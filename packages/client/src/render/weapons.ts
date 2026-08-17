@@ -9368,6 +9368,54 @@ export interface PoleStyle {
   iron?: string;
   /** Length multiplier on the school's long frame. */
   len?: number;
+  // ---- THE BESPOKE VOCABULARY (the SwordStyle idiom brought to
+  // reach): every field below is one nameable idea a specific weapon
+  // OWNS, spoken as geometry — never a recolor's crutch. All are
+  // drawn in the held-item axis frame, symmetric or ±y-mirrored, so
+  // every facing's rotation and skew inherits them for free.
+  /** Head length multiplier — the high tier's licence to loom. */
+  headLen?: number;
+  /** Head width multiplier (broad adamant, deep moonglaive crescent). */
+  headW?: number;
+  /**
+   * Leaf furniture past the collar: 'bar' = the hunt's toggle
+   * crossbar, lashed proud so what you pin stays pinned; 'blades' =
+   * swept side blades — the partisan's three-point answer.
+   */
+  wings?: 'bar' | 'blades';
+  /** Knapped edge: the chipped facet line of a head never poured. */
+  knapped?: boolean;
+  /** Cord lashings REPLACE the ferrule — bound, never socketed. */
+  bound?: boolean;
+  /** Mounting straps running down from the collar (leaf/pike opt-in;
+   *  glaives and halberds always carry theirs). */
+  langets?: boolean;
+  /** Cord X-lacing over the grip wrap (rawhide fists). */
+  laced?: boolean;
+  /** A living vein down the head's spine — REPLACES the dark midrib
+   *  (the riftglass law at full reach). */
+  core?: string;
+  /** Graduated shaft rings — the drill square's ruler. */
+  bands?: number;
+  /** Painted spiral down the shaft — the tourney's barber stripe. */
+  spiral?: string;
+  /** Star pricks set INTO the shaft metal. Constellations are not
+   *  motes: they hold their stations. */
+  stars?: string;
+  /** Cord tassel flaring below the collar — parade skirt, and the
+   *  soldier's honest reason: it stops blood reaching the grip. */
+  tassel?: string;
+  /** A socketed stone riding the collar. */
+  gem?: string;
+  /** Engraved curl chased into the head's flat, spoken dark. */
+  filigree?: string;
+  /** The moon's negative space: a crescent cut clean through the
+   *  glaive's flat (path-level, so the hurt flash keeps the hole). */
+  pierced?: boolean;
+  /** Ice teeth under the lance cone — rime that never lifts. */
+  rimed?: boolean;
+  /** Bone-white boss riveted to the halberd's cheek. */
+  skull?: string;
   /** Enchant-family accent (the standing ench fx vocabulary). */
   fx?: string;
   fxColor?: string;
@@ -9386,68 +9434,84 @@ export interface PoleStyle {
  */
 export const POLE_STYLES: Record<string, PoleStyle> = {
   // ---- the metal spear line: the standing metal palette, eight ways
-  // of mounting a leaf on a stick.
+  // of mounting a leaf on a stick — and each mounting is ITS OWN:
+  // lashed, plain, strapped, paraded, drawn, ground, knapped, fallen.
   // The levy's first lesson: a poured bronze leaf, an ash pole nobody
-  // straightened, hemp cord where the hands go.
+  // straightened, hemp cord X-laced where the hands go.
   spear: {
     kind: 'leaf', color: '#a4744b', edge: '#d09a63', dark: '#6f4a2a',
-    haft: '#8a6a45', wrap: '#6b4a26', iron: '#5b4028',
+    haft: '#8a6a45', wrap: '#6b4a26', iron: '#5b4028', laced: true,
   },
-  // Plain iron, and PLAIN is the design: a collar, a cap, no third idea.
+  // Plain iron, and PLAIN is the design: a collar, a cap, no third
+  // idea. The roster's baseline — every flourish below is measured
+  // against this one's refusal to have any.
   iron_spear: {
     kind: 'leaf', color: '#8d9299', edge: '#b4bac2', dark: '#565b64',
     haft: '#6a4a2c', iron: '#4a4554',
   },
-  // Watch pattern: bright steel over a blackened haft and a leather
-  // fist — the spear that stands in a doorway all night.
+  // Watch pattern: bright steel over a blackened haft, a leather fist,
+  // and riveted war langets — the spear that stands in a doorway all
+  // night and is MOUNTED for the trouble that comes through it.
   steel_spear: {
     kind: 'leaf', color: '#b8bec8', edge: '#e2e6ee', dark: '#7a8090',
-    haft: '#4a3f38', wrap: '#3a3540', iron: '#5a5f6a',
+    haft: '#4a3f38', wrap: '#3a3540', iron: '#5a5f6a', langets: true,
   },
-  // The parade piece: gilt on bleached ash with a crimson cord. It has
-  // never been outside a hall and it is not pretending otherwise.
+  // The parade piece: gilt on bleached ash, a crimson tassel skirting
+  // the collar, one chased curl down the flat. It has never been
+  // outside a hall and it is not pretending otherwise.
   gold_spear: {
     kind: 'leaf', color: '#e8c04c', edge: '#fff0b8', dark: '#9a7a1c',
     haft: '#c9b48c', wrap: '#8a2a3a', iron: '#b8863f',
+    tassel: '#8a2a3a', filigree: '#7a5c10',
   },
-  // Sky-metal drawn thin enough that the leaf reads blue against light.
+  // Sky-metal DRAWN, not forged wide: the longest slimmest leaf in
+  // the line, thin enough to read blue against light.
   mithril_spear: {
     kind: 'leaf', color: '#7fa8d9', edge: '#d8ecff', dark: '#4a6a9c',
     haft: '#2e3a4e', wrap: '#4a6a9c', iron: '#3f5e8c',
+    headLen: 1.3, headW: 0.72,
   },
-  // Deep-green adamant, green iron to the butt cap. It does not dull,
-  // so there is no whetstone notch anywhere on it.
+  // Deep-green adamant GROUND BROAD, green iron to the butt cap, war
+  // langets because the mounting must be as sure as the metal. It
+  // does not dull, so there is no whetstone notch anywhere on it.
   adamant_spear: {
     kind: 'leaf', color: '#5fa06a', edge: '#d2f0d0', dark: '#2f5e3c',
     haft: '#26382c', wrap: '#2f5e3c', iron: '#2f5e3c',
+    headW: 1.28, langets: true,
   },
   // Knapped night-glass BOUND to the haft rather than socketed — the
-  // one head in the line that was never poured.
+  // one head in the line that was never poured, and the cord
+  // crossings where every other spear wears a collar say so.
   obsidian_spear: {
     kind: 'leaf', color: '#4e4260', edge: '#8a7ab8', dark: '#2a2333',
     haft: '#241d30', wrap: '#5a4a68', iron: '#332b40',
+    knapped: true, bound: true,
   },
-  // Fallen-sky violet on a night haft, still throwing light that left
-  // somewhere a long time ago.
+  // Fallen-sky violet on a night haft: a long pale leaf with a white
+  // vein down the spine still throwing light that left somewhere a
+  // long time ago.
   starsteel_spear: {
     kind: 'leaf', color: '#cabdf2', edge: '#ffffff', dark: '#7a6ab0',
     haft: '#3a3452', wrap: '#a99ad8', iron: '#7a6ab0',
-    fx: 'star', fxColor: '#f4f4ff',
+    headLen: 1.15, core: '#ffffff', fx: 'star', fxColor: '#f4f4ff',
   },
 
   // ---- the bespoke twelve.
-  // THE CROSSBAR IS THE POINT: the hunt's wings stop a charging boar
-  // an arm's length short of the hands. Oak, rawhide, working iron.
+  // THE CROSSBAR IS THE POINT: a forged toggle bar with rolled
+  // finials, rawhide-lashed proud of the socket, stops a charging
+  // boar an arm's length short of the hands. Oak, rawhide, working
+  // iron, and an X-laced fist.
   boar_spear: {
     kind: 'winged', color: '#8d9299', edge: '#b4bac2', dark: '#4e535a',
     haft: '#7a5a34', wrap: '#a08a5c', iron: '#4a4554',
+    wings: 'bar', laced: true,
   },
   // Eighteen feet of ash and four inches of iron — the levy's whole
   // answer to a horse. The head is almost an afterthought; the LENGTH
-  // is the weapon.
+  // is the weapon, and the langets admit the head knows it.
   iron_pike: {
     kind: 'pike', color: '#8d9299', edge: '#b0b6be', dark: '#565b64',
-    haft: '#8a6a45', iron: '#4a4554', len: 1.12,
+    haft: '#8a6a45', iron: '#4a4554', len: 1.12, langets: true,
   },
   // The town watch's arm: a brass collar (the roster's one warm metal,
   // spent here on purpose) and an oxblood cord. It opens gates and it
@@ -9457,61 +9521,82 @@ export const POLE_STYLES: Record<string, PoleStyle> = {
     haft: '#5b4028', wrap: '#8a2a3a', iron: '#c9a45e',
   },
   // One long single edge on a black haft: a sword that decided it
-  // wanted reach and never went back.
+  // wanted reach and never went back — the fuller down the sweep is
+  // the sword it used to be, remembered.
   steel_glaive: {
     kind: 'glaive', color: '#b8bec8', edge: '#eef2f8', dark: '#6e7684',
     haft: '#3a3540', wrap: '#5a5f6a', iron: '#5a5f6a',
   },
-  // The drilled square's pike: steel banding laid where the ranks grip,
-  // so the whole shaft is graduated like a ruler.
+  // The drilled square's pike: four steel rings laid down the shaft
+  // where the ranks grip, so the whole length is graduated like a
+  // ruler and the sergeant can SAY "third band" and be obeyed.
   steel_pike: {
     kind: 'pike', color: '#b8bec8', edge: '#e2e6ee', dark: '#7a8090',
     haft: '#6a5a44', wrap: '#b8bec8', iron: '#5a5f6a', len: 1.12,
+    bands: 4,
   },
-  // The hall guard's partisan: bright silver wings, white cord, a haft
-  // stained the color of a good coat. It stands still and looks costly.
+  // The hall guard's partisan: THREE POINTS, ONE WEAPON — swept side
+  // blades curling off the socket under the main leaf, the white cord
+  // at the fist, a haft stained the color of a good coat. It stands
+  // still and looks costly. (The sheet judged a tassel here as noise
+  // against the wings — the flare belongs to the blades alone.)
   silver_partisan: {
     kind: 'winged', color: '#dfe3ec', edge: '#ffffff', dark: '#9aa2b4',
     haft: '#33303c', wrap: '#e8e4f0', iron: '#9aa2b4',
+    wings: 'blades',
   },
-  // The tourney lance, painted in Vale blue right down the shaft — the
-  // vamplate is a shield, and it is wearing the house on it.
+  // The tourney lance made honest: the barber spiral wound in Vale
+  // blue right down the shaft — the vamplate is a shield, and the
+  // whole weapon is wearing the house on it.
   knights_lance: {
     kind: 'lance', color: '#c8ced8', edge: '#ffffff', dark: '#7a8496',
-    haft: '#3a5a8c', wrap: '#2e4a78', iron: '#3f5e8c',
+    haft: '#e8e4da', wrap: '#2e4a78', iron: '#3f5e8c',
+    spiral: '#3a5a8c',
   },
-  // Found, never forged: a moonpale crescent hafted in green wood, and
-  // the edge keeps growing a thin verdant light back along itself.
+  // Found, never forged: a moonpale crescent hafted in green wood,
+  // with the MOON'S OWN NEGATIVE SPACE cut clean through the flat —
+  // and the edge keeps growing a thin verdant light back along
+  // itself.
   moonglaive: {
     kind: 'glaive', color: '#dfe6f6', edge: '#ffffff', dark: '#9aa8c0',
     haft: '#4a5a3c', wrap: '#8aa860', iron: '#7a8a9c',
+    headW: 1.18, pierced: true, gem: '#dfe6f6',
     fx: 'gleam', fxColor: '#c8f0a0',
   },
-  // A lance of standing ice on grey pine. The fog on it has never
+  // A lance of standing ice on grey pine, icicle teeth down the cone
+  // and frost creeping the vamplate rim. The fog on it has never
   // lifted, indoors or out, and the wrap is stiff with rime.
   fellwinter_lance: {
     kind: 'lance', color: '#cfe2f0', edge: '#ffffff', dark: '#8ac4e8',
     haft: '#4a5a66', wrap: '#a8c8dc', iron: '#7a94ac',
-    fx: 'frost', fxColor: '#dff0ff',
+    rimed: true, fx: 'frost', fxColor: '#dff0ff',
   },
-  // The keep gate's own arm: black gate-iron, one gold band at the
-  // fist, and a rear hook that has taken men off horses.
+  // The keep gate's own arm: black gate-iron cut DEEP (the biggest
+  // axe bite in the roster, the longest unhorsing hook), one gold
+  // band at the fist, and the warden the relief never reached riding
+  // the cheek in bone-white.
   gatewarden_halberd: {
     kind: 'halberd', color: '#5e6a76', edge: '#98a4b2', dark: '#2c343c',
     haft: '#2e2a30', wrap: '#d9a441', iron: '#3a4048',
+    headW: 1.16, skull: '#cfc8b6',
   },
-  // The pike that outreaches the sky: night-metal shaft with a small
-  // constellation adrift up it, always climbing toward the point.
+  // The pike that outreaches the sky: a long white-seamed needle over
+  // a night shaft set with seven fixed stars — the constellation
+  // holds its stations while the drift motes climb past it.
   heavens_reach: {
     kind: 'pike', color: '#b8c4f0', edge: '#ffffff', dark: '#5a5a8c',
     haft: '#2a2a44', wrap: '#6a6ab0', iron: '#4a4a7a', len: 1.12,
+    headLen: 1.25, core: '#ffffff', stars: '#e8e4ff',
     fx: 'drift', fxColor: '#e8e4ff',
   },
-  // White ash and gold, and a sunrise sitting on the point — the one
-  // lance in the roster that is warm to hold.
+  // White ash and gold: the gold spiral wound down the white, a
+  // sunstone socketed at the collar, rays chased off the vamplate —
+  // and a sunrise sitting on the point. The one lance in the roster
+  // that is warm to hold.
   dawnlance: {
     kind: 'lance', color: '#f0e4c0', edge: '#ffffff', dark: '#c9a45e',
     haft: '#e8e2d0', wrap: '#d9a441', iron: '#e8c04c', len: 1.04,
+    headLen: 1.12, spiral: '#e8c04c', gem: '#ffd97a', filigree: '#c9a45e',
     fx: 'sun', fxColor: '#ffe8a0',
   },
 };
@@ -9578,9 +9663,13 @@ export function drawPole(
   const hw = 0.024 * s;
 
   // Head geometry budgets, per archetype: where the socket collar
-  // sits (the wood ends), how far the steel runs past it.
-  const headLen =
-    st.kind === 'pike' ? 0.16 * s : st.kind === 'lance' ? 0.24 * s : st.kind === 'glaive' ? 0.3 * s : st.kind === 'halberd' ? 0.24 * s : 0.2 * s;
+  // sits (the wood ends), how far the steel runs past it. headLen /
+  // headW are the roster's two exaggeration dials — the endgame heads
+  // are allowed to loom, the levy's are not.
+  const baseHead =
+    st.kind === 'pike' ? 0.16 : st.kind === 'lance' ? 0.24 : st.kind === 'glaive' ? 0.3 : st.kind === 'halberd' ? 0.24 : 0.2;
+  const headLen = baseHead * s * (st.headLen ?? 1);
+  const wMul = st.headW ?? 1;
   const collarAt = tip - headLen;
 
   // THE HAFT: one tapered ash line, butt to collar, with a single lit
@@ -9603,6 +9692,51 @@ export function drawPole(
     ctx.closePath();
     ctx.fill();
   }
+  // THE SPIRAL: the tourney's barber stripe, painted down the whole
+  // working length. Diagonal parallelograms — at any rotation they
+  // read as wound paint, which is what a real lance wears.
+  if (st.spiral && !hurt) {
+    ctx.fillStyle = st.spiral;
+    const x0 = butt + 0.1 * LEN;
+    const x1 = collarAt - 0.05 * s;
+    const step = 0.085 * s;
+    const slant = 0.03 * s;
+    const bw = 0.026 * s;
+    for (let x = x0; x < x1 - slant - bw; x += step) {
+      ctx.beginPath();
+      ctx.moveTo(x, hw * 0.88);
+      ctx.lineTo(x + slant, -hw * 0.88);
+      ctx.lineTo(x + slant + bw, -hw * 0.88);
+      ctx.lineTo(x + bw, hw * 0.88);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  // THE BANDS: graduated shaft rings — the drill square's ruler laid
+  // where the ranks grip.
+  if (st.bands && !hurt) {
+    ctx.fillStyle = iron;
+    const x0 = butt + 0.16 * LEN;
+    const x1 = collarAt - 0.12 * s;
+    for (let i = 0; i < st.bands; i++) {
+      const x = x0 + ((x1 - x0) * i) / Math.max(1, st.bands - 1);
+      ctx.fillRect(x - 0.008 * s, -hw * 1.14, 0.016 * s, hw * 2.28);
+    }
+  }
+  // THE STARS: pricks set INTO the shaft metal at held stations —
+  // a constellation is not a mote swarm; it does not drift.
+  if (st.stars && !hurt) {
+    ctx.fillStyle = st.stars;
+    const x0 = butt + 0.14 * LEN;
+    const x1 = collarAt - 0.08 * s;
+    for (let i = 0; i < 7; i++) {
+      const x = x0 + ((x1 - x0) * (i + 0.5)) / 7;
+      const y = hw * 0.5 * Math.sin(i * 2.4);
+      const r = 0.009 * s * (i % 3 === 1 ? 1.5 : 1);
+      ctx.fillRect(x - r, y - r * 0.28, r * 2, r * 0.56);
+      ctx.fillRect(x - r * 0.28, y - r, r * 0.56, r * 2);
+    }
+  }
   // THE BUTT CAP: a real end for the haft-strike's real argument.
   ctx.fillStyle = iron;
   ctx.beginPath();
@@ -9612,30 +9746,128 @@ export function drawPole(
   ctx.lineTo(butt - 0.028 * s, hw * 1.05);
   ctx.closePath();
   ctx.fill();
-  // The grip wrap: one band where the main fist lives (the origin).
+  // The grip wrap: one band where the main fist lives (the origin),
+  // with the rawhide X-lacing over it when the roster says worked.
   if (st.wrap && !hurt) {
     ctx.fillStyle = st.wrap;
     ctx.fillRect(-0.055 * s, -hw * 1.08, 0.11 * s, hw * 2.16);
+    if (st.laced) {
+      ctx.strokeStyle = shade(st.wrap, -30);
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      ctx.beginPath();
+      for (const d of [-1, 1] as const) {
+        ctx.moveTo(-0.05 * s, d * hw * 0.9);
+        ctx.lineTo(0, -d * hw * 0.9);
+        ctx.lineTo(0.05 * s, d * hw * 0.9);
+      }
+      ctx.stroke();
+    }
   }
-  // THE FERRULE: the collar that MOUNTS the head. Slightly proud of
-  // the haft so the seam reads at scale.
-  ctx.fillStyle = iron;
-  ctx.fillRect(collarAt - 0.012 * s, -hw * 1.3, 0.03 * s, hw * 2.6);
+  // THE TASSEL: the parade skirt below the collar — two flared
+  // strands mirrored about the axis so every facing keeps the flare.
+  // Painted before the ferrule so the collar caps its knot.
+  if (st.tassel) {
+    // Rounded cord drops, curving back toward the shaft — a parade
+    // skirt, never a barb (the first cut of this read like red
+    // spurs and got judged off the sheet).
+    ctx.fillStyle = hurt ? '#ffffff' : st.tassel;
+    for (const d of [-1, 1] as const) {
+      ctx.beginPath();
+      ctx.moveTo(collarAt - 0.006 * s, d * hw * 0.95);
+      ctx.quadraticCurveTo(collarAt - 0.055 * s, d * hw * 2.5, collarAt - 0.088 * s, d * hw * 2.05);
+      ctx.quadraticCurveTo(collarAt - 0.064 * s, d * hw * 1.25, collarAt - 0.028 * s, d * hw * 1.02);
+      ctx.closePath();
+      ctx.fill();
+    }
+    if (!hurt) {
+      // The strand shadow: one dark slit per side so the skirt reads
+      // as cords, not a cone.
+      ctx.strokeStyle = shade(st.tassel, -32);
+      ctx.lineWidth = Math.max(1, s * 0.008);
+      ctx.beginPath();
+      for (const d of [-1, 1] as const) {
+        ctx.moveTo(collarAt - 0.018 * s, d * hw * 1.2);
+        ctx.lineTo(collarAt - 0.07 * s, d * hw * 1.95);
+      }
+      ctx.stroke();
+    }
+  }
+  if (st.bound) {
+    // THE LASHING: cord crossings where a socket would be — this head
+    // was BOUND to its haft, never poured. The ferrule yields.
+    ctx.strokeStyle = hurt ? '#ffffff' : (st.wrap ?? '#6b4a26');
+    ctx.lineWidth = Math.max(1, s * 0.012);
+    ctx.beginPath();
+    for (let i = 0; i < 3; i++) {
+      const x = collarAt - 0.03 * s + i * 0.022 * s;
+      ctx.moveTo(x - 0.012 * s, -hw * 1.25);
+      ctx.lineTo(x + 0.012 * s, hw * 1.25);
+      ctx.moveTo(x + 0.012 * s, -hw * 1.25);
+      ctx.lineTo(x - 0.012 * s, hw * 1.25);
+    }
+    ctx.stroke();
+  } else {
+    // THE FERRULE: the collar that MOUNTS the head. Slightly proud of
+    // the haft so the seam reads at scale.
+    ctx.fillStyle = iron;
+    ctx.fillRect(collarAt - 0.012 * s, -hw * 1.3, 0.03 * s, hw * 2.6);
+  }
+  // Opt-in langets for leaves and pikes (the war mounting); glaives
+  // and halberds always carry theirs in their own branches below.
+  if (st.langets && st.kind !== 'glaive' && st.kind !== 'halberd') {
+    ctx.fillStyle = iron;
+    ctx.fillRect(collarAt - 0.075 * s, -hw * 1.1, 0.068 * s, hw * 0.44);
+    ctx.fillRect(collarAt - 0.075 * s, hw * 0.66, 0.068 * s, hw * 0.44);
+    if (!hurt) {
+      ctx.fillStyle = shade(iron, 30);
+      for (const d of [-1, 1] as const)
+        for (const f of [0.28, 0.72] as const) {
+          ctx.beginPath();
+          ctx.arc(collarAt - 0.075 * s + 0.068 * s * f, d * hw * 0.88, Math.max(0.75, 0.006 * s), 0, Math.PI * 2);
+          ctx.fill();
+        }
+    }
+  }
 
   if (st.kind === 'leaf' || st.kind === 'winged') {
     // THE LEAF: two shoulders swelling off the socket, tapering to
-    // one point; a dark midrib carries the spine, one lit facet takes
-    // the sun. The winged head (boar spears, partisans) grows a
-    // crossbar past the collar — the hunt's own guard.
-    const w = 0.062 * s;
+    // one point; the spine carries a dark midrib (or a living core),
+    // one lit facet takes the sun. A knapped head speaks the same
+    // profile in chips — facet bites instead of the poured line.
+    const w = 0.062 * s * wMul;
     const swellAt = collarAt + headLen * 0.38;
+    const x0 = collarAt + 0.012 * s;
+    // The edge polyline, socket→swell→tip, optionally knapped.
+    const edgePts = (sign: number): Array<[number, number]> => {
+      const pts: Array<[number, number]> = [];
+      const n = st.knapped ? 7 : 2;
+      for (let i = 0; i <= n; i++) {
+        const t = i / n;
+        let x: number;
+        let y: number;
+        if (t < 0.38) {
+          const u = t / 0.38;
+          x = x0 + (swellAt - x0) * u;
+          y = hw * 0.5 + (w - hw * 0.5) * u;
+        } else {
+          const u = (t - 0.38) / 0.62;
+          x = swellAt + (tip - swellAt) * u;
+          y = w * (1 - u);
+        }
+        // The chip bites alternate deep and shallow — a worked edge,
+        // not a serration.
+        if (st.knapped && i > 0 && i < n) y -= w * (i % 2 ? 0.18 : 0.07);
+        pts.push([x, sign * y]);
+      }
+      return pts;
+    };
     ctx.fillStyle = steel;
     ctx.beginPath();
-    ctx.moveTo(collarAt + 0.012 * s, -hw * 0.5);
-    ctx.lineTo(swellAt, -w);
-    ctx.lineTo(tip, 0);
-    ctx.lineTo(swellAt, w);
-    ctx.lineTo(collarAt + 0.012 * s, hw * 0.5);
+    const up = edgePts(-1);
+    const dn = edgePts(1);
+    ctx.moveTo(x0, -hw * 0.5);
+    for (const [px, py] of up) ctx.lineTo(px, py);
+    for (let i = dn.length - 1; i >= 0; i--) ctx.lineTo(dn[i]![0], dn[i]![1]);
     ctx.closePath();
     ctx.fill();
     if (!hurt) {
@@ -9646,26 +9878,99 @@ export function drawPole(
       ctx.lineTo(swellAt + 0.02 * s, -0.006 * s);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = dark;
-      ctx.lineWidth = Math.max(1, s * 0.012);
-      ctx.beginPath();
-      ctx.moveTo(collarAt + 0.02 * s, 0);
-      ctx.lineTo(tip - 0.02 * s, 0);
-      ctx.stroke();
-      if (st.kind === 'winged') {
-        ctx.fillStyle = iron;
+      if (st.core) {
+        // The living vein breathes on the world clock — the one
+        // bright thing allowed to move on a still weapon. It rides a
+        // dark channel first so it reads even across the lit facet.
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = Math.max(1.5, s * 0.02);
         ctx.beginPath();
-        ctx.moveTo(collarAt + 0.028 * s, -0.075 * s);
-        ctx.lineTo(collarAt + 0.052 * s, -0.075 * s);
-        ctx.lineTo(collarAt + 0.046 * s, -hw * 1.1);
-        ctx.lineTo(collarAt + 0.034 * s, -hw * 1.1);
+        ctx.moveTo(collarAt + 0.02 * s, 0);
+        ctx.lineTo(tip - 0.02 * s, 0);
+        ctx.stroke();
+        ctx.strokeStyle = st.core;
+        ctx.globalAlpha = 0.6 + 0.3 * Math.sin(nowMs * 0.003);
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.beginPath();
+        ctx.moveTo(collarAt + 0.024 * s, 0);
+        ctx.lineTo(tip - 0.024 * s, 0);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(collarAt + 0.02 * s, 0);
+        ctx.lineTo(tip - 0.02 * s, 0);
+        ctx.stroke();
+      }
+      if (st.filigree) {
+        // One chased curl on the flat — engraving is spoken dark,
+        // and it stays inside the facet's own field.
+        ctx.strokeStyle = st.filigree;
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.moveTo(collarAt + headLen * 0.18, w * 0.3);
+        ctx.quadraticCurveTo(swellAt, w * 0.66, swellAt + headLen * 0.12, w * 0.12);
+        ctx.quadraticCurveTo(swellAt + headLen * 0.3, -w * 0.2, tip - headLen * 0.18, -0.004 * s);
+        ctx.stroke();
+      }
+    }
+    // THE WINGS — silhouette furniture, so they draw under the hurt
+    // flash too (a boar spear that loses its bar when struck is a
+    // different weapon for three frames).
+    if (st.wings === 'bar') {
+      // The hunt's toggle crossbar: a forged bar with rolled finials,
+      // lashed proud of the socket. What you pin stays pinned.
+      const bx = collarAt + 0.038 * s;
+      ctx.fillStyle = iron;
+      ctx.fillRect(bx - 0.011 * s, -0.105 * s, 0.022 * s, 0.21 * s);
+      for (const d of [-1, 1] as const) {
+        ctx.beginPath();
+        ctx.arc(bx, d * 0.105 * s, 0.016 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (!hurt) {
+        ctx.strokeStyle = st.wrap ?? '#a08a5c';
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.moveTo(bx - 0.02 * s, -hw * 1.2);
+        ctx.lineTo(bx + 0.02 * s, hw * 1.2);
+        ctx.moveTo(bx + 0.02 * s, -hw * 1.2);
+        ctx.lineTo(bx - 0.02 * s, hw * 1.2);
+        ctx.stroke();
+      }
+    } else if (st.wings === 'blades') {
+      // The partisan's answer: swept side blades curving tipward off
+      // the socket — three points, one weapon.
+      ctx.fillStyle = steel;
+      for (const d of [-1, 1] as const) {
+        ctx.beginPath();
+        ctx.moveTo(collarAt + 0.012 * s, d * hw * 0.7);
+        ctx.quadraticCurveTo(collarAt + 0.018 * s, d * 0.1 * s, collarAt + 0.088 * s, d * 0.115 * s);
+        ctx.quadraticCurveTo(collarAt + 0.056 * s, d * 0.05 * s, collarAt + 0.06 * s, d * hw * 0.6);
         ctx.closePath();
         ctx.fill();
+      }
+      if (!hurt) {
+        // One lit face, on the outward blade only — one sun.
+        ctx.fillStyle = edge;
         ctx.beginPath();
-        ctx.moveTo(collarAt + 0.028 * s, 0.075 * s);
-        ctx.lineTo(collarAt + 0.052 * s, 0.075 * s);
-        ctx.lineTo(collarAt + 0.046 * s, hw * 1.1);
-        ctx.lineTo(collarAt + 0.034 * s, hw * 1.1);
+        ctx.moveTo(collarAt + 0.02 * s, -hw * 0.95);
+        ctx.quadraticCurveTo(collarAt + 0.026 * s, -0.088 * s, collarAt + 0.08 * s, -0.107 * s);
+        ctx.quadraticCurveTo(collarAt + 0.052 * s, -0.07 * s, collarAt + 0.046 * s, -hw * 0.85);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else if (st.kind === 'winged') {
+      // The fallback wing nubs (unauthored partisan-shaped ids).
+      ctx.fillStyle = iron;
+      for (const d of [-1, 1] as const) {
+        ctx.beginPath();
+        ctx.moveTo(collarAt + 0.028 * s, d * 0.075 * s);
+        ctx.lineTo(collarAt + 0.052 * s, d * 0.075 * s);
+        ctx.lineTo(collarAt + 0.046 * s, d * hw * 1.1);
+        ctx.lineTo(collarAt + 0.034 * s, d * hw * 1.1);
         ctx.closePath();
         ctx.fill();
       }
@@ -9674,7 +9979,7 @@ export function drawPole(
     // THE PIKE: the needle — a slim four-sided bodkin on the longest
     // haft in the roster. The head is barely there; the LENGTH is the
     // design.
-    const w = 0.03 * s;
+    const w = 0.03 * s * wMul;
     ctx.fillStyle = steel;
     ctx.beginPath();
     ctx.moveTo(collarAt + 0.01 * s, -w);
@@ -9690,13 +9995,31 @@ export function drawPole(
       ctx.lineTo(collarAt + 0.02 * s, 0);
       ctx.closePath();
       ctx.fill();
+      if (st.core) {
+        // The needle's living seam, breathing on the world clock —
+        // dark channel under bright vein, same as the leaf's.
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = Math.max(1.5, s * 0.016);
+        ctx.beginPath();
+        ctx.moveTo(collarAt + 0.02 * s, 0);
+        ctx.lineTo(tip - 0.01 * s, 0);
+        ctx.stroke();
+        ctx.strokeStyle = st.core;
+        ctx.globalAlpha = 0.6 + 0.3 * Math.sin(nowMs * 0.003);
+        ctx.lineWidth = Math.max(1, s * 0.009);
+        ctx.beginPath();
+        ctx.moveTo(collarAt + 0.024 * s, 0);
+        ctx.lineTo(tip - 0.014 * s, 0);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
     }
   } else if (st.kind === 'lance') {
     // THE LANCE: the knight's cone — a smooth taper from a ringed
     // socket to the point, and the VAMPLATE riding ahead of the fist:
     // the sloped hand-guard disc that says this weapon meets things
     // at speed.
-    const w0 = 0.052 * s;
+    const w0 = 0.052 * s * wMul;
     ctx.fillStyle = steel;
     ctx.beginPath();
     ctx.moveTo(collarAt + 0.008 * s, -w0);
@@ -9704,6 +10027,22 @@ export function drawPole(
     ctx.lineTo(collarAt + 0.008 * s, w0);
     ctx.closePath();
     ctx.fill();
+    if (st.rimed) {
+      // THE RIME: icicle teeth hanging off the cone's under-face —
+      // silhouette-level, because on this lance the ice IS the shape.
+      // The fog never lifted; neither do these.
+      ctx.fillStyle = hurt ? '#ffffff' : (st.edge ?? '#ffffff');
+      for (const [f, drop] of [[0.08, 0.055], [0.42, 0.04], [0.74, 0.026]] as const) {
+        const x = collarAt + 0.008 * s + (headLen - 0.008 * s) * f;
+        const wAt = w0 * (1 - f);
+        ctx.beginPath();
+        ctx.moveTo(x - 0.01 * s, wAt * 0.75);
+        ctx.lineTo(x + 0.003 * s, wAt + drop * s);
+        ctx.lineTo(x + 0.015 * s, wAt * 0.6);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
     if (!hurt) {
       ctx.fillStyle = edge;
       ctx.beginPath();
@@ -9740,12 +10079,40 @@ export function drawPole(
       ctx.lineTo(0.096 * s, -0.03 * s);
       ctx.closePath();
       ctx.fill();
+      if (st.rimed) {
+        // Frost creeping the vamplate's leading rim.
+        ctx.fillStyle = st.edge ?? '#ffffff';
+        for (const d of [-1, 1] as const) {
+          ctx.beginPath();
+          ctx.moveTo(0.088 * s, d * 0.07 * s);
+          ctx.lineTo(0.072 * s, d * 0.088 * s);
+          ctx.lineTo(0.096 * s, d * 0.052 * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      if (st.filigree) {
+        // Rays chased forward off the vamplate — the heirloom wears
+        // its sunrise where the charge shows it first.
+        ctx.strokeStyle = st.filigree;
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        for (const yy of [-0.05, 0, 0.05] as const) {
+          ctx.moveTo(0.092 * s, yy * s);
+          ctx.lineTo(0.058 * s, yy * s * 0.5);
+        }
+        ctx.stroke();
+      }
     }
   } else if (st.kind === 'glaive') {
     // THE GLAIVE: one single-edged sweep of steel rising off the
     // socket — the edge on the outward face, a notched back, langets
-    // carrying the mounting down the haft.
-    const w = 0.075 * s;
+    // carrying the mounting down the haft. A pierced glaive carries
+    // the moon's negative space cut clean through the flat.
+    const w = 0.075 * s * wMul;
+    const holeX = collarAt + headLen * 0.4;
+    const holeY = -w * 0.32;
+    const holeR = w * 0.44;
     ctx.fillStyle = steel;
     ctx.beginPath();
     ctx.moveTo(collarAt + 0.01 * s, -hw * 0.6);
@@ -9754,7 +10121,20 @@ export function drawPole(
     ctx.lineTo(collarAt + headLen * 0.4, hw * 0.5);
     ctx.lineTo(collarAt + 0.01 * s, hw * 0.6);
     ctx.closePath();
-    ctx.fill();
+    if (st.pierced) {
+      ctx.moveTo(holeX + holeR, holeY);
+      ctx.arc(holeX, holeY, holeR, 0, Math.PI * 2);
+      ctx.fill('evenodd');
+      // The waxing fill: a second disc re-fills part of the punch so
+      // what remains open is a THICK CRESCENT, not a ring-hole.
+      // Steel-side, so the hurt flash keeps the same moon.
+      ctx.fillStyle = steel;
+      ctx.beginPath();
+      ctx.arc(holeX + holeR * 0.62, holeY + holeR * 0.1, holeR * 0.92, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fill();
+    }
     if (!hurt) {
       ctx.fillStyle = edge;
       ctx.beginPath();
@@ -9763,6 +10143,23 @@ export function drawPole(
       ctx.lineTo(collarAt + headLen * 0.5, -w * 0.45);
       ctx.closePath();
       ctx.fill();
+      if (st.pierced) {
+        // A dark rim around the crescent so the cut reads as THROUGH.
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.arc(holeX, holeY, holeR, Math.PI * 0.55, Math.PI * 1.75);
+        ctx.stroke();
+      } else {
+        // THE FULLER: the sword this blade used to be, remembered as
+        // one dark line riding the sweep.
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.moveTo(collarAt + headLen * 0.14, -hw * 0.25);
+        ctx.quadraticCurveTo(collarAt + headLen * 0.48, -w * 0.52, tip - 0.024 * s, -0.01 * s);
+        ctx.stroke();
+      }
       ctx.fillStyle = iron;
       ctx.fillRect(collarAt - 0.06 * s, -hw * 1.14, 0.055 * s, hw * 0.5);
       ctx.fillRect(collarAt - 0.06 * s, hw * 0.64, 0.055 * s, hw * 0.5);
@@ -9770,7 +10167,8 @@ export function drawPole(
   } else {
     // THE HALBERD: the argument with three answers — axe flat forward,
     // hook behind, spike above. Langets run the mounting down the
-    // haft; the axe face takes the one lit plane.
+    // haft; the axe face takes the one lit plane. headW deepens the
+    // whole argument: bigger axe bite, longer unhorsing hook.
     const ax0 = collarAt + 0.015 * s;
     const ax1 = collarAt + 0.14 * s;
     ctx.fillStyle = steel;
@@ -9784,40 +10182,92 @@ export function drawPole(
     // The axe blade (the -y face is the school's outward edge).
     ctx.beginPath();
     ctx.moveTo(ax0, -hw * 0.8);
-    ctx.lineTo(ax0 + 0.012 * s, -0.105 * s);
-    ctx.quadraticCurveTo((ax0 + ax1) / 2, -0.135 * s, ax1 - 0.008 * s, -0.1 * s);
+    ctx.lineTo(ax0 + 0.012 * s, -0.105 * s * wMul);
+    ctx.quadraticCurveTo((ax0 + ax1) / 2, -0.135 * s * wMul, ax1 - 0.008 * s, -0.1 * s * wMul);
     ctx.lineTo(ax1, -hw * 0.8);
     ctx.closePath();
     ctx.fill();
     // The rear hook.
     ctx.beginPath();
     ctx.moveTo(ax0 + 0.02 * s, hw * 0.8);
-    ctx.lineTo(ax0 + 0.055 * s, 0.095 * s);
-    ctx.lineTo(ax0 + 0.085 * s, 0.075 * s);
+    ctx.lineTo(ax0 + 0.055 * s, 0.095 * s * wMul);
+    ctx.lineTo(ax0 + 0.085 * s, 0.075 * s * wMul);
     ctx.lineTo(ax0 + 0.075 * s, hw * 0.8);
     ctx.closePath();
     ctx.fill();
     if (!hurt) {
       ctx.fillStyle = edge;
       ctx.beginPath();
-      ctx.moveTo(ax0 + 0.014 * s, -0.1 * s);
-      ctx.quadraticCurveTo((ax0 + ax1) / 2, -0.128 * s, ax1 - 0.012 * s, -0.095 * s);
-      ctx.lineTo(ax1 - 0.02 * s, -0.062 * s);
-      ctx.quadraticCurveTo((ax0 + ax1) / 2, -0.09 * s, ax0 + 0.02 * s, -0.066 * s);
+      ctx.moveTo(ax0 + 0.014 * s, -0.1 * s * wMul);
+      ctx.quadraticCurveTo((ax0 + ax1) / 2, -0.128 * s * wMul, ax1 - 0.012 * s, -0.095 * s * wMul);
+      ctx.lineTo(ax1 - 0.02 * s, -0.062 * s * wMul);
+      ctx.quadraticCurveTo((ax0 + ax1) / 2, -0.09 * s * wMul, ax0 + 0.02 * s, -0.066 * s * wMul);
       ctx.closePath();
       ctx.fill();
       ctx.fillStyle = dark;
       ctx.beginPath();
-      ctx.moveTo(ax0 + 0.055 * s, 0.093 * s);
-      ctx.lineTo(ax0 + 0.083 * s, 0.074 * s);
-      ctx.lineTo(ax0 + 0.078 * s, 0.086 * s);
+      ctx.moveTo(ax0 + 0.055 * s, 0.093 * s * wMul);
+      ctx.lineTo(ax0 + 0.083 * s, 0.074 * s * wMul);
+      ctx.lineTo(ax0 + 0.078 * s, 0.086 * s * wMul);
       ctx.closePath();
       ctx.fill();
-      // Langets: the mounting straps down both faces of the haft.
+      if (st.skull) {
+        // THE BOSS: a bone-white skull riveted to the axe cheek — the
+        // warden the relief never reached, still on post. Small, flat,
+        // and inside the axe's own mass; never a second silhouette.
+        const cx = (ax0 + ax1) / 2;
+        const cy = -0.062 * s * wMul;
+        const r = 0.024 * s;
+        ctx.fillStyle = st.skull;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(cx - r * 0.52, cy + r * 0.5, r * 1.04, r * 0.8);
+        // Eye pits, nose notch, and the jaw's tooth shadow — spoken
+        // in the axe's own dark.
+        ctx.fillStyle = dark;
+        for (const d of [-1, 1] as const) {
+          ctx.beginPath();
+          ctx.arc(cx + d * r * 0.4, cy - r * 0.02, r * 0.26, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillRect(cx - r * 0.1, cy + r * 0.34, r * 0.2, r * 0.3);
+        ctx.fillRect(cx - r * 0.5, cy + r * 0.92, r, r * 0.16);
+      }
+      // Langets: the mounting straps down both faces of the haft,
+      // with their rivet heads catching light.
       ctx.fillStyle = iron;
       ctx.fillRect(collarAt - 0.075 * s, -hw * 1.12, 0.07 * s, hw * 0.46);
       ctx.fillRect(collarAt - 0.075 * s, hw * 0.66, 0.07 * s, hw * 0.46);
+      ctx.fillStyle = shade(iron, 30);
+      for (const d of [-1, 1] as const)
+        for (const f of [0.25, 0.75] as const) {
+          ctx.beginPath();
+          ctx.arc(collarAt - 0.075 * s + 0.07 * s * f, d * hw * 0.89, Math.max(0.75, 0.006 * s), 0, Math.PI * 2);
+          ctx.fill();
+        }
     }
+  }
+
+  // THE STONE: one socketed gem riding the collar — bezel, table,
+  // and a single lit fleck. The jewel is furniture, not fx.
+  if (st.gem && !hurt) {
+    const gx = collarAt + 0.004 * s;
+    const r = Math.max(1.5, 0.019 * s);
+    ctx.fillStyle = shade(st.gem, -36);
+    ctx.beginPath();
+    ctx.arc(gx, 0, r * 1.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = st.gem;
+    ctx.beginPath();
+    ctx.arc(gx, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.arc(gx - r * 0.3, -r * 0.32, r * 0.34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
   }
 
   // THE ENCHANT ACCENT: the standing fx vocabulary, spoken small. A
