@@ -2727,7 +2727,9 @@ export class Panels {
       const level = levelForXp(this.lastSkills[stop] ?? 0);
       const ring = ringGauge(level / 99, { tone: face.color });
       const img = document.createElement('img');
-      img.src = itemIconUrl(face.icon, 26);
+      // The callings wing wears crest-only stops at couch size — fetch
+      // the sharper asset; the arts wing's smaller ring downscales it.
+      img.src = itemIconUrl(face.icon, this.artsWing === 'callings' ? 40 : 26);
       img.draggable = false;
       ring.center.appendChild(img);
       const text = document.createElement('span');

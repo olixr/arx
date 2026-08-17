@@ -1252,11 +1252,22 @@ body:not(.no-ui-motion) .m-fill {
    crest-only (the tooltip and the stage name the skill), so the rail
    stays one calm row of faces instead of a strip of clipped text. */
 .wing-callings .rail-stop {
-  padding: 0.3125rem 0.4375rem;
+  padding: 0.3125rem 0.375rem;
 }
 
 .wing-callings .rail-stop .rail-text {
   display: none;
+}
+
+/* Crest-only stops read from the couch: the ring and its face grow
+   into the room the retired text gave back. */
+.wing-callings .rail-stop .ring-gauge {
+  --ring-size: 3.25rem;
+}
+
+.wing-callings .rail-stop .ring-center img {
+  width: 2rem;
+  height: 2rem;
 }
 
 /* ---- The wing door: two cut banner tabs, never a pill. ---------- */
