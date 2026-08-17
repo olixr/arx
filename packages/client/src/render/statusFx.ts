@@ -38,10 +38,11 @@ import {
   STATUS_AMBIENCE_MASK,
   STATUS_BOOK,
   afflictionStacksOf,
+  countStacksOf,
   type StatusId,
 } from '@arx/shared';
 import type { MatterCtx } from './matter/types.js';
-import { fire, frost, storm, blood, venom, dust } from './matter/index.js';
+import { fire, frost, storm, blood, venom, dust, shadow, radiance } from './matter/index.js';
 
 /**
  * The one status color truth — read off THE BOOK OF STATES, where
@@ -74,10 +75,17 @@ export interface StatusEdgeEvent {
 interface EdgeRec {
   bits: number;
   stacks: number;
+  /** The count-model nibble (THE WIDER WOUND) — its own deepening note. */
+  count: number;
   frame: number;
 }
 
-/** Ambience-mask bits in nameplate priority order, each with its id. */
+/**
+ * Ambience-mask bits in nameplate priority order, each with its id.
+ * The shipped six keep their exact order (the learned grammar); the
+ * wave-one roster appends — holds first (a lock outranks a number),
+ * then the marks, then the boons.
+ */
 const EDGE_BITS: ReadonlyArray<readonly [number, StatusId]> = [
   [STATUS_BIT.sunder, 'sunder'],
   [STATUS_BIT.bleed, 'bleed'],
@@ -85,9 +93,18 @@ const EDGE_BITS: ReadonlyArray<readonly [number, StatusId]> = [
   [STATUS_BIT.burn, 'burn'],
   [STATUS_BIT.chill, 'chill'],
   [STATUS_BIT.shock, 'shock'],
+  [STATUS_BIT.root, 'root'],
+  [STATUS_BIT.stagger, 'stagger'],
+  [STATUS_BIT.weaken, 'weaken'],
+  [STATUS_BIT.stonehide, 'stonehide'],
+  [STATUS_BIT.quicken, 'quicken'],
+  [STATUS_BIT.mend, 'mend'],
 ];
 
 const AFFLICTION_BITS = STATUS_BIT.bleed | STATUS_BIT.venom;
+
+/** The count-model pages' bits (their nibble is the second one). */
+const COUNT_PAGE_BITS = STATUS_BIT.quicken | STATUS_BIT.stonehide;
 
 /**
  * Per-body status memory. The renderer observes every visible body
@@ -115,19 +132,22 @@ export class StatusEdges {
    */
   observe(eid: number, bits: number): StatusEdgeEvent[] {
     const stacks = afflictionStacksOf(bits);
+    const count = countStacksOf(bits);
     const rec = this.map.get(eid);
     if (!rec || rec.frame < this.frame - 2) {
-      this.map.set(eid, { bits, stacks, frame: this.frame });
+      this.map.set(eid, { bits, stacks, count, frame: this.frame });
       return [];
     }
     const events: StatusEdgeEvent[] = [];
     const rose = bits & ~rec.bits & STATUS_AMBIENCE_MASK;
     let afflictionLanded = false;
+    let countLanded = false;
     if (rose) {
       for (const [bit, status] of EDGE_BITS) {
         if (rose & bit) {
           events.push({ status, kind: 'land' });
           if (bit & AFFLICTION_BITS) afflictionLanded = true;
+          if (bit & COUNT_PAGE_BITS) countLanded = true;
         }
       }
     }
@@ -139,8 +159,17 @@ export class StatusEdges {
         kind: 'stack',
       });
     }
+    // A count-model page deepening speaks its own note (AMBIGUOUS
+    // COUNTS SPEAK QUICKEN — the louder strategic boon).
+    if (!countLanded && count > rec.count && bits & COUNT_PAGE_BITS) {
+      events.push({
+        status: bits & STATUS_BIT.quicken ? 'quicken' : 'stonehide',
+        kind: 'stack',
+      });
+    }
     rec.bits = bits;
     rec.stacks = stacks;
+    rec.count = count;
     rec.frame = this.frame;
     return events;
   }
@@ -189,9 +218,32 @@ export const LANDINGS: Readonly<Record<string, LandingVoice>> = {
       z: 0.55,
     });
   },
+  // ---- THE WIDER WOUND: the wave-one landings, library-voiced per
+  // each page's contract. Phase 4 masters the riding auras; these are
+  // the announcements, held to landing scale.
+  root: (c, x, y) => {
+    // The earth grabs: a gouge tearing at the feet, ground-anchored.
+    dust.deployments.gouge!(c, x, y, { scale: 0.5 });
+  },
+  stagger: (c, x, y) => {
+    storm.deployments.impact!(c, x, y, { scale: 0.45, z: 0.4 });
+  },
+  weaken: (c, x, y) => {
+    shadow.deployments.bloom!(c, x, y, { scale: 0.45, z: 0.5 });
+  },
+  quicken: (c, x, y) => {
+    radiance.deployments.bloom!(c, x, y, { scale: 0.45, z: 0.5 });
+  },
+  mend: (c, x, y) => {
+    radiance.deployments.halo!(c, x, y, { scale: 0.45, z: 0.5 });
+  },
+  stonehide: (c, x, y) => {
+    // Stone settles ON the body, not off it: the slam at chest height.
+    dust.deployments.slam!(c, x, y - 0.35, { scale: 0.4 });
+  },
 };
 
-/** The quieter re-apply notes for stacking afflictions. */
+/** The quieter re-apply notes for stacking states. */
 const STACK_NOTES: Readonly<Record<string, LandingVoice>> = {
   venom: (c, x, y) => {
     venom.deployments.bead!(c, x, y, { scale: 0.5, z: 0.4 });
@@ -199,6 +251,13 @@ const STACK_NOTES: Readonly<Record<string, LandingVoice>> = {
   bleed: (c, x, y) => {
     // Drip is a sustained emitter — two or three drops and done.
     blood.deployments.drip!(c, x, y, { scale: 0.5, dur: 0.5 });
+  },
+  // The count-model boons' deepening notes (smaller than landings).
+  quicken: (c, x, y) => {
+    radiance.deployments.bloom!(c, x, y, { scale: 0.3, z: 0.5 });
+  },
+  stonehide: (c, x, y) => {
+    dust.deployments.slam!(c, x, y - 0.35, { scale: 0.25 });
   },
 };
 

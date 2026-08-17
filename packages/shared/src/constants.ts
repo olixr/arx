@@ -213,7 +213,15 @@
 // field at its parse door and equips the main hand as it always
 // did — a plainer answer to a deliberate ask, not a wrong world;
 // every gate stays server-side either way.
-export const PROTOCOL_VERSION = 33;
+// v34 — THE WIDER WOUND (statusBook Phase 3): the snapshot `status`
+// field widens u16 → u32, a binary record reshape (+2 bytes/entity)
+// no old reader can parse past, so the bump is owed. THE LOW WORD IS
+// FROZEN: bits 0-15 keep their exact v29 meanings forever (the u8
+// archaeology, sunder at 8, the affliction nibble at 9-12); the
+// wave-one roster rides bits 16-21, the count-model stack nibble
+// bits 22-25, and 26-31 stay free — this widening is meant to be the
+// last the status wire ever needs.
+export const PROTOCOL_VERSION = 34;
 
 /** The most souls one party can hold. */
 export const PARTY_CAP = 10;

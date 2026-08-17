@@ -114,7 +114,21 @@ test('the sweep purges long-unseen bodies', () => {
 });
 
 test('ONE GRAMMAR: every ambience state has a landing voice and an ink', () => {
-  const states = ['burn', 'chill', 'shock', 'bleed', 'venom', 'sunder'] as const;
+  // The whole roster — THE WIDER WOUND joined the six.
+  const states = [
+    'burn',
+    'chill',
+    'shock',
+    'bleed',
+    'venom',
+    'sunder',
+    'root',
+    'stagger',
+    'weaken',
+    'quicken',
+    'mend',
+    'stonehide',
+  ] as const;
   let mask = 0;
   for (const s of states) {
     assert.ok(LANDINGS[s], `${s} has no landing voice`);

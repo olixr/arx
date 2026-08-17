@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   AFFLICTIONS,
   AFFLICTION_STACKS_MASK,
+  COUNT_STACKS_MASK,
   AFFLICTION_STACKS_SHIFT,
   HASTE_FULL_DRAW_TICKS,
   HASTE_ON_HIT_TICKS,
@@ -40,15 +41,25 @@ test('THE TWO LANES: every distinct spark pair reacts; nothing else ever does', 
   }
 });
 
-test('THE TWO LANES: the rosters partition the statuses exactly', () => {
+test('THE TWO LANES: the rosters partition the FROZEN SIX exactly', () => {
+  // THE WIDER WOUND grew the union past the reaction lanes: the
+  // spark/affliction rosters still partition the ORIGINAL six (the
+  // reaction grammar's whole world); the wave-one roster lives in
+  // other lanes entirely (statusBook pins each page's).
+  const frozen = ['burn', 'chill', 'shock', 'bleed', 'venom', 'sunder'] as const;
   const seen = new Set<string>();
   for (const id of [...SPARKS, ...AFFLICTIONS, 'sunder' as const]) {
     assert.ok(!seen.has(id), `${id} sits in two lanes`);
     seen.add(id);
   }
-  assert.equal(seen.size, STATUS_IDS.length, 'every status has exactly one lane');
-  for (const id of STATUS_IDS) assert.ok(seen.has(id), `${id} has no lane`);
+  assert.equal(seen.size, frozen.length, 'the six partition');
+  for (const id of frozen) assert.ok(seen.has(id), `${id} has no lane`);
   assert.ok(!isSpark('sunder') && !isAffliction('sunder'), 'the mark stands alone');
+  for (const id of STATUS_IDS) {
+    if (!seen.has(id)) {
+      assert.ok(!isSpark(id) && !isAffliction(id), `${id} joined a reaction lane uninvited`);
+    }
+  }
 });
 
 test('reactions are symmetric — detonation order does not matter', () => {
@@ -139,14 +150,24 @@ test('passive metadata is complete for every passive id', async () => {
   }
 });
 
-test('status wire bits are distinct single bits that fit the u16', () => {
+test('status wire bits are distinct single bits in the u32, and THE LOW WORD IS FROZEN', () => {
   const seen = new Set<number>();
   for (const id of STATUS_IDS) {
     const bit = STATUS_BIT[id];
-    assert.ok(bit > 0 && bit <= 0xffff);
+    assert.ok(bit > 0 && bit <= 0x8000_0000, `${id} fits the u32`);
     assert.equal(bit & (bit - 1), 0, 'single bit');
     assert.ok(!seen.has(bit));
     seen.add(bit);
+  }
+  // THE LOW WORD IS FROZEN (the widening's one law): only the six
+  // pre-widening states may sit under bit 16, and nothing collides
+  // with either stack nibble (afflictions 9-12, counts 22-25).
+  for (const id of STATUS_IDS) {
+    const low = STATUS_BIT[id] < 1 << 16;
+    const frozen = ['burn', 'chill', 'shock', 'bleed', 'venom', 'sunder'].includes(id);
+    assert.equal(low, frozen, `${id} sits in the wrong word`);
+    assert.equal(STATUS_BIT[id] & AFFLICTION_STACKS_MASK, 0, `${id} collides with the wound nibble`);
+    assert.equal(STATUS_BIT[id] & COUNT_STACKS_MASK, 0, `${id} collides with the count nibble`);
   }
 });
 

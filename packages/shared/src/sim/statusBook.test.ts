@@ -8,6 +8,7 @@ import {
   CHILL_SPEED_FACTOR,
   SHOCK_MAX_TICKS,
   SPARKS,
+  STATUS_BIT,
   STATUS_IDS,
   VENOM_TICK_EVERY,
   isAffliction,
@@ -15,19 +16,27 @@ import {
 } from './abilities.js';
 import {
   STATUS_BOOK,
+  WEAKEN_MAX_PCT,
   applyCount,
   ccTicksFor,
   consumeDetonation,
   decayAtZero,
   effectivePower,
+  moveFactorOfBits,
+  moveFactorOfList,
+  outgoingAmp,
   pageOf,
   refreshMax,
   stacksOf,
+  statusArmorDelta,
+  statusSwingFactor,
+  survivesCleanse,
   thresholdsCrossed,
   weakestOf,
   type StackEntry,
   type StatusPage,
 } from './statusBook.js';
+import { SWING_MULT_MAX, swingMult } from './buffForge.js';
 
 /**
  * THE BOOK OF STATES (status-book-plan.md Phase 1), pinned:
@@ -56,15 +65,30 @@ test('the book covers exactly the shipped roster, and pageOf agrees', () => {
   }
 });
 
-test('lanes transcribe the rosters: sparks, afflictions, and the one mark', () => {
-  for (const id of STATUS_IDS) {
+const FROZEN_SIX = ['burn', 'chill', 'shock', 'bleed', 'venom', 'sunder'] as const;
+const WAVE_ONE = ['root', 'stagger', 'weaken', 'quicken', 'mend', 'stonehide'] as const;
+
+test('lanes transcribe the rosters, and the wave-one roster knows its own', () => {
+  for (const id of FROZEN_SIX) {
     const page = pageOf(id);
     if (isSpark(id)) assert.equal(page.lane, 'spark', `${id} is a spark`);
     else if (isAffliction(id)) assert.equal(page.lane, 'affliction', `${id} is an affliction`);
     else assert.equal(page.lane, 'mark', `${id} is the mark`);
-    assert.equal(page.hostile, true, 'no boon pages before the boon lane ships');
+    assert.equal(page.hostile, true, 'the six are all hostile');
   }
-  assert.equal(SPARKS.length + AFFLICTIONS.length + 1, STATUS_IDS.length, 'the rosters partition');
+  assert.equal(SPARKS.length + AFFLICTIONS.length + 1, FROZEN_SIX.length, 'the six partition');
+  assert.equal(FROZEN_SIX.length + WAVE_ONE.length, STATUS_IDS.length, 'the book is whole');
+  // THE WIDER WOUND: holds hold, marks mark, boons befriend.
+  assert.equal(pageOf('root').lane, 'hold');
+  assert.equal(pageOf('stagger').lane, 'hold');
+  assert.equal(pageOf('weaken').lane, 'mark');
+  for (const id of ['quicken', 'mend', 'stonehide'] as const) {
+    assert.equal(pageOf(id).lane, 'boon', `${id} is a boon`);
+    assert.equal(pageOf(id).hostile, false, 'a boon is never hostile');
+  }
+  for (const id of WAVE_ONE) {
+    assert.ok(!isSpark(id) && !isAffliction(id), `${id} stays out of the reaction lanes`);
+  }
 });
 
 test('the stacking models transcribe the lanes, caps included', () => {
@@ -97,7 +121,7 @@ test('chill records its slow and shock records its stagger, to the shipped numbe
 });
 
 test('THE FROZEN SIX author none of the new machinery', () => {
-  for (const id of STATUS_IDS) {
+  for (const id of FROZEN_SIX) {
     const page = pageOf(id);
     assert.notEqual(page.stacking.model, 'count', `${id} predates the count model`);
     assert.equal(page.stacking.atMax, 'refresh', `${id} never consumes at max`);
@@ -106,6 +130,54 @@ test('THE FROZEN SIX author none of the new machinery', () => {
     assert.equal(page.consume, undefined, `${id} carries no consume block`);
     assert.equal(page.decay.model, 'expire', `${id} expires whole`);
   }
+});
+
+test('FAIR HANDS: the wave-one holds obey the ledger, and shock keeps its old word', () => {
+  const root = pageOf('root').cc!;
+  assert.ok(root.maxTicks <= 40, 'a root holds two seconds at most');
+  assert.ok(root.immunityTicks >= root.maxTicks * 3, 'immunity at least 3x the hold');
+  assert.ok((root.breakOnDamage ?? 0) > 0, 'a root snaps to honest damage');
+  const stagger = pageOf('stagger').cc!;
+  assert.ok(stagger.maxTicks <= 14, 'the stagger is the hardest, shortest second');
+  assert.ok(stagger.immunityTicks >= stagger.maxTicks * 4, 'immunity at least 4x');
+  assert.equal(stagger.holdsPlayers, true, 'the true stagger holds player hands');
+  assert.equal(pageOf('shock').cc!.holdsPlayers, false, 'a shocked player is never stunned');
+  // The stone feet: both holds declare them, the mirror reads them.
+  assert.equal(pageOf('root').statMods?.moveSpeedMult, 0);
+  assert.equal(pageOf('stagger').statMods?.moveSpeedMult, 0);
+});
+
+test("THE BOOK'S FEET: the list and bits mirrors read the same pages", () => {
+  assert.equal(moveFactorOfList(undefined), 1);
+  assert.equal(moveFactorOfList([entry({ id: 'chill' })]), CHILL_SPEED_FACTOR, 'chill unchanged');
+  assert.equal(moveFactorOfBits(STATUS_BIT.chill), CHILL_SPEED_FACTOR);
+  assert.equal(moveFactorOfList([entry({ id: 'root' })]), 0, 'stone feet');
+  assert.equal(moveFactorOfBits(STATUS_BIT.root | STATUS_BIT.chill), 0);
+  assert.equal(moveFactorOfBits(STATUS_BIT.burn), 1, 'a burn never slows');
+});
+
+test('THE DULLED ARM: weaken shaves outgoing, clamped, and only dealtPct pages speak', () => {
+  assert.equal(outgoingAmp(undefined), 1);
+  assert.equal(outgoingAmp([entry({ id: 'weaken', power: 10 })]), 0.9);
+  assert.equal(outgoingAmp([entry({ id: 'weaken', power: 99 })]), 1 - WEAKEN_MAX_PCT / 100, 'the clamp holds');
+  assert.equal(outgoingAmp([entry({ id: 'venom', power: 9 })]), 1, 'a wound never dulls the arm');
+});
+
+test('the boon seams: quicken quickens per stack inside the band, stonehide lends coats', () => {
+  const q1 = statusSwingFactor([entry({ id: 'quicken', stacks: 1 })]);
+  const q5 = statusSwingFactor([entry({ id: 'quicken', stacks: 5 })]);
+  assert.ok(q1 > 1 && q5 > q1, 'each stack quickens');
+  assert.ok(swingMult(1, []) === 1 && swingMult(q5, []) <= SWING_MULT_MAX, 'the band caps the fold');
+  assert.equal(statusArmorDelta([entry({ id: 'stonehide', stacks: 3 })]), 12, 'coats stack');
+  assert.equal(statusArmorDelta([entry({ id: 'burn' })]), 0);
+});
+
+test('THE HONEST CLEANSE: hostile pages strip, boons ride through', () => {
+  for (const id of STATUS_IDS) {
+    assert.equal(survivesCleanse(id), !pageOf(id).hostile, `${id} answers its lane`);
+  }
+  assert.equal(survivesCleanse('mend'), true);
+  assert.equal(survivesCleanse('venom'), false);
 });
 
 test('the visuals contract is total: ink, landing, tiers, icon — and the DoTs bleed at the screen edge', () => {

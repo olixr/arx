@@ -27,6 +27,7 @@ import {
   BURN_TICK_EVERY,
   CHILL_SPEED_FACTOR,
   SHOCK_MAX_TICKS,
+  STATUS_BIT,
   STATUS_IDS,
   SUNDER_MAX_PCT,
   VENOM_TICK_EVERY,
@@ -133,6 +134,15 @@ export interface StatusCc {
   immunityTicks: number;
   /** Root only: absorbed damage that snaps the hold early. */
   breakOnDamage?: number;
+  /**
+   * FAIR HANDS, the player half: does this page's stagger lock a
+   * PLAYER's hands too (stunLeft at the player door, the attack and
+   * cast doors refused while it holds)? Shock declares false — the
+   * historic law that a shocked player is never stunned stands;
+   * stagger declares true and its player-facing content is held to
+   * one boss signature until it proves (the green-light's answer).
+   */
+  holdsPlayers?: boolean;
 }
 
 /**
@@ -183,7 +193,7 @@ export interface StatusVisuals {
 }
 
 /** What a page's `power` number MEANS — tooling and tooltips read this. */
-export type StatusPowerMeaning = 'tickDamage' | 'takenPct' | 'none';
+export type StatusPowerMeaning = 'tickDamage' | 'tickHeal' | 'takenPct' | 'dealtPct' | 'none';
 
 export interface StatusPage {
   id: StatusId;
@@ -191,11 +201,12 @@ export interface StatusPage {
   name: string;
   /**
    * The lane keeps its shipped meaning: sparks react among
-   * themselves, afflictions ride and stack, the mark amplifies.
-   * `boon` is the friendly lane (Phase 2) — cleanse touches hostile
-   * pages only.
+   * themselves, afflictions ride and stack, marks shift what a body
+   * deals or takes, `hold` is the control lane (FAIR HANDS binds
+   * it), and `boon` is the friendly lane — cleanse touches hostile
+   * pages only, never a boon.
    */
-  lane: 'spark' | 'affliction' | 'mark' | 'boon';
+  lane: 'spark' | 'affliction' | 'mark' | 'hold' | 'boon';
   hostile: boolean;
   powerIs: StatusPowerMeaning;
   stacking: StatusStacking;
@@ -255,7 +266,9 @@ export const STATUS_BOOK: Readonly<Record<StatusId, StatusPage>> = {
     powerIs: 'none',
     stacking: { model: 'refresh', max: 1, atMax: 'refresh' },
     decay: { model: 'expire' },
-    cc: { kind: 'stagger', maxTicks: SHOCK_MAX_TICKS, immunityTicks: 0 },
+    // holdsPlayers false = the historic law: a shocked PLAYER is
+    // never stunned; the charge is reaction fodder, not a lockout.
+    cc: { kind: 'stagger', maxTicks: SHOCK_MAX_TICKS, immunityTicks: 0, holdsPlayers: false },
     visuals: { ink: '#e8e06a', landing: 'storm.crackle', auraTiers: 1, icon: 'status_shock' },
   },
   bleed: {
@@ -306,6 +319,100 @@ export const STATUS_BOOK: Readonly<Record<StatusId, StatusPage>> = {
     stacking: { model: 'highest', max: 1, atMax: 'refresh' },
     decay: { model: 'expire' },
     visuals: { ink: '#b8b2a6', landing: 'dust.slam', auraTiers: 1, icon: 'status_sunder' },
+  },
+
+  // ----------------------------------------------- THE WIDER WOUND
+  // The wave-one roster (Phase 3). Engine-complete, visually voiced
+  // at landing scale (Phase 4 masters the auras), and APPLIER-FREE:
+  // no shipped ability, kit, item, or proc lays any of these until
+  // the authored tide (Phase 5) prices each one against the ledger.
+
+  root: {
+    id: 'root',
+    name: 'Rooted',
+    lane: 'hold',
+    hostile: true,
+    powerIs: 'none',
+    stacking: { model: 'refresh', max: 1, atMax: 'refresh' },
+    // The hold IS the status: the door clamps duration to maxTicks.
+    decay: { model: 'expire' },
+    statMods: { moveSpeedMult: 0 },
+    // FAIR HANDS: ≤2s, snapped early by ~two ticks of honest damage,
+    // and a 3× immunity window after — never chainable, engine law.
+    cc: { kind: 'root', maxTicks: 40, immunityTicks: 120, breakOnDamage: 6 },
+    visuals: { ink: '#a8814f', landing: 'dust.gouge', auraTiers: 2, icon: 'status_root' },
+  },
+  stagger: {
+    id: 'stagger',
+    name: 'Staggered',
+    lane: 'hold',
+    hostile: true,
+    powerIs: 'none',
+    stacking: { model: 'refresh', max: 1, atMax: 'refresh' },
+    decay: { model: 'expire' },
+    statMods: { moveSpeedMult: 0 },
+    // The TRUE stagger (shock's lock generalized): brief, it holds
+    // player hands too, and the 4× immunity window is the whole law.
+    cc: { kind: 'stagger', maxTicks: 14, immunityTicks: 56, holdsPlayers: true },
+    visuals: { ink: '#dcd8f0', landing: 'storm.impact', auraTiers: 1, icon: 'status_stagger' },
+  },
+  weaken: {
+    id: 'weaken',
+    name: 'Weakened',
+    lane: 'mark',
+    hostile: true,
+    // Power = the flat percent struck FROM the bearer's outgoing
+    // blows, clamped WEAKEN_MAX_PCT at the read — sunder's mirror,
+    // same one-mark discipline.
+    powerIs: 'dealtPct',
+    stacking: { model: 'highest', max: 1, atMax: 'refresh' },
+    decay: { model: 'expire' },
+    visuals: { ink: '#8a6a9a', landing: 'shadow.bloom', auraTiers: 1, icon: 'status_weaken' },
+  },
+  quicken: {
+    id: 'quicken',
+    name: 'Quickened',
+    lane: 'boon',
+    hostile: false,
+    powerIs: 'none',
+    // THE COUNT MODEL's boon debut: five stacks, each quickening the
+    // hand (^stacks per the forge law), the whole fold clamped by
+    // the swing band at the one pay site. 1.04^5 ≈ +22%.
+    stacking: { model: 'count', max: 5, atMax: 'refresh' },
+    decay: { model: 'expire' },
+    statMods: { attackSpeedMult: 1.04 },
+    visuals: {
+      ink: '#ffd76a',
+      landing: 'radiance.bloom',
+      stackNote: 'radiance.bloom',
+      auraTiers: 3,
+      icon: 'status_quicken',
+    },
+  },
+  mend: {
+    id: 'mend',
+    name: 'Mending',
+    lane: 'boon',
+    hostile: false,
+    powerIs: 'tickHeal',
+    stacking: { model: 'refresh', max: 1, atMax: 'refresh' },
+    decay: { model: 'expire' },
+    // THE MEND DOOR's first page: power healed every second.
+    tick: { every: 20, kind: 'heal' },
+    visuals: { ink: '#7ad0a0', landing: 'radiance.halo', auraTiers: 1, icon: 'status_mend' },
+  },
+  stonehide: {
+    id: 'stonehide',
+    name: 'Stonehide',
+    lane: 'boon',
+    hostile: false,
+    powerIs: 'none',
+    // Three coats of stone, shed one at a time — the honest fading
+    // potion (stepDown's debut): each step re-arms five seconds.
+    stacking: { model: 'count', max: 3, atMax: 'refresh' },
+    decay: { model: 'stepDown', stepTicks: 100 },
+    statMods: { armorDelta: 4 },
+    visuals: { ink: '#98a4b0', landing: 'dust.slam', auraTiers: 2, icon: 'status_stonehide' },
   },
 };
 
@@ -466,4 +573,95 @@ export function decayAtZero(page: StatusPage, entry: StackEntry): DecayVerdict {
 export function ccTicksFor(page: StatusPage, durationTicks: number): number {
   if (!page.cc) return 0;
   return Math.min(durationTicks, page.cc.maxTicks);
+}
+
+// -------------------------------------- the page-driven stat seams
+// Each helper reads the riding pages' declared statMods, so the read
+// sites stay page-blind: authoring a new state never touches them.
+// Every helper has a LIST shape (the server's truth) and, where the
+// client predicts, a BITS shape (the wire's mirror) — both derived
+// from the same pages, so the mirrors cannot disagree.
+
+/** The weaken clamp — sunder's mirror discipline (flat, short, one). */
+export const WEAKEN_MAX_PCT = 15;
+
+/**
+ * Movement factor of everything riding: chill's slow and the holds'
+ * stone feet, multiplied. The chill read sites fold through here now
+ * — same constant, one home (byte-identical for a chill-only world).
+ */
+export function moveFactorOfList(list: readonly ActiveStatus[] | undefined): number {
+  if (!list) return 1;
+  let f = 1;
+  for (const s of list) {
+    const m = STATUS_BOOK[s.id].statMods?.moveSpeedMult;
+    if (m !== undefined) f *= m;
+  }
+  return f;
+}
+
+/** The bits mirror of moveFactorOfList — the client predictor's read. */
+export function moveFactorOfBits(bits: number): number {
+  let f = 1;
+  for (const id of STATUS_IDS) {
+    if (bits & STATUS_BIT[id]) {
+      const m = STATUS_BOOK[id].statMods?.moveSpeedMult;
+      if (m !== undefined) f *= m;
+    }
+  }
+  return f;
+}
+
+/**
+ * What the BEARER's outgoing blows are worth under riding marks:
+ * every `dealtPct` page shaves its clamped power (weaken's lane —
+ * sunderAmp's outgoing mirror). Folded at the two damage doors from
+ * the ATTACKER's list; DoT pulses deliberately skip it (a set drip
+ * is already inside — mitigation's own law).
+ */
+export function outgoingAmp(list: readonly ActiveStatus[] | undefined): number {
+  if (!list) return 1;
+  let mult = 1;
+  for (const s of list) {
+    if (STATUS_BOOK[s.id].powerIs === 'dealtPct') {
+      mult *= 1 - Math.min(s.power, WEAKEN_MAX_PCT) / 100;
+    }
+  }
+  return mult;
+}
+
+/**
+ * The swing-channel factor riding pages contribute (quicken's lane):
+ * attackSpeedMult ^ stacks per the forge's stack law. Folded INTO
+ * swingMult's band clamp at the one pay site — pages cannot escape
+ * the band any more than gear or buffs can.
+ */
+export function statusSwingFactor(list: readonly StackEntry[] | undefined): number {
+  if (!list) return 1;
+  let f = 1;
+  for (const s of list) {
+    const m = STATUS_BOOK[s.id].statMods?.attackSpeedMult;
+    if (m !== undefined) f *= Math.pow(m, stacksOf(s));
+  }
+  return f;
+}
+
+/** Flat armor the riding pages lend (stonehide's lane): delta × stacks. */
+export function statusArmorDelta(list: readonly StackEntry[] | undefined): number {
+  if (!list) return 0;
+  let armor = 0;
+  for (const s of list) {
+    const d = STATUS_BOOK[s.id].statMods?.armorDelta;
+    if (d !== undefined) armor += d * stacksOf(s);
+  }
+  return armor;
+}
+
+/**
+ * THE HONEST CLEANSE: what survives a stripping — boon pages ride
+ * through (a mend must never die to its bearer's own dispel). Both
+ * cleanse doors (proc action, pet art) filter through here.
+ */
+export function survivesCleanse(id: StatusId): boolean {
+  return !STATUS_BOOK[id].hostile;
 }

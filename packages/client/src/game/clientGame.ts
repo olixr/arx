@@ -16,7 +16,6 @@ import {
   PLAYER_SPEED,
   PROTOCOL_VERSION,
   SHEATHED_BIT,
-  STATUS_BIT,
   DRAW_MOVE_FACTOR,
   groundAimRange,
   groundAimed,
@@ -88,7 +87,7 @@ import {
 } from '@arx/shared';
 import { CROP_TILES, LIVESTOCK, MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SOIL_RICH, WORK_STATION_TILES, bandAtLeast, isCropTile, abilityDef, itemDef, movesetFor, npcDef, replaceGeography, strikePose, tameDef, techniquePoolDef, type FactionBand, type GeographyDef, type WorkStation } from '@arx/content';
 import { clearFarmMirror, farmApiaries, farmBins, farmJobs, farmKey, farmPlots, farmTroughs, larderFills, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
-import { EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsSolid, shutDoorTile, swingCooldown } from '@arx/shared';
+import { EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsSolid, shutDoorTile, swingCooldown, moveFactorOfBits } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look, PlaneWire } from '@arx/shared';
 import type { S2CArenaBoard, S2CArenaState } from '@arx/shared';
 
@@ -3725,7 +3724,7 @@ export class ClientGame {
         this.ownStatus = e.status;
         // THE PREDICTOR FEELS THE COLD: the chill bit drives the same
         // speed factor the server walks by (CHILL_SPEED_FACTOR).
-        this.predictor.chilled = (e.status & STATUS_BIT.chill) !== 0;
+        this.predictor.statusMoveFactor = moveFactorOfBits(e.status);
         // The sheathe mirror retires the moment the server bit agrees
         // (same-value handover, the PREDICTED BLOW pattern); a claim
         // the server never confirms — a dropped frame — goes stale

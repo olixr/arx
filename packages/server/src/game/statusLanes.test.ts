@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AFFLICTION_SOURCE_CAP, AFFLICTION_STACKS_SHIFT, SHOCK_MAX_TICKS, STATUS_BIT } from '@arx/shared';
+import { AFFLICTION_SOURCE_CAP, AFFLICTION_STACKS_SHIFT, SHOCK_MAX_TICKS, STATUS_BIT, countStacksOf } from '@arx/shared';
 import { GameServer } from './gameServer.js';
 
 /**
@@ -171,13 +171,39 @@ test('weakness doubles the wound and stretches it', () => {
   assert.equal(wound.ticksLeft, 150);
 });
 
-test('the player door keeps the pre-lanes shape: one entry per id, refresh by max', () => {
+test('THE LEDGER ANSWERED: the player door stacks afflictions per source, the NPC shape', () => {
+  // The Phase 3 green-light's one deliberate number move: a pack's
+  // wounds are real now — one entry per hand, capped at the page's
+  // max, the newest hand folding into the weakest at the cap, the
+  // same hand refreshing its own wound by the max rules.
   const statuses = new Map<number, Entry[]>();
   const s = { statuses };
   call(proto.applyStatusToPlayer, s, 5, { status: 'bleed', power: 3, durationTicks: 100 }, 11);
   call(proto.applyStatusToPlayer, s, 5, { status: 'bleed', power: 5, durationTicks: 60 }, 22);
   const list = statuses.get(5)!;
-  assert.equal(list.length, 1, 'a pack of wolves is still one bleed');
+  assert.equal(list.length, 2, 'two wolves, two wounds');
+  call(proto.applyStatusToPlayer, s, 5, { status: 'bleed', power: 2, durationTicks: 200 }, 11);
+  assert.equal(statuses.get(5)!.length, 2, 'the same hand never self-stacks');
+  const mine = statuses.get(5)!.find((e) => e.sourceEid === 11)!;
+  assert.equal(mine.power, 3, 'power refreshes by max, never down');
+  assert.equal(mine.ticksLeft, 200, 'duration refreshes by max');
+  for (let src = 30; src < 30 + AFFLICTION_SOURCE_CAP; src++) {
+    call(proto.applyStatusToPlayer, s, 5, { status: 'bleed', power: 4, durationTicks: 100 }, src);
+  }
+  assert.equal(
+    statuses.get(5)!.length,
+    AFFLICTION_SOURCE_CAP,
+    'the cap holds on players exactly as on NPCs',
+  );
+});
+
+test('the player door refresh lane still refreshes one entry per id (sparks and marks)', () => {
+  const statuses = new Map<number, Entry[]>();
+  const s = { statuses };
+  call(proto.applyStatusToPlayer, s, 5, { status: 'burn', power: 3, durationTicks: 100 }, 11);
+  call(proto.applyStatusToPlayer, s, 5, { status: 'burn', power: 5, durationTicks: 60 }, 22);
+  const list = statuses.get(5)!;
+  assert.equal(list.length, 1, 'two burns are one flame');
   assert.equal(list[0]!.power, 5);
   assert.equal(list[0]!.ticksLeft, 100);
 });
@@ -200,4 +226,23 @@ test('statusBits carries the affliction count in the high nibble', () => {
   assert.ok(bits & STATUS_BIT.burn && bits & STATUS_BIT.bleed, 'flags still fly');
   assert.ok(bits & STATUS_BIT.sunder, 'the mark reaches the wire');
   assert.equal((bits >> AFFLICTION_STACKS_SHIFT) & 0xf, 3, 'three wounds counted');
+});
+
+test('THE WIDER WOUND: a count page rides the high word and its own nibble', () => {
+  const statuses = new Map<number, Entry[]>([
+    [
+      7,
+      [
+        { id: 'bleed', power: 2, ticksLeft: 50, sourceEid: 1 },
+        { id: 'quicken', power: 0, ticksLeft: 200, sourceEid: 7, stacks: 4 } as Entry & {
+          stacks: number;
+        },
+      ],
+    ],
+  ]);
+  const s = { statuses, players: new Map(), npcs: new Map(), actors: new Map() };
+  const bits = call(proto.statusBits, s, 7) as number;
+  assert.ok(bits & STATUS_BIT.quicken, 'the boon flies its high-word flag');
+  assert.equal((bits >> AFFLICTION_STACKS_SHIFT) & 0xf, 1, 'the wound nibble stays per-source');
+  assert.equal(countStacksOf(bits), 4, 'the count nibble carries the depth');
 });

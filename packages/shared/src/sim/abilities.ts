@@ -16,7 +16,22 @@ import { TICK_RATE } from '../constants.js';
 
 // ------------------------------------------------------------- status
 
-export type StatusId = 'burn' | 'chill' | 'shock' | 'bleed' | 'venom' | 'sunder';
+export type StatusId =
+  | 'burn'
+  | 'chill'
+  | 'shock'
+  | 'bleed'
+  | 'venom'
+  | 'sunder'
+  // THE WIDER WOUND (statusBook Phase 3) — the wave-one roster. Every
+  // page lives in STATUS_BOOK; none has a shipped applier until the
+  // authored tide (Phase 5) prices it.
+  | 'root'
+  | 'stagger'
+  | 'weaken'
+  | 'quicken'
+  | 'mend'
+  | 'stonehide';
 
 export const STATUS_IDS: readonly StatusId[] = [
   'burn',
@@ -25,6 +40,12 @@ export const STATUS_IDS: readonly StatusId[] = [
   'bleed',
   'venom',
   'sunder',
+  'root',
+  'stagger',
+  'weaken',
+  'quicken',
+  'mend',
+  'stonehide',
 ];
 
 /**
@@ -55,10 +76,14 @@ export function isAffliction(id: StatusId): boolean {
 }
 
 /**
- * Snapshot wire bits (u16 bitfield per entity since protocol v29).
- * The low byte is the historic u8 layout UNCHANGED — bits 4-5 belong
- * to sneak, bit 7 to the sheathe — so every pre-v29 reader's mask
- * still means what it always meant. New states climb the high byte.
+ * Snapshot wire bits (u32 bitfield per entity since the Phase 3
+ * widening; u16 v29-v33). THE LOW WORD IS FROZEN: bits 0-15 keep
+ * their exact v29 meanings forever — the historic u8 low byte (bits
+ * 4-5 sneak, bit 7 sheathe), sunder at 8, the per-source affliction
+ * nibble at 9-12 — so every pre-widening reader's mask still means
+ * what it always meant. The wave-one roster climbs the high word
+ * (bits 16-21), the count-model stack nibble rides bits 22-25, and
+ * bits 26-31 stay free for the next decade.
  */
 export const STATUS_BIT: Record<StatusId, number> = {
   burn: 1 << 0,
@@ -67,10 +92,20 @@ export const STATUS_BIT: Record<StatusId, number> = {
   bleed: 1 << 3,
   venom: 1 << 6,
   sunder: 1 << 8,
+  root: 1 << 16,
+  stagger: 1 << 17,
+  weaken: 1 << 18,
+  quicken: 1 << 19,
+  mend: 1 << 20,
+  stonehide: 1 << 21,
 };
 
-/** Mask of the state bits above — ambience particles must not react to the sneak bits. */
-export const STATUS_AMBIENCE_MASK = 0x14f;
+/**
+ * Mask of the real state bits — ambience and edge detection must not
+ * react to the sneak/sheathe bits or the stack nibbles. Low word
+ * 0x14f frozen; the wave-one bits join in the high word.
+ */
+export const STATUS_AMBIENCE_MASK = 0x14f | (0x3f << 16);
 
 /**
  * Bits 9-12: how many affliction entries ride this body (per-source
@@ -83,6 +118,21 @@ export const AFFLICTION_STACKS_MASK = 0xf << AFFLICTION_STACKS_SHIFT;
 /** Read the per-source affliction stack count out of a status bitfield. */
 export function afflictionStacksOf(bits: number): number {
   return (bits & AFFLICTION_STACKS_MASK) >> AFFLICTION_STACKS_SHIFT;
+}
+
+/**
+ * Bits 22-25: the COUNT-model stack nibble (statusBook Phase 3) — how
+ * deep the count-model state on this body runs, clamped 15. Separate
+ * from the affliction nibble so each keeps one honest meaning: per-
+ * source entries there, one page's own count here.
+ */
+export const COUNT_STACKS_SHIFT = 22;
+export const COUNT_STACKS_MASK = 0xf << COUNT_STACKS_SHIFT;
+
+/** Read the count-model stack count out of a status bitfield. */
+export function countStacksOf(bits: number): number {
+  // >>> keeps the read honest at the top of the u32.
+  return (bits & COUNT_STACKS_MASK) >>> COUNT_STACKS_SHIFT;
 }
 
 /**

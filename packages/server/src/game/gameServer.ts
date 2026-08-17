@@ -442,7 +442,6 @@ import {
   ABILITY_SLOTS,
   BODY_RADIUS,
   CAST_STILL_FACTOR,
-  CHILL_SPEED_FACTOR,
   TECHNIQUE_STYLES,
   HEAVY_BOLT_KNOCKBACK,
   HEAVY_BOLT_MULT,
@@ -587,6 +586,12 @@ import {
   refreshMax,
   weakestOf,
   ccTicksFor,
+  moveFactorOfList,
+  outgoingAmp,
+  statusSwingFactor,
+  statusArmorDelta,
+  survivesCleanse,
+  COUNT_STACKS_SHIFT,
   buffCritPct,
   buffDmgMult,
   buffSpeedMult,
@@ -1386,6 +1391,12 @@ interface ServerStatus extends ActiveStatus {
    */
   stacks?: number;
   /**
+   * FAIR HANDS: damage absorbed while a breakOnDamage hold rides —
+   * past the page's threshold the hold snaps early (root's
+   * counterplay: hit the vines, not the clock).
+   */
+  ccDamage?: number;
+  /**
    * A companion's tooth put this here (beastcraft v2 Phase 5): the
    * drip still credits the keeper's KILL, but its ticks train no
    * school — a sleeping keeper's venom must never level a blade.
@@ -1785,6 +1796,8 @@ interface ArenaMatchState {
 }
 
 interface PlayerComp {
+  /** The comp's own entity id — stamped at spawn, never reassigned. */
+  eid: EntityId;
   name: string;
   speed: number;
   /** Chosen base look; null until the player has been through creation. */
@@ -3936,6 +3949,9 @@ export class GameServer {
         ? await this.accounts.loadCarryStyles(character.id)
         : { main: 'normal' as CarryStyle, off: 'normal' as CarryStyle };
     this.players.set(eid, {
+      // The comp knows its own entity (the buffs push reads riding
+      // status pages by eid — the one back-reference, stamped once).
+      eid,
       name: character.name,
       speed: PLAYER_SPEED,
       look: character.id > 0 ? await this.accounts.loadLook(character.id) : null,
@@ -15033,8 +15049,13 @@ export class GameServer {
     combat.sort((a, b) => b.secsLeft - a.secsLeft);
     buffs.push(...combat.slice(0, Math.max(0, 6 - buffs.length)));
     // THE SWING CHANNEL rides the buff push: the client's prediction
-    // lanes pay the same recovery the server pays (absent = 1).
-    const swing = swingMult(player.gear.attackSpeedMult ?? 1, player.buffs);
+    // lanes pay the same recovery the server pays (absent = 1). Gear,
+    // riding buffs, AND riding boon pages (quicken) fold here — one
+    // number, clamped once.
+    const swing = swingMult(
+      (player.gear.attackSpeedMult ?? 1) * statusSwingFactor(this.statuses?.get(player.eid)),
+      player.buffs,
+    );
     player.session?.sendJson({ t: 'buffs', buffs, ...(swing !== 1 ? { swing } : {}) });
   }
 
@@ -16019,7 +16040,12 @@ export class GameServer {
           health.hp = Math.min(health.maxHp, health.hp + Math.max(1, Math.ceil(health.maxHp * ab.petHealFrac)));
         }
         // Rank III: the balm sheds whatever rides the friend.
-        if (ab.petCleanse) this.statuses.delete(petEid);
+        if (ab.petCleanse) {
+          // THE HONEST CLEANSE: the keeper's word lifts wounds, never boons.
+          const kept = this.statuses.get(petEid)?.filter((s) => survivesCleanse(s.id));
+          if (kept && kept.length > 0) this.statuses.set(petEid, kept);
+          else this.statuses.delete(petEid);
+        }
         // Rank IV: the hide stays tough a while.
         if (pet && ab.petGuard) {
           pet.guard = { armor: ab.petGuard.armor, untilTick: this.tickCount + ab.petGuard.durationTicks };
@@ -16354,7 +16380,7 @@ export class GameServer {
         if (pet.surge && this.tickCount < pet.surge.untilTick) speed *= pet.surge.speedMult;
         // The slotted stride: pack step, skitter, the night eyes.
         speed *= this.petStrideMult(pet);
-        if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
+        speed *= moveFactorOfList(this.statuses.get(eid)); // THE BOOK'S FEET
         if (d > npc.def.attackRange * 1.5 + 0.3) {
           ({ mx, my } = this.separateHeading(eid, pos, npc.def.radius, mx, my));
         }
@@ -16387,7 +16413,7 @@ export class GameServer {
     // ---- THE HEEL.
     const speed =
       petFollowSpeed(npc.def.speed * this.petStrideMult(pet), dist) *
-      (this.isChilled(eid) ? CHILL_SPEED_FACTOR : 1);
+      moveFactorOfList(this.statuses.get(eid)); // THE BOOK'S FEET
     if (speed > 0) {
       let mx = dx / dist;
       let my = dy / dist;
@@ -16687,7 +16713,12 @@ export class GameServer {
     };
     const selfWords = (): void => {
       const h = this.healths.get(eid);
-      if (ab.petCleanse) this.statuses.delete(eid);
+      if (ab.petCleanse) {
+        // THE HONEST CLEANSE, the self half: wounds lift, boons ride.
+        const kept = this.statuses.get(eid)?.filter((s) => survivesCleanse(s.id));
+        if (kept && kept.length > 0) this.statuses.set(eid, kept);
+        else this.statuses.delete(eid);
+      }
       if (ab.petHealFrac !== undefined && h && h.hp > 0) {
         h.hp = Math.min(h.maxHp, h.hp + Math.ceil(h.maxHp * ab.petHealFrac));
       }
@@ -19861,6 +19892,9 @@ export class GameServer {
     pressLagTicks = 0,
   ): void {
     if (player.attackCooldown > 0) return;
+    // FAIR HANDS: a held body (a riding stagger) swings nothing
+    // (inline — the slate-test law).
+    if (this.statuses?.get(eid)?.some((s) => (s.stunLeft ?? 0) > 0)) return;
     const equipped = this.equippedWeapon(player);
     if (process.env.COMBAT_DEBUG) {
       console.log(`[combat] attack eid=${eid} weapon=${equipped?.id ?? 'none'} style=${equipped?.weapon.style ?? '-'}`);
@@ -19883,7 +19917,10 @@ export class GameServer {
     // clamped — the ONE swing multiplier, paid here and mirrored by
     // the client's prediction lanes through the same shared math. The
     // bow keeps its own draw clock (a deliberate Phase 5 door).
-    const swing = swingMult(player.gear.attackSpeedMult ?? 1, player.buffs);
+    const swing = swingMult(
+      (player.gear.attackSpeedMult ?? 1) * statusSwingFactor(this.statuses?.get(eid)),
+      player.buffs,
+    );
     player.attackCooldown = swingCooldown(weapon.cooldownTicks, swing);
     player.lastCombatAt = Date.now();
     // Backstab eligibility is judged at the moment of the swing — capture
@@ -20693,6 +20730,14 @@ export class GameServer {
     // while the road runs refuses honestly (the optimistic client
     // pay comes back on the cooldown resend).
     if (this.transits.has(eid)) {
+      this.sendCooldowns(player);
+      return;
+    }
+    // FAIR HANDS: a held body (a riding stagger's stunLeft) casts
+    // nothing — the same honest refusal, nothing spent. Inline and
+    // optional-chained: THE SLATE-TEST LAW (a door reaches state only
+    // behind a guard that no-ops on a bare slate).
+    if (this.statuses?.get(eid)?.some((s) => (s.stunLeft ?? 0) > 0)) {
       this.sendCooldowns(player);
       return;
     }
@@ -22441,13 +22486,15 @@ export class GameServer {
       power *= 2;
       duration = Math.round(duration * 1.5);
     }
-
     // THE BOOK OF STATES: the door reads the page and dispatches on
     // its stacking model — the lanes became data. The six shipped
     // pages transcribe the exact pre-book behavior (statusLanes pins
     // it); the count model is the composable workhorse waiting for
     // wave-one pages.
     const page = pageOf(apply.status);
+    // A root's hold IS its status: the page's lock bounds the clock
+    // (weakness stretches inside the bound, never past it).
+    if (page.cc?.kind === 'root') duration = Math.min(duration, page.cc.maxTicks);
     // FAIR HANDS: a CC page with an authored immunity window is
     // refused while the window holds (no shipped page authors one, so
     // this guard costs a field read and passes — and touches no state,
@@ -22675,15 +22722,18 @@ export class GameServer {
   }
 
   /**
-   * Players only receive simple statuses (wolf bleed) — no reactions,
-   * and DELIBERATELY no per-source affliction stacking: one entry per
-   * id, refresh by max, exactly the pre-lanes shape (THE PLAYER LAW —
-   * a pack of five wolves stacking five bleeds would raise damage
-   * TAKEN; the book-plan Phase 3 ledger prices that door before it
-   * opens). A COUNT-model page walks its own door: its stacking is
-   * the page's authored identity on any body, players included — the
-   * spider that worsens per stack is exactly this lane, and its ramp
-   * is priced when its page is authored.
+   * The player door. Players get no reactions (sparks refresh-max,
+   * never detonate — the pre-lanes shape stands), but THE LEDGER
+   * ANSWERED (book-plan Phase 3, green-lit): afflictions now stack
+   * PER SOURCE on players exactly as they do on NPCs — capped at the
+   * page's max, the new hand folding into the weakest wound, so a
+   * pack's pressure is real and each wolf's own wound is honest. The
+   * ONE deliberate number move of the phase, priced by the plan's
+   * ledger; cleanse, kiting, and the visible stack row are the
+   * counterplay. COUNT-model pages walk their own door on any body.
+   * FAIR HANDS holds here too: immunity windows refuse, root clamps
+   * to its page's lock, and a holdsPlayers stagger locks the hands
+   * (stunLeft — read by the held gates at the attack/cast doors).
    */
   private applyStatusToPlayer(eid: EntityId, apply: StatusApply, sourceEid: EntityId): void {
     const page = pageOf(apply.status);
@@ -22698,12 +22748,17 @@ export class GameServer {
         delete rec![page.id];
       }
     }
+    // A root's hold IS its status: the page's lock bounds the clock.
+    const duration =
+      page.cc?.kind === 'root'
+        ? Math.min(apply.durationTicks, page.cc.maxTicks)
+        : apply.durationTicks;
     const list = this.statuses.get(eid) ?? [];
     if (page.stacking.model === 'count') {
-      const verdict = applyCount(list, page, apply.power, apply.durationTicks, () => ({
+      const verdict = applyCount(list, page, apply.power, duration, () => ({
         id: apply.status,
         power: apply.power,
-        ticksLeft: apply.durationTicks,
+        ticksLeft: duration,
         sourceEid,
       }));
       if (list.length > 0) this.statuses.set(eid, list);
@@ -22732,34 +22787,71 @@ export class GameServer {
           sourceEid,
         });
       }
+      // A boon that moves the swing channel re-mirrors it at once.
+      if (page.statMods?.attackSpeedMult !== undefined) {
+        const p = this.players.get(eid);
+        if (p) this.sendBuffs(p);
+      }
+      return;
+    }
+    // THE LEDGER ANSWERED: afflictions stack per source on players,
+    // the NPC shape exactly (cap at the page's max, fold into the
+    // weakest at the cap, the same hand refreshes its own wound).
+    if (page.stacking.model === 'perSource') {
+      const own = list.find((s) => s.id === apply.status && s.sourceEid === sourceEid);
+      if (own) {
+        refreshMax(own, apply.power, duration);
+      } else {
+        const riding = list.filter((s) => s.id === apply.status);
+        if (riding.length >= page.stacking.max) {
+          refreshMax(weakestOf(riding), apply.power, duration);
+        } else {
+          list.push({ id: apply.status, power: apply.power, ticksLeft: duration, sourceEid });
+        }
+      }
+      this.statuses.set(eid, list);
       return;
     }
     const same = list.find((s) => s.id === apply.status);
     if (same) {
-      refreshMax(same, apply.power, apply.durationTicks);
+      refreshMax(same, apply.power, duration);
+      if (page.cc?.holdsPlayers) {
+        same.stunLeft = Math.max(same.stunLeft ?? 0, ccTicksFor(page, duration));
+      }
     } else {
-      list.push({ id: apply.status, power: apply.power, ticksLeft: apply.durationTicks, sourceEid });
+      list.push({
+        id: apply.status,
+        power: apply.power,
+        ticksLeft: duration,
+        sourceEid,
+        // FAIR HANDS, the player half: only a page that declares
+        // holdsPlayers locks the hands (shock never does — the
+        // historic law is the page's own word now).
+        stunLeft: page.cc?.holdsPlayers ? ccTicksFor(page, duration) : undefined,
+      });
     }
     this.statuses.set(eid, list);
   }
+
 
   private statusBits(eid: EntityId): number {
     let bits = 0;
     const list = this.statuses.get(eid);
     if (list) {
       let stacks = 0;
+      let count = 0;
       for (const s of list) {
         bits |= STATUS_BIT[s.id];
-        // The stack nibble speaks the book: a perSource entry is one
-        // wound, a count entry carries its whole count. The six
-        // shipped pages make this exactly the old affliction tally.
+        // Two nibbles, two honest meanings (THE WIDER WOUND): the
+        // affliction nibble counts per-source entries exactly as v29
+        // wrote it; the count nibble carries a count-model page's own
+        // depth in the high word.
         const model = pageOf(s.id).stacking.model;
         if (model === 'perSource') stacks++;
-        else if (model === 'count') stacks += s.stacks ?? 1;
+        else if (model === 'count') count += s.stacks ?? 1;
       }
-      // The stack count rides the high nibble so the nameplate can
-      // read it with no protocol change.
       bits |= Math.min(stacks, 15) << AFFLICTION_STACKS_SHIFT;
+      bits |= Math.min(count, 15) << COUNT_STACKS_SHIFT;
     }
     // Stealth bits ride the same byte. Snapshots for a hidden player only
     // ever reach their own session (interest suppression), so HIDDEN is
@@ -22850,6 +22942,11 @@ export class GameServer {
             const rec = this.ccImmunity.get(eid) ?? {};
             rec[s.id] = this.tickCount + page.cc.immunityTicks;
             this.ccImmunity.set(eid, rec);
+          }
+          // A swing-channel boon leaving re-mirrors the mult at once.
+          if (page.statMods?.attackSpeedMult !== undefined) {
+            const sp = this.players.get(eid);
+            if (sp) this.sendBuffs(sp);
           }
         }
       }
@@ -23784,7 +23881,11 @@ export class GameServer {
         break;
       }
       case 'cleanse': {
-        this.statuses.delete(eid);
+        // THE HONEST CLEANSE: hostile pages strip; boons ride on (a
+        // mend must never die to its bearer's own dispel).
+        const clist = this.statuses.get(eid)?.filter((s) => survivesCleanse(s.id));
+        if (clist && clist.length > 0) this.statuses.set(eid, clist);
+        else this.statuses.delete(eid);
         radius = 0.9;
         break;
       }
@@ -23965,6 +24066,16 @@ export class GameServer {
         this.npcAggro(npcEid, npc, attackerEid, { force: true });
       }
       return;
+    }
+
+    // THE DULLED ARM (statusBook Phase 3): a weakened ATTACKER's blows
+    // land softer — the outgoing mirror of sunder, read off the
+    // striker's own riding marks, clamped at the helper. Dormant until
+    // a page with dealtPct power ships an applier; DoT pulses skip it
+    // by construction (dotNpc — the set drip is already inside).
+    if (dmg > 0) {
+      const arm = outgoingAmp(this.statuses.get(attackerEid));
+      if (arm !== 1) dmg = Math.max(1, Math.round(dmg * arm));
     }
 
     // ------------------------------------------------ THE READING EDGE
@@ -24188,6 +24299,29 @@ export class GameServer {
     this.broadcastHit(npcEid, dmg, crit, kx, ky, opts.backstab, warded);
     if (dmg <= 0) return;
     health.hp -= dmg;
+    // FAIR HANDS: honest damage snaps a breakOnDamage hold early on
+    // NPC bodies too (inline — the slate-test law; nothing is touched
+    // unless a hold page rides).
+    {
+      const held = this.statuses.get(npcEid);
+      if (held) {
+        for (let i = held.length - 1; i >= 0; i--) {
+          const hs = held[i]!;
+          const hcc = pageOf(hs.id).cc;
+          if (hcc?.breakOnDamage === undefined) continue;
+          hs.ccDamage = (hs.ccDamage ?? 0) + dmg;
+          if (hs.ccDamage >= hcc.breakOnDamage) {
+            held.splice(i, 1);
+            if (hcc.immunityTicks > 0) {
+              const rec = this.ccImmunity.get(npcEid) ?? {};
+              rec[hs.id] = this.tickCount + hcc.immunityTicks;
+              this.ccImmunity.set(npcEid, rec);
+            }
+          }
+        }
+        if (held.length === 0) this.statuses.delete(npcEid);
+      }
+    }
     this.setNpcPose(npcEid, npc, PoseState.Hurt, 4);
     npc.windupTicks = 0; // a solid hit interrupts a wound-up attack
 
@@ -24716,6 +24850,16 @@ export class GameServer {
     const health = this.healths.get(eid);
     if (!player || !health) return;
 
+    // THE DULLED ARM, mirrored: a weakened striker's blow lands
+    // softer on players too — read off the ATTACKER's riding marks
+    // (dormant until a dealtPct page ships an applier; DoT pulses
+    // never pass here with a source mark, pierceArmor drips skip by
+    // the via lane).
+    if (raw > 0 && opts.sourceEid !== undefined && opts.via === undefined) {
+      const arm = outgoingAmp(this.statuses.get(opts.sourceEid));
+      if (arm !== 1) raw = Math.max(1, Math.round(raw * arm));
+    }
+
     // THE MANY ARE MET (the other edge): a garrison meeting a
     // fellowship strikes a shade harder — +12% per extra soul, capped
     // at half again — so numbers thin the blows they draw, never
@@ -24749,6 +24893,8 @@ export class GameServer {
     const armor =
       player.gear.armor +
       buffArmor(player.buffs) +
+      // Stonehide's lane: riding boon pages lend their coats.
+      statusArmorDelta(this.statuses.get(eid)) +
       (player.stillTicks >= STILL_ARMOR_TICKS
         ? player.perks.stillArmor
         : player.perks.marchArmor) +
@@ -24847,6 +24993,31 @@ export class GameServer {
     this.broadcastHit(eid, dmg, false, 0, 0, false, false, opts.via);
     player.lastCombatAt = Date.now();
     if (dmg <= 0) return;
+
+    // FAIR HANDS: honest damage snaps a breakOnDamage hold early —
+    // hit the vines, not the clock. Inline (the slate-test law); the
+    // immunity stamp waits inside the snap so no state is touched
+    // unless a hold page actually rides.
+    {
+      const held = this.statuses.get(eid);
+      if (held) {
+        for (let i = held.length - 1; i >= 0; i--) {
+          const hs = held[i]!;
+          const hcc = pageOf(hs.id).cc;
+          if (hcc?.breakOnDamage === undefined) continue;
+          hs.ccDamage = (hs.ccDamage ?? 0) + dmg;
+          if (hs.ccDamage >= hcc.breakOnDamage) {
+            held.splice(i, 1);
+            if (hcc.immunityTicks > 0) {
+              const rec = this.ccImmunity.get(eid) ?? {};
+              rec[hs.id] = this.tickCount + hcc.immunityTicks;
+              this.ccImmunity.set(eid, rec);
+            }
+          }
+        }
+        if (held.length === 0) this.statuses.delete(eid);
+      }
+    }
 
     // A wound that reached flesh breaks the tend — kneeling hands
     // need an unbloodied keeper. The tame channel deliberately
@@ -28775,7 +28946,7 @@ export class GameServer {
         if (npc.state === 'chase' || npc.state === 'seekhelp') speed = npc.def.speed;
         else if (npc.state === 'search') speed = npc.def.speed * 0.85;
         else if (npc.state === 'investigate') speed = npc.def.speed * 0.7;
-        if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
+        speed *= moveFactorOfList(this.statuses.get(eid)); // THE BOOK'S FEET
         // The phase's stride: a turned crown may quicken (or slow to
         // a deliberate, dreadful walk — both are authored dials).
         if (npc.def.boss) speed *= bossSpeedMult(npc.def.boss, npc.bossPhase ?? 0);
@@ -31125,7 +31296,10 @@ export class GameServer {
       // replaces the foot stack (max, never product). This is the same
       // number sendRide mirrors, so prediction agrees to the digit.
       speed *= this.steadySpeedMult(player);
-      if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
+      // THE BOOK'S FEET: chill's slow and the holds' stone feet fold
+      // through the pages (moveFactorOfList — one home, the mirror
+      // reads the same pages off the wire bits).
+      speed *= moveFactorOfList(this.statuses.get(eid));
       if (casting) speed = 0; // committed to the cast
       // THE TRAVELED ROAD owns the body: while a transit runs, the
       // sticks steer nothing (the predictor mirrors this window).

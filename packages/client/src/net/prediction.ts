@@ -1,5 +1,4 @@
 import {
-  CHILL_SPEED_FACTOR,
   DODGE_COOLDOWN_SEQ,
   DRAW_MOVE_FACTOR,
   InputButton,
@@ -90,14 +89,16 @@ export class Predictor {
    */
   speedMult = 1;
   /**
-   * THE PREDICTOR FEELS THE COLD: chilled bodies walk at
-   * CHILL_SPEED_FACTOR on the server — mirrored here from the own
-   * snapshot's status bit. Without it a chilled player over-predicts
-   * at 1.8x the authoritative speed for the chill's whole life and
+   * THE PREDICTOR FEELS THE PAGES (statusBook Phase 3, generalizing
+   * THE PREDICTOR FEELS THE COLD): the movement factor of every
+   * status riding the own body — chill's slow, the holds' stone feet
+   * — derived from the same STATUS_BOOK pages the server folds
+   * (moveFactorOfBits off the own snapshot's status word). Without it
+   * a slowed player over-predicts for the state's whole life and
    * rubber-bands every frame. One RTT stale at the edges, honest for
    * the duration.
    */
-  chilled = false;
+  statusMoveFactor = 1;
   /**
    * Drawn-bow walk factor with perks folded (Longstride) — mirrored
    * from S2CRide; the bare constant is only the fallback.
@@ -186,14 +187,15 @@ export class Predictor {
 
   /**
    * Per-frame speed — every factor the server applies, mirrored:
-   * draw-slow (perk-folded), the steady ride mult, and the chill.
+   * draw-slow (perk-folded), the steady ride mult, and the riding
+   * pages' feet (chill, the holds).
    */
   private frameSpeed(frame: InputFrame): number {
     if (this.rooted(frame.seq)) return 0;
     let speed =
       (isDrawSlowed(frame, this.weaponStyle) ? this.speed * this.drawFactor : this.speed) *
       this.speedMult;
-    if (this.chilled) speed *= CHILL_SPEED_FACTOR;
+    speed *= this.statusMoveFactor;
     return speed;
   }
 

@@ -11,9 +11,21 @@ test('snapshot round-trips through the binary codec', () => {
     entities: [
       { eid: 1, x: 32.5, y: 48.25, dir: 1.5, pose: 1, hpPct: 255, status: 0, alert: 0 },
       { eid: 99, x: -10.125, y: 0, dir: 6.1, pose: 4, hpPct: 128, status: 0b0101, alert: 2 },
-      // status walks the FULL u16: low-byte flags + sunder (0x100)
-      // + an affliction stack nibble of 3 (3 << 9) = 0x749.
-      { eid: 4_000_000, x: 1000.75, y: 2000.5, dir: 0, pose: 0, hpPct: 0, status: 0x749, alert: 3 },
+      // status walks the FULL u32 (THE WIDER WOUND): the frozen low
+      // word exactly as v29 wrote it (low-byte flags + sunder 0x100 +
+      // an affliction nibble of 3 = 0x749), a high-word wave-one bit
+      // (quicken, 1 << 19) and a count nibble of 5 (5 << 22) — the
+      // widening must round-trip every lane at once.
+      {
+        eid: 4_000_000,
+        x: 1000.75,
+        y: 2000.5,
+        dir: 0,
+        pose: 0,
+        hpPct: 0,
+        status: 0x749 | (1 << 19) | (5 << 22),
+        alert: 3,
+      },
     ],
   };
   const buf = encodeSnapshot(snap);

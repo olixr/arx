@@ -64,6 +64,25 @@ function statusValue(s: StatusApply | undefined): number {
       // bigger crack prices higher and the cap (SUNDER_MAX_PCT)
       // bounds it near chill's utility weight.
       return secs * (s.power / 15) * horizon;
+    // THE WIDER WOUND (wave one — APPLIER-FREE until the authored
+    // tide, but the compiler makes the ladder price them the day one
+    // ships; the plan's ledger set these weights).
+    case 'root':
+      // A full hold beats a slow: half again chill's utility weight.
+      return secs * 1.35 * horizon;
+    case 'stagger':
+      // The hardest second in the game — short by law, priced steep.
+      return secs * 2.2 * horizon;
+    case 'weaken':
+      // The dulled arm prices like sunder's mirror, 15-flat baseline.
+      return secs * (s.power / 15) * 0.9 * horizon;
+    case 'quicken':
+    case 'mend':
+    case 'stonehide':
+      // Boons on a FOE are nothing; on the caster the self-buff lane
+      // already carries its own pricing. The status ladder scores a
+      // hostile application only, and these are never hostile.
+      return 0;
   }
 }
 

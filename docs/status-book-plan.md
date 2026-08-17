@@ -426,6 +426,75 @@ move; wire untouched.
 
 ### Phase 3 — THE WIDER WOUND (the wire, the roster, fair CC)
 
+**SHIPPED 2026-08-16. As-built:**
+
+- **The wire widened**: snapshot `status` u16 → u32 (protocol v34,
+  record reshape +2 bytes/entity, judgment comment in constants.ts).
+  THE LOW WORD IS FROZEN — bits 0-15 keep their exact v29 meanings,
+  pinned both ways in abilities.test (only the six pre-widening
+  states under bit 16; nothing collides with either nibble). Wave-one
+  states ride bits 16-21; the COUNT nibble (bits 22-25,
+  `countStacksOf`) carries a count page's own depth — the affliction
+  nibble returns to pure per-source meaning; bits 26-31 free. The
+  roundtrip test walks all three lanes at once.
+- **The wave-one roster** (six pages, ENGINE-COMPLETE and
+  APPLIER-FREE — `statusWave.test.ts` in content is the tripwire: no
+  shipped ability/kit/item/enchant/word/temper lays one until Phase 5
+  prices it): `root` (hold lane, ≤2s clamped AT THE DOOR, stone feet,
+  breakOnDamage 6, immunity 3×), `stagger` (the true stagger, ≤0.7s,
+  immunity 4×, holdsPlayers TRUE — and shock's page now declares
+  holdsPlayers FALSE: the historic never-stun-a-player law is the
+  page's own word), `weaken` (mark lane, sunder's outgoing mirror,
+  WEAKEN_MAX_PCT 15 clamp), `quicken` (the count model's boon debut:
+  5 stacks × 1.04 swing each, band-clamped at the fold), `mend` (THE
+  MEND DOOR's first page, heal-kind tick), `stonehide` (stepDown's
+  debut: three coats shed one per 5s, armorDelta 4 × stacks). Lane
+  vocabulary grew `hold`; powerIs grew `tickHeal`/`dealtPct`.
+- **THE LEDGER ANSWERED — the phase's ONE deliberate number move
+  (green-lit)**: the player affliction door now mirrors the NPC shape
+  exactly (per-source entries, page cap, fold-into-weakest; the same
+  hand refreshes). A pack's wounds are real; the statusLanes pin is
+  REWRITTEN to the new law. Sparks/marks keep one-entry refresh-max
+  on players.
+- **FAIR HANDS made real**: player stunLeft at the door for
+  holdsPlayers pages; the attack and cast doors refuse a held body
+  (inline + optional-chained — THE SLATE-TEST LAW claimed its second
+  scalp this phase: a `playerHeld` method broke 27 pinned tests
+  before the inline recut, now ledgered twice); breakOnDamage
+  accumulates on the entry at BOTH damage doors and snaps the hold
+  early with the immunity stamp; root's duration clamps to its lock
+  at both doors.
+- **The page-driven stat seams** (all dormant until appliers): THE
+  BOOK'S FEET — `moveFactorOfList` replaced every hardcoded chill
+  read (4 server movement sites, byte-identical at 0.55) and
+  `moveFactorOfBits` replaced the predictor's `chilled` flag (the
+  mirror reads the same pages off the wire; root/stagger stop the
+  predicted feet the frame the bit lands); THE DULLED ARM —
+  `outgoingAmp` folds the ATTACKER's dealtPct marks at both damage
+  doors (DoT pulses skip by construction); `statusSwingFactor` joins
+  the swing fold inside the band clamp (quicken's seat; re-mirrored
+  on apply AND expiry); `statusArmorDelta` joins the armor term
+  (stonehide's seat). THE HONEST CLEANSE: all three cleanse doors
+  (proc, pet, self) strip hostile pages only — a mend never dies to
+  its bearer's own dispel (`survivesCleanse`).
+- **The client learned the roster**: EDGE_BITS/nameplate/wound-row
+  orders append (holds first — a lock outranks a number — then
+  marks, then boons); six landing voices + two count stack-notes,
+  library-composed (root = the earth grabs, stagger = storm impact,
+  weaken = shadow bloom, quicken/mend = radiance, stonehide = stone
+  settling ON the body); inks derive from the pages as always; both
+  nibbles sum into the xN. The count nibble gets its own edge watch
+  (AMBIGUOUS COUNTS SPEAK QUICKEN). Phase 4 masters the tiered auras.
+- **PlayerComp gained `eid`** (stamped at spawn — the buffs push
+  reads riding pages); ladderModel prices the roster (root 1.35×
+  chill's weight, stagger 2.2, weaken as sunder's mirror ×0.9, boons
+  0 hostile-score by construction).
+- **Pinned**: shared 268 (roster/lane/FAIR-HANDS/feet-mirror/dulled-
+  arm/boon-seam/cleanse laws + the u32 LOW-WORD-FROZEN pin), content
+  571 (the applier-free tripwire), server 560 (THE LEDGER ANSWERED
+  rewrite + the count-nibble wire law), client 628 (the twelve-state
+  grammar), tsc clean ×4 — every suite FULLY green.
+
 - Snapshot `status` u16 → u32 (protocol bump; LOW WORD FROZEN). High
   word: new visible states + a second stack nibble for the count model.
 - Wave-1 pages (proposed, priced in Part 4): `root` (webs and snares

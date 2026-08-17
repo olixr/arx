@@ -16,6 +16,7 @@ import {
   STATUS_AMBIENCE_MASK,
   STATUS_BIT,
   afflictionStacksOf,
+  countStacksOf,
   LIGHT_BLOCKING_TILES,
   TICK_MS,
   TILE_PX,
@@ -55712,6 +55713,8 @@ export class Renderer {
     const states = status & STATUS_AMBIENCE_MASK;
     if (!states) return;
     const d = Math.max(3, this.camera.scale * 0.07);
+    // The shipped order stands; THE WIDER WOUND appends — holds first
+    // (a lock outranks a number), then the marks, then the boons.
     const order: ReadonlyArray<readonly [number, string]> = [
       [STATUS_BIT.sunder, STATUS_INK.sunder!],
       [STATUS_BIT.bleed, STATUS_INK.bleed!],
@@ -55719,6 +55722,12 @@ export class Renderer {
       [STATUS_BIT.burn, STATUS_INK.burn!],
       [STATUS_BIT.chill, STATUS_INK.chill!],
       [STATUS_BIT.shock, STATUS_INK.shock!],
+      [STATUS_BIT.root, STATUS_INK.root!],
+      [STATUS_BIT.stagger, STATUS_INK.stagger!],
+      [STATUS_BIT.weaken, STATUS_INK.weaken!],
+      [STATUS_BIT.stonehide, STATUS_INK.stonehide!],
+      [STATUS_BIT.quicken, STATUS_INK.quicken!],
+      [STATUS_BIT.mend, STATUS_INK.mend!],
     ];
     const shown = order.filter(([bit]) => (states & bit) !== 0).slice(0, 4);
     let sx = x - (shown.length * (d + 2) - 2) / 2;
@@ -55730,7 +55739,8 @@ export class Renderer {
       ctx.fillRect(sx, sy, d, d);
       sx += d + 2;
     }
-    const stacks = afflictionStacksOf(status);
+    // Both nibbles count: per-source wounds plus a count page's depth.
+    const stacks = afflictionStacksOf(status) + countStacksOf(status);
     if (stacks >= 2) {
       ctx.font = `700 ${Math.max(9, this.camera.scale * 0.2)}px 'Trebuchet MS', sans-serif`;
       ctx.textAlign = 'left';
@@ -63852,6 +63862,7 @@ export class Renderer {
     const states = game.ownStatus & STATUS_AMBIENCE_MASK;
     if (!states) return;
     const ctx = this.ctx;
+    // The one priority order, owner scale (THE WIDER WOUND appends).
     const order: ReadonlyArray<readonly [number, string]> = [
       [STATUS_BIT.sunder, STATUS_INK.sunder!],
       [STATUS_BIT.bleed, STATUS_INK.bleed!],
@@ -63859,11 +63870,18 @@ export class Renderer {
       [STATUS_BIT.burn, STATUS_INK.burn!],
       [STATUS_BIT.chill, STATUS_INK.chill!],
       [STATUS_BIT.shock, STATUS_INK.shock!],
+      [STATUS_BIT.root, STATUS_INK.root!],
+      [STATUS_BIT.stagger, STATUS_INK.stagger!],
+      [STATUS_BIT.weaken, STATUS_INK.weaken!],
+      [STATUS_BIT.stonehide, STATUS_INK.stonehide!],
+      [STATUS_BIT.quicken, STATUS_INK.quicken!],
+      [STATUS_BIT.mend, STATUS_INK.mend!],
     ];
     const shown = order.filter(([bit]) => (states & bit) !== 0);
     const d = 12;
     const gap = 5;
-    const stacks = afflictionStacksOf(game.ownStatus);
+    // Both nibbles count on the owner's row too.
+    const stacks = afflictionStacksOf(game.ownStatus) + countStacksOf(game.ownStatus);
     const stackW = stacks >= 2 ? 26 : 0;
     let sx = this.w / 2 - (shown.length * (d + gap) - gap + stackW) / 2;
     const sy = barY - d - 8;
