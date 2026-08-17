@@ -316,8 +316,9 @@ export function buildManifest(): Manifest {
  * Sheet + pipeline ordering: first wave first, then by region, then name.
  *
  * ONE ROW PER PLACE THE PLAYER GOES. This list was written when the world
- * ended at Silverfall, and four towns have opened since (Pinewatch, Saltmere,
- * Hartfell, the Low Hall). A region missing from here does not warn: indexOf
+ * ended at Silverfall, and seven places have opened since (Pinewatch,
+ * Saltmere, Hartfell, the Low Hall, the Falls Vale below Silverfall,
+ * Kingsdelf, Evenfall). A region missing from here does not warn: indexOf
  * returns -1, which sorts ABOVE every named region, so the newest town
  * silently jumps the queue in the recording sheet. Any zone in
  * packages/content/src/maps that places actors belongs here, in roughly the
@@ -333,6 +334,9 @@ export const REGION_ORDER = [
   'saltmere',
   'hartfell',
   'lowhall',
+  'vale',
+  'kingsdelf',
+  'evenfall',
 ];
 export function orderedActors(m: Manifest): string[] {
   const ids = [...m.byActor.keys()].filter((id) => m.actors.has(id));

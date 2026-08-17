@@ -4,7 +4,7 @@
 actor defs, `tools/voice/quips.json` or `tools/voice/characters.json`,
 never this file.*
 
-**188 characters · 1645 dialogue lines · 564 ambient barks · 84 quips.**
+**222 characters · 1832 dialogue lines · 666 ambient barks · 84 quips.**
 
 ## How to record
 
@@ -978,1842 +978,6 @@ ford town's daily faces. Quips are authored for all twelve.
 **`q_the_delf_ladder_turnin__paid`** — *opens the conversation*
 
 > Eight honest stones. Bronze starts exactly here, and so did I. Furnace is there, spare anvil's there, and the iron face up north of the cutting will keep saying no until your pick is better. Let it say no. That's the ladder working.
-
----
-
-# kingsdelf
-
-## Lorn `assayer_lorn` — 6 dialogue lines, 3 quips and barks
-
-*Fordgate-trained, scales-honest. Once passed a load he should have failed; a bridge cracked; he left. Nothing leaves the delf unweighed now.*
-
-**Who they are, and how to say it:** Assayer; passed a load once and a bridge cracked, and the word he uses is nobody. Dry, exact; weighs words like loads: 'that claim is light'. No adjectives he has not tested.
-
-**Chatterbox casting:** `rpg_fantasy/male/court_phil` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `assayer_lorn__bark_1` — "That claim is light. Bring me the rest of it."
-- `assayer_lorn__bark_2` — "The scales do not care who is waiting. That is what makes them scales."
-- `assayer_lorn__bark_3` — "I failed a load once by passing it. Never again."
-
-### Conversation: `lorn_assay`
-
-**`lorn_assay__greet`** — *opens the conversation*
-
-> Set it on the counter. Everything gets weighed before it gets believed.
-
-**`lorn_assay__hub`** — *follows straight on from "greet"; or follows straight on from "work"; or follows straight on from "worth"*
-
-> What is your business with the scales?
-
-**`lorn_assay__work`** — *player says: "What do you do here?"*
-
-> Every load out of the delf and every stone out of the burn crosses this counter. I stamp what is true. The stamp is why a Kingsdelf bar sells in Amberford without an argument. Towns run on bread. Trade runs on stamps.
-
-**`lorn_assay__worth`** — *player says: "What's ore worth these days?"*
-
-> Mithril holds steady, the Charter sees to that. Adamant is worth your sweat. Obsidian is worth other people's sweat, which is why it is priced like it. And starfall is worth whatever the buyer's eyes say before their mouth starts lying.
-
-**`lorn_assay__strict`** — *player says: "Why so strict about it?"*
-
-> In Amberford, years ago, a man in a hurry talked me into passing a load I doubted. A bridge cracked. Nobody died, and I hear the word nobody in my sleep, because it was luck, not judgment. The scales do not hurry. Neither do I. Not anymore.
-
-**`lorn_assay__bye`** — *player says: "Nothing to weigh."*
-
-> Honest weight to you.
-
----
-
-# evenfall
-
-## Aewyn `bowyer_aewyn` — 10 dialogue lines, 3 quips and barks
-
-*The finest bowyer alive, by the reckoning of everyone who has held her work and lived to reckon. She treats every stave as an acquaintance of some decades' standing, because it is.*
-
-**Who they are, and how to say it:** Bowyer of the Fair Court; treats the staves as acquaintances. Workshop imperatives softened by sixty-year patience; the wood is always the subject of the sentence.
-
-**Chatterbox casting:** `rpg_fantasy/female/highmountain_f` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `bowyer_aewyn__bark_1` — "This stave and I have known each other sixty years. It is nearly ready. So am I."
-- `bowyer_aewyn__bark_2` — "A bow is a conversation between a tree and a need. Most of yours shout."
-- `bowyer_aewyn__bark_3` — "Yew wants patience. Everything worth stringing does."
-
-### Conversation: `aewyn_bows`
-
-**`aewyn_bows__greet`** — *opens the conversation*
-
-> Hands off the staves unless they greet you first.
-
-**`aewyn_bows__hub`** — *follows straight on from "greet"; or player says: "Later."; or follows straight on from "yew"*
-
-> Bows. Staves. Sixty years of patience on racks. What do you need?
-
-**`aewyn_bows__teach`** — *player says: "Teach me the craft."*
-
-> The guild halls east teach to a line and stop. I teach past it. Yew bows, the singing bow, the war bow. Nobody else alive will show you, because everybody else who could is in this city, and they all send students to me anyway.
-
-**`aewyn_bows__yew`** — *player says: "Why yew?"*
-
-> Yew grows slow and remembers everything. Oak forgets by autumn. A yew stave taken kindly will pull for your grandchildren. Taken unkindly it will not pull at all. The wood decides. My whole craft is asking well.
-
-**`aewyn_bows__browse`** — *player says: "Show me your work."; or player says: "Show me, then."*
-
-> Patterns, staves, and finished work. The prices are firm. So is the yew.
-
-### Conversation: `q_a_bow_of_the_wood_offer` *(plays when: quest:a_bow_of_the_wood:available)*
-
-**`q_a_bow_of_the_wood_offer__hub`** — *opens the conversation*
-
-> You want the yew shelf. Everyone with eyes wants the yew shelf. The yew is not mine to give, so we do this properly.  Ask the Warden for leave to take staves from the living wood. If Sylwen grants it, gather kindly and bring twine, and I will teach you what the guild halls stop short of.
-
-**`q_a_bow_of_the_wood_offer__why`** — *player says: "Why does a bowyer need permission?"*
-
-> I do not need permission. I have standing leave, sixty years old. YOU need permission, and watching how you ask will tell me more about your hands than any bench test.
-
-**`q_a_bow_of_the_wood_offer__go`** — *player says: "I'll ask the warden."; or player says: "Then I'll ask her."*
-
-> Go on then. Stand straight when you ask her. She counts.
-
-### Conversation: `q_a_bow_of_the_wood_turnin` *(plays when: quest:a_bow_of_the_wood:ready)*
-
-**`q_a_bow_of_the_wood_turnin__grain`** — *opens the conversation*
-
-> Show me. Clean grain, no hurry in the cut, and Sylwen's mark on the leave. The wood said yes twice. It does not do that for me every year.
-
-**`q_a_bow_of_the_wood_turnin__wall`** — *follows straight on from "grain"*
-
-> The staves go to the wall now, to think. A bow of the wood is not made, it is agreed to, and the agreement takes as long as it takes. What you bought today is the yes. That is the rare half. The rest is only years, and years are the one thing this house has in stock.
-
----
-
-# kingsdelf
-
-## Slate `broker_slate` — 7 dialogue lines, 3 quips and barks
-
-*A gray, agreeable man with a corner stall and no history he will admit to. Answers most questions with prices. Slate is what was left after he dropped the other name on the road.*
-
-**Who they are, and how to say it:** Dealer in sundries, the Company’s counter, unstated. Flat, amiable, frictionless; answers questions with prices. "Asking costs." Nothing sticks to him, by design.
-
-**Chatterbox casting:** `rpg_fantasy/male/george` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `broker_slate__bark_1` — "Rope, tallow, keys. Other things by asking. Asking costs."
-- `broker_slate__bark_2` — "I buy odd lots. No questions is the house specialty."
-- `broker_slate__bark_3` — "Everything on this crate has a price. Most things off it, too."
-
-### Conversation: `slate_sundries`
-
-**`slate_sundries__greet`** — *opens the conversation*
-
-> Rope, tallow, keys. Other things by asking. Asking costs.
-
-**`slate_sundries__hub`** — *follows straight on from "greet"; or player says: "Noted."; or follows straight on from "cellar"*
-
-> Buying or browsing? Both are fine. One is finer.
-
-**`slate_sundries__wagons`** — *player says: "What kind of things fall off wagons?"*
-
-> Useful things. Unclaimed things. Things whose owners lost interest at exactly the moment I gained it. Commerce is a river, friend. I am just a man standing where it bends.
-
-**`slate_sundries__cellar`** — *player says: "This river have a cellar, like the other towns?"*
-
-> Asking costs, and that one costs double, so here is your coin's worth. No cellar. Forty one miles of road nobody watches is a better door than any door, and the crate you are looking at is the counter at the end of it. You knew that before you asked. I like that in a customer.
-
-**`slate_sundries__name`** — *player says: "Slate's an odd name."*
-
-> It is a good name. Writes easy, wipes clean. The one before it got heavy, so I set it down somewhere on the road and have never once gone back for it. You can buy most things at this crate. Not that.
-
-**`slate_sundries__browse`** — *player says: "What have you got?"*
-
-> Take a look. No questions is the house specialty, and it goes both ways.
-
-**`slate_sundries__bye`** — *player says: "Neither, today."*
-
-> You know where the crate is.
-
----
-
-## Ruen `delfmaster_ruen` — 8 dialogue lines, 3 quips and barks
-
-*Sixty years of reading stone. Her grandmother's name is on the names-stone, eleventh row. She runs the town like a good shift: everyone counted out, everyone counted back.*
-
-**Who they are, and how to say it:** Delfmaster; sixty years reading stone, grandmother on the names-stone. Work orders, plainly given: 'count your crew before the burn, not after'. Taps stone twice before trusting it; unimpressed by Silverfall on principle.
-
-**Chatterbox casting:** `rpg_fantasy/female/orc_f` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `delfmaster_ruen__bark_1` — "Count your crew before the burn, not after."
-- `delfmaster_ruen__bark_2` — "The Crown never answers my letters. The mountain always answers my knock."
-- `delfmaster_ruen__bark_3` — "Grievances go in the shift book. Miracles too, if you have any."
-
-### Conversation: `q_the_crown_asks_ruen` *(plays when: quest:the_crown_asks:stage:the_lost_pages)*
-
-**`q_the_crown_asks_ruen__scene`** — *opens the conversation*
-
-> So. The Crown's surveyor lost her papers in the burn and sends a stranger to ask my leave. That is the most honest thing her office has done all year, and I suspect it was your idea.  Go and get them. Break the shift politely, if a shift can be broken politely. But you carry my words back with the pages: the next question the Crown has for this town knocks at the Delfhall first, or it walks home.
-
-### Conversation: `ruen_delfhall`
-
-**`ruen_delfhall__greet`** — *opens the conversation*
-
-> The Delfhall. Grievances go in the shift book, wonders go in the shift book, everything goes in the shift book. What have you got?
-
-**`ruen_delfhall__hub`** — *follows straight on from "greet"; or follows straight on from "runs"; or follows straight on from "digs"*
-
-> Ask it plain.
-
-**`ruen_delfhall__runs`** — *player says: "Who runs this town?"*
-
-> I do, the way a foreman runs a shift. Not because I am grand. Because I count. Everyone who goes out gets counted out, and everyone gets counted back, and the day that stops being true, you may have my chair.
-
-**`ruen_delfhall__digs`** — *player says: "What do you dig here?"*
-
-> Mithril, here inside the walls, safe as digging ever gets. Adamant for those with arms for it. The obsidian and the starfall are out in the burn, and the burn sets its own wages. Talk to Lorn at the assay before you go believing anything shiny.
-
-**`ruen_delfhall__crown`** — *player says: "Does the Crown know about this place?"*
-
-> I have written to Silverfall three times. Three polite silences came back. And yet somebody up there reads Hedda's maps, doesn't he. The Crown knows us the way you know a debt you would rather not name.
-
-**`ruen_delfhall__read`** — *player says: "The Crown read the survey. I carried it."*
-
-> A letter came. Four lines, the King's own hand, and the first line was an apology for the other three. The delf is on the ledger again. I tapped the stone twice before I believed it, and it held, so I believe it. Do not tell Venn I said anything kind about Silverfall. The rate would move.
-
-**`ruen_delfhall__bye`** — *player says: "Nothing today."*
-
-> Mind the horn. It is not a suggestion.
-
----
-
-## Veyle `enchanter_veyle` — 10 dialogue lines, 3 quips and barks
-
-*Old blood, whole: moonpale, upswept ears, an age nobody asks about twice. The Arcanum sent her away for a question. The seal on the Stair is older craft, and she means to read it.*
-
-**Who they are, and how to say it:** Enchanter of the Focus House; old blood, whole, exiled from the Arcanum for one question. Soft, precise, drifts between centuries mid-sentence and returns without apology. Never frightened, which is itself unsettling.
-
-**Chatterbox casting:** `rpg_fantasy/female/faerin_f` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `enchanter_veyle__bark_1` — "The seal on the Stair is older work than mine. That is not a small thing to say."
-- `enchanter_veyle__bark_2` — "Solvei writes to me every month. The letters are very polite. So is my silence."
-- `enchanter_veyle__bark_3` — "My people built the old realm's lights. I am only finishing the shift."
-
-### Conversation: `q_the_count_below_veyle` *(plays when: quest:the_count_below:stage:the_order_of_march)*
-
-**`q_the_count_below_veyle__scene`** — *opens the conversation*
-
-> Annik sent you. Good. She has been circling that question since she was nine, and I have been waiting for her to send somebody braver than my silence...  The Court keeps the old musters. Every dead soldier holds his place in the order of march, and they have held ONE place open for a hundred and fifty years. Walk the processions after dark. Count the gap. Then look at what the foremost one carries, and come back when your hands have stopped shaking.
-
-### Conversation: `q_what_the_net_held_veyle` *(plays when: quest:what_the_net_held:stage:the_answer)*
-
-**`q_what_the_net_held_veyle__scene`** — *opens the conversation*
-
-> Heavy. Patient. Went down slow, like it was deciding...  Yes. There is a word for that, in the old tongue, and I will not translate it, and my not translating it is the kindest sentence I have said this year. Tell Denna this instead: bring a stormpearl to her quay. My people used them to listen to deep water. Her line may hear more than most, and what she does with the listening is hers.
-
-### Conversation: `veyle_focus`
-
-**`veyle_focus__greet`** — *opens the conversation*
-
-> Come in. Shut the door softly, the table is listening.
-
-**`veyle_focus__hub`** — *follows straight on from "greet"; or follows straight on from "others"; or follows straight on from "years"*
-
-> You have questions. The young always do. It is one of your better habits.
-
-**`veyle_focus__folk`** — *player says: "What are you? If that's polite to ask."*
-
-> It is polite enough. I am of the old folk, the people who raised the realm before the roads. Long ears, long years, long memories. Most of us thinned into your bloodlines ages ago... you have met Annik. A few of us stayed whole. I am a few of a few.
-
-**`veyle_focus__others`** — *player says: "Are there others like you?"*
-
-> Scattered. Quiet. The old folk learned quiet the year the mountain woke, and we are excellent students. Look for moonpale skin and ears that remember. The coast kept some. The crown of Silverfall keeps more than it admits, in its own line, though I did not say so.
-
-**`veyle_focus__years`** — *player says: "Long years? How long?"*
-
-> I watched the Processional built, child. I watched it swept, and I watched it emptied... Forgive me. The number would only frighten one of us, and it is not me.
-
-**`veyle_focus__house`** — *player says: "What is the Focus House?"*
-
-> The second enchanting table in the Dawnlands, and the older art it studies. The seal on the Stair was made with craft the Arcanum has never held. My people lit the old realm's lamps. I am here to finish reading what we left.
-
-**`veyle_focus__arcanum`** — *player says: "Why did the Arcanum send you away?"*
-
-> I asked what their first focus was made from. Solvei, who keeps their table now, writes to me monthly. Polite letters. The answer to my question is not in any of them, which tells me she does not know either... or knows exactly.
-
-**`veyle_focus__browse`** — *player says: "Can I see your wares?"*
-
-> Folios and workings. Handle the dust with respect, it is older than your language.
-
----
-
-# evenfall
-
-## Evenguard `evenguard_watch` — 0 dialogue lines, 3 quips and barks
-
-*Moonpale, upswept ears, a strung bow, and the stillness of someone for whom an afternoon is not a long time. The watch faces the way you came from.*
-
-**Who they are, and how to say it:** Pooled Evenguard voices: moonpale, strung bows, the stillness of someone for whom an afternoon is not a long time. "You are seen." Watch-speak pared to the bone.
-
-**Chatterbox casting:** `rpg_fantasy/male/belf_m` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `evenguard_watch__bark_1` — "You are seen."
-- `evenguard_watch__bark_2` — "The mile is kept."
-- `evenguard_watch__bark_3` — "Walk on. The stones know the way better than I would tell it."
-
----
-
-# kingsdelf
-
-## Venn `factor_venn` — 6 dialogue lines, 3 quips and barks
-
-*Amberford-born, trained under old Cormund at the ford bank. Counts everything in threes, out loud, and has never once been short.*
-
-**Who they are, and how to say it:** Factor of the Charter; trained under Cormund at the ford bank. Counts in threes, out loud; precise, money-worded, warm underneath. "Weighed, stamped, banked." The ledger is the family now.
-
-**Chatterbox casting:** `rpg_fantasy/male/telemancer_m` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `factor_venn__bark_1` — "One, two, three. Weighed, stamped, banked. That is the whole religion."
-- `factor_venn__bark_2` — "The Charter believes in Kingsdelf. I have the paper that says so."
-- `factor_venn__bark_3` — "Ore pays for grain. Grain feeds the miners. Miners dig the ore. Round it goes."
-
-### Conversation: `venn_counting`
-
-**`venn_counting__greet`** — *opens the conversation*
-
-> The Countinghouse of the Amberford Charter, Kingsdelf seat. One, two, three: weighed, stamped, banked. How may the Charter serve?
-
-**`venn_counting__hub`** — *follows straight on from "greet"; or follows straight on from "bank"; or follows straight on from "why"*
-
-> Speak. The ledger waits.
-
-**`venn_counting__bank`** — *player says: "How does the bank work?"*
-
-> You put your goods in the chest, and the chest remembers you, and any Charter chest anywhere will give them back. That is the whole miracle, and it took better men than me a hundred years to make it boring.
-
-**`venn_counting__why`** — *player says: "Why did the Charter come out here?"*
-
-> Ore. Glass. A road nobody else wanted. The Charter believes in exactly one thing, friend, and that thing rolls downhill in a wagon and jingles.
-
-**`venn_counting__learn`** — *player says: "Where did you learn the trade?"*
-
-> Under old Cormund, at the ford bank in Amberford. He taught me that a ledger is a promise book. You do not break promises. You carry them, in threes, where you cannot drop them.
-
-**`venn_counting__bye`** — *player says: "That's all."*
-
-> One, two, three. Safe road.
-
----
-
-# evenfall
-
-## Fair Court artisan `fair_artisan` — 0 dialogue lines, 3 quips and barks
-
-*An artisan of the Fair Court, at work on something that will outlive every customer it ever has. This does not seem to hurry anyone.*
-
-**Who they are, and how to say it:** Pooled Fair Court artisan voices: courteous, absorbed, allergic to hurry. At work on something that will outlive every customer it ever has, and content about it.
-
-**Chatterbox casting:** `rpg_fantasy/male/veil_ethan` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `fair_artisan__bark_1` — "Mind the planters. They are older than your town."
-- `fair_artisan__bark_2` — "We do not shout our wares. The work speaks at its own pace."
-- `fair_artisan__bark_3` — "The Gallery is not a market. Coin is welcome. Hurry is not."
-
----
-
-# kingsdelf
-
-## Denna `fisher_denna` — 14 dialogue lines, 3 quips and barks
-
-*Old Peld's kin, with the pointed ears her line never lost and never explains. She fishes the drowned workings and never turns her back to the water. Once the net held something else.*
-
-**Who they are, and how to say it:** Fisher of the quay, the coast's old-blood ears. Low weather-talk that stops dead at one subject; never turns her back to the water. Calm on top, and the calm is load-bearing.
-
-**Chatterbox casting:** `rpg_fantasy/female/hush_morrow` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `fisher_denna__bark_1` — "The pale fish bite at dusk. Other things bite later."
-- `fisher_denna__bark_2` — "My ears? My mother's mother's mothers. The coast keeps what it likes."
-- `fisher_denna__bark_3` — "The mere holds the old galleries. The old galleries hold their breath."
-
-### Conversation: `denna_quay`
-
-**`denna_quay__greet`** — *opens the conversation*
-
-> Mind the nets. And stand where I can see the water past you, if you would.
-
-**`denna_quay__hub`** — *follows straight on from "greet"; or follows straight on from "catch"; or follows straight on from "ears"*
-
-> Ask, then. The fish are patient. Mostly.
-
-**`denna_quay__catch`** — *player says: "What do you catch out there?"*
-
-> Pale fish, blind as stones and sweeter than they have any right to be. They school against the drowned galleries, where the old workings flooded. Down there it is all doorways, traveler. Doorways and stairs, under sixty feet of gray water.
-
-**`denna_quay__ears`** — *player says: "May I ask about your ears?"*
-
-> You may, you asked kindly. My mother's line, back along the coast, back and back to the old folk. The coast kept the ears and lost the rest, the years, the moonpale, all of it. Veyle at the Focus House says I am a word the old language left behind. She means it friendly. I think.
-
-**`denna_quay__water`** — *player says: "Why never turn your back to it?"*
-
-> Because once my net came up heavy, and what was in it was not a fish, and I threw it back before my eyes finished arguing with my hands. It went down slow. Like it was deciding. So no, I do not turn my back to the water, and no, that is all you get.
-
-**`denna_quay__named`** — *player says: "The word has its answer now."*
-
-> It does. Veyle wrote it in the old hand and did not say it twice, and I did not ask for it said once. The pearl sits in the Focus House now, being studied at, and I still do not turn my back to the water. Some things you keep even after they have answers. Especially after.
-
-**`denna_quay__browse`** — *player says: "What's for sale?"*
-
-> The pale catch, smoked or fresh, and the gear to try your own luck.
-
-### Conversation: `denna_the_listening` *(plays when: quest:what_the_song_holds:stage:the_word)*
-
-**`denna_the_listening__slow`** — *opens the conversation*
-
-> The Loresinger wants to know what the deep water sings. It sings slow, traveler. I have heard it through the hull on the still nights. No words. One note, held longer than breath allows, coming up through sixty feet of gray water like it has all the time that ever was.
-
-**`denna_the_listening__pearl`** — *follows straight on from "slow"*
-
-> The storms leave pearls on the far shelf when they are done shouting. One of those holds the note, if her song is owed one. Bring her a stormpearl, and tell her the coast keeps its half of the listening. She will know what that means. I half do, and the half keeps me company.
-
-**`denna_the_listening__back`** — *follows straight on from "pearl"*
-
-> And mind the shelf water. I fish it with my back to nothing, and I am the brave one on this quay.
-
-### Conversation: `q_what_the_net_held_offer` *(plays when: quest:what_the_net_held:available)*
-
-**`q_what_the_net_held_offer__hub`** — *opens the conversation*
-
-> I have decided something, and I need a person for it who is not from the quay.  Years ago my net came up holding a thing I threw back. I do not want the story told. I want a NAME for it, so it stops being every shape at once when I close my eyes. Take my words to Veyle. Exactly these words: heavy, patient, and it went down slow, like it was deciding.
-
-**`q_what_the_net_held_offer__why`** — *player says: "Why not ask her yourself?"*
-
-> Because she will look at my ears and my mother's line and tell me the truth, all of it, and I only want the front of the truth. You she will give the short version. Go on.
-
-**`q_what_the_net_held_offer__go`** — *player says: "I'll carry it exactly."*
-
-> Exactly those words, mind. The mere listens.
-
-### Conversation: `q_what_the_net_held_turnin` *(plays when: quest:what_the_net_held:ready)*
-
-**`q_what_the_net_held_turnin__paid`** — *opens the conversation*
-
-> A stormpearl. And a word she would not say. That is Veyle all over, kind sideways.  You know what? I am keeping the pearl in my pocket, not my ear. Some days the not-knowing is the floor you stand on. But it has a name now, somewhere, in somebody's mouth, and tonight I will turn my back to the water for one whole minute. Thank you.
-
----
-
-## Mirena `glasswright_mirena` — 6 dialogue lines, 3 quips and barks
-
-*Salt-coast born, where sand meets fire. Her old master called glasswork a small craft. Her lenses light six towns. She holds everything up to the light first.*
-
-**Who they are, and how to say it:** Glasswright, the town’s one spice-carrier. Quick, bright, holds everything up to the light; earns one aphorism per talk and lands it. Salt-coast vowels, kiln-warm delivery.
-
-**Chatterbox casting:** `rpg_fantasy/female/spark_wren` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `glasswright_mirena__bark_1` — "Hold it to the light. Everything true has a light it agrees with."
-- `glasswright_mirena__bark_2` — "Sand, fire, and patience. Two of those can be bought."
-- `glasswright_mirena__bark_3` — "The kilns do not cool. Neither do I, ask anyone."
-
-### Conversation: `mirena_glass`
-
-**`mirena_glass__greet`** — *opens the conversation*
-
-> Careful where you stand, the floor has opinions. Welcome to the Glasshouse.
-
-**`mirena_glass__hub`** — *follows straight on from "greet"; or follows straight on from "make"; or follows straight on from "here"*
-
-> Ask quick, the kilns are jealous.
-
-**`mirena_glass__make`** — *player says: "What do you make here?"*
-
-> Lamp lenses for six towns, focus glass for the enchanters, and once a year something for nobody but me. Starfall glass takes light the way a good listener takes bad news: all of it, without flinching.
-
-**`mirena_glass__here`** — *player says: "How did a glassmaker end up out here?"*
-
-> I grew up on the salt coast, where sand is free and fire is a family argument. My old master called glass a small craft. Now his town reads by my lenses at night. I did not come here to prove him wrong. That was extra.
-
-**`mirena_glass__browse`** — *player says: "What are you selling?"*
-
-> The burn's stones, cut and clean. Hold them to the light before you pay, I insist on it.
-
-**`mirena_glass__bye`** — *player says: "Back to it, then."*
-
-> Go on. Glass waits for no one, and neither do I.
-
----
-
-# evenfall
-
-## Selorne `glasswright_selorne` — 6 dialogue lines, 3 quips and barks
-
-*Moonglass is worked cold, over years, the way a river works a stone. Selorne is on his eleventh lens this century and considers the pace a little hurried.*
-
-**Who they are, and how to say it:** Glasswright of the Moonglass Hall; works glass cold, over years, and considers eleven lenses a century a little hurried. The patience register: measured, unbothered, finds days quaint.
-
-**Chatterbox casting:** `rpg_fantasy/male/telemancer_m` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `glasswright_selorne__bark_1` — "Glass is a liquid that made a promise. Moonglass keeps it longer."
-- `glasswright_selorne__bark_2` — "The Glasshouse in the delf melts starfall in a day. Impressive. Loud, but impressive."
-- `glasswright_selorne__bark_3` — "Cold work, slow work, true work. Sit, if you like. This lens has nine years left in it."
-
-### Conversation: `selorne_glass`
-
-**`selorne_glass__greet`** — *opens the conversation*
-
-> Sit, if you like. This lens has nine years left in it, so we are not pressed for time.
-
-**`selorne_glass__hub`** — *follows straight on from "greet"; or follows straight on from "cold"; or follows straight on from "years"*
-
-> Ask. Slowly is fine. Slowly is preferred.
-
-**`selorne_glass__browse`** — *player says: "Show me the moonglass."*
-
-> Lenses, pane work, and the small vessels. Glass is a liquid that made a promise. Moonglass keeps it longer.
-
-**`selorne_glass__cold`** — *player says: "You work glass cold?"*
-
-> The way a river works a stone. No fire, no hurry, a hand's pressure and a century's patience, and the glass never learns the word for breaking because nobody ever shouted it. The delf melts starfall in a day. Impressive. Loud, but impressive. Their glass remembers the shout, though. Hold a piece of each to your ear sometime.
-
-**`selorne_glass__years`** — *player says: "Nine years for one lens?"*
-
-> My eleventh this century, which the hall considers a little hurried, and they are not wrong. The ninth went to the Evenhall. The tenth I ground for a human, though he does not know it yet, and I will not say more, because a gift that arrives early is only a delivery.
-
-**`selorne_glass__off`** — *player says: "Take your time, glasswright."*
-
-> Go well. The lens and I will both be here.
-
----
-
-# kingsdelf
-
-## Brekka `innkeep_brekka` — 6 dialogue lines, 3 quips and barks
-
-*Fell-country born. Her day-book records who went out to the burn and who came home. Her brother went out unrecorded once, up north. The book is her answer.*
-
-**Who they are, and how to say it:** Keeper of the Foreman’s Rest; fell-country born, a brother who went out unrecorded. Brisk host warmth; no second cup till you sign the book. "Names out, names in."
-
-**Chatterbox casting:** `rpg_fantasy/female/sunny_posy` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `innkeep_brekka__bark_1` — "Sign the book before you drink. Going out or coming home, sign it."
-- `innkeep_brekka__bark_2` — "Soup is what the road brought us. Some days that is a long story."
-- `innkeep_brekka__bark_3` — "Every name in my book came home. I mean to keep it that way."
-
-### Conversation: `brekka_rest`
-
-**`brekka_rest__greet`** — *opens the conversation*
-
-> The Foreman's Rest. Sign the book first. Going out or coming home, everyone signs.
-
-**`brekka_rest__hub`** — *follows straight on from "greet"; or follows straight on from "book"; or follows straight on from "north"*
-
-> Now then. Food, a bed, or talk?
-
-**`brekka_rest__book`** — *player says: "What's the book for?"*
-
-> Names out, names in. When the burn keeps somebody past dark, I take the book to the wardroom and the watch goes looking with a page instead of a guess. Every name in my book has come home so far. I mean to keep the record clean.
-
-**`brekka_rest__north`** — *player says: "You're not from here, are you?"*
-
-> Fell country, past the treeline, where Hartfell keeps its warm water. I walked south with drover's pay and a brother who was going to follow in the spring. Springs are liars up north. Sign the book, traveler. That is all I will say about why.
-
-**`brekka_rest__browse`** — *player says: "What's good today?"*
-
-> Stew that has met real beef, bread that is younger than you, and the day's pour.
-
-**`brekka_rest__bye`** — *player says: "Just passing."*
-
-> Door bars at the horn. Be on the right side of it.
-
----
-
-# evenfall
-
-## Elarin `innkeep_elarin` — 7 dialogue lines, 3 quips and barks
-
-*The one elf in Evenfall who likes travelers, keeping the one building raised in a hundred and fifty years. He collects human idioms and uses them slightly wrong, on purpose, probably.*
-
-**Who they are, and how to say it:** Keeper of the Outward House, the one elf who likes travelers. Bright, hosting, collects human idioms and uses them wrong on purpose; lands the idiom-joke once per conversation at most.
-
-**Chatterbox casting:** `rpg_fantasy/male/flynn_m` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `innkeep_elarin__bark_1` — "Welcome to the Outward House. As you humans say: make yourself at house."
-- `innkeep_elarin__bark_2` — "I built this inn myself, forty years ago, to be ready. The whole city said the gate would never open. The whole city helps me sweep it now."
-- `innkeep_elarin__bark_3` — "The stew is my own recipe. It is one hundred and six years old. The stew, not the pot. The pot is older."
-
-### Conversation: `elarin_outward`
-
-**`elarin_outward__greet`** — *opens the conversation*
-
-> Welcome to the Outward House! Sit anywhere. As you humans say: make yourself at house. Nearly right is my favorite kind of right.
-
-**`elarin_outward__hub`** — *follows straight on from "greet"; or follows straight on from "inn"; or follows straight on from "humans"*
-
-> Food, a bed, or talk. I stock all three and only burn one of them.
-
-**`elarin_outward__inn`** — *player says: "Why build an inn in a closed city?"*
-
-> Forty years ago I built it, to be ready. The whole city said the gate would never open. I said: then a ready inn costs us nothing but my foolishness, and you all enjoy that anyway. The whole city helps me sweep it now. Nobody apologizes. It is very elven.
-
-**`elarin_outward__humans`** — *player says: "You like humans."*
-
-> You are fast. You decide things in a season and mean them. A human promise is a mayfly promising you the summer, and keeping it. I collect your sayings. I use them wrong on purpose, it makes travelers correct me, and then we are talking. You see the trick. You fell for it anyway.
-
-**`elarin_outward__browse`** — *player says: "What's on the board?"*
-
-> Stew that is older than your town, bread that is not. Both are good.
-
-### Conversation: `elarin_the_letter` *(plays when: quest:the_letters_west:stage:the_evenhall)*
-
-**`elarin_the_letter__arrive`** — *opens the conversation*
-
-> A letter! An actual letter, from an actual human hand, at my actual door. Serel sent you? Of course she did, she calls anything wonderful a problem. Give it here, let me...
-
-**`elarin_the_letter__up`** — *follows straight on from "arrive"*
-
-> Oh. No. This is not mine to open. This hand asks questions the way trees fall. It goes up, my friend, all the way up: the Evenhall, past the flame. Walk slowly. Some letters deserve a slow walk, and this is the first one in my lifetime.
-
----
-
-## Vessa `inscriber_vessa` — 12 dialogue lines, 3 quips and barks
-
-*The oldest enchanting table in the world stands in her house, and the answer the Arcanum exiled Veyle for asking hangs on her rear wall. She has been waiting for somebody to come and see it.*
-
-**Who they are, and how to say it:** Inscriber of the Third Table; keeps copies of other people’s silences. Dry, precise, archival; the dust has seniority and so does she. Affection shown as record-keeping.
-
-**Chatterbox casting:** `rpg_fantasy/female/dour_mabel` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `inscriber_vessa__bark_1` — "The Arcanum calls theirs the first table. Counting is hard when you start at your own birth."
-- `inscriber_vessa__bark_2` — "Solvei's letters to Veyle are very polite. Veyle's silences are very polite. I am running out of politeness to watch."
-- `inscriber_vessa__bark_3` — "The wall in the back answers one question. It has waited a long time for the right asker."
-
-### Conversation: `q_the_first_focus_offer` *(plays when: quest:the_first_focus:available)*
-
-**`q_the_first_focus_offer__hub`** — *opens the conversation*
-
-> You have seen the wall by now, or heard of it. It answers one question, and I will not show it to the merely curious. The question belongs to an exile at the delf who paid for it with her seat.  Go and ask Veyle for her question. Bring it back in your own mouth. Then the wall is yours to read.
-
-**`q_the_first_focus_offer__why`** — *player says: "Why can't you just tell me?"*
-
-> Because an answer without its asker is gossip. The wall has waited longer than your language has existed. It can wait for you to do this properly.
-
-**`q_the_first_focus_offer__go`** — *player says: "I'll go and ask him."; or player says: "Then I'll go and ask him."*
-
-> Walk east, then. And when Veyle gives you the question, carry it gently. She has been holding it a long time.
-
-### Conversation: `q_the_first_focus_turnin` *(plays when: quest:the_first_focus:ready)*
-
-**`q_the_first_focus_turnin__asked`** — *opens the conversation*
-
-> You came back with the question in the right order at last. Veyle's question, the one they exiled her for asking. Then the wall owes you its answer. Stand there. Read.
-
-**`q_the_first_focus_turnin__wall`** — *follows straight on from "asked"*
-
-> One line, in the old hand, cut the year the Arcanum lit its first focus. The branch was given. Not taken, not traded, not found. Given, from the Heartwood itself, to hands the wood trusted. They built a guild on a gift and then forgot the giver, and the one soul who asked what the first focus was made from was sent into the ash for it.
-
-**`q_the_first_focus_turnin__debt`** — *follows straight on from "wall"*
-
-> Take your pay, and take this with it. A gift remembered is a debt reopened. The wood does not forget. It waits to see what the remembering does. Tell Veyle the wall answered, and watch what she writes to Solvei this month. I will be keeping a copy.
-
-### Conversation: `vessa_table`
-
-**`vessa_table__greet`** — *opens the conversation*
-
-> Wipe your feet. The dust in here has seniority.
-
-**`vessa_table__hub`** — *follows straight on from "greet"; or follows straight on from "read"; or follows straight on from "letters"*
-
-> The third table, by the human count. The first, by counting. What brings you to the oldest desk in the world?
-
-**`vessa_table__read`** — *player says: "The wall's answer found its asker, then."*
-
-> It did. You read it with your own question standing in the room, which nobody else alive has done. The dust and I are considering promoting you to furniture. And Veyle's latest letter was four pages. Four. The silence is over, my copies are getting thicker, and I have never been happier in my working life. Not that you can tell.
-
-**`vessa_table__letters`** — *player says: "Whose letters are those?"*
-
-> Copies. An enchantress at the capital writes monthly to an exile at the delf, asking nothing in very fine handwriting. The exile answers with silence, also monthly. I keep copies because someday one of them will say the true thing, and I want to be current when it happens.
-
-**`vessa_table__wall`** — *player says: "What's on the rear wall?"*
-
-> An answer, waiting for its question to walk in. It has waited a long time. It can wait for you to earn it, too. Bring me a reason older than curiosity.
-
-**`vessa_table__browse`** — *player says: "What can you teach me?"*
-
-> Workings and materials the Arcanum rations, sold here by the handful. Mind the dust.
-
----
-
-## Ilvane `keeper_ilvane` — 5 dialogue lines, 3 quips and barks
-
-*She tends a fire that needs no tending and has for longer than the roads have had names. Ask her what the flame burns and she will say: nothing. That is the point.*
-
-**Who they are, and how to say it:** Keeper of the Everflame. Still, kind, unhurried; speaks of fire the way others speak of elders. Every sentence set down gently, like a lamp on a shelf.
-
-**Chatterbox casting:** `rpg_fantasy/female/hush_morrow` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `keeper_ilvane__bark_1` — "The flame burns nothing. It has never needed anything. I keep it company, not alive."
-- `keeper_ilvane__bark_2` — "Every road lamp south of here is a daughter of a daughter of this light. The lamps do not know it."
-- `keeper_ilvane__bark_3` — "The mother-flame at Silverfall is the youngest daughter. Tell Sella she is doing it right."
-
-### Conversation: `ilvane_flame`
-
-**`ilvane_flame__greet`** — *opens the conversation*
-
-> Mind the light. It minds you.
-
-**`ilvane_flame__hub`** — *follows straight on from "greet"; or follows straight on from "flame"; or follows straight on from "heat"*
-
-> You are standing where every lamp you have ever trusted was born. Ask your questions here, they come out better.
-
-**`ilvane_flame__flame`** — *player says: "What is the Everflame?"*
-
-> The first light my people kept. It burns nothing. It has never needed anything. I keep it company, not alive. There is a difference, and learning it is most of my work.
-
-**`ilvane_flame__heat`** — *player says: "It gives no heat."*
-
-> No. Heat is what fire spends. This one saves. Ask Faelar about spending, his is the one working fire in the city and he is very proud of it.
-
-**`ilvane_flame__daughters`** — *player says: "The road lamps, then. The shrine flame."*
-
-> Daughters of daughters of this light. My people taught the old realm its lamps, and the realm taught the roads, and the roads made a faith of it. The mother-flame at Silverfall is the youngest daughter. She is doing it right. You may tell her keeper I said so.
-
----
-
-## Othiel `keeper_othiel` — 5 dialogue lines, 3 quips and barks
-
-*The smallest bank in the world, kept perfectly. Two vaults, one chest, and a keeper who does not count out loud, because counting out loud is for people who might be wrong.*
-
-**Who they are, and how to say it:** Keeper of the Keeping, the smallest bank in the world. Fewest words in the city, each one load-bearing. Does not count out loud; counting out loud is for people who might be wrong.
-
-**Chatterbox casting:** `rpg_fantasy/male/draven_m` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `keeper_othiel__bark_1` — "What is kept is kept. That is the whole charter, and it has never needed a second line."
-- `keeper_othiel__bark_2` — "The Charter's countinghouse has nine clerks and a tithe vault. We have a bench and my memory. Same service."
-- `keeper_othiel__bark_3` — "Your coin is safe here. Safer than you are, frankly, but you chose the adventuring."
-
-### Conversation: `othiel_keeping`
-
-**`othiel_keeping__greet`** — *opens the conversation*
-
-> The Keeping. Two vaults, one chest, my memory. State your business.
-
-**`othiel_keeping__hub`** — *follows straight on from "greet"; or follows straight on from "kept"; or follows straight on from "memory"*
-
-> Yes?
-
-**`othiel_keeping__kept`** — *player says: "How does the Keeping work?"*
-
-> What is kept is kept. That is the whole charter. It has never needed a second line.
-
-**`othiel_keeping__memory`** — *player says: "No ledgers at all?"*
-
-> The Charter's countinghouse has nine clerks, a tithe vault, and a fire watch. We have a bench and my memory. Same service. I do not count out loud. Counting out loud is for people who might be wrong.
-
-**`othiel_keeping__off`** — *player says: "Good keeping, Othiel."*
-
-> Your coin is safe here. Safer than you are. You chose the adventuring.
-
----
-
-## Aldaren `king_aldaren` — 12 dialogue lines, 3 quips and barks
-
-*The first of the few: old blood, whole, and older than the word for it. He opened the gate after a hundred and fifty years, and he carries the cost of every quiet year like a coat.*
-
-**Who they are, and how to say it:** The Evenking; old blood, whole, older than the word for it. Long warm sentences that stop early when the weight arrives; loses decades mid-sentence and returns. Never frightened, never hurried; centuries in the present tense.
-
-**Chatterbox casting:** `rpg_fantasy/male/murozond_m` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `king_aldaren__bark_1` — "You came up the Evenway. I planted the third stone on it. Or the fourth... no. The third."
-- `king_aldaren__bark_2` — "The gate is open because family was knocking. The thinned blood is still the blood."
-- `king_aldaren__bark_3` — "The foreman's grandchildren wear a crown now. He would have laughed. He had a good laugh."
-
-### Conversation: `aldaren_evenhall`
-
-**`aldaren_evenhall__greet`** — *opens the conversation*
-
-> Come up. The fire does not mind strangers, and I have decided not to either.
-
-**`aldaren_evenhall__hub`** — *follows straight on from "greet"; or player says: "Never mind."; or follows straight on from "dissent"*
-
-> Ask. I have answered harder things than questions.
-
-**`aldaren_evenhall__gate`** — *player says: "Why open the gate now?"*
-
-> Because family was knocking. Annik at the delf, Denna on her coast, a hundred more who do not know their own ears. The thinned blood is still the blood. A door you keep shut on family is not a door. It is a wall, and we do not build walls.
-
-**`aldaren_evenhall__dissent`** — *player says: "Not everyone here agrees."*
-
-> My daughter counts my mistakes. It is good work and somebody should do it. She keeps the open gate better than anyone who wanted it open. That is the whole argument, standing at her post.
-
-**`aldaren_evenhall__realm`** — *player says: "Did you know the old realm?"*
-
-> I taught their first masons which end of the stone listens... they built well, for people in a hurry. When their mountain woke I brought my folk home. The ones who stayed east are your grandmothers. Some of you have the ears still.
-
-**`aldaren_evenhall__crown`** — *player says: "The kings at Silverfall are moonpale."*
-
-> Are they. Five kings, one name, a foreman's line... I knew a foreman once. Paid his debts in silver and laughed from the belt up. I will not finish this thought. You may, if you walk east again.
-
-**`aldaren_evenhall__count`** — *player says: "The delf's sealed door has its count now. The ring came home."*
-
-> Two hundred and fifteen. I taught their masons which end of the stone listens, and that seal was their masterwork, and it was shut from the outside by a man who then walked north and fathered kings... You carried the count that finishes the first sentence of that story. The rest is still being written, east of here, by whoever wears the crown when it ends. Tell Annik the old blood reads her stone. She will know what that is worth.
-
-**`aldaren_evenhall__quiet`** — *player says: "What happened in the quiet years?"*
-
-> A hundred and fifty years of tending what we are. Songs. Glass. Bows. The wood grew. The stones kept the miles. Nothing happened, which is what we wanted, and it cost more than it sounds like it would.
-
-**`aldaren_evenhall__heartwood`** — *player says: "What is the Heartwood?"*
-
-> The grove we keep. That is the whole answer anyone gets, and I am the king, so it will hold... ask me again in a hundred years. Or do something worth an earlier asking. People have.
-
-### Conversation: `aldaren_the_letter` *(plays when: quest:the_letters_west:ready)*
-
-**`aldaren_the_letter__name`** — *opens the conversation*
-
-> ...Solvei. I know the name. The one who asks the rift what it knows. Not afraid enough, once. Wise enough to be afraid later, which is the better order after all.
-
-**`aldaren_the_letter__answer`** — *follows straight on from "name"*
-
-> She asks whether the gate is truly open, and whether the old teaching may come east again. Sit while I answer her. It will not take long. The answer has been ready for a hundred and fifty years. Only the question was missing.
-
-**`aldaren_the_letter__carry`** — *follows straight on from "answer"*
-
-> There. Carry her my hand, and walk the miles kindly. You have been the address for both halves of a very old silence, and that is a thing songs get made of, whatever Maelis pretends.
-
----
-
-# kingsdelf
-
-## A Delver `kingsdelf_delver` — 4 dialogue lines, 3 quips and barks
-
-*Ash on the boots, chalk on the hands, a tally string with a knot for every trip below. Paid by the basket. The baskets are heavy.*
-
-**Who they are, and how to say it:** Pooled delver voices: ash on the boots, a knot for every trip down and every trip up. Tally-string practical, basket-tired, dry about the deep.
-
-**Chatterbox casting:** `rpg_fantasy/male/larry` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `kingsdelf_delver__bark_1` — "Mithril day. You can smell it, sweet, like rain on a griddle."
-- `kingsdelf_delver__bark_2` — "Knot on the string going down, knot coming up. Even knots is a good life."
-- `kingsdelf_delver__bark_3` — "The Hewers never stopped working. Some mornings I know just how they feel."
-
-### Conversation: `delver_shift`
-
-**`delver_shift__hub`** — *opens the conversation; or follows straight on from "work"; or follows straight on from "deep"*
-
-> Day shift. Off it, technically, so make it short or make it a drink.
-
-**`delver_shift__work`** — *player says: "What's the work like?"*
-
-> Mithril by lamplight, tally-string on the wrist, a knot going down and a knot coming up. When the strings match, the horn stays quiet. You learn to love a quiet horn the way farmers love dull weather.
-
-**`delver_shift__deep`** — *player says: "How deep do the workings go?"*
-
-> Deeper than anybody is paid to think about. The night crews say the Hewers never stopped working, that you can put your ear to the old faces and hear it. I say stone settles and echoes lie. I also say I do not work nights, and I have never once asked to.
-
-**`delver_shift__off`** — *player says: "Rest well."*
-
-> Knot going down, knot coming up. That is the whole trade, and it is enough.
-
----
-
-## A Glasshand `kingsdelf_glasshand` — 4 dialogue lines, 3 quips and barks
-
-*Forearms scarred smooth by old splashes, eyes narrowed by kiln light. The kilns never cool, so the glasshands work turn and turn about, and sleep like the dead.*
-
-**Who they are, and how to say it:** Pooled glasshand voices: kiln-squint careful, forearms scarred smooth. "You never look straight into the kiln. You learn that once." Heat-tired, patient, exact.
-
-**Chatterbox casting:** `rpg_fantasy/male/bran_m` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `kingsdelf_glasshand__bark_1` — "Mind the carry poles. Hot glass forgives nothing and neither does Mirena."
-- `kingsdelf_glasshand__bark_2` — "You never look straight into the kiln. You learn that once."
-- `kingsdelf_glasshand__bark_3` — "Turn and turn about. The fire sleeps when I do, which is never."
-
-### Conversation: `glasshand_kilns`
-
-**`glasshand_kilns__hub`** — *opens the conversation; or follows straight on from "glass"; or follows straight on from "rule"*
-
-> Kilns. Stand back from the eye, your face is not rated for it.
-
-**`glasshand_kilns__glass`** — *player says: "What comes out of these kilns?"*
-
-> Brand glass. Starfall sand off the burn, melted twice, poured once. Mirena takes the best of it and makes the town rich, and we take turn-and-turn-about on the hot floor, because nobody's eyebrows survive a double.
-
-**`glasshand_kilns__rule`** — *player says: "What's the first rule up here?"*
-
-> You never look straight into the kiln. You learn that once, and after that you teach it, and that is the whole guild examination up here. Everything else is timing and not being brave. Brave is for people who work above ground.
-
-**`glasshand_kilns__off`** — *player says: "Stay unsinged."*
-
-> Mind the carry poles. They do not care who you are.
-
----
-
-## The Delfwatch `kingsdelf_watch` — 5 dialogue lines, 3 quips and barks
-
-*A miner or a glasshand in a Charter coat, keeping the rota. The orders are short: the horn means in, the bar means barred, nobody walks the burn alone.*
-
-**Who they are, and how to say it:** Pooled Delfwatch voices: a miner or glasshand in a Charter coat keeping the rota. Rota-flat, orders short. "The horn means in. The Overband does not knock first."
-
-**Chatterbox casting:** `rpg_fantasy/male/solder_m` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `kingsdelf_watch__bark_1` — "The horn means in. The Overband does not knock first."
-- `kingsdelf_watch__bark_2` — "Walk the burn in company or not at all."
-- `kingsdelf_watch__bark_3` — "Charter pays my wage. The wall earns it."
-
-### Conversation: `delfwatch_wall`
-
-**`delfwatch_wall__hub`** — *opens the conversation; or follows straight on from "wall"; or follows straight on from "overband"*
-
-> Delfwatch. Say it walking, my eyes stay on the ash.
-
-**`delfwatch_wall__wall`** — *player says: "What do you watch for?"*
-
-> The burn, mostly. Ember-light where ember-light should not be, and the count. This wall exists so the delf can be counted out and counted back, and I was a delver before the Charter put a coat on me, so I count like my shift depends on it. It did, once.
-
-**`delfwatch_wall__overband`** — *player says: "What's the Overband?"*
-
-> The high workings past the wall, where the good stone lives at Overband prices. Nothing out there knocks first. If you go, tell the wicket your road, so the horn does not have to guess whose name it is blowing for.
-
-**`delfwatch_wall__mark`** — *player says: "Anything out there the wall can't reach?"*
-
-> Since you offer. Something has set up in the ash that the rota cannot leave the wall to answer, and it is not on any shift book. There is your mark. Counted out. Be counted back.
-
-**`delfwatch_wall__off`** — *player says: "Steady watch."*
-
-> The horn means in. The Overband does not knock first.
-
----
-
-## Soren `lampwright_soren` — 10 dialogue lines, 3 quips and barks
-
-*Carried the daughter-flame south in a pilgrim lamp, on foot, down the whole unlit road. Trims every wick he passes. He is building lamps for that road, one by one.*
-
-**Who they are, and how to say it:** Lampwright of the Flamehouse; carried the daughter-flame south on foot down the whole unlit road. Patient road-faith, mile-counted. "The lamp holds." Quiet certainty, never sermonizing.
-
-**Chatterbox casting:** `rpg_fantasy/male/narrator_m` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `lampwright_soren__bark_1` — "The flame came south in my two hands. It can go up the road the same way."
-- `lampwright_soren__bark_2` — "A lamp is a promise you have to keep every night."
-- `lampwright_soren__bark_3` — "Forty one dark miles. I counted them with my feet. I mean to uncount them."
-
-### Conversation: `q_light_the_old_road_offer` *(plays when: quest:light_the_old_road:available)*
-
-**`q_light_the_old_road_offer__hub`** — *opens the conversation*
-
-> You want to do something that matters and looks like nothing? Lamps. Fat for tallow, an emberstone for the heart. I build the lamp, I stand it one dark mile up the road, and the argument gets one mile shorter.
-
-**`q_light_the_old_road_offer__order`** — *player says: "Does the order know?"*
-
-> Liv watches me carry every one out the gate, and writes it down, and says nothing. That is how a no dies, friend. Slowly, in front of witnesses.
-
-**`q_light_the_old_road_offer__go`** — *player says: "I'll bring what you need."*
-
-> The road thanks you in the only way it can. It gets shorter after dark.
-
-### Conversation: `q_light_the_old_road_turnin` *(plays when: quest:light_the_old_road:ready)*
-
-**`q_light_the_old_road_turnin__paid`** — *opens the conversation*
-
-> Good fat, good stone. This one goes up at the third milestone, where the dark is oldest. Forty one dark miles when I walked it. Fewer now. Come back when your pack is heavy again.
-
-### Conversation: `soren_flame`
-
-**`soren_flame__greet`** — *opens the conversation*
-
-> Mind the flame there. She came a long way to be here, and so, I suppose, did you.
-
-**`soren_flame__hub`** — *follows straight on from "greet"; or follows straight on from "flame"; or follows straight on from "road"*
-
-> Warm yourself. Ask what you like.
-
-**`soren_flame__flame`** — *player says: "What's special about this fire?"*
-
-> She is a daughter of the mother-flame, from the Silver Shrine on the mountain. Sella, the shrinekeeper up there, lit my pilgrim lamp with her own taper, and I carried it south on foot, the whole unlit way. Forty one dark miles. The lamp never went out. I checked at every step.
-
-**`soren_flame__road`** — *player says: "Why is the Old Road dark?"*
-
-> Because the Waykeepers will not light a road they cannot patrol, and they cannot patrol this far. Liv will tell you it is doctrine, and she is right. I am building lamps anyway. Doctrine is how the faith protects the flame. Lamps are what the flame is for.
-
-**`soren_flame__browse`** — *player says: "What do you sell?"*
-
-> Oil, coal, and the stones that hold a light steady. The lamps themselves are not for sale. They are for the road.
-
-**`soren_flame__bye`** — *player says: "Keep the light, then."*
-
-> The lamp holds. Walk safe.
-
----
-
-# evenfall
-
-## Maelis `loresinger_maelis` — 12 dialogue lines, 3 quips and barks
-
-*The Songhouse keeps the memory the way humans keep ledgers, and Maelis keeps the Songhouse. There is one verse she will not sing. Everyone here knows which one, and nobody asks twice.*
-
-**Who they are, and how to say it:** Loresinger of the Songhouse; keeps everything, sings almost nothing. Musical phrasing, refusals delivered beautifully; "No." is a complete sentence she owns. Warmth under the refusal, never past it.
-
-**Chatterbox casting:** `rpg_fantasy/female/nightborne_f` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `loresinger_maelis__bark_1` — "A song is a ledger that forgives. That is the whole difference between our houses and yours."
-- `loresinger_maelis__bark_2` — "The harp is older than the hall. The hall is older than the question you were about to ask."
-- `loresinger_maelis__bark_3` — "There is a verse about the deep grove. It is not mine to sing. It is not yours to hear. We are both fine."
-
-### Conversation: `maelis_song`
-
-**`maelis_song__greet`** — *opens the conversation*
-
-> Softly. The harp holds the last note longer than you would credit.
-
-**`maelis_song__hub`** — *follows straight on from "greet"; or follows straight on from "songs"; or player says: "I hope she comes."*
-
-> The Songhouse keeps what happened. Some of it is even true. What do you want kept, or found?
-
-**`maelis_song__songs`** — *player says: "What do the songs remember?"*
-
-> Everything the stones cannot hold. Names, mostly. A ledger forgives, a song forgives twice. When the thinned blood comes up the trail I sing the leaving song for their line, and they cry without knowing why. That is memory working.
-
-**`maelis_song__water`** — *player says: "Is there a song about deep water?"*
-
-> There is a listening song. The pearls the storms leave were our ears once, for deep water. There is a fisher on the far coast who is owed that song. If the sea sends her, I will sing it true.
-
-**`maelis_song__answered`** — *player says: "The song is whole now. I was there."*
-
-> You were, and the pearl sits where the harp can see it, and I have not sung it since. Some songs are for having, not for spending. When Denna of the coast comes up the trail at last, it will spend itself, and I intend to be surprised by my own voice when it does.
-
-**`maelis_song__refusal`** — *player says: "Sing me the verse nobody sings."*
-
-> No.
-
-**`maelis_song__blunt`** — *player says: "That was blunt."*
-
-> Yes. The verse is about the grove, and it is not mine to give, and you are the eleventh to ask this season. Elarin keeps a list. He finds it funnier than I do.
-
-### Conversation: `q_what_the_song_holds_offer` *(plays when: quest:what_the_song_holds:available)*
-
-**`q_what_the_song_holds_offer__hub`** — *opens the conversation*
-
-> There is a debt in my keeping. A line on the far coast kept the ears and lost the years, and the sea has been trying to talk to that family for generations. The Songhouse owes them the listening song.  Go east to the quay at the water's end. Talk to Denna. Then bring me a stormpearl, and I will pay my house's debt in the only coin it holds.
-
-**`q_what_the_song_holds_offer__why`** — *player says: "Who is Denna?"*
-
-> A fisher with her mother's ears and her mother's mother's patience. Veyle called her a word the old language left behind. Veyle meant it kindly, and it is also true, and the word is a good one.
-
-**`q_what_the_song_holds_offer__go`** — *player says: "I'll go and listen."; or player says: "Then I'll go and listen."*
-
-> Tell her the Songhouse remembers her mothers. All the way back. She will know what that costs us to say.
-
-### Conversation: `q_what_the_song_holds_turnin` *(plays when: quest:what_the_song_holds:ready)*
-
-**`q_what_the_song_holds_turnin__pearl`** — *opens the conversation*
-
-> You brought the deep water's ear home. Sit. This will take exactly as long as it takes.
-
-**`q_what_the_song_holds_turnin__sung`** — *follows straight on from "pearl"*
-
-> There. The listening song, sung true, first time in an age of the world, and the pearl held its half like it had been waiting. Denna of the delf coast is owed the hearing, when the sea sends her. As for you: the Songhouse keeps what happened, and what happened now has your name in it. That is not a small thing, in a place like this.
-
----
-
-# kingsdelf
-
-## Cass `outfitter_cass` — 6 dialogue lines, 3 quips and barks
-
-*Salt-coast born, sailed one season, walked inland. Sizes you with one look and says the number out loud. He sold a thin coat once. The burn taught them both.*
-
-**Who they are, and how to say it:** Outfitter; sold a thin coat once and the burn taught them both. Blunt, kind underneath; sizes you on sight and says the number out loud. "Wool first, pride second."
-
-**Chatterbox casting:** `rpg_fantasy/male/volf_m` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `outfitter_cass__bark_1` — "You are a forty-two across the shoulders. Do not argue with a tailor."
-- `outfitter_cass__bark_2` — "The burn does not care what you paid. It cares what you wore."
-- `outfitter_cass__bark_3` — "Wool first, pride second. Pride does not hold warmth."
-
-### Conversation: `cass_outfitting`
-
-**`cass_outfitting__greet`** — *opens the conversation*
-
-> Forty two across the shoulders, boots a size hopeful. Come in anyway.
-
-**`cass_outfitting__hub`** — *follows straight on from "greet"; or follows straight on from "eye"; or follows straight on from "advice"*
-
-> What do you need against the weather?
-
-**`cass_outfitting__eye`** — *player says: "How do you size people so fast?"*
-
-> One season at sea. On a boat you learn to read a body in one look, because the sea reads it too, and she grades harshly. The sea and I agreed to disagree, so now I use the eye for coats. Coats argue less.
-
-**`cass_outfitting__advice`** — *player says: "Any advice for the burn?"*
-
-> Wool first, pride second. I sold a thin coat once to a man in a hurry, and I spent a bad week wondering. He came back frostbit and polite about it, which was worse than shouting. The burn does not care what you paid. It cares what you wore.
-
-**`cass_outfitting__browse`** — *player says: "Show me your stock."*
-
-> Leathers that fit, capes that mean it. Do not argue with the number, forty two.
-
-**`cass_outfitting__bye`** — *player says: "Just looking."*
-
-> Layers, traveler. Layers.
-
----
-
-# evenfall
-
-## Corwen `provisioner_corwen` — 6 dialogue lines, 3 quips and barks
-
-*Thinned blood: pointed ears, human years. He walked west a decade before the gate opened and was let in, which nobody outside had managed in a century. What he gave up to stay, he does not say.*
-
-**Who they are, and how to say it:** Provisioner of the Gate Court; thinned blood who knocked for three years and chose whose clock to age by. Human-quick, plain, generous with the answers elves ration.
-
-**Chatterbox casting:** `rpg_fantasy/male/frank` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `provisioner_corwen__bark_1` — "The wood provides. I just weigh it and take a cut. Smallest job in the city, best view in the world."
-- `provisioner_corwen__bark_2` — "You want to know how I got in. Everyone asks. I knocked for three years. Take from that what you like."
-- `provisioner_corwen__bark_3` — "They count my age in their heads when they talk to me. I can see them doing it. They are always gentle after."
-
-### Conversation: `corwen_gate`
-
-**`corwen_gate__greet`** — *opens the conversation*
-
-> You look like you have questions. I had the same ones, standing where you are.
-
-**`corwen_gate__hub`** — *follows straight on from "greet"; or player says: "Never mind."; or follows straight on from "cost"*
-
-> Ask me. I answer the things elves answer slowly.
-
-**`corwen_gate__in`** — *player says: "How did you get in?"*
-
-> I knocked for three years. Camped at the arch, traded at the arch, wintered at the arch. Year three, Serel opened it and said: you knock like family. My mother had the ears. I never thought they meant anything. They meant everything.
-
-**`corwen_gate__cost`** — *player says: "What did you give up to stay?"*
-
-> A house at the ford. A trade. Somebody. You want the story to have a villain, but it is just years. They pass differently here, and I chose whose clock I age by. She would not come west. That is all of it you get.
-
-**`corwen_gate__donts`** — *player says: "What should I not do here?"*
-
-> Do not hurry anyone. Do not ask ages. Do not touch the staves at the bowyer's before they know you. And the Heartwood is not a dare. The wood keeps score, and it has a long book.
-
-**`corwen_gate__browse`** — *player says: "What are you selling?"*
-
-> What the wood gives, weighed fair. The honey is the good kind of trouble.
-
----
-
-# kingsdelf
-
-## Etta `provisioner_etta` — 6 dialogue lines, 3 quips and barks
-
-*Fen-born, from the crofts on the First Road waist. Everything on her shelves walked here up the unlit road, and the prices say so. She apologizes for them before you ask.*
-
-**Who they are, and how to say it:** Provisioner; a full shelf in a town that grows nothing, and the villain of every hard winter’s prices. Soft, quick, generous; apologizes for prices unprompted; eats last and sounds like it.
-
-**Chatterbox casting:** `rpg_fantasy/female/garrif_f` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `provisioner_etta__bark_1` — "The prices are the road's fault. I only write them down."
-- `provisioner_etta__bark_2` — "Grain from the ford, salt from the coast, apples when the carts are brave."
-- `provisioner_etta__bark_3` — "Nobody leaves my counter hungry. Broke, sometimes. Hungry, no."
-
-### Conversation: `etta_goods`
-
-**`etta_goods__greet`** — *opens the conversation*
-
-> Welcome, welcome. The prices are the road's fault, I only write them down.
-
-**`etta_goods__hub`** — *follows straight on from "greet"; or follows straight on from "dear"; or follows straight on from "fen"*
-
-> What can I get you?
-
-**`etta_goods__dear`** — *player says: "Why is everything so dear?"*
-
-> Every loaf on that shelf walked forty miles of unlit road in a wagon that pays guards. Bread is cheap. Getting bread here is not. The day they light that road, I will paint the new prices myself, singing.
-
-**`etta_goods__fen`** — *player says: "Where are you from?"*
-
-> The Fenside Crofts, on the First Road waist, where the water does the farming for you. Out here the ash does the opposite. I miss the reeds. I do not miss being twelve leagues from anything worth selling to.
-
-**`etta_goods__browse`** — *player says: "Let's see the shelves."*
-
-> Grain from the ford, salt from the coast, and cake for the brave.
-
-**`etta_goods__bye`** — *player says: "Another time."*
-
-> Eat something. You look like a long road.
-
----
-
-## Ida `salvewright_ida` — 6 dialogue lines, 3 quips and barks
-
-*Trained on Elowen's folios, came south for what ash does to a miner's chest. Keeps a list of every remedy that failed. It is long, and it is also a map.*
-
-**Who they are, and how to say it:** Salvewright; came south for what ash does to a miner’s chest. Brisk bedside, diagnoses in passing. "Breathe for me. In. Out." Keeps an honest list of every remedy that failed.
-
-**Chatterbox casting:** `rpg_fantasy/female/highmountain_f` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `salvewright_ida__bark_1` — "Breathe for me. In. Out. You will live, which is my whole trade."
-- `salvewright_ida__bark_2` — "Salve for burns, draught for the lungs, and sleep for most of the rest."
-- `salvewright_ida__bark_3` — "My list of failures is long. It is also a map."
-
-### Conversation: `ida_remedies`
-
-**`ida_remedies__greet`** — *opens the conversation*
-
-> Breathe in for me. Out. You will live, which is my whole trade. What else?
-
-**`ida_remedies__hub`** — *follows straight on from "greet"; or follows straight on from "treat"; or follows straight on from "list"*
-
-> Sit if you are tired. Ask if you are not.
-
-**`ida_remedies__treat`** — *player says: "What do you treat here?"*
-
-> Burns, ash-lung, quench scalds, and hearts that stopped being careful. The ash gets into a miner's chest a breath at a time. My draughts buy years. I want a cure, and a cure is somewhere in the moonbell family, I can smell it. Almost.
-
-**`ida_remedies__list`** — *player says: "Somebody said you keep a failure list."*
-
-> Every remedy that failed, written plain, dated, no excuses. My teacher Elowen, the sage at the ford, taught me that a failure recorded is a door marked tried. The list is long. It is also a map, and maps end somewhere.
-
-**`ida_remedies__browse`** — *player says: "What's on the shelf?"*
-
-> Tinctures, salves, and the honest herbs. Take the draught before the dust, not after.
-
-**`ida_remedies__bye`** — *player says: "I'm well, thanks."*
-
-> Drink water. Yes, you.
-
----
-
-## Annik `sealkeeper_annik` — 12 dialogue lines, 3 quips and barks
-
-*The oldest returner, moonpale with the old blood. She feeds the braziers so the names are never read in the dark. She counted the marks at nine. She is still asking about the extra one.*
-
-**Who they are, and how to say it:** Sealkeeper; the oldest returner, moonpale with the old blood. Slow, exact, calls everyone child; touches the names-stone before answering about the past. 'The names are never read in the dark.' Gravity without hurry.
-
-**Chatterbox casting:** `rpg_fantasy/female/nightborne_f` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `sealkeeper_annik__bark_1` — "Two hundred and fourteen names. Count the marks yourself, child."
-- `sealkeeper_annik__bark_2` — "The lamp by the door stays lit. That is not a rule. That is a promise."
-- `sealkeeper_annik__bark_3` — "My grandmother had the old blood, and the old blood remembers what stone forgets."
-
-### Conversation: `annik_names`
-
-**`annik_names__greet`** — *opens the conversation*
-
-> Mind the braziers, child. The names are never read in the dark. Not while I keep them.
-
-**`annik_names__hub`** — *follows straight on from "greet"; or follows straight on from "door"; or follows straight on from "names"*
-
-> You may ask. The old ones like being asked.
-
-**`annik_names__door`** — *player says: "What is this door?"*
-
-> The way down to the deep workings. Sealed the day the Brand woke, a hundred and fifty years gone, with the night shift still below. The Guild made the seal. The mountain has been knocking on it ever since, soft, like a neighbor who knows you are home.
-
-**`annik_names__names`** — *player says: "What are the names?"*
-
-> Two hundred and fourteen. The whole night shift, cut into stone by the survivors before they walked north. My grandmother's sister is fourth row, second name. We read them aloud on the founding day, every year, and the mountain listens.
-
-**`annik_names__mark`** — *player says: "Somebody said there's an extra mark."*
-
-> Count them yourself. Two hundred and fourteen names. Two hundred and fifteen marks. The last one is scratched, not carved, and it was made after. I was nine when I found it. I am not nine now, and nobody has ever explained it to me.
-
-**`annik_names__ring`** — *player says: "The seal ring came home."*
-
-> It did, child, and I keep it in the seal room on the names-stone shelf, where it can hear the reading. The ring that shut the door from the outside, out walking in the burn all these years. I have stopped counting the marks at night. The last one has an answer now, even if the answer is a question wearing a crown.
-
-**`annik_names__who`** — *player says: "Who could have made it?"*
-
-> Someone who came out after the door was shut. Or someone who went back in. Either way, child, somebody wanted to be counted, and the stone is the only one who knows which side of the seal they stood on.
-
-**`annik_names__blood`** — *player says: "You look different from other folk."*
-
-> Moonpale. The old blood, thinned. My grandmother had it stronger, and her grandmother stronger still, back to the folk who built the old realm. Veyle at the Focus House has it whole, ears and years and all. Ask her. She remembers more than stone does.
-
-### Conversation: `q_the_count_below_offer` *(plays when: quest:the_count_below:available)*
-
-**`q_the_count_below_offer__hub`** — *opens the conversation*
-
-> Seventy years I have kept this door, child, and nobody has ever asked the stone's question like they meant to answer it. You mean to. I can tell by how you stand.  Find out who made the two hundred and fifteenth mark. Start with Veyle. She was alive when the door was shut, and she has never once said so out loud.
-
-**`q_the_count_below_offer__why`** — *player says: "Why me?"*
-
-> Because you are not from here. Everyone born in this town learned not to ask before they learned to walk. You never learned it. Do not start now.
-
-**`q_the_count_below_offer__go`** — *player says: "I'll ask her."; or player says: "Then I'll ask her."*
-
-> Take a lamp. The question lives in dark places.
-
-### Conversation: `q_the_count_below_turnin` *(plays when: quest:the_count_below:ready)*
-
-**`q_the_count_below_turnin__paid`** — *opens the conversation*
-
-> The foreman's ring. The ring that sealed my grandmother's sister behind that door.  It was outside when the door shut, child. Every account agrees. So either the first king's own hand went back into the burn after the sealing, or something came out and took it from him. The mark on my stone is one of those two people. Thank you. I am ninety one years old and I finally have a question worth the candles.
-
----
-
-# evenfall
-
-## Lisse `sentinel_lisse` — 0 dialogue lines, 3 quips and barks
-
-*Old blood, whole. She counts what moves in the wood without appearing to count anything, and the count is never wrong.*
-
-**Who they are, and how to say it:** Evenguard sentinel at the Heartwood door. Old blood, whole; counts what moves in the wood without appearing to count anything. Quiet, exact, unhurried.
-
-**Chatterbox casting:** `rpg_fantasy/female/nightborne_f` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `sentinel_lisse__bark_1` — "Four wolves crossed at dusk. Three crossed back. The wood settles its own arithmetic."
-- `sentinel_lisse__bark_2` — "You may share the fire. The fire is older than the courtesy, and the courtesy is old."
-- `sentinel_lisse__bark_3` — "The Company sent another crew for the silverbark. We sent their palisade back in bundles. Everyone is being very polite."
-
----
-
-## Serel `sentinel_serel` — 12 dialogue lines, 3 quips and barks
-
-*The gate captain: polite as a drawn bow. She was the first face most of the thinned blood ever saw at the arch, and she has decided to be a good one, as a discipline.*
-
-**Who they are, and how to say it:** Captain of the Evengate: polite as a drawn bow. Gate-watch clip; welcomes and warns in the same breath. Decided to be a good first face, as a discipline, and it shows.
-
-**Chatterbox casting:** `rpg_fantasy/female/xalath_f` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `sentinel_serel__bark_1` — "Welcome to Evenfall. The arch is the whole wall. Treat it accordingly."
-- `sentinel_serel__bark_2` — "No, you may not see the Heartwood. Yes, everyone asks. No, asking twice does not help. You may ask twice anyway."
-- `sentinel_serel__bark_3` — "The king says the gate stays open. So it stays open, and I stay at it."
-
-### Conversation: `q_the_quiet_road_offer` *(plays when: quest:the_quiet_road:available)*
-
-**`q_the_quiet_road_offer__hub`** — *opens the conversation*
-
-> The waystones drink cool light, and the miles are long in both directions. I feed them when the watch allows, which is never often enough.  Bring moonbell and a measure of arcane dust, and one more stone keeps its mile through the dark season.
-
-**`q_the_quiet_road_offer__why`** — *player says: "What happens if a stone goes dark?"*
-
-> The mile forgets itself. Travelers wander. The wood tidies up. We prefer the stones fed.
-
-**`q_the_quiet_road_offer__go`** — *player says: "I'll gather them."; or player says: "Then I'll gather them."*
-
-> Good. The stones will know you did it. They keep better books than the humans' banks.
-
-### Conversation: `q_the_quiet_road_turnin` *(plays when: quest:the_quiet_road:ready)*
-
-**`q_the_quiet_road_turnin__paid`** — *opens the conversation*
-
-> Moonbell and dust, counted. The stones drink tonight, and the mile between them stays a mile instead of forgetting itself. The road thanks you in the only voice it has, which is silence. I have come to like it.
-
-### Conversation: `serel_gate`
-
-**`serel_gate__greet`** — *opens the conversation*
-
-> Welcome to Evenfall. The arch is the whole wall. Treat it accordingly.
-
-**`serel_gate__hub`** — *follows straight on from "greet"; or follows straight on from "arch"; or follows straight on from "heartwood"*
-
-> You may ask. I am on watch, which means I am listening anyway.
-
-**`serel_gate__arch`** — *player says: "One arch is the whole wall?"*
-
-> The wood is the wall. The arch is where the wall agrees to open, and I am where the agreement stands in boots. Nothing comes up the Evenway that the trees did not already discuss. My work is mostly to be the face the discussion wears, and to be a good one. I decided that early. It is a discipline.
-
-**`serel_gate__heartwood`** — *player says: "May I see the Heartwood?"*
-
-> No. Yes, everyone asks. No, asking twice does not help. You may ask twice anyway. I keep a private count of who manages to ask a third time politely, and the count is shorter than you would think, and it is not nothing to be on it.
-
-**`serel_gate__letters`** — *player says: "You know me. I carried the letters."*
-
-> I do know you. The gate knows you, which matters more. You were the address for a silence a century and a half old, and you walked it both ways without dropping it. When you come up the Evenway now, I say your name to the arch before you reach it. That is not a formality. That is the wall deciding not to be one, for you.
-
-**`serel_gate__off`** — *player says: "Watch well, captain."*
-
-> The king says the gate stays open. So it stays open, and I stay at it.
-
-### Conversation: `serel_the_address` *(plays when: quest:the_letters_west:stage:the_outward_house)*
-
-**`serel_the_address__letter`** — *opens the conversation*
-
-> A letter for the city, with no name on it. A hundred and fifty years of nobody writing, and the Arcanum finally sends... you. Hold still while I decide how historic this is.
-
-**`serel_the_address__house`** — *follows straight on from "letter"*
-
-> The address she could not write is the Outward House. Elarin keeps the one room in Evenfall where human things are allowed to arrive. Take it to him, tell him the gate sent you, and tell him I said it was his problem now. He will be delighted. He is always delighted. It is exhausting.
-
----
-
-## Thal `sentinel_thal` — 0 dialogue lines, 3 quips and barks
-
-*Old blood, whole, and younger than the other sentinels, which still makes him older than every road in the Dawnlands. He is the only Evenguard who asks travelers questions back.*
-
-**Who they are, and how to say it:** Evenguard sentinel at the Heartwood door; younger than the other sentinels, which still makes him old. Watchful, spare, a shade more curious than his elders would admit.
-
-**Chatterbox casting:** `rpg_fantasy/male/belf_m` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `sentinel_thal__bark_1` — "What is it like, the ford town? I have heard the bell. On a north wind, once, I heard the bell."
-- `sentinel_thal__bark_2` — "The king opened the gate. Some of us think a hundred and fifty years was hasty. I think it was about time. Do not repeat that."
-- `sentinel_thal__bark_3` — "Walk the stones and you will not be lost. Leave the stones and you will be lost exactly once."
-
----
-
-## Veran `sentinel_veran` — 0 dialogue lines, 3 quips and barks
-
-*Old blood, whole: moonpale, upswept ears, a bow that was strung before the roads were roads. He keeps the mile the way other people keep a promise.*
-
-**Who they are, and how to say it:** Evenguard sentinel at the Heartwood door; the bow was strung before the roads were laid. Low, ancient, unhurried; a door guard whose no predates the asking.
-
-**Chatterbox casting:** `rpg_fantasy/male/guldan_m` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `sentinel_veran__bark_1` — "The deadfall is cleared by morning. You are welcome, and it was not for you."
-- `sentinel_veran__bark_2` — "The lamps stop at the fork. That is not the road failing. That is the road handing over."
-- `sentinel_veran__bark_3` — "You are walking toward the city. Most who pass here are walking away from something instead. Both are allowed."
-
----
-
-## Faelar `smith_faelar` — 6 dialogue lines, 3 quips and barks
-
-*The keeper of the one warm room in Evenfall, and the closest thing the city has to a loud voice, which is not very. Mithril fittings, ferrule collars, leaf-blades: never ore by the cart.*
-
-**Who they are, and how to say it:** Smith of the Mithril Forge, the loudest voice in the city, which is not very. Warm, workmanlike, proud of the one fire that sweats. A leaf that agreed to be a sword; different joinery.
-
-**Chatterbox casting:** `rpg_fantasy/male/ember_tadhg` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `smith_faelar__bark_1` — "Mine is the one fire in the city that works for a living. The Everflame just stands there being old."
-- `smith_faelar__bark_2` — "The delf pulls mithril out by the cart. We pulled ours out by the ounce, first, before their realm had a name."
-- `smith_faelar__bark_3` — "A leaf-blade is not a sword shaped like a leaf. It is a leaf that agreed to be a sword. Different joinery."
-
-### Conversation: `faelar_forge`
-
-**`faelar_forge__greet`** — *opens the conversation*
-
-> Mind the heat. Mine is the one fire in the city that works for a living, and it has earned its temper.
-
-**`faelar_forge__hub`** — *follows straight on from "greet"; or follows straight on from "leaf"; or follows straight on from "delf"*
-
-> Speak up. That is a joke. Nobody in Evenfall speaks up. What do you need?
-
-**`faelar_forge__browse`** — *player says: "Show me your work."*
-
-> Fittings, ferrule collars, edge work. Never ore by the cart. We were never miners. We were listeners who owned a hammer.
-
-**`faelar_forge__leaf`** — *player says: "What is a leaf-blade, truly?"*
-
-> Not a sword shaped like a leaf. A leaf that agreed to be a sword. Different joinery entirely. The shape already knew how to shed force the way a leaf sheds rain, and my whole craft is not insulting that knowledge with a straight line. It took me eighty years to stop insulting it. Good years.
-
-**`faelar_forge__delf`** — *player says: "The delf pulls mithril by the cart, they say."*
-
-> They do, and good luck to them. We pulled ours out by the ounce before their realm had a name, and the ounce was enough, because we were not arming anybody. The Everflame stands over there being old and warm and admired. Mine is the fire that sweats. We have an understanding, the two of us. Neither would trade.
-
-**`faelar_forge__off`** — *player says: "Keep your fire, smith."*
-
-> If you hear the hammer stop, come back. Stopped is when the interesting part happens.
-
----
-
-# kingsdelf
-
-## Ferrun `smith_ferrun` — 6 dialogue lines, 3 quips and barks
-
-*Mountain-born, Balla's journeyman once. Wears a shard of his first masterwork on a cord: it cracked at the quench. He will not name a blade before the water.*
-
-**Who they are, and how to say it:** Smith of the Starfall Forge; wears the masterwork that cracked at the quench on a cord. Slow fire-words; never names a blade before the water. Wants to work starfall before his hands give out.
-
-**Chatterbox casting:** `rpg_fantasy/male/ilidan_m` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `smith_ferrun__bark_1` — "The delf's own mithril. The old realm swung this metal. Now you do."
-- `smith_ferrun__bark_2` — "A blade gets its name after the quench. Not before. Ask my necklace why."
-- `smith_ferrun__bark_3` — "Balla taught me the fire. The mountain taught me respect."
-
-### Conversation: `ferrun_forge`
-
-**`ferrun_forge__greet`** — *opens the conversation*
-
-> Mind the quench trough. The Starfall Forge, at your service, once this edge is drawn.
-
-**`ferrun_forge__hub`** — *follows straight on from "greet"; or follows straight on from "metal"; or follows straight on from "shard"*
-
-> Speak up. The fire is loud.
-
-**`ferrun_forge__metal`** — *player says: "What's special about the metal here?"*
-
-> The delf's own mithril, the seam the old realm never found. The kingsmen out on the old roads carry blades of it, forged before your family had a name. My work will be judged against dead men's work. I find that fair.
-
-**`ferrun_forge__shard`** — *player says: "What's that shard around your neck?"*
-
-> My first masterwork. It sang all the way to the quench and cracked in the water. Balla, the forgemistress up in Silverfall, made me keep a piece. She said pride needs a pocket to keep its receipts in. A blade gets its name after the water. Never before.
-
-**`ferrun_forge__browse`** — *player says: "What can you make?"*
-
-> Guild schematics, same folios Bretta keeps at the ford, without the six hundred mile walk.
-
-**`ferrun_forge__bye`** — *player says: "Work well."*
-
-> Keep your edge dry and your name earned.
-
----
-
-## Orin `stablemaster_orin` — 11 dialogue lines, 3 quips and barks
-
-*Kept stalls under Osa at the Silverfall caravanserai before this yard. Talks to beasts mid-sentence. Lost a colt on the Old Road the year he came, and none since.*
-
-**Who they are, and how to say it:** Stablemaster of the Beastyard; talks to beasts mid-sentence with people. Unhurried, few words. "Easy now. Not you, traveler." The kindness goes to the animal first and reaches you on the way past.
-
-**Chatterbox casting:** `rpg_fantasy/male/king_bob` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `stablemaster_orin__bark_1` — "Easy now. Not you, traveler. The mule."
-- `stablemaster_orin__bark_2` — "Three stalls, three friends. That is as many as a whistle can hold."
-- `stablemaster_orin__bark_3` — "The burn is no place for a green colt. Nor a green rider, but you will go anyway."
-
-### Conversation: `orin_beastyard`
-
-**`orin_beastyard__greet`** — *opens the conversation*
-
-> Easy, easy. Not you, traveler, the mule. Welcome to the Beastyard.
-
-**`orin_beastyard__hub`** — *follows straight on from "greet"; or player says: "Good to know."; or follows straight on from "string"*
-
-> What do you need?
-
-**`orin_beastyard__stalls`** — *player says: "How do the stalls work?"*
-
-> Three stalls, because three is what a whistle can hold. Bring me a friend you have gentled and I will keep it fed, brushed, and out of the ash. Call it out whenever you like. The pen does the remembering, I just do the caring.
-
-**`orin_beastyard__string`** — *player says: "How's the string, since the worgs?"*
-
-> Whole. Every head, counted twice, and the drove road walked without one ear going back. Easy, easy. Not you. The string sleeps sound because of what you did in the ash, and so do I, and the lead I gave you was the cheapest thing I ever paid gladly.
-
-**`orin_beastyard__burn`** — *player says: "Can a beast survive the burn?"*
-
-> A seasoned beast, with a seasoned rider, on the road, in daylight. Change any one of those words and you are gambling with a heart that trusts you. The Hewers do not chase, but the burn does not need to chase. It waits.
-
-**`orin_beastyard__osa`** — *player says: "Where did you learn beasts?"*
-
-> Under Osa, the hostler at the Silverfall caravanserai. She can calm a courser with one hand and a carter with the other, and I never learned which trick is harder. When the Charter offered me my own yard, she said go. So I went.
-
-**`orin_beastyard__browse`** — *player says: "Show me the stock."*
-
-> Coursers off the Charter freight, a garron bred for cold roads, and honest tack.
-
-### Conversation: `q_a_stall_in_ash_offer` *(plays when: quest:a_stall_in_ash:available)*
-
-**`q_a_stall_in_ash_offer__hub`** — *opens the conversation*
-
-> Come here. Quietly. Look south, past the hem, where the ash thins. Wild garrons. The last string in the world that drinks this country and lives, and worgs have found them.  I am not asking you to bring them in. A horse you drag home is a prisoner. I am asking you to make the ash safe enough that staying wild stays possible.
-
-**`q_a_stall_in_ash_offer__why`** — *player says: "Why not just catch one?"*
-
-> Because the day one of them walks up that road on its own and puts its head over my gate, it will be worth ten of anything caught. Trust is the only tack that never breaks.
-
-**`q_a_stall_in_ash_offer__go`** — *player says: "I'll deal with the worgs."; or player says: "Then I'll deal with the worgs."*
-
-> Watch the wind. Worgs read it better than you do.
-
-### Conversation: `q_a_stall_in_ash_turnin` *(plays when: quest:a_stall_in_ash:ready)*
-
-**`q_a_stall_in_ash_turnin__paid`** — *opens the conversation*
-
-> Feed and leather. Good. The bag goes on the same stone at the same hour until the same hour means something to somebody with four legs.  Here, the lead is yours. If a gray mare with one white ear ever follows you home, you did that, and I will only be a little jealous.
-
----
-
-# evenfall
-
-## Naia `stillkeeper_naia` — 6 dialogue lines, 3 quips and barks
-
-*The healers' house and the hanging gardens are hers: gathered herbs, never tilled rows. She is the youngest whole-blood in the city and the only one who finds that funny.*
-
-**Who they are, and how to say it:** Keeper of the Stillroom, the baby of the city at four human kingdoms old, the only whole-blood who jokes about age. Quick, warm, botanical; the garden is a conversation, not a demand.
-
-**Chatterbox casting:** `rpg_fantasy/female/perky_tilly` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `stillkeeper_naia__bark_1` — "I am the baby of the city. I have seen four human kingdoms. It keeps me humble."
-- `stillkeeper_naia__bark_2` — "We do not till. The wood gives what it gives, and the garden is a conversation, not a demand."
-- `stillkeeper_naia__bark_3` — "Drink it all. Yes, it tastes like that on purpose."
-
-### Conversation: `naia_stillroom`
-
-**`naia_stillroom__greet`** — *opens the conversation*
-
-> Come in, mind the hanging bundles, they outrank you. Stillroom's mine. I am Naia, the baby of the city, and yes, that is the official title.
-
-**`naia_stillroom__hub`** — *follows straight on from "greet"; or follows straight on from "baby"; or follows straight on from "garden"*
-
-> What hurts, or what are you curious about? I stock both.
-
-**`naia_stillroom__browse`** — *player says: "Show me your remedies."*
-
-> Salves, draughts, and the honest tea. Drink it all. Yes, it tastes like that on purpose. The taste is doing half the work.
-
-**`naia_stillroom__baby`** — *player says: "The baby of the city?"*
-
-> I have seen four human kingdoms. Rise, fall, rise, fall, and one of them managed both twice, which takes talent. Here that makes me the youngest in any room, and the elders still check whether I have eaten. It keeps a person humble. I recommend it, though I grant the arranging is difficult.
-
-**`naia_stillroom__garden`** — *player says: "Why no tilled rows?"*
-
-> Tilling is a demand. We ask. The wood gives what it gives, the garden hangs what it spares, and when a plant will not grow for me I assume it has its reasons and go and sit near it until one of us changes our mind. Your farmers would call that madness. Their sagewort would call it manners.
-
-**`naia_stillroom__off`** — *player says: "Stay well, Naia."*
-
-> Eat something green today. I always say that, and I am always right.
-
----
-
-# kingsdelf
-
-## Hedda `surveyor_hedda` — 10 dialogue lines, 3 quips and barks
-
-*Maps for the King, which no document will confirm. Her charts of the burn are the best since the old realm fell. She corrects distances mid-sentence, including yours.*
-
-**Who they are, and how to say it:** Crown surveyor; maps for a king no document will confirm. Clipped, measured, corrects distances mid-sentence. "Four thousand paces." Paid to be doubted and bearing it.
-
-**Chatterbox casting:** `rpg_fantasy/female/trade_nell` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `surveyor_hedda__bark_1` — "It is not a league to the crater. It is four thousand paces. Words matter."
-- `surveyor_hedda__bark_2` — "I draw what is there. What it means is above my pay."
-- `surveyor_hedda__bark_3` — "The Crown does not ask about Kingsdelf. It merely reads everything I send."
-
-### Conversation: `hedda_survey`
-
-**`hedda_survey__greet`** — *opens the conversation*
-
-> You are standing on my sightline. Two paces left. Thank you.
-
-**`hedda_survey__hub`** — *follows straight on from "greet"; or follows straight on from "maps"; or follows straight on from "king"*
-
-> Ask. I chart faster than I chat.
-
-**`hedda_survey__maps`** — *player says: "What are you mapping?"*
-
-> The burn, the old roads, the crater fields. The best charts of this country since the old realm fell, if I say it myself, and I do, because it is a measurement, not a boast. Measurements are the only sentences that cannot lie to you.
-
-**`hedda_survey__king`** — *player says: "Do you work for the King?"*
-
-> I survey for the Crown. Whether the King reads my charts personally is not written on any document, and neither am I. Let me say it this way: somebody in Silverfall asks very good questions about a town that officially is not here.
-
-**`hedda_survey__burn`** — *player says: "What's out there in the burn?"*
-
-> Quarries that are still being worked and nobody working them. Paved roads swept by nobody. A gatehouse maintained by nobody, guarding a door to nowhere. I write nobody in my notes a great deal, and I have begun to dislike the word. It is not a league to the crater, by the way. Four thousand paces.
-
-**`hedda_survey__bye`** — *player says: "Carry on."*
-
-> Mind the distances. They mind you.
-
-### Conversation: `q_the_crown_asks_offer` *(plays when: quest:the_crown_asks:available)*
-
-**`q_the_crown_asks_offer__hub`** — *opens the conversation*
-
-> I need hands that do not report to anybody, which in this town narrows the field to you. My mule bolted on the quarry road. My cipher pages went into the burn with the wreck, and the Hewers will have squared the wreck into their spoil by now. They are measurements. Bring them back unread.
-
-**`q_the_crown_asks_offer__just`** — *player says: "Just measurements?"*
-
-> That is twice I have said it, and you counted, and now we understand each other. Bring them back anyway.
-
-**`q_the_crown_asks_offer__go`** — *player says: "I'll get them."*
-
-> The quarry works a day shift that never ends. Interrupt it politely. With something heavy.
-
-### Conversation: `q_the_crown_asks_turnin` *(plays when: quest:the_crown_asks:ready)*
-
-**`q_the_crown_asks_turnin__paid`** — *opens the conversation*
-
-> Ash-stained, spoil-crushed, unread. Two of those three are the burn's fault.  You told Ruen. I know, because you walk like someone carrying a message with corners. Good. Kings should be seen asking. That is my whole treasonous opinion, and this is your pay, and neither of us said anything.
-
----
-
-# evenfall
-
-## Sylwen `warden_sylwen` — 8 dialogue lines, 3 quips and barks
-
-*The Evenking's heir, and the Evenguard's commander. She argued against opening the gate, lost, and now keeps the open gate better than anyone alive. Both of those are duty.*
-
-**Who they are, and how to say it:** Warden of the Wood, the Evenking's heir; argued against the open gate and now keeps it perfectly. Sentinel's arithmetic: short declaratives, counts while she listens, one dry edge per conversation.
-
-**Chatterbox casting:** `rpg_fantasy/female/elf_sentinel_f` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `warden_sylwen__bark_1` — "Two hundred years I kept a shut gate. Keeping an open one is harder. Nobody asks the second question."
-- `warden_sylwen__bark_2` — "The Company cut forty lengths of silverbark. Forty lengths came back to the hem, stacked. We are patient, not gentle."
-- `warden_sylwen__bark_3` — "My father is right about most things. I count the ones he is wrong about. The count is not zero."
-
-### Conversation: `sylwen_roost`
-
-**`sylwen_roost__greet`** — *opens the conversation*
-
-> You walked the stones and the watch let you by. So you are welcome. Those are the same fact.
-
-**`sylwen_roost__hub`** — *follows straight on from "greet"; or player says: "Never mind."; or follows straight on from "why"*
-
-> Say what you need. I count while I listen, it is not rudeness.
-
-**`sylwen_roost__against`** — *player says: "You argued against opening the gate."*
-
-> I did. I lost. Now the gate is mine to keep open, and I keep it. If you want a warden who only guards what she voted for, the humans elect those, I hear.
-
-**`sylwen_roost__why`** — *player says: "Why did you argue against it?"*
-
-> Because the last time the world was let in, my people thinned into it and did not come back. My father calls that family. I call it arithmetic. We are both right, which is the hard part.
-
-**`sylwen_roost__watch`** — *player says: "What does the Evenguard watch for?"*
-
-> The dark under the old lights. Wolves, and worse than wolves, and lately axes. The wood holds most of it down without being asked. We handle what the wood leaves us.
-
-**`sylwen_roost__company`** — *player says: "What's this about the Red Company?"*
-
-> A timber company keeps sending crews for silverbark nobody sold them. We keep sending the palisades back in bundles. Politely. The fourth crew is losing its nerve. There will be a fifth. Patience is a weapon you never have to sharpen.
-
-### Conversation: `sylwen_the_leave` *(plays when: quest:a_bow_of_the_wood:stage:the_patience)*
-
-**`sylwen_the_leave__count`** — *opens the conversation*
-
-> Aewyn sent you. I know. Who enters the yew stand is one of my counts, and you are about to be on it.
-
-**`sylwen_the_leave__leave`** — *follows straight on from "count"*
-
-> You asked before cutting. That is the whole test, and most fail it by not knowing it was set. Take the two logs the wind brought down this winter, west side of the stand, already dead and still true. Cut nothing standing. The living trees are not for this century, and we will not need to have the other conversation.
-
----
-
-# kingsdelf
-
-## Liv `waykeeper_liv` — 6 dialogue lines, 3 quips and barks
-
-*Sent by Marshal Kestrel to say no: the order lights no road it cannot walk. Two years of saying it, from the loneliest post the lamp-faith keeps, and the no keeps getting quieter.*
-
-**Who they are, and how to say it:** Waykeeper envoy, posted to say no; two years of saying it and the no keeps getting quieter. Formal, road-report exact, thawing by the month. Always positioned to see the gate.
-
-**Chatterbox casting:** `rpg_fantasy/female/elf_sentinel_f` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `waykeeper_liv__bark_1` — "The order's answer is still no. My answer is getting complicated."
-- `waykeeper_liv__bark_2` — "A lamp you cannot tend is a lie in glass. That is doctrine. I wrote it out nine times."
-- `waykeeper_liv__bark_3` — "I watch the gate. Somebody from the order ought to."
-
-### Conversation: `liv_post`
-
-**`liv_post__greet`** — *opens the conversation*
-
-> Waykeeper Liv. Yes, the only one for three hundred miles. The order is aware of the irony.
-
-**`liv_post__hub`** — *follows straight on from "greet"; or follows straight on from "no"; or follows straight on from "agree"*
-
-> Say your piece. I watch the gate while you do.
-
-**`liv_post__no`** — *player says: "Why won't the order light the Old Road?"*
-
-> A lamp we cannot tend is a lie in glass. A traveler trusts the light, walks the dark mile past it, and dies believing the road was watched. That is the doctrine, and it is not cruel. It was written by people who buried the ones who trusted.
-
-**`liv_post__agree`** — *player says: "Do you agree with them?"*
-
-> I have written the doctrine out nine times, once for every year I have served. I believed it all nine. Then I watched Soren trim his lamps every night for two winters, and now I write my reports very slowly, and the word no takes longer each month.
-
-**`liv_post__post`** — *player says: "What are you here for, then?"*
-
-> To carry the order's answer and to count this road's dead. In two years I have counted none inside the town's light and too many past it. The marshal reads my counts. Counts are how doctrine changes, when it changes. It changes slow.
-
-**`liv_post__bye`** — *player says: "Watch well."*
-
-> Stay on the lit side of the wall after the horn.
-
----
-
-# evenfall
-
-## Myrren `weaver_myrren` — 6 dialogue lines, 3 quips and barks
-
-*Moonpale silk with silver thread, woven by hands that remember teaching the craft to people whose great-grandchildren taught it to yours. She speaks in textures when words run short.*
-
-**Who they are, and how to say it:** Weaver of the Silk Hall; hands that remember teaching the craft to your ancestors’ teachers. Speaks in textures when words run short; slow, tactile, faintly amused by hurry.
-
-**Chatterbox casting:** `rpg_fantasy/female/faerin_f` *(provisional)* · exaggeration undefined · cfg undefined
-
-### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
-
-- `weaver_myrren__bark_1` — "Feel this. That is what a hundred quiet years does to thread."
-- `weaver_myrren__bark_2` — "Your ford-town wool is honest. Honest is a texture. I like it better than you would guess."
-- `weaver_myrren__bark_3` — "The moonpale weave is not white. Look again. Slower."
-
-### Conversation: `myrren_silks`
-
-**`myrren_silks__greet`** — *opens the conversation*
-
-> Come in. Hands clean? Then you may touch the second rack. The first rack is for looking, and the difference will make sense to your fingers before it makes sense to you.
-
-**`myrren_silks__hub`** — *follows straight on from "greet"; or follows straight on from "weave"; or follows straight on from "taught"*
-
-> Ask, or feel. Both are conversation here.
-
-**`myrren_silks__browse`** — *player says: "Show me the silks."*
-
-> Moonpale silk, silver thread, and a bolt of your ford-town wool I keep because honest is a texture and I like it near me.
-
-**`myrren_silks__weave`** — *player says: "The moonpale weave is not white?"*
-
-> Look again. Slower. There. It is every pale the moon owns, laid one against the next, and your eye calls it white because your eye is in a hurry. A hundred quiet years went into teaching the thread to hold that argument. The thread won. Threads usually do, given years, and we had the years.
-
-**`myrren_silks__taught`** — *player says: "Who taught whom, between us and you?"*
-
-> These hands taught the craft to people whose great-grandchildren taught it to yours. I say that without pride. Pride is for things that might have gone otherwise. It was a good trade both ways: we gave the loom, and your folk gave it hurry, and some of what hurry wove surprised us. I keep a piece of it. Second drawer. I do not show everyone.
-
-**`myrren_silks__off`** — *player says: "Weave well, Myrren."*
-
-> Go gently. You are wearing at least one thing somebody wove with care, whether you know it or not.
 
 ---
 
@@ -7884,6 +6048,138 @@ ford town's daily faces. Quips are authored for all twelve.
 
 ---
 
+## Stellan `captain_stellan` — 17 dialogue lines, 3 quips and barks
+
+*Career Crown, posted to the one fort that has never been attacked, drilling for the day that stops being true. His letters to Hoargate go out weekly. The answers get filed under nothing-yet.*
+
+**Who they are, and how to say it:** Captain of the Northguard; eleven years bored at the fort that has never been attacked, and proud of it. Clipped command grammar with a dry self-aware edge; doctrine quoted like scripture; jokes delivered as filed reports.
+
+**Chatterbox casting:** `rpg_fantasy/male/draven_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `captain_stellan__bark_1` — "The pass is quiet. I intend to be the reason that stays boring."
+- `captain_stellan__bark_2` — "The town watches the water and thinks my road is the safe one. I read the same reports they do not."
+- `captain_stellan__bark_3` — "Drill is cheap. The alternative is not."
+
+### Conversation: `q_the_north_count_offer` *(plays when: quest:the_north_count:available)*
+
+**`q_the_north_count_offer__hub`** — *opens the conversation*
+
+> You look like somebody whose legs work. Good. The drove season peaks this month and wolves are working the notch country north of the Hartgate, close enough that the beacon watch hears them on still nights. I want six taken. Not five. Not the pack entire. Six.
+
+**`q_the_north_count_offer__six`** — *player says: "Why exactly six?"*
+
+> Because Kolbrun's rota takes what the wood can spare and the Northguard takes what the road cannot, and six is where those two numbers meet this month. We count here. It is the whole difference between a cull and a slaughter.
+
+**`q_the_north_count_offer__sworn`** — *player says: "Consider it done."; or player says: "Then six it is."*
+
+> Out the Hartgate, stay in sight of the road, and do not flatter yourself that they have not already counted you. Come back to me, not to the serjeant. I sign for the dead.
+
+**`q_the_north_count_offer__declined`** — *player says: "Hire a soldier. You have a fort of them."; or player says: "Not my errand."*
+
+> My soldiers hold the gate. The moment they are out chasing wolves, the gate is what the wolves were for. That is the oldest trick the north knows. No. I hire strangers, and I pay them properly.
+
+### Conversation: `q_the_north_count_turnin` *(plays when: quest:the_north_count:ready)*
+
+**`q_the_north_count_turnin__counted`** — *opens the conversation*
+
+> Six. The watch confirmed it before you cleared the notch, which is the only reason I believe anything. Sign here. No, you do not have to write. The mark is fine. The ledger wants a hand, not a name.
+
+**`q_the_north_count_turnin__quiet`** — *player says: "The road is quieter already."*
+
+> It is. And Sylvi's next drove walks it easier, and the beacon watch sleeps, and nobody in this town will ever know the week the notch went bad, because it did not get to. That is what good work in the north looks like. Invisible. Take your pay anyway.
+
+**`q_the_north_count_turnin__paid`** — *player says: "Just the pay, captain."*
+
+> Sensible. Coin, arrows, and the Crown's regard, which weighs the least and lasts the longest. The gate knows your face now. Use it.
+
+### Conversation: `stellan_pass`
+
+**`stellan_pass__greet`** — *opens the conversation*
+
+> Captain Stellan, Northguard. State your business or walk on. Both are permitted and one is faster.
+
+**`stellan_pass__hub`** — *follows straight on from "greet"; or player says: "Fair enough."; or follows straight on from "bored"*
+
+> Well?
+
+**`stellan_pass__fort`** — *player says: "What is this fort for?"*
+
+> The pass. Two days north is Hartfell, and between here and there is country that has never once asked anyone's permission. The Crown put a wall at the bottleneck and me inside it.
+
+**`stellan_pass__bored`** — *player says: "Has it ever been attacked?"*
+
+> Never. You drill for the day that stops being true and you pray to stay bored. I have been bored eleven years. I am very good at it now, and I intend to retire undefeated.
+
+**`stellan_pass__thanks`** — *player says: "I thinned the wolves at the notch."*
+
+> So I heard. The beacon watch hears the notch on still nights, and this week it heard nothing. They sleep better, which means I sleep at all. The Crown pays its debts and so do I.
+
+**`stellan_pass__wary`** — *player says: "The town seems wary of you."*
+
+> They watched this water four hundred years without help, and then help arrived wearing a banner and drawing a payroll. I would be wary of me too. The rota still stands. We hold the one door it never reached.
+
+**`stellan_pass__disagree`** — *player says: "And if the two ever disagree?"*
+
+> Then the reeve wins, inside these walls. That is not modesty. It is doctrine, and it is mine, and Hoargate has it in writing whether they like the filing or not.
+
+**`stellan_pass__cold`** — *player says: "Halla told me what the four of them saw."*
+
+> So she told you. Then understand my yard. I do not drill them harder because I enjoy the shouting. Four honest people smelled the same winter, and my whole trade is to be wrong about it loudly and ready for it quietly.
+
+**`stellan_pass__coming`** — *player says: "Do you think it is coming?"*
+
+> I think the lake has been a wall for forty years and walls get tested. When it comes, this fort will be the least surprised ground in the north. That is the entire job. There is no other job.
+
+**`stellan_pass__off`** — *player says: "Nothing, captain."*
+
+> Then walk on. Mind the drill yard. The butts do not duck and neither do the recruits, yet.
+
+---
+
+## Sylvi `drover_sylvi` — 6 dialogue lines, 3 quips and barks
+
+*Walks the fell road both ways and carries both towns' gossip at drover rates. Counts every head in and every head out, and has never lost one she will admit to.*
+
+**Who they are, and how to say it:** Drover of the Hartway; walks the fell road both ways and carries both towns' gossip at drover rates. Road-rhythm chatter, warm and quick; one free warning per stranger, the second costs a drink.
+
+**Chatterbox casting:** `rpg_fantasy/female/sunny_posy` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `drover_sylvi__bark_1` — "Two days up, two days down, and the road tells you everything if you walk it enough."
+- `drover_sylvi__bark_2` — "Hartfell sends meat and leather down. We send boards and iron up. Everybody eats, everybody builds."
+- `drover_sylvi__bark_3` — "Stay on the road. I say that for free. The second time costs you a drink."
+
+### Conversation: `sylvi_drove`
+
+**`sylvi_drove__greet`** — *opens the conversation*
+
+> Mind the rails, the stock spooks easier than I do. Sylvi. Two days up, two days down, and whatever you heard about the fell road, the truth is better.
+
+**`sylvi_drove__hub`** — *follows straight on from "greet"; or follows straight on from "trade"; or follows straight on from "fell"*
+
+> Ask quick, the count starts at dawn.
+
+**`sylvi_drove__trade`** — *player says: "What moves on the Hartway?"*
+
+> Herds walk down alive and come back up as boards and iron. Hartfell sends meat, tallow, and the best leather in the Dawnlands. We send the timber their fells cannot grow and now Torger's bloom besides. Everybody eats, everybody builds, and the road gets two days of my feet either way.
+
+**`sylvi_drove__fell`** — *player says: "What is Hartfell like?"*
+
+> Cold, small, and stubborn as a knot, and I mean every word kindly. Gunvor keeps the watch fed and the beacon dry. When their fire burns, our Wardline bars and this fort lights the answer. When ours burns, they bar the Cairn Path. Two towns, one winter, one agreement older than my grandmother.
+
+**`sylvi_drove__quiet`** — *player says: "The notch was quiet on your last run?"*
+
+> Quietest in a season. The stock walked the notch without an ear turning, first time since thaw. That was your work, the gate says. Then the next drink at the Bell has an owner, and it is not you.
+
+**`sylvi_drove__off`** — *player says: "Safe roads, drover."*
+
+> Stay on the road. I say that one for free. The second telling costs you a drink.
+
+---
+
 ## Ebba `factor_ebba` — 8 dialogue lines, 3 quips and barks
 
 *Amberford sent her north eleven years ago to count timber for a season. She has counted every stick that left since, and she has stopped talking about the season.*
@@ -7934,7 +6230,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 ---
 
-## Ylva `fisher_ylva` — 7 dialogue lines, 3 quips and barks
+## Ylva `fisher_ylva` — 11 dialogue lines, 3 quips and barks
 
 *She fishes the one water in the Dawnlands that nobody else wants, and she is fed, so the argument is settled.*
 
@@ -7947,6 +6243,24 @@ ford town's daily faces. Quips are authored for all twelve.
 - `fisher_ylva__bark_1` — "Cold water, slow fish, big fish. You want quick, go to the ford."
 - `fisher_ylva__bark_2` — "The steps are the only place on this water a child is allowed. Mind that."
 - `fisher_ylva__bark_3` — "I have never once seen it freeze. Torvi has. We do not discuss it."
+
+### Conversation: `q_the_cold_signs_offer` *(plays when: quest:the_cold_signs:available)*
+
+**`q_the_cold_signs_offer__hub`** — *opens the conversation*
+
+> You sat through my talk of edges without changing the subject to fishing, so you can have the rest of it. Frostfall is a month off, and the shallows fringed this morning. Forty years I have watched the edges and they have never once been early. Go and ask Odd about his newest row. Tell him the water sent you.
+
+**`q_the_cold_signs_offer__why`** — *player says: "Why me and not the reeve?"*
+
+> Because if I walk into the yard with one fisher's worry, Halla files it under one fisher. Four people have each noticed one true thing this season, and a stranger can carry all four without the town watching the carrying. Then it is not worry. It is a count.
+
+**`q_the_cold_signs_offer__sworn`** — *player says: "I will go and listen."; or player says: "Then I will carry it."*
+
+> Odd first, at the nursery. Then wherever he points you, and he will point. When you have all four, take them to Halla and only Halla. The inn hears everything a beat too early in this town.
+
+**`q_the_cold_signs_offer__declined`** — *player says: "Ice comes early some years. That is all."; or player says: "Not my water."*
+
+> Then forget I spoke. The lake will tell everyone eventually. It is just politer, hearing it from a fisher first.
 
 ### Conversation: `ylva_steps`
 
@@ -7977,6 +6291,222 @@ ford town's daily faces. Quips are authored for all twelve.
 **`ylva_steps__off`** — *player says: "Good lines, Ylva."*
 
 > If the gulls sit down, you sit down too. That one is free.
+
+---
+
+## Espen `fletcher_espen` — 7 dialogue lines, 3 quips and barks
+
+*Strings every bow with the story of the tree it was. Sells arrows by the dozen and keeps the best dozen back, and will not be drawn on the difference.*
+
+**Who they are, and how to say it:** Fletcher; strings every bow with the story of the tree it was and keeps the year's best dozen back. Quiet workshop musing; gentle, unhurried; deflects personal questions by making a sale.
+
+**Chatterbox casting:** `rpg_fantasy/male/belf_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `fletcher_espen__bark_1` — "A bow is a tree taught a second trade."
+- `fletcher_espen__bark_2` — "Yannick gets the one tree in a hundred. I get the one branch in a thousand. We do not argue. We trade."
+- `fletcher_espen__bark_3` — "The dozen on the counter are good. The dozen under it are spoken for. No, not by you."
+
+### Conversation: `espen_staves`
+
+**`espen_staves__greet`** — *opens the conversation*
+
+> Mind the shavings. They remember being a bow that almost was.
+
+**`espen_staves__hub`** — *follows straight on from "greet"; or follows straight on from "bow"; or player says: "Fair enough."*
+
+> Espen. Staves, strings, arrows. Which?
+
+**`espen_staves__shop`** — *player says: "Show me the counter."*
+
+> The counter dozen fly true and the hunting bows are seasoned three winters. Arrows by count, feathers by the fistful. Kolbrun's people shoot my work and come back alive, which is the only advertisement I run.
+
+**`espen_staves__bow`** — *player says: "What makes a good bow?"*
+
+> A bow is a tree taught a second trade. Yannick takes the one tree in a hundred for his masts. I take the one branch in a thousand, off the tree he rejected, and we have never once argued, because we are both right.
+
+**`espen_staves__dozen`** — *player says: "What is the dozen under the counter?"*
+
+> Spoken for. Every winter I keep twelve of the year's best back, strung and waxed and wrapped. Ask me who they are for and I will sell you an arrow and change the subject. You are watching me do it now.
+
+**`espen_staves__kept`** — *player says: "The tower rota? The fort?"*
+
+> The people who will be on the ice if the ice ever asks. Some of them do not know they are on my list, and it would only worry them. A fletcher keeps his own rota. That is all you get, and it is more than most.
+
+**`espen_staves__off`** — *player says: "Loose and true, fletcher."*
+
+> Loose and true. And pick up your spent shafts, the wood counts those too.
+
+---
+
+## Maren `herbalist_maren` — 9 dialogue lines, 3 quips and barks
+
+*Makes the salve every axe hand in town swears by. Born in the out-camps the Wolfwinter emptied; carried inside the wall at four years old. She keeps a very small garden and a very long memory.*
+
+**Who they are, and how to say it:** Herbalist; the salve every axe hand swears by. Carried over the Wolfwinter ice at four years old; counts the uncounted every Frostfall. Brisk healer's triage warming into slow, exact memory; declines pity before it is offered.
+
+**Chatterbox casting:** `rpg_fantasy/female/faerin_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `herbalist_maren__bark_1` — "Salve first. Whatever you came for, it is salve first. I have met woodcutters."
+- `herbalist_maren__bark_2` — "Sagewort forgives poor soil. Moonbell does not. People are one or the other too."
+- `herbalist_maren__bark_3` — "The garden is small because a garden should be finishable. Most things are not."
+
+### Conversation: `maren_physic`
+
+**`maren_physic__greet`** — *opens the conversation*
+
+> Salve first. Show me the hands. Mm. You will live, which puts you ahead of most of my mornings.
+
+**`maren_physic__hub`** — *follows straight on from "greet"; or follows straight on from "salve"; or follows straight on from "garden"*
+
+> Maren. The garden and the salve are mine. Ask.
+
+**`maren_physic__salve`** — *player says: "What goes into the salve?"*
+
+> Sagewort base, moonbell thread, pine tar because we are where we are. Nial sells it on his shelf at his margin and I let him, because his shelf is dry and mine is a garden. The axe hands buy it by the season. The garrison buys it by the drill.
+
+**`maren_physic__garden`** — *player says: "Your garden is very small."*
+
+> A garden should be finishable. Most things are not. I finish this one every evening and it is the best hour I own. The wood out there is four hundred years of unfinished, and I leave it to the people who like that sort of thing.
+
+**`maren_physic__fifth`** — *player says: "You carried four true things to Halla once, they say."*
+
+> I carried nothing. You carried. But since you are the one who listens, you can carry a fifth thing, and it is older than the other four.
+
+**`maren_physic__count`** — *player says: "Say it."*
+
+> The stone counts the fourteen the town could name. But the out-camps held road folk that winter too, a peddler family iced in, faces with no names for the granite. I was four. Somebody wrapped me in a net float, walked me over the ice, set me inside the wall, and went back into the dark. Every Frostfall I count seven faces at my own fire, quietly, because somebody counted me.
+
+**`maren_physic__who`** — *player says: "Who carried you?"*
+
+> I was four. I remember a coat that smelled of pitch, and the sound the ice makes when it is deciding. Every soul in this town has told me it must have been somebody else's somebody. One day the lake will give the answer back. It keeps everything, that water. It is only slow.
+
+**`maren_physic__kept`** — *player says: "I will remember them too."*
+
+> Then there are two of us, and the count is safer by one. That is all keeping ever is. Take a salve from the basket. No coin. That one is between us and Frostfall.
+
+**`maren_physic__off`** — *player says: "Be well, Maren."*
+
+> Salve before blisters, supper before dark, and do not argue with the moonbell. It always wins.
+
+---
+
+## Ranka `houndmistress_ranka` — 9 dialogue lines, 3 quips and barks
+
+*Keeps the fort's hounds — the line bred down from Bern's dog, the one that came back across the ice. She talks to them in full sentences and to people in most of one.*
+
+**Who they are, and how to say it:** Houndmistress of the line bred from Bern's dog, the one that came back across the ice. Talks to hounds in full sentences and people in most of one; short, certain, weathered; zero sentiment, total devotion.
+
+**Chatterbox casting:** `rpg_fantasy/female/witherbard_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `houndmistress_ranka__bark_1` — "They are not pets. They are colleagues with better hearing."
+- `houndmistress_ranka__bark_2` — "Bern's dog swam back through broken ice. Everything in that pen remembers it in the blood."
+- `houndmistress_ranka__bark_3` — "If a hound of mine does not like you, I want to know why before you leave."
+
+### Conversation: `ranka_kennels`
+
+**`ranka_kennels__greet`** — *opens the conversation*
+
+> Mind the rail. They are working, even when it looks like sleeping. Especially then.
+
+**`ranka_kennels__hub`** — *follows straight on from "greet"; or follows straight on from "line"; or follows straight on from "bern"*
+
+> Ranka. Hounds. Ask.
+
+**`ranka_kennels__line`** — *player says: "Where does the line come from?"*
+
+> Bern's dog came back across the breaking ice the night the camps went quiet. Swam the last of it. Every hound in this pen carries her. You do not buy into that line. You are issued a place in it, if the line likes you.
+
+**`ranka_kennels__bern`** — *player says: "Who is Bern?"*
+
+> First name on the Wolfwinter stone, by the yard fire. His dog outlived him nine years and patrolled every one of them, nobody asking her to. The fort feeds her line forever. That was the town's one condition for the wall, and the Crown had the sense to write it down.
+
+**`ranka_kennels__work`** — *player says: "How do they work?"*
+
+> Nose first, then ears, then teeth, and it has never yet come to teeth. A hound that growls at the dark is guessing. A hound that goes silent is sure. You want the growling. Pray for the growling.
+
+**`ranka_kennels__off`** — *player says: "Good day to the pack."*
+
+> They heard you say it. They keep accounts. Walk well.
+
+### Conversation: `ranka_the_runs` *(plays when: quest:the_cold_signs:stage:the_count)*
+
+**`ranka_the_runs__north`** — *opens the conversation*
+
+> You came from the nursery. Odd sent you, which means Ylva sent him, which means the water started this, which is right. The water always knows first. So I will say the thing I have only said to the pen.
+
+**`ranka_the_runs__quiet`** — *follows straight on from "north"; or follows straight on from "means"*
+
+> They stopped sleeping on the north side of the run. All twelve, the same week, and none of them will say why, because a hound that goes silent is sure. Bern's line has not been wrong about the north in forty years.
+
+**`ranka_the_runs__means`** — *player says: "What do you think it means?"*
+
+> I think the pen remembers the ice better than the town does. Go and ask Kolbrun what her book says. She writes the cull count every day of her life, and it has sat open on the same page for a month. Tell her the hounds sent you. She will not laugh.
+
+---
+
+## Kolbrun `hunter_kolbrun` — 10 dialogue lines, 3 quips and barks
+
+*Keeps the cull rota and the wolf count, and has kept both long enough to know which number matters. The count is wrong this year. She has not put that in the book yet.*
+
+**Who they are, and how to say it:** Master hunter; keeps the cull count and knows what it means that the wolves are leaving. Field-report economy, low and level; scorn for sport, reverence for the licence; never raises her voice at the wood.
+
+**Chatterbox casting:** `rpg_fantasy/female/hush_morrow` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `hunter_kolbrun__bark_1` — "The cull is a rota, not a sport. We take the count the wood can spare and not one hide more."
+- `hunter_kolbrun__bark_2` — "A hunter who brags about wolves has never been looked at by one."
+- `hunter_kolbrun__bark_3` — "The old wood keeps its own tally. Mine just has to agree with it."
+
+### Conversation: `kolbrun_count`
+
+**`kolbrun_count__greet`** — *opens the conversation*
+
+> The Hunters' Hall. Wipe your boots, the floor is the only carpet the cull ever bought us.
+
+**`kolbrun_count__hub`** — *follows straight on from "greet"; or player says: "Understood."; or follows straight on from "checks"*
+
+> Kolbrun. I keep the count. Ask.
+
+**`kolbrun_count__cull`** — *player says: "What is the cull?"*
+
+> A rota, not a sport. The wood can spare so many wolves, so many boar, so many hides a season, and we take exactly that and write it down. The count is the licence. Lose the count and you are not a hunter, you are just a wolf that pays taxes.
+
+**`kolbrun_count__checks`** — *player says: "Who checks the count?"*
+
+> The wood does. Take too many and the deer strip the seedlings and Odd comes for you with forty years of quiet. Take too few and the packs press the drove road and Stellan comes for you with paperwork. The count is where everyone's argument agrees.
+
+**`kolbrun_count__shop`** — *player says: "Show me the leathers."*
+
+> Honest leathers, cut for the road north, and the furs the count could spare. First quality goes to Hartfell, and I say so out loud because Ranna would say it louder.
+
+**`kolbrun_count__advice`** — *player says: "Any advice for the wood?"*
+
+> Walk like you owe the ground an apology. Downwind is a direction, not a suggestion. And if the wood goes quiet around you, it is not admiring your boots. Leave.
+
+**`kolbrun_count__off`** — *player says: "Good hunting."*
+
+> Count what you take. The wood already is.
+
+### Conversation: `kolbrun_the_wolves` *(plays when: quest:the_cold_signs:stage:the_door)*
+
+**`kolbrun_the_wolves__book`** — *opens the conversation*
+
+> The hounds sent you. Then you have earned the page. Look. A month, nothing written. Not because there was nothing to write. Because I did not want to be the one who wrote it.
+
+**`kolbrun_the_wolves__low`** — *follows straight on from "book"; or follows straight on from "leave"*
+
+> The count is low. You expected high. Everyone expects high, wolves at the door, a hard cull. No. The packs are leaving the near wood. Through my licence, south and east, and not stopping to hunt on the way.
+
+**`kolbrun_the_wolves__leave`** — *player says: "Why would wolves leave?"*
+
+> Animals leave first. Ask anyone who ever read a flood plain. Something north of the water is moving them off ground their grandmothers denned on. Take all four of us to Halla, and tell her I said the word she has been waiting for somebody else to say first. Winter.
 
 ---
 
@@ -8038,7 +6568,49 @@ ford town's daily faces. Quips are authored for all twelve.
 
 ---
 
-## Odd `nurseryman_odd` — 7 dialogue lines, 3 quips and barks
+## Torger `ironmaster_torger` — 6 dialogue lines, 3 quips and barks
+
+*Found the seam the year the fort went up, which everyone agrees is a coincidence. Pays the mountain the respect Odd pays the wood, which is why their argument never quite becomes one.*
+
+**Who they are, and how to say it:** Ironmaster of the Ore Cut; found the seam the year the fort went up, which everyone agrees is a coincidence. Slow geologic patience; treats arguments as weather; working-man gravel.
+
+**Chatterbox casting:** `rpg_fantasy/male/ember_tadhg` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `ironmaster_torger__bark_1` — "The mountain pays in iron what the wood pays in years. Neither one pays twice."
+- `ironmaster_torger__bark_2` — "A bloomery eats charcoal and charcoal is trees. Odd says so weekly. He is right, which is the annoying part."
+- `ironmaster_torger__bark_3` — "The seam runs north under the fell. I stop where the stones say. That is the whole conversation."
+
+### Conversation: `torger_seam`
+
+**`torger_seam__greet`** — *opens the conversation*
+
+> Mind the terrace edge. The mountain forgives nothing and neither does the drop.
+
+**`torger_seam__hub`** — *follows straight on from "greet"; or follows straight on from "seam"; or follows straight on from "charcoal"*
+
+> Torger. The cut is mine. Say your piece.
+
+**`torger_seam__seam`** — *player says: "How did you find the seam?"*
+
+> The road cut found it, truth be told. The wains wore the ridge down to its bones and the bones had rust in them. I just listened to what the rock was already saying. That was the year the fort went up, and everyone agrees that is a coincidence, in the tone people use for coincidences.
+
+**`torger_seam__charcoal`** — *player says: "Odd glares at your bloomery."*
+
+> A bloomery eats charcoal and charcoal is trees. Odd says so weekly and he is right, which is the annoying part. So I burn mill scrap and storm fall, the count comes off the cordwood licence, and he checks my woodpile like a customs man. I would not have it otherwise. A town that argues well is a town that lasts.
+
+**`torger_seam__order`** — *player says: "Great spars go missing. Does iron?"*
+
+> So you are the one who did Bram's arithmetic. Then hear mine. Iron is worth more than its ore if somebody wants war. I sell to the town, to Vigga, and to the fort, in that order, and I write down which. When somebody asks you to wonder about me, and somebody will, ask to see my order. It has not changed since the first bloom.
+
+**`torger_seam__off`** — *player says: "Good iron to you."*
+
+> The mountain pays in iron what the wood pays in years. Spend both slowly.
+
+---
+
+## Odd `nurseryman_odd` — 10 dialogue lines, 3 quips and barks
 
 *He has set more trees than the town has felled, which is the only boast he has ever made, and he made it to a seedling.*
 
@@ -8081,6 +6653,20 @@ ford town's daily faces. Quips are authored for all twelve.
 **`odd_nursery__off`** — *player says: "Grow well, Odd."*
 
 > Take the walk out slow. The seedlings notice a hurry, and it sets a bad example.
+
+### Conversation: `odd_the_row` *(plays when: quest:the_cold_signs:stage:the_runs)*
+
+**`odd_the_row__sent`** — *opens the conversation*
+
+> The water sent you. That is Ylva being careful with both of us. Come. Look at the new row, the one that went in this spring. Look at the lean.
+
+**`odd_the_row__lean`** — *follows straight on from "sent"; or follows straight on from "know"*
+
+> Every seedling, the same way, like they are listening to something north of here. The row planted the spring after the ice year grew exactly so. I have spent a month calling it wind. It is not wind.
+
+**`odd_the_row__know`** — *player says: "How can a tree know?"*
+
+> Trees do not know. Trees answer. Cold coming long and slow bends the growth before any of us feel it, and a row is forty answers in a line. Trees take years to finish their sentences. The hounds finish theirs faster. Go and ask Ranka at the fort what her pen has been saying.
 
 ---
 
@@ -8230,6 +6816,60 @@ ford town's daily faces. Quips are authored for all twelve.
 
 ---
 
+## Pinewatch Hunter `pinewatch_hunter` — 0 dialogue lines, 3 quips and barks
+
+*Quiet boots, patched leathers, and a tally string on the belt with fewer knots in it than last year. They have noticed. They do not talk about it.*
+
+**Who they are, and how to say it:** Pooled cull hunter; patched leathers and a tally string with fewer knots than last year. Trail-quiet clip; says the count and stops talking.
+
+**Chatterbox casting:** `rpg_fantasy/male/arathi_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `pinewatch_hunter__bark_1` — "The count is the count. Kolbrun writes it, the wood checks it."
+- `pinewatch_hunter__bark_2` — "You walk loud. Everything north of the wall already knows your name."
+- `pinewatch_hunter__bark_3` — "Wolves first, then boar, then whatever the winter sends. There is always a then."
+
+---
+
+## Northguard `pinewatch_northguard` — 5 dialogue lines, 3 quips and barks
+
+*Weld colors, drilled straight, and young enough to think the quiet is normal. The captain is working on that.*
+
+**Who they are, and how to say it:** Pooled Crown pass post; young enough to think the quiet is normal. Gate-rules flat; orders quoted verbatim; pride kept just under regulation.
+
+**Chatterbox casting:** `rpg_fantasy/male/solder_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `pinewatch_northguard__bark_1` — "The gate opens at dawn and bars at the beacon. Those are the only two rules you need."
+- `pinewatch_northguard__bark_2` — "Two days to Hartfell if you stay on the road. Longer if you do not, and then forever."
+- `pinewatch_northguard__bark_3` — "The tower watches the water. We watch the road. Everybody watches us. It works."
+
+### Conversation: `northguard_gate`
+
+**`northguard_gate__hub`** — *opens the conversation; or follows straight on from "north"*
+
+> Northguard. The gate opens at dawn and bars at the beacon. State your road.
+
+**`northguard_gate__north`** — *player says: "What is north of here?"*
+
+> Two days of drove road to Hartfell if you stay on it. Notch country first, then the braid, then the fells. The road is the only promise anyone has made out there, and the Waykeepers keep it and we keep this end. Step off it and you are on ground that owes you nothing.
+
+**`northguard_gate__mark`** — *player says: "Anything moving out there?"*
+
+> Since you ask. Something has planted itself in the country this post watches, and my orders end at the wall. There is your mark. The captain signs for dead wolves and worse things, if you are collecting.
+
+**`northguard_gate__remark`** — *player says: "Where was that trouble again?"*
+
+> Where it was. The mark is on your chart, and it has not had the decency to leave.
+
+**`northguard_gate__off`** — *player says: "Just passing, guard."*
+
+> Walk on. If the beacon lights behind you, turn around and walk faster.
+
+---
+
 ## Sawyer `pinewatch_sawyer` — 4 dialogue lines, 3 quips and barks
 
 *Sawdust in the cuffs, the collar, the beard, and the bread. It stops being a nuisance in about a year.*
@@ -8264,7 +6904,7 @@ ford town's daily faces. Quips are authored for all twelve.
 
 ---
 
-## Pinewatch Watch `pinewatch_watch` — 5 dialogue lines, 3 quips and barks
+## Pinewatch Watch `pinewatch_watch` — 6 dialogue lines, 3 quips and barks
 
 *Not a soldier. A sawyer, or a carter, or somebody's aunt, taking their night on the board like everyone else.*
 
@@ -8280,13 +6920,17 @@ ford town's daily faces. Quips are authored for all twelve.
 
 ### Conversation: `pinewatch_rota`
 
-**`pinewatch_rota__hub`** — *opens the conversation; or follows straight on from "water"*
+**`pinewatch_rota__hub`** — *opens the conversation; or player says: "Understood."; or follows straight on from "kept"*
 
 > On the rota. My night. Say it quick, the tower does not watch itself.
 
 **`pinewatch_rota__water`** — *player says: "What are you watching for?"*
 
 > The water. The roads have Sigrun and the yard has Halla, and the tower has the Glasswater, all night, every night, forty years past the last time it mattered. It matters by not mattering. And the fire at the Pine and Bell is lit at half three for us coming down. You can set your knees by Sunniva.
+
+**`pinewatch_rota__kept`** — *player says: "I know what the rota is for now."*
+
+> So the reeve opened the door for you. Then stand a night with us sometime. The tower is warmer than it looks and colder than it needs to be, and it is ours, and now it is a little bit yours. That is how the board works.
 
 **`pinewatch_rota__mark`** — *player says: "Anything moving out there?"*
 
@@ -8364,7 +7008,49 @@ ford town's daily faces. Quips are authored for all twelve.
 
 ---
 
-## Halla `reeve_halla` — 29 dialogue lines, 3 quips and barks
+## Berget `quartermaster_berget` — 6 dialogue lines, 3 quips and barks
+
+*Runs the armory like a ledger with opinions. Sells the makings to civilians at a margin she calls the wall tax, and considers the wall cheap at the price.*
+
+**Who they are, and how to say it:** Quartermaster; sells the makings, never the made, at a margin she calls the wall tax. Requisition forms made flesh: cool, exact, unhurried; explains a thing precisely once and says so.
+
+**Chatterbox casting:** `rpg_fantasy/female/nightborne_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `quartermaster_berget__bark_1` — "Issued steel is counted steel. Sold steel is counted twice."
+- `quartermaster_berget__bark_2` — "The wall tax is not a joke. It is a margin with a purpose, which is more than most jokes have."
+- `quartermaster_berget__bark_3` — "Requisitions close at dusk. Emergencies may apply at any hour and had better be one."
+
+### Conversation: `berget_wall`
+
+**`berget_wall__greet`** — *opens the conversation*
+
+> Quartermaster Berget. Requisitions close at dusk. Purchases close when I say. What is it?
+
+**`berget_wall__hub`** — *follows straight on from "greet"; or follows straight on from "tax"; or follows straight on from "makings"*
+
+> Speak or buy. Both is also allowed.
+
+**`berget_wall__shop`** — *player says: "Show me the shelves."*
+
+> Bar stock, coal, arrows, and the tincture the drill yard goes through like water. Count your coin before I do.
+
+**`berget_wall__tax`** — *player says: "Why does your steel cost more?"*
+
+> One coin more in ten than the Charterhouse. That coin buys the wall you will stand behind the day the price of everything else goes strange. I call it the wall tax. I have now explained it, which happens once.
+
+**`berget_wall__makings`** — *player says: "Do you sell weapons?"*
+
+> I sell the makings, never the made. Issued steel is counted steel, and a civilian blade is earned at an anvil. Vigga's, for preference. Tell her I sent you and she will charge you the same as everyone, because she is Vigga.
+
+**`berget_wall__off`** — *player says: "Nothing today."*
+
+> Then stand clear of the window. The window is for people with requisitions, and hope is not a requisition.
+
+---
+
+## Halla `reeve_halla` — 33 dialogue lines, 3 quips and barks
 
 *She keeps the rota, the boundary, and her temper, in that order of difficulty. Nine years old the winter the ice came.*
 
@@ -8482,6 +7168,24 @@ ford town's daily faces. Quips are authored for all twelve.
 
 > Somebody will. There is a hundred years of standing timber out there and a hall in Silverfall that wants a roof. The line is not a wall. It is an agreement, and agreements need somebody to keep walking them.
 
+### Conversation: `q_the_cold_signs_turnin` *(plays when: quest:the_cold_signs:ready)*
+
+**`q_the_cold_signs_turnin__carrying`** — *opens the conversation*
+
+> You have the look of somebody carrying four things that weigh the same. Sit. Say them in any order.
+
+**`q_the_cold_signs_turnin__four`** — *follows straight on from "carrying"*
+
+> The edges early. The row leaning. The hounds off the north wall. The wolves leaving. Forty years I have waited to hear those four sentences said in one room, and dreaded it, in exactly that order.
+
+**`q_the_cold_signs_turnin__now`** — *player says: "What happens now?"*
+
+> Now you know what the rota is for. Not wolves. It was never wolves. The rota is for the year the lake stops being a wall. Take your pay, and say nothing at the inn. When this town needs to know, it hears it from this chair, in daylight, with the granary numbers already done.
+
+**`q_the_cold_signs_turnin__captain`** — *player says: "Will you tell the captain?"*
+
+> Stellan smelled it before any of us. Why do you think the drills got longer. Between his yard and my rota, whatever crosses that ice will find this town standing up. That is all preparation ever buys anyone. It has always been enough. Take your pay, and keep the inn out of it.
+
 ### Conversation: `q_the_wet_count_turnin` *(plays when: quest:the_wet_count:ready)*
 
 **`q_the_wet_count_turnin__paid`** — *opens the conversation*
@@ -8567,6 +7271,48 @@ ford town's daily faces. Quips are authored for all twelve.
 **`groa_the_gap__where`** — *player says: "Then where do wet logs go?"; or follows straight on from "wrong"*
 
 > Into the water they came from, or up somebody's skid road in the dark. Ask the man who buys the kind of stick that goes missing. The Crown's buyer keeps the wain bays past the Charterhouse. He is very polite. Count your fingers after.
+
+---
+
+## Ove `serjeant_ove` — 6 dialogue lines, 3 quips and barks
+
+*Pinewatch-born, Crown-sworn, and the only man in the fort the town will take a correction from. Counts the weapon rack before he counts the men, and has never once found the rack wrong.*
+
+**Who they are, and how to say it:** Drill serjeant, Pinewatch-born and Crown-sworn; the fort's one bridge to the town. Drill-yard bark softened by inn-kitchen roots; counts things aloud; corrections land warm.
+
+**Chatterbox casting:** `rpg_fantasy/male/ilidan_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `serjeant_ove__bark_1` — "I stood my nights on the tower before I ever wore the weld. The rota made me. The Crown just pays me."
+- `serjeant_ove__bark_2` — "Shoulders back. No, not you. Him. Always him."
+- `serjeant_ove__bark_3` — "The town thinks we are guests. The captain thinks we are hosts. I think the wall does not care."
+
+### Conversation: `ove_drill`
+
+**`ove_drill__greet`** — *opens the conversation*
+
+> Serjeant Ove. Yes, that Ove, Sunniva's cousin's boy, the whole town has told you already. Stand clear of the butts.
+
+**`ove_drill__hub`** — *follows straight on from "greet"; or follows straight on from "both"; or follows straight on from "drill"*
+
+> Quick, I have forty spears to count.
+
+**`ove_drill__both`** — *player says: "A town man in Crown colors. How is that?"*
+
+> I stood tower nights before I ever wore the weld. The rota made me, the Crown just pays me. If the two ever disagree I will let you know which way I fall, and so will the whole town, loudly, at the inn, with my aunt leading.
+
+**`ove_drill__drill`** — *player says: "What do you drill for?"*
+
+> Forty push of spear at dawn, forty at dusk, and the rack counted twice. The men think I love counting. What I love is that nothing has ever been missing. There is a difference and the difference is the whole job.
+
+**`ove_drill__verdict`** — *player says: "Who watches whom around here?"*
+
+> The tower watches the water. The fort watches the road. The town watches the fort. It sounds like a joke and it works like a treaty, and in the north you learn not to care which one a thing is, so long as it holds.
+
+**`ove_drill__off`** — *player says: "Carry on, serjeant."*
+
+> Walk on. If you hear the gong it is not for practice, and if you hear me it is.
 
 ---
 
@@ -10733,5 +9479,2587 @@ ford town's daily faces. Quips are authored for all twelve.
 **`q_undercut_turnin__paid`** — *opens the conversation*
 
 > Six picks gone quiet. The floor is a floor again. Rate paid, line cleared, line will be back by market day.
+
+---
+
+# The Falls Vale — Silverfall's lower town
+
+## Baker Hedda `baker_hedda` — 5 dialogue lines, 3 quips and barks
+
+*Awake when the city sleeps, asleep when it eats what she made. Her forearms could win the arm-wrestling table at the Delvers' Rest, and once, famously, did.*
+
+**Who they are, and how to say it:** Night baker; the city is fed before it wakes and she sleeps through every festival she provisions. Warm, floury, runs on like proving dough; calls people love without losing an ounce of edge. Big forearms, bigger voice, first bell in her throat.
+
+**Chatterbox casting:** `rpg_fantasy/female/sunny_posy` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `baker_hedda__bark_1` — "The ovens never cool. Neither do I, more's the pity."
+- `baker_hedda__bark_2` — "Night belongs to me and the watch and nobody else. You learn things about a city, being the only lit window in it."
+- `baker_hedda__bark_3` — "First bell, first bread. The castle eats fourth, whatever Ansgar tells you — the miners are walking to a shift, the King is walking to a chair."
+
+### Conversation: `hedda_ovens`
+
+**`hedda_ovens__hub`** — *opens the conversation; or follows straight on from "night"; or follows straight on from "city"*
+
+> If you're here for bread, you're in luck. If you're here for conversation, you're in luck and it's included in the price.
+
+**`hedda_ovens__browse`** — *player says: "What's fresh?"*
+
+> Everything. That's the whole trick of a bakery, love — there is no yesterday's. Yesterday's went to the hostel at cost and Maeve knows better than to say where from.
+
+**`hedda_ovens__night`** — *player says: "You bake all night?"*
+
+> Brant grinds by day, I bake by night, the city eats by morning. Somebody's always awake keeping the next meal moving — that's what a city IS, if you ask me, which nobody does because they're all asleep when I'm proving it. The night watch and I run the whole place for about five hours, you know. We've agreed not to tell anyone.
+
+**`hedda_ovens__city`** — *player says: "Who eats all this bread?"*
+
+> The mine eats first — Ronnaug takes forty loaves before dawn shift. Then the market, then the hostel, then the wagon yard. Signy up at the cookhouse takes sixty for the trades' mess and we have a treaty about whose bread it becomes at that point. The castle? Ansgar's four hundred meals a week ride on MY flour and Brant's stones, and the steward sends a very correct little note each month saying so. I've kept every note. So would you.
+
+**`hedda_ovens__bye`** — *player says: "Sleep well, Hedda."*
+
+> Off with you. Some of us have a city to feed at an hour you'll never see.
+
+---
+
+## Bathkeeper Una `bathkeeper_una` — 4 dialogue lines, 3 quips and barks
+
+*Steam-pink and cheerfully tyrannical. Inside her door rank means nothing, ore-dust means a second scrub, and the Crown itself would be handed a brush and told to do its neck.*
+
+**Who they are, and how to say it:** Bathkeeper at the hot spring; steam-pink and cheerfully tyrannical. Rank stays at the door with the boots and the Crown itself would be handed a brush. Imperatives softened by steam, big laugh close behind; outdrinks the mine at the Rest. Commanding and warm at once.
+
+**Chatterbox casting:** `rpg_fantasy/female/xalath_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `bathkeeper_una__bark_1` — "Ore washes off. The shift takes longer. Sit in the steam till your shoulders drop, that's the actual price of admission."
+- `bathkeeper_una__bark_2` — "The spring is the mountain being kind. It is not otherwise a kind mountain. Say thank you."
+- `bathkeeper_una__bark_3` — "The mine pays for the miners. Everyone else pays for the miners too, they just get a bath out of it."
+
+### Conversation: `una_steam`
+
+**`una_steam__hub`** — *opens the conversation; or follows straight on from "mine"; or follows straight on from "spring"*
+
+> Boots by the door, coin in the box, rank stays outside with both. The Bath House welcomes you exactly as much as you scrub.
+
+**`una_steam__mine`** — *player says: "The mine pays for all this?"*
+
+> Balla and Grettir went up to the bursar together, the one time anyone's seen them agree in public, and argued that clean miners cough less and dig longer. Odele did the sums, the sums came out my way, and here we are: the one luxury in the Vale with the Crown's arithmetic behind it. Everyone else pays at the door and subsidizes the coughing.
+
+**`una_steam__spring`** — *player says: "Where's the water from?"*
+
+> A led spring out of the west crag — the mountain being kind, which it is otherwise not known for. The guild stone-lined the channel as a favor I repay in bath tokens. Hot's from the braziers, not the rock; anybody who tells you Silverfall sits on warm springs is selling you land in the Undercroft.
+
+**`una_steam__bye`** — *player says: "Steam on, Una."*
+
+> Come back dirty. It's the only way this works.
+
+---
+
+## Chandler Wick `chandler_wick` — 5 dialogue lines, 3 quips and barks
+
+*Yes, that is his real name, and no, he did not pick the trade for it — the trade picked him, he'll tell you, grinning like a lit taper. Every shrine candle passed through his hands first.*
+
+**Who they are, and how to say it:** Chandler at the bottom of the pilgrim way; yes that is his real name and he tells the joke first. Bright, quick, taper-crackle delivery, grinning through it; ends on small warmths. The flame's practical half: somebody has to make the part that burns.
+
+**Chatterbox casting:** `rpg_fantasy/male/murozond_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `chandler_wick__bark_1` — "The shrine's wicks are dipped here. Sella blesses the flame; somebody has to make the part that burns."
+- `chandler_wick__bark_2` — "Tallow for the Vale, beeswax for the Row, and one box a month that goes down the Undercroft stair and doesn't come back. I don't ask. The coin's good."
+- `chandler_wick__bark_3` — "A candle is a clock you can read in the dark. People forget that. I sell a lot of clocks."
+
+### Conversation: `wick_taper`
+
+**`wick_taper__hub`** — *opens the conversation; or follows straight on from "shrine"; or follows straight on from "trade"*
+
+> Wick. Yes, really. The Chandlery — tallow, beeswax, and every wick the mother-flame ever kissed. What'll it be?
+
+**`wick_taper__shrine`** — *player says: "You make the shrine's candles?"*
+
+> Every one. Sella blesses the flame; I make the part that burns. She'd tell you the flame is the miracle and the candle is just wax that agreed to help — and then she'd pay her bill on time, because the road-faith is very practical about its miracles. The pilgrims buy theirs here and carry them up unlit. Bottom of the way, top of the way. We're the same errand, her and me.
+
+**`wick_taper__trade`** — *player says: "Who buys candles in a city of lamps?"*
+
+> Lamps are the Crown's light — the streets, the stair, the promises. Candles are people's light. A sickbed, a late letter, a girl reading where her mother can't see the oil go. The Row buys beeswax to look rich. The Vale buys tallow to see. Everybody burns.
+
+**`wick_taper__blessed`** — *player says: "Sella gave me the flame's blessing."*
+
+> Then you've stood at both ends of my whole life's work in one day. Here — when you next buy a light, the dipping's free. Flame-carried is flame-carried; that's chandler's law, and I'm the only chandler, so it passes unanimously.
+
+**`wick_taper__bye`** — *player says: "Stay bright, Wick."*
+
+> Mind how you go. And if you're minded to go dark places — you know where I am.
+
+---
+
+## Cobbler Finn `cobbler_finn` — 4 dialogue lines, 3 quips and barks
+
+*He can tell where you've been by your heels and where you're going by your toes, and he considers both strictly your own business. The quietest man on the lane, married to the loudest awl.*
+
+**Who they are, and how to say it:** Cobbler; the quietest man on the lane, married to the loudest awl. Complete sentences, no hurry, small dry finish; reads roads off heels and futures off toes and never asks. Soft, even, almost under his breath.
+
+**Chatterbox casting:** `rpg_fantasy/male/edder` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `cobbler_finn__bark_1` — "This city is stairs. I will never be poor."
+- `cobbler_finn__bark_2` — "Mended while you wait. The wait is the point — sit down, put your feet up, they've earned it and I'm about to prove it."
+- `cobbler_finn__bark_3` — "Miners' boots Monday, pilgrims' sandals market day, one pair of court slippers a season that I charge like a small house."
+
+### Conversation: `finn_awl`
+
+**`finn_awl__hub`** — *opens the conversation; or follows straight on from "read"; or follows straight on from "stairs"*
+
+> Sit. Boots off. I can work and listen, and you look like you've done some miles.
+
+**`finn_awl__read`** — *player says: "What do a traveler's boots tell you?"*
+
+> Heels say the road: worn outside edge, that's the High Road's camber, you came up from the east. Toes say the future: scuffed square means stairs coming, and friend, in this city the toes are always right. What the boots don't say, I don't ask. A cobbler who asks questions dies poor and nosy.
+
+**`finn_awl__stairs`** — *player says: "Business good in a city of stairs?"*
+
+> Four gates, three grand flights, the mine stair, the lych stair, the Greenstair, and every step of all of them made of the hardest stone the guild could find. I resole the watch on contract, the miners at a rate Ronnaug and I fixed over one very long evening, and the pilgrims at whatever's in the shoe when it comes off. The mountain is my business partner. It never rests and neither do soles.
+
+**`finn_awl__bye`** — *player says: "Just passing the lane. Good day, Finn."*
+
+> Mind the fourth step past the bridge. Everyone's heels say the same thing about it.
+
+---
+
+## Pip `courier_pip` — 5 dialogue lines, 3 quips and barks
+
+*Twelve years old, knows every stair, shortcut, and unlatched wicket in the city, and is currently owed small favors by roughly half the population. The other half owe her large ones.*
+
+**Who they are, and how to say it:** Pip, twelve years old, the Vale's courier; knows every stair, shortcut and unlatched wicket and is owed favors by half the city. Breathless, numbered lists, one secret always almost told; never writes anything down. A KID's voice: light, quick, bright, talking while already walking away.
+
+**Chatterbox casting:** `rpg_fantasy/female/perky_tilly` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `courier_pip__bark_1` — "Flour to Hedda, soles to Finn, a sealed thing to the Rookery I officially don't know about. Busy morning. Walk with me or talk fast."
+- `courier_pip__bark_2` — "The stairs are only long if you take all of them. There's a rhythm. Nobody over twenty can hear it."
+- `courier_pip__bark_3` — "Ossian reads the Crown's word at the court at midday. I've usually told everyone by ten."
+
+### Conversation: `pip_errands`
+
+**`pip_errands__hub`** — *opens the conversation; or follows straight on from "ways"; or follows straight on from "work"*
+
+> Can't stop long — four deliveries and a rumor to place before midday. Talk while I catch my breath. You get one breath's worth.
+
+**`pip_errands__ways`** — *player says: "What's the fastest way around this city?"*
+
+> Depends where. Vale to castle: High Street, Silver Gate, stair, stair, stair — no shortcuts, the mountain doesn't do favors. BUT: mill lane beats the market crush at noon, the Delvers' walk beats the garland lane when the wash is out, and there's a fourth way up nobody uses because it goes through — actually, never mind that one. That one's mine.
+
+**`pip_errands__work`** — *player says: "Who do you run for?"*
+
+> Everyone. Brant's dockets, Finn's finished boots, Tove's sealed letters — she pays double for sealed, so I NEVER peek, that's the whole economy of it — and things to the Rookery I officially don't know about, and things from the castle I officially know even less about. A courier who knows nothing carries everything. First rule. Made it up myself.
+
+**`pip_errands__best`** — *player says: "What's the best thing you've ever carried?"*
+
+> The Queen's winter thanks to Osa's yard, once — sealed with the actual moon seal, heavier than a brick. And every spring I carry the first Greenstair carrot down to Hedda because Ivo says the first one's hers, always, and nobody will tell me why, and it's the only delivery in this city I'd do for free. Don't tell anyone I said the last part.
+
+**`pip_errands__bye`** — *player says: "Run fast, Pip."*
+
+> Right! If anyone asks, you never saw me resting.
+
+---
+
+## Fisher Brigga `fisher_brigga` — 5 dialogue lines, 3 quips and barks
+
+*Salt-and-weather hands and a stare that carries clean across the mere. She rows further out than anyone on the Kingshore, and trades what she learns of the far banks very carefully.*
+
+**Who they are, and how to say it:** Fisher of the deep water; rows further out than anyone on the Kingshore and waves at the far fires because the wave IS the treaty. Weathered, clipped, generous underneath; a stare that carries clean across the mere. Salt in the voice, no wasted words.
+
+**Chatterbox casting:** `rpg_fantasy/female/witherbard_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `fisher_brigga__bark_1` — "The mere gives. The mere is thanked. You skip the second part, the first part gets complicated."
+- `fisher_brigga__bark_2` — "There are fires on the far water some nights. Croaking, if the wind's right. We wave. They wave. That's the whole treaty and it's held longer than most."
+- `fisher_brigga__bark_3` — "Holm fishes the reeds and I fish the deep, and we've argued which is braver for thirty years. It's the reeds. Don't tell him."
+
+### Conversation: `brigga_far_shore`
+
+**`brigga_far_shore__hub`** — *opens the conversation; or follows straight on from "across"; or follows straight on from "spoken"*
+
+> You're standing where I gut the catch, so either buy some or talk quick. Both is also allowed.
+
+**`brigga_far_shore__browse`** — *player says: "What's on the slab today?"*
+
+> Mere trout, cold-water fat. Rods too, if you'd rather argue with the lake yourself. The lake usually wins, but it's a fair fight and the loser still eats.
+
+**`brigga_far_shore__across`** — *player says: "What's across the water?"*
+
+> Fires, some nights. Croaking, when the wind lies right. The fish-folk keep the waters past the far shore — always have, since before this quarter had a wall. My grandmother rowed wide of them, my mother rowed wide of them, I row wide of them. Wide is a distance everyone can live at.
+
+**`brigga_far_shore__spoken`** — *player says: "Ever spoken with them?"*
+
+> Words, no. Waves, yes — the arm kind. Once, a bad-ice winter, I found a keep-pool of mine broken open and a string of dried kelp weighted where the catch had been. Payment, see. Their arithmetic, their manners. We've never spoken and we've never once misunderstood each other. There are marriages that manage less.
+
+**`brigga_far_shore__bye`** — *player says: "Fair winds, Brigga."*
+
+> The mere gives. Say thank you, even if you only borrowed the view.
+
+---
+
+## Fisher Holm `fisher_holm` — 4 dialogue lines, 3 quips and barks
+
+*Brigga's brother, the reed-water man: patient as a heron and about as talkative. He mends nets the way other people pray.*
+
+**Who they are, and how to say it:** Brigga's brother, the reed-water man; patient as a heron and about as talkative. Mm. Sparse. Every sentence earns its place; corrects your standing posture before speaking. Low gravel, long pauses, mends nets the way other people pray.
+
+**Chatterbox casting:** `rpg_fantasy/male/ember_tadhg` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `fisher_holm__bark_1` — "Reeds feed you every day. Deep water feeds you once a week, spectacularly. I like eating every day."
+- `fisher_holm__bark_2` — "The river brings the mountain's water down cold and the mere warms it slow. The fish sit exactly where the two argue. So do I."
+- `fisher_holm__bark_3` — "My sister waves at the far fires. I mend the nets. Between us that's a foreign policy."
+
+### Conversation: `holm_reeds`
+
+**`holm_reeds__hub`** — *opens the conversation; or follows straight on from "reeds"; or follows straight on from "split"*
+
+> Mm. You'll scare the fish standing like that. Stand like this instead. Better. What?
+
+**`holm_reeds__reeds`** — *player says: "What's in the reeds worth catching?"*
+
+> Perch, eel when the river runs cold, and the fry the whole mere grows up from — which is why you fish the reeds gently or in ten years you fish nothing at all. The reeds are the mere's nursery. I'm less a fisherman there, more a doorman with a rod.
+
+**`holm_reeds__split`** — *player says: "You and Brigga split the water?"*
+
+> She takes the deep, I take the margins, and we've argued thirty years about which is the braver water. Deep water kills you quick if it decides to. Reed water lets you make your own mistakes slower. Between us we've never once gone hungry, and the argument keeps winters short.
+
+**`holm_reeds__bye`** — *player says: "Still waters, Holm."*
+
+> Mm. Gently past the reeds, if you walk that way.
+
+---
+
+## Gravekeeper Aldous `gravekeeper_aldous` — 5 dialogue lines, 3 quips and barks
+
+*Old enough to have buried the men who buried the men he was named for. He speaks slowly, sweeps carefully, and never, ever discusses the candles.*
+
+**Who they are, and how to say it:** Gravekeeper; old enough to have buried the men who buried the men he was named for. Slow, formal, trailing; extends courtesy to moss; never, ever discusses the candles, and the one stumble is the fresh candle below. Deep, unhurried, every sentence set down like a stone.
+
+**Chatterbox casting:** `rpg_fantasy/male/guldan_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `gravekeeper_aldous__bark_1` — "The stones were here before the kings. They'll be here after. I just keep the moss polite."
+- `gravekeeper_aldous__bark_2` — "Leave the candles be. That's the whole of the rule, and it's not mine to explain."
+- `gravekeeper_aldous__bark_3` — "The Watcher's name wore off before my grandfather's time. The face wore off before that. It still watches. Names are for the living anyway."
+
+### Conversation: `aldous_terrace`
+
+**`aldous_terrace__hub`** — *opens the conversation; or follows straight on from "stones"; or follows straight on from "candles"*
+
+> Mind the moss on the third step. It's older than either of us and I extend it the courtesy.
+
+**`aldous_terrace__stones`** — *player says: "Whose graves are these?"*
+
+> The old rows are the quarry foremen — the ones who worked this mountain before anyone thought to crown it. The Silver Line is five kings deep. The terrace is twenty rows deeper. Kings come up here on foot, you know. Only place in the city they do.
+
+**`aldous_terrace__candles`** — *player says: "Who lights the candles up there?"*
+
+> The rule is on the sign: leave the candles be. It is a good rule. It is not my rule, it was here when I was young, and the candles were lit then too. That is everything I have said on the subject in forty years, and you got the long version.
+
+**`aldous_terrace__below`** — *player says: "There's a candle like these in the Undercroft. Always fresh."*
+
+> ...Is there. A fresh one. At the memorial. Well. The stair down there is long, and my knees are what they are, so it isn't me — and it isn't nobody, is it. Hm. You'll excuse me. The moss wants looking at. Leave the candles be — up here AND down there, if you take advice.
+
+**`aldous_terrace__bye`** — *player says: "I'll let you work."*
+
+> Quiet roads. That's the blessing here. We're rather known for quiet.
+
+---
+
+## Guildmaster Soren `guildmaster_soren` — 5 dialogue lines, 3 quips and barks
+
+*The keeper of the sealed book. He carries the guild's whole weight the way the guild's pillars carry the mountain: without visible strain and without ever, ever shifting.*
+
+**Who they are, and how to say it:** Guildmaster of the delvers, keeper of the sealed book. Load-bearing sentences, nothing ornamental; speaks of stone as a colleague and carries the guild's weight without visible strain. Deep, deliberate, the hardest line in his charter delivered without flinching.
+
+**Chatterbox casting:** `rpg_fantasy/male/garrosh_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `guildmaster_soren__bark_1` — "The mountain is a member in good standing. Its dues are the ore. Ours are the shoring."
+- `guildmaster_soren__bark_2` — "The book on the lectern stays open to the same page. Guild law. You may read it. You may not touch it."
+- `guildmaster_soren__bark_3` — "We carved the Undercroft, we sealed the Undercroft, we opened the Undercroft. Each was right when we did it. That is the hardest sentence in our charter."
+
+### Conversation: `soren_charter`
+
+**`soren_charter__hub`** — *opens the conversation; or follows straight on from "guild"; or follows straight on from "book"*
+
+> The Masons' Guild. You're standing in the charter hall of the people who cut every terrace you climbed to get here. Ask what you came to ask.
+
+**`soren_charter__guild`** — *player says: "Tell me about the guild."*
+
+> Five generations of us cut this city out of the Silverspine. The terraces, the stair, the Undercroft below — our chisels, our shoring, our dead. The Crown owns what stands on the ground. We remember what the ground cost.
+
+**`soren_charter__book`** — *player says: "What's the book on the lectern?"*
+
+> The sealed book. Shift rolls from the winter we closed the Undercroft. It stays open to one page — the descent roll of the last crew. Guild law says the book stays open until the count matches. Thirty-one signatures going down. Thirty marks coming up. It has been open a long time.
+
+**`soren_charter__count`** — *player says: "Grettir sent word about his brother's crew."*
+
+> Then you know more than most, and I'll say the part I can. The missing man was Grettir's brother. The seal went up eleven days after the breach; my predecessor swung the mallet and never spoke of it again. If tools with his mark are coming out of the deep now — bring them here as well as to Grettir. The wall below holds a name-space empty. The guild would very much like to stop being wrong about the count.
+
+**`soren_charter__bye`** — *player says: "I'll leave you to the stone."*
+
+> Walk on stone. It's all ours, so walk gently.
+
+---
+
+## Hostelkeeper Maeve `hostelkeeper_maeve` — 5 dialogue lines, 3 quips and barks
+
+*She has watched ten thousand pilgrims arrive footsore and leave lighter, and she can tell within a minute of the door which ones the flame will actually help. She keeps that skill strictly to herself.*
+
+**Who they are, and how to say it:** Keeper of the pilgrim hostel; ten thousand footsore arrivals and she can tell at the door which ones the flame will help, and keeps that to herself. Soft-spoken hostel law: no questions in either direction. Leaves a roll out for Pip and denies it. Cool, kind, measured.
+
+**Chatterbox casting:** `rpg_fantasy/female/elf_sentinel_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `hostelkeeper_maeve__bark_1` — "A bed before the climb. The flame keeps the fee — I keep a roof over the arrangement."
+- `hostelkeeper_maeve__bark_2` — "The way is three shrines and a long stair. Some walk it in an hour. Some take three days. The flame doesn't count either way, so neither do I."
+- `hostelkeeper_maeve__bark_3` — "Whoever sleeps at the wayfarer's bench outside sleeps free. That's not charity, that's the first rule Sella's mother taught mine."
+
+### Conversation: `maeve_lanterns`
+
+**`maeve_lanterns__hub`** — *opens the conversation; or follows straight on from "way"; or follows straight on from "bench"*
+
+> Welcome to the Rest. Beds inside, bench outside, and no questions in either direction. Which will it be?
+
+**`maeve_lanterns__browse`** — *player says: "What does a bed cost?"*
+
+> Less than you'd think — the flame keeps the fee, which means Sella's shrine underwrites the shortfall and has since her mother's day. Board's simple and hot. Hedda's day-old bread at cost, and if you tell anyone it's day-old I'll deny the arrangement exists.
+
+**`maeve_lanterns__way`** — *player says: "Tell me about the way up."*
+
+> Out the door, turn up the way, and it's three shrines to the Silver Gate: the gate shrine, the mid shrine, the mill shrine. Stop at each, or don't — the stations are for pacing the heart, not the feet. Past the Silver Gate the city carries you: the avenue goes nowhere but up, and up ends at the mother-flame. You can't get lost. You can only get tired, and that's what I'm for.
+
+**`maeve_lanterns__bench`** — *player says: "Who takes the bench?"*
+
+> Whoever needs it. That's the first rule of this house and it isn't mine — Sella's mother set it with my mother, and the bench has never once been empty a whole winter. Lately it's mostly Pip, when her feet finally lose the argument with midnight. I leave a roll out. We don't discuss it. Twelve-year-olds have their dignity.
+
+**`maeve_lanterns__bye`** — *player says: "Soft nights, Maeve."*
+
+> If you climb today, eat first. The flame's patient. Stomachs aren't.
+
+---
+
+## Keeper Ronnaug `keeper_ronnaug` — 5 dialogue lines, 3 quips and barks
+
+*Half the chalk tallies on her wall are debts and half are shifts survived, and she guards the difference like a vault. Miners' keeper, miners' banker, miners' memory.*
+
+**Who they are, and how to say it:** Keeper of the Delvers' Rest; the wall of chalk tallies is her scripture, half debts and half shifts survived. Brisk, guarded warmth; speaks of debts and shifts in the same breath because they are the same thing. Miners' banker and miners' memory; no time wasted, no one forgotten.
+
+**Chatterbox casting:** `rpg_fantasy/female/flint_greta` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `keeper_ronnaug__bark_1` — "First pour free on a mithril day. Second pour costs double. The mine giveth."
+- `keeper_ronnaug__bark_2` — "Every pick in that rack outside has a name, and I know whose. You want to make trouble here, start by explaining yourself to the picks."
+- `keeper_ronnaug__bark_3` — "Grettir sits in the corner and doesn't drink much. Nobody charges him for the chair. That's not kindness, that's arithmetic — he's the reason half of them come home."
+
+### Conversation: `ronnaug_tallies`
+
+**`ronnaug_tallies__hub`** — *opens the conversation; or follows straight on from "tallies"; or follows straight on from "regulars"*
+
+> You're not a miner. Miners sit before they talk. Sit, then talk, and we'll make a miner of you yet.
+
+**`ronnaug_tallies__browse`** — *player says: "What's the board?"*
+
+> Stew, bread, beef when the drovers came through recent, and the beer the mine's wage was half invented to buy. First pour's free on a mithril day. Ask Koll what a mithril day is and watch his whole face change.
+
+**`ronnaug_tallies__tallies`** — *player says: "What are all the chalk marks?"*
+
+> Left wall is debts — beer against payday, standard arithmetic. Right wall is shifts come home safe: one stroke per crew per day, going back nine years. When a wall fills I whitewash the left one and I do NOT whitewash the right one. There's a third wall we don't chalk. The Rest remembers it anyway.
+
+**`ronnaug_tallies__regulars`** — *player says: "Tell me about your regulars."*
+
+> Petra takes the end seat and argues stone with anyone brave enough. Grettir has the corner chair from the last bell — doesn't drink much, doesn't talk much; the crews just like knowing where he is, and if you think about why for a minute you'll know everything about this quarter that matters. Una comes in pink as a boiled crab and outdrinks the lot.
+
+**`ronnaug_tallies__bye`** — *player says: "Keep the corner warm, Ronnaug."*
+
+> Walk safe. That's not a pleasantry here, it's the house rule.
+
+---
+
+## Miller Brant `miller_brant` — 5 dialogue lines, 3 quips and barks
+
+*Flour in his eyebrows and a ledger in his head. He can tell you the weight of a sack by the sound it makes hitting the floor, and he will, whether you asked or not.*
+
+**Who they are, and how to say it:** Miller of the Falls Vale; the wheel is the Vale's honesty and he wants everything weighed in the open. Measured, ledgered, one dry aside per exchange; judges a sack by the sound it lands with. Changes the subject when the two-month granary gap comes up. Plain, level, unhurried.
+
+**Chatterbox casting:** `rpg_fantasy/male/king_bob` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `miller_brant__bark_1` — "Amberford grows it, the road carries it, the river turns it, Hedda bakes it. I'm the part in the middle nobody writes songs about."
+- `miller_brant__bark_2` — "The wheel never stops. You stop the wheel, you explain yourself to the whole city at breakfast."
+- `miller_brant__bark_3` — "Weighed in at the yard, weighed out at the counter. The scale's the only honest conversation in this town."
+
+### Conversation: `brant_stones`
+
+**`brant_stones__hub`** — *opens the conversation; or follows straight on from "name"; or follows straight on from "grain"*
+
+> Mind the flour dust — it gets in everything, including conversations. The King's Mill. What do you need weighed?
+
+**`brant_stones__browse`** — *player says: "Sell me flour."*
+
+> Flour by the sack, wheat by the measure, and a few loaves Hedda trades me at a rate we renegotiate loudly every solstice. All weighed in front of you. The scale's bolted down and so am I.
+
+**`brant_stones__name`** — *player says: "Why 'the King's Mill'?"*
+
+> First Aeriex paid for the wheel out of the quarry purse — before the crown, mind, back when he was just the foreman who noticed everyone was hungry. The name stuck because it's true the way the Vale likes things true: the King's mill grinds everyone's grain, and the King queues.
+
+**`brant_stones__grain`** — *player says: "Where does the grain come from?"*
+
+> Amberford, all of it, up the High Road in the grain carts you'll have passed on the descent. The mountains grow silver, stone, and appetite. The granaries hold three months if the road closes. It has never closed longer than two. Nobody likes discussing the gap.
+
+**`brant_stones__bye`** — *player says: "Grind on, Brant."*
+
+> Steady grinding. That's both the trade and the advice.
+
+---
+
+## Lucan `monger_lucan` — 4 dialogue lines, 3 quips and barks
+
+*Produce stacked like masonry and priced like poetry. He and Petya have run facing stalls for a decade and their bickering is the market's second-best entertainment after the fish.*
+
+**Who they are, and how to say it:** Greengrocer of the wet market; produce stacked like masonry and priced like poetry. Dry, professorial patter that undersells how sharp it is; markets understood as geography with stalls; sells leaning carrots as the ones that decided. Unhurried, amused, a lecturer at a stall.
+
+**Chatterbox casting:** `rpg_fantasy/male/lorewake_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `monger_lucan__bark_1` — "Up the road from Amberford, down the stair from the Greenstair, and onto my boards before the dew's off. Geography does my marketing."
+- `monger_lucan__bark_2` — "Petya sells things that blink. I sell things that keep. We let the customers decide which is more trustworthy."
+- `monger_lucan__bark_3` — "A carrot from the Greenstair terraces has seen a better view than most people. You can taste the altitude. That'll be two coppers."
+
+### Conversation: `lucan_boards`
+
+**`lucan_boards__hub`** — *opens the conversation; or follows straight on from "supply"*
+
+> Ignore the shouting from across the square; it comes with the fish. Proper greens, road grain, Greenstair roots. Take your time.
+
+**`lucan_boards__browse`** — *player says: "What's good today?"*
+
+> Carrots off the Greenstair terraces — Ivo's own rows, picked leaning, which is how you know they'd decided. Berries from the hem woods, eggs and milk off the morning carts, and Brant's flour if you'd rather bake than buy Hedda's. You would not rather. Buy her bread. But the flour's here for the stubborn.
+
+**`lucan_boards__supply`** — *player says: "How does produce reach a mountain city?"*
+
+> Two roads and a stair. The High Road brings the fields of Amberford up in carts; the Greenstair brings the city's own terraces down in baskets; and the difference in miles is why the carrot costs less than the wheat. People think markets are about money. Markets are about geography with a stall over it.
+
+**`lucan_boards__bye`** — *player says: "Good trading, Lucan."*
+
+> Eat something that grew in the ground today. Balances out whatever Petya sells you.
+
+---
+
+## Petya `monger_petya` — 5 dialogue lines, 3 quips and barks
+
+*Fish-scale sequins to the elbow and a voice that carries to the Silver Gate. The wet market's morning bell in human form.*
+
+**Who they are, and how to say it:** Fishmonger of the wet market; the morning bell in human form, fish-scale sequins to the elbow. LOUD, endearments flying, italics audible; makes Lucan's produce famous by insulting it. Darling, love, sweetheart, all at carrying volume.
+
+**Chatterbox casting:** `rpg_fantasy/female/trade_nell` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `monger_petya__bark_1` — "Pool trout, mere perch, and the pale ones from below that taste better than they look, which is a low bar they clear easily!"
+- `monger_petya__bark_2` — "Fresh means it was swimming when Hedda lit her second oven. Ask it yourself, it barely knows it's dead."
+- `monger_petya__bark_3` — "The High City sends servants down for my fish and calls it slumming. Coin doesn't slum, darling."
+
+### Conversation: `petya_slab`
+
+**`petya_slab__hub`** — *opens the conversation; or follows straight on from "pale"; or follows straight on from "lucan"*
+
+> FRESH off the slab, darling, fresher than the morning and twice as cold! What's your appetite?
+
+**`petya_slab__browse`** — *player says: "Let's see the catch."*
+
+> Mere trout off Brigga's boat, pool trout out of the Roaring Pool itself — city fish, very cultured, practically pays for itself in conversation. Raw or cooked, your knife or mine.
+
+**`petya_slab__pale`** — *player says: "What are the pale ones?"*
+
+> Cave-fish, love. Blind as justice and sweeter than either of us expected. Varga's broker sends a keep-pool crate up the stair twice a week — the Undercroft's one export you can eat. The High City won't touch them because of the look. More fool the High City; flavor never needed eyes.
+
+**`petya_slab__lucan`** — *player says: "You and Lucan always this loud?"*
+
+> LOUD? This is the indoor voice, and no — Lucan and I have run facing stalls for ten years and the bickering is a public service. Watch: LUCAN! YOUR CARROTS ARE SAD TODAY! ...See how he holds one up like a trophy? That's the freshest carrot in the province now. You're welcome, carrot. You're welcome, city.
+
+**`petya_slab__bye`** — *player says: "Sell it all, Petya."*
+
+> Off you go, and tell the terraces the Vale eats better than they do — they KNOW, but tell them!
+
+---
+
+## Potter Signe `potter_signe` — 5 dialogue lines, 3 quips and barks
+
+*Clay to the elbows and perfectly content about it. She reads people the way she reads a thrown pot — by where the wobble starts.*
+
+**Who they are, and how to say it:** Potter; clay to the elbows and perfectly content about it. Calm, tactile, present tense; reads people the way she reads a thrown pot, by where the wobble starts, and offers one gentle unrude observation per talk. Warm and settled, the kiln breathing behind her.
+
+**Chatterbox casting:** `rpg_fantasy/female/garrif_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `potter_signe__bark_1` — "River clay, mountain fire, my hands. Everything in this shop is local except the patience."
+- `potter_signe__bark_2` — "The High City eats off silver and calls my work rustic. The High City's kitchens buy from me by the cartload and call it something else."
+- `potter_signe__bark_3` — "The mound out back breathes all night on a burn day. First time you hear it you'll think the mountain's alive. Second time you'll know it is."
+
+### Conversation: `signe_wheel`
+
+**`signe_wheel__hub`** — *opens the conversation; or follows straight on from "clay"; or follows straight on from "kiln"*
+
+> Careful where you lean — everything in here was soft once and remembers it. The Crockery. Browse with your eyes.
+
+**`signe_wheel__clay`** — *player says: "Where does the clay come from?"*
+
+> The river brings it down off the mountain and drops it at the bend by the Low Bridge, same as it's done since before anyone was here to dig. The mountain sends the Emberway its ore and me my clay, and only one of us has to blast for it. I've never once said so at the Delvers' Rest, out of manners.
+
+**`signe_wheel__kiln`** — *player says: "Tell me about the kiln outside."*
+
+> The mound. Clay-daubed, coil-built, breathes all night on a burn day like something sleeping rough between the shops. Wick keeps asking to bake wax in the warm side and I keep telling him wax and glaze are enemies. He knows. He just likes the argument. It's a small lane; you take the entertainment that offers.
+
+**`signe_wheel__wheel`** — *player says: "Wheel-work looks like a trance."*
+
+> It's the opposite. A trance is going somewhere else; the wheel is being exactly here or the pot tells on you. Every wobble is a moment you stopped paying attention, fired permanent. I can read a whole apprenticeship off one bowl. People are the same, but it's ruder to say.
+
+**`signe_wheel__bye`** — *player says: "Spin true, Signe."*
+
+> Mind the stack by the door. Soft once, remembers it.
+
+---
+
+## Ringmaster Cato `ringmaster_cato` — 5 dialogue lines, 3 quips and barks
+
+*Half his face is old scar and all of it is showman. He counts the crowd the way a banker counts coin, and the sand the way a farmer counts weather.*
+
+**Who they are, and how to say it:** Ringmaster of the Grand Ring; a pit fighter from past the Salt Road who outlived his own card and bought the book, half his face old scar and all of it showman. Hall voice on the call, counter-quiet off it; names a fighter's style before their name; one flourish per card and he saves it for the sand.
+
+**Chatterbox casting:** `rpg_fantasy/male/flynn_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `ringmaster_cato__bark_1` — "Seats are free. Standing on the sand costs."
+- `ringmaster_cato__bark_2` — "I fought nineteen cards on sand worse than this. The twentieth taught me to sell tickets instead."
+- `ringmaster_cato__bark_3` — "The crowd forgets a win in a week. A good LOSS they talk about all winter."
+
+### Conversation: `cato_ring`
+
+**`cato_ring__hub`** — *opens the conversation; or follows straight on from "rules"; or follows straight on from "fall"*
+
+> The Grand Ring. Best sand south of the mountain, and the only honest work I ever found. You here to watch, or to be watched?
+
+**`cato_ring__rules`** — *player says: "How does a card work?"*
+
+> Coin up front, purse if you stand. Three rounds through the far gate, each worse than the last. Bring friends if you like, the sand takes parties. When the gates come down, you belong to the crowd until it's done.
+
+**`cato_ring__fall`** — *player says: "What happens if I fall?"*
+
+> Kind hands carry you out, and your pack spills at the gate for whoever loves you enough to guard it. The fee stays with the house. Nobody has died on my sand who did not bring it in with them.
+
+**`cato_ring__board`** — *player says: "Show me the board."*
+
+> Have a look, then. Pay at the counter, stand on the sand, and listen for my voice. The crowd wants a show. Give them one and the purse is yours.
+
+**`cato_ring__bye`** — *player says: "Just passing."*
+
+> Watch a card first. It teaches faster than the sand does, and it costs nothing but the standing.
+
+---
+
+## Old Serle `ringmaster_serle` — 5 dialogue lines, 3 quips and barks
+
+*Toll War leather, kept oiled. He watches your footwork before your face, and his verdicts are kind the way cold water is kind.*
+
+**Who they are, and how to say it:** Old Serle of the sparring pen; Toll War leather, kept oiled. Watches your feet before your face; verdicts kind the way cold water is kind. Terse, gruff, three words where others use ten; every sentence a correction.
+
+**Chatterbox casting:** `rpg_fantasy/male/ilidan_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `ringmaster_serle__bark_1` — "Feet first. Everything else follows the feet."
+- `ringmaster_serle__bark_2` — "The pen has held worse than what you'll draw. Usually."
+- `ringmaster_serle__bark_3` — "Watching is learning. Paying is learning faster."
+
+### Conversation: `serle_ring`
+
+**`serle_ring__hub`** — *opens the conversation; or follows straight on from "what"; or follows straight on from "advice"*
+
+> The Ford Ring. Small sand, small fees, honest lessons. Speak up.
+
+**`serle_ring__what`** — *player says: "What is this place?"*
+
+> A pen with benches. You pay, the gate drops, something with teeth comes on until it stops. Good practice, small stakes. The big ring in the capital is for after you stop tripping.
+
+**`serle_ring__advice`** — *player says: "Any advice?"*
+
+> Lose small the first time. Watch the far gate, not the crowd. Keep your feet, boars win low. And bring a friend, the pen takes pairs.
+
+**`serle_ring__board`** — *player says: "Show me the board."*
+
+> Board's here. Pick a card you can walk away from.
+
+**`serle_ring__bye`** — *player says: "Another time."*
+
+> The benches are free. Watching is learning too.
+
+---
+
+## Sergeant Varn `sergeant_varn` — 4 dialogue lines, 3 quips and barks
+
+*First posting as a sergeant, newest wall in the city, and absolutely determined that neither fact will show. The Vale Gate's paperwork has never been so thorough.*
+
+**Who they are, and how to say it:** Sergeant of the Vale Gate; first posting, newest wall in the city, determined neither will show. Procedure with a pulse; logs everything including his own jokes; feeds the braziers like a sacrament since Kestrel's six words. Young, earnest, crisp, a shade too thorough.
+
+**Chatterbox casting:** `rpg_fantasy/male/bran_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `sergeant_varn__bark_1` — "The young wall, the young watch. We heard it. We repeat it ourselves now, which ruins it for everybody else."
+- `sergeant_varn__bark_2` — "Everything enters through this gate or the Silver Gate above, and the Silver Gate's watch has seniority, tenure, and opinions. We have the kettle and the actual traffic."
+- `sergeant_varn__bark_3` — "Marshal Kestrel walked the wall once, nodded twice, and said 'keep the braziers fed.' I have never fed anything so carefully in my life."
+
+### Conversation: `varn_gate`
+
+**`varn_gate__hub`** — *opens the conversation; or follows straight on from "duty"; or follows straight on from "wall"*
+
+> Vale Ward. State your business or state your lack of one — both get logged, only one gets follow-up questions.
+
+**`varn_gate__duty`** — *player says: "What does the Vale Ward actually do?"*
+
+> Everything below the Silver Gate: the Vale Gate and its traffic, the market's honest weights, the wagon yard's arguments, the shore, and the fair-day crowds that triple all of the above. The garrison above guards the Crown. We guard the part of the city that's awake at four in the morning. Ask Hedda whose lamp she trusts.
+
+**`varn_gate__wall`** — *player says: "How's the new wall holding?"*
+
+> The masons call it the youngest wall like that's an insult. Walls age well here — the Silver Gate was somebody's reckless new project once too. Give us a century and a siege and we'll have seniority of our own. Preferably just the century.
+
+**`varn_gate__bye`** — *player says: "Carry on, Sergeant."*
+
+> Logged. Mind the edge — the mountain doesn't check the ledger.
+
+---
+
+## Taverner Ulf `taverner_ulf` — 5 dialogue lines, 3 quips and barks
+
+*Built like a door and about as easy to move. He keeps the first taproom inside the Silver Gate, which means he has heard every version of every story the High Road tells.*
+
+**Who they are, and how to say it:** Keeper of the Last Climb, first taproom inside the Silver Gate; built like a door. Big, level, publican-plain; prices things by fairness and people by thirst; stopped saying goodbye to carters years ago. Low, unbothered, room-filling without shouting.
+
+**Chatterbox casting:** `rpg_fantasy/male/dwarf_g_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `taverner_ulf__bark_1` — "The Flagon costs a day's wage and calls it atmosphere. Down here the atmosphere is free and the beer is honest."
+- `taverner_ulf__bark_2` — "Every carter says the same thing at the door: 'never again, that road.' Every carter is back in a month. I stopped saying goodbye years ago."
+- `taverner_ulf__bark_3` — "The dice table settles more disputes than the moot. Quieter, too, most nights."
+
+### Conversation: `ulf_climb`
+
+**`ulf_climb__hub`** — *opens the conversation; or follows straight on from "name"; or follows straight on from "word"*
+
+> The Last Climb. Last drink before the stair, first after. Which are you?
+
+**`ulf_climb__browse`** — *player says: "What's on the board?"*
+
+> Stew that's seen real beef, bread that saw Hedda's oven this morning, and beer that costs what beer should. The Flagon charges for the view. My view is the dice table, and it's free.
+
+**`ulf_climb__name`** — *player says: "Why 'the Last Climb'?"*
+
+> Count the gates from here to the castle. Four, and a stair between each pair like the mountain's testing your commitment. A carter delivers to the Crown terrace, that's the better part of a morning, and every step of it he's thinking about my taproom. I didn't name the tavern. The stair named it. I just wrote it down.
+
+**`ulf_climb__word`** — *player says: "What's the word in the Vale?"*
+
+> Fair-day's coming and the Fairstead's getting its poles dressed. Torvald's got a three-cart backlog, which means the road's busy, which means good months. And Pip says the castle kitchens ordered double flour, which means a feast, which means the Crown's hosting somebody. Pip's twelve and runs the best news service in the city. I tip her in pastry.
+
+**`ulf_climb__bye`** — *player says: "Keep the taps honest, Ulf."*
+
+> Down the stair's easier. Mind how the bridge cobbles catch your feet after a pint.
+
+---
+
+## Carter `vale_carter` — 0 dialogue lines, 3 quips and barks
+
+*The High Road's last league is a descent, a crag corner, and a gate, in that order, and every carter at this fire has opinions about all three.*
+
+**Who they are, and how to say it:** Pooled carter voices at the yard fire; the descent, the crag corner and the gate, and opinions about all three. Road-weary, wry, never-again-see-you-next-month; grain up, ingots down. Plain trader gravel.
+
+**Chatterbox casting:** `rpg_fantasy/male/larry` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `vale_carter__bark_1` — "Never again, that road. See you next month."
+- `vale_carter__bark_2` — "Grain up, ingots down. The road only rhymes if you're paid both ways."
+- `vale_carter__bark_3` — "Torvald looked at my axle, sucked his teeth, and named a price. You don't argue with the teeth. The teeth have seen things."
+
+---
+
+## Pilgrim `vale_pilgrim` — 0 dialogue lines, 3 quips and barks
+
+*Road-dust to the knees and a candle wrapped in cloth against the wind. Every road lamp in the Dawnlands is lit from the fire at the top of this climb, and somebody has to carry the asking up.*
+
+**Who they are, and how to say it:** Pooled pilgrim voices; road-dust to the knees, a candle wrapped against the wind, counting the days the flame does not. Footsore patience, gentle, road-faith spoken plainly; tired in the legs and lit in the eyes.
+
+**Chatterbox casting:** `rpg_fantasy/male/belf_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `vale_pilgrim__bark_1` — "Three shrines and the long stair. The keeper at the hostel says the flame doesn't count the days. I'm counting them anyway."
+- `vale_pilgrim__bark_2` — "You carry the candle up unlit. That's the whole of it. The flame does the rest, or it doesn't, and either way you walked."
+- `vale_pilgrim__bark_3` — "The lamps on the road home will all be lit from the fire up there. I like knowing that. Makes the dark on the way back feel borrowed, not owed."
+
+---
+
+## Vale Watch `vale_watch` — 0 dialogue lines, 3 quips and barks
+
+*The youngest company on the city's rolls, walking the newest wall. The kit is newer, the boots are cheaper, and the pride is, if anything, worse.*
+
+**Who they are, and how to say it:** Pooled Vale Watch voices; the youngest company on the city's rolls walking the newest wall, cheaper boots and worse pride. Young, quick, a little chippy about the Silver Gate watch; orders flat, grievances fond.
+
+**Chatterbox casting:** `rpg_fantasy/male/george` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `vale_watch__bark_1` — "Mind the edge. Yes, down here too. It's the same mountain."
+- `vale_watch__bark_2` — "The Silver Gate watch calls us the puddle patrol. The puddle patrol logged forty carts yesterday. They logged nine."
+- `vale_watch__bark_3` — "Fair-days the green fills and the pickpockets come up from the road. Best day of the year for arrests. Worst day for lunch."
+
+---
+
+## Wainwright Torvald `wainwright_torvald` — 4 dialogue lines, 3 quips and barks
+
+*A spoke-shave in his belt and a cottage on Garland Row he built the doors for himself. Every axle that survives the High Road's last league does so because Torvald argued with it first.*
+
+**Who they are, and how to say it:** Wainwright; every axle that survives the High Road's last league does so because he argued with it first. Craftsman-literal, counts arguments per cart, splits logs to avoid conversation (his wife is right). Dry working-man delivery, sucks his teeth before a price.
+
+**Chatterbox casting:** `rpg_fantasy/male/jeff` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `wainwright_torvald__bark_1` — "The descent eats axles. The corner at the crag eats wheels. I eat well."
+- `wainwright_torvald__bark_2` — "A cart is forty arguments held together with iron bands. I win about thirty-eight of them per cart."
+- `wainwright_torvald__bark_3` — "Home is the first cottage on the Row, the one with the woodpile that never shrinks. My wife says I split logs to avoid conversation. My wife is right."
+
+### Conversation: `torvald_axles`
+
+**`torvald_axles__hub`** — *opens the conversation; or follows straight on from "road"; or follows straight on from "home"*
+
+> If it rolls, I mend it. If it doesn't roll, that's why you're here. Which cart's yours?
+
+**`torvald_axles__road`** — *player says: "What breaks most on the High Road?"*
+
+> The descent. That last league drops like a dropped thing, and carters ride the brake till the shoe glazes, then take the crag corner with glazed shoes. Axles I can save. Wheels, usually. Pride, no. I keep a shelf of the worst failures as a museum. The carters pretend to hate it. They bring visitors.
+
+**`torvald_axles__home`** — *player says: "You live on Garland Row?"*
+
+> First cottage on the Row, hedge and all. Built the door myself, hung it myself, planed it three times because the frame and I disagreed about what square meant. My wife keeps the garden through the wicket and I keep the woodpile, and between the two of us the house behaves. Mostly her doing. The woodpile just makes me look useful.
+
+**`torvald_axles__bye`** — *player says: "Roll easy, Torvald."*
+
+> Grease the hubs before the descent, not after. After is a story I get paid to hear.
+
+---
+
+# Kingsdelf — the delf that made the crown
+
+## Lorn `assayer_lorn` — 6 dialogue lines, 3 quips and barks
+
+*Fordgate-trained, scales-honest. Once passed a load he should have failed; a bridge cracked; he left. Nothing leaves the delf unweighed now.*
+
+**Who they are, and how to say it:** Assayer; passed a load once and a bridge cracked, and the word he uses is nobody. Dry, exact; weighs words like loads: 'that claim is light'. No adjectives he has not tested.
+
+**Chatterbox casting:** `rpg_fantasy/male/court_phil` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `assayer_lorn__bark_1` — "That claim is light. Bring me the rest of it."
+- `assayer_lorn__bark_2` — "The scales do not care who is waiting. That is what makes them scales."
+- `assayer_lorn__bark_3` — "I failed a load once by passing it. Never again."
+
+### Conversation: `lorn_assay`
+
+**`lorn_assay__greet`** — *opens the conversation*
+
+> Set it on the counter. Everything gets weighed before it gets believed.
+
+**`lorn_assay__hub`** — *follows straight on from "greet"; or follows straight on from "work"; or follows straight on from "worth"*
+
+> What is your business with the scales?
+
+**`lorn_assay__work`** — *player says: "What do you do here?"*
+
+> Every load out of the delf and every stone out of the burn crosses this counter. I stamp what is true. The stamp is why a Kingsdelf bar sells in Amberford without an argument. Towns run on bread. Trade runs on stamps.
+
+**`lorn_assay__worth`** — *player says: "What's ore worth these days?"*
+
+> Mithril holds steady, the Charter sees to that. Adamant is worth your sweat. Obsidian is worth other people's sweat, which is why it is priced like it. And starfall is worth whatever the buyer's eyes say before their mouth starts lying.
+
+**`lorn_assay__strict`** — *player says: "Why so strict about it?"*
+
+> In Amberford, years ago, a man in a hurry talked me into passing a load I doubted. A bridge cracked. Nobody died, and I hear the word nobody in my sleep, because it was luck, not judgment. The scales do not hurry. Neither do I. Not anymore.
+
+**`lorn_assay__bye`** — *player says: "Nothing to weigh."*
+
+> Honest weight to you.
+
+---
+
+## Slate `broker_slate` — 7 dialogue lines, 3 quips and barks
+
+*A gray, agreeable man with a corner stall and no history he will admit to. Answers most questions with prices. Slate is what was left after he dropped the other name on the road.*
+
+**Who they are, and how to say it:** Dealer in sundries, the Company’s counter, unstated. Flat, amiable, frictionless; answers questions with prices. "Asking costs." Nothing sticks to him, by design.
+
+**Chatterbox casting:** `rpg_fantasy/male/george` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `broker_slate__bark_1` — "Rope, tallow, keys. Other things by asking. Asking costs."
+- `broker_slate__bark_2` — "I buy odd lots. No questions is the house specialty."
+- `broker_slate__bark_3` — "Everything on this crate has a price. Most things off it, too."
+
+### Conversation: `slate_sundries`
+
+**`slate_sundries__greet`** — *opens the conversation*
+
+> Rope, tallow, keys. Other things by asking. Asking costs.
+
+**`slate_sundries__hub`** — *follows straight on from "greet"; or player says: "Noted."; or follows straight on from "cellar"*
+
+> Buying or browsing? Both are fine. One is finer.
+
+**`slate_sundries__wagons`** — *player says: "What kind of things fall off wagons?"*
+
+> Useful things. Unclaimed things. Things whose owners lost interest at exactly the moment I gained it. Commerce is a river, friend. I am just a man standing where it bends.
+
+**`slate_sundries__cellar`** — *player says: "This river have a cellar, like the other towns?"*
+
+> Asking costs, and that one costs double, so here is your coin's worth. No cellar. Forty one miles of road nobody watches is a better door than any door, and the crate you are looking at is the counter at the end of it. You knew that before you asked. I like that in a customer.
+
+**`slate_sundries__name`** — *player says: "Slate's an odd name."*
+
+> It is a good name. Writes easy, wipes clean. The one before it got heavy, so I set it down somewhere on the road and have never once gone back for it. You can buy most things at this crate. Not that.
+
+**`slate_sundries__browse`** — *player says: "What have you got?"*
+
+> Take a look. No questions is the house specialty, and it goes both ways.
+
+**`slate_sundries__bye`** — *player says: "Neither, today."*
+
+> You know where the crate is.
+
+---
+
+## Ruen `delfmaster_ruen` — 8 dialogue lines, 3 quips and barks
+
+*Sixty years of reading stone. Her grandmother's name is on the names-stone, eleventh row. She runs the town like a good shift: everyone counted out, everyone counted back.*
+
+**Who they are, and how to say it:** Delfmaster; sixty years reading stone, grandmother on the names-stone. Work orders, plainly given: 'count your crew before the burn, not after'. Taps stone twice before trusting it; unimpressed by Silverfall on principle.
+
+**Chatterbox casting:** `rpg_fantasy/female/orc_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `delfmaster_ruen__bark_1` — "Count your crew before the burn, not after."
+- `delfmaster_ruen__bark_2` — "The Crown never answers my letters. The mountain always answers my knock."
+- `delfmaster_ruen__bark_3` — "Grievances go in the shift book. Miracles too, if you have any."
+
+### Conversation: `q_the_crown_asks_ruen` *(plays when: quest:the_crown_asks:stage:the_lost_pages)*
+
+**`q_the_crown_asks_ruen__scene`** — *opens the conversation*
+
+> So. The Crown's surveyor lost her papers in the burn and sends a stranger to ask my leave. That is the most honest thing her office has done all year, and I suspect it was your idea.  Go and get them. Break the shift politely, if a shift can be broken politely. But you carry my words back with the pages: the next question the Crown has for this town knocks at the Delfhall first, or it walks home.
+
+### Conversation: `ruen_delfhall`
+
+**`ruen_delfhall__greet`** — *opens the conversation*
+
+> The Delfhall. Grievances go in the shift book, wonders go in the shift book, everything goes in the shift book. What have you got?
+
+**`ruen_delfhall__hub`** — *follows straight on from "greet"; or follows straight on from "runs"; or follows straight on from "digs"*
+
+> Ask it plain.
+
+**`ruen_delfhall__runs`** — *player says: "Who runs this town?"*
+
+> I do, the way a foreman runs a shift. Not because I am grand. Because I count. Everyone who goes out gets counted out, and everyone gets counted back, and the day that stops being true, you may have my chair.
+
+**`ruen_delfhall__digs`** — *player says: "What do you dig here?"*
+
+> Mithril, here inside the walls, safe as digging ever gets. Adamant for those with arms for it. The obsidian and the starfall are out in the burn, and the burn sets its own wages. Talk to Lorn at the assay before you go believing anything shiny.
+
+**`ruen_delfhall__crown`** — *player says: "Does the Crown know about this place?"*
+
+> I have written to Silverfall three times. Three polite silences came back. And yet somebody up there reads Hedda's maps, doesn't he. The Crown knows us the way you know a debt you would rather not name.
+
+**`ruen_delfhall__read`** — *player says: "The Crown read the survey. I carried it."*
+
+> A letter came. Four lines, the King's own hand, and the first line was an apology for the other three. The delf is on the ledger again. I tapped the stone twice before I believed it, and it held, so I believe it. Do not tell Venn I said anything kind about Silverfall. The rate would move.
+
+**`ruen_delfhall__bye`** — *player says: "Nothing today."*
+
+> Mind the horn. It is not a suggestion.
+
+---
+
+## Veyle `enchanter_veyle` — 10 dialogue lines, 3 quips and barks
+
+*Old blood, whole: moonpale, upswept ears, an age nobody asks about twice. The Arcanum sent her away for a question. The seal on the Stair is older craft, and she means to read it.*
+
+**Who they are, and how to say it:** Enchanter of the Focus House; old blood, whole, exiled from the Arcanum for one question. Soft, precise, drifts between centuries mid-sentence and returns without apology. Never frightened, which is itself unsettling.
+
+**Chatterbox casting:** `rpg_fantasy/female/faerin_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `enchanter_veyle__bark_1` — "The seal on the Stair is older work than mine. That is not a small thing to say."
+- `enchanter_veyle__bark_2` — "Solvei writes to me every month. The letters are very polite. So is my silence."
+- `enchanter_veyle__bark_3` — "My people built the old realm's lights. I am only finishing the shift."
+
+### Conversation: `q_the_count_below_veyle` *(plays when: quest:the_count_below:stage:the_order_of_march)*
+
+**`q_the_count_below_veyle__scene`** — *opens the conversation*
+
+> Annik sent you. Good. She has been circling that question since she was nine, and I have been waiting for her to send somebody braver than my silence...  The Court keeps the old musters. Every dead soldier holds his place in the order of march, and they have held ONE place open for a hundred and fifty years. Walk the processions after dark. Count the gap. Then look at what the foremost one carries, and come back when your hands have stopped shaking.
+
+### Conversation: `q_what_the_net_held_veyle` *(plays when: quest:what_the_net_held:stage:the_answer)*
+
+**`q_what_the_net_held_veyle__scene`** — *opens the conversation*
+
+> Heavy. Patient. Went down slow, like it was deciding...  Yes. There is a word for that, in the old tongue, and I will not translate it, and my not translating it is the kindest sentence I have said this year. Tell Denna this instead: bring a stormpearl to her quay. My people used them to listen to deep water. Her line may hear more than most, and what she does with the listening is hers.
+
+### Conversation: `veyle_focus`
+
+**`veyle_focus__greet`** — *opens the conversation*
+
+> Come in. Shut the door softly, the table is listening.
+
+**`veyle_focus__hub`** — *follows straight on from "greet"; or follows straight on from "others"; or follows straight on from "years"*
+
+> You have questions. The young always do. It is one of your better habits.
+
+**`veyle_focus__folk`** — *player says: "What are you? If that's polite to ask."*
+
+> It is polite enough. I am of the old folk, the people who raised the realm before the roads. Long ears, long years, long memories. Most of us thinned into your bloodlines ages ago... you have met Annik. A few of us stayed whole. I am a few of a few.
+
+**`veyle_focus__others`** — *player says: "Are there others like you?"*
+
+> Scattered. Quiet. The old folk learned quiet the year the mountain woke, and we are excellent students. Look for moonpale skin and ears that remember. The coast kept some. The crown of Silverfall keeps more than it admits, in its own line, though I did not say so.
+
+**`veyle_focus__years`** — *player says: "Long years? How long?"*
+
+> I watched the Processional built, child. I watched it swept, and I watched it emptied... Forgive me. The number would only frighten one of us, and it is not me.
+
+**`veyle_focus__house`** — *player says: "What is the Focus House?"*
+
+> The second enchanting table in the Dawnlands, and the older art it studies. The seal on the Stair was made with craft the Arcanum has never held. My people lit the old realm's lamps. I am here to finish reading what we left.
+
+**`veyle_focus__arcanum`** — *player says: "Why did the Arcanum send you away?"*
+
+> I asked what their first focus was made from. Solvei, who keeps their table now, writes to me monthly. Polite letters. The answer to my question is not in any of them, which tells me she does not know either... or knows exactly.
+
+**`veyle_focus__browse`** — *player says: "Can I see your wares?"*
+
+> Folios and workings. Handle the dust with respect, it is older than your language.
+
+---
+
+## Venn `factor_venn` — 6 dialogue lines, 3 quips and barks
+
+*Amberford-born, trained under old Cormund at the ford bank. Counts everything in threes, out loud, and has never once been short.*
+
+**Who they are, and how to say it:** Factor of the Charter; trained under Cormund at the ford bank. Counts in threes, out loud; precise, money-worded, warm underneath. "Weighed, stamped, banked." The ledger is the family now.
+
+**Chatterbox casting:** `rpg_fantasy/male/telemancer_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `factor_venn__bark_1` — "One, two, three. Weighed, stamped, banked. That is the whole religion."
+- `factor_venn__bark_2` — "The Charter believes in Kingsdelf. I have the paper that says so."
+- `factor_venn__bark_3` — "Ore pays for grain. Grain feeds the miners. Miners dig the ore. Round it goes."
+
+### Conversation: `venn_counting`
+
+**`venn_counting__greet`** — *opens the conversation*
+
+> The Countinghouse of the Amberford Charter, Kingsdelf seat. One, two, three: weighed, stamped, banked. How may the Charter serve?
+
+**`venn_counting__hub`** — *follows straight on from "greet"; or follows straight on from "bank"; or follows straight on from "why"*
+
+> Speak. The ledger waits.
+
+**`venn_counting__bank`** — *player says: "How does the bank work?"*
+
+> You put your goods in the chest, and the chest remembers you, and any Charter chest anywhere will give them back. That is the whole miracle, and it took better men than me a hundred years to make it boring.
+
+**`venn_counting__why`** — *player says: "Why did the Charter come out here?"*
+
+> Ore. Glass. A road nobody else wanted. The Charter believes in exactly one thing, friend, and that thing rolls downhill in a wagon and jingles.
+
+**`venn_counting__learn`** — *player says: "Where did you learn the trade?"*
+
+> Under old Cormund, at the ford bank in Amberford. He taught me that a ledger is a promise book. You do not break promises. You carry them, in threes, where you cannot drop them.
+
+**`venn_counting__bye`** — *player says: "That's all."*
+
+> One, two, three. Safe road.
+
+---
+
+## Denna `fisher_denna` — 14 dialogue lines, 3 quips and barks
+
+*Old Peld's kin, with the pointed ears her line never lost and never explains. She fishes the drowned workings and never turns her back to the water. Once the net held something else.*
+
+**Who they are, and how to say it:** Fisher of the quay, the coast's old-blood ears. Low weather-talk that stops dead at one subject; never turns her back to the water. Calm on top, and the calm is load-bearing.
+
+**Chatterbox casting:** `rpg_fantasy/female/hush_morrow` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `fisher_denna__bark_1` — "The pale fish bite at dusk. Other things bite later."
+- `fisher_denna__bark_2` — "My ears? My mother's mother's mothers. The coast keeps what it likes."
+- `fisher_denna__bark_3` — "The mere holds the old galleries. The old galleries hold their breath."
+
+### Conversation: `denna_quay`
+
+**`denna_quay__greet`** — *opens the conversation*
+
+> Mind the nets. And stand where I can see the water past you, if you would.
+
+**`denna_quay__hub`** — *follows straight on from "greet"; or follows straight on from "catch"; or follows straight on from "ears"*
+
+> Ask, then. The fish are patient. Mostly.
+
+**`denna_quay__catch`** — *player says: "What do you catch out there?"*
+
+> Pale fish, blind as stones and sweeter than they have any right to be. They school against the drowned galleries, where the old workings flooded. Down there it is all doorways, traveler. Doorways and stairs, under sixty feet of gray water.
+
+**`denna_quay__ears`** — *player says: "May I ask about your ears?"*
+
+> You may, you asked kindly. My mother's line, back along the coast, back and back to the old folk. The coast kept the ears and lost the rest, the years, the moonpale, all of it. Veyle at the Focus House says I am a word the old language left behind. She means it friendly. I think.
+
+**`denna_quay__water`** — *player says: "Why never turn your back to it?"*
+
+> Because once my net came up heavy, and what was in it was not a fish, and I threw it back before my eyes finished arguing with my hands. It went down slow. Like it was deciding. So no, I do not turn my back to the water, and no, that is all you get.
+
+**`denna_quay__named`** — *player says: "The word has its answer now."*
+
+> It does. Veyle wrote it in the old hand and did not say it twice, and I did not ask for it said once. The pearl sits in the Focus House now, being studied at, and I still do not turn my back to the water. Some things you keep even after they have answers. Especially after.
+
+**`denna_quay__browse`** — *player says: "What's for sale?"*
+
+> The pale catch, smoked or fresh, and the gear to try your own luck.
+
+### Conversation: `denna_the_listening` *(plays when: quest:what_the_song_holds:stage:the_word)*
+
+**`denna_the_listening__slow`** — *opens the conversation*
+
+> The Loresinger wants to know what the deep water sings. It sings slow, traveler. I have heard it through the hull on the still nights. No words. One note, held longer than breath allows, coming up through sixty feet of gray water like it has all the time that ever was.
+
+**`denna_the_listening__pearl`** — *follows straight on from "slow"*
+
+> The storms leave pearls on the far shelf when they are done shouting. One of those holds the note, if her song is owed one. Bring her a stormpearl, and tell her the coast keeps its half of the listening. She will know what that means. I half do, and the half keeps me company.
+
+**`denna_the_listening__back`** — *follows straight on from "pearl"*
+
+> And mind the shelf water. I fish it with my back to nothing, and I am the brave one on this quay.
+
+### Conversation: `q_what_the_net_held_offer` *(plays when: quest:what_the_net_held:available)*
+
+**`q_what_the_net_held_offer__hub`** — *opens the conversation*
+
+> I have decided something, and I need a person for it who is not from the quay.  Years ago my net came up holding a thing I threw back. I do not want the story told. I want a NAME for it, so it stops being every shape at once when I close my eyes. Take my words to Veyle. Exactly these words: heavy, patient, and it went down slow, like it was deciding.
+
+**`q_what_the_net_held_offer__why`** — *player says: "Why not ask her yourself?"*
+
+> Because she will look at my ears and my mother's line and tell me the truth, all of it, and I only want the front of the truth. You she will give the short version. Go on.
+
+**`q_what_the_net_held_offer__go`** — *player says: "I'll carry it exactly."*
+
+> Exactly those words, mind. The mere listens.
+
+### Conversation: `q_what_the_net_held_turnin` *(plays when: quest:what_the_net_held:ready)*
+
+**`q_what_the_net_held_turnin__paid`** — *opens the conversation*
+
+> A stormpearl. And a word she would not say. That is Veyle all over, kind sideways.  You know what? I am keeping the pearl in my pocket, not my ear. Some days the not-knowing is the floor you stand on. But it has a name now, somewhere, in somebody's mouth, and tonight I will turn my back to the water for one whole minute. Thank you.
+
+---
+
+## Mirena `glasswright_mirena` — 6 dialogue lines, 3 quips and barks
+
+*Salt-coast born, where sand meets fire. Her old master called glasswork a small craft. Her lenses light six towns. She holds everything up to the light first.*
+
+**Who they are, and how to say it:** Glasswright, the town’s one spice-carrier. Quick, bright, holds everything up to the light; earns one aphorism per talk and lands it. Salt-coast vowels, kiln-warm delivery.
+
+**Chatterbox casting:** `rpg_fantasy/female/spark_wren` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `glasswright_mirena__bark_1` — "Hold it to the light. Everything true has a light it agrees with."
+- `glasswright_mirena__bark_2` — "Sand, fire, and patience. Two of those can be bought."
+- `glasswright_mirena__bark_3` — "The kilns do not cool. Neither do I, ask anyone."
+
+### Conversation: `mirena_glass`
+
+**`mirena_glass__greet`** — *opens the conversation*
+
+> Careful where you stand, the floor has opinions. Welcome to the Glasshouse.
+
+**`mirena_glass__hub`** — *follows straight on from "greet"; or follows straight on from "make"; or follows straight on from "here"*
+
+> Ask quick, the kilns are jealous.
+
+**`mirena_glass__make`** — *player says: "What do you make here?"*
+
+> Lamp lenses for six towns, focus glass for the enchanters, and once a year something for nobody but me. Starfall glass takes light the way a good listener takes bad news: all of it, without flinching.
+
+**`mirena_glass__here`** — *player says: "How did a glassmaker end up out here?"*
+
+> I grew up on the salt coast, where sand is free and fire is a family argument. My old master called glass a small craft. Now his town reads by my lenses at night. I did not come here to prove him wrong. That was extra.
+
+**`mirena_glass__browse`** — *player says: "What are you selling?"*
+
+> The burn's stones, cut and clean. Hold them to the light before you pay, I insist on it.
+
+**`mirena_glass__bye`** — *player says: "Back to it, then."*
+
+> Go on. Glass waits for no one, and neither do I.
+
+---
+
+## Brekka `innkeep_brekka` — 6 dialogue lines, 3 quips and barks
+
+*Fell-country born. Her day-book records who went out to the burn and who came home. Her brother went out unrecorded once, up north. The book is her answer.*
+
+**Who they are, and how to say it:** Keeper of the Foreman’s Rest; fell-country born, a brother who went out unrecorded. Brisk host warmth; no second cup till you sign the book. "Names out, names in."
+
+**Chatterbox casting:** `rpg_fantasy/female/sunny_posy` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `innkeep_brekka__bark_1` — "Sign the book before you drink. Going out or coming home, sign it."
+- `innkeep_brekka__bark_2` — "Soup is what the road brought us. Some days that is a long story."
+- `innkeep_brekka__bark_3` — "Every name in my book came home. I mean to keep it that way."
+
+### Conversation: `brekka_rest`
+
+**`brekka_rest__greet`** — *opens the conversation*
+
+> The Foreman's Rest. Sign the book first. Going out or coming home, everyone signs.
+
+**`brekka_rest__hub`** — *follows straight on from "greet"; or follows straight on from "book"; or follows straight on from "north"*
+
+> Now then. Food, a bed, or talk?
+
+**`brekka_rest__book`** — *player says: "What's the book for?"*
+
+> Names out, names in. When the burn keeps somebody past dark, I take the book to the wardroom and the watch goes looking with a page instead of a guess. Every name in my book has come home so far. I mean to keep the record clean.
+
+**`brekka_rest__north`** — *player says: "You're not from here, are you?"*
+
+> Fell country, past the treeline, where Hartfell keeps its warm water. I walked south with drover's pay and a brother who was going to follow in the spring. Springs are liars up north. Sign the book, traveler. That is all I will say about why.
+
+**`brekka_rest__browse`** — *player says: "What's good today?"*
+
+> Stew that has met real beef, bread that is younger than you, and the day's pour.
+
+**`brekka_rest__bye`** — *player says: "Just passing."*
+
+> Door bars at the horn. Be on the right side of it.
+
+---
+
+## A Delver `kingsdelf_delver` — 4 dialogue lines, 3 quips and barks
+
+*Ash on the boots, chalk on the hands, a tally string with a knot for every trip below. Paid by the basket. The baskets are heavy.*
+
+**Who they are, and how to say it:** Pooled delver voices: ash on the boots, a knot for every trip down and every trip up. Tally-string practical, basket-tired, dry about the deep.
+
+**Chatterbox casting:** `rpg_fantasy/male/larry` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `kingsdelf_delver__bark_1` — "Mithril day. You can smell it, sweet, like rain on a griddle."
+- `kingsdelf_delver__bark_2` — "Knot on the string going down, knot coming up. Even knots is a good life."
+- `kingsdelf_delver__bark_3` — "The Hewers never stopped working. Some mornings I know just how they feel."
+
+### Conversation: `delver_shift`
+
+**`delver_shift__hub`** — *opens the conversation; or follows straight on from "work"; or follows straight on from "deep"*
+
+> Day shift. Off it, technically, so make it short or make it a drink.
+
+**`delver_shift__work`** — *player says: "What's the work like?"*
+
+> Mithril by lamplight, tally-string on the wrist, a knot going down and a knot coming up. When the strings match, the horn stays quiet. You learn to love a quiet horn the way farmers love dull weather.
+
+**`delver_shift__deep`** — *player says: "How deep do the workings go?"*
+
+> Deeper than anybody is paid to think about. The night crews say the Hewers never stopped working, that you can put your ear to the old faces and hear it. I say stone settles and echoes lie. I also say I do not work nights, and I have never once asked to.
+
+**`delver_shift__off`** — *player says: "Rest well."*
+
+> Knot going down, knot coming up. That is the whole trade, and it is enough.
+
+---
+
+## A Glasshand `kingsdelf_glasshand` — 4 dialogue lines, 3 quips and barks
+
+*Forearms scarred smooth by old splashes, eyes narrowed by kiln light. The kilns never cool, so the glasshands work turn and turn about, and sleep like the dead.*
+
+**Who they are, and how to say it:** Pooled glasshand voices: kiln-squint careful, forearms scarred smooth. "You never look straight into the kiln. You learn that once." Heat-tired, patient, exact.
+
+**Chatterbox casting:** `rpg_fantasy/male/bran_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `kingsdelf_glasshand__bark_1` — "Mind the carry poles. Hot glass forgives nothing and neither does Mirena."
+- `kingsdelf_glasshand__bark_2` — "You never look straight into the kiln. You learn that once."
+- `kingsdelf_glasshand__bark_3` — "Turn and turn about. The fire sleeps when I do, which is never."
+
+### Conversation: `glasshand_kilns`
+
+**`glasshand_kilns__hub`** — *opens the conversation; or follows straight on from "glass"; or follows straight on from "rule"*
+
+> Kilns. Stand back from the eye, your face is not rated for it.
+
+**`glasshand_kilns__glass`** — *player says: "What comes out of these kilns?"*
+
+> Brand glass. Starfall sand off the burn, melted twice, poured once. Mirena takes the best of it and makes the town rich, and we take turn-and-turn-about on the hot floor, because nobody's eyebrows survive a double.
+
+**`glasshand_kilns__rule`** — *player says: "What's the first rule up here?"*
+
+> You never look straight into the kiln. You learn that once, and after that you teach it, and that is the whole guild examination up here. Everything else is timing and not being brave. Brave is for people who work above ground.
+
+**`glasshand_kilns__off`** — *player says: "Stay unsinged."*
+
+> Mind the carry poles. They do not care who you are.
+
+---
+
+## The Delfwatch `kingsdelf_watch` — 5 dialogue lines, 3 quips and barks
+
+*A miner or a glasshand in a Charter coat, keeping the rota. The orders are short: the horn means in, the bar means barred, nobody walks the burn alone.*
+
+**Who they are, and how to say it:** Pooled Delfwatch voices: a miner or glasshand in a Charter coat keeping the rota. Rota-flat, orders short. "The horn means in. The Overband does not knock first."
+
+**Chatterbox casting:** `rpg_fantasy/male/solder_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `kingsdelf_watch__bark_1` — "The horn means in. The Overband does not knock first."
+- `kingsdelf_watch__bark_2` — "Walk the burn in company or not at all."
+- `kingsdelf_watch__bark_3` — "Charter pays my wage. The wall earns it."
+
+### Conversation: `delfwatch_wall`
+
+**`delfwatch_wall__hub`** — *opens the conversation; or follows straight on from "wall"; or follows straight on from "overband"*
+
+> Delfwatch. Say it walking, my eyes stay on the ash.
+
+**`delfwatch_wall__wall`** — *player says: "What do you watch for?"*
+
+> The burn, mostly. Ember-light where ember-light should not be, and the count. This wall exists so the delf can be counted out and counted back, and I was a delver before the Charter put a coat on me, so I count like my shift depends on it. It did, once.
+
+**`delfwatch_wall__overband`** — *player says: "What's the Overband?"*
+
+> The high workings past the wall, where the good stone lives at Overband prices. Nothing out there knocks first. If you go, tell the wicket your road, so the horn does not have to guess whose name it is blowing for.
+
+**`delfwatch_wall__mark`** — *player says: "Anything out there the wall can't reach?"*
+
+> Since you offer. Something has set up in the ash that the rota cannot leave the wall to answer, and it is not on any shift book. There is your mark. Counted out. Be counted back.
+
+**`delfwatch_wall__off`** — *player says: "Steady watch."*
+
+> The horn means in. The Overband does not knock first.
+
+---
+
+## Soren `lampwright_soren` — 10 dialogue lines, 3 quips and barks
+
+*Carried the daughter-flame south in a pilgrim lamp, on foot, down the whole unlit road. Trims every wick he passes. He is building lamps for that road, one by one.*
+
+**Who they are, and how to say it:** Lampwright of the Flamehouse; carried the daughter-flame south on foot down the whole unlit road. Patient road-faith, mile-counted. "The lamp holds." Quiet certainty, never sermonizing.
+
+**Chatterbox casting:** `rpg_fantasy/male/narrator_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `lampwright_soren__bark_1` — "The flame came south in my two hands. It can go up the road the same way."
+- `lampwright_soren__bark_2` — "A lamp is a promise you have to keep every night."
+- `lampwright_soren__bark_3` — "Forty one dark miles. I counted them with my feet. I mean to uncount them."
+
+### Conversation: `q_light_the_old_road_offer` *(plays when: quest:light_the_old_road:available)*
+
+**`q_light_the_old_road_offer__hub`** — *opens the conversation*
+
+> You want to do something that matters and looks like nothing? Lamps. Fat for tallow, an emberstone for the heart. I build the lamp, I stand it one dark mile up the road, and the argument gets one mile shorter.
+
+**`q_light_the_old_road_offer__order`** — *player says: "Does the order know?"*
+
+> Liv watches me carry every one out the gate, and writes it down, and says nothing. That is how a no dies, friend. Slowly, in front of witnesses.
+
+**`q_light_the_old_road_offer__go`** — *player says: "I'll bring what you need."*
+
+> The road thanks you in the only way it can. It gets shorter after dark.
+
+### Conversation: `q_light_the_old_road_turnin` *(plays when: quest:light_the_old_road:ready)*
+
+**`q_light_the_old_road_turnin__paid`** — *opens the conversation*
+
+> Good fat, good stone. This one goes up at the third milestone, where the dark is oldest. Forty one dark miles when I walked it. Fewer now. Come back when your pack is heavy again.
+
+### Conversation: `soren_flame`
+
+**`soren_flame__greet`** — *opens the conversation*
+
+> Mind the flame there. She came a long way to be here, and so, I suppose, did you.
+
+**`soren_flame__hub`** — *follows straight on from "greet"; or follows straight on from "flame"; or follows straight on from "road"*
+
+> Warm yourself. Ask what you like.
+
+**`soren_flame__flame`** — *player says: "What's special about this fire?"*
+
+> She is a daughter of the mother-flame, from the Silver Shrine on the mountain. Sella, the shrinekeeper up there, lit my pilgrim lamp with her own taper, and I carried it south on foot, the whole unlit way. Forty one dark miles. The lamp never went out. I checked at every step.
+
+**`soren_flame__road`** — *player says: "Why is the Old Road dark?"*
+
+> Because the Waykeepers will not light a road they cannot patrol, and they cannot patrol this far. Liv will tell you it is doctrine, and she is right. I am building lamps anyway. Doctrine is how the faith protects the flame. Lamps are what the flame is for.
+
+**`soren_flame__browse`** — *player says: "What do you sell?"*
+
+> Oil, coal, and the stones that hold a light steady. The lamps themselves are not for sale. They are for the road.
+
+**`soren_flame__bye`** — *player says: "Keep the light, then."*
+
+> The lamp holds. Walk safe.
+
+---
+
+## Cass `outfitter_cass` — 6 dialogue lines, 3 quips and barks
+
+*Salt-coast born, sailed one season, walked inland. Sizes you with one look and says the number out loud. He sold a thin coat once. The burn taught them both.*
+
+**Who they are, and how to say it:** Outfitter; sold a thin coat once and the burn taught them both. Blunt, kind underneath; sizes you on sight and says the number out loud. "Wool first, pride second."
+
+**Chatterbox casting:** `rpg_fantasy/male/volf_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `outfitter_cass__bark_1` — "You are a forty-two across the shoulders. Do not argue with a tailor."
+- `outfitter_cass__bark_2` — "The burn does not care what you paid. It cares what you wore."
+- `outfitter_cass__bark_3` — "Wool first, pride second. Pride does not hold warmth."
+
+### Conversation: `cass_outfitting`
+
+**`cass_outfitting__greet`** — *opens the conversation*
+
+> Forty two across the shoulders, boots a size hopeful. Come in anyway.
+
+**`cass_outfitting__hub`** — *follows straight on from "greet"; or follows straight on from "eye"; or follows straight on from "advice"*
+
+> What do you need against the weather?
+
+**`cass_outfitting__eye`** — *player says: "How do you size people so fast?"*
+
+> One season at sea. On a boat you learn to read a body in one look, because the sea reads it too, and she grades harshly. The sea and I agreed to disagree, so now I use the eye for coats. Coats argue less.
+
+**`cass_outfitting__advice`** — *player says: "Any advice for the burn?"*
+
+> Wool first, pride second. I sold a thin coat once to a man in a hurry, and I spent a bad week wondering. He came back frostbit and polite about it, which was worse than shouting. The burn does not care what you paid. It cares what you wore.
+
+**`cass_outfitting__browse`** — *player says: "Show me your stock."*
+
+> Leathers that fit, capes that mean it. Do not argue with the number, forty two.
+
+**`cass_outfitting__bye`** — *player says: "Just looking."*
+
+> Layers, traveler. Layers.
+
+---
+
+## Etta `provisioner_etta` — 6 dialogue lines, 3 quips and barks
+
+*Fen-born, from the crofts on the First Road waist. Everything on her shelves walked here up the unlit road, and the prices say so. She apologizes for them before you ask.*
+
+**Who they are, and how to say it:** Provisioner; a full shelf in a town that grows nothing, and the villain of every hard winter’s prices. Soft, quick, generous; apologizes for prices unprompted; eats last and sounds like it.
+
+**Chatterbox casting:** `rpg_fantasy/female/garrif_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `provisioner_etta__bark_1` — "The prices are the road's fault. I only write them down."
+- `provisioner_etta__bark_2` — "Grain from the ford, salt from the coast, apples when the carts are brave."
+- `provisioner_etta__bark_3` — "Nobody leaves my counter hungry. Broke, sometimes. Hungry, no."
+
+### Conversation: `etta_goods`
+
+**`etta_goods__greet`** — *opens the conversation*
+
+> Welcome, welcome. The prices are the road's fault, I only write them down.
+
+**`etta_goods__hub`** — *follows straight on from "greet"; or follows straight on from "dear"; or follows straight on from "fen"*
+
+> What can I get you?
+
+**`etta_goods__dear`** — *player says: "Why is everything so dear?"*
+
+> Every loaf on that shelf walked forty miles of unlit road in a wagon that pays guards. Bread is cheap. Getting bread here is not. The day they light that road, I will paint the new prices myself, singing.
+
+**`etta_goods__fen`** — *player says: "Where are you from?"*
+
+> The Fenside Crofts, on the First Road waist, where the water does the farming for you. Out here the ash does the opposite. I miss the reeds. I do not miss being twelve leagues from anything worth selling to.
+
+**`etta_goods__browse`** — *player says: "Let's see the shelves."*
+
+> Grain from the ford, salt from the coast, and cake for the brave.
+
+**`etta_goods__bye`** — *player says: "Another time."*
+
+> Eat something. You look like a long road.
+
+---
+
+## Ida `salvewright_ida` — 6 dialogue lines, 3 quips and barks
+
+*Trained on Elowen's folios, came south for what ash does to a miner's chest. Keeps a list of every remedy that failed. It is long, and it is also a map.*
+
+**Who they are, and how to say it:** Salvewright; came south for what ash does to a miner’s chest. Brisk bedside, diagnoses in passing. "Breathe for me. In. Out." Keeps an honest list of every remedy that failed.
+
+**Chatterbox casting:** `rpg_fantasy/female/highmountain_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `salvewright_ida__bark_1` — "Breathe for me. In. Out. You will live, which is my whole trade."
+- `salvewright_ida__bark_2` — "Salve for burns, draught for the lungs, and sleep for most of the rest."
+- `salvewright_ida__bark_3` — "My list of failures is long. It is also a map."
+
+### Conversation: `ida_remedies`
+
+**`ida_remedies__greet`** — *opens the conversation*
+
+> Breathe in for me. Out. You will live, which is my whole trade. What else?
+
+**`ida_remedies__hub`** — *follows straight on from "greet"; or follows straight on from "treat"; or follows straight on from "list"*
+
+> Sit if you are tired. Ask if you are not.
+
+**`ida_remedies__treat`** — *player says: "What do you treat here?"*
+
+> Burns, ash-lung, quench scalds, and hearts that stopped being careful. The ash gets into a miner's chest a breath at a time. My draughts buy years. I want a cure, and a cure is somewhere in the moonbell family, I can smell it. Almost.
+
+**`ida_remedies__list`** — *player says: "Somebody said you keep a failure list."*
+
+> Every remedy that failed, written plain, dated, no excuses. My teacher Elowen, the sage at the ford, taught me that a failure recorded is a door marked tried. The list is long. It is also a map, and maps end somewhere.
+
+**`ida_remedies__browse`** — *player says: "What's on the shelf?"*
+
+> Tinctures, salves, and the honest herbs. Take the draught before the dust, not after.
+
+**`ida_remedies__bye`** — *player says: "I'm well, thanks."*
+
+> Drink water. Yes, you.
+
+---
+
+## Annik `sealkeeper_annik` — 12 dialogue lines, 3 quips and barks
+
+*The oldest returner, moonpale with the old blood. She feeds the braziers so the names are never read in the dark. She counted the marks at nine. She is still asking about the extra one.*
+
+**Who they are, and how to say it:** Sealkeeper; the oldest returner, moonpale with the old blood. Slow, exact, calls everyone child; touches the names-stone before answering about the past. 'The names are never read in the dark.' Gravity without hurry.
+
+**Chatterbox casting:** `rpg_fantasy/female/nightborne_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `sealkeeper_annik__bark_1` — "Two hundred and fourteen names. Count the marks yourself, child."
+- `sealkeeper_annik__bark_2` — "The lamp by the door stays lit. That is not a rule. That is a promise."
+- `sealkeeper_annik__bark_3` — "My grandmother had the old blood, and the old blood remembers what stone forgets."
+
+### Conversation: `annik_names`
+
+**`annik_names__greet`** — *opens the conversation*
+
+> Mind the braziers, child. The names are never read in the dark. Not while I keep them.
+
+**`annik_names__hub`** — *follows straight on from "greet"; or follows straight on from "door"; or follows straight on from "names"*
+
+> You may ask. The old ones like being asked.
+
+**`annik_names__door`** — *player says: "What is this door?"*
+
+> The way down to the deep workings. Sealed the day the Brand woke, a hundred and fifty years gone, with the night shift still below. The Guild made the seal. The mountain has been knocking on it ever since, soft, like a neighbor who knows you are home.
+
+**`annik_names__names`** — *player says: "What are the names?"*
+
+> Two hundred and fourteen. The whole night shift, cut into stone by the survivors before they walked north. My grandmother's sister is fourth row, second name. We read them aloud on the founding day, every year, and the mountain listens.
+
+**`annik_names__mark`** — *player says: "Somebody said there's an extra mark."*
+
+> Count them yourself. Two hundred and fourteen names. Two hundred and fifteen marks. The last one is scratched, not carved, and it was made after. I was nine when I found it. I am not nine now, and nobody has ever explained it to me.
+
+**`annik_names__ring`** — *player says: "The seal ring came home."*
+
+> It did, child, and I keep it in the seal room on the names-stone shelf, where it can hear the reading. The ring that shut the door from the outside, out walking in the burn all these years. I have stopped counting the marks at night. The last one has an answer now, even if the answer is a question wearing a crown.
+
+**`annik_names__who`** — *player says: "Who could have made it?"*
+
+> Someone who came out after the door was shut. Or someone who went back in. Either way, child, somebody wanted to be counted, and the stone is the only one who knows which side of the seal they stood on.
+
+**`annik_names__blood`** — *player says: "You look different from other folk."*
+
+> Moonpale. The old blood, thinned. My grandmother had it stronger, and her grandmother stronger still, back to the folk who built the old realm. Veyle at the Focus House has it whole, ears and years and all. Ask her. She remembers more than stone does.
+
+### Conversation: `q_the_count_below_offer` *(plays when: quest:the_count_below:available)*
+
+**`q_the_count_below_offer__hub`** — *opens the conversation*
+
+> Seventy years I have kept this door, child, and nobody has ever asked the stone's question like they meant to answer it. You mean to. I can tell by how you stand.  Find out who made the two hundred and fifteenth mark. Start with Veyle. She was alive when the door was shut, and she has never once said so out loud.
+
+**`q_the_count_below_offer__why`** — *player says: "Why me?"*
+
+> Because you are not from here. Everyone born in this town learned not to ask before they learned to walk. You never learned it. Do not start now.
+
+**`q_the_count_below_offer__go`** — *player says: "I'll ask her."; or player says: "Then I'll ask her."*
+
+> Take a lamp. The question lives in dark places.
+
+### Conversation: `q_the_count_below_turnin` *(plays when: quest:the_count_below:ready)*
+
+**`q_the_count_below_turnin__paid`** — *opens the conversation*
+
+> The foreman's ring. The ring that sealed my grandmother's sister behind that door.  It was outside when the door shut, child. Every account agrees. So either the first king's own hand went back into the burn after the sealing, or something came out and took it from him. The mark on my stone is one of those two people. Thank you. I am ninety one years old and I finally have a question worth the candles.
+
+---
+
+## Ferrun `smith_ferrun` — 6 dialogue lines, 3 quips and barks
+
+*Mountain-born, Balla's journeyman once. Wears a shard of his first masterwork on a cord: it cracked at the quench. He will not name a blade before the water.*
+
+**Who they are, and how to say it:** Smith of the Starfall Forge; wears the masterwork that cracked at the quench on a cord. Slow fire-words; never names a blade before the water. Wants to work starfall before his hands give out.
+
+**Chatterbox casting:** `rpg_fantasy/male/ilidan_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `smith_ferrun__bark_1` — "The delf's own mithril. The old realm swung this metal. Now you do."
+- `smith_ferrun__bark_2` — "A blade gets its name after the quench. Not before. Ask my necklace why."
+- `smith_ferrun__bark_3` — "Balla taught me the fire. The mountain taught me respect."
+
+### Conversation: `ferrun_forge`
+
+**`ferrun_forge__greet`** — *opens the conversation*
+
+> Mind the quench trough. The Starfall Forge, at your service, once this edge is drawn.
+
+**`ferrun_forge__hub`** — *follows straight on from "greet"; or follows straight on from "metal"; or follows straight on from "shard"*
+
+> Speak up. The fire is loud.
+
+**`ferrun_forge__metal`** — *player says: "What's special about the metal here?"*
+
+> The delf's own mithril, the seam the old realm never found. The kingsmen out on the old roads carry blades of it, forged before your family had a name. My work will be judged against dead men's work. I find that fair.
+
+**`ferrun_forge__shard`** — *player says: "What's that shard around your neck?"*
+
+> My first masterwork. It sang all the way to the quench and cracked in the water. Balla, the forgemistress up in Silverfall, made me keep a piece. She said pride needs a pocket to keep its receipts in. A blade gets its name after the water. Never before.
+
+**`ferrun_forge__browse`** — *player says: "What can you make?"*
+
+> Guild schematics, same folios Bretta keeps at the ford, without the six hundred mile walk.
+
+**`ferrun_forge__bye`** — *player says: "Work well."*
+
+> Keep your edge dry and your name earned.
+
+---
+
+## Orin `stablemaster_orin` — 11 dialogue lines, 3 quips and barks
+
+*Kept stalls under Osa at the Silverfall caravanserai before this yard. Talks to beasts mid-sentence. Lost a colt on the Old Road the year he came, and none since.*
+
+**Who they are, and how to say it:** Stablemaster of the Beastyard; talks to beasts mid-sentence with people. Unhurried, few words. "Easy now. Not you, traveler." The kindness goes to the animal first and reaches you on the way past.
+
+**Chatterbox casting:** `rpg_fantasy/male/king_bob` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `stablemaster_orin__bark_1` — "Easy now. Not you, traveler. The mule."
+- `stablemaster_orin__bark_2` — "Three stalls, three friends. That is as many as a whistle can hold."
+- `stablemaster_orin__bark_3` — "The burn is no place for a green colt. Nor a green rider, but you will go anyway."
+
+### Conversation: `orin_beastyard`
+
+**`orin_beastyard__greet`** — *opens the conversation*
+
+> Easy, easy. Not you, traveler, the mule. Welcome to the Beastyard.
+
+**`orin_beastyard__hub`** — *follows straight on from "greet"; or player says: "Good to know."; or follows straight on from "string"*
+
+> What do you need?
+
+**`orin_beastyard__stalls`** — *player says: "How do the stalls work?"*
+
+> Three stalls, because three is what a whistle can hold. Bring me a friend you have gentled and I will keep it fed, brushed, and out of the ash. Call it out whenever you like. The pen does the remembering, I just do the caring.
+
+**`orin_beastyard__string`** — *player says: "How's the string, since the worgs?"*
+
+> Whole. Every head, counted twice, and the drove road walked without one ear going back. Easy, easy. Not you. The string sleeps sound because of what you did in the ash, and so do I, and the lead I gave you was the cheapest thing I ever paid gladly.
+
+**`orin_beastyard__burn`** — *player says: "Can a beast survive the burn?"*
+
+> A seasoned beast, with a seasoned rider, on the road, in daylight. Change any one of those words and you are gambling with a heart that trusts you. The Hewers do not chase, but the burn does not need to chase. It waits.
+
+**`orin_beastyard__osa`** — *player says: "Where did you learn beasts?"*
+
+> Under Osa, the hostler at the Silverfall caravanserai. She can calm a courser with one hand and a carter with the other, and I never learned which trick is harder. When the Charter offered me my own yard, she said go. So I went.
+
+**`orin_beastyard__browse`** — *player says: "Show me the stock."*
+
+> Coursers off the Charter freight, a garron bred for cold roads, and honest tack.
+
+### Conversation: `q_a_stall_in_ash_offer` *(plays when: quest:a_stall_in_ash:available)*
+
+**`q_a_stall_in_ash_offer__hub`** — *opens the conversation*
+
+> Come here. Quietly. Look south, past the hem, where the ash thins. Wild garrons. The last string in the world that drinks this country and lives, and worgs have found them.  I am not asking you to bring them in. A horse you drag home is a prisoner. I am asking you to make the ash safe enough that staying wild stays possible.
+
+**`q_a_stall_in_ash_offer__why`** — *player says: "Why not just catch one?"*
+
+> Because the day one of them walks up that road on its own and puts its head over my gate, it will be worth ten of anything caught. Trust is the only tack that never breaks.
+
+**`q_a_stall_in_ash_offer__go`** — *player says: "I'll deal with the worgs."; or player says: "Then I'll deal with the worgs."*
+
+> Watch the wind. Worgs read it better than you do.
+
+### Conversation: `q_a_stall_in_ash_turnin` *(plays when: quest:a_stall_in_ash:ready)*
+
+**`q_a_stall_in_ash_turnin__paid`** — *opens the conversation*
+
+> Feed and leather. Good. The bag goes on the same stone at the same hour until the same hour means something to somebody with four legs.  Here, the lead is yours. If a gray mare with one white ear ever follows you home, you did that, and I will only be a little jealous.
+
+---
+
+## Hedda `surveyor_hedda` — 10 dialogue lines, 3 quips and barks
+
+*Maps for the King, which no document will confirm. Her charts of the burn are the best since the old realm fell. She corrects distances mid-sentence, including yours.*
+
+**Who they are, and how to say it:** Crown surveyor; maps for a king no document will confirm. Clipped, measured, corrects distances mid-sentence. "Four thousand paces." Paid to be doubted and bearing it.
+
+**Chatterbox casting:** `rpg_fantasy/female/trade_nell` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `surveyor_hedda__bark_1` — "It is not a league to the crater. It is four thousand paces. Words matter."
+- `surveyor_hedda__bark_2` — "I draw what is there. What it means is above my pay."
+- `surveyor_hedda__bark_3` — "The Crown does not ask about Kingsdelf. It merely reads everything I send."
+
+### Conversation: `hedda_survey`
+
+**`hedda_survey__greet`** — *opens the conversation*
+
+> You are standing on my sightline. Two paces left. Thank you.
+
+**`hedda_survey__hub`** — *follows straight on from "greet"; or follows straight on from "maps"; or follows straight on from "king"*
+
+> Ask. I chart faster than I chat.
+
+**`hedda_survey__maps`** — *player says: "What are you mapping?"*
+
+> The burn, the old roads, the crater fields. The best charts of this country since the old realm fell, if I say it myself, and I do, because it is a measurement, not a boast. Measurements are the only sentences that cannot lie to you.
+
+**`hedda_survey__king`** — *player says: "Do you work for the King?"*
+
+> I survey for the Crown. Whether the King reads my charts personally is not written on any document, and neither am I. Let me say it this way: somebody in Silverfall asks very good questions about a town that officially is not here.
+
+**`hedda_survey__burn`** — *player says: "What's out there in the burn?"*
+
+> Quarries that are still being worked and nobody working them. Paved roads swept by nobody. A gatehouse maintained by nobody, guarding a door to nowhere. I write nobody in my notes a great deal, and I have begun to dislike the word. It is not a league to the crater, by the way. Four thousand paces.
+
+**`hedda_survey__bye`** — *player says: "Carry on."*
+
+> Mind the distances. They mind you.
+
+### Conversation: `q_the_crown_asks_offer` *(plays when: quest:the_crown_asks:available)*
+
+**`q_the_crown_asks_offer__hub`** — *opens the conversation*
+
+> I need hands that do not report to anybody, which in this town narrows the field to you. My mule bolted on the quarry road. My cipher pages went into the burn with the wreck, and the Hewers will have squared the wreck into their spoil by now. They are measurements. Bring them back unread.
+
+**`q_the_crown_asks_offer__just`** — *player says: "Just measurements?"*
+
+> That is twice I have said it, and you counted, and now we understand each other. Bring them back anyway.
+
+**`q_the_crown_asks_offer__go`** — *player says: "I'll get them."*
+
+> The quarry works a day shift that never ends. Interrupt it politely. With something heavy.
+
+### Conversation: `q_the_crown_asks_turnin` *(plays when: quest:the_crown_asks:ready)*
+
+**`q_the_crown_asks_turnin__paid`** — *opens the conversation*
+
+> Ash-stained, spoil-crushed, unread. Two of those three are the burn's fault.  You told Ruen. I know, because you walk like someone carrying a message with corners. Good. Kings should be seen asking. That is my whole treasonous opinion, and this is your pay, and neither of us said anything.
+
+---
+
+## Liv `waykeeper_liv` — 6 dialogue lines, 3 quips and barks
+
+*Sent by Marshal Kestrel to say no: the order lights no road it cannot walk. Two years of saying it, from the loneliest post the lamp-faith keeps, and the no keeps getting quieter.*
+
+**Who they are, and how to say it:** Waykeeper envoy, posted to say no; two years of saying it and the no keeps getting quieter. Formal, road-report exact, thawing by the month. Always positioned to see the gate.
+
+**Chatterbox casting:** `rpg_fantasy/female/elf_sentinel_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `waykeeper_liv__bark_1` — "The order's answer is still no. My answer is getting complicated."
+- `waykeeper_liv__bark_2` — "A lamp you cannot tend is a lie in glass. That is doctrine. I wrote it out nine times."
+- `waykeeper_liv__bark_3` — "I watch the gate. Somebody from the order ought to."
+
+### Conversation: `liv_post`
+
+**`liv_post__greet`** — *opens the conversation*
+
+> Waykeeper Liv. Yes, the only one for three hundred miles. The order is aware of the irony.
+
+**`liv_post__hub`** — *follows straight on from "greet"; or follows straight on from "no"; or follows straight on from "agree"*
+
+> Say your piece. I watch the gate while you do.
+
+**`liv_post__no`** — *player says: "Why won't the order light the Old Road?"*
+
+> A lamp we cannot tend is a lie in glass. A traveler trusts the light, walks the dark mile past it, and dies believing the road was watched. That is the doctrine, and it is not cruel. It was written by people who buried the ones who trusted.
+
+**`liv_post__agree`** — *player says: "Do you agree with them?"*
+
+> I have written the doctrine out nine times, once for every year I have served. I believed it all nine. Then I watched Soren trim his lamps every night for two winters, and now I write my reports very slowly, and the word no takes longer each month.
+
+**`liv_post__post`** — *player says: "What are you here for, then?"*
+
+> To carry the order's answer and to count this road's dead. In two years I have counted none inside the town's light and too many past it. The marshal reads my counts. Counts are how doctrine changes, when it changes. It changes slow.
+
+**`liv_post__bye`** — *player says: "Watch well."*
+
+> Stay on the lit side of the wall after the horn.
+
+---
+
+# Evenfall — the city the old folk kept
+
+## Aewyn `bowyer_aewyn` — 10 dialogue lines, 3 quips and barks
+
+*The finest bowyer alive, by the reckoning of everyone who has held her work and lived to reckon. She treats every stave as an acquaintance of some decades' standing, because it is.*
+
+**Who they are, and how to say it:** Bowyer of the Fair Court; treats the staves as acquaintances. Workshop imperatives softened by sixty-year patience; the wood is always the subject of the sentence.
+
+**Chatterbox casting:** `rpg_fantasy/female/highmountain_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `bowyer_aewyn__bark_1` — "This stave and I have known each other sixty years. It is nearly ready. So am I."
+- `bowyer_aewyn__bark_2` — "A bow is a conversation between a tree and a need. Most of yours shout."
+- `bowyer_aewyn__bark_3` — "Yew wants patience. Everything worth stringing does."
+
+### Conversation: `aewyn_bows`
+
+**`aewyn_bows__greet`** — *opens the conversation*
+
+> Hands off the staves unless they greet you first.
+
+**`aewyn_bows__hub`** — *follows straight on from "greet"; or player says: "Later."; or follows straight on from "yew"*
+
+> Bows. Staves. Sixty years of patience on racks. What do you need?
+
+**`aewyn_bows__teach`** — *player says: "Teach me the craft."*
+
+> The guild halls east teach to a line and stop. I teach past it. Yew bows, the singing bow, the war bow. Nobody else alive will show you, because everybody else who could is in this city, and they all send students to me anyway.
+
+**`aewyn_bows__yew`** — *player says: "Why yew?"*
+
+> Yew grows slow and remembers everything. Oak forgets by autumn. A yew stave taken kindly will pull for your grandchildren. Taken unkindly it will not pull at all. The wood decides. My whole craft is asking well.
+
+**`aewyn_bows__browse`** — *player says: "Show me your work."; or player says: "Show me, then."*
+
+> Patterns, staves, and finished work. The prices are firm. So is the yew.
+
+### Conversation: `q_a_bow_of_the_wood_offer` *(plays when: quest:a_bow_of_the_wood:available)*
+
+**`q_a_bow_of_the_wood_offer__hub`** — *opens the conversation*
+
+> You want the yew shelf. Everyone with eyes wants the yew shelf. The yew is not mine to give, so we do this properly.  Ask the Warden for leave to take staves from the living wood. If Sylwen grants it, gather kindly and bring twine, and I will teach you what the guild halls stop short of.
+
+**`q_a_bow_of_the_wood_offer__why`** — *player says: "Why does a bowyer need permission?"*
+
+> I do not need permission. I have standing leave, sixty years old. YOU need permission, and watching how you ask will tell me more about your hands than any bench test.
+
+**`q_a_bow_of_the_wood_offer__go`** — *player says: "I'll ask the warden."; or player says: "Then I'll ask her."*
+
+> Go on then. Stand straight when you ask her. She counts.
+
+### Conversation: `q_a_bow_of_the_wood_turnin` *(plays when: quest:a_bow_of_the_wood:ready)*
+
+**`q_a_bow_of_the_wood_turnin__grain`** — *opens the conversation*
+
+> Show me. Clean grain, no hurry in the cut, and Sylwen's mark on the leave. The wood said yes twice. It does not do that for me every year.
+
+**`q_a_bow_of_the_wood_turnin__wall`** — *follows straight on from "grain"*
+
+> The staves go to the wall now, to think. A bow of the wood is not made, it is agreed to, and the agreement takes as long as it takes. What you bought today is the yes. That is the rare half. The rest is only years, and years are the one thing this house has in stock.
+
+---
+
+## Evenguard `evenguard_watch` — 0 dialogue lines, 3 quips and barks
+
+*Moonpale, upswept ears, a strung bow, and the stillness of someone for whom an afternoon is not a long time. The watch faces the way you came from.*
+
+**Who they are, and how to say it:** Pooled Evenguard voices: moonpale, strung bows, the stillness of someone for whom an afternoon is not a long time. "You are seen." Watch-speak pared to the bone.
+
+**Chatterbox casting:** `rpg_fantasy/male/belf_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `evenguard_watch__bark_1` — "You are seen."
+- `evenguard_watch__bark_2` — "The mile is kept."
+- `evenguard_watch__bark_3` — "Walk on. The stones know the way better than I would tell it."
+
+---
+
+## Fair Court artisan `fair_artisan` — 0 dialogue lines, 3 quips and barks
+
+*An artisan of the Fair Court, at work on something that will outlive every customer it ever has. This does not seem to hurry anyone.*
+
+**Who they are, and how to say it:** Pooled Fair Court artisan voices: courteous, absorbed, allergic to hurry. At work on something that will outlive every customer it ever has, and content about it.
+
+**Chatterbox casting:** `rpg_fantasy/male/veil_ethan` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `fair_artisan__bark_1` — "Mind the planters. They are older than your town."
+- `fair_artisan__bark_2` — "We do not shout our wares. The work speaks at its own pace."
+- `fair_artisan__bark_3` — "The Gallery is not a market. Coin is welcome. Hurry is not."
+
+---
+
+## Selorne `glasswright_selorne` — 6 dialogue lines, 3 quips and barks
+
+*Moonglass is worked cold, over years, the way a river works a stone. Selorne is on his eleventh lens this century and considers the pace a little hurried.*
+
+**Who they are, and how to say it:** Glasswright of the Moonglass Hall; works glass cold, over years, and considers eleven lenses a century a little hurried. The patience register: measured, unbothered, finds days quaint.
+
+**Chatterbox casting:** `rpg_fantasy/male/telemancer_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `glasswright_selorne__bark_1` — "Glass is a liquid that made a promise. Moonglass keeps it longer."
+- `glasswright_selorne__bark_2` — "The Glasshouse in the delf melts starfall in a day. Impressive. Loud, but impressive."
+- `glasswright_selorne__bark_3` — "Cold work, slow work, true work. Sit, if you like. This lens has nine years left in it."
+
+### Conversation: `selorne_glass`
+
+**`selorne_glass__greet`** — *opens the conversation*
+
+> Sit, if you like. This lens has nine years left in it, so we are not pressed for time.
+
+**`selorne_glass__hub`** — *follows straight on from "greet"; or follows straight on from "cold"; or follows straight on from "years"*
+
+> Ask. Slowly is fine. Slowly is preferred.
+
+**`selorne_glass__browse`** — *player says: "Show me the moonglass."*
+
+> Lenses, pane work, and the small vessels. Glass is a liquid that made a promise. Moonglass keeps it longer.
+
+**`selorne_glass__cold`** — *player says: "You work glass cold?"*
+
+> The way a river works a stone. No fire, no hurry, a hand's pressure and a century's patience, and the glass never learns the word for breaking because nobody ever shouted it. The delf melts starfall in a day. Impressive. Loud, but impressive. Their glass remembers the shout, though. Hold a piece of each to your ear sometime.
+
+**`selorne_glass__years`** — *player says: "Nine years for one lens?"*
+
+> My eleventh this century, which the hall considers a little hurried, and they are not wrong. The ninth went to the Evenhall. The tenth I ground for a human, though he does not know it yet, and I will not say more, because a gift that arrives early is only a delivery.
+
+**`selorne_glass__off`** — *player says: "Take your time, glasswright."*
+
+> Go well. The lens and I will both be here.
+
+---
+
+## Elarin `innkeep_elarin` — 7 dialogue lines, 3 quips and barks
+
+*The one elf in Evenfall who likes travelers, keeping the one building raised in a hundred and fifty years. He collects human idioms and uses them slightly wrong, on purpose, probably.*
+
+**Who they are, and how to say it:** Keeper of the Outward House, the one elf who likes travelers. Bright, hosting, collects human idioms and uses them wrong on purpose; lands the idiom-joke once per conversation at most.
+
+**Chatterbox casting:** `rpg_fantasy/male/flynn_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `innkeep_elarin__bark_1` — "Welcome to the Outward House. As you humans say: make yourself at house."
+- `innkeep_elarin__bark_2` — "I built this inn myself, forty years ago, to be ready. The whole city said the gate would never open. The whole city helps me sweep it now."
+- `innkeep_elarin__bark_3` — "The stew is my own recipe. It is one hundred and six years old. The stew, not the pot. The pot is older."
+
+### Conversation: `elarin_outward`
+
+**`elarin_outward__greet`** — *opens the conversation*
+
+> Welcome to the Outward House! Sit anywhere. As you humans say: make yourself at house. Nearly right is my favorite kind of right.
+
+**`elarin_outward__hub`** — *follows straight on from "greet"; or follows straight on from "inn"; or follows straight on from "humans"*
+
+> Food, a bed, or talk. I stock all three and only burn one of them.
+
+**`elarin_outward__inn`** — *player says: "Why build an inn in a closed city?"*
+
+> Forty years ago I built it, to be ready. The whole city said the gate would never open. I said: then a ready inn costs us nothing but my foolishness, and you all enjoy that anyway. The whole city helps me sweep it now. Nobody apologizes. It is very elven.
+
+**`elarin_outward__humans`** — *player says: "You like humans."*
+
+> You are fast. You decide things in a season and mean them. A human promise is a mayfly promising you the summer, and keeping it. I collect your sayings. I use them wrong on purpose, it makes travelers correct me, and then we are talking. You see the trick. You fell for it anyway.
+
+**`elarin_outward__browse`** — *player says: "What's on the board?"*
+
+> Stew that is older than your town, bread that is not. Both are good.
+
+### Conversation: `elarin_the_letter` *(plays when: quest:the_letters_west:stage:the_evenhall)*
+
+**`elarin_the_letter__arrive`** — *opens the conversation*
+
+> A letter! An actual letter, from an actual human hand, at my actual door. Serel sent you? Of course she did, she calls anything wonderful a problem. Give it here, let me...
+
+**`elarin_the_letter__up`** — *follows straight on from "arrive"*
+
+> Oh. No. This is not mine to open. This hand asks questions the way trees fall. It goes up, my friend, all the way up: the Evenhall, past the flame. Walk slowly. Some letters deserve a slow walk, and this is the first one in my lifetime.
+
+---
+
+## Vessa `inscriber_vessa` — 12 dialogue lines, 3 quips and barks
+
+*The oldest enchanting table in the world stands in her house, and the answer the Arcanum exiled Veyle for asking hangs on her rear wall. She has been waiting for somebody to come and see it.*
+
+**Who they are, and how to say it:** Inscriber of the Third Table; keeps copies of other people’s silences. Dry, precise, archival; the dust has seniority and so does she. Affection shown as record-keeping.
+
+**Chatterbox casting:** `rpg_fantasy/female/dour_mabel` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `inscriber_vessa__bark_1` — "The Arcanum calls theirs the first table. Counting is hard when you start at your own birth."
+- `inscriber_vessa__bark_2` — "Solvei's letters to Veyle are very polite. Veyle's silences are very polite. I am running out of politeness to watch."
+- `inscriber_vessa__bark_3` — "The wall in the back answers one question. It has waited a long time for the right asker."
+
+### Conversation: `q_the_first_focus_offer` *(plays when: quest:the_first_focus:available)*
+
+**`q_the_first_focus_offer__hub`** — *opens the conversation*
+
+> You have seen the wall by now, or heard of it. It answers one question, and I will not show it to the merely curious. The question belongs to an exile at the delf who paid for it with her seat.  Go and ask Veyle for her question. Bring it back in your own mouth. Then the wall is yours to read.
+
+**`q_the_first_focus_offer__why`** — *player says: "Why can't you just tell me?"*
+
+> Because an answer without its asker is gossip. The wall has waited longer than your language has existed. It can wait for you to do this properly.
+
+**`q_the_first_focus_offer__go`** — *player says: "I'll go and ask him."; or player says: "Then I'll go and ask him."*
+
+> Walk east, then. And when Veyle gives you the question, carry it gently. She has been holding it a long time.
+
+### Conversation: `q_the_first_focus_turnin` *(plays when: quest:the_first_focus:ready)*
+
+**`q_the_first_focus_turnin__asked`** — *opens the conversation*
+
+> You came back with the question in the right order at last. Veyle's question, the one they exiled her for asking. Then the wall owes you its answer. Stand there. Read.
+
+**`q_the_first_focus_turnin__wall`** — *follows straight on from "asked"*
+
+> One line, in the old hand, cut the year the Arcanum lit its first focus. The branch was given. Not taken, not traded, not found. Given, from the Heartwood itself, to hands the wood trusted. They built a guild on a gift and then forgot the giver, and the one soul who asked what the first focus was made from was sent into the ash for it.
+
+**`q_the_first_focus_turnin__debt`** — *follows straight on from "wall"*
+
+> Take your pay, and take this with it. A gift remembered is a debt reopened. The wood does not forget. It waits to see what the remembering does. Tell Veyle the wall answered, and watch what she writes to Solvei this month. I will be keeping a copy.
+
+### Conversation: `vessa_table`
+
+**`vessa_table__greet`** — *opens the conversation*
+
+> Wipe your feet. The dust in here has seniority.
+
+**`vessa_table__hub`** — *follows straight on from "greet"; or follows straight on from "read"; or follows straight on from "letters"*
+
+> The third table, by the human count. The first, by counting. What brings you to the oldest desk in the world?
+
+**`vessa_table__read`** — *player says: "The wall's answer found its asker, then."*
+
+> It did. You read it with your own question standing in the room, which nobody else alive has done. The dust and I are considering promoting you to furniture. And Veyle's latest letter was four pages. Four. The silence is over, my copies are getting thicker, and I have never been happier in my working life. Not that you can tell.
+
+**`vessa_table__letters`** — *player says: "Whose letters are those?"*
+
+> Copies. An enchantress at the capital writes monthly to an exile at the delf, asking nothing in very fine handwriting. The exile answers with silence, also monthly. I keep copies because someday one of them will say the true thing, and I want to be current when it happens.
+
+**`vessa_table__wall`** — *player says: "What's on the rear wall?"*
+
+> An answer, waiting for its question to walk in. It has waited a long time. It can wait for you to earn it, too. Bring me a reason older than curiosity.
+
+**`vessa_table__browse`** — *player says: "What can you teach me?"*
+
+> Workings and materials the Arcanum rations, sold here by the handful. Mind the dust.
+
+---
+
+## Ilvane `keeper_ilvane` — 5 dialogue lines, 3 quips and barks
+
+*She tends a fire that needs no tending and has for longer than the roads have had names. Ask her what the flame burns and she will say: nothing. That is the point.*
+
+**Who they are, and how to say it:** Keeper of the Everflame. Still, kind, unhurried; speaks of fire the way others speak of elders. Every sentence set down gently, like a lamp on a shelf.
+
+**Chatterbox casting:** `rpg_fantasy/female/hush_morrow` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `keeper_ilvane__bark_1` — "The flame burns nothing. It has never needed anything. I keep it company, not alive."
+- `keeper_ilvane__bark_2` — "Every road lamp south of here is a daughter of a daughter of this light. The lamps do not know it."
+- `keeper_ilvane__bark_3` — "The mother-flame at Silverfall is the youngest daughter. Tell Sella she is doing it right."
+
+### Conversation: `ilvane_flame`
+
+**`ilvane_flame__greet`** — *opens the conversation*
+
+> Mind the light. It minds you.
+
+**`ilvane_flame__hub`** — *follows straight on from "greet"; or follows straight on from "flame"; or follows straight on from "heat"*
+
+> You are standing where every lamp you have ever trusted was born. Ask your questions here, they come out better.
+
+**`ilvane_flame__flame`** — *player says: "What is the Everflame?"*
+
+> The first light my people kept. It burns nothing. It has never needed anything. I keep it company, not alive. There is a difference, and learning it is most of my work.
+
+**`ilvane_flame__heat`** — *player says: "It gives no heat."*
+
+> No. Heat is what fire spends. This one saves. Ask Faelar about spending, his is the one working fire in the city and he is very proud of it.
+
+**`ilvane_flame__daughters`** — *player says: "The road lamps, then. The shrine flame."*
+
+> Daughters of daughters of this light. My people taught the old realm its lamps, and the realm taught the roads, and the roads made a faith of it. The mother-flame at Silverfall is the youngest daughter. She is doing it right. You may tell her keeper I said so.
+
+---
+
+## Othiel `keeper_othiel` — 5 dialogue lines, 3 quips and barks
+
+*The smallest bank in the world, kept perfectly. Two vaults, one chest, and a keeper who does not count out loud, because counting out loud is for people who might be wrong.*
+
+**Who they are, and how to say it:** Keeper of the Keeping, the smallest bank in the world. Fewest words in the city, each one load-bearing. Does not count out loud; counting out loud is for people who might be wrong.
+
+**Chatterbox casting:** `rpg_fantasy/male/draven_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `keeper_othiel__bark_1` — "What is kept is kept. That is the whole charter, and it has never needed a second line."
+- `keeper_othiel__bark_2` — "The Charter's countinghouse has nine clerks and a tithe vault. We have a bench and my memory. Same service."
+- `keeper_othiel__bark_3` — "Your coin is safe here. Safer than you are, frankly, but you chose the adventuring."
+
+### Conversation: `othiel_keeping`
+
+**`othiel_keeping__greet`** — *opens the conversation*
+
+> The Keeping. Two vaults, one chest, my memory. State your business.
+
+**`othiel_keeping__hub`** — *follows straight on from "greet"; or follows straight on from "kept"; or follows straight on from "memory"*
+
+> Yes?
+
+**`othiel_keeping__kept`** — *player says: "How does the Keeping work?"*
+
+> What is kept is kept. That is the whole charter. It has never needed a second line.
+
+**`othiel_keeping__memory`** — *player says: "No ledgers at all?"*
+
+> The Charter's countinghouse has nine clerks, a tithe vault, and a fire watch. We have a bench and my memory. Same service. I do not count out loud. Counting out loud is for people who might be wrong.
+
+**`othiel_keeping__off`** — *player says: "Good keeping, Othiel."*
+
+> Your coin is safe here. Safer than you are. You chose the adventuring.
+
+---
+
+## Aldaren `king_aldaren` — 12 dialogue lines, 3 quips and barks
+
+*The first of the few: old blood, whole, and older than the word for it. He opened the gate after a hundred and fifty years, and he carries the cost of every quiet year like a coat.*
+
+**Who they are, and how to say it:** The Evenking; old blood, whole, older than the word for it. Long warm sentences that stop early when the weight arrives; loses decades mid-sentence and returns. Never frightened, never hurried; centuries in the present tense.
+
+**Chatterbox casting:** `rpg_fantasy/male/murozond_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `king_aldaren__bark_1` — "You came up the Evenway. I planted the third stone on it. Or the fourth... no. The third."
+- `king_aldaren__bark_2` — "The gate is open because family was knocking. The thinned blood is still the blood."
+- `king_aldaren__bark_3` — "The foreman's grandchildren wear a crown now. He would have laughed. He had a good laugh."
+
+### Conversation: `aldaren_evenhall`
+
+**`aldaren_evenhall__greet`** — *opens the conversation*
+
+> Come up. The fire does not mind strangers, and I have decided not to either.
+
+**`aldaren_evenhall__hub`** — *follows straight on from "greet"; or player says: "Never mind."; or follows straight on from "dissent"*
+
+> Ask. I have answered harder things than questions.
+
+**`aldaren_evenhall__gate`** — *player says: "Why open the gate now?"*
+
+> Because family was knocking. Annik at the delf, Denna on her coast, a hundred more who do not know their own ears. The thinned blood is still the blood. A door you keep shut on family is not a door. It is a wall, and we do not build walls.
+
+**`aldaren_evenhall__dissent`** — *player says: "Not everyone here agrees."*
+
+> My daughter counts my mistakes. It is good work and somebody should do it. She keeps the open gate better than anyone who wanted it open. That is the whole argument, standing at her post.
+
+**`aldaren_evenhall__realm`** — *player says: "Did you know the old realm?"*
+
+> I taught their first masons which end of the stone listens... they built well, for people in a hurry. When their mountain woke I brought my folk home. The ones who stayed east are your grandmothers. Some of you have the ears still.
+
+**`aldaren_evenhall__crown`** — *player says: "The kings at Silverfall are moonpale."*
+
+> Are they. Five kings, one name, a foreman's line... I knew a foreman once. Paid his debts in silver and laughed from the belt up. I will not finish this thought. You may, if you walk east again.
+
+**`aldaren_evenhall__count`** — *player says: "The delf's sealed door has its count now. The ring came home."*
+
+> Two hundred and fifteen. I taught their masons which end of the stone listens, and that seal was their masterwork, and it was shut from the outside by a man who then walked north and fathered kings... You carried the count that finishes the first sentence of that story. The rest is still being written, east of here, by whoever wears the crown when it ends. Tell Annik the old blood reads her stone. She will know what that is worth.
+
+**`aldaren_evenhall__quiet`** — *player says: "What happened in the quiet years?"*
+
+> A hundred and fifty years of tending what we are. Songs. Glass. Bows. The wood grew. The stones kept the miles. Nothing happened, which is what we wanted, and it cost more than it sounds like it would.
+
+**`aldaren_evenhall__heartwood`** — *player says: "What is the Heartwood?"*
+
+> The grove we keep. That is the whole answer anyone gets, and I am the king, so it will hold... ask me again in a hundred years. Or do something worth an earlier asking. People have.
+
+### Conversation: `aldaren_the_letter` *(plays when: quest:the_letters_west:ready)*
+
+**`aldaren_the_letter__name`** — *opens the conversation*
+
+> ...Solvei. I know the name. The one who asks the rift what it knows. Not afraid enough, once. Wise enough to be afraid later, which is the better order after all.
+
+**`aldaren_the_letter__answer`** — *follows straight on from "name"*
+
+> She asks whether the gate is truly open, and whether the old teaching may come east again. Sit while I answer her. It will not take long. The answer has been ready for a hundred and fifty years. Only the question was missing.
+
+**`aldaren_the_letter__carry`** — *follows straight on from "answer"*
+
+> There. Carry her my hand, and walk the miles kindly. You have been the address for both halves of a very old silence, and that is a thing songs get made of, whatever Maelis pretends.
+
+---
+
+## Maelis `loresinger_maelis` — 12 dialogue lines, 3 quips and barks
+
+*The Songhouse keeps the memory the way humans keep ledgers, and Maelis keeps the Songhouse. There is one verse she will not sing. Everyone here knows which one, and nobody asks twice.*
+
+**Who they are, and how to say it:** Loresinger of the Songhouse; keeps everything, sings almost nothing. Musical phrasing, refusals delivered beautifully; "No." is a complete sentence she owns. Warmth under the refusal, never past it.
+
+**Chatterbox casting:** `rpg_fantasy/female/nightborne_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `loresinger_maelis__bark_1` — "A song is a ledger that forgives. That is the whole difference between our houses and yours."
+- `loresinger_maelis__bark_2` — "The harp is older than the hall. The hall is older than the question you were about to ask."
+- `loresinger_maelis__bark_3` — "There is a verse about the deep grove. It is not mine to sing. It is not yours to hear. We are both fine."
+
+### Conversation: `maelis_song`
+
+**`maelis_song__greet`** — *opens the conversation*
+
+> Softly. The harp holds the last note longer than you would credit.
+
+**`maelis_song__hub`** — *follows straight on from "greet"; or follows straight on from "songs"; or player says: "I hope she comes."*
+
+> The Songhouse keeps what happened. Some of it is even true. What do you want kept, or found?
+
+**`maelis_song__songs`** — *player says: "What do the songs remember?"*
+
+> Everything the stones cannot hold. Names, mostly. A ledger forgives, a song forgives twice. When the thinned blood comes up the trail I sing the leaving song for their line, and they cry without knowing why. That is memory working.
+
+**`maelis_song__water`** — *player says: "Is there a song about deep water?"*
+
+> There is a listening song. The pearls the storms leave were our ears once, for deep water. There is a fisher on the far coast who is owed that song. If the sea sends her, I will sing it true.
+
+**`maelis_song__answered`** — *player says: "The song is whole now. I was there."*
+
+> You were, and the pearl sits where the harp can see it, and I have not sung it since. Some songs are for having, not for spending. When Denna of the coast comes up the trail at last, it will spend itself, and I intend to be surprised by my own voice when it does.
+
+**`maelis_song__refusal`** — *player says: "Sing me the verse nobody sings."*
+
+> No.
+
+**`maelis_song__blunt`** — *player says: "That was blunt."*
+
+> Yes. The verse is about the grove, and it is not mine to give, and you are the eleventh to ask this season. Elarin keeps a list. He finds it funnier than I do.
+
+### Conversation: `q_what_the_song_holds_offer` *(plays when: quest:what_the_song_holds:available)*
+
+**`q_what_the_song_holds_offer__hub`** — *opens the conversation*
+
+> There is a debt in my keeping. A line on the far coast kept the ears and lost the years, and the sea has been trying to talk to that family for generations. The Songhouse owes them the listening song.  Go east to the quay at the water's end. Talk to Denna. Then bring me a stormpearl, and I will pay my house's debt in the only coin it holds.
+
+**`q_what_the_song_holds_offer__why`** — *player says: "Who is Denna?"*
+
+> A fisher with her mother's ears and her mother's mother's patience. Veyle called her a word the old language left behind. Veyle meant it kindly, and it is also true, and the word is a good one.
+
+**`q_what_the_song_holds_offer__go`** — *player says: "I'll go and listen."; or player says: "Then I'll go and listen."*
+
+> Tell her the Songhouse remembers her mothers. All the way back. She will know what that costs us to say.
+
+### Conversation: `q_what_the_song_holds_turnin` *(plays when: quest:what_the_song_holds:ready)*
+
+**`q_what_the_song_holds_turnin__pearl`** — *opens the conversation*
+
+> You brought the deep water's ear home. Sit. This will take exactly as long as it takes.
+
+**`q_what_the_song_holds_turnin__sung`** — *follows straight on from "pearl"*
+
+> There. The listening song, sung true, first time in an age of the world, and the pearl held its half like it had been waiting. Denna of the delf coast is owed the hearing, when the sea sends her. As for you: the Songhouse keeps what happened, and what happened now has your name in it. That is not a small thing, in a place like this.
+
+---
+
+## Corwen `provisioner_corwen` — 6 dialogue lines, 3 quips and barks
+
+*Thinned blood: pointed ears, human years. He walked west a decade before the gate opened and was let in, which nobody outside had managed in a century. What he gave up to stay, he does not say.*
+
+**Who they are, and how to say it:** Provisioner of the Gate Court; thinned blood who knocked for three years and chose whose clock to age by. Human-quick, plain, generous with the answers elves ration.
+
+**Chatterbox casting:** `rpg_fantasy/male/frank` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `provisioner_corwen__bark_1` — "The wood provides. I just weigh it and take a cut. Smallest job in the city, best view in the world."
+- `provisioner_corwen__bark_2` — "You want to know how I got in. Everyone asks. I knocked for three years. Take from that what you like."
+- `provisioner_corwen__bark_3` — "They count my age in their heads when they talk to me. I can see them doing it. They are always gentle after."
+
+### Conversation: `corwen_gate`
+
+**`corwen_gate__greet`** — *opens the conversation*
+
+> You look like you have questions. I had the same ones, standing where you are.
+
+**`corwen_gate__hub`** — *follows straight on from "greet"; or player says: "Never mind."; or follows straight on from "cost"*
+
+> Ask me. I answer the things elves answer slowly.
+
+**`corwen_gate__in`** — *player says: "How did you get in?"*
+
+> I knocked for three years. Camped at the arch, traded at the arch, wintered at the arch. Year three, Serel opened it and said: you knock like family. My mother had the ears. I never thought they meant anything. They meant everything.
+
+**`corwen_gate__cost`** — *player says: "What did you give up to stay?"*
+
+> A house at the ford. A trade. Somebody. You want the story to have a villain, but it is just years. They pass differently here, and I chose whose clock I age by. She would not come west. That is all of it you get.
+
+**`corwen_gate__donts`** — *player says: "What should I not do here?"*
+
+> Do not hurry anyone. Do not ask ages. Do not touch the staves at the bowyer's before they know you. And the Heartwood is not a dare. The wood keeps score, and it has a long book.
+
+**`corwen_gate__browse`** — *player says: "What are you selling?"*
+
+> What the wood gives, weighed fair. The honey is the good kind of trouble.
+
+---
+
+## Lisse `sentinel_lisse` — 0 dialogue lines, 3 quips and barks
+
+*Old blood, whole. She counts what moves in the wood without appearing to count anything, and the count is never wrong.*
+
+**Who they are, and how to say it:** Evenguard sentinel at the Heartwood door. Old blood, whole; counts what moves in the wood without appearing to count anything. Quiet, exact, unhurried.
+
+**Chatterbox casting:** `rpg_fantasy/female/nightborne_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `sentinel_lisse__bark_1` — "Four wolves crossed at dusk. Three crossed back. The wood settles its own arithmetic."
+- `sentinel_lisse__bark_2` — "You may share the fire. The fire is older than the courtesy, and the courtesy is old."
+- `sentinel_lisse__bark_3` — "The Company sent another crew for the silverbark. We sent their palisade back in bundles. Everyone is being very polite."
+
+---
+
+## Serel `sentinel_serel` — 12 dialogue lines, 3 quips and barks
+
+*The gate captain: polite as a drawn bow. She was the first face most of the thinned blood ever saw at the arch, and she has decided to be a good one, as a discipline.*
+
+**Who they are, and how to say it:** Captain of the Evengate: polite as a drawn bow. Gate-watch clip; welcomes and warns in the same breath. Decided to be a good first face, as a discipline, and it shows.
+
+**Chatterbox casting:** `rpg_fantasy/female/xalath_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `sentinel_serel__bark_1` — "Welcome to Evenfall. The arch is the whole wall. Treat it accordingly."
+- `sentinel_serel__bark_2` — "No, you may not see the Heartwood. Yes, everyone asks. No, asking twice does not help. You may ask twice anyway."
+- `sentinel_serel__bark_3` — "The king says the gate stays open. So it stays open, and I stay at it."
+
+### Conversation: `q_the_quiet_road_offer` *(plays when: quest:the_quiet_road:available)*
+
+**`q_the_quiet_road_offer__hub`** — *opens the conversation*
+
+> The waystones drink cool light, and the miles are long in both directions. I feed them when the watch allows, which is never often enough.  Bring moonbell and a measure of arcane dust, and one more stone keeps its mile through the dark season.
+
+**`q_the_quiet_road_offer__why`** — *player says: "What happens if a stone goes dark?"*
+
+> The mile forgets itself. Travelers wander. The wood tidies up. We prefer the stones fed.
+
+**`q_the_quiet_road_offer__go`** — *player says: "I'll gather them."; or player says: "Then I'll gather them."*
+
+> Good. The stones will know you did it. They keep better books than the humans' banks.
+
+### Conversation: `q_the_quiet_road_turnin` *(plays when: quest:the_quiet_road:ready)*
+
+**`q_the_quiet_road_turnin__paid`** — *opens the conversation*
+
+> Moonbell and dust, counted. The stones drink tonight, and the mile between them stays a mile instead of forgetting itself. The road thanks you in the only voice it has, which is silence. I have come to like it.
+
+### Conversation: `serel_gate`
+
+**`serel_gate__greet`** — *opens the conversation*
+
+> Welcome to Evenfall. The arch is the whole wall. Treat it accordingly.
+
+**`serel_gate__hub`** — *follows straight on from "greet"; or follows straight on from "arch"; or follows straight on from "heartwood"*
+
+> You may ask. I am on watch, which means I am listening anyway.
+
+**`serel_gate__arch`** — *player says: "One arch is the whole wall?"*
+
+> The wood is the wall. The arch is where the wall agrees to open, and I am where the agreement stands in boots. Nothing comes up the Evenway that the trees did not already discuss. My work is mostly to be the face the discussion wears, and to be a good one. I decided that early. It is a discipline.
+
+**`serel_gate__heartwood`** — *player says: "May I see the Heartwood?"*
+
+> No. Yes, everyone asks. No, asking twice does not help. You may ask twice anyway. I keep a private count of who manages to ask a third time politely, and the count is shorter than you would think, and it is not nothing to be on it.
+
+**`serel_gate__letters`** — *player says: "You know me. I carried the letters."*
+
+> I do know you. The gate knows you, which matters more. You were the address for a silence a century and a half old, and you walked it both ways without dropping it. When you come up the Evenway now, I say your name to the arch before you reach it. That is not a formality. That is the wall deciding not to be one, for you.
+
+**`serel_gate__off`** — *player says: "Watch well, captain."*
+
+> The king says the gate stays open. So it stays open, and I stay at it.
+
+### Conversation: `serel_the_address` *(plays when: quest:the_letters_west:stage:the_outward_house)*
+
+**`serel_the_address__letter`** — *opens the conversation*
+
+> A letter for the city, with no name on it. A hundred and fifty years of nobody writing, and the Arcanum finally sends... you. Hold still while I decide how historic this is.
+
+**`serel_the_address__house`** — *follows straight on from "letter"*
+
+> The address she could not write is the Outward House. Elarin keeps the one room in Evenfall where human things are allowed to arrive. Take it to him, tell him the gate sent you, and tell him I said it was his problem now. He will be delighted. He is always delighted. It is exhausting.
+
+---
+
+## Thal `sentinel_thal` — 0 dialogue lines, 3 quips and barks
+
+*Old blood, whole, and younger than the other sentinels, which still makes him older than every road in the Dawnlands. He is the only Evenguard who asks travelers questions back.*
+
+**Who they are, and how to say it:** Evenguard sentinel at the Heartwood door; younger than the other sentinels, which still makes him old. Watchful, spare, a shade more curious than his elders would admit.
+
+**Chatterbox casting:** `rpg_fantasy/male/belf_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `sentinel_thal__bark_1` — "What is it like, the ford town? I have heard the bell. On a north wind, once, I heard the bell."
+- `sentinel_thal__bark_2` — "The king opened the gate. Some of us think a hundred and fifty years was hasty. I think it was about time. Do not repeat that."
+- `sentinel_thal__bark_3` — "Walk the stones and you will not be lost. Leave the stones and you will be lost exactly once."
+
+---
+
+## Veran `sentinel_veran` — 0 dialogue lines, 3 quips and barks
+
+*Old blood, whole: moonpale, upswept ears, a bow that was strung before the roads were roads. He keeps the mile the way other people keep a promise.*
+
+**Who they are, and how to say it:** Evenguard sentinel at the Heartwood door; the bow was strung before the roads were laid. Low, ancient, unhurried; a door guard whose no predates the asking.
+
+**Chatterbox casting:** `rpg_fantasy/male/guldan_m` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `sentinel_veran__bark_1` — "The deadfall is cleared by morning. You are welcome, and it was not for you."
+- `sentinel_veran__bark_2` — "The lamps stop at the fork. That is not the road failing. That is the road handing over."
+- `sentinel_veran__bark_3` — "You are walking toward the city. Most who pass here are walking away from something instead. Both are allowed."
+
+---
+
+## Faelar `smith_faelar` — 6 dialogue lines, 3 quips and barks
+
+*The keeper of the one warm room in Evenfall, and the closest thing the city has to a loud voice, which is not very. Mithril fittings, ferrule collars, leaf-blades: never ore by the cart.*
+
+**Who they are, and how to say it:** Smith of the Mithril Forge, the loudest voice in the city, which is not very. Warm, workmanlike, proud of the one fire that sweats. A leaf that agreed to be a sword; different joinery.
+
+**Chatterbox casting:** `rpg_fantasy/male/ember_tadhg` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `smith_faelar__bark_1` — "Mine is the one fire in the city that works for a living. The Everflame just stands there being old."
+- `smith_faelar__bark_2` — "The delf pulls mithril out by the cart. We pulled ours out by the ounce, first, before their realm had a name."
+- `smith_faelar__bark_3` — "A leaf-blade is not a sword shaped like a leaf. It is a leaf that agreed to be a sword. Different joinery."
+
+### Conversation: `faelar_forge`
+
+**`faelar_forge__greet`** — *opens the conversation*
+
+> Mind the heat. Mine is the one fire in the city that works for a living, and it has earned its temper.
+
+**`faelar_forge__hub`** — *follows straight on from "greet"; or follows straight on from "leaf"; or follows straight on from "delf"*
+
+> Speak up. That is a joke. Nobody in Evenfall speaks up. What do you need?
+
+**`faelar_forge__browse`** — *player says: "Show me your work."*
+
+> Fittings, ferrule collars, edge work. Never ore by the cart. We were never miners. We were listeners who owned a hammer.
+
+**`faelar_forge__leaf`** — *player says: "What is a leaf-blade, truly?"*
+
+> Not a sword shaped like a leaf. A leaf that agreed to be a sword. Different joinery entirely. The shape already knew how to shed force the way a leaf sheds rain, and my whole craft is not insulting that knowledge with a straight line. It took me eighty years to stop insulting it. Good years.
+
+**`faelar_forge__delf`** — *player says: "The delf pulls mithril by the cart, they say."*
+
+> They do, and good luck to them. We pulled ours out by the ounce before their realm had a name, and the ounce was enough, because we were not arming anybody. The Everflame stands over there being old and warm and admired. Mine is the fire that sweats. We have an understanding, the two of us. Neither would trade.
+
+**`faelar_forge__off`** — *player says: "Keep your fire, smith."*
+
+> If you hear the hammer stop, come back. Stopped is when the interesting part happens.
+
+---
+
+## Naia `stillkeeper_naia` — 6 dialogue lines, 3 quips and barks
+
+*The healers' house and the hanging gardens are hers: gathered herbs, never tilled rows. She is the youngest whole-blood in the city and the only one who finds that funny.*
+
+**Who they are, and how to say it:** Keeper of the Stillroom, the baby of the city at four human kingdoms old, the only whole-blood who jokes about age. Quick, warm, botanical; the garden is a conversation, not a demand.
+
+**Chatterbox casting:** `rpg_fantasy/female/perky_tilly` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `stillkeeper_naia__bark_1` — "I am the baby of the city. I have seen four human kingdoms. It keeps me humble."
+- `stillkeeper_naia__bark_2` — "We do not till. The wood gives what it gives, and the garden is a conversation, not a demand."
+- `stillkeeper_naia__bark_3` — "Drink it all. Yes, it tastes like that on purpose."
+
+### Conversation: `naia_stillroom`
+
+**`naia_stillroom__greet`** — *opens the conversation*
+
+> Come in, mind the hanging bundles, they outrank you. Stillroom's mine. I am Naia, the baby of the city, and yes, that is the official title.
+
+**`naia_stillroom__hub`** — *follows straight on from "greet"; or follows straight on from "baby"; or follows straight on from "garden"*
+
+> What hurts, or what are you curious about? I stock both.
+
+**`naia_stillroom__browse`** — *player says: "Show me your remedies."*
+
+> Salves, draughts, and the honest tea. Drink it all. Yes, it tastes like that on purpose. The taste is doing half the work.
+
+**`naia_stillroom__baby`** — *player says: "The baby of the city?"*
+
+> I have seen four human kingdoms. Rise, fall, rise, fall, and one of them managed both twice, which takes talent. Here that makes me the youngest in any room, and the elders still check whether I have eaten. It keeps a person humble. I recommend it, though I grant the arranging is difficult.
+
+**`naia_stillroom__garden`** — *player says: "Why no tilled rows?"*
+
+> Tilling is a demand. We ask. The wood gives what it gives, the garden hangs what it spares, and when a plant will not grow for me I assume it has its reasons and go and sit near it until one of us changes our mind. Your farmers would call that madness. Their sagewort would call it manners.
+
+**`naia_stillroom__off`** — *player says: "Stay well, Naia."*
+
+> Eat something green today. I always say that, and I am always right.
+
+---
+
+## Sylwen `warden_sylwen` — 8 dialogue lines, 3 quips and barks
+
+*The Evenking's heir, and the Evenguard's commander. She argued against opening the gate, lost, and now keeps the open gate better than anyone alive. Both of those are duty.*
+
+**Who they are, and how to say it:** Warden of the Wood, the Evenking's heir; argued against the open gate and now keeps it perfectly. Sentinel's arithmetic: short declaratives, counts while she listens, one dry edge per conversation.
+
+**Chatterbox casting:** `rpg_fantasy/female/elf_sentinel_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `warden_sylwen__bark_1` — "Two hundred years I kept a shut gate. Keeping an open one is harder. Nobody asks the second question."
+- `warden_sylwen__bark_2` — "The Company cut forty lengths of silverbark. Forty lengths came back to the hem, stacked. We are patient, not gentle."
+- `warden_sylwen__bark_3` — "My father is right about most things. I count the ones he is wrong about. The count is not zero."
+
+### Conversation: `sylwen_roost`
+
+**`sylwen_roost__greet`** — *opens the conversation*
+
+> You walked the stones and the watch let you by. So you are welcome. Those are the same fact.
+
+**`sylwen_roost__hub`** — *follows straight on from "greet"; or player says: "Never mind."; or follows straight on from "why"*
+
+> Say what you need. I count while I listen, it is not rudeness.
+
+**`sylwen_roost__against`** — *player says: "You argued against opening the gate."*
+
+> I did. I lost. Now the gate is mine to keep open, and I keep it. If you want a warden who only guards what she voted for, the humans elect those, I hear.
+
+**`sylwen_roost__why`** — *player says: "Why did you argue against it?"*
+
+> Because the last time the world was let in, my people thinned into it and did not come back. My father calls that family. I call it arithmetic. We are both right, which is the hard part.
+
+**`sylwen_roost__watch`** — *player says: "What does the Evenguard watch for?"*
+
+> The dark under the old lights. Wolves, and worse than wolves, and lately axes. The wood holds most of it down without being asked. We handle what the wood leaves us.
+
+**`sylwen_roost__company`** — *player says: "What's this about the Red Company?"*
+
+> A timber company keeps sending crews for silverbark nobody sold them. We keep sending the palisades back in bundles. Politely. The fourth crew is losing its nerve. There will be a fifth. Patience is a weapon you never have to sharpen.
+
+### Conversation: `sylwen_the_leave` *(plays when: quest:a_bow_of_the_wood:stage:the_patience)*
+
+**`sylwen_the_leave__count`** — *opens the conversation*
+
+> Aewyn sent you. I know. Who enters the yew stand is one of my counts, and you are about to be on it.
+
+**`sylwen_the_leave__leave`** — *follows straight on from "count"*
+
+> You asked before cutting. That is the whole test, and most fail it by not knowing it was set. Take the two logs the wind brought down this winter, west side of the stand, already dead and still true. Cut nothing standing. The living trees are not for this century, and we will not need to have the other conversation.
+
+---
+
+## Myrren `weaver_myrren` — 6 dialogue lines, 3 quips and barks
+
+*Moonpale silk with silver thread, woven by hands that remember teaching the craft to people whose great-grandchildren taught it to yours. She speaks in textures when words run short.*
+
+**Who they are, and how to say it:** Weaver of the Silk Hall; hands that remember teaching the craft to your ancestors’ teachers. Speaks in textures when words run short; slow, tactile, faintly amused by hurry.
+
+**Chatterbox casting:** `rpg_fantasy/female/faerin_f` *(provisional)* · exaggeration undefined · cfg undefined
+
+### Ambient barks — said in passing; the game matches your recording to the shown line, so record VERBATIM
+
+- `weaver_myrren__bark_1` — "Feel this. That is what a hundred quiet years does to thread."
+- `weaver_myrren__bark_2` — "Your ford-town wool is honest. Honest is a texture. I like it better than you would guess."
+- `weaver_myrren__bark_3` — "The moonpale weave is not white. Look again. Slower."
+
+### Conversation: `myrren_silks`
+
+**`myrren_silks__greet`** — *opens the conversation*
+
+> Come in. Hands clean? Then you may touch the second rack. The first rack is for looking, and the difference will make sense to your fingers before it makes sense to you.
+
+**`myrren_silks__hub`** — *follows straight on from "greet"; or follows straight on from "weave"; or follows straight on from "taught"*
+
+> Ask, or feel. Both are conversation here.
+
+**`myrren_silks__browse`** — *player says: "Show me the silks."*
+
+> Moonpale silk, silver thread, and a bolt of your ford-town wool I keep because honest is a texture and I like it near me.
+
+**`myrren_silks__weave`** — *player says: "The moonpale weave is not white?"*
+
+> Look again. Slower. There. It is every pale the moon owns, laid one against the next, and your eye calls it white because your eye is in a hurry. A hundred quiet years went into teaching the thread to hold that argument. The thread won. Threads usually do, given years, and we had the years.
+
+**`myrren_silks__taught`** — *player says: "Who taught whom, between us and you?"*
+
+> These hands taught the craft to people whose great-grandchildren taught it to yours. I say that without pride. Pride is for things that might have gone otherwise. It was a good trade both ways: we gave the loom, and your folk gave it hurry, and some of what hurry wove surprised us. I keep a piece of it. Second drawer. I do not show everyone.
+
+**`myrren_silks__off`** — *player says: "Weave well, Myrren."*
+
+> Go gently. You are wearing at least one thing somebody wove with care, whether you know it or not.
 
 ---

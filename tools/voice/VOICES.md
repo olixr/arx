@@ -1,4 +1,4 @@
-# The Arx voice pool — 59 samples, 46 cast on
+# The Arx voice pool — 59 samples, 45 cast on
 
 Chatterbox generates every line from a conditioning sample. The pool lives in
 `~/code/voicelab/voices/`, split across four shelves: `rpg_fantasy/{male,female}`
@@ -103,6 +103,25 @@ register), Torger `ember_tadhg` (the smeltmaster precedent), Sylvi
 standing soldier-pool voice), hunter pool `arathi_m` (outdoor clip).
 Sex-checked against the defs; no voice repeats within Pinewatch's 29
 entries.
+
+**THE FALLS VALE wave (2026-08-16, +23 throats, all cast in the JSON, new
+sheet region `vale` after `lowhall`; `kingsdelf` and `evenfall` also joined
+REGION_ORDER):** every Vale voice was chosen against the Silverfall high-city
+cast so the two halves of the capital do not echo each other, and by type:
+Pip (twelve years old) takes `perky_tilly`, the lightest kid-register sample
+in the pool and the same throat as Tansy the twin; Aldous the gravekeeper
+the deepest (`guldan_m`); Soren the guildmaster the gruff weight of
+`garrosh_m` (Grettir keeps `draven_m` — foreman and guildmaster must not
+share a throat); Holm the reed-fisher `ember_tadhg` gravel; Ulf the door-
+built taverner `dwarf_g_m`; Cato the ringmaster `flynn_m` (hall voice);
+Serle `ilidan_m` (bark); Varn the young sergeant `bran_m`; Wick the chandler
+`murozond_m` bright; Finn `edder` quiet; Torvald `jeff`; Brant `king_bob`
+plain; Lucan `lorewake_m` professorial; Hedda `sunny_posy` warm run-on;
+Una `xalath_f` command-with-a-laugh; Brigga `witherbard_f` weathered; Maeve
+`elf_sentinel_f` cool hostel law; Ronnaug `flint_greta` brisk; Petya
+`trade_nell` market-loud; Signe `garrif_f` warm; the three pools vale_watch
+`george` (NOT `solder_m` — the Silver Gate watch is the rival), vale_pilgrim
+`belf_m`, vale_carter `larry`. Sex-checked against the defs.
 
 `rpg_fantasy/` is split male/female on disk and that split drives casting.
 Check it by ear when a sample is added: `garrosh_f` sat in `female/` at 119 Hz

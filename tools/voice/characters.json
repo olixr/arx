@@ -999,5 +999,120 @@
     "where": "pinewatch",
     "direction": "Pooled cull hunter; patched leathers and a tally string with fewer knots than last year. Trail-quiet clip; says the count and stops talking.",
     "ttsVoice": "rpg_fantasy/male/arathi_m"
+  },
+  "miller_brant": {
+    "where": "vale",
+    "direction": "Miller of the Falls Vale; the wheel is the Vale's honesty and he wants everything weighed in the open. Measured, ledgered, one dry aside per exchange; judges a sack by the sound it lands with. Changes the subject when the two-month granary gap comes up. Plain, level, unhurried.",
+    "ttsVoice": "rpg_fantasy/male/king_bob"
+  },
+  "baker_hedda": {
+    "where": "vale",
+    "direction": "Night baker; the city is fed before it wakes and she sleeps through every festival she provisions. Warm, floury, runs on like proving dough; calls people love without losing an ounce of edge. Big forearms, bigger voice, first bell in her throat.",
+    "ttsVoice": "rpg_fantasy/female/sunny_posy"
+  },
+  "taverner_ulf": {
+    "where": "vale",
+    "direction": "Keeper of the Last Climb, first taproom inside the Silver Gate; built like a door. Big, level, publican-plain; prices things by fairness and people by thirst; stopped saying goodbye to carters years ago. Low, unbothered, room-filling without shouting.",
+    "ttsVoice": "rpg_fantasy/male/dwarf_g_m"
+  },
+  "keeper_ronnaug": {
+    "where": "vale",
+    "direction": "Keeper of the Delvers' Rest; the wall of chalk tallies is her scripture, half debts and half shifts survived. Brisk, guarded warmth; speaks of debts and shifts in the same breath because they are the same thing. Miners' banker and miners' memory; no time wasted, no one forgotten.",
+    "ttsVoice": "rpg_fantasy/female/flint_greta"
+  },
+  "potter_signe": {
+    "where": "vale",
+    "direction": "Potter; clay to the elbows and perfectly content about it. Calm, tactile, present tense; reads people the way she reads a thrown pot, by where the wobble starts, and offers one gentle unrude observation per talk. Warm and settled, the kiln breathing behind her.",
+    "ttsVoice": "rpg_fantasy/female/garrif_f"
+  },
+  "chandler_wick": {
+    "where": "vale",
+    "direction": "Chandler at the bottom of the pilgrim way; yes that is his real name and he tells the joke first. Bright, quick, taper-crackle delivery, grinning through it; ends on small warmths. The flame's practical half: somebody has to make the part that burns.",
+    "ttsVoice": "rpg_fantasy/male/murozond_m"
+  },
+  "cobbler_finn": {
+    "where": "vale",
+    "direction": "Cobbler; the quietest man on the lane, married to the loudest awl. Complete sentences, no hurry, small dry finish; reads roads off heels and futures off toes and never asks. Soft, even, almost under his breath.",
+    "ttsVoice": "rpg_fantasy/male/edder"
+  },
+  "wainwright_torvald": {
+    "where": "vale",
+    "direction": "Wainwright; every axle that survives the High Road's last league does so because he argued with it first. Craftsman-literal, counts arguments per cart, splits logs to avoid conversation (his wife is right). Dry working-man delivery, sucks his teeth before a price.",
+    "ttsVoice": "rpg_fantasy/male/jeff"
+  },
+  "hostelkeeper_maeve": {
+    "where": "vale",
+    "direction": "Keeper of the pilgrim hostel; ten thousand footsore arrivals and she can tell at the door which ones the flame will help, and keeps that to herself. Soft-spoken hostel law: no questions in either direction. Leaves a roll out for Pip and denies it. Cool, kind, measured.",
+    "ttsVoice": "rpg_fantasy/female/elf_sentinel_f"
+  },
+  "gravekeeper_aldous": {
+    "where": "vale",
+    "direction": "Gravekeeper; old enough to have buried the men who buried the men he was named for. Slow, formal, trailing; extends courtesy to moss; never, ever discusses the candles, and the one stumble is the fresh candle below. Deep, unhurried, every sentence set down like a stone.",
+    "ttsVoice": "rpg_fantasy/male/guldan_m"
+  },
+  "fisher_brigga": {
+    "where": "vale",
+    "direction": "Fisher of the deep water; rows further out than anyone on the Kingshore and waves at the far fires because the wave IS the treaty. Weathered, clipped, generous underneath; a stare that carries clean across the mere. Salt in the voice, no wasted words.",
+    "ttsVoice": "rpg_fantasy/female/witherbard_f"
+  },
+  "fisher_holm": {
+    "where": "vale",
+    "direction": "Brigga's brother, the reed-water man; patient as a heron and about as talkative. Mm. Sparse. Every sentence earns its place; corrects your standing posture before speaking. Low gravel, long pauses, mends nets the way other people pray.",
+    "ttsVoice": "rpg_fantasy/male/ember_tadhg"
+  },
+  "bathkeeper_una": {
+    "where": "vale",
+    "direction": "Bathkeeper at the hot spring; steam-pink and cheerfully tyrannical. Rank stays at the door with the boots and the Crown itself would be handed a brush. Imperatives softened by steam, big laugh close behind; outdrinks the mine at the Rest. Commanding and warm at once.",
+    "ttsVoice": "rpg_fantasy/female/xalath_f"
+  },
+  "guildmaster_soren": {
+    "where": "vale",
+    "direction": "Guildmaster of the delvers, keeper of the sealed book. Load-bearing sentences, nothing ornamental; speaks of stone as a colleague and carries the guild's weight without visible strain. Deep, deliberate, the hardest line in his charter delivered without flinching.",
+    "ttsVoice": "rpg_fantasy/male/garrosh_m"
+  },
+  "monger_petya": {
+    "where": "vale",
+    "direction": "Fishmonger of the wet market; the morning bell in human form, fish-scale sequins to the elbow. LOUD, endearments flying, italics audible; makes Lucan's produce famous by insulting it. Darling, love, sweetheart, all at carrying volume.",
+    "ttsVoice": "rpg_fantasy/female/trade_nell"
+  },
+  "monger_lucan": {
+    "where": "vale",
+    "direction": "Greengrocer of the wet market; produce stacked like masonry and priced like poetry. Dry, professorial patter that undersells how sharp it is; markets understood as geography with stalls; sells leaning carrots as the ones that decided. Unhurried, amused, a lecturer at a stall.",
+    "ttsVoice": "rpg_fantasy/male/lorewake_m"
+  },
+  "sergeant_varn": {
+    "where": "vale",
+    "direction": "Sergeant of the Vale Gate; first posting, newest wall in the city, determined neither will show. Procedure with a pulse; logs everything including his own jokes; feeds the braziers like a sacrament since Kestrel's six words. Young, earnest, crisp, a shade too thorough.",
+    "ttsVoice": "rpg_fantasy/male/bran_m"
+  },
+  "courier_pip": {
+    "where": "vale",
+    "direction": "Pip, twelve years old, the Vale's courier; knows every stair, shortcut and unlatched wicket and is owed favors by half the city. Breathless, numbered lists, one secret always almost told; never writes anything down. A KID's voice: light, quick, bright, talking while already walking away.",
+    "ttsVoice": "rpg_fantasy/female/perky_tilly"
+  },
+  "vale_watch": {
+    "where": "vale",
+    "direction": "Pooled Vale Watch voices; the youngest company on the city's rolls walking the newest wall, cheaper boots and worse pride. Young, quick, a little chippy about the Silver Gate watch; orders flat, grievances fond.",
+    "ttsVoice": "rpg_fantasy/male/george"
+  },
+  "vale_pilgrim": {
+    "where": "vale",
+    "direction": "Pooled pilgrim voices; road-dust to the knees, a candle wrapped against the wind, counting the days the flame does not. Footsore patience, gentle, road-faith spoken plainly; tired in the legs and lit in the eyes.",
+    "ttsVoice": "rpg_fantasy/male/belf_m"
+  },
+  "vale_carter": {
+    "where": "vale",
+    "direction": "Pooled carter voices at the yard fire; the descent, the crag corner and the gate, and opinions about all three. Road-weary, wry, never-again-see-you-next-month; grain up, ingots down. Plain trader gravel.",
+    "ttsVoice": "rpg_fantasy/male/larry"
+  },
+  "ringmaster_cato": {
+    "where": "vale",
+    "direction": "Ringmaster of the Grand Ring; a pit fighter from past the Salt Road who outlived his own card and bought the book, half his face old scar and all of it showman. Hall voice on the call, counter-quiet off it; names a fighter's style before their name; one flourish per card and he saves it for the sand.",
+    "ttsVoice": "rpg_fantasy/male/flynn_m"
+  },
+  "ringmaster_serle": {
+    "where": "vale",
+    "direction": "Old Serle of the sparring pen; Toll War leather, kept oiled. Watches your feet before your face; verdicts kind the way cold water is kind. Terse, gruff, three words where others use ten; every sentence a correction.",
+    "ttsVoice": "rpg_fantasy/male/ilidan_m"
   }
 }

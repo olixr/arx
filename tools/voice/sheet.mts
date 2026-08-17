@@ -31,6 +31,9 @@ const REGION_TITLES: Record<string, string> = {
   saltmere: 'Saltmere — the harbour and the salt pans',
   hartfell: 'Hartfell — the town past the treeline',
   lowhall: 'The Low Hall — the Red Company below',
+  vale: "The Falls Vale — Silverfall's lower town",
+  kingsdelf: 'Kingsdelf — the delf that made the crown',
+  evenfall: 'Evenfall — the city the old folk kept',
 };
 
 const SLOT_NOTES: Record<string, string> = {

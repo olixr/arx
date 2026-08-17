@@ -19,10 +19,14 @@
 #   3. generic     (opt-in) the per-voice fallback bank
 #   4. report      audit again, so the end state is stated rather than assumed
 #
-# EXPECTED COST at the time of writing: 92 characters need speaking (65 newly
-# cast, 27 recast off the trashed voices), about 1039 clips, roughly two hours
-# at ~7s a clip. The other 47 characters already hold valid takes and are
-# skipped by their stamp. --generic adds ~50 minutes on top.
+# EXPECTED COST at the time of writing (2026-08-16, after THE GREAT RECAST and
+# the Falls Vale wave): all 222 speaking characters are cast, 2582 clips
+# (1832 dialogue lines, 666 barks, 84 quips). Every character is either
+# recast, retuned or newly cast since the last pass, so a plain run and a
+# --fresh run speak the same thing: the WHOLE cast, roughly five hours at
+# ~7s a clip. Pass --fresh anyway when the intent is a complete
+# regeneration — it ignores every stamp on disk, so nothing old survives by
+# accident. --generic adds ~50 minutes on top.
 #
 # READ THIS BEFORE YOU START IT
 #   * Do not push to main while this runs. Forge quick-deploys on every push to
@@ -124,7 +128,7 @@ fi
 # currently reaches nothing in the game.
 #
 # It also matters less than it did. The bank existed so an NPC with no authored
-# dialogue could still answer in its cast voice; every one of the 139 speaking
+# dialogue could still answer in its cast voice; every one of the 222 speaking
 # characters is now cast and generating real lines.
 #
 # Run it when the importer exists, or when you want the clips on disk anyway.
