@@ -211,9 +211,22 @@ export function generateGrassTile(
   ty: number,
   tileId: number,
   detailId: number,
+  snowMask = 0,
 ): GrassTileGeom {
   const geom: GrassTileGeom = { under: [], north: [], south: [], roots: [], flowers: [] };
   const tall = tileId === Tile.GrassTall;
+  // THE BURIED MARGIN: a snow neighbor's baked contour overhangs up to
+  // half a tile into this one — blades rooted under the blanket must
+  // never sprout THROUGH it (green ticks poking out of white read as
+  // z-fighting, not meadow). snowMask bits: 1=N 2=E 4=S 8=W.
+  const buried =
+    snowMask === 0
+      ? null
+      : (bx: number, by: number): boolean =>
+          ((snowMask & 1) !== 0 && by < ty + 0.42) ||
+          ((snowMask & 4) !== 0 && by > ty + 0.58) ||
+          ((snowMask & 8) !== 0 && bx < tx + 0.42) ||
+          ((snowMask & 2) !== 0 && bx > tx + 0.58);
   const cov =
     valueNoise(901, tx * 0.13, ty * 0.13) * 0.6 + valueNoise(902, tx * 0.045, ty * 0.045) * 0.4;
   // Tone patches at meadow scale — neighbouring tiles share a palette.
@@ -225,9 +238,13 @@ export function generateGrassTile(
     const count = 9 + (h % 5);
     for (let i = 0; i < count; i++) {
       const b = makeBlade(tx, ty, 157, i, true, null, tileTone);
+      if (buried?.(b.bx, b.by)) continue;
       (b.by < ty + 0.5 ? geom.north : geom.south).push(b);
     }
-    for (let i = 0; i < 2; i++) geom.under.push(makeBlade(tx, ty, 163, i, false, null, tileTone));
+    for (let i = 0; i < 2; i++) {
+      const b = makeBlade(tx, ty, 163, i, false, null, tileTone);
+      if (!buried?.(b.bx, b.by)) geom.under.push(b);
+    }
     return geom;
   }
 
@@ -246,7 +263,8 @@ export function generateGrassTile(
       const size = Math.min(budget - placed, 1 + (hs % 3));
       const at = size > 1 ? { x: tx + rand01(hs, 3), y: ty + rand01(hs, 13) } : null;
       for (let i = 0; i < size; i++) {
-        geom.under.push(makeBlade(tx, ty, 173 + seed * 29, i, false, at, tileTone));
+        const b = makeBlade(tx, ty, 173 + seed * 29, i, false, at, tileTone);
+        if (!buried?.(b.bx, b.by)) geom.under.push(b);
       }
       placed += size;
       seed++;
@@ -255,15 +273,18 @@ export function generateGrassTile(
     const h = hashCoords(179, tx, ty);
     const cx = tx + 0.1 + rand01(h, 3) * 0.8;
     const cy = ty + 0.1 + rand01(h, 13) * 0.8;
-    geom.roots.push({ x: cx, y: cy, w: 0.16 + rand01(h, 7) * 0.06 });
-    const members = 5 + (h % 3);
-    for (let i = 0; i < members; i++) {
-      const b = makeBlade(tx, ty, 181, i, false, { x: cx, y: cy }, tileTone);
-      b.h += 0.08; // clumps stand proud of the lawn
-      geom.under.push(b);
+    if (!buried?.(cx, cy)) {
+      geom.roots.push({ x: cx, y: cy, w: 0.16 + rand01(h, 7) * 0.06 });
+      const members = 5 + (h % 3);
+      for (let i = 0; i < members; i++) {
+        const b = makeBlade(tx, ty, 181, i, false, { x: cx, y: cy }, tileTone);
+        b.h += 0.08; // clumps stand proud of the lawn
+        geom.under.push(b);
+      }
     }
     // A satellite strand beside the clump.
-    geom.under.push(makeBlade(tx, ty, 191, 0, false, null, tileTone));
+    const sat = makeBlade(tx, ty, 191, 0, false, null, tileTone);
+    if (!buried?.(sat.bx, sat.by)) geom.under.push(sat);
   }
 
   // Flowers grow as PATCHES: a seed point lands anywhere (edges too),
@@ -285,6 +306,7 @@ export function generateGrassTile(
       const h = hashCoords(199 + i * 5, tx, ty);
       const ang = rand01(h, 3) * 6.283;
       const rad = 0.08 + rand01(h, 13) * 0.3;
+      if (buried?.(pcx + Math.cos(ang) * rad, pcy + Math.sin(ang) * rad * 0.8)) continue;
       geom.flowers.push({
         bx: pcx + Math.cos(ang) * rad,
         by: pcy + Math.sin(ang) * rad * 0.8,
@@ -657,12 +679,27 @@ export class GrassSystem {
     this.shadowPath = null;
   }
 
-  private tile(tx: number, ty: number, tileId: number, detailId: number): GrassTileState {
+  private tile(
+    tx: number,
+    ty: number,
+    tileId: number,
+    detailId: number,
+    ground?: Sampler,
+  ): GrassTileState {
     // Numeric key — string building here showed up in profiles.
     const key = (((ty + 8192) * 16384 + (tx + 8192)) * 16 + tileId) * 8 + detailId;
     let st = this.tiles.get(key);
     if (!st) {
-      st = { geom: generateGrassTile(tx, ty, tileId, detailId), wakeAt: 0, tx, ty };
+      // Snow adjacency culls blades under the blanket's baked overhang
+      // (see generateGrassTile). Static per world — cached with the
+      // geometry.
+      const snowMask = ground
+        ? (ground(tx, ty - 1) === Tile.Snow ? 1 : 0) |
+          (ground(tx + 1, ty) === Tile.Snow ? 2 : 0) |
+          (ground(tx, ty + 1) === Tile.Snow ? 4 : 0) |
+          (ground(tx - 1, ty) === Tile.Snow ? 8 : 0)
+        : 0;
+      st = { geom: generateGrassTile(tx, ty, tileId, detailId, snowMask), wakeAt: 0, tx, ty };
       this.tiles.set(key, st);
       this.posIndex.set((ty + 8192) * 16384 + (tx + 8192), st);
     }
@@ -996,7 +1033,7 @@ export class GrassSystem {
         const t = ground(tx, ty);
         if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
         const key = (ty + 8192) * 16384 + (tx + 8192);
-        const st = this.tile(tx, ty, t, detail(tx, ty));
+        const st = this.tile(tx, ty, t, detail(tx, ty), ground);
         // Fresh wakes spring back at frame rate — keep them live too.
         if (st.wakeAt > 0 && this.nowMs - st.wakeAt < 800) {
           live.add(key);
@@ -1106,7 +1143,7 @@ export class GrassSystem {
       if (tx < bounds.minTx || tx > bounds.maxTx || ty < bounds.minTy || ty > bounds.maxTy) continue;
       const t = ground(tx, ty);
       if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
-      const st = this.tile(tx, ty, t, detail(tx, ty));
+      const st = this.tile(tx, ty, t, detail(tx, ty), ground);
       this.buildUnderTile(st, t, tx, ty, wts, s, flowerTiles);
     }
     this.buildFlowerTiles(flowerTiles, wts, s);
@@ -1134,7 +1171,7 @@ export class GrassSystem {
       let row: GrassTileState[] | null = null;
       for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
         if (ground(tx, ty) !== Tile.GrassTall) continue;
-        (row ??= []).push(this.tile(tx, ty, Tile.GrassTall, detail(tx, ty)));
+        (row ??= []).push(this.tile(tx, ty, Tile.GrassTall, detail(tx, ty), ground));
       }
       if (!row) continue;
       const tiles = row;
@@ -1178,7 +1215,7 @@ export class GrassSystem {
       for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
         const t = ground(tx, ty);
         if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
-        const st = this.tile(tx, ty, t, detail(tx, ty));
+        const st = this.tile(tx, ty, t, detail(tx, ty), ground);
         const wind = windAtInto(WIND_SCRATCH, tx + 0.5, ty + 0.5, this.tSec);
         const f = this.tileFrame(tx, ty, wts);
         this.gatherNear(tx, ty);

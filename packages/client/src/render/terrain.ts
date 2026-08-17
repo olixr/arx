@@ -67,27 +67,47 @@ interface BlobLayer {
   band: string | null;
   /** Turf creeps over this material's edge where it borders grass. */
   fringe: boolean;
-}
-
-/** Region-scale two-tone variation — smooth patches, never per-tile. */
-function patch(base: string, alt: string, tx: number, ty: number, salt: number): string {
-  return valueNoise(salt, tx * 0.09, ty * 0.09) > 0.55 ? alt : base;
+  /**
+   * Region-scale two-tone variation, painted as ORGANIC sub-patches
+   * through the same dual-grid contour machinery as the region itself.
+   * (The old per-tile threshold printed the tone change as rectangular
+   * steps on the tile grid — the plaza patchwork artifact.)
+   */
+  alt?: { color: string; salt: number };
+  /**
+   * Sun-side lit lip: a thin bright stroke inside edges whose outward
+   * normal faces the western sun — the same sun-law every wall and
+   * pile in the world already obeys. Ground that catches the light at
+   * its edges stops reading as a flat sticker.
+   */
+  lip?: string;
+  /** Material interior dressing painted inside the region contour. */
+  interior?: 'flags' | 'flagsDark' | 'sand' | 'snow';
+  /**
+   * THE LADEN EDGE (snow): no worn dirt band — a cool inner shade, a
+   * bright crest, and a white thickness fascia + soft cast shadow on
+   * south-facing edges, so the blanket visibly SITS ON the ground.
+   */
+  laden?: boolean;
 }
 
 /** Painted lowest → highest; later layers' rounding overlaps earlier. */
 const BLOB_LAYERS: BlobLayer[] = [
   {
     match: (t) => t === Tile.Dirt,
-    color: (_t, tx, ty) => patch('#96744c', '#8f6e47', tx, ty, 31),
+    color: () => '#96744c',
+    alt: { color: '#8f6e47', salt: 31 },
     wobble: 0.22,
     band: 'rgba(70, 50, 30, 0.3)',
+    lip: 'rgba(228, 196, 148, 0.32)',
     fringe: true,
   },
   {
     // Tilled garden soil: dug by hand — near-straight edges, a deep
     // worked-earth band. All crop stages resolve to this material.
     match: (t) => t === Tile.Tilled,
-    color: (_t, tx, ty) => patch('#6b4f33', '#654a30', tx, ty, 43),
+    color: () => '#6b4f33',
+    alt: { color: '#654a30', salt: 43 },
     wobble: 0.08,
     band: 'rgba(38, 26, 16, 0.4)',
     fringe: true,
@@ -95,43 +115,53 @@ const BLOB_LAYERS: BlobLayer[] = [
   {
     match: (t) => t === Tile.Swamp,
     color: () => '#556b3e',
+    alt: { color: '#4f6539', salt: 51 },
     wobble: 0.24,
     band: 'rgba(30, 42, 24, 0.35)',
     fringe: true,
   },
   {
     match: (t) => t === Tile.Path,
-    color: (_t, tx, ty) => patch('#c2a26e', '#bc9d69', tx, ty, 33),
+    color: () => '#c2a26e',
+    alt: { color: '#bc9d69', salt: 33 },
     wobble: 0.2,
     band: 'rgba(105, 78, 44, 0.3)',
+    lip: 'rgba(240, 216, 170, 0.34)',
     fringe: true,
   },
   {
     match: (t) => t === Tile.Sand,
-    color: (_t, tx, ty) => patch('#ddc98d', '#d6c286', tx, ty, 35),
+    color: () => '#ddc98d',
+    alt: { color: '#d6c286', salt: 35 },
     wobble: 0.2,
     band: 'rgba(158, 128, 74, 0.32)',
+    lip: 'rgba(248, 234, 192, 0.4)',
+    interior: 'sand',
     fringe: true,
   },
   {
     // Hand-laid flagstone: a light wobble — tighter than wild ground,
     // looser than a laser cut.
     match: (t) => t === Tile.StoneFloor,
-    color: (_t, tx, ty) => patch('#a09aa8', '#99939f', tx, ty, 37),
+    color: () => '#a09aa8',
+    alt: { color: '#99939f', salt: 37 },
     wobble: 0.11,
     band: 'rgba(40, 34, 56, 0.28)',
+    lip: 'rgba(214, 212, 224, 0.4)',
+    interior: 'flags',
     fringe: true,
   },
   {
     match: (t) => t === Tile.WoodFloor || t === Tile.Bridge,
-    color: (_t, tx, ty) => patch('#a87e46', '#a37943', tx, ty, 39),
+    color: () => '#a87e46',
     wobble: 0,
     band: 'rgba(58, 40, 22, 0.3)',
     fringe: false,
   },
   {
     match: (t) => t === Tile.CaveFloor || t === Tile.PortalDown || t === Tile.PortalUp,
-    color: (_t, tx, ty) => patch(CAVE_TONES[0]!, CAVE_TONES[1]!, tx, ty, 41),
+    color: () => CAVE_TONES[0]!,
+    alt: { color: CAVE_TONES[1]!, salt: 41 },
     wobble: 0.18,
     band: 'rgba(18, 14, 28, 0.35)',
     fringe: false,
@@ -141,9 +171,11 @@ const BLOB_LAYERS: BlobLayer[] = [
     // flagstone wobble (tight, deliberate) in cave-depth tones, so a
     // built room reads man-made against the raw cave around it.
     match: (t) => t === Tile.DungeonFloor,
-    color: (_t, tx, ty) => patch('#514b58', '#4c4653', tx, ty, 47),
+    color: () => '#514b58',
+    alt: { color: '#4c4653', salt: 47 },
     wobble: 0.11,
     band: 'rgba(16, 12, 24, 0.32)',
+    interior: 'flagsDark',
     fringe: false,
   },
   {
@@ -151,7 +183,8 @@ const BLOB_LAYERS: BlobLayer[] = [
     // fully organic patches, a shade lighter than the rock they broke
     // from, painted over both cave floor and flagstone.
     match: (t) => t === Tile.CaveRubble,
-    color: (_t, tx, ty) => patch('#544e5f', '#4f4959', tx, ty, 49),
+    color: () => '#544e5f',
+    alt: { color: '#4f4959', salt: 49 },
     wobble: 0.18,
     band: 'rgba(18, 14, 28, 0.3)',
     fringe: false,
@@ -159,8 +192,11 @@ const BLOB_LAYERS: BlobLayer[] = [
   {
     match: (t) => t === Tile.Snow,
     color: () => '#e9edf3',
+    alt: { color: '#e0e6ef', salt: 57 },
     wobble: 0.22,
-    band: 'rgba(150, 166, 200, 0.3)',
+    band: null,
+    interior: 'snow',
+    laden: true,
     fringe: true,
   },
   {
@@ -168,7 +204,8 @@ const BLOB_LAYERS: BlobLayer[] = [
     // Lighter and greener than open water so "walkable" reads at a
     // glance; the live shoreline draws its waterline — no baked band.
     match: (t) => t === Tile.WaterShallow,
-    color: (_t, tx, ty) => patch('#649cc0', '#5f96ba', tx, ty, 45),
+    color: () => '#649cc0',
+    alt: { color: '#5f96ba', salt: 45 },
     wobble: 0.14,
     band: null,
     fringe: false,
@@ -178,6 +215,7 @@ const BLOB_LAYERS: BlobLayer[] = [
     // step where the wadeable rim drops away into swimming water.
     match: (t) => t === Tile.Water || isFishingTile(t),
     color: () => '#4979b8',
+    alt: { color: '#4574b2', salt: 53 },
     wobble: 0.14,
     band: 'rgba(24, 44, 84, 0.3)',
     fringe: false,
@@ -185,6 +223,7 @@ const BLOB_LAYERS: BlobLayer[] = [
   {
     match: (t) => t === Tile.WaterDeep,
     color: () => '#3a629e',
+    alt: { color: '#375d97', salt: 55 },
     wobble: 0.2,
     band: 'rgba(24, 42, 80, 0.4)',
     fringe: false,
@@ -727,7 +766,7 @@ export function startChunkBake(
   for (let li = 0; li < BLOB_LAYERS.length; li++) {
     steps.push(() => {
       idx ??= computeLayerIdx(g, baseX, baseY);
-      paintLayerSkin(ctx, idx, li, baseX, baseY, px);
+      paintLayerSkin(ctx, idx, li, baseX, baseY, px, g);
     });
   }
 
@@ -2053,16 +2092,80 @@ function drawTileDetail(
         // Baked turf stubble: static vertical flecks, dark and sunlit,
         // so the ground under the live blades reads as dense mown grass
         // instead of flat paint. Costs nothing — baked once per chunk.
+        // NEAR SNOW the snow contour overhangs half a tile into this
+        // one: flecks landing under the blanket are buried (never green
+        // ticks poking through white), and the survivors go frosted.
+        const snowN = gAt !== undefined && gAt(tx, ty - 1) === Tile.Snow;
+        const snowS = gAt !== undefined && gAt(tx, ty + 1) === Tile.Snow;
+        const snowW = gAt !== undefined && gAt(tx - 1, ty) === Tile.Snow;
+        const snowE = gAt !== undefined && gAt(tx + 1, ty) === Tile.Snow;
+        const nearSnow = snowN || snowS || snowW || snowE;
         const n = 3 + (hg % 3);
         for (let k = 0; k < n; k++) {
           const hh = hashCoords(101 + k, tx, ty);
-          const sx = gx + ((hh % 88) / 100) * px;
-          const sy = gy + (((hh >> 7) % 88) / 100) * px;
+          const fx = (hh % 88) / 100;
+          const fy = ((hh >> 7) % 88) / 100;
+          if (
+            (snowN && fy < 0.4) ||
+            (snowS && fy > 0.6) ||
+            (snowW && fx < 0.4) ||
+            (snowE && fx > 0.6)
+          ) {
+            continue;
+          }
+          const sx = gx + fx * px;
+          const sy = gy + fy * px;
           const stub = px * (0.05 + ((hh >> 3) % 4) * 0.014);
           // Floor law: turf detail is never DARKER than the ground —
           // dark flecks read as holes. Two grades of lighter green only.
-          ctx.fillStyle = hh & 1 ? 'rgba(148, 178, 96, 0.18)' : 'rgba(215, 227, 140, 0.15)';
+          ctx.fillStyle = nearSnow
+            ? (hh & 1 ? 'rgba(178, 198, 168, 0.22)' : 'rgba(228, 238, 224, 0.2)')
+            : (hh & 1 ? 'rgba(148, 178, 96, 0.18)' : 'rgba(215, 227, 140, 0.15)');
           ctx.fillRect(sx, sy - stub, Math.max(1, px * 0.045), stub);
+        }
+      }
+      if (m === Tile.Snow) {
+        // THE SPARKLE: sun on fresh crystal — a few pinpoint glints,
+        // and the rare four-point star. With the drift pass this is
+        // the whole difference between snow and blank paper.
+        const n = 1 + (hg % 3);
+        for (let k = 0; k < n; k++) {
+          const hh = hashCoords(2767 + k, tx, ty);
+          const sx = gx + ((hh % 90) / 100) * px;
+          const sy = gy + (((hh >> 7) % 90) / 100) * px;
+          ctx.fillStyle = hh & 1 ? 'rgba(255, 255, 255, 0.6)' : 'rgba(214, 228, 248, 0.5)';
+          const r = Math.max(1, px * 0.028);
+          ctx.fillRect(sx, sy, r, r);
+        }
+        if (hg % 7 === 3) {
+          const hh = hashCoords(2777, tx, ty);
+          const sx = gx + (0.12 + (hh % 72) / 100) * px;
+          const sy = gy + (0.12 + ((hh >> 6) % 72) / 100) * px;
+          const arm = px * 0.05;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+          ctx.lineWidth = Math.max(1, px * 0.018);
+          ctx.beginPath();
+          ctx.moveTo(sx - arm, sy);
+          ctx.lineTo(sx + arm, sy);
+          ctx.moveTo(sx, sy - arm * 0.6);
+          ctx.lineTo(sx, sy + arm * 0.6);
+          ctx.stroke();
+        }
+        // A soft blue pool where the blanket dips — sparse, wide, quiet.
+        if (hg % 5 === 2) {
+          const hh = hashCoords(2789, tx, ty);
+          ctx.fillStyle = 'rgba(158, 174, 208, 0.14)';
+          ctx.beginPath();
+          ctx.ellipse(
+            gx + (0.2 + (hh % 60) / 100) * px,
+            gy + (0.2 + ((hh >> 6) % 60) / 100) * px,
+            px * (0.14 + ((hh >> 11) % 3) * 0.04),
+            px * 0.09,
+            0,
+            0,
+            Math.PI * 2,
+          );
+          ctx.fill();
         }
       }
       if (m === Tile.StoneFloor && hg % 3 === 0) {
@@ -3062,7 +3165,7 @@ export function startElevatedBake(
     steps.push(
       clipped(() => {
         idx ??= computeLayerIdx(g, baseX, baseY);
-        paintLayerSkin(ctx, idx, li, baseX, baseY, px);
+        paintLayerSkin(ctx, idx, li, baseX, baseY, px, g);
       }),
     );
   }
@@ -3335,13 +3438,28 @@ const rnd01 = (seed: number, x: number, y: number): number =>
   hashCoords(seed, x, y) / 4294967296;
 
 /**
+ * THE SWELL FIELD — the second octave of every organic boundary. The
+ * per-edge hash alone wiggles at exactly one tile's wavelength, which
+ * reads as a uniform worm crawling around every region. This slow
+ * world noise swells and calms that jitter over ~10-tile stretches, so
+ * a shoreline carries long meanders with quiet reaches between the
+ * choppy ones — coastline, not corrugation. Pure function of world
+ * position (+ per-layer salt), so bakes, tiers, and the live shoreline
+ * agree by construction.
+ */
+function edgeSwell(li: number, wx: number, wy: number): number {
+  return 0.45 + 1.1 * valueNoise(6151 + li * 97, wx * 0.031, wy * 0.031);
+}
+
+/**
  * Where the contour crosses a dual-cell edge, as a param 0..1 along
  * the edge. Keyed on the edge's world identity so the two cells
  * sharing the edge (and every chunk/tier/live pass) agree exactly.
  */
 function crossT(li: number, wob: number, kx: number, ky: number, vert: number): number {
   if (wob === 0) return 0.5;
-  return 0.5 + (rnd01(7717 + li * 131 + vert * 67, kx, ky) - 0.5) * 2 * wob;
+  const amp = wob * edgeSwell(li, kx + (vert === 0 ? 0.5 : 0), ky + (vert === 1 ? 0.5 : 0));
+  return 0.5 + (rnd01(7717 + li * 131 + vert * 67, kx, ky) - 0.5) * 2 * Math.min(0.42, amp);
 }
 
 /** Crossing point on one edge of dual cell (I, J). 0=T 1=R 2=B 3=L. */
@@ -3372,7 +3490,10 @@ function bndCurve(
     const dx = b[0] - a[0];
     const dy = b[1] - a[1];
     const len = Math.hypot(dx, dy) || 1;
-    const d = (rnd01(8117 + li * 131 + pair * 29, I, J) - 0.5) * 2 * wob * len;
+    // The control point rides the swell field too (sampled at the run
+    // midpoint), so bows deepen exactly where the crossings roughen.
+    const amp = Math.min(0.42, wob * edgeSwell(li, cx, cy));
+    const d = (rnd01(8117 + li * 131 + pair * 29, I, J) - 0.5) * 2 * amp * len;
     cx += (-dy / len) * d;
     cy += (dx / len) * d;
   }
@@ -3500,6 +3621,7 @@ function drawGrassFringe(
   toX: (wx: number) => number,
   toY: (wy: number) => number,
   px: number,
+  laden = false,
 ): void {
   const seed = 9313 + bnd.pair * 17;
   for (let k = 0; k < 3; k++) {
@@ -3511,7 +3633,10 @@ function drawGrassFringe(
     const rx = p[0] - bnd.ox * 0.055;
     const ry = p[1] - bnd.oy * 0.055;
     const blades = 2 + ((h >> 9) % 3);
-    const tone = meadowTone(rx, ry);
+    // At a snow rim the tufts are frost-kissed: pale sage, not summer
+    // green — cold bleeds into the meadow instead of butting it.
+    const tone = laden ? '#93ae90' : meadowTone(rx, ry);
+    const toneAlt = laden ? '#b4c8ae' : '#79a556';
     for (let bl = 0; bl < blades; bl++) {
       const hb = hashCoords(seed + k * 293 + 31 * (bl + 1), bnd.I, bnd.J);
       const bx = toX(rx) + ((hb % 100) / 100 - 0.5) * px * 0.22;
@@ -3519,7 +3644,7 @@ function drawGrassFringe(
       const lean = (((hb >> 3) % 100) / 100 - 0.5) * 0.7;
       const tall = px * (0.1 + ((hb >> 11) % 100) / 100 * 0.09);
       const w = px * 0.05;
-      ctx.fillStyle = hb & 1 ? tone : '#79a556';
+      ctx.fillStyle = hb & 1 ? tone : toneAlt;
       ctx.beginPath();
       ctx.moveTo(bx - w / 2, by);
       ctx.lineTo(bx + w / 2, by);
@@ -3527,8 +3652,27 @@ function drawGrassFringe(
       ctx.closePath();
       ctx.fill();
     }
-    // Material crumbs spilling outward onto the grass.
-    if ((h >> 4) % 3 !== 0) {
+    if (laden) {
+      // Snow spills as DOLLOPS, never confetti: one soft lobe tossed
+      // past the rim, seated in its own blue shade.
+      if ((h >> 4) % 2 === 0) {
+        const hc = hashCoords(seed + k * 293 + 71, bnd.I, bnd.J);
+        const d = 0.1 + ((hc % 100) / 100) * 0.16;
+        const along = (((hc >> 7) % 100) / 100 - 0.5) * 0.3;
+        const sx = toX(p[0] + bnd.ox * d - bnd.oy * along);
+        const sy = toY(p[1] + bnd.oy * d + bnd.ox * along);
+        const r = px * (0.07 + ((hc >> 13) % 3) * 0.02);
+        ctx.fillStyle = 'rgba(60, 72, 108, 0.16)';
+        ctx.beginPath();
+        ctx.ellipse(sx + r * 0.18, sy + r * 0.3, r, r * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#eef2f8';
+        ctx.beginPath();
+        ctx.ellipse(sx, sy, r, r * 0.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if ((h >> 4) % 3 !== 0) {
+      // Material crumbs spilling outward onto the grass.
       ctx.fillStyle = matColor;
       const crumbs = 2 + ((h >> 13) % 2);
       for (let c = 0; c < crumbs; c++) {
@@ -3559,13 +3703,14 @@ function drawGrassFringe(
  * higher ones and the base can never peek through a boundary. Painted
  * lowest → highest, higher skins cover the underlap.
  */
-/** The layer index of every tile touching this chunk (34² halo grid). */
+/** The layer index of every tile touching this chunk (36² halo grid —
+ *  two rings, so the adjacency-underlap test never leaves the array). */
 function computeLayerIdx(g: GroundSampler, baseX: number, baseY: number): Int8Array {
-  const N = CHUNK_SIZE + 2;
+  const N = CHUNK_SIZE + 4;
   const idx = new Int8Array(N * N);
-  for (let ly = -1; ly <= CHUNK_SIZE; ly++) {
-    for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
-      idx[lx + 1 + (ly + 1) * N] = layerIndexOf(g(baseX + lx, baseY + ly) ?? Tile.Grass);
+  for (let ly = -2; ly <= CHUNK_SIZE + 1; ly++) {
+    for (let lx = -2; lx <= CHUNK_SIZE + 1; lx++) {
+      idx[lx + 2 + (ly + 2) * N] = layerIndexOf(g(baseX + lx, baseY + ly) ?? Tile.Grass);
     }
   }
   return idx;
@@ -3585,9 +3730,10 @@ function paintLayerSkin(
   baseX: number,
   baseY: number,
   px: number,
+  g: GroundSampler,
 ): void {
-  const N = CHUNK_SIZE + 2;
-  const at = (lx: number, ly: number): number => idx[lx + 1 + (ly + 1) * N]!;
+  const N = CHUNK_SIZE + 4;
+  const at = (lx: number, ly: number): number => idx[lx + 2 + (ly + 2) * N]!;
 
   const toX = (wx: number): number => (wx - baseX) * px;
   const toY = (wy: number): number => (wy - baseY) * px;
@@ -3596,9 +3742,56 @@ function paintLayerSkin(
     const layer = BLOB_LAYERS[li]!;
     const wob = layer.wobble;
     const region = new Path2D();
-    const bands = new Path2D();
-    let hasBands = false;
+    const runs: Array<{ bnd: Bnd; lone: boolean }> = [];
     const fringe: Array<{ bnd: Bnd; color: string }> = [];
+    // THE UNDERLAP IS A NEIGHBOR'S COURTESY, NOT A BLANKET: layer li
+    // extends under a HIGHER material's tile only where a true li tile
+    // actually adjoins it (8-neighborhood) — that seal is the whole
+    // point of underlap (no base peeking between two skins). The old
+    // cumulative rule made every higher tile a member of EVERY lower
+    // layer, so a lone snow patch in open grassland wore dirt, sand,
+    // flagstone, cave and dungeon floor blobs beneath it — ten phantom
+    // skins, and whichever contour lobed past the snow's printed its
+    // color and worn band as a dark ring around the drift (the
+    // longstanding "snow wears a black rim" artifact).
+    const memberAt = (lx: number, ly: number): boolean => {
+      const lt = at(lx, ly);
+      if (lt === li) return true;
+      if (lt < li || lt === -1) return false;
+      // THE WATER FAMILY KEEPS FULL UNDERLAP: the live shoreline traces
+      // the shallows layer's contour as THE land|water boundary (see
+      // WATER_LI) — every deeper water tile must stay a member of every
+      // shallower water layer so foam always hugs the painted edge.
+      if (li >= WATER_LI) return true;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if ((dx !== 0 || dy !== 0) && at(lx + dx, ly + dy) === li) return true;
+        }
+      }
+      return false;
+    };
+    // THE LONE TILE: a single tile of a material is a worn spot in the
+    // ground, not a walled island — its runs thin the band and skip
+    // the crumb scatter. Keyed on the WORLD sampler so both chunks
+    // sharing a halo tile reach the same verdict.
+    const memberOf = (wx: number, wy: number): boolean => {
+      const lt = layerIndexOf(g(wx, wy) ?? Tile.Grass);
+      return lt >= li && lt !== -1;
+    };
+    const loneMemo = new Map<number, boolean>();
+    const isLone = (wx: number, wy: number): boolean => {
+      const key = wx * 131072 + wy;
+      let v = loneMemo.get(key);
+      if (v === undefined) {
+        v =
+          !memberOf(wx, wy - 1) &&
+          !memberOf(wx, wy + 1) &&
+          !memberOf(wx - 1, wy) &&
+          !memberOf(wx + 1, wy);
+        loneMemo.set(key, v);
+      }
+      return v;
+    };
     for (let j = 0; j <= CHUNK_SIZE; j++) {
       for (let i = 0; i <= CHUNK_SIZE; i++) {
         // Corner tiles of this dual cell.
@@ -3607,26 +3800,17 @@ function paintLayerSkin(
         const br = at(i, j);
         const bl = at(i - 1, j);
         const mask =
-          (tl >= li && tl !== -1 ? 1 : 0) |
-          (tr >= li && tr !== -1 ? 2 : 0) |
-          (br >= li && br !== -1 ? 4 : 0) |
-          (bl >= li && bl !== -1 ? 8 : 0);
+          (memberAt(i - 1, j - 1) ? 1 : 0) |
+          (memberAt(i, j - 1) ? 2 : 0) |
+          (memberAt(i, j) ? 4 : 0) |
+          (memberAt(i - 1, j) ? 8 : 0);
         if (mask === 0) continue;
-        // Color from a corner that is truly of this layer if possible
-        // (members-by-underlap sit above and will repaint themselves).
-        let ctx2 = -1;
-        let cty = -1;
-        if (tl === li) { ctx2 = i - 1; cty = j - 1; }
-        else if (tr === li) { ctx2 = i; cty = j - 1; }
-        else if (bl === li) { ctx2 = i - 1; cty = j; }
-        else if (br === li) { ctx2 = i; cty = j; }
-        else { ctx2 = i; cty = j; }
         const I = baseX + i;
         const J = baseY + j;
         const bnds = boundaryCurvesFor(li, wob, I, J, mask);
         const cell = new Path2D();
         organicCellPath(cell, li, wob, I, J, mask, bnds, toX, toY);
-        const col = layer.color(0, baseX + ctx2, baseY + cty);
+        const col = layer.color(0, I, J);
         ctx.fillStyle = col;
         ctx.fill(cell);
         // Hairline same-color stroke kills antialiasing seams between
@@ -3635,10 +3819,21 @@ function paintLayerSkin(
         ctx.lineWidth = 0.8;
         ctx.stroke(cell);
         region.addPath(cell);
+        // THE PHANTOM BOUNDARY STAYS BARE: a cell with no TRUE li
+        // corner is pure underlap sealing a seam beneath a higher
+        // skin — its contour is not this material's visible edge, so
+        // it takes no worn band, no lip, no fringe (only the fill).
+        const hasTrue = tl === li || tr === li || br === li || bl === li;
+        if (!hasTrue) continue;
+        // A one-member cell may belong to a lone tile; find that tile.
+        let lone = false;
+        if (mask === 1 || mask === 2 || mask === 4 || mask === 8) {
+          const wx = mask === 1 || mask === 8 ? I - 1 : I;
+          const wy = mask === 1 || mask === 2 ? J - 1 : J;
+          lone = isLone(wx, wy);
+        }
         for (const b of bnds) {
-          bands.moveTo(toX(b.ax), toY(b.ay));
-          bands.quadraticCurveTo(toX(b.cx), toY(b.cy), toX(b.bx), toY(b.by));
-          hasBands = true;
+          runs.push({ bnd: b, lone });
           // Turf fringe wherever the outside of this run is base grass.
           if (layer.fringe && (tl === -1 || tr === -1 || br === -1 || bl === -1)) {
             fringe.push({ bnd: b, color: col });
@@ -3646,26 +3841,401 @@ function paintLayerSkin(
         }
       }
     }
-    // Worn shade band settling the material into its edge: two strokes
-    // clipped to the region so only the inner half shows.
-    if (layer.band && hasBands) {
+
+    // Region-scale two-tone drift, contoured through the same organic
+    // machinery as the region itself (a distinct hash lane keeps the
+    // sub-patch meander uncorrelated with the material's own edge).
+    if (layer.alt) {
+      paintAltPatches(ctx, region, layer, li, at, baseX, baseY, px, toX, toY);
+    }
+
+    // Material interiors: the dressing that makes a plaza read as laid
+    // flags and a snowfield as wind-worked drifts, not blank fill.
+    if (layer.interior !== undefined) {
+      paintLayerInterior(ctx, region, layer.interior, li, at, baseX, baseY, px, toX, toY);
+    }
+
+    // Worn shade band settling the material into its edge — stroked
+    // per run now, so width and weight breathe along the boundary
+    // (swell field) and obey the sun-law: heavier in the shade, and a
+    // lit lip where an edge faces the western sun.
+    if (runs.length > 0 && (layer.band !== null || layer.lip !== undefined || layer.laden)) {
       ctx.save();
       ctx.clip(region);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      ctx.strokeStyle = layer.band;
-      ctx.globalAlpha = 0.45;
-      ctx.lineWidth = px * 0.34;
-      ctx.stroke(bands);
+      for (const { bnd, lone } of runs) {
+        const mid = qpoint(bnd, 0.5);
+        const sw = Math.max(0, Math.min(1, (edgeSwell(li, mid[0], mid[1]) - 0.45) / 1.1));
+        const sunDot = bnd.ox * SUN_X + bnd.oy * SUN_Y;
+        const p = new Path2D();
+        p.moveTo(toX(bnd.ax), toY(bnd.ay));
+        p.quadraticCurveTo(toX(bnd.cx), toY(bnd.cy), toX(bnd.bx), toY(bnd.by));
+        if (layer.band !== null) {
+          const weight = (lone ? 0.55 : 1) * (0.7 + 0.6 * sw) * (1 - 0.38 * Math.max(0, sunDot));
+          ctx.strokeStyle = layer.band;
+          ctx.globalAlpha = Math.min(1, 0.45 * weight);
+          ctx.lineWidth = px * 0.34 * (0.72 + 0.55 * sw);
+          ctx.stroke(p);
+          ctx.globalAlpha = Math.min(1, weight);
+          ctx.lineWidth = px * 0.15 * (0.78 + 0.44 * sw);
+          ctx.stroke(p);
+        }
+        if (layer.laden) {
+          // Cool blue settling shade instead of a dirt band — snow
+          // shadows itself, it never wears mud.
+          ctx.strokeStyle = 'rgba(126, 146, 188, 0.3)';
+          ctx.globalAlpha = 0.6 + 0.4 * sw;
+          ctx.lineWidth = px * 0.38 * (0.75 + 0.5 * sw);
+          ctx.stroke(p);
+          // The crest catching the sun on lit edges.
+          if (sunDot > 0.2) {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+            ctx.globalAlpha = Math.min(1, sunDot);
+            ctx.lineWidth = px * 0.08;
+            ctx.stroke(p);
+          }
+        }
+        if (layer.lip !== undefined && sunDot > 0.25) {
+          ctx.strokeStyle = layer.lip;
+          ctx.globalAlpha = Math.min(1, (sunDot - 0.1) * 1.1);
+          ctx.lineWidth = px * 0.07;
+          ctx.stroke(p);
+        }
+      }
       ctx.globalAlpha = 1;
-      ctx.lineWidth = px * 0.15;
-      ctx.stroke(bands);
       ctx.lineCap = 'butt';
       ctx.lineJoin = 'miter';
       ctx.restore();
     }
-    for (const f of fringe) drawGrassFringe(ctx, f.bnd, f.color, toX, toY, px);
+
+    // THE LADEN EDGE, outside the region: on south-facing runs the
+    // blanket shows its thickness — a white fascia sliver riding just
+    // past the contour with a soft cast shadow beneath it, so snow
+    // visibly SITS ON the ground it covers instead of being a decal.
+    if (layer.laden) {
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (const { bnd } of runs) {
+        if (bnd.oy < 0.35) continue;
+        const shadow = new Path2D();
+        emitOffsetRun(shadow, bnd, 0.1, toX, toY);
+        ctx.strokeStyle = 'rgba(44, 54, 86, 0.2)';
+        ctx.lineWidth = px * 0.16;
+        ctx.stroke(shadow);
+        const fascia = new Path2D();
+        emitOffsetRun(fascia, bnd, 0.025, toX, toY);
+        ctx.strokeStyle = '#f7fafe';
+        ctx.lineWidth = px * 0.1;
+        ctx.stroke(fascia);
+      }
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'miter';
+    }
+
+    for (const f of fringe) {
+      drawGrassFringe(ctx, f.bnd, f.color, toX, toY, px, layer.laden === true);
+    }
   }
+}
+
+/**
+ * The world's one sun (see the pile painters' "sun-law lit west edge"):
+ * west with a whisper of north. Ground edges read against it exactly
+ * like walls and piles do — lit lips face it, worn shade gathers away
+ * from it.
+ */
+const SUN_X = -0.928;
+const SUN_Y = -0.371;
+
+/** A boundary run's polyline pushed along its outward normal by `d`. */
+function emitOffsetRun(
+  path: Path2D,
+  b: Bnd,
+  d: number,
+  toX: (wx: number) => number,
+  toY: (wy: number) => number,
+): void {
+  for (let n = 0; n <= 6; n++) {
+    const p = qpoint(b, n / 6);
+    const x = toX(p[0] + b.ox * d);
+    const y = toY(p[1] + b.oy * d);
+    if (n === 0) path.moveTo(x, y);
+    else path.lineTo(x, y);
+  }
+}
+
+/**
+ * Two-tone drift INSIDE a material region as organic sub-patches: the
+ * same low-frequency field the old per-tile threshold sampled, but
+ * contoured on the dual grid with its own hash lane — tone changes
+ * meander like everything else instead of printing rectangular steps
+ * on the tile grid (the plaza-patchwork artifact, retired).
+ */
+function paintAltPatches(
+  ctx: CanvasRenderingContext2D,
+  region: Path2D,
+  layer: BlobLayer,
+  li: number,
+  at: (lx: number, ly: number) => number,
+  baseX: number,
+  baseY: number,
+  px: number,
+  toX: (wx: number) => number,
+  toY: (wy: number) => number,
+): void {
+  const alt = layer.alt!;
+  const sub = li + 64; // distinct hash lane for the sub-contour
+  const wob = Math.max(0.18, layer.wobble);
+  const memberAt = (lx: number, ly: number): boolean => {
+    const lt = at(lx, ly);
+    if (lt < li || lt === -1) return false;
+    const wx = baseX + lx;
+    const wy = baseY + ly;
+    return valueNoise(alt.salt, wx * 0.09, wy * 0.09) > 0.55;
+  };
+  ctx.save();
+  ctx.clip(region);
+  for (let j = 0; j <= CHUNK_SIZE; j++) {
+    for (let i = 0; i <= CHUNK_SIZE; i++) {
+      const mask =
+        (memberAt(i - 1, j - 1) ? 1 : 0) |
+        (memberAt(i, j - 1) ? 2 : 0) |
+        (memberAt(i, j) ? 4 : 0) |
+        (memberAt(i - 1, j) ? 8 : 0);
+      if (mask === 0) continue;
+      const I = baseX + i;
+      const J = baseY + j;
+      const bnds = boundaryCurvesFor(sub, wob, I, J, mask);
+      const cell = new Path2D();
+      organicCellPath(cell, sub, wob, I, J, mask, bnds, toX, toY);
+      ctx.fillStyle = alt.color;
+      ctx.fill(cell);
+      ctx.strokeStyle = alt.color;
+      ctx.lineWidth = 0.8;
+      ctx.stroke(cell);
+    }
+  }
+  ctx.restore();
+}
+
+/** Dispatch a material's interior dressing, clipped to its region. */
+function paintLayerInterior(
+  ctx: CanvasRenderingContext2D,
+  region: Path2D,
+  kind: 'flags' | 'flagsDark' | 'sand' | 'snow',
+  li: number,
+  at: (lx: number, ly: number) => number,
+  baseX: number,
+  baseY: number,
+  px: number,
+  toX: (wx: number) => number,
+  toY: (wy: number) => number,
+): void {
+  const memberAt = (lx: number, ly: number): boolean => at(lx, ly) === li;
+  ctx.save();
+  ctx.clip(region);
+  if (kind === 'flags' || kind === 'flagsDark') {
+    paintFlagLattice(ctx, memberAt, baseX, baseY, px, kind === 'flagsDark', toX, toY);
+  } else if (kind === 'sand') {
+    paintSandRipples(ctx, memberAt, baseX, baseY, px);
+  } else {
+    paintSnowDrifts(ctx, memberAt, baseX, baseY, px);
+  }
+  ctx.restore();
+}
+
+/**
+ * HAND-LAID FLAGS. The one ground material every town paves with was
+ * the only surface in the world with no coursework — walls wear
+ * masonry, roofs wear shingles, floors wore nothing (the blank-plaza
+ * artifact). A world-keyed jittered lattice cuts the sheet into
+ * irregular flags: dark joints (some skipped, so flags merge into
+ * bigger slabs), a whisper of per-flag tone lean, and a faint lit tick
+ * on sun-facing joint shoulders. All geometry is keyed on world tile
+ * coordinates — chunk seams and zoom tiers lay the same floor.
+ */
+function paintFlagLattice(
+  ctx: CanvasRenderingContext2D,
+  memberAt: (lx: number, ly: number) => boolean,
+  baseX: number,
+  baseY: number,
+  px: number,
+  dark: boolean,
+  toX: (wx: number) => number,
+  toY: (wy: number) => number,
+): void {
+  const corner = (jx: number, jy: number): Pt => [
+    jx + (rnd01(2711, jx, jy) - 0.5) * 0.4,
+    jy + (rnd01(2713, jx, jy) - 0.5) * 0.4,
+  ];
+  const joint = dark ? 'rgba(10, 8, 20, 0.4)' : 'rgba(36, 32, 52, 0.3)';
+  const jointW = Math.max(1, px * 0.032);
+  const litW = Math.max(1, px * 0.024);
+  for (let ly = -2; ly <= CHUNK_SIZE + 1; ly++) {
+    for (let lx = -2; lx <= CHUNK_SIZE + 1; lx++) {
+      if (!memberAt(lx, ly)) continue;
+      const wx = baseX + lx;
+      const wy = baseY + ly;
+      const h = hashCoords(2717, wx, wy);
+      const c00 = corner(wx, wy);
+      const c10 = corner(wx + 1, wy);
+      const c11 = corner(wx + 1, wy + 1);
+      const c01 = corner(wx, wy + 1);
+      // Per-flag tone lean: warm or cool by hash, a whisper only.
+      const lean = h % 5;
+      if (lean < 2) {
+        ctx.fillStyle =
+          lean === 0 ? 'rgba(255, 252, 244, 0.06)' : 'rgba(24, 20, 40, 0.07)';
+        ctx.beginPath();
+        ctx.moveTo(toX(c00[0]), toY(c00[1]));
+        ctx.lineTo(toX(c10[0]), toY(c10[1]));
+        ctx.lineTo(toX(c11[0]), toY(c11[1]));
+        ctx.lineTo(toX(c01[0]), toY(c01[1]));
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Joints: each flag owns its south and east edge (the neighbor
+      // draws the others), with hash-skips so slabs merge.
+      ctx.strokeStyle = joint;
+      ctx.lineWidth = jointW;
+      const south = (h >> 3) % 9 !== 3;
+      const east = (h >> 7) % 9 !== 4;
+      if (south) {
+        ctx.beginPath();
+        ctx.moveTo(toX(c01[0]), toY(c01[1]));
+        ctx.lineTo(toX(c11[0]), toY(c11[1]));
+        ctx.stroke();
+        // The joint's sunlit south shoulder — the flag behind it
+        // catching light over the crack (masonry depth, one whisper).
+        if (!dark) {
+          ctx.strokeStyle = 'rgba(236, 236, 248, 0.14)';
+          ctx.lineWidth = litW;
+          ctx.beginPath();
+          ctx.moveTo(toX(c01[0]), toY(c01[1]) + jointW);
+          ctx.lineTo(toX(c11[0]), toY(c11[1]) + jointW);
+          ctx.stroke();
+          ctx.strokeStyle = joint;
+          ctx.lineWidth = jointW;
+        }
+      }
+      if (east) {
+        ctx.beginPath();
+        ctx.moveTo(toX(c10[0]), toY(c10[1]));
+        ctx.lineTo(toX(c11[0]), toY(c11[1]));
+        ctx.stroke();
+      }
+      // The rare chipped corner — a pale nick where a cart clipped it.
+      if (h % 23 === 7) {
+        ctx.fillStyle = dark ? 'rgba(140, 132, 156, 0.2)' : 'rgba(244, 242, 250, 0.22)';
+        const nx = toX(c00[0]);
+        const ny = toY(c00[1]);
+        ctx.beginPath();
+        ctx.moveTo(nx, ny);
+        ctx.lineTo(nx + px * 0.09, ny + px * 0.02);
+        ctx.lineTo(nx + px * 0.03, ny + px * 0.08);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+}
+
+/**
+ * WIND-RIPPLED SAND: long low-contrast crescents combed by a slowly
+ * turning direction field, each with a sunlit crest echo — the shore
+ * reads as swept sand instead of flat paint with three specks.
+ */
+function paintSandRipples(
+  ctx: CanvasRenderingContext2D,
+  memberAt: (lx: number, ly: number) => boolean,
+  baseX: number,
+  baseY: number,
+  px: number,
+): void {
+  ctx.lineCap = 'round';
+  for (let ly = -2; ly <= CHUNK_SIZE + 1; ly++) {
+    for (let lx = -2; lx <= CHUNK_SIZE + 1; lx++) {
+      if (!memberAt(lx, ly)) continue;
+      const wx = baseX + lx;
+      const wy = baseY + ly;
+      const h = hashCoords(2731, wx, wy);
+      if (h % 100 >= 42) continue;
+      const ang =
+        -0.35 + (valueNoise(2741, wx * 0.024, wy * 0.024) - 0.5) * 1.1;
+      const len = (0.5 + ((h >> 5) % 40) / 100) * px;
+      const cxp = (lx + 0.15 + ((h >> 7) % 70) / 100) * px;
+      const cyp = (ly + 0.15 + ((h >> 12) % 70) / 100) * px;
+      const dx = Math.cos(ang);
+      const dy = Math.sin(ang) * 0.65; // the tilted camera squashes y
+      const bow = (((h >> 3) % 20) - 10) / 10 * px * 0.09;
+      const draw = (ox: number, oy: number, tone: string, w: number): void => {
+        ctx.strokeStyle = tone;
+        ctx.lineWidth = w;
+        ctx.beginPath();
+        ctx.moveTo(cxp - dx * len * 0.5 + ox, cyp - dy * len * 0.5 + oy);
+        ctx.quadraticCurveTo(
+          cxp - dy * bow + ox,
+          cyp + dx * bow + oy,
+          cxp + dx * len * 0.5 + ox,
+          cyp + dy * len * 0.5 + oy,
+        );
+        ctx.stroke();
+      };
+      // Shade trough first, then the crest catching the western sun.
+      draw(0, 0, 'rgba(158, 128, 74, 0.16)', Math.max(1, px * 0.04));
+      draw(-px * 0.03, -px * 0.028, 'rgba(248, 236, 198, 0.2)', Math.max(1, px * 0.032));
+    }
+  }
+  ctx.lineCap = 'butt';
+}
+
+/**
+ * THE LADEN FIELD: sastrugi — wind-carved drift lines riding one slow
+ * world wind, each a blue trough with a white crest offset toward the
+ * sun. With the sparkle pass in drawTileDetail this is what turns the
+ * flat white sheet into weather.
+ */
+function paintSnowDrifts(
+  ctx: CanvasRenderingContext2D,
+  memberAt: (lx: number, ly: number) => boolean,
+  baseX: number,
+  baseY: number,
+  px: number,
+): void {
+  ctx.lineCap = 'round';
+  for (let ly = -2; ly <= CHUNK_SIZE + 1; ly++) {
+    for (let lx = -2; lx <= CHUNK_SIZE + 1; lx++) {
+      if (!memberAt(lx, ly)) continue;
+      const wx = baseX + lx;
+      const wy = baseY + ly;
+      const h = hashCoords(2753, wx, wy);
+      if (h % 100 >= 30) continue;
+      const ang = -0.3 + (valueNoise(2749, wx * 0.02, wy * 0.02) - 0.5) * 0.7;
+      const len = (0.8 + ((h >> 5) % 70) / 100) * px;
+      const cxp = (lx + 0.1 + ((h >> 8) % 80) / 100) * px;
+      const cyp = (ly + 0.1 + ((h >> 13) % 80) / 100) * px;
+      const dx = Math.cos(ang);
+      const dy = Math.sin(ang) * 0.6;
+      const bow = (((h >> 3) % 20) - 10) / 10 * px * 0.12;
+      const draw = (ox: number, oy: number, tone: string, w: number): void => {
+        ctx.strokeStyle = tone;
+        ctx.lineWidth = w;
+        ctx.beginPath();
+        ctx.moveTo(cxp - dx * len * 0.5 + ox, cyp - dy * len * 0.5 + oy);
+        ctx.quadraticCurveTo(
+          cxp - dy * bow + ox,
+          cyp + dx * bow + oy,
+          cxp + dx * len * 0.5 + ox,
+          cyp + dy * len * 0.5 + oy,
+        );
+        ctx.stroke();
+      };
+      draw(0, 0, 'rgba(148, 164, 200, 0.26)', Math.max(1, px * 0.05));
+      draw(-px * 0.035, -px * 0.03, 'rgba(255, 255, 255, 0.5)', Math.max(1, px * 0.036));
+    }
+  }
+  ctx.lineCap = 'butt';
 }
 
 /**
