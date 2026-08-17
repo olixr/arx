@@ -1,6 +1,6 @@
 import { ELEMENT_COLORS, ENCHANT_DEFS, GRADED_PRODUCE, ITEMS, RECIPES, gradedId, itemDef } from '@arx/content';
 import { shade } from './rig.js';
-import { BOW_STYLES, DAGGER_STYLES, GREAT_STYLES, STAFF_STYLES, SWORD_STYLES, drawBow, drawGreatweapon, drawStaff, drawSword } from './weapons.js';
+import { BOW_STYLES, DAGGER_STYLES, GREAT_STYLES, POLE_STYLES, STAFF_STYLES, SWORD_STYLES, drawBow, drawGreatweapon, drawPole, drawStaff, drawSword } from './weapons.js';
 import { TOOL_STYLES, drawTool } from './tools.js';
 import { bodyStyle, bootStyle, gloveStyle, helmStyle, legStyle, offhandStyle } from './armor.js';
 import {
@@ -6338,6 +6338,45 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
     };
     ITEM_ICON[id] = { icon: `great:${id}`, color: st.color };
   }
+}
+
+// ---- the reaching school's roster: every polearm's icon IS its world
+// painter on the sword diagonal. The pole is the LONGEST art in the
+// game, so it renders at the smallest scale in the pack — length IS
+// the identity, and an icon that trimmed the haft to fatten the head
+// would be lying about the weapon. Gripped past mid-shaft so the head
+// (the identity's other half) owns the box's upper corner, and the
+// double-ended spade keeps both its ends inside the frame.
+{
+  for (const [id, st] of Object.entries(POLE_STYLES)) {
+    const scale = (st.len ?? 1) > 1.05 ? 56 : 62;
+    // grip = fraction of length trailing behind the origin; biasing
+    // past half keeps long heads clear of the corner while the butt
+    // still reads (the spade's crescent needs the most butt room).
+    const grip = st.kind === 'spade' ? 0.5 : 0.55;
+    PAINTERS[`pole:${id}`] = (c) => {
+      c.translate(0.5, 0.5);
+      c.rotate(-Math.PI / 4);
+      c.scale(1 / 64, 1 / 64);
+      c.translate(-0.04 * scale, 0);
+      drawPole(c, st, scale, 5234, false, grip);
+    };
+    ITEM_ICON[id] = { icon: `pole:${id}`, color: st.color };
+  }
+  // THE SPEAR CREST: the skills hall's coin is NOT an inventory icon —
+  // at coin size an honest full-length spear reads as a hairline. The
+  // crest crops to the weapon's identity half: the watch spear's head,
+  // langets, and upper haft filling the diagonal, drawn from the same
+  // style record as the item so there is zero art drift. The box
+  // itself crops the butt — the zoom IS the crop.
+  const crest = POLE_STYLES['steel_spear']!;
+  PAINTERS['polearm_crest'] = (c) => {
+    c.translate(0.5, 0.5);
+    c.rotate(-Math.PI / 4);
+    c.scale(1 / 64, 1 / 64);
+    drawPole(c, crest, 120, 5234, false, 0.75);
+  };
+  ITEM_ICON['polearm_crest'] = { icon: 'polearm_crest', color: crest.color };
 }
 
 // ---- the wardrobe: every armor piece's icon renders FROM the style

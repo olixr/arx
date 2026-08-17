@@ -127,7 +127,10 @@ export const SKILL_FACE: Record<string, { icon: string; color: string }> = {
   beastcraft: { icon: 'bones', color: '#c4b590' },
   sneak: { icon: 'bronze_dagger', color: '#8a7fae' },
   twohand: { icon: 'iron_greatblade', color: '#c47a3d' },
-  polearm: { icon: 'spear', color: '#9a8560' },
+  // The reaching school's coin wears the CREST (the head half zoomed
+  // to the box), not the item icon — a full-length spear at coin size
+  // reads as a hairline.
+  polearm: { icon: 'polearm_crest', color: '#9a8560' },
   dualwield: { icon: 'bronze_dagger', color: '#d9a441' },
   shield: { icon: 'tower_shield', color: '#9db6cc' },
 };
