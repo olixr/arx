@@ -51769,133 +51769,435 @@ export class Renderer {
 
       case Tile.Well: {
         const syT = s * this.camera.yScale;
-        // The yard's water: a facetted stone ring at the chest (its
-        // top plane a true tilted ellipse holding a dark water disc),
-        // two posts carrying a small shake gable, the windlass beam
-        // between them with rope run down to a bucket parked on the
-        // rim. Still art head to toe — the water alone glints.
+        // THE DRAWN WATER — the well recut from the ground up (user
+        // verdict: the old ring was a flat-front rectangle wearing a
+        // side-elevation gable, one identical well for every town).
+        // The ring is now a TRUE CYLINDER under this camera — the
+        // mouth a foreshortened ellipse the camera looks INTO (far
+        // inner wall showing as a crescent, the water sunk below it,
+        // glint drifting, a ripple ring widening off the last drop)
+        // — and THE HASH DEALS THE WELL: masonry or a scavenged
+        // iron-banded timber crib for the ring, and three tops (the
+        // roofed gantry, the bare weathered windlass, the open ring
+        // with its parked pail and dealt half-lid), so no two yards
+        // — town, farm, or war camp — draw from the same well twice.
         const yB = p.y + syT * 0.42;
-        const ringR = s * 0.4;
-        const ringTop = yB - s * 0.5;
-        const stoneC = '#6e6a75';
+        const ringR = s * 0.46;
+        const ery = ringR * 0.36;
+        const wallH = s * 0.55;
+        const ringTop = yB - wallH;
+        const stone = ((h >>> 5) & 7) < 5;
+        const tv = (h >>> 2) % 3; // 0 roofed gantry, 1 bare windlass, 2 open ring
+        const lid = tv === 2 && ((h >>> 9) & 1) === 0;
+        const matC = stone ? '#6e6a75' : '#7d5f36';
+        const capC = stone ? shade('#6e6a75', 20) : shade('#7d5f36', 16);
         const timberC = '#7d5a2e';
+        const postT = ringTop - s * 1.0;
         return {
           sortY: ty + 0.85,
-          body: stationBody(0.85, 1.85, 0.55),
+          body: stationBody(0.9, 2.0, 0.6),
           drawShadow: () => {
             this.castEdgeQuad(p.x - ringR, yB + syT * 0.05, p.x + ringR, yB + syT * 0.05, 0.6);
           },
           draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
             const ctx = this.ctx;
-            // Damp ground ring: the spill line around every well.
-            ctx.fillStyle = 'rgba(64, 82, 108, 0.22)';
+            // Damp ground ring + the spill puddle on the dealt side:
+            // a filling place never dries.
+            ctx.fillStyle = 'rgba(64, 82, 108, 0.2)';
             ctx.beginPath();
-            ctx.ellipse(p.x, yB + syT * 0.02, ringR * 1.3, syT * 0.2, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x, yB + syT * 0.04, ringR * 1.35, syT * 0.22, 0, 0, Math.PI * 2);
             ctx.fill();
-            // The ring wall: coursed stone blocks around the drum,
-            // hash-dealt widths, mortar shadows, sunlit cap course.
-            ctx.fillStyle = stoneC;
-            ctx.fillRect(p.x - ringR, ringTop, ringR * 2, yB - ringTop);
-            ctx.fillStyle = shade(stoneC, -14);
-            ctx.fillRect(p.x + ringR * 0.35, ringTop, ringR * 0.65, yB - ringTop);
-            ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
-            ctx.lineWidth = Math.max(1, s * 0.016);
-            for (let i = 0; i < 4; i++) {
-              const bx = p.x - ringR + (0.15 + i * 0.24 + ((h >> (i * 4)) % 7) * 0.01) * ringR * 2;
+            const spillM = ((h >>> 7) & 1) ? 1 : -1;
+            ctx.fillStyle = 'rgba(58, 78, 104, 0.35)';
+            ctx.beginPath();
+            ctx.ellipse(p.x + spillM * ringR * 0.9, yB + syT * 0.12, ringR * 0.34, syT * 0.09, spillM * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            // The cobble apron: a few set stones where every boot
+            // lands — hash-scattered, never a paved ring.
+            for (let k = 0; k < 3; k++) {
+              const aa = ((h >>> (k * 3 + 1)) & 7) * 0.785 + 0.6;
+              const ax = p.x + Math.cos(aa) * ringR * (1.15 + ((h >>> (k * 2)) & 1) * 0.14);
+              const ay = yB + syT * 0.06 + Math.sin(aa) * syT * 0.1;
+              ctx.fillStyle = shade(TWN_STONE_DARK, (((h >>> (k * 4)) & 3) - 1) * 6);
               ctx.beginPath();
-              ctx.moveTo(bx, ringTop + s * 0.1 + ((h >> (i * 3)) % 3) * s * 0.02);
-              ctx.lineTo(bx, yB - s * 0.05);
+              facetBlob(ctx, ax, ay, s * 0.05, h ^ (k * 37), 5, 0.62);
+              ctx.fill();
+            }
+            // THE RING WALL: a cylinder — straight flanks closed by
+            // the bottom's forward bow, the cap ellipse above.
+            ctx.fillStyle = matC;
+            ctx.beginPath();
+            ctx.moveTo(p.x - ringR, ringTop);
+            ctx.lineTo(p.x - ringR, yB - s * 0.02);
+            ctx.quadraticCurveTo(p.x, yB + ery * 0.62, p.x + ringR, yB - s * 0.02);
+            ctx.lineTo(p.x + ringR, ringTop);
+            ctx.closePath();
+            ctx.fill();
+            // The turned form: west sun lane, east shade, both
+            // running the wall's full height.
+            ctx.fillStyle = shade(matC, 12);
+            ctx.fillRect(p.x - ringR * 0.92, ringTop + s * 0.02, ringR * 0.3, wallH - s * 0.02);
+            ctx.fillStyle = shade(matC, -14);
+            ctx.beginPath();
+            ctx.moveTo(p.x + ringR * 0.55, ringTop + s * 0.02);
+            ctx.lineTo(p.x + ringR * 0.55, yB - s * 0.035);
+            ctx.quadraticCurveTo(p.x + ringR * 0.8, yB + ery * 0.28, p.x + ringR, yB - s * 0.02);
+            ctx.lineTo(p.x + ringR, ringTop + s * 0.02);
+            ctx.closePath();
+            ctx.fill();
+            if (stone) {
+              // COURSED FIELDSTONE: two ranks of blocks, mortar
+              // struck dark, widths and tones off the hash so no
+              // two rings course alike (a shrine is a cairn
+              // somebody squared — jitter or it reads window-frame).
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.42)';
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              ctx.beginPath();
+              ctx.moveTo(p.x - ringR + s * 0.02, ringTop + wallH * 0.48);
+              ctx.quadraticCurveTo(p.x, ringTop + wallH * 0.48 + ery * 0.5, p.x + ringR - s * 0.02, ringTop + wallH * 0.46);
+              ctx.stroke();
+              for (let i = 0; i < 7; i++) {
+                const row = i < 4 ? 0 : 1;
+                const n = row === 0 ? 4 : 3;
+                const j = row === 0 ? i : i - 4;
+                const fx = -0.78 + (j + 0.5) * (1.56 / n) + (((h >>> (i * 3)) & 3) - 1.5) * 0.05;
+                const y0 = ringTop + wallH * (row === 0 ? 0.1 : 0.52);
+                const y1 = ringTop + wallH * (row === 0 ? 0.44 : 0.9);
+                ctx.beginPath();
+                ctx.moveTo(p.x + fx * ringR, y0 + fx * fx * ery * 0.3);
+                ctx.lineTo(p.x + fx * ringR * 0.98, y1 + fx * fx * ery * 0.35);
+                ctx.stroke();
+              }
+              // Two blocks catch the sun a shade brighter.
+              ctx.fillStyle = 'rgba(214, 210, 222, 0.14)';
+              ctx.fillRect(p.x - ringR * 0.55, ringTop + wallH * 0.12, ringR * 0.34, wallH * 0.3);
+              ctx.fillRect(p.x + ringR * 0.05, ringTop + wallH * 0.55, ringR * 0.3, wallH * 0.3);
+              // Moss at the shaded damp footing.
+              ctx.fillStyle = 'rgba(96, 122, 74, 0.7)';
+              ctx.beginPath();
+              ctx.ellipse(p.x - ringR * 0.72, yB - s * 0.045, s * 0.055, s * 0.028, 0.2, 0, Math.PI * 2);
+              ctx.ellipse(p.x - ringR * 0.2, yB + s * 0.015, s * 0.045, s * 0.022, -0.2, 0, Math.PI * 2);
+              ctx.fill();
+            } else {
+              // THE SCAVENGED CRIB: vertical staves lashed with the
+              // smith's two bands (the standing-hoop law bows them
+              // down the belly) — the well a war camp digs first
+              // and dresses never.
+              ctx.strokeStyle = 'rgba(46, 32, 14, 0.5)';
+              ctx.lineWidth = Math.max(1, s * 0.014);
+              for (const f of [-0.62, -0.28, 0.08, 0.42, 0.74]) {
+                ctx.beginPath();
+                ctx.moveTo(p.x + f * ringR, ringTop + s * 0.03 + f * f * ery * 0.3);
+                ctx.lineTo(p.x + f * ringR * 0.98, yB - s * 0.03 + f * f * ery * 0.4);
+                ctx.stroke();
+              }
+              // One stave stands proud of the rim — driven, not
+              // sawn: the scavenger's tell.
+              const pf = ((h >>> 8) & 1) ? -0.45 : 0.25;
+              ctx.fillStyle = shade(matC, -6);
+              ctx.fillRect(p.x + pf * ringR - s * 0.035, ringTop - s * 0.07, s * 0.07, s * 0.09);
+              ctx.fillStyle = shade(matC, 10);
+              ctx.fillRect(p.x + pf * ringR - s * 0.035, ringTop - s * 0.07, s * 0.024, s * 0.09);
+              for (const fh of [0.26, 0.72] as const) {
+                const wk = ringR * 0.99;
+                this.paintStandingHoop(p.x, ringTop + wallH * fh, wk, ery * 0.34, s);
+              }
+            }
+            // THE MOUTH: cap ring, the dark throat, the far inner
+            // wall's crescent, and the water the whole prop is for.
+            ctx.fillStyle = capC;
+            ctx.beginPath();
+            ctx.ellipse(p.x, ringTop, ringR * 1.04, ery, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The cap's south face keeps a thin under-shadow so the
+            // slab reads as a course, not paint.
+            ctx.strokeStyle = 'rgba(26, 20, 36, 0.35)';
+            ctx.lineWidth = Math.max(1, s * 0.018);
+            ctx.beginPath();
+            ctx.ellipse(p.x, ringTop + s * 0.012, ringR * 1.03, ery, 0, 0.35, Math.PI - 0.35);
+            ctx.stroke();
+            // Cap joints: the ring is BUILT even on top.
+            ctx.strokeStyle = 'rgba(26, 20, 36, 0.3)';
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            for (const ja of [0.6, 2.2, 3.6, 5.1]) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + Math.cos(ja) * ringR * 0.76, ringTop + Math.sin(ja) * ery * 0.76);
+              ctx.lineTo(p.x + Math.cos(ja) * ringR * 1.02, ringTop + Math.sin(ja) * ery * 1.0);
               ctx.stroke();
             }
-            ctx.strokeStyle = 'rgba(26, 20, 36, 0.35)';
+            // THE MOUTH MODULE (user verdict, round two: the dealt
+            // sink OFFSET centered some wells and not others). One
+            // anchor — the throat's own center — and every internal
+            // draws CONCENTRIC to it: crescent, water, glint, ripple.
+            // Depth is dealt by SCALE (a lower water is a smaller
+            // disc in a wider dark margin), never by displacement,
+            // so the whole mouth swaps as a module with no per-
+            // variant nudging.
+            const tcx = p.x;
+            const tcy = ringTop + s * 0.012;
+            const deep = ((h >>> 11) & 3) / 3; // 0 brimming .. 1 low
+            ctx.fillStyle = '#1d1824';
             ctx.beginPath();
-            ctx.moveTo(p.x - ringR + s * 0.03, ringTop + s * 0.24);
-            ctx.lineTo(p.x + ringR - s * 0.03, ringTop + s * 0.26);
-            ctx.stroke();
-            // The top plane: cap ring ellipse, then the water disc
-            // sunk inside with one moving glint.
-            ctx.fillStyle = shade(stoneC, 22);
-            ctx.beginPath();
-            ctx.ellipse(p.x, ringTop, ringR * 1.04, syT * 0.15, 0, 0, Math.PI * 2);
+            ctx.ellipse(tcx, tcy, ringR * 0.72, ery * 0.74, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = '#2c3a54';
+            // The far inner wall: the crescent the tilted camera is
+            // owed — lit faintly at its top where the sky reaches.
+            ctx.fillStyle = shade(matC, -22);
             ctx.beginPath();
-            ctx.ellipse(p.x, ringTop + syT * 0.012, ringR * 0.72, syT * 0.1, 0, 0, Math.PI * 2);
+            ctx.ellipse(tcx, tcy, ringR * 0.72, ery * 0.74, 0, Math.PI, Math.PI * 2);
+            ctx.ellipse(tcx, tcy + s * 0.047, ringR * 0.62, ery * 0.6, 0, Math.PI * 2, Math.PI, true);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(198, 204, 216, 0.16)';
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            ctx.beginPath();
+            ctx.ellipse(tcx, tcy + s * 0.004, ringR * 0.7, ery * 0.72, 0, Math.PI * 1.2, Math.PI * 1.8);
+            ctx.stroke();
+            // THE WATER: concentric in the throat, its size the
+            // depth — dark base, a truer blue heart, the drifting
+            // sky glint, a ripple ring off the last drop.
+            const wR = ringR * (0.62 - deep * 0.12);
+            const wRy = ery * (0.54 - deep * 0.11);
+            ctx.fillStyle = '#22384e';
+            ctx.beginPath();
+            ctx.ellipse(tcx, tcy, wR, wRy, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#2c4a6e';
+            ctx.beginPath();
+            ctx.ellipse(tcx, tcy, wR * 0.78, wRy * 0.74, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.fillStyle = 'rgba(160, 196, 232, 0.5)';
             ctx.beginPath();
             ctx.ellipse(
-              p.x + Math.sin(t * 0.7 + h) * ringR * 0.2,
-              ringTop + syT * 0.02,
-              ringR * 0.16,
-              syT * 0.022,
+              tcx + Math.sin(t * 0.7 + h) * wR * 0.38,
+              tcy,
+              wR * 0.24,
+              wRy * 0.2,
               0, 0, Math.PI * 2,
             );
             ctx.fill();
-            // Posts and the shake gable above; the roof shows its
-            // south slope (foreshortened, lit on the west lane).
-            const postT = ringTop - s * 0.78;
-            for (const px2 of [p.x - ringR * 0.8, p.x + ringR * 0.8]) {
-              ctx.fillStyle = shade(timberC, -10);
-              ctx.fillRect(px2 - s * 0.045, postT, s * 0.09, ringTop - postT + s * 0.06);
-              ctx.fillStyle = shade(timberC, 22);
-              ctx.fillRect(px2 - s * 0.045, postT, s * 0.035, ringTop - postT + s * 0.06);
+            const rp = (t * 0.32 + ((h >>> 3) & 3) * 0.25) % 1;
+            ctx.strokeStyle = `rgba(150, 186, 220, ${(0.4 * (1 - rp)).toFixed(3)})`;
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            ctx.beginPath();
+            ctx.ellipse(tcx, tcy, wR * (0.25 + rp * 0.72), wRy * (0.25 + rp * 0.72), 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // THE PAIL, one small painter parked or hung: staves, a
+            // rim band, the bail arc — edged in its own thin dark
+            // line (clipped to what it laps, never the open air).
+            const pail = (bx: number, by: number, sway: number) => {
+              ctx.save();
+              ctx.translate(bx, by);
+              ctx.rotate(sway);
+              ctx.fillStyle = shade(timberC, -6);
+              ctx.beginPath();
+              ctx.moveTo(-s * 0.075, -s * 0.115);
+              ctx.lineTo(s * 0.075, -s * 0.115);
+              ctx.lineTo(s * 0.058, s * 0.02);
+              ctx.lineTo(-s * 0.058, s * 0.02);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = shade(timberC, 12);
+              ctx.beginPath();
+              ctx.moveTo(-s * 0.075, -s * 0.115);
+              ctx.lineTo(-s * 0.028, -s * 0.115);
+              ctx.lineTo(-s * 0.02, s * 0.02);
+              ctx.lineTo(-s * 0.058, s * 0.02);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = '#2c3140';
+              ctx.beginPath();
+              ctx.ellipse(0, -s * 0.115, s * 0.075, s * 0.026, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#22384e';
+              ctx.beginPath();
+              ctx.ellipse(0, -s * 0.113, s * 0.058, s * 0.019, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = TWN_IRON;
+              ctx.lineWidth = Math.max(1, s * 0.014);
+              ctx.beginPath();
+              ctx.moveTo(-s * 0.062, -s * 0.03);
+              ctx.lineTo(s * 0.062, -s * 0.03);
+              ctx.stroke();
+              ctx.strokeStyle = 'rgba(26, 20, 36, 0.55)';
+              ctx.lineWidth = Math.max(1, s * 0.014);
+              ctx.beginPath();
+              ctx.moveTo(-s * 0.075, -s * 0.11);
+              ctx.lineTo(-s * 0.058, s * 0.02);
+              ctx.lineTo(s * 0.058, s * 0.02);
+              ctx.lineTo(s * 0.075, -s * 0.11);
+              ctx.stroke();
+              ctx.strokeStyle = shade(TWN_IRON, 10);
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              ctx.beginPath();
+              ctx.arc(0, -s * 0.1, s * 0.078, -Math.PI * 0.92, -Math.PI * 0.08);
+              ctx.stroke();
+              ctx.restore();
+            };
+            if (tv < 2) {
+              // THE GANTRY: two squared posts seated on the cap's
+              // flanks — lit west arris, pegged feet — carrying the
+              // WINDLASS: a true roller cylinder whose rope wraps
+              // read as vertical coils (the lying-hoop law), the
+              // crank dropped at rest on the east.
+              for (const m of [-1, 1] as const) {
+                const px2 = p.x + m * ringR * 0.84;
+                ctx.fillStyle = shade(timberC, -12);
+                ctx.fillRect(px2 - s * 0.05, postT, s * 0.1, ringTop - postT + ery * (m < 0 ? 0.5 : 0.3));
+                ctx.fillStyle = shade(timberC, 16);
+                ctx.fillRect(px2 - s * 0.05, postT, s * 0.036, ringTop - postT + ery * (m < 0 ? 0.5 : 0.3));
+                ctx.fillStyle = 'rgba(58, 40, 20, 0.8)';
+                ctx.beginPath();
+                ctx.ellipse(px2, ringTop + ery * (m < 0 ? 0.28 : 0.1), s * 0.013, s * 0.011, 0, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              // The roller between the posts.
+              const rollY = postT + s * 0.16;
+              ctx.fillStyle = shade(timberC, -4);
+              ctx.fillRect(p.x - ringR * 0.8, rollY - s * 0.055, ringR * 1.6, s * 0.11);
+              ctx.fillStyle = shade(timberC, 10);
+              ctx.fillRect(p.x - ringR * 0.8, rollY - s * 0.055, ringR * 1.6, s * 0.036);
+              for (const m of [-1, 1] as const) {
+                ctx.fillStyle = shade(timberC, -18);
+                ctx.beginPath();
+                ctx.ellipse(p.x + m * ringR * 0.8, rollY, s * 0.032, s * 0.058, 0, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              // The rope wound on the roller: coils as vertical
+              // bands, never rings on a lying cylinder.
+              ctx.strokeStyle = TWN_ROPE;
+              ctx.lineWidth = Math.max(1, s * 0.018);
+              for (let k = 0; k < 4; k++) {
+                const cxk = p.x - s * 0.05 + k * s * 0.026;
+                ctx.beginPath();
+                ctx.moveTo(cxk, rollY - s * 0.055);
+                ctx.lineTo(cxk + s * 0.004, rollY + s * 0.055);
+                ctx.stroke();
+              }
+              // The crank: iron drop-arm and worn grip, at rest.
+              ctx.strokeStyle = TWN_IRON;
+              ctx.lineWidth = Math.max(1.5, s * 0.024);
+              ctx.beginPath();
+              ctx.moveTo(p.x + ringR * 0.84, rollY);
+              ctx.lineTo(p.x + ringR * 1.02, rollY + s * 0.1);
+              ctx.stroke();
+              ctx.fillStyle = TWN_OAK_LIT;
+              ctx.fillRect(p.x + ringR * 1.02 - s * 0.016, rollY + s * 0.1, s * 0.032, s * 0.085);
+              // The rope down the shaft: it ENTERS the dark — the
+              // read that the water is far below.
+              const sway = tv === 0 ? Math.sin(t * 0.8 + tx * 1.3 + ty * 0.9) * 0.045 : 0;
+              const dropX = p.x - s * 0.037;
+              if (tv === 0) {
+                // Roofed gantry: the pail hangs mid-draw.
+                const hangY = ringTop - s * 0.18;
+                ctx.strokeStyle = TWN_ROPE;
+                ctx.lineWidth = Math.max(1, s * 0.018);
+                ctx.beginPath();
+                ctx.moveTo(dropX, rollY + s * 0.05);
+                ctx.quadraticCurveTo(dropX + sway * s * 2.2, (rollY + hangY) / 2, dropX + sway * s * 4, hangY - s * 0.1);
+                ctx.stroke();
+                pail(dropX + sway * s * 4, hangY, sway * 0.8);
+              } else {
+                // Bare windlass: rope run out, pail parked on the
+                // rim where the last hand left it.
+                ctx.strokeStyle = TWN_ROPE;
+                ctx.lineWidth = Math.max(1, s * 0.018);
+                ctx.beginPath();
+                ctx.moveTo(dropX, rollY + s * 0.05);
+                ctx.lineTo(dropX - ringR * 0.32, ringTop - s * 0.02);
+                ctx.stroke();
+                pail(p.x - ringR * 0.44, ringTop - ery * 0.1, 0);
+                // The rope's slack coiled on the cap (coils, never
+                // loops).
+                ctx.strokeStyle = TWN_ROPE;
+                ctx.lineWidth = Math.max(1, s * 0.016);
+                ctx.beginPath();
+                ctx.ellipse(p.x - ringR * 0.42, ringTop + ery * 0.42, s * 0.055, s * 0.024, 0.1, 0, Math.PI * 1.7);
+                ctx.stroke();
+              }
+              // Rope-wear: the cap's south rim polished pale where
+              // the draw always rides.
+              ctx.strokeStyle = 'rgba(226, 222, 232, 0.35)';
+              ctx.lineWidth = Math.max(1, s * 0.02);
+              ctx.beginPath();
+              ctx.ellipse(p.x, ringTop, ringR * 0.74, ery * 0.76, 0, Math.PI * 0.42, Math.PI * 0.58);
+              ctx.stroke();
             }
-            const roofY = postT - s * 0.06;
-            ctx.fillStyle = shade(timberC, -18);
-            ctx.beginPath();
-            ctx.moveTo(p.x - ringR * 1.08, roofY + s * 0.16);
-            ctx.lineTo(p.x, roofY - s * 0.18);
-            ctx.lineTo(p.x + ringR * 1.08, roofY + s * 0.16);
-            ctx.lineTo(p.x + ringR * 0.96, roofY + s * 0.24);
-            ctx.lineTo(p.x, roofY - s * 0.07);
-            ctx.lineTo(p.x - ringR * 0.96, roofY + s * 0.24);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = shade(timberC, 16);
-            ctx.beginPath();
-            ctx.moveTo(p.x - ringR * 1.08, roofY + s * 0.16);
-            ctx.lineTo(p.x, roofY - s * 0.18);
-            ctx.lineTo(p.x, roofY - s * 0.07);
-            ctx.lineTo(p.x - ringR * 0.96, roofY + s * 0.24);
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(26, 20, 36, 0.45)';
-            ctx.lineWidth = Math.max(1, s * 0.02);
-            ctx.beginPath();
-            ctx.moveTo(p.x - ringR * 1.08, roofY + s * 0.16);
-            ctx.lineTo(p.x, roofY - s * 0.18);
-            ctx.lineTo(p.x + ringR * 1.08, roofY + s * 0.16);
-            ctx.stroke();
-            // The windlass: beam between the posts, a crank arm east,
-            // rope falling to a bucket parked on the rim.
-            ctx.fillStyle = shade(timberC, 6);
-            ctx.fillRect(p.x - ringR * 0.8, postT + s * 0.16, ringR * 1.6, s * 0.07);
-            ctx.fillStyle = shade(timberC, -20);
-            ctx.fillRect(p.x + ringR * 0.8, postT + s * 0.13, s * 0.05, s * 0.14);
-            ctx.strokeStyle = '#c9b98a';
-            ctx.lineWidth = Math.max(1, s * 0.02);
-            ctx.beginPath();
-            ctx.moveTo(p.x + s * 0.03, postT + s * 0.22);
-            ctx.lineTo(p.x + s * 0.05, ringTop - s * 0.1);
-            ctx.stroke();
-            const bkX = p.x + s * 0.06;
-            const bkY = ringTop - s * 0.08;
-            ctx.fillStyle = shade(timberC, -6);
-            ctx.beginPath();
-            ctx.moveTo(bkX - s * 0.07, bkY - s * 0.09);
-            ctx.lineTo(bkX + s * 0.07, bkY - s * 0.09);
-            ctx.lineTo(bkX + s * 0.055, bkY + s * 0.03);
-            ctx.lineTo(bkX - s * 0.055, bkY + s * 0.03);
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
-            ctx.lineWidth = Math.max(1, s * 0.016);
-            ctx.stroke();
-            // Moss at the shaded footing: the damp tells its story.
-            ctx.fillStyle = 'rgba(96, 122, 74, 0.7)';
-            ctx.fillRect(p.x - ringR + s * 0.04, yB - s * 0.07, s * 0.09, s * 0.035);
-            ctx.fillRect(p.x - ringR * 0.3, yB - s * 0.04, s * 0.07, s * 0.03);
+            if (tv === 0) {
+              // THE ROOF: two true pitches and the foreshortened
+              // ridge plane (the bell-cap law) — shakes seamed down
+              // the south faces, wide enough to keep rain out of
+              // the draw.
+              const roofY = postT - s * 0.07;
+              ctx.fillStyle = shade(timberC, -18);
+              ctx.beginPath();
+              ctx.moveTo(p.x - ringR * 1.18, roofY + s * 0.2);
+              ctx.lineTo(p.x, roofY - s * 0.22);
+              ctx.lineTo(p.x + ringR * 1.18, roofY + s * 0.2);
+              ctx.lineTo(p.x + ringR * 1.0, roofY + s * 0.3);
+              ctx.lineTo(p.x, roofY - s * 0.1);
+              ctx.lineTo(p.x - ringR * 1.0, roofY + s * 0.3);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = shade(timberC, 14);
+              ctx.beginPath();
+              ctx.moveTo(p.x - ringR * 1.0, roofY + s * 0.3);
+              ctx.lineTo(p.x, roofY - s * 0.1);
+              ctx.lineTo(p.x + ringR * 1.0, roofY + s * 0.3);
+              ctx.lineTo(p.x + ringR * 0.84, roofY + s * 0.37);
+              ctx.lineTo(p.x, roofY - s * 0.035);
+              ctx.lineTo(p.x - ringR * 0.84, roofY + s * 0.37);
+              ctx.closePath();
+              ctx.fill();
+              // Shake seams down the near pitch.
+              ctx.strokeStyle = 'rgba(46, 32, 14, 0.4)';
+              ctx.lineWidth = Math.max(1, s * 0.012);
+              for (const f of [-0.66, -0.33, 0.33, 0.66]) {
+                ctx.beginPath();
+                ctx.moveTo(p.x + f * ringR * 0.95, roofY + s * 0.35 - Math.abs(f) * s * 0.0 + (Math.abs(f) - 1) * s * -0.0);
+                ctx.moveTo(p.x + f * ringR * 0.95, roofY + s * 0.34);
+                ctx.lineTo(p.x + f * ringR * 0.6, roofY + s * 0.1 - (1 - Math.abs(f)) * s * 0.12);
+                ctx.stroke();
+              }
+            }
+            if (tv === 2) {
+              // THE OPEN RING: no gantry — the pail parked on the
+              // rim, its rope coiled beside it, and half the mouth
+              // dealt a plank lid (kept, or drawn clean off).
+              if (lid) {
+                ctx.fillStyle = shade(timberC, 2);
+                ctx.beginPath();
+                ctx.ellipse(p.x, ringTop + s * 0.004, ringR * 0.73, ery * 0.75, 0, Math.PI, Math.PI * 2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = shade(timberC, 14);
+                ctx.beginPath();
+                ctx.ellipse(p.x, ringTop - s * 0.006, ringR * 0.7, ery * 0.7, 0, Math.PI * 1.02, Math.PI * 1.98);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(46, 32, 14, 0.5)';
+                ctx.lineWidth = Math.max(1, s * 0.012);
+                for (const f of [-0.42, 0, 0.4]) {
+                  ctx.beginPath();
+                  ctx.moveTo(p.x + f * ringR * 0.7, ringTop - s * 0.004 - Math.sqrt(Math.max(0, 1 - f * f)) * ery * 0.1);
+                  ctx.lineTo(p.x + f * ringR * 0.66, ringTop - ery * 0.68 * Math.sqrt(Math.max(0.05, 1 - f * f)));
+                  ctx.stroke();
+                }
+                // The lid's grab rope, a short loop lying flat.
+                ctx.strokeStyle = TWN_ROPE;
+                ctx.lineWidth = Math.max(1, s * 0.014);
+                ctx.beginPath();
+                ctx.ellipse(p.x + ringR * 0.1, ringTop - ery * 0.4, s * 0.03, s * 0.014, 0, 0, Math.PI * 2);
+                ctx.stroke();
+              }
+              pail(p.x + ringR * 0.46, ringTop + ery * 0.28, 0);
+              ctx.strokeStyle = TWN_ROPE;
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              ctx.beginPath();
+              ctx.ellipse(p.x + ringR * 0.14, ringTop + ery * 0.55, s * 0.06, s * 0.026, -0.15, 0, Math.PI * 1.75);
+              ctx.stroke();
+            }
           },
         };
       }
