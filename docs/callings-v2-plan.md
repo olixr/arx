@@ -52,6 +52,50 @@ pair tables. Core first, content later.
 
 ---
 
+## As built — Phase 3, THE WHEN CLAUSE (2026-08-17)
+
+Engine-complete, zero authored content. What shipped, where it bound:
+
+- **The conditional lane**: `PlayerComp.callingWhens` (rebuilt in
+  recomputeGear, keyed `<callingId>#<entryIndex>` — never by display
+  name) + `whenEngaged` hysteresis latches. `tickCallingWhens` runs
+  per player per tick immediately BEFORE the buff sweep: a true
+  condition holds an id-keyed `calling`-channel PlayerBuff (the forge
+  folds it like any other buff — band clamps, ride mirror, swing
+  mirror inherited free), re-armed WHEN_REARM_TICKS ahead of the
+  sweep; falling edges, set-downs, and vanished defs remove crisply
+  at the pass, and anything ever missed self-heals at the ordinary
+  sweep inside half a second (the safety net under the crisp edge).
+  Edges send the buff push; speed-bearing edges mark the ride mirror.
+- **whenHolds** = the one truth read, every predicate mirroring the
+  dial it generalizes: still/moving split on Bulwark's own
+  STILL_ARMOR_TICKS boundary, shieldRaised is shieldArm's
+  equippedShield gate, underground is Deep Lungs' plane law, night is
+  the Night Angler's sun, stateRiding reads the body's list, wellFed
+  reads the food channel. hpBelow/hpAbove engage AT the authored
+  line and release only WHEN_HP_HYST past it — a bouncing bar cannot
+  strobe a grant, and re-engaging needs the true line again.
+- **THE HELD CHIP**: `PlayerBuff.channel` grew 'calling' (+ whenKey,
+  quiet); sendBuffs speaks held grants as `calling:`-id chips with a
+  placeholder clock, and the client pins the ring FULL by stylesheet
+  law (`--sweep: 1 !important` beats the per-frame inline walk, so
+  the countdown machinery stays untouched and array-parallel), hides
+  the seconds, and wears the answered-calling violet. `quiet: true`
+  grants are live but chipless (the momentum idiom). BuffInfo channel
+  doc updated — additive v34 wire fact, no bump.
+- **THE RE-EXPRESSION VERDICT (open question 6, answered)**: Bulwark
+  and War Footing STAND as perk dials. The mitigate site reads the
+  stance at the instant of the blow; the when-pass grants at its
+  place in the tick — a same-tick edge can disagree, so byte-identical
+  fails on ordering, and a chip flickering with every stop/start
+  would be noise besides. The dials live on; the `when` lane is for
+  the content epoch's new callings, with `quiet` recommended for any
+  twitchy condition.
+- Gates: callingWhens.test.ts = 6 slate laws (hold/re-arm/release,
+  hysteresis both ways, orphan cleanup + ride-mirror mark, the
+  planted-stance split, wellFed/stateRiding reads, quiet chips);
+  full suites green ×4.
+
 ## As built — Phase 2, THE WAKING HAND (2026-08-17)
 
 Engine-complete, zero authored content (the green-light's PURE

@@ -265,6 +265,8 @@ import {
   callingDef,
   callingsFor,
   CALLINGS,
+  type CallingCondition,
+  type CallingGrant,
   foldEffect,
   isAggregateCallingEffect,
   PERK_FOLD,
@@ -1971,6 +1973,19 @@ interface PlayerComp {
    * the same law that binds a matched set.
    */
   callingProcs: ProcEffect[];
+  /**
+   * THE WHEN CLAUSE (callings-v2 Phase 3): the answered packages'
+   * conditional grants, rebuilt in recomputeGear; the per-tick pass
+   * (tickCallingWhens) holds each grant as a calling-channel buff
+   * while its condition is true.
+   */
+  callingWhens: Array<{ key: string; cond: CallingCondition; grant: CallingGrant }>;
+  /**
+   * The hysteresis latches: which conditional entries are currently
+   * engaged (keyed like whenKey). hp conditions release on a wider
+   * line than they engage, so a bouncing bar cannot strobe a grant.
+   */
+  whenEngaged: Set<string>;
   /** One-site perk dials derived from answered Callings (recomputeGear). */
   perks: Perks;
   /** Consecutive ticks without movement, sneaking or not (Bulwark). */
@@ -2275,11 +2290,23 @@ interface PlayerBuff {
    * oils are NOT buffs — they live on the weapon instance (roll.coat).
    * 'momentum' = THE KNIFE'S HUNGER's refresh-not-stack lane (no HUD
    * chip: sendBuffs shows only named consumables).
+   * 'calling' = THE WHEN CLAUSE's lane (callings-v2 Phase 3): grants
+   * the engine holds while a conditional package's condition is true —
+   * re-armed each tick, removed on the falling edge, chipped as a
+   * HELD chip (no countdown) unless the grant declares itself quiet.
    */
-  channel?: 'tonic' | 'food' | 'momentum';
+  channel?: 'tonic' | 'food' | 'momentum' | 'calling';
   /** Item that granted it + display name — drives the HUD chip. */
   itemId?: string;
   name?: string;
+  /**
+   * THE WHEN CLAUSE: the conditional entry this grant answers to
+   * (`<callingId>#<entryIndex>`) — the tick pass matches and re-arms
+   * by this key, never by display name.
+   */
+  whenKey?: string;
+  /** THE WHEN CLAUSE: a quiet grant is live but chipless (momentum's idiom). */
+  quiet?: boolean;
 }
 
 /** Buff with the passive-combat defaults filled in. */
@@ -2433,6 +2460,22 @@ function defaultPerks(): Perks {
 
 /** Ticks of standing still before Bulwark's armor answers. */
 const STILL_ARMOR_TICKS = 12;
+
+/**
+ * THE WHEN CLAUSE's safety clock: a held grant is re-armed this far
+ * ahead each tick, so any removal path the engine ever misses (a
+ * set-down mid-condition, a def retired between logins) self-heals at
+ * the ordinary buff sweep within half a second. The crisp edge is
+ * still the tick pass's explicit removal — this is the net under it.
+ */
+const WHEN_REARM_TICKS = 10;
+/**
+ * The hp conditions' hysteresis band (the Second Wind law, held
+ * open-ended): engage exactly at the authored line, release only a
+ * nudge past it, so a bar bouncing on the line cannot strobe the
+ * grant or its chip.
+ */
+const WHEN_HP_HYST = 0.05;
 
 /**
  * Input queue depth cap. Nominal flow is 1/tick and THE STEADY HAND
@@ -4017,6 +4060,8 @@ export class GameServer {
       lessonDirty: new Set(),
       callings: character.id > 0 ? new Set(await this.accounts.loadCallings(character.id)) : new Set(),
       callingProcs: [],
+      callingWhens: [],
+      whenEngaged: new Set(),
       perks: defaultPerks(),
       stillTicks: 0,
       sneaking: false,
@@ -15008,6 +15053,129 @@ export class GameServer {
     }
   }
 
+  /**
+   * THE WHEN CLAUSE's one truth read (callings-v2 Phase 3): is this
+   * condition true for this body, right now? Pure fact-reads, every
+   * one optional-chained (the slate law), each mirroring the exact
+   * predicate its precedent dial trusts: `still`/`moving` split on
+   * Bulwark's own clock and boundary, `shieldRaised` is the
+   * shieldArm gate's read, `underground` is Deep Lungs' plane law,
+   * `night` is the Night Angler's sun. `engaged` feeds the hp
+   * hysteresis and nothing else.
+   */
+  private whenHolds(
+    eid: EntityId,
+    player: PlayerComp,
+    cond: CallingCondition,
+    engaged: boolean,
+  ): boolean {
+    switch (cond.when) {
+      case 'hpBelow': {
+        const h = this.healths?.get(eid);
+        if (!h || h.maxHp <= 0 || h.hp <= 0) return false;
+        const frac = h.hp / h.maxHp;
+        return engaged ? frac <= cond.frac + WHEN_HP_HYST : frac <= cond.frac;
+      }
+      case 'hpAbove': {
+        const h = this.healths?.get(eid);
+        if (!h || h.maxHp <= 0 || h.hp <= 0) return false;
+        const frac = h.hp / h.maxHp;
+        return engaged ? frac >= cond.frac - WHEN_HP_HYST : frac >= cond.frac;
+      }
+      case 'still':
+        return (player.stillTicks ?? 0) >= STILL_ARMOR_TICKS;
+      case 'moving':
+        return (player.stillTicks ?? 0) < STILL_ARMOR_TICKS;
+      case 'shieldRaised':
+        return this.equippedShield(player);
+      case 'underground': {
+        const plane = this.positions?.get(eid)?.plane;
+        return plane !== undefined && (this.planes?.defOf(plane)?.underground ?? false);
+      }
+      case 'night': {
+        const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
+        return hours < SUNRISE || hours > SUNSET;
+      }
+      case 'stateRiding':
+        return this.statuses?.get(eid)?.some((s) => s.id === cond.status) ?? false;
+      case 'wellFed':
+        return player.buffs.some((b) => b.channel === 'food');
+    }
+  }
+
+  /**
+   * THE WHEN CLAUSE's tick pass: hold a calling-channel buff for every
+   * conditional entry whose condition is true. Rising edge pushes the
+   * grant (the forge folds it like any other buff — band clamps, ride
+   * mirror, swing mirror all inherited); a held grant is re-armed
+   * ahead of the sweep; a falling edge, a set-down, or a vanished def
+   * removes it crisply here — and anything this pass ever misses dies
+   * at the ordinary sweep inside WHEN_REARM_TICKS (the safety net).
+   * Edges send the buff push; a speed-bearing edge marks the ride
+   * mirror, exactly like the sweep's own law.
+   */
+  private tickCallingWhens(eid: EntityId, player: PlayerComp): void {
+    const whens = player.callingWhens ?? [];
+    if (whens.length === 0 && !player.buffs.some((b) => b.channel === 'calling')) return;
+    const engaged = (player.whenEngaged ??= new Set());
+    const wanted = new Map<string, CallingGrant>();
+    for (const w of whens) {
+      if (this.whenHolds(eid, player, w.cond, engaged.has(w.key))) {
+        engaged.add(w.key);
+        wanted.set(w.key, w.grant);
+      } else {
+        engaged.delete(w.key);
+      }
+    }
+    let changed = false;
+    let speedTouched = false;
+    // Falling edges + stale grants (a set-down calling's entries are
+    // simply no longer wanted): remove crisply.
+    for (const b of player.buffs) {
+      if (b.channel !== 'calling') continue;
+      if (b.whenKey !== undefined && wanted.has(b.whenKey)) {
+        // Held: re-arm ahead of the sweep.
+        b.untilTick = this.tickCount + WHEN_REARM_TICKS;
+        continue;
+      }
+      changed = true;
+      if (b.speedMult !== 1) speedTouched = true;
+    }
+    if (changed) {
+      player.buffs = player.buffs.filter(
+        (b) => b.channel !== 'calling' || (b.whenKey !== undefined && wanted.has(b.whenKey)),
+      );
+    }
+    // Rising edges: push what is wanted and not yet held.
+    for (const [key, g] of wanted) {
+      if (player.buffs.some((b) => b.channel === 'calling' && b.whenKey === key)) continue;
+      player.buffs.push(
+        mkBuff({
+          channel: 'calling',
+          whenKey: key,
+          name: g.name,
+          untilTick: this.tickCount + WHEN_REARM_TICKS,
+          ...(g.quiet ? { quiet: true } : {}),
+          ...(g.armor !== undefined ? { armor: g.armor } : {}),
+          ...(g.speedMult !== undefined ? { speedMult: g.speedMult } : {}),
+          ...(g.attackSpeedMult !== undefined ? { attackSpeedMult: g.attackSpeedMult } : {}),
+          ...(g.critPct !== undefined ? { critPct: g.critPct } : {}),
+          ...(g.dmgMult !== undefined ? { dmgMult: g.dmgMult } : {}),
+          ...(g.regenPer4s !== undefined ? { regenPer4s: g.regenPer4s } : {}),
+          ...(g.reflectFrac !== undefined ? { reflectFrac: g.reflectFrac } : {}),
+          ...(g.meleeLifesteal !== undefined ? { meleeLifesteal: g.meleeLifesteal } : {}),
+          ...(g.gatherSpeed !== undefined ? { gatherSpeed: g.gatherSpeed } : {}),
+        }),
+      );
+      changed = true;
+      if ((g.speedMult ?? 1) !== 1) speedTouched = true;
+    }
+    if (changed) {
+      this.sendBuffs(player);
+      if (speedTouched) this.rideDirty?.add(player);
+    }
+  }
+
   /** The HUD chip row: named consumable buffs only. */
   /**
    * THE CHIP SPEAKS (visible-buildcraft V2): the plain-words effect
@@ -15050,7 +15218,22 @@ export class GameServer {
     for (const b of player.buffs) {
       // A STACK IS A THING YOU CAN SEE: a stacking buff's chip counts.
       const stacks = (b.stacks ?? 1) > 1 ? { stacks: b.stacks } : {};
-      if (b.channel && b.itemId && b.name) {
+      if (b.channel === 'calling') {
+        // THE WHEN CLAUSE: a HELD chip — it stands while the
+        // condition holds and vanishes on the falling edge; there is
+        // no countdown to count (the client wears the ring full).
+        // Quiet grants stay off the HUD by their own word.
+        if (b.name && b.quiet !== true) {
+          buffs.push({
+            id: `calling:${b.whenKey ?? b.name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
+            name: b.name,
+            channel: 'calling',
+            secsLeft: 1,
+            desc: this.describeBuff(b),
+            ...stacks,
+          });
+        }
+      } else if (b.channel && b.itemId && b.name) {
         buffs.push({
           id: b.itemId,
           name: b.name,
@@ -19734,13 +19917,16 @@ export class GameServer {
     player.gear = aggregateGearStats(player.equipment);
     const perks = defaultPerks();
     const callingProcs: ProcEffect[] = [];
+    const callingWhens: PlayerComp['callingWhens'] = [];
     for (const id of player.callings) {
       const def = callingDef(id);
       if (!def) continue;
       // THE CALLING IS A PACKAGE (callings-v2 Phase 1): every entry
-      // folds. The reserved lanes still waiting on their doors (when,
-      // art) are typed but unread — the default arm holds their seats.
-      for (const fx of def.effects) {
+      // folds. The one reserved lane still waiting on its door (art,
+      // the content epoch's) is typed but unread — the default arm
+      // holds its seat.
+      for (let entryIndex = 0; entryIndex < def.effects.length; entryIndex++) {
+        const fx = def.effects[entryIndex]!;
         switch (fx.kind) {
           case 'gear':
             if (isAggregateCallingEffect(fx)) foldEffect(player.gear, fx.effect);
@@ -19789,12 +19975,19 @@ export class GameServer {
             // matched-set law verbatim.
             addProc(callingProcs, fx.proc);
             break;
+          case 'when':
+            // THE WHEN CLAUSE: keyed by def + entry seat, never by
+            // display name — two grants may share a name and still
+            // never share a latch.
+            callingWhens.push({ key: `${def.id}#${entryIndex}`, cond: fx.cond, grant: fx.grant });
+            break;
           default:
             break;
         }
       }
     }
     player.callingProcs = callingProcs;
+    player.callingWhens = callingWhens;
     player.perks = perks;
     const health = this.healths.get(eid);
     if (health) {
@@ -31537,6 +31730,9 @@ export class GameServer {
     for (let i = 0; i < ABILITY_SLOTS; i++) {
       if (player.abilityCd[i]! > 0) player.abilityCd[i]!--;
     }
+    // THE WHEN CLAUSE holds its grants BEFORE the sweep, so a held
+    // grant is always re-armed past it and a released one dies in it.
+    this.tickCallingWhens(eid, player);
     if (player.buffs.length > 0) {
       // A chip-bearing buff running out clears its chip: consumables
       // (channel) and named combat buffs alike (THE VISIBLE FIGHT).

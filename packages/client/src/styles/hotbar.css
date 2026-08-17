@@ -365,6 +365,26 @@ body.no-ui-motion .swap-slot.trading .hotbar-icon {
   text-shadow: var(--punch-small);
 }
 
+/* THE HELD COIN — a Calling's conditional grant (THE WHEN CLAUSE):
+   it stands while the condition holds, so there is no countdown to
+   count. The ring is pinned FULL against the per-frame sweep write
+   (stylesheet !important beats the inline walk on purpose — the JS
+   countdown stays untouched and array-parallel), the seconds hide,
+   and the coin wears the answered-calling violet so a held grant
+   reads apart from a ticking surge at a glance. */
+.buff-chip.calling {
+  --sweep: 1 !important;
+  box-shadow: inset 0 0 0 0.09375rem rgba(164, 138, 220, 0.55), 0 0.125rem 0.25rem rgba(6, 4, 2, 0.45);
+}
+
+.buff-chip.calling .coin-glyph {
+  color: #c8b4ee;
+}
+
+.buff-chip.calling .buff-secs {
+  display: none;
+}
+
 .buff-chip.tonic {
   box-shadow: inset 0 0 0 0.09375rem rgba(127, 201, 179, 0.55), 0 0.125rem 0.25rem rgba(6, 4, 2, 0.45);
 }

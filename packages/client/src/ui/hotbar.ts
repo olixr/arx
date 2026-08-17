@@ -320,13 +320,16 @@ export class Hotbar {
         }
         const secs = document.createElement('span');
         secs.className = 'buff-secs';
-        if (b.channel === 'combat') {
+        if (b.channel === 'combat' || b.channel === 'calling') {
           // THE VISIBLE FIGHT: a combat chip has no item behind it —
           // a lettered coin in the tray, the charge chip's sibling.
           // Dress lives in hotbar.css (.buff-chip.combat/.coin-glyph);
           // THE CHIP SPEAKS: the server-composed effect line rides the
           // title so hovering a coin tells what it does, not just its
-          // name.
+          // name. A 'calling' coin is THE WHEN CLAUSE's HELD chip: it
+          // stands while the condition holds — the stylesheet pins its
+          // ring full and hides the countdown (there is none to count;
+          // the falling edge removes the chip itself).
           chip.title = b.desc ? `${b.name}: ${b.desc}` : b.name;
           chip.dataset.tipname = chip.title;
           const glyph = document.createElement('span');

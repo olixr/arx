@@ -1356,7 +1356,10 @@ export interface BuffInfo {
   /**
    * 'tonic' | 'food' (one active per channel) | 'combat' (THE
    * VISIBLE FIGHT: named wards, surges, and stance riders — additive
-   * v29 wire fact, an older client simply styles the chip plainly).
+   * v29 wire fact, an older client simply styles the chip plainly) |
+   * 'calling' (THE WHEN CLAUSE, callings-v2 Phase 3: a HELD grant —
+   * it stands while its condition holds, secsLeft is a placeholder
+   * and the client pins the ring full; additive v34 wire fact).
    */
   channel: string;
   secsLeft: number;
