@@ -773,9 +773,13 @@ body.pad-mode #ctx-sheet.radial .ctx-verb:focus-visible {
 }
 
 .ledger-turn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3125rem;
   min-width: 2.375rem;
   min-height: 2.375rem;
-  padding: 0;
+  padding: 0 0.375rem;
   font-size: var(--t-lead);
   font-weight: 800;
   line-height: 1;
@@ -791,6 +795,19 @@ body.pad-mode #ctx-sheet.radial .ctx-verb:focus-visible {
 .ledger-turn:hover {
   color: var(--gold-hot);
   filter: brightness(1.15) drop-shadow(0.125rem 0.1875rem 0 var(--shadow));
+}
+
+/* THE FOOT TEACHES ITS SHORTCUT: in pad mode the turn keys wear the
+   bumper (or trigger, where a rail owns the bumpers) that already
+   turns them — the shortcut is taught exactly where the slow path
+   lived. `.pad-glyph` visibility rides body.pad-mode globally, so a
+   mouse never meets controller chrome here. */
+.ledger-turn .pad-glyph {
+  min-width: 1.3125rem;
+  height: 1.3125rem;
+  padding: 0 0.25rem;
+  font-size: 0.6875rem;
+  pointer-events: none;
 }
 
 .ledger-dots {

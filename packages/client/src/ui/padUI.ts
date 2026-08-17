@@ -753,10 +753,13 @@ export class UiNav {
     }
     // LB / RB: THE BUMPER SERVES THE ROOM. A room with its own section
     // rail (the vault's family tabs, the codex's schools) takes the
-    // bumpers for stepping sections — the grammar every pad player
-    // already knows — and only a rail-less room lets them walk the
-    // shelf of screens. Never both: a bumper press inside the vault
-    // must not slam the vault shut mid-errand.
+    // bumpers for stepping sections; a rail-less room whose list is
+    // dealt onto ledger leaves (every maker's bench, the quest log)
+    // takes them for turning leaves — THE BUMPER TURNS THE LEAF. Only
+    // a room with neither stepper lets them walk the shelf of screens.
+    // Never both: a bumper press inside the vault must not slam the
+    // vault shut mid-errand, and one inside the smithy must not march
+    // the reader off to the skills wall.
     if (edge(BTN.lb)) this.bumperStep(-1);
     if (edge(BTN.rb)) this.bumperStep(1);
 
@@ -814,30 +817,39 @@ export class UiNav {
     );
   }
 
-  /**
-   * A bumper press: step the room's section rail when one stands,
-   * otherwise walk the shelf of screens. An open verb menu owns the
-   * frame — sections must not slide under a raised sheet of verbs.
-   */
-  private bumperStep(dir: -1 | 1): void {
-    const menu = document.getElementById('item-menu');
-    if (menu && !menu.classList.contains('hidden')) return;
-    const rail = this.roomTabs();
-    if (rail) rail.dispatchEvent(new CustomEvent('kit-page', { detail: dir }));
-    else this.hooks.onCycleScreen(dir);
-  }
-
-  /** LT/RT: hand the press to the open room's declared pager — the
-   * ledger first (the rail already answers the bumpers), the rail
-   * itself when it is the only pager the room owns. */
-  private dispatchPage(dir: -1 | 1): void {
+  /** The open room's declared pager — the ledger first (a rail
+   * already answers the bumpers), the rail itself when it is the only
+   * pager the room owns. */
+  private roomPager(): HTMLElement | null {
     const pagers = Array.from(
       document.querySelectorAll<HTMLElement>(
         '.ui-screen:not(.hidden) [data-pager], .ui-tray:not(.hidden) [data-pager]',
       ),
     );
-    const pager = pagers.find((p) => p.dataset.tabs === undefined) ?? pagers[0];
-    pager?.dispatchEvent(new CustomEvent('kit-page', { detail: dir }));
+    return pagers.find((p) => p.dataset.tabs === undefined) ?? pagers[0] ?? null;
+  }
+
+  /**
+   * A bumper press: step the room's section rail when one stands,
+   * turn the room's ledger when leaves are all it has, and only walk
+   * the shelf of screens when the room owns neither. An open verb
+   * menu owns the frame — sections must not slide under a raised
+   * sheet of verbs.
+   */
+  private bumperStep(dir: -1 | 1): void {
+    const menu = document.getElementById('item-menu');
+    if (menu && !menu.classList.contains('hidden')) return;
+    const stepper = this.roomTabs() ?? this.roomPager();
+    if (stepper) stepper.dispatchEvent(new CustomEvent('kit-page', { detail: dir }));
+    else this.hooks.onCycleScreen(dir);
+  }
+
+  /** LT/RT: hand the press to the open room's declared pager. In a
+   * railed room this reaches past the rail to the ledger; in a
+   * rail-less room it seconds the bumpers — the same leaf turn under
+   * either finger, so no habit is ever wrong. */
+  private dispatchPage(dir: -1 | 1): void {
+    this.roomPager()?.dispatchEvent(new CustomEvent('kit-page', { detail: dir }));
   }
 
   // ---- THE SCREEN RING ---------------------------------------------
@@ -1003,15 +1015,17 @@ export class UiNav {
       label,
     ]);
     // The standing bumper affordance — and it tells the truth: in a
-    // room with a section rail the bumpers step sections; everywhere
-    // else every screen is one LB/RB away.
+    // room with a section rail the bumpers step sections; in a room
+    // dealt onto leaves they turn the page; only everywhere else is
+    // every screen one LB/RB away.
     const tabbed = this.roomTabs() !== null;
+    const paged = !tabbed && this.roomPager() !== null;
     items.push(
       ['pad-glyph lb', padGlyph(4).text, ''],
-      ['pad-glyph rb', padGlyph(5).text, tabbed ? 'Section' : 'Screens'],
+      ['pad-glyph rb', padGlyph(5).text, tabbed ? 'Section' : paged ? 'Page' : 'Screens'],
     );
     this.renderStrip(
-      actions.map((a) => a.join(':')).join('|') + (tabbed ? '|tabs' : '|cycle'),
+      actions.map((a) => a.join(':')).join('|') + (tabbed ? '|tabs' : paged ? '|page' : '|cycle'),
       items,
     );
   }

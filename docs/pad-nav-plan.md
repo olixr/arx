@@ -99,3 +99,48 @@ Harness gotchas, hard-won:
 - `window.__arx` now carries `nav` and `input` (the proving levers);
   read `nav.focusKey` for the ring's truth, never `elementsFromPoint`.
 - Item id is `log`, not `logs`, for the /give stock.
+
+## 4. THE BUMPER TURNS THE LEAF (2026-08-16)
+
+THE BUMPER SERVES THE ROOM (a946eab) left one family of rooms
+orphaned: rail-less rooms whose list is dealt onto ledger leaves —
+every maker's bench, the build board, the quest log. There a bumper
+still walked the shelf of screens, marching the reader off the smithy
+mid-recipe; the only leaf-turn on the pad was cursor-walking down to
+the foot arrows. Repaired as one grammar extension:
+
+- **The stepper ladder** (`padUI.bumperStep`): section rail
+  (`data-tabs`) → room pager (`data-pager`, the ledger) → only then
+  the shelf of screens. `roomPager()` is the ONE pager election
+  (shared with LT/RT `dispatchPage`): the first non-rail `[data-pager]`
+  in the open room, the rail itself when it is the room's only pager.
+  In a rail-less ledgered room the triggers now second the bumpers —
+  the same leaf turn under either finger, so no habit is ever wrong.
+- **The strip tells the truth** three ways now: `Section` (railed) /
+  `Page` (leaved) / `Screens` (neither).
+- **THE FOOT TEACHES ITS SHORTCUT** (`kit/ledger.ts`): in pad mode the
+  ‹ › turn keys wear the buttons that already turn them — bumper
+  glyphs where the ledger owns them, trigger glyphs where a rail has
+  first claim (vault, key ring). Glyphs ride `padGlyph` (family-aware,
+  THE BUTTON WEARS ITS OWN NAME); `.pad-glyph` visibility rides
+  `body.pad-mode`, so mouse hands never meet controller chrome.
+  Chips re-dress on every deal and on the leaf's ResizeObserver beat
+  (a ledger dealt before parenting cannot yet know its room's rail).
+- **THE WHEEL TURNS THE LEAF** (`kit/ledger.ts`): nothing lives below
+  the fold, so a mouse wheel over the ledger turns a whole leaf; a
+  200ms cooldown makes a trackpad flick one turn, not a riffle.
+- **The bench is a counter too** (`main.cycleScreen`): a
+  station-anchored workshop (`stationPanels.anchorTile !== null`)
+  never yields to the shelf walk even when its list dealt no pager —
+  an empty seed pouch must not turn LB into "close the furrow, open
+  the skills".
+
+Proving (as run, 2026-08-16, rig13 lane 5230/8830,
+`scratchpad/prove-craft-bumpers.mjs`, fresh account + modal look
+creator + advancing-timestamp fake pad): Workshop open in pad mode →
+strip read `…LB RB Page`, foot chips read `LB`/`RB`; RB turned dot
+1→2 with the workshop standing and no other screen opened; LB walked
+back; a synthetic wheel turned the leaf; on the pagerless character
+screen the strip honestly read `Screens` and RB walked the shelf
+(inv → skills) exactly as before. Screenshot kept the judged pass:
+chips seated inside the iron turn keys, dots between.

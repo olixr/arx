@@ -1146,6 +1146,11 @@ function cycleScreen(dir: -1 | 1): void {
   if (cur === null && (stationPanels.shopOpen || stationPanels.stableOpen || stationPanels.bankOpen)) {
     return;
   }
+  // The bench is a counter too: a station-anchored workshop (smithy,
+  // stove, enchanting table, the seed furrow) holds its ground even
+  // when its list dealt no pager to take the bumpers — an empty seed
+  // pouch must not turn LB into "close the furrow, open the skills".
+  if (stationPanels.anchorTile !== null) return;
   const idx = cur === null ? (dir === 1 ? -1 : 0) : SCREEN_ORDER.indexOf(cur);
   const next = SCREEN_ORDER[(idx + dir + SCREEN_ORDER.length) % SCREEN_ORDER.length]!;
   if (next === cur) return;

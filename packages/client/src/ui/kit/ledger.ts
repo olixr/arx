@@ -12,6 +12,8 @@
  * are the kit's.
  */
 
+import { padGlyph } from '../../input/bindings.js';
+
 export interface Ledger<T> {
   root: HTMLElement;
   /** Replace the collection; keeps the current leaf when possible. */
@@ -53,20 +55,45 @@ export function createLedger<T>(opts: {
   foot.className = 'ledger-foot';
   const prev = document.createElement('button');
   prev.className = 'ledger-turn';
-  prev.textContent = '‹';
   prev.dataset.nav = '';
   prev.dataset.navkey = 'ledger:prev';
   prev.dataset.acta = 'Back a leaf';
+  const prevChip = document.createElement('span');
+  const prevMark = document.createElement('span');
+  prevMark.textContent = '‹';
+  prev.append(prevChip, prevMark);
   const dots = document.createElement('div');
   dots.className = 'ledger-dots';
   const next = document.createElement('button');
   next.className = 'ledger-turn';
-  next.textContent = '›';
   next.dataset.nav = '';
   next.dataset.navkey = 'ledger:next';
   next.dataset.acta = 'On a leaf';
+  const nextMark = document.createElement('span');
+  nextMark.textContent = '›';
+  const nextChip = document.createElement('span');
+  next.append(nextMark, nextChip);
   foot.append(prev, dots, next);
   root.append(leaf, foot);
+
+  /* THE FOOT TEACHES ITS SHORTCUT: in pad mode the turn keys wear the
+     buttons that already turn them — the bumpers where the ledger owns
+     them outright (THE BUMPER TURNS THE LEAF), the triggers where a
+     section rail claims the bumpers first (the vault, the key ring).
+     Glyph text rides padGlyph so the chips speak the live pad's
+     marking family; `.pad-glyph` shows only under body.pad-mode, so a
+     mouse never sees controller chrome. Re-dressed on every deal —
+     the room is only knowable once the ledger is parented. */
+  const dressPadChips = (): void => {
+    const room = root.closest('.ui-screen, .ui-tray');
+    const railed = room?.querySelector('[data-tabs]') != null;
+    const l = padGlyph(railed ? 6 : 4);
+    const r = padGlyph(railed ? 7 : 5);
+    prevChip.className = `ledger-pad pad-glyph ${l.cls}`;
+    prevChip.textContent = l.text;
+    nextChip.className = `ledger-pad pad-glyph ${r.cls}`;
+    nextChip.textContent = r.text;
+  };
 
   let items: T[] = [];
   let at = Math.max(0, opts.initialLeaf ?? 0);
@@ -77,6 +104,7 @@ export function createLedger<T>(opts: {
   const leaves = (): number => Math.max(1, Math.ceil(items.length / per));
 
   const renderDots = (): void => {
+    dressPadChips();
     dots.innerHTML = '';
     const n = leaves();
     foot.classList.toggle('hidden', n <= 1);
@@ -153,8 +181,30 @@ export function createLedger<T>(opts: {
 
   /* The leaf re-measures itself whenever its box changes — including
      the first honest layout after mounting, so a ledger dealt while
-     detached still lands on the true row count. */
-  new ResizeObserver(() => refit()).observe(leaf);
+     detached still lands on the true row count. The chips re-dress on
+     the same beat: a ledger dealt before parenting could not yet know
+     whether its room's rail had first claim on the bumpers. */
+  new ResizeObserver(() => {
+    refit();
+    dressPadChips();
+  }).observe(leaf);
+
+  /* THE WHEEL TURNS THE LEAF: nothing lives below the fold, so the
+     only honest answer to a mouse wheel over the ledger is a whole
+     leaf turn. The cooldown makes a trackpad flick one turn, not a
+     riffle through the whole book. */
+  let wheelAt = 0;
+  root.addEventListener(
+    'wheel',
+    (e) => {
+      if (Math.abs(e.deltaY) < 12) return;
+      const now = performance.now();
+      if (now - wheelAt < 200) return;
+      wheelAt = now;
+      (e.deltaY > 0 ? next : prev).click();
+    },
+    { passive: true },
+  );
 
   /* LT/RT reach the ledger through the pad grammar's pager wire. */
   root.addEventListener('kit-page', (e) => {
