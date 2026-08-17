@@ -9350,7 +9350,21 @@ function drawAxeBit(
 // reads pasted onto a stick. One lit top plane per mass (the sun law);
 // a real butt cap (the haft-strike end is a real end).
 
-export type PoleHead = 'leaf' | 'winged' | 'lance' | 'glaive' | 'halberd' | 'pike';
+export type PoleHead =
+  // ---- the founding six: the mounted-point family.
+  | 'leaf' | 'winged' | 'lance' | 'glaive' | 'halberd' | 'pike'
+  // ---- THE BLADED LONG-ARMS (wave 2): the school breaks out of the
+  // spear silhouette. These heads are BLADES first — some a third of
+  // the whole arm — and each is its own geometry, never a reskin.
+  | 'sweep'      // the naginata's long curved single edge
+  | 'crescent'   // the guandao's deep chopping moon, flame-notched back
+  | 'scythe'     // the war harvest's transverse sickle horn
+  | 'bardiche'   // the tall cleaver crescent, mounted at two points
+  | 'trident'    // the sea fork's three barbed tines
+  | 'swordstaff' // a true double-edged sword blade on a cross-guard socket
+  | 'beak'       // the bill's forward talon that empties saddles
+  | 'spade'      // the pilgrim's double end: flat spade + butt crescent
+  | 'ge';        // the barrow-bronze dagger-axe: a perpendicular fang
 
 export interface PoleStyle {
   kind: PoleHead;
@@ -9599,6 +9613,82 @@ export const POLE_STYLES: Record<string, PoleStyle> = {
     headLen: 1.12, spiral: '#e8c04c', gem: '#ffd97a', filigree: '#c9a45e',
     fx: 'sun', fxColor: '#ffe8a0',
   },
+
+  // ---- THE BLADED LONG-ARMS (wave 2): ten more, none of them a
+  // spear. New head geometries, blades up to a third of the arm, and
+  // the same curation law: one identity idea each, owned outright.
+  // The river-watcher's curve: bright steel served to a night haft
+  // with white cord, and nothing else — the elegance IS the design.
+  herons_wing: {
+    kind: 'sweep', color: '#c8ced8', edge: '#f0f4fa', dark: '#7a8496',
+    haft: '#2e3440', wrap: '#e8e4da', iron: '#8d9299', laced: true,
+  },
+  // The field's iron, promoted: a work-dark sickle horn whose edge
+  // stayed bright because it never stopped being used. Rust-red
+  // lashing at the fist; the heel rivet is the whole mounting story.
+  long_harvest: {
+    kind: 'scythe', color: '#6e7a86', edge: '#c8d0d8', dark: '#3e4650',
+    haft: '#7a6a52', wrap: '#8a4a32', iron: '#4e463e', laced: true,
+  },
+  // Barrow bronze under barrow patina, BOUND the old way — the fang
+  // that collected what the dead were owed, still collecting.
+  tithe_hook: {
+    kind: 'ge', color: '#9a8a56', edge: '#c8b878', dark: '#5e6a4a',
+    haft: '#4a4438', wrap: '#6a5e46', iron: '#5e6a4a',
+    bound: true, fx: 'void', fxColor: '#aab89a',
+  },
+  // The old kingdom's cleaver: blackened steel crescent on crown-gold
+  // mounts — the one warm metal spent where the blade meets the wood,
+  // because that is where a king would spend it.
+  oldcrown_bardiche: {
+    kind: 'bardiche', color: '#5e6874', edge: '#a8b2be', dark: '#2e363e',
+    haft: '#5b4436', wrap: '#d9a441', iron: '#c9a45e',
+  },
+  // The Company's dismounting bill: black iron, oxblood fist, and a
+  // talon whose inner curve has paid for itself many times over.
+  crowsbeak: {
+    kind: 'beak', color: '#4e545c', edge: '#98a2ac', dark: '#262c32',
+    haft: '#3a3238', wrap: '#8a2a3a', iron: '#3e444c',
+  },
+  // Sky-metal drawn into a TRUE sword blade and set on a cross-guard
+  // socket — both edges live, and the guard means the parry does too.
+  mithril_swordstave: {
+    kind: 'swordstaff', color: '#8fb4e4', edge: '#d8ecff', dark: '#4a6a9c',
+    haft: '#2e3a4e', wrap: '#7fa8d9', iron: '#3f5e8c',
+  },
+  // The deepking's fork: verdigris sea-steel, barbed to keep what it
+  // takes, a pearl at the crossbar, and the storm that never quite
+  // leaves the tines.
+  tidesplitter: {
+    kind: 'trident', color: '#7ab0a2', edge: '#d8f0e8', dark: '#3e6a5e',
+    haft: '#2e4a44', wrap: '#4a7a6e', iron: '#5e8a7e',
+    gem: '#ece8dc', fx: 'storm', fxColor: '#d8fff2',
+  },
+  // The legion's chopping moon: charcoal steel whose one lit plane is
+  // EMBER — the edge holds banked fire — with the war-cord tassel at
+  // the mount and a flame-notched spine.
+  bannereaver: {
+    kind: 'crescent', color: '#4a4448', edge: '#ff9a50', dark: '#2a2628',
+    haft: '#3a2e2a', wrap: '#8a2a3a', iron: '#c9a45e',
+    tassel: '#8a2a3a', fx: 'ember', fxColor: '#ff9a50',
+  },
+  // The pilgrim way's double answer: moon-pale steel at both ends of
+  // honest oak — spade for the road, crescent for the company the
+  // road keeps.
+  pilgrims_moon: {
+    kind: 'spade', color: '#e8e4d8', edge: '#ffffff', dark: '#b0a890',
+    haft: '#8a6a45', wrap: '#c9a45e', iron: '#c9a45e',
+    fx: 'gleam', fxColor: '#fff0c8',
+  },
+  // THE ARTIFACT: a third of its length is one night-metal blade. The
+  // starred shaft, the breathing white vein, the sky it was sheared
+  // from still on it — the school's ceiling, legendary or not at all.
+  skyshear: {
+    kind: 'sweep', color: '#8a8ac8', edge: '#ffffff', dark: '#4a4a7a',
+    haft: '#26264a', wrap: '#6a6ab0', iron: '#4a4a7a',
+    headLen: 1.45, headW: 1.05, core: '#ffffff', stars: '#e8e4ff',
+    fx: 'star', fxColor: '#f4f4ff',
+  },
 };
 
 const POLE_FALLBACKS = new Map<string, PoleStyle>();
@@ -9638,11 +9728,20 @@ export function poleStyle(itemId: string | undefined, color?: string): PoleStyle
   return fb;
 }
 
+/** Where each archetype's wood ends, as a fraction of body scale. */
+const POLE_HEAD_BUDGET: Record<PoleHead, number> = {
+  leaf: 0.2, winged: 0.2, lance: 0.24, glaive: 0.3, halberd: 0.24, pike: 0.16,
+  sweep: 0.34, crescent: 0.3, trident: 0.3, swordstaff: 0.38, beak: 0.26,
+  bardiche: 0.1, scythe: 0.05, spade: 0.12, ge: 0.16,
+};
+
 /**
- * Paint a polearm in the held-item frame. The school's silhouette
- * argument: the LONGEST art in the game, almost all of it haft — the
- * head is small, deliberate, and mounted, because a spear is a point
- * with an opinion, not a sword on a stick.
+ * Paint a polearm in the held-item frame. The school's founding
+ * silhouette argument — the LONGEST art in the game, almost all of it
+ * haft, the head small and mounted — holds for the point family. The
+ * bladed long-arms (wave 2) argue the OTHER truth on the same frame:
+ * sometimes the blade IS the argument, and the haft exists to put it
+ * somewhere the other fellow cannot reach back from.
  */
 export function drawPole(
   ctx: CanvasRenderingContext2D,
@@ -9665,9 +9764,12 @@ export function drawPole(
   // Head geometry budgets, per archetype: where the socket collar
   // sits (the wood ends), how far the steel runs past it. headLen /
   // headW are the roster's two exaggeration dials — the endgame heads
-  // are allowed to loom, the levy's are not.
-  const baseHead =
-    st.kind === 'pike' ? 0.16 : st.kind === 'lance' ? 0.24 : st.kind === 'glaive' ? 0.3 : st.kind === 'halberd' ? 0.24 : 0.2;
+  // are allowed to loom, the levy's are not. The bladed long-arms
+  // spend REAL budget here (a swordstaff's blade is over a quarter of
+  // the whole arm); the side-mounted heads (bardiche, scythe, ge,
+  // spade) keep the budget SMALL so the wood runs on beneath a blade
+  // that rides beside the line instead of capping it.
+  const baseHead = POLE_HEAD_BUDGET[st.kind];
   const headLen = baseHead * s * (st.headLen ?? 1);
   const wMul = st.headW ?? 1;
   const collarAt = tip - headLen;
@@ -10164,7 +10266,7 @@ export function drawPole(
       ctx.fillRect(collarAt - 0.06 * s, -hw * 1.14, 0.055 * s, hw * 0.5);
       ctx.fillRect(collarAt - 0.06 * s, hw * 0.64, 0.055 * s, hw * 0.5);
     }
-  } else {
+  } else if (st.kind === 'halberd') {
     // THE HALBERD: the argument with three answers — axe flat forward,
     // hook behind, spike above. Langets run the mounting down the
     // haft; the axe face takes the one lit plane. headW deepens the
@@ -10246,6 +10348,382 @@ export function drawPole(
           ctx.arc(collarAt - 0.075 * s + 0.07 * s * f, d * hw * 0.89, Math.max(0.75, 0.006 * s), 0, Math.PI * 2);
           ctx.fill();
         }
+    }
+  } else if (st.kind === 'sweep') {
+    // THE SWEEP: the naginata's answer — one long single-edged curve,
+    // belly on the outward face, a recurved spine, and a cord-served
+    // socket instead of langets. At full budget the blade is a third
+    // of the arm and every finger-width of it is edge.
+    const w = 0.105 * s * wMul;
+    ctx.fillStyle = steel;
+    ctx.beginPath();
+    ctx.moveTo(collarAt + 0.008 * s, -hw * 0.75);
+    // The blade runs slim off the socket, carries its mass in the far
+    // third, and the point rises off the line in a true sori — the
+    // drawn-out curve is the whole school of this blade.
+    ctx.quadraticCurveTo(collarAt + headLen * 0.5, -w * 0.74, collarAt + headLen * 0.74, -w * 0.78);
+    ctx.quadraticCurveTo(collarAt + headLen * 0.96, -w * 0.7, tip, -0.055 * s);
+    ctx.quadraticCurveTo(collarAt + headLen * 0.72, 0.002 * s, collarAt + 0.008 * s, hw * 0.85);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The lit line hugs the belly's edge — a strip, never a flood,
+      // so the metal keeps its own color.
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(collarAt + headLen * 0.24, -w * 0.42);
+      ctx.quadraticCurveTo(collarAt + headLen * 0.56, -w * 0.68, collarAt + headLen * 0.78, -w * 0.68);
+      ctx.quadraticCurveTo(collarAt + headLen * 0.96, -w * 0.6, tip - 0.006 * s, -0.052 * s);
+      ctx.quadraticCurveTo(collarAt + headLen * 0.68, -w * 0.5, collarAt + headLen * 0.28, -w * 0.26);
+      ctx.closePath();
+      ctx.fill();
+      // The spine, spoken dark along the recurve.
+      ctx.strokeStyle = dark;
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.moveTo(collarAt + headLen * 0.12, hw * 0.35);
+      ctx.quadraticCurveTo(collarAt + headLen * 0.66, 0.01 * s, tip - 0.014 * s, -0.048 * s);
+      ctx.stroke();
+      if (st.core) {
+        // The living vein rides the blade's own midline.
+        ctx.strokeStyle = st.core;
+        ctx.globalAlpha = 0.6 + 0.3 * Math.sin(nowMs * 0.003);
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.beginPath();
+        ctx.moveTo(collarAt + headLen * 0.14, -w * 0.18);
+        ctx.quadraticCurveTo(collarAt + headLen * 0.6, -w * 0.52, tip - 0.02 * s, -0.05 * s);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      // The served socket: two cord rings where langets would be.
+      ctx.fillStyle = st.wrap ?? '#6b4a26';
+      ctx.fillRect(collarAt - 0.036 * s, -hw * 1.12, 0.016 * s, hw * 2.24);
+      ctx.fillRect(collarAt - 0.062 * s, -hw * 1.12, 0.016 * s, hw * 2.24);
+    }
+  } else if (st.kind === 'crescent') {
+    // THE CRESCENT: the bannered chopping moon — a deep single-edged
+    // belly forward, a flame-notched back, and enough steel that the
+    // wielder is honestly carrying a wall on a stick.
+    const w = 0.14 * s * wMul;
+    ctx.fillStyle = steel;
+    ctx.beginPath();
+    ctx.moveTo(collarAt + 0.01 * s, -hw * 0.7);
+    ctx.quadraticCurveTo(collarAt + headLen * 0.35, -w, tip, -0.02 * s);
+    ctx.lineTo(tip - headLen * 0.1, 0.012 * s);
+    // The flame back: two hooked notches riding the spine home.
+    ctx.lineTo(collarAt + headLen * 0.6, 0.055 * s);
+    ctx.lineTo(collarAt + headLen * 0.48, 0.022 * s);
+    ctx.lineTo(collarAt + headLen * 0.32, 0.062 * s);
+    ctx.lineTo(collarAt + headLen * 0.2, 0.026 * s);
+    ctx.lineTo(collarAt + 0.01 * s, hw * 0.85);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(collarAt + headLen * 0.14, -w * 0.5);
+      ctx.quadraticCurveTo(collarAt + headLen * 0.42, -w * 0.88, tip - 0.016 * s, -0.02 * s);
+      ctx.quadraticCurveTo(collarAt + headLen * 0.44, -w * 0.52, collarAt + headLen * 0.18, -w * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      // The notch shadows, so the flame back reads as forged, not torn.
+      ctx.fillStyle = dark;
+      for (const [nx, ny] of [[0.6, 0.055], [0.32, 0.062]] as const) {
+        ctx.beginPath();
+        ctx.moveTo(collarAt + headLen * nx, ny * s);
+        ctx.lineTo(collarAt + headLen * (nx - 0.1), (ny - 0.032) * s);
+        ctx.lineTo(collarAt + headLen * (nx - 0.045), (ny - 0.008) * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // The moon's collar ring, proud brass.
+      ctx.fillStyle = iron;
+      ctx.fillRect(collarAt - 0.008 * s, -hw * 1.4, 0.024 * s, hw * 2.8);
+    }
+  } else if (st.kind === 'scythe') {
+    // THE SCYTHE: the harvest turned soldier — the horn mounts at the
+    // pole's very top and sweeps BACK down the line, bowing out, the
+    // cutting edge on the inner curve the way a scythe has always
+    // cut: toward the one who swings it.
+    const out = 0.16 * s * wMul;
+    const reachBack = 0.32 * s;
+    const heel = collarAt + 0.02 * s;
+    ctx.fillStyle = steel;
+    ctx.beginPath();
+    ctx.moveTo(heel + 0.014 * s, -hw * 0.6);
+    // The outer (back) edge, convex, out to the trailing point.
+    ctx.quadraticCurveTo(heel - reachBack * 0.22, -out * 1.08, heel - reachBack, -out * 0.62);
+    // The inner (cutting) edge, concave, home to the heel.
+    ctx.quadraticCurveTo(heel - reachBack * 0.32, -out * 0.52, heel - 0.02 * s, -hw * 0.9);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The lit strip rides the cutting curve.
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(heel - 0.03 * s, -hw * 1.4);
+      ctx.quadraticCurveTo(heel - reachBack * 0.3, -out * 0.62, heel - reachBack + 0.016 * s, -out * 0.6);
+      ctx.quadraticCurveTo(heel - reachBack * 0.36, -out * 0.72, heel - 0.036 * s, -out * 0.24);
+      ctx.closePath();
+      ctx.fill();
+      // The heel mount: an iron collar and one hard rivet.
+      ctx.fillStyle = iron;
+      ctx.fillRect(heel - 0.008 * s, -hw * 1.35, 0.03 * s, hw * 2.7);
+      ctx.fillStyle = shade(iron, 30);
+      ctx.beginPath();
+      ctx.arc(heel + 0.006 * s, -hw * 0.2, Math.max(0.75, 0.007 * s), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (st.kind === 'bardiche') {
+    // THE BARDICHE: the tall cleaver crescent, mounted at TWO points —
+    // the long lower horn rides back down the haft to its own strap,
+    // and the top horn IS the weapon's point. More edge per honest
+    // pound than anything else on the rack.
+    const reach = 0.34 * s;
+    const x0 = tip - reach;
+    const w = 0.135 * s * wMul;
+    ctx.fillStyle = steel;
+    ctx.beginPath();
+    ctx.moveTo(x0, -hw * 0.7);
+    ctx.quadraticCurveTo(x0 + reach * 0.45, -w, tip + 0.015 * s, -0.02 * s);
+    ctx.quadraticCurveTo(x0 + reach * 0.55, -w * 0.42, x0 + 0.02 * s, -hw * 0.55);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(x0 + reach * 0.16, -w * 0.6);
+      ctx.quadraticCurveTo(x0 + reach * 0.48, -w * 0.9, tip + 0.008 * s, -0.02 * s);
+      ctx.quadraticCurveTo(x0 + reach * 0.52, -w * 0.62, x0 + reach * 0.2, -w * 0.42);
+      ctx.closePath();
+      ctx.fill();
+      // The two mounts: strap iron at the horn and at the throat.
+      ctx.fillStyle = iron;
+      ctx.fillRect(x0 - 0.008 * s, -hw * 1.3, 0.022 * s, hw * 2.6);
+      ctx.fillRect(tip - 0.075 * s, -hw * 1.3, 0.022 * s, hw * 2.6);
+      // The horn shadow, so the crescent reads as one slab.
+      ctx.strokeStyle = dark;
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      ctx.beginPath();
+      ctx.moveTo(x0 + reach * 0.2, -w * 0.34);
+      ctx.quadraticCurveTo(x0 + reach * 0.5, -w * 0.55, tip - 0.02 * s, -0.022 * s);
+      ctx.stroke();
+    }
+  } else if (st.kind === 'trident') {
+    // THE TRIDENT: the sea's fork — three tines off a forged crossbar,
+    // the outer pair barbed INWARD, because what the sea takes it
+    // means to keep.
+    const w = 0.022 * s;
+    // The crossbar.
+    ctx.fillStyle = iron;
+    ctx.fillRect(collarAt + 0.008 * s, -0.088 * s, 0.024 * s, 0.176 * s);
+    // The center tine.
+    ctx.fillStyle = steel;
+    ctx.beginPath();
+    ctx.moveTo(collarAt + 0.02 * s, -w);
+    ctx.lineTo(tip, 0);
+    ctx.lineTo(collarAt + 0.02 * s, w);
+    ctx.closePath();
+    ctx.fill();
+    // The outer tines, angling gently home.
+    for (const d of [-1, 1] as const) {
+      ctx.beginPath();
+      ctx.moveTo(collarAt + 0.026 * s, d * 0.082 * s);
+      ctx.lineTo(tip - 0.055 * s, d * 0.03 * s);
+      ctx.lineTo(tip - 0.075 * s, d * 0.052 * s);
+      ctx.lineTo(collarAt + 0.026 * s, d * 0.096 * s);
+      ctx.closePath();
+      ctx.fill();
+      // The barb: one inward tooth near each outer point.
+      ctx.beginPath();
+      ctx.moveTo(tip - 0.075 * s, d * 0.038 * s);
+      ctx.lineTo(tip - 0.095 * s, d * 0.018 * s);
+      ctx.lineTo(tip - 0.1 * s, d * 0.042 * s);
+      ctx.closePath();
+      ctx.fill();
+    }
+    if (!hurt) {
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(collarAt + 0.026 * s, -w * 0.6);
+      ctx.lineTo(tip - 0.008 * s, -0.002 * s);
+      ctx.lineTo(collarAt + 0.034 * s, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else if (st.kind === 'swordstaff') {
+    // THE SWORDSTAFF: no metaphor — a full double-edged sword blade on
+    // a cross-guard socket. Over a quarter of the arm is blade, and
+    // both edges mean it. The one polearm a swordsman already knows.
+    const w = 0.05 * s * wMul;
+    ctx.fillStyle = steel;
+    ctx.beginPath();
+    ctx.moveTo(collarAt + 0.018 * s, -w);
+    ctx.lineTo(collarAt + headLen * 0.68, -w * 0.72);
+    ctx.lineTo(tip, 0);
+    ctx.lineTo(collarAt + headLen * 0.68, w * 0.72);
+    ctx.lineTo(collarAt + 0.018 * s, w);
+    ctx.closePath();
+    ctx.fill();
+    // The cross: a real guard, mounted where blade meets haft.
+    ctx.fillStyle = iron;
+    ctx.fillRect(collarAt - 0.004 * s, -0.085 * s, 0.022 * s, 0.17 * s);
+    ctx.fillRect(collarAt - 0.004 * s - 0.003 * s, -0.085 * s, 0.028 * s, 0.024 * s);
+    ctx.fillRect(collarAt - 0.004 * s - 0.003 * s, 0.061 * s, 0.028 * s, 0.024 * s);
+    if (!hurt) {
+      // One lit half, edge to point.
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(collarAt + 0.03 * s, -w * 0.78);
+      ctx.lineTo(collarAt + headLen * 0.66, -w * 0.55);
+      ctx.lineTo(tip - 0.012 * s, -0.004 * s);
+      ctx.lineTo(collarAt + 0.045 * s, -w * 0.12);
+      ctx.closePath();
+      ctx.fill();
+      // The fuller, straight and true down the middle.
+      ctx.strokeStyle = dark;
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.moveTo(collarAt + 0.04 * s, 0);
+      ctx.lineTo(tip - 0.05 * s, 0);
+      ctx.stroke();
+    }
+  } else if (st.kind === 'beak') {
+    // THE BEAK: the bill's argument — a top spike to keep them honest
+    // and a forward talon to bring them DOWN. The hook's inner curve
+    // is the edge; the saddle is the anvil.
+    ctx.fillStyle = steel;
+    // The spike.
+    ctx.beginPath();
+    ctx.moveTo(collarAt + 0.01 * s, -0.024 * s);
+    ctx.lineTo(tip, 0);
+    ctx.lineTo(collarAt + 0.01 * s, 0.024 * s);
+    ctx.closePath();
+    ctx.fill();
+    // The talon.
+    ctx.beginPath();
+    ctx.moveTo(collarAt + 0.02 * s, -hw * 0.8);
+    ctx.quadraticCurveTo(collarAt + 0.135 * s, -0.05 * s, collarAt + 0.152 * s, -0.148 * s);
+    ctx.quadraticCurveTo(collarAt + 0.1 * s, -0.1 * s, collarAt + 0.088 * s, -hw * 0.8);
+    ctx.closePath();
+    ctx.fill();
+    // The counter-face: a small hammer poll behind.
+    ctx.beginPath();
+    ctx.moveTo(collarAt + 0.03 * s, hw * 0.8);
+    ctx.lineTo(collarAt + 0.03 * s, 0.062 * s);
+    ctx.lineTo(collarAt + 0.075 * s, 0.062 * s);
+    ctx.lineTo(collarAt + 0.075 * s, hw * 0.8);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The talon's lit outer curve.
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(collarAt + 0.04 * s, -0.03 * s);
+      ctx.quadraticCurveTo(collarAt + 0.125 * s, -0.056 * s, collarAt + 0.146 * s, -0.138 * s);
+      ctx.quadraticCurveTo(collarAt + 0.118 * s, -0.082 * s, collarAt + 0.062 * s, -0.045 * s);
+      ctx.closePath();
+      ctx.fill();
+      // The poll's dark face.
+      ctx.fillStyle = dark;
+      ctx.fillRect(collarAt + 0.062 * s, 0.045 * s, 0.013 * s, 0.017 * s);
+      // Langets.
+      ctx.fillStyle = iron;
+      ctx.fillRect(collarAt - 0.07 * s, -hw * 1.12, 0.064 * s, hw * 0.46);
+      ctx.fillRect(collarAt - 0.07 * s, hw * 0.66, 0.064 * s, hw * 0.46);
+    }
+  } else if (st.kind === 'spade') {
+    // THE SPADE: the pilgrim's double end — a flat spade at the point
+    // (for the road's honest work) and an open crescent at the butt
+    // (for the road's dishonest company). The ONLY head in the roster
+    // that arms both ends of the stick.
+    ctx.fillStyle = steel;
+    // The spade: a flat-edged blade flaring TOWARD the tip.
+    ctx.beginPath();
+    ctx.moveTo(collarAt + 0.012 * s, -hw * 1.1);
+    ctx.lineTo(tip - 0.01 * s, -0.068 * s);
+    ctx.lineTo(tip, -0.058 * s);
+    ctx.lineTo(tip, 0.058 * s);
+    ctx.lineTo(tip - 0.01 * s, 0.068 * s);
+    ctx.lineTo(collarAt + 0.012 * s, hw * 1.1);
+    ctx.closePath();
+    ctx.fill();
+    // The butt crescent: horns opening backward, past the cap.
+    ctx.beginPath();
+    ctx.arc(butt + 0.055 * s, 0, 0.1 * s, Math.PI * 0.62, Math.PI * 1.38);
+    ctx.arc(butt + 0.055 * s, 0, 0.058 * s, Math.PI * 1.34, Math.PI * 0.66, true);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // One lit plane on the spade's upper face.
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(collarAt + 0.03 * s, -hw * 0.95);
+      ctx.lineTo(tip - 0.014 * s, -0.06 * s);
+      ctx.lineTo(tip - 0.014 * s, -0.02 * s);
+      ctx.lineTo(collarAt + 0.05 * s, -hw * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      // And the crescent's lit inner rim.
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = Math.max(1, s * 0.009);
+      ctx.beginPath();
+      ctx.arc(butt + 0.055 * s, 0, 0.062 * s, Math.PI * 0.75, Math.PI * 1.25);
+      ctx.stroke();
+      // The spade's flat is a worked surface: one dark set-line.
+      ctx.strokeStyle = dark;
+      ctx.lineWidth = Math.max(1, s * 0.009);
+      ctx.beginPath();
+      ctx.moveTo(tip - 0.022 * s, -0.05 * s);
+      ctx.lineTo(tip - 0.022 * s, 0.05 * s);
+      ctx.stroke();
+    }
+  } else if (st.kind === 'ge') {
+    // THE GE: the barrow-bronze dagger-axe — a perpendicular fang at
+    // the throat, a short spike above it, and a counter-tang behind.
+    // The oldest way anyone put a blade at right angles to an argument.
+    ctx.fillStyle = steel;
+    // The short spike.
+    ctx.beginPath();
+    ctx.moveTo(collarAt + 0.008 * s, -0.02 * s);
+    ctx.lineTo(tip, 0);
+    ctx.lineTo(collarAt + 0.008 * s, 0.02 * s);
+    ctx.closePath();
+    ctx.fill();
+    // The fang: a broad flat dagger-blade jutting square off the line
+    // — the whole argument, so it gets the whole mass. It rakes
+    // slightly tipward the way the old bronzes did.
+    ctx.beginPath();
+    ctx.moveTo(collarAt - 0.006 * s, -hw * 0.6);
+    ctx.lineTo(collarAt + 0.014 * s, -0.19 * s);
+    ctx.lineTo(collarAt + 0.052 * s, -0.15 * s);
+    ctx.lineTo(collarAt + 0.075 * s, -hw * 0.5);
+    ctx.closePath();
+    ctx.fill();
+    // The counter-tang.
+    ctx.beginPath();
+    ctx.moveTo(collarAt + 0.006 * s, hw * 0.7);
+    ctx.lineTo(collarAt + 0.012 * s, 0.06 * s);
+    ctx.lineTo(collarAt + 0.046 * s, 0.052 * s);
+    ctx.lineTo(collarAt + 0.05 * s, hw * 0.7);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The fang's lit facet and its midrib.
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(collarAt + 0.008 * s, -0.04 * s);
+      ctx.lineTo(collarAt + 0.02 * s, -0.176 * s);
+      ctx.lineTo(collarAt + 0.042 * s, -0.145 * s);
+      ctx.lineTo(collarAt + 0.032 * s, -0.05 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = dark;
+      ctx.lineWidth = Math.max(1, s * 0.009);
+      ctx.beginPath();
+      ctx.moveTo(collarAt + 0.03 * s, -hw * 0.8);
+      ctx.lineTo(collarAt + 0.032 * s, -0.165 * s);
+      ctx.stroke();
     }
   }
 

@@ -26,14 +26,18 @@ const ONLY = q.get('only');
 const HURT = q.get('hurt') === '1';
 const S = Number(q.get('s') ?? 260);
 
-// Roster order: the forge line's eight, then the bespoke twelve in
-// level order — the sheet reads as the climb the player makes.
+// Roster order: the forge line's eight, then the bespoke twelve, then
+// THE BLADED LONG-ARMS — all in level order down each column, so the
+// sheet reads as the climb the player makes.
 const POLE_IDS = [
   'spear', 'iron_spear', 'steel_spear', 'gold_spear',
   'mithril_spear', 'adamant_spear', 'obsidian_spear', 'starsteel_spear',
   'boar_spear', 'iron_pike', 'watch_halberd', 'steel_glaive',
   'steel_pike', 'silver_partisan', 'knights_lance', 'moonglaive',
   'fellwinter_lance', 'gatewarden_halberd', 'heavens_reach', 'dawnlance',
+  'herons_wing', 'long_harvest', 'tithe_hook', 'oldcrown_bardiche',
+  'crowsbeak', 'mithril_swordstave', 'tidesplitter', 'bannereaver',
+  'pilgrims_moon', 'skyshear',
 ];
 
 const OUTLINE = '#241a2e';

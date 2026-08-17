@@ -369,6 +369,9 @@ const defs: LootTableDef[] = [
       // The company's arguing door — the crew that kicks doors for a
       // living loses one, occasionally, along with the argument.
       { item: 'lowhall_breacher', chance: 0.02 },
+      // THE BLADED LONG-ARMS' talon: the Company's dismounting bill.
+      // The reaver kept the crew's shares AND the crew's best argument.
+      { item: 'crowsbeak', chance: 0.025 },
       { item: 'leather_hood', chance: 0.03 },
       ...setDrops('cutpurse', 0.012),
       // THE RED RIGHT HAND: the company's colors fly nowhere else.
@@ -623,6 +626,9 @@ const defs: LootTableDef[] = [
       { item: 'gloomsilk_thread', qty: [2, 5], chance: 0.5 },
       // The dark he has stood in for a few centuries has gone thick.
       { item: 'umbral_essence', qty: [1, 3], chance: 0.4 },
+      // THE BLADED LONG-ARMS' fang: the barrow's collection arm.
+      // What the dead were owed, the Champion still collects.
+      { item: 'tithe_hook', chance: 0.02 },
       { item: 'storm_bell', chance: 0.08 },
       { item: 'storm_coil', chance: 0.07 },
       { item: 'seeker_stone', chance: 0.05 },
@@ -758,6 +764,10 @@ const defs: LootTableDef[] = [
       // halberd and the pike that fell pointing up.
       { item: 'gatewarden_halberd', chance: 0.012 },
       { item: 'heavens_reach', chance: 0.006 },
+      // THE BLADED LONG-ARMS at the racks: the pilgrim way's double
+      // answer, and the sky's own shear — legendary or not at all.
+      { item: 'pilgrims_moon', chance: 0.008 },
+      { item: 'skyshear', chance: 0.004 },
       // THE VAULT OF NAMES' legendary pair: the gate-glass blade and
       // the cracked bell, both legendary or not at all.
       { item: 'riftglass', chance: 0.004 },
@@ -983,6 +993,9 @@ const defs: LootTableDef[] = [
       { item: 'astral_essence', qty: [1, 3], chance: 0.3 },
       // THE DEEPENING's key, and the rarest ordinary thing in the game.
       { item: 'deepening_sigil', chance: 0.04 },
+      // THE BLADED LONG-ARMS' cleaver: the Oldcrown armory pattern,
+      // cached by whoever looted the armory first.
+      { item: 'oldcrown_bardiche', chance: 0.015 },
       // The king under the hill banked with the house he built.
       ...setDrops('barrowking', 0.008),
       // A rook got here first, once. It left the feathers behind.
@@ -1044,6 +1057,8 @@ const defs: LootTableDef[] = [
       // pike that fell pointing up — the cache keeps both watches.
       { item: 'gatewarden_halberd', chance: 0.015 },
       { item: 'heavens_reach', chance: 0.008 },
+      // The sky's shear went below with the gate it was sheared over.
+      { item: 'skyshear', chance: 0.006 },
       // Woven from the same dark the blade was ground from.
       ...setDrops('riftweave', 0.006),
       // The smith's dragon run went below with whoever ordered it.
@@ -1443,6 +1458,9 @@ const defs: LootTableDef[] = [
       // The pack raided a harvest that would not stop being one.
       // The packlord slept on the sheaf and dreamed of bread.
       { item: 'lastsheaf', chance: 0.012 },
+      // THE BLADED LONG-ARMS' scythe: a farmstead answered the raid
+      // in the field's own iron, and the packlord kept the answer.
+      { item: 'long_harvest', chance: 0.02 },
       // The packs crown their best in jade and a skull that watches
       // back. The packlord earned every piece twice.
       ...setDrops('jadeskull', 0.022),
@@ -1512,6 +1530,9 @@ const defs: LootTableDef[] = [
       // deepking is the one who DIVES for it. Better odds at the
       // throne than in the shallows.
       ...setDrops('tidecaller', 0.02, { colorway: 'darkwater' }),
+      // THE BLADED LONG-ARMS' fork: the deepking's own trident,
+      // barbed to keep what it takes — surrendered only with the throne.
+      { item: 'tidesplitter', chance: 0.012 },
     ],
   },
 
@@ -1558,6 +1579,9 @@ const defs: LootTableDef[] = [
       { item: 'crimson_essence', qty: [1, 3], chance: 0.35 },
       { item: 'brass_key', chance: 0.08 },
       { item: 'dungeon_key', chance: 0.04 },
+      // THE BLADED LONG-ARMS' moon: the warlord's standard-cutter,
+      // ember edge still banked from the last campaign.
+      { item: 'bannereaver', chance: 0.012 },
     ],
   },
   {
@@ -2001,6 +2025,9 @@ const defs: LootTableDef[] = [
       { item: 'scrap_hide', qty: [2, 4], chance: 0.4 },
       // The club it swung at you — the loot-story law, giant-sized.
       { item: 'ogre_greatclub', chance: 0.012 },
+      // THE BLADED LONG-ARMS' cleaver: the hill sacked an Oldcrown
+      // armory once, and the sack still remembers.
+      { item: 'oldcrown_bardiche', chance: 0.01 },
     ],
   },
   {

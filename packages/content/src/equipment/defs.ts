@@ -5903,7 +5903,149 @@ function polearmDefs(): EquipmentDef[] {
     },
   ];
 
-  return [...spear, ...bespoke];
+  // ---- THE BLADED LONG-ARMS (wave 2): ten more, none of them a
+  // spear. The school learns the sweep, the moon, the fork, and the
+  // fang — blades up to a third of the arm, each its own geometry on
+  // the client's drawPole. Drop pieces climb the rarity ladder per
+  // the blade-roster chase law; the two craftables put real steel in
+  // the smithing book's reaching chapter.
+  const bladed: EquipmentDef[] = [
+    {
+      // The river-watcher's naginata: the reaping cut taught with a
+      // fencer's manners.
+      id: 'herons_wing', name: "Heron's Wing", slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 28 },
+      weapon: { style: 'polearm', damage: 4, cooldownTicks: 9, range: 2.8, art: 'reapers_turn' },
+      affixPool: KNIGHTS_POOL,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 36, xp: 320, station: 'anvil', ticks: 95,
+        inputs: [{ item: 'steel_bar', qty: 2 }, { item: 'willow_log', qty: 1 }],
+      },
+      value: 460, color: '#c8ced8', code: 'H8',
+      desc: 'One long curve on a night haft, quiet as a ford at dusk. It waits the way the bird does: entirely.',
+    },
+    {
+      // The field iron promoted — the warband raids the farmsteads,
+      // and sometimes the farmstead answers back.
+      id: 'long_harvest', name: 'The Long Harvest', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 36 },
+      weapon: { style: 'polearm', damage: 4, cooldownTicks: 10, range: 2.9, art: 'reapers_turn' },
+      affixPool: KNIGHTS_POOL,
+      acquisition: { craft: true, drop: true },
+      recipe: {
+        skill: 'smithing', levelReq: 42, xp: 420, station: 'anvil', ticks: 100,
+        inputs: [{ item: 'steel_bar', qty: 2 }, { item: 'oak_log', qty: 1 }],
+      },
+      value: 560, color: '#6e7a86', code: 'L8',
+      desc: 'A field scythe re-hung for a worse crop. The blade never noticed the difference and never will.',
+    },
+    {
+      // The barrow bronze: the dagger-axe that collected what the
+      // dead were owed. Rare or better — the barrows do not tithe
+      // in common coin.
+      id: 'tithe_hook', name: 'Tithe-hook', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 42 },
+      weapon: { style: 'polearm', damage: 5, cooldownTicks: 10, range: 2.7, art: 'skullhook' },
+      affixPool: KNIGHTS_POOL,
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 800, color: '#9a8a56', code: 'T8',
+      desc: 'Barrow bronze on a black haft, the fang set square to the line. It was owed. It is still owed.',
+    },
+    {
+      // The old kingdom's cleaver, mounted at two points the way the
+      // Oldcrown armories always mounted theirs.
+      id: 'oldcrown_bardiche', name: 'Oldcrown bardiche', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 46 },
+      weapon: { style: 'polearm', damage: 5, cooldownTicks: 10, range: 2.6, art: 'reapers_turn' },
+      affixPool: KNIGHTS_POOL,
+      acquisition: { craft: true, drop: true },
+      recipe: {
+        skill: 'smithing', levelReq: 52, xp: 620, station: 'anvil', ticks: 105,
+        inputs: [{ item: 'steel_bar', qty: 3 }, { item: 'oak_log', qty: 1 }],
+      },
+      value: 900, color: '#5e6874', code: 'O8',
+      desc: 'A crescent of blackened steel on crown-gold mounts. The kingdom fell; the edge declined to.',
+    },
+    {
+      // The Company's dismounting bill — the reaver kept the crew's
+      // shares AND the crew's best argument.
+      id: 'crowsbeak', name: 'Crowsbeak', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 50 },
+      weapon: { style: 'polearm', damage: 5, cooldownTicks: 9, range: 2.7, art: 'skullhook' },
+      affixPool: KNIGHTS_POOL,
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1100, color: '#4e545c', code: 'C8',
+      desc: 'A talon on nine feet of ash. Horses learned it first; the riders learn it on the way down.',
+    },
+    {
+      // Sky-metal drawn into a TRUE double-edged blade on a cross-
+      // guard socket. The id says swordstave — the staff registry
+      // claims any 'staff' it sees, the FISH CLAUSE's cousin.
+      id: 'mithril_swordstave', name: 'Mithril swordstave', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 54 },
+      weapon: { style: 'polearm', damage: 5, cooldownTicks: 9, range: 2.9, art: 'reaching_thrust' },
+      affixPool: KNIGHTS_POOL,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 58, xp: 780, station: 'anvil', ticks: 110,
+        inputs: [{ item: 'mithril_bar', qty: 2 }, { item: 'steel_bar', qty: 1 }, { item: 'willow_log', qty: 1 }],
+      },
+      value: 1600, color: '#8fb4e4', code: 'M8',
+      desc: 'A whole sword at the end of a pole, both edges live. The parry works; the riposte arrives early.',
+    },
+    {
+      // The deepking's fork, barbed to keep what it takes.
+      id: 'tidesplitter', name: 'Tidesplitter', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 60 },
+      weapon: { style: 'polearm', damage: 6, cooldownTicks: 9, range: 3.0, art: 'reaching_thrust' },
+      affixPool: KNIGHTS_POOL,
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 2000, color: '#7ab0a2', code: 'T9',
+      desc: 'Three barbed tines and a pearl the throne dove for itself. What the sea takes, it means to keep.',
+    },
+    {
+      // The legion's chopping moon — the warlord's banner rides the
+      // haft, and the edge holds banked fire.
+      id: 'bannereaver', name: 'Bannereaver', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 68 },
+      weapon: { style: 'polearm', damage: 6, cooldownTicks: 10, range: 2.8, art: 'reapers_turn' },
+      affixPool: KNIGHTS_POOL,
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 2300, color: '#4a4448', code: 'B9',
+      desc: 'The legion cuts standards down with this, then whatever held them. The ember edge never cools.',
+    },
+    {
+      // The pilgrim way's double answer: spade for the road, crescent
+      // for the company the road keeps. Epic or better.
+      id: 'pilgrims_moon', name: "Pilgrim's Moon", slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 76 },
+      weapon: { style: 'polearm', damage: 7, cooldownTicks: 9, range: 2.8, art: 'reapers_turn' },
+      affixPool: KNIGHTS_POOL,
+      rarities: ['epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 2700, color: '#e8e4d8', code: 'P8',
+      desc: 'Spade at one end, moon at the other, a long road between. Both ends have buried trouble.',
+    },
+    {
+      // THE ARTIFACT: a third of its length is one night-metal blade.
+      // Legendary or not at all — the school's second heirloom.
+      id: 'skyshear', name: 'Skyshear', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 90 },
+      weapon: { style: 'polearm', damage: 8, cooldownTicks: 10, range: 3.0, art: 'reapers_turn' },
+      affixPool: KNIGHTS_POOL,
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      value: 2200, color: '#8a8ac8', code: 'S8',
+      desc: 'One blade, a third of the arm, ground from a piece of night that hit the ground still cutting.',
+    },
+  ];
+
+  return [...spear, ...bespoke, ...bladed];
 }
 
 /** Compiled once at module load — throws loudly on any malformed def. */
