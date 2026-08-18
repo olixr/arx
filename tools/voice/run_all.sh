@@ -49,12 +49,14 @@ SERVICE="${ARX_TTS:-http://localhost:5002}"
 
 DRY=0
 GENERIC=0
-PASS_ARGS=()
+FRESH_ARG=()
+ACTOR_ARGS=()
 for a in "$@"; do
   case "$a" in
     --dry)     DRY=1 ;;
     --generic) GENERIC=1 ;;
-    *)         PASS_ARGS+=("$a") ;;   # --fresh and actor ids go to the driver
+    --fresh)   FRESH_ARG=(--fresh) ;;  # a MODE, not an actor selection
+    *)         ACTOR_ARGS+=("$a") ;;   # bare ids are the actor selection
   esac
 done
 
@@ -111,11 +113,25 @@ npx tsx tools/voice/sheet.mts
 # ---- 2. the character lane ----------------------------------------------
 # wave_driver handles per-actor resumption, stale-take clearing and stamping.
 # 'all' means every character in characters.json carrying a ttsVoice.
+#
+# THE SCOPE IS ALWAYS EXPLICIT. --fresh used to be forwarded as if it were an
+# actor id, which made ACTOR_ARGS non-empty, which dropped the literal `all`
+# from this call, which left wave_driver.sh falling back to its own documented
+# `first` default — the six firstWave actors. `run_all.sh --fresh`, the command
+# whose whole point is "re-speak EVERYTHING", therefore spoke 6 of 222 and said
+# WAVE-COMPLETE. Nothing errored, so it read as a finished full pass.
+#
+# The rule that keeps it fixed: --fresh is a MODE and never selects actors, and
+# this script never lets wave_driver.sh reach its argless default — it passes
+# `all` or a list, always. (Empty-array expansion is guarded because bash 3.2
+# under `set -u` treats "${arr[@]}" on an empty array as unbound.)
 say "2/4  speaking the cast (this is the long one)"
-if [ ${#PASS_ARGS[@]} -eq 0 ]; then
-  tools/voice/wave_driver.sh all
+if [ ${#ACTOR_ARGS[@]} -eq 0 ]; then
+  echo "scope: ALL cast characters in characters.json"
+  tools/voice/wave_driver.sh ${FRESH_ARG[@]+"${FRESH_ARG[@]}"} all
 else
-  tools/voice/wave_driver.sh "${PASS_ARGS[@]}"
+  echo "scope: ${#ACTOR_ARGS[@]} named actor(s) — ${ACTOR_ARGS[*]}"
+  tools/voice/wave_driver.sh ${FRESH_ARG[@]+"${FRESH_ARG[@]}"} "${ACTOR_ARGS[@]}"
 fi
 
 # ---- 3. the generic fallback bank ---------------------------------------
