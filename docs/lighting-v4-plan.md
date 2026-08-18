@@ -1,6 +1,6 @@
 # Lighting v4 — THE LIGHT LIVES IN THE WORLD
 
-Status: PHASE 1 SHIPPED (2026-08-17) — see §8 As built. Phases 2–5 not started.
+Status: PHASES 1–2 SHIPPED (2026-08-17) — see §8 As built. Phases 3–5 not started.
 Owner mandate: re-approach lighting at the foundational level — lights must read as real
 sources in the 3D universe (oriented, occluded, illuminating), shadows must cover the
 whole standing world, dynamic sources (spells, placed props) must carry light, darkness
@@ -384,3 +384,60 @@ unchanged draw code).
 
 Phase-2 note: with specs in shared, `z`/`cone`/`halo` fields land next to consumers —
 do NOT pre-declare dead fields here.
+
+### Phase 2 — THE BODY (2026-08-17)
+
+Owner proceeded; §7.1 taken as recommended: **THE TOWN LAW, TIERED** — the candle
+family gains ONE tiny non-occluding table-reach pool (r 1.5, i 0.16, flame-gated);
+LampPost stays the only occluding town light. Law test rewritten to codify the license
+(one pool, ≤1.6 reach, ≤0.2 intensity, never occlude).
+
+**THE SEATED HALO** — the floating disc is dead for every standing data-emitter:
+- `EmitterGlowOut` gained seat fields (`gy` ground anchor, `z` air height); the parity
+  golden evolved WITH it (documented in its docblock — the gate's contract held: spec
+  and golden moved together, still zero-tolerance bit-for-bit).
+- Renderer: standing-emitter glows route to `seatedGlows`, drawn via a new bulk-lane
+  kind (`BulkKind.Halo`, pooled items — no closures) INSIDE the sorted world pass at
+  the fixture's ground row (+0.02), `lighter`, BEFORE the exposure multiply. Each halo
+  is two stamps: a camera-foreshortened ground-ellipse POOL at (x, gy) and a round
+  CORONA seated at the flame point (projAir offset already in `y`). Dials:
+  `HALO_POOL_A 0.62 / HALO_CORONA_A 0.5 / HALO_CORONA_R 0.6`.
+- **THE EMISSIVE CORE**: the one post-multiply survivor — a flame-point glint capped at
+  9 device px (`CORE_*` dials), drawn at the head of drawGlows. Brilliance, never
+  lighting.
+- Underground bloom-tighten applies to seated glows too; queueGlow dynamics and the
+  coded emitters (portals, Table/chest promises, windows) stay post-pass until phase 4.
+- **THE CONE OF SPILL**: `WorldLight.cone {ux, uy, spread}` — a world-space wedge clip
+  (apex pulled 0.3 behind the light, quadratic far rim, softened by the map's filter)
+  over pool AND lit-face painting for non-occluding lights. Window hearth-spill now
+  anchors at the pane (0.55 out) opening outdoors at 0.95 rad instead of a bare pool
+  floating 1.4 tiles off the wall.
+
+**Deliberate deferrals** (recorded, not debts): z terms in the lightmap pools/faceK
+retune every fixture and pair naturally with Phase 3's response profiles — moved there;
+cone stays a client WorldLight field until a data emitter needs it (Phase 4 hooded
+lanterns).
+
+**Proving** (rig lane 29, :5211→:8805, DB arx_lighting_p2, headless chromium at dpr 2;
+driver scripts in the session scratchpad): a 7-fixture row (campfire/brazier/torch/
+candle-stand/bonfire/lamppost/sconce) + barrel-south-of-campfire occlusion witness in a
+cut clearing at THE NEAR FRONTIER (22..43, 96): **noon** — fixtures read as painted
+props with modest flame glows, zero pools (DAYLIGHT IS FREE held); **dusk** —
+continuous wake, no pops; **midnight** — every fixture wears a foreshortened pool +
+seated corona + core glint, and the clearing-edge tree crowns CLIP the pools' southern
+lobes (the first, un-cleared run buried the whole row under canopy — the glows filtered
+through crown gaps, an accidental but decisive occlusion proof the old post-pass could
+never produce). **Dawnmead** (plaza −82,52 + lane −96,40) at dusk/midnight: lamp
+halos seated on their cages, pools landing on the road, drill-yard braziers pooling on
+stone, window bloom at panes — no floating circle anywhere. **Underground look**:
+ugBlend forced to 1 over the row — pools reach further and burn harder, blooms tighten
+to cores (the amplification path intact). Proving lesson banked: the register path is
+needed on a fresh DB (THE HERO'S MIRROR blocks the world until "Begin your story");
+chat automation keys on `e.code === 'Enter'` with the input focused; pace commands
+~700ms or the throttle scrambles /settile placements.
+
+Gates: STANDALONE TWIN (HEAD + only this phase's six files, twin-local @arx links):
+tsc -b ×4 clean, shared 285/285, client 658/659 — the one red is HEAD's own
+armAssembly writer-census pin (a neighbor's committed renderer half awaiting its
+uncommitted test half), proven failing identically at pure HEAD with this phase's files
+removed. Live tree: shared 285/285, client 659/659.

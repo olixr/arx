@@ -51,6 +51,15 @@ export interface WorldLight {
   intensity: number;
   /** Static architectural lights cast hard wall shadows. */
   occlude?: boolean;
+  /**
+   * THE CONE (v4 phase 2): a directional throw — window spill, hooded
+   * lanterns. `ux, uy` the unit axis, `spread` the half-angle in
+   * radians. Pool AND lit faces clip to the wedge (apex pulled a hair
+   * behind the light so the fixture itself stays lit); the map's blur
+   * softens the edges. Cone lights must be NON-occluding — the patch
+   * cache doesn't carry cones.
+   */
+  cone?: { ux: number; uy: number; spread: number };
 }
 
 /** Everything the lightmap needs to share the camera's view. */
@@ -228,6 +237,12 @@ export class LightingSystem {
       if (light.occlude) {
         this.drawOccludedLight(light, blocks, tallH, sx, sy, tx, ty);
       } else {
+        const cone = light.cone;
+        if (cone) {
+          m.save();
+          m.setTransform(sx, 0, 0, sy, tx, ty);
+          this.clipCone(m, light, cone);
+        }
         m.setTransform(sx, 0, 0, sy, tx, ty);
         m.globalCompositeOperation = 'screen';
         m.globalAlpha = Math.min(1, light.intensity);
@@ -237,6 +252,7 @@ export class LightingSystem {
         // math for free-floating lights, so no LOS gate either.
         this.gatherFaceRuns(light, tallH, null);
         this.paintFaceRuns(m, light, sx, sy, tx, ty);
+        if (cone) m.restore();
       }
     }
 
@@ -263,6 +279,35 @@ export class LightingSystem {
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(this.map, 0, 0, mw, mh, 0, 0, view.w, view.h);
     ctx.restore();
+  }
+
+  /**
+   * THE CONE's wedge clip, in world coordinates (the current transform
+   * is the world→map camera). Apex pulled 0.3 tiles behind the light
+   * so the emitting fixture sits inside its own wedge; the far rim is
+   * one quadratic bow through the axis — THE MAP IS FILTERED softens
+   * whatever straightness remains.
+   */
+  private clipCone(
+    m: CanvasRenderingContext2D,
+    light: WorldLight,
+    cone: { ux: number; uy: number; spread: number },
+  ): void {
+    const th = Math.atan2(cone.uy, cone.ux);
+    const R = light.r * 1.2;
+    const a0 = th - cone.spread;
+    const a1 = th + cone.spread;
+    m.beginPath();
+    m.moveTo(light.x - cone.ux * 0.3, light.y - cone.uy * 0.3);
+    m.lineTo(light.x + Math.cos(a0) * R, light.y + Math.sin(a0) * R);
+    m.quadraticCurveTo(
+      light.x + cone.ux * R * 1.35,
+      light.y + cone.uy * R * 1.35,
+      light.x + Math.cos(a1) * R,
+      light.y + Math.sin(a1) * R,
+    );
+    m.closePath();
+    m.clip();
   }
 
   /** The light's radial falloff, pre-rendered — intensity rides

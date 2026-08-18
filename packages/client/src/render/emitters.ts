@@ -23,10 +23,22 @@ import {
 } from '@arx/shared';
 import type { WorldLight } from './lighting.js';
 
-/** The renderer's bloom-queue entry shape (renderer.ts `glows`). */
+/**
+ * A standing emitter's evaluated glow — THE SEATED HALO's input
+ * (lighting v4 phase 2). `y` is the FLAME point (air height already
+ * divided out by the camera squash, the projAir law); `gy` is the
+ * ground-plane anchor under it and `z` the air height in world tiles,
+ * so the halo renderer can seat a corona at the flame and a
+ * foreshortened pool on the ground — world geometry, never a screen
+ * disc.
+ */
 export interface EmitterGlowOut {
   x: number;
   y: number;
+  /** Ground-plane y under the flame (world row, no air division). */
+  gy: number;
+  /** Air height in world tiles (0 = a ground flame). */
+  z: number;
   r: number;
   rgb: string;
   a: number;
@@ -67,6 +79,8 @@ export function collectEmitter(
     glows.push({
       x: tx + g.dx,
       y: airH !== 0 ? ty + g.dy - airH / yScale : ty + g.dy,
+      gy: ty + g.dy,
+      z: airH,
       r: g.rRide ? g.r * k : g.r,
       rgb: alt && g.altRgb !== undefined ? g.altRgb : g.rgb,
       a: g.gate === 'flame' ? g.a * flame * k : g.a * k * boost,

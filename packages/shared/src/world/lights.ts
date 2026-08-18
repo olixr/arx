@@ -37,10 +37,12 @@
  *    lights are man-made fire and stand down by day; `occlude` lights
  *    are architecture and cast real wall shadows.
  *
- * THE TOWN LAW stands (see town-decor memory): the candle family is
- * GLOW-ONLY — a kept flame is a mark, not a street light; LampPost
- * owns the town night. Repealing or tiering that economy is owner
- * decision §7.1 of the plan, not an edit to this table.
+ * THE TOWN LAW, TIERED (owner decision §7.1, taken 2026-08-17 with
+ * phase 2): the candle family carries a seated halo and ONE tiny
+ * non-occluding pool — a kept flame now warms its own table-reach,
+ * but it is still a mark, not a street light. LampPost remains the
+ * only OCCLUDING town light: architecture, wall shadows, the night's
+ * anchor. Widening the candle tier further is a new owner decision.
  */
 import { Tile } from './tiles.js';
 
@@ -152,12 +154,13 @@ const FLICK_OPEN_FIRE: LightCurve = {
 /** The candle family's shared sub-1Hz breath. */
 const CANDLE_BREATH: LightCurve = { base: 0.85, terms: [{ hz: 0.63, amp: 0.15, px: 1.3, py: 0.7 }] };
 
-/** One kept flame: bloom at the form's own flame height, glow-only. */
+/** One kept flame: bloom at the form's own flame height, plus the
+ *  candle tier's ONE tiny non-occluding pool (THE TOWN LAW, TIERED). */
 function candleSpec(air: number, r: number): EmitterSpec {
   return {
     curve: CANDLE_BREATH,
     glows: [{ dx: 0.5, dy: 0.5, air, r, rRide: true, rgb: '255, 190, 100', a: 0.2 }],
-    lights: [],
+    lights: [{ dx: 0.5, dy: 0.5, r: 1.5, rgb: [255, 196, 120], intensity: 0.16, flameGated: true }],
   };
 }
 
@@ -218,11 +221,11 @@ const SPECS: ReadonlyArray<readonly [Tile, EmitterSpec]> = [
     glows: [{ dx: 0.5, dy: 0.18, r: 0.85, rRide: true, rgb: '255, 190, 100', a: 0.24 }],
     lights: [{ dx: 0.5, dy: 0.5, r: 2.4, rRide: true, rgb: [255, 200, 130], intensity: 0.55, flameGated: true, occlude: true }],
   }],
-  // THE KEPT FLAME: one breathing bloom per LIT candle prop. GLOW
-  // ONLY, never a light entry: the LampPost still owns the town night
-  // (THE TOWN LAW — owner decision §7.1 before this changes). The
-  // bloom sits at each form's flame height, and the snuffed tile ids
-  // simply have no row.
+  // THE KEPT FLAME, TIERED (§7.1): one breathing bloom per LIT candle
+  // prop plus a table-reach pool that never occludes — the LampPost
+  // still owns the town night as its only occluding light. The bloom
+  // sits at each form's flame height, and the snuffed tile ids simply
+  // have no row.
   [Tile.CandleCluster, candleSpec(0.4, 0.72)],
   [Tile.MeltedCandles, candleSpec(0.4, 0.55)],
   [Tile.CandleTable, candleSpec(0.68, 0.55)],

@@ -233,7 +233,7 @@ import { FlightRig, batLook, drawBat, drawGreatOwl, flierSpec } from './flight.j
 import { EarSim } from './earPhysics.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
-import { collectEmitter } from './emitters.js';
+import { collectEmitter, type EmitterGlowOut } from './emitters.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
 import {
   RaisedKind,
@@ -1258,7 +1258,38 @@ const enum BulkKind {
   Particle,
   Debris,
   GroundedBird,
+  /** A standing emitter's seated halo — THE SOURCE HAS A BODY (lighting
+   *  v4 phase 2): world-sorted light geometry, never a screen disc. */
+  Halo,
 }
+
+/**
+ * THE SEATED HALO's dials (lighting v4 phase 2). One halo = two stamps
+ * from the shared radial sprite, drawn in the SORTED WORLD PASS under
+ * `lighter`, BEFORE the exposure multiply — so a stall in front clips
+ * it, a wall kills it with its line of sight, and the night's exposure
+ * governs it like any other lit surface:
+ *  - THE POOL: a camera-foreshortened ground ellipse at the fixture's
+ *    ground anchor — light landing around the source;
+ *  - THE CORONA: a round air-glow seated at the flame's own height.
+ * The old post-multiply screen disc split its alpha between them; the
+ * near-center sum (~1.1×) rides slightly hot so the multiply's dimming
+ * near the pool rim nets out around the old read at the core.
+ */
+const HALO_POOL_A = 0.62;
+const HALO_CORONA_A = 0.5;
+const HALO_CORONA_R = 0.6;
+/** THE EMISSIVE CORE: the one post-multiply survivor — a flame-point
+ *  glint capped in DEVICE pixels so it can only ever read as
+ *  brilliance, never as lighting. */
+const CORE_STOPS: ReadonlyArray<readonly [number, number]> = [
+  [0, 1],
+  [0.5, 0.55],
+  [1, 0],
+];
+const CORE_R_K = 0.16;
+const CORE_R_MAX_PX = 9;
+const CORE_A_K = 1.3;
 
 /** THE SHELF LAW's one comparator, hoisted — a fresh closure per frame
  *  de-optimized the hottest sort in the engine.
@@ -2211,6 +2242,15 @@ export class Renderer {
 
   /** Emissive glow requests queued during the frame, composited last. */
   private readonly glows: Array<{ x: number; y: number; r: number; rgb: string; a: number }> = [];
+  /**
+   * THE SEATED HALOS (lighting v4 phase 2): the standing data-emitters'
+   * glows, routed here instead of the post-pass `glows` queue. Drawn as
+   * sorted world items (pool + corona) inside the world pass, then
+   * their flame-point CORES glint in the post pass. queueGlow dynamics
+   * and the coded emitters (portals, tables, chests, windows) stay in
+   * `glows` until phase 4 seats them too.
+   */
+  private readonly seatedGlows: EmitterGlowOut[] = [];
 
   // ---- projectile aftermath: the world remembers your arrows. ----
   /** Arrows standing in the ground/walls; fade out near `until`. */
@@ -4839,6 +4879,14 @@ export class Renderer {
         items.push(this.takeBulkItem(bd.y + 0.01, this.stratAt(bd.x, bd.y), BulkKind.GroundedBird, bd));
       }
     }
+    // THE SEATED HALOS y-sort with the world at their flame's ground
+    // row: a stall south of the lantern clips the glow, a body just
+    // north stands inside it — the halo is world geometry (lighting v4
+    // phase 2). The +0.02 nudge keeps it over its own fixture's paint.
+    for (const g of this.seatedGlows) {
+      if (g.a < 0.01) continue;
+      items.push(this.takeBulkItem(g.gy + 0.02, this.stratAt(g.x, g.gy), BulkKind.Halo, g));
+    }
     this.perfMark('collect');
     // THE SHELF LAW (see DrawItem.strat): shelf first, raw row within.
     items.sort(DRAW_ORDER);
@@ -5012,6 +5060,7 @@ export class Renderer {
     bounds: { minTx: number; maxTx: number; minTy: number; maxTy: number },
   ): void {
     this.portalsInView.length = 0;
+    this.seatedGlows.length = 0;
     const t = performance.now() / 1000;
     const flame = this.sky.flame;
     const boost = 1 + 0.8 * this.sky.darkness;
@@ -5035,7 +5084,10 @@ export class Renderer {
           // THE PORCH LIGHT: a porch-capable fixture on lifted boards
           // carries the deck lift into its bloom height.
           const deckLift = spec.porch && this.porchAt(game, tx, ty) ? DOCK_LIFT : 0;
-          collectEmitter(spec, tx, ty, t, flame, boost, this.camera.yScale, deckLift, this.glows, this.lights);
+          // Standing-emitter glows are SEATED (drawn in the world pass
+          // as pool + corona, cores glinting post) — never the flat
+          // post-pass disc the coded emitters below still use.
+          collectEmitter(spec, tx, ty, t, flame, boost, this.camera.yScale, deckLift, this.seatedGlows, this.lights);
         } else if (tile === Tile.PortalDown || tile === Tile.PortalUp) {
           // The Riftgate: bloom rides the vortex heart (raised off the
           // ground — divide the squash back out, the projAir law), a
@@ -5107,14 +5159,18 @@ export class Renderer {
           if (!inside || !region) continue;
           windowLights++;
           if (flame > 0.05 && region.hasHearth) {
-            // Hearthlight spills OUT of the pane after dark; the pool
-            // sits south of the wall so its shadow never bites it.
+            // THE CONE OF SPILL (v4 phase 2): hearthlight leaves the
+            // pane as a wedge — apex at the glass, opening outdoors —
+            // an honest cone instead of a bare pool floating off the
+            // wall. Non-occluding, so the wall it leaves never bites
+            // its own light.
             this.lights.push({
-              x: tx + 0.5 - inside[0] * 1.4,
-              y: ty + 0.5 - inside[1] * 1.4,
-              r: 3,
+              x: tx + 0.5 - inside[0] * 0.55,
+              y: ty + 0.5 - inside[1] * 0.55,
+              r: 3.2,
               rgb: [255, 205, 135],
               intensity: 0.5 * flame,
+              cone: { ux: -inside[0], uy: -inside[1], spread: 0.95 },
             });
             if (inside[1] === -1) {
               // Only south-facing panes are painted — only they bloom.
@@ -5143,6 +5199,7 @@ export class Renderer {
         L.intensity = Math.min(1, L.intensity * (1 + 0.2 * ug));
       }
       for (const g of this.glows) g.r *= 1 - 0.3 * ug;
+      for (const g of this.seatedGlows) g.r *= 1 - 0.3 * ug;
       // THE CARRIED LANTERN: below ground the own hero always holds a
       // small warm light — enough to read the floor, the props and the
       // bodies around you, never enough to kill the dark's drama. It
@@ -5170,9 +5227,21 @@ export class Renderer {
   private drawGlows(): void {
     const ctx = this.ctx;
     const s = this.camera.scale;
-    if (this.glows.length === 0) return;
+    if (this.glows.length === 0 && this.seatedGlows.length === 0) return;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
+    // THE EMISSIVE CORES: the seated halos' one post-multiply voice — a
+    // flame-point glint capped in device pixels, brilliance that blooms
+    // over the exposure like a bright pixel in a lens. The halos
+    // themselves already drew in the world pass, under the multiply.
+    for (const g of this.seatedGlows) {
+      const a = g.a * CORE_A_K;
+      if (a < 0.04) continue;
+      const q = this.liftedWTS(g.x, g.y);
+      const cr = Math.min(g.r * s * CORE_R_K, CORE_R_MAX_PX);
+      ctx.globalAlpha = Math.min(0.6, a);
+      ctx.drawImage(radialGlowSprite(g.rgb, CORE_STOPS, 0.25), q.x - cr, q.y - cr, cr * 2, cr * 2);
+    }
     for (const g of this.glows) {
       const p = this.liftedWTS(g.x, g.y);
       const r = g.r * s;
@@ -5187,6 +5256,7 @@ export class Renderer {
     }
     ctx.restore();
     this.glows.length = 0;
+    this.seatedGlows.length = 0;
   }
 
   /**
@@ -18183,7 +18253,37 @@ export class Renderer {
       case BulkKind.GroundedBird:
         this.birds.drawOne(this.ctx, item.bulkArg as Bird, this.liftedWTSScratch, this.camera.scale, this.outlineOn, this.birdEnv.tSec);
         break;
+      case BulkKind.Halo:
+        this.drawSeatedHalo(item.bulkArg as EmitterGlowOut);
+        break;
     }
+  }
+
+  /**
+   * One seated halo (see the HALO dials by BulkKind): the POOL as a
+   * true camera-foreshortened ground ellipse at the fixture's anchor,
+   * the CORONA round at the flame's own height — `lighter`, inside the
+   * sorted world pass, BEFORE the exposure multiply. The flame-point
+   * core glints later in the post pass (drawGlows).
+   */
+  private drawSeatedHalo(g: EmitterGlowOut): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const ys = this.camera.yScale;
+    const sprite = radialGlowSprite(g.rgb, GLOW_STOPS, 0.08);
+    ctx.globalCompositeOperation = 'lighter';
+    const p = this.liftedWTS(g.x, g.gy);
+    const pr = g.r * s;
+    ctx.globalAlpha = Math.min(1, g.a * HALO_POOL_A);
+    ctx.drawImage(sprite, p.x - pr, p.y - pr * ys, pr * 2, pr * 2 * ys);
+    // A ground flame's corona hugs its pool; an air-mounted one rises
+    // to its bracket — the projAir offset is already inside g.y.
+    const q = this.liftedWTS(g.x, g.y);
+    const cr = pr * HALO_CORONA_R;
+    ctx.globalAlpha = Math.min(1, g.a * HALO_CORONA_A);
+    ctx.drawImage(sprite, q.x - cr, q.y - cr, cr * 2, cr * 2);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
   }
 
   /**

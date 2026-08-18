@@ -83,18 +83,27 @@ test('every row is well-formed: sane reaches, intensities, colors, and at least 
   });
 });
 
-test('THE FLAME LAW: every flame-gated light is architecture (occludes) — man-made fire casts', () => {
+test('THE FLAME LAW: flame-gated light is architecture (occludes) — except the licensed candle tier', () => {
   eachSpec((tile, spec) => {
     for (const l of spec.lights) {
-      if (l.flameGated) assert.ok(l.occlude, `${Tile[tile]}: flame-gated light must occlude`);
+      if (l.flameGated && !candleInfo(tile)?.lit) {
+        assert.ok(l.occlude, `${Tile[tile]}: flame-gated light must occlude`);
+      }
     }
   });
 });
 
-test('THE TOWN LAW: lit candles are glow-only, snuffed candles have no row, LampPost owns the night', () => {
+test('THE TOWN LAW, TIERED (§7.1): candles carry one tiny non-occluding pool; LampPost owns the night', () => {
   eachSpec((tile, spec) => {
     if (candleInfo(tile)?.lit) {
-      assert.equal(spec.lights.length, 0, `${Tile[tile]}: a kept flame is a mark, not a street light`);
+      // The tier license, exactly: ONE pool, table-reach, flame-voiced,
+      // never architecture. Louder candles need a new owner decision.
+      assert.equal(spec.lights.length, 1, `${Tile[tile]}: the candle tier is ONE pool`);
+      const pool = spec.lights[0]!;
+      assert.ok(!pool.occlude, `${Tile[tile]}: a kept flame never occludes`);
+      assert.ok(pool.flameGated, `${Tile[tile]}: a candle is a man-made flame`);
+      assert.ok(pool.r <= 1.6, `${Tile[tile]}: table-reach only (r ${pool.r})`);
+      assert.ok(pool.intensity <= 0.2, `${Tile[tile]}: a mark's voice (i ${pool.intensity})`);
       assert.equal(spec.glows.length, 1, `${Tile[tile]}: one breathing bloom per lit prop`);
     }
   });
