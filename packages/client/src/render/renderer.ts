@@ -56432,6 +56432,20 @@ export class Renderer {
    * the eye (a grey lid slides shut and the eye sinks) so
    * disengagement is shown, not popped out of existence. Drawn in
    * the label pass; the pupil is the outline ink punching through.
+   *
+   * THE SMALL EYE (recut, user mandate): the badge runs at HALF its
+   * first-cut footprint — the old eye crowded the head and out-shouted
+   * the game it was annotating. Halving halves the interior detail
+   * budget, so every state is RE-PROPORTIONED rather than scaled: a
+   * deeper chamber, a larger relative pupil, a wider slit, heavier-
+   * floored rim and slash — nothing may dissolve to mush at 9–15 px.
+   * Motion carries what pixels no longer can: each state owns a
+   * unique motion signature — WARY's still squint, LOOKING's slow
+   * saccade wander (the badge echoes THE GLANCE, the gaze behavior
+   * the server actually runs), HUNTING's fast wide sweep, PURSUIT's
+   * slashed stillness, ENGAGED's slit-and-flare. Judged on the badge
+   * audit sheet (scratchpad eyebadge2.html: 3 scales × 4 grounds ×
+   * all faces + old-vs-new nameplate claim + quest-mark confusion).
    */
   private alertIconItem(
     eid: number,
@@ -56471,10 +56485,10 @@ export class Renderer {
         // Clear of the nameplate: a body's label caps ~1.32 body-
         // heights up; the badge floats a step above it.
         const cy = humanoid
-          ? p.y - 1.62 * sc
+          ? p.y - 1.58 * sc
           : sizeK > 1
-            ? p.y - 1.62 * sc * sizeK
-            : p.y - (radius * 2.6 + 0.55) * sc;
+            ? p.y - 1.58 * sc * sizeK
+            : p.y - (radius * 2.6 + 0.5) * sc;
         const cx = p.x;
         const closing = anim.icon === ALERT_ICON_NONE;
         const face = closing ? ALERT_ICON_LOOKING : anim.icon;
@@ -56494,9 +56508,9 @@ export class Renderer {
         // verdict off the first cut: the capsule read as a giant
         // lozenge floating over the world — system furniture, not a
         // creature's attention.
-        const W = Math.max(16, sc * 0.55) * pop;
+        const W = Math.max(9, sc * 0.275) * pop;
         const ew = W / 2;
-        const eh = W * 0.28;
+        const eh = W * 0.3;
         const shut = closing ? Math.min(1, (t - anim.since) / 380) : 0;
         ctx.save();
         ctx.globalAlpha = closing ? 0.9 * (1 - shut * shut) : 0.96;
@@ -56514,7 +56528,7 @@ export class Renderer {
         almond();
         ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
         ctx.lineJoin = 'round';
-        ctx.lineWidth = Math.max(2.5, W * 0.17);
+        ctx.lineWidth = Math.max(1.6, W * 0.15);
         ctx.stroke();
         almond();
         ctx.fillStyle = ink;
@@ -56525,7 +56539,7 @@ export class Renderer {
         ctx.fillStyle = Renderer.STRUCT_OUTLINE;
         if (face === ALERT_ICON_ENGAGED && !closing) {
           // The lock: a predator's slit, contracted on you.
-          ctx.fillRect(-W * 0.045, -eh, W * 0.09, eh * 2);
+          ctx.fillRect(-W * 0.075, -eh, W * 0.15, eh * 2);
         } else {
           // The round pupil — HUNTING sweeps it side to side: the
           // searcher is GUESSING, and the player watches it guess.
@@ -56534,16 +56548,20 @@ export class Renderer {
           // the leftover crescent read as a MOUTH (pass-two verdict
           // off the badge audit sheet).
           const sweep =
-            face === ALERT_ICON_HUNTING && !closing ? Math.sin(t / 430) * ew * 0.52 : 0;
-          const py = face === ALERT_ICON_WARY && !closing ? eh * 0.3 : 0;
-          const pr = eh * 0.52;
+            face === ALERT_ICON_HUNTING && !closing
+              ? Math.sin(t / 430) * ew * 0.55
+              : face === ALERT_ICON_LOOKING && !closing
+                ? Math.sin(t / 900) * ew * 0.22
+                : 0;
+          const py = face === ALERT_ICON_WARY && !closing ? eh * 0.32 : 0;
+          const pr = eh * 0.58;
           ctx.beginPath();
           ctx.arc(sweep, py, pr, 0, Math.PI * 2);
           ctx.fill();
         }
         // The lid: WARY holds it half-drawn (a stare not yet a
         // verdict); the stand-down slides it all the way shut.
-        const lid = closing ? shut : face === ALERT_ICON_WARY ? 0.4 : 0;
+        const lid = closing ? shut : face === ALERT_ICON_WARY ? 0.42 : 0;
         if (lid > 0) {
           ctx.fillStyle = Renderer.STRUCT_OUTLINE;
           ctx.fillRect(-ew, -eh, ew * 2, eh * 2 * lid);
@@ -56554,7 +56572,7 @@ export class Renderer {
           // reads as a LID, not a cropped shape.
           const ly = -eh + eh * 2 * lid;
           ctx.strokeStyle = ink;
-          ctx.lineWidth = Math.max(1, W * 0.04);
+          ctx.lineWidth = Math.max(1, W * 0.05);
           ctx.beginPath();
           ctx.moveTo(-ew * Math.sqrt(Math.max(0, 1 - (ly / eh) * (ly / eh))), ly);
           ctx.lineTo(ew * Math.sqrt(Math.max(0, 1 - (ly / eh) * (ly / eh))), ly);
@@ -56567,16 +56585,16 @@ export class Renderer {
           // OVER the eye, not painted inside it.
           ctx.lineCap = 'round';
           ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
-          ctx.lineWidth = Math.max(3, W * 0.16);
+          ctx.lineWidth = Math.max(2, W * 0.18);
           ctx.beginPath();
-          ctx.moveTo(-ew * 0.92, -eh * 1.55);
-          ctx.lineTo(ew * 0.92, eh * 1.55);
+          ctx.moveTo(-ew * 0.95, -eh * 1.5);
+          ctx.lineTo(ew * 0.95, eh * 1.5);
           ctx.stroke();
           ctx.strokeStyle = ink;
-          ctx.lineWidth = Math.max(1.2, W * 0.06);
+          ctx.lineWidth = Math.max(1, W * 0.07);
           ctx.beginPath();
-          ctx.moveTo(-ew * 0.92, -eh * 1.55);
-          ctx.lineTo(ew * 0.92, eh * 1.55);
+          ctx.moveTo(-ew * 0.95, -eh * 1.5);
+          ctx.lineTo(ew * 0.95, eh * 1.5);
           ctx.stroke();
         }
         if (face === ALERT_ICON_ENGAGED && !closing) {
@@ -56588,7 +56606,7 @@ export class Renderer {
             const g = 1 + fk * 0.8;
             ctx.globalAlpha = 0.7 * (1 - fk);
             ctx.strokeStyle = ink;
-            ctx.lineWidth = Math.max(1, W * 0.05);
+            ctx.lineWidth = Math.max(1, W * 0.06);
             ctx.beginPath();
             ctx.moveTo(-ew * g, 0);
             ctx.quadraticCurveTo(0, -eh * 2 * g, ew * g, 0);
