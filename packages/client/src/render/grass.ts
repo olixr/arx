@@ -506,6 +506,13 @@ interface LiveDisturber extends Disturber {
   vx: number;
   vy: number;
   speed: number;
+  /** THE SETTLED BODY JOINS THE CALM: true once this body has stood
+   *  still for ~a second. Its parting field is then static, so the
+   *  calm canvas may bake the deformed blades and stop rebuilding the
+   *  tiles under it live every frame — the cost that kept a plaza of
+   *  idle townsfolk paying meadow prices. The field itself still
+   *  applies wherever those tiles DO build (bake or live). */
+  settled: boolean;
 }
 
 // --------------------------------------------------------------- system
@@ -580,7 +587,10 @@ export class GrassSystem {
     // a stale coat blits for a beat after the crossing.
     this.underCache = null;
   }
-  private readonly lastPos = new Map<number | 'own', { x: number; y: number; tx: number; ty: number }>();
+  private readonly lastPos = new Map<
+    number | 'own',
+    { x: number; y: number; tx: number; ty: number; movedAt: number }
+  >();
   private live: LiveDisturber[] = [];
   private tSec = 0;
   private nowMs = 0;
@@ -707,7 +717,7 @@ export class GrassSystem {
       const d = disturbers[i]!;
       let ld = this.livePool[i];
       if (!ld) {
-        ld = { id: 0, x: 0, y: 0, r: 0, vx: 0, vy: 0, speed: 0 };
+        ld = { id: 0, x: 0, y: 0, r: 0, vx: 0, vy: 0, speed: 0, settled: false };
         this.livePool[i] = ld;
       }
       const prev = this.lastPos.get(d.id);
@@ -716,6 +726,12 @@ export class GrassSystem {
       const speed = Math.hypot(vx, vy);
       const tx = Math.floor(d.x);
       const ty = Math.floor(d.y);
+      // Settle clock: any real motion re-arms the live window (see
+      // LiveDisturber.settled). The threshold is a whisker over
+      // interpolation jitter so an idle body truly settles.
+      if (prev && (Math.abs(d.x - prev.x) > 0.02 || Math.abs(d.y - prev.y) > 0.02)) {
+        prev.movedAt = nowMs;
+      }
       if (speed > 1.1) {
         // Moving bodies keep the grass around them agitated.
         const st = this.posIndex.get((ty + 8192) * 16384 + (tx + 8192));
@@ -731,7 +747,7 @@ export class GrassSystem {
         prev.tx = tx;
         prev.ty = ty;
       } else {
-        this.lastPos.set(d.id, { x: d.x, y: d.y, tx, ty });
+        this.lastPos.set(d.id, { x: d.x, y: d.y, tx, ty, movedAt: nowMs });
       }
       ld.id = d.id;
       ld.x = d.x;
@@ -740,6 +756,7 @@ export class GrassSystem {
       ld.vx = Math.min(8, Math.max(-8, vx));
       ld.vy = Math.min(8, Math.max(-8, vy));
       ld.speed = speed;
+      ld.settled = prev !== undefined && nowMs - prev.movedAt > 900;
       this.live[i] = ld;
     }
     // Forget disturbers that vanished (deaths, despawns).
@@ -1230,6 +1247,14 @@ export class GrassSystem {
     const live = new Set<number>();
     const horizon = UNDER_CACHE_MS / 1000 + 0.02;
     for (const d of this.live) {
+      // THE SETTLED BODY JOINS THE CALM: a body that has stood still
+      // long enough excludes nothing — the bake captures its (static)
+      // parting exactly as the live path would draw it, and the tiles
+      // under a plaza of idle townsfolk go back to one blit. First
+      // motion re-arms within a bake window (≤66ms parting onset,
+      // under the body's own sprite — invisible), and fresh wakes
+      // below keep springing tiles live at frame rate.
+      if (d.settled) continue;
       const x1 = d.x + d.vx * horizon;
       const y1 = d.y + d.vy * horizon;
       const bx0 = Math.floor(Math.min(d.x, x1) - DISTURB_REACH);
@@ -1382,6 +1407,12 @@ export class GrassSystem {
     // not at the next beat, so displacement never lags.
     if (!needBake && c) {
       outer: for (const d of this.live) {
+        // THE SETTLED BODY JOINS THE CALM: a settled body's parting is
+        // IN the bake — to this hatch it is not a displacement at all.
+        // The moment it moves, settled flips false, the hatch sees its
+        // tiles missing from the exclusion set, and the rebake lands
+        // THIS frame: motion onset never lags the calm canvas.
+        if (d.settled) continue;
         const tx0 = Math.floor(d.x - DISTURB_REACH);
         const tx1 = Math.floor(d.x + DISTURB_REACH);
         const ty0 = Math.floor(d.y - DISTURB_REACH);
