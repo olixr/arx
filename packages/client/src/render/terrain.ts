@@ -3209,7 +3209,7 @@ function drawTileDetail(
           ctx.fillStyle = '#e8dcc4';
           ctx.fillRect(gx + px * 0.4, gy + px * 0.38, px * 0.2, px * 0.16);
         } else if (info.kind === 'trellis') {
-          ctx.strokeStyle = info.species === 1 ? '#a8433a' : '#3f7a48';
+          ctx.strokeStyle = info.species === 1 ? '#97322f' : '#3f7a48';
           ctx.lineWidth = px * 0.05;
           ctx.strokeRect(gx + px * 0.28, gy + px * 0.24, px * 0.44, px * 0.5);
           ctx.beginPath();

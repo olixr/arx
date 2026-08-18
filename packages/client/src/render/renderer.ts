@@ -8903,9 +8903,10 @@ export class Renderer {
     ctx.lineTo(cx + bw / 2 + lag - s * 0.015, yBot - s * 0.05);
     ctx.stroke();
     ctx.restore();
-    // THE HOUSE OUTLINE around the silhouette.
-    ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
-    ctx.lineWidth = Math.max(1, s * 0.028);
+    // THE HOUSE OUTLINE around the silhouette — at the architecture
+    // ring weight (THE RING IS ONE): the royal cloth hangs on the
+    // same masonry as the crenellations and must not read lighter.
+    this.beginStructOutline();
     ctx.stroke(path);
     // The iron rod over everything, gold-capped, strapped to the wall.
     ctx.fillStyle = '#454052';
@@ -9116,7 +9117,12 @@ export class Renderer {
     lag: number,
   ): Path2D {
     const ctx = this.ctx;
-    const cloth = Renderer.AWNING_CLOTHS[dye]!.a;
+    // THE GREAT CLOTH IS DYED DEEP (user color pass): monumental wool
+    // drinks the vat one register past street canvas, so a madder
+    // great banner sits between the town's madder and the royal
+    // crimson instead of clashing coral against it — one red family,
+    // three depths: street dye > castle deep > royal.
+    const cloth = shade(Renderer.AWNING_CLOTHS[dye]!.a, -14);
     const trim = Renderer.AWNING_CLOTHS[dye]!.b;
     // Cool dyes fly silver thread; warm dyes fly gold — one rule, so
     // a house's metal never argues with its field.
@@ -9197,7 +9203,6 @@ export class Renderer {
     const cx = px0 + s * 0.5;
     const K = garrison ? 1.15 : 1;
     const my = -s * (garrison ? 1.95 : 1.32);
-    const inkW = Math.max(1, s * 0.028);
     const ghost = (p: Path2D): void => {
       ctx.save();
       ctx.translate(s * 0.035, s * 0.05);
@@ -9205,9 +9210,11 @@ export class Renderer {
       ctx.fill(p);
       ctx.restore();
     };
+    // THE RING IS ONE: mounted steel wears the architecture ring —
+    // the same weight the prop pass gives a WeaponRack, so a shield
+    // on the wall never reads lighter-lined than the case beside it.
     const ink = (p: Path2D): void => {
-      ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
-      ctx.lineWidth = inkW;
+      this.beginStructOutline();
       ctx.stroke(p);
     };
     // The iron wall peg every form hangs from — a forged nub with a
@@ -9476,8 +9483,8 @@ export class Renderer {
         rib.closePath();
         ctx.fillStyle = '#7a2430';
         ctx.fill(rib);
-        ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
-        ctx.lineWidth = Math.max(1, s * 0.024);
+        // ONE RING — the ribbons wear the crest's own weight.
+        this.beginStructOutline();
         ctx.stroke(rib);
       }
       // The quartered shield over everything.
@@ -9554,8 +9561,11 @@ export class Renderer {
     ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
     ctx.fillRect(cx - bw / 2 + s * 0.045, yTop + s * 0.06, bw, bl - s * 0.14);
     const outer = this.paintGreatCloth(cx, yTop, bw, bl, dye, s, sway, lag);
-    ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
-    ctx.lineWidth = Math.max(1, s * 0.028);
+    // THE RING IS ONE (user outline pass): architecture-scale cloth
+    // on architecture wears the architecture ring — the hand-set
+    // 0.028 read as a lighter, wrongly-applied line beside the
+    // crenellations' 0.055.
+    this.beginStructOutline();
     ctx.stroke(outer);
     // The lance rod: a tourney shaft strapped to the wall, steel
     // end caps — the castle hangs its cloth off war gear.
@@ -9688,8 +9698,8 @@ export class Renderer {
     ctx.closePath();
     ctx.fill();
     // THE HOUSE OUTLINE around the true silhouette — puddle included.
-    ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
-    ctx.lineWidth = Math.max(1, s * 0.028);
+    // THE RING IS ONE: floor-length cloth at the architecture weight.
+    this.beginStructOutline();
     ctx.stroke(path);
     // The turned timber rod over everything, knob finials proud.
     ctx.fillStyle = '#4a3524';
@@ -10105,7 +10115,7 @@ export class Renderer {
       ctx.fill();
       // The payload: rose blooms glint madder; hop hangs pale cones.
       if (species === 1 && (hk & 5) === 1) {
-        ctx.fillStyle = '#a8433a';
+        ctx.fillStyle = '#97322f';
         ctx.beginPath();
         ctx.arc(lx + flutter + s * 0.03, ly - s * 0.03, s * 0.032, 0, Math.PI * 2);
         ctx.fill();
@@ -36198,7 +36208,7 @@ export class Renderer {
               ctx.restore();
             }
             // The wax seal on the third bill — the crown's business.
-            ctx.fillStyle = '#a8433a';
+            ctx.fillStyle = '#97322f';
             ctx.beginPath();
             ctx.ellipse(p.x + hw * 0.66, boardTop + (boardBot - boardTop) * 0.42, s * 0.024, s * 0.024, 0, 0, Math.PI * 2);
             ctx.fill();
@@ -48963,7 +48973,7 @@ export class Renderer {
             // volumes, flat-lying stacks, gilt bands — and one keeps
             // the owner's curios: hourglass, scrolls, a stoppered
             // bottle and a bookend holding nothing up.
-            const SPINES = ['#a8433a', '#31589c', '#4d6b3c', '#c9962e', '#7a3f8f', '#996242'];
+            const SPINES = ['#97322f', '#31589c', '#4d6b3c', '#c9962e', '#7a3f8f', '#996242'];
             const curioRow = (h >> 2) % 4;
             for (let row = 0; row < 4; row++) {
               const cy0 = baseY - uh + s * (0.12 + row * 0.375);
@@ -49674,7 +49684,7 @@ export class Renderer {
         // authored pole keeps the town's hash-dealt roster.
         const pal = poleDye
           ? Renderer.AWNING_CLOTHS[poleDye.dye]!.a
-          : (['#7a3f8f', '#a8433a', '#2e7d72', '#31589c'] as const)[h % 4]!;
+          : (['#7a3f8f', '#97322f', '#2e7d72', '#31589c'] as const)[h % 4]!;
         // A civic standard: the crossarm rides well above head height.
         const ph = s * 1.85;
         return {
@@ -50733,8 +50743,9 @@ export class Renderer {
             const { sway, lag } = this.breezeAt(tx, ty, t, tx * 1.9 + ty * 1.3, s, 0.03, 0.05);
             const clothCx = cx + s * 0.3;
             const outer = this.paintGreatCloth(clothCx, armY + s * 0.035, s * 0.5, s * 1.32, standDye, s, sway, lag);
-            ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
-            ctx.lineWidth = Math.max(1, s * 0.028);
+            // THE RING IS ONE: the standard's cloth wears the same
+            // architecture ring as its wall-hung kin.
+            this.beginStructOutline();
             ctx.stroke(outer);
             // Hoist loops over the arm.
             ctx.fillStyle = shade(Renderer.AWNING_CLOTHS[standDye]!.b, -8);

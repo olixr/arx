@@ -6640,14 +6640,14 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   counter: { icon: 'counter', color: '#94693a' },
   hearth: { icon: 'hearth', color: '#e8823d' },
   hanging_sign: { icon: 'signpost', color: '#a5793f' },
-  awning_shed: { icon: 'awning', color: '#a8433a' },
+  awning_shed: { icon: 'awning', color: '#97322f' },
   awning_market: { icon: 'awning', color: '#c9962e' },
   awning_board: { icon: 'awning', color: '#8a6534' },
   awning_bowed: { icon: 'awning', color: '#7a3f8f' },
   porch_deck: { icon: 'floortile', color: '#9a7040' },
   timber_post: { icon: 'timberpost', color: '#8a6534' },
   wall_banner: { icon: 'banner', color: '#31589c' },
-  pennant_string: { icon: 'pennants', color: '#a8433a' },
+  pennant_string: { icon: 'pennants', color: '#97322f' },
   bracket_sign: { icon: 'brasign', color: '#8a6534' },
   trellis: { icon: 'trellisicon', color: '#3f7a48' },
   wall_basket: { icon: 'wallbasket', color: '#d977a8' },
@@ -6906,7 +6906,11 @@ export function itemIconUrl(itemId: string, size = 48): string {
  */
 export const DYE_SWATCHES: readonly string[] = [
   '#cfc5aa', // linen
-  '#a8433a', // madder
+  // THE MADDER RUNS DEEP (user color pass): the old '#a8433a' leaned
+  // coral and clashed three ways with the royal crimson '#7a2430'
+  // wherever red cloth hung beside red cloth. True madder-root red,
+  // one family with the crown: street madder > castle deep > royal.
+  '#97322f', // madder
   '#31589c', // woad
   '#c9962e', // weld
   '#3f7a48', // ivy
