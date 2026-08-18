@@ -196,3 +196,32 @@ Six judged passes on the sheet (three at 4× zoom), all-station row + smalls,
 wieldlab wall rows 36-38 at all 8 facings, living clock proven by differing
 freeze captures. Gates: client+content tsc clean, client 666/666, content
 611/611.
+
+## GATEFALL BULWARK v2 — THE SEALED BREACH (as-built, 2026-08-17)
+
+The second premium recut, and the first under THE RESTRAINT CALIBRATION (user
+verdict on the Oathkeeper: detail must stay abstract and minimal, decipherable
+at distance — fewer, bolder masses; the silhouette carries the concept). The
+window-of-rift-glass identity is retired whole (sigRiftward/relRiftward/
+crestRiftward deleted).
+
+Three bold masses, one clock:
+- **THE FISSURE** (`sigGatefall`, LIVING_SIGS): a near-black slab (two panel
+  seams only) split by ONE jagged rift-violet crack running crown to heel —
+  the crack exits the top through the recut outline's own V-NOTCH, so the
+  silhouette tells the story alone. The breach breathes on one slow chest;
+  THE SURGE (BREACH_MS 4200, t=0 mid-climb) sends one bright charge up the
+  crack in the cycle's first quarter, then quiet — one event at a time.
+- **THE STAPLES** (`relGatefall`): two colossal ringed iron clamp bars
+  spanning the crack, each with a lit arris and two forged rivets — the seal
+  gets ALL the raised height, and nothing else is raised.
+- **THE ESCAPED SHARD** (`crestGatefall`): one splinter hovering in the
+  notch's air (slow bob, two facets, black ring — glass is matter), flaring
+  in answer when the surge reaches the crown: one pressure on one clock.
+  Two dark shear-stubs flank the notch via the spike plan (steel, not glow —
+  violet belongs to the breach alone).
+
+Fittings ledger: faceAlt + field 'pale' + device 'fang' + spikes = 4 (t6
+floor holds). Judged distance-first: smalls read the full story at 26/17px.
+Gates: client tsc clean (one foreign in-flight terrain.ts error is the perf
+session's), 666/666 client tests.

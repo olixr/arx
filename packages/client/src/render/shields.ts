@@ -821,30 +821,42 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
    * bezel at two corners, and four bolts hold a window onto a place
    * nobody has finished looking into.
    */
+  /**
+   * GATEFALL BULWARK — THE SEALED BREACH (v2, 2026-08-17: the recut,
+   * designed distance-first under the restraint calibration). The
+   * shield that holds a fallen gate shut: a massive dark iron slab
+   * CRACKED once from crown to heel — the crack exits the top as the
+   * silhouette's own V-notch — with the rift's violet light breathing
+   * through the fissure, TWO colossal riveted staples clamping it, and
+   * ONE escaped shard floating above the notch. Three bold masses and
+   * one clock (the surge climbs the crack; the shard flares when it
+   * arrives). Violet is the rift's alone; iron is the seal's; the
+   * near-black slab owns everything else. At eleven pixels: a dark
+   * gate with a glowing crack and a chip of light over it — the whole
+   * story, readable across a battlefield.
+   */
   gatefall_bulwark: {
     shape: 'riftward',
     material: 'steel',
-    face: '#3e3560',
-    faceAlt: '#37304f',
-    // The bezel column runs the face's height: a pale of glass.
+    face: '#2a2438',
+    faceAlt: '#3a3152',
+    // The fissure runs the face's height: a pale, honestly declared.
     field: 'pale',
-    rim: '#494259',
-    // The shard that would not sit flush — the substrate's boss, in
-    // gate glass, standing off the window it broke from.
-    boss: '#cbb4ff',
-    device: 'diamond',
-    deviceColor: '#a985ff',
-    studs: true,
+    rim: '#4a4458',
+    // The crack, in the rolls' nearest word: a jagged tooth of light.
+    device: 'fang',
+    deviceColor: '#9a79ec',
     spikes: true,
-    // Two splinters of the glass's light that got past the binding
-    // entirely and stayed, frozen mid-escape.
-    spikeAngles: [-0.85, 2.55],
-    spikeLen: 1.24,
-    spikeW: 0.06,
-    spikeColor: '#cbb4ff',
+    // Two dark iron shear-stubs flanking the notch — the crown's edge
+    // torn where the gate gave way. Steel, not glow: the violet
+    // belongs to the breach alone.
+    spikeAngles: [-1.92, -1.22],
+    spikeLen: 1.16,
+    spikeW: 0.09,
+    spikeColor: '#5b5468',
     curve: 0.26,
     strapColor: '#3f3830',
-    sig: 'riftward',
+    sig: 'gatefall',
     tier: 6,
   },
   /**
@@ -1073,9 +1085,12 @@ const OUTLINES: Record<ShieldShape, number[]> = {
   ],
   // The riftward obelisk: a narrow flat crown over canted upper walls,
   // then dead-straight sides to a chamfered heel — gate-stone, dressed.
+  // THE SEALED BREACH (the gatefall recut): a broad gate slab whose
+  // crown is split by a V-NOTCH where the crack exits the steel — the
+  // silhouette alone tells the whole story at any distance.
   riftward: [
-    -0.45, -1, 0.45, -1, 0.9, -0.6, 0.9, 0.64, 0.6, 1, -0.6, 1,
-    -0.9, 0.64, -0.9, -0.6,
+    -0.52, -1, -0.08, -1, 0, -0.76, 0.08, -1, 0.52, -1, 0.92, -0.7,
+    0.92, 0.55, 0.6, 0.98, -0.6, 0.98, -0.92, 0.55, -0.92, -0.7,
   ],
   // Aldaren's Gate: a MONOLITH — the crown plateau between two
   // shoulder steps that jut OUT past it, walls falling to a waist
@@ -1592,7 +1607,7 @@ interface FaceEntry {
 const FACE_CACHE = new Map<string, FaceEntry>();
 const FACE_CACHE_MAX = 64;
 /** Signatures whose FACE is a function of the clock (crests stay live). */
-const LIVING_SIGS = new Set(['oath']);
+const LIVING_SIGS = new Set(['oath', 'gatefall']);
 /** Resolution rungs, px per design unit — capped so no entry balloons. */
 const FACE_RES = [20, 30, 44, 64, 92, 132, 184];
 
@@ -2203,7 +2218,7 @@ const SIGNATURES: Record<string, FacePainter> = {
   reliquary: sigReliquary,
   cindermaw: sigCindermaw,
   everwood: sigEverwood,
-  riftward: sigRiftward,
+  gatefall: sigGatefall,
   oath: sigOath,
 };
 
@@ -3251,40 +3266,128 @@ function sigEverwood(
 }
 
 /**
- * GATEFALL BULWARK — a window onto a place nobody has finished
- * looking into. Two void plates, the bezel (a seam frame with four
- * bolts), the gate glass with one bright facet and one deep one, and
- * two splinters of its light that have escaped the frame and stayed.
+ * THE BREACH CLOCK. One slow cycle: a SURGE of the rift's light climbs
+ * the crack heel to crown in the cycle's first quarter, then the seal
+ * holds through the long quiet. One clock, one event at a time — the
+ * face's surge and the crest shard's answering flare read the SAME
+ * phase, so the whole shield is one pressure. Pure function of nowMs;
+ * offset so t=0 catches the surge mid-climb.
  */
-function sigRiftward(
+const BREACH_MS = 4200;
+function breachPhase(nowMs: number): number {
+  return ((nowMs + BREACH_MS * 0.12) % BREACH_MS) / BREACH_MS;
+}
+
+/** The crack's road, crown notch to heel — one wound, four elbows. */
+const BREACH_ROAD: Array<[number, number]> = [
+  [0, -0.84],
+  [-0.1, -0.4],
+  [0.09, -0.02],
+  [-0.07, 0.44],
+  [0.03, 1.02],
+];
+
+/**
+ * GATEFALL BULWARK — THE SEALED BREACH. The face is three masses and
+ * nothing else: the near-black slab (two panel seams for its
+ * construction), ONE jagged fissure of rift-violet breathing down its
+ * whole height, and the surge that climbs it. Everything raised — the
+ * staples, the escaped shard — lives in the relief and crest tiers.
+ * Restraint is the design: at distance this is a dark gate with a
+ * glowing crack, and that is the entire story.
+ */
+function sigGatefall(
   ctx: CanvasRenderingContext2D,
   st: ShieldStyle,
   fr: ShieldFrame,
   litU: number,
+  nowMs: number,
 ): void {
   plates(ctx, st, litU);
-  const glass = st.deviceColor ?? '#a985ff';
-  const bright = '#cbb4ff';
-  const deep = '#7a5fd0';
-  // The bezel: one dark frame, standing a seam's width proud.
+  const glass = st.deviceColor ?? '#9a79ec';
+  const deep = '#6b4fc0';
+  const ph = breachPhase(nowMs);
+  // The gate's construction: two panel seams, and no more.
   ctx.fillStyle = SEAM;
-  ctx.fillRect(-0.5, -0.82, 1.0, 1.44);
-  // The glass, in three facets: base, one bright diagonal, one deep
-  // heel — cut planes, not a gradient in sight.
-  ctx.fillStyle = glass;
-  ctx.fillRect(-0.42, -0.74, 0.84, 1.28);
-  poly(ctx, bright, [-0.42, -0.74, 0.42, -0.74, -0.42, 0.2]);
-  poly(ctx, deep, [-0.42, 0.54, 0.42, 0.54, 0.42, -0.1]);
-  // The splinters: light that got OUT. Two shards past the frame,
-  // frozen mid-escape — the only asymmetry on the piece.
-  poly(ctx, bright, [0.5, -0.6, 0.78, -0.78, 0.6, -0.44]);
-  poly(ctx, glass, [-0.5, 0.12, -0.76, 0.02, -0.52, 0.3]);
-  // Four bolts holding a window shut.
-  const bolt = shade(st.rim, 34);
-  stud(ctx, -0.58, -0.88, 0.07, bolt);
-  stud(ctx, 0.58, -0.88, 0.07, bolt);
-  stud(ctx, -0.58, 0.68, 0.07, bolt);
-  stud(ctx, 0.58, 0.68, 0.07, bolt);
+  ctx.fillRect(-0.6, -1.15, 0.035, 2.3);
+  ctx.fillRect(0.565, -1.15, 0.035, 2.3);
+  // The breach breathes on one slow chest.
+  const breath = 0.7 + 0.3 * Math.sin(nowMs * 0.0007);
+  const segBand = (w: number, tone: string, alpha: number): void => {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = tone;
+    ctx.beginPath();
+    for (let i = 0; i + 1 < BREACH_ROAD.length; i++) {
+      const [x0, t0] = BREACH_ROAD[i]!;
+      const [x1, t1] = BREACH_ROAD[i + 1]!;
+      const dx = x1 - x0;
+      const dt = t1 - t0;
+      const L = Math.hypot(dx, dt) || 1;
+      const nx = (-dt / L) * w;
+      const nt = (dx / L) * w;
+      ctx.moveTo(x0 + nx, t0 + nt);
+      ctx.lineTo(x1 + nx, t1 + nt);
+      ctx.lineTo(x1 - nx, t1 - nt);
+      ctx.lineTo(x0 - nx, t0 - nt);
+      ctx.closePath();
+    }
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  };
+  // The void's stain, then the wound: deep edge, glass body, live core.
+  segBand(0.17, deep, 0.15 * breath);
+  segBand(0.1, shade(deep, -18), 1);
+  segBand(0.068, glass, 0.85 + 0.15 * breath);
+  segBand(0.03, '#c9b2ff', breath);
+  // THE SURGE: one bright charge climbing heel → crown, then quiet.
+  if (ph < 0.26) {
+    const p = ph / 0.26;
+    // Cumulative road lengths, heel-parametrized.
+    const cum: number[] = [0];
+    for (let i = 0; i + 1 < BREACH_ROAD.length; i++) {
+      const [x0, t0] = BREACH_ROAD[i]!;
+      const [x1, t1] = BREACH_ROAD[i + 1]!;
+      cum.push(cum[i]! + Math.hypot(x1 - x0, t1 - t0));
+    }
+    const total = cum[cum.length - 1]!;
+    const at = (s: number): [number, number] => {
+      // s: 0 heel → 1 crown, walked back along the road.
+      const d = (1 - Math.max(0, Math.min(1, s))) * total;
+      for (let i = 0; i + 1 < BREACH_ROAD.length; i++) {
+        if (d <= cum[i + 1]! || i + 2 === BREACH_ROAD.length) {
+          const k = (d - cum[i]!) / (cum[i + 1]! - cum[i]! || 1);
+          const [x0, t0] = BREACH_ROAD[i]!;
+          const [x1, t1] = BREACH_ROAD[i + 1]!;
+          return [x0 + (x1 - x0) * k, t0 + (t1 - t0) * k];
+        }
+      }
+      return BREACH_ROAD[0]!;
+    };
+    const glow = Math.sin(p * Math.PI);
+    ctx.globalAlpha = 0.55 + 0.45 * glow;
+    ctx.fillStyle = '#efe6ff';
+    ctx.beginPath();
+    const N = 4;
+    const s0 = p - 0.16;
+    const s1 = p + 0.02;
+    const w2 = 0.036;
+    for (let k = 0; k < N; k++) {
+      const [ax, at0] = at(s0 + ((s1 - s0) * k) / N);
+      const [bx2, bt] = at(s0 + ((s1 - s0) * (k + 1)) / N);
+      const dx = bx2 - ax;
+      const dt = bt - at0;
+      const L = Math.hypot(dx, dt) || 1;
+      const nx = (-dt / L) * w2;
+      const nt = (dx / L) * w2;
+      ctx.moveTo(ax + nx, at0 + nt);
+      ctx.lineTo(bx2 + nx, bt + nt);
+      ctx.lineTo(bx2 - nx, bt - nt);
+      ctx.lineTo(ax - nx, at0 - nt);
+      ctx.closePath();
+    }
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
 }
 
 /**
@@ -4698,25 +4801,32 @@ function relEverwood(rc: ReliefCtx, st: ShieldStyle): void {
 }
 
 /**
- * GATEFALL BULWARK — the bezel is a FRAME now: four raised bars of
- * void-iron standing off the face, the glass reading sunk between
- * them, and the corner bolts forged as pyramids. The splinters
- * escaping the binding were already real — the spike plan's.
+ * GATEFALL BULWARK — THE STAPLES. Two colossal riveted clamps spanning
+ * the crack, and nothing else raised on the face: the seal is the
+ * design, so the seal gets ALL the height. Each staple is one bold
+ * mass — a ringed iron bar with a lit arris and two forged rivets
+ * pinning its ends into the slab, the fissure passing visibly beneath.
  */
-function relRiftward(rc: ReliefCtx, st: ShieldStyle): void {
-  const frame = shade(st.rim, 18);
-  const bars: number[][] = [
-    [-0.54, -0.86, 0.54, -0.86, 0.54, -0.72, -0.54, -0.72],
-    [-0.54, 0.5, 0.54, 0.5, 0.54, 0.64, -0.54, 0.64],
-    [-0.54, -0.86, -0.4, -0.86, -0.4, 0.64, -0.54, 0.64],
-    [0.4, -0.86, 0.54, -0.86, 0.54, 0.64, 0.4, 0.64],
-  ];
-  for (const b of bars) prism(rc, b, 0, 0.4, frame, { wallDark: shade(frame, -30) });
-  pyramid(rc, -0.47, -0.79, 0.075, 0.085, 0.4, 0.72, shade(st.rim, 40), { outline: true });
-  pyramid(rc, 0.47, -0.79, 0.075, 0.085, 0.4, 0.72, shade(st.rim, 40), { outline: true });
-  pyramid(rc, -0.47, 0.57, 0.075, 0.085, 0.4, 0.72, shade(st.rim, 40), { outline: true });
-  pyramid(rc, 0.47, 0.57, 0.075, 0.085, 0.4, 0.72, shade(st.rim, 40), { outline: true });
-  // The standing shard is THE CREST TIER's — it leans, and it is tall.
+function relGatefall(rc: ReliefCtx, st: ShieldStyle): void {
+  const iron = shade(st.rim, 16);
+  for (const tc of [-0.32, 0.36]) {
+    prism(
+      rc,
+      [-0.46, tc - 0.075, 0.46, tc - 0.075, 0.46, tc + 0.075, -0.46, tc + 0.075],
+      0,
+      0.42,
+      iron,
+      { wallDark: shade(iron, -32), outline: true },
+    );
+    polyAt(
+      rc,
+      [-0.46, tc - 0.075, 0.46, tc - 0.075, 0.46, tc - 0.028, -0.46, tc - 0.028],
+      0.42,
+      shade(iron, 30),
+    );
+    pyramid(rc, -0.38, tc, 0.062, 0.072, 0.42, 0.68, shade(st.rim, 38), { outline: true });
+    pyramid(rc, 0.38, tc, 0.062, 0.072, 0.42, 0.68, shade(st.rim, 38), { outline: true });
+  }
 }
 
 /**
@@ -4799,36 +4909,57 @@ function crestFellhorn(rc: ReliefCtx, st: ShieldStyle): void {
 }
 
 /**
- * GATEFALL BULWARK — the shard that would not sit flush, at its true
- * size: a leaning crystal spire out of the pane, two facets to an
- * offset apex, catching more light than the glass it broke from.
+ * GATEFALL BULWARK — THE ESCAPED SHARD. One splinter of the gate,
+ * floating in the notch's own air above the crown: a slow hover, two
+ * facets, one black ring (glass is still an object), and an answering
+ * FLARE when the face's surge reaches the top of the crack — one
+ * pressure, read on one clock. Nothing else moves.
  */
-function crestRiftward(rc: ReliefCtx): void {
+function crestGatefall(rc: ReliefCtx, st: ShieldStyle): void {
   const { ctx } = rc;
-  const ax = rPx(rc, 0.16, 1.35);
-  const ay = rPy(rc, 0.16, -0.34, 1.35);
-  const e1x = rPx(rc, -0.14, 0);
-  const e1y = rPy(rc, -0.14, 0.12, 0);
-  const e2x = rPx(rc, 0.2, 0);
-  const e2y = rPy(rc, 0.2, 0.02, 0);
-  const mBase = rPy(rc, 0.03, 0.07, 0);
-  reliefShadow(rc, [-0.14, 0.12, 0.2, 0.02, 0.24, 0.18, -0.1, 0.26], 0.7);
-  ctx.fillStyle = e1y < e2y ? '#e2d6ff' : '#a985ff';
-  ctx.beginPath();
-  ctx.moveTo(e1x, e1y);
-  ctx.lineTo(ax, ay);
-  ctx.lineTo(rPx(rc, 0.03, 0), mBase);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = e2y <= e1y ? '#e2d6ff' : '#8a6ade';
-  ctx.beginPath();
-  ctx.moveTo(e2x, e2y);
-  ctx.lineTo(ax, ay);
-  ctx.lineTo(rPx(rc, 0.03, 0), mBase);
-  ctx.closePath();
-  ctx.fill();
+  const glass = st.deviceColor ?? '#9a79ec';
+  const ph = breachPhase(rc.nowMs);
+  const flare = ph > 0.18 && ph < 0.4 ? Math.sin(((ph - 0.18) / 0.22) * Math.PI) : 0;
+  const bob = Math.sin(rc.nowMs * 0.0011) * 0.045;
+  const cu = 0.02;
+  const ct = -1.22 + bob;
+  const H = 0.7;
+  const tipT = ct - 0.26;
+  const heelT = ct + 0.18;
+  const w = 0.08;
+  // The answering glow, under the glass.
+  if (flare > 0.05) {
+    ctx.globalAlpha = 0.45 * flare;
+    polyAt(
+      rc,
+      [cu, tipT - 0.12, cu + w * 2.4, ct, cu, heelT + 0.12, cu - w * 2.4, ct],
+      H,
+      '#e8dcff',
+    );
+    ctx.globalAlpha = 1;
+  }
+  const tx = rPx(rc, cu + 0.02, H);
+  const ty = rPy(rc, cu + 0.02, tipT, H);
+  const lx = rPx(rc, cu - w, H);
+  const ly = rPy(rc, cu - w, ct + 0.02, H);
+  const rx = rPx(rc, cu + w, H);
+  const ry = rPy(rc, cu + w, ct - 0.02, H);
+  const bx = rPx(rc, cu - 0.01, H);
+  const by = rPy(rc, cu - 0.01, heelT, H);
+  const litL = ly < ry;
+  const facet = (ex: number, ey: number, tone: string): void => {
+    ctx.fillStyle = tone;
+    ctx.beginPath();
+    ctx.moveTo(tx, ty);
+    ctx.lineTo(ex, ey);
+    ctx.lineTo(bx, by);
+    ctx.closePath();
+    ctx.fill();
+  };
+  facet(lx, ly, litL ? shade(glass, 26 + Math.round(20 * flare)) : shade(glass, -16));
+  facet(rx, ry, litL ? shade(glass, -16) : shade(glass, 26 + Math.round(20 * flare)));
   // The shard rings itself — glass is still an object.
-  strokeHull(rc, [e1x, e1y, e2x, e2y, ax, ay, rPx(rc, 0.03, 0), mBase]);
+  strokeHull(rc, [tx, ty, lx, ly, rx, ry, bx, by]);
 }
 
 /**
@@ -4983,7 +5114,7 @@ function crestPinion(rc: ReliefCtx, st: ShieldStyle): void {
 const CRESTS: Record<string, ReliefPainter> = {
   doorwall: crestDoorwall,
   fellhorn: crestFellhorn,
-  riftward: crestRiftward,
+  gatefall: crestGatefall,
   oath: crestOath,
   pinion: crestPinion,
 };
@@ -4999,7 +5130,7 @@ const RELIEFS: Record<string, ReliefPainter> = {
   reliquary: relReliquary,
   cindermaw: relCindermaw,
   everwood: relEverwood,
-  riftward: relRiftward,
+  gatefall: relGatefall,
   oath: relOath,
 };
 
