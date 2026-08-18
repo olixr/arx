@@ -665,28 +665,40 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
    * set proud at the heart. The sea builds symmetric and the smith
    * had the sense not to argue.
    */
+  /**
+   * BRINEHOLD CARAPACE — THE DEEP'S SHELL (v2, 2026-08-17: the turtle
+   * recut, under the restraint calibration). Not forged — GROWN: a
+   * sea-turtle's carapace taken whole, in three bold masses. THE
+   * SCUTE MAP: four great costal plates on a dark seam-bed, their
+   * borders the gaps between them — big flats, no texture. THE
+   * VERTEBRAL KEEL: the three center scutes raised off the shell,
+   * middle proudest, with the Deepking's pearl (the substrate umbo)
+   * set into it. THE MARGINAL HORNS: four short bone points serrating
+   * the lower rim — the snapping-shell's warning. One clock: the tide
+   * sheen, a single soft band of water-light washing across the shell
+   * and gone. Pearl-white belongs to the pearl; bone to the horns and
+   * barnacle studs; every green is the shell's own.
+   */
   brinehold_carapace: {
     shape: 'carapace',
     material: 'steel',
-    face: '#46655c',
-    faceAlt: '#3a5148',
-    rim: '#7ba892',
-    boss: '#dfe3d6',
+    face: '#2f5244',
+    faceAlt: '#3d6350',
+    rim: '#57604a',
+    boss: '#efe6d0',
     device: 'none',
     studs: true,
     spikes: true,
-    // Dorsal spines off the shell's crown — a crab grows its armor
-    // pointing UP off the ridge, and the smith kept them. Pale chitin
-    // in iron collars: grown weapon, mounted fitting. (The old flank
-    // spikes hung sideways off the waist like afterthoughts — the
-    // pasted-spikes verdict.)
-    spikeAngles: [-2.0, -1.57, -1.14],
-    spikeLen: 1.34,
-    spikeW: 0.1,
-    spikeColor: '#cfc9b4',
+    // THE MARGINAL HORNS: four short bone points off the lower rim —
+    // a shell that warns. The crown stays smooth; a turtle's ridge is
+    // the KEEL's, and the keel is the relief tier's.
+    spikeAngles: [0.62, 1.08, 2.06, 2.52],
+    spikeLen: 1.18,
+    spikeW: 0.085,
+    spikeColor: '#c4b892',
     curve: 0.42,
     strapColor: '#3a4652',
-    sig: 'carapace',
+    sig: 'brineshell',
     tier: 4,
   },
   /**
@@ -1043,10 +1055,14 @@ const OUTLINES: Record<ShieldShape, number[]> = {
   // The tide's rampart: a shell wall — domed crown, flared shoulders,
   // one scallop bitten into each flank, a skirt falling to a point.
   // Symmetric, unlike the targe: the sea builds true.
+  // THE DEEP'S SHELL (the turtle recut): a broad domed oval, smooth
+  // over the crown, the lower margin stepped by its own scutes — the
+  // serration is the silhouette's story, read before any detail.
   carapace: [
-    0, -0.96, 0.5, -0.88, 0.9, -0.6, 1.0, -0.15, 0.8, 0.2, 0.92, 0.5,
-    0.55, 0.85, 0, 1, -0.55, 0.85, -0.92, 0.5, -0.8, 0.2, -1.0, -0.15,
-    -0.9, -0.6, -0.5, -0.88,
+    0, -1.0, 0.52, -0.9, 0.86, -0.58, 1.0, -0.12, 0.94, 0.28, 0.8, 0.48,
+    0.86, 0.6, 0.62, 0.76, 0.66, 0.88, 0.34, 0.96, 0, 1.02, -0.34, 0.96,
+    -0.66, 0.88, -0.62, 0.76, -0.86, 0.6, -0.8, 0.48, -0.94, 0.28,
+    -1.0, -0.12, -0.86, -0.58, -0.52, -0.9,
   ],
   // The Court's round: nine facets — between the buckler's eight and
   // the round's ten, and the odd count seats one facet flat at the
@@ -1607,7 +1623,7 @@ interface FaceEntry {
 const FACE_CACHE = new Map<string, FaceEntry>();
 const FACE_CACHE_MAX = 64;
 /** Signatures whose FACE is a function of the clock (crests stay live). */
-const LIVING_SIGS = new Set(['oath', 'gatefall']);
+const LIVING_SIGS = new Set(['oath', 'gatefall', 'brineshell']);
 /** Resolution rungs, px per design unit — capped so no entry balloons. */
 const FACE_RES = [20, 30, 44, 64, 92, 132, 184];
 
@@ -2212,7 +2228,7 @@ const SIGNATURES: Record<string, FacePainter> = {
   doorwall: sigDoorwall,
   palisade: sigPalisade,
   fellhorn: sigFellhorn,
-  carapace: sigCarapace,
+  brineshell: sigBrineshell,
   wintercourt: sigWintercourt,
   pinion: sigPinion,
   reliquary: sigReliquary,
@@ -2946,73 +2962,70 @@ function sigFellhorn(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
 }
 
 /**
- * BRINEHOLD CARAPACE — the sea builds symmetric. Three shell courses
- * lapping downward (each one plate, one lit pass, one seam under its
- * scalloped edge), a keel seam down the middle, and four barnacle
- * studs where they chose to live. The pearl is the substrate's boss.
+ * THE TIDE CLOCK. One soft band of water-light washes across the
+ * shell each cycle and is gone — the only motion a grown shield
+ * needs; a shell does not flicker. Pure function of nowMs; offset so
+ * t=0 catches the sheen mid-shell.
  */
-function sigCarapace(
+const TIDE_MS = 5200;
+function tidePhase(nowMs: number): number {
+  return ((nowMs + TIDE_MS * 0.2) % TIDE_MS) / TIDE_MS;
+}
+
+/**
+ * BRINEHOLD CARAPACE — THE DEEP'S SHELL. Grown, not forged: a dark
+ * seam-bed with four great costal scutes laid on it as single flat
+ * masses, each carrying one beveled top edge and nothing else — the
+ * borders between plates are the BED showing through, so the scute
+ * map costs zero seam strokes. The vertebral column between them
+ * belongs to the relief tier (THE KEEL); the pearl is the substrate's
+ * boss, set on the keel's middle plate.
+ */
+function sigBrineshell(
   ctx: CanvasRenderingContext2D,
   st: ShieldStyle,
   fr: ShieldFrame,
   litU: number,
+  nowMs: number,
 ): void {
-  ctx.fillStyle = st.face;
+  // The seam-bed: the dark the plates grew out of.
+  ctx.fillStyle = shade(st.face, -24);
   ctx.fillRect(-1.2, -1.2, 2.4, 2.4);
-  // Three courses lapping downward, each ending in a SCALLOPED chord:
-  // two arcs meeting at a center point, the way shell actually grows.
-  // The course below is a full step darker so the lap reads as depth,
-  // and the seam is a thin line riding the scallop — never a bar.
-  const alt = st.faceAlt ?? shade(st.face, -16);
-  const scallop = (t0: number, dip: number, tone: string): void => {
-    // The course: everything below its scalloped top edge.
-    ctx.fillStyle = tone;
-    ctx.beginPath();
-    ctx.moveTo(-1.2, t0);
-    ctx.quadraticCurveTo(-0.55, t0 + dip, 0, t0 + dip * 0.45);
-    ctx.quadraticCurveTo(0.55, t0 + dip, 1.2, t0);
-    ctx.lineTo(1.2, 1.25);
-    ctx.lineTo(-1.2, 1.25);
-    ctx.closePath();
-    ctx.fill();
-    // The lap's thin shadow line, riding the same curve.
-    ctx.fillStyle = SEAM;
-    ctx.beginPath();
-    ctx.moveTo(-1.2, t0);
-    ctx.quadraticCurveTo(-0.55, t0 + dip, 0, t0 + dip * 0.45);
-    ctx.quadraticCurveTo(0.55, t0 + dip, 1.2, t0);
-    ctx.lineTo(1.2, t0 + 0.05);
-    ctx.quadraticCurveTo(0.55, t0 + dip + 0.05, 0, t0 + dip * 0.45 + 0.05);
-    ctx.quadraticCurveTo(-0.55, t0 + dip + 0.05, -1.2, t0 + 0.05);
-    ctx.closePath();
-    ctx.fill();
-    // One lit pass under the lap — the new plate catching the sun.
-    ctx.fillStyle = shade(tone, 16);
-    ctx.beginPath();
-    ctx.moveTo(-1.2, t0 + 0.05);
-    ctx.quadraticCurveTo(-0.55, t0 + dip + 0.05, 0, t0 + dip * 0.45 + 0.05);
-    ctx.quadraticCurveTo(0.55, t0 + dip + 0.05, 1.2, t0 + 0.05);
-    ctx.lineTo(1.2, t0 + 0.14);
-    ctx.quadraticCurveTo(0.55, t0 + dip + 0.14, 0, t0 + dip * 0.45 + 0.14);
-    ctx.quadraticCurveTo(-0.55, t0 + dip + 0.14, -1.2, t0 + 0.14);
-    ctx.closePath();
-    ctx.fill();
+  const alt = st.faceAlt ?? shade(st.face, 10);
+  // THE SCUTE MAP: four costal plates, mirrored — one flat fill and
+  // one grown bevel each.
+  const costal = (s: number, pts: number[], tone: string): void => {
+    const p2 = pts.map((v, i) => (i % 2 === 0 ? v * s : v));
+    poly(ctx, tone, p2);
+    poly(ctx, shade(tone, 16), [
+      p2[0]!, p2[1]!, p2[2]!, p2[3]!,
+      p2[2]! * 0.92, p2[3]! + 0.1, p2[0]! * 0.92, p2[1]! + 0.1,
+    ]);
   };
-  scallop(-0.5, 0.3, shade(st.face, -8));
-  scallop(0.14, 0.34, alt);
-  scallop(0.72, 0.3, shade(alt, -10));
-  // The keel: one dark seam, one lit side — the ridge the shell grew
-  // out from, and the sun picks its up-screen flank.
-  ctx.fillStyle = SEAM;
-  ctx.fillRect(-0.025, -1.2, 0.05, 2.4);
-  ctx.fillStyle = shade(st.face, 22);
-  ctx.fillRect(litU > 0 ? 0.025 : -0.115, -1.2, 0.09, 2.4);
-  // Barnacles: pale, few, riding the course edges where the water
-  // actually leaves them.
-  const pale = '#cfc9b4';
-  stud(ctx, -0.62, -0.62, 0.07, pale);
-  stud(ctx, 0.72, -0.14, 0.06, pale);
-  stud(ctx, -0.44, 0.52, 0.06, pale);
+  for (const s of [-1, 1]) {
+    costal(s, [0.3, -0.76, 0.66, -0.82, 0.9, -0.5, 0.94, -0.08, 0.3, -0.02], shade(st.face, 6));
+    costal(s, [0.3, 0.04, 0.94, 0.0, 0.84, 0.38, 0.58, 0.72, 0.3, 0.66], shade(alt, -4));
+  }
+  // The nuchal plate: the one small scute at the shell's brow.
+  poly(ctx, shade(alt, 6), [-0.18, -0.98, 0.18, -0.98, 0.13, -0.88, -0.13, -0.88]);
+  // THE TIDE SHEEN: one band of water-light, washing through and gone.
+  const ph = tidePhase(nowMs);
+  if (ph < 0.42) {
+    const p = ph / 0.42;
+    const c = -1.5 + p * 3.0;
+    const ax = 0.6;
+    const ay = 0.8;
+    const px2 = -ay;
+    const py2 = ax;
+    ctx.globalAlpha = Math.sin(p * Math.PI) * 0.13;
+    poly(ctx, '#e8f2e4', [
+      c * ax + px2 * 1.8 - ax * 0.24, c * ay + py2 * 1.8 - ay * 0.24,
+      c * ax + px2 * 1.8 + ax * 0.24, c * ay + py2 * 1.8 + ay * 0.24,
+      c * ax - px2 * 1.8 + ax * 0.24, c * ay - py2 * 1.8 + ay * 0.24,
+      c * ax - px2 * 1.8 - ax * 0.24, c * ay - py2 * 1.8 - ay * 0.24,
+    ]);
+    ctx.globalAlpha = 1;
+  }
 }
 
 /**
@@ -4592,39 +4605,33 @@ function relFellhorn(rc: ReliefCtx, st: ShieldStyle): void {
 }
 
 /**
- * BRINEHOLD CARAPACE — the courses LAP at real height: each scallop
- * seam is a lipped edge standing off the plate below it (sampled
- * along its own curve), and the keel rises as a ridge the whole
- * height of the shell. Grown structure, not surface stripes.
+ * BRINEHOLD CARAPACE — THE VERTEBRAL KEEL. The three center scutes
+ * raised off the shell as one grown ridge, the middle proudest, each
+ * a hexagonal plate with a single lit crown edge. Surface furniture —
+ * grown into the shell, never ringed. The pearl lands on the middle
+ * scute from the substrate pass, riding above the keel's own height.
  */
-function relCarapace(rc: ReliefCtx, st: ShieldStyle): void {
-  const alt = st.faceAlt ?? shade(st.face, -16);
-  const courses: Array<[number, number, string]> = [
-    [-0.5, 0.3, shade(st.face, 2)],
-    [0.14, 0.34, shade(alt, 10)],
-    [0.72, 0.3, alt],
-  ];
-  for (const [t0, dip, tone] of courses) {
-    // Sample the two quadratics the flat pass draws (control at
-    // ±0.55, t0+dip; midpoint t0+dip·0.45) and build a lipped band.
-    const pts: number[] = [];
-    const N = 5;
-    for (let k = 0; k <= N; k++) {
-      const s = k / N;
-      const u = -1.1 + 2.2 * s;
-      const abs = Math.abs(u);
-      // A serviceable stand-in for the drawn curve: deepest at center.
-      const t = t0 + dip * (0.45 + 0.55 * (1 - abs / 1.1) * (abs / 1.1) * 2);
-      pts.push(u, t);
-    }
-    for (let k = N; k >= 0; k--) {
-      pts.push(pts[k * 2]!, pts[k * 2 + 1]! + 0.12);
-    }
-    prism(rc, pts, 0, 0.26, tone, { shadow: false });
-  }
-  // The keel ridge.
-  prism(rc, [-0.05, -1.05, 0.05, -1.05, 0.035, 0.95, -0.035, 0.95], 0, 0.34, shade(st.face, 14));
-  polyAt(rc, [-0.012, -1.02, 0.012, -1.02, 0.01, 0.92, -0.01, 0.92], 0.34, shade(st.face, 30));
+function relBrineshell(rc: ReliefCtx, st: ShieldStyle): void {
+  const scute = (t0: number, t1: number, h: number, tone: string): void => {
+    const mid = (t0 + t1) / 2;
+    prism(
+      rc,
+      [-0.19, t0, 0.19, t0, 0.28, mid, 0.19, t1, -0.19, t1, -0.28, mid],
+      0,
+      h,
+      tone,
+      { wallDark: shade(tone, -30), shadow: false },
+    );
+    polyAt(
+      rc,
+      [-0.16, t0 + 0.03, 0.16, t0 + 0.03, 0.13, t0 + 0.11, -0.13, t0 + 0.11],
+      h,
+      shade(tone, 20),
+    );
+  };
+  scute(-0.84, -0.36, 0.28, shade(st.face, 14));
+  scute(-0.28, 0.24, 0.42, shade(st.face, 28));
+  scute(0.32, 0.8, 0.26, shade(st.face, 8));
 }
 
 /**
@@ -5124,7 +5131,7 @@ const RELIEFS: Record<string, ReliefPainter> = {
   doorwall: relDoorwall,
   palisade: relPalisade,
   fellhorn: relFellhorn,
-  carapace: relCarapace,
+  brineshell: relBrineshell,
   wintercourt: relWintercourt,
   pinion: relPinion,
   reliquary: relReliquary,

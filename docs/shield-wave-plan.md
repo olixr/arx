@@ -225,3 +225,31 @@ Fittings ledger: faceAlt + field 'pale' + device 'fang' + spikes = 4 (t6
 floor holds). Judged distance-first: smalls read the full story at 26/17px.
 Gates: client tsc clean (one foreign in-flight terrain.ts error is the perf
 session's), 666/666 client tests.
+
+## BRINEHOLD CARAPACE v2 — THE DEEP'S SHELL (as-built, 2026-08-17)
+
+The turtle recut (user-ordered: "turtle shell or scaly shell"), third premium
+pass, under the restraint calibration. The crab identity (scalloped courses,
+crown dorsal spines) retires whole (sigCarapace/relCarapace deleted).
+
+Three bold masses, one clock:
+- **THE SCUTE MAP** (`sigBrineshell`, LIVING_SIGS): a dark seam-bed with four
+  great costal plates as single flat masses (one grown bevel each — the plate
+  borders are the BED showing through, zero seam strokes) plus the small
+  nuchal plate at the brow. THE TIDE SHEEN (TIDE_MS 5200): one soft band of
+  water-light washes across and is gone — a shell does not flicker.
+- **THE VERTEBRAL KEEL** (`relBrineshell`): the three center scutes raised as
+  one grown ridge, middle proudest (h 0.28/0.42/0.26), hexagonal plates with
+  one lit crown edge each — surface furniture, grown not bolted, never
+  ringed. The Deepking's pearl (substrate boss '#efe6d0') rides the middle
+  scute above the keel's height.
+- **THE MARGINAL HORNS** (spike plan): four short bone points serrating the
+  lower rim — the snapping-shell's warning — with the recut outline's own
+  stepped lower margin carrying the serration into the silhouette. Barnacle
+  studs ride the olive marginal band (drawRim).
+
+Fittings: boss + studs + faceAlt + spikes = 4 (t4 floor holds). Palette:
+brine greens own the shell, bone owns horns + barnacles, pearl-white the
+pearl alone. Judged distance-first; the 26px small reads dome, keel, pearl,
+horns. Gates: shields tsc clean (foreign in-flight renderer/terrain reds are
+the perf session's), client 666/666.
