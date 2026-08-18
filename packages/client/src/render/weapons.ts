@@ -351,6 +351,21 @@ export const SWORD_STYLES: Record<string, SwordStyle> = {
     guard: 'swept', guardColor: '#d9a441', grip: '#e6ddc8', wrap: '#d9a441',
     pommel: 'round', pommelColor: '#d9a441',
   },
+  threshold: {
+    // The doorwarden's blade. THE CLIPPED NOSE IS THE STORY: the
+    // falchion silhouette is the roster's one squared-off point, and
+    // this sword was never meant to chase anyone past the door it
+    // keeps. The falchion painter lights the BELLY and nothing else,
+    // so the def's "bright along one line only" is the silhouette's
+    // own habit rather than a second coat of paint — cold grey steel,
+    // a dark fuller that stays dark, one lit edge. Furniture is
+    // door-fittings, not war-gear: a plain lintel bar for a guard,
+    // bog-oak in the fist under old brass strapping, and the RING at
+    // the butt is the door's own — a knocker, hung off a sword.
+    blade: 'falchion', color: '#aeb8c2', edge: '#eef4fa', fuller: '#5a6470',
+    guard: 'cross', guardColor: '#3e4650', grip: '#3a2e24', wrap: '#b0873f',
+    pommel: 'ring', pommelColor: '#b0873f', fx: 'gleam', fxColor: '#eef4fa',
+  },
   frostbrand: {
     blade: 'arming', color: '#cfe2f0', edge: '#ffffff', fuller: '#8ac4e8',
     guard: 'cross', guardColor: '#7a94ac', grip: '#3a4a5c', wrap: '#a8c8dc',
@@ -528,6 +543,37 @@ export const SWORD_STYLES: Record<string, SwordStyle> = {
     core: '#d8fff0',
     guard: 'halo', guardColor: '#6fae9a', grip: '#22303a', wrap: '#5a7a72',
     pommel: 'star', pommelColor: '#d8fff0', fx: 'borealis', fxColor: '#8fe8b8',
+  },
+
+  // ---- THE ARENA STEEL (THE WORN BOOK): the sand's own exclusive,
+  // and the roster's fourth honor roll — neither crown nor masterwork,
+  // because it is WON, not smithed and not hunted. It answers the same
+  // one-story law but spends nothing the other rolls reserved: no
+  // masterwork furniture, no signature word of its own.
+  laurelbrand: {
+    // Awarded, not forged: a show-curve of bout-bright steel wearing
+    // the arena's own hammered gold — the Laurel of the Sands' metal,
+    // verbatim, so the trophy on the shelf and the blade in the hand
+    // are one prize. THE WHOLE READ IS THE FULLER: the laurel is
+    // chased the length of it in bright gilt, one bold gold stripe
+    // down the steel, and it is the only thing this blade says. Bench
+    // note: the wreath was first cut as a PAIR of swept gilt sprays
+    // off the ricasso — anatomically the right laurel, and at pack
+    // scale a bent gold wire hooking under the grip; the honest fix
+    // was to stop drawing the wreath and let the gold ON THE BLADE
+    // carry it, over a plain crowned bar and a gold RING at the butt
+    // (the Grand Ring, which is what a laurel is: a circle you are
+    // handed). The chasing WALKS — `runes` lights its ticks in
+    // sequence down the steel, the crowd's count made visible and the
+    // honest face of the temper that rides this blade and no other
+    // (THE CROWD KEEPS TIME, every eighth swing) — and the edge takes
+    // the sun, which is the radiant word that temper is written in.
+    // Worn hide at the grip: a champion's hand went shallow into it.
+    blade: 'scimitar', color: '#c9ced8', edge: '#f2f5fa', fuller: '#c9a23c', len: 1.05,
+    runes: '#e8b74a',
+    guard: 'crown', guardColor: '#e8b74a', gem: '#f4e3a8',
+    grip: '#6e4a2c', wrap: '#c8a442',
+    pommel: 'ring', pommelColor: '#e8b74a', fx: 'sun', fxColor: '#ffe08a',
   },
 };
 
@@ -5150,6 +5196,19 @@ export const STAFF_STYLES: Record<string, StaffStyle> = {
     crown: 'thorns', crownColor: '#5a4668', gem: '#b070d8', gemCore: '#e8d0ff',
     ferrule: false, fx: 'motes', fxColor: '#9a6ab8',
   },
+  candlewake: {
+    // The watchman's staff, and the wax is the whole biography: a
+    // century of run tallow has swallowed the stave, so the shaft is
+    // gnarled not by wood but by DRIP — the knot swells read as
+    // built-up wax and the wood underneath never shows again. The
+    // lantern crown is the vigil itself: the cage painter keeps the
+    // focus guttering on the world clock, which is the one thing this
+    // staff has always done. Wax-clogged brass on the cage, and the
+    // ferrule is honest — a staff that gets WALKED, all night, again.
+    shaft: 'gnarled', color: '#d8c48e', edge: '#f6ecc8', metal: '#c9a45e',
+    crown: 'lantern', crownColor: '#d8b878', gem: '#ff9e3c', gemCore: '#fff2c8',
+    ferrule: true, fx: 'embers', fxColor: '#ffbc62', len: 1.05,
+  },
   serpentcoil: {
     shaft: 'straight', color: '#3e3428', edge: '#5c4e3a', metal: '#b87333',
     crown: 'coil', crownColor: '#b87333', gem: '#8ad05a', gemCore: '#eaffd8',
@@ -5174,6 +5233,21 @@ export const STAFF_STYLES: Record<string, StaffStyle> = {
     shaft: 'straight', color: '#d8ccb0', edge: '#f0e8d0', metal: '#d9a441',
     crown: 'sundisc', crownColor: '#e8b84a', gem: '#ffd98a', gemCore: '#ffffff',
     ferrule: true, fx: 'rays', fxColor: '#ffd98a', len: 1.05,
+  },
+  heartspindle: {
+    // The iron distaff. Read it as the tool it is: the iron shaft's
+    // own collars and the wire at the fist all paint in `metal`, so
+    // the WINDING is what bands the rod — dark red stations up cold
+    // grey iron, the something-that-is-not-wool laid on in courses.
+    // The orb crown is the distaff head: an iron collar and the
+    // gathered ball standing on it, warm all the way through, which
+    // is where 'a little fuller than yesterday' lives. The drip
+    // channel takes the blood direction (BLOOD_FOCUS): the beads
+    // climb past the crown instead of falling off it — everything
+    // this staff does, it does toward the ball.
+    shaft: 'iron', color: '#4a4450', edge: '#6e6878', metal: '#8a2f3e',
+    crown: 'orb', crownColor: '#6a6474', gem: '#c03348', gemCore: '#ffb8c0',
+    ferrule: true, fx: 'drip', fxColor: '#c8394a', len: 1.04,
   },
   boneharrow: {
     shaft: 'bone', color: '#d8d2be', edge: '#f0ecdc', metal: '#4a4554',
@@ -5404,6 +5478,16 @@ export function staffStyle(itemId: string | undefined, color?: string): StaffSty
   }
   return fb;
 }
+
+/**
+ * THE BLOOD RUNS UP. The drip channel sends beads DOWN the wood for
+ * everything that weeps and UP the shaft for everything that feeds —
+ * a blood focus is being filled, not drained. The school is read off
+ * the focus color, which is how the channel has always told them
+ * apart; this set is that test, named, now that the roster carries
+ * more than one blood staff.
+ */
+const BLOOD_FOCUS = new Set(['#ff6a7a', '#c03348']);
 
 /**
  * Paint a staff in the held-item frame (origin at the fist, +x toward
@@ -7927,7 +8011,7 @@ export function drawStaff(
               Math.sin(phase * Math.PI * 3 + i) * 0.02 * s;
             break;
           case 'drip': { // beads run down the wood; blood runs UP
-            const down = st.gem === '#ff6a7a' ? 1 : -1;
+            const down = BLOOD_FOCUS.has(st.gem ?? '') ? 1 : -1;
             x += down * (0.05 * s + phase * 0.14 * s);
             y = Math.sin(i * 2.8) * 0.05 * s;
             r *= 1 - phase * 0.4;
@@ -8114,6 +8198,22 @@ export const GREAT_STYLES: Record<string, GreatStyle> = {
     kind: 'greatblade', blade: 'colossus', len: 0.97, color: '#4c505e', edge: '#787e8e', fuller: '#2c3040',
     runes: '#a8a290', notched: true, guard: 'thorn', guardColor: '#343744', grip: '#2e3038',
     wrap: '#a8a290', pommel: 'ring', pommelColor: '#a8a290',
+  },
+  // The kerb slab off a fell barrow, hafted by somebody the old law
+  // could not reach. Its neighbour above is crypt IRON; this one never
+  // saw a forge — it is the founding colossus slab cut in weathered
+  // granite, sun-bleached along the top plane, its one dark line a
+  // seam of moss that stayed on through the hafting. THE NAMES stayed
+  // too: the runes channel is worked script, not glowing script, so
+  // the barrow's roll reads as cut lettering and lights nothing. Chip
+  // notches where stone answered steel, a crude iron block for a
+  // guard, rope at the fists, and no pommel at all — nobody who does
+  // this to a grave stops to finish the butt.
+  kerbstone: {
+    kind: 'greatblade', blade: 'colossus', len: 0.95, color: '#8a8a7a', edge: '#b6b4a2',
+    fuller: '#3d5a38', runes: '#d6d8bc', notched: true,
+    guard: 'stub', guardColor: '#4a4438', grip: '#3e3628', wrap: '#7a6a48',
+    pommel: 'none',
   },
   // A slab of mountain-stone steel split down the middle by the fire
   // it was quenched in; the sawback spine never stopped smoking.

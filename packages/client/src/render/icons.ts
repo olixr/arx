@@ -5919,6 +5919,46 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   starweaver_robe: { icon: 'robe', color: '#2c3260' },
   starweaver_skirts: { icon: 'legs', color: '#2c3260' },
   starweaver_slippers: { icon: 'boots', color: '#232850' },
+  // THE WORN BOOK's six houses. Every row here is a SEED, not a
+  // drawing: the generic glyph names below only license the wardrobe
+  // block further down to swap each id for its `worn:` product shot,
+  // painted from the very ARMOR STYLE that dresses the rig — so the
+  // pack glyph and the body can never drift. The tint is the piece's
+  // own leather/plate/linen (the darker value on the pieces that hang
+  // low), because the legs painter falls back to it.
+  //
+  // Three resurgences first — each seeded with the SAME glyph its
+  // ancestor wears, so even the seed layer records the kinship:
+  // adderking on adderfang's hood/jerkin, stormtalon on skytalon's,
+  // warvaliant on valiant's plate.
+  adderking_crown: { icon: 'hood', color: '#464a2b' },
+  adderking_jerkin: { icon: 'jerkin', color: '#464a2b' },
+  adderking_leggings: { icon: 'legs', color: '#3c4126' },
+  adderking_boots: { icon: 'boots', color: '#2b3019' },
+  stormtalon_helm: { icon: 'hood', color: '#2b3654' },
+  stormtalon_harness: { icon: 'jerkin', color: '#2b3654' },
+  stormtalon_leggings: { icon: 'legs', color: '#2b3654' },
+  stormtalon_striders: { icon: 'boots', color: '#222b42' },
+  // The legion kept the knight's chassis and only changed the metal:
+  // greathelm + platebody, exactly as valiant wears them.
+  warvaliant_helm: { icon: 'greathelm', color: '#514e3f' },
+  warvaliant_platebody: { icon: 'platebody', color: '#514e3f' },
+  warvaliant_greaves: { icon: 'legs', color: '#514e3f' },
+  warvaliant_sabatons: { icon: 'boots', color: '#514e3f' },
+  // ...then the wave's three character houses: the pack, the weir,
+  // and the bench.
+  packlord_hood: { icon: 'hood', color: '#5b4a33' },
+  packlord_jerkin: { icon: 'jerkin', color: '#5b4a33' },
+  packlord_leggings: { icon: 'legs', color: '#4a3f2d' },
+  packlord_treads: { icon: 'boots', color: '#3a3123' },
+  weirkeeper_hood: { icon: 'hood', color: '#2a5b52' },
+  weirkeeper_jerkin: { icon: 'jerkin', color: '#2a5b52' },
+  weirkeeper_waders: { icon: 'legs', color: '#24504a' },
+  weirkeeper_boots: { icon: 'boots', color: '#1d4139' },
+  wrightcloth_cap: { icon: 'hood', color: '#8d7d5c' },
+  wrightcloth_smock: { icon: 'robe', color: '#8d7d5c' },
+  wrightcloth_skirts: { icon: 'legs', color: '#6b5f45' },
+  wrightcloth_shoes: { icon: 'boots', color: '#6b5f45' },
   scholars_tome: { icon: 'tome', color: '#4a5a9c' },
   wolf_pelt_cloak: { icon: 'cape', color: '#8a90a0' },
   cape_traveler: { icon: 'cape', color: '#7da35a' },
@@ -6201,6 +6241,18 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   ramwall_gauntlets: { icon: 'gauntlet', color: '#6a7080' },
   briarplate_gauntlets: { icon: 'gauntlet', color: '#3e4a38' },
   sentinel_gauntlets: { icon: 'gauntlet', color: '#55607a' },
+  // THE WORN BOOK's hands — where each house's motif lands last: the
+  // gold fang, the storm talon, the legion rank stud, the pack's
+  // stitched tooth, the keeper's open fingertip, the wright's dyed
+  // cuff. Soft classes seed `gloves`, the legion's iron seeds
+  // `gauntlet`; the wardrobe block below turns both into the glove
+  // style's own product shot.
+  adderking_gloves: { icon: 'gloves', color: '#2b3019' },
+  stormtalon_talons: { icon: 'gloves', color: '#222b42' },
+  warvaliant_gauntlets: { icon: 'gauntlet', color: '#514e3f' },
+  packlord_grips: { icon: 'gloves', color: '#4a3f2d' },
+  weirkeeper_gloves: { icon: 'gloves', color: '#24504a' },
+  wrightcloth_mitts: { icon: 'gloves', color: '#8d7d5c' },
 };
 
 // Colorway variants inherit their base piece's painter; the tint comes

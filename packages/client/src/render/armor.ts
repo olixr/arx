@@ -2643,6 +2643,147 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     skirt: 0, collar: 'gorget', midline: true, tassets: true,
     breach: { color: '#a985ff' },
   },
+  // THE WORN BOOK: three houses hunted at the top of their roads, and
+  // every one a RESURGENCE — an early silhouette the eye already knows,
+  // recut at a band that can afford to mean it. The kinship IS the
+  // design: each house keeps its ancestor's own words and MATURES them
+  // (palette, hardware, scale), never trades them for a stranger's.
+  adderking_jerkin: {
+    // ADDERKING — adderfang steeped black by its own years. The khaki
+    // hide has gone deep lacquered olive and the moss diamonds have
+    // gone near-black: the ancestor's DIAMONDHIDE band is still the
+    // chest's one cell, and now the pattern only shows when it turns.
+    // Everything else grows up around it — a tailored yoke under the
+    // band where the little jerkin had bare hide, the road crews'
+    // brassy hardware matured to a king's gold, the hood's two fangs
+    // grown into the pair standing off each shoulder, and a short
+    // scaled skirt the leveling cut never earned. THE VENOM is the
+    // house's one clock: it breathes along this hem and out of the
+    // crown's dark above, and nowhere else.
+    color: '#464a2b', trim: '#21261a', metal: '#c9a04a', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'spiked', pauldronColor: '#3a3f24',
+    pauldronSpikes: 2, pauldronTrim: '#c9a04a', pauldronScale: 1.06,
+    chest: 'diamondhide', yoke: { color: '#3a3f24', stitch: true },
+    skirt: 0.13, underskirt: '#2b3019', bandolier: '#2b3019',
+    belt: { color: '#2b3019', buckle: '#c9a04a' }, pouch: true,
+    glowTrim: '#a8d84a',
+  },
+  stormtalon_harness: {
+    // STORMTALON — skytalon flown up into the weather it was named
+    // for. Same rig, at altitude: the ancestor's feather mantle and
+    // back quiver both survive, because this is the archer who never
+    // changed his gear, only the sky he stands in. The slate deepens
+    // to storm indigo, the hawk's cream tips go WHITE — the edge the
+    // weather put on every feather, and the one bright edge the whole
+    // house repeats — and the fletcher's warm gold cools to storm
+    // silver. Over the mantle, one bold swept pinion per shoulder
+    // carrying that white edge as a filled bevel; a soft wing would
+    // have gone to mush against the vanes beneath it. THE STORM is
+    // the one clock: an arc snaps shoulder to chest and is gone.
+    color: '#2b3654', trim: '#eef4ff', metal: '#c8d2e0', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'bladed', pauldronColor: '#46608c',
+    pauldronTrim: '#eef4ff', pauldronScale: 1.1, chest: 'straps',
+    skirt: 0,
+    plumage: { color: '#46608c', tip: '#c3d2e8' },
+    quiver: { color: '#525f8c', fletch: '#7fd4ff' },
+    belt: { color: '#1e2740', buckle: '#c8d2e0' }, pouch: true,
+    arcsparks: { color: '#7fd4ff' },
+  },
+  warvaliant_platebody: {
+    // WARVALIANT — the storybook knight's harness taken at a ford and
+    // re-issued by a legion armorer. The silhouette is valiant's,
+    // unchanged and on purpose: cuirass, lapped lames, the chevron on
+    // the breast, the surcoat cinched at the waist — the shape a child
+    // would still draw. Everything ELSE belongs to the legion now: the
+    // mirror finish scoured off to a drab working iron, the tourney
+    // gold beaten down to issue brass, rivets punched through the
+    // seams in ranks, tassets hung for the march the tourney never
+    // made, and the crimson surcoat restitched in the legion's own
+    // banner oxblood (the hobgoblin line's colour, verbatim). No
+    // signature light anywhere on it: issue kit does not shine, and
+    // the refusal is the whole read.
+    color: '#514e3f', trim: '#9c8248', metal: '#6a6656', cls: 'plate',
+    silhouette: 'cuirass', pauldron: 'layered', pauldronColor: '#5c5849',
+    pauldronTrim: '#9c8248', pauldronScale: 1.12, chest: 'plate',
+    emblem: 'chevron', emblemScale: 1.15, skirt: 0, collar: 'gorget',
+    midline: true, rivetSeams: true, tassets: true,
+    tabard: { color: '#8e2f2c', trim: '#9c8248' },
+  },
+  // THE WORN BOOK's other three houses — the wave's CHARACTER pieces,
+  // and the first wardrobes in the game that speak about keeping a
+  // beast, working a river, and standing at a bench. None of the
+  // three is a hunted trophy set, so none of them wears a light: the
+  // read has to come from what the work put on the garment. The two
+  // craft houses keep the honesty their lane is for (wayfarer's law —
+  // real hardware, counted devices, no signature glow); the pack
+  // house is a drop set and spends its allowance on MASS and MOTION
+  // instead of on a glow that a hide would have no business carrying.
+  packlord_jerkin: {
+    // PACKLORD — named for the beast, not the hunter. The houndmaster
+    // wears the pack: a grizzled pelt lying over each shoulder and
+    // carried on round the throat as one collar (mane and mantle are
+    // the same hide, so they must be the same two values), the hide
+    // itself gone road-brown under it, and the beast's own brush
+    // still hanging at the trailing hip — THE BRUSH is this house's
+    // living word, kicked by the stride the way the fringe is: motion
+    // where the hunted houses put light, because a working pelt has
+    // an opinion and a pack set should never glow. The chest is the
+    // HARNESS: the strap and buckle a handler already owns, over a
+    // stitched yoke, with the treat pouch on the belt beside it. The
+    // brightest thing on the whole rig is the grizzle at the pelt's
+    // tips — bronze is hardware and stays hardware.
+    color: '#5b4a33', trim: '#2b2318', metal: '#a8763c', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'fur', pauldronColor: '#7d6e54',
+    pauldronTrim: '#c4b593', pauldronScale: 1.14, chest: 'straps',
+    fringe: true, skirt: 0.12, underskirt: '#3e3325',
+    collar: 'fur', collarColor: '#8a7c62',
+    yoke: { color: '#483c2a', stitch: true },
+    tail: { color: '#4a3f2d', tip: '#c4b593' },
+    belt: { color: '#2b2318', buckle: '#a8763c' }, pouch: true,
+  },
+  weirkeeper_jerkin: {
+    // WEIRKEEPER — the river worker, and deliberately NOT the
+    // kingfisher: that house went to sea and came back a leviathan,
+    // this one stayed at the weir. Pike skin lapped as a true scale
+    // COAT (a skin has no front or back — the rows wrap), its wet
+    // crescents caught in a pale water-green rather than the
+    // leviathans' nacre, and over it the thing the whole set is
+    // about: TARRED NET CORD crossed both ways and knotted at the
+    // sternum, because a keeper wears his net between hauls. The
+    // shoulders are the only hard corners on it — one crab plate
+    // each, shell-orange against all that green, which is where the
+    // set's warm note begins and ends. Craft honesty: brass for
+    // hardware, a short oiled apron off the belt, and no light
+    // anywhere.
+    color: '#2a5b52', trim: '#7f9a86', metal: '#9fc0a8', cls: 'leather',
+    silhouette: 'jerkin', pauldron: 'round', pauldronColor: '#8a4a32',
+    pauldronTrim: '#d09a68', pauldronScale: 1.06, chest: 'scales',
+    skirt: 0.14, underskirt: '#1d4139',
+    yoke: { color: '#20463d', stitch: true },
+    cords: { color: '#b8ad86' },
+    belt: { color: '#1d4139', buckle: '#c0aa72' }, pouch: true,
+  },
+  wrightcloth_smock: {
+    // WRIGHTCLOTH — the master-wright at the bench, and the one cloth
+    // set in the wardrobe that wears a TABARD: an apron is a front
+    // panel cinched at the waist, which is exactly what that word
+    // paints, and the smith's leather over the tailor's linen is the
+    // set's whole argument. Under it the linen is QUILTED (a bench
+    // smock is padded, not draped) and the salvage forgeplate is
+    // lapped as lames at the shoulders, where a working hand takes
+    // its knocks. The tool-straps cross the apron afterward, because
+    // straps go on last. Two deliberate refusals: no belled sleeve —
+    // the wright's arm is rolled to the elbow and the mitts own the
+    // forearm — and a skirt hemmed SHORT (0.22 against the mage
+    // lane's 0.32), because a bench floor is never clean.
+    color: '#8d7d5c', trim: '#4a3728', metal: '#8a8272', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'layered', pauldronColor: '#6b6760',
+    pauldronTrim: '#9a958a', pauldronScale: 1.04, chest: 'straps',
+    skirt: 0.22, underskirt: '#6b5f45', folds: true, quilt: true,
+    sleeve: '#7d6f51',
+    tabard: { color: '#4a3728', trim: '#7a5f3e' },
+    belt: { color: '#3a2c20', buckle: '#a08a5c' }, pouch: true,
+  },
 };
 
 export const HELM_STYLES: Record<string, HelmStyle> = {
@@ -2981,6 +3122,89 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     color: '#37304f', trim: '#f1e9ff', kind: 'gatehelm', jaw: '#494259',
     keystone: { color: '#a985ff', glass: '#4c4176' },
   },
+  // THE WORN BOOK's heads. Two hoods and a greathelm — the same three
+  // chassis their ancestors wore, because a resurgence you cannot
+  // recognise is just a new set.
+  adderking_crown: {
+    // The little hood's two dry fangs come back GOLD-CAPPED at the
+    // mouth of the opening, and the face behind them is given up to
+    // the dark: a folded mask over the jaw, the brow band black on
+    // black, and the venom burning where the eyes should be. The
+    // ancestor's brow gem matures from flat gold to amber — the same
+    // stone the gauntlet wears at the wrist. The little one bit; this
+    // one decides.
+    color: '#464a2b', trim: '#21261a', kind: 'hood', mask: '#21261a',
+    gem: { color: '#e0902c' }, fangs: { color: '#c9a04a' },
+    emberEyes: { color: '#a8d84a' },
+  },
+  stormtalon_helm: {
+    // The crest is up and stays up: skytalon's three swept vanes
+    // recut storm-indigo with the house's white edge on every tip,
+    // over a hood whose brow band is that same white — the one bright
+    // line on a head otherwise given to the weather. The lower face
+    // folds into shadow (the raptor line at its most severe; the
+    // ancestor showed its whole chin), and the brow stone cools from
+    // the hawk's warm teal to storm glass.
+    color: '#2b3654', trim: '#eef4ff', kind: 'hood', mask: '#1e2740',
+    crestfeathers: { colors: ['#46608c', '#eef4ff'] },
+    gem: { color: '#7fd4ff' },
+  },
+  warvaliant_helm: {
+    // The tall tourney crest is still there — sawn to a stub of plain
+    // iron and re-plumed in legion black where a tournament red used
+    // to fly. The knight's clean eye slit is gone: the legion re-cut
+    // the face as a REINFORCED CROSS, because a bare dark slit on a
+    // scoured shell is no face at all (the redmarch law), and brass
+    // edges it where gold once did.
+    color: '#514e3f', trim: '#9c8248', kind: 'greathelm', visor: 'cross',
+    crest: { color: '#7a7568' }, plume: { color: '#453b31' },
+  },
+  // The wave's other three heads. All three keep the face — a
+  // houndmaster who cannot be read by a dog, a keeper who cannot see
+  // his line and a wright who cannot see his work are all nonsense —
+  // so the mystery planes the hunted houses wear stay off these.
+  // Each spends its budget on ONE crown device instead.
+  packlord_hood: {
+    // THE BRISTLE CREST, worn as it grew: the ridge off the pack
+    // beast's back standing upright along the hood's centerline,
+    // near-black so it reads as pure silhouette at any range (dogs
+    // read it before people do). ONE crown device only — pricked ears
+    // over a bristle ridge over the hood's own point is three crowns
+    // on one skull, and the courier's pineapple lesson holds here
+    // too. The grizzled mane rings the opening the way the pelt rings
+    // the throat below it (same two values as the collar — one hide),
+    // and the brow band is plain harness leather with a single bronze
+    // ring set in it: this house's jewellery is tack.
+    color: '#5b4a33', trim: '#2b2318', kind: 'hood',
+    ruff: { color: '#8a7c62' },
+    spikesCrown: { color: '#332a1d' },
+    gem: { color: '#a8763c' },
+  },
+  weirkeeper_hood: {
+    // THE FRILL, still holding its colors: skral frill fanned back off
+    // the TEMPLES rather than the centerline — a frill grows in a
+    // pair, at the sides of a head, and taking the temple blades
+    // instead of a crown crest also keeps this head's silhouette
+    // clear of every crested hood in the wardrobe. It is the one
+    // saturated thing the set owns. Under it an oiled fleece collar
+    // frames the face (a keeper stands in spray all day) and the brow
+    // band runs pale water-green, the color the rest of the kit only
+    // gets as a wet crescent.
+    color: '#2a5b52', trim: '#7f9a86', kind: 'hood',
+    ruff: { color: '#5f7d68' },
+    fins: { color: '#45a184' },
+  },
+  wrightcloth_cap: {
+    // THE FOLDED CAP: the plainest head in the wave, and deliberately
+    // so — a linen coif whose brow band IS the riveted salvage plate
+    // (the hood's trim bar, spent on the one piece of armour a bench
+    // worker actually needs), with a single copper rivet boss set at
+    // its center. Nothing rises off the crown. The craft lane earns
+    // its read by being right, not by being crowned; wayfarer's hood
+    // makes the same bargain a road lower.
+    color: '#8d7d5c', trim: '#6e6a60', kind: 'hood',
+    gem: { color: '#b06a30' },
+  },
 };
 
 export const LEG_STYLES: Record<string, LegStyle> = {
@@ -3087,6 +3311,30 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   palethorn_greaves: { kind: 'greaves', thigh: '#8d9299', shin: '#b8bec8', knee: 'plate', kneeColor: '#b0703c' },
   kingsmane_greaves: { kind: 'greaves', thigh: '#8a8478', shin: '#e8e4da', knee: 'plate', kneeColor: '#c9a23c' },
   gatefall_greaves: { kind: 'greaves', thigh: '#2c2542', shin: '#494259', knee: 'plate', kneeColor: '#8b81ab' },
+  // THE WORN BOOK. The leather pair keeps the MUTED register at the
+  // leg (the calffin verdict: a bright chip down there reads as a
+  // floating tooth) — the venom and the storm-white both stay above
+  // the belt. Only the plate house wears its trim at the knee.
+  // Scaled to the ankle: olive thigh into the near-black shin, bound
+  // off in dulled king's gold where the ancestor tied moss cord.
+  adderking_leggings: { kind: 'wraps', thigh: '#3c4126', shin: '#2b3019', knee: 'wrap', kneeColor: '#9a7f3e' },
+  // Cut for the long stand: a hard slate cop over indigo hide — the
+  // brace the ancestor's soft knee wrap never gave the archer.
+  stormtalon_leggings: { kind: 'wraps', thigh: '#2b3654', shin: '#222b42', knee: 'plate', kneeColor: '#7d8fb4' },
+  // Parade steel beaten back into issue kit: drab iron, brass poleyn.
+  warvaliant_greaves: { kind: 'greaves', thigh: '#3f3c31', shin: '#514e3f', knee: 'plate', kneeColor: '#8a7440' },
+  // Bound in cord and tooth for the long lope: hide thigh into a
+  // darker shin, tied off at the knee in the pelt's own grizzle so
+  // the leg answers the mane above it.
+  packlord_leggings: { kind: 'wraps', thigh: '#4a3f2d', shin: '#3a3123', knee: 'wrap', kneeColor: '#8a7c62' },
+  // Sealed to the hip and SHELLED at the knee — the one crab plate
+  // below the belt, quoting the shoulders exactly. The leg keeps the
+  // muted register: the frill's green never comes down here.
+  weirkeeper_waders: { kind: 'wraps', thigh: '#24504a', shin: '#1d4139', knee: 'plate', kneeColor: '#8a4a32' },
+  // The one cloth skirt in the wardrobe that admits to a knee: the
+  // hem is cut short, so the leg is on show, and a wright kneels at
+  // his work — a scrap-forgeplate cop over soot-dark linen.
+  wrightcloth_skirts: { kind: 'pants', thigh: '#6b5f45', shin: '#5c5240', knee: 'plate', kneeColor: '#6e6a60' },
 };
 
 export const BOOT_STYLES: Record<string, BootStyle> = {
@@ -3167,6 +3415,33 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   palethorn_sabatons: { color: '#b8bec8', height: 0.14, toe: '#8d9299', spike: true, cuff: { color: '#b0703c' } },
   kingsmane_sabatons: { color: '#e8e4da', height: 0.15, toe: '#c9a23c', cuff: { color: '#2c3a5e' } },
   gatefall_sabatons: { color: '#3e3560', height: 0.16, toe: '#8b81ab', cuff: { color: '#494259' } },
+  // THE WORN BOOK.
+  // They cross dry leaves the way the old hood did: the ancestor's
+  // ivory shaft lacing re-laid in dulled gold over near-black scale.
+  adderking_boots: { color: '#2b3019', height: 0.14, wrap: { color: '#9a7f3e' }, cuff: { color: '#3c4126' } },
+  // THE TALON FULLY REALISED — the house's motif carried to the
+  // ground: a capped fore-talon at the toe and the hind spur standing
+  // off the shaft top, both in the muted storm silver so the foot
+  // reads as a bird's without stealing the eye from the white edge
+  // above. The ancestor's cuff stays, in the plumage's own blue.
+  stormtalon_striders: { color: '#222b42', height: 0.14, toe: '#8ea0bc', spike: true, cuff: { color: '#46608c' } },
+  // The gold went to the paymaster, and the iron under it never
+  // noticed: an iron toe cap and nothing else. The one piece in the
+  // house that carries NO brass — a boot ankle is a fat colour mass
+  // in this grammar, and brass down there would have read as the
+  // parade gold the legion stripped off.
+  warvaliant_sabatons: { color: '#514e3f', height: 0.14, toe: '#6a6656' },
+  // Wide soled for open ground, and the only boot in the house that
+  // gets to wear the pelt: cord lacing up the shaft under a grizzled
+  // fur top, so the pack runs crown to heel.
+  packlord_treads: { color: '#3a3123', height: 0.13, wrap: { color: '#6e5f46' }, fur: { color: '#8a7c62' } },
+  // Tall for standing in the current, lashed in tarred cord, and
+  // studded at the toe in brass for wet stone. No green down here
+  // (the calffin verdict): the water-pale stays above the belt.
+  weirkeeper_boots: { color: '#1d4139', height: 0.16, toe: '#9a8a5c', wrap: { color: '#b8ad86' } },
+  // Plate capped at the toe against a dropped anvil, on a low linen
+  // shoe — a bench worker's foot, not a marching one.
+  wrightcloth_shoes: { color: '#6b5f45', height: 0.09, toe: '#6e6a60', cuff: { color: '#4a3728' } },
 };
 
 /**
@@ -3518,6 +3793,65 @@ export const GLOVE_STYLES: Record<string, GloveStyle> = {
     color: '#3e3560', hand: 'gauntlet', bracer: '#37304f',
     cuff: { color: '#494259', kind: 'flare' },
     knuckle: { color: '#a985ff', kind: 'gem' },
+  },
+  // THE WORN BOOK: each pair is where its house's motif lands last —
+  // the fang, the talon, the rank stud.
+  adderking_gloves: {
+    // Amber at the wrist and a gold fang laid along each knuckle: the
+    // ancestor's raw ivory claws, capped the way the crown's are — a
+    // step deeper than the crown's gold on purpose, because at rest
+    // both fists hang together at the waist and the pair reads as ONE
+    // mass; the brightest gold in the house belongs at the brow.
+    color: '#2b3019', hand: 'glove', bracer: '#3c4126',
+    cuff: { color: '#e0902c', kind: 'band' },
+    knuckle: { color: '#a8863a', kind: 'claws' },
+  },
+  stormtalon_talons: {
+    // Silver at the knuckle, hooked for the stoop — skytalon's gold
+    // talons cooled to the house's storm metal, off a cuff wearing
+    // the white edge every feather on this rig carries.
+    color: '#222b42', hand: 'glove', bracer: '#2b3654',
+    cuff: { color: '#eef4ff', kind: 'band' },
+    knuckle: { color: '#c8d2e0', kind: 'claws' },
+  },
+  warvaliant_gauntlets: {
+    // The chevron at the cuff is hammered flat and still legible: the
+    // tourney pair's bright hand plate re-punched as ranks of brass
+    // studs, on an iron vambrace mouth where the gold flare was.
+    color: '#514e3f', hand: 'gauntlet', bracer: '#3f3c31',
+    cuff: { color: '#5e5b4b', kind: 'flare' },
+    knuckle: { color: '#9c8248', kind: 'studs' },
+  },
+  packlord_grips: {
+    // The hand that feeds and the hand that signals are the same
+    // hand: a fitted hide glove off a fur cuff — the pelt reaching
+    // its last station, wrist after shoulder after throat — with a
+    // stitched tooth laid along each knuckle. Bone, not metal: this
+    // house forges nothing, it keeps what the pack already had, and
+    // the tooth is a full value step off the hide so the fist reads
+    // at range without borrowing the crown's bronze.
+    color: '#4a3f2d', hand: 'glove', bracer: '#3a3123',
+    cuff: { color: '#8a7c62', kind: 'fur' },
+    knuckle: { color: '#ddd2b4', kind: 'claws' },
+  },
+  weirkeeper_gloves: {
+    // Open at the fingertip, because a keeper ties knots all day and
+    // a line runs through these — the fingerless cut is the whole
+    // design, so nothing rides the knuckles (a device there would sit
+    // straight on top of the bare fingers). An oiled roll cuff in the
+    // set's pale water-green tops a green-black working glove.
+    color: '#24504a', hand: 'glove', bracer: '#1d4139',
+    cuff: { color: '#7f9a86', kind: 'roll' }, fingerless: true,
+  },
+  wrightcloth_mitts: {
+    // Two layers of linen wound on, a scrap of forgeplate across the
+    // back of the hand, and the cuff carrying the mark the whole set
+    // is named for: DYE. It is the only cool color anywhere on the
+    // wright — the stain a tailor's hands live with, kept to one
+    // place so it reads as work and not as trim.
+    color: '#8d7d5c', hand: 'wrap', bracer: '#7d6f51',
+    cuff: { color: '#41546b', kind: 'roll' },
+    knuckle: { color: '#6e6a60', kind: 'plate' },
   },
 };
 
