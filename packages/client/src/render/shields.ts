@@ -360,23 +360,31 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
    * enamel, which is the difference between a soldier's shield and a
    * thing a smith was proud of.
    */
+  /**
+   * TOWER SHIELD — THE CROSS TOWER (v2, 2026-08-17: the knight's
+   * recut against the user's references). The line-knight's board:
+   * a deep navy door in a silver riveted frame, bearing one thing —
+   * a full-height worked SILVER CROSS, flared at every end, crowned
+   * with wing-curls, a single gold heart at the crossing. Static by
+   * design: a soldier's shield holds still. Owners: silver is the
+   * frame's and the cross's; the navy owns the field; the one gold
+   * is the heart's.
+   */
   tower_shield: {
     shape: 'tower',
     material: 'steel',
-    face: '#9aa1ab',
-    faceAlt: '#2f3a5e',
-    field: 'pale',
-    rim: '#5d6472',
-    // No umbo: on a pavise the riveted lozenge PLATE is the boss, and
-    // the signature paints it in the face's own design space.
-    device: 'diamond',
-    deviceColor: '#dde3ec',
+    face: '#2c3a5e',
+    faceAlt: '#37476e',
+    rim: '#b9c2ce',
+    device: 'cross',
+    deviceColor: '#ccd4de',
     studs: true,
     curve: 0.3,
     strapColor: '#3f3830',
-    sig: 'pavise',
+    sig: 'crosstower',
     tier: 3,
   },
+
   /**
    * RUNG FOUR — a slab of the glacier, carried. Where the pavise is a
    * built thing, this one reads as CALVED: a squared wall of pale steel
@@ -430,26 +438,36 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
    * across the whole face a broad brass cross — the bulwark's own
    * daylight — with a brass umbo standing proud at the crossing.
    */
+  /**
+   * BULWARK BASTION — THE DARK BASTION (v2, 2026-08-17: the ornate
+   * recut against the user's reference). Near-black iron in a bronze
+   * frame whose SILHOUETTE is the ornament — cusped scallops from
+   * crown point to flared heel — bearing a bronze CROSS-FLEURY, two
+   * S-hooks flanking it, six dome bosses, and two drop-spikes off the
+   * lower cusps. Static: bronze does not perform. Owners: bronze is
+   * the smith's; the near-black iron owns everything else.
+   */
   bulwark_bastion: {
     shape: 'bastion',
     material: 'steel',
-    face: '#5a6270',
-    faceAlt: '#454d5a',
-    field: 'quarter',
-    // The binding is DARK brass and the cross is bright: both are the
-    // set's one warm metal, separated by value instead of hue, or the
-    // crenellated crown and the charge merge into one brass jumble
-    // exactly where the eye lands first.
-    rim: '#7d6330',
-    boss: '#d8b76a',
+    face: '#2b2e30',
+    faceAlt: '#383c3e',
+    rim: '#8a6b42',
     device: 'cross',
-    deviceColor: BRASS,
+    deviceColor: '#a8834e',
     studs: true,
-    curve: 0.32,
+    spikes: true,
+    // Two bronze drops off the heel cusps — the reference's hangers.
+    spikeAngles: [1.31, 1.83],
+    spikeLen: 1.2,
+    spikeW: 0.06,
+    spikeColor: '#8a6b42',
+    curve: 0.3,
     strapColor: '#3f3830',
     sig: 'bulwark',
     tier: 5,
   },
+
   /**
    * THE CHAMPION'S OWN — grown, not forged. The Skeleton Champion's
    * wall: fused ribs standing in a scalloped silhouette (every bump on
@@ -1079,9 +1097,12 @@ const OUTLINES: Record<ShieldShape, number[]> = {
     -0.82, 0.28, -0.95, -0.3, -0.62, -0.78,
   ],
   // The pavise: a cut crown, straight walls, clipped heels.
+  // THE CROSS TOWER (the knight's recut): a tall door with a beveled
+  // crown and one long point below the knees — the reference kite-
+  // tower a line of knights plants in the ground.
   tower: [
-    0, -1, 0.72, -0.88, 1.0, -0.5, 1.0, 0.62, 0.7, 1, -0.7, 1, -1.0, 0.62,
-    -1.0, -0.5, -0.72, -0.88,
+    -0.8, -1, 0.8, -1, 0.95, -0.85, 0.95, 0.45, 0.5, 0.75, 0, 1.04,
+    -0.5, 0.75, -0.95, 0.45, -0.95, -0.85,
   ],
   // The calved slab: a flat crown, walls that never taper, a flat heel,
   // and one clipped corner at each of the four turns. The squarest
@@ -1101,9 +1122,16 @@ const OUTLINES: Record<ShieldShape, number[]> = {
   // shoulders, straight walls, and a heel cut to a shallow point. The
   // notch in the crown is the whole silhouette — it reads as
   // architecture from across a field.
+  // THE DARK BASTION (the ornate recut): a cusped, scalloped iron
+  // silhouette — crown point, stepped shoulder scallops, flared heel —
+  // the reference's smith showing off. Cusps kept moderate: deep jags
+  // crumple the wall union at yaw (the frostplate lesson).
   bastion: [
-    -0.56, -1, 0.56, -1, 0.56, -0.88, 1.0, -0.88, 1.0, 0.5, 0.62, 0.9, 0, 1.0,
-    -0.62, 0.9, -1.0, 0.5, -1.0, -0.88, -0.56, -0.88,
+    0, -1.06, 0.34, -0.9, 0.26, -0.74, 0.6, -0.62, 0.52, -0.44,
+    0.9, -0.28, 0.82, 0, 0.9, 0.28, 0.56, 0.42, 0.64, 0.62, 0.3, 0.72,
+    0.4, 0.9, 0, 1.04, -0.4, 0.9, -0.3, 0.72, -0.64, 0.62, -0.56, 0.42,
+    -0.9, 0.28, -0.82, 0, -0.9, -0.28, -0.52, -0.44, -0.6, -0.62,
+    -0.26, -0.74, -0.34, -0.9,
   ],
   // The crowned greatshield: an apex at the crown and shoulders that
   // FLARE wider than the crown — the one outline here whose widest
@@ -2330,7 +2358,7 @@ type FacePainter = (
 const SIGNATURES: Record<string, FacePainter> = {
   buckler: sigBuckler,
   oak_kite: sigOakKite,
-  pavise: sigPavise,
+  crosstower: sigCrosstower,
   frost: sigFrost,
   bulwark: sigBulwark,
   sunforged: sigSunforged,
@@ -2576,40 +2604,22 @@ function sigOakKite(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
 }
 
 /**
- * TOWER SHIELD — three steel planes, an enamelled pale down the
- * middle, two riveted bands, and a lozenge plate. The flutes, brow
- * band and cornerplates are gone: they were seven more edges arguing
- * with a body drawn in four.
+ * TOWER SHIELD — THE CROSS TOWER's field: deep navy in two quiet
+ * planes, and nothing else. The cross is the relief tier's — a
+ * soldier's shield spends its whole allowance on the one thing it
+ * believes in.
  */
-function sigPavise(ctx: CanvasRenderingContext2D, st: ShieldStyle, fr: ShieldFrame, litU: number): void {
-  // Three plates across the width, the middle one standing proud.
-  plates(ctx, st, litU);
-
-  const enamel = st.faceAlt ?? shade(st.face, -60);
-  ctx.fillStyle = SEAM;
-  ctx.fillRect(-0.42, -1.2, 0.84, 2.4);
-  ctx.fillStyle = enamel;
-  ctx.fillRect(-0.38, -1.2, 0.76, 2.4);
-  ctx.fillStyle = shade(enamel, 22);
-  ctx.fillRect(-0.38, -1.2, 0.16, 2.4);
-
-  band(ctx, st, -0.62, 0.17);
-  band(ctx, st, 0.46, 0.17);
-  stud(ctx, -0.72, -0.53, 0.075, BRASS);
-  stud(ctx, 0.72, -0.53, 0.075, BRASS);
-  stud(ctx, -0.72, 0.55, 0.075, BRASS);
-  stud(ctx, 0.72, 0.55, 0.075, BRASS);
-
-  // The charge: a lozenge plate in three flat planes — seat, face,
-  // shadow. Riveted on, not painted on.
-  const c = st.deviceColor ?? shade(st.rim, 40);
-  const ty = -0.08;
-  const R = 0.52;
-  const W = 0.38;
-  poly(ctx, SEAM, [0, ty - R * 1.2, W * 1.2, ty, 0, ty + R * 1.2, -W * 1.2, ty]);
-  poly(ctx, c, [0, ty - R, W, ty, 0, ty + R, -W, ty]);
-  // ONE shadowed plane below the waist — the plate's second cut face.
-  poly(ctx, shade(c, -52), [-W, ty, W, ty, 0, ty + R]);
+function sigCrosstower(
+  ctx: CanvasRenderingContext2D,
+  st: ShieldStyle,
+  fr: ShieldFrame,
+  litU: number,
+): void {
+  ctx.fillStyle = st.face;
+  ctx.fillRect(-1.2, -1.2, 2.4, 2.4);
+  poly(ctx, st.faceAlt ?? shade(st.face, 8), [
+    litU * 0.15, -1.2, litU * 1.2, -1.2, litU * 1.2, 1.2, litU * 0.6, 1.2,
+  ]);
 }
 
 /**
@@ -2743,11 +2753,10 @@ function sigFrost(
 }
 
 /**
- * BULWARK BASTION — brass-bound gunmetal under a broad brass cross.
- * Two bars, each with a dark shadow bar under it and one lit plane on
- * top, four studs in the quarters the cross leaves empty, and the umbo
- * lands on the crossing. The cross is the bulwark set's own device;
- * the shield is where it finally gets room to be big.
+ * BULWARK BASTION — THE DARK BASTION's field: near-black iron in two
+ * worn planes. Every bronze thing on this shield stands off it in
+ * the relief tier; the field's job is to be the night the bronze
+ * reads against.
  */
 function sigBulwark(
   ctx: CanvasRenderingContext2D,
@@ -2755,38 +2764,11 @@ function sigBulwark(
   fr: ShieldFrame,
   litU: number,
 ): void {
-  plates(ctx, st, litU);
-  // The quartered field: the two panels the cross will divide, darkened
-  // on the diagonal so the brass has something to sit against.
-  const alt = st.faceAlt ?? shade(st.face, -18);
-  ctx.fillStyle = alt;
-  ctx.fillRect(-1.2, -1.2, 1.2, 1.2);
-  ctx.fillRect(0, 0, 1.2, 1.2);
-
-  const c = st.deviceColor ?? BRASS;
-  const w = 0.2; // half-width of a bar — narrow enough to clear the merlon
-  // Shadow first, then the bar, then the one lit plane along its
-  // up-screen edge. Painted vertical-then-horizontal so the horizontal
-  // laps OVER — which is how a real cross is riveted together.
-  ctx.fillStyle = SEAM;
-  ctx.fillRect(-w - 0.05, -1.2, (w + 0.05) * 2, 2.4);
-  ctx.fillStyle = c;
-  ctx.fillRect(-w, -1.2, w * 2, 2.4);
-  ctx.fillStyle = shade(c, 30);
-  ctx.fillRect(litU > 0 ? w - 0.09 : -w, -1.2, 0.09, 2.4);
-
-  ctx.fillStyle = SEAM;
-  ctx.fillRect(-1.2, -w - 0.19, 2.4, (w + 0.05) * 2);
-  ctx.fillStyle = c;
-  ctx.fillRect(-1.2, -w - 0.14, 2.4, w * 2);
-  ctx.fillStyle = shade(c, 30);
-  ctx.fillRect(-1.2, -w - 0.14, 2.4, 0.09);
-
-  // Four studs, one in each quarter — where the cross is bolted through
-  // the boards, and nowhere else.
-  for (const u of [-0.72, 0.72]) {
-    for (const t of [-0.7, 0.66]) stud(ctx, u, t, 0.085, shade(c, 40));
-  }
+  ctx.fillStyle = st.face;
+  ctx.fillRect(-1.2, -1.2, 2.4, 2.4);
+  poly(ctx, st.faceAlt ?? shade(st.face, 8), [
+    litU * 0.1, -1.2, litU * 1.2, -1.2, litU * 1.2, 1.2, litU * 0.5, 1.2,
+  ]);
 }
 
 /**
@@ -4986,6 +4968,117 @@ function relSunforged(rc: ReliefCtx, st: ShieldStyle): void {
 }
 
 /**
+ * TOWER SHIELD — THE SILVER CROSS. One worked object running the
+ * door's whole height: bar and crossbar as ringed prisms, flared
+ * finials at every end (un-ringed — they share the cross's ring, the
+ * thin-band law), two wing-curls crowning it, a point below, and the
+ * GOLD HEART set at the crossing.
+ */
+function relCrosstower(rc: ReliefCtx, st: ShieldStyle): void {
+  const silver = st.deviceColor ?? '#ccd4de';
+  const lit = shade(silver, 22);
+  // The bar and the crossbar — the worked core, each ringed.
+  prism(rc, [-0.07, -0.72, 0.07, -0.72, 0.07, 0.6, -0.07, 0.6], 0, 0.3, silver, {
+    wallDark: shade(silver, -38),
+    outline: true,
+  });
+  polyAt(rc, [-0.024, -0.7, 0.024, -0.7, 0.018, 0.58, -0.018, 0.58], 0.3, lit);
+  prism(rc, [-0.5, -0.42, 0.5, -0.42, 0.5, -0.28, -0.5, -0.28], 0.16, 0.36, silver, {
+    wallDark: shade(silver, -38),
+    outline: true,
+  });
+  polyAt(rc, [-0.5, -0.42, 0.5, -0.42, 0.5, -0.37, -0.5, -0.37], 0.36, lit);
+  // The finials: flares at every end, sharing the core's rings.
+  polyAt(rc, [-0.15, -0.88, 0.15, -0.88, 0.07, -0.7, -0.07, -0.7], 0.3, silver);
+  polyAt(rc, [-0.15, -0.88, 0.15, -0.88, 0.15, -0.84, -0.15, -0.84], 0.3, lit);
+  polyAt(rc, [-0.64, -0.44, -0.5, -0.48, -0.5, -0.22, -0.64, -0.26], 0.36, silver);
+  polyAt(rc, [0.64, -0.44, 0.5, -0.48, 0.5, -0.22, 0.64, -0.26], 0.36, silver);
+  polyAt(rc, [-0.12, 0.58, 0.12, 0.58, 0, 0.84], 0.3, silver);
+  // The wing-curls crowning the flare.
+  polyAt(rc, [-0.15, -0.84, -0.34, -0.94, -0.2, -0.72], 0.3, shade(silver, -8));
+  polyAt(rc, [0.15, -0.84, 0.34, -0.94, 0.2, -0.72], 0.3, shade(silver, -8));
+  // THE GOLD HEART, set at the crossing.
+  const gold = '#d9a940';
+  polyAt(rc, [0, -0.47, 0.11, -0.35, 0, -0.23, -0.11, -0.35], 0.44, gold);
+  polyAt(rc, [0, -0.44, 0.07, -0.35, 0, -0.27, -0.07, -0.35], 0.48, shade(gold, 26));
+  strokeAt(rc, [0, -0.47, 0.11, -0.35, 0, -0.23, -0.11, -0.35], 0.44);
+}
+
+/**
+ * BULWARK BASTION — THE SMITH'S BRONZE. The cross-fleury (ringed core,
+ * flared un-ringed tips, a blade point below), two S-hooks curling off
+ * its foot on deep-bronze under-bands, six dome bosses from crown to
+ * heel, and two hanging drops — the reference's whole inventory, each
+ * piece one bold bronze mass on the near-black iron.
+ */
+function relBulwark(rc: ReliefCtx, st: ShieldStyle): void {
+  const bronze = st.deviceColor ?? '#a8834e';
+  const lit = shade(bronze, 20);
+  // The cross-fleury: core ringed, tips flared.
+  prism(rc, [-0.055, -0.52, 0.055, -0.52, 0.055, 0.18, -0.055, 0.18], 0, 0.28, bronze, {
+    wallDark: shade(bronze, -36),
+    outline: true,
+  });
+  polyAt(rc, [-0.02, -0.5, 0.02, -0.5, 0.015, 0.16, -0.015, 0.16], 0.28, lit);
+  prism(rc, [-0.36, -0.3, 0.36, -0.3, 0.36, -0.18, -0.36, -0.18], 0.14, 0.32, bronze, {
+    wallDark: shade(bronze, -36),
+    outline: true,
+  });
+  polyAt(rc, [-0.36, -0.3, 0.36, -0.3, 0.36, -0.26, -0.36, -0.26], 0.32, lit);
+  polyAt(rc, [-0.13, -0.62, 0.13, -0.62, 0, -0.48], 0.28, bronze);
+  polyAt(rc, [-0.46, -0.32, -0.36, -0.36, -0.36, -0.12, -0.46, -0.16], 0.32, bronze);
+  polyAt(rc, [0.46, -0.32, 0.36, -0.36, 0.36, -0.12, 0.46, -0.16], 0.32, bronze);
+  polyAt(rc, [-0.09, 0.16, 0.09, 0.16, 0, 0.4], 0.28, bronze);
+  // THE HOOKS: two curls off the cross's foot, deep bands under bronze.
+  for (const sgn of [-1, 1]) {
+    const hook: Array<[number, number]> = [
+      [sgn * 0.12, 0.08], [sgn * 0.32, 0.12], [sgn * 0.44, 0.28], [sgn * 0.4, 0.46],
+    ];
+    for (const [w, tone, h] of [[0.055, shade(bronze, -34), 0.2], [0.034, bronze, 0.24]] as const) {
+      const { ctx } = rc;
+      ctx.fillStyle = tone;
+      ctx.beginPath();
+      for (let i = 0; i + 1 < hook.length; i++) {
+        const [x0, t0] = hook[i]!;
+        const [x1, t1] = hook[i + 1]!;
+        const dx = x1 - x0;
+        const dt = t1 - t0;
+        const L = Math.hypot(dx, dt) || 1;
+        const nx = (-dt / L) * w;
+        const nt = (dx / L) * w;
+        ctx.moveTo(rPx(rc, x0 + nx, h), rPy(rc, x0 + nx, t0 + nt, h));
+        ctx.lineTo(rPx(rc, x1 + nx, h), rPy(rc, x1 + nx, t1 + nt, h));
+        ctx.lineTo(rPx(rc, x1 - nx, h), rPy(rc, x1 - nx, t1 - nt, h));
+        ctx.lineTo(rPx(rc, x0 - nx, h), rPy(rc, x0 - nx, t0 - nt, h));
+        ctx.closePath();
+      }
+      ctx.fill();
+    }
+    // The horn's tip, curling back in.
+    polyAt(rc, [sgn * 0.4, 0.42, sgn * 0.46, 0.5, sgn * 0.36, 0.56, sgn * 0.33, 0.47], 0.26, lit);
+  }
+  // THE DOMES: six bosses, crown to heel.
+  const dome = (u: number, t: number, r: number): void => {
+    const oct: number[] = [];
+    for (let k = 0; k < 8; k++) {
+      const a = Math.PI / 8 + (k / 8) * Math.PI * 2;
+      oct.push(u + Math.cos(a) * r, t + Math.sin(a) * r);
+    }
+    prism(rc, oct, 0, 0.26, shade(bronze, -8), { wallDark: shade(bronze, -36), shadow: false });
+    polyAt(rc, [u - r * 0.5, t - r * 0.55, u + r * 0.5, t - r * 0.55, u, t - r * 0.1], 0.26, lit);
+  };
+  dome(0, -0.82, 0.1);
+  dome(-0.26, -0.56, 0.075);
+  dome(0.26, -0.56, 0.075);
+  dome(-0.32, 0.14, 0.075);
+  dome(0.32, 0.14, 0.075);
+  dome(0, 0.64, 0.09);
+  // The hanging drops, floating off the lower cusps.
+  polyAt(rc, [-0.15, 0.44, -0.09, 0.52, -0.15, 0.68, -0.21, 0.52], 0.3, shade(bronze, -4));
+  polyAt(rc, [0.15, 0.44, 0.21, 0.52, 0.15, 0.68, 0.09, 0.52], 0.3, shade(bronze, -4));
+}
+
+/**
  * SUNFORGED AEGIS — THE HORNED CREST. Two great gold horns sweeping
  * up and out past the silhouette from the stone's mount, a star of
  * rays around the stone (the side pair longest, the reference's own
@@ -5673,6 +5766,8 @@ const RELIEFS: Record<string, ReliefPainter> = {
   frost: relFrost,
   kingsward: relKingsward,
   sunforged: relSunforged,
+  crosstower: relCrosstower,
+  bulwark: relBulwark,
   oath: relOath,
 };
 

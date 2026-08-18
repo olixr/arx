@@ -409,3 +409,34 @@ shoulders, long taper). Fittings: faceAlt + star + studs + spikes = 4 (t6
 floor holds). Owners: amber/gold = the sun's; pale steels = the wall's;
 white = the stone's heart and the flare. Gates: shields tsc clean, client
 669/669.
+
+## TOWER SHIELD v2 + BULWARK BASTION v2 — THE CROSS TOWER & THE DARK BASTION (as-built, 2026-08-17)
+
+The tower recuts against the user's three references, split into two
+identities per the user's own invitation ("if you need to make two
+shields") — ninth and tenth premium passes. BOTH STATIC: forged metal
+does not perform (the Spiked Wall's precedent).
+
+**THE CROSS TOWER** (`tower_shield`, t3, sig 'crosstower' replacing
+'pavise'): the line-knight's board — recut 'tower' outline (beveled crown,
+long point below the knees), deep navy field in two quiet planes, silver
+riveted frame (rim + studs), and ONE thing on it: `relCrosstower`'s
+full-height worked SILVER CROSS — bar and crossbar as ringed prisms,
+flared finials at every end sharing the core's rings (thin-band law),
+wing-curls crowning it, a point below, and the GOLD HEART set at the
+crossing (the one warm accent). Fittings: faceAlt + cross + studs = 3
+(t3 floor holds).
+
+**THE DARK BASTION** (`bulwark_bastion`, t5, sig 'bulwark' rebuilt):
+near-black iron whose SILHOUETTE is the ornament — recut 'bastion'
+outline with cusped scallops crown-point to flared heel (cusps kept
+moderate; deep jags crumple the wall union at yaw — the frostplate
+lesson). `relBulwark`: bronze CROSS-FLEURY (ringed core, flared un-ringed
+tips, blade point below), two open S-HOOK ram-horns off its foot on
+deep-bronze under-bands (the first cut closed them into a wreath —
+opened), six dome bosses crown to heel, two hanging drops, and two
+bronze drop-spikes off the heel cusps (spike plan). Fittings: faceAlt +
+cross + studs + spikes = 4 (t5 floor holds).
+
+Gates: shields tsc clean, client 669/669; both judged at 4x + full-sweep
+rows; smalls read (cross ✓ ornate bronze badge ✓).
