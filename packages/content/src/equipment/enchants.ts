@@ -147,9 +147,10 @@ export type ProcAction =
   /** Gathering only: more in the basket. */
   | { do: 'yield'; extra: number }
   /**
-   * Mark what is nearby but unseen. `of: 'chest'` is RESERVED GRAMMAR:
-   * node and foe reveals ship on the roster, the cache reveal awaits
-   * the working that wants it. Intent, not rot.
+   * Mark what is nearby but unseen. All three reveals ship on the
+   * roster: node and foe from the founding wave, and the cache reveal
+   * since THE WORN BOOK gave it `kept_ground` — the working that
+   * wanted it finally turned up.
    */
   | { do: 'reveal'; radius: number; of: 'node' | 'chest' | 'foe' }
   /**
@@ -272,9 +273,20 @@ export type EnchantEffect =
   /**
    * THE SWING CHANNEL (buff forge, Phase 2): basics swing `pct`%
    * faster. Aggregate channel, additive across pieces, band-clamped
-   * at the server's one pay site. RESERVED GRAMMAR — no shipped
-   * enchant, temper, or word authors it yet (the armor/regen surge
-   * precedent); wave one prices it against the plan's ledger.
+   * at the server's one pay site.
+   *
+   * RESERVED GRAMMAR, AND RESERVED THE HARD WAY. Wave one shipped two
+   * grips on this channel; the repair wave took them off it and wrote
+   * the reason into law — see THE GEAR HOLDS NO HASTE in
+   * statusLedger.test.ts, which fails on the first authored pct. The
+   * band is 1.5, the page and the shelf spend 1.338 of it, the
+   * calling channel is capped at 1.10 to hold the rest, and worn gear
+   * gets none. The kind stays in the vocabulary because the CALLINGS
+   * may still author it (their gear lane folds here) and because the
+   * /proc dev lever needs the shape. It is not a slot waiting to be
+   * filled by an enchant. If a working wants to hurry a hand, lay
+   * `quicken` on the wearer with a `boon`: bounded, visible, and it
+   * announces itself.
    */
   | { kind: 'swingSpeed'; pct: number }
   | { kind: 'thorns'; amount: number }
@@ -1315,21 +1327,35 @@ export const ENCHANT_DEFS: EnchantDef[] = [
   //
   // Seven workings, and two channels open with them.
   //
-  // THE SWING CHANNEL gets its first roster users ever: two grips that
-  // hurry the hand, and one edge that finds a rhythm and rides it.
-  // THE SWING NUMBERS ARE SMALL ON PURPOSE and the arithmetic is
-  // written down here because it IS the reason. The band caps at
-  // SWING_MULT_MAX 1.5, and before a single piece of gear speaks,
-  // quicken at five stacks (1.04^5 = 1.217) times the quickstep tonic
-  // (1.10) has already spent 1.338 of it. Everything the equipment
-  // lanes may ever add has to fit inside the 12% that is left, and the
-  // SWING ASSEMBLY pin prices the worst wardrobe honestly: one enchant
-  // per slot, the weapon slot counted TWICE (THE DELIBERATE PAIR), a
-  // full house of words, and a tempered blade in each hand. So:
-  //   the grip's +2%  x  the edge's 2% surge, doubled  x  laurelbrand's
-  //   3% = 1.093, and the whole authored assembly folds to 1.463.
-  // A bigger number here would not read as a stronger working. It
-  // would read as a clamp eating the difference in silence.
+  // THE SWING CHANNEL WAS OPENED HERE AND HAS SINCE BEEN CLOSED, and
+  // the story is worth keeping because it is the most expensive
+  // lesson in this file.
+  //
+  // Wave one gave two grips and one edge a share of the swing band,
+  // priced against an assembly that folded quicken, the shelf and the
+  // worn wardrobe — 1.463 of 1.5, and the author wrote the arithmetic
+  // down proudly. The arithmetic was right and the ASSEMBLY was
+  // wrong: it never folded the callings, because a second pin in
+  // callingLedger folded the callings and never folded the gear.
+  // Two green tests, disjoint axes, one pay site multiplying across
+  // both. Seven co-held when-clauses alone reach 1.620; a real
+  // desperate fight reached 2.17 under a 1.5 clamp, and the clamp ate
+  // every bit of it without a word to the player.
+  //
+  // The true division of the band: quicken at five stacks (1.217) and
+  // the quickstep tonic (1.10) spend 1.338 between them, and the
+  // 1.1208 left over belongs to the calling channel, which is capped
+  // at 1.10 so it can never run away again (CALLING_SWING_CAP). What
+  // remains for worn gear is nothing, and that is now a LAW rather
+  // than an accident — THE GEAR HOLDS NO HASTE in statusLedger fails
+  // on the first authored pct, so nobody has to rediscover this.
+  //
+  // The three workings kept their identities and changed their verbs:
+  // the edge's rhythm became WEIGHT, the tier-4 grip hurries the ARTS
+  // instead of the arm (a different dial entirely), and the tier-5
+  // grip stopped hurrying anything and learned to read a fight. They
+  // are better workings for it. Haste was never the interesting
+  // answer — it was just the first one.
   //
   // THE SELF-BLESSING gets its first BONDED pages: two boon scrolls,
   // licensed by name in the register (statusWave GEAR_LICENSED), each
@@ -1344,17 +1370,21 @@ export const ENCHANT_DEFS: EnchantDef[] = [
       E({ kind: 'elementDmg', element: 'storm', pct: 26 }),
       E({ kind: 'crit', pct: 4 }),
       E({
-        // The surge-'swing' channel's first bonded working. Four
-        // strikes buy three seconds of a faster hand, and the pct is
-        // priced against the whole assembly above, not against how
-        // good 2% looks on a card.
+        // THE RHYTHM BECOMES FORCE. This working used to buy three
+        // seconds of a faster hand, and the hand was the one thing
+        // the band could not give it (see THE GEAR HOLDS NO HASTE).
+        // The beat is still the identity — every fourth blow, the
+        // storm arriving on schedule — but it now lands as WEIGHT,
+        // which the damage channel can actually pay. Deliberately not
+        // a chain: thunderchain_edge two tiers below owns the storm's
+        // forking, and a house does not say the same word twice.
         kind: 'proc', id: 'stormbeat', name: 'The Beat Takes Over',
         trigger: { on: 'cadence', every: 4 },
-        action: { do: 'surge', stat: 'swing', pct: 2, ticks: 60 },
+        action: { do: 'surge', stat: 'damage', pct: 12, ticks: 60 },
         icd: 180,
       }),
     ],
-    desc: 'A storm keeps its own time and this steel has learned it. Four blows in, the arm stops asking how fast.',
+    desc: 'A storm keeps its own time and this steel has learned it. Four blows in, the arm stops asking and simply lands.',
   },
 
   // ------------------------------------------------------------ body
@@ -1427,23 +1457,39 @@ export const ENCHANT_DEFS: EnchantDef[] = [
     id: 'quickhand_grip', name: 'Quickhand Grip', prefix: 'Quickhand', tier: 4, slot: 'gloves',
     element: 'storm', level: 58,
     effects: [
-      E({ kind: 'swingSpeed', pct: 1 }),
+      // THE OTHER HASTE. The swing band is spoken for (THE GEAR HOLDS
+      // NO HASTE), but the ability clock is a DIFFERENT dial and an
+      // uncrowded one — swingCooldown's own docstring says so. The
+      // glove's promise is unchanged where it counts: the hands stop
+      // waiting. They just stop waiting on the arts now.
+      E({ kind: 'cooldown', pct: 3 }),
       E({ kind: 'crit', pct: 4 }),
       E({ kind: 'skill', skill: 'onehand', amount: 2 }),
       E({ kind: 'skill', skill: 'archery', amount: 2 }),
     ],
-    desc: 'The hands stop waiting for the rest of you. Everything comes back up a shade sooner.',
+    desc: 'The hands stop waiting for the rest of you. Whatever you know how to do, you can do it again sooner.',
   },
   {
     id: 'duellists_grip', name: "Duellist's Grip", prefix: 'Duelling', tier: 5, slot: 'gloves',
     element: 'storm', level: 80,
     effects: [
-      E({ kind: 'swingSpeed', pct: 2 }),
       E({ kind: 'crit', pct: 5 }),
       E({ kind: 'skill', skill: 'onehand', amount: 3 }),
       E({ kind: 'skill', skill: 'archery', amount: 3 }),
+      E({
+        // THE OPENING. The tier below hurries the arts; this one reads
+        // the fight instead, which is the duellist's whole argument —
+        // six exchanges is long enough to learn somebody, and the
+        // seventh is where that shows. Counted on plain hits, NOT on
+        // crits: a crit-fed crit surge feeds itself, and a working
+        // that sharpens its own trigger is a loop, not a design.
+        kind: 'proc', id: 'the_opening', name: 'The Opening',
+        trigger: { on: 'stacks', per: 'hit', count: 6 },
+        action: { do: 'surge', stat: 'crit', pct: 10, ticks: 80 },
+        icd: 200,
+      }),
     ],
-    desc: 'Somebody who won a great many close things wore these. The tempo of the thing is in the leather.',
+    desc: 'Somebody who won a great many close things wore these. Six exchanges in, the leather has already found the gap.',
   },
 
   // --------------------------------------------------------- offhand

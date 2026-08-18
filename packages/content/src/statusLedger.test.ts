@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  CALLING_SWING_CAP,
   STATUS_BOOK,
   SWING_MULT_MAX,
   WEAKEN_MAX_PCT,
@@ -9,6 +10,7 @@ import {
   type StatusId,
 } from '@arx/shared';
 import { ABILITIES } from './abilities.js';
+import { CALLINGS, CALLING_MAX_RANK, honedCalling } from './callings.js';
 import { NPCS } from './npcs.js';
 import { ITEMS } from './items.js';
 import { MOVESETS } from './movesets.js';
@@ -181,11 +183,72 @@ test('THE SWING ASSEMBLY: the worst authored stack of haste folds inside the ban
   wear(secondTwo);
   for (const say of temperSays) wear(say);
 
-  const assembly = pageMax * shelfMax * artMax * (1 + gearPct / 100) * surgeMult;
+  // THE CALLING AXIS joins the assembly (the repair wave). This pin
+  // used to stop at the gear lane while a SECOND pin in
+  // callingLedger.test.ts assembled the calling lane and stopped at
+  // the gear lane — two green tests, disjoint axes, and a band the
+  // engine multiplies across BOTH. That is how a live overflow of
+  // 2.17 sat under a 1.5 clamp with every gate green. There is now
+  // ONE assembly, and it is this one.
+  //
+  // Callings pay two ways: a gear-lane swingSpeed pct that folds
+  // additively with worn gear (no calling authors one today; the term
+  // is kept so the first that does answers HERE), and when-grants
+  // that ride as calling-channel buffs. The grants MULTIPLY — every
+  // clause whose condition is true at once is held at once — and the
+  // engine caps their product at CALLING_SWING_CAP. Priced as the
+  // worst case: every grant true together, which the cap then binds.
+  let callingGearPct = 0;
+  let callingGrants = 1;
+  for (const [, def] of CALLINGS) {
+    for (const fx of honedCalling(def, CALLING_MAX_RANK)) {
+      if (fx.kind === 'gear' && fx.effect.kind === 'swingSpeed') callingGearPct += fx.effect.pct;
+      if (fx.kind === 'when') callingGrants *= fx.grant.attackSpeedMult ?? 1;
+    }
+  }
+  const callingPart = Math.min(callingGrants, CALLING_SWING_CAP);
+
+  const assembly =
+    pageMax * shelfMax * artMax * (1 + (gearPct + callingGearPct) / 100) * surgeMult * callingPart;
   assert.ok(
     assembly <= SWING_MULT_MAX,
     `the full authored assembly folds to ${assembly.toFixed(3)} — the band is being LEANED ON ` +
       '(the clamp would hide it; the ledger refuses it)',
+  );
+});
+
+test('THE GEAR HOLDS NO HASTE: the swing channel is not a worn stat', () => {
+  // THE STANDING LAW (repair wave, owner's call). The band is 1.5 and
+  // the page and the shelf have spent 1.338 of it between them; the
+  // 1.1208 that remains belongs to the callings, which is a lane the
+  // player CHOOSES rather than one they loot. Haste is deliberately
+  // not an armor identity in this game: it is a page, a consumable,
+  // and a calling. There are far more interesting things for a worn
+  // piece to say, and every one of them is still open.
+  //
+  // This is a LAW, not a budget — it fails on the first pct, so no
+  // future author has to re-derive the arithmetic above to discover
+  // there was never any room. A working that wants to hurry a hand
+  // should lay `quicken` on the wearer through the boon door instead:
+  // the page is bounded, it stacks visibly, and it announces itself.
+  const offenders: string[] = [];
+  const scan = (where: string, effects: readonly EnchantEffect[]): void => {
+    for (const fx of effects) {
+      if (fx.kind === 'swingSpeed') offenders.push(`${where} authors swingSpeed ${fx.pct}%`);
+      if (fx.kind === 'proc' && fx.action.do === 'surge' && fx.action.stat === 'swing') {
+        offenders.push(`${where} authors a surge-'swing' of ${fx.action.pct}%`);
+      }
+    }
+  };
+  for (const e of ENCHANT_DEFS) scan(`enchant ${e.id}`, e.effects);
+  for (const [setId, words] of Object.entries(SET_WORDS)) {
+    for (const w of words) scan(`word ${setId}/${w.pieces}pc`, w.effects);
+  }
+  for (const [weaponId, effects] of Object.entries(TEMPERS)) scan(`temper ${weaponId}`, effects);
+  assert.deepEqual(
+    offenders,
+    [],
+    `the gear lane holds no haste by law — found:\n  ${offenders.join('\n  ')}`,
   );
 });
 

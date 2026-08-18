@@ -202,18 +202,28 @@ export const TEMPERS: Record<string, EnchantEffect[]> = {
   // you want it to, and the eighth blow of a bout is where the noise
   // gets into the arm.
   //
-  // The 3% is PRICED, not chosen: THE SWING ASSEMBLY (statusLedger)
-  // folds quicken at five stacks x the quickstep tonic x the worst
-  // wearable wardrobe against SWING_MULT_MAX, and the page and the
-  // shelf have already spent 1.338 of the 1.5 between them. The plan
-  // proposed 8%; at 8% the assembly leans on the band and the clamp
-  // would eat the difference in silence, which is a lie told to the
-  // player on the item card. The blade's identity is the RHYTHM, and
-  // the rhythm survives the honest number.
+  // THE ROAR ARRIVES, and it is not a faster arm.
+  //
+  // The blade first shipped hurrying the hand by 3%, cut down from a
+  // planned 8% because the assembly leaned on the band. The repair
+  // wave found the truth behind that flinch: the band was ALREADY
+  // spent — quicken and the tonic take 1.338 of the 1.5, the calling
+  // channel takes the rest — so the honest number here was never 8,
+  // or 3, but ZERO. Gear does not hold haste in this game (THE GEAR
+  // HOLDS NO HASTE, statusLedger); haste is a page, a shelf and a
+  // calling.
+  //
+  // So the eighth blow keeps its meaning and changes its verb. A
+  // crowd does not make you faster. It makes the whole ring flinch at
+  // once — and the sand's own prize is the one blade that fights with
+  // the noise on its side. The rhythm is untouched: still the eighth,
+  // still the bout's own count, still the tick-sequence the walking
+  // blade paints. Only now it LANDS on everything close enough to
+  // hear it.
   laurelbrand: [
     { kind: 'proc', id: 'temper_laurelbrand', name: 'The Crowd Keeps Time',
       trigger: { on: 'cadence', every: 8 },
-      action: { do: 'surge', stat: 'swing', pct: 3, ticks: 60 }, icd: 240,
+      action: { do: 'nova', damage: 14, radius: 2.8 }, icd: 240,
       element: 'radiant' },
   ],
 };

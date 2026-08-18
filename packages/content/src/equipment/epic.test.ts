@@ -40,7 +40,10 @@ function power(fx: EnchantEffect): number {
     case 'cooldown': return fx.pct * 2;
     case 'speed': return fx.pct * 4;
     // THE SWING CHANNEL prices as throughput — a swing pct is a
-    // damage pct with extra steps (reserved grammar, no roster user).
+    // damage pct with extra steps. No roster user, and by law there
+    // never will be one from the gear lane: THE GEAR HOLDS NO HASTE
+    // (statusLedger) refuses the first pct. The price stays because
+    // the CALLINGS' gear lane folds through this same kind.
     case 'swingSpeed': return fx.pct * 1.2;
     case 'crit': return fx.pct * 2.5;
     case 'onKillHaste': return fx.ticks * 1.5;

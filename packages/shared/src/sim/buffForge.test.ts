@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  CALLING_SWING_CAP,
   SWING_MULT_MAX,
   SWING_MULT_MIN,
   buffArmor,
@@ -92,6 +93,53 @@ test('the swing channel folds gear with buffs and the band is engine law', () =>
   assert.ok(
     Math.abs(swingMult(1, [buff({ attackSpeedMult: 1.1, stacks: 2 })]) - 1.21) < 1e-9,
     'a stacking quickening deepens per stack',
+  );
+});
+
+test('THE CALLING CAP: the calling channel cannot spend the whole band', () => {
+  const call = (m: number): BuffLike => buff({ attackSpeedMult: m, channel: 'calling' });
+  // One clause is under the cap, so every wardrobe that held at most
+  // one calling grant swings byte-identical to before the cap.
+  assert.ok(Math.abs(swingMult(1, [call(1.08)]) - 1.08) < 1e-9, 'a single clause passes untouched');
+  // Seven co-held clauses — the desperate fight the cap was written
+  // for — fold to 1.620 unguarded. The cap takes them to 1.10, and
+  // this is the assertion that would have caught the original defect:
+  // without the cap this reads SWING_MULT_MAX and the clamp hides it.
+  const seven = [1.08, 1.08, 1.08, 1.08, 1.07, 1.06, 1.05].map(call);
+  assert.ok(
+    Math.abs(swingMult(1, seven) - CALLING_SWING_CAP) < 1e-9,
+    'seven true clauses stop at the cap, not at the band',
+  );
+  // Stacking clauses still PAYS — the cap sits above the best single
+  // grant on purpose, so a second clause is worth holding.
+  assert.ok(swingMult(1, [call(1.08), call(1.06)]) > swingMult(1, [call(1.08)]));
+  // The cap governs the calling lane ALONE: everything else still
+  // multiplies in full and the band still has the last word.
+  assert.ok(
+    Math.abs(swingMult(1, [...seven, buff({ attackSpeedMult: 1.2 })]) - CALLING_SWING_CAP * 1.2) < 1e-9,
+    'an uncapped lane rides on top of the capped one',
+  );
+  // Only the upward direction is capped: a slowing clause is not
+  // rescued by it.
+  assert.ok(Math.abs(swingMult(1, [call(0.8)]) - 0.8) < 1e-9, 'the cap never lifts a slow');
+});
+
+test('THE HONEST ASSEMBLY: the deepest lawful stack of haste lands inside the band', () => {
+  // Every axis at once, as the engine folds them at the one pay site:
+  // quicken at five stacks (the page), the quickstep tonic (the
+  // shelf), the whole calling channel at its cap, and the gear lane
+  // which by law authors NO haste at all. If a future author opens
+  // the gear lane again, this is the pin that goes red.
+  const page = 1.04 ** 5;
+  const shelf = buff({ attackSpeedMult: 1.1, channel: 'tonic' });
+  const callings = [1.08, 1.08, 1.08, 1.08, 1.07, 1.06, 1.05].map((m) =>
+    buff({ attackSpeedMult: m, channel: 'calling' }),
+  );
+  const assembly = swingMult(page, [shelf, ...callings]);
+  assert.ok(
+    assembly < SWING_MULT_MAX,
+    `the deepest lawful assembly folds to ${assembly.toFixed(4)} — it must land INSIDE the band, ` +
+      'not on it, or the clamp is eating a number the player was promised',
   );
 });
 

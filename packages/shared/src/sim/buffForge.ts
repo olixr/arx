@@ -16,8 +16,9 @@
  * |                  |                     | compound (TWO BUCKETS' first lane) |
  * | speedMult        | multiplicative      | stride stacks feel honest          |
  * | attackSpeedMult  | multiplicative,     | THE SWING CHANNEL (born Phase 2):  |
- * |                  | clamped SWING band  | the band is engine law, not        |
- * |                  |                     | authoring discipline               |
+ * |                  | calling channel     | the band is engine law, not        |
+ * |                  | capped, then        | authoring discipline — and the     |
+ * |                  | clamped SWING band  | callings cannot spend it all       |
  * | armor            | sum                 | plates stack                       |
  * | reflectFrac      | max                 | one turned blow, the sharpest      |
  * | regenPer4s       | best-of             | mending doesn't compound           |
@@ -46,6 +47,12 @@ export interface BuffLike {
   dmgMult: number;
   /** Stack count for stacking buffs (absent = 1). */
   stacks?: number;
+  /**
+   * Which lane granted this buff. The fold table reads it for exactly
+   * one rule — THE CALLING CAP on the swing channel — and for nothing
+   * else; every other field folds blind to where it came from.
+   */
+  channel?: string;
 }
 
 const nOf = (b: BuffLike): number => Math.max(1, b.stacks ?? 1);
@@ -120,13 +127,53 @@ export const SWING_MULT_MIN = 0.6;
 export const SWING_MULT_MAX = 1.5;
 
 /**
+ * THE CALLING CAP — the most the whole calling channel may ever lift
+ * the swing, however many when-clauses happen to be true at once.
+ *
+ * WHY IT EXISTS, written down because the arithmetic IS the reason.
+ * Nine callings grant swing under a condition, the best of them 1.08.
+ * Seven of those conditions are simultaneously satisfiable and cost
+ * nothing to hold together at the focus ceiling (102): a dual-wielded
+ * pair of one-handers, below a third health, bleeding, pet standing,
+ * three foes close. That is not a contrived build — it is an ordinary
+ * desperate fight, and it is the exact moment haste is worth having.
+ * Multiplied, those seven fold to 1.620 BEFORE the page, the shelf or
+ * a single worn piece speaks; three of them plus quicken already pass
+ * the band. The clamp caught it, silently, which is the failure: the
+ * player equips a faster glove and nothing happens, forever, and no
+ * card ever says so.
+ *
+ * THE SPLIT, priced against the band rather than chosen: quicken at
+ * five stacks (1.2167) and the quickstep tonic (1.10) have spent
+ * 1.338 of the 1.5 between them, so 1.1208 is the whole of what the
+ * remaining lanes may hold. The callings take 1.10 of it — above the
+ * best single grant, so stacking clauses still pays, and hard-stopped
+ * so it can never run away again — and the gear lane takes NONE. See
+ * THE GEAR HOLDS NO HASTE in enchants.ts: haste is a page, a shelf
+ * and a calling expression in this game, never a worn stat.
+ *
+ * Only the upward direction is capped. A calling that SLOWED a hand
+ * would pass through untouched, and be clamped by the band like
+ * anything else.
+ */
+export const CALLING_SWING_CAP = 1.1;
+
+/**
  * The one swing multiplier: worn gear's channel × every riding
- * buff's, clamped to the band. 1 everywhere = the trained pace, so
- * the pre-forge game swings byte-identical.
+ * buff's, with the calling channel capped first, then clamped to the
+ * band. 1 everywhere = the trained pace, so the pre-forge game swings
+ * byte-identical — and so does every wardrobe holding at most one
+ * calling swing clause, since 1.08 is under the cap.
  */
 export function swingMult(gearMult: number, buffs: readonly BuffLike[]): number {
   let mult = gearMult;
-  for (const b of buffs) mult *= Math.pow(b.attackSpeedMult ?? 1, nOf(b));
+  let calling = 1;
+  for (const b of buffs) {
+    const lift = Math.pow(b.attackSpeedMult ?? 1, nOf(b));
+    if (b.channel === 'calling') calling *= lift;
+    else mult *= lift;
+  }
+  mult *= Math.min(calling, CALLING_SWING_CAP);
   return Math.min(SWING_MULT_MAX, Math.max(SWING_MULT_MIN, mult));
 }
 

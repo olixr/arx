@@ -30,33 +30,26 @@ import { ladderFaults } from './callingLaws.js';
 
 // -------------------------------------------------- the swing assembly
 
-test('THE SWING ASSEMBLY, calling sources in the stack: the worst fold lands inside the band', () => {
-  const pageMax = statusSwingFactor([
-    { id: 'quicken', power: 0, ticksLeft: 1, stacks: STATUS_BOOK.quicken.stacking.max },
-  ]);
-  let shelfMax = 1;
-  for (const [, item] of ITEMS) shelfMax = Math.max(shelfMax, item.buff?.attackSpeedMult ?? 1);
-  let artMax = 1;
-  for (const [, ab] of ABILITIES) artMax = Math.max(artMax, ab.self?.attackSpeedMult ?? 1);
-  // The character axis: gear-lane swingSpeed pct (additive into the
-  // gear mult, per the fold) summed over the DEEPEST rank of every
-  // calling — an unaffordable stack, priced as the worst case on
-  // purpose — and the largest when-grant attackSpeedMult, multiplied.
-  let gearPct = 0;
-  let whenMax = 1;
-  for (const [, def] of CALLINGS) {
-    const deepest = honedCalling(def, CALLING_MAX_RANK);
-    for (const fx of deepest) {
-      if (fx.kind === 'gear' && fx.effect.kind === 'swingSpeed') gearPct += fx.effect.pct;
-      if (fx.kind === 'when') whenMax = Math.max(whenMax, fx.grant.attackSpeedMult ?? 1);
-    }
-  }
-  const assembly = pageMax * shelfMax * artMax * (1 + gearPct / 100) * whenMax;
-  assert.ok(
-    assembly <= SWING_MULT_MAX,
-    `the full authored assembly (callings in) folds to ${assembly.toFixed(3)} — the band is being LEANED ON`,
-  );
-});
+// THE SWING ASSEMBLY USED TO LIVE HERE, and that was the bug.
+//
+// This file assembled page x shelf x art x CALLINGS and stopped at
+// the gear lane; statusLedger.test.ts assembled page x shelf x art x
+// GEAR and stopped at the callings. Both were green. The engine
+// multiplies across both at one pay site, so the true fold was never
+// tested by anything: seven co-held when-clauses alone reached 1.620,
+// and a live desperate fight reached 2.17 against a 1.5 clamp, which
+// the clamp then swallowed in silence.
+//
+// Worse, the assembly here took Math.max over the when-grants where
+// the engine takes their PRODUCT — the one line that made the
+// overflow invisible from this side.
+//
+// THE LAW THAT REPLACES IT: any budget the engine multiplies at ONE
+// pay site is pinned by exactly ONE test. The swing assembly is now
+// whole, and it lives in statusLedger.test.ts beside the page and the
+// shelf it shares the band with. The calling channel's own hard stop
+// is CALLING_SWING_CAP, pinned in buffForge.test.ts where the fold
+// itself lives.
 
 // -------------------------------------------------------- the economy
 
