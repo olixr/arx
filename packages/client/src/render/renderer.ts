@@ -46,6 +46,7 @@ import {
   hashCoords,
   tileEmitter,
   hashString,
+  pointHitsShot,
   pointHitsSolid,
   seatAt,
   STRIKE_CLOCKS,
@@ -5550,6 +5551,44 @@ export class Renderer {
       const [rr, gg, bb] = Renderer.parseRgb(rgb);
       const intensity = Math.min(0.55, a * 1.6);
       this.lights.push({ x, y, r: r * 1.6, rgb: [rr, gg, bb], intensity });
+      this.nextDynamic.push({ x, y, r: r * 2.2, a: intensity });
+    }
+  }
+
+  /**
+   * THE BOLT'S LIGHT FLIES WITH THE BOLT: a projectile's bloom draws
+   * INLINE at the shot's own sorted moment — the forest, walls and
+   * bodies honestly occlude it (the seated-halo law, applied to a
+   * moving source) — while the post pass keeps only a small capped
+   * core glint (brilliance through the leaves, like a lit window
+   * behind a canopy) and the night lighting still takes the full
+   * source. The old post-pass disc floated over every canopy on
+   * screen. Callable only from inside a world-pass draw closure —
+   * (px, py) are the already-projected screen point.
+   */
+  private seatShotGlow(
+    px: number,
+    py: number,
+    x: number,
+    y: number,
+    r: number,
+    rgb: string,
+    a: number,
+  ): void {
+    if (this.bakingMask) return;
+    const ctx = this.ctx;
+    const rr = r * this.camera.scale;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.min(1, a);
+    ctx.drawImage(radialGlowSprite(rgb, GLOW_STOPS, 0.08), px - rr, py - rr, rr * 2, rr * 2);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    // The glint: capped like the halo CORES, a pinprick past the leaves.
+    this.glows.push({ x, y, r: Math.min(r * 0.22, 9 / this.camera.scale), rgb, a: a * 0.5 });
+    if (this.sky.darkness > 0.04) {
+      const [cr, cg, cb] = Renderer.parseRgb(rgb);
+      const intensity = Math.min(0.55, a * 1.6);
+      this.lights.push({ x, y, r: r * 1.6, rgb: [cr, cg, cb], intensity });
       this.nextDynamic.push({ x, y, r: r * 2.2, a: intensity });
     }
   }
@@ -55992,7 +56031,7 @@ export class Renderer {
               const subs = Math.ceil(span / 0.25);
               for (let i = 1; i <= subs; i++) {
                 const f = i / subs;
-                if (pointHitsSolid(game.world, ax + (sp.x - ax) * f, ay + (sp.y - ay) * f)) {
+                if (pointHitsShot(game.world, ax + (sp.x - ax) * f, ay + (sp.y - ay) * f)) {
                   const held = (i - 1) / subs;
                   sp = { ...sp, x: ax + (sp.x - ax) * held, y: ay + (sp.y - ay) * held };
                   break;
@@ -60772,8 +60811,11 @@ export class Renderer {
     // weapon: a directional spray of shards + a glow spike.
     if (!this.projSeen.has(eid)) {
       this.projSeen.add(eid);
+      // Muzzle matter rides THE WORLD LAYER at the flight height: the
+      // pop sorts at the caster's row like the caster does, instead of
+      // painting over whatever forest stands south of the screen line.
       if (arx) {
-        this.particles.burst(ax, ay, 10, [tint.mid, `rgb(${tint.deep})`, tint.core, tint.fleck], {
+        this.particles.burst(ax, s.y, 10, [tint.mid, `rgb(${tint.deep})`, tint.core, tint.fleck], {
           speed: 2.6,
           life: 0.32,
           size: 0.09,
@@ -60781,10 +60823,13 @@ export class Renderer {
           dir: s.dir,
           spread: 1.5,
           drag: 3,
+          layer: 'world',
+          z: PROJ_AIR,
+          shadow: 0,
         });
         this.queueGlow(ax, ay, 1.6, tint.glow, 0.75);
       } else {
-        this.particles.burst(ax, ay, 5, ['#e6e0d0', '#c4b590'], {
+        this.particles.burst(ax, s.y, 5, ['#e6e0d0', '#c4b590'], {
           speed: 1.6,
           life: 0.2,
           size: 0.06,
@@ -60792,12 +60837,23 @@ export class Renderer {
           dir: s.dir,
           spread: 0.9,
           drag: 4,
+          layer: 'world',
+          z: PROJ_AIR,
+          shadow: 0,
         });
       }
     }
 
     return {
-      sortY: s.y + 10,
+      // THE SHOT FLIES THROUGH THE FOREST: a projectile sorts at its
+      // own ground anchor, exactly like every body and tree (trees
+      // anchor at the trunk base row) — north of a trunk it passes
+      // BEHIND the canopy, south of it in front. The old `+ 10` pushed
+      // every shot in front of ten rows of world and painted bolts on
+      // top of whole forests. Altitude stays a screen lift (PROJ_AIR),
+      // the world-matter doctrine: sorted on the ground, lifted in the
+      // draw.
+      sortY: s.y,
       draw: () => {
         // The sprite must lie along the SCREEN flight line: the camera
         // pitch squashes world-y, so a world 45° travels ~31° on screen
@@ -60820,15 +60876,18 @@ export class Renderer {
           // The heavy orb: fat, slow, unmistakably the payoff beat —
           // a churning faceted core with an ESCORT: three satellites
           // wheeling around it in the element's own matter.
-          this.particles.burst(ax, ay, 2, [tint.mid, `rgb(${tint.deep})`, tint.core], {
+          this.particles.burst(ax, s.y, 2, [tint.mid, `rgb(${tint.deep})`, tint.core], {
             speed: 0.6,
             life: 0.5,
             size: 0.12,
             gravity: 0,
             dir: s.dir + Math.PI,
             spread: 1.2,
+            layer: 'world',
+            z: PROJ_AIR,
+            shadow: 0,
           });
-          this.queueGlow(ax, ay, 1.7, tint.glow, 0.65);
+          this.seatShotGlow(p.x, p.y, ax, ay, 1.7, tint.glow, 0.65);
           ctx.fillStyle = `rgba(${tint.deep}, 0.4)`;
           ctx.beginPath();
           facetCircle(ctx, p.x, p.y, scale * 0.32, 7, s.dir * 0.5);
@@ -60869,23 +60928,29 @@ export class Renderer {
           // Every school flies its OWN matter — a frost shard is not
           // an orange fireball with the hue swapped. The shared core
           // is the cut diamond; the element speaks around it.
-          this.particles.burst(ax, ay, 1, [tint.mid, `rgb(${tint.deep})`], {
+          this.particles.burst(ax, s.y, 1, [tint.mid, `rgb(${tint.deep})`], {
             speed: 0.35,
             life: 0.34,
             size: 0.08,
             gravity: 0,
             dir: s.dir + Math.PI,
             spread: 0.8,
+            layer: 'world',
+            z: PROJ_AIR,
+            shadow: 0,
           });
           if (Math.random() < this.frameDt * 22) {
-            this.particles.burst(ax, ay, 1, [tint.fleck, tint.core], {
+            this.particles.burst(ax, s.y, 1, [tint.fleck, tint.core], {
               speed: 1.4,
               life: 0.25,
               size: 0.05,
               gravity: 0,
+              layer: 'world',
+              z: PROJ_AIR,
+              shadow: 0,
             });
           }
-          this.queueGlow(ax, ay, 1.0, tint.glow, 0.5);
+          this.seatShotGlow(p.x, p.y, ax, ay, 1.0, tint.glow, 0.5);
           const nose = 0.3 * scale;
           const tail = 0.26 * scale;
           const half = 0.09 * scale;
@@ -60978,8 +61043,9 @@ export class Renderer {
               diamond(0.85, `rgb(${tint.deep})`);
               diamond(0.35, tint.mid);
               if (Math.random() < this.frameDt * 16) {
-                this.particles.burst(ax - Math.cos(s.dir) * 0.5, ay - Math.sin(s.dir) * 0.5, 1, [tint.fleck], {
+                this.particles.burst(ax - Math.cos(s.dir) * 0.5, s.y - Math.sin(s.dir) * 0.5, 1, [tint.fleck], {
                   speed: 1.6, life: 0.3, size: 0.05, gravity: 0, dir: s.dir, spread: 0.3, shape: 'streak',
+                  layer: 'world', z: PROJ_AIR, shadow: 0,
                 });
               }
               break;
@@ -61006,7 +61072,14 @@ export class Renderer {
               ctx.ellipse(p.x - fx * tail * 0.9, p.y - fy * tail * 0.9, half * 1.15, half * 0.85, Math.atan2(fy, fx), 0, Math.PI * 2);
               ctx.fill();
               if (Math.random() < this.frameDt * 10) {
-                this.particles.burst(ax, ay, 1, [tint.mid], { speed: 0.4, life: 0.4, size: 0.05, gravity: 5, shape: 'streak' });
+                // The weeping droplet FALLS in z now — from flight
+                // height to the forest floor, landing as ground matter
+                // (the world layer's own physics; gravity would have
+                // dragged it SOUTH in world-y instead of down).
+                this.particles.burst(ax, s.y, 1, [tint.mid], {
+                  speed: 0.4, life: 0.4, size: 0.05, gravity: 0, shape: 'streak',
+                  layer: 'world', z: PROJ_AIR, zg: 5, shadow: 0,
+                });
               }
               break;
             }
@@ -61046,11 +61119,14 @@ export class Renderer {
         } else {
           // An arrow you can read at speed: streak, shaft, iron head,
           // red fletching — and a wisp of slipstream behind it.
-          this.particles.burst(ax, ay, 1, ['rgba(230, 224, 208, 0.5)'], {
+          this.particles.burst(ax, s.y, 1, ['rgba(230, 224, 208, 0.5)'], {
             speed: 0.1,
             life: 0.16,
             size: 0.05,
             gravity: 0,
+            layer: 'world',
+            z: PROJ_AIR,
+            shadow: 0,
           });
           const len = scale * 0.46;
           ctx.strokeStyle = 'rgba(230, 224, 208, 0.28)';
@@ -61100,12 +61176,20 @@ export class Renderer {
         const heavy = end.style.split(':')[0] === 'arx_heavy';
         const t = projectileTint(end.style);
         const fy = this.projAirWorldY(end.y);
-        this.particles.burst(end.x, fy, heavy ? 16 : 8, [t.mid, `rgb(${t.deep})`, t.core, t.fleck], {
+        // Impact matter sorts at the impact's own row (world layer at
+        // flight height) — a bolt bursting deep in the woods flashes
+        // BETWEEN the trees, not on top of the canopy. The glow keeps
+        // the post disc: an impact is one bright frame, and its light
+        // legitimately blooms.
+        this.particles.burst(end.x, end.y, heavy ? 16 : 8, [t.mid, `rgb(${t.deep})`, t.core, t.fleck], {
           speed: heavy ? 3.2 : 2.2,
           life: 0.4,
           size: heavy ? 0.11 : 0.08,
           gravity: 0,
           drag: 3.5,
+          layer: 'world',
+          z: PROJ_AIR,
+          shadow: 0,
         });
         this.queueGlow(end.x, fy, heavy ? 2.2 : 1.4, t.glow, 0.8);
         continue;

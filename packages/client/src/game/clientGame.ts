@@ -87,7 +87,7 @@ import {
 } from '@arx/shared';
 import { CROP_TILES, LIVESTOCK, MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SOIL_RICH, WORK_STATION_TILES, bandAtLeast, isCropTile, abilityDef, itemDef, movesetFor, npcDef, replaceGeography, strikePose, tameDef, techniquePoolDef, type FactionBand, type GeographyDef, type WorkStation } from '@arx/content';
 import { clearFarmMirror, farmApiaries, farmBins, farmJobs, farmKey, farmPlots, farmTroughs, larderFills, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
-import { EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsSolid, shutDoorTile, swingCooldown, moveFactorOfBits } from '@arx/shared';
+import { EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsShot, shutDoorTile, swingCooldown, moveFactorOfBits } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look, PlaneWire } from '@arx/shared';
 import type { S2CArenaBoard, S2CArenaState } from '@arx/shared';
 
@@ -1454,11 +1454,11 @@ export class ClientGame {
     const dirX = Math.cos(aim);
     const dirY = Math.sin(aim);
     // Walk the ray once in the server's sub-steps (v9): the tracer
-    // dies where the world says — same shape-aware pointHitsSolid the
+    // dies where the world says — same shape-aware pointHitsShot the
     // server kills with, so a point-blank shot never pierces the wall.
     let wallAt = range;
     for (let d = 0.25; d <= range; d += 0.25) {
-      if (pointHitsSolid(this.world, p.x + dirX * d, p.y + dirY * d)) {
+      if (pointHitsShot(this.world, p.x + dirX * d, p.y + dirY * d)) {
         wallAt = Math.max(0, d - 0.25);
         break;
       }
@@ -1889,7 +1889,7 @@ export class ClientGame {
               for (let i = 0; i < subs; i++) {
                 const nx = ex + Math.cos(edir) * (step / subs);
                 const ny = ey + Math.sin(edir) * (step / subs);
-                if (pointHitsSolid(this.world, nx, ny)) break;
+                if (pointHitsShot(this.world, nx, ny)) break;
                 ex = nx;
                 ey = ny;
               }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { circleHitsSolid, pointHitsSolid, type CollisionSource } from './collision.js';
+import { circleHitsSolid, pointHitsShot, pointHitsSolid, SHOT_TRUNK_K, type CollisionSource } from './collision.js';
 import { Tile } from './tiles.js';
 
 /** One solid tile at (5,5) of the given kind; everything else open. */
@@ -45,4 +45,36 @@ test('rocks carry a wider boulder circle than trees', () => {
   const w = worldWith(Tile.RockIron); // 0.46
   assert.equal(pointHitsSolid(w, 5.5 + 0.4, 5.5), true);
   assert.equal(pointHitsSolid(w, 5.5 + 0.48, 5.5), false);
+});
+
+test('THE SHOT SEES THE SLIM TRUNK: flight tests a slimmer core than the walk base', () => {
+  const w = worldWith(Tile.TreeOak); // flared base radius 0.38
+  const r = 0.38;
+  const slim = r * SHOT_TRUNK_K;
+  // The annulus between the slim trunk and the flared base: a walking
+  // body still collides (roots underfoot), a shot at chest height
+  // slips past — this band is what makes a forest shootable-through.
+  const mid = (slim + r) / 2;
+  assert.equal(pointHitsSolid(w, 5.5 + mid, 5.5), true);
+  assert.equal(pointHitsShot(w, 5.5 + mid, 5.5), false);
+  // The trunk core stops a shot dead.
+  assert.equal(pointHitsShot(w, 5.5 + slim * 0.9, 5.5), true);
+  // Canopy air (the tile corner) was never a hitbox and still isn't.
+  assert.equal(pointHitsShot(w, 5.05, 5.05), false);
+});
+
+test('shots keep full-block collision on walls and blind sources', () => {
+  const wall = worldWith(Tile.WallStone);
+  assert.equal(pointHitsShot(wall, 5.05, 5.05), true);
+  const blind: CollisionSource = { isSolid: (tx, ty) => tx === 5 && ty === 5 };
+  assert.equal(pointHitsShot(blind, 5.05, 5.05), true);
+});
+
+test('THE SHOT OVERFLIES THE WATER: deep water blocks boots, never flight', () => {
+  const w = worldWith(Tile.WaterDeep);
+  // Boots cannot enter the deep...
+  assert.equal(circleHitsSolid(w, 5.5, 5.5, 0.25), true);
+  // ...but a chest-height shot crosses clean.
+  assert.equal(pointHitsShot(w, 5.5, 5.5), false);
+  assert.equal(pointHitsSolid(w, 5.5, 5.5), true); // debris still splashes short
 });

@@ -580,6 +580,7 @@ import {
   lineClear,
   newSteerMemory,
   pickSeatDir,
+  pointHitsShot,
   pointHitsSolid,
   seatAt,
   steerToward,
@@ -22988,7 +22989,7 @@ export class GameServer {
         let len = range;
         // March to find the wall the ray dies on.
         for (let d = 0.4; d <= range; d += 0.25) {
-          if (pointHitsSolid(this.worldOf(pos.plane), pos.x + dirX * d, pos.y + dirY * d)) {
+          if (pointHitsShot(this.worldOf(pos.plane), pos.x + dirX * d, pos.y + dirY * d)) {
             len = d;
             break;
           }
@@ -24246,9 +24247,10 @@ export class GameServer {
     const step = proj.speed * TICK_DT;
     // Sub-step the advance so the shot dies AT the wall face, not up
     // to a full step past it (fast arrows cover >1 tile per tick and
-    // could tunnel straight through a thin wall). pointHitsSolid is
-    // shape-aware: a shot crossing a tree's tile only dies on the
-    // TRUNK — grazes slip past the canopy corners.
+    // could tunnel straight through a thin wall). pointHitsShot is
+    // shape-aware AND flight-height honest: a shot crossing a tree's
+    // tile only dies on the SLIM TRUNK core (THE SHOT SEES THE SLIM
+    // TRUNK) — grazes slip past, and canopies have no hitbox at all.
     // Boomerangs home on the owner's LIVE position on the way back.
     if (proj.returning) {
       const opos = this.positions.get(proj.ownerEid);
@@ -24312,7 +24314,7 @@ export class GameServer {
       pos.y += proj.dirY * (step / subs);
       // Return legs ghost through walls — a boomerang that dies on the
       // doorframe it left through reads as a bug, not a mechanic.
-      if (!proj.returning && pointHitsSolid(this.worldOf(pos.plane), pos.x, pos.y)) {
+      if (!proj.returning && pointHitsShot(this.worldOf(pos.plane), pos.x, pos.y)) {
         dead = true;
         // A player's shot spends itself bursting the crate it
         // struck — the arrow's last act is the smash.
