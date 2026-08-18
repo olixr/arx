@@ -25,6 +25,8 @@ const proto = GameServer.prototype as unknown as {
   seatHolder: AnyFn;
   releaseSeat: AnyFn;
   routineMount: AnyFn;
+  seatStillStands: AnyFn;
+  evictIfSeatDied: AnyFn;
 };
 
 interface Seat {
@@ -138,6 +140,8 @@ test('the forgiving tile: a sit stop aimed at the table mounts the chair beside 
   const rc = {
     targetX: 5.5,
     targetY: 5.5,
+    restTx: null as number | null,
+    restTy: null as number | null,
     seat: null as Seat | null,
   };
   const pos = { x: 5.5, y: 7.2, dir: 0, plane: 'surface' };
@@ -148,8 +152,9 @@ test('the forgiving tile: a sit stop aimed at the table mounts the chair beside 
       rc: unknown,
       pos: unknown,
       dir: number | undefined,
+      want: 'sit' | 'lie',
     ) => void
-  ).call(s, 11, rc, pos, undefined);
+  ).call(s, 11, rc, pos, undefined, 'sit');
   assert.ok(rc.seat, 'the chair was found one tile off the authored target');
   assert.deepEqual(rc.seat!.tiles, [{ x: 5, y: 6 }]);
   assert.equal(rc.seat!.plane, 'surface');
@@ -163,7 +168,13 @@ test('an open-ground sit stop stays a wayside floor sit — no seat hijack', () 
   // a ground sit (a campfire circle); the probe must not kidnap the
   // body onto furniture it was never aimed at.
   const s = mountSlate(new Map([['5,6', Tile.Chair]]));
-  const rc = { targetX: 5.5, targetY: 4.5, seat: null as Seat | null };
+  const rc = {
+    targetX: 5.5,
+    targetY: 4.5,
+    restTx: null as number | null,
+    restTy: null as number | null,
+    seat: null as Seat | null,
+  };
   const pos = { x: 5.5, y: 4.4, dir: 0, plane: 'surface' };
   (
     proto.routineMount as (
@@ -172,7 +183,207 @@ test('an open-ground sit stop stays a wayside floor sit — no seat hijack', () 
       rc: unknown,
       pos: unknown,
       dir: number | undefined,
+      want: 'sit' | 'lie',
     ) => void
-  ).call(s, 12, rc, pos, undefined);
+  ).call(s, 12, rc, pos, undefined, 'sit');
   assert.equal(rc.seat, null);
+});
+
+// ------------------------------------------------- THE LIVING ANCHOR
+
+type MountFn = (
+  this: unknown,
+  eid: number,
+  rc: unknown,
+  pos: unknown,
+  dir: number | undefined,
+  want: 'sit' | 'lie',
+) => void;
+
+interface RestRc {
+  targetX: number;
+  targetY: number;
+  restTx: number | null;
+  restTy: number | null;
+  seat: Seat | null;
+  phase: 'travel' | 'linger';
+  stuckTicks: number;
+  progressBest: number;
+}
+
+test('a resolved rest tile mounts its bed exactly, and the lie is carried', () => {
+  const s = mountSlate(new Map([['8,5', Tile.Bed]]));
+  const rc: RestRc = {
+    targetX: 8.5,
+    targetY: 5.5,
+    restTx: 8,
+    restTy: 5,
+    seat: null,
+    phase: 'linger',
+    stuckTicks: 0,
+    progressBest: 0,
+  };
+  const pos = { x: 7.4, y: 5.5, dir: 0, plane: 'surface' };
+  (proto.routineMount as MountFn).call(s, 21, rc, pos, undefined, 'lie');
+  assert.ok(rc.seat, 'the sleeper settles');
+  assert.equal(rc.seat!.lie, true);
+  assert.equal(pos.x, 8.5, 'the body lands on the bed anchor');
+  assert.equal(s.seatOcc.get('surface:8,5'), 21);
+});
+
+test('the pose filter holds at the mount: a sit stop never climbs into the bed beside the counter', () => {
+  // Solid counter target with only a BED adjacent — the old probe
+  // would have put the shopkeeper to bed for the afternoon shift.
+  const s = mountSlate(
+    new Map([
+      ['5,5', Tile.Counter],
+      ['5,6', Tile.Bed],
+    ]),
+  );
+  const rc: RestRc = {
+    targetX: 5.5,
+    targetY: 5.5,
+    restTx: null,
+    restTy: null,
+    seat: null,
+    phase: 'linger',
+    stuckTicks: 0,
+    progressBest: 0,
+  };
+  const pos = { x: 5.5, y: 7.2, dir: 0, plane: 'surface' };
+  (proto.routineMount as MountFn).call(s, 22, rc, pos, undefined, 'sit');
+  assert.equal(rc.seat, null, 'no seat of the right pose stands here');
+});
+
+test('furniture dead mid-walk: the settle re-aims the leg — never a blink across the room', () => {
+  // The tile resolved at leg start (8,5) holds no bed anymore; a live
+  // replacement stands at (10,5), inside the seek ring.
+  const s = mountSlate(new Map([['10,5', Tile.Bed]]));
+  const rc: RestRc = {
+    targetX: 8.5,
+    targetY: 5.5,
+    restTx: 8,
+    restTy: 5,
+    seat: null,
+    phase: 'linger',
+    stuckTicks: 7,
+    progressBest: 3,
+  };
+  const pos = { x: 8.5, y: 6.5, dir: 0, plane: 'surface' };
+  (proto.routineMount as MountFn).call(s, 23, rc, pos, undefined, 'lie');
+  assert.equal(rc.seat, null, 'no mount this tick — the leg re-aims instead');
+  assert.equal(rc.restTx, 10);
+  assert.equal(rc.targetX, 10.5);
+  assert.equal(rc.phase, 'travel', 'the walk resumes');
+  assert.equal(pos.x, 8.5, 'the body has not moved — it will WALK there');
+});
+
+test('gone for real: the resolution strips so the stop degrades to the honest stand', () => {
+  const s = mountSlate(new Map());
+  const rc: RestRc = {
+    targetX: 8.5,
+    targetY: 5.5,
+    restTx: 8,
+    restTy: 5,
+    seat: null,
+    phase: 'linger',
+    stuckTicks: 0,
+    progressBest: 0,
+  };
+  const pos = { x: 8.5, y: 6.5, dir: 0, plane: 'surface' };
+  (proto.routineMount as MountFn).call(s, 24, rc, pos, undefined, 'lie');
+  assert.equal(rc.seat, null);
+  assert.equal(rc.restTx, null, 'the dead resolution is stripped');
+  assert.equal(rc.phase, 'linger', 'the stop holds — standing, not posing');
+});
+
+// ------------------------------------- THE FURNITURE SPEAKS WHEN IT DIES
+
+test('seatStillStands: demolition AND run growth both read as the piece dying', () => {
+  const tiles = new Map([['5,5', Tile.Bed]]);
+  const s = mountSlate(tiles);
+  const seat: Seat = {
+    plane: 'surface',
+    tiles: [{ x: 5, y: 5 }],
+    retX: 5.5,
+    retY: 6.5,
+    dir: 0,
+  };
+  const stands = proto.seatStillStands as (this: unknown, seat: Seat) => boolean;
+  assert.ok(stands.call(s, seat), 'the lone bed stands as claimed');
+  // A second bed tile joins the run: the derived piece is now two
+  // tiles with a moved anchor — the claim no longer matches.
+  tiles.set('5,6', Tile.Bed);
+  assert.ok(!stands.call(s, seat), 'run growth moves the anchor — remount required');
+  tiles.delete('5,6');
+  tiles.delete('5,5');
+  assert.ok(!stands.call(s, seat), 'demolition under the sleeper');
+});
+
+test('a routine sleeper whose bed dies is dismounted and re-resolves, forced', () => {
+  const tiles = new Map([['5,5', Tile.Bed]]);
+  const world = {
+    groundAt: (x: number, y: number) => tiles.get(`${x},${y}`),
+    isSolid: (x: number, y: number) => tiles.has(`${x},${y}`),
+  };
+  const calls: string[] = [];
+  const rc = {
+    seat: {
+      plane: 'surface',
+      tiles: [{ x: 5, y: 5 }],
+      retX: 5.5,
+      retY: 6.5,
+      dir: 0,
+      lie: true,
+    } as Seat | null,
+    phase: 'linger',
+    stuckTicks: 9,
+    progressBest: 1,
+  };
+  const s = {
+    worldOf: () => world,
+    positions: new Map([[7, { x: 5.5, y: 5.54, dir: 0, plane: 'surface' }]]),
+    players: new Map(),
+    routines: new Map([[7, rc]]),
+    seatStillStands: proto.seatStillStands,
+    routineDismount: (_eid: number, rc2: typeof rc) => {
+      calls.push('dismount');
+      rc2.seat = null;
+    },
+    routineTask: () => ({ kind: 'post', lie: true }),
+    routineRetarget: (_rc: unknown, _plane: string, _task: unknown, force: boolean) => {
+      calls.push(`retarget:${force}`);
+    },
+  };
+  const evict = proto.evictIfSeatDied as (this: unknown, eid: number) => void;
+  // Bed intact: the sweep is a no-op.
+  evict.call(s, 7);
+  assert.deepEqual(calls, []);
+  // The bed dies under the sleeper.
+  tiles.delete('5,5');
+  evict.call(s, 7);
+  assert.deepEqual(calls, ['dismount', 'retarget:true']);
+  assert.equal(rc.phase, 'travel', 'the body is walking again, not floating');
+});
+
+test('a player whose chair dies simply stands', () => {
+  const tiles = new Map<string, number>();
+  const world = {
+    groundAt: (x: number, y: number) => tiles.get(`${x},${y}`),
+    isSolid: (x: number, y: number) => tiles.has(`${x},${y}`),
+  };
+  const calls: string[] = [];
+  const player = {
+    seat: { plane: 'surface', tiles: [{ x: 3, y: 3 }], retX: 3.5, retY: 4.5, dir: 0 },
+  };
+  const s = {
+    worldOf: () => world,
+    positions: new Map([[4, { x: 3.5, y: 3.57, dir: 0, plane: 'surface' }]]),
+    players: new Map([[4, player]]),
+    routines: new Map(),
+    seatStillStands: proto.seatStillStands,
+    standUp: (eid: number) => calls.push(`standUp:${eid}`),
+  };
+  (proto.evictIfSeatDied as (this: unknown, eid: number) => void).call(s, 4);
+  assert.deepEqual(calls, ['standUp:4']);
 });

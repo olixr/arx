@@ -54,14 +54,23 @@ export interface RoutineWaypoint {
    * whose target lands ON a chair, bench, or throne tile mounts the
    * furniture — the body settles onto the seat itself, facing the way
    * the furniture does (authored `dir` overrides where the seat
-   * allows). Mutually exclusive with `work`.
+   * allows). THE LIVING ANCHOR: furniture-aimed stops (a seat tile or
+   * a solid station face) resolve the live piece near the coordinate
+   * each time the leg begins, so moved furniture is found again;
+   * open-ground stops stay wayside floor sits and never hijack a
+   * nearby seat. Mutually exclusive with `work`.
    */
   sit?: boolean;
   /**
-   * Lie down while lingering — author the stop ON a Tile.Bed and the
-   * body climbs in (head on the pillow, axis from the bed itself).
-   * Off a bed this falls back to the wayside sit. Mutually exclusive
-   * with `work` and `sit`.
+   * Lie down while lingering — author the stop at (or near) a
+   * Tile.Bed and the body climbs in (head on the pillow, axis from
+   * the bed itself). THE LIVING ANCHOR: the bed is resolved from the
+   * live world each time the stop begins — a bed moved a few tiles by
+   * a map save is found again, and one demolished mid-rest stands the
+   * sleeper up on the spot. A lie stop with no bed in reach stands
+   * honest beside the coordinate (warned once server-side) — it never
+   * lies or sits on bare floor. Mutually exclusive with `work` and
+   * `sit`.
    */
   lie?: boolean;
   /**

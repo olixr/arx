@@ -573,6 +573,7 @@ import {
   chargedShot,
   circleHitsSolid,
   findPathNav,
+  findSeatNear,
   isSeatTile,
   lineClear,
   newSteerMemory,
@@ -1709,6 +1710,20 @@ interface RoutineComp {
    * the-passerby glance yields to it.
    */
   holdFacing: boolean;
+  /**
+   * THE LIVING ANCHOR: the live-resolved furniture tile the current
+   * rest stop means, or null when the stop isn't a rest / nothing
+   * matching stands near the authored coordinate. Resolved at every
+   * retarget (leg start, slot flip, post-eviction re-aim) by walking
+   * the world AS IT STANDS — a bed that moved a couple of tiles since
+   * the routine was authored is found again, and a demolished one
+   * resolves to null instead of a body posed over bare floor. The
+   * mount re-derives the seat from this tile at settle time, so the
+   * gap between arrival and mount can never seat a body on furniture
+   * that stopped existing mid-walk.
+   */
+  restTx: number | null;
+  restTy: number | null;
   /**
    * The furniture this body is mounted on (a sit/lie stop whose target
    * landed on a chair, bench, throne, or bed), or null. Mounting moved
@@ -5815,6 +5830,84 @@ export class GameServer {
   }
 
   /**
+   * Does the furniture under a mounted claim still stand AS CLAIMED?
+   * Re-derives the seat from the live world and demands the exact
+   * same tile set — a chair swapped for a crate, a bed run shortened
+   * by demolition or LENGTHENED by a new build (the anchor moves
+   * either way), and a whole-zone re-save all read as the piece
+   * dying. Pure world read; the claim struct itself is never trusted.
+   */
+  private seatStillStands(seat: { plane: PlaneId; tiles: Array<{ x: number; y: number }> }): boolean {
+    const t0 = seat.tiles[0]!;
+    const spec = seatAt(
+      (x: number, y: number) => this.worldOf(seat.plane).groundAt(x, y),
+      t0.x,
+      t0.y,
+    );
+    if (!spec || spec.tiles.length !== seat.tiles.length) return false;
+    return spec.tiles.every((t) => seat.tiles.some((o) => o.x === t.x && o.y === t.y));
+  }
+
+  /**
+   * THE FURNITURE SPEAKS WHEN IT DIES: stand a body up the moment the
+   * piece under it stops standing as claimed — never a frame of a
+   * sleeper floating over bare floor. A player simply stands (back on
+   * the remembered walk-up ground); a routine body dismounts and
+   * re-resolves its stop against the live world immediately, so a
+   * replacement bed placed nearby is adopted by WALKING to it.
+   */
+  private evictIfSeatDied(eid: EntityId): void {
+    const pos = this.positions.get(eid);
+    if (!pos) return;
+    const player = this.players.get(eid);
+    if (player?.seat) {
+      if (!this.seatStillStands(player.seat)) this.standUp(eid, player, pos);
+      return;
+    }
+    const rc = this.routines.get(eid);
+    if (rc?.seat && !this.seatStillStands(rc.seat)) {
+      this.routineDismount(eid, rc, pos);
+      rc.phase = 'travel';
+      rc.stuckTicks = 0;
+      rc.progressBest = Infinity;
+      this.routineRetarget(rc, pos.plane, this.routineTask(rc), true);
+    }
+  }
+
+  /**
+   * The per-mutation sweep, called from the one tile-change door
+   * (setWorldTile). The cardinal ring is enough coverage: seat runs
+   * merge cardinally, so any neighboring change that redefines a run
+   * (a bed built against an occupied run's head, the run's own tile
+   * demolished) always touches a claimed tile or its cardinal.
+   */
+  private evictSeatsAround(plane: PlaneId, tx: number, ty: number): void {
+    const seen = new Set<EntityId>();
+    for (const [dx, dy] of [
+      [0, 0], [0, 1], [0, -1], [1, 0], [-1, 0],
+    ]) {
+      const eid = this.seatHolder(plane, tx + dx!, ty + dy!);
+      if (eid === null || seen.has(eid)) continue;
+      seen.add(eid);
+      this.evictIfSeatDied(eid);
+    }
+  }
+
+  /**
+   * The whole-plane sweep for bulk world swaps (live map-editor zone
+   * saves): validate every claim on the plane against the fresh
+   * ground. The ledger only ever holds currently-mounted bodies, so
+   * this is a handful of derivations, not a world walk.
+   */
+  private evictOrphanSeats(plane: PlaneId): void {
+    const holders = new Set<EntityId>();
+    for (const [key, eid] of this.seatOcc) {
+      if (key.startsWith(`${plane}:`)) holders.add(eid);
+    }
+    for (const eid of holders) this.evictIfSeatDied(eid);
+  }
+
+  /**
    * Mount the furniture under a routine rest stop, if any stands
    * free. The body remembers its walk-up stand and settles onto the
    * seat anchor; beds impose the lie axis, seats take the authored
@@ -5825,12 +5918,53 @@ export class GameServer {
     rc: RoutineComp,
     pos: PositionComp,
     dir: number | undefined,
+    want: 'sit' | 'lie',
   ): void {
     const ground = (x: number, y: number): number | undefined =>
       this.worldOf(pos.plane).groundAt(x, y);
     const ttx = Math.floor(rc.targetX);
     const tty = Math.floor(rc.targetY);
-    let spec = seatAt(ground, ttx, tty);
+    // THE LIVING ANCHOR, second door: the seat is re-derived from the
+    // world AT SETTLE TIME, never trusted from the leg's start — the
+    // walk took real seconds and the world owes the stop nothing. The
+    // pose filter is absolute both ways: a lie stop answers only to
+    // lie furniture and a sit stop only to sit furniture, so a lucky
+    // probe can never put a diner to bed or perch a sleeper on a stool.
+    let spec =
+      rc.restTx != null && rc.restTy != null
+        ? seatAt(ground, rc.restTx, rc.restTy)
+        : seatAt(ground, ttx, tty);
+    if (spec && spec.pose !== want) spec = null;
+    if (!spec && rc.restTx != null) {
+      // The resolved piece died mid-walk. Look again, live: a nearby
+      // replacement re-aims the LEG — the body walks there honestly,
+      // it never blinks across the room onto a mattress. Nothing
+      // found strips the resolution so the stop degrades to the
+      // honest stand (and speaks) instead of posing over bare floor.
+      const again = findSeatNear(ground, ttx, tty, want, GameServer.ROUTINE_SEAT_SEEK);
+      if (again) {
+        let best = again.tiles[0]!;
+        let bestD = Infinity;
+        for (const t of again.tiles) {
+          const d = (t.x - ttx) * (t.x - ttx) + (t.y - tty) * (t.y - tty);
+          if (d < bestD) {
+            bestD = d;
+            best = t;
+          }
+        }
+        rc.restTx = best.x;
+        rc.restTy = best.y;
+        rc.targetX = best.x + 0.5;
+        rc.targetY = best.y + 0.5;
+        rc.phase = 'travel';
+        rc.stuckTicks = 0;
+        rc.progressBest = Infinity;
+      } else {
+        rc.restTx = null;
+        rc.restTy = null;
+      }
+      return;
+    }
     // THE FORGIVING TILE: a sit stop aimed at a SOLID tile that isn't
     // itself furniture (the table beside the chair, a station-addressed
     // stop, a POI post rolled at runtime) can never be a floor sit —
@@ -5838,7 +5972,7 @@ export class GameServer {
     // furniture beside it. Probe the eight neighbors, nearest to the
     // walk-up stand first, and take the first real seat. Open-ground
     // targets are untouched: the wayside floor sit stays authorable.
-    if (!spec && this.worldOf(pos.plane).isSolid(ttx, tty)) {
+    if (!spec && rc.restTx == null && this.worldOf(pos.plane).isSolid(ttx, tty)) {
       const near = [
         [0, 1], [0, -1], [1, 0], [-1, 0],
         [1, 1], [-1, 1], [1, -1], [-1, -1],
@@ -5850,8 +5984,11 @@ export class GameServer {
             Math.hypot(b.x + 0.5 - pos.x, b.y + 0.5 - pos.y),
         );
       for (const n of near) {
-        spec = seatAt(ground, n.x, n.y);
-        if (spec) break;
+        const cand = seatAt(ground, n.x, n.y);
+        if (cand && cand.pose === want) {
+          spec = cand;
+          break;
+        }
       }
     }
     if (!spec) return;
@@ -9376,6 +9513,10 @@ export class GameServer {
     // durability (respawn, build, demolish, the burst itself).
     this.propDamage.delete(`${plane}|${tx},${ty}`);
     this.worldOf(plane).setGround(tx, ty, tile);
+    // THE FURNITURE SPEAKS WHEN IT DIES: a mutation under (or beside)
+    // a mounted body stands it up before the ground can lie about
+    // what holds it.
+    this.evictSeatsAround(plane, tx, ty);
     const key = chunkKey(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
     const patch = encodeTilePatch({ tx, ty, ground: tile });
     for (const s of this.sessions) {
@@ -9401,6 +9542,12 @@ export class GameServer {
     const world = this.worldOf(zonePlane);
     const old = world.zoneById(zone.id);
     world.replaceZone(zone);
+    // THE LIVING ANCHOR: the save may have moved or removed the
+    // furniture under mounted bodies anywhere in the zone — validate
+    // every claim on this plane against the fresh ground and stand
+    // the orphans up (routine bodies re-resolve and walk to the
+    // furniture's new spot on their own).
+    this.evictOrphanSeats(zonePlane);
     this.dropClientChunks(zonePlane, old);
     this.dropClientChunks(zonePlane, zone);
     this.retireZonePlacements(zone.id);
@@ -26720,6 +26867,8 @@ export class GameServer {
         losGoalX: Infinity,
         losGoalY: Infinity,
         holdFacing: false,
+        restTx: null,
+        restTy: null,
         seat: null,
       });
     }
@@ -26846,6 +26995,13 @@ export class GameServer {
   private static readonly ROUTINE_ARRIVE = 0.3;
   /** Travel ticks without progress before the watchdog intervenes (3s). */
   private static readonly ROUTINE_STUCK_TICKS = 60;
+  /**
+   * How far (Chebyshev tiles) a rest stop looks for its live furniture
+   * around the authored coordinate — wide enough to survive a bed
+   * nudged by a map save, narrow enough never to claim the room next
+   * door.
+   */
+  private static readonly ROUTINE_SEAT_SEEK = 3;
   /** Chase ticks without closing on a STATIONARY target before giving up (4.5s). */
   private static readonly CHASE_STALL_TICKS = 90;
   /** Homeward ticks without progress before the leash snaps the rest (5s). */
@@ -27238,8 +27394,23 @@ export class GameServer {
     return rc.slot < 0 ? rc.def.base : (rc.def.slots?.[rc.slot]?.task ?? rc.def.base);
   }
 
+  /** The rest a task's current stop asks for, or null (work/plain stops). */
+  private routineRestWant(rc: RoutineComp, task: RoutineTask): 'sit' | 'lie' | null {
+    if (task.kind === 'wander') return null;
+    const stop =
+      task.kind === 'path'
+        ? task.waypoints[Math.min(rc.wpIndex, task.waypoints.length - 1)]!
+        : task;
+    return stop.lie ? 'lie' : stop.sit ? 'sit' : null;
+  }
+
   /** Point the comp at its task's current destination (world coords). */
-  private routineRetarget(rc: RoutineComp, plane: PlaneId, task: RoutineTask): void {
+  private routineRetarget(
+    rc: RoutineComp,
+    plane: PlaneId,
+    task: RoutineTask,
+    forceSeek = false,
+  ): void {
     if (task.kind === 'path') {
       const wp = task.waypoints[Math.min(rc.wpIndex, task.waypoints.length - 1)]!;
       rc.targetX = rc.anchorX + wp.x;
@@ -27250,6 +27421,65 @@ export class GameServer {
       rc.targetX = rc.anchorX + (task.x ?? 0);
       rc.targetY = rc.anchorY + (task.y ?? 0);
     }
+    if (task.kind !== 'wander') this.routineResolveRest(rc, plane, task, forceSeek);
+  }
+
+  /**
+   * THE LIVING ANCHOR, first door: a rest stop resolves the furniture
+   * it MEANS the moment its leg begins — from the world as it stands,
+   * never from the authored coordinate alone. The walk is then aimed
+   * at the real piece (the run tile nearest the authored spot, so a
+   * bed's authored foot stays the foot), which is what keeps arrival,
+   * mount, and paint all telling one story when furniture has been
+   * built, demolished, or nudged since the routine was written. A
+   * stop that finds nothing keeps the authored target: open ground is
+   * the authorable wayside rest, and a vanished bed is reported once
+   * at settle time instead of silently posing a body over bare floor.
+   */
+  private routineResolveRest(
+    rc: RoutineComp,
+    plane: PlaneId,
+    task: RoutineTask,
+    forceSeek = false,
+  ): void {
+    rc.restTx = null;
+    rc.restTy = null;
+    const want = this.routineRestWant(rc, task);
+    if (!want) return;
+    const atx = Math.floor(rc.targetX);
+    const aty = Math.floor(rc.targetY);
+    const ground = (x: number, y: number): number | undefined => this.worldOf(plane).groundAt(x, y);
+    // A lie stop always MEANS a bed — there is no authorable floor
+    // lie. A sit stop is ambiguous: aimed at open walkable ground it
+    // is the wayside floor sit (the campfire circle) and must never
+    // hijack furniture the author didn't aim at — it only seeks when
+    // the coordinate names furniture or a solid station face, or when
+    // an eviction just proved the stop was furniture-mounted.
+    if (
+      want === 'sit' &&
+      !forceSeek &&
+      !isSeatTile(ground(atx, aty)) &&
+      !this.worldOf(plane).isSolid(atx, aty)
+    ) {
+      return;
+    }
+    const spec = findSeatNear(ground, atx, aty, want, GameServer.ROUTINE_SEAT_SEEK);
+    if (!spec) return;
+    // Aim at the seat tile nearest the authored coordinate — on a bed
+    // run that preserves which end the author called the stop.
+    let best = spec.tiles[0]!;
+    let bestD = Infinity;
+    for (const t of spec.tiles) {
+      const d = (t.x - atx) * (t.x - atx) + (t.y - aty) * (t.y - aty);
+      if (d < bestD) {
+        bestD = d;
+        best = t;
+      }
+    }
+    rc.restTx = best.x;
+    rc.restTy = best.y;
+    rc.targetX = best.x + 0.5;
+    rc.targetY = best.y + 0.5;
   }
 
   /** Roll a fresh walkable drift target inside the wander circle. */
@@ -27480,11 +27710,66 @@ export class GameServer {
             // throne the moment a squatter hops off. Seated bodies are
             // planted either way — no glancing at passersby (the whole
             // figure would swivel on the seat).
-            if (!rc.seat) this.routineMount(eid, rc, pos, dir);
-            this.routinePose(eid, npc, rc.seat?.lie ? PoseState.Lie : PoseState.Sit);
-            rc.holdFacing = true;
-            if (rc.seat) pos.dir = rc.seat.dir;
-            else if (dir !== undefined) pos.dir = dir;
+            if (!rc.seat) this.routineMount(eid, rc, pos, dir, lying ? 'lie' : 'sit');
+            if (rc.phase !== 'linger') {
+              // THE LIVING ANCHOR: the settle found its furniture gone
+              // and re-aimed the leg at a live replacement — fall
+              // through to travel and WALK there. A body never blinks
+              // across the room onto a mattress.
+            } else if (rc.seat) {
+              this.routinePose(eid, npc, rc.seat.lie ? PoseState.Lie : PoseState.Sit);
+              rc.holdFacing = true;
+              pos.dir = rc.seat.dir;
+            } else {
+              // No furniture answered the stop. The wayside floor sit
+              // is an OPEN-GROUND institution — the author aimed at
+              // bare walkable ground on purpose. A stop that MEANT
+              // furniture (every lie stop; a sit stop aimed at a
+              // solid face) stands honest beside it instead: waiting
+              // out an occupied seat, or marking a vanished piece —
+              // a body planked on the cobbles where a bed used to be
+              // is the misalignment bug wearing a pose.
+              const mtx = Math.floor(rc.targetX);
+              const mty = Math.floor(rc.targetY);
+              const waysideSit =
+                !lying && !this.worldOf(pos.plane).isSolid(mtx, mty) && rc.restTx == null;
+              if (waysideSit) {
+                this.routinePose(eid, npc, PoseState.Sit);
+                rc.holdFacing = true;
+              } else {
+                if (rc.restTx == null) {
+                  // Nothing matching stands within reach at all — a
+                  // content defect or a demolished piece; say so once
+                  // instead of failing silently forever.
+                  const restKey = `rest:${rc.def.id}#${rc.slot}#${rc.wpIndex}`;
+                  if (!this.routineSnapWarned.has(restKey)) {
+                    this.routineSnapWarned.add(restKey);
+                    console.warn(
+                      `[routine] '${rc.def.id}' slot ${rc.slot} ${lying ? 'lie' : 'sit'} stop at ` +
+                        `${rc.targetX.toFixed(1)},${rc.targetY.toFixed(1)} (plane ${pos.plane}) found no ` +
+                        `${lying ? 'bed' : 'seat'} within ${GameServer.ROUTINE_SEAT_SEEK} tiles — body stands instead`,
+                    );
+                  }
+                  // THE SLOW RETRY: the world heals — a bed rebuilt
+                  // where one was demolished, a chair placed by a live
+                  // map save — so the standing body looks again every
+                  // few seconds (staggered by eid) and WALKS to
+                  // whatever answers. Self-healing whatever door the
+                  // furniture came back through.
+                  if ((this.tickCount + eid) % 100 === 0) {
+                    this.routineResolveRest(rc, pos.plane, task);
+                    if (rc.restTx != null) {
+                      rc.phase = 'travel';
+                      rc.stuckTicks = 0;
+                      rc.progressBest = Infinity;
+                    }
+                  }
+                }
+                this.routinePose(eid, npc, PoseState.Idle);
+                rc.holdFacing = dir !== undefined;
+              }
+              if (dir !== undefined) pos.dir = dir;
+            }
           } else {
             this.routinePose(eid, npc, stopRide ? PoseState.Ride : PoseState.Idle);
             // An authored facing is held; otherwise tickActors may
@@ -27493,7 +27778,10 @@ export class GameServer {
             rc.holdFacing = dir !== undefined || stopRide;
             if (dir !== undefined) pos.dir = dir;
           }
-          continue;
+          // A settle that re-aimed its leg (phase flipped back to
+          // travel) falls through and walks THIS tick; every held
+          // linger stops here.
+          if (rc.phase === 'linger') continue;
         }
       }
 

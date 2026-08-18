@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { Tile } from './tiles.js';
 import { hashCoords } from '../math/rng.js';
-import { isSeatTile, pickSeatDir, seatAt, type SeatGround } from './seats.js';
+import { findSeatNear, isSeatTile, pickSeatDir, seatAt, type SeatGround } from './seats.js';
 
 /** A tiny world: a map of "x,y" → tile, everything else grass. */
 function worldOf(tiles: Record<string, Tile>): SeatGround {
@@ -219,4 +219,56 @@ test('a lone bed with a north wall keeps the pillow north (painter priority)', (
 test('non-furniture answers null', () => {
   assert.equal(seatAt(worldOf({}), 5, 5), null);
   assert.equal(seatAt(worldOf({ '5,5': Tile.Table }), 5, 5), null);
+});
+
+// ------------------------------------------------- THE LIVING ANCHOR
+
+test('findSeatNear: the exact authored tile wins outright', () => {
+  const g = worldOf({ '5,5': Tile.Chair, '6,5': Tile.Chair });
+  const seat = findSeatNear(g, 5, 5, 'sit')!;
+  assert.deepEqual(seat.tiles, [{ x: 5, y: 5 }]);
+});
+
+test('findSeatNear: pose intent is absolute — a lie stop walks past the chair to the bed', () => {
+  // Chair ON the authored tile, bed two tiles east: a sleeper must
+  // never perch on furniture of the wrong pose, however close.
+  const g = worldOf({ '5,5': Tile.Chair, '7,5': Tile.Bed });
+  const seat = findSeatNear(g, 5, 5, 'lie')!;
+  assert.equal(seat.pose, 'lie');
+  assert.deepEqual(seat.tiles, [{ x: 7, y: 5 }]);
+  // And the mirror: a sit stop aimed at a bed finds the chair.
+  const g2 = worldOf({ '5,5': Tile.Bed, '7,5': Tile.Chair });
+  const sit = findSeatNear(g2, 5, 5, 'sit')!;
+  assert.equal(sit.pose, 'sit');
+  assert.deepEqual(sit.tiles, [{ x: 7, y: 5 }]);
+});
+
+test('findSeatNear: nearest matching piece wins, ring by ring', () => {
+  const g = worldOf({ '8,5': Tile.Bed, '6,5': Tile.Bed });
+  const seat = findSeatNear(g, 5, 5, 'lie')!;
+  assert.deepEqual(seat.tiles, [{ x: 6, y: 5 }]);
+  // Within one ring, euclidean distance breaks the tie: the cardinal
+  // neighbor beats the diagonal. (Placed apart — adjacent beds would
+  // lawfully merge into one run.)
+  const g2 = worldOf({ '4,4': Tile.Bed, '5,6': Tile.Bed });
+  assert.deepEqual(findSeatNear(g2, 5, 5, 'lie')!.tiles, [{ x: 5, y: 6 }]);
+});
+
+test('findSeatNear: the search honors its radius — the room next door stays private', () => {
+  const g = worldOf({ '9,5': Tile.Bed });
+  assert.equal(findSeatNear(g, 5, 5, 'lie'), null);
+  assert.ok(findSeatNear(g, 5, 5, 'lie', 4));
+});
+
+test('findSeatNear: hitting any tile of a run answers the whole canonical run', () => {
+  const g = worldOf({
+    '5,4': Tile.Bed,
+    '5,5': Tile.Bed,
+    '5,3': Tile.WallStone,
+  });
+  // Authored at the foot neighbor: the ring finds a run tile, and the
+  // spec is the same one seatAt derives — anchor mid-deck, both tiles.
+  const seat = findSeatNear(g, 5, 6, 'lie')!;
+  assert.equal(seat.tiles.length, 2);
+  assert.equal(seat.ax, 5.5);
 });

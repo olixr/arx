@@ -347,6 +347,56 @@ export function seatAt(ground: SeatGround, tx: number, ty: number): SeatSpec | n
 }
 
 /**
+ * THE LIVING ANCHOR — resolve the furniture a rest stop MEANS from
+ * the world as it stands right now.
+ *
+ * A routine's sit/lie stop is authored as a coordinate, but its
+ * intent is an OBJECT: "the bed in this room", "the chair at this
+ * table". Worlds move under authored offsets — furniture is built,
+ * demolished, and nudged by live map saves — so the coordinate is
+ * only ever the place to START LOOKING. This walks outward from the
+ * authored tile ring by ring (nearest first within each ring) and
+ * returns the closest seat whose pose matches the stop's intent:
+ * a lie stop only ever answers to lie furniture (bed, daybed), a sit
+ * stop only to sit furniture — a sleeper must never perch on a chair
+ * and a diner must never climb into bed because the probe got lucky.
+ *
+ * Pure like `seatAt` — sim and render agree by construction. Returns
+ * null when nothing matching stands within `radius` tiles (Chebyshev):
+ * the caller decides whether that is a wayside floor rest (open
+ * ground the author meant) or a missing-furniture defect to report.
+ */
+export function findSeatNear(
+  ground: SeatGround,
+  tx: number,
+  ty: number,
+  want: 'sit' | 'lie',
+  radius = 3,
+): SeatSpec | null {
+  const exact = seatAt(ground, tx, ty);
+  if (exact && exact.pose === want) return exact;
+  for (let r = 1; r <= radius; r++) {
+    let best: SeatSpec | null = null;
+    let bestD = Infinity;
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        // Ring cells only — the inner square was already searched.
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const spec = seatAt(ground, tx + dx, ty + dy);
+        if (!spec || spec.pose !== want) continue;
+        const d = dx * dx + dy * dy;
+        if (d < bestD) {
+          bestD = d;
+          best = spec;
+        }
+      }
+    }
+    if (best) return best;
+  }
+  return null;
+}
+
+/**
  * The facing a body takes when it mounts `spec` from (fromX, fromY).
  * Only a free-standing bench offers a choice — sit facing the side
  * you came from; a table-fixed bench already chose for you.
