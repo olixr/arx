@@ -19,14 +19,29 @@
 #   3. generic     (opt-in) the per-voice fallback bank
 #   4. report      audit again, so the end state is stated rather than assumed
 #
-# EXPECTED COST at the time of writing (2026-08-16, after THE GREAT RECAST and
-# the Falls Vale wave): all 222 speaking characters are cast, 2582 clips
-# (1832 dialogue lines, 666 barks, 84 quips). Every character is either
-# recast, retuned or newly cast since the last pass, so a plain run and a
-# --fresh run speak the same thing: the WHOLE cast, roughly five hours at
-# ~7s a clip. Pass --fresh anyway when the intent is a complete
-# regeneration — it ignores every stamp on disk, so nothing old survives by
-# accident. --generic adds ~50 minutes on top.
+# DO NOT REACH FOR --fresh BY REFLEX. It is the sledgehammer: it ignores every
+# stamp on disk, so it re-speaks actors that are ALREADY correct at the current
+# casting. A plain run is the resumable one, and it is what you want almost
+# always — the stamp is a signature over the voice AND the delivery knobs, so a
+# plain run skips exactly the actors nothing has changed for, clears and
+# re-speaks the ones a recast or a retune invalidated, and speaks the ones that
+# have never been spoken. --fresh earns its keep only when you suspect the
+# stamps themselves are lying (a take edited by hand, a half-copied folder).
+#
+# EXPECTED COST (2026-08-18, after THE GREAT RECAST, the Falls Vale wave and the
+# six-actor firstWave pass): 222 speaking characters, 2582 clips (1832 dialogue
+# lines, 666 barks, 84 quips), at roughly ~7s a clip. The cast currently splits:
+#
+#   6 actors    current at the stamped signature   — a plain run SKIPS these
+#   126 actors  stale voice or delivery            — cleared and re-spoken
+#   90 actors   never spoken at all                — spoken
+#
+# So a plain run is ~216 actors and a --fresh run is ~222 — call it five hours
+# either way, but --fresh throws away 230 good clips to arrive at the same
+# place. --generic adds ~50 minutes on top.
+#
+# Re-derive that split whenever you want it fresh, rather than trusting these
+# numbers: `npx tsx tools/voice/audit.mts` states it as GAP lines.
 #
 # READ THIS BEFORE YOU START IT
 #   * Do not push to main while this runs. Forge quick-deploys on every push to
