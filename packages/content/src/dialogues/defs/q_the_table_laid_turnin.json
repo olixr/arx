@@ -14,14 +14,14 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_table_laid_turnin__paid",
       "text": "Loaves with a proper hollow knock, trout still warm. Sit down. That end's yours now, next to Nib's spot and one up from where Hask pretends not to enjoy company. Mam set this table thirty years. She'd have liked watching you earn a chair at it.",
       "hooks": [
         {
           "kind": "quest_turnin",
           "quest": "the_table_laid"
         }
-      ],
-      "voice": "q_the_table_laid_turnin__paid"
+      ]
     }
   ]
 }

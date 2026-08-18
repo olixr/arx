@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_delf_ladder_offer__hub",
       "text": "You want the forge, you start in the ground. Postern gate, east wall. The Delf. Four copper, four tin. The rock will teach your arms what I can't.",
       "hooks": [
         {
@@ -30,24 +31,23 @@
           "text": "Not today.",
           "next": "declined"
         }
-      ],
-      "voice": "q_the_delf_ladder_offer__hub"
+      ]
     },
     {
       "id": "sworn",
+      "voice": "q_the_delf_ladder_offer__sworn",
       "text": "Take a lamp if you're slow about it. The Delf keeps miners' hours, not yours.",
       "hooks": [
         {
           "kind": "quest_accept",
           "quest": "the_delf_ladder"
         }
-      ],
-      "voice": "q_the_delf_ladder_offer__sworn"
+      ]
     },
     {
       "id": "declined",
-      "text": "Then don't stand near my anvil looking hungry at it.",
-      "voice": "q_the_delf_ladder_offer__declined"
+      "voice": "q_the_delf_ladder_offer__declined",
+      "text": "Then don't stand near my anvil looking hungry at it."
     }
   ]
 }

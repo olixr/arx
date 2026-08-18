@@ -14,14 +14,14 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_ford_holds_turnin__paid",
       "text": "Rowan says your name sits straight in the book. Ansel says you stood at the pillar properly, quiet, no questions. Then you came when called. That's the whole test, and most fail the third part. Amberford holds because people hold it. You're one of them now. Cape's yours. Wear it on the roads and they'll know where you learned to walk.",
       "hooks": [
         {
           "kind": "quest_turnin",
           "quest": "the_ford_holds"
         }
-      ],
-      "voice": "q_the_ford_holds_turnin__paid"
+      ]
     }
   ]
 }

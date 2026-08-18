@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_first_road_turnin__paid",
       "text": "In off the west road, alone, standing straight. Wren's mark, that. She still sends me the ones worth the walk, same as Rowan did, and he'll want your name for his registry before supper. Amberford's yours to learn, waker. Gate stays open till the horn says otherwise.",
       "hooks": [
         {
