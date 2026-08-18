@@ -121,7 +121,13 @@ test('every foot word carries a bounded low-poly shape', () => {
   }
   // The ruler is the VISUAL foot: the rig wears chunky ~0.2-tile boots
   // against its 1.15-tile body, and the print matches the boot it saw.
-  assert.ok(PRINT_SHAPES.boot.len > 0.18 && PRINT_SHAPES.boot.len < 0.26);
+  assert.ok(PRINT_SHAPES.boot.len >= 0.18 && PRINT_SHAPES.boot.len < 0.26);
+  // THE ABSTRACTION LAW (user, 2026-08-17): people prints are ONE
+  // abstract scuff chip — never literal sole/heel/toe anatomy.
+  for (const w of ['boot', 'bare'] as const) {
+    assert.equal(PRINT_SHAPES[w].polys.length, 1, `${w} must be one abstract chip`);
+    assert.equal(PRINT_SHAPES[w].fine, undefined, `${w} must carry no toe anatomy`);
+  }
 });
 
 /** THE BUDGET BREATHES: hard cap recycles, pressure fast-fades oldest. */

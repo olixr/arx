@@ -17,12 +17,16 @@
  *   wall faces the sun; the terrain sun-law's mirror). Grass, stone,
  *   wood, and wet ground swallow the mark — extend PRINT_INKS to
  *   teach a new material, nothing else.
- * - THE PRINT IS THE FOOT. Shapes are low-poly chamfered polygons per
- *   foot word (boot, bare sole, cloven hoof, paw, bear pad, bird claw,
- *   turtle/lizard claw fans, crab spike), mirrored left/right by the
- *   leg's lateral sign and scaled ~1:1 with the body that made them.
- *   Fine marks (toes, claws) join only when the print is large enough
- *   on screen to earn them.
+ * - THE PRINT SPEAKS THE STYLE. People leave ABSTRACT marks — a
+ *   single chamfered scuff chip per step (boot a faceted tread chip,
+ *   bare a softer smaller chip): the alternating rhythm of the trail
+ *   says "footsteps", never a literal sole (user law 2026-08-17 —
+ *   literal boot anatomy read too real for the flat vector style).
+ *   Beasts keep their iconic marks (cloven hoof, paw pad + beans,
+ *   bird-claw trident, claw fans, crab spike) — those are already
+ *   game iconography, mirrored left/right by the leg's lateral sign
+ *   and scaled ~1:1 with the body. Fine marks (toes, claws) join
+ *   only when the print is large enough on screen to earn them.
  * - THE PLANE LAW. Prints lie flat on the ground: rotated in world
  *   space, squashed by the same ground-perspective constant every
  *   combat-fx circle uses, lifted by terrain elevation — and painted
@@ -149,21 +153,21 @@ function digit(tip: number, root: number, w: number): number[] {
 }
 
 export const PRINT_SHAPES: Record<FootWord, PrintShape> = {
-  // Sole and heel with the waist gap between — the cobbler's signature.
+  // THE SCUFF CHIP: one chamfered tread lozenge, faintly tapered
+  // toward the toe so the trail still tells its direction — the
+  // abstraction law above; no sole, no heel, no anatomy.
   boot: {
-    len: 0.22,
+    len: 0.2,
     polys: [
-      [0.5, -0.13, 0.44, -0.2, 0.06, -0.21, -0.06, -0.13, -0.06, 0.13, 0.06, 0.21, 0.44, 0.2, 0.5, 0.13],
-      [-0.18, -0.17, -0.42, -0.15, -0.5, -0.07, -0.5, 0.07, -0.42, 0.15, -0.18, 0.17],
+      [0.5, -0.09, 0.36, -0.16, -0.26, -0.15, -0.5, -0.07, -0.5, 0.07, -0.26, 0.15, 0.36, 0.16, 0.5, 0.09],
     ],
   },
-  // One tapered sole, three toe chips off the big-toe edge.
+  // The bare step: the same abstract chip, smaller and softer.
   bare: {
-    len: 0.21,
+    len: 0.18,
     polys: [
-      [0.36, -0.15, 0.1, -0.2, -0.28, -0.16, -0.44, -0.08, -0.44, 0.08, -0.28, 0.14, 0.1, 0.16, 0.36, 0.11],
+      [0.42, -0.07, 0.24, -0.13, -0.24, -0.12, -0.44, -0.06, -0.44, 0.06, -0.24, 0.12, 0.24, 0.13, 0.42, 0.07],
     ],
-    fine: [dia(0.46, -0.11, 0.07), dia(0.47, 0.01, 0.055), dia(0.44, 0.11, 0.045)],
   },
   // Two lobes, cleft down the middle — the cloven read.
   hoof: {
