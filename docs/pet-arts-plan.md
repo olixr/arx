@@ -335,6 +335,22 @@ wolves taught). Worg: `winters_jaw` (A)[2] chill arc; `war_pelt`
 (A)[3] becalm-pulse on lesser wild beasts (the war-hound remembers
 giving orders).
 
+
+**THE RED SKULK** (fox, added 2026-08-18 with the fox's courting round)
+— it takes two canid pool words and mints four of its own, because the
+fox is a WATCHER first: `pack_step` (P)[1] and `blooded_run` (P)[1] from
+the pack (the pace and the bleed), then `hedge_larder` (P)[2] every
+third kill shakes loose a forage scrap (the buried cache under the
+hedge root); `the_wary_one` (P)[2] statuses laid on it run at 0.6 and
+its downed clock at 0.6 (nothing holds a fox, and nothing keeps it
+down); `the_hundred_nips` (P)[2] its own nip's bleed deepens a power
+and 0.35 of that tick feeds it (the shallow bite, paid by the tally);
+signature `the_mousing_dive` (A)[3] leap-slam, narrow radius, bleed 2
+on the landing (windup 12 — the vole dive aimed at something that can
+argue). It never takes `worry_the_wound`: the wolf's bite out-hits the
+fox's basic without a readable windup, and THE TELEGRAPH PREMIUM
+refuses that shelf structurally.
+
 **THE CATS** (lynx_young, lynx) — pool: `soft_paw` (P)[1] its steps
 never lift a keeper's sneak; `raking_flurry` (A)[2] bleed flurry;
 `sharpened_claws` (P)[1] teeth a shade keener. Lynx_young (5 arts):

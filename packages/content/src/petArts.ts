@@ -490,6 +490,48 @@ export const PET_ART_DEFS: readonly PetArtDef[] = [
     tale: 'The war-hound remembers giving orders. Lesser wild hearts remember taking them.',
   },
 
+  // ------------------------------------------------- THE RED SKULK
+  // The fox is a WATCHER first: it sees everything, commits late, and
+  // abandons early. Its shelf pays for exactly that body — two canid
+  // family words for the pace and the bleed, then the skulk's own
+  // three: the buried larder, the coat nothing holds, and the dive.
+  {
+    id: 'hedge_larder',
+    name: 'Hedge Larder',
+    kind: 'passive',
+    focus: 2,
+    passive: { killsForage: true },
+    tale: 'It buries the third kill under the hedge root and remembers every one of them.',
+  },
+  {
+    id: 'the_wary_one',
+    name: 'The Wary One',
+    kind: 'passive',
+    focus: 2,
+    passive: { statusDurMult: 0.6, downedTicksMult: 0.6 },
+    tale: 'Nothing keeps its hold on a fox for long, and nothing keeps it down for long either.',
+  },
+  {
+    id: 'the_hundred_nips',
+    name: 'The Hundred Nips',
+    kind: 'passive',
+    focus: 2,
+    passive: { biteStatusPower: 1, statusLeech: 0.35 },
+    tale: 'Not one of its bites is worth the telling. The tally is what does the killing.',
+  },
+  {
+    id: 'the_mousing_dive',
+    name: 'The Mousing Dive',
+    kind: 'active',
+    focus: 3,
+    ability: 'the_mousing_dive',
+    cooldownTicks: 420,
+    windupTicks: 12,
+    minRange: 1.2,
+    maxRange: 5,
+    tale: 'It rises on its hind legs, folds, and comes down nose first.',
+  },
+
   // ----------------------------------------------------- THE CATS
   {
     id: 'soft_paw',
@@ -989,6 +1031,14 @@ export const PET_REPERTOIRE: Readonly<Record<string, readonly string[]>> = {
     'hamstring',
     'lone_vigil',
     'the_first_howl',
+  ],
+  fox: [
+    'pack_step',
+    'blooded_run',
+    'hedge_larder',
+    'the_wary_one',
+    'the_hundred_nips',
+    'the_mousing_dive',
   ],
   giant_turtle: [
     'chitin_plate',

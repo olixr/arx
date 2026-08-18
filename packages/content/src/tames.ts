@@ -130,6 +130,19 @@ export const TAME_DEFS: readonly TameDef[] = [
     flavor: 'It runs where you look. The pack was practice for you.',
   },
   {
+    // THE RED SKULK ANSWERS (user mandate 2026-08-18): the courting
+    // round the fox has been owed since it shipped. The lure is the
+    // henhouse story told back to it — the raid it was always going
+    // to make, handed over instead. 30 + 10 x wild level (plan Part 5).
+    species: 'fox',
+    lure: 'raw_chicken',
+    tameXp: 130,
+    // THE NIP IS ALREADY ITS OWN: no kit — the wild bleed and the
+    // fastest ground in the low wood need no re-aiming (the wolf,
+    // bear, and lynx precedent). The shelf carries the depth.
+    flavor: 'It came for the hen and stayed for the hand that offered one. It sleeps facing the hedge.',
+  },
+  {
     species: 'giant_turtle',
     lure: 'raw_trout',
     tameXp: 170,

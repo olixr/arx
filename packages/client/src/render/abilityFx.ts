@@ -898,6 +898,10 @@ export const FX_STYLES: Record<string, FxStyle> = {
   the_first_howl: EMBER({ mid: '#d9925a', deep: '#6e4326', spark: '#ffe4c8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'wave', punch: 0.35, wash: 0.3 }),
   winters_jaw: FROST({ mid: '#9ac8e0', deep: '#48626e', spark: '#e0f4fc', ring: 'teeth', debris: 'ice', decal: 'rime', punch: 0.35, wash: 0.25 }),
   the_cowing_snarl: SHADOW({ mid: '#9ab0c4', deep: '#485564', spark: '#dce8f4', ring: 'runes', debris: 'shadow', decal: undefined, motif: 'echo', punch: 0.4, wash: 0.2 }),
+  // THE RED SKULK: copper on hedge litter. No scorch, no crack — a
+  // fox leaves the ground exactly as it found it, and what scatters
+  // is whatever was living under it (swarm).
+  the_mousing_dive: EMBER({ mid: '#c4712e', deep: '#59321a', spark: '#ffdcae', ring: 'shards', debris: 'leaf', decal: undefined, motif: 'swarm', punch: 0.35, wash: 0.22 }),
   raking_flurry: BLOOD({ mid: '#c49a6a', deep: '#5e4630', spark: '#f4dcc0', ring: 'shards', debris: 'blood', decal: undefined, punch: 0.25, wash: 0.2 }),
   the_winter_stalk: FROST({ mid: '#a8c8d8', deep: '#4e6270', spark: '#e8f4fa', ring: 'shards', debris: 'ice', decal: 'rime', motif: 'echo', punch: 0.4, wash: 0.3 }),
   maul: BLOOD({ mid: '#8c6a4a', deep: '#443122', spark: '#e0c8a8', ring: 'teeth', debris: 'blood', decal: 'stain', punch: 0.45, wash: 0.3 }),

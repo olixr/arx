@@ -7054,6 +7054,36 @@ Object.assign(PLATES, {
     // The lesser heart bowing under the weight of it.
     crescent(c, 0, 0.54, 0.24, 0.33, Math.PI * 1.15, Math.PI * 1.85, st.spark, 0.03);
   },
+  // The Mousing Dive — the fox rises, folds, and comes down nose
+  // first. The plate is the HEAD emblem, not a body portrait: the
+  // soot ears and the dropped snipe are the reads that survive 24px,
+  // the chevrons say it is falling, and the hedge under the nose
+  // gives up whatever was living in it.
+  the_mousing_dive: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The drop, falling onto the skull.
+    chevrons(c, 0, -0.45, Math.PI / 2, st, 2, 0.6);
+    // THE SOOT EARS, oversized: the fox's identity from any distance.
+    poly(c, st.deep, [[-0.31, -0.11], [-0.27, -0.36], [-0.08, -0.15]], 0.03);
+    poly(c, st.deep, [[0.31, -0.11], [0.27, -0.36], [0.08, -0.15]], 0.03);
+    fill(c, st.mid, [[-0.255, -0.14], [-0.245, -0.28], [-0.135, -0.16]]);
+    fill(c, st.mid, [[0.255, -0.14], [0.245, -0.28], [0.135, -0.16]]);
+    // The skull, coming down.
+    poly(c, st.mid, [[-0.3, -0.14], [0.3, -0.14], [0.18, 0.07], [0.0, 0.16], [-0.18, 0.07]], 0.034);
+    // THE SNIPE: fine, dropped, and in the COAT tone — a lightened
+    // wedge reads as a duck bill (the shipped fox's own beak lesson).
+    poly(c, st.mid, [[-0.1, 0.04], [0.1, 0.04], [0.04, 0.29], [-0.04, 0.29]], 0.03);
+    dot(c, OUTLINE, -0.14, -0.02, 0.042);
+    dot(c, OUTLINE, 0.14, -0.02, 0.042);
+    dot(c, st.spark, -0.145, -0.033, 0.015);
+    dot(c, st.spark, 0.135, -0.033, 0.015);
+    dot(c, OUTLINE, 0.0, 0.26, 0.026);
+    // The struck hedge, and the two things the dive flushed loose.
+    puff(c, 0.0, 0.4, 0.095, st.deep);
+    star4(c, 0.0, 0.37, 0.06, st.core, 0.5);
+    dot(c, st.spark, -0.2, 0.31, 0.024);
+    dot(c, st.spark, 0.21, 0.27, 0.02);
+  },
   // Raking Flurry — four opinions, delivered.
   raking_flurry: (st) => (c) => {
     c.translate(0.5, 0.5);

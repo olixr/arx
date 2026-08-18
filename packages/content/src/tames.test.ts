@@ -138,7 +138,22 @@ test('BRACKET: the leash holds the ladder — beastcraft caps the climb', () => 
 });
 
 test('THE SPECIES SPEAK: the whole roster stands', () => {
-  assert.equal(TAME_DEFS.length, 19, 'entry trio through the worg capstone, the turtle keep, the razorback, the tide bulwark, the stone court pair, and the hearth cat among them');
+  assert.equal(TAME_DEFS.length, 20, 'entry trio through the worg capstone, the turtle keep, the razorback, the tide bulwark, the stone court pair, the hearth cat, and the red skulk among them');
+});
+
+test('THE RED SKULK ANSWERS: the fox courts on the henhouse story', () => {
+  // User mandate 2026-08-18: the courting round the fox was owed
+  // since it shipped. The lure is the raid it was always going to
+  // make, handed over instead, and the wild nip needs no re-aiming.
+  const f = tameDef('fox');
+  assert.ok(f, 'the fox joined the ladder of trust');
+  assert.equal(f!.lure, 'raw_chicken', 'the henhouse story, told back to it');
+  assert.equal(f!.tameXp, 130, '30 + 10 x wild level 10');
+  assert.equal(f!.kit, undefined, 'the nip and the ground are already its own');
+  assert.ok(!f!.docile, 'the skulk fights; only the hearth cat does not');
+  // The vixen keeps the old decree — a matriarch is not a friend.
+  assert.equal(tameDef('fox_champion'), undefined, 'the smokebrush vixen stays wild');
+  assert.deepEqual(tameErrors(f!), []);
 });
 
 test('THE GAZE TAKES THE LEASH: the stone court pair stands, the elder stays wild', () => {
@@ -192,11 +207,13 @@ test('kits are the species\' own teeth re-aimed, never an invented spellbook', (
   assert.equal(tameDef('giant_spider')?.kit, undefined);
   assert.equal(tameDef('lynx')?.kit, undefined);
   assert.equal(tameDef('lynx_young')?.kit, undefined);
+  assert.equal(tameDef('fox')?.kit, undefined);
   assert.ok(NPCS.get('wolf')?.attackStatus, 'the wolf bleeds on its own');
   assert.ok(NPCS.get('bear')?.attackStatus, 'the bear mauls on its own');
   assert.ok(NPCS.get('cave_bat')?.attackStatus, 'the bat bleeds on its own');
   assert.ok(NPCS.get('giant_spider')?.attackStatus, 'the spider envenoms on its own');
   assert.ok(NPCS.get('lynx')?.attackStatus, 'the lynx rakes on its own');
+  assert.ok(NPCS.get('fox')?.attackStatus, 'the fox nips on its own');
   // Pounce openers are anatomy, not kit: the chargers were born leaping.
   for (const sp of ['boar', 'bear', 'great_owl', 'worg', 'giant_spider', 'lynx']) {
     assert.ok(NPCS.get(sp)?.pounce, `${sp} pounces as it was born to`);

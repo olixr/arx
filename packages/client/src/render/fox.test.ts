@@ -12,7 +12,17 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LOOT_TABLES, NPCS, TAMES } from '@arx/content';
+import {
+  ABILITIES,
+  LOOT_TABLES,
+  NPCS,
+  PET_REPERTOIRE,
+  TAMES,
+  petArtDef,
+  repertoireFor,
+} from '@arx/content';
+import { FX_STYLES } from './abilityFx.js';
+import { allAbilityIconIds } from './abilityIcons.js';
 import { FOX_LOOKS, foxLook } from './rig.js';
 
 test('every fox NPC has its own authored look', () => {
@@ -82,11 +92,48 @@ test('the skulk hunts as one pack and the vixen screams her own scream', () => {
   assert.ok(fox.speed >= 5.0 && boss.speed > fox.speed, 'nothing in the low wood outruns the skulk, and nothing at all outruns her');
 });
 
-test('no keeper courts the skulk yet, and never the crown', () => {
-  // The fox has not joined the ladder of trust this pass (the lynx
-  // precedent: the beast ships first, the courting comes later); the
+test('THE RED SKULK ANSWERS: the keeper courts the fox, and never the crown', () => {
+  // The courting round landed 2026-08-18 (the lynx precedent run to
+  // its end: the beast shipped first, the courtship came after). The
   // vixen is a sovereign by construction either way.
+  assert.ok(TAMES.has('fox'), 'the fox joined the ladder of trust');
+  assert.equal(TAMES.get('fox')?.lure, 'raw_chicken', 'the henhouse story, told back to it');
+  assert.equal(TAMES.get('fox')?.kit, undefined, 'the wild nip is already the kit');
   assert.ok(!TAMES.has('fox_champion'), 'the vixen kneels for no one');
+  // The shelf: the canid pace and bleed, then the skulk's own words.
+  const shelf = repertoireFor('fox');
+  assert.equal(shelf.length, 6);
+  for (const id of ['pack_step', 'blooded_run']) {
+    assert.ok(shelf.includes(id), `the canid family word ${id} carries over`);
+  }
+  for (const id of ['hedge_larder', 'the_wary_one', 'the_hundred_nips', 'the_mousing_dive']) {
+    assert.ok(shelf.includes(id), `the skulk's own word ${id} is shelved`);
+    assert.ok(
+      !Object.entries(PET_REPERTOIRE).some(([sp, ids]) => sp !== 'fox' && ids.includes(id)),
+      `${id} is the fox's alone`,
+    );
+  }
+  // The wolf keeps its own teeth: no exclusive of the pack crossed over.
+  for (const id of ['hamstring', 'lone_vigil', 'the_first_howl', 'worry_the_wound']) {
+    assert.ok(!shelf.includes(id), `${id} stays the wolf's`);
+  }
+});
+
+test("the dive wears its own face and its own plate", () => {
+  // The bespoke-face and spell-plate laws, met at the fox's one word.
+  assert.ok(FX_STYLES['the_mousing_dive'], 'the dive has an FX identity');
+  assert.ok(
+    new Set(allAbilityIconIds()).has('the_mousing_dive'),
+    'the dive has a hand-painted plate',
+  );
+  const ab = ABILITIES.get('the_mousing_dive')!;
+  assert.equal(ab.shape, 'leap_slam', 'the fox folds and comes down, it does not charge');
+  assert.equal(ab.status?.status, 'bleed', 'the needle teeth stay needle teeth');
+  assert.ok(ab.damage > NPCS.get('fox')!.damage, 'the dive out-hits the nip');
+  assert.ok(
+    (petArtDef('the_mousing_dive')?.windupTicks ?? 0) >= 10,
+    'and therefore wears a windup the field can read',
+  );
 });
 
 test('the loot-story law: the pelts the foxes wear really drop', () => {

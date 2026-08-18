@@ -24,19 +24,22 @@ test('the repertoire clears every law it wrote for itself', () => {
   assert.deepEqual(petRepertoireErrors(), []);
 });
 
-test('the shelves are whole: eighteen species, eighty words', () => {
+test('the shelves are whole: nineteen species, eighty four words', () => {
   // Move these numbers ON PURPOSE when the roster grows — the pin
   // exists so a lost row or an orphaned art is loud, not silent.
   // 18: the basilisk joined the fen (THE GAZE TAKES THE LEASH,
   // 2026-08-17) and the family shelf was recut BESPOKE — the fen's
   // borrowed reptile words and the turtle's monolith went home, and
   // nine family words were minted (71 + 9 = 80).
-  assert.equal(Object.keys(PET_REPERTOIRE).length, 18);
-  assert.equal(PET_ART_DEFS.length, 80);
+  // 19: THE RED SKULK ANSWERS (user mandate 2026-08-18) — the fox
+  // took the two canid family words and minted four of its own (the
+  // larder, the wary coat, the tally, and the dive): 80 + 4 = 84.
+  assert.equal(Object.keys(PET_REPERTOIRE).length, 19);
+  assert.equal(PET_ART_DEFS.length, 84);
   // Exactly one signature ART per species' shelf — the stone court
   // now mints its own two (the mire and the gaze), so eighteen.
   const signatures = PET_ART_DEFS.filter((a) => a.focus === 3);
-  assert.equal(signatures.length, 18);
+  assert.equal(signatures.length, 19);
   // Every art is shelved somewhere; an unshelved art is a ghost.
   const shelved = new Set(Object.values(PET_REPERTOIRE).flat());
   for (const art of PET_ART_DEFS) {

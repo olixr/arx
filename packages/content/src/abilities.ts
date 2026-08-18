@@ -5033,6 +5033,24 @@ const defs: AbilityDef[] = [
     pulseEveryTicks: 5,
     status: { status: 'bleed', power: 1, durationTicks: 60 },
   },
+  // THE RED SKULK's one word. The fox does not brawl: it rises on its
+  // hind legs over the mark, folds, and comes down nose first — the
+  // mousing dive it uses on voles under snow, aimed at something that
+  // can argue. Narrow radius on purpose: this is a needle, not a slam.
+  {
+    id: 'the_mousing_dive',
+    name: 'The Mousing Dive',
+    desc: 'It rises on its hind legs, folds, and comes down nose first.',
+    color: '#c4712e',
+    code: 'Md',
+    cooldownTicks: 0, // pet pacing lives on the PetArtDef, not the ability
+    shape: 'leap_slam',
+    damage: 6,
+    dashTiles: 5.5,
+    radius: 1.3,
+    status: { status: 'bleed', power: 2, durationTicks: 60 },
+  },
+
   {
     id: 'the_winter_stalk',
     name: 'The Winter Stalk',
