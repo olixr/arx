@@ -288,6 +288,101 @@ Still open after round 5: tree sprites stay individual by design
 — a shared-atlas tree cache is the next lever if forests ever miss
 frame. Band canvases could pack tighter (per-tile height table).
 
+## Round 6 — THE FRAME SHEDS ITS TREADMILLS (2026-08-17)
+
+Triggered by the owner's post-content-wave audit: lighting v4, the
+grass coat, the town dressing waves and the prop recuts all landed
+since round 5, and a base-model Mac mini sat at 60fps. Survey driver +
+CPU profiles + sampled-stack op attribution on a fresh lane-32 rig
+(scratchpad perf6*.mjs pattern; 1500×900 @2, CDP 4x = weaker than a
+base M-series mini, so 4x numbers are a hard floor). Two prior notes
+stood confirmed: rAF locks to the panel (a 60Hz mini display caps at
+60 regardless of headroom), and sequential single-window scene
+readings lie (weather/entity drift) — every conviction here came from
+interleaved A/B cycles or per-op caller attribution.
+
+What the profiles confessed (4x, p50 / phase EMAs):
+
+- The live-water pass scanned EVERY visible tile per frame (3 sampler
+  calls each), and the shoreline march paid a 16-sample nearDeck ring
+  per dual cell BEFORE its water-mask gate — ~10% of town frames with
+  zero water on screen.
+- Soft trees re-baked their full painted sprite every 6 frames to
+  animate sway — the adaptive cadence TARGETED 28 repaints/frame by
+  design (a 577-tree forest measured ~26 body + ~26 shadow repaints
+  per frame), and the sun shadow filled a complex TRUE-FORM Path2D
+  per tree per frame (top fill consumer of every forest profile).
+- Idle NPCs excluded their grass tiles from the calm canvas forever,
+  so a plaza of standing townsfolk rebuilt hundreds of blade tiles
+  live every frame.
+- `dpr()` (a DOM getter read) burned ~1% inside per-tile loops.
+
+Shipped (58da55ee + 61fdb575):
+
+- **THE WET LEDGER**: drawLiveGround / drawShorelines /
+  waterRegionPath accept caller-compiled wet-tile + shore-cell lists,
+  built in ONE linear typed-array pass over the frame grid (Uint8
+  tile-class table; row-major append preserves the scans' exact visit
+  order, so bucket draw order is unchanged by construction). Plain
+  scans remain the always-correct fallback (elevated bands, editor,
+  bakes). wetLedger.test.ts pins op-stream parity in BOTH hemispheres
+  — the eastern pin exists because a signed unpack shift silently
+  dropped every wet tile at tx ≥ 0 in the first cut.
+- **THE SHEAR CARRIES THE SWAY**: tree sprites record their baked
+  wind sample; the blit shears by the live delta about the ground
+  line (THE RIGID SWAY generalized — rigid bakes neutral so its delta
+  IS the full wind; one blit path for every species). Primary
+  cantilever now moves at FULL frame rate at any cadence, so the
+  cadence only refreshes per-cluster gusts/flutter: floor 6→18,
+  target 28→12, ceiling 24→60, sub-pixel shear gate.
+- **THE CAST IS A STAMP**: the sun-shadow Path2D rasterizes once per
+  cadence into a half-res silhouette sprite (tone re-bakes on the
+  moon flip) and stamps with one drawImage wearing the same live
+  shear; shadow re-bakes ride the ms budget (a count-only gate burst
+  dozens of canvas fills into one frame). Night light-throws keep the
+  live path (few, near lamps only).
+- **THE SETTLED BODY JOINS THE CALM**: a body still for ~1s bakes its
+  (static) parting into the calm canvas and stops excluding tiles;
+  the teleport escape-hatch skips settled bodies (treating them as
+  unpredicted arrivals forced a full re-bake EVERY frame — caught by
+  interleaved A/B after sequential windows blamed the weather), and
+  first motion re-arms the hatch THAT frame.
+- dpr() frame-memoized.
+
+Measured (4x throttle; phase EMAs are the honest signal — p50s
+quantize on the throttled vsync ticks):
+
+| scene | ground | world | p50 |
+|---|---|---|---|
+| forest-day | 6.6→3.2 | 4.9→2.6 | 16.7→9.4 |
+| town-day | 5.9→3.4 | 6.1→4.3-5.2 | 16.7→9.9-15.3 |
+| town-night | 6.3→3.6 | 6.3→4.9 | ~16.6 (tick-pinned) |
+| forest-night | 6.3→3.5 | 4.5→3.3 | 16.8→15.4 |
+| meadow (577-tree river forest) | 7.6→6.1 | 8.0→7.0 | ~25 |
+| projectile storm | 8.2→6-7.6 | 8.7→3-9 | 25→17-25 |
+
+669/669 client tests (3 new parity pins). Visual proofs: canopy
+occlusion, step-aside fade, TRUE-FORM plaza casts, shoreline foam all
+clean in capture sweeps; sway smoothness needs a live human eyeball
+(primary sway is now frame-rate; cluster shimmer refreshes at the
+stretched cadence).
+
+Still open after round 6 (the meadow's remaining ~25ms at 4x is
+tree-BLIT-bound, not bake-bound):
+
+- Tree sprite margins carry large transparent headroom (wind throw +
+  jitter pads) — tight content bounds at bake would cut blit pixels
+  ~30-40% in dense forests.
+- `restore`/`transform` self-time in dense-forest profiles (~7%/5%)
+  — the stamp pairs could batch by layer if it ever matters.
+- Night light-throw tree shadows still build paths live per frame
+  (near lamps only; invisible in day profiles).
+- Hair silhouettes rebuild 4-6 paths per body per frame (towns);
+  garrison reveal repaints cut stretches live BY DESIGN (height-gated
+  correctly — cost is the animation, not a leak).
+- Tall thickets live-build every frame (y-sorted); a cadence+shear
+  sprite lane like the trees' is the shape if meadows ever miss.
+
 ## Verification harness (reusable)
 
 Isolated rig: `createdb-17 arx_rig_perf`; server
