@@ -40,6 +40,38 @@ import { WIELD_GROUND_K } from './wield.js';
  * bulges toward the enemy — which is what draws the bowed crescent
  * silhouette when the shield turns edge-on.
  *
+ * THE CARVED SHELL (v3, 2026-08-17 — the pancake verdict). The rings
+ * were always domed, but everything BETWEEN them lied: the face art
+ * projected through one flat affine onto the plane tangent to the
+ * dome's crown, and every relief measured its height from that same
+ * tangent plane. Turned past the three-quarter, the tangent plane and
+ * the real shell separate, and the shield came apart into parallel
+ * sheets — face card, furniture card, crest card, each hovering in its
+ * own air. v3 makes the SURFACE the one truth:
+ *
+ *  - THE WRAPPED FACE: the face art is painted once into a cached
+ *    design-space canvas and laid onto the dome in vertical strips,
+ *    each strip seated at its own station's height on the shell. The
+ *    art visibly wraps the bow: the near limb holds its width, the far
+ *    limb foreshortens away, and past the shell's own horizon a strip
+ *    back-faces and is culled — the art rolls out of view the way
+ *    paint on a curved board actually does. No pop gates: the grazing
+ *    read is the geometry's own, down to the last sliver.
+ *  - THE SEATED FITTING: rPx/rPy root every relief height on the dome
+ *    at its own (u, t) — dome-crown fittings ride high, rim fittings
+ *    sit low, and nothing floats over air the shell doesn't occupy.
+ *  - THE VISIBLE WINDOW: the strip scan hands the relief pass the
+ *    surviving u-range, and the solid vocabulary culls whole elements
+ *    that have rolled past the horizon instead of folding them back
+ *    into the visible crescent.
+ *  - THE PROUD PROFILE: bosses, spikes and crests draw at EVERY yaw —
+ *    edge-on they are the silhouette's character, which is the entire
+ *    point of a spiked shield. Only the shield's own back hides them.
+ *
+ * The tangent-plane affine survives only as the headless/small-scale
+ * fallback (node has no canvas to cache into, and under ~14px of
+ * half-height the warp is sub-pixel anyway).
+ *
  * THE SUN LAW holds through the turn: the lit band is chosen by the
  * SCREEN side of the h axis, never by a design-space constant, so the
  * highlight stays up-screen-left at all eight facings instead of
@@ -1514,6 +1546,142 @@ function dome(u: number, t: number): number {
   return d > 0 ? d : 0;
 }
 
+/** The dome's waist profile — the strip warp's spine. */
+function domeU(u: number): number {
+  return dome(u, 0);
+}
+
+/* ====================== THE WRAPPED FACE ============================
+ *
+ * The face art is authored flat, in design space, exactly as before —
+ * every signature painter is untouched. What changed is the LAYING ON:
+ * the art is painted once into a cached canvas and then dealt onto the
+ * shell in vertical strips, each strip an affine seated at its own
+ * station's dome height. Cache keyed by the style's paint fields, the
+ * lit side and the resolution bucket, so the whole roster warms to a
+ * handful of canvases and the draw path allocates nothing after that.
+ * The one living face (the storm gate's aurora) marks itself in
+ * LIVING_SIGS and repaints its cached canvas each frame — the same
+ * paint cost the flat path always paid, plus the strip blits.
+ */
+
+interface FaceEntry {
+  canvas: HTMLCanvasElement;
+  fctx: CanvasRenderingContext2D;
+  /** Pixels per design unit. */
+  res: number;
+  animated: boolean;
+  paintedAt: number;
+  litU: number;
+  side: 'F' | 'B';
+  st: ShieldStyle;
+}
+
+const FACE_CACHE = new Map<string, FaceEntry>();
+const FACE_CACHE_MAX = 64;
+/** Signatures whose FACE is a function of the clock (crests stay live). */
+const LIVING_SIGS = new Set(['falls']);
+/** Resolution rungs, px per design unit — capped so no entry balloons. */
+const FACE_RES = [20, 30, 44, 64, 92, 132, 184];
+
+const FACE_KEYS = new WeakMap<ShieldStyle, string>();
+function faceKeyOf(st: ShieldStyle): string {
+  let k = FACE_KEYS.get(st);
+  if (k === undefined) {
+    k = [
+      st.shape, st.material, st.face, st.faceAlt, st.field, st.rim,
+      st.boss, st.device, st.deviceColor, st.studs, st.planks, st.curve,
+      st.strapColor, st.sig, st.tier,
+    ].join('|');
+    FACE_KEYS.set(st, k);
+  }
+  return k;
+}
+
+/**
+ * The synthetic frame the cache paints under: fully open, so the
+ * painters' own grazing simplifications never bake into the art — the
+ * strips carry the grazing now, honestly, from the geometry.
+ */
+function cacheFrame(shape: ShieldShape, side: 'F' | 'B'): ShieldFrame {
+  return {
+    shape,
+    cx: 0, cy: 0, theta: side === 'B' ? Math.PI : 0, tilt: 0,
+    oside: 1, sgnP: -1, hw: 1, hh: 1, depth: 0.2, curve: 0.5,
+    gripX: 0, gripY: 0, poleX: 0, poleY: 1,
+    seeBack: side === 'B', open: 1, front: true, sling: 0, guard: 1,
+  };
+}
+
+function paintFaceEntry(e: FaceEntry, nowMs: number): void {
+  const { fctx, res, st } = e;
+  const outline = OUTLINES[st.shape];
+  const n = outline.length / 2;
+  fctx.setTransform(1, 0, 0, 1, 0, 0);
+  fctx.clearRect(0, 0, e.canvas.width, e.canvas.height);
+  fctx.setTransform(res, 0, 0, res, 1.2 * res, 1.2 * res);
+  const fr = cacheFrame(st.shape, e.side);
+  fctx.save();
+  fctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    if (i === 0) fctx.moveTo(outline[0]!, outline[1]!);
+    else fctx.lineTo(outline[i * 2]!, outline[i * 2 + 1]!);
+  }
+  fctx.closePath();
+  fctx.clip();
+  if (e.side === 'B') drawBack(fctx, st, fr, e.litU);
+  else drawFace(fctx, st, fr, e.litU, nowMs);
+  fctx.restore();
+  drawRim(fctx, st, fr, outline, n);
+  e.paintedAt = nowMs;
+}
+
+/**
+ * The cached face for a style/side/light at a resolution rung. Returns
+ * null where there is no DOM to build canvases from (the node test
+ * harness) — the caller falls back to the tangent-plane affine.
+ */
+function getFaceEntry(
+  st: ShieldStyle,
+  side: 'F' | 'B',
+  litU: number,
+  pxPerUnit: number,
+  nowMs: number,
+): FaceEntry | null {
+  if (typeof document === 'undefined') return null;
+  let res = FACE_RES[FACE_RES.length - 1]!;
+  for (const r of FACE_RES) {
+    if (r >= pxPerUnit) { res = r; break; }
+  }
+  const key = `${faceKeyOf(st)}#${side}${litU}@${res}`;
+  let e = FACE_CACHE.get(key);
+  if (e) {
+    // LRU touch; the living face repaints on a new clock tick.
+    FACE_CACHE.delete(key);
+    FACE_CACHE.set(key, e);
+    if (e.animated && e.paintedAt !== nowMs) paintFaceEntry(e, nowMs);
+    return e;
+  }
+  const canvas = document.createElement('canvas');
+  const px = Math.ceil(2.4 * res);
+  canvas.width = px;
+  canvas.height = px;
+  const fctx = canvas.getContext('2d');
+  if (!fctx) return null;
+  e = {
+    canvas, fctx, res,
+    animated: st.sig !== undefined && LIVING_SIGS.has(st.sig),
+    paintedAt: -1, litU, side, st,
+  };
+  paintFaceEntry(e, nowMs);
+  FACE_CACHE.set(key, e);
+  if (FACE_CACHE.size > FACE_CACHE_MAX) {
+    const oldest = FACE_CACHE.keys().next().value;
+    if (oldest !== undefined) FACE_CACHE.delete(oldest);
+  }
+  return e;
+}
+
 /**
  * Ring scratch: the projected front and back silhouettes of the shell,
  * rebuilt per shield and read by every pass below. Sized for the
@@ -1653,64 +1821,150 @@ export function drawShield(
   }
   ctx.fill();
 
-  // ---- the near ring. Edge-on there is no face left to paint: the
-  // wall above IS the shield, and a bright crest line finishes it.
-  if (fr.open < 0.07) {
-    if (!hurt) {
-      ctx.strokeStyle = shade(st.rim, 46);
-      ctx.lineWidth = fr.depth * 0.3;
-      ctx.beginPath();
-      for (let i = 0; i < n; i++) {
-        if (i === 0) ctx.moveTo(RING_NEAR[0]!, RING_NEAR[1]!);
-        else ctx.lineTo(RING_NEAR[i * 2]!, RING_NEAR[i * 2 + 1]!);
-      }
-      ctx.closePath();
-      ctx.stroke();
-    }
-    ctx.restore();
-    return;
-  }
-
-  // The face art rides the shell's crown: one translation onto the
-  // dome, then the design space itself becomes the canvas.
+  // ---- the near surface: THE WRAPPED FACE. The art is dealt onto the
+  // dome in vertical strips, each seated at its own station's shell
+  // height — the near limb holds its width, the far limb rolls away,
+  // and past the shell's horizon a strip back-faces and is culled. The
+  // grazing read is the geometry's own now: no pop gate anywhere.
+  // THE SUN LAW through the turn: the lit side is a SCREEN fact, so it
+  // is read off the h axis's direction, never off a design constant.
+  const litU = hxU >= 0 ? -1 : 1;
   const crown = dNear + front * fr.curve;
-  ctx.save();
-  ctx.translate(nxU * crown, nyU * crown);
-  ctx.transform(hxU, hyU, 0, fr.hh, 0, 0);
-  ctx.beginPath();
-  for (let i = 0; i < n; i++) {
-    const u = outline[i * 2]!;
-    const t = outline[i * 2 + 1]!;
-    if (i === 0) ctx.moveTo(u, t);
-    else ctx.lineTo(u, t);
-  }
-  ctx.closePath();
+  // The visible u-window, measured by the strip scan and handed to the
+  // relief pass so fittings that rolled past the horizon cull instead
+  // of folding back into the visible crescent as ghosts.
+  let uVis0 = -1.2;
+  let uVis1 = 1.2;
   if (hurt) {
+    // The hurt flash: one white silhouette through the tangent affine
+    // (headless-safe, and a flash needs no wrap), then out — the flash
+    // is a flat stamp, never a detailed object.
+    ctx.save();
+    ctx.translate(nxU * crown, nyU * crown);
+    ctx.transform(hxU, hyU, 0, fr.hh, 0, 0);
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const u = outline[i * 2]!;
+      const t = outline[i * 2 + 1]!;
+      if (i === 0) ctx.moveTo(u, t);
+      else ctx.lineTo(u, t);
+    }
+    ctx.closePath();
     ctx.fillStyle = '#ffffff';
     ctx.fill();
     ctx.restore();
     ctx.restore();
     return;
   }
-  ctx.save();
-  ctx.clip();
-  // THE SUN LAW through the turn: the lit side is a SCREEN fact, so it
-  // is read off the h axis's direction, never off a design constant.
-  const litU = hxU >= 0 ? -1 : 1;
-  if (fr.seeBack) drawBack(ctx, st, fr, litU);
-  else drawFace(ctx, st, fr, litU, nowMs);
-  ctx.restore();
-
-  // ---- the bound rim: a real band around the face, not a stroke.
-  drawRim(ctx, st, fr, outline, n);
-  ctx.restore();
-
-  if (!hurt) {
-    ctx.strokeStyle = SEAM;
-    ctx.lineWidth = ol;
-    ctx.lineJoin = 'round';
-    strokeRing(RING_NEAR);
+  if (fr.open < 0.07) {
+    // Edge-on there is no face left: the wall above IS the shield and
+    // a bright crest line finishes the slab. The fittings still draw
+    // below — a spiked profile is the entire point of a spiked shield.
+    ctx.strokeStyle = shade(st.rim, 46);
+    ctx.lineWidth = fr.depth * 0.3;
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      if (i === 0) ctx.moveTo(RING_NEAR[0]!, RING_NEAR[1]!);
+      else ctx.lineTo(RING_NEAR[i * 2]!, RING_NEAR[i * 2 + 1]!);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    uVis0 = 1.2;
+    uVis1 = -1.2;
+  } else {
+    // Honest device pixels per design unit, read off the live
+    // transform so icons (unit-space) and the rig (screen px) both
+    // land on the right resolution rung.
+    let scl = 1;
+    const gt = (
+      ctx as { getTransform?: () => { a: number; b: number } | undefined }
+    ).getTransform?.();
+    if (gt && typeof gt.a === 'number' && isFinite(gt.a)) {
+      scl = Math.hypot(gt.a, gt.b) || 1;
+    }
+    const pxHH = fr.hh * scl;
+    const entry =
+      pxHH >= 14 && Math.abs(hxU) > 1e-6
+        ? getFaceEntry(st, fr.seeBack ? 'B' : 'F', litU, pxHH * 1.25, nowMs)
+        : null;
+    if (entry) {
+      // THE STRIP DEAL. Stations across the design width; a strip
+      // survives when its screen run keeps the face's own orientation.
+      const res = entry.res;
+      const img = entry.canvas;
+      const wOf = (u: number): number => dNear + front * fr.curve * domeU(u);
+      const NS = Math.max(8, Math.min(26, Math.round((fr.hw * scl) / 3)));
+      const ref = hxU > 0 ? 1 : -1;
+      const sh = Math.ceil(2.4 * res);
+      uVis0 = 1.2;
+      uVis1 = -1.2;
+      let pu = -1.2;
+      let pw = wOf(pu);
+      let px0 = pu * hxU + nxU * pw;
+      let py0 = pu * hyU + nyU * pw;
+      for (let k = 1; k <= NS; k++) {
+        const u = -1.2 + (2.4 * k) / NS;
+        pw = wOf(u);
+        const x = u * hxU + nxU * pw;
+        const y = u * hyU + nyU * pw;
+        const dx = x - px0;
+        if (dx * ref > 1e-6) {
+          const sx = (pu + 1.2) * res;
+          const sw0 = (u - pu) * res;
+          // Seam law: neighbouring strips overlap by ~a screen pixel —
+          // measured in DESTINATION px, since a source-px overlap
+          // shrinks with the blit's own downscale and lets hairline
+          // gaps open between strips. The art is opaque flats, so the
+          // double-cover band can never show; the far side's spill at
+          // the fold hides under the silhouette's own SEAM ring.
+          const ov =
+            k < NS ? Math.min(sw0, (1.25 * sw0) / Math.max(1e-6, Math.abs(dx))) : 0;
+          ctx.save();
+          ctx.transform(dx / sw0, (y - py0) / sw0, 0, fr.hh / res, px0, py0 - 1.2 * fr.hh);
+          ctx.drawImage(img, sx, 0, sw0 + ov, sh, 0, 0, sw0 + ov, sh);
+          ctx.restore();
+          if (pu < uVis0) uVis0 = pu;
+          if (u > uVis1) uVis1 = u;
+        }
+        pu = u;
+        px0 = x;
+        py0 = y;
+      }
+    } else {
+      // THE TANGENT FALLBACK: no DOM to cache into (the node harness)
+      // or a shield too small for the warp to be more than sub-pixel.
+      // The painters' own grazing laws still guard this road (they
+      // read the REAL frame here, not the cache's synthetic one).
+      ctx.save();
+      ctx.translate(nxU * crown, nyU * crown);
+      ctx.transform(hxU, hyU, 0, fr.hh, 0, 0);
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const u = outline[i * 2]!;
+        const t = outline[i * 2 + 1]!;
+        if (i === 0) ctx.moveTo(u, t);
+        else ctx.lineTo(u, t);
+      }
+      ctx.closePath();
+      ctx.save();
+      ctx.clip();
+      if (fr.seeBack) drawBack(ctx, st, fr, litU);
+      else drawFace(ctx, st, fr, litU, nowMs);
+      ctx.restore();
+      drawRim(ctx, st, fr, outline, n);
+      ctx.restore();
+      if (fr.open < 0.24) {
+        // The old furniture gate's judgment holds on this road.
+        uVis0 = 1.2;
+        uVis1 = -1.2;
+      }
+    }
   }
+
+  ctx.strokeStyle = SEAM;
+  ctx.lineWidth = ol;
+  ctx.lineJoin = 'round';
+  strokeRing(RING_NEAR);
 
   // ---- the umbo stands PROUD of the face, so it is projected in the
   // local frame with its own dome height — at profile it survives as a
@@ -1720,17 +1974,17 @@ export function drawShield(
   // between the rim and the boss so a proud charge can still duck
   // under a prouder stone.
   // THE FURNITURE TIER: raised surface work — plates, bands, lips,
-  // worked charges. Furniture obeys the face's own grazing law (past
-  // open 0.24 the face is a sliver and anything on it collapses into
-  // floating sheets — the steep-yaw verdict), and it is clipped to
-  // THE SWEPT SILHOUETTE: the union of the outline ring at the face
-  // and at the furniture ceiling, which is the volume the shield
-  // actually occupies through its own thickness. Furniture may stand
-  // off the plane; it can never leave the shield.
-  if (!hurt && !fr.seeBack && fr.open >= 0.24) {
+  // worked charges. Furniture is SEATED on the dome (rPx/rPy root its
+  // height at its own station's shell height), gated by THE VISIBLE
+  // WINDOW the strip scan measured — a fitting that rolled past the
+  // shell's horizon culls whole instead of folding back as a ghost —
+  // and clipped to THE SWEPT SILHOUETTE: the union of the outline ring
+  // at the surface and at the furniture ceiling, which is the volume
+  // the shield actually occupies through its own thickness. Furniture
+  // may stand off the plane; it can never leave the shield.
+  if (!fr.seeBack && uVis1 > uVis0) {
     const relief = st.sig ? RELIEFS[st.sig] : undefined;
     if (relief) {
-      const litU2 = hxU >= 0 ? -1 : 1;
       ctx.save();
       ctx.beginPath();
       const grow = 1.03;
@@ -1738,20 +1992,68 @@ export function drawShield(
         for (let i = 0; i < n; i++) {
           const u = outline[i * 2]! * grow;
           const t = outline[i * 2 + 1]! * grow;
-          const x = u * hxU + nxU * (crown + h);
-          const y = u * hyU + t * fr.hh + nyU * (crown + h);
+          const w = dNear + front * fr.curve * dome(u, t) + h;
+          const x = u * hxU + nxU * w;
+          const y = u * hyU + t * fr.hh + nyU * w;
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
         ctx.closePath();
       }
       ctx.clip();
-      relief({ ctx, fr, hxU, hyU, nxU, nyU, crown, litU: litU2, ol, nowMs }, st);
+      // THE WINDOW CLIP: a second intersection confines furniture to
+      // the face still turned toward the camera — an element PARTLY
+      // past the horizon keeps its visible half and loses the folded
+      // half, instead of ghosting its whole length across the slab
+      // (the doorwall-strap sliver read at steep yaw). Face-on the
+      // window is the whole face and this clip is a no-op.
+      if (uVis0 > -1.19 || uVis1 < 1.19) {
+        // The region a furniture-bearing window sweeps through the
+        // slab's thickness: corners move linearly in h, so the convex
+        // hull of the eight projected corners is the region, exactly.
+        const pts: Array<[number, number]> = [];
+        for (const h of [-0.1, 1.6]) {
+          for (const [cu2, ct2] of [
+            [uVis0, -1.35], [uVis1, -1.35], [uVis1, 1.35], [uVis0, 1.35],
+          ] as const) {
+            const w = dNear + front * fr.curve * domeU(cu2) + h;
+            pts.push([
+              cu2 * hxU + nxU * w,
+              cu2 * hyU + ct2 * fr.hh + nyU * w,
+            ]);
+          }
+        }
+        pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+        const crs = (o: [number, number], a: [number, number], b: [number, number]): number =>
+          (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+        const lo: Array<[number, number]> = [];
+        for (const p of pts) {
+          while (lo.length >= 2 && crs(lo[lo.length - 2]!, lo[lo.length - 1]!, p) <= 0) lo.pop();
+          lo.push(p);
+        }
+        const up: Array<[number, number]> = [];
+        for (let i = pts.length - 1; i >= 0; i--) {
+          const p = pts[i]!;
+          while (up.length >= 2 && crs(up[up.length - 2]!, up[up.length - 1]!, p) <= 0) up.pop();
+          up.push(p);
+        }
+        const hull = lo.slice(0, -1).concat(up.slice(0, -1));
+        if (hull.length >= 3) {
+          ctx.beginPath();
+          for (let i = 0; i < hull.length; i++) {
+            if (i === 0) ctx.moveTo(hull[0]![0], hull[0]![1]);
+            else ctx.lineTo(hull[i]![0], hull[i]![1]);
+          }
+          ctx.closePath();
+          ctx.clip();
+        }
+      }
+      relief({ ctx, fr, hxU, hyU, nxU, nyU, crown, litU, ol, nowMs, uVis0, uVis1 }, st);
       ctx.restore();
     }
   }
   if (st.boss && !fr.seeBack) drawBoss(ctx, st, fr, hxU, hyU, nxU, nyU, crown);
-  if (st.spikes && !hurt) drawSpikes(ctx, st, fr, outline, hxU, hyU, nxU, nyU, crown, nowMs);
+  if (st.spikes) drawSpikes(ctx, st, fr, outline, hxU, hyU, nxU, nyU, crown, nowMs);
   // THE CREST TIER: the free-standing solids — face spires, mounted
   // bone, crown finials. A crest is a 3D object that happens to be
   // bolted to a 2.5D plane: face-on its apex foreshortens toward the
@@ -1759,14 +2061,15 @@ export function drawShield(
   // it is still there, breaking the slab's profile — which is the
   // entire point of a spiked shield. No clip, no grazing gate; only
   // the shield's back hides it.
-  if (!hurt && !fr.seeBack) {
+  if (!fr.seeBack) {
     const crest = st.sig ? CRESTS[st.sig] : undefined;
     if (crest) {
-      const litU2 = hxU >= 0 ? -1 : 1;
-      crest({ ctx, fr, hxU, hyU, nxU, nyU, crown, litU: litU2, ol, nowMs }, st);
+      // Crests take the FULL window: a free-standing solid protrudes
+      // past the shell's horizon on purpose — that is its job.
+      crest({ ctx, fr, hxU, hyU, nxU, nyU, crown, litU, ol, nowMs, uVis0: -1.2, uVis1: 1.2 }, st);
     }
   }
-  if (st.arx && !hurt) drawArxFace(ctx, st.arx, fr, hxU, hyU, nxU, nyU, crown, nowMs);
+  if (st.arx) drawArxFace(ctx, st.arx, fr, hxU, hyU, nxU, nyU, crown, nowMs);
   ctx.restore();
 }
 
@@ -3517,8 +3820,14 @@ function drawSpikes(
   // face instead of teeth grown out of the rim. Organic spikes (bone
   // fangs, spurs) override with their own material via the spike plan.
   const c = st.spikeColor ?? shade(st.rim, 18);
-  const bx = nxU * (crown + 0.3);
-  const by = nyU * (crown + 0.3);
+  // THE SEATED ROOT (v3): a spike beds at the BINDING, and the binding
+  // rides low on the dome (its stations sit near the rim, where the
+  // shell has nearly settled to its base thickness) — never on the
+  // crown's tangent plane, which floated every spike a full curve of
+  // air above the metal it is forged from.
+  const spikeSeat = 0.5 + fr.curve * 0.3;
+  const bx = nxU * (spikeSeat + 0.3);
+  const by = nyU * (spikeSeat + 0.3);
   const px = (u2: number): number => u2 * hxU + bx;
   const py = (u2: number, t2: number): number => u2 * hyU + t2 * fr.hh + by;
   // The spike plan: bespoke angles when the style has a story to tell,
@@ -3532,9 +3841,9 @@ function drawSpikes(
   // two facets meeting on a raised spine from root to tip, the sun
   // dealt to whichever facet rides up-screen. The silhouette the old
   // flat triangle drew is preserved exactly; the ridge lives inside it.
-  const pxh = (u2: number, h: number): number => u2 * hxU + nxU * (crown + h);
+  const pxh = (u2: number, h: number): number => u2 * hxU + nxU * (spikeSeat + h);
   const pyh = (u2: number, t2: number, h: number): number =>
-    u2 * hyU + t2 * fr.hh + nyU * (crown + h);
+    u2 * hyU + t2 * fr.hh + nyU * (spikeSeat + h);
   // The outline-law context: spikes ring themselves like every other
   // free-standing fitting (strokeHull below).
   const rc: ReliefCtx = {
@@ -3548,6 +3857,10 @@ function drawSpikes(
     litU: hxU >= 0 ? -1 : 1,
     ol: fr.hh * 0.062,
     nowMs,
+    // Spikes take the full window — a rim weapon protrudes at every
+    // yaw; that is what it is for.
+    uVis0: -1.2,
+    uVis1: 1.2,
   };
   // THE FERRULE metal: a spike is BEDDED in a collar of the shield's
   // own fitting iron, whatever the spike itself is made of — bone
@@ -3695,16 +4008,51 @@ interface ReliefCtx {
    * weather at the same moment.
    */
   nowMs: number;
+  /**
+   * THE VISIBLE WINDOW: the u-range of the face still turned toward
+   * the camera, measured by the strip scan. Furniture whose whole
+   * footprint has rolled past the shell's horizon culls against it;
+   * crests receive the full range — protruding is their job.
+   */
+  uVis0: number;
+  uVis1: number;
 }
 
 type ReliefPainter = (rc: ReliefCtx, st: ShieldStyle) => void;
 
-/** Design-space (u, t) at height h (in shell-depth multiples) → local px. */
+/**
+ * Design-space (u, t) at height h (in shell-depth multiples) → local
+ * px. THE SEATED FITTING (v3): height roots on the DOME at the point's
+ * own station — `0.5 + curve·dome + h` — never on the crown's tangent
+ * plane. At the dome's heart the two agree exactly (dome = 1 there),
+ * so centered fittings kept their authored face-on seat to the pixel;
+ * everything nearer the rim settled down onto the shell it is actually
+ * bolted to, which is what killed the floating-sheet read at yaw.
+ * (rPx has no t, so its x takes the waist profile — the residual is a
+ * fraction of the shell depth, against the full curve-height it fixed.)
+ */
 function rPx(rc: ReliefCtx, u: number, h: number): number {
-  return u * rc.hxU + rc.nxU * (rc.crown + h);
+  return u * rc.hxU + rc.nxU * (0.5 + rc.fr.curve * domeU(u) + h);
 }
 function rPy(rc: ReliefCtx, u: number, t: number, h: number): number {
-  return u * rc.hyU + t * rc.fr.hh + rc.nyU * (rc.crown + h);
+  return u * rc.hyU + t * rc.fr.hh + rc.nyU * (0.5 + rc.fr.curve * dome(u, t) + h);
+}
+
+/** True when a design-space u-span has wholly left the visible face. */
+function offFace(rc: ReliefCtx, u0: number, u1: number): boolean {
+  return u1 < rc.uVis0 - 0.06 || u0 > rc.uVis1 + 0.06;
+}
+
+/** The u-extent of a flat (u, t) point list. */
+function uSpan(pts: number[]): [number, number] {
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (let i = 0; i < pts.length; i += 2) {
+    const u = pts[i]!;
+    if (u < lo) lo = u;
+    if (u > hi) hi = u;
+  }
+  return [lo, hi];
 }
 
 /* ==================== THE FITTING OUTLINE LAW =======================
@@ -3726,6 +4074,8 @@ function rPy(rc: ReliefCtx, u: number, t: number, h: number): number {
 
 /** Stroke a design-space polygon at height h in the outline SEAM. */
 function strokeAt(rc: ReliefCtx, pts: number[], h: number): void {
+  const [s0, s1] = uSpan(pts);
+  if (offFace(rc, s0, s1)) return;
   const { ctx } = rc;
   ctx.strokeStyle = SEAM;
   ctx.lineWidth = rc.ol;
@@ -3782,6 +4132,8 @@ function strokeHull(rc: ReliefCtx, xy: number[]): void {
 
 /** A flat polygon projected at height h — top-plate detail work. */
 function polyAt(rc: ReliefCtx, pts: number[], h: number, tone: string): void {
+  const [s0, s1] = uSpan(pts);
+  if (offFace(rc, s0, s1)) return;
   const { ctx } = rc;
   ctx.fillStyle = tone;
   ctx.beginPath();
@@ -3801,6 +4153,8 @@ function polyAt(rc: ReliefCtx, pts: number[], h: number, tone: string): void {
  * game, so the displacement is a screen fact, not a design one.
  */
 function reliefShadow(rc: ReliefCtx, pts: number[], h: number): void {
+  const [s0, s1] = uSpan(pts);
+  if (offFace(rc, s0, s1)) return;
   const { ctx } = rc;
   const dy = rc.fr.depth * h * 0.85;
   ctx.globalAlpha = 0.26;
@@ -3842,6 +4196,11 @@ function prism(
     outline?: boolean;
   },
 ): void {
+  // THE WINDOW CULL: a fitting that rolled past the shell's horizon
+  // culls whole — projected through the fold it would fold back into
+  // the visible crescent as a ghost of itself.
+  const [s0, s1] = uSpan(pts);
+  if (offFace(rc, s0, s1)) return;
   const { ctx } = rc;
   const n = pts.length / 2;
   if (opts?.shadow !== false) reliefShadow(rc, pts, h1);
@@ -3899,6 +4258,7 @@ function pyramid(
     dt?: number;
   },
 ): void {
+  if (offFace(rc, u - ru, u + ru)) return;
   const { ctx } = rc;
   const base: Array<[number, number]> = [
     [u, t - rt],
@@ -3958,6 +4318,7 @@ function relBreacher(rc: ReliefCtx, st: ShieldStyle): void {
   });
   // The ring, hanging from the mount: an annulus at height, evenodd.
   const { ctx } = rc;
+  if (offFace(rc, -0.26, 0.26)) return;
   reliefShadow(rc, [-0.22, 0.12, 0.22, 0.12, 0.22, 0.5, -0.22, 0.5], 0.5);
   ctx.fillStyle = shade(iron, -14);
   ctx.beginPath();
@@ -4127,6 +4488,9 @@ function relWintercourt(rc: ReliefCtx, st: ShieldStyle): void {
     const w = 0.085 + 0.035 * (L > 0.8 ? 1 : 0);
     const cu = Math.cos(a);
     const ct = Math.sin(a);
+    // A shard that has wholly rolled past the horizon culls with the
+    // rest of the furniture.
+    if (offFace(rc, Math.min(0, cu * L) - w, Math.max(0, cu * L) + w)) continue;
     const hRoot = 0.55 * (L > 0.8 ? 1 : 0.7);
     // Shadow along the shard.
     reliefShadow(rc, [-ct * w, cu * w, cu * L, ct * L, ct * w, -cu * w], hRoot * 0.6);

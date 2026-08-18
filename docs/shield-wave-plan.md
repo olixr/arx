@@ -106,3 +106,47 @@ kiteshield but the warlord's own guard carries the doorwall (loot-story law:
 what you fight is what you loot); actor-gear assignments for named guards
 (Silverfall royal guard: aldarens_gate; the Lowhall door: lowhall_breacher)
 where actor defs already carry visible gear.
+
+## THE CARVED SHELL — the v3 substrate rebuild (as-built, 2026-08-17)
+
+The pancake verdict: turned past the three-quarter, every shield came apart
+into parallel sheets — face card, furniture card, crest card, each hovering in
+its own air — because the face art projected through ONE flat affine onto the
+plane tangent to the dome's crown, and every relief measured its height from
+that same tangent plane. v3 makes the SURFACE the one truth. All of it lives in
+`shields.ts`; `solveShield` (the carriage) is untouched and every one of its
+pins held.
+
+- **THE WRAPPED FACE.** The face art is painted once into a cached
+  design-space canvas (`FACE_CACHE`, LRU 64, keyed by paint fields + lit side +
+  resolution rung; `LIVING_SIGS` faces repaint per clock tick) and dealt onto
+  the dome in vertical strips, each strip an affine seated at its own station's
+  shell height (`domeU` waist profile). The near limb holds its width, the far
+  limb foreshortens away, and past the shell's horizon a strip back-faces and
+  is culled — the art rolls out of view the way paint on a curved board does.
+  Seam law: strips overlap by ~1.25 DESTINATION px (a source-px overlap
+  shrinks with the blit's downscale and let hairline gaps open).
+- **THE SEATED FITTING.** `rPx`/`rPy` root relief height on the dome at the
+  point's own station (`0.5 + curve·dome + h`), never on the crown plane. At
+  the dome's heart the two agree exactly, so centered fittings kept their
+  authored face-on seat to the pixel. Spikes bed at `0.5 + curve·0.3` — the
+  binding's own shell height.
+- **THE VISIBLE WINDOW.** The strip scan measures the surviving u-range and
+  hands it to the relief pass (`ReliefCtx.uVis0/uVis1`). The solid vocabulary
+  (prism/pyramid/polyAt/strokeAt/reliefShadow + the two custom-projection
+  sites) culls whole elements that rolled past the horizon, and a convex-hull
+  WINDOW CLIP confines partial elements to their visible half. Crests and
+  spikes take the FULL window — protruding is their job.
+- **THE PROUD PROFILE.** The `open < 0.07` early-return is dead: edge-on the
+  bright crest line still finishes the slab, and boss, spikes and crests draw
+  at EVERY yaw (pinned in shields.test.ts). Only the shield's back hides them.
+- **THE TANGENT FALLBACK.** The old flat-affine face path survives for the
+  node test harness (no DOM) and for shields under ~14 device px of
+  half-height, where the warp is sub-pixel; the painters' own grazing gates
+  still guard that road (they read the real frame, not the cache's synthetic
+  open-1 frame, so no painter changed).
+
+Proven on the shield sheet (all 23 rows × 6 yaw stations × hero + 3 gameplay
+scales, before/after), on the wield sheet rows 8-9 and 36-39 (board + wall
+carries, all 8 facings), and the living clock verified by differing captures
+at two freeze times. tsc clean, 666/666 client tests.

@@ -338,6 +338,36 @@ test('a greatshield fits the body it is carried on', () => {
   }
 });
 
+test('THE PROUD PROFILE: edge-on, a spiked shield still draws its weapons', () => {
+  // THE CARVED SHELL (v3): the old face pass RETURNED at open < 0.07,
+  // so a shield seen dead edge-on lost its boss, spikes and crests —
+  // the exact yaw where a protruding fitting is the whole silhouette.
+  // Pinned by counting fills: at profile a spiked, bossed shield must
+  // still paint solid geometry beyond the shell's own three passes
+  // (far ring, wall union, lit top plane).
+  let fills = 0;
+  const ctx = new Proxy(
+    { lineWidth: 1 },
+    {
+      get(t, p: string) {
+        if (p in t) return t[p as 'lineWidth'];
+        if (p === 'fill') return () => void fills++;
+        return () => undefined;
+      },
+      set(t, p: string, v) {
+        (t as Record<string, unknown>)[p] = v;
+        return true;
+      },
+    },
+  ) as unknown as CanvasRenderingContext2D;
+  const spiked = SHIELD_STYLES.aldarens_gate!;
+  drawShieldAt(ctx, spiked, { cx: 0, cy: 0, size: 60, theta: Math.PI / 2, tilt: 0, oside: 1 });
+  assert.ok(
+    fills > 6,
+    `edge-on the fittings went missing — only ${fills} fills (the bare shell alone is 3)`,
+  );
+});
+
 test('an unknown shield still resolves to a real shield in a coherent dialect', () => {
   const wood = shieldStyle('nobody_home', 'kite', '#8a5f31', '#4a3524');
   assert.equal(wood.material, 'wood', 'a warm face is built from staves');
