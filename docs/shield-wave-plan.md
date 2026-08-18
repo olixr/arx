@@ -313,3 +313,31 @@ Fittings: faceAlt + device 'diamond' + studs = 3 (t3 floor holds). Static
 by design — no clock, never in LIVING_SIGS. The hobgoblin warlord's
 carried doorwall inherits the recut with zero renderer changes.
 Gates: shields tsc clean, client 666/666.
+
+## FROSTPLATE GREATSHIELD v2 — THE FROZEN CROWN (as-built, 2026-08-17)
+
+The legendary-ice rebuild against the user's reference image (dark angular
+ice core, blazing heart, hoarfrost corona, crown peaks, hanging blade),
+sixth premium pass. The chief-and-star heraldry retires whole. Five judged
+passes — the load-bearing lesson: the reference's core is ONE dark body
+with the light escaping through the SEAMS, not plates of contrasting
+values (three interleaved mid-blues read as mud at every distance; the
+final face is dark + cyan + white only).
+
+Three masses, one clock:
+- **THE DARK STAR + THE SEAMS** (`sigFrost` LIVING + `relFrost`): six
+  raised petal plates (shared `frostPetal` geometry between paint and
+  relief) joined into one dark body over a tight cyan inner light, with
+  six thin glow blades escaping between the plates. THE MOON'S BREATH
+  (MOON_MS 4600): one cold octagonal ring swells out of the heart and
+  dies. The frozen moon is the substrate boss on a frost collar.
+- **THE CORONA**: recut 'wall' outline = a jagged frost lozenge (gentle
+  jags — deep ones crumpled the slab at yaw; the corona spikes carry the
+  jagged read) with eight pale hoarfrost spikes on the jags.
+- **THE CROWN AND THE FANG** (`crestFrost`): three great ice blades over
+  the crown (center h 2.6) and ONE great fang hanging below the heel
+  (dt 0.62) — ringed solids, ice is matter.
+
+Fittings: boss + device 'star' + spikes + faceAlt = 4 (t4 floor holds).
+Owners: white = moon + frost tips; cyan = the escaping light; night-blues
+own the plates. Gates: shields tsc clean, client 669/669.

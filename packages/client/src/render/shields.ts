@@ -385,22 +385,43 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
    * crown. The rim is the brightest metal on the ladder so far — the
    * whole shield is cold light — and the umbo is a bead of clear ice.
    */
+  /**
+   * FROSTPLATE GREATSHIELD — THE FROZEN CROWN (v2, 2026-08-17: the
+   * legendary-ice rebuild against the user's reference). Three
+   * masses, one clock. THE DARK STAR: two layers of angular
+   * night-blue plates radiating from the heart over a luminous cyan
+   * inner light — the front layer raised as real relief so the star
+   * stands off the slab at yaw. THE FROZEN MOON: the substrate's boss
+   * blazing at the center on a frost collar, its BREATH the one clock
+   * — a cold ring pulsing out of the heart and dying. THE CORONA:
+   * a jagged frost-lozenge silhouette ringed by eight pale hoarfrost
+   * spikes, three great crown blades above and ONE GREAT FANG hanging
+   * below the heel — the reference's whole stance. White belongs to
+   * the moon and the frost tips; cyan to the inner light; the deep
+   * night-blues own the plates.
+   */
   frostplate_greatshield: {
     shape: 'wall',
     material: 'steel',
-    face: '#9db6cc',
-    faceAlt: '#2c4a6b',
-    field: 'chief',
-    rim: '#dbe9f4',
-    boss: '#eaf7ff',
+    face: '#1c2c44',
+    faceAlt: '#2e4a6e',
+    rim: '#3a5878',
+    boss: '#f2fbff',
     device: 'star',
-    deviceColor: '#f2fbff',
-    studs: true,
-    curve: 0.28,
+    deviceColor: '#5fd0e8',
+    spikes: true,
+    // THE CORONA: eight pale frost spikes rooted on the lozenge's own
+    // jags — the crown and heel air belong to the crest's blades.
+    spikeAngles: [-0.35, -0.95, -2.19, -2.79, 0.35, 0.95, 2.19, 2.79],
+    spikeLen: 1.34,
+    spikeW: 0.09,
+    spikeColor: '#e8f8ff',
+    curve: 0.34,
     strapColor: '#3a4652',
     sig: 'frost',
     tier: 4,
   },
+
   /**
    * RUNG FIVE — the fortress you wear. A battlemented crown steps down
    * to the shoulders, the walls run dead straight, and the heel comes
@@ -1019,9 +1040,16 @@ const OUTLINES: Record<ShieldShape, number[]> = {
   // The calved slab: a flat crown, walls that never taper, a flat heel,
   // and one clipped corner at each of the four turns. The squarest
   // thing in the roster on purpose — it is a piece of a wall.
+  // THE FROSTPLATE (the legendary-ice recut): a jagged frost lozenge
+  // — a pointed oval whose edge steps in and out like grown crystal,
+  // crown point above, heel point below. The corona of frost spikes
+  // roots on these jags.
   wall: [
-    -0.82, -1, 0.82, -1, 1.0, -0.78, 1.0, 0.8, 0.8, 1, -0.8, 1, -1.0, 0.8,
-    -1.0, -0.78,
+    0, -1.06, 0.33, -0.8, 0.3, -0.62, 0.6, -0.48, 0.56, -0.28,
+    0.88, -0.12, 0.82, 0.1, 0.92, 0.3, 0.66, 0.52, 0.6, 0.7,
+    0.32, 0.82, 0, 1.02, -0.32, 0.82, -0.6, 0.7, -0.66, 0.52,
+    -0.92, 0.3, -0.82, 0.1, -0.88, -0.12, -0.56, -0.28, -0.6, -0.48,
+    -0.3, -0.62, -0.33, -0.8,
   ],
   // The battlement: a raised center merlon between two dropped
   // shoulders, straight walls, and a heel cut to a shallow point. The
@@ -1660,7 +1688,7 @@ interface FaceEntry {
 const FACE_CACHE = new Map<string, FaceEntry>();
 const FACE_CACHE_MAX = 64;
 /** Signatures whose FACE is a function of the clock (crests stay live). */
-const LIVING_SIGS = new Set(['oath', 'gatefall', 'brineshell', 'winterheart']);
+const LIVING_SIGS = new Set(['oath', 'gatefall', 'brineshell', 'winterheart', 'frost']);
 /** Resolution rungs, px per design unit — capped so no entry balloons. */
 const FACE_RES = [20, 30, 44, 64, 92, 132, 184];
 
@@ -2558,58 +2586,109 @@ function poly(ctx: CanvasRenderingContext2D, tone: string, pts: number[]): void 
 }
 
 /**
- * FROSTPLATE GREATSHIELD — a deep glacier CHIEF across the crown with
- * a rime star struck in it, three icicle teeth hanging off its lower
- * edge into the pale field, and nothing else. The teeth are the whole
- * signature: they are the one place in the roster where a charge leaves
- * its band and grows down into the field, and they cost three flat
- * triangles.
+ * THE MOON'S BREATH: the frozen moon exhales one cold ring every few
+ * seconds — it swells out of the heart, cools, and dies among the
+ * plates. The one clock this shield keeps. Pure function of nowMs;
+ * offset so t=0 catches the ring mid-breath.
+ */
+const MOON_MS = 4600;
+function moonPhase(nowMs: number): number {
+  return ((nowMs + MOON_MS * 0.3) % MOON_MS) / MOON_MS;
+}
+
+/**
+ * A star petal: a kite of plate radiating from the heart, stretched
+ * to the lozenge's own proportions. Shared by the face paint and the
+ * relief tier so the raised star and its painted shadow can never
+ * disagree.
+ */
+function frostPetal(a: number, r0: number, r1: number, w: number): number[] {
+  const RY = 1.22;
+  const du = Math.sin(a);
+  const dt = -Math.cos(a);
+  const pu = Math.cos(a);
+  const pt = Math.sin(a);
+  const rm = (r0 + r1) * 0.52;
+  return [
+    du * r0, dt * r0 * RY,
+    du * rm + pu * w, (dt * rm + pt * w) * RY,
+    du * r1, dt * r1 * RY,
+    du * rm - pu * w, (dt * rm - pt * w) * RY,
+  ];
+}
+
+/**
+ * FROSTPLATE GREATSHIELD — THE FROZEN CROWN's face. The deep field,
+ * the luminous inner light, the BACK layer of the dark star, and the
+ * moon's breath. The front star layer and the moon's collar are the
+ * relief tier's — raised plates, not paint — and the moon itself is
+ * the substrate's boss.
  */
 function sigFrost(
   ctx: CanvasRenderingContext2D,
   st: ShieldStyle,
   fr: ShieldFrame,
   litU: number,
+  nowMs: number,
 ): void {
-  plates(ctx, st, litU);
-  // The chief: the crown of the shield in glacier blue, cut off by one
-  // hard seam. Ice over steel, not ice painted on steel.
-  const ice = st.faceAlt ?? shade(st.face, -60);
-  ctx.fillStyle = ice;
-  ctx.fillRect(-1.2, -1.2, 2.4, 0.78);
-  // ONE lit plane along the chief's top — the house's whole shading law.
-  ctx.fillStyle = shade(ice, 26);
-  ctx.fillRect(-1.2, -1.2, 2.4, 0.2);
-  ctx.fillStyle = SEAM;
-  ctx.fillRect(-1.2, -0.42, 2.4, 0.05);
-  // The teeth: a curtain of ice hanging out of the chief and most of
-  // the way down the field. Uneven lengths — a matched set reads as a
-  // machined comb — and long, because the field below the chief is the
-  // biggest empty surface in the roster and this is what fills it.
-  const teeth: Array<[number, number, number]> = [
-    [-0.86, 0.13, 0.5],
-    [-0.5, 0.17, 1.02],
-    [-0.04, 0.2, 1.5],
-    [0.44, 0.16, 0.86],
-    [0.84, 0.13, 0.42],
-  ];
-  for (const [u, w, len] of teeth) {
-    poly(ctx, ice, [u - w, -0.4, u + w, -0.4, u, -0.4 + len]);
-    // The lit side of each tooth, one plane, always up-screen-lit.
-    poly(ctx, shade(ice, 30), [u - w * litU, -0.4, u, -0.4, u, -0.4 + len]);
+  const glow = st.deviceColor ?? '#5fd0e8';
+  ctx.fillStyle = st.face;
+  ctx.fillRect(-1.2, -1.2, 2.4, 2.4);
+  // THE INNER LIGHT: two soft octagonal washes — the ice is lit from
+  // inside its own heart.
+  const oct = (r: number): number[] => {
+    const pts: number[] = [];
+    for (let k = 0; k < 8; k++) {
+      const a = Math.PI / 8 + (k / 8) * Math.PI * 2;
+      pts.push(Math.cos(a) * r, Math.sin(a) * r * 1.25);
+    }
+    return pts;
+  };
+  // ONE inner light, tight around the heart...
+  ctx.globalAlpha = 0.3;
+  poly(ctx, glow, oct(0.45));
+  ctx.globalAlpha = 1;
+  // ...and THE SEAMS: the light escaping between the star's plates —
+  // six thin blades of glow in the petal gaps, dying as they run. The
+  // reference's whole trick: the body stays dark; the cracks burn.
+  for (let k = 0; k < 6; k++) {
+    const a = Math.PI / 6 + (k / 6) * Math.PI * 2;
+    const du = Math.sin(a);
+    const dt = -Math.cos(a) * 1.22;
+    const pu = Math.cos(a);
+    const pt = Math.sin(a) * 1.22;
+    ctx.globalAlpha = 0.55;
+    poly(ctx, glow, [
+      du * 0.24 - pu * 0.035, dt * 0.24 - pt * 0.035,
+      du * 0.24 + pu * 0.035, dt * 0.24 + pt * 0.035,
+      du * 0.6, dt * 0.6,
+    ]);
+    ctx.globalAlpha = 1;
   }
-  // The charge, struck in the chief: a rime mullet in two planes.
-  const c = st.deviceColor ?? '#ffffff';
-  const ty = -0.79;
-  const r = 0.36;
-  const pts: number[] = [];
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
-    const rr = i % 2 ? r * 0.42 : r;
-    pts.push(Math.cos(a) * rr, ty + Math.sin(a) * rr);
+  // THE MOON'S BREATH: one cold ring out of the heart, then quiet.
+  const ph = moonPhase(nowMs);
+  const rr = 0.32 + ph * 0.42;
+  ctx.globalAlpha = (1 - ph) * 0.35;
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  const ro = oct(rr + 0.04);
+  for (let k = 0; k < 8; k++) {
+    if (k === 0) ctx.moveTo(ro[0]!, ro[1]!);
+    else ctx.lineTo(ro[k * 2]!, ro[k * 2 + 1]!);
   }
-  poly(ctx, c, pts);
-  poly(ctx, shade(c, -34), [-r * 0.42, ty, r * 0.42, ty, 0, ty + r]);
+  ctx.closePath();
+  const ri = oct(rr - 0.04);
+  for (let k = 7; k >= 0; k--) {
+    if (k === 7) ctx.moveTo(ri[14]!, ri[15]!);
+    else ctx.lineTo(ri[k * 2]!, ri[k * 2 + 1]!);
+  }
+  ctx.closePath();
+  ctx.fill('evenodd');
+  ctx.globalAlpha = 1;
+  // The moon's seat: its own cold light, under the stone.
+  ctx.globalAlpha = 0.45;
+  poly(ctx, glow, oct(0.34));
+  ctx.globalAlpha = 1;
 }
 
 /**
@@ -4621,6 +4700,45 @@ function relDoorwall(rc: ReliefCtx, st: ShieldStyle): void {
 }
 
 /**
+ * FROSTPLATE GREATSHIELD — THE RAISED STAR. The front six petals of
+ * the dark star stand off the slab as grown plates (one shared petal
+ * geometry with the face, so paint and relief can never drift), and
+ * the moon's frost collar rises under the stone. Grown ice-plate:
+ * never ringed.
+ */
+function relFrost(rc: ReliefCtx, st: ShieldStyle): void {
+  const plate = st.faceAlt ?? '#2e4a6e';
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2;
+    prism(rc, frostPetal(a, 0.22, 0.86, 0.22), 0, 0.24, shade(plate, -20), {
+      wallDark: shade(plate, -38),
+      shadow: false,
+    });
+  }
+  const collar: number[] = [];
+  for (let k = 0; k < 8; k++) {
+    const a = Math.PI / 8 + (k / 8) * Math.PI * 2;
+    collar.push(Math.cos(a) * 0.28, Math.sin(a) * 0.28 * 1.1);
+  }
+  prism(rc, collar, 0.24, 0.46, '#9cc8e0', { wallDark: shade('#9cc8e0', -26), shadow: false });
+}
+
+/**
+ * FROSTPLATE GREATSHIELD — THE CROWN AND THE FANG. Three great ice
+ * blades over the crown point (the center one the roster's tallest
+ * crest), and ONE GREAT FANG hanging below the heel on a hard
+ * downward lean — the reference's silhouette, above and below. Every
+ * blade its own ringed solid: ice is matter.
+ */
+function crestFrost(rc: ReliefCtx, st: ShieldStyle): void {
+  const ice = st.spikeColor ?? '#d6f0fa';
+  pyramid(rc, 0, -1.0, 0.14, 0.11, 0, 2.6, ice, { outline: true, du: 0.08 });
+  pyramid(rc, -0.3, -0.88, 0.1, 0.085, 0, 1.8, shade(ice, -8), { outline: true, du: -0.22 });
+  pyramid(rc, 0.3, -0.88, 0.1, 0.085, 0, 1.9, shade(ice, -8), { outline: true, du: 0.24 });
+  pyramid(rc, 0, 0.96, 0.13, 0.1, 0, 1.0, shade(ice, -4), { outline: true, dt: 0.62 });
+}
+
+/**
  * STAGHEART PALISADE — the stakes get their CAPS: a beveled wedge of
  * end-grain standing off each stake tip, and the lashings tie off in
  * raised knots at the edges. Carpentry, not carving.
@@ -5192,6 +5310,7 @@ const CRESTS: Record<string, ReliefPainter> = {
   doorwall: crestDoorwall,
   fellhorn: crestFellhorn,
   gatefall: crestGatefall,
+  frost: crestFrost,
   winterheart: crestWinterheart,
   oath: crestOath,
   pinion: crestPinion,
@@ -5209,6 +5328,7 @@ const RELIEFS: Record<string, ReliefPainter> = {
   cindermaw: relCindermaw,
   everwood: relEverwood,
   gatefall: relGatefall,
+  frost: relFrost,
   oath: relOath,
 };
 
