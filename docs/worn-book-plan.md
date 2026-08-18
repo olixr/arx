@@ -154,6 +154,60 @@ quicken/stonehide (named tiers, ceremonies already engine-paid); first atMax:'co
 detonate page; NPC ward carrier elite; dead StatMods channels (regenPer4s/cooldownMult/
 damageDealtPct/statPerStack) wired or deleted before any page authors against them.
 
+## AS-BUILT (2026-08-18) — three commits, all gates green
+
+**Ph1 THE THREE DOORS — 2a54977f.** Engine grammar, content-free (the reserved-grammar
+precedent). SWING ASSEMBLY widened FIRST, before any author, to scan gear swingSpeed
+statics (additive per the roll fold) and surge-`'swing'` procs (multiplicative per
+buffForge) across ENCHANT_DEFS / SET_WORDS / TEMPERS. `StackSource` gained `'craft'`;
+`tickCraft` offers the moment at the completion door **inside the honest branch — a burnt
+pan mints nothing**. `boon` gained `target:'pet'`, routed through the companion's own NPC
+apply door, refused silently at both doors with no charge banked when no pet stands.
+Register rewritten consciously; TEMPERS stay wholly quiet (a surge carries no page for
+`leaks()` to see, so laurelbrand's licence lives in the assembly pin instead).
+
+**Ph2 THE SIX HOUSES — c0889397.** All six families, their twelve words, laurelbrand, the
+routes and the material sinks. Built as specified with these DELIBERATE DIVERGENCES:
+
+- **laurelbrand's temper shipped at `pct: 3`, not the `pct: 8` Part 1 asks for.** At 8 the
+  worst wardrobe leaned on the band and the clamp would have eaten the difference
+  silently — an invisible number is a lie to the player. The number yielded to the pin,
+  which is the law. **The pin passes at 1.4628 / 1.5 — margin 0.0372, and it is now nearly
+  spent; assemble before authoring any future swing number.**
+- **Tanning intakes are 1 pelt → 3 leather, not 2.** At 2 a gnoll hide (value 26) tanned
+  into 24 of leather — a loss, and a sink dead on arrival is not a sink. At 3 every intake
+  lands on the cowhide's own margin.
+- **17 trophies gained a sink** (target was 14). Eleven remain deliberately sinkless: the
+  four premium furs await the furrier arc, the rest are collector/boss pieces.
+- **One conscious value inversion**: craft_boar_spear costs 192 against a 180-value spear
+  (razorback_tusk at its smallest allowed qty). 47 recipes already invert, worst 3.45× —
+  inside house tolerance, but it is a net vendor loss and the one thread-in that crosses a
+  band. Flagged for the owner's eye.
+- Shared-table fact discovered at authoring: the four crowned foes Part 2 names have no
+  boss-only tables, so their named siblings inherit the lot. Boss-only stormtalon would
+  need a new table in npcs.ts — out of scope, recorded.
+
+**Ph3 THE HOUSES GET THEIR FACES — f2fcef22.** The 30 pieces shipped mechanically whole in
+Ph2 painted as tinted generic silhouettes with burnt-lump icons; a set the player cannot
+recognise is not a set. All 30 styles authored across the five armor tables with the
+resurgence lineage legible (adderking keeps adderfang's DIAMONDHIDE band as the chest's
+one cell). **Icon rows are SEEDS, never drawings** — the file's product-shot loop only
+sees ids that already hold a row, so a generic glyph + the piece's own tint lets the body
+art carry into the pack with zero drift. laurelbrand had no SwordStyle at all and painted
+as NOTHING IN HAND (bladeStyle falls back only for ids containing 'sword'/'dagger'); four
+other style-less weapons were paid off beside it, taking the roster 5 → 0. One latent
+kludge widened: the staff drip channel keyed on bloodmoon's exact hex, so a second blood
+staff would have shed beads instead of taking them — now a named BLOOD_FOCUS set.
+Verified by execution (a fallback is a pure cache hit that draws nothing, so an empty
+trace proves the lump): 31/31 real painters, no two sharing a geometry trace.
+
+**Gates at every commit**: shared 291 / content 613 / server 601 / client 669 = **2174
+pass, 0 fail**, tsc ×4 clean.
+
+**Found by this wave, outside its remit**: seven complete endgame chase houses (aetherion,
+duskwarden, flamewrought, gatefall, gloamsight, stormsinger, sunhallow) have full body art
+but no icon rows at all; the nightveil barrowdusk colorway has neither.
+
 ## Part 6 — Gates & ceremony
 
 tsc ×4 clean; content/shared/server/client suites green (setWords count pin 46→52
