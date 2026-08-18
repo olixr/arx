@@ -162,7 +162,9 @@ export type ShieldShape =
   | 'furnace'
   | 'leaf'
   | 'riftward'
-  | 'falls';
+  | 'falls'
+  // THE GILDED TYRANT (the boss commission): the colossus tower.
+  | 'colossus';
 
 /**
  * The material dialect. Wood is BUILT — staves, seams, a bound rim you
@@ -1027,6 +1029,47 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
     sig: 'oath',
     tier: 6,
   },
+  /**
+   * THE GILDED TYRANT (2026-08-17: the boss commission, built to the
+   * user's three references). A monster's tower in worked gold — the
+   * shield a boss carries INTO a throne room. Three masses, one clock:
+   * THE DOUBLED FRAME (a bright gold border around a recessed
+   * deep-gold panel, faceted diamond studs scattered on the field —
+   * the crusader-wall read), THE WAR-MASK (a gilded skull-jawed mask
+   * mounted in a spiked mandorla at the heart, real relief so it
+   * stands off the shell at yaw; its EMBER SMOLDER in the sockets is
+   * the one clock — a slow breath, not a performance), and THE SAW
+   * (six gold flank spikes off the walls, the horn-tip crown forged
+   * into the silhouette itself). Owners: bright gold is the worked
+   * metal's — frame, mask, studs, spikes; the mid gold owns the field;
+   * the deep gold owns every recess; the ember belongs to the sockets
+   * alone.
+   */
+  gilded_tyrant: {
+    shape: 'colossus',
+    material: 'bronze',
+    face: '#b08d3e',
+    // The recessed panel's deep gold.
+    faceAlt: '#957434',
+    rim: '#d8b968',
+    // The mask, in the rolls' nearest word.
+    device: 'fang',
+    deviceColor: '#6a4e1e',
+    studs: true,
+    spikes: true,
+    // THE SAW: three gold teeth down each wall — the reference's
+    // spiked free edge, dealt to both flanks (a boss shows no meek
+    // side). The crown air belongs to the horn tips and the mask's
+    // own crest.
+    spikeAngles: [-0.05, 0.4, 0.8, 2.34, 2.74, 3.19],
+    spikeLen: 1.3,
+    spikeW: 0.08,
+    spikeColor: '#d8b968',
+    curve: 0.32,
+    strapColor: '#4a3524',
+    sig: 'tyrant',
+    tier: 6,
+  },
 };
 
 /**
@@ -1263,6 +1306,17 @@ const OUTLINES: Record<ShieldShape, number[]> = {
     0.88, 0.14, 0.85, 0.52, 0.5, 0.9, 0, 1.06, -0.5, 0.9, -0.85, 0.52,
     -0.88, 0.14, -1.0, -0.05, -0.95, -0.45, -0.74, -0.8, -0.42, -0.88,
   ],
+  // THE GILDED TYRANT's colossus: a boss-scale tower whose crown rises
+  // to a peak between two UPSWEPT HORN TIPS — the corners sweep up past
+  // the valleys, a war-crown forged into the silhouette — then one long
+  // taper past a waist step to a ground point. Horn cusps kept moderate
+  // (the frostplate lesson: deep jags crumple the wall union at yaw).
+  colossus: [
+    0, -1.1, 0.28, -0.88, 0.58, -1.04, 0.76, -0.82, 0.86, -0.45,
+    0.78, -0.05, 0.6, 0.5, 0.32, 0.85, 0, 1.08, -0.32, 0.85,
+    -0.6, 0.5, -0.78, -0.05, -0.86, -0.45, -0.76, -0.82, -0.58, -1.04,
+    -0.28, -0.88,
+  ],
 };
 
 /**
@@ -1346,6 +1400,9 @@ const METRIC: Record<
   // game, and the last one planned. Its crown clears the bearer's own
   // by construction: hang −0.055 keeps the crest under the head line.
   falls: { hw: 0.21, hh: 0.36, hang: -0.055, depth: 0.066, strap: true, fwdK: -0.02, twistK: -0.05, wall: true },
+  // The Tyrant's colossus: boss scale — the Gate's own class, a hair
+  // narrower so the horn tips, not the walls, own its widest line.
+  colossus: { hw: 0.2, hh: 0.355, hang: -0.055, depth: 0.066, strap: true, fwdK: -0.02, twistK: -0.05, wall: true },
 };
 
 /** The solved plane — everything the painters and the arm both need. */
@@ -2380,6 +2437,7 @@ const SIGNATURES: Record<string, FacePainter> = {
   everwood: sigEverwood,
   gatefall: sigGatefall,
   oath: sigOath,
+  tyrant: sigTyrant,
 };
 
 /**
@@ -3029,6 +3087,77 @@ function sigKingsward(
     ]);
     ctx.globalAlpha = 1;
   }
+}
+
+/**
+ * THE GILDED TYRANT — the crusader wall the mask hangs on. The face
+ * spends its allowance on architecture and lets the relief carry the
+ * monster: the bright DOUBLED FRAME around a recessed deep-gold panel,
+ * inward gold teeth ticking down the panel's walls, the CENTER RIB
+ * falling from below the mask's seat to the ground point, and the
+ * faceted diamond studs scattered in two arcs above and below the
+ * heart — the reference's studded field, counted in bold pieces, not
+ * rivets. Static: the one clock lives in the mask's sockets (relief).
+ */
+function sigTyrant(
+  ctx: CanvasRenderingContext2D,
+  st: ShieldStyle,
+  fr: ShieldFrame,
+  litU: number,
+): void {
+  const gold = st.face;
+  const bright = st.rim;
+  const deep = st.faceAlt ?? shade(gold, -22);
+  ctx.fillStyle = gold;
+  ctx.fillRect(-1.2, -1.2, 2.4, 2.4);
+  // The field's one lit plane.
+  ctx.fillStyle = shade(gold, 10);
+  ctx.fillRect(litU > 0 ? 0.2 : -1.2, -1.2, 1.0, 2.4);
+  // THE RECESSED PANEL: the inner tower, sunk a register into the
+  // door. Shadow ring first (the sink), then the deep field, then one
+  // lit sliver under the crown edge.
+  // The crown arch stays SMOOTH — the outline alone owns the horn
+  // zigzag; a notched panel tripled it into clutter (first-cut lesson).
+  const panel: number[] = [
+    0, -0.82, 0.3, -0.76, 0.55, -0.66, 0.68, -0.44, 0.74, -0.2,
+    0.68, 0.06, 0.53, 0.44, 0.27, 0.72, 0, 0.92, -0.27, 0.72,
+    -0.53, 0.44, -0.68, 0.06, -0.74, -0.2, -0.68, -0.44, -0.55, -0.66,
+    -0.3, -0.76,
+  ];
+  poly(ctx, SEAM, panel.map((v) => v * 1.045));
+  poly(ctx, deep, panel);
+  poly(ctx, shade(deep, 12), [
+    0, -0.82, 0.3, -0.76, 0.55, -0.66, 0.5, -0.6, 0.28, -0.69, 0, -0.75,
+    -0.28, -0.69, -0.5, -0.6, -0.55, -0.66, -0.3, -0.76,
+  ]);
+  // THE EDGE TEETH: bright gold ticks pointing IN from the panel's
+  // walls — the reference frame's triangle course.
+  for (const sgn of [-1, 1]) {
+    for (let i = 0; i < 3; i++) {
+      const t = -0.3 + i * 0.3;
+      const u = sgn * (0.71 - Math.max(0, t) * 0.32);
+      poly(ctx, shade(bright, -6), [u, t - 0.07, u, t + 0.07, u - sgn * 0.13, t]);
+    }
+  }
+  // THE CENTER RIB: the lower panel's spine, falling to the point.
+  poly(ctx, shade(deep, -18), [-0.075, 0.28, 0.075, 0.28, 0.02, 0.9, -0.02, 0.9]);
+  poly(ctx, shade(gold, 6), [-0.045, 0.28, 0.045, 0.28, 0.012, 0.88, -0.012, 0.88]);
+  poly(ctx, shade(bright, 8), [-0.045, 0.28, -0.012, 0.28, -0.004, 0.88, -0.012, 0.88]);
+  // THE DIAMOND STUDS: faceted gold, dealt in an arc over the mask's
+  // crown and a pair riding the rib's shoulders.
+  const dia = (u: number, t: number, r: number): void => {
+    poly(ctx, shade(bright, -34), [u, t - r, u + r * 0.72, t, u, t + r, u - r * 0.72, t]);
+    poly(ctx, bright, [u, t - r, u + r * 0.72, t, u - r * 0.72, t]);
+  };
+  dia(0, -0.72, 0.075);
+  dia(-0.26, -0.56, 0.07);
+  dia(0.26, -0.56, 0.07);
+  dia(-0.46, -0.36, 0.065);
+  dia(0.46, -0.36, 0.065);
+  dia(-0.26, 0.42, 0.065);
+  dia(0.26, 0.42, 0.065);
+  dia(-0.16, 0.62, 0.055);
+  dia(0.16, 0.62, 0.055);
 }
 
 /**
@@ -4941,6 +5070,124 @@ function relKingsward(rc: ReliefCtx, st: ShieldStyle): void {
 }
 
 /**
+ * THE GILDED TYRANT — THE WAR-MASK. The monster at the heart, built
+ * as the mounted object it is: a SPIKED MANDORLA frame (a ringed
+ * pointed-oval prism, eight gold thorns radiating off it — un-ringed,
+ * the thin-band law, they share the frame's ring) around a recessed
+ * dark hollow, and the MASK itself standing off inside it — a
+ * skull-jawed gilded visage: brow plate, V-scowl, angled sockets, a
+ * skull nasal, a barred jaw with two hanging fangs. THE EMBER SMOLDER
+ * in the sockets is the shield's one clock — a slow breath of deep
+ * fire, dim enough to be a threat and not a lantern. Four ringed
+ * pyramid studs hold the field's corners — the reference's hero
+ * rivets, raised for the yaw read.
+ */
+function relTyrant(rc: ReliefCtx, st: ShieldStyle): void {
+  const bright = st.rim;
+  const deep = st.faceAlt ?? shade(st.face, -22);
+  const dark = st.deviceColor ?? shade(st.face, -40);
+  const MC = -0.2;
+  // THE HERO STUDS: four ringed pyramids at the field's quarters.
+  for (const [u, t] of [[-0.5, -0.55], [0.5, -0.55], [-0.44, 0.18], [0.44, 0.18]] as const) {
+    pyramid(rc, u, t, 0.085, 0.085, 0.05, 0.34, bright, { outline: true });
+  }
+  // THE MANDORLA: the mask's pointed-oval frame, one ringed prism.
+  // Sized so the mask nearly FILLS it — the recess reads as a thin
+  // dark margin, never a moat (the first cut's bear-head lesson).
+  const mand: number[] = [
+    0, MC - 0.56, 0.28, MC - 0.3, 0.37, MC, 0.28, MC + 0.32,
+    0, MC + 0.58, -0.28, MC + 0.32, -0.37, MC, -0.28, MC - 0.3,
+  ];
+  // The thorns first — they grow FROM the frame, under its ring.
+  const thorn = (u: number, t: number, du: number, dt: number, w: number): void => {
+    const L = Math.hypot(du, dt) || 1;
+    const pu = (-dt / L) * w;
+    const pt = (du / L) * w;
+    polyAt(rc, [u + pu, t + pt, u + du, t + dt, u - pu, t - pt], 0.24, shade(bright, -4));
+    polyAt(rc, [u + pu, t + pt, u + du, t + dt, u, t], 0.24, shade(bright, 16));
+  };
+  for (const sgn of [-1, 1]) {
+    thorn(sgn * 0.2, MC - 0.44, sgn * 0.15, -0.19, 0.055);
+    thorn(sgn * 0.33, MC + 0.17, sgn * 0.19, 0.11, 0.055);
+    thorn(sgn * 0.17, MC + 0.47, sgn * 0.12, 0.19, 0.05);
+  }
+  prism(rc, mand, 0, 0.24, bright, { wallDark: shade(bright, -38), outline: true });
+  // The hollow the mask hangs in — the frame's recess, near-dark.
+  const hollow = mand.map((v, i) => (i % 2 === 0 ? v * 0.7 : MC + (v - MC) * 0.7));
+  polyAt(rc, hollow, 0.24, shade(deep, -30));
+  // THE MASK: its own ringed object over the hollow (skull over jaw —
+  // the fellhorn law: stacked objects each wear their own line).
+  const head: number[] = [
+    -0.24, MC - 0.34, 0, MC - 0.42, 0.24, MC - 0.34, 0.285, MC - 0.08,
+    0.2, MC + 0.2, 0.09, MC + 0.42, -0.09, MC + 0.42, -0.2, MC + 0.2,
+    -0.285, MC - 0.08,
+  ];
+  prism(rc, head, 0.26, 0.52, shade(bright, 6), {
+    wallDark: shade(bright, -34),
+    shadow: false,
+    outline: true,
+  });
+  // THE BROW GEM: the reference mask's crown-stone — one dark diamond
+  // set in the forehead, lit on its sun side.
+  polyAt(rc, [0, MC - 0.34, 0.062, MC - 0.25, 0, MC - 0.16, -0.062, MC - 0.25], 0.52, dark);
+  polyAt(rc, [0, MC - 0.34, 0.062, MC - 0.25, 0, MC - 0.25], 0.52, shade(dark, 30));
+  // THE SCOWL: one heavy V-brow, meeting low over the nasal.
+  polyAt(rc, [
+    -0.26, MC - 0.16, -0.05, MC - 0.06, 0.05, MC - 0.06, 0.26, MC - 0.16,
+    0.26, MC - 0.05, 0.06, MC + 0.03, -0.06, MC + 0.03, -0.26, MC - 0.05,
+  ], 0.52, dark);
+  // The sockets: angled slits, outer corners raised — a glare.
+  const sockL = [-0.23, MC - 0.03, -0.075, MC + 0.02, -0.095, MC + 0.14, -0.21, MC + 0.1];
+  const sockR = [0.23, MC - 0.03, 0.075, MC + 0.02, 0.095, MC + 0.14, 0.21, MC + 0.1];
+  polyAt(rc, sockL, 0.52, SEAM);
+  polyAt(rc, sockR, 0.52, SEAM);
+  // THE EMBER SMOLDER — the one clock: a slow breath of fire deep in
+  // the sockets. Deterministic in nowMs; dim by design.
+  const breath = 0.38 + 0.26 * (0.5 + 0.5 * Math.sin(rc.nowMs * 0.0007));
+  rc.ctx.globalAlpha = breath;
+  polyAt(rc, [-0.2, MC + 0.03, -0.1, MC + 0.045, -0.115, MC + 0.115, -0.19, MC + 0.09], 0.52, '#ff9440');
+  polyAt(rc, [0.2, MC + 0.03, 0.1, MC + 0.045, 0.115, MC + 0.115, 0.19, MC + 0.09], 0.52, '#ff9440');
+  rc.ctx.globalAlpha = 1;
+  // The skull nasal, apex up.
+  polyAt(rc, [0, MC + 0.08, 0.05, MC + 0.24, -0.05, MC + 0.24], 0.52, SEAM);
+  // THE JAW: the barred grin — one pale block, three dark slots, two
+  // fangs hanging past the chin into the hollow.
+  polyAt(rc, [-0.16, MC + 0.27, 0.16, MC + 0.27, 0.09, MC + 0.42, -0.09, MC + 0.42], 0.52, shade(bright, 20));
+  for (const u of [-0.065, 0, 0.065]) {
+    polyAt(rc, [u - 0.013, MC + 0.27, u + 0.013, MC + 0.27, u + 0.011, MC + 0.41, u - 0.011, MC + 0.41], 0.52, dark);
+  }
+  polyAt(rc, [-0.15, MC + 0.32, -0.075, MC + 0.34, -0.115, MC + 0.52], 0.52, shade(bright, 14));
+  polyAt(rc, [0.15, MC + 0.32, 0.075, MC + 0.34, 0.115, MC + 0.52], 0.52, shade(bright, 14));
+}
+
+/**
+ * THE GILDED TYRANT — THE TYRANT'S CROWN. Three gold blades rising off
+ * the mandorla's crown arc into crest air — the mask's own diadem,
+ * leaning up and out so the tips clear the silhouette at every yaw
+ * (the kingsward lesson). Each is a ringed solid: the PROUD PROFILE
+ * law says a boss's weapons draw edge-on.
+ */
+function crestTyrant(rc: ReliefCtx, st: ShieldStyle): void {
+  const bright = st.rim;
+  const MC = -0.2;
+  // SHORT teeth, in the mandorla's own thorn voice — the first cut
+  // leaned three long ringed blades up the crown and their dark
+  // facets merged into a hood over the whole upper door; the second
+  // shrank them and the rings ate the gold. Grown from the frame,
+  // they share its ring (the thin-band law) and read as METAL.
+  const tooth = (u: number, t: number, du: number, dt: number, w: number): void => {
+    const L = Math.hypot(du, dt) || 1;
+    const pu = (-dt / L) * w;
+    const pt = (du / L) * w;
+    polyAt(rc, [u + pu, t + pt, u + du, t + dt, u - pu, t - pt], 0.5, shade(bright, -4));
+    polyAt(rc, [u + pu, t + pt, u + du, t + dt, u, t], 0.5, shade(bright, 16));
+  };
+  tooth(0, MC - 0.5, 0, -0.26, 0.06);
+  tooth(-0.17, MC - 0.42, -0.14, -0.18, 0.05);
+  tooth(0.17, MC - 0.42, 0.14, -0.18, 0.05);
+}
+
+/**
  * SUNFORGED AEGIS — THE STONE'S MOUNT. The gold seat at the crown the
  * sunstone is clawed into: an octagonal mount plate standing off the
  * pale wall, the long down-ray falling from it into the face, and
@@ -5749,6 +5996,7 @@ const CRESTS: Record<string, ReliefPainter> = {
   winterheart: crestWinterheart,
   oath: crestOath,
   pinion: crestPinion,
+  tyrant: crestTyrant,
 };
 
 const RELIEFS: Record<string, ReliefPainter> = {
@@ -5769,6 +6017,7 @@ const RELIEFS: Record<string, ReliefPainter> = {
   crosstower: relCrosstower,
   bulwark: relBulwark,
   oath: relOath,
+  tyrant: relTyrant,
 };
 
 /**

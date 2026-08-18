@@ -440,3 +440,46 @@ cross + studs + spikes = 4 (t5 floor holds).
 
 Gates: shields tsc clean, client 669/669; both judged at 4x + full-sweep
 rows; smalls read (cross ✓ ornate bronze badge ✓).
+
+## As-built — THE GILDED TYRANT (gilded_tyrant, 2026-08-17)
+
+The boss commission: a brand-new eleventh premium shield (not a recut),
+built to three user references — a golden crusader tower with a
+monster war-mask, and a spiked free edge. Held by bosses; drop-only
+(chest_boss 0.01, ogre_champion 0.008). defence 48, armor 13, t6.
+
+**THE COLOSSUS** (new shape + outline + METRIC rung): a boss-scale
+tower — crown peak between two UPSWEPT HORN TIPS (the war-crown is the
+silhouette), walls falling past a waist step in one long taper to a
+ground point. hw 0.2 / hh 0.355, wall-carry class. Horn cusps kept
+moderate (the frostplate yaw-crumple lesson).
+
+**Three masses, one clock:**
+- **THE DOUBLED FRAME** (face): bright-gold border around a recessed
+  deep-gold panel (SEAM sink ring + lit crown sliver), three inward
+  gold teeth per wall, faceted diamond studs in an arc over the mask
+  and riding the CENTER RIB that falls to the point.
+- **THE WAR-MASK** (relief): a ringed pointed-oval MANDORLA prism with
+  six flat two-facet thorns grown from it (un-ringed — thin-band law),
+  a thin dark hollow, and the skull-jawed gilded mask standing off
+  inside it as its own ringed prism (stacked-object law): brow gem,
+  V-scowl, angled SEAM sockets, skull nasal, barred grin with two
+  hanging fangs. Four ringed pyramid hero studs hold the field's
+  quarters. THE EMBER SMOLDER — the one clock — breathes dim fire in
+  the sockets (relief-tier animation: face canvas stays cached, sig is
+  NOT in LIVING_SIGS).
+- **THE SAW** (spike plan + crest): six gold flank spikes off both
+  walls; three short gold teeth off the mandorla crown in the thorn
+  voice (crest air, sharing the frame's ring).
+
+**Lessons banked (three cuts to land the crown):** (1) long leaning
+ringed pyramids merge their dark facets into a HOOD over the door —
+a diadem is teeth, not banners; (2) a narrow frame band flanked by its
+prism's two black rings reads as solid black — widen the band until
+gold survives between the rings; (3) tiny ringed pyramids read dark —
+below a size floor, spikes speak the flat two-facet thorn voice and
+share the parent ring.
+
+Proven at 6×/4× hero, full yaw sweep (mask proud at every θ, PROUD
+PROFILE holds edge-on), and the lab smalls columns. tsc ×4 clean;
+client 669, content 611, server all green.

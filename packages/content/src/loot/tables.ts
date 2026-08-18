@@ -1032,6 +1032,9 @@ const defs: LootTableDef[] = [
       // The doorwarden's harness came back up without the warden.
       // Nobody in the hoard's history has worn it twice.
       ...setDrops('gatefall', 0.004),
+      // THE GILDED TYRANT: the wall the champion carried into the
+      // dark, face out. The hoard kept the face. It is not sorry.
+      { item: 'gilded_tyrant', chance: 0.01 },
     ],
   },
   {
@@ -2102,6 +2105,9 @@ const defs: LootTableDef[] = [
       // The camp's whole toll shelf, carried hot — the master skims
       // the best of everything the hill ever flattened.
       { table: 'ogre_arms', mult: 3 },
+      // THE GILDED TYRANT: the one toll the hill never re-sold — a
+      // gold door with a face, sized like a compliment to its owner.
+      { item: 'gilded_tyrant', chance: 0.008 },
     ],
   },
   // THE HILL'S TOLL SHELF: everything the flattened travelers were

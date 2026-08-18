@@ -1088,6 +1088,21 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     desc: 'The capital, carried: or, a chief; argent, three falls. The king\'s answer to the sun.',
   },
   {
+    // THE GILDED TYRANT — the boss commission: the wall a warlord
+    // carries into a throne room. Drop-only: nobody smiths a tyrant.
+    id: 'gilded_tyrant',
+    name: 'The Gilded Tyrant',
+    slot: 'offhand',
+    levelReq: { skill: 'defence', level: 48 },
+    armor: 13,
+    affixPool: [{ stat: 'defence', w: 3 }, { stat: 'maxHp', w: 2 }, { stat: 'vitality' }, { stat: 'arx' }],
+    acquisition: { drop: true },
+    value: 2400,
+    color: '#c9a24f',
+    code: 'Ty',
+    desc: 'Gold enough to feed a town, hammered into a door with a face. The face is not sorry.',
+  },
+  {
     id: 'hunters_quiver',
     name: "Hunter's quiver",
     slot: 'offhand',
