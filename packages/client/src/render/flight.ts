@@ -1800,6 +1800,278 @@ export function batLook(defId: string, seed = 0): BatLook {
 type V3 = [number, number, number];
 
 /**
+ * ONE WING'S BONE CARRIAGE, in rig-local (F = forward, L = lateral,
+ * Z = up) TILES. Solved once and read twice: the painter hangs the
+ * membrane off these points, and `batExtent` measures the sprite's
+ * true reach from the very same numbers — so the frame can never
+ * disagree with the body it frames.
+ */
+export interface BatBones {
+  /** Sail's inner anchor, tucked inside the hull core. */
+  tuckF: number;
+  tuckL: number;
+  tuckZ: number;
+  /** Shoulder. */
+  shF: number;
+  shL: number;
+  shZ: number;
+  /** Elbow — the apex that breaks the leading edge. */
+  elbF: number;
+  elbL: number;
+  elbZ: number;
+  /** Wrist — the wing's high outer apex; the thumb-hook's seat. */
+  wrF: number;
+  wrL: number;
+  wrZ: number;
+  /** Ankle — the last bay's low inner mooring. */
+  ankF: number;
+  ankL: number;
+  ankZ: number;
+  /** Finger tips, leading first; tips[0] carries the wingtip. */
+  tips: V3[];
+  /** Finger count (= tips.length). */
+  N: number;
+  /** Load flex cue folded into the tips. */
+  flex: number;
+}
+
+/**
+ * THE WING IS AN ARM, NOT A FAN (the architecture verdict, drawn from
+ * reference): a real bat wing is three structures — a TWO-BONE ARM
+ * whose elbow breaks the leading edge and whose WRIST stands as the
+ * wing's high outer apex (the thumb-hook lives there), LONG FINGERS
+ * radiating from that apex with the LEADING finger carrying the far
+ * wingtip and each next finger stepping shorter and further inward,
+ * and DEEP CONCAVE MEMBRANE BAYS hung between the fingertips — with
+ * the last bay draping all the way to the ANKLE at the hull's low
+ * flank. An equal-rib radial fan reads umbrella; this is the anatomy,
+ * at this style's scale.
+ */
+function batBones(look: BatLook, fr: FlightFrame, pf: PitchFrame, es: number): BatBones {
+  const lag = es < 0 ? fr.port : fr.star;
+  const tipVel = es < 0 ? fr.portTipVel : fr.starTipVel;
+  const spread = Math.max(0.1, fr.spread);
+  const span = look.wingSpan;
+  const shA = look.bodyR * 0.22;
+  const shD = look.bodyW * 0.42;
+  const shF = pf.aF * shA + pf.dF * shD;
+  const shZ = pf.aZ * shA + pf.dZ * shD;
+  const shL = es * look.bodyW * 0.62;
+  // ROOT TUCK: the sail's inner anchor lives INSIDE the hull core —
+  // no raise angle or bank can ever open daylight at the joint.
+  const tuckF = pf.aF * 0.01 + pf.dF * 0.02;
+  const tuckZ = pf.aZ * 0.01 + pf.dZ * 0.02;
+  const tuckL = es * look.bodyW * 0.16;
+  // The upper arm rides ABOVE the rig's carriage (the elbow apex),
+  // the forearm settles back onto the hand channel — the angular
+  // leading edge every reference shows.
+  const armU = span * 0.3 * spread;
+  const armF2 = span * 0.36 * spread;
+  const rowF = 0.04 * spread + fr.swing;
+  const aU = fr.raise + 0.42;
+  const elbF = shF + pf.wfF * rowF + pf.wuF * Math.sin(aU) * armU;
+  const elbZ = shZ + pf.wfZ * rowF + pf.wuZ * Math.sin(aU) * armU;
+  const elbL = shL + es * Math.cos(aU) * armU;
+  const aW = fr.raiseHand + 0.02;
+  const wrF = elbF + pf.wuF * Math.sin(aW) * armF2;
+  const wrZ = elbZ + pf.wuZ * Math.sin(aW) * armF2;
+  const wrL = elbL + es * Math.cos(aW) * armF2;
+  const flex = clamp(-tipVel * 0.09, -0.5, 0.5);
+  // The fingers: the leading one nearly continues the forearm line
+  // out to the WINGTIP (the farthest point of the whole wing); each
+  // next finger is shorter and rotated further down-inward, so the
+  // tips lay a descending arc for the bays to hang from. Each rides
+  // its own sim station — the membrane breathes a beat behind.
+  const N = look.fingers;
+  const fanSpread = 1.35 * spread * (1 - 0.22 * fr.cruiseK);
+  const len0 = span * 0.58 * spread;
+  const tips: V3[] = [];
+  for (let k = 0; k < N; k++) {
+    const u = N === 1 ? 1 : k / (N - 1);
+    const lagK = lag[Math.min(k, lag.length - 1)] ?? 0;
+    const ang = fr.raiseHand - 0.28 - fanSpread * Math.pow(u, 1.15) - lagK * 0.45;
+    const len = len0 * (1 - 0.42 * Math.pow(u, 1.2));
+    const rise =
+      Math.sin(ang) * len + flex * u * len0 * 0.3 + fr.cruiseK * u * len0 * 0.06;
+    tips.push([
+      wrF - pf.wfF * 0.06 * len * u + pf.wuF * rise,
+      wrL + es * Math.cos(ang) * len,
+      wrZ - pf.wfZ * 0.06 * len * u + pf.wuZ * rise,
+    ]);
+  }
+  // The ankle: low on the hull's flank, under the mass — the last
+  // bay's inner mooring, so the sail wraps the body's whole height.
+  const ankF = -pf.aF * look.bodyR * 0.6 - pf.dF * look.bodyW * 0.5;
+  const ankZ = -pf.aZ * look.bodyR * 0.6 - pf.dZ * look.bodyW * 0.5;
+  const ankL = es * look.bodyW * 0.38;
+  return {
+    tuckF,
+    tuckL,
+    tuckZ,
+    shF,
+    shL,
+    shZ,
+    elbF,
+    elbL,
+    elbZ,
+    wrF,
+    wrL,
+    wrZ,
+    ankF,
+    ankL,
+    ankZ,
+    tips,
+    N,
+    flex,
+  };
+}
+
+/**
+ * The bat's sprite reach this frame, in TILES off the ground anchor
+ * (left/right signed on x, top/bottom positive away from the anchor).
+ *
+ * THE FRAME IS DERIVED, NEVER GUESSED — the same law the forest
+ * learned. A bat's silhouette is not a fixed box: the beat swings the
+ * wrists a third of a span above the hull, the bank rolls the whole
+ * projected body so a horizontal span tips into vertical reach, and
+ * the hover lifts the mass a full tile off its own shadow. A hand-set
+ * constant that fits the cruise clips the downbeat of a giant bat
+ * bearing down on the camera — the wingtips shear off at the top of
+ * the composite box. So every candidate below is a real point out of
+ * the SAME solver the painter draws from, run through the SAME
+ * projection (facing basis → camera squash → bank roll), and the box
+ * is their bound plus the membrane's own stroke half-width.
+ */
+export function batExtent(
+  look: BatLook,
+  fr: FlightFrame,
+  dir: number,
+  ys: number,
+  /** Px per tile — a few of the painter's inks carry PIXEL floors
+   *  (`Math.max(1.5, …)`) that outgrow their tile width at low zoom;
+   *  the box has to hold the ink at the size it is actually laid. */
+  s = 48,
+): { left: number; right: number; top: number; bottom: number } {
+  const fx = Math.cos(dir);
+  const fy = Math.sin(dir);
+  const px = -fy;
+  const py = fx;
+  const pf = pitchFrame(fr.pitchA, 0.45);
+  // The pixel-floor allowance, carried by every candidate below.
+  const inkPad = 2 / Math.max(1, s);
+  // The body center's own offset off the ground anchor: altitude,
+  // the strike lunge, and the hover tread's wander (drawBat's bcx/bcy
+  // in tiles — the box must travel with the body, not with the feet
+  // it does not have).
+  const ox = fx * (fr.lungeF * 0.85 + fr.driftF) + px * fr.driftL;
+  const oy = (fy * (fr.lungeF * 0.85 + fr.driftF) + py * fr.driftL) * ys - fr.lift;
+  // THE GIMBAL, exactly as the painter rolls it.
+  const roll = fr.bank * fr.pitchK * 0.55;
+  const cosR = Math.cos(roll);
+  const sinR = Math.sin(roll);
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  /** One rig-local point, projected and folded into the bound. `pad`
+   *  grows the point into the mass painted around it. */
+  const put = (F: number, L: number, Z: number, pad = 0): void => {
+    const wx = fx * F + px * L;
+    const wy = (fy * F + py * L) * ys - Z;
+    const x = ox + wx * cosR - wy * sinR;
+    const y = oy + wx * sinR + wy * cosR;
+    if (x - pad < minX) minX = x - pad;
+    if (x + pad > maxX) maxX = x + pad;
+    if (y - pad < minY) minY = y - pad;
+    if (y + pad > maxY) maxY = y + pad;
+  };
+
+  // ---- the hull: a pitched solid between the nose and vent poles.
+  const hullStretch = 1 + 0.08 * (1 - fr.pitchK);
+  const noseA = look.bodyR * 0.8 * hullStretch;
+  const ventA = look.bodyR * 1.0 * hullStretch;
+  const noseF = pf.aF * noseA;
+  const noseZ = pf.aZ * noseA;
+  const ventF = -pf.aF * ventA;
+  const ventZ = -pf.aZ * ventA;
+  // The hull blob's seeded jitter reaches 1.12× its radius; the
+  // pad is the fattest the mass can ever be, never its nominal.
+  const hullPad = look.bodyW * 1.2 + inkPad;
+  put(noseF, 0, noseZ, hullPad);
+  put(ventF, 0, ventZ, hullPad);
+  // The dire's dorsal hump rides proud of the hull's back.
+  if (look.hunch > 0) {
+    const hd = look.bodyW * (0.55 + 0.35 * look.hunch);
+    put(
+      pf.aF * look.bodyR * 0.12 + pf.dF * hd,
+      0,
+      pf.aZ * look.bodyR * 0.12 + pf.dZ * hd,
+      look.bodyW * (0.45 + 0.25 * look.hunch) + inkPad,
+    );
+  }
+  // The tail membrane, stretched behind the vent (the giant has none).
+  if (look.tailSail > 0) {
+    const reach = look.tailSail * 1.7;
+    const rootL = look.bodyW * 0.5;
+    put(ventF - pf.aF * reach, 0, ventZ - pf.aZ * reach - 0.03, inkPad);
+    put(ventF * 0.7, rootL, ventZ * 0.7, inkPad);
+    put(ventF * 0.7, -rootL, ventZ * 0.7, inkPad);
+  }
+
+  // ---- the wings: both sails, every bone. The membrane bays are
+  // quadratics whose control points are pulled toward the wrist, so
+  // each curve lies inside the hull of its tips and the wrist — the
+  // bone points alone bound the whole sail.
+  // The fattest ink on the wing: the edge-on slab's stroke, or the
+  // coat washing down the leading bone, whichever is heavier.
+  const edgePad = Math.max(look.wingSpan * 0.03, look.bodyW * 0.25) + inkPad;
+  for (const es of [-1, 1]) {
+    const b = batBones(look, fr, pf, es);
+    put(b.tuckF, b.tuckL, b.tuckZ, edgePad);
+    // The scapular fur mass seats the joint proud of the shoulder.
+    put(b.shF, b.shL, b.shZ, edgePad + look.bodyW * 0.35);
+    put(b.elbF, b.elbL, b.elbZ, edgePad);
+    // The wrist carries the thumb-hook curling up and out off it.
+    put(b.wrF, b.wrL, b.wrZ, edgePad + look.thumbClaw * 1.2);
+    put(b.ankF, b.ankL, b.ankZ, edgePad);
+    for (const t of b.tips) put(t[0], t[1], t[2], edgePad);
+  }
+
+  // ---- the head: seated on the neck, but drawn LEVEL in screen
+  // space (the skull never rolls with the gimbal), so its own reach
+  // is padded on the projected seat: ears up off the crown, the
+  // muzzle and fangs down under it.
+  const seatA = noseA + look.headR * 0.55;
+  const seatD = look.headR * (0.2 + 0.3 * fr.pitchK);
+  const hF = pf.aF * seatA + pf.dF * seatD;
+  const hZ = pf.aZ * seatA + pf.dZ * seatD;
+  const hwx = fx * hF;
+  const hwy = fy * hF * ys - hZ;
+  const hx = ox + hwx * cosR - hwy * sinR;
+  const hy = oy + hwx * sinR + hwy * cosR;
+  // The screech throws the ears back to their sweep limit; take the
+  // worst case both ways so a strike frame never outgrows the box.
+  const earUp = look.headR * 0.75 + look.earLen * 1.25 + inkPad;
+  const earOut = look.headR * 1.16 + look.earW + look.earLen * 0.7 + inkPad;
+  const chin = look.headR * (0.95 + look.fangLen) + inkPad;
+  if (hx - earOut < minX) minX = hx - earOut;
+  if (hx + earOut > maxX) maxX = hx + earOut;
+  if (hy - earUp < minY) minY = hy - earUp;
+  if (hy + chin > maxY) maxY = hy + chin;
+
+  // ---- the hook feet, dropped and opened on the strike.
+  if (look.variant !== 'cave') {
+    const hipF = pf.aF * -(look.bodyR * 0.35) + pf.dF * -(look.bodyW * 0.5);
+    const hipZ = pf.aZ * -(look.bodyR * 0.35) + pf.dZ * -(look.bodyW * 0.5);
+    for (const es of [-1, 1]) {
+      put(hipF + 0.19, es * look.bodyW * 0.4, hipZ - 0.15, 0.05 + inkPad);
+    }
+  }
+
+  return { left: minX, right: maxX, top: -minY, bottom: maxY };
+}
+
+/**
  * THE COLONY RIDES THE RIG — the one painter all three bat designs
  * share, every dial drawn from the BatLook. Root laws, all inherited
  * from the owl rounds and applied here at membrane dials:
@@ -1880,8 +2152,6 @@ export function drawBat(
   const screechK = at > 0.4 ? Math.min(1, (at - 0.4) / 0.25) : 0;
 
   const drawWing = (es: number): void => {
-    const lag = es < 0 ? fr.port : fr.star;
-    const tipVel = es < 0 ? fr.portTipVel : fr.starTipVel;
     const spread = Math.max(0.1, fr.spread);
     const span = look.wingSpan;
     // THE WING IS AN ARM, NOT A FAN (the user's architecture verdict,
@@ -1895,58 +2165,14 @@ export function drawBat(
     // dips — with the last bay draping all the way to the ANKLE at
     // the hull's low flank. An equal-rib radial fan reads umbrella;
     // this is the anatomy, at this style's scale.
-    const shA = look.bodyR * 0.22;
-    const shD = look.bodyW * 0.42;
-    const shF = pf.aF * shA + pf.dF * shD;
-    const shZ = pf.aZ * shA + pf.dZ * shD;
-    const shL = es * look.bodyW * 0.62;
-    // ROOT TUCK: the sail's inner anchor lives INSIDE the hull core —
-    // no raise angle or bank can ever open daylight at the joint.
-    const tuckF = pf.aF * 0.01 + pf.dF * 0.02;
-    const tuckZ = pf.aZ * 0.01 + pf.dZ * 0.02;
-    const tuckL = es * look.bodyW * 0.16;
-    // The upper arm rides ABOVE the rig's carriage (the elbow apex),
-    // the forearm settles back onto the hand channel — the angular
-    // leading edge every reference shows.
-    const armU = span * 0.3 * spread;
-    const armF2 = span * 0.36 * spread;
-    const rowF = 0.04 * spread + fr.swing;
-    const aU = fr.raise + 0.42;
-    const elbF = shF + pf.wfF * rowF + pf.wuF * Math.sin(aU) * armU;
-    const elbZ = shZ + pf.wfZ * rowF + pf.wuZ * Math.sin(aU) * armU;
-    const elbL = shL + es * Math.cos(aU) * armU;
-    const aW = fr.raiseHand + 0.02;
-    const wrF = elbF + pf.wuF * Math.sin(aW) * armF2;
-    const wrZ = elbZ + pf.wuZ * Math.sin(aW) * armF2;
-    const wrL = elbL + es * Math.cos(aW) * armF2;
-    const flex = clamp(-tipVel * 0.09, -0.5, 0.5);
-    // The fingers: the leading one nearly continues the forearm line
-    // out to the WINGTIP (the farthest point of the whole wing); each
-    // next finger is shorter and rotated further down-inward, so the
-    // tips lay a descending arc for the bays to hang from. Each rides
-    // its own sim station — the membrane breathes a beat behind.
-    const N = look.fingers;
-    const fanSpread = 1.35 * spread * (1 - 0.22 * fr.cruiseK);
-    const len0 = span * 0.58 * spread;
-    const tips: V3[] = [];
-    for (let k = 0; k < N; k++) {
-      const u = N === 1 ? 1 : k / (N - 1);
-      const lagK = lag[Math.min(k, lag.length - 1)] ?? 0;
-      const ang = fr.raiseHand - 0.28 - fanSpread * Math.pow(u, 1.15) - lagK * 0.45;
-      const len = len0 * (1 - 0.42 * Math.pow(u, 1.2));
-      const rise =
-        Math.sin(ang) * len + flex * u * len0 * 0.3 + fr.cruiseK * u * len0 * 0.06;
-      tips.push([
-        wrF - pf.wfF * 0.06 * len * u + pf.wuF * rise,
-        wrL + es * Math.cos(ang) * len,
-        wrZ - pf.wfZ * 0.06 * len * u + pf.wuZ * rise,
-      ]);
-    }
-    // The ankle: low on the hull's flank, under the mass — the last
-    // bay's inner mooring, so the sail wraps the body's whole height.
-    const ankF = -pf.aF * look.bodyR * 0.6 - pf.dF * look.bodyW * 0.5;
-    const ankZ = -pf.aZ * look.bodyR * 0.6 - pf.dZ * look.bodyW * 0.5;
-    const ankL = es * look.bodyW * 0.38;
+    // THE BONES ARE ONE TRUTH: the whole arm — root tuck, shoulder,
+    // elbow apex, wrist, every finger tip and the ankle mooring —
+    // comes from batBones, the same solver the EXTENT reads. A box
+    // derived from anything but these numbers crops the sail it
+    // framed (which is exactly what a hand-guessed constant did).
+    const bones = batBones(look, fr, pf, es);
+    const { shF, shZ, shL, tuckF, tuckZ, tuckL } = bones;
+    const { elbF, elbZ, elbL, wrF, wrZ, wrL, ankF, ankZ, ankL, tips, N } = bones;
     // A membrane bay's control point: the midpoint drawn toward the
     // wrist — the quadratic sags into the deep concave arc that IS
     // the bat-wing trailing edge.

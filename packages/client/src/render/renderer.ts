@@ -234,7 +234,7 @@ import { admitBake, BakeLane, type BakeBudgets } from './bakeAdmission.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { BobtailSim, CrocTailSim, TailSim, drawBobtail, drawFeyBrush, drawFoxBrush, drawHorseTail, drawHousecatTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
-import { FlightRig, batLook, drawBat, drawGreatOwl, flierSpec } from './flight.js';
+import { FlightRig, batExtent, batLook, drawBat, drawGreatOwl, flierSpec } from './flight.js';
 import { EarSim } from './earPhysics.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import {
@@ -60638,13 +60638,25 @@ export class Renderer {
     // ribbon, the bat hovers a full tile up with wings wide, and every
     // ooze plan buys its own room (the puddle reaches, the column
     // stands, the cube surges — oozeExtents is the one truth).
-    // Bat extents come from the look — the giant and dire sail far
-    // wider and hang higher than the cave flutterer's box.
+    // THE BAT'S FRAME IS DERIVED, NOT GUESSED: a wingspan is not a
+    // constant on screen. The beat carries the wrists a third of a
+    // span above the hull, the bank rolls that reach further up, and
+    // the hover holds the whole body a tile off its own shadow — a
+    // fixed top clipped the downbeat of a giant bat bearing down on
+    // the camera, shearing its wingtips at the composite's edge.
+    // batExtent measures the real silhouette off the SAME bones the
+    // painter draws, every frame (bats never take the sprite cache,
+    // so a live box costs nothing but the arithmetic).
     const bLook = bat ? batLook(defId, eid) : undefined;
+    const bExt = bLook ? batExtent(bLook, batFlight!, s.dir, this.camera.yScale, scale) : undefined;
     const oExt = ooze ? oozeExtents(ooze, radius) : undefined;
-    const halfW = (snake ? 1.55 : bLook ? bLook.wingSpan + bLook.bodyW + 0.2 : oExt ? oExt.halfW : radius * 2.2 + 0.25) * scale;
-    const top = (bLook ? 1.45 + bLook.bodyR + bLook.earLen : snake ? 0.55 : oExt ? oExt.top : radius * 2.4 + 0.15) * scale;
-    const bottom = (snake ? 1.1 : oExt ? oExt.bottom : 0.4) * scale;
+    const halfW = (snake ? 1.55 : bExt ? Math.max(-bExt.left, bExt.right) : oExt ? oExt.halfW : radius * 2.2 + 0.25) * scale;
+    const top = (bExt ? bExt.top : snake ? 0.55 : oExt ? oExt.top : radius * 2.4 + 0.15) * scale;
+    const bottom = (snake ? 1.1 : bExt ? bExt.bottom : oExt ? oExt.bottom : 0.4) * scale;
+    // The sail hangs off-center whenever the body banks or lunges —
+    // the box follows it rather than padding both sides to the worst.
+    const leftX = bExt ? bExt.left * scale : -halfW;
+    const rightX = bExt ? bExt.right * scale : halfW;
     const labelTop = bLook
       ? p.y - (1.7 + bLook.bodyR + bLook.earLen) * scale
       : oExt
@@ -60684,7 +60696,7 @@ export class Renderer {
         else if (snake) drawSnake(this.ctx, common);
         else drawOoze(this.ctx, ooze ?? { plan: 'hopper', giant: false, dress: 'verdant' }, common);
       },
-      body: { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom },
+      body: { x: p.x + leftX, y: p.y - top, w: rightX - leftX, h: top + bottom },
       drawLabel: () => {
         const ctx = this.ctx;
         if (meta.name) {

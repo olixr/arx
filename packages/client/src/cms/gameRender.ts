@@ -22,7 +22,7 @@ import { ogreLook } from '../render/ogre.js';
 import { skralLook } from '../render/skral.js';
 import { hobgoblinLook } from '../render/hobgoblin.js';
 import { TailSim, drawTail } from '../render/tail.js';
-import { batLook, drawBat, drawGreatOwl, flierSpec, stagedFlight } from '../render/flight.js';
+import { batExtent, batLook, drawBat, drawGreatOwl, flierSpec, stagedFlight } from '../render/flight.js';
 
 /**
  * TRUE IN-GAME RENDERS. Every creature and actor the studio shows is
@@ -404,9 +404,14 @@ function paintLegless(ctx: CanvasRenderingContext2D, px: number, def: NpcDef): v
   const bLook = bat ? batLook(def.id, 7) : undefined;
   const ooze = oozeLook(def.id);
   const oExt = ooze ? oozeExtents(ooze, radius) : undefined;
-  const halfWTiles = snake ? 1.55 : bLook ? bLook.wingSpan + bLook.bodyW + 0.2 : oExt ? oExt.halfW : radius * 2.2 + 0.25;
-  const topTiles = bLook ? 1.45 + bLook.bodyR + bLook.earLen : snake ? 0.55 : oExt ? oExt.top : radius * 2.4 + 0.15;
-  const bottomTiles = snake ? 1.1 : oExt ? oExt.bottom : 0.4;
+  // The card frames the SAME staged frame it paints — batExtent reads
+  // the settled hover's own bones, so the sail is never cropped by a
+  // box that guessed at the span.
+  const batFrame = bat ? stagedFlight(flierSpec(def.id), { seed: 7, moveK: 0 }) : undefined;
+  const bExt = bLook ? batExtent(bLook, batFrame!, Math.PI / 2, Y_SCALE, 48) : undefined;
+  const halfWTiles = snake ? 1.55 : bExt ? Math.max(-bExt.left, bExt.right) : oExt ? oExt.halfW : radius * 2.2 + 0.25;
+  const topTiles = bExt ? bExt.top : snake ? 0.55 : oExt ? oExt.top : radius * 2.4 + 0.15;
+  const bottomTiles = snake ? 1.1 : bExt ? Math.max(bExt.bottom, 0.1) : oExt ? oExt.bottom : 0.4;
   const scale = Math.min(
     (px * 0.84) / (halfWTiles * 2),
     (px * 0.8) / (topTiles + bottomTiles),
@@ -431,10 +436,7 @@ function paintLegless(ctx: CanvasRenderingContext2D, px: number, def: NpcDef): v
   type Bag = Parameters<typeof drawSnake>[1];
   if (bat) {
     // The bat card hangs the hover — the staged rig settled at rest.
-    drawBat(ctx, batLook(def.id, 7), {
-      ...common,
-      flight: stagedFlight(flierSpec(def.id), { seed: 7, moveK: 0 }),
-    });
+    drawBat(ctx, batLook(def.id, 7), { ...common, flight: batFrame! });
   } else if (snake) drawSnake(ctx, common as unknown as Bag);
   else drawOoze(ctx, ooze ?? { plan: 'hopper', giant: false, dress: 'verdant' }, common as unknown as Bag);
 }

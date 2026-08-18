@@ -20,6 +20,7 @@ import {
   GIANT_BAT_LOOK,
   OWL_FLIER,
   WingSim,
+  batExtent,
   batLook,
   drawBat,
   drawGreatOwl,
@@ -375,4 +376,147 @@ test('the beat curve is bounded, asymmetric, and phase-pure', () => {
   assert.ok(falling > 0 && rising > 0 && falling < rising, `down ${falling} vs up ${rising}`);
   // Phase is cyclic: one full cycle returns home.
   assert.ok(Math.abs(wingBeat(0.25).arm - wingBeat(1.25).arm) < 1e-9);
+});
+
+
+/**
+ * A recording context that tracks the affine transform the painter
+ * pushes, so every vertex it emits can be read back in FRAME space.
+ * Strokes report their own half-width — a bone line is as wide as its
+ * ink, and the box has to hold the ink.
+ */
+function tracingCtx(): {
+  ctx: CanvasRenderingContext2D;
+  pts: Array<{ x: number; y: number; pad: number }>;
+} {
+  const pts: Array<{ x: number; y: number; pad: number }> = [];
+  let m = [1, 0, 0, 1, 0, 0];
+  const stack: number[][] = [];
+  const state = {
+    fillStyle: '#000' as string,
+    strokeStyle: '#000' as string,
+    lineWidth: 1,
+    lineCap: 'butt',
+    lineJoin: 'miter',
+    globalAlpha: 1,
+    globalCompositeOperation: 'source-over',
+  };
+  const put = (x: number, y: number, r = 0): void => {
+    pts.push({
+      x: m[0]! * x + m[2]! * y + m[4]!,
+      y: m[1]! * x + m[3]! * y + m[5]!,
+      pad: r + state.lineWidth / 2,
+    });
+  };
+  const api: Record<string, (...a: number[]) => void> = {
+    save: () => void stack.push(m.slice()),
+    restore: () => void (m = stack.pop() ?? m),
+    translate: (tx, ty) => {
+      m = [m[0]!, m[1]!, m[2]!, m[3]!, m[4]! + m[0]! * tx + m[2]! * ty, m[5]! + m[1]! * tx + m[3]! * ty];
+    },
+    rotate: (r) => {
+      const c = Math.cos(r);
+      const n = Math.sin(r);
+      m = [
+        m[0]! * c + m[2]! * n,
+        m[1]! * c + m[3]! * n,
+        -m[0]! * n + m[2]! * c,
+        -m[1]! * n + m[3]! * c,
+        m[4]!,
+        m[5]!,
+      ];
+    },
+    moveTo: (x, y) => put(x, y),
+    lineTo: (x, y) => put(x, y),
+    quadraticCurveTo: (cx, cy, x, y) => {
+      // A quadratic never leaves the hull of its three points, so the
+      // control point is the honest bound to test.
+      put(cx, cy);
+      put(x, y);
+    },
+    arc: (x, y, r) => put(x, y, r),
+    ellipse: (x, y, rx, ry) => put(x, y, Math.max(rx, ry)),
+  };
+  const ctx = new Proxy(state, {
+    get(target, prop: string) {
+      if (prop in target) return target[prop as keyof typeof target];
+      if (prop in api) return api[prop]!;
+      return () => {};
+    },
+    set(target, prop: string, value) {
+      (target as Record<string, unknown>)[prop] = value;
+      return true;
+    },
+  }) as unknown as CanvasRenderingContext2D;
+  return { ctx, pts };
+}
+
+test('THE SPAN FITS ITS FRAME: batExtent holds every bat the painter paints', () => {
+  const g = globalThis as { Path2D?: unknown };
+  const hadPath = g.Path2D;
+  g.Path2D = FakePath2D;
+  const S = 48;
+  const YS = 0.82;
+  const OX = 200;
+  const OY = 200;
+  try {
+    for (const [batId, spec] of [
+      ['cave_bat', BAT_FLIER],
+      ['giant_bat', GIANT_BAT_FLIER],
+      ['dire_bat', DIRE_BAT_FLIER],
+    ] as const) {
+      let worstTop = 0;
+      // Every band of the compass, every travel dial, every phase of
+      // the beat, the strike included — the downbeat of a bat bearing
+      // down on the camera is exactly the frame that used to crop.
+      for (let band = 0; band < 12; band++) {
+        const dir = (band / 12) * Math.PI * 2;
+        for (const moveK of [0, 0.45, 1]) {
+          for (const at of [0, 0.5, 0.85]) {
+            for (const steps of [96, 101, 106, 111, 116, 121]) {
+              const look = batLook(batId, band * 5);
+              const fr = stagedFlight(spec, { seed: band, moveK, attackT: at, steps });
+              const ext = batExtent(look, fr, dir, YS, S);
+              const { ctx, pts } = tracingCtx();
+              drawBat(ctx, look, {
+                x: OX,
+                y: OY,
+                s: S,
+                dir,
+                hurt: false,
+                nowMs: 2222 + band,
+                seed: band,
+                ys: YS,
+                flight: fr,
+                attackT: at,
+              });
+              assert.ok(pts.length > 40, 'the painter drew nothing to measure');
+              const x0 = OX + ext.left * S;
+              const x1 = OX + ext.right * S;
+              const y0 = OY - ext.top * S;
+              const y1 = OY + ext.bottom * S;
+              worstTop = Math.max(worstTop, ext.top);
+              for (const q of pts) {
+                const why = `${batId} band${band} moveK${moveK} at${at} step${steps}`;
+                assert.ok(q.y - q.pad >= y0 - 0.5, `${why}: painted ABOVE its frame (the crop)`);
+                assert.ok(q.y + q.pad <= y1 + 0.5, `${why}: painted below its frame`);
+                assert.ok(q.x - q.pad >= x0 - 0.5, `${why}: painted left of its frame`);
+                assert.ok(q.x + q.pad <= x1 + 0.5, `${why}: painted right of its frame`);
+              }
+            }
+          }
+        }
+      }
+      // The regression pin: the old hand-set constant was
+      // 1.45 + bodyR + earLen, and the real reach clears it — that
+      // gap IS the wingtips that used to be sheared off.
+      const look = batLook(batId, 0);
+      assert.ok(
+        worstTop > 1.45 + look.bodyR + look.earLen,
+        `${batId}: the old constant already fit — the pin is stale`,
+      );
+    }
+  } finally {
+    g.Path2D = hadPath as typeof Path2D;
+  }
 });
