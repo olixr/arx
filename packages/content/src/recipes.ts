@@ -482,6 +482,59 @@ const defs: Array<Omit<RecipeDef, 'unlock'>> = [
     output: { item: 'leather', qty: 1 },
     ticks: 35,
   },
+  // THE WORN BOOK — THE RACK LEARNS THE PELTS. The tannery only ever
+  // took cowhide and offcuts, so every skin the hunt brought home was
+  // vendor trash the moment it hit the bag. Four whole-pelt intakes on
+  // the scraps mold. THE RATIO IS THE PELT'S OWN WORTH: a hide worth
+  // three cowhides tans into three leathers, which lands every one of
+  // them on the cowhide's margin (8 in, 12 out) — a trade, not a
+  // windfall, and never a LOSS, or the rack would go on being ignored.
+  // The premium furs (feywolf, duskruff, smokebrush, dire wolf) stay
+  // banked for the furrier arc — a coat is not a bootlace.
+  {
+    id: 'craft_leather_fox',
+    name: 'Leather (from fox pelt)',
+    skill: 'leatherworking',
+    levelReq: 8,
+    xp: 48,
+    station: 'tanning_rack',
+    inputs: [{ item: 'fox_pelt', qty: 1 }],
+    output: { item: 'leather', qty: 3 },
+    ticks: 45,
+  },
+  {
+    id: 'craft_leather_lynx',
+    name: 'Leather (from lynx pelt)',
+    skill: 'leatherworking',
+    levelReq: 10,
+    xp: 52,
+    station: 'tanning_rack',
+    inputs: [{ item: 'lynx_pelt', qty: 1 }],
+    output: { item: 'leather', qty: 3 },
+    ticks: 45,
+  },
+  {
+    id: 'craft_leather_gnoll',
+    name: 'Leather (from gnoll hide)',
+    skill: 'leatherworking',
+    levelReq: 12,
+    xp: 56,
+    station: 'tanning_rack',
+    inputs: [{ item: 'gnoll_hide', qty: 1 }],
+    output: { item: 'leather', qty: 3 },
+    ticks: 50,
+  },
+  {
+    id: 'craft_leather_fenhide',
+    name: 'Leather (from fen hide)',
+    skill: 'leatherworking',
+    levelReq: 16,
+    xp: 68,
+    station: 'tanning_rack',
+    inputs: [{ item: 'fen_basilisk_hide', qty: 1 }],
+    output: { item: 'leather', qty: 3 },
+    ticks: 55,
+  },
   {
     id: 'craft_hardened_leather',
     name: 'Hardened leather',
@@ -1561,6 +1614,12 @@ const INLINE_UNLOCK: Record<string, RecipeUnlock> = {
   // the tannery would deadlock every pattern that builds on leather.
   craft_leather: 'core',
   craft_leather_scraps: 'core',
+  // THE WORN BOOK's whole-pelt intakes ride the same law as the rest of
+  // the tannery: skinning is not a guild secret, it is a Tuesday.
+  craft_leather_fox: 'core',
+  craft_leather_lynx: 'core',
+  craft_leather_gnoll: 'core',
+  craft_leather_fenhide: 'core',
   craft_hardened_leather: 'core',
   weave_linen: 'core',
   weave_gloomsilk: 'core',

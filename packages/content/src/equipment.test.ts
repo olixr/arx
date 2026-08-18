@@ -281,16 +281,30 @@ test('acquisition routes are honest: drops in loot tables, shop stock flagged', 
       for (const item of reachableItems(tableId)) looted.add(item);
     }
   }
+  // THE WORN BOOK wave, rewritten consciously: a body is not the only
+  // door the world rolls loot through. THE CHEST IS THE PURSE — the
+  // sand's purses hang on no corpse at all — and a war-camp's
+  // signature strongbox rides a POI `chestLoot` override. Gear whose
+  // only honest home is one of those doors (the arena's laurelbrand,
+  // the camps' signature lots) is reachable, so the flag pin counts
+  // them. Both directions still hold: nothing unflagged may sit in
+  // any of these tables either.
+  const { ARENAS, arenaPurseTableFor } = await import('./arena.js');
+  const { POI_DEFS } = await import('./pois/defs.js');
+  const doorless = new Set<string>();
+  for (const m of ARENAS.matches) doorless.add(m.lootTable ?? arenaPurseTableFor(m.level));
+  for (const poi of POI_DEFS.values()) if (poi.chestLoot) doorless.add(poi.chestLoot);
+  for (const tableId of doorless) for (const item of reachableItems(tableId)) looted.add(item);
   for (const def of EQUIPMENT_DEFS) {
     if (def.acquisition.drop) {
-      assert.ok(looted.has(def.id), `${def.id} declares drop but no NPC drops it`);
+      assert.ok(looted.has(def.id), `${def.id} declares drop but nothing in the world drops it`);
     } else {
       // The converse law (the 2026-08 audit's second pass): gear a foe
       // pays out MUST be drop-flagged, or stampRoll refuses it a roll
       // and it lands as a permanently-common, affixless orphan.
       assert.ok(
         !looted.has(def.id),
-        `${def.id} sits in a foe's loot tables but is not drop-flagged (it would drop unrolled)`,
+        `${def.id} sits in a rolled loot table but is not drop-flagged (it would drop unrolled)`,
       );
     }
   }
@@ -456,7 +470,7 @@ test('themed cloth sets: five pieces each, coherent class and reqs', () => {
   assert.ok(byId.get('scholars_tome'));
 });
 
-test('the named wardrobe: thirty-one chase sets, owners keep them, rarity floors hold', () => {
+test('the named wardrobe: thirty-five chase sets, owners keep them, rarity floors hold', () => {
   // The vault-of-names law brought to armor: epic finds live at the
   // bands players level THROUGH (a low level never means a plain
   // reward), the legendary three never mint below their name, and
@@ -508,6 +522,18 @@ test('the named wardrobe: thirty-one chase sets, owners keep them, rarity floors
     flamewrought: { cls: 'cloth', skill: 'arx', floor: ['legendary'], maxLevel: 45 },
     duskwarden: { cls: 'cloth', skill: 'arx', floor: ['legendary'], maxLevel: 48 },
     aetherion: { cls: 'cloth', skill: 'arx', floor: ['legendary'], maxLevel: 52 },
+    // THE WORN BOOK wave (conscious rewrite, 2026-08-17): four hunted
+    // houses opening four empty lanes. Three are RESURGENCES — an
+    // early silhouette recut at a higher band — and the leather lane
+    // finally gets both its missing archery rung and its ceiling.
+    // packlord and warvaliant jackpot from epic at the bands players
+    // level through; adderking does the same at the venom endgame;
+    // stormtalon is the leather capstone and never mints below its
+    // name.
+    packlord: { cls: 'leather', skill: 'archery', floor: ['epic', 'legendary'], maxLevel: 32 },
+    warvaliant: { cls: 'plate', skill: 'defence', floor: ['epic', 'legendary'], maxLevel: 35 },
+    adderking: { cls: 'leather', skill: 'sneak', floor: ['epic', 'legendary'], maxLevel: 48 },
+    stormtalon: { cls: 'leather', skill: 'archery', floor: ['legendary'], maxLevel: 52 },
   };
   for (const [set, want] of Object.entries(SETS)) {
     // Offhands excluded per the plate test's precedent — a family may
@@ -673,9 +699,11 @@ test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates 
   // THE ARMORY's polearm pass (2026-08-16): the spear line's 8 metals
   // plus the bespoke twelve joined the census; THE BLADED LONG-ARMS
   // (same day) brought ten more — none of them a spear.
-  assert.equal(weapons.length, 280, 'swords 66 + daggers 58 + bows 41 + staves 55 + greatweapons 30 + polearms 30');
+  // THE WORN BOOK wave (conscious rewrite, 2026-08-17): the sand's
+  // second exclusive, laurelbrand, joins the sword census (66 -> 67).
+  assert.equal(weapons.length, 281, 'swords 67 + daggers 58 + bows 41 + staves 55 + greatweapons 30 + polearms 30');
   const swords = weapons.filter((d) => d.weapon?.style === 'onehand');
-  assert.equal(swords.length, 124, 'swords 66 + daggers 58');
+  assert.equal(swords.length, 125, 'swords 67 + daggers 58');
   for (const s of swords) {
     assert.equal(s.weapon?.style, 'onehand');
     assert.ok(s.weapon!.art && ABILITIES.has(s.weapon!.art), `${s.id} art ${s.weapon!.art} exists`);

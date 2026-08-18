@@ -44,7 +44,11 @@ test('coverage is exact: stamped sets and spoken sets are the same roster', () =
     assert.ok(SET_WORDS[set], `${set} is stamped but has no words`);
     assert.ok(count >= 5, `${set} needs a full family (${count} pieces found)`);
   }
-  assert.equal(Object.keys(SET_WORDS).length, 46, 'wave one is 31 chase + 15 themed');
+  // Consciously rewritten for THE WORN BOOK wave (46 -> 52): the six
+  // new houses are adderking, stormtalon, warvaliant and packlord
+  // (hunted, in namedChaseDefs) plus weirkeeper and wrightcloth
+  // (craft-only themed families). Wave one was 31 chase + 15 themed.
+  assert.equal(Object.keys(SET_WORDS).length, 52, 'the book is 35 chase + 17 themed');
 });
 
 test('the early wardrobes stay wordless — identity starts where the chase starts', () => {

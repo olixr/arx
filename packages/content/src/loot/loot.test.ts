@@ -4,6 +4,7 @@ import { rarityIndex } from '@arx/shared';
 import { ITEMS, itemDef } from '../items.js';
 import { HEIRLOOM_MIN_SURPLUS } from '../equipment/tables.js';
 import { NPCS } from '../npcs.js';
+import { POI_DEFS } from '../pois/defs.js';
 import {
   BOSS_YIELD_CEILING,
   LOOT_TABLES,
@@ -282,12 +283,21 @@ test('every foe’s tables preserve its signature loot — reserved pieces stay 
     fox_champion: ['smokebrush_pelt', 'fox_pelt', 'emberfox_jerkin'],
     iron_golem: ['forgeplate_scrap', 'golem_core', 'lodestone'],
     ogre: ['ogre_tooth', 'raw_beef', 'ogre_greatclub', 'quarryheart'],
-    ogre_champion: ['bonegrinder_girdle', 'ogre_tooth', 'ogre_greatclub', 'bearspine'],
+    // THE WORN BOOK wave: the hill kept a knight company's parade
+    // gold, so 24-30 plate no longer drops out of crypts alone.
+    ogre_champion: ['bonegrinder_girdle', 'ogre_tooth', 'ogre_greatclub', 'bearspine', 'oathgold_platebody'],
     // The legion's loot-story: the issued kit on the body really
     // drops — the line's sword and board, the longbowman's bow, the
     // warlord's steel and crest.
     hobgoblin: ['legion_ring', 'iron_sword', 'oak_kiteshield', 'shortbow'],
     hobgoblin_champion: ['warlord_crest', 'legion_ring', 'steel_sword'],
+    // THE WORN BOOK wave's re-homed lots (the routes lane): the
+    // fisher-people wear their own drowned cloth, the den holds the
+    // rest of the last warden's kit, and 24-30 plate finally drops
+    // somewhere that is not a crypt.
+    skral: ['raw_trout', 'skral_frill', 'tidecaller_robe_darkwater'],
+    skral_harpooner: ['tidecaller_hood_darkwater'],
+    wolf_oldfang: ['direwolf_pelt', 'duskwarden_robe', 'duskwarden_wraps'],
     elder_great_owl: ['elder_plume', 'palethorn_platebody', 'stormsinger_robe'],
     gnoll_champion: ['packlord_mane', 'jadeskull_platebody', 'lastsheaf'],
     skeleton_barrow_lord: ['nightveil_jerkin_barrowdusk', 'sunhallow_robe'],
@@ -316,6 +326,93 @@ test('every foe’s tables preserve its signature loot — reserved pieces stay 
   // never the crypt floor, never the Champion's own purse.
   assert.ok(!reach.get('skeleton')!.has('nightveil_jerkin_barrowdusk'), 'barrowdusk leaked to skeletons');
   assert.ok(!reach.get('skeleton_champion')!.has('nightveil_jerkin_barrowdusk'), 'barrowdusk leaked to the Champion');
+});
+
+test('THE WORN BOOK wave: the new houses have roads home, and the exclusives hold', () => {
+  const reach = new Map<string, Set<string>>();
+  for (const [id, npc] of NPCS) {
+    const items = new Set<string>();
+    for (const t of npc.loot) for (const item of reachableItems(t)) items.add(item);
+    reach.set(id, items);
+  }
+  // Piece names belong to the family lane; the ROUTE is this lane's
+  // to pin, so match on the family prefix and the gear flag rather
+  // than on hand-copied ids (packlord_mane is a trophy, not a piece).
+  const wears = (npc: string, family: string): boolean =>
+    [...(reach.get(npc) ?? [])].some((i) => i.startsWith(`${family}_`) && itemDef(i)?.gear);
+  const roads: Record<string, string[]> = {
+    // The fen grows the leather; the elder court wears it.
+    adderking: ['fen_basilisk', 'elder_basilisk'],
+    // The leather ceiling: four crowned foes chosen for the headroom
+    // the census found in them (19-24% of the boss gear ceiling).
+    stormtalon: ['skral_tidelord', 'skral_deepmaw', 'goblin_flame_tyrant', 'gnoll_matriarch'],
+    // The legion recut: the line signs for it, the warlord wears it.
+    warvaliant: ['hobgoblin', 'hobgoblin_archer', 'hobgoblin_juggernaut', 'hobgoblin_champion'],
+    // The pet lane's house, cut from the crest it drops beside.
+    packlord: ['gnoll_champion', 'gnoll_matriarch'],
+  };
+  for (const [family, foes] of Object.entries(roads)) {
+    for (const foe of foes) {
+      assert.ok(NPCS.has(foe), `${foe} left the bestiary`);
+      assert.ok(wears(foe, family), `${foe} pays no ${family} piece`);
+    }
+  }
+  // CRAFT-LANE SYMMETRY IS DESIGN (the 2026-08 audit's binding
+  // verdict): this wave's two craft-only houses gain material theming
+  // and NEVER a drop route. The heirloom pool is their only way onto
+  // the ground, exactly as it is for the other twelve.
+  for (const family of ['weirkeeper', 'wrightcloth']) {
+    for (const [id, t] of LOOT_TABLES) {
+      const leak = t.entries.find((e) => e.item?.startsWith(`${family}_`));
+      assert.equal(leak, undefined, `${family} grew a drop route in '${id}'`);
+    }
+  }
+  // THE SAND'S SECOND EXCLUSIVE: the laurelbrand is awarded, never
+  // looted. Two purse tables carry it; no chest, no rack, and no body
+  // anywhere in the bestiary may.
+  const homes = [...LOOT_TABLES]
+    .filter(([, t]) => t.entries.some((e) => e.item === 'laurelbrand'))
+    .map(([id]) => id)
+    .sort();
+  assert.deepEqual(homes, ['arena_purse_t3', 'arena_purse_t4'], 'the laurel blade left the sand');
+  for (const [id, items] of reach) {
+    assert.ok(!items.has('laurelbrand'), `the laurelbrand leaked onto '${id}'`);
+  }
+  // ...and the grave-goods left the sand with it: the small purses pay
+  // the pit house's own rack now, not a crypt two counties over.
+  for (const purse of ['arena_purse_t1', 'arena_purse_t2']) {
+    const refs = LOOT_TABLES.get(purse)!.entries.map((e) => e.table);
+    assert.ok(refs.includes('pit_arms'), `${purse} lost the pit rack`);
+    assert.ok(!refs.includes('crypt_arms'), `${purse} still hands out grave-goods`);
+  }
+});
+
+test('THE CAMPS BARE THEIR HOARDS: three war-camps carry their own strongbox', () => {
+  const boxes: Array<[poi: string, table: string]> = [
+    ['bandit_camp', 'chest_pit_takings'],
+    ['hobgoblin_warcamp', 'chest_legion_issue'],
+    ['ogre_camp', 'chest_toll_hoard'],
+  ];
+  for (const [poi, table] of boxes) {
+    assert.ok(LOOT_TABLES.has(table), `the '${table}' lot never shipped`);
+    assert.equal(POI_DEFS.get(poi)?.chestLoot, table, `${poi} lost its signature box`);
+  }
+  // THE RED RIGHT HAND stays where the audit put it: the crews' box
+  // holds the crews' takings, never the Company's colors.
+  const takings = reachableItems('chest_pit_takings');
+  assert.ok(
+    ![...takings].some((i) => i.endsWith('_redhand')),
+    'redhand leaked into the pit takings',
+  );
+  // The legion's box carries the campaign's pattern; the hill's box
+  // carries the hill's toll shelf and nothing it could not lift.
+  assert.ok(
+    [...reachableItems('chest_legion_issue')].some(
+      (i) => i.startsWith('warvaliant_') && itemDef(i)?.gear,
+    ),
+    'the quartermaster shipped an empty rack',
+  );
+  assert.ok(reachableItems('chest_toll_hoard').has('ogre_greatclub'), 'the toll shelf went missing');
 });
 
 test('the flood law: every foe’s per-kill expectation stays under its station’s ceiling', () => {

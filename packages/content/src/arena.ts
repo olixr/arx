@@ -17,6 +17,11 @@ import type { PlaneId } from './planes.js';
  *   from authored parts; validation walks every part.
  * - THE CHEST IS THE PURSE: a card names a purse table (or takes the
  *   banded default); arena foes themselves pay nothing.
+ * - THE SAND PAYS ITS OWN (THE WORN BOOK wave): the purses carry the
+ *   pit house's own rack (`pit_arms`) instead of the crypt's
+ *   grave-goods, and the sport keeps two exclusives nothing else in
+ *   the world pays — `sand_laurel` (t4) and `laurelbrand` (t3/t4).
+ *   Both are pinned negative everywhere else; see loot/tables.ts.
  * - THE ANNOUNCER IS A THROAT: every bark ships VOICE-lawful — the
  *   validator enforces the dash ban so a machine-writing tell can
  *   never reach the sand through a Studio save.

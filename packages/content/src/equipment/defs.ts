@@ -777,6 +777,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
       inputs: [
         { item: 'gold_bar', qty: 2 },
         { item: 'steel_bar', qty: 2 },
+        // THE WORN BOOK: the lion's mane is a packlord's, taken off the
+        // biggest back in a warband and combed out over the crown. One
+        // crest, one shield — the king's board wears a hunt.
+        { item: 'packlord_mane', qty: 1 },
       ],
     },
     value: 1250,
@@ -854,6 +858,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
       inputs: [
         { item: 'gold_bar', qty: 2 },
         { item: 'steel_bar', qty: 3 },
+        // THE WORN BOOK: the sun's own crest is horsehair off a legion
+        // officer's galea, dyed once and never again. A warlord's comb
+        // over the sunwell — the aegis wears somebody's rank.
+        { item: 'warlord_crest', qty: 1 },
       ],
     },
     value: 1500,
@@ -999,6 +1007,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
         { item: 'silver_bar', qty: 3 },
         { item: 'steel_bar', qty: 2 },
         { item: 'dried_moonbell', qty: 1 },
+        // THE WORN BOOK: a reliquary needs a relic. The keystone out of
+        // a walking cairn is the oldest stone on the pilgrim way, and it
+        // is still warm when the shrine door shuts on it.
+        { item: 'hillstone_heart', qty: 1 },
       ],
     },
     value: 1050,
@@ -1037,6 +1049,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
         { item: 'silverbark', qty: 3 },
         { item: 'mithril_bar', qty: 1 },
         { item: 'dried_moonbell', qty: 1 },
+        // THE WORN BOOK: two elder plumes laid along the rib. The great
+        // owl kept the Everwood's night; the leaf it grew into keeps
+        // the same silence, and the wood is louder without them.
+        { item: 'elder_plume', qty: 2 },
       ],
     },
     value: 1400,
@@ -1080,6 +1096,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
         { item: 'starsteel_bar', qty: 2 },
         { item: 'gold_bar', qty: 2 },
         { item: 'silver_bar', qty: 2 },
+        // THE WORN BOOK: a gate needs a keystone, and the only stone
+        // that holds a sworn light without going out is a golem's core.
+        // Mason's marks and all — it was warm before the smith got it.
+        { item: 'golem_core', qty: 1 },
       ],
     },
     value: 1800,
@@ -1204,6 +1224,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // -------- Stagheart: bark leather, moss trim, ivory ANTLERS — the
   // endgame forest-king craft. The wilds crown their own.
   ...withSet('stagheart', stagheartSet()),
+  // -------- Weirkeeper (THE WORN BOOK): brine leather and river teal,
+  // the kingfisher grown into a trade. Craft-only, and the first
+  // family in the game to speak about fishing.
+  ...withSet('weirkeeper', weirkeeperSet()),
 
   // ================================================= themed cloth sets
   // The cloth wardrobe: the caster's five color stories. Sashes, hem
@@ -1226,6 +1250,10 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // -------- Starweaver: midnight and silver, the endgame craft.
   // Orbits its own shoulder-orbs under a floating halo.
   ...withSet('starweaver', starweaverSet()),
+  // -------- Wrightcloth (THE WORN BOOK): salvage linen scaled in old
+  // forgeplate, the bench coat two trades made. Craft-only, and the
+  // first family in the game to speak about the work itself.
+  ...withSet('wrightcloth', wrightclothSet()),
 
   // ========================================== early-game cloth wardrobe
   // Five sets for the leveling road (arx 2–19), each in FOUR dye lots
@@ -1249,7 +1277,9 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   ...earlyPlateDefs(),
 
   // ================================================= the named wardrobe
-  // Six CHASE sets with owners, spread across the leveling road — the
+  // Thirty-five CHASE sets with owners, spread across the leveling
+  // road and past it (the founding six were six; THE WORN BOOK wave
+  // corrects the count and adds the last four) — the
   // vault-of-names law brought to armor. Epic finds live at the bands
   // players actually level through (a low level never means a plain
   // reward); the legendary three are the long hunts. All drop-only:
@@ -1509,13 +1539,21 @@ function sunforgedSet(): EquipmentDef[] {
     { stat: 'regen' },
   ];
   const color = '#d4a43c';
+  // THE WORN BOOK — THE HUNT FEEDS THE FORGE: every piece of this set
+  // was already described as IVORY on gold, and the roster only has
+  // one ivory big enough to cut a wing out of. Two ogre teeth a piece,
+  // ground flat; the bars stay the majority, as the ratio law asks.
   const craft = (levelReq: number, xp: number, ticks: number, gold: number, steel: number) => ({
     skill: 'smithing' as const,
     levelReq,
     xp,
     station: 'anvil' as const,
     ticks,
-    inputs: [{ item: 'gold_bar', qty: gold }, { item: 'steel_bar', qty: steel }],
+    inputs: [
+      { item: 'gold_bar', qty: gold },
+      { item: 'steel_bar', qty: steel },
+      { item: 'ogre_tooth', qty: 2 },
+    ],
   });
   return [
     {
@@ -1682,47 +1720,59 @@ function drakescaleSet(): EquipmentDef[] {
     { stat: 'maxHp' },
   ];
   const color = '#8c3a32';
-  const craft = (levelReq: number, xp: number, ticks: number, leather: number, iron: number) => ({
+  // THE WORN BOOK — THE HUNT FEEDS THE FORGE: the drakescale finally
+  // has scales on it. Basilisk scute is the stone court's horn plate,
+  // value-matched against the piece's own iron bar (48 to 30 — one
+  // scute costs a little more than the bar it lies beside, never a
+  // multiple of it), and the boiled leather stays the majority.
+  const craft = (
+    levelReq: number, xp: number, ticks: number,
+    leather: number, iron: number, scale: number,
+  ) => ({
     skill: 'leatherworking' as const,
     levelReq,
     xp,
     station: 'tanning_rack' as const,
     ticks,
-    inputs: [{ item: 'hardened_leather', qty: leather }, { item: 'iron_bar', qty: iron }],
+    inputs: [
+      { item: 'hardened_leather', qty: leather },
+      { item: 'iron_bar', qty: iron },
+      { item: 'basilisk_scale', qty: scale },
+    ],
   });
   return [
     {
       id: 'drakescale_coif', name: 'Drakescale coif', slot: 'head', armorClass: 'leather',
       levelReq: { skill: 'archery', level: 33 }, armor: 5, affixPool: pool,
-      acquisition: { craft: true }, recipe: craft(36, 320, 85, 2, 1),
+      acquisition: { craft: true }, recipe: craft(36, 320, 85, 2, 1, 1),
       value: 700, color, code: 'Qh',
       desc: 'The drake\'s own skull, horns and all. Its eyes still light when it is angry, and it is always angry.',
     },
     {
       id: 'drakescale_body', name: 'Drakescale body', slot: 'body', armorClass: 'leather',
       levelReq: { skill: 'archery', level: 34 }, armor: 8, affixPool: pool,
-      acquisition: { craft: true }, recipe: craft(40, 460, 100, 4, 2),
+      acquisition: { craft: true }, recipe: craft(40, 460, 100, 4, 2, 2),
       value: 960, color, code: 'Qj',
       desc: 'The belly plates still hold the banked fire, and the fire still holds a grudge.',
     },
     {
       id: 'drakescale_chaps', name: 'Drakescale chaps', slot: 'legs', armorClass: 'leather',
       levelReq: { skill: 'archery', level: 33 }, armor: 6, affixPool: pool,
-      acquisition: { craft: true }, recipe: craft(38, 380, 90, 3, 1),
+      acquisition: { craft: true }, recipe: craft(38, 380, 90, 3, 1, 2),
       value: 820, color, code: 'Qc',
       desc: 'Scute-plated to the knee, supple past it. Fire finds no purchase; it was asked to leave in person.',
     },
     {
       id: 'drakescale_boots', name: 'Drakescale boots', slot: 'boots', armorClass: 'leather',
       levelReq: { skill: 'archery', level: 33 }, armor: 5, affixPool: pool,
-      acquisition: { craft: true }, recipe: craft(37, 340, 85, 2, 1),
+      acquisition: { craft: true }, recipe: craft(37, 340, 85, 2, 1, 1),
       value: 740, color, code: 'Qb',
       desc: 'Char-hide boots, copper at the toe. Embers make way, grudgingly.',
     },
     {
       id: 'drakescale_gloves', name: 'Drakescale gloves', slot: 'gloves', armorClass: 'leather',
       levelReq: { skill: 'archery', level: 33 }, armor: 5, affixPool: pool,
-      acquisition: { craft: true }, recipe: craft(37, 350, 85, 2, 1),
+      acquisition: { craft: true }, recipe: craft(37, 350, 85, 2, 1, 1),
       value: 750, color, code: 'Qu',
       desc: 'Gauntlets knuckled in worn horn. You can catch a brand barehanded now.',
     },
@@ -1783,6 +1833,79 @@ function stagheartSet(): EquipmentDef[] {
       acquisition: { craft: true }, recipe: craft(45, 610, 100, 2, 1, 2),
       value: 1120, color, code: 'Gu',
       desc: 'Bark-backed, gold-stitched, moss at the cuff. The forest\'s grip.',
+    },
+  ];
+}
+
+/**
+ * WEIRKEEPER (THE WORN BOOK) — the kingfisher's grown sibling, and the
+ * first wardrobe in the game that speaks about FISHING. The little
+ * river kit tanned a leviathan jaw and called it a hood; the keeper
+ * builds a weir and lives beside it, so the leathers come off brine
+ * things: skral frill for the colors, crab plate for the hard corners,
+ * pike skin for everything that has to stay wet all day. CRAFT ONLY,
+ * by the symmetry law: the craft lane keeps its edge through families
+ * the anvil owns outright, and the aquatic economy pays for this one.
+ */
+function weirkeeperSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'archery', w: 2 },
+    { stat: 'fishing', w: 2 },
+    { stat: 'sneak' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#2a5b52';
+  const craft = (
+    levelReq: number, xp: number, ticks: number,
+    leather: number, frill: number, extras: Array<{ item: string; qty: number }>,
+  ) => ({
+    skill: 'leatherworking' as const,
+    levelReq,
+    xp,
+    station: 'tanning_rack' as const,
+    ticks,
+    inputs: [{ item: 'leather', qty: leather }, { item: 'skral_frill', qty: frill }, ...extras],
+  });
+  return [
+    {
+      id: 'weirkeeper_hood', name: 'Weirkeeper hood', slot: 'head', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 22 }, armor: 4, affixPool: pool,
+      acquisition: { craft: true },
+      recipe: craft(26, 200, 65, 2, 1, [{ item: 'raw_pike', qty: 2 }]),
+      value: 380, color, code: 'Wf',
+      desc: 'A frill fanned back off the crown, still holding its colors. You hear the weir before you see it.',
+    },
+    {
+      id: 'weirkeeper_jerkin', name: 'Weirkeeper jerkin', slot: 'body', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 26 }, armor: 6, affixPool: pool,
+      acquisition: { craft: true },
+      recipe: craft(32, 320, 85, 4, 2, [{ item: 'crab_carapace', qty: 1 }, { item: 'raw_pike', qty: 3 }]),
+      value: 520, color, code: 'Wg',
+      desc: 'Pike skin lapped over a crab plate at the chest. It has been wet since it was cut and does not mind.',
+    },
+    {
+      id: 'weirkeeper_waders', name: 'Weirkeeper waders', slot: 'legs', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 24 }, armor: 5, affixPool: pool,
+      acquisition: { craft: true },
+      recipe: craft(29, 250, 75, 3, 1, [{ item: 'crab_carapace', qty: 1 }]),
+      value: 440, color, code: 'Wh',
+      desc: 'Sealed to the hip and shelled at the knee. The current gives up asking.',
+    },
+    {
+      id: 'weirkeeper_boots', name: 'Weirkeeper boots', slot: 'boots', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 22 }, armor: 4, affixPool: pool,
+      acquisition: { craft: true },
+      recipe: craft(27, 215, 65, 2, 1, [{ item: 'raw_pike', qty: 2 }]),
+      value: 400, color, code: 'Wi',
+      desc: 'Studded for wet stone. They have stood in one place for whole afternoons and never once slipped.',
+    },
+    {
+      id: 'weirkeeper_gloves', name: 'Weirkeeper gloves', slot: 'gloves', armorClass: 'leather',
+      levelReq: { skill: 'archery', level: 22 }, armor: 4, affixPool: pool,
+      acquisition: { craft: true },
+      recipe: craft(27, 220, 65, 2, 1, [{ item: 'raw_pike', qty: 2 }]),
+      value: 400, color, code: 'Wj',
+      desc: 'Barbed at the palm, open at the fingertip. A line runs through them and never runs out.',
     },
   ];
 }
@@ -2038,6 +2161,72 @@ function starweaverSet(): EquipmentDef[] {
       acquisition: { craft: true }, recipe: craft(45, 610, 100, 2, 1, 1),
       value: 1160, color, code: 'Sy',
       desc: 'A star sapphire on each hand. Constellations take requests.',
+    },
+  ];
+}
+
+/**
+ * WRIGHTCLOTH (THE WORN BOOK) — the bench coat, and the first
+ * wardrobe in the game that speaks about CRAFTING. Not a mage's robe
+ * that happens to have pockets: undyed linen woven off salvaged
+ * scrap, soot in the weave, and old forgeplate cut into scale where a
+ * working hand takes its knocks. A tailor and a smith made it
+ * together and each kept a hand in it, which is exactly what it says
+ * on the wearer. CRAFT ONLY, and the scrap heap is its material
+ * story.
+ */
+function wrightclothSet(): EquipmentDef[] {
+  const pool: AffixPoolEntry[] = [
+    { stat: 'arx', w: 2 },
+    { stat: 'smithing' },
+    { stat: 'tailoring' },
+    { stat: 'vitality' },
+    { stat: 'maxHp' },
+  ];
+  const color = '#8d7d5c';
+  const craft = (levelReq: number, xp: number, ticks: number, linen: number, scrap: number) => ({
+    skill: 'tailoring' as const,
+    levelReq,
+    xp,
+    station: 'loom' as const,
+    ticks,
+    inputs: [{ item: 'linen', qty: linen }, { item: 'forgeplate_scrap', qty: scrap }],
+  });
+  return [
+    {
+      id: 'wrightcloth_cap', name: 'Wrightcloth cap', slot: 'head', armorClass: 'cloth',
+      levelReq: { skill: 'arx', level: 30 }, armor: 3, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(33, 300, 80, 2, 1),
+      value: 640, color, code: 'Wa',
+      desc: 'A folded linen cap with a plate riveted over the brow. The sparks stopped being an argument years ago.',
+    },
+    {
+      id: 'wrightcloth_smock', name: 'Wrightcloth smock', slot: 'body', armorClass: 'cloth',
+      levelReq: { skill: 'arx', level: 34 }, armor: 5, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(39, 440, 100, 4, 2),
+      value: 900, color, code: 'Wb',
+      desc: 'Salvage linen scaled in old forgeplate down the front. A tailor and a smith argued over it and both won.',
+    },
+    {
+      id: 'wrightcloth_skirts', name: 'Wrightcloth skirts', slot: 'legs', armorClass: 'cloth',
+      levelReq: { skill: 'arx', level: 32 }, armor: 4, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(36, 360, 90, 3, 1),
+      value: 760, color, code: 'Wd',
+      desc: 'Hemmed short of the floor because a bench floor is never clean. Every burn hole has a patch and every patch has a date.',
+    },
+    {
+      id: 'wrightcloth_shoes', name: 'Wrightcloth shoes', slot: 'boots', armorClass: 'cloth',
+      levelReq: { skill: 'arx', level: 31 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(34, 320, 80, 2, 1),
+      value: 670, color, code: 'We',
+      desc: 'Plate capped at the toe against a dropped anvil. It has been tested. Twice.',
+    },
+    {
+      id: 'wrightcloth_mitts', name: 'Wrightcloth mitts', slot: 'gloves', armorClass: 'cloth',
+      levelReq: { skill: 'arx', level: 31 }, armor: 2, affixPool: pool,
+      acquisition: { craft: true }, recipe: craft(34, 325, 80, 2, 1),
+      value: 680, color, code: 'Wn',
+      desc: 'Two layers of linen and a scale across the back of the hand. The eighth thing you make in them comes out twice.',
     },
   ];
 }
@@ -2414,7 +2603,11 @@ function earlyLeatherDefs(): EquipmentDef[] {
     // the whole fish AND wears its own head.
     ...kingfisher,
     ...colorways(kingfisher, [
+      // THE WORN BOOK: the reed lot is not tanned from cowhide at all —
+      // it comes off the lurker that owns the same reeds. Marsh skin
+      // for the marsh angler, and the sagewort still does the dyeing.
       { key: 'reedmace', dye: 'Reedmace', color: '#2c4434', dyeInput: { item: 'sagewort', qty: 2 },
+        swapInput: { from: 'leather', to: 'fen_basilisk_hide' },
         desc: 'The reed angler. A lure glows where the face should be.' },
       { key: 'stormgull', dye: 'Stormgull', color: '#46525c', dyeInput: { item: 'cotton', qty: 2 },
         desc: 'The kraken\'s claim. It has eyes; they are not yours.' },
@@ -2527,47 +2720,56 @@ function kingfisherSet(): EquipmentDef[] {
     { stat: 'maxHp' },
   ];
   const color = '#1e404c';
-  const craft = (levelReq: number, xp: number, ticks: number, leather: number) => ({
+  // THE WORN BOOK — THE HUNT FEEDS THE FORGE: the riverking's fisher is
+  // tanned from river things. Leather and feather stay the honest
+  // majority (the ratio law); the one hunted line is a skral frill,
+  // cut off the brine-folk who fish the same bank you do. Their crest
+  // dries color-fast, which is the whole reason the set is BLUE.
+  const craft = (levelReq: number, xp: number, ticks: number, leather: number, frill: number) => ({
     skill: 'leatherworking' as const,
     levelReq,
     xp,
     station: 'tanning_rack' as const,
     ticks,
-    inputs: [{ item: 'leather', qty: leather }, { item: 'feather', qty: 2 }],
+    inputs: [
+      { item: 'leather', qty: leather },
+      { item: 'feather', qty: 2 },
+      { item: 'skral_frill', qty: frill },
+    ],
   });
   return [
     {
       id: 'kingfisher_hood', name: 'Kingfisher hood', slot: 'head', armorClass: 'leather',
       levelReq: { skill: 'archery', level: 6 }, armor: 2, affixPool: pool,
-      acquisition: { craft: true }, recipe: craft(7, 55, 45, 1),
+      acquisition: { craft: true }, recipe: craft(7, 55, 45, 1, 1),
       value: 95, color, code: 'Oh',
       desc: 'The leviathan\'s jaws, worn whole. You look out from inside the bite.',
     },
     {
       id: 'kingfisher_jerkin', name: 'Kingfisher jerkin', slot: 'body', armorClass: 'leather',
       levelReq: { skill: 'archery', level: 8 }, armor: 4, affixPool: pool,
-      acquisition: { craft: true }, recipe: craft(11, 90, 60, 2),
+      acquisition: { craft: true }, recipe: craft(11, 90, 60, 2, 2),
       value: 140, color, code: 'Oj',
       desc: 'Lapped scute plates under a dorsal fin. Light moves across it like water.',
     },
     {
       id: 'kingfisher_chaps', name: 'Kingfisher chaps', slot: 'legs', armorClass: 'leather',
       levelReq: { skill: 'archery', level: 7 }, armor: 3, affixPool: pool,
-      acquisition: { craft: true }, recipe: craft(9, 70, 50, 2),
+      acquisition: { craft: true }, recipe: craft(9, 70, 50, 2, 1),
       value: 115, color, code: 'Oc',
       desc: 'Waders to the waterline, fins at the calf. Perch anywhere, answer nothing.',
     },
     {
       id: 'kingfisher_boots', name: 'Kingfisher boots', slot: 'boots', armorClass: 'leather',
       levelReq: { skill: 'archery', level: 6 }, armor: 2, affixPool: pool,
-      acquisition: { craft: true }, recipe: craft(8, 60, 45, 1),
+      acquisition: { craft: true }, recipe: craft(8, 60, 45, 1, 1),
       value: 100, color, code: 'Ob',
       desc: 'Nacre-toed, dry inside, always. The bank mud files a complaint.',
     },
     {
       id: 'kingfisher_gloves', name: 'Kingfisher gloves', slot: 'gloves', armorClass: 'leather',
       levelReq: { skill: 'archery', level: 6 }, armor: 2, affixPool: pool,
-      acquisition: { craft: true }, recipe: craft(8, 58, 45, 1),
+      acquisition: { craft: true }, recipe: craft(8, 58, 45, 1, 1),
       value: 98, color, code: 'Og',
       desc: 'Barb-knuckled fish leather. The hand that never comes up empty.',
     },
@@ -3321,7 +3523,16 @@ function greatweaponDefs(): EquipmentDef[] {
       acquisition: { craft: true },
       recipe: {
         skill: 'smithing', levelReq: 46, xp: 560, station: 'anvil', ticks: 105,
-        inputs: [{ item: 'steel_bar', qty: 3 }, { item: 'emberstone', qty: 1 }, { item: 'oak_log', qty: 1 }],
+        // THE WORN BOOK: the emberstone is the heart, but what keeps
+        // the heads orange is two lumps of furnace-melt forged into
+        // them. Slag off a molten golem never quite cools — neither
+        // does this, which is the whole promise in the name.
+        inputs: [
+          { item: 'steel_bar', qty: 3 },
+          { item: 'emberstone', qty: 1 },
+          { item: 'oak_log', qty: 1 },
+          { item: 'molten_slag', qty: 2 },
+        ],
       },
       value: 1100, color: '#b06a30', code: 'Fw',
       desc: 'An emberstone seated between the heads keeps the metal a working orange. It never fully cools. Neither will you.',
@@ -4019,6 +4230,20 @@ function swordDefs(): EquipmentDef[] {
       value: 3200, color: '#3c4a5e', code: 'Nl',
       desc: 'Fell steel quenched above the treeline on a night the sky came down green. The lights never left the blade, and a ring of them still stands watch at the hilt.',
     },
+    {
+      // THE SAND'S SECOND EXCLUSIVE (THE WORN BOOK): the arena pays a
+      // laurel and, once in a very long card, the blade that goes with
+      // it. Nowhere else in the world hands one over. Its temper is
+      // the crowd's own count, and it lives in the temper registry.
+      id: 'laurelbrand', name: 'Laurelbrand', slot: 'weapon',
+      levelReq: { skill: 'onehand', level: 40 },
+      weapon: { style: 'onehand', damage: 4, cooldownTicks: 6, range: 1.95, art: 'crescent_sweep' },
+      affixPool: [{ stat: 'onehand', w: 3 }, { stat: 'defence' }, { stat: 'vitality' }, { stat: 'maxHp' }],
+      rarities: ['epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1900, color: '#c8b054', code: 'Lb',
+      desc: 'Gilt laurel chased the whole length of the fuller, worn shallow where a champion\'s grip kept finding it. It swings on the eighth beat because the crowd does, and the crowd taught it first.',
+    },
   ];
 
   return [...arming, ...falchion, ...gladius, ...scimitar, ...crafts, ...finds];
@@ -4227,7 +4452,15 @@ function daggerDefs(): EquipmentDef[] {
       acquisition: { craft: true },
       recipe: {
         skill: 'smithing', levelReq: 36, xp: 340, station: 'anvil', ticks: 85,
-        inputs: [{ item: 'steel_bar', qty: 1 }, { item: 'gold_bar', qty: 1 }, { item: 'moonbell', qty: 2 }],
+        // THE WORN BOOK: the midwinter quench is not water. One shard
+        // of everfrost off a rimebound golem, and the blade comes out
+        // of it cold and stays that way.
+        inputs: [
+          { item: 'steel_bar', qty: 1 },
+          { item: 'gold_bar', qty: 1 },
+          { item: 'moonbell', qty: 2 },
+          { item: 'everfrost_shard', qty: 1 },
+        ],
       },
       value: 560, color: '#b8d8e8', code: 'Qf',
       desc: 'Quenched at midwinter midnight and never warm again. The first frost, kept on a hip.',
@@ -4623,6 +4856,10 @@ function bowDefs(): EquipmentDef[] {
   ];
 
   // Wood steps shared by every line — each design overrides stats/codes.
+  // THE WORN BOOK — THE HUNT FEEDS THE FORGE: every YEW rung (and only
+  // the yew rungs) is fletched with a pair of owl plumes. The wood is
+  // what kings taxed; the feather is what falls without a sound, and a
+  // war bow that arrives before its noise does is the whole point.
   const WOODS = { plain: '#8a6a45', oak: '#6b4a26', pine: '#b08050', willow: '#8a9455', yew: '#7d4436' };
 
   // ---- shortbow: the skirmisher's bow. Quick to draw, quick to loose.
@@ -4641,7 +4878,7 @@ function bowDefs(): EquipmentDef[] {
         desc: 'Dense oak snaps the arrow out flat and fast.' },
       { wood: 'willow', log: 'willow_log', color: WOODS.willow, damage: 5, archReq: 24, craftReq: 30, xp: 210, value: 320, code: 'Uw',
         desc: 'Willow forgives a hurried draw and hides the creak.' },
-      { wood: 'yew', log: 'yew_log', color: WOODS.yew, damage: 6, archReq: 40, craftReq: 46, xp: 360, value: 740, code: 'Ys', unlock: 'trainer', extras: [{ item: 'silverbark', qty: 1 }],
+      { wood: 'yew', log: 'yew_log', color: WOODS.yew, damage: 6, archReq: 40, craftReq: 46, xp: 360, value: 740, code: 'Ys', unlock: 'trainer', extras: [{ item: 'silverbark', qty: 1 }, { item: 'owl_plume', qty: 2 }],
         desc: 'Yew in a small frame: a whisper that hits like a shout.' },
     ],
   );
@@ -4662,7 +4899,7 @@ function bowDefs(): EquipmentDef[] {
         desc: 'Northern pine, straight as the cold horizon it grew against.' },
       { wood: 'willow', log: 'willow_log', color: WOODS.willow, damage: 8, archReq: 30, craftReq: 34, xp: 280, value: 400, code: 'Wl',
         desc: 'Willow bends far and sends arrows farther.' },
-      { wood: 'yew', log: 'yew_log', color: WOODS.yew, damage: 10, archReq: 45, craftReq: 50, xp: 420, value: 920, code: 'Yn', unlock: 'trainer', extras: [{ item: 'silverbark', qty: 1 }, { item: 'mithril_bar', qty: 1 }],
+      { wood: 'yew', log: 'yew_log', color: WOODS.yew, damage: 10, archReq: 45, craftReq: 50, xp: 420, value: 920, code: 'Yn', unlock: 'trainer', extras: [{ item: 'silverbark', qty: 1 }, { item: 'mithril_bar', qty: 1 }, { item: 'owl_plume', qty: 2 }],
         desc: 'The wood wars are fought over. A yard of bent thunder.' },
     ],
   );
@@ -4681,7 +4918,7 @@ function bowDefs(): EquipmentDef[] {
         desc: 'Oak recurve — the poacher\'s rank badge, worn on the back.' },
       { wood: 'willow', log: 'willow_log', color: WOODS.willow, damage: 6, archReq: 26, craftReq: 32, xp: 240, value: 360, code: 'Wr',
         desc: 'It bends like the river it grew beside. Deer trust rivers.' },
-      { wood: 'yew', log: 'yew_log', color: WOODS.yew, damage: 8, archReq: 42, craftReq: 48, xp: 390, value: 820, code: 'Yr', unlock: 'trainer', extras: [{ item: 'silverbark', qty: 1 }],
+      { wood: 'yew', log: 'yew_log', color: WOODS.yew, damage: 8, archReq: 42, craftReq: 48, xp: 390, value: 820, code: 'Yr', unlock: 'trainer', extras: [{ item: 'silverbark', qty: 1 }, { item: 'owl_plume', qty: 2 }],
         desc: 'The last thing the King\'s deer never saw.' },
     ],
   );
@@ -5780,7 +6017,14 @@ function polearmDefs(): EquipmentDef[] {
       acquisition: { craft: true, drop: true },
       recipe: {
         skill: 'smithing', levelReq: 18, xp: 150, station: 'anvil', ticks: 85,
-        inputs: [{ item: 'iron_bar', qty: 2 }, { item: 'oak_log', qty: 1 }],
+        // THE WORN BOOK: the lodges tip the point with a tusk off the
+        // last razorback that lied to one. The hunt pays for the next
+        // hunt — one tusk, never a fistful (the ratio law).
+        inputs: [
+          { item: 'iron_bar', qty: 2 },
+          { item: 'oak_log', qty: 1 },
+          { item: 'razorback_tusk', qty: 1 },
+        ],
       },
       value: 180, color: '#8a7a5c', code: 'Bp',
       desc: 'Iron wings behind the point so the pig stops where you said. The razorbacks collect the ones that lied.',
@@ -6086,9 +6330,10 @@ export const GEM_BATTLESTAFFS: Record<string, string> = {
 };
 
 // ------------------------------------------------- the named wardrobe
-// The named chase sets — thirty-one at this writing (THE WORN BOOK
-// wave corrects the founding-six count), spread across the classes
-// and the leveling road. Each
+// The named chase sets — thirty-five at this writing (THE WORN BOOK
+// wave corrects the founding-six count and adds its four hunted
+// houses: adderking, stormtalon, warvaliant, packlord), spread across
+// the classes and the leveling road. Each
 // set has an OWNER in the world (the foe or cache whose story it is)
 // and a hard rarity floor: epic finds jackpot to legendary, the
 // legendary three never mint below their name. Drop-only by law —
@@ -6603,6 +6848,79 @@ function namedChaseDefs(): EquipmentDef[] {
     color: '#2e2452',
     rarities: ['legendary'] as RarityTier[],
   };
+  // ---------------------------------------------- THE WORN BOOK wave
+  // Four hunted houses opening four empty lanes: the venom endgame,
+  // the leather capstone, melee's first set identity, and the first
+  // gear a companion ever felt. Three are RESURGENCES — a beloved
+  // early silhouette recut at a higher band, because renewal means
+  // the fight and the words change, not just the numbers.
+
+  // ADDERKING — adderfang grown old. The same diamondback hide,
+  // steeped years darker until the pattern reads black on olive, and
+  // the fangs capped in gold by whoever last skinned it. Owner: the
+  // fen basilisks, which eat adders and wear what will not chew.
+  const adderking = {
+    set: 'adderking',
+    class: 'leather' as const, skill: 'sneak' as const,
+    pool: [
+      { stat: 'sneak', w: 3 },
+      { stat: 'archery' },
+      { stat: 'herbalism' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#4c4f2c',
+    rarities: ['epic', 'legendary'] as RarityTier[],
+  };
+  // STORMTALON — skytalon flown up into the weather it was named for.
+  // The hawk rig again, indigo where it was slate, every feather with
+  // a white edge the storm put there. Owner: the crowned few who
+  // outrank the sky — the tidelord, the deepmaw, the flame tyrant,
+  // the matriarch. The leather wardrobe's ceiling.
+  const stormtalon = {
+    set: 'stormtalon',
+    class: 'leather' as const, skill: 'archery' as const,
+    pool: [
+      { stat: 'archery', w: 3 },
+      { stat: 'sneak' },
+      { stat: 'regen' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#2c3a58',
+    rarities: ['legendary'] as RarityTier[],
+  };
+  // WARVALIANT — the storybook knight's harness, taken at a ford and
+  // re-riveted by a legion armorer: the mirror finish scoured off, the
+  // gold chevron beaten flat, brass studs punched through in ranks.
+  // The shape a child would still draw, in the iron that captured it.
+  // Owner: the hobgoblin line and the warlord who issued it.
+  const warvaliant = {
+    set: 'warvaliant',
+    class: 'plate' as const, skill: 'defence' as const,
+    pool: [
+      { stat: 'onehand', w: 2 },
+      { stat: 'defence', w: 2 },
+      { stat: 'vitality' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#54503f',
+    rarities: ['epic', 'legendary'] as RarityTier[],
+  };
+  // PACKLORD — named for the beast, not the hunter: bristle-crest
+  // hide off the biggest back in the warband, worn by whoever took
+  // it. The first wardrobe in the game a COMPANION answers to.
+  // Owner: the wolfkin and the packlords themselves.
+  const packlord = {
+    set: 'packlord',
+    class: 'leather' as const, skill: 'archery' as const,
+    pool: [
+      { stat: 'archery', w: 2 },
+      { stat: 'beastcraft', w: 2 },
+      { stat: 'sneak' },
+      { stat: 'maxHp' },
+    ] as AffixPoolEntry[],
+    color: '#5b4a33',
+    rarities: ['epic', 'legendary'] as RarityTier[],
+  };
   return [
     chasePiece(moonbell, 'moonbell_hood', 'Moonbell hood', 'head', 8, 2, 380, 'Ma',
       'Two pale blooms tucked at the brow. They open at dusk.'),
@@ -6944,5 +7262,49 @@ function namedChaseDefs(): EquipmentDef[] {
       'They land on agreement rather than stone.'),
     chasePiece(aetherion, 'aetherion_wraps', 'Aetherion wraps', 'gloves', 50, 8, 2500, 'Af',
       'Aether pools at the fingertips. Spend it slowly.'),
+
+    chasePiece(adderking, 'adderking_crown', 'Adderking crown', 'head', 43, 7, 2200, 'Kn',
+      'Four fangs at the brow, gold capped, the hood behind them spread wide. The little one bit; this one decides.'),
+    chasePiece(adderking, 'adderking_jerkin', 'Adderking jerkin', 'body', 48, 10, 2500, 'Ko',
+      'Diamondback steeped black by its own years. The pattern only shows when it turns.'),
+    chasePiece(adderking, 'adderking_leggings', 'Adderking leggings', 'legs', 47, 8, 2350, 'Kq',
+      'Scaled to the ankle and warm at noon, whatever the season says.'),
+    chasePiece(adderking, 'adderking_boots', 'Adderking boots', 'boots', 45, 6, 2200, 'Kr',
+      'They cross dry leaves the way the old hood did, and nothing at all hears them now.'),
+    chasePiece(adderking, 'adderking_gloves', 'Adderking gloves', 'gloves', 45, 6, 2200, 'Kt',
+      'Amber at the wrist, a gold fang laid along each knuckle. Patience, sharpened.'),
+
+    chasePiece(stormtalon, 'stormtalon_helm', 'Stormtalon helm', 'head', 49, 8, 2500, 'Tm',
+      'The crest is up and stays up. Every feather wears the white edge the weather put on it.'),
+    chasePiece(stormtalon, 'stormtalon_harness', 'Stormtalon harness', 'body', 52, 11, 2900, 'Tn',
+      'The archer rig flown into the front and back out the far side. The quiver still rides where it always did.'),
+    chasePiece(stormtalon, 'stormtalon_leggings', 'Stormtalon leggings', 'legs', 51, 10, 2650, 'To',
+      'Indigo hide cut for the long stand. The hair on your legs never quite settles.'),
+    chasePiece(stormtalon, 'stormtalon_striders', 'Stormtalon striders', 'boots', 50, 8, 2500, 'Tp',
+      'They land the way the strike does, and the sound arrives afterward.'),
+    chasePiece(stormtalon, 'stormtalon_talons', 'Stormtalon talons', 'gloves', 50, 8, 2500, 'Tq',
+      'Silver at the knuckle, hooked for the stoop. The draw comes back faster than the arm meant it to.'),
+
+    chasePiece(warvaliant, 'warvaliant_helm', 'Warvaliant helm', 'head', 31, 7, 1380, 'Wv',
+      'The tall crest is still there, sawn to a stub and re-plumed in legion black. The storybooks would know the shape.'),
+    chasePiece(warvaliant, 'warvaliant_platebody', 'Warvaliant platebody', 'body', 35, 10, 1700, 'Ww',
+      'The mirror finish scoured off and brass studs punched through in ranks. Somebody good wore it first, and somebody worse kept it.'),
+    chasePiece(warvaliant, 'warvaliant_greaves', 'Warvaliant greaves', 'legs', 34, 9, 1520, 'Wx',
+      'Parade steel beaten back into issue kit. They march in step whether or not you do.'),
+    chasePiece(warvaliant, 'warvaliant_sabatons', 'Warvaliant sabatons', 'boots', 32, 7, 1420, 'Wy',
+      'The gold went to the paymaster. The iron under it never noticed.'),
+    chasePiece(warvaliant, 'warvaliant_gauntlets', 'Warvaliant gauntlets', 'gloves', 32, 7, 1420, 'Wz',
+      'The chevron at the cuff is hammered flat and still legible. A fist has to hold something.'),
+
+    chasePiece(packlord, 'packlord_hood', 'Packlord hood', 'head', 27, 5, 1200, 'Pl',
+      'The bristle crest worn as it grew, upright over the brow. Dogs read it before people do.'),
+    chasePiece(packlord, 'packlord_jerkin', 'Packlord jerkin', 'body', 32, 8, 1500, 'Pn',
+      'Hide off the biggest back in the warband. Whatever runs at your heel stops arguing about who leads.'),
+    chasePiece(packlord, 'packlord_leggings', 'Packlord leggings', 'legs', 31, 6, 1330, 'Pq',
+      'Bound in cord and tooth. They keep the long lope the pack keeps.'),
+    chasePiece(packlord, 'packlord_treads', 'Packlord treads', 'boots', 29, 5, 1220, 'Pr',
+      'Wide soled for open ground. You arrive with the pack, not behind it.'),
+    chasePiece(packlord, 'packlord_grips', 'Packlord grips', 'gloves', 29, 5, 1220, 'Ps',
+      'Claw stitched at the finger. The hand that feeds and the hand that signals are the same hand.'),
   ];
 }

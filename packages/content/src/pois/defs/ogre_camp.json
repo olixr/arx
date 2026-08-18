@@ -57,6 +57,7 @@
       ]
     }
   ],
+  "chestLoot": "chest_toll_hoard",
   "chestTierBonus": 1,
   "clearedFlag": "poi_ogre_camp_broken",
   "cues": {

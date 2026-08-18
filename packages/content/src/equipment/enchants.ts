@@ -1309,6 +1309,165 @@ export const ENCHANT_DEFS: EnchantDef[] = [
     ],
     desc: 'Four turned in a row and the sigil decides the wall is the point.',
   },
+
+  // ==================================================================
+  // THE WORN BOOK — the enchanter joins the wave
+  //
+  // Seven workings, and two channels open with them.
+  //
+  // THE SWING CHANNEL gets its first roster users ever: two grips that
+  // hurry the hand, and one edge that finds a rhythm and rides it.
+  // THE SWING NUMBERS ARE SMALL ON PURPOSE and the arithmetic is
+  // written down here because it IS the reason. The band caps at
+  // SWING_MULT_MAX 1.5, and before a single piece of gear speaks,
+  // quicken at five stacks (1.04^5 = 1.217) times the quickstep tonic
+  // (1.10) has already spent 1.338 of it. Everything the equipment
+  // lanes may ever add has to fit inside the 12% that is left, and the
+  // SWING ASSEMBLY pin prices the worst wardrobe honestly: one enchant
+  // per slot, the weapon slot counted TWICE (THE DELIBERATE PAIR), a
+  // full house of words, and a tempered blade in each hand. So:
+  //   the grip's +2%  x  the edge's 2% surge, doubled  x  laurelbrand's
+  //   3% = 1.093, and the whole authored assembly folds to 1.463.
+  // A bigger number here would not read as a stronger working. It
+  // would read as a clamp eating the difference in silence.
+  //
+  // THE SELF-BLESSING gets its first BONDED pages: two boon scrolls,
+  // licensed by name in the register (statusWave GEAR_LICENSED), each
+  // laying exactly one page of the book's boon shelf onto its wearer.
+  // ==================================================================
+
+  // ---------------------------------------------------------- weapon
+  {
+    id: 'stormbeat_edge', name: 'Stormbeat', prefix: 'Stormbeat', tier: 5, slot: 'weapon',
+    element: 'storm', level: 94,
+    effects: [
+      E({ kind: 'elementDmg', element: 'storm', pct: 26 }),
+      E({ kind: 'crit', pct: 4 }),
+      E({
+        // The surge-'swing' channel's first bonded working. Four
+        // strikes buy three seconds of a faster hand, and the pct is
+        // priced against the whole assembly above, not against how
+        // good 2% looks on a card.
+        kind: 'proc', id: 'stormbeat', name: 'The Beat Takes Over',
+        trigger: { on: 'cadence', every: 4 },
+        action: { do: 'surge', stat: 'swing', pct: 2, ticks: 60 },
+        icd: 180,
+      }),
+    ],
+    desc: 'A storm keeps its own time and this steel has learned it. Four blows in, the arm stops asking how fast.',
+  },
+
+  // ------------------------------------------------------------ body
+  {
+    // BINDING ID: the register (statusWave GEAR_LICENSED) licenses this
+    // container by name to lay the mend page and nothing else.
+    id: 'ench_quiet_mending', name: 'Quietmending Ward', prefix: 'Quietmending',
+    tier: 4, slot: 'body', element: 'verdant', level: 66,
+    effects: [
+      E({ kind: 'maxHp', amount: 25 }),
+      E({ kind: 'regen', amount: 2 }),
+      E({ kind: 'armor', amount: 2 }),
+      E({
+        // Priced against THE MEND BOUND: three health a second for
+        // five seconds is fifteen closed, and the working may not wake
+        // again for fifteen more. A quarter of anything wearing it is
+        // never in question, and it doubles the garment's own regen
+        // line at best, for a moment, after the wearer has been hurt.
+        kind: 'proc', id: 'quiet_mending', name: 'Quiet Mending',
+        trigger: { on: 'hurt', chance: 0.25 },
+        action: { do: 'boon', status: 'mend', power: 3, ticks: 100 },
+        icd: 300,
+      }),
+    ],
+    desc: 'A wound is untidy and the weave disagrees. Take one and the green work starts closing it without being asked.',
+  },
+
+  // ----------------------------------------------------------- boots
+  {
+    id: 'delvers_step', name: "Delver's Stride", prefix: 'Delving', tier: 4, slot: 'boots',
+    element: 'astral', level: 78,
+    effects: [
+      E({ kind: 'speed', pct: 4 }),
+      E({ kind: 'skill', skill: 'sneak', amount: 2 }),
+      E({
+        // The explorer's charm, and the cache reveal's first working:
+        // the grammar has been held open for it since the ladder.
+        kind: 'proc', id: 'kept_ground', name: 'The Ground Keeps Things',
+        trigger: { on: 'stride', tiles: 30 },
+        action: { do: 'reveal', radius: 10, of: 'chest' },
+        icd: 300,
+      }),
+    ],
+    desc: 'Walk a vault long enough and the boots start counting what the floor is hiding from you.',
+  },
+
+  // ------------------------------------------------------------ cape
+  {
+    id: 'kindlers_mantle', name: "Kindler's Mantle", prefix: 'Kindling', tier: 4, slot: 'cape',
+    element: 'ember', level: 76,
+    effects: [
+      E({ kind: 'maxHp', amount: 12 }),
+      E({ kind: 'elementDmg', element: 'ember', pct: 12 }),
+      E({
+        // THE ANSWERED ECHO, bonded: the synergy hinge spoken by an
+        // enchant for the first time. Frozen-six page, so no license
+        // is owed; and a page a proc itself laid never echoes, which
+        // is the door's construction rather than this author's care.
+        kind: 'proc', id: 'kindlers_answer', name: 'The Fire Answers',
+        trigger: { on: 'stateApplied', status: 'burn' },
+        action: { do: 'nova', damage: 12, radius: 2.6 },
+        icd: 180,
+      }),
+    ],
+    desc: 'Set something alight and the cloth at your back agrees with the decision, loudly.',
+  },
+
+  // ---------------------------------------------------------- gloves
+  {
+    id: 'quickhand_grip', name: 'Quickhand Grip', prefix: 'Quickhand', tier: 4, slot: 'gloves',
+    element: 'storm', level: 58,
+    effects: [
+      E({ kind: 'swingSpeed', pct: 1 }),
+      E({ kind: 'crit', pct: 4 }),
+      E({ kind: 'skill', skill: 'onehand', amount: 2 }),
+      E({ kind: 'skill', skill: 'archery', amount: 2 }),
+    ],
+    desc: 'The hands stop waiting for the rest of you. Everything comes back up a shade sooner.',
+  },
+  {
+    id: 'duellists_grip', name: "Duellist's Grip", prefix: 'Duelling', tier: 5, slot: 'gloves',
+    element: 'storm', level: 80,
+    effects: [
+      E({ kind: 'swingSpeed', pct: 2 }),
+      E({ kind: 'crit', pct: 5 }),
+      E({ kind: 'skill', skill: 'onehand', amount: 3 }),
+      E({ kind: 'skill', skill: 'archery', amount: 3 }),
+    ],
+    desc: 'Somebody who won a great many close things wore these. The tempo of the thing is in the leather.',
+  },
+
+  // --------------------------------------------------------- offhand
+  {
+    // BINDING ID: licensed by the register to lay stonehide alone.
+    id: 'ench_standing_stone', name: 'Standing Stone Rune', prefix: 'Standing',
+    tier: 5, slot: 'offhand', element: 'frost', level: 87,
+    effects: [
+      E({ kind: 'armor', amount: 8 }),
+      E({ kind: 'maxHp', amount: 15 }),
+      E({ kind: 'thorns', amount: 2 }),
+      E({
+        // Twelve seconds of stone for a blow turned, and ten before
+        // the rune will do it again: the page's own stepDown sheds a
+        // coat every five seconds, so the wall is built by blocking
+        // and never by standing still.
+        kind: 'proc', id: 'standing_stone', name: 'The Stone Stands',
+        trigger: { on: 'block' },
+        action: { do: 'boon', status: 'stonehide', power: 1, ticks: 240 },
+        icd: 200,
+      }),
+    ],
+    desc: 'Turn a blow and a coat of grey settles over you. Turn enough of them and you are wearing the hill.',
+  },
 ];
 
 export const ENCHANTS = new Map<string, EnchantDef>();

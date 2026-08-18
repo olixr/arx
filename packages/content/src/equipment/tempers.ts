@@ -17,7 +17,7 @@
  *   (`hitState` tempers pay only against marked foes — the first
  *   authored users of that trigger).
  *
- * Authored here as a registry rather than 33 scattered def literals
+ * Authored here as a registry rather than 34 scattered def literals
  * so the roster reads as one page and the law test can walk it.
  * compile.ts merges each temper into its weapon's native effects.
  * `borrowed_time` and `wakestone` keep their pre-buildcraft natives
@@ -195,6 +195,27 @@ export const TEMPERS: Record<string, EnchantEffect[]> = {
       action: { do: 'chain', damage: 8, jumps: 3 }, icd: 240, element: 'storm' },
   ],
   // wakestone keeps its pre-buildcraft natives (the legendary's own).
+  // ------------------------------------------------- the arena's blade
+  //
+  // THE WORN BOOK wave: the sand's second exclusive, and the whole
+  // roster's surge-'swing' debut. A crowd keeps time whether or not
+  // you want it to, and the eighth blow of a bout is where the noise
+  // gets into the arm.
+  //
+  // The 3% is PRICED, not chosen: THE SWING ASSEMBLY (statusLedger)
+  // folds quicken at five stacks x the quickstep tonic x the worst
+  // wearable wardrobe against SWING_MULT_MAX, and the page and the
+  // shelf have already spent 1.338 of the 1.5 between them. The plan
+  // proposed 8%; at 8% the assembly leans on the band and the clamp
+  // would eat the difference in silence, which is a lie told to the
+  // player on the item card. The blade's identity is the RHYTHM, and
+  // the rhythm survives the honest number.
+  laurelbrand: [
+    { kind: 'proc', id: 'temper_laurelbrand', name: 'The Crowd Keeps Time',
+      trigger: { on: 'cadence', every: 8 },
+      action: { do: 'surge', stat: 'swing', pct: 3, ticks: 60 }, icd: 240,
+      element: 'radiant' },
+  ],
 };
 
 /** The temper merged into a weapon's natives at compile, or []. */
@@ -210,3 +231,11 @@ export const MASTERWORK_DAGGERS = ['cindersnip', 'larkspur', 'latchkey', 'mothli
 export const STAFF_REGALIA = ['dowser', 'swarmsong', 'merelight', 'knellwood', 'glassgather',
   'duskcap', 'meridian', 'stormjar', 'escapement', 'lastsheaf', 'mirrormere', 'ashgarden',
   'hollowchoir', 'spindrift', 'wakestone'] as const;
+/**
+ * THE WORN BOOK wave: the registry's fourth roster. The honor roll was
+ * the masterworks and the regalia and nothing else, and the arena's own
+ * exclusive is neither — it is won in the sand, not smithed. It answers
+ * every temper law the other thirty three do, so it is a roster entry
+ * rather than an exception carved into the pin.
+ */
+export const ARENA_STEEL = ['laurelbrand'] as const;

@@ -960,9 +960,9 @@ const defs: ItemDef[] = [
   { id: 'direwolf_pelt', name: 'Dire wolf pelt', stackable: true, maxStack: 5, value: 110, desc: 'Broad as a bedroll, storm-dark and frost-tipped — her winters written in the scars.', color: '#4b4854', code: 'Dp' },
   { id: 'worg_fang', name: 'Worg fang', stackable: true, maxStack: 10, value: 38, desc: 'An up-hooked lower fang, long as a skinning knife. The goblins drill them for war-charms.', color: '#d8ccb0', code: 'Wg' },
   { id: 'feywolf_pelt', name: 'Fey wolf pelt', stackable: true, maxStack: 5, value: 260, desc: 'Moon-lavender and cold to the hand years after the skinning. In the right dark it still glimmers, and the furrier will not say what the wrong dark is.', color: '#9a94b4', code: 'Fp' },
-  { id: 'lynx_pelt', name: 'Lynx pelt', stackable: true, maxStack: 10, value: 24, desc: 'Rosette-spotted and soft as ash. The ear tufts are still on it — furriers pay for the tufts.', color: '#9c7f55', code: 'Lx' },
+  { id: 'lynx_pelt', name: 'Lynx pelt', stackable: true, maxStack: 10, value: 24, desc: 'Rosette-spotted and soft as ash. The ear tufts are still on it — furriers pay for the tufts, and the tanning rack takes everything under them.', color: '#9c7f55', code: 'Lx' },
   { id: 'duskruff_pelt', name: 'Duskruff pelt', stackable: true, maxStack: 5, value: 120, desc: 'Storm-grey with silver rosettes, the great ruff intact. It was the wood\'s quietest killer, and now it is a coat.', color: '#565064', code: 'Dk' },
-  { id: 'fox_pelt', name: 'Fox pelt', stackable: true, maxStack: 10, value: 22, desc: 'Winter-plush with the white-flagged brush still on it. Furriers pay for the flag.', color: '#b4622a', code: 'Fx' },
+  { id: 'fox_pelt', name: 'Fox pelt', stackable: true, maxStack: 10, value: 22, desc: 'Winter-plush with the white-flagged brush still on it. Furriers pay for the flag; the rack pays for the rest, three leathers at a time.', color: '#b4622a', code: 'Fx' },
   { id: 'smokebrush_pelt', name: 'Smokebrush pelt', stackable: true, maxStack: 5, value: 115, desc: 'Ember-dark under a silvered mask, the great brush ending in smoke and one ring of fire. The hedges are quieter now.', color: '#6b3226', code: 'Sb' },
   { id: 'turtle_scute', name: 'Turtle scute', stackable: true, maxStack: 10, value: 24, desc: 'One keeled plate off a giant turtle\'s shell, harder than boiled leather and half the weight. Shieldwrights argue over the good ones.', color: '#4a5238', code: 'Ts' },
   { id: 'colossus_plate', name: 'Colossus shell plate', stackable: true, maxStack: 5, value: 135, desc: 'A moss-grown slab of shell wider than a tower shield. The scars on it are older than the road you carried it home on.', color: '#59604f', code: 'Cp' },
@@ -970,19 +970,19 @@ const defs: ItemDef[] = [
   { id: 'crusher_claw', name: 'Crusher claw', stackable: true, maxStack: 5, value: 125, desc: 'The great claw entire, heavy as a smith\'s anvil and shaped like a verdict. What it closed on, it kept.', color: '#587566', code: 'Cw' },
   // THE STONE COURT — the basilisk drops. Scale off the gaze line, hide
   // off the fen, and the elder's eye for the collectors brave enough.
-  { id: 'basilisk_scale', name: 'Basilisk scale', stackable: true, maxStack: 8, value: 48, desc: 'A palm-wide scute of dull grey horn, heavier than it looks. Held to the light it shows a faint green sheen, like something in it is still watching.', color: '#6b6a52', code: 'Bs' },
+  { id: 'basilisk_scale', name: 'Basilisk scale', stackable: true, maxStack: 8, value: 48, desc: 'A palm-wide scute of dull grey horn, heavier than it looks. Held to the light it shows a faint green sheen, like something in it is still watching. Tanners lap them over boiled leather and let it keep watching.', color: '#6b6a52', code: 'Bs' },
   { id: 'fen_basilisk_hide', name: 'Fen basilisk hide', stackable: true, maxStack: 10, value: 24, desc: 'Olive-dark keeled leather off a marsh lurker, smelling of still water. Tanners prize it; the fen wants it back.', color: '#5c6644', code: 'Fh' },
   { id: 'petrified_eye', name: 'Petrified eye', stackable: true, maxStack: 5, value: 155, desc: 'An elder basilisk\'s eye, gone all the way to agate. It no longer turns anything to stone, as far as anyone has proven.', color: '#b9d18c', code: 'Pe' },
   { id: 'skral_frill', name: 'Skral frill', stackable: true, maxStack: 10, value: 28, desc: 'A crest fin off a brine-folk skull, rays and membrane whole. Dried flat it holds its colors; wet, it almost stands up again.', color: '#5f9a84', code: 'Sf' },
   { id: 'deepking_pearl', name: 'Deepking\'s pearl', stackable: true, maxStack: 5, value: 130, desc: 'A pale sphere the size of a plum, worn smooth against a king\'s throat. The bank is quieter now, and the water is not.', color: '#dfe3d6', code: 'Dp' },
   { id: 'legion_ring', name: 'Legion queue-ring', stackable: true, maxStack: 10, value: 30, desc: 'An iron band cut from a hobgoblin\'s war braid, the rank-notches still legible. The legion counts its dead by these.', color: '#767c86', code: 'Lq' },
   { id: 'warlord_crest', name: 'Warlord\'s crest', stackable: true, maxStack: 5, value: 135, desc: 'The crimson comb off an officer\'s galea, horsehair stiff with march dust. Somewhere a legion is standing very still, waiting for an order that is not coming.', color: '#8e2f2c', code: 'Wc' },
-  { id: 'gnoll_hide', name: 'Gnoll hide', stackable: true, maxStack: 10, value: 26, desc: 'Speckled gray-brown fur over dull green skin. Smells of old camps and older kills.', color: '#8a7a58', code: 'Gh' },
+  { id: 'gnoll_hide', name: 'Gnoll hide', stackable: true, maxStack: 10, value: 26, desc: 'Speckled gray-brown fur over dull green skin. Smells of old camps and older kills. Scraped and boiled it makes perfectly honest leather, which it would hate.', color: '#8a7a58', code: 'Gh' },
   { id: 'packlord_mane', name: 'Packlord mane', stackable: true, maxStack: 5, value: 120, desc: 'A bristled crest cut from the biggest back in the warband. The cackling stopped when it fell.', color: '#4e4034', code: 'Pm' },
   { id: 'warboss_tusk', name: 'Warboss tusk', stackable: true, maxStack: 5, value: 110, desc: 'A worn yellow tusk off the biggest jaw in the camp. The arguments are quieter now.', color: '#e9e0c6', code: 'Wt' },
   { id: 'razorback_tusk', name: 'Razorback tusk', stackable: true, maxStack: 5, value: 120, desc: 'An aged ivory scimitar off the old razorback. The chip in it belonged to something bigger.', color: '#dccfa8', code: 'Rk' },
   { id: 'scrap_hide', name: 'Scrap hide', stackable: true, value: 3, desc: 'Small pelts and offcuts. Three make an honest leather.', color: '#8a6f52', code: 'Sh' },
-  { id: 'owl_plume', name: 'Owl plume', stackable: true, value: 26, desc: 'A flight feather longer than your forearm. It fell without a sound.', color: '#d8ccae', code: 'Op' },
+  { id: 'owl_plume', name: 'Owl plume', stackable: true, value: 26, desc: 'A flight feather longer than your forearm. It fell without a sound. Bowyers fletch yew with them, and the arrow keeps the habit.', color: '#d8ccae', code: 'Op' },
   { id: 'elder_plume', name: 'Elder plume', stackable: true, maxStack: 5, value: 140, desc: 'Moon-pale at the edge, storm-dark at the root. The wood is louder now.', color: '#5a5e70', code: 'Ep' },
   // THE EARTH STANDS UP — the golem drops (docs/golems-plan.md). One
   // shared heart plus a signature piece per build.
@@ -993,7 +993,7 @@ const defs: ItemDef[] = [
   { id: 'everfrost_shard', name: 'Everfrost shard', stackable: true, maxStack: 10, value: 130, desc: 'A faceted slab of old winter. It does not melt, and the room it sits in forgets summer.', color: '#9ad4e8', code: 'Ev' },
   // THE HILL COMES DOWN — the ogre drops (docs/ogres-plan.md). A
   // giant's hoard is a sack of dented junk with one true prize in it.
-  { id: 'ogre_tooth', name: 'Ogre tooth', stackable: true, maxStack: 10, value: 48, desc: 'A lower tooth the size of a hand axe, worn flat from grinding bones. The underbite is quieter now.', color: '#e3d7b4', code: 'Ot' },
+  { id: 'ogre_tooth', name: 'Ogre tooth', stackable: true, maxStack: 10, value: 48, desc: 'A lower tooth the size of a hand axe, worn flat from grinding bones. The underbite is quieter now, and the goldsmiths have found the only ivory wide enough to cut a wing from.', color: '#e3d7b4', code: 'Ot' },
   { id: 'bonegrinder_girdle', name: 'Bonegrinder girdle', stackable: true, maxStack: 5, value: 150, desc: 'A rope-and-hide belt off the biggest gut in the camp, trophies still knotted on. It took two hands to carry it home.', color: '#96685a', code: 'Bg' },
 
   // Quest items — worthless by law (the flood law's price for

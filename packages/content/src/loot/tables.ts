@@ -282,6 +282,11 @@ const defs: LootTableDef[] = [
       // The camp crowns its boss in stolen briar-iron — the chase lot
       // the wardrobe rack teases lands heavier on the boss itself.
       ...setDrops('briarplate', 0.012, { colorway: 'bloodbriar' }),
+      // THE WORN BOOK: a storm-hunter's rig came off the high passes
+      // in a raid nobody in camp can explain. The flame tyrant wears
+      // it — buckled wrong, over the wrong shoulder — and the camp's
+      // own warboss copies the tyrant. Neither can work the quiver.
+      ...setDrops('stormtalon', 0.006),
     ],
   },
   {
@@ -912,6 +917,10 @@ const defs: LootTableDef[] = [
       // who shelved them says the sigils finished reading him in
       // under a minute.
       ...setDrops('gloamsight', 0.004),
+      // THE WORN BOOK: a collector paid three fortunes for leathers
+      // no venom will cross and then never once went near a fen. The
+      // adderking suit banks better than it hunts.
+      ...setDrops('adderking', 0.005),
     ],
   },
   {
@@ -1035,6 +1044,10 @@ const defs: LootTableDef[] = [
       // THE GILDED TYRANT: the wall the champion carried into the
       // dark, face out. The hoard kept the face. It is not sorry.
       { item: 'gilded_tyrant', chance: 0.01 },
+      // THE WORN BOOK: the leather ceiling banks with everything else
+      // — a hunter's rig cased whole, the quiver still full, the
+      // buckles still oiled by a hand nobody down here remembers.
+      ...setDrops('stormtalon', 0.006),
     ],
   },
   {
@@ -1100,11 +1113,124 @@ const defs: LootTableDef[] = [
     ],
   },
 
+  // ------------------------------------- THE CAMPS BARE THEIR HOARDS
+  // Three signature strongboxes (THE WORN BOOK wave). The chestLoot
+  // override has stood since the riftgate cache and has been used
+  // exactly once; the war-camps take it up. A camp's box should read
+  // like the camp — the crew's shares, the quartermaster's inventory,
+  // the giant's sack — instead of the same iron chest the whole road
+  // shares. Wired from the POI defs (bandit_camp, hobgoblin_warcamp,
+  // ogre_camp), which is where the tier and the ward already live.
+  {
+    // The crew pools every take and the reaver stands over the box.
+    // What the crews strip off the road is what the box holds — and
+    // NOT one thread more: the Red Company's colors ride the reaver's
+    // own body alone (the redhand exclusivity, pinned since the audit).
+    id: 'chest_pit_takings',
+    desc: 'The pit takings: the crew’s shares, counted twice and warded once.',
+    rarityBonus: 3,
+    entries: [
+      { item: 'coins', qty: [60, 160] },
+      { item: 'brass_key', chance: 0.3 },
+      { item: 'dungeon_key', chance: 0.12 },
+      { item: 'bread', qty: [1, 2], chance: 0.4 },
+      { item: 'arrow', qty: [10, 24], chance: 0.4 },
+      { item: 'linen_scrap', qty: [2, 4], chance: 0.4 },
+      { item: 'scrap_hide', qty: [1, 3], chance: 0.35 },
+      { item: 'arcane_dust', qty: [1, 3], chance: 0.35 },
+      { table: 'brigand_arms', mult: 8 },
+      { table: 'brigand_wardrobe', mult: 6 },
+      // The torn page rides the takings too — the banker's errand
+      // starts in a box the banker never got to open.
+      { item: 'torn_ledger_page', chance: 0.06 },
+      // The toll-blade the whole crew dreams about, in the box the
+      // whole crew is not allowed to open.
+      { item: 'reavers_toll', chance: 0.02 },
+      // The crews burn what they rob, and some of what they rob comes
+      // back out of the fire wearable.
+      ...setDrops('cindershade', 0.008),
+    ],
+  },
+  {
+    // The quartermaster's chest: stencilled, inventoried, and signed
+    // for this morning. The legion issues its plate by the line, so
+    // the camp keeps a rack of the current pattern unworn — and the
+    // wall-rank's spare door stacked on top of it.
+    id: 'chest_legion_issue',
+    desc: 'The quartermaster’s issue: campaign plate, drilled iron, and a chest inventoried this morning.',
+    rarityBonus: 4,
+    entries: [
+      { item: 'coins', qty: [70, 180] },
+      { item: 'legion_ring', qty: [1, 2], chance: 0.5 },
+      { item: 'iron_bar', qty: [1, 3], chance: 0.45 },
+      { item: 'arrow', qty: [12, 28], chance: 0.5 },
+      { item: 'brass_key', chance: 0.25 },
+      { item: 'dungeon_key', chance: 0.12 },
+      { item: 'crimson_essence', qty: [1, 2], chance: 0.3 },
+      { table: 'hobgoblin_arms', mult: 10 },
+      // The unissued rack: the pattern the line wears next season,
+      // still in its wrappings, still counted.
+      ...setDrops('warvaliant', 0.02),
+      // Spare doors, stacked. The wall-rank breaks two a campaign.
+      { item: 'legion_doorwall', chance: 0.05 },
+    ],
+  },
+  {
+    // Everything the hill took off the pass, in one sack it never
+    // learned to close: arms it cannot hold, teeth it keeps for no
+    // reason it could explain, and the supper it was saving.
+    id: 'chest_toll_hoard',
+    desc: 'The toll hoard: a giant’s sack of other people’s roads.',
+    rarityBonus: 5,
+    entries: [
+      { item: 'coins', qty: [120, 280] },
+      { item: 'ogre_tooth', qty: [1, 3], chance: 0.6 },
+      { item: 'leather', qty: [2, 4], chance: 0.5 },
+      { item: 'raw_beef', qty: [1, 3], chance: 0.4 },
+      { item: 'scrap_hide', qty: [2, 4], chance: 0.45 },
+      { item: 'brass_key', chance: 0.2 },
+      { item: 'dungeon_key', chance: 0.2 },
+      { item: 'arcane_dust', qty: [2, 4], chance: 0.4 },
+      { table: 'ogre_arms', mult: 10 },
+      // The hill flattens travellers and keeps their kit for the
+      // weight of it — the heirloom law, told from the wrong side.
+      { table: 'heirlooms', mult: 2 },
+    ],
+  },
+
   // --------------------------------------------- THE SAND AND THE ROAR
   // The arena's purses (docs/arena-plan.md). THE CHEST IS THE PURSE:
   // arena foes pay no ground loot, so these four banded tables are the
   // sport's entire payout, priced against the fee and walked by the
   // same flood-law gate as every chest.
+  //
+  // THE SAND PAYS ITS OWN (THE WORN BOOK wave): the small purses used
+  // to hand out crypt_arms — grave-goods, dug up two counties over and
+  // handed to a fighter who never went underground. The sand keeps its
+  // own rack now: the pit house's issue iron, the undercard's hedge
+  // kit, and whatever the last card left lying in the sand. Existing
+  // low-band weapons only (the reuse law: a rack re-homes the world's
+  // arms, it never mints new ones).
+  rack('pit_arms', 'The pit house rack: issue iron, undercard kit, and what the last card left in the sand.', 0.05, [
+    { item: 'bronze_sword', chance: 0.05 },
+    { item: 'iron_sword', chance: 0.05 },
+    { item: 'iron_dagger', chance: 0.04 },
+    { item: 'rustbite', chance: 0.04 },
+    { item: 'shiv', chance: 0.03 },
+    // The two-hand card draws a crowd, so the house keeps one on the rack.
+    { item: 'iron_greatblade', chance: 0.02 },
+    { item: 'iron_helm', chance: 0.03 },
+    { item: 'oak_kiteshield', chance: 0.03 },
+    // Won off a goblin card and never claimed. The house re-issues it.
+    { item: 'gobnail_warboard', chance: 0.02 },
+    { item: 'shortbow', chance: 0.03 },
+    { item: 'knucklebow', chance: 0.025 },
+    { item: 'hunters_quiver', chance: 0.02 },
+    { item: 'poachers_friend', chance: 0.015 },
+    { item: 'hazel_switch', chance: 0.03 },
+    { item: 'wisplight', chance: 0.02 },
+    { item: 'ember_staff', chance: 0.02 },
+  ]),
   {
     id: 'arena_purse_t1',
     desc: 'The small ring’s purse: coin over the stake, and a working fighter’s odds and ends.',
@@ -1113,7 +1239,7 @@ const defs: LootTableDef[] = [
       { item: 'coins', qty: [40, 90] },
       { item: 'bread', qty: [1, 2], chance: 0.5 },
       { item: 'arcane_dust', qty: [1, 3], chance: 0.4 },
-      { table: 'crypt_arms', mult: 6 },
+      { table: 'pit_arms', mult: 6 },
       { item: 'brass_key', chance: 0.08 },
       { table: 'heirlooms' },
     ],
@@ -1126,7 +1252,7 @@ const defs: LootTableDef[] = [
       { item: 'coins', qty: [80, 160] },
       { item: 'arcane_dust', qty: [2, 4], chance: 0.6 },
       { item: 'crimson_essence', qty: [1, 2], chance: 0.3 },
-      { table: 'crypt_arms', mult: 8 },
+      { table: 'pit_arms', mult: 8 },
       { table: 'heirlooms', mult: 2 },
       { item: 'brass_key', chance: 0.1 },
     ],
@@ -1142,6 +1268,11 @@ const defs: LootTableDef[] = [
       { item: 'radiant_essence', qty: [1, 2], chance: 0.25 },
       { table: 'champion_armory', mult: 2 },
       { table: 'heirlooms', mult: 2 },
+      // THE SAND'S SECOND EXCLUSIVE (THE WORN BOOK wave): the crowd
+      // keeps the beat of a Grand Ring bout, and a laurelbrand keeps
+      // the crowd's. The house awards it and the house alone — no
+      // road, no crypt, no camp anywhere carries one.
+      { item: 'laurelbrand', chance: 0.008 },
     ],
   },
   {
@@ -1161,6 +1292,10 @@ const defs: LootTableDef[] = [
       // The arena's OWN trophy — nowhere else in the world (the
       // exclusive law: some things only the sand pays).
       { item: 'sand_laurel', chance: 0.05 },
+      // ...and the blade that goes with the wreath. The headline card
+      // pays the laurelbrand best because the headline crowd is the
+      // loudest, and the sword answers a crowd.
+      { item: 'laurelbrand', chance: 0.012 },
     ],
   },
 
@@ -1246,6 +1381,13 @@ const defs: LootTableDef[] = [
       // The court's sword outlived the court. The matriarch sleeps
       // curled around it, and the den never quite thaws.
       { item: 'winterspire', chance: 0.008 },
+      // THE WORN BOOK thickens the dusk road: the war-hounds down at
+      // the camp still argue over the warden's hat (worg, 0.002, the
+      // long hunt). The REST of the kit went home with the den — the
+      // matriarch, and the Oldfang above her, pay it out the way a
+      // den pays anything: once, and hard. (Held to 0.008: the den's
+      // per-kill purse is the fullest named station on the road.)
+      ...setDrops('duskwarden', 0.008),
     ],
   },
   {
@@ -1467,6 +1609,19 @@ const defs: LootTableDef[] = [
       // The packs crown their best in jade and a skull that watches
       // back. The packlord earned every piece twice.
       ...setDrops('jadeskull', 0.022),
+      // THE WORN BOOK, the pet lane's own house: the crest you just
+      // cut off this body IS the set's material. The packlord leathers
+      // are grown, sewn and worn by the same animal — the warband
+      // dresses its beast-handlers out of its own back. (0.016: this
+      // table pays TWO new houses now, and the packlord station is
+      // the tightest named purse in the wave — see the stormtalon
+      // line below, deliberately thinned to make room for this one.)
+      ...setDrops('packlord', 0.016),
+      // The warband raids the passes for anything with wings. The
+      // matriarch keeps the harness; the birds keep their distance.
+      // Thinnest of the four stormtalon roads on purpose: the gnolls
+      // scavenged it, the deep courts hunted for it.
+      ...setDrops('stormtalon', 0.004),
     ],
   },
 
@@ -1513,6 +1668,11 @@ const defs: LootTableDef[] = [
       { item: 'raw_trout', chance: 0.35 },
       { item: 'coins', qty: [3, 12], chance: 0.4 },
       { item: 'verdant_essence', chance: 0.1 },
+      // THE WORN BOOK: the adderking leathers are cut from fen skin
+      // and nothing else, so the lurker is where they start. A 43-48
+      // chase off a marsh lizard is the longest wade on the road —
+      // the troll law, run through water: 0.004, flat, forever.
+      ...setDrops('adderking', 0.004),
     ],
   },
   {
@@ -1535,6 +1695,12 @@ const defs: LootTableDef[] = [
       { item: 'petrified_eye', chance: 0.5 },
       { item: 'coins', qty: [24, 70], chance: 0.5 },
       { item: 'verdant_essence', chance: 0.15 },
+      // THE WORN BOOK: venom's endgame home. The elder is the court
+      // the adderking leathers are named for, and it surrenders them
+      // a plate at a time. (Held to 0.012 — the elder's own estate
+      // already fills 94% of its per-kill STACK ceiling; the gear
+      // axis is where the room was, and this spends most of it.)
+      ...setDrops('adderking', 0.012),
     ],
   },
   {
@@ -1550,6 +1716,12 @@ const defs: LootTableDef[] = [
       { item: 'frost_essence', chance: 0.08 },
       { item: 'brass_key', chance: 0.02 },
       { item: 'dungeon_key', chance: 0.012 },
+      // THE DROWNED WARDROBE: the brine-folk wear their own cloth at
+      // last. The crabs only pass the dark-waters lot around the
+      // shallows — the fishers CUT it, out where the light gives up,
+      // and a bank body carries a piece of it about as often as the
+      // shelf gives one back.
+      ...setDrops('tidecaller', 0.004, { colorway: 'darkwater' }),
     ],
   },
   {
@@ -1571,6 +1743,11 @@ const defs: LootTableDef[] = [
       // THE BLADED LONG-ARMS' fork: the deepking's own trident,
       // barbed to keep what it takes — surrendered only with the throne.
       { item: 'tidesplitter', chance: 0.012 },
+      // THE WORN BOOK, the leather ceiling: the deep courts pull down
+      // whatever crosses the shoal, and the tidelord keeps the harness
+      // that was strapped to it. The stormtalon rig comes off a throne
+      // room floor with the feathers still on it.
+      ...setDrops('stormtalon', 0.008),
     ],
   },
 
@@ -1589,6 +1766,11 @@ const defs: LootTableDef[] = [
       { item: 'crimson_essence', chance: 0.08 },
       { item: 'brass_key', chance: 0.03 },
       { item: 'dungeon_key', chance: 0.015 },
+      // THE WORN BOOK, the legion recut: valiant plate was the old
+      // muster's pattern and warvaliant is this campaign's. The line
+      // signs for every strap, so it comes off a line soldier one
+      // strap at a time — the loot-story law, stencilled.
+      ...setDrops('warvaliant', 0.005),
     ],
   },
   rack('hobgoblin_arms', 'The legion\'s issue: line steel, drilled boards, and the flame-speaker\'s staff.', 0.045, [
@@ -1620,6 +1802,11 @@ const defs: LootTableDef[] = [
       // THE BLADED LONG-ARMS' moon: the warlord's standard-cutter,
       // ember edge still banked from the last campaign.
       { item: 'bannereaver', chance: 0.012 },
+      // THE WORN BOOK: the officers' pattern, worn by the officer who
+      // signed the whole muster's kit into being. Break the campaign
+      // and the campaign's plate is yours — the warlord pays the
+      // warvaliant suit the way the legion pays anything: in full.
+      ...setDrops('warvaliant', 0.014),
     ],
   },
   {
@@ -2108,6 +2295,11 @@ const defs: LootTableDef[] = [
       // THE GILDED TYRANT: the one toll the hill never re-sold — a
       // gold door with a face, sized like a compliment to its owner.
       { item: 'gilded_tyrant', chance: 0.008 },
+      // THE WORN BOOK breaks the crypt's monopoly on 24-30 plate: a
+      // knight's company came up the pass to collect a toll back, and
+      // the hill kept the parade gold along with the tally. The oath
+      // outlived the company; nothing about that reached the crypt.
+      ...setDrops('oathgold', 0.01),
     ],
   },
   // THE HILL'S TOLL SHELF: everything the flattened travelers were

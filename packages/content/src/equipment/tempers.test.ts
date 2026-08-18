@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ITEMS } from '../items.js';
 import {
+  ARENA_STEEL,
   MASTERWORK_DAGGERS,
   MASTERWORK_SWORDS,
   STAFF_REGALIA,
@@ -27,9 +28,20 @@ import { weaponStrikeEffects } from './roll.js';
  *   least 150 ticks — a signature is an event, not a texture;
  * - the strike channel resolves: a strike-triggered temper appears in
  *   weaponStrikeEffects for its blade.
+ *
+ * THE WORN BOOK wave (conscious rewrite, 2026-08-18): the honor roll
+ * grows from 33 tempers to 34. `laurelbrand` is the arena's own
+ * exclusive and is neither a masterwork nor a regalia, so it joins
+ * through its own roster (ARENA_STEEL) rather than by exempting the
+ * registry pin — every law below still walks it.
  */
 
-const ROSTER = [...MASTERWORK_SWORDS, ...MASTERWORK_DAGGERS, ...STAFF_REGALIA];
+const ROSTER = [
+  ...MASTERWORK_SWORDS,
+  ...MASTERWORK_DAGGERS,
+  ...STAFF_REGALIA,
+  ...ARENA_STEEL,
+];
 
 test('every masterwork and regalia is tempered after compile', () => {
   for (const id of ROSTER) {
@@ -47,6 +59,10 @@ test('the registry tempers the honor roll alone', () => {
   }
   assert.ok(!TEMPERS.borrowed_time && !TEMPERS.wakestone,
     'the two legacy natives keep their own steel');
+  // THE WORN BOOK wave: 33 -> 34, rewritten consciously the day the
+  // arena's blade was tempered. The count is here so the next entry is
+  // a decision somebody made rather than one that drifted in.
+  assert.equal(Object.keys(TEMPERS).length, 34, 'the registry holds 34 tempers');
 });
 
 test('temper procs validate and their ids collide with nothing', () => {
@@ -81,6 +97,14 @@ test('loudness honesty: ambient tempers whisper, signatures rest', () => {
       }
       if (fx.kind === 'vsState') {
         assert.ok(fx.pct <= 25, `${id}: a temper clause stays under the word ceiling`);
+      }
+      // THE WORN BOOK wave: the surge-'swing' channel is the one dial
+      // whose ceiling is spent elsewhere. The SWING ASSEMBLY pin
+      // (statusLedger) is the real judge; this is the near guard, so a
+      // future temper cannot quietly reach for the band from here.
+      if (fx.kind === 'proc' && fx.action.do === 'surge' && fx.action.stat === 'swing') {
+        assert.ok(fx.action.pct <= 5, `${id}: a swing surge past 5% leans on the band`);
+        assert.ok(fx.icd >= 150, `${id}: a swing surge is a moment, not a texture`);
       }
     }
   }

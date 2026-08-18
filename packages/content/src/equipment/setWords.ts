@@ -56,9 +56,12 @@ const W = (pieces: 2 | 4, name: string, desc: string, ...effects: EnchantEffect[
 });
 
 /**
- * The wave one roster: 31 chase families + 15 themed families. Keys
- * are the `set` ids stamped in defs.ts; a stamped set without words
- * (or words without a stamped set) fails the coverage test.
+ * The roster: 35 chase families + 17 themed families. Keys are the
+ * `set` ids stamped in defs.ts; a stamped set without words (or words
+ * without a stamped set) fails the coverage test. Wave one shipped
+ * 31 + 15; THE WORN BOOK added four hunted houses and two craft-only
+ * ones, and with them the game's first pet, fishing and crafting
+ * words.
  */
 export const SET_WORDS: Record<string, SetWord[]> = {
   // ================================================ themed plate
@@ -429,6 +432,74 @@ export const SET_WORDS: Record<string, SetWord[]> = {
         trigger: { on: 'lowHp', pct: 0.3 },
         action: { do: 'ward', absorb: 25, ticks: 200 }, icd: 1500 }),
   ],
+  // ============================================ THE WORN BOOK wave
+  // Six houses opening six lanes the census proved empty: the venom
+  // endgame, the archer's ceiling, melee's first set identity, the
+  // pet's first gear, the fisher's first word, and the bench's.
+  adderking: [
+    W(2, 'The Long Coil', '+2% move speed.',
+      { kind: 'speed', pct: 2 }),
+    // The lane's endgame home: past 29 the venom build had no armor
+    // to grow into, and the frozen-six page needs no license.
+    W(4, 'What the Fangs Left', 'Venomed foes take 30% more from you.',
+      { kind: 'vsState', status: 'venom', pct: 30 }),
+  ],
+  stormtalon: [
+    W(2, 'Storm Eye', '+3% archery damage.',
+      { kind: 'styleDmg', style: 'archery', pct: 3 }),
+    // THE COUNT CHASE: the recorded count-model word, and the gear
+    // lane's first licensed boon (statusWave GEAR_LICENSED). Quicken
+    // stacks price it, and the band clamp prices the stack.
+    W(4, 'The Fifth Stoop', 'Every fifth landed blow quickens your hands.',
+      { kind: 'proc', id: 'word_stormtalon_stoop', name: 'The Fifth Stoop',
+        trigger: { on: 'stacks', per: 'hit', count: 5 },
+        action: { do: 'boon', status: 'quicken', power: 1, ticks: 100 }, icd: 300,
+        element: 'storm' }),
+  ],
+  warvaliant: [
+    W(2, 'Legion Drill', '+3% one-handed damage.',
+      { kind: 'styleDmg', style: 'onehand', pct: 3 }),
+    // The stateApplied trigger's armor debut: sunder is the shield
+    // and sword line's own page, so the word answers the build that
+    // already lays it. Frozen-six reader, no license needed.
+    W(4, 'Into the Gap', 'A guard you crack lifts your damage for a while.',
+      { kind: 'proc', id: 'word_warvaliant_gap', name: 'Into the Gap',
+        trigger: { on: 'stateApplied', status: 'sunder' },
+        action: { do: 'surge', stat: 'damage', pct: 10, ticks: 80 }, icd: 300 }),
+  ],
+  packlord: [
+    W(2, 'Pack Tongue', '+2 beastcraft.',
+      { kind: 'skill', skill: 'beastcraft', amount: 2 }),
+    // THE PET LANE OPENS: the page goes to the companion through the
+    // pet's own apply door, and is refused silently when none stands.
+    // Licensed by container id in statusWave GEAR_LICENSED.
+    W(4, 'The Pack Sets the Pace', 'Every sixth landed blow quickens your companion.',
+      { kind: 'proc', id: 'word_packlord_pace', name: 'The Pack Sets the Pace',
+        trigger: { on: 'stacks', per: 'hit', count: 6 },
+        action: { do: 'boon', status: 'quicken', power: 1, ticks: 100, target: 'pet' }, icd: 300 }),
+  ],
+  weirkeeper: [
+    W(2, 'Weir Sense', '+2 fishing.',
+      { kind: 'skill', skill: 'fishing', amount: 2 }),
+    // The warden mold spoken in the fisher's voice: a small line and
+    // a real capability, counted never rolled (the doubling channel
+    // belongs to the Callings).
+    W(4, 'The Eighth Haul', 'Every eighth harvest comes up one heavier.',
+      { kind: 'proc', id: 'word_weirkeeper_haul', name: 'The Eighth Haul',
+        trigger: { on: 'stacks', per: 'gather', count: 8 },
+        action: { do: 'yield', extra: 1 }, icd: 40, element: 'frost' }),
+  ],
+  wrightcloth: [
+    W(2, 'Two Trades', '+1 smithing and +1 tailoring.',
+      { kind: 'skill', skill: 'smithing', amount: 1 },
+      { kind: 'skill', skill: 'tailoring', amount: 1 }),
+    // THE FIRST CRAFTING WORD: the same counted rhythm, moved from
+    // the field to the bench through the 'craft' StackSource.
+    W(4, 'Every Eighth Working', 'Every eighth finished working comes off the bench twice.',
+      { kind: 'proc', id: 'word_wrightcloth_working', name: 'Every Eighth Working',
+        trigger: { on: 'stacks', per: 'craft', count: 8 },
+        action: { do: 'yield', extra: 1 }, icd: 40, element: 'ember' }),
+  ],
 };
 
 /** The words a set speaks, threshold order. Empty for wordless sets. */
@@ -489,6 +560,13 @@ export const SET_NAMES: Record<string, string> = {
   palethorn: 'Palethorn',
   kingsmane: 'Kingsmane',
   gatefall: 'Gatefall',
+  // THE WORN BOOK wave.
+  adderking: 'Adderking',
+  stormtalon: 'Stormtalon',
+  warvaliant: 'War Valiant',
+  packlord: 'Packlord',
+  weirkeeper: 'Weirkeeper',
+  wrightcloth: 'Wrightcloth',
 };
 
 /** A house's display name; the raw id only if it was never christened. */

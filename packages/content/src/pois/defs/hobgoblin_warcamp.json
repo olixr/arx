@@ -65,6 +65,7 @@
       "minTier": 6
     }
   ],
+  "chestLoot": "chest_legion_issue",
   "chestTierBonus": 1,
   "clearedFlag": "poi_hobgoblin_warcamp_broken",
   "cues": {
