@@ -581,27 +581,35 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
    * the shield-wall's free edge, where the line ends. Ten thousand of
    * these exist and every one is this one.
    */
+  /**
+   * LEGION DOORWALL — THE SPIKED WALL (v2, 2026-08-17: the reference
+   * recut — a true iron-spiked door). Three masses and NO clock: iron
+   * is dead metal, and a legion's wall does not perform. THE SLAB: a
+   * violet-gray barrel door in a bronze frame (the rim band), studded
+   * along the frame and in rivet rows under crown and heel. THE NINE:
+   * a 3×3 grid of bronze-seated diamond bosses, every one of them a
+   * TRUE forward spike — face-on they read as dark pyramid diamonds
+   * in their tan seats (the reference's face), turned they erupt into
+   * the spike field (the reference's three-quarter). The red insignia
+   * is gone: this shield's only statement is that it is coming toward
+   * you.
+   */
   legion_doorwall: {
     shape: 'door',
     material: 'iron',
-    face: '#3f434e',
-    faceAlt: '#33363f',
-    rim: '#565b68',
-    // The charge is the drill columns of forged diamonds themselves.
+    face: '#453e50',
+    faceAlt: '#4e4759',
+    rim: '#77664a',
+    // The nine seats are the charge itself, in the rolls' word.
     device: 'diamond',
-    deviceColor: '#8e2f2c',
+    deviceColor: '#8f7c52',
     studs: true,
-    spikes: true,
-    // The free edge bears the teeth: +u is the outer side. LONG —
-    // these are the line's answer, not trim.
-    spikeAngles: [-0.5, 0, 0.5],
-    spikeLen: 1.42,
-    spikeW: 0.1,
-    curve: 0.26,
+    curve: 0.4,
     strapColor: '#3f3830',
     sig: 'doorwall',
     tier: 3,
   },
+
   /**
    * THE HUNTER'S WALL — fence, carried. Pale ash staves cut to three
    * stake points across the crown, two rawhide lashings holding the
@@ -1061,9 +1069,12 @@ const OUTLINES: Record<ShieldShape, number[]> = {
   // The legion's doorwall: issue iron, corners clipped to the
   // quartermaster's template. The squarest rectangle in the roster —
   // drill-ground geometry; the spike plan owns its free edge.
+  // THE SPIKED WALL (the doorwall recut): a barrel door — crown and
+  // heel bowed outward, corners chamfered — the reference slab's own
+  // stance.
   door: [
-    -0.9, -1, 0.9, -1, 1.0, -0.84, 1.0, 0.82, 0.86, 1, -0.86, 1,
-    -1.0, 0.82, -1.0, -0.84,
+    -0.85, -1.02, 0, -1.08, 0.85, -1.02, 1.0, -0.85, 1.0, 0.85,
+    0.85, 1.02, 0, 1.08, -0.85, 1.02, -1.0, 0.85, -1.0, -0.85,
   ],
   // The hunter's palisade: three stake-cut points across the crown —
   // fence, carried. The valleys between the stakes are the read.
@@ -2873,14 +2884,11 @@ function sigBreacher(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
 }
 
 /**
- * LEGION DOORWALL — issue iron, and every piece of it construction.
- * Two forged plates under two riveted cross-straps (the relief pass
- * raises them), six spike seats in drill columns, and the legion's
- * crimson spent ONE way: the campaign insignia stencilled high on the
- * slab with its tally strokes — paint a quartermaster budgeted, not a
- * band nobody can explain. The three edge spikes ride the spike plan
- * on the OUTER edge — where the shield-wall's line ends and the
- * argument starts.
+ * LEGION DOORWALL — THE SPIKED WALL's slab. The face spends almost
+ * nothing: the iron in two worn planes, and the rivet rows under the
+ * crown and heel bows. Every raised thing — the nine seats, the nine
+ * spikes — belongs to the relief and crest tiers, which is why this
+ * face survives any distance: there is nothing on it to muddy.
  */
 function sigDoorwall(
   ctx: CanvasRenderingContext2D,
@@ -2889,27 +2897,13 @@ function sigDoorwall(
   litU: number,
 ): void {
   plates(ctx, st, litU);
-  // Strap shadow seats at the crown and the heel — where the riveted
-  // door bindings (relief) cross, the flat pass keeps their dark
-  // lines so a grazing view still reads the door as BUILT.
-  ctx.fillStyle = shade(st.face, -16);
-  ctx.fillRect(-1.2, -0.98, 2.4, 0.24);
-  ctx.fillRect(-1.2, 0.74, 2.4, 0.24);
-  // THE CAMPAIGN MARK: the legion's diamond stencilled dead center
-  // between the drill columns, two tally strokes under it — one per
-  // war the door stood through. Paint on iron: no lit plane, one
-  // darker drip edge where the stencil ran.
-  const red = st.deviceColor ?? '#8e2f2c';
-  poly(ctx, red, [0, -0.38, 0.2, -0.14, 0, 0.1, -0.2, -0.14]);
-  poly(ctx, shade(red, -26), [0, 0.1, 0.2, -0.14, 0.13, -0.06, 0.035, 0.13]);
-  poly(ctx, red, [-0.11, 0.24, -0.035, 0.24, -0.055, 0.52, -0.13, 0.52]);
-  poly(ctx, red, [0.035, 0.24, 0.11, 0.24, 0.13, 0.52, 0.055, 0.52]);
-  // The six spike seats keep their shadows for the grazing view; the
-  // spires themselves are THE CREST TIER's, socketed and ringed.
-  for (const u of [-0.5, 0.5]) {
-    for (const t of [-0.36, 0.08, 0.52]) {
-      poly(ctx, shade(st.face, -20), [u, t - 0.2, u + 0.165, t, u, t + 0.2, u - 0.165, t]);
-    }
+  // The rivet rows, riding the bowed edges.
+  const c = shade(st.rim, 26);
+  for (let i = 0; i < 6; i++) {
+    const u = -0.6 + i * 0.24;
+    const bow = 0.05 * (1 - Math.abs(u) / 0.72);
+    stud(ctx, u, -0.86 - bow, 0.055, c);
+    stud(ctx, u, 0.86 + bow, 0.055, c);
   }
 }
 
@@ -4598,35 +4592,29 @@ function relBreacher(rc: ReliefCtx, st: ShieldStyle): void {
 }
 
 /**
- * LEGION DOORWALL — construction at height. The crown and heel
- * bindings are riveted iron straps standing off the slab, each bolt a
- * forged pyramid ringed as its own fixing; under every spire a bolted
- * seat plate waits, so the crest's spikes rise out of METAL, not out
- * of paint. The old crimson band is gone — the legion's red is the
- * stencilled insignia now, and everything raised on this door is iron.
+ * LEGION DOORWALL — THE NINE SEATS. A 3×3 grid of bronze diamond
+ * plates standing off the slab, each with the dark iron boss-base
+ * inset so the tan frame shows around it — the reference's exact
+ * grammar. Surface furniture: worked into the door, never ringed.
+ * The spikes that grow out of them are THE CREST TIER's.
  */
 function relDoorwall(rc: ReliefCtx, st: ShieldStyle): void {
-  const iron = shade(st.face, -4);
-  for (const t of [-0.98, 0.74]) {
-    prism(rc, [-0.94, t, 0.94, t, 0.94, t + 0.24, -0.94, t + 0.24], 0, 0.3, iron, {
-      wallDark: shade(iron, -36),
-    });
-    polyAt(rc, [-0.94, t, 0.94, t, 0.94, t + 0.07, -0.94, t + 0.07], 0.3, shade(iron, 16));
-    // The bolts, one at each strap end — ringed fixings.
-    pyramid(rc, -0.8, t + 0.12, 0.07, 0.085, 0.3, 0.58, shade(st.rim, 22), { outline: true });
-    pyramid(rc, 0.8, t + 0.12, 0.07, 0.085, 0.3, 0.58, shade(st.rim, 22), { outline: true });
-  }
-  // The spire seats: a raised diamond plate under each of the six,
-  // a hair wider than the spike root it carries.
-  for (const u of [-0.5, 0.5]) {
-    for (const t of [-0.36, 0.08, 0.52]) {
+  const seat = st.deviceColor ?? shade(st.rim, 8);
+  for (const cu of [-0.55, 0, 0.55]) {
+    for (const ct of [-0.55, 0, 0.55]) {
       prism(
         rc,
-        [u, t - 0.25, u + 0.2, t, u, t + 0.25, u - 0.2, t],
+        [cu, ct - 0.2, cu + 0.2, ct, cu, ct + 0.2, cu - 0.2, ct],
         0,
-        0.26,
-        shade(st.face, 10),
-        { wallDark: shade(st.face, -30), shadow: false },
+        0.2,
+        seat,
+        { wallDark: shade(seat, -32), shadow: false },
+      );
+      polyAt(
+        rc,
+        [cu, ct - 0.14, cu + 0.14, ct, cu, ct + 0.14, cu - 0.14, ct],
+        0.2,
+        shade(st.face, -12),
       );
     }
   }
@@ -4945,18 +4933,24 @@ function relOath(rc: ReliefCtx, st: ShieldStyle): void {
 // -------------------------------------------------- the crest solids
 
 /**
- * LEGION DOORWALL — the six spikes, at LENGTH: pyramidal spires two
- * and a half shell-depths long, rising off the slab where the flat
- * pass keeps their seats. Face-on they foreshorten to bosses aimed at
- * the eye; a quarter turn and they protrude with their whole reach;
- * edge-on they are the profile of a spiked door, which is the entire
- * argument for carrying one.
+ * LEGION DOORWALL — THE NINE SPIKES. Every seat carries a true
+ * forward spike: face-on each foreshortens to a dark pyramid diamond
+ * inside its bronze frame (the reference's face-on read), turned they
+ * erupt into the spike field. One shared lean, down and out — a wall
+ * advancing, not a hedgehog bristling. Each spike is its own ringed
+ * solid; the middle row runs longest.
  */
 function crestDoorwall(rc: ReliefCtx, st: ShieldStyle): void {
-  const iron = shade(st.face, 30);
-  for (const t of [-0.36, 0.08, 0.52]) {
-    for (const u of [-0.5, 0.5])
-      pyramid(rc, u, t, 0.16, 0.2, 0.26, 2.4, iron, { outline: true });
+  const iron = shade(st.face, -6);
+  for (const cu of [-0.55, 0, 0.55]) {
+    for (const ct of [-0.55, 0, 0.55]) {
+      const h = ct === 0 ? 1.5 : 1.3;
+      pyramid(rc, cu, ct, 0.13, 0.13, 0.2, h, iron, {
+        outline: true,
+        du: 0.07,
+        dt: 0.05,
+      });
+    }
   }
 }
 

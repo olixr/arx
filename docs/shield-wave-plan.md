@@ -285,3 +285,31 @@ Three bold masses, one clock:
 Fittings: boss + studs + spikes + faceAlt = 4 (t4 floor holds). Owners:
 white = heart + lead glint; pale cyan = ice lights; glacial blues = mass.
 Gates: shields tsc clean, client 666/666.
+
+## LEGION DOORWALL v2 — THE SPIKED WALL (as-built, 2026-08-17)
+
+The reference recut (user-supplied iron-spiked tower shield references),
+fifth premium pass. The red campaign insignia, stencil column, crown/heel
+straps and rim spike plan retire whole. Three masses and NO clock — iron is
+dead metal, and a legion's wall does not perform.
+
+- **THE SLAB** (`sigDoorwall`): violet-gray barrel iron in two worn planes
+  (plates), rivet rows riding the bowed crown and heel; the recut 'door'
+  outline is a barrel door — bowed crown/heel, chamfered corners, curve up
+  to 0.4 for the reference's cylinder bow. The muted bronze frame is the
+  rim band itself; drawRim's vertex studs stud the frame.
+- **THE NINE SEATS** (`relDoorwall`): a 3×3 grid of bronze diamond plates
+  (prism h 0.2) with dark iron boss-bases inset so the tan frame shows
+  around each — the reference's exact grammar. Surface furniture, never
+  ringed.
+- **THE NINE SPIKES** (`crestDoorwall`): every seat carries a true forward
+  spike (pyramid h0 0.2 → h 1.3, middle row 1.5), each its own ringed
+  solid, all sharing one down-and-out lean (du 0.07, dt 0.05) — a wall
+  advancing, not a hedgehog bristling. Face-on they foreshorten to dark
+  pyramid diamonds in their seats (reference face-on); turned they erupt
+  into the spike field (reference three-quarter).
+
+Fittings: faceAlt + device 'diamond' + studs = 3 (t3 floor holds). Static
+by design — no clock, never in LIVING_SIGS. The hobgoblin warlord's
+carried doorwall inherits the recut with zero renderer changes.
+Gates: shields tsc clean, client 666/666.
