@@ -55,7 +55,13 @@ export type TriggerCondition =
   | { when: 'undiscovered'; place: string }
   | { when: 'sneaking' }
   | { when: 'night' }
-  | { when: 'day' };
+  | { when: 'day' }
+  /** THE DARKNESS LEDGER (lighting v4): true light level at the
+   *  player's tile — a lamp post makes a guard's post NOT dark, a
+   *  cave is dark at noon. 'night'/'day' stay the CLOCK's words;
+   *  these are the LIGHT's. */
+  | { when: 'dark' }
+  | { when: 'lit' };
 
 export type TriggerConditionKind = TriggerCondition['when'];
 
@@ -75,6 +81,8 @@ export const TRIGGER_CONDITION_KINDS: readonly TriggerConditionKind[] = [
   'sneaking',
   'night',
   'day',
+  'dark',
+  'lit',
 ];
 
 export type TriggerEdge = 'enter' | 'exit';

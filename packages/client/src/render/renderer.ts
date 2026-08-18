@@ -234,7 +234,17 @@ import { BobtailSim, CrocTailSim, TailSim, drawBobtail, drawFeyBrush, drawFoxBru
 import { FlightRig, batLook, drawBat, drawGreatOwl, flierSpec } from './flight.js';
 import { EarSim } from './earPhysics.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
-import { LightingSystem, type WorldLight } from './lighting.js';
+import {
+  CORE_A_K,
+  CORE_R_K,
+  CORE_R_MAX_PX,
+  CORE_STOPS,
+  HALO_CORONA_A,
+  HALO_CORONA_R,
+  HALO_POOL_A,
+  LightingSystem,
+  type WorldLight,
+} from './lighting.js';
 import { collectEmitter, type EmitterGlowOut } from './emitters.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
 import {
@@ -1264,34 +1274,6 @@ const enum BulkKind {
    *  v4 phase 2): world-sorted light geometry, never a screen disc. */
   Halo,
 }
-
-/**
- * THE SEATED HALO's dials (lighting v4 phase 2). One halo = two stamps
- * from the shared radial sprite, drawn in the SORTED WORLD PASS under
- * `lighter`, BEFORE the exposure multiply — so a stall in front clips
- * it, a wall kills it with its line of sight, and the night's exposure
- * governs it like any other lit surface:
- *  - THE POOL: a camera-foreshortened ground ellipse at the fixture's
- *    ground anchor — light landing around the source;
- *  - THE CORONA: a round air-glow seated at the flame's own height.
- * The old post-multiply screen disc split its alpha between them; the
- * near-center sum (~1.1×) rides slightly hot so the multiply's dimming
- * near the pool rim nets out around the old read at the core.
- */
-const HALO_POOL_A = 0.62;
-const HALO_CORONA_A = 0.5;
-const HALO_CORONA_R = 0.6;
-/** THE EMISSIVE CORE: the one post-multiply survivor — a flame-point
- *  glint capped in DEVICE pixels so it can only ever read as
- *  brilliance, never as lighting. */
-const CORE_STOPS: ReadonlyArray<readonly [number, number]> = [
-  [0, 1],
-  [0.5, 0.55],
-  [1, 0],
-];
-const CORE_R_K = 0.16;
-const CORE_R_MAX_PX = 9;
-const CORE_A_K = 1.3;
 
 /**
  * THE FLAME MAY OVERREACH (lighting v4 phase 3, law #4): near its

@@ -142,6 +142,9 @@ export interface TriggerFacts {
   night: boolean;
   hpFrac: number;
   sneaking: boolean;
+  /** THE DARKNESS LEDGER, lazily — costs a 15×15 tile scan only when
+   *  a trigger actually asks (the levelOf pattern). */
+  dark(): boolean;
   levelOf(skill: string): number;
   standingWith(faction: string): number;
   hasFlag(flag: string): boolean;
@@ -179,6 +182,10 @@ export function conditionHolds(cond: TriggerCondition, facts: TriggerFacts): boo
       return facts.night;
     case 'day':
       return !facts.night;
+    case 'dark':
+      return facts.dark();
+    case 'lit':
+      return !facts.dark();
   }
 }
 

@@ -178,6 +178,33 @@ function rgbCsv(rgb: readonly number[]): string {
   return s;
 }
 
+/**
+ * THE SEATED HALO's dials (v4 phase 2; exported for the renderer AND
+ * the ?lightlab mastering bench — ONE set of numbers, no lab drift).
+ * One halo = two stamps from the shared radial sprite, drawn in the
+ * sorted world pass under `lighter`, BEFORE the exposure multiply:
+ *  - THE POOL: a camera-foreshortened ground ellipse at the fixture's
+ *    ground anchor — light landing around the source;
+ *  - THE CORONA: a round air-glow seated at the flame's own height.
+ * The old post-multiply screen disc split its alpha between them; the
+ * near-center sum (~1.1×) rides slightly hot so the multiply's dimming
+ * near the pool rim nets out around the old read at the core.
+ */
+export const HALO_POOL_A = 0.62;
+export const HALO_CORONA_A = 0.5;
+export const HALO_CORONA_R = 0.6;
+/** THE EMISSIVE CORE: the one post-multiply survivor — a flame-point
+ *  glint capped in DEVICE pixels so it can only ever read as
+ *  brilliance, never as lighting. */
+export const CORE_STOPS: ReadonlyArray<readonly [number, number]> = [
+  [0, 1],
+  [0.5, 0.55],
+  [1, 0],
+];
+export const CORE_R_K = 0.16;
+export const CORE_R_MAX_PX = 9;
+export const CORE_A_K = 1.3;
+
 export class LightingSystem {
   private readonly map = document.createElement('canvas');
   private readonly mctx = this.map.getContext('2d')!;

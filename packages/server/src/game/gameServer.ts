@@ -133,6 +133,8 @@ import {
   type DestructibleInfo,
   type SignInfo,
   type VoiceWire,
+  DARK_LEVEL,
+  lightLevelAt,
 } from '@arx/shared';
 import {
   BUILDABLES,
@@ -1614,6 +1616,8 @@ interface SpawnState {
   level?: number;
   /** Display-name override (named bosses, hidden-room wardens). */
   name?: string;
+  /** THE DARKNESS LEDGER's spawn gate — see ZoneSpawn.minDark. */
+  minDark?: number;
   /**
    * THE WILD CROWN (docs/boss-system-plan.md): forge seed — the seat
    * crowns its champion at spawn, deterministically (same seed, same
@@ -3499,6 +3503,7 @@ export class GameServer {
       arenaR?: number;
       patrol?: ReadonlyArray<{ x: number; y: number; dwell?: number; sit?: boolean }>;
       hours?: { from: number; to: number };
+      minDark?: number;
       wing?: number;
       tribe?: string;
       post?: {
@@ -3539,6 +3544,7 @@ export class GameServer {
           arenaR: spawn.arenaR,
           patrol: spawn.patrol,
           hours: spawn.hours,
+          minDark: spawn.minDark,
           wing: spawn.wing,
           tribe: spawn.tribe,
           post: spawn.post,
@@ -15591,6 +15597,24 @@ export class GameServer {
    * its precedent already trusts (the sneak bit, the sun, the skill
    * curve, the standing ledger, the discovery ledger, the pack).
    */
+  /**
+   * THE DARKNESS LEDGER's server read (lighting v4 phase 5): true
+   * light level at a body's tile — sky by the clock, zero below
+   * ground, fixtures at full voice from the SHARED emitter registry,
+   * so a lamp post makes a guard's post NOT dark and a cave is dark
+   * at noon. Lazy by contract: called only when a predicate asks.
+   */
+  private isDarkAt(eid: EntityId, hours: number): boolean {
+    const pos = this.positions.get(eid);
+    if (!pos) return false;
+    const world = this.worldOf(pos.plane);
+    const underground = this.planes.defOf(pos.plane)?.underground ?? true;
+    const level = lightLevelAt(hours, underground, Math.floor(pos.x), Math.floor(pos.y), (x, y) =>
+      world.groundAt(x, y),
+    );
+    return level < DARK_LEVEL;
+  }
+
   private triggerFacts(eid: EntityId, player: PlayerComp): TriggerFacts {
     const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
     const h = this.healths.get(eid);
@@ -15599,6 +15623,7 @@ export class GameServer {
       night: hours < SUNRISE || hours > SUNSET,
       hpFrac: h && h.maxHp > 0 ? h.hp / h.maxHp : 1,
       sneaking: player.hidden === true,
+      dark: () => this.isDarkAt(eid, hours),
       levelOf: (skill) => levelForXp(player.skills[skill as SkillId] ?? 0),
       standingWith: (fid) => player.standing.get(fid) ?? 0,
       hasFlag: (flag) => player.flags.has(flag),
@@ -26349,6 +26374,17 @@ export class GameServer {
       const spawn = this.spawnPoints[i]!;
       if (!spawn.active || spawn.eid !== null || spawn.respawnAt > now) continue;
       if (spawn.hours && !slotContains(spawn.hours.from, spawn.hours.to, hours)) continue;
+      // THE DARKNESS LEDGER's gate: a dark-seat body stands only in
+      // true dark — night reaches the seat, a placed torch denies it.
+      // Player light is territory. Priced only on seats that author it.
+      if (spawn.minDark !== undefined) {
+        const w = this.worldOf(spawn.plane);
+        const ug = this.planes.defOf(spawn.plane)?.underground ?? true;
+        const level = lightLevelAt(hours, ug, Math.floor(spawn.x), Math.floor(spawn.y), (x, y) =>
+          w.groundAt(x, y),
+        );
+        if (1 - level < spawn.minDark) continue;
+      }
       const base = NPCS.get(spawn.npc);
       if (!base) continue;
       // Dungeon garrisons: the authored def re-issued at the key's power.

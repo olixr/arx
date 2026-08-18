@@ -1,6 +1,6 @@
 # Lighting v4 — THE LIGHT LIVES IN THE WORLD
 
-Status: PHASES 1–4 SHIPPED (2026-08-17) — see §8 As built. Phase 5 not started.
+Status: **EPIC COMPLETE** — all five phases shipped 2026-08-17; §8 is the as-built ledger.
 Owner mandate: re-approach lighting at the foundational level — lights must read as real
 sources in the 3D universe (oriented, occluded, illuminating), shadows must cover the
 whole standing world, dynamic sources (spells, placed props) must carry light, darkness
@@ -548,3 +548,58 @@ Gates: tsc ×4 clean, shared 286/286, content 607/607 (torch joined WHOLE_TIMBER
 client 659/659, server 601/601. Committed after two neighbors' clean mid-flight
 ceremonies (armory ca99ede2, audio 7bd5cff7) both preserved this phase's WIP; the
 renderer worktree returned to wholly-mine before this commit.
+
+### Phase 5 — THE LEDGER & THE STUDIO (2026-08-17) — EPIC CLOSE
+
+**THE DARKNESS LEDGER** (`shared/world/lights.ts`): `lightLevelAt(hours, underground,
+tx, ty, tileAt)` → 0..1 — pure over the clock, the plane law, and the emitter
+registry, so server and client can never disagree. COARSE BY DESIGN: tile resolution,
+linear falloff, every fixture at FULL VOICE (the render flicker never flips a gameplay
+predicate — pinned by THE STABILITY LAW test). `DARK_LEVEL 0.25` is the one shared
+line. **THE MOON IS PAINT, NOT LIGHT** (a law the first test run forced): the
+deep-night ambient (~0.45 luminance) is the NIGHT-IS-PLAYABLE readability courtesy —
+read as light it would make surface darkness impossible; the sky term rescales above
+`LEDGER_NIGHT_FLOOR 0.45`, so open midnight = 0, real sun = 1, dusk ramps. Fixtures
+alone own the night. Man-made fire stands down by day and always burns underground,
+exactly as the renderer's flame clock does.
+
+**The server hooks**: (1) trigger conditions `dark` / `lit` — full vocabulary chain
+(content TriggerCondition + roster + validator bare-case; server TriggerFacts gains
+LAZY `dark()` on the levelOf pattern — the 15×15 scan runs only when a predicate asks;
+conditionHolds cases). 'night'/'day' remain the CLOCK's words; 'dark'/'lit' are the
+LIGHT's — a lamp post makes a guard's post NOT dark, a cave is dark at noon. (2)
+`ZoneSpawn.minDark` — minimum darkness at the seat before the body may stand: a seat
+at 0.75 spawns only in true dark; night reaches it, a placed torch denies it — PLAYER
+LIGHT IS TERRITORY (the phase-4 torch becomes a defense). Threaded through the wire
+type, SpawnState, and the tickSpawns gate, priced only on seats that author it.
+Content authoring of dark seats is game design's to take up; the mechanism is live.
+
+**THE LIGHT LAB** (`lightlab.html` + `dev/lightLab.ts`): every emitter row (plus the
+carried lantern) × noon / dusk / midnight / underground, drawn by the SHIPPED
+machinery — collectEmitter for the arithmetic, LightingSystem for the map, the halo
+dials now EXPORTED from lighting.ts (moved out of the renderer so bench and game share
+one set of numbers — no lab drift possible). Each cell: turf, a wall run showing
+occlusion + lit faces, seated halo, multiply, core — the real frame order, live at
+animation rate; the ledger reads out as green/red dots at 1.5/3.5/6 tiles with values.
+The bench PROVES on sight: flame fires at noon read `i 0.00`; underground columns burn
+at flame 1 over zero sky; the sconce's corona rides its z. Dev-only (not in the build
+input roster, like every lab).
+
+**The Studio & CMS, honestly closed**: the Studio's live preview is VERIFIED BY
+CONSTRUCTION — the stage runs the real renderer and collectStaticLights is
+unconditional, so a placed emitter tile lights the stage under the clock scrubber with
+zero editor code. Per-instance overrides (tint/radius on one placed lamp) and a
+CMS-editable spec table are DELIBERATELY NOT BUILT: the registry is compiled shared
+data under the parity gate — making it runtime-editable is a content-pipeline epic
+(THE AUTHORED SHELF) for the owner to commission, not a seam to bolt on here. The
+candle lit/unlit toggle already covers the one per-instance state that exists.
+
+**Handoff noted**: the audio lane's ambience schedulers (crickets, night hum) can now
+gate on `lightLevelAt` — offered to that session as a follow-up.
+
+Gates: STANDALONE TWIN (HEAD + this phase's 13 files; gameServer rebuilt as HEAD + the
+7-hunk filtered patch beside the pet session's in-flight cat WIP — 12 hunks split
+7/5/0 by markers after a first pass caught 'cat' matching inside 'predicate'): tsc ×4
+clean, shared 288/288, content 607/607, server 601/601, client 658/659 (the standing
+third-party armAssembly pin). Live tree: shared 288, server 601, client 659 green;
+content's 3 reds are the pet session's mid-flight cat species, not this epic's.

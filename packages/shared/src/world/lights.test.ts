@@ -1,8 +1,11 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import {
+  DARK_LEVEL,
   EMITTER_LIGHTS,
+  LIGHT_SCAN_R,
   lightCurveAt,
+  lightLevelAt,
   tileEmitter,
   type EmitterSpec,
 } from './lights.js';
@@ -130,6 +133,49 @@ test('THE LIGHT STANDS WHERE THE FLAME BURNS: a z light matches a glow at its ow
       );
     }
   });
+});
+
+// ------------------------------------------------------- the darkness ledger
+
+test('THE DARKNESS LEDGER: noon is lit, midnight is dark, and a bonfire holds a bright circle', () => {
+  const empty = (): number | undefined => Tile.Grass;
+  const bonfireAt = (x: number, y: number): number | undefined =>
+    x === 10 && y === 10 ? Tile.Bonfire : Tile.Grass;
+  // Full sun: lit everywhere regardless of fixtures.
+  assert.equal(lightLevelAt(12, false, 500, 500, empty), 1);
+  // Midnight open field: ZERO — the moonlit ambient is the NIGHT IS
+  // PLAYABLE paint courtesy, never gameplay light (THE MOON IS PAINT).
+  const nightOpen = lightLevelAt(0, false, 500, 500, empty);
+  assert.equal(nightOpen, 0, `open night ${nightOpen}`);
+  // Dusk still reads part-lit: the rescale is a ramp, not a cliff.
+  const dusk = lightLevelAt(19, false, 500, 500, empty);
+  assert.ok(dusk > 0.1 && dusk < 1, `dusk ${dusk}`);
+  // Beside the bonfire at midnight: bright — the fixture claims it.
+  const atFire = lightLevelAt(0, false, 10, 10, bonfireAt);
+  assert.ok(atFire > 0.7, `at the fire ${atFire}`);
+  assert.ok(atFire > DARK_LEVEL, 'a bonfire beats the dark line');
+  // Past the scan reach: the fixture is out of the ledger's world.
+  const far = lightLevelAt(0, false, 10 + LIGHT_SCAN_R + 2, 10, bonfireAt);
+  assert.ok(far < DARK_LEVEL, `far from the fire ${far}`);
+});
+
+test('THE DARKNESS LEDGER: no sky underground, and the flame clock lands right on both planes', () => {
+  const brazierAt = (x: number, y: number): number | undefined =>
+    x === 5 && y === 5 ? Tile.Brazier : Tile.Grass;
+  // Underground at noon, no fixture in reach: pitch dark.
+  assert.equal(lightLevelAt(12, true, 50, 50, () => Tile.Grass), 0);
+  // Underground beside a brazier at NOON: the flame gate rides to 1
+  // below ground — the brazier carries the dark band all day.
+  const ugFire = lightLevelAt(12, true, 5, 5, brazierAt);
+  assert.ok(ugFire > 0.6, `underground brazier ${ugFire}`);
+  // Surface at noon the same brazier adds nothing the sun didn't.
+  assert.equal(lightLevelAt(12, false, 5, 5, brazierAt), 1);
+  // THE STABILITY LAW: the ledger reads fixtures at full voice — the
+  // same query twice is bit-identical (no clock term, no flicker).
+  assert.equal(
+    lightLevelAt(0, false, 10, 10, brazierAt),
+    lightLevelAt(0, false, 10, 10, brazierAt),
+  );
 });
 
 test('THE PALETTE LAW: a palette row deals an alt color to every entry', () => {

@@ -87,6 +87,14 @@ export interface ZoneSpawn {
    */
   post?: { kind: PostKind; x: number; y: number; dir: number; hours?: { from: number; to: number } };
   /**
+   * THE DARKNESS LEDGER's spawn gate (lighting v4 phase 5): minimum
+   * DARKNESS (1 − lightLevelAt, 0..1) at the seat before the body may
+   * stand. A seat at 0.75 spawns only in true dark — night reaches it,
+   * a placed torch denies it: player light is territory. Absent = the
+   * clock alone decides (the `hours` window below).
+   */
+  minDark?: number;
+  /**
    * Activity window in game-clock hours [0, 24), from > to wrapping
    * midnight (the routine-slot law). Outside it the point neither
    * spawns nor respawns, and a standing body slips away once nothing

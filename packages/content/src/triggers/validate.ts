@@ -257,9 +257,11 @@ function validateCondition(
     }
     case 'sneaking':
     case 'night':
-    case 'day': {
+    case 'day':
+    case 'dark':
+    case 'lit': {
       refuseUnknownKeys(raw, ['when'], where, errors);
-      return { when: when as 'sneaking' | 'night' | 'day' };
+      return { when: when as 'sneaking' | 'night' | 'day' | 'dark' | 'lit' };
     }
   }
 }

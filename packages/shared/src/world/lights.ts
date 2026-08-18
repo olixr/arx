@@ -44,6 +44,7 @@
  * only OCCLUDING town light: architecture, wall shadows, the night's
  * anchor. Widening the candle tier further is a new owner decision.
  */
+import { daylightAt } from '../sim/daylight.js';
 import { Tile } from './tiles.js';
 
 /**
@@ -387,4 +388,74 @@ export const EMITTER_LIGHTS: ReadonlyArray<readonly [Tile, EmitterSpec]> = SPECS
  *  are u16 ids on the wire, so callers may hold plain numbers. */
 export function tileEmitter(tile: number): EmitterSpec | undefined {
   return BY_TILE[tile];
+}
+
+// ------------------------------------------------------- the darkness ledger
+
+/** The ledger's emitter scan reach, tiles — ≥ the longest fixture
+ *  pool (the bonfire's 6.2). */
+export const LIGHT_SCAN_R = 7;
+
+/**
+ * Below this light level the world counts as DARK — the trigger
+ * fact's line, the spawn gates' line. ONE shared number: gameplay
+ * never argues with itself about what dark means.
+ */
+export const DARK_LEVEL = 0.25;
+
+/**
+ * THE MOON IS PAINT, NOT LIGHT: the deep-night ambient (~0.45
+ * luminance) is the NIGHT-IS-PLAYABLE readability courtesy — if the
+ * ledger read it as light, nowhere on the surface could ever be dark
+ * and the whole gameplay layer would be stillborn. The sky term
+ * rescales ABOVE this floor: midnight open field = 0, real sun = 1,
+ * dusk in between. Fixtures alone own the night.
+ */
+export const LEDGER_NIGHT_FLOOR = 0.45;
+
+/**
+ * THE DARKNESS LEDGER (lighting v4 phase 5, law #6): how lit a tile
+ * is, 0..1 — a PURE function of the clock, the plane law, and the
+ * emitter registry, so the server and any client always agree.
+ *
+ * COARSE BY DESIGN: tile resolution, linear pool falloff, and every
+ * fixture read at FULL VOICE — the render flicker must never flip a
+ * gameplay predicate. The sky term is the ambient's luminance (zero
+ * below ground); man-made fire stands down by day exactly as the
+ * renderer's flame clock does, and always burns underground. The
+ * renderer never reads this — render light stays continuous and
+ * local; gameplay reads only this.
+ */
+export function lightLevelAt(
+  hours: number,
+  underground: boolean,
+  tx: number,
+  ty: number,
+  tileAt: (x: number, y: number) => number | undefined,
+): number {
+  const sky = daylightAt(hours);
+  let level = underground
+    ? 0
+    : Math.max(0, (1 - sky.darkness - LEDGER_NIGHT_FLOOR) / (1 - LEDGER_NIGHT_FLOOR));
+  if (level >= 1) return 1;
+  const flame = underground ? 1 : sky.flame;
+  const cx = tx + 0.5;
+  const cy = ty + 0.5;
+  for (let dy = -LIGHT_SCAN_R; dy <= LIGHT_SCAN_R; dy++) {
+    for (let dx = -LIGHT_SCAN_R; dx <= LIGHT_SCAN_R; dx++) {
+      const t = tileAt(tx + dx, ty + dy);
+      if (t === undefined) continue;
+      const spec = BY_TILE[t];
+      if (spec === undefined) continue;
+      for (const l of spec.lights) {
+        const eff = l.flameGated ? l.intensity * flame : l.intensity;
+        if (eff <= 0.02) continue;
+        const d = Math.hypot(tx + dx + l.dx - cx, ty + dy + l.dy - cy);
+        if (d >= l.r) continue;
+        const c = eff * (1 - d / l.r);
+        if (c > level) level = c;
+      }
+    }
+  }
+  return Math.min(1, level);
 }

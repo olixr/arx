@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Light Lab</title>
+    <style>
+      body { margin: 0; background: #14181f; color: #cfd4de; font: 12px ui-monospace, monospace; }
+      #head { padding: 10px 14px; position: sticky; top: 0; background: #14181fee; border-bottom: 1px solid #2a303c; }
+      canvas { display: block; }
+    </style>
+  </head>
+  <body>
+    <div id="head">
+      THE LIGHT LAB — every emitter row × noon / dusk / midnight / underground, drawn by the REAL
+      collectEmitter + LightingSystem + halo dials. Dots = THE DARKNESS LEDGER at 1.5 / 3.5 / 6 tiles
+      (green ≥ lit line, red = dark). The flicker is live — what you see is the shipped arithmetic.
+    </div>
+    <canvas id="lab"></canvas>
+    <script type="module" src="/src/dev/lightLab.ts"></script>
+  </body>
+</html>

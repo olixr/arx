@@ -31,6 +31,7 @@ const facts = (patch?: Partial<TriggerFacts>): TriggerFacts => ({
   night: false,
   hpFrac: 1,
   sneaking: false,
+    dark: () => false,
   levelOf: () => 1,
   standingWith: () => 0,
   hasFlag: () => false,
