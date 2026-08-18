@@ -62,11 +62,16 @@ function power(fx: EnchantEffect): number {
       // a harvest lands roughly every 4s.)
       const TICKS_PER_TILE = 5;
       const TICKS_PER_GATHER = 80;
+      // THE WORN BOOK: a craft-paced working rests on the bench's own
+      // clock too (a working lands roughly every 3s at a station).
+      const TICKS_PER_CRAFT = 60;
       let gate = Math.max(20, fx.icd);
       if (t.on === 'stride') gate = Math.max(gate, t.tiles * TICKS_PER_TILE);
       else if (t.on === 'gather') gate = Math.max(gate, TICKS_PER_GATHER / t.chance);
       else if (t.on === 'stacks' && t.per === 'gather') {
         gate = Math.max(gate, t.count * TICKS_PER_GATHER);
+      } else if (t.on === 'stacks' && t.per === 'craft') {
+        gate = Math.max(gate, t.count * TICKS_PER_CRAFT);
       }
       const rate = 100 / gate;
       const raw =

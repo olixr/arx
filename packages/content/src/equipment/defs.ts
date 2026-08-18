@@ -6086,7 +6086,9 @@ export const GEM_BATTLESTAFFS: Record<string, string> = {
 };
 
 // ------------------------------------------------- the named wardrobe
-// Six chase sets, two per class, spread across the leveling road. Each
+// The named chase sets — thirty-one at this writing (THE WORN BOOK
+// wave corrects the founding-six count), spread across the classes
+// and the leveling road. Each
 // set has an OWNER in the world (the foe or cache whose story it is)
 // and a hard rarity floor: epic finds jackpot to legendary, the
 // legendary three never mint below their name. Drop-only by law —

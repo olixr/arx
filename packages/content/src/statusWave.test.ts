@@ -16,8 +16,9 @@ import { TEMPERS } from './equipment/tempers.js';
  * facing holds and marks through the status rider. ANYTHING ELSE
  * that lays a wave-one state is a stranger and fails this pin, so
  * the next applier is always a conscious ledger decision, never a
- * drive-by. The equipment lanes (enchants, words, tempers) stay
- * silent by design — their wave is a future pricing.
+ * drive-by. The equipment lanes (enchants, words, tempers) spoke
+ * their first pages with THE WORN BOOK wave — licensed by container
+ * id in GEAR_LICENSED below; every other lane entry stays refused.
  */
 
 const WAVE_ONE = ['root', 'stagger', 'weaken', 'quicken', 'mend', 'stonehide'];
@@ -50,6 +51,28 @@ const LICENSED: Record<string, string> = {
   // player-facing FAIR HANDS ledger is untouched by either.
   the_graven_gaze: 'root',
   graven_mantle: 'stonehide',
+};
+
+/**
+ * THE WORN BOOK wave (conscious rewrite, 2026-08-17): the equipment
+ * lanes' first licenses. Keyed by CONTAINER — the enchant def's id or
+ * the set family's id — each licensed to lay exactly one page, and
+ * every other enchant, word, and temper stays a refused stranger.
+ * temper 'laurelbrand' (the surge-'swing' debut) carries no status id
+ * at all, so the leak walk never sees it — its price lives in the
+ * SWING ASSEMBLY pin (statusLedger), not here.
+ */
+const GEAR_LICENSED: Record<string, string[]> = {
+  // The enchant lane's two boon scrolls (ids per the enchant lane):
+  // hurt -> boon mend (MEND is priced by its own ledger pin) and
+  // block -> boon stonehide.
+  ench_quiet_mending: ['mend'],
+  ench_standing_stone: ['stonehide'],
+  // The set lane's two count-chase words: stormtalon's 4pc boon on
+  // the self door, packlord's 4pc boon handed to the pet (target
+  // 'pet' — the companion door, never another player).
+  stormtalon: ['quicken'],
+  packlord: ['quicken'],
 };
 
 function leaks(value: unknown): string[] {
@@ -119,7 +142,7 @@ test('FAIR HANDS at the register: one player stagger in the whole game, root pag
   assert.ok((grasp.status?.durationTicks ?? 99) <= 40, "a root's clock never outruns its page");
 });
 
-test('the quiet lanes stay quiet: gear, bodies, and the shelf lay no wave-one state', () => {
+test('the quiet lanes stay quiet: bodies and the shelf lay no wave-one state, gear only by license', () => {
   for (const [id, def] of NPCS) {
     // Kits reference art ids; the DEF itself (attackStatus etc.) must
     // stay silent — a body's basic bite never lays a wave-one page.
@@ -128,9 +151,13 @@ test('the quiet lanes stay quiet: gear, bodies, and the shelf lay no wave-one st
   for (const [id, item] of ITEMS) {
     assert.deepEqual(leaks(item), [], `${id} lays a wave-one state before its lane is priced`);
   }
-  for (const e of ENCHANT_DEFS) assert.deepEqual(leaks(e), [], `${e.id} strays`);
+  // THE WORN BOOK: a licensed container lays exactly its page the day
+  // it is authored; everything else in the gear lanes stays refused.
+  for (const e of ENCHANT_DEFS) {
+    assert.deepEqual(leaks(e), GEAR_LICENSED[e.id] ?? [], `${e.id} strays`);
+  }
   for (const [setId, words] of Object.entries(SET_WORDS)) {
-    assert.deepEqual(leaks(words), [], `${setId} strays`);
+    assert.deepEqual(leaks(words), GEAR_LICENSED[setId] ?? [], `${setId} strays`);
   }
   for (const [wid, fx] of Object.entries(TEMPERS)) assert.deepEqual(leaks(fx), [], `${wid} strays`);
 });

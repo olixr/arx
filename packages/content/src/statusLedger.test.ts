@@ -13,6 +13,9 @@ import { NPCS } from './npcs.js';
 import { ITEMS } from './items.js';
 import { MOVESETS } from './movesets.js';
 import { petArtDef } from './petArts.js';
+import { ENCHANT_DEFS, type EnchantEffect } from './equipment/enchants.js';
+import { SET_WORDS } from './equipment/setWords.js';
+import { TEMPERS } from './equipment/tempers.js';
 
 /**
  * THE LEDGER HOLDS (statusBook Phase 6) — the epic's constitution.
@@ -105,7 +108,80 @@ test('THE SWING ASSEMBLY: the worst authored stack of haste folds inside the ban
   for (const [, ab] of ABILITIES) {
     artMax = Math.max(artMax, ab.self?.attackSpeedMult ?? 1);
   }
-  const assembly = pageMax * shelfMax * artMax;
+
+  // THE WORN BOOK wave (2026-08-17, widened BEFORE the first gear
+  // author ships): the equipment lanes join the assembly. Two swing
+  // channels live there —
+  //  - `swingSpeed` statics fold ADDITIVELY into the one gear mult
+  //    (roll.ts's fold law, the speed idiom);
+  //  - surge-'swing' procs land as buffs and fold MULTIPLICATIVELY
+  //    (buffForge's swingMult law), and distinct workings can overlap
+  //    across their icds, so the worst case is their product.
+  // The worst wearable wardrobe, priced honestly: ONE enchant per
+  // slot with the weapon slot counted TWICE (THE DELIBERATE PAIR —
+  // two blades, each bonded; double-best is the pair's upper bound),
+  // one family's full words plus a second family's 2pc line (the
+  // free-fifth-slot law), and a tempered weapon in each hand.
+  interface SwingSay {
+    staticPct: number;
+    surge: number;
+  }
+  const swingOf = (effects: readonly EnchantEffect[]): SwingSay => {
+    const say: SwingSay = { staticPct: 0, surge: 1 };
+    for (const fx of effects) {
+      if (fx.kind === 'swingSpeed') say.staticPct += fx.pct;
+      if (fx.kind === 'proc' && fx.action.do === 'surge' && fx.action.stat === 'swing') {
+        say.surge *= 1 + fx.action.pct / 100;
+      }
+    }
+    return say;
+  };
+  const factorOf = (s: SwingSay): number => (1 + s.staticPct / 100) * s.surge;
+
+  // Enchants: the worst def per slot, weapon slot worn twice.
+  const bestBySlot = new Map<string, SwingSay>();
+  for (const e of ENCHANT_DEFS) {
+    const say = swingOf(e.effects);
+    const held = bestBySlot.get(e.slot);
+    if (!held || factorOf(say) > factorOf(held)) bestBySlot.set(e.slot, say);
+  }
+  // Set words: the worst full house (2pc + 4pc), plus the worst OTHER
+  // family's 2pc line riding the free fifth slot.
+  const houses = Object.entries(SET_WORDS).map(([setId, words]) => ({
+    setId,
+    full: swingOf(words.flatMap((w) => w.effects)),
+    two: swingOf(words.filter((w) => w.pieces === 2).flatMap((w) => w.effects)),
+  }));
+  const bestHouse = houses.reduce(
+    (a, b) => (factorOf(b.full) > factorOf(a.full) ? b : a),
+    { setId: '', full: { staticPct: 0, surge: 1 }, two: { staticPct: 0, surge: 1 } },
+  );
+  const secondTwo = houses
+    .filter((h) => h.setId !== bestHouse.setId)
+    .reduce<SwingSay>((a, h) => (factorOf(h.two) > factorOf(a) ? h.two : a), {
+      staticPct: 0,
+      surge: 1,
+    });
+  // Tempers: one blade in each hand, the two worst steels.
+  const temperSays = Object.values(TEMPERS)
+    .map(swingOf)
+    .sort((a, b) => factorOf(b) - factorOf(a))
+    .slice(0, 2);
+
+  let gearPct = 0;
+  let surgeMult = 1;
+  const wear = (s: SwingSay, times = 1): void => {
+    for (let i = 0; i < times; i++) {
+      gearPct += s.staticPct;
+      surgeMult *= s.surge;
+    }
+  };
+  for (const [slot, say] of bestBySlot) wear(say, slot === 'weapon' ? 2 : 1);
+  wear(bestHouse.full);
+  wear(secondTwo);
+  for (const say of temperSays) wear(say);
+
+  const assembly = pageMax * shelfMax * artMax * (1 + gearPct / 100) * surgeMult;
   assert.ok(
     assembly <= SWING_MULT_MAX,
     `the full authored assembly folds to ${assembly.toFixed(3)} — the band is being LEANED ON ` +

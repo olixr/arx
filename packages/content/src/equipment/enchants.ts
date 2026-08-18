@@ -100,9 +100,12 @@ export type EnchantTrigger =
  * `gather` is here so a yield working can be a RHYTHM (every Nth
  * harvest, deterministically) rather than a chance — the doubling
  * channel belongs to the Callings, and a chance-gated extra yield
- * would be that channel wearing an enchant's clothes.
+ * would be that channel wearing an enchant's clothes. `craft` (THE
+ * WORN BOOK) is the same law spoken at the bench: every Nth finished
+ * working, counted, never rolled — a yield answering it mints one
+ * bonus output of the very recipe just worked.
  */
-export type StackSource = 'hit' | 'crit' | 'hurt' | 'block' | 'cast' | 'kill' | 'gather';
+export type StackSource = 'hit' | 'crit' | 'hurt' | 'block' | 'cast' | 'kill' | 'gather' | 'craft';
 
 /**
  * What a timed surge lifts. Each maps to exactly one live dial.
@@ -157,8 +160,15 @@ export type ProcAction =
    * mismatch procMismatch refuses at load); needs no foe, so it is
    * legal on every trigger including the gather rhythms — a harvest
    * may bless the harvester.
+   *
+   * THE PACK'S BLESSING (THE WORN BOOK): `target: 'pet'` hands the
+   * page to the wearer's companion instead, through the pet's own NPC
+   * apply door (a quickened pet truly swings faster — the NPC swing
+   * sites already fold statusSwingFactor). No companion standing means
+   * the working is refused silently at the door: no charge spent, no
+   * page laid, and it never reaches any other player.
    */
-  | { do: 'boon'; status: StatusId; power: number; ticks: number };
+  | { do: 'boon'; status: StatusId; power: number; ticks: number; target?: 'pet' };
 
 /**
  * Triggers that belong to the steel which LANDED, and so resolve from
@@ -219,19 +229,28 @@ export function procMismatch(p: ProcEffect): string | null {
   if (needsFoe && !triggerHasTarget(p.trigger)) {
     return `'${p.action.do}' needs a foe, and '${p.trigger.on}' never brings one`;
   }
-  // A yield answers a harvest and nothing else — either the harvest
-  // itself, or a rhythm counted in harvests. Any other pairing fills a
-  // basket that was never held out.
+  // A yield answers a making and nothing else — the harvest itself, a
+  // rhythm counted in harvests, or (THE WORN BOOK) a rhythm counted in
+  // finished crafts. Any other pairing fills a basket that was never
+  // held out.
   const gatherPaced =
     p.trigger.on === 'gather' || (p.trigger.on === 'stacks' && p.trigger.per === 'gather');
-  if (p.action.do === 'yield' && !gatherPaced) {
-    return `'yield' fills a basket, so it only answers 'gather'`;
+  const craftPaced = p.trigger.on === 'stacks' && p.trigger.per === 'craft';
+  if (p.action.do === 'yield' && !gatherPaced && !craftPaced) {
+    return `'yield' fills a basket, so it only answers 'gather' and 'craft' rhythms`;
   }
   // A harvest happens away from any fight — but a blessing on the
   // harvester needs no fight, so 'boon' joins yield and reveal as the
-  // gather-legal answers.
-  if (gatherPaced && p.action.do !== 'yield' && p.action.do !== 'reveal' && p.action.do !== 'boon') {
-    return `'gather' happens away from any fight; '${p.action.do}' has nothing to work on`;
+  // gather-legal answers. The bench is the same country: a craft
+  // rhythm answers with the same three.
+  if (
+    (gatherPaced || craftPaced) &&
+    p.action.do !== 'yield' &&
+    p.action.do !== 'reveal' &&
+    p.action.do !== 'boon'
+  ) {
+    const moment = craftPaced ? 'craft' : 'gather';
+    return `'${moment}' happens away from any fight; '${p.action.do}' has nothing to work on`;
   }
   // THE SELF-BLESSING blesses: a hostile page through the self door
   // would be a working that wounds its own wearer on schedule.
@@ -1442,6 +1461,7 @@ const STACK_WORD: Record<StackSource, string> = {
   cast: 'abilities fired',
   kill: 'kills',
   gather: 'harvests',
+  craft: 'finished workings',
 };
 
 /** The moment a working waits for, as a phrase that follows "on". */
@@ -1506,7 +1526,9 @@ export function describeAction(a: ProcAction): string {
     case 'reveal':
       return `nearby ${a.of === 'node' ? 'ore and growth' : a.of === 'chest' ? 'caches' : 'foes'} marked within ${a.radius} tiles`;
     case 'boon':
-      return `${a.status} on yourself for ${secs(a.ticks)}`;
+      return a.target === 'pet'
+        ? `${a.status} on your companion for ${secs(a.ticks)}`
+        : `${a.status} on yourself for ${secs(a.ticks)}`;
   }
 }
 

@@ -8150,6 +8150,37 @@ export class GameServer {
         addItem(player.inventory, recipe.output.item, recipe.output.qty);
       }
       this.grantXp(eid, player, recipe.skill, recipe.xp);
+      // THE WRIGHT'S RHYTHM (THE WORN BOOK): a finished working is a
+      // moment, offered at the completion door exactly as a harvest is
+      // at the seam — and a yield working's extra mints one more
+      // output of the very recipe just worked (a fresh roll for gear,
+      // the hand's own quality for inscriptions). This lives inside
+      // the honest branch on purpose: the burnt pan above never
+      // reaches it, so a failed craft mints nothing. Pack overflow is
+      // the gather door's law — what will not fit is simply not taken.
+      const pos = this.positions.get(eid);
+      const procExtra = this.bodyMoment(eid, player, 'craft', {
+        x: pos?.x ?? 0,
+        y: pos?.y ?? 0,
+        style: recipe.skill,
+      });
+      for (let i = 0; i < procExtra; i++) {
+        if (gear) {
+          const rar = pickRarity(
+            craftRarityWeights(level, recipe.levelReq),
+            gear.rarities,
+            Math.random,
+          );
+          addItem(player.inventory, recipe.output.item, recipe.output.qty, makeRoll(rar));
+        } else if (itemDef(recipe.output.item)?.enchant) {
+          const q = inscriptionQuality(level, recipe.levelReq, player.perks.inscribeQuality);
+          for (let j = 0; j < recipe.output.qty; j++) {
+            addItem(player.inventory, recipe.output.item, 1, { rar: 'common', seed: 0, q });
+          }
+        } else {
+          addItem(player.inventory, recipe.output.item, recipe.output.qty);
+        }
+      }
     }
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
 
@@ -24715,6 +24746,14 @@ export class GameServer {
           (this.statuses?.get(ctx.targetEid)?.some((s) => s.id === wanted) ?? false);
         if (!riding) return;
       }
+      // THE PACK'S BLESSING door law (THE WORN BOOK): a pet-targeted
+      // working cannot answer a moment with no companion standing —
+      // no charge banked, no rest stamped on a sure no-op (the
+      // targeted-moment law, spoken for the leash).
+      if (p.action.do === 'boon' && p.action.target === 'pet') {
+        const petEid = player.petEid ?? null;
+        if (petEid === null || (this.healths?.get(petEid)?.hp ?? 0) <= 0) return;
+      }
       extra += this.offerProc(eid, player, p, on, ctx);
     };
     for (const p of player.gear.procs) offer(p);
@@ -24856,6 +24895,32 @@ export class GameServer {
         // swing re-mirror, chips, the whole visible layer answer as
         // they do for any other page. Boon-lane-only is load law
         // (procMismatch); the door needs no second check.
+        //
+        // THE PACK'S BLESSING (THE WORN BOOK): target 'pet' hands the
+        // page to the companion instead, through the pet's own NPC
+        // apply door — a quickened pet TRULY swings faster, the NPC
+        // swing sites fold statusSwingFactor already. No companion
+        // standing means a silent refusal (the aggregate lane also
+        // refuses at the door, charge unspent), and the page can never
+        // reach any other player: only the wearer's own petEid is a
+        // candidate.
+        if (a.target === 'pet') {
+          const petEid = player.petEid ?? null;
+          if (petEid === null || (this.healths?.get(petEid)?.hp ?? 0) <= 0) return extra;
+          this.applyStatusToNpc(
+            petEid,
+            { status: a.status, power: a.power, durationTicks: a.ticks },
+            eid,
+            'beastcraft',
+          );
+          const pp = this.positions?.get(petEid);
+          if (at && pp) {
+            x2 = pp.x;
+            y2 = pp.y;
+          }
+          radius = 0.9;
+          break;
+        }
         this.applyStatusToPlayer(eid, { status: a.status, power: a.power, durationTicks: a.ticks }, eid);
         radius = 0.9;
         break;
