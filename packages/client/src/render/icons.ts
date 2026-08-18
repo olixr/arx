@@ -5172,6 +5172,1016 @@ const PAINTERS: Record<string, IconPainter> = {
     c.stroke();
     c.restore();
   },
+  // THE THIRTEEN THE ARMOR WAVE PROMOTED. THE WORN BOOK moved these
+  // parts off the vendor line and into recipe ledgers — the tanning
+  // rack, the drakescale, and the six one-off luxuries — and every
+  // one of them still answered with the burnt lump, because an id with
+  // no ITEM_ICON row is invisible to the product-shot loop. Same law
+  // as the three parts before them: ONE bold subject each, solid over
+  // wire, the part's own color carrying the identity. A pelt drawn as
+  // a tinted hide is not a pelt.
+  foxpelt: (c, col) => {
+    // THE WINTER FOX, hung by the mask: the little sharp face still on
+    // the skin with its dark ears, the bib paling under it, and the
+    // brush sweeping the foot of the icon — white-flagged at the tip,
+    // which is the half the furrier pays for.
+    c.save();
+    c.translate(0.46, 0.44);
+    c.rotate(0.05);
+    // The brush, laid first: the skin hangs over its root.
+    c.fillStyle = shade(col, -16);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(-0.04, 0.14);
+    c.quadraticCurveTo(0.26, 0.16, 0.34, 0.42);
+    c.quadraticCurveTo(0.2, 0.5, 0.12, 0.4);
+    c.quadraticCurveTo(0.1, 0.28, -0.04, 0.3);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The white flag the brush ends in.
+    c.fillStyle = '#efe7d8';
+    c.beginPath();
+    c.moveTo(0.34, 0.42);
+    c.quadraticCurveTo(0.2, 0.5, 0.12, 0.4);
+    c.quadraticCurveTo(0.24, 0.36, 0.27, 0.28);
+    c.quadraticCurveTo(0.34, 0.34, 0.34, 0.42);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The ears, standing off the crown before the mask covers them.
+    c.fillStyle = shade(col, -34);
+    for (const s of [-1, 1] as const) {
+      c.beginPath();
+      c.moveTo(s * 0.06, -0.36);
+      c.lineTo(s * 0.2, -0.5);
+      c.lineTo(s * 0.22, -0.3);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    }
+    // The skin: narrow at the throat, plush through the flanks.
+    c.fillStyle = col;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(0, -0.42);
+    c.quadraticCurveTo(0.19, -0.36, 0.17, -0.2);
+    c.quadraticCurveTo(0.24, 0.02, 0.16, 0.22);
+    c.quadraticCurveTo(0.04, 0.34, -0.1, 0.24);
+    c.quadraticCurveTo(-0.22, 0.02, -0.18, -0.2);
+    c.quadraticCurveTo(-0.19, -0.36, 0, -0.42);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The bib: the cream running from the jaw down the belly.
+    c.fillStyle = '#e8dcc4';
+    c.beginPath();
+    c.moveTo(0, -0.14);
+    c.quadraticCurveTo(0.1, 0.02, 0.05, 0.22);
+    c.quadraticCurveTo(-0.03, 0.28, -0.08, 0.2);
+    c.quadraticCurveTo(-0.1, 0.02, 0, -0.14);
+    c.closePath();
+    c.fill();
+    // The mask: eye slits and the black nose the skinner left on.
+    c.fillStyle = shade(col, -48);
+    for (const s of [-1, 1] as const) {
+      c.beginPath();
+      c.ellipse(s * 0.075, -0.28, 0.045, 0.026, s * 0.35, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.fillStyle = '#2a2028';
+    c.beginPath();
+    c.moveTo(-0.05, -0.19);
+    c.quadraticCurveTo(0, -0.1, 0.05, -0.19);
+    c.quadraticCurveTo(0, -0.22, -0.05, -0.19);
+    c.closePath();
+    c.fill();
+    c.restore();
+  },
+  lynxpelt: (c, col) => {
+    // THE TUFTED CAT, HUNG OVER THE POLE: the wood's quiet killer, in
+    // profile the way the rack keeps a skin — the little head over the
+    // near end with ONE tufted ear standing off it and the cheek ruff
+    // combed under, the rosettes running the flank, the stub tail
+    // swinging at the heel. (Two cuts drew the mask face-on and read
+    // as a bear, then as a moth: a symmetric face with dots on it is
+    // an animal looking at you, never a pelt. In profile it is goods.)
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(0.04);
+    // The pole the skin is folded over.
+    c.fillStyle = '#6b5236';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.roundRect(-0.44, -0.36, 0.88, 0.085, 0.042);
+    c.fill();
+    c.stroke();
+    // The skin: over the pole at the withers, head end low at the
+    // left, the long flank falling away right.
+    c.fillStyle = col;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(-0.34, -0.34);
+    c.quadraticCurveTo(-0.42, -0.14, -0.36, 0.04); // the head end
+    c.quadraticCurveTo(-0.24, 0.16, -0.12, 0.1);
+    c.quadraticCurveTo(0.02, 0.3, 0.18, 0.26);
+    c.quadraticCurveTo(0.34, 0.3, 0.36, 0.12); // the haunch
+    c.quadraticCurveTo(0.42, -0.14, 0.34, -0.34);
+    c.quadraticCurveTo(0, -0.26, -0.34, -0.34);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The little head in profile, hanging past the pole's near end:
+    // muzzle to the left, the cheek ruff combed under the jaw. Small —
+    // a pelt's head is the smallest thing on it, not its subject.
+    c.fillStyle = shade(col, 12);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(-0.34, -0.24);
+    c.quadraticCurveTo(-0.47, -0.16, -0.46, -0.04); // the muzzle
+    c.quadraticCurveTo(-0.43, 0.07, -0.33, 0.1);
+    c.quadraticCurveTo(-0.26, 0.16, -0.21, 0.06);
+    c.quadraticCurveTo(-0.23, -0.12, -0.34, -0.24);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The ear standing clear ABOVE the pole line, and its tuft — the
+    // part the furrier is actually paying for, so it breaks the
+    // silhouette or it may as well not be drawn.
+    c.fillStyle = shade(col, -20);
+    c.beginPath();
+    c.moveTo(-0.36, -0.22);
+    c.lineTo(-0.32, -0.5);
+    c.lineTo(-0.2, -0.24);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.strokeStyle = '#cfc3ab';
+    c.lineWidth = 0.04;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.32, -0.46);
+    c.quadraticCurveTo(-0.34, -0.54, -0.4, -0.58);
+    c.stroke();
+    c.lineCap = 'butt';
+    // The ruff, combed under the jaw.
+    c.strokeStyle = shade(col, -34);
+    c.lineWidth = 0.022;
+    for (const [x, y] of [[-0.4, 0.06], [-0.34, 0.1], [-0.27, 0.11]] as const) {
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x + 0.03, y + 0.08);
+      c.stroke();
+    }
+    // The empty socket. No eye, no nose: a face that looks back is a
+    // living cat, and this is a skin on a pole.
+    c.fillStyle = shade(col, -46);
+    c.beginPath();
+    c.ellipse(-0.36, -0.1, 0.045, 0.03, 0.3, 0, Math.PI * 2);
+    c.fill();
+    // The rosettes: rings, not dots — a lynx is spotted with holes.
+    c.strokeStyle = shade(col, -40);
+    c.lineWidth = 0.026;
+    for (const [x, y, r] of [
+      [-0.1, -0.12, 0.05], [0.06, -0.16, 0.044], [0.2, -0.08, 0.048],
+      [0.0, 0.02, 0.046], [0.16, 0.08, 0.04], [-0.14, 0.02, 0.036],
+    ] as const) {
+      c.beginPath();
+      c.arc(x, y, r, 0, Math.PI * 2);
+      c.stroke();
+    }
+    // The stub tail, black-dipped, swinging off the haunch.
+    c.fillStyle = shade(col, -14);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.moveTo(0.3, 0.2);
+    c.quadraticCurveTo(0.42, 0.3, 0.38, 0.46);
+    c.quadraticCurveTo(0.26, 0.44, 0.24, 0.3);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = '#2b2530';
+    c.beginPath();
+    c.moveTo(0.4, 0.36);
+    c.quadraticCurveTo(0.41, 0.42, 0.38, 0.46);
+    c.quadraticCurveTo(0.3, 0.45, 0.28, 0.4);
+    c.closePath();
+    c.fill();
+    c.restore();
+  },
+  scute: (c, col) => {
+    // THE STONE COURT'S SCALE: one palm-wide plate of dull horn — a
+    // broad rounded scute lying on its side, the growth bands crossing
+    // it, the pale keel running its length, the notch at the root
+    // where the scale above it lapped over, and the green sheen the
+    // tanners swear is still watching. (Twice cut as an upright
+    // teardrop with a spine up the middle, and twice it read LEAF; a
+    // scute is a plate that lapped another plate.)
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(-0.14);
+    // The plate's own thickness, laid under the face.
+    c.fillStyle = shade(col, -46);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(-0.36, -0.14);
+    c.quadraticCurveTo(-0.3, -0.3, 0.06, -0.3);
+    c.quadraticCurveTo(0.36, -0.28, 0.4, -0.06);
+    c.quadraticCurveTo(0.42, 0.2, 0.1, 0.28);
+    c.quadraticCurveTo(-0.24, 0.3, -0.34, 0.14);
+    c.lineTo(-0.26, 0.0);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The face, seated a hair up off it.
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(-0.36, -0.2);
+    c.quadraticCurveTo(-0.3, -0.36, 0.06, -0.36);
+    c.quadraticCurveTo(0.36, -0.34, 0.4, -0.12);
+    c.quadraticCurveTo(0.42, 0.14, 0.1, 0.22);
+    c.quadraticCurveTo(-0.24, 0.24, -0.34, 0.08);
+    c.lineTo(-0.26, -0.06); // the notch the scale above it lapped into
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // Growth bands: the years the thing wore it, crossing the plate.
+    c.strokeStyle = shade(col, -32);
+    c.lineWidth = 0.03;
+    for (const [x, h] of [[-0.1, 0.2], [0.06, 0.23], [0.21, 0.19]] as const) {
+      c.beginPath();
+      c.moveTo(x, -h);
+      c.quadraticCurveTo(x - 0.06, 0, x, h * 0.82);
+      c.stroke();
+    }
+    // The keel: the raised ridge running the plate's length, lit.
+    c.fillStyle = shade(col, 46);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.moveTo(-0.28, -0.1);
+    c.quadraticCurveTo(0.06, -0.12, 0.36, -0.08);
+    c.quadraticCurveTo(0.06, 0.0, -0.28, -0.02);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The sheen — held to the light, something in it is still watching.
+    c.fillStyle = '#7f9b57';
+    c.beginPath();
+    c.ellipse(-0.08, 0.09, 0.13, 0.075, 0.06, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#a8c47a';
+    c.beginPath();
+    c.ellipse(-0.09, 0.08, 0.08, 0.045, 0.06, 0, Math.PI * 2);
+    c.fill();
+    dot(c, '#e0eec0', -0.12, 0.06, 0.03);
+    c.restore();
+  },
+  grindtooth: (c, col) => {
+    // THE HILL'S MOLAR: a lower tooth the size of a hand axe, the
+    // crown ground FLAT and dark from a lifetime of bones, two heavy
+    // roots splayed under it, and the chip out of the shoulder.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(-0.08);
+    // The roots, under everything.
+    c.fillStyle = shade(col, -26);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    for (const s of [-1, 1] as const) {
+      c.beginPath();
+      c.moveTo(s * 0.05, 0.04);
+      c.quadraticCurveTo(s * 0.24, 0.14, s * 0.19, 0.44);
+      c.quadraticCurveTo(s * 0.08, 0.48, s * 0.04, 0.36);
+      c.quadraticCurveTo(s * 0.02, 0.16, s * 0.05, 0.04);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    }
+    // The crown: broad, squared, wider than it is tall.
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(-0.32, -0.24);
+    c.quadraticCurveTo(-0.38, 0.0, -0.26, 0.14);
+    c.quadraticCurveTo(0, 0.24, 0.26, 0.14);
+    c.quadraticCurveTo(0.38, 0.0, 0.32, -0.24);
+    c.quadraticCurveTo(0.14, -0.34, -0.06, -0.32);
+    c.lineTo(-0.16, -0.22); // the chip out of the shoulder
+    c.lineTo(-0.24, -0.32);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The grinding face: worn flat, and dark with what it ground.
+    c.fillStyle = shade(col, -34);
+    c.beginPath();
+    c.moveTo(-0.28, -0.2);
+    c.quadraticCurveTo(0, -0.3, 0.28, -0.2);
+    c.quadraticCurveTo(0, -0.08, -0.28, -0.2);
+    c.closePath();
+    c.fill();
+    // Two enamel cracks running down off the wear.
+    c.strokeStyle = shade(col, -40);
+    c.lineWidth = 0.022;
+    for (const [x, d] of [[-0.12, -0.03], [0.13, 0.04]] as const) {
+      c.beginPath();
+      c.moveTo(x, -0.16);
+      c.lineTo(x + d, 0.06);
+      c.stroke();
+    }
+    // Enamel light along the near shoulder.
+    c.strokeStyle = shade(col, 34);
+    c.lineWidth = 0.04;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.26, 0.0);
+    c.quadraticCurveTo(-0.2, 0.1, -0.06, 0.14);
+    c.stroke();
+    c.lineCap = 'butt';
+    c.restore();
+  },
+  officercrest: (c, col) => {
+    // THE ORDER THAT NEVER CAME: the crimson comb off a legion
+    // officer's galea — ONE dense block of horsehair standing off its
+    // bronze holder, combed in strands, march dust still in the tips.
+    // (First cut cut the hair into separate wedges and read as a
+    // spiked crown at every size; horsehair is a MASS, not teeth.)
+    c.save();
+    c.translate(0.5, 0.58);
+    c.rotate(-0.05);
+    // The crest mass: ONE solid dome of hair, scalloped along the top
+    // where the bunches part, sitting flat on the holder. (The second
+    // cut hollowed it into a crescent and the gap read as an open
+    // mouth — a brush is filled all the way to its base.)
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.33, 0.16);
+    c.quadraticCurveTo(-0.34, -0.16, -0.16, -0.3);
+    c.quadraticCurveTo(-0.08, -0.4, -0.02, -0.3);
+    c.quadraticCurveTo(0.06, -0.42, 0.13, -0.28);
+    c.quadraticCurveTo(0.22, -0.36, 0.25, -0.2);
+    c.quadraticCurveTo(0.35, -0.06, 0.33, 0.16);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The near side of the brush, in the hair's own shadow.
+    c.fillStyle = shade(col, -26);
+    c.beginPath();
+    c.moveTo(-0.33, 0.16);
+    c.quadraticCurveTo(-0.3, -0.06, -0.16, -0.18);
+    c.quadraticCurveTo(-0.06, -0.26, 0.06, -0.16);
+    c.quadraticCurveTo(0.2, -0.04, 0.22, 0.16);
+    c.closePath();
+    c.fill();
+    // The comb: strand lines running the length of the hair, and the
+    // march dust bleached into the outer sweep.
+    c.strokeStyle = shade(col, -34);
+    c.lineWidth = 0.022;
+    for (let i = 0; i < 7; i++) {
+      const t = i / 6;
+      const a = Math.PI * (0.94 - t * 0.88);
+      const rx = 0.3;
+      c.beginPath();
+      c.moveTo(Math.cos(a) * rx, 0.16 - Math.sin(a) * 0.3);
+      c.lineTo(Math.cos(a) * (rx - 0.09), 0.16 - Math.sin(a) * 0.2);
+      c.stroke();
+    }
+    c.strokeStyle = '#cbb99a';
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.moveTo(-0.3, 0.02);
+    c.quadraticCurveTo(-0.18, -0.26, 0.06, -0.31);
+    c.stroke();
+    // The holder: the bronze channel the hair is sewn into, its rivets
+    // and the crown pin standing off the front.
+    c.fillStyle = '#8a6a34';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.roundRect(-0.4, 0.14, 0.8, 0.13, 0.05);
+    c.fill();
+    c.stroke();
+    c.fillStyle = '#a98442';
+    c.beginPath();
+    c.roundRect(-0.37, 0.16, 0.74, 0.04, 0.02);
+    c.fill();
+    for (const x of [-0.28, 0, 0.28] as const) dot(c, '#5e4620', x, 0.21, 0.028);
+    c.fillStyle = '#d9a441';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.moveTo(-0.4, 0.2);
+    c.lineTo(-0.49, 0.34);
+    c.lineTo(-0.31, 0.3);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.restore();
+  },
+  owlplume: (c, col) => {
+    // THE SILENT FLIGHT: a pale flight feather longer than a forearm,
+    // barred across the vane the way a hunting owl is barred — and the
+    // COMB on the leading edge, the fringe of soft teeth that takes
+    // the sound out of the stroke. Bowyers fletch yew with these.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(-0.32);
+    // The vane: long, one edge swept, the tip rounded off.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(0, -0.46);
+    c.quadraticCurveTo(0.15, -0.2, 0.13, 0.14);
+    c.quadraticCurveTo(0.1, 0.3, 0.02, 0.34);
+    c.lineTo(-0.02, 0.34);
+    c.quadraticCurveTo(-0.13, 0.16, -0.12, -0.12);
+    c.quadraticCurveTo(-0.1, -0.32, 0, -0.46);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The bars: the owl's own marking, four across the vane.
+    c.fillStyle = shade(col, -34);
+    for (const [y, w] of [[-0.26, 0.09], [-0.1, 0.12], [0.06, 0.13], [0.2, 0.11]] as const) {
+      c.beginPath();
+      c.moveTo(-w, y);
+      c.quadraticCurveTo(0, y + 0.06, w, y - 0.03);
+      c.quadraticCurveTo(0, y + 0.01, -w, y + 0.05);
+      c.closePath();
+      c.fill();
+    }
+    // The comb: soft teeth off the leading edge. This is the identity.
+    c.strokeStyle = shade(col, 40);
+    c.lineWidth = 0.022;
+    for (let i = 0; i < 7; i++) {
+      const t = i / 6;
+      const y = -0.36 + t * 0.58;
+      const x = -0.115 - 0.02 * Math.sin(t * Math.PI);
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x - 0.07, y - 0.05);
+      c.stroke();
+    }
+    // The quill, running the whole length and standing proud of both.
+    c.strokeStyle = shade(col, -52);
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(0, -0.42);
+    c.lineTo(0.01, 0.34);
+    c.stroke();
+    c.fillStyle = '#efe7d4';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.roundRect(-0.035, 0.32, 0.07, 0.16, 0.03);
+    c.fill();
+    c.stroke();
+    c.restore();
+  },
+  elderplume: (c, col) => {
+    // THE WOOD IS LOUDER NOW: the great owl's own feather — storm-dark
+    // through the vane with the moon-pale rim down its outer sweep,
+    // one barb split open where it was taken, and the bare quill
+    // running out past the root. (An early cut ran the vane wide and
+    // rimless and read as a dark leaf; a feather is a SHAFT with a
+    // vane hung off it, and the shaft has to show.)
+    c.save();
+    c.translate(0.5, 0.48);
+    c.rotate(0.3);
+    // The vane: long, curved, and split once on the leading edge.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(0.04, -0.48);
+    c.quadraticCurveTo(0.22, -0.16, 0.14, 0.16);
+    c.quadraticCurveTo(0.08, 0.3, 0.0, 0.32);
+    c.quadraticCurveTo(-0.08, 0.24, -0.12, 0.06);
+    c.lineTo(-0.04, 0.0); // the split barb gap
+    c.lineTo(-0.13, -0.1);
+    c.quadraticCurveTo(-0.12, -0.3, 0.04, -0.48);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The moon-pale rim down the outer sweep — a rim, not a half.
+    c.fillStyle = '#dcdfe8';
+    c.beginPath();
+    c.moveTo(0.04, -0.48);
+    c.quadraticCurveTo(0.22, -0.16, 0.14, 0.16);
+    c.quadraticCurveTo(0.1, 0.06, 0.09, -0.06);
+    c.quadraticCurveTo(0.1, -0.28, 0.04, -0.48);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The split strand standing away from the vane.
+    c.fillStyle = shade(col, 24);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.moveTo(-0.1, -0.06);
+    c.quadraticCurveTo(-0.28, 0.02, -0.34, 0.14);
+    c.quadraticCurveTo(-0.2, 0.1, -0.05, 0.04);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // Barb strokes running out of the shaft, storm-dark.
+    c.strokeStyle = shade(col, -42);
+    c.lineWidth = 0.02;
+    for (let i = 0; i < 4; i++) {
+      const y = -0.3 + i * 0.12;
+      c.beginPath();
+      c.moveTo(0.0, y);
+      c.lineTo(-0.08, y + 0.06);
+      c.stroke();
+    }
+    // The shaft, and the bare quill running out past the root.
+    c.strokeStyle = '#cfd4de';
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(0.03, -0.42);
+    c.lineTo(-0.01, 0.3);
+    c.stroke();
+    c.fillStyle = '#e8ebf2';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.moveTo(0.02, 0.28);
+    c.quadraticCurveTo(0.03, 0.42, -0.03, 0.5);
+    c.quadraticCurveTo(-0.09, 0.42, -0.05, 0.28);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.restore();
+  },
+  frostslab: (c, col) => {
+    // OLD WINTER, FACETED: a slab of ice that does not melt, cut into
+    // hard planes with a cold heart down the middle and hoarfrost
+    // needles growing off the shoulders. The room it sits in forgets
+    // summer.
+    c.save();
+    c.translate(0.5, 0.52);
+    c.rotate(0.06);
+    // Hoarfrost needles first — they grow OUT of the slab's edges.
+    c.strokeStyle = '#e6f6ff';
+    c.lineWidth = 0.03;
+    c.lineCap = 'round';
+    for (const [x, y, dx, dy] of [
+      [-0.24, -0.2, -0.16, -0.12], [0.22, -0.24, 0.14, -0.16],
+      [0.3, 0.14, 0.16, 0.1], [-0.28, 0.12, -0.15, 0.12],
+    ] as const) {
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x + dx, y + dy);
+      c.moveTo(x + dx * 0.55, y + dy * 0.55);
+      c.lineTo(x + dx * 0.4, y + dy * 1.1);
+      c.stroke();
+    }
+    c.lineCap = 'butt';
+    // The slab: a hard prism, no curve anywhere in it.
+    poly(c, shade(col, -26), [
+      [-0.06, -0.44], [0.24, -0.28], [0.32, 0.1], [0.1, 0.42], [-0.2, 0.34], [-0.3, -0.06],
+    ]);
+    // The lit planes: two faces catching the light off the break.
+    poly(c, col, [[-0.06, -0.44], [0.24, -0.28], [0.1, 0.06], [-0.14, -0.1]]);
+    poly(c, shade(col, 40), [[-0.14, -0.1], [0.1, 0.06], [0.02, 0.3], [-0.2, 0.2]]);
+    // The cold heart: the pale core the light stops inside.
+    c.fillStyle = '#f2fbff';
+    c.beginPath();
+    c.moveTo(-0.04, -0.24);
+    c.lineTo(0.1, -0.1);
+    c.lineTo(0.0, 0.14);
+    c.lineTo(-0.1, -0.04);
+    c.closePath();
+    c.fill();
+    // One rime edge along the top break.
+    c.strokeStyle = '#ffffff';
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.moveTo(-0.05, -0.4);
+    c.lineTo(0.21, -0.26);
+    c.stroke();
+    c.restore();
+  },
+  slaglump: (c, col) => {
+    // IT NEVER QUITE COOLS: furnace-melt gone hard — a black crusted
+    // lump broken open, the ember veins still running in the split and
+    // one drip that froze mid-fall off the underside.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(-0.05);
+    // The crust: dark, lumpy, nothing about it regular.
+    c.fillStyle = '#2e2626';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.36, -0.02);
+    c.quadraticCurveTo(-0.3, -0.28, -0.08, -0.32);
+    c.quadraticCurveTo(0.06, -0.42, 0.22, -0.28);
+    c.quadraticCurveTo(0.42, -0.2, 0.36, 0.04);
+    c.quadraticCurveTo(0.38, 0.26, 0.16, 0.3);
+    c.quadraticCurveTo(-0.04, 0.4, -0.2, 0.26);
+    c.quadraticCurveTo(-0.4, 0.2, -0.36, -0.02);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The cooler crust plates riding the top of the lump.
+    c.fillStyle = '#4a3d3a';
+    c.beginPath();
+    c.ellipse(-0.14, -0.16, 0.14, 0.09, -0.3, 0, Math.PI * 2);
+    c.fill();
+    c.beginPath();
+    c.ellipse(0.18, -0.1, 0.1, 0.07, 0.4, 0, Math.PI * 2);
+    c.fill();
+    // The split, and the heat still living in it.
+    c.strokeStyle = shade(col, -30);
+    c.lineWidth = 0.09;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.26, 0.12);
+    c.quadraticCurveTo(-0.02, -0.02, 0.28, 0.1);
+    c.stroke();
+    c.strokeStyle = col;
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(-0.24, 0.12);
+    c.quadraticCurveTo(-0.02, -0.01, 0.26, 0.1);
+    c.stroke();
+    // Two branch veins off the split, and the white where it is worst.
+    c.lineWidth = 0.03;
+    for (const [x, y, dx, dy] of [[-0.1, 0.06, -0.06, 0.16], [0.12, 0.05, 0.08, 0.14]] as const) {
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x + dx, y + dy);
+      c.stroke();
+    }
+    c.strokeStyle = '#ffd9a0';
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.moveTo(-0.12, 0.08);
+    c.quadraticCurveTo(0.02, 0.0, 0.16, 0.07);
+    c.stroke();
+    c.lineCap = 'butt';
+    // The frozen drip off the underside.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.moveTo(0.0, 0.34);
+    c.quadraticCurveTo(0.07, 0.4, 0.03, 0.48);
+    c.quadraticCurveTo(-0.05, 0.44, -0.04, 0.34);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.restore();
+  },
+  golemcore: (c, col) => {
+    // NOBODY TAUGHT IT TO BE WARM: a fist of grey stone worked all
+    // over with a mason's marks — a rough-knapped core, the chisel
+    // glyphs cut deep in bands, and the seam down the middle still
+    // giving off the heat the thing walked on.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(0.12);
+    // The core: knapped facets, a fist you could close a hand around.
+    poly(c, col, [
+      [-0.1, -0.4], [0.16, -0.34], [0.34, -0.12], [0.32, 0.16],
+      [0.12, 0.38], [-0.16, 0.34], [-0.34, 0.1], [-0.32, -0.18],
+    ]);
+    // The lit shoulder and the shadowed underside.
+    poly(c, shade(col, 26), [[-0.1, -0.4], [0.16, -0.34], [0.1, -0.16], [-0.14, -0.2]]);
+    c.fillStyle = shade(col, -30);
+    c.beginPath();
+    c.moveTo(-0.16, 0.34);
+    c.lineTo(0.12, 0.38);
+    c.lineTo(0.32, 0.16);
+    c.lineTo(0.06, 0.22);
+    c.closePath();
+    c.fill();
+    // THE SOCKET, and this is the recut. A grey stone with a glowing
+    // crack is the most generic idea in the set — at 26px it sat in
+    // the same family as `stone` and `iron_ingot`, separated only by
+    // an orange squiggle. A CORE is not a cracked rock: it is the cut
+    // seat somebody made to hold the thing that walks the pile. So
+    // the middle is a deliberate square socket set on the diagonal,
+    // and the geometry is the whole argument — nothing natural is
+    // square, so the eye reads MADE before it reads anything else,
+    // and it still reads it at 26px where a hairline crack is gone.
+    c.lineJoin = 'round';
+    c.lineCap = 'round';
+    // The seat: dressed flat, sunk into the knapped face.
+    poly(c, shade(col, -46), [[-0.2, -0.06], [-0.02, -0.22], [0.2, -0.04], [0.02, 0.2]]);
+    // The heat banked in the seat's own floor.
+    poly(c, '#8c4a2c', [[-0.14, -0.05], [-0.02, -0.16], [0.14, -0.03], [0.02, 0.13]]);
+    // THE CORE, seated and lit — the one warm thing on the stone, and
+    // the only saturated colour anywhere in the icon.
+    poly(c, '#e5915a', [[-0.09, -0.04], [-0.02, -0.11], [0.09, -0.03], [0.02, 0.08]]);
+    poly(c, '#ffd39a', [[-0.045, -0.035], [-0.015, -0.065], [0.05, -0.025], [0.012, 0.035]]);
+    // Two hairlines of the same heat escaping the seat's corners: the
+    // stone did not take the fitting quietly.
+    c.strokeStyle = '#c9713f';
+    c.lineWidth = 0.022;
+    for (const [x0, y0, x1, y1] of [
+      [-0.2, -0.06, -0.31, -0.12], [0.2, -0.04, 0.3, 0.02], [0.02, 0.2, 0.06, 0.32],
+    ] as const) {
+      c.beginPath();
+      c.moveTo(x0, y0);
+      c.lineTo(x1, y1);
+      c.stroke();
+    }
+    c.lineCap = 'butt';
+    c.lineJoin = 'miter';
+    // The mason's marks: cut glyphs, deliberate, deep enough to read.
+    c.strokeStyle = shade(col, -52);
+    c.lineWidth = 0.036;
+    for (const [x, y, k] of [[-0.19, -0.16, 1], [0.16, 0.16, -1]] as const) {
+      c.beginPath();
+      c.moveTo(x - 0.07, y - 0.06 * k);
+      c.lineTo(x, y + 0.06 * k);
+      c.lineTo(x + 0.07, y - 0.06 * k);
+      c.stroke();
+    }
+    c.beginPath();
+    c.moveTo(0.11, -0.24);
+    c.lineTo(0.25, -0.26);
+    c.moveTo(0.18, -0.31);
+    c.lineTo(0.18, -0.17);
+    c.stroke();
+    c.restore();
+  },
+  keystoneheart: (c, col) => {
+    // THE WALKING CAIRN'S KEYSTONE: the wedge the whole pile hung
+    // from, pulled out and carried home. A dressed trapezoid block,
+    // the chisel draft still legible around a hollowed heart, and the
+    // moss the seams kept.
+    c.save();
+    c.translate(0.5, 0.52);
+    c.rotate(-0.05);
+    // The block: wide at the crown, tapering hard the way a keystone
+    // must — the taper IS the identity, so it is not a subtle one.
+    poly(c, shade(col, -22), [[-0.38, -0.3], [0.38, -0.3], [0.2, 0.38], [-0.2, 0.38]]);
+    // The dressed face, held in off the draft margin.
+    c.fillStyle = shade(col, 22);
+    c.beginPath();
+    c.moveTo(-0.29, -0.21);
+    c.lineTo(0.29, -0.21);
+    c.lineTo(0.15, 0.3);
+    c.lineTo(-0.15, 0.3);
+    c.closePath();
+    c.fill();
+    // THE HEART IS A CORE, NOT A VALENTINE. The first cut carved a
+    // literal heart into the face and it read as a playing card
+    // carrying a UI glyph — a SYMBOL sitting on a material, which is
+    // the one thing a material icon must never be. The name means the
+    // heart OF the hill: the live seam at the middle of the stone that
+    // makes the cairn walk. So the face is split open instead, and
+    // what is inside is mineral.
+    //
+    // The struck cavity, dark and angular — stone breaks in facets.
+    // Driven HARD dark: the block is a pale dressed stone, so a
+    // half-tone cavity washed out at 26px and the core had nothing to
+    // be bright against. A break in a light stone is the darkest
+    // thing on it.
+    c.fillStyle = shade(col, -62);
+    c.beginPath();
+    c.moveTo(-0.02, -0.16);
+    c.lineTo(0.14, -0.07);
+    c.lineTo(0.11, 0.12);
+    c.lineTo(-0.05, 0.19);
+    c.lineTo(-0.15, 0.04);
+    c.lineTo(-0.12, -0.1);
+    c.closePath();
+    c.fill();
+    // The seam itself, banked bright at the middle of the break.
+    c.fillStyle = shade(col, 52);
+    c.beginPath();
+    c.moveTo(-0.01, -0.1);
+    c.lineTo(0.08, -0.04);
+    c.lineTo(0.06, 0.08);
+    c.lineTo(-0.04, 0.12);
+    c.lineTo(-0.09, 0.02);
+    c.closePath();
+    c.fill();
+    c.fillStyle = '#f2e6b8';
+    c.beginPath();
+    c.moveTo(-0.005, -0.06);
+    c.lineTo(0.045, -0.02);
+    c.lineTo(0.03, 0.05);
+    c.lineTo(-0.03, 0.07);
+    c.closePath();
+    c.fill();
+    // Fracture running out of the core into the dressed face: the
+    // break did not stop where the light did.
+    c.strokeStyle = shade(col, -38);
+    c.lineWidth = 0.02;
+    for (const [x0, y0, x1, y1] of [
+      [-0.13, -0.08, -0.24, -0.17], [0.13, -0.05, 0.24, -0.12], [0.09, 0.14, 0.15, 0.26],
+    ] as const) {
+      c.beginPath();
+      c.moveTo(x0, y0);
+      c.lineTo(x1, y1);
+      c.stroke();
+    }
+    // The chisel draft: tool strokes marching the top margin.
+    c.strokeStyle = shade(col, -34);
+    c.lineWidth = 0.022;
+    for (let i = 0; i < 5; i++) {
+      const x = -0.24 + i * 0.12;
+      c.beginPath();
+      c.moveTo(x, -0.26);
+      c.lineTo(x + 0.04, -0.15);
+      c.stroke();
+    }
+    // The moss the seams kept, top corner and heel.
+    c.fillStyle = '#6f8a44';
+    c.beginPath();
+    c.ellipse(-0.28, -0.24, 0.09, 0.045, 0.2, 0, Math.PI * 2);
+    c.fill();
+    c.beginPath();
+    c.ellipse(0.17, 0.33, 0.07, 0.04, -0.15, 0, Math.PI * 2);
+    c.fill();
+    dot(c, '#8aa85a', -0.22, -0.22, 0.026);
+    c.restore();
+  },
+  razortusk: (c, col) => {
+    // THE RAZORBACK'S PAIR, still in the jaw.
+    //
+    // THIS IS THE THIRD CUT AND THE FIRST HONEST ONE. Cuts one and two
+    // drew ONE ivory crescent — upright, then laid on the diagonal —
+    // and both times it read as the shipped worg_fang at 26px, because
+    // a single curved ivory shape IS a fang whatever angle you set it
+    // at. Length does not separate them; a downscale eats length
+    // first. What separates them is COUNT and ROOT: a razorback's
+    // tusks come in a matched pair out of a jaw, and no fang does.
+    // The dark jaw wedge across the foot is the whole silhouette
+    // argument — it breaks the crescent read before the eye gets to
+    // the ivory at all.
+    c.save();
+    c.translate(0.5, 0.56);
+    // The far tusk first, smaller and set back, so the pair reads as
+    // depth rather than as two of the same sticker.
+    const tusk = (sx: number, sy: number, dx: number, lean: number, tint: number): void => {
+      c.save();
+      c.translate(dx, 0);
+      c.rotate(lean);
+      c.scale(sx, sy);
+      c.fillStyle = shade(col, tint);
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.03 / Math.max(sx, sy);
+      c.beginPath();
+      c.moveTo(-0.13, 0.0); // the root, thick where the jaw holds it
+      c.quadraticCurveTo(-0.2, -0.3, -0.05, -0.54);
+      c.quadraticCurveTo(0.04, -0.68, 0.16, -0.72); // the point
+      c.quadraticCurveTo(0.05, -0.56, 0.02, -0.42);
+      c.quadraticCurveTo(0.02, -0.2, 0.08, 0.0);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      // The wear facet the boar ground into its own point.
+      c.fillStyle = shade(col, tint + 40);
+      c.beginPath();
+      c.moveTo(0.16, -0.72);
+      c.quadraticCurveTo(0.06, -0.6, 0.03, -0.48);
+      c.quadraticCurveTo(0.1, -0.56, 0.16, -0.66);
+      c.closePath();
+      c.fill();
+      // Growth bands: the old boar's years, laid across the root.
+      c.strokeStyle = shade(col, tint - 34);
+      c.lineWidth = 0.028 / Math.max(sx, sy);
+      for (const y of [-0.08, -0.2, -0.32] as const) {
+        c.beginPath();
+        c.moveTo(-0.15, y);
+        c.quadraticCurveTo(-0.04, y + 0.05, 0.07, y);
+        c.stroke();
+      }
+      c.restore();
+    };
+    tusk(0.74, 0.74, 0.13, 0.34, -26); // the far one, in shadow
+    tusk(1.0, 1.0, -0.06, -0.06, 0); // the near one, full ivory
+    // THE JAW. A short wedge of bone sawn off the mandible, dark
+    // against both ivories, with the two sockets the tusks stand in.
+    c.fillStyle = shade(col, -52);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(-0.3, -0.04);
+    c.quadraticCurveTo(-0.34, 0.16, -0.22, 0.24);
+    c.quadraticCurveTo(0.02, 0.34, 0.28, 0.22);
+    c.quadraticCurveTo(0.38, 0.14, 0.32, -0.06);
+    c.quadraticCurveTo(0.02, 0.06, -0.3, -0.04);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The bone's own light along the sawn top edge.
+    c.strokeStyle = shade(col, -22);
+    c.lineWidth = 0.03;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.26, 0.02);
+    c.quadraticCurveTo(0.02, 0.12, 0.29, 0.0);
+    c.stroke();
+    c.lineCap = 'butt';
+    c.restore();
+  },
+  forgeplate: (c, col) => {
+    // SOME SMITH MADE IT ONCE: a riveted plate torn out of the
+    // lodestone's gathered body — a straight bolted edge where it was
+    // built, a ragged tear where it was taken, one corner curled back
+    // and the rust the golem's years put in it.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(0.09);
+    // The plate: two honest edges and one BITTEN one — the tear is the
+    // whole story, so it takes a third of the plate, not a nibble.
+    //
+    // THE VALUE SPREAD IS THE RECUT. The first cut painted the body,
+    // the rust and the shadow all within a few steps of one brown and
+    // the whole icon went to mud by 26px — a smear with a shape you
+    // had to be told about. The body now sits DARK so every lit thing
+    // on it has somewhere to be bright, and the torn edge carries the
+    // silhouette on its own.
+    c.fillStyle = shade(col, -30);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.38, -0.32);
+    c.lineTo(0.32, -0.36);
+    c.lineTo(0.36, -0.12);
+    c.lineTo(0.1, 0.0); // the tear
+    c.lineTo(0.3, 0.14);
+    c.lineTo(0.06, 0.2);
+    c.lineTo(0.26, 0.38);
+    c.lineTo(-0.32, 0.34);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The bolted margin: the strip the rivet line runs down.
+    c.fillStyle = shade(col, -26);
+    c.beginPath();
+    c.moveTo(-0.38, -0.32);
+    c.lineTo(0.32, -0.36);
+    c.lineTo(0.31, -0.18);
+    c.lineTo(-0.37, -0.14);
+    c.closePath();
+    c.fill();
+    // The rivets. A plate is known by its rivet line — three big ones
+    // read at 26px where four small ones read as grit.
+    for (const x of [-0.24, -0.02, 0.2] as const) {
+      dot(c, shade(col, 48), x, -0.25, 0.055);
+      dot(c, shade(col, -50), x + 0.014, -0.234, 0.026);
+    }
+    // The curled corner, showing the plate's cold back.
+    c.fillStyle = shade(col, 34);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.moveTo(-0.3, 0.32);
+    c.quadraticCurveTo(-0.1, 0.36, -0.06, 0.22);
+    c.quadraticCurveTo(-0.16, 0.28, -0.28, 0.2);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The face the light gets to: a broad lit panel across the plate's
+    // middle, so the dark body reads as METAL and not as a hole.
+    c.fillStyle = shade(col, 26);
+    c.beginPath();
+    c.moveTo(-0.34, -0.1);
+    c.lineTo(0.06, -0.06);
+    c.lineTo(0.02, 0.16);
+    c.lineTo(-0.31, 0.16);
+    c.closePath();
+    c.fill();
+    // THE TORN EDGE, bright. Metal that was ripped shows raw where it
+    // parted, and that bright zigzag is the one line in this icon that
+    // survives the downscale — it is doing the silhouette's work.
+    c.strokeStyle = shade(col, 72);
+    c.lineWidth = 0.036;
+    c.lineJoin = 'round';
+    c.beginPath();
+    c.moveTo(0.36, -0.12);
+    c.lineTo(0.1, 0.0);
+    c.lineTo(0.3, 0.14);
+    c.lineTo(0.06, 0.2);
+    c.lineTo(0.26, 0.38);
+    c.stroke();
+    c.lineJoin = 'miter';
+    // The rust, pitted DARK into the lit panel rather than smeared
+    // across it in a middle tone — corrosion eats metal, it does not
+    // paint it.
+    c.fillStyle = shade(col, -44);
+    c.beginPath();
+    c.ellipse(-0.2, 0.04, 0.075, 0.05, 0.3, 0, Math.PI * 2);
+    c.fill();
+    c.beginPath();
+    c.ellipse(-0.07, 0.11, 0.045, 0.03, -0.2, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+  },
   vial: (c, col) => {
     // The tonic: a tall slim vial, corked and collared, the draught
     // filling two-thirds with one rising bubble.
@@ -5899,6 +6909,24 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   skral_frill: { icon: 'frillfin', color: '#5f9a84' },
   crab_carapace: { icon: 'shellplate', color: '#46655c' },
   fen_basilisk_hide: { icon: 'keeledhide', color: '#5c6644' },
+  // And the thirteen the same wave promoted and left faceless: the
+  // tanning rack's two pelts, the scale the drakescale finally
+  // contains, and the trophies the six one-off luxuries each take one
+  // of. Every one is now reachable from a recipe ledger, which is
+  // where the pin looks.
+  fox_pelt: { icon: 'foxpelt', color: '#b4622a' },
+  lynx_pelt: { icon: 'lynxpelt', color: '#9c7f55' },
+  basilisk_scale: { icon: 'scute', color: '#6b6a52' },
+  ogre_tooth: { icon: 'grindtooth', color: '#e3d7b4' },
+  warlord_crest: { icon: 'officercrest', color: '#8e2f2c' },
+  owl_plume: { icon: 'owlplume', color: '#d8ccae' },
+  elder_plume: { icon: 'elderplume', color: '#5a5e70' },
+  everfrost_shard: { icon: 'frostslab', color: '#9ad4e8' },
+  molten_slag: { icon: 'slaglump', color: '#d84c1e' },
+  golem_core: { icon: 'golemcore', color: '#9a94a8' },
+  hillstone_heart: { icon: 'keystoneheart', color: '#8a8164' },
+  forgeplate_scrap: { icon: 'forgeplate', color: '#6f665e' },
+  razorback_tusk: { icon: 'razortusk', color: '#dccfa8' },
   leather_body: { icon: 'jerkin', color: '#b08a5c' },
   bones: { icon: 'bones', color: '#efe8d8' },
   feather: { icon: 'feather', color: '#f4efe4' },

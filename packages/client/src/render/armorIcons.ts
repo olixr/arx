@@ -1,4 +1,5 @@
 import { shade } from './rig.js';
+import { chamferRect } from './shapes.js';
 import { drawShieldAt, isShieldKind, shieldStyle } from './shields.js';
 import {
   drawHelmet,
@@ -192,20 +193,461 @@ export function bodyIconPainter(st: BodyStyle): Painter {
 
 // ---------------------------------------------------------------- legs
 
+/**
+ * The leg the word pass paints on: one solved limb of the product
+ * shot, in the same terms rig.ts's leg pass gets from the solver —
+ * a centerline, a hip/knee/ankle stack, the half-widths at each, and
+ * which way is OUTWARD. Both the trouser cut and the forged harness
+ * hand one of these over, so a leg word is authored once and rides
+ * every silhouette the wardrobe owns.
+ */
+interface LegFrame {
+  /** Centerline of this leg, and the sign that points away from the hips. */
+  cx: number;
+  out: -1 | 1;
+  /** The joint rows down the limb. */
+  hipY: number;
+  kneeY: number;
+  ankY: number;
+  /** Half-widths at hip, knee and ankle — devices seat on the taper. */
+  whip: number;
+  wk: number;
+  wa: number;
+  /** The far leg's shade offset; 0 on the lit near leg. */
+  dim: number;
+  /** The near leg — one-sided gear dresses this one only. */
+  near: boolean;
+}
+
+/**
+ * THE HUNTER'S LEGS, in the pack. Thirteen one-owner words that
+ * rig.ts paints onto the solved limb, re-cut for the product shot in
+ * the SAME grammar and the same order — the tuft off the back of the
+ * ankle, the waterline break, the raked fin, the lapped scutes, the
+ * roll strapped flat to the thigh. The world painter is woven through
+ * the limb solver and cannot be called here (see the file header), so
+ * the shapes are re-authored; the REGISTER is not. The scutes and the
+ * Knife's spare stay muted exactly as they are on the body — down
+ * here an unearned lit chip reads as a floating tooth — and only the
+ * words that author an edge or a tie color of their own spend one.
+ */
+function legWords(ctx: CanvasRenderingContext2D, st: LegStyle, f: LegFrame): void {
+  const o = f.out;
+  const shinAt = (k: number): number => f.kneeY + (f.ankY - f.kneeY) * k;
+  const thighAt = (k: number): number => f.hipY + (f.kneeY - f.hipY) * k;
+  /** Half-width of the limb at any row — the shin taper, then the thigh. */
+  const halfAt = (y: number): number =>
+    y >= f.kneeY
+      ? f.wk + (f.wa - f.wk) * ((y - f.kneeY) / (f.ankY - f.kneeY || 1))
+      : f.whip + (f.wk - f.whip) * ((y - f.hipY) / (f.kneeY - f.hipY || 1));
+  /** A band across the limb, top row to bottom row, following the taper. */
+  const band = (y0: number, y1: number, k: number): void => {
+    const a = halfAt(y0) * k;
+    const b = halfAt(y1) * k;
+    ctx.beginPath();
+    ctx.moveTo(f.cx - a, y0);
+    ctx.lineTo(f.cx + a, y0);
+    ctx.lineTo(f.cx + b, y1);
+    ctx.lineTo(f.cx - b, y1);
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  if (st.hock) {
+    // Hare-fur hocks: a ragged tuft off the BACK of the ankle, the
+    // spring made visible. Three long straight flicks off the joint
+    // read as an INSECT'S leg at any size — the tuft is a lobed mass
+    // that hugs the ankle, with two short hairs breaking its edge.
+    const c = shade(st.hock.color, f.dim);
+    const ax = f.cx + o * f.wa * 0.85;
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.moveTo(ax - o * 0.012, f.ankY - 0.075);
+    ctx.quadraticCurveTo(ax + o * 0.052, f.ankY - 0.07, ax + o * 0.042, f.ankY - 0.036);
+    ctx.quadraticCurveTo(ax + o * 0.07, f.ankY - 0.022, ax + o * 0.036, f.ankY - 0.006);
+    ctx.quadraticCurveTo(ax + o * 0.05, f.ankY + 0.014, ax - o * 0.008, f.ankY + 0.012);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = c;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 0.014;
+    for (const [dx, dy] of [[0.058, -0.052], [0.062, 0.004]] as const) {
+      ctx.beginPath();
+      ctx.moveTo(ax + o * 0.01, f.ankY + dy * 0.4 - 0.02);
+      ctx.lineTo(ax + o * dx, f.ankY + dy);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+  if (st.calffin) {
+    // One small swept blade off the outer calf, back-raked, with a
+    // bright leading edge — sharp at any distance.
+    const by = shinAt(0.32);
+    const bx = f.cx + o * halfAt(by) * 0.88;
+    ctx.fillStyle = shade(st.calffin.color, f.dim);
+    ctx.beginPath();
+    ctx.moveTo(bx, by - 0.03);
+    ctx.lineTo(bx + o * 0.095, by + 0.05);
+    ctx.lineTo(bx, by + 0.085);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = shade(st.calffin.edge, f.dim);
+    ctx.lineWidth = 0.014;
+    ctx.beginPath();
+    ctx.moveTo(bx, by - 0.03);
+    ctx.lineTo(bx + o * 0.095, by + 0.05);
+    ctx.stroke();
+  }
+  if (st.wader) {
+    // Waxed waders: the lower shin recolored to a hard waterline
+    // break, one lit rim where the wax catches.
+    const y0 = shinAt(0.42);
+    ctx.fillStyle = shade(st.wader.color, f.dim);
+    band(y0, f.ankY, 0.97);
+    ctx.fillStyle = shade(st.wader.rim, f.dim);
+    band(y0 - 0.014, y0, 0.99);
+  }
+  if (st.sock) {
+    // The fox's socks: dark from mid-shin down, tied off with an
+    // ember knot and one loose end.
+    const y0 = shinAt(0.5);
+    ctx.fillStyle = shade(st.sock.color, f.dim);
+    band(y0, f.ankY, 0.97);
+    if (st.sock.tie) {
+      const tx = f.cx + o * halfAt(y0) * 0.62;
+      ctx.fillStyle = shade(st.sock.tie, f.dim);
+      ctx.beginPath();
+      ctx.arc(tx, y0, 0.024, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = shade(st.sock.tie, f.dim);
+      ctx.lineWidth = 0.016;
+      ctx.beginPath();
+      ctx.moveTo(tx, y0);
+      ctx.lineTo(tx + o * 0.024, y0 + 0.06);
+      ctx.stroke();
+    }
+  }
+  if (st.shinlace) {
+    // Snare-cord lacing: three X crossings climbing the shin.
+    ctx.strokeStyle = shade(st.shinlace.color, f.dim);
+    ctx.lineWidth = 0.017;
+    for (const k of [0.2, 0.48, 0.76]) {
+      const y = shinAt(k);
+      const w = halfAt(y) * 0.8;
+      ctx.beginPath();
+      ctx.moveTo(f.cx - w, y - 0.035);
+      ctx.lineTo(f.cx + w, y + 0.035);
+      ctx.moveTo(f.cx - w, y + 0.035);
+      ctx.lineTo(f.cx + w, y - 0.035);
+      ctx.stroke();
+    }
+  }
+  if (st.mossbind) {
+    // Moss-bound bands: two green wraps on the shin, tufts spilling
+    // off each band's lower edge.
+    ctx.strokeStyle = shade(st.mossbind.color, f.dim);
+    ctx.lineWidth = 0.038;
+    for (const k of [0.3, 0.62]) {
+      const y = shinAt(k);
+      const w = halfAt(y) * 0.95;
+      ctx.beginPath();
+      ctx.moveTo(f.cx - w, y - 0.014);
+      ctx.lineTo(f.cx + w, y + 0.014);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = shade(st.mossbind.tuft, f.dim);
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 0.016;
+    for (const [k, dx] of [[0.34, 0.07], [0.66, -0.065], [0.64, 0.08]] as const) {
+      const y = shinAt(k);
+      ctx.beginPath();
+      ctx.moveTo(f.cx + dx * 0.4, y);
+      ctx.lineTo(f.cx + dx, y + 0.05);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+  if (st.furknee) {
+    // Winter fur bursting over the knee: a LOW lumpy cap with guard
+    // hairs flicking down and out. A domed cap tall enough to be a
+    // half-circle reads as a lamp bolted to the leg — the fur is
+    // wider than it is tall, and its lower edge is broken by hair.
+    const c = shade(st.furknee.color, f.dim);
+    const kw = halfAt(f.kneeY);
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.moveTo(f.cx - kw * 1.06, f.kneeY + 0.014);
+    ctx.quadraticCurveTo(f.cx - kw * 1.1, f.kneeY - 0.05, f.cx - kw * 0.38, f.kneeY - 0.042);
+    ctx.quadraticCurveTo(f.cx - kw * 0.05, f.kneeY - 0.078, f.cx + kw * 0.46, f.kneeY - 0.04);
+    ctx.quadraticCurveTo(f.cx + kw * 1.12, f.kneeY - 0.046, f.cx + kw * 1.06, f.kneeY + 0.018);
+    ctx.quadraticCurveTo(f.cx + kw * 0.5, f.kneeY + 0.05, f.cx + kw * 0.06, f.kneeY + 0.03);
+    ctx.quadraticCurveTo(f.cx - kw * 0.55, f.kneeY + 0.052, f.cx - kw * 1.06, f.kneeY + 0.014);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = c;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 0.015;
+    for (const [dx, dy] of [[-1.0, 0.07], [-0.3, 0.082], [0.42, 0.078], [1.02, 0.062]] as const) {
+      ctx.beginPath();
+      ctx.moveTo(f.cx + dx * kw * 0.55, f.kneeY + 0.012);
+      ctx.lineTo(f.cx + dx * kw, f.kneeY + dy);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+  if (st.scalerows) {
+    // THE SCALED THIGH: three lapped scutes riding the thigh, hip to
+    // knee, painted bottom-up so uppers lap lowers — the plastron's
+    // language carried down, in the legs' muted register.
+    const plate = st.scalerows.plate;
+    for (const [bi, k] of [[2, 0.82], [1, 0.55], [0, 0.28]] as const) {
+      const y = thighAt(k);
+      // Three scutes of nearly ONE width, each riding the limb's own
+      // taper: stepping them in hard (the world's thin-limb figure)
+      // stacks a cone on a broad product-shot thigh, and a cone is
+      // not a scale. The lap reads from the shadow line, not the step.
+      const w = halfAt(y) * (0.84 - bi * 0.03);
+      const h = 0.05;
+      ctx.fillStyle = shade(plate, f.dim - 2 - bi * 13);
+      ctx.beginPath();
+      ctx.moveTo(f.cx - w, y - h * 0.5);
+      ctx.lineTo(f.cx + w, y - h * 0.5);
+      ctx.lineTo(f.cx + w * 0.92, y + h * 0.3);
+      ctx.quadraticCurveTo(f.cx, y + h * 0.8, f.cx - w * 0.92, y + h * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      // The under-lap shadow line — never a bright rim.
+      ctx.strokeStyle = shade(plate, f.dim - 30);
+      ctx.lineWidth = 0.013;
+      ctx.beginPath();
+      ctx.moveTo(f.cx - w * 0.92, y + h * 0.32);
+      ctx.quadraticCurveTo(f.cx, y + h * 0.82, f.cx + w * 0.92, y + h * 0.32);
+      ctx.stroke();
+      // One keel tick per band — the forge seam continued.
+      ctx.fillStyle = shade(plate, f.dim - 18);
+      ctx.fillRect(f.cx - 0.008, y - h * 0.4, 0.016, h * 0.66);
+    }
+  }
+  if (st.shadewrap) {
+    // The veil's language carried to the ground: three hard turns of
+    // dark cloth wound down the shin, edges on the diagonal.
+    ctx.strokeStyle = shade(st.shadewrap.color, f.dim);
+    ctx.lineWidth = 0.026;
+    for (const k of [0.28, 0.52, 0.76]) {
+      const y = shinAt(k);
+      const w = halfAt(y) * 0.98;
+      ctx.beginPath();
+      ctx.moveTo(f.cx - w, y - 0.012);
+      ctx.lineTo(f.cx + w, y + 0.01);
+      ctx.stroke();
+    }
+    // The tie: one loose end off the outward ankle — on both legs it
+    // reads as uniform print, on one it reads as gear.
+    if (f.near && st.shadewrap.tie) {
+      ctx.strokeStyle = shade(st.shadewrap.tie, f.dim);
+      ctx.lineWidth = 0.012;
+      ctx.beginPath();
+      ctx.moveTo(f.cx + o * f.wa * 0.5, f.ankY - 0.05);
+      ctx.lineTo(f.cx + o * f.wa * 1.25, f.ankY - 0.02);
+      ctx.stroke();
+    }
+  }
+  // One-sided words dress a single leg — gear on both thighs reads as
+  // uniform print, on one it reads as kit.
+  if (!f.near) return;
+  if (st.thighsheath) {
+    // The Knife's spare, flat to the outer thigh. Muted register: the
+    // pommel is dulled brass, and no glint lives at the leg.
+    const y = thighAt(0.42);
+    const x = f.cx + o * halfAt(y) * 0.34;
+    ctx.fillStyle = shade(st.thighsheath.sheath, f.dim);
+    ctx.beginPath();
+    chamferRect(ctx, x - 0.039, y - 0.082, 0.078, 0.17, 0.016);
+    ctx.fill();
+    ctx.strokeStyle = shade(st.thighsheath.sheath, f.dim - 22);
+    ctx.lineWidth = 0.013;
+    for (const dy of [-0.04, 0.034]) {
+      ctx.beginPath();
+      ctx.moveTo(x - 0.039, y + dy);
+      ctx.lineTo(x + 0.039, y + dy);
+      ctx.stroke();
+    }
+    ctx.fillStyle = shade(st.thighsheath.sheath, f.dim - 32);
+    ctx.fillRect(x - 0.012, y - 0.104, 0.024, 0.026);
+    ctx.fillStyle = shade(st.thighsheath.pommel, f.dim - 14);
+    ctx.beginPath();
+    ctx.arc(x, y - 0.114, 0.019, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (st.pickroll) {
+    // The thief's tool roll strapped flat to the thigh, pick ends
+    // ticking out of the top.
+    const y = thighAt(0.5);
+    const x = f.cx + o * halfAt(y) * 0.28;
+    ctx.fillStyle = shade(st.pickroll.color, f.dim);
+    ctx.beginPath();
+    chamferRect(ctx, x - 0.05, y - 0.085, 0.1, 0.17, 0.019);
+    ctx.fill();
+    ctx.strokeStyle = shade(st.pickroll.color, f.dim - 24);
+    ctx.lineWidth = 0.015;
+    for (const dy of [-0.044, 0.038]) {
+      ctx.beginPath();
+      ctx.moveTo(x - 0.05, y + dy);
+      ctx.lineTo(x + 0.05, y + dy);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = shade(st.pickroll.glint ?? shade(st.pickroll.color, 34), f.dim);
+    ctx.lineWidth = 0.016;
+    for (const dx of [-0.025, 0, 0.025]) {
+      ctx.beginPath();
+      ctx.moveTo(x + dx, y - 0.085);
+      ctx.lineTo(x + dx, y - 0.116);
+      ctx.stroke();
+    }
+  }
+  if (st.garter) {
+    // The assassin's garter: one strap high on the thigh, a sheathed
+    // blade hanging off its outward edge.
+    const y = thighAt(0.34);
+    ctx.strokeStyle = shade(st.garter.color, f.dim);
+    ctx.lineWidth = 0.032;
+    ctx.beginPath();
+    ctx.moveTo(f.cx - halfAt(y) * 0.95, y - 0.012);
+    ctx.lineTo(f.cx + halfAt(y) * 0.95, y + 0.012);
+    ctx.stroke();
+    if (st.garter.blade) {
+      const bx = f.cx + o * halfAt(y) * 0.62;
+      ctx.fillStyle = shade(st.garter.color, f.dim - 18);
+      ctx.fillRect(bx - 0.019, y, 0.038, 0.098);
+      ctx.fillStyle = shade(st.garter.blade, f.dim);
+      ctx.beginPath();
+      ctx.moveTo(bx - 0.013, y + 0.098);
+      ctx.lineTo(bx + 0.013, y + 0.098);
+      ctx.lineTo(bx, y + 0.15);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  if (st.roadpatch) {
+    // The road's mending: a squared patch sewn slightly askew on the
+    // thigh, stitch ticks at its corners.
+    const y = thighAt(0.55);
+    ctx.save();
+    ctx.translate(f.cx, y);
+    ctx.rotate(0.16);
+    ctx.fillStyle = shade(st.roadpatch.color, f.dim);
+    ctx.fillRect(-0.048, -0.048, 0.096, 0.096);
+    ctx.strokeStyle = shade(st.roadpatch.color, f.dim - 26);
+    ctx.lineWidth = 0.012;
+    for (const [x0, y0, x1, y1] of [
+      [-0.048, -0.019, -0.032, -0.019],
+      [0.032, 0.013, 0.048, 0.013],
+      [-0.013, -0.048, -0.013, -0.032],
+      [0.01, 0.032, 0.01, 0.048],
+    ] as const) {
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+/** Does this style carry any of the one-owner leg words? */
+function hasLegWord(st: LegStyle): boolean {
+  return (
+    st.hock !== undefined || st.wader !== undefined || st.calffin !== undefined ||
+    st.pickroll !== undefined || st.shadewrap !== undefined || st.thighsheath !== undefined ||
+    st.shinlace !== undefined || st.sock !== undefined || st.roadpatch !== undefined ||
+    st.furknee !== undefined || st.garter !== undefined || st.scalerows !== undefined ||
+    st.mossbind !== undefined
+  );
+}
+
+/** The soft leg's knee dressing: a plate cop, or bound courses. */
+function kneeDressing(
+  ctx: CanvasRenderingContext2D,
+  st: LegStyle,
+  f: LegFrame,
+  thigh: string,
+  shin: string,
+): void {
+  const w = f.wk;
+  if (st.knee === 'plate') {
+    const kc = st.kneeColor ?? shade(shin, 22);
+    ctx.fillStyle = shade(kc, f.dim);
+    ctx.beginPath();
+    ctx.ellipse(f.cx, f.kneeY, w * 0.8, 0.055, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = shade(kc, f.dim + 28);
+    ctx.beginPath();
+    ctx.ellipse(f.cx - w * 0.22, f.kneeY - 0.015, w * 0.32, 0.02, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (st.knee === 'wrap' || st.kind === 'wraps') {
+    // Binding courses climbing the shin, ends tucked.
+    ctx.strokeStyle = shade(st.kneeColor ?? shade(thigh, 18), f.dim);
+    ctx.lineWidth = 0.03;
+    for (const k of [0.08, 0.34, 0.61]) {
+      const y = f.kneeY + (f.ankY - f.kneeY) * k;
+      ctx.beginPath();
+      ctx.moveTo(f.cx - w * 1.03, y - 0.015);
+      ctx.lineTo(f.cx + w * 1.03, y + 0.02);
+      ctx.stroke();
+    }
+  }
+}
+
 export function legsIconPainter(st: LegStyle, fallback: string, id = ''): Painter {
   const thigh = st.thigh ?? fallback;
   const shin = st.shin ?? (st.kind === 'greaves' ? shade(thigh, 6) : shade(thigh, -8));
-  // Robe skirts have no LegStyle word of their own (the robe owns the
-  // drape in world) — the icon tells the truth by silhouette: an
-  // A-line skirt, never a pair of trousers.
-  const isSkirt = /skirts$/.test(id);
+  // A robe's skirt has no kind of its own (the robe owns the drape in
+  // world), so the piece is named by its id — the icon tells the truth
+  // by silhouette: an A-line skirt, never a pair of trousers. The id
+  // test matches the DYE LOTS too: it used to be anchored at the end
+  // of the string, so every colorway skirt in the wardrobe — eighteen
+  // of them — drew as trousers while its undyed twin drew a skirt.
+  const isSkirt = /skirts(_|$)/.test(id);
   if (isSkirt) {
+    // A skirt that declares a knee or carries a leg word has its hem
+    // CUT SHORT and its legs on show — the wright kneels at his work,
+    // and a word nobody can see is a word nobody spent.
+    const showLeg = (st.knee !== undefined && st.knee !== 'none') || hasLegWord(st);
     return (ctx) => {
       ctx.translate(0.5, 0.5);
       const topY = -0.38;
-      const hemY = 0.4;
+      const hemY = showLeg ? 0.02 : 0.4;
       const waistW = 0.34;
-      const hemW = 0.66;
+      const hemW = showLeg ? 0.5 : 0.66;
+      const goreK = hemW / 0.66;
+      // The legs under a short hem, laid down first so the skirt laps
+      // over them: shin columns with the knee dressed above.
+      if (showLeg) {
+        for (const side of [-1, 1] as const) {
+          const cx = side * 0.135;
+          const dim = side > 0 ? -12 : 0;
+          const f: LegFrame = {
+            cx, out: side, hipY: hemY - 0.06, kneeY: 0.13, ankY: 0.41,
+            whip: 0.105, wk: 0.1, wa: 0.108, dim, near: side < 0,
+          };
+          ctx.fillStyle = shade(shin, dim);
+          ctx.beginPath();
+          ctx.moveTo(cx - f.whip, f.hipY);
+          ctx.lineTo(cx + f.whip, f.hipY);
+          ctx.lineTo(cx + f.wa, f.ankY);
+          ctx.lineTo(cx - f.wa, f.ankY);
+          ctx.closePath();
+          ctx.fill();
+          if (side < 0) {
+            ctx.fillStyle = shade(shin, 14);
+            ctx.fillRect(cx - f.whip, f.hipY, 0.03, f.ankY - f.hipY);
+          }
+          ctx.fillStyle = shade(shin, dim - 22);
+          ctx.fillRect(cx - f.wa, f.ankY - 0.045, f.wa * 2, 0.045);
+          kneeDressing(ctx, st, f, thigh, shin);
+          legWords(ctx, st, f);
+        }
+      }
       // The skirt panel, flaring waist to hem.
       ctx.fillStyle = thigh;
       ctx.beginPath();
@@ -224,8 +666,8 @@ export function legsIconPainter(st: LegStyle, fallback: string, id = ''): Painte
         ctx.beginPath();
         ctx.moveTo(x0 * 0.42, topY + 0.12);
         ctx.lineTo(x1 * 0.42, topY + 0.12);
-        ctx.lineTo(x1, hemY);
-        ctx.lineTo(x0, hemY);
+        ctx.lineTo(x1 * goreK, hemY);
+        ctx.lineTo(x0 * goreK, hemY);
         ctx.closePath();
         ctx.fill();
       }
@@ -269,19 +711,32 @@ export function legsIconPainter(st: LegStyle, fallback: string, id = ''): Painte
         ctx.moveTo(cx, -0.3);
         ctx.lineTo(cx, -0.12);
         ctx.stroke();
-        // Knee cop: a domed plate with side wings.
-        ctx.fillStyle = shade(kneeCol, dim - 10);
-        ctx.beginPath();
-        ctx.ellipse(cx, -0.045, w * 1.05, 0.075, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = shade(kneeCol, dim);
-        ctx.beginPath();
-        ctx.ellipse(cx, -0.05, w * 0.78, 0.06, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = shade(kneeCol, dim + 30);
-        ctx.beginPath();
-        ctx.ellipse(cx - w * 0.24, -0.068, w * 0.3, 0.024, -0.25, 0, Math.PI * 2);
-        ctx.fill();
+        // Knee cop: a domed plate with side wings. A harness that
+        // says 'wrap' gets cord courses instead, and one that says
+        // 'none' shows the bare joint — the word is the smith's.
+        if (st.knee === 'wrap') {
+          ctx.strokeStyle = shade(kneeCol, dim);
+          ctx.lineWidth = 0.03;
+          for (const y of [-0.075, -0.02]) {
+            ctx.beginPath();
+            ctx.moveTo(cx - w * 0.95, y - 0.012);
+            ctx.lineTo(cx + w * 0.95, y + 0.012);
+            ctx.stroke();
+          }
+        } else if (st.knee !== 'none') {
+          ctx.fillStyle = shade(kneeCol, dim - 10);
+          ctx.beginPath();
+          ctx.ellipse(cx, -0.045, w * 1.05, 0.075, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(kneeCol, dim);
+          ctx.beginPath();
+          ctx.ellipse(cx, -0.05, w * 0.78, 0.06, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(kneeCol, dim + 30);
+          ctx.beginPath();
+          ctx.ellipse(cx - w * 0.24, -0.068, w * 0.3, 0.024, -0.25, 0, Math.PI * 2);
+          ctx.fill();
+        }
         // Shin greave: center ridge, calf swell, ankle flare.
         ctx.fillStyle = shade(shin, dim);
         ctx.beginPath();
@@ -319,6 +774,12 @@ export function legsIconPainter(st: LegStyle, fallback: string, id = ''): Painte
           ctx.arc(cx + dx, -0.32, 0.016, 0, Math.PI * 2);
           ctx.fill();
         }
+        // The harness wears its house's own words too — the drake's
+        // scutes lap the cuisse the same way they lap a hide thigh.
+        legWords(ctx, st, {
+          cx, out: side, hipY: -0.34, kneeY: -0.05, ankY: 0.395,
+          whip: w, wk: w * 0.82, wa: w * 0.92, dim, near: side < 0,
+        });
       }
       // The belt spanning both cuisses.
       ctx.fillStyle = shade(thigh, -26);
@@ -330,24 +791,35 @@ export function legsIconPainter(st: LegStyle, fallback: string, id = ''): Painte
     };
   }
   return (ctx) => {
-    // Hanging trousers/wraps: a waist yoke and two draping legs with
-    // real cloth reads — creases, a knee break, hem cuffs with a
-    // slight outward kick.
+    // Hanging trousers or wound wraps: a waist yoke and two legs.
+    // THE CLOTH HANGS, THE LEATHER IS WOUND — 'pants' fall in soft
+    // folds and kick out at the cuff; 'wraps' are bound onto the leg,
+    // tapered to the ankle, with the lapped seam and its lashes down
+    // the outer edge. Below the belt that cut is the whole tell
+    // between the cloth road and the leather road, and it used to be
+    // one drawing for both.
     ctx.translate(0.5, 0.5);
+    const bound = st.kind === 'wraps';
     const topY = -0.4;
     const hemY = 0.41;
     const legW = 0.16;
+    const hemK = bound ? 0.76 : 0.95;
     for (const side of [-1, 1] as const) {
       const cx = side * 0.185;
       const dim = side > 0 ? -12 : 0;
-      // One leg, hip to hem: tapers to the knee, kicks at the hem.
+      const f: LegFrame = {
+        cx, out: side, hipY: topY + 0.08, kneeY: 0.075, ankY: hemY,
+        whip: legW, wk: legW * 0.82, wa: legW * hemK, dim, near: side < 0,
+      };
+      // One leg, hip to hem: tapers to the knee, then kicks (cloth)
+      // or keeps tapering (leather).
       ctx.fillStyle = shade(thigh, dim);
       ctx.beginPath();
       ctx.moveTo(cx - legW, topY + 0.08);
       ctx.lineTo(cx + legW, topY + 0.08);
       ctx.lineTo(cx + legW * 0.82, 0.04);
-      ctx.lineTo(cx + legW * 0.95, hemY);
-      ctx.lineTo(cx - legW * 0.95, hemY);
+      ctx.lineTo(cx + legW * hemK, hemY);
+      ctx.lineTo(cx - legW * hemK, hemY);
       ctx.lineTo(cx - legW * 0.82, 0.04);
       ctx.closePath();
       ctx.fill();
@@ -356,20 +828,41 @@ export function legsIconPainter(st: LegStyle, fallback: string, id = ''): Painte
       ctx.beginPath();
       ctx.moveTo(cx - legW * 0.82, 0.05);
       ctx.lineTo(cx + legW * 0.82, 0.05);
-      ctx.lineTo(cx + legW * 0.95, hemY);
-      ctx.lineTo(cx - legW * 0.95, hemY);
+      ctx.lineTo(cx + legW * hemK, hemY);
+      ctx.lineTo(cx - legW * hemK, hemY);
       ctx.closePath();
       ctx.fill();
-      // Drape creases: two falling folds + the knee break.
-      ctx.strokeStyle = shade(thigh, dim - 18);
-      ctx.lineWidth = 0.016;
-      ctx.beginPath();
-      ctx.moveTo(cx - legW * 0.35, topY + 0.12);
-      ctx.quadraticCurveTo(cx - legW * 0.45, -0.1, cx - legW * 0.3, 0.02);
-      ctx.moveTo(cx + legW * 0.4, topY + 0.14);
-      ctx.quadraticCurveTo(cx + legW * 0.3, -0.12, cx + legW * 0.42, 0.0);
-      ctx.stroke();
+      if (bound) {
+        // The lapped seam down the outer edge, lashed shut three
+        // times — leather closed onto the leg, not falling off it.
+        ctx.strokeStyle = shade(thigh, dim - 22);
+        ctx.lineWidth = 0.016;
+        ctx.beginPath();
+        ctx.moveTo(cx + side * legW * 0.7, topY + 0.1);
+        ctx.lineTo(cx + side * legW * 0.58, 0.04);
+        ctx.lineTo(cx + side * legW * hemK * 0.72, hemY - 0.02);
+        ctx.stroke();
+        ctx.lineWidth = 0.013;
+        for (const [ty, tw] of [[-0.24, 0.66], [-0.12, 0.62], [0.0, 0.6]] as const) {
+          ctx.beginPath();
+          ctx.moveTo(cx + side * legW * (tw - 0.16), ty - 0.012);
+          ctx.lineTo(cx + side * legW * (tw + 0.2), ty + 0.012);
+          ctx.stroke();
+        }
+      } else {
+        // Drape creases: two falling folds — cloth hangs off the hip.
+        ctx.strokeStyle = shade(thigh, dim - 18);
+        ctx.lineWidth = 0.016;
+        ctx.beginPath();
+        ctx.moveTo(cx - legW * 0.35, topY + 0.12);
+        ctx.quadraticCurveTo(cx - legW * 0.45, -0.1, cx - legW * 0.3, 0.02);
+        ctx.moveTo(cx + legW * 0.4, topY + 0.14);
+        ctx.quadraticCurveTo(cx + legW * 0.3, -0.12, cx + legW * 0.42, 0.0);
+        ctx.stroke();
+      }
+      // The knee break, the one crease every worn leg carries.
       ctx.strokeStyle = shade(shin, dim - 16);
+      ctx.lineWidth = 0.016;
       ctx.beginPath();
       ctx.moveTo(cx - legW * 0.5, 0.16);
       ctx.quadraticCurveTo(cx, 0.2, cx + legW * 0.5, 0.16);
@@ -380,36 +873,24 @@ export function legsIconPainter(st: LegStyle, fallback: string, id = ''): Painte
         ctx.beginPath();
         ctx.moveTo(cx - legW * 0.95, topY + 0.09);
         ctx.lineTo(cx - legW * 0.62, topY + 0.09);
-        ctx.lineTo(cx - legW * 0.52, hemY - 0.01);
-        ctx.lineTo(cx - legW * 0.88, hemY - 0.01);
+        ctx.lineTo(cx - legW * hemK * 0.55, hemY - 0.01);
+        ctx.lineTo(cx - legW * hemK * 0.93, hemY - 0.01);
         ctx.closePath();
         ctx.fill();
       }
-      // Hem cuff.
+      // Hem cuff — turned over on cloth, lashed shut on leather.
       ctx.fillStyle = shade(shin, dim - 22);
-      ctx.fillRect(cx - legW * 0.95, hemY - 0.045, legW * 1.9, 0.045);
-      // Knee treatment.
-      if (st.knee === 'plate') {
-        const kc = st.kneeColor ?? shade(shin, 22);
-        ctx.fillStyle = shade(kc, dim);
+      ctx.fillRect(cx - legW * hemK, hemY - 0.045, legW * hemK * 2, 0.045);
+      if (bound) {
+        ctx.strokeStyle = shade(shin, dim + 16);
+        ctx.lineWidth = 0.012;
         ctx.beginPath();
-        ctx.ellipse(cx, 0.075, legW * 0.66, 0.055, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = shade(kc, dim + 28);
-        ctx.beginPath();
-        ctx.ellipse(cx - legW * 0.18, 0.06, legW * 0.26, 0.02, -0.3, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (st.knee === 'wrap' || st.kind === 'wraps') {
-        // Binding courses climbing the shin, ends tucked.
-        ctx.strokeStyle = shade(st.kneeColor ?? shade(thigh, 18), dim);
-        ctx.lineWidth = 0.03;
-        for (const y of [0.1, 0.19, 0.28]) {
-          ctx.beginPath();
-          ctx.moveTo(cx - legW * 0.85, y - 0.015);
-          ctx.lineTo(cx + legW * 0.85, y + 0.02);
-          ctx.stroke();
-        }
+        ctx.moveTo(cx - legW * hemK * 0.7, hemY - 0.036);
+        ctx.lineTo(cx + legW * hemK * 0.7, hemY - 0.012);
+        ctx.stroke();
       }
+      kneeDressing(ctx, st, f, thigh, shin);
+      legWords(ctx, st, f);
     }
     // The waist yoke over both hips, belt stitch lit.
     ctx.fillStyle = shade(thigh, -20);
