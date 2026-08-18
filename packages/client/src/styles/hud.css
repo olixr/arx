@@ -256,17 +256,31 @@
    whispers: settled land dims it to a murmur, and a band crossing
    breathes exactly once (transform/opacity, gated on no-ui-motion). */
 
-#danger-gauge {
+/* THE NORTHWEST COLUMN — the top-left corner is ONE lane, not a pile:
+   the land's word first (the danger gauge), the friend at heel under
+   it (the companion crest). Rows are flow children, so whichever one
+   stands down collapses its slot instead of leaving a hole — and two
+   chips can never overlap again (the Ashcap-over-the-banner defect). */
+#hud-northwest {
   position: fixed;
   top: 0.75rem;
   left: 0.875rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  z-index: 40;
+  pointer-events: none;
+}
+
+#danger-gauge {
+  order: 0;
   padding: 0.4375rem 0.625rem 0.375rem;
   background: rgba(13, 10, 6, 0.66);
   border: 0.0625rem solid rgba(222, 190, 128, 0.16);
   border-radius: var(--r-chip);
   box-shadow: 0 0.125rem 0.3125rem rgba(0, 0, 0, 0.35);
   pointer-events: none;
-  z-index: 40;
 }
 
 #danger-gauge.is-settled {

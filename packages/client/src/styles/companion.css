@@ -13,9 +13,9 @@
    is still the pat (THE QUIET HEEL). */
 
 #companion-plaque {
-  position: absolute;
-  left: 0.875rem;
-  top: 0.75rem;
+  /* Second row of THE NORTHWEST COLUMN (hud.css): the corner seat
+     belongs to the land's word; the friend rides just under it. */
+  order: 1;
   display: flex;
   align-items: center;
   gap: 0.5rem;

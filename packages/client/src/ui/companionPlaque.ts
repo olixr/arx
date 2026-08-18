@@ -4,6 +4,7 @@ import type { ClientGame } from '../game/clientGame.js';
 import { itemIconUrl } from '../render/icons.js';
 import { petPlaquePortraitUrl } from '../render/petPortrait.js';
 import { ringGauge, type RingGauge } from './kit/ring.js';
+import { hudNorthwest } from './dangerGauge.js';
 
 /**
  * THE QUIET CREST — the friend at your heel, worn small in the top-left
@@ -84,7 +85,9 @@ export class CompanionPlaque {
     medal.append(this.face, this.ring.root, this.offer);
 
     this.root.append(medal, card);
-    document.getElementById('hud')!.appendChild(this.root);
+    // Second row of THE NORTHWEST COLUMN — never the bare corner
+    // again (the crest stamped itself over the danger gauge there).
+    hudNorthwest().appendChild(this.root);
   }
 
   /** Called once per frame — cheap, writes only on change. */

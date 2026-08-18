@@ -40,6 +40,22 @@ const TIER_INK = [
   'rgb(255, 92, 64)',
 ];
 
+/**
+ * THE NORTHWEST COLUMN's one door: the top-left corner is a single
+ * flex lane (danger gauge over companion crest — CSS `order` seats
+ * the rows, so construction order never matters). Idempotent: the
+ * first chip to mount builds the column, the rest join it.
+ */
+export function hudNorthwest(): HTMLElement {
+  let nw = document.getElementById('hud-northwest');
+  if (!nw) {
+    nw = document.createElement('div');
+    nw.id = 'hud-northwest';
+    document.getElementById('hud')!.appendChild(nw);
+  }
+  return nw;
+}
+
 export class DangerGauge {
   private readonly el: HTMLElement;
   private readonly pips: HTMLElement[] = [];
@@ -72,7 +88,7 @@ export class DangerGauge {
     line.append(this.word, this.band);
     this.el.appendChild(line);
 
-    document.getElementById('hud')!.appendChild(this.el);
+    hudNorthwest().appendChild(this.el);
   }
 
   /**
