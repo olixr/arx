@@ -39,16 +39,27 @@ const PAN_MAX = 0.8;
  * re-measure when samples are added or replaced).
  *
  * Wired today: `level_up` (the skill herald), `poi_discovery` and
- * `stab_calm_1` (the discovery ceremony's voices), the three
- * `stab_dramatic` dread stings (rotating: deep-night dangerous wilds
- * + hostile-camp discoveries), the `day_to_night`/`night_to_day`
- * seam stingers (THE SKY'S SEAM in the main loop), and the five
+ * `stab_calm_1` (the discovery ceremony's voices), `poi_cleared`
+ * (THE CHAMPION'S MARK banner), the three `stab_dramatic` dread
+ * stings (rotating: deep-night dangerous wilds + hostile-camp
+ * discoveries), the three `ambient_hit` calm piano stabs (THE
+ * AMBIENT HITS scheduler — they fill the music player's long
+ * quiets), the `day_to_night`/`night_to_day` seam stingers (THE
+ * SKY'S SEAM in the main loop), `friend_alert` (the social ledger's
+ * ping), the henyard pair (`chicken_cluck` + the `chicken_chatter`
+ * phrase table, spatial via THE HENYARD SPEAKS), and the five
  * `step_grass` field recordings (footstep('grass') round-robin).
  * The rest sit ready for future moments — see each entry's note.
+ *
+ * Trims above 1 are honest normalization too: several recordings
+ * arrive mastered soft (owls, piano stabs) and are lifted to the
+ * −17.8 reference. Every boost was peak-checked against its file's
+ * true peak — with SAMPLE_LEVEL's seat no boosted sample can clip.
  */
 const SAMPLE_TRIM = {
-  level_up: 0.6, // −13.4 — the skill level-up herald (wired: levelUp())
-  poi_discovery: 0.67, // −14.3 — a wild site found (wired: onDiscovery)
+  level_up: 0.6, // −13.3 — the skill level-up herald (wired: levelUp(); recut 08-17)
+  poi_discovery: 0.9, // −16.9 — a wild site found (wired: onDiscovery; recut 08-17, 8.2s ceremony)
+  poi_cleared: 1.2, // −19.4 — THE CHAMPION'S MARK (wired: onPoiCleared)
   alert_1: 0.99, // −17.7 — a general attention chime, brighter
   alert_2: 0.69, // −14.6 — a general attention chime, softer
   notification_success: 0.72, // −14.9 — an affirmative notice landing
@@ -57,8 +68,33 @@ const SAMPLE_TRIM = {
   stab_dramatic_1: 0.72, // −14.9 — dread stings (wired: deep-night wilds + hostile-camp finds, rotating)
   stab_dramatic_2: 0.67, // −14.3
   stab_dramatic_3: 0.84, // −16.3
-  day_to_night: 0.57, // −12.9 — the dusk stinger (wired: THE SKY'S SEAM)
-  night_to_day: 1, // −17.8 — the answering dawn stinger (wired)
+  // THE AMBIENT HITS — soft calm stabs dealt on no beat the player
+  // can predict, only while the track player rests (wired: main loop).
+  ambient_hit_1: 0.88, // −16.7 — a warm ambient swell
+  ambient_hit_2: 1.51, // −21.4 — a spare piano stab
+  ambient_hit_3: 3.24, // −28.0 — the softest piano figure (peak −12.3 dBFS — boost-safe)
+  day_to_night: 0.73, // −15.1 — the dusk stinger (wired: THE SKY'S SEAM; recut 08-17)
+  night_to_day: 0.66, // −14.2 — the answering dawn stinger (wired; recut 08-17)
+  friend_alert: 0.58, // −13.2 — the social ledger's ping (wired: onFriendEvent)
+  // THE HENYARD SPEAKS: one clean cluck plus a 41s field bed of hen
+  // chatter dealt as phrases (CHICKEN_PHRASES) — spatial, ambient.
+  chicken_cluck: 0.94, // −17.3 (wired: chicken())
+  chicken_chatter: 1.76, // −22.7 (wired: chicken() phrase windows)
+  // Cached for future moments — reviewed, trimmed, unwired:
+  broadcast_fanfare: 0.62, // −13.6 — a server-wide herald, when broadcasts exist
+  notify_soft_1: 1.1, // −18.6 — soft UI notices (mail, gentle nudges)
+  notify_soft_2: 1.16, // −19.1
+  notify_soft_3: 1.19, // −19.3
+  warn_soft_1: 1.12, // −18.8 — a soft caution, for warnings that aren't combat
+  whistle_alert_1: 2.21, // −24.7 — a summons whistle (peak −16.0 — boost-safe)
+  notify_bleep_1: 0.83, // −16.2 — a rounder notice bleep
+  teleport_whoosh: 0.9, // −16.9 — candidate for transport arts (blink/teleport)
+  thunder_rumble: 1.53, // −21.5 — awaits a weather system
+  water_splash: 2.2, // −25.8 (trim capped below the 2.51 norm: true peak −1.8 dBFS)
+  water_splash_big: 1.2, // −19.4 — a landmark plunge (big bodies, falls)
+  logo_reveal: 0.33, // −8.2 — the Arx mark's 10s reveal; awaits the login
+  // logo presentation (the autoplay law: it needs the gesture that
+  // ceremony will provide — never fire it on a silent page).
   // THE REAL STEP: five grass-step field recordings (Kenney.nl Impact
   // Sounds, CC0), mastered soft at the source (≈−29 dB mean, ±1 dB of
   // natural variation kept on purpose) — trims stay 1, the footstep
@@ -170,12 +206,20 @@ export class Sfx {
     // Warm the wired samples so their first firing is the recording.
     this.warmSample('level_up');
     this.warmSample('poi_discovery');
+    this.warmSample('poi_cleared');
     this.warmSample('stab_calm_1');
     this.warmSample('day_to_night');
     this.warmSample('night_to_day');
     this.warmSample('stab_dramatic_1');
     this.warmSample('stab_dramatic_2');
     this.warmSample('stab_dramatic_3');
+    // The ambient hits fire on a long fuse, but a cold first hit
+    // would silently skip its whole minute — warm all three.
+    this.warmSample('ambient_hit_1');
+    this.warmSample('ambient_hit_2');
+    this.warmSample('ambient_hit_3');
+    // Friend presence can ping right at login (the roster push).
+    this.warmSample('friend_alert');
     // The grass underfoot must be the recording from the first step.
     for (const s of GRASS_STEPS) this.warmSample(s);
   }
@@ -211,8 +255,12 @@ export class Sfx {
    * fall back to its synth voice — the shelf never delays a moment.
    * Flat by default (UI and self feedback); inside `spatial()` it
    * rides the emitter like every other voice.
+   *
+   * `win` plays only a window of the buffer (offset + duration in
+   * source seconds) under a short sin ramp at each edge, so a phrase
+   * dealt out of a longer field bed never starts or ends on a click.
    */
-  sample(name: SampleName, volume = 1, rate = 1): boolean {
+  sample(name: SampleName, volume = 1, rate = 1, win?: { at: number; dur: number }): boolean {
     const ctx = this.ctx;
     const out = this.dest ?? this.engine.sfx;
     if (!ctx || !out) return false;
@@ -227,10 +275,21 @@ export class Sfx {
     // from ever machine-gunning the identical waveform.
     src.playbackRate.value = rate;
     const gain = ctx.createGain();
-    gain.gain.value = SAMPLE_TRIM[name] * SAMPLE_LEVEL * volume;
+    const level = SAMPLE_TRIM[name] * SAMPLE_LEVEL * volume;
     src.connect(gain);
     gain.connect(out);
-    src.start();
+    if (win) {
+      const t0 = ctx.currentTime;
+      const heard = win.dur / rate; // window length at the played rate
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.linearRampToValueAtTime(level, t0 + 0.015);
+      gain.gain.setValueAtTime(level, t0 + Math.max(0.015, heard - 0.06));
+      gain.gain.linearRampToValueAtTime(0.0001, t0 + heard);
+      src.start(t0, win.at, win.dur);
+    } else {
+      gain.gain.value = level;
+      src.start();
+    }
     return true;
   }
 
@@ -1116,4 +1175,50 @@ export class Sfx {
     this.tone(3100, 0.045, { type: 'sine', slide: 350, volume: 0.04 });
     this.tone(2750, 0.05, { type: 'sine', slide: -420, volume: 0.03, delay: 0.07 });
   }
+
+  /** The chatter bed's phrase deal cursor (random start per session). */
+  private chickenPhraseIdx = Math.floor(Math.random() * CHICKEN_PHRASES.length);
+
+  /**
+   * THE HENYARD SPEAKS: one voice from the yard — either the clean
+   * single cluck or a phrase dealt from the 41-second field bed of
+   * hen chatter (CHICKEN_PHRASES, cut points measured against the
+   * recording's own silences), with a breath of rate wobble so the
+   * flock never repeats a waveform. Ambient by law: no synth
+   * fallback — a cluck the shelf can't sound yet simply doesn't
+   * happen, and nobody misses a sound that was never scheduled.
+   * Always called inside `spatial()` from the henyard scheduler.
+   */
+  chicken(): void {
+    const rate = 0.97 + Math.random() * 0.08;
+    if (Math.random() < 0.45) {
+      this.sample('chicken_cluck', 0.55, rate);
+      return;
+    }
+    // Deal phrases round-robin from a shuffled start so back-to-back
+    // beats never replay the sentence just heard.
+    this.chickenPhraseIdx = (this.chickenPhraseIdx + 1) % CHICKEN_PHRASES.length;
+    const [at, end] = CHICKEN_PHRASES[this.chickenPhraseIdx]!;
+    this.sample('chicken_chatter', 0.5, rate, { at, dur: end - at });
+  }
 }
+
+/**
+ * The chatter bed's phrases — [start, end] seconds inside
+ * chicken_chatter.mp3, measured with ffmpeg silencedetect (−35 dB,
+ * 0.4s) so every window opens and closes in the recording's own
+ * silences. Nine sentences from one hen yard: quick clucks, longer
+ * grumbles, one full monologue — the whole bed stays in the file, so
+ * nothing recorded was thrown away to make one-shots.
+ */
+const CHICKEN_PHRASES: ReadonlyArray<readonly [number, number]> = [
+  [0.0, 5.16],
+  [5.68, 7.75],
+  [8.53, 15.06],
+  [15.73, 17.92],
+  [18.35, 21.44],
+  [22.4, 28.31],
+  [28.84, 30.55],
+  [31.64, 32.42],
+  [33.12, 39.74],
+];

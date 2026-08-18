@@ -38,8 +38,13 @@
  *  - TOWN: a far-off dog somewhere behind the houses now and then by
  *    day — the sound of other lives being lived. (The smithy tink
  *    that held this seat was removed by user verdict.)
- *  - OWL (night, wild): the low four-note call off in the dark, rare
- *    and far — the calmest thing the night says.
+ *  - OWL (night, wild): the low call off in the dark, rare and far —
+ *    the calmest thing the night says. Since 08-17 the voice deals
+ *    from a pool: two REAL owl recordings (public/sfx/owl_night_*.mp3,
+ *    fetched + decoded async, per-file gains matching their measured
+ *    loudness) and the original synthesized four-note call, no pick
+ *    repeated back-to-back. The synth owl also stands in whole until
+ *    the recordings decode — the first night is never silent.
  *  - FALLING WATER (near a waterfall): a calm pink-noise roil in two
  *    legs — a body whose lowpass opens as the listener approaches
  *    (distance darkens a fall long before it silences it) and a low
@@ -90,6 +95,15 @@ export class AmbienceSystem {
   private fallPan: StereoPannerNode | null = null;
   /** The synth rustle standing in until the recorded loop decodes. */
   private rustleSynth: AudioBufferSourceNode | null = null;
+  /**
+   * The recorded owl calls, decoded async like the rustle loop.
+   * Paired with a per-file gain: the two recordings arrive mastered
+   * ~15 dB apart (−11.7 / −26.9 LUFS) and must land equally far off
+   * in the dark.
+   */
+  private owlCalls: Array<{ buf: AudioBuffer; gain: number }> = [];
+  /** Last owl voice dealt (index; owlCalls.length = the synth call). */
+  private owlLastPick = -1;
   /** Debug mirrors for live verification. */
   gates = { wind: 0, birds: 0, crickets: 0, cave: 0, portal: 0, fall: 0 };
   /**
@@ -194,7 +208,7 @@ export class AmbienceSystem {
       this.nextDogAt = t + 38 + Math.random() * 50;
     }
     if (t >= this.nextOwlAt) {
-      if (night * outdoor * w.wild > 0.3) this.owlHoot(ctx, bus, t);
+      if (night * outdoor * w.wild > 0.3) this.owlCall(ctx, bus, t);
       this.nextOwlAt = t + 55 + Math.random() * 65;
     }
     if (t >= this.nextDoveAt) {
@@ -246,6 +260,8 @@ export class AmbienceSystem {
     rustle.start();
     this.rustleSynth = rustle;
     this.loadRustleLoop(ctx);
+
+    this.loadOwlCalls(ctx);
 
     // The dove, the woodpecker, the dog, and the owl all wait a
     // polite while after login — the world greets you with wind first.
@@ -377,6 +393,31 @@ export class AmbienceSystem {
       .catch(() => {
         // The synth loop keeps the wind alive this session.
       });
+  }
+
+  /**
+   * Fetch + decode the recorded owl calls. Each failure stays quiet
+   * on its own — one dead file still leaves the other recording and
+   * the synth call in the deal.
+   */
+  private loadOwlCalls(ctx: AudioContext): void {
+    // name → the gain seating that file at the shared far-owl level
+    // (measured EBU R128: owl_night_1 −11.7 LUFS, owl_night_2 −26.9).
+    const calls: Array<[string, number]> = [
+      ['owl_night_1', 0.16],
+      ['owl_night_2', 0.92],
+    ];
+    for (const [name, gain] of calls) {
+      fetch(`/sfx/${name}.mp3`)
+        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`${r.status}`))))
+        .then((bytes) => ctx.decodeAudioData(bytes))
+        .then((buf) => {
+          this.owlCalls.push({ buf, gain });
+        })
+        .catch(() => {
+          // The synth owl keeps the night company without it.
+        });
+    }
   }
 
   /**
@@ -759,11 +800,51 @@ export class AmbienceSystem {
   }
 
   /**
+   * The night owl's moment: deal one voice from the pool — the two
+   * recordings and the synth four-note call — never the same pick
+   * twice running. A recording plays seated exactly like the synth
+   * owl does: panned somewhere off in the trees, darkened by a
+   * lowpass when it's far, quieter still at distance; the ambience
+   * bus's shared room carries the rest of the night around it.
+   */
+  private owlCall(ctx: AudioContext, bus: GainNode, t: number): void {
+    const pool = this.owlCalls.length + 1; // + the synth call
+    let pick = Math.floor(Math.random() * pool);
+    if (pool > 1 && pick === this.owlLastPick) pick = (pick + 1) % pool;
+    this.owlLastPick = pick;
+    const rec = this.owlCalls[pick];
+    if (!rec) {
+      this.owlHoot(ctx, bus, t);
+      return;
+    }
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = (Math.random() * 2 - 1) * 0.75;
+    pan.connect(bus);
+    const far = Math.random() < 0.5;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = far ? 1100 : 2000;
+    lp.Q.value = 0.3;
+    lp.connect(pan);
+    const g = ctx.createGain();
+    g.gain.value = rec.gain * (far ? 0.55 : 1);
+    g.connect(lp);
+    const src = ctx.createBufferSource();
+    src.buffer = rec.buf;
+    // A whisper of rate drift — the same owl, never the same breath.
+    src.playbackRate.value = 0.97 + Math.random() * 0.06;
+    src.connect(g);
+    src.start(t);
+  }
+
+  /**
    * An owl off in the dark — the low four-note call: hoo… h'hoo…
    * hoo, hoooo. Soft-attacked sines settling slightly flat through a
    * dark filter, a breath of vibrato on the held last note. Rare and
    * far by design: the parliament roosts out there, and hearing one
-   * should feel like the night noticed you.
+   * should feel like the night noticed you. Since 08-17 one voice of
+   * three in the owlCall deal (and the whole voice before the
+   * recordings decode).
    */
   private owlHoot(ctx: AudioContext, bus: GainNode, t: number): void {
     const pan = ctx.createStereoPanner();

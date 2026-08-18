@@ -1780,7 +1780,10 @@ const game = new ClientGame(input, {
           : `${e.name} cleared — the mark is staked.`,
     });
     showPoiCleared(e);
-    sfx.questComplete();
+    // The recorded clear fanfare leads (its own voice, one size up
+    // from the quest ledger); the synth quest herald is the
+    // pre-decode fallback.
+    if (!sfx.sample('poi_cleared')) sfx.questComplete();
     const pos = game.predictor.pos;
     renderer.addRing(pos.x, pos.y, '#e2b356', 1.5);
     renderer.zoomPulse(0.045);
@@ -1837,12 +1840,16 @@ const game = new ClientGame(input, {
     // removals pass silently — the ledger simply reflects them.
     if (ev.kind === 'request') {
       chat.addLine({ channel: 'system', text: `${ev.name} wants to be your friend — press U.` });
-      sfx.uiOpen();
+      // The recorded friend ping — actionable social news deserves
+      // more than the panel's whisper; uiOpen is the cold fallback.
+      if (!sfx.sample('friend_alert')) sfx.uiOpen();
     } else if (ev.kind === 'accepted') {
       chat.addLine({ channel: 'system', text: `You are now friends with ${ev.name}.` });
-      sfx.uiOpen();
+      if (!sfx.sample('friend_alert')) sfx.uiOpen();
     } else if (ev.kind === 'online') {
       chat.addLine({ channel: 'system', text: `${ev.name} has come online.` });
+      // Presence is news, not a summons — the same ping, softened.
+      sfx.sample('friend_alert', 0.6);
     } else if (ev.kind === 'offline') {
       chat.addLine({ channel: 'system', text: `${ev.name} has gone offline.` });
     }
@@ -3299,6 +3306,23 @@ function nextDreadStab(): SampleName {
 }
 /** Next deep-night dread sting (ms clock); <0 = not yet scheduled. */
 let nextDreadStabAt = -1;
+/**
+ * THE AMBIENT HITS — the dread stabs' calm sibling: three soft piano
+ * stings dealt in rotation, only into the track player's long quiets
+ * (music silent, safe country) so a stab never lands over a song.
+ */
+const AMBIENT_HITS: readonly SampleName[] = ['ambient_hit_1', 'ambient_hit_2', 'ambient_hit_3'];
+let ambientHitIdx = Math.floor(Math.random() * AMBIENT_HITS.length);
+/** Next calm ambient hit (ms clock); <0 = not yet scheduled. */
+let nextAmbientHitAt = -1;
+/**
+ * THE HENYARD SPEAKS — next spatial chicken beat (ms clock). One
+ * voice per beat no matter how many hens stand in earshot: a yard
+ * murmurs one sentence at a time, it never becomes a chorus.
+ */
+let nextCluckAt = 0;
+/** The chatter bed decodes only once a chicken has been near. */
+let chickenWarmed = false;
 /** Fall-earshot scan, half-phase offset from the portal scan so the
  *  two 441-tile sweeps never land in the same frame. */
 let nextFallScanAt = 200;
@@ -4253,6 +4277,46 @@ function frame(now: number): void {
       const deepNight = hours < 4.5 || hours > 21.5;
       if (deepNight && w.wild > 0.7 && dangerTier >= 2 && !under) {
         sfx.sample(nextDreadStab(), 0.6);
+      }
+    }
+    // THE AMBIENT HITS: a soft piano sting once every minute or two,
+    // surface only, safe country only (the dread stabs own dangerous
+    // ground), and NEVER over a sounding track — the hits belong to
+    // the deck's long scenic quiets, the way the crickets do.
+    if (nextAmbientHitAt < 0) nextAmbientHitAt = now + 75_000 + Math.random() * 75_000;
+    if (now >= nextAmbientHitAt) {
+      nextAmbientHitAt = now + 70_000 + Math.random() * 90_000;
+      if (!under && music.state === 'silent' && dangerTier < 2) {
+        ambientHitIdx = (ambientHitIdx + 1) % AMBIENT_HITS.length;
+        sfx.sample(AMBIENT_HITS[ambientHitIdx]!, 0.55);
+      }
+    }
+    // THE HENYARD SPEAKS: every 6-15s, if any chicken stands within
+    // earshot, one hen says one thing — a cluck or a chatter phrase —
+    // from where she actually stands (the spatial law prices distance
+    // and side). The scan rides the beat itself, so it costs nothing
+    // between beats; the 41s chatter bed only decodes once a chicken
+    // has actually been near.
+    if (now >= nextCluckAt) {
+      nextCluckAt = now + 6_000 + Math.random() * 9_000;
+      let hen: { x: number; y: number } | null = null;
+      let seen = 0;
+      for (const remote of game.entities.values()) {
+        if (remote.meta.defId !== 'chicken') continue;
+        const at = remote.buffer.latest();
+        if (!at || Math.hypot(at.x - own.x, at.y - own.y) > 16) continue;
+        // Reservoir-pick one hen uniformly without collecting the yard.
+        seen++;
+        if (Math.random() < 1 / seen) hen = { x: at.x, y: at.y };
+      }
+      if (hen) {
+        if (!chickenWarmed) {
+          chickenWarmed = true;
+          sfx.warmSample('chicken_cluck');
+          sfx.warmSample('chicken_chatter');
+        }
+        const at = hen;
+        sfx.spatial(at, 'near', () => sfx.chicken());
       }
     }
     // The gauge reads the same field the music does — one law, every

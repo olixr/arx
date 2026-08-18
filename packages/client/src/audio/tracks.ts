@@ -50,7 +50,7 @@ export const TRACK_LIBRARY: Record<TrackMood, string[]> = {
   ],
   night: [
     'night_adventure_1', 'night_adventure_2', 'night_adventure_3',
-    'night_adventure_4', 'night_adventure_5',
+    'night_adventure_4', 'night_adventure_5', 'night_adventure_6',
   ],
   town: [
     'town_1', 'town_2', 'town_3', 'town_4', 'town_5', 'town_6', 'town_7',
@@ -108,6 +108,7 @@ const TRACK_TRIM: Record<string, number> = {
   night_adventure_3: 0.79, // −13.3
   night_adventure_4: 0.78, // −13.1
   night_adventure_5: 0.82, // −13.6
+  night_adventure_6: 0.71, // −12.3 (added 08-17)
   town_1: 0.77, // −13.0
   town_2: 1, // −15.3
   town_3: 0.76, // −12.9
