@@ -187,6 +187,15 @@ export interface ItemDef {
   armor?: number;
   /** HP restored when eaten. */
   heals?: number;
+  /**
+   * THE CARRIED FLAME (lighting v4 phase 4): equipped, this item is a
+   * real scene light — reach in tiles, color, peak intensity, held
+   * height. Registered at entity-collect time, so a carried light
+   * casts THIS frame's shadows. Flame-gated like every man-made fire
+   * (it sleeps by day); above ground it is the night-walking verb,
+   * below it replaces the underground courtesy lamp.
+   */
+  carryLight?: { r: number; rgb: readonly [number, number, number]; intensity: number; z: number };
   /** Timed buff granted when consumed (may accompany heals). */
   buff?: ConsumableBuff;
   /** Weapon oil: coats the equipped melee/archery weapon when used. */
@@ -1348,6 +1357,20 @@ const defs: ItemDef[] = [
 
   // Passive gear — the offhand slot carries your style passive; a
   // crafted cloak covers the scrapper. Build layering, not stat sticks.
+  {
+    id: 'lantern',
+    name: 'Lantern',
+    stackable: false,
+    value: 60,
+    equipSlot: 'offhand',
+    // THE CARRIED FLAME: stronger than the underground courtesy lamp
+    // (4.6 / 0.5) — an owned light beats the freebie, and it works
+    // under the night sky too.
+    carryLight: { r: 5.2, rgb: [255, 209, 150], intensity: 0.62, z: 0.8 },
+    desc: 'A hooded candle-lantern. The dark keeps its distance.',
+    color: '#e8c06a',
+    code: 'La',
+  },
   {
     id: 'spiked_buckler',
     name: 'Spiked buckler',

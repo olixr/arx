@@ -68,6 +68,15 @@ export interface FxStyle {
   spark: string;
   /** queueGlow tint as 'r, g, b'. */
   glow: string;
+  /**
+   * THE AUTHORED FLAME (lighting v4 phase 4): the real scene light a
+   * signature carries — reach in tiles, peak intensity, source height.
+   * Set per FAMILY (one voice per school) and overridable per style;
+   * absent = the queueGlow floor derivation (min(0.55, a·1.6)) — the
+   * floor, not the ceiling. SHADOW authors none BY LAW: shadow matter
+   * never emits (the matter library's own refusal).
+   */
+  light?: { r: number; intensity: number; z?: number };
   ring: RingStyle;
   debris: DebrisKind;
   decal?: DecalKind;
@@ -105,36 +114,43 @@ function fx(
 const EMBER = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#fff3d0', '#ff9a44', '#c43a18', '#ffd24a', '255, 150, 70', 'teeth', 'ember', 'scorch'),
   wash: 0.62,
+  light: { r: 3.4, intensity: 0.7, z: 0.4 },
   ...over,
 });
 const FROST = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#f0fbff', '#8ac4e8', '#3a6c94', '#d8f2ff', '150, 208, 240', 'frost', 'ice', 'rime'),
   wash: 0.48,
+  light: { r: 2.4, intensity: 0.4, z: 0.3 },
   ...over,
 });
 const STORM = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#fffce0', '#e8e06a', '#8a7a2a', '#ffffff', '240, 228, 120', 'teeth', 'spark', undefined, 0.6),
   wash: 0.55,
+  light: { r: 3.0, intensity: 0.6, z: 0.5 },
   ...over,
 });
 const VERDANT = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#eaffd8', '#7ac46a', '#3a6a34', '#c8e89a', '140, 208, 120', 'petals', 'leaf', 'roots'),
   wash: 0.35,
+  light: { r: 2.2, intensity: 0.35, z: 0.3 },
   ...over,
 });
 const BLOOD = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#ffd8d8', '#c4372a', '#6a1518', '#ff6a5a', '220, 80, 60', 'shards', 'blood', 'stain'),
   wash: 0.42,
+  light: { r: 2.2, intensity: 0.35, z: 0.3 },
   ...over,
 });
 const VOID = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#e8e0ff', '#7a68a8', '#2a2244', '#b49af0', '150, 120, 220', 'runes', 'shadow', 'glow'),
   wash: 0.5,
+  light: { r: 2.0, intensity: 0.3, z: 0.3 },
   ...over,
 });
 const RADIANT = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#fffbe8', '#ffd98a', '#b8862a', '#ffffff', '255, 220, 140', 'halo', 'star', 'glow', 0.6),
   wash: 0.7,
+  light: { r: 3.2, intensity: 0.6, z: 0.4 },
   ...over,
 });
 const BONE = (over: Partial<FxStyle> = {}): FxStyle => ({
@@ -145,23 +161,28 @@ const BONE = (over: Partial<FxStyle> = {}): FxStyle => ({
 const STEEL = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#ffffff', '#b8bec8', '#5a6068', '#e8eef8', '200, 208, 220', 'teeth', 'rock', 'cracks'),
   wash: 0.3,
+  light: { r: 1.8, intensity: 0.25, z: 0.3 },
   ...over,
 });
 const GOLD = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#fff8d8', '#e8c04c', '#9a7a1c', '#ffffff', '240, 200, 90', 'halo', 'star', 'glow', 0.6),
   wash: 0.62,
+  light: { r: 3.0, intensity: 0.55, z: 0.4 },
   ...over,
 });
 const TIDE = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#e0f8f8', '#6aa0c8', '#2a5a78', '#b8e8e8', '120, 180, 210', 'petals', 'ice', 'glow'),
   wash: 0.42,
+  light: { r: 2.4, intensity: 0.4, z: 0.3 },
   ...over,
 });
 const ARCANE = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#f4ecff', '#b49af0', '#5a4088', '#ffffff', '190, 160, 250', 'runes', 'star', 'runes'),
   wash: 0.52,
+  light: { r: 2.8, intensity: 0.5, z: 0.4 },
   ...over,
 });
+// SHADOW authors NO light (see FxStyle.light): dark matter never emits.
 const SHADOW = (over: Partial<FxStyle> = {}): FxStyle => ({
   ...fx('#d8d4e8', '#6a6080', '#1a1626', '#8a7fae', '120, 110, 160', 'shards', 'shadow', 'glow'),
   wash: 0.22,

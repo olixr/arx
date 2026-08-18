@@ -268,6 +268,15 @@ export class LightingSystem {
     this.frame++;
     this.offScaleRebuilds = 2;
 
+    // THE LADDER'S MIDDLE RUNG (v4 phase 4): non-occluding lights get
+    // lit faces while the budget lasts, pool-only after — a fireball
+    // volley degrades gracefully instead of paying an unbounded
+    // face-gather per bolt. Standing emitters collect FIRST in the
+    // frame list, so architecture's faces always win the seats;
+    // dynamics compete for the remainder. Occluding lights are
+    // patch-cached and never count against it.
+    let faceSeats = 12;
+
     for (const light of lights) {
       if (light.intensity <= 0.01) continue;
       if (light.occlude) {
@@ -286,8 +295,11 @@ export class LightingSystem {
         m.globalAlpha = 1;
         // Standing content in the pool catches the light — no shadow
         // math for free-floating lights, so no LOS gate either.
-        this.gatherFaceRuns(light, tallH, null, faceGain);
-        this.paintFaceRuns(m, light, sx, sy, tx, ty);
+        if (faceSeats > 0) {
+          faceSeats--;
+          this.gatherFaceRuns(light, tallH, null, faceGain);
+          this.paintFaceRuns(m, light, sx, sy, tx, ty);
+        }
         if (cone) m.restore();
       }
     }

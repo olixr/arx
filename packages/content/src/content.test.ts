@@ -763,6 +763,9 @@ test('foraging nodes, buildables, and shop stock resolve', () => {
     'signpost',
     // THE PORCH: posts are driven whole, never sawn.
     'timber_post',
+    // THE PLACEABLE FLAME: a torch is a stake with a rag head —
+    // driven whole like every post.
+    'standing_torch',
     // THE FULL FIELD: the shade bed IS a whole log — sawing it would
     // saw away the point.
     'mushroom_log',

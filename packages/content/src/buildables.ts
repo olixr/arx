@@ -756,6 +756,20 @@ const defs: BuildableDef[] = [
     ground: OUTDOOR_AND_FLOORS,
   },
   {
+    // THE PLACEABLE FLAME (lighting v4 phase 4): the player's verb for
+    // claiming the dark — cheap, early, and a true scene light the
+    // moment it stands (Tile.StandingTorch is an emitter row).
+    id: 'standing_torch',
+    cat: 'waymark',
+    name: 'Standing torch',
+    tile: Tile.StandingTorch,
+    levelReq: 3,
+    xp: 18,
+    materials: [{ item: 'log', qty: 1 }],
+    ticks: 18,
+    ground: OUTDOOR_AND_FLOORS,
+  },
+  {
     id: 'alembic',
     cat: 'station',
     name: 'Alembic bench',

@@ -1,6 +1,6 @@
 # Lighting v4 — THE LIGHT LIVES IN THE WORLD
 
-Status: PHASES 1–3 SHIPPED (2026-08-17) — see §8 As built. Phases 4–5 not started.
+Status: PHASES 1–4 SHIPPED (2026-08-17) — see §8 As built. Phase 5 not started.
 Owner mandate: re-approach lighting at the foundational level — lights must read as real
 sources in the 3D universe (oriented, occluded, illuminating), shadows must cover the
 whole standing world, dynamic sources (spells, placed props) must carry light, darkness
@@ -497,3 +497,54 @@ noon/dusk/midnight — fires visibly ignite the grass at their hearts, hung fixt
 throw flattened pools, canopy faces take the foliage gain, daylight untouched.
 Live tree gates: tsc ×4 clean, shared 286/286 (z law added), client 659/659, parity
 bit-for-bit with the three z rows joined in golden.
+
+### Phase 4 — THE MOVING FLAME (2026-08-17)
+
+**THE AUTHORED FLAME** (FX lights): `FxStyle.light {r, intensity, z?}` authored per
+FAMILY constructor — one voice per school, overridable per style (EMBER 3.4/0.7,
+RADIANT 3.2/0.6, STORM 3.0/0.6, GOLD 3.0/0.55, ARCANE 2.8/0.5, FROST/TIDE 2.4/0.4,
+VERDANT/BLOOD 2.2/0.35, VOID 2.0/0.3, STEEL 1.8/0.25; SHADOW authors NONE by the
+matter law — dark matter never emits). `queueFxGlow(x,y,r,a,st)` is the one door: the
+authored light's instantaneous strength rides the bloom's moment (a/0.4 capped) so a
+dying ember dims its pool with its glow; styles without `light` take the EXACT legacy
+queueGlow floor. All 18 style-carrying call sites converted mechanically — including
+the matter-library funnel, so every library-speaking signature carries authored light
+in one line. Visual proving of a night cast is OWED at the next night fight (the
+mechanism is exercised by every fx path, zero console errors across all proving runs).
+
+**THE CARRIED FLAME**: `ItemDef.carryLight {r, rgb, intensity, z}` + the LANTERN
+(offhand, r 5.2 / 0.62 / z 0.8 — an owned light beats the underground courtesy lamp's
+4.6/0.5). Registered at entity-COLLECT time — BEFORE the shadow prepass — so a held
+lantern casts THIS frame's shadows: the carried light gets the same-frame treatment
+the FX lag never needed (see below). Flame-gated (sleeps by day), per-carrier breath
+phase, bloom through the SEATED halo path at held height, works for remote carriers
+too. The underground courtesy lamp stands down when the own offhand carries a light
+(equipment ground-truth read, since collectStaticLights runs before the entity walk).
+The in-hand lantern PAINT is a wield-domain follow-up (precedent: tome_of_embers ships
+unpainted in hand); the light and its seated glow are fully real.
+
+**THE PLACEABLE FLAME**: `standing_torch` buildable (waymark, level 3, 1 log, ticks
+18) → Tile.StandingTorch — an emitter row since phase 1, so placing it lights the
+night with zero new render code. Joined the WHOLE_TIMBER roster in the content law
+test with its reason (a torch is a stake with a rag head — driven whole, never sawn).
+
+**THE LADDER, HONESTLY SIZED**: (1) THE INCUMBENT'S SEAT — the top-6 shadow-caster
+ranking gains a 0.06 incumbent bonus keyed on quantized world seats, so a flickering
+light must be BEATEN, not wobbled past, to lose its shadow lobes (ranking churn was
+the real defect behind the "7th light" fear); (2) THE MIDDLE RUNG — 12 face-run seats
+per frame for non-occluding lights, pool-only past them; standing emitters collect
+first so architecture always wins the seats and dynamics compete for the remainder.
+The quadrant-fold tail REVIEWED AND NOT BUILT: no content produces the 30+
+simultaneous lights it serves; revisit with the darkness ledger. The 1-frame dynamic
+shadow lag REVIEWED AND KEPT: at 120fps it is invisible, and same-frame registration
+would need a pre-pass duplicate of every FX position (the carried lantern, which CAN
+register early, does).
+
+Proving (lane 29, fresh server for the new content): the lantern given, equipped
+through the real pack UI (data-tipname cell click → offhand: lantern), and walked into
+the midnight forest — the carrier stands in their own warm pool, clipped under the
+canopy crowns: the night-walking verb delivered; the underground swap is code-gated.
+Gates: tsc ×4 clean, shared 286/286, content 607/607 (torch joined WHOLE_TIMBER),
+client 659/659, server 601/601. Committed after two neighbors' clean mid-flight
+ceremonies (armory ca99ede2, audio 7bd5cff7) both preserved this phase's WIP; the
+renderer worktree returned to wholly-mine before this commit.

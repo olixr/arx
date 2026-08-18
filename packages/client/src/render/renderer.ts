@@ -3237,22 +3237,38 @@ export class Renderer {
     this.frameLights.length = 0;
     const gate = Math.min(1, this.sky.darkness * 2.6);
     if (gate < 0.05) return;
-    const cand: Array<{ sx: number; sy: number; r: number; a: number }> = [];
+    const seatOf = (x: number, y: number): number => ((x * 4) | 0) * 100003 + ((y * 4) | 0);
+    const cand: Array<{ sx: number; sy: number; r: number; a: number; seat: number }> = [];
     for (const L of this.lights) {
       const a = Math.min(0.42, L.intensity * gate * 0.55);
       if (a < 0.05) continue;
       const p = this.liftedWTS(L.x, L.y);
-      cand.push({ sx: p.x, sy: p.y, r: L.r, a });
+      cand.push({ sx: p.x, sy: p.y, r: L.r, a, seat: seatOf(L.x, L.y) });
     }
     for (const D of this.prevDynamic) {
       const a = Math.min(0.38, D.a * gate * 0.6);
       if (a < 0.05) continue;
       const p = this.liftedWTS(D.x, D.y);
-      cand.push({ sx: p.x, sy: p.y, r: D.r, a });
+      cand.push({ sx: p.x, sy: p.y, r: D.r, a, seat: seatOf(D.x, D.y) });
     }
-    cand.sort((u, v) => v.a - u.a);
-    for (let i = 0; i < Math.min(6, cand.length); i++) this.frameLights.push(cand[i]!);
+    // THE INCUMBENT'S SEAT (v4 phase 4): flickering intensities used
+    // to churn the top-6 ranking frame to frame, popping shadow lobes
+    // in and out at the cut line. Last frame's chosen lights carry a
+    // small score bonus, so a light must be BEATEN, not merely
+    // wobbled past, to lose its shadows.
+    cand.sort(
+      (u, v) =>
+        v.a + (this.throwSeats.has(v.seat) ? 0.06 : 0) - (u.a + (this.throwSeats.has(u.seat) ? 0.06 : 0)),
+    );
+    this.throwSeats.clear();
+    for (let i = 0; i < Math.min(6, cand.length); i++) {
+      this.frameLights.push(cand[i]!);
+      this.throwSeats.add(cand[i]!.seat);
+    }
   }
+
+  /** Last frame's shadow-casting seats (quantized world pos). */
+  private readonly throwSeats = new Set<number>();
 
   /**
    * The shadow throws a point at screen (px, py) receives from nearby
@@ -5304,7 +5320,13 @@ export class Renderer {
       // bodies around you, never enough to kill the dark's drama. It
       // breathes slowly (a flame in still air), joins the shadow
       // prepass like any pool, and fades in with the ambient blend.
-      if (game.ownEid !== null) {
+      // A CARRIED light replaces the courtesy — the lantern is the
+      // real thing (collectEntities registers it later this frame;
+      // equipment is the ground truth here since that pass hasn't
+      // run yet).
+      const ownOff = game.equipment.offhand;
+      const ownCarries = ownOff !== undefined && itemDef(ownOff.id)?.carryLight !== undefined;
+      if (game.ownEid !== null && !ownCarries) {
         const own = game.predictor.renderPos();
         const breathe = 0.93 + Math.sin(t * 2.1) * 0.05 + Math.sin(t * 5.7) * 0.02;
         this.lights.push({
@@ -5392,6 +5414,73 @@ export class Renderer {
       Renderer.CSV_MEMO.set(rgb, s);
     }
     return s;
+  }
+
+  /**
+   * THE CARRIED FLAME (v4 phase 4): any equipped item with carryLight
+   * is a real scene light. Registered at entity-COLLECT time — before
+   * the shadow prepass — so a held lantern casts THIS frame's shadows
+   * (no dynamic-light lag). Flame-gated: it sleeps by day like every
+   * man-made fire; each carrier breathes on its own phase. The bloom
+   * rides the SEATED halo path (pool + corona + core) at the held
+   * height, so the lantern glows like the fixture it is.
+   */
+  private ownCarryLit = false;
+
+  private carriedLight(eid: number | 'own', x: number, y: number, offhand: string | undefined): void {
+    if (offhand === undefined) return;
+    const cl = itemDef(offhand)?.carryLight;
+    if (cl === undefined) return;
+    const flame = this.sky.flame;
+    if (flame <= 0.05) return;
+    if (eid === 'own') this.ownCarryLit = true;
+    const ph = (eid === 'own' ? 0 : (eid as number)) * 1.7;
+    const tsec = performance.now() / 1000;
+    const breathe = 0.93 + Math.sin(tsec * 2.1 + ph) * 0.05 + Math.sin(tsec * 5.7 + ph) * 0.02;
+    this.lights.push({
+      x,
+      y,
+      r: cl.r,
+      rgb: cl.rgb,
+      intensity: cl.intensity * flame * breathe,
+      z: cl.z,
+    });
+    this.seatedGlows.push({
+      x,
+      y: y - cl.z / this.camera.yScale,
+      gy: y,
+      z: cl.z,
+      r: 0.85 * breathe,
+      rgb: Renderer.csvOfRgb(cl.rgb),
+      a: 0.22 * flame * breathe,
+    });
+  }
+
+  /**
+   * THE AUTHORED FLAME's door (v4 phase 4): a style-carrying effect
+   * queues its bloom AND its authored scene light in one call. With
+   * `st.light` the light is the AUTHORED voice — reach, intensity
+   * ceiling and height from the style family, instantaneous strength
+   * riding the bloom's moment (a/0.4, capped) so a dying ember dims
+   * its pool with its glow. Without it, the exact queueGlow floor
+   * derivation applies — the floor, not the ceiling.
+   */
+  queueFxGlow(x: number, y: number, r: number, a: number, st: FxStyle): void {
+    if (this.bakingMask) return;
+    const L = st.light;
+    if (L === undefined) {
+      this.queueFxGlow(x, y, r, a, st);
+      return;
+    }
+    this.glows.push({ x, y, r, rgb: st.glow, a });
+    if (this.sky.darkness > 0.04) {
+      const intensity = L.intensity * Math.min(1, a / 0.4);
+      if (intensity < 0.02) return;
+      const light: WorldLight = { x, y, r: L.r, rgb: Renderer.parseRgb(st.glow), intensity };
+      if (L.z !== undefined) light.z = L.z;
+      this.lights.push(light);
+      this.nextDynamic.push({ x, y, r: L.r * 1.6, a: Math.min(0.55, intensity) });
+    }
   }
 
   queueGlow(x: number, y: number, r: number, rgb: string, a: number): void {
@@ -55339,6 +55428,7 @@ export class Renderer {
     this.wornOrigin =
       game.ownEid !== null ? game.predictor.renderPos() : { x: this.camera.x, y: this.camera.y };
     this.wornLitBodies = 0;
+    this.ownCarryLit = false;
     // Bodies that stopped being drawn forget their stride; without this
     // the motion map would grow for every soul ever seen this session.
     if (this.frameNo % 180 === 0) {
@@ -55393,6 +55483,11 @@ export class Renderer {
       const remoteEnch = remote.meta.appearance?.ench;
       if (remoteEnch) {
         this.wornLight(eid, s.x, s.y, s.dir, remoteEnch, false, remote.buffer.gliding());
+      }
+      // THE CARRIED FLAME: a held lantern lights the night for
+      // everyone who sees its carrier.
+      if (remote.meta.kind === EntityKind.Player) {
+        this.carriedLight(eid, s.x, s.y, remote.meta.appearance?.equip?.offhand);
       }
       // THE DREAD PRESENCE: a crowned foe reads as a crown at a
       // glance, before a single blow — and the air deepens per rung.
@@ -55721,6 +55816,7 @@ export class Renderer {
       const ownEquip = ownWorn.equip;
       const ownEnch = ownWorn.ench;
       if (ownEnch) this.wornLight('own', own.x, own.y, game.aim, ownEnch, true);
+      this.carriedLight('own', own.x, own.y, ownEquip.offhand);
       const ownItem = this.humanoidItem({
         eid: 'own',
         x: own.x,
@@ -62866,7 +62962,7 @@ export class Renderer {
             speed: 1.2, life: 0.5, size: 0.07, gravity: -2.6, flicker: 0.8,
           });
         }
-        this.queueGlow(wxa, wya - 0.5, 1.3, st.glow, 0.4 * fade);
+        this.queueFxGlow(wxa, wya - 0.5, 1.3, 0.4 * fade, st);
         break;
       }
       case 'spikes': {
@@ -63003,7 +63099,7 @@ export class Renderer {
             speed: 0.9, life: 0.6, size: 0.06, gravity: -0.4, drag: 1.5, flicker: 0.5,
           });
         }
-        this.queueGlow(wxa, wya - 0.6, 1.1, st.glow, 0.35 * open);
+        this.queueFxGlow(wxa, wya - 0.6, 1.1, 0.35 * open, st);
         break;
       }
       case 'wave': {
@@ -65479,7 +65575,7 @@ export class Renderer {
               [st.mid, st.spark, st.core],
               { speed: 3.0, life: 0.3, size: 0.08, gravity: 2, dir, spread: 1.3 },
             );
-            this.queueGlow(fx.x, fx.y - 0.3, fx.radius, st.glow, 0.3);
+            this.queueFxGlow(fx.x, fx.y - 0.3, fx.radius, 0.3, st);
           }
           const sweep = Math.min(1, t / 0.62);
           const lead = dir - half + 2 * half * sweep;
@@ -65519,7 +65615,7 @@ export class Renderer {
           if (!fx.arrived && travelT >= 1) {
             fx.arrived = true;
             this.particles.burst(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.3, 8, [st.mid, st.spark], { speed: 2.2, life: 0.35, size: 0.08, gravity: 3, up: true });
-            this.queueGlow(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.3, 1.2, st.glow, 0.35);
+            this.queueFxGlow(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.3, 1.2, 0.35, st);
           }
           // Dust shed under the crossing body — gated emission at the
           // live head, so a long charge trails a real ground wake.
@@ -65613,7 +65709,7 @@ export class Renderer {
             this.particles.burst(fx.x, fx.y - 0.35, 7, [st.deep, st.mid], {
               speed: 1.1, life: 0.45, size: 0.1, gravity: -0.3, drag: 2.6, shape: 'puff', fade: st.deep,
             });
-            this.queueGlow(fx.x, fx.y - 0.4, 1.0, st.glow, 0.3);
+            this.queueFxGlow(fx.x, fx.y - 0.4, 1.0, 0.3, st);
           }
           // ...and the far door announces when it opens.
           if (!fx.arrived && t >= 0.2) {
@@ -65621,7 +65717,7 @@ export class Renderer {
             this.particles.burst(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.45, 10, [st.core, st.spark], {
               speed: 2.0, life: 0.5, size: 0.09, gravity: -0.6, drag: 1.4, shape: 'glint',
             });
-            this.queueGlow(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.4, 1.3, st.glow, 0.45);
+            this.queueFxGlow(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.4, 1.3, 0.45, st);
           }
           const lift = sc * 0.55;
           ctx.save();
@@ -65707,8 +65803,8 @@ export class Renderer {
             this.particles.burst(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.4, 7, [st.spark, st.core], {
               speed: 3.4, life: 0.3, size: 0.05, gravity: 4, up: true, shape: 'streak',
             });
-            this.queueGlow(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.3, 1.1, st.glow, 0.5);
-            this.queueGlow(fx.x, fx.y - 0.3, 0.8, st.glow, 0.35);
+            this.queueFxGlow(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.3, 1.1, 0.5, st);
+            this.queueFxGlow(fx.x, fx.y - 0.3, 0.8, 0.35, st);
           }
           const lift = sc * 0.5;
           const kinkSeed = seed + Math.floor(age / 70) * 13;
@@ -65780,9 +65876,9 @@ export class Renderer {
             fx.spawned = true;
             const dir = Math.atan2((fx.y2 ?? fx.y) - fx.y, (fx.x2 ?? fx.x) - fx.x);
             this.particles.burst(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.4, 10, [st.mid, st.spark, st.core], { speed: 3.2, life: 0.4, size: 0.09, gravity: 1, dir, spread: 1.6 });
-            this.queueGlow(fx.x, fx.y - 0.4, 1.0, st.glow, 0.5);
-            this.queueGlow((fx.x + (fx.x2 ?? fx.x)) / 2, (fx.y + (fx.y2 ?? fx.y)) / 2 - 0.4, 1.6, st.glow, 0.4);
-            this.queueGlow(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.4, 1.3, st.glow, 0.5);
+            this.queueFxGlow(fx.x, fx.y - 0.4, 1.0, 0.5, st);
+            this.queueFxGlow((fx.x + (fx.x2 ?? fx.x)) / 2, (fx.y + (fx.y2 ?? fx.y)) / 2 - 0.4, 1.6, 0.4, st);
+            this.queueFxGlow(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.4, 1.3, 0.5, st);
             // The corridor leaves its mark where it terminated.
             this.addDecal(fx.x2 ?? fx.x, fx.y2 ?? fx.y, 0.9, st);
             this.queueBeat(now + 380, fx.x2 ?? fx.x, fx.y2 ?? fx.y, 0.8, 'settle', st);
@@ -65892,7 +65988,7 @@ export class Renderer {
             this.queueBeat(now + 260, fx.x, fx.y, fx.radius, 'dust', st);
             this.queueBeat(now + 520, fx.x, fx.y, fx.radius * 0.6, 'settle', st);
           }
-          this.queueGlow(fx.x, fx.y, fx.radius * (0.5 + 0.7 * t), st.glow, 0.5 * (1 - t));
+          this.queueFxGlow(fx.x, fx.y, fx.radius * (0.5 + 0.7 * t), 0.5 * (1 - t), st);
           break;
         }
 
@@ -65911,7 +66007,7 @@ export class Renderer {
             this.queueBeat(now + 300, fx.x, fx.y, fx.radius * 1.1, 'dust', st);
             this.queueBeat(now + 620, fx.x, fx.y, fx.radius * 0.6, 'settle', st);
           }
-          this.queueGlow(fx.x, fx.y, fx.radius * 1.6 * (1 - t), st.glow, 0.55 * (1 - t));
+          this.queueFxGlow(fx.x, fx.y, fx.radius * 1.6 * (1 - t), 0.55 * (1 - t), st);
           break;
         }
 
@@ -65922,8 +66018,8 @@ export class Renderer {
             fx.spawned = true;
             this.particles.burst(fx.x, fx.y - 0.6, 8, [st.mid, st.spark, st.core], { speed: 1.4, life: 0.5, size: 0.08, gravity: -2.4 });
           }
-          this.queueGlow(fx.x, fx.y - 0.4, 1.1, st.glow, 0.4 * (1 - t));
-          this.queueGlow(fx.x, fx.y - 1.1, 0.8, st.glow, 0.3 * (1 - t));
+          this.queueFxGlow(fx.x, fx.y - 0.4, 1.1, 0.4 * (1 - t), st);
+          this.queueFxGlow(fx.x, fx.y - 1.1, 0.8, 0.3 * (1 - t), st);
           break;
         }
 
@@ -65940,7 +66036,7 @@ export class Renderer {
           // Ring on the ground, star in the y-sort; light stays here.
           if (!fx.spawned) fx.spawned = true;
           if (fx.radius > 0) {
-            this.queueGlow(fx.x, fx.y - 0.2, fx.radius * (1 - t * 0.5), st.glow, 0.4 * (1 - t));
+            this.queueFxGlow(fx.x, fx.y - 0.2, fx.radius * (1 - t * 0.5), 0.4 * (1 - t), st);
           }
           break;
         }
@@ -65950,7 +66046,7 @@ export class Renderer {
           // furniture in the y-sort; the air keeps the simmer and
           // the breathing rim membrane.
           const edge = Math.min(1, age / 220, (life - age) / 420);
-          this.queueGlow(fx.x, fx.y, fx.radius * 0.9, st.glow, 0.2 * edge * (0.8 + 0.2 * Math.sin(now / 300)));
+          this.queueFxGlow(fx.x, fx.y, fx.radius * 0.9, 0.2 * edge * (0.8 + 0.2 * Math.sin(now / 300)), st);
           if (Math.random() < this.frameDt * 12 * edge) {
             const a = Math.random() * Math.PI * 2;
             const rr = Math.sqrt(Math.random()) * fx.radius * 0.9;
