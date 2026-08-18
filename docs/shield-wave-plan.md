@@ -341,3 +341,39 @@ Three masses, one clock:
 Fittings: boss + device 'star' + spikes + faceAlt = 4 (t4 floor holds).
 Owners: white = moon + frost tips; cyan = the escaping light; night-blues
 own the plates. Gates: shields tsc clean, client 669/669.
+
+## KINGSWARD v2 — THE LION OF THE CROWN (as-built, 2026-08-17)
+
+The royal rebuild against the user's references (the golden lion ward and
+its silver knight's set) — seventh premium pass, and the roster's flagship.
+The crimson quarters retire whole. Four judged passes at 4x; the lion cost
+three of them, and the lessons are written down: a fitting ring around a
+face plate reads as a PORTRAIT FRAME (the mask + mane are one grown
+ensemble — un-ringed); a lion is WIDTH (broad brow with ears, wide-set eye
+slits, big pale muzzle block); and the face needs a dark mane-shadow ring
+under it to separate gold from gold.
+
+Three masses, one clock:
+- **THE LION** (`relKingsward`): twelve flame-lick mane petals in two
+  golds (longest at the crown), the mane's shadow, then the broad face
+  plate (prism h 0.24→0.5) carrying the M-scowl brow band, SEAM eye
+  slits, lit nose bridge, pale muzzle block with cut nose and mouth, ear
+  hollows, and jaw tufts. Two silver RING BOSSES at the frame shoulders
+  (ringed fittings with painted holes).
+- **THE FLOW** (`sigKingsward`, LIVING_SIGS): two mane sweeps falling down
+  the flanks + four nested ridge-chevrons converging on the point — the
+  mane becoming the shield. THE ROYAL GLEAM (GLEAM_MS 6200): one slow
+  sheen down the polished gold; the sapphire answers with a white glint —
+  one clock. Recut 'heater' outline = the royal teardrop (peaked crown,
+  broad shoulders, long sweep to the point); METRIC heater 0.16/0.21 →
+  0.165/0.24.
+- **THE SILVER CROWN** (`crestKingsward`): the roster's ONLY silver-framed
+  shield — rim band + frame studs + four flank scroll-thorns (spike plan),
+  two great wing-blades whose tips CLEAR the silhouette at face-on
+  (a crown is worn above the shield, not inlaid in its rim), two inner
+  barbs, the crown spike, and ONE SAPPHIRE at the brow — the armor set's
+  gem, the only blue on the board, ringed as a set stone.
+
+Fittings: faceAlt + device 'fang' + studs + spikes = 4 (t5 floor holds).
+Owners: silver = the frame's; the golds = the lion's; sapphire + glint
+stand alone. Gates: shields tsc clean, client 669/669.

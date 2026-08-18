@@ -488,22 +488,46 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
    * houses meet. Ivory-gold binding. No spikes, no teeth — this one is
    * pure ceremony that happens to stop swords.
    */
+  /**
+   * KINGSWARD — THE LION OF THE CROWN (v2, 2026-08-17: the royal
+   * rebuild against the user's references — the shield of kings and
+   * their knights, the most revered board in the rolls). Three
+   * masses, one clock. THE LION: a mounted golden mask at the heart —
+   * a flame-petal mane rosette behind a stern sculpted face plate
+   * (brow scowl, set eyes, nose, muzzle — heraldic, not literal),
+   * ringed as the mounted object it is. THE FLOW: the gold field
+   * sweeps in nested ridges down to the point, mane-lines becoming
+   * the shield; THE ROYAL GLEAM (the one clock) sends a slow sheen
+   * down the polished gold. THE SILVER CROWN: this is the roster's
+   * ONLY silver-framed shield — the rim band, two swept wing-blades
+   * and a crown spike in crest air, two ring bosses at the shoulders,
+   * silver thorns along the flanks, and ONE SAPPHIRE set at the brow
+   * (the armor set's own gem, the only blue anywhere). Owners: silver
+   * is the frame's, the golds are the lion's, the sapphire and its
+   * glint stand alone.
+   */
   kingsward: {
     shape: 'heater',
     material: 'steel',
-    face: '#8a2431',
-    faceAlt: '#c9d2e4',
-    field: 'pale',
-    rim: '#d8b76a',
-    boss: '#dfe6f4',
-    device: 'crown',
-    deviceColor: '#e6c36a',
+    face: '#b8923f',
+    faceAlt: '#d8b968',
+    rim: '#c9ccd4',
+    // The lion, in the rolls' nearest word.
+    device: 'fang',
+    deviceColor: '#8a6a28',
     studs: true,
-    curve: 0.3,
+    spikes: true,
+    // Silver scroll-thorns off the flanks — the frame's own barbs.
+    spikeAngles: [0.2, 2.94, 0.9, 2.24],
+    spikeLen: 1.12,
+    spikeW: 0.05,
+    spikeColor: '#c9ccd4',
+    curve: 0.32,
     strapColor: '#5a4a2a',
     sig: 'kingsward',
     tier: 5,
   },
+
   /**
    * THE DREADFORGE THORNWALL — black steel and gold thorns, for the
    * tank whose answer is the shield itself. A waisted angular wall
@@ -1022,9 +1046,14 @@ const OUTLINES: Record<ShieldShape, number[]> = {
   round: ngon(10, -Math.PI / 2 + Math.PI / 10),
   // The knightly heater: flat top, cut shoulders, the belly falling to
   // a point in three straight runs.
+  // THE KINGSWARD (the royal recut): a tall teardrop kite — peaked
+  // crown, broad shoulders, one long sweep to the point. The king's
+  // silhouette before a single fitting resolves.
   heater: [
-    -0.9, -1, 0.9, -1, 1.0, -0.55, 0.86, 0.16, 0.44, 0.74, 0, 1, -0.44, 0.74,
-    -0.86, 0.16, -1.0, -0.55,
+    0, -1.02, 0.42, -0.94, 0.78, -0.74, 0.95, -0.4, 0.9, -0.05,
+    0.72, 0.32, 0.45, 0.65, 0.18, 0.9, 0, 1.06, -0.18, 0.9,
+    -0.45, 0.65, -0.72, 0.32, -0.9, -0.05, -0.95, -0.4, -0.78, -0.74,
+    -0.42, -0.94,
   ],
   // The Norman almond: a cut crown over a long taper that arrives at a
   // real POINT. Ten vertices, every one of them a corner you can see.
@@ -1229,7 +1258,8 @@ const METRIC: Record<
 > = {
   buckler: { hw: 0.13, hh: 0.13, hang: -0.25, depth: 0.034, strap: false, fwdK: 0.08, twistK: 0.18 },
   round: { hw: 0.175, hh: 0.175, hang: -0.21, depth: 0.036, strap: false, fwdK: 0.03, twistK: 0.1 },
-  heater: { hw: 0.16, hh: 0.21, hang: -0.19, depth: 0.05, strap: true, fwdK: 0, twistK: 0 },
+  // Sized with the KINGSWARD recut — the royal kite runs longer.
+  heater: { hw: 0.165, hh: 0.24, hang: -0.16, depth: 0.05, strap: true, fwdK: 0, twistK: 0 },
   kite: { hw: 0.152, hh: 0.27, hang: -0.14, depth: 0.05, strap: true, fwdK: 0, twistK: 0 },
   tower: { hw: 0.185, hh: 0.315, hang: -0.09, depth: 0.06, strap: true, fwdK: -0.01, twistK: -0.04, wall: true },
   // The greatshield class. Each rung is a little more shield than the
@@ -1688,7 +1718,7 @@ interface FaceEntry {
 const FACE_CACHE = new Map<string, FaceEntry>();
 const FACE_CACHE_MAX = 64;
 /** Signatures whose FACE is a function of the clock (crests stay live). */
-const LIVING_SIGS = new Set(['oath', 'gatefall', 'brineshell', 'winterheart', 'frost']);
+const LIVING_SIGS = new Set(['oath', 'gatefall', 'brineshell', 'winterheart', 'frost', 'kingsward']);
 /** Resolution rungs, px per design unit — capped so no entry balloons. */
 const FACE_RES = [20, 30, 44, 64, 92, 132, 184];
 
@@ -2870,32 +2900,68 @@ function sigBonespur(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
 }
 
 /**
- * KINGSWARD — the royal impalement. The field is divided per pale:
- * the King's crimson dexter, the Queen's moonpale sinister, one gold
- * fillet standing where the houses meet. The crown rides the seam at
- * the honor point; the moonstone boss (substrate pass) sets at the
- * heart below it. Ceremony first, and not one plane more.
+ * THE ROYAL GLEAM: polished gold catches the sun once every few
+ * seconds — one slow sheen travels the face and is gone, and the
+ * sapphire at the brow answers it with a glint. The king's shield
+ * does not flicker; it SHINES, briefly, like a thing kept polished.
+ */
+const GLEAM_MS = 6200;
+function gleamPhase(nowMs: number): number {
+  return ((nowMs + GLEAM_MS * 0.3) % GLEAM_MS) / GLEAM_MS;
+}
+
+/**
+ * KINGSWARD — THE LION OF THE CROWN's field. The gold FLOW: two mane
+ * sweeps falling from behind the lion down the flanks, then nested
+ * ridge-chevrons converging on the point — the mane becoming the
+ * shield, the reference's own grammar. All flat golds; the lion and
+ * the crown are the raised tiers'.
  */
 function sigKingsward(
   ctx: CanvasRenderingContext2D,
   st: ShieldStyle,
   fr: ShieldFrame,
+  litU: number,
+  nowMs: number,
 ): void {
-  // The impalement: sinister half in the Queen's moonpale.
-  ctx.fillStyle = st.faceAlt ?? shade(st.face, 40);
-  ctx.fillRect(0, -1.2, 1.2, 2.4);
-  // One shadowed plane on each field so both halves read as cloth
-  // hung on the same board, lit by the same sun.
-  ctx.fillStyle = shade(st.face, -18);
-  ctx.fillRect(-1.2, -1.2, 0.22, 2.4);
-  ctx.fillStyle = shade(st.faceAlt ?? st.face, -14);
-  ctx.fillRect(0.98, -1.2, 0.22, 2.4);
-  // The gold fillet on the seam.
-  ctx.fillStyle = SEAM;
-  ctx.fillRect(-0.075, -1.2, 0.15, 2.4);
-  ctx.fillStyle = st.deviceColor ?? shade(st.rim, 20);
-  ctx.fillRect(-0.045, -1.2, 0.09, 2.4);
-  drawDevice(ctx, st, fr);
+  const deep = st.deviceColor ?? '#8a6a28';
+  const light = st.faceAlt ?? '#d8b968';
+  ctx.fillStyle = st.face;
+  ctx.fillRect(-1.2, -1.2, 2.4, 2.4);
+  // THE MANE SWEEPS: two long bands falling from the lion's shoulders
+  // down the flanks, bowing with the outline.
+  for (const sgn of [-1, 1]) {
+    poly(ctx, shade(st.face, -12), [
+      sgn * 0.3, -0.62, sgn * 0.62, -0.5, sgn * 0.72, -0.1,
+      sgn * 0.55, 0.28, sgn * 0.38, 0.34, sgn * 0.52, -0.05, sgn * 0.42, -0.42,
+    ]);
+  }
+  // THE RIDGES: nested chevrons converging on the point.
+  const chevron = (t0: number, w: number, tone: string): void => {
+    poly(ctx, tone, [
+      -0.66, t0 - 0.34, -0.4, t0 - 0.2, 0, t0, 0.4, t0 - 0.2, 0.66, t0 - 0.34,
+      0.66, t0 - 0.34 + w, 0.4, t0 - 0.2 + w, 0, t0 + w, -0.4, t0 - 0.2 + w,
+      -0.66, t0 - 0.34 + w,
+    ]);
+  };
+  chevron(0.22, 0.11, deep);
+  chevron(0.46, 0.1, light);
+  chevron(0.7, 0.09, deep);
+  chevron(0.94, 0.08, light);
+  // THE ROYAL GLEAM: one sheen down the gold, then stillness.
+  const ph = gleamPhase(nowMs);
+  if (ph < 0.3) {
+    const pr = ph / 0.3;
+    const c = -1.4 + pr * 2.8;
+    ctx.globalAlpha = Math.sin(pr * Math.PI) * 0.14;
+    poly(ctx, '#fff2d0', [
+      c * 0.45 - 1.6 * 0.89 - 0.2 * 0.45, c * 0.89 + 1.6 * 0.45 - 0.2 * 0.89,
+      c * 0.45 - 1.6 * 0.89 + 0.2 * 0.45, c * 0.89 + 1.6 * 0.45 + 0.2 * 0.89,
+      c * 0.45 + 1.6 * 0.89 + 0.2 * 0.45, c * 0.89 - 1.6 * 0.45 + 0.2 * 0.89,
+      c * 0.45 + 1.6 * 0.89 - 0.2 * 0.45, c * 0.89 - 1.6 * 0.45 - 0.2 * 0.89,
+    ]);
+    ctx.globalAlpha = 1;
+  }
 }
 
 /**
@@ -4724,6 +4790,122 @@ function relFrost(rc: ReliefCtx, st: ShieldStyle): void {
 }
 
 /**
+ * KINGSWARD — THE LION, MOUNTED. The golden mask at the heart, built
+ * the heraldic way: a bold flame-petal mane (the licks alternating
+ * deep and bright gold, longest at the crown), then the broad
+ * sculpted FACE PLATE standing off it — stern brow scowl, set eyes,
+ * the nose's light, the muzzle's dark, mane tufts framing the jaw —
+ * ringed as one mounted object. Two silver RING BOSSES sit at the
+ * frame's shoulders, each its own ringed fitting.
+ */
+function relKingsward(rc: ReliefCtx, st: ShieldStyle): void {
+  const gold = st.face;
+  const light = st.faceAlt ?? shade(gold, 18);
+  const HC = -0.34; // the lion's heart
+  // THE MANE: twelve flame licks, longest at the crown, in two golds.
+  for (let k = 0; k < 12; k++) {
+    const a = (k / 12) * Math.PI * 2;
+    const L = 0.56 + 0.2 * Math.cos(a);
+    const du = Math.sin(a);
+    const dt = -Math.cos(a);
+    const pu = Math.cos(a);
+    const pt = Math.sin(a);
+    const w = 0.13;
+    polyAt(rc, [
+      du * 0.14, HC + dt * 0.14,
+      du * 0.32 + pu * w, HC + dt * 0.32 + pt * w,
+      du * L + pu * w * 0.45, HC + dt * L + pt * w * 0.45,
+      du * (L * 0.8) - pu * w * 0.35, HC + dt * (L * 0.8) - pt * w * 0.35,
+    ], 0.22, k % 2 ? shade(light, 12) : shade(gold, -22));
+  }
+  // THE FACE PLATE: a LION is width — broad brow carrying the ears,
+  // wide cheeks, the big muzzle block. One grown ensemble with the
+  // mane: no fitting ring (a ring boxed the face into a portrait).
+  // The MANE'S SHADOW under it separates gold face from gold mane.
+  const head: number[] = [
+    -0.28, HC - 0.28, 0, HC - 0.21, 0.28, HC - 0.28, 0.33, HC - 0.09,
+    0.3, HC + 0.12, 0.16, HC + 0.33, 0, HC + 0.4, -0.16, HC + 0.33,
+    -0.3, HC + 0.12, -0.33, HC - 0.09,
+  ];
+  polyAt(rc, head.map((v, i) => (i % 2 === 0 ? v * 1.14 : HC + (v - HC) * 1.14)), 0.22, shade(gold, -34));
+  prism(rc, head, 0.24, 0.5, shade(light, 8), {
+    wallDark: shade(gold, -30),
+    shadow: false,
+  });
+  const dark = shade(st.deviceColor ?? '#8a6a28', -26);
+  // The ears' hollows.
+  polyAt(rc, [-0.24, HC - 0.24, -0.14, HC - 0.185, -0.22, HC - 0.135], 0.5, dark);
+  polyAt(rc, [0.24, HC - 0.24, 0.14, HC - 0.185, 0.22, HC - 0.135], 0.5, dark);
+  // THE SCOWL: one heavy M-shaped brow band, meeting low at the nose.
+  polyAt(rc, [
+    -0.28, HC - 0.12, -0.07, HC - 0.05, 0, HC - 0.1, 0.07, HC - 0.05,
+    0.28, HC - 0.12, 0.24, HC - 0.02, 0.07, HC + 0.01, 0, HC - 0.035,
+    -0.07, HC + 0.01, -0.24, HC - 0.02,
+  ], 0.5, dark);
+  // The eyes: wide-set slits under the brow's weight.
+  polyAt(rc, [-0.22, HC + 0.035, -0.09, HC + 0.045, -0.115, HC + 0.105, -0.2, HC + 0.09], 0.5, SEAM);
+  polyAt(rc, [0.22, HC + 0.035, 0.09, HC + 0.045, 0.115, HC + 0.105, 0.2, HC + 0.09], 0.5, SEAM);
+  // The nose's light, short between the eyes.
+  polyAt(rc, [-0.04, HC + 0.0, 0.04, HC + 0.0, 0.032, HC + 0.14, -0.032, HC + 0.14], 0.5, shade(light, 26));
+  // THE MUZZLE BLOCK: the lion's pale mass, then nose and mouth cut in.
+  polyAt(rc, [-0.15, HC + 0.14, 0.15, HC + 0.14, 0.115, HC + 0.35, 0, HC + 0.38, -0.115, HC + 0.35], 0.52, shade(light, 20));
+  polyAt(rc, [-0.058, HC + 0.14, 0.058, HC + 0.14, 0, HC + 0.22], 0.52, dark);
+  polyAt(rc, [-0.016, HC + 0.22, 0.016, HC + 0.22, 0.012, HC + 0.31, -0.012, HC + 0.31], 0.52, dark);
+  // Mane tufts framing the jaw — the leonine cheeks.
+  polyAt(rc, [-0.33, HC + 0.07, -0.16, HC + 0.33, -0.35, HC + 0.28], 0.34, shade(gold, -22));
+  polyAt(rc, [0.33, HC + 0.07, 0.16, HC + 0.33, 0.35, HC + 0.28], 0.34, shade(gold, -22));
+  // THE RING BOSSES: the frame's two silver rings, at the shoulders.
+  const silver = st.rim;
+  for (const sgn of [-1, 1]) {
+    const ring: number[] = [];
+    for (let k = 0; k < 8; k++) {
+      const a = Math.PI / 8 + (k / 8) * Math.PI * 2;
+      ring.push(sgn * 0.6 + Math.cos(a) * 0.105, -0.6 + Math.sin(a) * 0.105);
+    }
+    polyAt(rc, ring, 0.3, silver);
+    strokeAt(rc, ring, 0.3);
+    const hole: number[] = [];
+    for (let k = 0; k < 8; k++) {
+      const a = Math.PI / 8 + (k / 8) * Math.PI * 2;
+      hole.push(sgn * 0.6 + Math.cos(a) * 0.048, -0.6 + Math.sin(a) * 0.048);
+    }
+    polyAt(rc, hole, 0.3, shade(gold, -10));
+  }
+}
+
+/**
+ * KINGSWARD — THE WINGED CROWN. Two great silver wing-blades sweeping
+ * up and out from the crown shoulders, a barb behind each, the crown
+ * spike between them — and THE SAPPHIRE set at the brow: the armor
+ * set's own stone, the one blue on the whole board, flashing in
+ * answer to the royal gleam. Silver is matter: every blade ringed.
+ */
+function crestKingsward(rc: ReliefCtx, st: ShieldStyle): void {
+  const { ctx } = rc;
+  const silver = st.spikeColor ?? '#c9ccd4';
+  // The wings SPREAD: their tips clear the silhouette at face-on —
+  // a crown is worn ABOVE the shield, not inlaid into its rim.
+  pyramid(rc, -0.48, -0.78, 0.12, 0.09, 0, 1.1, silver, { outline: true, du: -0.6, dt: -0.34 });
+  pyramid(rc, 0.48, -0.78, 0.12, 0.09, 0, 1.1, silver, { outline: true, du: 0.6, dt: -0.34 });
+  pyramid(rc, -0.3, -0.9, 0.08, 0.06, 0, 1.2, shade(silver, -14), { outline: true, du: -0.22, dt: -0.18 });
+  pyramid(rc, 0.3, -0.9, 0.08, 0.06, 0, 1.2, shade(silver, -14), { outline: true, du: 0.22, dt: -0.18 });
+  pyramid(rc, 0, -1.0, 0.09, 0.07, 0, 1.6, shade(silver, 8), { outline: true, dt: -0.1 });
+  // THE SAPPHIRE, set at the brow.
+  const jr = 0.085;
+  polyAt(rc, [0, -0.8 - jr * 1.4, jr, -0.8, 0, -0.8 + jr * 1.4, -jr, -0.8], 0.6, '#4a76c8');
+  polyAt(rc, [0, -0.8 - jr * 0.8, jr * 0.55, -0.8, 0, -0.8 + jr * 0.8, -jr * 0.55, -0.8], 0.66, '#8ab4f0');
+  strokeAt(rc, [0, -0.8 - jr * 1.4, jr, -0.8, 0, -0.8 + jr * 1.4, -jr, -0.8], 0.6);
+  // The gleam's answer: the stone takes the sun.
+  const ph = gleamPhase(rc.nowMs);
+  if (ph > 0.08 && ph < 0.3) {
+    const gl = Math.sin(((ph - 0.08) / 0.22) * Math.PI);
+    ctx.globalAlpha = gl * 0.95;
+    polyAt(rc, [0, -0.85, 0.02, -0.8, 0, -0.75, -0.02, -0.8], 0.7, '#ffffff');
+    ctx.globalAlpha = 1;
+  }
+}
+
+/**
  * FROSTPLATE GREATSHIELD — THE CROWN AND THE FANG. Three great ice
  * blades over the crown point (the center one the roster's tallest
  * crest), and ONE GREAT FANG hanging below the heel on a hard
@@ -5311,6 +5493,7 @@ const CRESTS: Record<string, ReliefPainter> = {
   fellhorn: crestFellhorn,
   gatefall: crestGatefall,
   frost: crestFrost,
+  kingsward: crestKingsward,
   winterheart: crestWinterheart,
   oath: crestOath,
   pinion: crestPinion,
@@ -5329,6 +5512,7 @@ const RELIEFS: Record<string, ReliefPainter> = {
   everwood: relEverwood,
   gatefall: relGatefall,
   frost: relFrost,
+  kingsward: relKingsward,
   oath: relOath,
 };
 
