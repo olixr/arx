@@ -60,6 +60,14 @@ export interface WorldLight {
    * cache doesn't carry cones.
    */
   cone?: { ux: number; uy: number; spread: number };
+  /**
+   * Source height, world tiles (v4 phase 3). The pool flattens — its
+   * center is `z` away so it dims to (1 − z/R3), while the LATERAL
+   * edge is preserved exactly (R3 = hypot(r, z)); faces respond to the
+   * light's true height (a sconce strikes a wall near-horizontally,
+   * a low crate obliquely from above). Absent = a ground flame.
+   */
+  z?: number;
 }
 
 /** Everything the lightmap needs to share the camera's view. */
@@ -120,6 +128,31 @@ const WRAP_STOPS: ReadonlyArray<readonly [number, number]> = [
   [0.6, WRAP_K * 0.55],
   [1, 0],
 ];
+
+/**
+ * THE HUNG POOL (v4 phase 3): an elevated light's ground pool keeps
+ * its authored LATERAL edge but flattens — every art stop of
+ * POOL_STOPS moves outward to where the true 3D distance through the
+ * source height lands it. Buckets of z/r (eighths) keep the sprite
+ * cache tiny; each bucket's stops array is minted once, so the glow
+ * sprite's identity memo holds.
+ */
+const Z_POOL_STOPS = new Map<number, ReadonlyArray<readonly [number, number]>>();
+function poolStopsFor(zOverR: number): ReadonlyArray<readonly [number, number]> {
+  if (zOverR <= 0.02) return POOL_STOPS;
+  const bucket = Math.min(12, Math.round(zOverR * 8));
+  let stops = Z_POOL_STOPS.get(bucket);
+  if (stops === undefined) {
+    const zn = bucket / 8;
+    const r3 = Math.hypot(1, zn);
+    stops = POOL_STOPS.map(([off, a]) => {
+      const d = off * (r3 - zn) + zn;
+      return [Math.min(1, Math.sqrt(Math.max(0, d * d - zn * zn))), a] as const;
+    });
+    Z_POOL_STOPS.set(bucket, stops);
+  }
+  return stops;
+}
 
 /** rgb triple → "r, g, b", memoized by array identity — one string
  *  per palette color instead of one per light per frame. */
@@ -203,6 +236,9 @@ export class LightingSystem {
     lights: WorldLight[],
     blocks: (tx: number, ty: number) => boolean,
     tallH: (tx: number, ty: number) => number,
+    /** Per-tile material response for lit faces (v4 phase 3): stone
+     *  returns light, wood a little less, foliage drinks it. 1 = full. */
+    faceGain: (tx: number, ty: number) => number,
   ): void {
     if (sky.darkness < 0.02) return; // full daylight: multiply-by-white
     const mw = Math.max(1, Math.ceil(view.w / MAP_DOWNSCALE));
@@ -235,7 +271,7 @@ export class LightingSystem {
     for (const light of lights) {
       if (light.intensity <= 0.01) continue;
       if (light.occlude) {
-        this.drawOccludedLight(light, blocks, tallH, sx, sy, tx, ty);
+        this.drawOccludedLight(light, blocks, tallH, faceGain, sx, sy, tx, ty);
       } else {
         const cone = light.cone;
         if (cone) {
@@ -250,7 +286,7 @@ export class LightingSystem {
         m.globalAlpha = 1;
         // Standing content in the pool catches the light — no shadow
         // math for free-floating lights, so no LOS gate either.
-        this.gatherFaceRuns(light, tallH, null);
+        this.gatherFaceRuns(light, tallH, null, faceGain);
         this.paintFaceRuns(m, light, sx, sy, tx, ty);
         if (cone) m.restore();
       }
@@ -311,9 +347,10 @@ export class LightingSystem {
   }
 
   /** The light's radial falloff, pre-rendered — intensity rides
-   *  globalAlpha at the stamp, so the sprite is shared per color. */
+   *  globalAlpha at the stamp, so the sprite is shared per color;
+   *  elevated sources take the hung-pool flattened profile. */
   private poolSprite(light: WorldLight): HTMLCanvasElement {
-    return radialGlowSprite(rgbCsv(light.rgb), POOL_STOPS, 0.06);
+    return radialGlowSprite(rgbCsv(light.rgb), poolStopsFor((light.z ?? 0) / light.r), 0.06);
   }
 
   /** The soft indirect halo: wider and dimmer than the pool. */
@@ -326,11 +363,27 @@ export class LightingSystem {
    * row ye: N·L (how squarely the face looks at the pool) times the
    * pool's falloff. Sampled at tile CORNERS so neighbouring faces
    * shade continuously — the run reads as one surface.
+   *
+   * With a source height (v4 phase 3) the vector runs through 3D: the
+   * vertical leg is the light's height over the FACE MIDDLE, so a
+   * sconce strikes a wall of its own height near-horizontally (full
+   * response) but a low crate obliquely from above (dim) — and the
+   * falloff normalizes by R3 so the ground-edge reach the fixture was
+   * tuned for is preserved exactly.
    */
-  private faceK(light: WorldLight, x: number, ye: number): number {
+  private faceK(light: WorldLight, x: number, ye: number, h: number): number {
     const mx = x - light.x;
     const my = ye - light.y;
     if (my >= 0) return 0;
+    const z = light.z ?? 0;
+    if (z > 0) {
+      const dz = Math.max(0, z - h * 0.5);
+      const d = Math.hypot(mx, my, dz) || 1;
+      const reach = Math.hypot(light.r, z);
+      if (d >= reach) return 0;
+      const fall = 1 - d / reach;
+      return Math.min(0.6, light.intensity * Math.pow(fall, 1.4) * (-my / d) * 0.85);
+    }
     const d = Math.hypot(mx, my) || 1;
     if (d >= light.r) return 0;
     const fall = 1 - d / light.r;
@@ -348,6 +401,7 @@ export class LightingSystem {
     light: WorldLight,
     tallH: (tx: number, ty: number) => number,
     blocks: ((tx: number, ty: number) => boolean) | null,
+    faceGain: ((tx: number, ty: number) => number) | null,
   ): void {
     this.runs.length = 0;
     const t0x = Math.floor(light.x - light.r);
@@ -364,8 +418,14 @@ export class LightingSystem {
         let k0 = 0;
         let k1 = 0;
         if (h > 0) {
-          k0 = this.faceK(light, cx, ye);
-          k1 = this.faceK(light, cx + 1, ye);
+          // THE RESPONSE PROFILE (v4 phase 3): the tile's material
+          // gain scales its whole face — foliage drinks light, stone
+          // returns it. Folded into the corner samples so runs still
+          // fuse on height alone and shade continuously across a
+          // material seam.
+          const g = faceGain === null ? 1 : faceGain(cx, cy);
+          k0 = this.faceK(light, cx, ye, h) * g;
+          k1 = this.faceK(light, cx + 1, ye, h) * g;
           if (k0 <= 0.005 && k1 <= 0.005) h = 0;
           else if (blocks) {
             const mx = cx + 0.5 - light.x;
@@ -528,6 +588,7 @@ export class LightingSystem {
     light: WorldLight,
     blocks: (tx: number, ty: number) => boolean,
     tallH: (tx: number, ty: number) => number,
+    faceGain: (tx: number, ty: number) => number,
     sx: number,
     sy: number,
     tx: number,
@@ -551,7 +612,7 @@ export class LightingSystem {
       // lights new to the cache — the per-rebuild createElement was
       // shedding ~1MB of canvas backing store per lamp per second all
       // night long (browser canvas memory, invisible to the JS heap).
-      const built = this.buildLightPatch(light, blocks, tallH, sx, sy, p?.c);
+      const built = this.buildLightPatch(light, blocks, tallH, faceGain, sx, sy, p?.c);
       if (!built) return;
       while (this.patches.size >= 128) {
         const first = this.patches.keys().next().value as string;
@@ -589,6 +650,7 @@ export class LightingSystem {
     light: WorldLight,
     blocks: (tx: number, ty: number) => boolean,
     tallH: (tx: number, ty: number) => number,
+    faceGain: (tx: number, ty: number) => number,
     sx: number,
     sy: number,
     reuse?: HTMLCanvasElement,
@@ -647,7 +709,7 @@ export class LightingSystem {
     // just erased their own wedges AND the stalls, stations and trees
     // the shadow math never knew — catches the lamp on the side the
     // camera sees, LOS-gated so nothing glows through a wall.
-    this.gatherFaceRuns(light, tallH, blocks);
+    this.gatherFaceRuns(light, tallH, blocks, faceGain);
     this.paintFaceRuns(t, light, sx, sy, tx, ty);
     t.setTransform(1, 0, 0, 1, 0, 0);
 

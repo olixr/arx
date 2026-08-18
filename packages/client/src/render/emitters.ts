@@ -94,9 +94,10 @@ export function collectEmitter(
       rgb: alt && l.altRgb !== undefined ? l.altRgb : l.rgb,
       intensity: l.flameGated ? l.intensity * flame * k : l.intensity * k,
     };
-    // Set only when true — the original pushes omitted the key, and
-    // the parity gate compares object shapes deep-strictly.
+    // Set only when present — the original pushes omitted the keys,
+    // and the parity gate compares object shapes deep-strictly.
     if (l.occlude) light.occlude = true;
+    if (l.z !== undefined) light.z = l.z;
     lights.push(light);
   }
   return true;

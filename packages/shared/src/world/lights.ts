@@ -119,6 +119,14 @@ export interface EmitterLight {
   /** Curve scales the reach too (living fire), not just the brightness. */
   rRide?: boolean;
   altRgb?: readonly [number, number, number];
+  /**
+   * Source height above the ground, world tiles (v4 phase 3 — THE
+   * LIGHT STANDS WHERE THE FLAME BURNS). The lightmap's 3D term: the
+   * pool under a hung light flattens (its center is `z` away; lateral
+   * reach preserved via R3 = hypot(r, z)) and faces respond to the
+   * source's true height. Must agree with the fixture's glow `air`.
+   */
+  z?: number;
 }
 
 export interface EmitterSpec {
@@ -210,7 +218,7 @@ const SPECS: ReadonlyArray<readonly [Tile, EmitterSpec]> = [
   [Tile.WallSconce, {
     curve: { base: 0.8, terms: [{ hz: 13, amp: 0.13, px: 2.9 }, { hz: 29, amp: 0.07, py: 1.1 }] },
     glows: [{ dx: 0.5, dy: 0, air: 1.1, r: 1.15, rRide: true, rgb: '255, 156, 62', a: 0.28 }],
-    lights: [{ dx: 0.5, dy: 0.35, r: 3.4, rRide: true, rgb: [255, 176, 96], intensity: 0.8, flameGated: true, occlude: true }],
+    lights: [{ dx: 0.5, dy: 0.35, r: 3.4, rRide: true, rgb: [255, 176, 96], intensity: 0.8, flameGated: true, occlude: true, z: 1.1 }],
   }],
   // THE LONG DARK PEOPLED: grave-candles — the smallest kept flame in
   // the game. A knee-high amber pool with a soft double-wick waver,
@@ -278,7 +286,7 @@ const SPECS: ReadonlyArray<readonly [Tile, EmitterSpec]> = [
   [Tile.LurePole, {
     curve: { base: 0.82, terms: [{ hz: 1.2, amp: 0.18, px: 1.1, py: 0.8 }] },
     glows: [{ dx: 0.5, dy: 0, air: 1.0, r: 1.0, rRide: true, rgb: '127, 216, 200', a: 0.16 }],
-    lights: [{ dx: 0.5, dy: 0.45, r: 3.6, rRide: true, rgb: [127, 216, 200], intensity: 0.55, occlude: true }],
+    lights: [{ dx: 0.5, dy: 0.45, r: 3.6, rRide: true, rgb: [127, 216, 200], intensity: 0.55, occlude: true, z: 1.0 }],
   }],
   // The tidecaller's slab: a cold shore-water shimmer, more moonlight
   // than lamp — enough to find the shrine across the camp, never
@@ -363,7 +371,7 @@ const SPECS: ReadonlyArray<readonly [Tile, EmitterSpec]> = [
     flameGate: true,
     porch: true,
     glows: [{ dx: 0.5, dy: 0.62, air: 1.4, r: 1.3, rRide: true, rgb: '255, 205, 130', a: 0.28, gate: 'flame' }],
-    lights: [{ dx: 0.5, dy: 0.5, r: 5, rRide: true, rgb: [255, 205, 135], intensity: 0.9, flameGated: true, occlude: true }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 5, rRide: true, rgb: [255, 205, 135], intensity: 0.9, flameGated: true, occlude: true, z: 1.4 }],
   }],
 ];
 

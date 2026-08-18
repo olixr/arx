@@ -119,6 +119,19 @@ test('THE TOWN LAW, TIERED (§7.1): candles carry one tiny non-occluding pool; L
   assert.ok(lamp.lights[0]?.occlude, 'LampPost: the town light is architecture');
 });
 
+test('THE LIGHT STANDS WHERE THE FLAME BURNS: a z light matches a glow at its own air height', () => {
+  eachSpec((tile, spec) => {
+    for (const l of spec.lights) {
+      if (l.z === undefined) continue;
+      assert.ok(l.z > 0 && l.z < 2, `${Tile[tile]}: z ${l.z} out of the fixture band`);
+      assert.ok(
+        spec.glows.some((g) => g.air === l.z),
+        `${Tile[tile]}: the light floats at z ${l.z} but no flame burns there`,
+      );
+    }
+  });
+});
+
 test('THE PALETTE LAW: a palette row deals an alt color to every entry', () => {
   eachSpec((tile, spec) => {
     if (!spec.palette) return;

@@ -23,8 +23,9 @@ import type { WorldLight } from './lighting.js';
  * Phase-2 evolutions carried here ON PURPOSE (2026-08-17): every glow
  * gained `gy`/`z` seat fields (THE SEATED HALO needs the ground anchor
  * and air height); the candle family gained its §7.1 tier pool — one
- * table-reach non-occluding light. Everything else is still the
- * original chain verbatim.
+ * table-reach non-occluding light. Phase 3 added `z` to the three
+ * air-mounted lights (sconce/lure/lamp — THE LIGHT STANDS WHERE THE
+ * FLAME BURNS). Everything else is still the original chain verbatim.
  */
 function golden(
   tile: Tile,
@@ -57,7 +58,7 @@ function golden(
   } else if (tile === Tile.WallSconce) {
     const flick = 0.8 + Math.sin(t * 13 + tx * 2.9) * 0.13 + Math.sin(t * 29 + ty * 1.1) * 0.07;
     glows.push({ x: tx + 0.5, y: ty - 1.1 / yScale, gy: ty, z: 1.1, r: 1.15 * flick, rgb: '255, 156, 62', a: 0.28 * flick * boost });
-    lights.push({ x: tx + 0.5, y: ty + 0.35, r: 3.4 * flick, rgb: [255, 176, 96], intensity: 0.8 * flame * flick, occlude: true });
+    lights.push({ x: tx + 0.5, y: ty + 0.35, r: 3.4 * flick, rgb: [255, 176, 96], intensity: 0.8 * flame * flick, occlude: true, z: 1.1 });
   } else if (tile === Tile.CandleShrine) {
     const flick = 0.86 + Math.sin(t * 9 + tx * 2.3) * 0.08 + Math.sin(t * 17 + ty * 1.7) * 0.06;
     glows.push({ x: tx + 0.5, y: ty + 0.18, gy: ty + 0.18, z: 0, r: 0.85 * flick, rgb: '255, 190, 100', a: 0.24 * flick * boost });
@@ -117,7 +118,7 @@ function golden(
   } else if (tile === Tile.LurePole) {
     const pulse = 0.82 + Math.sin(t * 1.2 + tx * 1.1 + ty * 0.8) * 0.18;
     glows.push({ x: tx + 0.5, y: ty - 1.0 / yScale, gy: ty, z: 1.0, r: 1.0 * pulse, rgb: '127, 216, 200', a: 0.16 * pulse * boost });
-    lights.push({ x: tx + 0.5, y: ty + 0.45, r: 3.6 * pulse, rgb: [127, 216, 200], intensity: 0.55 * pulse, occlude: true });
+    lights.push({ x: tx + 0.5, y: ty + 0.45, r: 3.6 * pulse, rgb: [127, 216, 200], intensity: 0.55 * pulse, occlude: true, z: 1.0 });
   } else if (tile === Tile.TideAltar) {
     const pulse = 0.75 + Math.sin(t * 0.9 + tx * 0.7 + ty * 1.3) * 0.25;
     glows.push({ x: tx + 0.5, y: ty + 0.3, gy: ty + 0.3, z: 0, r: 0.7 * pulse, rgb: '170, 216, 226', a: 0.1 * pulse * boost });
@@ -179,7 +180,7 @@ function golden(
         rgb: '255, 205, 130',
         a: 0.28 * flame * flick,
       });
-      lights.push({ x: tx + 0.5, y: ty + 0.5, r: 5 * flick, rgb: [255, 205, 135], intensity: 0.9 * flame * flick, occlude: true });
+      lights.push({ x: tx + 0.5, y: ty + 0.5, r: 5 * flick, rgb: [255, 205, 135], intensity: 0.9 * flame * flick, occlude: true, z: 1.4 });
     }
   } else {
     assert.fail(`golden has no branch for tile ${Tile[tile]}`);

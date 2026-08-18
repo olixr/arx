@@ -1,6 +1,6 @@
 # Lighting v4 — THE LIGHT LIVES IN THE WORLD
 
-Status: PHASES 1–2 SHIPPED (2026-08-17) — see §8 As built. Phases 3–5 not started.
+Status: PHASES 1–3 SHIPPED (2026-08-17) — see §8 As built. Phases 4–5 not started.
 Owner mandate: re-approach lighting at the foundational level — lights must read as real
 sources in the 3D universe (oriented, occluded, illuminating), shadows must cover the
 whole standing world, dynamic sources (spells, placed props) must carry light, darkness
@@ -441,3 +441,59 @@ tsc -b ×4 clean, shared 285/285, client 658/659 — the one red is HEAD's own
 armAssembly writer-census pin (a neighbor's committed renderer half awaiting its
 uncommitted test half), proven failing identically at pure HEAD with this phase's files
 removed. Live tree: shared 285/285, client 659/659.
+
+### Phase 3 — THE RESPONSE (2026-08-17)
+
+**THE RESPONSE PROFILES** (law #3): lit faces answer by material — three scalars, not
+PBR (`FACE_GAIN_STONE 1.0 / WOOD 0.85 / FOLIAGE 0.5 / PROP 0.8`; wood = WallWood +
+window + palisades — a finer split waits for TileDef data). A `faceGain(tx,ty)`
+callback joins `lighting.draw`; the gain folds into the corner SAMPLES so runs still
+fuse on height and shade continuously across a material seam. A canopy now drinks a
+campfire's light instead of returning it like a wall.
+
+**THE LIGHT STANDS WHERE THE FLAME BURNS** (the deferred z, landed): `EmitterLight.z`
+on the three air-mounted rows (sconce 1.1, lure 1.0, lamp 1.4 — pinned by a new law
+test: a z light must match a glow at its own air height), plus the window cone (0.9)
+and the carried lantern (0.8). In the map: the pool FLATTENS under a hung light — its
+center dims to (1 − z/R3) while the LATERAL edge is preserved exactly (R3 =
+hypot(r, z); per-z/r-bucket stop remapping of the art profile, sprites cached per
+bucket); faces take the true 3D vector with the vertical leg measured to the FACE
+MIDDLE — a sconce strikes a wall of its own height near-horizontally (full response)
+but a low crate obliquely from above (dim). Ground-flame lights keep the exact 2-arg
+math path.
+
+**THE FLAME MAY OVERREACH, ONCE** (law #4): every qualifying pool (intensity ≥ 0.15)
+accumulates `lighter` on one third-res scratch, then the whole field composites in a
+SINGLE bounded `soft-light` pass post-multiply (`OVERREACH_A 0.22`, inner reach 0.6r).
+Surfaces near a source get visibly hotter than their daylight paint; overlapping fires
+share ONE ceiling instead of stacking; the frame pays one blend. First cut stamped
+per-light soft-light — the batched field replaced it same-day (see the perf record).
+
+**THE RELIGHT DEEPENS**: warm rims keep their temperature (one-third white instead of
+half — a brazier rims amber, a beacon violet); a COOL COUNTER-RIM (ambient pulled
+blue, ≤0.15 alpha) lands on the edge away from the dominant fire for solidly-lit
+bodies — the complement that makes the warm edge read as light striking a form; and
+THE NEAR HALF IS RESERVED — the world pass walks north→south, so distant bodies used
+to drain the whole 48/frame relight budget before the bodies at the player's feet
+drew; the last 24 slots now belong to the viewport's south half.
+
+**Detail reveal**: delivered through the overreach field — the multiply crushed baked
+ground detail near fixtures and the lift restores its contrast locally, so grain and
+marks surface by lamplight. A dedicated glint scatter was considered and left unbuilt
+after the shots read revealed already (THE HAND NEVER REPEATS ITSELF says don't add
+matter without need); revisit only if a live pass says the ground reads flat.
+
+**Perf gate — PASSED on real hardware**: interleaved A/B (3 cycles each, medians, the
+probe law) at Dawnmead midnight, phase 3 vs a phase-2 HEAD twin served side-by-side:
+GPU Chrome (headed) lighting **0.71ms vs 0.70ms** (+0.01ms — far under the ≤1.5× and
+≤2.0ms gates), post 0.06 vs 0.05, world 2.53 vs 2.59. Profiling lessons banked:
+headless SwiftShader bills a full-frame soft-light at ~10ms (≈100× GPU) AND canvas
+blend rasterization defers across perfMark boundaries — the cost of a pass can land in
+the NEXT bucket; never judge blend-mode work in software rendering, and always A/B in
+the same environment with medians.
+
+Proving (lane 29, restart-vite law observed): the fixture row and Dawnmead at
+noon/dusk/midnight — fires visibly ignite the grass at their hearts, hung fixtures
+throw flattened pools, canopy faces take the foliage gain, daylight untouched.
+Live tree gates: tsc ×4 clean, shared 286/286 (z law added), client 659/659, parity
+bit-for-bit with the three z rows joined in golden.

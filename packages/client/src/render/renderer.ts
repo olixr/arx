@@ -1291,6 +1291,39 @@ const CORE_R_K = 0.16;
 const CORE_R_MAX_PX = 9;
 const CORE_A_K = 1.3;
 
+/**
+ * THE FLAME MAY OVERREACH (lighting v4 phase 3, law #4): near its
+ * source, light may push a surface PAST its painted daylight value —
+ * one bounded `soft-light` stamp per light over the inner pool,
+ * POST-multiply, so a brazier visibly ignites what it touches instead
+ * of merely un-darkening it. The exposure map stays the single source
+ * of truth (the stamp is the light's own pool shape); full daylight
+ * skips the pass with everything else.
+ */
+const OVERREACH_A = 0.22;
+const OVERREACH_R = 0.6;
+
+/**
+ * THE RESPONSE PROFILES (v4 phase 3, law #3): what a lit face gives
+ * back. Three scalars, not PBR — stone returns the lamp, wood warms
+ * a step lower, foliage drinks it (a canopy is depth, not a wall),
+ * standing props sit between. Applied per tile inside the face-run
+ * sampler so runs still shade continuously across material seams.
+ */
+const FACE_GAIN_STONE = 1.0;
+const FACE_GAIN_WOOD = 0.85;
+const FACE_GAIN_FOLIAGE = 0.5;
+const FACE_GAIN_PROP = 0.8;
+
+/** The wood-voiced faces (walls + palisades) for the profiles above.
+ *  A finer per-material split waits for TileDef data — three classes
+ *  is the phase-3 contract, not a ceiling. */
+const WOOD_FACE_TILES: ReadonlySet<number> = new Set<number>([
+  Tile.WallWood,
+  Tile.WallWoodWindow,
+  ...PALISADE_TILES,
+]);
+
 /** THE SHELF LAW's one comparator, hoisted — a fresh closure per frame
  *  de-optimized the hottest sort in the engine.
  *
@@ -2251,6 +2284,9 @@ export class Renderer {
    * `glows` until phase 4 seats them too.
    */
   private readonly seatedGlows: EmitterGlowOut[] = [];
+  /** THE OVERREACH FIELD's third-res accumulation scratch (phase 3). */
+  private readonly overreach = document.createElement('canvas');
+  private readonly overreachCtx = this.overreach.getContext('2d')!;
 
   // ---- projectile aftermath: the world remembers your arrows. ----
   /** Arrows standing in the ground/walls; fade out near `until`. */
@@ -4966,7 +5002,66 @@ export class Renderer {
         if (tileDef(t).raised) return 1.05 / ys;
         return 0;
       },
+      // THE RESPONSE PROFILE: what the face gives back, by material.
+      (tx, ty) => {
+        const t = game.world.groundAt(tx, ty);
+        if (t === undefined) return 1;
+        if (TREE_TILES.has(t as Tile)) return FACE_GAIN_FOLIAGE;
+        if (Renderer.GARRISON_MASS.has(t) || Renderer.LIGHT_BLOCKERS.has(t)) {
+          return WOOD_FACE_TILES.has(t) ? FACE_GAIN_WOOD : FACE_GAIN_STONE;
+        }
+        if (t === Tile.Cliff) return FACE_GAIN_STONE;
+        return FACE_GAIN_PROP;
+      },
     );
+    // THE FLAME MAY OVERREACH, ONCE: every qualifying pool accumulates
+    // `lighter` on one third-res scratch (light is low-frequency — the
+    // lightmap's own law), then the whole field composites in a SINGLE
+    // bounded soft-light pass after the multiply — surfaces near a
+    // source get visibly hotter than their daylight paint, overlapping
+    // fires share one ceiling instead of stacking, and the frame pays
+    // one blend instead of one per light. Daylight skips it whole.
+    if (this.sky.darkness > 0.06) {
+      const k = 3;
+      const ow = Math.max(1, Math.ceil(this.w / k));
+      const oh = Math.max(1, Math.ceil(this.h / k));
+      if (this.overreach.width < ow || this.overreach.height < oh) {
+        this.overreach.width = Math.max(this.overreach.width, ow);
+        this.overreach.height = Math.max(this.overreach.height, oh);
+      }
+      const oc = this.overreachCtx;
+      oc.setTransform(1, 0, 0, 1, 0, 0);
+      oc.globalCompositeOperation = 'source-over';
+      oc.clearRect(0, 0, ow, oh);
+      oc.globalCompositeOperation = 'lighter';
+      let any = false;
+      for (const L of this.lights) {
+        if (L.intensity < 0.15) continue;
+        const p = this.liftedWTS(L.x, L.y);
+        const r = (L.r * OVERREACH_R * this.camera.scale) / k;
+        const cx = p.x / k;
+        const cy = p.y / k;
+        if (cx + r < 0 || cy + r * ys < 0 || cx - r > ow || cy - r * ys > oh) continue;
+        oc.globalAlpha = Math.min(1, L.intensity);
+        oc.drawImage(
+          radialGlowSprite(Renderer.csvOfRgb(L.rgb), GLOW_STOPS, 0.12),
+          cx - r,
+          cy - r * ys,
+          r * 2,
+          r * 2 * ys,
+        );
+        any = true;
+      }
+      if (any) {
+        const octx = this.ctx;
+        octx.save();
+        octx.globalCompositeOperation = 'soft-light';
+        octx.globalAlpha = OVERREACH_A;
+        octx.imageSmoothingEnabled = true;
+        octx.drawImage(this.overreach, 0, 0, ow, oh, 0, 0, this.w, this.h);
+        octx.restore();
+      }
+    }
     this.perfMark('lighting');
     this.lights.length = 0;
     // Moving lights hand their positions to next frame's shadow pass.
@@ -5171,6 +5266,8 @@ export class Renderer {
               rgb: [255, 205, 135],
               intensity: 0.5 * flame,
               cone: { ux: -inside[0], uy: -inside[1], spread: 0.95 },
+              // Light leaves through the pane, not from the floor.
+              z: 0.9,
             });
             if (inside[1] === -1) {
               // Only south-facing panes are painted — only they bloom.
@@ -5214,6 +5311,8 @@ export class Renderer {
           r: 4.6,
           rgb: [255, 213, 156],
           intensity: 0.5 * ug * breathe,
+          // Held at hip height — the pool flattens like any hung lamp.
+          z: 0.8,
         });
       }
     }
@@ -5277,6 +5376,20 @@ export class Renderer {
       Renderer.RGB_MEMO.set(rgb, t);
     }
     return t;
+  }
+
+  /** Tuple → 'r, g, b' for glow-sprite keys — memoized on the tuple's
+   *  identity (data rows and parseRgb both hand out stable tuples, so
+   *  the overreach pass never rebuilds a string per light per frame). */
+  private static readonly CSV_MEMO = new WeakMap<readonly number[], string>();
+
+  private static csvOfRgb(rgb: readonly [number, number, number]): string {
+    let s = Renderer.CSV_MEMO.get(rgb);
+    if (s === undefined) {
+      s = `${rgb[0]}, ${rgb[1]}, ${rgb[2]}`;
+      Renderer.CSV_MEMO.set(rgb, s);
+    }
+    return s;
   }
 
   queueGlow(x: number, y: number, r: number, rgb: string, a: number): void {
@@ -57043,6 +57156,12 @@ export class Renderer {
   ): void {
     if (item.baseX === undefined || item.baseY === undefined) return;
     if (this.bakingMask || this.sky.darkness < 0.06 || this.relitLeft <= 0) return;
+    // THE NEAR HALF IS RESERVED (v4 phase 3): the world pass walks
+    // north → south, so distant up-screen bodies used to drain the
+    // whole budget before the bodies at the player's feet drew. The
+    // last 24 slots belong to the viewport's south (near) half — the
+    // bodies the player is actually looking at always relight.
+    if (item.baseY < this.camera.y && this.relitLeft <= 24) return;
     if (sw < 2 || sh < 2) return;
     const expBase = this.sampleExposure(item.baseX, item.baseY, true);
     // What the map will actually multiply over these pixels: the
@@ -57186,14 +57305,45 @@ export class Renderer {
         rc.globalCompositeOperation = 'destination-out';
         rc.drawImage(this.relightMask, 0, 0, sw, sh, ax, ay, sw, sh);
         rc.globalCompositeOperation = 'source-in';
-        // Rim reads hot: the light's color pushed toward white.
-        rc.fillStyle = `rgb(${(R.rgb[0] + 255) >> 1}, ${(R.rgb[1] + 255) >> 1}, ${(R.rgb[2] + 255) >> 1})`;
+        // Rim reads hot but KEEPS ITS TEMPERATURE (phase 3): one-third
+        // white instead of half, so a brazier rims amber and an arcane
+        // beacon rims violet — the light's identity survives the edge.
+        rc.fillStyle = `rgb(${((R.rgb[0] * 2 + 255) / 3) | 0}, ${((R.rgb[1] * 2 + 255) / 3) | 0}, ${((R.rgb[2] * 2 + 255) / 3) | 0})`;
         rc.fillRect(0, 0, sw, sh);
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = alpha;
         ctx.drawImage(this.relightCanvas, 0, 0, sw, sh, dx, dy, dw, dh);
         ctx.restore();
+      }
+      // THE COOL COUNTER-RIM (phase 3): the edge AWAY from the
+      // dominant fire catches the night — a faint ambient-blue
+      // crescent opposite the warm one. The complement is what makes
+      // the warm edge read as LIGHT striking a form instead of paint
+      // on a sprite. One extra stamp, only for solidly-lit bodies.
+      if (this.domK > 0.16) {
+        const ax = Math.round(-ux0 * mag);
+        const ay = Math.round(-uy0 * mag);
+        const alpha = baseAlpha * Math.min(0.15, this.domK * 0.45) * rimFade(this.domK);
+        if ((ax !== 0 || ay !== 0) && alpha > 0.01) {
+          const amb = this.sky.ambient;
+          rc.setTransform(1, 0, 0, 1, 0, 0);
+          rc.globalCompositeOperation = 'source-over';
+          rc.globalAlpha = 1;
+          rc.clearRect(0, 0, sw + 2, sh + 2);
+          rc.drawImage(this.relightMask, 0, 0, sw, sh, 0, 0, sw, sh);
+          rc.globalCompositeOperation = 'destination-out';
+          rc.drawImage(this.relightMask, 0, 0, sw, sh, ax, ay, sw, sh);
+          rc.globalCompositeOperation = 'source-in';
+          // The night's own color: the frame's ambient pulled blue.
+          rc.fillStyle = `rgb(${(amb[0] * 0.4) | 0}, ${(amb[1] * 0.48) | 0}, ${(amb[2] * 0.72) | 0})`;
+          rc.fillRect(0, 0, sw, sh);
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = alpha;
+          ctx.drawImage(this.relightCanvas, 0, 0, sw, sh, dx, dy, dw, dh);
+          ctx.restore();
+        }
       }
     }
   }
