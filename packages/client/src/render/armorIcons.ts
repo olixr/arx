@@ -37,11 +37,25 @@ export function helmIconPainter(st: HelmStyle): Painter {
   return (ctx) => {
     // Frame the helm by its extras: tall furniture (wizard peak, tall
     // ears, antlers, wings, halo) earns a wider stage.
+    //
+    // THE CREST IS FURNITURE TOO. spikesCrown, crestfeathers and fins
+    // were missing from this test, so every helm wearing one had its
+    // comb flat-cut against the top of the frame — measured as inked
+    // pixels in row 0 of the 96px bake: tuskguard_helm 25,
+    // sentinel_greathelm 25, stormtalon_helm 21. That reads as a
+    // broken crest for exactly the reason the horn clause below says
+    // a clipped horn tip does, and it had been shipping quietly on
+    // three helms before the repair wave gave a fourth one a crest
+    // and finally made somebody measure it. Side fins earn it for the
+    // width, not the height: they sweep OUT past the frame's half.
     const tall =
       st.kind === 'wizard' ||
       st.antlers !== undefined ||
       st.wings !== undefined ||
       st.halo !== undefined ||
+      st.spikesCrown !== undefined ||
+      st.crestfeathers !== undefined ||
+      st.fins !== undefined ||
       (st.ears?.tall ?? false) ||
       (st.horns !== undefined && st.horns.size > 0.45);
     // Great horns (dread-sized) earn the widest stage of all — a

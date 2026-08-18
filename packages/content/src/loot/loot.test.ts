@@ -1,10 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { rarityIndex } from '@arx/shared';
+import { dangerLaw } from '../danger.js';
 import { ITEMS, itemDef } from '../items.js';
 import { HEIRLOOM_MIN_SURPLUS } from '../equipment/tables.js';
+import { NODES } from '../nodes.js';
 import { NPCS } from '../npcs.js';
 import { POI_DEFS } from '../pois/defs.js';
+import { RECIPES } from '../recipes.js';
+import { SHOPS } from '../shop.js';
 import {
   BOSS_YIELD_CEILING,
   LOOT_TABLES,
@@ -413,6 +417,66 @@ test('THE CAMPS BARE THEIR HOARDS: three war-camps carry their own strongbox', (
     'the quartermaster shipped an empty rack',
   );
   assert.ok(reachableItems('chest_toll_hoard').has('ogre_greatclub'), 'the toll shelf went missing');
+  // THE SIGNATURE PAYS BETTER THAN THE STAMP. A `chestLoot` override
+  // replaces the payout but NOT the tile: the site still re-keys every
+  // closed chest through dangerLaw(tier + chestTierBonus), so a player
+  // reads a boss-black lid and opens the camp's own lot. Whatever the
+  // lot says, it must clear the chest the site would otherwise have
+  // stamped — at EVERY tier the archetype rolls at, both axes. A
+  // signature box that pays less than the generic one it replaced is a
+  // downgrade wearing a better lid.
+  // THE PIN WALKS THE WORLD, NOT A LIST. The first cut of this
+  // assertion named the three boxes above — and so it could not see
+  // chest_riftgate, which had carried the identical defect since long
+  // before them, nor any override a later author adds. A law that
+  // holds for three named things is a coincidence; this one derives
+  // its own roster from POI_DEFS, so the next chestLoot override is
+  // inside it the moment it ships.
+  const overrides = [...POI_DEFS].flatMap(([poi, def]) =>
+    def.chestLoot ? [[poi, def.chestLoot] as const] : [],
+  );
+  assert.ok(
+    overrides.length >= boxes.length,
+    'the override walk found fewer boxes than the roster names',
+  );
+  for (const [poi, table] of overrides) {
+    const def = POI_DEFS.get(poi)!;
+    const lot = expectedYield(table);
+    const lotRarity = LOOT_TABLES.get(table)?.rarityBonus ?? 0;
+    for (let tier = def.tiers[0]; tier <= def.tiers[1]; tier++) {
+      const stamped = `chest_${dangerLaw(tier + (def.chestTierBonus ?? 0)).chest}`;
+      assert.ok(LOOT_TABLES.has(stamped), `the tier law stamps an unknown chest '${stamped}'`);
+      const base = expectedYield(stamped);
+      assert.ok(
+        lot.stacks >= base.stacks,
+        `${poi} t${tier}: ${table} pays ${lot.stacks.toFixed(3)} stacks < ${stamped}'s ${base.stacks.toFixed(3)}`,
+      );
+      assert.ok(
+        lot.gearStacks >= base.gearStacks,
+        `${poi} t${tier}: ${table} pays ${lot.gearStacks.toFixed(3)} gear < ${stamped}'s ${base.gearStacks.toFixed(3)}`,
+      );
+      // THE SECOND AXIS, and the one expectedYield cannot see. rollLoot
+      // adds the table's rarityBonus to the roll's level before it
+      // weights rarity, so a lot that pays the same COUNT out of a
+      // colder table is still a downgrade — the player opens a
+      // boss-black lid and pulls commons out of it. Same law, same
+      // floor.
+      assert.ok(
+        lotRarity >= (LOOT_TABLES.get(stamped)?.rarityBonus ?? 0),
+        `${poi} t${tier}: ${table} rolls at rarityBonus ${lotRarity} < ${stamped}'s ` +
+          `${LOOT_TABLES.get(stamped)?.rarityBonus ?? 0} — the same count, colder`,
+      );
+    }
+  }
+  // ...and the lore chase rides every signature box, or a site's one
+  // chest silently drops the recipe hunt the whole road shares.
+  for (const [, table] of overrides) {
+    const refs = LOOT_TABLES.get(table)!.entries.map((e) => e.table);
+    assert.ok(
+      refs.some((r) => r?.startsWith('recipe_trove_')),
+      `${table} lost its recipe trove`,
+    );
+  }
 });
 
 test('the flood law: every foe’s per-kill expectation stays under its station’s ceiling', () => {
@@ -500,4 +564,99 @@ test('astral essence climbs a level-banded ladder, not a cliff', () => {
   assert.ok(carries('chest_riftgate'), 'the top end must keep paying');
   // And the roster still validates whole with the new lines in it.
   validateLootTables([...LOOT_TABLES.values()]);
+});
+
+/**
+ * Expected UNITS of one item paid by one roll of a table — the flood
+ * law's instrument turned around. expectedYield counts stacks and does
+ * not care which item they were; the supply law below has to price a
+ * named input, so it walks the same tree under the same rules (pick
+ * mode, ONE-DAMP-PER-LEAF on references, MAX_DEPTH) and totals qty.
+ */
+function expectedUnits(tableId: string, item: string, mult = 1, depth = 0): number {
+  const table = LOOT_TABLES.get(tableId);
+  if (!table || depth > 8) return 0;
+  const qtyOf = (e: { qty?: [number, number] }): number => {
+    const [lo, hi] = e.qty ?? [1, 1];
+    return (lo + hi) / 2;
+  };
+  let units = 0;
+  if ((table.mode ?? 'each') === 'pick') {
+    const [lo, hi] = table.picks ?? [1, 1];
+    const picks = (lo + hi) / 2;
+    let total = table.nothingW ?? 0;
+    for (const e of table.entries) total += (e.w ?? 1) * mult;
+    if (total <= 0) return 0;
+    for (const e of table.entries) {
+      const p = ((e.w ?? 1) * mult) / total;
+      if (e.table) units += picks * p * expectedUnits(e.table, item, e.mult ?? 1, depth + 1);
+      else if (e.item === item) units += picks * p * qtyOf(e);
+    }
+    return units;
+  }
+  for (const e of table.entries) {
+    if (e.table) {
+      units += Math.min(1, e.chance ?? 1) * expectedUnits(e.table, item, mult * (e.mult ?? 1), depth + 1);
+    } else if (e.item === item) {
+      units += Math.min(1, (e.chance ?? 1) * mult) * qtyOf(e);
+    }
+  }
+  return units;
+}
+
+test('the apprentice supply law: no early recipe hides a hunting gate behind an input', () => {
+  // The flood law bounds what a body PAYS. This is its mirror: what a
+  // recipe COSTS in bodies. An apprentice-band recipe may absolutely
+  // send you hunting — the hunt feeds the forge — but it may not turn
+  // a buy-and-craft set into an acquisition gate, and a rate typo (a
+  // 0.1 where the wave meant 0.3) is invisible in the table and lethal
+  // at the tanning rack.
+  //
+  // A CHAMPION IS NOT A SUPPLY LINE. Champions ride in as a knot's
+  // lead or stand as a POI singleton, one to a camp, and the flood law
+  // already prices them on their own richer ladder — so the supply
+  // here is measured against ORDINARY bodies only, the ones a crafter
+  // can actually stand in a field and farm.
+  const ORDINARY = [...NPCS].filter(([id, npc]) => npc.boss === undefined && !id.endsWith('_champion'));
+  // A supply the world hands over without a fight — a shelf, a node,
+  // another recipe's output — settles the input outright. What is left
+  // is the hunted lines.
+  const given = new Set<string>();
+  for (const shop of SHOPS.values()) for (const e of shop.stock) given.add(e.item);
+  for (const node of NODES) {
+    given.add(node.yieldItem);
+    if (node.seedYield) given.add(node.seedYield.item);
+    if (node.bonusYield?.item) given.add(node.bonusYield.item);
+    if (node.bonusYield?.table) for (const i of reachableItems(node.bonusYield.table)) given.add(i);
+  }
+  for (const r of RECIPES.values()) given.add(r.output.item);
+
+  // The rail. The shipped apprentice band spends 0.67-3.57 ordinary
+  // bodies per craft on a hunted line (cook_beef's 0.67 at the floor,
+  // weave_linen's three scraps at 3.57 at the top); eight is a full
+  // doubling of that widest row, so only a GATE trips it — never a
+  // balance nudge. Kills, not coins: a trophy may be dear and still be
+  // honest if the bank hands it over at a decent rate.
+  const MAX_KILLS_PER_CRAFT = 8;
+  for (const recipe of RECIPES.values()) {
+    if (recipe.levelReq > 20) continue;
+    for (const input of recipe.inputs) {
+      if (given.has(input.item)) continue;
+      let best = 0;
+      for (const [, npc] of ORDINARY) {
+        let units = 0;
+        for (const t of npc.loot) units += expectedUnits(t, input.item);
+        if (units > best) best = units;
+      }
+      // No kill source at all means this is a farming/husbandry line
+      // (a crop, a fleece, a churned butter), not a hunted one — the
+      // acquisition-routes pin owns reachability, this one owns rate.
+      if (best === 0) continue;
+      const kills = input.qty / best;
+      assert.ok(
+        kills <= MAX_KILLS_PER_CRAFT,
+        `${recipe.id} (craft lv ${recipe.levelReq}) costs ${kills.toFixed(1)} ordinary kills per craft for ${input.qty}x ${input.item} > ${MAX_KILLS_PER_CRAFT}`,
+      );
+    }
+  }
 });

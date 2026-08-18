@@ -2721,10 +2721,13 @@ function kingfisherSet(): EquipmentDef[] {
   ];
   const color = '#1e404c';
   // THE WORN BOOK — THE HUNT FEEDS THE FORGE: the riverking's fisher is
-  // tanned from river things. Leather and feather stay the honest
-  // majority (the ratio law); the one hunted line is a skral frill,
-  // cut off the brine-folk who fish the same bank you do. Their crest
-  // dries color-fast, which is the whole reason the set is BLUE.
+  // tanned from river things. The one hunted line is a skral frill, cut
+  // off the brine-folk who fish the same bank you do; their crest dries
+  // color-fast, which is the whole reason the set is BLUE. It is also
+  // the DEAR line — 28 coins against leather's 12, so the frill is most
+  // of what a piece costs — which is why the ratio law is spent on the
+  // count here and not on the coins: one frill a piece, two on the
+  // jerkin, never a fistful. The bank pays one every third skinning.
   const craft = (levelReq: number, xp: number, ticks: number, leather: number, frill: number) => ({
     skill: 'leatherworking' as const,
     levelReq,

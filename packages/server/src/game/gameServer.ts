@@ -24723,7 +24723,12 @@ export class GameServer {
    *  - a hitState working is skipped when the struck body does not
    *    carry its state (THE READING EDGE — the body lane hears it
    *    now too, since a calling's edge is the hand itself and rides
-   *    aggregate-side).
+   *    aggregate-side);
+   *  - a pet-targeted boon is skipped when no companion stands
+   *    (THE PACK'S BLESSING — the same targeted-moment law spoken
+   *    for the leash: a downed or absent companion is a sure no-op).
+   *
+   * All three are pinned in wornBookDoors.test.ts / procDoors.test.ts.
    */
   private bodyMoment(
     eid: EntityId,

@@ -2706,7 +2706,12 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     silhouette: 'cuirass', pauldron: 'layered', pauldronColor: '#5c5849',
     pauldronTrim: '#9c8248', pauldronScale: 1.12, chest: 'plate',
     emblem: 'chevron', emblemScale: 1.15, skirt: 0, collar: 'gorget',
-    midline: true, rivetSeams: true, tassets: true,
+    tassets: true,
+    // No `midline`/`rivetSeams` here, and that is the correct read of
+    // the piece: the forge crease and the seam rivets are breastplate
+    // work, and the breastplate only paints on a BARE chest — this one
+    // wears the surcoat over it. The rivets in the flavour above are
+    // the ones punched through the lames and the tassets, not cloth.
     tabard: { color: '#8e2f2c', trim: '#9c8248' },
   },
   // THE WORN BOOK's other three houses — the wave's CHARACTER pieces,
@@ -16039,6 +16044,66 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
   };
   drawGlyphOrbit('far');
 
+  // THE TWO CROWN DEVICES, lent to the cowls. Both grew up on the
+  // metal kinds and still paint there unchanged (the metal tail calls
+  // them with no seat at all); a hood asks for the same device SEATED
+  // DIFFERENTLY — a cowl's crown rides higher than a helm's dome and
+  // its temples stand wider — so each takes a seat offset in pixels,
+  // zero by default.
+  const drawSideFins = (lift = 0, out = 0): void => {
+    if (!st.fins || hurt) return;
+    // Side fins: broad blades swept up off the temples — real mass, a
+    // glacier's calving edge; the far fin narrows like the far eye.
+    for (const es of [-1, 1]) {
+      const far = es !== lead;
+      const wK = far ? Math.max(0.25, 1 - profileK * 0.7) : 1;
+      const bx = headX + es * (hw * 0.88 + out);
+      const by = headY - (hh * 0.4 + lift);
+      ctx.fillStyle = st.fins.color;
+      ctx.beginPath();
+      ctx.moveTo(bx - es * hw * 0.06, by + hh * 0.42 * wK);
+      ctx.quadraticCurveTo(bx + es * hw * 0.55 * wK, by + hh * 0.2, bx + es * hw * 1.0 * wK, by - hh * 0.85);
+      ctx.quadraticCurveTo(bx + es * hw * 0.5 * wK, by - hh * 0.2, bx + es * hw * 0.16 * wK, by - hh * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      // A darker under-facet keeps the blade from reading flat.
+      ctx.fillStyle = shade(st.fins.color, -16);
+      ctx.beginPath();
+      ctx.moveTo(bx - es * hw * 0.06, by + hh * 0.42 * wK);
+      ctx.quadraticCurveTo(bx + es * hw * 0.5 * wK, by + hh * 0.24, bx + es * hw * 0.86 * wK, by - hh * 0.55);
+      ctx.lineTo(bx + es * hw * 0.5 * wK, by - hh * 0.02);
+      ctx.closePath();
+      ctx.fill();
+    }
+  };
+
+  const drawSpikesCrown = (lift = 0): void => {
+    if (!st.spikesCrown || hurt) return;
+    // The spiked crown: forged points riding the centerline front-to-
+    // back — rising spikes frontal, a full ridge of war at profile.
+    // The crest grammar with teeth.
+    const arcK = 0.35 + 0.65 * profileK;
+    const baseY = headY - (hh * 1.06 + lift);
+    ctx.fillStyle = st.spikesCrown.color;
+    for (let i = 0; i < 4; i++) {
+      const u = (-0.66 + i * 0.44) * arcK;
+      const px = headX + lead * u * hw;
+      // The crown line bows like the skull: center spikes stand tallest.
+      const seat = baseY - hh * 0.22 * (1 - u * u * 1.6);
+      const tall = hh * (0.62 + 0.3 * (1 - Math.abs(u / arcK || 0)));
+      const half = hw * 0.15 * (0.8 + 0.4 * arcK);
+      ctx.beginPath();
+      ctx.moveTo(px - half, seat);
+      ctx.lineTo(px + lead * half * 0.1, seat - tall);
+      ctx.lineTo(px + half, seat);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // A seam bar seats the row on the crown.
+    ctx.fillStyle = shade(st.spikesCrown.color, -20);
+    ctx.fillRect(headX - hw * 0.8 * arcK, baseY - hh * 0.06, hw * 1.6 * arcK, hh * 0.1);
+  };
+
   if (st.shards && !hurt) {
     // The rift's answer to a halo: three slivers of night glass riding
     // above the crown, the tall one centered, each on its own slow
@@ -16990,6 +17055,15 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         }
       }
     }
+    // THE COWL'S CROWN DEVICES, seated for cloth. Both come AFTER the
+    // ruff, so a bristle ridge or a frill rides OVER the fur the way
+    // it grew out of the head under it. A hood's crown pitches far
+    // above a helm's dome, so the spike row is lifted onto the cloth
+    // line; a hood's temples stand wider than a skull, so the fins
+    // step out to the cowl's own edge and ride a little higher, where
+    // a frill fans off the temple instead of a glacier's calving.
+    drawSpikesCrown(hh * 0.2);
+    drawSideFins(hh * 0.04, hw * 0.12);
     if (st.feather && !hurt) {
       // One swept feather tucked at the temple, trailing behind the
       // travel — the scout's whole heraldry. A BROAD vane with a pale
@@ -27445,31 +27519,7 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.globalAlpha = 1;
     }
   }
-  if (st.fins && !hurt) {
-    // Side fins: broad blades swept up off the temples — real mass, a
-    // glacier's calving edge; the far fin narrows like the far eye.
-    for (const es of [-1, 1]) {
-      const far = es !== lead;
-      const wK = far ? Math.max(0.25, 1 - profileK * 0.7) : 1;
-      const bx = headX + es * hw * 0.88;
-      const by = headY - hh * 0.4;
-      ctx.fillStyle = st.fins.color;
-      ctx.beginPath();
-      ctx.moveTo(bx - es * hw * 0.06, by + hh * 0.42 * wK);
-      ctx.quadraticCurveTo(bx + es * hw * 0.55 * wK, by + hh * 0.2, bx + es * hw * 1.0 * wK, by - hh * 0.85);
-      ctx.quadraticCurveTo(bx + es * hw * 0.5 * wK, by - hh * 0.2, bx + es * hw * 0.16 * wK, by - hh * 0.1);
-      ctx.closePath();
-      ctx.fill();
-      // A darker under-facet keeps the blade from reading flat.
-      ctx.fillStyle = shade(st.fins.color, -16);
-      ctx.beginPath();
-      ctx.moveTo(bx - es * hw * 0.06, by + hh * 0.42 * wK);
-      ctx.quadraticCurveTo(bx + es * hw * 0.5 * wK, by + hh * 0.24, bx + es * hw * 0.86 * wK, by - hh * 0.55);
-      ctx.lineTo(bx + es * hw * 0.5 * wK, by - hh * 0.02);
-      ctx.closePath();
-      ctx.fill();
-    }
-  }
+  drawSideFins();
   if (st.wings && !hurt) {
     // Feathered wing blades: three ascending points, tallest outermost.
     ctx.fillStyle = st.wings.color;
@@ -27659,31 +27709,7 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.fill();
     }
   }
-  if (st.spikesCrown && !hurt) {
-    // The spiked crown: forged points riding the centerline front-to-
-    // back — rising spikes frontal, a full ridge of war at profile.
-    // The crest grammar with teeth.
-    const arcK = 0.35 + 0.65 * profileK;
-    const baseY = headY - hh * 1.06;
-    ctx.fillStyle = st.spikesCrown.color;
-    for (let i = 0; i < 4; i++) {
-      const u = (-0.66 + i * 0.44) * arcK;
-      const px = headX + lead * u * hw;
-      // The crown line bows like the skull: center spikes stand tallest.
-      const seat = baseY - hh * 0.22 * (1 - u * u * 1.6);
-      const tall = hh * (0.62 + 0.3 * (1 - Math.abs(u / arcK || 0)));
-      const half = hw * 0.15 * (0.8 + 0.4 * arcK);
-      ctx.beginPath();
-      ctx.moveTo(px - half, seat);
-      ctx.lineTo(px + lead * half * 0.1, seat - tall);
-      ctx.lineTo(px + half, seat);
-      ctx.closePath();
-      ctx.fill();
-    }
-    // A seam bar seats the row on the crown.
-    ctx.fillStyle = shade(st.spikesCrown.color, -20);
-    ctx.fillRect(headX - hw * 0.8 * arcK, baseY - hh * 0.06, hw * 1.6 * arcK, hh * 0.1);
-  }
+  drawSpikesCrown();
   if (st.boneCrown && !hurt) {
     // THE BONE CROWN: a trophy jaw worn as a comb — four fangs riding
     // the crown centerline, every one HOOKED toward the facing (a

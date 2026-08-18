@@ -1053,16 +1053,33 @@ const defs: LootTableDef[] = [
   {
     id: 'chest_riftgate',
     desc: 'The gatekeeper’s cache: a dungeon key near-certain, and the kit of whoever failed to turn it.',
-    rarityBonus: 3,
+    // THE FOURTH BOX. This override predates the three war-camp
+    // hoards and carried the identical defect for longer: a cache
+    // paying 0.535 gear behind a lid the site stamps boss-black at
+    // its top tiers, and rolling its contents seven rarity levels
+    // colder than the chest it displaced. The repair wave that found
+    // the three found this one by generalising the pin instead of
+    // naming boxes — which is the whole reason the pin now walks
+    // POI_DEFS rather than a list.
+    rarityBonus: 10,
     entries: [
-      { item: 'coins', qty: [30, 90] },
+      { item: 'coins', qty: [90, 240] },
       { item: 'dungeon_key', chance: 0.75 },
-      { item: 'brass_key', chance: 0.12 },
-      { item: 'arcane_dust', qty: [2, 5], chance: 0.6 },
-      { item: 'storm_essence', qty: [1, 2], chance: 0.25 },
+      { item: 'brass_key', chance: 0.35 },
+      { item: 'arcane_dust', qty: [3, 7], chance: 0.75 },
+      { item: 'storm_essence', qty: [1, 3], chance: 0.5 },
+      { item: 'radiant_essence', qty: [1, 3], chance: 0.35 },
       // The gate looks somewhere very far away. Some of it condenses.
-      { item: 'astral_essence', qty: [1, 2], chance: 0.3 },
-      { table: 'crypt_arms', mult: 8 },
+      { item: 'astral_essence', qty: [1, 3], chance: 0.5 },
+      { item: 'crimson_essence', qty: [1, 3], chance: 0.4 },
+      { table: 'crypt_arms', mult: 34 },
+      // THE KIT OF WHOEVER FAILED TO TURN IT — the cache's own line,
+      // finally in the cache. "The trophy racks of everyone who
+      // tried" is the same sentence read from the other side of the
+      // seal, and it is the shelf the boss chest earns its weight
+      // from, which is the weight this box has to clear.
+      { table: 'champion_armory' },
+      { table: 'heirlooms', mult: 3 },
       { item: 'deepening_sigil', chance: 0.03 },
       // Ground from a pane of this very gate.
       { item: 'riftglass', chance: 0.006 },
@@ -1121,6 +1138,36 @@ const defs: LootTableDef[] = [
   // the giant's sack — instead of the same iron chest the whole road
   // shares. Wired from the POI defs (bandit_camp, hobgoblin_warcamp,
   // ogre_camp), which is where the tier and the ward already live.
+  //
+  // THE SIGNATURE OUT-PAYS THE STAMP (2026-08 audit). An override
+  // swaps the PAYOUT and nothing else: the site still re-keys its
+  // closed lids through dangerLaw(tier + chestTierBonus), so a player
+  // walks up to a gilded or boss-black chest and opens the camp's own
+  // lot. The first cut of these three paid a third to a half of the
+  // chest they replaced — a downgrade wearing a better lid. Each now
+  // clears the RICHEST rung its archetype can stamp (all three reach
+  // boss: bandits at tier 4, the legion at 4 up, the hill always), and
+  // the loot.test pin walks every tier to hold it there — deriving
+  // its roster from POI_DEFS, so chest_riftgate and every future
+  // override answer to it too.
+  //
+  // WHERE THE WEIGHT COMES FROM, because the first repair got this
+  // wrong in an instructive way. The racks are pick-mode and saturate
+  // against nothingW: one rack reference pays at most ONE pick, so
+  // its gear contribution approaches 1.0 of a stack and no mult can
+  // push it past that (measured: brigand_arms at mult 26/36/100/1000
+  // pays 0.578/0.655/0.840/0.981). So a lot cannot reach a boss floor
+  // on mult alone — it needs a further shelf. The tempting shelf is
+  // the chase line, and that is the trap: the first cut reached its
+  // floor by multiplying set drops and heirlooms, which made a single
+  // box a better warvaliant source than the legion that wears it and
+  // a better relic source than the crowned dead. THE WEIGHT BELONGS
+  // TO THE SITE'S OWN KIT — the quartermaster's issued plate, the
+  // hill's pile of everyone who tried the pass — and the chase rates
+  // stay where the route that authored them put them. Where a box
+  // must clear a BOSS chest, it earns that the way a boss chest does:
+  // champion_armory, the same trophy rack, which every one of these
+  // four sites already had a story for.
   {
     // The crew pools every take and the reaver stands over the box.
     // What the crews strip off the road is what the box holds — and
@@ -1128,27 +1175,36 @@ const defs: LootTableDef[] = [
     // own body alone (the redhand exclusivity, pinned since the audit).
     id: 'chest_pit_takings',
     desc: 'The pit takings: the crew’s shares, counted twice and warded once.',
-    rarityBonus: 3,
+    rarityBonus: 10,
     entries: [
-      { item: 'coins', qty: [60, 160] },
-      { item: 'brass_key', chance: 0.3 },
-      { item: 'dungeon_key', chance: 0.12 },
-      { item: 'bread', qty: [1, 2], chance: 0.4 },
-      { item: 'arrow', qty: [10, 24], chance: 0.4 },
-      { item: 'linen_scrap', qty: [2, 4], chance: 0.4 },
-      { item: 'scrap_hide', qty: [1, 3], chance: 0.35 },
-      { item: 'arcane_dust', qty: [1, 3], chance: 0.35 },
-      { table: 'brigand_arms', mult: 8 },
-      { table: 'brigand_wardrobe', mult: 6 },
+      { item: 'coins', qty: [130, 320] },
+      // A whole crew's season of road work, counted twice: the keys,
+      // the rations, and the fletching pool the box is really for.
+      { item: 'brass_key', chance: 0.45 },
+      { item: 'dungeon_key', chance: 0.3 },
+      { item: 'bread', qty: [1, 3], chance: 0.6 },
+      { item: 'arrow', qty: [14, 34], chance: 0.7 },
+      { item: 'linen_scrap', qty: [2, 5], chance: 0.6 },
+      { item: 'scrap_hide', qty: [1, 4], chance: 0.55 },
+      { item: 'arcane_dust', qty: [1, 4], chance: 0.5 },
+      { table: 'brigand_arms', mult: 30 },
+      { table: 'brigand_wardrobe', mult: 22 },
+      // The crews rob the road, and the road carries its grandfathers'
+      // kit — the second shelf, and the heirloom law told from the
+      // wrong side of the toll. THE WEIGHT COMES OFF THE RACK, not off
+      // this shelf: an heirloom mult past the boss chest's own 3 would
+      // make a bandit box the best relic source in the game, which is
+      // not what a bandit box is.
+      { table: 'heirlooms', mult: 3 },
       // The torn page rides the takings too — the banker's errand
       // starts in a box the banker never got to open.
       { item: 'torn_ledger_page', chance: 0.06 },
       // The toll-blade the whole crew dreams about, in the box the
       // whole crew is not allowed to open.
-      { item: 'reavers_toll', chance: 0.02 },
+      { item: 'reavers_toll', chance: 0.03 },
       // The crews burn what they rob, and some of what they rob comes
       // back out of the fire wearable.
-      ...setDrops('cindershade', 0.008),
+      ...setDrops('cindershade', 0.016),
     ],
   },
   {
@@ -1158,21 +1214,50 @@ const defs: LootTableDef[] = [
     // wall-rank's spare door stacked on top of it.
     id: 'chest_legion_issue',
     desc: 'The quartermaster’s issue: campaign plate, drilled iron, and a chest inventoried this morning.',
-    rarityBonus: 4,
+    rarityBonus: 10,
     entries: [
-      { item: 'coins', qty: [70, 180] },
-      { item: 'legion_ring', qty: [1, 2], chance: 0.5 },
-      { item: 'iron_bar', qty: [1, 3], chance: 0.45 },
-      { item: 'arrow', qty: [12, 28], chance: 0.5 },
-      { item: 'brass_key', chance: 0.25 },
-      { item: 'dungeon_key', chance: 0.12 },
-      { item: 'crimson_essence', qty: [1, 2], chance: 0.3 },
-      { table: 'hobgoblin_arms', mult: 10 },
+      { item: 'coins', qty: [140, 340] },
+      // The campaign's paperwork, in metal: every fallen rank's ring
+      // signed back in, the smith's bar stock, and the line's arrows.
+      { item: 'legion_ring', qty: [1, 3], chance: 0.8 },
+      { item: 'iron_bar', qty: [1, 4], chance: 0.7 },
+      { item: 'arrow', qty: [16, 36], chance: 0.9 },
+      { item: 'brass_key', chance: 0.4 },
+      { item: 'dungeon_key', chance: 0.3 },
+      { item: 'crimson_essence', qty: [1, 3], chance: 0.6 },
+      { table: 'hobgoblin_arms', mult: 22 },
+      // THE ISSUE ITSELF. The box is named for the quartermaster and
+      // its own line promises "campaign plate" — and until now it held
+      // not one piece of it, because the rack above is a WEAPON rack.
+      // The standing issue, stacked by the pattern.
+      { item: 'iron_platebody', chance: 0.22 },
+      { item: 'iron_greaves', chance: 0.18 },
+      { item: 'iron_helm', chance: 0.18 },
+      { item: 'steel_greathelm', chance: 0.08 },
+      // THE OFFICERS' SHELF, and where this box's real weight comes
+      // from. The lot has to out-pay the boss chest the site stamps,
+      // and the honest way to clear a boss chest is the gear source a
+      // boss chest itself uses — not a multiplied set drop. A
+      // campaign that crossed a country kept what it took off the
+      // people who tried to stop it, and inventoried that too.
+      { table: 'champion_armory' },
       // The unissued rack: the pattern the line wears next season,
-      // still in its wrappings, still counted.
-      ...setDrops('warvaliant', 0.02),
+      // still in its wrappings, still counted. THE CHASE RATE IS NOT
+      // THE DIAL. This box has to out-pay the boss chest it replaces,
+      // and the honest place to find that weight is the camp's OWN
+      // kit above — the rack, the ring, the bar stock. A signature
+      // hoard that reached its floor by multiplying its set drop
+      // would make one chest a better warvaliant source than the
+      // legion itself, and the wave that authored the route would
+      // have been overwritten by the wave that repaired the box.
+      // Above the body rate, under the champion's: a strongbox holds
+      // more than a soldier and less than the one who commands them.
+      ...setDrops('warvaliant', 0.03),
       // Spare doors, stacked. The wall-rank breaks two a campaign.
-      { item: 'legion_doorwall', chance: 0.05 },
+      { item: 'legion_doorwall', chance: 0.15 },
+      // The ransom shelf — the second shelf: what the campaign took
+      // off the country it crossed, inventoried like everything else.
+      { table: 'heirlooms', mult: 3 },
     ],
   },
   {
@@ -1181,20 +1266,51 @@ const defs: LootTableDef[] = [
     // reason it could explain, and the supper it was saving.
     id: 'chest_toll_hoard',
     desc: 'The toll hoard: a giant’s sack of other people’s roads.',
-    rarityBonus: 5,
+    rarityBonus: 10,
     entries: [
-      { item: 'coins', qty: [120, 280] },
-      { item: 'ogre_tooth', qty: [1, 3], chance: 0.6 },
-      { item: 'leather', qty: [2, 4], chance: 0.5 },
-      { item: 'raw_beef', qty: [1, 3], chance: 0.4 },
-      { item: 'scrap_hide', qty: [2, 4], chance: 0.45 },
-      { item: 'brass_key', chance: 0.2 },
-      { item: 'dungeon_key', chance: 0.2 },
-      { item: 'arcane_dust', qty: [2, 4], chance: 0.4 },
-      { table: 'ogre_arms', mult: 10 },
+      { item: 'coins', qty: [160, 380] },
+      // A season of passes, in one sack: teeth by the handful, hide
+      // off everything that argued, and the supper it was saving.
+      { item: 'ogre_tooth', qty: [1, 4], chance: 0.9 },
+      { item: 'leather', qty: [2, 5], chance: 0.6 },
+      { item: 'raw_beef', qty: [1, 4], chance: 0.7 },
+      { item: 'scrap_hide', qty: [2, 5], chance: 0.55 },
+      { item: 'brass_key', chance: 0.35 },
+      { item: 'dungeon_key', chance: 0.4 },
+      { item: 'arcane_dust', qty: [2, 5], chance: 0.45 },
+      { table: 'ogre_arms', mult: 30 },
+      // WHAT THE ROAD WAS WEARING. The sack's own line calls it "a
+      // giant's sack of other people's roads", and a road's people are
+      // not carried off in weapons alone — the rack above is only the
+      // arms the hill kept. THE TROPHY RACK IS THE POINT: champion_
+      // armory is described as "the trophy racks of everyone who
+      // tried", which is precisely what a toll hoard IS, and it is
+      // the same shelf the boss chest uses to earn the number this
+      // box has to clear. The weight belongs here, in the pile of
+      // people who tried the pass, and NOT in a multiplied chase rate.
+      { table: 'champion_armory' },
+      { item: 'iron_platebody', chance: 0.2 },
+      { item: 'iron_sabatons', chance: 0.18 },
       // The hill flattens travellers and keeps their kit for the
-      // weight of it — the heirloom law, told from the wrong side.
-      { table: 'heirlooms', mult: 2 },
+      // weight of it — the heirloom law, told from the wrong side, and
+      // the sack's second shelf. Held at the boss chest's own 3: the
+      // sack is deep, but a giant is not a better antiquarian than
+      // the crowned dead.
+      { table: 'heirlooms', mult: 3 },
+      // A knight's company came up the pass to collect a toll back.
+      // The hill kept the parade gold and the tally both; the
+      // champion skims one suit's worth, the sack holds the rest —
+      // and the sack stays UNDER the champion who skimmed it (0.046),
+      // because the thing that beat the knights is worth more than
+      // the bag it threw them in.
+      ...setDrops('oathgold', 0.02),
+      // THE GILDED TYRANT and the Oldcrown cleaver — the two tolls the
+      // hill never re-sold, because neither one fits its hand. Left at
+      // the rates the hill's own bodies carry: a named blade that
+      // falls oftener from a box than from the thing that took it is
+      // a blade nobody remembers earning.
+      { item: 'gilded_tyrant', chance: 0.015 },
+      { item: 'oldcrown_bardiche', chance: 0.02 },
     ],
   },
 
@@ -1266,7 +1382,7 @@ const defs: LootTableDef[] = [
       { item: 'arcane_dust', qty: [3, 6], chance: 0.7 },
       { item: 'crimson_essence', qty: [1, 3], chance: 0.4 },
       { item: 'radiant_essence', qty: [1, 2], chance: 0.25 },
-      { table: 'champion_armory', mult: 2 },
+      { table: 'champion_armory' },
       { table: 'heirlooms', mult: 2 },
       // THE SAND'S SECOND EXCLUSIVE (THE WORN BOOK wave): the crowd
       // keeps the beat of a Grand Ring bout, and a laurelbrand keeps
@@ -1711,7 +1827,12 @@ const defs: LootTableDef[] = [
       // A skral IS a fisher — the catch on its belt is the least
       // surprising drop in the game.
       { item: 'raw_trout', qty: [1, 2], chance: 0.5 },
-      { item: 'skral_frill', chance: 0.1 },
+      // THE WORN BOOK: the bank is the ONLY ordinary body that carries
+      // a frill, and the kingfisher set asks six of them — the deepking
+      // is a knot's lead, not a supply line. At one in ten the entry
+      // set was a sixty-kill gate; a frill every third skinning puts it
+      // back inside the wave's own trophy band (the supply law).
+      { item: 'skral_frill', chance: 0.3 },
       { item: 'coins', qty: [3, 14], chance: 0.45 },
       { item: 'frost_essence', chance: 0.08 },
       { item: 'brass_key', chance: 0.02 },
@@ -2365,6 +2486,25 @@ const TROVE_IN_CHESTS: Array<[chest: string, trove: string, chance: number]> = [
   ['chest_gilded', 'recipe_trove_crown', 0.05],
   ['chest_boss', 'recipe_trove_vault', 0.15],
   ['chest_boss', 'recipe_trove_crown', 0.15],
+  // A signature strongbox REPLACES the chest a war camp would have
+  // stamped, so it inherits that chest's rumor of lore or the camp
+  // silently drops the whole recipe chase from its only box (the
+  // 2026-08 audit's third finding). Each reads at the band its site
+  // stands in: the pit works the road, the legion inventories the
+  // vault shelf, and the hill has been robbing the high passes for
+  // longer than anyone kept a tally.
+  ['chest_pit_takings', 'recipe_trove_field', 0.1],
+  ['chest_pit_takings', 'recipe_trove_vault', 0.1],
+  ['chest_legion_issue', 'recipe_trove_vault', 0.15],
+  ['chest_legion_issue', 'recipe_trove_crown', 0.08],
+  ['chest_toll_hoard', 'recipe_trove_vault', 0.15],
+  ['chest_toll_hoard', 'recipe_trove_crown', 0.15],
+  // The gatekeeper's cache, the OLDEST override and the one the
+  // named-box version of this law could not see. Whoever failed to
+  // turn the key was carrying their own notes, and the seal kept
+  // them along with everything else.
+  ['chest_riftgate', 'recipe_trove_vault', 0.15],
+  ['chest_riftgate', 'recipe_trove_crown', 0.15],
 ];
 for (const [chest, trove, chance] of TROVE_IN_CHESTS) {
   const t = defs.find((d) => d.id === chest);
