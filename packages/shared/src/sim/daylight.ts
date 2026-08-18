@@ -125,6 +125,25 @@ function smoothstep(lo: number, hi: number, x: number): number {
 }
 
 /**
+ * THE TWO SUNS, BOTH NAMED ONCE (lighting v4, law #5).
+ *
+ * The game has two suns and they are DIFFERENT on purpose:
+ * - THE PAINT SUN (these constants): the fixed direction every baked
+ *   highlight in the art assumes — lit-west edges, worn terrain bands,
+ *   footprint crests. West with a whisper of north. It NEVER moves;
+ *   making it dynamic would contradict the whole painted corpus (an
+ *   art-wide repaint — owner decision §7.4 of the lighting plan).
+ * - THE CAST SUN (transitShadow below): the transiting body cast
+ *   shadows follow across the day. Its whole fan stays SOUTH of the
+ *   caster so it never contradicts the paint.
+ *
+ * Every consumer of the paint sun imports THESE constants. Local
+ * copies are banned — they are how the two suns drift apart.
+ */
+export const ART_SUN_X = -0.928;
+export const ART_SUN_Y = -0.371;
+
+/**
  * Shadow azimuth for a body's transit fraction u (0 rise → 1 set):
  * southwest at rise, due south at zenith, southeast at set. The whole
  * fan stays SOUTH of the caster — the sun crosses the NORTHERN sky,

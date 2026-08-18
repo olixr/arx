@@ -1,0 +1,119 @@
+import { strict as assert } from 'node:assert';
+import { test } from 'node:test';
+import {
+  EMITTER_LIGHTS,
+  lightCurveAt,
+  tileEmitter,
+  type EmitterSpec,
+} from './lights.js';
+import { Tile, candleInfo } from './tiles.js';
+
+// ------------------------------------------------------------ the evaluator
+
+test('lightCurveAt reproduces the inline arithmetic exactly (base + amp·sin terms)', () => {
+  // The campfire flicker: 0.85 + sin(t·11 + tx·3.1)·0.1 + sin(t·23 + ty)·0.05
+  const c = { base: 0.85, terms: [{ hz: 11, amp: 0.1, px: 3.1 }, { hz: 23, amp: 0.05, py: 1 }] };
+  for (const [t, tx, ty] of [[0, 0, 0], [3.7, 12, -4], [921.13, -7, 33]] as const) {
+    const want = 0.85 + Math.sin(t * 11 + tx * 3.1) * 0.1 + Math.sin(t * 23 + ty) * 0.05;
+    assert.equal(lightCurveAt(c, t, tx, ty), want);
+  }
+});
+
+test('lightCurveAt `times` multiplies exactly (the bonfire roar law)', () => {
+  const c = {
+    base: 0.85,
+    terms: [{ hz: 9, amp: 0.1, px: 3.1 }, { hz: 21, amp: 0.05, py: 1 }],
+    times: { base: 0.9, terms: [{ hz: 1.1, amp: 0.08, px: 1 }] },
+  };
+  const t = 17.31;
+  const tx = 45;
+  const ty = -3;
+  const roar = 0.9 + Math.sin(t * 1.1 + tx) * 0.08;
+  const flick = (0.85 + Math.sin(t * 9 + tx * 3.1) * 0.1 + Math.sin(t * 21 + ty) * 0.05) * roar;
+  assert.equal(lightCurveAt(c, t, tx, ty), flick);
+});
+
+// ---------------------------------------------------------------- the census
+
+/** The phase-1 roster: exactly the tiles the renderer's old hardcoded
+ *  chain served. A new emitter extends this pin ON PURPOSE; a dropped
+ *  row screams here before it silently darkens a town. */
+const ROSTER: readonly Tile[] = [
+  Tile.Campfire, Tile.Furnace, Tile.Hearth, Tile.Brazier, Tile.WallSconce,
+  Tile.CandleShrine, Tile.CandleCluster, Tile.MeltedCandles, Tile.CandleTable,
+  Tile.CandleStand, Tile.PillarCandle, Tile.TripleCandles, Tile.StandingTorch,
+  Tile.Bonfire, Tile.WarBrazier, Tile.MeatSpit, Tile.CookPot, Tile.GlowShroom,
+  Tile.LurePole, Tile.TideAltar, Tile.ArcaneBeacon, Tile.Runestone,
+  Tile.CrystalCluster, Tile.WardArch, Tile.ArcaneTome, Tile.RunePillar,
+  Tile.Everflame, Tile.Moonwell, Tile.ElvenWaystone, Tile.LampPost,
+];
+
+test('the emitter census: exactly the transcribed roster, each row reachable', () => {
+  const listed = EMITTER_LIGHTS.map(([tile]) => tile).sort((a, b) => a - b);
+  const expected = [...ROSTER].sort((a, b) => a - b);
+  assert.deepEqual(listed, expected);
+  for (const tile of ROSTER) assert.ok(tileEmitter(tile), `no spec for tile ${Tile[tile]}`);
+  // Non-emitters answer undefined — including the wall the chain never lit.
+  assert.equal(tileEmitter(Tile.WallStone), undefined);
+  assert.equal(tileEmitter(Tile.Grass), undefined);
+});
+
+// ------------------------------------------------------------------ the laws
+
+function eachSpec(fn: (tile: Tile, spec: EmitterSpec) => void): void {
+  for (const [tile, spec] of EMITTER_LIGHTS) fn(tile, spec);
+}
+
+test('every row is well-formed: sane reaches, intensities, colors, and at least one voice', () => {
+  eachSpec((tile, spec) => {
+    const name = Tile[tile];
+    assert.ok(spec.glows.length + spec.lights.length > 0, `${name}: silent row`);
+    assert.ok(spec.curve.terms.length > 0, `${name}: rhythm-less curve`);
+    for (const g of spec.glows) {
+      assert.ok(g.r > 0 && g.r < 4, `${name}: glow r ${g.r}`);
+      assert.ok(g.a > 0 && g.a <= 0.5, `${name}: glow a ${g.a}`);
+      assert.match(g.rgb, /^\d{1,3}, \d{1,3}, \d{1,3}$/, `${name}: glow rgb '${g.rgb}'`);
+      if (g.air !== undefined) assert.ok(g.air > 0 && g.air < 2, `${name}: air ${g.air}`);
+    }
+    for (const l of spec.lights) {
+      assert.ok(l.r > 0 && l.r <= 7, `${name}: light r ${l.r}`);
+      assert.ok(l.intensity > 0 && l.intensity <= 1, `${name}: intensity ${l.intensity}`);
+      for (const ch of l.rgb) assert.ok(ch >= 0 && ch <= 255, `${name}: light rgb ${l.rgb}`);
+    }
+  });
+});
+
+test('THE FLAME LAW: every flame-gated light is architecture (occludes) — man-made fire casts', () => {
+  eachSpec((tile, spec) => {
+    for (const l of spec.lights) {
+      if (l.flameGated) assert.ok(l.occlude, `${Tile[tile]}: flame-gated light must occlude`);
+    }
+  });
+});
+
+test('THE TOWN LAW: lit candles are glow-only, snuffed candles have no row, LampPost owns the night', () => {
+  eachSpec((tile, spec) => {
+    if (candleInfo(tile)?.lit) {
+      assert.equal(spec.lights.length, 0, `${Tile[tile]}: a kept flame is a mark, not a street light`);
+      assert.equal(spec.glows.length, 1, `${Tile[tile]}: one breathing bloom per lit prop`);
+    }
+  });
+  // Snuffed postures fall through to darkness — no row at all.
+  for (const [lit, out] of [
+    [Tile.CandleCluster, Tile.CandleClusterOut],
+  ] as const) {
+    assert.ok(tileEmitter(lit), 'lit candle row missing');
+    assert.equal(tileEmitter(out), undefined, 'a snuffed candle must not emit');
+  }
+  const lamp = tileEmitter(Tile.LampPost);
+  assert.ok(lamp?.flameGate && lamp.porch, 'LampPost: flame-gated, porch-aware');
+  assert.ok(lamp.lights[0]?.occlude, 'LampPost: the town light is architecture');
+});
+
+test('THE PALETTE LAW: a palette row deals an alt color to every entry', () => {
+  eachSpec((tile, spec) => {
+    if (!spec.palette) return;
+    for (const g of spec.glows) assert.ok(g.altRgb, `${Tile[tile]}: glow missing altRgb`);
+    for (const l of spec.lights) assert.ok(l.altRgb, `${Tile[tile]}: light missing altRgb`);
+  });
+});

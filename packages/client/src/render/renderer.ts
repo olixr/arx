@@ -42,6 +42,7 @@ import {
   doorInfo,
   BED_RUN_CAP,
   hashCoords,
+  tileEmitter,
   hashString,
   pointHitsSolid,
   seatAt,
@@ -232,6 +233,7 @@ import { FlightRig, batLook, drawBat, drawGreatOwl, flierSpec } from './flight.j
 import { EarSim } from './earPhysics.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
+import { collectEmitter } from './emitters.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
 import {
   RaisedKind,
@@ -1492,11 +1494,11 @@ export class Renderer {
   private domK = 0;
   private domX = 0;
   private domY = 0;
-  private domRgb: [number, number, number] = [255, 255, 255];
+  private domRgb: readonly [number, number, number] = [255, 255, 255];
   private dom2K = 0;
   private dom2X = 0;
   private dom2Y = 0;
-  private dom2Rgb: [number, number, number] = [255, 255, 255];
+  private dom2Rgb: readonly [number, number, number] = [255, 255, 255];
   /** Ground shadows batch here, composited once at the sky's alpha. */
   private readonly shadowLayer = document.createElement('canvas');
   private readonly shadowLayerCtx = this.shadowLayer.getContext('2d')!;
@@ -5019,195 +5021,21 @@ export class Renderer {
     for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
       for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
         const tile = this.fgGroundAt(tx, ty);
-        if (tile === Tile.Campfire) {
-          const flick = 0.85 + Math.sin(t * 11 + tx * 3.1) * 0.1 + Math.sin(t * 23 + ty) * 0.05;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.32, r: 1.6 * flick, rgb: '235, 140, 52', a: 0.3 * flick * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 4.4 * flick, rgb: [255, 186, 110], intensity: 0.9 * flame * flick, occlude: true });
-        } else if (tile === Tile.Furnace) {
-          const pulse = 0.8 + Math.sin(t * 5 + tx) * 0.2;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.75, r: 1.15, rgb: '232, 108, 45', a: 0.24 * pulse * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.8, r: 2.8, rgb: [255, 148, 82], intensity: 0.65 * flame * pulse, occlude: true });
-        } else if (tile === Tile.Hearth) {
-          // The heart of a home: a wide, steady warm pool — less
-          // flicker than a campfire, more reach than a furnace mouth.
-          const pulse = 0.9 + Math.sin(t * 6 + tx * 1.9) * 0.08;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.45, r: 1.4 * pulse, rgb: '235, 150, 62', a: 0.26 * pulse * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.7, r: 4.2, rgb: [255, 190, 120], intensity: 0.85 * flame * pulse, occlude: true });
-        } else if (tile === Tile.Brazier) {
-          // Dungeon brazier: an open coal basket — campfire-class
-          // reach with the same standing-flame flicker, flame-gated
-          // like every man-made fire (underground the flame gate rides
-          // to 1, so braziers always carry the dark band).
-          const flick = 0.85 + Math.sin(t * 11 + tx * 3.1) * 0.1 + Math.sin(t * 23 + ty) * 0.05;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.3, r: 1.5 * flick, rgb: '255, 158, 66', a: 0.3 * flick * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 4.4 * flick, rgb: [255, 180, 104], intensity: 0.9 * flame * flick, occlude: true });
-        } else if (tile === Tile.WallSconce) {
-          // THE LONG DARK FURNISHED: the caged wall flame — torch-class
-          // heat mounted a body's height up the stone, so the pool it
-          // throws reaches further down the corridor than a floor fire
-          // of the same size. The bloom rides the basket (raised
-          // fixtures divide their height by yScale — the projAir law);
-          // the punch lights the walkway below it.
-          const flick = 0.8 + Math.sin(t * 13 + tx * 2.9) * 0.13 + Math.sin(t * 29 + ty * 1.1) * 0.07;
-          this.glows.push({ x: tx + 0.5, y: ty - 1.1 / this.camera.yScale, r: 1.15 * flick, rgb: '255, 156, 62', a: 0.28 * flick * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.35, r: 3.4 * flick, rgb: [255, 176, 96], intensity: 0.8 * flame * flick, occlude: true });
-        } else if (tile === Tile.CandleShrine) {
-          // THE LONG DARK PEOPLED: grave-candles — the smallest kept
-          // flame in the game. A knee-high amber pool with a soft
-          // double-wick waver, warmer and gentler than any torch:
-          // enough to find the shrine across a dark chamber, never
-          // enough to light the way past it.
-          const flick = 0.86 + Math.sin(t * 9 + tx * 2.3) * 0.08 + Math.sin(t * 17 + ty * 1.7) * 0.06;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.18, r: 0.85 * flick, rgb: '255, 190, 100', a: 0.24 * flick * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 2.4 * flick, rgb: [255, 200, 130], intensity: 0.55 * flame * flick, occlude: true });
-        } else if (
-          tile === Tile.CandleCluster ||
-          tile === Tile.MeltedCandles ||
-          tile === Tile.CandleTable ||
-          tile === Tile.CandleStand ||
-          tile === Tile.PillarCandle ||
-          tile === Tile.TripleCandles
-        ) {
-          // THE KEPT FLAME: one breathing bloom per LIT prop, riding
-          // the glow overlay so the outline pass never rings it (an
-          // in-painter halo dies exactly that death — the live rig
-          // caught the crown wearing a sooty cloud). GLOW ONLY,
-          // never a light entry: the LampPost still owns the town
-          // night. The breath is the family's own sub-1Hz clock; the
-          // bloom sits at each form's flame height (the projAir law),
-          // and the snuffed postures fall through to darkness.
-          const breath = 0.85 + 0.15 * Math.sin(t * 0.63 + tx * 1.3 + ty * 0.7);
-          const hgt =
-            tile === Tile.CandleStand ? 1.0
-            : tile === Tile.CandleTable ? 0.68
-            : tile === Tile.PillarCandle ? 0.55
-            : 0.4;
-          const r =
-            tile === Tile.CandleStand ? 0.66
-            : tile === Tile.CandleCluster || tile === Tile.TripleCandles ? 0.72
-            : tile === Tile.PillarCandle ? 0.6
-            : 0.55;
-          this.glows.push({
-            x: tx + 0.5,
-            y: ty + 0.5 - hgt / this.camera.yScale,
-            r: r * breath,
-            rgb: '255, 190, 100',
-            a: 0.2 * breath * boost,
-          });
-        } else if (tile === Tile.StandingTorch) {
-          // A camp torch: a small hot pool with a hard flicker — the
-          // rag head burns rough, never lamplight-steady.
-          const flick = 0.78 + Math.sin(t * 13 + tx * 2.7) * 0.14 + Math.sin(t * 29 + ty * 1.3) * 0.08;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.1, r: 1.1 * flick, rgb: '255, 150, 58', a: 0.28 * flick * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 3.0 * flick, rgb: [255, 176, 96], intensity: 0.75 * flame * flick, occlude: true });
-        } else if (tile === Tile.Bonfire) {
-          // THE GREAT FIRE: the camp's heart and its biggest light —
-          // wider than a hearth, hotter than a campfire, with a slow
-          // breathing roar under the flicker. The bloom rides high on
-          // the flame column, not the ground.
-          const roar = 0.9 + Math.sin(t * 1.1 + tx) * 0.08;
-          const flick = (0.85 + Math.sin(t * 9 + tx * 3.1) * 0.1 + Math.sin(t * 21 + ty) * 0.05) * roar;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.1, r: 2.3 * flick, rgb: '240, 132, 48', a: 0.34 * flick * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 6.2 * flick, rgb: [255, 182, 104], intensity: 1.0 * flame * flick, occlude: true });
-        } else if (tile === Tile.WarBrazier) {
-          // The war brazier: campfire-class reach, but the cage bars
-          // chop the light — a harder, meaner flicker than the
-          // dungeon basket.
-          const flick = 0.8 + Math.sin(t * 12 + tx * 3.3) * 0.13 + Math.sin(t * 27 + ty) * 0.06;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.18, r: 1.4 * flick, rgb: '255, 150, 60', a: 0.3 * flick * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 4.0 * flick, rgb: [255, 172, 98], intensity: 0.85 * flame * flick, occlude: true });
-        } else if (tile === Tile.MeatSpit || tile === Tile.CookPot) {
-          // Cooking coals: a low banked bed, more ember than flame —
-          // enough to find the kitchen corner of a camp after dark.
-          const pulse = 0.85 + Math.sin(t * 4.2 + tx * 1.7) * 0.12;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.62, r: 0.8 * pulse, rgb: '240, 120, 45', a: 0.2 * pulse * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.6, r: 1.9, rgb: [255, 160, 90], intensity: 0.45 * flame * pulse, occlude: true });
-        } else if (tile === Tile.GlowShroom) {
-          // Glowshrooms: bioluminescence, not fire — a smaller, cool
-          // teal pool that BREATHES on a slow swell (never the flame
-          // flicker), ungated by the flame clock, and non-occluding
-          // (a soft haze through the cave, not a lamp).
-          const pulse = 0.8 + Math.sin(t * 1.4 + tx * 0.9 + ty * 1.7) * 0.2;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.4, r: 0.95 * pulse, rgb: '110, 225, 200', a: 0.12 * pulse * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 2.4, rgb: [110, 225, 200], intensity: 0.4 * pulse });
-        } else if (tile === Tile.LurePole) {
-          // THE BANKS GET THEIR GOODS: the caged deep-jelly — the
-          // shoal's street light. Bioluminescence law (the
-          // glowshroom's): a slow swell, never flicker, no flame
-          // gate. The bloom rides the hanging cage (raised fixtures
-          // divide height by yScale — the projAir law); the punch
-          // pools on the path under the bow.
-          const pulse = 0.82 + Math.sin(t * 1.2 + tx * 1.1 + ty * 0.8) * 0.18;
-          this.glows.push({ x: tx + 0.5, y: ty - 1.0 / this.camera.yScale, r: 1.0 * pulse, rgb: '127, 216, 200', a: 0.16 * pulse * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.45, r: 3.6 * pulse, rgb: [127, 216, 200], intensity: 0.55 * pulse, occlude: true });
-        } else if (tile === Tile.TideAltar) {
-          // The tidecaller's slab: a cold shore-water shimmer, more
-          // moonlight than lamp — enough to find the shrine across
-          // the camp, never enough to fish by.
-          const pulse = 0.75 + Math.sin(t * 0.9 + tx * 0.7 + ty * 1.3) * 0.25;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.3, r: 0.7 * pulse, rgb: '170, 216, 226', a: 0.1 * pulse * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 2.2, rgb: [170, 216, 226], intensity: 0.3 * pulse });
-        } else if (tile === Tile.ArcaneBeacon) {
-          // THE IMBUED LANE: worked violet magic — a slow arcane
-          // swell, never a flicker, ungated by the flame clock.
-          const breathe = 0.8 + Math.sin(t * 1.1 + tx * 1.3 + ty * 0.7) * 0.2;
-          this.glows.push({ x: tx + 0.5, y: ty - 0.45, r: 1.1 * breathe, rgb: '180, 143, 232', a: 0.22 * breathe * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 5.0 * breathe, rgb: [180, 148, 228], intensity: 0.7 * breathe, occlude: true });
-        } else if (tile === Tile.Runestone) {
-          // The split stone's seam and glyph column, a quiet violet.
-          const breathe = 0.75 + Math.sin(t * 1.0 + tx * 0.9 + ty * 1.2) * 0.25;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.1, r: 0.7 * breathe, rgb: '180, 143, 232', a: 0.12 * breathe * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 3.5, rgb: [180, 148, 228], intensity: 0.42 * breathe });
-        } else if (tile === Tile.CrystalCluster) {
-          // Wild mana: green, low, and alive — glowshroom-class haze.
-          const breathe = 0.75 + Math.sin(t * 1.2 + tx * 1.1 + ty * 0.8) * 0.25;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.35, r: 1.0 * breathe, rgb: '127, 232, 168', a: 0.15 * breathe * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 4.0, rgb: [130, 226, 170], intensity: 0.5 * breathe });
-        } else if (tile === Tile.WardArch) {
-          // The keystone and its veil: violet at head height.
-          const breathe = 0.75 + Math.sin(t * 1.0 + tx * 0.7 + ty * 1.0) * 0.25;
-          this.glows.push({ x: tx + 0.5, y: ty - 0.3, r: 0.8 * breathe, rgb: '180, 143, 232', a: 0.13 * breathe * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 3.5, rgb: [180, 148, 228], intensity: 0.45 * breathe });
-        } else if (tile === Tile.ArcaneTome) {
-          // The floating book reads by its own light.
-          const breathe = 0.78 + Math.sin(t * 1.1 + tx * 1.4 + ty * 0.6) * 0.22;
-          this.glows.push({ x: tx + 0.5, y: ty - 0.35, r: 0.6 * breathe, rgb: '216, 196, 250', a: 0.12 * breathe * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 3.0, rgb: [196, 176, 240], intensity: 0.4 * breathe });
-        } else if (tile === Tile.RunePillar) {
-          // The elven street light — lead color dealt by the SAME
-          // hash the painter uses, so glow and tip-stone agree.
-          const green = (hashCoords(41, tx, ty) & 1) === 0;
-          const breathe = 0.8 + Math.sin(t * 1.05 + tx * 1.0 + ty * 0.9) * 0.2;
-          this.glows.push({
-            x: tx + 0.5, y: ty - 0.9, r: 0.9 * breathe,
-            rgb: green ? '127, 232, 168' : '180, 143, 232',
-            a: 0.18 * breathe * boost,
-          });
-          this.lights.push({
-            x: tx + 0.5, y: ty + 0.5, r: 4.5 * breathe,
-            rgb: green ? [130, 226, 170] : [180, 148, 228],
-            intensity: 0.6 * breathe, occlude: true,
-          });
-        } else if (tile === Tile.Everflame) {
-          // The Everflame: the elven hall's night anchor — bonfire
-          // reach in silver-white. It never went out, so it never
-          // flickers: the beat is a heart, not a spit.
-          const beat = 0.88 + Math.sin(t * 1.6 + tx * 0.8) * 0.12;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.06, r: 1.7 * beat, rgb: '223, 242, 255', a: 0.26 * beat * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 6.0 * beat, rgb: [206, 230, 252], intensity: 0.95 * beat, occlude: true });
-        } else if (tile === Tile.Moonwell) {
-          // The moonwell: lit water, a soft pool that swells with the
-          // surface shimmer — non-occluding like the glowshroom (a
-          // glow off water, not a lamp on a post).
-          const swell = 0.8 + Math.sin(t * 0.9 + tx * 0.6 + ty * 1.1) * 0.2;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.42, r: 1.2 * swell, rgb: '159, 232, 216', a: 0.16 * swell * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 3.6, rgb: [150, 226, 210], intensity: 0.5 * swell });
-        } else if (tile === Tile.ElvenWaystone) {
-          // The waystone's script band: the faintest voice in the kit
-          // — just enough to find the road by.
-          const pulse = 0.7 + Math.sin(t * 0.8 + tx * 1.1 + ty * 0.9) * 0.3;
-          this.glows.push({ x: tx + 0.5, y: ty + 0.12, r: 0.65 * pulse, rgb: '159, 232, 216', a: 0.1 * pulse * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 2.2, rgb: [150, 226, 210], intensity: 0.3 * pulse });
+        // THE LIGHT IS CONTENT (lighting v4 phase 1): standing emitters
+        // are data — one shared row per fixture (@arx/shared
+        // world/lights.ts), evaluated by collectEmitter under the
+        // exact-parity law (render/emitters.test.ts). Only
+        // world-coupled emitters remain coded below: Riftgates
+        // (particle side-effects + the portal plane), Table candles
+        // and chest seams (hash-phased queueGlow props), window
+        // hearth-spill (interior-region logic + the frame cap), and
+        // the underground carried lantern (phase 4 makes it an item).
+        const spec = tile === undefined ? undefined : tileEmitter(tile);
+        if (spec) {
+          // THE PORCH LIGHT: a porch-capable fixture on lifted boards
+          // carries the deck lift into its bloom height.
+          const deckLift = spec.porch && this.porchAt(game, tx, ty) ? DOCK_LIFT : 0;
+          collectEmitter(spec, tx, ty, t, flame, boost, this.camera.yScale, deckLift, this.glows, this.lights);
         } else if (tile === Tile.PortalDown || tile === Tile.PortalUp) {
           // The Riftgate: bloom rides the vortex heart (raised off the
           // ground — divide the squash back out, the projAir law), a
@@ -5237,25 +5065,6 @@ export class Renderer {
           // and the blight-apron pass reads the list it builds.
           spawnPortalFx(this.particles, tx, ty, up, this.frameDt);
           this.portalsInView.push({ tx, ty, up });
-        } else if (tile === Tile.LampPost) {
-          const flick = 0.92 + Math.sin(t * 9 + tx * 2.3 + ty) * 0.05 + Math.sin(t * 17 + ty * 1.7) * 0.03;
-          if (flame > 0.05) {
-            // The bloom rides the lantern cage, not the post's foot —
-            // world-y offset divides the camera squash back out so the
-            // glow lands on the raised fixture (the projAir law). A
-            // porch lamp stands on lifted boards: the SAME division
-            // carries the deck lift, so THE PORCH LIGHT sits on its
-            // lantern, never a fifth of a tile low.
-            const deckLift = this.porchAt(game, tx, ty) ? DOCK_LIFT : 0;
-            this.glows.push({
-              x: tx + 0.5,
-              y: ty + 0.62 - (1.4 + deckLift) / this.camera.yScale,
-              r: 1.3 * flick,
-              rgb: '255, 205, 130',
-              a: 0.28 * flame * flick,
-            });
-            this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 5 * flick, rgb: [255, 205, 135], intensity: 0.9 * flame * flick, occlude: true });
-          }
         } else if (tile === Tile.Table) {
           // Table candles (the same hash roll the baked art deals) glow
           // from HERE, not from the tile painter: the table is a
@@ -57213,7 +57022,7 @@ export class Renderer {
       // flickering sources never fight over a single crescent (the
       // old argmax pick strobed the rim side to side). Near-collinear
       // seconds fade by angular overlap instead of doubling one edge.
-      const rims: Array<{ k: number; x: number; y: number; rgb: [number, number, number] }> = [
+      const rims: Array<{ k: number; x: number; y: number; rgb: readonly [number, number, number] }> = [
         { k: this.domK, x: this.domX, y: this.domY, rgb: this.domRgb },
       ];
       if (this.dom2K > RIM_LO) {

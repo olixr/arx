@@ -1,4 +1,6 @@
 import {
+  ART_SUN_X,
+  ART_SUN_Y,
   CHEST_TILES,
   CHUNK_SIZE,
   Detail,
@@ -4241,7 +4243,7 @@ function paintLayerSkin(
       for (const { bnd, lone } of runs) {
         const mid = qpoint(bnd, 0.5);
         const sw = Math.max(0, Math.min(1, (edgeSwell(li, mid[0], mid[1]) - 0.45) / 1.1));
-        const sunDot = bnd.ox * SUN_X + bnd.oy * SUN_Y;
+        const sunDot = bnd.ox * ART_SUN_X + bnd.oy * ART_SUN_Y;
         const p = new Path2D();
         p.moveTo(toX(bnd.ax), toY(bnd.ay));
         p.quadraticCurveTo(toX(bnd.cx), toY(bnd.cy), toX(bnd.bx), toY(bnd.by));
@@ -4417,14 +4419,11 @@ function paintLayerSkin(
   }
 }
 
-/**
- * The world's one sun (see the pile painters' "sun-law lit west edge"):
- * west with a whisper of north. Ground edges read against it exactly
- * like walls and piles do — lit lips face it, worn shade gathers away
- * from it.
- */
-const SUN_X = -0.928;
-const SUN_Y = -0.371;
+// The paint sun (see the pile painters' "sun-law lit west edge"):
+// west with a whisper of north. Ground edges read against it exactly
+// like walls and piles do — lit lips face it, worn shade gathers away
+// from it. Named ONCE in shared (ART_SUN_X/ART_SUN_Y, daylight.ts) —
+// local copies are banned (lighting v4 law #5).
 
 /** A boundary run's polyline pushed along its outward normal by `d`. */
 function emitOffsetRun(

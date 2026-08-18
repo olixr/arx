@@ -1,0 +1,379 @@
+/**
+ * THE LIGHT IS CONTENT (lighting v4, law #1 — docs/lighting-v4-plan.md).
+ *
+ * Every standing emitter in the world is a data row here, not a branch
+ * in the renderer: which tiles emit, at what reach, color, intensity,
+ * height and rhythm is CONTENT, shared by the client (which draws it),
+ * the server (which will read light levels from the same rows — the
+ * darkness ledger, phase 5), and the editor (which will author them —
+ * phase 6 of the plan).
+ *
+ * The renderer owns HOW light behaves — the exposure map, occlusion,
+ * bloom compositing — and consumes these rows verbatim. Adding a lit
+ * prop to the game is adding a row; the renderer never grows another
+ * emitter branch.
+ *
+ * TRANSCRIPTION LAW (phase 1): every number and every curve in this
+ * table is a 1:1 transcription of the renderer's original hardcoded
+ * emitter chain, gated by an exact-value parity test on the client
+ * (render/emitters.test.ts). Change a fixture's voice ON PURPOSE, with
+ * the parity pin updated to match — never as a side effect.
+ *
+ * What deliberately does NOT live here (world-coupled emitters, still
+ * coded in the renderer's collect pass): Riftgate portals (particle
+ * side-effects + the portal plane), window hearth-spill (interior
+ * region logic + the per-frame cap), Table candles and chest seams
+ * (hash-phased queueGlow props), and the underground carried lantern
+ * (phase 4 makes it an item). Their numbers migrate when their
+ * structure does.
+ *
+ * THE TWO CHANNELS: an emitter speaks twice —
+ *  - `glows`: the additive bloom the eye sees AT the fixture (the
+ *    flame's own brilliance). Alpha rides the darkness boost by
+ *    default (`gate: 'boost'`), or the man-made-flame clock
+ *    (`gate: 'flame'`).
+ *  - `lights`: the lightmap punch that illuminates the scene AROUND
+ *    the fixture. Intensity always rides the curve; `flameGated`
+ *    lights are man-made fire and stand down by day; `occlude` lights
+ *    are architecture and cast real wall shadows.
+ *
+ * THE TOWN LAW stands (see town-decor memory): the candle family is
+ * GLOW-ONLY — a kept flame is a mark, not a street light; LampPost
+ * owns the town night. Repealing or tiering that economy is owner
+ * decision §7.1 of the plan, not an edit to this table.
+ */
+import { Tile } from './tiles.js';
+
+/**
+ * One sinusoidal voice in a fixture's rhythm:
+ * `amp · sin(t·hz + tx·px + ty·py)` — t in seconds, (tx, ty) the
+ * fixture's tile, so every instance of a fixture flickers on its own
+ * phase while all read the same clock.
+ */
+export interface CurveTerm {
+  hz: number;
+  amp: number;
+  px?: number;
+  py?: number;
+}
+
+/**
+ * A fixture's rhythm: `base + Σ terms`, optionally multiplied by a
+ * second curve (`times`) — the bonfire's slow roar under its flicker.
+ */
+export interface LightCurve {
+  base: number;
+  terms: readonly CurveTerm[];
+  times?: LightCurve;
+}
+
+/** Evaluate a curve at time `t` (seconds) for the fixture at (tx, ty).
+ *  Term order and operation order are load-bearing: the parity gate
+ *  compares against the original inline arithmetic bit-for-bit. */
+export function lightCurveAt(c: LightCurve, t: number, tx: number, ty: number): number {
+  let v = c.base;
+  for (const term of c.terms) {
+    v += term.amp * Math.sin(t * term.hz + tx * (term.px ?? 0) + ty * (term.py ?? 0));
+  }
+  return c.times ? v * lightCurveAt(c.times, t, tx, ty) : v;
+}
+
+/** The visible bloom at the fixture — see THE TWO CHANNELS above. */
+export interface EmitterGlow {
+  /** World offset from the tile origin. */
+  dx: number;
+  dy: number;
+  /**
+   * Height above the ground plane, in world tiles of AIR: divided by
+   * the camera's yScale at collect time so the bloom rides the raised
+   * fixture (the projAir law) — a sconce basket, a hung cage, a
+   * lantern head.
+   */
+  air?: number;
+  r: number;
+  /** 'r, g, b' — the bloom pass's color format. */
+  rgb: string;
+  a: number;
+  /** Curve scales the radius (a swelling halo, not just a brightening one). */
+  rRide?: boolean;
+  /** Alpha's final multiplier: the night boost (default) or the flame clock. */
+  gate?: 'flame';
+  /** Palette-alt color, when the spec deals one (see EmitterSpec.palette). */
+  altRgb?: string;
+}
+
+/** The lightmap punch around the fixture — see THE TWO CHANNELS above. */
+export interface EmitterLight {
+  dx: number;
+  dy: number;
+  r: number;
+  rgb: readonly [number, number, number];
+  /** Peak, 0..1. ALWAYS rides the curve — a law, not a flag. */
+  intensity: number;
+  /** Architecture: casts real wall shadows in the lightmap. */
+  occlude?: boolean;
+  /** Man-made fire: intensity rides sky.flame, so it stands down by day. */
+  flameGated?: boolean;
+  /** Curve scales the reach too (living fire), not just the brightness. */
+  rRide?: boolean;
+  altRgb?: readonly [number, number, number];
+}
+
+export interface EmitterSpec {
+  curve: LightCurve;
+  glows: readonly EmitterGlow[];
+  lights: readonly EmitterLight[];
+  /** The whole fixture stands down by day (flame ≤ 0.05): lamps whose
+   *  bloom AND punch are both flame-voiced. */
+  flameGate?: boolean;
+  /** Fixture may stand on lifted porch boards: the collect pass adds
+   *  the deck lift to every glow's air height (THE PORCH LIGHT). */
+  porch?: boolean;
+  /** Hash-dealt two-color palette: `hashCoords(salt, tx, ty) & 1 === 0`
+   *  swaps every entry to its altRgb — the SAME roll the tile's painter
+   *  makes, so glow and paint always agree (the RunePillar law). */
+  palette?: { salt: number };
+}
+
+// ---------------------------------------------------------------- the rhythms
+// Named, shared where fixtures genuinely share a voice; bespoke where
+// the original chain gave a fixture its own. Frequencies and phase
+// salts are the original chain's, verbatim.
+
+/** The standing open flame: camp- and dungeon-fire flicker. */
+const FLICK_OPEN_FIRE: LightCurve = {
+  base: 0.85,
+  terms: [
+    { hz: 11, amp: 0.1, px: 3.1 },
+    { hz: 23, amp: 0.05, py: 1 },
+  ],
+};
+
+/** The candle family's shared sub-1Hz breath. */
+const CANDLE_BREATH: LightCurve = { base: 0.85, terms: [{ hz: 0.63, amp: 0.15, px: 1.3, py: 0.7 }] };
+
+/** One kept flame: bloom at the form's own flame height, glow-only. */
+function candleSpec(air: number, r: number): EmitterSpec {
+  return {
+    curve: CANDLE_BREATH,
+    glows: [{ dx: 0.5, dy: 0.5, air, r, rRide: true, rgb: '255, 190, 100', a: 0.2 }],
+    lights: [],
+  };
+}
+
+/** Cooking coals — shared by the spit and the pot. */
+const COALS: EmitterSpec = {
+  curve: { base: 0.85, terms: [{ hz: 4.2, amp: 0.12, px: 1.7 }] },
+  glows: [{ dx: 0.5, dy: 0.62, r: 0.8, rRide: true, rgb: '240, 120, 45', a: 0.2 }],
+  lights: [{ dx: 0.5, dy: 0.6, r: 1.9, rgb: [255, 160, 90], intensity: 0.45, flameGated: true, occlude: true }],
+};
+
+// ---------------------------------------------------------------- the roster
+
+const SPECS: ReadonlyArray<readonly [Tile, EmitterSpec]> = [
+  // The open camp flame: a hot mid pool with a true fire flicker.
+  [Tile.Campfire, {
+    curve: FLICK_OPEN_FIRE,
+    glows: [{ dx: 0.5, dy: 0.32, r: 1.6, rRide: true, rgb: '235, 140, 52', a: 0.3 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 4.4, rRide: true, rgb: [255, 186, 110], intensity: 0.9, flameGated: true, occlude: true }],
+  }],
+  // The forge mouth: a low ember throb, reach kept short and steady.
+  [Tile.Furnace, {
+    curve: { base: 0.8, terms: [{ hz: 5, amp: 0.2, px: 1 }] },
+    glows: [{ dx: 0.5, dy: 0.75, r: 1.15, rgb: '232, 108, 45', a: 0.24 }],
+    lights: [{ dx: 0.5, dy: 0.8, r: 2.8, rgb: [255, 148, 82], intensity: 0.65, flameGated: true, occlude: true }],
+  }],
+  // The heart of a home: a wide, steady warm pool — less flicker than
+  // a campfire, more reach than a furnace mouth.
+  [Tile.Hearth, {
+    curve: { base: 0.9, terms: [{ hz: 6, amp: 0.08, px: 1.9 }] },
+    glows: [{ dx: 0.5, dy: 0.45, r: 1.4, rRide: true, rgb: '235, 150, 62', a: 0.26 }],
+    lights: [{ dx: 0.5, dy: 0.7, r: 4.2, rgb: [255, 190, 120], intensity: 0.85, flameGated: true, occlude: true }],
+  }],
+  // Dungeon brazier: an open coal basket — campfire-class reach with
+  // the same standing-flame flicker, flame-gated like every man-made
+  // fire (underground the flame gate rides to 1, so braziers always
+  // carry the dark band).
+  [Tile.Brazier, {
+    curve: FLICK_OPEN_FIRE,
+    glows: [{ dx: 0.5, dy: 0.3, r: 1.5, rRide: true, rgb: '255, 158, 66', a: 0.3 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 4.4, rRide: true, rgb: [255, 180, 104], intensity: 0.9, flameGated: true, occlude: true }],
+  }],
+  // THE LONG DARK FURNISHED: the caged wall flame — torch-class heat
+  // mounted a body's height up the stone, so the pool it throws
+  // reaches further down the corridor than a floor fire of the same
+  // size. The bloom rides the basket (air, the projAir law); the punch
+  // lights the walkway below it.
+  [Tile.WallSconce, {
+    curve: { base: 0.8, terms: [{ hz: 13, amp: 0.13, px: 2.9 }, { hz: 29, amp: 0.07, py: 1.1 }] },
+    glows: [{ dx: 0.5, dy: 0, air: 1.1, r: 1.15, rRide: true, rgb: '255, 156, 62', a: 0.28 }],
+    lights: [{ dx: 0.5, dy: 0.35, r: 3.4, rRide: true, rgb: [255, 176, 96], intensity: 0.8, flameGated: true, occlude: true }],
+  }],
+  // THE LONG DARK PEOPLED: grave-candles — the smallest kept flame in
+  // the game. A knee-high amber pool with a soft double-wick waver,
+  // warmer and gentler than any torch: enough to find the shrine
+  // across a dark chamber, never enough to light the way past it.
+  [Tile.CandleShrine, {
+    curve: { base: 0.86, terms: [{ hz: 9, amp: 0.08, px: 2.3 }, { hz: 17, amp: 0.06, py: 1.7 }] },
+    glows: [{ dx: 0.5, dy: 0.18, r: 0.85, rRide: true, rgb: '255, 190, 100', a: 0.24 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 2.4, rRide: true, rgb: [255, 200, 130], intensity: 0.55, flameGated: true, occlude: true }],
+  }],
+  // THE KEPT FLAME: one breathing bloom per LIT candle prop. GLOW
+  // ONLY, never a light entry: the LampPost still owns the town night
+  // (THE TOWN LAW — owner decision §7.1 before this changes). The
+  // bloom sits at each form's flame height, and the snuffed tile ids
+  // simply have no row.
+  [Tile.CandleCluster, candleSpec(0.4, 0.72)],
+  [Tile.MeltedCandles, candleSpec(0.4, 0.55)],
+  [Tile.CandleTable, candleSpec(0.68, 0.55)],
+  [Tile.CandleStand, candleSpec(1.0, 0.66)],
+  [Tile.PillarCandle, candleSpec(0.55, 0.6)],
+  [Tile.TripleCandles, candleSpec(0.4, 0.72)],
+  // A camp torch: a small hot pool with a hard flicker — the rag head
+  // burns rough, never lamplight-steady.
+  [Tile.StandingTorch, {
+    curve: { base: 0.78, terms: [{ hz: 13, amp: 0.14, px: 2.7 }, { hz: 29, amp: 0.08, py: 1.3 }] },
+    glows: [{ dx: 0.5, dy: 0.1, r: 1.1, rRide: true, rgb: '255, 150, 58', a: 0.28 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 3.0, rRide: true, rgb: [255, 176, 96], intensity: 0.75, flameGated: true, occlude: true }],
+  }],
+  // THE GREAT FIRE: the camp's heart and its biggest light — wider
+  // than a hearth, hotter than a campfire, with a slow breathing roar
+  // under the flicker. The bloom rides high on the flame column.
+  [Tile.Bonfire, {
+    curve: {
+      base: 0.85,
+      terms: [{ hz: 9, amp: 0.1, px: 3.1 }, { hz: 21, amp: 0.05, py: 1 }],
+      times: { base: 0.9, terms: [{ hz: 1.1, amp: 0.08, px: 1 }] },
+    },
+    glows: [{ dx: 0.5, dy: 0.1, r: 2.3, rRide: true, rgb: '240, 132, 48', a: 0.34 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 6.2, rRide: true, rgb: [255, 182, 104], intensity: 1.0, flameGated: true, occlude: true }],
+  }],
+  // The war brazier: campfire-class reach, but the cage bars chop the
+  // light — a harder, meaner flicker than the dungeon basket.
+  [Tile.WarBrazier, {
+    curve: { base: 0.8, terms: [{ hz: 12, amp: 0.13, px: 3.3 }, { hz: 27, amp: 0.06, py: 1 }] },
+    glows: [{ dx: 0.5, dy: 0.18, r: 1.4, rRide: true, rgb: '255, 150, 60', a: 0.3 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 4.0, rRide: true, rgb: [255, 172, 98], intensity: 0.85, flameGated: true, occlude: true }],
+  }],
+  // Cooking coals: a low banked bed, more ember than flame — enough
+  // to find the kitchen corner of a camp after dark.
+  [Tile.MeatSpit, COALS],
+  [Tile.CookPot, COALS],
+  // Glowshrooms: bioluminescence, not fire — a smaller, cool teal pool
+  // that BREATHES on a slow swell (never the flame flicker), ungated
+  // by the flame clock, and non-occluding (a soft haze through the
+  // cave, not a lamp).
+  [Tile.GlowShroom, {
+    curve: { base: 0.8, terms: [{ hz: 1.4, amp: 0.2, px: 0.9, py: 1.7 }] },
+    glows: [{ dx: 0.5, dy: 0.4, r: 0.95, rRide: true, rgb: '110, 225, 200', a: 0.12 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 2.4, rgb: [110, 225, 200], intensity: 0.4 }],
+  }],
+  // THE BANKS GET THEIR GOODS: the caged deep-jelly — the shoal's
+  // street light. Bioluminescence law: a slow swell, never flicker,
+  // no flame gate. The bloom rides the hanging cage; the punch pools
+  // on the path under the bow.
+  [Tile.LurePole, {
+    curve: { base: 0.82, terms: [{ hz: 1.2, amp: 0.18, px: 1.1, py: 0.8 }] },
+    glows: [{ dx: 0.5, dy: 0, air: 1.0, r: 1.0, rRide: true, rgb: '127, 216, 200', a: 0.16 }],
+    lights: [{ dx: 0.5, dy: 0.45, r: 3.6, rRide: true, rgb: [127, 216, 200], intensity: 0.55, occlude: true }],
+  }],
+  // The tidecaller's slab: a cold shore-water shimmer, more moonlight
+  // than lamp — enough to find the shrine across the camp, never
+  // enough to fish by.
+  [Tile.TideAltar, {
+    curve: { base: 0.75, terms: [{ hz: 0.9, amp: 0.25, px: 0.7, py: 1.3 }] },
+    glows: [{ dx: 0.5, dy: 0.3, r: 0.7, rRide: true, rgb: '170, 216, 226', a: 0.1 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 2.2, rgb: [170, 216, 226], intensity: 0.3 }],
+  }],
+  // THE IMBUED LANE: worked violet magic — a slow arcane swell, never
+  // a flicker, ungated by the flame clock.
+  [Tile.ArcaneBeacon, {
+    curve: { base: 0.8, terms: [{ hz: 1.1, amp: 0.2, px: 1.3, py: 0.7 }] },
+    glows: [{ dx: 0.5, dy: -0.45, r: 1.1, rRide: true, rgb: '180, 143, 232', a: 0.22 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 5.0, rRide: true, rgb: [180, 148, 228], intensity: 0.7, occlude: true }],
+  }],
+  // The split stone's seam and glyph column, a quiet violet.
+  [Tile.Runestone, {
+    curve: { base: 0.75, terms: [{ hz: 1.0, amp: 0.25, px: 0.9, py: 1.2 }] },
+    glows: [{ dx: 0.5, dy: 0.1, r: 0.7, rRide: true, rgb: '180, 143, 232', a: 0.12 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 3.5, rgb: [180, 148, 228], intensity: 0.42 }],
+  }],
+  // Wild mana: green, low, and alive — glowshroom-class haze.
+  [Tile.CrystalCluster, {
+    curve: { base: 0.75, terms: [{ hz: 1.2, amp: 0.25, px: 1.1, py: 0.8 }] },
+    glows: [{ dx: 0.5, dy: 0.35, r: 1.0, rRide: true, rgb: '127, 232, 168', a: 0.15 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 4.0, rgb: [130, 226, 170], intensity: 0.5 }],
+  }],
+  // The keystone and its veil: violet at head height.
+  [Tile.WardArch, {
+    curve: { base: 0.75, terms: [{ hz: 1.0, amp: 0.25, px: 0.7, py: 1.0 }] },
+    glows: [{ dx: 0.5, dy: -0.3, r: 0.8, rRide: true, rgb: '180, 143, 232', a: 0.13 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 3.5, rgb: [180, 148, 228], intensity: 0.45 }],
+  }],
+  // The floating book reads by its own light.
+  [Tile.ArcaneTome, {
+    curve: { base: 0.78, terms: [{ hz: 1.1, amp: 0.22, px: 1.4, py: 0.6 }] },
+    glows: [{ dx: 0.5, dy: -0.35, r: 0.6, rRide: true, rgb: '216, 196, 250', a: 0.12 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 3.0, rgb: [196, 176, 240], intensity: 0.4 }],
+  }],
+  // The elven street light — lead color dealt by the SAME hash the
+  // painter uses, so glow and tip-stone agree: alt (green) when
+  // hashCoords(41, tx, ty) & 1 === 0, violet otherwise.
+  [Tile.RunePillar, {
+    curve: { base: 0.8, terms: [{ hz: 1.05, amp: 0.2, px: 1.0, py: 0.9 }] },
+    palette: { salt: 41 },
+    glows: [{ dx: 0.5, dy: -0.9, r: 0.9, rRide: true, rgb: '180, 143, 232', altRgb: '127, 232, 168', a: 0.18 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 4.5, rRide: true, rgb: [180, 148, 228], altRgb: [130, 226, 170], intensity: 0.6, occlude: true }],
+  }],
+  // The Everflame: the elven hall's night anchor — bonfire reach in
+  // silver-white. It never went out, so it never flickers: the beat
+  // is a heart, not a spit.
+  [Tile.Everflame, {
+    curve: { base: 0.88, terms: [{ hz: 1.6, amp: 0.12, px: 0.8 }] },
+    glows: [{ dx: 0.5, dy: 0.06, r: 1.7, rRide: true, rgb: '223, 242, 255', a: 0.26 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 6.0, rRide: true, rgb: [206, 230, 252], intensity: 0.95, occlude: true }],
+  }],
+  // The moonwell: lit water, a soft pool that swells with the surface
+  // shimmer — non-occluding like the glowshroom (a glow off water,
+  // not a lamp on a post).
+  [Tile.Moonwell, {
+    curve: { base: 0.8, terms: [{ hz: 0.9, amp: 0.2, px: 0.6, py: 1.1 }] },
+    glows: [{ dx: 0.5, dy: 0.42, r: 1.2, rRide: true, rgb: '159, 232, 216', a: 0.16 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 3.6, rgb: [150, 226, 210], intensity: 0.5 }],
+  }],
+  // The waystone's script band: the faintest voice in the kit — just
+  // enough to find the road by.
+  [Tile.ElvenWaystone, {
+    curve: { base: 0.7, terms: [{ hz: 0.8, amp: 0.3, px: 1.1, py: 0.9 }] },
+    glows: [{ dx: 0.5, dy: 0.12, r: 0.65, rRide: true, rgb: '159, 232, 216', a: 0.1 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 2.2, rgb: [150, 226, 210], intensity: 0.3 }],
+  }],
+  // The town lamp: THE ONE LICENSED TOWN NIGHT-LIGHT (THE TOWN LAW).
+  // Whole fixture stands down by day; the bloom rides the lantern
+  // cage a full post-height up — and THE PORCH LIGHT law: on lifted
+  // porch boards the deck lift joins the cage height, so the glow
+  // sits on its lantern, never a fifth of a tile low. The bloom's
+  // alpha rides the flame clock, not the night boost — a lamp is lit,
+  // not merely dark-adapted.
+  [Tile.LampPost, {
+    curve: { base: 0.92, terms: [{ hz: 9, amp: 0.05, px: 2.3, py: 1 }, { hz: 17, amp: 0.03, py: 1.7 }] },
+    flameGate: true,
+    porch: true,
+    glows: [{ dx: 0.5, dy: 0.62, air: 1.4, r: 1.3, rRide: true, rgb: '255, 205, 130', a: 0.28, gate: 'flame' }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 5, rRide: true, rgb: [255, 205, 135], intensity: 0.9, flameGated: true, occlude: true }],
+  }],
+];
+
+/** Dense lookup: tile id → spec. Tile ids are small u16s. */
+const BY_TILE: Array<EmitterSpec | undefined> = [];
+for (const [tile, spec] of SPECS) BY_TILE[tile] = spec;
+
+/** All emitter rows, for census tests, the darkness ledger, and the
+ *  editor's roster view. */
+export const EMITTER_LIGHTS: ReadonlyArray<readonly [Tile, EmitterSpec]> = SPECS;
+
+/** The standing-light spec for a tile id, if it emits. O(1) — tiles
+ *  are u16 ids on the wire, so callers may hold plain numbers. */
+export function tileEmitter(tile: number): EmitterSpec | undefined {
+  return BY_TILE[tile];
+}

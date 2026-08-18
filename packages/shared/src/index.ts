@@ -26,6 +26,7 @@ export * from './dungeon/key.js';
 export * from './world/collision.js';
 export * from './world/danger.js';
 export * from './world/explored.js';
+export * from './world/lights.js';
 export * from './world/tiles.js';
 export * from './world/signs.js';
 export * from './world/seats.js';

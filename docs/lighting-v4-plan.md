@@ -1,6 +1,6 @@
 # Lighting v4 — THE LIGHT LIVES IN THE WORLD
 
-Status: PROPOSAL (2026-08-17). Exploration complete; architecture drafted; phases not started.
+Status: PHASE 1 SHIPPED (2026-08-17) — see §8 As built. Phases 2–5 not started.
 Owner mandate: re-approach lighting at the foundational level — lights must read as real
 sources in the 3D universe (oriented, occluded, illuminating), shadows must cover the
 whole standing world, dynamic sources (spells, placed props) must carry light, darkness
@@ -328,3 +328,59 @@ documented in this file's as-built ledger.
 4. **Dynamic sun ambition.** The two-sun doctrine (fixed paint sun, transiting cast sun)
    is load-bearing for ALL baked art. v4 unifies the constants but does NOT propose a
    dynamic paint sun — that would be an art-wide repaint. Confirm this boundary.
+
+---
+
+## 8. As built
+
+### Phase 1 — THE SPEC (2026-08-17)
+
+Owner proceeded on the phased plan (§7 town-law decision still open — nothing in this
+phase depended on it). Shipped as a zero-visual-change refactor:
+
+- **`packages/shared/src/world/lights.ts`** (new): `LightCurve` (base + Σ amp·sin(t·hz +
+  tx·px + ty·py), optional `times` product for the bonfire's roar-under-flicker),
+  `lightCurveAt` evaluator, `EmitterGlow`/`EmitterLight`/`EmitterSpec`, and
+  `EMITTER_LIGHTS` — all 30 standing-emitter tiles transcribed 1:1 from the renderer's
+  hardcoded chain, each row keeping its design-lore comment. `tileEmitter(id)` is an O(1)
+  dense-array lookup (cheaper per visible tile than the old ≤30-branch compare chain).
+  Spec grammar captured from the originals: `rRide` (curve scales radius), `gate:'flame'`
+  (LampPost's bloom rides the flame clock, not the night boost), `flameGate` (whole
+  fixture stands down by day), `porch` (THE PORCH LIGHT deck lift), `air` (projAir bloom
+  height), `palette` (RunePillar's hash-dealt green/violet — same salt as the painter).
+- **`packages/client/src/render/emitters.ts`** (new): `collectEmitter`, the pure
+  spec→frame evaluator. Renderer-free by design so the parity gate tests it directly.
+  Operation ORDER preserved from the originals (float · is commutative, not associative —
+  the flame-gated alpha multiplies (a·flame)·k while the boost path is (a·k)·boost,
+  exactly as the old branches did).
+- **renderer.ts**: `collectStaticLights`' 208-line emitter chain collapsed to the spec
+  lookup + `collectEmitter` call. Still coded, by design (world-coupled): Riftgates
+  (spawnPortalFx + portalsInView + PORTAL_PLANE), Table candles + chest seams
+  (hash-phased queueGlow, the ring-bake strobe law), window hearth-spill (interior
+  regions + the 24/frame cap), the underground amplification + carried lantern
+  (phase 4). The splice was applied by an anchor-verified script (every boundary line
+  asserted against expected text), not hand-retyped.
+- **Law #5 landed**: `ART_SUN_X/ART_SUN_Y` exported from `shared/sim/daylight.ts` beside
+  the TWO SUNS doctrine docblock; the local copies in `terrain.ts` and `footprints.ts`
+  (the only two, verified by grep) now import them. `WorldLight.rgb` widened to a
+  readonly tuple so shared palette tuples flow uncloned (renderer's dominant-light rim
+  fields widened to match).
+
+**The parity gate** (the phase's whole point): `render/emitters.test.ts` carries the
+ORIGINAL chain verbatim as `golden` and asserts `collectEmitter` reproduces it
+**bit-for-bit** (assert.deepEqual, zero tolerance) across 30 tiles × 5 tx × 4 ty ×
+3 clock times × 5 (flame, boost) skies (+ porch deck lift for LampPost) ≈ 9,300
+comparisons. The golden itself was then mechanically proven against git HEAD's deleted
+code: all 137 substantive deleted lines appear verbatim in the test (whitespace/`this.`
+normalization only). So HEAD ≡ golden ≡ new path. `shared/world/lights.test.ts` pins the
+laws: the 30-tile census (a dropped row screams), flame-gated ⇒ occlude, THE TOWN LAW
+(lit candles glow-only, snuffed candles rowless, LampPost flame-gated + porch-aware +
+occluding architecture), palette rows deal altRgb everywhere, sane ranges.
+
+Gates: tsc -b clean across shared/content/server/client; shared 280/280; client
+**659/659** (the long-red armAssembly census pin healed by the neighbor's dbac494b ship).
+No live proving owed: the refactor is provably invisible (identical arrays into
+unchanged draw code).
+
+Phase-2 note: with specs in shared, `z`/`cone`/`halo` fields land next to consumers —
+do NOT pre-declare dead fields here.

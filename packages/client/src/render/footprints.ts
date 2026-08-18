@@ -36,7 +36,7 @@
  *   (FOOTPRINT_TUNE.enabled) empties the field instantly.
  */
 
-import { Tile } from '@arx/shared';
+import { ART_SUN_X, ART_SUN_Y, Tile } from '@arx/shared';
 import { SOIL_TILES } from './terrain.js';
 
 /** All the feet the world walks on: the beast rig's foot words plus
@@ -71,9 +71,8 @@ export const FOOTPRINT_TUNE = {
   alphaMult: 1,
 };
 
-/** The world's one sun (the terrain sun-law) — crests sit opposite. */
-const SUN_X = -0.928;
-const SUN_Y = -0.371;
+// The paint sun (the terrain sun-law) — crests sit opposite. Named
+// ONCE in shared (ART_SUN_X/ART_SUN_Y, daylight.ts): lighting v4 law #5.
 
 export interface PrintInk {
   /** The pressed floor of the print. */
@@ -427,7 +426,7 @@ export class FootprintField {
       if (s.ink.rim && s.ink.rimA * fade > 0.02) {
         const off = shape.len * s.sizeK * 0.09 * sc;
         ctx.save();
-        ctx.translate(p.x - SUN_X * off, py - SUN_Y * off * squash);
+        ctx.translate(p.x - ART_SUN_X * off, py - ART_SUN_Y * off * squash);
         ctx.scale(1, squash);
         ctx.rotate(rotA);
         ctx.scale(flPx * 1.16, flPx * 1.16 * s.side);

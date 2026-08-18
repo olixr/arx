@@ -44,7 +44,9 @@ export interface WorldLight {
   y: number;
   /** Reach in world tiles. */
   r: number;
-  rgb: [number, number, number];
+  /** Readonly so shared EmitterSpec palette tuples flow in uncloned —
+   *  nothing downstream mutates a light's color. */
+  rgb: readonly [number, number, number];
   /** Peak brightness at the core, 0..1. */
   intensity: number;
   /** Static architectural lights cast hard wall shadows. */
