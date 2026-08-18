@@ -4947,6 +4947,231 @@ const PAINTERS: Record<string, IconPainter> = {
     }
     c.restore();
   },
+  // THE THREE PARTS THAT BECAME INGREDIENTS. The brine crest, the
+  // boiled plate, and the fen's leather sat in vendor lists for
+  // months wearing nothing; THE WORN BOOK put all three into craft
+  // recipes, and a part named in a recipe ledger is read a hundred
+  // times a night. One bold subject each, solid over wire, the part's
+  // own color carrying the identity — the same law the pelts keep.
+  frillfin: (c, col) => {
+    // THE BRINE CREST: a skral's skull fin, taken whole and dried
+    // flat — the membrane webbed into a fan with a scalloped hem, the
+    // pale ray bones standing through it, the root knuckle where the
+    // blade went in. Dried it keeps its colors; this is those.
+    c.save();
+    c.translate(0.5, 0.66);
+    c.rotate(-0.07);
+    const RAYS = 5;
+    const SPREAD = 1.62;
+    const ang = (i: number): number => -Math.PI / 2 + ((i / (RAYS - 1)) - 0.5) * SPREAD;
+    const len = (i: number): number => 0.5 + 0.16 * Math.sin((i / (RAYS - 1)) * Math.PI);
+    const tip = (i: number): [number, number] => [Math.cos(ang(i)) * len(i), Math.sin(ang(i)) * len(i)];
+    // The membrane: one solid sheet, hem dipping between every ray.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(0, 0.14);
+    for (let i = 0; i < RAYS; i++) {
+      const [x, y] = tip(i);
+      if (i === 0) { c.lineTo(x, y); continue; }
+      const [px, py] = tip(i - 1);
+      c.quadraticCurveTo((px + x) * 0.38, (py + y) * 0.38, x, y);
+    }
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The deep water in the webbing, banked at the root.
+    c.fillStyle = shade(col, -26);
+    c.beginPath();
+    c.moveTo(0, 0.14);
+    c.quadraticCurveTo(-0.24, 0.02, -0.2, -0.14);
+    c.quadraticCurveTo(0, -0.04, 0.21, -0.15);
+    c.quadraticCurveTo(0.25, 0.02, 0, 0.14);
+    c.closePath();
+    c.fill();
+    // The ray bones: tapered spines, root to tip, not hairlines.
+    c.fillStyle = shade(col, 40);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.016;
+    for (let i = 0; i < RAYS; i++) {
+      const [x, y] = tip(i);
+      const nx = -y / len(i);
+      const ny = x / len(i);
+      c.beginPath();
+      c.moveTo(nx * 0.05, 0.1 + ny * 0.05);
+      c.lineTo(x * 0.97, y * 0.97);
+      c.lineTo(-nx * 0.05, 0.1 - ny * 0.05);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    }
+    // The root knuckle the blade parted, and its two socket pits.
+    c.fillStyle = shade(col, -34);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.ellipse(0, 0.15, 0.17, 0.085, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    dot(c, shade(col, -50), -0.06, 0.15, 0.028);
+    dot(c, shade(col, -50), 0.06, 0.15, 0.028);
+    c.restore();
+  },
+  shellplate: (c, col) => {
+    // THE BOILED PLATE: a giant crab's back-shell off the storm line.
+    // A broad domed carapace with the shell's own H-groove cut across
+    // it, the margin sawn into spine teeth, one lifted ridge over the
+    // crown — and the barnacles the armorer still has to chisel. No
+    // eyes: this is the PLATE, off the crab and boiled, not the crab.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(0.04);
+    // The dome.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.44, 0.0);
+    c.quadraticCurveTo(-0.4, -0.24, -0.2, -0.32);
+    c.quadraticCurveTo(0, -0.4, 0.2, -0.32);
+    c.quadraticCurveTo(0.4, -0.24, 0.44, 0.0);
+    c.quadraticCurveTo(0.38, 0.2, 0.2, 0.3);
+    c.quadraticCurveTo(0, 0.38, -0.2, 0.3);
+    c.quadraticCurveTo(-0.38, 0.2, -0.44, 0.0);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The crown ridge: the lifted band where the shell arches.
+    c.fillStyle = shade(col, 24);
+    c.beginPath();
+    c.moveTo(-0.3, -0.12);
+    c.quadraticCurveTo(0, -0.3, 0.3, -0.12);
+    c.quadraticCurveTo(0, -0.19, -0.3, -0.12);
+    c.closePath();
+    c.fill();
+    c.fillStyle = shade(col, -24);
+    c.beginPath();
+    c.moveTo(-0.34, 0.06);
+    c.quadraticCurveTo(0, 0.2, 0.34, 0.06);
+    c.quadraticCurveTo(0, 0.28, -0.34, 0.06);
+    c.closePath();
+    c.fill();
+    // The H-groove every crab shell carries, sunk into the dome.
+    c.strokeStyle = shade(col, -46);
+    c.lineWidth = 0.05;
+    c.lineCap = 'round';
+    for (const x of [-0.15, 0.15]) {
+      c.beginPath();
+      c.moveTo(x, -0.16);
+      c.quadraticCurveTo(x * 1.2, 0.02, x * 0.86, 0.18);
+      c.stroke();
+    }
+    c.beginPath();
+    c.moveTo(-0.15, 0.0);
+    c.lineTo(0.15, 0.0);
+    c.stroke();
+    c.lineCap = 'butt';
+    // The sawn margin: spine teeth marching the shell's lower edge.
+    c.fillStyle = shade(col, -14);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.018;
+    for (const [x, y, dx, dy] of [
+      [-0.4, 0.06, -0.09, 0.05], [-0.31, 0.2, -0.07, 0.09],
+      [-0.16, 0.3, -0.03, 0.1], [0.16, 0.3, 0.03, 0.1],
+      [0.31, 0.2, 0.07, 0.09], [0.4, 0.06, 0.09, 0.05],
+    ] as const) {
+      c.beginPath();
+      c.moveTo(x - dy * 0.5, y + dx * 0.5);
+      c.lineTo(x + dx, y + dy);
+      c.lineTo(x + dy * 0.5, y - dx * 0.5);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    }
+    // Barnacles and all — pale cones with their own dark mouths.
+    for (const [x, y, r] of [[-0.28, -0.06, 0.055], [-0.33, 0.1, 0.038], [0.3, 0.08, 0.045]] as const) {
+      dot(c, '#d8d2c0', x, y, r);
+      dot(c, shade('#d8d2c0', -34), x, y, r * 0.45);
+    }
+    c.restore();
+  },
+  keeledhide: (c, col) => {
+    // THE FEN'S LEATHER: a cured panel of keeled marsh hide. The
+    // scale rows stamped across the grain, the raised keel running
+    // the spine line corner to corner, and one turned-back corner
+    // showing the pale suede the tanner worked.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(-0.22);
+    // The panel — cut square, but leather never lies square.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.36, -0.28);
+    c.quadraticCurveTo(-0.02, -0.34, 0.34, -0.26);
+    c.quadraticCurveTo(0.4, 0.02, 0.32, 0.3);
+    c.quadraticCurveTo(0, 0.36, -0.34, 0.28);
+    c.quadraticCurveTo(-0.4, 0.0, -0.36, -0.28);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // Scale rows stamped across the grain: fat overlapping scallops,
+    // light row over dark row so the grain reads at pack scale.
+    for (let row = 0; row < 3; row++) {
+      c.fillStyle = shade(col, row % 2 ? 34 : -30);
+      const y = -0.16 + row * 0.19;
+      for (let i = 0; i < 4; i++) {
+        const x = -0.28 + i * 0.19 + (row % 2 ? 0.095 : 0);
+        c.beginPath();
+        c.moveTo(x - 0.095, y + 0.075);
+        c.quadraticCurveTo(x, y - 0.115, x + 0.095, y + 0.075);
+        c.quadraticCurveTo(x, y + 0.015, x - 0.095, y + 0.075);
+        c.closePath();
+        c.fill();
+      }
+    }
+    // The keel: the raised spine ridge running corner to corner, laid
+    // on its own dark bed so the pale tips have something to stand on.
+    c.strokeStyle = shade(col, -44);
+    c.lineWidth = 0.1;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.26, 0.2);
+    c.lineTo(0.26, -0.2);
+    c.stroke();
+    c.lineCap = 'butt';
+    c.fillStyle = shade(col, 48);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.018;
+    for (let i = 0; i < 5; i++) {
+      const t = i / 4;
+      const x = -0.26 + t * 0.52;
+      const y = 0.2 - t * 0.4;
+      const h = 0.075 + 0.025 * Math.sin(t * Math.PI);
+      c.beginPath();
+      c.moveTo(x - 0.045, y + 0.035);
+      c.lineTo(x + 0.03, y - h);
+      c.lineTo(x + 0.055, y + 0.005);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    }
+    // The turned corner: the pale suede side the fen never sees.
+    c.fillStyle = shade(col, 62);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(0.32, 0.3);
+    c.quadraticCurveTo(0.1, 0.34, 0.06, 0.24);
+    c.quadraticCurveTo(0.24, 0.24, 0.26, 0.06);
+    c.quadraticCurveTo(0.36, 0.14, 0.32, 0.3);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.restore();
+  },
   vial: (c, col) => {
     // The tonic: a tall slim vial, corked and collared, the draught
     // filling two-thirds with one rising bubble.
@@ -5667,6 +5892,13 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   worg_fang: { icon: 'fang', color: '#d8ccb0' },
   gnoll_hide: { icon: 'spottedhide', color: '#7f6d4c' },
   packlord_mane: { icon: 'mane', color: '#4e4034' },
+  // Three parts THE WORN BOOK promoted from vendor line to recipe
+  // ingredient (the kingfisher lot and the weirkeeper's). A part a
+  // crafter reads every night has earned its own face, not a
+  // neighbour's tinted twice.
+  skral_frill: { icon: 'frillfin', color: '#5f9a84' },
+  crab_carapace: { icon: 'shellplate', color: '#46655c' },
+  fen_basilisk_hide: { icon: 'keeledhide', color: '#5c6644' },
   leather_body: { icon: 'jerkin', color: '#b08a5c' },
   bones: { icon: 'bones', color: '#efe8d8' },
   feather: { icon: 'feather', color: '#f4efe4' },
@@ -5754,6 +5986,11 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   bonespur_ward: { icon: 'shield', color: '#d9d2bd' },
   kingsward: { icon: 'shield', color: '#8a2431' },
   dreadforge_thornwall: { icon: 'shield', color: '#3a3d46' },
+  // The gatefall house's board — the sixth piece of a set whose other
+  // five went faceless with it (see THE SEVEN THAT SHIPPED FACELESS
+  // below). A real tower OffhandStyle all along; it only ever lacked
+  // the row that lets the wardrobe block product-shot it.
+  gatefall_bulwark: { icon: 'shield', color: '#3e3560' },
   // Themed plate sets — family painters carry the shape, the palette
   // carries the identity.
   warden_helm: { icon: 'helm', color: '#4a7a5a' },
@@ -5864,6 +6101,22 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   kingsmane_platebody: { icon: 'platebody', color: '#e8e4da' },
   kingsmane_greaves: { icon: 'legs', color: '#e8e4da' },
   kingsmane_sabatons: { icon: 'boots', color: '#e8e4da' },
+  // THE SEVEN THAT SHIPPED FACELESS. Seven top-band chase houses —
+  // gatefall here, six vestment houses down the cloth road below —
+  // were given full ARMOR STYLE records and dressed the rig from the
+  // day they landed, but never a single row in this table, so every
+  // one of their pieces fell through to the burnt lump in the pack.
+  // The rows are seeds, not drawings: the generic glyph names license
+  // the wardrobe block to swap each id for its `worn:` product shot,
+  // painted from the very style that dresses the body. The tint is
+  // the piece's own metal or cloth, darker where the piece hangs low.
+  //
+  // The gatehelm house first: a greathelm chassis on the door's own
+  // night glass, the violet quarried out of the riftgate's granite.
+  gatefall_helm: { icon: 'greathelm', color: '#37304f' },
+  gatefall_platebody: { icon: 'platebody', color: '#37304f' },
+  gatefall_greaves: { icon: 'legs', color: '#2c2542' },
+  gatefall_sabatons: { icon: 'boots', color: '#3e3560' },
   // The legendary cloth road — four vestments down the leveling bands.
   wintercourt_crown: { icon: 'circlet', color: '#cfe4f0' },
   wintercourt_robe: { icon: 'robe', color: '#3a5a74' },
@@ -5881,6 +6134,37 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   orrery_robe: { icon: 'robe', color: '#262e4e' },
   orrery_skirts: { icon: 'legs', color: '#1e2540' },
   orrery_slippers: { icon: 'boots', color: '#1e2540' },
+  // ...and the six faceless vestment houses, in band order: the
+  // hallowed pale, the storm's blue, the fen's olive veil, the
+  // ash-white flamewrought, the warden's night-and-gold, and the
+  // aetherion violet at the top of the road. Head glyphs follow the
+  // style record's own chassis — hood for a hood, wizardhat for the
+  // magus and wizard crowns, so even the seed layer tells the truth
+  // about the silhouette the product shot will paint.
+  sunhallow_hood: { icon: 'hood', color: '#ece6d8' },
+  sunhallow_robe: { icon: 'robe', color: '#ece6d8' },
+  sunhallow_skirts: { icon: 'legs', color: '#d9d1ba' },
+  sunhallow_slippers: { icon: 'boots', color: '#c9b073' },
+  stormsinger_hat: { icon: 'wizardhat', color: '#2c3a6e' },
+  stormsinger_robe: { icon: 'robe', color: '#2c3a6e' },
+  stormsinger_skirts: { icon: 'legs', color: '#22305c' },
+  stormsinger_slippers: { icon: 'boots', color: '#1f2a52' },
+  gloamsight_veil: { icon: 'hood', color: '#4e5636' },
+  gloamsight_robe: { icon: 'robe', color: '#4e5636' },
+  gloamsight_skirts: { icon: 'legs', color: '#3d4429' },
+  gloamsight_slippers: { icon: 'boots', color: '#39402a' },
+  flamewrought_crown: { icon: 'hood', color: '#3a2e2a' },
+  flamewrought_robe: { icon: 'robe', color: '#ddd2b8' },
+  flamewrought_skirts: { icon: 'legs', color: '#c9bda0' },
+  flamewrought_slippers: { icon: 'boots', color: '#352a24' },
+  duskwarden_hat: { icon: 'wizardhat', color: '#232838' },
+  duskwarden_robe: { icon: 'robe', color: '#232838' },
+  duskwarden_skirts: { icon: 'legs', color: '#1e2330' },
+  duskwarden_slippers: { icon: 'boots', color: '#1c2130' },
+  aetherion_cowl: { icon: 'hood', color: '#2e2452' },
+  aetherion_robe: { icon: 'robe', color: '#2e2452' },
+  aetherion_skirts: { icon: 'legs', color: '#251d42' },
+  aetherion_slippers: { icon: 'boots', color: '#211a3a' },
   // The legendary leather road — four hunter and assassin kits.
   hartsong_crown: { icon: 'hood', color: '#33472e' },
   hartsong_jerkin: { icon: 'jerkin', color: '#33472e' },
@@ -6253,6 +6537,16 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   packlord_grips: { icon: 'gloves', color: '#4a3f2d' },
   weirkeeper_gloves: { icon: 'gloves', color: '#24504a' },
   wrightcloth_mitts: { icon: 'gloves', color: '#8d7d5c' },
+  // The seven faceless houses' hands, last of the pieces to come in
+  // out of the burnt lump. Six sets of wraps and one iron fist: the
+  // warden's flared cuff over the gate's own glass splinter.
+  gatefall_gauntlets: { icon: 'gauntlet', color: '#3e3560' },
+  sunhallow_wraps: { icon: 'gloves', color: '#ece6d8' },
+  stormsinger_wraps: { icon: 'gloves', color: '#2c3a6e' },
+  gloamsight_wraps: { icon: 'gloves', color: '#4e5636' },
+  flamewrought_wraps: { icon: 'gloves', color: '#3a2e2a' },
+  duskwarden_wraps: { icon: 'gloves', color: '#232838' },
+  aetherion_wraps: { icon: 'gloves', color: '#2e2452' },
 };
 
 // Colorway variants inherit their base piece's painter; the tint comes
