@@ -1063,6 +1063,11 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     slot: 'offhand',
     levelReq: { skill: 'defence', level: 46 },
     armor: 12,
+    // THE LIGHT-BOUND SHIELD: the Oathkeepers' sworn light is REAL —
+    // the carried-flame system (the lantern's door) grants it a warm
+    // gold aura in the dark, softer than a working lamp: an honor
+    // shown, not a tool. Chest height — it is held, not hung.
+    carryLight: { r: 4.8, rgb: [255, 224, 158], intensity: 0.5, z: 0.75 },
     affixPool: [{ stat: 'defence', w: 3 }, { stat: 'maxHp', w: 2 }, { stat: 'vitality' }, { stat: 'regen' }],
     acquisition: { craft: true },
     recipe: {

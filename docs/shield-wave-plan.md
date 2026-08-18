@@ -150,3 +150,49 @@ Proven on the shield sheet (all 23 rows × 6 yaw stations × hero + 3 gameplay
 scales, before/after), on the wield sheet rows 8-9 and 36-39 (board + wall
 carries, all 8 facings), and the living clock verified by differing captures
 at two freeze times. tsc clean, 666/666 client tests.
+
+## ALDAREN'S GATE v2 — THE OATHKEEPER (as-built, 2026-08-17)
+
+The light-bound recut, and the first shield designed natively on the carved
+shell. The storm identity (aurora curtains, bolt, storm-blade crest,
+`stormPhase`) is fully retired — no dead code. Three ideas, one per zone, one
+owner per brightness (white = the light itself, gold = everything worked, the
+indigo field owns the dark):
+
+- **THE DAWNBURST** (`sigOath`, LIVING_SIGS): eleven gold rays breathing off
+  the sunstone on independent phases, narrow at the root and widening outward;
+  the king ray burns white up the centerline (declared `field: 'pale'` — the
+  ledger reads honest metadata). Lancet outline recut: one apex, stepped
+  shoulders, waisted flank, pointed heel.
+- **THE SWORN RING**: eight oath-marks (one per compass facing of the
+  alliance) on a worked annulus; the vow-glint renews each in turn on THE VOW
+  CLOCK (`OATH_MS` 3600, offset so t=0 reads mid-vow); each completed circuit
+  births THE OATH PULSE — an expanding ring, white at birth, cooling to gold,
+  dying at the rim. THE STONE'S FLARE: an eight-point star (two rotated
+  squares) beating under the substrate umbo (`boss: '#fff3d6'`).
+- **THE ORBIT OF THE VOW** (`crestOath`): not a painted halo — a flattened
+  ellipse of light lying LEVEL around the spire's tip in the camera's own
+  perspective, faceted in 28 per-segment flats. The rear arc rides low, dim,
+  and is CUT where the steel stands (it passes behind the spire); the front
+  arc rides proud of the slab; the height tapers continuously so the arcs
+  meet without a step. The vow orbits it as a white bead with a comet tail,
+  honestly disappearing behind the spire. Light is NEVER seam-ringed (the
+  aurora/storm-arc precedent; a full-weight ring swallowed the thin bands —
+  the pinion lesson, relearned and written down). Five rising motes on
+  staggered periods, confined to the ring's column.
+- **Worked fittings** (`relOath`): THE STONE COLLAR (octagonal gold mount the
+  umbo lands on) and THE KING RIDGE (a broad ringed gold blade, collar to
+  crown — broad enough that its ring frames gold instead of swallowing it).
+  Four gold ray-finials burst past the LOWER binding (spike plan) — the crown
+  air belongs to the orbit.
+- **THE LIGHT IS REAL**: `EquipmentDef.carryLight` added (types + compile
+  passthrough), and Aldaren's Gate declares a warm gold aura
+  (r 4.8, [255,224,158], i 0.5, z 0.75) through the lantern's carried-flame
+  door — an equipped Oathkeeper lights the night with zero client changes.
+  World-night visual proving owed at the next live session; the code path is
+  the lantern's own, live-proven in lighting v4 phase 4.
+
+Six judged passes on the sheet (three at 4× zoom), all-station row + smalls,
+wieldlab wall rows 36-38 at all 8 facings, living clock proven by differing
+freeze captures. Gates: client+content tsc clean, client 666/666, content
+611/611.

@@ -78,6 +78,14 @@ export interface EquipmentDef {
    * the one offhand kind that pairs with a two-handed bow or staff.
    */
   backMounted?: boolean;
+  /**
+   * THE CARRIED FLAME (lighting v4): an equipped piece that gives off
+   * real light in the world — the lantern's own field, passed through
+   * to the compiled ItemDef so the renderer's carried-flame system
+   * picks it up with no client change. The Oathkeeper's shield burns
+   * with its sworn light; the mechanism is the lantern's.
+   */
+  carryLight?: { r: number; rgb: readonly [number, number, number]; intensity: number; z: number };
   /** Gear-carried passive (hotbar tray), same field ItemDef carries. */
   passive?: PassiveId;
   /**

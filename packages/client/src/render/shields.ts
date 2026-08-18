@@ -848,38 +848,46 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
     tier: 6,
   },
   /**
-   * ALDAREN'S GATE — the GATE OF THE SKY. In the north the aurora
-   * over Silverfall is called the sky's gate, and this is that sky,
-   * forged: a storm-steel monolith with the aurora BURNING THROUGH
-   * it — curtains of cold light hanging uneven down the dark, one
-   * white bolt torn crown to heel — under a crown of three leaning
-   * storm-blades with a live arc crawling between their tips, and
-   * forged spikes off both flanks. Three ideas, one per zone, per the
-   * curation standard: the dark steel, the sky in it, the charged
-   * crown over it. The biggest plane in the game, and the one shield
-   * that looks like weather.
+   * ALDAREN'S GATE — THE OATHKEEPER (v2 face, 2026-08-17: the light-
+   * bound recut). The Oathkeepers' sworn shield: a lancet monolith of
+   * deep oath-indigo steel with a faceted SUNSTONE sworn to its
+   * center, and the dawn pouring through it. Three ideas, one per
+   * zone: THE DAWNBURST (a fan of breathing gold rays off the stone,
+   * the king ray burning white up the centerline), THE SWORN RING
+   * (eight oath-marks — one per compass facing of the alliance — a
+   * vow-glint circling them in turn, and the OATH PULSE ringing
+   * outward each time the circuit completes), and THE BROKEN HALO
+   * (three gold arcs FLOATING in free crest air above the crown — the
+   * roster's first floating regalia — flaring as the vow arrives,
+   * light motes rising through them). One owner per brightness: white
+   * is the light itself, gold is everything worked, the indigo field
+   * owns the dark. Four gold ray-finials burst past the lower binding
+   * — the light does not stop at the rim.
    */
   aldarens_gate: {
     shape: 'falls',
     material: 'steel',
-    face: '#252b3d',
-    // The aurora's own light — the sky's tincture, not a paint.
-    faceAlt: '#5ce8c4',
-    rim: '#525d78',
-    // The bolt, in the rolls' nearest word.
+    face: '#232746',
+    // The hour before the gate: the crown's field warms first.
+    faceAlt: '#2e3560',
+    rim: '#57492a',
+    // The king ray, in the rolls' nearest word: a pale on the field.
     device: 'star',
-    deviceColor: '#b8f4ff',
-    studs: true,
+    deviceColor: '#e9c86b',
+    field: 'pale',
     spikes: true,
-    // Forged storm-steel spikes off both free edges — the monolith
-    // bares its teeth at the world on either side.
-    spikeAngles: [-0.45, 0.45, 2.69, 3.59],
-    spikeLen: 1.35,
-    spikeW: 0.1,
-    spikeColor: '#aab6cc',
+    // THE ESCAPED RAYS: four gold finials off the lower flanks — the
+    // crown air belongs to the halo, so the rim's light breaks out
+    // low, where the gate spills onto the ground.
+    spikeAngles: [0.25, 0.85, 2.29, 2.89],
+    spikeLen: 1.32,
+    spikeW: 0.085,
+    spikeColor: '#e9c86b',
+    // The sunstone: the substrate umbo, in the light's own white.
+    boss: '#fff3d6',
     curve: 0.3,
-    strapColor: '#3f3830',
-    sig: 'falls',
+    strapColor: '#4a3d2c',
+    sig: 'oath',
     tier: 6,
   },
 };
@@ -1073,10 +1081,14 @@ const OUTLINES: Record<ShieldShape, number[]> = {
   // shoulder steps that jut OUT past it, walls falling to a waist
   // step, then the long taper to a ground point. The storm-crown
   // blades mount on the plateau; the flank spikes take the shoulders.
+  // THE OATHKEEPER'S LANCET (the light-bound recut): one apex the
+  // whole shield rises toward, stepped shoulders, a waisted flank and
+  // a heel that comes to its own point — an upward silhouette for a
+  // shield whose entire design is the dawn climbing.
   falls: [
-    -0.62, -1, 0.62, -1, 0.9, -0.84, 1.0, -0.58, 1.0, -0.08, 0.86, 0.06,
-    0.86, 0.52, 0.55, 0.92, 0, 1.06, -0.55, 0.92, -0.86, 0.52, -0.86, 0.06,
-    -1.0, -0.08, -1.0, -0.58, -0.9, -0.84,
+    0, -1.14, 0.42, -0.88, 0.74, -0.8, 0.95, -0.45, 1.0, -0.05,
+    0.88, 0.14, 0.85, 0.52, 0.5, 0.9, 0, 1.06, -0.5, 0.9, -0.85, 0.52,
+    -0.88, 0.14, -1.0, -0.05, -0.95, -0.45, -0.74, -0.8, -0.42, -0.88,
   ],
 };
 
@@ -1580,7 +1592,7 @@ interface FaceEntry {
 const FACE_CACHE = new Map<string, FaceEntry>();
 const FACE_CACHE_MAX = 64;
 /** Signatures whose FACE is a function of the clock (crests stay live). */
-const LIVING_SIGS = new Set(['falls']);
+const LIVING_SIGS = new Set(['oath']);
 /** Resolution rungs, px per design unit — capped so no entry balloons. */
 const FACE_RES = [20, 30, 44, 64, 92, 132, 184];
 
@@ -2192,7 +2204,7 @@ const SIGNATURES: Record<string, FacePainter> = {
   cindermaw: sigCindermaw,
   everwood: sigEverwood,
   riftward: sigRiftward,
-  falls: sigFalls,
+  oath: sigOath,
 };
 
 /**
@@ -3276,124 +3288,165 @@ function sigRiftward(
 }
 
 /**
- * THE STORM CLOCK. One cycle of the sky: the STRIKE (a hard flash),
- * its decaying afterglow, then the long charged quiet — and then it
- * strikes again, down the OTHER path, because lightning never walks
- * the same road twice. The face bolt and the crest arc both read this
- * one clock, so the whole shield answers the same weather; and it is
- * a pure function of nowMs (the FX doctrine), so every viewer of the
- * same shield sees the same strike at the same moment. At t=0 the
- * clock reads FLASH — icons and static frames show the shield at its
- * full argument.
+ * THE VOW CLOCK. One circuit of the sworn ring: a glint travels the
+ * eight oath-marks in turn, and the instant the circuit closes the
+ * OATH PULSE rings outward — one expanding band of light that fades
+ * as it travels to the rim, while the halo overhead flares in answer.
+ * The face, the pulse and the floating crest all read this ONE clock,
+ * so the whole shield keeps the same vow; and it is a pure function
+ * of nowMs (the FX doctrine), so every viewer of the same shield sees
+ * the same oath at the same moment. The clock is offset so t=0 reads
+ * MID-VOW — a mark alight, the pulse in flight — because a frozen
+ * frame (icons, the sheet) must show the full argument, never the
+ * quiet between.
  */
-const STORM_MS = 2600;
-function stormPhase(nowMs: number): { flash: number; cyc: number } {
-  const cyc = Math.floor(nowMs / STORM_MS);
-  const p = (nowMs - cyc * STORM_MS) / STORM_MS;
-  const flash = p < 0.09 ? 1 : Math.max(0, 1 - (p - 0.09) * 3.2);
-  return { flash, cyc };
+const OATH_MS = 3600;
+function oathPhase(nowMs: number): number {
+  return ((nowMs + OATH_MS * 0.25) % OATH_MS) / OATH_MS;
 }
 
-/** The two roads the strike walks, swapped every cycle. */
-const STORM_JAGS: Array<Array<[number, number, number, number]>> = [
-  [
-    [0.28, -1.12, -0.26, -0.38],
-    [-0.26, -0.38, 0.24, -0.24],
-    [0.24, -0.24, -0.22, 0.48],
-    [-0.22, 0.48, 0.12, 0.56],
-    [0.12, 0.56, -0.04, 1.02],
-  ],
-  [
-    [0.16, -1.12, 0.28, -0.56],
-    [0.28, -0.56, -0.24, -0.42],
-    [-0.24, -0.42, 0.2, 0.3],
-    [0.2, 0.3, -0.18, 0.42],
-    [-0.18, 0.42, 0.04, 1.02],
-  ],
-];
-
 /**
- * ALDAREN'S GATE — the sky, forged, and ALIVE. THE AURORA: four
- * ribbons of cold light parted around a dark corridor, each swaying
- * at the waist and hem on its own slow clock, breathing brightness,
- * carrying a faint bloom the way real curtains stain the sky around
- * them. THE BOLT: down the corridor on the storm clock — it flashes
- * white, decays to its teal ghost, and restrikes down the other road.
- * The dark steel stays the majority tone at every instant: the storm
- * reads from the dark, and nothing here asks to be deciphered.
+ * ALDAREN'S GATE — THE OATHKEEPER, radiant. THE DAWNBURST: a fan of
+ * gold rays off the sunstone, every ray breathing on its own slow
+ * phase, each one narrow at the stone and widening outward — light
+ * radiates, spokes do not — with the king ray burning white up the
+ * centerline (the pale the rolls record). THE SWORN RING: eight
+ * oath-marks on a worked circle, the vow-glint renewing each in turn.
+ * THE OATH PULSE rings outward when the circuit closes. THE STONE'S
+ * FLARE: the eight-point star the umbo stands on, beating gently.
+ * The indigo field stays the majority tone at every instant — the
+ * light reads FROM the dark, and nothing here asks to be deciphered:
+ * at eleven pixels this is a dark lancet with a bright heart and a
+ * gold crown, which is the whole oath at a glance.
  */
-function sigFalls(
+function sigOath(
   ctx: CanvasRenderingContext2D,
   st: ShieldStyle,
   fr: ShieldFrame,
   litU: number,
   nowMs: number,
 ): void {
-  plates(ctx, st, litU);
-  const teal = st.faceAlt ?? '#5ce8c4';
-  const ice = '#b8f4ff';
-  const { flash, cyc } = stormPhase(nowMs);
-  // THE AURORA RIBBONS: crown pinned, waist and hem swaying, the hem
-  // twice as far as the waist — cloth of light in a slow wind. Bloom
-  // first, then the deep edge, then the breathing shaft.
-  const curtains: Array<[number, number, number, string]> = [
-    [-0.74, 0.1, -0.24, teal],
-    [-0.4, 0.13, 0.6, ice],
-    [0.4, 0.13, 0.48, ice],
-    [0.74, 0.1, -0.34, teal],
+  const gold = st.deviceColor ?? '#e9c86b';
+  const goldDeep = shade(gold, -24);
+  const white = '#fff6dc';
+  const ph = oathPhase(nowMs);
+
+  // THE FIELD: night steel, warming toward the crown the light climbs.
+  ctx.fillStyle = st.face;
+  ctx.fillRect(-1.2, -1.2, 2.4, 2.4);
+  poly(ctx, st.faceAlt ?? shade(st.face, 9), [
+    -1.2, -1.2, 1.2, -1.2, 1.2, -0.52, 0, -0.36, -1.2, -0.52,
+  ]);
+  poly(ctx, shade(st.face, -9), [-1.2, 0.68, 0, 0.54, 1.2, 0.68, 1.2, 1.2, -1.2, 1.2]);
+
+  // THE DAWNBURST. A ray is a trapezoid from the stone's edge outward:
+  // hip-width at the root, half again as wide at its reach.
+  const ray = (a: number, r0: number, r1: number, w: number, tone: string): void => {
+    const du = Math.sin(a);
+    const dt = -Math.cos(a);
+    const pu = Math.cos(a);
+    const pt = Math.sin(a);
+    poly(ctx, tone, [
+      du * r0 - pu * w * 0.45, dt * r0 - pt * w * 0.45,
+      du * r0 + pu * w * 0.45, dt * r0 + pt * w * 0.45,
+      du * r1 + pu * w * 1.5, dt * r1 + pt * w * 1.5,
+      du * r1 - pu * w * 1.5, dt * r1 - pt * w * 1.5,
+    ]);
+  };
+  // Angle from the crown line, reach, root width. The upper fan does
+  // the radiating; three short rays spill under the stone so the burst
+  // is whole — a sun, not a peacock.
+  const FAN: Array<[number, number, number]> = [
+    [-1.36, 0.98, 0.05],
+    [-1.02, 1.05, 0.055],
+    [-0.68, 1.18, 0.06],
+    [-0.34, 1.32, 0.065],
+    [0.34, 1.32, 0.065],
+    [0.68, 1.18, 0.06],
+    [1.02, 1.05, 0.055],
+    [1.36, 0.98, 0.05],
+    [2.6, 0.85, 0.048],
+    [Math.PI, 0.88, 0.05],
+    [-2.6, 0.85, 0.048],
   ];
-  for (let i = 0; i < curtains.length; i++) {
-    const [u, w, t1, tone] = curtains[i]!;
-    const s1 = 0.045 * Math.sin(nowMs * 0.0008 + i * 2.1);
-    const hem = t1 + 0.09 * Math.sin(nowMs * 0.0006 + i * 1.7);
-    const waistT = -0.38 + (hem + 0.38) * 0.5;
-    const breathe = 0.78 + 0.22 * Math.sin(nowMs * 0.0011 + i * 1.3);
-    const ribbon = (g: number, tone2: string, alpha: number): void => {
+  for (let i = 0; i < FAN.length; i++) {
+    const [a, r1, w] = FAN[i]!;
+    const breathe = 0.5 + 0.5 * Math.sin(nowMs * 0.0011 + i * 1.9);
+    ray(a, 0.6, r1, w, shade(gold, -8 + Math.round(20 * breathe)));
+  }
+  // THE KING RAY: the pale itself — a gold blade with a white heart.
+  ray(0, 0.58, 1.16, 0.085, gold);
+  ray(0, 0.6, 1.1, 0.034, white);
+
+  // THE SWORN RING. Low-poly circles, filled as an annulus — the face
+  // budget knows no strokes.
+  const ringPoly = (r: number, cw: boolean): void => {
+    const N = 20;
+    for (let k = 0; k <= N; k++) {
+      const a2 = ((cw ? k : N - k) / N) * Math.PI * 2;
+      const x = Math.cos(a2) * r;
+      const y = Math.sin(a2) * r;
+      if (k === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  };
+  const annulus = (r0: number, r1: number, tone: string, alpha: number): void => {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = tone;
+    ctx.beginPath();
+    ringPoly(r1, true);
+    ringPoly(r0, false);
+    ctx.fill('evenodd');
+    ctx.globalAlpha = 1;
+  };
+  annulus(0.475, 0.51, goldDeep, 0.9);
+  // Eight marks — one per compass facing of the alliance — and the
+  // vow-glint that renews them in turn.
+  const vowA = ph * Math.PI * 2 - Math.PI / 2;
+  for (let k = 0; k < 8; k++) {
+    const a2 = (k / 8) * Math.PI * 2 - Math.PI / 2;
+    const cu = Math.cos(a2);
+    const ct2 = Math.sin(a2);
+    let d = Math.abs(a2 - vowA) % (Math.PI * 2);
+    if (d > Math.PI) d = Math.PI * 2 - d;
+    const lit = Math.pow(Math.max(0, Math.cos(d * 0.5)), 22);
+    const mr = 0.5;
+    const mark = (len: number, w: number, tone: string, alpha: number): void => {
       ctx.globalAlpha = alpha;
-      poly(ctx, tone2, [
-        u - w - g, -1.2,
-        u + w + g, -1.2,
-        u + s1 + (w + g) * 0.92, waistT,
-        u + s1 * 2 + (w + g) * 0.74, hem + g,
-        u + s1 * 2 - (w + g) * 0.74, hem - 0.08 - g,
-        u + s1 - (w + g) * 0.92, waistT - 0.05,
+      poly(ctx, tone, [
+        cu * (mr - len) - ct2 * w, ct2 * (mr - len) + cu * w,
+        cu * (mr + len) - ct2 * w * 0.6, ct2 * (mr + len) + cu * w * 0.6,
+        cu * (mr + len) + ct2 * w * 0.6, ct2 * (mr + len) - cu * w * 0.6,
+        cu * (mr - len) + ct2 * w, ct2 * (mr - len) - cu * w,
       ]);
       ctx.globalAlpha = 1;
     };
-    ribbon(0.1, tone, 0.13 * breathe);
-    ribbon(0.045, shade(tone, -38), 1);
-    ribbon(0, tone, breathe);
+    mark(0.085, 0.042, shade(gold, 2), 0.95);
+    if (lit > 0.08) mark(0.1, 0.05, white, Math.min(1, lit));
   }
-  // THE BOLT, on the storm clock. Always present — the shield's
-  // identity cannot blink out — but the strike OWNS its moment: the
-  // corridor washes with light, the wire burns full white, and the
-  // whole thing decays back to the waiting charge.
-  const seg = (
-    x0: number, t0: number, x1: number, t1: number, w2: number, tone: string,
-  ): void => {
-    const dx = x1 - x0;
-    const dt = t1 - t0;
-    const L = Math.hypot(dx, dt) || 1;
-    const nx = (-dt / L) * w2;
-    const nt = (dx / L) * w2;
-    poly(ctx, tone, [x0 + nx, t0 + nt, x1 + nx, t1 + nt, x1 - nx, t1 - nt, x0 - nx, t0 - nt]);
+
+  // THE OATH PULSE: new-born it is the light's own white, and it
+  // cools to worked gold as it travels out to die at the rim.
+  const pr = 0.56 + ph * 0.85;
+  const pw = 0.045 + ph * 0.05;
+  annulus(pr - pw, pr + pw, ph < 0.18 ? white : gold, (1 - ph) * 0.38);
+
+  // THE STONE'S FLARE: two rotated squares — the eight-point star the
+  // sunstone stands on — beating gently on the clock.
+  const star = (r: number, rot: number, tone: string, alpha: number): void => {
+    ctx.globalAlpha = alpha;
+    const pts: number[] = [];
+    for (let k = 0; k < 4; k++) {
+      const a2 = rot + (k / 4) * Math.PI * 2;
+      pts.push(Math.cos(a2) * r, Math.sin(a2) * r);
+    }
+    poly(ctx, tone, pts);
+    ctx.globalAlpha = 1;
   };
-  const jags = STORM_JAGS[cyc % 2]!;
-  ctx.globalAlpha = 0.1 * flash;
-  poly(ctx, teal, [-0.32, -1.2, 0.32, -1.2, 0.32, 1.1, -0.32, 1.1]);
-  ctx.globalAlpha = 0.5 + 0.5 * flash;
-  for (const [x0, t0, x1, t1] of jags) seg(x0, t0, x1, t1, 0.15, shade(teal, -16));
-  ctx.globalAlpha = 0.55 + 0.45 * flash;
-  for (const [x0, t0, x1, t1] of jags) seg(x0, t0, x1, t1, 0.07, '#ffffff');
-  // The strike's hard elbows: a bright barb thrown off each interior
-  // turn, toward the side the next jag breaks.
-  for (let j = 0; j + 1 < jags.length; j++) {
-    const jx = jags[j]![2];
-    const jt = jags[j]![3];
-    const dir = jags[j + 1]![2] > jx ? 1 : -1;
-    poly(ctx, '#ffffff', [jx, jt, jx + 0.2 * dir, jt - 0.08, jx + 0.12 * dir, jt + 0.12]);
-  }
-  ctx.globalAlpha = 1;
+  const beat = 0.5 + 0.5 * Math.sin(nowMs * 0.0016);
+  star(0.36 + 0.03 * beat, Math.PI / 4, gold, 0.45 + 0.2 * beat);
+  star(0.27 + 0.02 * beat, 0, shade(gold, 30), 0.85);
 }
 
 /** The heraldic charge, cut in flat planes with one lit facet. */
@@ -4666,9 +4719,35 @@ function relRiftward(rc: ReliefCtx, st: ShieldStyle): void {
   // The standing shard is THE CREST TIER's — it leans, and it is tall.
 }
 
-// ALDAREN'S GATE carries no furniture: the face is the sky and the
-// crown is the crest's — a curated storm needs nothing riveted to it.
-// (Its RELIEFS entry is gone with the gold arch it used to raise.)
+/**
+ * ALDAREN'S GATE — the worked light. Height is spent on exactly two
+ * fittings, the way the ladder spends brass: THE STONE COLLAR, an
+ * octagonal gold mount standing off the face — the seat the sunstone
+ * (the substrate umbo) is sworn into; and THE KING RIDGE, the pale's
+ * heart worked as a standing gold blade running collar to crown — at
+ * yaw it catches a real light plane the painted rays cannot, so the
+ * turned shield still carries one line of worked gold up its face.
+ */
+function relOath(rc: ReliefCtx, st: ShieldStyle): void {
+  const gold = st.deviceColor ?? BRASS;
+  // THE STONE COLLAR — its own ringed fitting; the stone lands on it.
+  const oct: number[] = [];
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2 - Math.PI / 8;
+    oct.push(Math.cos(a) * 0.27, Math.sin(a) * 0.27);
+  }
+  prism(rc, oct, 0, 0.3, shade(gold, -6), { wallDark: shade(gold, -40), outline: true });
+  // One lit arris across the collar's crown-side edge.
+  polyAt(rc, [-0.19, -0.2, 0.19, -0.2, 0.12, -0.12, -0.12, -0.12], 0.3, shade(gold, 22));
+  // THE KING RIDGE — a worked object, ringed as one; broad enough
+  // that its ring frames gold instead of swallowing it (the pinion's
+  // thin-band lesson).
+  prism(rc, [-0.072, -0.38, 0.072, -0.38, 0.05, -1.0, -0.05, -1.0], 0, 0.34, gold, {
+    wallDark: shade(gold, -38),
+    outline: true,
+  });
+  polyAt(rc, [-0.032, -0.42, 0.032, -0.42, 0.02, -0.97, -0.02, -0.97], 0.34, shade(gold, 32));
+}
 
 // -------------------------------------------------- the crest solids
 
@@ -4753,68 +4832,133 @@ function crestRiftward(rc: ReliefCtx): void {
 }
 
 /**
- * ALDAREN'S GATE — THE STORM CROWN. Three storm-steel blades standing
- * off the plateau, the center one tallest, the outer pair LEANING the
- * way lightning rods spread — every blade its own ringed solid — and
- * between their tips THE ARC: a live charge crawling point to point,
- * teal halo under a white wire, drawn in the crest's free air where
- * no clip can touch it. Face-on the blades crown the silhouette;
- * turned, the arc rides ahead of the leading edge like the shield is
- * about to answer something.
+ * ALDAREN'S GATE — THE BROKEN HALO. Three gold arcs FLOATING in free
+ * crest air above the crown: nothing holds them — the light does. The
+ * roster's first floating regalia (the armor grammar's crownring
+ * precedent, earned here by the one shield whose whole design is
+ * radiance). Each arc is its own ringed object; the vow-glint's
+ * arrival flares them in turn on the face's own clock — one oath, one
+ * weather — and THE RISING MOTES climb from behind the crown, through
+ * the halo, and die: the gate never stops giving off light. Face-on
+ * the halo crowns the silhouette; turned, it rides ahead of the
+ * leading edge; edge-on its arcs still break the profile, which is
+ * what a floating crown is FOR.
  */
-function crestFalls(rc: ReliefCtx, st: ShieldStyle): void {
+function crestOath(rc: ReliefCtx, st: ShieldStyle): void {
   const { ctx } = rc;
-  // Pale storm steel, kin to the flank spikes — the crown must read
-  // against both the dark slab and the dark of the world behind it.
-  const steel = '#aab6cc';
-  pyramid(rc, 0, -1.0, 0.2, 0.13, 0, 2.7, steel, { outline: true });
-  pyramid(rc, -0.42, -0.98, 0.15, 0.11, 0, 1.9, shade(steel, -14), { outline: true, du: -0.3 });
-  pyramid(rc, 0.42, -0.98, 0.15, 0.11, 0, 1.9, shade(steel, -14), { outline: true, du: 0.3 });
-  // THE ARC, ALIVE: the charge crawls blade to blade in stepped
-  // electric ticks — every ~110ms it snaps to a new jagged shape
-  // (hashed from the tick, pure function of time), and when the face
-  // bolt STRIKES, the arc flares with it: one weather, one clock.
-  const teal = st.faceAlt ?? '#5ce8c4';
-  const { flash } = stormPhase(rc.nowMs);
-  const tick = Math.floor(rc.nowMs / 110);
-  const jit = (i: number): number => {
-    const x = Math.sin(tick * 12.9898 + i * 78.233) * 43758.5453;
-    return x - Math.floor(x) - 0.5;
-  };
-  const pts: Array<[number, number, number]> = [
-    [-0.6, -0.98, 1.3],
-    [-0.36 + jit(1) * 0.08, -0.98, 1.7 + jit(11) * 0.34],
-    [-0.12 + jit(2) * 0.08, -0.98, 1.5 + jit(12) * 0.34],
-    [0.04 + jit(3) * 0.06, -0.98, 2.2 + jit(13) * 0.28],
-    [0.28 + jit(4) * 0.08, -0.98, 1.55 + jit(14) * 0.34],
-    [0.56, -0.98, 1.75],
+  const gold = st.deviceColor ?? BRASS;
+  const white = '#fff6dc';
+  const ph = oathPhase(rc.nowMs);
+  // THE ORBIT OF THE VOW. Not a painted halo — a RING, a flattened
+  // circle of light lying level around the spire's tip, drawn in this
+  // camera's own perspective (a horizontal circle IS an ellipse from
+  // the tilted bird's eye). The rear arc rides LOW and dim and is cut
+  // where the steel stands — it passes BEHIND the spire — while the
+  // front arc rides proud of the slab, bright, with the vow itself
+  // orbiting as a white bead. The occlusion is what makes the orbit
+  // true: the eye completes the circle behind the metal. Faceted in
+  // per-segment flats, the house's own low-poly light.
+  const EX = 0.52; // the ring's reach
+  const EY = 0.16; // its perspective squash — a disc seen from above
+  const ECY = -1.05; // level with the spire's throat
+  const HREAR = 0.22;
+  const HFRONT = 0.72;
+  const N2 = 28;
+  const beadA = ph * Math.PI * 2;
+  // The spire's own width at the ring's height — the rear arc is cut
+  // inside it (+ a hair of margin so the cut reads deliberate).
+  const OCC = 0.2;
+  const pt = (a: number, w: number): [number, number] => [
+    Math.sin(a) * (EX + w),
+    ECY + Math.cos(a) * (EY + w * 0.4),
   ];
-  const trace = (w: number, tone: string, alpha: number): void => {
+  const quad = (a0: number, a1: number, w: number, h: number, tone: string, alpha: number): void => {
+    const [x0, y0] = pt(a0, w);
+    const [x1, y1] = pt(a1, w);
+    const [x2, y2] = pt(a1, -w);
+    const [x3, y3] = pt(a0, -w);
     ctx.globalAlpha = alpha;
-    ctx.strokeStyle = tone;
-    ctx.lineWidth = w;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    for (let i = 0; i < pts.length; i++) {
-      const [u, t, h] = pts[i]!;
-      const x = rPx(rc, u, h);
-      const y = rPy(rc, u, t, h);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
+    polyAt(rc, [x0, y0, x1, y1, x2, y2, x3, y3], h, tone);
     ctx.globalAlpha = 1;
   };
-  trace(rc.ol * (1.0 + 0.5 * flash), teal, 0.55 + 0.45 * flash);
-  trace(rc.ol * (0.45 + 0.25 * flash), '#ffffff', 0.6 + 0.4 * flash);
-  // The blade tips take the strike's light — three glints on the
-  // crown the instant the sky answers.
-  if (flash > 0.05) {
-    ctx.globalAlpha = flash * 0.9;
-    polyAt(rc, [0, -1.06, 0.05, -1.0, 0, -0.94, -0.05, -1.0], 2.5, '#ffffff');
-    polyAt(rc, [-0.66, -1.04, -0.62, -0.98, -0.67, -0.92, -0.71, -0.98], 1.75, '#ffffff');
-    polyAt(rc, [0.66, -1.04, 0.71, -0.98, 0.66, -0.92, 0.62, -0.98], 1.75, '#ffffff');
+  // Two passes: rear first (it lies under everything the front does).
+  for (const front of [false, true]) {
+    for (let k = 0; k < N2; k++) {
+      const a0 = (k / N2) * Math.PI * 2;
+      const a1 = ((k + 1) / N2) * Math.PI * 2;
+      const am = (a0 + a1) / 2;
+      const isFront = Math.cos(am) >= 0;
+      if (isFront !== front) continue;
+      if (!front && Math.abs(Math.sin(am)) * EX < OCC) continue; // behind the spire
+      // The traveling light: each facet takes the bead's nearness.
+      let d = Math.abs(am - beadA) % (Math.PI * 2);
+      if (d > Math.PI) d = Math.PI * 2 - d;
+      const lit = Math.pow(Math.max(0, Math.cos(d * 0.5)), 8);
+      // The ring's height tapers continuously around the orbit — proud
+      // at the front, low at the rear — so the two arcs meet at the
+      // sides without a step.
+      const hk = HREAR + (HFRONT - HREAR) * (Math.cos(am) * 0.5 + 0.5);
+      if (front) {
+        quad(a0, a1, 0.062, hk, shade(gold, -40 + Math.round(12 * lit)), 1);
+        quad(a0, a1, 0.042, hk + 0.04, shade(gold, 10 + Math.round(26 * lit)), 1);
+        quad(a0, a1, 0.017, hk + 0.08, shade(gold, 32 + Math.round(16 * lit)), 1);
+      } else {
+        quad(a0, a1, 0.04, hk, shade(gold, -22 + Math.round(14 * lit)), 0.85);
+      }
+    }
+  }
+  // THE BEAD: the vow itself, orbiting. It vanishes exactly where the
+  // rear arc does — the spire is between it and the eye, and that
+  // honest disappearance is the whole trick. Behind it, a short comet
+  // tail of its own light, dying along the road it just swore.
+  for (let g = 3; g >= 1; g--) {
+    const ga = beadA - g * 0.16;
+    const gu = Math.sin(ga) * EX;
+    const gFront = Math.cos(ga) >= 0;
+    if (!gFront && Math.abs(gu) <= OCC) continue;
+    const gt = ECY + Math.cos(ga) * EY;
+    const gh = HREAR + (HFRONT - HREAR) * (Math.cos(ga) * 0.5 + 0.5) + (gFront ? 0.1 : 0);
+    const gr = (gFront ? 0.04 : 0.03) * (1 - g * 0.22);
+    ctx.globalAlpha = (gFront ? 0.5 : 0.25) * (1 - g * 0.26);
+    polyAt(rc, [gu, gt - gr * 1.6, gu + gr * 1.6, gt, gu, gt + gr * 1.6, gu - gr * 1.6, gt], gh, shade(gold, 20));
+    ctx.globalAlpha = 1;
+  }
+  const bu = Math.sin(beadA) * EX;
+  const bFront = Math.cos(beadA) >= 0;
+  if (bFront || Math.abs(bu) > OCC) {
+    const bt = ECY + Math.cos(beadA) * EY;
+    const bh = HREAR + (HFRONT - HREAR) * (Math.cos(beadA) * 0.5 + 0.5) + (bFront ? 0.1 : 0);
+    const br = bFront ? 0.055 : 0.04;
+    ctx.globalAlpha = bFront ? 0.55 : 0.3;
+    polyAt(rc, [bu, bt - br * 2.4, bu + br * 2.4, bt, bu, bt + br * 2.4, bu - br * 2.4, bt], bh, gold);
+    ctx.globalAlpha = 1;
+    polyAt(
+      rc,
+      [bu, bt - br * 1.3, bu + br * 1.3, bt, bu, bt + br * 1.3, bu - br * 1.3, bt],
+      bh,
+      bFront ? white : shade(gold, 26),
+    );
+  }
+  // THE RISING MOTES: sparks of the gate's own light climbing through
+  // the halo and dying — index-hashed, time-driven, stateless.
+  for (let m = 0; m < 5; m++) {
+    const hsh = Math.sin(m * 78.233) * 43758.5453;
+    const h1 = hsh - Math.floor(hsh);
+    const life = (rc.nowMs / (2400 + m * 260) + m * 0.37 + h1) % 1;
+    // Confined to the ring's own column — motes are the crown's
+    // breath, never loose debris drifting beside the shield — each on
+    // its own period so they never fall into step.
+    const mu = (h1 - 0.5) * 0.7 + Math.sin(rc.nowMs * 0.0012 + m * 2.3) * 0.05;
+    const mt = -1.02 - life * 0.58;
+    const al = Math.sin(life * Math.PI) * 0.6;
+    const r2 = 0.026 + h1 * 0.018;
+    ctx.globalAlpha = al;
+    polyAt(
+      rc,
+      [mu, mt - r2 * 1.6, mu + r2, mt, mu, mt + r2 * 1.6, mu - r2, mt],
+      0.5,
+      m % 2 ? white : shade(gold, 18),
+    );
     ctx.globalAlpha = 1;
   }
 }
@@ -4840,7 +4984,7 @@ const CRESTS: Record<string, ReliefPainter> = {
   doorwall: crestDoorwall,
   fellhorn: crestFellhorn,
   riftward: crestRiftward,
-  falls: crestFalls,
+  oath: crestOath,
   pinion: crestPinion,
 };
 
@@ -4856,6 +5000,7 @@ const RELIEFS: Record<string, ReliefPainter> = {
   cindermaw: relCindermaw,
   everwood: relEverwood,
   riftward: relRiftward,
+  oath: relOath,
 };
 
 /**

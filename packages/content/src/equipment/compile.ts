@@ -87,6 +87,7 @@ export function compileEquipment(defs: readonly EquipmentDef[]): {
       code: def.code,
       desc: def.desc,
       backMounted: def.backMounted,
+      carryLight: def.carryLight,
       gear,
     });
 
