@@ -282,9 +282,11 @@ import {
   startElevatedBake,
   stepChunkBake,
   waterRegionPath,
+  wetClassOf,
   type ChunkBakeJob,
   type ElevatedBakeJob,
   type WaterFx,
+  type WetLists,
 } from './terrain.js';
 
 /** The waterfall palette for one lighting state (fallTones()). */
@@ -355,20 +357,35 @@ const BIT_TO_STATUS = new Map<number, StatusId>(
 /** Renderer-side wind scratch (samples are consumed immediately). */
 const WIND_TMP: WindSample = { bx: 0, by: 0, s: 0, l: 0 };
 /**
- * Tree sprites/shadow paths re-bake every Nth frame (staggered by a
- * per-frame budget). Sway drifts ~12px/s at 0.85 zoom, so a 4-frame
- * cadence at 120fps steps ~0.4px — animation-rate sampling, invisible.
+ * Tree sprites/shadow sprites re-bake every Nth frame (staggered by a
+ * per-frame budget). THE SHEAR CARRIES THE SWAY: the blit shears the
+ * cached sprite by the live wind's delta from the bake sample, so the
+ * primary cantilever moves at FULL frame rate no matter the cadence —
+ * a re-bake only refreshes the small per-cluster gusts and frond
+ * flutter, which evolve on gust timescales (~seconds). 18 frames
+ * (~150ms at 120Hz) samples that secondary motion well above its own
+ * frequency while paying a third of the old bake treadmill; before
+ * the shear, cadence WAS the sway rate and had to stay at 6.
  */
-const TREE_REBAKE_FRAMES = 6;
+const TREE_REBAKE_FRAMES = 18;
 /**
- * Target tree re-bakes per frame (~0.8ms). The cadence ADAPTS to the
- * visible tree count so a thick forest stretches the re-bake interval
- * (motion sampling ~20Hz in a meadow → ~10Hz in a 300-tree forest,
- * ~1px sway steps) instead of saturating a fixed budget every frame —
- * a saturated budget both costs milliseconds AND starves the trees
- * late in scan order, freezing their sway entirely.
+ * Target tree re-bakes per frame. The cadence ADAPTS to the visible
+ * tree count so a thick forest stretches the re-bake interval
+ * (secondary-motion sampling only — the shear keeps the sway live)
+ * instead of saturating a fixed budget every frame — a saturated
+ * budget both costs milliseconds AND starves the trees late in scan
+ * order, freezing their cluster shimmer entirely. 12 (was 28): the
+ * old target WAS the sway rate and had to stay high; now it only
+ * paces cluster gust/flutter refresh, and a ~600-tree meadow at
+ * cadence ~48 still refreshes that shimmer ~2.5×/s while paying half
+ * a millisecond of bakes instead of a treadmill.
  */
-const TREE_BAKES_PER_FRAME = 28;
+const TREE_BAKES_PER_FRAME = 12;
+/** Shadow silhouettes re-bake at a multiple of the body cadence: the
+ *  cast is a soft dark mass at ≤0.35 layer alpha — its cluster-level
+ *  shimmer is invisible there, and the sun's azimuth drift plus the
+ *  live shear cover everything the eye can read. */
+const TREE_SHADOW_CADENCE_MUL = 3;
 /** Hard per-frame backstop (teleports/zoom flips force-bake herds). */
 const TREE_BAKE_BUDGET = 48;
 /**
@@ -419,7 +436,12 @@ const OL_IDLE_CADENCE = 8;
  */
 const OL_COOL_FRAMES = 24;
 /** Cadence bounds: never faster than 6 frames, never slower than 24. */
-const TREE_CADENCE_MAX = 24;
+// With the sway on the blit shear, the ceiling only bounds how stale
+// the secondary cluster motion may run in a packed forest.
+const TREE_CADENCE_MAX = 60;
+/** Shadow silhouettes rasterize at half resolution — they composite
+ *  soft at ≤0.35 layer alpha, and the upscale is invisible there. */
+const SHADOW_SPRITE_RES = 0.5;
 const CONTACT_MIN = 0.15;
 const CONTACT_MAX = 0.3;
 
@@ -3864,7 +3886,10 @@ export class Renderer {
     if (this.waterClip?.key !== key) {
       const ground = (tx: number, ty: number): number | undefined =>
         game.world.elevAt(tx, ty) !== 0 ? undefined : game.world.groundAt(tx, ty);
-      const path = waterRegionPath(ground, bounds);
+      // The wet-cell list stands for THIS frame's visible bounds — the
+      // same bounds every rebuild here is keyed on (drawReflections
+      // passes visibleTileBounds(), and the ledger builds before it).
+      const path = waterRegionPath(ground, bounds, this.wetLists.cells);
       // THE MIRROR STOPS AT THE STRUCTURE (round 7): the raw water
       // region includes cells the lifted decks paint INTO — fill
       // triangles, fascia bands, the boards' reach into the cell
@@ -4210,8 +4235,20 @@ export class Renderer {
   /** Last frame's raw dt — the spike filter's "was it already slow" test. */
   private prevFrameDt = 1000 / 60;
 
+  /** Frame-memoized: `window.devicePixelRatio` is a DOM getter, and
+   *  this accessor runs in per-tile/per-sprite hot loops — the getter
+   *  alone was a measured ~1% of frame CPU. resize() refreshes the
+   *  memo at the top of every frame; browser-zoom changes land within
+   *  a frame, exactly as before. */
+  private dprMemo = 0;
+  private dprMemoFrame = -1;
+
   private dpr(): number {
-    return Math.min(window.devicePixelRatio || 1, this.dprCap);
+    if (this.dprMemoFrame !== this.frameNo) {
+      this.dprMemo = Math.min(window.devicePixelRatio || 1, this.dprCap);
+      this.dprMemoFrame = this.frameNo;
+    }
+    return this.dprMemo;
   }
 
   /**
@@ -4320,14 +4357,12 @@ export class Renderer {
     // Architecture-band bakes per frame (ms): a cold band draws live
     // until the budget reaches it — THE STILL-WORLD BARGAIN.
     this.staticBakeMsLeft = 1.5;
-    // Zoomed out, the same world-space sway spans FEWER screen pixels —
-    // stretch the sampling floor so wide framings stop paying the full
-    // re-bake rate for sub-pixel motion. Cadence 10 at ≤0.85× steps
-    // ~1px, the accepted dense-forest rate; ≥1× keeps the fine floor.
-    const minCadence = this.camera.zoom < 1 ? 10 : TREE_REBAKE_FRAMES;
+    // The sway itself rides the blit shear at frame rate (THE SHEAR
+    // CARRIES THE SWAY) — the cadence floor only paces secondary
+    // cluster motion, one rate at every zoom.
     this.treeCadence = Math.min(
       TREE_CADENCE_MAX,
-      Math.max(minCadence, Math.ceil(this.treesVisible / TREE_BAKES_PER_FRAME)),
+      Math.max(TREE_REBAKE_FRAMES, Math.ceil(this.treesVisible / TREE_BAKES_PER_FRAME)),
     );
     this.treesVisible = 0;
     // The sky rules the frame: shadows, exposure, grade all read it.
@@ -4413,6 +4448,7 @@ export class Renderer {
     // every per-tile scan below reads from.
     if (this.perfHud) this.perfLast = performance.now();
     this.buildFrameGrid(game);
+    this.buildWetLists();
     this.perfMark('grid');
 
     this.ctx.fillStyle = '#141020';
@@ -4668,6 +4704,9 @@ export class Renderer {
       this.camera.scale,
       performance.now(),
       this.waterFx(),
+      // THE WET LEDGER: compiled this frame from the same frame grid
+      // groundLvl0 reads — the pass visits only tiles that can speak.
+      this.wetLists,
     );
 
     // Wake ripples and the back halves of every wader's rings — on the
@@ -6101,6 +6140,10 @@ export class Renderer {
   private fgElev = new Int8Array(0);
   private fgGround = new Uint16Array(0);
   private fgDetail = new Uint16Array(0);
+  /** THE WET LEDGER — per-frame water lists (see buildWetLists). */
+  private readonly wetLists: WetLists = { tiles: [], cells: [] };
+  private wetCellStamp = new Int32Array(0);
+  private wetStampNo = 0;
   private fgWorld: ClientGame['world'] | null = null;
 
   private buildFrameGrid(game: ClientGame): void {
@@ -6151,6 +6194,68 @@ export class Renderer {
   }
 
   /** Elevation through the frame grid; ChunkStore fallback off-window. */
+  /**
+   * THE WET LEDGER (see terrain.WetLists): one linear pass over the
+   * frame grid compiles the tiles the live-water pass dresses and the
+   * dual cells with a water corner, so drawLiveGround / drawShorelines
+   * / waterRegionPath stop paying sampler calls for dry meadow. Built
+   * fresh every frame from the same snapshot those samplers read —
+   * nothing to invalidate. Row-major append in both lists preserves
+   * the scans' exact visit order (bucket insertion is draw order).
+   */
+  private buildWetLists(): void {
+    const b = this.visibleTileBounds();
+    const tiles = this.wetLists.tiles;
+    const cells = this.wetLists.cells;
+    tiles.length = 0;
+    cells.length = 0;
+    const cw = b.maxTx - b.minTx + 2;
+    const ch = b.maxTy - b.minTy + 2;
+    if (this.wetCellStamp.length < cw * ch) this.wetCellStamp = new Int32Array(cw * ch);
+    const st = this.wetCellStamp;
+    const stamp = ++this.wetStampNo;
+    // Mark pass over bounds+1 (the ring feeds corner cells; frame-grid
+    // pads cover it). Tiles append here — already row-major.
+    for (let ty = b.minTy - 1; ty <= b.maxTy + 1; ty++) {
+      const iy = ty - this.fgMinTy;
+      if (iy < 0 || iy >= this.fgH) continue;
+      const row = iy * this.fgW;
+      for (let tx = b.minTx - 1; tx <= b.maxTx + 1; tx++) {
+        const ix = tx - this.fgMinTx;
+        if (ix < 0 || ix >= this.fgW) continue;
+        if (this.fgElev[row + ix] !== 0) continue;
+        const g = this.fgGround[row + ix]!;
+        if (g === FG_NO_GROUND) continue;
+        const cls = wetClassOf(g);
+        if (cls === 0) continue;
+        if (tx >= b.minTx && tx <= b.maxTx && ty >= b.minTy && ty <= b.maxTy) {
+          tiles.push(((tx + 0x8000) << 16) | (ty + 0x8000));
+        }
+        if ((cls & 1) !== 0) {
+          // A water tile is a corner of the four cells around it.
+          for (let dj = 0; dj <= 1; dj++) {
+            const cj = ty + dj;
+            if (cj < b.minTy || cj > b.maxTy + 1) continue;
+            for (let di = 0; di <= 1; di++) {
+              const ci = tx + di;
+              if (ci < b.minTx || ci > b.maxTx + 1) continue;
+              st[(cj - b.minTy) * cw + (ci - b.minTx)] = stamp;
+            }
+          }
+        }
+      }
+    }
+    // Collect pass: cells in row-major order (marks landed tile-major).
+    for (let cj = 0; cj < ch; cj++) {
+      const row = cj * cw;
+      for (let ci = 0; ci < cw; ci++) {
+        if (st[row + ci] === stamp) {
+          cells.push(((ci + b.minTx + 0x8000) << 16) | (cj + b.minTy + 0x8000));
+        }
+      }
+    }
+  }
+
   private fgElevAt(tx: number, ty: number): number {
     const ix = tx - this.fgMinTx;
     const iy = ty - this.fgMinTy;
@@ -6586,7 +6691,20 @@ export class Renderer {
       }
     }
     for (const [key, sh] of this.treeShadows) {
-      if (sh.used < cutoff) this.treeShadows.delete(key);
+      if (sh.used < cutoff) {
+        this.treeShadows.delete(key);
+        if (this.spriteCanvasPool.length < 40) this.spriteCanvasPool.push(sh.canvas);
+      }
+    }
+    // Silhouette sprites carry canvases now — cap like the body cache.
+    if (this.treeShadows.size > 640) {
+      for (const [key, sh] of this.treeShadows) {
+        if (sh.used < this.frameNo - 2) {
+          this.treeShadows.delete(key);
+          if (this.spriteCanvasPool.length < 40) this.spriteCanvasPool.push(sh.canvas);
+        }
+        if (this.treeShadows.size <= 560) break;
+      }
     }
     // Cap raised for the prop ring cache: a dense forest (310 trees +
     // forage) plus a prop-heavy town in the same walk must both fit.
@@ -19118,12 +19236,36 @@ export class Renderer {
       frame: number; // last bake frame
       used: number; // last frame drawn (eviction)
       outlined: boolean; // ring baked in — must match outlineOn
+      /** Wind sample painted into the bake — the blit shears by the
+       *  LIVE delta from this (THE SHEAR CARRIES THE SWAY), so the
+       *  primary cantilever runs at frame rate no matter the cadence.
+       *  Rigid species bake neutral (0) and the same delta gives them
+       *  their full shear — one blit path for every species. */
+      windAt: number;
     }
   >();
-  /** Sun-shadow twin: the projected silhouette Path2D built at origin. */
+  /** Sun-shadow twin: the projected TRUE-FORM silhouette, RASTERIZED —
+   *  built at origin on the sprite cadence and stamped with one
+   *  drawImage per frame (the per-frame fill of the complex Path2D was
+   *  a measured top cost of forest scenes). `windAt`/`ky` feed the
+   *  same live shear delta the body blit wears; `tone` re-bakes on the
+   *  sun/moon flip. */
   private readonly treeShadows = new Map<
     number,
-    { path: Path2D; scale: number; frame: number; used: number }
+    {
+      canvas: HTMLCanvasElement;
+      ctx: CanvasRenderingContext2D;
+      cw: number;
+      ch: number;
+      ax: number; // trunk-base anchor within the sprite (css px)
+      ay: number;
+      scale: number;
+      frame: number;
+      used: number;
+      tone: string;
+      windAt: number;
+      ky: number;
+    }
   >();
   private treeBakeBudget = 0;
   /** Running average sprite-bake cost (ms) — the admission estimate
@@ -19287,6 +19429,7 @@ export class Renderer {
     frame: number;
     used: number;
     outlined: boolean;
+    windAt: number;
   } {
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
@@ -19303,7 +19446,17 @@ export class Renderer {
     const { canvas, sctx } = this.acquireSpriteCanvas(prev, pw, ph);
     sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     sctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-    paintTree(sctx, m, { bx: half, groundY: top, s, syT, wx, wy, tSec, windOverride, grow: 1 });
+    const windAt = paintTree(sctx, m, {
+      bx: half,
+      groundY: top,
+      s,
+      syT,
+      wx,
+      wy,
+      tSec,
+      windOverride,
+      grow: 1,
+    });
     if (this.outlineOn) this.bakeOutlineRing(canvas, sctx, pw, ph);
     return {
       canvas,
@@ -19317,6 +19470,70 @@ export class Renderer {
       frame: this.frameNo,
       used: this.frameNo,
       outlined: this.outlineOn,
+      windAt,
+    };
+  }
+
+  /**
+   * Rasterize the TRUE-FORM sun-shadow silhouette (see treeShadows):
+   * the same treeShadowPath geometry as ever, built at the origin with
+   * the CURRENT sun ray and this tree's wind sample, filled once into
+   * a half-res canvas. Bounds are analytic — the projection maps the
+   * upright envelope (the body sprite's own margins) along the ray, so
+   * the box always contains the path; the blob radius rides inside the
+   * spread margin the envelope already carries.
+   */
+  private bakeTreeShadowSprite(
+    prev: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | undefined,
+    m: TreeModel,
+    wx: number,
+    wy: number,
+    tSec: number,
+    rigid: boolean,
+  ): NonNullable<ReturnType<Renderer['treeShadows']['get']>> {
+    const s = this.camera.scale;
+    const ys = this.camera.yScale;
+    const kx = this.sky.shadowX * this.sky.shadowLen;
+    const ky = this.sky.shadowY * this.sky.shadowLen * ys;
+    const wind = rigid ? 0 : windScalarAt(wx, wy, tSec);
+    const path = this.treeShadowPath(m, 0, 0, 1, wind, kx, ky);
+    const half = (m.spread * 1.15 + 0.08 * m.height + 0.45) * s;
+    const hp = (m.height * 1.18 + 0.45) * s;
+    const ex0 = Math.min(0, kx * hp) - half;
+    const ex1 = Math.max(0, kx * hp) + half;
+    const ey0 = Math.min(0, ky * hp) - half;
+    const ey1 = Math.max(0, ky * hp) + half;
+    const cw = Math.ceil(ex1 - ex0);
+    const ch = Math.ceil(ey1 - ey0);
+    const pw = Math.max(1, Math.ceil(cw * SHADOW_SPRITE_RES));
+    const ph = Math.max(1, Math.ceil(ch * SHADOW_SPRITE_RES));
+    const { canvas, sctx } = this.acquireSpriteCanvas(prev, pw, ph);
+    sctx.setTransform(1, 0, 0, 1, 0, 0);
+    sctx.clearRect(0, 0, canvas.width, canvas.height);
+    sctx.setTransform(
+      SHADOW_SPRITE_RES,
+      0,
+      0,
+      SHADOW_SPRITE_RES,
+      -ex0 * SHADOW_SPRITE_RES,
+      -ey0 * SHADOW_SPRITE_RES,
+    );
+    const tone = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
+    sctx.fillStyle = tone;
+    sctx.fill(path);
+    return {
+      canvas,
+      ctx: sctx,
+      cw,
+      ch,
+      ax: -ex0,
+      ay: -ey0,
+      scale: s,
+      frame: this.frameNo,
+      used: this.frameNo,
+      tone,
+      windAt: wind,
+      ky,
     };
   }
 
@@ -19985,6 +20202,7 @@ export class Renderer {
     frame: number;
     used: number;
     outlined: boolean;
+    windAt: number;
   } {
     const r = Math.max(1.25, this.camera.scale * 0.04);
     const m = Math.ceil(r) + 2;
@@ -20019,6 +20237,7 @@ export class Renderer {
       frame: this.frameNo,
       used: this.frameNo,
       outlined: true,
+      windAt: 0, // static art — its own blit path never shears
     };
   }
 
@@ -20213,6 +20432,7 @@ export class Renderer {
     frame: number;
     used: number;
     outlined: boolean;
+    windAt: number;
   } {
     const s = this.camera.scale;
     // Headroom: sway throw sideways, payload twinkle above, base below.
@@ -20249,6 +20469,7 @@ export class Renderer {
       frame: this.frameNo,
       used: this.frameNo,
       outlined: this.outlineOn,
+      windAt: 0, // static art — its own blit path never shears
     };
   }
 
@@ -20626,14 +20847,23 @@ export class Renderer {
       const fade = this.occluderFade(key, dx0, dy0, dw, dh, wy - this.ownPY > -FRONT_EPS);
       if (fade < 1) this.ctx.globalAlpha = fade;
       wind = windScalarAt(wx, wy, tSec);
-      if (rigid) {
-        // THE RIGID SWAY: shear the cached sprite about the ground
-        // line so the top leans by the live cantilever throw —
-        // full-framerate sway, and the linear ramp reads the same as
-        // the painter's hf^1.4 curve at these amplitudes. Manual
-        // inverse (b = 0 keeps it exact) — save/restore per tree was
-        // measurable on the shadow pass already.
-        const kSh = wind * 0.055;
+      // THE SHEAR CARRIES THE SWAY: every species shears the cached
+      // sprite about the ground line by the LIVE wind's delta from the
+      // bake's sample (rigid bakes neutral, so its delta IS the full
+      // wind — the original RIGID SWAY falls out as the special case).
+      // The primary cantilever now moves at frame rate regardless of
+      // the re-bake cadence — the cadence only refreshes the small
+      // per-cluster gusts and flutter, which live on gust timescales.
+      // The linear ramp reads the same as the painter's hf^1.4 curve
+      // at these amplitudes (the rigid species proved it); for soft
+      // species the shear is only the DELTA since the bake, smaller
+      // still. Manual inverse (b = 0 keeps it exact) — save/restore
+      // per tree was measurable on the shadow pass already.
+      // Sub-pixel gate: the shear only earns its two matrix ops once
+      // the crown's throw crosses ~¾ of a pixel — right after a
+      // re-bake the delta is near zero and the plain blit is exact.
+      const kSh = (wind - sp.windAt) * 0.055;
+      if (Math.abs(kSh) * dh > 0.75) {
         const gy = by + syT * 0.3;
         this.ctx.transform(1, 0, -kSh, 1, kSh * gy, 0);
         this.ctx.drawImage(sp.canvas, 0, 0, sw, sh, dx0, dy0, dw, dh);
@@ -20796,48 +21026,73 @@ export class Renderer {
             ),
           );
         } else {
-          // Cached silhouette, built at the origin on the sprite
-          // cadence (sun azimuth + sway drift sub-pixel across 4
-          // frames) and filled translated to the trunk base.
+          // Cached silhouette SPRITE: the TRUE-FORM path builds at the
+          // origin on the sprite cadence and rasterizes ONCE into a
+          // half-res canvas — the per-frame cost is one drawImage, not
+          // a fill of the complex Path2D (the fill was a measured top
+          // cost of forest scenes). Rigid trees (THE RIGID SWAY) bake
+          // a windless silhouette on a SLOW cadence — a ground blob
+          // doesn't read a lean, but the sun's azimuth still drifts
+          // and the silhouette must follow it.
           const key = Renderer.treeKey(wx, wy, tile);
           let sh = this.treeShadows.get(key);
-          // Same per-key phase as the sprite: body and shadow re-bake
-          // in the same frame, so their sway always agrees. Rigid
-          // trees (THE RIGID SWAY) cast a windless silhouette on a
-          // SLOW cadence — a ground blob doesn't read a lean, but the
-          // sun's azimuth still drifts and the path must follow it.
           const rigid = m.rigid === true;
-          const due = (this.frameNo + key) % (rigid ? 240 : this.treeCadence) === 0;
+          const due =
+            (this.frameNo + key) %
+              (rigid ? 240 : this.treeCadence * TREE_SHADOW_CADENCE_MUL) ===
+            0;
+          const tone = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
           const stale =
-            !sh || (due && sh.frame !== this.frameNo) || Math.abs(sh.scale - s) > s * 0.2;
-          if (stale && (!sh || (this.treeShadowBudget > 0 && !this.zoomGliding))) {
+            !sh ||
+            (due && sh.frame !== this.frameNo) ||
+            Math.abs(sh.scale - s) > s * 0.2 ||
+            sh.tone !== tone;
+          // Re-bakes ride the same ms budget as the body sprites — a
+          // count-only gate let a dense meadow burst dozens of canvas
+          // fills into one frame (measured as a collect-phase spike).
+          // First bakes stay unbudgeted: a missing cast is visible.
+          if (
+            stale &&
+            (!sh ||
+              (this.treeShadowBudget > 0 &&
+                this.spriteBakeMsLeft > this.bakeCostEma * 0.5 &&
+                !this.zoomGliding))
+          ) {
             this.treeShadowBudget--;
-            sh = {
-              path: this.treeShadowPath(
-                m,
-                0,
-                0,
-                1,
-                rigid ? 0 : windScalarAt(wx, wy, tSec),
-                this.sky.shadowX * this.sky.shadowLen,
-                this.sky.shadowY * this.sky.shadowLen * ys,
-              ),
-              scale: s,
-              frame: this.frameNo,
-              used: this.frameNo,
-            };
+            const t0 = performance.now();
+            sh = this.bakeTreeShadowSprite(sh, m, wx, wy, tSec, rigid);
+            this.spriteBakeMsLeft -= performance.now() - t0;
             this.treeShadows.set(key, sh);
           }
           if (sh) {
             sh.used = this.frameNo;
             const k = s / sh.scale;
-            // Manual transform undo — a save/restore pair per tree was
-            // measurable at ~240 casts a frame.
-            c.translate(bx, groundY);
-            if (k !== 1) c.scale(k, k);
-            c.fill(sh.path);
-            if (k !== 1) c.scale(1 / k, 1 / k);
-            c.translate(-bx, -groundY);
+            // THE SHEAR CARRIES THE SWAY, shadow half: the live wind's
+            // delta from the bake sample shears the silhouette along
+            // the ground plane, so the cast glides with its tree
+            // between re-bakes. Skipped when the projection is too
+            // flat to read a lean (and for rigid species, whose blob
+            // never leant). Manual transform undo — a save/restore
+            // pair per tree was measurable at ~240 casts a frame.
+            let sx = 0;
+            if (!rigid && Math.abs(sh.ky) > 0.12) {
+              sx = ((windScalarAt(wx, wy, tSec) - sh.windAt) * 0.055) / sh.ky;
+            }
+            const pw2 = Math.ceil(sh.cw * SHADOW_SPRITE_RES);
+            const ph2 = Math.ceil(sh.ch * SHADOW_SPRITE_RES);
+            if (k === 1 && Math.abs(sx) * sh.ch < 0.75) {
+              // Sub-pixel sway at native scale: the plain blit is
+              // exact and skips the matrix ops entirely.
+              c.drawImage(sh.canvas, 0, 0, pw2, ph2, bx - sh.ax, groundY - sh.ay, sh.cw, sh.ch);
+            } else {
+              // ONE composed transform + its exact inverse (b = 0
+              // keeps it closed-form): translate(bx,gy)·[k, sx·k; 0,
+              // k]. Six matrix ops per cast were a measured cost of
+              // dense meadows; two are not.
+              c.transform(k, 0, sx * k, k, bx, groundY);
+              c.drawImage(sh.canvas, 0, 0, pw2, ph2, -sh.ax, -sh.ay, sh.cw, sh.ch);
+              c.transform(1 / k, 0, -sx / k, 1 / k, (sx * groundY - bx) / k, -groundY / k);
+            }
           }
         }
         c.globalAlpha = 1;

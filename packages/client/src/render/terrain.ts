@@ -5598,6 +5598,52 @@ function waterTones(moonlit: boolean) {
  * caustics, the surf shoreline and portal swirls. Drawn every frame
  * over the baked ground. (Grass and flowers live in grass.ts.)
  */
+/**
+ * THE WET LEDGER — the live-water pass, compiled. The breeze layer only
+ * ever dresses the water family and the decks it laps against, yet the
+ * scan paid sampler calls for every meadow tile in view (and the
+ * shoreline march paid four corner reads per dual cell). A caller that
+ * already holds a tile snapshot (the renderer's frame grid) compiles
+ * these lists in one linear typed-array pass and hands them in; the
+ * passes then visit only tiles that can possibly speak. The lists are
+ * BUILT FRESH each frame from the same snapshot the samplers read, so
+ * there is nothing to invalidate — and every caller without lists (the
+ * elevated bands' single-row calls, the editor, bakes) keeps the plain
+ * scan, which remains the always-correct fallback.
+ *
+ * Packing: (tx + 0x8000) << 16 | (ty + 0x8000), row-major append — the
+ * exact visit order of the scans they replace, so bucket insertion
+ * order (draw order) is preserved by construction.
+ */
+export interface WetLists {
+  /** Wet tiles (water family or deck) inside the pass bounds. */
+  tiles: number[];
+  /** Dual cells with at least one water-family corner (bounds+1 grid). */
+  cells: number[];
+}
+
+/** Unpack helpers shared by the list consumers. The x shift is
+ *  UNSIGNED: for tx ≥ 0 the packed int32 wraps negative, and a signed
+ *  shift would sign-extend it into garbage coordinates — silently
+ *  dropping every wet tile in the eastern half of the world. */
+const wetX = (packed: number): number => (packed >>> 16) - 0x8000;
+const wetY = (packed: number): number => (packed & 0xffff) - 0x8000;
+
+/** Wet class per tile id: 1 = water family, 2 = deck. Table-backed so
+ *  a frame-grid compile pays one u8 read per tile, not two predicate
+ *  calls. Sized past every authored tile id; grown on demand. */
+let WET_CLASS = new Uint8Array(0);
+export function wetClassOf(t: number): number {
+  if (t >= WET_CLASS.length) {
+    const next = new Uint8Array(Math.max(2048, t + 1));
+    for (let id = 0; id < next.length; id++) {
+      next[id] = (isWaterTile(id) ? 1 : 0) | (isDeckGround(id) ? 2 : 0);
+    }
+    WET_CLASS = next;
+  }
+  return WET_CLASS[t]!;
+}
+
 export function drawLiveGround(
   ctx: CanvasRenderingContext2D,
   ground: GroundSampler,
@@ -5606,16 +5652,40 @@ export function drawLiveGround(
   s: number,
   timeMs: number,
   fx: WaterFx = WATER_FX_DEFAULT,
+  wet?: WetLists,
 ): void {
   const t = timeMs / 1000;
   const bk = new WaterBuckets();
   const tones = waterTones(fx.moonlit);
   // The shoreline runs first so its dark waterline buckets flush under
   // the foam and glitter (map insertion order is draw order).
-  drawShorelines(bk, ground, bounds, worldToScreen, s, t, fx, tones);
+  drawShorelines(bk, ground, bounds, worldToScreen, s, t, fx, tones, wet?.cells);
   const glintScale = fx.moonlit ? 0.3 : 0.5;
-  for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
-    for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
+  const wetTiles = wet?.tiles;
+  const nWet = wetTiles ? wetTiles.length : 0;
+  // One loop, two drivers: the compiled list when the caller brought
+  // one, the plain bounds scan otherwise. Same visit order either way.
+  let li = 0;
+  let scanTx = bounds.minTx;
+  let scanTy = bounds.minTy;
+  for (;;) {
+    let tx: number;
+    let ty: number;
+    if (wetTiles) {
+      if (li >= nWet) break;
+      const packed = wetTiles[li++]!;
+      tx = wetX(packed);
+      ty = wetY(packed);
+    } else {
+      if (scanTy > bounds.maxTy) break;
+      tx = scanTx;
+      ty = scanTy;
+      if (++scanTx > bounds.maxTx) {
+        scanTx = bounds.minTx;
+        scanTy++;
+      }
+    }
+    {
       const tile = ground(tx, ty);
       if (tile === undefined) continue;
       const h = hashCoords(59, tx, ty);
@@ -6013,12 +6083,36 @@ function isOpenWater(t: number | undefined): boolean {
 export function waterRegionPath(
   ground: GroundSampler,
   bounds: { minTx: number; maxTx: number; minTy: number; maxTy: number },
+  cells?: number[],
 ): Path2D | null {
   const wob = BLOB_LAYERS[WATER_LI]!.wobble;
   const id = (v: number): number => v;
   let path: Path2D | null = null;
-  for (let j = bounds.minTy; j <= bounds.maxTy + 1; j++) {
-    for (let i = bounds.minTx; i <= bounds.maxTx + 1; i++) {
+  // The compiled wet-cell list (see WetLists) covers exactly the cells
+  // with a water corner — the ones this scan keeps; the plain march
+  // stands for every caller without a snapshot.
+  const nCells = cells ? cells.length : 0;
+  let li = 0;
+  let scanI = bounds.minTx;
+  let scanJ = bounds.minTy;
+  for (;;) {
+    let i: number;
+    let j: number;
+    if (cells) {
+      if (li >= nCells) break;
+      const packed = cells[li++]!;
+      i = wetX(packed);
+      j = wetY(packed);
+    } else {
+      if (scanJ > bounds.maxTy + 1) break;
+      i = scanI;
+      j = scanJ;
+      if (++scanI > bounds.maxTx + 1) {
+        scanI = bounds.minTx;
+        scanJ++;
+      }
+    }
+    {
       const mask =
         (isWaterTile(ground(i - 1, j - 1)) ? 1 : 0) |
         (isWaterTile(ground(i, j - 1)) ? 2 : 0) |
@@ -6070,15 +6164,44 @@ function drawShorelines(
   t: number,
   fx: WaterFx,
   tones: ReturnType<typeof waterTones>,
+  cells?: number[],
 ): void {
   const wob = BLOB_LAYERS[WATER_LI]!.wobble;
   const STEPS = 6;
-  for (let j = bounds.minTy; j <= bounds.maxTy + 1; j++) {
-    for (let i = bounds.minTx; i <= bounds.maxTx + 1; i++) {
+  // List-driven when the caller compiled one (see WetLists), plain
+  // dual-cell march otherwise — identical visit order.
+  const nCells = cells ? cells.length : 0;
+  let li = 0;
+  let scanI = bounds.minTx;
+  let scanJ = bounds.minTy;
+  for (;;) {
+    let i: number;
+    let j: number;
+    if (cells) {
+      if (li >= nCells) break;
+      const packed = cells[li++]!;
+      i = wetX(packed);
+      j = wetY(packed);
+    } else {
+      if (scanJ > bounds.maxTy + 1) break;
+      i = scanI;
+      j = scanJ;
+      if (++scanI > bounds.maxTx + 1) {
+        scanI = bounds.minTx;
+        scanJ++;
+      }
+    }
+    {
       const c00 = ground(i - 1, j - 1);
       const c10 = ground(i, j - 1);
       const c11 = ground(i, j);
       const c01 = ground(i - 1, j);
+      const mask =
+        (isWaterTile(c00) ? 1 : 0) |
+        (isWaterTile(c10) ? 2 : 0) |
+        (isWaterTile(c11) ? 4 : 0) |
+        (isWaterTile(c01) ? 8 : 0);
+      if (mask === 0 || mask === 15) continue;
       // Deck cells get NO shoreline: the water slides quietly under
       // a raised dock or bridge — foam ringing a deck would paint it
       // back into a flat peninsula (piles carry their own ripples).
@@ -6086,7 +6209,10 @@ function drawShorelines(
       // slides in from over half a tile offshore, so a run in the
       // NEXT cell still pushes its crest and spray out past a deck
       // edge (the torn white sliver at every bank junction). Water
-      // calming beside the structure reads right anyway.
+      // calming beside the structure reads right anyway. Probed only
+      // AFTER the mask gate — the 16-sample ring on every dry meadow
+      // cell was a measured frame cost, and a cell with no waterline
+      // never needed the answer.
       let nearDeck = false;
       for (let dy = -2; dy <= 1 && !nearDeck; dy++) {
         for (let dx = -2; dx <= 1 && !nearDeck; dx++) {
@@ -6094,12 +6220,6 @@ function drawShorelines(
         }
       }
       if (nearDeck) continue;
-      const mask =
-        (isWaterTile(c00) ? 1 : 0) |
-        (isWaterTile(c10) ? 2 : 0) |
-        (isWaterTile(c11) ? 4 : 0) |
-        (isWaterTile(c01) ? 8 : 0);
-      if (mask === 0 || mask === 15) continue;
       const bnds = boundaryCurvesFor(WATER_LI, wob, i, j, mask);
       for (let k = 0; k < bnds.length; k++) {
         const bnd = bnds[k]!;
