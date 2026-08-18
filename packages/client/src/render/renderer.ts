@@ -5217,10 +5217,39 @@ export class Renderer {
           // from HERE, not from the tile painter: the table is a
           // run-ring baked prop, so its paint only runs on re-bake
           // frames and a glow queued there strobes at cadence rate.
+          //
+          // THE FLAME SITS WHERE THE PAINTER PUT IT (user verdict
+          // 2026-08-17): this glow used to queue at the bare tile
+          // center while the paint deals the candlestick to a corner
+          // of the board — the radial read hugged the table, not the
+          // flame. Mirror the painter's exact deal (h&1 east/west
+          // ±0.29, h&2 north/south ±0.12, the 0.52-tile tabletop plus
+          // ~0.2 of candle to the flame), SEAT the halo like every
+          // standing candle, and grant the §7.1 candle-tier pool at
+          // the true spot — one more coded emitter off the flat disc.
           const h = hashCoords(41, tx, ty);
           if ((h >> 11) % 3 === 0 && flame > 0.05) {
             const flick = 0.85 + Math.sin(t * 11 + h) * 0.12 + Math.sin(t * 23 + h * 3) * 0.05;
-            this.queueGlow(tx + 0.5, ty + 0.5, 0.9, '255, 196, 110', 0.22 * flame * flick);
+            const cwx = tx + 0.5 + (h & 1 ? 0.29 : -0.29);
+            const cgy = ty + 0.5 + (h & 2 ? 0.12 : -0.12);
+            const cz = 0.72;
+            this.seatedGlows.push({
+              x: cwx,
+              y: cgy - cz / this.camera.yScale,
+              gy: cgy,
+              z: cz,
+              r: 0.9,
+              rgb: '255, 196, 110',
+              a: 0.22 * flame * flick,
+            });
+            this.lights.push({
+              x: cwx,
+              y: cgy,
+              r: 1.5,
+              rgb: [255, 196, 120],
+              intensity: 0.16 * flame * flick,
+              z: cz,
+            });
           }
         } else if (tile === Tile.ChestMossy || tile === Tile.ChestBoss) {
           // A closed chest's promise: marsh-light seeping from the
