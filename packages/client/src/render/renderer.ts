@@ -187,7 +187,7 @@ import { buildableIconUrl, DYE_SWATCHES, itemIconUrl } from './icons.js';
 import { radialGlowSprite } from './glowSprite.js';
 import { Birds, type Bird, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample } from './grass.js';
-import { paintTree, saplingModel,
+import { paintTree, saplingModel, treeExtent,
   treeModel, type TreeModel } from './trees.js';
 import { dust } from './matter/dust.js';
 import { fire } from './matter/fire.js';
@@ -19571,14 +19571,19 @@ export class Renderer {
   } {
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
-    // Headroom: crown spread + wind-bend throw sideways; blob jitter
-    // (facet radii reach 1.12r) and rustle bob above; root flare below.
-    const half = (m.spread * 1.15 + 0.08 * m.height + 0.45) * s;
-    const top = (m.height * 1.18 + 0.45) * s;
-    const below = 0.3 * s;
-    const cw = Math.ceil(half * 2);
-    const ch = Math.ceil(top + below);
     const dpr = this.dpr();
+    // THE TREE FITS ITS FRAME (trees.ts treeExtent): the canvas is
+    // sized to the ink the painter can actually reach, not to a
+    // generous guess. The guess (spread * 1.15 + 0.08h + 0.45 sideways,
+    // height * 1.18 + 0.45 up) left better than half of every tree's
+    // rect empty — and a sprite's rect is not "only bytes", it is fill
+    // rate paid on every blit of every frame, forever.
+    const e = treeExtent(m);
+    const ring = this.outlineOn ? Math.ceil(Math.max(1.25 / dpr, s * 0.04)) + 1 : 1;
+    const half = -e.x0 * s + ring; // trunk-base anchor within the sprite
+    const top = e.y1 * s + ring;
+    const cw = Math.ceil((e.x1 - e.x0) * s) + ring * 2;
+    const ch = Math.ceil((e.y1 - e.y0) * s) + ring * 2;
     const pw = Math.max(1, Math.ceil(cw * dpr));
     const ph = Math.max(1, Math.ceil(ch * dpr));
     const { canvas, sctx } = this.acquireSpriteCanvas(prev, pw, ph);
@@ -19635,12 +19640,15 @@ export class Renderer {
     const ky = this.sky.shadowY * this.sky.shadowLen * ys;
     const wind = rigid ? 0 : windScalarAt(wx, wy, tSec);
     const path = this.treeShadowPath(m, 0, 0, 1, wind, kx, ky);
-    const half = (m.spread * 1.15 + 0.08 * m.height + 0.45) * s;
-    const hp = (m.height * 1.18 + 0.45) * s;
-    const ex0 = Math.min(0, kx * hp) - half;
-    const ex1 = Math.max(0, kx * hp) + half;
-    const ey0 = Math.min(0, ky * hp) - half;
-    const ey1 = Math.max(0, ky * hp) + half;
+    // THE CAST FITS ITS FRAME: the builder just reported the exact
+    // reach of everything it drew (see treeShadowPath). One pixel of
+    // slack for the rasteriser's edge coverage, and the contact line at
+    // y = 0 is always kept — the cast must meet its own trunk.
+    const bb = this.shadowBox;
+    const ex0 = Math.min(0, bb.x0) - 1;
+    const ex1 = Math.max(0, bb.x1) + 1;
+    const ey0 = Math.min(0, bb.y0) - 1;
+    const ey1 = Math.max(0, bb.y1) + 1;
     const cw = Math.ceil(ex1 - ex0);
     const ch = Math.ceil(ey1 - ey0);
     const pw = Math.max(1, Math.ceil(cw * SHADOW_SPRITE_RES));
@@ -21176,6 +21184,10 @@ export class Renderer {
    * the shadow sways with its tree. One Path2D, one fill: limbs and
    * clusters merge into a single density, never stacking.
    */
+  /** Bounds of the last treeShadowPath build (see THE CAST FITS ITS
+   *  FRAME) — a reused record, so the hot path allocates nothing. */
+  private readonly shadowBox = { x0: 0, x1: 0, y0: 0, y1: 0 };
+
   private treeShadowPath(
     m: TreeModel,
     bx: number,
@@ -21191,6 +21203,24 @@ export class Renderer {
     const H = m.height;
     const bendT = wind * 0.055 * H;
     const path = new Path2D();
+    // THE CAST FITS ITS FRAME: the builder visits every point it draws,
+    // so it reports the exact box rather than leaving the bake to guess
+    // one. The guess it replaced sized the canvas +-half on BOTH axes —
+    // but a ground cast is a squashed smear along the light ray, so its
+    // vertical reach is ky * height, a small fraction of half. Measured
+    // on the rig: 8.6% of each shadow canvas held ink, and the other
+    // 91% was blitted, alpha-blended and thrown away every frame.
+    const bb = this.shadowBox;
+    bb.x0 = Infinity;
+    bb.x1 = -Infinity;
+    bb.y0 = Infinity;
+    bb.y1 = -Infinity;
+    const box = (x: number, y: number): void => {
+      if (x < bb.x0) bb.x0 = x;
+      if (x > bb.x1) bb.x1 = x;
+      if (y < bb.y0) bb.y0 = y;
+      if (y > bb.y1) bb.y1 = y;
+    };
     // Limbs: trunk + fork arms (boughs hide inside the canopy shadow).
     for (const b of m.branches) {
       if (b.level !== 0) continue;
@@ -21214,6 +21244,8 @@ export class Renderer {
         const w = Math.max(1, (b.w0 + (b.w1 - b.w0) * u) * wMul * s * g);
         left.push([proj[i]![0] - ty2 * w, proj[i]![1] + tx2 * w]);
         right.push([proj[i]![0] + ty2 * w, proj[i]![1] - tx2 * w]);
+        box(proj[i]![0] - w, proj[i]![1] - w);
+        box(proj[i]![0] + w, proj[i]![1] + w);
       }
       path.moveTo(left[0]![0], left[0]![1]);
       for (let i = 1; i <= last; i++) path.lineTo(left[i]![0], left[i]![1]);
@@ -21240,6 +21272,13 @@ export class Renderer {
       M.e = cxp;
       M.f = cyp;
       path.addPath(unitBlob(c.seed, m.sides), M);
+      // The stamp is [a, 0; c, d] on a unit blob whose vertices reach
+      // 1.12 — so the reach is |a| * 1.12 plus |c| * 1.12 in x, and
+      // |d| * 1.12 in y.
+      const rx2 = (Math.abs(M.a) + Math.abs(M.c)) * 1.12;
+      const ry2 = Math.abs(M.d) * 1.12;
+      box(cxp - rx2, cyp - ry2);
+      box(cxp + rx2, cyp + ry2);
     }
     // The willow's skirt casts too: each fall's hull sheared flat
     // along the same ray (streaks carry no mass; saplings haven't
@@ -21253,6 +21292,7 @@ export class Renderer {
           const [x, y] = hull[i]!;
           const px = bx + (x + dx) * g * s + kx * y * g * s;
           const py = groundY + ky * y * g * s;
+          box(px, py);
           if (i === 0) path.moveTo(px, py);
           else path.lineTo(px, py);
         }

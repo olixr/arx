@@ -443,6 +443,147 @@ function alongSpine(pts: Array<[number, number]>, u: number): [number, number] {
 
 const modelCache = new Map<number, TreeModel>();
 
+/**
+ * THE TREE FITS ITS FRAME — the exact model-space box the painter's
+ * ink can reach, wind and all. Tiles, y UP, origin at the trunk base.
+ *
+ * The sprite cache bakes each tree onto its own canvas and blits that
+ * canvas every frame, so THE CANVAS IS THE PER-FRAME COST: a rect of
+ * transparent margin is not "only bytes", it is fill rate and alpha
+ * blending paid 60 times a second, per tree, forever. Measured on a
+ * dense-forest rig frame before this existed: the baked rects were
+ * generous round numbers (`spread * 1.15 + 0.08h + 0.45` sideways,
+ * `height * 1.18 + 0.45` up) and only **40% of each rect held ink** —
+ * the forest was blitting 44x the screen area every frame and better
+ * than half of it was nothing at all.
+ *
+ * So the box is DERIVED, not guessed. Every painter in paintTree is
+ * accounted for here, and `treeExtent.test.ts` walks the same geometry
+ * independently to prove containment across every species, variant and
+ * growth stage. Widening a painter's reach without widening this
+ * function clips a crown — which is why the test exists and why the
+ * wind allowances below cite their sources.
+ */
+export interface TreeExtent {
+  /** Model tiles: x left/right of the trunk base, y down/up from it. */
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+}
+
+/**
+ * The wind field's own ceiling: windScalarAt is `gust * (0.4 + sway)`
+ * with gust <= 1 and sway in [-1, 1], so |wind| <= 1.4. Every wind
+ * allowance below is derived from this one number — the field and the
+ * frame cannot drift apart.
+ */
+const WIND_MAX = 1.4;
+
+/** Blob-stamp reach, as a multiple of a cluster's r (see the cluster
+ *  stamp in paintTree and facetBlob's 0.82..1.12 vertex jitter): the
+ *  widest of the three stamps is the shade blob — scale 0.98, squash
+ *  0.92, offset (+0.11r, +0.13r) in SCREEN space — and rb tops at
+ *  1.02. Right/down carry the offset, left/up fight it. */
+const BLOB_R = 1.12;
+const BLOB_RB = 1.02;
+const BLOB_X1 = (0.98 * BLOB_R + 0.11) * BLOB_RB; // screen +x
+const BLOB_X0 = (0.98 * BLOB_R - 0.11) * BLOB_RB; // screen -x
+const BLOB_DOWN = (0.98 * 0.92 * BLOB_R + 0.13) * BLOB_RB; // model -y
+const BLOB_UP = (0.98 * 0.92 * BLOB_R - 0.13) * BLOB_RB; // model +y
+
+const extents = new WeakMap<TreeModel, TreeExtent>();
+
+export function treeExtent(m: TreeModel): TreeExtent {
+  const hit = extents.get(m);
+  if (hit) return hit;
+  const H = m.height;
+  let x0 = 0;
+  let x1 = 0;
+  let y0 = 0;
+  let y1 = 0;
+  const grow = (x: number, y: number): void => {
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+  };
+
+  // --- Canopy clusters. Rest position plus the per-cluster rustle:
+  // the cantilever disp(hf) = bendT * hf^1.4 with |bendT| = |wind| *
+  // 0.055H, the gust term clamped to +-0.05H, and the flutter
+  // amplitude windy * 0.02 * (0.5 + r) with windy <= 1.2.
+  for (const c of m.clusters) {
+    const r = c.r * BLOB_RB;
+    const amp = 1.2 * 0.02 * (0.5 + c.r);
+    const dx = WIND_MAX * 0.055 * H * Math.pow(Math.min(1, Math.max(0, c.hf)), 1.4) + 0.05 * H + amp;
+    const dy = amp * 0.55;
+    grow(c.x - BLOB_X0 * r - dx, c.y - BLOB_DOWN * r - dy);
+    grow(c.x + BLOB_X1 * r + dx, c.y + BLOB_UP * r + dy);
+  }
+
+  // --- Wood. A limb's polygon offsets each spine point by its
+  // half-width perpendicular (fillLimb), the first fifth widened by
+  // the root flare's load-bearing 0.4 factor; the whole spine rides
+  // the cantilever, and a bough's tip is dragged onto its cluster's
+  // displaced centre (|tipDx| <= |rx| + |disp|).
+  const tipDrag = 2 * WIND_MAX * 0.055 * H + 0.05 * H + 1.2 * 0.02 * (0.5 + m.spread);
+  for (const b of m.branches) {
+    const last = b.pts.length - 1;
+    for (let i = 0; i <= last; i++) {
+      const [px, py] = b.pts[i]!;
+      const u = last > 0 ? i / last : 0;
+      let w = b.w0 + (b.w1 - b.w0) * u;
+      if (u < 0.2) w *= 1 + b.flare * ((0.2 - u) / 0.2) * 0.4;
+      const sway = WIND_MAX * 0.055 * H * Math.pow(Math.min(1, Math.max(0, py / H)), 1.4);
+      const drag = b.tip >= 0 ? tipDrag * u * u : 0;
+      grow(px - w - sway - drag, py - w - drag);
+      grow(px + w + sway + drag, py + w + drag);
+      // The bark seam ticks stand 0.13 tiles above their spine point.
+      if (b.level === 0) grow(px, py + 0.13);
+    }
+  }
+
+  // --- The willow's cascade. Each vertex swings on its pendulum
+  // (|sw| <= 0.2 * len, weighted by drop), carries a traveling ripple
+  // (|wAmp| <= 0.085), rides the cantilever at its anchor's height,
+  // and lifts by |sw| * 0.18 * drop as it swings.
+  for (const cu of m.curtains) {
+    const sw = 0.2 * cu.len;
+    const swing = WIND_MAX * 0.055 * H + sw + 0.085;
+    const lift = sw * 0.18;
+    for (let k = 0; k < cu.pts.length; k++) {
+      const [px, py] = cu.pts[k]!;
+      grow(px - swing, py);
+      grow(px + swing, py + lift);
+    }
+  }
+
+  // Slack for stroke half-widths (the batched part/hem strokes and the
+  // trunk's edge light ride ON the shapes above) and for float drift —
+  // cheap in pixels, and a clipped crown is a bug.
+  const slack = 0.12;
+  // THE GROUND LINE KEEPS ITS OLD FLOOR. The sides and the crown are
+  // derived and PROVEN (treeExtent.test.ts walks the painters; a fat-
+  // margin rig bake confirmed the ink lands inside on every species).
+  // Below the trunk base the derivation came up ~0.2 tiles short in the
+  // same rig bake — the contact end of the wood carries paint the
+  // geometry above does not name — so the floor stays where the old
+  // frame put it, at the 0.3 tiles it always used. It costs almost
+  // nothing: the measured bottom margin was 8% of the rect, against 23%
+  // at the crown and 43% across the sides, which is where the win is.
+  const ROOT_BELOW = 0.3;
+  const ext: TreeExtent = {
+    x0: x0 - slack,
+    x1: x1 + slack,
+    y0: Math.min(-ROOT_BELOW, y0) - slack,
+    y1: y1 + slack,
+  };
+  extents.set(m, ext);
+  return ext;
+}
+
+
 /** Grow (or recall) the tree standing on a tile with world-hash `h`. */
 export function treeModel(tile: Tile, h: number): TreeModel {
   const key = ((tile as number) << 16) | (h & 0xffff);

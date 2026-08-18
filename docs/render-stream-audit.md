@@ -514,3 +514,115 @@ nor the tests caught it; the throttled rig caught it in one run.
 Instrument the fallback, then drive it, before believing a fallback is
 cheap. And absolute times in headless Chromium are SwiftShader times
 (an idle frame reads ~140ms) — only the COUNTS transfer.
+
+## ROUND 8 — THE TREE FITS ITS FRAME (2026-08-18)
+
+Owner report: "if I walk into a heavily forested area this hits my FPS
+by 40 to 80 frames — the trees hit me the most. I want 100-200 trees on
+screen." The wind system was the suspect. The wind system is fine; THE
+FRAMES AROUND THE TREES were not.
+
+### Measured first (rig lane 33, dense forest at 34,110)
+
+A `drawImage` census of one steady-state frame, attributed by
+destination area and draw target:
+
+| | before |
+|---|---|
+| main-canvas blits | 921 calls, **255.7 Mpx = 44x the screen area** |
+| of those, sheared (transformed) | 806 calls, 187.4 Mpx |
+| typical blit | 450-600 px square |
+
+Then the question that mattered: how much of that is PAINT? A scan of
+the live sprite caches, sampling every cached tree:
+
+| | ink bbox / rect | opaque coverage |
+|---|---|---|
+| tree body sprites | **40%** | 22% |
+| tree shadow sprites | **8.6%** | 5.6% |
+
+Body pads: 24% left, 19% right, 23% top. Shadow pads: 40% top, 44%
+bottom. **The forest was blitting, alpha-blending and throwing away
+more transparent margin than it was drawing tree** — every frame, per
+tree, forever. The bake comments called pad pixels "transparent and
+cost only bytes"; for a per-instance sprite that blits every frame,
+that sentence is exactly backwards, and it is the sentence the industry
+answers with sprite trimming (see TexturePacker/Unity atlas trimming:
+trimming exists as much for fill rate as for atlas space; MDN's canvas
+guidance says the same — "make sure your temporary canvas fits snugly
+around the image, otherwise the performance gain is counterweighted by
+the loss of copying one large canvas onto another").
+
+### Shipped
+
+- **THE TREE FITS ITS FRAME** (`trees.ts treeExtent`, pure + memoized
+  per model): the body canvas is DERIVED from the ink the painter can
+  actually reach — every cluster's blob stamp (facetBlob's 0.82-1.12
+  vertex jitter, the shade stamp's 0.98/0.92/+0.11r/+0.13r, the 1.02
+  breath), every limb's spine ± its flared half-width, the willow's
+  cascade, and every wind term traced back to `windScalarAt`'s own
+  ceiling of |wind| <= 1.4. The guessed box (`spread * 1.15 + 0.08h +
+  0.45` sideways, `height * 1.18 + 0.45` up) is gone.
+- **THE CAST FITS ITS FRAME**: `treeShadowPath` now reports the exact
+  bounds of everything it draws, and the shadow bake sizes itself from
+  that. The old box was `±half` on BOTH axes — but a ground cast is a
+  smear along the light ray whose vertical reach is `ky * height`, a
+  small fraction of half. That single wrong axis was the 8.6%.
+- **THE GROUND LINE KEEPS ITS OLD FLOOR**: the sides and crown are
+  derived and proven; below the trunk base the derivation came up ~0.2
+  tiles short in a fat-margin rig bake, so the floor stays at the 0.3
+  tiles the old frame used. It costs almost nothing — the bottom pad
+  was 8% against 23% at the crown and 43% across the sides.
+
+### Proven, not assumed
+
+`treeExtent.test.ts` re-walks paintTree's geometry INDEPENDENTLY
+(longhand, not shared, so a silent edit to one side fails in CI rather
+than on a player's screen) and asserts containment for every species,
+every variant, at wind extremes — plus a tightness assertion, because a
+box that contains the tree by being enormous passes the safety half and
+helps nobody. Then a FAT-MARGIN RIG BAKE: rebuild with +12px of slack,
+measure each sprite's true ink bbox in device pixels, and confirm it
+lands inside where the exact frame would have cut. Worst margins across
+the sample — bodies [66, 63, 34, 57] px against the 24 px the probe
+added, shadows [8, 7, 6, 6] against 6. Bodies have room to spare; the
+shadow box is exact to the pixel.
+
+### Results
+
+| | before | after |
+|---|---|---|
+| body ink bbox / rect | 40% | **65%** |
+| shadow ink bbox / rect | 8.6% | **78%** |
+| body top pad | 23% | 3.2% |
+| main-canvas blit volume | 255.7 Mpx | **200.7 Mpx** |
+| shadow-layer blit volume | ~130 Mpx (est.) | **35.0 Mpx** |
+| total frame blit volume | ~386 Mpx | **239 Mpx (−38%)** |
+
+Per tree the cut is larger than the totals suggest: body rects fell to
+0.61x and shadow rects to 0.11x their old area, while the untouched
+props, flora, bodies and 4-Mpx ground-chunk blits still ride in the
+same totals.
+
+**Rig lesson**: the first census counted only `this.canvas === main`
+and so never saw the tree casts at all (they draw into the shared
+shadow layer) — a census that does not split by TARGET will quietly
+omit a whole pass. And `treeSprites` is shared with props and flora,
+whose canvases were never in scope; the containment reading only became
+truthful once the sample was filtered to sprites with a shadow twin.
+
+### Still open (the levers this round did NOT pull)
+
+- **The dome's empty corners**: even trimmed, opaque coverage is 36% of
+  the rect — a dome in a box. Sprite DICING (blit as 2-3 horizontal
+  bands, each trimmed to its own width) is the standard answer and
+  would take another ~30% off body fill.
+- **Inter-tree overdraw**: 35x screen coverage remains, and in a closed
+  canopy most of it is trees hidden behind nearer trees. A front-to-
+  back coverage pre-pass on a coarse grid (2D occlusion culling) can
+  skip a tree whose box is already solidly covered — the only lever
+  that cuts CALLS as well as pixels, and canvas2d call overhead is
+  ~3-4.3us each (900 calls ~ 4ms/frame in Chrome before a pixel is
+  touched).
+- **The shear**: 1854 of 2085 blits carry a non-axis-aligned transform,
+  which forces a resample path. Worth an A/B before assuming it is free.
