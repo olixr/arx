@@ -377,3 +377,35 @@ Three masses, one clock:
 Fittings: faceAlt + device 'fang' + studs + spikes = 4 (t5 floor holds).
 Owners: silver = the frame's; the golds = the lion's; sapphire + glint
 stand alone. Gates: shields tsc clean, client 669/669.
+
+## SUNFORGED AEGIS v2 — THE SUNWELL WARD (as-built, 2026-08-17)
+
+The holy rebuild against the user's reference (pale paladin heater with a
+horned sunstone crest and gold light-cracks) — eighth premium pass. The
+gold-gores-and-quarters identity retires whole. The roster's one PALE
+shield.
+
+Three masses, one clock:
+- **THE PALE WALL** (`sigSunforged`, LIVING_SIGS): silver-white steel in
+  two soft planes inside the riveted bronze frame (rim + studs), with THE
+  RADIANCE — one soft gold wash under the crest where the wall catches
+  the stone's light: the "imbued" read in a single alpha poly.
+- **THE LIGHT CRACKS**: a main gold vein (SUN_VEIN) and two branches
+  running down from the stone — deep bronze bed, gold body, breathing
+  bright core. THE SUNPULSE (SUN_MS 5000): the stone flares and one
+  charge of white-gold light runs DOWN the main vein — the well feeding
+  its ward (gatefall's surge grammar, inverted: gold-on-pale, flowing
+  FROM the stone).
+- **THE SUNSTONE CREST** (`relSunforged` + `crestSunforged`): ringed gold
+  mount plate with claw prongs and the long down-ray laid into the wall;
+  above it two broad gold horns sweeping past the silhouette (ringed),
+  a five-ray star that shares the mount's ring and wears NONE of its own
+  (five ringed slivers in a cluster = black tangle — the thin-band
+  lesson, third confirmation), and the amber SUNSTONE with its white
+  heart, ringed as a set stone, flaring at the pulse's birth.
+
+Recut 'aegis' outline: the paladin heater-great (peaked crown, broad
+shoulders, long taper). Fittings: faceAlt + star + studs + spikes = 4 (t6
+floor holds). Owners: amber/gold = the sun's; pale steels = the wall's;
+white = the stone's heart and the flare. Gates: shields tsc clean, client
+669/669.

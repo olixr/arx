@@ -569,26 +569,43 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
    * everything on it is spent on ONE idea — the sun — instead of on a
    * fifth kind of fitting.
    */
+  /**
+   * SUNFORGED AEGIS — THE SUNWELL WARD (v2, 2026-08-17: the holy
+   * rebuild against the user's reference). The roster's one PALE
+   * shield: a silver-white wall in a riveted bronze frame, worn by
+   * the light it holds. Three masses, one clock. THE PALE WALL: soft
+   * white steel, nothing on it but what the light does to it. THE
+   * LIGHT CRACKS: gold veins branching down from the stone — the
+   * sunwell's power leaking through the steel; they breathe, and on
+   * THE SUNPULSE (the one clock) the stone flares and a charge of
+   * light runs down the main vein: the well feeding its ward. THE
+   * SUNSTONE CREST: a horned gold mount at the crown bearing the
+   * amber stone in claw prongs, star rays around it, two great horns
+   * sweeping past the silhouette. Owners: amber and gold are the
+   * sun's; the pale steels are the wall's; white is the stone's heart
+   * and the flare alone.
+   */
   sunforged_aegis: {
     shape: 'aegis',
     material: 'steel',
-    face: '#d4a43c',
-    // The ivory ray is a shade UNDER the ivory binding on purpose: the
-    // rim has to stay the brightest metal on the piece, or the rays run
-    // straight into it and the shield loses its own edge.
-    faceAlt: '#e6d3a6',
-    field: 'quarter',
-    rim: '#f0e2bd',
-    boss: '#fff8e4',
+    face: '#c8d0d6',
+    faceAlt: '#b6bec6',
+    rim: '#8a7548',
     device: 'star',
-    deviceColor: '#fff8e4',
+    deviceColor: '#d9a940',
     studs: true,
     spikes: true,
-    curve: 0.34,
+    // Two stray rays past the binding, flanking the crest's horns.
+    spikeAngles: [-2.35, -0.79],
+    spikeLen: 1.15,
+    spikeW: 0.06,
+    spikeColor: '#d9a940',
+    curve: 0.32,
     strapColor: '#5a4a2a',
     sig: 'sunforged',
     tier: 6,
   },
+
   // ================= THE SHIELD WAVE (docs/shield-wave-plan.md) =====
   /**
    * THE RED COMPANY'S — a tool that got promoted. Dark lacquered
@@ -1091,9 +1108,13 @@ const OUTLINES: Record<ShieldShape, number[]> = {
   // The crowned greatshield: an apex at the crown and shoulders that
   // FLARE wider than the crown — the one outline here whose widest
   // point is not its middle — falling in a long taper to a point.
+  // THE SUNFORGED AEGIS (the holy recut): the paladin's heater at
+  // greatshield scale — a gently peaked crown, broad shoulders, one
+  // long taper to the point. The wall the light lives in.
   aegis: [
-    0, -1, 0.46, -0.86, 1.0, -0.62, 0.92, -0.1, 0.66, 0.5, 0, 1, -0.66, 0.5,
-    -0.92, -0.1, -1.0, -0.62, -0.46, -0.86,
+    -0.75, -0.96, 0, -1.02, 0.75, -0.96, 0.95, -0.62, 1.0, -0.12,
+    0.86, 0.32, 0.56, 0.7, 0.2, 0.94, 0, 1.04, -0.2, 0.94, -0.56, 0.7,
+    -0.86, 0.32, -1.0, -0.12, -0.95, -0.62,
   ],
   // The bitten targe: a rugged ten-facet round with a WEDGE torn out
   // of the upper-right edge. The notch is the whole story — a shield
@@ -1718,7 +1739,7 @@ interface FaceEntry {
 const FACE_CACHE = new Map<string, FaceEntry>();
 const FACE_CACHE_MAX = 64;
 /** Signatures whose FACE is a function of the clock (crests stay live). */
-const LIVING_SIGS = new Set(['oath', 'gatefall', 'brineshell', 'winterheart', 'frost', 'kingsward']);
+const LIVING_SIGS = new Set(['oath', 'gatefall', 'brineshell', 'winterheart', 'frost', 'kingsward', 'sunforged']);
 /** Resolution rungs, px per design unit — capped so no entry balloons. */
 const FACE_RES = [20, 30, 44, 64, 92, 132, 184];
 
@@ -2769,48 +2790,112 @@ function sigBulwark(
 }
 
 /**
- * SUNFORGED AEGIS — the top of the ladder, spent entirely on one idea.
- * Eight rays strike out of the center in alternating gold and ivory,
- * a dark seat rings the middle so the white-hot umbo has somewhere to
- * land, and that is the whole face. No bands, no plates, no pale: a
- * sun does not need a second thought on top of it.
+ * THE SUNPULSE: every few seconds the stone flares and one charge of
+ * light runs DOWN the main vein — the well feeding its ward — then
+ * the cracks settle back to their slow breathing. One clock; the
+ * crest's flare and the face's charge read the same phase. Offset so
+ * t=0 catches the charge mid-vein.
+ */
+const SUN_MS = 5000;
+function sunPhase(nowMs: number): number {
+  return ((nowMs + SUN_MS * 0.25) % SUN_MS) / SUN_MS;
+}
+
+/** The main vein's road, stone to heel — and its two branches. */
+const SUN_VEIN: Array<[number, number]> = [
+  [0, -0.58], [-0.08, -0.28], [0.06, 0.08], [-0.04, 0.48], [0.03, 0.9],
+];
+const SUN_BRANCHES: Array<Array<[number, number]>> = [
+  [[-0.06, -0.14], [-0.26, 0.02], [-0.4, 0.24]],
+  [[0.05, 0.2], [0.22, 0.34], [0.34, 0.54]],
+];
+
+/**
+ * SUNFORGED AEGIS — THE SUNWELL WARD's face. The pale wall in two
+ * soft planes, and the light cracks: deep bronze bed, gold body,
+ * breathing bright core — branching down from the stone the crest
+ * carries. Everything else this shield owns is raised.
  */
 function sigSunforged(
   ctx: CanvasRenderingContext2D,
   st: ShieldStyle,
   fr: ShieldFrame,
   litU: number,
+  nowMs: number,
 ): void {
-  const ivory = st.faceAlt ?? '#f4ead2';
-  // The blazing sun: eight wedges struck from the umbo. Eight reads as
-  // a sunburst — which everywhere else in this file is the failure
-  // mode, and here is precisely the point.
-  for (let i = 0; i < 8; i++) {
-    const a0 = (i / 8) * Math.PI * 2 - Math.PI * 0.625;
-    const a1 = ((i + 1) / 8) * Math.PI * 2 - Math.PI * 0.625;
-    poly(ctx, i % 2 ? ivory : shade(st.face, 14), [
-      0, 0,
-      Math.cos(a0) * 2, Math.sin(a0) * 2,
-      Math.cos(a1) * 2, Math.sin(a1) * 2,
-    ]);
+  const gold = st.deviceColor ?? '#d9a940';
+  ctx.fillStyle = st.face;
+  ctx.fillRect(-1.2, -1.2, 2.4, 2.4);
+  // The wall's two soft planes — pale steel, quietly lit.
+  poly(ctx, st.faceAlt ?? shade(st.face, -7), [
+    litU * 0.1, -1.2, litU * 1.2, -1.2, litU * 1.2, 1.2, litU * 0.55, 1.2,
+  ]);
+  // THE RADIANCE: the pale wall catching the stone's light — one soft
+  // gold wash under the crest, and the shield reads IMBUED.
+  ctx.globalAlpha = 0.14;
+  const rad: number[] = [];
+  for (let k = 0; k < 8; k++) {
+    const a = Math.PI / 8 + (k / 8) * Math.PI * 2;
+    rad.push(Math.cos(a) * 0.52, -0.62 + Math.sin(a) * 0.48);
   }
-  // The sun's own shading, honest to the screen: the away side of every
-  // ray falls off together, in ONE plane laid over the whole burst.
-  ctx.globalAlpha = 0.22;
-  ctx.fillStyle = SEAM;
-  ctx.fillRect(litU > 0 ? -1.2 : 0.34, -1.2, 0.86, 2.4);
+  poly(ctx, gold, rad);
   ctx.globalAlpha = 1;
-  // The seat the umbo lands in — a dark RING, not a well. Cut wide it
-  // reads as a hole punched through the sun; it only has to be thick
-  // enough to give a white boss on a gold field an edge.
-  const seat: number[] = [];
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
-    seat.push(Math.cos(a) * 0.21, Math.sin(a) * 0.21);
+  const band = (road: Array<[number, number]>, w: number, tone: string, alpha: number): void => {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = tone;
+    ctx.beginPath();
+    for (let i = 0; i + 1 < road.length; i++) {
+      const [x0, t0] = road[i]!;
+      const [x1, t1] = road[i + 1]!;
+      const dx = x1 - x0;
+      const dt = t1 - t0;
+      const L = Math.hypot(dx, dt) || 1;
+      const nx = (-dt / L) * w;
+      const nt = (dx / L) * w;
+      ctx.moveTo(x0 + nx, t0 + nt);
+      ctx.lineTo(x1 + nx, t1 + nt);
+      ctx.lineTo(x1 - nx, t1 - nt);
+      ctx.lineTo(x0 - nx, t0 - nt);
+      ctx.closePath();
+    }
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  };
+  // THE LIGHT CRACKS: bed, body, breathing core — main vein and both
+  // branches, all fed by the same breath.
+  const breathe = 0.68 + 0.32 * Math.sin(nowMs * 0.0008);
+  for (const road of [SUN_VEIN, ...SUN_BRANCHES]) {
+    band(road, 0.05, shade(st.rim, -8), 1);
+    band(road, 0.032, gold, 0.9);
+    band(road, 0.015, '#ffdf8a', breathe);
   }
-  poly(ctx, SEAM, seat);
-  // Nothing else. The rim's own studs are the only fitting on it: the
-  // whole rung is spent on the sun, not on a fifth kind of rivet.
+  // THE SUNPULSE: one charge of light running down the main vein.
+  const ph = sunPhase(nowMs);
+  if (ph < 0.3) {
+    const pr = ph / 0.3;
+    const cum: number[] = [0];
+    for (let i = 0; i + 1 < SUN_VEIN.length; i++) {
+      const [x0, t0] = SUN_VEIN[i]!;
+      const [x1, t1] = SUN_VEIN[i + 1]!;
+      cum.push(cum[i]! + Math.hypot(x1 - x0, t1 - t0));
+    }
+    const total = cum[cum.length - 1]!;
+    const at = (sN: number): [number, number] => {
+      const d = Math.max(0, Math.min(1, sN)) * total;
+      for (let i = 0; i + 1 < SUN_VEIN.length; i++) {
+        if (d <= cum[i + 1]! || i + 2 === SUN_VEIN.length) {
+          const k = (d - cum[i]!) / (cum[i + 1]! - cum[i]! || 1);
+          const [x0, t0] = SUN_VEIN[i]!;
+          const [x1, t1] = SUN_VEIN[i + 1]!;
+          return [x0 + (x1 - x0) * k, t0 + (t1 - t0) * k];
+        }
+      }
+      return SUN_VEIN[0]!;
+    };
+    const seg: Array<[number, number]> = [];
+    for (let k = 0; k <= 3; k++) seg.push(at(pr - 0.14 + (0.16 * k) / 3));
+    band(seg, 0.03, '#fff8e8', 0.5 + 0.5 * Math.sin(pr * Math.PI));
+  }
 }
 
 /**
@@ -4874,6 +4959,79 @@ function relKingsward(rc: ReliefCtx, st: ShieldStyle): void {
 }
 
 /**
+ * SUNFORGED AEGIS — THE STONE'S MOUNT. The gold seat at the crown the
+ * sunstone is clawed into: an octagonal mount plate standing off the
+ * pale wall, the long down-ray falling from it into the face, and
+ * four claw prongs that will grip the stone the crest sets. Worked
+ * gold on the wall — the mount is ringed; the rays are surface work.
+ */
+function relSunforged(rc: ReliefCtx, st: ShieldStyle): void {
+  const gold = st.deviceColor ?? '#d9a940';
+  const SC = -0.62;
+  // The long down-ray: the star's lowest point, laid INTO the wall.
+  polyAt(rc, [-0.055, SC + 0.1, 0.055, SC + 0.1, 0, SC + 0.62], 0.22, gold);
+  polyAt(rc, [-0.02, SC + 0.12, 0.02, SC + 0.12, 0, SC + 0.52], 0.24, shade(gold, 24));
+  // The mount plate, ringed — a fitting clawed to the wall.
+  const oct: number[] = [];
+  for (let k = 0; k < 8; k++) {
+    const a = Math.PI / 8 + (k / 8) * Math.PI * 2;
+    oct.push(Math.cos(a) * 0.2, SC + Math.sin(a) * 0.2);
+  }
+  prism(rc, oct, 0, 0.34, shade(gold, -6), { wallDark: shade(gold, -34), outline: true });
+  // The claw prongs, rising to grip the stone.
+  polyAt(rc, [-0.13, SC - 0.1, -0.04, SC - 0.15, -0.08, SC - 0.02], 0.6, shade(gold, 12));
+  polyAt(rc, [0.13, SC - 0.1, 0.04, SC - 0.15, 0.08, SC - 0.02], 0.6, shade(gold, 12));
+  polyAt(rc, [-0.12, SC + 0.08, -0.03, SC + 0.13, -0.09, SC + 0.16], 0.6, shade(gold, 2));
+  polyAt(rc, [0.12, SC + 0.08, 0.03, SC + 0.13, 0.09, SC + 0.16], 0.6, shade(gold, 2));
+}
+
+/**
+ * SUNFORGED AEGIS — THE HORNED CREST. Two great gold horns sweeping
+ * up and out past the silhouette from the stone's mount, a star of
+ * rays around the stone (the side pair longest, the reference's own
+ * spread), and THE SUNSTONE itself: amber, white-hearted, ringed as
+ * the set stone it is — flaring on the sunpulse as the well feeds
+ * the ward.
+ */
+function crestSunforged(rc: ReliefCtx, st: ShieldStyle): void {
+  const { ctx } = rc;
+  const gold = st.spikeColor ?? '#d9a940';
+  const SC = -0.62;
+  // THE HORNS: broad-based, swept out and up, clearing the outline.
+  pyramid(rc, -0.3, SC - 0.16, 0.17, 0.1, 0, 1.2, shade(gold, 8), { outline: true, du: -0.62, dt: -0.3 });
+  pyramid(rc, 0.3, SC - 0.16, 0.17, 0.1, 0, 1.2, shade(gold, 8), { outline: true, du: 0.62, dt: -0.3 });
+  // THE STAR: one object — the rays share the mount's ring and wear
+  // none of their own (five ringed slivers in a cluster read as a
+  // black tangle, the thin-band lesson again). Side rays long.
+  pyramid(rc, -0.28, SC, 0.055, 0.05, 0, 0.7, shade(gold, 10), { du: -0.42 });
+  pyramid(rc, 0.28, SC, 0.055, 0.05, 0, 0.7, shade(gold, 10), { du: 0.42 });
+  pyramid(rc, 0, SC - 0.24, 0.05, 0.045, 0, 0.9, shade(gold, 10), { dt: -0.24 });
+  pyramid(rc, -0.18, SC - 0.18, 0.04, 0.04, 0, 0.55, shade(gold, -4), { du: -0.14, dt: -0.12 });
+  pyramid(rc, 0.18, SC - 0.18, 0.04, 0.04, 0, 0.55, shade(gold, -4), { du: 0.14, dt: -0.12 });
+  // THE SUNSTONE: amber, white heart, one ring — a set stone.
+  const oct = (r: number): number[] => {
+    const pts: number[] = [];
+    for (let k = 0; k < 8; k++) {
+      const a = Math.PI / 8 + (k / 8) * Math.PI * 2;
+      pts.push(Math.cos(a) * r, SC + Math.sin(a) * r);
+    }
+    return pts;
+  };
+  polyAt(rc, oct(0.16), 0.7, '#f0b23e');
+  polyAt(rc, oct(0.1), 0.76, '#ffd979');
+  polyAt(rc, [0, SC - 0.06, 0.042, SC, 0, SC + 0.06, -0.042, SC], 0.8, '#fff8e8');
+  strokeAt(rc, oct(0.16), 0.7);
+  // THE FLARE: the pulse's birth, on the stone.
+  const ph = sunPhase(rc.nowMs);
+  if (ph < 0.16) {
+    const gl = Math.sin((ph / 0.16) * Math.PI);
+    ctx.globalAlpha = gl * 0.7;
+    polyAt(rc, oct(0.27), 0.8, '#fff8e8');
+    ctx.globalAlpha = 1;
+  }
+}
+
+/**
  * KINGSWARD — THE WINGED CROWN. Two great silver wing-blades sweeping
  * up and out from the crown shoulders, a barb behind each, the crown
  * spike between them — and THE SAPPHIRE set at the brow: the armor
@@ -5494,6 +5652,7 @@ const CRESTS: Record<string, ReliefPainter> = {
   gatefall: crestGatefall,
   frost: crestFrost,
   kingsward: crestKingsward,
+  sunforged: crestSunforged,
   winterheart: crestWinterheart,
   oath: crestOath,
   pinion: crestPinion,
@@ -5513,6 +5672,7 @@ const RELIEFS: Record<string, ReliefPainter> = {
   gatefall: relGatefall,
   frost: relFrost,
   kingsward: relKingsward,
+  sunforged: relSunforged,
   oath: relOath,
 };
 
