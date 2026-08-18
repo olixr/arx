@@ -14,7 +14,11 @@
  * the body decelerates — that inertia is what pitches a sliding corpse
  * over its own pinned feet.
  */
-import { type BeastSpec, type GnollLook, type KoboldLook, type OwlLook, type SkeletonLook } from './rig.js';
+import { type BeastSpec, type GnollLook, type GoblinLook, type KoboldLook, type OwlLook, type SkeletonLook } from './rig.js';
+import { type GolemLook } from './golems.js';
+import { type OgreLook } from './ogre.js';
+import { type SkralLook } from './skral.js';
+import { type HobgoblinLook } from './hobgoblin.js';
 export interface RagPoint {
     x: number;
     y: number;
@@ -25,6 +29,10 @@ export interface RagPoint {
     grounded: boolean;
 }
 interface RagStick {
+    /** Fraction of the constraint correction the `b` end absorbs
+     *  (0.5 = symmetric). Light cloth anchored on heavy bone rides at
+     *  0.75–0.9 so the cape follows the body, never drags it. */
+    bias?: number;
     a: number;
     b: number;
     len: number;
@@ -53,6 +61,9 @@ export declare class Ragdoll {
      * ragdoll and the tumble is a pure function of (victim, blow).
      */
     private rngState;
+    /** The build seed, kept whole for deterministic corpse painters
+     *  (the launch RNG mutates its own copy). */
+    readonly seed: number;
     constructor(pts: RagPoint[], sticks: RagStick[], heavy: number[], seed?: number);
     private rand;
     /**
@@ -93,14 +104,24 @@ export declare const H: {
     readonly elbowR: 9;
     readonly handR: 10;
 };
+/** Simulated cape stations riding a caped ragdoll: the mid-cloth
+ *  point and three hem stations, in `Ragdoll.pts` index space. */
+export interface RagCapeIdx {
+    mid: number;
+    hem: [number, number, number];
+}
 /**
  * Standing humanoid skeleton, proportioned like the live rig (HEIGHT=1
  * scaled by `size`). Floor scatter comes from the seed so two goblins
- * never sprawl identically.
+ * never sprawl identically. `cape` appends a light cloth chain off the
+ * chest — mid-cloth plus three hem stations on mass-biased soft sticks
+ * — so the banner STREAMS through the tumble on the same simulation,
+ * floors with the body, and freezes with it when the sim sleeps: the
+ * settled corpse costs exactly what it cost before.
  */
-export declare function buildHumanoidRagdoll(size: number, seed: number): Ragdoll;
+export declare function buildHumanoidRagdoll(size: number, seed: number, cape?: boolean): Ragdoll;
 /** Upper-body / feet index groups for launch(). */
-export declare const HUMANOID_UPPER: (2 | 1 | 8 | 10 | 7 | 9)[];
+export declare const HUMANOID_UPPER: (1 | 2 | 7 | 8 | 9 | 10)[];
 export declare const HUMANOID_FEET: (4 | 6)[];
 /**
  * Beast skeleton: rear hip, front chest, head, then one two-segment
@@ -132,6 +153,9 @@ export interface CorpseGear {
     gloves?: string;
     weapon?: string;
     offhand?: string;
+    /** The banner comes down with its bearer — spilled cloth under the
+     *  fallen trunk, in the cape's own colors, hem cut and emblem. */
+    cape?: string;
     /** Enchant ids riding the weapons — the fx channel survives death. */
     weaponEnch?: string;
     offhandEnch?: string;
@@ -147,6 +171,21 @@ export interface HumanoidCorpseLook {
     kob?: KoboldLook;
     /** Set = this corpse is a gnoll: muzzle, crest, and coat stay. */
     gno?: GnollLook;
+    /** Set = this corpse is a goblin: wing ears, hook nose, and tusks stay. */
+    gob?: GoblinLook;
+    /** Set = this corpse is a golem: the construct comes APART — the
+     *  stack slides, the plates spring, the furnace goes out. */
+    gol?: GolemLook;
+    /** Set = this corpse is an ogre: THE FELLED HILL — the gut is the
+     *  mound, the jaw still juts, the club lies by the open hand. */
+    ogr?: OgreLook;
+    /** Set = this corpse is a skral: the lantern eye gone dull, the
+     *  crest flopped flat over the skull, the needle grin slack. */
+    skr?: SkralLook;
+    /** Set = this corpse is a hobgoblin: the painted helm still
+     *  seated, the corner fang proud of a jaw that gives no more
+     *  orders. */
+    hob?: HobgoblinLook;
     /** Worn equipment — the corpse keeps everything it died in. */
     gear?: CorpseGear;
 }
@@ -170,11 +209,6 @@ export interface BeastCorpseLook {
      */
     owl?: OwlLook;
 }
-/**
- * Paint a beast ragdoll: the same faceted body mass and species legs
- * as the live drawBeast, hanging off the simulated spine — half the
- * legs behind the mass, half in front, tail limp on the ground.
- */
 export declare function drawBeastRagdoll(ctx: CanvasRenderingContext2D, rag: Ragdoll, f: RagFrame, look: BeastCorpseLook): void;
 export {};
 //# sourceMappingURL=ragdoll.d.ts.map

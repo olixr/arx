@@ -1236,6 +1236,9 @@ export function buildAmberford(): ZoneDef {
   b.npcSpawn('cow', 134, 49.5, 3, 3);
   b.npcSpawn('cow', 92, 17.5, 2.5, 2);
   b.npcSpawn('chicken', 40, 91.5, 1.6, 4);
+  // The hen-yard cat, and the stable cat sunning by the cows.
+  b.npcSpawn('cat', 41.5, 89.5, 2.5, 1);
+  b.npcSpawn('cat', 132, 51.5, 3, 1);
   b.npcSpawn('sheep', 20, 108.5, 4, 3);
 
   // Respawn hearth for the eastern lowlands: the Round, by the well.

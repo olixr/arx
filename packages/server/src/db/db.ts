@@ -1092,6 +1092,12 @@ const MIGRATIONS: string[] = [
   // focus law. DEFAULT 1 keeps every existing answer at its founding
   // shape; the row stays presence-keyed.
   `ALTER TABLE character_callings ADD COLUMN IF NOT EXISTS rank INTEGER NOT NULL DEFAULT 1;`,
+  // v43: THE COAT OUTLIVES THE BODY (the house cat) — a companion's
+  // procedural look seed, captured from the wild body's eid on the
+  // day of the asking, so the coat the keeper courted follows them
+  // across every respawn. NULL on elder rows: they keep dressing by
+  // the spawned body's eid, exactly as they always did.
+  `ALTER TABLE character_pets ADD COLUMN IF NOT EXISTS look_seed INTEGER;`,
 ];
 
 /**

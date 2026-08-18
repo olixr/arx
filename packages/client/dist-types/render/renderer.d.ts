@@ -1,9 +1,11 @@
 import { Tile, type Vec2 } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
+import { FootprintField } from './footprints.js';
 import { Particles } from './particles.js';
 import { Debris, type SmashKind } from './debris.js';
 import { Birds } from './birds.js';
 import { InteriorMap } from './interiors.js';
+import { type FxStyle } from './abilityFx.js';
 /** Identity tints for undressed player rigs — also the party marker
  * inks (map tokens + wayfinder pills), so a fellow reads as the same
  * color on the chart as in the world. */
@@ -74,6 +76,9 @@ export declare class Renderer {
     private readonly canvas;
     readonly camera: Camera;
     readonly particles: Particles;
+    /** THE LANDING WORD: per-body status memory for application moments. */
+    private statusEdges;
+    private matterCtxCache;
     /** Smashed-prop chunk bodies — pooled, wall-aware, self-clearing. */
     readonly debris: Debris;
     /** Ambient bird flocks — land, peck, and flush when a body comes close. */
@@ -267,8 +272,16 @@ export declare class Renderer {
      *  the mirror pass clips by AFTER the water region — null when no
      *  deck is in view. */
     private waterClip;
-    /** Per-body wading state: splash edges + wake phase. */
+    /** Per-body wading state: splash edges + wake phase. `seenAt` marks
+     *  the last frame the body was dressed, so the under-water ring pass
+     *  never draws a stale collar; `lastRippleAt` throttles the trailing
+     *  wake rings a moving wader sheds. */
     private readonly wadeStates;
+    /** THE WAKE REMEMBERS: rings shed into the water — trailing ripples
+     *  behind a moving wader, the splash ring of a step in or out. Drawn
+     *  UNDER every body (right after the live water pass), expanding and
+     *  fading on their own clocks. */
+    private wakeRipples;
     private readonly outlineA;
     private readonly outlineB;
     private readonly outlineACtx;
@@ -283,6 +296,15 @@ export declare class Renderer {
     private readonly olObjIds;
     private olObjSeq;
     private readonly baked;
+    /**
+     * THE CROSSING (docs/planes-plan.md §2.4): the world under the
+     * camera just became a DIFFERENT world with legitimately overlapping
+     * coordinates. Every position-keyed cache the renderer holds must
+     * drop whole — a survivor would paint another plane's furniture
+     * here. Version-gated memos (lift/dock/bridge/fall) self-heal off
+     * the worldVersion bump; this clears everything that does not.
+     */
+    onPlaneSwitch(): void;
     /** Per-frame queue of chunks with pending sliced bakes (scan order:
      *  visible chunks first, then the pre-bake ring). Scratch, rebuilt
      *  every frame by drawGroundChunks. */
@@ -322,6 +344,8 @@ export declare class Renderer {
     private h;
     private hitstopUntil;
     private vignetteUntil;
+    /** Hurt-band ink — a DoT tick tints the edge toward its wound. */
+    private vignetteRgb;
     private zoomPulseAmount;
     private readonly rings;
     /**
@@ -350,6 +374,16 @@ export declare class Renderer {
     /** Body-thud hook: the renderer sees the landing, main.ts owns sfx. */
     onCorpseThud?: (heavy: boolean, x: number, y: number) => void;
     /**
+     * The sliding corpse budget (THE FIELD PAYS ITS WAY): stepped by the
+     * same frame-time signal the adaptive resolution reads — a machine
+     * holding its own display budget earns the full field, a straining
+     * one sheds toward the floor. Adjusted on a slow clock so it never
+     * thrashes with one bad frame.
+     */
+    private corpseBudget;
+    private corpseBudgetStepAt;
+    private corpseNudgeAt;
+    /**
      * THE FALL IS NEVER THE END (beastcraft v2 Phase 3): downed
      * companions — live entities lying at zero — render in the settled
      * ragdoll dialect, pre-settled once and cached per eid. A downed
@@ -372,10 +406,21 @@ export declare class Renderer {
     /** A fading, flattening silhouette where something died. */
     /** Freeze-frame: animation and particles crawl for a beat on impact. */
     hitstop(seconds: number): void;
-    /** Red edge flash when the local player takes damage. */
-    flashHurt(): void;
+    /**
+     * Red edge flash when the local player takes damage. A DoT tick
+     * names its wound and the bands take that ink (green edge = POISON,
+     * no words needed); a plain blow stays the standing red.
+     */
+    flashHurt(via?: 'burn' | 'bleed' | 'venom'): void;
     /** Expanding impact ring at a world position. */
     addRing(x: number, y: number, color: string, maxR?: number): void;
+    /**
+     * THE KEPT FLAME answering a hand: 'light' is a soft amber take —
+     * one warm breath of a ring and a few rising motes; 'snuff' is the
+     * honest grey — slow wisps curling off the dead wicks. Deliberately
+     * the quietest fx in the game: a candle is mood, never an event.
+     */
+    addCandleFx(x: number, y: number, lit: boolean): void;
     /**
      * Kick off the level-up ceremony at the player's feet. The opening
      * crack fires here (flash ring + streak column + shard fan + zoom
@@ -392,6 +437,15 @@ export declare class Renderer {
     private queueBeat;
     /** Fire every due aftershock beat. Called once per frame. */
     private runFxBeats;
+    /**
+     * THE TRACKED GROUND (footprints.ts): prints stamped where feet
+     * leave the soil — the leg rigs' lift rings feed it, the ground
+     * decides the ink, and it paints in the same stratum as the decals
+     * below. Public so the Display toggle can reach the field.
+     */
+    readonly footprints: FootprintField;
+    /** Bound terrain-lift sampler for the footprint painter. */
+    private readonly footprintLift;
     /** Lingering ground marks left by detonations (scorch, rime, cracks…). */
     private readonly fxDecals;
     /**
@@ -506,6 +560,13 @@ export declare class Renderer {
     /** Visible drops this frame — the loot-label pass reads these. */
     private frameLoot;
     /**
+     * THE TUMBLE's contact ledger: floor strikes already dust-puffed per
+     * drop eid, so each bounce fires exactly once. Size-capped, cleared
+     * wholesale when it overgrows — a stale zero only re-arms dust for a
+     * drop that is younger than the age gate anyway.
+     */
+    private readonly dropContacts;
+    /**
      * Screen rects the loot labels landed on last pass — the click
      * affordance. A label IS its drop's hitbox (bags overlap in a pile;
      * their labels never do), with the bag sprite as a fallback target.
@@ -513,6 +574,18 @@ export declare class Renderer {
     private lootPlates;
     /** Emissive glow requests queued during the frame, composited last. */
     private readonly glows;
+    /**
+     * THE SEATED HALOS (lighting v4 phase 2): the standing data-emitters'
+     * glows, routed here instead of the post-pass `glows` queue. Drawn as
+     * sorted world items (pool + corona) inside the world pass, then
+     * their flame-point CORES glint in the post pass. queueGlow dynamics
+     * and the coded emitters (portals, tables, chests, windows) stay in
+     * `glows` until phase 4 seats them too.
+     */
+    private readonly seatedGlows;
+    /** THE OVERREACH FIELD's third-res accumulation scratch (phase 3). */
+    private readonly overreach;
+    private readonly overreachCtx;
     /** Arrows standing in the ground/walls; fade out near `until`. */
     private readonly stuckArrows;
     /** Spent shots arcing down at the end of flight — a quarter-second of
@@ -584,7 +657,11 @@ export declare class Renderer {
      * arrive near zero, so volume can ride it directly.
      */
     onFootstep: ((x: number, y: number, speed: number, isOwn: boolean, sneaking: boolean) => void) | null;
-    /** Nearest crafting station around a world position, if any. */
+    /** Nearest crafting station around a world position, if any. THE
+     *  VERB IS VISIBLE (work.ts): every station keeps its TRUE identity
+     *  — the old grouping collapsed seven trades into one workbench
+     *  pantomime, so the weaver, the tanner, the carver, the alchemist,
+     *  the enchanter, and the sawyer all tapped the same air. */
     private findStation;
     /**
      * The nearest milkable animal (livestock with produce) in hand
@@ -622,6 +699,18 @@ export declare class Renderer {
      * reading this — lids glide open, fires flare, beams work harder.
      */
     private readonly stationHeat;
+    /** THE IMPACT IS ONE TRUTH: the last hammer-clang instant per
+     *  station tile — the anvil painter's white flash and spark fan
+     *  latch to the swung hammer's own beat, never a private sine. */
+    readonly stationClang: Map<number, number>;
+    /** Struck-node timestamps: a worked tree, rock, or bush shivers for
+     *  a beat when the tool lands — the world answers the blow. */
+    private readonly nodeImpacts;
+    /** Record an impact on a worked node tile. */
+    nodeStruck(tx: number, ty: number): void;
+    /** Screen-x jitter (±1) for a struck node — a damped ring that dies
+     *  inside a quarter second. Zero when the tile is at rest. */
+    private nodeShiverAt;
     /** The open station panel's anchor tile (set per frame by main.ts). */
     stationFocus: {
         tx: number;
@@ -630,6 +719,13 @@ export declare class Renderer {
     private tickStationHeat;
     /** Classify a tile as a gatherable node kind, if it is one. */
     private gatherKindAt;
+    /**
+     * THE PATIENT LINE's water: the tile a Fish-posed body angles. A
+     * classified fishing spot wins (own player's interact tile first);
+     * failing that, honest open water within reach — the pier NPC's
+     * case, whose stop stands over plain Water with no node at all.
+     */
+    private findFishWater;
     /**
      * The gatherable node a working body should square up to. The
      * server never names the action's tile, so remote players get the
@@ -732,6 +828,8 @@ export declare class Renderer {
      * capped so a lamp-ringed plaza stays cheap.
      */
     private buildFrameLights;
+    /** Last frame's shadow-casting seats (quantized world pos). */
+    private readonly throwSeats;
     /**
      * The shadow throws a point at screen (px, py) receives from nearby
      * lights: world-space unit direction AWAY from each light, a length
@@ -835,6 +933,16 @@ export declare class Renderer {
      *  rebuilt only when the camera crosses a tile or the world changes. */
     private waterClipFor;
     /**
+     * THE WATER BEHIND THE BODY — drawn right after the live water pass,
+     * BEFORE any entity: (a) every shed wake ripple, expanding and
+     * fading where the wader actually walked; (b) the BACK arcs of every
+     * active wader's collar and wake rings (π..2π — the far side of each
+     * ellipse), so the rings pass visibly behind the shins while their
+     * front halves ride over them in the label pass. This split is what
+     * seats a body IN the surface instead of under a stamped decal.
+     */
+    private drawWadeUnderlays;
+    /**
      * Water dressing for one living body, the single entry point players,
      * NPCs and the own body all pass through:
      *  - standing in SHALLOWS: the body sinks to the shins behind the
@@ -924,6 +1032,32 @@ export declare class Renderer {
      *  thousands of strings a second in glow-heavy combat. */
     private static readonly RGB_MEMO;
     private static parseRgb;
+    /** Tuple → 'r, g, b' for glow-sprite keys — memoized on the tuple's
+     *  identity (data rows and parseRgb both hand out stable tuples, so
+     *  the overreach pass never rebuilds a string per light per frame). */
+    private static readonly CSV_MEMO;
+    private static csvOfRgb;
+    /**
+     * THE CARRIED FLAME (v4 phase 4): any equipped item with carryLight
+     * is a real scene light. Registered at entity-COLLECT time — before
+     * the shadow prepass — so a held lantern casts THIS frame's shadows
+     * (no dynamic-light lag). Flame-gated: it sleeps by day like every
+     * man-made fire; each carrier breathes on its own phase. The bloom
+     * rides the SEATED halo path (pool + corona + core) at the held
+     * height, so the lantern glows like the fixture it is.
+     */
+    private ownCarryLit;
+    private carriedLight;
+    /**
+     * THE AUTHORED FLAME's door (v4 phase 4): a style-carrying effect
+     * queues its bloom AND its authored scene light in one call. With
+     * `st.light` the light is the AUTHORED voice — reach, intensity
+     * ceiling and height from the style family, instantaneous strength
+     * riding the bloom's moment (a/0.4, capped) so a dying ember dims
+     * its pool with its glow. Without it, the exact queueGlow floor
+     * derivation applies — the floor, not the ceiling.
+     */
+    queueFxGlow(x: number, y: number, r: number, a: number, st: FxStyle): void;
     queueGlow(x: number, y: number, r: number, rgb: string, a: number): void;
     /** 1/3-res frame copy backing the tilt-shift (bilinear up IS the blur). */
     private readonly tiltScratch;
@@ -1227,6 +1361,30 @@ export declare class Renderer {
     /** True while a band bake paints: the veil fields read full height
      *  and collect-side glow effects stay quiet (bakingMask). */
     private bakeVeilFull;
+    /**
+     * THE BANDED JOINT WEARS AN UNDERLAP (bake-only). A stretch's outer
+     * edge abuts content drawn from ANOTHER surface — the live windowed
+     * wall or gate that split the stretch, or the next chunk's own band.
+     * At settled zoom every surface shares the device lattice and the
+     * joint abuts byte-exact, but a gridPx-STALE band blits by pure
+     * scale ratio (mid-glide / dpr step / awaiting the paced re-bake)
+     * and its resampled edge lands up to ~1.5 device px off the live
+     * neighbor's snapped edge — printing a background-colored hairline
+     * down the full band height at every window transition on every
+     * zoom. So the bake extends the END members' paint a few device px
+     * PAST the shared edge (same-material flat-wall neighbors only —
+     * doors, gates, diagonals and material changes keep exact edges):
+     * the neighbor's own opaque paint covers the overrun whenever the
+     * lattice agrees, and a stale blit fills the joint with the wall's
+     * own masonry instead of grass. Live paint NEVER bleeds a joined
+     * edge — THE SHARED-EDGE LAW stands untouched. Keys are packTile of
+     * the end members; -1 outside bakes.
+     */
+    private bakeBleedW;
+    private bakeBleedE;
+    /** The underlap span in CSS px on the bake ctx (dprB-scaled): ~3
+     *  device px — misregistration bound (~1.5) plus resample fringe. */
+    private bakeBleedPx;
     /** Bound once — planStretches calls it per member. */
     private readonly memberBandableFn;
     /**
@@ -1300,6 +1458,12 @@ export declare class Renderer {
      * side effects out of the pixels.
      */
     private bakeStretch;
+    /** The flat-wall FACE FAMILY a tile paints with — windows resolve to
+     *  their masonry, the two cave masses count as one. Only a same-face
+     *  neighbor may receive a band end's underlap (bakeBleedW): any
+     *  other joint (door, gate, diagonal, material change) would show
+     *  foreign paint the moment a stale blit misregisters. */
+    private static wallBleedMat;
     private acquireBandCanvas;
     private releaseStretchBake;
     /**
@@ -1400,6 +1564,53 @@ export declare class Renderer {
      */
     private playerBannerOnFace;
     /**
+     * The woven charge at a great cloth's heart, drawn in the house
+     * metal. Features stay at or above the chest-law minimum — bold
+     * marks the avenue reads, never embroidery only a zoom sees.
+     */
+    private paintBannerEmblem;
+    /**
+     * THE GREAT CLOTH — the castle drop shared by the wall's
+     * GreatBanner and the standing BannerStand (one cooper: never fork
+     * the dialect). A square-bodied drop with a CRENELLATED hem — two
+     * square notches biting up between three teeth, the castle-pillar
+     * cut; the swallowtail stays the royals' and the street's. TRUE
+     * SEWN BORDER law: the border is a trim-colored fill of the full
+     * silhouette with the dye field inset, never a stroked line.
+     * THE COLOR IS THE HOUSE: the woven charge follows the DYE (dye %
+     * BANNER_EMBLEM_COUNT) — never a position hash, whose grid seams
+     * once flew two different houses on one authored gatefront. Choose
+     * the cloth, choose the charge; a matched pair can never argue.
+     * Returns the outer path for the caller's ink.
+     */
+    private paintGreatCloth;
+    /**
+     * THE WALL TAKES THE STEEL — mounted arms on the armory face.
+     * Steel is STILL: nothing here samples the breeze but the great
+     * crest's mantling ribbons — a mounted sword that swayed would
+     * read as hanging by a thread. Every piece throws a soft SE ghost
+     * on the masonry (the WeaponRack's iron-off-the-wood law), wears
+     * one west light, and rings its own exposed silhouette; lapped
+     * steel inks under the piece that laps it (the woodpile law
+     * brought to the wall).
+     */
+    private wallArmsOnFace;
+    /**
+     * THE CASTLE DROP — the great hall banner off a lance rod. Taller,
+     * wider, and crenel-hemmed against the street banner's swallowtail;
+     * garrison faces fly it garrison-tall so the avenue reads the
+     * colors from the market. Charge by the sixteen-tile heraldry.
+     */
+    private greatBannerOnFace;
+    /**
+     * THE LONG FALL — a floor-length drape off a turned timber rod:
+     * gathered at a corded waist, flaring to a hem that PUDDLES on the
+     * boards (cloth long enough to spill is the luxury the castle pays
+     * for). Interior cloth has weight: the hem barely breathes, the
+     * tie tassel swings a touch — never the street banner's ripple.
+     */
+    private drapeFallOnFace;
+    /**
      * THE HERALD'S ROW — hanging pennants: a wrought rail bearing three
      * long tapered pennons in the chosen dye, each bordered in its cream
      * partner (the fill is trim, the inner field cloth — a true sewn
@@ -1444,6 +1655,26 @@ export declare class Renderer {
      * pendulum. The gardener's smallest word.
      */
     private wallBasketOnFace;
+    /**
+     * THE HERBALIST'S SILL: three glazed pots standing on the window's
+     * sill course, herbs by mix — the one hanging painted by the window
+     * stack itself. Coordinates arrive in the wall's leaned face frame;
+     * sillY is the glass's bottom edge (the sill course paints just
+     * below it). GLAZED WARE NEVER BARE CLAY: the pots deal from the
+     * jar-glaze roster, each with its slip band and lit cheek, and the
+     * row is dealt — heights, jitter, and species stations vary by the
+     * world hash so no two sills in a street read as one stamp.
+     */
+    private sillHerbsOnSill;
+    /**
+     * THE HARVEST ON THE BEAM: a pegged oak batten across the wall
+     * face, three heads-down drying bundles and a seed string swinging
+     * on the banner's two-beat breeze — the herbalist's overflow where
+     * the freestanding rack is the workshop station. Bundle heads reuse
+     * the rack's layered-teardrop grammar at wall scale; the mix keys
+     * the hues (green harvest / healer's mix / seed heads).
+     */
+    private herbBundlesOnFace;
     /**
      * The grand tapestry — the Silverfall weave. Adjacent wall tiles of
      * the same run carrying Detail.Tapestry merge into ONE wide hanging:
@@ -1708,6 +1939,13 @@ export declare class Renderer {
      * camera-facing hyp draws in front of the bodies north of it, a
      * far-side hyp sorts behind the deck's traffic.
      */
+    /**
+     * THE LANDFALL NEWEL: the chunky chamfer-capped post a parapet
+     * plants where it meets the bank — the crossing's own gate
+     * furniture. Retires the grade-level fence posts maps used to stand
+     * beside bridge mouths to fake this.
+     */
+    private drawRailNewel;
     private deckFillRailItem;
     /**
      * A bridge's hip-height parapet: one live rail item per exposed
@@ -1716,6 +1954,41 @@ export declare class Renderer {
      * while both walk ends stay open. These are y-sorted items, never
      * bake: a body crossing the deck sorts behind the south rail.
      */
+    /**
+     * Does the tile at (x,y) carry a parapet rail on its (dx,dy) edge?
+     * A parapet exists to keep walkers out of the WATER: edges facing
+     * the bank carry no rail (land-facing step edges were stacking
+     * little fence boxes down every staircase junction). Ramp aprons
+     * keep their rails over land — the sloping entrance's furniture.
+     * EVERY water-facing edge rails, regardless of the walk axis
+     * (round 7): a stair-stepped span exposes step faces PARALLEL to
+     * the walk, and a walk end can only ever be an entrance where it
+     * meets LAND. An edge welded to a 45° notch fill is interior: the
+     * fill's own diagonal rail item carries the parapet across the
+     * hypotenuse instead. One predicate decides the tile AND all its
+     * neighbors, so runs read as one continuous parapet.
+     */
+    private railEdgeAt;
+    /**
+     * Does any straight parapet rail END at the tile corner (cx,cy)?
+     * The gate that keeps a 45° fill's diagonal rail honest: a lone
+     * slanted handrail floating on a dock's chamfered prow (no straight
+     * rail arriving at either end) read as scaffolding debris — the
+     * diagonal only carries the parapet where a parapet actually
+     * arrives.
+     */
+    /**
+     * Does a 45° fill's hypotenuse actually CARRY the parapet? Only a
+     * bridge-family water fill whose straight rails arrive at BOTH hyp
+     * corners — the diagonal is a connector, never a terminus. The old
+     * either-corner gate let one arriving rail sling a slanted board
+     * across a dock junction's notch that dead-ended mid-structure at
+     * the far corner — a floating handrail with an orphan post (the
+     * user's dock screenshot). One arriving rail now plants its end
+     * post at the corner instead (cornerHeld shares this verdict).
+     */
+    private fillRailBridges;
+    private railArrivesAtCorner;
     private bridgeRailItems;
     /** The interior region a wall-run tile fronts: any adjacent
      *  enclosed floor claims it (per-frame cached in the InteriorMap). */
@@ -2170,6 +2443,14 @@ export declare class Renderer {
     /** The closure-free bulk lane's one dispatch (see DrawItem.bulk). */
     private drawBulkItem;
     /**
+     * One seated halo (see the HALO dials by BulkKind): the POOL as a
+     * true camera-foreshortened ground ellipse at the fixture's anchor,
+     * the CORONA round at the flame's own height — `lighter`, inside the
+     * sorted world pass, BEFORE the exposure multiply. The flame-point
+     * core glints later in the post pass (drawGlows).
+     */
+    private drawSeatedHalo;
+    /**
      * Pooled bulk-lane DrawItems, reused every frame. ONLY the bulk lane
      * may pool: entity items can outlive the frame (the reflection
      * registry replays them), bulk items never do — and a pooled record
@@ -2481,6 +2762,193 @@ export declare class Renderer {
      * side-door law: never a pair).
      */
     private fenceGateItem;
+    /**
+     * Palisade connectivity: the war camp's wall merges ONLY with its
+     * own kind (the separate-masonry law, third family) — a goblin
+     * stockade dying into a town fence or house wall would read as one
+     * builder's work, and they are not.
+     */
+    private palisadeish;
+    /**
+     * ONE GIANT CARVED LOG — the unit the whole wall is built from. A
+     * quarter-tile round hewn from a whole trunk: four value bands roll
+     * the cylinder (FLAT FORGE — planes, never strokes), one or two
+     * axe-notch carvings bite the face, and the crown is a big two-facet
+     * chisel cut with an undercut shadow seating it on the body. Each
+     * log wears its OWN brand ring — a palisade is a row of monuments,
+     * not a fence panel — and overlapping logs occlude each other's ink
+     * honestly because fill and ink land together, log by log.
+     */
+    private giantLog;
+    /** Shoulder height for log k of a tile — big and uneven (1.3 to
+     *  1.62 tiles over the 1.15-tile body: the wall MEANS it). */
+    private logShoulder;
+    /**
+     * THE HEAVY LASH: a thick rope course bound across a span of logs —
+     * dark wrap band, two lit strands, a shadowed wrap tick where it
+     * rounds each log seam, and a knot with a dangling end at one
+     * hash-picked log. Fill-only value work (the logs own the ink).
+     */
+    private palisadeRope;
+    /**
+     * A GATE POST: the fattest log in the wall, with a rope hinge
+     * collar and — on one side of every gate — the camp's skull staring
+     * down the road.
+     */
+    private drawPalisadePost;
+    /**
+     * THE SPIKED WALL, rebuilt — GIANT CARVED LOGS, not a fence. Four
+     * whole trunks to the tile (each its own monument: rolled value
+     * bands, axe notches, a big two-facet point, its own black ring),
+     * bound by heavy rope courses. Every direction speaks the same
+     * vocabulary of STANDING logs:
+     *  - E-W runs: logs shoulder to shoulder, widths hash-split so no
+     *    two neighbors match, half-tile pitch so runs meet log-true.
+     *  - N-S runs: logs MARCH UP-SCREEN in depth — each drawn whole,
+     *    the next-south overlapping it, leaving a ridge of crowned
+     *    points climbing the screen (never an extruded strip).
+     *  - 45° strides: the same marching logs stepping corner-to-corner
+     *    — vertical giants on a diagonal line, never sheared planks.
+     * A fat junction log anchors every corner, tee, and run end.
+     */
+    private palisadeItem;
+    /**
+     * THE GREAT GATE — the camp's one piece of architecture. Two
+     * towering gate posts (the fattest logs in the wall, rope hinge
+     * collars, the skull watching the road) carry a squared lintel beam
+     * overhead: a true top plane for the bird's eye, three carved
+     * spikes standing on it, lashed to the posts at both ends. Below
+     * swing DOUBLE doors of lashed half-logs that meet at a rope-bound
+     * center seam — open, each leaf folds flat against its own post.
+     * N-S gates keep the posts-and-leaf grammar edge-on (a lintel seen
+     * end-on is a sliver, so the vertical gate lets its posts carry the
+     * height instead).
+     */
+    private palisadeGateItem;
+    /**
+     * Hedge connectivity: the garden's wall merges ONLY with its own
+     * kind (the separate-masonry law, FOURTH family) — clipped green
+     * dying into a timber fence or house wall would read as one
+     * builder's work, and a gardener is not a carpenter.
+     */
+    private hedgeish;
+    /** Half-tile crown-lobe amplitude, WORLD-keyed (channel per axis)
+     *  so run-mates agree at every shared seam. */
+    private hedgeLobe;
+    /**
+     * The clipped crown profile: per segment, two quadratic leaf-lobes
+     * meeting at a shallow shear notch — a gardener's line, organically
+     * lumpy but unmistakably CUT. Segment endpoints sit at the constant
+     * base line, so adjacent tiles (whose spans always start and end on
+     * half-tile boundaries) meet crown-true at every seam. Used for
+     * BOTH the fill silhouette and the ink (one geometry, one truth).
+     */
+    /**
+     * ONE MASS, ONE SILHOUETTE — the hedge's bespoke unit painter (the
+     * round-three verdict: composing slabs, strips, knuckles, and piers
+     * per tile left interior ink crossing every junction and gates
+     * reading as bollards beside gaps — wall-family thinking; a hedge
+     * is not a wall). The caller hands a closed clockwise PLAN loop of
+     * typed segments (crown = north-facing free edge, skirt = south-
+     * facing free edge wearing the face, sideW/sideE = west/east free
+     * edges, cut = a shared tile seam where a neighbor's mass
+     * continues) plus the crown texture cells and pillow-parting
+     * creases; this paints the WHOLE mass as one truth: the crown
+     * plane filled from a single decorated outline (crown lobes on
+     * north edges, pinch-and-bulge caterpillar sides keyed so both
+     * tiles at any seam agree, gently bellied skirts, rounded convex
+     * corners, filleted concave junctions), the south faces hung from
+     * the skirt edges with the full face kit, and ONE ink pass that
+     * strokes the outer silhouette only — cuts never take ink, so
+     * merged runs, corners, tees, and gate stubs read as one clipped
+     * body across any number of tiles.
+     */
+    private hedgeMassPaint;
+    /**
+     * THE CLIPPED GREEN, AT THE WAIST — a hedgerow, not a wall. The
+     * unit is the CUSHION RUN: a hip-high bed of clipped pillows whose
+     * sunlit top plane is the DOMINANT surface under the bird's-eye
+     * camera (a low hedge is seen mostly from above), riding a short
+     * shaded south face that seats into the turf through a tufted
+     * skirt. The mass FILLS its tile in plan — skirt near the south
+     * edge, crown back near the north — so a hedgerow laid against a
+     * building reads as planted against it, never a fence floating in
+     * grass. World-keyed half-tile lobes billow the crown so runs fold
+     * seamlessly; pillow creases part the plane at those same
+     * boundaries (each tile owns its west/north seam crease — one
+     * crease per boundary, never doubled) and a soft dome sheen rounds
+     * every cushion. E-W runs are one continuous pillowed bed; N-S
+     * runs march the near-full-width crown plane up-screen; corners,
+     * tees, N-S run ends, and 45° strides are anchored by fuller
+     * junction cushions in the same vocabulary. THE BODY HOLDS STILL
+     * (per-tile wind bend would print seam kinks a run must never
+     * show); the LIFE is layered on: the wind field's long luminance
+     * swell rolls light across the crowns, stray sprigs the shears
+     * missed flutter above the silhouette, leaf glints breathe on the
+     * plane, and one tile in six flowers on its crown. Ink is the wall
+     * law live-stroked: crown silhouette always, plumb sides only at
+     * true free ends, seams never — estate-length hedgerows ring
+     * seamlessly.
+     */
+    private hedgeItem;
+    /**
+     * THE GARDEN WICKET — the hedge gate, round four. The living arch
+     * DIED here: a 1.42-tile trained span over a 0.5-tile hedgerow was
+     * nearly three times the mass it bridged — the out-of-scale tower
+     * the user called out. What a hip-high garden actually gates its
+     * path with is a hip-high gate: the hedgerow itself runs up to two
+     * post cushions AT ITS OWN HEIGHT AND PLAN (their outer edges are
+     * CUTS, so the neighbor runs fuse in seamlessly — the gate is the
+     * hedge, thickened at the gap), a waist-high timber wicket swings
+     * in the opening (the one piece of carpentry the garden allows,
+     * riding the door law wholesale — doorOpenness eases the swing, a
+     * locked rattle shakes it), and a clipped FINIAL BALL on each post
+     * crown says "gatepost" in the topiary's own voice instead of with
+     * height. N-S gates keep the same body edge-on: two run-width
+     * stubs with cut seams, the wicket a paled bar between them.
+     */
+    private hedgeGateItem;
+    /**
+     * THE STANDING-HOOP LAW: a hoop on an upright cask is a HORIZONTAL
+     * ring, and this tilted camera sees its FRONT ARC bowing DOWN
+     * across the belly — never a straight strip (a flat band is the
+     * side-elevation lie the whole barrel shelf used to tell). One
+     * filled band between two down-bowed curves, a lit upper edge
+     * riding the top curve, and rivets at the crest and both ends.
+     * `dip` is the ring's foreshortened front drop at this hoop's
+     * width (the head-ellipse ry scaled down the belly). Reads
+     * this.ctx at call time — the outline pass swaps it.
+     */
+    private paintStandingHoop;
+    /**
+     * THE STREET CASK — ONE COOPER for the whole game. The upright
+     * barrel as a TURNED VOLUME under this camera: a coopered bulge on
+     * true curves closed over the head's foreshortened ellipse (the
+     * silhouette's top IS the far rim — the old straight-cut hexagon
+     * with a pasted facet lid is dead), stave seams bowing with the
+     * belly, a west sun lane and east shade, down-bowed riveted hoops
+     * (paintStandingHoop), the chime ring that honestly shows as a
+     * ring because the camera looks INTO the head, and a planked lid
+     * sunk in its shadowed rebate — or the rain-butt's open water
+     * with the drifting glint. Tile.Barrel and the BarrelStack both
+     * cast from here (a stack speaks its family's dialect). Draws
+     * from bottom-center (cx, by); `seed` deals plank turn, bung
+     * side, and grain; opts.ink lays the outline pass's own ink under
+     * the silhouette first, for castings that LAP other casks (the
+     * cart-wheel law). Reads this.ctx at call time.
+     */
+    private paintStreetCask;
+    /**
+     * THE SHELVING CONTRACT — one dispatcher, nine goods kinds, every
+     * good drawn from its bottom-center (gx, gy) so anything seats on
+     * any surface: 0 potions, 1 cloth, 2 crockery(bowls), 3 boxes,
+     * 4 books, 5 scrolls, 6 larder, 7 jug, 8 tinker. The ShopShelf and
+     * the DisplayTable both deal their stock from it; a future
+     * player-stocked shelf deals these kinds from its ledger instead
+     * of the hash. Reads this.ctx at CALL time, so the outline pass's
+     * scratch swap is honored wherever the caller sits.
+     */
+    private paintShelfGood;
     private objectItem;
     /**
      * THE CLOTH TAKES THE STREET — the awning painter, v3, the
@@ -2523,6 +2991,15 @@ export declare class Renderer {
      * (wet ground swallows the impact). Mult scales how much a given
      * surface gives up — sand erupts, flagstone barely powders. */
     private static dustFor;
+    /**
+     * THE TRACKED GROUND: diff a rig's lift ring and stamp a footprint
+     * for every honest lift-off inside that update — the print lands at
+     * the exact spot the planted foot occupied, gated by the material
+     * underfoot (dirt, sand, snow… — printInkFor decides). Returns the
+     * new lift count for the caller's anim record; a first sight seeds
+     * silently (a body entering view didn't just step).
+     */
+    private stampFootprints;
     /**
      * A foot met the ground — kick loose a puff of whatever the ground
      * is made of. Speed decides how much earth moves: an amble stirs
@@ -2589,16 +3066,41 @@ export declare class Renderer {
      */
     private bedCoversSide;
     private humanoidItem;
-    /** Per-entity alert glyph animation state (icon + when it changed). */
+    /** Per-entity alert badge animation state (icon + when it changed). */
     private readonly alertAnim;
+    /** THE EYE ABOVE THE HEAD: one ink per perception rung — the amber
+     *  ladder climbs to red exactly as the danger does. */
+    private static readonly ALERT_INK;
     /**
-     * THE TELEGRAPH: the "?" / "!" over a wary or engaged head — the
-     * player-facing read of the perception ladder. Gold "?" = something
-     * has its attention (suspicious/investigating); ember "!" = the
-     * hunt is on; the hunting "?" pulses — the chain is broken but the
-     * body is still out there looking. Pops in on every transition so
-     * the moment reads at a glance. Nameplate-dialect glyph text drawn
-     * in the label pass (no outline ring), never emoji.
+     * THE EYE ABOVE THE HEAD: the perception telegraph is ONE bespoke
+     * eye wearing the world's own outline ink — never a text glyph, so
+     * it can never rhyme with the QUEST marks (serif gold glyphs with a
+     * breathing bob; this eye pops and holds still), and never a plate
+     * or box — the icon alone, rimmed in STRUCT_OUTLINE like every
+     * sprite in the world, is the whole read. The eye acts the state:
+     * WARY is half-lidded (a stare at the edge of sense), LOOKING is
+     * the open eye walking over, ENGAGED is the red slit-pupil lock
+     * with a flare (an expanding echo of the eye) on the moment of
+     * commitment, PURSUIT is the slashed ember eye (sight broken,
+     * still coming — KEEP RUNNING), HUNTING sweeps its pupil side to
+     * side (it is guessing — hide). A state that drops to calm CLOSES
+     * the eye (a grey lid slides shut and the eye sinks) so
+     * disengagement is shown, not popped out of existence. Drawn in
+     * the label pass; the pupil is the outline ink punching through.
+     *
+     * THE SMALL EYE (recut, user mandate): the badge runs at HALF its
+     * first-cut footprint — the old eye crowded the head and out-shouted
+     * the game it was annotating. Halving halves the interior detail
+     * budget, so every state is RE-PROPORTIONED rather than scaled: a
+     * deeper chamber, a larger relative pupil, a wider slit, heavier-
+     * floored rim and slash — nothing may dissolve to mush at 9–15 px.
+     * Motion carries what pixels no longer can: each state owns a
+     * unique motion signature — WARY's still squint, LOOKING's slow
+     * saccade wander (the badge echoes THE GLANCE, the gaze behavior
+     * the server actually runs), HUNTING's fast wide sweep, PURSUIT's
+     * slashed stillness, ENGAGED's slit-and-flare. Judged on the badge
+     * audit sheet (scratchpad eyebadge2.html: 3 scales × 4 grounds ×
+     * all faces + old-vs-new nameplate claim + quest-mark confusion).
      */
     private alertIconItem;
     /**
@@ -2620,6 +3122,25 @@ export declare class Renderer {
      */
     private questIconItem;
     private drawMiniHp;
+    /** Baked lure-icon images for the tame badge, keyed by item id. */
+    private readonly lureIcons;
+    /** How far the asking is shown — a step past the cast's own reach,
+     *  so the treat appears while the keeper is still closing in. */
+    private static readonly LURE_BADGE_RANGE;
+    /**
+     * THE ASKING SHOWN — a thought bubble over a tamable wild beast:
+     * the very treat it wants, floating where the animal thinks. The
+     * pip on the bubble's shoulder says the rest without a word of
+     * chat: green check = the asking would land, red cross = the treat
+     * is missing from the pack, amber bang = the beast's wild level
+     * still outreaches the keeper's beastcraft. The treat itself stays
+     * full color in every state — identification is its whole job.
+     * Appears only while Gentle the Wild is seated (the
+     * badge is courting-mode dress, never standing world clutter) and
+     * only within courting range. The game client owns the truth
+     * (ClientGame.tameBadge); this painter owns the picture.
+     */
+    private drawLureBadge;
     /** Eight-tap alpha dilate → tinted ring under the sprite. */
     private static readonly OUTLINE_TAPS;
     /**
@@ -2687,7 +3208,43 @@ export declare class Renderer {
      * (or its tier) actually drops: the look IS the loot story.
      */
     private static readonly SKELETON_EQUIP;
+    /**
+     * Goblin kit — the loot-story law: every carried piece really drops
+     * from the wearer's table. The chopper swings camp bronze; the
+     * warboss hauls the double-axe behind the nail-studded warboard,
+     * scavenged iron on its head and stolen leather on its back — the
+     * best-armored goblin that ever stood, which is not saying much.
+     */
     private static readonly GOBLIN_EQUIP;
+    /**
+     * Goblin stature: the shortest fighting bodies in the game carried
+     * on the biggest heads — knee-high menace in numbers. The warboss
+     * stands a full head over the rabble and still under a man.
+     */
+    private static readonly GOBLIN_SIZE;
+    /**
+     * Skral stature (docs/skral-plan.md): waist-high waders between the
+     * goblin and a man, on the biggest head proportion in the game —
+     * and the deepking a full head over its whole shoal.
+     */
+    private static readonly SKRAL_SIZE;
+    /**
+     * Hobgoblin stature (docs/hobgoblin-plan.md): man-height soldiers —
+     * a full head and a half over the goblin rabble they command — the
+     * warlord over any brigand, and the juggernaut on the giant gait.
+     * Hand-sync with gameRender MOB_SIZE.
+     */
+    private static readonly HOB_SIZE;
+    /**
+     * Legion kit — the loot-story law: issued pieces that really drop
+     * from the legion's tables (the hobgoblin_arms rack). The line
+     * fights sword-and-board, the longbowman strings the shortbow, the
+     * warcaster carries the ember staff, the warlord bears steel, and
+     * the juggernaut swings the greatblade two-handed. No head slot
+     * EVER: THE FORGE LAW makes item metal full-face, and the legion's
+     * open helms are painted into the war mask itself.
+     */
+    private static readonly HOBGOBLIN_EQUIP;
     /**
      * Gnoll kit — the loot-story law: scavenged pieces that really drop
      * from the warband's tables. The skulker swings rusted camp iron;
@@ -2699,6 +3256,24 @@ export declare class Renderer {
      * any brigand even hunched, and the packlord looms near the troll.
      */
     private static readonly GNOLL_SIZE;
+    /**
+     * Golem stature: the tallest walking bodies in the game — every
+     * build stands over the troll, and the ice golem over all of them
+     * (docs/golems-plan.md THE EARTH STANDS UP).
+     */
+    private static readonly GOLEM_SIZE;
+    /**
+     * THE HILL COMES DOWN: the giant-kin break the stature ceiling by
+     * design — the smallest ogre stands over the tallest golem, and the
+     * Bonegrinder over everything that walks. Twice a waker and more.
+     */
+    private static readonly OGRE_SIZE;
+    /**
+     * The giant's kit: the greatclub and nothing else — hurlers throw
+     * what they carry loose and the bellower IS its own instrument.
+     * Every listed piece really drops (the loot-story law).
+     */
+    private static readonly OGRE_EQUIP;
     /**
      * The road-thieves' kit — leathers and honest iron, every piece a
      * real drop from the wearer's table (the loot-story law). The
@@ -2712,6 +3287,14 @@ export declare class Renderer {
     private static readonly BRIGAND_SKIN;
     /** Shared empty kit — stable identity for the body-sprite signature. */
     private static readonly NO_EQUIP;
+    /**
+     * ONE kit law for the living and the dead: the per-defId issued
+     * equipment, resolved through a single chain shared by npcItem and
+     * spawnCorpse — the corpse can never drift out of the live rig's
+     * wardrobe. Returns the static records themselves (a fresh literal
+     * here would churn the body-sprite signature's identity ids).
+     */
+    private static equipFor;
     /**
      * Skeleton stature ladder: the dead stand taller and gaunter than
      * goblins — the archer a touch lighter, the guard a head above the
@@ -2752,21 +3335,28 @@ export declare class Renderer {
      */
     private owlItem;
     /**
-     * Ground loot. Coins pile up as actual gold; everything else is a
-     * cinched leather loot bag whose topper tells you the cargo at a
-     * glance — a blade for weapons and tools, arrow shafts for ammo, a
-     * draped cloth for wearables, a round loaf for food, a stitched
-     * patch in the item's color for raw goods. High-value drops shimmer.
+     * Ground loot — THE DROPPED WORLD (groundItems.ts): every item's
+     * honest form on the dirt. Weapons and tools lie at true held scale
+     * under their own style painters, armor drops as its slot's smith's
+     * bundle, materials and food are 1:1 matter, rolled rarity speaks
+     * from the ground. This frame owns the drop's LIFE — landing pop,
+     * bob, contact shadow, hover, ground glow, stack echoes, and the
+     * loot label anchor; the matter itself is painted by drawGroundDrop.
      */
     private dropItem;
     /**
-     * Loot labels — the "what is that" layer over ground drops:
-     * - hovering a bag with the mouse names it instantly;
-     * - anything within arm's reach fades its label in (the read that
-     *   works with no pointer at all — pads and touch);
+     * Loot labels — THE QUIET PLATE (groundItems.ts owns the pure law).
+     * With every drop wearing its honest form, the ART is the first read
+     * and a plate is the invited second read:
+     * - hovering a drop with the mouse names it instantly;
+     * - a rolled rare+ instance (the payoff beat) announces at range;
+     * - anything else whispers only within arm's reach;
      * - holding the reveal (Alt / left trigger) names every drop on
      *   screen, the ARPG sweep-the-battlefield gesture.
-     * Labels stack upward when drops share a column so none overlap.
+     * Under crowding the plates are rationed by priority (payoff first,
+     * pointer second, proximity third), labels climb out of each other,
+     * and a plate that climbed far from its drop drops a hairline leader
+     * back to it so ownership never muddies.
      */
     private drawLootLabels;
     /**
@@ -2834,11 +3424,44 @@ export declare class Renderer {
      * SCREEN projection, so the stick angle references the actual shot.
      */
     private drawStuckArrow;
+    /** The renderer as a matter-library host (statusFx landings). */
+    private matterHost;
     /**
      * Ambient status VFX riding an entity: embers for burn, drifting
-     * frost for chill, spark jitter for shock, falling drips for bleed.
-     * Spawn rates are frame-time scaled so effect density is fps-stable.
+     * frost for chill, spark jitter for shock, falling drips for bleed,
+     * rising blebs for venom, shaken stone chips for sunder. Every
+     * state owns a distinct PLACE and RHYTHM (the anti-mush law) so two
+     * riding together still read as two things. Spawn rates are
+     * frame-time scaled so effect density is fps-stable.
      */
+    /**
+     * THE DREAD PRESENCE (docs/boss-system-plan.md): a crowned body
+     * bends the air around it — a low ground-glow in the crown's own
+     * color and sparse motes rising off the shoulders, both deepening
+     * as the fight climbs the phase ladder. Keyed purely off
+     * EntityMeta.boss (the wire the banner already reads), so plain
+     * flesh pays nothing and a dead wire raises nothing.
+     */
+    private crownAmbience;
+    /** One-shot latch so a ward's shatter plays exactly once. */
+    private wardShatterPlayed;
+    /**
+     * ?fx STATUS WING: forced status bits OR'd onto the own body's
+     * ambience for screenshot audit (fxLab drives it; 0 in real play).
+     */
+    statusAuditBits: number;
+    /**
+     * THE STANDING SHELL (statusBook Phase 4): while any ward pool
+     * rides the own body, a quiet facet dome STANDS around it — the
+     * ward_shell signature's geometry (equator at the chest, six glass
+     * panes to the apex, the far side dimmed for the 2.5D read) held as
+     * a presence instead of a cast moment: low alpha, slow breathing,
+     * a rim glint walking the equator. The number lives on the chip;
+     * the dome is the FACT of the shield, visibly AROUND you at every
+     * camera facing. When the total crosses to nothing the shell dies
+     * as glass: the panes flash once and shed real falling shards.
+     */
+    private drawOwnWardDome;
     private statusAmbience;
     /**
      * The world-space half of the worn-light grammar (wornLight.ts holds
@@ -3014,6 +3637,18 @@ export declare class Renderer {
     private drawAimGhost;
     private drawGroundFx;
     /**
+     * THE CHAMPION'S MARK: living victory banners at cleared camps.
+     * Each standing trophy is a real world prop — cloth simulated on
+     * the cape lineage riding the SHARED wind front, y-sorted among
+     * bodies, ringed by the live outline pass — and a freshly staked
+     * one plays its whole arrival: the accelerating drop, the strike
+     * (dust slam + radiance bloom + the shake), the spring settle, and
+     * the cloth taking the jolt. Sims live on trophyAnims keyed by the
+     * banner's cell id and are evicted when the roster drops them.
+     */
+    private readonly trophyAnims;
+    private collectTrophies;
+    /**
      * The VOLUME stratum of combat FX — kind-level standing matter,
      * collected into the world y-sort: the blast's fireball body, the
      * nova's vertical light kick, buff runes orbiting the caster's
@@ -3052,6 +3687,27 @@ export declare class Renderer {
      */
     private drawComboBeat;
     private drawFloaties;
+    /**
+     * THE RISEN WORD: interaction answers standing in the world —
+     * "LOCKED" over the chest, "PACK FULL" over your own head. A
+     * different voice from damage numbers on purpose: capitals, letter
+     * air, the full eight-tap ink ring (the icons' outline dialect), a
+     * settle instead of a flight. A deny-toned word is born with a short
+     * head-shake — the shape of "no" you can read before the letters.
+     * Words live on game.words under the dedupe law (a re-ask re-pops
+     * the standing word via its refreshed bornAt).
+     */
+    private drawWords;
     private drawHpBar;
+    /**
+     * THE WOUND ROW (visible-buildcraft V2): the player's own riding
+     * states, on the vitality gauge's shoulder. ONE GRAMMAR, EVERY
+     * SCALE — the same inks, the same priority order, and the same xN
+     * stack voice as every nameplate, scaled up for the owner. It
+     * stands ABOVE the bar because the hotbar owns the south edge; no
+     * timers are invented (the wire carries bits and stacks, and that
+     * is what is shown). Empty when clean — no furniture for nothing.
+     */
+    private drawOwnWounds;
 }
 //# sourceMappingURL=renderer.d.ts.map

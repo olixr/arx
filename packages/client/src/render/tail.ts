@@ -95,6 +95,15 @@ export class TailSim {
     dt: number,
     tSec: number,
     sizeK: number,
+    /**
+     * THE RAISED FLAG (house cat): 0..1 stands the rest carriage UP —
+     * the root leaves the rump level, the chain rises through
+     * vertical, and the tip hooks forward past it (the domestic
+     * question mark). 0 keeps every shipped tail's carriage verbatim;
+     * speed streams a raised tail back down toward the classic trail,
+     * so a darting cat levels its flag by construction.
+     */
+    perk = 0,
   ): void {
     const n = this.segs + 1;
     const fx = Math.cos(dir);
@@ -141,6 +150,25 @@ export class TailSim {
     const carry = this.restCarry * (1 - Math.min(0.51, spd * 0.1));
 
     const lastI = n - 1;
+    // THE RAISED FLAG: integrate the perked rest polyline once — each
+    // segment leaves at a steeper angle than the last, so the chain
+    // curls up and over by construction (never a kinked bend).
+    const perkEff = Math.max(0, Math.min(1, perk)) * (1 - Math.min(1, spd / 2.8));
+    let restPts: Array<{ x: number; y: number; z: number }> | null = null;
+    if (perkEff > 0.01) {
+      restPts = [];
+      let rxA = cx;
+      let ryA = cy;
+      let rzA = az;
+      for (let i = 1; i < n; i++) {
+        const ti = i / lastI;
+        const th = Math.min(Math.PI * 0.62, perkEff * (0.3 + 1.5 * ti));
+        rxA -= fx * seg * Math.cos(th);
+        ryA -= fy * seg * Math.cos(th);
+        rzA += seg * Math.sin(th);
+        restPts.push({ x: rxA, y: ryA, z: rzA });
+      }
+    }
     for (let i = 1; i < n; i++) {
       const nd = this.nodes[i]!;
       const ti = i / lastI;
@@ -155,13 +183,19 @@ export class TailSim {
       // behind the facing, drooping down the carry curve. Base nodes
       // hold the line hard, the tip is freest to lag and whip — which
       // is exactly what makes the trailing read organic.
-      const rx = cx - fx * seg * i;
-      const ry = cy - fy * seg * i;
-      const rz = Math.max(GROUND_Z, az * (1 - carry * ti) + this.tipCurl * az * ti * ti);
+      const rp = restPts ? restPts[i - 1]! : null;
+      const drx = cx - fx * seg * i;
+      const dry = cy - fy * seg * i;
+      const drz = Math.max(GROUND_Z, az * (1 - carry * ti) + this.tipCurl * az * ti * ti);
+      const rx = rp ? drx * (1 - perkEff) + rp.x * perkEff : drx;
+      const ry = rp ? dry * (1 - perkEff) + rp.y * perkEff : dry;
+      const rz = rp ? Math.max(GROUND_Z, drz * (1 - perkEff) + rp.z * perkEff) : drz;
       const tone = 30 * (1 - 0.62 * ti);
       let gx = (rx - nd.x) * tone;
       let gy = (ry - nd.y) * tone;
-      const gz = (rz - nd.z) * tone * 0.8 - 5 * this.heavy;
+      // A raised tail is held by MUSCLE, not hung by gravity — the
+      // settle weight yields to the perk so the flag actually stands.
+      const gz = (rz - nd.z) * tone * 0.8 - 5 * this.heavy * (1 - perkEff);
 
       // The wag: a lateral beat perpendicular to the facing, quick and
       // shallow at rest, wider and faster on the move — plus each
@@ -1225,6 +1259,145 @@ export function drawFoxBrush(
   ctx.lineWidth = Math.max(1, wk * 0.014);
   silhouette();
   ctx.stroke();
+}
+
+/** Pre-resolved house-cat tail tones — the painter never learns a species. */
+export interface HousecatTailStyle {
+  coat: string;
+  under: string;
+  /** Ring/tip/dark ink. */
+  mark: string;
+  /** Tail dress: ringed, dark-tipped, plain coat, or mark end to end. */
+  kind: 'rings' | 'tip' | 'coat' | 'dark';
+  /** The plume vs the whip — hair length is told from the tail first. */
+  longhair: boolean;
+}
+
+/**
+ * Paint the projected HOUSE-CAT TAIL. Two silhouettes share one
+ * ribbon: the shorthair's slim whip (near-even taper, rounded tip)
+ * and the longhair's plume (volume that swells past mid-length, edge
+ * fluff at close zoom). The dress rides on top — rings walk the
+ * outer two-thirds (the raccoon read), the tip dips, or the dark
+ * point runs end to end. Plain path calls, no Path2D, so node-side
+ * painter tests can walk every coordinate.
+ */
+export function drawHousecatTail(
+  ctx: CanvasRenderingContext2D,
+  pts: Array<{ x: number; y: number }>,
+  st: HousecatTailStyle,
+  wk: number,
+  opts: { hurt?: boolean; back?: boolean },
+): void {
+  const n = pts.length;
+  if (n < 5) return;
+  const left: Array<{ x: number; y: number }> = [];
+  const right: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[Math.max(0, i - 1)]!;
+    const b = pts[Math.min(n - 1, i + 1)]!;
+    let tx = b.x - a.x;
+    let ty = b.y - a.y;
+    const tl = Math.hypot(tx, ty) || 1;
+    tx /= tl;
+    ty /= tl;
+    const t = i / (n - 1);
+    // The whip tapers gently; the plume swells and holds (the fox
+    // profile at kitten scale).
+    const w = st.longhair
+      ? (0.022 + 0.038 * Math.pow(Math.sin(Math.min(1, t * 1.08) * Math.PI), 0.7)) * wk
+      : (0.028 - 0.01 * t) * wk;
+    left.push({ x: pts[i]!.x + ty * w, y: pts[i]!.y - tx * w });
+    right.push({ x: pts[i]!.x - ty * w, y: pts[i]!.y + tx * w });
+  }
+  const silhouette = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(left[0]!.x, left[0]!.y);
+    for (let i = 1; i < n; i++) ctx.lineTo(left[i]!.x, left[i]!.y);
+    const tipX = pts[n - 1]!.x + (pts[n - 1]!.x - pts[n - 2]!.x) * (st.longhair ? 0.5 : 0.35);
+    const tipY = pts[n - 1]!.y + (pts[n - 1]!.y - pts[n - 2]!.y) * (st.longhair ? 0.5 : 0.35);
+    ctx.quadraticCurveTo(tipX, tipY, right[n - 1]!.x, right[n - 1]!.y);
+    for (let i = n - 2; i >= 0; i--) ctx.lineTo(right[i]!.x, right[i]!.y);
+    ctx.closePath();
+  };
+  ctx.lineJoin = 'round';
+  const base = st.kind === 'dark' ? st.mark : shade(st.coat, -3);
+  // The back view dims toward the coat — never a bright banner over
+  // the body (the fox balloon lesson, kept).
+  ctx.fillStyle = opts.hurt ? '#ffffff' : opts.back ? shade(base, -16) : base;
+  silhouette();
+  ctx.fill();
+  if (!opts.hurt) {
+    if (st.kind === 'rings') {
+      // THE RINGS: banded ink walking the outer two-thirds — each band
+      // spans a knuckle fraction so the dress bends with the chain.
+      ctx.fillStyle = opts.back ? shade(st.mark, -10) : st.mark;
+      const bandAt = (tA: number, tB: number): void => {
+        const seg = (tt: number): { li: number; f: number } => {
+          const x = tt * (n - 1);
+          const li = Math.min(n - 2, Math.floor(x));
+          return { li, f: x - li };
+        };
+        const lerp = (
+          arr: Array<{ x: number; y: number }>,
+          q: { li: number; f: number },
+        ): { x: number; y: number } => ({
+          x: arr[q.li]!.x + (arr[q.li + 1]!.x - arr[q.li]!.x) * q.f,
+          y: arr[q.li]!.y + (arr[q.li + 1]!.y - arr[q.li]!.y) * q.f,
+        });
+        const a = seg(tA);
+        const b = seg(tB);
+        const la = lerp(left, a);
+        const lb = lerp(left, b);
+        const ra = lerp(right, a);
+        const rb = lerp(right, b);
+        ctx.beginPath();
+        ctx.moveTo(la.x, la.y);
+        ctx.lineTo(lb.x, lb.y);
+        ctx.lineTo(rb.x, rb.y);
+        ctx.lineTo(ra.x, ra.y);
+        ctx.closePath();
+        ctx.fill();
+      };
+      bandAt(0.4, 0.52);
+      bandAt(0.62, 0.74);
+      bandAt(0.84, 1.0);
+    } else if (st.kind === 'tip') {
+      ctx.fillStyle = st.mark;
+      const fl = n - 2;
+      ctx.beginPath();
+      ctx.moveTo(left[fl]!.x, left[fl]!.y);
+      ctx.lineTo(left[n - 1]!.x, left[n - 1]!.y);
+      const capX = pts[n - 1]!.x + (pts[n - 1]!.x - pts[n - 2]!.x) * 0.45;
+      const capY = pts[n - 1]!.y + (pts[n - 1]!.y - pts[n - 2]!.y) * 0.45;
+      ctx.quadraticCurveTo(capX, capY, right[n - 1]!.x, right[n - 1]!.y);
+      ctx.lineTo(right[fl]!.x, right[fl]!.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // The plume's edge fluff: loose strands off the low edge, close
+    // zoom only — the longhair read the brief asked the tail to carry.
+    if (st.longhair && wk > 70) {
+      let leftDown = 0;
+      for (let i = 1; i < n - 1; i++) leftDown += left[i]!.y - right[i]!.y;
+      const low = leftDown >= 0 ? left : right;
+      ctx.strokeStyle = shade(base, -12);
+      ctx.lineWidth = Math.max(1, wk * 0.016);
+      ctx.lineCap = 'round';
+      for (let i = 2; i <= n - 2; i += 2) {
+        ctx.beginPath();
+        ctx.moveTo(low[i]!.x, low[i]!.y);
+        ctx.lineTo(low[i]!.x + (low[i]!.x - pts[i]!.x) * 0.5, low[i]!.y + (low[i]!.y - pts[i]!.y) * 0.5 + wk * 0.02);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+    }
+    // The quiet contour separating the tail from same-coat flanks.
+    ctx.strokeStyle = shade(st.coat, -26);
+    ctx.lineWidth = Math.max(1, wk * 0.013);
+    silhouette();
+    ctx.stroke();
+  }
 }
 
 /** Pre-resolved wolf-brush tones — the painter never learns a species. */

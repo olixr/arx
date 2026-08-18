@@ -696,6 +696,10 @@ export function buildDawnmead(): ZoneDef {
   // of first combat and first produce, all of it in the open.
   // ---------------------------------------------------------------
   b.npcSpawn('chicken', 85, 10.5, 1.8, 5);
+  // THE HEARTH'S SHADOW: the coop mousers, and one working cat
+  // posted where the granary rats actually are.
+  b.npcSpawn('cat', 84, 12.5, 2.5, 2);
+  b.npcSpawn('cat', 108.5, 63.5, 3, 1);
   b.npcSpawn('cow', 74.5, 23.5, 3, 2);
   b.npcSpawn('sheep', 80.5, 26.5, 2.5, 3);
   b.npcSpawn('rat', 110.5, 61.5, 2, 3);

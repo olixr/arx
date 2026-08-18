@@ -135,6 +135,16 @@ export interface EntityMeta {
    */
   stock?: boolean;
   /**
+   * THE COAT OUTLIVES THE BODY (the house cat, generalized to every
+   * companion): a stable visual seed for this entity's procedural
+   * look. Wild bodies dress off their eid and never carry this; a
+   * tamed companion carries the seed of the WILD BODY IT WAS on the
+   * day of the asking, so the coat the keeper courted is the coat
+   * that follows them across every respawn. Additive-optional (the
+   * `shorn` precedent): a client that ignores it dresses by eid.
+   */
+  seed?: number;
+  /**
    * THE FLEECE TELLS THE TIME: a kept sheep mid-regrow — clipped
    * tight from the shear until its next fleece readies, when the
    * server flips this off with a meta update. Absent = full fleece,

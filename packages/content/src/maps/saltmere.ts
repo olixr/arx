@@ -632,6 +632,8 @@ export function buildSaltmere(): ZoneDef {
   b.actor('saltmere_fisher', 84.5, 34.5, Math.PI / 2, 'salt_fisher_yard');
   b.actor('saltmere_fisher', 71.5, 51.5, Math.PI / 2, 'salt_fisher_east');
   b.npcSpawn('chicken', 81, 34.5, 1.5, 3);
+  // A fishing town keeps the best-fed cats on the coast.
+  b.npcSpawn('cat', 79.5, 36.5, 2.5, 2);
 
   b.spawn(54.5, 44.5); // the quay square: the respawn hearth of the south
   return b.build();

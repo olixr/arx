@@ -138,7 +138,7 @@ test('BRACKET: the leash holds the ladder — beastcraft caps the climb', () => 
 });
 
 test('THE SPECIES SPEAK: the whole roster stands', () => {
-  assert.equal(TAME_DEFS.length, 18, 'entry trio through the worg capstone, the turtle keep, the razorback, the tide bulwark and the stone court pair among them');
+  assert.equal(TAME_DEFS.length, 19, 'entry trio through the worg capstone, the turtle keep, the razorback, the tide bulwark, the stone court pair, and the hearth cat among them');
 });
 
 test('THE GAZE TAKES THE LEASH: the stone court pair stands, the elder stays wild', () => {

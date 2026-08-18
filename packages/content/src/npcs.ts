@@ -481,6 +481,34 @@ const defs: NpcDef[] = [
     lays: { item: 'egg', minSec: 180, maxSec: 300, xp: 4 },
   },
   {
+    // THE HEARTH'S SHADOW: the town cat — the first pure-company
+    // critter. No produce, no lays (so the tame door stays open by
+    // structure: livestock is refused at the validator, and a cat is
+    // nobody's livestock), damage 0 forever — it fights nothing and
+    // nothing profits from fighting it. The coat wardrobe lives
+    // client-side (CAT_COATS, seeded per body); the tail tells the
+    // hair length. Speed is real — a startled cat DARTS — but the
+    // idle wander walks at half stride like every idle body.
+    id: 'cat',
+    name: 'Cat',
+    level: 1,
+    maxHp: 4,
+    damage: 0,
+    attackRange: 0.6,
+    attackCooldownTicks: 40,
+    aggroRange: 0,
+    leashRange: 12,
+    speed: 3.6,
+    // Killing a cat pays NOTHING — no xp, no loot. The body is
+    // attackable like any critter, but the world offers no reason.
+    xpReward: 0,
+    loot: [],
+    respawnSec: 60,
+    color: '#8d8478',
+    radius: 0.16,
+    hitHeight: 0.55,
+  },
+  {
     id: 'cow',
     name: 'Cow',
     level: 3,

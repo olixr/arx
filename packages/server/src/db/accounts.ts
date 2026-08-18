@@ -27,6 +27,13 @@ export interface PetRow {
   /** The journey's honest count. */
   kills: number;
   downs: number;
+  /**
+   * THE COAT OUTLIVES THE BODY: the wild body's look seed, captured
+   * on the day of the asking — the coat the keeper courted rides
+   * every respawn. NULL on elder rows (they dress by the body's eid,
+   * exactly as they always did).
+   */
+  lookSeed: number | null;
 }
 
 /** NULL-tolerant roll reader for legacy rows (pre-migration-11). */
@@ -1929,8 +1936,9 @@ export class AccountStore {
       tamed_level: number | null;
       kills: number;
       downs: number;
+      look_seed: number | null;
     }>(
-      'SELECT slot, species, name, xp, state, rested_at, bond_xp, arts, tamed_at, tamed_level, kills, downs FROM character_pets WHERE character_id = ? ORDER BY slot',
+      'SELECT slot, species, name, xp, state, rested_at, bond_xp, arts, tamed_at, tamed_level, kills, downs, look_seed FROM character_pets WHERE character_id = ? ORDER BY slot',
       [characterId],
     );
     return rows.map((r) => {
@@ -1959,6 +1967,7 @@ export class AccountStore {
         tamedLevel: r.tamed_level === null ? null : Number(r.tamed_level),
         kills: Number(r.kills),
         downs: Number(r.downs),
+        lookSeed: r.look_seed === null ? null : Number(r.look_seed),
       };
     });
   }
@@ -1971,10 +1980,10 @@ export class AccountStore {
     // with the row — a fresh bond never inherits a predecessor's
     // rope, loadout, ledger, or convalescence.
     this.db.fire(
-      'INSERT INTO character_pets (character_id, slot, species, name, xp, state, tamed_at, tamed_level, bond_xp, arts, kills, downs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0) ' +
+      'INSERT INTO character_pets (character_id, slot, species, name, xp, state, tamed_at, tamed_level, bond_xp, arts, kills, downs, look_seed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?) ' +
         'ON CONFLICT (character_id, slot) DO UPDATE SET species = excluded.species, name = excluded.name, xp = excluded.xp, state = excluded.state, rested_at = NULL, ' +
-        'tamed_at = excluded.tamed_at, tamed_level = excluded.tamed_level, bond_xp = 0, arts = excluded.arts, kills = 0, downs = 0',
-      [characterId, pet.slot, pet.species, pet.name, pet.xp, pet.state, tamedAtMs, pet.tamedLevel, pet.bondXp, JSON.stringify(pet.arts)],
+        'tamed_at = excluded.tamed_at, tamed_level = excluded.tamed_level, bond_xp = 0, arts = excluded.arts, kills = 0, downs = 0, look_seed = excluded.look_seed',
+      [characterId, pet.slot, pet.species, pet.name, pet.xp, pet.state, tamedAtMs, pet.tamedLevel, pet.bondXp, JSON.stringify(pet.arts), pet.lookSeed],
     );
   }
 

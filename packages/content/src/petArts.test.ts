@@ -202,7 +202,8 @@ function bestLoadout(species: string): number {
 }
 
 test('THE EQUALIZER LAW: every shelf pays, and the arts narrow the field', () => {
-  const species = [...TAMES.keys()];
+  // The docile company (the house cat) holds no shelf by law.
+  const species = [...TAMES.entries()].filter(([, t]) => !t.docile).map(([sp]) => sp);
   const base = new Map(species.map((sp) => [sp, loadoutScore(sp, [])]));
   const loaded = new Map(species.map((sp) => [sp, bestLoadout(sp)]));
   // Every species' best loadout is worth slotting.

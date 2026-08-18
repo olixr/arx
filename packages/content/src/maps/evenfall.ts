@@ -674,6 +674,8 @@ export function buildEvenfall(): ZoneDef {
   b.actor('loresinger_maelis', 64, 31, W, 'ef_singer');
   b.actor('bowyer_aewyn', 77, 20, W, 'ef_bowyer');
   b.actor('weaver_myrren', 77, 38, W, 'ef_weaver');
+  // The weaver's cat, asleep in the warp threads since before anyone asked.
+  b.npcSpawn('cat', 76, 36.5, 2.5, 1);
   b.actor('glasswright_selorne', 78, 63, UP, 'ef_glasswright');
   b.actor('smith_faelar', 90, 40, E, 'ef_smith');
   b.actor('inscriber_vessa', 64, 61, W, 'ef_inscriber');

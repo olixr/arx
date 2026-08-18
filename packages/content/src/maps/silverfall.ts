@@ -2036,6 +2036,8 @@ export function buildSilverfall(): ZoneDef {
 
   // The crag pasture's rams — the city's only livestock, on purpose.
   b.npcSpawn('ram', 157, 49.5, 3, 3);
+  // The capital's yard cats, kept fat by the fold's spilled grain.
+  b.npcSpawn('cat', 154.5, 51.5, 3, 2);
 
   // The hearth of the north: respawn inside the gate, on the avenue.
   b.spawn(88.5, 104.5);

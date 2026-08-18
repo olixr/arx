@@ -65,6 +65,9 @@ import {
   drawWorgHead,
   enchantedStyle,
   lynxLook,
+  housecatLook,
+  paintHousecatBody,
+  drawHousecatHead,
   foxLook,
   paintFoxBody,
   drawFoxHead,
@@ -2390,6 +2393,30 @@ export function drawBeastRagdoll(
       facetCircle(ctx, tx, tipY, s * 0.036, 5, ba);
       ctx.fill();
     }
+  } else if (look.defId === 'cat') {
+    // The raised flag comes down: the tail lies limp along the
+    // ground, its dress (rings, tip, the seal's dark point) still
+    // honest on the dead — the corpse-coat law, spoken domestic.
+    const cl = housecatLook(look.defId, look.seed);
+    const tx = rear.x - Math.cos(spineA) * len * (cl.longhair ? 0.85 : 0.95);
+    const tipY = f.ay + g[0]!.floor * f.s + s * 0.016;
+    const whip = taperedSpinePath(
+      rear.x,
+      rear.y,
+      (rear.x + tx) / 2,
+      Math.max(rear.y, tipY) + s * 0.025,
+      tx,
+      tipY,
+      (t) => s * (cl.longhair ? 0.028 + 0.02 * Math.sin(Math.PI * t) : 0.024 * (1 - t * 0.3)),
+    );
+    ctx.fillStyle = cl.tail === 'dark' ? cl.mark : shade(cl.coat, -3);
+    ctx.fill(whip);
+    if (cl.tail === 'rings' || cl.tail === 'tip') {
+      ctx.fillStyle = cl.mark;
+      ctx.beginPath();
+      facetCircle(ctx, tx, tipY, s * (cl.longhair ? 0.034 : 0.026), 5, spineA);
+      ctx.fill();
+    }
   } else if (look.defId.startsWith('lynx')) {
     // The bobtail lies flat on the rump — no perk left in it, the
     // black tip still honest on the dead.
@@ -2604,6 +2631,23 @@ export function drawBeastRagdoll(
       bob: 0,
       roll: 0,
       topScale: 0.5,
+      botH: 0.02,
+    });
+  } else if (look.defId === 'cat') {
+    // The corpse keeps its coat — the cabinet resolves from the raw
+    // eid, the corpse-coat law spoken domestic.
+    paintHousecatBody(ctx, spec, housecatLook(look.defId, look.seed), {
+      bx: midX,
+      gy: midY + r * 0.4,
+      s,
+      fx: Math.cos(spineA),
+      fy: Math.sin(spineA),
+      ys: 1,
+      seed: look.seed,
+      hurt: false,
+      bob: 0,
+      roll: 0,
+      topScale: 0.55,
       botH: 0.02,
     });
   } else if (look.defId.startsWith('lynx')) {
@@ -2983,6 +3027,18 @@ export function drawBeastRagdoll(
     // The cold lamps go out; the chamfron and its tines stay — the
     // court's silver survives the hound.
     drawFeyWolfHead(ctx, FEYWOLF_LOOK, {
+      x: head.x,
+      y: head.y,
+      s,
+      fx: Math.cos(neckA),
+      fy: Math.sin(neckA),
+      ys: 1,
+      dead: true,
+    });
+  } else if (look.defId === 'cat') {
+    // The cap, the mask, the coat stay; the big lamps close — the
+    // dead-eyes law, quiet lids on the kept animal.
+    drawHousecatHead(ctx, housecatLook(look.defId, look.seed), {
       x: head.x,
       y: head.y,
       s,

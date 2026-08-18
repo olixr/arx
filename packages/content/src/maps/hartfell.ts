@@ -942,6 +942,8 @@ export function buildHartfell(): ZoneDef {
   b.actor('guide_sunn', 66.5, 21.5, Math.PI, 'hart_guide');
   b.actor('furrier_ranna', 66.5, 67.5, Math.PI / 2, 'hart_furrier');
   b.actor('tallywife_inga', 60.5, 68.5, Math.PI / 2, 'hart_tallywife');
+  // The tallyhouse cat — every ledger north of the treeline has one.
+  b.npcSpawn('cat', 61.5, 66.5, 2.5, 1);
   b.actor('chandler_ulfa', 82.5, 66.5, Math.PI / 2, 'hart_chandler');
   b.actor('smokemaster_geir', 86.5, 82.5, Math.PI / 2, 'hart_smokemaster');
   b.actor('bonecarver_tuli', 92.5, 57.5, Math.PI / 2, 'hart_bonecarver');

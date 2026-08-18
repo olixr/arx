@@ -122,7 +122,11 @@ test('THE THREE CITIZENSHIPS: rung, page, and secret seats never overlap', () =>
 });
 
 test('npc loot, kits, and spawns all resolve — THE KIT contract', () => {
+  // THE COMPANY CRITTERS: pure-company bodies (the house cat) pay
+  // nothing at all — no loot, no xp — so the kill law passes them by.
+  const COMPANY = new Set(['cat']);
   for (const [id, npc] of NPCS) {
+    if (COMPANY.has(id)) continue;
     assert.ok(npc.loot.length > 0, `${id} has no loot tables`);
     for (const tableId of npc.loot) {
       assert.ok(LOOT_TABLES.has(tableId), `${id} loot table '${tableId}' missing`);

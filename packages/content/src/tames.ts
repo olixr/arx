@@ -49,6 +49,15 @@ export interface TameDef {
   tameXp: number;
   /** The tamed body's teeth (see TameKit). Absent = the wild kit as-is. */
   kit?: TameKit;
+  /**
+   * THE COMPANY THAT KEEPS NO FANG (the house cat): a docile friend
+   * follows, and that is the whole of its work — petDefend never
+   * aims it, the pointing arts decline it, and it holds no art
+   * shelf. Structurally enforced: a docile species must carry a
+   * damage-0 body and no kit (the validator refuses a contradiction
+   * before it can ship).
+   */
+  docile?: boolean;
   /** One concrete sentence in the world's diction (VOICE.md: no dashes). */
   flavor: string;
 }
@@ -142,6 +151,18 @@ export const TAME_DEFS: readonly TameDef[] = [
     // that holds the fight still while it happens.
     kit: { armor: 7, bite: { status: 'chill', power: 2, durationTicks: 60 } },
     flavor: 'A harbor wall that walks. What the great claw closes on stays where it was closed on.',
+  },
+  {
+    // THE HEARTH'S SHADOW: the town cat, the ladder's one friend
+    // that never fights — pure company at heel (docile: the arts
+    // decline it, petDefend never aims it, and it holds no shelf).
+    // The courtship is exactly what every town cat has ever wanted:
+    // a fish, offered by hand. 30 + 10 × wild level.
+    species: 'cat',
+    lure: 'raw_trout',
+    tameXp: 40,
+    docile: true,
+    flavor: 'It owes you nothing and follows you anyway. The fish helped.',
   },
   {
     species: 'lynx_young',
@@ -316,6 +337,14 @@ export function tameErrors(def: TameDef): string[] {
   }
   if (def.flavor.length < 1 || def.flavor.length > 200) {
     errs.push(`${def.species}: flavor must be one honest sentence`);
+  }
+  // THE COMPANY THAT KEEPS NO FANG: docile is a structural promise —
+  // a body that never fights must have nothing to fight WITH. A
+  // damage die or a kit on a docile row is a contradiction refused
+  // here, so the flag can never drift into a combat species.
+  if (def.docile) {
+    if (npc.damage > 0) errs.push(`${def.species}: a docile friend carries a damage-0 body`);
+    if (def.kit) errs.push(`${def.species}: a docile friend carries no kit`);
   }
   if (def.kit) {
     const k = def.kit;

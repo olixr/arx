@@ -16400,6 +16400,10 @@ export class GameServer {
       tamedLevel: levelForXp(player.skills.beastcraft ?? 0),
       kills: 0,
       downs: 0,
+      // THE COAT OUTLIVES THE BODY: the wild body's eid IS the seed
+      // every watcher's client dressed it with — captured here, the
+      // coat the keeper courted follows them across every respawn.
+      lookSeed: action.targetEid,
     };
     player.pets.push(row);
     if (player.characterId > 0) this.accounts.savePet(player.characterId, row, tamedAt);
@@ -16717,6 +16721,17 @@ export class GameServer {
           sys('Your friend is down. Kneel to it instead.');
           this.sendCooldowns(player);
           return;
+        }
+        // THE COMPANY THAT KEEPS NO FANG: pointing the fang at a
+        // docile friend is asking the wrong animal. Refused aloud,
+        // no cost paid.
+        {
+          const fangNpc = this.npcs.get(petEid);
+          if (fangNpc && tameDef(fangNpc.def.id)?.docile) {
+            sys(`${fangNpc.def.name === 'Cat' ? 'The cat' : 'Your friend'} looks where you point, then back at you.`);
+            this.sendCooldowns(player);
+            return;
+          }
         }
         const range = ab.range ?? 7;
         let mark: { eid: EntityId; npc: NpcComp; x: number; y: number } | null = null;
@@ -17218,6 +17233,13 @@ export class GameServer {
    */
   private petDefend(ownerEid: EntityId, owner: PlayerComp, mobEid: EntityId, urgent = false): void {
     if (!owner.petEid) return;
+    // THE COMPANY THAT KEEPS NO FANG: a docile friend defends nobody
+    // — this is the ONE door into a companion's fight, and for the
+    // house cat it stays shut forever.
+    {
+      const petNpc = this.npcs.get(owner.petEid);
+      if (petNpc && tameDef(petNpc.def.id)?.docile) return;
+    }
     // THE ASKING HOLDS THE FANG: while the keeper channels a tame, the
     // very beast being courted draws keeper blood — the companion must
     // hold back from the channel's own mark, or it would break every
@@ -31046,6 +31068,8 @@ export class GameServer {
         tamedLevel: levelForXp(player.skills.beastcraft ?? 0),
         kills: 0,
         downs: 0,
+        // No wild body stood for the dev whistle: roll the coat once.
+        lookSeed: (Math.random() * 0x7fffffff) | 0,
       };
       player.pets.push(row);
       if (player.characterId > 0) this.accounts.savePet(player.characterId, row, tamedAt);
@@ -33322,6 +33346,9 @@ export class GameServer {
       }
       meta.ownerEid = petComp.ownerEid;
       meta.friendly = true;
+      // THE COAT OUTLIVES THE BODY: the courted look rides the wire
+      // so every watcher dresses the same friend, every respawn.
+      if (row?.lookSeed != null) meta.seed = row.lookSeed;
     }
     // THE ANIMALS OF THE YARD: a kept animal wears its given name and
     // the stock marker (never fightable); ownerEid rides only while

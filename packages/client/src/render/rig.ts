@@ -10931,6 +10931,29 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     legColor: '#3a3746',
     segSplit: [0.53, 0.58],
   },
+  // THE HOUSE CAT: the smallest walker in the game — a compact body
+  // slung low between quick light legs, the whole frame built to
+  // read "kept animal" beside the lynx's wild stilts. The quickest
+  // turn of any body (a cat pivots inside its own length), a high
+  // dainty step, and the feline bones: long thigh over a short hock.
+  cat: {
+    rig: {
+      legs: quadLegs(0.17, 0.085),
+      legLen: 0.26,
+      rise: 0.22,
+      liftAmp: 0.095,
+      runSpeed: 4.2,
+      turnRate: 12,
+    },
+    bodyLen: 0.23,
+    bodyRise: 0.27,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.048,
+    foot: 'paw',
+    segSplit: [0.53, 0.6],
+  },
   // THE FOX: the lightest hunter in the wood — a narrow-tracked frame
   // (a fox trots its feet nearly on one line) with the highest step of
   // any canid: the prance IS the gait read. Dainty bones, fast turn,
@@ -21374,6 +21397,8 @@ export function drawCatLimb(
     /** Far-side legs step into shadow so pairs never merge mid-stride. */
     far: boolean;
     hurt: boolean;
+    /** Paw fill override (white mitts, seal points). Absent = the coat's dark step. */
+    paw?: string;
   },
 ): void {
   const { hipX, hipY, kx, ky, ex, ey, w, s, hind } = o;
@@ -21457,7 +21482,7 @@ export function drawCatLimb(
   ctx.save();
   ctx.translate(ex, ey);
   ctx.rotate(shinA - Math.PI / 2);
-  ctx.fillStyle = C(shade(o.coat, -32));
+  ctx.fillStyle = C(o.paw ?? shade(o.coat, -32));
   ctx.beginPath();
   ctx.ellipse(0, pw * 0.1, pw * 0.72, pw * 0.52, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -21788,6 +21813,689 @@ export function drawLynxHead(
       }
     }
   }
+}
+
+/**
+ * THE HOUSE CAT — the hearth's shadow, the first animal in the game
+ * that exists purely for company. Nothing here is borrowed from the
+ * lynx beyond the feline LAWS it must obey (the flat muzzle plate,
+ * the canid wedge ban, the long-thigh bones): where the lynx is a
+ * wild ambusher built on four predator reads, the house cat is built
+ * on WARDROBE and CARRIAGE — a curated coat cabinet a whole town's
+ * cats spread across (seeded, never random-hued), the raised
+ * question-mark tail no wild cat carries, and THE SIT, the settled
+ * upright rest that says "domestic" from across a market square.
+ */
+export interface HousecatLook {
+  /** Base coat. */
+  coat: string;
+  /** Underparts: belly, chest, muzzle plate — and the tuxedo's dress. */
+  under: string;
+  /** Pattern ink: tabby bars, the cap, patches, the points. */
+  mark: string;
+  /** Second patch ink (calico, tortoiseshell). */
+  mark2?: string;
+  /** Inner-ear fan. */
+  earIn: string;
+  eye: string;
+  nose: string;
+  /**
+   * The written pattern. 'solid' wears the coat plain; 'tabby' bars
+   * the back and flanks and writes the crown M; 'bicolor' carries
+   * white underparts high up the flank; 'tuxedo' is the black dress
+   * over a white bib and blaze; 'capped' is a clean pale body under
+   * a dark skullcap (the head painter owns the cap); 'patched'
+   * scatters seeded color patches (calico, tortie); 'points' darkens
+   * the extremities only — mask, ears, paws, tail.
+   */
+  pattern: 'solid' | 'tabby' | 'bicolor' | 'tuxedo' | 'capped' | 'patched' | 'points';
+  /**
+   * Long hair reads in the TAIL first (the plume vs the whip), then
+   * the cheek fluff, the chest ruff, and the belly fringe.
+   */
+  longhair: boolean;
+  /** Tail dress: ringed (the raccoon read), dark-tipped, plain coat, or mark-dark end to end. */
+  tail: 'rings' | 'tip' | 'coat' | 'dark';
+  /** White mitts on all four paws. */
+  mitts?: boolean;
+  /** The chest locket — one pale patch where the collarbones meet. */
+  locket?: boolean;
+  /** Body half-width (tiles); length comes from the BeastSpec. */
+  bodyW: number;
+  backH: number;
+  /** The mild rump rise — a kept cat, never the lynx's coiled ramp. */
+  haunchH: number;
+  shoulderH: number;
+  chestH: number;
+  tuckH: number;
+  headW: number;
+  headH: number;
+  seed?: number;
+}
+
+const HOUSECAT_BASE = {
+  bodyW: 0.115,
+  backH: 0.3,
+  haunchH: 0.05,
+  shoulderH: 0.03,
+  chestH: 0.16,
+  tuckH: 0.21,
+  headW: 0.24,
+  headH: 0.2,
+};
+
+type HousecatCoat = Omit<HousecatLook, keyof typeof HOUSECAT_BASE | 'seed'>;
+
+/** The default pink leather — dark-headed coats author their own. */
+const CAT_PINK = '#d9a2a0';
+
+/**
+ * THE COAT CABINET: sixteen curated coats a town's cats hash across —
+ * every one an animal somebody has actually owned. Shorthairs carry
+ * the whip tail; longhairs carry the plume (the hair length is told
+ * from the tail first, per the design brief). Never a random hue
+ * roll: the cabinet IS the breed book.
+ */
+const CAT_COATS: readonly HousecatCoat[] = [
+  // 0. The dun mackerel tabby — the town's common cat.
+  { coat: '#96805e', under: '#d6cab0', mark: '#57452f', earIn: CAT_PINK, eye: '#9fb85c', nose: '#8a5148', pattern: 'tabby', longhair: false, tail: 'rings' },
+  // 1. The ginger tabby — white mitts, a cream locket.
+  { coat: '#b57a41', under: '#e4cfa9', mark: '#7e4d26', earIn: CAT_PINK, eye: '#d9a944', nose: '#c98079', pattern: 'tabby', longhair: false, tail: 'rings', mitts: true, locket: true },
+  // 2. The ash tabby — grey bars on grey.
+  { coat: '#8b8b93', under: '#d0d0d3', mark: '#50505a', earIn: '#b98f92', eye: '#d9a944', nose: '#6d5a62', pattern: 'tabby', longhair: false, tail: 'rings' },
+  // 3. The black cat — copper-eyed, one coat end to end.
+  { coat: '#34313b', under: '#46424d', mark: '#232029', earIn: '#6b4a52', eye: '#c9803a', nose: '#3a3444', pattern: 'solid', longhair: false, tail: 'coat' },
+  // 4. The tuxedo — black dress over the white bib, white mitts.
+  { coat: '#34313b', under: '#ece7db', mark: '#232029', earIn: '#6b4a52', eye: '#9fb85c', nose: '#c98079', pattern: 'tuxedo', longhair: false, tail: 'coat', mitts: true },
+  // 5. The capped white — clean pale body, a dark skullcap, and the
+  //    ringed raccoon tail (the brief's own cat, verbatim).
+  { coat: '#eae5d8', under: '#f6f2e8', mark: '#3b3844', earIn: CAT_PINK, eye: '#d9a944', nose: '#c98079', pattern: 'capped', longhair: false, tail: 'rings' },
+  // 6. The grey bicolor — all grey above, white underbody, grey tail
+  //    end to end (the brief's second cat, verbatim).
+  { coat: '#8f8f97', under: '#e9e6e0', mark: '#6f6f78', earIn: '#b98f92', eye: '#9fb85c', nose: '#6d5a62', pattern: 'bicolor', longhair: false, tail: 'coat' },
+  // 7. The calico — white ground, ginger and black patches.
+  { coat: '#ece6d8', under: '#f6f2e8', mark: '#3b3844', mark2: '#b57a41', earIn: CAT_PINK, eye: '#d9a944', nose: '#c98079', pattern: 'patched', longhair: false, tail: 'dark' },
+  // 8. The black locket — coal coat, one pale patch at the chest.
+  { coat: '#34313b', under: '#e9e4d8', mark: '#232029', earIn: '#6b4a52', eye: '#9fb85c', nose: '#3a3444', pattern: 'solid', longhair: false, tail: 'coat', locket: true },
+  // 9. The seal point — cream body, dark mask and ears, dark paws,
+  //    dark tail, and the one blue eye in the cabinet.
+  { coat: '#e2d6c0', under: '#efe7d6', mark: '#4e3b32', earIn: '#5c463c', eye: '#7ea6c9', nose: '#4e3b32', pattern: 'points', longhair: false, tail: 'dark' },
+  // 10. The tortoiseshell — burnt patches over a dark ground.
+  { coat: '#4a3c30', under: '#6b5a48', mark: '#26211f', mark2: '#a86c38', earIn: '#6b4a52', eye: '#c9803a', nose: '#3a3444', pattern: 'patched', longhair: false, tail: 'coat' },
+  // 11. The cream longhair — the parlor cloud.
+  { coat: '#d8c8a6', under: '#efe8d4', mark: '#b19a74', earIn: CAT_PINK, eye: '#d9a944', nose: '#c98079', pattern: 'solid', longhair: true, tail: 'coat' },
+  // 12. The smoke longhair — storm fur, pale under-layer.
+  { coat: '#75717d', under: '#b8b3bd', mark: '#4f4b58', earIn: '#b98f92', eye: '#c9803a', nose: '#6d5a62', pattern: 'solid', longhair: true, tail: 'coat' },
+  // 13. The ginger longhair — the plumed fox-bright tabby.
+  { coat: '#b57a41', under: '#e4cfa9', mark: '#7e4d26', earIn: CAT_PINK, eye: '#9fb85c', nose: '#c98079', pattern: 'tabby', longhair: true, tail: 'rings', locket: true },
+  // 14. The capped longhair — white cloud, grey skullcap, grey plume.
+  { coat: '#eae5d8', under: '#f6f2e8', mark: '#75717d', earIn: CAT_PINK, eye: '#7ea6c9', nose: '#c98079', pattern: 'capped', longhair: true, tail: 'dark' },
+  // 15. The brown classic tabby longhair — mitts under the mane.
+  { coat: '#8c7350', under: '#d6cab0', mark: '#52402c', earIn: CAT_PINK, eye: '#d9a944', nose: '#8a5148', pattern: 'tabby', longhair: true, tail: 'rings', mitts: true },
+];
+
+const HOUSECAT_LOOK_CACHE = new Map<string, HousecatLook>();
+
+/**
+ * Resolve one cat's whole look from its stable seed. Wild bodies
+ * dress off their eid; a kept companion dresses off the lookSeed the
+ * wire carries (THE COAT OUTLIVES THE BODY) — the FULL seed keys the
+ * cache because pet seeds are 31-bit rolls, not small eids.
+ */
+export function housecatLook(defId: string, seed = 0): HousecatLook {
+  const key = `${defId}|${seed}`;
+  const hit = HOUSECAT_LOOK_CACHE.get(key);
+  if (hit) return hit;
+  // Hash before picking (the gnoll law): consecutive town eids must
+  // scatter across the cabinet, never dress a whole square alike.
+  const h = (seed * 2654435761) | 0;
+  const cl = CAT_COATS[(h >>> 8) % CAT_COATS.length]!;
+  const jit = (((h >>> 13) & 7) - 3) * 2;
+  const look: HousecatLook = {
+    ...HOUSECAT_BASE,
+    ...cl,
+    coat: shade(cl.coat, jit),
+    seed,
+  };
+  // A cloud carries more animal: longhairs read a shade wider and
+  // deeper without touching the skeleton.
+  if (look.longhair) {
+    look.bodyW = HOUSECAT_BASE.bodyW * 1.12;
+    look.chestH = HOUSECAT_BASE.chestH * 0.88;
+  }
+  if (HOUSECAT_LOOK_CACHE.size > 512) HOUSECAT_LOOK_CACHE.clear();
+  HOUSECAT_LOOK_CACHE.set(key, look);
+  return look;
+}
+
+/**
+ * The house cat's body: a compact level-backed loaf on the block
+ * dialect, morphing continuously into THE SIT — haunches folded
+ * under, spine sloping up to a lifted chest — as `sitK` rises. The
+ * sit is the species' whole domestic identity, so the morph is a
+ * first-class body state, not a pose hack: footprint, topline, and
+ * belly all interpolate, and the folded haunch paints as real mass.
+ */
+export function paintHousecatBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: HousecatLook,
+  f: BeastBlockFrame,
+  sitK = 0,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  const k = Math.max(0, Math.min(1, sitK));
+  // Seated, the body shortens (the loaf gathers) and the rump
+  // spreads a little where the haunches fold out.
+  const rearX = (X: number): number => (X < 0 ? X * (1 - 0.22 * k) : X * (1 - 0.06 * k));
+  const rearW = (X: number, Y: number): number => (X < -hl * 0.2 ? Y * (1 + 0.16 * k) : Y);
+  const foot: Array<[number, number]> = (
+    [
+      [hl, -hw * 0.72],
+      [hl, hw * 0.72],
+      [hl * 0.5, hw * 0.9],
+      [-hl * 0.3, hw],
+      [-hl, hw * 0.82],
+      [-hl, -hw * 0.82],
+      [-hl * 0.3, -hw],
+      [hl * 0.5, -hw * 0.9],
+    ] as Array<[number, number]>
+  ).map(([X, Y]) => [rearX(X), rearW(X, Y)] as [number, number]);
+  const coat = shade(look.coat, (((f.seed >>> 5) & 7) - 3) * 2);
+  // Standing topline: near-level with a soft shoulder and a mild
+  // haunch rise (a kept cat, never the lynx's ramp), the neck root
+  // easing away at the front. Seated topline: the rump settles and
+  // the spine climbs to a chest carried high.
+  const standTop = (X: number): number =>
+    look.backH +
+    look.shoulderH * Math.max(0, X / hl - 0.2) +
+    look.haunchH * Math.max(0, (-X / hl - 0.1) / 0.7) -
+    0.05 * Math.max(0, (X / hl - 0.66) / 0.34);
+  const sitTop = (X: number): number => {
+    const t = (X / hl + 1) / 2; // 0 rump .. 1 chest
+    return 0.2 + 0.24 * t * t + 0.04 * Math.max(0, 0.3 - Math.abs(t - 0.25));
+  };
+  const standBot = (X: number): number =>
+    look.chestH + (look.tuckH - look.chestH) * Math.min(1, Math.max(0, (0.5 - X / hl) / 1.05));
+  const sitBot = (X: number): number => {
+    const t = (X / hl + 1) / 2;
+    return 0.02 + 0.2 * t * t;
+  };
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    (X) => standTop(X) * (1 - k) + sitTop(X) * k,
+    (X) => standBot(X) * (1 - k) + sitBot(X) * k,
+    coat,
+    (gx, gyy, lift) => {
+      const s = f.s;
+      const tk = f.topScale ?? 1;
+      const bh = look.backH * tk * s;
+      const mark = look.mark;
+      // ---- THE WHITE UNDERSIDE: bicolor and tuxedo carry pale
+      // underparts up the flank — a wash along the belly line, deeper
+      // on the bicolor. Rides the belly's own lift coupling.
+      if (look.pattern === 'bicolor' || look.pattern === 'tuxedo') {
+        const deep = look.pattern === 'bicolor' ? 0.52 : 0.4;
+        ctx.fillStyle = look.under;
+        ctx.beginPath();
+        for (let i = 0; i <= 8; i++) {
+          const X = (-0.95 + (1.85 * i) / 8) * hl * (1 - 0.14 * k);
+          const y = gyy(X, 0) - bh * (0.16 + 0.05 * Math.sin(i * 2.1 + f.seed)) - lift * 0.6;
+          if (i === 0) ctx.moveTo(gx(X, 0), y);
+          else ctx.lineTo(gx(X, 0), y);
+        }
+        for (let i = 8; i >= 0; i--) {
+          const X = (-0.95 + (1.85 * i) / 8) * hl * (1 - 0.14 * k);
+          ctx.lineTo(gx(X, 0), gyy(X, 0) - bh * (0.16 - deep) - lift * 0.6);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+      // ---- THE TABBY SCRIPT: a doubled spine line and curved rib
+      // bars — STROKES, never fills (the fur-dialect law), seeded so
+      // no two tabbies bar alike.
+      if (look.pattern === 'tabby') {
+        ctx.strokeStyle = mark;
+        ctx.lineCap = 'round';
+        ctx.lineWidth = Math.max(1, s * 0.02);
+        // The spine pair.
+        for (const s2 of [-0.03, 0.03]) {
+          ctx.beginPath();
+          for (let i = 0; i <= 6; i++) {
+            const X = (-0.85 + (1.6 * i) / 6) * hl * (1 - 0.14 * k);
+            const px2 = gx(X, s2 * hl);
+            const py2 = gyy(X, s2 * hl) - bh * 0.98 - lift;
+            if (i === 0) ctx.moveTo(px2, py2);
+            else ctx.lineTo(px2, py2);
+          }
+          ctx.stroke();
+        }
+        // The rib bars: SHORT bowed strokes off the spine, stopping
+        // at mid-flank with seeded lengths — a written coat, never a
+        // rib cage (the first cut's evenly-ruled ladder read skeletal).
+        ctx.lineWidth = Math.max(1, s * 0.022);
+        ctx.globalAlpha = 0.85;
+        for (let b = 0; b < 4; b++) {
+          const rr = ((((f.seed >>> (b % 11)) * 2654435761 + b * 131) >>> 0) % 1000) / 1000;
+          const X = (-0.55 + 0.34 * b + (rr - 0.5) * 0.12) * hl * (1 - 0.14 * k);
+          const reach = 0.45 + 0.25 * rr;
+          for (const side of [-1, 1]) {
+            const x0 = gx(X, side * hw * 0.16);
+            const y0 = gyy(X, side * hw * 0.16) - bh * (0.96 - 0.03 * rr) - lift;
+            const x1 = gx(X - hl * 0.1, side * hw * reach);
+            const y1 = gyy(X - hl * 0.1, side * hw * reach) - bh * (0.62 - 0.08 * rr) - lift * 0.9;
+            ctx.beginPath();
+            ctx.moveTo(x0, y0);
+            ctx.quadraticCurveTo(
+              gx(X - hl * 0.01, side * hw * reach * 0.55),
+              gyy(X - hl * 0.01, side * hw * reach * 0.55) - bh * 0.82 - lift,
+              x1,
+              y1,
+            );
+            ctx.stroke();
+          }
+        }
+        ctx.globalAlpha = 1;
+        ctx.lineCap = 'butt';
+      }
+      // ---- THE PATCH WORK: calico and tortie scatter seeded color
+      // islands over back and shoulders — big enough to read at
+      // world zoom, alternating the two inks.
+      if (look.pattern === 'patched') {
+        const n = look.mark2 ? 5 : 4;
+        for (let i = 0; i < n; i++) {
+          const rr = ((((f.seed >>> (i % 13)) * 2654435761 + i * 197) >>> 0) % 1000) / 1000;
+          const X = (-0.72 + 0.34 * i + (rr - 0.5) * 0.18) * hl * (1 - 0.14 * k);
+          const Y = ((i & 1) === 0 ? 1 : -1) * hw * (0.1 + 0.5 * rr);
+          ctx.fillStyle = i % 2 === 0 && look.mark2 ? look.mark2 : mark;
+          ctx.beginPath();
+          facetBlob(
+            ctx,
+            gx(X, Y),
+            gyy(X, Y) - bh * (0.75 + 0.12 * rr) - lift,
+            s * (0.055 + 0.03 * rr),
+            (f.seed >>> i) | 1,
+            7,
+            0.8,
+            0.5,
+          );
+          ctx.fill();
+        }
+      }
+      // ---- THE POINTS SHADE: the seal's warmth gathers over the
+      // rump — a quiet gradient hint, the extremities carry the ink.
+      if (look.pattern === 'points') {
+        ctx.globalAlpha = 0.22;
+        ctx.fillStyle = mark;
+        ctx.beginPath();
+        facetBlob(ctx, gx(-hl * 0.55, 0), gyy(-hl * 0.55, 0) - bh * 0.8 - lift, hl * s * 0.42, f.seed | 1, 8, 0.8, 0.6);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      // ---- THE LOCKET: one pale patch where the collarbones meet —
+      // reads only while the chest can face the camera (the bib law).
+      if ((look.locket || look.pattern === 'tuxedo') && f.fy > -0.15) {
+        ctx.fillStyle = look.under;
+        ctx.beginPath();
+        facetBlob(
+          ctx,
+          gx(hl * 0.88, 0),
+          gyy(hl * 0.88, 0) - (look.chestH + 0.07 + 0.1 * k) * s - lift * 0.8,
+          hw * s * (look.pattern === 'tuxedo' ? 0.72 : 0.42),
+          f.seed ^ 0x55,
+          7,
+          0.85,
+          look.pattern === 'tuxedo' ? 1.6 : 1.1,
+        );
+        ctx.fill();
+      }
+      // ---- THE FOLDED HAUNCH: seated, the hind leg is a real mass
+      // on the camera-side flank — a thigh disc with a quiet
+      // under-edge, and a folded paw hint peeking at its base.
+      if (k > 0.3) {
+        const side = f.fx >= 0 ? 1 : -1;
+        const hx = gx(-hl * 0.42, side * hw * 0.55);
+        const hy = gyy(-hl * 0.42, side * hw * 0.55) - bh * 0.32 - lift * 0.6;
+        ctx.globalAlpha = Math.min(1, (k - 0.3) / 0.4);
+        ctx.fillStyle = shade(coat, -6);
+        ctx.beginPath();
+        ctx.ellipse(hx, hy, hl * s * 0.34, hl * s * 0.27, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = shade(coat, -26);
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        ctx.ellipse(hx, hy, hl * s * 0.34, hl * s * 0.27, 0, Math.PI * 0.1, Math.PI * 0.9);
+        ctx.stroke();
+        // The folded paw: one toe chip under the thigh's front edge.
+        ctx.fillStyle = look.mitts ? look.under : shade(coat, -20);
+        ctx.beginPath();
+        ctx.ellipse(hx + hl * s * 0.26, hy + hl * s * 0.2, s * 0.032, s * 0.02, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      // ---- THE LONG COAT: fluff along the belly fringe and the
+      // stern britches — chop strokes, restrained at world zoom.
+      if (look.longhair && s > 70) {
+        ctx.strokeStyle = shade(coat, -14);
+        ctx.lineWidth = Math.max(1, s * 0.016);
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 6; i++) {
+          const rr = ((((f.seed >>> (i % 7)) * 2654435761 + i * 61) >>> 0) % 1000) / 1000;
+          const X = (-0.8 + 0.3 * i) * hl * (1 - 0.14 * k);
+          const x0 = gx(X, 0);
+          const y0 = gyy(X, 0) - bh * (0.2 - 0.16 * k) - lift * 0.6;
+          ctx.beginPath();
+          ctx.moveTo(x0, y0);
+          ctx.lineTo(x0 + (rr - 0.5) * s * 0.03, y0 + s * (0.035 + 0.015 * rr));
+          ctx.stroke();
+        }
+        ctx.lineCap = 'butt';
+      }
+    },
+  );
+}
+
+/**
+ * The house cat's head — the feline grammar (the lynx's law: a FLAT
+ * face, the muzzle plate barely leaving the skull at profile, the
+ * canid wedge banned forever) recut CUTE: a round skull, eyes a full
+ * size up from any wild cat's, small neat ears on the elastic pair,
+ * the pink leather triangle, and the whisker fan at close zoom. The
+ * ears ride EarSim — they lag the turn, flap with the trot, and
+ * flick at rest; sim-less callers get THE ONE REST.
+ */
+export function drawHousecatHead(
+  ctx: CanvasRenderingContext2D,
+  look: HousecatLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** Wall clock for the ear sim and the blink; absent = settled rest. */
+    nowMs?: number;
+    ears?: EarSim;
+    /** 0..1 through THE SIT — steadies the ears, slows the blink. */
+    sitK?: number;
+  },
+): void {
+  const { x: cx, y: cy, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const w = look.headW * s;
+  const h = look.headH * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+  const sitK = o.sitK ?? 0;
+  const capped = look.pattern === 'capped';
+  const pointed = look.pattern === 'points';
+
+  // ---- THE EAR IS A SIMULATION: small stiff triangles on the fox's
+  // exact contract — one 3D carriage, projected; the sim adds the
+  // turn lag, the trot flap, and the idle flick that makes a cat's
+  // ears the most alive thing on its body.
+  const dir = Math.atan2(fy, fx);
+  const pin = 0;
+  const carr: EarCarriage = {
+    azimuth: 2.05,
+    rootR: look.headW * 0.24,
+    // Roots high on the crown and blades a shade longer than the
+    // first cut: at the back-quarter bands the far blade must clear
+    // the skull's silhouette — a cat from behind reads as TWO ears
+    // (the fox's from-behind law, at kitten scale) — while staying
+    // well under the lynx's tufted towers.
+    rootLift: look.headH * 0.52,
+    length: look.headW * 0.5,
+    spread: 0.55,
+    rise: 1.35,
+    curl: [0, 0.04, 0.1],
+  };
+  if (o.ears && !o.dead && o.nowMs) o.ears.update(cx, cy, s, carr, dir, pin, o.nowMs);
+  const chains = ([-1, 1] as const).map((side) =>
+    o.ears && !o.dead
+      ? o.ears.chain(side, carr, dir, pin)
+      : earRestChain(side, carr, { dir, pin: o.dead ? 0.5 : 0, sway: 0 }),
+  );
+  // Cap and points dress the ear backs in the mark ink; every other
+  // coat keeps its own fur.
+  const earBack = capped || pointed ? look.mark : shade(look.coat, -8);
+  const earW0 = w * 0.135;
+  const paintEar = (chain: { pts: Array<{ x: number; y: number }>; depth: number }): void => {
+    const pts = chain.pts.map((p) => ({ x: cx + p.x * s, y: cy + p.y * s }));
+    const prof = [1, 0.74, 0.4, 0];
+    const ea: Array<{ x: number; y: number }> = [];
+    const eb: Array<{ x: number; y: number }> = [];
+    for (let i = 0; i < 4; i++) {
+      const a = pts[Math.max(0, i - 1)]!;
+      const b = pts[Math.min(3, i + 1)]!;
+      let tx = b.x - a.x;
+      let ty = b.y - a.y;
+      const tl = Math.hypot(tx, ty) || 1;
+      tx /= tl;
+      ty /= tl;
+      const ww = earW0 * prof[i]!;
+      ea.push({ x: pts[i]!.x + ty * ww, y: pts[i]!.y - tx * ww });
+      eb.push({ x: pts[i]!.x - ty * ww, y: pts[i]!.y + tx * ww });
+    }
+    const da = Math.hypot(ea[1]!.x - cx, ea[1]!.y - cy);
+    const db = Math.hypot(eb[1]!.x - cx, eb[1]!.y - cy);
+    const lead = da >= db ? ea : eb;
+    const trail = da >= db ? eb : ea;
+    const blade = (): void => {
+      ctx.beginPath();
+      ctx.moveTo(trail[0]!.x, trail[0]!.y);
+      ctx.lineTo(lead[0]!.x, lead[0]!.y);
+      ctx.lineTo(lead[1]!.x, lead[1]!.y);
+      ctx.lineTo(pts[3]!.x, pts[3]!.y);
+      ctx.lineTo(trail[1]!.x, trail[1]!.y);
+      ctx.closePath();
+    };
+    ctx.lineJoin = 'round';
+    ctx.fillStyle = C(earBack);
+    blade();
+    ctx.fill();
+    if (o.hurt) return;
+    // The pale inner fan, camera-facing bands only.
+    if (fy > 0.02 && !o.dead) {
+      ctx.fillStyle = look.earIn;
+      ctx.beginPath();
+      ctx.moveTo(pts[0]!.x + (trail[0]!.x - pts[0]!.x) * 0.4, pts[0]!.y + (trail[0]!.y - pts[0]!.y) * 0.4);
+      ctx.lineTo(pts[0]!.x + (lead[0]!.x - pts[0]!.x) * 0.5, pts[0]!.y + (lead[0]!.y - pts[0]!.y) * 0.5);
+      ctx.lineTo(pts[2]!.x * 0.7 + pts[3]!.x * 0.3, pts[2]!.y * 0.7 + pts[3]!.y * 0.3);
+      ctx.closePath();
+      ctx.fill();
+    }
+  };
+  const earsBack = chains.filter((c) => c.depth <= 0);
+  const earsFront = chains.filter((c) => c.depth > 0);
+  for (const c of earsBack) paintEar(c);
+
+  // ---- The skull: one round mass — the cute read starts here.
+  ctx.fillStyle = C(look.coat);
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, w * 0.54, h * 0.52, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ---- THE CAP: the dark skullcap rides the top of the head — this
+  // camera always sees tops (the 2.5D law), so the cap reads at
+  // every band; it slides toward the back of the skull as the face
+  // comes to camera.
+  if (capped && !o.hurt) {
+    ctx.fillStyle = look.mark;
+    ctx.beginPath();
+    ctx.ellipse(cx - fx * w * 0.1, cy - fy * w * 0.1 * ys - h * 0.3, w * 0.42, h * 0.3, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // ---- THE MASK: the seal's warm face, gathered on the muzzle side.
+  if (pointed && !o.hurt && !o.dead && fy > -0.4) {
+    ctx.fillStyle = look.mark;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.ellipse(cx + fx * w * 0.3, cy + fy * w * 0.3 * ys + h * 0.06, w * 0.3, h * 0.26, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  // ---- The tabby M: three crown strokes between the ears.
+  if (look.pattern === 'tabby' && !o.hurt && !o.dead && fy > -0.25) {
+    ctx.strokeStyle = look.mark;
+    ctx.lineWidth = Math.max(1, w * 0.05);
+    ctx.lineCap = 'round';
+    for (const t of [-0.16, 0, 0.16]) {
+      const mx = cx - fx * w * 0.12 + px * t * w;
+      const my = cy + (-fy * w * 0.12 + py * t * w) * ys - h * 0.32;
+      ctx.beginPath();
+      ctx.moveTo(mx, my);
+      ctx.lineTo(mx + fx * w * 0.1 + px * t * w * 0.35, my + (fy * w * 0.1 + py * t * w * 0.35) * ys + h * 0.14);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+  // ---- The longhair cheek fluff: jaw chops framing the round face.
+  if (look.longhair && !o.hurt && !o.dead && fy > -0.35) {
+    ctx.fillStyle = C(shade(look.coat, -7));
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.7 && es * py < 0) continue;
+      const jx = cx + px * es * w * 0.48 + fx * w * 0.1;
+      const jy = cy + (py * es * w * 0.48 + fy * w * 0.1) * ys + h * 0.18;
+      ctx.beginPath();
+      ctx.moveTo(jx - px * es * w * 0.08, jy - h * 0.12);
+      ctx.lineTo(jx + px * es * w * 0.16, jy + h * 0.02);
+      ctx.lineTo(jx + px * es * w * 0.02, jy + h * 0.16);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // ---- THE FLAT FACE: the pale muzzle plate sits ON the skull and
+  // barely leaves it at profile (the lynx law — the canid wedge is
+  // banned on felines forever). Small: the cute ratio keeps the eyes
+  // the biggest thing on the face.
+  const profileK = Math.abs(fx);
+  const sl = w * (0.06 + 0.07 * profileK);
+  const mx0 = cx + fx * (w * 0.3 + sl);
+  const my0 = cy + fy * (w * 0.3 + sl) * ys + h * 0.16;
+  if (!o.dead && fy > -0.35) {
+    ctx.fillStyle = C(pointed ? shade(look.mark, 30) : look.under);
+    ctx.beginPath();
+    ctx.ellipse(mx0, my0, w * 0.26, h * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (!o.hurt) {
+      // The whisker pads: two soft mounds under the nose.
+      ctx.fillStyle = C(pointed ? shade(look.mark, 38) : shade(look.under, 6));
+      for (const es of [-1, 1]) {
+        ctx.beginPath();
+        ctx.ellipse(mx0 + px * es * w * 0.1, my0 + py * es * w * 0.1 * ys + h * 0.02, w * 0.11, h * 0.08, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // The nose leather: the pink downward triangle.
+      ctx.fillStyle = C(look.nose);
+      ctx.beginPath();
+      ctx.moveTo(mx0 - px * w * 0.055, my0 - h * 0.08);
+      ctx.lineTo(mx0 + px * w * 0.055, my0 - h * 0.08);
+      ctx.lineTo(mx0, my0 - h * 0.01);
+      ctx.closePath();
+      ctx.fill();
+      // Philtrum and chin: the sewn seam under the leather.
+      ctx.strokeStyle = shade(look.under, -34);
+      ctx.lineWidth = Math.max(1, w * 0.028);
+      ctx.beginPath();
+      ctx.moveTo(mx0, my0 - h * 0.01);
+      ctx.lineTo(mx0, my0 + h * 0.06);
+      ctx.stroke();
+      // The whisker fan: three pale arcs per side, close zoom only.
+      if (s > 90) {
+        ctx.strokeStyle = 'rgba(240, 236, 224, 0.75)';
+        ctx.lineWidth = Math.max(0.8, w * 0.018);
+        ctx.lineCap = 'round';
+        for (const es of [-1, 1]) {
+          if (Math.abs(fx) > 0.75 && es * py < 0) continue;
+          for (let wi = 0; wi < 3; wi++) {
+            const wy0 = my0 + py * es * w * 0.1 * ys + h * (0.0 + 0.03 * wi);
+            const wx0 = mx0 + px * es * w * 0.1;
+            ctx.beginPath();
+            ctx.moveTo(wx0, wy0);
+            ctx.quadraticCurveTo(
+              wx0 + px * es * w * 0.34,
+              wy0 - h * (0.06 - 0.05 * wi),
+              wx0 + px * es * w * 0.55,
+              wy0 + h * (0.02 * wi - 0.02),
+            );
+            ctx.stroke();
+          }
+        }
+        ctx.lineCap = 'butt';
+      }
+    }
+  }
+
+  // ---- THE EYES: the biggest feature on the face — round-cut
+  // almonds, dark-lined, the vertical pupil, one light chip, and the
+  // BLINK: a seeded once-in-a-while shutter, and the long slow
+  // half-blink while sitting (the cat's own word for trust).
+  if (!o.dead && fy > -0.42) {
+    let blink = 0;
+    if (o.nowMs && !o.hurt) {
+      const phase = ((look.seed ?? 0) % 89) * 97;
+      const cyc = sitK > 0.6 ? 5200 : 7400;
+      const t2 = (o.nowMs + phase) % cyc;
+      const dur = sitK > 0.6 ? 620 : 150;
+      if (t2 < dur) blink = Math.sin((t2 / dur) * Math.PI) * (sitK > 0.6 ? 0.65 : 1);
+    }
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.62 && es * py < 0) continue;
+      const ex = cx + fx * w * 0.16 + px * es * w * 0.26;
+      const ey = cy + (fy * w * 0.16 + py * es * w * 0.26) * ys - h * 0.08;
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.rotate(es * 0.16);
+      const ew = w * 0.15;
+      const eh = h * 0.13 * (1 - 0.85 * blink);
+      // The liner first, then the iris inside it.
+      ctx.fillStyle = C('#2a2430');
+      ctx.beginPath();
+      ctx.ellipse(0, 0, ew * 1.14, eh * 1.2 + h * 0.008, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (!o.hurt) {
+        ctx.fillStyle = look.eye;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, ew, eh, 0, 0, Math.PI * 2);
+        ctx.fill();
+        if (eh > h * 0.03) {
+          // The vertical pupil, soft-edged at this size.
+          ctx.fillStyle = OUTLINE;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, ew * 0.24, eh * 0.92, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255, 250, 235, 0.9)';
+          ctx.beginPath();
+          ctx.ellipse(ew * 0.4, -eh * 0.35, ew * 0.16, eh * 0.2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+  }
+  // Dead: quiet closed lids.
+  if (o.dead && !o.hurt && fy > -0.42) {
+    ctx.strokeStyle = shade(look.coat, -30);
+    ctx.lineWidth = Math.max(1, w * 0.03);
+    for (const es of [-1, 1]) {
+      const ex = cx + fx * w * 0.16 + px * es * w * 0.26;
+      const ey = cy + (fy * w * 0.16 + py * es * w * 0.26) * ys - h * 0.08;
+      ctx.beginPath();
+      ctx.moveTo(ex - w * 0.1, ey);
+      ctx.lineTo(ex + w * 0.1, ey);
+      ctx.stroke();
+    }
+  }
+
+  for (const c of earsFront) paintEar(c);
 }
 
 /**
@@ -22513,6 +23221,13 @@ export function drawBeast(
      * regrows — the painter trades the cloud for the clipped trim.
      */
     shorn?: boolean;
+    /**
+     * THE SIT (house cat): 0..1 into the settled upright rest —
+     * haunches folded under the body, forelegs posted straight from
+     * a lifted chest, head carried high. The renderer eases it in
+     * off stillness; the body, legs, and head all read the one dial.
+     */
+    sit?: number;
   },
 ): void {
   const s = opts.scale;
@@ -22581,6 +23296,11 @@ export function drawBeast(
   // look resolves here (cached) so the bespoke limb painter can dress
   // muscle, not strokes.
   const lynxLegL = opts.defId.startsWith('lynx') ? lynxLook(opts.defId, opts.seed ?? 0) : undefined;
+  // The house cat rolls the coat cabinet — LEGS FOLLOW THE ROLLED
+  // COAT (the lynx law), and the paws answer the pattern: white
+  // mitts, the seal's dark points, or the coat's own dark step.
+  const housecatL = opts.defId === 'cat' ? housecatLook(opts.defId, opts.seed ?? 0) : undefined;
+  const catSit = housecatL ? Math.max(0, Math.min(1, opts.sit ?? 0)) : 0;
   // THE STOCKING LAW: a fox's legs wear its rolled cluster — thigh in
   // the coat, shin in the soot sock, paw darkest — so the dark
   // stockings read under a warm body at every zoom. An ember fox on
@@ -22594,7 +23314,9 @@ export function drawBeast(
     : undefined;
   const legBase = lynxLegL
     ? lynxLegL.coat
-    : foxLegL
+    : housecatL
+      ? housecatL.coat
+      : foxLegL
       ? foxLegL.coat
       : basiliskLegL
         ? basiliskLegL.hide
@@ -22632,12 +23354,21 @@ export function drawBeast(
     // coupling (lift · 0.6 — the edge the legs emerge from), so the
     // leg roots stay seated in the bouncing mass instead of hanging
     // pinned in the air while the body moves around them.
+    // THE SIT FOLDS THE HAUNCH (house cat): past the settle the hind
+    // legs fold under the body — the body painter carries them as the
+    // folded-thigh mass — and the forelegs post straight from a chest
+    // lifted by the same dial.
+    if (catSit > 0.55 && leg.fwd < 0) return;
     const hf = leg.fwd * spec.hipFwd;
     const hs = leg.side * spec.hipSide;
     const wx = fx * hf - fy * hs;
     const wy = fy * hf + fx * hs;
     const hipX = bx + wx * s;
-    const hipY = by + wy * s * ys - (opts.pose.rise + opts.pose.bob * 0.35 * 0.6) * s;
+    const hipY =
+      by +
+      wy * s * ys -
+      (opts.pose.rise + opts.pose.bob * 0.35 * 0.6) * s -
+      (leg.fwd > 0 ? catSit * s * 0.1 : 0);
     const footY = foot.y - foot.lift * s;
     // Anatomical joint preference: along the facing (front knees bow
     // forward, hocks and bird ankles backward) plus a SCREEN-space
@@ -22699,6 +23430,32 @@ export function drawBeast(
         // same-coat legs mid-stride merge into one blob at profile.
         far: (opts.feet[i]?.y ?? opts.y) < opts.y,
         hurt: opts.hurt,
+      });
+      return;
+    }
+    // The house cat wears the same muscled limb at kitten scale —
+    // and the paw answers the coat: white mitts, seal points, or the
+    // coat's own dark step.
+    if (housecatL) {
+      drawCatLimb(ctx, {
+        hipX,
+        hipY,
+        kx,
+        ky,
+        ex,
+        ey,
+        w: spec.legW * s,
+        s,
+        hind: leg.fwd < 0,
+        coat: shade(housecatL.coat, (((seed >>> 5) & 7) - 3) * 2),
+        champion: false,
+        far: (opts.feet[i]?.y ?? opts.y) < opts.y,
+        hurt: opts.hurt,
+        paw: housecatL.mitts
+          ? housecatL.under
+          : housecatL.pattern === 'points'
+            ? housecatL.mark
+            : undefined,
       });
       return;
     }
@@ -23182,6 +23939,10 @@ export function drawBeast(
       paintBasiliskBody(ctx, spec, basiliskL, blockFrame());
       return;
     }
+    if (housecatL) {
+      paintHousecatBody(ctx, spec, housecatL, blockFrame(), catSit);
+      return;
+    }
     if (lynxL) {
       paintLynxBody(ctx, spec, lynxL, blockFrame());
       return;
@@ -23496,6 +24257,69 @@ export function drawBeast(
         ctx.stroke();
       }
       drawCourserHead(ctx, courserL, { x: chx, y: chy, s, fx, fy, ys, hurt: opts.hurt });
+      return;
+    }
+    if (housecatL) {
+      // THE KEPT CARRIAGE: a house cat is neither the lynx's low
+      // prowler nor the fox's pricked listener — the head rides just
+      // above a level back on a short soft neck, streamlines at a
+      // dart, and through THE SIT climbs high over the lifted chest
+      // (the upright silhouette that reads domestic across a square).
+      const hl = spec.bodyLen * s;
+      const hw2 = housecatL.headW * s;
+      const nod = opts.pose.bob * 0.35 * s;
+      const run = opts.pose.poleStrength;
+      const perk = s * 0.1 * (1 - run * 0.5);
+      const reach = (hl * 0.95 + hw2 * 0.3) * (1 - 0.32 * catSit);
+      const baseH = (housecatL.backH + housecatL.shoulderH) * s;
+      const chx = bx + fx * reach;
+      const chy =
+        by +
+        fy * reach * ys -
+        baseH -
+        perk -
+        catSit * s * 0.14 -
+        nod * (1 - catSit * 0.7);
+      // The neck: a short soft wedge — never a keel, never a stalk.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(housecatL.coat, -4);
+      ctx.beginPath();
+      const nb = baseH * (1 - 0.1 * catSit) + opts.pose.bob * 0.35 * s * (1 - catSit * 0.7) + catSit * s * 0.1;
+      const nwx = px * housecatL.bodyW * 0.6 * s;
+      const nwy = py * housecatL.bodyW * 0.6 * s;
+      ctx.moveTo(bx + fx * hl * 0.5 + nwx, by + (fy * hl * 0.5 + nwy) * ys - nb);
+      ctx.lineTo(bx + fx * hl * 0.5 - nwx, by + (fy * hl * 0.5 - nwy) * ys - nb);
+      ctx.lineTo(chx - px * hw2 * 0.38, chy - py * hw2 * 0.38 * ys + housecatL.headH * s * 0.3);
+      ctx.lineTo(chx + px * hw2 * 0.38, chy + py * hw2 * 0.38 * ys + housecatL.headH * s * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      // The pale throat: the bib climbs to the chin on the coats that
+      // dress in white — camera-facing bands only (the bib law).
+      if (
+        (housecatL.pattern === 'tuxedo' || housecatL.pattern === 'bicolor' || housecatL.locket) &&
+        fy > -0.1 &&
+        !opts.hurt
+      ) {
+        ctx.fillStyle = housecatL.under;
+        ctx.beginPath();
+        ctx.moveTo(bx + fx * hl * 0.58 + nwx * 0.5, by + (fy * hl * 0.58 + nwy * 0.5) * ys - nb * 0.88);
+        ctx.lineTo(bx + fx * hl * 0.58 - nwx * 0.5, by + (fy * hl * 0.58 - nwy * 0.5) * ys - nb * 0.88);
+        ctx.lineTo(chx - px * hw2 * 0.18, chy - py * hw2 * 0.18 * ys + housecatL.headH * s * 0.38);
+        ctx.lineTo(chx + px * hw2 * 0.18, chy + py * hw2 * 0.18 * ys + housecatL.headH * s * 0.38);
+        ctx.closePath();
+        ctx.fill();
+      }
+      drawHousecatHead(ctx, housecatL, {
+        x: chx,
+        y: chy,
+        s,
+        fx,
+        fy,
+        ys,
+        hurt: opts.hurt,
+        nowMs: now > 0 ? now : undefined,
+        ears: opts.ears,
+        sitK: catSit,
+      });
       return;
     }
     if (foxL) {
@@ -24441,6 +25265,60 @@ export function drawBeast(
         seed * 0.4,
       );
       ctx.fill();
+      return;
+    }
+    if (housecatL) {
+      // THE SIMULATED FLAG: the live game runs the perked TailSim.
+      if (opts.tail) {
+        opts.tail();
+        return;
+      }
+      // THE ONE REST: the analytic raised flag — the exact carriage
+      // the sim settles to at perk 1 (same segment lengths, same
+      // rising integration), so sheets, portraits, and sim-less
+      // callers paint what the live game relaxes to.
+      const segsN = 6;
+      const segT = 0.072 * (1 + 0.3 * (0.72 - 1));
+      const rootOff = Math.min(0.2, spec.bodyLen - 0.04);
+      const lift = opts.pose.bob * 0.35 * s;
+      const swayA = now > 0 ? Math.sin(now * 0.0012 + seed * 0.9) * 0.05 : 0;
+      let back = rootOff;
+      let zz = 0.27;
+      const pts: Array<{ x: number; y: number }> = [];
+      for (let i = 0; i <= segsN; i++) {
+        const ti = i / segsN;
+        pts.push({
+          x: bx - fx * back * s - px * swayA * ti * ti * s * 6,
+          y: by - fy * back * ys * s - py * swayA * ti * ti * ys * s * 6 - zz * s - lift * 0.6,
+        });
+        const th = Math.min(Math.PI * 0.62, 0.3 + 1.5 * ((i + 1) / segsN));
+        back += segT * Math.cos(th);
+        zz += segT * Math.sin(th);
+      }
+      // Inline ribbon (the lynx/fox precedent: the analytic rest is
+      // drawn with primitives here — tail.ts value-imports from this
+      // module, so the live painter cannot be called back without a
+      // runtime cycle). Same widths, same dress.
+      const lh = housecatL.longhair;
+      const base =
+        housecatL.tail === 'dark' ? housecatL.mark : shade(housecatL.coat, -3);
+      ctx.lineCap = 'round';
+      for (let i = 0; i < segsN; i++) {
+        const t0 = i / segsN;
+        const wRib = lh
+          ? (0.024 + 0.046 * Math.pow(Math.sin(Math.min(1, t0 * 1.08) * Math.PI), 0.7)) * s
+          : (0.028 - 0.01 * t0) * s;
+        const ringed =
+          housecatL.tail === 'rings' && t0 > 0.35 && (i % 2 === 0) ? housecatL.mark : base;
+        const tipInk = housecatL.tail === 'tip' && i >= segsN - 2 ? housecatL.mark : ringed;
+        ctx.strokeStyle = opts.hurt ? '#ffffff' : fy < -0.2 ? shade(tipInk, -16) : tipInk;
+        ctx.lineWidth = Math.max(2, wRib * 2);
+        ctx.beginPath();
+        ctx.moveTo(pts[i]!.x, pts[i]!.y);
+        ctx.lineTo(pts[i + 1]!.x, pts[i + 1]!.y);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
       return;
     }
     if (foxL) {

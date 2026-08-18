@@ -98,6 +98,7 @@ import {
   gnollLook,
   goblinLook,
   lynxLook,
+  housecatLook,
   foxLook,
   basiliskLook,
   drawBasiliskTail,
@@ -230,7 +231,7 @@ import {
 } from './reveal.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
-import { BobtailSim, CrocTailSim, TailSim, drawBobtail, drawFeyBrush, drawFoxBrush, drawHorseTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
+import { BobtailSim, CrocTailSim, TailSim, drawBobtail, drawFeyBrush, drawFoxBrush, drawHorseTail, drawHousecatTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
 import { FlightRig, batLook, drawBat, drawGreatOwl, flierSpec } from './flight.js';
 import { EarSim } from './earPhysics.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
@@ -1087,6 +1088,15 @@ interface AnimState {
   /** The canid elastic ear pair — beside the goblin's `ears`, its own
    *  slot for the same no-cross-lane-eviction reason. */
   canidEars?: EarSim;
+  /** THE RAISED FLAG: the house cat's perked tail sim — its own slot
+   *  beside the canid brush, so no lane's eviction drops the flag. */
+  catTail?: TailSim;
+  /** The house cat's elastic ear pair — its own slot. */
+  catEars?: EarSim;
+  /** THE SIT: wall-clock ms this cat last moved (stillness ledger). */
+  catStillAt?: number;
+  /** THE SIT: the eased 0..1 settle the whole body reads. */
+  catSit?: number;
   /** THE LIVING STALKS: the giant crab's eye-stalk pair on the ear
    *  contract — body-painter-ticked at the bow anchor; its own slot
    *  so the shell lane never evicts a canid's ears. */
@@ -59065,7 +59075,7 @@ export class Renderer {
   private downedBeastItem(
     eid: number,
     defId: string,
-    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean },
+    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean; seed?: number },
     s: { x: number; y: number; dir: number; hpPct: number; pose: number; status?: number },
     nameInk?: string,
   ): DrawItem {
@@ -59100,8 +59110,10 @@ export class Renderer {
           color: def?.color ?? '#999',
           defId,
           // The corpse-coat law: painters seed by RAW eid, exactly as
-          // the standing beast does — the downed friend keeps its coat.
-          seed: eid,
+          // the standing beast does — the downed friend keeps its coat
+          // (and a companion keeps its COURTED coat: the wire's seed
+          // outranks the body's eid, THE COAT OUTLIVES THE BODY).
+          seed: typeof meta.seed === 'number' ? meta.seed : eid,
           ...(corpseOwl ? { owl: corpseOwl } : {}),
         },
         lastSeen: performance.now(),
@@ -59171,7 +59183,7 @@ export class Renderer {
   private npcItem(
     eid: number,
     defId: string,
-    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean; shorn?: boolean },
+    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean; shorn?: boolean; seed?: number },
     s: { x: number; y: number; dir: number; hpPct: number; pose: number; status?: number },
     hurt: boolean,
     nameInk?: string,
@@ -59440,13 +59452,83 @@ export class Renderer {
       s.pose === PoseState.Attack
         ? Math.min(1, (performance.now() - anim.poseStartedAt) / 420)
         : 0;
+    // THE COAT OUTLIVES THE BODY: a companion carries its courted
+    // look seed on the wire; wild bodies dress by eid, exactly as
+    // they always did.
+    const lookSeed = typeof meta.seed === 'number' ? meta.seed : eid;
+    // ---- THE HOUSE CAT'S LANE: the raised flag, the elastic ears,
+    // and THE SIT — a stillness ledger eased into the body dial.
+    let catTailSim: TailSim | null = null;
+    let catEarSim: EarSim | undefined;
+    let catSitK = 0;
+    let paintBob: (() => void) | undefined;
+    if (defId === 'cat') {
+      const nowMs2 = performance.now();
+      // Stillness: the rig's own speed blend says whether the body
+      // is truly planted; anything but a quiet idle stands it up.
+      const still = legPose.poleStrength < 0.05 && s.pose === PoseState.Idle && !hurt;
+      if (!still) anim.catStillAt = nowMs2;
+      const stillFor = nowMs2 - (anim.catStillAt ?? (anim.catStillAt = nowMs2));
+      // Seeded settle delay: no two cats in a square sit on one clock.
+      const settleDelay = 2600 + (((eid * 2654435761) >>> 6) % 3200);
+      const target = still && stillFor > settleDelay ? 1 : 0;
+      const cur = anim.catSit ?? 0;
+      // Settling is unhurried; standing up is a cat's one fast verb.
+      const rate = target > cur ? 1.7 : 6;
+      catSitK = Math.max(0, Math.min(1, cur + Math.sign(target - cur) * this.frameDt * rate));
+      anim.catSit = catSitK;
+      const catL = housecatLook(defId, lookSeed);
+      if (!anim.catTail) {
+        // Root seated inside the stern (the vixen clamp), light body.
+        anim.catTail = new TailSim(0.72, lookSeed, Math.min(0.2, spec.bodyLen - 0.04));
+      }
+      catTailSim = anim.catTail;
+      catTailSim.update(
+        s.x,
+        s.y,
+        // The rump-top height, settling with the sit.
+        (0.27 - 0.11 * catSitK) + legPose.bob * 0.35 * (1 - catSitK * 0.7),
+        legPose.dir,
+        this.frameDt,
+        nowMs2 / 1000,
+        1,
+        // THE RAISED FLAG: full question-mark at ease; seated, the
+        // tail comes down to wrap low; speed streams it level inside
+        // the sim's own law.
+        1 - catSitK * 0.72,
+      );
+      const st = {
+        coat: catL.coat,
+        under: catL.under,
+        mark: catL.mark,
+        kind: catL.tail,
+        longhair: catL.longhair,
+      };
+      const sim = catTailSim;
+      paintBob = () => {
+        const pts = sim.nodes.map((nd) => {
+          const sp = this.camera.worldToScreen(nd.x, nd.y, this.w, this.h);
+          return { x: sp.x, y: sp.y - this.renderLift(nd.x, nd.y) * scale - nd.z * scale };
+        });
+        drawHousecatTail(this.ctx, pts, st, scale, {
+          hurt,
+          back: Math.sin(legPose.dir) < -0.2,
+        });
+      };
+      anim.catEars ??= new EarSim(lookSeed);
+      catEarSim = anim.catEars;
+    } else {
+      if (anim.catTail) anim.catTail = undefined;
+      if (anim.catEars) anim.catEars = undefined;
+      anim.catSit = undefined;
+      anim.catStillAt = undefined;
+    }
     // THE BOBTAIL IS A SIMULATION (tail.ts): the lynx's stub is the
     // cape contract in muscle — a verlet chain on the anim map,
     // ticked once per frame and painted through drawBeast's own
     // depth law (the tail seam). Perk 1 through the pounce crouch:
     // the stub stands while the body coils.
     let bobSim: BobtailSim | null = null;
-    let paintBob: (() => void) | undefined;
     if (defId.startsWith('lynx')) {
       if (!anim.bobtail) {
         anim.bobtail = new BobtailSim(defId === 'lynx_champion' ? 1.35 : 1, eid);
@@ -59758,6 +59840,12 @@ export class Renderer {
       // still moving keeps the hound at full rate.
       (anim.canidBrush2 !== undefined && anim.canidBrush2.restless) ||
       (foxEarSim !== undefined && foxEarSim.restless) ||
+      // The cat's flag and ears earn the same full-rate courtesy, and
+      // THE SIT re-bakes through its whole ease (a settle that snaps
+      // between cache frames reads as a dropped sim).
+      (catTailSim !== null && catTailSim.restless) ||
+      (catEarSim !== undefined && catEarSim.restless) ||
+      (catSitK > 0.002 && catSitK < 0.998) ||
       // The stalks earn it too: a settling eye stalk that snaps
       // between cache frames reads as a dropped sim.
       (crabEyeSim !== undefined && crabEyeSim.restless) ||
@@ -59769,6 +59857,8 @@ export class Renderer {
       elevated: terrainLift !== 0,
       olKey: eid,
       olSig: `${Math.round(s.dir * 1000)}|${s.pose}|${hurt ? 1 : 0}|${defId}${shorn ? '|sh' : ''}${
+        catSitK > 0 ? `|st${Math.round(catSitK * 10)}` : ''
+      }${
         // The tuft burst animates through the cache: bucket the clock
         // into the signature so the drift re-samples while it plays.
         shearT < 1 ? `|b${Math.floor(shearT * 18)}` : ''
@@ -59796,7 +59886,7 @@ export class Renderer {
           hurt,
           kneeMemory: anim.kneeMemory,
           attackT,
-          seed: eid,
+          seed: lookSeed,
           nowMs: performance.now(),
           // A companion wears the keeper's collar; a yard animal wears
           // the drover's tan halter — kept, never heeled, and the tag
@@ -59804,8 +59894,9 @@ export class Renderer {
           // marker is the durable fact; ownerEid comes and goes).
           collar: meta.stock ? '#8a6234' : meta.ownerEid !== undefined ? '#6e4a26' : undefined,
           tail: paintBob,
-          ears: foxEarSim ?? crabEyeSim,
+          ears: catEarSim ?? foxEarSim ?? crabEyeSim,
           shorn,
+          sit: catSitK > 0 ? catSitK : undefined,
         });
         // The shear moment: loosed tufts drift up and away off the
         // clipped back, cream over lit cream, gone inside a second.
@@ -59871,7 +59962,7 @@ export class Renderer {
         // antlers ride a raised neck and clip at the top edge without
         // their own headroom (user-flagged walking up-screen).
         const headroom =
-          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'wolf_oldfang' ? 0.32 : defId === 'fey_wolf' ? 0.45 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : defId === 'giant_turtle' ? 0.45 : defId === 'colossus_turtle' ? 0.85 : defId === 'giant_crab' ? 0.45 : defId === 'elder_basilisk' ? 0.5 : defId === 'basilisk' ? 0.3 : defId === 'fen_basilisk' ? 0.15 : 0;
+          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'wolf_oldfang' ? 0.32 : defId === 'fey_wolf' ? 0.45 : defId === 'worg' ? 0.25 : defId === 'cat' ? 0.35 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : defId === 'giant_turtle' ? 0.45 : defId === 'colossus_turtle' ? 0.85 : defId === 'giant_crab' ? 0.45 : defId === 'elder_basilisk' ? 0.5 : defId === 'basilisk' ? 0.3 : defId === 'fen_basilisk' ? 0.15 : 0;
         const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2 + headroom + tailRoom * 0.45) * scale + r;
         const bottom = (spec.rig.legLen + 0.7 + snapRoom + tailRoom * 0.65) * scale;
         return { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom };

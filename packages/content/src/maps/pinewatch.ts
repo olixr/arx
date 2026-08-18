@@ -1361,6 +1361,8 @@ export function buildPinewatch(): ZoneDef {
   b.actor('pinewatch_sawyer', 28.5, 80.5, Math.PI / 2, 'pine_sawyer');
   b.actor('pinewatch_sawyer', 52.5, 30.5, Math.PI / 2, 'pine_sawyer');
   b.npcSpawn('chicken', 24, 60.5, 2, 3);
+  // The coop cats — the north keeps its mousers close to the feed.
+  b.npcSpawn('cat', 26, 62.5, 2.5, 2);
 
   b.spawn(66.5, 50.5); // the muster yard: the respawn hearth of the north-east
   return b.build();

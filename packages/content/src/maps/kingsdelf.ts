@@ -679,6 +679,9 @@ export function buildKingsdelf(): ZoneDef {
   b.actor('factor_venn', 89, 24, S, 'kd_factor');
   b.actor('sealkeeper_annik', 39, 27, N, 'kd_sealkeeper');
   b.actor('innkeep_brekka', 78, 47, S, 'kd_innkeep');
+  // The inn cat and the stable cat — the delf feeds them both twice.
+  b.npcSpawn('cat', 79.5, 45.5, 2.5, 1);
+  b.npcSpawn('cat', 104.5, 13.5, 2.5, 1);
   b.actor('stablemaster_orin', 106, 12, W, 'kd_stablemaster');
   b.actor('smith_ferrun', 36, 52, W, 'kd_smith');
   b.actor('glasswright_mirena', 99, 64, W, 'kd_glasswright');

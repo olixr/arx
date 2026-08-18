@@ -1236,8 +1236,15 @@ export function petRepertoireErrors(): string[] {
     seen.add(def.id);
     errs.push(...petArtErrors(def));
   }
-  // Every tamable species holds a shelf, and only tamable species do.
-  for (const species of TAMES.keys()) {
+  // Every tamable species holds a shelf, and only tamable species do
+  // — except the docile company (the house cat), which by law fights
+  // nothing and therefore holds nothing: a shelf FOR a docile species
+  // is as much a defect as a missing one.
+  for (const [species, tame] of TAMES) {
+    if (tame.docile) {
+      if (PET_REPERTOIRE[species]) errs.push(`${species}: a docile friend holds no repertoire`);
+      continue;
+    }
     if (!PET_REPERTOIRE[species]) errs.push(`${species}: tamable but holds no repertoire`);
   }
   for (const species of Object.keys(PET_REPERTOIRE)) {
