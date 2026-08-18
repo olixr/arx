@@ -2323,7 +2323,10 @@ game.onFx = (fx) => {
         // the gnaw trough a hollowed log like the dugout — and the
         // gong is the RESONANT class's loudest member: breaking it
         // rings the alarm it was built to ring, once, for free.
-        kind === 'grogtub' || kind === 'gnawtrough' || kind === 'gong',
+        kind === 'grogtub' || kind === 'gnawtrough' || kind === 'gong' ||
+        // A racked cuirass is a hollow steel vessel — the harness
+        // rings when it comes off the stand.
+        kind === 'armorstandfull',
       ),
     );
     // Stone-weight pieces land heavy: marble, mithril, and old

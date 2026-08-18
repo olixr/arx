@@ -5,6 +5,8 @@ import {
   bracketSignDetail,
   pennantDetail,
   trellisDetail,
+  bannerStandTile,
+  wallArmsDetail,
   wallBannerDetail,
 } from '@arx/shared';
 import { PINEWATCH_RECT } from '../geography.js';
@@ -1109,6 +1111,10 @@ export function buildPinewatch(): ZoneDef {
   // rack, and the rack the serjeant counts before he counts the men.
   b.set(110, 8, Tile.TargetDummy).set(114, 8, Tile.TargetDummy);
   b.set(117, 12, Tile.SpearRack).set(108, 12, Tile.WeaponRack);
+  // The fort's standard on the drill line — what the muster forms
+  // on. Ochre: the Northguard flies timber-and-tar colors, not the
+  // capital's crimson.
+  b.set(111, 12, bannerStandTile(6));
   b.setDetail(112, 10, Detail.Pebbles).setDetail(110, 12, Detail.Sawdust);
   // The kennels, north-west corner: the hound line bred down from
   // Bern's dog — the one that came back across the ice. Rail-penned,
@@ -1134,6 +1140,9 @@ export function buildPinewatch(): ZoneDef {
   b.set(103, 22, Tile.Table).set(104, 22, Tile.Table);
   b.set(103, 23, Tile.Chair).set(105, 22, Tile.Chair);
   b.set(108, 21, Tile.WeaponRack).set(108, 23, Tile.Cabinet);
+  // One empty stand between the bunks and the hearth: the night
+  // watch's harness is out walking the wall in the dark.
+  b.set(100, 21, Tile.ArmorStand);
   b.setDetail(104, 16, Detail.Doormat).setDetail(104, 20, Detail.Rug).setDetail(105, 20, Detail.Rug);
   // The armory and the quartermaster's counter, west room; the
   // captain's quarters, east room — where the letters to Hoargate
@@ -1147,10 +1156,18 @@ export function buildPinewatch(): ZoneDef {
   b.set(120, 19, Tile.DoorwayStone);
   b.set(115, 17, Tile.Counter).set(116, 17, Tile.Counter); // the requisition window
   b.set(114, 16, Tile.WeaponRack).set(118, 16, Tile.WeaponRack);
+  // THE KNIGHT'S KEEPING: the fort's steel on the armory wall — the
+  // panoply and the long halberd over the racks — and a dressed
+  // stand beside the stores, signed out by nobody yet.
+  b.setDetail(114, 15, wallArmsDetail(0)).setDetail(118, 15, wallArmsDetail(2));
+  b.set(117, 21, Tile.ArmorStandFull);
   b.set(114, 21, Tile.Crate).set(115, 21, Tile.CrateGoods).set(118, 22, Tile.Barrel);
   b.set(119, 16, Tile.Cabinet);
   b.set(119, 20, Tile.Bed).set(119, 21, Tile.Bed); // the quartermaster sleeps beside the ledger
   b.setDetail(114, 19, Detail.Doormat);
+  // The great crest over the captain's quarters — the Northguard's
+  // arms where the letters to Hoargate get sealed under them.
+  b.setDetail(123, 15, wallArmsDetail(3));
   b.set(124, 16, Tile.Bed).set(124, 17, Tile.Bed); // the captain sleeps where the maps are
   b.set(121, 16, Tile.Lectern); // the correspondence: Hoargate, the Charterhouse, Hartfell
   b.set(122, 20, Tile.Table).set(122, 21, Tile.Chair);

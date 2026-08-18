@@ -19,6 +19,7 @@ import {
   SIGN_MOTIF_COUNT,
   SILL_MIX_COUNT,
   BUNDLE_MIX_COUNT,
+  ARMS_FORM_COUNT,
   SILL_HOST_TILES,
   TRELLIS_SPECIES_COUNT,
   WALL_HUNG_DETAILS,
@@ -35,6 +36,11 @@ import {
   sillHerbsDetail,
   herbBundlesDetail,
   hangHostTiles,
+  wallArmsDetail,
+  greatBannerDetail,
+  drapeFallDetail,
+  bannerStandInfo,
+  bannerStandTile,
   wallBannerDetail,
   wallHungInfo,
   candleInfo,
@@ -535,6 +541,14 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.PillarCandleOut, 'pillarcandle', 1],
     [Tile.TripleCandles, 'candlecluster', 1],
     [Tile.TripleCandlesOut, 'candlecluster', 1],
+    // THE KNIGHT'S KEEPING: bare oak two, joined harness three, the
+    // standard's staff two — every dye of the standard breaks alike.
+    [Tile.ArmorStand, 'armorstand', 2],
+    [Tile.ArmorStandFull, 'armorstandfull', 3],
+    ...Array.from(
+      { length: DYE_COUNT },
+      (_, d) => [Tile.BannerStand + d, 'bannerstand', 2] as [Tile, string, number],
+    ),
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {
@@ -653,6 +667,19 @@ test('wall-hung bands: wallHungInfo reads every id back exactly', () => {
   for (let mix = 0; mix < BUNDLE_MIX_COUNT; mix++) {
     assert.deepEqual(wallHungInfo(herbBundlesDetail(mix)), { kind: 'bundles', mix });
   }
+  // THE KNIGHT'S KEEPING bands read back form- and dye-true.
+  for (let form = 0; form < ARMS_FORM_COUNT; form++) {
+    assert.deepEqual(wallHungInfo(wallArmsDetail(form)), { kind: 'arms', form });
+  }
+  for (let dye = 0; dye < DYE_COUNT; dye++) {
+    assert.deepEqual(wallHungInfo(greatBannerDetail(dye)), { kind: 'greatbanner', dye });
+    assert.deepEqual(wallHungInfo(drapeFallDetail(dye)), { kind: 'drape', dye });
+    // The standing banner's tile band round-trips the same way.
+    assert.deepEqual(bannerStandInfo(bannerStandTile(dye)), { dye });
+  }
+  assert.equal(bannerStandInfo(Tile.BannerStand + DYE_COUNT), null);
+  assert.equal(bannerStandInfo(Tile.ArmorStandFull), null);
+  assert.throws(() => bannerStandTile(DYE_COUNT));
   // Ground details never read as hangings.
   for (const d of [Detail.None, Detail.Flowers, Detail.Rug, Detail.Doormat, Detail.CarpetRoyal]) {
     assert.equal(wallHungInfo(d), null, `detail ${d} stays on the ground`);
@@ -667,9 +694,15 @@ test('wall-hung bands: wallHungInfo reads every id back exactly', () => {
   assert.throws(() => trellisDetail(TRELLIS_SPECIES_COUNT));
   assert.throws(() => sillHerbsDetail(SILL_MIX_COUNT));
   assert.throws(() => herbBundlesDetail(BUNDLE_MIX_COUNT));
+  assert.throws(() => wallArmsDetail(ARMS_FORM_COUNT));
+  assert.throws(() => greatBannerDetail(DYE_COUNT));
+  assert.throws(() => drapeFallDetail(-1));
   // Past the mixed rosters the bands stay dark.
   assert.equal(wallHungInfo(Detail.SillHerbs + SILL_MIX_COUNT), null);
   assert.equal(wallHungInfo(Detail.HerbBundles + BUNDLE_MIX_COUNT), null);
+  assert.equal(wallHungInfo(Detail.WallArms + ARMS_FORM_COUNT), null);
+  assert.equal(wallHungInfo(Detail.GreatBanner + DYE_COUNT), null);
+  assert.equal(wallHungInfo(Detail.DrapeFall + DYE_COUNT), null);
 });
 
 test('wall-hung bands: the set and the reader agree, and bands never overlap', () => {

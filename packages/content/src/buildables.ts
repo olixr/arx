@@ -1,4 +1,6 @@
 import {
+  ARMS_FORM_COUNT,
+  BANNER_EMBLEM_COUNT,
   Detail,
   DYE_COUNT,
   Tile,
@@ -91,6 +93,37 @@ export const BUNDLE_MIXES: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'healer', name: "Healer's mix" },
   { id: 'seedheads', name: 'Seed heads' },
 ];
+
+/**
+ * THE KNIGHT'S KEEPING — the armory wall's mounted forms,
+ * index-married to the shared band (ARMS_FORM_COUNT pins the length).
+ */
+export const ARMS_FORMS: ReadonlyArray<{ id: string; name: string }> = [
+  { id: 'sword_shield', name: 'Sword & shield' },
+  { id: 'crossed_axes', name: 'Crossed axes' },
+  { id: 'halberd', name: 'Halberd' },
+  { id: 'great_crest', name: 'Great crest' },
+];
+
+/**
+ * The great cloth's woven charges (hall banner + standing standard),
+ * index-married to shared BANNER_EMBLEM_COUNT. Order is FOREVER.
+ */
+export const BANNER_EMBLEMS: ReadonlyArray<{ id: string; name: string }> = [
+  { id: 'tower', name: 'The Tower' },
+  { id: 'crossed_swords', name: 'Crossed Swords' },
+  { id: 'chevron', name: 'The Chevron' },
+  { id: 'sun', name: 'The Rayed Sun' },
+];
+
+if (ARMS_FORMS.length !== ARMS_FORM_COUNT) {
+  throw new Error(`ARMS_FORMS (${ARMS_FORMS.length}) must match shared ARMS_FORM_COUNT (${ARMS_FORM_COUNT})`);
+}
+if (BANNER_EMBLEMS.length !== BANNER_EMBLEM_COUNT) {
+  throw new Error(
+    `BANNER_EMBLEMS (${BANNER_EMBLEMS.length}) must match shared BANNER_EMBLEM_COUNT (${BANNER_EMBLEM_COUNT})`,
+  );
+}
 
 /** The palette's shelves — every buildable sits on exactly one. */
 export type BuildCategory =

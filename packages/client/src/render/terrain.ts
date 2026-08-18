@@ -2,6 +2,7 @@ import {
   ART_SUN_X,
   ART_SUN_Y,
   CHEST_TILES,
+  DYE_COUNT,
   CHUNK_SIZE,
   Detail,
   GARRISON_TILES,
@@ -604,6 +605,10 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     // whatever the room laid — boards, flags, or the green; wax
     // never paves.
     if (t >= Tile.CandleCluster && t <= Tile.TripleCandlesOut) return nearestFloor(ground, tx, ty);
+    // THE KNIGHT'S KEEPING: armory stands keep the garrison's floor
+    // under them — flags, boards, or the drill yard's dirt (the
+    // standard's whole dye band rides the same branch).
+    if (t >= Tile.ArmorStand && t < Tile.BannerStand + DYE_COUNT) return nearestFloor(ground, tx, ty);
     // The palisade stands in open country like the garrison curtain:
     // whatever walkable terrain fronts it continues beneath (south
     // first — that side's base sliver shows), and a family member
@@ -3213,6 +3218,55 @@ function drawTileDetail(
           ctx.moveTo(gx + px * 0.72, gy + px * 0.24);
           ctx.lineTo(gx + px * 0.28, gy + px * 0.74);
           ctx.stroke();
+        } else if (info.kind === 'arms') {
+          // THE KNIGHT'S KEEPING: crossed steel over a shield blot —
+          // one glyph for every mounted form; the form reads on hover.
+          ctx.strokeStyle = '#aeb6c6';
+          ctx.lineWidth = px * 0.07;
+          ctx.beginPath();
+          ctx.moveTo(gx + px * 0.3, gy + px * 0.26);
+          ctx.lineTo(gx + px * 0.7, gy + px * 0.68);
+          ctx.moveTo(gx + px * 0.7, gy + px * 0.26);
+          ctx.lineTo(gx + px * 0.3, gy + px * 0.68);
+          ctx.stroke();
+          if (info.form === 0 || info.form === 3) {
+            ctx.fillStyle = info.form === 3 ? '#c9962e' : '#7a2430';
+            ctx.beginPath();
+            ctx.moveTo(gx + px * 0.4, gy + px * 0.36);
+            ctx.lineTo(gx + px * 0.6, gy + px * 0.36);
+            ctx.lineTo(gx + px * 0.5, gy + px * 0.6);
+            ctx.closePath();
+            ctx.fill();
+          }
+        } else if (info.kind === 'greatbanner') {
+          // The great cloth: a wide drop with the dovetail bitten out.
+          ctx.fillStyle = DYE_SWATCHES[info.dye ?? 0]!;
+          ctx.beginPath();
+          ctx.moveTo(gx + px * 0.26, gy + px * 0.22);
+          ctx.lineTo(gx + px * 0.74, gy + px * 0.22);
+          ctx.lineTo(gx + px * 0.74, gy + px * 0.78);
+          ctx.lineTo(gx + px * 0.62, gy + px * 0.66);
+          ctx.lineTo(gx + px * 0.5, gy + px * 0.78);
+          ctx.lineTo(gx + px * 0.38, gy + px * 0.66);
+          ctx.lineTo(gx + px * 0.26, gy + px * 0.78);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = '#c9962e';
+          ctx.fillRect(gx + px * 0.44, gy + px * 0.36, px * 0.12, px * 0.14);
+        } else if (info.kind === 'drape') {
+          // The long fall: a floor-length column cinched at the waist.
+          ctx.fillStyle = DYE_SWATCHES[info.dye ?? 0]!;
+          ctx.beginPath();
+          ctx.moveTo(gx + px * 0.36, gy + px * 0.2);
+          ctx.lineTo(gx + px * 0.64, gy + px * 0.2);
+          ctx.lineTo(gx + px * 0.6, gy + px * 0.48);
+          ctx.lineTo(gx + px * 0.68, gy + px * 0.82);
+          ctx.lineTo(gx + px * 0.32, gy + px * 0.82);
+          ctx.lineTo(gx + px * 0.4, gy + px * 0.48);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = '#c9962e';
+          ctx.fillRect(gx + px * 0.38, gy + px * 0.46, px * 0.24, px * 0.05);
         } else {
           ctx.fillStyle = '#a8814c';
           ctx.beginPath();

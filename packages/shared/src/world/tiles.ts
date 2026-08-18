@@ -979,6 +979,21 @@ export enum Tile {
   TripleCandles = 476,
   /** The trio snuffed — three cold columns in one pool. */
   TripleCandlesOut = 477,
+  // THE KNIGHT'S KEEPING — the armory set: the steel a garrison
+  // lives beside. The stands are floor props (this shelf); the
+  // mounted arms and the great cloth hang on walls (Detail bands —
+  // WallArms / GreatBanner / DrapeFall).
+  /** An empty oak armor stand: cross-foot, mast, shoulder yoke, helm peg. */
+  ArmorStand = 478,
+  /** The same stand dressed: a full harness racked and waiting (hash-dealt style). */
+  ArmorStandFull = 479,
+  /**
+   * A standing great-banner frame: forged foot, tall staff, flying
+   * drop. THE DYE LAW: +dye (480..495 reserved) — the author picks
+   * the standard's colors, and THE COLOR IS THE HOUSE: the woven
+   * charge follows the dye, so a matched pair can never argue.
+   */
+  BannerStand = 480,
 }
 
 export enum Detail {
@@ -1041,6 +1056,15 @@ export enum Detail {
   SillHerbs = 96,
   /** A pegged batten of heads-down drying bundles: +mix (112..127 reserved). */
   HerbBundles = 112,
+  // THE KNIGHT'S KEEPING — the garrison's wall. Steel is mounted and
+  // STILL (only cloth answers the breeze); the great cloth is the
+  // castle register the swallowtail WallBanner is the street's.
+  /** Mounted arms on wall pegs: +form 0..3 (128..143 reserved). */
+  WallArms = 128,
+  /** Grand dovetail-hem hall banner off a lance rod: +dye (144..159 reserved). */
+  GreatBanner = 144,
+  /** Floor-length gathered drape falling the full face: +dye (160..175 reserved). */
+  DrapeFall = 160,
 }
 
 /**
@@ -1061,6 +1085,18 @@ export const TRELLIS_SPECIES_COUNT = 3;
 export const SILL_MIX_COUNT = 3;
 /** Bundle mixes tied to the drying batten, index order FOREVER. */
 export const BUNDLE_MIX_COUNT = 3;
+/**
+ * Mounted-arms forms on the armory wall, index order FOREVER:
+ * 0 sword & shield, 1 crossed axes, 2 the halberd, 3 the great crest.
+ */
+export const ARMS_FORM_COUNT = 4;
+/**
+ * Woven charges on the great cloth (banner + standing standard),
+ * index order FOREVER: 0 the tower, 1 crossed swords, 2 the double
+ * chevron, 3 the rayed sun. Authored cloth deals its charge by tile
+ * hash; the count is here so every dealer draws from one deck.
+ */
+export const BANNER_EMBLEM_COUNT = 4;
 
 export type WallHungKind =
   | 'crown'
@@ -1072,12 +1108,17 @@ export type WallHungKind =
   | 'trellis'
   | 'basket'
   | 'sill'
-  | 'bundles';
+  | 'bundles'
+  | 'arms'
+  | 'greatbanner'
+  | 'drape';
 
 export interface WallHungInfo {
   kind: WallHungKind;
-  /** Dye index (banner/pennant families). */
+  /** Dye index (banner/pennant/greatbanner/drape families). */
   dye?: number;
+  /** Mounted-arms form index (wall arms). */
+  form?: number;
   /** Trade-motif index (bracket sign). */
   motif?: number;
   /** Climbing-plant species index (trellis). */
@@ -1113,6 +1154,12 @@ export function wallHungInfo(d: number): WallHungInfo | null {
     return { kind: 'sill', mix: d - Detail.SillHerbs };
   if (d >= Detail.HerbBundles && d < Detail.HerbBundles + BUNDLE_MIX_COUNT)
     return { kind: 'bundles', mix: d - Detail.HerbBundles };
+  if (d >= Detail.WallArms && d < Detail.WallArms + ARMS_FORM_COUNT)
+    return { kind: 'arms', form: d - Detail.WallArms };
+  if (d >= Detail.GreatBanner && d < Detail.GreatBanner + DYE_COUNT)
+    return { kind: 'greatbanner', dye: d - Detail.GreatBanner };
+  if (d >= Detail.DrapeFall && d < Detail.DrapeFall + DYE_COUNT)
+    return { kind: 'drape', dye: d - Detail.DrapeFall };
   return null;
 }
 
@@ -1154,6 +1201,38 @@ export function herbBundlesDetail(mix: number): Detail {
   if (!Number.isInteger(mix) || mix < 0 || mix >= BUNDLE_MIX_COUNT)
     throw new Error(`bad mix ${mix}`);
   return Detail.HerbBundles + mix;
+}
+
+/** The mounted arms wearing this form. */
+export function wallArmsDetail(form: number): Detail {
+  if (!Number.isInteger(form) || form < 0 || form >= ARMS_FORM_COUNT)
+    throw new Error(`bad form ${form}`);
+  return Detail.WallArms + form;
+}
+
+/** The great hall banner wearing this dye. */
+export function greatBannerDetail(dye: number): Detail {
+  if (!Number.isInteger(dye) || dye < 0 || dye >= DYE_COUNT) throw new Error(`bad dye ${dye}`);
+  return Detail.GreatBanner + dye;
+}
+
+/** The floor-length drape wearing this dye. */
+export function drapeFallDetail(dye: number): Detail {
+  if (!Number.isInteger(dye) || dye < 0 || dye >= DYE_COUNT) throw new Error(`bad dye ${dye}`);
+  return Detail.DrapeFall + dye;
+}
+
+/** Read a dyed banner stand back to its dye; null for everything else. */
+export function bannerStandInfo(t: number): { dye: number } | null {
+  if (t >= Tile.BannerStand && t < Tile.BannerStand + DYE_COUNT)
+    return { dye: t - Tile.BannerStand };
+  return null;
+}
+
+/** The standing banner frame flying this dye. */
+export function bannerStandTile(dye: number): Tile {
+  if (!Number.isInteger(dye) || dye < 0 || dye >= DYE_COUNT) throw new Error(`bad dye ${dye}`);
+  return Tile.BannerStand + dye;
 }
 
 /**
@@ -1729,7 +1808,18 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.PillarCandleOut]: { name: 'pillar candle', solid: true, color: '#8a7d5e', raised: true, topColor: '#d8cba8' },
   [Tile.TripleCandles]: { name: 'triple candles', solid: true, color: '#8a7d5e', raised: true, topColor: '#e8a13c' },
   [Tile.TripleCandlesOut]: { name: 'triple candles', solid: true, color: '#8a7d5e', raised: true, topColor: '#d8cba8' },
+  // THE KNIGHT'S KEEPING: oak under steel; the dressed stand reads
+  // steel from the sky, the standard reads its cloth.
+  [Tile.ArmorStand]: { name: 'armor stand', solid: true, color: '#5e3f1e', raised: true, topColor: '#7a552e' },
+  [Tile.ArmorStandFull]: { name: 'armor stand', solid: true, color: '#5e3f1e', raised: true, topColor: '#aeb6c6' },
+  [Tile.BannerStand]: { name: 'banner stand', solid: true, color: '#454052', raised: true, topColor: '#8a2b35' },
 };
+
+// THE KNIGHT'S KEEPING: the standing banner's dye band — defs for
+// dyes 1..9 generated from the anchor (the awning-band precedent).
+for (let dye = 1; dye < DYE_COUNT; dye++) {
+  (TILE_DEFS as Record<number, TileDef>)[Tile.BannerStand + dye] = TILE_DEFS[Tile.BannerStand]!;
+}
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
 export const AWNING_SHAPES = ['shed', 'market', 'board', 'bowed'] as const;
@@ -2498,6 +2588,13 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   // body standing beside it.
   [Tile.CandleCluster, 0.24],
   [Tile.CandleClusterOut, 0.24],
+  // THE KNIGHT'S KEEPING: a stand is a mast on splayed feet — you
+  // brush past the yoke, never the whole tile; the standard's forged
+  // foot is narrower still. Empty and dressed keep ONE stance (the
+  // candle-pair law: dressing a stand must never shove a body).
+  [Tile.ArmorStand, 0.3],
+  [Tile.ArmorStandFull, 0.3],
+  ...Array.from({ length: DYE_COUNT }, (_, d) => [Tile.BannerStand + d, 0.24] as [Tile, number]),
   [Tile.MeltedCandles, 0.22],
   [Tile.MeltedCandlesOut, 0.22],
   [Tile.CandleTable, 0.26],
@@ -2844,7 +2941,13 @@ export type DestructibleKind =
   | 'meltwax'
   | 'candletable'
   // THE BOLD WICK: the lone column falls as ONE heavy piece.
-  | 'pillarcandle';
+  | 'pillarcandle'
+  // THE KNIGHT'S KEEPING: bare oak claps out; a dressed stand adds
+  // the harness ringing off it plate by plate; the standard breaks
+  // at the staff and the cloth flies as one great flap.
+  | 'armorstand'
+  | 'armorstandfull'
+  | 'bannerstand';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -3093,6 +3196,20 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.PillarCandleOut, { kind: 'pillarcandle', respawnSec: 300, hits: 1 }],
   [Tile.TripleCandles, { kind: 'candlecluster', respawnSec: 300, hits: 1 }],
   [Tile.TripleCandlesOut, { kind: 'candlecluster', respawnSec: 300, hits: 1 }],
+  // THE KNIGHT'S KEEPING: bare oak pops in two blows; a full harness
+  // is JOINED steel over oak and holds three (the shudder is the
+  // armorer's warranty working); the standard is a staff — two.
+  [Tile.ArmorStand, { kind: 'armorstand', respawnSec: 300, hits: 2 }],
+  [Tile.ArmorStandFull, { kind: 'armorstandfull', respawnSec: 420, hits: 3 }],
+  // The whole dyed standard band breaks as one kind.
+  ...Array.from(
+    { length: DYE_COUNT },
+    (_, d) =>
+      [Tile.BannerStand + d, { kind: 'bannerstand', respawnSec: 420, hits: 2 }] as [
+        Tile,
+        DestructibleInfo,
+      ],
+  ),
 ]);
 
 /** Every smashable prop tile. */

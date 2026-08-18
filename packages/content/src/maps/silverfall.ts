@@ -1,4 +1,4 @@
-import { Detail, Tile, awningTile, bannerPoleTile, bracketSignDetail, herbBundlesDetail, pennantDetail, sillHerbsDetail } from '@arx/shared';
+import { Detail, Tile, awningTile, bannerPoleTile, bannerStandTile, bracketSignDetail, drapeFallDetail, greatBannerDetail, herbBundlesDetail, pennantDetail, sillHerbsDetail, wallArmsDetail } from '@arx/shared';
 import { SILVERFALL_RECT } from '../geography.js';
 import { MARKET_STALL } from '../structures/templates.js';
 import { ZoneBuilder } from './builder.js';
@@ -115,6 +115,12 @@ export function buildSilverfall(): ZoneDef {
   b.set(83, 94, Tile.Brazier).set(93, 94, Tile.Brazier);
   b.set(83, 61, Tile.Brazier).set(98, 61, Tile.Brazier);
   b.set(84, 33, Tile.Brazier).set(92, 33, Tile.Brazier); // flanking the castle gate
+  // THE KNIGHT'S KEEPING: the household's crimson great banners fly
+  // from the gate BASTION drums, garrison-tall — house colors
+  // outboard on the towers, the royal pair's personal sigils inboard
+  // beside the arch (one gatefront, two registers of allegiance),
+  // and the avenue reads the crimson from the market.
+  b.setDetail(82, 32, greatBannerDetail(1)).setDetail(94, 32, greatBannerDetail(1));
   b.set(80, 35, Tile.Brazier).set(96, 35, Tile.Brazier); // the stair crown
   // Lamp pairs between the landings pace out the long stretches.
   b.set(83, 40, Tile.LampPost).set(93, 40, Tile.LampPost);
@@ -262,8 +268,17 @@ export function buildSilverfall(): ZoneDef {
   // beside the steel it carries. Hot bunks (the rota law).
   for (let x = 55; x <= 68; x++) b.set(x, 18, Tile.WallStone);
   b.set(61, 18, Tile.DoorwayStone);
+  // THE KNIGHT'S KEEPING: the panoply and crossed axes hang the
+  // armory wall, and the paired stands hold the open floor east of
+  // the rack wall — one harness racked, one stand stripped because
+  // its owner is on the curtain wearing it (the rota law told in
+  // oak and steel). Stands never take a berth INSIDE the rack
+  // column: the rack south of the berth overdraws the stand's body
+  // (y-sort truth — proven on the rig, round one).
   b.set(55, 13, Tile.WeaponRack).set(55, 15, Tile.WeaponRack).set(55, 17, Tile.WeaponRack);
   b.set(57, 13, Tile.ToolRack);
+  b.setDetail(56, 12, wallArmsDetail(0)).setDetail(66, 12, wallArmsDetail(1));
+  b.set(57, 15, Tile.ArmorStandFull).set(58, 15, Tile.ArmorStand);
   b.set(63, 13, Tile.Bed).set(63, 14, Tile.Bed);
   b.set(65, 13, Tile.Bed).set(65, 14, Tile.Bed);
   b.set(67, 13, Tile.Bed).set(67, 14, Tile.Bed);
@@ -283,6 +298,9 @@ export function buildSilverfall(): ZoneDef {
   b.set(68, 19, Tile.WeaponRack);
   b.set(67, 22, Tile.Bed).set(67, 23, Tile.Bed); // the castellan sleeps by the rolls
   b.setDetail(60, 25, Detail.Doormat);
+  // Crimson great banners flank the mess door — the household's
+  // colors over the tables that feed its watch.
+  b.setDetail(59, 18, greatBannerDetail(1)).setDetail(63, 18, greatBannerDetail(1));
 
   // THE ROYAL RANGE (x87-92): the chamber north, the solar south —
   // where the Crown is only a household. East windows on the walk,
@@ -297,6 +315,12 @@ export function buildSilverfall(): ZoneDef {
   b.set(89, 15, Tile.FlowerBox); // the queen's window box
   b.set(92, 16, Tile.Cabinet);
   b.setDetail(89, 16, Detail.RugRound);
+  // Moonpale drapes fall the chamber walls, and one softens the
+  // solar's east end (the Silverfall weave keeps the west — cloth
+  // yields to the tapestry, never crowds it). The royal range is
+  // the one floor where cloth outranks steel.
+  b.setDetail(88, 12, drapeFallDetail(2)).setDetail(90, 12, drapeFallDetail(2));
+  b.setDetail(91, 18, drapeFallDetail(2));
   // The solar: the Silverfall weave over the grand rug — the one
   // room where the Crown sits soft.
   b.setDetail(87, 18, Detail.Tapestry).setDetail(88, 18, Detail.Tapestry);
@@ -322,6 +346,11 @@ export function buildSilverfall(): ZoneDef {
   b.setDetail(62, 27, Detail.Straw).setDetail(62, 30, Detail.Straw);
   b.set(62, 28, Tile.TargetDummy).set(62, 30, Tile.TargetDummy); // the butts, finally literal
   b.set(71, 26, Tile.WeaponRack).set(71, 31, Tile.ToolRack);
+  // The garrison's standard on the drill line — the muster forms on
+  // it at the watch change, and it stands at the north rail, well
+  // clear of the loose-west lane. Castle crimson: the charge follows
+  // the dye, so it flies the same crossed swords as the gate.
+  b.set(67, 26, bannerStandTile(1));
   b.setDetail(66, 29, Detail.Pebbles);
   b.sign(73, 30, 'THE DRILL YARD', ['loose only west', 'the King watches on seventh-days']);
   // THE CASTLE KITCHENS — the service range on the west curtain:
@@ -606,7 +635,13 @@ export function buildSilverfall(): ZoneDef {
   b.set(72, 52, Tile.DoorwayStone).set(73, 52, Tile.DoorwayStone);
   b.set(69, 52, Tile.WallStoneWindow).set(77, 52, Tile.WallStoneWindow);
   b.set(66, 57, Tile.WallStoneWindow).set(80, 57, Tile.WallStoneWindow);
+  // THE KNIGHT'S KEEPING: a waykeeper's harness stands dressed off
+  // the rack wall (never IN the column — the berth-burial law), and
+  // the order's halberd — the road-warden's own reach — hangs the
+  // wall west of the door, the crown keeping the east.
   b.set(67, 53, Tile.WeaponRack).set(67, 55, Tile.WeaponRack).set(67, 57, Tile.WeaponRack);
+  b.set(69, 55, Tile.ArmorStandFull);
+  b.setDetail(71, 52, wallArmsDetail(2));
   b.set(71, 56, Tile.Table).set(72, 56, Tile.Table); // the road map table
   b.set(70, 56, Tile.Chair).set(73, 56, Tile.Chair);
   b.set(77, 53, Tile.Bookshelf).set(79, 53, Tile.Cabinet); // the duty ledgers
@@ -1046,12 +1081,21 @@ export function buildSilverfall(): ZoneDef {
   b.setDetail(21, 99, Detail.BannerCrown);
   for (let x = 16; x <= 22; x++) b.setDetail(x, 102, Detail.Rug);
   b.setDetail(27, 103, Detail.Doormat);
+  // THE KNIGHT'S KEEPING: the watch's steel on the wardhouse wall —
+  // axes over the bunks, the panoply by the duty board — and the
+  // stands by the racks: one dressed, one stripped for the shift out.
+  b.setDetail(16, 99, wallArmsDetail(1)).setDetail(23, 99, wallArmsDetail(0));
+  b.set(25, 106, Tile.ArmorStandFull).set(15, 105, Tile.ArmorStand);
   b.sign(29, 98, 'THE WARDHOUSE', ['the watch sleeps here', 'in shifts, like everything']);
   // The wardhouse drill ground, and the path to the gate.
   b.fillRect(29, 100, 6, 8, Tile.Dirt);
   b.set(33, 101, Tile.Fence).set(33, 104, Tile.Fence);
   b.setDetail(32, 101, Detail.Straw).setDetail(32, 104, Detail.Straw);
   b.set(29, 100, Tile.WeaponRack).set(30, 107, Tile.Crate);
+  // The watch's standard flies mid drill ground — the thing the
+  // morning muster forms up on. Woad: the city watch wears the
+  // city's blue, never the castle's crimson.
+  b.set(31, 103, bannerStandTile(2));
   // THE SCREE RIDGES the wall dies into — the flanks are CLOSED.
   for (let x = 16; x <= 35; x++) {
     b.set(x, 112, Tile.Rock).set(x, 113, Tile.Rock);

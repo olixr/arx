@@ -1,4 +1,5 @@
 import {
+  BANNER_EMBLEM_COUNT,
   CHUNK_SIZE,
   CLOTH_COLORS,
   HAIR_COLORS,
@@ -36,6 +37,7 @@ import {
   awningInfo,
   type AwningInfo,
   bannerPoleInfo,
+  bannerStandInfo,
   AWNING_HOST_TILES,
   wallHungInfo,
   diagWallInfo,
@@ -8688,6 +8690,16 @@ export class Renderer {
       case 'bundles':
         this.herbBundlesOnFace(tx, ty, px0, s, info.mix ?? 0);
         return;
+      // THE KNIGHT'S KEEPING: the armory wall's three families.
+      case 'arms':
+        this.wallArmsOnFace(tx, ty, px0, s, info.form ?? 0, garrison);
+        return;
+      case 'greatbanner':
+        this.greatBannerOnFace(tx, ty, px0, s, info.dye ?? 0, garrison);
+        return;
+      case 'drape':
+        this.drapeFallOnFace(tx, ty, px0, s, info.dye ?? 0, garrison);
+        return;
       case 'sill':
         // The sill pots never route here: their host gate keeps them
         // on glazed walls, and the window stack paints them itself
@@ -8911,6 +8923,698 @@ export class Renderer {
     ctx.fillStyle = '#454052';
     ctx.fillRect(cx - bw / 2 - s * 0.09, rodY - s * 0.035, s * 0.032, s * 0.07);
     ctx.fillRect(cx + bw / 2 + s * 0.058, rodY - s * 0.035, s * 0.032, s * 0.07);
+  }
+
+  /**
+   * The woven charge at a great cloth's heart, drawn in the house
+   * metal. Features stay at or above the chest-law minimum — bold
+   * marks the avenue reads, never embroidery only a zoom sees.
+   */
+  private paintBannerEmblem(cx: number, cy: number, w: number, metal: string, emblem: number): void {
+    const ctx = this.ctx;
+    ctx.fillStyle = metal;
+    if (emblem === 0) {
+      // THE TOWER: a crenellated keep, base-flared, door struck dark.
+      const bw = w * 0.52;
+      const bh = w * 0.6;
+      ctx.fillRect(cx - bw / 2, cy - bh * 0.42, bw, bh * 0.84);
+      ctx.fillRect(cx - bw * 0.68, cy + bh * 0.28, bw * 1.36, bh * 0.16);
+      for (const fx of [-1, 0, 1] as const) {
+        ctx.fillRect(cx + fx * bw * 0.36 - bw * 0.13, cy - bh * 0.62, bw * 0.26, bh * 0.22);
+      }
+      ctx.fillStyle = 'rgba(18, 12, 26, 0.5)';
+      ctx.beginPath();
+      ctx.moveTo(cx - bw * 0.14, cy + bh * 0.44);
+      ctx.lineTo(cx - bw * 0.14, cy + bh * 0.1);
+      ctx.quadraticCurveTo(cx, cy - bh * 0.08, cx + bw * 0.14, cy + bh * 0.1);
+      ctx.lineTo(cx + bw * 0.14, cy + bh * 0.44);
+      ctx.closePath();
+      ctx.fill();
+    } else if (emblem === 1) {
+      // CROSSED SWORDS: two blades saltire, points up-out, guards
+      // and pommels below — the garrison's own signature.
+      for (const sd of [-1, 1] as const) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(sd * 0.66);
+        ctx.fillStyle = metal;
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.045, w * 0.34);
+        ctx.lineTo(-w * 0.045, -w * 0.26);
+        ctx.lineTo(0, -w * 0.4);
+        ctx.lineTo(w * 0.045, -w * 0.26);
+        ctx.lineTo(w * 0.045, w * 0.34);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillRect(-w * 0.13, w * 0.16, w * 0.26, w * 0.06);
+        ctx.beginPath();
+        facetCircle(ctx, 0, w * 0.42, w * 0.05, 6, 0.3);
+        ctx.fill();
+        ctx.restore();
+      }
+    } else if (emblem === 2) {
+      // THE CHEVRON: two bold rafters stacked — the builder-house.
+      for (const off of [0, w * 0.3] as const) {
+        ctx.beginPath();
+        ctx.moveTo(cx - w * 0.42, cy + w * 0.11 + off);
+        ctx.lineTo(cx, cy - w * 0.33 + off);
+        ctx.lineTo(cx + w * 0.42, cy + w * 0.11 + off);
+        ctx.lineTo(cx + w * 0.42, cy + w * 0.27 + off);
+        ctx.lineTo(cx, cy - w * 0.17 + off);
+        ctx.lineTo(cx - w * 0.42, cy + w * 0.27 + off);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else {
+      // THE RAYED SUN: a faceted disc throwing eight short rays.
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a - 0.16) * w * 0.24, cy + Math.sin(a - 0.16) * w * 0.24);
+        ctx.lineTo(cx + Math.cos(a) * w * 0.44, cy + Math.sin(a) * w * 0.44);
+        ctx.lineTo(cx + Math.cos(a + 0.16) * w * 0.24, cy + Math.sin(a + 0.16) * w * 0.24);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.beginPath();
+      facetCircle(ctx, cx, cy, w * 0.22, 8, 0.25);
+      ctx.fill();
+    }
+  }
+
+  /**
+   * THE GREAT CLOTH — the castle drop shared by the wall's
+   * GreatBanner and the standing BannerStand (one cooper: never fork
+   * the dialect). A square-bodied drop with a CRENELLATED hem — two
+   * square notches biting up between three teeth, the castle-pillar
+   * cut; the swallowtail stays the royals' and the street's. TRUE
+   * SEWN BORDER law: the border is a trim-colored fill of the full
+   * silhouette with the dye field inset, never a stroked line.
+   * THE COLOR IS THE HOUSE: the woven charge follows the DYE (dye %
+   * BANNER_EMBLEM_COUNT) — never a position hash, whose grid seams
+   * once flew two different houses on one authored gatefront. Choose
+   * the cloth, choose the charge; a matched pair can never argue.
+   * Returns the outer path for the caller's ink.
+   */
+  private paintGreatCloth(
+    cx: number,
+    yTop: number,
+    bw: number,
+    bl: number,
+    dye: number,
+    s: number,
+    sway: number,
+    lag: number,
+  ): Path2D {
+    const ctx = this.ctx;
+    const cloth = Renderer.AWNING_CLOTHS[dye]!.a;
+    const trim = Renderer.AWNING_CLOTHS[dye]!.b;
+    // Cool dyes fly silver thread; warm dyes fly gold — one rule, so
+    // a house's metal never argues with its field.
+    const metal = dye === 2 || dye === 4 || dye === 7 || dye === 8 ? '#b4c0d2' : '#c9962e';
+    const buildDrop = (inset: number): Path2D => {
+      const xL = cx - bw / 2 + inset;
+      const xR = cx + bw / 2 - inset;
+      const yT = yTop + inset;
+      const yHem = yTop + bl - inset;
+      const yMid = yT + (yHem - yT) * 0.6;
+      const tw = bw * 0.24 - inset * 0.5;
+      const nd = bl * 0.13;
+      const p = new Path2D();
+      p.moveTo(xL, yT);
+      p.lineTo(xR, yT);
+      p.lineTo(xR + sway, yMid);
+      // East tooth, the step up, the center tooth, the step, west
+      // tooth — the hem walks a battlement, teeth trailing the beat.
+      p.lineTo(xR + lag, yHem);
+      p.lineTo(xR - tw + lag, yHem);
+      p.lineTo(xR - tw + lag * 0.8, yHem - nd);
+      p.lineTo(cx + tw / 2 + lag * 0.8, yHem - nd);
+      p.lineTo(cx + tw / 2 + lag * 1.1, yHem);
+      p.lineTo(cx - tw / 2 + lag * 1.1, yHem);
+      p.lineTo(cx - tw / 2 + lag * 0.8, yHem - nd);
+      p.lineTo(xL + tw + lag * 0.8, yHem - nd);
+      p.lineTo(xL + tw + lag, yHem);
+      p.lineTo(xL + lag, yHem);
+      p.lineTo(xL + sway, yMid);
+      p.closePath();
+      return p;
+    };
+    const outer = buildDrop(0);
+    ctx.fillStyle = trim;
+    ctx.fill(outer);
+    const field = buildDrop(s * 0.05);
+    ctx.fillStyle = cloth;
+    ctx.fill(field);
+    // Everything woven ON the cloth clips to the field.
+    ctx.save();
+    ctx.clip(field);
+    // Header band under the rod, struck with the house metal.
+    ctx.fillStyle = shade(cloth, 14);
+    ctx.fillRect(cx - bw / 2, yTop, bw, s * 0.08);
+    ctx.fillStyle = metal;
+    ctx.fillRect(cx - bw / 2, yTop + s * 0.08, bw, s * 0.024);
+    // Fold shading — hung cloth, never a printed card.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.13)';
+    ctx.fillRect(cx - bw * 0.24, yTop + s * 0.12, s * 0.05, bl * 0.8);
+    ctx.fillRect(cx + bw * 0.1, yTop + s * 0.12, s * 0.05, bl * 0.74);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.fillRect(cx - bw * 0.06, yTop + s * 0.12, s * 0.06, bl * 0.82);
+    // THE CHARGE at the drop's heart — the dye's own house.
+    this.paintBannerEmblem(cx, yTop + bl * 0.42, bw * 0.6, metal, dye % BANNER_EMBLEM_COUNT);
+    ctx.restore();
+    return outer;
+  }
+
+  /**
+   * THE WALL TAKES THE STEEL — mounted arms on the armory face.
+   * Steel is STILL: nothing here samples the breeze but the great
+   * crest's mantling ribbons — a mounted sword that swayed would
+   * read as hanging by a thread. Every piece throws a soft SE ghost
+   * on the masonry (the WeaponRack's iron-off-the-wood law), wears
+   * one west light, and rings its own exposed silhouette; lapped
+   * steel inks under the piece that laps it (the woodpile law
+   * brought to the wall).
+   */
+  private wallArmsOnFace(
+    tx: number,
+    ty: number,
+    px0: number,
+    s: number,
+    form: number,
+    garrison: boolean,
+  ): void {
+    const ctx = this.ctx;
+    const cx = px0 + s * 0.5;
+    const K = garrison ? 1.15 : 1;
+    const my = -s * (garrison ? 1.95 : 1.32);
+    const inkW = Math.max(1, s * 0.028);
+    const ghost = (p: Path2D): void => {
+      ctx.save();
+      ctx.translate(s * 0.035, s * 0.05);
+      ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
+      ctx.fill(p);
+      ctx.restore();
+    };
+    const ink = (p: Path2D): void => {
+      ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+      ctx.lineWidth = inkW;
+      ctx.stroke(p);
+    };
+    // The iron wall peg every form hangs from — a forged nub with a
+    // struck plate, drawn where each form asks for it.
+    const peg = (x: number, y: number): void => {
+      ctx.fillStyle = '#2c2836';
+      ctx.fillRect(x - s * 0.03, y - s * 0.02, s * 0.06, s * 0.05);
+      ctx.fillStyle = TWN_IRON;
+      ctx.fillRect(x - s * 0.018, y - s * 0.034, s * 0.036, s * 0.03);
+    };
+    // A hung longsword blade, built once for forms 0 and 3: a
+    // tapered quad running (ang) from the guard point, tip last.
+    const swordPath = (x: number, y: number, len: number, ang: number): Path2D => {
+      const p = new Path2D();
+      const c = Math.cos(ang);
+      const n = Math.sin(ang);
+      const bw2 = s * 0.045;
+      const tipX = x + c * len;
+      const tipY = y + n * len;
+      p.moveTo(x - n * bw2, y + c * bw2);
+      p.lineTo(x + n * bw2, y - c * bw2);
+      p.lineTo(tipX + n * bw2 * 0.3 - c * len * 0.08, tipY - c * bw2 * 0.3 - n * len * 0.08);
+      p.lineTo(tipX, tipY);
+      p.lineTo(tipX - n * bw2 * 0.3 - c * len * 0.08, tipY + c * bw2 * 0.3 - n * len * 0.08);
+      p.closePath();
+      return p;
+    };
+
+    if (form === 0) {
+      // THE PANOPLY — the longsword hung point-down behind the
+      // heater shield: the knight's front door.
+      const ang = Math.PI * 0.5 + 0.42;
+      const sx = cx - s * 0.16;
+      const sy = my - s * 0.42 * K;
+      const blade = swordPath(sx, sy, s * 0.92 * K, ang);
+      ghost(blade);
+      ctx.fillStyle = TRD_STEEL;
+      ctx.fill(blade);
+      ctx.save();
+      ctx.clip(blade);
+      ctx.fillStyle = TRD_STEEL_LIT;
+      ctx.fillRect(sx - s * 0.5, sy - s * 0.1, s * 0.42, s * 1.2 * K);
+      ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(ang);
+      ctx.fillRect(s * 0.06, -s * 0.008, s * 0.7 * K, s * 0.016);
+      ctx.restore();
+      ctx.restore();
+      ink(blade);
+      // Crossguard, grip, pommel above the shield's chief.
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(ang);
+      ctx.fillStyle = '#c9962e';
+      ctx.fillRect(-s * 0.02, -s * 0.13, s * 0.05, s * 0.26);
+      ctx.fillStyle = '#4a3020';
+      ctx.fillRect(-s * 0.16, -s * 0.032, s * 0.14, s * 0.064);
+      ctx.restore();
+      ctx.fillStyle = '#e0c88a';
+      ctx.beginPath();
+      facetCircle(ctx, sx - Math.cos(ang) * s * 0.2, sy - Math.sin(ang) * s * 0.2, s * 0.045, 6, 0.3);
+      ctx.fill();
+      peg(sx + Math.cos(ang) * s * 0.66 * K, sy + Math.sin(ang) * s * 0.66 * K - s * 0.05);
+      // The heater shield over it: crimson field, gold chief, boss.
+      const shw = s * 0.44 * K;
+      const shh = s * 0.54 * K;
+      const shy = my - s * 0.05;
+      const heater = new Path2D();
+      heater.moveTo(cx - shw / 2, shy - shh * 0.5);
+      heater.lineTo(cx + shw / 2, shy - shh * 0.5);
+      heater.lineTo(cx + shw / 2, shy - shh * 0.08);
+      heater.quadraticCurveTo(cx + shw * 0.42, shy + shh * 0.34, cx, shy + shh * 0.5);
+      heater.quadraticCurveTo(cx - shw * 0.42, shy + shh * 0.34, cx - shw / 2, shy - shh * 0.08);
+      heater.closePath();
+      ghost(heater);
+      ctx.fillStyle = '#7a2430';
+      ctx.fill(heater);
+      ctx.save();
+      ctx.clip(heater);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.fillRect(cx - shw, shy - shh, shw, shh * 2);
+      ctx.fillStyle = '#c9962e';
+      ctx.fillRect(cx - shw / 2, shy - shh * 0.5, shw, shh * 0.16);
+      ctx.fillStyle = shade('#c9962e', -18);
+      ctx.fillRect(cx - shw / 2, shy - shh * 0.34, shw, shh * 0.035);
+      ctx.restore();
+      ctx.fillStyle = '#e0c88a';
+      ctx.beginPath();
+      facetCircle(ctx, cx, shy + shh * 0.06, s * 0.05, 6, 0.3);
+      ctx.fill();
+      ink(heater);
+    } else if (form === 1) {
+      // CROSSED AXES — two bearded axes saltire, heads up and out,
+      // rope-lashed where the hafts cross.
+      const cy = my;
+      for (const sd of [-1, 1] as const) {
+        const ang = -Math.PI / 2 + sd * 0.62;
+        const hx = cx - Math.cos(ang) * s * 0.36 * K;
+        const hy = cy - Math.sin(ang) * s * 0.36 * K + s * 0.3 * K;
+        const len = s * 0.78 * K;
+        const c = Math.cos(ang);
+        const n = Math.sin(ang);
+        const haft = new Path2D();
+        const hw2 = s * 0.026;
+        haft.moveTo(hx - n * hw2, hy + c * hw2);
+        haft.lineTo(hx + n * hw2, hy - c * hw2);
+        haft.lineTo(hx + c * len + n * hw2, hy + n * len - c * hw2);
+        haft.lineTo(hx + c * len - n * hw2, hy + n * len + c * hw2);
+        haft.closePath();
+        const tx2 = hx + c * len;
+        const ty2 = hy + n * len;
+        const head = new Path2D();
+        head.moveTo(tx2 - c * s * 0.1, ty2 - n * s * 0.1);
+        head.quadraticCurveTo(tx2 + sd * s * 0.3, ty2 - s * 0.16, tx2 + sd * s * 0.3, ty2 + s * 0.1);
+        head.quadraticCurveTo(tx2 + sd * s * 0.16, ty2 + s * 0.22, tx2 + sd * s * 0.05, ty2 + s * 0.12);
+        head.lineTo(tx2 - c * s * 0.02, ty2 - n * s * 0.02 + s * 0.1);
+        head.closePath();
+        if (sd < 0) {
+          ghost(haft);
+          ghost(head);
+        }
+        ctx.fillStyle = TWN_OAK_DARK;
+        ctx.fill(haft);
+        ctx.save();
+        ctx.clip(haft);
+        ctx.fillStyle = TWN_OAK;
+        ctx.fillRect(hx - s * 0.5, hy - s * 1.1, s * 0.485, s * 1.6);
+        ctx.restore();
+        ink(haft);
+        ctx.fillStyle = TRD_STEEL;
+        ctx.fill(head);
+        ctx.save();
+        ctx.clip(head);
+        // The edge crescent stays bright — the sharpened truth.
+        ctx.fillStyle = TRD_STEEL_LIT;
+        ctx.beginPath();
+        ctx.ellipse(tx2 + sd * s * 0.27, ty2 - s * 0.02, s * 0.05, s * 0.15, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        ink(head);
+        peg(hx - c * s * 0.03, hy - n * s * 0.03 + s * 0.05);
+      }
+      // The lash where they cross: rope band and its wrap ticks.
+      ctx.fillStyle = PALI_ROPE;
+      ctx.fillRect(cx - s * 0.055, my + s * 0.02, s * 0.11, s * 0.08);
+      ctx.fillStyle = PALI_ROPE_DARK;
+      for (const fx of [-0.032, 0, 0.032] as const) {
+        ctx.fillRect(cx + fx * s - s * 0.006, my + s * 0.02, s * 0.012, s * 0.08);
+      }
+    } else if (form === 2) {
+      // THE HALBERD — the long steel laid diagonal across two forged
+      // cradles: blade, beak, and spike all reading against masonry.
+      const ang = -0.32;
+      const c = Math.cos(ang);
+      const n = Math.sin(ang);
+      const x0 = cx - c * s * 0.46 * K;
+      const y0 = my - n * s * 0.46 * K + s * 0.1;
+      const len = s * 0.92 * K;
+      // Cradle pegs first — the pole lies IN them.
+      peg(x0 + c * len * 0.22, y0 + n * len * 0.22 + s * 0.05);
+      peg(x0 + c * len * 0.78, y0 + n * len * 0.78 + s * 0.05);
+      const pole = new Path2D();
+      const pw2 = s * 0.024;
+      pole.moveTo(x0 - n * pw2, y0 + c * pw2);
+      pole.lineTo(x0 + n * pw2, y0 - c * pw2);
+      pole.lineTo(x0 + c * len + n * pw2, y0 + n * len - c * pw2);
+      pole.lineTo(x0 + c * len - n * pw2, y0 + n * len + c * pw2);
+      pole.closePath();
+      ghost(pole);
+      ctx.fillStyle = TWN_OAK_DARK;
+      ctx.fill(pole);
+      ctx.save();
+      ctx.clip(pole);
+      ctx.fillStyle = TWN_OAK;
+      ctx.fillRect(x0 - s * 0.1, y0 - s * 0.7, s * 1.1, s * 0.35);
+      ctx.restore();
+      ink(pole);
+      // Butt spike at the low end.
+      const bx = x0 - c * s * 0.07;
+      const by = y0 - n * s * 0.07;
+      ctx.fillStyle = TRD_STEEL;
+      ctx.beginPath();
+      ctx.moveTo(bx + n * s * 0.03, by - c * s * 0.03);
+      ctx.lineTo(bx - c * s * 0.09, by - n * s * 0.09);
+      ctx.lineTo(bx - n * s * 0.03, by + c * s * 0.03);
+      ctx.closePath();
+      ctx.fill();
+      // The head: axe crescent above the pole line, hook beak below,
+      // spike running the axis on — three answers in one steel.
+      const hx = x0 + c * len;
+      const hy = y0 + n * len;
+      const head = new Path2D();
+      head.moveTo(hx - n * s * 0.024, hy + c * s * 0.024);
+      head.lineTo(hx + c * s * 0.3, hy + n * s * 0.3);
+      head.lineTo(hx + n * s * 0.024, hy - c * s * 0.024);
+      head.moveTo(hx - c * s * 0.16 - n * s * 0.02, hy - n * s * 0.16 + c * s * 0.02);
+      head.quadraticCurveTo(hx - c * s * 0.1 - n * s * 0.26, hy - n * s * 0.1 - c * s * 0.26, hx + c * s * 0.06 - n * s * 0.24, hy + n * s * 0.06 - c * s * 0.24);
+      head.quadraticCurveTo(hx + c * s * 0.1 - n * s * 0.12, hy + n * s * 0.1 - c * s * 0.12, hx + c * s * 0.08, hy + n * s * 0.08);
+      head.closePath();
+      head.moveTo(hx - c * s * 0.1 + n * s * 0.02, hy - n * s * 0.1 - c * s * 0.02);
+      head.quadraticCurveTo(hx - c * s * 0.02 + n * s * 0.18, hy - n * s * 0.02 + c * s * 0.18, hx + c * s * 0.1 + n * s * 0.1, hy + n * s * 0.1 + c * s * 0.1);
+      head.lineTo(hx + c * s * 0.06, hy + n * s * 0.06);
+      head.closePath();
+      ghost(head);
+      ctx.fillStyle = TRD_STEEL;
+      ctx.fill(head);
+      ctx.save();
+      ctx.clip(head);
+      ctx.fillStyle = TRD_STEEL_LIT;
+      ctx.beginPath();
+      ctx.ellipse(hx - n * s * 0.22, hy - c * s * 0.22, s * 0.16, s * 0.045, ang - 1.1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(hx - s * 0.02, hy - s * 0.16, s * 0.02, s * 0.2);
+      ctx.restore();
+      ink(head);
+      // Langets: steel straps riding the pole down from the socket.
+      ctx.fillStyle = shade(TRD_STEEL, -14);
+      ctx.save();
+      ctx.translate(hx, hy);
+      ctx.rotate(ang);
+      ctx.fillRect(-s * 0.3, -s * 0.014, s * 0.26, s * 0.028);
+      ctx.restore();
+    } else {
+      // THE GREAT CREST — crossed swords saltire behind a quartered
+      // shield under a coronet, mantling ribbons trailing: the hall
+      // piece the whole set salutes.
+      const cy = my - s * 0.06;
+      for (const sd of [-1, 1] as const) {
+        const ang = -Math.PI / 2 + sd * 0.6;
+        const sx = cx - Math.cos(ang) * s * 0.34 * K;
+        const sy = cy - Math.sin(ang) * s * 0.34 * K + s * 0.32 * K;
+        const blade = swordPath(sx, sy, s * 0.78 * K, ang);
+        ghost(blade);
+        ctx.fillStyle = TRD_STEEL;
+        ctx.fill(blade);
+        ctx.save();
+        ctx.clip(blade);
+        ctx.fillStyle = TRD_STEEL_LIT;
+        ctx.fillRect(cx - s * 0.7, cy - s * 0.8, s * (0.7 - 0.02 * sd), s * 1.6);
+        ctx.restore();
+        ink(blade);
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(ang);
+        ctx.fillStyle = '#c9962e';
+        ctx.fillRect(-s * 0.02, -s * 0.11, s * 0.045, s * 0.22);
+        ctx.restore();
+        ctx.fillStyle = '#e0c88a';
+        ctx.beginPath();
+        facetCircle(ctx, sx - Math.cos(ang) * s * 0.16, sy - Math.sin(ang) * s * 0.16, s * 0.04, 6, 0.3);
+        ctx.fill();
+      }
+      // Mantling ribbons — the crest's one living detail: two dyed
+      // tails off the shield's shoulders trailing the hall's breath.
+      const t = performance.now() / 1000;
+      const { lag } = this.breezeAt(tx, ty, t, tx * 2.3 + ty * 1.1, s, 0.015, 0.03);
+      for (const sd of [-1, 1] as const) {
+        const rx = cx + sd * s * 0.24 * K;
+        const ry = cy - s * 0.2 * K;
+        const rib = new Path2D();
+        rib.moveTo(rx, ry);
+        rib.quadraticCurveTo(rx + sd * s * 0.16, ry + s * 0.1, rx + sd * s * 0.2 + lag * sd, ry + s * 0.34);
+        rib.lineTo(rx + sd * s * 0.12 + lag * sd, ry + s * 0.3);
+        rib.quadraticCurveTo(rx + sd * s * 0.1, ry + s * 0.12, rx - sd * s * 0.02, ry + s * 0.02);
+        rib.closePath();
+        ctx.fillStyle = '#7a2430';
+        ctx.fill(rib);
+        ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+        ctx.lineWidth = Math.max(1, s * 0.024);
+        ctx.stroke(rib);
+      }
+      // The quartered shield over everything.
+      const shw = s * 0.5 * K;
+      const shh = s * 0.6 * K;
+      const heater = new Path2D();
+      heater.moveTo(cx - shw / 2, cy - shh * 0.5);
+      heater.lineTo(cx + shw / 2, cy - shh * 0.5);
+      heater.lineTo(cx + shw / 2, cy - shh * 0.06);
+      heater.quadraticCurveTo(cx + shw * 0.42, cy + shh * 0.36, cx, cy + shh * 0.5);
+      heater.quadraticCurveTo(cx - shw * 0.42, cy + shh * 0.36, cx - shw / 2, cy - shh * 0.06);
+      heater.closePath();
+      ghost(heater);
+      ctx.fillStyle = '#7a2430';
+      ctx.fill(heater);
+      ctx.save();
+      ctx.clip(heater);
+      // Quarters counterchanged: gold NE and SW over the crimson.
+      ctx.fillStyle = '#c9962e';
+      ctx.fillRect(cx, cy - shh, shw, shh);
+      ctx.fillRect(cx - shw, cy, shw, shh);
+      ctx.fillStyle = 'rgba(18, 12, 26, 0.35)';
+      ctx.fillRect(cx - s * 0.012, cy - shh, s * 0.024, shh * 2);
+      ctx.fillRect(cx - shw, cy - s * 0.012, shw * 2, s * 0.024);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+      ctx.fillRect(cx - shw, cy - shh, shw * 0.98, shh * 2);
+      ctx.restore();
+      ctx.fillStyle = '#e0c88a';
+      ctx.beginPath();
+      facetCircle(ctx, cx, cy, s * 0.045, 6, 0.3);
+      ctx.fill();
+      ink(heater);
+      // The coronet riding the shield's chief between the blades.
+      const cw = shw * 0.56;
+      const cyy = cy - shh * 0.5 - s * 0.09;
+      ctx.fillStyle = '#c9962e';
+      ctx.fillRect(cx - cw / 2, cyy, cw, s * 0.055);
+      for (const fx of [-1, 0, 1] as const) {
+        ctx.beginPath();
+        ctx.moveTo(cx + fx * cw * 0.32 - s * 0.035, cyy);
+        ctx.lineTo(cx + fx * cw * 0.32, cyy - s * 0.08);
+        ctx.lineTo(cx + fx * cw * 0.32 + s * 0.035, cyy);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.fillStyle = '#e0c88a';
+      ctx.fillRect(cx - cw / 2, cyy + s * 0.01, cw, s * 0.014);
+    }
+  }
+
+  /**
+   * THE CASTLE DROP — the great hall banner off a lance rod. Taller,
+   * wider, and crenel-hemmed against the street banner's swallowtail;
+   * garrison faces fly it garrison-tall so the avenue reads the
+   * colors from the market. Charge by the sixteen-tile heraldry.
+   */
+  private greatBannerOnFace(
+    tx: number,
+    ty: number,
+    px0: number,
+    s: number,
+    dye: number,
+    garrison: boolean,
+  ): void {
+    const ctx = this.ctx;
+    const cx = px0 + s * 0.5;
+    const rodY = -s * (garrison ? 2.78 : 1.86);
+    const bw = s * (garrison ? 0.72 : 0.62);
+    const bl = s * (garrison ? 2.1 : 1.48);
+    const t = performance.now() / 1000;
+    const { sway, lag } = this.breezeAt(tx, ty, t, tx * 1.7 + ty * 0.9, s, 0.024, 0.04);
+    const yTop = rodY + s * 0.04;
+    // The cloth's own shadow seats it on the masonry.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+    ctx.fillRect(cx - bw / 2 + s * 0.045, yTop + s * 0.06, bw, bl - s * 0.14);
+    const outer = this.paintGreatCloth(cx, yTop, bw, bl, dye, s, sway, lag);
+    ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+    ctx.lineWidth = Math.max(1, s * 0.028);
+    ctx.stroke(outer);
+    // The lance rod: a tourney shaft strapped to the wall, steel
+    // end caps — the castle hangs its cloth off war gear.
+    ctx.fillStyle = '#454052';
+    ctx.fillRect(cx - bw / 2 - s * 0.02, rodY - s * 0.06, s * 0.045, s * 0.05);
+    ctx.fillRect(cx + bw / 2 - s * 0.025, rodY - s * 0.06, s * 0.045, s * 0.05);
+    ctx.fillStyle = '#5a4a30';
+    ctx.fillRect(cx - bw / 2 - s * 0.1, rodY - s * 0.024, bw + s * 0.2, s * 0.052);
+    ctx.fillStyle = '#6f5a3a';
+    ctx.fillRect(cx - bw / 2 - s * 0.1, rodY - s * 0.024, bw + s * 0.2, s * 0.018);
+    // Hoist loops over the rod.
+    ctx.fillStyle = shade(Renderer.AWNING_CLOTHS[dye]!.b, -8);
+    for (const fx of [-bw * 0.4, -bw * 0.14, bw * 0.14, bw * 0.4] as const) {
+      ctx.fillRect(cx + fx - s * 0.03, rodY - s * 0.05, s * 0.06, s * 0.12);
+    }
+    ctx.fillStyle = TRD_STEEL_LIT;
+    ctx.beginPath();
+    facetCircle(ctx, cx - bw / 2 - s * 0.12, rodY, s * 0.038, 6, 0.3);
+    ctx.fill();
+    ctx.beginPath();
+    facetCircle(ctx, cx + bw / 2 + s * 0.12, rodY, s * 0.038, 6, 0.3);
+    ctx.fill();
+  }
+
+  /**
+   * THE LONG FALL — a floor-length drape off a turned timber rod:
+   * gathered at a corded waist, flaring to a hem that PUDDLES on the
+   * boards (cloth long enough to spill is the luxury the castle pays
+   * for). Interior cloth has weight: the hem barely breathes, the
+   * tie tassel swings a touch — never the street banner's ripple.
+   */
+  private drapeFallOnFace(
+    tx: number,
+    ty: number,
+    px0: number,
+    s: number,
+    dye: number,
+    garrison: boolean,
+  ): void {
+    const ctx = this.ctx;
+    const cloth = Renderer.AWNING_CLOTHS[dye]!.a;
+    const trim = Renderer.AWNING_CLOTHS[dye]!.b;
+    const cx = px0 + s * 0.5;
+    const rodY = -s * (garrison ? 2.66 : 1.8);
+    const yTop = rodY + s * 0.03;
+    const yFloor = -s * 0.05;
+    const t = performance.now() / 1000;
+    const { lag } = this.breezeAt(tx, ty, t, tx * 1.3 + ty * 2.7, s, 0.008, 0.014);
+    const topW = s * 0.5;
+    const waistY = yTop + (yFloor - yTop) * 0.46;
+    const waistW = s * 0.3;
+    const hemW = s * 0.56;
+    // The fall's silhouette: shoulders, the cinch, the flare, and
+    // three puddle lobes resting on the floor.
+    const path = new Path2D();
+    path.moveTo(cx - topW / 2, yTop);
+    path.lineTo(cx + topW / 2, yTop);
+    path.quadraticCurveTo(cx + topW / 2 + s * 0.01, waistY - s * 0.24, cx + waistW / 2, waistY);
+    path.quadraticCurveTo(cx + hemW / 2 + s * 0.02, yFloor - s * 0.34, cx + hemW / 2 + lag, yFloor - s * 0.05);
+    path.quadraticCurveTo(cx + hemW / 2 + s * 0.05 + lag, yFloor + s * 0.005, cx + hemW * 0.3 + lag, yFloor);
+    path.quadraticCurveTo(cx + lag * 0.6, yFloor - s * 0.045, cx - hemW * 0.12 + lag * 0.5, yFloor);
+    path.quadraticCurveTo(cx - hemW * 0.34, yFloor + s * 0.005, cx - hemW / 2 - s * 0.04, yFloor - s * 0.01);
+    path.quadraticCurveTo(cx - hemW / 2 - s * 0.015, yFloor - s * 0.1, cx - waistW / 2, waistY);
+    path.quadraticCurveTo(cx - topW / 2 - s * 0.01, waistY - s * 0.24, cx - topW / 2, yTop);
+    path.closePath();
+    // The puddle's contact shadow seats the cloth on the boards.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
+    ctx.beginPath();
+    ctx.ellipse(cx + s * 0.02, yFloor + s * 0.015, hemW * 0.56, s * 0.045, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // And its own wall shadow above the waist.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+    ctx.fillRect(cx - topW / 2 + s * 0.04, yTop + s * 0.05, topW, waistY - yTop);
+    ctx.fillStyle = cloth;
+    ctx.fill(path);
+    ctx.save();
+    ctx.clip(path);
+    // Gathered folds: wedges falling INTO the cinch and spreading
+    // out of it — pinched cloth, never a painted column.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.14)';
+    for (const fx of [-0.16, 0.02, 0.17] as const) {
+      ctx.beginPath();
+      ctx.moveTo(cx + fx * s * 1.2, yTop);
+      ctx.lineTo(cx + fx * s * 1.2 + s * 0.045, yTop);
+      ctx.lineTo(cx + fx * s * 0.42, waistY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx + fx * s * 0.42, waistY);
+      ctx.lineTo(cx + fx * s * 1.35 + s * 0.05, yFloor - s * 0.02);
+      ctx.lineTo(cx + fx * s * 1.35, yFloor - s * 0.02);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // The west selvage carries the light down the whole fall.
+    ctx.fillStyle = shade(cloth, 14);
+    ctx.fillRect(cx - topW / 2, yTop, s * 0.05, waistY - yTop);
+    ctx.fillRect(cx - waistW / 2 - s * 0.02, waistY, s * 0.05, yFloor - waistY);
+    // Header pleats under the rod: gathered bumps, shadow-struck.
+    ctx.fillStyle = shade(cloth, 10);
+    ctx.fillRect(cx - topW / 2, yTop, topW, s * 0.07);
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
+    for (const fx of [-0.16, -0.05, 0.06, 0.17] as const) {
+      ctx.fillRect(cx + fx * s, yTop + s * 0.01, s * 0.016, s * 0.07);
+    }
+    ctx.restore();
+    // The corded tie-back at the waist: trim band dipping with the
+    // gather, its tassel hanging free.
+    ctx.fillStyle = trim;
+    ctx.beginPath();
+    ctx.moveTo(cx - waistW / 2 - s * 0.02, waistY - s * 0.03);
+    ctx.quadraticCurveTo(cx, waistY + s * 0.035, cx + waistW / 2 + s * 0.02, waistY - s * 0.03);
+    ctx.lineTo(cx + waistW / 2 + s * 0.02, waistY + s * 0.015);
+    ctx.quadraticCurveTo(cx, waistY + s * 0.08, cx - waistW / 2 - s * 0.02, waistY + s * 0.015);
+    ctx.closePath();
+    ctx.fill();
+    const tasX = cx + waistW / 2 + s * 0.02 + lag * 0.8;
+    ctx.strokeStyle = trim;
+    ctx.lineWidth = Math.max(1, s * 0.016);
+    ctx.beginPath();
+    ctx.moveTo(cx + waistW / 2 + s * 0.01, waistY + s * 0.01);
+    ctx.quadraticCurveTo(tasX - s * 0.01, waistY + s * 0.08, tasX, waistY + s * 0.15);
+    ctx.stroke();
+    ctx.fillStyle = trim;
+    ctx.beginPath();
+    ctx.moveTo(tasX - s * 0.022, waistY + s * 0.14);
+    ctx.lineTo(tasX + s * 0.022, waistY + s * 0.14);
+    ctx.lineTo(tasX + s * 0.014, waistY + s * 0.22);
+    ctx.lineTo(tasX - s * 0.014, waistY + s * 0.22);
+    ctx.closePath();
+    ctx.fill();
+    // THE HOUSE OUTLINE around the true silhouette — puddle included.
+    ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+    ctx.lineWidth = Math.max(1, s * 0.028);
+    ctx.stroke(path);
+    // The turned timber rod over everything, knob finials proud.
+    ctx.fillStyle = '#4a3524';
+    ctx.fillRect(cx - topW / 2 - s * 0.09, rodY - s * 0.022, topW + s * 0.18, s * 0.048);
+    ctx.fillStyle = '#5e4530';
+    ctx.fillRect(cx - topW / 2 - s * 0.09, rodY - s * 0.022, topW + s * 0.18, s * 0.016);
+    for (const sd of [-1, 1] as const) {
+      ctx.fillStyle = '#5e4530';
+      ctx.beginPath();
+      facetCircle(ctx, cx + sd * (topW / 2 + s * 0.115), rodY, s * 0.04, 6, 0.3);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.fillRect(cx + sd * (topW / 2 + s * 0.115) - s * 0.012, rodY - s * 0.014, s * 0.014, s * 0.014);
+    }
   }
 
   /**
@@ -18584,6 +19288,13 @@ export class Renderer {
     Tile.TargetDummy,
     Tile.WarDrum,
     Tile.HideFrame,
+    // THE KNIGHT'S KEEPING: the armory pieces ride the cache — the
+    // plume and the standard's cloth sample at cadence like every
+    // breeze prop; the stands are still art. The standard's whole
+    // dye band rides (the dyed-pole precedent).
+    Tile.ArmorStand,
+    Tile.ArmorStandFull,
+    ...Array.from({ length: 10 }, (_, d) => (Tile.BannerStand + d) as Tile),
     // THE FAIR HOUSE FURNISHED: the elven kit rides the ring cache
     // the same way — glow-breath, water, glints and breeze all sample
     // at cadence (every animated term is <4Hz, the moonlight-breathes
@@ -18854,6 +19565,10 @@ export class Renderer {
     Tile.PlunderSacks,
     Tile.SpearRack,
     Tile.WarDrum,
+    // THE KNIGHT'S KEEPING: the empty stand is dead oak — truly
+    // still. The dressed stand may wear a plume and the standard is
+    // all wind; both stay on the fast cadence.
+    Tile.ArmorStand,
     // Elven statics: the pieces whose painters never read the clock
     // (bench, chair, case, marble, gallery). Everything that glows,
     // pours, sways, sings, or glints stays on the fast cadence.
@@ -23619,10 +24334,13 @@ export class Renderer {
     // never forty switch cases.
     const awn = awningInfo(tile);
     if (awn) return this.awningItem(awn, tile, tx, ty, game, p, s, t);
-    // A dyed banner pole is the classic pole flying a chosen cloth.
+    // A dyed banner pole is the classic pole flying a chosen cloth,
+    // and the standing banner's dye band folds to its anchor the
+    // same way (the painter reads the dye back from the id).
     const poleDye = bannerPoleInfo(tile);
+    const standFold = bannerStandInfo(tile) ? Tile.BannerStand : tile;
 
-    switch (poleDye ? Tile.BannerPole : tile) {
+    switch (poleDye ? Tile.BannerPole : standFold) {
       case Tile.Tree:
       case Tile.TreeOak:
       case Tile.TreeWillow:
@@ -49549,6 +50267,407 @@ export class Renderer {
               hang(p.x + s * 0.09, midY - bh2 * 0.33);
               hang(p.x + bw * 0.29, midY - bh2 * 0.31);
             }
+          },
+        };
+      }
+
+      case Tile.ArmorStand:
+      case Tile.ArmorStandFull: {
+        const dressed = tile === Tile.ArmorStandFull;
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // THE SQUIRE'S STAND: a cross-footed oak mast with a shoulder
+        // yoke and helm peg — empty it shows its joinery honestly;
+        // dressed it wears a full harness dealt by the tile (three
+        // styles, one stance). Scaled by the body ruler: the yoke
+        // sits at the rig's own shoulders, the helm crowns its head.
+        const style = (h >>> 3) % 3;
+        const dye = Renderer.AWNING_CLOTHS[(h >>> 5) % 10]!;
+        return {
+          sortY: ty + 0.66,
+          body: stationBody(0.5, 1.7, 0.4),
+          drawShadow: () => this.castContact(p.x, baseY, s * 0.32, s * 0.055),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            const cx = p.x;
+            // Ground seat: soft pool plus per-foot contact darks.
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(cx, baseY + s * 0.008, s * 0.3, s * 0.055, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Cross feet: two splayed squared quads east-west and a
+            // short foreshortened north foot behind the mast (BLOCK
+            // LAW — quads with one lit facet, never round strokes).
+            for (const sd of [-1, 1] as const) {
+              ctx.fillStyle = shade('#5e3f1e', sd < 0 ? 6 : -8);
+              ctx.beginPath();
+              ctx.moveTo(cx + sd * s * 0.03, baseY - s * 0.2);
+              ctx.lineTo(cx + sd * s * 0.075, baseY - s * 0.2);
+              ctx.lineTo(cx + sd * s * 0.26, baseY + s * 0.01);
+              ctx.lineTo(cx + sd * s * 0.19, baseY + s * 0.01);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = 'rgba(12, 8, 20, 0.28)';
+              ctx.fillRect(cx + sd * s * 0.19, baseY + s * 0.002, s * 0.075, s * 0.022);
+            }
+            ctx.fillStyle = shade('#5e3f1e', -14);
+            ctx.fillRect(cx - s * 0.028, baseY - s * 0.26, s * 0.056, s * 0.09);
+            // The mast, west face lit.
+            ctx.fillStyle = '#5e3f1e';
+            ctx.fillRect(cx - s * 0.028, baseY - s * 1.18, s * 0.056, s * 1.0);
+            ctx.fillStyle = shade('#5e3f1e', 16);
+            ctx.fillRect(cx - s * 0.028, baseY - s * 1.18, s * 0.02, s * 1.0);
+            // Hip rail.
+            ctx.fillStyle = shade('#5e3f1e', -6);
+            ctx.fillRect(cx - s * 0.15, baseY - s * 0.66, s * 0.3, s * 0.045);
+            // The shoulder yoke: a squared T-bar with dipped tips and
+            // a lit foreshortened top plane (the camera sees the top
+            // of every upright in town).
+            const yokeY = baseY - s * 1.04;
+            ctx.fillStyle = '#6f4d26';
+            ctx.beginPath();
+            ctx.moveTo(cx - s * 0.23, yokeY + s * 0.09);
+            ctx.lineTo(cx - s * 0.19, yokeY);
+            ctx.lineTo(cx + s * 0.19, yokeY);
+            ctx.lineTo(cx + s * 0.23, yokeY + s * 0.09);
+            ctx.lineTo(cx + s * 0.17, yokeY + s * 0.09);
+            ctx.lineTo(cx + s * 0.14, yokeY + s * 0.05);
+            ctx.lineTo(cx - s * 0.14, yokeY + s * 0.05);
+            ctx.lineTo(cx - s * 0.17, yokeY + s * 0.09);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade('#6f4d26', 18);
+            ctx.fillRect(cx - s * 0.19, yokeY, s * 0.38, s * 0.02);
+            // Helm peg with its capped top plane.
+            ctx.fillStyle = '#5e3f1e';
+            ctx.fillRect(cx - s * 0.02, baseY - s * 1.3, s * 0.04, s * 0.26);
+            ctx.fillStyle = shade('#5e3f1e', 20);
+            ctx.beginPath();
+            ctx.ellipse(cx, baseY - s * 1.3, s * 0.032, s * 0.014, 0, 0, Math.PI * 2);
+            ctx.fill();
+            if (!dressed) {
+              // The empty stand's story: two slack straps waiting off
+              // the yoke tips — the harness is out on a body.
+              for (const sd of [-1, 1] as const) {
+                ctx.fillStyle = '#4a3020';
+                ctx.beginPath();
+                ctx.moveTo(cx + sd * s * 0.2, yokeY + s * 0.09);
+                ctx.lineTo(cx + sd * s * 0.23, yokeY + s * 0.09);
+                ctx.lineTo(cx + sd * s * 0.21, yokeY + s * 0.34);
+                ctx.lineTo(cx + sd * s * 0.185, yokeY + s * 0.34);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#b8a86a';
+                ctx.fillRect(cx + sd * s * 0.19 - s * 0.012, yokeY + s * 0.3, s * 0.028, s * 0.02);
+              }
+              return;
+            }
+            // ---- THE HARNESS. All three styles share the torso box:
+            // shoulders at the yoke, waist taper, skirt at the rail.
+            const shY = yokeY + s * 0.02;
+            const waY = baseY - s * 0.7;
+            const skY = baseY - s * 0.52;
+            const torso = (wS: number, wW: number): Path2D => {
+              const q = new Path2D();
+              q.moveTo(cx - s * wS, shY);
+              q.lineTo(cx + s * wS, shY);
+              q.lineTo(cx + s * wW, waY);
+              q.lineTo(cx + s * wW * 1.15, skY);
+              q.lineTo(cx - s * wW * 1.15, skY);
+              q.lineTo(cx - s * wW, waY);
+              q.closePath();
+              return q;
+            };
+            if (style === 0) {
+              // STEEL HARNESS: cuirass with a plastron ridge, lobed
+              // pauldrons, a great helm — the knight in waiting.
+              const body = torso(0.19, 0.125);
+              ctx.fillStyle = TRD_STEEL;
+              ctx.fill(body);
+              ctx.save();
+              ctx.clip(body);
+              ctx.fillStyle = TRD_STEEL_LIT;
+              ctx.fillRect(cx - s * 0.2, shY - s * 0.05, s * 0.13, s * 0.6);
+              // The plastron ridge: one dark crease down the center
+              // breaking the light in two — plate, not a bib.
+              ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+              ctx.fillRect(cx - s * 0.008, shY + s * 0.03, s * 0.016, s * 0.42);
+              ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
+              ctx.fillRect(cx - s * 0.2, waY - s * 0.015, s * 0.4, s * 0.03);
+              ctx.restore();
+              // Fauld: two lapped skirt bands below the waist line.
+              for (let k = 0; k < 2; k++) {
+                ctx.fillStyle = shade(TRD_STEEL, -6 - k * 8);
+                ctx.fillRect(cx - s * (0.15 - k * 0.012), waY + s * (0.06 + k * 0.06), s * (0.3 - k * 0.024), s * 0.06);
+              }
+              // Pauldrons: two lapped lobes riding each yoke tip.
+              for (const sd of [-1, 1] as const) {
+                ctx.fillStyle = shade(TRD_STEEL, sd < 0 ? 14 : -4);
+                ctx.beginPath();
+                ctx.ellipse(cx + sd * s * 0.21, shY + s * 0.03, s * 0.075, s * 0.065, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = shade(TRD_STEEL, sd < 0 ? 4 : -14);
+                ctx.beginPath();
+                ctx.ellipse(cx + sd * s * 0.225, shY + s * 0.1, s * 0.06, s * 0.045, 0, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              // Gorget seats the helm; the great helm wears a lit
+              // foreshortened crown plane and one dark eye slit.
+              ctx.fillStyle = shade(TRD_STEEL, -10);
+              ctx.fillRect(cx - s * 0.07, shY - s * 0.045, s * 0.14, s * 0.05);
+              const hy = baseY - s * 1.17;
+              ctx.fillStyle = TRD_STEEL;
+              ctx.fillRect(cx - s * 0.085, hy - s * 0.17, s * 0.17, s * 0.19);
+              ctx.fillStyle = TRD_STEEL_LIT;
+              ctx.fillRect(cx - s * 0.085, hy - s * 0.17, s * 0.05, s * 0.19);
+              ctx.fillStyle = shade(TRD_STEEL, 18);
+              ctx.beginPath();
+              ctx.ellipse(cx, hy - s * 0.17, s * 0.085, syT * 0.032, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(10, 6, 16, 0.75)';
+              ctx.fillRect(cx - s * 0.062, hy - s * 0.1, s * 0.124, s * 0.028);
+              // The plume — the stand's one living piece.
+              const { lag } = this.breezeAt(tx, ty, t, tx * 2.1 + ty * 1.7, s, 0.012, 0.025);
+              ctx.fillStyle = '#7a2430';
+              ctx.beginPath();
+              ctx.moveTo(cx - s * 0.01, hy - s * 0.19);
+              ctx.lineTo(cx + s * 0.03, hy - s * 0.19);
+              ctx.quadraticCurveTo(cx + s * 0.1 + lag, hy - s * 0.26, cx + s * 0.16 + lag * 1.4, hy - s * 0.14);
+              ctx.quadraticCurveTo(cx + s * 0.09 + lag, hy - s * 0.18, cx + s * 0.01, hy - s * 0.15);
+              ctx.closePath();
+              ctx.fill();
+            } else if (style === 1) {
+              // CHAIN AND TABARD: banded mail under the town's own
+              // dye, belted, a kettle hat on the peg.
+              const mail = torso(0.185, 0.13);
+              ctx.fillStyle = '#5a606c';
+              ctx.fill(mail);
+              ctx.save();
+              ctx.clip(mail);
+              ctx.fillStyle = 'rgba(210, 218, 226, 0.16)';
+              for (let k = 0; k < 5; k++) {
+                ctx.fillRect(cx - s * 0.2, shY + s * (0.05 + k * 0.1), s * 0.4, s * 0.032);
+              }
+              ctx.restore();
+              // Mail hem scallop below the skirt line.
+              ctx.fillStyle = '#5a606c';
+              for (const fx of [-0.1, -0.033, 0.033, 0.1] as const) {
+                ctx.beginPath();
+                ctx.arc(cx + fx * s, skY + s * 0.01, s * 0.034, 0, Math.PI);
+                ctx.fill();
+              }
+              // The tabard over it: open-sided, V-necked, belted.
+              ctx.fillStyle = dye.a;
+              ctx.beginPath();
+              ctx.moveTo(cx - s * 0.115, shY + s * 0.01);
+              ctx.lineTo(cx + s * 0.115, shY + s * 0.01);
+              ctx.lineTo(cx + s * 0.095, skY + s * 0.06);
+              ctx.lineTo(cx - s * 0.095, skY + s * 0.06);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = shade(dye.a, 12);
+              ctx.fillRect(cx - s * 0.115, shY + s * 0.01, s * 0.07, s * 0.55);
+              ctx.fillStyle = shade(dye.a, -22);
+              ctx.beginPath();
+              ctx.moveTo(cx - s * 0.045, shY + s * 0.01);
+              ctx.lineTo(cx + s * 0.045, shY + s * 0.01);
+              ctx.lineTo(cx, shY + s * 0.09);
+              ctx.closePath();
+              ctx.fill();
+              // The charge: a trim lozenge at the chest.
+              ctx.fillStyle = dye.b;
+              ctx.beginPath();
+              ctx.moveTo(cx, shY + s * 0.16);
+              ctx.lineTo(cx + s * 0.05, shY + s * 0.25);
+              ctx.lineTo(cx, shY + s * 0.34);
+              ctx.lineTo(cx - s * 0.05, shY + s * 0.25);
+              ctx.closePath();
+              ctx.fill();
+              // Belt and buckle.
+              ctx.fillStyle = '#4a3020';
+              ctx.fillRect(cx - s * 0.12, waY - s * 0.01, s * 0.24, s * 0.04);
+              ctx.fillStyle = '#b8a86a';
+              ctx.fillRect(cx - s * 0.022, waY - s * 0.014, s * 0.044, s * 0.048);
+              // The kettle hat: a brimmed dome, top plane honest.
+              const hy = baseY - s * 1.2;
+              ctx.fillStyle = shade(TRD_STEEL, -6);
+              ctx.beginPath();
+              ctx.ellipse(cx, hy, s * 0.11, syT * 0.045, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = TRD_STEEL;
+              ctx.beginPath();
+              ctx.arc(cx, hy - s * 0.005, s * 0.065, Math.PI, 0);
+              ctx.fill();
+              ctx.fillStyle = TRD_STEEL_LIT;
+              ctx.beginPath();
+              ctx.arc(cx - s * 0.02, hy - s * 0.01, s * 0.035, Math.PI, 0);
+              ctx.fill();
+            } else {
+              // LEATHER JACK: a riveted brigandine with layered
+              // shoulder tabs and a plain sallet — the scout's kit.
+              const jack = torso(0.18, 0.12);
+              ctx.fillStyle = '#6e4a33';
+              ctx.fill(jack);
+              ctx.save();
+              ctx.clip(jack);
+              ctx.fillStyle = shade('#6e4a33', 14);
+              ctx.fillRect(cx - s * 0.19, shY - s * 0.05, s * 0.12, s * 0.6);
+              // Rivet rows: bronze pips at the chest-law minimum —
+              // the plates inside announced on the outside.
+              ctx.fillStyle = '#b8a86a';
+              for (let r = 0; r < 3; r++) {
+                for (let c = -1; c <= 1; c++) {
+                  ctx.beginPath();
+                  ctx.arc(cx + c * s * 0.085, shY + s * (0.12 + r * 0.14), s * 0.015, 0, Math.PI * 2);
+                  ctx.fill();
+                }
+              }
+              ctx.restore();
+              // Studded skirt tabs.
+              for (const fx of [-0.105, -0.035, 0.035, 0.105] as const) {
+                ctx.fillStyle = shade('#6e4a33', -10);
+                ctx.fillRect(cx + fx * s - s * 0.028, skY, s * 0.056, s * 0.08);
+                ctx.fillStyle = '#b8a86a';
+                ctx.beginPath();
+                ctx.arc(cx + fx * s, skY + s * 0.05, s * 0.012, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              // Shoulder tabs: two lapped leather plates per side.
+              for (const sd of [-1, 1] as const) {
+                for (let k = 0; k < 2; k++) {
+                  ctx.fillStyle = shade('#6e4a33', sd < 0 ? 10 - k * 8 : -6 - k * 8);
+                  ctx.beginPath();
+                  ctx.moveTo(cx + sd * s * (0.14 + k * 0.03), shY - s * 0.01 + k * s * 0.055);
+                  ctx.lineTo(cx + sd * s * (0.24 + k * 0.02), shY + s * 0.02 + k * s * 0.055);
+                  ctx.lineTo(cx + sd * s * (0.22 + k * 0.02), shY + s * 0.09 + k * s * 0.055);
+                  ctx.lineTo(cx + sd * s * (0.13 + k * 0.03), shY + s * 0.06 + k * s * 0.055);
+                  ctx.closePath();
+                  ctx.fill();
+                }
+              }
+              // The sallet: a smooth dome with a short tail, its
+              // face opening struck dark.
+              const hy = baseY - s * 1.16;
+              ctx.fillStyle = TRD_STEEL;
+              ctx.beginPath();
+              ctx.arc(cx, hy - s * 0.03, s * 0.075, Math.PI * 0.9, Math.PI * 2.02);
+              ctx.lineTo(cx + s * 0.11, hy + s * 0.035);
+              ctx.lineTo(cx - s * 0.075, hy + s * 0.035);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = TRD_STEEL_LIT;
+              ctx.beginPath();
+              ctx.arc(cx - s * 0.025, hy - s * 0.035, s * 0.04, Math.PI, Math.PI * 1.9);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(10, 6, 16, 0.7)';
+              ctx.fillRect(cx - s * 0.055, hy + s * 0.005, s * 0.09, s * 0.024);
+            }
+          },
+        };
+      }
+
+      case Tile.BannerStand: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        // THE STANDARD FRAME: a forged tripod socket flying the great
+        // cloth from a cross-arm — the muster forms on it, the wind
+        // owns it. The author dyes the standard (the tile band); the
+        // charge follows the dye (THE COLOR IS THE HOUSE).
+        const standDye = bannerStandInfo(tile)?.dye ?? 0;
+        const topY = baseY - s * 2.38;
+        return {
+          sortY: ty + 0.72,
+          body: stationBody(0.8, 2.7, 0.45),
+          drawShadow: () => this.castEdgeQuad(p.x - s * 0.06, baseY, p.x + s * 0.06, baseY, 1.9),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            const cx = p.x;
+            // The forged foot: a socket boss on three splayed legs,
+            // the front pair landing in their own contact pools.
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(cx, baseY + s * 0.01, s * 0.24, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = shade('#454052', -10);
+            ctx.fillRect(cx - s * 0.022, baseY - s * 0.3, s * 0.044, s * 0.14);
+            for (const sd of [-1, 1] as const) {
+              ctx.fillStyle = shade('#454052', sd < 0 ? 8 : -8);
+              ctx.beginPath();
+              ctx.moveTo(cx + sd * s * 0.02, baseY - s * 0.18);
+              ctx.lineTo(cx + sd * s * 0.065, baseY - s * 0.18);
+              ctx.lineTo(cx + sd * s * 0.22, baseY + s * 0.005);
+              ctx.lineTo(cx + sd * s * 0.16, baseY + s * 0.005);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = 'rgba(12, 8, 20, 0.3)';
+              ctx.fillRect(cx + sd * s * 0.16, baseY, s * 0.065, s * 0.02);
+            }
+            ctx.fillStyle = shade('#454052', -18);
+            ctx.fillRect(cx - s * 0.02, baseY - s * 0.24, s * 0.04, s * 0.07);
+            // The socket collar with its bolt pips.
+            ctx.fillStyle = '#454052';
+            ctx.fillRect(cx - s * 0.045, baseY - s * 0.34, s * 0.09, s * 0.09);
+            ctx.fillStyle = '#8b8697';
+            ctx.beginPath();
+            ctx.arc(cx - s * 0.02, baseY - s * 0.3, s * 0.012, 0, Math.PI * 2);
+            ctx.arc(cx + s * 0.02, baseY - s * 0.3, s * 0.012, 0, Math.PI * 2);
+            ctx.fill();
+            // The staff: iron-dark, west sliver lit, collar rings at
+            // the thirds — a mast, not a stick.
+            ctx.fillStyle = '#3a3444';
+            ctx.fillRect(cx - s * 0.024, topY, s * 0.048, s * 2.04);
+            ctx.fillStyle = '#5a5468';
+            ctx.fillRect(cx - s * 0.024, topY, s * 0.016, s * 2.04);
+            ctx.fillStyle = '#454052';
+            ctx.fillRect(cx - s * 0.032, baseY - s * 0.95, s * 0.064, s * 0.05);
+            ctx.fillRect(cx - s * 0.032, baseY - s * 1.72, s * 0.064, s * 0.05);
+            // The cross-arm reaching east, braced to the staff.
+            const armY = topY + s * 0.08;
+            ctx.fillStyle = '#454052';
+            ctx.fillRect(cx - s * 0.02, armY - s * 0.022, s * 0.58, s * 0.044);
+            ctx.fillStyle = '#5a5468';
+            ctx.fillRect(cx - s * 0.02, armY - s * 0.022, s * 0.58, s * 0.015);
+            ctx.fillStyle = shade('#454052', -8);
+            ctx.beginPath();
+            ctx.moveTo(cx + s * 0.024, armY + s * 0.16);
+            ctx.lineTo(cx + s * 0.2, armY + s * 0.022);
+            ctx.lineTo(cx + s * 0.2, armY + s * 0.052);
+            ctx.lineTo(cx + s * 0.05, armY + s * 0.17);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#2c2836';
+            ctx.fillRect(cx + s * 0.545, armY - s * 0.032, s * 0.024, s * 0.064);
+            // THE CLOTH — the great drop off the arm, freestanding
+            // wind (a fuller beat than any wall hanging's).
+            const { sway, lag } = this.breezeAt(tx, ty, t, tx * 1.9 + ty * 1.3, s, 0.03, 0.05);
+            const clothCx = cx + s * 0.3;
+            const outer = this.paintGreatCloth(clothCx, armY + s * 0.035, s * 0.5, s * 1.32, standDye, s, sway, lag);
+            ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+            ctx.lineWidth = Math.max(1, s * 0.028);
+            ctx.stroke(outer);
+            // Hoist loops over the arm.
+            ctx.fillStyle = shade(Renderer.AWNING_CLOTHS[standDye]!.b, -8);
+            for (const fx of [0.1, 0.3, 0.5] as const) {
+              ctx.fillRect(cx + fx * s - s * 0.026, armY - s * 0.04, s * 0.052, s * 0.1);
+            }
+            // The finial: a gold leaf-point crowning the staff.
+            ctx.fillStyle = '#c9962e';
+            ctx.beginPath();
+            ctx.moveTo(cx, topY - s * 0.17);
+            ctx.lineTo(cx + s * 0.042, topY - s * 0.05);
+            ctx.lineTo(cx, topY + s * 0.01);
+            ctx.lineTo(cx - s * 0.042, topY - s * 0.05);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#e0c88a';
+            ctx.beginPath();
+            ctx.moveTo(cx - s * 0.002, topY - s * 0.15);
+            ctx.lineTo(cx - s * 0.026, topY - s * 0.05);
+            ctx.lineTo(cx - s * 0.002, topY - s * 0.01);
+            ctx.closePath();
+            ctx.fill();
           },
         };
       }

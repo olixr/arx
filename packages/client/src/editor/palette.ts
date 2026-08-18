@@ -1,5 +1,5 @@
-import { AWNING_SHAPES, DYE_COUNT, Detail, TILE_PX, TILE_SKIP, Tile, awningTile, bracketSignDetail, herbBundlesDetail, pennantDetail, sillHerbsDetail, tileDef, trellisDetail, wallBannerDetail } from '@arx/shared';
-import { BUILDABLES, BUNDLE_MIXES, DYES, SIGN_MOTIFS, SILL_MIXES, TRELLIS_SPECIES } from '@arx/content';
+import { AWNING_SHAPES, DYE_COUNT, Detail, TILE_PX, TILE_SKIP, Tile, awningTile, bannerStandTile, bracketSignDetail, drapeFallDetail, greatBannerDetail, herbBundlesDetail, pennantDetail, sillHerbsDetail, tileDef, trellisDetail, wallArmsDetail, wallBannerDetail } from '@arx/shared';
+import { ARMS_FORMS, BUILDABLES, BUNDLE_MIXES, DYES, SIGN_MOTIFS, SILL_MIXES, TRELLIS_SPECIES } from '@arx/content';
 import { bakeChunk, bakeGutter } from '../render/terrain.js';
 import { buildableIconUrl } from '../render/icons.js';
 import { paintTree, treeModel } from '../render/trees.js';
@@ -101,6 +101,10 @@ export const TILE_CATEGORIES: TileCategory[] = [
       Tile.MarketStall, Tile.BannerPole, Tile.HangingSign, Tile.Signpost, Tile.FlowerBox,
       Tile.ToolRack, Tile.WeaponRack, Tile.Vault, Tile.Lectern, Tile.Basin,
       Tile.LampPost, Tile.Brazier, Tile.TimberPost,
+      // THE KNIGHT'S KEEPING: the armory floor pieces — the standing
+      // banner in every dye, dealt from the band math.
+      Tile.ArmorStand, Tile.ArmorStandFull,
+      ...DYES.map((_, i) => bannerStandTile(i)),
     ],
   },
   {
@@ -327,6 +331,19 @@ export const DETAILS: Array<{ d: Detail; label: string }> = [
   ...BUNDLE_MIXES.map((m, i) => ({
     d: herbBundlesDetail(i),
     label: `${m.name.toLowerCase()} bundles (on wall)`,
+  })),
+  // THE KNIGHT'S KEEPING: the armory wall, dealt from band math.
+  ...ARMS_FORMS.map((f, i) => ({
+    d: wallArmsDetail(i),
+    label: `${f.name.toLowerCase()} mount (on wall)`,
+  })),
+  ...DYES.map((dye, i) => ({
+    d: greatBannerDetail(i),
+    label: `${dye.name.toLowerCase()} great banner (on wall)`,
+  })),
+  ...DYES.map((dye, i) => ({
+    d: drapeFallDetail(i),
+    label: `${dye.name.toLowerCase()} drape (on wall)`,
   })),
 ];
 

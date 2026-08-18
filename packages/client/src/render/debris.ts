@@ -237,6 +237,10 @@ export type SmashKind =
   | 'candlecluster'
   | 'meltwax'
   | 'candletable'
+  // THE KNIGHT'S KEEPING: armory oak, racked steel, the standard.
+  | 'armorstand'
+  | 'armorstandfull'
+  | 'bannerstand'
   // THE BOLD WICK: the lone column falls as ONE heavy piece.
   | 'pillarcandle';
 
@@ -837,6 +841,11 @@ const CHIP_TONE: Record<SmashKind, string> = {
   effigy: '#9c8a62',
   gnawtrough: '#5e4023',
   herbplanter: '#6f4d26',
+  // THE KNIGHT'S KEEPING: armory oak chips; the dressed stand and
+  // the standard chip in their metal.
+  armorstand: '#5e3f1e',
+  armorstandfull: '#8b93a4',
+  bannerstand: '#454052',
 };
 
 const pick = <T>(rand: () => number, arr: readonly T[]): T =>
@@ -3052,6 +3061,50 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       for (let i = 0; i < 3; i++) {
         out.push({ len: 0.06, wid: 0.04, color: pick(rand, ['#d8cba8', '#efe6cf']), stripe: '#c9bd9e', round: true, pace: 0.55 });
       }
+      break;
+    }
+    case 'armorstand': {
+      // The bare stand folds as joinery: mast in two, the yoke's
+      // T-bar flying, cross-feet tumbling low, strap leathers light.
+      out.push({ len: 0.42 + rand() * 0.1, wid: 0.07, color: '#5e3f1e', stripe: shade('#5e3f1e', 14), pace: 0.75 });
+      out.push({ len: 0.3 + rand() * 0.06, wid: 0.06, color: '#6f4d26', stripe: '#7a552e', pace: 1.1 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.24 + rand() * 0.05, wid: 0.06, color: shade('#5e3f1e', -8), pace: 0.7 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.14, wid: 0.04, color: '#8a5c40', round: true, pace: 1.35 });
+      }
+      wood('#5e3f1e', 2 + Math.floor(rand() * 2), 0.1, 0.18, 0.04);
+      break;
+    }
+    case 'armorstandfull': {
+      // The DRESSED stand: the harness rings off plate by plate —
+      // cuirass halves spinning bright, round pauldrons bouncing,
+      // the helm flying whole with its plume — over the oak's clap.
+      out.push({ len: 0.26 + rand() * 0.05, wid: 0.2, color: '#8b93a4', stripe: '#aeb6c6', round: true, pace: 1.2 });
+      out.push({ len: 0.22 + rand() * 0.05, wid: 0.17, color: shade('#8b93a4', -8), stripe: '#aeb6c6', round: true, pace: 1.1 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.13, wid: 0.12, color: '#98a0b0', stripe: '#c6cdd8', round: true, pace: 1.35 });
+      }
+      // The helm — one proud piece, crest rag trailing.
+      out.push({ len: 0.17, wid: 0.15, color: '#aeb6c6', stripe: '#e8ecf2', round: true, pace: 1.3 });
+      out.push({ len: 0.14, wid: 0.09, color: '#7a2430', round: true, pace: 1.45 });
+      // The stand under it all breaks as the bare kit does.
+      out.push({ len: 0.4 + rand() * 0.08, wid: 0.07, color: '#5e3f1e', stripe: shade('#5e3f1e', 14), pace: 0.75 });
+      out.push({ len: 0.24, wid: 0.06, color: shade('#5e3f1e', -8), pace: 0.7 });
+      wood('#5e3f1e', 2, 0.1, 0.16, 0.04);
+      break;
+    }
+    case 'bannerstand': {
+      // The staff breaks long and heavy, the forged foot lands like
+      // iron, the finial spins off bright — and the great cloth flies
+      // as ONE flap, the slowest-falling piece on the field.
+      out.push({ len: 0.55 + rand() * 0.12, wid: 0.06, color: '#454052', stripe: '#5a5468', pace: 0.7 });
+      out.push({ len: 0.4 + rand() * 0.08, wid: 0.055, color: '#3a3444', pace: 0.8 });
+      out.push({ len: 0.2, wid: 0.14, color: '#454052', stripe: '#5a5468', pace: 0.55 });
+      out.push({ len: 0.12, wid: 0.06, color: '#c9962e', stripe: '#e0c88a', pace: 1.3 });
+      out.push({ len: 0.4 + rand() * 0.1, wid: 0.3, color: '#7a2430', stripe: '#c9962e', round: true, pace: 1.5 });
+      out.push({ len: 0.16, wid: 0.1, color: shade('#7a2430', -10), round: true, pace: 1.4 });
       break;
     }
   }
