@@ -708,21 +708,46 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
    * grows. Fist-gripped and light: the Court does not carry weight,
    * it confers it.
    */
+  /**
+   * WINTERCOURT RIME — THE WINTER'S HEART (v2, 2026-08-17: the ice-
+   * elemental recut, the frost shield a boss is proud to raise). Not
+   * court silver — GLACIER: a nine-faceted lens of ancient ice read
+   * from above, in three bold masses. THE GLACIER STEPS: the face
+   * rises inward — outer sheet, a raised inner terrace, a hoarfrost
+   * collar, the frozen heart — a stepped well of ice climbing to its
+   * own light. THE UNFROZEN RING: a channel of living water circling
+   * between the ice walls, never freezing; three glints circulate it
+   * on the shield's one clock, and the water is the only SMOOTH curve
+   * here — ice is faceted, water flows. THE ICICLE CROWN: a king
+   * icicle and two flanks off the crown facet, two drip icicles
+   * HANGING from the heel — gravity is the read — and four hoarfrost
+   * thorns at the diagonals. White belongs to the heart and the lead
+   * glint; pale cyan to the ice's lights; the glacial blues own the
+   * mass.
+   */
   wintercourt_rime: {
     shape: 'courtround',
     material: 'steel',
-    face: '#cfd8d2',
-    faceAlt: '#b4c0bc',
-    rim: '#8fa8b8',
-    boss: '#9ad4e8',
-    device: 'moon',
-    deviceColor: '#dce4f0',
+    face: '#2a5170',
+    faceAlt: '#4a86a8',
+    rim: '#1e3a54',
+    boss: '#d8eefa',
+    device: 'none',
     studs: true,
-    curve: 0.5,
+    spikes: true,
+    // THE HOARFROST THORNS: two short crystal points at the lower
+    // diagonals — frost creeping past the binding. The crown air
+    // belongs to the icicle trio alone.
+    spikeAngles: [0.75, 2.39],
+    spikeLen: 1.14,
+    spikeW: 0.06,
+    spikeColor: '#bfe6f4',
+    curve: 0.55,
     strapColor: '#3a4652',
-    sig: 'wintercourt',
+    sig: 'winterheart',
     tier: 4,
   },
+
   /**
    * THE VEIL'S WING — a wing BUILT, not painted. Blued night-steel
    * laid in four feather courses that sweep from the leading edge down
@@ -1190,7 +1215,8 @@ const METRIC: Record<
   // The carapace is the BROADEST wall — a shell spreads.
   carapace: { hw: 0.21, hh: 0.32, hang: -0.08, depth: 0.064, strap: true, fwdK: -0.015, twistK: -0.05, wall: true },
   // The Court's round carries like the fist discs — punched, angled.
-  courtround: { hw: 0.18, hh: 0.18, hang: -0.21, depth: 0.038, strap: false, fwdK: 0.04, twistK: 0.12 },
+  // Sized up a shade with the WINTER'S HEART recut — a boss's round.
+  courtround: { hw: 0.2, hh: 0.2, hang: -0.21, depth: 0.038, strap: false, fwdK: 0.04, twistK: 0.12 },
   pinion: { hw: 0.195, hh: 0.34, hang: -0.065, depth: 0.06, strap: true, fwdK: -0.02, twistK: -0.05, wall: true },
   // The reliquary and the leaf are ARM class: kite-blooded, guarded at
   // the chest, alive — ceremony does not plant.
@@ -1623,7 +1649,7 @@ interface FaceEntry {
 const FACE_CACHE = new Map<string, FaceEntry>();
 const FACE_CACHE_MAX = 64;
 /** Signatures whose FACE is a function of the clock (crests stay live). */
-const LIVING_SIGS = new Set(['oath', 'gatefall', 'brineshell']);
+const LIVING_SIGS = new Set(['oath', 'gatefall', 'brineshell', 'winterheart']);
 /** Resolution rungs, px per design unit — capped so no entry balloons. */
 const FACE_RES = [20, 30, 44, 64, 92, 132, 184];
 
@@ -2229,7 +2255,7 @@ const SIGNATURES: Record<string, FacePainter> = {
   palisade: sigPalisade,
   fellhorn: sigFellhorn,
   brineshell: sigBrineshell,
-  wintercourt: sigWintercourt,
+  winterheart: sigWinterheart,
   pinion: sigPinion,
   reliquary: sigReliquary,
   cindermaw: sigCindermaw,
@@ -3029,51 +3055,95 @@ function sigBrineshell(
 }
 
 /**
- * WINTERCOURT RIME — cold ceremony. Nine pale facets, a court-silver
- * crescent inlaid high on the off quarter, and the rime star: eight
- * everfrost splinters struck from the heart at the lengths ice
- * actually grows — uneven, and each one a single flat shard.
+ * THE GLACIER CLOCK: one motion on the whole shield — the unfrozen
+ * ring circulates. Three glints of moving water ride it, one leading
+ * bright, and the king icicle answers when the lead glint passes the
+ * crown. Pure function of nowMs; a slow fifteen-second round, because
+ * deep water is never in a hurry.
  */
-function sigWintercourt(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
-  gores(ctx, st, 4);
-  // The crescent: inlay, not paint — a seam ring under a silver moon,
-  // and the bite cut back out in the FACE's own unshaded tone, so
-  // what remains is honestly a crescent and not a coin.
-  const silver = st.deviceColor ?? '#dce4f0';
-  ctx.fillStyle = SEAM;
-  ctx.beginPath();
-  ctx.arc(-0.42, -0.4, 0.34, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = silver;
-  ctx.beginPath();
-  ctx.arc(-0.42, -0.4, 0.3, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = st.face;
-  ctx.beginPath();
-  ctx.arc(-0.24, -0.48, 0.28, 0, Math.PI * 2);
-  ctx.fill();
-  // The rime star: splinters at ice's own lengths, each on its own
-  // seam-dark shard so the ice reads against the pale face — the one
-  // charge on the disc, and it has to carry from across a room.
-  const frost = '#6db8d8';
-  const lit = '#b8e6f6';
-  const lens = [0.98, 0.55, 0.84, 0.5, 0.94, 0.52, 0.8, 0.48];
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2 - Math.PI / 2 + 0.12;
-    const L = lens[i]!;
-    const w = 0.085 + 0.035 * (L > 0.8 ? 1 : 0);
-    const cu = Math.cos(a);
-    const ct = Math.sin(a);
-    // The shard's shadow first — a hair wider and longer.
-    poly(ctx, SEAM, [
-      -ct * (w + 0.025), cu * (w + 0.025), cu * (L + 0.05), ct * (L + 0.05),
-      ct * (w + 0.025), -cu * (w + 0.025),
-    ]);
-    poly(ctx, i < 2 || i === 7 ? lit : frost, [
-      -ct * w, cu * w, cu * L, ct * L, ct * w, -cu * w,
-    ]);
+const FLOW_W = 0.00042;
+
+/** A nonagon aligned to the courtround's own facets. */
+function icePoly(r: number): number[] {
+  const pts: number[] = [];
+  for (let k = 0; k < 9; k++) {
+    const a = -Math.PI / 2 + Math.PI / 9 + (k / 9) * Math.PI * 2;
+    pts.push(Math.cos(a) * r, Math.sin(a) * r);
   }
-  poly(ctx, SEAM, [0, -0.18, 0.16, 0, 0, 0.18, -0.16, 0]);
+  return pts;
+}
+
+/**
+ * WINTERCOURT RIME — THE WINTER'S HEART. The face owns two masses:
+ * the outer ice sheet (one flat, one lit crown facet) and THE
+ * UNFROZEN RING — dark living water in a faceted channel, its lit lip
+ * of ice above it, three smooth glints circulating. The raised steps
+ * inside the ring belong to the relief tier; the frozen heart is the
+ * substrate's boss.
+ */
+function sigWinterheart(
+  ctx: CanvasRenderingContext2D,
+  st: ShieldStyle,
+  fr: ShieldFrame,
+  litU: number,
+  nowMs: number,
+): void {
+  // The outer sheet.
+  ctx.fillStyle = st.face;
+  ctx.fillRect(-1.2, -1.2, 2.4, 2.4);
+  // One lit crown facet on the sheet — the sun on old ice.
+  const o = icePoly(1.2);
+  poly(ctx, shade(st.face, 10), [0, 0, o[16]!, o[17]!, o[0]!, o[1]!, o[2]!, o[3]!]);
+  // THE UNFROZEN RING: the channel, cut down into the dark.
+  const ring = (rOut: number, rIn: number, tone: string, alpha: number): void => {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = tone;
+    ctx.beginPath();
+    const po = icePoly(rOut);
+    for (let k = 0; k < 9; k++) {
+      if (k === 0) ctx.moveTo(po[0]!, po[1]!);
+      else ctx.lineTo(po[k * 2]!, po[k * 2 + 1]!);
+    }
+    ctx.closePath();
+    const pi = icePoly(rIn);
+    for (let k = 8; k >= 0; k--) {
+      if (k === 8) ctx.moveTo(pi[16]!, pi[17]!);
+      else ctx.lineTo(pi[k * 2]!, pi[k * 2 + 1]!);
+    }
+    ctx.closePath();
+    ctx.fill('evenodd');
+    ctx.globalAlpha = 1;
+  };
+  ring(0.66, 0.44, '#122f44', 1);
+  // The ice wall's lit lip over the water's outer edge.
+  ring(0.68, 0.635, '#a8d8ea', 0.55);
+  // THE FLOW: three glints riding the ring — the only smooth curves
+  // on the shield, because water is the only thing here that moves.
+  const w = nowMs * FLOW_W;
+  const glint = (a0: number, span: number, tone: string, alpha: number): void => {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = tone;
+    ctx.beginPath();
+    const N = 5;
+    for (let k = 0; k <= N; k++) {
+      const a = a0 + (span * k) / N;
+      const x = Math.cos(a) * 0.615;
+      const y = Math.sin(a) * 0.615;
+      if (k === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    for (let k = N; k >= 0; k--) {
+      const a = a0 + (span * k) / N;
+      ctx.lineTo(Math.cos(a) * 0.475, Math.sin(a) * 0.475);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  };
+  glint(w, 0.66, '#6fc8dd', 0.65);
+  glint(w + 0.1, 0.4, '#d8f4fc', 0.75);
+  glint(w + 2.2, 0.48, '#6fc8dd', 0.45);
+  glint(w + 4.3, 0.4, '#6fc8dd', 0.35);
 }
 
 /**
@@ -4635,49 +4705,55 @@ function relBrineshell(rc: ReliefCtx, st: ShieldStyle): void {
 }
 
 /**
- * WINTERCOURT RIME — the star grows OUT of the disc: every splinter
- * is a crystal ridge, two facets meeting on a spine that stands
- * tallest at the heart and falls to the tip, the way ice actually
- * grows off a seed. The everfrost bead crowns the seed point.
+ * WINTERCOURT RIME — THE GLACIER STEPS. Two grown steps of ice rising
+ * inside the unfrozen ring: the inner terrace and the hoarfrost
+ * collar, each a faceted prism with one lit crown edge. Grown ice is
+ * never ringed; its walls at yaw are what say the well is DEEP. The
+ * frozen heart (the substrate's boss) lands above them both.
  */
-function relWintercourt(rc: ReliefCtx, st: ShieldStyle): void {
+function relWinterheart(rc: ReliefCtx, st: ShieldStyle): void {
+  const alt = st.faceAlt ?? '#4a86a8';
+  const frost = '#9fd4e8';
+  const litBand = (r: number, h: number, tone: string): void => {
+    const po = icePoly(r);
+    const pi = icePoly(r * 0.74);
+    polyAt(
+      rc,
+      [po[16]!, po[17]!, po[0]!, po[1]!, po[2]!, po[3]!, pi[2]!, pi[3]!, pi[0]!, pi[1]!, pi[16]!, pi[17]!],
+      h,
+      tone,
+    );
+  };
+  prism(rc, icePoly(0.46), 0, 0.26, alt, { wallDark: shade(alt, -26), shadow: false });
+  litBand(0.46, 0.26, shade(alt, 14));
+  prism(rc, icePoly(0.28), 0.26, 0.5, frost, { wallDark: shade(frost, -22), shadow: false });
+  litBand(0.28, 0.5, shade(frost, 16));
+}
+
+/**
+ * WINTERCOURT RIME — THE ICICLE CROWN. A king icicle and two flanks
+ * rising off the crown facet; two drip icicles HANGING from the heel
+ * facets, frozen mid-drip — gravity is what makes ice read as ice.
+ * Every icicle is its own ringed solid (ice is matter, not light).
+ * THE HEART'S ANSWER: when the lead glint rounds the crown of the
+ * unfrozen ring, the king icicle's tip takes the light — one clock.
+ */
+function crestWinterheart(rc: ReliefCtx, st: ShieldStyle): void {
   const { ctx } = rc;
-  const frost = '#6db8d8';
-  const lit = '#c8ecf8';
-  const lens = [0.98, 0.55, 0.84, 0.5, 0.94, 0.52, 0.8, 0.48];
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2 - Math.PI / 2 + 0.12;
-    const L = lens[i]!;
-    const w = 0.085 + 0.035 * (L > 0.8 ? 1 : 0);
-    const cu = Math.cos(a);
-    const ct = Math.sin(a);
-    // A shard that has wholly rolled past the horizon culls with the
-    // rest of the furniture.
-    if (offFace(rc, Math.min(0, cu * L) - w, Math.max(0, cu * L) + w)) continue;
-    const hRoot = 0.55 * (L > 0.8 ? 1 : 0.7);
-    // Shadow along the shard.
-    reliefShadow(rc, [-ct * w, cu * w, cu * L, ct * L, ct * w, -cu * w], hRoot * 0.6);
-    // Two facets meeting on the spine.
-    const sx = [-ct * w, cu * w];
-    const sy = [ct * w, -cu * w];
-    const tipX = rPx(rc, cu * L, 0.1);
-    const tipY = rPy(rc, cu * L, ct * L, 0.1);
-    const spineX = rPx(rc, cu * 0.06, hRoot);
-    const spineY = rPy(rc, cu * 0.06, ct * 0.06, hRoot);
-    const e1y = rPy(rc, sx[0]!, sx[1]!, 0);
-    const e2y = rPy(rc, sy[0]!, sy[1]!, 0);
-    const base = i < 2 || i === 7 ? lit : frost;
-    const face = (ex: number, ey: number, tone: string): void => {
-      ctx.fillStyle = tone;
-      ctx.beginPath();
-      ctx.moveTo(rPx(rc, ex, 0), ey);
-      ctx.lineTo(tipX, tipY);
-      ctx.lineTo(spineX, spineY);
-      ctx.closePath();
-      ctx.fill();
-    };
-    face(sx[0]!, e1y, e1y < e2y ? shade(base, 24) : shade(base, -18));
-    face(sy[0]!, e2y, e2y <= e1y ? shade(base, 24) : shade(base, -18));
+  const ice = st.spikeColor ?? '#bfe6f4';
+  pyramid(rc, 0, -0.97, 0.11, 0.09, 0, 2.4, ice, { outline: true, du: 0.1 });
+  pyramid(rc, -0.24, -0.92, 0.075, 0.065, 0, 1.4, shade(ice, -8), { outline: true, du: -0.12 });
+  pyramid(rc, 0.24, -0.92, 0.075, 0.065, 0, 1.5, shade(ice, -8), { outline: true, du: 0.14 });
+  pyramid(rc, -0.22, 0.92, 0.055, 0.05, 0, 0.9, shade(ice, -4), { outline: true, dt: 0.5 });
+  pyramid(rc, 0.16, 0.95, 0.045, 0.04, 0, 0.7, shade(ice, -12), { outline: true, dt: 0.38 });
+  const a = (rc.nowMs * FLOW_W) % (Math.PI * 2);
+  let d = Math.abs(a - Math.PI * 1.5);
+  if (d > Math.PI) d = Math.PI * 2 - d;
+  const gl = Math.pow(Math.max(0, Math.cos(d / 2)), 16);
+  if (gl > 0.08) {
+    ctx.globalAlpha = gl;
+    polyAt(rc, [0.12, -1.06, 0.19, -0.99, 0.12, -0.92, 0.05, -0.99], 2.05, '#f0faff');
+    ctx.globalAlpha = 1;
   }
 }
 
@@ -5122,6 +5198,7 @@ const CRESTS: Record<string, ReliefPainter> = {
   doorwall: crestDoorwall,
   fellhorn: crestFellhorn,
   gatefall: crestGatefall,
+  winterheart: crestWinterheart,
   oath: crestOath,
   pinion: crestPinion,
 };
@@ -5132,7 +5209,7 @@ const RELIEFS: Record<string, ReliefPainter> = {
   palisade: relPalisade,
   fellhorn: relFellhorn,
   brineshell: relBrineshell,
-  wintercourt: relWintercourt,
+  winterheart: relWinterheart,
   pinion: relPinion,
   reliquary: relReliquary,
   cindermaw: relCindermaw,

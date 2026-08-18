@@ -253,3 +253,35 @@ brine greens own the shell, bone owns horns + barnacles, pearl-white the
 pearl alone. Judged distance-first; the 26px small reads dome, keel, pearl,
 horns. Gates: shields tsc clean (foreign in-flight renderer/terrain reds are
 the perf session's), client 666/666.
+
+## WINTERCOURT RIME v2 — THE WINTER'S HEART (as-built, 2026-08-17)
+
+The ice-elemental recut (user order: "true ice and water infused... the
+high-end game ice shield... epic enough for a boss"), fourth premium pass,
+under the restraint calibration. The court-silver identity (gores, moon
+inlay, rime-star shards) retires whole (sigWintercourt/relWintercourt
+deleted). Built as pure elemental ice/water — no occult visual language.
+
+Three bold masses, one clock:
+- **THE GLACIER STEPS**: the face is a stepped well of ice climbing to its
+  own light — outer sheet (one flat + one lit crown facet) at face level,
+  then `relWinterheart`'s two grown faceted prisms (inner terrace h 0.26,
+  hoarfrost collar h 0.26→0.5), then the frozen heart: the substrate boss
+  ('#d8eefa'), big on a fist round. Grown ice is never ringed; its step
+  walls at yaw are what say the well is deep. courtround METRIC sized up
+  0.18→0.20 — a boss's round.
+- **THE UNFROZEN RING** (`sigWinterheart`, LIVING_SIGS): a channel of
+  living water circling between the ice walls with a lit ice lip; THE
+  GLACIER CLOCK (FLOW_W, ~15s round) circulates three glints, one leading
+  bright — the only SMOOTH curves on the shield: ice is faceted, water
+  flows. THE HEART'S ANSWER: the king icicle's tip takes a white glint as
+  the lead glint rounds the crown — one clock, whole shield.
+- **THE ICICLE CROWN** (`crestWinterheart`): king icicle (h 2.4) + two
+  flanks off the crown facet, ringed solids (ice is matter); TWO DRIP
+  ICICLES hanging from the heel facets via dt-leaning pyramids — the
+  roster's first gravity-hung fittings; two hoarfrost thorns at the lower
+  diagonals (spike plan — the crown air belongs to the trio alone).
+
+Fittings: boss + studs + spikes + faceAlt = 4 (t4 floor holds). Owners:
+white = heart + lead glint; pale cyan = ice lights; glacial blues = mass.
+Gates: shields tsc clean, client 666/666.
