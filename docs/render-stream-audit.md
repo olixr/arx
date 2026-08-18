@@ -397,3 +397,120 @@ to emulate weak machines; A/B by `git stash push -- <the exact files>`
 `-A` beside a live neighbor session). Surgical repros: `/tp -333 -261`
 (Hoargate: mass load + elevation + town walls) and
 `dcGame.conn.ws.close()` (reconnect re-stream).
+
+## ROUND 7 — THE WORLD DOES NOT BLINK (2026-08-18)
+
+Owner report, seen on a base Mac mini (weaker than the dev machine):
+"things stop rendering… I see through the world… entire walls
+disappear, props disappear, for a second… every now and then a flicker
+of ALL the props as they phase in or out… sometimes the resolution
+changes." The suspicion was the static bakes or the lighting. The
+lighting was innocent. The bakes were not — but not in the way the
+report guessed.
+
+### The root: four caches whose MISS PATH WAS INVISIBILITY
+
+Every economy this document records is a cache in front of a live
+painter, and THE STILL-WORLD BARGAIN has always said what a cache owes:
+*a bake is a cache, never a mode — correctness never depends on a bake
+existing.* The band layer honours it exactly (a declining stretch emits
+its members live). **Two levels down, at the leaf, it was broken.**
+`drawPropOutlined`, `drawFlora` and `drawTree` each ended their cache
+lookup with `if (!sp) return` — a piece with no minted sprite was not
+drawn AT ALL. The comment above it said "off-screen (a pad band) with
+no sprite yet", and the code never checked whether it was off screen.
+
+That would still be rare if a visible miss always baked. THE STORM
+LAW's original words say it does — *"a missing sprite bakes UNBUDGETED
+when its extent is on screen RIGHT NOW; skipping that bake would be
+visible pop-in"* — but a later pass capped the visible lane at
+`VIS_SPRITE_BAKE_MS = 4`, and the admission test asked for half the
+running average bake cost up front. On a machine where one mature
+tree's bake costs more than 4ms:
+
+- the visible lane declines — forever, because
+- `bakeCostEma` only ever updates INSIDE an admitted bake, so nothing
+  can ever correct the estimate that closed the lane, and
+- the ordinary 2.5ms lane closes on the same arithmetic.
+
+**The cache stops growing and the world stops drawing.** Measured on
+the rig (lane 33, 4x CPU throttle, a 1,122-piece scene): 775 trees
+uncached, `frames>0 = every frame`, zero convergence across a
+nine-second idle. The weaker the machine, the worse it gets — exactly
+backwards, and exactly the owner's report.
+
+Three more of the same shape, found in the same sweep:
+
+- **Ground holes**: brand-new visible chunks were capped at 4 starts a
+  frame, and a chunk with no cache entry blits NOTHING — a 32×32-tile
+  patch of bare `#141020`. That is "I can see through the world",
+  literally. (The cap bought a 6-16ms teleport hitch; it sold a
+  multi-frame hole to do it.)
+- **Shadow strobe**: `shadowMasks` trimmed the OLDEST-INSERTED 64
+  entries at its 320 cap — in any scene over the cap, that is precisely
+  the working set that has been drawing every frame since you arrived.
+  Evict the hot set, re-mint it at 6/frame, trip the cap again: a
+  permanent loop of shadows blinking out and back.
+- **The visible resolution step**: ADAPTIVE RESOLUTION capped the
+  backing store's dpr and stepped it half a point on sustained slow
+  frames, retrying upward a minute later. Every step re-rasters the
+  world and visibly changes its sharpness; on a borderline machine it
+  wobbles between two resolutions on a minutes scale. That is the
+  "resolution changes" verbatim.
+
+### Shipped
+
+- **THE STILL-WORLD BARGAIN REACHES THE LEAF**: a visible piece with no
+  sprite paints LIVE this frame (`paintPropLive` — the pre-cache
+  engine's own outline pass, kept alive on purpose as the caches'
+  floor). Off-screen misses still skip: nothing to see, nothing to pay.
+- **THE RING PAYS ITS OWN WAY** (`LIVE_RING_MS = 1.5`): the dilated
+  ring is eight full-sprite taps; an arrival wanting hundreds of
+  fallbacks spent SECONDS inside them (caught by the rig, not by
+  reading). A handful of stragglers — the ordinary case — are rung and
+  pixel-identical to the blit they stand in for; a mass arrival paints
+  bare art for a frame or two, exactly as a felled tree always has.
+- **THE ARRIVAL PAYS ONCE** (`VIS_SPRITE_BAKE_MS` 4 → 60): N uncached
+  pieces owe N bakes. Paying converges; deferring does not (each
+  deferred frame repaints live at the same order of cost and buys
+  nothing). The ceiling is now only a runaway guard.
+- **THE CACHE ALWAYS GAINS GROUND** (`render/bakeAdmission.ts`, pure +
+  11 tests): one admission door for all three lanes. The "don't start
+  on fumes" ask is CLAMPED to half its own lane's allowance, so a lane
+  holding a full allowance always admits and the deadlock is
+  unrepresentable; plus a guaranteed one-mint-per-frame floor so the
+  estimate always gets a fresh sample.
+- **NO VISIBLE CHUNK GOES UNPAINTED**: the 4-start cap is gone for
+  on-screen ground (the pre-bake ring keeps its pacing — nothing out
+  there is on screen to hole).
+- **Shadow masks evict COLDEST, not oldest** (LRU by last draw).
+- **THE RESOLUTION IS A CONSTANT** (owner law): adaptive resolution is
+  RETIRED. The game renders at the display's own pixels, always. Frame
+  time is bought with the economies that cost the player nothing to
+  look at. `dprOverride` remains as the rig door for fractional-dpr
+  DEVICE GRID proofs.
+- **THE FRAME CONFESSES WHAT IT COULD NOT CACHE** (`?perf`): a
+  `live prop N tree N flora N chunk N mask N` line. A steady non-zero
+  prop/tree/flora reading is the one thing that should never be seen —
+  it means a cache is not converging.
+
+### Measured (rig lane 33, `/tp 34 110` dense forest + `/tp -333 -261`
+Hoargate)
+
+| window | before | after |
+|---|---|---|
+| idle, settled (either scene) | 775 trees uncached EVERY frame, no convergence | **0 fallbacks, 0 void pixels** |
+| Hoargate arrival | multi-frame phase-in | 88 props / 64 trees on ONE frame, 0 for the next 33 |
+| dense-forest arrival (1,122 pieces) | never converged | 743 → 172 → 0 across the sample, **0.00% void** |
+
+695/695 client tests (11 new), 615 + 608 + 293 elsewhere. Visual proofs
+captured at both sites: every tree, wall, prop, ore and snow-line
+present, rings intact, step-aside fade and ghost ember correct.
+
+**Rig lesson, paid for in this round**: the first cut of the live
+fallback painted off-screen pad-band misses too, and rang every one of
+them — a 790-piece arrival went to 4-SECOND frames. Neither the reading
+nor the tests caught it; the throttled rig caught it in one run.
+Instrument the fallback, then drive it, before believing a fallback is
+cheap. And absolute times in headless Chromium are SwiftShader times
+(an idle frame reads ~140ms) — only the COUNTS transfer.

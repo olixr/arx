@@ -230,6 +230,7 @@ import {
   stackCover,
   wallCover,
 } from './reveal.js';
+import { admitBake, BakeLane, type BakeBudgets } from './bakeAdmission.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { BobtailSim, CrocTailSim, TailSim, drawBobtail, drawFeyBrush, drawFoxBrush, drawHorseTail, drawHousecatTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
@@ -408,19 +409,46 @@ const CHUNK_REPLACE_STARTS = 2;
 /**
  * Per-frame time budget (ms) for tree/flora/prop sprite bakes BEYOND
  * the truly-visible set: pad-band pre-bakes and cadence re-bakes stop
- * when it runs out. Sprites whose extent is on screen RIGHT NOW always
- * bake (a skipped visible bake would be pop-in, the worse artifact).
+ * when it runs out.
  */
 const SPRITE_BAKE_MS = 2.5;
 /**
- * Per-frame time budget (ms) for the on-screen emergency sprite bakes
- * themselves: a forest edge scrolling in used to bake its whole
- * population unbudgeted in one frame (THE STORM LAW's blind spot).
- * Within the allowance a visible missing sprite still bakes the same
- * frame; past it, the straggler lands a frame or two later — a far
- * smaller artifact than the multi-frame hitch the storm caused.
+ * THE ARRIVAL PAYS ONCE — the ceiling (ms) on first bakes for sprites
+ * whose extent is ON SCREEN RIGHT NOW.
+ *
+ * This was 4ms, and 4ms is the whole regression. THE STORM LAW's
+ * original words were right — "a missing sprite bakes UNBUDGETED when
+ * its extent is on screen RIGHT NOW; skipping that bake would be
+ * visible pop-in" — and a later pass capped it at 4ms to smooth the
+ * hitch of a forest edge sweeping in. What the cap actually bought,
+ * measured on the rig at 4x CPU throttle in a 775-tree scene, was a
+ * TREADMILL THAT NEVER ENDS: one mature tree's bake costs more than
+ * 4ms on a weak machine, the admission estimate climbed past both
+ * budgets, and the lane closed for good — the forest simply never
+ * cached, and (pre-fix) simply never drew. That is the owner's
+ * "everything phases out", and it got worse the slower the machine.
+ *
+ * The physics do not care how the frames are sliced: a scene with N
+ * uncached pieces owes N bakes. Paying them is CONVERGENT — the
+ * frame is expensive once and cheap forever after. Deferring them is
+ * NOT: every deferred frame pays the live paint again (which costs the
+ * same order as the bake it refused) and buys nothing. So an arrival
+ * pays, in one covered hitch, at the moment the screen is already
+ * changing. The ceiling here is only the runaway guard for a
+ * pathological scene — one visible hitch, never a phase-out; past it
+ * the stragglers paint live (see paintPropLive) and bake next frame.
  */
-const VIS_SPRITE_BAKE_MS = 4;
+const VIS_SPRITE_BAKE_MS = 60;
+/**
+ * Per-frame allowance (ms) for putting the outline ring on a LIVE
+ * fallback paint (see paintPropLive). A handful of stragglers — the
+ * ordinary case — all get rung, and the fallback is then pixel-
+ * identical to the cached blit it stands in for. A mass arrival
+ * (hundreds of pieces on their first frame) paints bare art past the
+ * allowance rather than spending seconds in ring taps. Presence is
+ * never at stake either way.
+ */
+const LIVE_RING_MS = 1.5;
 /**
  * Idle body-sprite re-sample cadence, in frames (see the olKey fields
  * on DrawItem): a resting body's cosmetic life — breathing, gaze,
@@ -1204,8 +1232,8 @@ export class Camera {
   /**
    * THE DEVICE GRID: the real pixel lattice belongs to the BACKING
    * STORE, not CSS space. The context is scaled by the (possibly
-   * FRACTIONAL) devicePixelRatio — adaptive resolution steps it in
-   * halves (2 -> 1.5), browser zoom mints 1.25/1.75 — so a CSS-integer
+   * FRACTIONAL) devicePixelRatio — a browser zoom mints 1.25/1.75, and
+   * the rig's dprOverride can name any value — so a CSS-integer
    * coordinate can land exactly on a half device pixel. Two abutting
    * fills that "share" such an edge each get partial AA coverage of
    * the same pixel column, and the double-blend prints a uniform
@@ -1592,7 +1620,10 @@ export class Renderer {
   /** Cached silhouette masks for TRUE-FORM cast shadows, keyed per
    *  formation; cleared wholesale when the cap trips (rebakes are
    *  cheap and only visible formations rebake). */
-  private readonly shadowMasks = new Map<string, { cv: HTMLCanvasElement; au: number; av: number }>();
+  private readonly shadowMasks = new Map<
+    string,
+    { cv: HTMLCanvasElement; au: number; av: number; used: number }
+  >();
   /**
    * Point lights that CAST this frame (screen space, strongest first).
    * Bodies and organic props near one throw an extra shadow lobe away
@@ -1858,7 +1889,7 @@ export class Renderer {
   onCorpseThud?: (heavy: boolean, x: number, y: number) => void;
   /**
    * The sliding corpse budget (THE FIELD PAYS ITS WAY): stepped by the
-   * same frame-time signal the adaptive resolution reads — a machine
+   * same frame-time signal the ?perf confession reads — a machine
    * holding its own display budget earns the full field, a straining
    * one sheds toward the floor. Adjusted on a slow clock so it never
    * thrashes with one bad frame.
@@ -3489,27 +3520,35 @@ export class Renderer {
     upTiles: number,
     downTiles: number,
     paint: (ctx: CanvasRenderingContext2D, au: number, av: number) => void,
-  ): { cv: HTMLCanvasElement; au: number; av: number } | null {
+  ): { cv: HTMLCanvasElement; au: number; av: number; used: number } | null {
     const moon = this.sky.moonlit;
     const full = `${key}:${moon ? 'm' : 's'}`;
     const hit = this.shadowMasks.get(full);
-    if (hit) return hit;
+    if (hit) {
+      hit.used = this.frameNo;
+      return hit;
+    }
     // Cache misses are BUDGETED: a cold dense field wants dozens of
     // masks in one frame, and each bake costs real paint. A skipped
     // cast simply appears a frame or two later — invisible, unlike
     // the multi-hundred-ms arrival hitch this replaced.
-    if (this.maskBakeBudget <= 0) return null;
+    if (this.maskBakeBudget <= 0) {
+      this.liveStats.mask++;
+      return null;
+    }
     this.maskBakeBudget--;
     if (this.shadowMasks.size > 320) {
-      // Trim the OLDEST entries (Map preserves insertion order) — a
-      // full clear() here made a dense ore field re-bake its whole
-      // mask set in one frame, a recurring stagger every time the
-      // cache wrapped.
-      let drop = 64;
-      for (const k of this.shadowMasks.keys()) {
-        this.shadowMasks.delete(k);
-        if (--drop <= 0) break;
-      }
+      // Trim the COLDEST entries. This used to trim the OLDEST
+      // (insertion order, which a Map hands over for free) — and in
+      // any scene needing more than the cap, the oldest entries are
+      // precisely the ones that have been drawing every frame since
+      // you arrived. The cache evicted its own working set, the 6-per
+      // -frame bake budget spent ~11 frames minting it back, the cap
+      // tripped again, and the field's shadows strobed on a loop for
+      // as long as you stood there. LRU by last draw: what leaves is
+      // what genuinely left the screen.
+      const cold = [...this.shadowMasks.entries()].sort((a, b) => a[1].used - b[1].used);
+      for (let i = 0; i < 64 && i < cold.length; i++) this.shadowMasks.delete(cold[i]![0]);
     }
     const B = Renderer.MASK_S;
     const cv = document.createElement('canvas');
@@ -3540,7 +3579,7 @@ export class Renderer {
     mctx.fillStyle = moon ? 'rgb(14, 20, 48)' : 'rgb(24, 14, 32)';
     mctx.fillRect(0, 0, cv.width, cv.height);
     mctx.restore();
-    const entry = { cv, au, av };
+    const entry = { cv, au, av, used: this.frameNo };
     this.shadowMasks.set(full, entry);
     return entry;
   }
@@ -4214,20 +4253,32 @@ export class Renderer {
   }
 
   /**
-   * ADAPTIVE RESOLUTION: the painting is fill-bound, so backing-store
-   * pixels convert almost linearly into frame time. Machines that hold
-   * the pace render every native devicePixelRatio pixel; a machine
-   * demonstrably grinding (sustained frame time past ~45ms) steps the
-   * cap down half a point at a time — floor 1 — and only climbs back
-   * when frames are comfortable. All backing stores size through this
-   * one accessor, so a cap change reflows every layer on the next
-   * resize() guard.
+   * THE RESOLUTION IS A CONSTANT (user law, 2026-08-18).
+   *
+   * ADAPTIVE RESOLUTION is RETIRED. It capped the backing store's dpr
+   * and stepped it down half a point whenever frames sustained past
+   * the panel's budget, climbing back a minute later — and every step
+   * was a whole-screen event the player could see: the world changed
+   * sharpness, every cached sprite and band went stale at once, and
+   * the re-raster wave it touched off cost more than the pixels it
+   * saved. On a weaker machine that made a MINUTES-SCALE WOBBLE
+   * between two resolutions, which is precisely the "resolution
+   * changes / things glitch in scale" the owner will not have.
+   *
+   * The law now: the game renders at the display's own pixels, always.
+   * Frame time is bought with the economies that cost the player
+   * NOTHING to look at — sliced chunk bakes, static bands, the sprite
+   * caches, the glow-sprite and lamp-patch stamps. Pixels are not on
+   * the table. `frameEma`/`minDt` survive because the frame-time
+   * telemetry still feeds the corpse-field budget and ?perf.
+   *
+   * `dprOverride` is the RIG DOOR (dev only): the DEVICE GRID law
+   * needs fractional-dpr proofs, and browser zoom is an awkward way to
+   * get one. Nothing in the game ever writes it.
    */
-  private dprCap = Number.POSITIVE_INFINITY;
+  dprOverride: number | null = null;
   private frameEma = 16.7;
   private lastFrameAt = 0;
-  private dprHoldUntil = 0;
-  private lastDprDownAt = 0;
   /** Decaying floor of observed frame intervals ≈ the display's vsync
    *  budget: a machine that ever hits its refresh pins this at the
    *  panel's period (8.3ms at 120Hz, 16.7 at 60), and a machine that
@@ -4246,46 +4297,19 @@ export class Renderer {
 
   private dpr(): number {
     if (this.dprMemoFrame !== this.frameNo) {
-      this.dprMemo = Math.min(window.devicePixelRatio || 1, this.dprCap);
+      this.dprMemo = this.dprOverride ?? (window.devicePixelRatio || 1);
       this.dprMemoFrame = this.frameNo;
     }
     return this.dprMemo;
   }
 
   /**
-   * The adaptive-resolution effective dpr, readable from outside — so
-   * satellite canvases (the map screen) render at the same capped
-   * resolution instead of raw devicePixelRatio on a machine that has
-   * already stepped down.
+   * The frame's effective dpr, readable from outside — satellite
+   * canvases (the map screen) size through the same accessor so a rig
+   * override or a browser zoom moves every surface together.
    */
   effectiveDpr(): number {
     return this.dpr();
-  }
-
-  private adaptResolution(nowMs: number): void {
-    if (nowMs < this.dprHoldUntil) return;
-    const native = window.devicePixelRatio || 1;
-    const cur = this.dpr();
-    // A smooth game at the panel's own refresh beats extra pixels: step
-    // down when frames sustainedly miss THIS display's budget (never
-    // punishing 30Hz panels for being 30Hz), floor 1.
-    const budget = this.minDt;
-    if (this.frameEma > Math.max(budget * 1.25, 21) && cur > 1) {
-      this.dprCap = Math.max(1, cur - 0.5);
-      this.dprHoldUntil = nowMs + 4000;
-      this.lastDprDownAt = nowMs;
-    } else if (
-      this.frameEma < Math.max(budget * 1.06, 17.6) &&
-      cur < native &&
-      nowMs - this.lastDprDownAt > 60_000
-    ) {
-      // Stepping up costs pixels immediately, and a vsync-locked frame
-      // time can't reveal headroom — retry gently, at most once a
-      // minute after the last step down, so a borderline machine
-      // wobbles on a minutes scale, not seconds.
-      this.dprCap = Math.min(native, cur + 0.5);
-      this.dprHoldUntil = nowMs + 10_000;
-    }
   }
 
   private resize(): void {
@@ -4322,19 +4346,17 @@ export class Renderer {
     const nowMs = performance.now();
     if (this.lastFrameAt > 0) {
       const dt = Math.min(200, nowMs - this.lastFrameAt);
-      // THE LONE HITCH IS NOT LOAD: a single spike (menu open, chunk
-      // burst, tab switch) used to move the EMA far enough in ONE frame
-      // to trip the resolution downshift — which reallocates every
-      // backing store and re-rasters the world, turning one lost frame
-      // into a visible cascade. An isolated spike after a healthy frame
-      // clamps to 2x budget in the EMA; only SUSTAINED slowness (the
-      // previous frame already over budget) counts at full weight.
+      // THE LONE HITCH IS NOT LOAD: an isolated spike (menu open, chunk
+      // burst, tab switch) after a healthy frame clamps to 2x budget in
+      // the EMA; only SUSTAINED slowness (the previous frame already
+      // over budget) counts at full weight. This telemetry no longer
+      // drives resolution (THE RESOLUTION IS A CONSTANT) — it feeds the
+      // corpse-field budget and the ?perf confession.
       const spikeCap =
         this.prevFrameDt <= this.minDt * 1.25 ? this.minDt * 2 : 200;
       this.frameEma += (Math.min(dt, spikeCap) - this.frameEma) * 0.08;
       this.prevFrameDt = dt;
       this.minDt = Math.min(Math.max(6.9, dt), Math.min(33.4, this.minDt * 1.015));
-      this.adaptResolution(nowMs);
     }
     this.lastFrameAt = nowMs;
     this.resize();
@@ -4343,6 +4365,18 @@ export class Renderer {
     this.treeShadowBudget = TREE_BAKE_BUDGET;
     this.spriteBakeMsLeft = SPRITE_BAKE_MS;
     this.visSpriteMsLeft = VIS_SPRITE_BAKE_MS;
+    this.liveRingMsLeft = LIVE_RING_MS;
+    this.forcedBakeUsed = false;
+    // THE FRAME CONFESSES WHAT IT COULD NOT CACHE: the live-paint
+    // fallbacks are correct but they are also the cost the caches
+    // exist to avoid, so a frame that leans on them says so out loud
+    // in ?perf. A steady non-zero reading means a budget wants
+    // raising; a burst at a teleport is the system working.
+    this.liveStats.prop = 0;
+    this.liveStats.tree = 0;
+    this.liveStats.flora = 0;
+    this.liveStats.chunk = 0;
+    this.liveStats.mask = 0;
     // Shadow-mask misses per frame: masks are shared per (kind,
     // variant) — see castRockShadow — so a handful per frame drains
     // any cold field's set within a second, and a skipped cast just
@@ -6392,12 +6426,22 @@ export class Renderer {
     // corner does. An unstarted stale entry keeps its old blit.
     this.replaceQueue.length = 0;
 
-    // Brand-new chunk starts are PACED too: each live start pays a
+    // NO VISIBLE CHUNK GOES UNPAINTED (2026-08-18). Brand-new chunk
+    // starts used to be PACED at 4 per frame: each live start pays a
     // synchronous prologue (coarse placeholder + fill mask + canvas
-    // alloc, ~0.3-0.8ms), and a mass teleport used to start a 5x4
-    // window of them in ONE frame — a 6-16ms spike right when the
-    // scene is busiest. A capped start lands 1-3 frames later into
-    // the same background fill it would have placeholder-painted.
+    // alloc, ~0.3-0.8ms) and a mass teleport starts a 5x4 window of
+    // them at once, so the cap traded a 6-16ms spike for "lands 1-3
+    // frames later". What that sentence hid is WHAT THE PLAYER SAW in
+    // those frames: a chunk with no cache entry draws NOTHING, so the
+    // capped chunks were 32x32-tile holes of bare background — the
+    // owner's "I can see through the world". A hole in the world is
+    // never a smaller bug than a hitch. The cap is gone for VISIBLE
+    // ground: every chunk on screen gets its placeholder the frame it
+    // is asked for, and the one frame that pays for a whole new
+    // viewport is a frame where the screen is already changing (a
+    // teleport, a plane hop, the first frame of a session). The
+    // pre-bake ring below keeps its 1-per-frame pacing — nothing out
+    // there is on screen to hole.
     let newStarts = 0;
 
     for (let cy = minCy; cy <= maxCy; cy++) {
@@ -6407,9 +6451,9 @@ export class Renderer {
         const key = `${cx},${cy}`;
         let baked = this.baked.get(key);
         if (!baked) {
-          // Brand-new chunk: start a live job — the placeholder blits
-          // this same frame, so streaming rarely leaves a hole.
-          if (newStarts >= 4) continue;
+          // Brand-new VISIBLE chunk: start a live job unconditionally —
+          // the placeholder blits this same frame, so streaming never
+          // leaves a hole.
           newStarts++;
           baked = this.startChunkEntry(game, cx, cy, data, bakePx, true);
         } else if (baked.pending) {
@@ -6516,6 +6560,7 @@ export class Renderer {
     // per-frame slice budget is spent. At least one step always runs
     // when work exists, so progress is guaranteed even if a single
     // step overruns the budget (a hi-res detail band can).
+    this.liveStats.chunk = newStarts;
     let msLeft = CHUNK_BAKE_MS;
     for (const entry of this.chunkJobQueue) {
       while (entry.pending && msLeft > 0) {
@@ -7555,6 +7600,18 @@ export class Renderer {
   /** Per-tile invalidation nonces (sign text and friends) — mixed
    *  into stretch content sigs so state-keyed art re-bakes its band. */
   private readonly bandNonce = new Map<number, number>();
+  /**
+   * THE FRAME CONFESSES WHAT IT COULD NOT CACHE (?perf): per-frame
+   * counts of the frame's uncached work — props/trees/flora that had to
+   * paint live for want of a minted sprite, brand-new ground chunks
+   * started (each pays a prologue), and shadow masks the budget turned
+   * away. Presence is never at stake in any of these; they are pure
+   * cost signals, and a STEADY non-zero prop/tree/flora reading is the
+   * one thing that should never be seen — it means the caches are not
+   * converging and a budget wants raising.
+   */
+  private readonly liveStats = { prop: 0, tree: 0, flora: 0, chunk: 0, mask: 0 };
+
   /** Live band canvas bytes — the byte budget's running total. */
   private bandBytes = 0;
   /** Per-frame band accounting (the ?perf confession, phase 5). */
@@ -7904,7 +7961,7 @@ export class Renderer {
     const southT = rampish ? 1.7 : 0.7;
     const padXT = 1;
     // The bake replicates the LIVE environment: a CSS-coordinate ctx
-    // scaled by the adaptive dpr, the camera at the settled target
+    // scaled by the live dpr, the camera at the settled target
     // scale, snapping on the device lattice — painters, sprite blits,
     // and every snapPx behave byte-for-byte as on screen.
     const dprB = this.dpr();
@@ -19317,6 +19374,9 @@ export class Renderer {
    *  cadence re-bakes) — see SPRITE_BAKE_MS. */
   private spriteBakeMsLeft = 0;
   private visSpriteMsLeft = 0;
+  /** Per-frame allowance (ms) for ringing live fallback paints — see
+   *  paintPropLive / LIVE_RING_MS. */
+  private liveRingMsLeft = 0;
   /** The frame's y-sorted draw list — persistent, cleared at reuse. */
   private readonly drawItems: DrawItem[] = [];
 
@@ -19355,6 +19415,10 @@ export class Renderer {
     const bs = this.bandStats;
     parts.push(
       `bands ${bs.blit}/${bs.live + bs.blit} hot ${bs.hot} ${(this.bandBytes / 1048576).toFixed(0)}MB`,
+    );
+    const ls = this.liveStats;
+    parts.push(
+      `live prop ${ls.prop} tree ${ls.tree} flora ${ls.flora} chunk ${ls.chunk} mask ${ls.mask}`,
     );
     return parts.join('\n');
   }
@@ -19444,6 +19508,41 @@ export class Renderer {
   private treeCadence = TREE_REBAKE_FRAMES;
   /** Evicted sprite canvases, reused by new bakes (GC churn while walking). */
   private readonly spriteCanvasPool: HTMLCanvasElement[] = [];
+
+  /**
+   * THE CACHE ALWAYS GAINS GROUND — the ONE admission door for the
+   * world-sprite bakes (discrete props, flora, trees). The law itself
+   * is pure and pinned in bakeAdmission.ts (read it: the deadlock it
+   * forbids shipped once and took the world off the screen with it);
+   * this is only the frame's state, handed over.
+   */
+  private admitSpriteBake(missing: boolean, visNow: boolean): BakeLane {
+    const b = this.bakeBudgets;
+    b.arrivalMsLeft = this.visSpriteMsLeft;
+    b.budgetMsLeft = this.spriteBakeMsLeft;
+    b.count = this.treeBakeBudget;
+    b.costEma = this.bakeCostEma;
+    b.floorUsed = this.forcedBakeUsed;
+    b.gliding = this.zoomGliding;
+    const lane = admitBake(b, missing, visNow);
+    // The frame's one guaranteed mint is spent by whoever took it.
+    if (lane === BakeLane.Floor) this.forcedBakeUsed = true;
+    return lane;
+  }
+
+  /** Reused admission-state record — the frame loop mints no garbage. */
+  private readonly bakeBudgets: BakeBudgets = {
+    arrivalMsLeft: 0,
+    budgetMsLeft: 0,
+    budgetMsFull: SPRITE_BAKE_MS,
+    count: 0,
+    costEma: 0.3,
+    floorUsed: false,
+    gliding: false,
+  };
+
+  /** THE FLOOR's one-per-frame token (see admitSpriteBake). */
+  private forcedBakeUsed = false;
 
   private static treeKey(wx: number, wy: number, tile: Tile): number {
     return ((Math.floor(wx) + 8192) * 32768 + (Math.floor(wy) + 8192)) * 64 + (tile & 63);
@@ -20329,6 +20428,79 @@ export class Renderer {
     Tile.Throne,
   ]);
 
+  /**
+   * THE STEP-ASIDE FADE for a discrete prop, one door for both the
+   * blit and the live fallback (they must agree to the pixel — a prop
+   * that ghosted while cached and stood solid while live would strobe
+   * on every cache miss).
+   *
+   * A band bake paints the world at rest: the fade is a per-frame,
+   * screen-space affair (its box lives in live viewport coords) and
+   * banded stretches near the body draw live anyway — never bake a
+   * ghost. Short furniture can't hide a body and never fades. THE
+   * FURNITURE KEEPS ITS FACE (user law): the interaction set — tables,
+   * counters, seats, beds — NEVER ghosts, whatever its drawn height,
+   * and neither does the seat the own body is mounted on.
+   */
+  private propFade(
+    key: number,
+    tile: Tile,
+    tx: number,
+    ty: number,
+    dx0: number,
+    dy0: number,
+    dw: number,
+    dh: number,
+  ): number {
+    if (
+      this.bakeVeilFull ||
+      dh < FADE_TALL_TILES * this.camera.scale ||
+      Renderer.NEVER_FADE_TILES.has(tile) ||
+      this.ownSeatTiles?.has((tx + 0x8000) * 0x10000 + (ty + 0x8000)) === true
+    )
+      return 1;
+    return this.occluderFade(key, dx0, dy0, dw, dh, ty + 0.9 - this.ownPY > -FRONT_EPS);
+  }
+
+  /**
+   * Paint a discrete prop with no cached sprite STRAIGHT TO THE FRAME,
+   * ring and all — the pre-cache engine's own path, kept alive on
+   * purpose as the sprite cache's floor.
+   *
+   * This is the same scratch build the body pass uses (art into A, the
+   * dilated ring into B, ring under art), minus the body relight: a
+   * barrel is not a body and never took the exposure lift. Cost is one
+   * live outline pass — the very cost the cache exists to amortise —
+   * so a frame that pays it for a handful of misses is paying exactly
+   * what the engine paid for every prop before the cache existed. What
+   * it does NOT do is leave a hole.
+   */
+  private paintPropLive(b: { x: number; y: number; w: number; h: number }, paint: () => void): void {
+    // THE RING PAYS ITS OWN WAY. The dilated ring is eight full-sprite
+    // taps plus a tint over a canvas the size of the piece — for a
+    // mature tree that is millions of pixel-ops EACH, and an arrival
+    // frame can want hundreds of fallbacks at once (measured on the
+    // rig: a 790-tree first frame spent SECONDS entirely inside the
+    // ring taps). Presence is the floor; the ring is polish. While the
+    // per-frame live-ring allowance lasts — which covers the ordinary
+    // case of a handful of stragglers, and there the fallback is
+    // pixel-identical to the blit it stands in for — the piece gets
+    // its ring. Past it the art paints bare for a frame or two until
+    // the bakes catch up, which is precisely what a felled tree
+    // (bendOverride) has always done on this engine's live path.
+    if (!this.outlineOn || this.liveRingMsLeft <= 0) {
+      paint();
+      return;
+    }
+    const t0 = performance.now();
+    const dpr = this.dpr();
+    const geo = this.paintOutlineScratch({ sortY: 0, body: b, draw: paint });
+    const ctx = this.ctx;
+    ctx.drawImage(this.outlineB, 0, 0, geo.w, geo.h, b.x - geo.m, b.y - geo.m, geo.w / dpr, geo.h / dpr);
+    ctx.drawImage(this.outlineA, 0, 0, geo.w, geo.h, b.x - geo.m, b.y - geo.m, geo.w / dpr, geo.h / dpr);
+    this.liveRingMsLeft -= performance.now() - t0;
+  }
+
   private drawPropOutlined(
     tile: Tile,
     tx: number,
@@ -20346,40 +20518,63 @@ export class Renderer {
       !sp ||
       (due && sp.frame !== this.frameNo) ||
       Math.abs(sp.scale - s) > s * 0.2 ||
-      // Adaptive resolution moved the effective dpr: re-bake to the
+      // The effective dpr moved (browser zoom, rig override): re-bake to the
       // new grid (paced by the budget — the blit stays correct
       // meanwhile because the source rect reads the BAKE's dpr).
       sp.dpr !== this.dpr() ||
       !sp.outlined;
+    // THE STORM LAW (shared by drawTree/drawFlora): a missing sprite
+    // bakes on the visible-now lane only when its extent is on screen
+    // RIGHT NOW — skipping that bake would be visible pop-in. Missing
+    // sprites in the tall-content pad bands (most of a fresh area) and
+    // cadence re-bakes go through the per-frame time budget instead, so
+    // a dense field streaming in bakes across frames, not in one. The
+    // same test decides the live fallback below: on screen, presence is
+    // non-negotiable; off screen, there is by definition nothing to see
+    // and nothing to pay for.
+    const visNow = b.x < this.w && b.x + b.w > 0 && b.y < this.h && b.y + b.h > 0;
     if (stale) {
-      // THE STORM LAW (shared by drawTree/drawFlora): a missing sprite
-      // bakes UNBUDGETED only when its extent is on screen RIGHT NOW —
-      // skipping that bake would be visible pop-in. Missing sprites in
-      // the tall-content pad bands (most of a fresh area) and cadence
-      // re-bakes go through the per-frame time budget instead, so a
-      // dense field streaming in bakes across frames, not in one.
-      const visNow = b.x < this.w && b.x + b.w > 0 && b.y < this.h && b.y + b.h > 0;
-      const emergency = !sp && visNow && this.visSpriteMsLeft > this.bakeCostEma * 0.5;
-      const allow = !sp
-        ? emergency || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > this.bakeCostEma * 0.5)
-        : this.treeBakeBudget > 0 && this.spriteBakeMsLeft > this.bakeCostEma * 0.5 && !this.zoomGliding;
-      if (allow) {
+      const lane = this.admitSpriteBake(!sp, visNow);
+      if (lane !== BakeLane.None) {
         this.treeBakeBudget--;
         const t0 = performance.now();
         sp = this.bakePropSprite(sp, b, paint);
         const took = performance.now() - t0;
         this.spriteBakeMsLeft -= took;
         this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
-        if (emergency) this.visSpriteMsLeft -= took;
+        if (lane === BakeLane.Arrival) this.visSpriteMsLeft -= took;
         this.treeSprites.set(key, sp);
       }
     }
-    // Off-screen (a pad band) with no sprite yet: nothing to draw —
-    // a budgeted frame bakes it before it scrolls in.
-    if (!sp) return;
+    // THE STILL-WORLD BARGAIN REACHES THE LEAF (2026-08-18): a cache
+    // miss is a COST problem, never a PRESENCE one. This used to
+    // `return` — the prop simply did not exist that frame — on the
+    // theory that a miss only ever happened off-screen in a pad band.
+    // It does not: the visible-now "emergency" bake is itself budgeted
+    // (VIS_SPRITE_BAKE_MS), so any frame that spends its 4ms — a
+    // teleport, a plane hop, a street streaming in, ANY frame at all on
+    // a machine whose bakes cost more than a fast one's — left every
+    // remaining prop INVISIBLE. Whole streets phased out and back on
+    // the weaker machine, which is exactly the bug this pass exists to
+    // kill. The bake is a cache; the painter is the truth. With no
+    // sprite in hand we paint the prop live, ring and all, at the
+    // ordinary live-outline cost — and the budget goes back to doing
+    // its only legitimate job, which is deciding WHEN we pay to make
+    // the next frame cheaper, never WHETHER the world is on screen.
+    if (!sp) {
+      // Off screen with no sprite: nothing to draw, nothing to pay —
+      // a budgeted frame bakes it before it scrolls in.
+      if (!visNow) return;
+      this.liveStats.prop++;
+      const live = this.propFade(key, tile, tx, ty, b.x, b.y, b.w, b.h);
+      if (live < 1) this.ctx.globalAlpha = live;
+      this.paintPropLive(b, paint);
+      if (live < 1) this.ctx.globalAlpha = 1;
+      return;
+    }
     sp.used = this.frameNo;
     // Source rect on the sprite's OWN bake dpr — the live dpr can
-    // drift under adaptive resolution, and sizing the source by it
+    // drift (browser zoom), and sizing the source by it
     // crops (or letterboxes) every cached prop until its re-bake.
     const k = s / sp.scale;
     const sw = Math.ceil(sp.cw * sp.dpr);
@@ -20398,17 +20593,7 @@ export class Renderer {
     // and the fade stays reserved for true body-hiders (bookcases,
     // pillars, canopies, walls' own veil). The seat the own body is
     // MOUNTED on stands its ground by the same law.
-    const fade =
-      // A band bake paints the world at rest: the step-aside fade is
-      // a per-frame, screen-space affair (its box lives in live
-      // viewport coords) and banded stretches near the body draw
-      // live anyway — never bake a ghost.
-      !this.bakeVeilFull &&
-      dh >= FADE_TALL_TILES * s &&
-      !Renderer.NEVER_FADE_TILES.has(tile) &&
-      this.ownSeatTiles?.has((tx + 0x8000) * 0x10000 + (ty + 0x8000)) !== true
-        ? this.occluderFade(key, dx0, dy0, dw, dh, ty + 0.9 - this.ownPY > -FRONT_EPS)
-        : 1;
+    const fade = this.propFade(key, tile, tx, ty, dx0, dy0, dw, dh);
     if (fade < 1) this.ctx.globalAlpha = fade;
     this.ctx.drawImage(sp.canvas, 0, 0, sw, sh, dx0, dy0, dw, dh);
     if (fade < 1) this.ctx.globalAlpha = 1;
@@ -20529,42 +20714,62 @@ export class Renderer {
       Math.abs(sp.scale - s) > s * 0.2 ||
       sp.dpr !== this.dpr() ||
       sp.outlined !== this.outlineOn;
+    // The storm law (see drawPropOutlined): visible-now misses take the
+    // emergency lane and, failing that, paint live; pad-band misses and
+    // re-bakes ride the time budget.
+    const half = (fm.spread * 1.3 + 0.2) * s;
+    const top = (fm.height * 1.25 + 0.2) * s;
+    const gy = by + syT * 0.3;
+    const visNow = bx + half > 0 && bx - half < this.w && gy + s * 0.5 > 0 && gy - top < this.h;
     if (stale) {
-      // The storm law (see drawPropOutlined): visible-now misses bake
-      // unbudgeted, pad-band misses and re-bakes ride the time budget.
-      const half = (fm.spread * 1.3 + 0.2) * s;
-      const top = (fm.height * 1.25 + 0.2) * s;
-      const gy = by + syT * 0.3;
-      const visNow = bx + half > 0 && bx - half < this.w && gy + s * 0.5 > 0 && gy - top < this.h;
-      const emergency = !sp && visNow && this.visSpriteMsLeft > this.bakeCostEma * 0.5;
-      const allow = !sp
-        ? emergency || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > this.bakeCostEma * 0.5)
-        : this.treeBakeBudget > 0 && this.spriteBakeMsLeft > this.bakeCostEma * 0.5 && !this.zoomGliding;
-      if (allow) {
+      const lane = this.admitSpriteBake(!sp, visNow);
+      if (lane !== BakeLane.None) {
         this.treeBakeBudget--;
         const t0 = performance.now();
         sp = this.bakeFloraSprite(sp, fm, tx + 0.5, ty + 0.5, tSec);
         const took = performance.now() - t0;
         this.spriteBakeMsLeft -= took;
         this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
-        if (emergency) this.visSpriteMsLeft -= took;
+        if (lane === BakeLane.Arrival) this.visSpriteMsLeft -= took;
         this.treeSprites.set(key, sp);
       }
     }
-    if (!sp) return;
-    sp.used = this.frameNo;
-    const k = s / sp.scale;
-    this.ctx.drawImage(
-      sp.canvas,
-      0,
-      0,
-      Math.ceil(sp.cw * sp.dpr),
-      Math.ceil(sp.ch * sp.dpr),
-      bx - sp.ax * k,
-      by + syT * 0.3 - sp.ay * k,
-      sp.cw * k,
-      sp.ch * k,
-    );
+    // THE STILL-WORLD BARGAIN REACHES THE LEAF (see drawPropOutlined):
+    // a starved budget must never delete a plant from the world. With
+    // no sprite in hand the node paints live, ring and all — the exact
+    // pass this cache was built to amortise.
+    if (!sp) {
+      // Off screen with no sprite: nothing to draw, nothing to pay.
+      if (!visNow) return;
+      this.liveStats.flora++;
+      this.paintPropLive(
+        { x: bx - half, y: gy - top, w: half * 2, h: top + 0.35 * s },
+        () =>
+          paintPlant(this.ctx, fm, {
+            bx,
+            groundY: gy,
+            s,
+            wx: tx + 0.5,
+            wy: ty + 0.5,
+            tSec,
+            flame: this.sky.flame,
+          }),
+      );
+    } else {
+      sp.used = this.frameNo;
+      const k = s / sp.scale;
+      this.ctx.drawImage(
+        sp.canvas,
+        0,
+        0,
+        Math.ceil(sp.cw * sp.dpr),
+        Math.ceil(sp.ch * sp.dpr),
+        bx - sp.ax * k,
+        by + syT * 0.3 - sp.ay * k,
+        sp.cw * k,
+        sp.ch * k,
+      );
+    }
     // THE GROWING FRAME: a framed row wears its hoops over the plant
     // (the cloth is over the crop — that is the point of it). Live
     // over the blit; the sprite cache never learns about frames.
@@ -20842,24 +21047,23 @@ export class Renderer {
         !sp ||
         (due && sp.frame !== this.frameNo) ||
         Math.abs(sp.scale - s) > s * 0.2 ||
-        // Adaptive resolution moved the effective dpr — even rigid
+        // The effective dpr moved — even rigid
         // trees (no cadence) must re-bake to the new grid.
         sp.dpr !== this.dpr() ||
         sp.outlined !== this.outlineOn;
+      // The storm law (see drawPropOutlined): visible-now misses take
+      // the emergency lane and, failing that, paint live; pad-band
+      // misses and re-bakes ride the time budget — the tall-content
+      // pads mean most of a fresh forest enters as pad rows and
+      // pre-bakes across many frames, and a pad-row tree with no
+      // sprite has nothing on screen to be missing FROM.
+      const half = (m.spread * 1.15 + 0.08 * m.height + 0.45) * s;
+      const top = (m.height * 1.18 + 0.45) * s;
+      const gy = by + syT * 0.3;
+      const visNow = bx + half > 0 && bx - half < this.w && gy + s * 0.5 > 0 && gy - top < this.h;
       if (stale) {
-        // The storm law (see drawPropOutlined): visible-now misses
-        // bake unbudgeted, pad-band misses and re-bakes ride the time
-        // budget — the tall-content pads mean most of a fresh forest
-        // enters as pad rows and pre-bakes across many frames.
-        const half = (m.spread * 1.15 + 0.08 * m.height + 0.45) * s;
-        const top = (m.height * 1.18 + 0.45) * s;
-        const gy = by + syT * 0.3;
-        const visNow = bx + half > 0 && bx - half < this.w && gy + s * 0.5 > 0 && gy - top < this.h;
-        const emergency = !sp && visNow && this.visSpriteMsLeft > this.bakeCostEma * 0.5;
-        const allow = !sp
-          ? emergency || (this.treeBakeBudget > 0 && this.spriteBakeMsLeft > this.bakeCostEma * 0.5)
-          : this.treeBakeBudget > 0 && this.spriteBakeMsLeft > this.bakeCostEma * 0.5 && !this.zoomGliding;
-        if (allow) {
+        const lane = this.admitSpriteBake(!sp, visNow);
+        if (lane !== BakeLane.None) {
           this.treeBakeBudget--;
           const t0 = performance.now();
           // A rigid tree bakes its NEUTRAL pose — the shear below is
@@ -20868,11 +21072,39 @@ export class Renderer {
           const took = performance.now() - t0;
           this.spriteBakeMsLeft -= took;
           this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
-          if (emergency) this.visSpriteMsLeft -= took;
+          if (lane === BakeLane.Arrival) this.visSpriteMsLeft -= took;
           this.treeSprites.set(key, sp);
         }
       }
-      if (!sp) return;
+      if (!sp) {
+        // THE STILL-WORLD BARGAIN REACHES THE LEAF (see
+        // drawPropOutlined): a starved bake budget is never allowed to
+        // delete a tree from the forest that is ON SCREEN. With no
+        // sprite in hand the tree paints live at its TRUE current wind
+        // — no shear, no override; the shear exists only to carry a
+        // bake forward, and a live pose needs no carrying. The ring
+        // comes with it, so the switch between blit and live paint is
+        // invisible.
+        if (!visNow) return;
+        this.liveStats.tree++;
+        const fade = this.occluderFade(
+          key,
+          bx - half,
+          gy - top,
+          half * 2,
+          top + 0.3 * s,
+          wy - this.ownPY > -FRONT_EPS,
+        );
+        if (fade < 1) this.ctx.globalAlpha = fade;
+        this.paintPropLive({ x: bx - half, y: gy - top, w: half * 2, h: top + 0.3 * s }, () => {
+          paintTree(this.ctx, m, { bx, groundY: gy, s, syT, wx, wy, tSec, grow, foliage });
+        });
+        if (fade < 1) this.ctx.globalAlpha = 1;
+        // The leaf-shed below is skipped by design on a fallback frame:
+        // a tree the frame could not even afford to cache has no
+        // business minting particles.
+        return;
+      }
       sp.used = this.frameNo;
       const k = s / sp.scale;
       const sw = Math.ceil(sp.cw * sp.dpr);
@@ -61671,7 +61903,7 @@ export class Renderer {
    */
   private tickCorpses(game: ClientGame, now: number): void {
     // THE FIELD PAYS ITS WAY: step the budget on a slow clock against
-    // the same signal the adaptive resolution reads — sustained misses
+    // the same frame-time signal ?perf reads — sustained misses
     // of THIS display's frame budget shed corpses fast, comfortable
     // headroom wins them back slowly (down in twos, up in ones).
     if (now - this.corpseBudgetStepAt > 500) {
