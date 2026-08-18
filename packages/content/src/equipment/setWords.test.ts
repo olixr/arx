@@ -2,7 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ITEMS } from '../items.js';
 import { SET_WORDS, WORD_FORBIDDEN_KINDS, setWordsFor } from './setWords.js';
-import { ENCHANT_DEFS, isStrikeTrigger, procMismatch, triggerHasTarget } from './enchants.js';
+import {
+  ENCHANT_DEFS,
+  isStrikeTrigger,
+  procMismatch,
+  triggerHasTarget,
+  type EnchantEffect,
+} from './enchants.js';
 import { aggregateGearStats } from './roll.js';
 
 /**
@@ -156,6 +162,66 @@ test('THE SET IS WORTH ONE EXTRA ITEM: the flat budget holds', () => {
   }
 });
 
+test('THE OPENER IS THE HOUSE: no family greets you in another house\'s words', () => {
+  // THE REPETITION LAW, and the reason it is a test and not a habit.
+  //
+  // The 2pc line is the FIRST thing a set ever says to a player — the
+  // sentence they read at the moment they decide whether a house is
+  // worth chasing. Before the recut, 52 families spoke it in 21
+  // shapes: six different armors opened "+2 speed", six opened
+  // "+armor", six "+maxHp", five "+2% crit" at the identical number.
+  // 36 of the 52 were byte-identical to another family's. Nothing was
+  // broken and every pin was green — the wardrobe was simply BORING,
+  // and boring is the one defect a suite never catches by accident.
+  // So it is caught on purpose here.
+  //
+  // The vocabulary was never the constraint: `skill` alone has 25
+  // variants, and per-style and per-element damage add a dozen more.
+  // Roughly forty legal openers exist. There is no excuse for two
+  // houses sharing one, and none at all for them sharing its number.
+  const shape = (fx: EnchantEffect): string =>
+    fx.kind === 'skill' ? `skill:${fx.skill}`
+      : fx.kind === 'styleDmg' ? `styleDmg:${fx.style}`
+        : fx.kind === 'elementDmg' ? `elementDmg:${fx.element}`
+          : fx.kind;
+  const sig = (w: { effects: readonly EnchantEffect[] }, withNumbers: boolean): string =>
+    w.effects
+      .map((fx) => (withNumbers ? `${shape(fx)}=${JSON.stringify(fx)}` : shape(fx)))
+      .sort()
+      .join('+');
+
+  // NOBODY SHARES AN OPENER EXACTLY. Two houses may reach for the same
+  // channel; they may not reach for the same channel at the same
+  // number, because then the two sets are literally indistinguishable
+  // until the fourth piece lands.
+  const exact = new Map<string, string[]>();
+  for (const [set, words] of Object.entries(SET_WORDS)) {
+    const k = sig(words[0]!, true);
+    exact.set(k, [...(exact.get(k) ?? []), set]);
+  }
+  const twins = [...exact.values()].filter((v) => v.length > 1);
+  assert.deepEqual(
+    twins,
+    [],
+    `these houses open with the identical line:\n  ${twins.map((v) => v.join(' = ')).join('\n  ')}`,
+  );
+
+  // AND NO CHANNEL IS A CROWD. Sharing a channel is legitimate — a
+  // frost house and a winter house may both speak frost — but the
+  // third house on one channel means the roster has stopped choosing.
+  const byShape = new Map<string, string[]>();
+  for (const [set, words] of Object.entries(SET_WORDS)) {
+    const k = sig(words[0]!, false);
+    byShape.set(k, [...(byShape.get(k) ?? []), set]);
+  }
+  const crowded = [...byShape.entries()].filter(([, v]) => v.length > 2);
+  assert.deepEqual(
+    crowded.map(([k, v]) => `${k}: ${v.join(', ')}`),
+    [],
+    'a third house on one opener channel — pick a word of its own',
+  );
+});
+
 test('the fold is live: worn pieces speak, thresholds gate, wordOnHit routes', () => {
   const worn = (ids: string[]) => {
     const slots = ['head', 'body', 'legs', 'boots', 'gloves'] as const;
@@ -165,10 +231,26 @@ test('the fold is live: worn pieces speak, thresholds gate, wordOnHit routes', (
   };
   const four = worn(['moonbell_hood', 'moonbell_robe', 'moonbell_skirts', 'moonbell_slippers']);
   assert.equal(four.setCounts.moonbell, 4);
-  assert.equal(four.skillBonus.herbalism, 2, 'the 2pc line stays live under the 4pc word');
+  // THE OPENER PREFIGURES THE WORD (the 2pc recut): moonbell's opener
+  // used to be a herbalism bonus it shared with hedgemage; it is now
+  // the verdant channel its own venom clause finishes. This assertion
+  // keeps its original job — proving the 2pc line stays LIVE once the
+  // 4pc threshold is crossed — and reads it on the new channel.
+  assert.ok(
+    Math.abs((four.elementDmgMult.verdant ?? 1) - 1.03) < 1e-9,
+    'the 2pc line stays live under the 4pc word',
+  );
   assert.equal(four.vsState.venom, 30, 'the 4pc clause speaks');
   const two = worn(['moonbell_hood', 'moonbell_robe']);
-  assert.equal(two.skillBonus.herbalism, 2);
+  assert.ok(Math.abs((two.elementDmgMult.verdant ?? 1) - 1.03) < 1e-9);
+  // ...and a SKILL opener still folds through its own channel, on a
+  // house that kept one: the recut moved moonbell off this lane, so
+  // the lane itself keeps a witness.
+  assert.equal(
+    worn(['hedgemage_hat', 'hedgemage_robe']).skillBonus.herbalism,
+    2,
+    'a skill opener still folds',
+  );
   assert.equal(two.vsState.venom, undefined, 'two pieces do not speak the 4pc word');
   const broken = worn(['moonbell_hood', 'barrowking_platebody', 'barrowking_greaves']);
   assert.equal(broken.vsState.venom, undefined, 'mixed houses speak neither 4pc');
