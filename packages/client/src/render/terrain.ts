@@ -855,6 +855,17 @@ export function startChunkBake(
 
 /** The one-shot bake: start + run every step. Output is identical to
  *  the sliced path — this is the sliced path, run to completion. */
+/**
+ * THE GLYPH IS THE AUTHOR'S (floor-banner artifact fix): wall-hung
+ * details bake a flat marker glyph into the ground so Studio authors
+ * see what hangs where — but in GAME that ground is only ever hidden
+ * under a wall's paint, and any orphaned hanging (authored on a
+ * non-wall tile) leaked its glyph onto walkable ground as a 'floor
+ * banner' the player could stand on. The glyph now bakes ONLY through
+ * this synchronous editor door; the game's sliced bake never sets it.
+ */
+let studioBake = false;
+
 export function bakeChunk(
   ground: GroundSampler,
   detail: DetailSampler,
@@ -864,11 +875,16 @@ export function bakeChunk(
   px: number,
   woodSkin?: WoodSkinSampler,
 ): HTMLCanvasElement {
-  const job = startChunkBake(ground, detail, elev, cx, cy, px, woodSkin);
-  while (!stepChunkBake(job)) {
-    /* run to completion */
+  studioBake = true;
+  try {
+    const job = startChunkBake(ground, detail, elev, cx, cy, px, woodSkin);
+    while (!stepChunkBake(job)) {
+      /* run to completion */
+    }
+    return job.canvas;
+  } finally {
+    studioBake = false;
   }
-  return job.canvas;
 }
 
 /** Weathered board tones for dock decks — hash-dealt per board. */
@@ -3143,9 +3159,10 @@ function drawTileDetail(
         if (!js && !jw) miter(x0, y1, 1, -1);
         if (!js && !je) miter(x1, y1, -1, -1);
       } else if (
-        d === Detail.BannerCrown ||
-        d === Detail.BannerMoon ||
-        d === Detail.Tapestry
+        studioBake &&
+        (d === Detail.BannerCrown ||
+          d === Detail.BannerMoon ||
+          d === Detail.Tapestry)
       ) {
         // WALL-HUNG cloth is painted by the wall painters onto the
         // south face — in game the ground under a wall is never seen,
@@ -3174,7 +3191,7 @@ function drawTileDetail(
           ctx.fillStyle = trim;
           ctx.fillRect(gx + px * 0.3, gy + px * 0.28, px * 0.4, px * 0.05);
         }
-      } else if (wallHungInfo(d) !== null) {
+      } else if (studioBake && wallHungInfo(d) !== null) {
         // Player hangings — Studio-only glyphs like the royals above:
         // the ground under a wall is never seen in game, but authors
         // must see at a glance what hangs where, in what color.

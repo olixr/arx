@@ -1,4 +1,4 @@
-import { TILE_SKIP, Tile } from '@arx/shared';
+import { TILE_SKIP, Tile, hangHostTiles, wallHungInfo } from '@arx/shared';
 import { ZoneBuilder } from './builder.js';
 import type { ZoneDef } from './types.js';
 
@@ -93,6 +93,26 @@ export function zonePlacementErrors(zone: ZoneDef): string[] {
     }
     if (p.dest === undefined && p.delve !== true) {
       errors.push(`${at} needs a dest or delve: true (a door must lead somewhere)`);
+    }
+  }
+  // THE HANGING LAW's authoring gate (the floor-banner purge): a
+  // wall-hung detail on a tile whose painter never runs the hangings
+  // pass is orphan state — the cloth never draws, and the Studio
+  // marker glyph baked onto walkable ground as a 'floor banner' the
+  // player could stand on. Nineteen of these shipped across six
+  // towns before this line existed. Cheap: one pass over the grid.
+  if (zone.ground && zone.detail) {
+    for (let i = 0; i < zone.detail.length; i++) {
+      const d = zone.detail[i]!;
+      if (d === 0 || wallHungInfo(d) === null) continue;
+      const t = zone.ground[i]!;
+      if (!hangHostTiles(d).has(t)) {
+        const x = i % zone.width;
+        const y = Math.floor(i / zone.width);
+        errors.push(
+          `wall-hung detail ${d} at (${x},${y}) sits on non-hangable tile ${t} — hang it on a wall its painter dresses`,
+        );
+      }
     }
   }
   return errors;

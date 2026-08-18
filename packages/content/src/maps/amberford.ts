@@ -448,7 +448,7 @@ export function buildAmberford(): ZoneDef {
   b.set(59, 34, Tile.Sawhorse);
   b.set(62, 34, Tile.LumberRack); // seasoned stock, one plank pulled
   b.set(62, 33, Tile.Crate).set(63, 35, Tile.Barrel);
-  b.setDetail(51, 33, Detail.Tapestry).setDetail(52, 33, Detail.Tapestry); // the half-woven piece, warp showing
+  b.setDetail(50, 32, Detail.Tapestry).setDetail(51, 32, Detail.Tapestry); // the half-woven piece, warp showing — ON the shop wall (52,32 is glazed; a hanging on floor/window tiles is orphan state)
   b.setDetail(52, 36, Detail.Sawdust).setDetail(58, 36, Detail.Sawdust);
   b.set(55, 45, awningTile('bowed', 4)).set(59, 45, awningTile('bowed', 4));
   b.set(58, 45, Tile.DisplayTable); // remnant ends and ribbon under the awning — the loss leaders

@@ -277,7 +277,9 @@ export function buildSilverfall(): ZoneDef {
   // (y-sort truth — proven on the rig, round one).
   b.set(55, 13, Tile.WeaponRack).set(55, 15, Tile.WeaponRack).set(55, 17, Tile.WeaponRack);
   b.set(57, 13, Tile.ToolRack);
-  b.setDetail(56, 12, wallArmsDetail(0)).setDetail(66, 12, wallArmsDetail(1));
+  // (Axes at 65, not 66 — 66 is a window tile, whose painter never
+  // hangs: THE HANGING LAW's orphan trap, caught by the host audit.)
+  b.setDetail(56, 12, wallArmsDetail(0)).setDetail(65, 12, wallArmsDetail(1));
   b.set(57, 15, Tile.ArmorStandFull).set(58, 15, Tile.ArmorStand);
   b.set(63, 13, Tile.Bed).set(63, 14, Tile.Bed);
   b.set(65, 13, Tile.Bed).set(65, 14, Tile.Bed);
@@ -532,7 +534,11 @@ export function buildSilverfall(): ZoneDef {
   // THE KING'S ARCH — the Silver Line's centenary, arched over the
   // avenue where the court meets the Row.
   for (let x = 86; x <= 90; x++) b.set(x, 54, Tile.ArchStone);
-  b.setDetail(87, 54, Detail.BannerCrown).setDetail(89, 54, Detail.BannerMoon);
+  // (No cloth on the arch: hangings authored on ArchStone are orphan
+  // state — the arch painter never hangs, and the Studio glyph baked
+  // onto the walkable ground below as a 'floor banner' artifact the
+  // user could stand on. Cloth hung FROM an arch is its own future
+  // lane; the centenary arch stands clean until then.)
   b.set(84, 54, Tile.LampPost).set(92, 54, Tile.LampPost);
   // THE BANK OF SILVERFALL fronts the court from the west — the
   // mountain's coin sleeps here, under the Crown's countersign.

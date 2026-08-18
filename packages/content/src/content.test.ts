@@ -32,6 +32,7 @@ import { buildUndercroft } from './maps/undercroft.js';
 import { buildLowhall } from './maps/lowhall.js';
 import { AMBERFORD_RECT, EVENFALL_RECT, HARTFELL_RECT, KINGSDELF_RECT, SALTMERE_RECT, SILVERFALL_RECT } from './geography.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
+import { zonePlacementErrors } from './maps/validateZone.js';
 import { UNDERWORLD_PLANE_ID } from './planes.js';
 import { compileTemplate, templateHeight, templateWidth } from './structures/stamp.js';
 import { templateFromJson, templateToJson } from './structures/serialize.js';
@@ -1144,6 +1145,30 @@ test('structure templates: JSON round-trip is lossless and re-validated', () => 
     assert.deepEqual(back, tpl, `${tpl.id} did not survive the round trip`);
   }
   assert.throws(() => templateFromJson('{"id":"bad","legend":{},"rows":["x"]}'));
+});
+
+test('every authored zone passes the placement vet — no orphaned wall hangings', () => {
+  // THE FLOOR BANNER purge: 19 wall-hung details across six towns
+  // were authored on floors, windows, beds, and an arch — invisible
+  // orphan cloth whose Studio marker glyph baked onto walkable
+  // ground. The placement vet now refuses them; this sweep keeps
+  // every shipped town clean forever.
+  const towns: Array<[string, () => import('./maps/types.js').ZoneDef]> = [
+    ['dawnmead', buildDawnmead],
+    ['amberford', buildAmberford],
+    ['silverfall', buildSilverfall],
+    ['saltmere', buildSaltmere],
+    ['pinewatch', buildPinewatch],
+    ['hartfell', buildHartfell],
+    ['kingsdelf', buildKingsdelf],
+    ['evenfall', buildEvenfall],
+    ['undercroft', buildUndercroft],
+    ['lowhall', buildLowhall],
+  ];
+  for (const [name, build] of towns) {
+    const errors = zonePlacementErrors(build()).filter((e) => e.includes('wall-hung'));
+    assert.deepEqual(errors, [], `${name} hangs its cloth on real walls`);
+  }
 });
 
 test('dawnmead: awakening anchors, stations, pens, and the lane seam hold', () => {

@@ -524,7 +524,7 @@ export function buildEvenfall(): ZoneDef {
   // The king's seat and the queen-that-was's empty one: two chairs,
   // one table, a very long view. Thrones are not the register.
   b.set(30, 38, Tile.ElvenChair).set(32, 38, Tile.ElvenChair);
-  b.setDetail(31, 38, Detail.BannerMoon);
+  b.setDetail(31, 36, Detail.BannerMoon); // on the wall BEHIND the seats (floor tiles never hang)
   b.setDetail(30, 39, Detail.CarpetMoon).setDetail(32, 39, Detail.CarpetMoon);
   // The feast floor: two long tables, benches between.
   b.fillRect(26, 44, 4, 1, Tile.ElvenTable);
@@ -540,7 +540,7 @@ export function buildEvenfall(): ZoneDef {
   b.set(37, 45, Tile.ElvenMirror);
   // Hall dressing.
   b.set(24, 38, Tile.ElvenHarp);
-  b.setDetail(27, 40, Detail.Tapestry).setDetail(35, 40, Detail.Tapestry);
+  b.setDetail(27, 36, Detail.Tapestry).setDetail(35, 36, Detail.Tapestry); // on the hall's north wall (mid-floor hangings are orphan state)
   // The forecourt: banners and beacons frame the door; the walk rows
   // y52-54 stay open (the sealed-pocket law).
   b.set(26, 51, Tile.ElvenBanner).set(37, 51, Tile.ElvenBanner);
@@ -637,7 +637,7 @@ export function buildEvenfall(): ZoneDef {
   // The halls hang their cloth: moon banners on the Evenhall's face,
   // and on the Outward House where travelers first look up.
   b.setDetail(26, 50, Detail.BannerMoon).setDetail(36, 50, Detail.BannerMoon);
-  b.setDetail(141, 48, Detail.BannerMoon).setDetail(149, 48, Detail.BannerMoon);
+  b.setDetail(140, 48, Detail.BannerMoon).setDetail(148, 48, Detail.BannerMoon); // beside the glazing — window walls never hang the classic families
   // The floors remember bare feet: rugs in the cold-work halls.
   b.setDetail(78, 64, Detail.RugRound);
   b.setDetail(52, 65, Detail.RugRound);

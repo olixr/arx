@@ -461,7 +461,7 @@ export function buildPinewatch(): ZoneDef {
   b.set(86, 36, Tile.Lectern);
   b.set(85, 35, Tile.Bookshelf);
   b.set(88, 37, Tile.Table).set(88, 38, Tile.Chair);
-  b.setDetail(86, 34, Detail.Tapestry).setDetail(87, 34, Detail.Tapestry);
+  b.setDetail(85, 34, Detail.Tapestry).setDetail(86, 34, Detail.Tapestry); // pair shifts west — 87 is glazed, and window walls never hang
   // The Charter's room, south-west: a counter, a cash drawer, and a
   // ledger wall going back to before the Wolfwinter.
   b.set(86, 42, Tile.Counter).set(87, 42, Tile.Counter);
@@ -497,7 +497,7 @@ export function buildPinewatch(): ZoneDef {
   b.set(78, 66, Tile.Chair).set(80, 66, Tile.Chair);
   b.set(79, 68, Tile.Chair).set(81, 68, Tile.Chair);
   b.setDetail(77, 70, Detail.Rug).setDetail(78, 70, Detail.Rug);
-  b.setDetail(79, 63, Detail.Tapestry).setDetail(80, 63, Detail.Tapestry);
+  b.setDetail(79, 62, Detail.Tapestry).setDetail(80, 62, Detail.Tapestry); // ON the wall — the pair sat on a bed and the floor beside it
   b.set(84, 65, Tile.Counter).set(84, 66, Tile.Counter);
   b.set(84, 68, Tile.Counter).set(84, 69, Tile.Counter);
   b.set(86, 64, Tile.TapCask).set(87, 64, Tile.Barrel).set(88, 64, Tile.Crate);

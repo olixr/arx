@@ -397,7 +397,7 @@ export function buildHartfell(): ZoneDef {
   b.set(82, 28, Tile.Bench).set(80, 26, Tile.Bench).set(82, 25, Tile.Bench);
   b.set(84, 26, Tile.Bench).set(84, 29, Tile.Bench);
   b.setDetail(79, 27, Detail.RugRound);
-  b.setDetail(77, 23, Detail.Tapestry).setDetail(78, 23, Detail.Tapestry);
+  b.setDetail(77, 22, Detail.Tapestry).setDetail(78, 22, Detail.Tapestry); // ON the wall — floor tiles never hang (the orphan-glyph artifact)
   // The bath wing, partitioned east: the warm pool, the basins, and
   // Maeva's room in the corner with the herb chest.
   for (let y = 23; y <= 33; y++) b.set(87, y, Tile.WallStone);
@@ -645,7 +645,7 @@ export function buildHartfell(): ZoneDef {
   b.set(40, 77, Tile.Table).set(41, 77, Tile.Table);
   b.set(40, 78, Tile.Chair).set(42, 77, Tile.Chair);
   b.setDetail(36, 74, Detail.RugRound);
-  b.setDetail(37, 71, Detail.Tapestry).setDetail(38, 71, Detail.Tapestry);
+  b.setDetail(36, 70, Detail.Tapestry).setDetail(37, 70, Detail.Tapestry); // pair shifts onto plain wall (38,70 is glazed)
   b.setDetail(38, 76, Detail.Rug).setDetail(39, 76, Detail.Rug);
   // The bar, and Brandulf's cot behind it.
   b.set(45, 73, Tile.Counter).set(45, 74, Tile.Counter).set(45, 75, Tile.Counter);

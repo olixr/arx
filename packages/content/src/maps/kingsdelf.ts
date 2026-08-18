@@ -285,7 +285,7 @@ export function buildKingsdelf(): ZoneDef {
   b.set(45, 34, Tile.WallStone).set(45, 35, Tile.WallStone).set(45, 36, Tile.DoorwayStone);
   b.set(46, 35, Tile.Bed).set(47, 36, Tile.Cabinet);
   b.setDetail(41, 39, Detail.Rug).setDetail(42, 39, Detail.Rug);
-  b.setDetail(38, 34, Detail.WallBanner).setDetail(46, 34, Detail.WallBanner);
+  b.setDetail(38, 33, Detail.WallBanner).setDetail(46, 33, Detail.WallBanner); // ON the wall — floor tiles never hang
   b.sign(44, 42, 'THE DELFHALL', [
     'moot on counting-day',
     'grievances to the shift book first',
