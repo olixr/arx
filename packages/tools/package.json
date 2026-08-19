@@ -20,16 +20,18 @@
     "prove:arts": "ARX_PROVE_FROM=arts tsx src/proving/farm.ts",
     "prove:combat-v2": "tsx src/proving/combatV2.ts",
     "prove:weapon-sets": "tsx src/proving/weaponSets.ts",
-    "prove:boss": "tsx src/proving/dreadCrown.ts"
+    "prove:boss": "tsx src/proving/dreadCrown.ts",
+    "reel": "tsx src/reel/cli.ts"
   },
   "dependencies": {
-    "@arx/shared": "*",
     "@arx/content": "*",
+    "@arx/shared": "*",
     "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/ws": "^8.5.0",
+    "playwright-core": "^1.62.1",
     "tsx": "^4.19.0"
   }
 }

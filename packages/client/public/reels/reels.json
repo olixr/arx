@@ -1,0 +1,239 @@
+{
+  "generated": "2026-08-19T20:14:55.968Z",
+  "reels": [
+    {
+      "id": "the-crown",
+      "title": "The world crowns its foes",
+      "caption": "Eight crowned bosses hold ground out there. Each has its phases, its summons, and a wind-up you can read — if you keep your nerve.",
+      "pillar": "crown",
+      "seconds": 11.73,
+      "loop": false,
+      "hero": true,
+      "poster": "/reels/the-crown.jpg",
+      "sources": {
+        "webm": "/reels/the-crown.webm",
+        "webm720": "/reels/the-crown-720.webm",
+        "mp4": "/reels/the-crown.mp4"
+      },
+      "bytes": {
+        "webm": 5030942,
+        "webm720": 2070671,
+        "mp4": 2235508,
+        "poster": 208833
+      },
+      "take": {
+        "frames": 361,
+        "medianDt": 33.3,
+        "hitches": 0
+      }
+    },
+    {
+      "id": "the-cut",
+      "title": "The cut lives in the world",
+      "caption": "Six hobgoblin juggernauts come down on the standing stones. Every swing is a real body swinging real steel — no canned animation, no sprite sheet.",
+      "pillar": "combat",
+      "seconds": 10.77,
+      "loop": false,
+      "hero": true,
+      "poster": "/reels/the-cut.jpg",
+      "sources": {
+        "webm": "/reels/the-cut.webm",
+        "webm720": "/reels/the-cut-720.webm",
+        "mp4": "/reels/the-cut.mp4"
+      },
+      "bytes": {
+        "webm": 5687169,
+        "webm720": 2385352,
+        "mp4": 2165690,
+        "poster": 226552
+      },
+      "take": {
+        "frames": 298,
+        "medianDt": 33.4,
+        "hitches": 9
+      }
+    },
+    {
+      "id": "the-arts",
+      "title": "Three hundred and nine arts",
+      "caption": "No classes. Twenty-four skills climb by doing, and the deepest arts live in the weapons that teach them. Every sigil is live geometry.",
+      "pillar": "arcana",
+      "seconds": 10.73,
+      "loop": false,
+      "hero": true,
+      "poster": "/reels/the-arts.jpg",
+      "sources": {
+        "webm": "/reels/the-arts.webm",
+        "webm720": "/reels/the-arts-720.webm",
+        "mp4": "/reels/the-arts.mp4"
+      },
+      "bytes": {
+        "webm": 2046710,
+        "webm720": 908693,
+        "mp4": 1142446,
+        "poster": 95942
+      },
+      "take": {
+        "frames": 331,
+        "medianDt": 33.3,
+        "hitches": 0
+      }
+    },
+    {
+      "id": "the-road",
+      "title": "One long road north",
+      "caption": "Eight hand-built towns on one road, and the country between them comes in eleven grades. Past the authored miles, the wilderness keeps going.",
+      "pillar": "road",
+      "seconds": 11.7,
+      "loop": true,
+      "hero": true,
+      "poster": "/reels/the-road.jpg",
+      "sources": {
+        "webm": "/reels/the-road.webm",
+        "webm720": "/reels/the-road-720.webm",
+        "mp4": "/reels/the-road.mp4"
+      },
+      "bytes": {
+        "webm": 2860896,
+        "webm720": 1117508,
+        "mp4": 1295402,
+        "poster": 192528
+      },
+      "take": {
+        "frames": 1089,
+        "medianDt": 8.6,
+        "hitches": 0
+      }
+    },
+    {
+      "id": "the-tended-earth",
+      "title": "The tended earth",
+      "caption": "Twenty-three crops, livestock that learn your hands, and eighty buildable pieces that persist in the shared world. What you raise stays raised.",
+      "pillar": "homestead",
+      "seconds": 10.73,
+      "loop": false,
+      "hero": false,
+      "poster": "/reels/the-tended-earth.jpg",
+      "sources": {
+        "webm": "/reels/the-tended-earth-720.webm",
+        "webm720": "/reels/the-tended-earth-720.webm",
+        "mp4": "/reels/the-tended-earth.mp4"
+      },
+      "bytes": {
+        "webm": 1484101,
+        "webm720": 1484101,
+        "mp4": 1923602,
+        "poster": 225808
+      },
+      "take": {
+        "frames": 331,
+        "medianDt": 33.3,
+        "hitches": 0
+      }
+    },
+    {
+      "id": "the-town",
+      "title": "Eight towns that keep their day",
+      "caption": "A hundred and eighty-eight voiced characters keep their own hours — the smith at the anvil, the watch on its round, the market when the market is open.",
+      "pillar": "town",
+      "seconds": 10.73,
+      "loop": false,
+      "hero": false,
+      "poster": "/reels/the-town.jpg",
+      "sources": {
+        "webm": "/reels/the-town-720.webm",
+        "webm720": "/reels/the-town-720.webm",
+        "mp4": "/reels/the-town.mp4"
+      },
+      "bytes": {
+        "webm": 1840956,
+        "webm720": 1840956,
+        "mp4": 2468200,
+        "poster": 223435
+      },
+      "take": {
+        "frames": 1321,
+        "medianDt": 8.3,
+        "hitches": 0
+      }
+    },
+    {
+      "id": "the-wild-at-heel",
+      "title": "The wild at heel",
+      "caption": "Sixteen species will walk beside you once your beastcraft earns them. A companion fights at your side and levels through its own deeds.",
+      "pillar": "wild",
+      "seconds": 9.73,
+      "loop": false,
+      "hero": false,
+      "poster": "/reels/the-wild-at-heel.jpg",
+      "sources": {
+        "webm": "/reels/the-wild-at-heel-720.webm",
+        "webm720": "/reels/the-wild-at-heel-720.webm",
+        "mp4": "/reels/the-wild-at-heel.mp4"
+      },
+      "bytes": {
+        "webm": 1730408,
+        "webm720": 1730408,
+        "mp4": 2334883,
+        "poster": 194575
+      },
+      "take": {
+        "frames": 301,
+        "medianDt": 33.3,
+        "hitches": 0
+      }
+    },
+    {
+      "id": "the-long-dark",
+      "title": "The key is the dungeon",
+      "caption": "Dungeons are cut by their keys — the same key always opens the same halls, and its ward holds three turns before it wears through.",
+      "pillar": "dark",
+      "seconds": 10.77,
+      "loop": false,
+      "hero": false,
+      "poster": "/reels/the-long-dark.jpg",
+      "sources": {
+        "webm": "/reels/the-long-dark-720.webm",
+        "webm720": "/reels/the-long-dark-720.webm",
+        "mp4": "/reels/the-long-dark.mp4"
+      },
+      "bytes": {
+        "webm": 840960,
+        "webm720": 840960,
+        "mp4": 1051323,
+        "poster": 59703
+      },
+      "take": {
+        "frames": 331,
+        "medianDt": 33.3,
+        "hitches": 0
+      }
+    },
+    {
+      "id": "the-night",
+      "title": "Every torch after dark",
+      "caption": "Light lives in the world here: every lantern, hearth and brazier throws its own, and the day turns over whether you are watching or not.",
+      "pillar": "town",
+      "seconds": 11.73,
+      "loop": true,
+      "hero": true,
+      "poster": "/reels/the-night.jpg",
+      "sources": {
+        "webm": "/reels/the-night.webm",
+        "webm720": "/reels/the-night-720.webm",
+        "mp4": "/reels/the-night.mp4"
+      },
+      "bytes": {
+        "webm": 1385160,
+        "webm720": 572086,
+        "mp4": 812135,
+        "poster": 140569
+      },
+      "take": {
+        "frames": 361,
+        "medianDt": 33.3,
+        "hitches": 0
+      }
+    }
+  ]
+}

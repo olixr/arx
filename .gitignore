@@ -6,6 +6,11 @@ dist/
 data/*.db
 data/*.db-*
 data/worldcache/
+# Reel mezzanines and contact sheets — the tape a take leaves behind.
+# Only the encoded delivery files under packages/client/public/reels/
+# are ever committed; a raw 1080p mezzanine is 30 MB and reproducible.
+/.reels-raw/
+
 # content-addressed voice clip store — runtime data, deploy-persisted via shared/voice
 data/voice/
 .DS_Store

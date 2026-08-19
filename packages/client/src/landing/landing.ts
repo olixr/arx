@@ -10,6 +10,7 @@
  */
 import './landing.css';
 import { createScene } from './scene.js';
+import { loadReels, montage, reelVideo, type ReelEntry } from './reels.js';
 import { VOICES, initCrown, initRiftgate, initSchoolChip, setVignettesReduced } from './vignettes.js';
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -25,8 +26,10 @@ const scene = createScene(heroCanvas, {
   },
 });
 
-// The sim only runs while the hero is actually on screen.
-const hero = document.querySelector('.hero')!;
+// The sim only runs while the LIVE band is actually on screen — the
+// canvas moved out of the hero when the reels took it, and a scene
+// simulating a meadow nobody is looking at is pure heat.
+const hero = document.querySelector('.live') ?? document.querySelector('.hero')!;
 const heroIo = new IntersectionObserver(
   (entries) => {
     for (const e of entries) scene.setRunning(e.isIntersecting && !document.hidden);
@@ -219,4 +222,210 @@ if (depart) {
   io.observe(depart);
   new ResizeObserver(resize).observe(depart);
   resize();
+}
+
+
+// ═══════════════════════════════════════════════════════ THE REELS
+//
+// Everything recorded on this page hangs off one manifest written by
+// the capture lane (packages/tools/src/reel). The page asks for it once
+// and then wires four kinds of surface: the hero montage, the
+// full-bleed bands, the reels inside feature rows, and the road-picker.
+//
+// If the manifest is missing — a fresh checkout that has not shot any
+// reels yet — every one of these quietly does nothing and the page
+// stands on its copy and its live canvas. The front door must never
+// depend on a build artefact to be a front door.
+
+/**
+ * THE ROADS. Each card is a real way to spend a hundred hours, and each
+ * one is answered by a reel of somebody actually spending them.
+ */
+const ROADS: Array<{ reel: string; name: string; line: string }> = [
+  {
+    reel: 'the-cut',
+    name: 'The Blade',
+    line: 'Meet the thing on the road with steel. Every swing is a real body swinging.',
+  },
+  {
+    reel: 'the-arts',
+    name: 'The Adept',
+    line: 'Three hundred and nine arts, and two skills the game never admits exist.',
+  },
+  {
+    reel: 'the-crown',
+    name: 'The Crown-hunter',
+    line: 'Eight crowned foes hold ground out there. Read the wind-up or wear it.',
+  },
+  {
+    reel: 'the-long-dark',
+    name: 'The Delver',
+    line: 'Cut a dungeon out of a key. The same key always opens the same halls.',
+  },
+  {
+    reel: 'the-tended-earth',
+    name: 'The Steader',
+    line: 'Twenty-three crops, a barn full of opinions, and walls that outlast you.',
+  },
+  {
+    reel: 'the-wild-at-heel',
+    name: 'The Beastcrafter',
+    line: 'Sixteen species will walk beside you once your beastcraft earns them.',
+  },
+  {
+    reel: 'the-road',
+    name: 'The Wanderer',
+    line: 'Ride north until the gazetteer runs out of words. It does not end there.',
+  },
+];
+
+void (async () => {
+  const reels = await loadReels();
+  if (!reels.size) return;
+  const pick = (id: string): ReelEntry | undefined => reels.get(id);
+
+  // ------------------------------------------------------- the cold open
+  const stage = document.getElementById('hero-stage');
+  const heroCut = [...reels.values()].filter((r) => r.hero);
+  if (stage && heroCut.length) {
+    montage(stage, heroCut, {
+      caption: document.getElementById('hero-caption'),
+      ticks: document.getElementById('hero-ticks'),
+    });
+  }
+
+  // ---------------------------------------------------------- the bands
+  for (const [nodeId, reelId] of [
+    ['crown-stage', 'the-crown'],
+    ['arts-stage', 'the-arts'],
+    ['depart-stage', 'the-night'],
+  ] as const) {
+    const host = document.getElementById(nodeId);
+    const entry = pick(reelId);
+    if (host && entry) host.appendChild(reelVideo(entry, { loop: true, full: true }));
+  }
+
+  // ------------------------------------------- reels inside feature rows
+  for (const well of document.querySelectorAll<HTMLElement>('[data-reel]')) {
+    const entry = pick(well.dataset.reel ?? '');
+    if (!entry) continue;
+    well.appendChild(reelVideo(entry, { loop: true }));
+    const cap = document.querySelector<HTMLElement>(
+      `[data-reel-cap="${CSS.escape(entry.id)}"]`,
+    );
+    if (cap) cap.textContent = entry.caption;
+  }
+
+  // ------------------------------------------------------- choose a road
+  const list = document.getElementById('paths-list');
+  const screen = document.getElementById('paths-screen');
+  const cap = document.getElementById('paths-cap');
+  const roads = ROADS.filter((r) => reels.has(r.reel));
+  if (list && screen && roads.length) {
+    let current = -1;
+    const cards: HTMLButtonElement[] = [];
+
+    const choose = (i: number): void => {
+      if (i === current) return;
+      current = i;
+      const road = roads[i]!;
+      const entry = reels.get(road.reel)!;
+      cards.forEach((c, n) => {
+        c.setAttribute('aria-selected', String(n === i));
+        c.tabIndex = n === i ? 0 : -1;
+      });
+      screen.replaceChildren(reelVideo(entry, { loop: true }));
+      if (cap) cap.textContent = entry.caption;
+    };
+
+    roads.forEach((road, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'path-card chamfer';
+      b.role = 'tab';
+      b.setAttribute('aria-selected', 'false');
+      b.tabIndex = -1;
+      const name = document.createElement('span');
+      name.className = 'path-name';
+      name.textContent = road.name;
+      const line = document.createElement('span');
+      line.className = 'path-line';
+      line.textContent = road.line;
+      b.append(name, line);
+      // Hover previews, click commits, arrows walk the list — the same
+      // three doors every other control in this game offers.
+      b.addEventListener('mouseenter', () => choose(i));
+      b.addEventListener('focus', () => choose(i));
+      b.addEventListener('click', () => choose(i));
+      b.addEventListener('keydown', (e) => {
+        const step = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
+        if (!step) return;
+        e.preventDefault();
+        const next = (i + step + roads.length) % roads.length;
+        cards[next]!.focus();
+      });
+      list.appendChild(b);
+      cards.push(b);
+    });
+    choose(0);
+  }
+})();
+
+
+// ═════════════════════════════════════════════════════════ THE SCORE
+//
+// The game has eighteen tracks. The front door offers one — never
+// automatically, never louder than the room, and always with a way out.
+// A page that makes noise at a stranger has already lost them, so this
+// only ever starts on a click, and the fade is long enough that turning
+// it on does not feel like an accident.
+{
+  const btn = document.getElementById('score-btn') as HTMLButtonElement | null;
+  const label = btn?.querySelector('.score-label');
+  let audio: HTMLAudioElement | null = null;
+  let fade = 0;
+  const PEAK = 0.34;
+
+  const ramp = (to: number, done?: () => void): void => {
+    window.clearInterval(fade);
+    fade = window.setInterval(() => {
+      if (!audio) return;
+      const step = to > audio.volume ? 0.02 : -0.02;
+      audio.volume = Math.min(1, Math.max(0, audio.volume + step));
+      if (Math.abs(audio.volume - to) < 0.021) {
+        audio.volume = to;
+        window.clearInterval(fade);
+        done?.();
+      }
+    }, 40);
+  };
+
+  btn?.addEventListener('click', () => {
+    const on = btn.getAttribute('aria-pressed') === 'true';
+    if (on) {
+      btn.setAttribute('aria-pressed', 'false');
+      if (label) label.textContent = 'Score off';
+      ramp(0, () => audio?.pause());
+      return;
+    }
+    if (!audio) {
+      audio = new Audio('/music/adventure_1.mp3');
+      audio.loop = true;
+      audio.volume = 0;
+      audio.preload = 'auto';
+    }
+    btn.setAttribute('aria-pressed', 'true');
+    if (label) label.textContent = 'Score on';
+    void audio.play().catch(() => {
+      btn.setAttribute('aria-pressed', 'false');
+      if (label) label.textContent = 'Score off';
+    });
+    ramp(PEAK);
+  });
+
+  // Leaving the tab takes the music with you.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) audio?.pause();
+    else if (btn?.getAttribute('aria-pressed') === 'true') void audio?.play().catch(() => {});
+  });
 }

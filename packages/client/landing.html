@@ -28,36 +28,47 @@
       <div class="nav-inner">
         <a class="nav-mark" href="/">Arx</a>
         <div class="nav-links">
+          <a href="#paths">Your Road</a>
           <a href="#world">The World</a>
           <a href="#dark">The Long Dark</a>
-          <a href="#schools">The Schools</a>
-          <a href="#friends">With Friends</a>
+          <a href="#live">Live</a>
         </div>
         <a class="btn-gold" href="/play">Play free</a>
       </div>
     </nav>
 
-    <!-- ============================================== the hero -->
+    <!-- ============================================== the cold open -->
     <header class="hero" id="top">
-      <div class="hero-stage" id="hero-stage">
-        <canvas id="hero-canvas" aria-hidden="true"></canvas>
-        <div class="hero-scrim"></div>
+      <div class="hero-stage" id="hero-stage" aria-hidden="true">
+        <!-- Two video layers trade opacity at each cut; see reels.ts. -->
       </div>
+      <div class="hero-scrim"></div>
+      <div class="hero-vignette"></div>
       <div class="hero-content" id="hero-content">
         <p class="hero-kicker">Free to play &middot; runs in the browser &middot; nothing to install</p>
         <h1 class="hero-mark">Arx</h1>
         <p class="hero-tagline">An open world, forged by hand.</p>
         <p class="hero-lede">
-          Every blade of grass, every body on the road and every torch after dark is drawn
-          live, in code, as you watch. <strong>This is not a trailer.</strong> The meadow behind
-          these words is the game, running.
+          Eight towns on one long road north. Farm it, forge it, fight it, or walk out past
+          the last lamp and see what is out there. <strong>Every frame behind these words is
+          the game itself</strong> &mdash; recorded in a browser tab, nothing staged, nothing
+          pre-rendered.
         </p>
         <div class="hero-cta">
           <a class="btn-gold" href="/play">Enter the Dawnlands</a>
-          <a class="btn-ghost" href="#world">Walk the road north &darr;</a>
+          <a class="btn-ghost" href="#paths">Choose your road &darr;</a>
         </div>
       </div>
-      <p class="hero-clock" aria-live="off"><span id="scene-clock">evening</span> over the meadow</p>
+      <div class="reel-bar">
+        <p class="reel-caption" id="hero-caption" aria-live="off"></p>
+        <div class="reel-tools">
+          <button class="score-btn" id="score-btn" type="button" aria-pressed="false">
+            <span class="score-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <span class="score-label">Score off</span>
+          </button>
+          <div class="reel-ticks" id="hero-ticks" aria-label="Jump to a scene"></div>
+        </div>
+      </div>
     </header>
 
     <!-- ============================================== the ledger -->
@@ -74,6 +85,52 @@
         <span>one long road north</span>
       </div>
     </div>
+
+
+    <!-- ============================================== forge your adventure -->
+    <section class="paths sec-pad" id="paths">
+      <div class="wrap">
+        <div class="paths-head reveal">
+          <p class="sec-label">Forge your adventure</p>
+          <h2 class="sec-title">No classes. No rails. Pick a life.</h2>
+          <p class="lede">
+            Twenty-four skills climb to ninety-nine by <em>doing</em>, and nothing locks you
+            out of anything. The smith who never left Amberford and the delver who has not
+            seen daylight in a month are the same character sheet, spent differently.
+          </p>
+        </div>
+        <div class="paths-rig">
+          <div class="paths-list" id="paths-list" role="tablist" aria-label="Ways to play"></div>
+          <figure class="paths-stage chamfer">
+            <div class="paths-screen" id="paths-screen"></div>
+            <figcaption class="paths-cap" id="paths-cap"></figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================== the crown band -->
+    <section class="band" id="crown-band">
+      <div class="band-stage" id="crown-stage" aria-hidden="true"></div>
+      <div class="band-scrim"></div>
+      <div class="wrap band-inner">
+        <div class="band-copy reveal">
+          <p class="sec-label">The Dread Crown</p>
+          <h2 class="sec-title">The world crowns its foes</h2>
+          <p>
+            Eight crowned bosses hold ground out there, each with its own phases, its own
+            summons, and a wind-up you can read if you keep your nerve.
+            <strong>The bigger the telegraph, the harder it lands.</strong> When a crown
+            falls, the whole field marks the felling.
+          </p>
+          <p class="feat-roll">
+            Goblin flame-tyrant &middot; The Fallen King &middot; The Barrow Lord &middot; Skral
+            tidelord &middot; Skral deepmaw &middot; Gnoll matriarch &middot; Old Fang &middot;
+            Anvil golem
+          </p>
+        </div>
+      </div>
+    </section>
 
     <!-- ============================================== the road north -->
     <section class="road sec-pad" id="world">
@@ -166,7 +223,7 @@
       </div>
     </section>
 
-    <!-- ============================================== the long dark + the crown -->
+    <!-- ============================================== the long dark -->
     <section class="feat sec-pad" id="dark">
       <div class="wrap">
         <div class="feat-row">
@@ -183,32 +240,64 @@
             <p>
               Nothing respawns behind you. Clear a hall and it stays cleared until the key wears out.
             </p>
+            <p class="feat-aside">
+              Step into a friend&rsquo;s run mid-fight and the door stays open to the party.
+            </p>
           </div>
-          <figure class="reveal" style="--d: 120ms">
-            <div class="stage-well chamfer"><canvas id="riftgate-canvas" aria-hidden="true"></canvas></div>
-            <figcaption class="stage-caption">&ldquo;A rift-cut key, humming with somewhere else.&rdquo;</figcaption>
+          <figure class="reveal reel-figure" style="--d: 120ms">
+            <div class="reel-well chamfer" data-reel="the-long-dark"></div>
+            <figcaption class="stage-caption" data-reel-cap="the-long-dark"></figcaption>
           </figure>
         </div>
 
         <div class="feat-row flip">
           <div class="feat-copy reveal">
-            <p class="sec-label">The Dread Crown</p>
-            <h2 class="sec-title">The world crowns its foes</h2>
+            <p class="sec-label">The Wild at Heel</p>
+            <h2 class="sec-title">Sixteen species will walk beside you</h2>
             <p>
-              Eight crowned bosses hold ground out there, each with its own phases, its own
-              summons, and a wind-up you can read if you keep your nerve.
-              <strong>The bigger the telegraph, the harder it lands.</strong> When a crown falls,
-              the whole field marks the felling.
+              Wolf, bear, lynx, great owl, worg among them. A companion fights at your side,
+              levels through its own deeds, and falls without ever being lost. Gentling one is
+              its own craft &mdash; beastcraft climbs like any other skill, by doing it.
             </p>
-            <p class="feat-roll">
-              Goblin flame-tyrant &middot; The Fallen King &middot; The Barrow Lord &middot; Skral tidelord
-              &middot; Skral deepmaw &middot; Gnoll matriarch &middot; Old Fang &middot; Anvil golem
+            <p class="feat-aside">
+              And when the road is long: the Dawnlands courser, the shaggy Hoargate garron,
+              the night sabercat. You ride to cross the world; the moment you fight, your
+              boots are back on the ground.
             </p>
           </div>
-          <figure class="reveal" style="--d: 120ms">
-            <div class="stage-well chamfer"><canvas id="crown-canvas" aria-hidden="true"></canvas></div>
-            <figcaption class="stage-caption">The dread presence never sleeps.</figcaption>
+          <figure class="reveal reel-figure" style="--d: 120ms">
+            <div class="reel-well chamfer" data-reel="the-wild-at-heel"></div>
+            <figcaption class="stage-caption" data-reel-cap="the-wild-at-heel"></figcaption>
           </figure>
+        </div>
+
+        <div class="rift-aside reveal">
+          <div class="stage-well chamfer stage-well-sm">
+            <canvas id="riftgate-canvas" aria-hidden="true"></canvas>
+          </div>
+          <p>
+            <b>Drawn, not drawn on.</b> That key is not an image file &mdash; it is the game&rsquo;s
+            own painter, running in this page, in your browser, right now. So is the meadow
+            further down. Nothing on this page is concept art.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================== the arts band -->
+    <section class="band band-tall" id="arts-band">
+      <div class="band-stage" id="arts-stage" aria-hidden="true"></div>
+      <div class="band-scrim"></div>
+      <div class="wrap band-inner">
+        <div class="band-copy reveal">
+          <p class="sec-label">The Arts</p>
+          <h2 class="sec-title">Three hundred and nine ways to end an argument</h2>
+          <p>
+            Weapon Arts live in the weapon &mdash; hold the teaching blade and its art is on
+            loan; win with it and the lesson sticks. Relics, sigils and techniques fill the
+            other three fingers of your hand. <strong>Two whole skills stay secret</strong>
+            until your hands find them; nothing in the game tells you they exist.
+          </p>
         </div>
       </div>
     </section>
@@ -233,6 +322,56 @@
       </div>
     </section>
 
+    <!-- ============================================== the living world -->
+    <section class="feat sec-pad" id="living">
+      <div class="wrap">
+        <div class="feat-row">
+          <div class="feat-copy reveal">
+            <p class="sec-label">The Spoken Land</p>
+            <h2 class="sec-title">Eight towns that keep their own day</h2>
+            <p>
+              A hundred and eighty-eight characters are cast and voiced, and every one of them
+              has somewhere to be. The smith is at the anvil in the morning and in the inn at
+              night; the watch changes on its own hours; the market is open when the market is
+              open. <strong>Two of them may tell you different truths about the same thing.</strong>
+              Leave with both.
+            </p>
+            <p class="feat-aside">
+              2,293 lines of dialogue. Six factions keeping books on you, from
+              <b style="color: var(--red)">hunted</b> to
+              <b style="color: var(--gold-bright)">champion</b> &mdash; prices, fines, work and
+              doors all follow the name you carry.
+            </p>
+          </div>
+          <figure class="reveal reel-figure" style="--d: 120ms">
+            <div class="reel-well chamfer" data-reel="the-town"></div>
+            <figcaption class="stage-caption" data-reel-cap="the-town"></figcaption>
+          </figure>
+        </div>
+
+        <div class="feat-row flip">
+          <div class="feat-copy reveal">
+            <p class="sec-label">The Tended Earth</p>
+            <h2 class="sec-title">Or never draw a sword at all</h2>
+            <p>
+              Twenty-three crops, livestock that learn to trust your hands, eighty buildable
+              pieces that persist in the shared world, and seven named trades that each go all
+              the way to mastery. What you raise stays raised &mdash; and only you can pull
+              your own walls down.
+            </p>
+            <p class="feat-aside">
+              Ore veins deplete and come back for everyone. A house someone raised last winter
+              is still standing when you walk past it tomorrow.
+            </p>
+          </div>
+          <figure class="reveal reel-figure" style="--d: 120ms">
+            <div class="reel-well chamfer" data-reel="the-tended-earth"></div>
+            <figcaption class="stage-caption" data-reel-cap="the-tended-earth"></figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
     <!-- ============================================== field notes -->
     <section class="feat sec-pad">
       <div class="wrap">
@@ -241,24 +380,6 @@
           <h2 class="sec-title">The rest of the ledger</h2>
         </div>
         <div class="notes-grid">
-          <article class="note chamfer reveal">
-            <p class="note-kicker">Beastcraft</p>
-            <h3>The wild at heel</h3>
-            <p>
-              Sixteen wild species will walk beside you once your beastcraft earns them &mdash;
-              wolf, bear, lynx, great owl, worg among them. A companion fights at your side,
-              levels through its own deeds, and falls without ever being lost.
-            </p>
-          </article>
-          <article class="note chamfer reveal" style="--d: 90ms">
-            <p class="note-kicker">Farming &amp; building</p>
-            <h3>The tended earth</h3>
-            <p>
-              Twenty-three crops, livestock that learn to trust your hands, and eighty buildable
-              pieces that persist in the shared world. What you raise stays raised &mdash; and only
-              you can pull your own walls down.
-            </p>
-          </article>
           <article class="note wide chamfer reveal">
             <div>
               <p class="note-kicker">Reputation</p>
@@ -297,11 +418,11 @@
             </div>
           </article>
           <article class="note third chamfer reveal">
-            <p class="note-kicker">The spoken land</p>
-            <h3>188 voices</h3>
+            <p class="note-kicker">With friends</p>
+            <h3>One world, held in common</h3>
             <p>
-              2,293 lines of dialogue, every character cast and voiced. Two of them may tell you
-              different truths about the same thing. Leave with both.
+              Party up and walk the same road, or step into a friend&rsquo;s live dungeon run
+              mid-fight &mdash; the run is the owner&rsquo;s, the door is open to the party.
             </p>
           </article>
           <article class="note third chamfer reveal" style="--d: 90ms">
@@ -324,28 +445,38 @@
       </div>
     </section>
 
-    <!-- ============================================== fellowship -->
-    <section class="fellow sec-pad" id="friends">
-      <div class="wrap fellow-inner">
+    <!-- ============================================== the live proof -->
+    <section class="live" id="live">
+      <div class="live-stage">
+        <canvas id="hero-canvas" aria-hidden="true"></canvas>
+        <div class="live-scrim"></div>
+      </div>
+      <div class="wrap live-inner">
         <div class="reveal">
-          <p class="sec-label">With Friends</p>
-          <h2 class="sec-title">One world, held in common</h2>
+          <p class="sec-label">Not a render</p>
+          <h2 class="sec-title">This meadow is the game, running, in this tab</h2>
           <p class="lede">
-            Arx is a single, persistent, shared world. Party up and walk the same road, or
-            <strong>step into a friend&rsquo;s live dungeon run mid-fight</strong> &mdash; the run is
-            the owner&rsquo;s, the door is open to the party. Ore veins deplete and come back for
-            everyone. A house someone raised last winter is still standing when you walk past
-            it tomorrow.
+            Everything above was recorded. This is not. The grass below is the game&rsquo;s own
+            grass system, the bodies are the game&rsquo;s rig walking on the game&rsquo;s leg
+            solver, the fire is the game&rsquo;s fire, and the sky is the game&rsquo;s clock.
+            Built in-house on canvas and websockets &mdash; no engine, no sprite sheets.
           </p>
+          <p class="live-clock"><span id="scene-clock">evening</span> over the meadow</p>
         </div>
-        <p class="fellow-figures reveal" style="--d: 150ms">
-          No download, no launcher, no spec sheet. A browser tab is the whole machine.
-        </p>
+        <div class="live-figures reveal" style="--d: 150ms">
+          <span>One shared, persistent world</span>
+          <span>Party up and walk the same road</span>
+          <span>No download, no launcher, no spec sheet</span>
+        </div>
       </div>
     </section>
 
     <!-- ============================================== departure -->
     <section class="depart">
+      <div class="band-stage" id="depart-stage" aria-hidden="true"></div>
+      <!-- Embers over the recorded night: the one place the page paints
+           on top of its own footage, because a fire should always be
+           live. -->
       <canvas id="depart-canvas" aria-hidden="true"></canvas>
       <div class="depart-scrim"></div>
       <div class="wrap depart-inner">
@@ -371,8 +502,9 @@
         </div>
         <p class="foot-note">
           Built in-house on canvas, websockets and stubbornness &mdash; no engine, no sprite
-          sheets. Everything you saw on this page was drawn by the game&rsquo;s own code, in this
-          tab, just now.
+          sheets. Every clip on this page was recorded out of the running game, in a browser
+          tab, by the game&rsquo;s own code &mdash; and the meadow above is that same code,
+          drawing live, right now.
         </p>
       </div>
     </footer>

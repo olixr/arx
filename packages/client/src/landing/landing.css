@@ -280,8 +280,16 @@ svg {
   position: absolute;
   inset: 0;
   will-change: transform;
+  /* THE BASE PLATE. The first reel's own poster frame stands behind the
+     video layers so the cold open is never a black rectangle — not
+     while the first clip decodes, not on a metered connection, and not
+     when the manifest is missing entirely. A background-image that 404s
+     costs nothing and shows nothing. */
+  background: var(--ink-deep) url('/reels/the-cut.jpg') center / cover no-repeat;
 }
 
+/* The live canvas now stands in its own band further down the page —
+   the hero belongs to the recorded reels. */
 #hero-canvas {
   position: absolute;
   inset: -6% 0 0;
@@ -294,9 +302,9 @@ svg {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(to bottom, rgba(14, 11, 8, 0.5) 0%, rgba(14, 11, 8, 0) 14%),
-    linear-gradient(to top, rgba(14, 11, 8, 0.82) 0%, rgba(14, 11, 8, 0.35) 34%, rgba(14, 11, 8, 0) 58%),
-    linear-gradient(105deg, rgba(14, 11, 8, 0.5) 0%, rgba(14, 11, 8, 0) 46%);
+    linear-gradient(to bottom, rgba(14, 11, 8, 0.58) 0%, rgba(14, 11, 8, 0) 16%),
+    linear-gradient(to top, rgba(14, 11, 8, 0.9) 0%, rgba(14, 11, 8, 0.42) 30%, rgba(14, 11, 8, 0) 62%),
+    linear-gradient(105deg, rgba(14, 11, 8, 0.62) 0%, rgba(14, 11, 8, 0.1) 42%, rgba(14, 11, 8, 0) 60%);
   pointer-events: none;
 }
 
@@ -1090,5 +1098,562 @@ footer {
   .hero-stage,
   .hero-content {
     transform: none !important;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════ THE REELS
+ *
+ * Recorded game, played back. Every clip on this page came out of the
+ * reel room (packages/tools/src/reel) — the real client, driven through
+ * the real input layer, taped off the real canvas.
+ *
+ * The house style holds over video exactly as it holds over leather:
+ * chamfered silhouettes, hard offset shadows, brass for "look here",
+ * and NO BLUR — the scrims are flat gradient ramps, not glass. Video is
+ * the only thing on this page allowed to be photographic, and even it
+ * is pixel art.
+ */
+
+.reel-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  /* The cut is a fast dissolve, not a fade: long enough that no frame
+     of black shows between clips, short enough to read as a cut. */
+  transition: opacity 420ms ease-in-out;
+  will-change: opacity;
+}
+
+.reel-layer.is-on {
+  opacity: 1;
+}
+
+/* A second, tighter darkness at the rim so the copy never fights the
+   grass. Flat radial ramp — a vignette is a shape, not a blur. */
+.hero-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 90% at 50% 45%,
+    rgba(14, 11, 8, 0) 42%,
+    rgba(14, 11, 8, 0.42) 78%,
+    rgba(14, 11, 8, 0.72) 100%
+  );
+}
+
+/* The trailer's chapter bar: what you are watching, and every other
+   scene one click away. */
+.reel-bar {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: clamp(1rem, 3.5vh, 2.25rem);
+  width: min(var(--page), 100% - clamp(2.5rem, 8vw, 7rem));
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.reel-caption {
+  flex: 1 1 20rem;
+  max-width: 34rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch);
+  border-left: 0.1875rem solid var(--gold);
+  padding-left: 0.875rem;
+}
+
+.reel-tools {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.reel-ticks {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* THE SCORE. Eighteen tracks in the game; one of them offered here, and
+   only ever on a click — a page that makes noise at a stranger has
+   already lost them. */
+.score-btn {
+  --cut: 0.375rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4375rem 0.75rem;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  background: rgba(38, 32, 25, 0.82);
+  clip-path: polygon(
+    var(--cut) 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut)),
+    0 var(--cut)
+  );
+  filter: drop-shadow(0.125rem 0.125rem 0 rgba(10, 7, 3, 0.7));
+  transition: color 160ms ease, background 160ms ease;
+}
+
+.score-btn:hover,
+.score-btn:focus-visible {
+  color: var(--parchment);
+  background: var(--raise);
+  outline: none;
+}
+
+.score-btn[aria-pressed='true'] {
+  color: var(--gold-hot);
+}
+
+.score-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.125rem;
+  height: 0.75rem;
+}
+
+.score-bars i {
+  width: 0.1875rem;
+  height: 0.25rem;
+  background: currentColor;
+}
+
+/* Only the playing state dances, and only four bars of it. */
+.score-btn[aria-pressed='true'] .score-bars i {
+  animation: score-bounce 900ms ease-in-out infinite;
+}
+
+.score-btn[aria-pressed='true'] .score-bars i:nth-child(2) {
+  animation-delay: 140ms;
+}
+
+.score-btn[aria-pressed='true'] .score-bars i:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+.score-btn[aria-pressed='true'] .score-bars i:nth-child(4) {
+  animation-delay: 220ms;
+}
+
+@keyframes score-bounce {
+  0%,
+  100% {
+    height: 0.25rem;
+  }
+  50% {
+    height: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .score-btn[aria-pressed='true'] .score-bars i {
+    animation: none;
+    height: 0.5rem;
+  }
+}
+
+.reel-tick {
+  width: 2.25rem;
+  height: 0.3125rem;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: rgba(240, 230, 207, 0.28);
+  box-shadow: var(--punch);
+  transition: background 200ms ease, transform 200ms ease;
+}
+
+.reel-tick:hover,
+.reel-tick:focus-visible {
+  background: var(--parchment);
+  transform: translateY(-0.125rem);
+  outline: none;
+}
+
+.reel-tick.is-on {
+  background: var(--gold-bright);
+}
+
+/* On a phone the cold open has room for the title, the button and the
+   chapter marks — and not one line more. The caption is the first thing
+   to go: the clip is saying it already. */
+@media (max-width: 52rem) {
+  .reel-caption {
+    display: none;
+  }
+
+  .reel-bar {
+    justify-content: flex-end;
+  }
+
+  .hero-content {
+    padding-bottom: clamp(5rem, 16vh, 7rem);
+  }
+
+  .reel-tick {
+    width: 1.75rem;
+  }
+}
+
+/* ─────────────────────────────────────────── the paths (choose a life) */
+
+.paths-head {
+  max-width: var(--measure);
+  margin-bottom: clamp(2.5rem, 6vh, 4rem);
+}
+
+.paths-rig {
+  display: grid;
+  grid-template-columns: minmax(16rem, 22rem) 1fr;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  align-items: start;
+}
+
+.paths-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.path-card {
+  --cut: 0.5rem;
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+  color: var(--parchment-dim);
+  background: var(--panel);
+  padding: 0.875rem 1.125rem 0.9375rem;
+  position: relative;
+  filter: drop-shadow(0.1875rem 0.1875rem 0 rgba(10, 7, 3, 0.55));
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.path-card:hover,
+.path-card:focus-visible {
+  background: var(--raise);
+  color: var(--parchment);
+  transform: translateX(0.1875rem);
+  outline: none;
+}
+
+.path-card[aria-selected='true'] {
+  background: var(--raise);
+  color: var(--parchment);
+}
+
+/* The brass rule that marks the chosen road. */
+.path-card[aria-selected='true']::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 0.25rem;
+  background: var(--gold-bright);
+}
+
+.path-name {
+  display: block;
+  font-family: var(--serif);
+  font-size: 1.125rem;
+  letter-spacing: 0.04em;
+  color: var(--gold-bright);
+  margin-bottom: 0.1875rem;
+}
+
+.path-card[aria-selected='true'] .path-name {
+  color: var(--gold-hot);
+}
+
+.path-line {
+  display: block;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.paths-stage {
+  position: relative;
+  background: var(--sunk);
+  filter: drop-shadow(0.375rem 0.375rem 0 rgba(10, 7, 3, 0.6));
+}
+
+.paths-screen {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--ink-deep);
+}
+
+.paths-screen video,
+.paths-screen img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.paths-cap {
+  padding: 0.875rem 1.125rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--parchment-dim);
+  border-top: 0.0625rem solid var(--line);
+  min-height: 4.25rem;
+}
+
+@media (max-width: 62rem) {
+  .paths-rig {
+    grid-template-columns: 1fr;
+  }
+
+  /* On one column the reel leads: a phone should see the road before
+     it is asked to choose one. */
+  .paths-stage {
+    order: -1;
+  }
+}
+
+/* ─────────────────────────────────────────────── full-bleed reel bands */
+
+.band {
+  position: relative;
+  min-height: 78svh;
+  display: flex;
+  align-items: flex-end;
+  overflow: clip;
+  border-block: 0.0625rem solid var(--line);
+}
+
+.band-tall {
+  min-height: 86svh;
+}
+
+.band-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.band-stage video,
+.band-stage img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.band-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to top, rgba(14, 11, 8, 0.88) 0%, rgba(14, 11, 8, 0.34) 30%, rgba(14, 11, 8, 0) 62%),
+    linear-gradient(95deg, rgba(14, 11, 8, 0.78) 0%, rgba(14, 11, 8, 0.12) 46%, rgba(14, 11, 8, 0) 64%);
+}
+
+.band-inner {
+  position: relative;
+  z-index: 2;
+  padding-block: clamp(3rem, 10vh, 6rem);
+}
+
+.band-copy {
+  max-width: 36rem;
+}
+
+.band-copy p {
+  color: var(--parchment-dim);
+  text-shadow: 0.0625rem 0.0625rem 0 rgba(14, 10, 5, 0.85);
+}
+
+.band-copy p + p {
+  margin-top: 0.875rem;
+}
+
+.band-copy strong {
+  color: var(--parchment);
+}
+
+/* ───────────────────────────────────────────── reels inside feature rows */
+
+.reel-figure {
+  margin: 0;
+}
+
+.reel-well {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--ink-deep);
+  filter: drop-shadow(0.375rem 0.375rem 0 rgba(10, 7, 3, 0.6));
+}
+
+.reel-well video,
+.reel-well img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.feat-aside {
+  margin-top: 1rem;
+  padding-left: 0.875rem;
+  border-left: 0.1875rem solid var(--line-strong);
+  font-size: 0.9375rem;
+  color: var(--parchment-faint);
+}
+
+/* The live riftgate keeps its place under the recorded dark — the one
+   place on the page where the two arguments stand side by side. */
+.rift-aside {
+  display: grid;
+  grid-template-columns: minmax(10rem, 16rem) 1fr;
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  align-items: center;
+  margin-top: clamp(2.5rem, 6vh, 4rem);
+  padding-top: clamp(2rem, 5vh, 3rem);
+  border-top: 0.0625rem solid var(--line);
+}
+
+.rift-aside p {
+  max-width: var(--measure);
+  color: var(--parchment-faint);
+}
+
+.rift-aside b {
+  color: var(--parchment);
+}
+
+.stage-well-sm {
+  aspect-ratio: 4 / 3;
+}
+
+@media (max-width: 46rem) {
+  .rift-aside {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ────────────────────────────────────────────────── the live band */
+
+.depart #depart-canvas {
+  /* The ember field rides OVER the reel; the reel is the ground. */
+  z-index: 1;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.depart .band-stage {
+  z-index: 0;
+}
+
+.live {
+  position: relative;
+  min-height: 92svh;
+  display: flex;
+  align-items: flex-end;
+  overflow: clip;
+  border-block: 0.0625rem solid var(--line);
+}
+
+.live-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.live-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to top, rgba(14, 11, 8, 0.92) 0%, rgba(14, 11, 8, 0.45) 40%, rgba(14, 11, 8, 0) 72%),
+    linear-gradient(100deg, rgba(14, 11, 8, 0.66) 0%, rgba(14, 11, 8, 0) 55%);
+}
+
+.live-inner {
+  position: relative;
+  z-index: 2;
+  padding-block: clamp(3rem, 10vh, 6rem);
+}
+
+.live-inner .lede {
+  max-width: 38rem;
+  text-shadow: 0.0625rem 0.0625rem 0 rgba(14, 10, 5, 0.85);
+}
+
+.live-clock {
+  margin-top: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.8125rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch);
+}
+
+.live-clock::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--gold-bright);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  animation: clock-breathe 2.8s ease-in-out infinite;
+}
+
+.live-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.75rem;
+  margin-top: 2rem;
+  font-size: 0.8125rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--parchment-faint);
+  text-shadow: var(--punch);
+}
+
+.live-figures span::before {
+  content: '\2726';
+  color: var(--gold);
+  margin-right: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reel-layer {
+    transition: none;
+  }
+
+  .live-clock::before {
+    animation: none;
   }
 }

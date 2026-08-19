@@ -22,8 +22,12 @@ export default defineConfig({
           // query on `/` keeps the game shell so the dev rigs' levers
           // (?fx, ?det…) hold.
           if (req.url === '/') req.url = '/landing.html';
-          else if (req.url === '/play') req.url = '/index.html';
-          else if (req.url === '/landing') req.url = '/landing.html';
+          // `/play` and `/play?reel=1` alike — the capture lane hangs a
+          // query on the game shell, and nginx's `location = /play`
+          // ignores the query string the same way.
+          else if (req.url === '/play' || req.url?.startsWith('/play?')) {
+            req.url = '/index.html' + (req.url.slice(5) || '');
+          } else if (req.url === '/landing') req.url = '/landing.html';
           next();
         });
       },
@@ -33,8 +37,12 @@ export default defineConfig({
           // query on `/` keeps the game shell so the dev rigs' levers
           // (?fx, ?det…) hold.
           if (req.url === '/') req.url = '/landing.html';
-          else if (req.url === '/play') req.url = '/index.html';
-          else if (req.url === '/landing') req.url = '/landing.html';
+          // `/play` and `/play?reel=1` alike — the capture lane hangs a
+          // query on the game shell, and nginx's `location = /play`
+          // ignores the query string the same way.
+          else if (req.url === '/play' || req.url?.startsWith('/play?')) {
+            req.url = '/index.html' + (req.url.slice(5) || '');
+          } else if (req.url === '/landing') req.url = '/landing.html';
           next();
         });
       },

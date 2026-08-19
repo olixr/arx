@@ -73,6 +73,7 @@ import { SpeechBubbles } from './ui/speechBubbles.js';
 import { PetNamingCard } from './ui/petNaming.js';
 import { LookCreator } from './ui/lookCreator.js';
 import { DialogueCinema } from './ui/dialogueCinema.js';
+import { reel } from './reel/state.js';
 
 // THE ONE RULER, then the one material truth, then the painted chrome
 // cut from it — all before any panel shows. The stylesheet holds no
@@ -2805,6 +2806,16 @@ game.onLoose = (charge, aim) => {
   input,
 };
 
+// THE REEL ROOM (src/reel): `?reel` hangs the capture bridge on the
+// window — begin a shot, ask how it is going, take the bytes. The
+// module graph is DYNAMIC, so a player never downloads a frame of the
+// cinema lane, and the game underneath is untouched: a reel is the
+// real client, driven through the real input layer, taped off the real
+// canvas. See packages/tools/src/reel for the lane that drives it.
+if (new URLSearchParams(location.search).has('reel')) {
+  void import('./reel/boot.js').then((m) => m.bootReel({ game, renderer, input }));
+}
+
 // ------------------------------------------------------------------
 // THE DOOR REMEMBERS: four views share the one login form. 'roster'
 // deals the saved cards as faces; picking one enters 'quick', where
@@ -3819,6 +3830,13 @@ function frame(now: number): void {
       }
     }
   }
+
+  // THE REEL ROOM (src/reel, `?reel=`): while a capture director drives
+  // the stage, the SHOT owns the eyes. Its puppet walks on the touch
+  // lane, and the branch above would therefore nail a body's aim to its
+  // own walk vector — no fight ever looks like that. This is the one
+  // line of the game that knows reels exist.
+  if (reel.aim !== null && game.ownEid !== null) game.aim = reel.aim;
 
   // THE HELD SIGIL: steer the held ring, face the throw, hand the
   // renderer its ghost. Any opened screen, the build ghost, or a

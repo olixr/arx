@@ -1695,6 +1695,21 @@ export class Renderer {
    */
   cameraOverride: { x: number; y: number; zoom: number } | null = null;
   /**
+   * THE REEL ROOM's second seam (src/reel): how much of the game's own
+   * chrome the frame is allowed to carry. A capture wants the bodies
+   * and the ground, not a dashboard floating over them — a trailer
+   * that shows "Goblin (5)" in 12px sans over a swing has stopped
+   * being a trailer.
+   *
+   *   'all'   — every label and gauge. The player's frame. (Default.)
+   *   'drama' — no nameplates, no gauges, but the world still SPEAKS:
+   *             damage rises, risen words stand, the ceremonies play.
+   *   'none'  — the bare world.
+   *
+   * Cleared with the shot, exactly like cameraOverride.
+   */
+  chrome: 'all' | 'drama' | 'none' = 'all';
+  /**
    * The editor's one drawing seam: called at the very end of the
    * frame (over the vignette) with the settled camera's transforms.
    * The renderer never learns editor concepts; the editor never
@@ -5076,7 +5091,7 @@ export class Renderer {
       else if (item.draw) item.draw();
       else this.drawBulkItem(item);
       if (item.alpha !== undefined) this.ctx.globalAlpha = 1;
-      item.drawLabel?.();
+      if (this.chrome === 'all') item.drawLabel?.();
     }
     if (inParticleRun) this.particles.endRun();
     this.perfMark('world');
@@ -5203,12 +5218,22 @@ export class Renderer {
     this.drawGrade();
 
     this.drawBuildGhost();
-    this.drawActionProgress(game);
-    this.drawComboBeat(game);
-    this.drawFloaties(game);
-    this.drawWords(game);
-    this.drawLootLabels(game);
-    this.drawHpBar(game);
+    // THE REEL ROOM: the dashboard lane (progress, beat, loot tags, the
+    // vitality gauge) bows out for any capture; the SPEAKING lane
+    // (damage rising off a body, a risen word) survives into 'drama',
+    // because that is the game talking, not the interface.
+    if (this.chrome === 'all') {
+      this.drawActionProgress(game);
+      this.drawComboBeat(game);
+    }
+    if (this.chrome !== 'none') {
+      this.drawFloaties(game);
+      this.drawWords(game);
+    }
+    if (this.chrome === 'all') {
+      this.drawLootLabels(game);
+      this.drawHpBar(game);
+    }
     this.drawVignette();
     if (this.overlayHook !== null) {
       // The editor's plane rides over the finished frame with the
@@ -5609,7 +5634,13 @@ export class Renderer {
     if (this.bakingMask) return;
     const L = st.light;
     if (L === undefined) {
-      this.queueFxGlow(x, y, r, a, st);
+      // No authored light on this family: the plain glow door, whose
+      // floor derivation is the documented fallback. (This line used to
+      // call queueFxGlow — itself — and any unlit style that queued a
+      // bloom blew the stack every frame it was on screen. Found by the
+      // capture lane, which is the first thing in the project that
+      // watches a whole fight with the console open.)
+      this.queueGlow(x, y, r, st.glow, a);
       return;
     }
     this.glows.push({ x, y, r, rgb: st.glow, a });
