@@ -264,6 +264,15 @@ import {
   type StretchBake,
   type StretchRef,
 } from './staticRegister.js';
+import {
+  BandVerdict,
+  admitBand,
+  bandSweepNeeded,
+  bandSweepRelieved,
+  planBandSweep,
+  poolAdmits,
+  type BandSweepEntry,
+} from './bandBudget.js';
 import { dealWoodSkin, type WoodSkin } from './woodSkins.js';
 import { drawPortalArch, drawPortalGround, spawnPortalFx, PORTAL_PLANE } from './portal.js';
 import { ELEV_H, solveLiftedY } from './elevPick.js';
@@ -1815,7 +1824,12 @@ export class Renderer {
   onPlaneSwitch(): void {
     this.baked.clear();
     this.registers.clear();
-    this.bandCache.clear();
+    // THE LEDGER HAS ONE DOOR: a bare .clear() here dropped the
+    // canvases but kept their bytes on the books — ~40MB of phantom
+    // per crossing, measured, permanently narrowing the band budget
+    // for the rest of the session and pulling the admission gate shut
+    // in places that used to fit.
+    this.dropAllBands();
     this.bandNonce.clear();
     this.bandEmitted.clear();
     this.shadowMasks.clear();
@@ -6843,27 +6857,27 @@ export class Renderer {
     // ground cache's distance rule first, then coldest-first. The
     // live path is the overflow pressure valve: an evicted street
     // draws live and re-bakes on the budget when re-entered.
-    if (this.bandCache.size > 240 || this.bandBytes > 64 * 1048576) {
-      const rcx = this.camera.x / CHUNK_SIZE;
-      const rcy = this.camera.y / CHUNK_SIZE;
+    // THE BAND BUDGET IS A FUSE, NOT A BROOM (bandBudget.ts). The
+    // planner decides WHAT may go and in what order — distant before
+    // near, coldest first, and never a band this frame drew with. An
+    // empty plan while the ledger sits over relief is the honest
+    // answer, not a stall: it says this view's working set IS the
+    // budget, the surplus already went live at the admission gate,
+    // and anything taken here would only be re-baked next frame.
+    if (bandSweepNeeded(this.bandCache.size, this.bandBytes)) {
+      const camCx = this.camera.x / CHUNK_SIZE;
+      const camCy = this.camera.y / CHUNK_SIZE;
+      this.bandSweepScratch.length = 0;
       for (const [key, sb] of this.bandCache) {
         // Keys read "cx,cy|stretchKey".
         const [cx, cy] = key.slice(0, key.indexOf('|')).split(',').map(Number);
-        if (Math.abs(cx! - rcx) > 4 || Math.abs(cy! - rcy) > 4) {
-          this.releaseStretchBake(sb);
-          this.bandCache.delete(key);
-        }
-        if (this.bandCache.size <= 200 && this.bandBytes <= 48 * 1048576) break;
+        this.bandSweepScratch.push({ key, used: sb.used, cx: cx!, cy: cy! });
       }
-      if (this.bandBytes > 48 * 1048576) {
-        // Still over after the distance sweep: drop coldest first.
-        const cold = [...this.bandCache.entries()].sort((a, b) => a[1].used - b[1].used);
-        for (const [key, sb] of cold) {
-          this.releaseStretchBake(sb);
-          this.bandCache.delete(key);
-          if (this.bandBytes <= 48 * 1048576) break;
-        }
+      for (const key of planBandSweep(this.bandSweepScratch, this.frameNo, camCx, camCy)) {
+        this.dropBand(key);
+        if (bandSweepRelieved(this.bandCache.size, this.bandBytes)) break;
       }
+      this.bandSweepScratch.length = 0;
     }
     // Hi-res bakes are 4× the pixels — keep far fewer of them around.
     const hiRes = this.bakePx() > TILE_PX;
@@ -6897,13 +6911,13 @@ export class Renderer {
     for (const [key, sp] of this.treeSprites) {
       if (sp.used < cutoff) {
         this.treeSprites.delete(key);
-        if (this.spriteCanvasPool.length < 40) this.spriteCanvasPool.push(sp.canvas);
+        this.poolCanvas(sp.canvas);
       }
     }
     for (const [key, sh] of this.treeShadows) {
       if (sh.used < cutoff) {
         this.treeShadows.delete(key);
-        if (this.spriteCanvasPool.length < 40) this.spriteCanvasPool.push(sh.canvas);
+        this.poolCanvas(sh.canvas);
       }
     }
     // Silhouette sprites carry canvases now — cap like the body cache.
@@ -6911,7 +6925,7 @@ export class Renderer {
       for (const [key, sh] of this.treeShadows) {
         if (sh.used < this.frameNo - 2) {
           this.treeShadows.delete(key);
-          if (this.spriteCanvasPool.length < 40) this.spriteCanvasPool.push(sh.canvas);
+          this.poolCanvas(sh.canvas);
         }
         if (this.treeShadows.size <= 560) break;
       }
@@ -6922,7 +6936,7 @@ export class Renderer {
       for (const [key, sp] of this.treeSprites) {
         if (sp.used < this.frameNo - 2) {
           this.treeSprites.delete(key);
-          if (this.spriteCanvasPool.length < 40) this.spriteCanvasPool.push(sp.canvas);
+          this.poolCanvas(sp.canvas);
         }
         if (this.treeSprites.size <= 560) break;
       }
@@ -6932,14 +6946,14 @@ export class Renderer {
     for (const [key, sp] of this.bodySprites) {
       if (sp.used < cutoff) {
         this.bodySprites.delete(key);
-        if (this.spriteCanvasPool.length < 40) this.spriteCanvasPool.push(sp.canvas);
+        this.poolCanvas(sp.canvas);
       }
     }
     if (this.bodySprites.size > 200) {
       for (const [key, sp] of this.bodySprites) {
         if (sp.used < this.frameNo - 2) {
           this.bodySprites.delete(key);
-          if (this.spriteCanvasPool.length < 40) this.spriteCanvasPool.push(sp.canvas);
+          this.poolCanvas(sp.canvas);
         }
         if (this.bodySprites.size <= 160) break;
       }
@@ -7104,6 +7118,7 @@ export class Renderer {
     this.bandStats.live = 0;
     this.bandStats.hot = 0;
     this.bandStats.bakes = 0;
+    this.bandStats.over = 0;
     // Tall-content pads (see TREE_PAD_S/TREE_PAD_X/PROP_PAD_S): rows
     // up to PROP_PAD_S past the shared bounds admit everything (walls
     // and stations are ~2.2 tiles tall — their crowns reach 3.7 rows
@@ -7304,10 +7319,7 @@ export class Renderer {
     for (const bk of this.bandCache.keys()) {
       if (bk.startsWith(pfx)) {
         const live = entry.stretches.some((ss) => ss?.some((st) => key + '|' + st.key === bk));
-        if (!live) {
-          this.releaseStretchBake(this.bandCache.get(bk)!);
-          this.bandCache.delete(bk);
-        }
+        if (!live) this.dropBand(bk);
       }
     }
     return entry;
@@ -7738,10 +7750,18 @@ export class Renderer {
    */
   private readonly liveStats = { prop: 0, tree: 0, flora: 0, chunk: 0, mask: 0, offscreen: 0 };
 
-  /** Live band canvas bytes — the byte budget's running total. */
+  /**
+   * THE BAND BUDGET IS A FUSE, NOT A BROOM — the whole doctrine, the
+   * measurements that forced it, and the arithmetic itself live in
+   * bandBudget.ts. What stands here is the ledger it reads and the
+   * ONE DOOR every removal goes through.
+   */
+  /** Live band canvas bytes — the ledger, and the admission gate's
+   *  left-hand side. Every acquisition adds, every release
+   *  subtracts, and dropAllBands re-grounds it at zero. */
   private bandBytes = 0;
   /** Per-frame band accounting (the ?perf confession, phase 5). */
-  private readonly bandStats = { blit: 0, live: 0, hot: 0, bakes: 0 };
+  private readonly bandStats = { blit: 0, live: 0, hot: 0, bakes: 0, over: 0 };
   /** Per-frame "this stretch already emitted" marker (blit or live). */
   private readonly bandEmitted = new Map<string, number>();
   private readonly bandScratchSeen = new Set<number>();
@@ -7931,6 +7951,8 @@ export class Renderer {
         // re-bake above replaces it.
         if (isRun) runSeen.add(packTile(m0.tx, m0.ty));
         this.bandStats.blit++;
+        // Claim the band for this frame: `used` is what protects it
+        // from the sweep (A BAND THIS FRAME NEEDED IS NOT COLD).
         bake.used = this.frameNo;
         const buckets = bake.buckets;
         // SHADOWS NEVER BAKE — the members' items re-mint fresh
@@ -8097,6 +8119,16 @@ export class Renderer {
     const W = Math.ceil(cssW * dprB);
     const H = Math.ceil(cssH * dprB);
     if (W <= 0 || W > 8192 || H > 4096) return null;
+    // ONE BAND IS NEVER A BUDGET (bandBudget law 3). The bucket count
+    // is not known until the probe pass below, so the cheap half of
+    // the verdict is taken here: a band whose SINGLE bucket already
+    // bursts the per-band ceiling can never be admitted, and there is
+    // no reason to probe it.
+    const bucketBytes = W * H * 4;
+    if (admitBand(this.bandBytes, bucketBytes) === BandVerdict.TooBig) {
+      this.bandStats.over++;
+      return null;
+    }
     const cam = this.camera;
     const savedX = cam.x;
     const savedY = cam.y;
@@ -8143,6 +8175,18 @@ export class Renderer {
         const k = keyOf(it);
         if (!bucketKeys.includes(k)) bucketKeys.push(k);
         if (it.drawShadow) casts = true;
+      }
+      // THE BUDGET IS AN ADMISSION GATE (bandBudget law 2). The true
+      // cost is only known once the probe has counted the sort
+      // buckets — one canvas each. Decide here, before a single pixel
+      // is allocated: a band that cannot stand alongside the ones
+      // already standing draws live instead, and the ledger stays a
+      // ceiling. (The old shape painted first and let the post-frame
+      // sweep discover the overdraft — which is how a cache becomes
+      // an allocator.)
+      if (admitBand(this.bandBytes, bucketBytes * bucketKeys.length) !== BandVerdict.Admit) {
+        this.bandStats.over++;
+        return null;
       }
       for (const bkKey of bucketKeys) {
         const canvas = this.acquireBandCanvas(W, H);
@@ -8213,6 +8257,7 @@ export class Renderer {
       buckets,
       casts,
       used: this.frameNo,
+      bytes: bucketBytes * buckets.length,
     };
   }
 
@@ -8235,18 +8280,51 @@ export class Renderer {
   }
 
   private acquireBandCanvas(w: number, h: number): HTMLCanvasElement {
-    const canvas = this.spriteCanvasPool.pop() ?? document.createElement('canvas');
-    if (canvas.width !== w) canvas.width = w;
-    if (canvas.height !== h) canvas.height = h;
+    const canvas = this.spriteCanvasPool.pop();
+    if (canvas) this.poolBytes -= canvas.width * canvas.height * 4;
+    const c = canvas ?? document.createElement('canvas');
+    if (c.width !== w) c.width = w;
+    if (c.height !== h) c.height = h;
     this.bandBytes += w * h * 4;
-    return canvas;
+    return c;
+  }
+
+  /** A POOL IS BYTES, NOT SLOTS (bandBudget law 5): a recycled canvas
+   *  keeps its full backing store, so a slot count bounds nothing. */
+  private poolCanvas(c: HTMLCanvasElement): void {
+    const bytes = c.width * c.height * 4;
+    if (!poolAdmits(this.spriteCanvasPool.length, this.poolBytes, bytes)) return;
+    this.poolBytes += bytes;
+    this.spriteCanvasPool.push(c);
   }
 
   private releaseStretchBake(sb: StretchBake): void {
     for (const bk of sb.buckets) {
       this.bandBytes -= bk.canvas.width * bk.canvas.height * 4;
-      if (this.spriteCanvasPool.length < 40) this.spriteCanvasPool.push(bk.canvas);
+      this.poolCanvas(bk.canvas);
     }
+  }
+
+  /**
+   * THE LEDGER HAS ONE DOOR: the only way a band leaves the cache.
+   * Release the pixels, then delete the key — never one without the
+   * other, and never a bare Map mutation anywhere else.
+   */
+  private dropBand(key: string): void {
+    const sb = this.bandCache.get(key);
+    if (!sb) return;
+    this.releaseStretchBake(sb);
+    this.bandCache.delete(key);
+  }
+
+  /** Every band at once, through the same door (THE CROSSING). */
+  private dropAllBands(): void {
+    for (const sb of this.bandCache.values()) this.releaseStretchBake(sb);
+    this.bandCache.clear();
+    // The ledger is derived, never drifted: with no bands standing,
+    // the only honest total is zero. Float dust from the per-bucket
+    // arithmetic dies here rather than accreting across a session.
+    this.bandBytes = 0;
   }
   /**
    * Walls: continuous top mass with rounded exposed corners, a darker
@@ -19519,7 +19597,8 @@ export class Renderer {
     // THE STANDING WORLD's confession: how much of the frame blits.
     const bs = this.bandStats;
     parts.push(
-      `bands ${bs.blit}/${bs.live + bs.blit} hot ${bs.hot} ${(this.bandBytes / 1048576).toFixed(0)}MB`,
+      `bands ${bs.blit}/${bs.live + bs.blit} hot ${bs.hot} over ${bs.over} ` +
+        `${(this.bandBytes / 1048576).toFixed(0)}MB`,
     );
     const ls = this.liveStats;
     parts.push(
@@ -19673,6 +19752,11 @@ export class Renderer {
   private treeCadence = TREE_REBAKE_FRAMES;
   /** Evicted sprite canvases, reused by new bakes (GC churn while walking). */
   private readonly spriteCanvasPool: HTMLCanvasElement[] = [];
+  /** Pixel bytes parked in the pool — the pool's real bound. */
+  private poolBytes = 0;
+  /** Reused scratch for the band sweep's plan input (no per-frame
+   *  garbage on a path that can run every frame). */
+  private readonly bandSweepScratch: BandSweepEntry[] = [];
 
   /**
    * THE CACHE ALWAYS GAINS GROUND — the ONE admission door for the
@@ -20765,6 +20849,7 @@ export class Renderer {
         const c = this.spriteCanvasPool[i]!;
         if (c.width >= pw && c.height >= ph && c.width * c.height <= pw * ph * 2.5) {
           canvas = c;
+          this.poolBytes -= c.width * c.height * 4;
           this.spriteCanvasPool.splice(i, 1);
           break;
         }

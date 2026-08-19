@@ -727,3 +727,124 @@ is not.
 - The honest ceiling remains: canvas2d cannot batch. 200 animated trees
   at full frame rate on weak hardware is a WebGL world pass, which is
   an epic, not a round.
+
+---
+
+## ROUND 10 — THE BAND BUDGET IS A FUSE, NOT A BROOM (2026-08-19)
+
+**The report.** "I was in the Undercroft and something crashed the
+browser when I was to the right of the cave bats. It consistently
+crashed until I left that area." A crash with a PLACE: the tab died in
+the deep galleries and the game was fine one screen west.
+
+Not a prop. Not the new dungeon dressing. The static layer's memory
+policy, in a district built out of solid rock.
+
+### The mechanism, in one paragraph
+
+A band canvas is exactly as wide as the wall run it bakes, so its cost
+is set by the WORLD, not the renderer. A town facade is a few hundred
+KB. The Undercroft is a 128×96 rect of `CaveWall` with corridors carved
+out of it, so **every row of the dark is a maximal wall run** — 34
+tiles, `4896×591` device px, **11MB of backing store per band** at zoom
+1.8 on a retina panel, and ~380MB for one screen of the galleries
+against a 64MB budget. The old shape baked FIRST and swept AFTER:
+every band on screen baked, the post-frame sweep found the budget
+blown, and the coldest-first loop emptied the cache — **including the
+bands that very frame had just baked and blitted**. The next frame
+re-baked all of them.
+
+### Measured, before (rig lane 34, `:8813`/`:5216`, zoom 1.8, dpr 2)
+
+| where | bakes/frame | canvas alloc/frame | band cache | fps |
+| --- | --- | --- | --- | --- |
+| Undercroft galleries | 17.5 | **184 MB** | 4 | 120 |
+| Undercroft long haulage | 17.4 | **180 MB** | 4 | 120 |
+| Undercroft landing | 23.2 | **222 MB** | 4 | 121 |
+| Silverfall city (SURFACE) | 23.4 | **78 MB** | 0 | 93 |
+| Dawnmead / open wild | 0 | 0 | 3–6 | 120 |
+
+6510 cache `set`s and 6510 `delete`s in 362 frames — an 18-per-frame
+bake/evict cycle, forever. **~20GB/s of allocate-and-discard**, which
+walks the browser's renderer process into an OOM kill while frame
+time, entity count and the JS heap all read perfectly healthy. This is
+why nothing in the game confessed it: **the storm is invisible to every
+counter that existed.** Zoom 1.0 still cost 63MB/frame; the cost is
+quadratic in zoom.
+
+Two accomplices, both measured:
+
+- **Phantom ledger.** `onPlaneSwitch` cleared `bandCache` with a bare
+  `.clear()` — canvases dropped, bytes still on the books. **+38.8MB of
+  phantom per plane crossing**, never returned. Every Undercroft visit
+  is two crossings. The budget silently narrows for the rest of the
+  session, pulling the gate shut in places that used to fit.
+- **A pool bounded by slots.** `spriteCanvasPool` capped at 40 entries
+  with no byte ceiling; what it was recycling were cave-row bands.
+  **Measured holding 369MB of idle pixels.**
+
+### The five laws (`render/bandBudget.ts`, tested)
+
+1. **A BAND THIS FRAME NEEDED IS NOT COLD.** The sweep may never evict
+   an entry whose `used` is the current frame. Evicting what you just
+   baked IS the thrash — it pins the hit rate at exactly zero and turns
+   a cache into an allocator. *This one law alone took the galleries
+   from 193MB/frame to 0.9MB/frame.*
+2. **THE BUDGET IS AN ADMISSION GATE.** Decide before painting, pricing
+   the whole ledger. A band that will not fit draws live — THE
+   STILL-WORLD BARGAIN, the layer's own designed pressure valve.
+3. **ONE BAND IS NEVER A BUDGET.** Past `BAND_ONE_MAX_BYTES` (6MB) a
+   band is refused outright. Blitting an 11MB canvas to spare 34 flat
+   wall tiles is the worst trade in the renderer.
+4. **THE SWEEP KEEPS THE HEADROOM.** It aims at RELIEF (48MB), not at
+   the ceiling (64MB); the gap IS the room the gate needs to admit the
+   ground you are walking onto. Sweeping only at the ceiling would let
+   a long walk fill the ledger with cold bands and latch the gate shut.
+5. **A POOL IS BYTES, NOT SLOTS.** Two ceilings plus a per-slot size
+   past which a canvas goes to GC instead of being parked.
+
+Plus **THE LEDGER HAS ONE DOOR** (`dropBand` / `dropAllBands` in the
+renderer): release then delete, never one without the other, and
+`dropAllBands` re-grounds the total at zero so float dust cannot
+accrete across a session.
+
+And upstream, in `planStretches`: **A SHELF, NOT A WALL** — a stretch
+is now cut every `BAND_MAX_SPAN` (12) tiles of world span. Without it,
+law 3 refuses every cave row and the layer silently stops working
+exactly where the world is densest. With it, the same 64MB covers ~4×
+the ground (galleries: **blit 5 → 22**). The cut falls BETWEEN members,
+never inside a merged run, and the joint is precisely the case THE
+BANDED JOINT WEARS AN UNDERLAP was written for.
+
+### Measured, after (same rig, same stops, same zoom)
+
+| where | bakes/frame | alloc/frame | cache | ledger | pool | blit | fps |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Undercroft landing | 0 | **0 MB** | 18 | 63.9MB | 11MB | 18 | 120 |
+| Deep Market | 0 | **0 MB** | 19 | 64.0MB | 12MB | 19 | 120 |
+| **Galleries (crash site)** | 0 | **0 MB** | 21 | 63.6MB | 18MB | 21 | 120 |
+| Long haulage | 0 | **0 MB** | 21 | 64.0MB | 10MB | 21 | 120 |
+| Blackreach | 0 | **0 MB** | 19 | 62.9MB | 13MB | 19 | 120 |
+
+- **Ledger == true bytes to two decimals at every stop**, and still
+  exact after six plane crossings (was +38.8MB each).
+- **THE WALK** (31 stops east across the galleries, 2610 frames): 511
+  bakes total = 0.2/frame, **0.58MB/frame**, blit holds 18–24 at every
+  stop. The gate does not latch shut as the ground changes.
+- **Pixel proof of no seam**: the banded frame diffed against the live
+  path (`staticLayerOn` forced false) is black everywhere except the
+  bodies that moved between grabs — player, bat, spider, swaying webs,
+  a nameplate. No vertical hairlines, no band-edge grid. The new
+  segment cuts are invisible.
+
+### For the next round
+
+`over` (declined bands) is now on the `?perf` confession line beside
+`blit`/`live`/`hot`. A steady non-zero `over` is not a defect — it is
+the gate saying this view is bigger than the budget — but it is the
+one number to read before raising `BAND_BUDGET_BYTES`. Raising it is
+now a **single safe knob**: the ledger is exact, the gate prices the
+whole ledger, and nothing re-bakes what it just baked. In the deep at
+zoom 1.8 a screen still wants ~4× the budget, so there is headroom to
+buy coverage with memory if a future round wants it — deliberately,
+with numbers, and not by accident at 20GB/s.

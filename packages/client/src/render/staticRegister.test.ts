@@ -347,6 +347,59 @@ test('ramp runs stay singleton stretches beside other bandables', () => {
   );
 });
 
+test('A SHELF, NOT A WALL: a maximal run is cut every BAND_MAX_SPAN tiles', () => {
+  const member = (tx: number) =>
+    ({ kind: RaisedKind.Wall, tile: 1, tx, ty: 0, len: 1, endX: tx, treeLike: false });
+  // A cave row: 30 tiles of unbroken rock. Left maximal it is one
+  // 11MB canvas at close zoom — the band the Undercroft crash was
+  // made of. Cut, it is a handful of shelves the budget can hold.
+  const rows = [Array.from({ length: 30 }, (_, i) => member(i))];
+  const ss = planStretches(rows, () => true, 12)[0]!;
+  assert.deepEqual(
+    ss.map((s) => [s.i0, s.i1]),
+    [
+      [0, 11],
+      [12, 23],
+      [24, 29],
+    ],
+  );
+  // Every segment is a distinct, stable identity.
+  assert.equal(new Set(ss.map((s) => s.key)).size, ss.length);
+});
+
+test('the span cut falls BETWEEN members, never inside a merged run', () => {
+  const member = (kind: RaisedKind, tx: number, len = 1) =>
+    ({ kind, tile: 1, tx, ty: 0, len, endX: tx + len - 1, treeLike: false });
+  // A member wider than the whole span may not be sliced — it opens
+  // its own segment and stands alone. (Its own canvas is then the
+  // per-band ceiling's business, not the planner's.)
+  const rows = [[member(RaisedKind.Wall, 0), member(RaisedKind.Wall, 1, 20), member(RaisedKind.Wall, 21)]];
+  const ss = planStretches(rows, () => true, 6)[0]!;
+  assert.deepEqual(
+    ss.map((s) => [s.i0, s.i1]),
+    [
+      [0, 0],
+      [1, 1],
+      [2, 2],
+    ],
+  );
+});
+
+test('a gap-merged run is measured to its EAST end, not its member count', () => {
+  const member = (tx: number) =>
+    ({ kind: RaisedKind.Wall, tile: 1, tx, ty: 0, len: 1, endX: tx, treeLike: false });
+  // Two members 20 tiles apart: cheap by count, ruinous by canvas
+  // width. The span is what the canvas costs, so they split.
+  const ss = planStretches([[member(0), member(20)]], () => true, 12)[0]!;
+  assert.deepEqual(
+    ss.map((s) => [s.i0, s.i1]),
+    [
+      [0, 0],
+      [1, 1],
+    ],
+  );
+});
+
 test('stretch keys are stable across rebuilds and distinct across rows', () => {
   const member = (tx: number, ty: number) =>
     ({ kind: RaisedKind.Wall, tile: 1, tx, ty, len: 1, endX: tx, treeLike: false });
