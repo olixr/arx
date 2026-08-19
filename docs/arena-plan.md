@@ -422,3 +422,61 @@ music shelf (a bespoke arena deck is future audio content), the
 Laurel of the Sands in the t4 purse (the exclusive law,
 test-pinned to exactly one table), and the muster walk-away chip on
 the match card (the ONE pointer-enabled control).
+
+## 9. THE SAND ANSWERS THE PAD (2026-08-18) — the room was mouse-only
+
+The epic shipped both of its surfaces pad-blind. Found by a controller
+player who opened the stakes board and could not move.
+
+**The stakes board.** The plates were plain `<button>`s with no
+`[data-nav]`, so the ONE navigable thing in the room was `dressPanel`'s
+✕ chip — the ring landed there and had nowhere to walk. Fixed in
+`ui/arenaBoard.ts` + `main.ts`:
+
+- **THE PLATE IS A STOP** — every card carries `data-nav` /
+  `data-navkey="arena:<id>"` / `data-acta`, inside the cards'
+  `[data-region]`, so the ring walks the list and the action strip
+  speaks the plate's verb (Take the sand / Locked).
+- **THE HERO LANDING** — the board names its seat on open through a
+  `requestFocus` hook (the loot tray's wire): the first plate you could
+  actually buy, never the ✕. Only in pad mode.
+- **A GATED PLATE IS STILL A STOP** — locked cards stay navigable (the
+  rank chip is part of the intrigue, §1) and refuse in place with an
+  ember flash. A hole in the walk would be worse than a no.
+- **THE BOARD IS A COUNTER TOO** — `cycleScreen` returns early while
+  the board stands, so LB/RB can't walk the screen shelf out from under
+  a room the ringmaster opened (the anchored-counter law).
+
+**The muster chip.** `arena-hud-leave` is a HUD chip, and the pad only
+captures while a room is open — during the muster nothing is. The
+window now borrows one button the way build mode does: **Ⓨ Walk away**,
+taught by `nav.showModeStrip`, pad mode only. Both the chip's
+visibility and the button read ONE truth, `canWalkAway(game)` in
+`ui/arenaHud.ts` (enrolled · phase 'muster' · not a spectator);
+build mode, the cinema, and any open room all outrank the press.
+
+**Two art wounds in the same room.** `--iron-edge` was never a token,
+so the whole `border` shorthand on `.arena-card` died at
+computed-value time and every plate had been shipping FRAMELESS — it is
+the seal's own `--line-strong` now. The round pips were filled with
+`--brass-ink`, which is the ink for text stamped ON brass (#241503):
+on the plate's dark leather the count read as nothing. Brass proper, a
+hair larger. The board widened 30rem → 36rem so "The Grand Ring" clears
+its own banner instead of ellipsing. Audit the whole file's tokens
+against `ui/kit/tokens.ts` when you touch it — an undefined var doesn't
+warn, it silently deletes the property.
+
+**Proving.** Two fake-pad harnesses (scratchpad `prove-arena-pad.mjs`,
+`prove-muster-pad.mjs`) on the shared 5173 lane. The board is raised by
+calling `game.events.onArenaBoard(...)` and the match by
+`game.handleMessage({t:'arena',…})` — the real code paths, without the
+walk to Cato. Harness truths: a fake pad MUST advance
+`Gamepad.timestamp` (a getter on `performance.now()`); the look creator
+is modal and swallows the pad until `#look-confirm` is pressed; and
+`hideStrip()` only adds `.hidden` without emptying the strip, so read
+the class, never the leftover text.
+
+**Known and deliberate:** walking DOWN off the last plate leaves the
+board for the dock rail (and LEFT comes back). That is the house
+grammar, not an arena wound — Standing and the Key Ring spill the same
+way at the bottom of their lists.
