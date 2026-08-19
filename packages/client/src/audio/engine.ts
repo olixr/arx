@@ -22,6 +22,15 @@
  * and ambience under a spoken line and release them after. The user's
  * sliders and the system's duck compose; neither ever writes a gain
  * directly, and nothing else touches bus gains at all.
+ *
+ * THE RAIL HAS LANES (music-pacing pass): more than one system wants
+ * the same bus down at the same time — a spoken line seats the
+ * ambience, and so does a sounding track. A single scalar made those
+ * two clobber each other (a line ending would throw the ambience back
+ * to full underneath the music, and a track ending would undo a duck
+ * the voice still needed). Each SOURCE now holds its own lane and the
+ * bus takes their PRODUCT, so ducks compose instead of racing and
+ * every source releases only its own hold.
  */
 
 /**
@@ -43,6 +52,12 @@ const BASE = {
 export type VolumeKind = 'master' | 'music' | 'sfx' | 'ambience' | 'voice';
 /** The duckable group buses (master carries no duck — it is the user's). */
 export type BusKind = 'sfx' | 'music' | 'tracks' | 'ambience' | 'voice';
+/**
+ * THE RAIL HAS LANES — who is holding a bus down. `voice` seats the
+ * world under a spoken line; `music` settles the ambience back under
+ * a sounding track. Each releases only its own lane.
+ */
+export type DuckSource = 'voice' | 'music';
 
 /** Which user slider drives each bus (tracks rides the music slider). */
 const SLIDER: Record<BusKind, VolumeKind> = {
@@ -90,13 +105,24 @@ export class AudioEngine {
     ambience: 1,
     voice: 1,
   };
-  /** THE DUCK RAIL — system multipliers, 1 = unducked. setDuck only. */
+  /**
+   * THE DUCK RAIL — the product of every source's hold on each bus,
+   * 1 = unducked. Derived from `duckLanes`; only setDuck moves it.
+   */
   private duckVol: Record<BusKind, number> = {
     sfx: 1,
     music: 1,
     tracks: 1,
     ambience: 1,
     voice: 1,
+  };
+  /** THE RAIL HAS LANES — each source's own hold, per bus. */
+  private duckLanes: Record<BusKind, Record<DuckSource, number>> = {
+    sfx: { voice: 1, music: 1 },
+    music: { voice: 1, music: 1 },
+    tracks: { voice: 1, music: 1 },
+    ambience: { voice: 1, music: 1 },
+    voice: { voice: 1, music: 1 },
   };
 
   /** Browsers require a user gesture before audio can start. */
@@ -167,17 +193,23 @@ export class AudioEngine {
 
   /**
    * Duck a bus toward `k` (0..1 of its normal level) or release it
-   * back to 1. `tc` shapes the move: quick seat (~0.12) under a line,
-   * slow release (~0.2) after. The only lawful system write to gains.
+   * back to 1, in `source`'s own lane. `tc` shapes the move: quick
+   * seat (~0.12) under a line, slow release (~0.2) after, long and
+   * scenic (~2.5) when the music settles the world back. The bus
+   * takes the product of all lanes, so releasing one hold never
+   * lifts another source's. The only lawful system write to gains.
    */
-  setDuck(kind: BusKind, k: number, tc = 0.12): void {
-    this.duckVol[kind] = Math.max(0, Math.min(1, k));
+  setDuck(kind: BusKind, k: number, tc = 0.12, source: DuckSource = 'voice'): void {
+    this.duckLanes[kind][source] = Math.max(0, Math.min(1, k));
+    const lanes = this.duckLanes[kind];
+    this.duckVol[kind] = lanes.voice * lanes.music;
     const ctx = this.ctx;
     const node = this.busNode(kind);
     if (!ctx || !node) return;
     node.gain.setTargetAtTime(busLevel(kind, this.userVol, this.duckVol), ctx.currentTime, tc);
   }
 
+  /** The bus's live hold — the product of every lane. */
   getDuck(kind: BusKind): number {
     return this.duckVol[kind];
   }

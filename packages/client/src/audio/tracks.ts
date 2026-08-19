@@ -19,7 +19,7 @@
  *    adventure shelf.
  *    Mood commits on a 2.5s-sustained change (no doorway stutter),
  *    then the sounding track bows out with a fade and the new mood
- *    opens after a short breath.
+ *    waits out an arrival quiet (see THE THRESHOLD IS NOT A CUE).
  *  - THE FULL DECK: each shelf is dealt as a shuffled deck — every
  *    track plays once before any repeats, and a reshuffle never leads
  *    with the track just heard. Decks persist across sessions
@@ -33,9 +33,53 @@
  *    ~3.5s bow out — on a PER-TRACK gain node. Fades never touch the
  *    bus and no two tracks ever fight over one fader, so an interrupted
  *    fade can simply become a gentle crossfade.
- *  - SILENCE IS A SECTION: the rest after a track ends is tuned per
- *    mood — towns sing again sooner; the wild and the night hold long
- *    scenic quiets where the world's own ambience carries the scene.
+ *  - SILENCE IS A SECTION, and the section is LONG. The library's
+ *    tracks run two to six minutes; a flat 12-26 second rest behind
+ *    one meant music sounded ~90% of every hour and the land never
+ *    got the floor. Three laws now hold the quiet open:
+ *
+ *      THE EARNED QUIET — a rest is not a constant, it is PAID FOR by
+ *      the music just heard: a floor, plus a share of the minutes that
+ *      actually sounded, capped. A six-minute adventure piece buys a
+ *      three-minute quiet; a two-minute town piece buys about one.
+ *      The ratio is what the ear reads, not the absolute number, so
+ *      long and short tracks both land the same way.
+ *
+ *      THE THRESHOLD IS NOT A CUE — crossing a zone line used to cut
+ *      the sounding track and open the new mood ~5 seconds later, and
+ *      crossing DURING a rest truncated that rest to 2-5 seconds. A
+ *      doorway is now an ordinary event: the old track bows out and
+ *      the new mood waits out a real arrival quiet. Only the deep
+ *      frontier still speaks fast — dread arriving late is dread
+ *      wasted, so danger is the one arrival that may cut an earned
+ *      quiet short. Every other crossing waits its turn: three
+ *      minutes of music just played does not become three more
+ *      because a zone line went by.
+ *
+ *      THE FLOOR OF SILENCE — no code path, on any route, may put
+ *      music back inside QUIET_FLOOR seconds of real silence. It is
+ *      measured from when the last track went inaudible, not from the
+ *      last boundary crossed, so pacing back and forth over a town
+ *      line cannot starve the world of its own voice.
+ *
+ *    And THE DEEP QUIET: now and then the rest simply stretches, well
+ *    past its cap. Silences that are all the same length become a
+ *    metronome the ear learns to count; one that runs long is what
+ *    makes the next bloom land.
+ *  - THE WORLD TAKES THE FLOOR: while a track sounds, the ambience
+ *    bus settles back a couple of decibels in the music lane of the
+ *    duck rail, and rises again — slowly, over a scenic time constant
+ *    that no ear can catch working — when the quiet opens. Two things
+ *    fall out of it. The mix under music gets cleaner, because the
+ *    wind and the birds stop competing with a mastered piece for the
+ *    same air. And the quiet does not merely begin, it OPENS: the
+ *    land audibly comes forward as the score steps back, which is the
+ *    whole reason the rests were lengthened. The move is small on
+ *    purpose — deep enough to feel the room change, far too shallow
+ *    to read as pumping, and the edges it rides are minutes apart.
+ *  - THE WORLD SPEAKS FIRST: a fresh world opens on ambience alone
+ *    for the better part of a minute. The first thing a player hears
+ *    should be the place, not the score.
  */
 
 import type { AudioEngine } from './engine.js';
@@ -71,22 +115,108 @@ const RESUME_REWIND_SEC = 4;
 const RESUME_MIN_REMAIN_SEC = 25;
 
 /**
- * SILENCE IS A SECTION — the rest [min, max] seconds after a track
- * ends naturally, per mood. Towns feel lived-in and sing again sooner;
- * the wild holds long scenic quiets; the night longer still — the dark
- * belongs to the crickets first and the music second; the dungeon lets
- * the dark breathe between pieces but never goes quiet for long (its
- * ambience is thinner than the surface's, so the shelf carries more of
- * the scene); the deep frontier keeps its dread close.
+ * THE EARNED QUIET — how long the world holds the floor after a piece
+ * of music, per mood:
+ *   floor — the shortest rest this mood ever gives, in seconds.
+ *   share — how much of the music just HEARD is paid back as silence
+ *           (0.5 = a two-minute piece buys a one-minute quiet).
+ *   cap   — the ceiling on the earned part (THE DEEP QUIET may pass it).
+ *
+ * The characters: towns are lived-in and sing again soonest of the
+ * surface moods, but a town is also where a player stands still, so
+ * its quiet has to be real. The wild is scenery — the whole point of
+ * being out there is the wind, the birds, the far water. The night
+ * belongs to the crickets and the owl first and the score second. The
+ * dungeon's own ambience is thinner than the surface's, so its shelf
+ * carries more of the scene and stays closer. The deep frontier keeps
+ * its dread close and its quiets short: fear is the one mood that
+ * loses by waiting.
+ *
+ * The calibration, so a later pass has the reasoning and not just the
+ * digits: the shelves average three minutes a track and run to six, so
+ * a FLAT rest cannot serve both ends — 45 seconds behind a two-minute
+ * town piece is a breath, behind a six-minute adventure piece it is a
+ * rounding error. Tuned against the library's real durations these
+ * numbers put the shortest rest on the shortest track at ~60s (the
+ * asked-for window), the typical rest near two minutes, and the world
+ * on the floor 35-45% of every hour — where it was 10%.
  */
-const REST: Record<TrackMood, readonly [number, number]> = {
-  town: [12, 26],
-  adventure: [24, 55],
-  night: [30, 70],
-  dungeon: [18, 42],
-  danger: [8, 18],
+const REST: Record<TrackMood, { floor: number; share: number; cap: number }> = {
+  town: { floor: 32, share: 0.32, cap: 110 },
+  adventure: { floor: 36, share: 0.36, cap: 150 },
+  night: { floor: 42, share: 0.42, cap: 170 },
+  dungeon: { floor: 28, share: 0.28, cap: 100 },
+  danger: { floor: 10, share: 0.08, cap: 30 },
 };
 
+/**
+ * THE FLOOR OF SILENCE — the hard minimum of real, measured quiet
+ * between any two tracks, whatever route asked for the next one.
+ * Every path through the player is clamped by this.
+ */
+const QUIET_FLOOR: Record<TrackMood, number> = {
+  town: 30,
+  adventure: 34,
+  night: 38,
+  dungeon: 30,
+  danger: 8,
+};
+
+/**
+ * THE THRESHOLD IS NOT A CUE — the [min, max] arrival quiet after a
+ * mood change, before the new shelf speaks. Long enough that the new
+ * country's own sound establishes itself first; short enough that the
+ * arrival still feels answered.
+ */
+const ARRIVAL: Record<TrackMood, readonly [number, number]> = {
+  town: [24, 48],
+  adventure: [36, 72],
+  night: [40, 80],
+  dungeon: [22, 45],
+  danger: [5, 12],
+};
+
+/**
+ * THE WORLD TAKES THE FLOOR — where the ambience bus sits while a
+ * track sounds (1 = its shipped level, kept for the quiet), and the
+ * time constant it moves on: long and scenic, so the land comes
+ * forward like weather rather than like a fader.
+ */
+const AMBIENCE_UNDER_MUSIC = 0.8;
+const AMBIENCE_SETTLE_TC = 2.5;
+
+/** THE WORLD SPEAKS FIRST — the opening quiet of a fresh session. */
+const OPENING_QUIET: readonly [number, number] = [30, 66];
+
+/**
+ * THE DEEP QUIET — the chance a rest simply runs long, and by how
+ * much. Never in danger country, where a hole in the music reads as a
+ * bug rather than as breath.
+ */
+const DEEP_QUIET_CHANCE = 0.22;
+const DEEP_QUIET_STRETCH: readonly [number, number] = [1.5, 2.2];
+
+/**
+ * The rest a mood owes after `heardSec` of music actually sounded.
+ * Pure, so the pacing law can be pinned by tests instead of by ear.
+ * `rand` is drawn twice: once for the ±18% breath on the earned rest,
+ * once for THE DEEP QUIET.
+ */
+export function restAfter(mood: TrackMood, heardSec: number, rand: () => number): number {
+  const law = REST[mood];
+  const earned = Math.min(law.cap, law.floor + Math.max(0, heardSec) * law.share);
+  let rest = earned * (0.82 + rand() * 0.36);
+  if (mood !== 'danger' && rand() < DEEP_QUIET_CHANCE) {
+    const [lo, hi] = DEEP_QUIET_STRETCH;
+    rest *= lo + rand() * (hi - lo);
+  }
+  return Math.max(QUIET_FLOOR[mood], rest);
+}
+
+/** A draw from a [min, max] second window. */
+function drawWindow(w: readonly [number, number], rand: () => number): number {
+  return w[0] + rand() * (w[1] - w[0]);
+}
 /**
  * Per-track loudness trims — the library is normalized to its own
  * quietest track (EBU R128 integrated loudness, measured with ffmpeg
@@ -200,6 +330,27 @@ export class TrackPlayer {
   current: string | null = null;
 
   private nextAt = 0;
+  /**
+   * THE FLOOR OF SILENCE — ctx time at which the last track became
+   * genuinely inaudible (its bow-out finished), i.e. when real quiet
+   * began. Every start is gated on this, not on any per-frame event,
+   * so no amount of boundary-crossing can shorten a silence.
+   */
+  private quietSince = 0;
+  /** THE EARNED QUIET — ctx time the sounding track started sounding. */
+  private soundingSince = 0;
+  /**
+   * AN EARNED QUIET IS NOT REFUNDABLE — true while the pending rest
+   * was paid for by music that actually finished sounding. Such a
+   * rest stands whatever lines the player crosses; only an ARRIVAL or
+   * OPENING quiet (nothing heard yet, nothing owed) may be re-aimed
+   * by a crossing.
+   */
+  private quietEarned = false;
+  /** THE WORLD TAKES THE FLOOR — the hold last written, so the
+   * per-frame update schedules automation only when it actually
+   * changes rather than once a frame forever. */
+  private ambHold = 1;
   private candidate: TrackMood | null = null;
   private candidateSince = 0;
   private decks: Partial<Record<TrackMood, string[]>>;
@@ -223,10 +374,19 @@ export class TrackPlayer {
     if (!ctx || !this.engine.tracks) return;
     const t = ctx.currentTime;
     if (!this.booted) {
-      // Let the world's own sounds greet the player first.
+      // THE WORLD SPEAKS FIRST — a fresh world opens on its own voice
+      // alone. The wind, the birds, the far water get the better part
+      // of a minute before the score is allowed an opinion. (Dread
+      // country is the exception: it announces itself.)
       this.booted = true;
       this.mood = moodFor(w, hours, dangerTier);
-      this.nextAt = t + 4 + Math.random() * 5;
+      this.quietSince = t;
+      this.quietEarned = false;
+      this.nextAt =
+        t +
+        (this.mood === 'danger'
+          ? drawWindow(ARRIVAL.danger, Math.random)
+          : drawWindow(OPENING_QUIET, Math.random));
     }
 
     // Mood commitment with hysteresis.
@@ -242,22 +402,54 @@ export class TrackPlayer {
       this.candidate = null;
     }
 
-    if (this.state === 'silent' && t >= this.nextAt) this.play(t);
+    // THE FLOOR OF SILENCE is the last word on every route in: a
+    // scheduled start still waits out the mood's minimum real quiet.
+    const quietOwed = this.quietSince + QUIET_FLOOR[this.mood];
+    if (this.state === 'silent' && t >= this.nextAt && t >= quietOwed) this.play(t);
+
+    // THE WORLD TAKES THE FLOOR. The ambience settles under a sounding
+    // track and comes back up when the quiet opens — in the player's
+    // OWN lane of the duck rail, so a spoken line's duck and this one
+    // compose instead of releasing each other.
+    const ambWant = this.state === 'playing' ? AMBIENCE_UNDER_MUSIC : 1;
+    if (ambWant !== this.ambHold) {
+      this.ambHold = ambWant;
+      this.engine.setDuck('ambience', ambWant, AMBIENCE_SETTLE_TC, 'music');
+    }
   }
 
   private switchTo(mood: TrackMood, t: number): void {
     const from = this.mood;
     this.mood = mood;
     this.candidate = null;
+    // THE THRESHOLD IS NOT A CUE. A doorway used to be a downbeat:
+    // playing → the next track opened ~5s later, silent → a running
+    // quiet was truncated to 2-5s. Between them, a player who walked
+    // in and out of a town heard music almost without pause. Now a
+    // crossing buys the new country an arrival quiet of its own, and
+    // a crossing DURING a rest may only pull the rest in as far as
+    // that same window — never past THE FLOOR OF SILENCE, which is
+    // measured from real silence and so cannot be re-rolled by
+    // pacing the line.
+    const arrival = t + drawWindow(ARRIVAL[mood], Math.random);
     if (this.state === 'playing') {
+      // A track cut mid-flight bought nothing — the arrival quiet is
+      // the whole rest, and it is re-aimable like any other.
       this.fadeOut(from, t);
-      // Arrival deserves music — a breath, not a full rest. The old
-      // track's tail may still be sounding when the new one blooms;
-      // per-track gains make that overlap a gentle crossfade.
-      this.nextAt = t + FADE_OUT_SEC + 1 + Math.random() * 3;
-    } else {
-      this.nextAt = Math.min(this.nextAt, t + 2 + Math.random() * 3);
+      this.quietEarned = false;
+      this.nextAt = Math.max(arrival, t + FADE_OUT_SEC + 1);
+    } else if (!this.quietEarned || mood === 'danger') {
+      // Dread is the one arrival that outranks an earned quiet: walking
+      // into dire-wolf country three minutes deep in a rest must not
+      // mean walking in silent. Every other crossing waits its turn.
+      this.nextAt = Math.min(this.nextAt, arrival);
     }
+    // …and if the pending quiet WAS earned, the crossing changes which
+    // shelf speaks next but not when. Three minutes of music just
+    // played; a doorway does not entitle the player to three more.
+    // Without this, anyone actually travelling — the exact "out
+    // exploring" case — re-armed the score at every zone line and
+    // heard music every ~40 seconds no matter how long the rests got.
   }
 
   /**
@@ -282,6 +474,8 @@ export class TrackPlayer {
       g.setTargetAtTime(0, t + FADE_OUT_SEC * 0.45, FADE_OUT_SEC * 0.16);
       this.schedulePause(name, m.el, FADE_OUT_SEC + 0.5);
     }
+    // Real quiet starts where the bow-out lands, not where it began.
+    this.quietSince = t + FADE_OUT_SEC;
     this.activeEl = null;
     this.current = null;
     this.state = 'silent';
@@ -379,11 +573,17 @@ export class TrackPlayer {
           this.state = 'silent';
           this.current = null;
           this.activeEl = null;
+          // Nothing sounded, so nothing was earned — but the retry is
+          // still a start, and THE FLOOR OF SILENCE gates it.
+          this.quietSince = now;
+          this.quietEarned = false;
           this.nextAt = now + 6;
         }
       });
     }
     this.easeUp(gain.gain, t, TRACK_TRIM[name] ?? 1, FADE_IN_SEC);
+    this.soundingSince = t;
+    this.quietEarned = false;
     this.activeEl = m.el;
     this.current = name;
     this.state = 'playing';
@@ -403,8 +603,13 @@ export class TrackPlayer {
     this.activeEl = null;
     this.current = null;
     this.state = 'silent';
-    const [lo, hi] = REST[this.mood];
-    this.nextAt = this.engine.now() + lo + Math.random() * (hi - lo);
+    // THE EARNED QUIET — the rest is bought by the music that actually
+    // sounded, so a six-minute piece and a two-minute one leave the
+    // same RATIO of world to score behind them.
+    const now = this.engine.now();
+    this.quietSince = now;
+    this.quietEarned = true;
+    this.nextAt = now + restAfter(this.mood, now - this.soundingSince, Math.random);
   }
 
   private saveDeckStore(): void {

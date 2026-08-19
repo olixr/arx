@@ -3,7 +3,7 @@ import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
-import { TRACK_LIBRARY, drawTrack, moodFor } from './tracks.js';
+import { TRACK_LIBRARY, drawTrack, moodFor, restAfter } from './tracks.js';
 import { zoneWeights } from './zones.js';
 
 const MUSIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../public/music');
@@ -92,4 +92,48 @@ test('a stale persisted deck drops tracks the shelf no longer carries', () => {
   const d = drawTrack(['a', 'b'], ['retired_track'], null, () => 0);
   assert.ok(['a', 'b'].includes(d.name));
   assert.ok(!d.deck.includes('retired_track'));
+});
+
+test('THE FLOOR OF SILENCE: no mood, no track length, ever rests under 30s', () => {
+  // rand ≈ 0 is the shortest draw the law can produce.
+  for (const mood of ['town', 'adventure', 'night', 'dungeon'] as const) {
+    for (const heard of [0, 30, 120, 364]) {
+      const r = restAfter(mood, heard, () => 0);
+      assert.ok(r >= 30, `${mood} after ${heard}s rested only ${r.toFixed(1)}s`);
+    }
+  }
+});
+
+test('THE EARNED QUIET: a longer piece buys a longer rest, and the cap holds', () => {
+  const half = restAfter('adventure', 120, () => 0.5);
+  const full = restAfter('adventure', 360, () => 0.5);
+  assert.ok(full > half, 'six minutes must buy more quiet than two');
+  // rand 0.5 takes the mid breath (×1.0) and misses THE DEEP QUIET.
+  const huge = restAfter('adventure', 100_000, () => 0.5);
+  assert.ok(huge <= 210 * 1.001, `the earned rest is capped, got ${huge.toFixed(1)}s`);
+});
+
+test('the wild and the night hold the floor longer than a town does', () => {
+  const at = (m: 'town' | 'adventure' | 'night') => restAfter(m, 180, () => 0.5);
+  assert.ok(at('night') > at('adventure'), 'the night belongs to the crickets first');
+  assert.ok(at('adventure') > at('town'), 'the wild is scenery');
+});
+
+test('dread country keeps its quiets short — fear loses by waiting', () => {
+  assert.ok(restAfter('danger', 200, () => 0.999) < 45);
+  // THE DEEP QUIET never fires in danger: even a rand that always
+  // rolls the stretch may not open a hole in a boss fight.
+  assert.ok(restAfter('danger', 200, () => 0) <= 30);
+});
+
+test('the pacing law lands the intended ratio of world to score', () => {
+  // The complaint that drove this: ~90% of every hour had music under
+  // it. With the library's real average track lengths, every surface
+  // mood must now sit near or under two-thirds.
+  const AVG: Record<string, number> = { town: 181, adventure: 229, night: 170, dungeon: 182 };
+  for (const [mood, len] of Object.entries(AVG)) {
+    const rest = restAfter(mood as 'town', len, () => 0.5);
+    const duty = len / (len + rest);
+    assert.ok(duty < 0.7, `${mood} still plays music ${(duty * 100).toFixed(0)}% of the time`);
+  }
 });

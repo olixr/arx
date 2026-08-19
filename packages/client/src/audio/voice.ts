@@ -384,9 +384,9 @@ export class VoicePlayer {
     // setTargetAtTime reaches ~95% at 3τ — the release dial names the
     // full journey, so the time constant is a third of it.
     const tc = on ? DUCK_SEAT_TC : Math.max(0.05, this.dials.duckReleaseMs / 3000);
-    this.engine.setDuck('music', on ? this.dials.duckLine : 1, tc);
-    this.engine.setDuck('tracks', on ? this.dials.duckLine : 1, tc);
-    this.engine.setDuck('ambience', on ? this.dials.duckAmbience : 1, tc);
+    this.engine.setDuck('music', on ? this.dials.duckLine : 1, tc, 'voice');
+    this.engine.setDuck('tracks', on ? this.dials.duckLine : 1, tc, 'voice');
+    this.engine.setDuck('ambience', on ? this.dials.duckAmbience : 1, tc, 'voice');
   }
 
   /**
