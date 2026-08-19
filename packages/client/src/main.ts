@@ -18,7 +18,7 @@ import { SwapSlot } from './ui/swapSlot.js';
 import { BeltSlot, resolveBelt, beltPin } from './ui/beltSlot.js';
 import { BossBanner } from './ui/bossBanner.js';
 import { ArenaBoard } from './ui/arenaBoard.js';
-import { ArenaHud } from './ui/arenaHud.js';
+import { ArenaHud, canWalkAway } from './ui/arenaHud.js';
 import { raiseHerald } from './ui/herald.js';
 import { CompanionPlaque } from './ui/companionPlaque.js';
 import { CompanionHall } from './ui/companionHall.js';
@@ -3687,6 +3687,16 @@ function frame(now: number): void {
           ['kb-glyph', bindings.kbBadge('dodge') || 'Shift', 'Cancel'],
         ]);
       }
+    } else if (canWalkAway(game) && nav.mode === 'pad') {
+      // THE MUSTER TEACHES ITS DOOR: the walk-away is a HUD chip, and a
+      // chip is a mouse's affordance — a pad has no cursor to reach it
+      // with and no open room to capture. So the muster window borrows
+      // one button, the way build mode borrows its verbs, and the strip
+      // says which. Only while the gates are still up, and never for a
+      // spectator — canWalkAway is the one truth the chip reads too.
+      nav.showModeStrip('arena:muster', [
+        ['pad-glyph y', padGlyph(3).text, 'Walk away'],
+      ]);
     } else {
       nav.clearModeStrip();
     }
@@ -3872,6 +3882,14 @@ function frame(now: number): void {
     if (b.pressed) padBtns.add(i);
   });
   const padEdge = (i: number): boolean => padBtns.has(i) && !padPrevBtns.has(i);
+  // THE ONE CONTROL on a pad: Ⓨ leaves the claim while the muster
+  // clock runs. Gated on the same canWalkAway the chip is gated on, so
+  // the button and the strip can never promise different things; build
+  // mode outranks it (Ⓨ is the demolisher there), a cinema owns every
+  // press it sees, and an open room means the pad is the ring's.
+  if (!buildMode && !cinema.open && !uiOpen && input.padPrimary() && canWalkAway(game) && padEdge(3)) {
+    game.arenaLeave();
+  }
   if (buildMode && game.ownEid !== null) {
     const pos = game.predictor.pos;
     let tx: number;

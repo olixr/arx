@@ -1,6 +1,18 @@
 import type { ClientGame } from '../game/clientGame.js';
 
 /**
+ * THE ONE CONTROL, ONE TRUTH: is the walk-away on offer? A member may
+ * leave before the gates come down, and only then — never a spectator,
+ * never mid-card. The HUD chip's visibility and the pad's Ⓨ verb both
+ * read THIS function, so the button and the thing you can see can
+ * never promise different things.
+ */
+export function canWalkAway(game: ClientGame): boolean {
+  const m = game.arenaMatch;
+  return m !== null && m.phase === 'muster' && m.specAt === undefined;
+}
+
+/**
  * THE MATCH CARD (docs/arena-plan.md) — the arena HUD while a card
  * holds you: the card's name, one pip per round (past / now), and
  * the phase's own read — the muster and breather clocks as a draining
@@ -72,7 +84,7 @@ export class ArenaHud {
         this.key = '';
         this.phaseSeen = '';
         this.spanMs = 1;
-        this.root.classList.remove('up', 'won', 'lost', 'spec');
+        this.root.classList.remove('up', 'won', 'lost', 'spec', 'leavable');
       }
       return;
     }
@@ -139,6 +151,6 @@ export class ArenaHud {
     // THE ONE CONTROL: walking away is offered to enrolled members
     // during the muster alone — never to spectators, never mid-card
     // (mid-card the door is the same one it always was: the fight).
-    this.root.classList.toggle('leavable', live.phase === 'muster' && !spec);
+    this.root.classList.toggle('leavable', canWalkAway(game));
   }
 }
