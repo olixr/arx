@@ -253,7 +253,7 @@ export function basinFieldAt(seed: number, tx: number, ty: number): number {
   // every authored border, future ones included.
   return (
     f -
-    Math.max(0, 1 - distFromTown / 240) * 0.6 -
+    Math.max(0, 1 - distFromTown / 200) * 0.6 -
     fieldApronAt(tx, ty, 64) * 0.6 -
     zoneFieldDampAt(tx, ty, EDGE_BASIN_DAMP_RANGE) * 0.6
   );

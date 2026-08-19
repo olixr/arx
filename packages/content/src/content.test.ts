@@ -1190,7 +1190,7 @@ test('dawnmead: awakening anchors, stations, pens, and the lane seam hold', () =
   // SEVEN standing stones close the Waking Ring (THE DAWN COMES OPEN);
   // the five that have always stood kept their world tiles.
   for (const [sx, sy] of [[78, 108], [74, 110], [82, 109], [74, 115], [81, 116], [72, 112], [85, 113]] as const) {
-    assert.equal(at(sx, sy), Tile.Rock, `ring stone missing at ${sx},${sy}`);
+    assert.equal(at(sx, sy), Tile.PillarStone, `ring stone missing at ${sx},${sy}`);
   }
   const counts = new Map<number, number>();
   for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);

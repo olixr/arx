@@ -58,13 +58,13 @@ nobody in Dawnmead explains it, ever (the law stands).
 |---|---|
 | `geography.ts` `DAWNMEAD_RECT` | → `{x:-160, y:-64, w:192, h:224}` + rewrite the doc block |
 | `geography.ts` `first_road` | drop pts[0..3]; new head **(32,48)**, then (36,66) (40,82) (44,96) → the old chain |
-| `geography.ts` `old_road` | drop pts[0..4]; new head **(−20,160)**, then (−56,168) (−96,174) (−136,182) → (−172,188) |
-| `geography.ts` `hunters_trail` | drop pts[0..2]; new head **(−100,−65)**, then (−108,−74) (−112,−84) → (−118,−104) |
+| `geography.ts` `old_road` | drop pts[0..4]; new head **(−52,160)**, then (−80,168) (−112,176) (−144,184) → (−172,188) |
+| `geography.ts` `hunters_trail` | drop pts[0..2]; new head **(−100,−65)**, then (−104,−70) (−110,−80) → (−118,−104) |
 | `danger.ts` | **`safeR` stays 64.** The rect already excludes POIs, finds and strongholds; the one real leak is the ambient wild spawner, fixed at its source (below). Raising `safeR` would soften the First Road ambush from tier 2 to tier 1 — the corridor's whole lesson. |
 | `gameServer.ts` `vetWildAnchor` | **add a zone-rect refusal** — refuse any wild anchor inside a registered surface zone rect. Closes the leak for every town, costs the danger field nothing. |
 | `npcs.ts` `TOWN_SPAWNS` | all nine entries move clear of the grown hems (§6) |
-| `worldgen.ts` | plateau radial 130 → **176**, basin radial 200 → **240** (the grown corners sit at 147; a mesa cresting on a hem would be flattened inside the rect and left standing outside it) |
-| `audio/zones.ts` | Dawnmead row → **`{x:-64, y:48, full:112, fade:168}`** (rect centre is (−64,48) — the anchor IS the centre of the new rect, which the old rect never managed) |
+| `worldgen.ts` | plateau radial 130 → **176** (the grown corners sit at 147; a mesa cresting on a hem would be flattened inside the rect and left standing outside it). The basin radial STAYS 200 — it already clears 147 by 53 tiles. |
+| `audio/zones.ts` | Dawnmead row → **`{x:-64, y:48, full:112, fade:184}`** — the rect centre IS the anchor, and 184 is the tightest fade keeping every tile of a 147-half-diagonal rect town-dominant |
 | `editor2/dialogs.ts` | the stale rect in the tip copy |
 | `pois.test.ts`, `strongholds.test.ts` ×3 | the stale `{x:-96,y:16,w:96,h:64}` literal |
 

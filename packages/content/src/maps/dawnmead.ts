@@ -115,15 +115,30 @@ export function buildDawnmead(): ZoneDef {
   // tends it. The five that have always stood kept their world tiles.
   // ================================================================
   b.fillEllipse(78.5, 112.5, 7.5, 6, Tile.StoneFloor);
-  b.set(78, 108, Tile.Rock); // N   world (-82,44)
-  b.set(74, 110, Tile.Rock); // NW  world (-86,46)
-  b.set(82, 109, Tile.Rock); // NE  world (-78,45)
-  b.set(74, 115, Tile.Rock); // SW  world (-86,51)
-  b.set(81, 116, Tile.Rock); // SE  world (-79,52)
-  b.set(72, 112, Tile.Rock); // W   world (-88,48) — added, closes the ring
-  b.set(85, 113, Tile.Rock); // E   world (-75,49) — added, closes the ring
-  b.setDetail(76, 111, Detail.Pebbles).setDetail(80, 114, Detail.Pebbles);
-  b.setDetail(78, 110, Detail.Pebbles).setDetail(77, 115, Detail.Pebbles);
+  // The pad is OLD: grass has taken the cracks back at its rim, and
+  // nobody has ever re-laid it. A ruled ellipse reads as pavement.
+  for (const [gx, gy] of [
+    [72, 108], [85, 109], [71, 116], [86, 117], [77, 106], [80, 119], [87, 111],
+  ] as const) b.set(gx, gy, Tile.Grass);
+  // SEVEN STONES. They are standing stones, not boulders — the first
+  // silhouette in the game reads as a ring of pillars against sky.
+  b.set(78, 108, Tile.PillarStone); // N   world (-82,44)
+  b.set(74, 110, Tile.PillarStone); // NW  world (-86,46)
+  b.set(82, 109, Tile.PillarStone); // NE  world (-78,45)
+  b.set(74, 115, Tile.PillarStone); // SW  world (-86,51)
+  b.set(81, 116, Tile.PillarStone); // SE  world (-79,52)
+  b.set(72, 112, Tile.PillarStone); // W   world (-88,48) — added, closes the ring
+  b.set(85, 113, Tile.PillarStone); // E   world (-75,49) — added, closes the ring
+  // Two more lie where they fell, outside the ring. Nobody set them up
+  // again; nobody knows who set them up the first time.
+  b.set(68, 118, Tile.Rock).set(89, 106, Tile.Rock);
+  // The worn ring inside the stones — fifty years of first footsteps.
+  for (const [px, py] of [
+    [76, 110], [80, 110], [82, 112], [80, 115], [76, 115], [74, 112], [78, 111],
+    [78, 114], [77, 112], [79, 113],
+  ] as const) b.setDetail(px, py, Detail.Pebbles);
+  b.setDetail(75, 113, Detail.Flowers).setDetail(83, 115, Detail.Flowers);
+  b.setDetail(81, 107, Detail.Flowers);
   // Flowers crowd every crack and the verge beyond.
   for (const [fx, fy] of [
     [75, 108], [80, 107], [83, 112], [79, 118], [73, 117], [70, 110], [84, 116],
@@ -203,33 +218,43 @@ export function buildDawnmead(): ZoneDef {
   // bell, the board, the great oak, and four signed ways. The middle
   // stays EMPTY: a green is the space, not the props around it.
   // ================================================================
-  b.fillRect(108, 106, 28, 17, Tile.StoneFloor);
+  // A GREEN IS GRASS. Stone only where feet actually wear it: the
+  // well's court, and the lane the whole village already walks.
+  b.fillEllipse(114.5, 108.5, 5.5, 4, Tile.StoneFloor);
   b.set(114, 108, Tile.Well);
   b.set(111, 107, Tile.TownBell);
   b.set(117, 107, Tile.NoticeBoard);
-  b.set(133, 108, Tile.TreeOak); // the great oak, north-east, clear of every door
-  b.set(110, 110, Tile.StoneBench);
-  b.set(133, 116, Tile.StoneBench);
-  b.set(126, 108, Tile.StoneBench);
+  b.set(112, 110, Tile.StoneBench).set(117, 110, Tile.StoneBench);
+  b.setDetail(114, 110, Detail.Pebbles).setDetail(116, 106, Detail.Pebbles);
+  b.setDetail(112, 106, Detail.Pebbles);
+  // The great oak on the north-east grass, and the seats under it.
+  b.set(133, 108, Tile.TreeOak);
+  b.set(131, 110, Tile.StoneBench);
+  b.set(127, 118, Tile.Bench).set(134, 116, Tile.Bench);
   b.set(108, 106, bannerPoleTile(3)).set(135, 106, bannerPoleTile(5));
   b.set(108, 122, bannerPoleTile(8)).set(135, 122, bannerPoleTile(1));
   b.set(109, 109, Tile.LampPost).set(134, 109, Tile.LampPost);
   b.set(109, 119, Tile.LampPost).set(134, 119, Tile.LampPost);
-  b.set(112, 118, Tile.StreetPlanter).set(119, 118, Tile.StreetPlanter);
-  b.set(126, 118, Tile.StreetPlanter).set(132, 118, Tile.StreetPlanter);
-  b.setDetail(115, 115, Detail.Pebbles).setDetail(128, 113, Detail.Pebbles);
-  b.setDetail(122, 119, Detail.Pebbles);
-  b.sign(124, 109, 'DAWNMEAD', ['The village that raises wakers.', 'Learn your hands, then the road.'], Tile.Signpost);
-  // The four ways, each saying what it is before you take it.
-  b.sign(119, 106, 'THE HOMESTEAD WAY', ['Brammel keeps the field,', 'Sorrel the stalls.'], Tile.Signpost);
-  b.sign(110, 116, 'THE PROVING WAY', ['Blade, bow and spark.', 'Halla musters at seven.'], Tile.Signpost);
-  b.sign(129, 120, "THE COOK'S WAY", ['Berrit feeds all comers.', 'The table is long.'], Tile.Signpost);
-  b.sign(137, 110, 'THE FIRST ROAD', ['Amberford, a day east.', 'Keep to the lamps.'], Tile.Signpost);
-  // The market pitch: two stalls on the green's east half on market
-  // days, and the produce stand that never comes down.
-  b.set(129, 104, Tile.MarketStall).set(130, 104, Tile.MarketStall);
-  b.set(132, 104, Tile.ProduceStand);
-  b.set(128, 103, Tile.CrateGoods);
+  // Planters where the lane meets the grass — staggered, never ruled.
+  b.set(111, 115, Tile.StreetPlanter).set(120, 116, Tile.StreetPlanter);
+  b.set(125, 109, Tile.StreetPlanter).set(132, 114, Tile.StreetPlanter);
+  b.set(113, 120, Tile.FlowerBox).set(129, 121, Tile.FlowerBox);
+  for (const [fx, fy] of [
+    [110, 113], [116, 118], [122, 107], [128, 116], [131, 120], [119, 121], [135, 112],
+  ] as const) b.setDetail(fx, fy, Detail.Flowers);
+  b.sign(120, 110, 'DAWNMEAD', ['The village that raises wakers.', 'Learn your hands, then the road.'], Tile.Signpost);
+  // Three ways, each saying what it is before you take it — signed at
+  // the mouth it belongs to, never all in one eyeful. (The First Road
+  // keeps its own board out at the gate, where leaving happens.)
+  b.sign(124, 106, 'THE HOMESTEAD WAY', ['Brammel keeps the field,', 'Sorrel the stalls.'], Tile.Signpost);
+  b.sign(105, 115, 'THE PROVING WAY', ['Blade, bow and spark.', 'Halla musters at seven.'], Tile.Signpost);
+  b.sign(125, 121, "THE COOK'S WAY", ['Berrit feeds all comers.', 'The table is long.'], Tile.Signpost);
+  // The market pitch on the green's own grass — two stalls shoulder to
+  // shoulder, the produce stand that never comes down, and the crate
+  // somebody keeps meaning to take home.
+  b.set(128, 104, Tile.MarketStall).set(129, 104, Tile.MarketStall);
+  b.set(131, 104, Tile.ProduceStand);
+  b.set(126, 105, Tile.CrateGoods).set(132, 106, Tile.BarrelStack);
 
   // ================================================================
   // THE FIVE STONES — the inn, named for the only thing every guest
@@ -317,6 +342,8 @@ export function buildDawnmead(): ZoneDef {
     b.set(x + 1, y + 1, Tile.Bed).set(x + 1, y + 2, Tile.Bed);
     b.set(x + 6, y + 1, Tile.Hearth);
     b.set(x + 4, y + 4, Tile.Table).set(x + 5, y + 4, Tile.Chair).set(x + 4, y + 5, Tile.Chair);
+    b.set(x + 6, y + 6, Tile.WoodStool);
+    b.set(x + 2, y + 5, Tile.BasketStack);
     b.setDetail(x + 4, y + 6, Detail.Doormat);
     b.set(x + 3, y + 8, Tile.Dirt);
     if (kind === 'trim') {
@@ -325,7 +352,7 @@ export function buildDawnmead(): ZoneDef {
       b.set(x - 1, y + 7, Tile.FlowerBox).set(x + 8, y + 7, Tile.FlowerBox);
       b.setDetail(x + 6, y + 7, trellisDetail(0));
     } else if (kind === 'worn') {
-      b.set(x + 1, y + 5, Tile.Crate).set(x + 6, y + 4, Tile.Barrel);
+      b.set(x + 3, y + 2, Tile.Crate).set(x + 6, y + 5, Tile.Barrel);
       b.set(x + 8, y + 4, Tile.Woodpile);
       b.set(x - 1, y + 5, Tile.BroomAndPail);
       b.setDetail(x + 1, y + 8, Detail.Sawdust);
@@ -338,9 +365,14 @@ export function buildDawnmead(): ZoneDef {
       b.setDetail(x + 5, y + 7, trellisDetail(2));
     }
   };
-  cottage(85, 84, 'green');
-  cottage(98, 84, 'worn');
-  cottage(72, 84, 'trim');
+  // Set back from each other by a course or two: three families, three
+  // decisions about where the door should face the morning.
+  cottage(85, 83, 'green');
+  cottage(98, 85, 'worn');
+  cottage(72, 82, 'trim');
+  b.set(94, 88, Tile.Apiary);
+  b.set(94, 91, Tile.ChoppingBlock);
+  b.setDetail(93, 89, Detail.Flowers).setDetail(95, 90, Detail.Tuft);
   b.set(107, 92, Tile.StreetLantern);
   b.set(95, 92, Tile.StreetLantern);
   b.setDetail(93, 91, Detail.Pebbles).setDetail(105, 91, Detail.Pebbles);
@@ -416,6 +448,8 @@ export function buildDawnmead(): ZoneDef {
   b.set(135, 43, Tile.ToolRack);
   b.set(133, 39, Tile.FruitPress);
   b.set(126, 39, Tile.Crate).set(127, 39, Tile.BarrelStack);
+  b.set(130, 37, Tile.HayBale).set(131, 37, Tile.HayBale);
+  b.set(126, 43, Tile.Wheelbarrow).set(131, 41, Tile.GrainSacks);
   b.setDetail(128, 42, Detail.Straw).setDetail(131, 44, Detail.Straw);
   b.setDetail(125, 44, Detail.Straw).setDetail(133, 37, Detail.Straw);
   b.setDetail(124, 34, wallArmsDetail(1));
@@ -427,7 +461,15 @@ export function buildDawnmead(): ZoneDef {
   b.set(133, 47, awningTile('board', 6)).set(134, 47, awningTile('board', 6));
   b.set(116, 49, Tile.HandCart);
   b.set(133, 49, Tile.ChoppingBlock).set(134, 49, Tile.Woodpile);
+  b.set(120, 50, Tile.WaterTrough);
+  b.set(126, 49, Tile.BarrelStack).set(130, 50, Tile.Wheelbarrow);
   b.setDetail(122, 49, Detail.Pebbles).setDetail(128, 50, Detail.Straw);
+  b.setDetail(118, 48, Detail.Straw).setDetail(131, 48, Detail.Pebbles);
+  // The strip between house and barn: the kitchen plot and the line
+  // where the washing goes out. A gap is not a garden until you plant it.
+  b.set(117, 38, Tile.HerbPlanter).set(117, 41, Tile.GrowingFrame);
+  b.set(119, 36, Tile.BasketStack).set(119, 43, Tile.BroomAndPail);
+  b.setDetail(118, 40, Detail.Flowers).setDetail(118, 37, Detail.Flowers);
   // The coop: rail-penned dirt, straw, the gap in the run IS the door.
   b.fillRect(101, 52, 13, 9, Tile.Dirt);
   for (let x = 100; x <= 114; x++) b.set(x, 51, Tile.RailWood);
@@ -519,18 +561,22 @@ export function buildDawnmead(): ZoneDef {
   b.setDetail(144, 40, sillHerbsDetail(0));
   // The yard: everything a river gives you, and everything you give
   // back to it. The bench is where the whole trade actually happens.
-  b.fillRect(140, 42, 16, 12, Tile.Dirt);
+  b.fillRect(140, 42, 15, 11, Tile.Dirt);
   b.set(141, 43, Tile.MendingBench);
   b.set(143, 43, Tile.NetFrame).set(145, 43, Tile.NetFrame);
-  b.set(141, 46, Tile.FishRack).set(141, 48, Tile.DryingRack);
-  b.set(143, 48, Tile.SmokeTripod);
-  b.set(145, 46, Tile.CatchBasket).set(146, 48, Tile.FishTrap);
-  b.set(150, 44, Tile.HarpoonRack);
-  b.set(150, 47, Tile.LurePole);
-  b.set(152, 50, Tile.BeachedSkiff);
-  b.set(150, 52, Tile.Barrel).set(151, 52, Tile.CrateStack);
+  b.set(148, 43, Tile.WeirPanels);
+  b.set(140, 46, Tile.FishRack).set(140, 48, Tile.DryingRack);
+  b.set(140, 51, Tile.SmokeTripod);
+  b.set(143, 46, Tile.CatchBasket).set(143, 51, Tile.FishTrap);
+  b.set(145, 49, Tile.WithyStore);
+  b.set(148, 46, Tile.HarpoonRack);
+  b.set(150, 51, Tile.LurePole);
+  b.set(155, 51, Tile.BeachedSkiff).set(156, 52, Tile.MooringPost);
+  b.set(151, 43, Tile.Barrel).set(152, 44, Tile.CrateStack);
+  b.set(146, 52, Tile.ShellBench).set(150, 48, Tile.WoodStool);
   b.setDetail(147, 45, Detail.Pebbles).setDetail(149, 50, Detail.Pebbles);
-  b.setDetail(144, 52, Detail.Pebbles);
+  b.setDetail(144, 52, Detail.Pebbles).setDetail(142, 49, Detail.Pebbles);
+  b.setDetail(146, 47, Detail.Pebbles);
   b.set(142, 41, awningTile('shed', 7)).set(143, 41, awningTile('shed', 7));
   b.sign(140, 55, "WEIR'S REACH", ['Rod, line and patience.', 'Mostly patience.'], Tile.Signpost);
   b.set(153, 42, Tile.MooringPost).set(153, 52, Tile.MooringPost);
@@ -618,6 +664,15 @@ export function buildDawnmead(): ZoneDef {
   b.set(152, 97, awningTile('shed', 1)).set(154, 97, awningTile('shed', 1));
   b.set(148, 108, Tile.Wheelbarrow);
   b.set(139, 108, Tile.CrateGoods).set(140, 108, Tile.Crate);
+  // The middle of the yard is where the work waits its turn: the
+  // board stack, the water for the quench, and the bench a customer
+  // sits on while Ottery finds the right chisel.
+  b.set(147, 100, Tile.LumberRack).set(147, 102, Tile.LogPileEndOn);
+  b.set(149, 105, Tile.WaterCask);
+  b.set(146, 106, Tile.Bench).set(145, 108, Tile.WoodStool);
+  b.set(149, 98, Tile.TiedParcels);
+  b.setDetail(148, 101, Detail.Sawdust).setDetail(146, 104, Detail.Sawdust);
+  b.setDetail(150, 103, Detail.Pebbles);
   b.sign(143, 109, "OTTERY'S WORKS", ['Bench, saw, forge.', 'Make your first thing.'], Tile.Signpost);
   b.set(137, 109, Tile.LampPost).set(157, 109, Tile.LampPost);
 
@@ -654,8 +709,17 @@ export function buildDawnmead(): ZoneDef {
   b.set(131, 128, Tile.CookPot);
   b.set(123, 134, Tile.WaterCask);
   b.set(131, 134, Tile.SettleBench);
+  b.set(122, 132, Tile.BasketStack).set(122, 129, Tile.GlazedJars);
+  b.set(132, 130, Tile.WoodStool).set(132, 132, Tile.WoodStool);
+  b.set(125, 135, Tile.Barrel).set(129, 135, Tile.TiedParcels);
   b.setDetail(126, 134, Detail.Pebbles).setDetail(129, 128, Detail.Pebbles);
-  // The bake line on the hall's north face, and the smoke yard east.
+  // The bake line on the hall's north face, and the smoke yard east —
+  // each on its own worked apron. A station standing on lawn reads as
+  // a prop somebody dropped.
+  b.fillRect(121, 123, 12, 3, Tile.Dirt);
+  b.fillRect(135, 126, 4, 9, Tile.Dirt);
+  b.setDetail(128, 124, Detail.Pebbles).setDetail(132, 125, Detail.Sawdust);
+  b.setDetail(137, 132, Detail.Pebbles).setDetail(136, 128, Detail.Pebbles);
   b.set(124, 124, Tile.BreadOven);
   b.set(122, 124, Tile.GrainSacks);
   b.set(126, 124, Tile.Woodpile);
@@ -698,16 +762,28 @@ export function buildDawnmead(): ZoneDef {
   // quarter introduces itself: the muster standard, the board, the
   // rack, watchers' benches, and the three signed ways.
   // ================================================================
-  b.fillRect(86, 118, 20, 16, Tile.Dirt);
-  b.set(96, 119, bannerStandTile(1));
+  b.fillEllipse(96, 126, 11, 9, Tile.Dirt);
+  b.fillRect(90, 119, 13, 3, Tile.Dirt); // the muster line, worn straight
+  // THE MUSTER LINE — what the yard forms up on, and the board that
+  // tells it what it is forming up for.
+  b.set(96, 119, bannerStandTile(1)).set(100, 119, bannerStandTile(6));
   b.set(93, 119, Tile.NoticeBoard);
-  b.set(99, 119, Tile.WeaponRack);
-  b.set(88, 122, Tile.Bench).set(88, 124, Tile.Bench);
-  b.set(104, 122, Tile.Bench).set(104, 124, Tile.Bench);
-  b.set(87, 132, Tile.Grindstone);
-  b.set(104, 132, Tile.ArmorStand);
-  b.setDetail(91, 127, Detail.Pebbles).setDetail(100, 129, Detail.Pebbles);
-  b.setDetail(96, 124, Detail.Pebbles);
+  b.set(90, 120, Tile.WeaponRack).set(103, 120, Tile.SpearRack);
+  b.set(92, 122, Tile.ArmorStandFull).set(101, 122, Tile.ArmorStand);
+  // The watchers' side: benches, and the rail a visitor ties to.
+  b.set(87, 123, Tile.Bench).set(87, 124, Tile.Bench);
+  b.set(105, 126, Tile.Bench).set(105, 127, Tile.Bench);
+  b.set(88, 128, Tile.HitchingPost);
+  // The yard's own housekeeping, ranked at the west hem.
+  b.set(87, 131, Tile.Grindstone).set(89, 132, Tile.Woodpile);
+  b.set(103, 131, Tile.WaterCask).set(104, 133, Tile.Barrel);
+  b.set(94, 133, Tile.HayBale).set(95, 132, Tile.HayBale);
+  b.set(99, 133, Tile.CrateStack);
+  b.set(91, 130, Tile.TargetDummy).set(101, 129, Tile.TargetDummy);
+  b.setDetail(91, 127, Detail.Pebbles).setDetail(100, 128, Detail.Pebbles);
+  b.setDetail(96, 124, Detail.Pebbles).setDetail(93, 131, Detail.Straw);
+  b.setDetail(98, 126, Detail.Sawdust).setDetail(102, 133, Detail.Straw);
+  b.setDetail(91, 131, Detail.Straw);
   b.set(85, 117, Tile.LampPost).set(106, 117, Tile.LampPost);
   b.sign(96, 136, 'THE PROVING GROUND', ['Halla keeps the blade.', 'Rill the bow, Varn the spark.'], Tile.Signpost);
   b.sign(69, 150, 'THE LONG BUTTS', ['Loose only EAST.', 'Walk the lane, never the line.'], Tile.Signpost);
@@ -726,10 +802,18 @@ export function buildDawnmead(): ZoneDef {
   for (let x = 94; x <= 108; x++) b.set(x, 172, Tile.RailWood);
   for (let y = 152; y <= 171; y++) b.set(83, y, Tile.RailWood);
   for (let y = 156; y <= 171; y++) b.set(108, y, Tile.RailWood);
-  // The pell line: three posts and three dummies, ranked and worn.
-  b.set(88, 156, Tile.TargetDummy).set(93, 156, Tile.TargetDummy).set(98, 156, Tile.TargetDummy);
-  b.set(88, 159, Tile.TimberPost).set(93, 159, Tile.TimberPost).set(98, 159, Tile.TimberPost);
-  b.setDetail(88, 157, Detail.Straw).setDetail(93, 158, Detail.Straw).setDetail(98, 157, Detail.Straw);
+  // THE SPARRING RING — sand raked into the dirt at the yard's heart.
+  // Everything else in this yard faces it.
+  b.fillEllipse(95, 163, 7, 5, Tile.Sand);
+  b.setDetail(95, 163, Detail.Pebbles).setDetail(92, 161, Detail.Pebbles);
+  b.setDetail(98, 165, Detail.Pebbles).setDetail(93, 166, Detail.Straw);
+  // The pell line: dummies and posts, ranked but never ruled — thirty
+  // years of moving them a pace to spare the worn ground.
+  b.set(87, 155, Tile.TargetDummy).set(93, 156, Tile.TargetDummy).set(99, 155, Tile.TargetDummy);
+  b.set(90, 158, Tile.TimberPost).set(96, 159, Tile.TimberPost).set(102, 157, Tile.TimberPost);
+  b.setDetail(87, 156, Detail.Straw).setDetail(93, 157, Detail.Straw).setDetail(99, 156, Detail.Straw);
+  b.setDetail(90, 159, Detail.Sawdust).setDetail(96, 160, Detail.Sawdust);
+  b.set(85, 153, Tile.HayBale).set(105, 153, Tile.HayBale).set(104, 154, Tile.HayBale);
   // The stands: two dressed, one bare, and the rack they come off.
   b.set(103, 155, Tile.ArmorStandFull).set(105, 155, Tile.ArmorStandFull);
   b.set(103, 158, Tile.ArmorStand);
@@ -741,8 +825,10 @@ export function buildDawnmead(): ZoneDef {
   b.set(86, 167, Tile.TargetDummy);
   b.setDetail(86, 168, Detail.Pebbles);
   // The watchers' side and the water.
-  b.set(90, 170, Tile.Bench).set(93, 170, Tile.Bench).set(96, 170, Tile.Bench);
-  b.set(99, 170, Tile.WaterCask);
+  b.set(89, 170, Tile.Bench).set(90, 170, Tile.Bench);
+  b.set(94, 171, Tile.Bench).set(95, 171, Tile.Bench);
+  b.set(99, 169, Tile.WaterCask);
+  b.set(101, 171, Tile.Barrel).set(87, 168, Tile.BasketStack);
   b.setDetail(92, 163, Detail.Pebbles).setDetail(99, 167, Detail.Pebbles);
   b.setDetail(95, 161, Detail.Pebbles);
   // THE ARMING SHED — stone, arms on the wall, the duty table inside.
@@ -775,7 +861,10 @@ export function buildDawnmead(): ZoneDef {
   // straw butts backed by fence, and the covered shelter she stands
   // in when it rains, which is often.
   // ================================================================
-  b.fillRect(44, 154, 40, 14, Tile.Dirt);
+  // A RANGE IS GRASS, worn only where feet stand and arrows land. A
+  // ruled dirt rectangle forty tiles long reads as a car park.
+  b.fillRect(44, 155, 8, 12, Tile.Dirt);   // the shooting ground
+  for (const bx of [56, 66, 76]) b.fillRect(bx, 158, 6, 6, Tile.Dirt); // the marks
   for (let x = 43; x <= 84; x++) b.set(x, 153, Tile.Fence).set(x, 168, Tile.Fence);
   for (let y = 154; y <= 167; y++) b.set(43, y, Tile.Fence);
   for (let y = 154; y <= 160; y++) b.set(84, y, Tile.Fence);
@@ -785,21 +874,34 @@ export function buildDawnmead(): ZoneDef {
   // The shooting line, west end: dressed stone, and the marks east.
   for (let y = 156; y <= 165; y++) b.set(46, y, Tile.StoneFloor);
   b.setDetail(46, 158, Detail.Pebbles).setDetail(46, 163, Detail.Pebbles);
-  b.set(58, 155, Tile.TimberPost); // the range stakes: ten, twenty, thirty
-  b.set(68, 155, Tile.TimberPost);
-  b.set(78, 155, Tile.TimberPost);
-  // Three butts, ranked deeper down the lane, each backed by fence.
-  b.set(58, 160, Tile.HayBale).set(58, 162, Tile.HayBale);
-  b.set(68, 160, Tile.TargetDummy).set(68, 162, Tile.HayBale);
-  b.set(78, 159, Tile.HayBale).set(78, 161, Tile.TargetDummy).set(78, 163, Tile.HayBale);
-  b.setDetail(59, 161, Detail.Straw).setDetail(69, 161, Detail.Straw);
-  b.setDetail(79, 162, Detail.Straw).setDetail(77, 160, Detail.Straw);
+  // THREE MARKS — ten paces, twenty, thirty. Each is a real butt: a
+  // stack of straw, a fence behind it so nothing walks out the back,
+  // and a stake at its shoulder that says how far you just shot.
+  const butt = (bx: number, dummy: boolean): void => {
+    b.set(bx + 3, 158, Tile.HayBale).set(bx + 3, 159, Tile.HayBale);
+    b.set(bx + 3, dummy ? 161 : 160, dummy ? Tile.TargetDummy : Tile.HayBale);
+    b.set(bx + 3, 162, Tile.HayBale);
+    for (let y = 157; y <= 163; y++) b.set(bx + 4, y, Tile.Fence); // the backstop, right behind the straw
+    b.set(bx, 158, Tile.TimberPost); // the range stake, at the mark's shoulder
+    b.setDetail(bx + 2, 160, Detail.Straw).setDetail(bx + 4, 162, Detail.Straw);
+    b.setDetail(bx + 1, 163, Detail.Straw);
+  };
+  butt(56, false);
+  butt(66, true);
+  butt(76, true);
+  b.set(74, 165, Tile.HayBale).set(64, 156, Tile.HayBale); // spares, dragged clear
   // The shelter on the line: posts, a bowed canopy, the day's tackle.
   b.set(44, 156, Tile.WallWood).set(45, 156, Tile.WallWood);
   b.set(44, 157, Tile.WallWood).set(44, 158, Tile.WallWood);
   b.set(44, 159, awningTile('bowed', 4)).set(45, 157, awningTile('bowed', 4));
   b.set(45, 158, Tile.ToolRack);
   b.set(45, 161, Tile.Bench).set(45, 164, Tile.Barrel);
+  // The line itself: the arrow store, the day's tackle, the seat for
+  // whoever is not shooting.
+  b.set(48, 156, Tile.CrateGoods).set(49, 156, Tile.Barrel);
+  b.set(48, 165, Tile.WoodStool).set(50, 163, Tile.BasketStack);
+  b.setDetail(48, 160, Detail.Pebbles).setDetail(50, 158, Detail.Pebbles);
+  b.setDetail(49, 164, Detail.Straw);
   b.setDetail(44, 156, pennantDetail(4));
   // The bow wood, growing where the bowyer can see it.
   b.set(40, 156, Tile.TreeYew).set(38, 161, Tile.TreeYew).set(41, 166, Tile.TreeWillow);
@@ -837,8 +939,16 @@ export function buildDawnmead(): ZoneDef {
   for (const [px, py] of [
     [74, 195], [82, 197], [85, 202], [82, 207], [74, 209], [66, 207], [63, 202], [66, 197],
   ] as const) b.set(px, py, py % 2 === 1 ? Tile.PillarStone : Tile.Runestone);
-  b.set(74, 202, Tile.Dirt).set(75, 201, Tile.Dirt).set(73, 203, Tile.Dirt); // the scorch
-  b.setDetail(74, 203, Detail.Pebbles).setDetail(75, 202, Detail.Pebbles);
+  // Grass has taken the old pad's rim back, the way it takes the Ring's.
+  for (const [gx, gy] of [[64, 198], [84, 206], [67, 208], [82, 196], [74, 210]] as const) {
+    b.set(gx, gy, Tile.Grass);
+  }
+  // THE BURNT HEART — where fifty years of lessons have landed.
+  b.fillEllipse(74, 202, 3, 2, Tile.Dirt);
+  for (const [px, py] of [
+    [74, 202], [73, 201], [75, 203], [72, 202], [76, 202], [74, 200], [74, 204],
+    [70, 199], [78, 205], [69, 203], [79, 201],
+  ] as const) b.setDetail(px, py, Detail.Pebbles);
   b.set(70, 199, Tile.Brazier).set(78, 199, Tile.Brazier);
   b.set(70, 205, Tile.Brazier).set(78, 205, Tile.Brazier);
   // The approach: the ward arch on the way in, and the lamp before it.
@@ -847,6 +957,11 @@ export function buildDawnmead(): ZoneDef {
   // The test stones — cracked, tipped, and honestly earned.
   b.set(88, 200, Tile.BrokenPillar).set(90, 204, Tile.Rock);
   b.set(87, 208, Tile.CrystalCluster);
+  // Where the reading happens when the weather allows it.
+  b.set(63, 196, Tile.Lectern).set(62, 198, Tile.WoodStool);
+  b.set(86, 194, Tile.WeaponRack); // the stave rack
+  b.set(88, 197, Tile.Crate);
+  b.setDetail(64, 197, Detail.Pebbles).setDetail(87, 196, Detail.Pebbles);
   b.set(60, 210, Tile.RunePillar);
   b.set(64, 213, Tile.TargetDummy).set(84, 212, Tile.TargetDummy);
   b.setDetail(65, 214, Detail.Pebbles).setDetail(85, 213, Detail.Pebbles);
@@ -946,10 +1061,20 @@ export function buildDawnmead(): ZoneDef {
   b.set(146, 157, Tile.Grass).set(147, 157, Tile.Grass); // the doorway went with the roof
   b.set(142, 170, Tile.Grass).set(143, 170, Tile.Grass); // the south wall sags open
   b.set(155, 163, Tile.Grass).set(155, 164, Tile.Grass); // and the east one too
+  // A ROOFLESS RUIN GROWS THINGS. Weeds have the floor; the rats came
+  // for what the weeds did not take.
+  for (const [wx, wy] of [
+    [140, 160], [143, 166], [149, 159], [152, 167], [145, 162], [153, 161],
+  ] as const) b.set(wx, wy, Tile.GrassTall);
+  for (const [wx, wy] of [
+    [141, 165], [148, 168], [151, 163], [142, 159], [150, 165], [146, 159], [154, 166],
+  ] as const) b.set(wx, wy, Tile.Grass);
   b.set(139, 158, Tile.Crate).set(154, 169, Tile.Barrel);
   b.set(147, 164, Tile.ChestWood);
   b.set(141, 161, Tile.BurialUrns).set(152, 159, Tile.CaveRubble);
-  b.set(144, 168, Tile.GrainSacks);
+  b.set(144, 168, Tile.GrainSacks).set(150, 161, Tile.CaveRubble);
+  b.set(143, 163, Tile.BarrelStack).set(153, 157, Tile.CaveRubble);
+  b.setDetail(147, 161, Detail.Mushroom).setDetail(144, 166, Detail.Mushroom);
   b.setDetail(143, 160, Detail.Straw).setDetail(149, 166, Detail.Straw);
   b.setDetail(152, 162, Detail.Straw).setDetail(141, 167, Detail.Straw);
   b.setDetail(148, 160, Detail.Straw);
@@ -997,11 +1122,13 @@ export function buildDawnmead(): ZoneDef {
   for (let x = 152; x <= 156; x++) b.set(x, 150, Tile.Dirt);
   for (let x = 163; x <= 170; x++) b.set(x, 150, Tile.Dirt);
   b.setDetail(154, 149, Detail.Pebbles).setDetail(165, 151, Detail.Pebbles);
-  // Weir's pier: planks off the near bank into the current.
-  for (let x = 154; x <= 158; x++) b.set(x, 46, Tile.Dock);
-  b.set(154, 45, Tile.MooringPost);
+  // Weir's pier: planks off the near bank, out over the deep water,
+  // with a widened head at the end where a man can actually stand.
+  for (let x = 154; x <= 159; x++) b.set(x, 46, Tile.Dock);
+  for (let x = 158; x <= 159; x++) b.set(x, 45, Tile.Dock).set(x, 47, Tile.Dock);
+  b.set(154, 45, Tile.MooringPost).set(157, 44, Tile.MooringPost);
   b.set(154, 47, Tile.CatchBasket);
-  b.set(158, 45, Tile.KeepPool);
+  b.set(155, 44, Tile.KeepPool);
   // Fishing spots where the water sounds busiest.
   b.set(161, 20, Tile.FishingSpot);
   b.set(159, 62, Tile.FishingSpot);
@@ -1054,7 +1181,13 @@ export function buildDawnmead(): ZoneDef {
   b.set(184, 109, Tile.LampPost).set(184, 115, Tile.LampPost);
   b.set(178, 109, Tile.StoneBench);
   b.set(178, 115, Tile.WayShrine);
-  b.set(188, 108, bannerPoleTile(3)).set(188, 116, bannerPoleTile(5));
+  // THE THRESHOLD — two old stones flank the road where the village's
+  // last lamp gives out. Nobody built a gate here; the stones ARE it.
+  b.set(189, 109, Tile.PillarStone).set(189, 115, Tile.PillarStone);
+  b.set(186, 110, Tile.Rock); // the milestone, worn past reading
+  b.set(180, 117, Tile.WayfarersRest);
+  b.setDetail(187, 111, Detail.Pebbles).setDetail(188, 114, Detail.Pebbles);
+  b.set(185, 108, bannerPoleTile(3)).set(185, 116, bannerPoleTile(5));
   b.setDetail(180, 110, Detail.Pebbles).setDetail(175, 114, Detail.Pebbles);
   b.sign(182, 116, 'THE FIRST ROAD', ['Amberford, a day east.', 'Waystations at every lamp.'], Tile.Signpost);
   // The east wold: open country across the water, hedgerow and oaks.
