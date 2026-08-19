@@ -5123,96 +5123,110 @@ export class Renderer {
     // Lit-face heights in world-y units: faces rise N tiles of SCREEN
     // height, so divide the camera squash back out.
     const ys = this.camera.yScale;
-    this.lighting.draw(
-      this.ctx,
-      { w: this.w, h: this.h, scale: this.camera.scale, yScale: ys, ox: origin.x, oy: origin.y },
-      this.sky,
-      this.lights,
-      this.blocksAt,
-      // LIGHT CLIMBS WHAT IT MEETS: every tall thing reports the face
-      // the camera sees — walls at full prism height, cliffs at their
-      // ledge, stations/stalls/furniture at standing-prop height,
-      // trees a modest trunk wash under the canopy.
-      (tx, ty) => {
-        const t = game.world.groundAt(tx, ty);
-        if (t === undefined) return 0;
-        // Garrison mass stands half again over the house walls — its
-        // lit faces climb the true curtain height. The open gate is a
-        // passage: light pours through it, nothing to climb.
-        if (Renderer.GARRISON_MASS.has(t)) return GARRISON_H / ys;
-        if (Renderer.LIGHT_BLOCKERS.has(t)) return WALL_H / ys;
-        if (t === Tile.Cliff) return ELEV_H / ys;
-        if (TREE_TILES.has(t as Tile)) return 1.5 / ys;
-        if (tileDef(t).raised) return 1.05 / ys;
-        return 0;
-      },
-      // THE RESPONSE PROFILE: what the face gives back, by material.
-      (tx, ty) => {
-        const t = game.world.groundAt(tx, ty);
-        if (t === undefined) return 1;
-        if (TREE_TILES.has(t as Tile)) return FACE_GAIN_FOLIAGE;
-        if (Renderer.GARRISON_MASS.has(t) || Renderer.LIGHT_BLOCKERS.has(t)) {
-          return WOOD_FACE_TILES.has(t) ? FACE_GAIN_WOOD : FACE_GAIN_STONE;
+    // A FRAME'S LIGHTS ARE THE FRAME'S. The retirement below used to
+    // sit in the straight line after the exposure pass, so ANY throw
+    // between here and there left this frame's lights in the list —
+    // and the next frame appended to them, and the next. One bad light
+    // therefore did not cost one frame, it cost the SESSION: the list
+    // grew without bound and the pass re-threw on the same corpse every
+    // frame until the tab was reloaded. The retirement is per-frame
+    // bookkeeping, not part of the drawing, so it belongs in a finally
+    // where no drawing failure can skip it. This is state hygiene, not
+    // error swallowing — the throw still propagates, the frame loop
+    // still drops the frame, and main.ts still reports it.
+    try {
+      this.lighting.draw(
+        this.ctx,
+        { w: this.w, h: this.h, scale: this.camera.scale, yScale: ys, ox: origin.x, oy: origin.y },
+        this.sky,
+        this.lights,
+        this.blocksAt,
+        // LIGHT CLIMBS WHAT IT MEETS: every tall thing reports the face
+        // the camera sees — walls at full prism height, cliffs at their
+        // ledge, stations/stalls/furniture at standing-prop height,
+        // trees a modest trunk wash under the canopy.
+        (tx, ty) => {
+          const t = game.world.groundAt(tx, ty);
+          if (t === undefined) return 0;
+          // Garrison mass stands half again over the house walls — its
+          // lit faces climb the true curtain height. The open gate is a
+          // passage: light pours through it, nothing to climb.
+          if (Renderer.GARRISON_MASS.has(t)) return GARRISON_H / ys;
+          if (Renderer.LIGHT_BLOCKERS.has(t)) return WALL_H / ys;
+          if (t === Tile.Cliff) return ELEV_H / ys;
+          if (TREE_TILES.has(t as Tile)) return 1.5 / ys;
+          if (tileDef(t).raised) return 1.05 / ys;
+          return 0;
+        },
+        // THE RESPONSE PROFILE: what the face gives back, by material.
+        (tx, ty) => {
+          const t = game.world.groundAt(tx, ty);
+          if (t === undefined) return 1;
+          if (TREE_TILES.has(t as Tile)) return FACE_GAIN_FOLIAGE;
+          if (Renderer.GARRISON_MASS.has(t) || Renderer.LIGHT_BLOCKERS.has(t)) {
+            return WOOD_FACE_TILES.has(t) ? FACE_GAIN_WOOD : FACE_GAIN_STONE;
+          }
+          if (t === Tile.Cliff) return FACE_GAIN_STONE;
+          return FACE_GAIN_PROP;
+        },
+      );
+      // THE FLAME MAY OVERREACH, ONCE: every qualifying pool accumulates
+      // `lighter` on one third-res scratch (light is low-frequency — the
+      // lightmap's own law), then the whole field composites in a SINGLE
+      // bounded soft-light pass after the multiply — surfaces near a
+      // source get visibly hotter than their daylight paint, overlapping
+      // fires share one ceiling instead of stacking, and the frame pays
+      // one blend instead of one per light. Daylight skips it whole.
+      if (this.sky.darkness > 0.06) {
+        const k = 3;
+        const ow = Math.max(1, Math.ceil(this.w / k));
+        const oh = Math.max(1, Math.ceil(this.h / k));
+        if (this.overreach.width < ow || this.overreach.height < oh) {
+          this.overreach.width = Math.max(this.overreach.width, ow);
+          this.overreach.height = Math.max(this.overreach.height, oh);
         }
-        if (t === Tile.Cliff) return FACE_GAIN_STONE;
-        return FACE_GAIN_PROP;
-      },
-    );
-    // THE FLAME MAY OVERREACH, ONCE: every qualifying pool accumulates
-    // `lighter` on one third-res scratch (light is low-frequency — the
-    // lightmap's own law), then the whole field composites in a SINGLE
-    // bounded soft-light pass after the multiply — surfaces near a
-    // source get visibly hotter than their daylight paint, overlapping
-    // fires share one ceiling instead of stacking, and the frame pays
-    // one blend instead of one per light. Daylight skips it whole.
-    if (this.sky.darkness > 0.06) {
-      const k = 3;
-      const ow = Math.max(1, Math.ceil(this.w / k));
-      const oh = Math.max(1, Math.ceil(this.h / k));
-      if (this.overreach.width < ow || this.overreach.height < oh) {
-        this.overreach.width = Math.max(this.overreach.width, ow);
-        this.overreach.height = Math.max(this.overreach.height, oh);
+        const oc = this.overreachCtx;
+        oc.setTransform(1, 0, 0, 1, 0, 0);
+        oc.globalCompositeOperation = 'source-over';
+        oc.clearRect(0, 0, ow, oh);
+        oc.globalCompositeOperation = 'lighter';
+        let any = false;
+        for (const L of this.lights) {
+          if (L.intensity < 0.15) continue;
+          const p = this.liftedWTS(L.x, L.y);
+          const r = (L.r * OVERREACH_R * this.camera.scale) / k;
+          const cx = p.x / k;
+          const cy = p.y / k;
+          if (cx + r < 0 || cy + r * ys < 0 || cx - r > ow || cy - r * ys > oh) continue;
+          oc.globalAlpha = Math.min(1, L.intensity);
+          oc.drawImage(
+            radialGlowSprite(Renderer.csvOfRgb(L.rgb), GLOW_STOPS, 0.12),
+            cx - r,
+            cy - r * ys,
+            r * 2,
+            r * 2 * ys,
+          );
+          any = true;
+        }
+        if (any) {
+          const octx = this.ctx;
+          octx.save();
+          octx.globalCompositeOperation = 'soft-light';
+          octx.globalAlpha = OVERREACH_A;
+          octx.imageSmoothingEnabled = true;
+          octx.drawImage(this.overreach, 0, 0, ow, oh, 0, 0, this.w, this.h);
+          octx.restore();
+        }
       }
-      const oc = this.overreachCtx;
-      oc.setTransform(1, 0, 0, 1, 0, 0);
-      oc.globalCompositeOperation = 'source-over';
-      oc.clearRect(0, 0, ow, oh);
-      oc.globalCompositeOperation = 'lighter';
-      let any = false;
-      for (const L of this.lights) {
-        if (L.intensity < 0.15) continue;
-        const p = this.liftedWTS(L.x, L.y);
-        const r = (L.r * OVERREACH_R * this.camera.scale) / k;
-        const cx = p.x / k;
-        const cy = p.y / k;
-        if (cx + r < 0 || cy + r * ys < 0 || cx - r > ow || cy - r * ys > oh) continue;
-        oc.globalAlpha = Math.min(1, L.intensity);
-        oc.drawImage(
-          radialGlowSprite(Renderer.csvOfRgb(L.rgb), GLOW_STOPS, 0.12),
-          cx - r,
-          cy - r * ys,
-          r * 2,
-          r * 2 * ys,
-        );
-        any = true;
-      }
-      if (any) {
-        const octx = this.ctx;
-        octx.save();
-        octx.globalCompositeOperation = 'soft-light';
-        octx.globalAlpha = OVERREACH_A;
-        octx.imageSmoothingEnabled = true;
-        octx.drawImage(this.overreach, 0, 0, ow, oh, 0, 0, this.w, this.h);
-        octx.restore();
-      }
+      this.perfMark('lighting');
+    } finally {
+      this.lights.length = 0;
+      // Moving lights hand their positions to next frame's shadow pass.
+      const swap = this.prevDynamic;
+      this.prevDynamic = this.nextDynamic;
+      this.nextDynamic = swap;
+      this.nextDynamic.length = 0;
     }
-    this.perfMark('lighting');
-    this.lights.length = 0;
-    // Moving lights hand their positions to next frame's shadow pass.
-    const swap = this.prevDynamic;
-    this.prevDynamic = this.nextDynamic;
-    this.nextDynamic = swap;
-    this.nextDynamic.length = 0;
     this.drawGlows();
     this.applyTiltShift();
     this.drawGrade();
@@ -5352,7 +5366,7 @@ export class Renderer {
             a: 0.3 * pulse * boost,
           });
           this.glows.push({ x: tx + 0.5, y: ty + 0.6, r: 1.3, rgb: '122, 86, 200', a: 0.12 * boost });
-          this.lights.push({
+          this.admitLight({
             x: tx + 0.5,
             y: ty + 0.5,
             r: 4.6 * pulse,
@@ -5396,7 +5410,7 @@ export class Renderer {
               rgb: '255, 196, 110',
               a: 0.22 * flame * flick,
             });
-            this.lights.push({
+            this.admitLight({
               x: cwx,
               y: cgy,
               r: 1.5,
@@ -5442,7 +5456,7 @@ export class Renderer {
             // an honest cone instead of a bare pool floating off the
             // wall. Non-occluding, so the wall it leaves never bites
             // its own light.
-            this.lights.push({
+            this.admitLight({
               x: tx + 0.5 - inside[0] * 0.55,
               y: ty + 0.5 - inside[1] * 0.55,
               r: 3.2,
@@ -5494,7 +5508,7 @@ export class Renderer {
       if (game.ownEid !== null && !ownCarries) {
         const own = game.predictor.renderPos();
         const breathe = 0.93 + Math.sin(t * 2.1) * 0.05 + Math.sin(t * 5.7) * 0.02;
-        this.lights.push({
+        this.admitLight({
           x: own.x,
           y: own.y,
           r: 4.6,
@@ -5602,7 +5616,7 @@ export class Renderer {
     const ph = (eid === 'own' ? 0 : (eid as number)) * 1.7;
     const tsec = performance.now() / 1000;
     const breathe = 0.93 + Math.sin(tsec * 2.1 + ph) * 0.05 + Math.sin(tsec * 5.7 + ph) * 0.02;
-    this.lights.push({
+    this.admitLight({
       x,
       y,
       r: cl.r,
@@ -5643,24 +5657,60 @@ export class Renderer {
       this.queueGlow(x, y, r, st.glow, a);
       return;
     }
-    this.glows.push({ x, y, r, rgb: st.glow, a });
+    if (Renderer.drawableFlare(x, y, r)) this.glows.push({ x, y, r, rgb: st.glow, a });
     if (this.sky.darkness > 0.04) {
       const intensity = L.intensity * Math.min(1, a / 0.4);
       if (intensity < 0.02) return;
       const light: WorldLight = { x, y, r: L.r, rgb: Renderer.parseRgb(st.glow), intensity };
       if (L.z !== undefined) light.z = L.z;
-      this.lights.push(light);
+      if (!this.admitLight(light)) return;
       this.nextDynamic.push({ x, y, r: L.r * 1.6, a: Math.min(0.55, intensity) });
     }
   }
 
+  /**
+   * THE ONE DOOR FOR A DYNAMIC LIGHT.
+   *
+   * Standing emitters derive reach and strength from the SAME envelope,
+   * so a fading fixture zeroes both together and can never hand the
+   * exposure pass a light it cannot draw. The fx doors are different in
+   * kind: a signature deals its own radius and its own alpha, from
+   * different expressions, and only the alpha was ever checked. A
+   * radius that reaches 0 (or NaN, from an fx the server sends with no
+   * radius at all) while the alpha is still healthy mints a light with
+   * strength and no reach — and every consumer that divides by reach
+   * then works on NaN.
+   *
+   * This is that missing invariant, in one place instead of at each
+   * call site: a light joins the frame only if it is a real position,
+   * a real POSITIVE reach, and a real strength. Returns whether it was
+   * admitted so callers can skip the paired bookkeeping.
+   */
+  private static drawableFlare(x: number, y: number, r: number): boolean {
+    return r > 0 && Number.isFinite(r) && Number.isFinite(x) && Number.isFinite(y);
+  }
+
+  private admitLight(light: WorldLight): boolean {
+    if (!(light.r > 0)) return false;
+    if (!Number.isFinite(light.x) || !Number.isFinite(light.y)) return false;
+    if (!Number.isFinite(light.intensity)) return false;
+    if (light.z !== undefined && !Number.isFinite(light.z)) delete light.z;
+    this.lights.push(light);
+    return true;
+  }
+
   queueGlow(x: number, y: number, r: number, rgb: string, a: number): void {
     if (this.bakingMask) return;
-    this.glows.push({ x, y, r, rgb, a });
+    // The bloom is the other half of the same deal, from the same two
+    // numbers — refuse it on the same terms. A disc with no reach paints
+    // nothing anyway, so every honest caller is untouched; what this
+    // stops is a NEGATIVE reach reaching drawImage, where a flipped
+    // sprite would paint a bright slab nobody asked for.
+    if (Renderer.drawableFlare(x, y, r)) this.glows.push({ x, y, r, rgb, a });
     if (this.sky.darkness > 0.04) {
       const [rr, gg, bb] = Renderer.parseRgb(rgb);
       const intensity = Math.min(0.55, a * 1.6);
-      this.lights.push({ x, y, r: r * 1.6, rgb: [rr, gg, bb], intensity });
+      if (!this.admitLight({ x, y, r: r * 1.6, rgb: [rr, gg, bb], intensity })) return;
       this.nextDynamic.push({ x, y, r: r * 2.2, a: intensity });
     }
   }
@@ -5698,7 +5748,7 @@ export class Renderer {
     if (this.sky.darkness > 0.04) {
       const [cr, cg, cb] = Renderer.parseRgb(rgb);
       const intensity = Math.min(0.55, a * 1.6);
-      this.lights.push({ x, y, r: r * 1.6, rgb: [cr, cg, cb], intensity });
+      if (!this.admitLight({ x, y, r: r * 1.6, rgb: [cr, cg, cb], intensity })) return;
       this.nextDynamic.push({ x, y, r: r * 2.2, a: intensity });
     }
   }

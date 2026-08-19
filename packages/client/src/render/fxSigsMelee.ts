@@ -894,7 +894,14 @@ const bull_rush: AbilitySig = {
     // The halt: a forward-only quarter ring snaps where the argument
     // ends — no sneaking past the period.
     if (ease > 0.95 && t < 0.9) {
-      const k = Math.max(0, 1 - (t - 0.72) / 0.18);
+      // k is the halt ring's age, 1 at the stamp falling to 0. The ease
+      // gate opens a hair BEFORE t reaches 0.72, so (t - 0.72) is
+      // briefly negative and k briefly exceeds 1 — and the ring radius
+      // below reads (1 - k), which then goes NEGATIVE and throws
+      // IndexSizeError out of ctx.ellipse. The window is ~1.5 ms wide,
+      // so the charge only ate a frame now and then. Clamped at BOTH
+      // ends, which is what a normalized age always wanted to be.
+      const k = Math.min(1, Math.max(0, 1 - (t - 0.72) / 0.18));
       ctx.globalAlpha = 0.9 * k;
       ctx.strokeStyle = st.core;
       ctx.lineWidth = Math.max(2.5, sc * 0.06);

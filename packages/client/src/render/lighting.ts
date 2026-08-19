@@ -136,10 +136,20 @@ const WRAP_STOPS: ReadonlyArray<readonly [number, number]> = [
  * source height lands it. Buckets of z/r (eighths) keep the sprite
  * cache tiny; each bucket's stops array is minted once, so the glow
  * sprite's identity memo holds.
+ *
+ * THE PROFILE IS TOTAL: the argument is z/r, and r is a quantity the
+ * caller divides by — a degenerate light (r = 0) hands this function
+ * NaN, and NaN fails every `<=` test, so the old first line fell
+ * THROUGH to `Math.round(NaN * 8)` and minted a stops array of NaN
+ * offsets. addColorStop then threw, and one such light killed the
+ * whole exposure pass every frame it lived (night rendered as flat
+ * noon). A falloff profile must be defined on its whole domain: any
+ * input that is not a real, positive ratio is a FLAT pool, which is
+ * exactly what a source with no height or no reach looks like.
  */
 const Z_POOL_STOPS = new Map<number, ReadonlyArray<readonly [number, number]>>();
 function poolStopsFor(zOverR: number): ReadonlyArray<readonly [number, number]> {
-  if (zOverR <= 0.02) return POOL_STOPS;
+  if (!(zOverR > 0.02)) return POOL_STOPS;
   const bucket = Math.min(12, Math.round(zOverR * 8));
   let stops = Z_POOL_STOPS.get(bucket);
   if (stops === undefined) {
@@ -153,6 +163,11 @@ function poolStopsFor(zOverR: number): ReadonlyArray<readonly [number, number]> 
   }
   return stops;
 }
+
+/** Test seam for THE PROFILE IS TOTAL (lightAdmission.test.ts) — the
+ *  falloff derivation is pure, and the crash it used to hide lived
+ *  entirely in its guard clause. */
+export const poolStopsForTest = poolStopsFor;
 
 /** rgb triple → "r, g, b", memoized by array identity — one string
  *  per palette color instead of one per light per frame. */
@@ -306,6 +321,13 @@ export class LightingSystem {
 
     for (const light of lights) {
       if (light.intensity <= 0.01) continue;
+      // A LIGHT IS A REACH: intensity was always gated here, but reach
+      // never was, and the two arrive from INDEPENDENT inputs at the fx
+      // doors (a signature deals its own radius and its own strength).
+      // A light with no reach paints nothing by definition — skipping
+      // it costs the frame nothing and keeps every downstream divisor
+      // (poolStopsFor, the pool's bounding box) on real numbers.
+      if (!(light.r > 0) || !Number.isFinite(light.x) || !Number.isFinite(light.y)) continue;
       if (light.occlude) {
         this.drawOccludedLight(light, blocks, tallH, faceGain, sx, sy, tx, ty);
       } else {
