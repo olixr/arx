@@ -254,7 +254,9 @@ body.pad-mode .bind-chip .kb-glyph,
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  font-size: var(--t-small);
+  /* `--t-small` is not a rung on the type ladder — this body has been
+     inheriting the screen's size rather than stepping under it. */
+  font-size: var(--t-label);
   color: var(--parchment-dim);
 }
 
@@ -309,6 +311,6 @@ body.pad-mode .bind-chip .kb-glyph,
   border-radius: 0.375rem;
   background: var(--ember-deep);
   color: var(--parchment);
-  font-size: var(--t-small);
+  font-size: var(--t-label);
   font-weight: 700;
 }
