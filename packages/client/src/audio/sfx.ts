@@ -41,10 +41,9 @@ const PAN_MAX = 0.8;
  * Wired today: `level_up` (the skill herald), `poi_discovery` and
  * `stab_calm_1` (the discovery ceremony's voices), `poi_cleared`
  * (THE CHAMPION'S MARK banner), the three `stab_dramatic` dread
- * stings (rotating: deep-night dangerous wilds + hostile-camp
- * discoveries), the three `ambient_hit` calm piano stabs (THE
- * AMBIENT HITS scheduler — they fill the music player's long
- * quiets), the `day_to_night`/`night_to_day` seam stingers (THE
+ * stings (rotating — hostile-camp discoveries ONLY since the
+ * unprompted-sting retirement), the `day_to_night`/`night_to_day`
+ * seam stingers (THE
  * SKY'S SEAM in the main loop), `friend_alert` (the social ledger's
  * ping), the henyard pair (`chicken_cluck` + the `chicken_chatter`
  * phrase table, spatial via THE HENYARD SPEAKS), and the five
@@ -65,11 +64,17 @@ const SAMPLE_TRIM = {
   notification_success: 0.72, // −14.9 — an affirmative notice landing
   success_1: 0.81, // −16.0 — a smaller "it worked" flourish
   stab_calm_1: 0.47, // −11.2 — a town's gate entered (wired: onDiscovery)
-  stab_dramatic_1: 0.72, // −14.9 — dread stings (wired: deep-night wilds + hostile-camp finds, rotating)
+  stab_dramatic_1: 0.72, // −14.9 — dread stings (wired: hostile-camp finds, rotating)
   stab_dramatic_2: 0.67, // −14.3
   stab_dramatic_3: 0.84, // −16.3
-  // THE AMBIENT HITS — soft calm stabs dealt on no beat the player
-  // can predict, only while the track player rests (wired: main loop).
+  // THE AMBIENT HITS — RETIRED, UNWIRED (user verdict 2026-08-19):
+  // three soft piano stabs that used to drop into the track player's
+  // quiets every 70-160s. They did not sit in the same hand as the
+  // music library and read as jarring against a field-recording bed.
+  // Cached here so the lab can still audition them and so their
+  // measured trims are not lost — but nothing plays them, and the
+  // scheduler is not coming back without stings composed FOR this
+  // library. See the note over DREAD_STABS in main.ts.
   ambient_hit_1: 0.88, // −16.7 — a warm ambient swell
   ambient_hit_2: 1.51, // −21.4 — a spare piano stab
   ambient_hit_3: 3.24, // −28.0 — the softest piano figure (peak −12.3 dBFS — boost-safe)
@@ -213,11 +218,6 @@ export class Sfx {
     this.warmSample('stab_dramatic_1');
     this.warmSample('stab_dramatic_2');
     this.warmSample('stab_dramatic_3');
-    // The ambient hits fire on a long fuse, but a cold first hit
-    // would silently skip its whole minute — warm all three.
-    this.warmSample('ambient_hit_1');
-    this.warmSample('ambient_hit_2');
-    this.warmSample('ambient_hit_3');
     // Friend presence can ping right at login (the roster push).
     this.warmSample('friend_alert');
     // The grass underfoot must be the recording from the first step.

@@ -3316,8 +3316,26 @@ let nextPortalScanAt = 0;
 /** Last frame's sky clock — the dusk/dawn seam stingers watch it. */
 let lastSkyHours: number | null = null;
 /**
- * THE DREAD STABS — the three dramatic stings deal in rotation so
- * neither the night nor two camp finds in a row repeat themselves.
+ * THE UNPROMPTED STING IS RETIRED (user verdict 2026-08-19). Two
+ * schedulers used to drop a one-shot into the world on no beat the
+ * player could predict: THE AMBIENT HITS (three soft piano stabs,
+ * every 70-160s into the track player's quiets) and THE NIGHT HAS
+ * TEETH (three dramatic stings, every 170-390s in deep-night
+ * dangerous wilds). The model was Breath of the Wild's piano, where a
+ * trill wanders in ahead of a theme — but that only works when the
+ * sting is written in the same hand as the score it precedes. Ours
+ * were not: they read as jarring, they broke out of a field recording
+ * bed that is genuinely good, and they cost the ambience more than
+ * they added. BOTH SCHEDULERS ARE GONE. Do not reinstate either on
+ * the strength of the idea alone — it would take stings COMPOSED
+ * against this library, keyed to it, and the burden of proof is on
+ * the audio, not on the design.
+ *
+ * The stings themselves survive where a player EARNED them: the
+ * discovery ceremony still speaks (calm for a town's gate, dread for
+ * a hostile camp), because there the sound answers something the
+ * player just did and lands under a banner — the opposite of an
+ * unprompted stab. That rotation is all `nextDreadStab` serves now.
  */
 const DREAD_STABS: readonly SampleName[] = ['stab_dramatic_1', 'stab_dramatic_2', 'stab_dramatic_3'];
 let dreadStabIdx = Math.floor(Math.random() * DREAD_STABS.length);
@@ -3325,17 +3343,6 @@ function nextDreadStab(): SampleName {
   dreadStabIdx = (dreadStabIdx + 1) % DREAD_STABS.length;
   return DREAD_STABS[dreadStabIdx]!;
 }
-/** Next deep-night dread sting (ms clock); <0 = not yet scheduled. */
-let nextDreadStabAt = -1;
-/**
- * THE AMBIENT HITS — the dread stabs' calm sibling: three soft piano
- * stings dealt in rotation, only into the track player's long quiets
- * (music silent, safe country) so a stab never lands over a song.
- */
-const AMBIENT_HITS: readonly SampleName[] = ['ambient_hit_1', 'ambient_hit_2', 'ambient_hit_3'];
-let ambientHitIdx = Math.floor(Math.random() * AMBIENT_HITS.length);
-/** Next calm ambient hit (ms clock); <0 = not yet scheduled. */
-let nextAmbientHitAt = -1;
 /**
  * THE HENYARD SPEAKS — next spatial chicken beat (ms clock). One
  * voice per beat no matter how many hens stand in earshot: a yard
@@ -4312,31 +4319,11 @@ function frame(now: number): void {
     } else {
       lastSkyHours = null;
     }
-    // THE NIGHT HAS TEETH: deep in the dark, out in genuinely
-    // dangerous country, a rare far-off dramatic sting — a triggered
-    // ambient one-shot on no beat the player can predict. True wild
-    // + tier 2 or worse only; towns and the safe meadows never hear
-    // it, and the first is never sooner than two minutes in.
-    if (nextDreadStabAt < 0) nextDreadStabAt = now + 120_000 + Math.random() * 120_000;
-    if (now >= nextDreadStabAt) {
-      nextDreadStabAt = now + 170_000 + Math.random() * 220_000;
-      const deepNight = hours < 4.5 || hours > 21.5;
-      if (deepNight && w.wild > 0.7 && dangerTier >= 2 && !under) {
-        sfx.sample(nextDreadStab(), 0.6);
-      }
-    }
-    // THE AMBIENT HITS: a soft piano sting once every minute or two,
-    // surface only, safe country only (the dread stabs own dangerous
-    // ground), and NEVER over a sounding track — the hits belong to
-    // the deck's long scenic quiets, the way the crickets do.
-    if (nextAmbientHitAt < 0) nextAmbientHitAt = now + 75_000 + Math.random() * 75_000;
-    if (now >= nextAmbientHitAt) {
-      nextAmbientHitAt = now + 70_000 + Math.random() * 90_000;
-      if (!under && music.state === 'silent' && dangerTier < 2) {
-        ambientHitIdx = (ambientHitIdx + 1) % AMBIENT_HITS.length;
-        sfx.sample(AMBIENT_HITS[ambientHitIdx]!, 0.55);
-      }
-    }
+    // (THE UNPROMPTED STING IS RETIRED — the deep-night dread stab
+    // and the calm ambient-hit schedulers both stood here. See the
+    // note over DREAD_STABS. The quiets they used to fill now belong
+    // entirely to the world's own voice, which is the whole point of
+    // having lengthened them.)
     // THE HENYARD SPEAKS: every 6-15s, if any chicken stands within
     // earshot, one hen says one thing — a cluck or a chatter phrase —
     // from where she actually stands (the spatial law prices distance
