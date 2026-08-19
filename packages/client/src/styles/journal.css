@@ -617,11 +617,9 @@
   position: relative;
 }
 
-.quest-card .rift-plaque {
-  box-shadow:
-    0 0 0 0.125rem var(--quest-accent),
-    0 0 1rem var(--quest-accent);
-}
+/* (The `.quest-card .rift-plaque` ring lived here as an override of a
+   ceremony.css rule that read a token nobody set. The base rule reads
+   `--quest-accent` now, so this duplicate is gone.) */
 
 .quest-kicker {
   color: var(--quest-accent);

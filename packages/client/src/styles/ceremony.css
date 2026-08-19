@@ -514,9 +514,13 @@
   justify-content: center;
   border: 0.4375rem solid transparent;
   border-image: var(--ui-socket) 35 fill / 0.4375rem;
+  /* `--rift-accent` was never set by anything — the ceremony's two
+     builders (questBanner, repBanner) have always written
+     `--quest-accent` on the stage. A name mismatch, not a missing
+     value: the accent was being computed and delivered all along. */
   box-shadow:
-    0 0 0 0.125rem var(--rift-accent),
-    0 0 1rem var(--rift-accent);
+    0 0 0 0.125rem var(--quest-accent),
+    0 0 1rem var(--quest-accent);
 }
 
 .rift-plaque img {
@@ -555,13 +559,17 @@
   text-overflow: ellipsis;
 }
 
-/* The tier's enamel inlay under the name (the ceremony's dialect). */
+/* The enamel inlay under the name (the ceremony's dialect). This one
+   was genuinely dead — nothing overrode it, so the bar painted no
+   field and only its offset drop-shadow survived, reading as a stray
+   dark hairline under the title rather than as a missing element.
+   That is how it passed review. */
 .rift-title::after {
   content: '';
   display: block;
   height: 0.25rem;
   margin-top: 0.25rem;
-  background: var(--rift-accent);
+  background: var(--quest-accent);
   box-shadow: 0.09375rem 0.09375rem 0 rgba(14, 10, 5, 0.9);
 }
 
