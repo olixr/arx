@@ -16,7 +16,8 @@
     "build": "npm run build -w @arx/client",
     "start": "npm run start -w @arx/server",
     "test": "npm run test --workspaces --if-present",
-    "typecheck": "tsc -b packages/shared packages/content packages/server packages/client packages/tools"
+    "typecheck": "tsc -b packages/shared packages/content packages/server packages/client packages/tools",
+    "audit:css": "node scripts/audit-css-tokens.mjs"
   },
   "devDependencies": {
     "typescript": "^5.5.0"
