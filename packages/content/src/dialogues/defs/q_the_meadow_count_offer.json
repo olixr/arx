@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_meadow_count_offer__hub",
       "text": "The granary across the ford. Rats all over it in open daylight, and the count grows every morning. I want six down. Yours?",
       "hooks": [
         {
@@ -34,6 +35,7 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_meadow_count_offer__sworn",
       "text": "Good. Southeast, over the ford. Count them out loud if it helps. It helps me.",
       "hooks": [
         {
@@ -44,6 +46,7 @@
     },
     {
       "id": "declined",
+      "voice": "q_the_meadow_count_offer__declined",
       "text": "It'll keep. Rats always keep."
     }
   ]

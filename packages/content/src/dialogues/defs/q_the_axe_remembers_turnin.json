@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_axe_remembers_turnin__paid",
       "text": "Four, and taken clean off the marked ones. The stand approves. So do I, at about the same speed.",
       "hooks": [
         {

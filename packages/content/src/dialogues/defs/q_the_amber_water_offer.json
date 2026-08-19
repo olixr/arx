@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_amber_water_offer__hub",
       "text": "River's giving today. Five trout. The planks, the jetty, wherever the water lets you stand. It'll teach you more than I would.",
       "hooks": [
         {
@@ -30,24 +31,23 @@
           "text": "Fish don't like me.",
           "next": "declined"
         }
-      ],
-      "voice": "q_the_amber_water_offer__hub"
+      ]
     },
     {
       "id": "sworn",
+      "voice": "q_the_amber_water_offer__sworn",
       "text": "Slack water. Soft arm. The river does the rest.",
       "hooks": [
         {
           "kind": "quest_accept",
           "quest": "the_amber_water"
         }
-      ],
-      "voice": "q_the_amber_water_offer__sworn"
+      ]
     },
     {
       "id": "declined",
-      "text": "They don't like anyone. That's not what the line is for.",
-      "voice": "q_the_amber_water_offer__declined"
+      "voice": "q_the_amber_water_offer__declined",
+      "text": "They don't like anyone. That's not what the line is for."
     }
   ]
 }

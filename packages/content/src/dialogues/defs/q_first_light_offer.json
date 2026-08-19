@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_first_light_offer__hub",
       "text": "Before the road can ask after you, the yard should. Go meet the three who keep it: *Halla* at the drill ground, her fletcher *Rill*, and *Old Varn* at his circle. Each teaches for the asking. Will you go?",
       "hooks": [
         {
@@ -34,6 +35,7 @@
     },
     {
       "id": "sworn",
+      "voice": "q_first_light_offer__sworn",
       "text": "Good. Start with Halla. Shoulders back, child. She'll say it if I don't.",
       "hooks": [
         {
@@ -44,6 +46,7 @@
     },
     {
       "id": "declined",
+      "voice": "q_first_light_offer__declined",
       "text": "Then warm yourself here a while longer. The yard keeps."
     }
   ]

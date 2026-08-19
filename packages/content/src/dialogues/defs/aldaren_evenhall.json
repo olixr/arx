@@ -10,12 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "aldaren_evenhall__greet",
    "text": "Come up. The fire does not mind strangers, and I have decided not to either.",
-   "next": "hub",
-   "voice": "aldaren_evenhall__greet"
+   "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "aldaren_evenhall__hub",
    "text": "Ask. I have answered harder things than questions.",
    "choices": [
     {
@@ -34,11 +35,11 @@
      "text": "What is the Heartwood?",
      "next": "heartwood"
     }
-   ],
-   "voice": "aldaren_evenhall__hub"
+   ]
   },
   {
    "id": "gate",
+   "voice": "aldaren_evenhall__gate",
    "text": "Because family was knocking. Annik at the delf, Denna on her coast, a hundred more who do not know their own ears. The thinned blood is still the blood. A door you keep shut on family is not a door. It is a wall, and we do not build walls.",
    "choices": [
     {
@@ -49,17 +50,17 @@
      "text": "Never mind.",
      "next": "hub"
     }
-   ],
-   "voice": "aldaren_evenhall__gate"
+   ]
   },
   {
    "id": "dissent",
+   "voice": "aldaren_evenhall__dissent",
    "text": "My daughter counts my mistakes. It is good work and somebody should do it. She keeps the open gate better than anyone who wanted it open. That is the whole argument, standing at her post.",
-   "next": "hub",
-   "voice": "aldaren_evenhall__dissent"
+   "next": "hub"
   },
   {
    "id": "realm",
+   "voice": "aldaren_evenhall__realm",
    "text": "I taught their first masons which end of the stone listens... they built well, for people in a hurry. When their mountain woke I brought my folk home. The ones who stayed east are your grandmothers. Some of you have the ears still.",
    "choices": [
     {
@@ -70,11 +71,11 @@
      "text": "Never mind.",
      "next": "hub"
     }
-   ],
-   "voice": "aldaren_evenhall__realm"
+   ]
   },
   {
    "id": "crown",
+   "voice": "aldaren_evenhall__crown",
    "text": "Are they. Five kings, one name, a foreman's line... I knew a foreman once. Paid his debts in silver and laughed from the belt up. I will not finish this thought. You may, if you walk east again.",
    "choices": [
     {
@@ -83,26 +84,25 @@
      "requires": ["the_count_stands"]
     },
     { "text": "Never mind.", "next": "hub" }
-   ],
-   "voice": "aldaren_evenhall__crown"
+   ]
   },
   {
    "id": "count",
+   "voice": "aldaren_evenhall__count",
    "text": "Two hundred and fifteen. I taught their masons which end of the stone listens, and that seal was their masterwork, and it was shut from the outside by a man who then walked north and fathered kings... You carried the count that finishes the first sentence of that story. The rest is still being written, east of here, by whoever wears the crown when it ends. Tell Annik the old blood reads her stone. She will know what that is worth.",
-   "next": "hub",
-   "voice": "aldaren_evenhall__count"
+   "next": "hub"
   },
   {
    "id": "quiet",
+   "voice": "aldaren_evenhall__quiet",
    "text": "A hundred and fifty years of tending what we are. Songs. Glass. Bows. The wood grew. The stones kept the miles. Nothing happened, which is what we wanted, and it cost more than it sounds like it would.",
-   "next": "hub",
-   "voice": "aldaren_evenhall__quiet"
+   "next": "hub"
   },
   {
    "id": "heartwood",
+   "voice": "aldaren_evenhall__heartwood",
    "text": "The grove we keep. That is the whole answer anyone gets, and I am the king, so it will hold... ask me again in a hundred years. Or do something worth an earlier asking. People have.",
-   "next": "hub",
-   "voice": "aldaren_evenhall__heartwood"
+   "next": "hub"
   }
  ]
 }

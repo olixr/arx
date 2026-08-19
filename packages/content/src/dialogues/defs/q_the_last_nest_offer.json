@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_last_nest_offer__hub",
       "text": "The granary's still breathing. Eight more and the nest breaks for a season. There's an old traveller's chest inside the walls: clear the ruin and it's yours, along with something off my own rack. In?",
       "hooks": [
         {
@@ -34,6 +35,7 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_last_nest_offer__sworn",
       "text": "Then finish it. Come back when the ruin goes quiet.",
       "hooks": [
         {
@@ -44,6 +46,7 @@
     },
     {
       "id": "declined",
+      "voice": "q_the_last_nest_offer__declined",
       "text": "The nest won't wait politely. Say when."
     }
   ]

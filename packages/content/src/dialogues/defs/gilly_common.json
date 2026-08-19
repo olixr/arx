@@ -5,6 +5,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "gilly_common__hub",
       "text": "Pull up. What'll it be?",
       "choices": [
         { "text": "What's on the board?", "next": "board" },
@@ -15,21 +16,25 @@
     },
     {
       "id": "road",
+      "voice": "gilly_common__road",
       "text": "Walked it as far as Saltmere once. Grey gulls, painted boats, salt in everything including the gossip. Came home because somebody has to hold the door for the ones just starting. That's the whole story. It pours longer after dark.",
       "next": "hub"
     },
     {
       "id": "beds",
+      "voice": "gilly_common__beds",
       "text": "Four in the wing. Claim any free one and it's yours: the world keeps a place that remembers you, and home can pull you back from anywhere. Ask the road how often it does that for people.",
       "next": "hub"
     },
     {
       "id": "board",
+      "voice": "gilly_common__board",
       "text": "Bread's fresh, the bird's hot, and the trout depends entirely on Weir's morning.",
       "hooks": [{ "kind": "shop", "shop": "gilly_board" }]
     },
     {
       "id": "pass",
+      "voice": "gilly_common__pass",
       "text": "Mind the step, love."
     }
   ]

@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_flour_and_water_offer__hub",
       "text": "Everyone wants bread. Nobody wants to know where flour comes from. You look like you could stand to know. Three measures, my stone, your arms. Wheat's over the counter if you didn't grow any.",
       "hooks": [
         {
@@ -30,24 +31,23 @@
           "text": "I just eat the bread.",
           "next": "declined"
         }
-      ],
-      "voice": "q_flour_and_water_offer__hub"
+      ]
     },
     {
       "id": "sworn",
+      "voice": "q_flour_and_water_offer__sworn",
       "text": "Steady feed, steady turn. The stone does the thinking. That's more than I can say for most of my customers.",
       "hooks": [
         {
           "kind": "quest_accept",
           "quest": "flour_and_water"
         }
-      ],
-      "voice": "q_flour_and_water_offer__sworn"
+      ]
     },
     {
       "id": "declined",
-      "text": "In my day that answer got you the small loaf. Still does.",
-      "voice": "q_flour_and_water_offer__declined"
+      "voice": "q_flour_and_water_offer__declined",
+      "text": "In my day that answer got you the small loaf. Still does."
     }
   ]
 }

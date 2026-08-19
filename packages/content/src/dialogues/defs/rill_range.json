@@ -5,6 +5,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "rill_range__hub",
       "text": "Range is open. Wind's honest today.",
       "choices": [
         { "text": "Any advice on the wind?", "next": "wind" },
@@ -15,21 +16,25 @@
     },
     {
       "id": "wind",
+      "voice": "rill_range__wind",
       "text": "Off the brook, mornings. Aim a hair upstream and let it carry. Evenings it turns. So do I.",
       "next": "hub"
     },
     {
       "id": "arrows",
+      "voice": "rill_range__arrows",
       "text": "Ottery sells the makings. Fletch your own when your hands are ready. An arrow you made flies like it owes you.",
       "next": "hub"
     },
     {
       "id": "trail",
+      "voice": "rill_range__trail",
       "text": "North of here. I was nine. I walked in off the hunters' trail alone and Rowan didn't ask questions, so I stayed. That's the whole story anyone's getting.",
       "next": "hub"
     },
     {
       "id": "pass",
+      "voice": "rill_range__pass",
       "text": "Straight elbows."
     }
   ]

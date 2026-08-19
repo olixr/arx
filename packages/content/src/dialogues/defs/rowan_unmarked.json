@@ -15,6 +15,7 @@
   "nodes": [
     {
       "id": "edwin",
+      "voice": "rowan_unmarked__edwin",
       "text": "Ansel tells me you asked after Edwin's page, and stood for it properly. I never met the man. I know his caravan made the Fork, and I know what he did there, and I know his name gets read to the braziers each feast whether the book requires it or not. You stood for a stranger's name. The road remembers that kind. So do I.",
       "choices": [
         {
@@ -25,24 +26,23 @@
           "text": "Somebody should stand for them.",
           "next": "bye"
         }
-      ],
-      "voice": "rowan_unmarked__edwin"
+      ]
     },
     {
       "id": "cape",
+      "voice": "rowan_unmarked__cape",
       "text": "And the cape keeps her. That's how it works, this far down the road. You keep a thing well enough, it starts keeping you back.",
       "choices": [
         {
           "text": "True enough.",
           "next": "bye"
         }
-      ],
-      "voice": "rowan_unmarked__cape"
+      ]
     },
     {
       "id": "bye",
-      "text": "Peace on your road. Mind the dusk chill.",
-      "voice": "rowan_unmarked__bye"
+      "voice": "rowan_unmarked__bye",
+      "text": "Peace on your road. Mind the dusk chill."
     }
   ]
 }

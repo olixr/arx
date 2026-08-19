@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_first_light_turnin__paid",
       "text": "Met all three, and still standing straight. Halla growled something kind about you, which from her is a parade. Here, child. The day's first coin should always be an easy one.",
       "hooks": [
         {

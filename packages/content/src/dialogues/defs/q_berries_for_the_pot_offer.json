@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_berries_for_the_pot_offer__hub",
       "text": "Pot's low, love. Eight handfuls of berries off the banks south of the bridge, and there'll be a bowl in it for you. There always is. Will you?",
       "hooks": [
         {
@@ -34,6 +35,7 @@
     },
     {
       "id": "sworn",
+      "voice": "q_berries_for_the_pot_offer__sworn",
       "text": "Take a pocketful for yourself while you're at it. The bank never minds.",
       "hooks": [
         {
@@ -44,6 +46,7 @@
     },
     {
       "id": "declined",
+      "voice": "q_berries_for_the_pot_offer__declined",
       "text": "Then come by for a bowl anyway."
     }
   ]

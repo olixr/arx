@@ -6,16 +6,19 @@
   "nodes": [
     {
       "id": "door",
+      "voice": "gilly_stones__door",
       "text": "Welcome to the *Five Stones*, named for the only thing every guest has in common. Gilly. I pour, I listen, and I keep four beds in the wing.",
       "next": "beds"
     },
     {
       "id": "beds",
+      "voice": "gilly_stones__beds",
       "text": "Claim one. Walk up to a free bed and make it yours, and from then on the world has a place that remembers you. Wherever the road drops you, home pulls you back. Roads don't remember anybody, love. Beds do.",
       "next": "board"
     },
     {
       "id": "board",
+      "voice": "gilly_stones__board",
       "text": "Board's simple: bread, a hot bird, a trout when Weir's morning went well. Sit anywhere. The stories pour themselves.",
       "hooks": [{ "kind": "shop", "shop": "gilly_board" }]
     }

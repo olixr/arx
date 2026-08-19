@@ -14,14 +14,14 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_makers_mark_turnin__paid",
       "text": "They told me. All three, before you crossed the lane back. Bretta said your grip was honest, which from her is a parade. The row knows your mark now. Whatever you make next, make it here.",
       "hooks": [
         {
           "kind": "quest_turnin",
           "quest": "the_makers_mark"
         }
-      ],
-      "voice": "q_the_makers_mark_turnin__paid"
+      ]
     }
   ]
 }

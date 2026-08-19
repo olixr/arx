@@ -6,16 +6,19 @@
   "nodes": [
     {
       "id": "mark",
+      "voice": "rill_bow__mark",
       "text": "New. Wren send you? Good. *Rill*. Bow.",
       "next": "draw"
     },
     {
       "id": "draw",
+      "voice": "rill_bow__draw",
       "text": "Don't tap at it. *Draw and hold.* The longer the pull, the harder it hits. Loose early and you've wasted the arrow and the moment. Full pull. Then let go. You'll feel the difference.",
       "next": "butts"
     },
     {
       "id": "butts",
+      "voice": "rill_bow__butts",
       "text": "Straw butts at the end of the range. Put ten through them. Then put one through the wind and see what it costs you. That's the whole school. The rest is mornings."
     }
   ]

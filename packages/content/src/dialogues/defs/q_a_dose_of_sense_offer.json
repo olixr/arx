@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_a_dose_of_sense_offer__hub",
       "text": "A proposal. You brew two tinctures at my alembic, and in exchange, you stop being a person who knocks on my door at midnight. Sagewort's in the garden. Well, mostly in the garden.",
       "hooks": [
         {
@@ -30,24 +31,23 @@
           "text": "I'd rather buy them.",
           "next": "declined"
         }
-      ],
-      "voice": "q_a_dose_of_sense_offer__hub"
+      ]
     },
     {
       "id": "sworn",
+      "voice": "q_a_dose_of_sense_offer__sworn",
       "text": "Wash the sagewort. Twice. The first wash is for the dirt and the second is for my peace of mind.",
       "hooks": [
         {
           "kind": "quest_accept",
           "quest": "a_dose_of_sense"
         }
-      ],
-      "voice": "q_a_dose_of_sense_offer__sworn"
+      ]
     },
     {
       "id": "declined",
-      "text": "A valid arrangement, until the night you're out of coin and blood at the same time. It happens weekly.",
-      "voice": "q_a_dose_of_sense_offer__declined"
+      "voice": "q_a_dose_of_sense_offer__declined",
+      "text": "A valid arrangement, until the night you're out of coin and blood at the same time. It happens weekly."
     }
   ]
 }

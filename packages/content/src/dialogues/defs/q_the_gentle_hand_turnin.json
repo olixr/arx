@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_gentle_hand_turnin__paid",
       "text": "Two pails and not a hoofmark on you. That's the gentle hand. Everything wild I could ever teach you starts exactly there.",
       "hooks": [
         {

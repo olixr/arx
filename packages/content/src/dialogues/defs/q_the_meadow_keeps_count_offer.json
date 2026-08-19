@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_meadow_keeps_count_offer__hub",
       "text": "Count's up at the granary again. Eight down, usual rate. Yours?",
       "hooks": [
         {
@@ -34,6 +35,7 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_meadow_keeps_count_offer__sworn",
       "text": "Go. Count out loud.",
       "hooks": [
         {
@@ -44,6 +46,7 @@
     },
     {
       "id": "declined",
+      "voice": "q_the_meadow_keeps_count_offer__declined",
       "text": "The count won't shrink by itself."
     }
   ]

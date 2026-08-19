@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_boards_and_twine_offer__hub",
       "text": "Prove the hands work! Three boards off my sawhorse, two twine off the bench. Logs from Alder's copse, fibre from the banks. First crafts, best crafts. Go on?",
       "hooks": [
         {
@@ -34,6 +35,7 @@
     },
     {
       "id": "sworn",
+      "voice": "q_boards_and_twine_offer__sworn",
       "text": "Saw's sharp, bench is free. Nothing on my shelf started better than this.",
       "hooks": [
         {
@@ -44,6 +46,7 @@
     },
     {
       "id": "declined",
+      "voice": "q_boards_and_twine_offer__declined",
       "text": "The stool had two legs and I still kept it. No shame in later."
     }
   ]

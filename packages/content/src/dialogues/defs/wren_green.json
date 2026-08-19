@@ -5,6 +5,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "wren_green__hub",
       "text": "There you are, waker. How's the day treating you?",
       "choices": [
         { "text": "Tell me about the Waking Ring.", "next": "ring" },
@@ -15,21 +16,25 @@
     },
     {
       "id": "ring",
+      "voice": "wren_green__ring",
       "text": "Five stones, older than any map of them. They sleep a week, sometimes a season. Then one dawn the frost melts off them in a ring, and someone new is standing where you stood. We tend them, child. We don't ask them. They've never once answered anybody.",
       "next": "hub"
     },
     {
       "id": "pointers",
+      "voice": "wren_green__pointers",
       "text": "Halla, Rill, and Varn keep the yard if your arms want work. Berrit feeds, Ottery builds, Alder fells, Weir fishes. Brammel and Sorrel keep the field and the beasts, and Gilly keeps the beds. Small village. One good day covers it.",
       "next": "hub"
     },
     {
       "id": "rowan",
+      "voice": "wren_green__rowan",
       "text": "Rowan. Forty years beside these stones. Two winters back he stood up off his porch and said the road had finally asked him personally. He keeps the gate registry at Amberford now, with his old friend Aldis. He writes. I knit. It suits us both.",
       "next": "hub"
     },
     {
       "id": "pass",
+      "voice": "wren_green__pass",
       "text": "Go gently, child. The day's long enough to learn one more thing."
     }
   ]

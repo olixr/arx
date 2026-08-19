@@ -5,6 +5,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "weir_pier__hub",
       "text": "...Mm. You again. Good.",
       "choices": [
         { "text": "How's the water?", "next": "water" },
@@ -14,16 +15,19 @@
     },
     {
       "id": "water",
+      "voice": "weir_pier__water",
       "text": "Up a finger since yesterday. That matters to more things than you'd think. The trout know it. Now you do.",
       "next": "hub"
     },
     {
       "id": "crabs",
+      "voice": "weir_pier__crabs",
       "text": "We have an understanding, the crabs and I. They keep the sand. I keep the pier. You they haven't met. Introduce yourself carefully, or with a bow.",
       "next": "hub"
     },
     {
       "id": "pass",
+      "voice": "weir_pier__pass",
       "text": "Quiet on the boards."
     }
   ]

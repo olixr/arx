@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_free_furrows_offer__hub",
       "text": "See the fenced plots out the west gate, south of the road? Free Furrows. Anyone may plant. Almost nobody does, and it offends me personally. Six carrots, your own furrow. The soil's better than Jorel admits.",
       "hooks": [
         {
@@ -30,24 +31,23 @@
           "text": "Dirt and I disagree.",
           "next": "declined"
         }
-      ],
-      "voice": "q_the_free_furrows_offer__hub"
+      ]
     },
     {
       "id": "sworn",
+      "voice": "q_the_free_furrows_offer__sworn",
       "text": "Seeds at Jorel's stall, water in the barrel, and talk to the soil if it helps. It helps me. Don't tell Jorel.",
       "hooks": [
         {
           "kind": "quest_accept",
           "quest": "the_free_furrows"
         }
-      ],
-      "voice": "q_the_free_furrows_offer__sworn"
+      ]
     },
     {
       "id": "declined",
-      "text": "The dirt always wins the disagreement, love. It just waits.",
-      "voice": "q_the_free_furrows_offer__declined"
+      "voice": "q_the_free_furrows_offer__declined",
+      "text": "The dirt always wins the disagreement, love. It just waits."
     }
   ]
 }

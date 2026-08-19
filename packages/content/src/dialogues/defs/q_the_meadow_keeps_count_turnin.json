@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_meadow_keeps_count_turnin__paid",
       "text": "Eight. The meadow breathes easier and so does my ledger. Same again in a day or two, knowing rats.",
       "hooks": [
         {

@@ -10,12 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "ilvane_flame__greet",
    "text": "Mind the light. It minds you.",
-   "next": "hub",
-   "voice": "ilvane_flame__greet"
+   "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "ilvane_flame__hub",
    "text": "You are standing where every lamp you have ever trusted was born. Ask your questions here, they come out better.",
    "choices": [
     {
@@ -30,26 +31,25 @@
      "text": "The road lamps, then. The shrine flame.",
      "next": "daughters"
     }
-   ],
-   "voice": "ilvane_flame__hub"
+   ]
   },
   {
    "id": "flame",
+   "voice": "ilvane_flame__flame",
    "text": "The first light my people kept. It burns nothing. It has never needed anything. I keep it company, not alive. There is a difference, and learning it is most of my work.",
-   "next": "hub",
-   "voice": "ilvane_flame__flame"
+   "next": "hub"
   },
   {
    "id": "heat",
+   "voice": "ilvane_flame__heat",
    "text": "No. Heat is what fire spends. This one saves. Ask Faelar about spending, his is the one working fire in the city and he is very proud of it.",
-   "next": "hub",
-   "voice": "ilvane_flame__heat"
+   "next": "hub"
   },
   {
    "id": "daughters",
+   "voice": "ilvane_flame__daughters",
    "text": "Daughters of daughters of this light. My people taught the old realm its lamps, and the realm taught the roads, and the roads made a faith of it. The mother-flame at Silverfall is the youngest daughter. She is doing it right. You may tell her keeper I said so.",
-   "next": "hub",
-   "voice": "ilvane_flame__daughters"
+   "next": "hub"
   }
  ]
 }

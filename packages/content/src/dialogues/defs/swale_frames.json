@@ -10,6 +10,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "swale_frames__hub",
       "text": "Downwind's that way, and you're welcome to it. Tannery's open. Frames, folios, or a question, but make it while I scrape.",
       "choices": [
         {
@@ -28,56 +29,55 @@
           "text": "Just passing through.",
           "next": "bye"
         }
-      ],
-      "voice": "swale_frames__hub"
+      ]
     },
     {
       "id": "teach",
+      "voice": "swale_frames__teach",
       "text": "The whole wet trade, hide to strap. Folios on the shelf, every pattern the guild teaches, buy the one your hands are ready for. Tilo sends me his leather students now and calls it *giving the hides back to somebody who likes them*. He's not wrong.",
       "hooks": [
         {
           "kind": "shop",
           "shop": "trainer_tanner"
         }
-      ],
-      "voice": "swale_frames__teach"
+      ]
     },
     {
       "id": "hask",
+      "voice": "swale_frames__hask",
       "text": "Fifteen years his quartermaster on the Last Lamp run. Every strap, every buckle, every waterskin in that column crossed my bench first. My knees took the road's wages the winter the worgs came down. The trade kept the rest of me. He still sends me every pelt worth curing, and he still checks the stitching. Let him.",
       "choices": [
         {
           "text": "He checks everything.",
           "next": "checks"
         }
-      ],
-      "voice": "swale_frames__hask"
+      ]
     },
     {
       "id": "checks",
-      "text": "It's how he says he'd rather you didn't die. Took me five years on the road to translate it. Saved my life twice after.",
-      "voice": "swale_frames__checks"
+      "voice": "swale_frames__checks",
+      "text": "It's how he says he'd rather you didn't die. Took me five years on the road to translate it. Saved my life twice after."
     },
     {
       "id": "bank",
+      "voice": "swale_frames__bank",
       "text": "Tanning wants water, lime, and neighbors with forgiving noses, in that order. The river does the first, I do the second, and downstream past the retting bank there's nobody but the reeds to complain. It's the right place. The town finally built it.",
       "choices": [
         {
           "text": "The reeds don't mind?",
           "next": "reeds"
         }
-      ],
-      "voice": "swale_frames__bank"
+      ]
     },
     {
       "id": "reeds",
-      "text": "The reeds keep their own counsel down there. Always have. I cure hides and mind my bench, and I'd advise the same to anyone poking the slack water.",
-      "voice": "swale_frames__reeds"
+      "voice": "swale_frames__reeds",
+      "text": "The reeds keep their own counsel down there. Always have. I cure hides and mind my bench, and I'd advise the same to anyone poking the slack water."
     },
     {
       "id": "bye",
-      "text": "Boots through here twice, third pair's cut to your foot. That's the standing offer.",
-      "voice": "swale_frames__bye"
+      "voice": "swale_frames__bye",
+      "text": "Boots through here twice, third pair's cut to your foot. That's the standing offer."
     }
   ]
 }

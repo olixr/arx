@@ -14,14 +14,14 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_flour_and_water_turnin__paid",
       "text": "Ground even, no scorch. You listened. Forty years I've watched folk fight that stone, and the stone is undefeated. Flour's yours. Bread is flour, water, and nerve. Ask Dunna about the nerve.",
       "hooks": [
         {
           "kind": "quest_turnin",
           "quest": "flour_and_water"
         }
-      ],
-      "voice": "q_flour_and_water_turnin__paid"
+      ]
     }
   ]
 }

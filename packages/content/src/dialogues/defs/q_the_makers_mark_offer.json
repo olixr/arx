@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_makers_mark_offer__hub",
       "text": "Cloth, leather, and a brew that didn't explode. Do you know what that makes you? A maker. Go let Bretta, Swale, and Elowen say so to your face. It matters. It mattered to me.",
       "hooks": [
         {
@@ -30,24 +31,23 @@
           "text": "I don't need ceremony.",
           "next": "declined"
         }
-      ],
-      "voice": "q_the_makers_mark_offer__hub"
+      ]
     },
     {
       "id": "sworn",
+      "voice": "q_the_makers_mark_offer__sworn",
       "text": "It isn't ceremony, it's the row learning a name worth shouting when work comes in. Go on.",
       "hooks": [
         {
           "kind": "quest_accept",
           "quest": "the_makers_mark"
         }
-      ],
-      "voice": "q_the_makers_mark_offer__sworn"
+      ]
     },
     {
       "id": "declined",
-      "text": "Neither did I, and Bretta shook my hand anyway, and I have thought about it weekly for nine years. Go anyway. When you like.",
-      "voice": "q_the_makers_mark_offer__declined"
+      "voice": "q_the_makers_mark_offer__declined",
+      "text": "Neither did I, and Bretta shook my hand anyway, and I have thought about it weekly for nine years. Go anyway. When you like."
     }
   ]
 }

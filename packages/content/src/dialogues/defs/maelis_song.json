@@ -10,12 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "maelis_song__greet",
    "text": "Softly. The harp holds the last note longer than you would credit.",
-   "next": "hub",
-   "voice": "maelis_song__greet"
+   "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "maelis_song__hub",
    "text": "The Songhouse keeps what happened. Some of it is even true. What do you want kept, or found?",
    "choices": [
     {
@@ -30,17 +31,17 @@
      "text": "Sing me the verse nobody sings.",
      "next": "refusal"
     }
-   ],
-   "voice": "maelis_song__hub"
+   ]
   },
   {
    "id": "songs",
+   "voice": "maelis_song__songs",
    "text": "Everything the stones cannot hold. Names, mostly. A ledger forgives, a song forgives twice. When the thinned blood comes up the trail I sing the leaving song for their line, and they cry without knowing why. That is memory working.",
-   "next": "hub",
-   "voice": "maelis_song__songs"
+   "next": "hub"
   },
   {
    "id": "water",
+   "voice": "maelis_song__water",
    "text": "There is a listening song. The pearls the storms leave were our ears once, for deep water. There is a fisher on the far coast who is owed that song. If the sea sends her, I will sing it true.",
    "choices": [
     {
@@ -49,17 +50,17 @@
      "requires": ["the_song_answers"]
     },
     { "text": "I hope she comes.", "next": "hub" }
-   ],
-   "voice": "maelis_song__water"
+   ]
   },
   {
    "id": "answered",
+   "voice": "maelis_song__answered",
    "text": "You were, and the pearl sits where the harp can see it, and I have not sung it since. Some songs are for having, not for spending. When Denna of the coast comes up the trail at last, it will spend itself, and I intend to be surprised by my own voice when it does.",
-   "next": "hub",
-   "voice": "maelis_song__answered"
+   "next": "hub"
   },
   {
    "id": "refusal",
+   "voice": "maelis_song__refusal",
    "text": "No.",
    "choices": [
     {
@@ -70,14 +71,13 @@
      "text": "Fair enough.",
      "next": "hub"
     }
-   ],
-   "voice": "maelis_song__refusal"
+   ]
   },
   {
    "id": "blunt",
+   "voice": "maelis_song__blunt",
    "text": "Yes. The verse is about the grove, and it is not mine to give, and you are the eleventh to ask this season. Elarin keeps a list. He finds it funnier than I do.",
-   "next": "hub",
-   "voice": "maelis_song__blunt"
+   "next": "hub"
   }
  ]
 }

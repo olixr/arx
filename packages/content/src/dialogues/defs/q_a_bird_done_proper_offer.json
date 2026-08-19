@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_a_bird_done_proper_offer__hub",
       "text": "Now the proper lesson. Take these birds, {item:raw_chicken}, and bring me two cooked through. My fire's right there. You'll burn the first. That's why there's three.",
       "hooks": [
         {
@@ -34,6 +35,7 @@
     },
     {
       "id": "sworn",
+      "voice": "q_a_bird_done_proper_offer__sworn",
       "text": "Slow is the secret, love. The fire just wants you slower.",
       "hooks": [
         {
@@ -49,6 +51,7 @@
     },
     {
       "id": "declined",
+      "voice": "q_a_bird_done_proper_offer__declined",
       "text": "The pot will still be here when your nerve is."
     }
   ]

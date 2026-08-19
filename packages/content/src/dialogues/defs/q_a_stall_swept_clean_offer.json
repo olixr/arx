@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_a_stall_swept_clean_offer__hub",
       "text": "Rule of the yard: beasts fed first. Bins are low. Five sheaves of wheat, Garton's counter or the field, and while they eat I'll show you what a stable's actually for. No, not you. The tall one. Yes.",
       "hooks": [
         {
@@ -30,24 +31,23 @@
           "text": "I'm no stable hand.",
           "next": "declined"
         }
-      ],
-      "voice": "q_a_stall_swept_clean_offer__hub"
+      ]
     },
     {
       "id": "sworn",
+      "voice": "q_a_stall_swept_clean_offer__sworn",
       "text": "Good answer. The grey thinks so too. He's a fine judge and a terrible horse.",
       "hooks": [
         {
           "kind": "quest_accept",
           "quest": "a_stall_swept_clean"
         }
-      ],
-      "voice": "q_a_stall_swept_clean_offer__sworn"
+      ]
     },
     {
       "id": "declined",
-      "text": "Nobody is, until a road gets long enough. It always does.",
-      "voice": "q_a_stall_swept_clean_offer__declined"
+      "voice": "q_a_stall_swept_clean_offer__declined",
+      "text": "Nobody is, until a road gets long enough. It always does."
     }
   ]
 }

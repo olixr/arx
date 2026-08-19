@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_eggs_for_the_morning_offer__hub",
       "text": "Six eggs short of a morning. The hens know it, too. Coop, mostly. Long grass, some days. Fetch them?",
       "hooks": [
         {
@@ -34,6 +35,7 @@
     },
     {
       "id": "sworn",
+      "voice": "q_eggs_for_the_morning_offer__sworn",
       "text": "Good. Mind where you step.",
       "hooks": [
         {
@@ -44,6 +46,7 @@
     },
     {
       "id": "declined",
+      "voice": "q_eggs_for_the_morning_offer__declined",
       "text": "Than eggs. All right."
     }
   ]

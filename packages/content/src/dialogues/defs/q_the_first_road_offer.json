@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_first_road_offer__hub",
       "text": "Every teacher in this village has signed you off, waker. The Ring brought you in, and the road takes you out. That's the shape of every waker's story, and yours is ready for its next line. *Amberford*, east down the First Road, a day's walk. Will you go?",
       "hooks": [
         {
@@ -34,6 +35,7 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_first_road_offer__sworn",
       "text": "Then hear the send-off, same as fifty years of wakers before you: keep to the lamps, eat before you're hungry, and find *Aldis* at the North Gate. Tell her a waker walked the whole way. Rowan will want your name for the registry the moment he hears. Go on, child. Make the road ask about you.",
       "hooks": [
         {
@@ -44,6 +46,7 @@
     },
     {
       "id": "declined",
+      "voice": "q_the_first_road_offer__declined",
       "text": "Then sit a while longer. The road keeps, and so do I."
     }
   ]

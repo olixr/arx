@@ -6,16 +6,19 @@
   "nodes": [
     {
       "id": "stand",
+      "voice": "alder_axe__stand",
       "text": "You'll be the new one. Alder. This stand was my mother's, and her mother planted the south row. Sixty years a copse gives, if you take it right.",
       "next": "lesson"
     },
     {
       "id": "lesson",
+      "voice": "alder_axe__lesson",
       "text": "Take the *marked ones*, the trunks with the blaze cut low. An axe wants a whole swing and an honest stance. The tree will tell you where it means to fall if you look up before you swing. Most don't look up.",
       "next": "years"
     },
     {
       "id": "years",
+      "voice": "alder_axe__years",
       "text": "Wood becomes boards at Ottery's saw, and boards become anything at all. Take what the stand can spare and it outlives us both. That's the whole trade, told slow. Everything I know is told slow."
     }
   ]

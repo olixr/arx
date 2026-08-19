@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_gate_book_offer__hub",
       "text": "Your name's in the book. Now learn the three doors that keep it company: Ansel's hall, Cormund's bank, Dunna's fire. Walk them once and this town is half yours already. Will you go?",
       "hooks": [
         {
@@ -30,24 +31,23 @@
           "text": "Later, maybe.",
           "next": "declined"
         }
-      ],
-      "voice": "q_the_gate_book_offer__hub"
+      ]
     },
     {
       "id": "sworn",
+      "voice": "q_the_gate_book_offer__sworn",
       "text": "Good. Tell Ansel the gate sent you. He'll pretend that's a formality. It isn't.",
       "hooks": [
         {
           "kind": "quest_accept",
           "quest": "the_gate_book"
         }
-      ],
-      "voice": "q_the_gate_book_offer__sworn"
+      ]
     },
     {
       "id": "declined",
-      "text": "The book is patient. So am I. Mostly the book.",
-      "voice": "q_the_gate_book_offer__declined"
+      "voice": "q_the_gate_book_offer__declined",
+      "text": "The book is patient. So am I. Mostly the book."
     }
   ]
 }

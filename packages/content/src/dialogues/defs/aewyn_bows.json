@@ -10,12 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "aewyn_bows__greet",
    "text": "Hands off the staves unless they greet you first.",
-   "next": "hub",
-   "voice": "aewyn_bows__greet"
+   "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "aewyn_bows__hub",
    "text": "Bows. Staves. Sixty years of patience on racks. What do you need?",
    "choices": [
     {
@@ -30,11 +31,11 @@
      "text": "Show me your work.",
      "next": "browse"
     }
-   ],
-   "voice": "aewyn_bows__hub"
+   ]
   },
   {
    "id": "teach",
+   "voice": "aewyn_bows__teach",
    "text": "The guild halls east teach to a line and stop. I teach past it. Yew bows, the singing bow, the war bow. Nobody else alive will show you, because everybody else who could is in this city, and they all send students to me anyway.",
    "choices": [
     {
@@ -45,25 +46,24 @@
      "text": "Later.",
      "next": "hub"
     }
-   ],
-   "voice": "aewyn_bows__teach"
+   ]
   },
   {
    "id": "yew",
+   "voice": "aewyn_bows__yew",
    "text": "Yew grows slow and remembers everything. Oak forgets by autumn. A yew stave taken kindly will pull for your grandchildren. Taken unkindly it will not pull at all. The wood decides. My whole craft is asking well.",
-   "next": "hub",
-   "voice": "aewyn_bows__yew"
+   "next": "hub"
   },
   {
    "id": "browse",
+   "voice": "aewyn_bows__browse",
    "text": "Patterns, staves, and finished work. The prices are firm. So is the yew.",
    "hooks": [
     {
      "kind": "shop",
      "shop": "aewyn_bows"
     }
-   ],
-   "voice": "aewyn_bows__browse"
+   ]
   }
  ]
 }

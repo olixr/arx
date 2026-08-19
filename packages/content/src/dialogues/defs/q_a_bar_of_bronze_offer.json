@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_a_bar_of_bronze_offer__hub",
       "text": "Last lesson in my pocket: *bronze*. Crag copper, crag tin, my furnace by the lane. Bring me one bar you made yourself and I'll believe all the rest.",
       "hooks": [
         {
@@ -34,6 +35,7 @@
     },
     {
       "id": "sworn",
+      "voice": "q_a_bar_of_bronze_offer__sworn",
       "text": "Pick's on the counter if you need one. The crag is patient. The furnace isn't.",
       "hooks": [
         {
@@ -44,6 +46,7 @@
     },
     {
       "id": "declined",
+      "voice": "q_a_bar_of_bronze_offer__declined",
       "text": "The crag keeps. Bronze has waited three thousand years for you already."
     }
   ]

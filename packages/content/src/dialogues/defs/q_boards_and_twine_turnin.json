@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_boards_and_twine_turnin__paid",
       "text": "Boards true, twine tight. That's a maker's hand or I've never watched one start. These stay in YOUR pack, mind. Here's the fee I'd charge anyone else, paid backwards.",
       "hooks": [
         {

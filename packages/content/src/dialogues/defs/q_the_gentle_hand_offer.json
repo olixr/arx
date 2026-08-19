@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_gentle_hand_offer__hub",
       "text": "You found the eggs, so your feet are quiet enough. Now the hands. Two pails of milk from the herd, walked up gentle. She'll allow it if you let her see you the whole way in. Will you?",
       "hooks": [
         {
@@ -34,6 +35,7 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_gentle_hand_offer__sworn",
       "text": "Slow steps. Open hands. She's called Bess, and she judges everyone the same amount.",
       "hooks": [
         {
@@ -44,6 +46,7 @@
     },
     {
       "id": "declined",
+      "voice": "q_the_gentle_hand_offer__declined",
       "text": "No shame. Cows can wait. Cows are good at it."
     }
   ]

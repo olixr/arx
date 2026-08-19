@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "halla_watch_urgent__hub",
       "text": "They've stopped hiding their fires. That means numbers. Numbers mean they're deciding something.",
       "choices": [
         { "text": "Mark it. I'll go.", "next": "mark" },
@@ -15,16 +16,19 @@
     },
     {
       "id": "mark",
+      "voice": "halla_watch_urgent__mark",
       "text": "Marked on your chart. Don't scout it. *End* it.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "noone",
+      "voice": "halla_watch_urgent__noone",
       "text": "Then they get bolder. Then they come down the road. I've seen the order it happens in.",
       "next": "hub"
     },
     {
       "id": "hold",
+      "voice": "halla_watch_urgent__hold",
       "text": "Always."
     }
   ]

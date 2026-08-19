@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_cloth_for_the_counting_offer__hub",
       "text": "Oh, a commission, sort of, if you'd like one. Two lengths of cloth, your own hands, the town loom. Cotton's in my garden rows out back. Sorry, I should ask first. Would you?",
       "hooks": [
         {
@@ -30,24 +31,23 @@
           "text": "Cloth isn't my trade.",
           "next": "declined"
         }
-      ],
-      "voice": "q_cloth_for_the_counting_offer__hub"
+      ]
     },
     {
       "id": "sworn",
+      "voice": "q_cloth_for_the_counting_offer__sworn",
       "text": "Wonderful. The loom is friendlier than it looks. Firm with the beater, gentle with everything else.",
       "hooks": [
         {
           "kind": "quest_accept",
           "quest": "cloth_for_the_counting"
         }
-      ],
-      "voice": "q_cloth_for_the_counting_offer__sworn"
+      ]
     },
     {
       "id": "declined",
-      "text": "That's fair. It wasn't mine either, until it was.",
-      "voice": "q_cloth_for_the_counting_offer__declined"
+      "voice": "q_cloth_for_the_counting_offer__declined",
+      "text": "That's fair. It wasn't mine either, until it was."
     }
   ]
 }

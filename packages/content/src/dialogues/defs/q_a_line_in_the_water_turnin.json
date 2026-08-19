@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_a_line_in_the_water_turnin__paid",
       "text": "...Four. Fat ones. You listened. Here.",
       "hooks": [
         {

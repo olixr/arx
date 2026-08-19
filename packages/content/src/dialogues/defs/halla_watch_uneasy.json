@@ -6,6 +6,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "halla_watch_uneasy__hub",
       "text": "Smoke past the hedgerows that isn't ours. I count fires at dusk. Last night there was one too many.",
       "choices": [
         { "text": "Mark it for me. I'll look.", "next": "mark" },
@@ -15,16 +16,19 @@
     },
     {
       "id": "mark",
+      "voice": "halla_watch_uneasy__mark",
       "text": "Marked. Go before they dig in. Break it, come home, report.",
       "hooks": [{ "kind": "bounty" }]
     },
     {
       "id": "count",
+      "voice": "halla_watch_uneasy__count",
       "text": "Wolves take a lamb, that's weather. A camp takes the road, and the road is how bread gets here. Bad enough.",
       "next": "hub"
     },
     {
       "id": "dismiss",
+      "voice": "halla_watch_uneasy__dismiss",
       "text": "Then send me someone who will."
     }
   ]

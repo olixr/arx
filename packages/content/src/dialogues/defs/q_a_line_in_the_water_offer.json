@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_a_line_in_the_water_offer__hub",
       "text": "...Four trout. The water's talking today. Bring a rod and listen. Will you?",
       "hooks": [
         {
@@ -34,6 +35,7 @@
     },
     {
       "id": "sworn",
+      "voice": "q_a_line_in_the_water_offer__sworn",
       "text": "Pier holds two. Mind the boards.",
       "hooks": [
         {
@@ -44,6 +46,7 @@
     },
     {
       "id": "declined",
+      "voice": "q_a_line_in_the_water_offer__declined",
       "text": "Mm. The fish agree with you."
     }
   ]

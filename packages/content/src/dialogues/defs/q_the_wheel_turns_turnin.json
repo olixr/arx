@@ -14,14 +14,14 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_wheel_turns_turnin__paid",
       "text": "The wheel turns, the town eats, and my shoulders file no complaint for once. Same wage as always, and worth it every time.",
       "hooks": [
         {
           "kind": "quest_turnin",
           "quest": "the_wheel_turns"
         }
-      ],
-      "voice": "q_the_wheel_turns_turnin__paid"
+      ]
     }
   ]
 }

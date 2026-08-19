@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_wheel_turns_offer__hub",
       "text": "Stone doesn't stop. Shoulders do. Six measures and the ovens stay ahead of the town. Same terms as always.",
       "hooks": [
         {
@@ -30,24 +31,23 @@
           "text": "Not this time.",
           "next": "declined"
         }
-      ],
-      "voice": "q_the_wheel_turns_offer__hub"
+      ]
     },
     {
       "id": "sworn",
+      "voice": "q_the_wheel_turns_offer__sworn",
       "text": "You know where everything is. Mind the feed rate. You always mind the feed rate. I always say it anyway.",
       "hooks": [
         {
           "kind": "quest_accept",
           "quest": "the_wheel_turns"
         }
-      ],
-      "voice": "q_the_wheel_turns_offer__sworn"
+      ]
     },
     {
       "id": "declined",
-      "text": "Then bread's thin tomorrow and everyone will know whose fault it was. I'll tell them. Cheerfully.",
-      "voice": "q_the_wheel_turns_offer__declined"
+      "voice": "q_the_wheel_turns_offer__declined",
+      "text": "Then bread's thin tomorrow and everyone will know whose fault it was. I'll tell them. Cheerfully."
     }
   ]
 }

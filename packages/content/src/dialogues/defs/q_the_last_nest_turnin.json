@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_the_last_nest_turnin__paid",
       "text": "Quiet granary. Eight down, and you opened the chest, I hope. Never leave a chest shut. This is off my rack: it's iron, it's honest, and it's yours.",
       "hooks": [
         {

@@ -10,12 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "sylwen_roost__greet",
    "text": "You walked the stones and the watch let you by. So you are welcome. Those are the same fact.",
-   "next": "hub",
-   "voice": "sylwen_roost__greet"
+   "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "sylwen_roost__hub",
    "text": "Say what you need. I count while I listen, it is not rudeness.",
    "choices": [
     {
@@ -30,11 +31,11 @@
      "text": "What's this about the Red Company?",
      "next": "company"
     }
-   ],
-   "voice": "sylwen_roost__hub"
+   ]
   },
   {
    "id": "against",
+   "voice": "sylwen_roost__against",
    "text": "I did. I lost. Now the gate is mine to keep open, and I keep it. If you want a warden who only guards what she voted for, the humans elect those, I hear.",
    "choices": [
     {
@@ -45,26 +46,25 @@
      "text": "Never mind.",
      "next": "hub"
     }
-   ],
-   "voice": "sylwen_roost__against"
+   ]
   },
   {
    "id": "why",
+   "voice": "sylwen_roost__why",
    "text": "Because the last time the world was let in, my people thinned into it and did not come back. My father calls that family. I call it arithmetic. We are both right, which is the hard part.",
-   "next": "hub",
-   "voice": "sylwen_roost__why"
+   "next": "hub"
   },
   {
    "id": "watch",
+   "voice": "sylwen_roost__watch",
    "text": "The dark under the old lights. Wolves, and worse than wolves, and lately axes. The wood holds most of it down without being asked. We handle what the wood leaves us.",
-   "next": "hub",
-   "voice": "sylwen_roost__watch"
+   "next": "hub"
   },
   {
    "id": "company",
+   "voice": "sylwen_roost__company",
    "text": "A timber company keeps sending crews for silverbark nobody sold them. We keep sending the palisades back in bundles. Politely. The fourth crew is losing its nerve. There will be a fifth. Patience is a weapon you never have to sharpen.",
-   "next": "hub",
-   "voice": "sylwen_roost__company"
+   "next": "hub"
   }
  ]
 }

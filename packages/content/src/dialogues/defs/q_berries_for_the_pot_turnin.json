@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_berries_for_the_pot_turnin__paid",
       "text": "Eight, and none squashed. Into the pot they go. Here's your trouble back, love, with interest.",
       "hooks": [
         {

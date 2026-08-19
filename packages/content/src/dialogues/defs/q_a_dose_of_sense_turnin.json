@@ -14,14 +14,14 @@
   "nodes": [
     {
       "id": "paid",
+      "voice": "q_a_dose_of_sense_turnin__paid",
       "text": "Clear, amber, no sediment. Two and a half days of shelf, drink them before that. Well, three days. Two and a half. You're carrying your own midnight now, which was the entire point.",
       "hooks": [
         {
           "kind": "quest_turnin",
           "quest": "a_dose_of_sense"
         }
-      ],
-      "voice": "q_a_dose_of_sense_turnin__paid"
+      ]
     }
   ]
 }

@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_walking_the_bounds_offer__hub",
       "text": "Free advice with your bread: you don't know a place till you've walked its corners. Alder in his copse, Weir on his pier, Sorrel at her stalls. Pay each a call and come tell me what you saw. Deal?",
       "hooks": [
         {
@@ -34,6 +35,7 @@
     },
     {
       "id": "sworn",
+      "voice": "q_walking_the_bounds_offer__sworn",
       "text": "Take the lane, then leave it. That's the trick to corners.",
       "hooks": [
         {
@@ -44,6 +46,7 @@
     },
     {
       "id": "declined",
+      "voice": "q_walking_the_bounds_offer__declined",
       "text": "Suit yourself, love. The corners keep."
     }
   ]

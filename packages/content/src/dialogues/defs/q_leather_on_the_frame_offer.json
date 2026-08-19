@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_leather_on_the_frame_offer__hub",
       "text": "Hides come in raw and leave as leather, and the part in the middle is the trade. Two pieces, your hands, my racks. Yes or no.",
       "hooks": [
         {
@@ -30,24 +31,23 @@
           "text": "The smell says no.",
           "next": "declined"
         }
-      ],
-      "voice": "q_leather_on_the_frame_offer__hub"
+      ]
     },
     {
       "id": "sworn",
+      "voice": "q_leather_on_the_frame_offer__sworn",
       "text": "The rack by the frames is yours. Scrape thin, lime long, and don't rush the river. It doesn't rush you.",
       "hooks": [
         {
           "kind": "quest_accept",
           "quest": "leather_on_the_frame"
         }
-      ],
-      "voice": "q_leather_on_the_frame_offer__sworn"
+      ]
     },
     {
       "id": "declined",
-      "text": "The smell is the trade being honest. Come back when your boots wear through. They will.",
-      "voice": "q_leather_on_the_frame_offer__declined"
+      "voice": "q_leather_on_the_frame_offer__declined",
+      "text": "The smell is the trade being honest. Come back when your boots wear through. They will."
     }
   ]
 }

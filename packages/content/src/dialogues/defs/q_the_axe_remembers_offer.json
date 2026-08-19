@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_the_axe_remembers_offer__hub",
       "text": "Teaching for timber, that's my trade. Four logs off the marked trunks and the lesson's yours for keeps. Fair?",
       "hooks": [
         {
@@ -34,6 +35,7 @@
     },
     {
       "id": "sworn",
+      "voice": "q_the_axe_remembers_offer__sworn",
       "text": "Look up before you swing. Every swing.",
       "hooks": [
         {
@@ -44,6 +46,7 @@
     },
     {
       "id": "declined",
+      "voice": "q_the_axe_remembers_offer__declined",
       "text": "The trees aren't going anywhere. Nor am I."
     }
   ]

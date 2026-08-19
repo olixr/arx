@@ -10,12 +10,13 @@
  "nodes": [
   {
    "id": "greet",
+   "voice": "vessa_table__greet",
    "text": "Wipe your feet. The dust in here has seniority.",
-   "next": "hub",
-   "voice": "vessa_table__greet"
+   "next": "hub"
   },
   {
    "id": "hub",
+   "voice": "vessa_table__hub",
    "text": "The third table, by the human count. The first, by counting. What brings you to the oldest desk in the world?",
    "choices": [
     {
@@ -36,37 +37,36 @@
      "next": "read",
      "requires": ["the_gift_remembered"]
     }
-   ],
-   "voice": "vessa_table__hub"
+   ]
   },
   {
    "id": "read",
+   "voice": "vessa_table__read",
    "text": "It did. You read it with your own question standing in the room, which nobody else alive has done. The dust and I are considering promoting you to furniture. And Veyle's latest letter was four pages. Four. The silence is over, my copies are getting thicker, and I have never been happier in my working life. Not that you can tell.",
-   "next": "hub",
-   "voice": "vessa_table__read"
+   "next": "hub"
   },
   {
    "id": "letters",
+   "voice": "vessa_table__letters",
    "text": "Copies. An enchantress at the capital writes monthly to an exile at the delf, asking nothing in very fine handwriting. The exile answers with silence, also monthly. I keep copies because someday one of them will say the true thing, and I want to be current when it happens.",
-   "next": "hub",
-   "voice": "vessa_table__letters"
+   "next": "hub"
   },
   {
    "id": "wall",
+   "voice": "vessa_table__wall",
    "text": "An answer, waiting for its question to walk in. It has waited a long time. It can wait for you to earn it, too. Bring me a reason older than curiosity.",
-   "next": "hub",
-   "voice": "vessa_table__wall"
+   "next": "hub"
   },
   {
    "id": "browse",
+   "voice": "vessa_table__browse",
    "text": "Workings and materials the Arcanum rations, sold here by the handful. Mind the dust.",
    "hooks": [
     {
      "kind": "shop",
      "shop": "vessa_inscriptions"
     }
-   ],
-   "voice": "vessa_table__browse"
+   ]
   }
  ]
 }

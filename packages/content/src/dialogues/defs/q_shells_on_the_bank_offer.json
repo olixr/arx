@@ -14,6 +14,7 @@
   "nodes": [
     {
       "id": "hub",
+      "voice": "q_shells_on_the_bank_offer__hub",
       "text": "Crabs on the bank. Four too many. They won't rush you. That's the lesson. Take it?",
       "hooks": [
         {
@@ -34,6 +35,7 @@
     },
     {
       "id": "sworn",
+      "voice": "q_shells_on_the_bank_offer__sworn",
       "text": "Distance. Full draw. Go.",
       "hooks": [
         {
@@ -44,6 +46,7 @@
     },
     {
       "id": "declined",
+      "voice": "q_shells_on_the_bank_offer__declined",
       "text": "Mm."
     }
   ]
