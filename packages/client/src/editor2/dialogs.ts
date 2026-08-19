@@ -327,7 +327,7 @@ export function newZoneDialog(deps: DialogDeps): void {
       el(
         'p',
         'muted',
-        'Tip: chunk-align the origin (multiples of 32) and keep clear of Dawnmead (-96,16–0,80) unless you mean to override it.',
+        'Tip: chunk-align the origin (multiples of 32) and keep clear of Dawnmead (-160,-64–31,159) unless you mean to override it.',
       ),
     );
     const actions = el('div', 'dialog-actions');

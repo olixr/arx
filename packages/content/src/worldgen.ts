@@ -205,8 +205,12 @@ export function plateauFieldAt(seed: number, tx: number, ty: number): number {
   // mesa-dominant at the heart, breaking into plateaus and valley
   // floors toward the rim. The noise still decides every edge.
   f += massifAt(tx, ty) * 0.24;
+  // The legacy Dawnmead radial. THE DAWN COMES OPEN grew the rect to
+  // 192x224 about this same centre, so the corners now sit 147 tiles
+  // out — the radius follows them, or a mesa cresting on a hem would
+  // be flattened inside the rect and left standing just outside it.
   const distFromTown = Math.hypot(tx + 64, ty - 48);
-  f -= Math.max(0, 1 - distFromTown / 130) * 0.45;
+  f -= Math.max(0, 1 - distFromTown / 176) * 0.45;
   // Planned-zone aprons: plateaus hold a short walk off new town
   // borders (their fence is on their own crown, so this is mostly
   // aesthetics: no cliff wall jammed against a gate). Strength 0.65
@@ -249,7 +253,7 @@ export function basinFieldAt(seed: number, tx: number, ty: number): number {
   // every authored border, future ones included.
   return (
     f -
-    Math.max(0, 1 - distFromTown / 200) * 0.6 -
+    Math.max(0, 1 - distFromTown / 240) * 0.6 -
     fieldApronAt(tx, ty, 64) * 0.6 -
     zoneFieldDampAt(tx, ty, EDGE_BASIN_DAMP_RANGE) * 0.6
   );

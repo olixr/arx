@@ -1,27 +1,56 @@
 {
   "id": "weir_hours",
-  "base": { "kind": "post", "dir": 1.5707963, "speed": 1.0 },
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963,
+    "speed": 1.0
+  },
   "slots": [
     {
       "from": 12,
       "to": 12.7,
-      "task": { "kind": "wander", "x": 5, "y": 5, "radius": 2, "speed": 1.0 }
+      "task": {
+        "kind": "wander",
+        "x": -4,
+        "y": 2,
+        "radius": 2,
+        "speed": 1.0
+      }
     },
     {
       "from": 21.5,
       "to": 5.5,
       "task": {
         "kind": "path",
-        "mode": "once",
         "speed": 1.0,
         "waypoints": [
-          { "x": 3, "y": 0 },
-          { "x": 10, "y": -1 },
-          { "x": 14, "y": -3 },
-          { "x": 14, "y": -4 },
-          { "x": 13, "y": -6 },
-          { "x": 12, "y": -6, "lie": true }
-        ]
+          {
+            "x": -4,
+            "y": -1
+          },
+          {
+            "x": -5,
+            "y": -4
+          },
+          {
+            "x": -6,
+            "y": -10
+          },
+          {
+            "x": -7,
+            "y": -10
+          },
+          {
+            "x": -15,
+            "y": -11
+          },
+          {
+            "x": -15,
+            "y": -12,
+            "lie": true
+          }
+        ],
+        "mode": "once"
       }
     }
   ]

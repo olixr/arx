@@ -1,25 +1,53 @@
 {
   "id": "ottery_hours",
-  "base": { "kind": "post", "dir": -1.5707963, "work": true, "speed": 1.5 },
+  "base": {
+    "kind": "post",
+    "dir": -1.5707963,
+    "speed": 1.5,
+    "work": true
+  },
   "slots": [
     {
       "from": 14,
       "to": 15.5,
-      "task": { "kind": "wander", "x": 3, "y": 2, "radius": 1.5, "speed": 1.5 }
+      "task": {
+        "kind": "wander",
+        "x": 13,
+        "y": 1,
+        "radius": 1.5,
+        "speed": 1.5
+      }
     },
     {
       "from": 21,
       "to": 7,
       "task": {
         "kind": "path",
-        "mode": "once",
         "speed": 1.5,
         "waypoints": [
-          { "x": 1, "y": -4 },
-          { "x": 1, "y": -5 },
-          { "x": 1, "y": -8 },
-          { "x": 0, "y": -8, "lie": true }
-        ]
+          {
+            "x": 3,
+            "y": -2
+          },
+          {
+            "x": 3,
+            "y": -3
+          },
+          {
+            "x": 3,
+            "y": -4
+          },
+          {
+            "x": 0,
+            "y": -6
+          },
+          {
+            "x": 0,
+            "y": -7,
+            "lie": true
+          }
+        ],
+        "mode": "once"
       }
     }
   ]

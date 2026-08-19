@@ -27,11 +27,12 @@ test('the green is town, the far field is wild, cave planes are cave', () => {
 });
 
 test('the town edge fades — no cliff in the crossfade', () => {
-  // The rebuilt Dawnmead fills its whole rect: the town weight rides
-  // the lane east and lands on zero exactly where the First Road
-  // takes over at world x=0.
+  // THE DAWN COMES OPEN: Dawnmead's row is sized to its 192x224 rect
+  // (half-diagonal 147), so full town weight covers the built ground
+  // and the fade lands on zero out past the east hem at world x=31 —
+  // by x=120 the First Road has the ear entirely.
   let prev = zoneWeights(-64, 48).town;
-  for (let x = -64; x <= 0; x += 0.5) {
+  for (let x = -64; x <= 130; x += 0.5) {
     const cur = zoneWeights(x, 48).town;
     assert.ok(cur <= prev + 1e-9, 'town weight is monotone outward');
     assert.ok(Math.abs(cur - prev) < 0.06, `smooth at x=${x}`);

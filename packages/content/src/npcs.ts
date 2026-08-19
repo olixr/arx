@@ -3841,21 +3841,23 @@ export const TOWN_SPAWNS: readonly SpawnPoint[] = [
   // The wolfkin dens in the north-western woods, past the orchard rim
   // — far enough that only a waker who goes LOOKING for trouble finds
   // the matriarch roaming between her packs.
-  // (Pushed outward for THE DAWN REMADE: the rect grew to
-  // (-128,0)-(0,96), so every den keeps ≥8 tiles off the hems and the
-  // hunters' trail threads them without touching the village.)
-  { npc: 'wolf', x: -24, y: -12, radius: 6, count: 2 },
-  { npc: 'wolf', x: -52, y: -14, radius: 6, count: 2 },
-  { npc: 'dire_wolf', x: -38, y: -14, radius: 8, count: 1 },
+  // (Pushed outward again for THE DAWN COMES OPEN: the rect grew to
+  // (-160,-64)-(31,159), so every den keeps ≥8 tiles off the hems and
+  // the re-headed hunters' trail threads them without touching the
+  // village. They sit NORTH-WEST of the town, which is where the
+  // matriarch's quest card has always said they are.)
+  { npc: 'wolf', x: -96, y: -76, radius: 6, count: 2 },
+  { npc: 'wolf', x: -124, y: -80, radius: 6, count: 2 },
+  { npc: 'dire_wolf', x: -110, y: -86, radius: 8, count: 1 },
   // The Gloamwood — the dark forest south of the brook meadow: webs
   // above, wings at dusk, and the old threats deeper in. Clear of the
-  // old-road gate at (-30,96).
-  { npc: 'giant_spider', x: -22, y: 108, radius: 7, count: 2 },
-  { npc: 'cave_bat', x: -40, y: 106, radius: 6, count: 2 },
-  { npc: 'bear', x: -54, y: 112, radius: 6, count: 1 },
-  { npc: 'troll', x: -64, y: 120, radius: 6, count: 1 },
+  // old-road gate at (-52,160).
+  { npc: 'giant_spider', x: -26, y: 176, radius: 7, count: 2 },
+  { npc: 'cave_bat', x: -48, y: 172, radius: 6, count: 2 },
+  { npc: 'bear', x: -64, y: 180, radius: 6, count: 1 },
+  { npc: 'troll', x: -80, y: 188, radius: 6, count: 1 },
   // Gentle life on the village's shoulders: stags browse the east
   // meadow along the lane, rams keep the rocky rise out west.
-  { npc: 'stag', x: 12, y: 40, radius: 7, count: 2 },
-  { npc: 'ram', x: -142, y: 24, radius: 7, count: 2 },
+  { npc: 'stag', x: 52, y: 20, radius: 7, count: 2 },
+  { npc: 'ram', x: -184, y: 16, radius: 7, count: 2 },
 ];

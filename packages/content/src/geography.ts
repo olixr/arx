@@ -65,12 +65,17 @@ export interface Landform {
 }
 
 /**
- * Dawnmead — the village that raises wakers (THE DAWN REMADE rebuild;
- * docs/dawnmead-remade-plan.md). Doubled and re-centered so the rect
- * sits exactly on the danger anchor (-64,48); the Waking Ring and the
- * world spawn kept their world tiles through the rebuild.
+ * Dawnmead — the village that raises wakers. THE DAWN COMES OPEN
+ * (docs/dawnmead-open-plan.md) grew the rect to three and a half times
+ * the ground: 32 west, 32 east, 64 north, 64 south, which is the first
+ * Dawnmead rect whose CENTRE is the danger anchor (-64,48) exactly —
+ * one number now serves the field, the charter, the audio row and the
+ * worldgen radials. The Waking Ring and the world spawn kept their
+ * world tiles through both rebuilds; the ring grew from five stones to
+ * seven. Both origin components are multiples of 32, so the rect is
+ * chunk-aligned on both axes.
  */
-export const DAWNMEAD_RECT: ZoneRect = { x: -128, y: 0, w: 128, h: 96 };
+export const DAWNMEAD_RECT: ZoneRect = { x: -160, y: -64, w: 192, h: 224 };
 
 /**
  * Amberford — the crossroads market town (epic 2). Center (520, -4):
@@ -471,8 +476,7 @@ const AUTHORED_PLAN: GeographyDef = {
       // river at the far end is now the destination's own drama.
       // Tier 1-2 throughout.
       pts: [
-        { x: 0, y: 48 }, { x: 8, y: 60 }, { x: 16, y: 74 }, { x: 28, y: 86 },
-        { x: 44, y: 96 }, { x: 62, y: 102 }, { x: 84, y: 104 }, { x: 108, y: 100 },
+        { x: 32, y: 48 }, { x: 36, y: 66 }, { x: 40, y: 82 }, { x: 44, y: 96 }, { x: 62, y: 102 }, { x: 84, y: 104 }, { x: 108, y: 100 },
         { x: 130, y: 88 }, { x: 152, y: 80 }, { x: 176, y: 72 }, { x: 200, y: 64 },
         { x: 228, y: 58 }, { x: 254, y: 56 }, { x: 278, y: 58 }, { x: 304, y: 56 },
         { x: 330, y: 46 }, { x: 356, y: 38 }, { x: 382, y: 30 }, { x: 410, y: 24 },
@@ -637,12 +641,12 @@ const AUTHORED_PLAN: GeographyDef = {
       // for the gate with the burn country rising beyond. The band
       // march does the rest: tier 1 at Dawnmead's hem, 5 before the
       // walls.
-      // (Rebuild note: it now leaves the grown rect's south hem past
-      // the old granary at world (-30,96) — the ruin and the dark
-      // road share the village's one unkempt corner on purpose.)
+      // (THE DAWN COMES OPEN: it leaves the grown rect's south hem at
+      // world (-52,160), forking off the proving way at the muster
+      // court — the one way out of Dawnmead that carries no lamp.)
       pts: [
-        { x: -30, y: 96 }, { x: -52, y: 112 }, { x: -76, y: 128 }, { x: -102, y: 142 },
-        { x: -128, y: 156 }, { x: -152, y: 170 }, { x: -172, y: 188 }, { x: -194, y: 206 },
+        { x: -52, y: 160 }, { x: -80, y: 168 }, { x: -112, y: 176 }, { x: -144, y: 184 },
+        { x: -172, y: 188 }, { x: -194, y: 206 },
         { x: -218, y: 224 }, { x: -244, y: 240 }, { x: -270, y: 256 }, { x: -296, y: 272 },
         { x: -322, y: 286 }, { x: -348, y: 296 }, { x: -374, y: 302 }, { x: -398, y: 302 },
         { x: -412, y: 300 }, { x: -418, y: 300 },
@@ -670,12 +674,12 @@ const AUTHORED_PLAN: GeographyDef = {
       id: 'hunters_trail',
       name: 'The Hunter\'s Trail',
       kind: 'trail',
-      // Dawnmead's north hem to the Thornveil Fork: the unlit shortcut
-      // that threads the wolf dens. Saves half the journey, costs the
+      // Dawnmead's north-west hem to the Thornveil Fork: the unlit
+      // shortcut that threads the wolf dens. It leaves at world
+      // (-100,-65), off the orchard's head (THE DAWN COMES OPEN). Saves half the journey, costs the
       // safety — the map's lesson about roads, taught by counterexample.
       pts: [
-        { x: -64, y: -1 }, { x: -72, y: -8 }, { x: -84, y: -32 }, { x: -98, y: -56 },
-        { x: -110, y: -80 }, { x: -118, y: -104 }, { x: -124, y: -128 }, { x: -130, y: -150 },
+        { x: -100, y: -65 }, { x: -104, y: -70 }, { x: -110, y: -80 }, { x: -118, y: -104 }, { x: -124, y: -128 }, { x: -130, y: -150 },
         { x: -136, y: -166 }, { x: -140, y: -176 },
       ],
     },

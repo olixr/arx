@@ -28,7 +28,7 @@ const prefabs = new Map([...POI_PREFABS, ...STRONGHOLD_PREFABS]);
 
 const SEAT_CTX: SeatCtx = {
   anchors: SETTLED_ANCHORS,
-  zoneRects: [{ x: -96, y: 16, w: 96, h: 64 }],
+  zoneRects: [{ x: -160, y: -64, w: 192, h: 224 }],
   claimRings: [],
   layouts: [...STRONGHOLD_DEFS.values()],
   prefabs,
@@ -116,7 +116,7 @@ test('THE MASK: no site, no finds, and no hold stands on a capital\'s ground', (
   const capitals = seats.map((s) => s.rect);
   const ctx: PoiContext = {
     anchors: SETTLED_ANCHORS,
-    zoneRects: [{ x: -96, y: 16, w: 96, h: 64 }],
+    zoneRects: [{ x: -160, y: -64, w: 192, h: 224 }],
     claimRings: [],
     defs: [...POI_DEFS.values()],
     minors: [...MINOR_DEFS.values()],
@@ -575,7 +575,7 @@ import { simulateLandSteps } from './finds.js';
 test('the density survey walks the full ladder: capitals swept, mask observed, deterministic', () => {
   const ctx: PoiContext = {
     anchors: SETTLED_ANCHORS,
-    zoneRects: [{ x: -96, y: 16, w: 96, h: 64 }],
+    zoneRects: [{ x: -160, y: -64, w: 192, h: 224 }],
     claimRings: [],
     defs: [...POI_DEFS.values()],
     minors: [...MINOR_DEFS.values()],

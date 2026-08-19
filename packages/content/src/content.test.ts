@@ -1181,11 +1181,16 @@ test('dawnmead: awakening anchors, stations, pens, and the lane seam hold', () =
   // The spawn stands inside the Waking Ring, on the SAME world tile it
   // has kept through every rebuild (respawn + rescue law).
   assert.deepEqual(z.spawn, { x: -81.5, y: 48.5 });
-  assert.equal(TILE_DEFS[at(46, 48)].solid, false, 'spawn tile must be walkable');
-  // The lane exits the east edge on world rows 47-49, where the First
-  // Road begins at world (0,48).
-  for (const y of [47, 48, 49]) {
-    assert.equal(at(127, y), Tile.Path, `lane row ${y} must reach the east edge`);
+  assert.equal(TILE_DEFS[at(78, 112)].solid, false, 'spawn tile must be walkable');
+  // The lane exits the east edge on world rows 47-49 (local 111-113),
+  // where the First Road begins at world (32,48).
+  for (const y of [111, 112, 113]) {
+    assert.equal(at(191, y), Tile.Path, `lane row ${y} must reach the east edge`);
+  }
+  // SEVEN standing stones close the Waking Ring (THE DAWN COMES OPEN);
+  // the five that have always stood kept their world tiles.
+  for (const [sx, sy] of [[78, 108], [74, 110], [82, 109], [74, 115], [81, 116], [72, 112], [85, 113]] as const) {
+    assert.equal(at(sx, sy), Tile.Rock, `ring stone missing at ${sx},${sy}`);
   }
   const counts = new Map<number, number>();
   for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);
@@ -1251,7 +1256,7 @@ test('dawnmead: every doorway (granary included) walks from the spawn', () => {
     x >= 0 && y >= 0 && x < z.width && y < z.height &&
     !TILE_DEFS[z.ground[y * z.width + x]! as Tile].solid;
   const seen = new Uint8Array(z.width * z.height);
-  const queue: number[] = [48 * z.width + 46]; // the Waking Ring
+  const queue: number[] = [112 * z.width + 78]; // the Waking Ring
   seen[queue[0]!] = 1;
   while (queue.length > 0) {
     const i = queue.pop()!;
@@ -1277,9 +1282,9 @@ test('dawnmead: every doorway (granary included) walks from the spawn', () => {
   assert.deepEqual(unreachable, [], `doorways cut off from spawn: ${unreachable.join(' ')}`);
   // The ways out truly connect: the First Road's edge tile, the
   // hunters' trail head, and the old-road gate all walk from the Ring.
-  assert.equal(seen[48 * z.width + 127], 1, 'the lane east is severed');
-  assert.equal(seen[0 * z.width + 64], 1, "the hunters' trail is severed");
-  assert.equal(seen[95 * z.width + 98], 1, 'the old road is severed');
+  assert.equal(seen[112 * z.width + 191], 1, 'the lane east is severed');
+  assert.equal(seen[0 * z.width + 60], 1, "the hunters' trail is severed");
+  assert.equal(seen[223 * z.width + 108], 1, 'the old road is severed');
 });
 
 test('amberford: the crossroads town holds its anchors, stations, and gates', () => {

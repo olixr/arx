@@ -17,11 +17,17 @@ import { dangerAt, type ChestKind, type DangerAnchor } from '@arx/shared';
 
 export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // Dawnmead — the awakening village, and the softest word in the
-  // Dawnlands. Its safe radius covers the village, its worked meadows,
-  // and the first stretch of the east lane toward Amberford; its word
-  // keeps the whole first province a country of firsts — the basin
-  // runs a full band-width in every direction before the land asks
-  // anything of anyone.
+  // Dawnlands. Its word keeps the whole first province a country of
+  // firsts — the basin runs a full band-width in every direction
+  // before the land asks anything of anyone.
+  // THE DAWN COMES OPEN grew the rect to 192x224 about this very tile,
+  // so the rect now REACHES PAST safeR at its corners, and that is
+  // deliberate: raising the radius to cover them would flatten the
+  // First Road's ambush from tier 2 to tier 1 and soften the corridor
+  // that teaches the space BETWEEN safeties. The town's own ground is
+  // protected by its RECT instead — the POI seeder, the small finds
+  // and the strongholds always honoured it, and the ambient wild
+  // spawner now does too (gameServer vetWildAnchor).
   { x: -64, y: 48, safeR: 64, country: 1 },
   // Amberford — the crossroads market town (the master plan's second
   // hearth), a real journey east across the Amberfen. The corridor

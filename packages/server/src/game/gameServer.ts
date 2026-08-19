@@ -26733,6 +26733,18 @@ export class GameServer {
     return spot ? { tx, ty, ...spot } : null;
   }
 
+  /** True when a world tile stands inside any authored surface zone. */
+  private inAuthoredZoneRect(tx: number, ty: number): boolean {
+    for (const z of this.surface.zoneDefs) {
+      if (z.id.startsWith('poi:') || z.id.startsWith('stronghold:')) continue;
+      if (
+        tx >= z.origin.x && tx < z.origin.x + z.width &&
+        ty >= z.origin.y && ty < z.origin.y + z.height
+      ) return true;
+    }
+    return false;
+  }
+
   /** The anchor guard ladder on explicit coords (habitat deals share it). */
   private vetWildAnchor(
     tx: number,
@@ -26740,6 +26752,15 @@ export class GameServer {
   ): { tier: number; biome: 'grass' | 'forest'; shore: boolean } | null {
     const ground = this.surface.groundAt(tx, ty);
     if (ground !== Tile.Grass && ground !== Tile.GrassTall) return null;
+    // THE TOWN IS NOT THE FRONTIER. Every other frontier system — the
+    // POI seeder, the small finds, the strongholds — refuses an
+    // authored zone's rect outright; the ambient spawner was the one
+    // that never learned to, and read the danger field alone. A town
+    // whose rect out-reaches its safe radius (Dawnmead's does, by
+    // design: the corridor's whole lesson is that the space BETWEEN
+    // safeties is the game) would otherwise grow wolves on its own
+    // meadow. The rect is the law here, not the radius.
+    if (this.inAuthoredZoneRect(tx, ty)) return null;
     const spotTier = this.liveDangerTier(tx, ty);
     if (spotTier === 0) return null;
     if (roadDistanceAt(config.worldSeed, tx, ty) <= ROAD_CALM) return null;

@@ -27,7 +27,7 @@ const SEED = WORLD_SEED;
 const CTX: PoiContext = {
   anchors: SETTLED_ANCHORS,
   zoneRects: [
-    { x: -96, y: 16, w: 96, h: 64 }, // dawnmead
+    { x: -160, y: -64, w: 192, h: 224 }, // dawnmead
   ],
   claimRings: [],
   defs: [...POI_DEFS.values()],

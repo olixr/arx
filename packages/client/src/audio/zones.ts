@@ -6,12 +6,14 @@
  * ring of cottages), WILD (the open overworld), CAVE (anything
  * underground). The weights always sum to 1.
  *
- * Geography facts these lean on: the village zone spans (-96,16)-(0,80)
- * with its green near (-64,48). THE WORLDS APART: whether the ear is
+ * Geography facts these lean on: Dawnmead's rect spans
+ * (-160,-64)-(31,159) with its well and its danger anchor on the
+ * rect's exact centre (-64,48). THE WORLDS APART: whether the ear is
  * underground is the PLANE'S law now (cave planes: the underworld,
  * the rifts), passed in by the caller — never a y-line; the surface
- * runs wild on every compass point. The town radii hug the built-up
- * hamlet (~22 tiles) and let the last hedgerows trail off by ~36.
+ * runs wild on every compass point. Each town's radii are sized to
+ * its own rect: full weight over the built ground, trailing off to
+ * wild a little past the hem.
  */
 
 import { SUNRISE, SUNSET } from '@arx/shared';
@@ -31,7 +33,7 @@ export type ZoneId = keyof ZoneWeights;
  * streets play the wild's music — new settlements add rows as built.
  */
 const TOWNS = [
-  { x: -64, y: 48, full: 44, fade: 64 }, // Dawnmead (THE DAWN REMADE 128x96 rect)
+  { x: -64, y: 48, full: 112, fade: 184 }, // Dawnmead — THE DAWN COMES OPEN 192x224 rect, centred on this very tile (half-diagonal 147)
   { x: 520, y: 16, full: 56, fade: 80 }, // Amberford — THE FORD COMES HOME 144x144 rect
   { x: -448, y: -220, full: 72, fade: 104 }, // Silverfall — the capital, crown to Vale Gate (176x256 rect)
   { x: 760, y: 330, full: 34, fade: 52 }, // Saltmere — the town at the water's end

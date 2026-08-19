@@ -1,30 +1,59 @@
 {
   "id": "alder_hours",
-  "base": { "kind": "post", "dir": 1.5707963, "speed": 1.0 },
+  "base": {
+    "kind": "post",
+    "dir": 3.1415927,
+    "speed": 1.0
+  },
   "slots": [
     {
       "from": 8,
       "to": 11,
-      "task": { "kind": "wander", "x": -2, "y": -4, "radius": 3, "speed": 1.0 }
+      "task": {
+        "kind": "wander",
+        "x": -1,
+        "y": -4,
+        "radius": 3,
+        "speed": 1.0
+      }
     },
     {
       "from": 14,
       "to": 17,
-      "task": { "kind": "wander", "x": 2, "y": 4, "radius": 3, "speed": 1.0 }
+      "task": {
+        "kind": "wander",
+        "x": -8,
+        "y": 6,
+        "radius": 3,
+        "speed": 1.0
+      }
     },
     {
       "from": 20.5,
       "to": 6,
       "task": {
         "kind": "path",
-        "mode": "once",
         "speed": 1.0,
         "waypoints": [
-          { "x": -2, "y": -4 },
-          { "x": -4, "y": -4 },
-          { "x": -7, "y": -4 },
-          { "x": -8, "y": -4, "lie": true }
-        ]
+          {
+            "x": -4,
+            "y": 1
+          },
+          {
+            "x": -6,
+            "y": 1
+          },
+          {
+            "x": -11,
+            "y": -1
+          },
+          {
+            "x": -12,
+            "y": -1,
+            "lie": true
+          }
+        ],
+        "mode": "once"
       }
     }
   ]

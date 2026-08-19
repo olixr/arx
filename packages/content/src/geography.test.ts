@@ -118,8 +118,8 @@ test('road queries agree with themselves (deterministic, kind-aware)', () => {
   assert.deepEqual(a, b);
   assert.ok(a !== null && a.dist < 8, 'the First Road runs the fen waist near (84,104)');
   assert.equal(a!.trail, false);
-  const t = roadHitAt(SEED, -84, -32);
-  assert.ok(t !== null && t.trail, "the Hunter's Trail near (-84,-32) reads as a trail");
+  const t = roadHitAt(SEED, -106, -74);
+  assert.ok(t !== null && t.trail, "the Hunter's Trail near (-106,-74) reads as a trail");
 });
 
 test('distToRect is zero inside, exact outside', () => {

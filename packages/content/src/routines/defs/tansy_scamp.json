@@ -1,28 +1,60 @@
 {
   "id": "tansy_scamp",
-  "base": { "kind": "post", "dir": 0, "speed": 2.8 },
+  "base": {
+    "kind": "post",
+    "dir": 0.0,
+    "speed": 2.8
+  },
   "slots": [
     {
       "from": 8,
       "to": 20,
-      "task": { "kind": "wander", "x": 0, "y": 0, "radius": 5, "speed": 2.8 }
+      "task": {
+        "kind": "wander",
+        "x": 0,
+        "y": 0,
+        "radius": 5,
+        "speed": 2.8
+      }
     },
     {
       "from": 20,
       "to": 8,
       "task": {
         "kind": "path",
-        "mode": "once",
         "speed": 2.8,
         "waypoints": [
-          { "x": 5, "y": 4 },
-          { "x": 28, "y": 2 },
-          { "x": 28, "y": -27 },
-          { "x": 14, "y": -29 },
-          { "x": 14, "y": -30 },
-          { "x": 13, "y": -33 },
-          { "x": 13, "y": -34, "lie": true }
-        ]
+          {
+            "x": 2,
+            "y": -5
+          },
+          {
+            "x": 2,
+            "y": -45
+          },
+          {
+            "x": 2,
+            "y": -64
+          },
+          {
+            "x": -11,
+            "y": -65
+          },
+          {
+            "x": -11,
+            "y": -66
+          },
+          {
+            "x": -13,
+            "y": -75
+          },
+          {
+            "x": -14,
+            "y": -75,
+            "lie": true
+          }
+        ],
+        "mode": "once"
       }
     }
   ]
