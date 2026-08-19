@@ -1191,6 +1191,10 @@ function cycleScreen(dir: -1 | 1): void {
   // when its list dealt no pager to take the bumpers — an empty seed
   // pouch must not turn LB into "close the furrow, open the skills".
   if (stationPanels.anchorTile !== null) return;
+  // The stakes board is a counter too: the ringmaster opened it from
+  // the far side of a conversation, and no bumper walk may reach back
+  // and slam it — LB/RB step the plates' room, they do not leave it.
+  if (arenaBoard.isOpen) return;
   const idx = cur === null ? (dir === 1 ? -1 : 0) : SCREEN_ORDER.indexOf(cur);
   const next = SCREEN_ORDER[(idx + dir + SCREEN_ORDER.length) % SCREEN_ORDER.length]!;
   if (next === cur) return;
@@ -2190,7 +2194,13 @@ const swapWell = new SwapSlot(() => input.queueSwap());
 // side; the server range-gates the press, so a far body just no-ops.
 // THE DREAD BANNER: the crowned fight, read from meta + snapshots.
 const bossBanner = new BossBanner();
-const arenaBoard = new ArenaBoard(game);
+// THE HERO LANDING: the ringmaster's counter opens under the ring's
+// cursor on a pad — the first plate you could buy, not the ✕ chip.
+const arenaBoard = new ArenaBoard(game, {
+  requestFocus: (key) => {
+    if (input.padPrimary()) nav.focusNavKey(key);
+  },
+});
 const arenaHud = new ArenaHud();
 // THE ONE CONTROL: the muster chip's walk-away rides the real verb.
 arenaHud.onLeave = () => game.arenaLeave();

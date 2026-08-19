@@ -1,6 +1,9 @@
 import type { S2CArenaBoard } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 
+/** How long a refused plate wears its ember flash. */
+const REFUSE_MS = 420;
+
 /**
  * THE STAKES BOARD (docs/arena-plan.md) — the ringmaster's counter.
  *
@@ -15,14 +18,38 @@ import type { ClientGame } from '../game/clientGame.js';
  * Buying sends one C2S verb and closes the board — the muster
  * ceremony answers from the server (or a refusal speaks overhead).
  * Routes through main.ts's one-screen gate like every other screen.
+ *
+ * PAD-FIRST (the Grand Refit law, ui/padUI.ts): every plate is a
+ * `[data-nav]` stop inside the cards' `[data-region]`, so the ring
+ * walks the card list and never bleeds sideways; the board names its
+ * own seat on open (THE HERO LANDING — the first plate you could
+ * actually buy, never the ✕ chip); and a locked plate stays a STOP
+ * rather than a hole in the walk — its rank chip already says what it
+ * wants, and Ⓐ on it refuses in place instead of going quiet.
  */
 export class ArenaBoard {
   private readonly panel = document.getElementById('arena-board')!;
   private readonly title = document.getElementById('arena-board-title')!;
   private readonly cards = document.getElementById('arena-board-cards')!;
   private readonly ladder = document.getElementById('arena-board-ladder')!;
+  private refuseTimer = 0;
 
-  constructor(private readonly game: ClientGame) {}
+  constructor(
+    private readonly game: ClientGame,
+    private readonly hooks: { requestFocus?: (key: string) => void } = {},
+  ) {}
+
+  /** A locked plate's spoken no — color only, in place, no shake. */
+  private refuse(plate: HTMLElement): void {
+    plate.classList.remove('refused');
+    void plate.offsetWidth; // restart the flash on back-to-back presses
+    plate.classList.add('refused');
+    window.clearTimeout(this.refuseTimer);
+    this.refuseTimer = window.setTimeout(
+      () => this.cards.querySelectorAll('.refused').forEach((p) => p.classList.remove('refused')),
+      REFUSE_MS,
+    );
+  }
 
   get isOpen(): boolean {
     return !this.panel.classList.contains('hidden');
@@ -35,6 +62,11 @@ export class ArenaBoard {
       const plate = document.createElement('button');
       plate.className = 'arena-card' + (m.locked === true ? ' locked' : '');
       plate.type = 'button';
+      // THE PLATE IS A STOP: pad focus walks the cards by key, and the
+      // action strip speaks the plate's own verb.
+      plate.dataset.nav = '';
+      plate.dataset.navkey = `arena:${m.id}`;
+      plate.dataset.acta = m.locked === true ? 'Locked' : 'Take the sand';
 
       const seal = document.createElement('span');
       seal.className = 'arena-card-seal';
@@ -82,6 +114,9 @@ export class ArenaBoard {
         });
       } else {
         plate.setAttribute('aria-disabled', 'true');
+        // Never a dead press: the plate flashes its refusal where the
+        // ring already stands, and the rank chip beside it says why.
+        plate.addEventListener('click', () => this.refuse(plate));
       }
       this.cards.appendChild(plate);
     }
@@ -116,9 +151,17 @@ export class ArenaBoard {
     }
 
     this.panel.classList.remove('hidden');
+
+    // THE HERO LANDING: the ring opens on the first plate the buyer
+    // could actually take; with every card gated it seats on the top
+    // plate anyway, so the walk begins on the work, not on the ✕.
+    const seat = b.matches.find((m) => m.locked !== true) ?? b.matches[0];
+    if (seat) this.hooks.requestFocus?.(`arena:${seat.id}`);
   }
 
   close(): void {
+    window.clearTimeout(this.refuseTimer);
+    this.cards.querySelectorAll('.refused').forEach((p) => p.classList.remove('refused'));
     this.panel.classList.add('hidden');
   }
 }

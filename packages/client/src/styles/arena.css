@@ -10,7 +10,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
-  width: min(30rem, 92vw);
+  /* Wide enough that the venue's own name clears the crest and the
+     ✕ chip — at 30rem "The Grand Ring" ellipsed on its own banner. */
+  width: min(36rem, 94vw);
 }
 .screen-arena h3 {
   font-family: var(--serif);
@@ -31,7 +33,9 @@
   gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-3);
   background: var(--raise);
-  border: var(--hairline) solid var(--iron-edge);
+  /* `--iron-edge` was never a token — the plate shipped frameless.
+     The quiet rule is the seal's own frame, one family. */
+  border: var(--hairline) solid var(--line-strong);
   border-radius: var(--r-plate);
   color: var(--parchment);
   text-align: left;
@@ -44,6 +48,25 @@
 .arena-card.locked {
   cursor: default;
   opacity: 0.55;
+}
+/* A gated plate's spoken no: pressed by hand or by Ⓐ, it flashes
+   ember in place — the rank chip beside it already says the price,
+   so the refusal only has to be SEEN, never explained twice. */
+.arena-card.refused {
+  animation: arena-card-refuse 0.42s ease-out;
+}
+@keyframes arena-card-refuse {
+  0%, 100% {
+    border-color: var(--line-strong);
+  }
+  22%, 66% {
+    border-color: var(--red-soft);
+    box-shadow: 0 0 0.875rem rgba(255, 155, 138, 0.28);
+  }
+}
+body.no-ui-motion .arena-card.refused {
+  animation: none;
+  border-color: var(--red-soft);
 }
 .arena-card-seal {
   flex: none;
@@ -85,10 +108,15 @@
   display: inline-flex;
   gap: 0.25rem;
 }
+/* One stud per round — the card's SHAPE, read at a glance. They were
+   filled with `--brass-ink`, which is the ink for text stamped ON
+   brass (#241503): on the plate's own dark leather the count went
+   invisible. Brass proper reads, and stays a step under the gold fee
+   beside it so price still leads. */
 .arena-card-pips i {
-  width: 0.375rem;
-  height: 0.375rem;
-  background: var(--brass-ink);
+  width: 0.4375rem;
+  height: 0.4375rem;
+  background: var(--brass);
   border-radius: var(--r-chip);
 }
 .arena-card-fee {
