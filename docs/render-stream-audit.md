@@ -626,3 +626,104 @@ truthful once the sample was filtered to sprites with a shadow twin.
   touched).
 - **The shear**: 1854 of 2085 blits carry a non-axis-aligned transform,
   which forces a resample path. Worth an A/B before assuming it is free.
+
+## ROUND 9 — THE OFF-SCREEN TREE STANDS DOWN, AND CANOPY OCCLUSION IS REJECTED (2026-08-18)
+
+Round 8 left three named levers. This round took the biggest one —
+inter-tree occlusion culling — built it, measured it, and **rejected
+it**, keeping the smaller win that fell out of the same machinery.
+
+### What shipped
+
+**THE OFF-SCREEN TREE STANDS DOWN.** The world pass collects from a
+PADDED grid so tall content outside the viewport can lean, sway and
+cast into it. Most of those trees have nothing on screen at all — and
+every one was blitted in full, ~150k device px each, for the canvas to
+clip away entirely. A tree whose whole box (plus a 24px margin for the
+blit's shear) falls outside the viewport now stands down; its cache
+entry stays warm so nothing re-bakes when it scrolls back, and its
+ground shadow still casts.
+
+| dense forest | round 8 | round 9 |
+|---|---|---|
+| main-canvas blits | 952 calls, 200.7 Mpx | **837 calls, 182.6 Mpx** |
+| trees skipped | — | **294 / frame** |
+| cull pass cost | — | 0.03 ms |
+
+Against round 7's baseline the main canvas is down from 255.7 to 182.6
+Mpx — **−29%** — and 115 fewer draw calls a frame matters on its own,
+since canvas2d has no batching and a call costs ~3-4.3µs before it
+touches a pixel.
+
+### What was rejected, and why it is not a tuning problem
+
+The intended prize was culling trees BURIED behind nearer crowns. Built
+in full: `treeCore` computed a SOLID HEART per bake — a rectangle of
+guaranteed-opaque canopy from inscribed cluster ellipses at the bake's
+own wind — and a coarse screen grid accumulated hearts front-to-back so
+a tree whose whole box landed on solid cells could stand down.
+
+It culled **exactly zero trees in every scene tested**, at two heart
+resolutions and with two different solidity rules (single-ellipse
+containment, then a rasterised UNION with one-cell erosion, which
+raised the mean heart from 1.9% to 4.2% of a sprite and changed the
+cull count not at all).
+
+The reason is the projection. At `yScale` 0.6 a tree one row nearer is
+drawn only **0.6 tiles lower**, so an equal-height crown in front
+stands 0.6 tiles SHORT of the crown behind it:
+
+| front | back | front apex vs back apex |
+|---|---|---|
+| h 4.5 | h 4.5 | **0.60 tiles BELOW** |
+| h 4.5 | h 5.5 | 1.60 tiles BELOW |
+| h 5.5 | h 4.5 | 0.40 above |
+
+Every receding row peeks above the one ahead. That is not a defect —
+**it is why a forest reads as a forest**, and the dense-forest capture
+shows it plainly. Only a front tree at least 0.6 tiles taller can bury
+one behind it, and in a stand grown from a single species grammar that
+is the rare case. A conservative test — the only kind allowed to skip a
+draw — never sees it.
+
+**Do not re-propose whole-tree occlusion without changing the
+projection.** What could work, at real cost: a coverage buffer marked
+from each sprite's actual downsampled ALPHA rather than an inscribed
+rectangle, tested against each candidate's ink rather than its box.
+That needs a per-bake readback (the thing every round of this document
+has avoided) and would still only catch trees whose whole crown sits
+under a taller one.
+
+### The verification that mattered
+
+Three harnesses, and the first two were wrong:
+
+1. **Live-frame pixel diff** (cull on vs off, time frozen): useless. A
+   NULL CONTROL — two captures with the cull off BOTH times — showed a
+   noise floor of 135k differing pixels against a 139k signal. Freezing
+   `performance.now` does not freeze a networked client; adding a
+   `clockHoursNow` pin made it worse, because the freeze destabilises
+   the interpolation it does not reach. **Always run the null control
+   before believing an A/B.**
+2. **Severity split** (soft vs hard diffs): still swamped.
+3. **The one that worked** — audit the CLAIM, not the frame. The design
+   rests on exactly one assertion: the heart is opaque. So read it
+   straight off the real baked sprites: 121 hearts across two scenes,
+   **zero holes, minimum alpha 255**. Sound — and useless, which is how
+   we learned the geometry was the problem and not the soundness.
+
+Lesson banked: when an A/B is noisy, find the single load-bearing claim
+and test THAT directly. It is usually deterministic even when the frame
+is not.
+
+### Still open from round 8
+
+- **Sprite dicing** — even trimmed, opaque coverage is 36% of a tree's
+  rect: a dome in a box. 2-3 trimmed horizontal bands would take
+  another ~30% off body fill. Untouched, and now the largest remaining
+  lever.
+- **The shear** — 1676 of 1913 blits carry a non-axis-aligned
+  transform, forcing a resample path. Still never A/B'd.
+- The honest ceiling remains: canvas2d cannot batch. 200 animated trees
+  at full frame rate on weak hardware is a WebGL world pass, which is
+  an epic, not a round.

@@ -1300,6 +1300,44 @@ function fillLimb(
 }
 
 /**
+ * THE ONE SWAY. Where every cluster of a crown stands THIS instant:
+ * the cantilever displacement for its height, the local gust it
+ * re-samples off the ONE wind field at its own world offset, its
+ * flutter, and the breath that swells its radius.
+ *
+ * Extracted from paintTree so the sway has ONE statement rather than
+ * being spelled out inside the painter. THE SOLID HEART (an occlusion
+ * experiment, measured and rejected — see docs/render-stream-audit.md
+ * round 9) was its second caller and needed them to agree to the last
+ * decimal; the extraction is worth keeping on its own merits.
+ */
+function clusterSway(
+  m: TreeModel,
+  f: TreeFrame,
+  wind: number,
+  rx: Float32Array,
+  ry: Float32Array,
+  rb: Float32Array,
+): void {
+  const H = m.height;
+  const bendT = wind * 0.055 * H;
+  const windy = 0.2 + Math.min(1, Math.abs(wind));
+  for (let i = 0; i < m.clusters.length; i++) {
+    const c = m.clusters[i]!;
+    const local = f.windOverride !== undefined
+      ? wind
+      : windScalarAt(f.wx + c.x * 0.8, f.wy - c.y * 0.35, f.tSec - c.hf * 0.3);
+    const ph = f.wx * 1.7 + f.wy * 1.3 + c.x * 2.1 + c.y * 1.6;
+    const amp = windy * 0.02 * (0.5 + c.r);
+    const gust = Math.max(-0.05 * H, Math.min(0.05 * H, (local - wind) * 0.05 * H));
+    rx[i] = bendT * Math.pow(Math.max(0, c.hf), 1.4) + gust
+      + Math.sin(f.tSec * (1.7 + (c.seed % 5) * 0.13) + ph) * amp;
+    ry[i] = Math.cos(f.tSec * (1.35 + (c.seed % 3) * 0.17) + ph * 1.29) * amp * 0.55;
+    rb[i] = 1 + 0.02 * Math.sin(f.tSec * 1.9 + ph);
+  }
+}
+
+/**
  * Paint a grown tree. Returns the sampled wind value so the caller
  * can gate ambient leaf-shed on gust strength.
  */
@@ -1327,19 +1365,9 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
   const rx = new Float32Array(n);
   const ry = new Float32Array(n);
   const rb = new Float32Array(n);
+  clusterSway(m, f, wind, rx, ry, rb);
+  // The curtain pendulum and ripple read the same gust scalar.
   const windy = 0.2 + Math.min(1, Math.abs(wind));
-  for (let i = 0; i < n; i++) {
-    const c = m.clusters[i]!;
-    const local = f.windOverride !== undefined
-      ? wind
-      : windScalarAt(f.wx + c.x * 0.8, f.wy - c.y * 0.35, f.tSec - c.hf * 0.3);
-    const ph = f.wx * 1.7 + f.wy * 1.3 + c.x * 2.1 + c.y * 1.6;
-    const amp = windy * 0.02 * (0.5 + c.r);
-    const gust = Math.max(-0.05 * H, Math.min(0.05 * H, (local - wind) * 0.05 * H));
-    rx[i] = disp(c.hf) + gust + Math.sin(f.tSec * (1.7 + (c.seed % 5) * 0.13) + ph) * amp;
-    ry[i] = Math.cos(f.tSec * (1.35 + (c.seed % 3) * 0.17) + ph * 1.29) * amp * 0.55;
-    rb[i] = 1 + 0.02 * Math.sin(f.tSec * 1.9 + ph);
-  }
 
   // --- Curtain hang (willow): each fall samples the ONE field at its
   // own anchor with a lag; the swing scales with the fall's length

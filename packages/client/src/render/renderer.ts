@@ -1442,6 +1442,18 @@ interface DrawItem {
   bulkArg?: unknown;
   drawShadow?: () => void;
   /**
+   * THE OFF-SCREEN TREE STANDS DOWN — set only by mature-tree items
+   * (see cullHiddenTrees). `occKey` finds the cached sprite so a culled
+   * tree can keep its entry warm; occX0..occY1 is the screen box the
+   * blit would cover. `occCulled` is the pass's verdict.
+   */
+  occKey?: number;
+  occX0?: number;
+  occY0?: number;
+  occX1?: number;
+  occY1?: number;
+  occCulled?: boolean;
+  /**
    * Screen-space bounds of the body paint. Present = this entity is a
    * living silhouette the outline pass may ring (player preference);
    * labels are excluded via drawLabel.
@@ -1482,6 +1494,31 @@ interface DrawItem {
    *  base-exposure relight pass (see relightBody). */
   baseX?: number;
   baseY?: number;
+}
+
+/**
+ * One cached world sprite — a tree, a forage plant, a discrete prop.
+ * The three bakes share this shape so the caches, the eviction, the
+ * canvas pool and the occlusion pass all speak one language.
+ */
+interface WorldSprite {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  cw: number; // used css-px region
+  ch: number;
+  ax: number; // trunk-base anchor within the sprite (css px)
+  ay: number;
+  scale: number; // camera scale at bake
+  dpr: number; // effective dpr at bake — sizes the blit's source rect
+  frame: number; // last bake frame
+  used: number; // last frame drawn (eviction)
+  outlined: boolean; // ring baked in — must match outlineOn
+  /** Wind sample painted into the bake — the blit shears by the LIVE
+   *  delta from this (THE SHEAR CARRIES THE SWAY), so the primary
+   *  cantilever runs at frame rate no matter the cadence. Rigid
+   *  species bake neutral (0) and the same delta gives them their full
+   *  shear — one blit path for every species. */
+  windAt: number;
 }
 
 export class Renderer {
@@ -4377,6 +4414,7 @@ export class Renderer {
     this.liveStats.flora = 0;
     this.liveStats.chunk = 0;
     this.liveStats.mask = 0;
+    this.liveStats.offscreen = 0;
     // Shadow-mask misses per frame: masks are shared per (kind,
     // variant) — see castRockShadow — so a handful per frame drains
     // any cold field's set within a second, and a skipped cast just
@@ -5011,6 +5049,8 @@ export class Renderer {
     // THE SHELF LAW (see DrawItem.strat): shelf first, raw row within.
     items.sort(DRAW_ORDER);
     this.perfMark('sort');
+    this.cullHiddenTrees(items);
+    this.perfMark('cull');
     // Consecutive particle items form a RUN: nothing else touches
     // fillStyle inside one, so setFill dedupes across the run exactly
     // like the overlay batch (a storm's grains sort adjacent).
@@ -5027,7 +5067,12 @@ export class Renderer {
       // leave the ring solid). The nameplate stays opaque.
       if (item.alpha !== undefined) this.ctx.globalAlpha = item.alpha;
       if (item.elevated) item.drawShadow?.();
-      if (this.outlineOn && item.body) this.paintOutlined(item);
+      // THE OFF-SCREEN TREE STANDS DOWN: nothing of it lies in the
+      // viewport. Its shadow above still casts — that lies on the
+      // ground and may well be visible from inside it.
+      if (item.occCulled) {
+        // nothing: the pass proved no pixel would differ
+      } else if (this.outlineOn && item.body) this.paintOutlined(item);
       else if (item.draw) item.draw();
       else this.drawBulkItem(item);
       if (item.alpha !== undefined) this.ctx.globalAlpha = 1;
@@ -7610,7 +7655,7 @@ export class Renderer {
    * one thing that should never be seen — it means the caches are not
    * converging and a budget wants raising.
    */
-  private readonly liveStats = { prop: 0, tree: 0, flora: 0, chunk: 0, mask: 0 };
+  private readonly liveStats = { prop: 0, tree: 0, flora: 0, chunk: 0, mask: 0, offscreen: 0 };
 
   /** Live band canvas bytes — the byte budget's running total. */
   private bandBytes = 0;
@@ -19318,28 +19363,7 @@ export class Renderer {
    * just sampled at animation rate instead of frame rate. Felling
    * (bendOverride) and regrowth (grow < 1) stay fully live.
    */
-  private readonly treeSprites = new Map<
-    number,
-    {
-      canvas: HTMLCanvasElement;
-      ctx: CanvasRenderingContext2D;
-      cw: number; // used css-px region
-      ch: number;
-      ax: number; // trunk-base anchor within the sprite (css px)
-      ay: number;
-      scale: number; // camera scale at bake
-      dpr: number; // effective dpr at bake — sizes the blit's source rect
-      frame: number; // last bake frame
-      used: number; // last frame drawn (eviction)
-      outlined: boolean; // ring baked in — must match outlineOn
-      /** Wind sample painted into the bake — the blit shears by the
-       *  LIVE delta from this (THE SHEAR CARRIES THE SWAY), so the
-       *  primary cantilever runs at frame rate no matter the cadence.
-       *  Rigid species bake neutral (0) and the same delta gives them
-       *  their full shear — one blit path for every species. */
-      windAt: number;
-    }
-  >();
+  private readonly treeSprites = new Map<number, WorldSprite>();
   /** Sun-shadow twin: the projected TRUE-FORM silhouette, RASTERIZED —
    *  built at origin on the sprite cadence and stamped with one
    *  drawImage per frame (the per-frame fill of the complex Path2D was
@@ -19420,8 +19444,68 @@ export class Renderer {
     parts.push(
       `live prop ${ls.prop} tree ${ls.tree} flora ${ls.flora} chunk ${ls.chunk} mask ${ls.mask}`,
     );
+    parts.push(
+      `trees offscreen ${ls.offscreen}`,
+    );
     return parts.join('\n');
   }
+
+  /**
+   * THE OFF-SCREEN TREE STANDS DOWN.
+   *
+   * The world pass draws from a PADDED grid: rows well north and south
+   * of the viewport are collected so tall content can lean, sway and
+   * cast into view from outside it. Most of those trees have nothing on
+   * screen at all — and every one was being blitted in full, ~150k
+   * device pixels each, for the canvas to clip away entirely. In a
+   * dense forest that was 342 sprites a frame of pure waste.
+   *
+   * So a tree whose whole box falls outside the viewport stands down.
+   * Its cache entry stays warm (`used`), so nothing re-bakes when it
+   * scrolls back in, and its ground shadow still casts — that lies on
+   * the ground and may well be visible from inside the viewport.
+   *
+   * WHY THERE IS NO CANOPY OCCLUSION HERE. The obvious companion — cull
+   * a tree buried behind nearer crowns — was built, measured, and
+   * REJECTED (docs/render-stream-audit.md round 9). It culled exactly
+   * zero trees in every scene, and the reason is the projection, not
+   * the tuning: at yScale 0.6 a tree one row nearer is drawn only 0.6
+   * tiles lower, so an equal-height crown in front stands 0.6 tiles
+   * SHORT of the crown behind it. Each receding row peeks above the one
+   * ahead — which is exactly why a forest reads as a forest — and only
+   * a front tree at least that much taller can bury one behind. In a
+   * stand grown from one species grammar, that is the rare case, and
+   * a conservative test (which is the only kind allowed to skip a draw)
+   * never sees it. The geometry is a feature of the art; do not
+   * re-propose whole-tree occlusion without changing the projection.
+   */
+  private cullHiddenTrees(items: DrawItem[]): void {
+    if (!this.occlusionOn) return;
+    // A margin of insurance. The box comes from treeExtent, which is
+    // the painter's own reach — but the BLIT then shears the whole
+    // sprite about its ground line by the live wind's delta from the
+    // bake, and a hair of that lands outside the modelled box. It costs
+    // a few trees at the frame edge that would have been skipped; a
+    // crown popping in at the border costs the scene.
+    const M = 24;
+    const W = this.w + M;
+    const H = this.h + M;
+    let offscreen = 0;
+    for (let i = items.length - 1; i >= 0; i--) {
+      const it = items[i]!;
+      if (it.occKey === undefined) continue;
+      if (it.occX1! > -M && it.occY1! > -M && it.occX0! < W && it.occY0! < H) continue;
+      it.occCulled = true;
+      offscreen++;
+      const sp = this.treeSprites.get(it.occKey);
+      if (sp) sp.used = this.frameNo; // never re-bake on scrolling back in
+    }
+    this.liveStats.offscreen = offscreen;
+  }
+
+  /** Viewport culling on/off — the A/B door for rig proofs and the kill
+   *  switch if a canopy ever blinks. */
+  occlusionOn = true;
 
   /** The closure-free bulk lane's one dispatch (see DrawItem.bulk). */
   private drawBulkItem(item: DrawItem): void {
@@ -19555,20 +19639,7 @@ export class Renderer {
     wy: number,
     tSec: number,
     windOverride?: number,
-  ): {
-    canvas: HTMLCanvasElement;
-    ctx: CanvasRenderingContext2D;
-    cw: number;
-    ch: number;
-    ax: number;
-    ay: number;
-    scale: number;
-    dpr: number;
-    frame: number;
-    used: number;
-    outlined: boolean;
-    windAt: number;
-  } {
+  ): WorldSprite {
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
     const dpr = this.dpr();
@@ -19616,6 +19687,7 @@ export class Renderer {
       windAt,
     };
   }
+
 
   /**
    * Rasterize the TRUE-FORM sun-shadow silhouette (see treeShadows):
@@ -20336,20 +20408,7 @@ export class Renderer {
     prev: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | undefined,
     b: { x: number; y: number; w: number; h: number },
     paint: () => void,
-  ): {
-    canvas: HTMLCanvasElement;
-    ctx: CanvasRenderingContext2D;
-    cw: number;
-    ch: number;
-    ax: number;
-    ay: number;
-    scale: number;
-    dpr: number;
-    frame: number;
-    used: number;
-    outlined: boolean;
-    windAt: number;
-  } {
+  ): WorldSprite {
     const r = Math.max(1.25, this.camera.scale * 0.04);
     const m = Math.ceil(r) + 2;
     const cw = Math.ceil(b.w) + m * 2;
@@ -20652,20 +20711,7 @@ export class Renderer {
     wx: number,
     wy: number,
     tSec: number,
-  ): {
-    canvas: HTMLCanvasElement;
-    ctx: CanvasRenderingContext2D;
-    cw: number;
-    ch: number;
-    ax: number;
-    ay: number;
-    scale: number;
-    dpr: number;
-    frame: number;
-    used: number;
-    outlined: boolean;
-    windAt: number;
-  } {
+  ): WorldSprite {
     const s = this.camera.scale;
     // Headroom: sway throw sideways, payload twinkle above, base below.
     const half = (fm.spread * 1.3 + 0.2) * s;
@@ -25035,8 +25081,20 @@ export class Renderer {
         // A tree that just stood up from its sapling eases from
         // sapling scale to full height instead of popping in.
         const grow = this.growthOf(tx, ty, 0.45, 1, 2600);
+        // THE HIDDEN TREE STANDS DOWN: a settled tree offers the
+        // occlusion pass its screen box and the key to its cached
+        // heart. A tree still growing in is exempt — its art is live,
+        // its size is changing, and it is by definition small.
+        const shiver = this.nodeShiverAt(tx, ty) * s * 0.028;
+        const occ = grow >= 1 ? treeExtent(this.treeOrSaplingModel(tile, h)) : null;
+        const occGy = p.y + s * this.camera.yScale * 0.3;
         return {
           sortY: ty + 0.9,
+          occKey: occ ? Renderer.treeKey(tx + 0.5, ty + 0.5, tile) : undefined,
+          occX0: occ ? p.x + shiver + occ.x0 * s : undefined,
+          occX1: occ ? p.x + shiver + occ.x1 * s : undefined,
+          occY0: occ ? occGy - occ.y1 * s : undefined,
+          occY1: occ ? occGy - occ.y0 * s : undefined,
           // Mature trees carry the ring baked into their cached sprite
           // (bakeOutlineRing) — only the live-painted regrowth ease
           // goes through the per-frame outline pass.
@@ -25046,7 +25104,7 @@ export class Renderer {
           // the whole sprite for a quarter second after each bite.
           draw: () =>
             this.drawTree(
-              p.x + this.nodeShiverAt(tx, ty) * s * 0.028,
+              p.x + shiver,
               p.y,
               tx + 0.5,
               ty + 0.5,
