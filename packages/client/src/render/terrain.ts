@@ -7,6 +7,7 @@ import {
   Detail,
   GARRISON_TILES,
   HEDGE_TILES,
+  IRON_FENCE_TILES,
   PALISADE_TILES,
   Tile,
   WALL_RUN_TILES,
@@ -644,6 +645,27 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
         Tile.Grass
       );
     }
+    // THE IRON REST: the railing stands where the smith set it —
+    // whatever walkable ground fronts it continues beneath (south
+    // first — the curb's base sliver shows), and a family member
+    // never lends its own skin. The open-air fallback is GRASS: a
+    // graveyard is a lawn kept quiet, never a camp's mud.
+    if (IRON_FENCE_TILES.has(t)) {
+      const pick = (tt: Tile | undefined): Tile | null =>
+        tt !== undefined && !tileDef(tt).solid && !IRON_FENCE_TILES.has(tt) && tt !== Tile.Ramp
+          ? tt
+          : null;
+      return (
+        pick(ground(tx, ty + 1)) ??
+        pick(ground(tx, ty - 1)) ??
+        pick(ground(tx + 1, ty)) ??
+        pick(ground(tx - 1, ty)) ??
+        Tile.Grass
+      );
+    }
+    // The graveyard's stones stand on the yard's own ground — turf,
+    // path, or bare earth; carved granite never paves its plot.
+    if (t >= Tile.Gravestone && t <= Tile.MournerStatue) return nearestFloor(ground, tx, ty);
     // Dungeon props stand on whichever floor the corridor carries
     // (nearestFloor knows DungeonFloor/CaveRubble/CaveFloor).
     if (

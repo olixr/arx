@@ -33,6 +33,7 @@ import {
   DOOR_TILES,
   FENCE_TILES,
   HEDGE_TILES,
+  IRON_FENCE_TILES,
   PALISADE_TILES,
   awningInfo,
   type AwningInfo,
@@ -646,6 +647,18 @@ const PALI_LOG = '#6a4a28';
 const PALI_ROPE = '#8a713f';
 const PALI_ROPE_DARK = '#4a3a22';
 const PALI_BONE = '#c9c2ae';
+// THE IRON REST — the graveyard kit's palette: wrought iron gone
+// blue-black with age (never bright steel — this metal drinks the
+// light), the granite curb and piers it is set into, and the rust
+// that blooms where bar meets stone. The moss is the crypt kit's own
+// damp green, so the yard and the dark beneath it read as one place.
+const IRON_DARK = '#26232f';
+const IRON_MID = '#3c3849';
+const IRON_LIT = '#635d76';
+const IRON_RUST = '#5e4030';
+const GY_STONE = '#6f6a7d';
+const GY_STONE_LIT = '#8d889c';
+const GY_MOSS = 'rgba(74, 97, 56, 0.5)';
 // THE WARREN'S RAGS: the one dye deal every stolen cloth in the
 // camps draws from — madder gone dull, drab field green, mustard,
 // and a gray-woad blue. Four WIDE values (the hide-cluster law:
@@ -7234,7 +7247,9 @@ export class Renderer {
         // The camp gate belongs to the palisade family's painter.
         doorInfo(t)!.material !== 'palisade' &&
         // The garden arch belongs to the hedge family's painter.
-        doorInfo(t)!.material !== 'hedge',
+        doorInfo(t)!.material !== 'hedge' &&
+        // The graveyard gate belongs to the iron-fence family's painter.
+        doorInfo(t)!.material !== 'iron',
     ),
   );
 
@@ -20323,6 +20338,15 @@ export class Renderer {
     Tile.LootedChest,
     Tile.CandleShrine,
     Tile.IronGrate,
+    // THE IRON REST: all four stones ride the cache — carved
+    // granite, turned earth, and weathered marble never read the
+    // clock (all four idle in STATIC_RING_TILES below). The iron
+    // fence family itself is connectivity-drawn like every wall
+    // family and never sprite-cached.
+    Tile.Gravestone,
+    Tile.GravestoneTall,
+    Tile.GraveMound,
+    Tile.MournerStatue,
     // THE BANKS GET THEIR GOODS: all twelve ride the cache — the
     // totem's banner sway, the lure cage's bob and tendril drift,
     // and the altar's pearl glint all sit under 4Hz; the jelly's and
@@ -20558,6 +20582,12 @@ export class Renderer {
     Tile.GrandPillar,
     Tile.BurialUrns,
     Tile.AncientStatue,
+    // THE IRON REST statics: the whole stone shelf — nothing in a
+    // graveyard moves, and that is the point of a graveyard.
+    Tile.Gravestone,
+    Tile.GravestoneTall,
+    Tile.GraveMound,
+    Tile.MournerStatue,
     // THE LONG DARK PEOPLED statics: dead timber, dead stone, dead
     // wood. The gibbet (swing), webs (breathe), pool (drip), candles
     // (flame), and grate (mist) stay on the fast cadence.
@@ -23887,6 +23917,880 @@ export class Renderer {
     };
   }
 
+  // ------------------------------------------------- the iron rest
+
+  /**
+   * Iron-fence connectivity: the graveyard's wall merges ONLY with
+   * its own kind (the separate-masonry law, FIFTH family) — a
+   * smith's railing dying into a timber fence or clipped green would
+   * read as one builder's work, and a smith is neither carpenter nor
+   * gardener.
+   */
+  private ironish(game: ClientGame, x: number, y: number): boolean {
+    const t = game.world.groundAt(x, y);
+    return t !== undefined && IRON_FENCE_TILES.has(t as Tile);
+  }
+
+  /**
+   * ONE WROUGHT BAR — the unit the whole railing is forged from. A
+   * slim square bar, blue-black (this iron drinks the light), one
+   * cool lit arris down the west edge, crowned by a two-facet spear
+   * leaf above the top rail. The smith's work was true; the years
+   * were not: a rare bar stands bent at the shoulder, and a rarer
+   * one is gone at the root with only a rust bloom to say so. The
+   * gaps are the POINT — a graveyard rail is drawn so the eye passes
+   * between the bars and finds the stones it keeps.
+   */
+  private ironBar(
+    x: number,
+    footY: number,
+    tipY: number,
+    seed: number,
+    dim: number,
+  ): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const bw = s * 0.036;
+    const spearH = s * 0.2;
+    const spearW = s * 0.075;
+    const shoulder = tipY + spearH;
+    // The gone bar: a snapped stub at the curb, rust weeping from it.
+    if ((seed & 127) === 9) {
+      ctx.fillStyle = shade(IRON_DARK, dim);
+      ctx.fillRect(x - bw / 2, footY - s * 0.09, bw, s * 0.09);
+      ctx.fillStyle = IRON_RUST;
+      ctx.fillRect(x - bw * 0.7, footY - s * 0.035, bw * 1.4, s * 0.035);
+      return;
+    }
+    // The bent bar leans from a wound at the shoulder — the shaft
+    // breaks into two honest segments, never a curve painted on.
+    const bent = (seed & 63) === 21;
+    const lean = bent ? (((seed >> 6) & 1) ? 1 : -1) * s * 0.055 : 0;
+    const elbowY = footY - (footY - shoulder) * 0.62;
+    ctx.fillStyle = shade(IRON_MID, dim);
+    if (bent) {
+      ctx.beginPath();
+      ctx.moveTo(x - bw / 2, footY);
+      ctx.lineTo(x - bw / 2, elbowY);
+      ctx.lineTo(x + lean - bw / 2, shoulder);
+      ctx.lineTo(x + lean + bw / 2, shoulder);
+      ctx.lineTo(x + bw / 2, elbowY);
+      ctx.lineTo(x + bw / 2, footY);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.fillRect(x - bw / 2, shoulder, bw, footY - shoulder);
+    }
+    // The one moonlit arris — a thread, not a stripe.
+    ctx.fillStyle = shade(IRON_LIT, dim);
+    ctx.fillRect(x - bw / 2, bent ? elbowY : shoulder, Math.max(1, bw * 0.3), footY - (bent ? elbowY : shoulder));
+    // THE SPEAR LEAF: two facets meeting on a ridge — lit west, the
+    // shadowed fall east — with a waist collar seating it on the bar.
+    const sx = x + lean;
+    ctx.fillStyle = shade(IRON_MID, dim + 10);
+    ctx.beginPath();
+    ctx.moveTo(sx - spearW / 2, shoulder - spearH * 0.34);
+    ctx.lineTo(sx, tipY);
+    ctx.lineTo(sx, shoulder);
+    ctx.lineTo(sx - spearW / 2, shoulder - spearH * 0.12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = shade(IRON_DARK, dim);
+    ctx.beginPath();
+    ctx.moveTo(sx, tipY);
+    ctx.lineTo(sx + spearW / 2, shoulder - spearH * 0.34);
+    ctx.lineTo(sx + spearW / 2, shoulder - spearH * 0.12);
+    ctx.lineTo(sx, shoulder);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = shade(IRON_DARK, dim);
+    ctx.fillRect(sx - bw * 0.9, shoulder - s * 0.012, bw * 1.8, s * 0.024);
+    // Rust blooms where some bars meet the stone.
+    if ((seed & 31) === 5) {
+      ctx.fillStyle = IRON_RUST;
+      ctx.fillRect(x - bw * 0.8, footY - s * 0.05, bw * 1.6, s * 0.05);
+    }
+  }
+
+  /**
+   * THE CURB — the granite course the railing is leaded into. A low
+   * coursed-stone footing with a TRUE foreshortened top plane (the
+   * bird's eye sees stone, never a paint stripe), joint ticks on the
+   * half-tile, and the yard's damp green creeping up the shaded
+   * spots. Every run stands on this; iron never touches soil.
+   */
+  private ironCurbEW(xw: number, xe: number, baseY: number, tx: number, ty: number): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const syT = s * this.camera.yScale;
+    const faceH = s * 0.15;
+    const capD = syT * 0.09;
+    // Contact shade pools at the foot.
+    ctx.fillStyle = 'rgba(12, 8, 20, 0.26)';
+    ctx.fillRect(xw - s * 0.02, baseY - s * 0.012, xe - xw + s * 0.04, s * 0.05);
+    // The south face, a step darker than the cap it carries.
+    ctx.fillStyle = shade(GY_STONE, -14);
+    ctx.fillRect(xw, baseY - faceH, xe - xw, faceH);
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
+    ctx.fillRect(xw, baseY - s * 0.045, xe - xw, s * 0.045);
+    // The lit top plane, far edge shaded (the crate-lid treatment).
+    ctx.fillStyle = GY_STONE_LIT;
+    ctx.fillRect(xw, baseY - faceH - capD, xe - xw, capD);
+    ctx.fillStyle = shade(GY_STONE_LIT, -16);
+    ctx.fillRect(xw, baseY - faceH - capD, xe - xw, Math.max(1, s * 0.02));
+    // Joint ticks on the half-tile pitch; a mason laid this in blocks.
+    ctx.fillStyle = 'rgba(24, 18, 34, 0.4)';
+    for (let jx = Math.ceil((xw - s * 0.001) / (s * 0.5)) * s * 0.5; jx < xe; jx += s * 0.5) {
+      ctx.fillRect(jx - Math.max(0.5, s * 0.01), baseY - faceH - capD, Math.max(1, s * 0.02), faceH + capD);
+    }
+    // Moss takes the shaded joints, hash-dealt, never everywhere.
+    const h = hashCoords(151, tx, ty);
+    if ((h & 7) < 3) {
+      const mx = xw + (xe - xw) * (0.2 + ((h >> 3) & 7) * 0.08);
+      ctx.fillStyle = GY_MOSS;
+      ctx.beginPath();
+      facetBlob(ctx, mx, baseY - s * 0.05, s * 0.06, h ^ 0x5c, 5, 0.7);
+      ctx.fill();
+    }
+  }
+
+  /**
+   * A GRAVE PIER — the masonry that anchors every corner, tee, run
+   * end, and gate. Stepped plinth, coursed granite shaft, a molded
+   * cap with a TRUE top plane for the bird's eye, and a dark iron
+   * finial standing on it: an urn on the piers that keep the yard,
+   * an orb-and-spike on the piers that carry the gate.
+   */
+  private drawGravePier(
+    x: number,
+    baseY: number,
+    w: number,
+    hTot: number,
+    finial: 'urn' | 'orb',
+  ): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const syT = s * this.camera.yScale;
+    const hw = w / 2;
+    const capY = baseY - hTot;
+    const seed = hashCoords(157, Math.round(x), Math.round(baseY));
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
+    ctx.beginPath();
+    ctx.ellipse(x, baseY + s * 0.012, hw * 1.7, s * 0.055, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // The stepped plinth grips the ground.
+    const plinthH = s * 0.16;
+    ctx.fillStyle = shade(GY_STONE, -18);
+    ctx.fillRect(x - hw * 1.24, baseY - plinthH, w * 1.24, plinthH);
+    ctx.fillStyle = shade(GY_STONE_LIT, -6);
+    ctx.fillRect(x - hw * 1.24, baseY - plinthH, w * 1.24, Math.max(1, s * 0.022));
+    // The shaft: coursed granite, lit west band, shaded east band.
+    ctx.fillStyle = GY_STONE;
+    ctx.fillRect(x - hw, capY, w, baseY - plinthH - capY);
+    ctx.fillStyle = shade(GY_STONE, 12);
+    ctx.fillRect(x - hw, capY, w * 0.24, baseY - plinthH - capY);
+    ctx.fillStyle = shade(GY_STONE, -16);
+    ctx.fillRect(x + hw - w * 0.2, capY, w * 0.2, baseY - plinthH - capY);
+    // Course lines — two, hash-shifted; a pier is built, not poured.
+    ctx.fillStyle = 'rgba(24, 18, 34, 0.35)';
+    for (let i = 0; i < 2; i++) {
+      const cy = capY + (baseY - plinthH - capY) * (0.3 + i * 0.34 + ((seed >> (i * 3)) & 3) * 0.02);
+      ctx.fillRect(x - hw, cy, w, Math.max(1, s * 0.014));
+    }
+    // THE CAP: a molded slab wider than the shaft — dark drip edge,
+    // lit face, and the foreshortened top plane the camera owns.
+    const capW = w * 1.42;
+    const capFace = s * 0.075;
+    const capD = syT * 0.1;
+    ctx.fillStyle = shade(GY_STONE, -20);
+    ctx.fillRect(x - capW / 2, capY, capW, Math.max(1, s * 0.02));
+    ctx.fillStyle = shade(GY_STONE, 4);
+    ctx.fillRect(x - capW / 2, capY - capFace, capW, capFace);
+    ctx.fillStyle = GY_STONE_LIT;
+    ctx.fillRect(x - capW / 2, capY - capFace - capD, capW, capD);
+    ctx.fillStyle = shade(GY_STONE_LIT, -16);
+    ctx.fillRect(x - capW / 2, capY - capFace - capD, capW, Math.max(1, s * 0.018));
+    // The finial in dead iron, one lit sliver.
+    const fy = capY - capFace - capD;
+    if (finial === 'urn') {
+      // The urn: foot, swelling belly, narrow neck, a small flame tip
+      // of stone — the old sign for a life burned down.
+      ctx.fillStyle = IRON_DARK;
+      ctx.fillRect(x - s * 0.045, fy - s * 0.03, s * 0.09, s * 0.03);
+      ctx.beginPath();
+      ctx.ellipse(x, fy - s * 0.115, s * 0.075, s * 0.09, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(x - s * 0.026, fy - s * 0.24, s * 0.052, s * 0.05);
+      ctx.beginPath();
+      ctx.moveTo(x - s * 0.03, fy - s * 0.24);
+      ctx.lineTo(x, fy - s * 0.34);
+      ctx.lineTo(x + s * 0.03, fy - s * 0.24);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(IRON_LIT, -8);
+      ctx.fillRect(x - s * 0.05, fy - s * 0.135, s * 0.022, s * 0.09);
+    } else {
+      // The orb-and-spike: a sphere seated in a collar, the gate's
+      // own point standing over it.
+      ctx.fillStyle = IRON_DARK;
+      ctx.fillRect(x - s * 0.04, fy - s * 0.026, s * 0.08, s * 0.026);
+      ctx.beginPath();
+      facetCircle(ctx, x, fy - s * 0.1, s * 0.075, 7, 0.4, 0.8);
+      ctx.fill();
+      ctx.fillRect(x - s * 0.014, fy - s * 0.3, s * 0.028, s * 0.14);
+      ctx.beginPath();
+      ctx.moveTo(x - s * 0.032, fy - s * 0.3);
+      ctx.lineTo(x, fy - s * 0.4);
+      ctx.lineTo(x + s * 0.032, fy - s * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(IRON_LIT, -8);
+      ctx.beginPath();
+      facetCircle(ctx, x - s * 0.025, fy - s * 0.12, s * 0.026, 5, 0.2);
+      ctx.fill();
+    }
+    // Damp climbs the shaded foot.
+    ctx.fillStyle = GY_MOSS;
+    ctx.beginPath();
+    facetBlob(ctx, x + hw * 0.7, baseY - s * 0.07, s * 0.055, seed ^ 0x2f, 5, 0.7);
+    ctx.fill();
+    if (this.outlineOn) {
+      this.beginStructOutline();
+      ctx.beginPath();
+      ctx.moveTo(x - hw * 1.24, baseY);
+      ctx.lineTo(x - hw * 1.24, baseY - plinthH);
+      ctx.lineTo(x - hw, baseY - plinthH);
+      ctx.lineTo(x - hw, capY);
+      ctx.lineTo(x - capW / 2, capY);
+      ctx.lineTo(x - capW / 2, capY - capFace - capD);
+      ctx.lineTo(x + capW / 2, capY - capFace - capD);
+      ctx.lineTo(x + capW / 2, capY);
+      ctx.lineTo(x + hw, capY);
+      ctx.lineTo(x + hw, baseY - plinthH);
+      ctx.lineTo(x + hw * 1.24, baseY - plinthH);
+      ctx.lineTo(x + hw * 1.24, baseY);
+      ctx.stroke();
+    }
+  }
+
+  /** A rail band: dark iron with one lit top thread, drawn OVER the
+   *  bars so every bar reads as pierced through, never glued on. */
+  private ironRail(x0: number, x1: number, y: number, t: number, dim: number): void {
+    const ctx = this.ctx;
+    ctx.fillStyle = shade(IRON_DARK, dim);
+    ctx.fillRect(x0, y - t / 2, x1 - x0, t);
+    ctx.fillStyle = shade(IRON_LIT, dim - 10);
+    ctx.fillRect(x0, y - t / 2, x1 - x0, Math.max(1, t * 0.26));
+  }
+
+  /**
+   * THE ORNAMENT BAND: what the smith did between the second rail
+   * and the top one. Hash-dealt per half-tile panel — a ring, a
+   * facing pair of C-scrolls, or honest plain bars — so no two
+   * panels down a long run repeat, and the whole run still reads as
+   * one commission.
+   */
+  private ironOrnament(cx: number, yTop: number, yBot: number, seed: number, dim: number): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const midY = (yTop + yBot) / 2;
+    const kind = seed & 3;
+    if (kind === 3) return; // the plain panel breathes
+    ctx.strokeStyle = shade(IRON_MID, dim + 6);
+    ctx.lineWidth = Math.max(1, s * 0.024);
+    if (kind === 0) {
+      // The ring, seated on both rails.
+      ctx.beginPath();
+      ctx.arc(cx, midY, (yBot - yTop) * 0.44, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (kind === 1) {
+      // The S-scroll: one serpentine of two half-turns — the smith's
+      // signature curl, laid on its side between the rails. (The
+      // first cut's facing C-pair read as an X at play distance and
+      // was retired on the audit's verdict.)
+      const r = (yBot - yTop) * 0.24;
+      ctx.beginPath();
+      ctx.arc(cx - r, midY - r * 0.5, r, Math.PI, Math.PI * 2.5);
+      ctx.arc(cx + r, midY + r * 0.5, r, Math.PI * 1.5, Math.PI * 3);
+      ctx.stroke();
+    } else {
+      // The diamond: a small turned lozenge echoing the spear leaf.
+      const r = (yBot - yTop) * 0.34;
+      ctx.beginPath();
+      ctx.moveTo(cx, midY - r);
+      ctx.lineTo(cx + r * 0.7, midY);
+      ctx.lineTo(cx, midY + r);
+      ctx.lineTo(cx - r * 0.7, midY);
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+
+  /**
+   * THE IRON REST — the graveyard's wall. Wrought spear-topped bars
+   * leaded into a granite curb, three rails, an ornament band, and a
+   * masonry pier at every corner, tee, and run end. The gaps between
+   * the bars are the design: the yard shows through its own wall.
+   * Every direction speaks the same vocabulary of STANDING bars:
+   *  - E-W runs: the full panel faces the camera — curb, bars,
+   *    rails over them, the smith's ornament in its band.
+   *  - N-S runs: the bars march up-screen in depth on the curb's
+   *    strip, a dense comb with a ridge of spear leaves climbing.
+   *  - 45° strides: vertical bars stationed corner-to-corner under
+   *    honestly slanted rails — never a sheared panel.
+   */
+  private ironFenceItem(tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
+    const s = this.camera.scale;
+    const syT = s * this.camera.yScale;
+    const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const baseY = p.y + syT * 0.14;
+    const straight = tile === Tile.IronFence;
+    const gAt = (dx: number, dy: number) => game.world.groundAt(tx + dx, ty + dy);
+    const cn = straight && this.ironish(game, tx, ty - 1);
+    const ce = straight && this.ironish(game, tx + 1, ty);
+    const cs = straight && this.ironish(game, tx, ty + 1);
+    const cw = straight && this.ironish(game, tx - 1, ty);
+    const dNE =
+      tile === Tile.IronFenceDiagNE
+        ? this.ironish(game, tx + 1, ty - 1)
+        : straight && gAt(1, -1) === Tile.IronFenceDiagNE;
+    const dSW =
+      tile === Tile.IronFenceDiagNE
+        ? this.ironish(game, tx - 1, ty + 1)
+        : straight && gAt(-1, 1) === Tile.IronFenceDiagNE;
+    const dNW =
+      tile === Tile.IronFenceDiagNW
+        ? this.ironish(game, tx - 1, ty - 1)
+        : straight && gAt(-1, -1) === Tile.IronFenceDiagNW;
+    const dSE =
+      tile === Tile.IronFenceDiagNW
+        ? this.ironish(game, tx + 1, ty + 1)
+        : straight && gAt(1, 1) === Tile.IronFenceDiagNW;
+    const anyDiag = dNE || dSW || dNW || dSE;
+    const any = cn || ce || cs || cw || anyDiag;
+    const isoEW = straight && !any;
+    const isoNE = tile === Tile.IronFenceDiagNE && !any;
+    const isoNW = tile === Tile.IronFenceDiagNW && !any;
+    const xw = cw || isoEW ? p.x - s * 0.5 : p.x;
+    const xe = ce || isoEW ? p.x + s * 0.5 : p.x;
+    const dirCount =
+      (cw ? 1 : 0) + (ce ? 1 : 0) + (cn ? 1 : 0) + (cs ? 1 : 0) + (anyDiag ? 1 : 0);
+    const ewAny = cw || ce || isoEW;
+    const nsAny = cn || cs;
+    const ewThrough = cw && ce && !nsAny && !anyDiag;
+    const nsThrough = cn && cs && !ewAny && !anyDiag;
+    const needAnchor =
+      (straight && !ewThrough && !nsThrough && !isoEW && dirCount > 0) || anyDiag || isoNE || isoNW;
+    // The railing's proportions, measured against the 1.15-tile body:
+    // spear tips clear the head, piers clear the spears. A graveyard
+    // wall MEANS it without leaning on garrison bulk — the menace is
+    // in the points, not the mass.
+    const CURB_H = s * 0.15;
+    const RAIL_LO = baseY - s * 0.3;
+    const RAIL_MID = baseY - s * 0.78;
+    const RAIL_HI = baseY - s * 1.0;
+    const railT = s * 0.048;
+    const PITCH = 0.125;
+    const tipAt = (k: number): number =>
+      baseY - s * (1.28 + ((hashCoords(163, tx * 16 + k, ty) >> 2) & 3) * 0.045);
+    return {
+      sortY: ty + 0.8,
+      drawShadow: () => {
+        // An open railing throws a lighter shadow than a log wall.
+        if (ewAny) this.castEdgeQuad(xw, baseY, xe, baseY, 0.6);
+        if (cn) this.castEdgeQuad(p.x, baseY - syT * 0.5, p.x, baseY, 0.6);
+        if (cs) this.castEdgeQuad(p.x, baseY, p.x, baseY + syT * 0.5, 0.6);
+        if (dNE || isoNE) this.castEdgeQuad(p.x, baseY, p.x + s * 0.5, baseY - syT * 0.5, 0.6);
+        if (dSW || isoNE) this.castEdgeQuad(p.x - s * 0.5, baseY + syT * 0.5, p.x, baseY, 0.6);
+        if (dNW || isoNW) this.castEdgeQuad(p.x - s * 0.5, baseY - syT * 0.5, p.x, baseY, 0.6);
+        if (dSE || isoNW) this.castEdgeQuad(p.x, baseY, p.x + s * 0.5, baseY + syT * 0.5, 0.6);
+      },
+      draw: () => {
+        // Draw-time ctx capture: the outline pass swaps this.ctx.
+        const ctx = this.ctx;
+
+        // A marching bar: one wrought bar at a world offset from the
+        // tile center — the vocabulary every non-E-W course speaks.
+        const marchBar = (fx: number, fy: number, k: number) => {
+          const seed = hashCoords(167, tx * 16 + k, ty * 16 + Math.round(fy * 16));
+          const bx = p.x + fx * s + (((seed >> 8) & 3) - 1.5) * s * 0.008;
+          const by = baseY + fy * syT;
+          this.ironBar(bx, by - CURB_H * 0.5, tipAt(k) + fy * syT, seed, 0);
+        };
+
+        // The E-W course: the full panel faces the camera.
+        const courseEW = () => {
+          this.ironCurbEW(xw, xe, baseY, tx, ty);
+          const foot = baseY - CURB_H * 0.6;
+          const n = Math.round((xe - xw) / (s * PITCH));
+          for (let i = 0; i <= n; i++) {
+            const bx = xw + i * s * PITCH;
+            // Seam bars land where runs join — the neighbor draws the
+            // same bar at the same x, so the double paint is idempotent.
+            const k = Math.round((bx - (p.x - s * 0.5)) / (s * PITCH));
+            this.ironBar(bx, foot, tipAt(k), hashCoords(167, tx * 16 + k, ty), 0);
+          }
+          this.ironRail(xw, xe, RAIL_LO, railT, 0);
+          this.ironRail(xw, xe, RAIL_MID, railT * 0.8, 0);
+          this.ironRail(xw, xe, RAIL_HI, railT, 0);
+          // The smith's hand, one thought per half-tile panel.
+          const halves: Array<[number, number]> = [];
+          if (xw < p.x) halves.push([p.x - s * 0.25, 0]);
+          if (xe > p.x) halves.push([p.x + s * 0.25, 1]);
+          for (const [hx, hi] of halves) {
+            this.ironOrnament(hx, RAIL_HI + railT / 2, RAIL_MID - railT / 2, hashCoords(173, tx * 2 + hi, ty), 0);
+          }
+          // THE STANDARD: a heavier forged upright at every second
+          // tile seam — collar rings over the rails, a taller spear —
+          // the rhythm that keeps a long run from reading as
+          // wallpaper. Parity-dealt so both neighbors agree on it.
+          if (tx % 2 === 0 && cw) drawStandard(p.x - s * 0.5, baseY);
+        };
+
+        // One forged standard: the heavier upright with its own
+        // taller spear and the collar rings that marry it to the
+        // rails — shared by the E-W seam rhythm and the N-S joints.
+        const drawStandard = (sx: number, footBase: number) => {
+          const bw = s * 0.062;
+          const foot = footBase - CURB_H * 0.5;
+          const stTip = footBase - s * 1.48;
+          const stShoulder = stTip + s * 0.24;
+          ctx.fillStyle = IRON_MID;
+          ctx.fillRect(sx - bw / 2, stShoulder, bw, foot - stShoulder);
+          ctx.fillStyle = IRON_LIT;
+          ctx.fillRect(sx - bw / 2, stShoulder, Math.max(1, bw * 0.28), foot - stShoulder);
+          ctx.fillStyle = shade(IRON_MID, 10);
+          ctx.beginPath();
+          ctx.moveTo(sx - s * 0.052, stShoulder - s * 0.075);
+          ctx.lineTo(sx, stTip);
+          ctx.lineTo(sx, stShoulder);
+          ctx.lineTo(sx - s * 0.052, stShoulder - s * 0.02);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = IRON_DARK;
+          ctx.beginPath();
+          ctx.moveTo(sx, stTip);
+          ctx.lineTo(sx + s * 0.052, stShoulder - s * 0.075);
+          ctx.lineTo(sx + s * 0.052, stShoulder - s * 0.02);
+          ctx.lineTo(sx, stShoulder);
+          ctx.closePath();
+          ctx.fill();
+          // The collars marry the standard to the rail heights.
+          ctx.fillStyle = IRON_DARK;
+          for (const cy of [footBase - s * 0.3, footBase - s * 1.0]) {
+            ctx.fillRect(sx - bw * 0.95, cy - railT * 0.85, bw * 1.9, railT * 1.7);
+          }
+          ctx.fillStyle = shade(IRON_LIT, -6);
+          for (const cy of [footBase - s * 0.3, footBase - s * 1.0]) {
+            ctx.fillRect(sx - bw * 0.95, cy - railT * 0.85, bw * 1.9, Math.max(1, s * 0.014));
+          }
+        };
+
+        // N-S: the run seen edge-on. Overlapping bars CONDENSE — the
+        // honest projection of a thin panel in depth is one dark
+        // band, so that is what is drawn: the massed ironwork over
+        // the curb strip, a lit west thread, hairline bar seams, and
+        // the per-tile STANDARD covering every joint (the wood
+        // fence's own N-S law, spoken in iron — the first cut gave
+        // every bar its spearhead in depth and the stack read as a
+        // hanging chain; the audit retired it).
+        const courseNS = (half: 'n' | 's') => {
+          const y0 = half === 'n' ? -0.5 : 0;
+          const y1 = half === 'n' ? 0 : 0.5;
+          const yTop = baseY + y0 * syT;
+          const yBot = baseY + y1 * syT;
+          // The curb strip in depth: lit top plane, dark east edge.
+          ctx.fillStyle = shade(GY_STONE_LIT, -6);
+          ctx.fillRect(p.x - s * 0.085, yTop - CURB_H, s * 0.17, yBot - yTop);
+          ctx.fillStyle = shade(GY_STONE_LIT, 8);
+          ctx.fillRect(p.x - s * 0.085, yTop - CURB_H, Math.max(1, s * 0.022), yBot - yTop);
+          ctx.fillStyle = 'rgba(24, 18, 34, 0.4)';
+          ctx.fillRect(p.x + s * 0.065, yTop - CURB_H, Math.max(1, s * 0.02), yBot - yTop);
+          if (half === 's') {
+            // The south cap: the one place the strip shows its face.
+            ctx.fillStyle = shade(GY_STONE, -14);
+            ctx.fillRect(p.x - s * 0.085, yBot - CURB_H, s * 0.17, CURB_H);
+          }
+          // The massed panel: bars in depth, condensed to a band.
+          const bw2 = s * 0.052;
+          const bandTop = yTop - s * 1.3;
+          const bandBot = yBot - CURB_H * 0.5;
+          ctx.fillStyle = shade(IRON_MID, -4);
+          ctx.fillRect(p.x - bw2, bandTop, bw2 * 2, bandBot - bandTop);
+          ctx.fillStyle = shade(IRON_LIT, -4);
+          ctx.fillRect(p.x - bw2, bandTop, Math.max(1, s * 0.018), bandBot - bandTop);
+          ctx.fillStyle = shade(IRON_DARK, 0);
+          for (const fx of [-0.012, 0.022]) {
+            ctx.fillRect(p.x + fx * s, bandTop, Math.max(1, s * 0.012), bandBot - bandTop);
+          }
+          // The band's own head: one spear leaf where the run walks
+          // away north — the tip the eye tracks down the line.
+          if (half === 'n') {
+            ctx.fillStyle = shade(IRON_MID, 8);
+            ctx.beginPath();
+            ctx.moveTo(p.x - bw2, bandTop);
+            ctx.lineTo(p.x, bandTop - s * 0.14);
+            ctx.lineTo(p.x + bw2, bandTop);
+            ctx.closePath();
+            ctx.fill();
+          }
+        };
+
+        // 45°: vertical bars stationed corner-to-corner beneath
+        // honestly slanted rails — collected and depth-sorted so the
+        // overlaps read true.
+        const diagBars: Array<[number, number, number]> = [];
+        const diagRails: Array<[number, number]> = [];
+        const strideInto = (sx: number, sy: number, kBase: number) => {
+          for (let i = 1; i <= 3; i++) {
+            const f = i / 4;
+            diagBars.push([sx * f * 0.5, sy * f * 0.5, kBase + i]);
+          }
+          diagRails.push([sx, sy]);
+        };
+        if (dNE || isoNE) strideInto(1, -1, 16);
+        if (dNW || isoNW) strideInto(-1, -1, 20);
+        if (dSW || isoNE) strideInto(-1, 1, 24);
+        if (dSE || isoNW) strideInto(1, 1, 28);
+        diagBars.sort((a, b) => a[1] - b[1]);
+
+        // The slanted courses: curb ribbon and rails following the
+        // diagonal line — drawn between the bar ranks so northern
+        // bars stand behind them and southern bars before.
+        const diagCourses = () => {
+          for (const [sx, sy] of diagRails) {
+            const x1 = p.x + sx * s * 0.5;
+            const yTip = baseY + sy * syT * 0.5;
+            // The curb ribbon.
+            ctx.fillStyle = shade(GY_STONE_LIT, -6);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.09, baseY - CURB_H);
+            ctx.lineTo(x1 - s * 0.09, yTip - CURB_H);
+            ctx.lineTo(x1 + s * 0.09, yTip - CURB_H);
+            ctx.lineTo(p.x + s * 0.09, baseY - CURB_H);
+            ctx.closePath();
+            ctx.fill();
+            // Slanted rails at the panel heights.
+            for (const [ry, rt] of [
+              [RAIL_LO, railT],
+              [RAIL_MID, railT * 0.8],
+              [RAIL_HI, railT],
+            ] as const) {
+              const off = ry - baseY;
+              ctx.fillStyle = IRON_DARK;
+              ctx.beginPath();
+              ctx.moveTo(p.x, ry - rt / 2);
+              ctx.lineTo(x1, yTip + off - rt / 2);
+              ctx.lineTo(x1, yTip + off + rt / 2);
+              ctx.lineTo(p.x, ry + rt / 2);
+              ctx.closePath();
+              ctx.fill();
+            }
+          }
+        };
+
+        // Back-to-front: north masses, the E-W panel, the junction
+        // pier, then south masses over its foot.
+        if (cn) courseNS('n');
+        for (const [fx, fy, k] of diagBars) if (fy < 0) marchBar(fx, fy, k);
+        if (anyDiag || isoNE || isoNW) diagCourses();
+        if (ewAny) courseEW();
+        if (needAnchor) {
+          this.drawGravePier(p.x, baseY + s * 0.02, s * 0.26, s * 1.52, 'urn');
+        } else if (nsAny) {
+          // The joint of a through N-S run: the standard covers it
+          // (the wood fence's post law), one per tile.
+          drawStandard(p.x, baseY);
+        }
+        if (cs) courseNS('s');
+        for (const [fx, fy, k] of diagBars) if (fy >= 0) marchBar(fx, fy, k);
+
+        // The ink: the curb's silhouette carries the ring — the bars
+        // and rails are blue-black and ink themselves.
+        if (this.outlineOn && ewAny) {
+          this.beginStructOutline();
+          ctx.beginPath();
+          ctx.moveTo(xw, baseY);
+          ctx.lineTo(xe, baseY);
+          ctx.moveTo(xw, baseY - CURB_H - syT * 0.09);
+          ctx.lineTo(xe, baseY - CURB_H - syT * 0.09);
+          ctx.stroke();
+        }
+      },
+    };
+  }
+
+  /**
+   * THE GRAVEYARD GATE — the yard's one piece of ceremony. Twin
+   * granite piers under orb-and-spike finials carry a wrought
+   * OVERTHROW: an arched iron band sweeping pier to pier, scroll
+   * curls at its springings, a spear finial at its crown — and, some
+   * nights, a crow that will not move. Below swing double leaves of
+   * barred iron, each top rail sweeping down from its pier toward
+   * the meeting stiles, spear leaves riding the curve; open, each
+   * leaf folds back against its own pier. N-S gates keep the
+   * pier-and-leaf grammar edge-on (an overthrow seen end-on is a
+   * sliver, so the vertical gate lets its piers carry the ceremony).
+   */
+  private ironGateItem(tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
+    const s = this.camera.scale;
+    const syT = s * this.camera.yScale;
+    const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const baseY = p.y + syT * 0.14;
+    const open = doorInfo(tile)!.open;
+    const h = hashCoords(179, tx, ty);
+    const vertical =
+      (this.ironish(game, tx, ty - 1) || this.ironish(game, tx, ty + 1)) &&
+      !(this.ironish(game, tx + 1, ty) || this.ironish(game, tx - 1, ty));
+    const PIER_W = s * 0.3;
+    const PIER_H = s * 1.66;
+    return {
+      sortY: ty + (vertical ? 0.75 : 0.8),
+      drawShadow: () => {
+        if (vertical) this.castEdgeQuad(p.x, baseY - syT * 0.5, p.x, baseY + syT * 0.5, 0.8);
+        else this.castEdgeQuad(p.x - s * 0.5, baseY, p.x + s * 0.5, baseY, 0.8);
+      },
+      draw: () => {
+        // Draw-time ctx capture: the outline pass swaps this.ctx.
+        const ctx = this.ctx;
+        const o = Math.min(1, this.doorOpenness(tx, ty, open));
+        const shakeX = this.doorShakeAt(tx, ty) * s * 0.03;
+        if (shakeX !== 0) {
+          ctx.save();
+          ctx.translate(shakeX, 0);
+        }
+
+        // One gate leaf: barred iron under a swept top rail — tall
+        // at the hinge, dipping toward the meeting stile, spear
+        // leaves riding the curve. `hingeX` is the stile the leaf
+        // folds toward; `dir` +1 opens east.
+        const drawLeaf = (hingeX: number, dir: number, width: number, dim: number) => {
+          const w2 = width;
+          if (w2 < s * 0.045) return;
+          const x0 = dir > 0 ? hingeX : hingeX - w2;
+          const yBot = baseY - 0.05 * s;
+          const hingeTop = baseY - 1.12 * s;
+          const meetTop = baseY - 0.86 * s;
+          if (w2 < s * 0.16) {
+            // Edge-on: the turned leaf collapses to a dark stile
+            // with its spear ridge.
+            ctx.fillStyle = shade(IRON_DARK, dim);
+            ctx.fillRect(x0, hingeTop, w2, yBot - hingeTop);
+            ctx.fillStyle = shade(IRON_MID, dim + 8);
+            ctx.beginPath();
+            ctx.moveTo(x0, hingeTop);
+            ctx.lineTo(x0 + w2 / 2, hingeTop - 0.14 * s);
+            ctx.lineTo(x0 + w2, hingeTop);
+            ctx.closePath();
+            ctx.fill();
+            return;
+          }
+          const topAt = (fx: number): number => {
+            const f = dir > 0 ? fx : 1 - fx;
+            return hingeTop + (meetTop - hingeTop) * f * f;
+          };
+          const nb = 5;
+          // Bars first — the rails and stiles pin them after.
+          for (let i = 0; i <= nb; i++) {
+            const fx = i / nb;
+            const bx = x0 + w2 * fx;
+            // A gate leaf keeps every bar it was hung with: the seed's
+            // low bits are pinned so the decay variants never deal here.
+            const seed = hashCoords(181, tx * 8 + i, ty + dir * 3);
+            this.ironBar(bx, yBot, topAt(fx) - 0.2 * s, (seed & ~127) | 1, dim);
+          }
+          // The bottom rail and the swept top rail.
+          ctx.fillStyle = shade(IRON_DARK, dim);
+          ctx.fillRect(x0, yBot - 0.16 * s, w2, s * 0.045);
+          ctx.beginPath();
+          ctx.moveTo(x0, topAt(0) - s * 0.024);
+          ctx.quadraticCurveTo(x0 + w2 / 2, topAt(0.5) - s * 0.06, x0 + w2, topAt(1) - s * 0.024);
+          ctx.lineTo(x0 + w2, topAt(1) + s * 0.024);
+          ctx.quadraticCurveTo(x0 + w2 / 2, topAt(0.5) - s * 0.012, x0, topAt(0) + s * 0.024);
+          ctx.closePath();
+          ctx.fill();
+          // The scroll heart under the sweep — the smith signs every
+          // leaf with one curl, turned toward the hinge.
+          ctx.strokeStyle = shade(IRON_MID, dim + 6);
+          ctx.lineWidth = Math.max(1, s * 0.024);
+          ctx.beginPath();
+          ctx.arc(x0 + w2 * (dir > 0 ? 0.32 : 0.68), yBot - 0.52 * s, w2 * 0.17, dir > 0 ? -Math.PI * 0.2 : Math.PI * 0.8, dir > 0 ? Math.PI * 0.9 : Math.PI * 1.9);
+          ctx.stroke();
+          // The hinge stile, a hair heavier than its bars.
+          const hx2 = dir > 0 ? x0 : x0 + w2 - s * 0.06;
+          ctx.fillStyle = shade(IRON_DARK, dim);
+          ctx.fillRect(hx2, topAt(dir > 0 ? 0 : 1) - s * 0.02, s * 0.06, yBot - topAt(dir > 0 ? 0 : 1) + s * 0.02);
+          ctx.fillStyle = shade(IRON_LIT, dim - 8);
+          ctx.fillRect(hx2, topAt(dir > 0 ? 0 : 1) - s * 0.02, Math.max(1, s * 0.018), yBot - topAt(dir > 0 ? 0 : 1) + s * 0.02);
+        };
+
+        if (!vertical) {
+          const pierL = p.x - 0.44 * s;
+          const pierR = p.x + 0.44 * s;
+          // THE DOUBLE LEAVES: each folds toward its own pier.
+          const leafFull = 0.37 * s;
+          const wNow = leafFull * (1 - o * 0.9);
+          drawLeaf(pierL + PIER_W * 0.32, 1, wNow, Math.round(-20 * o));
+          drawLeaf(pierR - PIER_W * 0.32, -1, wNow, Math.round(-20 * o));
+          // The latch: an old lock plate where the stiles meet — a
+          // shield-shaped escutcheon under a hanging ring pull.
+          if (o < 0.15) {
+            ctx.fillStyle = IRON_DARK;
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.065, baseY - s * 0.68);
+            ctx.lineTo(p.x + s * 0.065, baseY - s * 0.68);
+            ctx.lineTo(p.x + s * 0.065, baseY - s * 0.55);
+            ctx.lineTo(p.x, baseY - s * 0.49);
+            ctx.lineTo(p.x - s * 0.065, baseY - s * 0.55);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(IRON_LIT, -4);
+            ctx.fillRect(p.x - s * 0.065, baseY - s * 0.68, s * 0.13, Math.max(1, s * 0.016));
+            ctx.strokeStyle = shade(IRON_LIT, -6);
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.beginPath();
+            ctx.arc(p.x, baseY - s * 0.52, s * 0.04, Math.PI * 0.15, Math.PI * 0.85);
+            ctx.stroke();
+          }
+          // The piers flank the opening.
+          this.drawGravePier(pierL, baseY, PIER_W, PIER_H, 'orb');
+          this.drawGravePier(pierR, baseY, PIER_W, PIER_H, 'orb');
+          // THE OVERTHROW: the wrought band arching pier to pier —
+          // this is the silhouette the whole yard is known by. The
+          // band springs from the pier CAPS (iron seats on masonry,
+          // never floats over it) and carries real thickness.
+          const spring = baseY - PIER_H + s * 0.04;
+          const crown = baseY - PIER_H - s * 0.46;
+          const bandT = s * 0.075;
+          ctx.fillStyle = IRON_DARK;
+          ctx.beginPath();
+          ctx.moveTo(pierL, spring);
+          ctx.quadraticCurveTo(p.x, crown - s * 0.12, pierR, spring);
+          ctx.lineTo(pierR, spring + bandT);
+          ctx.quadraticCurveTo(p.x, crown - s * 0.12 + bandT * 1.7, pierL, spring + bandT);
+          ctx.closePath();
+          ctx.fill();
+          // The lit thread rides the band's upper sweep.
+          ctx.strokeStyle = shade(IRON_LIT, -6);
+          ctx.lineWidth = Math.max(1, s * 0.018);
+          ctx.beginPath();
+          ctx.moveTo(pierL + s * 0.04, spring + s * 0.012);
+          ctx.quadraticCurveTo(p.x, crown - s * 0.1, pierR - s * 0.04, spring + s * 0.012);
+          ctx.stroke();
+          // The springing spirals hang FROM the band — an outer curl
+          // rolling into a tighter turn, one under each shoulder.
+          ctx.strokeStyle = IRON_MID;
+          ctx.lineWidth = Math.max(1, s * 0.026);
+          for (const [sx3, sweep] of [
+            [pierL + s * 0.17, 1],
+            [pierR - s * 0.17, -1],
+          ] as const) {
+            const sy3 = spring + bandT + s * 0.055;
+            ctx.beginPath();
+            ctx.arc(sx3, sy3, s * 0.06, Math.PI * 1.5, Math.PI * (1.5 + sweep * 1.5), sweep < 0);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(sx3 + sweep * s * 0.02, sy3, s * 0.028, Math.PI * 1.5, Math.PI * (1.5 + sweep * 1.6), sweep < 0);
+            ctx.stroke();
+          }
+          // The crown cluster: the center spear flanked by two small
+          // curls — the yard's sign, read against the sky.
+          const cx2 = p.x;
+          const cy2 = crown - s * 0.06;
+          ctx.fillStyle = IRON_DARK;
+          ctx.fillRect(cx2 - s * 0.015, cy2 - s * 0.1, s * 0.03, s * 0.14);
+          ctx.beginPath();
+          ctx.moveTo(cx2 - s * 0.04, cy2 - s * 0.1);
+          ctx.lineTo(cx2, cy2 - s * 0.22);
+          ctx.lineTo(cx2 + s * 0.04, cy2 - s * 0.1);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = IRON_MID;
+          ctx.lineWidth = Math.max(1, s * 0.022);
+          ctx.beginPath();
+          ctx.arc(cx2 - s * 0.085, cy2 + s * 0.015, s * 0.042, Math.PI * 1.6, Math.PI * 2.9);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(cx2 + s * 0.085, cy2 + s * 0.015, s * 0.042, Math.PI * 0.1, Math.PI * 1.4, true);
+          ctx.stroke();
+          // Some nights, the watcher. It came with the iron; it
+          // leaves with nobody.
+          if ((h & 7) === 3) {
+            const bx = p.x + (((h >> 3) & 1) ? -1 : 1) * s * 0.24;
+            const by = spring - s * 0.012;
+            ctx.fillStyle = '#16131d';
+            ctx.beginPath();
+            ctx.ellipse(bx, by - s * 0.05, s * 0.052, s * 0.042, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            facetCircle(ctx, bx + s * 0.04, by - s * 0.1, s * 0.026, 5, 0.3);
+            ctx.fill();
+            // The tail tick and the beak.
+            ctx.beginPath();
+            ctx.moveTo(bx - s * 0.04, by - s * 0.05);
+            ctx.lineTo(bx - s * 0.11, by - s * 0.02);
+            ctx.lineTo(bx - s * 0.045, by - s * 0.022);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(bx + s * 0.062, by - s * 0.1);
+            ctx.lineTo(bx + s * 0.095, by - s * 0.088);
+            ctx.lineTo(bx + s * 0.06, by - s * 0.078);
+            ctx.closePath();
+            ctx.fill();
+          }
+          if (this.outlineOn) {
+            // The arch's ink: the overthrow's outer sweep only — the
+            // leaves and bars are blue-black and ink themselves.
+            this.beginStructOutline();
+            ctx.beginPath();
+            ctx.moveTo(pierL, spring);
+            ctx.quadraticCurveTo(p.x, crown - s * 0.1, pierR, spring);
+            ctx.stroke();
+          }
+        } else {
+          const yN = baseY - syT * 0.5;
+          const yS = baseY + syT * 0.5;
+          this.drawGravePier(p.x, yN, PIER_W, PIER_H, 'orb');
+          if (o < 0.98) {
+            // Shut: the leaf edge-on — a dark comb barring the gap,
+            // spear ridge cascading, retracting toward its north
+            // hinge as it swings.
+            const top = yN - 1.02 * s;
+            const bot = top + (yS - 0.05 * s - top) * (1 - o);
+            ctx.fillStyle = IRON_DARK;
+            ctx.fillRect(p.x - s * 0.032, top, s * 0.064, bot - top);
+            ctx.fillStyle = shade(IRON_LIT, -8);
+            ctx.fillRect(p.x - s * 0.032, top, Math.max(1, s * 0.018), bot - top);
+            // The comb: spear tips marching down the strip.
+            ctx.fillStyle = shade(IRON_MID, 6);
+            for (let fy = 0.06; fy < 0.94; fy += 0.16) {
+              const ty2 = top + (bot - top) * fy;
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.05, ty2 + s * 0.05);
+              ctx.lineTo(p.x, ty2);
+              ctx.lineTo(p.x + s * 0.05, ty2 + s * 0.05);
+              ctx.closePath();
+              ctx.fill();
+            }
+            if (this.outlineOn) {
+              this.beginStructOutline();
+              ctx.strokeRect(p.x - s * 0.032, top, s * 0.064, bot - top);
+            }
+          }
+          if (o > 0.02) {
+            const oo = Math.sin((o * Math.PI) / 2);
+            drawLeaf(p.x + 0.07 * s, 1, 0.7 * s * oo, 0);
+          }
+          this.drawGravePier(p.x, yS, PIER_W, PIER_H, 'orb');
+        }
+        if (shakeX !== 0) ctx.restore();
+      },
+    };
+  }
+
   // ------------------------------------------------- the clipped green
 
   /**
@@ -25711,6 +26615,15 @@ export class Renderer {
       case Tile.HedgeGate:
       case Tile.HedgeGateShut:
         return this.hedgeGateItem(tile, tx, ty, game);
+
+      case Tile.IronFence:
+      case Tile.IronFenceDiagNE:
+      case Tile.IronFenceDiagNW:
+        return this.ironFenceItem(tile, tx, ty, game);
+
+      case Tile.IronGate:
+      case Tile.IronGateShut:
+        return this.ironGateItem(tile, tx, ty, game);
 
       // ------------------------------------- THE CLIPPED GREEN props
       // The gardener's showpieces. Both ride the cached ring on the
@@ -31963,6 +32876,449 @@ export class Renderer {
             ctx.restore();
             // A few finger bones where a hand let go.
             this.rubble(pelvX + m * s * 0.1, p.y - s * 0.1, s * 0.5, h ^ 0x65, [DGN_BONE, DGN_BONE_DIM]);
+          },
+        };
+      }
+
+      // ---------------------------------------------- THE IRON REST
+      // The graveyard's stones (docs pending; the kit ships with the
+      // iron-fence family). Every piece measures against the
+      // 1.15-tile body, leans as the ground let it, and wears the
+      // crypt kit's damp green — the yard and the dark beneath it
+      // are one place.
+      case Tile.Gravestone: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // THREE CUTS OF ONE TRADE — round-top, shouldered, lancet —
+        // dealt by hash so a row of graves reads as one mason's
+        // yard's work across years, never a stamped multiple. Each
+        // stone LEANS its own way (the ground settles; the stone
+        // keeps whatever promise it can), shows an east-side sliver
+        // so the slab has thickness, and carries carved lines worn
+        // just past reading.
+        const cut = h % 3;
+        const gw = s * (0.4 + ((h >> 3) & 3) * 0.024);
+        const gh = s * (0.66 + ((h >> 6) & 7) * 0.018);
+        const lean = (((h >> 9) & 7) - 3.5) * s * 0.016;
+        const sliver = s * 0.055;
+        // The slab silhouette, hoisted so side and face share one
+        // truth: trace from SW up over the head to SE.
+        const trace = (dx: number, dy: number): void => {
+          const ctx = this.ctx;
+          const xL = p.x - gw / 2 + dx;
+          const xR = p.x + gw / 2 + dx;
+          const topY = baseY - gh + dy;
+          ctx.moveTo(xL, baseY + dy);
+          if (cut === 0) {
+            // The round-top: one full arch.
+            ctx.lineTo(xL + lean, topY + gh * 0.22);
+            ctx.quadraticCurveTo(p.x + lean + dx, topY - gh * 0.14, xR + lean, topY + gh * 0.22);
+          } else if (cut === 1) {
+            // The shouldered tablet: stepped shoulders, flat crown.
+            ctx.lineTo(xL + lean, topY + gh * 0.2);
+            ctx.lineTo(xL + lean + gw * 0.16, topY + gh * 0.2);
+            ctx.lineTo(xL + lean + gw * 0.16, topY + gh * 0.06);
+            ctx.lineTo(xR + lean - gw * 0.16, topY + gh * 0.06);
+            ctx.lineTo(xR + lean - gw * 0.16, topY + gh * 0.2);
+            ctx.lineTo(xR + lean, topY + gh * 0.2);
+          } else {
+            // The lancet: a pointed arch for the older rows.
+            ctx.lineTo(xL + lean, topY + gh * 0.3);
+            ctx.quadraticCurveTo(xL + lean + gw * 0.1, topY + gh * 0.02, p.x + lean + dx, topY - gh * 0.08);
+            ctx.quadraticCurveTo(xR + lean - gw * 0.1, topY + gh * 0.02, xR + lean, topY + gh * 0.3);
+          }
+          ctx.lineTo(xR, baseY + dy);
+        };
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.5, 0.95, 0.35),
+          drawShadow: () => this.castBlob(p.x, baseY, gh / s, gw * 0.42, h ^ 0x67),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            // Contact shade seats the stone in its turf.
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.26)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, gw * 0.62, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The east sliver first — the slab's thickness.
+            ctx.fillStyle = shade(GY_STONE, -22);
+            ctx.beginPath();
+            trace(sliver, 0);
+            ctx.closePath();
+            ctx.fill();
+            // The face, a full step brighter, west arris lit.
+            ctx.fillStyle = shade(GY_STONE, 6);
+            ctx.beginPath();
+            trace(0, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(GY_STONE_LIT, 4);
+            ctx.fillRect(p.x - gw / 2 + lean * 0.5, baseY - gh * 0.78, Math.max(1, s * 0.02), gh * 0.74);
+            // THE CARVED LINES: a name, worn just past reading —
+            // rows of broken dashes, longest at the head, the last
+            // row half gone. The SHAPE of writing is the story.
+            ctx.fillStyle = 'rgba(30, 24, 40, 0.5)';
+            const rows = 3 + ((h >> 4) & 1);
+            for (let i = 0; i < rows; i++) {
+              const ry = baseY - gh * (0.62 - i * 0.14);
+              const rw = gw * (0.56 - i * 0.09);
+              const gap = ((h >> (6 + i * 2)) & 3) * 0.1 + 0.16;
+              ctx.fillRect(p.x + lean * (0.6 - i * 0.14) - rw / 2, ry, rw * gap, Math.max(1, s * 0.022));
+              ctx.fillRect(p.x + lean * (0.6 - i * 0.14) - rw / 2 + rw * (gap + 0.12), ry, rw * (1 - gap - 0.12), Math.max(1, s * 0.022));
+            }
+            // The chipped shoulder — one bite of paler, fresher stone.
+            if (((h >> 11) & 3) === 1) {
+              const mx = ((h >> 13) & 1) ? -1 : 1;
+              ctx.fillStyle = shade(GY_STONE, 20);
+              ctx.beginPath();
+              ctx.moveTo(p.x + mx * gw * 0.5 + lean, baseY - gh * 0.68);
+              ctx.lineTo(p.x + mx * gw * 0.34 + lean, baseY - gh * 0.74);
+              ctx.lineTo(p.x + mx * gw * 0.5 + lean, baseY - gh * 0.82);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // Moss takes the shaded foot; the turf takes the rest.
+            ctx.fillStyle = GY_MOSS;
+            ctx.beginPath();
+            facetBlob(ctx, p.x + gw * (((h >> 8) & 1) ? 0.3 : -0.3), baseY - s * 0.06, s * 0.06, h ^ 0x71, 5, 0.7);
+            ctx.fill();
+            if (this.outlineOn) {
+              this.beginStructOutline();
+              ctx.beginPath();
+              trace(0, 0);
+              ctx.closePath();
+              ctx.stroke();
+            }
+          },
+        };
+      }
+
+      case Tile.GravestoneTall: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        // THE MONUMENT — somebody paid for this one. A stepped
+        // plinth (both steps showing TRUE top planes to the bird's
+        // eye), a tapered shaft carrying a carved band, and a
+        // two-facet pyramid cap. It stands PLUMB where the tablets
+        // lean: money buys a deeper footing.
+        const mh = s * (1.3 + ((h >> 5) & 3) * 0.04);
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.55, 1.6, 0.4),
+          drawShadow: () => this.castBlob(p.x, baseY, mh / s, s * 0.26, h ^ 0x53),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.012, s * 0.36, s * 0.055, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Two plinth steps, each a lit tread over a shaded riser.
+            const steps: ReadonlyArray<readonly [number, number]> = [
+              [s * 0.56, s * 0.1],
+              [s * 0.42, s * 0.1],
+            ];
+            let sy2 = baseY;
+            for (const [sw2, sh2] of steps) {
+              ctx.fillStyle = shade(GY_STONE, -14);
+              ctx.fillRect(p.x - sw2 / 2, sy2 - sh2, sw2, sh2);
+              ctx.fillStyle = shade(GY_STONE_LIT, -4);
+              ctx.fillRect(p.x - sw2 / 2, sy2 - sh2 - syT * 0.055, sw2, syT * 0.055);
+              sy2 -= sh2 + syT * 0.055;
+            }
+            // The shaft tapers as it rises — the mason's entasis,
+            // spoken in two straight lines.
+            const shaftB = sy2;
+            const capY = baseY - mh + s * 0.18;
+            const wB = s * 0.3;
+            const wT = s * 0.24;
+            ctx.fillStyle = GY_STONE;
+            ctx.beginPath();
+            ctx.moveTo(p.x - wB / 2, shaftB);
+            ctx.lineTo(p.x - wT / 2, capY);
+            ctx.lineTo(p.x + wT / 2, capY);
+            ctx.lineTo(p.x + wB / 2, shaftB);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(GY_STONE, 12);
+            ctx.beginPath();
+            ctx.moveTo(p.x - wB / 2, shaftB);
+            ctx.lineTo(p.x - wT / 2, capY);
+            ctx.lineTo(p.x - wT / 2 + s * 0.05, capY);
+            ctx.lineTo(p.x - wB / 2 + s * 0.05, shaftB);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(GY_STONE, -16);
+            ctx.beginPath();
+            ctx.moveTo(p.x + wB / 2 - s * 0.045, shaftB);
+            ctx.lineTo(p.x + wT / 2 - s * 0.045, capY);
+            ctx.lineTo(p.x + wT / 2, capY);
+            ctx.lineTo(p.x + wB / 2, shaftB);
+            ctx.closePath();
+            ctx.fill();
+            // The carved band rings the shaft's shoulder; below it,
+            // the name lines worn like the tablets'.
+            ctx.fillStyle = 'rgba(30, 24, 40, 0.45)';
+            ctx.fillRect(p.x - wT / 2, capY + mh * 0.09, wT, Math.max(1, s * 0.02));
+            ctx.fillRect(p.x - wT / 2, capY + mh * 0.14, wT, Math.max(1, s * 0.012));
+            for (let i = 0; i < 3; i++) {
+              const rw = wT * (0.62 - i * 0.1);
+              ctx.fillRect(p.x - rw / 2, capY + mh * (0.24 + i * 0.09), rw, Math.max(1, s * 0.02));
+            }
+            // THE CAP: a pyramid in two facets — sunrise west, the
+            // shadowed fall east — over its own molded lip.
+            ctx.fillStyle = shade(GY_STONE, -18);
+            ctx.fillRect(p.x - wT / 2 - s * 0.035, capY - s * 0.045, wT + s * 0.07, s * 0.045);
+            ctx.fillStyle = shade(GY_STONE_LIT, 10);
+            ctx.beginPath();
+            ctx.moveTo(p.x - wT / 2 - s * 0.035, capY - s * 0.045);
+            ctx.lineTo(p.x, capY - s * 0.24);
+            ctx.lineTo(p.x, capY - s * 0.045);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(GY_STONE, -8);
+            ctx.beginPath();
+            ctx.moveTo(p.x, capY - s * 0.24);
+            ctx.lineTo(p.x + wT / 2 + s * 0.035, capY - s * 0.045);
+            ctx.lineTo(p.x, capY - s * 0.045);
+            ctx.closePath();
+            ctx.fill();
+            // Damp holds the north step; the wind keeps the shaft.
+            ctx.fillStyle = GY_MOSS;
+            ctx.beginPath();
+            facetBlob(ctx, p.x - s * 0.2, baseY - s * 0.07, s * 0.055, h ^ 0x39, 5, 0.7);
+            ctx.fill();
+            if (this.outlineOn) {
+              this.beginStructOutline();
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.28, baseY);
+              ctx.lineTo(p.x - s * 0.28, shaftB);
+              ctx.lineTo(p.x - wB / 2, shaftB);
+              ctx.lineTo(p.x - wT / 2 - s * 0.035, capY);
+              ctx.lineTo(p.x, capY - s * 0.24);
+              ctx.lineTo(p.x + wT / 2 + s * 0.035, capY);
+              ctx.lineTo(p.x + wB / 2, shaftB);
+              ctx.lineTo(p.x + s * 0.28, shaftB);
+              ctx.lineTo(p.x + s * 0.28, baseY);
+              ctx.stroke();
+            }
+          },
+        };
+      }
+
+      case Tile.GraveMound: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        // THE FRESH GRAVE — the yard's quietest and loudest piece. A
+        // low mound of turned earth (dark: the soil hasn't dried),
+        // crumb flecks catching light along the ridge, a field-stone
+        // at its head because a field-stone is what there was. Some
+        // carry a laid posy, still pale. Nothing here is carved; the
+        // grief is recent.
+        const mw = s * (0.76 + ((h >> 4) & 3) * 0.03);
+        return {
+          sortY: ty + 0.65,
+          body: stationBody(0.8, 0.5, 0.45),
+          // A mound throws no standing shadow — it IS ground.
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            // The turned bed sinks a shade into the turf around it.
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.18)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - syT * 0.1, mw * 0.62, syT * 0.34, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The mound: dark fresh soil, faceted so it reads dug,
+            // not poured.
+            ctx.fillStyle = shade('#4a3a2c', ((h >> 7) & 3) - 1);
+            ctx.beginPath();
+            facetBlob(ctx, p.x, baseY - syT * 0.12, mw * 0.5, h ^ 0x25, 8, 0.82);
+            ctx.fill();
+            // The ridge catches what light the yard gets.
+            ctx.fillStyle = shade('#5e4a36', 8);
+            ctx.beginPath();
+            ctx.ellipse(p.x - mw * 0.06, baseY - syT * 0.2, mw * 0.3, syT * 0.12, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Crumb flecks, hash-strewn — the spade's signature.
+            ctx.fillStyle = 'rgba(24, 16, 12, 0.55)';
+            for (let i = 0; i < 5; i++) {
+              const fx = p.x + (((h >> (i * 3)) & 7) - 3.5) * mw * 0.11;
+              const fy = baseY - syT * (0.06 + (((h >> (i * 3 + 2)) & 3) * 0.07));
+              ctx.fillRect(fx, fy, Math.max(1, s * 0.02), Math.max(1, s * 0.016));
+            }
+            // The head stone: one rounded field-stone, set north.
+            ctx.fillStyle = shade(GY_STONE, -6);
+            ctx.beginPath();
+            facetBlob(ctx, p.x - mw * 0.04, baseY - syT * 0.38, s * 0.11, h ^ 0x4d, 6, 0.75);
+            ctx.fill();
+            ctx.fillStyle = shade(GY_STONE_LIT, -4);
+            ctx.beginPath();
+            facetBlob(ctx, p.x - mw * 0.06, baseY - syT * 0.4, s * 0.055, h ^ 0x4e, 5, 0.7);
+            ctx.fill();
+            // The posy, where someone left one: three pale heads on
+            // a laid stem, wilting toward the foot.
+            if ((h & 7) < 3) {
+              const px2 = p.x + mw * 0.16;
+              const py2 = baseY - syT * 0.18;
+              ctx.strokeStyle = 'rgba(74, 97, 56, 0.8)';
+              ctx.lineWidth = Math.max(1, s * 0.014);
+              ctx.beginPath();
+              ctx.moveTo(px2, py2);
+              ctx.quadraticCurveTo(px2 + s * 0.08, py2 + syT * 0.03, px2 + s * 0.15, py2 + syT * 0.1);
+              ctx.stroke();
+              ctx.fillStyle = '#cfc8dd';
+              for (const [dx2, dy2] of [
+                [0, 0],
+                [s * 0.045, -s * 0.02],
+                [s * 0.02, s * 0.035],
+              ] as const) {
+                ctx.beginPath();
+                facetCircle(ctx, px2 + dx2, py2 + dy2, s * 0.026, 5, 0.4);
+                ctx.fill();
+              }
+            }
+          },
+        };
+      }
+
+      case Tile.MournerStatue: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        // THE MOURNER — the yard's showpiece. A hooded figure in
+        // carved stone, head bowed over folded hands, robe falling
+        // sheer to the plinth. The hood's cavity is the darkest
+        // value in the whole kit — the face is NOT drawn; the
+        // camera never earns it — and the rain has worn two pale
+        // tracks down the cowl where centuries cried for it. Bowed
+        // east or west by hash, so facing pairs can flank a gate.
+        const m = ((h >> 4) & 1) === 0 ? 1 : -1;
+        // Robe stone: PALE weathered marble, two full steps off the
+        // pier granite. (The first cut's dark teardrop read as a
+        // ghost at play distance — a statue is STONE first; the
+        // grief lives in the pose, not the value.)
+        const MRB = '#a49fb3';
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.55, 1.65, 0.4),
+          drawShadow: () => this.castBlob(p.x, baseY, 1.4, s * 0.24, h ^ 0x77),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.012, s * 0.36, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The plinth: two stepped blocks, each a lit tread over a
+            // shaded riser — the statue is SET UP, never set down.
+            let stepY = baseY;
+            for (const [sw2, sh2] of [
+              [s * 0.56, s * 0.11],
+              [s * 0.4, s * 0.1],
+            ] as const) {
+              ctx.fillStyle = shade(GY_STONE, -16);
+              ctx.fillRect(p.x - sw2 / 2, stepY - sh2, sw2, sh2);
+              ctx.fillStyle = shade(GY_STONE_LIT, -4);
+              ctx.fillRect(p.x - sw2 / 2, stepY - sh2 - syT * 0.05, sw2, syT * 0.05);
+              stepY -= sh2 + syT * 0.05;
+            }
+            const footY = stepY;
+            const headX = p.x + m * s * 0.055;
+            const headY = footY - s * 1.02;
+            // THE SILHOUETTE — hem flare, gathered waist, sloped
+            // shoulders, the cowl bowed over the grave it keeps.
+            // Grief is drawn in the SHOULDER LINE, not the value.
+            const silhouette = (): void => {
+              ctx.moveTo(p.x - s * 0.21, footY);
+              // West hem gathers in to the waist...
+              ctx.quadraticCurveTo(p.x - s * 0.15, footY - s * 0.34, p.x - s * 0.135, footY - s * 0.52);
+              // ...rises to the near shoulder...
+              ctx.quadraticCurveTo(headX - s * 0.15, headY + s * 0.34, headX - s * 0.125, headY + s * 0.2);
+              // ...the cowl closes over the bowed head...
+              ctx.quadraticCurveTo(headX - s * 0.1, headY - s * 0.045, headX + m * s * 0.02, headY - s * 0.05);
+              ctx.quadraticCurveTo(headX + s * 0.115, headY - s * 0.03, headX + s * 0.12, headY + s * 0.21);
+              // ...falls off the far shoulder to the waist...
+              ctx.quadraticCurveTo(headX + s * 0.14, headY + s * 0.36, p.x + s * 0.13, footY - s * 0.5);
+              // ...and the east hem flares back out to the plinth.
+              ctx.quadraticCurveTo(p.x + s * 0.15, footY - s * 0.3, p.x + s * 0.21, footY);
+            };
+            ctx.fillStyle = MRB;
+            ctx.beginPath();
+            silhouette();
+            ctx.closePath();
+            ctx.fill();
+            // The west light takes the near fold; the east fall
+            // shades one step — planes, never gradients.
+            ctx.fillStyle = shade(MRB, 12);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.17, footY);
+            ctx.quadraticCurveTo(p.x - s * 0.115, footY - s * 0.4, headX - s * 0.09, headY + s * 0.24);
+            ctx.lineTo(headX - s * 0.035, headY + s * 0.26);
+            ctx.quadraticCurveTo(p.x - s * 0.055, footY - s * 0.36, p.x - s * 0.075, footY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(MRB, -16);
+            ctx.beginPath();
+            ctx.moveTo(p.x + s * 0.21, footY);
+            ctx.quadraticCurveTo(p.x + s * 0.15, footY - s * 0.3, headX + s * 0.115, headY + s * 0.24);
+            ctx.lineTo(headX + s * 0.06, headY + s * 0.27);
+            ctx.quadraticCurveTo(p.x + s * 0.09, footY - s * 0.34, p.x + s * 0.1, footY);
+            ctx.closePath();
+            ctx.fill();
+            // Two drape folds fall from the hands — carved lines,
+            // not paint.
+            ctx.strokeStyle = shade(MRB, -22);
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            ctx.beginPath();
+            ctx.moveTo(headX - s * 0.045, headY + s * 0.48);
+            ctx.quadraticCurveTo(p.x - s * 0.05, footY - s * 0.26, p.x - s * 0.035, footY - s * 0.02);
+            ctx.moveTo(headX + s * 0.05, headY + s * 0.47);
+            ctx.quadraticCurveTo(p.x + s * 0.06, footY - s * 0.24, p.x + s * 0.05, footY - s * 0.02);
+            ctx.stroke();
+            // THE HOOD'S CAVITY — small, bowed toward the grave. The
+            // darkest value in the kit; no face is carved there.
+            ctx.fillStyle = '#241f2e';
+            ctx.beginPath();
+            ctx.ellipse(headX + m * s * 0.035, headY + s * 0.075, s * 0.052, s * 0.068, m * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+            // The cowl's rim catches the sky over the cavity.
+            ctx.strokeStyle = shade(MRB, 20);
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.beginPath();
+            ctx.arc(headX + m * s * 0.005, headY + s * 0.06, s * 0.088, Math.PI * 0.95, Math.PI * 2.05);
+            ctx.stroke();
+            // The folded hands: one carved knot at the breast, the
+            // wrists meeting under it.
+            ctx.fillStyle = shade(MRB, 18);
+            ctx.beginPath();
+            facetCircle(ctx, headX - m * s * 0.01, headY + s * 0.4, s * 0.05, 6, 0.5, 0.75);
+            ctx.fill();
+            ctx.fillStyle = shade(MRB, -12);
+            ctx.fillRect(headX - m * s * 0.01 - s * 0.055, headY + s * 0.435, s * 0.11, Math.max(1, s * 0.016));
+            // THE RAIN'S TRACKS: two faint runnels down the cowl —
+            // the weather mourns with it, quietly.
+            ctx.fillStyle = 'rgba(60, 52, 76, 0.22)';
+            ctx.fillRect(headX - m * s * 0.035, headY + s * 0.16, Math.max(1, s * 0.013), s * 0.26);
+            ctx.fillRect(headX + m * s * 0.02, headY + s * 0.18, Math.max(1, s * 0.013), s * 0.2);
+            // Moss holds the hem and the plinth's shaded corner.
+            ctx.fillStyle = GY_MOSS;
+            ctx.beginPath();
+            facetBlob(ctx, p.x - m * s * 0.15, footY - s * 0.04, s * 0.055, h ^ 0x2b, 5, 0.7);
+            ctx.fill();
+            ctx.beginPath();
+            facetBlob(ctx, p.x + m * s * 0.22, baseY - s * 0.04, s * 0.05, h ^ 0x2c, 5, 0.7);
+            ctx.fill();
+            if (this.outlineOn) {
+              this.beginStructOutline();
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.28, baseY);
+              ctx.lineTo(p.x - s * 0.28, baseY - s * 0.11);
+              ctx.lineTo(p.x - s * 0.21, footY);
+              silhouette();
+              ctx.lineTo(p.x + s * 0.28, baseY - s * 0.11);
+              ctx.lineTo(p.x + s * 0.28, baseY);
+              ctx.stroke();
+            }
           },
         };
       }

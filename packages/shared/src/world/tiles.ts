@@ -994,6 +994,35 @@ export enum Tile {
    * charge follows the dye, so a matched pair can never argue.
    */
   BannerStand = 480,
+  // THE IRON REST — the graveyard kit (IDs resume at 496; 481..495
+  // belong to the banner stand's dye band). The wall first: wrought
+  // iron on a stone curb, the FIFTH run-merging family beside fence,
+  // garrison, palisade, and hedge (the separate-masonry law — a
+  // smith's railing never dies into a carpenter's fence). Then the
+  // stones the wall was raised to keep.
+  /** A wrought-iron railing set in a stone curb: spear-topped bars, scrollwork, pier-anchored runs. */
+  IronFence = 496,
+  /** The railing's 45° turn spanning the NE-SW diagonal ("/"). */
+  IronFenceDiagNE = 497,
+  /** The railing's 45° turn spanning the NW-SE diagonal ("\"). */
+  IronFenceDiagNW = 498,
+  /**
+   * The graveyard gate, standing open — twin stone piers under a
+   * wrought overthrow arch; the barred leaves fold back against the
+   * piers. Rides the whole door machinery (interact, locks,
+   * occupancy, auto-close) like every gate before it.
+   */
+  IronGate = 499,
+  /** The graveyard gate shut: the leaves meet at an old iron latch. */
+  IronGateShut = 500,
+  /** A headstone. Three cuts of one trade — round-top, shouldered, and lancet — leaning as the ground let them. */
+  Gravestone = 501,
+  /** A monument: stepped plinth, tapered shaft, pyramid cap — somebody paid for this one. */
+  GravestoneTall = 502,
+  /** A fresh-turned grave mound, field-stone marker at its head. The soil is still dark. */
+  GraveMound = 503,
+  /** A weathered stone mourner, hooded and bowed over folded hands. Rain has worn tracks down the cowl. */
+  MournerStatue = 504,
 }
 
 export enum Detail {
@@ -1813,6 +1842,17 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.ArmorStand]: { name: 'armor stand', solid: true, color: '#5e3f1e', raised: true, topColor: '#7a552e' },
   [Tile.ArmorStandFull]: { name: 'armor stand', solid: true, color: '#5e3f1e', raised: true, topColor: '#aeb6c6' },
   [Tile.BannerStand]: { name: 'banner stand', solid: true, color: '#454052', raised: true, topColor: '#8a2b35' },
+  // THE IRON REST: cold iron over curb stone from above; the gate
+  // tiles keep the fence-gate posture law (open walkable, shut not).
+  [Tile.IronFence]: { name: 'iron fence', solid: true, color: '#33303f', raised: true, topColor: '#4c485c' },
+  [Tile.IronFenceDiagNE]: { name: 'iron fence', solid: true, color: '#33303f', raised: true, topColor: '#4c485c' },
+  [Tile.IronFenceDiagNW]: { name: 'iron fence', solid: true, color: '#33303f', raised: true, topColor: '#4c485c' },
+  [Tile.IronGate]: { name: 'graveyard gate', solid: false, color: '#33303f', raised: true, topColor: '#4c485c' },
+  [Tile.IronGateShut]: { name: 'shut graveyard gate', solid: true, color: '#2c2938', raised: true, topColor: '#4c485c' },
+  [Tile.Gravestone]: { name: 'gravestone', solid: true, color: '#6b6678', raised: true, topColor: '#8f8a9e' },
+  [Tile.GravestoneTall]: { name: 'grave monument', solid: true, color: '#625d70', raised: true, topColor: '#8f8a9e' },
+  [Tile.GraveMound]: { name: 'grave mound', solid: true, color: '#4a3a2c', raised: true, topColor: '#5e4a36' },
+  [Tile.MournerStatue]: { name: 'mourner statue', solid: true, color: '#726d80', raised: true, topColor: '#a29db2' },
 };
 
 // THE KNIGHT'S KEEPING: the standing banner's dye band — defs for
@@ -2072,7 +2112,8 @@ export type DoorMaterial =
   | 'fence'
   | 'garrison'
   | 'palisade'
-  | 'hedge';
+  | 'hedge'
+  | 'iron';
 
 export interface DoorInfo {
   material: DoorMaterial;
@@ -2110,6 +2151,12 @@ const DOOR_INFO = new Map<Tile, DoorInfo>([
   // opening blocks lamplight and reads as a sealed garden.
   [Tile.HedgeGate, { material: 'hedge', wide: false, open: true }],
   [Tile.HedgeGateShut, { material: 'hedge', wide: false, open: false }],
+  // The graveyard gate: rides ALL the door machinery like the fence
+  // gate, rendered by the iron-fence family (never the wall-doorway
+  // pipeline). Its leaves are open bars — shut, it still lets the
+  // lamplight and the eye through; what it stops is the body.
+  [Tile.IronGate, { material: 'iron', wide: false, open: true }],
+  [Tile.IronGateShut, { material: 'iron', wide: false, open: false }],
 ]);
 
 /** Every doorway tile, open and shut, both widths and materials. */
@@ -2129,6 +2176,7 @@ const SHUT_OF = new Map<Tile, Tile>([
   [Tile.GateGarrison, Tile.GateGarrisonShut],
   [Tile.PalisadeGate, Tile.PalisadeGateShut],
   [Tile.HedgeGate, Tile.HedgeGateShut],
+  [Tile.IronGate, Tile.IronGateShut],
 ]);
 const OPEN_OF = new Map<Tile, Tile>([...SHUT_OF].map(([o, s]) => [s, o]));
 
@@ -2265,6 +2313,34 @@ export const HEDGE_TILES: ReadonlySet<Tile> = new Set([
   Tile.HedgeGate,
   Tile.HedgeGateShut,
 ]);
+
+/**
+ * THE IRON REST — the graveyard's wall: straight runs, the two 45°
+ * turns, and the barred gate in both postures. A FIFTH run-merging
+ * family (the separate-masonry law): wrought iron never joins a
+ * WALL_RUN, never bounds an interior, and merges only with its own
+ * kind — a smith's railing dying into a carpenter's fence would read
+ * as one builder's work, and they are not.
+ */
+export const IRON_FENCE_TILES: ReadonlySet<Tile> = new Set([
+  Tile.IronFence,
+  Tile.IronFenceDiagNE,
+  Tile.IronFenceDiagNW,
+  Tile.IronGate,
+  Tile.IronGateShut,
+]);
+
+/** The fence family's auto-orient law, spoken in wrought iron. */
+export function orientDiagIronFence(
+  ne: boolean,
+  nw: boolean,
+  se: boolean,
+  sw: boolean,
+): Tile {
+  if (ne || sw) return Tile.IronFenceDiagNE;
+  if (nw || se) return Tile.IronFenceDiagNW;
+  return Tile.IronFenceDiagNE;
+}
 
 /** The fence family's auto-orient law, spoken in clipped leaves. */
 export function orientDiagHedge(

@@ -141,6 +141,21 @@ export const TILE_CATEGORIES: TileCategory[] = [
     ],
   },
   {
+    // THE IRON REST: the graveyard dresser's shelf — the wall first
+    // (the iron family the yard is drawn with), then the stones it
+    // was raised to keep.
+    id: 'graveyard',
+    label: 'Graveyard',
+    tiles: [
+      Tile.IronFence, Tile.IronFenceDiagNE, Tile.IronFenceDiagNW,
+      Tile.IronGate, Tile.IronGateShut,
+      Tile.Gravestone, Tile.GravestoneTall, Tile.GraveMound,
+      Tile.MournerStatue,
+      // The crypt kit's kin that belong in the open yard too.
+      Tile.Sarcophagus, Tile.BurialUrns, Tile.CandleShrine,
+    ],
+  },
+  {
     // THE LONG DARK FURNISHED: the dungeon dresser's shelf — the
     // architecture first (pillars set a room's bones), then the wall
     // iron, then the dead and their goods.

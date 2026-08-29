@@ -13,6 +13,7 @@ import {
   GARRISON_TILES,
   HANGABLE_WALL_TILES,
   HEDGE_TILES,
+  IRON_FENCE_TILES,
   INTERIOR_BOUNDARY_TILES,
   LIGHT_BLOCKING_TILES,
   PALISADE_TILES,
@@ -57,6 +58,7 @@ import {
   openDoorTile,
   orientDiagFence,
   orientDiagHedge,
+  orientDiagIronFence,
   orientDiagPalisade,
   orientDiagWall,
   shutDoorTile,
@@ -179,6 +181,19 @@ test('door posture drives solidity and lamplight', () => {
       );
       continue;
     }
+    if (info.material === 'iron') {
+      // The graveyard gate carves out like the fence gate: it
+      // belongs to the iron-fence family, and its leaves are open
+      // bars — even shut, lamplight passes between them. What the
+      // gate stops is the body, never the light.
+      assert.ok(!WALL_RUN_TILES.includes(tile), `${tileDef(tile).name} stays out of wall runs`);
+      assert.ok(IRON_FENCE_TILES.has(tile), `${tileDef(tile).name} joins the iron-fence family`);
+      assert.ok(
+        !LIGHT_BLOCKING_TILES.includes(tile),
+        `${tileDef(tile).name} never blocks lamplight`,
+      );
+      continue;
+    }
     if (info.material === 'hedge') {
       // The garden wicket carves out like the fence gate: it belongs
       // to the hedge family, and even shut it is a waist-high timber
@@ -271,6 +286,46 @@ test('hedge family: the clipped green stands apart and its arch rounds the trip'
   assert.equal(orientDiagHedge(false, true, false, false), Tile.HedgeDiagNW);
   assert.equal(orientDiagHedge(false, false, true, false), Tile.HedgeDiagNW);
   assert.equal(orientDiagHedge(false, false, false, false), Tile.HedgeDiagNE);
+});
+
+test('iron-fence family: the graveyard wall stands apart and its gate rounds the trip', () => {
+  assert.deepEqual(doorInfo(Tile.IronGate), { material: 'iron', wide: false, open: true });
+  assert.deepEqual(doorInfo(Tile.IronGateShut), {
+    material: 'iron',
+    wide: false,
+    open: false,
+  });
+  assert.equal(shutDoorTile(Tile.IronGate), Tile.IronGateShut);
+  assert.equal(openDoorTile(Tile.IronGateShut), Tile.IronGate);
+  for (const tile of IRON_FENCE_TILES) {
+    assert.ok(tileDef(tile).raised, `${tileDef(tile).name} renders raised`);
+    // Only the open gate lets a body through.
+    assert.equal(tileDef(tile).solid, tile !== Tile.IronGate, `${tileDef(tile).name} solidity`);
+    // THE SEPARATE-MASONRY LAW, fifth family: never a building wall,
+    // never a timber fence, never garrison masonry, never the camp's
+    // logs, never the garden's green — wrought iron merges only with
+    // its own kind.
+    assert.ok(!WALL_RUN_TILES.includes(tile), `${tileDef(tile).name} out of wall runs`);
+    assert.ok(!FENCE_TILES.has(tile), `${tileDef(tile).name} out of the fence family`);
+    assert.ok(!GARRISON_TILES.has(tile), `${tileDef(tile).name} out of the garrison family`);
+    assert.ok(!PALISADE_TILES.has(tile), `${tileDef(tile).name} out of the palisade family`);
+    assert.ok(!HEDGE_TILES.has(tile), `${tileDef(tile).name} out of the hedge family`);
+    assert.ok(
+      !INTERIOR_BOUNDARY_TILES.includes(tile),
+      `${tileDef(tile).name} never encloses a room`,
+    );
+  }
+  // THE OPEN-BAR LAW: a railing is drawn so the eye — and the lamp —
+  // passes between the bars. No iron tile is ever lamplight mass.
+  for (const tile of IRON_FENCE_TILES) {
+    assert.ok(!LIGHT_BLOCKING_TILES.includes(tile), `${tileDef(tile).name} clears lamplight`);
+  }
+  // The 45° turn joins whichever diagonal already carries the iron.
+  assert.equal(orientDiagIronFence(true, false, false, false), Tile.IronFenceDiagNE);
+  assert.equal(orientDiagIronFence(false, false, false, true), Tile.IronFenceDiagNE);
+  assert.equal(orientDiagIronFence(false, true, false, false), Tile.IronFenceDiagNW);
+  assert.equal(orientDiagIronFence(false, false, true, false), Tile.IronFenceDiagNW);
+  assert.equal(orientDiagIronFence(false, false, false, false), Tile.IronFenceDiagNE);
 });
 
 test('fence family: gates round-trip and diagonals stay solid', () => {
