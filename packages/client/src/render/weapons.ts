@@ -3500,6 +3500,14 @@ export const BOW_STYLES: Record<string, BowStyle> = {
     bow: 'composite', color: '#8a6f52', belly: '#a8895f', wrap: '#4a3a2a',
     string: '#d8cba8', tip: 'bone', tipColor: '#e2dcc8', charm: 'teeth', charmColor: '#e2dcc8',
   },
+  // The oxbow: a drover's war bow named for the yoke-bend it carries —
+  // the composite's angled siyahs ARE the ox-bow. Horn off the beast's
+  // own crown at the tips, its shag ringing the grip, oxblood fletch.
+  oxbow: {
+    bow: 'composite', color: '#6a4f30', belly: '#8a6a42', wrap: '#3a3128',
+    string: '#d8cba8', tip: 'horn', tipColor: '#d8d2c0',
+    charm: 'fur', charmColor: '#4e3e2c', fletch: '#a4462e',
+  },
   poachers_friend: {
     bow: 'shortbow', color: '#7a6a48', belly: '#96845c', wrap: '#4a3a2a',
     charm: 'beads', charmColor: '#8a7a5c', fletch: '#8a9455',

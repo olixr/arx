@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Icon Lab</title>
+    <style>
+      body { margin: 0; background: #1d1a24; color: #d8d2c4; font: 12px/1.4 system-ui, sans-serif; }
+      h2 { margin: 18px 12px 6px; font-size: 14px; color: #e8dcc0; }
+      .grid { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 12px 12px; }
+      .cell { background: #2a2632; border: 1px solid #3a3648; border-radius: 4px; padding: 6px; width: 200px; }
+      .cell .name { color: #b8b0a0; margin-bottom: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+      .cell .sizes { display: flex; align-items: flex-end; gap: 8px; }
+      .cell .sizes .sw { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+      .cell img { image-rendering: auto; background: #211d2a; border-radius: 3px; }
+      .cell .lite img { background: #cfc8b8; }
+    </style>
+  </head>
+  <body>
+    <div id="lab"></div>
+    <script type="module" src="/src/dev/iconlab.ts"></script>
+  </body>
+</html>

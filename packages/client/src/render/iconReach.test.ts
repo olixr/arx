@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LOOT_TABLES, RECIPES, SHOPS, itemDef } from '@arx/content';
+import { ITEMS, LOOT_TABLES, RECIPES, SHOPS, itemDef } from '@arx/content';
 
 /**
  * NO FACELESS SHIPS. `itemIconUrl` answers an unmapped id with a
@@ -145,11 +145,22 @@ test('the lump detector answers in both directions', () => {
   assert.ok(traceOf('__another_missing_id__').length > 0);
 });
 
-/** Every id a player can reach through the three shipped ledgers. */
-function reachableIds(): Map<string, string> {
+/**
+ * Every id in the item registry, annotated with the loudest door it
+ * reaches a pack through (recipe / loot / shop) when one of the three
+ * ledgers names it — the annotation is for the failure message, not
+ * the lens. THE LENS IS THE WHOLE REGISTRY: the day the standing debt
+ * was paid (2026-08-29, 68 lumps, zero after), the ledger sweep was
+ * retired for the stronger law. Quest pockets, arena purses, mount
+ * shelves, starter kits — every door ever built or yet to be built
+ * hands out ids from this one registry, so this is the set that can
+ * appear in an inventory, and an id that EXISTS must hold a face.
+ */
+function allIds(): Map<string, string> {
   const src = new Map<string, string>();
+  for (const id of ITEMS.keys()) src.set(id, 'items registry');
   const note = (id: string, where: string): void => {
-    if (!src.has(id)) src.set(id, where);
+    if (src.get(id) === 'items registry') src.set(id, where);
   };
   for (const r of RECIPES.values()) for (const i of r.inputs) note(i.item, `recipe ${r.id}`);
   for (const t of LOOT_TABLES.values()) {
@@ -160,66 +171,39 @@ function reachableIds(): Map<string, string> {
 }
 
 /**
- * THE STANDING DEBT, named out loud. The sweep that first ran this pin
- * found 69 faceless reachable ids and paid off the 13 THE WORN BOOK
- * itself promoted; these 56 are older debt in other lanes' remits, and
- * they are written down rather than swept under a loose assertion. The
- * list is a CEILING, not a licence: a new faceless id fails the pin, and
- * a paid-off one fails it too, so the number can only go down.
+ * THE STANDING DEBT: PAID. The first run of this pin (2026-08-18)
+ * recorded 56 faceless ids as a ceiling; the wave of 2026-08-29 paid
+ * all of them plus the 12 the old three-ledger lens could not see
+ * (recipe OUTPUTS and quest pockets), and emptied the set. It stays
+ * declared as the mechanism: a new faceless id either gets its face in
+ * the same commit or gets written down HERE, by name, as conscious
+ * debt — and the stale-entry pin below makes sure it leaves again.
  */
-const KNOWN_FACELESS: ReadonlySet<string> = new Set([
-  // Materials other waves promoted into ledgers and left faceless —
-  // the elven trades (061d4084), the shield wave (d14d8efc), and the
-  // scribe's bench, which never had faces at all.
-  'salt', 'radiant_essence', 'umbral_essence', 'astral_essence', 'focused_dust',
-  'moonglass_lens', 'turtle_scute', 'colossus_plate', 'deepking_pearl',
-  'silverbark', 'moonpale_silk',
-  // Champion and boss trophies that pay to the ground but feed no
-  // recipe yet — the furrier arc's banked pelts among them.
-  'warboss_tusk', 'crusher_claw', 'petrified_eye', 'bonegrinder_girdle',
-  'feywolf_pelt', 'duskruff_pelt', 'smokebrush_pelt', 'wintercourt_rime',
-  'sand_laurel', 'legion_ring', 'nightveil_pinion',
-  // Named drops whose art lane never answered (0cc361f8 recorded the
-  // barrowdusk colorway; these are its neighbours).
-  'lowhall_breacher', 'fellhorn_gate', 'oxbow', 'cindermaw_bulwark',
-  'deepening_sigil', 'night_sabercat', 'gilded_tyrant', 'legion_doorwall',
-  // The colorway wardrobes: three tidecaller lots and barrowdusk, all
-  // wanting a one-line seed row each (the colorway loop walks
-  // EARLY_COLORWAYS, which holds none of them).
-  'tidecaller_gloves_maelstrom', 'tidecaller_hood_maelstrom', 'tidecaller_robe_maelstrom',
-  'tidecaller_skirts_maelstrom', 'tidecaller_slippers_maelstrom',
-  'tidecaller_gloves_abyss', 'tidecaller_hood_abyss', 'tidecaller_robe_abyss',
-  'tidecaller_skirts_abyss', 'tidecaller_slippers_abyss',
-  'tidecaller_gloves_darkwater', 'tidecaller_hood_darkwater', 'tidecaller_robe_darkwater',
-  'tidecaller_skirts_darkwater', 'tidecaller_slippers_darkwater',
-  'nightveil_boots_barrowdusk', 'nightveil_cowl_barrowdusk', 'nightveil_gloves_barrowdusk',
-  'nightveil_jerkin_barrowdusk', 'nightveil_leggings_barrowdusk',
-  // Shop rows: the larder's two and the stable's four mounts.
-  'fishers_pot', 'smoked_trout', 'hoargate_garron', 'bay_courser', 'grey_courser', 'dun_courser',
-]);
+const KNOWN_FACELESS: ReadonlySet<string> = new Set([]);
 
-test('every reachable item holds a real painter — no faceless ships', () => {
-  const reach = reachableIds();
+test('every item in the registry holds a real painter — no faceless ships', () => {
+  const reach = allIds();
   const faceless: string[] = [];
   for (const [id, where] of reach) {
     if (KNOWN_FACELESS.has(id)) continue;
+    if (id === 'burnt_food') continue; // the one honest lump-wearer
     if (isLump(id)) faceless.push(`${id} (${where})`);
   }
   assert.deepEqual(
     faceless,
     [],
-    `${faceless.length} of ${reach.size} reachable ids render the burnt lump:\n  ${faceless.join('\n  ')}`,
+    `${faceless.length} of ${reach.size} item ids render the burnt lump:\n  ${faceless.join('\n  ')}`,
   );
 });
 
 test('the recorded debt is exactly the debt — no stale entries', () => {
   // The other half of the ceiling. An id that gained a face, or left
-  // the ledgers entirely, comes OFF the list the same day, or the list
+  // the registry entirely, comes OFF the list the same day, or the list
   // starts hiding regressions instead of recording debt.
-  const reach = reachableIds();
+  const reach = allIds();
   const stale: string[] = [];
   for (const id of KNOWN_FACELESS) {
-    if (!reach.has(id)) stale.push(`${id} (no longer reachable)`);
+    if (!reach.has(id)) stale.push(`${id} (no longer in the registry)`);
     else if (!isLump(id)) stale.push(`${id} (has a painter now)`);
   }
   assert.deepEqual(stale, [], `stale debt entries:\n  ${stale.join('\n  ')}`);
@@ -302,6 +286,13 @@ test('the promoted materials are drawings, not tinted twins', () => {
     'fox_pelt', 'lynx_pelt', 'basilisk_scale', 'ogre_tooth', 'warlord_crest',
     'elder_plume', 'owl_plume', 'everfrost_shard', 'molten_slag', 'golem_core',
     'hillstone_heart', 'forgeplate_scrap', 'razorback_tusk',
+    // The 2026-08-29 wave: the debt-paying faces join the pin the day
+    // they are drawn, so none of them can quietly become a hand-me-down.
+    'feywolf_pelt', 'duskruff_pelt', 'smokebrush_pelt', 'warboss_tusk',
+    'crusher_claw', 'bonegrinder_girdle', 'legion_ring', 'turtle_scute',
+    'colossus_plate', 'petrified_eye', 'deepking_pearl', 'sand_laurel',
+    'deepening_sigil', 'moonpale_silk', 'silverbark', 'moonglass_lens',
+    'focused_dust', 'salt',
   ];
   const mats = new Set(materials);
   const seen = new Map<string, string>();

@@ -3893,6 +3893,10 @@ export const OFFHAND_STYLES: Record<string, OffhandStyle> = {
   everwood_crest: { kind: 'kite', color: '#e8e0cc', trim: '#a39072', boss: '#e6f0c2' },
   gatefall_bulwark: { kind: 'tower', color: '#3e3560', trim: '#494259', boss: '#cbb4ff', spikes: true },
   aldarens_gate: { kind: 'tower', color: '#c9d2e4', trim: '#d8b76a', boss: '#e6c36a', spikes: true },
+  // The tyrant wore its authored colossus face (shields.ts) from the
+  // day it shipped, but no kind routing — worn in the world it fell to
+  // the fallback buckler frame. A colossus is a wall: route it tower.
+  gilded_tyrant: { kind: 'tower', color: '#b08d3e', trim: '#d8b968', boss: '#6a4e1e', spikes: true },
   hunters_quiver: { kind: 'quiver', color: '#8a6a45', trim: '#3f6b3a' },
   scholars_tome: { kind: 'tome', color: '#4a5a9c', trim: '#c8cee8' },
 };
@@ -4572,6 +4576,41 @@ registerColorways(BOOT_STYLES, 'emberfox_boots', {
   silverfox: { color: '#33303a', fur: { color: '#a4a8b0' } },
   shadowfox: { color: '#232028', fur: { color: '#4c4856' } },
   dawnfox: { color: '#6e5838', fur: { color: '#e0c890' } },
+});
+
+// Nightveil barrowdusk: veil leather steeped in barrow water — the
+// violet drowned out to grave-green, and every lavender accent
+// re-picked as the old kings' tarnished gold. The edgelight goes
+// wisp-pale: barrow light, not moonlight. The knife keeps its glint,
+// but the glint comes off grave-gold now.
+registerColorways(BODY_STYLES, 'nightveil_jerkin', {
+  barrowdusk: {
+    color: '#4a5136', trim: '#a8934e', metal: '#7a6a3e',
+    yoke: { color: '#3c422c' }, sash: '#5e5a38',
+    knifebaldric: { strap: '#2c3122', steel: '#8a8a76', glint: '#d2dc9a' },
+    shadowtails: { color: '#404830' },
+  },
+});
+registerColorways(HELM_STYLES, 'nightveil_cowl', {
+  barrowdusk: {
+    color: '#4a5136', trim: '#a8934e', mask: '#565e3c',
+    edgelight: { color: '#c8d89a' },
+  },
+});
+registerColorways(LEG_STYLES, 'nightveil_leggings', {
+  barrowdusk: {
+    thigh: '#4a5136', shin: '#404830',
+    garter: { color: '#5e5a38', blade: '#a8a88e' },
+  },
+});
+registerColorways(BOOT_STYLES, 'nightveil_boots', {
+  barrowdusk: { color: '#404830', cuff: { color: '#6e683e' } },
+});
+registerColorways(GLOVE_STYLES, 'nightveil_gloves', {
+  barrowdusk: {
+    color: '#404830', bracer: '#4a5136',
+    cuff: { color: '#6e683e', kind: 'band' },
+  },
 });
 
 // Tuskguard forge lots: the same boar hammered from iron, gold and

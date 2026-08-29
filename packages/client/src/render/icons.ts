@@ -6182,6 +6182,1653 @@ const PAINTERS: Record<string, IconPainter> = {
     c.fill();
     c.restore();
   },
+  feywolfpelt: (c, col) => {
+    // THE COURT'S COAT: a wolf's skin splayed flat for the buyer — ONE
+    // unbroken silhouette: mask at the crown, a leg flap off each
+    // shoulder and each haunch, tail at the hem, all part of the same
+    // outline. Moon-lavender, one cold wash down the spine, and the
+    // three glimmer points the furrier will not warm his hands over.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(0.03);
+    // The whole hide as one closed path, crown → clockwise.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(0, -0.3); // throat under the mask
+    // Right shoulder out to the right fore-flap.
+    c.quadraticCurveTo(0.16, -0.3, 0.28, -0.38);
+    c.quadraticCurveTo(0.36, -0.42, 0.38, -0.32);
+    c.quadraticCurveTo(0.36, -0.22, 0.26, -0.16);
+    // Right flank in, then out to the right hind-flap.
+    c.quadraticCurveTo(0.2, -0.02, 0.26, 0.12);
+    c.quadraticCurveTo(0.36, 0.18, 0.36, 0.3);
+    c.quadraticCurveTo(0.34, 0.4, 0.24, 0.34);
+    c.quadraticCurveTo(0.16, 0.28, 0.1, 0.26);
+    // The tail, part of the hem.
+    c.quadraticCurveTo(0.08, 0.38, 0.03, 0.5);
+    c.quadraticCurveTo(-0.03, 0.4, -0.04, 0.26);
+    // Left hind-flap.
+    c.quadraticCurveTo(-0.14, 0.3, -0.24, 0.34);
+    c.quadraticCurveTo(-0.34, 0.4, -0.36, 0.3);
+    c.quadraticCurveTo(-0.36, 0.18, -0.26, 0.12);
+    // Left flank, left fore-flap, back to the throat.
+    c.quadraticCurveTo(-0.2, -0.02, -0.26, -0.16);
+    c.quadraticCurveTo(-0.36, -0.22, -0.38, -0.32);
+    c.quadraticCurveTo(-0.36, -0.42, -0.28, -0.38);
+    c.quadraticCurveTo(-0.16, -0.3, 0, -0.3);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The mask, still on the skin: a modest dark cap with pricked ears,
+    // seated ON the hide's crown.
+    c.fillStyle = shade(col, -28);
+    for (const s of [-1, 1] as const) {
+      c.beginPath();
+      c.moveTo(s * 0.04, -0.3);
+      c.lineTo(s * 0.13, -0.46);
+      c.lineTo(s * 0.16, -0.26);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    }
+    c.beginPath();
+    c.moveTo(-0.11, -0.3);
+    c.quadraticCurveTo(0, -0.37, 0.11, -0.3);
+    c.quadraticCurveTo(0.05, -0.17, 0, -0.15);
+    c.quadraticCurveTo(-0.05, -0.17, -0.11, -0.3);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The moon down the spine: one narrow wash, mask to tail.
+    c.fillStyle = shade(col, 24);
+    c.beginPath();
+    c.moveTo(0, -0.13);
+    c.quadraticCurveTo(0.06, 0.04, 0.03, 0.2);
+    c.quadraticCurveTo(0, 0.28, -0.03, 0.2);
+    c.quadraticCurveTo(-0.06, 0.04, 0, -0.13);
+    c.closePath();
+    c.fill();
+    // The glimmer in the right dark: three cold points, spine-set.
+    for (const [x, y, r] of [[0.0, -0.04, 0.03], [0.015, 0.1, 0.024], [-0.015, 0.21, 0.02]] as const) {
+      dot(c, '#f2f4ff', x, y, r);
+    }
+    c.restore();
+  },
+  duskruffpelt: (c, col) => {
+    // THE QUIET KILLER'S COAT, over the rail: the pelt thrown across a
+    // furrier's bar in side view — the great ruff a storm-cloud bulge
+    // at the shoulder end, the flank draping down with its silver
+    // rosettes, the tail hanging off the far side. A drape reads as a
+    // PELT from across the room; nothing about it radiates.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(-0.04);
+    // The rail it hangs over.
+    c.strokeStyle = '#4a3e30';
+    c.lineWidth = 0.06;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.46, -0.18);
+    c.lineTo(0.46, -0.24);
+    c.stroke();
+    c.lineCap = 'butt';
+    // The far fall, behind the rail: the tail-end dropping short.
+    c.fillStyle = shade(col, -22);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(0.16, -0.24);
+    c.lineTo(0.4, -0.26);
+    c.lineTo(0.38, -0.44);
+    c.lineTo(0.18, -0.42);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The tail, hanging off the far fall.
+    c.beginPath();
+    c.moveTo(0.3, -0.44);
+    c.quadraticCurveTo(0.36, -0.36, 0.34, -0.26);
+    c.lineTo(0.26, -0.26);
+    c.quadraticCurveTo(0.26, -0.36, 0.24, -0.43);
+    c.closePath();
+    c.fill();
+    // The near fall: the flank, draping long and easy.
+    c.fillStyle = col;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(-0.34, -0.22);
+    c.lineTo(0.34, -0.27);
+    c.quadraticCurveTo(0.38, 0.0, 0.3, 0.24);
+    c.quadraticCurveTo(0.22, 0.42, 0.1, 0.44);
+    c.lineTo(0.02, 0.36);
+    c.lineTo(-0.06, 0.44);
+    c.lineTo(-0.14, 0.34);
+    c.lineTo(-0.22, 0.42);
+    c.quadraticCurveTo(-0.32, 0.2, -0.34, -0.22);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // THE RUFF: the storm-cloud bulge riding the west shoulder — five
+    // soft lobes billowing past the hide's edge.
+    c.fillStyle = shade(col, 26);
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(-0.14, -0.1);
+    c.quadraticCurveTo(-0.5, -0.06, -0.46, -0.3);
+    c.quadraticCurveTo(-0.44, -0.44, -0.3, -0.44);
+    c.quadraticCurveTo(-0.26, -0.52, -0.12, -0.5);
+    c.quadraticCurveTo(0.0, -0.5, 0.02, -0.4);
+    c.quadraticCurveTo(0.08, -0.3, 0.0, -0.22);
+    c.quadraticCurveTo(-0.02, -0.12, -0.14, -0.1);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The ruff's fur splits: three soft partings in the cloud.
+    c.strokeStyle = shade(col, -8);
+    c.lineWidth = 0.024;
+    for (const [x0, y0, x1, y1] of [[-0.38, -0.34, -0.28, -0.2], [-0.24, -0.42, -0.18, -0.26], [-0.08, -0.42, -0.08, -0.28]] as const) {
+      c.beginPath();
+      c.moveTo(x0, y0);
+      c.quadraticCurveTo((x0 + x1) / 2 - 0.03, (y0 + y1) / 2, x1, y1);
+      c.stroke();
+    }
+    // The silver rosettes on the flank: open rings, the coat's word.
+    c.strokeStyle = '#b0b4c4';
+    c.lineWidth = 0.024;
+    for (const [x, y, r] of [[0.06, 0.06, 0.05], [0.2, 0.14, 0.04], [-0.04, 0.24, 0.036]] as const) {
+      c.beginPath();
+      c.arc(x, y, r, 0, Math.PI * 2);
+      c.stroke();
+    }
+    c.restore();
+  },
+  smokebrushpelt: (c, col) => {
+    // THE HEDGE GHOST'S COAT: the great brush IS the fortune, so the
+    // great brush is the icon — one thick S-sweep of tail owning the
+    // frame, ember-dark at the root, one ring of fire, then smoke-pale
+    // to the tip where it stops being fur at all. The hide it came
+    // with rides small at the root, rolled for the road.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(-0.06);
+    // The rolled hide at the root, small — the receipt, not the prize.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.roundRect(-0.44, -0.02, 0.3, 0.2, 0.09);
+    c.fill();
+    c.stroke();
+    c.strokeStyle = shade(col, -30);
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.ellipse(-0.16, 0.08, 0.045, 0.085, 0, 0, Math.PI * 2);
+    c.stroke();
+    // THE BRUSH: root at the roll, sweeping up and over in one S.
+    // Root third: ember-dark.
+    c.fillStyle = shade(col, -8);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(-0.18, -0.02);
+    c.quadraticCurveTo(-0.12, -0.3, 0.1, -0.34);
+    c.quadraticCurveTo(0.1, -0.18, 0.02, -0.1);
+    c.quadraticCurveTo(-0.08, -0.02, -0.18, 0.06);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // Mid third, carrying toward the fire.
+    c.fillStyle = shade(col, 10);
+    c.beginPath();
+    c.moveTo(0.1, -0.34);
+    c.quadraticCurveTo(0.34, -0.34, 0.4, -0.12);
+    c.quadraticCurveTo(0.28, -0.1, 0.18, -0.16);
+    c.quadraticCurveTo(0.12, -0.26, 0.1, -0.34);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // THE RING OF FIRE: one bold band across the brush.
+    c.fillStyle = '#e07838';
+    c.beginPath();
+    c.moveTo(0.4, -0.12);
+    c.quadraticCurveTo(0.44, 0.02, 0.4, 0.14);
+    c.quadraticCurveTo(0.28, 0.14, 0.2, 0.08);
+    c.quadraticCurveTo(0.18, -0.06, 0.18, -0.16);
+    c.quadraticCurveTo(0.28, -0.1, 0.4, -0.12);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The smoke tip: pale, and letting go — two puffs off the end.
+    c.fillStyle = '#c8c2b8';
+    c.beginPath();
+    c.moveTo(0.4, 0.14);
+    c.quadraticCurveTo(0.36, 0.34, 0.2, 0.42);
+    c.quadraticCurveTo(0.12, 0.3, 0.2, 0.08);
+    c.quadraticCurveTo(0.28, 0.14, 0.4, 0.14);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    dot(c, '#c8c2b8', 0.1, 0.48, 0.055);
+    dot(c, '#d8d2c8', 0.02, 0.38, 0.038);
+    c.restore();
+  },
+  warbosstusk: (c, col) => {
+    // THE ARGUMENT SETTLED: one tusk off the biggest jaw in the camp —
+    // thicker and blunter than the razorback's ivory scimitar, worn
+    // yellow, and banded in camp iron at the root where the warboss
+    // hung it off his own belt before somebody hung it off theirs.
+    c.save();
+    c.translate(0.5, 0.52);
+    c.rotate(0.5);
+    // The tusk: a heavy crescent, blunt at the tip — it BROKE things.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.moveTo(-0.3, 0.26);
+    c.quadraticCurveTo(-0.4, -0.06, -0.18, -0.28);
+    c.quadraticCurveTo(-0.04, -0.4, 0.1, -0.38);
+    c.quadraticCurveTo(0.12, -0.28, 0.04, -0.24);
+    c.quadraticCurveTo(-0.12, -0.18, -0.16, 0.02);
+    c.quadraticCurveTo(-0.18, 0.18, -0.1, 0.28);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The worn belly the light lands on.
+    c.fillStyle = shade(col, 22);
+    c.beginPath();
+    c.moveTo(-0.32, 0.14);
+    c.quadraticCurveTo(-0.36, -0.06, -0.2, -0.24);
+    c.quadraticCurveTo(-0.24, -0.04, -0.2, 0.16);
+    c.closePath();
+    c.fill();
+    // One old crack, dark, mid-length.
+    c.strokeStyle = shade(col, -46);
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.moveTo(-0.3, -0.02);
+    c.lineTo(-0.2, -0.06);
+    c.stroke();
+    // The camp-iron band at the root, riveted — snug ON the ivory,
+    // with a thumb's width of root standing past it.
+    c.fillStyle = '#5a5e66';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(-0.31, 0.2);
+    c.quadraticCurveTo(-0.2, 0.28, -0.08, 0.24);
+    c.lineTo(-0.09, 0.12);
+    c.quadraticCurveTo(-0.2, 0.16, -0.29, 0.08);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    dot(c, '#8a8e96', -0.19, 0.18, 0.026);
+    c.restore();
+  },
+  crusherclaw: (c, col) => {
+    // THE VERDICT: a giant crab's great claw — and the claw IS the two
+    // fingers, so the fingers get the frame: two heavy crescents
+    // closing on a wide dark gape, teeth in the jaw, the palm just a
+    // wrist behind them and the cut stump where it came off the crab.
+    // No spots: a die has pips, a claw has none.
+    c.save();
+    c.translate(0.5, 0.54);
+    c.rotate(0.1);
+    // The wrist: a short banded arm segment at the south-west, with
+    // the sheared stump where it came off the crab.
+    c.fillStyle = shade(col, -12);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(-0.42, 0.3);
+    c.quadraticCurveTo(-0.42, 0.14, -0.28, 0.1);
+    c.lineTo(-0.1, 0.14);
+    c.lineTo(-0.12, 0.34);
+    c.quadraticCurveTo(-0.28, 0.42, -0.42, 0.3);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.strokeStyle = shade(col, -34);
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.moveTo(-0.3, 0.1);
+    c.quadraticCurveTo(-0.34, 0.24, -0.3, 0.38);
+    c.stroke();
+    // The stump face, ring-scored.
+    c.fillStyle = shade(col, -40);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.ellipse(-0.4, 0.22, 0.045, 0.09, -0.18, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    // THE PALM AND THE TWO PINCERS, one silhouette: palm bulging off
+    // the wrist, the long finger sweeping up-right in a horn taper,
+    // the shorter thumb rising inside it — tips nearly meeting, the
+    // gape a narrow dark sliver. No teeth: teeth make mouths.
+    c.fillStyle = col;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    // Palm south edge → the long finger's outer sweep to its tip.
+    c.moveTo(-0.14, 0.36);
+    c.quadraticCurveTo(0.2, 0.38, 0.36, 0.2);
+    c.quadraticCurveTo(0.5, 0.02, 0.44, -0.28);
+    // Long finger inner edge, down into the gape throat.
+    c.quadraticCurveTo(0.32, -0.1, 0.26, 0.0);
+    c.quadraticCurveTo(0.2, 0.06, 0.12, 0.04);
+    // The thumb: up and out to its own tip, then home to the palm.
+    c.quadraticCurveTo(0.14, -0.06, 0.22, -0.16);
+    c.quadraticCurveTo(0.12, -0.18, 0.0, -0.12);
+    c.quadraticCurveTo(-0.14, -0.04, -0.18, 0.1);
+    c.quadraticCurveTo(-0.2, 0.26, -0.14, 0.36);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The gape's shadow: the sliver between the tips, deepened.
+    c.fillStyle = shade(col, -46);
+    c.beginPath();
+    c.moveTo(0.42, -0.24);
+    c.quadraticCurveTo(0.3, -0.08, 0.24, 0.0);
+    c.quadraticCurveTo(0.18, 0.04, 0.13, 0.03);
+    c.quadraticCurveTo(0.17, -0.04, 0.23, -0.13);
+    c.quadraticCurveTo(0.33, -0.16, 0.42, -0.24);
+    c.closePath();
+    c.fill();
+    // The knuckle shine on the palm's crown.
+    c.strokeStyle = shade(col, 34);
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(-0.12, 0.0);
+    c.quadraticCurveTo(0.0, -0.1, 0.14, -0.1);
+    c.stroke();
+    // The finger's shell ridge, following its sweep.
+    c.strokeStyle = shade(col, -26);
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.moveTo(0.1, 0.24);
+    c.quadraticCurveTo(0.3, 0.1, 0.38, -0.16);
+    c.stroke();
+    c.restore();
+  },
+  bonegrindergirdle: (c, col) => {
+    // TWO HANDS TO CARRY: the ogre's belt hung off a hook the way the
+    // camp hung it — a strap wider than your palm doubling over and
+    // dropping, rope-lashed in X after X, the trophies still knotted
+    // on at the hem. Vertical, heavy, and unmistakably a BELT.
+    c.save();
+    c.translate(0.5, 0.46);
+    c.rotate(0.02);
+    // ONE strap, thrown over the rack: a heavy arch, both ends down.
+    // Outer edge, inner edge — a fat inverted U, palm-wide.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.36, 0.42);
+    c.lineTo(-0.38, -0.06);
+    c.quadraticCurveTo(-0.38, -0.4, 0.0, -0.4);
+    c.quadraticCurveTo(0.38, -0.4, 0.38, -0.06);
+    c.lineTo(0.36, 0.34);
+    c.lineTo(0.18, 0.34);
+    c.lineTo(0.2, -0.04);
+    c.quadraticCurveTo(0.2, -0.22, 0.0, -0.22);
+    c.quadraticCurveTo(-0.2, -0.22, -0.2, -0.04);
+    c.lineTo(-0.18, 0.42);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The rope lashings: two heavy X's riding the arch's crown.
+    c.strokeStyle = shade(col, 30);
+    c.lineWidth = 0.04;
+    for (const [x, a] of [[-0.2, 0.5], [0.2, -0.5]] as const) {
+      c.save();
+      c.translate(x, -0.3);
+      c.rotate(a);
+      c.beginPath();
+      c.moveTo(-0.09, -0.08);
+      c.lineTo(0.09, 0.08);
+      c.moveTo(0.09, -0.08);
+      c.lineTo(-0.09, 0.08);
+      c.stroke();
+      c.restore();
+    }
+    // The west end: ragged where the hide ran out.
+    c.fillStyle = shade(col, -14);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.moveTo(-0.36, 0.42);
+    c.lineTo(-0.18, 0.42);
+    c.lineTo(-0.22, 0.5);
+    c.lineTo(-0.28, 0.44);
+    c.lineTo(-0.33, 0.51);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The buckle: a crude iron ring lashed to the west end — the one
+    // fitting that says BELT before anything else does.
+    c.strokeStyle = '#5a5e66';
+    c.lineWidth = 0.055;
+    c.beginPath();
+    c.arc(-0.27, 0.28, 0.1, 0, Math.PI * 2);
+    c.stroke();
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.arc(-0.27, 0.28, 0.13, 0, Math.PI * 2);
+    c.stroke();
+    c.beginPath();
+    c.arc(-0.27, 0.28, 0.07, 0, Math.PI * 2);
+    c.stroke();
+    // The east end: the knot fist, and the trophies hanging off it.
+    dot(c, shade(col, -26), 0.27, 0.36, 0.075);
+    dot(c, shade(col, -44), 0.27, 0.36, 0.034);
+    c.strokeStyle = '#4a3e30';
+    c.lineWidth = 0.022;
+    for (const [x1, y1] of [[0.2, 0.52], [0.34, 0.5]] as const) {
+      c.beginPath();
+      c.moveTo(0.27, 0.4);
+      c.lineTo(x1, y1);
+      c.stroke();
+    }
+    c.fillStyle = '#e2dcc8';
+    c.strokeStyle = OUTLINE;
+    for (const [x, y, a] of [[0.19, 0.55, 0.7], [0.35, 0.53, 0.25]] as const) {
+      c.save();
+      c.translate(x, y);
+      c.rotate(a);
+      c.beginPath();
+      c.roundRect(-0.08, -0.032, 0.16, 0.064, 0.032);
+      c.fill();
+      c.stroke();
+      c.restore();
+    }
+    c.restore();
+  },
+  turtlescute: (c, col) => {
+    // THE SHIELDWRIGHT'S ARGUMENT: one keeled plate off the walking
+    // fortress — a five-sided scute with the keel standing proud down
+    // its spine and the growth rings of a long, unhurried life. This
+    // is a good one. That is what the argument is about.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(0.08);
+    // The plate: five-sided, dome-shouldered.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.moveTo(0, -0.42);
+    c.lineTo(0.36, -0.14);
+    c.lineTo(0.26, 0.34);
+    c.lineTo(-0.26, 0.34);
+    c.lineTo(-0.36, -0.14);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The growth rings: the years, stepped in toward the crown.
+    c.strokeStyle = shade(col, -26);
+    c.lineWidth = 0.024;
+    for (const k of [0.72, 0.45] as const) {
+      c.beginPath();
+      c.moveTo(0, -0.42 * k);
+      c.lineTo(0.36 * k, -0.14 * k);
+      c.lineTo(0.26 * k, 0.34 * k);
+      c.lineTo(-0.26 * k, 0.34 * k);
+      c.lineTo(-0.36 * k, -0.14 * k);
+      c.closePath();
+      c.stroke();
+    }
+    // THE KEEL, standing proud: lit on the west face, shaded east.
+    c.fillStyle = shade(col, 30);
+    c.beginPath();
+    c.moveTo(0, -0.42);
+    c.lineTo(0.05, -0.3);
+    c.lineTo(0.05, 0.24);
+    c.lineTo(0, 0.34);
+    c.lineTo(-0.05, 0.24);
+    c.lineTo(-0.05, -0.3);
+    c.closePath();
+    c.fill();
+    c.fillStyle = shade(col, -32);
+    c.beginPath();
+    c.moveTo(0.05, -0.3);
+    c.lineTo(0.05, 0.24);
+    c.lineTo(0, 0.34);
+    c.lineTo(0.02, 0.22);
+    c.lineTo(0.02, -0.28);
+    c.closePath();
+    c.fill();
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.moveTo(0, -0.42);
+    c.lineTo(0, 0.34);
+    c.stroke();
+    // The chipped corner — off the shell, not off a shelf.
+    c.fillStyle = shade(col, -40);
+    c.beginPath();
+    c.moveTo(0.36, -0.14);
+    c.lineTo(0.28, -0.1);
+    c.lineTo(0.31, -0.02);
+    c.closePath();
+    c.fill();
+    c.restore();
+  },
+  colossusplate: (c, col) => {
+    // OLDER THAN THE ROAD: a slab of shell wider than a tower shield,
+    // moss keeping its north face, and scars from arguments nothing
+    // alive remembers. The rim shows the shell's thickness — this is
+    // a SLAB, and the icon's job is weight.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(-0.06);
+    // The under-rim first: the slab's thickness, showing south.
+    c.fillStyle = shade(col, -36);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.44, 0.1);
+    c.quadraticCurveTo(-0.2, 0.42, 0.2, 0.4);
+    c.quadraticCurveTo(0.44, 0.32, 0.46, 0.06);
+    c.lineTo(0.46, 0.14);
+    c.quadraticCurveTo(0.44, 0.4, 0.2, 0.48);
+    c.quadraticCurveTo(-0.2, 0.5, -0.44, 0.18);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The slab face.
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(-0.44, 0.1);
+    c.quadraticCurveTo(-0.46, -0.22, -0.2, -0.34);
+    c.quadraticCurveTo(0.1, -0.44, 0.34, -0.3);
+    c.quadraticCurveTo(0.48, -0.16, 0.46, 0.06);
+    c.quadraticCurveTo(0.44, 0.32, 0.2, 0.4);
+    c.quadraticCurveTo(-0.2, 0.42, -0.44, 0.1);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The crown light along the upper arch.
+    c.fillStyle = shade(col, 20);
+    c.beginPath();
+    c.moveTo(-0.34, -0.14);
+    c.quadraticCurveTo(-0.1, -0.34, 0.24, -0.26);
+    c.quadraticCurveTo(0, -0.22, -0.24, -0.06);
+    c.closePath();
+    c.fill();
+    // The moss, keeping the north face in two patches.
+    c.fillStyle = '#6e8a4a';
+    c.beginPath();
+    c.ellipse(-0.24, -0.16, 0.13, 0.08, 0.5, 0, Math.PI * 2);
+    c.fill();
+    c.beginPath();
+    c.ellipse(-0.05, -0.3, 0.08, 0.05, 0.2, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#87a45c';
+    c.beginPath();
+    c.ellipse(-0.26, -0.19, 0.07, 0.04, 0.5, 0, Math.PI * 2);
+    c.fill();
+    // The scars: two old gouges, pale where the shell healed proud.
+    c.strokeStyle = shade(col, 38);
+    c.lineWidth = 0.036;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(0.02, -0.06);
+    c.lineTo(0.3, 0.06);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.1, 0.16);
+    c.lineTo(0.26, 0.24);
+    c.stroke();
+    c.lineCap = 'butt';
+    c.restore();
+  },
+  petrifiedeye: (c, col) => {
+    // GONE ALL THE WAY TO AGATE: an elder basilisk's eye, banded like
+    // riverbed stone with the slit pupil still set in it — a gaze with
+    // the gaze fossilized out. As far as anyone has proven.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(0.1);
+    // The stone sphere.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.arc(0, 0, 0.38, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    // The agate banding: concentric, drifted off-center like true
+    // agate — never bullseye-perfect.
+    c.strokeStyle = shade(col, -24);
+    c.lineWidth = 0.036;
+    for (const [r, ox, oy] of [[0.29, 0.03, 0.02], [0.2, 0.05, 0.03]] as const) {
+      c.beginPath();
+      c.arc(ox, oy, r, 0, Math.PI * 2);
+      c.stroke();
+    }
+    c.strokeStyle = shade(col, 20);
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.arc(0.04, 0.025, 0.245, 0, Math.PI * 2);
+    c.stroke();
+    // The iris ground, a shade warmer than the stone around it.
+    c.fillStyle = shade(col, -12);
+    c.beginPath();
+    c.arc(0.05, 0.03, 0.15, 0, Math.PI * 2);
+    c.fill();
+    // The slit pupil, gone to dark agate.
+    c.fillStyle = shade(col, -58);
+    c.beginPath();
+    c.moveTo(0.05, -0.13);
+    c.quadraticCurveTo(0.1, 0.03, 0.05, 0.19);
+    c.quadraticCurveTo(0.0, 0.03, 0.05, -0.13);
+    c.closePath();
+    c.fill();
+    // The lapidary polish: one hard window, high west.
+    c.fillStyle = 'rgba(255,255,255,0.5)';
+    c.beginPath();
+    c.ellipse(-0.15, -0.17, 0.085, 0.05, -0.7, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+  },
+  deepkingpearl: (c, col) => {
+    // THE KING'S THROAT-STONE: a pearl the size of a plum, worn smooth
+    // by a live current for longer than the bank has had a name. The
+    // cord it hung from came up with it, cut — the bank is quieter
+    // now, and the cut is why.
+    c.save();
+    c.translate(0.5, 0.48);
+    // The cut cord, under the pearl: two ends, going nowhere.
+    c.strokeStyle = '#3e4a46';
+    c.lineWidth = 0.05;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.3, 0.3);
+    c.quadraticCurveTo(-0.1, 0.42, 0.12, 0.36);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.12, 0.36);
+    c.quadraticCurveTo(0.26, 0.3, 0.3, 0.18);
+    c.stroke();
+    c.lineCap = 'butt';
+    // The pearl.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.arc(0, -0.02, 0.34, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    // The nacre turn: the under-half cools green-grey — that two-tone
+    // roll is what makes a pearl read as a pearl and not a bead.
+    c.fillStyle = shade(col, -16);
+    c.beginPath();
+    c.arc(0, -0.02, 0.34, 0.35, Math.PI - 0.35);
+    c.quadraticCurveTo(0, 0.06, -0.32, 0.09);
+    c.closePath();
+    c.fill();
+    // The luster: one broad soft crescent high west, one pinpoint.
+    c.fillStyle = 'rgba(255,255,255,0.6)';
+    c.beginPath();
+    c.ellipse(-0.12, -0.16, 0.13, 0.07, -0.7, 0, Math.PI * 2);
+    c.fill();
+    dot(c, '#ffffff', -0.06, -0.22, 0.026);
+    c.restore();
+  },
+  legionring: (c, col) => {
+    // THE COUNT OF THE DEAD: an iron queue-ring cut from a war braid —
+    // a heavy open band, the gap where the knife went, rank-notches
+    // filed square into the outer rim. The lock of braid it kept is a
+    // small dark tuft still tied at its foot: evidence, not ornament.
+    c.save();
+    c.translate(0.5, 0.48);
+    c.rotate(0.2);
+    // The tuft of braid, tied through at the foot, hanging clear.
+    c.strokeStyle = '#4a4438';
+    c.lineWidth = 0.07;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(0.02, 0.26);
+    c.quadraticCurveTo(0.06, 0.4, 0.0, 0.5);
+    c.stroke();
+    c.lineCap = 'butt';
+    c.strokeStyle = '#2e2a22';
+    c.lineWidth = 0.022;
+    for (const t of [0.32, 0.42] as const) {
+      c.beginPath();
+      c.moveTo(-0.02, t);
+      c.lineTo(0.07, t + 0.04);
+      c.stroke();
+    }
+    // The ring: one heavy open band, the cut gap at the north-east.
+    c.strokeStyle = col;
+    c.lineWidth = 0.15;
+    c.beginPath();
+    c.arc(0, 0, 0.28, -0.55, Math.PI * 2 - 1.15);
+    c.stroke();
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.arc(0, 0, 0.355, -0.55, Math.PI * 2 - 1.15);
+    c.stroke();
+    c.beginPath();
+    c.arc(0, 0, 0.205, -0.55, Math.PI * 2 - 1.15);
+    c.stroke();
+    // The sheared ends of the cut, closed square.
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.028;
+    for (const a of [-0.55, Math.PI * 2 - 1.15] as const) {
+      c.beginPath();
+      c.moveTo(Math.cos(a) * 0.2, Math.sin(a) * 0.2);
+      c.lineTo(Math.cos(a) * 0.36, Math.sin(a) * 0.36);
+      c.stroke();
+    }
+    // The rank-notches, filed square into the outer rim — the LEDGER.
+    c.strokeStyle = shade(col, -44);
+    c.lineWidth = 0.04;
+    for (const a of [1.2, 1.7, 2.2, 2.7] as const) {
+      c.beginPath();
+      c.moveTo(Math.cos(a) * 0.27, Math.sin(a) * 0.27);
+      c.lineTo(Math.cos(a) * 0.37, Math.sin(a) * 0.37);
+      c.stroke();
+    }
+    // The worn crown light on the band, opposite the notches.
+    c.strokeStyle = shade(col, 32);
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.arc(0, 0, 0.28, -0.5, 0.3);
+    c.stroke();
+    c.restore();
+  },
+  saltheap: (c, col) => {
+    // HALF OF COOKING: the white harvest, poured to a cone the way the
+    // pans stack it — and the coarse crystals that say SALT and not
+    // flour, sitting where they rolled off the pile.
+    c.save();
+    c.translate(0.5, 0.54);
+    // The pan board under it, dark so the white owns the icon.
+    c.fillStyle = '#5a5248';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.ellipse(0, 0.26, 0.42, 0.11, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    // The cone, poured — sides settle at the angle salt actually rests.
+    c.fillStyle = col;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(-0.34, 0.24);
+    c.quadraticCurveTo(-0.12, 0.16, -0.02, -0.3);
+    c.quadraticCurveTo(0.14, 0.14, 0.34, 0.24);
+    c.quadraticCurveTo(0, 0.34, -0.34, 0.24);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The shade side of the pour.
+    c.fillStyle = shade(col, -14);
+    c.beginPath();
+    c.moveTo(-0.02, -0.3);
+    c.quadraticCurveTo(0.14, 0.14, 0.34, 0.24);
+    c.quadraticCurveTo(0.12, 0.3, 0.02, 0.28);
+    c.quadraticCurveTo(0.04, -0.02, -0.02, -0.3);
+    c.closePath();
+    c.fill();
+    // The coarse crystals that rolled clear: cut chips, not dots.
+    c.fillStyle = shade(col, 8);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.02;
+    for (const [x, y, r, a] of [[-0.32, 0.33, 0.05, 0.3], [0.36, 0.3, 0.042, -0.4], [0.24, 0.37, 0.034, 0.8]] as const) {
+      c.save();
+      c.translate(x, y);
+      c.rotate(a);
+      c.beginPath();
+      c.rect(-r, -r * 0.8, r * 2, r * 1.6);
+      c.fill();
+      c.stroke();
+      c.restore();
+    }
+    c.restore();
+  },
+  moonpalesilk: (c, col) => {
+    // NOT WHITE. LOOK AGAIN, SLOWER: a bolt of elven silk lying level,
+    // the last arm's-length unrolled and falling off the near edge in
+    // two soft S-folds — and the hundred quiet years riding the roll
+    // as one moon-cool gleam. Everything else is calm.
+    c.save();
+    c.translate(0.5, 0.42);
+    c.rotate(-0.06);
+    // The unrolled fall: off the near edge, draping down and pooling.
+    c.fillStyle = shade(col, -10);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(-0.3, 0.1);
+    c.quadraticCurveTo(-0.34, 0.26, -0.24, 0.34);
+    c.quadraticCurveTo(-0.14, 0.4, -0.18, 0.48);
+    c.lineTo(0.14, 0.48);
+    c.quadraticCurveTo(0.2, 0.36, 0.12, 0.28);
+    c.quadraticCurveTo(0.04, 0.2, 0.1, 0.1);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The fold shadows: two quiet S-creases in the fall.
+    c.strokeStyle = shade(col, -26);
+    c.lineWidth = 0.026;
+    for (const x of [-0.14, 0.0] as const) {
+      c.beginPath();
+      c.moveTo(x, 0.12);
+      c.quadraticCurveTo(x - 0.06, 0.28, x + 0.02, 0.44);
+      c.stroke();
+    }
+    // The bolt, level across the frame.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.roundRect(-0.44, -0.12, 0.88, 0.24, 0.12);
+    c.fill();
+    c.stroke();
+    // The roll's end: the wound years, ring in ring.
+    c.fillStyle = shade(col, 10);
+    c.beginPath();
+    c.ellipse(0.36, 0.0, 0.08, 0.12, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.strokeStyle = shade(col, -22);
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.ellipse(0.36, 0.0, 0.04, 0.06, 0, 0, Math.PI * 2);
+    c.stroke();
+    // The moon in the weave: one cool gleam lying ON the roll's crown.
+    c.strokeStyle = '#f4f8ff';
+    c.lineWidth = 0.05;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.36, -0.045);
+    c.quadraticCurveTo(-0.04, -0.095, 0.24, -0.05);
+    c.stroke();
+    c.lineCap = 'butt';
+    c.restore();
+  },
+  silverbark: (c, col) => {
+    // THE GRAIN REMEMBERS AGREEING: a shed slab of Everwood bark, laid
+    // on the diagonal like the timber it is — outer skin silver-grey
+    // with the lenticel ticks every birch-kin carries, one end curling
+    // under to show the pale flesh the axe never sees. A PLANK with a
+    // curl, never a hook.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(-0.5);
+    // The slab: long, gently bowed, bark-edged rough at both ends.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.42, -0.1);
+    c.lineTo(-0.38, -0.16);
+    c.quadraticCurveTo(0, -0.22, 0.3, -0.15);
+    c.lineTo(0.28, 0.1);
+    c.quadraticCurveTo(0, 0.16, -0.36, 0.1);
+    c.lineTo(-0.44, 0.02);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The silvered skin: a cool wash down the slab's crown.
+    c.fillStyle = '#dfe4ea';
+    c.beginPath();
+    c.moveTo(-0.38, -0.14);
+    c.quadraticCurveTo(0, -0.2, 0.29, -0.13);
+    c.lineTo(0.29, -0.05);
+    c.quadraticCurveTo(0, -0.12, -0.4, -0.06);
+    c.closePath();
+    c.fill();
+    // The lenticel ticks: short horizontal dashes, the birch word.
+    c.strokeStyle = shade(col, -34);
+    c.lineWidth = 0.026;
+    for (const [x, y, w] of [[-0.28, 0.0, 0.09], [-0.08, -0.05, 0.11], [0.12, 0.02, 0.08], [-0.16, 0.08, 0.07]] as const) {
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x + w, y + 0.012);
+      c.stroke();
+    }
+    // The curl: the far end rolling under, pale flesh showing.
+    c.fillStyle = shade(col, 34);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(0.28, -0.16);
+    c.quadraticCurveTo(0.46, -0.18, 0.46, 0.0);
+    c.quadraticCurveTo(0.46, 0.14, 0.3, 0.11);
+    c.quadraticCurveTo(0.4, 0.08, 0.38, -0.02);
+    c.quadraticCurveTo(0.36, -0.1, 0.28, -0.08);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.restore();
+  },
+  moonglasslens: (c, col) => {
+    // WORKED COLD OVER YEARS: a disc of moonglass ground true, held in
+    // a part-collar of silver — and the light it holds, which is not
+    // the light that is on it. A promise, mid-word.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(-0.1);
+    // The silver collar, gripping the lens from the south-west.
+    c.strokeStyle = '#c8d0da';
+    c.lineWidth = 0.09;
+    c.beginPath();
+    c.arc(0, 0, 0.36, Math.PI * 0.4, Math.PI * 1.15);
+    c.stroke();
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.arc(0, 0, 0.405, Math.PI * 0.4, Math.PI * 1.15);
+    c.stroke();
+    c.beginPath();
+    c.arc(0, 0, 0.315, Math.PI * 0.4, Math.PI * 1.15);
+    c.stroke();
+    // The glass.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.arc(0, 0, 0.33, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    // The cold grind: two true rings, the years in circles.
+    c.strokeStyle = shade(col, -18);
+    c.lineWidth = 0.022;
+    for (const r of [0.24, 0.14] as const) {
+      c.beginPath();
+      c.arc(0, 0, r, 0, Math.PI * 2);
+      c.stroke();
+    }
+    // The bevel light on the rim, opposite the collar.
+    c.strokeStyle = shade(col, 34);
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.arc(0, 0, 0.29, -Math.PI * 0.7, -Math.PI * 0.1);
+    c.stroke();
+    // THE HELD LIGHT: a four-point star, dead center, whiter than
+    // anything the scene could have lent it.
+    c.fillStyle = '#ffffff';
+    c.beginPath();
+    c.moveTo(0, -0.13);
+    c.quadraticCurveTo(0.025, -0.025, 0.13, 0);
+    c.quadraticCurveTo(0.025, 0.025, 0, 0.13);
+    c.quadraticCurveTo(-0.025, 0.025, -0.13, 0);
+    c.quadraticCurveTo(-0.025, -0.025, 0, -0.13);
+    c.closePath();
+    c.fill();
+    c.restore();
+  },
+  focuseddust: (c, col) => {
+    // THE DUST THAT DECIDED: arcane dust drawn up out of its own heap
+    // into a rising point — matter mid-refusal of the floor. The heap
+    // is what it was; the spire is what the scribe made of it.
+    c.save();
+    c.translate(0.5, 0.56);
+    // The heap it is leaving.
+    c.fillStyle = shade(col, -16);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.ellipse(0, 0.24, 0.32, 0.1, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(-0.28, 0.22);
+    c.quadraticCurveTo(-0.1, 0.12, 0.0, 0.1);
+    c.quadraticCurveTo(0.14, 0.12, 0.28, 0.22);
+    c.quadraticCurveTo(0, 0.3, -0.28, 0.22);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The rise: a tapering spiral wisp, drawn to a point.
+    c.fillStyle = col;
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.moveTo(-0.1, 0.14);
+    c.quadraticCurveTo(-0.16, -0.04, -0.02, -0.12);
+    c.quadraticCurveTo(0.1, -0.18, 0.04, -0.3);
+    c.quadraticCurveTo(0.0, -0.38, 0.02, -0.46);
+    c.quadraticCurveTo(0.07, -0.36, 0.12, -0.28);
+    c.quadraticCurveTo(0.16, -0.14, 0.06, -0.06);
+    c.quadraticCurveTo(-0.02, 0.0, 0.02, 0.12);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The motes still deciding, riding the draw.
+    dot(c, shade(col, 20), -0.14, -0.16, 0.028);
+    dot(c, shade(col, 20), 0.18, -0.1, 0.022);
+    dot(c, shade(col, 20), 0.1, -0.4, 0.02);
+    // The point it is drawn TO, lit.
+    dot(c, '#ffffff', 0.02, -0.5, 0.032);
+    c.restore();
+  },
+  deepeningsigil: (c, col) => {
+    // FOUND, NEVER MADE: the sigil that opens steel to a second
+    // working — a hand-width plaque of lost bronze, the working
+    // stamped DEEP into it in one unbroken coil. Nobody alive knows
+    // the stroke order. The steel does.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(0.1);
+    // The plaque, corners eased by centuries of pockets.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.roundRect(-0.34, -0.34, 0.68, 0.68, 0.14);
+    c.fill();
+    c.stroke();
+    // The face light, high west; the age, banked south-east.
+    c.fillStyle = shade(col, 16);
+    c.beginPath();
+    c.roundRect(-0.3, -0.3, 0.38, 0.34, 0.1);
+    c.fill();
+    c.fillStyle = shade(col, -18);
+    c.beginPath();
+    c.moveTo(0.3, -0.12);
+    c.quadraticCurveTo(0.32, 0.2, 0.1, 0.31);
+    c.lineTo(-0.16, 0.31);
+    c.quadraticCurveTo(0.16, 0.24, 0.3, -0.12);
+    c.closePath();
+    c.fill();
+    // THE WORKING: one coil, stamped deep — dark groove, lit south lip.
+    c.strokeStyle = shade(col, -52);
+    c.lineWidth = 0.062;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(0.0, 0.2);
+    c.quadraticCurveTo(-0.2, 0.18, -0.18, -0.02);
+    c.quadraticCurveTo(-0.16, -0.2, 0.02, -0.18);
+    c.quadraticCurveTo(0.18, -0.16, 0.16, 0.0);
+    c.quadraticCurveTo(0.15, 0.1, 0.04, 0.09);
+    c.stroke();
+    c.strokeStyle = shade(col, 36);
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.moveTo(0.0, 0.235);
+    c.quadraticCurveTo(-0.22, 0.21, -0.21, -0.02);
+    c.stroke();
+    c.lineCap = 'butt';
+    c.restore();
+  },
+  sandlaurel: (c, col) => {
+    // THE CROWD REMEMBERS: hammered gold leaves on an iron band, the
+    // arena's own crown — an open wreath, leaves paired up the arc,
+    // the iron showing honest at the gap where it never quite closes.
+    c.save();
+    c.translate(0.5, 0.54);
+    // The iron band, an open arc — the wreath's bones.
+    c.strokeStyle = '#4e525a';
+    c.lineWidth = 0.07;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.arc(0, 0, 0.34, Math.PI * 0.86, Math.PI * 2.14);
+    c.stroke();
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.arc(0, 0, 0.375, Math.PI * 0.86, Math.PI * 2.14);
+    c.stroke();
+    c.lineCap = 'butt';
+    // The gold leaves, paired and marching up both arcs to the brow.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.022;
+    const leaf = (a: number, flip: number): void => {
+      const x = Math.cos(a) * 0.34;
+      const y = Math.sin(a) * 0.34;
+      c.save();
+      c.translate(x, y);
+      c.rotate(a + (Math.PI / 2) * flip);
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.quadraticCurveTo(0.1, -0.07, 0.21, -0.02);
+      c.quadraticCurveTo(0.1, 0.05, 0, 0);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.restore();
+    };
+    for (const a of [Math.PI * 1.02, Math.PI * 1.2, Math.PI * 1.38] as const) {
+      leaf(a, 1);
+      leaf(Math.PI * 3 - a, -1);
+    }
+    // The brow leaf, single, dead center — the one the crowd sees.
+    c.save();
+    c.translate(0, -0.34);
+    c.beginPath();
+    c.moveTo(-0.02, 0.02);
+    c.quadraticCurveTo(0.0, -0.14, 0.13, -0.16);
+    c.quadraticCurveTo(0.08, -0.02, -0.02, 0.02);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.restore();
+    // The hammer light: each west leaf catches one plane.
+    c.fillStyle = shade(col, 34);
+    for (const a of [Math.PI * 1.02, Math.PI * 1.2] as const) {
+      const x = Math.cos(a) * 0.34;
+      const y = Math.sin(a) * 0.34;
+      c.save();
+      c.translate(x, y);
+      c.rotate(a + Math.PI / 2);
+      c.beginPath();
+      c.moveTo(0.02, -0.01);
+      c.quadraticCurveTo(0.1, -0.05, 0.17, -0.02);
+      c.quadraticCurveTo(0.1, 0.0, 0.02, -0.01);
+      c.closePath();
+      c.fill();
+      c.restore();
+    }
+    c.restore();
+  },
+  wardstonepainter: (c, col) => {
+    // THE LINE PULLED UP: a boundary stone — blazed on one face,
+    // chiselled flat on the other, and lately a supper table. The
+    // blaze is the king's; the flat is the argument.
+    c.save();
+    c.translate(0.5, 0.52);
+    c.rotate(-0.04);
+    // The stone: a standing wedge, wider at the seat.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.moveTo(-0.26, 0.38);
+    c.lineTo(-0.3, -0.1);
+    c.quadraticCurveTo(-0.28, -0.34, -0.06, -0.42);
+    c.quadraticCurveTo(0.14, -0.4, 0.2, -0.22);
+    c.lineTo(0.28, 0.38);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The chiselled flat: one clean plane down the east side, cooler.
+    c.fillStyle = shade(col, -20);
+    c.beginPath();
+    c.moveTo(0.2, -0.22);
+    c.lineTo(0.28, 0.38);
+    c.lineTo(0.06, 0.38);
+    c.lineTo(0.04, -0.3);
+    c.closePath();
+    c.fill();
+    // The chisel courses on the flat.
+    c.strokeStyle = shade(col, -36);
+    c.lineWidth = 0.02;
+    for (const y of [-0.14, 0.02, 0.18] as const) {
+      c.beginPath();
+      c.moveTo(0.07, y);
+      c.lineTo(0.22, y + 0.03);
+      c.stroke();
+    }
+    // The weathered crown light.
+    c.fillStyle = shade(col, 18);
+    c.beginPath();
+    c.moveTo(-0.26, -0.2);
+    c.quadraticCurveTo(-0.22, -0.36, -0.06, -0.4);
+    c.quadraticCurveTo(-0.12, -0.3, -0.14, -0.16);
+    c.closePath();
+    c.fill();
+    // THE BLAZE, painted on the west face: the mark that WAS the law.
+    c.strokeStyle = '#d8b64a';
+    c.lineWidth = 0.06;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.16, -0.18);
+    c.lineTo(-0.08, 0.0);
+    c.lineTo(-0.18, 0.18);
+    c.stroke();
+    c.lineCap = 'butt';
+    // The seat line: mud it stood in for a hundred years.
+    c.strokeStyle = shade(col, -40);
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.moveTo(-0.24, 0.3);
+    c.lineTo(0.26, 0.3);
+    c.stroke();
+    c.restore();
+  },
+  spademark: (c, col) => {
+    // ON THE BOOKS: a Red Company crew tally — a rough iron tag struck
+    // with the spade, holed and thonged for the paymaster's wire.
+    // Companies pay by the head; this is a head's worth.
+    c.save();
+    c.translate(0.5, 0.52);
+    c.rotate(0.22);
+    // The thong through the hole, first.
+    c.strokeStyle = '#7a6a4e';
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.moveTo(-0.02, -0.32);
+    c.quadraticCurveTo(-0.14, -0.5, 0.1, -0.5);
+    c.quadraticCurveTo(0.2, -0.46, 0.04, -0.32);
+    c.stroke();
+    // The tag: rough-sheared, no two edges agreeing.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.24, -0.34);
+    c.lineTo(0.22, -0.38);
+    c.lineTo(0.28, 0.3);
+    c.lineTo(-0.18, 0.38);
+    c.lineTo(-0.28, 0.02);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The punched hole.
+    dot(c, shade(col, -55), 0.0, -0.28, 0.05);
+    // The shear light down one edge.
+    c.strokeStyle = shade(col, 26);
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.moveTo(-0.22, -0.3);
+    c.lineTo(-0.26, 0.0);
+    c.stroke();
+    // THE SPADE, struck deep — the whole tag exists for this.
+    c.fillStyle = shade(col, -48);
+    c.beginPath();
+    c.moveTo(0.0, -0.12);
+    c.quadraticCurveTo(0.2, 0.04, 0.14, 0.14);
+    c.quadraticCurveTo(0.1, 0.2, 0.03, 0.17);
+    c.quadraticCurveTo(-0.04, 0.2, -0.09, 0.15);
+    c.quadraticCurveTo(-0.16, 0.05, 0.0, -0.12);
+    c.closePath();
+    c.fill();
+    // The spade's foot.
+    c.fillStyle = shade(col, -48);
+    c.beginPath();
+    c.rect(-0.015, 0.16, 0.04, 0.1);
+    c.fill();
+    c.restore();
+  },
+  graveband: (c, col) => {
+    // COUNTED IN, WANTING COUNTING BACK: a twisted arm ring of old
+    // gold — two strands wound and hammered open-ended, cold in every
+    // weather. It is not tarnished. That is the unsettling part.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(0.35);
+    // The band: a heavy open C.
+    c.strokeStyle = col;
+    c.lineWidth = 0.15;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.arc(0, 0, 0.28, 0.55, Math.PI * 2 - 0.55);
+    c.stroke();
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.arc(0, 0, 0.355, 0.5, Math.PI * 2 - 0.5);
+    c.stroke();
+    c.beginPath();
+    c.arc(0, 0, 0.205, 0.62, Math.PI * 2 - 0.62);
+    c.stroke();
+    // The twist: the wound strands, ticked across the band.
+    c.strokeStyle = shade(col, -30);
+    c.lineWidth = 0.032;
+    for (let i = 0; i < 7; i++) {
+      const a = 0.9 + i * 0.62;
+      c.beginPath();
+      c.moveTo(Math.cos(a - 0.12) * 0.34, Math.sin(a - 0.12) * 0.34);
+      c.quadraticCurveTo(Math.cos(a + 0.06) * 0.28, Math.sin(a + 0.06) * 0.28, Math.cos(a + 0.12) * 0.22, Math.sin(a + 0.12) * 0.22);
+      c.stroke();
+    }
+    // The terminals: hammered flat, capped.
+    c.fillStyle = shade(col, 14);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.026;
+    for (const s of [0.55, -0.55] as const) {
+      c.beginPath();
+      c.arc(Math.cos(s) * 0.28, Math.sin(s) * 0.28, 0.085, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+    }
+    // The cold light: one gleam that should be warm and is not.
+    c.strokeStyle = '#f4f0dc';
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.arc(0, 0, 0.28, Math.PI * 0.9, Math.PI * 1.3);
+    c.stroke();
+    c.restore();
+  },
+  sealringicon: (c, col) => {
+    // SEALED OUTSIDE, FOUND INSIDE: the foreman's signet, face-on —
+    // the band worn to a whisper, the seal face still deep enough to
+    // close a mine. The device is the crossed prop and beam of the
+    // deep workings. It still stamps true. That is the problem.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(-0.12);
+    // The band behind the face.
+    c.strokeStyle = shade(col, -14);
+    c.lineWidth = 0.095;
+    c.beginPath();
+    c.arc(0, 0.06, 0.3, Math.PI * 0.18, Math.PI * 0.82, false);
+    c.stroke();
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.arc(0, 0.06, 0.35, Math.PI * 0.16, Math.PI * 0.84);
+    c.stroke();
+    c.beginPath();
+    c.arc(0, 0.06, 0.25, Math.PI * 0.22, Math.PI * 0.78);
+    c.stroke();
+    // The seal face: a broad oval table.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.ellipse(0, -0.1, 0.3, 0.26, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    // The table's worn bevel.
+    c.strokeStyle = shade(col, 24);
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.ellipse(0, -0.1, 0.24, 0.2, 0, Math.PI * 0.7, Math.PI * 1.7);
+    c.stroke();
+    // THE DEVICE, cut deep: prop and beam, the mine's own mark.
+    c.strokeStyle = shade(col, -46);
+    c.lineWidth = 0.055;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.13, 0.02);
+    c.lineTo(0.13, -0.22);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(-0.13, -0.22);
+    c.lineTo(0.13, 0.02);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(-0.16, -0.1);
+    c.lineTo(0.16, -0.1);
+    c.stroke();
+    c.lineCap = 'butt';
+    c.restore();
+  },
+  lanternicon: (c, col) => {
+    // THE CARRIED FLAME: a hooded road lantern — iron cage, horn pane,
+    // and the light that makes the underdark negotiable. The pane is
+    // the icon: everything else is just what holds it up.
+    c.save();
+    c.translate(0.5, 0.54);
+    // The ring handle.
+    c.strokeStyle = '#4a4640';
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.arc(0, -0.42, 0.09, 0, Math.PI * 2);
+    c.stroke();
+    // The hood: a chamfered iron cap.
+    c.fillStyle = '#5a544a';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(-0.26, -0.2);
+    c.lineTo(-0.16, -0.34);
+    c.lineTo(0.16, -0.34);
+    c.lineTo(0.26, -0.2);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The body frame.
+    c.fillStyle = '#4a4640';
+    c.beginPath();
+    c.moveTo(-0.24, -0.2);
+    c.lineTo(0.24, -0.2);
+    c.lineTo(0.2, 0.3);
+    c.lineTo(-0.2, 0.3);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // THE PANE, lit: horn-warm, brightest at the heart.
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(-0.17, -0.14);
+    c.lineTo(0.17, -0.14);
+    c.lineTo(0.14, 0.24);
+    c.lineTo(-0.14, 0.24);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The cage bar across the pane.
+    c.strokeStyle = '#4a4640';
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.moveTo(0.0, -0.14);
+    c.lineTo(0.0, 0.24);
+    c.stroke();
+    // The flame heart, through the horn.
+    c.fillStyle = '#fff2c8';
+    c.beginPath();
+    c.moveTo(0.0, 0.16);
+    c.quadraticCurveTo(-0.07, 0.04, 0.0, -0.08);
+    c.quadraticCurveTo(0.07, 0.04, 0.0, 0.16);
+    c.closePath();
+    c.fill();
+    // The foot.
+    c.fillStyle = '#5a544a';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.roundRect(-0.22, 0.3, 0.44, 0.08, 0.03);
+    c.fill();
+    c.stroke();
+    c.restore();
+  },
+  courser: (c, col) => {
+    // SOLD SADDLED AND SHOD: a courser at the string, head and arched
+    // neck in profile — the bridle on, because the horse you are
+    // buying is the horse that is ready. Coat carries the name.
+    c.save();
+    c.translate(0.46, 0.5);
+    c.rotate(0.02);
+    // The neck: one proud arch filling the west of the box.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.3, 0.44);
+    c.quadraticCurveTo(-0.34, -0.08, -0.04, -0.28);
+    c.quadraticCurveTo(0.1, -0.36, 0.22, -0.3);
+    // The head, dropped at the poll, tapering to the muzzle.
+    c.quadraticCurveTo(0.4, -0.2, 0.42, -0.02);
+    c.quadraticCurveTo(0.42, 0.08, 0.32, 0.08);
+    c.quadraticCurveTo(0.22, 0.08, 0.16, 0.0);
+    c.quadraticCurveTo(0.06, 0.1, 0.02, 0.44);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The ear, pricked.
+    c.beginPath();
+    c.moveTo(0.06, -0.32);
+    c.lineTo(0.12, -0.48);
+    c.lineTo(0.2, -0.32);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The mane, roached along the crest in a darker fall.
+    c.fillStyle = shade(col, -32);
+    c.beginPath();
+    c.moveTo(-0.3, 0.42);
+    c.quadraticCurveTo(-0.36, -0.06, -0.06, -0.3);
+    c.quadraticCurveTo(-0.14, -0.12, -0.16, 0.06);
+    c.quadraticCurveTo(-0.18, 0.26, -0.14, 0.44);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The blaze down the face.
+    c.fillStyle = shade(col, 36);
+    c.beginPath();
+    c.moveTo(0.2, -0.3);
+    c.quadraticCurveTo(0.32, -0.18, 0.36, -0.04);
+    c.quadraticCurveTo(0.32, 0.0, 0.28, -0.04);
+    c.quadraticCurveTo(0.24, -0.18, 0.16, -0.28);
+    c.closePath();
+    c.fill();
+    // The bridle: cheekpiece and noseband, buckled brass.
+    c.strokeStyle = '#3e3226';
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(0.1, -0.3);
+    c.lineTo(0.24, 0.02);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.2, 0.06);
+    c.quadraticCurveTo(0.32, 0.12, 0.4, 0.02);
+    c.stroke();
+    dot(c, '#c9a23c', 0.24, 0.03, 0.026);
+    // The eye.
+    dot(c, '#2a2622', 0.16, -0.18, 0.036);
+    // The nostril.
+    dot(c, shade(col, -40), 0.36, -0.02, 0.024);
+    c.restore();
+  },
+  garron: (c, col) => {
+    // THE PASS PONY: shaggy, short-headed, sure-footed — the forelock
+    // over the eyes because a garron watches the trail, not you.
+    // Winter coat in every season Pinewatch sells.
+    c.save();
+    c.translate(0.46, 0.5);
+    // The neck: shorter and thicker than the courser's.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.32, 0.44);
+    c.quadraticCurveTo(-0.34, 0.0, -0.08, -0.22);
+    c.quadraticCurveTo(0.06, -0.3, 0.18, -0.26);
+    // The head: deep jaw, blunt muzzle.
+    c.quadraticCurveTo(0.38, -0.18, 0.4, 0.0);
+    c.quadraticCurveTo(0.4, 0.1, 0.28, 0.1);
+    c.quadraticCurveTo(0.16, 0.12, 0.1, 0.04);
+    c.quadraticCurveTo(0.04, 0.14, 0.02, 0.44);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The ears, small under the shag.
+    c.beginPath();
+    c.moveTo(0.0, -0.26);
+    c.lineTo(0.05, -0.4);
+    c.lineTo(0.13, -0.26);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // THE SHAG: the coat hangs in tags along the whole jaw and neck.
+    c.fillStyle = shade(col, -24);
+    c.beginPath();
+    c.moveTo(-0.3, 0.42);
+    c.quadraticCurveTo(-0.34, 0.02, -0.1, -0.2);
+    c.lineTo(-0.05, -0.1);
+    c.lineTo(-0.14, -0.02);
+    c.lineTo(-0.08, 0.06);
+    c.lineTo(-0.18, 0.16);
+    c.lineTo(-0.1, 0.24);
+    c.lineTo(-0.18, 0.34);
+    c.lineTo(-0.12, 0.44);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The forelock, dropped OVER where the eye should be.
+    c.beginPath();
+    c.moveTo(-0.02, -0.28);
+    c.quadraticCurveTo(0.1, -0.24, 0.1, -0.06);
+    c.lineTo(0.04, -0.1);
+    c.lineTo(0.02, 0.0);
+    c.quadraticCurveTo(-0.06, -0.14, -0.02, -0.28);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The muzzle, mealy — the pony nose.
+    c.fillStyle = shade(col, 28);
+    c.beginPath();
+    c.ellipse(0.32, 0.0, 0.09, 0.07, 0.3, 0, Math.PI * 2);
+    c.fill();
+    dot(c, shade(col, -44), 0.35, 0.0, 0.022);
+    // The halter — rope, not brass: a garron is bought, not shown.
+    c.strokeStyle = '#8a7a5c';
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(0.14, 0.08);
+    c.quadraticCurveTo(0.26, 0.14, 0.38, 0.04);
+    c.stroke();
+    c.restore();
+  },
+  sabercatmount: (c, col) => {
+    // A HARNESS CUT FOR NO HORSE: the night sabercat, head-on-profile
+    // with the two sabers down past the jaw and the courier harness
+    // it answers to. Nobody sells these; the icon is the proof you
+    // have one anyway.
+    c.save();
+    c.translate(0.48, 0.5);
+    c.rotate(0.03);
+    // The neck and shoulder wedge.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.3, 0.44);
+    c.quadraticCurveTo(-0.34, 0.02, -0.1, -0.2);
+    // The skull: flat crown, heavy muzzle.
+    c.quadraticCurveTo(0.0, -0.34, 0.16, -0.32);
+    c.quadraticCurveTo(0.36, -0.28, 0.4, -0.1);
+    c.quadraticCurveTo(0.42, 0.02, 0.3, 0.04);
+    c.quadraticCurveTo(0.18, 0.06, 0.1, 0.02);
+    c.quadraticCurveTo(0.06, 0.16, 0.04, 0.44);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The ear, rounded — a cat's, not a horse's.
+    c.beginPath();
+    c.moveTo(-0.04, -0.28);
+    c.quadraticCurveTo(-0.04, -0.44, 0.08, -0.42);
+    c.quadraticCurveTo(0.12, -0.34, 0.06, -0.3);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // THE SABERS: two, down past the jaw — the species in one stroke.
+    c.fillStyle = '#e8e4d6';
+    c.lineWidth = 0.026;
+    for (const [x, len] of [[0.3, 0.3], [0.2, 0.22]] as const) {
+      c.beginPath();
+      c.moveTo(x - 0.05, 0.02);
+      c.quadraticCurveTo(x - 0.08, len * 0.6 + 0.02, x - 0.16, len + 0.02);
+      c.quadraticCurveTo(x - 0.06, len * 0.6 + 0.04, x + 0.03, 0.03);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    }
+    // The night mask: darker saddle over crown and cheek.
+    c.fillStyle = shade(col, -22);
+    c.beginPath();
+    c.moveTo(-0.08, -0.24);
+    c.quadraticCurveTo(0.06, -0.34, 0.2, -0.3);
+    c.quadraticCurveTo(0.1, -0.2, 0.02, -0.1);
+    c.quadraticCurveTo(-0.06, -0.16, -0.08, -0.24);
+    c.closePath();
+    c.fill();
+    // The eye: moon-catch in the dark.
+    dot(c, '#c8d8a4', 0.14, -0.16, 0.036);
+    dot(c, '#2a2622', 0.155, -0.155, 0.018);
+    // The harness: one strap where no horse tack would sit.
+    c.strokeStyle = '#6a4e2c';
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.moveTo(-0.22, 0.06);
+    c.quadraticCurveTo(-0.02, 0.16, 0.08, 0.36);
+    c.stroke();
+    dot(c, '#c9a23c', -0.04, 0.13, 0.026);
+    c.restore();
+  },
   vial: (c, col) => {
     // The tonic: a tall slim vial, corked and collared, the draught
     // filling two-thirds with one rising bubble.
@@ -6892,6 +8539,15 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   crew_paytin: { icon: 'jar', color: '#a9976a' },
   gilded_locket: { icon: 'gem', color: '#d8b45a' },
   weathered_letter: { icon: 'scroll', color: '#cfc5ab' },
+  // The Kingsdelf errand pockets: paper rides the shared scroll like
+  // its neighbours above; the stone, the tally, the barrow gold and
+  // the foreman's signet each carry too much story for a tinted
+  // hand-me-down and got their own drawings.
+  survey_pages: { icon: 'scroll', color: '#e8ddc0' },
+  wardstone: { icon: 'wardstonepainter', color: '#8f9099' },
+  spade_mark: { icon: 'spademark', color: '#a3452e' },
+  grave_band: { icon: 'graveband', color: '#c9a94c' },
+  seal_ring: { icon: 'sealringicon', color: '#9aa4b2' },
   hardened_leather: { icon: 'hide', color: '#7d5636' },
   linen_scrap: { icon: 'ragswatch', color: '#ddd6c2' },
   linen: { icon: 'linenbolt', color: '#e4dcc4' },
@@ -6927,6 +8583,38 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   hillstone_heart: { icon: 'keystoneheart', color: '#8a8164' },
   forgeplate_scrap: { icon: 'forgeplate', color: '#6f665e' },
   razorback_tusk: { icon: 'razortusk', color: '#dccfa8' },
+  // THE STANDING DEBT PAID (the iconReach ledger's back half): the
+  // champion trophies, the furrier's banked pelts, the shell parts,
+  // and the elven trades' luxuries — every one a drawn face in the
+  // mane/gland standard, none a tinted twin. The desc was the brief.
+  feywolf_pelt: { icon: 'feywolfpelt', color: '#9a94b4' },
+  duskruff_pelt: { icon: 'duskruffpelt', color: '#565064' },
+  smokebrush_pelt: { icon: 'smokebrushpelt', color: '#6b3226' },
+  warboss_tusk: { icon: 'warbosstusk', color: '#e9e0c6' },
+  crusher_claw: { icon: 'crusherclaw', color: '#587566' },
+  bonegrinder_girdle: { icon: 'bonegrindergirdle', color: '#96685a' },
+  legion_ring: { icon: 'legionring', color: '#767c86' },
+  turtle_scute: { icon: 'turtlescute', color: '#4a5238' },
+  colossus_plate: { icon: 'colossusplate', color: '#59604f' },
+  petrified_eye: { icon: 'petrifiedeye', color: '#b9d18c' },
+  deepking_pearl: { icon: 'deepkingpearl', color: '#dfe3d6' },
+  sand_laurel: { icon: 'sandlaurel', color: '#e8b74a' },
+  deepening_sigil: { icon: 'deepeningsigil', color: '#e8d8a8' },
+  moonpale_silk: { icon: 'moonpalesilk', color: '#cdd8ec' },
+  silverbark: { icon: 'silverbark', color: '#a39072' },
+  moonglass_lens: { icon: 'moonglasslens', color: '#9fe0d8' },
+  salt: { icon: 'saltheap', color: '#f0ede4' },
+  // The stable string and the one harness nobody sells: a mount item
+  // is a promise of an animal, so the icon is the animal — coat tints
+  // name the coursers, the garron keeps its winter shag, and the
+  // sabercat keeps its sabers.
+  bay_courser: { icon: 'courser', color: '#7b4a2e' },
+  grey_courser: { icon: 'courser', color: '#b7b3a8' },
+  dun_courser: { icon: 'courser', color: '#b2905e' },
+  hoargate_garron: { icon: 'garron', color: '#6d5c49' },
+  night_sabercat: { icon: 'sabercatmount', color: '#4a4f63' },
+  // The carried flame.
+  lantern: { icon: 'lanternicon', color: '#e8c06a' },
   leather_body: { icon: 'jerkin', color: '#b08a5c' },
   bones: { icon: 'bones', color: '#efe8d8' },
   feather: { icon: 'feather', color: '#f4efe4' },
@@ -6969,6 +8657,14 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   storm_essence: { icon: 'essence', color: '#f0eab8' },
   verdant_essence: { icon: 'essence', color: '#9ad48a' },
   crimson_essence: { icon: 'essence', color: '#d06868' },
+  // The scribe's bench trio rides the same family painter — an essence
+  // is an essence; the school is the color. The focused dust is NOT
+  // the arcane heap in a new coat: it is dust mid-refusal of the
+  // floor, and it has its own drawing.
+  umbral_essence: { icon: 'essence', color: '#8a78b0' },
+  radiant_essence: { icon: 'essence', color: '#f2d98a' },
+  astral_essence: { icon: 'essence', color: '#9ae8de' },
+  focused_dust: { icon: 'focuseddust', color: '#d8c8ff' },
   verdant_totem: { icon: 'totem', color: '#7ab06a' },
   snare_kit: { icon: 'trap', color: '#b0a05a' },
   storm_bell: { icon: 'bell', color: '#e8d06a' },
@@ -7019,6 +8715,24 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   // below). A real tower OffhandStyle all along; it only ever lacked
   // the row that lets the wardrobe block product-shot it.
   gatefall_bulwark: { icon: 'shield', color: '#3e3560' },
+  // THE SHIELD WAVE's twelve, seeded at last. Every one of these has
+  // worn an authored SHIELD_STYLES face since the wave shipped — the
+  // walls, the kites, the rime disc, the tyrant's colossus — and every
+  // one of them paid out of a loot table as a burnt lump, because the
+  // seed row was treated as a follow-up instead of part of the piece.
+  // The row IS the piece. Tints are each face's own field color.
+  lowhall_breacher: { icon: 'shield', color: '#4a3a30' },
+  legion_doorwall: { icon: 'shield', color: '#3f434e' },
+  stagheart_palisade: { icon: 'shield', color: '#b09a6e' },
+  fellhorn_gate: { icon: 'shield', color: '#a89878' },
+  brinehold_carapace: { icon: 'shield', color: '#46655c' },
+  wintercourt_rime: { icon: 'shield', color: '#cfd8d2' },
+  nightveil_pinion: { icon: 'shield', color: '#2e3345' },
+  vale_reliquary: { icon: 'kiteshield', color: '#28324f' },
+  cindermaw_bulwark: { icon: 'shield', color: '#3e3a38' },
+  everwood_crest: { icon: 'kiteshield', color: '#e8e0cc' },
+  aldarens_gate: { icon: 'shield', color: '#c9d2e4' },
+  gilded_tyrant: { icon: 'shield', color: '#b08d3e' },
   // Themed plate sets — family painters carry the shape, the palette
   // carries the identity.
   warden_helm: { icon: 'helm', color: '#4a7a5a' },
@@ -7366,6 +9080,10 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   honeybrew: { icon: 'jug', color: '#e0a83c' },
   smoked_beef: { icon: 'stew', color: '#8a4a38' },
   smoked_eel: { icon: 'stew', color: '#6e5a4a' },
+  // The Saltmere larder pair: the trout keeps its fish shape (smoke is
+  // a color, not a new anatomy), the pot joins the stew family.
+  smoked_trout: { icon: 'fishcooked', color: '#c98a54' },
+  fishers_pot: { icon: 'stew', color: '#d9b48a' },
   dried_sagewort: { icon: 'herbbundle', color: '#7a9c6e' },
   dried_moonbell: { icon: 'herbbundle', color: '#8f9ed6' },
   dried_bittercress: { icon: 'herbbundle', color: '#5e7a52' },
@@ -7416,6 +9134,7 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   gatherers_brew: { icon: 'jug', color: '#7fc9b3' },
   swiftness_tonic: { icon: 'vial', color: '#8fd0e8' },
   ironbark_tonic: { icon: 'vial', color: '#9c7440' },
+  quickstep_tonic: { icon: 'vial', color: '#ffd76a' },
   mending_salve: { icon: 'jar', color: '#c9a8e8' },
   venom_gland: { icon: 'gland', color: '#8a9a3a' },
   pine_resin: { icon: 'resin', color: '#d8963c' },
@@ -7596,6 +9315,12 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
     ramwall: ['steelhorn', 'goldhorn', 'stormram'],
     briarplate: ['bloodbriar', 'bonebriar', 'nightbriar'],
     sentinel: ['daybreak', 'bloodwatch', 'midnight'],
+    // The deep-water lots and the barrow steep. These dyed wardrobes
+    // shipped with full armor styles registered and NO seed rows — the
+    // whole lots rendered the burnt lump for their shipped life (the
+    // iconReach pin recorded them as debt; this line pays it).
+    tidecaller: ['abyss', 'darkwater', 'maelstrom'],
+    nightveil: ['barrowdusk'],
   };
   const CLOTH_PIECES = ['hood', 'robe', 'skirts', 'slippers', 'wraps'];
   const LEATHER_PIECES = ['hood', 'jerkin', 'chaps', 'boots', 'gloves'];
@@ -7612,6 +9337,8 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
     ramwall: PLATE_PIECES,
     briarplate: PLATE_PIECES,
     sentinel: ['greathelm', 'platebody', 'greaves', 'sabatons', 'gauntlets'],
+    tidecaller: ['hood', 'robe', 'skirts', 'slippers', 'gloves'],
+    nightveil: ['cowl', 'jerkin', 'leggings', 'boots', 'gloves'],
   };
   for (const [set, dyes] of Object.entries(EARLY_COLORWAYS)) {
     for (const piece of PIECES[set] ?? CLOTH_PIECES) {
