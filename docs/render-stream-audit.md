@@ -848,3 +848,166 @@ whole ledger, and nothing re-bakes what it just baked. In the deep at
 zoom 1.8 a screen still wants ~4× the budget, so there is headroom to
 buy coverage with memory if a future round wants it — deliberately,
 with numbers, and not by accident at 20GB/s.
+
+---
+
+## Round 11 — THE GROUND LEARNS THE BYTE LAW (2026-08-29)
+
+Owner's report: **"after ~30 minutes of play it locks at 30-31 fps and
+never recovers; a page refresh clears it. Worse with trees and other
+animated things."** A stable plateau, not a slide — and cleared only by
+reloading the document, which points at accumulated *process* state
+rather than at anything the frame recomputes.
+
+### What was ruled out, and how
+
+Four hypotheses were audited to exhaustion before anything was touched,
+because the expensive mistake here is fixing the wrong thing well:
+
+- **A second rAF loop** (the classic exact-halving). Dead: `main.ts`
+  has one `frame`, one bootstrap at `:4418`, one self-schedule at
+  `:3512`. Every UI loop self-terminates on a guard read each tick.
+- **Listener / timer / DOM / audio-node accumulation.** 199
+  `addEventListener` against 5 removals looks alarming and is benign —
+  every window/document listener is in a constructor or at module
+  scope. Chat caps at 80 lines, speech bubbles reap on death, despawn
+  and zone change, observers are constructor-scoped.
+- **Per-entity and decal growth.** Particles (2600), debris (220),
+  footprints (a preallocated 240-slot ring), corpses (64, adaptive),
+  ragdolls (16) are all capped with swap-remove and free lists. The
+  entity map deletes on leave.
+- **A frame-time latch.** `minDt`/`frameEma` self-heal: `minDt` takes
+  `Math.min(dt, ...)` so one fast frame re-learns the panel budget.
+
+Genuine but non-causal leaks were found and are listed at the end.
+
+### The measurement that mattered
+
+Round 10's law — *canvas allocation RATE is the only honest signal;
+FPS, heap and entity counts all read healthy through this failure
+class* — was applied to a **long-session soak** rather than a single
+frame (`scratchpad/soak3.mjs`, lane 34: vite `:5216` → server `:8813`,
+DB `arx_rig_soak`, probe `soak_probe`). The driver walks and teleports
+a circuit of dissimilar places, so chunks stream and every sprite cache
+is asked for a working set it has never held.
+
+**The instrument had to be fixed before it could be believed.** The
+first cut registered a fresh `FinalizationRegistry` per canvas and let
+it fall out of scope — a collectable registry never fires, so it
+reported *every canvas ever made as still live* and would have
+"proved" a spectacular leak that does not exist. One registry held for
+the life of the page, plus a forced `HeapProfiler.collectGarbage`
+before each sample, gives an honest resident figure.
+
+**The verdict: there is no canvas leak.** Resident backing store is
+flat at ~480MB across the whole soak; `freed` tracks `made`. What is
+wrong is the RATE:
+
+| | 5-min circuit |
+| --- | --- |
+| total canvas allocated | **2,398 MB** |
+| `startChunkBake` | 1,125 MB from 277 canvases |
+| `startElevatedBake` | 443 MB from 109 canvases |
+| `acquireSpriteCanvas` | 701 MB from 17,891 canvases |
+
+**Chunk bakes are 65% of every canvas byte the client allocates, from
+1.5% of its canvas calls** — and not one of them was pooled. Attribute
+by BYTES, never by call count: the sprite lane dominates the census and
+is the smaller half of the cost.
+
+### THE GROUND CACHE LEARNS THE BYTE LAW
+
+`baked` never learned Round 10's law. It was capped at **80 slots** (28
+hi-res) and weighed by nothing — but a chunk canvas is 4.3MB at px=32
+and 17MB at px=64, with every `lifted` elevation layer a full-size
+canvas of its own. The same "80" is 341MB of flat ground at one zoom
+and over a gigabyte of terraced ground at another. And all three exits
+dropped their canvases un-pooled: the re-bake swap overwrote
+`entry.canvas`, the distance evict was a bare `delete`, the plane
+crossing a bare `clear()`.
+
+- `bakeCanvasFor` (terrain.ts) — both bakes take an optional reuse
+  canvas. Chunk canvases of a tier are all **exactly one size**, so
+  this is the one lane where reuse needs no fit search and wastes
+  nothing. A borrowed canvas carries two obligations a fresh one does
+  not, and both are load-bearing: **clear it** (it holds the previous
+  chunk's pixels) and **reset the transform** (it holds the previous
+  bake's gutter translate). Setting `width` does both — by
+  reallocating, which is the cost being avoided.
+- A dedicated `chunkCanvasPool` (12 slots), *not* the sprite pool: a
+  4.3MB canvas exceeds `POOL_SLOT_MAX_BYTES` and would be refused, and
+  two or three would consume the entire sprite budget.
+- `bakedBytes` + `BAKED_BUDGET_BYTES` (192MB) replace the slot cap.
+- **The ledger is symmetric**: bytes are charged at *acquisition* and
+  released at *recycle*, and `recycleBakedEntry` releases what an
+  **in-flight** bake holds too. Charging at completion instead would
+  let a chunk evicted mid-bake decrement bytes it never had — the
+  negative-ledger twin of THE CROSSING's phantom.
+
+### THE POOL IS INDEXED BY SHAPE, NOT SEARCHED
+
+`acquireSpriteCanvas` scanned one stack for a canvas big enough but not
+wastefully bigger. Sprite canvases are sized per model, per zoom, per
+dpr, so a heterogeneous stack rarely holds a fit near the top.
+
+**Enlarging the pool made it measurably worse** — an honest negative
+result worth keeping: 384 slots minted 9,867 canvases over the
+circuit; **1,480 slots minted 14,766**. A longer stack only dilutes the
+window a bounded probe can afford to look at. The pool size was never
+the binding constraint; the search was.
+
+So shapes are **quantized to a 32px class on each axis**, collapsing
+thousands of one-off sizes into a few dozen buckets and making
+acquisition an exact O(1) lookup. Legal because oversized reuse
+already was: every bake `clearRect`s the full canvas, and all six
+sprite blits use the explicit 9-arg `drawImage` with recorded `sw/sh`
+— never `canvas.width`. 64px classes halved the call count but cost
+63% more bytes per canvas; 32px is the measured optimum.
+
+### THE GATE MUST BE ABLE TO CLOSE AGAIN — why trees
+
+`growingTrees` and `propShakes` are ease clocks whose **readers own the
+only delete**. `growthOf` retires a key when its ease runs out — but it
+runs only for pieces that are actually **drawn**, while the writers
+fire across the whole interest radius. A sapling sprouting off-screen
+sets a key nothing will ever read. The code says so in its own comment:
+*"the map is empty except moments after a regrowth."* It is not.
+
+The cost is not the entry, it is the **fast-path gate**. Both maps are
+read through `size === 0` / `size > 0` tests standing in the per-tile
+terrain scan and in every tree's per-frame growth lookup. One orphan
+latches those gates open **forever**: from then on every visible tree
+mints a template-string key every frame, and every tile in view pays
+`destructibleInfo` — plus a closure per shaking tile, against Round 2's
+closure-free bulk lane. Accumulation-triggered, permanent,
+tree-correlated, cleared only by reload. `evictEases()` sweeps both on
+a 60-frame cadence past each clock's known ceiling (2600ms / 380ms), so
+the gate can close again.
+
+### Results (identical 5-minute circuit, lane 34)
+
+| | before | after |
+| --- | --- | --- |
+| total canvas allocated | 2,398 MB | **936 MB** (−61%) |
+| chunk bakes | 1,568 MB / 386 | **345 MB / 85** (−78%) |
+| sprite lane | 701 MB / 17,891 | **439 MB / 6,975** (−37% B, −61% calls) |
+| resident canvas | 472 MB | 354 MB (−25%) |
+
+732/732 client tests green; typecheck clean. `?perf` grows
+`ground <MB>/<chunks> pool <n>` — **a zero pool means every re-bake is
+paying full allocation**, and is the first thing to read.
+
+### Still open, ranked
+
+1. The sprite lane is still 439MB/circuit. The next lever is fewer
+   *re-bakes*, not cheaper canvases — the caches evict a scene's
+   working set on arrival at the next one.
+2. Gradients: 1,200–1,400 `createLinearGradient`/sec in some scenes,
+   built live in the frame loop.
+3. Confirmed-but-harmless leaks, all never iterated per frame, all
+   fixable with the `npcArrows` idiom (`renderer.ts:61806`):
+   `alertAnim`, `questAnim`, `stationClang`, `lastDemolishFxAt`,
+   `npcCasts`, `VoicePlayer.media`, and the nuclear
+   `wadeStates`/`dropContacts` `clear()`-at-N backstops.
+4. `lighting.ts` patch cache is capped at 128 **slots**, not bytes —
+   the same class of defect, small per entry. Ceiling, not a decay.

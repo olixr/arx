@@ -70,10 +70,37 @@ export const BAND_RELIEF_BYTES = 48 * 1048576;
 /** No single band may claim more than this — it draws live (law 3). */
 export const BAND_ONE_MAX_BYTES = 6 * 1048576;
 
-/** Canvas pool ceilings (law 5). */
-export const POOL_MAX_SLOTS = 40;
-export const POOL_MAX_BYTES = 32 * 1048576;
+/**
+ * Canvas pool ceilings (law 5).
+ *
+ * THE POOL IS SIZED FOR THE LANE THAT USES IT. Law 5 was written
+ * against the BAND ledger, where 40 slots were found holding 369MB
+ * because each slot was a multi-megabyte cave-row band. The byte cap
+ * and the per-slot ceiling fixed that — but the slot count stayed at
+ * 40, and the same pool serves the SPRITE lane, whose canvases are
+ * ~50KB and whose turnover is two orders of magnitude larger: walking
+ * into a new scene retires well over a thousand tree, prop and flora
+ * sprites at once. A 40-slot pool can catch about 3% of that, so 97%
+ * of it was allocated fresh and thrown away — measured at 697MB over
+ * five minutes of travel, the largest remaining source of canvas
+ * churn in the client once the ground cache was fixed.
+ *
+ * So the slot count is now derived rather than guessed: it is exactly
+ * what the sprite caches are able to hand back — 640 tree bodies + 640
+ * tree shadows + 200 prop/flora sprites — because a pool smaller than
+ * the largest eviction it must absorb is a pool that will miss, and
+ * one larger than that can never be filled. The two BYTE ceilings,
+ * which are what law 5 is actually about, stand unchanged in spirit:
+ * no single canvas over 4MB is ever parked (that is what kept the
+ * bands out), and the pool as a whole is still bounded by bytes, not
+ * by the slot count. At the sprite lane's measured mean of ~54KB the
+ * byte cap binds first, around 1,200 canvases — so the ceiling that
+ * actually holds is a byte ceiling, exactly as law 5 requires.
+ */
+export const POOL_MAX_SLOTS = 1480;
+export const POOL_MAX_BYTES = 64 * 1048576;
 export const POOL_SLOT_MAX_BYTES = 4 * 1048576;
+
 
 /** Why a bake was let through, or what turned it away. */
 export const enum BandVerdict {

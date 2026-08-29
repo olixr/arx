@@ -415,6 +415,25 @@ const CHUNK_BAKE_MS = 3;
  * Brand-new chunks (holes) are never gated.
  */
 const CHUNK_REPLACE_STARTS = 2;
+
+/**
+ * Retired chunk canvases held for reuse. Sized to the working set a
+ * scene actually turns over — a viewport holds well under a dozen
+ * chunks, and the churn is replacement (a tile changed, a tier
+ * flipped), not accumulation. Every entry is one of two known sizes,
+ * so this count is a true byte bound: at most 12 x 17MB at the hi-res
+ * tier, 12 x 4.3MB at the base one.
+ */
+const CHUNK_POOL_MAX = 12;
+
+/**
+ * Byte ceiling on the baked-ground cache. The old cap counted SLOTS
+ * (80, or 28 hi-res) and so meant wildly different amounts of memory
+ * depending on zoom tier and how much elevation a region carries.
+ * 192MB holds a generous ring at either tier and, unlike a slot count,
+ * means the same thing everywhere.
+ */
+const BAKED_BUDGET_BYTES = 192 * 1048576;
 /**
  * Per-frame time budget (ms) for tree/flora/prop sprite bakes BEYOND
  * the truly-visible set: pad-band pre-bakes and cadence re-bakes stop
@@ -1814,6 +1833,120 @@ export class Renderer {
   private readonly baked = new Map<string, BakedChunk>();
 
   /**
+   * THE GROUND CACHE LEARNS THE BYTE LAW.
+   *
+   * Round 10 established it for the band ledger — a cache of canvases
+   * is bounded by BYTES, never by slots, because a slot's cost is not
+   * a constant. `baked` never learned it. It was capped at 80 entries
+   * (28 at the hi-res tier), and a chunk canvas is 4.3MB at px=32 and
+   * 17MB at px=64 — so the same "80" meant 341MB on flat ground at one
+   * zoom and over a gigabyte on terraced ground at another, with every
+   * `lifted` elevation layer a full-size canvas of its own on top.
+   * Nothing weighed them, so nothing could see that.
+   *
+   * And none of the three ways a chunk canvas left this map returned
+   * it: the re-bake swap overwrote `entry.canvas`, the distance evict
+   * was a bare `delete`, and the plane crossing was a bare `clear()`.
+   * Measured over five minutes of travel, that lane alone allocated
+   * and discarded 1.5GB — 65% of every canvas byte the client mints,
+   * from 1.5% of its canvas calls. The JS heap never shows it (canvas
+   * backing store is not heap), which is why every counter read
+   * healthy while the compositor wore the cost.
+   *
+   * Chunk canvases are the one lane where reuse is exact: every canvas
+   * of a tier is the same size, so a retired one is always the right
+   * shape for the next bake and the free list needs no fit search.
+   * They get their OWN pool rather than the sprite pool, for two
+   * reasons: a 4.3MB chunk canvas exceeds `POOL_SLOT_MAX_BYTES` and
+   * would be refused outright, and even if admitted, two or three of
+   * them would consume the entire 32MB sprite budget and starve the
+   * lane that turns over thousands of small sprites a scene.
+   */
+  private readonly chunkCanvasPool: HTMLCanvasElement[] = [];
+  /** Live bytes held by `baked` (base canvases + every lifted layer). */
+  private bakedBytes = 0;
+
+  /** Take a canvas of exactly this shape from the pool, if one waits. */
+  private takePooled(w: number, h: number): HTMLCanvasElement | undefined {
+    const key = Renderer.poolKey(w, h);
+    const bucket = this.spriteCanvasPool.get(key);
+    if (!bucket || bucket.length === 0) return undefined;
+    this.poolCount--;
+    const c = bucket.pop();
+    // Band bakes park odd one-off shapes here too; an emptied bucket
+    // is a key nothing will ask for again, so it goes with its last
+    // canvas rather than accreting as a dead entry for the session.
+    if (bucket.length === 0) this.spriteCanvasPool.delete(key);
+    return c;
+  }
+
+  /** Round a pixel extent up to its 32px reuse class. */
+  private static sizeClass(n: number): number {
+    return Math.max(32, Math.ceil(n / 32) * 32);
+  }
+
+  /** Bucket key for a class-sized canvas. */
+  private static poolKey(w: number, h: number): number {
+    return w * 65536 + h;
+  }
+
+  /** Bytes a canvas's backing store occupies. */
+  private static canvasBytes(c: HTMLCanvasElement): number {
+    return c.width * c.height * 4;
+  }
+
+  /**
+   * Retire a chunk canvas: off the ledger, then into the free list if
+   * it still has room. The pool is capped by COUNT here and that is
+   * honest — unlike the sprite lane, every canvas in it is one of two
+   * known sizes, so a count IS a byte bound.
+   */
+  private recycleChunkCanvas(c: HTMLCanvasElement | undefined): void {
+    if (!c) return;
+    this.bakedBytes -= Renderer.canvasBytes(c);
+    if (this.chunkCanvasPool.length >= CHUNK_POOL_MAX) return;
+    this.chunkCanvasPool.push(c);
+  }
+
+  /** Every canvas a baked entry owns — its base and its lifted layers. */
+  private recycleBakedEntry(entry: BakedChunk | undefined): void {
+    if (!entry) return;
+    this.recycleChunkCanvas(entry.canvas);
+    if (entry.lifted) {
+      for (const l of entry.lifted) this.recycleChunkCanvas(l.canvas);
+    }
+    // A chunk can be evicted mid-bake. Everything the in-flight job
+    // holds was charged at acquisition, so it must be released here
+    // too — otherwise the ledger keeps a phantom that narrows the
+    // budget for the rest of the session, which is precisely the
+    // failure THE LEDGER HAS ONE DOOR was written to stop.
+    const p = entry.pending;
+    if (p) {
+      if (p.job.canvas !== entry.canvas) this.recycleChunkCanvas(p.job.canvas);
+      if (p.elevJob) this.recycleChunkCanvas(p.elevJob.job.canvas);
+      for (const l of p.lifted) this.recycleChunkCanvas(l.canvas);
+    }
+  }
+
+  /** A free chunk canvas of the requested tier, or undefined. */
+  private takeChunkCanvas(px: number): HTMLCanvasElement | undefined {
+    const want = CHUNK_SIZE * px + bakeGutter(px) * 2;
+    for (let i = this.chunkCanvasPool.length - 1; i >= 0; i--) {
+      const c = this.chunkCanvasPool[i]!;
+      if (c.width === want && c.height === want) {
+        this.chunkCanvasPool.splice(i, 1);
+        return c;
+      }
+    }
+    // A pool full of the other tier's canvases is dead weight after a
+    // zoom flip — drop one so the wrong tier drains instead of
+    // permanently denying the right one a slot.
+    if (this.chunkCanvasPool.length >= CHUNK_POOL_MAX) this.chunkCanvasPool.shift();
+    return undefined;
+  }
+
+
+  /**
    * THE CROSSING (docs/planes-plan.md §2.4): the world under the
    * camera just became a DIFFERENT world with legitimately overlapping
    * coordinates. Every position-keyed cache the renderer holds must
@@ -1822,6 +1955,10 @@ export class Renderer {
    * the worldVersion bump; this clears everything that does not.
    */
   onPlaneSwitch(): void {
+    // THE LEDGER HAS ONE DOOR, applied to the ground cache too: a bare
+    // clear() here dropped ~80 chunk canvases (341MB on flat ground)
+    // straight to GC every crossing and left the byte ledger lying.
+    for (const entry of this.baked.values()) this.recycleBakedEntry(entry);
     this.baked.clear();
     this.registers.clear();
     // THE LEDGER HAS ONE DOOR: a bare .clear() here dropped the
@@ -5277,6 +5414,7 @@ export class Renderer {
       });
     }
     this.evictBaked();
+    this.evictEases();
     this.evictAnims();
     this.evictTreeSprites();
     this.perfMark('post');
@@ -6727,6 +6865,7 @@ export class Renderer {
     live: boolean,
   ): BakedChunk {
     const pending = this.buildChunkPending(game, cx, cy, data, bakePx, live);
+    this.bakedBytes += Renderer.canvasBytes(pending.job.canvas);
     const baked: BakedChunk = {
       canvas: pending.job.canvas,
       data,
@@ -6753,6 +6892,7 @@ export class Renderer {
     bakePx: number,
   ): void {
     entry.pending = this.buildChunkPending(game, cx, cy, data, bakePx, false);
+    this.bakedBytes += Renderer.canvasBytes(entry.pending.job.canvas);
   }
 
   /** The shared job body: terrain steps + one step per elevation level. */
@@ -6789,14 +6929,15 @@ export class Renderer {
       levels.push(level);
     }
     return {
-      job: startChunkBake(ground, detail, elev, cx, cy, bakePx, woodSkin, live),
+      job: startChunkBake(ground, detail, elev, cx, cy, bakePx, woodSkin, live, this.takeChunkCanvas(bakePx)),
       levels,
       lifted: [],
       live,
       data,
       rev: data.rev ?? 0,
       px: bakePx,
-      startElev: (level: number) => startElevatedBake(ground, detail, elev, cx, cy, bakePx, level),
+      startElev: (level: number) =>
+        startElevatedBake(ground, detail, elev, cx, cy, bakePx, level, this.takeChunkCanvas(bakePx)),
     };
   }
 
@@ -6829,10 +6970,26 @@ export class Renderer {
       // decides whether the level bakes at all (most don't).
       const level = p.levels.shift()!;
       const job = p.startElev(level);
-      if (job) p.elevJob = { job, level };
+      if (job) {
+        // Charged at ACQUISITION, like every other chunk canvas — an
+        // elevation layer evicted mid-bake must release exactly what
+        // it took, and only a symmetric ledger can promise that.
+        this.bakedBytes += Renderer.canvasBytes(job.canvas);
+        p.elevJob = { job, level };
+      }
     }
     if (p.job.next < p.job.steps.length || p.elevJob !== undefined || p.levels.length > 0) return;
-    // Complete: swap the finished bake into the entry.
+    // Complete: swap the finished bake into the entry. THE OUTGOING
+    // CANVAS IS NOT RUBBISH — it is exactly the shape the next bake
+    // will ask for. Retiring it here (and every lifted layer it owned)
+    // is what turns a re-bake from a fresh multi-megabyte allocation
+    // into a repaint of pixels we already have.
+    if (entry.canvas !== p.job.canvas) this.recycleChunkCanvas(entry.canvas);
+    if (entry.lifted) {
+      for (const l of entry.lifted) {
+        if (!p.lifted.some((n) => n.canvas === l.canvas)) this.recycleChunkCanvas(l.canvas);
+      }
+    }
     entry.canvas = p.job.canvas;
     entry.lifted = p.lifted;
     entry.data = p.data;
@@ -6879,16 +7036,70 @@ export class Renderer {
       }
       this.bandSweepScratch.length = 0;
     }
-    // Hi-res bakes are 4× the pixels — keep far fewer of them around.
-    const hiRes = this.bakePx() > TILE_PX;
-    const cap = hiRes ? 28 : 80;
-    if (this.baked.size <= cap) return;
+    // THE GROUND CACHE IS BOUNDED BY BYTES. The old rule counted
+    // slots, which is not a cost: the same 80 entries are 341MB of
+    // flat ground at the base tier and over a gigabyte of terraced
+    // ground at the hi-res one. A byte budget means the same thing in
+    // every scene, at every zoom, however much relief the land has.
+    // The distance rule is unchanged — what leaves is still the
+    // furthest ring first — and every canvas that leaves goes back to
+    // the pool for the next bake instead of to the collector.
+    if (this.baked.size <= 8 || this.bakedBytes <= BAKED_BUDGET_BYTES) return;
+    const relief = BAKED_BUDGET_BYTES * 0.75;
     const ccx = this.camera.x / CHUNK_SIZE;
     const ccy = this.camera.y / CHUNK_SIZE;
-    for (const [key] of this.baked) {
+    for (const [key, entry] of this.baked) {
       const [cx, cy] = key.split(',').map(Number);
-      if (Math.abs(cx! - ccx) > 4 || Math.abs(cy! - ccy) > 4) this.baked.delete(key);
-      if (this.baked.size <= (hiRes ? 20 : 60)) break;
+      if (Math.abs(cx! - ccx) > 4 || Math.abs(cy! - ccy) > 4) {
+        this.recycleBakedEntry(entry);
+        this.baked.delete(key);
+      }
+      if (this.bakedBytes <= relief || this.baked.size <= 8) break;
+    }
+  }
+
+  /**
+   * THE GATE MUST BE ABLE TO CLOSE AGAIN.
+   *
+   * `growingTrees` and `propShakes` are ease clocks whose readers own
+   * the only delete: `growthOf` and `propShakeX` retire a key when its
+   * ease runs out. That is correct for anything ON SCREEN, and it was
+   * written believing the map "is empty except moments after a
+   * regrowth" — but the readers run only for pieces that are actually
+   * DRAWN, while the writers fire across the whole interest radius.
+   * A sapling that sprouts off-screen, or a prop struck out of view,
+   * sets a key nothing will ever read, and the key is immortal.
+   *
+   * The cost is not the entry. It is the FAST-PATH GATE: both maps are
+   * read through `size === 0` / `size > 0` tests that stand in the
+   * per-tile terrain scan and in every tree's per-frame growth
+   * lookup. One orphan latches those gates open FOREVER — from then
+   * on every visible tree mints a template-string key every frame, and
+   * every tile in view pays `destructibleInfo`, for an ease that
+   * finished long ago and a prop that may be miles away.
+   *
+   * So the sweep is the gate's own door. Both clocks have a KNOWN
+   * ceiling (the growth ease tops out at 2600ms, the shudder at
+   * 380ms); anything past a generous multiple of that is finished by
+   * arithmetic, not by opinion, and can go without consulting the
+   * reader. Cadenced because it exists to close a gate, not to keep a
+   * frame honest — the readers still retire their own keys the moment
+   * they are drawn.
+   */
+  private evictEases(): void {
+    if (this.frameNo % 60 !== 0) return;
+    const now = performance.now();
+    if (this.growingTrees.size > 0) {
+      const dead = now - 6000;
+      for (const [key, born] of this.growingTrees) {
+        if (born < dead) this.growingTrees.delete(key);
+      }
+    }
+    if (this.propShakes.size > 0) {
+      const dead = now - 2000;
+      for (const [key, born] of this.propShakes) {
+        if (born < dead) this.propShakes.delete(key);
+      }
     }
   }
 
@@ -8280,7 +8491,7 @@ export class Renderer {
   }
 
   private acquireBandCanvas(w: number, h: number): HTMLCanvasElement {
-    const canvas = this.spriteCanvasPool.pop();
+    const canvas = this.takePooled(w, h);
     if (canvas) this.poolBytes -= canvas.width * canvas.height * 4;
     const c = canvas ?? document.createElement('canvas');
     if (c.width !== w) c.width = w;
@@ -8293,9 +8504,16 @@ export class Renderer {
    *  keeps its full backing store, so a slot count bounds nothing. */
   private poolCanvas(c: HTMLCanvasElement): void {
     const bytes = c.width * c.height * 4;
-    if (!poolAdmits(this.spriteCanvasPool.length, this.poolBytes, bytes)) return;
+    if (!poolAdmits(this.poolCount, this.poolBytes, bytes)) return;
     this.poolBytes += bytes;
-    this.spriteCanvasPool.push(c);
+    const key = Renderer.poolKey(c.width, c.height);
+    let bucket = this.spriteCanvasPool.get(key);
+    if (!bucket) {
+      bucket = [];
+      this.spriteCanvasPool.set(key, bucket);
+    }
+    bucket.push(c);
+    this.poolCount++;
   }
 
   private releaseStretchBake(sb: StretchBake): void {
@@ -19600,6 +19818,14 @@ export class Renderer {
       `bands ${bs.blit}/${bs.live + bs.blit} hot ${bs.hot} over ${bs.over} ` +
         `${(this.bandBytes / 1048576).toFixed(0)}MB`,
     );
+    // THE GROUND CONFESSES ITS BYTES: the baked-chunk cache is the
+    // largest canvas holder in the client and used to be invisible —
+    // capped by slot count, weighed by nothing. `pool` is the retired
+    // canvases standing by; a healthy walk keeps it non-zero, because
+    // a zero pool means every re-bake is paying full allocation.
+    parts.push(
+      `ground ${(this.bakedBytes / 1048576).toFixed(0)}MB/${this.baked.size} pool ${this.chunkCanvasPool.length}`,
+    );
     const ls = this.liveStats;
     parts.push(
       `live prop ${ls.prop} tree ${ls.tree} flora ${ls.flora} chunk ${ls.chunk} mask ${ls.mask}`,
@@ -19751,7 +19977,31 @@ export class Renderer {
   private treesVisible = 0;
   private treeCadence = TREE_REBAKE_FRAMES;
   /** Evicted sprite canvases, reused by new bakes (GC churn while walking). */
-  private readonly spriteCanvasPool: HTMLCanvasElement[] = [];
+  /**
+   * THE POOL IS INDEXED BY SHAPE, NOT SEARCHED.
+   *
+   * The sprite pool was a single stack scanned for a canvas that was
+   * big enough but not wastefully bigger. That search is the reason it
+   * missed: sprite canvases are sized per model, per zoom and per dpr,
+   * so a heterogeneous stack almost never holds an acceptable fit near
+   * the top, and scanning deeper costs more than the allocation it
+   * saves. Enlarging the pool made this measurably WORSE — 384 slots
+   * minted 9,867 canvases over a five-minute circuit, 1,480 slots
+   * minted 14,766 — because a longer stack only dilutes the window a
+   * bounded probe can afford to look at.
+   *
+   * So the shapes are QUANTIZED instead. Every sprite canvas is
+   * rounded up to a 64px class on each axis, which collapses thousands
+   * of one-off sizes into a few dozen buckets and turns acquisition
+   * into an exact O(1) lookup that either has the shape or does not.
+   * The rounding costs at most 63px of margin per axis and nothing in
+   * correctness: the blit has always read an explicit source rect, and
+   * every bake clears the full canvas before painting, which is why
+   * oversized reuse was already legal on the old path.
+   */
+  private readonly spriteCanvasPool = new Map<number, HTMLCanvasElement[]>();
+  /** Live count across all buckets — `poolAdmits` reads a count. */
+  private poolCount = 0;
   /** Pixel bytes parked in the pool — the pool's real bound. */
   private poolBytes = 0;
   /** Reused scratch for the band sweep's plan input (no per-frame
@@ -20844,20 +21094,17 @@ export class Renderer {
       // props stream in constantly while walking, and canvas churn
       // shows up as GC tail frames. Oversized pool hits are fine (the
       // blit reads a source rect); grossly oversized ones stay pooled.
-      canvas = undefined;
-      for (let i = this.spriteCanvasPool.length - 1; i >= 0; i--) {
-        const c = this.spriteCanvasPool[i]!;
-        if (c.width >= pw && c.height >= ph && c.width * c.height <= pw * ph * 2.5) {
-          canvas = c;
-          this.poolBytes -= c.width * c.height * 4;
-          this.spriteCanvasPool.splice(i, 1);
-          break;
-        }
-      }
-      if (!canvas) {
+      // The shape this sprite will occupy, rounded to its reuse class
+      // so the pool is a lookup and not a search.
+      const cw = Renderer.sizeClass(pw);
+      const ch = Renderer.sizeClass(ph);
+      canvas = this.takePooled(cw, ch);
+      if (canvas) {
+        this.poolBytes -= canvas.width * canvas.height * 4;
+      } else {
         canvas = document.createElement('canvas');
-        canvas.width = pw;
-        canvas.height = ph;
+        canvas.width = cw;
+        canvas.height = ch;
       }
       sctx = canvas.getContext('2d')!;
     }

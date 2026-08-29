@@ -712,6 +712,55 @@ export function stepChunkBake(job: ChunkBakeJob): boolean {
 /** Rows of the per-tile detail pass per step — the heaviest pass. */
 const DETAIL_STEP_ROWS = 5;
 
+/**
+ * THE CHUNK CANVAS IS BORROWED, NOT MINTED.
+ *
+ * A chunk bake is the largest single allocation the client makes —
+ * (32*px + 2*gutter)^2 * 4 bytes: 4.3MB at px=32, 17MB at the hi-res
+ * tier — and it was minted fresh every time, then dropped un-pooled
+ * when the entry was replaced or evicted. Measured over five minutes
+ * of travel that is 1.1GB from the base bake and 443MB from the
+ * elevated one: 65% of ALL canvas bytes the client allocates, from
+ * 1.5% of its canvas calls.
+ *
+ * Every chunk canvas of a given tier is EXACTLY the same size, which
+ * makes them the one lane where reuse needs no fit search and can
+ * never waste a byte — hand the bake a retired canvas and it is
+ * already the right shape.
+ *
+ * A borrowed canvas carries two obligations a fresh one does not, and
+ * both are load-bearing: it still holds the PREVIOUS chunk's pixels,
+ * so it must be cleared or the old ground shows through wherever the
+ * new bake paints nothing; and it still carries the previous bake's
+ * gutter translate, so the transform must be reset before this one is
+ * applied or every step lands a gutter further out. Setting `width`
+ * would do both, but only by reallocating the backing store — the
+ * exact cost we are here to avoid — so when the size already matches
+ * we clear and reset by hand.
+ */
+function bakeCanvasFor(
+  px: number,
+  reuse?: HTMLCanvasElement | null,
+): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } {
+  const G = bakeGutter(px);
+  const size = CHUNK_SIZE * px + G * 2;
+  let canvas: HTMLCanvasElement;
+  if (reuse && reuse.width === size && reuse.height === size) {
+    canvas = reuse;
+    const c = canvas.getContext('2d')!;
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, size, size);
+  } else {
+    canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+  }
+  const ctx = canvas.getContext('2d')!;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.translate(G, G);
+  return { canvas, ctx };
+}
+
 export function startChunkBake(
   ground: GroundSampler,
   detail: DetailSampler,
@@ -721,13 +770,10 @@ export function startChunkBake(
   px: number,
   woodSkin?: WoodSkinSampler,
   live = true,
+  reuse?: HTMLCanvasElement | null,
 ): ChunkBakeJob {
   const G = bakeGutter(px);
-  const canvas = document.createElement('canvas');
-  canvas.width = CHUNK_SIZE * px + G * 2;
-  canvas.height = CHUNK_SIZE * px + G * 2;
-  const ctx = canvas.getContext('2d')!;
-  ctx.translate(G, G);
+  const { canvas, ctx } = bakeCanvasFor(px, reuse);
   const baseX = cx * CHUNK_SIZE;
   const baseY = cy * CHUNK_SIZE;
 
@@ -3405,6 +3451,7 @@ export function startElevatedBake(
   cy: number,
   px: number,
   level: number,
+  reuse?: HTMLCanvasElement | null,
 ): ElevatedBakeJob | null {
   const baseX = cx * CHUNK_SIZE;
   const baseY = cy * CHUNK_SIZE;
@@ -3467,11 +3514,7 @@ export function startElevatedBake(
   // crown contour cells already reach half a tile past the chunk, so
   // the margin content exists without widening any contour loop.
   const G = bakeGutter(px);
-  const canvas = document.createElement('canvas');
-  canvas.width = CHUNK_SIZE * px + G * 2;
-  canvas.height = CHUNK_SIZE * px + G * 2;
-  const ctx = canvas.getContext('2d')!;
-  ctx.translate(G, G);
+  const { canvas, ctx } = bakeCanvasFor(px, reuse);
 
   // The plateau-top silhouette, contoured between tile centers.
   // Cells touching a stair of THIS level turn with square corners
