@@ -129,6 +129,24 @@ export interface LegRigConfig {
    * body (the ogre lesson).
    */
   swingMax?: number;
+  /**
+   * THE WALK HAS AN ORDER: leg indices in authored footfall sequence.
+   * Below the gallop blend (runF < 0.35 — exactly where the flight
+   * gate opens) a sequenced rig walks the flightEager law GROUNDED:
+   * the only leg allowed to launch is the successor of the leg that
+   * LAUNCHED last, once that predecessor's swing has passed the
+   * eager point — so the footfalls cycle the authored beat with the
+   * honest overlapping support phases of a real walk (two to three
+   * feet always down). Real quadrupeds walk a LATERAL sequence
+   * (LH → LF → RH → RF); without the law a 4-group rig's walk slots
+   * (a quarter-cycle apart) can NEVER clear the one-airborne group
+   * gate, so every stride fell through to the emergency snap in
+   * whatever order the start-up scramble froze — the goofy walk.
+   * Emergencies and idle shuffles stay outside the gate; a rig
+   * without the field keeps the emergent gait every other species
+   * walks.
+   */
+  walkOrder?: number[];
 }
 
 interface StepState {
@@ -221,6 +239,8 @@ export class LegRig {
     side: 1,
     speed: 0,
   }));
+  /** Leg index of the most recent LAUNCH — the walk-order cursor. */
+  private lastLaunch = -1;
   /** Signed idle-turn accumulator; a big enough pivot owes a shuffle. */
   private lastDir: number | null = null;
   private turnDebt = 0;
@@ -452,9 +472,33 @@ export class LegRig {
           runF > 0.35 &&
           airMinT > (cfg.flightEager ?? 0.45) &&
           airCount < cfg.legs.length;
-        const groupClear = moving
-          ? (!airMixed && (airGroup === -1 || airGroup === leg.group)) || flightOK
-          : airCount < idleAirCap;
+        // THE WALK HAS AN ORDER: an ordered rig at a walk swaps the
+        // one-airborne group gate for the sequenced eager launch —
+        // only the last-launched leg's successor may go, once that
+        // predecessor's swing is past the eager point (or landed).
+        // The walk slots of a 4-group rig sit a quarter-cycle apart,
+        // closer than a swing — a real walk OVERLAPS its swings (two
+        // to three feet always down), which the group gate can never
+        // grant; without this lane the walk lived on emergency snaps.
+        const ordered = cfg.walkOrder !== undefined && moving && runF < 0.35;
+        let orderClear = true;
+        if (ordered && this.lastLaunch >= 0) {
+          const ord = cfg.walkOrder!;
+          const at = ord.indexOf(this.lastLaunch);
+          if (at >= 0) {
+            if (ord[(at + 1) % ord.length] !== i) {
+              orderClear = false;
+            } else {
+              const ps = this.step[this.lastLaunch];
+              if (ps && ps.t < 0.55) orderClear = false;
+            }
+          }
+        }
+        const groupClear = ordered
+          ? orderClear
+          : moving
+            ? (!airMixed && (airGroup === -1 || airGroup === leg.group)) || flightOK
+            : airCount < idleAirCap;
         // Eager threshold when a groupmate is already swinging — pairs
         // launch together, so a trot stays a trot.
         const mate = airGroup === leg.group;
@@ -472,6 +516,10 @@ export class LegRig {
         const emergency = moving && behind > reach * 1.12;
         if (due || emergency) {
           if (turnStep) this.turnPending--;
+          // The walk-order cursor advances at EVERY launch (emergency
+          // included) — a broken beat rebases the sequence instead of
+          // fighting it.
+          this.lastLaunch = i;
           // THE RHYTHM NUDGE. A hard direction reversal leaves every
           // foot overdue at once, and a pair of overdue feet launches
           // as early as the gates allow, cycle after cycle — touchdowns

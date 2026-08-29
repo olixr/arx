@@ -20468,13 +20468,19 @@ export function mountSpec(mountId: string): BeastSpec {
         turnRate: 7.5,
         flight: true,
         flightEager: 0.26,
+        // THE WALK HAS AN ORDER: the lateral sequence every walking
+        // quadruped keeps — LH, LF, RH, RF (legs indexed FL FR BL BR).
+        walkOrder: [2, 0, 3, 1],
       },
       bodyLen: 0.62,
       bodyRise: 0.46,
       kneeFwd: [1, 1, -1, -1],
       hipFwd: 0.9,
       hipSide: 0.52,
-      legW: 0.085,
+      // Saddle-bearing bone: the muscled limb painter carries the
+      // width as a filled mass (hind thigh 1.35×), so the dial reads
+      // as the FED riding cat, not a stroke gauge.
+      legW: 0.098,
       foot: 'paw',
       legColor: shade(catLook.coat, -14),
       // The cat's bones: the lynx lane's long thigh over a short hock
@@ -20500,15 +20506,28 @@ export function mountSpec(mountId: string): BeastSpec {
         turnRate: garron ? 6 : 5.5,
         flight: true,
         flightEager: 0.26,
+        // THE WALK HAS AN ORDER: the equine 4-beat is a LATERAL
+        // sequence — LH, LF, RH, RF (legs indexed FL FR BL BR). This
+        // is the stately led-walk read; without it the start-up order
+        // sticks and a courser can pace like a sewing machine.
+        walkOrder: [2, 0, 3, 1],
       },
       bodyLen: garron ? 0.5 : 0.58,
       bodyRise: garron ? 0.44 : 0.54,
       kneeFwd: [1, 1, -1, -1],
       hipFwd: 0.9,
       hipSide: 0.5,
-      legW: garron ? 0.105 : 0.09,
+      // Riding-horse bone: legW is the FOREARM/GASKIN gauge now that
+      // the equine limb painter fills real muscle masses from it
+      // (gaskin 1.55×, cannon 0.5×) — the old stroke-gauge 0.09 was
+      // thinner than a cow's under a barrel half again as tall.
+      legW: garron ? 0.13 : 0.115,
       foot: 'hoof',
       legColor: look.sock,
+      // The horn block derives from the heavier legW — pull the dial
+      // under one so the hoof lands a touch past the portrait-approved
+      // block, not a clown boot (hoof ≈ 1.6× the pastern width).
+      footScale: 0.85,
       // Horse bones: a long forearm over a short cannon in front, the
       // hock riding HIGH behind — the equine silhouette's whole lower
       // story, and what keeps the gallop's folded knees honest.
@@ -21499,6 +21518,181 @@ export function drawCatLimb(
     ctx.lineCap = 'butt';
   }
   ctx.restore();
+}
+
+/**
+ * THE EQUINE LIMB: a horse's leg is not a stroke — it is a muscled
+ * upper story over a bone-and-tendon lower story, and the break
+ * between them is the whole silhouette. Fore: the shoulder/forearm
+ * column tapering hard into the carpus (the "knee"), then the clean
+ * near-parallel CANNON down to a fetlock knot and a short sprung
+ * pastern. Hind: the deep GASKIN off the quarters into the
+ * high-riding HOCK — whose calcaneal point juts past the joint on
+ * the bend side, the one landmark that says horse from any band —
+ * then the same cannon story. The upper leg wears the COAT (only
+ * the lower leg ever wore socks); the fetlock and pastern wear the
+ * sock tone so the existing horn-block hoof caps a leg that darkens
+ * honestly toward the ground. Species-blind: any hoofed heavy can
+ * adopt it. Far legs step into shadow (the doctrine's far-pair law)
+ * so profile strides never merge.
+ */
+export function drawHorseLimb(
+  ctx: CanvasRenderingContext2D,
+  o: {
+    hipX: number;
+    hipY: number;
+    kx: number;
+    ky: number;
+    ex: number;
+    ey: number;
+    /** Upper-leg thickness in px (spec.legW × scale). */
+    w: number;
+    s: number;
+    hind: boolean;
+    /** Body coat (seed-jittered by the caller — legs match the barrel). */
+    coat: string;
+    /** Lower-leg tone below the fetlock (the sock). */
+    sock: string;
+    /** Far-side legs step into shadow so pairs never merge mid-stride. */
+    far: boolean;
+    hurt: boolean;
+    /** Winter shag: fetlock feathering (the garron). */
+    feather?: boolean;
+    /**
+     * Screen y of the belly line at this hip. The upper story CLIPS
+     * below it: the thigh is implied inside the barrel, and the box
+     * face owns every pixel above the belly — painted over it, the
+     * muscle read as a translucent body. The clip keeps the true hip
+     * root (mid-gallop folds emerge honestly) without face-paint.
+     */
+    clipY?: number;
+    /**
+     * |cos(facing)| — how side-on the body is. The gaskin and
+     * forearm are SAGITTAL masses: broad in profile, narrow head-on.
+     * Painted at profile width on the N/S bands they poked past the
+     * chest face as saddlebag lumps — the width breathes with the
+     * facing while the bone gauges below stay true.
+     */
+    horiz?: number;
+  },
+): void {
+  const { hipX, hipY, kx, ky, ex, ey, w, s, hind } = o;
+  const dim = o.far ? -13 : 0;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : shade(c, dim));
+  // Segment frames.
+  const u1x = kx - hipX;
+  const u1y = ky - hipY;
+  const l1 = Math.hypot(u1x, u1y) || 1e-4;
+  const p1x = -u1y / l1;
+  const p1y = u1x / l1;
+  const u2x = ex - kx;
+  const u2y = ey - ky;
+  const l2 = Math.hypot(u2x, u2y) || 1e-4;
+  const p2x = -u2y / l2;
+  const p2y = u2x / l2;
+
+  // Upper story: gaskin (hind) or forearm (fore) — broad at the body,
+  // tapering hard into the joint. The hind carries the bigger muscle.
+  // THE BARREL IS THE MASS: the brutalist body box already paints the
+  // quarters and shoulder, so everything above the belly line is
+  // clipped away — the muscle EMERGES from under the body instead of
+  // re-painting anatomy across the box face (the translucent-barrel
+  // read of the first cut). The root stays the true hip, so a
+  // gallop's folded thigh still comes out of the right place.
+  const sag = 0.6 + 0.4 * (o.horiz ?? 1);
+  const wHip = w * (hind ? 1.55 : 1.3) * sag;
+  const wJoint = w * (hind ? 0.64 : 0.6);
+  if (o.clipY !== undefined) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(-1e5, o.clipY - w * 0.2, 2e5, 2e5);
+    ctx.clip();
+  }
+  ctx.fillStyle = C(shade(o.coat, hind ? -8 : -13));
+  ctx.beginPath();
+  ctx.moveTo(hipX + p1x * wHip, hipY + p1y * wHip);
+  ctx.lineTo(kx + p1x * wJoint, ky + p1y * wJoint);
+  ctx.lineTo(kx - p1x * wJoint, ky - p1y * wJoint);
+  ctx.lineTo(hipX - p1x * wHip, hipY - p1y * wHip);
+  ctx.closePath();
+  ctx.fill();
+  if (o.clipY !== undefined) ctx.restore();
+
+  // Lower story: the cannon — a clean, near-parallel bone-and-tendon
+  // column from the joint down to the fetlock at ~78% of the shank.
+  // Deliberately slimmer than the muscle above: the contrast IS the
+  // equine read; a leg one width top to bottom is a table's.
+  const fetT = 0.78;
+  const fkx = kx + u2x * fetT;
+  const fky = ky + u2y * fetT;
+  const wCan = w * 0.5;
+  const wCanB = w * 0.44;
+  ctx.fillStyle = C(shade(o.coat, -24));
+  ctx.beginPath();
+  ctx.moveTo(kx + p2x * wCan, ky + p2y * wCan);
+  ctx.lineTo(fkx + p2x * wCanB, fky + p2y * wCanB);
+  ctx.lineTo(fkx - p2x * wCanB, fky - p2y * wCanB);
+  ctx.lineTo(kx - p2x * wCan, ky - p2y * wCan);
+  ctx.closePath();
+  ctx.fill();
+
+  // Joint fill bridging the stories — carpus in front, hock behind —
+  // so no wedge of daylight opens mid-stride.
+  ctx.fillStyle = C(shade(o.coat, -18));
+  ctx.beginPath();
+  ctx.arc(kx, ky, w * 0.6, 0, Math.PI * 2);
+  ctx.fill();
+  // THE HOCK POINT (hind only): the calcaneus juts past the joint on
+  // the bend side — the sprung-lever landmark of every equine hind.
+  if (hind) {
+    const mx = (hipX + ex) / 2;
+    const my = (hipY + ey) / 2;
+    let ox = kx - mx;
+    let oy = ky - my;
+    const ol = Math.hypot(ox, oy) || 1e-4;
+    ox /= ol;
+    oy /= ol;
+    ctx.beginPath();
+    ctx.moveTo(kx + p2x * w * 0.42, ky + p2y * w * 0.42);
+    ctx.lineTo(kx + ox * w * 0.95, ky + oy * w * 0.95);
+    ctx.lineTo(kx - p2x * w * 0.42, ky - p2y * w * 0.42);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // The fetlock knot, in the sock tone — the ankle that lets the
+  // pastern spring. Feathered coats fringe it (the garron's shag).
+  ctx.fillStyle = C(shade(o.sock, -4));
+  ctx.beginPath();
+  ctx.arc(fkx, fky, w * 0.48, 0, Math.PI * 2);
+  ctx.fill();
+  if (o.feather && !o.hurt && s > 60) {
+    ctx.strokeStyle = C(shade(o.sock, 10));
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(1, w * 0.22);
+    for (const t of [-0.55, 0, 0.55]) {
+      ctx.beginPath();
+      ctx.moveTo(fkx + p2x * t * w * 0.5, fky + p2y * t * w * 0.5);
+      ctx.lineTo(
+        fkx + p2x * t * w * 0.72 - u2x / l2 * w * 0.1,
+        fky + p2y * t * w * 0.72 + Math.abs(u2y / l2) * w * 0.55 + w * 0.15,
+      );
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+
+  // The pastern: a short sprung wedge from the fetlock into the hoof
+  // block (the foot painter caps it — z-order already law).
+  ctx.fillStyle = C(o.sock);
+  ctx.beginPath();
+  ctx.moveTo(fkx + p2x * w * 0.42, fky + p2y * w * 0.42);
+  ctx.lineTo(ex + p2x * w * 0.36, ey + p2y * w * 0.36);
+  ctx.lineTo(ex - p2x * w * 0.36, ey - p2y * w * 0.36);
+  ctx.lineTo(fkx - p2x * w * 0.42, fky - p2y * w * 0.42);
+  ctx.closePath();
+  ctx.fill();
+
 }
 
 /**
@@ -23459,8 +23653,63 @@ export function drawBeast(
       });
       return;
     }
+    // THE SADDLE WEARS THE MUSCLE: the night sabercat is a prestige
+    // saddle beast — it runs the lynx lane's muscled limb, never the
+    // stick strokes (a harness over stroke legs read as a reskin).
+    if (sabercatL) {
+      drawCatLimb(ctx, {
+        hipX,
+        hipY,
+        kx,
+        ky,
+        ex,
+        ey,
+        w: spec.legW * s,
+        s,
+        hind: leg.fwd < 0,
+        coat: shade(sabercatL.coat, (((seed >>> 5) & 7) - 3) * 2),
+        champion: false,
+        far: (opts.feet[i]?.y ?? opts.y) < opts.y,
+        hurt: opts.hurt,
+      });
+      return;
+    }
 
     const paintShin = (): void => {
+      // THE EQUINE LIMB: the saddle horses never wear the stick
+      // strokes — gaskin/forearm over cannon, fetlock, pastern, with
+      // the horn-block hoof still capping the leg through paintFoot's
+      // own z-order. The upper leg wears the seed-jittered COAT (the
+      // barrel's exact tone); only the lower leg keeps the sock.
+      if (courserL) {
+        drawHorseLimb(ctx, {
+          hipX,
+          hipY,
+          kx,
+          ky,
+          ex,
+          ey,
+          w: spec.legW * s,
+          s,
+          hind: leg.fwd < 0,
+          coat: shade(courserL.coat, (((seed >>> 5) & 7) - 3) * 2),
+          sock: courserL.sock,
+          far: (opts.feet[i]?.y ?? opts.y) < opts.y,
+          hurt: opts.hurt,
+          feather: courserL.shaggy === true,
+          horiz: Math.abs(fx),
+          // The belly line at this hip: the barrel's chest height off
+          // the hip's own projected ground point, dipping with the
+          // gait bob at the belly's coupling — the same ride the hip
+          // takes, so the emergence line never parts from the box.
+          clipY:
+            by +
+            wy * s * ys -
+            (courserL.chestH - 0.02) * s -
+            opts.pose.bob * 0.35 * 0.6 * s,
+        });
+        return;
+      }
       ctx.lineCap = 'round';
       ctx.strokeStyle = tone(legColor);
       ctx.lineWidth = Math.max(2, spec.legW * s);
