@@ -1098,6 +1098,41 @@ const MIGRATIONS: string[] = [
   // across every respawn. NULL on elder rows: they keep dressing by
   // the spawned body's eid, exactly as they always did.
   `ALTER TABLE character_pets ADD COLUMN IF NOT EXISTS look_seed INTEGER;`,
+  // v44: THE COMPANY YOU KEEP (docs/companions-plan.md) — befriended
+  // companions leave the tamed-beast system entirely. Slot-addressed
+  // like the stalls (the (character, slot) pair IS the identity, so
+  // every write is a plain fire-and-forget upsert); `state` is the
+  // durable truth ('heel' | 'home'), the wire-only 'trailing' never
+  // lands here. Deliberately thin: no xp, no bond, no arts — company.
+  `
+  CREATE TABLE character_companions (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    slot SMALLINT NOT NULL,
+    species TEXT NOT NULL,
+    name TEXT NOT NULL,
+    state TEXT NOT NULL DEFAULT 'home',
+    look_seed INTEGER,
+    met_at BIGINT,
+    PRIMARY KEY (character_id, slot)
+  );
+  `,
+  // v45: the rescue — every cat tamed under the old docile lane walks
+  // out of the stalls and into the company, name and coat intact
+  // (met_at inherits the asking's date). Slots carry over verbatim:
+  // per-character pet slots were unique, so no collision can exist.
+  `
+  INSERT INTO character_companions (character_id, slot, species, name, state, look_seed, met_at)
+  SELECT character_id, slot, species, name,
+         CASE WHEN state = 'heel' THEN 'heel' ELSE 'home' END,
+         look_seed, tamed_at
+  FROM character_pets WHERE species = 'cat'
+  ON CONFLICT (character_id, slot) DO NOTHING;
+  `,
+  // v46: the freed stall — the cat rows leave character_pets so the
+  // beast household holds beasts only (and the stolen stall opens).
+  `
+  DELETE FROM character_pets WHERE species = 'cat';
+  `,
 ];
 
 /**

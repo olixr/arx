@@ -135,6 +135,16 @@ export interface EntityMeta {
    */
   stock?: boolean;
   /**
+   * THE COMPANY YOU KEEP (docs/companions-plan.md): a befriended
+   * companion — pure company, never a tamed beast. Rides beside
+   * ownerEid and is what tells the two lanes apart on the wire: a
+   * pet body wears the collar and answers the keeper arts; a company
+   * body wears nothing and answers only the hand. Additive-optional
+   * (the `stock` precedent): a client that ignores it merely draws
+   * the friend a collar it never asked for.
+   */
+  company?: boolean;
+  /**
    * THE COAT OUTLIVES THE BODY (the house cat, generalized to every
    * companion): a stable visual seed for this entity's procedural
    * look. Wild bodies dress off their eid and never carry this; a

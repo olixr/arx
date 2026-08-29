@@ -87,7 +87,7 @@ function slate(): Record<string, unknown> {
     tickCount: 1000,
     players: new Map(),
     positions: new Map(),
-    pets: new Map(),
+    pets: new Map(), companions: new Map(),
     livestock: new Map(),
     npcs: new Map(),
     healths: new Map(),

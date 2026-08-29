@@ -20,8 +20,10 @@ import { BossBanner } from './ui/bossBanner.js';
 import { ArenaBoard } from './ui/arenaBoard.js';
 import { ArenaHud, canWalkAway } from './ui/arenaHud.js';
 import { raiseHerald } from './ui/herald.js';
-import { CompanionPlaque } from './ui/companionPlaque.js';
-import { CompanionHall } from './ui/companionHall.js';
+import { BeastPlaque } from './ui/beastPlaque.js';
+import { BeastHall } from './ui/beastHall.js';
+import { CompanionsPanel } from './ui/companionsPanel.js';
+import { CompanionChip } from './ui/companionChip.js';
 import { Panels, SKILL_FACE, SKILL_STORY } from './ui/panels.js';
 import { showLevelUp } from './ui/levelToast.js';
 import { StationPanels, craftStationFace } from './ui/stationPanels.js';
@@ -116,6 +118,7 @@ const DOCK_BUTTONS = [
   ['btn-inventory', 'pack', 'Pack', 'screenPack', 'inv'],
   ['btn-skills', 'skills', 'Skills', 'screenSkills', 'skills'],
   ['btn-arts', 'arts', 'Techniques', 'screenArts', 'arts'],
+  ['btn-beasts', 'beast', 'Beasts', 'screenBeasts', 'beasts'],
   ['btn-companions', 'companion', 'Companions', 'screenCompanions', 'companions'],
   ['btn-craft', 'handiwork', 'Handiwork', 'screenCraft', 'craft'],
   ['btn-build', 'build', 'Build', 'screenBuild', 'build'],
@@ -1053,13 +1056,14 @@ function closeAllUi(): void {
   questLog.close();
   repScreen.close();
   keyRingPanel.close();
-  companionHall.close();
+  beastHall.close();
+  companionsPanel.close();
   arenaBoard.close();
   signHud.close();
 }
 
 function toggleScreen(
-  which: 'inv' | 'skills' | 'arts' | 'craft' | 'build' | 'audio' | 'loot' | 'social' | 'map' | 'quests' | 'rep' | 'keys' | 'companions',
+  which: 'inv' | 'skills' | 'arts' | 'craft' | 'build' | 'audio' | 'loot' | 'social' | 'map' | 'quests' | 'rep' | 'keys' | 'beasts' | 'companions',
 ): void {
   // A conversation owns the stage: no screen may open over it, from
   // any device — hotkeys, dock clicks, and pad shortcuts all pass
@@ -1088,9 +1092,11 @@ function toggleScreen(
                         ? repScreen.isOpen
                         : which === 'keys'
                           ? keyRingPanel.isOpen
-                          : which === 'companions'
-                            ? companionHall.isOpen
-                            : lootPanel.isOpen;
+                          : which === 'beasts'
+                            ? beastHall.isOpen
+                            : which === 'companions'
+                              ? companionsPanel.isOpen
+                              : lootPanel.isOpen;
   closeAllUi();
   if (wasOpen) return;
   switch (which) {
@@ -1128,8 +1134,11 @@ function toggleScreen(
     case 'keys':
       keyRingPanel.open();
       break;
+    case 'beasts':
+      beastHall.open(game);
+      break;
     case 'companions':
-      companionHall.open(game);
+      companionsPanel.open(game);
       break;
     case 'loot':
       if (game.nearbyLoot(2.4).length > 0) lootPanel.open();
@@ -1154,7 +1163,8 @@ function currentScreen(): (typeof SCREEN_ORDER)[number] | null {
   if (questLog.isOpen) return 'quests';
   if (repScreen.isOpen) return 'rep';
   if (keyRingPanel.isOpen) return 'keys';
-  if (companionHall.isOpen) return 'companions';
+  if (beastHall.isOpen) return 'beasts';
+  if (companionsPanel.isOpen) return 'companions';
   if (mapScreen.isOpen) return 'map';
   if (audioMenu.isOpen) return 'audio';
   return null;
@@ -1220,6 +1230,7 @@ function screenAction(id: ActionId): void {
     screenQuests: 'quests',
     screenRep: 'rep',
     screenKeys: 'keys',
+    screenBeasts: 'beasts',
     screenCompanions: 'companions',
     screenSettings: 'audio',
     screenLoot: 'loot',
@@ -1239,6 +1250,7 @@ document.getElementById('btn-map')!.addEventListener('click', () => toggleScreen
 document.getElementById('btn-quests')!.addEventListener('click', () => toggleScreen('quests'));
 document.getElementById('btn-rep')!.addEventListener('click', () => toggleScreen('rep'));
 document.getElementById('btn-keys')!.addEventListener('click', () => toggleScreen('keys'));
+document.getElementById('btn-beasts')!.addEventListener('click', () => toggleScreen('beasts'));
 document.getElementById('btn-companions')!.addEventListener('click', () => toggleScreen('companions'));
 
 function showLoginError(text: string): void {
@@ -2059,19 +2071,25 @@ const speech = new SpeechBubbles(game, renderer);
 const petNaming = new PetNamingCard();
 game.onPetCeremony = (slot, currentName) => {
   sfx.petBond();
-  petNaming.open(slot, currentName, (name) => game.petRename(slot, name));
+  petNaming.open(slot, currentName, (name) => game.petRename(slot, name), 'THE WILD AT HEEL');
+};
+// THE COMPANY YOU KEEP: a fresh befriending asks its name through
+// the same one card, under the company's own kicker.
+game.onCompanionCeremony = (slot, currentName) => {
+  sfx.petBond();
+  petNaming.open(slot, currentName, (name) => game.companionRename(slot, name));
 };
 // THE ANIMALS OF THE YARD: a fresh release asks its name through the
 // same one card — the yard and the heel share a naming law.
 game.onStockCeremony = (slot, species) => {
   sfx.petBond();
-  petNaming.open(slot, npcDef(species)?.name ?? species, (name) => game.stockRename(slot, name));
+  petNaming.open(slot, npcDef(species)?.name ?? species, (name) => game.stockRename(slot, name), 'A NEW CHARGE');
 };
 // THE THREE STALLS: the stable door's acts ride the wire; the rename
 // re-uses the naming card whole. The mirror re-renders the open panel.
 stationPanels.setStableHooks(
   (op, slot) => game.stableOp(op, slot),
-  (slot, current) => petNaming.open(slot, current, (name) => game.petRename(slot, name)),
+  (slot, current) => petNaming.open(slot, current, (name) => game.petRename(slot, name), 'THE WILD AT HEEL'),
 );
 // The companion's moments ride the mirror's state edges — the huff
 // when a friend goes down, the happy nip when it stands again. Event
@@ -2094,7 +2112,13 @@ game.onPet = () => {
     if (!game.ownPets.some((p) => p.slot === slot)) petStates.delete(slot);
   }
   stationPanels.refreshStable(game.ownPets);
-  companionHall.refresh(game);
+  beastHall.refresh(game);
+};
+// THE COMPANY YOU KEEP: the company mirror retells its own rooms —
+// the roster panel and the northwest chip, nothing of the beast lane.
+game.onCompanions = () => {
+  companionsPanel.refresh(game);
+  companionChip.update(game);
 };
 renderer.signHasText = (tx, ty) => {
   const sign = game.signAt(tx, ty);
@@ -2141,10 +2165,15 @@ dressPanel(el('bank-panel'), {
   hint: 'Tap pack items to deposit. Choose a socket here to take back.',
   onClose: () => stationPanels.closeAll(),
 });
-dressPanel(el('companion-panel'), {
+dressPanel(el('beast-panel'), {
+  icon: dockGlyphUrl('beast', 34),
+  hint: 'The beast told whole. Read its words and choose the three it holds in mind.',
+  onClose: () => beastHall.close(),
+});
+dressPanel(el('companions-panel'), {
   icon: dockGlyphUrl('companion', 34),
-  hint: 'The friend told whole. Read its words and choose the three it holds in mind.',
-  onClose: () => companionHall.close(),
+  hint: 'The friends who keep you company. Call one to your side, or let it wander.',
+  onClose: () => companionsPanel.close(),
 });
 dressPanel(el('stable-panel'), {
   icon: buildableIconUrl('beast_pen', 34) ?? itemIconUrl('egg', 34),
@@ -2205,12 +2234,23 @@ const arenaBoard = new ArenaBoard(game, {
 const arenaHud = new ArenaHud();
 // THE ONE CONTROL: the muster chip's walk-away rides the real verb.
 arenaHud.onLeave = () => game.arenaLeave();
-const companionPlaque = new CompanionPlaque();
-const companionHall = new CompanionHall();
-companionHall.onArts = (slot, arts) => game.petArts(slot, arts);
-companionPlaque.onPat = () => {
+const beastPlaque = new BeastPlaque();
+const beastHall = new BeastHall();
+beastHall.onArts = (slot, arts) => game.petArts(slot, arts);
+beastPlaque.onPat = () => {
   const petEid = game.ownPetEid();
   if (petEid !== null) game.interactNpc(petEid);
+};
+// THE COMPANY YOU KEEP: the roster room and the northwest chip — the
+// company's acts ride its own wire; the rename re-uses the one card.
+const companionsPanel = new CompanionsPanel();
+companionsPanel.onOp = (op, slot) => game.companionOp(op, slot);
+companionsPanel.onRename = (slot, current) =>
+  petNaming.open(slot, current, (name) => game.companionRename(slot, name));
+const companionChip = new CompanionChip();
+companionChip.onPat = () => {
+  const cEid = game.ownCompanionEid();
+  if (cEid !== null) game.interactNpc(cEid);
 };
 game.onTechniques = () => panels.setTechniques(game.techniques, game.earnedArts, game.lessons);
 game.onCallings = () => panels.setCallings(game.callings, game.callingRanks);
@@ -3071,6 +3111,7 @@ const KB_SCREEN_ACTIONS: readonly ActionId[] = [
   'screenQuests',
   'screenRep',
   'screenKeys',
+  'screenBeasts',
   'screenCompanions',
   'screenMap',
   'screenSettings',
@@ -3268,7 +3309,7 @@ canvas.addEventListener('mousedown', (e) => {
   // THE QUIET HEEL: the companion's body is its own button — a
   // deliberate click lands the hand on its flank (the server answers
   // pat, offer, or kneel). It never rides the proximity prompt.
-  const petHit = game.petAtTile(tx, ty);
+  const petHit = game.petAtTile(tx, ty) ?? game.companionAtTile(tx, ty);
   if (petHit !== null) {
     game.interactNpc(petHit);
     return;
@@ -3290,7 +3331,7 @@ setupTouch(input, game, renderer, canvas, (tx, ty) => {
   const dy = ty + 0.5 - pos.y;
   if (dx * dx + dy * dy > 2.2 * 2.2) return false;
   // THE QUIET HEEL: a tap on the companion is the pat (see mousedown).
-  const petTap = game.petAtTile(tx, ty);
+  const petTap = game.petAtTile(tx, ty) ?? game.companionAtTile(tx, ty);
   if (petTap !== null) {
     game.interactNpc(petTap);
     return true;
@@ -4261,7 +4302,8 @@ function frame(now: number): void {
   hotbar.update(game);
   belt.update(game);
   swapWell.update(game);
-  companionPlaque.update(game);
+  beastPlaque.update(game);
+  companionChip.update(game);
   bossBanner.update(game);
   arenaHud.update(game);
 

@@ -1286,15 +1286,10 @@ export function petRepertoireErrors(): string[] {
     seen.add(def.id);
     errs.push(...petArtErrors(def));
   }
-  // Every tamable species holds a shelf, and only tamable species do
-  // — except the docile company (the house cat), which by law fights
-  // nothing and therefore holds nothing: a shelf FOR a docile species
-  // is as much a defect as a missing one.
-  for (const [species, tame] of TAMES) {
-    if (tame.docile) {
-      if (PET_REPERTOIRE[species]) errs.push(`${species}: a docile friend holds no repertoire`);
-      continue;
-    }
+  // Every tamable species holds a shelf, and only tamable species do.
+  // (The docile exemption died with the docile lane: company lives in
+  // companions.ts now, whose own validator refuses it a shelf.)
+  for (const species of TAMES.keys()) {
     if (!PET_REPERTOIRE[species]) errs.push(`${species}: tamable but holds no repertoire`);
   }
   for (const species of Object.keys(PET_REPERTOIRE)) {

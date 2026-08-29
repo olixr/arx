@@ -74,7 +74,7 @@ function rosterEnvelope(level: number): { hp: number; fang: number; hide: number
   return { hp, fang, hide, stride };
 }
 
-export class CompanionHall {
+export class BeastHall {
   private readonly root: HTMLElement;
   private readonly rail: HTMLElement;
   private readonly standing: HTMLElement;
@@ -92,7 +92,7 @@ export class CompanionHall {
   onArts: ((slot: number, arts: string[]) => void) | null = null;
 
   constructor() {
-    this.root = document.getElementById('companion-panel')!;
+    this.root = document.getElementById('beast-panel')!;
     this.rail = document.getElementById('hall-rail')!;
     this.standing = document.getElementById('hall-standing')!;
     this.shelf = document.getElementById('hall-shelf')!;
@@ -149,7 +149,7 @@ export class CompanionHall {
       const empty = document.createElement('div');
       empty.className = 'hall-empty';
       empty.textContent =
-        'No companion yet walks beside you. The wild is wide, and a gentle hand opens it.';
+        'No beast yet walks beside you. The wild is wide, and a gentle hand opens it.';
       this.standing.appendChild(empty);
       this.ground.show(null);
       return;

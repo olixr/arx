@@ -473,6 +473,18 @@ export class Session {
         this.game.petArtsOp(this.playerEid, msg.slot, msg.arts);
         return;
       }
+      case 'companionop': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.companionOp(this.playerEid, msg.op, msg.slot);
+        return;
+      }
+      case 'companionname': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.companionRename(this.playerEid, msg.slot, msg.name);
+        return;
+      }
       case 'pickup': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

@@ -375,7 +375,7 @@ test('the swing and the scenery share ONE cone', () => {
       arcs.push(arcHalf),
     viewRewindTicks: () => 0,
     npcs: new Map(),
-    pets: new Map(),
+    pets: new Map(), companions: new Map(),
     chunks: new Map(),
     forEachNpcNear: proto.forEachNpcNear,
   };

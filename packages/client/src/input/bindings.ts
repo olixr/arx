@@ -50,6 +50,7 @@ export type ActionId =
   | 'screenRep'
   | 'screenSettings'
   | 'screenKeys'
+  | 'screenBeasts'
   | 'screenCompanions'
   | 'screenLoot'
   | 'mapGlass'
@@ -135,9 +136,13 @@ export const ACTIONS: readonly ActionDef[] = [
   // The letters ran out before the rooms did: the Key Ring hangs on
   // the semicolon, the home row's last free hook (rebindable as ever).
   { id: 'screenKeys', label: 'Key Ring', group: 'Screens', kb: ['Semicolon'], pad: [] },
-  // The stalls hang beside the key ring: the quote key, the home
-  // row's other last hook (rebindable as ever).
-  { id: 'screenCompanions', label: 'Companions', group: 'Screens', kb: ['Quote'], pad: [] },
+  // The beasts hang beside the key ring: the quote key, the home
+  // row's other last hook (rebindable as ever). Muscle memory holds:
+  // this key opened the pet menu before the company split from it.
+  { id: 'screenBeasts', label: 'Beasts', group: 'Screens', kb: ['Quote'], pad: [] },
+  // THE COMPANY YOU KEEP: the befriended friends' own room — the
+  // letters ran out long ago; the left bracket answers the door.
+  { id: 'screenCompanions', label: 'Companions', group: 'Screens', kb: ['BracketLeft'], pad: [] },
   { id: 'screenSettings', label: 'Settings', group: 'Screens', kb: ['KeyO'], pad: [] },
   { id: 'mapGlass', label: "Traveler's glass", group: 'Screens', kb: ['Tab'], pad: [15] },
 

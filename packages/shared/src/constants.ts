@@ -228,7 +228,20 @@
 // per-pile pickups) and an old client simply never sends them —
 // plainer answers to deliberate asks, not a wrong world; every gate
 // stays server-side either way.
-export const PROTOCOL_VERSION = 34;
+// v35 — THE COMPANY YOU KEEP (docs/companions-plan.md): the befriended
+// companion arrives as a system wholly apart from the tamed beast.
+// S2CCompanions mirrors the company roster, C2SCompanionOp and
+// C2SCompanionName work it, EntityMeta grows `company` (what tells
+// the two owned lanes apart on the wire), and the house cat leaves
+// the TAMES registry for the companion one. Strictly additive JSON —
+// and bumped anyway (the v26/v32 judgment): a v34 client still
+// carries the cat on its tame ladder, so it would badge wild cats as
+// courtable, watch the gentling refuse forever, and — having no ear
+// for the companions mirror — befriend a friend it can never see,
+// name, or call. A working befriending whose company silently never
+// appears reads as a broken system, not a missing nicety, so the
+// handshake keeps the shards honest.
+export const PROTOCOL_VERSION = 35;
 
 /** The most souls one party can hold. */
 export const PARTY_CAP = 10;

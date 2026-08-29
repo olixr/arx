@@ -65,7 +65,7 @@ import {
   type Vec2,
   isFishingTile,
 } from '@arx/shared';
-import { COMPOST_BATCH_WORTH, abilityDef, bandDy, enchantDef, instanceName, isCropTile, itemDef, npcDef, npcHitHeight, tameDef } from '@arx/content';
+import { COMPOST_BATCH_WORTH, abilityDef, bandDy, enchantDef, instanceName, isCropTile, itemDef, npcDef, npcHitHeight, tameDef, companionDef } from '@arx/content';
 import { farmApiaries, farmBins, farmJobs, farmPlots, farmTroughs, predictedGrade } from '../game/farmCare.js';
 import { shortestAngle } from '../net/interpolation.js';
 import type { ClientGame } from '../game/clientGame.js';
@@ -60574,14 +60574,18 @@ export class Renderer {
     s: { x: number; y: number; hpPct: number },
     seed: number,
   ): void {
-    if (!tameDef(defId)) return; // cheap gate before any game-state work
+    // Cheap gate before any game-state work — the courting badge for
+    // tamables, THE OFFERED HAND for companion bodies (same picture,
+    // its own truth source: befriending has no level state).
+    if (!tameDef(defId) && !companionDef(defId)) return;
     const game = this.game;
     if (!game || s.hpPct === 0) return;
     const pos = game.predictor.pos;
     const dx = s.x - pos.x;
     const dy = s.y - pos.y;
     if (dx * dx + dy * dy > Renderer.LURE_BADGE_RANGE * Renderer.LURE_BADGE_RANGE) return;
-    const badge = game.tameBadge(defId, meta.level, meta.ownerEid);
+    const badge =
+      game.tameBadge(defId, meta.level, meta.ownerEid) ?? game.befriendBadge(defId, meta.ownerEid);
     if (!badge) return;
 
     let img = this.lureIcons.get(badge.lure);
@@ -61468,7 +61472,7 @@ export class Renderer {
   private downedBeastItem(
     eid: number,
     defId: string,
-    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean; seed?: number },
+    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean; company?: boolean; seed?: number },
     s: { x: number; y: number; dir: number; hpPct: number; pose: number; status?: number },
     nameInk?: string,
   ): DrawItem {
@@ -61578,7 +61582,7 @@ export class Renderer {
   private npcItem(
     eid: number,
     defId: string,
-    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean; shorn?: boolean; seed?: number },
+    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean; company?: boolean; shorn?: boolean; seed?: number },
     s: { x: number; y: number; dir: number; hpPct: number; pose: number; status?: number },
     hurt: boolean,
     nameInk?: string,
@@ -62290,7 +62294,7 @@ export class Renderer {
           // the drover's tan halter — kept, never heeled, and the tag
           // stays on whether the keeper is online or not (the stock
           // marker is the durable fact; ownerEid comes and goes).
-          collar: meta.stock ? '#8a6234' : meta.ownerEid !== undefined ? '#6e4a26' : undefined,
+          collar: meta.stock ? '#8a6234' : meta.ownerEid !== undefined && !meta.company ? '#6e4a26' : undefined,
           tail: paintBob,
           ears: catEarSim ?? foxEarSim ?? crabEyeSim,
           shorn,
@@ -62563,7 +62567,7 @@ export class Renderer {
   private owlItem(
     eid: number,
     defId: string,
-    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean; seed?: number },
+    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean; company?: boolean; seed?: number },
     s: { x: number; y: number; dir: number; hpPct: number; pose: number; status?: number },
     hurt: boolean,
     nameInk?: string,
@@ -62631,7 +62635,7 @@ export class Renderer {
           nowMs: now,
           seed: lookSeed,
           // A companion wears the keeper's strap (the collar law).
-          collar: meta.stock ? '#8a6234' : meta.ownerEid !== undefined ? '#6e4a26' : undefined,
+          collar: meta.stock ? '#8a6234' : meta.ownerEid !== undefined && !meta.company ? '#6e4a26' : undefined,
         });
       },
       body: { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + 0.6 * scale },

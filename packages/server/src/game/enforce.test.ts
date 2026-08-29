@@ -75,7 +75,7 @@ function slate(opts: {
     tickCount: 100,
     players: new Map([[11, player]]),
     positions: new Map([[11, { x: 5, y: 5 }]]),
-    pets: new Map(),
+    pets: new Map(), companions: new Map(),
     livestock: new Map(),
     // THE WILD TAKES SIDES: the door now reads the npc roster for
     // NPC-shaped targets (kin peace) — empty here, players only.

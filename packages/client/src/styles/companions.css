@@ -1,0 +1,273 @@
+/**
+ * THE COMPANY YOU KEEP (docs/companions-plan.md) — the companions'
+ * room and the northwest company chip.
+ *
+ * The room is deliberately WARMER and SIMPLER than the Beasts hall
+ * beside it: no instruments, no ledgers, no proving ground — a rail
+ * of kept friends and one standing that reads like a hearthside
+ * introduction. The absence of machinery IS the design: the moment a
+ * player opens both rooms, the difference teaches the split.
+ */
+
+/* ------------------------------------------------------- the room */
+.screen-company {
+  width: min(52rem, 92vw);
+  height: min(36rem, 88vh);
+  display: grid;
+  grid-template-columns: 16rem minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: var(--sp-3);
+}
+/* The panel chrome (dressPanel's head and hint) spans both columns;
+   the ambient backdrop sits out of flow but is pinned whole anyway. */
+.screen-company > .kit-ambient {
+  grid-area: 1 / 1 / -1 / -1;
+}
+.screen-company > .panel-head,
+.screen-company > .panel-hint {
+  grid-column: 1 / -1;
+}
+#company-rail,
+#company-standing {
+  grid-row: 3;
+}
+
+/* The rail: one stop per kept friend, open places told softly. */
+#company-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  background: var(--sunk);
+  border-radius: var(--r-plate);
+  box-shadow: inset 0 0.125rem 0.25rem rgba(0, 0, 0, 0.4);
+}
+.company-stop {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  background: transparent;
+  border: var(--hairline) solid transparent;
+  border-radius: 2rem;
+  cursor: pointer;
+  color: var(--parchment-dim);
+  font: inherit;
+  text-align: left;
+}
+.company-stop.active {
+  background: var(--raise);
+  border-color: rgba(201, 164, 94, 0.45);
+  color: var(--parchment);
+  box-shadow: 0 0.125rem 0.375rem rgba(0, 0, 0, 0.35);
+}
+.company-stop-face {
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.company-stop-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+.company-stop-name {
+  font-family: var(--serif);
+  font-size: var(--t-label);
+  text-shadow: var(--punch-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.company-stop-sub {
+  font-size: var(--t-whisper);
+}
+.company-state-heel,
+.company-state-trailing {
+  color: var(--bond);
+}
+.company-state-home {
+  color: var(--parchment-dim);
+}
+.company-stop-empty {
+  justify-content: center;
+  min-height: 3.5rem;
+  border: var(--hairline) dashed rgba(222, 190, 128, 0.18);
+  border-radius: var(--r-plate);
+  color: var(--parchment-dim);
+  font-size: var(--t-whisper);
+  font-style: italic;
+  cursor: default;
+}
+
+/* ---------------------------------------------------- the standing */
+#company-standing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  min-height: 0;
+}
+.company-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+.company-portrait-well {
+  flex: none;
+  width: 7rem;
+  height: 7rem;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 0.1875rem solid rgba(201, 164, 94, 0.4);
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.45);
+}
+.company-portrait-well img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.company-names {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.company-name {
+  font-family: var(--serif);
+  font-size: var(--t-title);
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+}
+.company-kind {
+  font-size: var(--t-label);
+  color: var(--parchment-dim);
+}
+.company-tale {
+  font-size: var(--t-body);
+  color: var(--parchment-dim);
+  font-style: italic;
+  max-width: 30rem;
+}
+.company-journey {
+  font-size: var(--t-body);
+  color: var(--parchment);
+}
+.company-standing-state {
+  font-size: var(--t-body);
+}
+.company-acts {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+/* The empty room: the invitation, told concretely. */
+.company-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+}
+.company-empty-lede {
+  font-family: var(--serif);
+  font-size: var(--t-title);
+  color: var(--parchment);
+}
+.company-empty-how {
+  font-size: var(--t-body);
+  color: var(--parchment-dim);
+  max-width: 34rem;
+}
+.company-invites {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.company-invite {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--parchment);
+  font-size: var(--t-body);
+}
+.company-invite img {
+  width: 2rem;
+  height: 2rem;
+}
+
+/* ------------------------------------------- THE COMPANY CHIP ----
+   Third row of THE NORTHWEST COLUMN (hud.css): under the danger
+   gauge (order 0) and the beast plaque (order 1). Smaller than the
+   plaque on purpose — company carries no vigor, no level, no clocks.
+   No idle motion (THE QUIET CREST law). */
+/* The author display below beats the UA's [hidden] rule — restate
+   the law or an off-duty chip keeps standing in the column. */
+#companion-chip[hidden] {
+  display: none;
+}
+#companion-chip {
+  order: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.1875rem 0.625rem 0.1875rem 0.1875rem;
+  border: 0.0625rem solid rgba(222, 190, 128, 0.16);
+  border-radius: 2rem;
+  background: rgba(13, 10, 6, 0.66);
+  box-shadow: 0 0.125rem 0.3125rem rgba(6, 4, 2, 0.5);
+  font: inherit;
+  color: var(--parchment);
+  text-align: left;
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.cchip-medal {
+  position: relative;
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 0.09375rem solid rgba(201, 164, 94, 0.35);
+}
+.cchip-face {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.cchip-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+  min-width: 0;
+}
+.cchip-name {
+  font-family: var(--serif);
+  font-size: var(--t-whisper);
+  text-shadow: var(--punch-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 7rem;
+}
+.cchip-state {
+  font-size: var(--t-whisper);
+  color: var(--parchment-dim);
+}
+#companion-chip.state-trailing .cchip-state {
+  color: var(--bond);
+}
+#companion-chip:hover {
+  border-color: rgba(222, 190, 128, 0.3);
+}
+#companion-chip:active .cchip-medal {
+  transform: scale(0.94);
+}

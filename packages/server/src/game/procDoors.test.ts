@@ -68,7 +68,7 @@ test('a targeted hurt working with no foe in hand skips BEFORE the roll: no icd 
   const player = { gear: { procs: [targetedProc] }, procs: new Map() };
   const s = {
     tickCount: 100,
-    pets: new Map(),
+    pets: new Map(), companions: new Map(),
     livestock: new Map(), npcs: new Map(),
     bodyMoment: proto.bodyMoment,
     offerProc: proto.offerProc,
@@ -105,7 +105,7 @@ test('DoT pulses reach the hurt door with the burner in hand', () => {
     statuses: new Map([
       [5, [{ id: 'burn', power: 3, ticksLeft: BURN_TICK_EVERY * 4 + 1, sourceEid: 42 }]],
     ]),
-    pets: new Map(),
+    pets: new Map(), companions: new Map(),
     livestock: new Map(), npcs: new Map(),
     players: new Map([[5, { perks: { dotResistMult: 1 } }]]),
     damagePlayer: (eid: unknown, dmg: unknown, opts: { sourceEid?: number }) =>
@@ -203,7 +203,7 @@ function damageNpcSlate(hp: number) {
   const health = { hp, maxHp: 20 };
   const s = {
     tickCount: 50,
-    pets: new Map(),
+    pets: new Map(), companions: new Map(),
     livestock: new Map(), npcs: new Map([[9, npc]]),
     healths: new Map([[9, health]]),
     positions: new Map([
@@ -298,7 +298,7 @@ test('a live surge sharpens the basic shaft where it lands', () => {
       must: (id: number) => positions.get(id)!,
     }),
     players: new Map([[1, shooter]]),
-    pets: new Map(),
+    pets: new Map(), companions: new Map(),
     livestock: new Map(), npcs: new Map([[9, { def: { radius: 0.4 } }]]),
     summons: new Map(),
     chunks: new Map([['surface|0,0', new Set([9])]]),
@@ -343,7 +343,7 @@ test('chain per-jump fx carry the `<action>:<procId>` id, same as the closing br
   ]);
   const s = {
     positions,
-    pets: new Map(),
+    pets: new Map(), companions: new Map(),
     livestock: new Map(), npcs: new Map([
       [9, { def: { radius: 0.4 } }],
       [10, { def: { radius: 0.4 } }],

@@ -22,7 +22,14 @@ export class PetNamingCard {
     return this.root !== null;
   }
 
-  open(slot: number, currentName: string, submit: (name: string) => void): void {
+  open(
+    slot: number,
+    currentName: string,
+    submit: (name: string) => void,
+    // The card serves three ceremonies now (beast, yard, company) —
+    // the kicker names which. Default = the companion's own words.
+    kickerText = 'A NEW COMPANION',
+  ): void {
     this.close();
 
     const stage = document.createElement('div');
@@ -33,7 +40,7 @@ export class PetNamingCard {
 
     const kicker = document.createElement('div');
     kicker.className = 'petname-kicker';
-    kicker.textContent = 'A NEW COMPANION';
+    kicker.textContent = kickerText;
     card.appendChild(kicker);
 
     const lede = document.createElement('div');

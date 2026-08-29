@@ -1,5 +1,5 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
-import { isRarityTier, sanitizeLook, sanitizePetArts, type ItemRoll, type KeyLore, type Look, type PetState } from '@arx/shared';
+import { isRarityTier, sanitizeLook, sanitizePetArts, type CompanionState, type ItemRoll, type KeyLore, type Look, type PetState } from '@arx/shared';
 import type { Db } from './db.js';
 
 /**
@@ -34,6 +34,24 @@ export interface PetRow {
    * exactly as they always did).
    */
   lookSeed: number | null;
+}
+
+/**
+ * THE COMPANY YOU KEEP (docs/companions-plan.md): a befriended
+ * companion as the roster knows it. Deliberately thin beside PetRow —
+ * company has no xp, no bond, no arts, no convalescence. `slot` is
+ * 0..COMPANION_CAP-1; `state` is the durable truth ('heel' | 'home'),
+ * the wire-only 'trailing' never lands here.
+ */
+export interface CompanionRow {
+  slot: number;
+  species: string;
+  name: string;
+  state: CompanionState;
+  /** THE COAT OUTLIVES THE BODY — the wild body's look seed, captured at the befriending. */
+  lookSeed: number | null;
+  /** The befriending's date (ms), or null on rescued elder rows. */
+  metAt: number | null;
 }
 
 /** NULL-tolerant roll reader for legacy rows (pre-migration-11). */
@@ -2055,6 +2073,68 @@ export class AccountStore {
   /** The release. Phase 4 gives it its ceremony; the dev lever uses it today. */
   deletePet(characterId: number, slot: number): void {
     this.db.fire('DELETE FROM character_pets WHERE character_id = ? AND slot = ?', [
+      characterId,
+      slot,
+    ]);
+  }
+
+  // ---- THE COMPANY YOU KEEP (docs/companions-plan.md) --------------
+  // The companion roster's own accessors, wholly apart from the pet
+  // household above — the two systems share a naming sanitizer and
+  // nothing else.
+
+  async loadCompanions(characterId: number): Promise<CompanionRow[]> {
+    const rows = await this.db.query<{
+      slot: number;
+      species: string;
+      name: string;
+      state: string;
+      look_seed: number | null;
+      met_at: number | null;
+    }>(
+      'SELECT slot, species, name, state, look_seed, met_at FROM character_companions WHERE character_id = ? ORDER BY slot',
+      [characterId],
+    );
+    return rows.map((r) => ({
+      slot: Number(r.slot),
+      species: r.species,
+      name: r.name,
+      // An unknown state (a future word, an edited row) reads as
+      // safely home — never a phantom body at heel.
+      state: r.state === 'heel' ? 'heel' : 'home',
+      lookSeed: r.look_seed === null ? null : Number(r.look_seed),
+      metAt: r.met_at === null ? null : Number(r.met_at),
+    }));
+  }
+
+  /** The befriending ceremony's write: the full row, fired at the moment. */
+  saveCompanion(characterId: number, c: CompanionRow): void {
+    this.db.fire(
+      'INSERT INTO character_companions (character_id, slot, species, name, state, look_seed, met_at) VALUES (?, ?, ?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (character_id, slot) DO UPDATE SET species = excluded.species, name = excluded.name, state = excluded.state, look_seed = excluded.look_seed, met_at = excluded.met_at',
+      [characterId, c.slot, c.species, c.name, c.state, c.lookSeed, c.metAt],
+    );
+  }
+
+  saveCompanionName(characterId: number, slot: number, name: string): void {
+    this.db.fire('UPDATE character_companions SET name = ? WHERE character_id = ? AND slot = ?', [
+      name,
+      characterId,
+      slot,
+    ]);
+  }
+
+  saveCompanionState(characterId: number, slot: number, state: CompanionState): void {
+    this.db.fire('UPDATE character_companions SET state = ? WHERE character_id = ? AND slot = ?', [
+      state,
+      characterId,
+      slot,
+    ]);
+  }
+
+  /** The parting — final, like the release, and just as deliberate. */
+  deleteCompanion(characterId: number, slot: number): void {
+    this.db.fire('DELETE FROM character_companions WHERE character_id = ? AND slot = ?', [
       characterId,
       slot,
     ]);

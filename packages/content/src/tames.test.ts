@@ -138,7 +138,9 @@ test('BRACKET: the leash holds the ladder — beastcraft caps the climb', () => 
 });
 
 test('THE SPECIES SPEAK: the whole roster stands', () => {
-  assert.equal(TAME_DEFS.length, 20, 'entry trio through the worg capstone, the turtle keep, the razorback, the tide bulwark, the stone court pair, the hearth cat, and the red skulk among them');
+  // The hearth cat left the ladder for the companion registry
+  // (docs/companions-plan.md): company is befriended, never courted.
+  assert.equal(TAME_DEFS.length, 19, 'entry trio through the worg capstone, the turtle keep, the razorback, the tide bulwark, the stone court pair, and the red skulk among them');
 });
 
 test('THE RED SKULK ANSWERS: the fox courts on the henhouse story', () => {
@@ -150,7 +152,6 @@ test('THE RED SKULK ANSWERS: the fox courts on the henhouse story', () => {
   assert.equal(f!.lure, 'raw_chicken', 'the henhouse story, told back to it');
   assert.equal(f!.tameXp, 130, '30 + 10 x wild level 10');
   assert.equal(f!.kit, undefined, 'the nip and the ground are already its own');
-  assert.ok(!f!.docile, 'the skulk fights; only the hearth cat does not');
   // The vixen keeps the old decree — a matriarch is not a friend.
   assert.equal(tameDef('fox_champion'), undefined, 'the smokebrush vixen stays wild');
   assert.deepEqual(tameErrors(f!), []);

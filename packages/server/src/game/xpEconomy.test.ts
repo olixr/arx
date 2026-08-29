@@ -33,7 +33,7 @@ function markSlate(hp: number, xpReward: number) {
   const attacker = { lastCombatAt: 0, characterId: -1, buffs: [], equipment: {} };
   const s = {
     tickCount: 50,
-    pets: new Map(),
+    pets: new Map(), companions: new Map(),
     livestock: new Map(),
     npcs: new Map([[9, npc]]),
     healths: new Map([[9, health]]),

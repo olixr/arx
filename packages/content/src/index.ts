@@ -65,6 +65,7 @@ export * from './crownForge.js';
 export * from './npcLanes.js';
 export * from './mounts.js';
 export * from './tames.js';
+export * from './companions.js';
 export * from './petArts.js';
 export * from './actors/types.js';
 export * from './actors/validate.js';

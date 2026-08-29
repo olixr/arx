@@ -12,7 +12,7 @@
    motion — the crest moves only when something happens. Pressing it
    is still the pat (THE QUIET HEEL). */
 
-#companion-plaque {
+#beast-plaque {
   /* Second row of THE NORTHWEST COLUMN (hud.css): the corner seat
      belongs to the land's word; the friend rides just under it. */
   order: 1;
@@ -167,11 +167,11 @@
   box-shadow: inset 0 var(--hairline) 0 rgba(255, 236, 190, 0.4);
 }
 
-#companion-plaque[data-vigor='worn'] .comp-hp-fill {
+#beast-plaque[data-vigor='worn'] .comp-hp-fill {
   background: linear-gradient(180deg, var(--gold-bright) 0 52%, var(--gold-deep) 52% 100%);
 }
 
-#companion-plaque[data-vigor='dire'] .comp-hp-fill {
+#beast-plaque[data-vigor='dire'] .comp-hp-fill {
   background: linear-gradient(180deg, var(--red) 0 52%, var(--ember-deep) 52% 100%);
 }
 
@@ -189,15 +189,15 @@
   text-shadow: var(--punch-small);
 }
 
-#companion-plaque.state-downed .comp-name,
-#companion-plaque.state-resting .comp-name,
-#companion-plaque.state-trailing .comp-name {
+#beast-plaque.state-downed .comp-name,
+#beast-plaque.state-resting .comp-name,
+#beast-plaque.state-trailing .comp-name {
   display: none;
 }
 
-#companion-plaque.state-downed .comp-state,
-#companion-plaque.state-resting .comp-state,
-#companion-plaque.state-trailing .comp-state {
+#beast-plaque.state-downed .comp-state,
+#beast-plaque.state-resting .comp-state,
+#beast-plaque.state-trailing .comp-state {
   display: block;
 }
 
@@ -206,50 +206,50 @@
 /* Downed: the color drains from the face — grief, never a black
    hole; the crest carries a slow ember ring; the word turns to the
    wound. */
-#companion-plaque.state-downed .comp-face {
+#beast-plaque.state-downed .comp-face {
   filter: grayscale(0.9) brightness(0.78);
 }
 
-#companion-plaque.state-downed .comp-medal {
+#beast-plaque.state-downed .comp-medal {
   box-shadow: 0 0 0 0.125rem rgba(200, 72, 62, 0.65);
 }
 
-#companion-plaque.state-downed .comp-state {
+#beast-plaque.state-downed .comp-state {
   color: var(--red-soft);
 }
 
 /* Resting: cooled and quiet; the blue ring is the clock. */
-#companion-plaque.state-resting .comp-face {
+#beast-plaque.state-resting .comp-face {
   filter: saturate(0.55) brightness(0.82);
 }
 
-#companion-plaque.state-resting .comp-state {
+#beast-plaque.state-resting .comp-state {
   color: var(--blue);
 }
 
 /* Trailing: the friend is behind — a touch dimmer, nothing louder. */
-#companion-plaque.state-trailing .comp-face {
+#beast-plaque.state-trailing .comp-face {
   filter: brightness(0.82);
 }
 
 /* ---- the hand ---- */
 
-#companion-plaque:hover {
+#beast-plaque:hover {
   border-color: rgba(222, 190, 128, 0.32);
 }
 
-#companion-plaque:hover .comp-medal {
+#beast-plaque:hover .comp-medal {
   filter: brightness(1.08);
 }
 
-#companion-plaque:active {
+#beast-plaque:active {
   translate: 0 0.0625rem;
 }
 
 /* ---- motion (event moments only; idle is stillness) ---- */
 
 /* The downed ember ring pulses instead of standing still. */
-body:not(.no-ui-motion) #companion-plaque.state-downed .comp-medal {
+body:not(.no-ui-motion) #beast-plaque.state-downed .comp-medal {
   animation: comp-down-pulse 1.6s ease-in-out infinite;
 }
 
@@ -265,7 +265,7 @@ body:not(.no-ui-motion) #companion-plaque.state-downed .comp-medal {
 
 /* The reopened bond breathes gold on the ring, and the offered treat
    bobs once a breath — asking, never shouting. */
-body:not(.no-ui-motion) #companion-plaque.bond .comp-ring {
+body:not(.no-ui-motion) #beast-plaque.bond .comp-ring {
   animation: comp-bond-breathe 2.4s ease-in-out infinite;
 }
 
@@ -279,7 +279,7 @@ body:not(.no-ui-motion) #companion-plaque.bond .comp-ring {
   }
 }
 
-body:not(.no-ui-motion) #companion-plaque.bond .comp-offer {
+body:not(.no-ui-motion) #beast-plaque.bond .comp-offer {
   animation: comp-offer-bob 2.4s ease-in-out infinite;
 }
 
@@ -294,7 +294,7 @@ body:not(.no-ui-motion) #companion-plaque.bond .comp-offer {
 }
 
 /* The hurt jolt: one sharp flinch when blood is drawn. */
-body:not(.no-ui-motion) #companion-plaque.hurt {
+body:not(.no-ui-motion) #beast-plaque.hurt {
   animation: comp-hurt 0.3s ease-out;
 }
 
@@ -314,7 +314,7 @@ body:not(.no-ui-motion) #companion-plaque.hurt {
 }
 
 /* A dire wound keeps a slow warning breath on the fill. */
-body:not(.no-ui-motion) #companion-plaque[data-vigor='dire']:not(.state-downed) .comp-hp-fill {
+body:not(.no-ui-motion) #beast-plaque[data-vigor='dire']:not(.state-downed) .comp-hp-fill {
   animation: comp-dire-breathe 1.4s ease-in-out infinite;
 }
 

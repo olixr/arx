@@ -85,10 +85,10 @@ import {
   type DetailPatch,
   type Vec2,
 } from '@arx/shared';
-import { CROP_TILES, LIVESTOCK, MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SOIL_RICH, WORK_STATION_TILES, bandAtLeast, isCropTile, abilityDef, itemDef, movesetFor, npcDef, replaceGeography, strikePose, tameDef, techniquePoolDef, type FactionBand, type GeographyDef, type WorkStation } from '@arx/content';
+import { CROP_TILES, LIVESTOCK, MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SOIL_RICH, WORK_STATION_TILES, bandAtLeast, isCropTile, abilityDef, itemDef, movesetFor, npcDef, replaceGeography, strikePose, tameDef, companionDef, techniquePoolDef, type FactionBand, type GeographyDef, type WorkStation } from '@arx/content';
 import { clearFarmMirror, farmApiaries, farmBins, farmJobs, farmKey, farmPlots, farmTroughs, larderFills, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
-import { EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsShot, shutDoorTile, swingCooldown, moveFactorOfBits } from '@arx/shared';
-import type { AbilityDef, AbilitySlot, DangerAnchor, Look, PlaneWire } from '@arx/shared';
+import { COMPANION_CAP, EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsShot, shutDoorTile, swingCooldown, moveFactorOfBits } from '@arx/shared';
+import type { AbilityDef, AbilitySlot, CompanionInfo, DangerAnchor, Look, PlaneWire } from '@arx/shared';
 import type { S2CArenaBoard, S2CArenaState } from '@arx/shared';
 
 /**
@@ -702,6 +702,12 @@ export class ClientGame {
   onPet: (() => void) | null = null;
   /** Fires once per fresh tame: raise the naming card for this slot. */
   onPetCeremony: ((slot: number, currentName: string) => void) | null = null;
+  /** THE COMPANY YOU KEEP: the company mirror — every befriended friend. */
+  ownCompanions: CompanionInfo[] = [];
+  /** Fires when the company changes (panel / chip refresh). */
+  onCompanions: (() => void) | null = null;
+  /** Fires once per fresh befriending: raise the naming card for this slot. */
+  onCompanionCeremony: ((slot: number, currentName: string) => void) | null = null;
   /** Fires when the local player commits a cast (FX + audio hooks). */
   onCastFx: ((slot: AbilitySlot, ab: AbilityDef) => void) | null = null;
   /**
@@ -2419,6 +2425,18 @@ export class ClientGame {
         this.onPet?.();
         break;
       }
+      case 'companions': {
+        // THE COMPANY YOU KEEP: the company's own mirror — never
+        // folded into the pet lane above, so neither system can jog
+        // the other's elbow.
+        this.ownCompanions = msg.companions;
+        if (msg.ceremony !== undefined) {
+          const fresh = msg.companions.find((c) => c.slot === msg.ceremony);
+          this.onCompanionCeremony?.(msg.ceremony, fresh?.name ?? '');
+        }
+        this.onCompanions?.();
+        break;
+      }
       case 'time': {
         this.timeOfs = msg.ofs;
         break;
@@ -3192,21 +3210,30 @@ export class ClientGame {
       // neutrals — the guard you COULD strike would rather chat. A
       // crouched hand asks a different question (factions Phase 5):
       // the same press is the pickpocket verb, and the prompt says so.
+      // THE COMPANY YOU KEEP: your own befriended companion takes no
+      // prompt at all (the pat is a deliberate click, and it has no
+      // tend and no bond clock to offer) — and a WILD companion body
+      // offers the befriending itself: the treat by hand IS the
+      // interact, so the verb teaches the door exists.
       const verb = remote.meta.stock
         ? (LIVESTOCK.get(def?.id ?? '')?.produce.verb ?? 'Tend')
         : owned
-        ? latest != null && latest.hpPct === 0
-          ? 'Tend'
-          : this.petOfferReady()
-            ? 'Offer'
-            : null
-        : def?.produce
-          ? 'Milk'
-          : remote.meta.talk || remote.meta.friendly
-            ? this.isSneaking
-              ? 'Pickpocket'
-              : 'Talk'
-            : null;
+        ? remote.meta.company
+          ? null
+          : latest != null && latest.hpPct === 0
+            ? 'Tend'
+            : this.petOfferReady()
+              ? 'Offer'
+              : null
+        : def && companionDef(def.id) && (latest == null || latest.hpPct > 0)
+          ? 'Befriend'
+          : def?.produce
+            ? 'Milk'
+            : remote.meta.talk || remote.meta.friendly
+              ? this.isSneaking
+                ? 'Pickpocket'
+                : 'Talk'
+              : null;
       if (!verb) continue;
       const x = latest?.x ?? remote.meta.x;
       const y = latest?.y ?? remote.meta.y;
@@ -3291,20 +3318,72 @@ export class ClientGame {
     return Date.now() >= (this.petBondReadyAt.get(slot) ?? 0);
   }
 
-  /** The walking companion's live body, if it is spawned right now. */
+  /**
+   * THE OFFERED HAND — the overhead treat badge's one truth source
+   * (the tameBadge law, spoken for company): a wild companion body
+   * wears the very morsel it wants, green-checked when the treat is
+   * packed and a place stands open, red-crossed when the treat is
+   * missing. No level state exists — the befriending has no ladder.
+   */
+  befriendBadge(
+    defId: string,
+    ownerEid: number | undefined,
+  ): { lure: string; state: 'ready' | 'lure' } | null {
+    if (ownerEid !== undefined) return null; // already somebody's friend
+    const cd = companionDef(defId);
+    if (!cd) return null;
+    const packed = this.inventory.some((sl) => sl !== null && sl.item === cd.treat && sl.qty > 0);
+    const room = this.ownCompanions.length < COMPANION_CAP;
+    return { lure: cd.treat, state: packed && room ? 'ready' : 'lure' };
+  }
+
+  /** The walking beast's live body, if it is spawned right now.
+   *  (A befriended companion also wears my ownerEid — the `company`
+   *  mark is what keeps the two heels from answering for each other.) */
   ownPetEid(): EntityId | null {
     for (const [eid, remote] of this.entities) {
-      if (remote.meta.kind === EntityKind.Npc && remote.meta.ownerEid === this.ownEid) return eid;
+      if (
+        remote.meta.kind === EntityKind.Npc &&
+        remote.meta.ownerEid === this.ownEid &&
+        !remote.meta.company
+      ) {
+        return eid;
+      }
+    }
+    return null;
+  }
+
+  /** THE COMPANY YOU KEEP: the afield companion's live body, if any. */
+  ownCompanionEid(): EntityId | null {
+    for (const [eid, remote] of this.entities) {
+      if (
+        remote.meta.kind === EntityKind.Npc &&
+        remote.meta.ownerEid === this.ownEid &&
+        remote.meta.company
+      ) {
+        return eid;
+      }
     }
     return null;
   }
 
   /**
-   * Your own companion near this tile's center — the deliberate pat
+   * Your own companion (befriended) near this tile's center — the
+   * same deliberate pat channel as the beast below.
+   */
+  companionAtTile(tx: number, ty: number): EntityId | null {
+    return this.friendAtTile(this.ownCompanionEid(), tx, ty);
+  }
+
+  /**
+   * Your own beast near this tile's center — the deliberate pat
    * channel (THE QUIET HEEL: the body is the button, not the prompt).
    */
   petAtTile(tx: number, ty: number): EntityId | null {
-    const eid = this.ownPetEid();
+    return this.friendAtTile(this.ownPetEid(), tx, ty);
+  }
+
+  private friendAtTile(eid: EntityId | null, tx: number, ty: number): EntityId | null {
     if (eid === null) return null;
     const remote = this.entities.get(eid);
     if (!remote) return null;
@@ -3490,6 +3569,16 @@ export class ClientGame {
    *  server re-proves repertoire, budget, and the fight gate aloud. */
   petArts(slot: number, arts: string[]): void {
     this.conn?.send({ t: 'petarts', slot, arts });
+  }
+
+  /** THE COMPANY YOU KEEP: a company-roster act — honored anywhere. */
+  companionOp(op: 'heel' | 'home' | 'part', slot: number): void {
+    this.conn?.send({ t: 'companionop', op, slot });
+  }
+
+  /** Name (or rename) a kept companion — the server judges. */
+  companionRename(slot: number, name: string): void {
+    this.conn?.send({ t: 'companionname', slot, name });
   }
 
   /** Advance the current dialogue beat (the server owns the walk). */

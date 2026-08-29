@@ -10092,12 +10092,56 @@ type DockGlyphPainter = (c: CanvasRenderingContext2D) => void;
 /** The one ink every dock sigil is engraved in. */
 const GLYPH_INK = '#d8c08c';
 
-export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack' | 'map' | 'quest' | 'rep' | 'keys' | 'companion';
+export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack' | 'map' | 'quest' | 'rep' | 'keys' | 'beast' | 'companion';
 
 const DOCK_GLYPHS: Record<DockGlyph, DockGlyphPainter> = {
-  // The companion's hall: a pawprint over the collar's own band —
-  // the friend at heel, worn at the belt like everything you keep.
+  // THE COMPANY YOU KEEP: the cat's own sigil — the round skull, two
+  // high ear blades (a cat from behind must read as TWO ears — the
+  // hearth law, engraved), and the whisker strokes. No collar band
+  // anywhere on it: company is never collared, and the glyph pair
+  // teaches the split at a glance (collar = beast, whiskers = friend).
   companion: (c) => {
+    c.lineWidth = 0.06;
+    // The skull: a round head seated low in the frame.
+    c.beginPath();
+    c.arc(0.5, 0.58, 0.24, 0, Math.PI * 2);
+    c.stroke();
+    // Two ear blades rooted HIGH on the crown, tips flared outward.
+    c.beginPath();
+    c.moveTo(0.32, 0.42);
+    c.lineTo(0.26, 0.16);
+    c.lineTo(0.46, 0.35);
+    c.moveTo(0.68, 0.42);
+    c.lineTo(0.74, 0.16);
+    c.lineTo(0.54, 0.35);
+    c.stroke();
+    // The vertical pupils: the one canid-proof stroke pair — nothing
+    // else in the dock reads feline from across the room.
+    c.beginPath();
+    c.moveTo(0.42, 0.5);
+    c.lineTo(0.42, 0.58);
+    c.moveTo(0.58, 0.5);
+    c.lineTo(0.58, 0.58);
+    c.stroke();
+    // The whiskers: three strokes a side, rooted at the cheek rim and
+    // fanned outward — they clear the skull, never hatch across it.
+    c.lineWidth = 0.045;
+    c.beginPath();
+    for (const [y, dy] of [
+      [0.6, -0.05],
+      [0.66, 0],
+      [0.72, 0.05],
+    ] as const) {
+      c.moveTo(0.28, y);
+      c.lineTo(0.08, y + dy);
+      c.moveTo(0.72, y);
+      c.lineTo(0.92, y + dy);
+    }
+    c.stroke();
+  },
+  // The beast hall: a pawprint over the collar's own band — the
+  // tamed friend at heel, worn at the belt like everything you keep.
+  beast: (c) => {
     c.lineWidth = 0.06;
     // The main pad: a wide bean, printed.
     c.beginPath();

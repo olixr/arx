@@ -80,6 +80,13 @@ import {
   petFollowSpeed,
   petLevelFor,
   sanitizePetName,
+  COMPANION_CAP,
+  COMPANION_TRAIL_OUT,
+  COMPANION_CATCHUP_DIST,
+  COMPANION_CALM_SPEED,
+  COMPANION_CALM_TICKS,
+  companionFollowSpeed,
+  type CompanionInfo,
   type PetInfo,
   type EntityId,
   type EntityMeta,
@@ -254,6 +261,8 @@ import {
   techniquePoolDef,
   techniquesFor,
   tameDef,
+  companionDef,
+  COMPANIONS,
   petArtDef,
   repertoireFor,
   petPassiveBundle,
@@ -661,7 +670,7 @@ import {
 } from '@arx/shared';
 import { config } from '../config.js';
 import { Session, sanitizeName } from '../net/session.js';
-import type { AccountStore, CharacterRow, PetRow } from '../db/accounts.js';
+import type { AccountStore, CharacterRow, CompanionRow, PetRow } from '../db/accounts.js';
 import type { WorldSource } from '../world/worldSource.js';
 import type { Planes } from '../world/planes.js';
 import { DUNGEON_ORIGIN, generateDungeon } from '../dungeon/generate.js';
@@ -1447,6 +1456,23 @@ interface SummonComp {
 }
 
 /**
+ * THE COMPANY YOU KEEP (docs/companions-plan.md): a befriended
+ * companion at heel — pure company on an ordinary NpcComp body, run
+ * by tickCompanion (follow only: no perception, no fight, no fall).
+ * Truth lives on the keeper's PlayerComp.companions row; this
+ * component only points home. Wholly apart from PetComp below —
+ * combat rails, keeper arts, and the stalls know nothing of it, by
+ * construction.
+ */
+interface CompanionComp {
+  ownerEid: EntityId;
+  /** Which roster row (PlayerComp.companions slot) this body embodies. */
+  slot: number;
+  /** Ticks of no follow progress while far — the give-up-to-trailing watchdog. */
+  stuckTicks: number;
+}
+
+/**
  * THE SECOND BODY IS EARNED (beastcraft v2, docs/beastcraft-plan.md):
  * a tamed companion — the game's only player-owned second entity. It
  * wears an ordinary NpcComp body on the shipped snapshot/nav rails,
@@ -2123,6 +2149,20 @@ interface PlayerComp {
    *  on purpose: a relogin forgiving a snack timer harms nothing. */
   petBondAt: Map<number, number>;
   /**
+   * THE COMPANY YOU KEEP (docs/companions-plan.md): the befriended
+   * roster, slots 0..COMPANION_CAP-1 — a system wholly apart from
+   * `pets` above. At most one row carries state 'heel', and that one
+   * may own a live body below; a companion walks BESIDE a tamed
+   * beast, never instead of one.
+   */
+  companions: CompanionRow[];
+  /** The heel companion's live entity, or null (home, or trailing). */
+  companionEid: EntityId | null;
+  /** Consecutive calm ticks — a trailing companion re-emerges on a full second. */
+  companionCalmTicks: number;
+  /** Last mirrored company signature — resend only on change (the ride discipline). */
+  companionSigSent: string;
+  /**
    * Weapons stowed on the body (the H toggle) — blades at the hip,
    * bow/staff across the back. While stowed, attacks and casts are
    * SUPPRESSED (the roleplay safety): a combat press draws the weapon
@@ -2665,6 +2705,9 @@ export class GameServer {
   readonly summons = this.ecs.register<SummonComp>();
   /** Tamed companions at heel — the pointer home; rows on PlayerComp.pets. */
   readonly pets = this.ecs.register<PetComp>();
+  /** THE COMPANY YOU KEEP: befriended companions at heel — the pointer
+   *  home; rows on PlayerComp.companions. Never in `pets`, ever. */
+  readonly companions = this.ecs.register<CompanionComp>();
   /** Gravestones raised where a pack spilled — world dressing on the
    *  Prop lane, living exactly as long as the spill's quarter hour. */
   readonly graves = this.ecs.register<GraveComp>();
@@ -4264,6 +4307,12 @@ export class GameServer {
       petHpWatch: -1,
       petXpDirty: false,
       petBondAt: new Map(),
+      // THE COMPANY YOU KEEP: the roster returns with the character;
+      // the heel-state row takes its body once the entity stands.
+      companions: character.id > 0 ? await this.accounts.loadCompanions(character.id) : [],
+      companionEid: null,
+      companionCalmTicks: 0,
+      companionSigSent: '',
       sheathed: false,
       drawLockUntilSeq: 0,
       drawLockUntilTick: 0,
@@ -4323,6 +4372,8 @@ export class GameServer {
     this.bindSession(session, eid);
     // The heel companion arrives with its keeper — same doorstep.
     this.trySpawnPet(eid, this.players.must(eid));
+    // ...and the company arrives beside it (its own lane, same law).
+    this.trySpawnCompanion(eid, this.players.must(eid));
     this.systemChatAll(`${character.name} has joined the world.`);
     // A true arrival (reconnects within grace rebind without passing
     // here) — tell online friends, and surface any waiting asks.
@@ -4364,6 +4415,8 @@ export class GameServer {
     player.rideSigSent = '';
     // Same law for the household mirror.
     player.petSigSent = '';
+    // ...and the company's.
+    player.companionSigSent = '';
     player.inputQueue.length = 0;
     // A fresh client restarts its input numbering from 1 — accepting the
     // old high-water mark would silently drop all of its movement.
@@ -4433,6 +4486,7 @@ export class GameServer {
     // are evented now — no per-tick sweep will catch a fresh socket).
     this.sendRide(player);
     this.sendPet(player);
+    this.sendCompanions(player);
     session.sendJson(this.callingsMessage(player));
     session.sendJson({ t: 'time', ofs: this.timeOfsTicks });
     this.sendCooldowns(player);
@@ -4581,6 +4635,8 @@ export class GameServer {
       this.petLimpsHome(player);
     }
     this.despawnPetEntity(player);
+    // The company's visit ends the same way — the row remembers.
+    this.despawnCompanionEntity(player);
     this.removeFromChunks(eid);
     this.ecs.destroy(eid);
     this.systemChatAll(`${player.name} has left the world.`);
@@ -13056,6 +13112,16 @@ export class GameServer {
         pet.target = null;
         this.updateChunkMembership(petEid);
       }
+      // The company crosses the same threshold (no fight to leave).
+      for (const [cEid, comp] of this.companions.entries()) {
+        if (comp.ownerEid !== eid) continue;
+        const cPos = this.positions.get(cEid);
+        if (!cPos) continue;
+        cPos.x = x - 0.6;
+        cPos.y = y + 0.8;
+        cPos.plane = plane;
+        this.updateChunkMembership(cEid);
+      }
     }
     const session = player?.session;
     if (session) {
@@ -13495,7 +13561,7 @@ export class GameServer {
     // the one exception: a friend follows its keeper, never the rubble.
     const strays: EntityId[] = [];
     for (const [neid] of this.npcs) {
-      if (this.pets.has(neid)) continue;
+      if (this.pets.has(neid) || this.companions.has(neid)) continue;
       const npos = this.positions.get(neid);
       if (!npos || npos.plane !== dungeon.plane) continue;
       strays.push(neid);
@@ -15994,6 +16060,26 @@ export class GameServer {
     const npc = this.npcs.get(targetEid);
     if (!npc) return;
 
+    // THE COMPANY YOU KEEP: your own companion answers the hand in
+    // its species' own words; someone else's keeps its counsel.
+    const compComp = this.companions.get(targetEid);
+    if (compComp) {
+      if (compComp.ownerEid !== eid) return;
+      const row = player.companions.find((c) => c.slot === compComp.slot);
+      if (!row) return;
+      const cdef = companionDef(row.species);
+      sys(`${row.name} ${cdef?.pat ?? 'leans into your hand.'}`);
+      return;
+    }
+
+    // A wild companion body: the befriending IS the interact — a
+    // treat, offered by hand, no rung and no cast (companions never
+    // ride the beastcraft rail, by design).
+    if (companionDef(npc.def.id) && !this.livestock.has(targetEid) && !this.actors.has(targetEid)) {
+      this.tryBefriend(eid, player, targetEid, npc);
+      return;
+    }
+
     // Your own companion: the tend when it is down, the bond moment
     // when you carry its lure, a hand on its flank otherwise.
     // Someone else's beast keeps its counsel.
@@ -16225,12 +16311,24 @@ export class GameServer {
     const range = ab.range ?? 5;
     let best: { eid: EntityId; npc: NpcComp; x: number; y: number } | null = null;
     let bestD = Infinity;
+    // THE WRONG DOOR TEACHES THE RIGHT ONE: a companion body in the
+    // cone (the town cat) is not a tame mark, but the refusal should
+    // say so — the gentling aimed at company is a player who does not
+    // yet know the two systems are different.
+    let companySeen: NpcComp | null = null;
     for (const [npcEid, npc] of this.npcs) {
-      if (this.pets.has(npcEid) || this.actors.has(npcEid)) continue;
+      if (this.pets.has(npcEid) || this.companions.has(npcEid) || this.actors.has(npcEid)) continue;
       // THE SAND AND THE ROAR: the sand's bodies are not for courting
       // — a tamed wave body would leave the round without a fall and
       // wedge the card open until the backstop (the audit's find).
       if (npc.arenaMatch !== undefined) continue;
+      if (companionDef(npc.def.id)) {
+        const cpos = this.positions.get(npcEid);
+        if (cpos && cpos.plane === pos.plane && Math.hypot(cpos.x - pos.x, cpos.y - pos.y) <= range) {
+          companySeen = npc;
+        }
+        continue;
+      }
       if (!tameDef(npc.def.id)) continue;
       const npos = this.positions.get(npcEid);
       if (!npos || npos.plane !== pos.plane) continue;
@@ -16247,7 +16345,13 @@ export class GameServer {
       }
     }
     if (!best) {
-      sys('Nothing wild in reach answers the call.');
+      if (companySeen) {
+        const treat = companionDef(companySeen.def.id)?.treat;
+        const treatName = treat ? (itemDef(treat)?.name.toLowerCase() ?? treat) : 'a morsel';
+        sys(`The ${companySeen.def.name.toLowerCase()} is nobody's beast to gentle. Offer it ${treatName === 'a morsel' ? treatName : `a ${treatName}`} by hand instead.`);
+      } else {
+        sys('Nothing wild in reach answers the call.');
+      }
       this.sendCooldowns(player); // THE HONEST REFUSAL: take back the optimistic pay
       return;
     }
@@ -16559,7 +16663,7 @@ export class GameServer {
     let best: { eid: EntityId; npc: NpcComp; x: number; y: number } | null = null;
     let bestD = Infinity;
     for (const [npcEid, npc] of this.npcs) {
-      if (this.pets.has(npcEid) || this.actors.has(npcEid)) continue;
+      if (this.pets.has(npcEid) || this.companions.has(npcEid) || this.actors.has(npcEid)) continue;
       if (!isWildBeast(npc.def)) continue;
       if ((this.healths.get(npcEid)?.hp ?? 0) <= 0) continue;
       const npos = this.positions.get(npcEid);
@@ -16617,7 +16721,7 @@ export class GameServer {
       const spread = ab.radius ?? 0;
       if (spread > 0) {
         for (const [oEid, other] of this.npcs) {
-          if (oEid === best.eid || this.pets.has(oEid) || this.actors.has(oEid)) continue;
+          if (oEid === best.eid || this.pets.has(oEid) || this.companions.has(oEid) || this.actors.has(oEid)) continue;
           if (!isWildBeast(other.def) || isBeastSovereign(other.def)) continue;
           const opos = this.positions.get(oEid);
           if (!opos || opos.plane !== pos.plane) continue;
@@ -16636,7 +16740,7 @@ export class GameServer {
       const radius = ab.radius ?? 7;
       const ears: Array<{ eid: EntityId; npc: NpcComp }> = [];
       for (const [npcEid, npc] of this.npcs) {
-        if (this.pets.has(npcEid) || this.actors.has(npcEid)) continue;
+        if (this.pets.has(npcEid) || this.companions.has(npcEid) || this.actors.has(npcEid)) continue;
         if (!isWildBeast(npc.def) || isBeastSovereign(npc.def)) continue;
         if ((this.healths.get(npcEid)?.hp ?? 0) <= 0) continue;
         const npos = this.positions.get(npcEid);
@@ -16754,22 +16858,14 @@ export class GameServer {
           this.sendCooldowns(player);
           return;
         }
-        // THE COMPANY THAT KEEPS NO FANG: pointing the fang at a
-        // docile friend is asking the wrong animal. Refused aloud,
-        // no cost paid.
-        {
-          const fangNpc = this.npcs.get(petEid);
-          if (fangNpc && tameDef(fangNpc.def.id)?.docile) {
-            sys(`${fangNpc.def.name === 'Cat' ? 'The cat' : 'Your friend'} looks where you point, then back at you.`);
-            this.sendCooldowns(player);
-            return;
-          }
-        }
+        // (The docile refusal that lived here died with the docile
+        // lane: company is not a pet any more, so no pointing art can
+        // ever reach it — docs/companions-plan.md.)
         const range = ab.range ?? 7;
         let mark: { eid: EntityId; npc: NpcComp; x: number; y: number } | null = null;
         let bestD = Infinity;
         for (const [npcEid, npc] of this.npcs) {
-          if (this.pets.has(npcEid) || this.actors.has(npcEid)) continue;
+          if (this.pets.has(npcEid) || this.companions.has(npcEid) || this.actors.has(npcEid)) continue;
           if ((this.healths.get(npcEid)?.hp ?? 0) <= 0) continue;
           const npos = this.positions.get(npcEid);
           if (!npos || npos.plane !== pos.plane) continue;
@@ -16814,7 +16910,7 @@ export class GameServer {
         const dare = ab.radius ?? 0;
         if (dare > 0) {
           for (const [oEid, other] of this.npcs) {
-            if (oEid === mark.eid || this.pets.has(oEid) || this.actors.has(oEid)) continue;
+            if (oEid === mark.eid || this.pets.has(oEid) || this.companions.has(oEid) || this.actors.has(oEid)) continue;
             if (other.def.damage <= 0 || (this.healths.get(oEid)?.hp ?? 0) <= 0) continue;
             const opos = this.positions.get(oEid);
             if (!opos || Math.hypot(opos.x - mark.x, opos.y - mark.y) > dare) continue;
@@ -17265,13 +17361,9 @@ export class GameServer {
    */
   private petDefend(ownerEid: EntityId, owner: PlayerComp, mobEid: EntityId, urgent = false): void {
     if (!owner.petEid) return;
-    // THE COMPANY THAT KEEPS NO FANG: a docile friend defends nobody
-    // — this is the ONE door into a companion's fight, and for the
-    // house cat it stays shut forever.
-    {
-      const petNpc = this.npcs.get(owner.petEid);
-      if (petNpc && tameDef(petNpc.def.id)?.docile) return;
-    }
+    // (THE COMPANY THAT KEEPS NO FANG became structure: a befriended
+    // companion is not a pet, so this door — like every combat door —
+    // simply cannot see it. docs/companions-plan.md.)
     // THE ASKING HOLDS THE FANG: while the keeper channels a tame, the
     // very beast being courted draws keeper blood — the companion must
     // hold back from the channel's own mark, or it would break every
@@ -17289,7 +17381,7 @@ export class GameServer {
     ) {
       return; // one mark at a time; only the keeper's blood re-aims
     }
-    if (!this.npcs.has(mobEid) || this.pets.has(mobEid)) return;
+    if (!this.npcs.has(mobEid) || this.pets.has(mobEid) || this.companions.has(mobEid)) return;
     if (this.actors.has(mobEid)) return;
     const hp = this.healths.get(mobEid);
     if (!hp || hp.hp <= 0) return;
@@ -17403,7 +17495,7 @@ export class GameServer {
    * another keeper's friend, never the dead.
    */
   private petLegalMark(eid: EntityId): boolean {
-    if (!this.npcs.has(eid) || this.pets.has(eid) || this.actors.has(eid)) return false;
+    if (!this.npcs.has(eid) || this.pets.has(eid) || this.companions.has(eid) || this.actors.has(eid)) return false;
     return (this.healths.get(eid)?.hp ?? 0) > 0;
   }
 
@@ -17599,6 +17691,7 @@ export class GameServer {
               !isBeastSovereign(m.def) &&
               m.def.level < level &&
               !this.pets.has(mEid) &&
+              !this.companions.has(mEid) &&
               !this.actors.has(mEid)
             ) {
               this.becalmNpc(mEid, m, ab.becalmTicks);
@@ -18418,6 +18511,343 @@ export class GameServer {
     if (player.characterId > 0) this.accounts.deletePet(player.characterId, slot);
     this.sendPet(player);
     sys(`You slip the collar. ${row.name} looks back once, and the wild takes it home.`);
+  }
+
+  // ------------------- THE COMPANY YOU KEEP (docs/companions-plan.md)
+  // The befriended companion's whole system, wholly apart from the
+  // tamed beast above: no beastcraft, no stalls, no combat rails, no
+  // fall. A companion is befriended by hand (the treat, offered to a
+  // wild body), kept on its own roster, and walks BESIDE a tamed
+  // beast — the two heels never compete.
+
+  /**
+   * Stand the heel companion beside its keeper (or exactly where it
+   * was befriended). Safe no-op when a body already stands or nothing
+   * is at heel — every arrival path may call it blind (the
+   * trySpawnPet law, held separately).
+   */
+  private trySpawnCompanion(eid: EntityId, player: PlayerComp, at?: { x: number; y: number }): void {
+    if (player.companionEid !== null) return;
+    const row = player.companions.find((c) => c.state === 'heel');
+    if (!row) return;
+    const def = NPCS.get(row.species);
+    if (!def) {
+      console.warn(`[company] '${row.species}' is not in the bestiary — ${player.name}'s slot ${row.slot} stays trailing`);
+      return;
+    }
+    const opos = this.positions.get(eid);
+    if (!opos) return;
+    let x = at?.x ?? opos.x - 0.9;
+    let y = at?.y ?? opos.y + 0.4;
+    if (!at) {
+      for (let tries = 0; tries < 10; tries++) {
+        const a = Math.random() * Math.PI * 2;
+        const r = 1.0 + Math.random() * 1.4;
+        const tx = opos.x + Math.cos(a) * r;
+        const ty = opos.y + Math.sin(a) * r;
+        if (!this.worldOf(opos.plane).isSolid(Math.floor(tx), Math.floor(ty))) {
+          x = tx;
+          y = ty;
+          break;
+        }
+      }
+    }
+    const cEid = this.spawnNpc(def, opos.plane, x, y, -1);
+    this.companions.set(cEid, { ownerEid: eid, slot: row.slot, stuckTicks: 0 });
+    player.companionEid = cEid;
+    player.companionCalmTicks = 0;
+    // 'trailing' becomes 'heel' on the card the moment the body stands.
+    this.companionDirty.add(player);
+  }
+
+  /** Take the companion's body out of the world (trailing, home, logout). */
+  private despawnCompanionEntity(player: PlayerComp): void {
+    if (player.companionEid === null) return;
+    this.removeFromChunks(player.companionEid);
+    this.ecs.destroy(player.companionEid);
+    player.companionEid = null;
+    this.companionDirty.add(player);
+  }
+
+  /**
+   * The companion's whole brain, run INSTEAD of the wild state
+   * machine (the tickPet dispatch law): follow, settle, nothing else.
+   * No fight block exists to reach — company cannot fight even by a
+   * missed guard somewhere, because the code that would swing simply
+   * is not here.
+   */
+  private tickCompanion(eid: EntityId, npc: NpcComp, pos: PositionComp, comp: CompanionComp): void {
+    const owner = this.players.get(comp.ownerEid);
+    if (!owner || owner.companionEid !== eid) {
+      // Orphaned by a despawn race — no unpiloted bodies, ever.
+      this.removeFromChunks(eid);
+      this.ecs.destroy(eid);
+      return;
+    }
+    const opos = this.positions.get(comp.ownerEid);
+    if (!opos) return;
+    const dx = opos.x - pos.x;
+    const dy = opos.y - pos.y;
+    const dist = Math.hypot(dx, dy);
+
+    // THE HEEL FORGIVES THE ROAD: too far behind, slip to trailing —
+    // the row remembers, the calm counter brings it back.
+    if (dist > COMPANION_TRAIL_OUT) {
+      this.despawnCompanionEntity(owner);
+      return;
+    }
+
+    const speed = companionFollowSpeed(npc.def.speed, dist);
+    if (speed > 0) {
+      let mx = dx / dist;
+      let my = dy / dist;
+      ({ mx, my } = this.separateHeading(eid, pos, npc.def.radius, mx, my));
+      const next = stepMovement(pos, { mx, my }, speed, TICK_DT, this.worldOf(pos.plane), npc.def.radius);
+      const moved = next.x !== pos.x || next.y !== pos.y;
+      if (moved) {
+        pos.dir = Math.atan2(my, mx);
+        pos.x = next.x;
+        pos.y = next.y;
+        this.updateChunkMembership(eid);
+        comp.stuckTicks = 0;
+      } else if (dist > COMPANION_CATCHUP_DIST && ++comp.stuckTicks > 60) {
+        // Wedged behind a wall while the keeper walks on: slip to
+        // trailing and re-emerge — never a body dragged across the map.
+        this.despawnCompanionEntity(owner);
+        return;
+      }
+      if (this.tickCount >= npc.poseUntilTick) {
+        this.poses.set(eid, moved ? PoseState.Walk : PoseState.Idle);
+      }
+    } else {
+      comp.stuckTicks = 0;
+      // At heel: settle, eyes on the keeper. (The cat's sit lives
+      // client-side in the stillness ledger — the body only idles.)
+      if (dist > 0.01) pos.dir = Math.atan2(dy, dx);
+      if (this.tickCount >= npc.poseUntilTick) this.poses.set(eid, PoseState.Idle);
+    }
+  }
+
+  /**
+   * The calm counter (the tickPetTrailing law, held apart): a
+   * trailing companion re-emerges once its keeper holds under a calm
+   * stride for a full second — an arrival, never a teleport.
+   */
+  private tickCompanionTrailing(eid: EntityId, player: PlayerComp, strideStep: number): void {
+    if (player.companionEid !== null || !player.companions.some((c) => c.state === 'heel')) {
+      player.companionCalmTicks = 0;
+      return;
+    }
+    if (strideStep * (1000 / TICK_MS) < COMPANION_CALM_SPEED) {
+      if (++player.companionCalmTicks >= COMPANION_CALM_TICKS) {
+        this.trySpawnCompanion(eid, player);
+        player.companionCalmTicks = 0;
+      }
+    } else {
+      player.companionCalmTicks = 0;
+    }
+  }
+
+  /**
+   * The company mirror (the S2CPet signature-gate discipline):
+   * resent whole on any change, reset to '' on reconnect rebind.
+   * `ceremony` bypasses the gate and names a just-befriended slot so
+   * the client raises the naming card exactly once.
+   */
+  private sendCompanions(player: PlayerComp, ceremony?: number): void {
+    if (!player.session) return;
+    const sig = player.companions
+      .map(
+        (c) =>
+          `${c.slot}:${c.species}:${c.name}:${c.state}:` +
+          `${c.state === 'heel' ? (player.companionEid === null ? 'T' : 'H') : ''}`,
+      )
+      .join('|');
+    if (ceremony === undefined && sig === player.companionSigSent) return;
+    player.companionSigSent = sig;
+    const companions: CompanionInfo[] = player.companions.map((c) => {
+      const state: CompanionInfo['state'] =
+        c.state === 'heel' ? (player.companionEid === null ? 'trailing' : 'heel') : c.state;
+      const info: CompanionInfo = {
+        slot: c.slot,
+        species: c.species,
+        name: c.name,
+        state,
+      };
+      if (c.lookSeed != null) info.lookSeed = c.lookSeed;
+      if (c.metAt !== null) info.metAt = c.metAt;
+      return info;
+    });
+    player.session.sendJson(
+      ceremony === undefined
+        ? { t: 'companions', companions }
+        : { t: 'companions', companions, ceremony },
+    );
+  }
+
+  /** Name (or rename) a kept companion — the shared sanitizer judges. */
+  companionRename(eid: EntityId, slot: number, raw: string): void {
+    const player = this.players.get(eid);
+    if (!player) return;
+    const row = player.companions.find((c) => c.slot === slot);
+    if (!row) return;
+    const name = sanitizePetName(raw);
+    if (!name) {
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        from: '',
+        text: 'That is no name to call across a field. Two to sixteen letters.',
+      });
+      return;
+    }
+    row.name = name;
+    if (player.characterId > 0) this.accounts.saveCompanionName(player.characterId, slot, name);
+    if (player.companionEid !== null && this.companions.get(player.companionEid)?.slot === slot) {
+      this.broadcastMetaUpdate(player.companionEid);
+    }
+    this.sendCompanions(player);
+  }
+
+  /**
+   * A company-roster act: heel calls a kept friend out (sending any
+   * current heel home in the same breath — one friend afield), home
+   * settles the heel friend, part is the goodbye. No tile gate: the
+   * roster is a menu decision, honored anywhere, and every refusal
+   * speaks (the client's confirm arming is courtesy, never the law).
+   */
+  companionOp(eid: EntityId, op: 'heel' | 'home' | 'part', slot: number): void {
+    const player = this.players.get(eid);
+    if (!player) return;
+    const sys = (text: string): void => {
+      player.session?.sendJson({ t: 'chat', channel: 'system', from: '', text });
+    };
+    const row = player.companions.find((c) => c.slot === slot);
+    if (!row) {
+      sys('No friend keeps that place.');
+      return;
+    }
+
+    if (op === 'heel') {
+      if (row.state === 'heel') {
+        sys(`${row.name} is already with you.`);
+        return;
+      }
+      // One friend afield: the current heel steps home as this one
+      // steps out — a swap is one breath, not two errands.
+      const current = player.companions.find((c) => c.state === 'heel');
+      if (current) {
+        this.despawnCompanionEntity(player);
+        current.state = 'home';
+        if (player.characterId > 0) {
+          this.accounts.saveCompanionState(player.characterId, current.slot, 'home');
+        }
+      }
+      row.state = 'heel';
+      if (player.characterId > 0) this.accounts.saveCompanionState(player.characterId, slot, 'heel');
+      this.trySpawnCompanion(eid, player);
+      this.sendCompanions(player);
+      sys(`${row.name} comes to find you.`);
+      return;
+    }
+
+    if (op === 'home') {
+      if (row.state !== 'heel') {
+        sys(`${row.name} is already keeping its own counsel.`);
+        return;
+      }
+      this.despawnCompanionEntity(player);
+      row.state = 'home';
+      if (player.characterId > 0) this.accounts.saveCompanionState(player.characterId, slot, 'home');
+      this.sendCompanions(player);
+      sys(`${row.name} wanders off to its own affairs. It knows where you live.`);
+      return;
+    }
+
+    // The parting: final, and spoken like it.
+    if (row.state === 'heel') this.despawnCompanionEntity(player);
+    player.companions = player.companions.filter((c) => c.slot !== slot);
+    if (player.characterId > 0) this.accounts.deleteCompanion(player.characterId, slot);
+    this.sendCompanions(player);
+    sys(`${row.name} takes its leave the way it came: on its own terms, without looking back.`);
+  }
+
+  /**
+   * THE BEFRIENDING: a treat, offered by hand to a wild companion
+   * body. No skill, no rung, no channel — the whole courtship is
+   * carrying the right morsel and being the one to offer it. Refusals
+   * teach aloud (THE ASKING SHOWN's spirit); the ceremony consumes
+   * the treat, captures the coat (THE COAT OUTLIVES THE BODY), and
+   * raises the naming card through the company mirror.
+   */
+  private tryBefriend(eid: EntityId, player: PlayerComp, targetEid: EntityId, npc: NpcComp): void {
+    const sys = (text: string): void => {
+      player.session?.sendJson({ t: 'chat', channel: 'system', from: '', text });
+    };
+    const cdef = companionDef(npc.def.id);
+    if (!cdef) return;
+    if (player.characterId <= 0) {
+      sys('A guest keeps no company. Make a home here first.');
+      return;
+    }
+    if (player.companions.length >= COMPANION_CAP) {
+      sys('Your company is full. Part with a friend before you promise another.');
+      return;
+    }
+    const health = this.healths.get(targetEid);
+    if (!health || health.hp <= 0) return;
+    const treatName = itemDef(cdef.treat)?.name.toLowerCase() ?? cdef.treat;
+    if (countItem(player.inventory, cdef.treat) < 1) {
+      sys(`The ${npc.def.name.toLowerCase()} watches your empty hands with interest, then loses it. (It wants: ${treatName}.)`);
+      return;
+    }
+    if (removeItem(player.inventory, cdef.treat, 1) < 1) return;
+    player.session?.sendJson({ t: 'inv', slots: player.inventory });
+
+    // The ceremony. Slot = first free; the coat is the wild body's
+    // own eid, captured at the offering (THE COAT OUTLIVES THE BODY).
+    let slot = 0;
+    while (player.companions.some((c) => c.slot === slot)) slot++;
+    const pos = this.positions.get(targetEid);
+    const row: CompanionRow = {
+      slot,
+      species: npc.def.id,
+      name: npc.def.name,
+      state: 'heel',
+      lookSeed: targetEid,
+      metAt: Date.now(),
+    };
+    player.companions.push(row);
+    if (player.characterId > 0) this.accounts.saveCompanion(player.characterId, row);
+    // The wild body leaves the world the tame way: respawn clock and
+    // site ledgers honored, no death, no loot, no deed.
+    this.removeTamedNpc(targetEid, eid);
+    // Any current heel steps home — the new friend takes the walk.
+    const current = player.companions.find((c) => c.state === 'heel' && c.slot !== slot);
+    if (current) {
+      this.despawnCompanionEntity(player);
+      current.state = 'home';
+      if (player.characterId > 0) {
+        this.accounts.saveCompanionState(player.characterId, current.slot, 'home');
+      }
+    }
+    this.trySpawnCompanion(eid, player, pos ? { x: pos.x, y: pos.y } : undefined);
+    // The tame ceremony's bond-green burst, reused whole: the moment
+    // reads the same in every watcher's eye — a friendship, sealed.
+    if (pos) {
+      this.broadcastFx(pos.plane, {
+        t: 'fx',
+        kind: 'tame',
+        x: pos.x,
+        y: pos.y,
+        x2: pos.x,
+        y2: pos.y,
+        radius: 1.6,
+        id: 'befriend',
+      });
+    }
+    sys(`The ${npc.def.name.toLowerCase()} takes the ${treatName} from your hand, and decides you will do.`);
+    this.sendCompanions(player, slot);
   }
 
   // ------------------------------------------------------- dialogue
@@ -19959,7 +20389,7 @@ export class GameServer {
    */
   private npcStanceRangeVs(eid: EntityId, npc: NpcComp, targetEid: EntityId): number {
     const tnpc = this.npcs.get(targetEid);
-    if (!tnpc || this.pets.has(targetEid)) return 0;
+    if (!tnpc || this.pets.has(targetEid) || this.companions.has(targetEid)) return 0;
     const ans = stanceBetween(this.npcTribeOf(eid, npc), this.npcTribeOf(targetEid, tnpc));
     return ans.stance === 'hostile' ? ans.range : 0;
   }
@@ -21069,7 +21499,7 @@ export class GameServer {
   private foeWithin(pos: { plane: PlaneId; x: number; y: number }, range: number, rewindTicks = 0): boolean {
     let found = false;
     this.forEachNpcNear(pos.plane, pos.x, pos.y, range, (npcEid, npc) => {
-      if (this.pets.has(npcEid)) return;
+      if (this.pets.has(npcEid) || this.companions.has(npcEid)) return;
       const hp = this.healths.get(npcEid);
       if (!hp || hp.hp <= 0) return;
       const npos = this.npcPosAt(npcEid, rewindTicks);
@@ -21221,7 +21651,7 @@ export class GameServer {
     const inArc: EntityId[] = [];
     this.forEachNpcNear(pos.plane, pos.x, pos.y, range, (npcEid, npc) => {
       // A companion is not a target — the blade picks the mob behind it.
-      if (this.pets.has(npcEid)) return;
+      if (this.pets.has(npcEid) || this.companions.has(npcEid)) return;
       const npos = this.npcPosAt(npcEid, rewind);
       if (!npos) return;
       const dx = npos.x - pos.x;
@@ -22127,7 +22557,7 @@ export class GameServer {
    * assistMark mirrors this from the wire facts.
    */
   private assistMark(npcEid: EntityId): boolean {
-    if (this.pets.has(npcEid) || this.livestock.has(npcEid)) return false;
+    if (this.pets.has(npcEid) || this.companions.has(npcEid) || this.livestock.has(npcEid)) return false;
     const actor = this.actors.get(npcEid)?.actor;
     if (actor && (actor.protection === 'invulnerable' || actor.disposition !== 'hostile')) {
       return false;
@@ -24099,7 +24529,7 @@ export class GameServer {
       } else if (sum.kind === 'snare_trap') {
         this.forEachNpcNear(pos.plane, pos.x, pos.y, sum.radius, (npcEid, npc, npos) => {
           if (npcLivestock(npc.def)) return; // livestock won't spring it
-          if (this.pets.has(npcEid)) return; // a companion won't either
+          if (this.pets.has(npcEid) || this.companions.has(npcEid)) return; // a friend won't either
           if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > sum.radius) return;
           // Sprung: bite, chill, and the trap is spent.
           const owner = this.players.get(sum.ownerEid);
@@ -24317,7 +24747,7 @@ export class GameServer {
         this.forEachNpcNear(pos.plane, pos.x, pos.y, HOMING_SEEK_RANGE, (npcEid, npc, npos) => {
           if (proj.hitEids?.has(npcEid)) return;
           // A homing shot never hunts a companion.
-          if (this.pets.has(npcEid)) return;
+          if (this.pets.has(npcEid) || this.companions.has(npcEid)) return;
           const d = Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius;
           if (d < bestD) {
             bestD = d;
@@ -24516,7 +24946,7 @@ export class GameServer {
       this.forEachNpcNear(pos.plane, pos.x, pos.y, 0.25, (npcEid, npc, npos) => {
         if (proj.hitEids?.has(npcEid)) return;
         // Arrows fly past a companion — it neither blocks nor bleeds.
-        if (this.pets.has(npcEid)) return;
+        if (this.pets.has(npcEid) || this.companions.has(npcEid)) return;
         // THE FANG KNOWS ITS FRIENDS: a companion's spit passes every
         // townsperson clean by.
         if (proj.viaPetEid !== undefined && this.actors.has(npcEid)) return;
@@ -24655,6 +25085,8 @@ export class GameServer {
    */
   private rideDirty = new Set<PlayerComp>();
   private petDirty = new Set<PlayerComp>();
+  /** The company mirror's own dirty set — the petDirty discipline, held apart. */
+  private companionDirty = new Set<PlayerComp>();
 
   private procState(player: PlayerComp, id: string): ProcRuntime {
     let st = player.procs.get(id);
@@ -25184,8 +25616,9 @@ export class GameServer {
     // THE FANG KNOWS ITS FRIENDS, mirrored: this door is the players'
     // (and pets') door, and neither may wound a companion — friendly
     // fire is refused structurally. The mob-side rail is damagePet;
-    // DoTs route there through tickStatuses.
-    if (this.pets.has(npcEid)) return;
+    // DoTs route there through tickStatuses. Befriended company has
+    // no damage rail AT ALL — this refusal is its whole armor.
+    if (this.pets.has(npcEid) || this.companions.has(npcEid)) return;
 
     // THE WARD: an invulnerable actor is a full combat participant
     // that cannot be worn down. The blow connects — and stops there:
@@ -26388,6 +26821,16 @@ export class GameServer {
             petPos.y = home.y + 0.4;
             this.updateChunkMembership(player.petEid);
           }
+        }
+      }
+      // The company follows home too — it was never in the fight.
+      if (player.companionEid !== null) {
+        const cPos = this.positions.get(player.companionEid);
+        if (cPos) {
+          cPos.plane = home.plane;
+          cPos.x = home.x - 0.9;
+          cPos.y = home.y + 0.4;
+          this.updateChunkMembership(player.companionEid);
         }
       }
       this.cancelAction(eid, player);
@@ -28146,8 +28589,9 @@ export class GameServer {
     // THE QUIET SHADOW (beastcraft v2): a companion is nobody's
     // packmate and nobody's quarry — no rally, no decoy pull, no cry
     // for help, no taunt ever aims a tamed body. This is the ONE door
-    // into 'chase', so the law holds everywhere by construction.
-    if (this.pets.has(eid)) return;
+    // into 'chase', so the law holds everywhere by construction —
+    // and befriended company shelters under the same roof.
+    if (this.pets.has(eid) || this.companions.has(eid)) return;
     // THE DROVER'S PEACE: a kept yard animal opens no fight — ever.
     if (this.livestock.has(eid)) return;
     // THE PEACE HOLDS AT THE DOOR (docs/factions-plan.md Phase 2):
@@ -28176,7 +28620,7 @@ export class GameServer {
       // an authored 'ally' row extends that law across banners — the
       // hounds that serve the watch). A BLOW still forces past all of
       // it, exactly as it forces past the faction peace above.
-      if (this.pets.has(targetEid) || this.livestock.has(targetEid)) return;
+      if (this.pets.has(targetEid) || this.companions.has(targetEid) || this.livestock.has(targetEid)) return;
       const tnpc = this.npcs.get(targetEid);
       if (
         tnpc &&
@@ -28600,7 +29044,7 @@ export class GameServer {
       if (oEid === eid) return;
       // Companions and yard animals are nobody's quarry (THE QUIET
       // SHADOW, THE DROVER'S PEACE) — and the dead are already gone.
-      if (this.pets.has(oEid) || this.livestock.has(oEid)) return;
+      if (this.pets.has(oEid) || this.companions.has(oEid) || this.livestock.has(oEid)) return;
       if ((this.healths.get(oEid)?.hp ?? 0) <= 0) return;
       // THE UNKILLABLE ARE NOT QUARRY (proving pass F3): opening on a
       // warded body is a fight that can only end one way — or, when
@@ -28897,6 +29341,10 @@ export class GameServer {
       if ((this.healths.get(targetEid)?.hp ?? 0) <= 0) return null;
       return onPlane(this.positions.get(targetEid));
     }
+    // Befriended company is simply invisible to a chase — no mob can
+    // acquire it (the aggro door refuses), and any stale pointer
+    // breaks here like a vanished decoy.
+    if (this.companions.has(targetEid)) return null;
     // THE WILD TAKES SIDES: any other combat body is a chaseable
     // quarry — the guard runs down the worg, the wolf runs down the
     // stag, on the ordinary rails. A dead or cross-plane body is
@@ -29465,6 +29913,14 @@ export class GameServer {
         continue;
       }
 
+      // THE COMPANY YOU KEEP: same dispatch law, its own brain —
+      // follow only, and no fight block exists to reach.
+      const comp = this.companions.get(eid);
+      if (comp) {
+        this.tickCompanion(eid, npc, pos, comp);
+        continue;
+      }
+
       // THE PERCEPTION PASS (cheap: peacetime bodies only, every 5
       // ticks, staggered). The eye replaced the circle — see
       // npcPerception. A body still sulking from an abandoned chase
@@ -29703,6 +30159,7 @@ export class GameServer {
                   npcTargetEid:
                     npc.targetEid !== null &&
                     !this.pets.has(npc.targetEid) &&
+                    !this.companions.has(npc.targetEid) &&
                     this.npcs.has(npc.targetEid)
                       ? npc.targetEid
                       : undefined,
@@ -31172,6 +31629,61 @@ export class GameServer {
       this.trySpawnPet(eid, player);
       // Ceremony on purpose: the dev whistle exercises the naming card.
       this.sendPet(player, slot);
+      return;
+    }
+    if (config.devCommands && text.startsWith('/company')) {
+      // THE COMPANY YOU KEEP's staging lever:
+      // /company                — list the roster and the kept company
+      // /company <species>      — befriend at heel (skips the treat)
+      // /company heel <slot>    — call a kept friend out (the real op)
+      // /company home <slot>    — send the heel friend home (the real op)
+      // /company part <slot>    — the goodbye (the real op)
+      const [, arg, arg2] = text.split(/\s+/);
+      const say = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      if (!arg) {
+        const roster = [...COMPANIONS.keys()].join(', ');
+        const held = player.companions
+          .map((c) => `${c.slot}:${c.name} (${c.species}, ${c.state})`)
+          .join(', ');
+        say(`Company: ${roster}. Kept: ${held || 'none'}.`);
+        return;
+      }
+      if (arg === 'heel' || arg === 'home' || arg === 'part') {
+        // The real door, refusals and all — the /petarts precedent.
+        this.companionOp(eid, arg, Number.parseInt(arg2 ?? '', 10));
+        return;
+      }
+      const cdef = companionDef(arg);
+      if (!cdef) {
+        say(`No companion '${arg}'.`);
+        return;
+      }
+      if (player.companions.length >= COMPANION_CAP) {
+        say('Your company is full.');
+        return;
+      }
+      let slot = 0;
+      while (player.companions.some((c) => c.slot === slot)) slot++;
+      const current = player.companions.find((c) => c.state === 'heel');
+      if (current) {
+        this.despawnCompanionEntity(player);
+        current.state = 'home';
+        if (player.characterId > 0) this.accounts.saveCompanionState(player.characterId, current.slot, 'home');
+      }
+      const row: CompanionRow = {
+        slot,
+        species: cdef.species,
+        name: NPCS.get(cdef.species)?.name ?? cdef.species,
+        state: 'heel',
+        // No wild body stood for the dev whistle: roll the coat once.
+        lookSeed: (Math.random() * 0x7fffffff) | 0,
+        metAt: Date.now(),
+      };
+      player.companions.push(row);
+      if (player.characterId > 0) this.accounts.saveCompanion(player.characterId, row);
+      this.trySpawnCompanion(eid, player);
+      // Ceremony on purpose: the dev whistle exercises the naming card.
+      this.sendCompanions(player, slot);
       return;
     }
     if (config.devCommands && text.startsWith('/petbond')) {
@@ -32715,6 +33227,10 @@ export class GameServer {
       for (const p of this.petDirty) this.sendPet(p);
       this.petDirty.clear();
     }
+    if (this.companionDirty.size > 0) {
+      for (const p of this.companionDirty) this.sendCompanions(p);
+      this.companionDirty.clear();
+    }
 
     for (const session of this.sessions) {
       if (session.playerEid === null) continue;
@@ -33036,6 +33552,7 @@ export class GameServer {
     // THE HEEL FORGIVES THE ROAD: the trailing companion's calm
     // counter reads this tick's true stride, right where it's known.
     this.tickPetTrailing(eid, player, strideStep);
+    this.tickCompanionTrailing(eid, player, strideStep);
     if (player.sneaking) {
       player.sneakStillTicks = moved ? 0 : player.sneakStillTicks + 1;
     } else {
@@ -33442,6 +33959,22 @@ export class GameServer {
       meta.friendly = true;
       // THE COAT OUTLIVES THE BODY: the courted look rides the wire
       // so every watcher dresses the same friend, every respawn.
+      if (row?.lookSeed != null) meta.seed = row.lookSeed;
+    }
+    // THE COMPANY YOU KEEP: a befriended companion wears its name and
+    // the `company` mark — what tells the two owned lanes apart on
+    // the wire (no collar, no level gem, no fight offer, ever).
+    const compComp = this.companions.get(eid);
+    if (compComp && npc) {
+      const keeper = this.players.get(compComp.ownerEid);
+      const row = keeper?.companions.find((c) => c.slot === compComp.slot);
+      if (row) meta.name = row.name;
+      // Company has no ladder: the species' wild level (stamped for
+      // every npc above) leaves the plate — 'Pip', never 'Pip (1)'.
+      delete meta.level;
+      meta.ownerEid = compComp.ownerEid;
+      meta.friendly = true;
+      meta.company = true;
       if (row?.lookSeed != null) meta.seed = row.lookSeed;
     }
     // THE ANIMALS OF THE YARD: a kept animal wears its given name and

@@ -521,6 +521,31 @@ export interface C2SStable {
 }
 
 /**
+ * THE COMPANY YOU KEEP: a companion-roster act — call a kept friend
+ * to heel, send the heel friend home, or part ways for good. No tile
+ * gate (company is not a pen fixture): the roster is a menu decision,
+ * honored anywhere, and every refusal speaks. The heel op seats the
+ * asked slot and sends any current heel home in the same breath —
+ * one friend afield, beside whatever beast walks the OTHER heel.
+ */
+export interface C2SCompanionOp {
+  t: 'companionop';
+  op: 'heel' | 'home' | 'part';
+  slot: number;
+}
+
+/**
+ * Name (or rename) a companion by roster slot. The server re-runs
+ * the shared sanitizer whatever the client showed (the C2SPetName
+ * law, held separately).
+ */
+export interface C2SCompanionName {
+  t: 'companionname';
+  slot: number;
+  name: string;
+}
+
+/**
  * THE THREE COLLARS (pet arts): set a stall's slotted arts whole.
  * The server re-proves everything — ownership, repertoire membership,
  * the focus budget from the pet's own level and bond, and that the
@@ -809,6 +834,8 @@ export type C2SMessage =
   | C2SPetName
   | C2SStable
   | C2SPetArts
+  | C2SCompanionOp
+  | C2SCompanionName
   | C2SPickup
   | C2STechnique
   | C2SCalling
@@ -1528,6 +1555,36 @@ export interface S2CPet {
   t: 'pet';
   pets: PetInfo[];
   /** Slot just tamed — the client raises the naming card exactly once. */
+  ceremony?: number;
+}
+
+/**
+ * THE COMPANY YOU KEEP (docs/companions-plan.md, protocol 35): the
+ * own player's company — befriended companions, a system wholly
+ * apart from the tamed-beast household above. Deliberately thin: a
+ * companion has no level, no hp, no bond ledger, no arts — it is
+ * company, and the card says only who it is and where it stands.
+ * Same signature-gate discipline as S2CPet; watchers need none of
+ * this (the body rides the ordinary snapshot and meta lanes, marked
+ * `company` in its EntityMeta).
+ */
+export interface CompanionInfo {
+  slot: number;
+  /** NpcDef id — the species body every watcher already knows. */
+  species: string;
+  name: string;
+  /** 'trailing' is the wire-only derivation (the PetInfo law). */
+  state: 'heel' | 'trailing' | 'home';
+  /** THE COAT OUTLIVES THE BODY — the wild body's look seed, captured at the befriending. */
+  lookSeed?: number;
+  /** The befriending's date (ms since epoch). */
+  metAt?: number;
+}
+
+export interface S2CCompanions {
+  t: 'companions';
+  companions: CompanionInfo[];
+  /** Slot just befriended — the client raises the naming card exactly once. */
   ceremony?: number;
 }
 
@@ -2308,6 +2365,7 @@ export type S2CMessage =
   | S2CCharges
   | S2CRide
   | S2CPet
+  | S2CCompanions
   | S2CRiftgate
   | S2CKeyRing
   | S2CKeyLore
@@ -2711,6 +2769,19 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (msg.op !== 'heel' && msg.op !== 'stable' && msg.op !== 'release') return null;
       if (msg.slot !== 0 && msg.slot !== 1 && msg.slot !== 2) return null;
       return { t: 'stable', op: msg.op, slot: msg.slot };
+    }
+    case 'companionop': {
+      if (msg.op !== 'heel' && msg.op !== 'home' && msg.op !== 'part') return null;
+      if (msg.slot !== 0 && msg.slot !== 1 && msg.slot !== 2) return null;
+      return { t: 'companionop', op: msg.op, slot: msg.slot };
+    }
+    case 'companionname': {
+      // Slot bounds are THE COMPANY CAP; the name is only length-gated
+      // here — the shared sanitizer renders the real verdict server-
+      // side (the petname law, held separately).
+      if (msg.slot !== 0 && msg.slot !== 1 && msg.slot !== 2) return null;
+      if (typeof msg.name !== 'string' || msg.name.length > 40) return null;
+      return { t: 'companionname', slot: msg.slot, name: msg.name };
     }
     case 'petarts': {
       // Slot bounds are THREE STALLS; the loadout is only shape-gated

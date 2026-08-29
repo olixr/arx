@@ -57,7 +57,7 @@ function seamSlate(hp = 100) {
   };
   const s = {
     tickCount: 50,
-    pets: new Map(),
+    pets: new Map(), companions: new Map(),
     livestock: new Map(),
     npcs: new Map([[9, npc]]),
     healths: new Map([[9, health]]),
@@ -206,7 +206,7 @@ test('the mirror seam: a sundered player takes more of what mitigation passed', 
     healths: new Map([[5, health]]),
     positions: new Map([[5, { plane: 'surface', x: 0, y: 0, dir: 0 }]]),
     statuses: new Map([[5, [{ id: 'sunder', power: 20, ticksLeft: 60, sourceEid: 7 }]]]),
-    pets: new Map(),
+    pets: new Map(), companions: new Map(),
     npcs: new Map(),
     revealPlayer: () => {},
     dialogueClose: () => {},

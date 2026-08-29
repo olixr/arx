@@ -84,7 +84,8 @@
         <button id="btn-inventory" title="Character (I)"></button>
         <button id="btn-skills" title="Skills (K)"></button>
         <button id="btn-arts" title="Techniques (V)"></button>
-        <button id="btn-companions" title="Companions (')"></button>
+        <button id="btn-beasts" title="Beasts (')"></button>
+        <button id="btn-companions" title="Companions ([)"></button>
         <button id="btn-craft" title="Handiwork (C)"></button>
         <button id="btn-build" title="Build (B)"></button>
         <button id="btn-social" title="Social (U)"></button>
@@ -236,8 +237,8 @@
            STANDING down the left (the rope, the instruments, the
            journey), THE REPERTOIRE ribbon over THE READING and its
            proving ground, THE THREE COLLARS at the foot. -->
-      <div id="companion-panel" class="ui-screen screen-hall hidden">
-        <h3>Companions</h3>
+      <div id="beast-panel" class="ui-screen screen-hall hidden">
+        <h3>Beasts</h3>
         <div id="hall-rail" data-region></div>
         <div class="hall-main">
           <div id="hall-standing" data-region></div>
@@ -246,6 +247,16 @@
           <div id="hall-ground"></div>
         </div>
         <div id="hall-collars" data-region></div>
+      </div>
+
+      <!-- THE COMPANY YOU KEEP (docs/companions-plan.md): the
+           companion roster — befriended friends, a system wholly
+           apart from the Beasts hall above. One rail of kept
+           friends, one standing for the friend under regard. -->
+      <div id="companions-panel" class="ui-screen screen-company hidden">
+        <h3>Companions</h3>
+        <div id="company-rail" data-region></div>
+        <div id="company-standing" data-region></div>
       </div>
 
       <!-- THE STAKES BOARD (docs/arena-plan.md) — the ringmaster's

@@ -24,7 +24,7 @@ import { hudNorthwest } from './dangerGauge.js';
  * one). DOM writes land only on change — the perf law of the HUD.
  * Clicking the crest is still the pat (THE QUIET HEEL).
  */
-export class CompanionPlaque {
+export class BeastPlaque {
   private readonly root = document.createElement('button');
   private readonly face = document.createElement('img');
   private readonly nameEl = document.createElement('span');
@@ -43,7 +43,7 @@ export class CompanionPlaque {
   onPat: (() => void) | null = null;
 
   constructor() {
-    this.root.id = 'companion-plaque';
+    this.root.id = 'beast-plaque';
     this.root.type = 'button';
     this.root.style.display = 'none';
     this.root.addEventListener('click', () => this.onPat?.());
@@ -180,7 +180,7 @@ export class CompanionPlaque {
           ? `${active.name} rests at the stalls and will find you when it is well.`
           : bond && lureName
             ? `${active.name} watches your hands. ${lureName.charAt(0).toUpperCase()}${lureName.slice(1)} offered by hand would deepen the bond.`
-            : `${active.name}, your companion. Click to give it a pat.`;
-    this.root.setAttribute('aria-label', `${active.name}, your companion`);
+            : `${active.name}, your beast at heel. Click to give it a pat.`;
+    this.root.setAttribute('aria-label', `${active.name}, your beast at heel`);
   }
 }
