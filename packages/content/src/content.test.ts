@@ -1573,8 +1573,10 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   const n = (t: Tile): number => counts.get(t) ?? 0;
   // The terraces are fenced and staired by the builder's own law
   // (39 of the Silver Stair + 6 on the Silent Terrace's two flights).
-  // 45 of the Vale epic + the Grand Ring's four stand steps.
-  assert.equal(n(Tile.Ramp), 49, 'the city lost a flight');
+  // 45 of the Vale epic + the Grand Ring colosseum's eight stand
+  // steps (two per crescent, two per grandstand wing — §10 THE SAND
+  // GROWS).
+  assert.equal(n(Tile.Ramp), 53, 'the city lost a flight');
   assert.ok(n(Tile.Cliff) > 500, 'the terrace fences are missing');
   // The mountain's ladder: silver in numbers, the deep teases above.
   assert.ok(n(Tile.RockSilver) >= 8, 'Silverfall without silver');

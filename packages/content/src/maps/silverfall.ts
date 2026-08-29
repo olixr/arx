@@ -1,6 +1,7 @@
 import { Detail, Tile, awningTile, bannerPoleTile, bannerStandTile, bracketSignDetail, drapeFallDetail, greatBannerDetail, herbBundlesDetail, pennantDetail, sillHerbsDetail, wallArmsDetail } from '@arx/shared';
 import { SILVERFALL_RECT } from '../geography.js';
 import { MARKET_STALL } from '../structures/templates.js';
+import { UNDERWORLD_PLANE_ID } from '../planes.js';
 import { ZoneBuilder } from './builder.js';
 import type { ZoneDef } from './types.js';
 
@@ -449,7 +450,7 @@ export function buildSilverfall(): ZoneDef {
   // keeps fed, because THEY use the stair more than anyone.
   b.fillRect(33, 13, 11, 6, Tile.CaveWall);
   b.set(38, 18, Tile.ArchStone);
-  b.portal(38, 17, Tile.PortalDown, { x: -333.5, y: 552.5 }); // down to the Landing
+  b.portal(38, 17, Tile.PortalDown, { x: -333.5, y: 552.5 }, UNDERWORLD_PLANE_ID); // down to the Landing
   b.set(31, 16, Tile.Rock).set(32, 18, Tile.Rock).set(31, 19, Tile.Rock);
   b.set(44, 16, Tile.Rock).set(45, 18, Tile.Rock).set(45, 20, Tile.Rock);
   b.fillRect(35, 12, 3, 1, Tile.Snow).fillRect(40, 12, 2, 1, Tile.Snow);
@@ -501,7 +502,7 @@ export function buildSilverfall(): ZoneDef {
   // the Rookery's back lot — Mab tolerates the door and the Company
   // pays her rent in news. No lamp, no sign, no name.
   b.fillRect(37, 42, 3, 3, Tile.Dirt);
-  b.portal(38, 43, Tile.PortalDown, { x: 207.5, y: 573.5 }); // the Silverfall alcove
+  b.portal(38, 43, Tile.PortalDown, { x: 207.5, y: 573.5 }, UNDERWORLD_PLANE_ID); // the Silverfall alcove
   b.set(39, 42, Tile.Crate);
   b.setDetail(37, 43, Detail.Pebbles);
 
@@ -1699,46 +1700,58 @@ export function buildSilverfall(): ZoneDef {
   b.setDetail(37, 231, Detail.Doormat);
   b.sign(24, 212, 'THE KINGSHORE', ['the mere gives.', 'the mere is thanked'], Tile.Signpost);
   // ---------------------------------------------------------------
-  // THE FAIRSTEAD — the festival green, and THE GRAND RING standing
-  // on it: the fair that came to stay (docs/arena-plan.md Phase 5).
-  // The green still breathes around the ring, the statues watch the
-  // walk in, and the meeting oak keeps the east walk. Garrison
-  // masonry on purpose — the separate-masonry law means the pit
-  // never reads as a room, and the gates ride the town-wall door
-  // machinery the match engine already speaks.
+  // THE FAIRSTEAD — the festival green, and THE GRAND RING risen on
+  // it as a true colosseum (docs/arena-plan.md Phase 5, grown by §10
+  // THE SAND GROWS). The sand nearly tripled; raised stone crescents
+  // flank it east and west, the grandstand wings stand over the
+  // Kingswater bank with the beasts' pen lane between them, and the
+  // fighters' gate opens south onto a statue-flanked processional to
+  // the counter. Garrison masonry on purpose — the separate-masonry
+  // law means the pit never reads as a room, and the gates ride the
+  // town-wall door machinery the match engine already speaks.
   // ---------------------------------------------------------------
-  b.fillRect(78, 215, 6, 2, Tile.Path); // the green's east walk
-  b.set(78, 214, Tile.GuardianStatue).set(83, 214, Tile.GuardianStatue); // parity pair, mirrored
-  b.set(52, 208, Tile.BannerPole).set(72, 208, Tile.BannerPole); // fair-day poles, kept
-  b.set(77, 220, Tile.TreeOak); // the meeting oak, moved to the walk-in
-  b.set(50, 225, Tile.Barrel).set(49, 225, Tile.WoodStool).set(50, 226, Tile.WoodStool);
-  b.set(64, 209, Tile.Bench);
-  b.sign(76, 212, 'THE FAIRSTEAD', ['the fair came to stay.', 'match days fill it'], Tile.Signpost);
-  // The pit: sand in a garrison ring. Two gates — the fighters' gate
-  // south toward the counter, the beasts' gate north. Both authored
-  // OPEN (the claim shuts them; no routine crosses a gate line).
-  b.fillEllipse(60, 218, 10, 7, Tile.WallGarrison);
-  b.fillEllipse(60, 218, 8, 5.5, Tile.Sand);
-  b.set(60, 211, Tile.Grass).set(60, 225, Tile.Grass); // shave the arch bumps
-  b.set(59, 212, Tile.GateGarrison).set(60, 212, Tile.GateGarrison).set(61, 212, Tile.GateGarrison);
-  b.set(59, 224, Tile.GateGarrison).set(60, 224, Tile.GateGarrison).set(61, 224, Tile.GateGarrison);
-  b.fillRect(59, 225, 3, 2, Tile.Path); // the fighters' walk-out
-  // The stands: two raised terraces flanking the sand, south-facing
-  // stairs per the stair law, benches one row in from the rims.
-  b.raise(44, 212, 4, 12, 1);
-  b.raise(72, 212, 4, 12, 1);
-  b.stairs(45, 223).stairs(46, 223);
-  b.stairs(73, 223).stairs(74, 223);
-  // Benches on the pit-side column only — the aisle column stays
-  // clear the whole run so every seat walks from the stairs.
-  b.set(46, 214, Tile.Bench).set(46, 216, Tile.Bench).set(46, 218, Tile.Bench).set(46, 220, Tile.Bench);
-  b.set(73, 214, Tile.Bench).set(73, 216, Tile.Bench).set(73, 218, Tile.Bench).set(73, 220, Tile.Bench);
-  // The show's dressing: braziers at the fighters' gate, poles at
-  // the south shoulders, and the ringmaster's counter by the walk.
-  b.set(56, 226, Tile.Brazier).set(64, 226, Tile.Brazier);
-  b.set(50, 227, Tile.BannerPole).set(70, 227, Tile.BannerPole);
-  b.set(63, 227, Tile.Table).set(62, 227, Tile.WoodStool);
-  b.sign(65, 227, 'THE GRAND RING', ['pay, stand, survive.', 'the purse is real'], Tile.Signpost);
+  // The stands first. Every flight faces south per the stair law;
+  // benches keep the pit-side column and the aisle stays clear the
+  // whole run so every seat walks from the stairs.
+  b.raise(46, 208, 4, 17, 1); // the west crescent
+  b.raise(79, 208, 4, 17, 1); // the east crescent
+  b.raise(50, 201, 10, 4, 1); // the grandstand, west wing
+  b.raise(69, 201, 10, 4, 1); // the grandstand, east wing
+  b.stairs(47, 224).stairs(48, 224);
+  b.stairs(80, 224).stairs(81, 224);
+  b.stairs(52, 204).stairs(53, 204);
+  b.stairs(74, 204).stairs(75, 204);
+  for (let y = 209; y <= 223; y += 2) b.set(48, y, Tile.Bench).set(80, y, Tile.Bench);
+  for (let x = 52; x <= 58; x += 2) b.set(x, 203, Tile.Bench);
+  for (let x = 70; x <= 76; x += 2) b.set(x, 203, Tile.Bench);
+  // The pit: sand in a full garrison ring, two three-wide gates on
+  // the short axis — the beasts' gate north out of the pen lane
+  // between the wings, the fighters' gate south onto the
+  // processional. Both authored OPEN (the claim shuts them; no
+  // routine crosses a gate line).
+  b.fillEllipse(64, 216, 14.5, 11.5, Tile.WallGarrison);
+  b.fillEllipse(64, 216, 12.5, 9.5, Tile.Sand);
+  b.set(63, 205, Tile.GateGarrison).set(64, 205, Tile.GateGarrison).set(65, 205, Tile.GateGarrison);
+  b.set(63, 227, Tile.GateGarrison).set(64, 227, Tile.GateGarrison).set(65, 227, Tile.GateGarrison);
+  // The wall wears the Crown's colors on its south face, and banner
+  // poles hold the four shoulders the way the fair-day poles did.
+  b.setDetail(61, 227, greatBannerDetail(1)).setDetail(67, 227, greatBannerDetail(1));
+  b.set(50, 206, bannerPoleTile(1)).set(78, 206, bannerPoleTile(1));
+  b.set(50, 226, bannerPoleTile(1)).set(78, 226, bannerPoleTile(1));
+  // The processional: the fighters' walk from the south gate to the
+  // counter, statue-flanked and fire-lit, with paved arrival rows
+  // tying it to the High Street east and the Pilgrim's Way west.
+  b.fillRect(63, 228, 3, 6, Tile.Path);
+  b.fillRect(66, 232, 18, 1, Tile.Path);
+  b.fillRect(45, 233, 18, 1, Tile.Path);
+  b.set(61, 228, Tile.Brazier).set(67, 228, Tile.Brazier);
+  b.set(60, 230, Tile.GuardianStatue).set(68, 230, Tile.GuardianStatue); // parity pair, rehomed to the walk
+  b.set(59, 205, Tile.Brazier).set(69, 205, Tile.Brazier); // the pen lane's mouth-fires
+  b.set(66, 230, Tile.WeaponRack).set(66, 231, Tile.WaterCask); // the fighters' last checks
+  b.set(59, 232, Tile.Table).set(58, 232, Tile.WoodStool); // Cato's counter
+  b.set(77, 231, Tile.TreeOak); // the meeting oak keeps the south walk now
+  b.sign(67, 233, 'THE GRAND RING', ['pay, stand, survive.', 'the purse is real'], Tile.Signpost);
+  b.sign(46, 227, 'THE FAIRSTEAD', ['the fair came to stay.', 'match days fill the stands'], Tile.Signpost);
   // THE VALE WARD — the lower watch's desk inside the new gate.
   b.fillRect(96, 224, 9, 8, Tile.StoneFloor);
   b.outlineRect(96, 224, 9, 8, Tile.WallStone);
@@ -2018,7 +2031,7 @@ export function buildSilverfall(): ZoneDef {
   b.actor('sergeant_varn', 99.5, 227.5, Math.PI / 2, 'fall_sergeant');
   // THE SAND AND THE ROAR: the Grand Ring's own throat, at the
   // counter by the fighters' gate.
-  b.actor('ringmaster_cato', 63.5, 226.4, Math.PI / 2, 'grand_ring_master');
+  b.actor('ringmaster_cato', 59.5, 231.4, Math.PI / 2, 'grand_ring_master');
   b.actor('courier_pip', 88.5, 130.5, Math.PI / 2, 'fall_courier');
   // The lower watch: the gate rota pair, the beats, the posts.
   b.actor('vale_watch', 86.5, 239.5, Math.PI / 2, 'vale_watch_gate_day');

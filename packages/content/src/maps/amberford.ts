@@ -949,15 +949,20 @@ export function buildAmberford(): ZoneDef {
   // Perl's orchard: real apple rows at last, plum interplants, the
   // berry hedge on the road, her cottage among the trees, the press
   // and the hives by her dooryard.
-  for (const y of [76, 81, 86, 91, 96]) {
-    for (const x of [128, 133, 138, 142]) {
+  // The south rank went under the sand when the ring grew — Perl
+  // charges the ringmaster for it yearly, and he pays. She planted
+  // the replacement rank west against the town wall, where the
+  // afternoon shade suits the plums.
+  for (const y of [76, 81, 86, 91]) {
+    for (const x of [125, 128, 133, 138, 142]) {
       if (x >= 131 && x <= 141 && y >= 81 && y <= 91) continue; // her dooryard
       const plum = (x + y) % 3 === 0;
       const young = (x * 7 + y) % 5 === 0; // a few young grafts among the bearers
       b.set(x, y, plum ? (young ? Tile.PlumTreeMid : Tile.PlumTreeRipe) : young ? Tile.AppleTreeMid : Tile.AppleTreeRipe);
     }
   }
-  b.set(126, 78, Tile.BerryBush).set(126, 88, Tile.BerryBush).set(127, 97, Tile.BerryBush);
+  b.set(125, 96, Tile.AppleTreeRipe); // the wall rank runs one deeper where the shade lasts longest
+  b.set(126, 78, Tile.BerryBush).set(126, 88, Tile.BerryBush).set(126, 93, Tile.BerryBush);
   b.fillRect(132, 82, 9, 8, Tile.WoodFloor);
   b.outlineRect(132, 82, 9, 8, Tile.WallWood);
   b.set(132, 85, Tile.DoorwayWood); // door west, toward the road
@@ -977,23 +982,37 @@ export function buildAmberford(): ZoneDef {
   b.sign(128, 74, "PERL'S ORCHARD", ['windfalls by the basket', 'shade is free, the apples are not'], Tile.Signpost);
 
   // ---------------------------------------------------------------
-  // THE FORD RING (docs/arena-plan.md Phase 5) — a pen with benches
-  // in the working country south of the orchard: palisade dialect,
-  // one gate north for the beasts, one gate south for the fighters,
-  // Old Serle's counter by the walk-out. The starter stage — small
-  // sand, small fees, honest lessons.
+  // THE FORD RING (docs/arena-plan.md Phase 5, grown by §10 THE SAND
+  // GROWS) — the country arena in the working land south of the
+  // orchard, filling its pocket wall-to-hem now: palisade dialect,
+  // near-triple sand, a three-wide beasts' gate north and a
+  // three-wide fighters' gate south, the muster yard and Old Serle's
+  // counter on the walk-out, and the north gallery benches under the
+  // orchard eaves. Still the starter stage — the fees stayed small;
+  // only the sand stopped being.
   // ---------------------------------------------------------------
-  b.fillEllipse(135, 102, 6, 5, Tile.Palisade);
-  b.fillEllipse(135, 102, 4.5, 3.5, Tile.Sand);
-  b.set(135, 97, Tile.Grass).set(135, 107, Tile.Grass); // shave the arch bumps
-  b.set(135, 98, Tile.PalisadeGate); // the beasts' gate
-  b.set(135, 106, Tile.PalisadeGate); // the fighters' gate
-  b.fillRect(134, 107, 3, 3, Tile.Path); // the walk-out to the counter
-  b.set(127, 100, Tile.Bench).set(127, 104, Tile.Bench); // the west benches
-  b.set(142, 100, Tile.Bench).set(142, 104, Tile.Bench); // the east benches
-  b.set(133, 108, Tile.Brazier).set(137, 108, Tile.Brazier);
-  b.set(130, 109, Tile.Table).set(129, 109, Tile.WoodStool); // Serle's counter
-  b.sign(132, 110, 'THE FORD RING', ['small sand, small fees.', 'lose small, learn big'], Tile.Signpost);
+  b.fillEllipse(134, 101, 8.75, 8, Tile.Palisade);
+  b.fillEllipse(134, 101, 7, 6.4, Tile.Sand);
+  b.set(134, 93, Tile.Grass).set(134, 109, Tile.Grass); // shave the arch bumps
+  b.set(133, 94, Tile.PalisadeGate).set(134, 94, Tile.PalisadeGate).set(135, 94, Tile.PalisadeGate); // the beasts' gate
+  b.set(133, 108, Tile.PalisadeGate).set(134, 108, Tile.PalisadeGate).set(135, 108, Tile.PalisadeGate); // the fighters' gate
+  // The muster yard: the fighters' walk-out, fire at the shoulders,
+  // Serle's counter facing the sand he rakes at noon.
+  b.fillRect(133, 109, 3, 4, Tile.Path);
+  b.set(132, 110, Tile.Brazier).set(136, 110, Tile.Brazier);
+  b.set(129, 108, Tile.BannerPole).set(139, 108, Tile.BannerPole); // the south shoulders
+  b.set(138, 110, Tile.Table).set(139, 110, Tile.WoodStool); // Serle's counter
+  b.set(136, 112, Tile.WaterCask).set(132, 112, Tile.Barrel); // the fighters' water, the house's take
+  b.sign(137, 112, 'THE FORD RING', ['the sand grew with the crowds.', 'lose small, learn big'], Tile.Signpost);
+  // The north gallery: benches in the orchard's shade, the beasts'
+  // gate fires, and a paved landing between the middle seats.
+  b.fillRect(133, 91, 3, 2, Tile.Path);
+  b.set(130, 91, Tile.Bench).set(132, 91, Tile.Bench).set(136, 91, Tile.Bench).set(138, 91, Tile.Bench);
+  b.set(132, 93, Tile.Brazier).set(136, 93, Tile.Brazier);
+  // Standing rails at the south shoulders — the working country
+  // watches leaning, the way it watches everything.
+  b.set(127, 107, Tile.RailWood).set(126, 106, Tile.RailWood);
+  b.set(141, 107, Tile.RailWood).set(142, 106, Tile.RailWood);
 
   // ---------------------------------------------------------------
   // THE FORD QUARTER — through the water gate, the town steps down
@@ -1154,7 +1173,7 @@ export function buildAmberford(): ZoneDef {
   // grass down to the bank.
   b.set(8, 108, Tile.TreeWillow).set(24, 112, Tile.TreeWillow).set(40, 111, Tile.TreeWillow);
   b.set(46, 116, Tile.TreeWillow).set(70, 108, Tile.TreeWillow);
-  b.set(100, 120, Tile.TreeWillow).set(135, 112, Tile.TreeWillow);
+  b.set(100, 120, Tile.TreeWillow).set(139, 119, Tile.TreeWillow);
   b.set(14, 111, Tile.FibrePlant).set(31, 113, Tile.FibrePlant);
 
   // ---------------------------------------------------------------
@@ -1227,7 +1246,7 @@ export function buildAmberford(): ZoneDef {
   // The traveling traders: the produce row by day, the guest wing by
   // night — the market has voices.
   // THE SAND AND THE ROAR: the Ford Ring's keeper, at his counter.
-  b.actor('ringmaster_serle', 130.5, 108.4, Math.PI / 2, 'ford_ring_master');
+  b.actor('ringmaster_serle', 138.5, 109.4, Math.PI / 2, 'ford_ring_master');
   b.actor('round_trader', 63.0, 49.8, Math.PI / 2, 'amber_trader_a');
   b.actor('round_trader', 67.0, 49.8, Math.PI / 2, 'amber_trader_b');
 

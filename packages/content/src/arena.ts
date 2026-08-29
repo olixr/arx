@@ -157,25 +157,26 @@ export interface ArenasDef {
  */
 export const ARENAS: ArenasDef = {
   venues: [
-    // Coordinates SEALED by Phase 5's builds (the fillEllipse cell
-    // math is the truth): Silverfall local (60,218) rx8/ry5.5 on the
-    // Fairstead, Amberford local (135,102) rx4.5/ry3.5 in the working
-    // country south of Perl's orchard. World = local + zone origin.
+    // Coordinates SEALED by the grand recut's builds (§10 THE SAND
+    // GROWS; the fillEllipse cell math is the truth): Silverfall
+    // local (64,216) rx12.5/ry9.5 on the Fairstead colosseum,
+    // Amberford local (134,101) rx7/ry6.4 in the working country
+    // south of Perl's orchard. World = local + zone origin.
     {
       id: 'grand_ring',
       name: 'The Grand Ring',
       zone: 'silverfall',
-      pit: { x: -476, y: -126, rx: 8, ry: 5.5 },
+      pit: { x: -472, y: -128, rx: 12.5, ry: 9.5 },
       gates: [
-        { x: -477, y: -132 },
-        { x: -476, y: -132 },
-        { x: -475, y: -132 },
-        { x: -477, y: -120 },
-        { x: -476, y: -120 },
-        { x: -475, y: -120 },
+        { x: -473, y: -139 },
+        { x: -472, y: -139 },
+        { x: -471, y: -139 },
+        { x: -473, y: -117 },
+        { x: -472, y: -117 },
+        { x: -471, y: -117 },
       ],
-      exit: { x: -476, y: -117 },
-      chest: { x: -476, y: -129 },
+      exit: { x: -472, y: -113 },
+      chest: { x: -472, y: -136 },
       master: 'ringmaster_cato',
       levelBand: [15, 40],
     },
@@ -183,13 +184,17 @@ export const ARENAS: ArenasDef = {
       id: 'ford_ring',
       name: 'The Ford Ring',
       zone: 'amberford',
-      pit: { x: 583, y: 46, rx: 4.5, ry: 3.5 },
+      pit: { x: 582, y: 45, rx: 7, ry: 6.4 },
       gates: [
-        { x: 583, y: 42 },
-        { x: 583, y: 50 },
+        { x: 581, y: 38 },
+        { x: 582, y: 38 },
+        { x: 583, y: 38 },
+        { x: 581, y: 52 },
+        { x: 582, y: 52 },
+        { x: 583, y: 52 },
       ],
-      exit: { x: 583, y: 54 },
-      chest: { x: 583, y: 44 },
+      exit: { x: 582, y: 55 },
+      chest: { x: 582, y: 40 },
       master: 'ringmaster_serle',
       levelBand: [3, 16],
     },

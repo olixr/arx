@@ -480,3 +480,77 @@ the class, never the leftover text.
 board for the dock rail (and LEFT comes back). That is the house
 grammar, not an arena wound — Standing and the Key Ring spill the same
 way at the bottom of their lists.
+
+---
+
+## 10. THE SAND GROWS (2026-08-29) — the grand recut
+
+The user's verdict on the shipped rings: too small, "stuck in a little
+tiny box." Both venues were reworked at grand scale — not dial turns,
+new ground plans — with the engine untouched: the venue def is data,
+`inPit`/`scatterSpots` are pure ellipse math, and the gate machinery
+reads whatever door tiles the venue lists. Only geometry moved.
+
+**The Grand Ring — a true colosseum now.** The Fairstead block gives
+~39×34 usable tiles between the Pilgrim's Way (x42-44), the Kingshore,
+the High Street (x84-92), the Kingswater (y194-200), and the Vale wall
+(y236). The recut spends almost all of it, centered local (64,216):
+
+- Sand `fillEllipse rx12.5/ry9.5` ≈ 373 tiles (was rx8/ry5.5 ≈ 138 —
+  2.7×). Garrison ring `rx14.5/ry11.5`, two THREE-wide GateGarrison
+  mouths on the short axis (x63-65 at y205 and y227).
+- **The horseshoe opens south on purpose**: raised stands sit E, W,
+  and N only, because a south stand's cliff face would occlude the
+  sand from this camera. West/east crescents `raise(46|79,208,4,17,1)`
+  with the bench column pit-side and the aisle clear (the reachability
+  law from Phase 5 held); north grandstand as TWO WINGS over the
+  Kingswater bank (`raise(50|69,201,10,4,1)`) with the ground-level
+  BEASTS' PEN LANE between them (x60-68) feeding the north gate —
+  when the gates shut, the lane seals into a real holding pen.
+- Every flight faces south (the stair law): 8 Ramps total, so the
+  content.test ramp pin moved 49 → 53.
+- Dressing: greatBannerDetail(1) on the south wall face flanking the
+  fighters' gate, bannerPoleTile(1) at the four shoulders, braziers at
+  both mouths, the GuardianStatue parity pair rehomed to the
+  processional, WeaponRack + WaterCask as the fighters' last checks,
+  Cato's counter west of the walk, the meeting oak rehomed to the
+  south green, paved arrival rows tying the processional to the High
+  Street (y232) and the Pilgrim's Way (y233).
+
+**The Ford Ring — the pocket, filled.** Amberford offers no 30-wide
+ground anywhere: the town wall (x124, y8-104), Perl's house
+(x132-141, y82-89), the tannery (x119-130, y110-117), the Ford Door
+dirt yard (y122+, anchor MUST not move), and the zone hem (x143) box
+the venue on every side. The recut fills the pocket wall-to-hem,
+centered local (134,101): palisade `rx8.75/8`, sand `rx7/6.4` ≈ 143
+tiles (was rx4.5/3.5 ≈ 49 — 2.9×), three-wide PalisadeGate mouths N
+(y94) and S (y108), muster yard + Serle's counter on the walk-out,
+BannerPoles at the south shoulders, RailWood standing rails SW/SE,
+and the NORTH GALLERY: benches under the orchard eaves with a paved
+landing. Perl's y96 tree rank went under the sand; she replanted it
+WEST against the town wall (x125 column, +1 deep at y96 to keep the
+orchard pin honest at 10 apples).
+
+**Laws this recut minted:**
+- ROUTINES CANNOT WALK THE SAND — worldFit paths a wander circle from
+  the anchor, and a garrison pit behind door tiles has "no reachable
+  ground." Cato's midday wander was re-aimed at the south green
+  (offset 11,0); Serle's noon rake (-3,-8) still lands mid-sand
+  through the always-open palisade mouths and passes. Aim ringmaster
+  wanders OUTSIDE garrison pits.
+- THE POCKET IS THE BUDGET — before drawing a venue, dump the
+  neighborhood occupancy from the real builder (the scratchpad survey
+  script pattern: build the zone, print tiles+elev ASCII). Every
+  collision this recut dodged (road trees, the mid-walk willow, the
+  tannery bite) was caught on the dump, not in review.
+- Venue defs re-sealed: grand_ring pit (-472,-128) rx12.5/ry9.5,
+  gates (-473..-471,-139)+(-473..-471,-117), exit (-472,-113), chest
+  (-472,-136); ford_ring pit (582,45) rx7/ry6.4, gates
+  (581..583,38)+(581..583,52), exit (582,55), chest (582,40). Both
+  ringmaster actors moved with their counters.
+
+**Proving:** all suites green (616 content / 608 server / 293 shared /
+732 client) and both rings walked LIVE on the reel lane (register →
+`/tp 582 45` and `/tp -472 -128` → screenshots): body-ruler passes —
+a fighter reads small on both sands; the wings, pen lane, crescents,
+gates, braziers, and both counters all render as drawn.
