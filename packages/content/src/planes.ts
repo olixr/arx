@@ -58,6 +58,24 @@ export const UNDERWORLD_PLANE: PlaneDef = {
 /** The planes that exist at boot; rift planes are minted per run. */
 export const STATIC_PLANES: readonly PlaneDef[] = [SURFACE_PLANE, UNDERWORLD_PLANE];
 
+/**
+ * THE PROP MUSEUM — the developer's review hall. NOT a static plane:
+ * the server stands it only when dev commands are on, so production
+ * never holds it (a character saved inside rescues home through the
+ * ordinary does-not-stand law). Daylight in a carved shell: 'cave'
+ * base keeps worldgen out, underground:false keeps the review light
+ * honest, and scratch persistence keeps the DB untouched.
+ */
+export const MUSEUM_PLANE_ID: PlaneId = 'museum';
+
+export const MUSEUM_PLANE: PlaneDef = {
+  id: MUSEUM_PLANE_ID,
+  name: 'The Prop Museum',
+  base: 'cave',
+  underground: false,
+  persistent: false,
+};
+
 /** The plane a dungeon run lives on — the slot IS the isolation now. */
 export function riftPlaneId(slot: number): PlaneId {
   return `rift:${slot}`;

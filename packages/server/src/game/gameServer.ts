@@ -393,6 +393,7 @@ import {
   strongholdFallowFor,
   SURFACE_PLANE_ID,
   UNDERWORLD_PLANE_ID,
+  MUSEUM_PLANE_ID,
   isRiftPlane,
   portalDestPlane,
   riftPlaneDef,
@@ -2711,6 +2712,10 @@ export class GameServer {
   /** Gravestones raised where a pack spilled — world dressing on the
    *  Prop lane, living exactly as long as the spill's quarter hour. */
   readonly graves = this.ecs.register<GraveComp>();
+  /** THE PROP MUSEUM: where /museum walks each reviewer back out to.
+   *  Dev-only convenience state — never persisted, stale rows guarded
+   *  by a does-this-plane-still-stand check at use. */
+  private readonly museumReturn = new Map<EntityId, PlanePos>();
 
   /**
    * The walk-back beacon: each character's latest spill spot, keyed by
@@ -31221,6 +31226,35 @@ export class GameServer {
             }
           }
         }
+      }
+      return;
+    }
+    if (config.devCommands && (text === '/museum' || text.startsWith('/museum '))) {
+      // THE PROP MUSEUM: the review hall's one door. First call walks
+      // you in at the entrance plinth; calling it from inside walks
+      // you back to the exact spot you left (or home, if that world
+      // has since been torn down — a rift never waits).
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      if (!this.planes.get(MUSEUM_PLANE_ID)) {
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: 'The museum does not stand on this server.' });
+        return;
+      }
+      if (pos.plane === MUSEUM_PLANE_ID) {
+        const saved = this.museumReturn.get(eid);
+        const back = saved && this.planes.get(saved.plane) ? saved : this.planes.worldSpawn;
+        this.museumReturn.delete(eid);
+        this.transferPlane(eid, back.plane, back.x, back.y);
+      } else {
+        const entry = this.planes.spawnOf('museum');
+        if (!entry) return;
+        this.museumReturn.set(eid, { plane: pos.plane, x: pos.x, y: pos.y });
+        this.transferPlane(eid, entry.plane, entry.x, entry.y);
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: 'The Prop Museum — walk the wings north to south; /museum returns you.',
+        });
       }
       return;
     }

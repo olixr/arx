@@ -112,3 +112,4 @@ export * from './maps/kingsdelf.js';
 export * from './maps/evenfall.js';
 export * from './maps/undercroft.js';
 export * from './maps/lowhall.js';
+export * from './maps/museum.js';

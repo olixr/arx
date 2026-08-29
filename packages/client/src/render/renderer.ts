@@ -65,7 +65,7 @@ import {
   type Vec2,
   isFishingTile,
 } from '@arx/shared';
-import { COMPOST_BATCH_WORTH, abilityDef, bandDy, enchantDef, instanceName, isCropTile, itemDef, npcDef, npcHitHeight, tameDef, companionDef } from '@arx/content';
+import { COMPOST_BATCH_WORTH, MUSEUM_PLANE_ID, abilityDef, bandDy, enchantDef, instanceName, isCropTile, itemDef, npcDef, npcHitHeight, tameDef, companionDef } from '@arx/content';
 import { farmApiaries, farmBins, farmJobs, farmPlots, farmTroughs, predictedGrade } from '../game/farmCare.js';
 import { shortestAngle } from '../net/interpolation.js';
 import type { ClientGame } from '../game/clientGame.js';
@@ -5407,6 +5407,7 @@ export class Renderer {
     if (this.chrome !== 'none') {
       this.drawFloaties(game);
       this.drawWords(game);
+      this.drawMuseumLabels(game);
     }
     if (this.chrome === 'all') {
       this.drawLootLabels(game);
@@ -69174,6 +69175,43 @@ export class Renderer {
       ctx.fillText(text, cx, p.y);
       ctx.globalAlpha = 1;
     }
+  }
+
+  /**
+   * THE PROP MUSEUM (dev builds only): on the museum plane every
+   * plinth speaks at once — each sign's title hangs as a small plate
+   * beneath its post so a reviewer reads a whole aisle at a glance
+   * instead of plaque-by-plaque through the sign HUD's 2.9-tile
+   * radius. Loot-plate dialect, calmer: no ration, no climb — the
+   * floor plan already spaces the plinths. Off-plane this is a single
+   * string compare per frame.
+   */
+  private drawMuseumLabels(game: ClientGame): void {
+    if (game.plane.id !== MUSEUM_PLANE_ID || game.signs.size === 0) return;
+    const ctx = this.ctx;
+    const b = this.visibleTileBounds();
+    ctx.save();
+    ctx.font = "600 11px 'Trebuchet MS', sans-serif";
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const h = 16;
+    for (const sign of game.signs.values()) {
+      if (sign.tx < b.minTx || sign.tx > b.maxTx || sign.ty < b.minTy || sign.ty > b.maxTy) {
+        continue;
+      }
+      const p = this.liftedWTS(sign.tx + 0.5, sign.ty + 1.05);
+      const w = ctx.measureText(sign.title).width + 12;
+      ctx.fillStyle = 'rgba(24, 16, 30, 0.78)';
+      ctx.strokeStyle = 'rgba(240, 232, 212, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      chamferRect(ctx, p.x - w / 2, p.y - h / 2, w, h, 3);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#f0e6cf';
+      ctx.fillText(sign.title, p.x, p.y + 0.5);
+    }
+    ctx.restore();
   }
 
   private drawHpBar(game: ClientGame): void {

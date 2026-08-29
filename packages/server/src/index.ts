@@ -36,6 +36,7 @@ import {
   buildSilverfall,
   buildUndercroft,
   buildLowhall,
+  buildMuseum,
   lootTableErrors,
   replaceFactions,
   replaceFrontier,
@@ -78,6 +79,7 @@ import {
   SURFACE_PLANE_ID,
   UNDERWORLD_PLANE,
   UNDERWORLD_PLANE_ID,
+  MUSEUM_PLANE,
 } from '@arx/content';
 import { config } from './config.js';
 import { AccountStore } from './db/accounts.js';
@@ -526,6 +528,14 @@ const underworld = planes.add(
   UNDERWORLD_PLANE,
   zones.filter((z) => z.plane === UNDERWORLD_PLANE_ID),
 );
+// THE PROP MUSEUM — the developer's review hall stands only where dev
+// commands do; production never holds the plane, and a character who
+// logged out inside rescues home through the does-not-stand law. The
+// hall is always regenerated from code (no data/maps override lane):
+// its whole job is to show what the CURRENT build actually draws.
+if (config.devCommands) {
+  planes.add(MUSEUM_PLANE, [buildMuseum()]);
+}
 /** The persistent plane a rehydrated row registers into. */
 /**
  * The persistent plane a rehydrated row registers into — null for a
