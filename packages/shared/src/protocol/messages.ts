@@ -1509,6 +1509,13 @@ export interface PetInfo {
   focus?: number;
   focusMax?: number;
   arts?: string[];
+  /**
+   * THE COAT OUTLIVES THE BODY: the wild body's procedural look seed,
+   * captured on the day of the asking — the portrait surfaces dress
+   * the same coat the world body wears. Additive; absent on friends
+   * courted before the ledgers (they show the species' home coat).
+   */
+  lookSeed?: number;
   /** The asking's date (ms since epoch); absent on elder friends. */
   tamedAt?: number;
   /** The keeper's beastcraft on the day of the asking; absent = long before the ledgers. */

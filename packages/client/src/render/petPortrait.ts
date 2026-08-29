@@ -28,9 +28,15 @@ function settledPose(species: string, radius: number, speed: number) {
  * under the feet, and a quiet vignette that seats the animal in the
  * medallion's well instead of floating it. Painted once per species
  * and size, at double density so the crest never shows a soft pixel.
+ *
+ * THE COAT OUTLIVES THE BODY: a friend courted since the ledgers
+ * carries its wild body's look seed — the portrait dresses the SAME
+ * coat cluster the world body wears (a frost fox's medallion is a
+ * frost fox). Elder friends without a seed keep the home coat.
  */
-export function petPlaquePortraitUrl(species: string, size = 96): string {
-  const key = `plaque:${species}@${size}`;
+export function petPlaquePortraitUrl(species: string, size = 96, lookSeed?: number): string {
+  const seed = lookSeed ?? 7;
+  const key = `plaque:${species}|${seed}@${size}`;
   const cached = cache.get(key);
   if (cached) return cached;
   const S = size * 2; /* double-density backing store */
@@ -93,7 +99,7 @@ export function petPlaquePortraitUrl(species: string, size = 96): string {
         hurt: false,
         kneeMemory: [],
         attackT: 0,
-        seed: 7,
+        seed,
         nowMs: 0,
         // The portrait wears the bond: strap and brass, like the body.
         collar: '#6e4a26',
@@ -168,8 +174,9 @@ export function petPlaquePortraitUrl(species: string, size = 96): string {
   return url;
 }
 
-export function petPortraitUrl(species: string, size = 92): string {
-  const key = `${species}@${size}`;
+export function petPortraitUrl(species: string, size = 92, lookSeed?: number): string {
+  const seed = lookSeed ?? 7;
+  const key = `${species}|${seed}@${size}`;
   const cached = cache.get(key);
   if (cached) return cached;
   const def = npcDef(species);
@@ -205,7 +212,7 @@ export function petPortraitUrl(species: string, size = 92): string {
       hurt: false,
       kneeMemory: [],
       attackT: 0,
-      seed: 7,
+      seed,
       nowMs: 0,
       // The portrait wears the bond: strap and brass, like the body.
       collar: '#6e4a26',

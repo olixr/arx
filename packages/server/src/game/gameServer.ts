@@ -18292,6 +18292,7 @@ export class GameServer {
         kills: p.kills,
         downs: p.downs,
       };
+      if (p.lookSeed != null) info.lookSeed = p.lookSeed;
       if (p.tamedAt !== null) info.tamedAt = p.tamedAt;
       if (p.tamedLevel !== null) info.tamedLevel = p.tamedLevel;
       if (p.state === 'resting' && p.restedAt !== null) {

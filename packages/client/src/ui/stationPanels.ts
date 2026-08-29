@@ -463,7 +463,7 @@ export class StationPanels {
       head.className = 'stall-head';
       const img = document.createElement('img');
       img.className = 'stall-portrait';
-      img.src = petPortraitUrl(p.species);
+      img.src = petPortraitUrl(p.species, 92, p.lookSeed);
       img.draggable = false;
       head.appendChild(img);
       const id = document.createElement('div');

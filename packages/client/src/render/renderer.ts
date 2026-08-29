@@ -60138,7 +60138,9 @@ export class Renderer {
         impacts.length = 0;
       }
       const corpseOwl =
-        defId === 'great_owl' || defId === 'elder_great_owl' ? owlLook(defId, eid) : undefined;
+        defId === 'great_owl' || defId === 'elder_great_owl'
+          ? owlLook(defId, typeof meta.seed === 'number' ? meta.seed : eid)
+          : undefined;
       entry = {
         rag,
         look: {
@@ -60584,7 +60586,7 @@ export class Renderer {
         defId === 'lynx_young' ? 0.8 : 1,
         attackT > 0 && attackT < 0.7 ? 1 : 0,
       );
-      const look = lynxLook(defId, eid);
+      const look = lynxLook(defId, lookSeed);
       paintBob = () => {
         const pts = bobSim!.nodes.map((nd) => {
           const sp = this.camera.worldToScreen(nd.x, nd.y, this.w, this.h);
@@ -60647,7 +60649,7 @@ export class Renderer {
     // and the strike SWEEPS it, which is the weapon read).
     let basiliskTailSim: CrocTailSim | null = null;
     if (defId.endsWith('basilisk')) {
-      const bLook = basiliskLook(defId, eid);
+      const bLook = basiliskLook(defId, lookSeed);
       if (!anim.basiliskTail) {
         const rootOff = Math.min(spec.bodyLen - 0.04, spec.bodyLen * 0.92);
         anim.basiliskTail = new CrocTailSim(eid, rootOff, {
@@ -60784,8 +60786,11 @@ export class Renderer {
           canid.sizeK,
         );
       }
+      // THE COAT OUTLIVES THE BODY holds for the brush too: the tail
+      // must dress off the SAME seed as the hull, or a courted frost
+      // fox streams an ember flag off a re-minted eid.
       const isFox = defId.startsWith('fox');
-      const foxL = isFox ? foxLook(defId, eid) : undefined;
+      const foxL = isFox ? foxLook(defId, lookSeed) : undefined;
       const feySt =
         defId === 'fey_wolf'
           ? // The court's banners: dusk silk dipped in cold light —
@@ -61033,7 +61038,7 @@ export class Renderer {
   private leglessItem(
     eid: number,
     defId: string,
-    meta: { name?: string; level?: number; ownerEid?: number },
+    meta: { name?: string; level?: number; ownerEid?: number; seed?: number },
     s: { x: number; y: number; dir: number; hpPct: number; pose: number; status?: number },
     hurt: boolean,
     nameInk?: string,
@@ -61050,6 +61055,9 @@ export class Renderer {
     const attackT =
       s.pose === PoseState.Attack ? Math.min(1, (now - anim.poseStartedAt) / 420) : 0;
     const moveK = anim.moveK ?? 0;
+    // THE COAT OUTLIVES THE BODY: a companion bat carries its courted
+    // look seed on the wire; wild bodies dress by eid, as always.
+    const lookSeed = typeof meta.seed === 'number' ? meta.seed : eid;
     const common = {
       x: p.x,
       y: p.y,
@@ -61060,7 +61068,7 @@ export class Renderer {
       hurt,
       walkPhase: anim.walkPhase,
       nowMs: now,
-      seed: eid,
+      seed: lookSeed,
       moveK,
       attackT,
       ys: this.camera.yScale,
@@ -61118,7 +61126,7 @@ export class Renderer {
     // batExtent measures the real silhouette off the SAME bones the
     // painter draws, every frame (bats never take the sprite cache,
     // so a live box costs nothing but the arithmetic).
-    const bLook = bat ? batLook(defId, eid) : undefined;
+    const bLook = bat ? batLook(defId, lookSeed) : undefined;
     const bExt = bLook ? batExtent(bLook, batFlight!, s.dir, this.camera.yScale, scale) : undefined;
     const oExt = ooze ? oozeExtents(ooze, radius) : undefined;
     const halfW = (snake ? 1.55 : bExt ? Math.max(-bExt.left, bExt.right) : oExt ? oExt.halfW : radius * 2.2 + 0.25) * scale;
@@ -61163,7 +61171,7 @@ export class Renderer {
         this.castBody(p.x, p.y + r * 0.25, r * (bat ? 0.8 : snake ? 1.0 : 1.05));
       },
       draw: () => {
-        if (bat) drawBat(this.ctx, batLook(defId, eid), { ...common, flight: batFlight! });
+        if (bat) drawBat(this.ctx, batLook(defId, lookSeed), { ...common, flight: batFlight! });
         else if (snake) drawSnake(this.ctx, common);
         else drawOoze(this.ctx, ooze ?? { plan: 'hopper', giant: false, dress: 'verdant' }, common);
       },
@@ -61199,7 +61207,7 @@ export class Renderer {
   private owlItem(
     eid: number,
     defId: string,
-    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean },
+    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean; seed?: number },
     s: { x: number; y: number; dir: number; hpPct: number; pose: number; status?: number },
     hurt: boolean,
     nameInk?: string,
@@ -61214,7 +61222,10 @@ export class Renderer {
     const now = performance.now();
     const anim = this.animFor(eid, s.x, s.y, s.pose, now);
     const spec = beastSpec(defId, radius, def?.speed ?? 2);
-    const look = owlLook(defId, eid);
+    // THE COAT OUTLIVES THE BODY: a companion owl carries its courted
+    // plumage seed on the wire; wild bodies dress by eid, as always.
+    const lookSeed = typeof meta.seed === 'number' ? meta.seed : eid;
+    const look = owlLook(defId, lookSeed);
     const dt = Math.max(this.frameDt, 1e-3);
 
     // AN OWL NEVER SITS: the parliament lives on the wing, always —
@@ -61262,7 +61273,7 @@ export class Renderer {
           attackT,
           hurt,
           nowMs: now,
-          seed: eid,
+          seed: lookSeed,
           // A companion wears the keeper's strap (the collar law).
           collar: meta.stock ? '#8a6234' : meta.ownerEid !== undefined ? '#6e4a26' : undefined,
         });

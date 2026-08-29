@@ -177,7 +177,7 @@ export class CompanionHall {
       const ring = ringGauge(p.maxHp > 0 ? p.hp / p.maxHp : 0, { size: '3.4rem' });
       ring.root.classList.add('hall-stop-ring');
       const face = document.createElement('img');
-      face.src = petPlaquePortraitUrl(p.species, 96);
+      face.src = petPlaquePortraitUrl(p.species, 96, p.lookSeed);
       face.alt = '';
       ring.center.appendChild(face);
       stop.appendChild(ring.root);
@@ -228,7 +228,7 @@ export class CompanionHall {
     const ring = ringGauge(pet.maxHp > 0 ? pet.hp / pet.maxHp : 0, { size: '6.5rem' });
     ring.root.classList.add('hall-portrait-ring');
     const face = document.createElement('img');
-    face.src = petPlaquePortraitUrl(pet.species, 192);
+    face.src = petPlaquePortraitUrl(pet.species, 192, pet.lookSeed);
     face.alt = pet.name;
     ring.center.appendChild(face);
     well.appendChild(ring.root);

@@ -121,7 +121,7 @@ export class CompanionPlaque {
     this.lastHp = active.hp;
 
     this.root.style.display = '';
-    this.face.src = petPlaquePortraitUrl(active.species, 96);
+    this.face.src = petPlaquePortraitUrl(active.species, 96, active.lookSeed);
     this.nameEl.textContent = active.name;
     this.lvlEl.textContent = String(active.level);
 
