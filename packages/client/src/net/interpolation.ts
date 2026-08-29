@@ -38,6 +38,12 @@ const EXTRAP_MAX_SPEED = 30;
  */
 const EXTRAP_BALLISTIC_MS = 300;
 
+/** The rest poses whose mount/dismount the server performs as a
+ *  same-tick teleport onto (or off) the furniture anchor. */
+function sitLie(p: number): boolean {
+  return p === PoseState.Sit || p === PoseState.Lie;
+}
+
 /** Shortest signed angular distance a→b, in (-π, π]. */
 export function shortestAngle(a: number, b: number): number {
   let d = (b - a) % TAU;
@@ -193,8 +199,22 @@ export class InterpBuffer {
       // to EXTRAP_MAX_MS, then hold. Velocity comes from the last pair
       // and must be fresh; a stationary entity never projects (no
       // orbiting around an idle body from dir noise).
+      //
+      // THE SEAT IS A TELEPORT, NOT A WALK — the extrapolation side of
+      // the interpolation rule below. The server mounts a rest stop by
+      // MOVING the body onto the furniture anchor and flipping the pose
+      // in the same tick (and steps it back beside the piece the tick
+      // it rises), then THE QUIET WIRE goes silent: a settled row never
+      // resends, so this branch is where a sleeper lives FOREVER. The
+      // mount pair read as a just-under-cap ~29 t/s sprint and beached
+      // every sleeper tiles past the bed until any row change (a talk,
+      // a hit) resent the truth. A resting body is anchored to its
+      // sample; a pair that crosses the rest boundary is a teleport,
+      // never a velocity.
+      if (sitLie(last.pose)) return last;
       const prev = this.samples[n - 2];
       if (!prev) return last;
+      if (sitLie(prev.pose)) return last;
       const pairDt = last.t - prev.t;
       if (pairDt <= 0 || pairDt > EXTRAP_PAIR_MAX_MS) return last;
       const vx = (last.x - prev.x) / pairDt;
@@ -226,7 +246,6 @@ export class InterpBuffer {
         // seat resolve reads the approach tile, mis-sorting the rig
         // behind the furniture for the whole glide. Present the new
         // side of the boundary whole; the pose blends do the easing.
-        const sitLie = (p: PoseState): boolean => p === PoseState.Sit || p === PoseState.Lie;
         if (sitLie(a.pose) !== sitLie(b.pose)) {
           return {
             t,

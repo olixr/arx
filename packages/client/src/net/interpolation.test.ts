@@ -62,6 +62,43 @@ test('implausible speeds are rejected (teleport, not motion)', () => {
   assert.ok(Math.abs(s.x - 10) < 1e-9);
 });
 
+// ---- THE SEAT IS A TELEPORT (extrapolation side) -------------------
+// Live-caught in Silverfall: a sleeper's last two samples straddle the
+// bed mount — bedside walk → bed anchor in one 50ms tick, ~29 t/s,
+// just under the extrapolation speed cap — and THE QUIET WIRE never
+// sends another row, so render time sits past the newest sample for
+// the entire night. The projection beached every sleeper ~4 tiles
+// outside the house, lying in the void, until any row change (a talk)
+// resent the truth.
+
+test('a body resting after the mount teleport never extrapolates', () => {
+  const b = new InterpBuffer();
+  b.push({ ...sample(0, 10.3, 5.5), pose: 1 }); // last walk step, bedside
+  b.push({ ...sample(50, 11.5, 4.7), pose: 16 }); // mount teleport onto the anchor, Lie
+  // Deep in the quiet-wire night: minutes past the newest sample.
+  const s = b.sampleAt(50 + 200_000)!;
+  assert.equal(s.pose, 16);
+  assert.ok(Math.abs(s.x - 11.5) < 1e-9 && Math.abs(s.y - 4.7) < 1e-9,
+    `sleeper must hold the bed anchor, got ${s.x},${s.y}`);
+});
+
+test('a body that just rose never rides the dismount teleport', () => {
+  const b = new InterpBuffer();
+  b.push({ ...sample(0, 11.5, 4.7), pose: 16 }); // lying on the anchor
+  b.push({ ...sample(50, 10.3, 5.5), pose: 0 }); // dismount step back beside the bed
+  const s = b.sampleAt(50 + 200_000)!;
+  assert.ok(Math.abs(s.x - 10.3) < 1e-9 && Math.abs(s.y - 5.5) < 1e-9,
+    `riser must hold the bedside stand, got ${s.x},${s.y}`);
+});
+
+test('a seated body holds its chair through the quiet wire', () => {
+  const b = new InterpBuffer();
+  b.push({ ...sample(0, 3.2, 8.4), pose: 1 });
+  b.push({ ...sample(50, 4.5, 8.5), pose: 14 }); // Sit mount
+  const s = b.sampleAt(50 + 60_000)!;
+  assert.ok(Math.abs(s.x - 4.5) < 1e-9, `sitter must hold the seat anchor, got ${s.x}`);
+});
+
 // ---- BALLISTIC TRUTH (v9) ------------------------------------------
 
 test('a ballistic shot flies from its very first sample — no freeze', () => {
