@@ -1,0 +1,22 @@
+{
+  "id": "find_forgotten_graves",
+  "name": "Forgotten graves",
+  "description": "Three stones past reading and one mound the grass has not taken. Somebody still weeds them.",
+  "tiers": [2, 7],
+  "weight": 1.2,
+  "prefabs": ["find_forgotten_graves"],
+  "cache": {
+    "chance": 0.2
+  },
+  "garrison": [
+    {
+      "npc": "skeleton",
+      "count": [1, 2],
+      "hours": {
+        "from": 21,
+        "to": 5
+      }
+    }
+  ],
+  "family": "dead"
+}

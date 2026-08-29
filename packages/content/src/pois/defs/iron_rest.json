@@ -1,0 +1,79 @@
+{
+  "id": "iron_rest",
+  "name": "The Iron Rest",
+  "description": "A graveyard somebody still keeps: wrought iron around counted rows, grave-candles burning at a paid-for monument, and a sexton's lodge with the lamp lit. The gate stands open. Nobody living does the weeding.",
+  "tiers": [3, 7],
+  "weight": 2,
+  "prefabs": ["poi_iron_rest"],
+  "garrison": [
+    {
+      "npc": "skeleton",
+      "count": [3, 4],
+      "role": "holdfast"
+    },
+    {
+      "npc": "skeleton",
+      "count": [2, 3],
+      "role": "holdfast",
+      "hours": {
+        "from": 20,
+        "to": 6
+      }
+    },
+    {
+      "npc": "skeleton_archer",
+      "count": [1, 2],
+      "role": "sentry",
+      "patrol": true
+    },
+    {
+      "npc": "skeleton_guard",
+      "count": [2, 3],
+      "role": "holdfast",
+      "minTier": 4
+    },
+    {
+      "npc": "skeleton_chanter",
+      "count": [1, 1],
+      "role": "holdfast",
+      "minTier": 5
+    },
+    {
+      "npc": "skeleton_guard",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 4,
+      "names": [
+        "The Sexton",
+        "The Gate Count",
+        "She Who Weeds the Rows",
+        "The Last Entry"
+      ]
+    }
+  ],
+  "chestTierBonus": 1,
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [
+      {
+        "tile": "Rock",
+        "count": 2
+      },
+      {
+        "tile": "BonePile",
+        "count": 2
+      }
+    ]
+  },
+  "signs": [
+    {
+      "title": "THE IRON REST",
+      "lines": [
+        "the gate stands open",
+        "the rows are counted"
+      ]
+    }
+  ],
+  "family": "dead"
+}

@@ -450,6 +450,25 @@ export const skralLegend: Record<string, number> = {
 };
 
 /**
+ * THE IRON REST (docs/graveyard-kit-plan.md): the kept dead's own
+ * marks, a local legend for every ground that buries with a smith
+ * and a mason instead of a kerb of fieldstone. The letters shadow
+ * their global meanings sketch by sketch, mnemonically: T a stone
+ * sTanding, M the Monument, m the low mound, A the mourner's bowed
+ * silhouette, I the iron rail, = its gate.
+ */
+export const graveLegend: Record<string, number> = {
+  T: Tile.Gravestone,
+  M: Tile.GravestoneTall,
+  m: Tile.GraveMound,
+  A: Tile.MournerStatue,
+  I: Tile.IronFence,
+  '=': Tile.IronGate,
+  '+': Tile.IronGateShut,
+  g: Tile.CandleShrine,
+};
+
+/**
  * THE SKRAL CAMPS (docs/skral-plan.md): the brine-folk BUILD, but only
  * in bank-stuff — lashed racks heavy with the catch, a beached dugout,
  * and always the dug pool at the heart (the '~' shallows: a camp that
@@ -2064,6 +2083,23 @@ const findBarrow = sketch('find_barrow', 'Old barrow', [
   '_,....,_',
 ]);
 
+/** Three stones past reading and one mound the grass has not taken.
+ *  Somebody still weeds them; nobody will say who. */
+const findForgottenGraves = sketch(
+  'find_forgotten_graves',
+  'Forgotten graves',
+  [
+    '_,.....,_',
+    ',.T:,T..,',
+    ',..m:.T,,',
+    ',.,:W:..,',
+    '_,.....,_',
+  ],
+  {},
+  undefined,
+  graveLegend,
+);
+
 // THE SHORE FINDS (docs/skral-decor-plan.md): the banks' own texture —
 // each stands only where its slot brushes water (MinorDef.shore), and
 // each re-voices the war camp's punctuation through the skral legend.
@@ -2517,6 +2553,7 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     findWreckedCart,
     findTappedYew,
     findBarrow,
+    findForgottenGraves,
     findWarTotem,
     findStashMound,
     // The shore finds (docs/skral-decor-plan.md): bank texture.

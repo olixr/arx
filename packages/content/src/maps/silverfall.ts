@@ -1638,17 +1638,28 @@ export function buildSilverfall(): ZoneDef {
   // No loot among the dead. The quiet is the design.
   // ---------------------------------------------------------------
   b.fillRect(15, 144, 3, 3, Tile.Path).fillRect(32, 144, 3, 3, Tile.Path); // the stair feet
-  // The lych gate at the mourners' stair.
-  b.set(12, 146, Tile.Fence).set(13, 146, Tile.Fence).set(14, 146, Tile.Fence).set(15, 146, Tile.Fence);
-  b.set(16, 146, Tile.FenceGate);
-  b.set(17, 146, Tile.Fence).set(18, 146, Tile.Fence).set(19, 146, Tile.Fence).set(20, 146, Tile.Fence);
+  // The lych gates in wrought iron (THE IRON REST — docs/graveyard-
+  // kit-plan.md): the rail runs the terrace's whole south lip and
+  // BOTH stairs answer to a gate. The city walled its dead the day
+  // it could afford a smith; the standing stones inside are older
+  // than the rail and the rail knows it.
+  for (let fx = 12; fx <= 37; fx++) b.set(fx, 146, Tile.IronFence);
+  b.set(16, 146, Tile.IronGate).set(33, 146, Tile.IronGate);
   // The barrow rows: two lines of standing stones, older than the
   // Silver Line — the foremen who came before the kings.
   for (const sx of [13, 18, 23, 28, 33] as const) {
     b.set(sx, 124, Tile.PillarStone);
     b.set(sx, 132, Tile.PillarStone);
   }
-  b.set(14, 125, Tile.Rock).set(24, 133, Tile.Rock).set(34, 125, Tile.Rock); // the mounds
+  // The kept rows between the old stones: the city's own dead in
+  // proper granite, the fresh mounds saying the terrace still earns
+  // its name. The Watcher's row stays clear about the Watcher.
+  b.set(14, 128, Tile.Gravestone).set(17, 128, Tile.GraveMound).set(20, 128, Tile.Gravestone);
+  b.set(27, 128, Tile.Gravestone).set(30, 128, Tile.Gravestone).set(33, 128, Tile.GravestoneTall);
+  b.set(13, 136, Tile.Gravestone).set(16, 136, Tile.Gravestone).set(19, 136, Tile.GravestoneTall);
+  b.set(25, 136, Tile.Gravestone).set(28, 136, Tile.GraveMound).set(31, 136, Tile.Gravestone);
+  b.set(34, 136, Tile.Gravestone);
+  b.set(14, 125, Tile.GraveMound).set(24, 133, Tile.GraveMound).set(34, 125, Tile.GraveMound);
   b.fillRect(12, 122, 2, 1, Tile.Snow).fillRect(26, 127, 2, 1, Tile.Snow);
   b.fillRect(35, 138, 2, 1, Tile.Snow);
   b.set(11, 128, Tile.TreeYew).set(37, 128, Tile.TreeYew);
@@ -1656,6 +1667,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(18, 133, Tile.CandleShrine).set(28, 125, Tile.CandleShrine).set(23, 139, Tile.CandleShrine);
   b.set(23, 128, Tile.GuardianStatue); // the Watcher whose name wore off
   b.set(26, 140, Tile.Bench); // one seat, for whoever needs it longest
+  b.set(24, 140, Tile.MournerStatue); // and the one who never leaves it
   b.setDetail(16, 130, Detail.Pebbles).setDetail(30, 136, Detail.Pebbles);
   b.sign(19, 147, 'THE SILENT TERRACE', ['older than the walls.', 'leave the candles be'], Tile.Signpost);
   // ---------------------------------------------------------------

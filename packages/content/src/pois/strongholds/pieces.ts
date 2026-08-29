@@ -1,6 +1,6 @@
 import { Tile } from '@arx/shared';
 import type { PrefabDef } from '../../maps/prefab.js';
-import { sketch, skralLegend } from '../prefabs.js';
+import { graveLegend, sketch, skralLegend } from '../prefabs.js';
 
 // THE WARREN AND THE LEGION reaches the ward shelf: the camps' life
 // marks, shared by every piece that flies one (the marks collide with
@@ -273,7 +273,13 @@ const wkDenheart = piece('boss', 'ward_wk_denheart', 'den heart', [
   '_____________',
 ]);
 
-/** Dead cluster (barrow-courts — old stone, cold braziers). */
+/** Dead cluster (barrow-courts — old stone, cold braziers). The
+ *  grave-court's own rows speak THE IRON REST's legend (the kit in
+ *  docs/graveyard-kit-plan.md): real headstones and turned earth
+ *  where the first cut dealt cave rubble, the mourner where the
+ *  court keeps its cache, candles where somebody still tends. The
+ *  standing stones stay bare stone — that ground is OLDER than any
+ *  smith, and the two dialects never mix by accident. */
 const ddStones = piece('ward', 'ward_dd_stones', 'standing stones', [
   '___________',
   '__P:::P____',
@@ -287,34 +293,34 @@ const ddStones = piece('ward', 'ward_dd_stones', 'standing stones', [
 
 const ddGraves = piece('watch', 'ward_dd_graves', 'grave rows', [
   '__________',
-  '_o:R:o____',
-  '_:::::R___',
-  '_R:o:::o__',
-  '_:::R:::__',
-  '__o::R____',
+  '_T:m:T:___',
+  '_:,:,:T,__',
+  '_T:o:::m__',
+  '_:,:T:,:__',
+  '__m::T:___',
   '__________',
-]);
+], undefined, graveLegend);
 
 const ddShrine = piece('ward', 'ward_dd_shrine', 'fallen shrine', [
   '_________',
   '__Q:b____',
-  '_:::::R__',
+  '_:A:::R__',
   '_:b:Q::__',
-  '__:::____',
+  '__:g:____',
   '_________',
-]);
+], undefined, graveLegend);
 
 const ddCourt = piece('boss', 'ward_dd_court', 'barrow court', [
   '_____________',
   '__P::b::P____',
-  '_:::::::::___',
-  '_:b::Z::b:___',
+  '_::::M::::___',
+  '_:b:AZA:b:___',
   '_::::S::::___',
   '_:P::b::P:___',
-  '_:::::::::___',
+  '_::T:::T::___',
   '__P:::::P____',
   '_____________',
-]);
+], undefined, graveLegend);
 
 /**
  * THE LARGE SHELF (Second Charter, THE BREATHING LAW) — neighborhood-
@@ -434,16 +440,18 @@ const wkGreatboneyard = piece('ward', 'ward_wk_greatboneyard', 'great boneyard',
   '________________',
 ]);
 
+// The processional's south rank keeps grave-candles now — the tended
+// side, facing the rows it serves.
 const ddProcessional = piece('ward', 'ward_dd_processional', 'processional way', [
   '_________________',
   '__P::b::::b::P___',
   '_:SSSSSSSSSSSS:__',
   '_:S..........S:__',
   '_:SSSSSSSSSSSS:__',
-  '__P::b::::b::P___',
+  '__P::g::::g::P___',
   '___,________,____',
   '_________________',
-]);
+], undefined, graveLegend);
 
 const ddCairnfield = piece('ward', 'ward_dd_cairnfield', 'cairn field', [
   '__________________',
@@ -463,19 +471,41 @@ const ddCairnfield = piece('ward', 'ward_dd_cairnfield', 'cairn field', [
  * different HOLDS, not different seeds: the dead keep proper grave
  * rows, the wolfkin keep warg pens, the goblins keep a tent city.
  */
+// THE IRON ROWS: the gravefield finally wears the wall its def prose
+// always claimed ("fenced rows of old graves") — a wrought rectangle
+// with its gate south, headstone ranks and turned earth inside, the
+// braziers cold between them.
+// The aisle law, learned from the shelf validator twice over: the
+// center aisle stays clear gate to back wall, the worn corridor rows
+// run FULL width, and no gap between stones ever loses its corridor
+// neighbor — a walled yard with a boxed cell is a sealed ward.
 const ddGravefield = piece('ward', 'ward_dd_gravefield', 'grave rows', [
   '__________________',
-  '__P::R:R:R:R::P___',
-  '_:,.R,R.R,R.R,:___',
-  '_::::::::::::::,__',
-  '_:,R.R,R.R,R.,:___',
-  '_:::::::::::::,___',
-  '_:,R.R,R.R,R.::___',
-  '_::::::::::::::___',
-  '__P::b::::b::P____',
+  '__IIIIIIIIIIIII___',
+  '_:I:T.T.:.m.T.I:__',
+  '_:I:::::::::::I:__',
+  '_:I.m.T.:.T.T.I:__',
+  '_:I:b:::::::b:I:__',
+  '_:I,T.m.:.T,m.I:__',
+  '_:IIIIII=IIIIII:__',
+  '__:,:::::::,::____',
   '___,____,_________',
   '__________________',
-]);
+], undefined, graveLegend);
+
+// THE MOURNER COURT: the yard's paid-for corner — the monument under
+// its candles, the mourner bowed beside it, lesser stones drawn up
+// around. The quietest piece on the shelf, and the one that says
+// somebody LOVED these dead, which in a hostile hold is the eeriest
+// thing a ward can say.
+const ddMournercourt = piece('ward', 'ward_dd_mournercourt', 'mourner court', [
+  '_____________',
+  '__T:g:M:g:T__',
+  '_:::::A::::__',
+  '_:T:::::::T__',
+  '__,:T:m:T,___',
+  '_____________',
+], undefined, graveLegend);
 
 const wkWargpens = piece(
   'ward',
@@ -779,6 +809,7 @@ export const WARD_PIECES: ReadonlyMap<string, WardPiece> = new Map(
     ddProcessional,
     ddCairnfield,
     ddGravefield,
+    ddMournercourt,
     wkWargpens,
     gsWartents,
     skPools,

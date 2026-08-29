@@ -48,6 +48,7 @@ import goblinMootfield from './defs/goblin_mootfield.json';
 import goblinGrubfarm from './defs/goblin_grubfarm.json';
 import goblinWarstage from './defs/goblin_warstage.json';
 import deadChapel from './defs/dead_chapel.json';
+import ironRest from './defs/iron_rest.json';
 import deadMuster from './defs/dead_muster.json';
 import deadCloister from './defs/dead_cloister.json';
 import deadKingsrow from './defs/dead_kingsrow.json';
@@ -134,6 +135,9 @@ const SOURCES: readonly unknown[] = [
   deadMuster,
   deadCloister,
   deadKingsrow,
+  // THE IRON REST: the kept yard — the graveyard kit's own ground
+  // (docs/graveyard-kit-plan.md).
+  ironRest,
   // THE EVERWOOD (the Evenfall epic): the old folk's wild grounds —
   // the family 'elf' joins the territory atlas here, and the far west
   // starts reading as somebody's country instead of nobody's.

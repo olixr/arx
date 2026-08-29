@@ -12,11 +12,14 @@ import {
   dryingGround,
   feastTrestles,
   fireCircle,
+  graveRank,
+  ironYard,
   kelpGarth,
   keepRow,
   kerbMound,
   lureWay,
   mendingRow,
+  monumentCourt,
   ossuaryRun,
   reedHamlet,
   ribShrine,
@@ -683,10 +686,19 @@ function buildDeadChapel(): PrefabDef {
   ossuaryRun(c, 19, 13, 37, 13, rng);
   ossuaryRun(c, 19, 28, 25, 28, rng);
   put(c, 28, 13, Tile.ChestIron);
-  // The garth: kerbed graves east, the bell mound west.
+  // THE WALLED GARTH (THE IRON REST): the parish railed its east
+  // ground — two kerbs and a rank of proper stones inside the iron,
+  // and the third kerb OUTSIDE the rail, opened, which nobody will
+  // explain. The gate faces the nave.
+  blob(c, 46, 21, 9, Tile.Grass, rng, 0.15);
+  ironYard(c, 40, 12, 52, 30, 'w');
   kerbMound(c, 46, 16, rng, rng.chance(0.4));
   kerbMound(c, 45, 26, rng, rng.chance(0.4));
+  graveRank(c, 43, 21, 50, 21, 3, rng);
+  put(c, 49, 28, Tile.MournerStatue);
   kerbMound(c, 46, 36, rng, true);
+  put(c, 26, 31, Tile.CandleShrine);
+  track(c, 29, 31, 39, 21, rng);
   cairn(c, 11, 16, 3, rng);
   // The processional: brazier pairs walking the door south.
   brazierWalk(c, 28, 44, 28, 31, 5, rng);
@@ -701,7 +713,7 @@ function buildDeadChapel(): PrefabDef {
     { dx: 28, dy: 17, dwell: 100 },
     { dx: 34, dy: 21 },
     { dx: 36, dy: 31 },
-    { dx: 45, dy: 30, dwell: 80 },
+    { dx: 44, dy: 33, dwell: 80 },
     { dx: 46, dy: 21, dwell: 80 },
     { dx: 40, dy: 12 },
     { dx: 29, dy: 10 },
@@ -712,6 +724,92 @@ function buildDeadChapel(): PrefabDef {
     { dx: 24, dy: 38 },
   ]);
   return finish(c, 'poi_dead_chapel', 'The sunken chapel');
+}
+
+// --------------------------------------------------------------------
+// THE IRON REST (dead) — the kept yard: a wrought-iron wall around
+// counted rows, a paid-for monument with its mourner, the sexton's
+// lodge with the light still in it, and an older tomb outside the
+// rail that the wall was maybe built against, not around. Everything
+// here is TENDED — weeded rows, burning grave-candles, a gate that
+// stands open — and nobody living does the tending. The kerbed
+// barrows keep the old dead; this ground keeps the kept dead.
+function buildIronRest(): PrefabDef {
+  const c = canvas(58, 46);
+  const rng = seedOf('poi_iron_rest');
+  blob(c, 29, 23, 26, Tile.Grass, rng, 0);
+  // The yard: one iron rectangle, the gate south to meet the road.
+  ironYard(c, 16, 10, 40, 26, 's');
+  // The rows, walked west to east; the third rank stands half empty —
+  // a working yard keeps room, and room in a graveyard is a promise.
+  graveRank(c, 18, 14, 38, 14, 3, rng);
+  graveRank(c, 18, 18, 38, 18, 3, rng);
+  graveRank(c, 18, 22, 28, 22, 3, rng);
+  // The monument court in the yard's east: the one paid-for stone.
+  monumentCourt(c, 34, 23, rng);
+  // The mourners flank the gate from INSIDE — they face the road,
+  // and everyone who enters walks between them.
+  put(c, 26, 25, Tile.MournerStatue);
+  put(c, 30, 25, Tile.MournerStatue);
+  // The aisles the tenders wore.
+  track(c, 28, 25, 28, 12, rng);
+  track(c, 19, 16, 37, 16, rng);
+  track(c, 19, 20, 37, 20, rng);
+  // THE OLD TOMB, northeast OUTSIDE the rail: a stone bed, the
+  // sarcophagus with its walked lid, the urns of the household, a
+  // pillar the years took — and the cache the yard is dug over.
+  for (let y = 12; y <= 16; y++) for (let x = 45; x <= 51; x++) put(c, x, y, Tile.StoneFloor);
+  put(c, 48, 14, Tile.Sarcophagus);
+  put(c, 46, 13, Tile.BurialUrns);
+  put(c, 50, 16, Tile.BrokenPillar);
+  put(c, 50, 12, Tile.ChestIron);
+  put(c, 45, 16, Tile.CandleShrine);
+  // THE SEXTON'S LODGE, southeast: bed made, ledger table, the lamp
+  // lit — the counter of the resting has not stopped counting.
+  ruinRect(c, 44, 30, 52, 37, Tile.WallWood, Tile.CaveRubble, rng, 0.12);
+  for (let y = 31; y <= 36; y++) for (let x = 45; x <= 51; x++) put(c, x, y, Tile.WoodFloor);
+  put(c, 44, 33, Tile.DoorwayWood);
+  put(c, 50, 31, Tile.Bed);
+  put(c, 47, 34, Tile.Table);
+  put(c, 46, 34, Tile.Chair);
+  put(c, 50, 36, Tile.Brazier);
+  // THE POOR GROUND, west outside the rail: the ones the yard would
+  // not take or could not fit — mounds and lesser stones in rougher
+  // rows, and the cairn of whoever was here before any of it.
+  graveRank(c, 10, 14, 10, 26, 3, rng);
+  graveRank(c, 12, 30, 22, 34, 4, rng);
+  cairn(c, 9, 36, 3, rng);
+  // The processional: brazier pairs walking the road to the gate.
+  brazierWalk(c, 28, 44, 28, 28, 5, rng);
+  track(c, 28, 27, 44, 33, rng);
+  track(c, 34, 24, 46, 16, rng);
+  track(c, 24, 26, 12, 32, rng);
+  scatter(c, 29, 23, 26, 12, [Tile.GrassTall], rng);
+  scatter(c, 10, 34, 8, 4, [Tile.BonePile, Tile.Rock], rng);
+  // THE SEXTON'S ROUND: up the processional, in at the gate, the
+  // rows walked rank by rank, a long stand at the monument, out to
+  // the old tomb, the poor ground given its due, and the lodge last
+  // — the count taken, the count written down.
+  route(c, [
+    { dx: 28, dy: 43 },
+    { dx: 28, dy: 34, dwell: 60 },
+    { dx: 28, dy: 25 },
+    { dx: 20, dy: 16, dwell: 80 },
+    { dx: 34, dy: 16 },
+    { dx: 36, dy: 20, dwell: 60 },
+    { dx: 34, dy: 24, dwell: 120 },
+    { dx: 28, dy: 25 },
+    { dx: 40, dy: 28 },
+    { dx: 47, dy: 15, dwell: 100 },
+    { dx: 46, dy: 28 },
+    { dx: 46, dy: 33, dwell: 120, sit: true },
+    { dx: 36, dy: 34 },
+    { dx: 17, dy: 32, dwell: 80 },
+    { dx: 10, dy: 22, dwell: 60 },
+    { dx: 14, dy: 12 },
+    { dx: 22, dy: 30 },
+  ]);
+  return finish(c, 'poi_iron_rest', 'The Iron Rest');
 }
 
 // --------------------------------------------------------------------
@@ -807,10 +905,16 @@ function buildDeadCloister(): PrefabDef {
   }
   put(c, 21, 35, Tile.Lectern);
   put(c, 18, 35, Tile.Brazier);
-  // The bell mound, and the graves of the quieter brothers.
+  // The bell mound, and the graves of the quieter brothers — the
+  // newer rank in proper stone beside the old kerbs (THE IRON REST's
+  // dialect: the kept dead get headstones; the founders keep their
+  // kerbs), the mourner keeping the chapel stub's office with them.
   cairn(c, 44, 34, 3, rng);
+  put(c, 46, 31, Tile.CandleShrine);
   kerbMound(c, 11, 16, rng, false);
   kerbMound(c, 11, 24, rng, true);
+  graveRank(c, 16, 14, 16, 26, 3, rng);
+  put(c, 24, 33, Tile.MournerStatue);
   brazierWalk(c, 29, 44, 29, 31, 5, rng);
   track(c, 29, 32, 29, 22, rng);
   track(c, 32, 26, 40, 22, rng);
@@ -1244,6 +1348,7 @@ export const LANDMARK_PREFABS: readonly PrefabDef[] = [
   buildGoblinGrubfarm(),
   buildGoblinWarstage(),
   buildDeadChapel(),
+  buildIronRest(),
   buildDeadMuster(),
   buildDeadCloister(),
   buildDeadKingsrow(),

@@ -7,6 +7,7 @@ import findBeachedWreck from './minors/find_beached_wreck.json';
 import findBonePile from './minors/find_bone_pile.json';
 import findCatCache from './minors/find_cat_cache.json';
 import findDenMouth from './minors/find_den_mouth.json';
+import findForgottenGraves from './minors/find_forgotten_graves.json';
 import findGlade from './minors/find_glade.json';
 import findHuntersRest from './minors/find_hunters_rest.json';
 import findOldRibs from './minors/find_old_ribs.json';
@@ -33,6 +34,7 @@ const SOURCES: readonly unknown[] = [
   findBonePile,
   findCatCache,
   findDenMouth,
+  findForgottenGraves,
   findGlade,
   findHuntersRest,
   findOldRibs,

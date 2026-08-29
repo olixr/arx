@@ -150,7 +150,7 @@ const ROSTER: readonly RosterEntry[] = [
     seed: 3,
     bossNames: ['The Grave Warden', 'The Pale Sexton', 'The Roll Keeper', 'He Who Closes the Earth'],
     titles: ['The Sunken Rows', 'The Counted Field', 'The Long Rest'],
-    pieces: ['ward_dd_gravefield', 'ward_dd_graves', 'ward_dd_stones', 'ward_dd_cairnfield', 'ward_dd_processional'],
+    pieces: ['ward_dd_gravefield', 'ward_dd_graves', 'ward_dd_stones', 'ward_dd_cairnfield', 'ward_dd_processional', 'ward_dd_mournercourt'],
   },
   {
     id: 'stronghold_wolfkin_wargcamp',

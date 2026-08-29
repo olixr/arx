@@ -299,6 +299,88 @@ export const brazierWalk = (
   }
 };
 
+// --------------------------------------------------------------------
+// THE IRON REST SHELF (docs/graveyard-kit-plan.md) — the kept dead's
+// material culture, shelved so every tended ground buries the same
+// way. The kerbed barrow is the OLD dead (stone rings, no smith); the
+// iron yard is the KEPT dead — a wall raised by the living, rows
+// weeded by somebody, a gate that counts. The two dialects never mix
+// on one ground by accident: a builder chooses which dead it buries.
+
+/**
+ * A rank of the kept dead along a line: headstones at a walked
+ * spacing, the odd fresh mound among them (grief is never finished),
+ * tall grass creeping where the tenders' feet don't fall.
+ */
+export const graveRank = (
+  c: Canvas,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  step: number,
+  rng: Rng,
+): void => {
+  const dist = Math.hypot(x1 - x0, y1 - y0);
+  const n = Math.max(1, Math.floor(dist / step));
+  for (let i = 0; i <= n; i++) {
+    const x = Math.round(x0 + ((x1 - x0) * i) / n);
+    const y = Math.round(y0 + ((y1 - y0) * i) / n);
+    // One grave in six is fresh-dug; one in eight was never marked
+    // at all — the rank reads as a working row, not a stamp sheet.
+    if (rng.chance(0.125)) continue;
+    put(c, x, y, rng.chance(0.18) ? Tile.GraveMound : Tile.Gravestone);
+    if (rng.chance(0.35) && at(c, x, y + 1) === Tile.Grass) put(c, x, y + 1, Tile.GrassTall);
+  }
+};
+
+/**
+ * THE IRON YARD: a wrought-iron rectangle with one gate — the kept
+ * ground's wall. Corners anchor their own piers (the renderer's
+ * junction law), so the module only lays the runs and hangs the
+ * gate at the middle of the named side, standing OPEN — a graveyard
+ * gate is an invitation the wise decline.
+ */
+export const ironYard = (
+  c: Canvas,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  gate: 'n' | 's' | 'e' | 'w',
+): void => {
+  for (let x = x0; x <= x1; x++) {
+    put(c, x, y0, Tile.IronFence);
+    put(c, x, y1, Tile.IronFence);
+  }
+  for (let y = y0 + 1; y < y1; y++) {
+    put(c, x0, y, Tile.IronFence);
+    put(c, x1, y, Tile.IronFence);
+  }
+  const mx = Math.round((x0 + x1) / 2);
+  const my = Math.round((y0 + y1) / 2);
+  if (gate === 'n') put(c, mx, y0, Tile.IronGate);
+  else if (gate === 's') put(c, mx, y1, Tile.IronGate);
+  else if (gate === 'w') put(c, x0, my, Tile.IronGate);
+  else put(c, x1, my, Tile.IronGate);
+};
+
+/**
+ * The monument court: the yard's one paid-for stone — a tall
+ * monument with the mourner bowed beside it and grave-candles kept
+ * burning at its foot. Somebody tends this; that is the eeriness.
+ */
+export const monumentCourt = (
+  c: Canvas,
+  cx: number,
+  cy: number,
+  rng: Rng,
+): void => {
+  put(c, cx, cy, Tile.GravestoneTall);
+  put(c, cx + (rng.chance(0.5) ? -2 : 2), cy, Tile.MournerStatue);
+  put(c, cx + (rng.chance(0.5) ? -1 : 1), cy + 1, Tile.CandleShrine);
+};
+
 /** Bone-lined run: the ossuary's aisle, stacked against a wall line. */
 export const ossuaryRun = (
   c: Canvas,
