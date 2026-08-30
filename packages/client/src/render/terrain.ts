@@ -589,7 +589,7 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     if (t >= Tile.FishRack && t <= Tile.TideChimes) return nearestFloor(ground, tx, ty);
     // THE TOWN KEEPS ITS DAY: street furniture stands on whatever
     // the town paved — flagstone, path, or the green.
-    if (t >= Tile.TownFountain && t <= Tile.ProduceStand) return nearestFloor(ground, tx, ty);
+    if (t >= Tile.TownFountain && t <= Tile.StoneBench) return nearestFloor(ground, tx, ty);
     // THE TRADES KEEP SHOP: workshop gear stands on the shop floor
     // or the yard the trade tramples — never its own material.
     if (t >= Tile.QuenchTrough && t <= Tile.DisplayTable) return nearestFloor(ground, tx, ty);
@@ -599,9 +599,10 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     // THE WARREN AND THE LEGION: the camps' life stands on the same
     // trampled ground the first war-camp shelf stands on.
     if (t >= Tile.BoneMidden && t <= Tile.GnawTrough) return nearestFloor(ground, tx, ty);
-    // THE CHORE AND THE LOG YARD: the block and the mill timber
-    // stand on the yard they serve — never their own material.
-    if (t >= Tile.ChoppingBlock && t <= Tile.LogPileEndOn) return nearestFloor(ground, tx, ty);
+    // THE LOG YARD: the mill timber stands on the yard it serves —
+    // never its own material. (462 ChoppingBlock RETIRED — the range
+    // re-anchored on the surviving log family.)
+    if (t >= Tile.FelledLog && t <= Tile.LogPileEndOn) return nearestFloor(ground, tx, ty);
     // THE KEPT FLAME (+ THE BOLD WICK): a candle court stands on
     // whatever the room laid — boards, flags, or the green; wax
     // never paves.

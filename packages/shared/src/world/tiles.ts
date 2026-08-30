@@ -768,8 +768,7 @@ export enum Tile {
   StreetPlanter = 402,
   /** A carved civic bench, worn where people actually sit. */
   StoneBench = 403,
-  /** A street grocer's tiered display, produce ranked to the street. */
-  ProduceStand = 404,
+  // 404 RETIRED (ProduceStand — the museum audit sent it back to the shop; old DBs may hold it, never reuse).
   // THE TRADES KEEP SHOP — the working-trades kit (405-416,
   // docs/trade-decor-plan.md). The town kit dressed the street;
   // this shelf dresses the SHOPS behind it. Same voice, TENDED,
@@ -781,8 +780,7 @@ export enum Tile {
   QuenchTrough = 405,
   /** A treadle grinding wheel, its groove worn true, a blade resting on the rest. */
   Grindstone = 406,
-  /** The forge's great double-lung bellows parked on its stand, nozzle to the fire. */
-  SmithBellows = 407,
+  // 407 RETIRED (SmithBellows — the museum audit sent it back to the shop; old DBs may hold it, never reuse).
   /** Bar stock leaning and ingots stacked by metal — the smith's larder. */
   IngotRack = 408,
   /** Planks racked on edge between dowel pegs, sawdust drifted below. */
@@ -793,8 +791,7 @@ export enum Tile {
   TailorsDummy = 411,
   /** Bolts of dyed cloth rolled and racked, ends spilling color. */
   ClothBolts = 412,
-  /** A domed masonry bread oven, the day's loaves cooling on the peel. */
-  BreadOven = 413,
+  // 413 RETIRED (BreadOven — the museum audit sent it back to the shop; old DBs may hold it, never reuse).
   /** The butcher's scarred round block, cleaver standing, links on the hooks. */
   ButcherBlock = 414,
   /** Bundled herbs hung heads-down to dry over the herbalist's mortar. */
@@ -812,22 +809,18 @@ export enum Tile {
   // NEVER LEFT — every piece mid-shift.
   /** A spring-fed fount of old fieldstone, its spout-stone still pouring. */
   WallFountain = 417,
-  /** A raised street cask on its cradle — cooper's work, a wooden tap, the pail waiting. */
-  WaterCask = 418,
+  // 418 RETIRED (WaterCask — the museum audit sent it back to the shop; old DBs may hold it, never reuse).
   /** A long staved street trough of still water beside the hitching rail. */
   WaterTrough = 419,
-  /** The potter's kick-wheel, a wet pot half-risen on the wheelhead. */
-  PottersWheel = 420,
-  /** The bottle kiln mid-firing, greenware boarded and waiting its turn. */
-  PotteryKiln = 421,
+  // 420 RETIRED (PottersWheel — the museum audit sent it back to the shop; old DBs may hold it, never reuse).
+  // 421 RETIRED (PotteryKiln — the museum audit sent it back to the shop; old DBs may hold it, never reuse).
   /** A slant-top scribe's desk — ledger open, ink still wet, scrolls pigeonholed. */
   ScribesDesk = 422,
   /** Dipped candles hung in pairs to cure over the chandler's wax tray. */
   CandleRack = 423,
   /** The fletcher's bench: arrows bundled, feathers boxed, staves on their pegs. */
   FletchersBench = 424,
-  /** The cobbler's corner: the iron last, a row of finished boots, scraps below. */
-  CobblersBench = 425,
+  // 425 RETIRED (CobblersBench — the museum audit sent it back to the shop; old DBs may hold it, never reuse).
   /** The fishmonger's tilted slab, the morning catch laid out in silver rows. */
   FishmongerSlab = 426,
   /** The merchant's runner-clothed display table, wares dealt across the top. */
@@ -918,15 +911,11 @@ export enum Tile {
   // THE CHORE STANDS ALONE — split out of the Woodpile when the pile
   // went generalized: the pile is now the STORE (any yard, any door),
   // and this is the WORK — block, standing axe, the fresh split where
-  // the last swing threw it. Pair them where wood is the story; stand
-  // the pile alone everywhere else.
-  /** The splitting block: a scarred seasoned round, the axe standing in it. */
-  ChoppingBlock = 462,
+  // 462 RETIRED (ChoppingBlock — the museum audit sent it back to the shop; old DBs may hold it, never reuse).
   // THE LOG YARD — the pile that came before the cord: raw felled
   // timber at MILL scale, for the sawyers, the wainwrights, and every
   // working wood yard the firewood pile is too small to speak for.
-  // The Woodpile is the STORE and the ChoppingBlock is the WORK;
-  // these are the SUPPLY — trunks the size of the trees the player
+  // The Woodpile is the STORE and these are the SUPPLY — trunks the size of the trees the player
   // fells, waiting on the saw. Two orientations on purpose: the deck
   // lies long across the yard, the end-on pile aims its cut faces at
   // the road.
@@ -1743,20 +1732,17 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.Woodpile]: { name: 'woodpile', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
   [Tile.StreetPlanter]: { name: 'street planter', solid: true, color: '#75603e', raised: true, topColor: '#c95a74' },
   [Tile.StoneBench]: { name: 'stone bench', solid: true, color: '#8a857a', raised: true, topColor: '#b3ada0' },
-  [Tile.ProduceStand]: { name: 'produce stand', solid: true, color: '#75603e', raised: true, topColor: '#c05a3a' },
   // THE TRADES KEEP SHOP — minimap voice: each trade keys off its
   // own material (quench iron, grindstone grit, oven brick, dye
   // madder, herb green) so a workshop yard reads as a WORKSHOP at
   // chart scale, distinct from the street furniture beside it.
   [Tile.QuenchTrough]: { name: 'quench trough', solid: true, color: '#4c4a52', raised: true, topColor: '#8fb4c4' },
   [Tile.Grindstone]: { name: 'grindstone', solid: true, color: '#6f5a38', raised: true, topColor: '#b3ada0' },
-  [Tile.SmithBellows]: { name: "smith's bellows", solid: true, color: '#75603e', raised: true, topColor: '#a3714a' },
   [Tile.IngotRack]: { name: 'ingot rack', solid: true, color: '#5c5648', raised: true, topColor: '#c2a45c' },
   [Tile.LumberRack]: { name: 'lumber rack', solid: true, color: '#75603e', raised: true, topColor: '#d4b98a' },
   [Tile.DyeVats]: { name: 'dye vats', solid: true, color: '#75603e', raised: true, topColor: '#a04a58' },
   [Tile.TailorsDummy]: { name: "tailor's dummy", solid: true, color: '#6f6a58', raised: true, topColor: '#7a86b8' },
   [Tile.ClothBolts]: { name: 'cloth bolts', solid: true, color: '#75603e', raised: true, topColor: '#c4808a' },
-  [Tile.BreadOven]: { name: 'bread oven', solid: true, color: '#8a6a52', raised: true, topColor: '#b8917a' },
   [Tile.ButcherBlock]: { name: "butcher's block", solid: true, color: '#75603e', raised: true, topColor: '#c9856a' },
   [Tile.HerbRack]: { name: 'herb rack', solid: true, color: '#6f5a38', raised: true, topColor: '#7fae6a' },
   [Tile.ShopShelf]: { name: 'shop shelf', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
@@ -1765,14 +1751,10 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   // three street pieces, kiln brick, scribe paper, chandler wax,
   // fletch red, cobbler leather, fish silver, merchant brass).
   [Tile.WallFountain]: { name: 'spring fount', solid: true, color: '#8a857a', raised: true, topColor: '#8fb4c4' },
-  [Tile.WaterCask]: { name: 'water cask', solid: true, color: '#75603e', raised: true, topColor: '#b08a45' },
   [Tile.WaterTrough]: { name: 'water trough', solid: true, color: '#75603e', raised: true, topColor: '#8fb4c4' },
-  [Tile.PottersWheel]: { name: "potter's wheel", solid: true, color: '#75603e', raised: true, topColor: '#b07850' },
-  [Tile.PotteryKiln]: { name: 'pottery kiln', solid: true, color: '#96604a', raised: true, topColor: '#c4a284' },
   [Tile.ScribesDesk]: { name: "scribe's desk", solid: true, color: '#75603e', raised: true, topColor: '#e8dcc4' },
   [Tile.CandleRack]: { name: 'candle rack', solid: true, color: '#6f5a38', raised: true, topColor: '#e8d9b0' },
   [Tile.FletchersBench]: { name: "fletcher's bench", solid: true, color: '#75603e', raised: true, topColor: '#c05a48' },
-  [Tile.CobblersBench]: { name: "cobbler's bench", solid: true, color: '#75603e', raised: true, topColor: '#8a5a36' },
   [Tile.FishmongerSlab]: { name: "fishmonger's slab", solid: true, color: '#8a857a', raised: true, topColor: '#b8c4cc' },
   [Tile.DisplayTable]: { name: 'display table', solid: true, color: '#75603e', raised: true, topColor: '#c9a13c' },
   // THE COMMONS — minimap voice: the general shelf keys warm and
@@ -1813,7 +1795,6 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.HerbPlanter]: { name: 'herb planter', solid: true, color: '#6f4d26', raised: true, topColor: '#5d7c42' },
   // THE CHORE STANDS ALONE — minimap voice: bark below, bright-scarred
   // end grain above (the block reads by its worked top from the sky).
-  [Tile.ChoppingBlock]: { name: 'chopping block', solid: true, color: '#6f4d26', raised: true, topColor: '#c9ab74' },
   // THE LOG YARD — minimap voice: heavy bark masses; the end-on pile
   // alone shows cut-face pale (its faces aim at the sky's camera too).
   [Tile.FelledLog]: { name: 'felled log', solid: true, color: '#6f4d26', raised: true, topColor: '#8a6534' },
@@ -2579,20 +2560,17 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.Woodpile, 0.36],
   [Tile.StreetPlanter, 0.24],
   [Tile.StoneBench, 0.34],
-  [Tile.ProduceStand, 0.36],
   // THE TRADES KEEP SHOP: workshop gear you work AROUND — the oven
   // is the yard's one true mass, the dress form a pole you sidle
   // past, the racks and vats the shoulder-width of the aisles they
   // stand in.
   [Tile.QuenchTrough, 0.4],
   [Tile.Grindstone, 0.34],
-  [Tile.SmithBellows, 0.32],
   [Tile.IngotRack, 0.34],
   [Tile.LumberRack, 0.36],
   [Tile.DyeVats, 0.36],
   [Tile.TailorsDummy, 0.24],
   [Tile.ClothBolts, 0.32],
-  [Tile.BreadOven, 0.45],
   [Tile.ButcherBlock, 0.32],
   [Tile.HerbRack, 0.28],
   [Tile.ShopShelf, 0.38],
@@ -2600,14 +2578,10 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   // two true masses; the pump and the scale are poles you sidle
   // past; the trough runs long and low like the rail it serves.
   [Tile.WallFountain, 0.42],
-  [Tile.WaterCask, 0.3],
   [Tile.WaterTrough, 0.42],
-  [Tile.PottersWheel, 0.34],
-  [Tile.PotteryKiln, 0.45],
   [Tile.ScribesDesk, 0.32],
   [Tile.CandleRack, 0.28],
   [Tile.FletchersBench, 0.34],
-  [Tile.CobblersBench, 0.3],
   [Tile.FishmongerSlab, 0.36],
   [Tile.DisplayTable, 0.38],
   // THE COMMONS: the guardian and the skiff are the shelf's two
@@ -2645,7 +2619,6 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   // THE HERBALIST'S SHELF: waist furniture you brush past.
   [Tile.HerbPlanter, 0.3],
   // THE CHORE STANDS ALONE: a knee-high round you step around.
-  [Tile.ChoppingBlock, 0.26],
   // THE LOG YARD: mill timber is MASS — the deck keeps the widest
   // working stance in the yard.
   [Tile.FelledLog, 0.42],
@@ -2927,20 +2900,17 @@ export type DestructibleKind =
   | 'woodpile'
   | 'streetplanter'
   | 'stonebench'
-  | 'produce'
   // THE TRADES KEEP SHOP: each trade breaks in its own material —
   // the quench sloshes out, the grindstone disc ROLLS FREE, the
   // oven lands like the masonry it is, the bolts unroll in flight,
   // and a smashed shelf is a rain of crockery.
   | 'quench'
   | 'grindstone'
-  | 'bellows'
   | 'ingots'
   | 'lumber'
   | 'dyevat'
   | 'dressform'
   | 'clothbolts'
-  | 'breadoven'
   | 'butcherblock'
   | 'herbs'
   | 'shopshelf'
@@ -2949,14 +2919,10 @@ export type DestructibleKind =
   // wax, feather and shaft, leather, market silver, brass chain,
   // and the display table's rain of dealt goods.
   | 'wallfountain'
-  | 'watercask'
   | 'watertrough'
-  | 'potterswheel'
-  | 'kiln'
   | 'scribedesk'
   | 'candlerack'
   | 'fletcher'
-  | 'cobbler'
   | 'fishslab'
   | 'parcels'
   | 'displaytable'
@@ -2996,7 +2962,6 @@ export type DestructibleKind =
   | 'herbplanter'
   // THE CHORE STANDS ALONE: the great round topples heavy, the
   // standing axe cartwheels free, chips everywhere.
-  | 'choppingblock'
   // THE LOG YARD: whole trunks break as TRUNKS — long heavy sections
   // that barely fly, great rounds that roll, bark sheeting off.
   | 'greatlog'
@@ -3170,19 +3135,16 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.Woodpile, { kind: 'woodpile', respawnSec: 300, hits: 1 }],
   [Tile.StreetPlanter, { kind: 'streetplanter', respawnSec: 300, hits: 1 }],
   [Tile.StoneBench, { kind: 'stonebench', respawnSec: 600, hits: 3 }],
-  [Tile.ProduceStand, { kind: 'produce', respawnSec: 300, hits: 2 }],
   // THE TRADES KEEP SHOP: workshop timber holds a blow or two like
   // the street's; the oven is the yard's masonry and holds four.
   // A wrecked shop restocks on the short clock — trade goes on.
   [Tile.QuenchTrough, { kind: 'quench', respawnSec: 300, hits: 2 }],
   [Tile.Grindstone, { kind: 'grindstone', respawnSec: 300, hits: 2 }],
-  [Tile.SmithBellows, { kind: 'bellows', respawnSec: 300, hits: 1 }],
   [Tile.IngotRack, { kind: 'ingots', respawnSec: 300, hits: 2 }],
   [Tile.LumberRack, { kind: 'lumber', respawnSec: 300, hits: 2 }],
   [Tile.DyeVats, { kind: 'dyevat', respawnSec: 300, hits: 2 }],
   [Tile.TailorsDummy, { kind: 'dressform', respawnSec: 300, hits: 1 }],
   [Tile.ClothBolts, { kind: 'clothbolts', respawnSec: 300, hits: 1 }],
-  [Tile.BreadOven, { kind: 'breadoven', respawnSec: 600, hits: 4 }],
   [Tile.ButcherBlock, { kind: 'butcherblock', respawnSec: 300, hits: 2 }],
   [Tile.HerbRack, { kind: 'herbs', respawnSec: 300, hits: 1 }],
   [Tile.ShopShelf, { kind: 'shopshelf', respawnSec: 300, hits: 2 }],
@@ -3190,14 +3152,10 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   // limestone holds three; the kiln is this wave's masonry and
   // holds four on the long clock like the oven before it.
   [Tile.WallFountain, { kind: 'wallfountain', respawnSec: 600, hits: 3 }],
-  [Tile.WaterCask, { kind: 'watercask', respawnSec: 300, hits: 2 }],
   [Tile.WaterTrough, { kind: 'watertrough', respawnSec: 300, hits: 2 }],
-  [Tile.PottersWheel, { kind: 'potterswheel', respawnSec: 300, hits: 2 }],
-  [Tile.PotteryKiln, { kind: 'kiln', respawnSec: 600, hits: 4 }],
   [Tile.ScribesDesk, { kind: 'scribedesk', respawnSec: 300, hits: 2 }],
   [Tile.CandleRack, { kind: 'candlerack', respawnSec: 300, hits: 1 }],
   [Tile.FletchersBench, { kind: 'fletcher', respawnSec: 300, hits: 2 }],
-  [Tile.CobblersBench, { kind: 'cobbler', respawnSec: 300, hits: 1 }],
   [Tile.FishmongerSlab, { kind: 'fishslab', respawnSec: 300, hits: 2 }],
   [Tile.DisplayTable, { kind: 'displaytable', respawnSec: 300, hits: 2 }],
   // THE COMMONS: street timber pops in one or two like the rest
@@ -3240,7 +3198,6 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   // THE HERBALIST'S SHELF: cooper's timber on the street clock.
   [Tile.HerbPlanter, { kind: 'herbplanter', respawnSec: 300, hits: 2 }],
   // THE CHORE STANDS ALONE: a seasoned round takes two honest blows.
-  [Tile.ChoppingBlock, { kind: 'choppingblock', respawnSec: 300, hits: 2 }],
   // THE LOG YARD: whole trunks are the street kit's heaviest timber —
   // the single log holds two, the stacked masses hold three.
   [Tile.FelledLog, { kind: 'greatlog', respawnSec: 420, hits: 2 }],

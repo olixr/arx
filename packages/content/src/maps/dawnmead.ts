@@ -205,7 +205,6 @@ export function buildDawnmead(): ZoneDef {
   b.set(87, 102, Tile.HerbPlanter);
   b.set(87, 107, Tile.Apiary);
   b.set(99, 106, Tile.Woodpile);
-  b.set(99, 108, Tile.ChoppingBlock);
   b.sign(100, 110, "THE KEEPER'S HOUSE", ['Wren keeps the Ring.', 'Knock, or wait on the step.']);
   // The wayshrine on the keeper's way — the old hound, worn smooth.
   b.set(103, 115, Tile.WayShrine);
@@ -253,7 +252,6 @@ export function buildDawnmead(): ZoneDef {
   // shoulder, the produce stand that never comes down, and the crate
   // somebody keeps meaning to take home.
   b.set(128, 104, Tile.MarketStall).set(129, 104, Tile.MarketStall);
-  b.set(131, 104, Tile.ProduceStand);
   b.set(126, 105, Tile.CrateGoods).set(132, 106, Tile.BarrelStack);
 
   // ================================================================
@@ -371,7 +369,6 @@ export function buildDawnmead(): ZoneDef {
   cottage(98, 85, 'worn');
   cottage(72, 82, 'trim');
   b.set(94, 88, Tile.Apiary);
-  b.set(94, 91, Tile.ChoppingBlock);
   b.setDetail(93, 89, Detail.Flowers).setDetail(95, 90, Detail.Tuft);
   b.set(107, 92, Tile.StreetLantern);
   b.set(95, 92, Tile.StreetLantern);
@@ -460,7 +457,7 @@ export function buildDawnmead(): ZoneDef {
   b.set(124, 47, awningTile('board', 6)).set(125, 47, awningTile('board', 6));
   b.set(133, 47, awningTile('board', 6)).set(134, 47, awningTile('board', 6));
   b.set(116, 49, Tile.HandCart);
-  b.set(133, 49, Tile.ChoppingBlock).set(134, 49, Tile.Woodpile);
+  b.set(134, 49, Tile.Woodpile);
   b.set(120, 50, Tile.WaterTrough);
   b.set(126, 49, Tile.BarrelStack).set(130, 50, Tile.Wheelbarrow);
   b.setDetail(122, 49, Detail.Pebbles).setDetail(128, 50, Detail.Straw);
@@ -640,7 +637,6 @@ export function buildDawnmead(): ZoneDef {
   b.set(141, 98, Tile.Sawhorse);
   b.set(143, 98, Tile.CarvingBench);
   b.set(139, 101, Tile.LumberRack).set(139, 103, Tile.LogPile);
-  b.set(141, 103, Tile.ChoppingBlock);
   b.set(143, 102, Tile.FelledLog).set(144, 102, Tile.LogPileEndOn);
   b.set(146, 97, awningTile('board', 6)).set(147, 97, awningTile('board', 6));
   b.setDetail(140, 99, Detail.Sawdust).setDetail(142, 100, Detail.Sawdust);
@@ -649,7 +645,6 @@ export function buildDawnmead(): ZoneDef {
   b.set(151, 96, Tile.WallStone).set(152, 96, Tile.WallStone).set(153, 96, Tile.WallStone);
   b.set(154, 96, Tile.WallStone).set(155, 96, Tile.WallStone);
   b.set(151, 97, Tile.Furnace);
-  b.set(153, 97, Tile.SmithBellows);
   b.set(155, 97, Tile.IngotRack);
   b.set(152, 100, Tile.Anvil);
   b.set(153, 100, Tile.QuenchTrough);
@@ -668,7 +663,6 @@ export function buildDawnmead(): ZoneDef {
   // board stack, the water for the quench, and the bench a customer
   // sits on while Ottery finds the right chisel.
   b.set(147, 100, Tile.LumberRack).set(147, 102, Tile.LogPileEndOn);
-  b.set(149, 105, Tile.WaterCask);
   b.set(146, 106, Tile.Bench).set(145, 108, Tile.WoodStool);
   b.set(149, 98, Tile.TiedParcels);
   b.setDetail(148, 101, Detail.Sawdust).setDetail(146, 104, Detail.Sawdust);
@@ -707,7 +701,6 @@ export function buildDawnmead(): ZoneDef {
   for (let x = 124; x <= 129; x++) b.set(x, 130, Tile.Bench).set(x, 132, Tile.Bench);
   b.set(123, 128, Tile.Hearth);
   b.set(131, 128, Tile.CookPot);
-  b.set(123, 134, Tile.WaterCask);
   b.set(131, 134, Tile.Bench);
   b.set(122, 132, Tile.BasketStack).set(122, 129, Tile.GlazedJars);
   b.set(132, 130, Tile.WoodStool).set(132, 132, Tile.WoodStool);
@@ -720,7 +713,6 @@ export function buildDawnmead(): ZoneDef {
   b.fillRect(135, 126, 4, 9, Tile.Dirt);
   b.setDetail(128, 124, Detail.Pebbles).setDetail(132, 125, Detail.Sawdust);
   b.setDetail(137, 132, Detail.Pebbles).setDetail(136, 128, Detail.Pebbles);
-  b.set(124, 124, Tile.BreadOven);
   b.set(122, 124, Tile.GrainSacks);
   b.set(126, 124, Tile.Woodpile);
   b.set(130, 124, Tile.ButcherBlock);
@@ -776,7 +768,7 @@ export function buildDawnmead(): ZoneDef {
   b.set(88, 128, Tile.HitchingPost);
   // The yard's own housekeeping, ranked at the west hem.
   b.set(87, 131, Tile.Grindstone).set(89, 132, Tile.Woodpile);
-  b.set(103, 131, Tile.WaterCask).set(104, 133, Tile.Barrel);
+  b.set(104, 133, Tile.Barrel);
   b.set(94, 133, Tile.HayBale).set(95, 132, Tile.HayBale);
   b.set(99, 133, Tile.CrateStack);
   b.set(91, 130, Tile.TargetDummy).set(101, 129, Tile.TargetDummy);
@@ -827,7 +819,6 @@ export function buildDawnmead(): ZoneDef {
   // The watchers' side and the water.
   b.set(89, 170, Tile.Bench).set(90, 170, Tile.Bench);
   b.set(94, 171, Tile.Bench).set(95, 171, Tile.Bench);
-  b.set(99, 169, Tile.WaterCask);
   b.set(101, 171, Tile.Barrel).set(87, 168, Tile.BasketStack);
   b.setDetail(92, 163, Detail.Pebbles).setDetail(99, 167, Detail.Pebbles);
   b.setDetail(95, 161, Detail.Pebbles);
@@ -1032,7 +1023,6 @@ export function buildDawnmead(): ZoneDef {
   b.fillRect(31, 154, 8, 12, Tile.Dirt);
   b.set(32, 155, Tile.FelledLog).set(33, 155, Tile.FelledLog);
   b.set(32, 158, Tile.LogPile).set(35, 158, Tile.LogPileEndOn);
-  b.set(32, 161, Tile.ChoppingBlock);
   b.set(35, 161, Tile.Woodpile).set(36, 161, Tile.Woodpile);
   b.set(37, 155, Tile.HandCart);
   b.set(33, 164, Tile.Sawhorse);

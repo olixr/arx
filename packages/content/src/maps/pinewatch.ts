@@ -600,7 +600,7 @@ export function buildPinewatch(): ZoneDef {
   b.set(90, 84, Tile.Barrel).set(91, 84, Tile.BarrelStack).set(92, 84, Tile.Barrel);
   b.set(96, 84, Tile.Barrel).set(97, 84, Tile.Barrel);
   b.set(102, 84, Tile.CrateGoods).set(103, 84, Tile.CrateGoods);
-  b.set(94, 86, Tile.WaterCask).set(100, 86, Tile.ToolRack); // fire water, staved and full
+  b.set(100, 86, Tile.ToolRack);
   b.setDetail(93, 82, Detail.Pebbles).setDetail(99, 83, Detail.Pebbles);
   b.sign(88, 82, 'THE PITCH YARD', ['no open flame past the barrels', 'we mean it, Rullo'], Tile.Signpost);
   // The pitchmaster's hut, upwind at the yard's north-west corner.
@@ -749,7 +749,6 @@ export function buildPinewatch(): ZoneDef {
     for (let x = 89; x <= 95; x += 3) b.set(x, y, Tile.SaplingPine);
   }
   b.fillRect(86, 17, 2, 16, Tile.Dirt); // the barrow walk
-  b.set(84, 32, Tile.WaterCask).set(95, 33, Tile.WaterCask); // drawn water for the beds (PERIOD TRUTH)
   b.set(84, 16, Tile.Barrel).set(85, 16, Tile.Crate);
   // The nursery shed: seed trays, a bench, and the count book that
   // nobody outside this fence has ever asked to see.
@@ -1241,7 +1240,6 @@ export function buildPinewatch(): ZoneDef {
   // The Old Watch keeps a light on the watch book.
   b.set(65, 37, Tile.CandleStand);
   // The axe-smith: the working wall completed — lungs, stock, stone.
-  b.set(47, 35, Tile.SmithBellows);
   b.set(52, 36, Tile.IngotRack);
   b.set(46, 41, Tile.Grindstone); // teeth set here, and only here
   // The stores: Nial's two-of-everything made visible.
@@ -1261,7 +1259,6 @@ export function buildPinewatch(): ZoneDef {
   b.set(79, 71, Tile.Barrel); // the taproom's standing barrel
   b.set(78, 71, Tile.WoodStool).set(80, 71, Tile.WoodStool);
   b.set(75, 67, Tile.Bench); // the four o'clock seat, nearest the fire
-  b.set(88, 68, Tile.BreadOven);
   b.set(85, 78, Tile.Woodpile);
   b.set(77, 76, Tile.HitchingPost);
   // The waterfront: posts for the rafts, a slab for the catch, and

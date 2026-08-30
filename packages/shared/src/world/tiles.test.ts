@@ -514,32 +514,25 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.Woodpile, 'woodpile', 1],
     [Tile.StreetPlanter, 'streetplanter', 1],
     [Tile.StoneBench, 'stonebench', 3],
-    [Tile.ProduceStand, 'produce', 2],
     // THE TRADES KEEP SHOP: workshop timber like the street's; the
     // bread oven is the yard's masonry and holds four.
     [Tile.QuenchTrough, 'quench', 2],
     [Tile.Grindstone, 'grindstone', 2],
-    [Tile.SmithBellows, 'bellows', 1],
     [Tile.IngotRack, 'ingots', 2],
     [Tile.LumberRack, 'lumber', 2],
     [Tile.DyeVats, 'dyevat', 2],
     [Tile.TailorsDummy, 'dressform', 1],
     [Tile.ClothBolts, 'clothbolts', 1],
-    [Tile.BreadOven, 'breadoven', 4],
     [Tile.ButcherBlock, 'butcherblock', 2],
     [Tile.HerbRack, 'herbs', 1],
     [Tile.ShopShelf, 'shopshelf', 2],
     // THE SECOND SHIFT: street timber 1-2; carved limestone 3; the
     // kiln is the wave's masonry and holds four like the oven.
     [Tile.WallFountain, 'wallfountain', 3],
-    [Tile.WaterCask, 'watercask', 2],
     [Tile.WaterTrough, 'watertrough', 2],
-    [Tile.PottersWheel, 'potterswheel', 2],
-    [Tile.PotteryKiln, 'kiln', 4],
     [Tile.ScribesDesk, 'scribedesk', 2],
     [Tile.CandleRack, 'candlerack', 1],
     [Tile.FletchersBench, 'fletcher', 2],
-    [Tile.CobblersBench, 'cobbler', 1],
     [Tile.FishmongerSlab, 'fishslab', 2],
     [Tile.DisplayTable, 'displaytable', 2],
     // THE COMMONS: street timber 1-2 like the town's; the wayside
@@ -574,7 +567,6 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.BossEffigy, 'effigy', 2],
     [Tile.GnawTrough, 'gnawtrough', 1],
     [Tile.HerbPlanter, 'herbplanter', 2],
-    [Tile.ChoppingBlock, 'choppingblock', 2],
     // THE LOG YARD: whole trunks are the street kit's heaviest timber.
     [Tile.FelledLog, 'greatlog', 2],
     [Tile.LogPile, 'logdeck', 3],

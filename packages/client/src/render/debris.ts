@@ -144,20 +144,17 @@ export type SmashKind =
   | 'woodpile'
   | 'streetplanter'
   | 'stonebench'
-  | 'produce'
   // THE TRADES KEEP SHOP: workshop wreckage — the quench sloshing
   // out around its blade, the grindstone disc rolling FREE, ingots
   // clattering, bolts unrolling mid-air, the oven coughing brick,
   // and a shelf's whole stock raining crockery.
   | 'quench'
   | 'grindstone'
-  | 'bellows'
   | 'ingots'
   | 'lumber'
   | 'dyevat'
   | 'dressform'
   | 'clothbolts'
-  | 'breadoven'
   | 'butcherblock'
   | 'herbs'
   | 'shopshelf'
@@ -169,14 +166,10 @@ export type SmashKind =
   // silver, brass pans ringing off their chains, and the display
   // table's dealt stock going up all at once.
   | 'wallfountain'
-  | 'watercask'
   | 'watertrough'
-  | 'potterswheel'
-  | 'kiln'
   | 'scribedesk'
   | 'candlerack'
   | 'fletcher'
-  | 'cobbler'
   | 'fishslab'
   | 'parcels'
   | 'displaytable'
@@ -223,7 +216,6 @@ export type SmashKind =
   | 'herbplanter'
   // THE CHORE STANDS ALONE: the great round topples heavy, the
   // standing axe cartwheels free, chips everywhere.
-  | 'choppingblock'
   // THE LOG YARD: whole trunks break as TRUNKS — long heavy sections
   // that barely fly, great rounds that roll, bark sheeting off.
   | 'greatlog'
@@ -763,24 +755,20 @@ const CHIP_TONE: Record<SmashKind, string> = {
   cratestack: '#8a6534',
   hitchpost: '#8a6534',
   woodpile: '#8a6534',
-  choppingblock: '#8a6534',
   greatlog: '#6f4d26',
   logdeck: '#6f4d26',
   logstack: '#6f4d26',
   streetplanter: '#8a6534',
   stonebench: '#a39a86',
-  produce: '#c05a3a',
   // Trade wreckage: slack-tub iron, stone grit, worked leather,
   // metal stock, fired brick, market red, and herb green.
   quench: '#4c4a52',
   grindstone: '#8f887a',
-  bellows: '#8a5a36',
   ingots: '#5c5648',
   lumber: '#8a6534',
   dyevat: '#8a6534',
   dressform: '#6f6a58',
   clothbolts: '#8a6534',
-  breadoven: '#8a5844',
   butcherblock: '#8a6534',
   herbs: '#6f5a38',
   shopshelf: '#8a6534',
@@ -788,14 +776,10 @@ const CHIP_TONE: Record<SmashKind, string> = {
   // wet clay, kiln brick, desk oak, wax cream, bench oak, cobbler
   // leather, slab stone, scale bronze, and the table's joinery.
   wallfountain: '#8a857a',
-  watercask: '#75603e',
   watertrough: '#8a6534',
-  potterswheel: '#8a6534',
-  kiln: '#96604a',
   scribedesk: '#8a6534',
   candlerack: '#6f5a38',
   fletcher: '#8a6534',
-  cobbler: '#8a5a36',
   fishslab: '#8a857a',
   parcels: '#a08a62',
   displaytable: '#8a6534',
@@ -2139,22 +2123,6 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       }
       break;
     }
-    case 'produce': {
-      // Market day ends early: the tiers fold, the baskets burst,
-      // and the GOODS make their break — apples bouncing far,
-      // cabbages rolling, the pumpkin going exactly one sad hop.
-      for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.18, wid: 0.05, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.7 });
-      }
-      for (let i = 0; i < 5; i++) {
-        out.push({ len: 0.055, wid: 0.05, color: pick(rand, ['#c05a3a', '#b5452f']), stripe: '#e8c8a0', round: true, pace: 1.5 });
-      }
-      for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.08, wid: 0.07, color: '#6a9455', stripe: '#87b06a', round: true, pace: 0.9 });
-      }
-      out.push({ len: 0.14, wid: 0.11, color: '#c9822f', stripe: '#e0a860', round: true, pace: 0.4 });
-      break;
-    }
     case 'quench': {
       // The tub lets go in a SLOSH: staves and hoops out low, the
       // cooling blade flipping bright, and the bath itself — short
@@ -2182,18 +2150,6 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
         out.push({ len: 0.05, wid: 0.04, color: '#78705d', round: true, pace: 0.5 });
       }
       out.push({ len: 0.14, wid: 0.025, color: '#8a94a0', stripe: '#d2dae2', pace: 1.1 });
-      break;
-    }
-    case 'bellows': {
-      // The lungs blow OUT: boards clapping apart, the leather gut
-      // flying in soft wide flaps, the brass nozzle ringing off.
-      for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.2, wid: 0.05, color: pick(rand, ['#8a6534', '#96713c']), stripe: '#c9a76a', pace: 0.8 });
-      }
-      for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.13, wid: 0.09, color: pick(rand, ['#8a5a36', '#6f4426']), stripe: '#b5824e', pace: 1.2 });
-      }
-      out.push({ len: 0.08, wid: 0.03, color: '#c2a45c', stripe: '#e0c88a', pace: 1.5 });
       break;
     }
     case 'ingots': {
@@ -2256,21 +2212,6 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       }
       break;
     }
-    case 'breadoven': {
-      // Masonry ends as masonry: brick and mortar DOWN, flour dust
-      // up — and the loaves bounce out the mouth still whole.
-      for (let i = 0; i < 5; i++) {
-        out.push({ len: 0.11, wid: 0.06, color: pick(rand, ['#8a5844', '#7a4a38']), stripe: '#b8917a', pace: 0.45 });
-      }
-      for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.09, wid: 0.07, color: '#a89a88', round: true, pace: 0.4 });
-      }
-      for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.06, wid: 0.045, color: '#c9955c', stripe: '#e8c48e', round: true, pace: 1.1 });
-      }
-      out.push({ len: 0.2, wid: 0.03, color: '#8a6534', stripe: '#c9a76a', pace: 0.9 });
-      break;
-    }
     case 'butcherblock': {
       // The court comes down mid-market: rail and posts folding, the
       // links whipping off in a chain, the block landing on its face
@@ -2326,23 +2267,6 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       }
       break;
     }
-    case 'watercask': {
-      // The cask lets go the cooper's way: staves clapping out in a
-      // ring, hoops rolling free, the lid flying whole, the tap peg
-      // spinning — and the whole held water out in one low slosh.
-      for (let i = 0; i < 5; i++) {
-        out.push({ len: 0.16, wid: 0.045, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.75 });
-      }
-      for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.11, wid: 0.022, color: '#4c4a52', stripe: '#8a94a0', pace: 1.3 });
-      }
-      out.push({ len: 0.13, wid: 0.1, color: '#96713c', stripe: '#c9a76a', round: true, pace: 1.1 });
-      out.push({ len: 0.07, wid: 0.02, color: '#6f4d26', stripe: '#a3814a', pace: 1.5 });
-      for (let i = 0; i < 4; i++) {
-        out.push({ len: 0.06, wid: 0.05, color: pick(rand, ['#2e3c48', '#5f87a8']), round: true, pace: 0.35 });
-      }
-      break;
-    }
     case 'watertrough': {
       // A trough-length SLOSH: long staves slapping flat, hoops
       // rolling, the dipper flying, and the whole held water out
@@ -2356,38 +2280,6 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       out.push({ len: 0.07, wid: 0.055, color: '#5c748a', stripe: '#8fa8bd', round: true, pace: 1.3 });
       for (let i = 0; i < 5; i++) {
         out.push({ len: 0.065, wid: 0.05, color: pick(rand, ['#5f87a8', '#9fc4d8']), round: true, pace: 0.4 });
-      }
-      break;
-    }
-    case 'potterswheel': {
-      // The flywheel remembers its spin — the big disc ROLLS free
-      // like the grindstone's — and the wet pot dies as CLAY: soft
-      // fat lumps that barely bounce, the slip bucket's slosh dark.
-      out.push({ len: 0.21, wid: 0.21, color: '#8a6534', stripe: '#c9a76a', round: true, pace: 1.5 });
-      for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.12, wid: 0.04, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.7 });
-      }
-      for (let i = 0; i < 4; i++) {
-        out.push({ len: 0.07, wid: 0.055, color: pick(rand, ['#b07850', '#9a6248']), round: true, pace: 0.3 });
-      }
-      out.push({ len: 0.08, wid: 0.05, color: '#9a6248', stripe: '#c99a78', round: true, pace: 0.5 });
-      break;
-    }
-    case 'kiln': {
-      // Masonry ends as masonry — fired brick DOWN, ash up — and
-      // the shoulder's cooling pots ring off glazed and whole-ish;
-      // the greenware dies as pale dust nobody will ever fire.
-      for (let i = 0; i < 5; i++) {
-        out.push({ len: 0.11, wid: 0.06, color: pick(rand, ['#96604a', '#7c4c3a']), stripe: '#c4917a', pace: 0.45 });
-      }
-      for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.09, wid: 0.07, color: '#a89a88', round: true, pace: 0.4 });
-      }
-      for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.06, wid: 0.05, color: pick(rand, ['#6f8a5c', '#5c748a', '#a3703c']), stripe: '#d8e0d4', round: true, pace: 1.15 });
-      }
-      for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.05, wid: 0.04, color: '#c9ab8e', round: true, pace: 0.6 });
       }
       break;
     }
@@ -2435,22 +2327,6 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
         out.push({ len: 0.055, wid: 0.035, color: pick(rand, ['#c05a48', '#e8dcc4', '#c9a13c']), round: true, pace: 1.5 });
       }
       out.push({ len: 0.22, wid: 0.022, color: '#8a6534', stripe: '#c9a76a', pace: 1.25 });
-      break;
-    }
-    case 'cobbler': {
-      // The corner comes apart mid-stitch: the iron last landing
-      // heavy and STAYING, boots tumbling in their dealt leathers,
-      // scraps and the pale soles flipping light.
-      out.push({ len: 0.14, wid: 0.05, color: '#4c4a52', stripe: '#8a8a94', pace: 0.35 });
-      for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.12, wid: 0.045, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.7 });
-      }
-      for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.09, wid: 0.06, color: pick(rand, ['#8a5a36', '#6f4426', '#a3703c']), stripe: '#d8c49a', round: true, pace: 1.0 });
-      }
-      for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.06, wid: 0.04, color: pick(rand, ['#6f4426', '#4e3a2c']), pace: 1.2 });
-      }
       break;
     }
     case 'fishslab': {
@@ -2921,19 +2797,6 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       }
       out.push({ len: 0.05, wid: 0.03, color: '#4c4a52', stripe: '#c9d6e4', pace: 1.6 });
       out.push({ len: 0.09, wid: 0.05, color: '#8a9058', stripe: '#a89263', round: true, pace: 1.15 });
-      break;
-    }
-    case 'choppingblock': {
-      // The block goes the way of the wood it split: the great round
-      // toppling heavy and rolling ONCE, the standing axe finally
-      // cartwheeling free, the fresh split with it, chips everywhere.
-      out.push({ len: 0.17, wid: 0.15, color: '#6f4d26', stripe: '#c9ab74', round: true, pace: 0.45 });
-      out.push({ len: 0.17, wid: 0.03, color: '#96713c', stripe: '#c9a76a', pace: 1.3 });
-      out.push({ len: 0.08, wid: 0.05, color: '#4c4a52', stripe: '#8c8798', pace: 1.15 });
-      out.push({ len: 0.14, wid: 0.05, color: '#8a6534', stripe: '#d4b98a', pace: 0.8 });
-      for (let i = 0; i < 4; i++) {
-        out.push({ len: 0.055, wid: 0.018, color: pick(rand, ['#d8b878', '#e8d4a0']), pace: 1.25 });
-      }
       break;
     }
     case 'greatlog': {

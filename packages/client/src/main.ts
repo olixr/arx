@@ -2380,11 +2380,6 @@ game.onFx = (fx) => {
         // The town bell's break is the loudest note it ever plays,
         // and a stack of empty casks is a drum choir.
         kind === 'townbell' || kind === 'barrelstack' ||
-        // The baker's dome is one big fired vessel — it booms the
-        // way a kiln-hollow breaks.
-        kind === 'breadoven' ||
-        // And the potter's bottle kiln IS that hollow, full size.
-        kind === 'kiln' ||
         // The commons' hollows: an ale cask lets go like a drum,
         // fired jars ring like the urns, and the hauled-out skiff
         // is forty seasons of hollowed clinker — the dugout's kin.
@@ -2412,11 +2407,9 @@ game.onFx = (fx) => {
           // Town limestone and a founder's bronze land like the
           // civic masonry they are.
           kind === 'townfountain' || kind === 'founder' || kind === 'stonebench' ||
-          // The bread oven and the grindstone's disc are the trade
-          // kit's stone-weight.
-          kind === 'breadoven' || kind === 'grindstone' ||
-          // Second-shift limestone and kiln masonry land the same.
-          kind === 'wallfountain' || kind === 'kiln' ||
+          // The grindstone's disc is the trade kit's stone-weight;
+          // second-shift limestone lands the same.
+          kind === 'grindstone' || kind === 'wallfountain' ||
           // The commons' wayside stone: the guardian hound and the
           // shrine's rubble are the street's masonry — they land like it.
           kind === 'guardian' || kind === 'wayshrine'

@@ -257,7 +257,6 @@ export function buildAmberford(): ZoneDef {
   // shoulder, paired anvils, the ingot rack fed by the Delf, and the
   // quench where every blade ends its argument.
   b.set(21, 13, Tile.Furnace).set(21, 17, Tile.Furnace);
-  b.set(21, 15, Tile.SmithBellows); // one set of lungs between two fires
   b.set(25, 14, Tile.Anvil).set(25, 18, Tile.Anvil);
   b.set(28, 12, Tile.ToolRack);
   b.set(29, 13, Tile.IngotRack); // copper, tin, and the iron the Delf owes
@@ -559,7 +558,6 @@ export function buildAmberford(): ZoneDef {
   for (let y = 56; y <= 59; y++) b.set(97, y, Tile.WallWood);
   b.set(96, 57, Tile.Hearth); // the cook fire
   b.set(91, 57, Tile.Basin);
-  b.set(92, 58, Tile.BreadOven); // the loaves for the common table — warm when the coach comes in
   b.set(92, 59, Tile.Counter).set(93, 59, Tile.Counter);
   b.set(95, 59, Tile.CrateGoods).set(91, 59, Tile.Crate);
   // Nib's box room: the smallest door in town and the proudest.
@@ -643,7 +641,6 @@ export function buildAmberford(): ZoneDef {
   b.set(45, 59, Tile.FlowerBox);
   b.sign(53, 57, "MERRA'S PROVISIONS", ['nothing here traveled more than a mile']);
   for (let y = 53; y <= 57; y++) b.set(50, y, Tile.Dirt); // her path to the spine
-  b.set(48, 55, Tile.ProduceStand); // the overflow stand on her path — what didn't fit the Round pitch
   b.fillRect(48, 68, 4, 2, Tile.Tilled);
   b.set(48, 68, Tile.CarrotMid).set(51, 69, Tile.CarrotRipe);
   b.set(53, 69, Tile.CompostBin);
@@ -913,7 +910,6 @@ export function buildAmberford(): ZoneDef {
     b.set(x, 65, Tile.Tilled);
   }
   b.set(4, 59, Tile.CarrotMid).set(8, 62, Tile.WheatMid).set(12, 65, Tile.SunflowerMid);
-  b.set(13, 57, Tile.WaterCask); // the water cask — drawn from the meadow spring, tapped by whoever needs it
   b.set(3, 66, Tile.CompostBin);
   b.sign(1, 55, 'THE FREE FURROWS', ['common ground', 'plant what you will, waker'], Tile.Signpost);
   b.set(8, 54, Tile.Dirt).set(8, 55, Tile.Dirt);
@@ -930,7 +926,7 @@ export function buildAmberford(): ZoneDef {
   b.set(139, 26, Tile.RockIron); // the better-pick face
   b.set(130, 21, Tile.Rock).set(136, 28, Tile.Rock); // spoil
   b.set(134, 22, Tile.Wheelbarrow); // the spoil barrow, parked where the last load stopped
-  b.set(130, 13, Tile.Crate).set(130, 14, Tile.WaterCask); // the work corner — a miner's thirst is half the wage
+  b.set(130, 13, Tile.Crate); // the work corner
   b.set(129, 24, Tile.LampPost); // the early shift's lamp
   b.setDetail(134, 17, Detail.Pebbles).setDetail(137, 22, Detail.Pebbles).setDetail(132, 23, Detail.Pebbles);
   b.sign(127, 17, 'THE AMBER DELF', ['copper and tin for the forge', 'the iron face wants a better pick'], Tile.Signpost);
@@ -1000,7 +996,7 @@ export function buildAmberford(): ZoneDef {
   b.set(132, 110, Tile.Brazier).set(136, 110, Tile.Brazier);
   b.set(129, 108, Tile.BannerPole).set(139, 108, Tile.BannerPole); // the south shoulders
   b.set(138, 110, Tile.Table).set(139, 110, Tile.WoodStool); // Serle's counter
-  b.set(136, 112, Tile.WaterCask).set(132, 112, Tile.Barrel); // the fighters' water, the house's take
+  b.set(132, 112, Tile.Barrel); // the house's take
   b.sign(137, 112, 'THE FORD RING', ['the sand grew with the crowds.', 'lose small, learn big'], Tile.Signpost);
   // The north gallery: benches in the orchard's shade, the beasts'
   // gate fires, and a paved landing between the middle seats.

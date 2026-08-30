@@ -1605,15 +1605,12 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   assert.ok(n(Tile.FishingSpot) >= 4, 'the mere and the pool must fish');
   assert.ok(n(Tile.ArchStone) >= 1, 'the Undercroft mouth lost its arch');
   // THE VALE KEEPS SHOP (the lower town's own roster): the mill
-  // grinds, the ovens bake, the commons throw and dip and mend, the
-  // taverns pour, the way keeps its three stations, and the dead
-  // keep their three flames plus the guild's two.
-  assert.ok(n(Tile.BreadOven) >= 2, 'the bakehouse went cold');
+  // grinds, the commons mend, the taverns pour, the way keeps its
+  // three stations, and the dead keep their three flames plus the
+  // guild's two. (Oven/wheel/kiln/cobbler rows RETIRED 08-29 —
+  // the museum audit sent them back to the shop.)
   assert.ok(n(Tile.Grindstone) >= 3, 'the mill lost its stones');
-  assert.equal(n(Tile.PottersWheel), 1, 'the crockery lost its wheel');
-  assert.equal(n(Tile.PotteryKiln), 1, "the potter's mound fell");
   assert.ok(n(Tile.CandleRack) >= 2, 'the chandlery went dark');
-  assert.equal(n(Tile.CobblersBench), 1, 'the cobbler lost the bench');
   assert.ok(n(Tile.TapCask) >= 3, 'the Vale taverns ran dry');
   assert.equal(n(Tile.WayShrine), 3, "the Pilgrim's Way lost a station");
   assert.equal(n(Tile.GuardianStatue), 3, 'the Vale lost a watcher');

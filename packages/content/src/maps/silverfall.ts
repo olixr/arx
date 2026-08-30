@@ -792,7 +792,7 @@ export function buildSilverfall(): ZoneDef {
   b.setDetail(19, 87, Detail.Pebbles).setDetail(21, 91, Detail.Pebbles);
   b.set(27, 70, Tile.RockSilver);
   b.set(29, 80, Tile.Crate).set(30, 81, Tile.Crate).set(31, 79, Tile.Crate);
-  b.set(30, 78, Tile.ToolRack).set(28, 79, Tile.WaterCask); // the shift drinks drawn water
+  b.set(30, 78, Tile.ToolRack);
   b.set(19, 78, Tile.Brazier).set(15, 88, Tile.Brazier);
   // THE SMELTER HALL: three furnaces, charge bins, slag trough,
   // tally desk.
@@ -844,7 +844,6 @@ export function buildSilverfall(): ZoneDef {
   b.set(62, 67, Tile.Crate).set(62, 76, Tile.Crate); // the coal
   b.set(66, 69, Tile.Anvil).set(66, 74, Tile.Anvil).set(69, 71, Tile.Anvil);
   b.set(68, 69, Tile.QuenchTrough).set(68, 74, Tile.QuenchTrough); // the quench earns its steam
-  b.set(64, 68, Tile.SmithBellows); // the lungs between the fires
   b.set(79, 69, Tile.IngotRack); // the day's pour, racked
   b.set(77, 71, Tile.Grindstone); // edges before fittings
   b.set(76, 68, Tile.Workbench); // finishing bench
@@ -1077,7 +1076,6 @@ export function buildSilverfall(): ZoneDef {
   b.set(15, 103, Tile.Cabinet);
   b.set(15, 106, Tile.WeaponRack).set(17, 106, Tile.WeaponRack).set(19, 106, Tile.ToolRack);
   b.set(21, 106, Tile.SpearRack); // the wall's own reach
-  b.set(27, 105, Tile.WaterCask); // the watch drinks drawn
   b.set(26, 100, Tile.Bookshelf); // the duty board
   b.set(23, 104, Tile.Table).set(24, 104, Tile.Table);
   b.set(23, 103, Tile.Chair).set(24, 105, Tile.Chair);
@@ -1449,10 +1447,9 @@ export function buildSilverfall(): ZoneDef {
   b.stamp(MARKET_STALL, 66, 150);
   b.stamp(MARKET_STALL, 74, 150);
   b.set(70, 155, Tile.FishmongerSlab); // pool trout and blind cave-fish
-  b.set(76, 155, Tile.ProduceStand).set(79, 151, Tile.ProduceStand);
   b.set(67, 158, Tile.ButcherBlock);
   b.set(72, 158, Tile.TiedParcels); // sold and tied, waiting on their buyers
-  b.set(65, 162, Tile.WaterCask).set(78, 159, Tile.BasketStack);
+  b.set(78, 159, Tile.BasketStack);
   b.set(64, 147, bannerPoleTile(6)).set(83, 147, bannerPoleTile(6)); // ochre, the market's color
   b.set(81, 162, Tile.Bench).set(64, 157, Tile.Bench);
   b.sign(65, 145, 'THE WET MARKET', ['weighed under the sky,', 'argued under the cloth'], Tile.Signpost);
@@ -1463,7 +1460,6 @@ export function buildSilverfall(): ZoneDef {
   b.set(70, 166, Tile.DoorwayWood);
   b.set(67, 166, Tile.WallWoodWindow).set(74, 166, Tile.WallWoodWindow);
   b.set(64, 171, Tile.WallWoodWindow).set(76, 171, Tile.WallWoodWindow);
-  b.set(65, 168, Tile.BreadOven).set(65, 171, Tile.BreadOven);
   b.set(68, 169, Tile.Counter).set(68, 170, Tile.Counter); // the pass
   b.set(71, 168, Tile.Basin);
   b.set(66, 174, Tile.GrainSacks).set(67, 175, Tile.GrainSacks); // the flour store
@@ -1486,7 +1482,7 @@ export function buildSilverfall(): ZoneDef {
   for (let x = 64; x <= 69; x++) b.set(x, 177, Tile.Hedge);
   for (let x = 73; x <= 78; x++) b.set(x, 177, Tile.Hedge);
   // The baker's back yard, through the wicket.
-  b.set(59, 175, Tile.WaterCask).set(61, 175, Tile.Woodpile);
+  b.set(61, 175, Tile.Woodpile);
   b.set(62, 176, Tile.HerbPlanter); // off the lane — the lane stays two clear
   // Cottage the first (north row): the wainwright's house.
   b.fillRect(48, 168, 11, 9, Tile.WoodFloor);
@@ -1512,7 +1508,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(55, 183, Tile.Hearth);
   b.set(55, 187, Tile.Bookshelf);
   b.setDetail(52, 183, Detail.Doormat);
-  b.set(47, 183, Tile.Woodpile).set(57, 184, Tile.WaterCask);
+  b.set(47, 183, Tile.Woodpile);
   b.fillRect(60, 182, 9, 9, Tile.WoodFloor);
   b.outlineRect(60, 182, 9, 9, Tile.WallWood);
   b.set(64, 182, Tile.DoorwayWood);
@@ -1765,7 +1761,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(61, 228, Tile.Brazier).set(67, 228, Tile.Brazier);
   b.set(60, 230, Tile.GuardianStatue).set(68, 230, Tile.GuardianStatue); // parity pair, rehomed to the walk
   b.set(59, 205, Tile.Brazier).set(69, 205, Tile.Brazier); // the pen lane's mouth-fires
-  b.set(66, 230, Tile.WeaponRack).set(66, 231, Tile.WaterCask); // the fighters' last checks
+  b.set(66, 230, Tile.WeaponRack); // the fighters' last checks
   b.set(59, 232, Tile.Table).set(58, 232, Tile.WoodStool); // Cato's counter
   b.set(77, 231, Tile.TreeOak); // the meeting oak keeps the south walk now
   b.sign(67, 233, 'THE GRAND RING', ['pay, stand, survive.', 'the purse is real'], Tile.Signpost);
@@ -1834,14 +1830,12 @@ export function buildSilverfall(): ZoneDef {
   b.set(115, 178, Tile.DoorwayWood);
   b.set(112, 178, Tile.WallWoodWindow).set(118, 178, Tile.WallWoodWindow);
   b.set(110, 172, Tile.WallWoodWindow).set(120, 172, Tile.WallWoodWindow);
-  b.set(112, 169, Tile.PottersWheel);
   b.set(114, 169, Tile.Basin); // the slip water
   b.set(111, 167, Tile.Crate); // river clay
   b.set(118, 168, Tile.GlazedJars).set(119, 171, Tile.GlazedJars);
   b.set(111, 175, Tile.ShopShelf);
   b.set(115, 175, Tile.Counter).set(116, 175, Tile.Counter);
   b.setDetail(115, 177, Detail.Doormat);
-  b.set(122, 174, Tile.PotteryKiln); // the potter's mound, breathing
   b.sign(113, 179, 'THE CROCKERY', ['thrown, burned,', 'and true']);
   b.fillRect(124, 168, 9, 11, Tile.WoodFloor);
   b.outlineRect(124, 168, 9, 11, Tile.WallWood);
@@ -1859,7 +1853,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(140, 178, Tile.DoorwayWood);
   b.set(137, 178, Tile.WallWoodWindow).set(143, 178, Tile.WallWoodWindow);
   b.set(136, 174, Tile.WallWoodWindow).set(144, 174, Tile.WallWoodWindow);
-  b.set(137, 172, Tile.CobblersBench).set(138, 172, Tile.Chair);
+  b.set(138, 172, Tile.Chair);
   b.set(142, 171, Tile.ShopShelf);
   b.set(140, 174, Tile.Counter).set(141, 174, Tile.Counter);
   b.set(137, 176, Tile.Crate); // the leather

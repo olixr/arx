@@ -199,8 +199,8 @@ export const TILE_CATEGORIES: TileCategory[] = [
     label: 'Town life',
     tiles: [
       Tile.TownFountain, Tile.FounderStatue, Tile.NoticeBoard, Tile.TownBell,
-      Tile.ProduceStand, Tile.HandCart, Tile.BarrelStack, Tile.CrateStack,
-      Tile.GrainSacks, Tile.Woodpile, Tile.ChoppingBlock, Tile.HitchingPost,
+      Tile.HandCart, Tile.BarrelStack, Tile.CrateStack,
+      Tile.GrainSacks, Tile.Woodpile, Tile.HitchingPost,
       Tile.StreetPlanter, Tile.StoneBench,
     ],
   },
@@ -211,16 +211,16 @@ export const TILE_CATEGORIES: TileCategory[] = [
     id: 'trades',
     label: 'Trades & shops',
     tiles: [
-      Tile.QuenchTrough, Tile.Grindstone, Tile.SmithBellows, Tile.IngotRack,
+      Tile.QuenchTrough, Tile.Grindstone, Tile.IngotRack,
       Tile.LumberRack, Tile.FelledLog, Tile.LogPile, Tile.LogPileEndOn,
       Tile.DyeVats, Tile.TailorsDummy, Tile.ClothBolts,
-      Tile.BreadOven, Tile.ButcherBlock, Tile.HerbRack, Tile.ShopShelf,
+      Tile.ButcherBlock, Tile.HerbRack, Tile.ShopShelf,
       // THE SECOND SHIFT: the street's water first (the wave's
       // loudest ask), then the potter, the quiet trades, and the
       // merchant's display furniture and packed orders.
-      Tile.WallFountain, Tile.WaterCask, Tile.WaterTrough,
-      Tile.PottersWheel, Tile.PotteryKiln, Tile.ScribesDesk,
-      Tile.CandleRack, Tile.FletchersBench, Tile.CobblersBench,
+      Tile.WallFountain, Tile.WaterTrough,
+      Tile.ScribesDesk,
+      Tile.CandleRack, Tile.FletchersBench,
       Tile.FishmongerSlab, Tile.TiedParcels, Tile.DisplayTable,
     ],
   },
