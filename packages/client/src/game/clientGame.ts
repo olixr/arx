@@ -3535,6 +3535,15 @@ export class ClientGame {
     this.conn?.send({ t: 'unmake', slot });
   }
 
+  /**
+   * THE BULK BREAKING: the marked batch comes apart as ONE working —
+   * one message, one payout, one voice line (all or nothing serverside).
+   */
+  unmakeManySend(slots: number[]): void {
+    if (slots.length === 0) return;
+    this.conn?.send({ t: 'unmake', slots });
+  }
+
   /** SUNDERING: draw the working back out of a pack slot's gear. */
   sunderSend(slot: number, worn?: EquipSlot, seat?: 'ward' | 'art'): void {
     this.conn?.send({ t: 'sunder', slot, worn, seat });

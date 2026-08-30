@@ -159,7 +159,16 @@ export interface C2SDropItem {
  */
 export interface C2SUnmake {
   t: 'unmake';
-  slot: number;
+  /** One pack slot. Exactly one of `slot`/`slots` rides each message. */
+  slot?: number;
+  /**
+   * THE BULK BREAKING: several pack slots come apart as ONE working —
+   * one pack-space proof, one payout, one voice line, one moment of
+   * light. All or nothing: a batch with one refused piece refuses
+   * whole, because a destructive action that half-happens is worse
+   * than one that asks you to fix the batch and mean it again.
+   */
+  slots?: number[];
 }
 
 /**
@@ -2561,6 +2570,52 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (!isFiniteNum(msg.qty) || !Number.isInteger(msg.qty)) return null;
       if (msg.qty < 1 || msg.qty > 100000) return null;
       return { t: 'dropitem', slot: msg.slot, qty: msg.qty };
+    }
+    case 'unmake': {
+      // THE WIRE KNOWS THE BENCH. This branch is load-bearing history:
+      // the Unmaking shipped whole (bench, server door, tests) while
+      // this validator never learned its message, so every press fell
+      // through `default: null` and earned an abuse strike — three
+      // presses closed the socket. A C2S message is only real once it
+      // has a case here; messages.test.ts pins both doors open.
+      if (msg.slots !== undefined) {
+        if (msg.slot !== undefined) return null; // one dialect per message
+        if (!Array.isArray(msg.slots)) return null;
+        if (msg.slots.length < 1 || msg.slots.length > 64) return null;
+        const slots: number[] = [];
+        const seen = new Set<number>();
+        for (const s of msg.slots) {
+          if (!isFiniteNum(s) || !Number.isInteger(s) || s < 0 || s >= 64) return null;
+          if (seen.has(s)) return null; // a piece named twice is a client bug, not a bigger yield
+          seen.add(s);
+          slots.push(s);
+        }
+        return { t: 'unmake', slots };
+      }
+      if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot)) return null;
+      if (msg.slot < 0 || msg.slot >= 64) return null;
+      return { t: 'unmake', slot: msg.slot };
+    }
+    case 'sunder': {
+      // The bench sends slot -1 when `worn` names the piece instead —
+      // the pack index is a passenger there, but it still parses
+      // strictly so a junk value never rides in on the worn dialect.
+      if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot)) return null;
+      if (msg.slot < -1 || msg.slot >= 64) return null;
+      let worn: EquipSlot | undefined;
+      if (msg.worn !== undefined) {
+        if (typeof msg.worn !== 'string' || !EQUIP_SLOTS.includes(msg.worn as EquipSlot)) {
+          return null;
+        }
+        worn = msg.worn as EquipSlot;
+      }
+      if (msg.slot < 0 && worn === undefined) return null; // -1 only makes sense worn
+      let seat: 'ward' | 'art' | undefined;
+      if (msg.seat !== undefined) {
+        if (msg.seat !== 'ward' && msg.seat !== 'art') return null;
+        seat = msg.seat;
+      }
+      return { t: 'sunder', slot: msg.slot, worn, seat };
     }
     case 'craft': {
       if (typeof msg.recipe !== 'string' || msg.recipe.length > 64) return null;

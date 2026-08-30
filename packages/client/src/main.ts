@@ -723,6 +723,13 @@ const stationPanels = new StationPanels(
   () => game.skills,
 );
 
+// THE BULK BREAKING: the bench confirmed the batch with the player;
+// the server re-validates the lot and refuses it whole if one piece lies.
+stationPanels.onUnmakeMany = (slots) => {
+  sfx.stow();
+  game.unmakeManySend(slots);
+};
+
 stationPanels.onPlant = (tx, ty, seed) => {
   sfx.plantSeed();
   game.plantSend(tx, ty, seed);

@@ -349,7 +349,10 @@ export class Session {
       case 'unmake': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
-        this.game.unmake(this.playerEid, msg.slot);
+        // THE BULK BREAKING rides one message and one bucket token:
+        // the batch is a single working, not a burst of presses.
+        if (msg.slots !== undefined) this.game.unmakeMany(this.playerEid, msg.slots);
+        else if (msg.slot !== undefined) this.game.unmake(this.playerEid, msg.slot);
         return;
       }
       case 'sunder': {

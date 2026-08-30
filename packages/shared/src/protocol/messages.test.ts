@@ -224,3 +224,125 @@ test('use carries its aims whole — stow and the off-hand pair, literal true on
   assert.deepEqual(parseC2S(JSON.stringify({ t: 'use', slot: 3, off: 'yes' })), { t: 'use', slot: 3 });
   assert.equal(parseC2S(JSON.stringify({ t: 'use', slot: 64, off: true })), null);
 });
+
+test('THE UNMAKING parses at the door — the strike that broke the bench', () => {
+  // The regression that mattered: these two messages shipped with the
+  // epic but never joined parseC2S, so every bench press was judged
+  // malformed traffic and three presses closed the socket.
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'unmake', slot: 3 })), { t: 'unmake', slot: 3 });
+  assert.equal(parseC2S(JSON.stringify({ t: 'unmake' })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'unmake', slot: -1 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'unmake', slot: 64 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'unmake', slot: 1.5 })), null);
+});
+
+test('THE BULK BREAKING: a batch parses whole or not at all', () => {
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'unmake', slots: [0, 5, 27] })), {
+    t: 'unmake',
+    slots: [0, 5, 27],
+  });
+  // One dialect per message; a piece named twice is refused, not doubled.
+  assert.equal(parseC2S(JSON.stringify({ t: 'unmake', slot: 1, slots: [2] })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'unmake', slots: [] })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'unmake', slots: [3, 3] })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'unmake', slots: [3, 64] })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'unmake', slots: [3, -1] })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'unmake', slots: 'all' })), null);
+});
+
+test('SUNDERING parses both its dialects — pack slot and worn piece', () => {
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'sunder', slot: 4 })), {
+    t: 'sunder',
+    slot: 4,
+    worn: undefined,
+    seat: undefined,
+  });
+  const worn = parseC2S(JSON.stringify({ t: 'sunder', slot: -1, worn: 'body', seat: 'art' }));
+  assert.deepEqual(worn, { t: 'sunder', slot: -1, worn: 'body', seat: 'art' });
+  // -1 is the "worn names the piece" sentinel and rides ONLY with worn.
+  assert.equal(parseC2S(JSON.stringify({ t: 'sunder', slot: -1 })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'sunder', slot: 4, worn: 'hat' })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'sunder', slot: 4, seat: 'deep' })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'sunder', slot: 64 })), null);
+});
+
+test('EVERY DOOR ANSWERS: a canonical sample of each C2S message parses', () => {
+  // The unmake lesson, generalized: an interface without a validator
+  // case is a message that strikes the sender. Every C2S `t` keeps a
+  // canonical sample here; adding a message means adding its sample,
+  // and a sample that parses to null names the door that never opened.
+  const samples: Record<string, object> = {
+    hello: { t: 'hello', v: 1 },
+    login: { t: 'login', user: 'a', pass: 'b' },
+    register: { t: 'register', user: 'a', pass: 'b', name: 'c' },
+    logout: { t: 'logout' },
+    input: { t: 'input', frame: { seq: 1, mx: 0, my: 0, aim: 0, buttons: 0 } },
+    chat: { t: 'chat', text: 'hi' },
+    ping: { t: 'ping', ct: 1 },
+    interact: { t: 'interact', tx: 0, ty: 0 },
+    signedit: { t: 'signedit', tx: 0, ty: 0, title: 'x', lines: [] },
+    waypoint: { t: 'waypoint' },
+    questabandon: { t: 'questabandon', quest: 'q' },
+    use: { t: 'use', slot: 0 },
+    unequip: { t: 'unequip', slot: 'body' },
+    invmove: { t: 'invmove', from: 0, to: 1 },
+    dropitem: { t: 'dropitem', slot: 0, qty: 1 },
+    unmake: { t: 'unmake', slot: 0 },
+    sunder: { t: 'sunder', slot: 0 },
+    craft: { t: 'craft', recipe: 'r', qty: 1 },
+    craftstop: { t: 'craftstop' },
+    bank: { t: 'bank', op: 'deposit', item: 'i', qty: 1 },
+    shop: { t: 'shop', op: 'buy', item: 'i', qty: 1 },
+    build: { t: 'build', buildable: 'b', tx: 0, ty: 0 },
+    demolish: { t: 'demolish', tx: 0, ty: 0 },
+    ownbuilt: { t: 'ownbuilt' },
+    plant: { t: 'plant', tx: 0, ty: 0, seed: 's' },
+    fertilize: { t: 'fertilize', tx: 0, ty: 0 },
+    mulch: { t: 'mulch', tx: 0, ty: 0 },
+    prune: { t: 'prune', tx: 0, ty: 0 },
+    compostadd: { t: 'compostadd', tx: 0, ty: 0, slot: 0 },
+    troughadd: { t: 'troughadd', tx: 0, ty: 0, slot: 0 },
+    stockname: { t: 'stockname', slot: 0, name: 'n' },
+    workstart: { t: 'workstart', tx: 0, ty: 0, recipe: 'r', qty: 1 },
+    interactnpc: { t: 'interactnpc', eid: 1 },
+    dlgadv: { t: 'dlgadv' },
+    dlgchoice: { t: 'dlgchoice', idx: 0 },
+    dlgend: { t: 'dlgend' },
+    usekey: { t: 'usekey', key: 1 },
+    keydrop: { t: 'keydrop', key: 1 },
+    keylabel: { t: 'keylabel', seed: 1 },
+    keyforge: { t: 'keyforge', seed: 1 },
+    pickup: { t: 'pickup', eid: 1 },
+    technique: { t: 'technique', ability: 'a', slot: 0 },
+    calling: { t: 'calling', calling: 'c', on: true },
+    carrystyle: { t: 'carrystyle', style: 'normal' },
+    lootpref: { t: 'lootpref', auto: true },
+    takeall: { t: 'takeall' },
+    petname: { t: 'petname', slot: 0, name: 'n' },
+    stable: { t: 'stable', op: 'heel', slot: 0 },
+    companionop: { t: 'companionop', op: 'heel', slot: 0 },
+    companionname: { t: 'companionname', slot: 0, name: 'n' },
+    social: { t: 'social' },
+    friendsearch: { t: 'friendsearch', query: 'q' },
+    friendrequest: { t: 'friendrequest', name: 'n' },
+    friendaccept: { t: 'friendaccept', name: 'n' },
+    frienddecline: { t: 'frienddecline', name: 'n' },
+    friendremove: { t: 'friendremove', name: 'n' },
+    party: { t: 'party' },
+    partyinvite: { t: 'partyinvite', name: 'n' },
+    partyaccept: { t: 'partyaccept', name: 'n' },
+    partydecline: { t: 'partydecline', name: 'n' },
+    partyleave: { t: 'partyleave' },
+    partykick: { t: 'partykick', name: 'n' },
+    partydisband: { t: 'partydisband' },
+    partyjoinrun: { t: 'partyjoinrun', name: 'n' },
+    arenaqueue: { t: 'arenaqueue', match: 'm' },
+    arenaleave: { t: 'arenaleave' },
+    // setlook and petarts are absent on purpose: their payloads pass
+    // through sanitizeLook/sanitizePetArts, whose own suites prove the
+    // doors open — a hand-faked look here would test the fake, not the door.
+  };
+  for (const [name, sample] of Object.entries(samples)) {
+    assert.notEqual(parseC2S(JSON.stringify(sample)), null, `the '${name}' door never opened`);
+  }
+});

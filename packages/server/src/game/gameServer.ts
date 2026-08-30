@@ -737,6 +737,7 @@ import {
   bossStunTicks,
 } from './bossMind.js';
 import { addItem, bestTool, countItem, emptyInventory, hasSpaceFor, removeItem, takeSlot } from './inventory.js';
+import { planUnmaking, COUNT_WORDS } from './unmaking.js';
 import { DEATH_SPILL_TTL_MS, DROP_MERGE_RADIUS, canMergeDrop, spillInventory } from './drops.js';
 import { SocialSystem } from './social.js';
 import { PartySystem } from './party.js';
@@ -14707,15 +14708,21 @@ export class GameServer {
    * and nothing is consumed until the payout is certain.
    */
   unmake(eid: EntityId, slotIndex: number): void {
+    this.unmakeMany(eid, [slotIndex]);
+  }
+
+  /**
+   * THE BULK BREAKING: one or many pieces come apart as ONE working —
+   * one plan, one payout, one voice line, one moment of light. The
+   * arbitration lives in planUnmaking (pure, tested against a copy of
+   * the pack), so this door only speaks refusals and pays plans out.
+   * ALL OR NOTHING: a batch with one refused piece refuses whole,
+   * before anything is destroyed.
+   */
+  unmakeMany(eid: EntityId, slotIndexes: readonly number[]): void {
     const player = this.players.get(eid);
     if (!player?.session) return;
     const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
-    if (slotIndex < 0 || slotIndex >= player.inventory.length) return;
-    const slot = player.inventory[slotIndex];
-    if (!slot) return;
-    const def = itemDef(slot.item);
-    if (!def) return;
-
     if (!this.nearTile(eid, STATION_TILES.enchanting_table)) {
       this.speak(
         player,
@@ -14724,53 +14731,73 @@ export class GameServer {
       );
       return;
     }
-    if (!canUnmake(slot.item)) {
-      sys(`The ${def.name.toLowerCase()} has no Arx in it to recover.`);
-      return;
-    }
-    // NO LAUNDERING. Stolen goods do not become clean dust at a bench:
-    // the fences exist for exactly this and the table must not quietly
-    // become a better one.
-    if (slot.stolen) {
-      sys('That one is hot. No honest bench will take it apart for you.');
-      return;
-    }
-    const result = unmakingOf(slot.item, slot.roll);
-    if (!result) return;
-    // Prove the pack can hold every yield BEFORE anything is destroyed.
-    // Half-paying a player for a thing they no longer have is the one
-    // failure this action must never have.
-    for (const y of result.yields) {
-      if (!hasSpaceFor(player.inventory, y.item)) {
-        this.speak(player, 'Pack full', 'Your pack is too full to catch what comes out of it.');
-        return;
+
+    const plan = planUnmaking(player.inventory, slotIndexes);
+    if (!plan.ok) {
+      // Every refusal is spoken plainly and nothing has been consumed;
+      // the plan proved the whole payout before anything could break.
+      switch (plan.reason) {
+        case 'nothing':
+          return; // a stale bench, not an offense
+        case 'no-arx':
+          sys(`The ${plan.name!.toLowerCase()} has no Arx in it to recover.`);
+          return;
+        case 'stolen':
+          // NO LAUNDERING, and no quiet drops: one hot piece refuses
+          // the lot, or a marked batch becomes a fence by accident.
+          sys(
+            slotIndexes.length > 1
+              ? `The ${plan.name!.toLowerCase()} is hot. No honest bench takes a batch with it in.`
+              : 'That one is hot. No honest bench will take it apart for you.',
+          );
+          return;
+        case 'full':
+          this.speak(
+            player,
+            'Pack full',
+            slotIndexes.length > 1
+              ? 'Your pack is too full to catch everything that comes out of them.'
+              : 'Your pack is too full to catch what comes out of it.',
+          );
+          return;
       }
     }
 
-    const taken = takeSlot(player.inventory, slotIndex, 1);
-    if (!taken) return;
-    const name = instanceName(taken.item, taken.roll);
-    for (const y of result.yields) addItem(player.inventory, y.item, y.qty);
-    this.grantXp(eid, player, 'enchanting', result.xp);
+    // Pay the plan out in the exact sequence it proved: take every
+    // piece, then land every yield. The plan and the payout are the
+    // same arithmetic, which on a destructive action is the law.
+    for (const p of plan.pieces) takeSlot(player.inventory, p.index, 1);
+    for (const y of plan.yields) addItem(player.inventory, y.item, y.qty);
+    this.grantXp(eid, player, 'enchanting', plan.xp);
     player.session.sendJson({ t: 'inv', slots: player.inventory });
 
-    const got = result.yields
-      .map((y) => `${y.qty} ${(itemDef(y.item)?.name ?? y.item).toLowerCase()}`)
-      .join(' and ');
-    sys(`The ${name} comes apart. You recover ${got}.`);
+    const lines = plan.yields.map(
+      (y) => `${y.qty} ${(itemDef(y.item)?.name ?? y.item).toLowerCase()}`,
+    );
+    const got =
+      lines.length <= 2
+        ? lines.join(' and ')
+        : `${lines.slice(0, -1).join(', ')} and ${lines[lines.length - 1]!}`;
+    const n = plan.pieces.length;
+    sys(
+      n === 1
+        ? `The ${plan.pieces[0]!.name} comes apart. You recover ${got}.`
+        : `${COUNT_WORDS[n] ?? String(n)} pieces come apart on the bench. You recover ${got}.`,
+    );
 
     // The bench answers: an unmaking is a working too, and it should
-    // read as one. Tinted by the piece's own school where it had one.
+    // read as one. A batch that agrees on a school borrows it; mixed
+    // work and bare steel stay arcane. A bigger breaking rings a
+    // little wider, capped so a full sweep never reads as an ability.
     const pos = this.positions.get(eid);
     if (pos) {
-      const ench = enchantDef(taken.roll?.ench);
       this.broadcastFx(pos.plane, {
         t: 'fx',
         kind: 'proc',
         x: pos.x,
         y: pos.y,
-        radius: 0.8,
-        color: ELEMENT_COLORS[ench?.element ?? 'arcane'],
+        radius: Math.min(0.8 + 0.06 * (n - 1), 1.2),
+        color: ELEMENT_COLORS[plan.element],
         id: 'yield:unmake',
       });
     }

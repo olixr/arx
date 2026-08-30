@@ -230,6 +230,29 @@ export class StationPanels {
    * second one says what it is about to destroy.
    */
   private unmakeArmed: number | null = null;
+  /**
+   * THE MARKED BATCH: pack slots set aside for one bulk breaking.
+   * Each mark remembers the piece it named, so a pack that shifts
+   * underneath drops the stale mark instead of breaking a stranger.
+   */
+  private readonly unmakeMarked = new Map<number, string>();
+  /** The batch's own two-press confirm, held apart from the single's. */
+  private unmakeBatchArmed = false;
+  /**
+   * THE RECOVERED RIBBON: what the last breaking said it would pay.
+   * Preview and payout are the same pure function, so the bench may
+   * celebrate with its own figures — but only once the pack proves the
+   * pieces really left (a refusal never earns a ribbon), and only for
+   * a breath.
+   */
+  private pendingBreak: {
+    checks: Array<{ index: number; item: string }>;
+    yields: Array<{ item: string; qty: number }>;
+    count: number;
+    at: number;
+    /** The let-go clock is wound once, not once per re-render. */
+    timed?: boolean;
+  } | null = null;
   /** World tile center the open panel is bound to (null = untethered). */
   private anchor: { x: number; y: number } | null = null;
   /** Which shop's shelf is on screen — echoed on every buy. */
@@ -300,6 +323,44 @@ export class StationPanels {
       const verbs: SheetVerb[] = [make(1)];
       if (most > 5) verbs.push(make(5));
       if (most > 1) verbs.push(make(most));
+      return verbs;
+    });
+    // Ⓨ on an unmaking row fans the row's own verbs — mark it for the
+    // batch, arm the breaking, draw a working out — so the pad never
+    // has to cross to the detail pane at all. Worn rows keep their
+    // pane (sundering the armor on your body deserves the full read).
+    registerSheetProvider('unrow', (el) => {
+      const slot = Number((el.dataset.navkey ?? '').slice('unrow:'.length));
+      if (!Number.isInteger(slot) || slot < 0) return [];
+      const s = this.getInventory()[slot];
+      if (!s || s.stolen) return [];
+      const marked = this.unmakeMarked.get(slot) === s.item;
+      const verbs: SheetVerb[] = [
+        {
+          label: marked ? 'Unmark' : 'Mark for the batch',
+          act: () => {
+            if (marked) this.unmakeMarked.delete(slot);
+            else this.unmakeMarked.set(slot, s.item);
+            this.unmakeBatchArmed = false;
+            this.renderCraft();
+          },
+        },
+        {
+          // The ellipsis is honest: this arms the two-press confirm on
+          // the bench; nothing breaks from inside the sheet.
+          label: 'Unmake…',
+          act: () => {
+            this.unmakeSel = slot;
+            this.unmakeWorn = undefined;
+            this.unmakeArmed = slot;
+            this.unmakeBatchArmed = false;
+            this.renderCraft();
+          },
+        },
+      ];
+      if (s.roll?.ench) {
+        verbs.push({ label: 'Sunder', act: () => this.onSunder(slot, undefined, 'ward') });
+      }
       return verbs;
     });
   }
@@ -374,6 +435,14 @@ export class StationPanels {
     this.showing = null;
     this.bankSel = null;
     this.releaseArmed = null;
+    // The bench remembers nothing between visits: a mode, an armed
+    // confirm, or a marked batch that persisted would eventually greet
+    // somebody with a wall of their own gear and a Break button.
+    this.craftMode = 'make';
+    this.unmakeArmed = null;
+    this.unmakeBatchArmed = false;
+    this.unmakeMarked.clear();
+    this.pendingBreak = null;
   }
 
   /**
@@ -789,6 +858,9 @@ export class StationPanels {
 
   // ------------------------------------------------------------ plant
 
+  /** Set by main: THE BULK BREAKING — the marked batch, as one send. */
+  onUnmakeMany: ((slots: number[]) => void) | null = null;
+
   /** Set by main: sends the plant intent for a chosen seed. */
   onPlant: ((tx: number, ty: number, seed: string) => void) | null = null;
 
@@ -839,7 +911,7 @@ export class StationPanels {
      * share one tool strip — without it the second call silently wipes
      * the first, which is exactly the bug the bench mode hit.
      */
-    opts: { label?: string; keep?: boolean } = {},
+    opts: { label?: string; keep?: boolean; next?: string } = {},
   ): void {
     if (!opts.keep) host.innerHTML = '';
     const row = document.createElement('div');
@@ -855,6 +927,10 @@ export class StationPanels {
       chip.dataset.nav = '';
       chip.dataset.navkey = `sort:${scope}:${key}`;
       chip.dataset.acta = 'Sort';
+      // THE HAND LANDS ON THE WORK: a chip that re-deals the list may
+      // hand the cursor to it (the bench mode switch does), so picking
+      // a mode is one press and the next press is already on a row.
+      if (opts.next !== undefined) chip.dataset.navnext = opts.next;
       chip.addEventListener('click', () => onPick(key));
       row.appendChild(chip);
     }
@@ -878,9 +954,16 @@ export class StationPanels {
      * a toll booth on the way to the Make button.
      */
     next?: string;
+    /**
+     * THE MARKED BATCH: a toggle chip riding the row's right edge, its
+     * own pad stop, so marking a pile never means walking the detail
+     * pane once per piece. Only the unmaking bench deals it.
+     */
+    mark?: { on: boolean; key: string; toggle: () => void };
   }): HTMLElement {
     const row = document.createElement('div');
-    row.className = 'ledger-row' + (opts.selected ? ' selected' : '');
+    row.className =
+      'ledger-row' + (opts.selected ? ' selected' : '') + (opts.mark?.on ? ' marked' : '');
     row.dataset.nav = '';
     row.dataset.navkey = opts.key;
     row.dataset.acta = 'View';
@@ -896,7 +979,43 @@ export class StationPanels {
     note.className = `ledger-note ${opts.noteTone ?? ''}`.trim();
     note.textContent = opts.note;
     row.append(img, name, note);
+    if (opts.mark) {
+      const chip = document.createElement('button');
+      chip.className = 'ledger-mark' + (opts.mark.on ? ' on' : '');
+      chip.textContent = '◆';
+      chip.title = opts.mark.on ? 'Unmark' : 'Mark for the batch';
+      chip.dataset.nav = '';
+      chip.dataset.navkey = opts.mark.key;
+      chip.dataset.acta = opts.mark.on ? 'Unmark' : 'Mark';
+      chip.addEventListener('click', (ev) => {
+        ev.stopPropagation(); // the chip marks; only the row selects
+        opts.mark!.toggle();
+      });
+      row.appendChild(chip);
+    }
     row.addEventListener('click', opts.onPick);
+    return row;
+  }
+
+  /**
+   * One YIELD row — what an unmaking pays out. A gain, never a need:
+   * materialRow's have/need framing painted a 5-dust payout as a red
+   * "1 / 5" shortfall, which is the opposite of what is happening.
+   */
+  private yieldRow(item: string, qty: number): HTMLElement {
+    const def = itemDef(item);
+    const row = document.createElement('div');
+    row.className = 'mat-row ok';
+    const img = document.createElement('img');
+    img.src = itemIconUrl(item, 36);
+    img.draggable = false;
+    const name = document.createElement('span');
+    name.className = 'mat-name';
+    name.textContent = def?.name ?? item;
+    const count = document.createElement('span');
+    count.className = 'mat-count';
+    count.textContent = `+${qty}`;
+    row.append(img, name, count);
     return row;
   }
 
@@ -1508,9 +1627,10 @@ export class StationPanels {
       (k) => {
         this.craftMode = k as 'make' | 'unmake';
         this.unmakeArmed = null;
+        this.unmakeBatchArmed = false;
         this.renderCraft();
       },
-      { label: 'Bench' },
+      { label: 'Bench', next: '#craft-list' },
     );
   }
 
@@ -1546,6 +1666,16 @@ export class StationPanels {
       }
     }
 
+    // THE MARKS FOLLOW THE PIECES: a mark whose slot emptied, shifted,
+    // or turned out hot since it was set is let go — a batch must
+    // never break a stranger standing where a marked piece used to.
+    for (const [slot, item] of [...this.unmakeMarked]) {
+      if (!rows.some((r) => !r.worn && !r.stolen && r.slot === slot && r.item === item)) {
+        this.unmakeMarked.delete(slot);
+      }
+    }
+    if (this.unmakeMarked.size === 0) this.unmakeBatchArmed = false;
+
     if (rows.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'make-empty';
@@ -1568,20 +1698,38 @@ export class StationPanels {
       rows.map((row) => {
         const result = unmakingOf(row.item, row.roll);
         const dust = result?.yields.find((y) => y.item === 'arcane_dust')?.qty ?? 0;
+        const marked = !row.worn && this.unmakeMarked.get(row.slot) === row.item;
         return this.ledgerRow({
-          key: `unmake:${row.worn ?? row.slot}`,
-          next: '#craft-detail',
+          // `unrow:`, never `unmake:` — the Unmake button owns that key,
+          // and two stops sharing a navkey starved the pad's advance:
+          // the row's own key matched the target and the cursor never
+          // moved (resolveAdvance refuses a target wearing the focus key).
+          key: `unrow:${row.worn ?? row.slot}`,
+          // THE HAND LANDS ON THE WORK, and on the gentler verb where
+          // one exists: worked steel lands on Sunder (the bench's own
+          // framing — most players want the working gone, not the
+          // piece), bare steel lands on Unmake. A hot piece advances
+          // nowhere; its pane is a refusal, not a verb.
+          next: row.stolen
+            ? undefined
+            : row.worn
+              ? `key:sunder:ward:${row.worn}`
+              : row.roll?.ench || row.roll?.ench2
+                ? `key:sunder:ward:${row.slot}`
+                : `key:unmake:${row.slot}`,
           iconUrl: itemIconUrl(row.item, 40),
           name: instanceName(row.item, row.roll),
-          note: row.worn
-            ? 'worn'
-            : row.stolen
-              ? 'hot'
-              : row.roll?.deep
-                ? 'deepened'
-                : enchantDef(row.roll?.ench)
-                  ? 'worked'
-                  : `${dust} dust`,
+          note: marked
+            ? 'marked'
+            : row.worn
+              ? 'worn'
+              : row.stolen
+                ? 'hot'
+                : row.roll?.deep
+                  ? 'deepened'
+                  : enchantDef(row.roll?.ench)
+                    ? 'worked'
+                    : `${dust} dust`,
           noteTone: row.stolen ? 'lock' : 'ok',
           selected: this.unmakeSel === (row.worn ? -1 : row.slot) && this.unmakeWorn === row.worn,
           onPick: () => {
@@ -1590,10 +1738,42 @@ export class StationPanels {
             this.unmakeArmed = null;
             this.renderCraft();
           },
+          mark:
+            row.worn || row.stolen
+              ? undefined
+              : {
+                  on: marked,
+                  key: `mark:${row.slot}`,
+                  toggle: () => {
+                    if (marked) this.unmakeMarked.delete(row.slot);
+                    else this.unmakeMarked.set(row.slot, row.item);
+                    this.unmakeBatchArmed = false;
+                    this.renderCraft();
+                  },
+                },
         });
       }),
       8,
     );
+
+    // THE RECOVERED RIBBON leads the pane: the payout the last
+    // breaking proved, shown once the pack shows the pieces gone.
+    this.renderBreakRibbon();
+
+    // A piece with nothing bound in and no fine rarity is JUNK — what
+    // the one-sweep suggestion may mark by itself. Worked, deepened,
+    // rare-or-finer and hot pieces are always the player's own call.
+    const junkRows = rows.filter((r) => {
+      if (r.worn || r.stolen) return false;
+      if (r.roll?.ench || r.roll?.ench2 || r.roll?.deep) return false;
+      const rar = r.roll?.rar ?? 'common';
+      return rar === 'common' || rar === 'uncommon';
+    });
+    const markedRows = rows.filter((r) => !r.worn && this.unmakeMarked.get(r.slot) === r.item);
+    // NOTHING LIVES BELOW THE FOLD: a standing batch is the ACTIVE
+    // work and leads the pane; the mere suggestion of one stays a
+    // quiet footer under the picked piece.
+    if (markedRows.length > 0) this.renderUnmakeBatch(markedRows, junkRows);
 
     const picked = rows.find(
       (r) => (r.worn ? -1 : r.slot) === this.unmakeSel && r.worn === this.unmakeWorn,
@@ -1635,7 +1815,7 @@ export class StationPanels {
 
     this.craftDetail.appendChild(sectionHead('What comes out'));
     for (const y of result.yields) {
-      this.craftDetail.appendChild(this.materialRow(y.item, y.qty));
+      this.craftDetail.appendChild(this.yieldRow(y.item, y.qty));
     }
 
     const warn = document.createElement('div');
@@ -1693,37 +1873,241 @@ export class StationPanels {
 
     // A worn piece is offered for sundering and nothing else. A Destroy
     // button aimed at the armor you are currently wearing is a footgun.
-    if (picked.worn) return;
+    // The batch section still renders below it: picking a worn piece
+    // must never hide the marked batch's own verbs.
+    if (!picked.worn) {
+      const actions = document.createElement('div');
+      actions.className = 'work-actions';
+      if (picked.stolen) {
+        const no = bigButton('Cannot unmake', `unmake:${picked.slot}`, () => {}, { minor: true });
+        no.disabled = true;
+        actions.appendChild(no);
+      } else if (this.unmakeArmed === picked.slot) {
+        // THE SECOND PRESS NAMES ITS VICTIM. One click between a player
+        // and a destroyed legendary is not a bench, it is a trap, and the
+        // confirm has to say WHICH piece or it protects nobody.
+        actions.append(
+          bigButton(`Destroy ${pickedName}`, `unmake:${picked.slot}`, () => {
+            this.unmakeArmed = null;
+            // The ribbon's receipt: what this breaking should pay, and
+            // which slot must empty before it may celebrate.
+            this.pendingBreak = {
+              checks: [{ index: picked.slot, item: picked.item }],
+              yields: result.yields,
+              count: 1,
+              at: Date.now(),
+            };
+            this.unmakeMarked.delete(picked.slot);
+            this.onUnmake(picked.slot);
+          }, { acta: 'Destroy' }),
+          bigButton('Keep it', `unmake:cancel`, () => {
+            this.unmakeArmed = null;
+            this.renderCraft();
+          }, { minor: true, acta: 'Cancel' }),
+        );
+      } else {
+        actions.appendChild(
+          bigButton('Unmake', `unmake:${picked.slot}`, () => {
+            this.unmakeArmed = picked.slot;
+            this.unmakeBatchArmed = false;
+            this.renderCraft();
+          }, { acta: 'Unmake' }),
+        );
+        const marked = this.unmakeMarked.get(picked.slot) === picked.item;
+        actions.appendChild(
+          bigButton(
+            marked ? 'Unmark' : 'Mark for the batch',
+            `markpick:${picked.slot}`,
+            () => {
+              if (marked) this.unmakeMarked.delete(picked.slot);
+              else this.unmakeMarked.set(picked.slot, picked.item);
+              this.unmakeBatchArmed = false;
+              this.renderCraft();
+            },
+            { minor: true, acta: marked ? 'Unmark' : 'Mark' },
+          ),
+        );
+      }
+      this.craftDetail.appendChild(actions);
+    }
 
-    const actions = document.createElement('div');
-    actions.className = 'work-actions';
-    if (picked.stolen) {
-      const no = bigButton('Cannot unmake', `unmake:${picked.slot}`, () => {}, { minor: true });
-      no.disabled = true;
-      actions.appendChild(no);
-    } else if (this.unmakeArmed === picked.slot) {
-      // THE SECOND PRESS NAMES ITS VICTIM. One click between a player
-      // and a destroyed legendary is not a bench, it is a trap, and the
-      // confirm has to say WHICH piece or it protects nobody.
-      actions.append(
-        bigButton(`Destroy ${pickedName}`, `unmake:${picked.slot}`, () => {
-          this.unmakeArmed = null;
-          this.onUnmake(picked.slot);
+    if (markedRows.length === 0) this.renderUnmakeBatch(markedRows, junkRows);
+  }
+
+  /**
+   * THE RECOVERED RIBBON — the bench's own answer to a breaking. The
+   * preview and the payout are the same pure function, so the bench
+   * may celebrate with its own figures; the pack is still asked to
+   * prove the pieces left first, because a refusal (a hot piece, a
+   * full pack) must never wear a celebration. Lives for a breath,
+   * then lets itself go.
+   */
+  private renderBreakRibbon(): void {
+    const p = this.pendingBreak;
+    if (!p) return;
+    if (Date.now() - p.at > 4000) {
+      this.pendingBreak = null;
+      return;
+    }
+    const inv = this.getInventory();
+    if (!p.checks.every((c) => inv[c.index]?.item !== c.item)) return;
+    const rib = document.createElement('div');
+    rib.className = 'unmake-ribbon';
+    const title = document.createElement('div');
+    title.className = 'unmake-ribbon-title';
+    title.textContent = p.count === 1 ? 'It comes apart.' : `${p.count} pieces come apart.`;
+    rib.appendChild(title);
+    const chips = document.createElement('div');
+    chips.className = 'unmake-ribbon-yields';
+    for (const y of p.yields) {
+      const chip = document.createElement('span');
+      chip.className = 'rib-chip';
+      chip.title = itemDef(y.item)?.name ?? y.item;
+      const img = document.createElement('img');
+      img.src = itemIconUrl(y.item, 28);
+      img.draggable = false;
+      const qty = document.createElement('strong');
+      qty.textContent = `+${y.qty}`;
+      chip.append(img, qty);
+      chips.appendChild(chip);
+    }
+    rib.appendChild(chips);
+    this.craftDetail.appendChild(rib);
+    if (!p.timed) {
+      p.timed = true;
+      window.setTimeout(() => {
+        if (this.pendingBreak === p) {
+          this.pendingBreak = null;
+          this.refreshOpen();
+        }
+      }, 3200);
+    }
+  }
+
+  /**
+   * THE MARKED BATCH — the bench's bulk lane. Marked pieces break as
+   * ONE working (one send, one payout, one voice line, one moment of
+   * light); the section reads the whole account out before the
+   * two-press confirm. With nothing marked it offers the one clean
+   * sweep: every plain piece with nothing bound in, marked in a single
+   * press. Worked, deepened and rare-or-finer steel is never swept —
+   * those are the player's own deliberate call, piece by piece.
+   */
+  private renderUnmakeBatch(
+    marked: Array<{ slot: number; item: string; roll?: ItemRoll }>,
+    junk: Array<{ slot: number; item: string; roll?: ItemRoll }>,
+  ): void {
+    const unmarkedJunk = junk.filter((r) => this.unmakeMarked.get(r.slot) !== r.item);
+    if (marked.length === 0 && unmarkedJunk.length < 2) return;
+
+    this.craftDetail.appendChild(
+      sectionHead(marked.length > 0 ? 'The marked batch' : 'One clean sweep'),
+    );
+
+    const markJunk = (): void => {
+      for (const r of unmarkedJunk) this.unmakeMarked.set(r.slot, r.item);
+      this.unmakeBatchArmed = false;
+      this.renderCraft();
+    };
+    const junkButton = (): HTMLButtonElement => {
+      const btn = bigButton(`Mark the junk (${unmarkedJunk.length})`, 'unmake:junk', markJunk, {
+        minor: true,
+        acta: 'Mark',
+      });
+      // The sweep deals a Break button in — land the hand on it.
+      btn.dataset.navnext = 'key:unmake:batch';
+      return btn;
+    };
+
+    if (marked.length === 0) {
+      const note = document.createElement('div');
+      note.className = 'work-result';
+      const flavor = document.createElement('div');
+      flavor.className = 'work-result-flavor';
+      flavor.textContent = `${unmarkedJunk.length} plain pieces here carry nothing bound in. They could all go in one breaking.`;
+      note.appendChild(flavor);
+      this.craftDetail.appendChild(note);
+      const acts = document.createElement('div');
+      acts.className = 'work-actions batch-actions';
+      acts.appendChild(junkButton());
+      this.craftDetail.appendChild(acts);
+      return;
+    }
+
+    // The whole account before the confirm: every yield, summed by the
+    // same pure function the server pays from — figures that cannot lie.
+    const yields: Array<{ item: string; qty: number }> = [];
+    let xp = 0;
+    for (const r of marked) {
+      const out = unmakingOf(r.item, r.roll);
+      if (!out) continue;
+      xp += out.xp;
+      for (const y of out.yields) {
+        const line = yields.find((l) => l.item === y.item);
+        if (line) line.qty += y.qty;
+        else yields.push({ item: y.item, qty: y.qty });
+      }
+    }
+
+    const names = marked.map((r) => instanceName(r.item, r.roll));
+    const said =
+      names.length <= 3
+        ? names.join(', ')
+        : `${names.slice(0, 3).join(', ')} and ${names.length - 3} more`;
+    const note = document.createElement('div');
+    note.className = 'work-result';
+    const facts = document.createElement('div');
+    facts.className = 'work-result-facts';
+    facts.textContent = `${marked.length} ${marked.length === 1 ? 'piece' : 'pieces'} · +${xp} xp`;
+    const flavor = document.createElement('div');
+    flavor.className = 'work-result-flavor';
+    flavor.textContent = `${said}. All of it goes in one breaking; what comes back comes back as one pile.`;
+    note.append(facts, flavor);
+    this.craftDetail.appendChild(note);
+    for (const y of yields) this.craftDetail.appendChild(this.yieldRow(y.item, y.qty));
+
+    const acts = document.createElement('div');
+    acts.className = 'work-actions batch-actions';
+    const word = marked.length === 1 ? 'piece' : 'pieces';
+    if (this.unmakeBatchArmed) {
+      // THE SECOND PRESS NAMES ITS VICTIMS — by count here; the names
+      // stand written directly above, in the account.
+      acts.append(
+        bigButton(`Destroy ${marked.length} ${word}`, 'unmake:batch', () => {
+          this.unmakeBatchArmed = false;
+          this.pendingBreak = {
+            checks: marked.map((r) => ({ index: r.slot, item: r.item })),
+            yields,
+            count: marked.length,
+            at: Date.now(),
+          };
+          const slots = marked.map((r) => r.slot);
+          this.unmakeMarked.clear();
+          this.onUnmakeMany?.(slots);
         }, { acta: 'Destroy' }),
-        bigButton('Keep it', `unmake:cancel`, () => {
-          this.unmakeArmed = null;
+        bigButton('Keep them', 'unmake:batch:cancel', () => {
+          this.unmakeBatchArmed = false;
           this.renderCraft();
         }, { minor: true, acta: 'Cancel' }),
       );
     } else {
-      actions.appendChild(
-        bigButton('Unmake', `unmake:${picked.slot}`, () => {
-          this.unmakeArmed = picked.slot;
+      acts.appendChild(
+        bigButton(`Break ${marked.length} ${word}`, 'unmake:batch', () => {
+          this.unmakeBatchArmed = true;
+          this.unmakeArmed = null;
           this.renderCraft();
-        }, { acta: 'Unmake' }),
+        }, { acta: 'Break' }),
+      );
+      if (unmarkedJunk.length > 0) acts.appendChild(junkButton());
+      acts.appendChild(
+        bigButton('Clear marks', 'unmake:batch:clear', () => {
+          this.unmakeMarked.clear();
+          this.unmakeBatchArmed = false;
+          this.renderCraft();
+        }, { minor: true, acta: 'Clear' }),
       );
     }
-    this.craftDetail.appendChild(actions);
+    this.craftDetail.appendChild(acts);
   }
 
   // THE BENCH NAMES ITS TEACHERS: the rumor line points at a real
