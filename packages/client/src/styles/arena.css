@@ -1,9 +1,12 @@
-/* THE SAND AND THE ROAR (docs/arena-plan.md) — two pieces of chrome:
- * THE STAKES BOARD (a dressed screen: the venue's cards as plates,
- * the buyer's ladder at the foot) and THE MATCH CARD (the live HUD
- * worn under the boss banner's band). Tokens only (ONE TRUTH);
- * motion is transform/opacity and gates on body.no-ui-motion;
- * the HUD is pointer-blind. */
+/* THE SAND AND THE ROAR (docs/arena-plan.md §11) — two pieces of
+ * chrome, both recut at the venues' own grand scale:
+ * THE STAKES BOARD (a dressed screen: the venue's cards as plates
+ * under shield seals, and THE STANDING — the buyer's rank worn as a
+ * crest medal, record, and climbing meter at the board's foot) and
+ * THE MATCH CARD (the live HUD: a winged marquee, THE COUNT as one
+ * great numeral, and the fuse rail burning from both ends).
+ * Tokens only (ONE TRUTH); motion is transform/opacity and gates on
+ * body.no-ui-motion; the HUD is pointer-blind. */
 
 /* ------------------------------------------------- the stakes board */
 .screen-arena {
@@ -12,7 +15,7 @@
   gap: var(--sp-3);
   /* Wide enough that the venue's own name clears the crest and the
      ✕ chip — at 30rem "The Grand Ring" ellipsed on its own banner. */
-  width: min(36rem, 94vw);
+  width: min(38rem, 94vw);
 }
 .screen-arena h3 {
   font-family: var(--serif);
@@ -23,31 +26,67 @@
 #arena-board-cards {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
   overflow-y: auto;
   min-height: 0;
+  padding: var(--sp-1);
 }
 .arena-card {
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-3);
-  background: var(--raise);
-  /* `--iron-edge` was never a token — the plate shipped frameless.
-     The quiet rule is the seal's own frame, one family. */
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  background: linear-gradient(180deg, var(--raise-hi), var(--raise) 55%);
   border: var(--hairline) solid var(--line-strong);
   border-radius: var(--r-plate);
   color: var(--parchment);
   text-align: left;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition:
+    border-color 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease;
 }
+/* An open plate answers the hand: it lifts a breath, warms its edge,
+   and a light sweeps the leather once — the shelf presenting the
+   card, not the card shouting. */
 .arena-card:hover:not(.locked),
 .arena-card:focus-visible:not(.locked) {
   border-color: var(--gold);
+  transform: translateY(-0.125rem);
+  box-shadow: 0 0.25rem 0.75rem var(--shadow);
 }
+.arena-card::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 30%;
+  background: linear-gradient(105deg, transparent, rgba(255, 233, 168, 0.14), transparent);
+  transform: translateX(-160%);
+  pointer-events: none;
+}
+body:not(.no-ui-motion) .arena-card:hover:not(.locked)::before,
+body:not(.no-ui-motion) .arena-card:focus-visible:not(.locked)::before {
+  animation: arena-card-sweep 640ms ease-out;
+}
+@keyframes arena-card-sweep {
+  to {
+    transform: translateX(500%);
+  }
+}
+/* A gated plate stands in iron: colder, dimmer, its shield greyed —
+   but every word still legible (the price in rank is the intrigue). */
 .arena-card.locked {
   cursor: default;
-  opacity: 0.55;
+  background: linear-gradient(180deg, #2c2823, #241f1a 55%);
+  opacity: 0.75;
+}
+.arena-card.locked .arena-card-name {
+  color: var(--parchment-dim);
 }
 /* A gated plate's spoken no: pressed by hand or by Ⓐ, it flashes
    ember in place — the rank chip beside it already says the price,
@@ -68,24 +107,47 @@ body.no-ui-motion .arena-card.refused {
   animation: none;
   border-color: var(--red-soft);
 }
+/* The level seal is a SHIELD now — the card's weight class, worn the
+   way a fighter wears one: pointed, bossed, the number struck big. */
 .arena-card-seal {
   flex: none;
-  display: grid;
-  place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.0625rem;
+  width: 3rem;
+  height: 3.5rem;
+  background: linear-gradient(180deg, #4a3d28, var(--sunk) 78%);
+  box-shadow: inset 0 0 0 0.125rem color-mix(in srgb, var(--gold-deep) 65%, transparent);
+  clip-path: polygon(0 0, 100% 0, 100% 58%, 50% 100%, 0 58%);
+  padding-bottom: 0.5rem;
+}
+.arena-card-seal-num {
   font-family: var(--serif);
   font-weight: 700;
-  font-size: var(--t-lead);
-  color: var(--gold);
-  background: var(--sunk);
-  border: var(--hairline) solid var(--line-strong);
-  border-radius: var(--r-chip);
+  font-size: var(--t-title);
+  line-height: 1;
+  color: var(--gold-bright);
+  text-shadow: var(--punch-small);
+}
+.arena-card-seal-word {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--parchment-faint);
+}
+.arena-card.locked .arena-card-seal {
+  box-shadow: inset 0 0 0 0.125rem color-mix(in srgb, var(--iron) 80%, transparent);
+}
+.arena-card.locked .arena-card-seal-num {
+  color: var(--iron-lit);
 }
 .arena-card-body {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 0.1875rem;
   min-width: 0;
 }
 .arena-card-name {
@@ -95,76 +157,188 @@ body.no-ui-motion .arena-card.refused {
 }
 .arena-card-blurb {
   font-size: var(--t-whisper);
+  font-style: italic;
   color: var(--parchment-dim);
 }
 .arena-card-meta {
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
+  gap: var(--sp-4);
+  margin-top: 0.0625rem;
   font-size: var(--t-label);
   color: var(--parchment-dim);
 }
 .arena-card-pips {
   display: inline-flex;
-  gap: 0.25rem;
+  gap: 0.375rem;
 }
-/* One stud per round — the card's SHAPE, read at a glance. They were
-   filled with `--brass-ink`, which is the ink for text stamped ON
-   brass (#241503): on the plate's own dark leather the count went
-   invisible. Brass proper reads, and stays a step under the gold fee
-   beside it so price still leads. */
+/* One stud per round — the card's SHAPE, read at a glance, in the
+   world's diamond-spark dialect. Brass proper (not brass-ink, the
+   old invisible fill), a step under the gold fee so price leads. */
 .arena-card-pips i {
   width: 0.4375rem;
   height: 0.4375rem;
   background: var(--brass);
-  border-radius: var(--r-chip);
+  transform: rotate(45deg);
+  box-shadow: 0 0 0 0.0625rem rgba(12, 8, 4, 0.5);
 }
 .arena-card-fee {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   color: var(--gold);
+  font-weight: 700;
 }
+.arena-card-fee img {
+  width: 1rem;
+  height: 1rem;
+  image-rendering: pixelated;
+}
+/* The rank gate: an iron chip that names its price. On a locked
+   plate it burns ember — the one hot thing on the cold iron. */
 .arena-card-gate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.0625rem 0.4375rem;
+  font-size: var(--t-whisper);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  background: var(--sunk);
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: var(--r-chip);
+}
+.arena-card.locked .arena-card-gate {
   color: var(--red-soft);
-  letter-spacing: 0.06em;
+  border-color: color-mix(in srgb, var(--red-soft) 45%, var(--line-strong));
 }
 
-/* The buyer's own ladder at the board's foot. */
+/* -------------------------------------- THE STANDING (the ladder) */
+/* The buyer's whole story at the board's foot: the crest medal
+   wearing the rank, the crowd's name for them, the record, and the
+   climb to the next rung as a shining meter. Gamified, bespoke — a
+   trophy shelf, not a footnote. */
 #arena-board-ladder {
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
-  padding-top: var(--sp-2);
-  border-top: var(--hairline) solid var(--rule);
-  font-size: var(--t-label);
-  color: var(--parchment-dim);
+  gap: var(--sp-5);
+  padding: var(--sp-3) var(--sp-2) 0;
+  /* The gold rule fades at both ends — a shelf edge, not a box. */
+  border-top: var(--rule) solid transparent;
+  border-image: linear-gradient(90deg, transparent, var(--gold-deep) 18%, var(--gold-deep) 82%, transparent) 1;
 }
-.arena-ladder-title {
+.arena-standing-medal {
+  flex: none;
+  width: 4.25rem;
+  height: 4.25rem;
+  background: var(--ui-crest) center / contain no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0.125rem 0.1875rem 0 rgba(12, 8, 4, 0.45));
+}
+.arena-standing-medal b {
   font-family: var(--serif);
   font-weight: 700;
-  color: var(--gold);
+  font-size: var(--t-title);
+  color: var(--brass-ink);
+  transform: translateY(-0.0625rem);
 }
-.arena-ladder-meter {
+/* The unranked medal waits face-down: dim, its number a dash (the
+   dash in parchment — brass-ink vanishes on the dimmed brass). */
+#arena-board-ladder.unranked .arena-standing-medal {
+  filter: grayscale(0.7) brightness(0.75) drop-shadow(0.125rem 0.1875rem 0 rgba(12, 8, 4, 0.45));
+}
+#arena-board-ladder.unranked .arena-standing-medal b {
+  color: var(--parchment-dim);
+}
+/* The capped medal burns — the once-per-account occasion. */
+#arena-board-ladder.capped .arena-standing-medal {
+  filter: drop-shadow(0 0 0.625rem rgba(242, 201, 76, 0.6)) drop-shadow(0.125rem 0.1875rem 0 rgba(12, 8, 4, 0.45));
+}
+.arena-standing-body {
   flex: 1;
-  height: 0.375rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+}
+.arena-standing-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-4);
+}
+.arena-standing-title {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: var(--t-lead);
+  color: var(--gold-bright);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#arena-board-ladder.capped .arena-standing-title {
+  color: var(--gold-hot);
+}
+.arena-standing-record {
+  font-size: var(--t-whisper);
+  letter-spacing: 0.06em;
+  color: var(--parchment-faint);
+  white-space: nowrap;
+}
+/* The meter: a deep channel with rung-marks every tenth, the fill a
+   gold blade with a hot leading edge — the climb you can SEE. */
+.arena-standing-meter {
+  position: relative;
+  height: 0.625rem;
   background: var(--sunk);
   border: var(--hairline) solid var(--line-strong);
   border-radius: var(--r-chip);
   overflow: hidden;
 }
-.arena-ladder-meter i {
+.arena-standing-meter i {
   display: block;
   height: 100%;
-  background: var(--gold);
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold) 62%, var(--gold-hot));
   transform-origin: left;
   transform: scaleX(var(--fill, 0));
 }
+.arena-standing-meter::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent calc(10% - 0.09375rem),
+    rgba(12, 8, 4, 0.4) calc(10% - 0.09375rem),
+    rgba(12, 8, 4, 0.4) 10%
+  );
+  pointer-events: none;
+}
+.arena-standing-next {
+  font-size: var(--t-whisper);
+  color: var(--parchment-dim);
+}
+.arena-standing-next b {
+  font-weight: 700;
+  color: var(--gold);
+}
 
 /* --------------------------------------------------- the match card */
+/* THE MATCH CARD — the marquee that says AN OCCASION HOLDS YOU:
+   winged name band, round studs, the phase's spoken read, THE COUNT
+   as one great numeral, and the fuse rail burning from both ends
+   toward center. Pointer-blind but for the walk-away chip. */
 #arena-hud {
   position: fixed;
   left: 50%;
   top: var(--sp-2);
   transform: translateX(-50%);
-  width: min(15rem, 60vw);
+  width: min(26rem, 88vw);
   z-index: 56; /* the boss banner's band: readings, under ceremony */
   pointer-events: none;
   text-align: center;
@@ -175,26 +349,89 @@ body.no-ui-motion .arena-card.refused {
 #arena-hud.up {
   opacity: 1;
 }
+
+/* The marquee band: two gold wings tapering out from the card's
+   name, each flying a diamond finial past its point. */
+.arena-hud-marquee {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-5);
+  padding: var(--sp-2) var(--sp-4);
+}
+#arena-hud.turn .arena-hud-marquee {
+  animation: arena-turn 460ms cubic-bezier(0.2, 1.3, 0.32, 1);
+}
+@keyframes arena-turn {
+  from {
+    transform: scale(1.12);
+  }
+  to {
+    transform: none;
+  }
+}
+body.no-ui-motion #arena-hud.turn .arena-hud-marquee {
+  animation: none;
+}
+.arena-hud-wing {
+  flex: 1;
+  max-width: 6.5rem;
+  height: 0.4375rem;
+  position: relative;
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold-bright));
+  clip-path: polygon(0 50%, 0.875rem 0, 100% 0, 100% 100%, 0.875rem 100%);
+}
+/* The east wing is the west wing mirrored — one shape, one truth. */
+.arena-hud-wing.e {
+  transform: scaleX(-1);
+}
+.arena-hud-wing::before {
+  content: '';
+  position: absolute;
+  left: -0.8125rem;
+  top: 50%;
+  width: 0.4375rem;
+  height: 0.4375rem;
+  margin-top: -0.21875rem;
+  background: var(--gold);
+  transform: rotate(45deg);
+}
+.arena-hud-core {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
 .arena-hud-head {
   font-family: var(--serif);
   font-weight: 700;
-  font-size: var(--t-label);
-  letter-spacing: 0.08em;
+  font-size: var(--t-lead);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--parchment);
-  text-shadow: 0 0.0625rem 0 var(--ink-line);
+  text-shadow:
+    0 0 0.25rem var(--ink-wash),
+    0 0.0625rem 0 var(--ink-line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 16rem;
 }
 .arena-hud-pips {
   display: flex;
   justify-content: center;
-  gap: 0.3125rem;
-  margin-top: 0.1875rem;
+  gap: 0.4375rem;
 }
+/* Round studs in the diamond-spark dialect: past rounds gold, the
+   living round an ember that breathes. */
 .arena-hud-pips i {
-  width: 0.4375rem;
-  height: 0.4375rem;
+  width: 0.5rem;
+  height: 0.5rem;
   background: var(--sunk);
   border: var(--hairline) solid var(--line-strong);
-  border-radius: var(--r-chip);
+  transform: rotate(45deg);
 }
 .arena-hud-pips i.past {
   background: var(--gold);
@@ -203,36 +440,205 @@ body.no-ui-motion .arena-card.refused {
 .arena-hud-pips i.now {
   background: var(--ember-deep);
   border-color: var(--gold);
+  animation: arena-pip-breathe 1.6s ease-in-out infinite;
 }
+@keyframes arena-pip-breathe {
+  0%, 100% {
+    box-shadow: 0 0 0.125rem rgba(200, 72, 62, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0.5rem rgba(200, 72, 62, 0.85);
+  }
+}
+body.no-ui-motion .arena-hud-pips i.now {
+  animation: none;
+}
+
+/* The victory sweep: one light crosses the marquee as the card is
+   won — the same shine dialect every ceremony speaks. */
+.arena-hud-shine {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.arena-hud-shine::after {
+  content: '';
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 34%;
+  background: linear-gradient(105deg, transparent, rgba(255, 233, 168, 0.32), transparent);
+  transform: translateX(-140%);
+}
+body:not(.no-ui-motion) #arena-hud.won .arena-hud-shine::after {
+  animation: arena-shine 900ms ease-out 120ms both;
+}
+@keyframes arena-shine {
+  to {
+    transform: translateX(420%);
+  }
+}
+
 .arena-hud-word {
-  margin-top: 0.1875rem;
+  margin-top: 0.0625rem;
   font-size: var(--t-whisper);
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   color: var(--parchment-dim);
   text-shadow: 0 0.0625rem 0 var(--ink-line);
 }
 #arena-hud.won .arena-hud-word {
-  color: var(--gold);
+  color: var(--gold-hot);
 }
 #arena-hud.lost .arena-hud-word {
   color: var(--red-soft);
 }
+
+/* THE COUNT — the one great numeral. A clock wears gold and turns
+   ember over the last five seconds, beating with each; mid-round the
+   numeral belongs to the foes still standing, in parchment steel —
+   a countdown of bodies never dressed as a countdown of time. */
+.arena-hud-clock {
+  display: none;
+  margin-top: 0.0625rem;
+}
+#arena-hud.counted .arena-hud-clock {
+  display: block;
+}
+.arena-hud-count {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 3.25rem;
+  line-height: 1;
+  color: var(--gold-bright);
+  text-shadow:
+    var(--punch),
+    0 0 1.25rem rgba(242, 201, 76, 0.35);
+}
+.arena-hud-count.foes {
+  color: var(--parchment);
+  text-shadow:
+    var(--punch),
+    0 0 1rem rgba(240, 230, 207, 0.25);
+}
+.arena-hud-count.tick {
+  animation: arena-count-roll 340ms cubic-bezier(0.2, 1.2, 0.35, 1);
+}
+@keyframes arena-count-roll {
+  from {
+    transform: translateY(-0.4375rem) scale(1.1);
+    opacity: 0.25;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+#arena-hud.urgent .arena-hud-count {
+  color: var(--red-soft);
+  text-shadow:
+    var(--punch),
+    0 0 1.25rem rgba(200, 72, 62, 0.55);
+}
+/* The final five land like drum hits: the numeral strikes big and
+   settles — the beat you feel in the stands. */
+#arena-hud.urgent .arena-hud-count.tick {
+  animation: arena-count-beat 520ms cubic-bezier(0.15, 1.4, 0.3, 1);
+}
+@keyframes arena-count-beat {
+  0% {
+    transform: scale(1.5);
+    opacity: 0.3;
+  }
+  45% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+body.no-ui-motion .arena-hud-count.tick,
+body.no-ui-motion #arena-hud.urgent .arena-hud-count.tick {
+  animation: none;
+}
+.arena-hud-count-word {
+  margin-top: 0.0625rem;
+  font-size: var(--t-whisper);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--parchment-faint);
+  text-shadow: 0 0.0625rem 0 var(--ink-line);
+}
+
+/* The fuse rail: flanked by diamond jewels, the fill burning from
+   both ends toward center (transform-origin center — the gradient's
+   hot tips ride the scale, so the burning ends stay lit). */
+.arena-hud-rail-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  margin-top: 0.375rem;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+#arena-hud.clocked .arena-hud-rail-row {
+  opacity: 1;
+}
+.arena-hud-jewel {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--gold-deep);
+  transform: rotate(45deg);
+}
 .arena-hud-rail {
-  height: 0.25rem;
-  margin-top: 0.25rem;
+  flex: 1;
+  position: relative;
+  height: 0.5rem;
   background: var(--sunk);
   border: var(--hairline) solid var(--line-strong);
   border-radius: var(--r-chip);
   overflow: hidden;
-  opacity: 0;
-}
-#arena-hud.clocked .arena-hud-rail {
-  opacity: 1;
 }
 .arena-hud-bar {
   height: 100%;
-  background: var(--gold);
-  transform-origin: left;
+  transform-origin: center;
+  background: linear-gradient(
+    90deg,
+    var(--gold-hot),
+    var(--gold) 7%,
+    var(--gold-deep) 50%,
+    var(--gold) 93%,
+    var(--gold-hot)
+  );
+}
+#arena-hud.urgent .arena-hud-bar {
+  background: linear-gradient(
+    90deg,
+    var(--red-soft),
+    var(--ember-deep) 8%,
+    var(--gold-deep) 50%,
+    var(--ember-deep) 92%,
+    var(--red-soft)
+  );
+}
+/* Quiet rung-marks over the burn — tenths, read at a glance. */
+.arena-hud-rail::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent calc(10% - 0.09375rem),
+    rgba(12, 8, 4, 0.35) calc(10% - 0.09375rem),
+    rgba(12, 8, 4, 0.35) 10%
+  );
+  pointer-events: none;
 }
 
 /* A crowned round raises both readings: the banner keeps its band,
@@ -250,7 +656,7 @@ body.boss-up #arena-hud {
  * pointer-blind; the chip alone takes the pointer. */
 .arena-hud-leave {
   display: none;
-  margin: 0.375rem auto 0;
+  margin: 0.4375rem auto 0;
   padding: 0.125rem 0.625rem;
   font-size: var(--t-whisper);
   letter-spacing: 0.06em;

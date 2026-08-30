@@ -13970,6 +13970,15 @@ export class GameServer {
       ...(bank.rank < ARENAS.ladder.maxRank
         ? { xpNext: totalXpForArenaRank(bank.rank + 1) }
         : {}),
+      // THE STANDING: the record and the next named rung, so the foot
+      // of the board can wear the buyer's whole story (all additive).
+      wins: bank.wins,
+      losses: bank.losses,
+      maxRank: ARENAS.ladder.maxRank,
+      ...(() => {
+        const up = ARENAS.ladder.titles.find((t) => t.rank > bank.rank);
+        return up ? { nextTitle: up.title, nextTitleRank: up.rank } : {};
+      })(),
     });
   }
 
@@ -19079,6 +19088,11 @@ export class GameServer {
     // the next question: another decision in between means the shelf
     // is that press's consequence, not this one's.
     const shopChoices: number[] = [];
+    // A ring-weighted plate wears the sand's emblem by the same walk:
+    // a choice whose press ends at the ringmaster's counter (the
+    // arena hook) gets the gold crossed swords — the board-opening
+    // answer must read apart from small talk BEFORE the press.
+    const arenaChoices: number[] = [];
     eligible.forEach((c, idx) => {
       const seen = new Set<string>();
       let cur = c.next;
@@ -19088,6 +19102,10 @@ export class GameServer {
         if (!dest) break;
         if (dest.hooks?.some((h) => h.kind === 'shop')) {
           shopChoices.push(idx);
+          break;
+        }
+        if (dest.hooks?.some((h) => h.kind === 'arena')) {
+          arenaChoices.push(idx);
           break;
         }
         if (dest.choices && dest.choices.length > 0) break;
@@ -19106,6 +19124,7 @@ export class GameServer {
         : undefined,
       questChoices: questChoices.length > 0 ? questChoices : undefined,
       shopChoices: shopChoices.length > 0 ? shopChoices : undefined,
+      arenaChoices: arenaChoices.length > 0 ? arenaChoices : undefined,
       // THE ONE RESOLVER's answer for this beat: the node's full line,
       // else the speaker's bank slot for the moment, else silence.
       voice: this.resolveBeatVoice(dlg.targetEid, node, first, last),

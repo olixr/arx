@@ -10076,6 +10076,56 @@ export function uiIconUrl(
   return renderIcon(kind, colors[kind]!, size);
 }
 
+/**
+ * THE SAND'S OWN MARK — gold swords rising crossed behind a dark
+ * heater shield. Worn by arena chrome only (the cinema's board-opening
+ * plate, the stakes board's head). The shield mass owns the center and
+ * the blades read point-UP like trophies over a hearth, so the mark
+ * can never be mistaken for a dismiss cross the way bare crossed
+ * blades were at chip size (the proving pass's find).
+ */
+export function arenaEmblemUrl(size = 48): string {
+  return paintedIconUrl(
+    'arena_emblem',
+    (c, col) => {
+      // The blades first — the shield lands over their crossing.
+      for (const flip of [1, -1]) {
+        c.save();
+        c.translate(0.5, 0.52);
+        c.rotate((Math.PI / 5.2) * flip);
+        // Blade, point up; a lit facet line keeps it reading as steel.
+        poly(c, col, [
+          [-0.05, 0.36], [0.05, 0.36], [0.05, -0.28], [0, -0.42], [-0.05, -0.28],
+        ]);
+        c.fillStyle = shade(col, 26);
+        c.fillRect(-0.05, -0.26, 0.045, 0.58);
+        // Crossguard and leather grip — the hilt is what says SWORD.
+        bar(c, shade(col, -18), -0.13, 0.22, 0.26, 0.06);
+        bar(c, '#6b4a26', -0.035, 0.28, 0.07, 0.14);
+        dot(c, col, 0, 0.45, 0.045);
+        c.restore();
+      }
+      // The heater shield over the crossing, rimmed in the gold.
+      poly(c, '#43301b', [
+        [0.315, 0.4], [0.685, 0.4], [0.685, 0.6], [0.5, 0.78], [0.315, 0.6],
+      ]);
+      c.strokeStyle = col;
+      c.lineWidth = 0.028;
+      c.beginPath();
+      c.moveTo(0.345, 0.425);
+      c.lineTo(0.655, 0.425);
+      c.lineTo(0.655, 0.585);
+      c.lineTo(0.5, 0.745);
+      c.lineTo(0.345, 0.585);
+      c.closePath();
+      c.stroke();
+      dot(c, col, 0.5, 0.52, 0.05);
+    },
+    '#e8b64c',
+    size,
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* DOCK GLYPHS — the quiet console's menu language.                    */
 /* ------------------------------------------------------------------ */

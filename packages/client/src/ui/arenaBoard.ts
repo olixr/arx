@@ -1,5 +1,6 @@
 import type { S2CArenaBoard } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
+import { itemIconUrl } from '../render/icons.js';
 
 /** How long a refused plate wears its ember flash. */
 const REFUSE_MS = 420;
@@ -10,10 +11,13 @@ const REFUSE_MS = 420;
  * Server-opened (the shopopen law): the arena dialogue hook's good
  * ending drops the frame and raises this screen with the venue's
  * whole card in hand. Every plate is one match card: name, blurb,
- * the level seal, round pips, the stake in coin — and a rank gate
- * SHOWN, never hidden (the price in rank is part of the intrigue;
- * a locked plate says what it wants). The foot carries the buyer's
- * own ladder: title, rank, and the climb to the next rung.
+ * the level seal worn as a shield, round studs, the stake as coin —
+ * and a rank gate SHOWN, never hidden (the price in rank is part of
+ * the intrigue; a locked plate says what it wants). The foot carries
+ * THE STANDING: the buyer's rank on the brass crest medal, the
+ * crowd's name for them, the record in cards, and the climb to the
+ * next rung — with the next NAMED rung as the carrot (a title waits,
+ * not just a number).
  *
  * Buying sends one C2S verb and closes the board — the muster
  * ceremony answers from the server (or a refusal speaks overhead).
@@ -68,9 +72,17 @@ export class ArenaBoard {
       plate.dataset.navkey = `arena:${m.id}`;
       plate.dataset.acta = m.locked === true ? 'Locked' : 'Take the sand';
 
+      // The level seal is a shield: the card's weight class worn the
+      // way a fighter wears one — number struck big, word beneath.
       const seal = document.createElement('span');
       seal.className = 'arena-card-seal';
-      seal.textContent = String(m.level);
+      const sealNum = document.createElement('span');
+      sealNum.className = 'arena-card-seal-num';
+      sealNum.textContent = String(m.level);
+      const sealWord = document.createElement('span');
+      sealWord.className = 'arena-card-seal-word';
+      sealWord.textContent = 'level';
+      seal.append(sealNum, sealWord);
       plate.appendChild(seal);
 
       const body = document.createElement('span');
@@ -94,9 +106,15 @@ export class ArenaBoard {
         pips.appendChild(pip);
       }
       meta.appendChild(pips);
+      // The stake wears the purse's own coin — price reads as coin,
+      // not as a sentence.
       const fee = document.createElement('span');
       fee.className = 'arena-card-fee';
-      fee.textContent = `${m.fee} coins`;
+      const coin = document.createElement('img');
+      coin.src = itemIconUrl('coins', 20);
+      coin.alt = '';
+      coin.draggable = false;
+      fee.append(coin, document.createTextNode(String(m.fee)));
       meta.appendChild(fee);
       if (m.rankReq !== undefined) {
         const gate = document.createElement('span');
@@ -121,15 +139,44 @@ export class ArenaBoard {
       this.cards.appendChild(plate);
     }
 
-    // The buyer's own standing at the foot of the board.
+    // THE STANDING — the buyer's whole story at the board's foot:
+    // the crest medal wearing the rank, the crowd's name for them,
+    // the record in cards, and the climb to the next rung. The next
+    // NAMED rung is the carrot: a title, not just a number.
     this.ladder.replaceChildren();
+    this.ladder.classList.toggle('unranked', b.rank <= 0);
+    this.ladder.classList.toggle('capped', b.maxRank !== undefined && b.rank >= b.maxRank);
+
+    const medal = document.createElement('span');
+    medal.className = 'arena-standing-medal';
+    const medalNum = document.createElement('b');
+    medalNum.textContent = b.rank > 0 ? String(b.rank) : '—';
+    medal.appendChild(medalNum);
+    this.ladder.appendChild(medal);
+
+    const body = document.createElement('span');
+    body.className = 'arena-standing-body';
+
+    const head = document.createElement('span');
+    head.className = 'arena-standing-head';
     const tag = document.createElement('span');
-    tag.className = 'arena-ladder-title';
-    tag.textContent = b.rank > 0 ? `${b.title} · rank ${b.rank}` : 'Unranked';
-    this.ladder.appendChild(tag);
+    tag.className = 'arena-standing-title';
+    tag.textContent = b.rank > 0 ? b.title : 'Unranked';
+    head.appendChild(tag);
+    const record = document.createElement('span');
+    record.className = 'arena-standing-record';
+    record.textContent = [
+      b.rank > 0 ? `rank ${b.rank}` : 'the sand waits',
+      ...(b.wins !== undefined && b.losses !== undefined
+        ? [`${b.wins} won · ${b.losses} lost`]
+        : []),
+    ].join(' · ');
+    head.appendChild(record);
+    body.appendChild(head);
+
     if (b.xpNext !== undefined) {
       const meter = document.createElement('span');
-      meter.className = 'arena-ladder-meter';
+      meter.className = 'arena-standing-meter';
       const fill = document.createElement('i');
       // The honest rung: the meter climbs from THIS rank's floor to
       // the next threshold (xpPrev rides the wire; an old server
@@ -138,17 +185,33 @@ export class ArenaBoard {
       const span = Math.max(1, b.xpNext - floor);
       fill.style.setProperty('--fill', String(Math.max(0, Math.min(1, (b.xp - floor) / span))));
       meter.appendChild(fill);
-      this.ladder.appendChild(meter);
+      body.appendChild(meter);
       const words = document.createElement('span');
-      words.className = 'arena-ladder-next';
-      words.textContent = `${b.xp - floor} / ${b.xpNext - floor} marks to the next rung`;
-      this.ladder.appendChild(words);
+      words.className = 'arena-standing-next';
+      words.append(
+        document.createTextNode(`${b.xp - floor} / ${b.xpNext - floor} marks to rank ${b.rank + 1}`),
+      );
+      if (b.nextTitle !== undefined && b.nextTitleRank !== undefined) {
+        const name = document.createElement('b');
+        name.textContent = b.nextTitle;
+        words.append(document.createTextNode(' — '), name);
+        words.append(document.createTextNode(` waits at rank ${b.nextTitleRank}`));
+      }
+      body.appendChild(words);
     } else {
+      // The capped ladder: the meter stands full and the words bow.
+      const meter = document.createElement('span');
+      meter.className = 'arena-standing-meter';
+      const fill = document.createElement('i');
+      fill.style.setProperty('--fill', '1');
+      meter.appendChild(fill);
+      body.appendChild(meter);
       const words = document.createElement('span');
-      words.className = 'arena-ladder-next';
+      words.className = 'arena-standing-next';
       words.textContent = 'The ladder ends here. The crowd knows.';
-      this.ladder.appendChild(words);
+      body.appendChild(words);
     }
+    this.ladder.appendChild(body);
 
     this.panel.classList.remove('hidden');
 

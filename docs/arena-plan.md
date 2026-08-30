@@ -554,3 +554,86 @@ orchard pin honest at 10 apples).
 `/tp 582 45` and `/tp -472 -128` → screenshots): body-ruler passes —
 a fighter reads small on both sands; the wings, pen lane, crescents,
 gates, braziers, and both counters all render as drawn.
+
+## §11 THE CROWD SEES THE CARD — the arena chrome recut (2026-08-29)
+
+The venues grew grand (§10); this pass makes the INTERFACE match.
+Four surfaces, one emblem.
+
+**THE SAND'S OWN MARK** (`arenaEmblemUrl`, render/icons.ts): gold
+swords rising crossed behind a dark heater shield, baked through the
+standard eight-tap-outline pipeline via `paintedIconUrl`. Worn by the
+cinema's board-opening plate and the stakes board's panel head — the
+door and the room carry one emblem. LAW OF THE MARK: bare crossed
+blades at chip size read as a DISMISS CROSS (the proving pass's
+find — the first cut used the plain 'attack' glyph and looked like an
+✕ on the very plate that says yes). A combat emblem must carry mass
+behind the crossing (the shield) and hilts that say SWORD.
+
+**The pennant plate** (dialogueCinema + dialogue.css): a choice that
+ends at the ringmaster's counter (server walks linear beats to the
+`arena` hook, same contract as shopChoices — `arenaChoices` on the
+dlgnode wire, additive+cosmetic) wears a full-height banner tab that
+hangs past the plate's bottom edge, swallow-tailed, bearing the mark
+at 2.625rem — deliberately the largest badge a plate may carry. The
+plate's chamfer clip is replaced by a bespoke polygon that keeps every
+chamfer AND opens a slot for the hang (a clip-path clips children —
+`clip-path: none` would have cost the dialect). The plate below gets
+margin so the tail never collides.
+
+**THE MATCH CARD** (arenaHud + arena.css) — the marquee:
+- Winged head band: the card's name in spaced serif caps between two
+  tapering gold wings with diamond finials; the marquee slams once on
+  each phase turn (`turn` class, remove/reflow/add).
+- Round studs in the diamond-spark dialect; the living round breathes
+  ember (box-shadow keyframe, gated on no-ui-motion).
+- THE COUNT: one great serif numeral (3.25rem). The muster/breather
+  clocks own it in gold; it turns ember over the last five and BEATS
+  (scale-strike keyframe restarted only when the shown value truly
+  changes — the tick class is guarded by a `countShown` string, never
+  restarted by unrelated key churn). Mid-round the numeral belongs to
+  the FOES STILL STANDING in parchment steel with its own label — a
+  countdown of bodies never dressed as a countdown of time. Victory's
+  chest grace and the wipe never claim the numeral (those moments
+  read in words; only the fuse carries their drain).
+- THE FUSE: the drain rail burns from BOTH ends toward center —
+  transform-origin center, one scaleX per frame (still the ONE
+  per-frame write), the gradient's hot tips riding the scale so the
+  burning ends stay lit; flanked by diamond jewels, tenth-marks
+  overlaid. Urgent swaps the gradient to ember.
+- THE COUNT SPEAKS (sfx.arenaCount, wired in main): the last five
+  seconds of a MEMBER's muster/breather land as felt drum beats,
+  tightening as the gate nears. Never for spectators.
+- Victory sweeps one shine across the marquee (the ceremony dialect);
+  wipe reads ember. All boss-banner laws kept whole: pointer-blind
+  (walk-away chip excepted), change-key DOM writes, self-expiring
+  wipe/spectator clocks, boss-up offset.
+
+**THE STAKES BOARD** (arenaBoard + arena.css): plates recut — the
+level seal is a pointed SHIELD (number struck big, "level" beneath);
+the stake wears the coin icon; round studs are diamonds; an open
+plate lifts and sweeps light on hover; a locked plate stands in cold
+iron with its shield greyed and its rank chip burning ember (still
+SHOWN, never hidden). THE STANDING at the foot: the buyer's rank on
+the brass crest medal (`--ui-crest`, greyed face-down when unranked,
+burning at the cap), the crowd's title, the record in cards
+(`wins`/`losses` now ride the board wire with `maxRank`/`nextTitle`/
+`nextTitleRank`, all additive), a rung-marked meter with a hot
+leading edge, and the words that gamify the climb: "N / M marks to
+rank R — **Ironturn** waits at rank 15." The next NAMED rung is the
+carrot, not just a number.
+
+**Proving:** audit:css clean, all four suites green, and the whole
+loop walked live on the reel lane: Serle's pennant plate → the Ford
+board (5 shield plates + unranked STANDING) → bought The First Bell →
+marquee muster in gold → ember 0 at the gate → THE FIRST ROUND with
+the foes numeral → a real wipe banked (the Grand board then showed
+"0 won · 1 lost" — the record is live) → Cato's board proved the
+locked Tyrant's Turn. Breather/victory/wipe stills proven by staging
+`dcGame.arenaMatch` client-side (display states are client chrome;
+the wipe still needed a future `wipeAt` because the 2.6 s self-clear
+kept beating the screenshot — the clock law working).
+
+MUSTER IS A REAL WINDOW: a `/tp` onto the sand after the deadline is
+judged leaves "Nobody took the sand" — drive proving buys and the
+teleport in the SAME evaluate, not across tool roundtrips.

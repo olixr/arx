@@ -2,7 +2,7 @@ import { itemDef, parseDialogueMarkup } from '@arx/content';
 import type { Sfx } from '../audio/sfx.js';
 import { voicePaceScale } from '../audio/voice.js';
 import { bindings, padGlyph } from '../input/bindings.js';
-import { dockGlyphUrl, itemIconUrl } from '../render/icons.js';
+import { arenaEmblemUrl, dockGlyphUrl, itemIconUrl } from '../render/icons.js';
 
 /**
  * THE DIALOGUE CINEMA — the screen-space half of a conversation (the
@@ -68,6 +68,13 @@ interface CinemaNode {
    * quest weight does.
    */
   shopChoices?: number[];
+  /**
+   * Choices that raise a stakes board, by index: the plate wears the
+   * ring's gold crossed-swords emblem — larger than the coin chip,
+   * because the sand is an OCCASION and the board-opening answer must
+   * be unmistakable among small talk.
+   */
+  arenaChoices?: number[];
 }
 
 /** One reveal beat: an element to light, how long to rest after it. */
@@ -401,7 +408,7 @@ export class DialogueCinema {
     if (node.gifts && node.gifts.length > 0) this.stageGifts(node.gifts);
     if (node.quest) this.stageQuestOffer(node.quest);
     if (node.choices && node.choices.length > 0) {
-      this.buildChoices(node.choices, node.questChoices, node.shopChoices);
+      this.buildChoices(node.choices, node.questChoices, node.shopChoices, node.arenaChoices);
       this.setHints('question');
     } else {
       this.moreEl.classList.add('show');
@@ -551,6 +558,7 @@ export class DialogueCinema {
     choices: string[],
     marks?: CinemaNode['questChoices'],
     shopMarks?: number[],
+    arenaMarks?: number[],
   ): void {
     this.choicesShown = true;
     this.choicesAt = performance.now();
@@ -590,6 +598,23 @@ export class DialogueCinema {
         coin.alt = '';
         coin.draggable = false;
         badge.appendChild(coin);
+        btn.appendChild(badge);
+      }
+      // A ring-weighted answer wears the sand's own mark: the gold
+      // crossed swords on a full-height banner tab — deliberately the
+      // LARGEST thing a plate may wear, because "show me the board"
+      // is the door to the whole occasion and must never dress like
+      // small talk. The tab hangs past the plate's bottom edge the
+      // way a banner hangs past its rail.
+      if (arenaMarks?.includes(i)) {
+        btn.classList.add('arena');
+        const badge = document.createElement('span');
+        badge.className = 'dlg-choice-arena';
+        const mark = document.createElement('img');
+        mark.src = arenaEmblemUrl(84);
+        mark.alt = '';
+        mark.draggable = false;
+        badge.appendChild(mark);
         btn.appendChild(badge);
       }
       btn.addEventListener('mouseenter', () => this.select(i));

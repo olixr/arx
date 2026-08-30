@@ -1729,6 +1729,14 @@ export interface S2CDialogueNode {
    * questChoices — additive + cosmetic, unbadged plates read the same.
    */
   shopChoices?: number[];
+  /**
+   * Choices that raise a stakes board, by index into `choices`: the
+   * press ends at the ringmaster's counter (directly or through beats
+   * the player only pages past), so the plate wears the ring's own
+   * gold crossed-swords emblem. Same contract as shopChoices —
+   * additive + cosmetic, unbadged plates read the same.
+   */
+  arenaChoices?: number[];
   /** The beat's spoken audio, when the node has a voiced line. */
   voice?: VoiceWire;
 }
@@ -1824,6 +1832,18 @@ export interface S2CArenaBoard {
   xpNext?: number;
   /** Lifetime xp at which the CURRENT rank landed — the meter's floor. */
   xpPrev?: number;
+  /**
+   * THE STANDING — the buyer's whole record, so the board's foot can
+   * gamify the ladder without a second ask. All additive alongside
+   * the original board (an old client shows the plain foot): cards
+   * won and lost lifetime, the ladder's top rung, and the next TITLE
+   * milestone above the buyer (absent when no name remains to earn).
+   */
+  wins?: number;
+  losses?: number;
+  maxRank?: number;
+  nextTitle?: string;
+  nextTitleRank?: number;
 }
 
 /**

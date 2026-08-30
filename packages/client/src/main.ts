@@ -60,7 +60,7 @@ import { AudioMenu } from './ui/audioMenu.js';
 import { skySeam, zoneWeights } from './audio/zones.js';
 import { scanFallEar, SILENT_EAR, type FallEar } from './audio/falls.js';
 import { setupTouch } from './input/touch.js';
-import { DYE_SWATCHES, buildableIconUrl, dockGlyphUrl, itemIconUrl, uiIconUrl } from './render/icons.js';
+import { DYE_SWATCHES, arenaEmblemUrl, buildableIconUrl, dockGlyphUrl, itemIconUrl, uiIconUrl } from './render/icons.js';
 import { abilityIconUrl } from './render/abilityIcons.js';
 import { fxStyleFor } from './render/abilityFx.js';
 import { PORTAL_BURST_COLORS } from './render/portal.js';
@@ -2141,7 +2141,9 @@ dressPanel(el('inventory-panel'), {
   onClose: () => panels.closeAll(),
 });
 dressPanel(el('arena-board'), {
-  icon: uiIconUrl('attack', 34),
+  // The sand's own mark — the gold crossed swords the dialogue plate
+  // wears, so the door and the room carry one emblem.
+  icon: arenaEmblemUrl(34),
   hint: 'The stakes board. Pay the fee, take the sand, survive the card.',
   onClose: () => arenaBoard.close(),
 });
@@ -2241,6 +2243,9 @@ const arenaBoard = new ArenaBoard(game, {
 const arenaHud = new ArenaHud();
 // THE ONE CONTROL: the muster chip's walk-away rides the real verb.
 arenaHud.onLeave = () => game.arenaLeave();
+// THE COUNT SPEAKS: the last five seconds of a member's muster or
+// breather clock land as felt drum beats under the great numeral.
+arenaHud.onCountBeat = (secs) => sfx.arenaCount(secs);
 const beastPlaque = new BeastPlaque();
 const beastHall = new BeastHall();
 beastHall.onArts = (slot, arts) => game.petArts(slot, arts);

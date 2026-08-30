@@ -940,6 +940,18 @@ export class Sfx {
     this.tone(168, 0.5, { type: 'triangle', slide: 14, volume: 0.09, delay: 1.05 });
   }
 
+  /**
+   * THE COUNT SPEAKS — one felt drum per closing second of an arena
+   * clock (the last five of a muster or breather): a low timpani
+   * touch under a tight leather slap, rising a shade as the gate
+   * nears — the beat the stands stamp their feet to.
+   */
+  arenaCount(secs: number): void {
+    const near = Math.max(0, Math.min(4, 5 - secs)); // 0 far .. 4 at the gate
+    this.tone(84 + near * 7, 0.24, { type: 'sine', slide: -20, volume: 0.2, detune: false });
+    this.noise(0.05, 0.08 + near * 0.015, 0, { band: 900 + near * 160 });
+  }
+
   /** Stepping up to a station: a wooden tap and the tools shifting. */
   stationOpen(): void {
     this.tone(200, 0.05, { type: 'triangle', slide: -70, volume: 0.16 });
