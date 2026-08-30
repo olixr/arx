@@ -1742,6 +1742,15 @@ export function buildSilverfall(): ZoneDef {
   b.fillEllipse(64, 216, 12.5, 9.5, Tile.Sand);
   b.set(63, 205, Tile.GateGarrison).set(64, 205, Tile.GateGarrison).set(65, 205, Tile.GateGarrison);
   b.set(63, 227, Tile.GateGarrison).set(64, 227, Tile.GateGarrison).set(65, 227, Tile.GateGarrison);
+  // THE GATE MUST OPEN ONTO GROUND, NOT WALL: this ring's annulus is
+  // TWO tiles thick at the crowns (wall ry 11.5 over sand ry 9.5 —
+  // flat curvature), and the gates pierce only the outer row. Unpunched,
+  // the pit is sealed: no body can ever walk in, every claim ends
+  // "nobody took the sand", and the door verb gaslights the fighter
+  // stuck in the recess ("someone is standing in the gateway" — it's
+  // them). Carve the inner row into a sanded gatehouse passage.
+  b.set(63, 206, Tile.Sand).set(64, 206, Tile.Sand).set(65, 206, Tile.Sand);
+  b.set(63, 226, Tile.Sand).set(64, 226, Tile.Sand).set(65, 226, Tile.Sand);
   // The wall wears the Crown's colors on its south face, and banner
   // poles hold the four shoulders the way the fair-day poles did.
   b.setDetail(61, 227, greatBannerDetail(1)).setDetail(67, 227, greatBannerDetail(1));

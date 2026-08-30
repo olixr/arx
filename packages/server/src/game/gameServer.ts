@@ -14511,13 +14511,17 @@ export class GameServer {
     for (const [peid, p] of this.players) {
       const pp = this.positions.get(peid);
       if (!pp || pp.plane !== plane) continue;
-      // The sand, plus the gate line: a body parked ON a gate tile
-      // would hold the bar open all match and rob the death spill of
-      // its gate (the audit's find) — the sweep clears both.
+      // The sand, plus the gate line, plus the gatehouse recesses: a
+      // body parked ON a gate tile would hold the bar open all match
+      // and rob the death spill of its gate (the audit's find), and a
+      // body in a carved passage row between gate and sand (the Grand
+      // Ring's two-tile crown, §10 fix) would be sealed in with the
+      // card. Pad 1.5 reaches the recesses; everything the wider
+      // ellipse adds beyond them is solid wall no body can stand in.
       const onGate = match.gateTiles.some(
         (g) => Math.floor(pp.x) === g.x && Math.floor(pp.y) === g.y,
       );
-      if (!onGate && !inPit(venue.pit, pp.x, pp.y, 0.25)) continue;
+      if (!onGate && !inPit(venue.pit, pp.x, pp.y, 1.5)) continue;
       if (match.members.get(p.characterId)?.alive === true) continue;
       this.teleport(peid, venue.exit.x + 0.5, venue.exit.y + 0.5);
       p.session?.sendJson({

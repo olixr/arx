@@ -637,3 +637,48 @@ kept beating the screenshot — the clock law working).
 MUSTER IS A REAL WINDOW: a `/tp` onto the sand after the deadline is
 judged leaves "Nobody took the sand" — drive proving buys and the
 teleport in the SAME evaluate, not across tool roundtrips.
+
+## §12 THE GATE OPENS ONTO GROUND — the sealed colosseum (2026-08-29)
+
+USER-REPORTED BLOCKER: at the Grand Ring, walking into a gate reported
+"Someone is standing in the gateway" forever, and no card could ever
+proceed — every claim folded "Nobody took the sand."
+
+**Root cause — pure geometry.** The colosseum's wall ellipse
+(ry 11.5) over its sand ellipse (ry 9.5) leaves the annulus TWO tiles
+thick at the north and south crowns (flat curvature), and §10's gates
+pierced only the OUTER row. Behind all six gate tiles stood a solid
+WallGarrison row: the pit was sealed. Nobody could walk in; the
+muster always found nobody; and a fighter stuck in the gate recess
+pressing F was asking the OPEN gate to shut — whose body-check
+refusal ("Someone is standing in the gateway") gaslit them: the
+someone was themselves. The Ford Ring never had the bug because its
+thinner ring (ry 8 over 6.4) is one row at the crowns.
+
+**Fix:** carve the inner wall row behind each gate into a sanded
+gatehouse passage (local 63-65 × y206 and y226 → Sand), and widen
+arenaGuardSweep's pit pad 0.25 → 1.5 so the sweep clears a bystander
+parked in a recess before the gates bar them in (everything else the
+wider ellipse adds is solid wall no body can stand in). Enrollment's
+pad 1 already reaches the passage — a member mustering in the
+gatehouse is enrolled, not stranded.
+
+**LAW: THE GATE MUST OPEN ONTO GROUND.** When a gate pierces any
+curved wall, walk the tile BEHIND the gate before sealing the build —
+an ellipse ring is thicker at its crowns than its flanks, and a gate
+that opens onto wall passes every existing validator silently
+(nothing inside the ring demanded reachability).
+
+**CORRECTION to §10's minted law:** "ROUTINES CANNOT WALK A GARRISON
+SAND — door tiles read solid to routine pathing" was a MISDIAGNOSIS.
+worldFit counts every doorInfo tile walkable (open AND shut). Cato's
+pit wander failed because the pit was sealed by this very bug — the
+first symptom, read wrong. Ringmaster wanders may be aimed anywhere
+reachable; Cato's stays on the south green because it is good
+placement, not because of a pathing law.
+
+**Proving (live, walked not teleported):** synthetic W-hold walked
+Sandward from the processional through the south gate onto the sand;
+bought The Warband at Cato's counter, walked in during the muster,
+and the claim TOOK — gates barred with him enrolled inside, breather
+running. Content 619 / server 616 green.
