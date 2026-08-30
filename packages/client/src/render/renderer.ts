@@ -9939,11 +9939,11 @@ export class Renderer {
     };
     // A hung longsword blade, built once for forms 0 and 3: a
     // tapered quad running (ang) from the guard point, tip last.
-    const swordPath = (x: number, y: number, len: number, ang: number): Path2D => {
+    const swordPath = (x: number, y: number, len: number, ang: number, halfW = s * 0.045): Path2D => {
       const p = new Path2D();
       const c = Math.cos(ang);
       const n = Math.sin(ang);
-      const bw2 = s * 0.045;
+      const bw2 = halfW;
       const tipX = x + c * len;
       const tipY = y + n * len;
       p.moveTo(x - n * bw2, y + c * bw2);
@@ -9954,47 +9954,116 @@ export class Renderer {
       p.closePath();
       return p;
     };
+    // THE STEEL SEATS ON THE WOOD: a tight under-shadow where a piece
+    // rests on the board — nearer than the wall ghost, so the stack
+    // (steel over oak over masonry) reads in two honest depths.
+    const seat = (p: Path2D): void => {
+      ctx.save();
+      ctx.translate(s * 0.018, s * 0.026);
+      ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+      ctx.fill(p);
+      ctx.restore();
+    };
+    // THE TROPHY BOARD (the museum-audit recut): every mount presents
+    // ON a shaped oak backboard — floating steel on bare masonry was
+    // the first cut's cheapness. The board throws the composition's
+    // ONE wall ghost, wears the west light on its bevel, and pins to
+    // the wall with forged pips; the steel above stays the star.
+    const board = (bx: number, by: number, bw: number, bh: number, rail = false): void => {
+      const p = new Path2D();
+      const ch = Math.min(bw, bh) * (rail ? 0.4 : 0.18);
+      if (rail) {
+        p.moveTo(bx - bw / 2 + ch, by - bh / 2);
+        p.lineTo(bx + bw / 2 - ch, by - bh / 2);
+        p.lineTo(bx + bw / 2, by);
+        p.lineTo(bx + bw / 2 - ch, by + bh / 2);
+        p.lineTo(bx - bw / 2 + ch, by + bh / 2);
+        p.lineTo(bx - bw / 2, by);
+      } else {
+        p.moveTo(bx - bw / 2 + ch, by - bh / 2);
+        p.lineTo(bx + bw / 2 - ch, by - bh / 2);
+        p.lineTo(bx + bw / 2, by - bh / 2 + ch);
+        p.lineTo(bx + bw / 2, by + bh * 0.18);
+        p.lineTo(bx, by + bh / 2);
+        p.lineTo(bx - bw / 2, by + bh * 0.18);
+        p.lineTo(bx - bw / 2, by - bh / 2 + ch);
+      }
+      p.closePath();
+      ghost(p);
+      ctx.fillStyle = TWN_OAK_DARK;
+      ctx.fill(p);
+      ctx.save();
+      ctx.clip(p);
+      ctx.fillStyle = TWN_OAK;
+      ctx.fillRect(bx - bw / 2, by - bh / 2, s * 0.045, bh);
+      ctx.fillRect(bx - bw / 2, by - bh / 2, bw, s * 0.038);
+      ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+      ctx.fillRect(bx - bw * 0.17, by - bh / 2, s * 0.012, bh);
+      ctx.fillRect(bx + bw * 0.15, by - bh / 2, s * 0.012, bh);
+      ctx.restore();
+      ink(p);
+      const ppx = bw / 2 - ch * 0.75;
+      ctx.fillStyle = TWN_IRON;
+      const pips: ReadonlyArray<readonly [number, number]> = rail
+        ? [[-ppx, 0], [ppx, 0]]
+        : [
+            [-ppx, -bh / 2 + ch * 0.75],
+            [ppx, -bh / 2 + ch * 0.75],
+            [-ppx, bh * 0.12],
+            [ppx, bh * 0.12],
+          ];
+      for (const [fx, fy] of pips) {
+        ctx.beginPath();
+        facetCircle(ctx, bx + fx, by + fy, s * 0.02, 5, 0.4);
+        ctx.fill();
+      }
+    };
 
     if (form === 0) {
-      // THE PANOPLY — the longsword hung point-down behind the
-      // heater shield: the knight's front door.
-      const ang = Math.PI * 0.5 + 0.42;
-      const sx = cx - s * 0.16;
-      const sy = my - s * 0.42 * K;
-      const blade = swordPath(sx, sy, s * 0.92 * K, ang);
-      ghost(blade);
+      // THE PANOPLY — one bold diagonal of steel behind one bold
+      // heater, presented on the escutcheon board: the knight's
+      // front door. Two masses, one line, nothing else.
+      board(cx, my, s * 0.72 * K, s * 0.95 * K);
+      const ang = Math.PI * 0.5 + 0.44;
+      const sx = cx + s * 0.24 * K;
+      const sy = my - s * 0.38 * K;
+      const blade = swordPath(sx, sy, s * 1.05 * K, ang, s * 0.056);
+      seat(blade);
       ctx.fillStyle = TRD_STEEL;
       ctx.fill(blade);
       ctx.save();
       ctx.clip(blade);
       ctx.fillStyle = TRD_STEEL_LIT;
-      ctx.fillRect(sx - s * 0.5, sy - s * 0.1, s * 0.42, s * 1.2 * K);
+      ctx.fillRect(sx - s * 0.55, sy - s * 0.15, s * 0.45, s * 1.3 * K);
       ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
       ctx.save();
       ctx.translate(sx, sy);
       ctx.rotate(ang);
-      ctx.fillRect(s * 0.06, -s * 0.008, s * 0.7 * K, s * 0.016);
+      ctx.fillRect(s * 0.06, -s * 0.008, s * 0.72 * K, s * 0.016);
       ctx.restore();
       ctx.restore();
       ink(blade);
-      // Crossguard, grip, pommel above the shield's chief.
+      // The hilt above the chief: a WIDE gold cross, a real grip, a
+      // disc pommel — the one place jewelry is the point.
       ctx.save();
       ctx.translate(sx, sy);
       ctx.rotate(ang);
+      ctx.fillStyle = shade('#c9962e', -16);
+      ctx.fillRect(-s * 0.03, -s * 0.17, s * 0.06, s * 0.34);
       ctx.fillStyle = '#c9962e';
-      ctx.fillRect(-s * 0.02, -s * 0.13, s * 0.05, s * 0.26);
+      ctx.fillRect(-s * 0.03, -s * 0.17, s * 0.06, s * 0.3);
       ctx.fillStyle = '#4a3020';
-      ctx.fillRect(-s * 0.16, -s * 0.032, s * 0.14, s * 0.064);
+      ctx.fillRect(-s * 0.2, -s * 0.036, s * 0.17, s * 0.072);
       ctx.restore();
       ctx.fillStyle = '#e0c88a';
       ctx.beginPath();
-      facetCircle(ctx, sx - Math.cos(ang) * s * 0.2, sy - Math.sin(ang) * s * 0.2, s * 0.045, 6, 0.3);
+      facetCircle(ctx, sx - Math.cos(ang) * s * 0.25, sy - Math.sin(ang) * s * 0.25, s * 0.055, 6, 0.3);
       ctx.fill();
-      peg(sx + Math.cos(ang) * s * 0.66 * K, sy + Math.sin(ang) * s * 0.66 * K - s * 0.05);
-      // The heater shield over it: crimson field, gold chief, boss.
-      const shw = s * 0.44 * K;
-      const shh = s * 0.54 * K;
-      const shy = my - s * 0.05;
+      // THE HEATER, grown to command the board: crimson field, one
+      // gold chief, one boss. The blade reads past both flanks.
+      const shw = s * 0.6 * K;
+      const shh = s * 0.7 * K;
+      const shy = my + s * 0.05;
       const heater = new Path2D();
       heater.moveTo(cx - shw / 2, shy - shh * 0.5);
       heater.lineTo(cx + shw / 2, shy - shh * 0.5);
@@ -10002,7 +10071,7 @@ export class Renderer {
       heater.quadraticCurveTo(cx + shw * 0.42, shy + shh * 0.34, cx, shy + shh * 0.5);
       heater.quadraticCurveTo(cx - shw * 0.42, shy + shh * 0.34, cx - shw / 2, shy - shh * 0.08);
       heater.closePath();
-      ghost(heater);
+      seat(heater);
       ctx.fillStyle = '#7a2430';
       ctx.fill(heater);
       ctx.save();
@@ -10010,198 +10079,270 @@ export class Renderer {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
       ctx.fillRect(cx - shw, shy - shh, shw, shh * 2);
       ctx.fillStyle = '#c9962e';
-      ctx.fillRect(cx - shw / 2, shy - shh * 0.5, shw, shh * 0.16);
+      ctx.fillRect(cx - shw / 2, shy - shh * 0.5, shw, shh * 0.17);
       ctx.fillStyle = shade('#c9962e', -18);
-      ctx.fillRect(cx - shw / 2, shy - shh * 0.34, shw, shh * 0.035);
+      ctx.fillRect(cx - shw / 2, shy - shh * 0.33, shw, shh * 0.04);
       ctx.restore();
+      ctx.fillStyle = shade('#e0c88a', -14);
+      ctx.beginPath();
+      facetCircle(ctx, cx + s * 0.008, shy + shh * 0.07, s * 0.062, 6, 0.3);
+      ctx.fill();
       ctx.fillStyle = '#e0c88a';
       ctx.beginPath();
-      facetCircle(ctx, cx, shy + shh * 0.06, s * 0.05, 6, 0.3);
+      facetCircle(ctx, cx, shy + shh * 0.06, s * 0.055, 6, 0.3);
       ctx.fill();
       ink(heater);
     } else if (form === 1) {
-      // CROSSED AXES — two bearded axes saltire, heads up and out,
-      // rope-lashed where the hafts cross.
-      const cy = my;
+      // CROSSED AXES — two BOLD bearded heads saltire over the board,
+      // a forged rosette where the hafts cross. The heads are the
+      // read; everything else keeps quiet.
+      board(cx, my, s * 0.72 * K, s * 0.95 * K);
+      const cy = my + s * 0.06;
       for (const sd of [-1, 1] as const) {
-        const ang = -Math.PI / 2 + sd * 0.62;
-        const hx = cx - Math.cos(ang) * s * 0.36 * K;
-        const hy = cy - Math.sin(ang) * s * 0.36 * K + s * 0.3 * K;
-        const len = s * 0.78 * K;
+        const ang = -Math.PI / 2 + sd * 0.5;
         const c = Math.cos(ang);
         const n = Math.sin(ang);
+        const hx = cx - c * s * 0.46 * K;
+        const hy = cy - n * s * 0.46 * K + s * 0.34 * K;
+        const len = s * 1.0 * K;
+        const hw2 = s * 0.038;
         const haft = new Path2D();
-        const hw2 = s * 0.026;
         haft.moveTo(hx - n * hw2, hy + c * hw2);
         haft.lineTo(hx + n * hw2, hy - c * hw2);
-        haft.lineTo(hx + c * len + n * hw2, hy + n * len - c * hw2);
-        haft.lineTo(hx + c * len - n * hw2, hy + n * len + c * hw2);
+        haft.lineTo(hx + c * len + n * hw2 * 0.8, hy + n * len - c * hw2 * 0.8);
+        haft.lineTo(hx + c * len - n * hw2 * 0.8, hy + n * len + c * hw2 * 0.8);
         haft.closePath();
-        const tx2 = hx + c * len;
-        const ty2 = hy + n * len;
-        const head = new Path2D();
-        head.moveTo(tx2 - c * s * 0.1, ty2 - n * s * 0.1);
-        head.quadraticCurveTo(tx2 + sd * s * 0.3, ty2 - s * 0.16, tx2 + sd * s * 0.3, ty2 + s * 0.1);
-        head.quadraticCurveTo(tx2 + sd * s * 0.16, ty2 + s * 0.22, tx2 + sd * s * 0.05, ty2 + s * 0.12);
-        head.lineTo(tx2 - c * s * 0.02, ty2 - n * s * 0.02 + s * 0.1);
-        head.closePath();
-        if (sd < 0) {
-          ghost(haft);
-          ghost(head);
-        }
+        seat(haft);
         ctx.fillStyle = TWN_OAK_DARK;
         ctx.fill(haft);
         ctx.save();
         ctx.clip(haft);
         ctx.fillStyle = TWN_OAK;
-        ctx.fillRect(hx - s * 0.5, hy - s * 1.1, s * 0.485, s * 1.6);
+        ctx.fillRect(hx - s * 0.55, hy - s * 1.2, s * 0.52, s * 1.7);
         ctx.restore();
         ink(haft);
-        ctx.fillStyle = TRD_STEEL;
+        // Leather grip band at the butt.
+        ctx.save();
+        ctx.translate(hx, hy);
+        ctx.rotate(ang);
+        ctx.fillStyle = '#4a3020';
+        ctx.fillRect(s * 0.02, -hw2 - s * 0.006, s * 0.14, hw2 * 2 + s * 0.012);
+        ctx.restore();
+        // THE HEAD: one big bearded crescent, edge-out, its bevel
+        // bright — an axe you can name from across the hall.
+        const tx2 = hx + c * len;
+        const ty2 = hy + n * len;
+        const head = new Path2D();
+        head.moveTo(tx2 - c * s * 0.16, ty2 - n * s * 0.16);
+        head.quadraticCurveTo(
+          tx2 + sd * s * 0.38 - c * s * 0.14,
+          ty2 - s * 0.38,
+          tx2 + sd * s * 0.5,
+          ty2 - s * 0.12,
+        );
+        head.quadraticCurveTo(
+          tx2 + sd * s * 0.55,
+          ty2 + s * 0.18,
+          tx2 + sd * s * 0.26,
+          ty2 + s * 0.34,
+        );
+        head.quadraticCurveTo(
+          tx2 + sd * s * 0.12,
+          ty2 + s * 0.4,
+          tx2 + sd * s * 0.07,
+          ty2 + s * 0.24,
+        );
+        head.lineTo(tx2 - c * s * 0.05, ty2 - n * s * 0.05 + s * 0.12);
+        head.closePath();
+        seat(head);
+        ctx.fillStyle = shade(TRD_STEEL, -9);
         ctx.fill(head);
         ctx.save();
         ctx.clip(head);
-        // The edge crescent stays bright — the sharpened truth.
         ctx.fillStyle = TRD_STEEL_LIT;
         ctx.beginPath();
-        ctx.ellipse(tx2 + sd * s * 0.27, ty2 - s * 0.02, s * 0.05, s * 0.15, 0, 0, Math.PI * 2);
+        ctx.ellipse(tx2 + sd * s * 0.49, ty2 + s * 0.04, s * 0.042, s * 0.2, sd * 0.16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
+        ctx.beginPath();
+        ctx.ellipse(tx2 + sd * s * 0.06, ty2 + s * 0.06, s * 0.08, s * 0.24, sd * 0.2, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
         ink(head);
-        peg(hx - c * s * 0.03, hy - n * s * 0.03 + s * 0.05);
       }
-      // The lash where they cross: rope band and its wrap ticks.
-      ctx.fillStyle = PALI_ROPE;
-      ctx.fillRect(cx - s * 0.055, my + s * 0.02, s * 0.11, s * 0.08);
-      ctx.fillStyle = PALI_ROPE_DARK;
-      for (const fx of [-0.032, 0, 0.032] as const) {
-        ctx.fillRect(cx + fx * s - s * 0.006, my + s * 0.02, s * 0.012, s * 0.08);
-      }
+      // The forged rosette where the hafts cross: iron over gold pip.
+      ctx.fillStyle = '#2c2836';
+      ctx.beginPath();
+      facetCircle(ctx, cx, cy + s * 0.2 * K, s * 0.095, 6, 0.5);
+      ctx.fill();
+      ctx.fillStyle = TWN_IRON;
+      ctx.beginPath();
+      facetCircle(ctx, cx, cy + s * 0.2 * K, s * 0.07, 6, 0.5);
+      ctx.fill();
+      ctx.fillStyle = '#e0c88a';
+      ctx.beginPath();
+      facetCircle(ctx, cx, cy + s * 0.2 * K, s * 0.028, 5, 0.3);
+      ctx.fill();
     } else if (form === 2) {
-      // THE HALBERD — the long steel laid diagonal across two forged
-      // cradles: blade, beak, and spike all reading against masonry.
-      const ang = -0.32;
+      // THE HALBERD — the long steel laid on a rail board in two
+      // forged cradles: one confident diagonal, one commanding head.
+      board(cx, my + s * 0.08, s * 1.0 * K, s * 0.26 * K, true);
+      const ang = -0.34;
       const c = Math.cos(ang);
       const n = Math.sin(ang);
-      const x0 = cx - c * s * 0.46 * K;
-      const y0 = my - n * s * 0.46 * K + s * 0.1;
-      const len = s * 0.92 * K;
-      // Cradle pegs first — the pole lies IN them.
-      peg(x0 + c * len * 0.22, y0 + n * len * 0.22 + s * 0.05);
-      peg(x0 + c * len * 0.78, y0 + n * len * 0.78 + s * 0.05);
+      const len = s * 1.2 * K;
+      const x0 = cx - c * len * 0.52;
+      const y0 = my + s * 0.08 - n * len * 0.52;
+      const pw2 = s * 0.036;
       const pole = new Path2D();
-      const pw2 = s * 0.024;
       pole.moveTo(x0 - n * pw2, y0 + c * pw2);
       pole.lineTo(x0 + n * pw2, y0 - c * pw2);
       pole.lineTo(x0 + c * len + n * pw2, y0 + n * len - c * pw2);
       pole.lineTo(x0 + c * len - n * pw2, y0 + n * len + c * pw2);
       pole.closePath();
-      ghost(pole);
+      seat(pole);
       ctx.fillStyle = TWN_OAK_DARK;
       ctx.fill(pole);
       ctx.save();
       ctx.clip(pole);
       ctx.fillStyle = TWN_OAK;
-      ctx.fillRect(x0 - s * 0.1, y0 - s * 0.7, s * 1.1, s * 0.35);
+      ctx.fillRect(x0 - s * 0.1, y0 - s * 0.75, s * 1.3, s * 0.4);
       ctx.restore();
       ink(pole);
-      // Butt spike at the low end.
-      const bx = x0 - c * s * 0.07;
-      const by = y0 - n * s * 0.07;
+      // Forged cradles gripping OVER the pole — the rail's own hands.
+      for (const fr of [0.26, 0.74] as const) {
+        const gx = x0 + c * len * fr;
+        const gy = y0 + n * len * fr;
+        ctx.save();
+        ctx.translate(gx, gy);
+        ctx.rotate(ang);
+        ctx.fillStyle = '#2c2836';
+        ctx.fillRect(-s * 0.024, -pw2 - s * 0.02, s * 0.048, pw2 * 2 + s * 0.05);
+        ctx.fillStyle = TWN_IRON;
+        ctx.fillRect(-s * 0.014, -pw2 - s * 0.014, s * 0.028, pw2 * 2 + s * 0.038);
+        ctx.restore();
+      }
+      // The butt shoe: a steel cap closing the low end.
+      const shoe = new Path2D();
+      const bx = x0 - c * s * 0.02;
+      const by = y0 - n * s * 0.02;
+      shoe.moveTo(bx + n * pw2 * 1.4, by - c * pw2 * 1.4);
+      shoe.lineTo(bx - c * s * 0.1, by - n * s * 0.1);
+      shoe.lineTo(bx - n * pw2 * 1.4, by + c * pw2 * 1.4);
+      shoe.closePath();
       ctx.fillStyle = TRD_STEEL;
-      ctx.beginPath();
-      ctx.moveTo(bx + n * s * 0.03, by - c * s * 0.03);
-      ctx.lineTo(bx - c * s * 0.09, by - n * s * 0.09);
-      ctx.lineTo(bx - n * s * 0.03, by + c * s * 0.03);
-      ctx.closePath();
-      ctx.fill();
-      // The head: axe crescent above the pole line, hook beak below,
-      // spike running the axis on — three answers in one steel.
-      const hx = x0 + c * len;
-      const hy = y0 + n * len;
+      ctx.fill(shoe);
+      ink(shoe);
+      // THE HEAD in one steel: a big axe crescent above the axis, a
+      // hook beak below, the top spike running on — each mass big
+      // enough to name. Built in the pole's rotated frame so the
+      // geometry stays honest.
+      const hx = x0 + c * (len - s * 0.22);
+      const hy = y0 + n * (len - s * 0.22);
       const head = new Path2D();
-      head.moveTo(hx - n * s * 0.024, hy + c * s * 0.024);
-      head.lineTo(hx + c * s * 0.3, hy + n * s * 0.3);
-      head.lineTo(hx + n * s * 0.024, hy - c * s * 0.024);
-      head.moveTo(hx - c * s * 0.16 - n * s * 0.02, hy - n * s * 0.16 + c * s * 0.02);
-      head.quadraticCurveTo(hx - c * s * 0.1 - n * s * 0.26, hy - n * s * 0.1 - c * s * 0.26, hx + c * s * 0.06 - n * s * 0.24, hy + n * s * 0.06 - c * s * 0.24);
-      head.quadraticCurveTo(hx + c * s * 0.1 - n * s * 0.12, hy + n * s * 0.1 - c * s * 0.12, hx + c * s * 0.08, hy + n * s * 0.08);
+      ctx.save();
+      ctx.translate(hx, hy);
+      ctx.rotate(ang);
+      head.moveTo(s * 0.12, -s * 0.036);
+      head.lineTo(s * 0.55, 0);
+      head.lineTo(s * 0.12, s * 0.036);
+      head.lineTo(s * 0.05, s * 0.07);
+      head.quadraticCurveTo(-s * 0.02, s * 0.3, -s * 0.2, s * 0.26);
+      head.quadraticCurveTo(-s * 0.08, s * 0.15, -s * 0.1, s * 0.06);
+      head.lineTo(-s * 0.28, s * 0.024);
+      head.lineTo(-s * 0.28, -s * 0.07);
+      head.quadraticCurveTo(-s * 0.34, -s * 0.44, -s * 0.02, -s * 0.46);
+      head.quadraticCurveTo(s * 0.13, -s * 0.46, s * 0.1, -s * 0.26);
+      head.quadraticCurveTo(s * 0.075, -s * 0.12, s * 0.12, -s * 0.036);
       head.closePath();
-      head.moveTo(hx - c * s * 0.1 + n * s * 0.02, hy - n * s * 0.1 - c * s * 0.02);
-      head.quadraticCurveTo(hx - c * s * 0.02 + n * s * 0.18, hy - n * s * 0.02 + c * s * 0.18, hx + c * s * 0.1 + n * s * 0.1, hy + n * s * 0.1 + c * s * 0.1);
-      head.lineTo(hx + c * s * 0.06, hy + n * s * 0.06);
-      head.closePath();
-      ghost(head);
-      ctx.fillStyle = TRD_STEEL;
+      seat(head);
+      ctx.fillStyle = shade(TRD_STEEL, -9);
       ctx.fill(head);
       ctx.save();
       ctx.clip(head);
       ctx.fillStyle = TRD_STEEL_LIT;
       ctx.beginPath();
-      ctx.ellipse(hx - n * s * 0.22, hy - c * s * 0.22, s * 0.16, s * 0.045, ang - 1.1, 0, Math.PI * 2);
+      ctx.ellipse(-s * 0.29, -s * 0.28, s * 0.035, s * 0.17, 0.35, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillRect(hx - s * 0.02, hy - s * 0.16, s * 0.02, s * 0.2);
+      ctx.fillRect(s * 0.12, -s * 0.026, s * 0.42, s * 0.02);
+      ctx.fillStyle = 'rgba(18, 12, 26, 0.26)';
+      ctx.beginPath();
+      ctx.ellipse(-s * 0.08, -s * 0.2, s * 0.09, s * 0.2, 0.3, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
       ink(head);
-      // Langets: steel straps riding the pole down from the socket.
+      // Langets: two steel straps riding the pole from the socket.
       ctx.fillStyle = shade(TRD_STEEL, -14);
-      ctx.save();
-      ctx.translate(hx, hy);
-      ctx.rotate(ang);
-      ctx.fillRect(-s * 0.3, -s * 0.014, s * 0.26, s * 0.028);
+      ctx.fillRect(-s * 0.44, -s * 0.014, s * 0.28, s * 0.028);
       ctx.restore();
+      // The armory cord at the socket: a still crimson tassel — the
+      // dressed touch that says KEPT, not stored. Steel is STILL;
+      // so is its cord.
+      const tas = new Path2D();
+      tas.moveTo(hx - c * s * 0.02, hy - n * s * 0.02);
+      tas.quadraticCurveTo(hx - s * 0.05, hy + s * 0.12, hx - s * 0.04, hy + s * 0.22);
+      tas.lineTo(hx - s * 0.085, hy + s * 0.22);
+      tas.quadraticCurveTo(hx - s * 0.1, hy + s * 0.1, hx - c * s * 0.06, hy - n * s * 0.06 + s * 0.02);
+      tas.closePath();
+      ctx.fillStyle = '#7a2430';
+      ctx.fill(tas);
+      ink(tas);
+      ctx.fillStyle = shade('#7a2430', -16);
+      ctx.fillRect(hx - s * 0.095, hy + s * 0.2, s * 0.055, s * 0.024);
     } else {
-      // THE GREAT CREST — crossed swords saltire behind a quartered
-      // shield under a coronet, mantling ribbons trailing: the hall
-      // piece the whole set salutes.
-      const cy = my - s * 0.06;
+      // THE GREAT CREST — the hall piece: saltire swords behind the
+      // board, the quartered heater on it, and above the chief the
+      // BARREL HELM wearing the coronet, mantling trailing the
+      // hall's breath. Helm over shield IS the silhouette.
+      const cy = my + s * 0.14 * K;
+      board(cx, my - s * 0.02, s * 0.82 * K, s * 1.08 * K);
       for (const sd of [-1, 1] as const) {
-        const ang = -Math.PI / 2 + sd * 0.6;
-        const sx = cx - Math.cos(ang) * s * 0.34 * K;
-        const sy = cy - Math.sin(ang) * s * 0.34 * K + s * 0.32 * K;
-        const blade = swordPath(sx, sy, s * 0.78 * K, ang);
-        ghost(blade);
+        const ang = -Math.PI / 2 + sd * 0.66;
+        const sx = cx - Math.cos(ang) * s * 0.36 * K;
+        const sy = cy - Math.sin(ang) * s * 0.36 * K + s * 0.26 * K;
+        const blade = swordPath(sx, sy, s * 0.88 * K, ang, s * 0.045);
+        seat(blade);
         ctx.fillStyle = TRD_STEEL;
         ctx.fill(blade);
         ctx.save();
         ctx.clip(blade);
         ctx.fillStyle = TRD_STEEL_LIT;
-        ctx.fillRect(cx - s * 0.7, cy - s * 0.8, s * (0.7 - 0.02 * sd), s * 1.6);
+        ctx.fillRect(cx - s * 0.75, cy - s * 0.85, s * (0.75 - 0.02 * sd), s * 1.7);
         ctx.restore();
         ink(blade);
         ctx.save();
         ctx.translate(sx, sy);
         ctx.rotate(ang);
         ctx.fillStyle = '#c9962e';
-        ctx.fillRect(-s * 0.02, -s * 0.11, s * 0.045, s * 0.22);
+        ctx.fillRect(-s * 0.022, -s * 0.12, s * 0.05, s * 0.24);
         ctx.restore();
         ctx.fillStyle = '#e0c88a';
         ctx.beginPath();
-        facetCircle(ctx, sx - Math.cos(ang) * s * 0.16, sy - Math.sin(ang) * s * 0.16, s * 0.04, 6, 0.3);
+        facetCircle(ctx, sx - Math.cos(ang) * s * 0.17, sy - Math.sin(ang) * s * 0.17, s * 0.042, 6, 0.3);
         ctx.fill();
       }
-      // Mantling ribbons — the crest's one living detail: two dyed
-      // tails off the shield's shoulders trailing the hall's breath.
+      // Mantling ribbons — the crest's one living detail, breathing
+      // off the HELM's shoulders now, where mantling belongs.
       const t = performance.now() / 1000;
       const { lag } = this.breezeAt(tx, ty, t, tx * 2.3 + ty * 1.1, s, 0.015, 0.03);
+      const shw = s * 0.58 * K;
+      const shh = s * 0.68 * K;
+      const hely = cy - shh * 0.5 - s * 0.16 * K;
       for (const sd of [-1, 1] as const) {
-        const rx = cx + sd * s * 0.24 * K;
-        const ry = cy - s * 0.2 * K;
+        const rx = cx + sd * s * 0.13 * K;
+        const ry = hely - s * 0.02;
         const rib = new Path2D();
         rib.moveTo(rx, ry);
-        rib.quadraticCurveTo(rx + sd * s * 0.16, ry + s * 0.1, rx + sd * s * 0.2 + lag * sd, ry + s * 0.34);
-        rib.lineTo(rx + sd * s * 0.12 + lag * sd, ry + s * 0.3);
-        rib.quadraticCurveTo(rx + sd * s * 0.1, ry + s * 0.12, rx - sd * s * 0.02, ry + s * 0.02);
+        rib.quadraticCurveTo(rx + sd * s * 0.22, ry + s * 0.08, rx + sd * s * 0.28 + lag * sd, ry + s * 0.4);
+        rib.lineTo(rx + sd * s * 0.18 + lag * sd, ry + s * 0.38);
+        rib.quadraticCurveTo(rx + sd * s * 0.12, ry + s * 0.14, rx - sd * s * 0.01, ry + s * 0.04);
         rib.closePath();
         ctx.fillStyle = '#7a2430';
         ctx.fill(rib);
-        // ONE RING — the ribbons wear the crest's own weight.
         this.beginStructOutline();
         ctx.stroke(rib);
       }
-      // The quartered shield over everything.
-      const shw = s * 0.5 * K;
-      const shh = s * 0.6 * K;
+      // The quartered heater on the board.
       const heater = new Path2D();
       heater.moveTo(cx - shw / 2, cy - shh * 0.5);
       heater.lineTo(cx + shw / 2, cy - shh * 0.5);
@@ -10209,12 +10350,11 @@ export class Renderer {
       heater.quadraticCurveTo(cx + shw * 0.42, cy + shh * 0.36, cx, cy + shh * 0.5);
       heater.quadraticCurveTo(cx - shw * 0.42, cy + shh * 0.36, cx - shw / 2, cy - shh * 0.06);
       heater.closePath();
-      ghost(heater);
+      seat(heater);
       ctx.fillStyle = '#7a2430';
       ctx.fill(heater);
       ctx.save();
       ctx.clip(heater);
-      // Quarters counterchanged: gold NE and SW over the crimson.
       ctx.fillStyle = '#c9962e';
       ctx.fillRect(cx, cy - shh, shw, shh);
       ctx.fillRect(cx - shw, cy, shw, shh);
@@ -10224,26 +10364,49 @@ export class Renderer {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
       ctx.fillRect(cx - shw, cy - shh, shw * 0.98, shh * 2);
       ctx.restore();
-      ctx.fillStyle = '#e0c88a';
-      ctx.beginPath();
-      facetCircle(ctx, cx, cy, s * 0.045, 6, 0.3);
-      ctx.fill();
       ink(heater);
-      // The coronet riding the shield's chief between the blades.
-      const cw = shw * 0.56;
-      const cyy = cy - shh * 0.5 - s * 0.09;
+      // THE BARREL HELM above the chief — the crest's missing crown
+      // piece: flat-crowned riveted steel, one dark sight slit, the
+      // coronet riding its brow.
+      const hw = s * 0.17 * K;
+      const hh = s * 0.17 * K;
+      const helm = new Path2D();
+      helm.moveTo(cx - hw, hely + hh);
+      helm.lineTo(cx - hw, hely - hh * 0.55);
+      helm.quadraticCurveTo(cx - hw * 0.9, hely - hh, cx, hely - hh);
+      helm.quadraticCurveTo(cx + hw * 0.9, hely - hh, cx + hw, hely - hh * 0.55);
+      helm.lineTo(cx + hw, hely + hh);
+      helm.closePath();
+      seat(helm);
+      ctx.fillStyle = TRD_STEEL;
+      ctx.fill(helm);
+      ctx.save();
+      ctx.clip(helm);
+      ctx.fillStyle = TRD_STEEL_LIT;
+      ctx.fillRect(cx - hw, hely - hh, hw * 0.55, hh * 2.2);
+      ctx.fillStyle = 'rgba(18, 12, 26, 0.85)';
+      ctx.fillRect(cx - hw * 0.72, hely - hh * 0.08, hw * 1.44, s * 0.028);
+      ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+      ctx.fillRect(cx - s * 0.008, hely + hh * 0.25, s * 0.016, hh * 0.7);
+      ctx.restore();
+      ink(helm);
+      // The coronet on the helm's brow: gold band, three points.
+      const cw = hw * 2.15;
+      const cyy = hely - hh * 0.92;
+      ctx.fillStyle = shade('#c9962e', -16);
+      ctx.fillRect(cx - cw / 2, cyy, cw, s * 0.06);
       ctx.fillStyle = '#c9962e';
-      ctx.fillRect(cx - cw / 2, cyy, cw, s * 0.055);
+      ctx.fillRect(cx - cw / 2, cyy, cw, s * 0.045);
       for (const fx of [-1, 0, 1] as const) {
         ctx.beginPath();
-        ctx.moveTo(cx + fx * cw * 0.32 - s * 0.035, cyy);
-        ctx.lineTo(cx + fx * cw * 0.32, cyy - s * 0.08);
-        ctx.lineTo(cx + fx * cw * 0.32 + s * 0.035, cyy);
+        ctx.moveTo(cx + fx * cw * 0.32 - s * 0.035, cyy + s * 0.005);
+        ctx.lineTo(cx + fx * cw * 0.32, cyy - s * 0.075);
+        ctx.lineTo(cx + fx * cw * 0.32 + s * 0.035, cyy + s * 0.005);
         ctx.closePath();
         ctx.fill();
       }
       ctx.fillStyle = '#e0c88a';
-      ctx.fillRect(cx - cw / 2, cyy + s * 0.01, cw, s * 0.014);
+      ctx.fillRect(cx - cw / 2, cyy + s * 0.008, cw, s * 0.012);
     }
   }
 
@@ -10994,6 +11157,26 @@ export class Renderer {
       ctx.beginPath();
       ctx.ellipse(px, py - ph - s * 0.005, pw * 0.4, s * 0.02, 0, 0, Math.PI * 2);
       ctx.fill();
+      // THE HANGING WEARS ITS LINE (museum audit): glazed ware inks
+      // its one outer contour at the wall basket's weight — unlined,
+      // the whole row vanished into the sill beside every ringed
+      // neighbor. The planting stays soft; ceramic takes the line.
+      const pot = new Path2D();
+      const rimT = py - ph - s * 0.024;
+      const rimB = py - ph + s * 0.01;
+      pot.moveTo(px - pw * 0.56, rimB);
+      pot.lineTo(px - pw * 0.56, rimT);
+      pot.lineTo(px + pw * 0.56, rimT);
+      pot.lineTo(px + pw * 0.56, rimB);
+      pot.lineTo(px + pw * 0.485, rimB);
+      pot.lineTo(px + pw * 0.36, py);
+      pot.lineTo(px - pw * 0.36, py);
+      pot.lineTo(px - pw * 0.485, rimB);
+      pot.closePath();
+      ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+      ctx.lineWidth = Math.max(1, s * 0.024);
+      ctx.lineJoin = 'round';
+      ctx.stroke(pot);
       // The planting, by mix and station.
       const nod = this.breezeAt(tx, ty, t, tx * 1.7 + ty + k * 2.1, s, 0.006, 0.006).sway;
       const topY = py - ph - s * 0.008;
@@ -11149,11 +11332,16 @@ export class Renderer {
     // Shadow seats the batten on the masonry.
     ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
     ctx.fillRect(cx - half + s * 0.025, batY + s * 0.065, half * 2, s * 0.04);
-    // The batten: riven oak, lit top arris, two forged nails.
+    // The batten: riven oak, lit top arris, two forged nails — inked
+    // at the bracket-sign's board weight (THE HANGING WEARS ITS LINE:
+    // the museum audit read the bare batten as a paint smear).
     ctx.fillStyle = TWN_OAK;
     ctx.fillRect(cx - half, batY, half * 2, s * 0.065);
     ctx.fillStyle = 'rgba(201, 167, 106, 0.55)';
     ctx.fillRect(cx - half, batY, half * 2, s * 0.02);
+    ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+    ctx.lineWidth = Math.max(1, s * 0.028);
+    ctx.strokeRect(cx - half, batY, half * 2, s * 0.065);
     ctx.fillStyle = TWN_IRON;
     for (const m of [-1, 1] as const) {
       ctx.fillRect(cx + m * half * 0.84 - s * 0.016, batY + s * 0.017, s * 0.032, s * 0.032);
@@ -11201,14 +11389,14 @@ export class Renderer {
         ctx.stroke();
       }
       // The head: layered teardrop, lit cheek, sprig texture.
+      const headP = new Path2D();
+      headP.moveTo(kx + sway * 0.5, tieY + len * 0.38);
+      headP.quadraticCurveTo(tipX - s * 0.078, tipY - s * 0.03, tipX - s * 0.028, tipY + s * 0.13);
+      headP.quadraticCurveTo(tipX, tipY + s * 0.165, tipX + s * 0.028, tipY + s * 0.13);
+      headP.quadraticCurveTo(tipX + s * 0.078, tipY - s * 0.03, kx + sway * 0.5, tieY + len * 0.38);
+      headP.closePath();
       ctx.fillStyle = hue.lo;
-      ctx.beginPath();
-      ctx.moveTo(kx + sway * 0.5, tieY + len * 0.38);
-      ctx.quadraticCurveTo(tipX - s * 0.078, tipY - s * 0.03, tipX - s * 0.028, tipY + s * 0.13);
-      ctx.quadraticCurveTo(tipX, tipY + s * 0.165, tipX + s * 0.028, tipY + s * 0.13);
-      ctx.quadraticCurveTo(tipX + s * 0.078, tipY - s * 0.03, kx + sway * 0.5, tieY + len * 0.38);
-      ctx.closePath();
-      ctx.fill();
+      ctx.fill(headP);
       ctx.fillStyle = hue.hi;
       ctx.beginPath();
       ctx.moveTo(kx + sway * 0.5 - s * 0.012, tieY + len * 0.46);
@@ -11224,6 +11412,13 @@ export class Renderer {
         ctx.lineTo(tipX + m * s * 0.046, tipY + s * 0.14);
         ctx.stroke();
       }
+      // THE HANGING WEARS ITS LINE: the dried mass rings its own
+      // silhouette at the basket's weight — texture inside the line,
+      // never instead of it.
+      ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+      ctx.lineWidth = Math.max(1, s * 0.024);
+      ctx.lineJoin = 'round';
+      ctx.stroke(headP);
       // The healer's mix hangs one moonbell head: two pale bells
       // still on the stem — dusk-blue reads even dried.
       if (mix === 1 && (k + ((h >>> (k * 3)) & 1)) % 3 === 1) {
