@@ -18,7 +18,6 @@ test('every prop a body can physically sit or lie in answers the registry', () =
   assert.ok(isSeatTile(Tile.ElvenChair));
   assert.ok(isSeatTile(Tile.ElvenBench));
   assert.ok(isSeatTile(Tile.StoneBench));
-  assert.ok(isSeatTile(Tile.SettleBench));
   assert.ok(isSeatTile(Tile.WoodStool));
   // Workbenches are stations, not seats — you stand at a fletcher's
   // bench, whatever its name says.
@@ -29,16 +28,13 @@ test('every prop a body can physically sit or lie in answers the registry', () =
   assert.ok(!isSeatTile(undefined));
 });
 
-test('the elven chair and the settle keep their painted north backs — no table turn', () => {
-  // Both painters draw the back north unconditionally, so the sim
+test('the elven chair keeps its painted north back — no table turn', () => {
+  // The painter draws the back north unconditionally, so the sim
   // must never turn the body sideways: a table east changes nothing.
-  for (const tile of [Tile.ElvenChair, Tile.SettleBench]) {
-    const seat = seatAt(worldOf({ '5,5': tile, '6,5': Tile.Table }), 5, 5)!;
-    assert.equal(seat.kind, 'chair');
-    assert.equal(seat.dir, Math.PI / 2);
-  }
+  const seat = seatAt(worldOf({ '5,5': Tile.ElvenChair, '6,5': Tile.Table }), 5, 5)!;
+  assert.equal(seat.kind, 'chair');
+  assert.equal(seat.dir, Math.PI / 2);
   assert.equal(seatAt(worldOf({ '5,5': Tile.ElvenChair }), 5, 5)!.seatH, 0.36);
-  assert.equal(seatAt(worldOf({ '5,5': Tile.SettleBench }), 5, 5)!.seatH, 0.34);
 });
 
 test('the elven bench and stone slab take the bench law; an elven table fixes them', () => {

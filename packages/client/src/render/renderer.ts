@@ -19488,11 +19488,6 @@ export class Renderer {
       splinters: ['#c9a76a', '#8a6534', '#d8c0a0'],
       chips: ['#c9a76a', '#d8c0a0'],
     },
-    settle: {
-      dust: ['#6f4d26', '#8a6534', '#7a86b8'],
-      splinters: ['#c9a76a', '#6f4d26', '#7a86b8'],
-      chips: ['#c9a76a', '#7a86b8'],
-    },
     baskets: {
       dust: ['#a88f5c', '#7d6840', '#d8c49a'],
       splinters: ['#cdb078', '#a88f5c', '#d8c49a'],
@@ -19507,11 +19502,6 @@ export class Renderer {
       dust: ['#6f5a38', '#d8c49a', '#a89263'],
       splinters: ['#c9a76a', '#d8c49a', '#8a6534'],
       chips: ['#d8c49a', '#c9a76a'],
-    },
-    cloakstand: {
-      dust: ['#6f5a38', '#c4808a', '#7a86b8'],
-      splinters: ['#c9a76a', '#c4808a', '#8a9a4f'],
-      chips: ['#c4808a', '#7a86b8'],
     },
     ladder: {
       dust: ['#8a6534', '#b39268', '#6f4d26'],
@@ -20461,11 +20451,9 @@ export class Renderer {
     Tile.GuardianStatue,
     Tile.TapCask,
     Tile.WoodStool,
-    Tile.SettleBench,
     Tile.BasketStack,
     Tile.GlazedJars,
     Tile.BroomAndPail,
-    Tile.CloakStand,
     Tile.LeanLadder,
     Tile.Wheelbarrow,
     Tile.WayfarersRest,
@@ -20669,11 +20657,9 @@ export class Renderer {
     Tile.TripleCandlesOut,
     Tile.GuardianStatue,
     Tile.WoodStool,
-    Tile.SettleBench,
     Tile.BasketStack,
     Tile.GlazedJars,
     Tile.BroomAndPail,
-    Tile.CloakStand,
     Tile.LeanLadder,
     Tile.Wheelbarrow,
     Tile.WayfarersRest,
@@ -32984,13 +32970,10 @@ export class Renderer {
             ctx.beginPath();
             facetBlob(ctx, p.x + gw * (((h >> 8) & 1) ? 0.3 : -0.3), baseY - s * 0.06, s * 0.06, h ^ 0x71, 5, 0.7);
             ctx.fill();
-            if (this.outlineOn) {
-              this.beginStructOutline();
-              ctx.beginPath();
-              trace(0, 0);
-              ctx.closePath();
-              ctx.stroke();
-            }
+            // NO struct stroke here: the cached ring pass already
+            // dilates the painted silhouette — a manual ring on top
+            // doubled the ink and read gross at play scale (the
+            // museum audit's verdict; TimberPost had the same bug).
           },
         };
       }
@@ -33090,20 +33073,9 @@ export class Renderer {
             ctx.beginPath();
             facetBlob(ctx, p.x - s * 0.2, baseY - s * 0.07, s * 0.055, h ^ 0x39, 5, 0.7);
             ctx.fill();
-            if (this.outlineOn) {
-              this.beginStructOutline();
-              ctx.beginPath();
-              ctx.moveTo(p.x - s * 0.28, baseY);
-              ctx.lineTo(p.x - s * 0.28, shaftB);
-              ctx.lineTo(p.x - wB / 2, shaftB);
-              ctx.lineTo(p.x - wT / 2 - s * 0.035, capY);
-              ctx.lineTo(p.x, capY - s * 0.24);
-              ctx.lineTo(p.x + wT / 2 + s * 0.035, capY);
-              ctx.lineTo(p.x + wB / 2, shaftB);
-              ctx.lineTo(p.x + s * 0.28, shaftB);
-              ctx.lineTo(p.x + s * 0.28, baseY);
-              ctx.stroke();
-            }
+            // NO struct stroke: the cached ring pass rings the whole
+            // stepped silhouette by dilation — the manual trace on
+            // top of it doubled the monument's ink (museum audit).
           },
         };
       }
@@ -36995,7 +36967,10 @@ export class Renderer {
         const fishN = 2 + ((h >> 7) & 1);
         return {
           sortY: ty + 0.7,
-          body: stationBody(0.6, 1.4, 0.45),
+          // THE SMOKE IS THE READ — and the bounds must hold the smoke:
+          // the standing haze tops out near baseY − 1.9s, and the old
+          // 1.4 rise guillotined the plume at a hard horizontal.
+          body: stationBody(0.6, 2.05, 0.45),
           drawShadow: () => this.castContact(p.x, baseY, s * 0.42, s * 0.08),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx
@@ -46494,138 +46469,6 @@ export class Renderer {
         };
       }
 
-      case Tile.SettleBench: {
-        const syT = s * this.camera.yScale;
-        const baseY = p.y + syT * 0.18;
-        // The hearth's high-backed settle: a draft-wall you sit
-        // in, back rail at the chest, planked back, boxed seat —
-        // and a thrown cloak over one arm in a dealt dye, because
-        // its owner is HOME. The top rail shows its plane; the
-        // seat shows its shine.
-        const hw = s * 0.54;
-        // The cloak deals from the COLORED shelf only — a linen
-        // or charcoal throw vanished against the pale boards.
-        const settleDyes = [1, 2, 3, 4, 5, 9] as const;
-        const cloth = Renderer.AWNING_CLOTHS[settleDyes[(h >>> 5) % 6]!]!;
-        const cm = ((h >>> 8) & 1) ? 1 : -1;
-        const railY = baseY - s * 0.88;
-        const seatY = baseY - s * 0.34;
-        return {
-          sortY: ty + 0.68,
-          body: stationBody(0.62, 1.2, 0.42),
-          drawShadow: () => this.castContact(p.x, baseY, hw * 1.05, s * 0.06),
-          draw: () => {
-            // Draw-time ctx capture: the outline pass swaps this.ctx
-            // to its scratch — the build-time capture would paint past it.
-            const ctx = this.ctx;
-            ctx.fillStyle = 'rgba(12, 8, 20, 0.2)';
-            ctx.beginPath();
-            ctx.ellipse(p.x, baseY + s * 0.008, hw * 1.02, s * 0.055, 0, 0, Math.PI * 2);
-            ctx.fill();
-            // THE BACK: a broad planked wall — pass two squared
-            // it off (the first paint's rounded rail read as a
-            // BARREL RIM). Flat rail, square shoulders, planks
-            // parted by honest dark seams.
-            ctx.fillStyle = TWN_OAK_DARK;
-            ctx.fillRect(p.x - hw * 0.94, railY, hw * 1.88, seatY - railY + s * 0.02);
-            ctx.fillStyle = TWN_OAK;
-            for (const k of [-0.94, -0.48, -0.02, 0.46]) {
-              ctx.fillRect(p.x + hw * k + s * 0.012, railY + s * 0.015, hw * 0.42, seatY - railY - s * 0.005);
-            }
-            ctx.fillStyle = 'rgba(201, 167, 106, 0.4)';
-            ctx.fillRect(p.x - hw * 0.94, railY + s * 0.015, hw * 1.88, s * 0.02);
-            // THE TOP RAIL: one square beam, its foreshortened
-            // top plane lit flat — a shelf, not a rim.
-            ctx.fillStyle = TWN_OAK_DARK;
-            ctx.fillRect(p.x - hw, railY - s * 0.06, hw * 2, s * 0.075);
-            ctx.fillStyle = TWN_OAK_LIT;
-            ctx.fillRect(p.x - hw, railY - s * 0.06, hw * 2, s * 0.032);
-            ctx.fillStyle = shade(TWN_OAK_LIT, 10);
-            ctx.fillRect(p.x - hw * 0.96, railY - s * 0.056, hw * 1.4, s * 0.014);
-            // THE ARMS: solid end cheeks proud of the back, each
-            // with a scroll nose the sitter's hand has polished.
-            for (const e of [-1, 1] as const) {
-              ctx.fillStyle = TWN_OAK_DARK;
-              ctx.fillRect(p.x + e * hw * 0.9 - s * 0.05, seatY - s * 0.2, s * 0.1, baseY - seatY + s * 0.2);
-              ctx.fillStyle = TWN_OAK;
-              ctx.fillRect(p.x + e * hw * 0.9 - s * 0.05, seatY - s * 0.2, s * 0.036, baseY - seatY + s * 0.2);
-              ctx.fillStyle = TWN_OAK_LIT;
-              ctx.fillRect(p.x + e * hw * 0.9 - s * 0.05, seatY - s * 0.2, s * 0.1, s * 0.024);
-              ctx.beginPath();
-              ctx.arc(p.x + e * hw * 0.9, seatY - s * 0.2, s * 0.032, Math.PI, Math.PI * 2);
-              ctx.fill();
-            }
-            // THE SEAT and its boxed skirt — the shine tells you
-            // which end the old man owns.
-            ctx.fillStyle = TWN_OAK;
-            ctx.fillRect(p.x - hw * 0.86, seatY, hw * 1.72, s * 0.05);
-            ctx.fillStyle = TWN_OAK_LIT;
-            ctx.fillRect(p.x - hw * 0.86, seatY, hw * 1.72, s * 0.02);
-            ctx.fillStyle = shade(TWN_OAK_LIT, 12);
-            ctx.beginPath();
-            ctx.ellipse(p.x - cm * hw * 0.4, seatY + s * 0.012, hw * 0.3, s * 0.014, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = TWN_OAK_DARK;
-            ctx.fillRect(p.x - hw * 0.86, seatY + s * 0.05, hw * 1.72, baseY - seatY - s * 0.05);
-            ctx.fillStyle = shade(TWN_OAK_DARK, 8);
-            ctx.fillRect(p.x - hw * 0.86, seatY + s * 0.05, hw * 0.5, baseY - seatY - s * 0.05);
-            ctx.strokeStyle = 'rgba(50, 36, 18, 0.5)';
-            ctx.beginPath();
-            ctx.moveTo(p.x - hw * 0.3, seatY + s * 0.07);
-            ctx.lineTo(p.x - hw * 0.3, baseY - s * 0.02);
-            ctx.moveTo(p.x + hw * 0.32, seatY + s * 0.07);
-            ctx.lineTo(p.x + hw * 0.32, baseY - s * 0.02);
-            ctx.stroke();
-            // THE CLOAK, thrown over the TOP RAIL (pass three —
-            // draped on the arm it shrank to a handle): a broad
-            // fall down the back panel, shoulder bunch riding the
-            // rail, fold lines dropping true, trim hem swinging.
-            const ax = p.x + cm * hw * 0.52;
-            const clTop = railY - s * 0.075;
-            const clBot = seatY - s * 0.03;
-            ctx.fillStyle = cloth.a;
-            ctx.beginPath();
-            ctx.moveTo(ax - s * 0.13, clTop + s * 0.02);
-            ctx.quadraticCurveTo(ax, clTop - s * 0.035, ax + s * 0.13, clTop + s * 0.025);
-            ctx.lineTo(ax + s * 0.155, clBot);
-            ctx.quadraticCurveTo(ax + s * 0.06, clBot + s * 0.05, ax - s * 0.04, clBot + s * 0.03);
-            ctx.quadraticCurveTo(ax - s * 0.135, clBot + s * 0.045, ax - s * 0.16, clBot - s * 0.02);
-            ctx.closePath();
-            ctx.fill();
-            // The shade fold and two honest fall lines.
-            ctx.fillStyle = shade(cloth.a, -16);
-            ctx.beginPath();
-            ctx.moveTo(ax + s * 0.05, clTop + s * 0.01);
-            ctx.quadraticCurveTo(ax + s * 0.09, (clTop + clBot) / 2, ax + s * 0.075, clBot + s * 0.02);
-            ctx.lineTo(ax + s * 0.035, clBot + s * 0.03);
-            ctx.quadraticCurveTo(ax + s * 0.045, (clTop + clBot) / 2, ax + s * 0.012, clTop + s * 0.005);
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = shade(cloth.a, -20);
-            ctx.lineWidth = Math.max(1, s * 0.011);
-            ctx.beginPath();
-            ctx.moveTo(ax - s * 0.06, clTop + s * 0.03);
-            ctx.quadraticCurveTo(ax - s * 0.075, (clTop + clBot) / 2, ax - s * 0.065, clBot + s * 0.015);
-            ctx.stroke();
-            // The shoulder bunch on the rail and the trim hem.
-            ctx.fillStyle = shade(cloth.a, 12);
-            ctx.beginPath();
-            ctx.ellipse(ax, clTop + s * 0.005, s * 0.115, s * 0.032, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = cloth.b;
-            ctx.lineWidth = Math.max(1.5, s * 0.016);
-            ctx.beginPath();
-            ctx.moveTo(ax - s * 0.16, clBot - s * 0.02);
-            ctx.quadraticCurveTo(ax - s * 0.02, clBot + s * 0.055, ax + s * 0.155, clBot);
-            ctx.stroke();
-            // The bronze clasp glinting where it caught the rail.
-            ctx.fillStyle = TWN_BRONZE_LIT;
-            ctx.beginPath();
-            ctx.arc(ax - s * 0.09, clTop + s * 0.02, s * 0.013, 0, Math.PI * 2);
-            ctx.fill();
-          },
-        };
-      }
 
       case Tile.BasketStack: {
         const syT = s * this.camera.yScale;
@@ -47128,144 +46971,6 @@ export class Renderer {
         };
       }
 
-      case Tile.CloakStand: {
-        const syT = s * this.camera.yScale;
-        const baseY = p.y + syT * 0.18;
-        // The inn door's turned post on its cross-foot: two dealt
-        // cloaks hung by their collars, the traveler's hat on the
-        // crown peg — and ONE PEG EMPTY, worn bright, because
-        // somebody is out in the weather right now. Cloaks deal
-        // from the colored shelf only (linen vanished on oak).
-        const cloakDyes = [1, 2, 3, 4, 5, 9] as const;
-        const dyeBase = (h >>> 5) % 6;
-        const m = ((h >>> 8) & 1) ? 1 : -1;
-        const postTop = baseY - s * 1.24;
-        return {
-          sortY: ty + 0.68,
-          body: stationBody(0.52, 1.6, 0.35),
-          drawShadow: () => this.castContact(p.x, baseY, s * 0.24, s * 0.045),
-          draw: () => {
-            // Draw-time ctx capture: the outline pass swaps this.ctx
-            // to its scratch — the build-time capture would paint past it.
-            const ctx = this.ctx;
-            // The cross-foot: two shod feet splayed to the camera.
-            ctx.fillStyle = TWN_OAK_DARK;
-            for (const e of [-1, 1] as const) {
-              ctx.beginPath();
-              ctx.moveTo(p.x, baseY - s * 0.1);
-              ctx.lineTo(p.x + e * s * 0.17, baseY - s * 0.014);
-              ctx.lineTo(p.x + e * s * 0.17, baseY);
-              ctx.lineTo(p.x, baseY - s * 0.07);
-              ctx.closePath();
-              ctx.fill();
-            }
-            ctx.fillStyle = TWN_OAK;
-            ctx.beginPath();
-            ctx.moveTo(p.x, baseY - s * 0.1);
-            ctx.lineTo(p.x - s * 0.17, baseY - s * 0.014);
-            ctx.lineTo(p.x - s * 0.17, baseY - s * 0.006);
-            ctx.lineTo(p.x, baseY - s * 0.088);
-            ctx.closePath();
-            ctx.fill();
-            // The post: turned, with a swell and a crown knob.
-            ctx.fillStyle = TWN_OAK_DARK;
-            ctx.fillRect(p.x - s * 0.032, postTop, s * 0.064, baseY - s * 0.06 - postTop);
-            ctx.fillStyle = TWN_OAK;
-            ctx.fillRect(p.x - s * 0.032, postTop, s * 0.024, baseY - s * 0.06 - postTop);
-            ctx.fillStyle = TWN_OAK;
-            ctx.beginPath();
-            ctx.ellipse(p.x, baseY - s * 0.44, s * 0.048, s * 0.032, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = TWN_OAK;
-            ctx.beginPath();
-            ctx.ellipse(p.x, postTop - s * 0.035, s * 0.038, s * 0.042, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = TWN_OAK_LIT;
-            ctx.beginPath();
-            ctx.ellipse(p.x - s * 0.01, postTop - s * 0.045, s * 0.016, s * 0.02, -0.4, 0, Math.PI * 2);
-            ctx.fill();
-            // THE CLOAKS: two collars hung on their pegs, each a
-            // dealt dye (stride-3 — housemates never match), fold
-            // lines falling TRUE, trim hems catching the light.
-            for (let k = 0; k < 2; k++) {
-              const e = k === 0 ? -1 : 1;
-              const cloth = Renderer.AWNING_CLOTHS[cloakDyes[(dyeBase + k * 3) % 6]!]!;
-              const pegY = postTop + s * (0.16 + k * 0.1);
-              const cx2 = p.x + e * s * 0.1;
-              // The peg first.
-              ctx.fillStyle = TWN_OAK;
-              ctx.fillRect(p.x, pegY - s * 0.012, e * s * 0.095, s * 0.024);
-              // The collar bunch, the FULL fall, the hem drift —
-              // pass two widened the cloth: a cloak is a wardrobe,
-              // not a towel.
-              const fall = s * (0.54 + ((h >>> (k * 3 + 10)) & 3) * 0.05);
-              ctx.fillStyle = cloth.a;
-              ctx.beginPath();
-              ctx.moveTo(cx2 - s * 0.075, pegY + s * 0.02);
-              ctx.quadraticCurveTo(cx2, pegY - s * 0.035, cx2 + s * 0.075, pegY + s * 0.02);
-              ctx.quadraticCurveTo(cx2 + e * s * 0.06 + s * 0.08, pegY + fall * 0.5, cx2 + e * s * 0.04 + s * 0.068, pegY + fall);
-              ctx.quadraticCurveTo(cx2 + e * s * 0.02, pegY + fall + s * 0.035, cx2 + e * s * 0.02 - s * 0.068, pegY + fall - s * 0.012);
-              ctx.quadraticCurveTo(cx2 - s * 0.088, pegY + fall * 0.5, cx2 - s * 0.075, pegY + s * 0.02);
-              ctx.closePath();
-              ctx.fill();
-              // Shade fold + two fall lines: cloth turns, never
-              // stripes.
-              ctx.fillStyle = shade(cloth.a, -16);
-              ctx.beginPath();
-              ctx.moveTo(cx2 + e * s * 0.03, pegY + s * 0.012);
-              ctx.quadraticCurveTo(cx2 + e * s * 0.055 + s * 0.02, pegY + fall * 0.5, cx2 + e * s * 0.03 + s * 0.032, pegY + fall - s * 0.006);
-              ctx.lineTo(cx2 + e * s * 0.03 + s * 0.012, pegY + fall - s * 0.004);
-              ctx.quadraticCurveTo(cx2 + e * s * 0.04, pegY + fall * 0.5, cx2 + e * s * 0.012, pegY + s * 0.016);
-              ctx.closePath();
-              ctx.fill();
-              ctx.strokeStyle = shade(cloth.a, -20);
-              ctx.lineWidth = Math.max(1, s * 0.009);
-              ctx.beginPath();
-              ctx.moveTo(cx2 - s * 0.018, pegY + s * 0.04);
-              ctx.quadraticCurveTo(cx2 - s * 0.026, pegY + fall * 0.55, cx2 - s * 0.02, pegY + fall - s * 0.02);
-              ctx.stroke();
-              // The collar clasp and the trim hem.
-              ctx.fillStyle = TWN_BRONZE_LIT;
-              ctx.beginPath();
-              ctx.arc(cx2, pegY + s * 0.005, s * 0.011, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.strokeStyle = cloth.b;
-              ctx.lineWidth = Math.max(1, s * 0.012);
-              ctx.beginPath();
-              ctx.moveTo(cx2 + e * s * 0.02 - s * 0.048, pegY + fall - s * 0.014);
-              ctx.quadraticCurveTo(cx2 + e * s * 0.02, pegY + fall + s * 0.026, cx2 + e * s * 0.035 + s * 0.048, pegY + fall - s * 0.002);
-              ctx.stroke();
-            }
-            // THE HAT on the crown peg: felt dome, honest brim.
-            const hatX = p.x + m * s * 0.02;
-            const hatY = postTop - s * 0.06;
-            ctx.fillStyle = '#5c4a34';
-            ctx.beginPath();
-            ctx.ellipse(hatX, hatY, s * 0.105, s * 0.038, m * 0.14, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#6f5a3e';
-            ctx.beginPath();
-            ctx.ellipse(hatX - m * s * 0.01, hatY - s * 0.035, s * 0.058, s * 0.045, m * 0.14, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = shade('#6f5a3e', 14);
-            ctx.beginPath();
-            ctx.ellipse(hatX - m * s * 0.025, hatY - s * 0.05, s * 0.028, s * 0.02, m * 0.3, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = '#4a3a28';
-            ctx.lineWidth = Math.max(1, s * 0.012);
-            ctx.beginPath();
-            ctx.ellipse(hatX, hatY - s * 0.02, s * 0.06, s * 0.024, m * 0.14, Math.PI * 0.1, Math.PI * 0.95);
-            ctx.stroke();
-            // THE EMPTY PEG, worn bright: somebody's out in it.
-            ctx.fillStyle = TWN_OAK;
-            ctx.fillRect(p.x, postTop + s * 0.38 - s * 0.012, -m * s * 0.08, s * 0.024);
-            ctx.fillStyle = TWN_OAK_LIT;
-            ctx.beginPath();
-            ctx.ellipse(p.x - m * s * 0.08, postTop + s * 0.38, s * 0.014, s * 0.014, 0, 0, Math.PI * 2);
-            ctx.fill();
-          },
-        };
-      }
 
       case Tile.LeanLadder: {
         const syT = s * this.camera.yScale;
@@ -54818,9 +54523,18 @@ export class Renderer {
       case Tile.Apiary: {
         const syT = s * this.camera.yScale;
         const yB = p.y + syT * 0.4;
+        // Per-tile headroom: the scratch bounds must contain the TALLEST
+        // paint or the pass clips it flat — the silo's whole cap (finial
+        // tops yB − 2.16s) and the scarecrow's hat crown (yB − 1.44s)
+        // both shipped guillotined under the shared 1.0 rise.
+        const bodyUp =
+          tile === Tile.Silo ? 2.25
+          : tile === Tile.DryingRack ? 1.5
+          : tile === Tile.Scarecrow ? 1.5
+          : 1.0;
         return {
           sortY: ty + 0.8,
-          body: stationBody(0.7, tile === Tile.DryingRack ? 1.5 : 1.0, 0.5),
+          body: stationBody(0.7, bodyUp, 0.5),
           drawShadow: () => this.castEdgeQuad(p.x - s * 0.36, yB + syT * 0.05, p.x + s * 0.36, yB + syT * 0.05, 0.55),
           draw: () => {
             const ctx = this.ctx;
@@ -57295,8 +57009,8 @@ export class Renderer {
         // THE PORCH's corner bones: a hewn post, blocky per the
         // masterwork laws — squared plinth, squared shaft with one
         // sun-law lit facet, a cap whose TOP PLANE foreshortens (the
-        // crate-lid grammar), and ONE architecture ring around the
-        // whole stepped silhouette.
+        // crate-lid grammar). The silhouette ring comes from the
+        // cached ring pass alone.
         const syT = s * this.camera.yScale;
         const base = '#6e4b29';
         const lit = '#8a6534';
@@ -57340,25 +57054,10 @@ export class Renderer {
             ctx.fillRect(bx - capW / 2, capY - syT * 0.09, capW, syT * 0.09);
             ctx.fillStyle = 'rgba(24, 15, 6, 0.3)';
             ctx.fillRect(bx - capW / 2, capY - syT * 0.09, capW, s * 0.02);
-            // ONE RING around the stepped silhouette.
-            if (this.outlineOn) {
-              this.beginStructOutline();
-              const o = new Path2D();
-              o.moveTo(bx - capW / 2, capY - syT * 0.09);
-              o.lineTo(bx + capW / 2, capY - syT * 0.09);
-              o.lineTo(bx + capW / 2, capY + capH);
-              o.lineTo(bx + shaftW / 2, capY + capH);
-              o.lineTo(bx + shaftW / 2, footY - plinthH);
-              o.lineTo(bx + plinthW / 2, footY - plinthH);
-              o.lineTo(bx + plinthW / 2, footY);
-              o.lineTo(bx - plinthW / 2, footY);
-              o.lineTo(bx - plinthW / 2, footY - plinthH);
-              o.lineTo(bx - shaftW / 2, footY - plinthH);
-              o.lineTo(bx - shaftW / 2, capY + capH);
-              o.lineTo(bx - capW / 2, capY + capH);
-              o.closePath();
-              ctx.stroke(o);
-            }
+            // NO manual ring: the post rides CACHED_RING_TILES, whose
+            // dilate pass already rings the stepped silhouette — the
+            // struct stroke on top doubled the ink into a fat crayon
+            // edge on a thin post (the museum audit's worst offender).
           },
         };
       }

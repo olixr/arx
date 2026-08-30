@@ -192,11 +192,9 @@ export type SmashKind =
   | 'guardian'
   | 'tapcask'
   | 'stool'
-  | 'settle'
   | 'baskets'
   | 'glazedjars'
   | 'broompail'
-  | 'cloakstand'
   | 'ladder'
   | 'barrow'
   | 'wayfarer'
@@ -803,7 +801,7 @@ const CHIP_TONE: Record<SmashKind, string> = {
   displaytable: '#8a6534',
   // Commons wreckage: forged iron, lantern oak, wayside stone,
   // dial stone, guardian granite, festival pole, ale oak, board
-  // oak, stool oak, settle oak, wicker, glaze, broom birch, cloak
+  // oak, stool oak, wicker, glaze, broom birch
   // post, ladder rail, barrow oak, road burlap, tub oak, tarred
   // bollard, and lapped hull strake.
   candlestand: '#4c4a52',
@@ -816,11 +814,9 @@ const CHIP_TONE: Record<SmashKind, string> = {
   guardian: '#6f6a58',
   tapcask: '#75603e',
   stool: '#8a6534',
-  settle: '#6f4d26',
   baskets: '#a88f5c',
   glazedjars: '#5c748a',
   broompail: '#6f5a38',
-  cloakstand: '#6f5a38',
   ladder: '#8a6534',
   barrow: '#75603e',
   wayfarer: '#8a744e',
@@ -2599,19 +2595,6 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       }
       break;
     }
-    case 'settle': {
-      // Joined furniture holds its shape into the air: the back
-      // panel flies as boards, the arms as blocks — and the
-      // thrown cloak sails FREE, the one soft thing in the wreck.
-      for (let i = 0; i < 4; i++) {
-        out.push({ len: 0.18, wid: 0.05, color: pick(rand, ['#6f4d26', '#8a6534']), stripe: '#c9a76a', pace: 0.6 });
-      }
-      for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.09, wid: 0.07, color: '#6f4d26', stripe: '#c9a76a', pace: 0.5 });
-      }
-      out.push({ len: 0.16, wid: 0.09, color: pick(rand, ['#7a86b8', '#c4808a', '#8a9a4f']), stripe: '#efe8d4', pace: 1.45 });
-      break;
-    }
     case 'baskets': {
       // Wicker doesn't shatter, it UNRAVELS: hoops of weave
       // springing loose, both lids rolling, and the contents
@@ -2655,20 +2638,6 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       out.push({ len: 0.05, wid: 0.04, color: '#efe8d4', stripe: '#f8f2e0', round: true, pace: 1.35 });
       for (let i = 0; i < 2; i++) {
         out.push({ len: 0.04, wid: 0.018, color: '#8a7448', pace: 1.45 });
-      }
-      break;
-    }
-    case 'cloakstand': {
-      // The post drops plainly — and then the WARDROBE flies:
-      // two cloaks streaming their dyes, the hat spinning on its
-      // brim, the bright empty peg nobody will find again.
-      out.push({ len: 0.22, wid: 0.04, color: pick(rand, ['#6f5a38', '#8a6534']), stripe: '#c9a76a', pace: 0.55 });
-      for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.17, wid: 0.09, color: pick(rand, ['#c4808a', '#7a86b8', '#8a9a4f', '#c25668']), stripe: '#efe8d4', pace: 1.45 });
-      }
-      out.push({ len: 0.09, wid: 0.07, color: '#6f5a3e', stripe: '#8a7454', round: true, pace: 1.3 });
-      for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.05, wid: 0.02, color: pick(rand, ['#8a6534', '#c9a76a']), stripe: '#c9a76a', pace: 1.1 });
       }
       break;
     }

@@ -178,7 +178,7 @@ export function buildDawnmead(): ZoneDef {
   b.setDetail(91, 98, Detail.Tapestry).setDetail(92, 98, Detail.Tapestry);
   b.set(89, 101, Tile.Chair);
   b.set(89, 104, Tile.Hearth);
-  b.set(89, 106, Tile.SettleBench);
+  b.set(89, 106, Tile.Bench);
   b.set(92, 102, Tile.Table).set(93, 102, Tile.Table).set(92, 103, Tile.Chair).set(93, 101, Tile.Chair);
   b.setDetail(92, 104, Detail.Rug).setDetail(93, 104, Detail.Rug);
   // Her bed: head north, foot at (96,101) — the night path's last tile.
@@ -287,7 +287,7 @@ export function buildDawnmead(): ZoneDef {
   b.set(118, 97, Tile.Table).set(119, 97, Tile.Table);
   b.set(118, 96, Tile.Chair).set(119, 98, Tile.Chair);
   b.set(114, 99, Tile.Table).set(114, 100, Tile.Chair);
-  b.set(113, 97, Tile.SettleBench);
+  b.set(113, 97, Tile.Bench);
   b.setDetail(115, 93, Detail.Rug).setDetail(116, 93, Detail.Rug);
   b.setDetail(118, 98, Detail.Rug).setDetail(119, 98, Detail.Rug);
   b.setDetail(112, 90, wallBannerDetail(6));
@@ -304,7 +304,7 @@ export function buildDawnmead(): ZoneDef {
   b.set(128, 92, Tile.Bed).set(128, 93, Tile.Bed);
   b.set(126, 87, Tile.Cabinet); // NW of the wing: the NE corner would seal a pocket
   b.set(129, 96, Tile.Cabinet);
-  b.set(125, 99, Tile.CloakStand).set(128, 99, Tile.WoodStool);
+  b.set(128, 99, Tile.WoodStool);
   b.setDetail(126, 91, Detail.Rug).setDetail(127, 91, Detail.Rug);
   b.setDetail(126, 95, Detail.Rug).setDetail(127, 95, Detail.Rug);
   b.setDetail(120, 101, Detail.Doormat).setDetail(121, 101, Detail.Doormat);
@@ -708,7 +708,7 @@ export function buildDawnmead(): ZoneDef {
   b.set(123, 128, Tile.Hearth);
   b.set(131, 128, Tile.CookPot);
   b.set(123, 134, Tile.WaterCask);
-  b.set(131, 134, Tile.SettleBench);
+  b.set(131, 134, Tile.Bench);
   b.set(122, 132, Tile.BasketStack).set(122, 129, Tile.GlazedJars);
   b.set(132, 130, Tile.WoodStool).set(132, 132, Tile.WoodStool);
   b.set(125, 135, Tile.Barrel).set(129, 135, Tile.TiedParcels);

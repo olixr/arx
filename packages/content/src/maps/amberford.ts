@@ -581,8 +581,7 @@ export function buildAmberford(): ZoneDef {
   // where every road-worn eye lands — the picture of where the road
   // goes, because this road goes THERE.
   b.set(91, 43, Tile.Hearth);
-  b.set(94, 43, Tile.SettleBench); // the high-backed seat by the fire — first come, longest stayed
-  b.set(91, 48, Tile.CloakStand); // road cloaks drip here, one peg always empty
+  b.set(94, 43, Tile.Bench); // the seat by the fire — first come, longest stayed
   b.set(93, 46, Tile.Table).set(92, 46, Tile.Chair).set(94, 46, Tile.Chair);
   b.set(96, 44, Tile.Table).set(96, 45, Tile.Chair);
   b.set(93, 52, Tile.Table).set(92, 52, Tile.Chair).set(93, 53, Tile.Chair);
@@ -684,7 +683,6 @@ export function buildAmberford(): ZoneDef {
   b.set(23, 63, Tile.Bed).set(24, 63, Tile.Bed);
   b.set(23, 67, Tile.Bed).set(24, 67, Tile.Bed);
   b.set(23, 71, Tile.Cabinet);
-  b.set(24, 71, Tile.CloakStand); // pilgrim cloaks dry by the cots — the empty peg is somebody still walking
   b.set(26, 74, Tile.CandleStand); // lit for the ones on the road tonight
   b.setDetail(24, 64, Detail.RugRound).setDetail(24, 68, Detail.RugRound);
   // The registry corner: the book of who passed, by the door — the

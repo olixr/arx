@@ -261,7 +261,6 @@ export function buildSilverfall(): ZoneDef {
   b.set(82, 18, Tile.Chair).set(82, 20, Tile.Chair).set(82, 22, Tile.Chair);
   b.set(84, 19, Tile.Chair).set(84, 21, Tile.Chair);
   b.set(71, 23, Tile.BannerPole).set(84, 23, Tile.BannerPole);
-  b.set(75, 23, Tile.CloakStand); // petitioners hang their road here
   b.setDetail(77, 25, Detail.Doormat).setDetail(78, 25, Detail.Doormat);
 
   // THE GARRISON RANGE (x55-68): armory and barracks north, the
@@ -334,7 +333,6 @@ export function buildSilverfall(): ZoneDef {
   // The household reads (the dressing pass): the Queen's candle by
   // the solar hearth, the cloaks at the chamber door.
   b.set(91, 19, Tile.CandleStand);
-  b.set(92, 13, Tile.CloakStand);
   b.setDetail(89, 25, Detail.Doormat);
 
   // THE BAILEY — parade stone between the keep and the curtain.
@@ -733,7 +731,6 @@ export function buildSilverfall(): ZoneDef {
   b.set(130, 51, Tile.Hearth);
   b.set(131, 56, Tile.Counter).set(132, 56, Tile.Counter).set(133, 56, Tile.Counter);
   b.set(130, 52, Tile.TapCask).set(130, 58, Tile.BarrelStack); // the cellar works, and shows it
-  b.set(138, 52, Tile.CloakStand); // the road hangs by the door
   b.set(133, 52, Tile.Table).set(132, 52, Tile.Chair).set(134, 52, Tile.Chair);
   b.set(136, 54, Tile.Table).set(135, 54, Tile.Chair).set(137, 54, Tile.Chair);
   b.setDetail(131, 53, Detail.Rug).setDetail(132, 53, Detail.Rug);
@@ -1441,7 +1438,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(68, 136, Tile.Table).set(69, 136, Tile.Table);
   b.set(67, 136, Tile.Chair).set(70, 136, Tile.Chair).set(68, 137, Tile.Chair);
   b.set(73, 136, Tile.Table).set(73, 137, Tile.Chair).set(74, 136, Tile.Chair);
-  b.set(70, 140, Tile.SettleBench).set(71, 140, Tile.SettleBench);
+  b.set(70, 140, Tile.Bench).set(71, 140, Tile.Bench);
   b.setDetail(71, 134, Detail.Rug).setDetail(72, 134, Detail.Rug);
   b.setDetail(71, 135, Detail.Rug).setDetail(72, 135, Detail.Rug);
   b.setDetail(78, 134, Detail.Doormat).setDetail(78, 135, Detail.Doormat);
@@ -1588,7 +1585,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(15, 167, Tile.Table).set(16, 167, Tile.Table);
   b.set(14, 167, Tile.Chair).set(17, 167, Tile.Chair).set(15, 168, Tile.Chair);
   b.set(20, 169, Tile.Table).set(21, 169, Tile.Chair).set(19, 169, Tile.Chair);
-  b.set(12, 170, Tile.SettleBench).set(13, 170, Tile.SettleBench);
+  b.set(12, 170, Tile.Bench).set(13, 170, Tile.Bench);
   b.setDetail(17, 171, Detail.Doormat);
   b.setDetail(16, 165, Detail.Rug).setDetail(17, 165, Detail.Rug);
   // The shift's kit waits SOUTH of the Rest (the wall-shadow law:

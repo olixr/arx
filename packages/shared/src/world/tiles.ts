@@ -854,16 +854,14 @@ export enum Tile {
   // 436 RETIRED (GameTable — the tafl barrel left town; old DBs may hold it, never reuse).
   /** The universal three-legged stool, tenons wedged, seat worn to a shine. */
   WoodStool = 437,
-  /** The hearth's high-backed settle, a thrown cloak over the arm. */
-  SettleBench = 438,
+  // 438 RETIRED (SettleBench — the settle left the hearth; old DBs may hold it, never reuse).
   /** A lidded wicker hamper stacked two high, contents peeking, lid ajar. */
   BasketStack = 439,
   /** Three glazed jars ranked tall to small — corked, sealed, and open-mouthed. */
   GlazedJars = 440,
   /** A birch besom on its peg-post, pail and rag, the sweepings still piled. */
   BroomAndPail = 441,
-  /** A turned cloak post — two dealt cloaks, a traveler's hat, one peg empty. */
-  CloakStand = 442,
+  // 442 RETIRED (CloakStand — the cloak post left town; old DBs may hold it, never reuse).
   /** A joiner's ladder leaned north to the eaves, a sickle hung on a rung. */
   LeanLadder = 443,
   /** The yard's one-wheeled mule, box open to the sky, dealt load aboard. */
@@ -1787,11 +1785,9 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.GuardianStatue]: { name: 'guardian statue', solid: true, color: '#6f6a58', raised: true, topColor: '#b3ada0' },
   [Tile.TapCask]: { name: 'tap cask', solid: true, color: '#75603e', raised: true, topColor: '#c9955c' },
   [Tile.WoodStool]: { name: 'stool', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
-  [Tile.SettleBench]: { name: 'settle bench', solid: true, color: '#6f4d26', raised: true, topColor: '#7a86b8' },
   [Tile.BasketStack]: { name: 'basket stack', solid: true, color: '#a88f5c', raised: true, topColor: '#d8c49a' },
   [Tile.GlazedJars]: { name: 'glazed jars', solid: true, color: '#5c748a', raised: true, topColor: '#8fa8bd' },
   [Tile.BroomAndPail]: { name: 'broom and pail', solid: true, color: '#6f5a38', raised: true, topColor: '#d8c49a' },
-  [Tile.CloakStand]: { name: 'cloak stand', solid: true, color: '#6f5a38', raised: true, topColor: '#c4808a' },
   [Tile.LeanLadder]: { name: 'leaning ladder', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
   [Tile.Wheelbarrow]: { name: 'wheelbarrow', solid: true, color: '#75603e', raised: true, topColor: '#a3814a' },
   [Tile.WayfarersRest]: { name: "wayfarer's rest", solid: true, color: '#8a744e', raised: true, topColor: '#8a9a4f' },
@@ -2623,11 +2619,9 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.GuardianStatue, 0.4],
   [Tile.TapCask, 0.38],
   [Tile.WoodStool, 0.2],
-  [Tile.SettleBench, 0.36],
   [Tile.BasketStack, 0.3],
   [Tile.GlazedJars, 0.28],
   [Tile.BroomAndPail, 0.24],
-  [Tile.CloakStand, 0.24],
   [Tile.LeanLadder, 0.26],
   [Tile.Wheelbarrow, 0.36],
   [Tile.WayfarersRest, 0.3],
@@ -2976,11 +2970,9 @@ export type DestructibleKind =
   | 'guardian'
   | 'tapcask'
   | 'stool'
-  | 'settle'
   | 'baskets'
   | 'glazedjars'
   | 'broompail'
-  | 'cloakstand'
   | 'ladder'
   | 'barrow'
   | 'wayfarer'
@@ -3219,11 +3211,9 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.GuardianStatue, { kind: 'guardian', respawnSec: 600, hits: 4 }],
   [Tile.TapCask, { kind: 'tapcask', respawnSec: 300, hits: 2 }],
   [Tile.WoodStool, { kind: 'stool', respawnSec: 150, hits: 1 }],
-  [Tile.SettleBench, { kind: 'settle', respawnSec: 300, hits: 2 }],
   [Tile.BasketStack, { kind: 'baskets', respawnSec: 300, hits: 1 }],
   [Tile.GlazedJars, { kind: 'glazedjars', respawnSec: 300, hits: 1 }],
   [Tile.BroomAndPail, { kind: 'broompail', respawnSec: 300, hits: 1 }],
-  [Tile.CloakStand, { kind: 'cloakstand', respawnSec: 300, hits: 1 }],
   [Tile.LeanLadder, { kind: 'ladder', respawnSec: 300, hits: 1 }],
   [Tile.Wheelbarrow, { kind: 'barrow', respawnSec: 300, hits: 2 }],
   [Tile.WayfarersRest, { kind: 'wayfarer', respawnSec: 300, hits: 1 }],

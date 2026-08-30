@@ -80,7 +80,6 @@ export function isSeatTile(t: number | undefined): boolean {
     t === Tile.ElvenChair ||
     t === Tile.ElvenBench ||
     t === Tile.StoneBench ||
-    t === Tile.SettleBench ||
     t === Tile.WoodStool
   );
 }
@@ -197,21 +196,6 @@ export function seatAt(ground: SeatGround, tx: number, ty: number): SeatSpec | n
         ay: ty + 0.61,
         dir: Math.PI / 2,
         seatH: 0.36,
-        tiles: [{ x: tx, y: ty }],
-      };
-    case Tile.SettleBench:
-      // The hearth settle: a draft-wall you sit IN — high planked
-      // back painted north always, so the facing is the camera's.
-      // Kind 'chair' is the truth of the body: back support, chair
-      // leg spots, and the head-over-the-crest read when a squatter
-      // faces away is impossible by construction (dir is fixed).
-      return {
-        kind: 'chair',
-        pose: 'sit',
-        ax: tx + 0.5,
-        ay: ty + 0.51,
-        dir: Math.PI / 2,
-        seatH: 0.34,
         tiles: [{ x: tx, y: ty }],
       };
     case Tile.WoodStool: {
