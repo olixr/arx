@@ -441,7 +441,25 @@ function alongSpine(pts: Array<[number, number]>, u: number): [number, number] {
   return [a[0] + (b[0] - a[0]) * fr, a[1] + (b[1] - a[1]) * fr];
 }
 
-const modelCache = new Map<number, TreeModel>();
+/** THE WORKING SET IS NOT EVICTABLE (round 12). The old shape —
+ *  `if (size > 600) clear()` — dropped the WHOLE cache the moment a
+ *  dense forest's population passed the cap, so every visible tree
+ *  regrew its model (spines, domes, streamers) every frame: ~30% of
+ *  steady-state CPU in a 600+ tree stand, plus the GC bill — and the
+ *  extent memo (a WeakMap on model identity) died with it. Two
+ *  generations rotate instead: a hit anywhere survives the rotation,
+ *  and the only entries ever dropped are those untouched for one
+ *  whole generation. Bounded at 2x the generation cap. */
+const MODEL_GEN_CAP = 2048;
+let modelGen = new Map<number, TreeModel>();
+let modelOld = new Map<number, TreeModel>();
+const modelGenSet = (key: number, m: TreeModel): void => {
+  modelGen.set(key, m);
+  if (modelGen.size >= MODEL_GEN_CAP) {
+    modelOld = modelGen;
+    modelGen = new Map();
+  }
+};
 
 /**
  * THE TREE FITS ITS FRAME — the exact model-space box the painter's
@@ -587,9 +605,13 @@ export function treeExtent(m: TreeModel): TreeExtent {
 /** Grow (or recall) the tree standing on a tile with world-hash `h`. */
 export function treeModel(tile: Tile, h: number): TreeModel {
   const key = ((tile as number) << 16) | (h & 0xffff);
-  const hit = modelCache.get(key);
+  let hit = modelGen.get(key);
   if (hit) return hit;
-  if (modelCache.size > 600) modelCache.clear();
+  hit = modelOld.get(key);
+  if (hit) {
+    modelGenSet(key, hit);
+    return hit;
+  }
 
   const rnd = (i: number): number => (hashCoords(53, h & 0xffff, i) % 1000) / 1000;
   const species = speciesOf(tile, h);
@@ -1065,11 +1087,21 @@ export function treeModel(tile: Tile, h: number): TreeModel {
     clusters,
     curtains,
   };
-  modelCache.set(key, model);
+  modelGenSet(key, model);
   return model;
 }
 
-const saplingCache = new Map<number, TreeModel>();
+/** Same two-generation law as the adult models above. */
+const SAPLING_GEN_CAP = 512;
+let saplingGen = new Map<number, TreeModel>();
+let saplingOld = new Map<number, TreeModel>();
+const saplingGenSet = (key: number, m: TreeModel): void => {
+  saplingGen.set(key, m);
+  if (saplingGen.size >= SAPLING_GEN_CAP) {
+    saplingOld = saplingGen;
+    saplingGen = new Map();
+  }
+};
 
 /**
  * THE SAPLING STANDS ALONE (second-growth polish): a young tree is a
@@ -1095,9 +1127,13 @@ const saplingCache = new Map<number, TreeModel>();
  */
 export function saplingModel(tile: Tile, h: number): TreeModel {
   const key = ((tile as number) << 16) | (h & 0xffff);
-  const hit = saplingCache.get(key);
+  let hit = saplingGen.get(key);
   if (hit) return hit;
-  if (saplingCache.size > 300) saplingCache.clear();
+  hit = saplingOld.get(key);
+  if (hit) {
+    saplingGenSet(key, hit);
+    return hit;
+  }
 
   // Two streams: salt 53 REPLAYS the adult's variant pick (the
   // promise law — a sapling becomes precisely the tree its tile
@@ -1221,7 +1257,7 @@ export function saplingModel(tile: Tile, h: number): TreeModel {
     clusters,
     curtains: [],
   };
-  saplingCache.set(key, model);
+  saplingGenSet(key, model);
   return model;
 }
 

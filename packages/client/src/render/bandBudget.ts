@@ -63,10 +63,18 @@
  * ceiling silently becomes a floor.
  */
 
-/** Hard ceiling on live band pixels (law 2). */
-export const BAND_BUDGET_BYTES = 64 * 1048576;
+/** Hard ceiling on live band pixels (law 2).
+ *
+ *  128MB, measured (round 12): Silverfall's on-screen working set
+ *  alone is ~87MB at zoom 1 on a retina panel — under the old 64MB
+ *  the sweep could evict nothing (everything in use), the gate
+ *  latched shut, and 16-27 stretches of the capital repainted live
+ *  as vector art EVERY frame, forever. The ledger is exact and the
+ *  gate prices the whole of it, so raising this buys coverage at a
+ *  known byte cost and nothing else. */
+export const BAND_BUDGET_BYTES = 128 * 1048576;
 /** What the sweep aims for, leaving the gate its headroom (law 4). */
-export const BAND_RELIEF_BYTES = 48 * 1048576;
+export const BAND_RELIEF_BYTES = 96 * 1048576;
 /** No single band may claim more than this — it draws live (law 3). */
 export const BAND_ONE_MAX_BYTES = 6 * 1048576;
 

@@ -1011,3 +1011,128 @@ paying full allocation**, and is the first thing to read.
    `wadeStates`/`dropContacts` `clear()`-at-N backstops.
 4. `lighting.ts` patch cache is capped at 128 **slots**, not bytes —
    the same class of defect, small per entry. Ceiling, not a decay.
+
+---
+
+## Round 12 — THE CLIFF JOINS THE STANDING WORLD (2026-08-29)
+
+Owner's report: **"120+ fps on the dev laptop, 30-60 on Mac minis —
+worst in places rich with props, decorations, furniture, walls."**
+Two standing facts first: rAF locks to the panel (a 60Hz mini display
+reads 60 with infinite headroom — that half of the gap is the
+monitor), and headless SwiftShader absolute times still lie — every
+conviction below is an op-count, byte, or same-rig A/B delta.
+
+### The measurement (rig lane 36, `:5218`→`:8814`, 4x, dpr 2)
+
+Five scenes surveyed: Silverfall avenue `/tp -448 -264`, Silverfall
+crown `/tp -448 -320`, the Silent Terrace graveyard `/tp -512 -212`,
+Hoargate, dense forest 34,110. The city was the catastrophe — world
+phase EMA 269-345 vs the forest's 50, driven by a **path-op storm**:
+~13-16k lineTo + ~6k fillRect + ~2.5k fill per frame of live vector
+painting. Attribution (sampled function-name stacks — vite line
+numbers lie, names do not) named three owners:
+
+1. **`bedPath` is not beds.** It is cliff BEDDING STRATA — the
+   terraced city's rim faces (rock gradient + macro drift + three
+   dashed seams + block jointing + brow + tufts + scree) painted live
+   per dual-cell segment per frame, ~100-200 segments in a capital
+   viewport. Also the top gradient-mint site (601 createLinearGradient
+   /s — the rock body gradient).
+2. **Band starvation.** The ledger sat pinned at 64MB with the
+   on-screen working set ALONE ~87MB — the sweep can never evict
+   what's in use, so the gate latched shut and 16-27 stretches
+   (garrison masonry, merlons, walls, furniture) repainted live
+   forever. Confirmed causal by a 256MB experiment: declines 60→5,
+   masonry/merlon ops absorbed into bands.
+3. **The mirror lies.** THE HERO'S MIRROR auto-opens for a probe
+   character whose look was never confirmed, and its turntable rAF
+   paints a full figure every frame BEHIND the measurement. Two runs
+   were poisoned before the screenshot caught it. **Probe protocol:
+   click `#look-confirm` after first login.**
+
+And one treasure from an unthrottled steady-state CPU profile of the
+forest: **~30% of ALL self time was tree model construction**
+(`treeModel` 7.2%, `treeExtent` 5.7%, `grownSpine` 5.1%, `dome`,
+`addStreamer`, `addCluster`, `addLimb`…) plus 9.3% GC — at `live tree
+0`, every sprite cached. `modelCache` had the nuclear backstop:
+`if (size > 600) clear()`. A dense forest's working set is >600
+models, so the cache cleared and refilled EVERY frame, and the extent
+memo (a WeakMap on model identity) died with it each time.
+
+### Shipped
+
+- **THE CLIFF JOINS THE STANDING WORLD** (renderer.ts): straight
+  south rim faces group into runs inside the already-memoized cliff
+  memo (`fruns`, cut every `CLIFF_RUN_MAX_SPAN` = 12 tiles — a shelf,
+  not a wall), and each run bakes ONCE into a pooled curtain canvas
+  through the shared sprite admission lanes (`cliffSprites`, keyed
+  level|row|span|world-rev|gridPx|dpr). THE SAME-BRUSH LAW verbatim:
+  the bake constructs the member `cliffFaceItem`s again under the
+  swapped camera and they draw themselves — zero art code moved. The
+  blit wears blitBand's EXACT LATTICE PATH mapping; diagonals/bevels
+  stay per-segment live (few, different sort rows); falls and contact
+  shadows stay live; run items reproduce cliffFaceItem's strat/sortY
+  formulas exactly (members of a straight run are same-sortY ties, so
+  one item sorts where its members did). THE STILL-WORLD BARGAIN
+  holds: declined/mid-glide/layer-off runs paint members live, and
+  `?perf` confesses `cliff N` live fallbacks.
+- **THE LEDGER FITS THE CITY** (bandBudget.ts): `BAND_BUDGET_BYTES`
+  64→128MB, relief 48→96MB — sized from the measured demand, not
+  hope. Avenue declines 16→2/frame, graveyard 0, ledger settles
+  88-98MB.
+- **THE TREE REMEMBERS ITS SHAPE** (trees.ts): both model caches
+  (adult 600, sapling 300) replace clear-at-N with TWO-GENERATION
+  rotation (2048/512 per generation): a hit anywhere survives, only
+  entries untouched for a whole generation drop, worst case bounded
+  at 2x the cap. THE WORKING SET IS NOT EVICTABLE — the same law as
+  rounds 10/11, one level deeper.
+
+### Proven
+
+- **Cliff containment**: edge-ink audit of every baked curtain — zero
+  ink on any border row/col (the round-8 fat-margin method, automated).
+- **Cliff parity**: cached-vs-live pixel flip (bakeCliffRun stubbed
+  null + cache dropped) diffed BELOW the equal-gap animation noise
+  floor — 10,445 hard px vs the null control's 12,235 — with no rim-
+  row spike in the 32px band profile. Eyeball shots clean at zoom 1
+  and 1.8.
+- **Ops (final survey vs baseline, same protocol)**: avenue lineTo
+  13,243→5,002/frame (−62%), gradients 601→117/s; graveyard
+  6,918→3,469 (−50%); crown 16,539→9,771 (−41% — the remainder is
+  the settled-cut walls + hair, ranked below); forest steady-state
+  profile: treeModel 7.2%→0.5%, extent/spine/dome/streamer gone from
+  the top 30, GC 9.7%→0.8%, **32% idle appeared where the frame had
+  none**. `cliff 0` fallbacks at steady state in every scene.
+- 739/739 client tests, typecheck clean.
+
+### Still open, ranked
+
+1. **THE SETTLED CUT JOINS THE BAND**: `stretchHot` treats any
+   cut wall (height ≠ full) as hot even when the ease has SETTLED —
+   standing still inside any furnished building keeps ~20 wall
+   stretches (crown measured) repainting live vectors every frame.
+   Design sketched: extend the stretch sig with a quantized cut-height
+   vector, bake only after a stability window (heights depend on
+   continuous own-position + cutCtx, so motion = live, as today), let
+   the stop/start churn ride the existing bake budget. Touches the
+   most player-visible system in the game — wants its own interactive
+   harness (walk in / stop / walk out), not a round's tail end.
+2. **Hair/beard/hem path churn**: the top steady world consumer now
+   (~600 path ops/frame, body-count-bound, rides animated-body
+   re-bakes). Path2D cache keyed (style, facing, head size) in
+   head-local space is the shape.
+3. **Waterfall churn** (`drawFallChurn` ~4k quadraticCurveTo/frame
+   near the Silverfall falls) — animated by design; a two-layer
+   scroll bake is the classic answer if the falls district ever
+   misses frame.
+4. Hoargate reads `bands 0/0` in every run — no stretches at all in a
+   walled mountain town. Unexplained; same before/after this round.
+5. The two `over` stragglers in the avenue at ANY budget (TooBig
+   verdicts, tiles 35:0 / 11:14 / 428:15) — single-member stretches
+   declining on the per-band ceiling; harmless, unexplained.
+
+**Rig lane 36 (reusable)**: `vite.config.rig36.ts` (:5218 → :8814),
+DB `arx_rig_36`, probe `perf12_probe` / `probe-owl-9127` char Prowler
+(look CONFIRMED — the mirror stays shut). Drivers in scratchpad
+pattern: survey12/attribute12/cliff-proof/profile12.

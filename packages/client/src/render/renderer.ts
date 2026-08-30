@@ -1542,6 +1542,23 @@ interface DrawItem {
  * The three bakes share this shape so the caches, the eviction, the
  * canvas pool and the occlusion pass all speak one language.
  */
+/** THE CLIFF JOINS THE STANDING WORLD: one straight rim run, baked
+ *  once and blitted — the strata art is world-keyed and still, so the
+ *  bake is a cache in front of the very painter it replaces. The
+ *  canvas may be pool-oversized (32px shape classes), so blits read
+ *  the recorded w/h, never canvas.width. */
+interface CliffRunBake {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  w: number; // used device-px region
+  h: number;
+  gridPx: number; // device px per tile at bake (THE CRISP GRID LAW)
+  dpr: number;
+  padX: number; // device px from canvas origin to the run's west anchor
+  padTop: number;
+  used: number; // last frame drawn (eviction)
+}
+
 interface WorldSprite {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
@@ -1989,6 +2006,10 @@ export class Renderer {
     this.propShakes.clear();
     this.treeSprites.clear();
     this.treeShadows.clear();
+    // Cliff curtains go back through the pool — a bare clear() is how
+    // a plane crossing leaks a working set (round 10's phantom).
+    for (const sp of this.cliffSprites.values()) this.poolCanvas(sp.canvas);
+    this.cliffSprites.clear();
     this.phaseMs.clear();
     this.bedFlips.clear();
     this.lighting.dropWorld();
@@ -4594,6 +4615,7 @@ export class Renderer {
     this.liveStats.chunk = 0;
     this.liveStats.mask = 0;
     this.liveStats.offscreen = 0;
+    this.liveStats.cliff = 0;
     // Shadow-mask misses per frame: masks are shared per (kind,
     // variant) — see castRockShadow — so a handful per frame drains
     // any cold field's set within a second, and a skipped cast just
@@ -7145,6 +7167,23 @@ export class Renderer {
         this.poolCanvas(sh.canvas);
       }
     }
+    // Cliff curtains ride the same camera: cold entries recycle, and
+    // a hard cap bounds the worst case (a curtain is band-sized).
+    for (const [key, sp] of this.cliffSprites) {
+      if (sp.used < cutoff) {
+        this.cliffSprites.delete(key);
+        this.poolCanvas(sp.canvas);
+      }
+    }
+    if (this.cliffSprites.size > 160) {
+      for (const [key, sp] of this.cliffSprites) {
+        if (sp.used < this.frameNo - 2) {
+          this.cliffSprites.delete(key);
+          this.poolCanvas(sp.canvas);
+        }
+        if (this.cliffSprites.size <= 128) break;
+      }
+    }
     // Silhouette sprites carry canvases now — cap like the body cache.
     if (this.treeShadows.size > 640) {
       for (const [key, sh] of this.treeShadows) {
@@ -7975,7 +8014,7 @@ export class Renderer {
    * one thing that should never be seen — it means the caches are not
    * converging and a budget wants raising.
    */
-  private readonly liveStats = { prop: 0, tree: 0, flora: 0, chunk: 0, mask: 0, offscreen: 0 };
+  private readonly liveStats = { prop: 0, tree: 0, flora: 0, chunk: 0, mask: 0, offscreen: 0, cliff: 0 };
 
   /**
    * THE BAND BUDGET IS A FUSE, NOT A BROOM — the whole doctrine, the
@@ -14446,6 +14485,22 @@ export class Renderer {
    * per-frame, and the paint is byte-identical because nothing
    * downstream of the scan changed.
    */
+  /** Runs cut every this many tiles — a shelf, not a wall (round
+   *  10's law: one piece is never a budget), and the same ledger
+   *  covers ~4x the rim. */
+  private static readonly CLIFF_RUN_MAX_SPAN = 12;
+  /** Bake box in tiles around a run's row line: above the crown top
+   *  (brow tuck + margin), below the base (AO stroke + scree), and
+   *  sideways past the span (tuft overhang, joint lean). Proven by a
+   *  fat-margin rig bake, round 8's method. */
+  private static readonly CLIFF_BAKE_NORTH_T = 0.5;
+  private static readonly CLIFF_BAKE_SOUTH_T = 0.3;
+  private static readonly CLIFF_BAKE_PAD_X_T = 0.35;
+  /** THE CLIFF JOINS THE STANDING WORLD — cached curtain bakes, keyed
+   *  run geometry + world rev + grid (zoom/dpr). Evicted beside the
+   *  tree sprites; recycled through the shape pool. */
+  private readonly cliffSprites = new Map<string, CliffRunBake>();
+
   private cliffMemo: {
     key: string;
     levels: Array<{
@@ -14456,6 +14511,10 @@ export class Renderer {
       norths: number[];
       /** Flat records: nx, x, a, b per merged side run. */
       runs: number[];
+      /** Flat records: o0, o1, rev per straight-south face run —
+       *  ordinals into `faces` (÷8), grouped once per memo so the
+       *  cached-curtain lane never re-derives them per frame. */
+      fruns: number[];
     }>;
   } | null = null;
 
@@ -14488,10 +14547,23 @@ export class Renderer {
     // emitted them, so every stable-sort tie stays put.
     for (const lv of this.cliffMemo.levels) {
       const f = lv.faces;
-      for (let i = 0; i < f.length; i += 8) {
-        items.push(
-          this.cliffFaceItem(game, f[i]!, f[i + 1]!, f[i + 2]!, f[i + 3]!, f[i + 4]!, lv.level, f[i + 6]!, f[i + 7]!),
-        );
+      const fr = lv.fruns;
+      let ri = 0;
+      let runEnd = -1;
+      for (let i = 0, o = 0; i < f.length; i += 8, o++) {
+        if (ri < fr.length && fr[ri] === o) {
+          // THE CLIFF JOINS THE STANDING WORLD: one item per straight
+          // run — a cached curtain blit standing where its first
+          // member stood. Members were consecutive same-sortY ties,
+          // so the stable sort cannot tell the difference.
+          items.push(this.cliffRunItem(game, lv.level, f, fr[ri]!, fr[ri + 1]!, fr[ri + 2]!));
+          runEnd = fr[ri + 1]!;
+          ri += 3;
+        } else if (o > runEnd) {
+          items.push(
+            this.cliffFaceItem(game, f[i]!, f[i + 1]!, f[i + 2]!, f[i + 3]!, f[i + 4]!, lv.level, f[i + 6]!, f[i + 7]!),
+          );
+        }
         this.pushSouthFallItems(game, items, f[i]!, f[i + 1]!, f[i + 2]!, f[i + 3]!, f[i + 4]!, f[i + 5]!, lv.level);
       }
       const n = lv.norths;
@@ -14626,8 +14698,52 @@ export class Renderer {
           }
         }
       }
+      // THE CLIFF JOINS THE STANDING WORLD: straight south faces
+      // chain into bake runs (same row, abutting spans, cut every
+      // CLIFF_RUN_MAX_SPAN tiles — a shelf, not a wall). Bevels and
+      // diagonals stay per-segment: they are few, and their sort rows
+      // differ. Grouped here, once per memo, with a per-run world rev
+      // so a terraform re-keys exactly the curtains it touched.
+      const fruns: number[] = [];
+      const nFaces = faces.length / 8;
+      let r0 = -1;
+      const runRev = (o0: number, o1: number): number => {
+        const rax = faces[o0 * 8]!;
+        const rbx = faces[o1 * 8 + 2]!;
+        const ray = faces[o0 * 8 + 1]!;
+        let rev = 0;
+        const cx0 = Math.floor((rax - 1) / CHUNK_SIZE);
+        const cx1 = Math.floor((rbx + 1) / CHUNK_SIZE);
+        const cy0 = Math.floor((ray - 3) / CHUNK_SIZE);
+        const cy1 = Math.floor((ray + 1) / CHUNK_SIZE);
+        for (let cy = cy0; cy <= cy1; cy++)
+          for (let cx = cx0; cx <= cx1; cx++) rev += game.world.get(cx, cy)?.rev ?? 0;
+        return rev;
+      };
+      const flushRun = (o1: number): void => {
+        if (r0 < 0) return;
+        fruns.push(r0, o1, runRev(r0, o1));
+        r0 = -1;
+      };
+      for (let o = 0; o < nFaces; o++) {
+        const f = o * 8;
+        const straight = Math.abs(faces[f + 4]!) <= 0.01 && faces[f + 1] === faces[f + 3];
+        if (!straight) {
+          flushRun(o - 1);
+          continue;
+        }
+        if (r0 >= 0) {
+          const chain =
+            faces[f + 1] === faces[r0 * 8 + 1] &&
+            faces[f] === faces[(o - 1) * 8 + 2] &&
+            faces[f + 2]! - faces[r0 * 8]! <= Renderer.CLIFF_RUN_MAX_SPAN;
+          if (!chain) flushRun(o - 1);
+        }
+        if (r0 < 0) r0 = o;
+      }
+      flushRun(nFaces - 1);
       if (faces.length > 0 || norths.length > 0 || runsOut.length > 0)
-        levels.push({ level, faces, norths, runs: runsOut });
+        levels.push({ level, faces, norths, runs: runsOut, fruns });
     }
     return { key, levels };
   }
@@ -15116,6 +15232,226 @@ export class Renderer {
         }
       },
     };
+  }
+
+  /**
+   * One straight rim run as a single DrawItem. Strat, sortY and the
+   * contact shadow reproduce cliffFaceItem's own formulas exactly —
+   * members of a straight run share ay === by, so min(ay, by) is ay
+   * for every member and one item sorts precisely where its members
+   * did. The contact quad over the whole span is the union of the
+   * members' colinear quads, pixel for pixel.
+   */
+  private cliffRunItem(
+    game: ClientGame,
+    level: number,
+    faces: number[],
+    o0: number,
+    o1: number,
+    rev: number,
+  ): DrawItem {
+    const ax = faces[o0 * 8]!;
+    const ay = faces[o0 * 8 + 1]!;
+    const bx = faces[o1 * 8 + 2]!;
+    const s = this.camera.scale;
+    const baseLift = (level - 1) * ELEV_H * s;
+    return {
+      strat: level - 1 !== 0 ? level - 1 : undefined,
+      sortY: ay + 0.001,
+      drawShadow:
+        level - 1 === 0
+          ? () => {
+              const A = this.camera.worldToScreen(ax, ay, this.w, this.h);
+              const B = this.camera.worldToScreen(bx, ay, this.w, this.h);
+              const skew = Math.max(-s * 0.6, Math.min(s * 0.6, this.castOffset(0.5).x));
+              const c = this.beginContactFill();
+              c.beginPath();
+              c.moveTo(A.x, A.y - baseLift - 1);
+              c.lineTo(B.x, B.y - baseLift - 1);
+              c.lineTo(B.x + skew, B.y - baseLift + s * 0.42);
+              c.lineTo(A.x + skew, A.y - baseLift + s * 0.42);
+              c.closePath();
+              c.fill();
+              c.globalAlpha = 1;
+            }
+          : undefined,
+      draw: () => this.drawCliffRun(game, level, faces, o0, o1, rev),
+    };
+  }
+
+  /**
+   * Blit the run's cached curtain; bake it through the shared sprite
+   * admission lanes when missing; and when no bake stands (declined,
+   * mid-glide, layer off) fall back to the members' own live paint —
+   * THE STILL-WORLD BARGAIN: a bake is a cache, never a mode.
+   */
+  private drawCliffRun(
+    game: ClientGame,
+    level: number,
+    faces: number[],
+    o0: number,
+    o1: number,
+    rev: number,
+  ): void {
+    const ax = faces[o0 * 8]!;
+    const ay = faces[o0 * 8 + 1]!;
+    const bx = faces[o1 * 8 + 2]!;
+    const gridPx = this.bandGridPx();
+    const key = `${level}|${ay}|${ax}|${bx}|${rev}|${gridPx}|${this.dpr()}`;
+    let sp = this.cliffSprites.get(key);
+    const s = this.camera.scale;
+    const cam = this.camera;
+    const pA = cam.worldToScreen(ax, ay, this.w, this.h);
+    const pB = cam.worldToScreen(bx, ay, this.w, this.h);
+    const northCss = (level * ELEV_H + Renderer.CLIFF_BAKE_NORTH_T) * s;
+    const southCss = (Renderer.CLIFF_BAKE_SOUTH_T - (level - 1) * ELEV_H) * s;
+    const padXCss = Renderer.CLIFF_BAKE_PAD_X_T * s;
+    const visNow =
+      pA.x - padXCss < this.w && pB.x + padXCss > 0 && pA.y - northCss < this.h && pA.y + southCss > 0;
+    if (!sp && this.staticLayerOn() && !this.zoomGliding) {
+      const lane = this.admitSpriteBake(true, visNow);
+      if (lane !== BakeLane.None) {
+        this.treeBakeBudget--;
+        const t0 = performance.now();
+        const fresh = this.bakeCliffRun(game, level, faces, o0, o1, gridPx);
+        const took = performance.now() - t0;
+        this.spriteBakeMsLeft -= took;
+        this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
+        if (lane === BakeLane.Arrival) this.visSpriteMsLeft -= took;
+        if (fresh) {
+          this.cliffSprites.set(key, fresh);
+          sp = fresh;
+        }
+      }
+    }
+    if (sp) {
+      sp.used = this.frameNo;
+      // THE EXACT LATTICE PATH (blitBand's mapping): settled zoom on
+      // the bake's own grid is a pure translation; stale grids map by
+      // the scale ratio — transient softness mid-glide, by design.
+      const x0 = cam.snapPx(pA.x);
+      const y0 = cam.snapPx(pA.y);
+      const k = !this.zoomGliding && sp.gridPx === gridPx ? 1 / cam.snapDpr : s / sp.gridPx;
+      this.ctx.drawImage(
+        sp.canvas,
+        0,
+        0,
+        sp.w,
+        sp.h,
+        x0 - sp.padX * k,
+        y0 - sp.padTop * k,
+        sp.w * k,
+        sp.h * k,
+      );
+      return;
+    }
+    if (visNow) this.liveStats.cliff++;
+    for (let o = o0; o <= o1; o++) {
+      const f = o * 8;
+      this.cliffFaceItem(
+        game,
+        faces[f]!,
+        faces[f + 1]!,
+        faces[f + 2]!,
+        faces[f + 3]!,
+        faces[f + 4]!,
+        level,
+        faces[f + 6]!,
+        faces[f + 7]!,
+      ).draw!();
+    }
+  }
+
+  /**
+   * Bake one run (THE SAME-BRUSH LAW): the ctx, camera, snap lattice
+   * and viewport swap to the curtain canvas, and the members' items
+   * are constructed AGAIN under the swap and draw themselves — the
+   * bake is byte-for-byte the live painter's own work. Anchor pads
+   * round to whole device pixels (THE ANCHOR SITS ON THE LATTICE).
+   */
+  private bakeCliffRun(
+    game: ClientGame,
+    level: number,
+    faces: number[],
+    o0: number,
+    o1: number,
+    gridPx: number,
+  ): CliffRunBake | null {
+    const ax = faces[o0 * 8]!;
+    const ay = faces[o0 * 8 + 1]!;
+    const bx = faces[o1 * 8 + 2]!;
+    const dprB = this.dpr();
+    const cssScale = gridPx / dprB;
+    const padXT = Renderer.CLIFF_BAKE_PAD_X_T;
+    const northT = level * ELEV_H + Renderer.CLIFF_BAKE_NORTH_T;
+    const southT = Renderer.CLIFF_BAKE_SOUTH_T - (level - 1) * ELEV_H;
+    const cssW = (bx - ax + padXT * 2) * cssScale;
+    const cssH = (northT + southT) * cssScale;
+    const W = Math.ceil(cssW * dprB);
+    const H = Math.ceil(cssH * dprB);
+    if (W <= 0 || W > 8192 || H <= 0 || H > 2048) return null;
+    const cam = this.camera;
+    const savedX = cam.x;
+    const savedY = cam.y;
+    const savedScale = cam.scale;
+    const savedSnap = cam.snapDpr;
+    const savedW = this.w;
+    const savedH = this.h;
+    const savedCtx = this.ctx;
+    this.bakeVeilFull = true;
+    this.bakingMask = true;
+    try {
+      const { canvas, sctx } = this.acquireSpriteCanvas(undefined, W, H);
+      sctx.setTransform(1, 0, 0, 1, 0, 0);
+      sctx.clearRect(0, 0, canvas.width, canvas.height);
+      sctx.setTransform(dprB, 0, 0, dprB, 0, 0);
+      cam.scale = cssScale;
+      cam.snapDpr = dprB;
+      this.w = cssW;
+      this.h = cssH;
+      const targetX = padXT * cssScale;
+      const targetY = northT * cssScale;
+      cam.x = (cssW / 2 - (targetX - ax * cssScale)) / cssScale;
+      cam.y = (cssH / 2 - (targetY - ay * cssScale * cam.yScale)) / (cssScale * cam.yScale);
+      const anchorCss = cam.worldToScreen(ax, ay, cssW, cssH);
+      const anchor = { x: Math.round(anchorCss.x * dprB), y: Math.round(anchorCss.y * dprB) };
+      this.ctx = sctx;
+      for (let o = o0; o <= o1; o++) {
+        const f = o * 8;
+        this.cliffFaceItem(
+          game,
+          faces[f]!,
+          faces[f + 1]!,
+          faces[f + 2]!,
+          faces[f + 3]!,
+          faces[f + 4]!,
+          level,
+          faces[f + 6]!,
+          faces[f + 7]!,
+        ).draw!();
+      }
+      return {
+        canvas,
+        ctx: sctx,
+        w: W,
+        h: H,
+        gridPx,
+        dpr: dprB,
+        padX: anchor.x,
+        padTop: anchor.y,
+        used: this.frameNo,
+      };
+    } finally {
+      cam.x = savedX;
+      cam.y = savedY;
+      cam.scale = savedScale;
+      cam.snapDpr = savedSnap;
+      this.w = savedW;
+      this.h = savedH;
+      this.ctx = savedCtx;
+      this.bakeVeilFull = false;
+      this.bakingMask = false;
+    }
   }
 
   /**
@@ -19834,7 +20170,7 @@ export class Renderer {
     );
     const ls = this.liveStats;
     parts.push(
-      `live prop ${ls.prop} tree ${ls.tree} flora ${ls.flora} chunk ${ls.chunk} mask ${ls.mask}`,
+      `live prop ${ls.prop} tree ${ls.tree} flora ${ls.flora} chunk ${ls.chunk} mask ${ls.mask} cliff ${ls.cliff}`,
     );
     parts.push(
       `trees offscreen ${ls.offscreen}`,
