@@ -106,6 +106,13 @@ export declare class WorldView {
      */
     private drawClaimRings;
     /**
+     * THE CAPITALS (strongholds Phase 6): every known seat drawn as the
+     * landmark it is — the biggest diamond on the map, family-colored,
+     * with the ONE-CELL DEBT's mask washed under it and the lifecycle
+     * spoken in the poi dialect (ember dashed, fallow hollow).
+     */
+    private drawCapitals;
+    /**
      * THE FAMILY LINES (Phase 6): every satellite and toll drawn tied to
      * its core — the source-and-kill-switch made visible. Hearth-tied
      * squats (origin `hearth:<id>`) key on no cell and draw no line.

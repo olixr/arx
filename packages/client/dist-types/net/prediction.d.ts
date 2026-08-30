@@ -1,4 +1,19 @@
-import { type CollisionSource, type InputFrame, type Vec2 } from '@arx/shared';
+import { type CollisionSource, type InputFrame, type TravelKind, type Vec2 } from '@arx/shared';
+/**
+ * THE CROSSING, mirrored: the movement a cast carries. A `blink`
+ * leaves through the shared teleport resolver on the cast frame; the
+ * traversal kinds walk a seq-window road — one transit step per
+ * frame at the kind's speed, the sticks suppressed while the road
+ * owns the body, exactly the window the server's tickTransits walks
+ * in the tick domain (the recorded bounded-drift class: both ends of
+ * the road agree, the middle folds through the error offset).
+ */
+export interface CastMove {
+    kind: TravelKind;
+    dirX: number;
+    dirY: number;
+    dist: number;
+}
 /**
  * Client-side prediction for the local player. Inputs are applied
  * immediately and kept until the server acknowledges them; on each
@@ -21,6 +36,15 @@ export declare class Predictor {
     private prev;
     /** 0..1 fraction through the current tick, set by the game loop. */
     renderAlpha: number;
+    /**
+     * Unacked frames, each stamped with the SPEED it was first simmed at
+     * — reconcile replays with the frame's own historical speed, never
+     * today's (a mid-flight ride/chill change used to mis-replay the
+     * whole queue at the new multiplier). Rooting is re-judged live at
+     * replay instead: it is seq-deterministic, and a root learned LATE
+     * (a charged cast's fire message) must still root the frames it
+     * covers.
+     */
     private pending;
     private errX;
     private errY;
@@ -30,7 +54,7 @@ export declare class Predictor {
      * commitment window, and dash Arts move the body on the cast frame. */
     private lastCastSeq;
     private lastCastFreeze;
-    private lastCastDash;
+    private lastCastMove;
     /** Fires when a dodge impulse applies locally (for whoosh/trail FX). */
     onDodge: ((x: number, y: number, mx: number, my: number) => void) | null;
     /**
@@ -47,15 +71,43 @@ export declare class Predictor {
      * prediction would have rubber-banded every frame.
      */
     speedMult: number;
+    /**
+     * THE PREDICTOR FEELS THE PAGES (statusBook Phase 3, generalizing
+     * THE PREDICTOR FEELS THE COLD): the movement factor of every
+     * status riding the own body — chill's slow, the holds' stone feet
+     * — derived from the same STATUS_BOOK pages the server folds
+     * (moveFactorOfBits off the own snapshot's status word). Without it
+     * a slowed player over-predicts for the state's whole life and
+     * rubber-bands every frame. One RTT stale at the edges, honest for
+     * the duration.
+     */
+    statusMoveFactor: number;
+    /**
+     * Drawn-bow walk factor with perks folded (Longstride) — mirrored
+     * from S2CRide; the bare constant is only the fallback.
+     */
+    drawFactor: number;
     constructor(collision: CollisionSource, speed: number);
     reset(pos: Vec2): void;
     /** ClientGame commits a cast on input frame `seq`. */
-    registerCast(seq: number, freezeTicks: number, dash: {
-        tiles: number;
-        aim: number;
-    } | null): void;
-    private applyCastDash;
-    /** Per-frame speed — drawing a bow brakes exactly like the server. */
+    registerCast(seq: number, freezeTicks: number, move: CastMove | null): void;
+    /**
+     * THE TRAVELED ROAD, mirrored: the frames whose legs the road owns
+     * — [cast frame, cast frame + duration). The cast frame itself
+     * still walks its normal step (the server processed that frame's
+     * stick before the press), so only the LATER window frames zero
+     * their input speed; every window frame takes its transit step.
+     */
+    private roadOwns;
+    /** The cast's movement on this frame: the blink door or one road step. */
+    private applyCastMove;
+    /** Rooted while committed to a cast (the frames after the cast frame). */
+    private rooted;
+    /**
+     * Per-frame speed — every factor the server applies, mirrored:
+     * draw-slow (perk-folded), the steady ride mult, and the riding
+     * pages' feet (chill, the holds).
+     */
     private frameSpeed;
     /** The shared per-frame move: normal step + optional dodge impulse. */
     private simFrame;

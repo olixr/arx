@@ -282,6 +282,13 @@ export interface StaffWield {
 }
 /** The staff carry's forward lean (see StaffWield.fwd), units of s. */
 export declare const STAFF_FWD_LEAN_S = 0.05;
+/** THE PLANT CLEARS THE FACE: the planted stick's crown tips outboard
+ *  by this screen lean (radians) so the shaft stands clear of the head
+ *  silhouette at the profile facings — the lab's verdict cells showed
+ *  the staff crossing the face at W/NW. Rides sideS (mirror-true,
+ *  continuous through every turn) and fades out as the run levels the
+ *  carry (the trail has its own lifeline). */
+export declare const STAFF_PLANT_LEAN = 0.09;
 /** The great shoulder carry's forward lean, units of s. */
 export declare const GREAT_FWD_LEAN_S = 0.04;
 /** THE CROWN NEVER DIGS: extra above-level pitch the staff's run
@@ -313,29 +320,6 @@ export declare function staffWield(f: FacingFrame, moveK: number, runK: number, 
  * — the rig orders those). The RUN never claims it any more.
  */
 export declare const STAFF_GUARD_CHOKE_S = 0.2;
-export interface StaffStrikeFrame {
-    /** Arm-angle offset from the aim (radians); rests at 0.5 like blades. */
-    arm: number;
-    /** Staff angle relative to the arm ray — ±π/2 is the tangent hold. */
-    spin: number;
-    /** Reach multiplier (1 at both ends). */
-    reach: number;
-    /** Vertical hand offset, units of s (negative = raised). */
-    lift: number;
-    /** Torso lean along the sweep. */
-    lean: number;
-    /** Shaft fraction behind the fist — sweeps pivot at the middle. */
-    grip: number;
-}
-export declare function staffStrikeFrame(stage: 0 | 1, t: number): StaffStrikeFrame;
-export interface StaffTrail {
-    from: number;
-    to: number;
-    alpha: number;
-    lift: number;
-}
-/** The sweep's crescent, alive from the loosing through the extension. */
-export declare function staffStrikeTrail(stage: 0 | 1, t: number): StaffTrail | null;
 export interface GreatWield {
     /** Main-hand offset from (x, armY), units of s (dx pre-squash). */
     dx: number;
@@ -380,6 +364,30 @@ export interface GreatWield {
  * screen's vertical component never crosses zero (nothing to whip).
  */
 export declare function greatWield(f: FacingFrame, moveK: number, runK: number, sw: number, px: number): GreatWield;
+export interface PoleWield {
+    /** Main-hand offset from (x, armY), units of s (dx pre-squash). */
+    dx: number;
+    dy: number;
+    /** UN-squashed forward lean along the facing (StaffWield.fwd's law). */
+    fwd: number;
+    /** Haft angle, fist→point, screen radians (projected). */
+    angle: number;
+    /** Foreshortened length for the painter. */
+    fore: number;
+    /** Fraction of the haft trailing behind the fist (painter grip). */
+    grip: number;
+    /** How much the carrying hand joins the arm pump (0 planted…1 free). */
+    pumpK: number;
+    /** The war grip's call on the off fist (0 under the couch — the
+     *  shield owns that hand and this never argues). */
+    offClaim: number;
+}
+/** The pole carry's forward lean (StaffWield.fwd's law), units of s. */
+export declare const POLE_FWD_LEAN_S = 0.05;
+/** Combat's ready pitch: point forward-level, a breath above the
+ *  horizon — the guard every polearm strike coils from. */
+export declare const POLE_GUARD_PITCH: number;
+export declare function poleWield(f: FacingFrame, moveK: number, runK: number, sw: number, px: number, couched: boolean): PoleWield;
 /**
  * THE HIGH GUARD — combat's carry. Both fists on the long grip, blade
  * up-forward at the ready diagonal; the main hand rides at the cross,
@@ -393,20 +401,6 @@ export declare function greatWield(f: FacingFrame, moveK: number, runK: number, 
 export declare const GREAT_GUARD_PITCH: number;
 /** Off-fist seat: this far BEHIND the main fist along the grip. */
 export declare const GREAT_POMMEL_CHOKE_S = 0.13;
-export interface GreatStrikeFrame {
-    /** Arm-angle offset from the aim; rests at 0.5 like the blades. */
-    arm: number;
-    /** Weapon angle relative to the arm ray — the heavy wrist lag. */
-    spin: number;
-    /** Reach multiplier (1 at both ends). */
-    reach: number;
-    /** Vertical hand offset, units of s (negative = raised). */
-    lift: number;
-    /** Torso lean along the cut. */
-    lean: number;
-    /** Weapon fraction behind the fist — cuts slide toward mid-grip. */
-    grip: number;
-}
 /** The great school's beat: long gather, LONG poise, honest snap. */
 export declare const GREAT_PHASES: {
     coil: number;
@@ -414,9 +408,6 @@ export declare const GREAT_PHASES: {
     impact: number;
     ext: number;
 };
-export declare function greatStrikeFrame(stage: 0 | 1, t: number): GreatStrikeFrame;
-/** The great sweep's crescent — alive loosing→extension, like the pole's. */
-export declare function greatStrikeTrail(stage: 0 | 1, t: number): StaffTrail | null;
 /**
  * THE MOUNTAIN FALLS — the finisher. Both hands haul the blade
  * straight overhead (the fist barely leaves the body; the LIFT does

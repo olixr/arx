@@ -1,4 +1,4 @@
-import type { GrowthDef, NodeDef, DialogueDef, FactionsDef, FrontierDef, LootTableDef, MinorDef, NpcActorDef, NpcDef, PoiDef, PrefabJson, VoiceBankDef, VoiceClipDef, VoiceDoc, ZoneJson } from '@arx/content';
+import type { GrowthDef, NodeDef, DialogueDef, FactionsDef, FrontierDef, LootTableDef, MinorDef, NpcActorDef, NpcDef, PoiDef, PrefabJson, StrongholdDef, TriggerDef, VoiceBankDef, VoiceClipDef, VoiceDoc, ZoneJson } from '@arx/content';
 /** Content Studio's wire to the running server's /dev/content API. */
 export interface Editable<T> {
     def: T;
@@ -37,6 +37,19 @@ export declare function revertNpc(id: string): Promise<{
 export declare function listLoot(): Promise<Array<Editable<LootTableDef>>>;
 export declare function saveLoot(def: LootTableDef): Promise<void>;
 export declare function revertLoot(id: string): Promise<{
+    outcome: string;
+}>;
+/**
+ * THE WATCHFUL GROUND (docs/triggers-plan.md): trigger rows ride the
+ * content_docs lane whole; an invalid tool-owned row carries its
+ * refusals so the bench can show them instead of hiding the def.
+ */
+export interface TriggerRow extends Editable<TriggerDef> {
+    errors?: string[];
+}
+export declare function listTriggers(): Promise<TriggerRow[]>;
+export declare function saveTrigger(def: TriggerDef): Promise<void>;
+export declare function revertTrigger(id: string): Promise<{
     outcome: string;
 }>;
 /** The weather is a singleton: one doc, one 'world' id, two hashes. */
@@ -114,6 +127,42 @@ export declare function saveMinor(def: MinorDef): Promise<void>;
 export declare function revertMinor(id: string): Promise<{
     outcome: string;
 }>;
+export declare function listStrongholds(): Promise<{
+    strongholds: Array<Editable<StrongholdDef>>;
+    prefabIds: string[];
+    families: string[];
+}>;
+export declare function saveStronghold(def: StrongholdDef): Promise<void>;
+export declare function revertStronghold(id: string): Promise<{
+    outcome: string;
+}>;
+export interface StrongholdRoll {
+    ok: boolean;
+    def?: StrongholdDef;
+    prefab?: PrefabJson;
+    gates?: Array<{
+        x: number;
+        y: number;
+    }>;
+    errors: string[];
+}
+export declare function generateStronghold(body: {
+    seed: number;
+    id: string;
+    name: string;
+    description?: string;
+    family: string;
+    tiers: [number, number];
+    weight: number;
+    sizeClass: 'hold' | 'citadel';
+    bossNames: string[];
+}): Promise<StrongholdRoll>;
+/** THE STAGE LADDER: a real capital composed at a stage, for the bench. */
+export declare function previewStronghold(id: string, stage: number): Promise<{
+    zone: ZoneJson;
+}>;
+/** Bank a rolled layout prefab into the shared library (save order: prefab, then def). */
+export declare function savePrefabJson(prefab: PrefabJson): Promise<void>;
 export declare function listNodes(): Promise<{
     nodes: Array<Editable<NodeDef>>;
 }>;
@@ -158,6 +207,14 @@ export interface PoiSimStats {
         sites: number;
         familyTrue: number;
     }>;
+    /** THE CAPITALS, observed (strongholds Phase 6). */
+    capitals?: {
+        seats: number;
+        byLayout: Record<string, number>;
+        byFamily: Record<string, number>;
+        quietCountries: number;
+        maskedCells: number;
+    };
 }
 /** The observed panel: the server runs the REAL scaffold over a fresh scan. */
 export declare function surveyFrontier(draft?: PoiDef, cells?: number): Promise<PoiSimStats>;
@@ -201,6 +258,13 @@ export interface ZoneRect {
     };
     width: number;
     height: number;
+    /**
+     * THE WORLDS APART: the plane this rect stamps. Planes legitimately
+     * overlap in coordinates, so a containment scan must filter by
+     * plane or a surface site inside the Undercroft's rect resolves to
+     * the underworld zone. Absent (older server) = 'surface'.
+     */
+    plane?: string;
 }
 export declare function listZoneRects(): Promise<ZoneRect[]>;
 //# sourceMappingURL=api.d.ts.map

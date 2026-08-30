@@ -214,8 +214,9 @@ export interface GreatStyle {
     blade?: GreatbladeKind;
     /** Head silhouette (greataxe dialect). Default 'crescent'. */
     head?: GreataxeHead;
-    /** Maul head build. Default 'block'; 'bell' is a cast bell. */
-    maul?: 'block' | 'bell';
+    /** Maul head build. Default 'block'; 'bell' is a cast bell; 'club'
+     *  is THE TORN LIMB — a knotted greatclub that was lately a tree. */
+    maul?: 'block' | 'bell' | 'club';
     /** Steel / head color. */
     color: string;
     /** Lit edge or top plane; defaults shade(+34). */
@@ -275,6 +276,100 @@ export declare function greatStyle(itemId: string | undefined, color?: string): 
  * whole argument that this weapon owns both hands.
  */
 export declare function drawGreatweapon(ctx: CanvasRenderingContext2D, st: GreatStyle, s: number, nowMs: number, hurt?: boolean, grip?: number): void;
-export type WieldKind = 'great' | 'staff' | 'bow' | 'blade' | 'none';
+export type PoleHead = 'leaf' | 'winged' | 'lance' | 'glaive' | 'halberd' | 'pike' | 'sweep' | 'crescent' | 'scythe' | 'bardiche' | 'trident' | 'swordstaff' | 'beak' | 'spade' | 'ge';
+export interface PoleStyle {
+    kind: PoleHead;
+    /** Head steel. */
+    color: string;
+    /** Lit edge/facet tone (derived when absent). */
+    edge?: string;
+    /** Dark fuller/socket tone (derived when absent). */
+    dark?: string;
+    /** Haft wood. */
+    haft?: string;
+    /** Grip wrap band color (absent = bare wood). */
+    wrap?: string;
+    /** Ferrule/langet/butt iron. */
+    iron?: string;
+    /** Length multiplier on the school's long frame. */
+    len?: number;
+    /** Head length multiplier — the high tier's licence to loom. */
+    headLen?: number;
+    /** Head width multiplier (broad adamant, deep moonglaive crescent). */
+    headW?: number;
+    /**
+     * Leaf furniture past the collar: 'bar' = the hunt's toggle
+     * crossbar, lashed proud so what you pin stays pinned; 'blades' =
+     * swept side blades — the partisan's three-point answer.
+     */
+    wings?: 'bar' | 'blades';
+    /** Knapped edge: the chipped facet line of a head never poured. */
+    knapped?: boolean;
+    /** Cord lashings REPLACE the ferrule — bound, never socketed. */
+    bound?: boolean;
+    /** Mounting straps running down from the collar (leaf/pike opt-in;
+     *  glaives and halberds always carry theirs). */
+    langets?: boolean;
+    /** Cord X-lacing over the grip wrap (rawhide fists). */
+    laced?: boolean;
+    /** A living vein down the head's spine — REPLACES the dark midrib
+     *  (the riftglass law at full reach). */
+    core?: string;
+    /** Graduated shaft rings — the drill square's ruler. */
+    bands?: number;
+    /** Painted spiral down the shaft — the tourney's barber stripe. */
+    spiral?: string;
+    /** Star pricks set INTO the shaft metal. Constellations are not
+     *  motes: they hold their stations. */
+    stars?: string;
+    /** Cord tassel flaring below the collar — parade skirt, and the
+     *  soldier's honest reason: it stops blood reaching the grip. */
+    tassel?: string;
+    /** A socketed stone riding the collar. */
+    gem?: string;
+    /** Engraved curl chased into the head's flat, spoken dark. */
+    filigree?: string;
+    /** The moon's negative space: a crescent cut clean through the
+     *  glaive's flat (path-level, so the hurt flash keeps the hole). */
+    pierced?: boolean;
+    /** Ice teeth under the lance cone — rime that never lifts. */
+    rimed?: boolean;
+    /** Bone-white boss riveted to the halberd's cheek. */
+    skull?: string;
+    /** Enchant-family accent (the standing ench fx vocabulary). */
+    fx?: string;
+    fxColor?: string;
+}
+/**
+ * THE ARMORY — the reaching school's roster. Twenty weapons, and the
+ * curation law the blade rosters wrote holds here: every entry is ONE
+ * identity idea, never a recolor of the one above it. The forge line
+ * relearns what a spear IS at every metal (poured, plain, drilled,
+ * paraded, drawn, ground, knapped, fallen), and each owned piece
+ * answers "who carried this, and at what?"
+ *
+ * The fallback below still keeps an unauthored id visible — degrade,
+ * never invisible.
+ */
+export declare const POLE_STYLES: Record<string, PoleStyle>;
+/**
+ * Resolve a polearm look. Registry first; unknown ids that read as
+ * hafted reach (`spear`/`lance`/`glaive`/`halberd`/`partisan`/`pike`)
+ * get a cached color-derived fallback. THE FISH CLAUSE: `pike` and
+ * `raw_pike` are the river's pike (items.ts), not the pikeman's — the
+ * bare words are excluded by id, the way 'greataxe' guards the
+ * woodcutter's rack above.
+ */
+export declare function poleStyle(itemId: string | undefined, color?: string): PoleStyle | null;
+/**
+ * Paint a polearm in the held-item frame. The school's founding
+ * silhouette argument — the LONGEST art in the game, almost all of it
+ * haft, the head small and mounted — holds for the point family. The
+ * bladed long-arms (wave 2) argue the OTHER truth on the same frame:
+ * sometimes the blade IS the argument, and the haft exists to put it
+ * somewhere the other fellow cannot reach back from.
+ */
+export declare function drawPole(ctx: CanvasRenderingContext2D, st: PoleStyle, s: number, nowMs: number, hurt?: boolean, grip?: number): void;
+export type WieldKind = 'great' | 'staff' | 'bow' | 'pole' | 'blade' | 'none';
 export declare function wieldClass(itemId: string | undefined): WieldKind;
 //# sourceMappingURL=weapons.d.ts.map

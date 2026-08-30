@@ -13,6 +13,16 @@ export declare function paintedIconUrlIfBaked(key: string, color: string, size: 
 /** Fill `el` with an item icon through the budgeted lane. */
 export declare function queueItemIcon(el: HTMLImageElement | HTMLElement, itemId: string, size?: number): void;
 /**
+ * The bare pipeline as a reusable baker: paint a unit-box painter at
+ * supersample, ring it with the eight-tap outline shader, drop the
+ * hard shadow off the ringed silhouette, downscale once — and hand
+ * back the CANVAS (map sigils stamp these straight onto the chart;
+ * the dataURL wrapper below serves the `<img>` lanes). `ringFrac`
+ * scales the ring against the sprite size — chart marks read at map
+ * distance and wear a bolder ring than a pack icon needs.
+ */
+export declare function bakeOutlinedSprite(painter: (ctx: CanvasRenderingContext2D) => void, size: number, ringFrac?: number): HTMLCanvasElement;
+/**
  * Render an externally-authored painter through the SAME pipeline —
  * supersample, eight-tap outline ring, hard shadow — so satellite icon
  * sets (the ability spell-plates) wear the identical dark ring the
@@ -46,7 +56,16 @@ export declare function slotGlyphUrl(slot: string, size?: number): string;
 export declare function sneakEyeUrl(state: 'sneaking' | 'hidden' | 'detected', size?: number): string;
 /** Data URL for a UI glyph. */
 export declare function uiIconUrl(kind: 'backpack' | 'scroll' | 'hammer' | 'house' | 'attack' | 'bell' | 'signpost', size?: number): string;
-export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack' | 'map' | 'quest' | 'rep';
+/**
+ * THE SAND'S OWN MARK — gold swords rising crossed behind a dark
+ * heater shield. Worn by arena chrome only (the cinema's board-opening
+ * plate, the stakes board's head). The shield mass owns the center and
+ * the blades read point-UP like trophies over a hearth, so the mark
+ * can never be mistaken for a dismiss cross the way bare crossed
+ * blades were at chip size (the proving pass's find).
+ */
+export declare function arenaEmblemUrl(size?: number): string;
+export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack' | 'map' | 'quest' | 'rep' | 'keys' | 'beast' | 'companion';
 /** Data URL for a dock sigil — monoline, muted brass, soft under-shade. */
 export declare function dockGlyphUrl(kind: DockGlyph, size?: number): string;
 //# sourceMappingURL=icons.d.ts.map

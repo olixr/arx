@@ -25,7 +25,7 @@ export interface DialogDeps {
 }
 /**
  * THE OPEN BROWSER — everything the world holds, one dialog: towns,
- * the dark band, every composed frontier site, files, orphans.
+ * the Underworld, every composed frontier site, files, orphans.
  */
 export declare function openBrowser(deps: DialogDeps): Promise<void>;
 export declare function newZoneDialog(deps: DialogDeps): void;

@@ -125,7 +125,24 @@ export declare function buildRegisterRows(host: RegisterHost, cx: number, cy: nu
  * gaps costs nothing and keeps bands big). Ramp runs stay SINGLETON
  * stretches: the same run registers in every chunk it touches, and the
  * frame's runSeen dedupe must be able to skip a whole band.
+ *
+ * A SHELF, NOT A WALL (BAND_MAX_SPAN). A stretch is also cut every
+ * BAND_MAX_SPAN tiles of world span, because a band canvas is as wide
+ * as the run it bakes and the run's length is the WORLD's business,
+ * not the renderer's. Left maximal, one row of a cave — where every
+ * row is a maximal run of solid rock — asks for an 11MB canvas at
+ * close zoom on a retina panel, which is both refused by the band
+ * budget's per-band ceiling (so the layer silently stops working
+ * exactly where the world is densest) and, before that ceiling
+ * existed, the pixel cost that walked the renderer process into an
+ * OOM kill. Segmented, the same 64MB budget covers ~4x the ground:
+ * the layer keeps working in the deep and in dense cities, and the
+ * ledger stays flat. Segment joints are the case THE BANDED JOINT
+ * WEARS AN UNDERLAP was written for — the neighbour across a cut is
+ * by construction the same wall face, so the end members bleed into
+ * it and a stale-ratio blit can never open a hairline there.
  */
+export declare const BAND_MAX_SPAN = 12;
 export interface StretchRef {
     /** Member index range [i0, i1] inclusive, into the row's list. */
     i0: number;
@@ -133,7 +150,7 @@ export interface StretchRef {
     /** Stable identity across register rebuilds: local row + anchor x. */
     key: number;
 }
-export declare function planStretches(rows: RegisterRows, bandable: (m: RaisedMember) => boolean): Array<StretchRef[] | undefined>;
+export declare function planStretches(rows: RegisterRows, bandable: (m: RaisedMember) => boolean, maxSpan?: number): Array<StretchRef[] | undefined>;
 /** FNV-1a step for band content signatures. */
 export declare function mixSig(h: number, v: number): number;
 /** One baked sort-bucket of a stretch: all members whose emitted items
@@ -166,6 +183,10 @@ export interface StretchBake {
      *  closures. This flag just spares castless stretches the mint. */
     casts: boolean;
     used: number;
+    /** Pixel bytes this bake holds across all its buckets — carried on
+     *  the bake so the admission gate and the ledger never have to walk
+     *  the canvases to price it (THE BAND BUDGET IS A FUSE). */
+    bytes: number;
 }
 /** The renderer's per-chunk register entry: compiled rows + planned
  *  band stretches + the member→stretch index, all rebuilt together on

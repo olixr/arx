@@ -17,6 +17,8 @@ export declare class Hotbar {
     private readonly buffTray;
     private buffKey;
     private readonly buffSecsEls;
+    /** Chip elements wearing THE HONEST RING (per-frame --sweep write). */
+    private readonly buffRingEls;
     /** Stealth-state eye chip (sneaking / hidden / detected). */
     private readonly sneakChip;
     private readonly sneakEye;

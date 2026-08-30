@@ -36,6 +36,19 @@ export interface FxStyle {
     spark: string;
     /** queueGlow tint as 'r, g, b'. */
     glow: string;
+    /**
+     * THE AUTHORED FLAME (lighting v4 phase 4): the real scene light a
+     * signature carries — reach in tiles, peak intensity, source height.
+     * Set per FAMILY (one voice per school) and overridable per style;
+     * absent = the queueGlow floor derivation (min(0.55, a·1.6)) — the
+     * floor, not the ceiling. SHADOW authors none BY LAW: shadow matter
+     * never emits (the matter library's own refusal).
+     */
+    light?: {
+        r: number;
+        intensity: number;
+        z?: number;
+    };
     ring: RingStyle;
     debris: DebrisKind;
     decal?: DecalKind;

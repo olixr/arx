@@ -78,6 +78,13 @@ interface CinemaNode {
      * quest weight does.
      */
     shopChoices?: number[];
+    /**
+     * Choices that raise a stakes board, by index: the plate wears the
+     * ring's gold crossed-swords emblem — larger than the coin chip,
+     * because the sand is an OCCASION and the board-opening answer must
+     * be unmistakable among small talk.
+     */
+    arenaChoices?: number[];
 }
 export declare class DialogueCinema {
     private readonly sfx;

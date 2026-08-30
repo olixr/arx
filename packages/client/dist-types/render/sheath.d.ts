@@ -81,5 +81,5 @@ export declare function stowBlade(hand: 'main' | 'off', side: number, rake: numb
  * its own bearer's skull (user verdict) — never point the tip at the
  * head again.
  */
-export declare function stowBack(kind: 'bow' | 'staff' | 'great', side: number): StowSpot;
+export declare function stowBack(kind: 'bow' | 'staff' | 'great' | 'pole', side: number): StowSpot;
 //# sourceMappingURL=sheath.d.ts.map

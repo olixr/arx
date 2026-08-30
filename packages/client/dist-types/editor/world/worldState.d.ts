@@ -1,4 +1,4 @@
-import type { GeographyDef } from '@arx/content';
+import { type GeographyDef } from '@arx/content';
 import type { MapListEntry, WorldCell, WorldSnapshot } from '../api.js';
 /**
  * THE WORLD DOCUMENT — the World view's state: the geography DRAFT
@@ -51,6 +51,7 @@ export declare class WorldState {
     credits: number;
     calm: WorldSnapshot['calm'];
     claimRings: WorldSnapshot['claimRings'];
+    capitals: WorldSnapshot['capitals'];
     zones: MapListEntry[];
     poiDefs: WorldSnapshot['poiDefs'];
     /** Server-side advisory warnings from the last read/save. */
@@ -86,6 +87,8 @@ export declare class WorldState {
         grid: boolean;
         /** Claimed-hearth yards — the exclusion mask, drawn honest. */
         rings: boolean;
+        /** THE CAPITALS (strongholds Phase 6) — seats, states, and mask. */
+        capitals: boolean;
         /** The political map (factions Phase 6) — marches and counters. */
         standing: boolean;
         /** THE COUNTRY wash (lived-in-land Phase 5/6) — whose land is whose. */

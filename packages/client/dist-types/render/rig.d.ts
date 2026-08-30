@@ -2201,6 +2201,59 @@ export declare function drawCatLimb(ctx: CanvasRenderingContext2D, o: {
     paw?: string;
 }): void;
 /**
+ * THE EQUINE LIMB: a horse's leg is not a stroke — it is a muscled
+ * upper story over a bone-and-tendon lower story, and the break
+ * between them is the whole silhouette. Fore: the shoulder/forearm
+ * column tapering hard into the carpus (the "knee"), then the clean
+ * near-parallel CANNON down to a fetlock knot and a short sprung
+ * pastern. Hind: the deep GASKIN off the quarters into the
+ * high-riding HOCK — whose calcaneal point juts past the joint on
+ * the bend side, the one landmark that says horse from any band —
+ * then the same cannon story. The upper leg wears the COAT (only
+ * the lower leg ever wore socks); the fetlock and pastern wear the
+ * sock tone so the existing horn-block hoof caps a leg that darkens
+ * honestly toward the ground. Species-blind: any hoofed heavy can
+ * adopt it. Far legs step into shadow (the doctrine's far-pair law)
+ * so profile strides never merge.
+ */
+export declare function drawHorseLimb(ctx: CanvasRenderingContext2D, o: {
+    hipX: number;
+    hipY: number;
+    kx: number;
+    ky: number;
+    ex: number;
+    ey: number;
+    /** Upper-leg thickness in px (spec.legW × scale). */
+    w: number;
+    s: number;
+    hind: boolean;
+    /** Body coat (seed-jittered by the caller — legs match the barrel). */
+    coat: string;
+    /** Lower-leg tone below the fetlock (the sock). */
+    sock: string;
+    /** Far-side legs step into shadow so pairs never merge mid-stride. */
+    far: boolean;
+    hurt: boolean;
+    /** Winter shag: fetlock feathering (the garron). */
+    feather?: boolean;
+    /**
+     * Screen y of the belly line at this hip. The upper story CLIPS
+     * below it: the thigh is implied inside the barrel, and the box
+     * face owns every pixel above the belly — painted over it, the
+     * muscle read as a translucent body. The clip keeps the true hip
+     * root (mid-gallop folds emerge honestly) without face-paint.
+     */
+    clipY?: number;
+    /**
+     * |cos(facing)| — how side-on the body is. The gaskin and
+     * forearm are SAGITTAL masses: broad in profile, narrow head-on.
+     * Painted at profile width on the N/S bands they poked past the
+     * chest face as saddlebag lumps — the width breathes with the
+     * facing while the bone gauges below stay true.
+     */
+    horiz?: number;
+}): void;
+/**
  * The lynx head: a round feline skull wearing the THREE face reads —
  * tall triangular ears firing black TUFTS off their tips, the pale
  * RUFF chops framing the jaw like a layered beard, and slanted

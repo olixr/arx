@@ -15,6 +15,17 @@ export declare class Connection {
     constructor(handlers: ConnectionHandlers);
     connect(): void;
     get isOpen(): boolean;
+    /**
+     * THE LIVE WIRE's teardown: kill the socket NOW and report it closed,
+     * without waiting for the close handshake. A dead route rarely says
+     * goodbye — close() on a blackholed TCP can leave onclose unfired
+     * for minutes while the browser retransmits into the void, and the
+     * whole point of the watchdog is not to wait for that. Handlers
+     * detach first, so if the zombie socket's real close event ever does
+     * arrive it finds nobody listening and cannot double-fire the
+     * reconnect path.
+     */
+    abort(): void;
     send(msg: C2SMessage): void;
     close(): void;
 }

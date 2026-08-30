@@ -1,6 +1,7 @@
-import { ChunkStore, ExploredMask, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type ChargeInfo, type PetInfo, type InputFrame, type BuildOrient, type InvSlot, type ItemRoll, type DiscoveryWire, type QuestAvailWire, type QuestDoneWire, type QuestRewardsWire, type QuestWire, type RepStandingWire, type EquippedItem, type PartyMemberWire, type PartyRunWire, type S2CFx, type S2CPartyEvent, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
+import { ChunkStore, ExploredMask, type ChestKind, type EntityId, type EntityMeta, type EquipSlot, type BuffInfo, type ChargeInfo, type PetInfo, type InputFrame, type BuildOrient, type InvSlot, type ItemRoll, type KeyLore, type DiscoveryWire, type TrophyWire, type S2CPoiCleared, type QuestAvailWire, type QuestDoneWire, type QuestRewardsWire, type QuestWire, type RepStandingWire, type EquippedItem, type PartyMemberWire, type PartyRunWire, type S2CFx, type S2CPartyEvent, type SignInfo, type SkillXp, type StationType, type Vec2 } from '@arx/shared';
 import { type WorkStation } from '@arx/content';
-import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
+import type { AbilityDef, AbilitySlot, CompanionInfo, DangerAnchor, Look, PlaneWire } from '@arx/shared';
+import type { S2CArenaBoard, S2CArenaState } from '@arx/shared';
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
  * fire gate passes (the same mirrored gate the server applies), flown
@@ -106,6 +107,11 @@ export type InteractTarget = {
     open: boolean;
     gate: boolean;
 } | {
+    kind: 'candle';
+    tx: number;
+    ty: number;
+    lit: boolean;
+} | {
     kind: 'seat';
     tx: number;
     ty: number;
@@ -146,11 +152,33 @@ export interface Floaty {
     /** Font-size multiplier (crits go big, xp drips go small). */
     sizeMul?: number;
 }
+/**
+ * THE RISEN WORD: an interaction's answer standing in the world —
+ * "LOCKED" over the chest, "PACK FULL" over your head — so nobody has
+ * to read the corner log to learn why nothing happened. A separate
+ * lane from damage floaties: words live longer, rise slower, and obey
+ * the dedupe law (mashing the verb re-bumps the standing word instead
+ * of stacking copies into mush).
+ */
+export interface RisenWord {
+    x: number;
+    y: number;
+    word: string;
+    tone: 'deny' | 'note' | 'good';
+    bornAt: number;
+    /** Re-asks while alive; the renderer re-pops instead of stacking. */
+    bumpedAt: number;
+}
 export interface ChatLine {
     channel: 'local' | 'system' | 'xp';
     from?: string;
+    /** The speaker's entity, when the line was said aloud IN the world —
+     *  what lets THE SPOKEN AIR stand the words over the right head. */
+    eid?: EntityId;
     text: string;
 }
+/** One word-life — shared by the dedupe law and the renderer's prune. */
+export declare const WORD_LIFE_MS = 1400;
 /** A combat effect in flight (nova ring, telegraph, blast, reaction). */
 export interface ActiveFx {
     kind: S2CFx['kind'];
@@ -187,8 +215,21 @@ export interface GameEvents {
         item: string;
         roll: ItemRoll;
     }>): void;
-    /** The Riftgate answered an interact — open the key panel over these pack slots. */
-    onRiftgate?(keySlots: number[], partyRuns?: PartyRunWire[]): void;
+    /** The Riftgate answered an interact — open the key panel (keys come from the ring mirror). */
+    onRiftgate?(live?: {
+        seed: number;
+        tier: string;
+        power: number;
+    }, partyRuns?: PartyRunWire[]): void;
+    /** THE KEY RING's full mirror arrived — repaint whatever shows keys. */
+    onKeyRing?(keys: Array<{
+        id: number;
+        roll: ItemRoll;
+    }>): void;
+    /** THE KEY LEDGER's mirror arrived — repaint the ledger wing. */
+    onKeyLore?(known: KeyLore[]): void;
+    /** The Keywright's bench opened — raise the ledger with the forge lit. */
+    onKeyForgeOpen?(): void;
     /** A board's words arrived or changed — repaint whatever shows them. */
     onSignChanged?(tx: number, ty: number): void;
     /** Crossed into a dungeon — everything the entry banner tells. */
@@ -198,7 +239,25 @@ export interface GameEvents {
         tier: string;
         theme: string;
         power: number;
+        mods?: string[];
     }): void;
+    /** THE COURT FALLS: the run's champion is down — the run is cleared. */
+    onDungeonClear?(d: {
+        name: string;
+        sigil: string;
+        sec: number;
+    }): void;
+    /** THE SAND AND THE ROAR: the ringmaster's stakes board opened. */
+    onArenaBoard?(b: S2CArenaBoard): void;
+    /** The match's state turned a phase (state itself sits on game.arenaMatch). */
+    onArenaState?(s: S2CArenaState): void;
+    /**
+     * THE CROSSING: the body just moved to another plane. ClientGame has
+     * already dropped its own world state (chunks, prediction, entities,
+     * versions); this event is where the renderer, chart, and audio drop
+     * theirs and the veil covers the cut.
+     */
+    onPlane?(p: PlaneWire): void;
     onHit(hit: {
         x: number;
         y: number;
@@ -206,6 +265,8 @@ export interface GameEvents {
         isOwn: boolean;
         crit: boolean;
         backstab?: boolean;
+        /** Set on DoT pulses — the wound that ticked (tints the hurt edge). */
+        via?: 'burn' | 'bleed' | 'venom';
     }): void;
     onDeath(death: {
         x: number;
@@ -269,6 +330,7 @@ export interface GameEvents {
             kind: 'accept' | 'turnin';
         }>;
         shopChoices?: number[];
+        arenaChoices?: number[];
         voice?: {
             url: string;
             durMs: number;
@@ -319,6 +381,13 @@ export interface GameEvents {
     }): void;
     /** A LIVE first-ever discovery — the one trigger for the splash. */
     onDiscovery?(d: DiscoveryWire): void;
+    /**
+     * THE CHAMPION'S MARK: you stood among a broken camp's champions —
+     * the one trigger for the full-screen CLEARED ceremony.
+     */
+    onPoiCleared?(e: S2CPoiCleared): void;
+    /** A fresh victory banner was staked somewhere on the shard. */
+    onTrophyStaked?(t: TrophyWire): void;
     /** A LIVE quest ceremony — the ONLY trigger for banners and fanfare. */
     onQuestEvent?(e: {
         kind: 'accepted' | 'completed';
@@ -389,21 +458,62 @@ export declare class ClientGame {
     /** World-clock offset in ticks (dev /time); see sim/daylight. */
     timeOfs: number;
     inventory: InvSlot[];
+    /** THE KEY RING mirror — every dungeon key held, outside the pack. */
+    keyRing: Array<{
+        id: number;
+        roll: ItemRoll;
+    }>;
+    /** THE KEY LEDGER mirror — every door ever held, with margin notes. */
+    keyLore: KeyLore[];
     skills: SkillXp;
     /** Recipes known beyond the core set (server-owned; see 'recipes'). */
     knownRecipes: ReadonlySet<string>;
     /**
-     * THE CHART: persistent fog-of-war, seeded by the login snapshot and
-     * cleared locally with the shared deterministic disc — the server
-     * marks the identical cells, so no reveal ever travels the wire.
+     * THE WORLDS APART: the law of the plane the body stands on —
+     * ambience, cutaway, chart behavior, and fog persistence all read
+     * from here instead of any y-line. Set by the welcome and by every
+     * S2CPlane crossing.
      */
-    readonly explored: ExploredMask;
-    /** The per-run dungeon chart (y >= DUNGEON_MIN_Y) — never persisted. */
+    plane: PlaneWire;
+    /**
+     * THE CHART: persistent fog-of-war, ONE MASK PER PLANE (coordinates
+     * across planes legitimately overlap). Seeded by the login snapshot
+     * and cleared locally with the shared deterministic disc — the
+     * server marks the identical cells, so no reveal ever travels the
+     * wire. Scratch planes chart into dungeonExplored instead.
+     */
+    private readonly exploredByPlane;
+    /** The per-run scratch chart (rift planes) — never persisted. */
     readonly dungeonExplored: ExploredMask;
+    /** The named plane's persistent mask, materialized on first touch. */
+    exploredFor(planeId: string): ExploredMask;
+    /**
+     * The CURRENT plane's chart — the mask every reader (map, reveal)
+     * sees. Persistent planes read their own mask; scratch planes read
+     * the per-run chart. The getter keeps the one-mask call sites honest
+     * across every crossing.
+     */
+    get explored(): ExploredMask;
     /** The place ledger, keyed by discovery id. */
     readonly discoveries: Map<string, DiscoveryWire>;
+    /**
+     * THE CHAMPION'S MARK: every victory banner standing on the shard,
+     * by cell key. Whole-list replaced by the wire (the havens dialect);
+     * the renderer stakes a living standard at each anchor.
+     */
+    readonly trophies: Map<string, TrophyWire>;
+    /**
+     * Local fly-in clocks: banner id → performance.now() when its
+     * `fresh` cue arrived. Banners without an entry stand settled (a
+     * welcome-time roster never replays its ceremonies).
+     */
+    readonly trophyBorn: Map<string, number>;
     /** The one active waypoint (optimistic; server keeps the durable copy). */
-    waypoint: Vec2 | null;
+    waypoint: {
+        x: number;
+        y: number;
+        plane?: string;
+    } | null;
     /** Where the reader last fell — the spilled pack's skull on the
      *  chart. `until` is a local clock stamp built from the wire's
      *  duration; the server clears it on arrival or expiry. */
@@ -411,6 +521,26 @@ export declare class ClientGame {
         x: number;
         y: number;
         until: number;
+        plane?: string;
+    } | null;
+    /**
+     * THE SAND AND THE ROAR: the live match card, null when no card
+     * holds this soul. `deadlineAt` is a LOCAL clock (performance.now
+     * base) derived from the wire's remainMs duration — the HUD counts
+     * against it without ever trusting a wall clock off the wire.
+     */
+    arenaMatch: {
+        phase: S2CArenaState['phase'];
+        venue?: string;
+        name?: string;
+        round?: number;
+        rounds?: number;
+        deadlineAt: number | null;
+        foes?: number;
+        /** Set on a spectator-tagged state; the HUD self-clears when stale. */
+        specAt?: number;
+        /** Set when the wipe lands; the HUD holds the lost beat 2.6 s. */
+        wipeAt?: number;
     } | null;
     /** THE QUEST LEDGER: active quests by id (status 'ready' = turn in). */
     readonly quests: Map<string, QuestWire>;
@@ -458,6 +588,7 @@ export declare class ClientGame {
     readonly partyPos: Map<string, {
         x: number;
         y: number;
+        plane: string;
         at: number;
     }>;
     /** Bumped whenever fog, discoveries, or the waypoint change — map surfaces re-draw on it. */
@@ -484,6 +615,8 @@ export declare class ClientGame {
     ownBuilt: ReadonlySet<string>;
     /** Damage numbers floating up; pruned by the renderer. */
     readonly floaties: Floaty[];
+    /** Overhead interaction words (THE RISEN WORD); pruned by the renderer. */
+    readonly words: RisenWord[];
     /**
      * Projectiles that just ended flight (hit, expired, or left view) —
      * consumed by the renderer for impact bursts and stuck arrows.
@@ -498,15 +631,21 @@ export declare class ClientGame {
     readonly ownShots: OwnShot[];
     /**
      * Matched tracer → entity handoffs. The renderer captures the visual
-     * gap — position offset AND heading delta (v9) — on the entity's
-     * first draw and decays both together (~120ms), so the predicted
-     * flight STEERS onto the authoritative ray instead of snapping.
+     * gap on the entity's first draw and splits it by axis (v10, THE
+     * LEAD IS REPAID IN FLIGHT): the cross-track offset `ox/oy` and the
+     * heading delta `od` decay together in ~120ms — the v9 steer, nose
+     * leading the turn — while the along-track lead `along` is repaid
+     * LINEARLY over `repayMs` (the flight remaining at capture), so the
+     * spawn latency never reads as a brake-then-sprint; the shot flies a
+     * hair slow the whole way and lands exactly on the server's impact.
      */
     readonly projHandoffs: Map<number, {
         shot: OwnShot;
         ox: number;
         oy: number;
         od: number;
+        along: number;
+        repayMs: number;
         capturedAt: number;
     }>;
     /**
@@ -602,8 +741,21 @@ export declare class ClientGame {
     lessons: Record<string, number>;
     /** Answered Callings (server truth; Focus derives from skills). */
     callings: string[];
+    /** APPLIED ranks past I by id (callings-v2 Phase 4; absent = Rank I). */
+    callingRanks: Record<string, number>;
     /** Active consumable buffs (tonic/food) for the HUD chip row. */
     buffs: BuffInfo[];
+    /**
+     * THE SWING CHANNEL's live multiplier, mirrored off S2CBuffs so the
+     * prediction lanes pay the SAME recovery the server pays (absent on
+     * the wire = the trained 1). Never derived locally — the server's
+     * fold is the truth and this is its mirror.
+     */
+    swingMult: number;
+    /** THE STANDING SHELL: the own live ward total (0 = no dome). */
+    ownWard: number;
+    /** When the last standing ward crossed to nothing (0 = never). */
+    wardShatteredAt: number;
     /** performance.now() when the buffs snapshot arrived (chips count down). */
     buffsAt: number;
     /** Fires when the buff list changes (HUD refresh). */
@@ -632,6 +784,12 @@ export declare class ClientGame {
     onPet: (() => void) | null;
     /** Fires once per fresh tame: raise the naming card for this slot. */
     onPetCeremony: ((slot: number, currentName: string) => void) | null;
+    /** THE COMPANY YOU KEEP: the company mirror — every befriended friend. */
+    ownCompanions: CompanionInfo[];
+    /** Fires when the company changes (panel / chip refresh). */
+    onCompanions: (() => void) | null;
+    /** Fires once per fresh befriending: raise the naming card for this slot. */
+    onCompanionCeremony: ((slot: number, currentName: string) => void) | null;
     /** Fires when the local player commits a cast (FX + audio hooks). */
     onCastFx: ((slot: AbilitySlot, ab: AbilityDef) => void) | null;
     /**
@@ -678,10 +836,58 @@ export declare class ClientGame {
     get isDetected(): boolean;
     /** Weapons stowed on the body (own snapshot bit, server-owned). */
     get isSheathed(): boolean;
+    /**
+     * ONE LAW, TWO MIRRORS — the predicted sheathe state. The snapshot
+     * bit is a round trip stale; a fire mirror reading it would happily
+     * loose a tracer for the press the server spends DRAWING (THE
+     * SAFETY converts a sheathed combat press into a draw, no shot).
+     * Toggles are deterministic per press, so the mirror leads and the
+     * snapshot confirms: null = trust the server bit; a set value wins
+     * until the bit agrees (or the claim goes stale — a dropped frame —
+     * and the server bit takes back the truth).
+     */
+    private ownSheathed;
+    /** performance.now() when ownSheathed was last asserted. */
+    private ownSheathedAt;
+    /**
+     * No local swing/bolt/draw/cast until this input seq — the mirror of
+     * the server's drawLockUntilSeq, fed by the same three verbs (the
+     * sheathed combat press's auto-draw, and the swap beat). The server
+     * gates on this seq AND its own tick twin (ONE LAW, TWO CLOCKS);
+     * for a healthy 20Hz stream both expire on the same press. When a
+     * jitter catch-up briefly holds the server's tick floor past this
+     * mirror, the press rides the held bit / armBuffer a tick or two
+     * and the tracer marriage's ±2 window + angle fallback absorb it.
+     */
+    private drawLockUntilSeq;
+    /** The sheathe state the fire mirrors must judge by. */
+    private effectiveSheathed;
+    /**
+     * The server's weaponsAway gate, mirrored: stowed steel or a
+     * mid-draw lock refuses every fire mirror — no tracer, no predicted
+     * swing, no radial, exactly the presses the server refuses.
+     */
+    private weaponsAway;
+    /** The predicted sheathe truth, for UI consumers (the aim ring). */
+    sheathedNow(): boolean;
+    /**
+     * ONE LAW, TWO MIRRORS for the aim ring: true while the NEXT cast
+     * press would be refused (weapons away, cast freeze, a winding
+     * breath). The ring must not arm-and-swallow a press the server
+     * would refuse anyway — the refusal shape should be the same one
+     * every other lane shows.
+     */
+    castGateClosed(): boolean;
     /** Tap-to-move autopilot; cancelled by any manual movement input. */
     private autoPath;
     /** Drop entity to take the moment the auto-walk brings it in reach. */
     private pendingPickup;
+    /**
+     * THE CHOSEN HAND (looting v2): whether the walk-over vacuum serves
+     * this character. Mirrors the server's persisted truth (welcome
+     * carries it; setLootPref writes it optimistically).
+     */
+    lootAuto: boolean;
     /** Own hit-flash timer. */
     ownHurtUntil: number;
     ownHpPct: number;
@@ -690,6 +896,21 @@ export declare class ClientGame {
     /** Server-confirmed own facing (radians) — the seat-locked dir while
      *  mounted on furniture; the live aim everywhere else. */
     ownDirServer: number;
+    /**
+     * THE PREDICTED TRADE: performance.now() when the local swap verb
+     * last fired with something waiting at the back; 0 = never. The
+     * renderer stows the own body through the beat's first half off this
+     * clock, and main.ts hangs the stow/draw voice on its edge. Cosmetic
+     * only — the server's exchange and beat lock are the authority.
+     */
+    ownSwapAt: number;
+    /**
+     * True through the first half of the local swap beat — the outgoing
+     * weapon riding to its rest. The back half is the standing sheathe
+     * ease falling home with the incoming set (the equip echo lands
+     * while the hand is at the hip, so the trade reads as one motion).
+     */
+    swapStowing(now?: number): boolean;
     /** Dodge FX hook (the predictor's onDodge is owned internally). */
     onDodgeFx: ((x: number, y: number, mx: number, my: number) => void) | null;
     /**
@@ -714,6 +935,24 @@ export declare class ClientGame {
     private pingTimer;
     private reconnectDelay;
     private stopped;
+    /**
+     * THE LIVE WIRE: performance.now() of the last byte the server spoke
+     * — any message, snapshot, or chunk. In-game a healthy wire is never
+     * silent longer than one tick (the own body ships in every snapshot,
+     * THE QUIET WIRE notwithstanding), so this clock going stale IS the
+     * connection dying — including the death TCP never reports: a route
+     * change or dropped Wi-Fi leaves the socket reading "open" for
+     * minutes while the world stands frozen at its last sample. The
+     * watchdog in update() reads this and forces the reconnect the
+     * close event would never have delivered.
+     */
+    private lastS2CAt;
+    /**
+     * Arrival stamp of the previous snapshot — the clock discipline's
+     * burst detector (see handleSnapshot): back-to-back arrivals are a
+     * stalled queue draining, not evidence about the remote clock.
+     */
+    private lastSnapArrivalAt;
     constructor(input: InputManager, events: GameEvents);
     /**
      * THE OVERCHARGE: true once the held draw has pulled past full into
@@ -755,8 +994,11 @@ export declare class ClientGame {
     slotAbilityDef(slot: AbilitySlot): AbilityDef | null;
     /** Seat a technique on Q (slot 0) or R (slot 2); server validates. */
     sendTechnique(ability: string, slot: 0 | 2): void;
-    /** Answer or set down a Calling (server enforces THE FOCUS LAW). */
-    sendCalling(calling: string, on: boolean): void;
+    /**
+     * Answer, deepen, or set down a Calling (server enforces THE FOCUS
+     * LAW and the rank entitlement). `rank` = the applied rank to hold.
+     */
+    sendCalling(calling: string, on: boolean, rank?: number): void;
     /** Remaining cooldown fraction for a hotbar slot, 0 = ready. */
     abilityCdFraction(slot: AbilitySlot, now?: number): number;
     /**
@@ -765,6 +1007,40 @@ export declare class ClientGame {
      * server's authoritative version lands where we already are.
      */
     private trackOwnCasts;
+    /**
+     * THE CROSSING, mirrored: the movement a cast carries, for the
+     * predictor. Every transport art is predicted now — dashes and
+     * charges walk the same seq-window road the server's transit
+     * walks, blinks leave through the SAME shared teleport resolver,
+     * and a road released on an aimed ring travels exactly the
+     * clamped distance the server will (one reach ruler, one clamp
+     * law). A locked charge's live curve toward a moving mark stays
+     * server-side — the straight-line mirror is the recorded bounded
+     * drift and folds through the error offset.
+     */
+    private castImpulse;
+    /**
+     * THE PREDICTED TRADE: the swap's choreography starts on the press
+     * edge (the PREDICTED BLOW insight — feed the stow early, let the
+     * standing sheathe ease play it), and the mirror clocks clamp
+     * FORWARD so the predicted body never swings a blow the server's
+     * beat lock will refuse. Fires only when the local pack knows
+     * something waits at the back — the empty press stays silent here
+     * and the server speaks the refusal. Cosmetic on mispredict: a
+     * stale local view plays a beat over nothing and touches no
+     * authority. Dodge stays free through the beat, like the server.
+     */
+    /**
+     * THE SAFETY, mirrored — the sheathe toggle and the auto-draw. The
+     * server flips `sheathed` on the Sheathe press edge and converts a
+     * sheathed combat press into a DRAW behind DRAW_LOCK_TICKS; the
+     * mirror plays both on the same edges so no fire mirror ever
+     * predicts a shot for a press the server spends pulling steel.
+     * Runs FIRST in the frame pipeline (the server reads its buttons in
+     * this order too: sheathe → swap → auto-draw → casts → attacks).
+     */
+    private trackOwnSheathe;
+    private trackOwnSwap;
     /**
      * Local mirror of the server's draw state machine, driven by the same
      * input frames — gives zero-latency draw/release feedback while the
@@ -822,6 +1098,27 @@ export declare class ClientGame {
     private settledAnchors;
     /** Merge the server's haven triples with the settled anchors. */
     private setHavens;
+    /**
+     * THE CROSSING's reset work (docs/planes-plan.md §2.4), shared by
+     * BOTH doors — the 'plane' message and a reconnect welcome that
+     * wakes on a different plane than the one on screen. Everything
+     * streamed before this moment belongs to a space that no longer
+     * surrounds the player: drop it all and let the fresh plane stream
+     * in behind the veil. POST-SHIP AUDIT: ephemeral matter is world
+     * matter too — a queued death, a floating word, a spent shaft all
+     * carry old-plane coordinates.
+     *
+     * `at` is the carried standing point; the welcome door passes none
+     * (welcome carries no coordinates — the own body's 'enter' seats
+     * the predictor, exactly as every welcome always has).
+     */
+    private crossPlane;
+    /**
+     * True once a welcome has seated this client in a world — the gate
+     * that keeps THE SECOND DOOR shut over the login screen (a first
+     * welcome's caches are empty; no veil is wanted there).
+     */
+    private stoodInWorld;
     private handleMessage;
     private handleChunk;
     /** Wall/door flags per streamed chunk key — the interiors gate. */
@@ -891,6 +1188,14 @@ export declare class ClientGame {
      * The range is wider than arm's reach (2.2) so the words arrive as
      * you walk up rather than when you bump the post.
      */
+    /**
+     * The nearest standing victory banner within approach range, for
+     * the champions plaque — the nearestSign law applied to trophies
+     * (reading is passive, never competes for the interact slot; the
+     * range is generous because the mark is meant to be read from the
+     * road). Surface-plane only: the banners stand on the overworld.
+     */
+    nearestTrophy(radius?: number): TrophyWire | null;
     nearestSign(radius?: number): SignInfo | null;
     /** Rewrite one of your own boards (the server judges ownership). */
     editSign(tx: number, ty: number, title: string, lines: string[]): void;
@@ -918,7 +1223,7 @@ export declare class ClientGame {
     /** Send an interact intent for a specific world tile. */
     interact(tx: number, ty: number): void;
     /** Use (equip/eat) the item in an inventory slot. */
-    useSlot(slot: number): void;
+    useSlot(slot: number, stow?: boolean, off?: boolean): void;
     /** Set one fist's grip style (optimistic; server confirms). */
     setCarryStyle(style: 'normal' | 'rogue', hand?: 'main' | 'off'): void;
     unequip(slot: EquipSlot): void;
@@ -935,15 +1240,50 @@ export declare class ClientGame {
      * never a lie — it simply keeps offering until the offer takes.)
      */
     private petOfferReady;
+    /**
+     * THE ASKING SHOWN — the overhead lure badge's one truth source.
+     * While Gentle the Wild is seated, a wild living tamable wears the
+     * very treat it wants above its head, marked with what the words in
+     * the chat could only spell out: an amber bang when its wild level
+     * still outreaches the keeper's beastcraft (fetching the treat
+     * would not help yet), a red cross when the treat is missing from
+     * the pack, a green check when the asking would land. Little
+     * keepers read the picture, never the refusal line.
+     */
+    tameBadge(defId: string, level: number | undefined, ownerEid: number | undefined): {
+        lure: string;
+        state: 'ready' | 'lure' | 'level';
+    } | null;
     /** Is the bond moment open for this stall? (Counts down locally.) */
     petBondReady(slot: number): boolean;
-    /** The walking companion's live body, if it is spawned right now. */
-    ownPetEid(): EntityId | null;
     /**
-     * Your own companion near this tile's center — the deliberate pat
+     * THE OFFERED HAND — the overhead treat badge's one truth source
+     * (the tameBadge law, spoken for company): a wild companion body
+     * wears the very morsel it wants, green-checked when the treat is
+     * packed and a place stands open, red-crossed when the treat is
+     * missing. No level state exists — the befriending has no ladder.
+     */
+    befriendBadge(defId: string, ownerEid: number | undefined): {
+        lure: string;
+        state: 'ready' | 'lure';
+    } | null;
+    /** The walking beast's live body, if it is spawned right now.
+     *  (A befriended companion also wears my ownerEid — the `company`
+     *  mark is what keeps the two heels from answering for each other.) */
+    ownPetEid(): EntityId | null;
+    /** THE COMPANY YOU KEEP: the afield companion's live body, if any. */
+    ownCompanionEid(): EntityId | null;
+    /**
+     * Your own companion (befriended) near this tile's center — the
+     * same deliberate pat channel as the beast below.
+     */
+    companionAtTile(tx: number, ty: number): EntityId | null;
+    /**
+     * Your own beast near this tile's center — the deliberate pat
      * channel (THE QUIET HEEL: the body is the button, not the prompt).
      */
     petAtTile(tx: number, ty: number): EntityId | null;
+    private friendAtTile;
     /** The drop nearest this tile's center (touch taps land on tiles). */
     lootAtTile(tx: number, ty: number): EntityId | null;
     /** Where a ground drop lies, if it is still in view. */
@@ -961,6 +1301,15 @@ export declare class ClientGame {
     /** Take a specific ground drop (server validates reach and claim). */
     pickup(eid: EntityId): void;
     /**
+     * ONE SWEEP, ONE ANSWER: take everything within reach on one
+     * message — the server runs the sweep and coalesces the refusals.
+     */
+    takeAll(): void;
+    /** THE CHOSEN HAND: set the walk-over preference (persisted). */
+    setLootPref(auto: boolean): void;
+    /** Whether a walk-and-take errand (ONWARD, far click) is in flight. */
+    get hasPickupErrand(): boolean;
+    /**
      * Click a distant bag: auto-walk toward it and take exactly that
      * bag on arrival — not whatever the walk-over vacuum happens to
      * cross first. Manual movement input cancels the errand.
@@ -972,6 +1321,11 @@ export declare class ClientGame {
     craft(recipe: string, qty: number): void;
     /** THE UNMAKING: break the gear in a pack slot down for its dust. */
     unmakeSend(slot: number): void;
+    /**
+     * THE BULK BREAKING: the marked batch comes apart as ONE working —
+     * one message, one payout, one voice line (all or nothing serverside).
+     */
+    unmakeManySend(slots: number[]): void;
     /** SUNDERING: draw the working back out of a pack slot's gear. */
     sunderSend(slot: number, worn?: EquipSlot, seat?: 'ward' | 'art'): void;
     /** Set the tools down: stop the running craft batch, keeping what's made. */
@@ -984,6 +1338,13 @@ export declare class ClientGame {
     petRename(slot: number, name: string): void;
     /** A stable-door act — the server re-proves the pen tile. */
     stableOp(op: 'heel' | 'stable' | 'release', slot: number): void;
+    /** THE THREE COLLARS: set a stall's slotted arts whole — the
+     *  server re-proves repertoire, budget, and the fight gate aloud. */
+    petArts(slot: number, arts: string[]): void;
+    /** THE COMPANY YOU KEEP: a company-roster act — honored anywhere. */
+    companionOp(op: 'heel' | 'home' | 'part', slot: number): void;
+    /** Name (or rename) a kept companion — the server judges. */
+    companionRename(slot: number, name: string): void;
     /** Advance the current dialogue beat (the server owns the walk). */
     dialogueAdvance(): void;
     /** Answer the current dialogue question by choice index. */
@@ -1005,6 +1366,10 @@ export declare class ClientGame {
     partyKick(name: string): void;
     partyDisband(): void;
     partyJoinRun(name: string): void;
+    /** THE SAND AND THE ROAR: buy a card off the open stakes board. */
+    arenaQueue(match: string): void;
+    /** Walk away from the claim (muster cancel or mid-card forfeit). */
+    arenaLeave(): void;
     /**
      * Fellows the wayfinder may point at: party members with a fresh
      * ticker position, self excluded. Entries older than two beats are
@@ -1014,6 +1379,7 @@ export declare class ClientGame {
         name: string;
         x: number;
         y: number;
+        plane: string;
     }>;
     /**
      * The players standing inside our interest window right now, nearest
@@ -1029,8 +1395,14 @@ export declare class ClientGame {
     invMove(from: number, to: number, merge?: boolean): void;
     /** Drop a pack slot onto the ground where you stand. */
     dropSend(slot: number, qty: number): void;
-    /** Turn the dungeon key in this pack slot — only heard at a riftgate. */
-    useKeySend(slot: number): void;
+    /** Turn a key by ring id — only heard at a riftgate. */
+    useKeySend(key: number): void;
+    /** Set a key from the ring down at your feet (the trade verb). */
+    keyDropSend(key: number): void;
+    /** Write (or clear) the margin note on a ledgered door. */
+    keyLabelSend(seed: number, label: string | undefined): void;
+    /** Pay the Keywright to cut a remembered door again. */
+    keyForgeSend(seed: number): void;
     /** Confirm character creation (optimistic — the server locks it). */
     setLookSend(look: Look): void;
     shopSend(op: 'buy' | 'sell', item: string, qty: number, slot?: number, shop?: string): void;
@@ -1053,6 +1425,15 @@ export declare class ClientGame {
     private targetInterpDelay;
     /** Server-timeline timestamp remote entities should be rendered at. */
     renderTime(): number;
+    /**
+     * THE LIVE WIRE, read aloud: milliseconds since the server last
+     * spoke, while we believe ourselves in-game on an open socket — 0
+     * whenever that belief doesn't hold (login, reconnect, shutdown).
+     * The HUD reads this to name a stall the moment it starts
+     * (~1.5s), well before the 5s watchdog rules the wire dead: the
+     * frozen world should never be anonymous.
+     */
+    wireSilenceMs(now?: number): number;
     /**
      * Server-NOW estimate — the projectile timeline. Arrows and bolts
      * render extrapolated to where the server actually HAS them, not

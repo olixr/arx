@@ -34,7 +34,75 @@ declare const RANGES: {
 };
 export type SoundRange = keyof typeof RANGES;
 /**
- * Procedural WebAudio SFX — no audio files, everything synthesized.
+ * THE RECORDED SHELF — mastered one-shot stings in /public/sfx, the
+ * fourth playback idiom beside synthesized SFX, streamed tracks, and
+ * voice: fetched once, decoded once, held warm for the session (the
+ * shelf is a handful of short stings, not a library). Values are
+ * per-sample loudness trims normalizing the shelf to its quietest
+ * sample (EBU R128 integrated, ffmpeg ebur128: −17.8 LUFS reference —
+ * re-measure when samples are added or replaced).
+ *
+ * Wired today: `level_up` (the skill herald), `poi_discovery` and
+ * `stab_calm_1` (the discovery ceremony's voices), `poi_cleared`
+ * (THE CHAMPION'S MARK banner), the three `stab_dramatic` dread
+ * stings (rotating — hostile-camp discoveries ONLY since the
+ * unprompted-sting retirement), the `day_to_night`/`night_to_day`
+ * seam stingers (THE
+ * SKY'S SEAM in the main loop), `friend_alert` (the social ledger's
+ * ping), the henyard pair (`chicken_cluck` + the `chicken_chatter`
+ * phrase table, spatial via THE HENYARD SPEAKS), and the five
+ * `step_grass` field recordings (footstep('grass') round-robin).
+ * The rest sit ready for future moments — see each entry's note.
+ *
+ * Trims above 1 are honest normalization too: several recordings
+ * arrive mastered soft (owls, piano stabs) and are lifted to the
+ * −17.8 reference. Every boost was peak-checked against its file's
+ * true peak — with SAMPLE_LEVEL's seat no boosted sample can clip.
+ */
+declare const SAMPLE_TRIM: {
+    readonly level_up: 0.6;
+    readonly poi_discovery: 0.9;
+    readonly poi_cleared: 1.2;
+    readonly alert_1: 0.99;
+    readonly alert_2: 0.69;
+    readonly notification_success: 0.72;
+    readonly success_1: 0.81;
+    readonly stab_calm_1: 0.47;
+    readonly stab_dramatic_1: 0.72;
+    readonly stab_dramatic_2: 0.67;
+    readonly stab_dramatic_3: 0.84;
+    readonly ambient_hit_1: 0.88;
+    readonly ambient_hit_2: 1.51;
+    readonly ambient_hit_3: 3.24;
+    readonly day_to_night: 0.73;
+    readonly night_to_day: 0.66;
+    readonly friend_alert: 0.58;
+    readonly chicken_cluck: 0.94;
+    readonly chicken_chatter: 1.76;
+    readonly broadcast_fanfare: 0.62;
+    readonly notify_soft_1: 1.1;
+    readonly notify_soft_2: 1.16;
+    readonly notify_soft_3: 1.19;
+    readonly warn_soft_1: 1.12;
+    readonly whistle_alert_1: 2.21;
+    readonly notify_bleep_1: 0.83;
+    readonly teleport_whoosh: 0.9;
+    readonly thunder_rumble: 1.53;
+    readonly water_splash: 2.2;
+    readonly water_splash_big: 1.2;
+    readonly logo_reveal: 0.33;
+    readonly step_grass_1: 1;
+    readonly step_grass_2: 1;
+    readonly step_grass_3: 1;
+    readonly step_grass_4: 1;
+    readonly step_grass_5: 1;
+};
+export type SampleName = keyof typeof SAMPLE_TRIM;
+/** The shelf's roster, for the sound lab and future pickers. */
+export declare const SAMPLE_NAMES: SampleName[];
+/**
+ * Procedural WebAudio SFX — synthesized voices, plus THE RECORDED
+ * SHELF: a small set of mastered one-shot stings (see SAMPLE_TRIM).
  * Kept short and soft; a local family server doesn't need ear-splitters.
  * Every sound rides the engine's sfx bus, which carries the warmth
  * low-pass, the glue compressor, and a touch of the shared room —
@@ -72,6 +140,28 @@ export declare class Sfx {
     spatial(at: WorldAt | null | undefined, range: SoundRange, body: () => void): void;
     /** Browsers require a user gesture before audio can start. */
     unlock(): void;
+    /** Decoded samples, held for the session. */
+    private sampleBuf;
+    private sampleLoading;
+    /** The grass steps' round-robin cursor (random start per session). */
+    private grassStepIdx;
+    /** Fetch + decode a sample ahead of its moment. Failure stays quiet. */
+    warmSample(name: SampleName): void;
+    /**
+     * Play a recorded one-shot from the shelf. Returns true if the
+     * recording sounded; false warms it for next time so the caller can
+     * fall back to its synth voice — the shelf never delays a moment.
+     * Flat by default (UI and self feedback); inside `spatial()` it
+     * rides the emitter like every other voice.
+     *
+     * `win` plays only a window of the buffer (offset + duration in
+     * source seconds) under a short sin ramp at each edge, so a phrase
+     * dealt out of a longer field bed never starts or ends on a click.
+     */
+    sample(name: SampleName, volume?: number, rate?: number, win?: {
+        at: number;
+        dur: number;
+    }): boolean;
     private get ctx();
     private tone;
     private noise;
@@ -89,6 +179,14 @@ export declare class Sfx {
     chop(): void;
     /** A stem snaps free of the plant: a leafy brush with a soft pop. */
     forage(): void;
+    /** The joiner's mallet taps the piece home: a woody knock, rounder
+     *  and lighter than the axe's bite — furniture being made, not
+     *  timber being felled. Serves the bench AND the building site. */
+    benchKnock(): void;
+    /** The saw draws through the kerf: a short fibrous rasp — banded
+     *  noise with a woody undertone, no ring (steel in wood, never
+     *  steel on steel). */
+    sawRasp(): void;
     /** Pick meets rock: a hard stony knock with a metallic tick on top. */
     mineClink(): void;
     /** A mined-out node collapses: low crunch + settling stone clatter. */
@@ -215,6 +313,13 @@ export declare class Sfx {
     /** A locked door refusing: two dull knocks and the hasp's rattle. */
     doorRattle(): void;
     /**
+     * THE KEPT FLAME: a wick taking (the strike's soft pip and the
+     * flame's first warm breath) or dying (one puffed breath, the
+     * faintest ember tick). The quietest verb in the game on purpose —
+     * a candle is mood, never an event.
+     */
+    candleFlip(lit: boolean): void;
+    /**
      * A blow landing on a durable prop without finishing it: one solid
      * woody knock and a short splinter spray — the sound of progress.
      */
@@ -242,6 +347,13 @@ export declare class Sfx {
      * — raiders don't own good horns.
      */
     warHorn(): void;
+    /**
+     * THE COUNT SPEAKS — one felt drum per closing second of an arena
+     * clock (the last five of a muster or breather): a low timpani
+     * touch under a tight leather slap, rising a shade as the gate
+     * nears — the beat the stands stamp their feet to.
+     */
+    arenaCount(secs: number): void;
     /** Stepping up to a station: a wooden tap and the tools shifting. */
     stationOpen(): void;
     /** Parchment unrolling — the skills scroll, the blueprint sheaf. */
@@ -322,6 +434,19 @@ export declare class Sfx {
      * reads as THIS bird here, not the far chorus.
      */
     birdChip(): void;
+    /** The chatter bed's phrase deal cursor (random start per session). */
+    private chickenPhraseIdx;
+    /**
+     * THE HENYARD SPEAKS: one voice from the yard — either the clean
+     * single cluck or a phrase dealt from the 41-second field bed of
+     * hen chatter (CHICKEN_PHRASES, cut points measured against the
+     * recording's own silences), with a breath of rate wobble so the
+     * flock never repeats a waveform. Ambient by law: no synth
+     * fallback — a cluck the shelf can't sound yet simply doesn't
+     * happen, and nobody misses a sound that was never scheduled.
+     * Always called inside `spatial()` from the henyard scheduler.
+     */
+    chicken(): void;
 }
 export {};
 //# sourceMappingURL=sfx.d.ts.map

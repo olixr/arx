@@ -20,7 +20,7 @@
  * ceremonies, not place ceremonies.
  */
 export interface HeraldFacts {
-    /** Danger pips: this many lit of five. Absent = no pips. */
+    /** Danger pips: this many lit of the full ladder. Absent = no pips. */
     tier?: number;
     /** Plain notes, spoken in a row with quiet separators. */
     notes: string[];

@@ -14,6 +14,12 @@ export declare function maskBitsToAlpha(bytes: Uint8Array, out: Uint8ClampedArra
  */
 export declare class FogLayer {
     private readonly regions;
+    /** Reusable cell-resolution composite — regions land here unsmoothed
+     *  so the one scaled blit to screen has no interior edges to bleed. */
+    private readonly compose;
+    /** THE CROSSING: region canvases are (rx,ry)-keyed on one plane —
+     *  a plane switch drops them whole. */
+    clear(): void;
     regionCanvas(mask: ExploredMask, rx: number, ry: number, version: number): HTMLCanvasElement | null;
     /**
      * Paint the coverage mask for the visible span into `ctx` (white

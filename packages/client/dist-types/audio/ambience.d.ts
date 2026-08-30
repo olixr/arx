@@ -4,11 +4,18 @@
  * disappear from attention within a minute and leave a hole if muted.
  *
  * Layers, all crossfaded continuously by zone weight and clock:
- *  - LEAF RUSTLE (the "wind"): a GRANULAR texture — a pre-rendered
- *    stereo loop of hundreds of overlapping micro-grains (each a
- *    15-80ms flutter), so the sound flickers like foliage instead of
- *    washing like water. Gated by the squared gust curve of the SAME
- *    wind field the grass and trees bend to; silent between gusts.
+ *  - LEAF RUSTLE (the "wind"): a REAL RECORDING — aspen foliage at
+ *    the edge of Białowieża Forest (freesound #381717 by urupin,
+ *    CC0), its calmest 14 seconds cut into a seamless loop
+ *    (public/sfx/leaf_rustle_loop.mp3), fetched and decoded async
+ *    with the old synthesized grain loop standing in only until the
+ *    recording arrives. Ruled twice on synthesis (v1 micro-grains =
+ *    paper bag, v2 smooth grains = white noise): this voice is a
+ *    field recording now, full stop — real leaves are the only
+ *    thing that sounds like real leaves. Gated by the squared gust
+ *    curve of the SAME wind field the grass and trees bend to;
+ *    silent between gusts, so the recording supplies the TEXTURE
+ *    and the field supplies the WEATHER.
  *    THE BAN (two user rejections): NO continuous filtered-noise bed
  *    may ever play, in any band — a smooth gain envelope on noise
  *    reads as waves crashing, full stop. Granular or nothing.
@@ -28,8 +35,16 @@
  *    sounds must soothe, never nag.
  *  - CAVE (underground): a barely-there low rumble plus echoing
  *    drips; the ambience bus reverb makes each drip a cavern.
- *  - TOWN: a distant smithy tink now and then by day — the sound of
- *    other lives being lived somewhere behind the houses.
+ *  - TOWN: a far-off dog somewhere behind the houses now and then by
+ *    day — the sound of other lives being lived. (The smithy tink
+ *    that held this seat was removed by user verdict.)
+ *  - OWL (night, wild): the low call off in the dark, rare and far —
+ *    the calmest thing the night says. Since 08-17 the voice deals
+ *    from a pool: two REAL owl recordings (public/sfx/owl_night_*.mp3,
+ *    fetched + decoded async, per-file gains matching their measured
+ *    loudness) and the original synthesized four-note call, no pick
+ *    repeated back-to-back. The synth owl also stands in whole until
+ *    the recordings decode — the first night is never silent.
  *  - FALLING WATER (near a waterfall): a calm pink-noise roil in two
  *    legs — a body whose lowpass opens as the listener approaches
  *    (distance darkens a fall long before it silences it) and a low
@@ -66,15 +81,27 @@ export declare class AmbienceSystem {
     private nextBirdAt;
     private nextCricketAt;
     private nextDripAt;
-    private nextTownAt;
+    private nextDogAt;
     private nextDoveAt;
     private nextPeckAt;
+    private nextOwlAt;
     private portalGain;
     private nextPortalMoodAt;
     private fallBody;
     private fallRumble;
     private fallLp;
     private fallPan;
+    /** The synth rustle standing in until the recorded loop decodes. */
+    private rustleSynth;
+    /**
+     * The recorded owl calls, decoded async like the rustle loop.
+     * Paired with a per-file gain: the two recordings arrive mastered
+     * ~15 dB apart (−11.7 / −26.9 LUFS) and must land equally far off
+     * in the dark.
+     */
+    private owlCalls;
+    /** Last owl voice dealt (index; owlCalls.length = the synth call). */
+    private owlLastPick;
     /** Debug mirrors for live verification. */
     gates: {
         wind: number;
@@ -84,6 +111,13 @@ export declare class AmbienceSystem {
         portal: number;
         fall: number;
     };
+    /**
+     * Dev lever (soundlab.html): when set, stands in for the wind
+     * field's gust scalar (0..1) so the rustle texture can be
+     * auditioned on demand instead of waiting on a natural gust.
+     * The game never sets it.
+     */
+    devWindOverride: number | null;
     constructor(engine: AudioEngine);
     /**
      * `portalNear` is 0..1 closeness to the nearest Riftgate (0 beyond
@@ -94,11 +128,30 @@ export declare class AmbienceSystem {
     update(x: number, y: number, w: ZoneWeights, hours: number, tSec: number, portalNear?: number, fall?: FallEar): void;
     private build;
     /**
-     * Pre-render the leaf texture: white noise multiplied by a granular
-     * envelope — ~55 overlapping sin²-windowed grains per second, each
-     * 20-80ms with squared-random amplitude (many soft, few loud), wrapped
-     * at the loop seam. The chaotic 8-25 Hz amplitude flicker this makes
-     * is what separates leaves from water; a smooth envelope cannot.
+     * Fetch + decode the recorded aspen loop and seat it in the synth
+     * loop's place. SILENCE IS VALID: any failure simply leaves the
+     * synth fallback playing — no throw escapes into the frame loop.
+     */
+    private loadRustleLoop;
+    /**
+     * Fetch + decode the recorded owl calls. Each failure stays quiet
+     * on its own — one dead file still leaves the other recording and
+     * the synth call in the deal.
+     */
+    private loadOwlCalls;
+    /**
+     * Pre-render the SYNTH leaf texture — since v3 only the stand-in
+     * while the recorded loop decodes (and the net-failure fallback).
+     * The first build's 20-80ms micro-grains flickering to silence
+     * read as a paper bag scrunching (user verdict): fast, deep
+     * amplitude flicker on bright noise IS crinkle. What a gust through leaves
+     * actually does is BREATHE — so this loop is long (120-350ms),
+     * heavily overlapped sin²-windowed grains riding OVER a floor
+     * (the texture undulates, it never blinks), on pink-tinted noise
+     * so the energy leans dark, with two slow whole-loop swells
+     * (seam-safe sine multiples, phase-offset per channel) letting
+     * the canopy inhale and exhale. Decorrelated left/right. The
+     * paper-bag law: no fast bright flicker in this voice, ever.
      */
     private makeRustleBuffer;
     /**
@@ -134,7 +187,32 @@ export declare class AmbienceSystem {
      * inside the gate. Panned wide at random; louder the closer you are.
      */
     private portalMood;
-    /** A far-off hammer on a far-off anvil: the village at work. */
-    private townTink;
+    /**
+     * A dog somewhere behind the houses — soft far-off barks, low-passed
+     * to distance. Each "wuff" is a pitch-dropping saw pair (a few cents
+     * apart for the throat's roughness) with a sharp attack; the pattern
+     * varies — one wuff, a quick ruff-ruff, or a short string — so the
+     * same dog never says the same thing twice.
+     */
+    private dogBark;
+    /**
+     * The night owl's moment: deal one voice from the pool — the two
+     * recordings and the synth four-note call — never the same pick
+     * twice running. A recording plays seated exactly like the synth
+     * owl does: panned somewhere off in the trees, darkened by a
+     * lowpass when it's far, quieter still at distance; the ambience
+     * bus's shared room carries the rest of the night around it.
+     */
+    private owlCall;
+    /**
+     * An owl off in the dark — the low four-note call: hoo… h'hoo…
+     * hoo, hoooo. Soft-attacked sines settling slightly flat through a
+     * dark filter, a breath of vibrato on the held last note. Rare and
+     * far by design: the parliament roosts out there, and hearing one
+     * should feel like the night noticed you. Since 08-17 one voice of
+     * three in the owlCall deal (and the whole voice before the
+     * recordings decode).
+     */
+    private owlHoot;
 }
 //# sourceMappingURL=ambience.d.ts.map

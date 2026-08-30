@@ -43,8 +43,8 @@ export declare class Camera {
     /**
      * THE DEVICE GRID: the real pixel lattice belongs to the BACKING
      * STORE, not CSS space. The context is scaled by the (possibly
-     * FRACTIONAL) devicePixelRatio — adaptive resolution steps it in
-     * halves (2 -> 1.5), browser zoom mints 1.25/1.75 — so a CSS-integer
+     * FRACTIONAL) devicePixelRatio — a browser zoom mints 1.25/1.75, and
+     * the rig's dprOverride can name any value — so a CSS-integer
      * coordinate can land exactly on a half device pixel. Two abutting
      * fills that "share" such an edge each get partial AA coverage of
      * the same pixel column, and the double-blend prints a uniform
@@ -229,6 +229,21 @@ export declare class Renderer {
         zoom: number;
     } | null;
     /**
+     * THE REEL ROOM's second seam (src/reel): how much of the game's own
+     * chrome the frame is allowed to carry. A capture wants the bodies
+     * and the ground, not a dashboard floating over them — a trailer
+     * that shows "Goblin (5)" in 12px sans over a swing has stopped
+     * being a trailer.
+     *
+     *   'all'   — every label and gauge. The player's frame. (Default.)
+     *   'drama' — no nameplates, no gauges, but the world still SPEAKS:
+     *             damage rises, risen words stand, the ceremonies play.
+     *   'none'  — the bare world.
+     *
+     * Cleared with the shot, exactly like cameraOverride.
+     */
+    chrome: 'all' | 'drama' | 'none';
+    /**
      * The editor's one drawing seam: called at the very end of the
      * frame (over the vignette) with the settled camera's transforms.
      * The renderer never learns editor concepts; the editor never
@@ -296,6 +311,58 @@ export declare class Renderer {
     private readonly olObjIds;
     private olObjSeq;
     private readonly baked;
+    /**
+     * THE GROUND CACHE LEARNS THE BYTE LAW.
+     *
+     * Round 10 established it for the band ledger — a cache of canvases
+     * is bounded by BYTES, never by slots, because a slot's cost is not
+     * a constant. `baked` never learned it. It was capped at 80 entries
+     * (28 at the hi-res tier), and a chunk canvas is 4.3MB at px=32 and
+     * 17MB at px=64 — so the same "80" meant 341MB on flat ground at one
+     * zoom and over a gigabyte on terraced ground at another, with every
+     * `lifted` elevation layer a full-size canvas of its own on top.
+     * Nothing weighed them, so nothing could see that.
+     *
+     * And none of the three ways a chunk canvas left this map returned
+     * it: the re-bake swap overwrote `entry.canvas`, the distance evict
+     * was a bare `delete`, and the plane crossing was a bare `clear()`.
+     * Measured over five minutes of travel, that lane alone allocated
+     * and discarded 1.5GB — 65% of every canvas byte the client mints,
+     * from 1.5% of its canvas calls. The JS heap never shows it (canvas
+     * backing store is not heap), which is why every counter read
+     * healthy while the compositor wore the cost.
+     *
+     * Chunk canvases are the one lane where reuse is exact: every canvas
+     * of a tier is the same size, so a retired one is always the right
+     * shape for the next bake and the free list needs no fit search.
+     * They get their OWN pool rather than the sprite pool, for two
+     * reasons: a 4.3MB chunk canvas exceeds `POOL_SLOT_MAX_BYTES` and
+     * would be refused outright, and even if admitted, two or three of
+     * them would consume the entire 32MB sprite budget and starve the
+     * lane that turns over thousands of small sprites a scene.
+     */
+    private readonly chunkCanvasPool;
+    /** Live bytes held by `baked` (base canvases + every lifted layer). */
+    private bakedBytes;
+    /** Take a canvas of exactly this shape from the pool, if one waits. */
+    private takePooled;
+    /** Round a pixel extent up to its 32px reuse class. */
+    private static sizeClass;
+    /** Bucket key for a class-sized canvas. */
+    private static poolKey;
+    /** Bytes a canvas's backing store occupies. */
+    private static canvasBytes;
+    /**
+     * Retire a chunk canvas: off the ledger, then into the free list if
+     * it still has room. The pool is capped by COUNT here and that is
+     * honest — unlike the sprite lane, every canvas in it is one of two
+     * known sizes, so a count IS a byte bound.
+     */
+    private recycleChunkCanvas;
+    /** Every canvas a baked entry owns — its base and its lifted layers. */
+    private recycleBakedEntry;
+    /** A free chunk canvas of the requested tier, or undefined. */
+    private takeChunkCanvas;
     /**
      * THE CROSSING (docs/planes-plan.md §2.4): the world under the
      * camera just became a DIFFERENT world with legitimately overlapping
@@ -375,7 +442,7 @@ export declare class Renderer {
     onCorpseThud?: (heavy: boolean, x: number, y: number) => void;
     /**
      * The sliding corpse budget (THE FIELD PAYS ITS WAY): stepped by the
-     * same frame-time signal the adaptive resolution reads — a machine
+     * same frame-time signal the ?perf confession reads — a machine
      * holding its own display budget earns the full field, a straining
      * one sheds toward the floor. Adjusted on a slow clock so it never
      * thrashes with one bad frame.
@@ -955,20 +1022,32 @@ export declare class Renderer {
     private dressForWater;
     private animFor;
     /**
-     * ADAPTIVE RESOLUTION: the painting is fill-bound, so backing-store
-     * pixels convert almost linearly into frame time. Machines that hold
-     * the pace render every native devicePixelRatio pixel; a machine
-     * demonstrably grinding (sustained frame time past ~45ms) steps the
-     * cap down half a point at a time — floor 1 — and only climbs back
-     * when frames are comfortable. All backing stores size through this
-     * one accessor, so a cap change reflows every layer on the next
-     * resize() guard.
+     * THE RESOLUTION IS A CONSTANT (user law, 2026-08-18).
+     *
+     * ADAPTIVE RESOLUTION is RETIRED. It capped the backing store's dpr
+     * and stepped it down half a point whenever frames sustained past
+     * the panel's budget, climbing back a minute later — and every step
+     * was a whole-screen event the player could see: the world changed
+     * sharpness, every cached sprite and band went stale at once, and
+     * the re-raster wave it touched off cost more than the pixels it
+     * saved. On a weaker machine that made a MINUTES-SCALE WOBBLE
+     * between two resolutions, which is precisely the "resolution
+     * changes / things glitch in scale" the owner will not have.
+     *
+     * The law now: the game renders at the display's own pixels, always.
+     * Frame time is bought with the economies that cost the player
+     * NOTHING to look at — sliced chunk bakes, static bands, the sprite
+     * caches, the glow-sprite and lamp-patch stamps. Pixels are not on
+     * the table. `frameEma`/`minDt` survive because the frame-time
+     * telemetry still feeds the corpse-field budget and ?perf.
+     *
+     * `dprOverride` is the RIG DOOR (dev only): the DEVICE GRID law
+     * needs fractional-dpr proofs, and browser zoom is an awkward way to
+     * get one. Nothing in the game ever writes it.
      */
-    private dprCap;
+    dprOverride: number | null;
     private frameEma;
     private lastFrameAt;
-    private dprHoldUntil;
-    private lastDprDownAt;
     /** Decaying floor of observed frame intervals ≈ the display's vsync
      *  budget: a machine that ever hits its refresh pins this at the
      *  panel's period (8.3ms at 120Hz, 16.7 at 60), and a machine that
@@ -976,15 +1055,20 @@ export declare class Renderer {
     private minDt;
     /** Last frame's raw dt — the spike filter's "was it already slow" test. */
     private prevFrameDt;
+    /** Frame-memoized: `window.devicePixelRatio` is a DOM getter, and
+     *  this accessor runs in per-tile/per-sprite hot loops — the getter
+     *  alone was a measured ~1% of frame CPU. resize() refreshes the
+     *  memo at the top of every frame; browser-zoom changes land within
+     *  a frame, exactly as before. */
+    private dprMemo;
+    private dprMemoFrame;
     private dpr;
     /**
-     * The adaptive-resolution effective dpr, readable from outside — so
-     * satellite canvases (the map screen) render at the same capped
-     * resolution instead of raw devicePixelRatio on a machine that has
-     * already stepped down.
+     * The frame's effective dpr, readable from outside — satellite
+     * canvases (the map screen) size through the same accessor so a rig
+     * override or a browser zoom moves every surface together.
      */
     effectiveDpr(): number;
-    private adaptResolution;
     private resize;
     render(game: ClientGame, frameDt: number): void;
     /** Deep-cave ambient the underground blend rides to: cool, slightly
@@ -1058,7 +1142,39 @@ export declare class Renderer {
      * derivation applies — the floor, not the ceiling.
      */
     queueFxGlow(x: number, y: number, r: number, a: number, st: FxStyle): void;
+    /**
+     * THE ONE DOOR FOR A DYNAMIC LIGHT.
+     *
+     * Standing emitters derive reach and strength from the SAME envelope,
+     * so a fading fixture zeroes both together and can never hand the
+     * exposure pass a light it cannot draw. The fx doors are different in
+     * kind: a signature deals its own radius and its own alpha, from
+     * different expressions, and only the alpha was ever checked. A
+     * radius that reaches 0 (or NaN, from an fx the server sends with no
+     * radius at all) while the alpha is still healthy mints a light with
+     * strength and no reach — and every consumer that divides by reach
+     * then works on NaN.
+     *
+     * This is that missing invariant, in one place instead of at each
+     * call site: a light joins the frame only if it is a real position,
+     * a real POSITIVE reach, and a real strength. Returns whether it was
+     * admitted so callers can skip the paired bookkeeping.
+     */
+    private static drawableFlare;
+    private admitLight;
     queueGlow(x: number, y: number, r: number, rgb: string, a: number): void;
+    /**
+     * THE BOLT'S LIGHT FLIES WITH THE BOLT: a projectile's bloom draws
+     * INLINE at the shot's own sorted moment — the forest, walls and
+     * bodies honestly occlude it (the seated-halo law, applied to a
+     * moving source) — while the post pass keeps only a small capped
+     * core glint (brilliance through the leaves, like a lit window
+     * behind a canopy) and the night lighting still takes the full
+     * source. The old post-pass disc floated over every canopy on
+     * screen. Callable only from inside a world-pass draw closure —
+     * (px, py) are the already-projected screen point.
+     */
+    private seatShotGlow;
     /** 1/3-res frame copy backing the tilt-shift (bilinear up IS the blur). */
     private readonly tiltScratch;
     private readonly tiltScratchCtx;
@@ -1156,9 +1272,23 @@ export declare class Renderer {
     private fgElev;
     private fgGround;
     private fgDetail;
+    /** THE WET LEDGER — per-frame water lists (see buildWetLists). */
+    private readonly wetLists;
+    private wetCellStamp;
+    private wetStampNo;
     private fgWorld;
     private buildFrameGrid;
     /** Elevation through the frame grid; ChunkStore fallback off-window. */
+    /**
+     * THE WET LEDGER (see terrain.WetLists): one linear pass over the
+     * frame grid compiles the tiles the live-water pass dresses and the
+     * dual cells with a water corner, so drawLiveGround / drawShorelines
+     * / waterRegionPath stop paying sampler calls for dry meadow. Built
+     * fresh every frame from the same snapshot those samplers read —
+     * nothing to invalidate. Row-major append in both lists preserves
+     * the scans' exact visit order (bucket insertion is draw order).
+     */
+    private buildWetLists;
     private fgElevAt;
     /**
      * THE SHELF LAW: the shelf a standing item sorts on — the elevation
@@ -1198,6 +1328,35 @@ export declare class Renderer {
     /** Run ONE slice of a pending chunk bake; finalize when done. */
     private advanceChunkPending;
     private evictBaked;
+    /**
+     * THE GATE MUST BE ABLE TO CLOSE AGAIN.
+     *
+     * `growingTrees` and `propShakes` are ease clocks whose readers own
+     * the only delete: `growthOf` and `propShakeX` retire a key when its
+     * ease runs out. That is correct for anything ON SCREEN, and it was
+     * written believing the map "is empty except moments after a
+     * regrowth" — but the readers run only for pieces that are actually
+     * DRAWN, while the writers fire across the whole interest radius.
+     * A sapling that sprouts off-screen, or a prop struck out of view,
+     * sets a key nothing will ever read, and the key is immortal.
+     *
+     * The cost is not the entry. It is the FAST-PATH GATE: both maps are
+     * read through `size === 0` / `size > 0` tests that stand in the
+     * per-tile terrain scan and in every tree's per-frame growth
+     * lookup. One orphan latches those gates open FOREVER — from then
+     * on every visible tree mints a template-string key every frame, and
+     * every tile in view pays `destructibleInfo`, for an ease that
+     * finished long ago and a prop that may be miles away.
+     *
+     * So the sweep is the gate's own door. Both clocks have a KNOWN
+     * ceiling (the growth ease tops out at 2600ms, the shudder at
+     * 380ms); anything past a generous multiple of that is finished by
+     * arithmetic, not by opinion, and can go without consulting the
+     * reader. Cadenced because it exists to close a gate, not to keep a
+     * frame honest — the readers still retire their own keys the moment
+     * they are drawn.
+     */
+    private evictEases;
     private evictAnims;
     /**
      * Tree sprite/shadow caches ride the camera: drop entries not drawn
@@ -1350,7 +1509,26 @@ export declare class Renderer {
     /** Per-tile invalidation nonces (sign text and friends) — mixed
      *  into stretch content sigs so state-keyed art re-bakes its band. */
     private readonly bandNonce;
-    /** Live band canvas bytes — the byte budget's running total. */
+    /**
+     * THE FRAME CONFESSES WHAT IT COULD NOT CACHE (?perf): per-frame
+     * counts of the frame's uncached work — props/trees/flora that had to
+     * paint live for want of a minted sprite, brand-new ground chunks
+     * started (each pays a prologue), and shadow masks the budget turned
+     * away. Presence is never at stake in any of these; they are pure
+     * cost signals, and a STEADY non-zero prop/tree/flora reading is the
+     * one thing that should never be seen — it means the caches are not
+     * converging and a budget wants raising.
+     */
+    private readonly liveStats;
+    /**
+     * THE BAND BUDGET IS A FUSE, NOT A BROOM — the whole doctrine, the
+     * measurements that forced it, and the arithmetic itself live in
+     * bandBudget.ts. What stands here is the ledger it reads and the
+     * ONE DOOR every removal goes through.
+     */
+    /** Live band canvas bytes — the ledger, and the admission gate's
+     *  left-hand side. Every acquisition adds, every release
+     *  subtracts, and dropAllBands re-grounds it at zero. */
     private bandBytes;
     /** Per-frame band accounting (the ?perf confession, phase 5). */
     private readonly bandStats;
@@ -1465,7 +1643,18 @@ export declare class Renderer {
      *  foreign paint the moment a stale blit misregisters. */
     private static wallBleedMat;
     private acquireBandCanvas;
+    /** A POOL IS BYTES, NOT SLOTS (bandBudget law 5): a recycled canvas
+     *  keeps its full backing store, so a slot count bounds nothing. */
+    private poolCanvas;
     private releaseStretchBake;
+    /**
+     * THE LEDGER HAS ONE DOOR: the only way a band leaves the cache.
+     * Release the pixels, then delete the key — never one without the
+     * other, and never a bare Map mutation anywhere else.
+     */
+    private dropBand;
+    /** Every band at once, through the same door (THE CROSSING). */
+    private dropAllBands;
     /**
      * Walls: continuous top mass with rounded exposed corners, a darker
      * front face where the wall meets open ground, and a hard shadow.
@@ -2038,6 +2227,21 @@ export declare class Renderer {
      * per-frame, and the paint is byte-identical because nothing
      * downstream of the scan changed.
      */
+    /** Runs cut every this many tiles — a shelf, not a wall (round
+     *  10's law: one piece is never a budget), and the same ledger
+     *  covers ~4x the rim. */
+    private static readonly CLIFF_RUN_MAX_SPAN;
+    /** Bake box in tiles around a run's row line: above the crown top
+     *  (brow tuck + margin), below the base (AO stroke + scree), and
+     *  sideways past the span (tuft overhang, joint lean). Proven by a
+     *  fat-margin rig bake, round 8's method. */
+    private static readonly CLIFF_BAKE_NORTH_T;
+    private static readonly CLIFF_BAKE_SOUTH_T;
+    private static readonly CLIFF_BAKE_PAD_X_T;
+    /** THE CLIFF JOINS THE STANDING WORLD — cached curtain bakes, keyed
+     *  run geometry + world rev + grid (zoom/dpr). Evicted beside the
+     *  tree sprites; recycled through the shape pool. */
+    private readonly cliffSprites;
     private cliffMemo;
     /** Chunk revs over the padded scan window — the memo's world key. */
     private cliffRevKey;
@@ -2051,6 +2255,30 @@ export declare class Renderer {
     private emitCliffSideRun;
     /** One contour segment extruded into a face curtain (level -> level-1). */
     private cliffFaceItem;
+    /**
+     * One straight rim run as a single DrawItem. Strat, sortY and the
+     * contact shadow reproduce cliffFaceItem's own formulas exactly —
+     * members of a straight run share ay === by, so min(ay, by) is ay
+     * for every member and one item sorts precisely where its members
+     * did. The contact quad over the whole span is the union of the
+     * members' colinear quads, pixel for pixel.
+     */
+    private cliffRunItem;
+    /**
+     * Blit the run's cached curtain; bake it through the shared sprite
+     * admission lanes when missing; and when no bake stands (declined,
+     * mid-glide, layer off) fall back to the members' own live paint —
+     * THE STILL-WORLD BARGAIN: a bake is a cache, never a mode.
+     */
+    private drawCliffRun;
+    /**
+     * Bake one run (THE SAME-BRUSH LAW): the ctx, camera, snap lattice
+     * and viewport swap to the curtain canvas, and the members' items
+     * are constructed AGAIN under the swap and draw themselves — the
+     * bake is byte-for-byte the live painter's own work. Anchor pads
+     * round to whole device pixels (THE ANCHOR SITS ON THE LATTICE).
+     */
+    private bakeCliffRun;
     /**
      * Wall THICKNESS for one row-slice of a north-south rim run (world
      * x, world y s0..s1, flags marking the run's true ends). The plane
@@ -2412,7 +2640,12 @@ export declare class Renderer {
      * (bendOverride) and regrowth (grow < 1) stay fully live.
      */
     private readonly treeSprites;
-    /** Sun-shadow twin: the projected silhouette Path2D built at origin. */
+    /** Sun-shadow twin: the projected TRUE-FORM silhouette, RASTERIZED —
+     *  built at origin on the sprite cadence and stamped with one
+     *  drawImage per frame (the per-frame fill of the complex Path2D was
+     *  a measured top cost of forest scenes). `windAt`/`ky` feed the
+     *  same live shear delta the body blit wears; `tone` re-bakes on the
+     *  sun/moon flip. */
     private readonly treeShadows;
     private treeBakeBudget;
     /** Running average sprite-bake cost (ms) — the admission estimate
@@ -2425,6 +2658,9 @@ export declare class Renderer {
      *  cadence re-bakes) — see SPRITE_BAKE_MS. */
     private spriteBakeMsLeft;
     private visSpriteMsLeft;
+    /** Per-frame allowance (ms) for ringing live fallback paints — see
+     *  paintPropLive / LIVE_RING_MS. */
+    private liveRingMsLeft;
     /** The frame's y-sorted draw list — persistent, cleared at reuse. */
     private readonly drawItems;
     /** Stale-chunk re-bake candidates this frame (center-first pacing). */
@@ -2440,6 +2676,39 @@ export declare class Renderer {
     private readonly phaseMs;
     private perfMark;
     perfSummary(): string;
+    /**
+     * THE OFF-SCREEN TREE STANDS DOWN.
+     *
+     * The world pass draws from a PADDED grid: rows well north and south
+     * of the viewport are collected so tall content can lean, sway and
+     * cast into view from outside it. Most of those trees have nothing on
+     * screen at all — and every one was being blitted in full, ~150k
+     * device pixels each, for the canvas to clip away entirely. In a
+     * dense forest that was 342 sprites a frame of pure waste.
+     *
+     * So a tree whose whole box falls outside the viewport stands down.
+     * Its cache entry stays warm (`used`), so nothing re-bakes when it
+     * scrolls back in, and its ground shadow still casts — that lies on
+     * the ground and may well be visible from inside the viewport.
+     *
+     * WHY THERE IS NO CANOPY OCCLUSION HERE. The obvious companion — cull
+     * a tree buried behind nearer crowns — was built, measured, and
+     * REJECTED (docs/render-stream-audit.md round 9). It culled exactly
+     * zero trees in every scene, and the reason is the projection, not
+     * the tuning: at yScale 0.6 a tree one row nearer is drawn only 0.6
+     * tiles lower, so an equal-height crown in front stands 0.6 tiles
+     * SHORT of the crown behind it. Each receding row peeks above the one
+     * ahead — which is exactly why a forest reads as a forest — and only
+     * a front tree at least that much taller can bury one behind. In a
+     * stand grown from one species grammar, that is the rare case, and
+     * a conservative test (which is the only kind allowed to skip a draw)
+     * never sees it. The geometry is a feature of the art; do not
+     * re-propose whole-tree occlusion without changing the projection.
+     */
+    private cullHiddenTrees;
+    /** Viewport culling on/off — the A/B door for rig proofs and the kill
+     *  switch if a canopy ever blinks. */
+    occlusionOn: boolean;
     /** The closure-free bulk lane's one dispatch (see DrawItem.bulk). */
     private drawBulkItem;
     /**
@@ -2469,9 +2738,60 @@ export declare class Renderer {
     private treesVisible;
     private treeCadence;
     /** Evicted sprite canvases, reused by new bakes (GC churn while walking). */
+    /**
+     * THE POOL IS INDEXED BY SHAPE, NOT SEARCHED.
+     *
+     * The sprite pool was a single stack scanned for a canvas that was
+     * big enough but not wastefully bigger. That search is the reason it
+     * missed: sprite canvases are sized per model, per zoom and per dpr,
+     * so a heterogeneous stack almost never holds an acceptable fit near
+     * the top, and scanning deeper costs more than the allocation it
+     * saves. Enlarging the pool made this measurably WORSE — 384 slots
+     * minted 9,867 canvases over a five-minute circuit, 1,480 slots
+     * minted 14,766 — because a longer stack only dilutes the window a
+     * bounded probe can afford to look at.
+     *
+     * So the shapes are QUANTIZED instead. Every sprite canvas is
+     * rounded up to a 64px class on each axis, which collapses thousands
+     * of one-off sizes into a few dozen buckets and turns acquisition
+     * into an exact O(1) lookup that either has the shape or does not.
+     * The rounding costs at most 63px of margin per axis and nothing in
+     * correctness: the blit has always read an explicit source rect, and
+     * every bake clears the full canvas before painting, which is why
+     * oversized reuse was already legal on the old path.
+     */
     private readonly spriteCanvasPool;
+    /** Live count across all buckets — `poolAdmits` reads a count. */
+    private poolCount;
+    /** Pixel bytes parked in the pool — the pool's real bound. */
+    private poolBytes;
+    /** Reused scratch for the band sweep's plan input (no per-frame
+     *  garbage on a path that can run every frame). */
+    private readonly bandSweepScratch;
+    /**
+     * THE CACHE ALWAYS GAINS GROUND — the ONE admission door for the
+     * world-sprite bakes (discrete props, flora, trees). The law itself
+     * is pure and pinned in bakeAdmission.ts (read it: the deadlock it
+     * forbids shipped once and took the world off the screen with it);
+     * this is only the frame's state, handed over.
+     */
+    private admitSpriteBake;
+    /** Reused admission-state record — the frame loop mints no garbage. */
+    private readonly bakeBudgets;
+    /** THE FLOOR's one-per-frame token (see admitSpriteBake). */
+    private forcedBakeUsed;
     private static treeKey;
     private bakeTreeSprite;
+    /**
+     * Rasterize the TRUE-FORM sun-shadow silhouette (see treeShadows):
+     * the same treeShadowPath geometry as ever, built at the origin with
+     * the CURRENT sun ray and this tree's wind sample, filled once into
+     * a half-res canvas. Bounds are analytic — the projection maps the
+     * upright envelope (the body sprite's own margins) along the ray, so
+     * the box always contains the path; the blob radius rides inside the
+     * spread margin the envelope already carries.
+     */
+    private bakeTreeShadowSprite;
     /**
      * Props whose outline ring bakes into a cached sprite (with their
      * art) instead of running the per-frame outline pass. Only DISCRETE
@@ -2565,6 +2885,35 @@ export declare class Renderer {
      *  the pieces a body walks up to USE. Ghosting the table you dine
      *  at (or the seat under you) breaks the scene it exists to sell. */
     private static readonly NEVER_FADE_TILES;
+    /**
+     * THE STEP-ASIDE FADE for a discrete prop, one door for both the
+     * blit and the live fallback (they must agree to the pixel — a prop
+     * that ghosted while cached and stood solid while live would strobe
+     * on every cache miss).
+     *
+     * A band bake paints the world at rest: the fade is a per-frame,
+     * screen-space affair (its box lives in live viewport coords) and
+     * banded stretches near the body draw live anyway — never bake a
+     * ghost. Short furniture can't hide a body and never fades. THE
+     * FURNITURE KEEPS ITS FACE (user law): the interaction set — tables,
+     * counters, seats, beds — NEVER ghosts, whatever its drawn height,
+     * and neither does the seat the own body is mounted on.
+     */
+    private propFade;
+    /**
+     * Paint a discrete prop with no cached sprite STRAIGHT TO THE FRAME,
+     * ring and all — the pre-cache engine's own path, kept alive on
+     * purpose as the sprite cache's floor.
+     *
+     * This is the same scratch build the body pass uses (art into A, the
+     * dilated ring into B, ring under art), minus the body relight: a
+     * barrel is not a body and never took the exposure lift. Cost is one
+     * live outline pass — the very cost the cache exists to amortise —
+     * so a frame that pays it for a handful of misses is paying exactly
+     * what the engine paid for every prop before the cache existed. What
+     * it does NOT do is leave a hole.
+     */
+    private paintPropLive;
     private drawPropOutlined;
     /** Pool-aware canvas acquisition shared by the world-prop sprite bakes. */
     private acquireSpriteCanvas;
@@ -2628,6 +2977,9 @@ export declare class Renderer {
      * the shadow sways with its tree. One Path2D, one fill: limbs and
      * clusters merge into a single density, never stacking.
      */
+    /** Bounds of the last treeShadowPath build (see THE CAST FITS ITS
+     *  FRAME) — a reused record, so the hot path allocates nothing. */
+    private readonly shadowBox;
     private treeShadowPath;
     private drawTreeShadow;
     /**
@@ -2825,6 +3177,79 @@ export declare class Renderer {
      * height instead).
      */
     private palisadeGateItem;
+    /**
+     * Iron-fence connectivity: the graveyard's wall merges ONLY with
+     * its own kind (the separate-masonry law, FIFTH family) — a
+     * smith's railing dying into a timber fence or clipped green would
+     * read as one builder's work, and a smith is neither carpenter nor
+     * gardener.
+     */
+    private ironish;
+    /**
+     * ONE WROUGHT BAR — the unit the whole railing is forged from. A
+     * slim square bar, blue-black (this iron drinks the light), one
+     * cool lit arris down the west edge, crowned by a two-facet spear
+     * leaf above the top rail. The smith's work was true; the years
+     * were not: a rare bar stands bent at the shoulder, and a rarer
+     * one is gone at the root with only a rust bloom to say so. The
+     * gaps are the POINT — a graveyard rail is drawn so the eye passes
+     * between the bars and finds the stones it keeps.
+     */
+    private ironBar;
+    /**
+     * THE CURB — the granite course the railing is leaded into. A low
+     * coursed-stone footing with a TRUE foreshortened top plane (the
+     * bird's eye sees stone, never a paint stripe), joint ticks on the
+     * half-tile, and the yard's damp green creeping up the shaded
+     * spots. Every run stands on this; iron never touches soil.
+     */
+    private ironCurbEW;
+    /**
+     * A GRAVE PIER — the masonry that anchors every corner, tee, run
+     * end, and gate. Stepped plinth, coursed granite shaft, a molded
+     * cap with a TRUE top plane for the bird's eye, and a dark iron
+     * finial standing on it: an urn on the piers that keep the yard,
+     * an orb-and-spike on the piers that carry the gate.
+     */
+    private drawGravePier;
+    /** A rail band: dark iron with one lit top thread, drawn OVER the
+     *  bars so every bar reads as pierced through, never glued on. */
+    private ironRail;
+    /**
+     * THE ORNAMENT BAND: what the smith did between the second rail
+     * and the top one. Hash-dealt per half-tile panel — a ring, a
+     * facing pair of C-scrolls, or honest plain bars — so no two
+     * panels down a long run repeat, and the whole run still reads as
+     * one commission.
+     */
+    private ironOrnament;
+    /**
+     * THE IRON REST — the graveyard's wall. Wrought spear-topped bars
+     * leaded into a granite curb, three rails, an ornament band, and a
+     * masonry pier at every corner, tee, and run end. The gaps between
+     * the bars are the design: the yard shows through its own wall.
+     * Every direction speaks the same vocabulary of STANDING bars:
+     *  - E-W runs: the full panel faces the camera — curb, bars,
+     *    rails over them, the smith's ornament in its band.
+     *  - N-S runs: the bars march up-screen in depth on the curb's
+     *    strip, a dense comb with a ridge of spear leaves climbing.
+     *  - 45° strides: vertical bars stationed corner-to-corner under
+     *    honestly slanted rails — never a sheared panel.
+     */
+    private ironFenceItem;
+    /**
+     * THE GRAVEYARD GATE — the yard's one piece of ceremony. Twin
+     * granite piers under orb-and-spike finials carry a wrought
+     * OVERTHROW: an arched iron band sweeping pier to pier, scroll
+     * curls at its springings, a spear finial at its crown — and, some
+     * nights, a crow that will not move. Below swing double leaves of
+     * barred iron, each top rail sweeping down from its pier toward
+     * the meeting stiles, spear leaves riding the curve; open, each
+     * leaf folds back against its own pier. N-S gates keep the
+     * pier-and-leaf grammar edge-on (an overthrow seen end-on is a
+     * sliver, so the vertical gate lets its piers carry the ceremony).
+     */
+    private ironGateItem;
     /**
      * Hedge connectivity: the garden's wall merges ONLY with its own
      * kind (the separate-masonry law, FOURTH family) — clipped green
@@ -3698,6 +4123,16 @@ export declare class Renderer {
      * the standing word via its refreshed bornAt).
      */
     private drawWords;
+    /**
+     * THE PROP MUSEUM (dev builds only): on the museum plane every
+     * plinth speaks at once — each sign's title hangs as a small plate
+     * beneath its post so a reviewer reads a whole aisle at a glance
+     * instead of plaque-by-plaque through the sign HUD's 2.9-tile
+     * radius. Loot-plate dialect, calmer: no ration, no climb — the
+     * floor plan already spaces the plinths. Off-plane this is a single
+     * string compare per frame.
+     */
+    private drawMuseumLabels;
     private drawHpBar;
     /**
      * THE WOUND ROW (visible-buildcraft V2): the player's own riding

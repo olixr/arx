@@ -6,9 +6,9 @@ export interface InterpSample {
     dir: number;
     pose: number;
     hpPct: number;
-    /** STATUS_BIT bitfield (burn/chill/shock/bleed VFX). */
+    /** STATUS_BIT u16 bitfield (state VFX flags + affliction stack nibble). */
     status: number;
-    /** NPC alert telegraph (ALERT_ICON_*): the ?/! over the head. */
+    /** NPC alert telegraph (ALERT_ICON_*): the eye badge over the head. */
     alert: number;
 }
 /** Shortest signed angular distance a→b, in (-π, π]. */

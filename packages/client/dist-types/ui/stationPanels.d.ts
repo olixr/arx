@@ -21,6 +21,8 @@ export declare class StationPanels {
     private readonly getInventory;
     /** The worn kit — the unmaking bench sunders straight off the body. */
     private readonly getEquipment;
+    /** The character's skills — vault sockets judge equip gates live. */
+    private readonly getSkills;
     private readonly craftPanel;
     private readonly craftTitle;
     private readonly craftTools;
@@ -72,6 +74,22 @@ export declare class StationPanels {
      * second one says what it is about to destroy.
      */
     private unmakeArmed;
+    /**
+     * THE MARKED BATCH: pack slots set aside for one bulk breaking.
+     * Each mark remembers the piece it named, so a pack that shifts
+     * underneath drops the stale mark instead of breaking a stranger.
+     */
+    private readonly unmakeMarked;
+    /** The batch's own two-press confirm, held apart from the single's. */
+    private unmakeBatchArmed;
+    /**
+     * THE RECOVERED RIBBON: what the last breaking said it would pay.
+     * Preview and payout are the same pure function, so the bench may
+     * celebrate with its own figures — but only once the pack proves the
+     * pieces really left (a refusal never earns a ribbon), and only for
+     * a breath.
+     */
+    private pendingBreak;
     /** World tile center the open panel is bound to (null = untethered). */
     private anchor;
     /** Which shop's shelf is on screen — echoed on every buy. */
@@ -86,7 +104,9 @@ export declare class StationPanels {
     /** The live pack — feeds every have/need figure. */
     getInventory?: () => InvSlot[], 
     /** The worn kit — the unmaking bench sunders straight off the body. */
-    getEquipment?: () => Partial<Record<EquipSlot, EquippedItem>>);
+    getEquipment?: () => Partial<Record<EquipSlot, EquippedItem>>, 
+    /** The character's skills — vault sockets judge equip gates live. */
+    getSkills?: () => SkillXp);
     /** Main hands over the Workshop head's dress handles once, at boot. */
     setCraftDress(handles: {
         setHint: (t: string) => void;
@@ -174,6 +194,8 @@ export declare class StationPanels {
      * Place button. Locked plans stay visible; ambition needs a map.
      */
     private renderBuild;
+    /** Set by main: THE BULK BREAKING — the marked batch, as one send. */
+    onUnmakeMany: ((slots: number[]) => void) | null;
     /** Set by main: sends the plant intent for a chosen seed. */
     onPlant: ((tx: number, ty: number, seed: string) => void) | null;
     /** Seed picker for a tilled plot: lists the seeds you carry. */
@@ -192,6 +214,12 @@ export declare class StationPanels {
      * the portrait synchronously; a function fills it through the
      * BUDGETED LANE (icons.ts) so a first-open burst never hitches. */
     private ledgerRow;
+    /**
+     * One YIELD row — what an unmaking pays out. A gain, never a need:
+     * materialRow's have/need framing painted a 5-dust payout as a red
+     * "1 / 5" shortfall, which is the opposite of what is happening.
+     */
+    private yieldRow;
     /** One material row in the Workshop detail: the full story of a need. */
     private materialRow;
     private renderPlant;
@@ -269,6 +297,25 @@ export declare class StationPanels {
      * destructive action that would be the worst bug in the system.
      */
     private renderUnmake;
+    /**
+     * THE RECOVERED RIBBON — the bench's own answer to a breaking. The
+     * preview and the payout are the same pure function, so the bench
+     * may celebrate with its own figures; the pack is still asked to
+     * prove the pieces left first, because a refusal (a hot piece, a
+     * full pack) must never wear a celebration. Lives for a breath,
+     * then lets itself go.
+     */
+    private renderBreakRibbon;
+    /**
+     * THE MARKED BATCH — the bench's bulk lane. Marked pieces break as
+     * ONE working (one send, one payout, one voice line, one moment of
+     * light); the section reads the whole account out before the
+     * two-press confirm. With nothing marked it offers the one clean
+     * sweep: every plain piece with nothing bound in, marked in a single
+     * press. Worked, deepened and rare-or-finer steel is never swept —
+     * those are the player's own deliberate call, piece by piece.
+     */
+    private renderUnmakeBatch;
     private craftRumor;
     private renderCraft;
     openBank(items: Record<string, number>, at?: {

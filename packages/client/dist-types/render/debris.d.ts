@@ -21,7 +21,7 @@
  * warm, and a room-clearing rampage can never grow the draw bill.
  */
 export declare const DEBRIS_CAP = 220;
-export type SmashKind = 'barrel' | 'crate' | 'goods' | 'chair' | 'table' | 'bench' | 'bonepile' | 'crackedwall';
+export type SmashKind = 'barrel' | 'crate' | 'goods' | 'chair' | 'table' | 'bench' | 'bonepile' | 'crackedwall' | 'palisade' | 'torch' | 'brazier' | 'tent' | 'skulls' | 'totem' | 'banner' | 'cage' | 'stakes' | 'spit' | 'meatrack' | 'pot' | 'potions' | 'nest' | 'sacks' | 'spears' | 'dummy' | 'drum' | 'hide' | 'beacon' | 'elfbanner' | 'elfbench' | 'elftable' | 'elfchair' | 'daybed' | 'bookcase' | 'lectern' | 'harp' | 'loom' | 'fountain' | 'statue' | 'moonwell' | 'anvil' | 'armsrack' | 'planter' | 'mirror' | 'waystone' | 'chimes' | 'runestone' | 'crystals' | 'wardarch' | 'tome' | 'runepillar' | 'mossbarrel' | 'minecart' | 'chainedbones' | 'sarcophagus' | 'brokenpillar' | 'urns' | 'oldstatue' | 'gibbet' | 'stocks' | 'coldcamp' | 'lootchest' | 'candles' | 'fishrack' | 'tidetotem' | 'net' | 'dugout' | 'harpoons' | 'midden' | 'fishtrap' | 'roe' | 'lure' | 'catch' | 'greatribs' | 'shelter' | 'smoker' | 'mendbench' | 'weir' | 'kelpline' | 'saltpan' | 'shellbench' | 'withies' | 'keeppool' | 'shellchimes' | 'townfountain' | 'founder' | 'notices' | 'townbell' | 'handcart' | 'grainsacks' | 'barrelstack' | 'cratestack' | 'hitchpost' | 'woodpile' | 'streetplanter' | 'stonebench' | 'quench' | 'grindstone' | 'ingots' | 'lumber' | 'dyevat' | 'dressform' | 'clothbolts' | 'butcherblock' | 'herbs' | 'shopshelf' | 'wallfountain' | 'watertrough' | 'scribedesk' | 'candlerack' | 'fletcher' | 'fishslab' | 'parcels' | 'displaytable' | 'candlestand' | 'streetlantern' | 'wayshrine' | 'guardian' | 'tapcask' | 'stool' | 'baskets' | 'glazedjars' | 'broompail' | 'ladder' | 'barrow' | 'wayfarer' | 'mooring' | 'skiff' | 'gnawbones' | 'trophies' | 'grogtub' | 'knuckles' | 'ragnest' | 'beaststake' | 'critters' | 'gong' | 'wartable' | 'plundercart' | 'effigy' | 'gnawtrough' | 'herbplanter' | 'greatlog' | 'logdeck' | 'logstack' | 'candlecluster' | 'meltwax' | 'candletable' | 'armorstand' | 'armorstandfull' | 'bannerstand' | 'pillarcandle';
 export interface DebrisChunk {
     x: number;
     y: number;
@@ -47,6 +47,12 @@ export declare class Debris {
     private readonly free;
     private capCursor;
     private take;
+    /**
+     * THE CROSSING: every chunk in flight (or settled) lies at old-plane
+     * coordinates — drop the lot. Dead records return to the free list;
+     * the warm pool stays warm.
+     */
+    clear(): void;
     /**
      * Burst a prop at (x,y): chunks fly in a cone around `dir` — WITH
      * the blow, away from whoever swung it. `rand` is injectable so the

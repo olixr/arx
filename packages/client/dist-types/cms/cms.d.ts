@@ -1,5 +1,5 @@
-import type { GrowthDef, NodeDef, DialogueDef, FactionsDef, FrontierDef, LootTableDef, MinorDef, NpcActorDef, NpcDef, PoiDef, VoiceDoc } from '@arx/content';
-import { type VoiceLedger, type Editable, type ItemRow, type SpawnSites, type ZoneRect } from './api.js';
+import type { GrowthDef, NodeDef, DialogueDef, FactionsDef, FrontierDef, LootTableDef, MinorDef, StrongholdDef, PrefabJson, NpcActorDef, NpcDef, PoiDef, TriggerDef, VoiceDoc } from '@arx/content';
+import { type VoiceLedger, type TriggerRow, type Editable, type ItemRow, type SpawnSites, type ZoneRect } from './api.js';
 /**
  * Arx Content Studio — the CMS over the running game's DB-first
  * content: bestiary archetypes, loot tables, and placed-actor
@@ -8,7 +8,7 @@ import { type VoiceLedger, type Editable, type ItemRow, type SpawnSites, type Zo
  * live registry, and retires standing bodies so the world plays the
  * new numbers within a tick.
  */
-export type Section = 'npcs' | 'loot' | 'actors' | 'dialogues' | 'pois' | 'minors' | 'resources' | 'frontier' | 'factions' | 'voice' | 'items';
+export type Section = 'npcs' | 'loot' | 'actors' | 'dialogues' | 'pois' | 'minors' | 'strongholds' | 'resources' | 'frontier' | 'factions' | 'voice' | 'triggers' | 'items';
 export interface CmsState {
     section: Section;
     selectedId: string | null;
@@ -20,6 +20,12 @@ export interface CmsState {
     pois: Array<Editable<PoiDef>>;
     /** THE SMALL FINDS roster (lived-in-land Phase 6). */
     minors: Array<Editable<MinorDef>>;
+    /** THE FOUNDRY's layout repository (strongholds Phase 1). */
+    strongholds: Array<Editable<StrongholdDef>>;
+    /** Families the generator can build for — the roll form's menu. */
+    strongholdFamilies: string[];
+    /** Rolled-but-unsaved layout prefabs, by def id (banked on save). */
+    strongholdDrafts: Record<string, PrefabJson>;
     /** THE ROSTER SPEAKS: the gatherable-node roster (second-growth Ph5). */
     nodes: Array<Editable<NodeDef>>;
     /** The land's clock — the growth dial doc riding the Resources bench. */
@@ -41,6 +47,8 @@ export interface CmsState {
     } | null;
     /** The spoken world: clips, banks, dials (voiceover Phase 5). */
     voice: VoiceLedger | null;
+    /** THE WATCHFUL GROUND: the trigger roster (docs/triggers-plan.md). */
+    triggers: TriggerRow[];
     items: ItemRow[];
     sites: SpawnSites;
     zones: ZoneRect[];
@@ -54,8 +62,14 @@ export declare function setHint(text: string): void;
 export declare function setSaveState(text: string): void;
 export declare function reloadSection(section: Section): Promise<void>;
 export declare function refreshSites(): Promise<void>;
-/** Zone whose rect contains a world tile, for "open in Map Studio". */
-export declare function zoneAt(x: number, y: number): ZoneRect | null;
+/**
+ * Zone whose rect contains a world tile, for "open in Map Studio".
+ * THE WORLDS APART: rects legitimately overlap across planes (the
+ * Undercroft lies over open surface wilderness), so containment
+ * filters by plane. Callers without plane context read the surface —
+ * spawn-site rows carry no plane on the wire today.
+ */
+export declare function zoneAt(x: number, y: number, plane?: string): ZoneRect | null;
 export declare function setSection(section: Section, selectedId?: string | null): void;
 export declare function select(id: string | null): void;
 export declare function markDirty(): void;
@@ -69,6 +83,8 @@ export declare const persistence: {
     revertPoiDef(id: string): Promise<void>;
     saveMinorDef(def: MinorDef): Promise<void>;
     revertMinorDef(id: string): Promise<void>;
+    saveStrongholdDef(def: StrongholdDef): Promise<void>;
+    revertStrongholdDef(id: string): Promise<void>;
     saveNodeDef(def: NodeDef): Promise<void>;
     revertNodeDef(id: string): Promise<void>;
     saveGrowthDef(def: GrowthDef): Promise<void>;
@@ -79,6 +95,8 @@ export declare const persistence: {
     revertFactionsDef(): Promise<void>;
     saveVoiceDialsDef(def: VoiceDoc): Promise<void>;
     revertVoiceDialsDef(): Promise<void>;
+    saveTriggerDef(def: TriggerDef): Promise<void>;
+    revertTriggerDef(id: string): Promise<void>;
     saveDialogueDef(def: DialogueDef): Promise<void>;
     revertDialogueDef(id: string): Promise<void>;
     saveActorDef(def: NpcActorDef): Promise<void>;

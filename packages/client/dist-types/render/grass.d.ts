@@ -46,6 +46,16 @@ export interface Flower {
     pal: number;
     phase: number;
 }
+/** A wild grain stalk: thin stem streaming in the wind, gold ear at the tip. */
+export interface SeedHead {
+    bx: number;
+    by: number;
+    h: number;
+    size: number;
+    lean: number;
+    phase: number;
+    bin: number;
+}
 export interface GrassTileGeom {
     /** Short blades — always drawn under entities. */
     under: Blade[];
@@ -59,14 +69,18 @@ export interface GrassTileGeom {
         w: number;
     }>;
     flowers: Flower[];
+    seeds: SeedHead[];
 }
 /**
- * Deterministic geometry for one grass tile. Coverage noise deals the
- * hand: bare / strands / stand / clump. Detail.Tuft forces a clump,
- * Detail.Flowers plants a bloom patch, and a low-frequency meadow noise
- * scatters lone flowers so they gather into natural drifts.
+ * Deterministic geometry for one grass tile. THE COAT lays a dense low
+ * nap on every tile (density riding the lush field), then coverage
+ * noise deals the accent hand above it: strands / stand / clump.
+ * Detail.Tuft forces a clump, Detail.Flowers plants a bloom patch, a
+ * low-frequency meadow noise scatters lone flowers so they gather into
+ * natural drifts, and a prairie field raises seed-head stalks in
+ * golden reaches.
  */
-export declare function generateGrassTile(tx: number, ty: number, tileId: number, detailId: number): GrassTileGeom;
+export declare function generateGrassTile(tx: number, ty: number, tileId: number, detailId: number, snowMask?: number): GrassTileGeom;
 /** Radial falloff of a body pushing into grass: 1 at center, 0 at R. */
 export declare function disturbFalloff(dist: number, radius: number): number;
 export interface Disturber {
@@ -91,6 +105,12 @@ export declare class GrassSystem {
     private readonly tiles;
     /** Position → live state, for waking tiles bodies move through. */
     private readonly posIndex;
+    /**
+     * THE CROSSING: every tuft and disturbance is position-keyed on the
+     * CURRENT plane — a plane switch drops the meadow whole, or another
+     * world's grass would sway here.
+     */
+    dropWorld(): void;
     private readonly lastPos;
     private live;
     private tSec;
@@ -114,19 +134,34 @@ export declare class GrassSystem {
     /** Disturbers near the tile currently being built. */
     private near;
     /**
-     * THE CALM CACHE. Re-tessellating every visible blade every frame
+     * THE CALM CANVAS. Re-tessellating every visible blade every frame
      * cost ~2ms steady at 0.85× zoom (and its allocation churn drew GC
-     * pauses of up to 15ms into this very pass). But a calm meadow only
-     * MOVES at wind rate — so the under-layer bakes all undisturbed
-     * tiles into a persistent set of bucket paths at UNDER_CACHE_MS
+     * pauses of up to 15ms into this very pass) — and even the Path2D
+     * cache that fixed THAT still re-FILLED every bucket every frame,
+     * which is what kept the meadow's density starved. A calm meadow
+     * only MOVES at wind rate — so the under-layer now RENDERS all
+     * undisturbed tiles into an offscreen canvas at UNDER_CACHE_MS
      * cadence (~15Hz wind sampling, the tree-cadence law) and each frame
-     * just re-FILLS them translated by the camera delta. Only tiles a
-     * body (or its predicted path — a swept box over the cache window)
+     * blits it with ONE drawImage translated by the camera delta. The
+     * coat's 3-4× blade density rides on this: quads are only paid at
+     * bake time. Grass shadows bake into a second canvas the same way
+     * (opaque at bake, alpha at blit — overlaps inside the meadow's own
+     * shade merge instead of stacking, the shadow-layer law). Only tiles
+     * a body (or its predicted path — a swept box over the cache window)
      * can reach, plus fresh wakes, are excluded and rebuilt live per
      * frame. A disturber that escapes its predicted box forces an
      * immediate rebake, so displacement NEVER lags a frame.
      */
     private underCache;
+    /** The calm canvas + its shadow twin, reused across bakes. */
+    private underCanvas;
+    private underCtx;
+    private shadowCanvas;
+    private shadowCtx;
+    /** The shadow fill the NEXT bake will use (set via setShadow). */
+    private shFill;
+    /** Effective screen alpha for the meadow's own cast composite. */
+    private shAlpha;
     /** This frame's cached-fill translation (drawUnder → flushShadows). */
     private cacheDx;
     private cacheDy;
@@ -155,12 +190,23 @@ export declare class GrassSystem {
      * patch of tall grass.
      */
     beginFrame(nowMs: number, frameDt: number, disturbers: Disturber[], groundAt: Sampler, rustle: (x: number, y: number) => void, camX: number, camY: number): void;
-    /** Arm (or disarm) this frame's blade shadow projection. */
-    setShadow(kx: number, ky: number, on: boolean): void;
     /**
-     * Fill the frame's accumulated blade shadows — called by the
-     * renderer inside the ground-shadow prepass so grass shade lands on
-     * the same batched layer as every other caster.
+     * Arm (or disarm) this frame's blade shadow projection. `fill` is
+     * the shade color the calm canvas will bake its casts in — pass the
+     * same color the composite will use, or the cached shade lags a
+     * bake behind at a sun/moon flip. `alpha` is the EFFECTIVE screen
+     * alpha the meadow's self-composite lands at (drawUnder paints its
+     * own casts under the coat — see the z-order law there), matching
+     * what the shared prepass layer would have produced.
+     */
+    setShadow(kx: number, ky: number, on: boolean, fill?: string, alpha?: number): void;
+    /**
+     * Composite any blade casts still pending on the shared prepass
+     * layer. Since THE CAST LIES UNDER THE COAT (see drawUnder), the
+     * meadow consumes its own shade — calm canvas and live path alike —
+     * before its blades paint, so this normally has nothing left; it
+     * stays as the safety drain for any cast gathered after the under
+     * pass, keeping the shared-layer merge law for that remainder.
      */
     flushShadows(ctx: CanvasRenderingContext2D, fill: string, alpha: number): void;
     private tile;
@@ -178,6 +224,13 @@ export declare class GrassSystem {
      */
     private buildBlade;
     private buildFlower;
+    /**
+     * A wild grain stalk: thin stem streaming further than any blade
+     * (long lever, light head), three gold chips laid up the tip like a
+     * ripening ear. Sparse by construction — the prairie field deals
+     * them — so each one reads as a find, not a crop.
+     */
+    private buildSeed;
     private buildRoots;
     private flush;
     /** Painter's order for one bucket set: roots under blades under flowers. */
@@ -185,16 +238,17 @@ export declare class GrassSystem {
     /** Build one tile's under-layer content into the CURRENT containers
      *  (roots, under blades, tall-thicket casts, flowers deferred). */
     private buildUnderTile;
-    /** Flowers are their own layer: heads always read above the lawn. */
+    /** Flowers and seed-heads are their own layer: heads read above the lawn. */
     private buildFlowerTiles;
-    /** Rebake the calm cache (see underCache). */
+    /** Rebake the calm canvas (see underCache). */
     private bakeUnder;
     /**
-     * The under-layer: every short blade, clump, and flower in bounds —
-     * drawn beneath entities. Tall thickets contribute only their sparse
-     * underbrush here; their mass y-sorts via collectTall. Calm tiles
-     * come from the cadence-baked cache (one translated fill per bucket);
-     * only disturbed/waking tiles rebuild per frame.
+     * The under-layer: every short blade, nap chip, clump, flower, and
+     * seed-head in bounds — drawn beneath entities. Tall thickets
+     * contribute only their nap underbrush here; their mass y-sorts via
+     * collectTall. Calm tiles come from the cadence-baked calm canvas
+     * (ONE drawImage, however dense the coat); only disturbed/waking
+     * tiles rebuild per frame.
      */
     drawUnder(ctx: CanvasRenderingContext2D, ground: Sampler, detail: DetailFn, bounds: GrassBounds, wts: WTS, s: number): void;
     /**

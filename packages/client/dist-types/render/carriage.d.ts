@@ -59,18 +59,6 @@ export interface BladeCarriage {
 export declare function bladeCarriage(grip: Grip, side: number, runK: number, 
 /** 1 = knife-class (range ≤ 1.5): rides tighter and steeper than a sword. */
 compact?: number): BladeCarriage;
-export interface StrikeFrame {
-    /** Arm-angle offset from the aim (radians). STRIKE_REST_ARM at both ends. */
-    arm: number;
-    /** Blade angle relative to the arm ray (the rogue base π included). */
-    blade: number;
-    /** Reach multiplier of the base combat reach (1 at both ends). */
-    reach: number;
-    /** Vertical hand offset, units of s (negative = raised). 0 at both ends. */
-    lift: number;
-    /** Torso lean, signed along the cut direction. 0 at both ends. */
-    lean: number;
-}
 /** The combat-guard arm offset every strike starts from and lands on. */
 export declare const STRIKE_REST_ARM = 0.5;
 export interface StrikePhases {
@@ -90,47 +78,6 @@ export interface StrikePhases {
  * extension are the two frames a bystander actually sees.
  */
 export declare function strikePhases(grip: Grip): StrikePhases;
-/**
- * One melee strike, every channel, as a pure function of the beat
- * clock. Phases: ease into the coil, HOLD cocked, snap the cut with a
- * hair of overshoot, hold the extension, recover to neutral. The blade
- * channel runs the wrist law inside the same clock — cocked against
- * the sweep through the coil, whipping to a lead at impact, settling
- * straight — around the rogue grip's constant π reversal.
- */
-export declare function strikeFrame(grip: Grip, stage: 0 | 1, t: number): StrikeFrame;
-export interface StrikeTrail {
-    /** Arm angle (offset from aim) the crescent starts from — the coil. */
-    from: number;
-    /** Arm angle the crescent has swept to — the current arm. */
-    to: number;
-    /** 0..1 fade — full through the cut, dying through the extension. */
-    alpha: number;
-    /** Vertical offset for the crescent's center, units of s. */
-    lift: number;
-}
-/**
- * The slash trail as a pure channel: alive from the moment the cut is
- * loosed, chasing the blade to the impact pose, fading through the
- * held extension. The lift centers the crescent on the cut's plane, so
- * a high cleave rings high and a rising return rings low.
- */
-export declare function strikeTrail(grip: Grip, stage: 0 | 1, t: number): StrikeTrail | null;
-/** Main-beat t where the off blade's echo beat begins. */
-export declare const ECHO_START = 0.34;
-/** The echo always answers on the opposite plane (the finisher's
- * straight drive is answered by the rising stage-1 cut). */
-export declare function echoStage(mainStage: 0 | 1 | 2): 0 | 1;
-/**
- * The off blade's echo cut, in MAIN-beat time. Null until the echo
- * begins; then the full strike vocabulary (the off fist's own grip)
- * compressed into the back of the beat. Because the echo reuses the
- * strike specs, every readability law rides along for free — and its
- * strike window lands entirely after the main impact (test-pinned).
- */
-export declare function echoFrame(grip: Grip, mainStage: 0 | 1 | 2, t: number): StrikeFrame | null;
-/** The echo's slash trail, in main-beat time. */
-export declare function echoTrail(grip: Grip, mainStage: 0 | 1 | 2, t: number): StrikeTrail | null;
 /**
  * The finisher beat both schools share: coil, a POISED hold (the big
  * telegraphed kill — longer than a combo hold), the drive, a BURIED

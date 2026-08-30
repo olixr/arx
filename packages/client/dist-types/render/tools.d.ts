@@ -48,5 +48,8 @@ export declare const TOOL_STYLES: Record<string, ToolStyle>;
 /** Resolve a tool style; unknown '*_axe'/'*_pickaxe' ids get a color-
  * derived fallback so a new ladder rung never renders as nothing. */
 export declare function toolStyle(itemId: string | undefined, color?: string): ToolStyle | null;
-export declare function drawTool(ctx: CanvasRenderingContext2D, st: ToolStyle, s: number, nowMs: number, hurt?: boolean): void;
+export declare function drawTool(ctx: CanvasRenderingContext2D, st: ToolStyle, s: number, nowMs: number, hurt?: boolean, 
+/** THE PATIENT LINE (work.ts): a rod mid-cast keeps its decorative
+ *  dangle home — the rig paints the real line to the water. */
+rodCast?: boolean): void;
 //# sourceMappingURL=tools.d.ts.map

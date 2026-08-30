@@ -1,33 +1,30 @@
 /**
- * THE SIGNATURE LAW — the ARCHMAGE wave, second half.
+ * THE SIGNATURE LAW — the ARCHMAGE wave, second half (THE ARMORY
+ * REMEMBERS, wave 5b: the heavy staff arts).
  *
- * Ten bespoke set-pieces for the heavy end of the archmage roster —
- * the late-game showpieces. Down here Arx stops asking the world
- * and starts TELLING it: venom that keeps chewing after it lands,
- * a window opened onto the place with no windows, noon thrown as a
- * spear, and at the very top the world itself parted at the seam
- * and welded shut again. Every signature keeps the three reads —
- * impact, aftermath, what the world remembers — in the grammar's
- * three strata.
+ * Ten late-game showpieces rebuilt ground-up to the three-strata
+ * bar. Down here Arx stops asking the world and starts TELLING it —
+ * and the telling now lands on all three layers: the painted
+ * statement, the matter that flies or drains or rises off it, and
+ * THE LASTING MARK: a threshold stain where a door of nothing
+ * stood, a dry circle inside a rained-on ring, one splinter-shard
+ * glinting at the end of an unsewn seam.
  *
- * Same binding laws as every wave before: hard edges only, save/
- * restore discipline, squash on ground y-radii, air pieces lifted
- * ~0.4·sc, srand-deterministic geometry with frameDt-gated emission
- * as the only per-frame chance, ≤ ~60 path ops per hook per frame.
- * 120fps is a law. No signature shares a centerpiece with any other
- * file's — these are new sentences, not louder readings of old ones.
+ * Binding laws as ever: hard edges, save/restore hygiene, squash on
+ * ground y-radii, srand determinism, frameDt-gated emission, ≤ ~60
+ * path ops per hook per frame. No centerpiece repeats another's,
+ * nor any of this file's former ones (the seething spatter, the
+ * crusting-over, the closing floe-jaw, the standing noon, the lit
+ * lettering, the tolling rib-lantern, the inhaling window, the
+ * walking weather-wall, the drinking disc, the parted world — all
+ * retired whole). Pulse arts ride bornAt beat parity; field arts
+ * accumulate their mark beat by beat.
  *
- * FX v5 wave 3d: venom, fire, frost, radiance, storm, water, and
- * blood route through the MATTER LIBRARY (ONE-VOICE LAW); red_eclipse
- * and galvanic_arc honor their standing earmarks. rune_echo's arcane
- * lettering, marrow_pulse's bone, void_rift's void, and realm_rend's
- * world-fabric stay bespoke — no material owns those voices.
+ * ONE-VOICE stands: venom, fire, frost, radiance, storm, water, and
+ * blood speak through the MATTER LIBRARY; bone, void, moon-tide,
+ * and world-fabric stay each art's own.
  */
 import type { AbilitySig } from './fxSignatures.js';
-/**
- * The archmage roster's heavy half. The lead wires this table into
- * the master SIGNATURES registry — keys must match ability ids and
- * FX_STYLES faces exactly.
- */
+/** The archmage second-half signatures, keyed by ability id. */
 export declare const ARCHMAGE_B_SIGS: Record<string, AbilitySig>;
 //# sourceMappingURL=fxSigsArchmageB.d.ts.map

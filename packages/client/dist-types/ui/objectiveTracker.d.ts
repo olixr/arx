@@ -39,6 +39,7 @@ export declare class ObjectiveTracker {
             x: number;
             y: number;
             r: number;
+            plane?: string;
             label: string;
             quest: string;
         }): void;

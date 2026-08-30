@@ -42,11 +42,34 @@ export interface WorldLight {
     y: number;
     /** Reach in world tiles. */
     r: number;
-    rgb: [number, number, number];
+    /** Readonly so shared EmitterSpec palette tuples flow in uncloned —
+     *  nothing downstream mutates a light's color. */
+    rgb: readonly [number, number, number];
     /** Peak brightness at the core, 0..1. */
     intensity: number;
     /** Static architectural lights cast hard wall shadows. */
     occlude?: boolean;
+    /**
+     * THE CONE (v4 phase 2): a directional throw — window spill, hooded
+     * lanterns. `ux, uy` the unit axis, `spread` the half-angle in
+     * radians. Pool AND lit faces clip to the wedge (apex pulled a hair
+     * behind the light so the fixture itself stays lit); the map's blur
+     * softens the edges. Cone lights must be NON-occluding — the patch
+     * cache doesn't carry cones.
+     */
+    cone?: {
+        ux: number;
+        uy: number;
+        spread: number;
+    };
+    /**
+     * Source height, world tiles (v4 phase 3). The pool flattens — its
+     * center is `z` away so it dims to (1 − z/R3), while the LATERAL
+     * edge is preserved exactly (R3 = hypot(r, z)); faces respond to the
+     * light's true height (a sconce strikes a wall near-horizontally,
+     * a low crate obliquely from above). Absent = a ground flame.
+     */
+    z?: number;
 }
 /** Everything the lightmap needs to share the camera's view. */
 export interface LightView {
@@ -58,6 +81,33 @@ export interface LightView {
     ox: number;
     oy: number;
 }
+declare function poolStopsFor(zOverR: number): ReadonlyArray<readonly [number, number]>;
+/** Test seam for THE PROFILE IS TOTAL (lightAdmission.test.ts) — the
+ *  falloff derivation is pure, and the crash it used to hide lived
+ *  entirely in its guard clause. */
+export declare const poolStopsForTest: typeof poolStopsFor;
+/**
+ * THE SEATED HALO's dials (v4 phase 2; exported for the renderer AND
+ * the ?lightlab mastering bench — ONE set of numbers, no lab drift).
+ * One halo = two stamps from the shared radial sprite, drawn in the
+ * sorted world pass under `lighter`, BEFORE the exposure multiply:
+ *  - THE POOL: a camera-foreshortened ground ellipse at the fixture's
+ *    ground anchor — light landing around the source;
+ *  - THE CORONA: a round air-glow seated at the flame's own height.
+ * The old post-multiply screen disc split its alpha between them; the
+ * near-center sum (~1.1×) rides slightly hot so the multiply's dimming
+ * near the pool rim nets out around the old read at the core.
+ */
+export declare const HALO_POOL_A = 0.62;
+export declare const HALO_CORONA_A = 0.5;
+export declare const HALO_CORONA_R = 0.6;
+/** THE EMISSIVE CORE: the one post-multiply survivor — a flame-point
+ *  glint capped in DEVICE pixels so it can only ever read as
+ *  brilliance, never as lighting. */
+export declare const CORE_STOPS: ReadonlyArray<readonly [number, number]>;
+export declare const CORE_R_K = 0.16;
+export declare const CORE_R_MAX_PX = 9;
+export declare const CORE_A_K = 1.3;
 export declare class LightingSystem {
     private readonly map;
     private readonly mctx;
@@ -92,6 +142,9 @@ export declare class LightingSystem {
     private readonly patches;
     private frame;
     private offScaleRebuilds;
+    /** THE CROSSING: lamp patches are position-keyed on the current
+     *  plane — drop them whole when the world changes under the lights. */
+    dropWorld(): void;
     /**
      * Paint the frame's exposure. `blocks` answers whether a tile stops
      * light (walls, cliffs); it is only consulted near occluding lights.
@@ -99,9 +152,21 @@ export declare class LightingSystem {
      * on a tile, in WORLD-y units (0 = nothing tall) — it drives the
      * lit-face response for walls AND standing props alike.
      */
-    draw(ctx: CanvasRenderingContext2D, view: LightView, sky: DaylightSample, lights: WorldLight[], blocks: (tx: number, ty: number) => boolean, tallH: (tx: number, ty: number) => number): void;
+    draw(ctx: CanvasRenderingContext2D, view: LightView, sky: DaylightSample, lights: WorldLight[], blocks: (tx: number, ty: number) => boolean, tallH: (tx: number, ty: number) => number, 
+    /** Per-tile material response for lit faces (v4 phase 3): stone
+     *  returns light, wood a little less, foliage drinks it. 1 = full. */
+    faceGain: (tx: number, ty: number) => number): void;
+    /**
+     * THE CONE's wedge clip, in world coordinates (the current transform
+     * is the world→map camera). Apex pulled 0.3 tiles behind the light
+     * so the emitting fixture sits inside its own wedge; the far rim is
+     * one quadratic bow through the axis — THE MAP IS FILTERED softens
+     * whatever straightness remains.
+     */
+    private clipCone;
     /** The light's radial falloff, pre-rendered — intensity rides
-     *  globalAlpha at the stamp, so the sprite is shared per color. */
+     *  globalAlpha at the stamp, so the sprite is shared per color;
+     *  elevated sources take the hung-pool flattened profile. */
     private poolSprite;
     /** The soft indirect halo: wider and dimmer than the pool. */
     private wrapSprite;
@@ -110,6 +175,13 @@ export declare class LightingSystem {
      * row ye: N·L (how squarely the face looks at the pool) times the
      * pool's falloff. Sampled at tile CORNERS so neighbouring faces
      * shade continuously — the run reads as one surface.
+     *
+     * With a source height (v4 phase 3) the vector runs through 3D: the
+     * vertical leg is the light's height over the FACE MIDDLE, so a
+     * sconce strikes a wall of its own height near-horizontally (full
+     * response) but a low crate obliquely from above (dim) — and the
+     * falloff normalizes by R3 so the ground-edge reach the fixture was
+     * tuned for is preserved exactly.
      */
     private faceK;
     /**
@@ -165,4 +237,5 @@ export declare class LightingSystem {
      */
     private castRectShadow;
 }
+export {};
 //# sourceMappingURL=lighting.d.ts.map

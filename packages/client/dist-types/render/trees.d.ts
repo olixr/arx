@@ -185,6 +185,35 @@ export declare function speciesOf(tile: Tile, h: number): number;
  * the art. Flare widens the very base by up to (1 + flare * 0.4).
  */
 export declare function maxTrunkBaseRadius(tile: Tile): number;
+/**
+ * THE TREE FITS ITS FRAME — the exact model-space box the painter's
+ * ink can reach, wind and all. Tiles, y UP, origin at the trunk base.
+ *
+ * The sprite cache bakes each tree onto its own canvas and blits that
+ * canvas every frame, so THE CANVAS IS THE PER-FRAME COST: a rect of
+ * transparent margin is not "only bytes", it is fill rate and alpha
+ * blending paid 60 times a second, per tree, forever. Measured on a
+ * dense-forest rig frame before this existed: the baked rects were
+ * generous round numbers (`spread * 1.15 + 0.08h + 0.45` sideways,
+ * `height * 1.18 + 0.45` up) and only **40% of each rect held ink** —
+ * the forest was blitting 44x the screen area every frame and better
+ * than half of it was nothing at all.
+ *
+ * So the box is DERIVED, not guessed. Every painter in paintTree is
+ * accounted for here, and `treeExtent.test.ts` walks the same geometry
+ * independently to prove containment across every species, variant and
+ * growth stage. Widening a painter's reach without widening this
+ * function clips a crown — which is why the test exists and why the
+ * wind allowances below cite their sources.
+ */
+export interface TreeExtent {
+    /** Model tiles: x left/right of the trunk base, y down/up from it. */
+    x0: number;
+    x1: number;
+    y0: number;
+    y1: number;
+}
+export declare function treeExtent(m: TreeModel): TreeExtent;
 /** Grow (or recall) the tree standing on a tile with world-hash `h`. */
 export declare function treeModel(tile: Tile, h: number): TreeModel;
 /**

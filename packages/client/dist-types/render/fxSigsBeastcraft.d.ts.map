@@ -1,1 +1,1 @@
-{"version":3,"file":"fxSigsBeastcraft.d.ts","sourceRoot":"","sources":["../../src/render/fxSigsBeastcraft.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;;;;;;;;;;;GAoBG;AAIH,OAAO,KAAK,EAAE,UAAU,EAAU,MAAM,mBAAmB,CAAC;AAy4B5D,eAAO,MAAM,eAAe,EAAE,MAAM,CAAC,MAAM,EAAE,UAAU,CAUtD,CAAC"}
+{"version":3,"file":"fxSigsBeastcraft.d.ts","sourceRoot":"","sources":["../../src/render/fxSigsBeastcraft.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;;;;;;;;;;;;;;;;;GA0BG;AAIH,OAAO,KAAK,EAAE,UAAU,EAAU,MAAM,mBAAmB,CAAC;AAk1B5D,gDAAgD;AAChD,eAAO,MAAM,eAAe,EAAE,MAAM,CAAC,MAAM,EAAE,UAAU,CAUtD,CAAC"}

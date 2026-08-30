@@ -16,7 +16,7 @@
  *   load before the first frame; resetting restores this file exactly.
  */
 import { type PadFamily } from './padProfiles.js';
-export type ActionId = 'moveUp' | 'moveDown' | 'moveLeft' | 'moveRight' | 'attack' | 'ability1' | 'ability2' | 'ability3' | 'ability4' | 'dodge' | 'quickUse' | 'interact' | 'lootReveal' | 'buildRotate' | 'sit' | 'sheathe' | 'mount' | 'walkToggle' | 'sneakToggle' | 'screenPack' | 'screenSkills' | 'screenArts' | 'screenCraft' | 'screenBuild' | 'screenSocial' | 'screenMap' | 'screenQuests' | 'screenRep' | 'screenSettings' | 'screenLoot' | 'mapGlass' | 'zoomIn' | 'zoomOut' | 'zoomCycle';
+export type ActionId = 'moveUp' | 'moveDown' | 'moveLeft' | 'moveRight' | 'attack' | 'ability1' | 'ability2' | 'ability3' | 'ability4' | 'dodge' | 'quickUse' | 'interact' | 'lootReveal' | 'buildRotate' | 'sit' | 'sheathe' | 'swapSets' | 'mount' | 'walkToggle' | 'sneakToggle' | 'screenPack' | 'screenSkills' | 'screenArts' | 'screenCraft' | 'screenBuild' | 'screenSocial' | 'screenMap' | 'screenQuests' | 'screenRep' | 'screenSettings' | 'screenKeys' | 'screenBeasts' | 'screenCompanions' | 'screenLoot' | 'mapGlass' | 'zoomIn' | 'zoomOut' | 'zoomCycle';
 export interface ActionDef {
     id: ActionId;
     /** Player-facing name — quiet quartermaster diction. */
@@ -29,10 +29,11 @@ export interface ActionDef {
 }
 /**
  * The shipped layout. Keyboard: WASD moves, Space attacks, QERT casts,
- * F uses, Shift dodges, 1 swallows the belt's meal; the stance row is
- * Z walk / X sit / C sneak; screens live on I K V N B U M O G. Pad:
- * RT (or Ⓧ) attacks, Ⓐ uses, Ⓑ dodges, LB/LT/RB/▲ cast, Ⓨ names the
- * loot; d-pad ▼ eats off the belt, ◀ sheathes, ▶ raises the glass;
+ * F uses, Shift dodges, 1 swallows the belt's meal, backquote trades
+ * weapon sets; the stance row is Z walk / X sit / C sneak; screens
+ * live on I K V N B U M O G. Pad: RT (or Ⓧ) attacks, Ⓐ uses, Ⓑ
+ * dodges, LB/LT/RB/▲ cast, Ⓨ names the loot; d-pad ▼ eats off the
+ * belt, ◀ sheathes (HELD ◀ trades weapon sets), ▶ raises the glass;
  * L3 sneaks, R3 steps the camera; Start is the pack, Select the chart.
  *
  * THE PAIRED HAND: the two technique seats ride TOGETHER — Q and E on

@@ -7,7 +7,7 @@ import { type ArxMark } from './wornLight.js';
  * shield" to the equipment system, and three different objects to the
  * eye — a calved slab, a battlement, and a crowned greatshield.
  */
-export type ShieldShape = 'buckler' | 'round' | 'heater' | 'kite' | 'tower' | 'wall' | 'bastion' | 'aegis' | 'targe' | 'ribwall' | 'thorn';
+export type ShieldShape = 'buckler' | 'round' | 'heater' | 'kite' | 'tower' | 'wall' | 'bastion' | 'aegis' | 'targe' | 'ribwall' | 'thorn' | 'breach' | 'door' | 'palisade' | 'gate' | 'carapace' | 'courtround' | 'pinion' | 'reliquary' | 'furnace' | 'leaf' | 'riftward' | 'falls' | 'colossus';
 /**
  * The material dialect. Wood is BUILT — staves, seams, a bound rim you
  * can count the rivets on. Metal is FORGED — one continuous face,

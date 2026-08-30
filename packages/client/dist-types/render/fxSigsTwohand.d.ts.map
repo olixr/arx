@@ -1,1 +1,1 @@
-{"version":3,"file":"fxSigsTwohand.d.ts","sourceRoot":"","sources":["../../src/render/fxSigsTwohand.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;;;;;;;;;GAkBG;AAGH,OAAO,KAAK,EAAE,UAAU,EAAU,MAAM,mBAAmB,CAAC;AAuzC5D,eAAO,MAAM,YAAY,EAAE,MAAM,CAAC,MAAM,EAAE,UAAU,CAgCnD,CAAC"}
+{"version":3,"file":"fxSigsTwohand.d.ts","sourceRoot":"","sources":["../../src/render/fxSigsTwohand.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;;;;;;;;;;;;;;;;GAyBG;AAIH,OAAO,KAAK,EAAE,UAAU,EAAU,MAAM,mBAAmB,CAAC;AA4iE5D,eAAO,MAAM,YAAY,EAAE,MAAM,CAAC,MAAM,EAAE,UAAU,CAiCnD,CAAC"}

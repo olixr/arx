@@ -46,6 +46,19 @@
  *   frame — they rotate with the facing, so turning in place re-plants
  *   the feet through the normal step logic: a real shuffle for free.
  */
+/**
+ * THE TURNED SILHOUETTE's first channel: the billboard's fake-3D width
+ * squash as a function of how side-on the heading is (`horiz` = |cos|
+ * of the travel/facing). ONE SOURCE — the leg solver eases toward it
+ * every frame and the look-creator preview samples it directly. A
+ * profile must COMMIT to its foreshortening: the old 0.91 floor left
+ * the torso 87% of its frontal width side-on, which is why an E/W
+ * stance read as a front-facing card with a turned head. The user's
+ * calibration: at MOST a 15-20% squish against the frontal width —
+ * the first cut (0.83, ~21%) turned the head profile too dramatic.
+ * 0.88 lands at ~16% and keeps the side read.
+ */
+export declare function yawSquash(horiz: number): number;
 export interface LegSpec {
     /** Rest home in the body frame: forward along the facing (tiles). */
     fwd: number;
@@ -84,6 +97,15 @@ export interface LegRigConfig {
      * stance time and never leave the ground.
      */
     flight?: boolean;
+    /**
+     * How far the NEWEST airborne swing must have progressed (0..1)
+     * before a flight rig may launch another leg. The 0.45 default is
+     * the two-group law every shipped flier runs. A FOUR-group gallop
+     * staggers launches only a quarter-cycle apart — under the default
+     * gate the fourth beat always arrives blocked and the full-gather
+     * suspension frame never happens; the saddle rigs run ~0.26.
+     */
+    flightEager?: number;
     /** Full-run swing duration in seconds (default 0.4 · √legLen). */
     swingRef?: number;
     /**
@@ -94,7 +116,50 @@ export interface LegRigConfig {
      * Default: unlimited (billboard rigs face the camera regardless).
      */
     turnRate?: number;
+    /**
+     * Swing-time ceiling in seconds. Default 0.35 — tuned for a
+     * man-sized stride. THE GIANT GAIT: a leg twice as long takes a
+     * real fraction of a second longer to swing; capping a giant at the
+     * human ceiling forces mincing double-time steps under a ponderous
+     * body (the ogre lesson).
+     */
+    swingMax?: number;
+    /**
+     * THE WALK HAS AN ORDER: leg indices in authored footfall sequence.
+     * Below the gallop blend (runF < 0.35 — exactly where the flight
+     * gate opens) a sequenced rig walks the flightEager law GROUNDED:
+     * the only leg allowed to launch is the successor of the leg that
+     * LAUNCHED last, once that predecessor's swing has passed the
+     * eager point — so the footfalls cycle the authored beat with the
+     * honest overlapping support phases of a real walk (two to three
+     * feet always down). Real quadrupeds walk a LATERAL sequence
+     * (LH → LF → RH → RF); without the law a 4-group rig's walk slots
+     * (a quarter-cycle apart) can NEVER clear the one-airborne group
+     * gate, so every stride fell through to the emergency snap in
+     * whatever order the start-up scramble froze — the goofy walk.
+     * Emergencies and idle shuffles stay outside the gate; a rig
+     * without the field keeps the emergent gait every other species
+     * walks.
+     */
+    walkOrder?: number[];
 }
+/** One lift-off: where a planted foot left the ground (world tiles). */
+export interface LiftEvent {
+    x: number;
+    y: number;
+    /** The slewed facing at the lift — the way the foot was pointing. */
+    dir: number;
+    /** Lateral sign of the leg spec (− left / + right) — print mirror. */
+    side: number;
+    /** Body speed (tiles/sec) at the lift — the tread's vigor. */
+    speed: number;
+}
+/**
+ * Lift-ring size (power of two). A quadruped pair-launch plus a
+ * skipped consumer frame can bank several lift-offs before anyone
+ * reads them — the ring holds the last 8, oldest overwritten.
+ */
+export declare const LIFT_RING = 8;
 export interface LegPose {
     /** World-space feet + lift (tiles), one per configured leg. */
     feet: Array<{
@@ -143,6 +208,18 @@ export declare class LegRig {
     /** Body velocity at the touchdown — dust kicks back along this. */
     plantVx: number;
     plantVy: number;
+    /**
+     * Lift-offs since birth — the mirror of `plants`. Diff across
+     * updates to stamp footprints: a print belongs at the exact spot a
+     * planted foot LEFT, the trackable moment of a gait. The last
+     * LIFT_RING events wait in `liftRing[k & (LIFT_RING - 1)]` for
+     * k = lifts−n … lifts−1. A teleport snap never emits — a snap is
+     * not a step, and no foot ever "left" the ground there.
+     */
+    lifts: number;
+    readonly liftRing: LiftEvent[];
+    /** Leg index of the most recent LAUNCH — the walk-order cursor. */
+    private lastLaunch;
     /** Signed idle-turn accumulator; a big enough pivot owes a shuffle. */
     private lastDir;
     private turnDebt;
@@ -177,6 +254,15 @@ export interface LimbSolve {
  * HOLD two solves at once uses solveLimb, which allocates.
  */
 export declare function solveLimbInto(out: LimbSolve, sx: number, sy: number, hx: number, hy: number, L: number, stretch: number, prefX: number, prefY: number): LimbSolve;
+/**
+ * Unequal-bone variant of the one IK: a limb whose upper and lower
+ * segments differ in length (a cat's long thigh over its short hock).
+ * Law-of-cosines joint placement; reduces exactly to solveLimbInto at
+ * L1 === L2. Same allocation-free scratch contract, same side
+ * preference, same stretch law (past full reach the joint rides the
+ * chord at its bone fraction, so a stretched pounce leg stays honest).
+ */
+export declare function solveLimb2Into(out: LimbSolve, sx: number, sy: number, hx: number, hy: number, L1: number, L2: number, stretch: number, prefX: number, prefY: number): LimbSolve;
 /**
  * Pure two-bone limb solve, the one IK in the game: clamps the target
  * into reach and places the joint on whichever side of the root→target

@@ -1,1 +1,1 @@
-{"version":3,"file":"fxSigsCombat.d.ts","sourceRoot":"","sources":["../../src/render/fxSigsCombat.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;;;;;;;;GAiBG;AAGH,OAAO,KAAK,EAAE,UAAU,EAAU,MAAM,mBAAmB,CAAC;AAghB5D,eAAO,MAAM,WAAW,EAAE,MAAM,CAAC,MAAM,EAAE,UAAU,CAYlD,CAAC"}
+{"version":3,"file":"fxSigsCombat.d.ts","sourceRoot":"","sources":["../../src/render/fxSigsCombat.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;;;;;;;;;;;;;;;;;GA0BG;AAGH,OAAO,KAAK,EAAE,UAAU,EAAU,MAAM,mBAAmB,CAAC;AAotC5D,eAAO,MAAM,WAAW,EAAE,MAAM,CAAC,MAAM,EAAE,UAAU,CAYlD,CAAC"}

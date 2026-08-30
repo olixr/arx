@@ -358,6 +358,14 @@ export declare class Particles {
     /** Scratch bolt node buffers — reused, never allocated per frame. */
     private readonly boltNx;
     private readonly boltNy;
+    /**
+     * THE CROSSING: every live grain dies where it flew and every
+     * emitter falls silent — particles are position-keyed matter, and a
+     * survivor would rain another plane's weather here. The dead return
+     * to the free lists, so the warm pool stays warm; the landing queue
+     * empties too (those contacts happened on ground we just left).
+     */
+    clear(): void;
     /** Live particle count (tests + budget audits). */
     count(): number;
     /**

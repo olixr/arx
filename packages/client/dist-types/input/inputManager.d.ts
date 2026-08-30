@@ -65,6 +65,21 @@ export declare class InputManager {
      */
     private sheatheQueued;
     private padSheatheWasDown;
+    /**
+     * THE SECOND GRIP's swap verb (backquote; pad = HELD sheathe ◀, or
+     * a direct rebind) — the sit protocol: one frame carries the bit,
+     * the server trades the sets and owns the beat.
+     */
+    private swapQueued;
+    private padSwapWasDown;
+    /**
+     * THE HOLD SPLIT on the pad's sheathe button: press starts this
+     * clock; release under SWAP_HOLD_MS is the tap (sheathe fires on
+     * RELEASE — the deliberate cost of the split), crossing SWAP_HOLD_MS
+     * while held fires the trade once and eats the release.
+     */
+    private padSheatheDownAt;
+    private padSheatheHeldSwap;
     private padSneakWasDown;
     /**
      * One queued mount-toggle press (P; pad unbound by default) — the
@@ -150,6 +165,12 @@ export declare class InputManager {
      * hold-to-aim layer skips these (a thumb tap keeps its smart cast).
      */
     touchAbilityBits(): number;
+    /**
+     * THE SECOND GRIP's one door for UI presses (the hotbar swap well,
+     * the rack's Draw/Trade): queue the swap verb exactly as the key
+     * does — one frame carries the bit, the server owns the trade.
+     */
+    queueSwap(): void;
     /** The pad's Interact button (Ⓐ default) — polled for edge detection. */
     padInteractPressed(): boolean;
     /** True when a connected gamepad is the player's active input device. */

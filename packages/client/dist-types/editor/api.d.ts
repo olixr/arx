@@ -1,4 +1,4 @@
-import type { FactionsDef, FrontierDef, GeographyDef, PackedZoneEdgeProfile, PrefabJson, ZoneJson } from '@arx/content';
+import type { FactionsDef, FrontierDef, GeographyDef, PackedZoneEdgeProfile, PlaneId, PrefabJson, ZoneJson } from '@arx/content';
 /**
  * The editor's wire to the game server's dev maps API (/dev/maps on
  * the game port, proxied by Vite in dev). Every save lands on disk
@@ -14,6 +14,8 @@ export interface MapListEntry {
         x: number;
         y: number;
     };
+    /** THE WORLDS APART: the plane the zone stamps (absent = surface). */
+    plane?: PlaneId;
     spawn: {
         x: number;
         y: number;
@@ -122,6 +124,17 @@ export interface WorldSnapshot {
         x: number;
         y: number;
         r: number;
+    }>;
+    capitals: Array<{
+        gx: number;
+        gy: number;
+        x: number;
+        y: number;
+        layoutId: string;
+        family: string | null;
+        stage: number;
+        wardsCleared: number;
+        state: 'standing' | 'broken' | 'ember' | 'fallow' | 'unstood';
     }>;
     /** THE FORESTER'S GLASS: the wild-harvest ledger, one read. */
     growth?: Array<{

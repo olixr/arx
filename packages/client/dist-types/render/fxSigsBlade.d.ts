@@ -1,27 +1,39 @@
 /**
- * THE SIGNATURE LAW — the blade wave.
+ * THE SIGNATURE LAW — the sword-secret roster (THE ARMORY REMEMBERS,
+ * wave 3: the blade twenty) + the onehand breath wave.
  *
- * Thirteen bespoke set-pieces for the sword-art roster, composed on
- * top of the v3 grammar in the renderer's three strata. Same binding
- * laws as fxSignatures.ts: hard edges, save/restore hygiene, squash
- * on the ground, srand-deterministic geometry, frameDt-gated emission,
- * ≤60 path ops per hook per frame. The signature must SAY the
- * mechanic — a stagger splits, a bleed leaves barbs, an oath cinches.
- * No centerpiece here repeats another's, nor any other file's.
+ * The twenty sword secrets rebuilt ground-up to the three-strata
+ * bar — every art speaks on all three layers at once:
  *
- * Wire kinds served: the arc arts read c.dir; Riptide rides 'dash'
- * (heart = departure, far end = arrival); Storm Brand rides 'bolt'
- * (far end = the strike point, one fx per hop); Quicksilver's flurry
- * arrives as three 'arc' beats, so its signature is one beat's worth;
- * Starfall lands as 'blast' after its telegraph; the vow is a 'buff'.
- * Every hook stays graceful for any kind — far-end fields collapse
- * to the heart when a cast carries no second point.
+ *   PRIMARY   the strike statement, painted inside the wire's life:
+ *             2.5D volumes, side faces, foreshortened tops, crisp.
+ *   SECONDARY what flies off: true-altitude matter — bark chips,
+ *             torn leaves, forge spatter, a night-star's sparks.
+ *   TERTIARY  THE LASTING MARK — settled grains lying in deliberate
+ *             formations for ~6-10 s: a split round's pale faces, a
+ *             wheel of weeping cuts, a cooling slag cake, a fallen
+ *             star fragment glinting where it landed.
  *
- * FX v5 wave 3a: particle matter routes through the MATTER LIBRARY
- * (ONE-VOICE LAW) — water, fire, frost, storm, blood, radiance, and
- * dust all speak mastered. The painted centerpieces stay bespoke,
- * as do quicksilver's mercury, reapers_arc's chaff, green_verse's
- * notes, and still_air's stillness: no material owns those voices.
+ * Wire kinds served: the arc arts read c.dir; riptide/green_verse
+ * ride 'dash' (heart = departure, far end = arrival); storm_brand
+ * and sky_splits ride 'bolt' (far end = the strike, one fx per hop);
+ * quicksilver's flurry arrives as three 'arc' beats (beat parity off
+ * bornAt); starfall/slagfall land as 'blast' after their telegraphs;
+ * the vow is a one-ceremony 'buff'. Binding laws as ever: hard
+ * edges, save/restore hygiene, squash on ground y-radii, srand
+ * determinism, frameDt-gated emission, ≤ ~60 path ops per hook per
+ * frame. No centerpiece repeats another's, nor any of this file's
+ * former ones (the kerf, the barb row, the mercury dart, the
+ * undertow, the ember rind, the icicle fringe, the windrow, the
+ * threshing ring, the seared sigil, the court rail, the thrown
+ * shadows, the sky splash, the cinched knot, the sea takes its
+ * turn, the word reads itself, the poured mouth, the bolt goes
+ * visiting, the second bar, the session, the held breath — all
+ * retired whole).
+ *
+ * FX v5 ONE-VOICE stands: water, fire, frost, storm, blood,
+ * radiance, and dust speak through the MATTER LIBRARY; straw,
+ * silver, kelp, star-stone, and script stay each art's own.
  */
 import type { AbilitySig } from './fxSignatures.js';
 export declare const BLADE_SIGS: Record<string, AbilitySig>;

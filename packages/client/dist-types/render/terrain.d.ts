@@ -64,9 +64,7 @@ export interface ChunkBakeJob {
 }
 /** Advance a sliced bake by one step; true when the bake is complete. */
 export declare function stepChunkBake(job: ChunkBakeJob): boolean;
-export declare function startChunkBake(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, woodSkin?: WoodSkinSampler, live?: boolean): ChunkBakeJob;
-/** The one-shot bake: start + run every step. Output is identical to
- *  the sliced path — this is the sliced path, run to completion. */
+export declare function startChunkBake(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, woodSkin?: WoodSkinSampler, live?: boolean, reuse?: HTMLCanvasElement | null): ChunkBakeJob;
 export declare function bakeChunk(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, woodSkin?: WoodSkinSampler): HTMLCanvasElement;
 /** The world's outline ink — MUST equal Renderer.STRUCT_OUTLINE. The
  *  decks wear the same bold dark edge as walls, props and entities
@@ -107,7 +105,7 @@ export interface ElevatedBake {
 export interface ElevatedBakeJob extends ChunkBakeJob {
     rows: boolean[];
 }
-export declare function startElevatedBake(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, level: number): ElevatedBakeJob | null;
+export declare function startElevatedBake(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, level: number, reuse?: HTMLCanvasElement | null): ElevatedBakeJob | null;
 /** The one-shot elevated bake: start + run every step. Output is
  *  identical to the sliced path — this IS the sliced path, run whole. */
 export declare function bakeElevated(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, level: number): ElevatedBake | null;
@@ -150,9 +148,9 @@ export interface WaterFx {
 export declare const DOCK_LIFT = 0.22;
 /** Deck-family ground: the two raised-walk tiles. */
 export declare function isDeckGround(t: number | undefined): boolean;
-/** Dock tile near water — a raised jetty deck. */
+/** Dock tile of a water-touching structure — a raised jetty deck. */
 export declare function isDockTile(ground: GroundSampler, tx: number, ty: number): boolean;
-/** Bridge tile near water — a raised, seated crossing. */
+/** Bridge tile of a water-touching structure — a raised, seated crossing. */
 export declare function isBridgeTile(ground: GroundSampler, tx: number, ty: number): boolean;
 /** Either raised deck — everything the water must flow quietly under. */
 export declare function isDeckTile(ground: GroundSampler, tx: number, ty: number): boolean;
@@ -235,6 +233,23 @@ export declare function fillCoversEdge(ground: GroundSampler, x: number, y: numb
  * verdict for every member tile so callers memoize one flood per span.
  */
 export declare function deckWalkIsVertical(ground: GroundSampler, tx: number, ty: number, out?: Map<number, boolean>): boolean;
+/**
+ * THE ARM LAW (deck platform rework). Board JOINT RHYTHM follows the
+ * ARM a tile sits in, measured on the spot: the contiguous deck run
+ * through the tile along each axis (capped). A long N-S arm breaks
+ * its boards in the brick bond, a long E-W arm runs long planks —
+ * and an L- or T-shaped complex resolves ARM BY ARM instead of
+ * flipping per tile (the old per-tile guess butted the two rhythms
+ * mid-run with no seam at all). Where two arms genuinely meet, the
+ * rhythm verdicts disagree across one shared edge — and that edge is
+ * exactly where the painters lay a HEADER BEAM, so every rhythm
+ * change in the world is carpentry, never an accident.
+ *
+ * This is the APPEARANCE axis only. The WALK axis (aprons, kerbs,
+ * thresholds, rails) stays with deckWalkIsVertical's span flood —
+ * a span keeps one walk even where its board rhythm turns a corner.
+ */
+export declare function deckArmVertical(ground: GroundSampler, tx: number, ty: number): boolean;
 /** Which way a bridge tile ramps: the LAND side of an apron, or
  *  'none' for a full-height tile. */
 export type BridgeApron = 'none' | 'W' | 'E' | 'N' | 'S';
@@ -262,6 +277,30 @@ export declare function bridgeApronAt(ground: GroundSampler, tx: number, ty: num
  * caustics, the surf shoreline and portal swirls. Drawn every frame
  * over the baked ground. (Grass and flowers live in grass.ts.)
  */
+/**
+ * THE WET LEDGER — the live-water pass, compiled. The breeze layer only
+ * ever dresses the water family and the decks it laps against, yet the
+ * scan paid sampler calls for every meadow tile in view (and the
+ * shoreline march paid four corner reads per dual cell). A caller that
+ * already holds a tile snapshot (the renderer's frame grid) compiles
+ * these lists in one linear typed-array pass and hands them in; the
+ * passes then visit only tiles that can possibly speak. The lists are
+ * BUILT FRESH each frame from the same snapshot the samplers read, so
+ * there is nothing to invalidate — and every caller without lists (the
+ * elevated bands' single-row calls, the editor, bakes) keeps the plain
+ * scan, which remains the always-correct fallback.
+ *
+ * Packing: (tx + 0x8000) << 16 | (ty + 0x8000), row-major append — the
+ * exact visit order of the scans they replace, so bucket insertion
+ * order (draw order) is preserved by construction.
+ */
+export interface WetLists {
+    /** Wet tiles (water family or deck) inside the pass bounds. */
+    tiles: number[];
+    /** Dual cells with at least one water-family corner (bounds+1 grid). */
+    cells: number[];
+}
+export declare function wetClassOf(t: number): number;
 export declare function drawLiveGround(ctx: CanvasRenderingContext2D, ground: GroundSampler, bounds: {
     minTx: number;
     maxTx: number;
@@ -270,7 +309,7 @@ export declare function drawLiveGround(ctx: CanvasRenderingContext2D, ground: Gr
 }, worldToScreen: (wx: number, wy: number) => {
     x: number;
     y: number;
-}, s: number, timeMs: number, fx?: WaterFx): void;
+}, s: number, timeMs: number, fx?: WaterFx, wet?: WetLists): void;
 /**
  * The visible water region as ONE Path2D in WORLD tile coordinates:
  * interior dual cells as rects, boundary cells through the same organic
@@ -284,7 +323,7 @@ export declare function waterRegionPath(ground: GroundSampler, bounds: {
     maxTx: number;
     minTy: number;
     maxTy: number;
-}): Path2D | null;
+}, cells?: number[]): Path2D | null;
 /** Water tiles that share a shoreline (no foam between each other). */
 export declare function isWaterTile(t: number | undefined): boolean;
 //# sourceMappingURL=terrain.d.ts.map

@@ -6,6 +6,20 @@ export interface UiNavHooks {
     /** Drop the carried pack slot onto the ground (Ⓨ while carrying). */
     onDropToWorld: (slot: number) => void;
     /**
+     * Carry-place onto an equipment socket: the manual equip (a helmet
+     * onto the head, a one-handed blade onto the off hand — THE
+     * DELIBERATE PAIR). True when the verb fired and the carry ends;
+     * false when the piece can never live there (the carry stands and
+     * the ring shakes its head). The server still holds every gate.
+     */
+    onPlaceToEquip?: (from: number, equipSlot: string) => boolean;
+    /**
+     * The action strip's honest word for placing the carried slot on
+     * this socket ('Equip' / 'Stow'), or null when it won't fit — the
+     * strip never promises what the place would refuse.
+     */
+    placeToEquipLabel?: (from: number, equipSlot: string) => string | null;
+    /**
      * Focus landed on an element — show the item inspect card for it if
      * it's an item cell. Return true when a card is showing (the small
      * tooltip stands down). Called with null when pad UI ends.
@@ -54,6 +68,8 @@ export declare class UiNav {
     private focusKey;
     /** Pack slot index currently carried (pad move mode), or null. */
     private carrying;
+    /** Clears the ring's refusal flash. */
+    private refuseTimer;
     private readonly ring;
     private readonly strip;
     private readonly tooltip;
@@ -117,6 +133,12 @@ export declare class UiNav {
     private moveFocus;
     private setFocus;
     /**
+     * THE HERO LANDING: a panel names its own default seat (the loot
+     * tray lands the ring on Take all). Lands only if the control
+     * stands; a missing key simply leaves the ring where it was.
+     */
+    focusNavKey(key: string): void;
+    /**
      * One directional step: a focused slider consumes ◀ ▶ as value
      * nudges (the audio menu's volumes, any future range row); everything
      * else moves the focus ring spatially.
@@ -154,6 +176,11 @@ export declare class UiNav {
     private landFocus;
     /** Pick up / place the focused pack slot (Ⓧ). */
     private handleCarry;
+    /**
+     * The ring's spoken no: a brief ember flash on a refused carry-place.
+     * Color only — the ring's transform is its position, never a shaker.
+     */
+    private refuseRing;
     /** Per-frame drive. Call after input.pollGamepad(). */
     update(nowMs: number, uiOpen: boolean, buildActive?: boolean): void;
     /**
@@ -165,15 +192,22 @@ export declare class UiNav {
     private handleGlobalButtons;
     /** The open room's section rail, when it declares one. */
     private roomTabs;
+    /** The open room's declared pager — the ledger first (a rail
+     * already answers the bumpers), the rail itself when it is the only
+     * pager the room owns. */
+    private roomPager;
     /**
      * A bumper press: step the room's section rail when one stands,
-     * otherwise walk the shelf of screens. An open verb menu owns the
-     * frame — sections must not slide under a raised sheet of verbs.
+     * turn the room's ledger when leaves are all it has, and only walk
+     * the shelf of screens when the room owns neither. An open verb
+     * menu owns the frame — sections must not slide under a raised
+     * sheet of verbs.
      */
     private bumperStep;
-    /** LT/RT: hand the press to the open room's declared pager — the
-     * ledger first (the rail already answers the bumpers), the rail
-     * itself when it is the only pager the room owns. */
+    /** LT/RT: hand the press to the open room's declared pager. In a
+     * railed room this reaches past the rail to the ledger; in a
+     * rail-less room it seconds the bumpers — the same leaf turn under
+     * either finger, so no habit is ever wrong. */
     private dispatchPage;
     /**
      * Start's tap-or-hold machine. Hold past the threshold and the ten

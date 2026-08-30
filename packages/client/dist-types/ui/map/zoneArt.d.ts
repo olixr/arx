@@ -7,6 +7,13 @@
  */
 export interface ZoneArt {
     canvas: HTMLCanvasElement;
+    /**
+     * THE WORLDS APART: the plane whose chart this art belongs on.
+     * Planes legitimately overlap in coordinates — the Undercroft lies
+     * over open surface wilderness — so the drawer must match plane,
+     * never just rectangle.
+     */
+    plane: string;
     x: number;
     y: number;
     w: number;
