@@ -273,6 +273,19 @@ export function buildRegisterRows(
  * it and a stale-ratio blit can never open a hairline there.
  */
 export const BAND_MAX_SPAN = 12;
+
+/**
+ * THE SHELF CUTS TO THE CROWN (round 14). A band canvas's height is
+ * set by its tallest FAMILY (garrison crowns bake ~4.6 tiles of
+ * head-room against a house wall's 2.8), so a garrison stretch at the
+ * full 12-tile span costs ~8MB at zoom 1 on a retina panel — past the
+ * 6MB per-band ceiling, refused at the gate, and painted live
+ * forever. That was round 12's "TooBig straggler": measured at the
+ * Silverfall falls as ~2,700 path ops a frame of masonry, merlons and
+ * tapestries that never stopped. Garrison shelves cut at half span so
+ * the same crown fits the same ceiling.
+ */
+export const BAND_MAX_SPAN_TALL = 6;
 export interface StretchRef {
   /** Member index range [i0, i1] inclusive, into the row's list. */
   i0: number;
@@ -292,6 +305,7 @@ export function planStretches(
     if (!list) continue;
     let cur: StretchRef | null = null;
     let curX0 = 0;
+    let curSpan = maxSpan;
     let acc: StretchRef[] | undefined;
     for (let i = 0; i < list.length; i++) {
       const m = list[i]!;
@@ -305,17 +319,23 @@ export function planStretches(
         cur = null;
         continue;
       }
+      // THE SHELF CUTS TO THE CROWN: a garrison member anywhere in the
+      // segment holds the whole segment to the tall-family span (the
+      // canvas is as tall as its tallest member).
+      const mSpan = m.kind === RaisedKind.GarrisonWall ? BAND_MAX_SPAN_TALL : maxSpan;
       // A SHELF, NOT A WALL: the span is measured to the member's EAST
       // end, so one run-merged member can never smuggle a whole chunk
       // row into a single canvas. A member that would burst the span
       // on its own still opens its own segment — the cut falls BETWEEN
       // members, never inside one.
-      if (cur !== null && m.endX + 1 - curX0 <= maxSpan) {
+      if (cur !== null && m.endX + 1 - curX0 <= Math.min(curSpan, mSpan)) {
         cur.i1 = i;
+        if (mSpan < curSpan) curSpan = mSpan;
         continue;
       }
       cur = { i0: i, i1: i, key: packStretchKey(ly, m.tx) };
       curX0 = m.tx;
+      curSpan = mSpan;
       (acc ??= []).push(cur);
     }
     if (acc) out[ly] = acc;

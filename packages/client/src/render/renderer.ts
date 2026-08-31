@@ -3835,12 +3835,31 @@ export class Renderer {
     const q = this.camera.scale / Renderer.MASK_S;
     const ys = this.camera.yScale;
     const c = this.sdw;
+    // On the shadow layer the base transform is a bare dpr scale, so
+    // the stamp composes its matrix ABSOLUTELY — one setTransform per
+    // throw instead of a save/transform/restore trio (a full state
+    // serialization per stamp; a cold ore field threw ~84 a frame).
+    // The in-sort path (sdw === main ctx, elevated casts) keeps the
+    // stack: its base carries the zoom-pulse and is not ours to guess.
+    const onLayer = c === this.shadowLayerCtx;
+    const dprL = onLayer ? this.dpr() : 1;
+    let stamped = false;
     const throwMask = (kx: number, ky: number, alpha: number): void => {
-      c.save();
-      c.globalAlpha = Math.min(1, alpha / this.sdwLayerAlpha);
-      c.transform(q, 0, -kx * q, -ky * q, px - entry.au * q + kx * q * entry.av, baseY + ky * q * entry.av);
-      c.drawImage(entry.cv, 0, 0);
-      c.restore();
+      const a = Math.min(1, alpha / this.sdwLayerAlpha);
+      const tx = px - entry.au * q + kx * q * entry.av;
+      const ty = baseY + ky * q * entry.av;
+      if (onLayer) {
+        c.globalAlpha = a;
+        c.setTransform(q * dprL, 0, -kx * q * dprL, -ky * q * dprL, tx * dprL, ty * dprL);
+        c.drawImage(entry.cv, 0, 0);
+        stamped = true;
+      } else {
+        c.save();
+        c.globalAlpha = a;
+        c.transform(q, 0, -kx * q, -ky * q, tx, ty);
+        c.drawImage(entry.cv, 0, 0);
+        c.restore();
+      }
     };
     if (this.sky.shadowAlpha >= 0.02) {
       throwMask(
@@ -3851,6 +3870,10 @@ export class Renderer {
     }
     for (const th of this.lightThrows(px, baseY, 0.6)) {
       throwMask(th.ux * th.len, th.uy * th.len * ys, th.alpha);
+    }
+    if (stamped) {
+      c.setTransform(dprL, 0, 0, dprL, 0, 0);
+      c.globalAlpha = 1;
     }
   }
 
@@ -7385,6 +7408,14 @@ export class Renderer {
     this.bandStats.hot = 0;
     this.bandStats.bakes = 0;
     this.bandStats.over = 0;
+    this.bandStats.cut = 0;
+    // THE SETTLED CUT's stability ledger prunes on a cadence: an entry
+    // not seen for ~4s left every reveal window long ago.
+    if (this.frameNo % 240 === 0 && this.bandCutStates.size > 0) {
+      for (const [key, st] of this.bandCutStates) {
+        if (st.seen < this.frameNo - 240) this.bandCutStates.delete(key);
+      }
+    }
     // Tall-content pads (see TREE_PAD_S/TREE_PAD_X/PROP_PAD_S): rows
     // up to PROP_PAD_S past the shared bounds admit everything (walls
     // and stations are ~2.2 tiles tall — their crowns reach 3.7 rows
@@ -8027,7 +8058,7 @@ export class Renderer {
    *  subtracts, and dropAllBands re-grounds it at zero. */
   private bandBytes = 0;
   /** Per-frame band accounting (the ?perf confession, phase 5). */
-  private readonly bandStats = { blit: 0, live: 0, hot: 0, bakes: 0, over: 0 };
+  private readonly bandStats = { blit: 0, live: 0, hot: 0, bakes: 0, over: 0, cut: 0 };
   /** Per-frame "this stretch already emitted" marker (blit or live). */
   private readonly bandEmitted = new Map<string, number>();
   private readonly bandScratchSeen = new Set<number>();
@@ -8115,14 +8146,27 @@ export class Renderer {
   }
 
   /**
-   * THE HOT MEMBER RULE's predicate, reusing the live path's own gates
-   * verbatim: a stretch is hot if any wall member's reveal height is
-   * off full (checked only inside the cut's known support window — the
-   * same early-outs wallHeightAt itself takes), if its north neighbor
-   * is (the REAR RISER repaints on the neighbor's ease), or if a
-   * destructible member is mid-shake.
+   * THE HOT MEMBER RULE's walk, upgraded for THE SETTLED CUT (round
+   * 14). Returns:
+   *  -1 — must draw LIVE this frame (a destructible mid-shake, or a
+   *       tall prop inside the step-aside fade's support box — both
+   *       animate per frame and can never bake);
+   *   0 — fully standing (every reveal height at rest): the ordinary
+   *       cold band path;
+   *  >0 — a CUT SIGNATURE: some wall/garrison member is revealed, and
+   *       this hash quantizes every off-full height (own row + north
+   *       neighbor — the REAR RISER paints on the neighbor's ease) to
+   *       1/48 tile. While the player MOVES the signature churns every
+   *       frame and the stretch stays live, exactly as before; once
+   *       the player settles the signature holds still, and after a
+   *       short stability window the stretch may bake AT ITS CUT
+   *       HEIGHTS — standing inside a furnished building no longer
+   *       keeps ~20 wall stretches painting live vectors forever
+   *       (round 12's #1 open item, measured as the crown's `hot 20`).
    */
-  private stretchHot(game: ClientGame, list: readonly RaisedMember[], s: StretchRef): boolean {
+  private stretchCutSig(game: ClientGame, list: readonly RaisedMember[], s: StretchRef): number {
+    let sig = 17;
+    let anyCut = false;
     for (let i = s.i0; i <= s.i1; i++) {
       const m = list[i]!;
       switch (m.kind) {
@@ -8131,8 +8175,12 @@ export class Renderer {
           if (this.cutCtx > 0.001) {
             const dy = m.ty - this.ownPY;
             if (dy >= -2.5 && dy <= 12.5 && Math.abs(m.tx + 0.5 - this.ownPX) <= 13.5) {
-              if (this.wallHeightAt(game, m.tx, m.ty) !== WALL_H) return true;
-              if (this.wallHeightAt(game, m.tx, m.ty - 1) !== WALL_H) return true;
+              const h0 = this.wallHeightAt(game, m.tx, m.ty);
+              const h1 = this.wallHeightAt(game, m.tx, m.ty - 1);
+              if (h0 !== WALL_H || h1 !== WALL_H) {
+                anyCut = true;
+                sig = (sig * 31 + Math.round(h0 * 48) * 397 + Math.round(h1 * 48)) | 0;
+              }
             }
           }
           break;
@@ -8140,8 +8188,12 @@ export class Renderer {
         case RaisedKind.GarrisonWall: {
           const dy = m.ty - this.ownPY;
           if (dy >= -2.5 && dy <= 16.5 && Math.abs(m.tx + 0.5 - this.ownPX) <= 13.5) {
-            if (this.garrisonHeightAt(game, m.tx, m.ty) !== GARRISON_H) return true;
-            if (this.garrisonHeightAt(game, m.tx, m.ty - 1) !== GARRISON_H) return true;
+            const h0 = this.garrisonHeightAt(game, m.tx, m.ty);
+            const h1 = this.garrisonHeightAt(game, m.tx, m.ty - 1);
+            if (h0 !== GARRISON_H || h1 !== GARRISON_H) {
+              anyCut = true;
+              sig = (sig * 31 + Math.round(h0 * 48) * 397 + Math.round(h1 * 48)) | 0;
+            }
           }
           break;
         }
@@ -8155,17 +8207,29 @@ export class Renderer {
             m.ty - this.ownPY >= -2.5 &&
             m.ty - this.ownPY <= 6.5
           )
-            return true;
+            return -1;
           break;
         }
         default:
           break; // ramps and rails never animate
       }
       if (this.propShakes.size > 0 && destructibleInfo(m.tile) && this.propShakeX(m.tx, m.ty) !== 0)
-        return true;
+        return -1;
     }
-    return false;
+    if (!anyCut) return 0;
+    return sig === 0 || sig === -1 ? 1 : sig;
   }
+
+  /** Per-stretch cut stability: sig last seen + how long it has held.
+   *  Entries prune on a cadence (seen-stamped) — the map only ever
+   *  holds stretches currently inside a reveal window. */
+  private readonly bandCutStates = new Map<string, { sig: number; stable: number; seen: number }>();
+
+  /** Frames a cut signature must hold before its stretch may bake —
+   *  a whisker over interpolation jitter, well under a reader's
+   *  patience. Motion churns the sig every frame, so walking keeps
+   *  today's live path untouched. */
+  private static readonly CUT_STABLE_FRAMES = 10;
 
   /**
    * Emit one stretch: blit its bake when standing and cold, bake it
@@ -8191,19 +8255,48 @@ export class Renderer {
     // first (band or live) owns the frame; the twin copy stands down.
     const isRun = m0.kind === RaisedKind.RampRun;
     if (isRun && runSeen.has(packTile(m0.tx, m0.ty))) return;
-    const hot = this.staticLayerOn() && this.stretchHot(game, list, s);
-    if (hot) this.bandStats.hot++;
-    if (this.staticLayerOn() && !hot) {
+    // THE SETTLED CUT JOINS THE BAND: walk the members once. A shake
+    // or fading prop forces live; a reveal in motion churns the cut
+    // signature and stays live; a reveal that has HELD STILL for the
+    // stability window folds its quantized heights into the band sig
+    // and bakes like any cold stretch — at its cut heights.
+    const layerOn = this.staticLayerOn();
+    let hot = false;
+    let sigEff = sig;
+    let cutBaked = false;
+    if (layerOn) {
+      const cut = this.stretchCutSig(game, list, s);
+      if (cut === -1) {
+        hot = true;
+      } else if (cut !== 0) {
+        const st = this.bandCutStates.get(ck);
+        if (st !== undefined && st.sig === cut) {
+          st.seen = this.frameNo;
+          if (st.stable < Renderer.CUT_STABLE_FRAMES) {
+            st.stable++;
+            hot = true;
+          } else {
+            sigEff = (sig * 31 + cut) | 0;
+            cutBaked = true;
+          }
+        } else {
+          this.bandCutStates.set(ck, { sig: cut, stable: 0, seen: this.frameNo });
+          hot = true;
+        }
+      }
+      if (hot) this.bandStats.hot++;
+    }
+    if (layerOn && !hot) {
       const gridPx = this.bandGridPx();
       let bake = this.bandCache.get(ck);
       const contentFresh =
-        bake !== undefined && bake.sig === sig && bake.outlined === this.outlineOn;
+        bake !== undefined && bake.sig === sigEff && bake.outlined === this.outlineOn;
       if (
         (!contentFresh || bake!.gridPx !== gridPx) &&
         !this.zoomGliding &&
         this.staticBakeMsLeft > 0.2
       ) {
-        const fresh = this.bakeStretch(game, list, s, sig, gridPx);
+        const fresh = this.bakeStretch(game, list, s, sigEff, gridPx, !cutBaked);
         if (fresh) {
           this.bandStats.bakes++;
           if (bake) this.releaseStretchBake(bake);
@@ -8211,7 +8304,8 @@ export class Renderer {
           bake = fresh;
         }
       }
-      if (bake && bake.sig === sig && bake.outlined === this.outlineOn) {
+      if (bake && bake.sig === sigEff && bake.outlined === this.outlineOn) {
+        if (cutBaked) this.bandStats.cut++;
         // Content matches — blit. A gridPx-stale bake still serves
         // (the snapped-corner blit scale-compensates) while the paced
         // re-bake above replaces it.
@@ -8326,6 +8420,7 @@ export class Renderer {
     s: StretchRef,
     sig: number,
     gridPx: number,
+    veilFull = true,
   ): StretchBake | null {
     const t0 = performance.now();
     let wx0 = Infinity;
@@ -8403,7 +8498,10 @@ export class Renderer {
     const savedW = this.w;
     const savedH = this.h;
     const savedCtx = this.ctx;
-    this.bakeVeilFull = true;
+    // THE SETTLED CUT: a cut bake paints the reveal AT its settled
+    // heights (the extended sig owns their identity); an ordinary
+    // bake still holds the veil at rest.
+    this.bakeVeilFull = veilFull;
     this.bakingMask = true;
     const keyOf = (it: DrawItem): string => `${it.sortY}|${it.strat ?? 'u'}|${it.elevated ? 1 : 0}`;
     const buckets: BandBucket[] = [];
@@ -20317,7 +20415,7 @@ export class Renderer {
     // THE STANDING WORLD's confession: how much of the frame blits.
     const bs = this.bandStats;
     parts.push(
-      `bands ${bs.blit}/${bs.live + bs.blit} hot ${bs.hot} over ${bs.over} ` +
+      `bands ${bs.blit}/${bs.live + bs.blit} hot ${bs.hot} cut ${bs.cut} over ${bs.over} ` +
         `${(this.bandBytes / 1048576).toFixed(0)}MB`,
     );
     // THE GROUND CONFESSES ITS BYTES: the baked-chunk cache is the
@@ -21443,7 +21541,11 @@ export class Renderer {
     dh: number,
   ): number {
     if (
+      // Any bake context suppresses fades — the step-aside fade is a
+      // per-frame animation and must never freeze into pixels (cut
+      // bakes run with the veil live, so bakingMask carries the duty).
       this.bakeVeilFull ||
+      this.bakingMask ||
       dh < FADE_TALL_TILES * this.camera.scale ||
       Renderer.NEVER_FADE_TILES.has(tile) ||
       this.ownSeatTiles?.has((tx + 0x8000) * 0x10000 + (ty + 0x8000)) === true
@@ -22358,10 +22460,29 @@ export class Renderer {
             }
             const pw2 = Math.ceil(sh.cw * SHADOW_SPRITE_RES);
             const ph2 = Math.ceil(sh.ch * SHADOW_SPRITE_RES);
-            if (k === 1 && Math.abs(sx) * sh.ch < 0.75) {
-              // Sub-pixel sway at native scale: the plain blit is
-              // exact and skips the matrix ops entirely.
-              c.drawImage(sh.canvas, 0, 0, pw2, ph2, bx - sh.ax, groundY - sh.ay, sh.cw, sh.ch);
+            const dx0 = bx - sh.ax * k;
+            const dy0 = groundY - sh.ay * k;
+            const dwS = sh.cw * k;
+            const dhS = sh.ch * k;
+            const smg = Math.abs(sx) * dhS + 4;
+            // THE OFF-SCREEN CAST STANDS DOWN (round 14): the padded
+            // grid collects trees well outside the viewport so crowns
+            // can lean in — but a cast is a ground smear at its base,
+            // and the census counted ~160 stamps/frame in a dense
+            // forest whose dest rects were entirely outside the
+            // viewport, each paying its transform pair for the canvas
+            // to clip. The sprite stays warm; only the stamp stands
+            // down (same law as the body cull, one layer lower).
+            if (dx0 + dwS + smg < 0 || dx0 - smg > this.w || dy0 + dhS < 0 || dy0 > this.h) {
+              // nothing on screen to shade
+            } else if (Math.abs(sx) * dhS < 1.5) {
+              // Sub-pixel sway: the plain 9-arg blit carries the
+              // scale ratio in its dest rect and skips the matrix
+              // ops entirely. Shadows are soft 0.35-alpha smears, so
+              // their sway gate is twice the body's 0.75px — the
+              // wider gate halves the transform-pair population and
+              // is invisible on a blob (the body keeps its own).
+              c.drawImage(sh.canvas, 0, 0, pw2, ph2, dx0, dy0, dwS, dhS);
             } else {
               // ONE composed transform + its exact inverse (b = 0
               // keeps it closed-form): translate(bx,gy)·[k, sx·k; 0,

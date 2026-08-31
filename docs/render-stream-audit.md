@@ -1256,3 +1256,116 @@ classifier bug — the calm canvas itself.
    parting fidelity cost, now honestly sized by the reach law.
 5. Waterfall churn; Hoargate `bands 0/0`; the two avenue TooBig
    stragglers (all unchanged).
+
+---
+
+## Round 14 — THE SETTLED CUT JOINS THE BAND (2026-08-31)
+
+Owner's brief: keep going on CPU — the named leftovers (shade beat,
+live tiles, waterfalls) plus "hundreds of trees and ores rendering
+seamlessly." The profile answered with a different ranking than the
+ledger's: the shade beat and live-tile tail are sub-1% each since
+round 13 (reported as already-paid, not re-fixed), and the busy
+slice's real owners were **per-sprite canvas state overhead** (forest:
+`drawImage` 8.1% + `restore` 6.0% + `transform` 1.2% self-time —
+1,755 transform calls and 1,295 blits a frame), the settled-cut walls,
+and two mysteries the census finally named.
+
+### Shipped
+
+1. **THE SETTLED CUT JOINS THE BAND** (round 12's #1, with the
+   prescribed interactive harness). `stretchHot` became
+   `stretchCutSig`: the member walk now returns must-live (shakes,
+   fading props), standing, or a CUT SIGNATURE — every off-full
+   reveal height (own row + REAR RISER neighbor) quantized to 1/48
+   tile. Motion churns the sig every frame (today's live path,
+   untouched); a sig that holds for 10 frames folds into the band
+   signature and the stretch bakes AT ITS CUT HEIGHTS
+   (`bakeStretch(veilFull=false)` — heights read player position,
+   not the swapped camera, so SAME-BRUSH holds; `bakingMask` now
+   suppresses prop fades in every bake context). Harness-proven
+   (stand / walk / settle): standing in the crown castle
+   **hot 17 → 3, `cut 16`** blits; walking keeps `cut 13-14` because
+   walls deep in the reveal window sit on the ease's PLATEAU — their
+   heights are constant mid-walk, an unplanned bonus the math
+   delivers. Pixel proof: layer-off diff 379 vs null-control 596
+   (below animation noise). `?perf` bands line grows `cut N`.
+   **Honest sizing**: the interleaved A/B (old semantics restored at
+   runtime via a prototype wrap) reads world EMA 24.5 vs 24.8 at 4x —
+   the live wall vectors were a SUB-MILLISECOND share, far below
+   round 12's ranked estimate (SwiftShader also taxes the replacement
+   blits at CPU raster prices, so real GPUs should net more). The
+   machinery ships for the op/GC cut and the closed ledger item, with
+   its cost measured instead of guessed.
+2. **THE OFF-SCREEN CAST STANDS DOWN**: the padded grid's trees blit
+   ground shadows unconditionally — the census counted MORE shadow
+   stamps than tree bodies (636 vs 477/frame in the dense forest;
+   round 9 culled the bodies but never the casts). Casts whose dest
+   rect (plus shear margin) misses the viewport skip the stamp,
+   sprite kept warm. Plus a widened shadow sub-pixel gate: the plain
+   9-arg blit now carries the scale ratio in its dest rect (the old
+   gate demanded k === 1 exactly), and a shadow's sway gate is 1.5px
+   against the body's 0.75 — a soft 0.35-alpha blob does not read
+   half-pixel sway. Forest: transform 1,755 → 1,121/frame (−36%),
+   drawImage 1,295 → 1,028 (−21%).
+3. **THE MASK THROWS WITHOUT THE STACK** (`castMask`): each ore/rock
+   shadow stamp paid save + transform + restore — a full context
+   state serialization per throw, ~84/frame in the graveyard. On the
+   shadow layer the base transform is a bare dpr scale, so the stamp
+   composes its matrix ABSOLUTELY: one setTransform per throw, base
+   restored once per cast. The in-sort path (elevated casts on the
+   main ctx under zoom-pulse) keeps the stack. Graveyard
+   save/restore 163 → 76/frame.
+4. **THE GRASS READS THE FRAME ONCE** (`frameTransform` memo): every
+   row item called `ctx.getTransform()` — a DOMMatrix allocation and
+   state sync, 133/frame in the avenue. The base transform is
+   constant across a frame's grass passes (height-lean transforms
+   live INSIDE wall painters, never around item dispatch), so one
+   read per frame per ctx serves all lanes. getTransform 133 → 22
+   (avenue), 139 → 17 (crown).
+5. **THE SHELF CUTS TO THE CROWN** (`BAND_MAX_SPAN_TALL = 6` +
+   per-band ceiling 6 → 8MB): round 12's "TooBig stragglers,
+   harmless, unexplained" are EXPLAINED and were not harmless — a
+   garrison stretch bakes ~4.6 tiles of crown head-room, so at the
+   full 12-tile span on a retina panel it is ~8MB, refused at the
+   6MB ceiling, and its masonry/merlons/tapestries painted live
+   forever (~2,700 path ops a frame measured at the Silverfall
+   falls). Garrison members hold their segment to the half span
+   (planStretches, pinned in tests), and the ceiling seats the
+   level-3-terrace case; the Undercroft's 11MB cave monsters stay
+   refused. Falls: `over` 2 → 1, blits 69 → 86.
+
+### Named, measured, and deliberately not taken this round
+
+- **Hair** (`silhouettePath`, ~1,900 lineTo/frame at the falls with
+  a guard population): the cache shape is a head-local Path2D per
+  (style, facing bin, back/front) with a per-frame transform, plus a
+  bucket for the interior kit — body-render surgery on the most-seen
+  feature in the game; its own round with its own visual harness.
+- **Live water** (`WaterBuckets.flush` ~2,500 lineTo + 585 strokes at
+  the falls district): animated by design (THE LIVING WATER); a
+  cadence/scroll lane is the shape if a water district ever misses
+  frame — an epic, not a tail.
+- **The last `over 1` at the falls**: a SINGLE run-merged elevated
+  wall member spanning its whole stretch — the planner's cut falls
+  between members and cannot slice inside one, and splitting register
+  run-merges risks end-cap seams in the wall painters. Documented
+  with its cause; it costs one band's live paint.
+- The 15Hz shade beat and the disturbed-tile tail were re-profiled at
+  0.3-0.9% self-time since round 13 — already paid, left alone.
+
+### The standing ceiling, restated for the entity-density ask
+
+Canvas2d has no batching: every entity is at least one native call,
+and ~3-4µs of call overhead each means "hundreds of animated entities"
+costs milliseconds before a pixel lands. Rounds 8, 9, 13 and 14 have
+now taken the constants down to near their floor (sprites, culls,
+state-stack hygiene). An order-of-magnitude jump in entity count is
+the WebGL world pass — the epic the ledger has named since round 9.
+
+**Verification**: 767/767 client tests (new shelf pin), typecheck
+clean; settle-cut harness + pixel proof above; state-attr census
+before/after at four scenes; falls census for the garrison verdicts.
+Note: a neighbor session shipped sapling-model changes (e8e2b11a)
+mid-round, so cross-round ABSOLUTE numbers are polluted — every
+conviction above is a same-session interleave or count delta.

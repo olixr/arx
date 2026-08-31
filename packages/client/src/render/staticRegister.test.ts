@@ -385,6 +385,44 @@ test('the span cut falls BETWEEN members, never inside a merged run', () => {
   );
 });
 
+test('THE SHELF CUTS TO THE CROWN: garrison members hold their segment to the tall span', () => {
+  const member = (kind: RaisedKind, tx: number) =>
+    ({ kind, tile: 1, tx, ty: 0, len: 1, endX: tx, treeLike: false });
+  // Twelve garrison tiles: at the ordinary span this is ONE stretch
+  // whose ~4.6-tile crown head-room busts the per-band ceiling on a
+  // retina panel — the "TooBig straggler" that painted its masonry
+  // live forever. At the tall span it is two shelves that both fit.
+  const garr = [Array.from({ length: 12 }, (_, i) => member(RaisedKind.GarrisonWall, i))];
+  const gs = planStretches(garr, () => true)[0]!;
+  assert.deepEqual(
+    gs.map((s) => [s.i0, s.i1]),
+    [
+      [0, 5],
+      [6, 11],
+    ],
+  );
+  // A garrison member JOINING a wall segment pulls the whole segment
+  // down to the tall span — the canvas is as tall as its tallest.
+  const mixed = [
+    [
+      member(RaisedKind.Wall, 0),
+      member(RaisedKind.Wall, 1),
+      member(RaisedKind.GarrisonWall, 2),
+      member(RaisedKind.Wall, 3),
+      member(RaisedKind.Wall, 6),
+      member(RaisedKind.Wall, 7),
+    ],
+  ];
+  const ms = planStretches(mixed, () => true)[0]!;
+  assert.deepEqual(
+    ms.map((s) => [s.i0, s.i1]),
+    [
+      [0, 3],
+      [4, 5],
+    ],
+  );
+});
+
 test('a gap-merged run is measured to its EAST end, not its member count', () => {
   const member = (tx: number) =>
     ({ kind: RaisedKind.Wall, tile: 1, tx, ty: 0, len: 1, endX: tx, treeLike: false });

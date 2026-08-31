@@ -786,6 +786,26 @@ export class GrassSystem {
   /** Under-lane deferred blits (cell sprites paint after the shade). */
   private readonly underBlitScratch: Array<{ sp: RowSprite; c0: number; ty: number }> = [];
   /**
+   * Per-frame ctx transform memo. Every lane's entry point read
+   * ctx.getTransform() per row item — ~100-130 DOMMatrix allocations
+   * a frame in a capital — but the base transform is constant across
+   * a frame's grass passes (the renderer's height-lean transforms
+   * live INSIDE wall painters, never around item dispatch), so one
+   * read per frame per ctx serves them all.
+   */
+  private ctxM: DOMMatrix | null = null;
+  private ctxMOwner: CanvasRenderingContext2D | null = null;
+  private ctxMFrame = -1;
+
+  private frameTransform(ctx: CanvasRenderingContext2D): DOMMatrix {
+    if (this.ctxMFrame !== this.frameNo || this.ctxMOwner !== ctx || this.ctxM === null) {
+      this.ctxM = ctx.getTransform();
+      this.ctxMOwner = ctx;
+      this.ctxMFrame = this.frameNo;
+    }
+    return this.ctxM;
+  }
+  /**
    * Tile → disturbers-in-range, rebuilt once per frame from each
    * disturber's footprint (~5×5 tiles). Inverts the old per-tile scan
    * over every live body: thousands of visible tiles × N disturbers of
@@ -1525,7 +1545,7 @@ export class GrassSystem {
     // The ctx's device-pixel ratio, read off its transform (a pure
     // dpr scale in both the renderer and the landing scene) — the calm
     // canvas bakes at this resolution so the blit is 1:1 device px.
-    const m = ctx.getTransform();
+    const m = this.frameTransform(ctx);
     const dpr = m.a || 1;
     let c = this.underCache;
     let needBake =
@@ -2051,7 +2071,7 @@ export class GrassSystem {
           sortY,
           draw: () => {
             this.ensurePaths();
-            const m = ctx.getTransform();
+            const m = this.frameTransform(ctx);
             for (let c0 = cellStartTx(bounds.minTx); c0 <= bounds.maxTx; c0 += GRASS_CELL_SPAN) {
               this.handleRowCell(ctx, m, lane, 0, ty, c0, ground, detail, wts, s);
             }
@@ -2077,7 +2097,7 @@ export class GrassSystem {
     level = 0,
   ): void {
     this.ensurePaths();
-    const m = ctx.getTransform();
+    const m = this.frameTransform(ctx);
     for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
       for (let c0 = cellStartTx(bounds.minTx); c0 <= bounds.maxTx; c0 += GRASS_CELL_SPAN) {
         this.handleRowCell(ctx, m, LANE_ROW, level, ty, c0, ground, detail, wts, s);
