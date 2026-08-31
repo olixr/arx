@@ -1104,26 +1104,41 @@ const saplingGenSet = (key: number, m: TreeModel): void => {
 };
 
 /**
- * THE SAPLING STANDS ALONE (second-growth polish): a young tree is a
- * BESPOKE form, never the adult model shrunk. The adult dome is a
- * ring of shoulder clusters whose heart the old young-thinning law
- * left unfilled — at sapling scale that read as a DONUT with the
- * trunk showing through the crown, the exact kind of cheat this
- * studio does not ship. Every species grows a true juvenile: a
- * slender whip of a stem with a root flare, a pair of seed-leaves
- * low on the stem, and a TIGHT overlapping tuft of crown clusters —
- * solid mass at every zoom, the same three light bands (shaded
- * underside, body, lit cap with a sun facet) and the same wind
- * grammar as the grown wood, so a stand of saplings breathes with
- * the forest it will become.
+ * THE NURSERY EARNS ITS NAME (sapling recut — supersedes the
+ * one-tuft-fits-all draft): a young tree is a BESPOKE form, never
+ * the adult model shrunk — and never the SAME form nine times in
+ * different bark. The first bespoke cut still read as one lollipop
+ * grammar with a floating seed-leaf blob beside the stem (a detached
+ * blob mints its own ink ring and halos — the garden law), so the
+ * juvenile grammar was rebuilt from real nursery anatomy:
  *
- * Species dialects: the OAK squats broad on a stout stem; the PINE
- * stacks three tierlets to a green tip and keeps a dead whorl stub
- * (rigid, like its elder); the WILLOW leans hard and hangs two low
- * lobes — the weep before the curtains; the YEW holds a dense dark
- * column; the COMMON WOODS read their adult grammar's hash so every
- * sapling grows into exactly the tree it promised (same species,
- * same variant, same lean).
+ * - THE WHIP AND THE LEADER: a slender stem with a root flare that
+ *   climbs INTO the head and keeps going — the apical leader carries
+ *   its own small lit tuft above the cap, the upward reach every
+ *   young broadleaf actually has. Nothing detaches: every cluster
+ *   overlaps the chain into one silhouette.
+ * - NODE BRANCHLETS: one or two true side twigs at stem nodes, each
+ *   carrying its own leaf tuft whose mass buries the twig tip (seam
+ *   law) and OVERLAPS the head — young trees read as trees, not
+ *   balls on sticks. Twigs are level-1 wood: the grow-in ease keeps
+ *   the youngest stage a clean whip.
+ * - THE PROMISE IS DERIVED, NOT RESTATED: proportions come off the
+ *   adult grammar the same hash grows — head width from crownW,
+ *   stature from the species height band, lean and crown-shift from
+ *   the windswept dials, and a forked grammar (the twin, the
+ *   storm-split oak) forks the SAPLING into twin whips too. Salt 53
+ *   replays the adult's variant pick; salt 97 deals juvenile jitter.
+ * - THE SPECIES SPEAKS ITS OWN DIALECT, young: the WILLOW hangs real
+ *   curtain strands off its nodding crown — the weep before the
+ *   cascade, pendulum wind and combed part-lines included, hems
+ *   staggered with daylight between them (hem law). The PINE stacks
+ *   true serrated chevron plates with west-lit facets, shadow-ribbon
+ *   shingle lines, a POINTED spire tip and a dead whorl stub on the
+ *   bare bole (nothing round anywhere — rigid, like its elder). The
+ *   YEW holds a dense near-black column on a rusty shin. The BIRCH
+ *   lifts a small airy head high on its pale stem. The OAK squats
+ *   broad and stout. Light is banded on every head: dark seat
+ *   hugging the underside, mid body, lit cap with a sun facet.
  */
 export function saplingModel(tile: Tile, h: number): TreeModel {
   const key = ((tile as number) << 16) | (h & 0xffff);
@@ -1135,9 +1150,6 @@ export function saplingModel(tile: Tile, h: number): TreeModel {
     return hit;
   }
 
-  // Two streams: salt 53 REPLAYS the adult's variant pick (the
-  // promise law — a sapling becomes precisely the tree its tile
-  // hash grows); salt 97 deals the juvenile's own jitter.
   const rndA = (i: number): number => (hashCoords(53, h & 0xffff, i) % 1000) / 1000;
   const rnd = (i: number): number => (hashCoords(97, h & 0xffff, i) % 1000) / 1000;
   const species = speciesOf(tile, h);
@@ -1149,13 +1161,24 @@ export function saplingModel(tile: Tile, h: number): TreeModel {
   const willow = g.fall > 0;
   const yew = species === 7;
   const oak = species === 5;
-  const H = pine ? 1.45 + rnd(1) * 0.35 : yew ? 1.0 + rnd(1) * 0.22 : 1.15 + rnd(1) * 0.3;
+  const birch = species === 1;
+
+  // --- Stature and head width DERIVED from the adult grammar: a tall
+  // variant grows a taller whip, a spreading variant a wider head.
+  const stretch = (g.h[0] + g.h[1]) / (def.base.h[0] + def.base.h[1]);
+  const wFac = def.base.crownW > 0 ? g.crownW / def.base.crownW : 1;
+  const baseH = pine ? 1.62 : willow ? 1.32 : yew ? 1.0 : birch ? 1.42
+    : oak ? 1.2 : species === 4 ? 1.08 : species === 3 ? 1.12 : 1.26;
+  const H = baseH * stretch * (0.94 + rnd(1) * 0.14);
   const leanSign = rndA(2) < 0.5 ? -1 : 1;
-  const lean = (willow ? 0.22 : 0.06 + g.lean * 0.4) * leanSign;
+  // The windswept dialects lean as juveniles too — half the adult's
+  // rake; everything else stands a whisker off plumb at most.
+  const lean = (0.04 + g.lean * 0.5 + rnd(3) * 0.03) * leanSign;
 
   const branches: TreeBranch[] = [];
   const clusters: TreeCluster[] = [];
-  const add = (x: number, y: number, r: number, tone: number, lit = false): void => {
+  const curtains: TreeCurtain[] = [];
+  const add = (x: number, y: number, r: number, tone: number, lit = false): number => {
     clusters.push({
       x,
       y: Math.min(y, H + 0.1),
@@ -1166,80 +1189,301 @@ export function saplingModel(tile: Tile, h: number): TreeModel {
       lit,
       extra: false,
     });
+    return clusters.length - 1;
   };
 
-  // --- The stem: a slender whip with a visible root flare. It climbs
-  // into the tuft so the joint can never show (the seam law, young).
-  const stemTop = pine ? H * 0.9 : H * 0.68;
-  const stemW = oak ? 0.1 : yew ? 0.095 : 0.08;
-  const stem = grownSpine(
-    0, 0, lean * H * 0.9, stemTop,
-    g.bow * 0.4, lean * 1.2, g.gnarl * 0.5, leanSign, H / 2.4, rnd, 5, 4,
-  );
+  const stemW = oak ? 0.1 : yew ? 0.09 : pine ? 0.075 : birch ? 0.062 : 0.08;
 
-  // --- Seed-leaves: the juvenile signature — a tiny leaf pair low on
-  // the stem, one per side, shaded like the crown's underside.
-  const [slx, sly] = alongSpine(stem, 0.3);
-  add(slx - 0.13, sly + 0.04, 0.09 + rnd(20) * 0.02, 1);
-  add(slx + 0.12, sly + 0.09, 0.08 + rnd(21) * 0.02, 0);
-
-  const [cx0, cy0] = alongSpine(stem, 1);
-  if (pine) {
-    // Three tierlets closing to a point — a pine ends in a POINT,
-    // never a ball, from its first year. A dead whorl stub keeps the
-    // northern signature.
-    add(cx0 + (rnd(30) - 0.5) * 0.06, H * 0.42, 0.34, 1);
-    add(cx0 - (rnd(31) - 0.5) * 0.08, H * 0.62, 0.27, 1);
-    add(cx0 + (rnd(32) - 0.5) * 0.06, H * 0.8, 0.21, 2);
-    add(cx0, H * 0.97, 0.13, 2, true);
-    const [wx1, wy1] = alongSpine(stem, 0.34);
+  /** One node branchlet: a true side twig whose tip tuft drags on the
+   *  wind (anchoring law) and overlaps the head — the tuft is pulled
+   *  onto the head's rim so it can NEVER detach and halo (the garden
+   *  law: a blob outside the silhouette mints its own ink ring). */
+  const branchlet = (
+    spine: Array<[number, number]>, u: number, side: number,
+    len: number, r: number, tone: number, ri: number,
+    headC: [number, number], headR: number,
+  ): void => {
+    const [ax, ay] = alongSpine(spine, u);
+    let ex = ax + side * len;
+    let ey = ay + len * (0.3 + rnd(ri) * 0.25);
+    // Seat the tuft against the head: cap its centre's distance from
+    // the head centre so the two masses always fuse.
+    const dx = ex - headC[0];
+    const dy = ey - headC[1];
+    const d = Math.hypot(dx, dy);
+    const dMax = headR + r * 0.55;
+    if (d > dMax) {
+      ex = headC[0] + (dx / d) * dMax;
+      ey = headC[1] + (dy / d) * dMax;
+    }
+    const ci = add(ex, ey + r * 0.25, r, tone);
     branches.push({
-      pts: [[wx1, wy1], [wx1 - leanSign * (0.16 + rnd(33) * 0.08), wy1 - 0.05]],
-      w0: stemW * 0.32, w1: stemW * 0.07, flare: 0, tip: -1, level: 1,
+      pts: [[ax, ay], [(ax + ex) / 2, ay + (ey - ay) * 0.3], [ex, ey]],
+      w0: stemW * 0.5, w1: stemW * 0.14, flare: 0, tip: ci, level: 1,
+    });
+  };
+
+  /** One sculpted juvenile head at (hx, hy): dark seat lobes hugging
+   *  the underside, mid body, lit cap, and the leader's own small lit
+   *  tuft reaching past it — one fused mass, banded like the forest
+   *  it will join. `R` is the lobe radius; `k` squashes tall (<1) or
+   *  spreads low (>1). Returns the head centre height for callers. */
+  const head = (hx: number, hy: number, R: number, k: number, ri: number): void => {
+    const jx = (i: number): number => (rnd(ri + i) - 0.5) * 0.05;
+    add(hx - R * 0.62 * k, hy - R * 0.42 + jx(0), R * 0.92, 0);
+    add(hx + R * 0.58 * k, hy - R * 0.34 + jx(1), R * 0.86, 0);
+    add(hx - R * 0.55 * k + jx(2), hy + R * 0.28, R * 0.95, 1);
+    add(hx + R * 0.6 * k + jx(3), hy + R * 0.24, R * 0.9, 1);
+    add(hx + jx(4), hy + R * 0.05, R * 1.12, 1);
+    add(hx - R * 0.12 + jx(5), hy + R * 0.82 / k, R * 0.88, 2, true);
+    // The apical leader's young tuft — the juvenile reach.
+    add(hx + lean * 0.25 + jx(6), hy + R * (1.28 / k), R * 0.48, 2, true);
+  };
+
+  /** The whip: stem + head + branchlets for one broadleaf juvenile.
+   *  `x0`/`y0` seat the fork twins; `hMul` shortens the lesser twin. */
+  const whip = (
+    x0: number, y0: number, dx: number, hMul: number,
+    R: number, k: number, twigs: number, ri: number,
+  ): void => {
+    const hTop = y0 + (H - y0) * hMul;
+    const stemTop = hTop * (birch ? 0.74 : 0.66);
+    const spine = grownSpine(
+      x0, y0, x0 + dx + lean * hTop * 0.85, stemTop,
+      g.bow * 0.5, lean * 1.1, g.gnarl * 0.5, leanSign, hTop / 2.3, rnd, ri, 4,
+    );
+    const [hx, hy] = alongSpine(spine, 1);
+    // Windswept grammar streams the head leeward off the stem top.
+    const hx2 = hx + g.crownDx * 0.3 * (leanSign || 1) * Math.sign(lean || 1);
+    head(hx2, hy + R * 0.25, R, k, ri + 10);
+    if (g.crownDx > 0) {
+      // The flag lobe — the crown already streaming with the weather.
+      add(hx2 + Math.sign(lean) * R * 1.15, hy + R * 0.3, R * 0.62, 1);
+    }
+    const headC: [number, number] = [hx2, hy + R * 0.25];
+    for (let i = 0; i < twigs; i++) {
+      const side = (i % 2 === 0 ? 1 : -1) * (leanSign || 1);
+      branchlet(
+        spine, 0.55 + i * 0.15 + rnd(ri + 20 + i) * 0.06, side,
+        0.16 + rnd(ri + 24 + i) * 0.07, 0.13 + rnd(ri + 28 + i) * 0.03,
+        1, ri + 32 + i, headC, R * 1.05,
+      );
+    }
+    branches.push({
+      pts: spine, w0: stemW, w1: stemW * 0.4, flare: 0.7, tip: -1, level: 0,
+    });
+  };
+
+  if (pine) {
+    // --- THE YOUNG SPIRE: true serrated chevron plates to a point.
+    const spine = grownSpine(
+      0, 0, lean * H * 0.5, H * 0.9,
+      0.02, lean * 0.5, g.gnarl * 0.4, leanSign, H / 2.6, rnd, 5, 4,
+    );
+
+    /** One juvenile plate: peaked ridge, downswept serrated hem, its
+     *  shingle shadow ribbon, and a west-lit facet — the adult's
+     *  whole plate law at nursery scale. */
+    const plate = (y: number, W: number, tone: number, ri: number): void => {
+      const [cx] = alongSpine(spine, Math.min(1, y / (H * 0.9)));
+      const rise = 0.13 + W * 0.22;
+      const dTip = 0.07 + W * 0.16;
+      const teeth = W > 0.42 ? 4 : 3;
+      const pts: Array<[number, number]> = [];
+      const drop: number[] = [];
+      const dropF: number[] = [];
+      const push = (x: number, yy: number, d: number): void => {
+        pts.push([x, Math.max(0.06, yy)]);
+        drop.push(d);
+        dropF.push(d);
+      };
+      const j = (i: number): number => (rnd(ri + i) - 0.5) * 0.04;
+      push(cx - W, y - dTip, 0.2);
+      push(cx - W * 0.5 + j(1), y + rise * 0.55, 0.08);
+      push(cx + j(2) * 0.5, y + rise, 0);
+      push(cx + W * 0.5 + j(3), y + rise * 0.55, 0.08);
+      push(cx + W, y - dTip, 0.2);
+      const hem: Array<[number, number]> = [[cx + W, y - dTip]];
+      for (let k = teeth - 1; k >= 0; k--) {
+        const xn = cx - W + 2 * W * ((k + 1) / teeth);
+        const xt = cx - W + 2 * W * ((k + 0.5) / teeth);
+        const yn = y - dTip * (0.35 + rnd(ri + 20 + k) * 0.2);
+        const yt = y - dTip * (1.2 + rnd(ri + 30 + k) * 0.5);
+        push(xn - W * 0.05, yn, 0.14);
+        push(xt, yt, 0.18);
+        hem.push([xn - W * 0.05, yn], [xt, yt]);
+      }
+      push(cx - W, y - dTip, 0.2);
+      hem.push([cx - W, y - dTip]);
+      curtains.push({
+        pts, drop, dropF, tone, hf: Math.min(1, y / H),
+        seed: hashCoords(61, h & 0xffff, curtains.length), x0: cx, len: 0.3,
+        shadowHull: pts.slice(0, 5).concat([[cx, y - dTip * 1.4]]),
+      });
+      // The shingle shadow ribbon under the broader plates.
+      if (W > 0.3) {
+        const rp: Array<[number, number]> = [];
+        const rd: number[] = [];
+        for (const [x, yy] of hem) { rp.push([x, Math.max(0.06, yy)]); rd.push(0.16); }
+        for (let i2 = hem.length - 1; i2 >= 0; i2--) {
+          rp.push([hem[i2]![0], Math.max(0.06, hem[i2]![1] - 0.045)]);
+          rd.push(0.16);
+        }
+        curtains.push({
+          pts: rp, drop: rd, dropF: rd, tone: 0, hf: Math.min(1, y / H),
+          seed: hashCoords(61, h & 0xffff, curtains.length), x0: cx, len: 0.3,
+          noShadow: true,
+        });
+      }
+      // The west-lit facet — the one sun sculpting the cone.
+      const fp: Array<[number, number]> = [
+        [cx - W, y - dTip],
+        [cx - W * 0.5 + j(1), y + rise * 0.55],
+        [cx - W * 0.05, y + rise * 0.9],
+        [cx - W * 0.15, y - dTip * 0.3],
+        [cx - W * 0.58, y - dTip * (0.85 + rnd(ri + 40) * 0.25)],
+      ];
+      curtains.push({
+        pts: fp.map(([x, yy]) => [x, Math.max(0.06, yy)]),
+        drop: [0.2, 0.08, 0, 0.1, 0.18], dropF: [0.2, 0.08, 0, 0.1, 0.18],
+        tone: 3, hf: Math.min(1, y / H),
+        seed: hashCoords(61, h & 0xffff, curtains.length), x0: cx, len: 0.3,
+        noShadow: true,
+      });
+    };
+
+    // Three tiers up the bole, then the pointed spire tip: wider
+    // daylight low (bare shin — the northern signature), tightening
+    // toward the leader.
+    const W0 = 0.46 + wFac * 0.06 + rnd(30) * 0.05;
+    plate(H * 0.34, W0, 1, 300);
+    plate(H * 0.56, W0 * 0.76, 1, 330);
+    plate(H * 0.75, W0 * 0.54, 2, 360);
+    plate(H * 0.9, 0.15, 2, 390);
+    // Soft depth tufts tucked between the upper ridges — mass inside
+    // the crisp plates, and the tip stays a POINT.
+    const [tx1] = alongSpine(spine, 0.72);
+    add(tx1 + (rnd(32) - 0.5) * 0.05, H * 0.66, 0.15, 2, true);
+    add(tx1 - 0.06, H * 0.46, 0.16, 1);
+    // The dead whorl stub on the bare shin.
+    const [wx1, wy1] = alongSpine(spine, 0.18);
+    branches.push({
+      pts: [[wx1, wy1], [wx1 - leanSign * (0.15 + rnd(33) * 0.07), wy1 - 0.04]],
+      w0: stemW * 0.34, w1: stemW * 0.08, flare: 0, tip: -1, level: 1,
+    });
+    branches.push({
+      pts: spine, w0: stemW, w1: stemW * 0.3, flare: 0.6, tip: -1, level: 0,
     });
   } else if (willow) {
-    // The weep before the curtains: a teardrop tuft with two LOW
-    // hanging lobes on the lean side — the crown already falling.
-    add(cx0, cy0 + 0.14, 0.3, 1);
-    add(cx0 - leanSign * 0.1, cy0 + 0.32, 0.24, 2, true);
-    add(cx0 + leanSign * 0.24, cy0 - 0.04, 0.21, 0);
-    add(cx0 + leanSign * 0.3, cy0 - 0.26, 0.15, 0);
-    add(cx0 - leanSign * 0.18, cy0 + 0.02, 0.19, 1);
-  } else if (yew) {
-    // A dense dark column — the slowest wood is solid from the start.
-    add(cx0 + (rnd(40) - 0.5) * 0.05, cy0 - 0.1, 0.29, 0);
-    add(cx0 - (rnd(41) - 0.5) * 0.06, cy0 + 0.12, 0.31, 1);
-    add(cx0 + (rnd(42) - 0.5) * 0.05, cy0 + 0.34, 0.24, 2, true);
-  } else {
-    // The common woods and the oak: one honest tuft — underside lobe,
-    // body, side lobe, lit cap — every blob overlapping its neighbor
-    // by half a radius so the mass NEVER opens.
-    const w = oak ? 1.25 : 1;
-    add(cx0 - 0.1 * w, cy0 - 0.06, 0.25 * w, 0);
-    add(cx0 + 0.2 * w, cy0 + 0.02, 0.24 * w, 1);
-    add(cx0 - 0.18 * w, cy0 + 0.1, 0.23 * w, 1);
-    add(cx0 + (rnd(50) - 0.5) * 0.08, cy0 + 0.12, 0.3 * w, 1);
-    add(cx0 + (rnd(51) - 0.5) * 0.1, cy0 + (oak ? 0.26 : 0.3), 0.26 * w, 2, true);
-    if (species === 2 && rndA(2) < 0.6) {
-      // The twin's second whip — forked from the first hand-span.
-      const arm = grownSpine(
-        0.04, H * 0.12, -leanSign * 0.3, stemTop * 0.82,
-        g.bow * 0.3, -lean, g.gnarl * 0.5, -leanSign, H / 2.6, rnd, 60, 3,
-      );
-      branches.push({ pts: arm, w0: stemW * 0.7, w1: stemW * 0.35, flare: 0.1, tip: -1, level: 0 });
-      const [ax, ay] = alongSpine(arm, 1);
-      add(ax, ay + 0.1, 0.2, 1);
-    }
-  }
+    // --- THE WEEP BEFORE THE CASCADE: a slim whip that NODS at the
+    // top — upright at the root, arcing over through the crown — and
+    // whose head already pours real strands.
+    const nod = leanSign * (0.16 + rnd(5) * 0.06);
+    const spine = grownSpine(
+      0, 0, nod * H * 0.35, H * 0.74,
+      0.34, nod * 0.9, g.gnarl * 0.5, leanSign, H / 2.2, rnd, 6, 5,
+    );
+    const [hx, hy] = alongSpine(spine, 1);
+    // The mound: swept low over the arc, silvered bands.
+    add(hx - leanSign * 0.2, hy - 0.02, 0.21, 0);
+    add(hx + leanSign * 0.16, hy + 0.03, 0.23, 1);
+    add(hx, hy + 0.15, 0.25, 1);
+    add(hx - leanSign * 0.05, hy + 0.29, 0.2, 2, true);
+    add(hx + leanSign * 0.27, hy + 0.1, 0.17, 1);
+    add(hx - leanSign * 0.3, hy + 0.06, 0.15, 0);
 
-  // Stem LAST — its body paints over every join (the seam law).
-  branches.push({ pts: stem, w0: stemW, w1: stemW * 0.42, flare: 0.55, tip: -1, level: 0 });
+    /** One young strand: anchored under the mound, a near-vertical
+     *  hang with a slight outward drift to a chisel point. */
+    const strand = (
+      ax: number, ay: number, dir: number, tipY: number, w: number,
+      tone: number, sway: number, ri: number, part: boolean,
+    ): void => {
+      const len = Math.max(0.3, ay - tipY);
+      const drift = dir * (0.05 + rnd(ri) * 0.05);
+      const xF = [0, 0.55, 0.9, 1.0];
+      const yF = [0, 0.38, 0.72, 1];
+      const wF = [0.5, 0.95, 0.8, 0.5];
+      const pts: Array<[number, number]> = [];
+      const drop: number[] = [];
+      const dropF: number[] = [];
+      const push = (x: number, y: number): void => {
+        pts.push([x, Math.max(0.07, y)]);
+        const fr = Math.min(1, Math.max(0, (ay - y) / len));
+        drop.push(Math.pow(fr, 1.25) * sway);
+        dropF.push(fr);
+      };
+      for (let i = 0; i < 4; i++) {
+        push(ax + drift * xF[i]! - w * wF[i]!, ay - len * yF[i]!);
+      }
+      push(ax + drift + (rnd(ri + 1) - 0.5) * 0.03, tipY - 0.05 - rnd(ri + 2) * 0.04);
+      for (let i = 3; i >= 0; i--) {
+        push(ax + drift * xF[i]! + w * wF[i]!, ay - len * yF[i]!);
+      }
+      curtains.push({
+        pts, drop, dropF, tone, hf: Math.min(1, ay / H),
+        seed: hashCoords(61, h & 0xffff, curtains.length), x0: ax, len,
+        part: part ? [1, 4] : undefined,
+      });
+    };
+
+    // The hang plan (hem law: staggered tips, daylight between hems;
+    // the rear strand paints BEHIND the stem for depth): rear dark,
+    // two mid falls, the sun-side lit fall, one escaped withy.
+    strand(hx - leanSign * 0.16, hy - 0.04, -leanSign, H * 0.4, 0.09, 0, 0.7, 70, false);
+    strand(hx + leanSign * 0.2, hy + 0.02, leanSign, H * 0.26, 0.115, 1, 0.9, 74, true);
+    strand(hx - leanSign * 0.02, hy - 0.06, leanSign * 0.4, H * 0.17, 0.1, 1, 1.0, 78, true);
+    strand(hx - leanSign * 0.3, hy - 0.02, -leanSign, H * 0.33, 0.095, 2, 0.85, 82, true);
+    strand(
+      hx + leanSign * 0.3, hy + 0.08, leanSign, H * 0.46 + rnd(86) * 0.1,
+      0.032, 3, 1.2, 87, false,
+    );
+    branches.push({
+      pts: spine, w0: stemW * 0.82, w1: stemW * 0.34, flare: 0.6, tip: -1, level: 0,
+    });
+  } else if (yew) {
+    // --- THE DARK COLUMN: the slowest wood is solid from the start —
+    // a dense near-black flame on a rusty shin, narrow all the way.
+    const spine = grownSpine(
+      0, 0, lean * H * 0.5, H * 0.5,
+      g.bow * 0.4, lean, g.gnarl * 0.6, leanSign, H / 2.4, rnd, 5, 4,
+    );
+    const [hx] = alongSpine(spine, 1);
+    const R = 0.23 + wFac * 0.02;
+    add(hx - R * 0.35, H * 0.42, R, 0);
+    add(hx + R * 0.4 + (rnd(40) - 0.5) * 0.04, H * 0.5, R * 0.92, 0);
+    add(hx + (rnd(41) - 0.5) * 0.05, H * 0.62, R * 1.02, 1);
+    add(hx - R * 0.3, H * 0.76, R * 0.85, 1);
+    add(hx + R * 0.28, H * 0.82, R * 0.72, 1);
+    add(hx + (rnd(42) - 0.5) * 0.05, H * 0.95, R * 0.62, 2, true);
+    // The spire tip — yew v2's promise, every young yew's reach.
+    add(hx + lean * 0.2, H * 1.06, R * 0.34, 2, true);
+    branches.push({
+      pts: spine, w0: stemW, w1: stemW * 0.5, flare: 0.8, tip: -1, level: 0,
+    });
+  } else if (g.split !== null) {
+    // --- THE YOUNG FORK: a forked grammar (the twin, the storm-split
+    // oak) forks its sapling too — two whips out of one root crown,
+    // one dominant, heads fused at the inner shoulder.
+    const straddle = 0.16 + rnd(7) * 0.05;
+    const R = (oak ? 0.22 : 0.2) * (0.8 + wFac * 0.25);
+    whip(-leanSign * 0.03, 0.04, -leanSign * straddle, 0.99, R, 0.9, 1, 200);
+    whip(leanSign * 0.03, 0.05, leanSign * (straddle + 0.08), 0.8, R * 0.85, 0.9, 0, 240);
+  } else {
+    // --- The common woods, the birch, the oak: one whip, its head
+    // and twigs proportioned by the grammar it will grow into.
+    const R = (oak ? 0.27 : birch ? 0.19 : 0.22) * (0.72 + wFac * 0.28);
+    const k = species === 4 || variant === 2 ? 1.12 : g.crownW < def.base.crownW ? 0.92 : 1;
+    whip(0, 0, 0, 1, R, k, oak || species === 4 ? 2 : birch ? 1 : 1 + (rnd(9) < 0.5 ? 1 : 0), 100);
+  }
 
   let top = 0;
   let spread = 0;
   for (const c of clusters) {
     top = Math.max(top, c.y + c.r);
     spread = Math.max(spread, Math.abs(c.x) + c.r);
+  }
+  for (const cu of curtains) {
+    for (const p of cu.pts) spread = Math.max(spread, Math.abs(p[0]) + 0.06);
   }
 
   const model: TreeModel = {
@@ -1255,7 +1499,7 @@ export function saplingModel(tile: Tile, h: number): TreeModel {
     sides: g.sides,
     branches,
     clusters,
-    curtains: [],
+    curtains,
   };
   saplingGenSet(key, model);
   return model;

@@ -261,22 +261,44 @@ test('THE SAPLING STANDS ALONE: every young form is solid, small, and true to it
       assert.ok(m.height >= 0.8 && m.height <= 2.1, `height ${m.height}`);
       assert.ok(m.spread <= 1.2, `spread ${m.spread} must stay tight`);
       assert.ok(m.branches.length >= 1, 'a stem stands');
-      // THE SOLID CROWN: no donut, ever — every crown cluster (above
-      // the seed-leaf band) overlaps at least one other crown cluster,
-      // so the tuft reads as ONE mass at any zoom.
-      const crown = m.clusters.filter((c) => c.y > m.height * 0.35);
-      assert.ok(crown.length >= 3, `${Tile[tile]} needs a real tuft, got ${crown.length}`);
-      for (const c of crown) {
-        const touches = crown.some(
-          (o) => o !== c && Math.hypot(o.x - c.x, o.y - c.y) < (o.r + c.r) * 0.9,
-        );
-        assert.ok(touches, `${Tile[tile]} sapling cluster at ${c.x},${c.y} floats alone`);
+      if (tile === Tile.TreePine) {
+        // THE YOUNG SPIRE speaks the plate dialect: its crown mass is
+        // serrated chevron curtains (plates + shingle ribbons + west
+        // facets), the soft tufts tuck INSIDE the plates rather than
+        // against each other, and it keeps its elder's rigid sway.
+        assert.equal(m.rigid, true);
+        const plates = m.curtains.filter((cu) => cu.tone === 1 || cu.tone === 2);
+        assert.ok(plates.length >= 4, `plates carry the young spire, got ${plates.length}`);
+        assert.ok(m.curtains.some((cu) => cu.tone === 3), 'a west-lit facet sculpts the cone');
+        assert.ok(m.curtains.some((cu) => cu.tone === 0), 'a shingle shadow separates the tiers');
+        assert.ok(m.clusters.some((c) => c.tone === 2 && c.lit), 'a lit tuft inside the crown');
+      } else {
+        // THE SOLID CROWN: no donut, ever — every crown cluster (above
+        // the low-sprig band) overlaps at least one other crown
+        // cluster, so the tuft reads as ONE mass at any zoom.
+        const crown = m.clusters.filter((c) => c.y > m.height * 0.35);
+        assert.ok(crown.length >= 3, `${Tile[tile]} needs a real tuft, got ${crown.length}`);
+        for (const c of crown) {
+          const touches = crown.some(
+            (o) => o !== c && Math.hypot(o.x - c.x, o.y - c.y) < (o.r + c.r) * 0.9,
+          );
+          assert.ok(touches, `${Tile[tile]} sapling cluster at ${c.x},${c.y} floats alone`);
+        }
+        // The light language holds: an underside band and a lit cap.
+        assert.ok(m.clusters.some((c) => c.tone === 0), 'a shaded underside');
+        assert.ok(m.clusters.some((c) => c.tone === 2 && c.lit), 'a lit cap facet');
       }
-      // The light language holds: an underside band and a lit cap.
-      assert.ok(m.clusters.some((c) => c.tone === 0), 'a shaded underside');
-      assert.ok(m.clusters.some((c) => c.tone === 2 && c.lit), 'a lit cap facet');
-      // The pine keeps its elder's rigid sway.
-      if (tile === Tile.TreePine) assert.equal(m.rigid, true);
+      // The weep before the cascade: a young willow already hangs
+      // real strands, staggered to different hem depths (hem law).
+      if (tile === Tile.TreeWillow) {
+        const falls = m.curtains.filter((cu) => cu.tone <= 2);
+        assert.ok(falls.length >= 3, `young willow hangs strands, got ${falls.length}`);
+        const tips = falls.map((cu) => Math.min(...cu.pts.map((p) => p[1])));
+        assert.ok(
+          Math.max(...tips) - Math.min(...tips) > 0.1,
+          'strand hems must stagger, never a straight cut',
+        );
+      }
     }
   }
 });
