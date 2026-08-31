@@ -1,4 +1,22 @@
 import { Tile, hashCoords, valueNoise } from '@arx/shared';
+import {
+  GRASS_BAKE_MS_BUDGET,
+  GRASS_CELL_SPAN,
+  GRASS_ROW_CADENCE_MS,
+  GrassVerdict,
+  admitGrassSprite,
+  cellStartTx,
+  grassPoolAdmits,
+  grassPoolClass,
+  grassSweepNeeded,
+  grassSweepRelieved,
+  planGrassSweep,
+  rowCadenceJitter,
+  rowCadenceStep,
+  rowShear,
+  scaleFresh,
+  windTerm,
+} from './grassSpriteBudget.js';
 
 /**
  * The bespoke grass system. The ground IS the game's biggest canvas, and
@@ -550,9 +568,73 @@ const UNDER_CACHE_MS = 66;
 /** Padding (tiles) baked past the visible bounds so panning doesn't
  *  force a rebake between cadence beats. */
 const UNDER_PAD = 2;
-/** A disturber's blade-influence box half-extent, tiles (matches the
- *  disturberIndex footprint). */
-const DISTURB_REACH = 2.3;
+/**
+ * A disturber's blade-influence pad past its own radius, tiles. The
+ * push falloff in buildBlade reaches exactly `d.r + 0.62` from the
+ * BASE of a blade, so a disturber's box is `d.r + 0.7` (falloff plus
+ * a whisker), floored to tiles. This used to be a fixed 2.3 — ~4x the
+ * area a walking body can actually touch (the whole live-exclusion
+ * set rode on it: 140-350 tiles rebuilt per frame in every surveyed
+ * scene), while UNDER-covering a large body whose r + 0.62 exceeds
+ * 2.3 (an ogre's parting clipped at the box edge). Every consumer —
+ * the disturber index, the calm-canvas exclusion, the escape hatch —
+ * derives the same bound from the same function.
+ */
+const DISTURB_PAD = 0.7;
+
+function disturbReach(r: number): number {
+  return r + DISTURB_PAD;
+}
+
+// ---------------------------------- THE MEADOW RIDES THE SHEAR (round 13)
+
+/** Row-sprite lanes: a full elevated row, one thicket depth band, or
+ *  a level-0 under-layer row (round 13's calm-canvas successor). */
+const LANE_ROW = 0;
+const LANE_TALL_N = 1;
+const LANE_TALL_S = 2;
+const LANE_UNDER = 3;
+
+/** A tile stays live this long after its last wake (spring-back runs
+ *  at frame rate — the same window bakeUnder honors). */
+const WAKE_LIVE_MS = 800;
+
+/** Urgent-bake spend ceiling, ms/frame: first sight and hatches pay
+ *  now (THE ARRIVAL PAYS ONCE — deferring repaints live at the same
+ *  order of cost and converges never); this is only the runaway guard. */
+const GRASS_URGENT_MS = 12;
+
+/**
+ * One baked row-cell sprite. `liveMask` records which of the cell's
+ * tiles were EXCLUDED at bake (bit i = tile cellTx+i): excluded tiles
+ * are empty pixels in the sprite and always build live, whatever the
+ * disturbers are doing now. A canvas of null is a declined verdict —
+ * the cell draws live and retries on the cadence.
+ */
+interface RowSprite {
+  canvas: HTMLCanvasElement | null;
+  bytes: number;
+  /** Canvas device dims actually painted (canvas itself is class-sized). */
+  w: number;
+  h: number;
+  scale: number;
+  dpr: number;
+  sx: number;
+  sy: number;
+  mx: number;
+  my: number;
+  bakedAtMs: number;
+  bakedTerm: number;
+  liveMask: number;
+  sig: number;
+  used: number;
+  /** First used tile of the baked extent, relative to the cell start —
+   *  THE SPRITE FITS ITS FRAME: a cell with three scattered thicket
+   *  tiles bakes three tiles' width, not sixteen. */
+  txOff: number;
+  /** World x of the baked extent's center (the shear's wind sample). */
+  center: number;
+}
 /** Ear chip scale from tip down: pointed tip, swollen middle, eased foot. */
 const SEED_EAR_TAPER = [0.55, 0.9, 1.0, 0.75] as const;
 
@@ -586,6 +668,12 @@ export class GrassSystem {
     // The calm canvas holds the OLD world's meadow — drop it too, or
     // a stale coat blits for a beat after the crossing.
     this.underCache = null;
+    // Row sprites are world content too. THE LEDGER HAS ONE DOOR:
+    // every canvas goes back through the pool and the ledger re-grounds
+    // at zero — a bare clear() here is round 10's phantom-ledger bug.
+    for (const key of this.rowSprites.keys()) this.dropRowSprite(key);
+    this.rowSprites.clear();
+    this.rowBytes = 0;
   }
   private readonly lastPos = new Map<
     number | 'own',
@@ -613,23 +701,20 @@ export class GrassSystem {
   /** Disturbers near the tile currently being built. */
   private near: LiveDisturber[] = [];
   /**
-   * THE CALM CANVAS. Re-tessellating every visible blade every frame
-   * cost ~2ms steady at 0.85× zoom (and its allocation churn drew GC
-   * pauses of up to 15ms into this very pass) — and even the Path2D
-   * cache that fixed THAT still re-FILLED every bucket every frame,
-   * which is what kept the meadow's density starved. A calm meadow
-   * only MOVES at wind rate — so the under-layer now RENDERS all
-   * undisturbed tiles into an offscreen canvas at UNDER_CACHE_MS
-   * cadence (~15Hz wind sampling, the tree-cadence law) and each frame
-   * blits it with ONE drawImage translated by the camera delta. The
-   * coat's 3-4× blade density rides on this: quads are only paid at
-   * bake time. Grass shadows bake into a second canvas the same way
-   * (opaque at bake, alpha at blit — overlaps inside the meadow's own
-   * shade merge instead of stacking, the shadow-layer law). Only tiles
-   * a body (or its predicted path — a swept box over the cache window)
-   * can reach, plus fresh wakes, are excluded and rebuilt live per
-   * frame. A disturber that escapes its predicted box forces an
-   * immediate rebake, so displacement NEVER lags a frame.
+   * THE SHADE CACHE (né THE CALM CANVAS). Round 6 baked the whole calm
+   * under-layer — blades and casts — into offscreen canvases at 66ms
+   * cadence; round 13 moved the BLADES onto the budgeted row-sprite
+   * lane (THE MEADOW RIDES THE SHEAR — the 15Hz full re-tessellation
+   * was a measured multi-ms burst that read as micro-stutter on fast
+   * panels), and this cache now carries only the meadow's merged CAST
+   * canvas (cast-only build, ~a quarter of the old beat) plus the
+   * live-exclusion set both consumers share. Casts stay monolithic on
+   * purpose: one canvas is the only place overlapping shade can merge
+   * instead of stacking (the shadow-layer law). Only tiles a body (or
+   * its predicted path — a swept box over the cache window) can
+   * reach, plus fresh wakes, are excluded and rebuilt live per frame.
+   * A disturber that escapes its predicted box forces an immediate
+   * rebake, so displacement NEVER lags a frame.
    */
   private underCache: {
     /** Screen position of world (0,0) at bake — blits translate by the delta. */
@@ -655,9 +740,7 @@ export class GrassSystem {
     /** Whether the shadow canvas holds any content this bake. */
     hasShadow: boolean;
   } | null = null;
-  /** The calm canvas + its shadow twin, reused across bakes. */
-  private underCanvas: HTMLCanvasElement | null = null;
-  private underCtx: CanvasRenderingContext2D | null = null;
+  /** The meadow's merged cast canvas, reused across bakes. */
   private shadowCanvas: HTMLCanvasElement | null = null;
   private shadowCtx: CanvasRenderingContext2D | null = null;
   /** The shadow fill the NEXT bake will use (set via setShadow). */
@@ -667,6 +750,41 @@ export class GrassSystem {
   /** This frame's cached-fill translation (drawUnder → flushShadows). */
   private cacheDx = 0;
   private cacheDy = 0;
+
+  /**
+   * THE MEADOW RIDES THE SHEAR: cadence-baked sprites for the two
+   * lanes that could never join the calm canvas because they y-sort
+   * per row — tall thicket bands and elevated-surface rows. Each
+   * sprite blits through a live wind-delta shear about the row's base
+   * line, so primary sway runs at frame rate at any cadence (the tree
+   * lane's law, one size down). Byte-ledgered, admission-gated,
+   * pooled — rounds 10-12's metering laws verbatim.
+   */
+  private readonly rowSprites = new Map<number, RowSprite>();
+  private rowBytes = 0;
+  private readonly rowPool = new Map<number, HTMLCanvasElement[]>();
+  private rowPoolBytes = 0;
+  private frameNo = 0;
+  /** Per-frame bake spend: cadence refreshes ride `bakeMsLeft`, first
+   *  sight and hatches ride `urgentMsLeft` (the runaway guard). */
+  private bakeMsLeft = 0;
+  private urgentMsLeft = 0;
+  /** One guaranteed cadence bake per frame keeps the queue draining
+   *  even when a single bake overruns the whole budget. */
+  private bakeFloorLeft = 0;
+  /** THE FRAME CONFESSES: read by the renderer's ?perf line. */
+  readonly rowStats = { blit: 0, live: 0, bake: 0, over: 0 };
+  /** Dev/proof lever (the staticLayerOn pattern): false = every cell
+   *  builds live through the exact pre-sprite path. */
+  rowSpritesOn = true;
+  /** THE CADENCE PAYS A BUDGET: live beat, self-tuned per frame. */
+  private rowCadenceMs = GRASS_ROW_CADENCE_MS;
+  /** Cell-scan scratch (span-sized; no per-frame allocation). */
+  private readonly cellSt: Array<GrassTileState | null> = new Array(GRASS_CELL_SPAN).fill(null);
+  private readonly cellT = new Int32Array(GRASS_CELL_SPAN);
+  private readonly rowSweepScratch: Array<{ key: number; used: number }> = [];
+  /** Under-lane deferred blits (cell sprites paint after the shade). */
+  private readonly underBlitScratch: Array<{ sp: RowSprite; c0: number; ty: number }> = [];
   /**
    * Tile → disturbers-in-range, rebuilt once per frame from each
    * disturber's footprint (~5×5 tiles). Inverts the old per-tile scan
@@ -703,6 +821,40 @@ export class GrassSystem {
   ): void {
     this.nowMs = nowMs;
     this.tSec = nowMs / 1000;
+    this.frameNo++;
+    this.rowCadenceMs = rowCadenceStep(this.rowCadenceMs, this.rowStats.bake);
+    this.rowStats.blit = 0;
+    this.rowStats.live = 0;
+    this.rowStats.bake = 0;
+    this.rowStats.over = 0;
+    this.bakeMsLeft = GRASS_BAKE_MS_BUDGET;
+    this.urgentMsLeft = GRASS_URGENT_MS;
+    this.bakeFloorLeft = 1;
+    // Sweep the row-sprite ledger toward relief — coldest first, never
+    // a sprite this frame drew with. Runs before any draw so the gate
+    // has its headroom when the frame's admissions arrive.
+    if (grassSweepNeeded(this.rowBytes)) {
+      this.rowSweepScratch.length = 0;
+      for (const [key, sp] of this.rowSprites) {
+        if (sp.canvas) this.rowSweepScratch.push({ key, used: sp.used });
+      }
+      for (const key of planGrassSweep(this.rowSweepScratch, this.frameNo)) {
+        this.dropRowSprite(key);
+        this.rowSprites.delete(key);
+        if (grassSweepRelieved(this.rowBytes)) break;
+      }
+      this.rowSweepScratch.length = 0;
+    }
+    // Key hygiene: a long walk accretes declined/cold entries whose
+    // canvases the sweep already took — prune the bookkeeping too.
+    if (this.rowSprites.size > 2048) {
+      for (const [key, sp] of this.rowSprites) {
+        if (sp.used < this.frameNo - 900) {
+          this.dropRowSprite(key);
+          this.rowSprites.delete(key);
+        }
+      }
+    }
     for (let i = 0; i < FLUTTER_BINS; i++) {
       const phase = (i / FLUTTER_BINS) * 6.283;
       this.flutter[i] = Math.sin(this.tSec * 2.3 + phase) * 0.028;
@@ -770,10 +922,11 @@ export class GrassSystem {
     // with a town's worth of bodies); readers must check the epoch.
     const epoch = ++this.indexEpoch;
     for (const d of this.live) {
-      const tx0 = Math.floor(d.x - 2.3);
-      const tx1 = Math.floor(d.x + 2.3);
-      const ty0 = Math.floor(d.y - 2.3);
-      const ty1 = Math.floor(d.y + 2.3);
+      const reach = disturbReach(d.r);
+      const tx0 = Math.floor(d.x - reach);
+      const tx1 = Math.floor(d.x + reach);
+      const ty0 = Math.floor(d.y - reach);
+      const ty1 = Math.floor(d.y + reach);
       for (let ty = ty0; ty <= ty1; ty++) {
         for (let tx = tx0; tx <= tx1; tx++) {
           const key = (ty + 8192) * 16384 + (tx + 8192);
@@ -1012,6 +1165,7 @@ export class GrassSystem {
     fr: TileFrame,
     s: number,
     cast = false,
+    draw = true,
   ): void {
     let bob = (wind.bx + wind.by * 0.35) * f.h * 0.5;
     bob += Math.sin(this.tSec * 2.6 + f.phase * 6.283) * 0.02;
@@ -1049,6 +1203,7 @@ export class GrassSystem {
       const spr = f.size * s;
       sp.rect(sx - spr, sy - spr * 0.55, spr * 2, spr * 1.1);
     }
+    if (!draw) return;
 
     // Stem: a thin slab leaning to the bloom.
     const stem = paths[B_STEM]!;
@@ -1085,6 +1240,7 @@ export class GrassSystem {
     fr: TileFrame,
     s: number,
     cast = false,
+    draw = true,
   ): void {
     let bob = (wind.bx + wind.by * 0.35) * sd.h * 0.85 + sd.lean;
     bob += this.flutter[sd.bin]! * (0.9 + Math.abs(wind.s));
@@ -1122,6 +1278,7 @@ export class GrassSystem {
       sp.lineTo(sx + ssw, sy);
       sp.lineTo(sx - ssw, sy);
     }
+    if (!draw) return;
 
     // Stem: a thin slab streaming to the ear.
     const stem = paths[B_STEM]!;
@@ -1189,46 +1346,15 @@ export class GrassSystem {
     }
   }
 
-  /** Build one tile's under-layer content into the CURRENT containers
-   *  (roots, under blades, tall-thicket casts, flowers deferred). */
-  private buildUnderTile(
-    st: GrassTileState,
-    t: number,
-    tx: number,
-    ty: number,
-    wts: WTS,
-    s: number,
-    flowerTiles: GrassTileState[],
-  ): void {
-    const wind = windAtInto(WIND_SCRATCH, tx + 0.5, ty + 0.5, this.tSec);
-    const f = this.tileFrame(tx, ty, wts);
-    this.gatherNear(tx, ty);
-    this.buildRoots(st, f, s);
-    for (const b of st.geom.under) this.buildBlade(b, st, wind, f, s, true);
-    // Tall thickets y-sort their mass separately, so their casts are
-    // gathered here, shadow-only — the thicket's shade lands in the
-    // meadow's own under-the-coat composite (the z-order law in
-    // drawUnder), and the standing mass draws over it later.
-    if (t === Tile.GrassTall) {
-      for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s, true, false);
-      for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s, true, false);
-    }
-    if (st.geom.flowers.length > 0 || st.geom.seeds.length > 0) flowerTiles.push(st);
-  }
-
-  /** Flowers and seed-heads are their own layer: heads read above the lawn. */
-  private buildFlowerTiles(flowerTiles: GrassTileState[], wts: WTS, s: number): void {
-    for (const st of flowerTiles) {
-      const wind = windAtInto(WIND_SCRATCH, st.tx + 0.5, st.ty + 0.5, this.tSec);
-      const f = this.tileFrame(st.tx, st.ty, wts);
-      this.gatherNear(st.tx, st.ty);
-      for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s, true);
-      for (const sd of st.geom.seeds) this.buildSeed(sd, st, wind, f, s, true);
-    }
-  }
-
-  /** Rebake the calm canvas (see underCache). */
-  private bakeUnder(
+  /**
+   * Rebake the meadow's SHADE canvas (see underCache). Round 13
+   * slimmed this from the old full calm-canvas bake: the blades
+   * themselves now live on the row-sprite lane (budgeted, sheared),
+   * so this pass builds ONLY the cast quads — ~a quarter of the old
+   * beat, and the one place the whole meadow's casts still merge on a
+   * single canvas so overlaps never stack (the shadow-layer law).
+   */
+  private bakeShade(
     ground: Sampler,
     detail: DetailFn,
     bounds: GrassBounds,
@@ -1257,50 +1383,70 @@ export class GrassSystem {
       if (d.settled) continue;
       const x1 = d.x + d.vx * horizon;
       const y1 = d.y + d.vy * horizon;
-      const bx0 = Math.floor(Math.min(d.x, x1) - DISTURB_REACH);
-      const bx1 = Math.floor(Math.max(d.x, x1) + DISTURB_REACH);
-      const by0 = Math.floor(Math.min(d.y, y1) - DISTURB_REACH);
-      const by1 = Math.floor(Math.max(d.y, y1) + DISTURB_REACH);
+      const reach = disturbReach(d.r);
+      const bx0 = Math.floor(Math.min(d.x, x1) - reach);
+      const bx1 = Math.floor(Math.max(d.x, x1) + reach);
+      const by0 = Math.floor(Math.min(d.y, y1) - reach);
+      const by1 = Math.floor(Math.max(d.y, y1) + reach);
       for (let ty = by0; ty <= by1; ty++) {
         for (let tx = bx0; tx <= bx1; tx++) {
           live.add((ty + 8192) * 16384 + (tx + 8192));
         }
       }
     }
-    // Swap the bucket containers for the bake, restore after — the
-    // build helpers all write through `this`.
-    const prevPaths = this.paths;
-    const prevFlags = this.touchedFlag;
-    const prevTouched = this.touched;
+    // Only the cast path is built — blades, flowers and roots write
+    // nothing when draw is false, so the bucket containers stay
+    // untouched and only the shadow path needs the swap ceremony.
     const prevShadow = this.shadowPath;
-    const paths = new Array<Path2D>(BUCKETS);
-    for (let i = 0; i < BUCKETS; i++) paths[i] = new Path2D();
-    this.paths = paths;
-    this.touchedFlag = new Uint8Array(BUCKETS);
-    this.touched = [];
     this.shadowPath = null;
-    const flowerTiles: GrassTileState[] = [];
-    for (let ty = minTy; ty <= maxTy; ty++) {
+    const castsOn = this.shOn;
+    for (let ty = minTy; ty <= maxTy && castsOn; ty++) {
       for (let tx = minTx; tx <= maxTx; tx++) {
         const t = ground(tx, ty);
         if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
         const key = (ty + 8192) * 16384 + (tx + 8192);
         const st = this.tile(tx, ty, t, detail(tx, ty), ground);
         // Fresh wakes spring back at frame rate — keep them live too.
-        if (st.wakeAt > 0 && this.nowMs - st.wakeAt < 800) {
+        if (st.wakeAt > 0 && this.nowMs - st.wakeAt < WAKE_LIVE_MS) {
           live.add(key);
           continue;
         }
         if (live.has(key)) continue;
-        this.buildUnderTile(st, t, tx, ty, wts, s, flowerTiles);
+        const wind = windAtInto(WIND_SCRATCH, tx + 0.5, ty + 0.5, this.tSec);
+        const f = this.tileFrame(tx, ty, wts);
+        this.gatherNear(tx, ty);
+        // Pre-gate on the builders' own cast conditions (hpx floor,
+        // bin parity) using h*s — an upper bound on hpx, so a skip is
+        // never a lost cast. The nap (most of the coat) can never
+        // reach the 8px floor and this pass owes it nothing.
+        for (const b of st.geom.under) {
+          if (b.h * s < 8 || (b.bin & 1) !== 0) continue;
+          this.buildBlade(b, st, wind, f, s, true, false);
+        }
+        if (t === Tile.GrassTall) {
+          for (const b of st.geom.north) {
+            if (b.h * s < 8 || (b.bin & 1) !== 0) continue;
+            this.buildBlade(b, st, wind, f, s, true, false);
+          }
+          for (const b of st.geom.south) {
+            if (b.h * s < 8 || (b.bin & 1) !== 0) continue;
+            this.buildBlade(b, st, wind, f, s, true, false);
+          }
+        }
+        for (const fl of st.geom.flowers) {
+          if (fl.h * s < 6) continue;
+          this.buildFlower(fl, st, wind, f, s, true, false);
+        }
+        for (const sd of st.geom.seeds) {
+          if (sd.h * s < 6 || (sd.bin & 1) !== 0) continue;
+          this.buildSeed(sd, st, wind, f, s, true, false);
+        }
       }
     }
-    this.buildFlowerTiles(flowerTiles, wts, s);
 
-    // Render the bake into the calm canvas: the geometry was built in
-    // screen space (CSS px), so the canvas ctx maps that space onto a
-    // dpr-resolution backing anchored at the padded bounds' top-left.
-    // Margin covers blade lean + height past a tile's own box.
+    // Rasterize the merged casts, anchored at the padded bounds'
+    // top-left in the bake frame's screen space (CSS px onto a
+    // dpr-resolution backing). Margin covers cast throw past a tile.
     const pTL = wts(minTx, minTy);
     const pBR = wts(maxTx + 1, maxTy + 1);
     const margin = 1.5 * s;
@@ -1310,24 +1456,15 @@ export class GrassSystem {
     const chh = Math.ceil(Math.abs(pBR.y - pTL.y) + margin * 2);
     const bw = Math.ceil(cw * dpr);
     const bh = Math.ceil(chh * dpr);
-    if (!this.underCanvas) {
-      this.underCanvas = document.createElement('canvas');
-      this.underCtx = this.underCanvas.getContext('2d');
+    if (!this.shadowCanvas) {
       this.shadowCanvas = document.createElement('canvas');
       this.shadowCtx = this.shadowCanvas.getContext('2d');
     }
-    const uc = this.underCanvas;
-    const scv = this.shadowCanvas!;
-    if (uc.width !== bw || uc.height !== bh) {
-      uc.width = bw;
-      uc.height = bh;
+    const scv = this.shadowCanvas;
+    if (scv.width !== bw || scv.height !== bh) {
       scv.width = bw;
       scv.height = bh;
     }
-    const uctx = this.underCtx!;
-    uctx.setTransform(dpr, 0, 0, dpr, -canvasX0 * dpr, -canvasY0 * dpr);
-    uctx.clearRect(canvasX0, canvasY0, cw, chh);
-    this.fillBuckets(uctx, paths, this.touchedFlag);
     const hasShadow = this.shadowPath !== null;
     if (hasShadow || this.underCache?.hasShadow) {
       const sctx = this.shadowCtx!;
@@ -1360,9 +1497,6 @@ export class GrassSystem {
       shFill: this.shFill,
       hasShadow,
     };
-    this.paths = prevPaths;
-    this.touchedFlag = prevFlags;
-    this.touched = prevTouched;
     this.shadowPath = prevShadow;
   }
 
@@ -1370,9 +1504,14 @@ export class GrassSystem {
    * The under-layer: every short blade, nap chip, clump, flower, and
    * seed-head in bounds — drawn beneath entities. Tall thickets
    * contribute only their nap underbrush here; their mass y-sorts via
-   * collectTall. Calm tiles come from the cadence-baked calm canvas
-   * (ONE drawImage, however dense the coat); only disturbed/waking
-   * tiles rebuild per frame.
+   * collectTall. Since round 13 the blades ride the row-sprite lane
+   * (THE MEADOW RIDES THE SHEAR): calm cells blit their cadence
+   * sprites through the live wind shear, disturbed/waking tiles build
+   * live — the old monolithic calm canvas re-tessellated the entire
+   * viewport's coat every 66ms, a measured multi-ms burst at 15Hz
+   * that read as micro-stutter on fast panels. Only the SHADE still
+   * bakes monolithically (cast-only, ~a quarter of the old beat),
+   * because casts must merge on one canvas so overlaps never stack.
    */
   drawUnder(
     ctx: CanvasRenderingContext2D,
@@ -1413,10 +1552,11 @@ export class GrassSystem {
         // tiles missing from the exclusion set, and the rebake lands
         // THIS frame: motion onset never lags the calm canvas.
         if (d.settled) continue;
-        const tx0 = Math.floor(d.x - DISTURB_REACH);
-        const tx1 = Math.floor(d.x + DISTURB_REACH);
-        const ty0 = Math.floor(d.y - DISTURB_REACH);
-        const ty1 = Math.floor(d.y + DISTURB_REACH);
+        const reach = disturbReach(d.r);
+        const tx0 = Math.floor(d.x - reach);
+        const tx1 = Math.floor(d.x + reach);
+        const ty0 = Math.floor(d.y - reach);
+        const ty1 = Math.floor(d.y + reach);
         for (let ty = ty0; ty <= ty1; ty++) {
           for (let tx = tx0; tx <= tx1; tx++) {
             if (tx < bounds.minTx || tx > bounds.maxTx || ty < bounds.minTy || ty > bounds.maxTy) continue;
@@ -1432,7 +1572,7 @@ export class GrassSystem {
       }
     }
     if (needBake) {
-      this.bakeUnder(ground, detail, bounds, wts, s, o.x, o.y, dpr);
+      this.bakeShade(ground, detail, bounds, wts, s, o.x, o.y, dpr);
       c = this.underCache;
     }
     const cache = c!;
@@ -1448,23 +1588,21 @@ export class GrassSystem {
     // and thicket casts alike — rides this composite; big casters
     // (props, trees, bodies) keep the shared layer, whose shade
     // honestly DRAPES over the standing coat.
-    // 1. Build the living edge FIRST (paths + casts only, no paint),
-    // so live tiles' casts land under the calm blades too.
+    // 1. Walk the row cells FIRST but paint nothing: cell bakes and
+    // live tiles land in the containers (live casts into shadowPath),
+    // and each usable sprite defers its blit — so every cast, baked
+    // and live, composites under every blade.
     this.ensurePaths();
-    const flowerTiles: GrassTileState[] = [];
-    for (const key of cache.live) {
-      const ty = Math.floor(key / 16384) - 8192;
-      const tx = (key % 16384) - 8192;
-      if (tx < bounds.minTx || tx > bounds.maxTx || ty < bounds.minTy || ty > bounds.maxTy) continue;
-      const t = ground(tx, ty);
-      if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
-      const st = this.tile(tx, ty, t, detail(tx, ty), ground);
-      this.buildUnderTile(st, t, tx, ty, wts, s, flowerTiles);
+    const defer = this.underBlitScratch;
+    defer.length = 0;
+    for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
+      for (let c0 = cellStartTx(bounds.minTx); c0 <= bounds.maxTx; c0 += GRASS_CELL_SPAN) {
+        this.handleRowCell(ctx, m, LANE_UNDER, 0, ty, c0, ground, detail, wts, s, defer);
+      }
     }
-    this.buildFlowerTiles(flowerTiles, wts, s);
-    // 2. The whole meadow's shade — the calm canvas's baked casts
-    // (opaque at bake, one alpha here: overlaps merged) and the live
-    // tiles' cast path — lands BEFORE any blade.
+    // 2. The whole meadow's shade — the baked cast canvas (opaque at
+    // bake, one alpha here: overlaps merged) and the live tiles' cast
+    // path — lands BEFORE any blade.
     const cached = cache.hasShadow ? this.shadowCanvas : null;
     if (cached || this.shadowPath) {
       ctx.globalAlpha = this.shAlpha;
@@ -1485,22 +1623,396 @@ export class GrassSystem {
       }
       ctx.globalAlpha = 1;
     }
-    // 3. The calm meadow's blades: one canvas blit, translated by the
-    // camera delta (both origins are pixel-snapped, so the delta is
-    // integer) and landed on whole device pixels so the coat never
-    // softens.
-    if (this.underCanvas) {
-      ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(
-        this.underCanvas,
-        Math.round(m.a * (cache.canvasX0 + this.cacheDx) + m.e),
-        Math.round(m.d * (cache.canvasY0 + this.cacheDy) + m.f),
-      );
-      ctx.restore();
+    // 3. The calm cells' blades: one sheared blit per cell.
+    for (let i = 0; i < defer.length; i++) {
+      const b = defer[i]!;
+      this.blitRowSprite(ctx, m, b.sp, b.c0, b.ty, wts, s);
     }
+    defer.length = 0;
     // 4. The living blades over everything.
     this.flush(ctx);
+  }
+
+  // ---------------------------- THE MEADOW RIDES THE SHEAR (round 13)
+
+  /** World-stable cell identity: lane, elevation level, row, cell. */
+  private static rowKey(lane: number, level: number, ty: number, c0: number): number {
+    return (((ty + 8192) * 1024 + (c0 / GRASS_CELL_SPAN + 512)) * 4 + lane) * 16 + level;
+  }
+
+  /**
+   * THE LEDGER HAS ONE DOOR: release a sprite's canvas back through
+   * the pool (or to GC past the pool's byte ceiling) and return its
+   * bytes. The caller owns the map entry itself.
+   */
+  private dropRowSprite(key: number): void {
+    const sp = this.rowSprites.get(key);
+    if (!sp || !sp.canvas) return;
+    const cls = grassPoolClass(sp.canvas.width, sp.canvas.height);
+    const bytes = sp.canvas.width * sp.canvas.height * 4;
+    if (grassPoolAdmits(this.rowPoolBytes, bytes)) {
+      let bucket = this.rowPool.get(cls);
+      if (!bucket) {
+        bucket = [];
+        this.rowPool.set(cls, bucket);
+      }
+      bucket.push(sp.canvas);
+      this.rowPoolBytes += bytes;
+    }
+    this.rowBytes -= sp.bytes;
+    sp.canvas = null;
+    sp.bytes = 0;
+  }
+
+  /** One lane-tile of live geometry — the SAME brush the sprites bake
+   *  with, and the same order the old per-frame loops drew in. `cast`
+   *  is true only for LIVE under-lane tiles: a cell bake never casts
+   *  (the shade bake owns the merged cast canvas), and the tall/row
+   *  lanes never did. */
+  private buildLaneTile(
+    lane: number,
+    st: GrassTileState,
+    t: number,
+    wind: WindSample,
+    f: TileFrame,
+    s: number,
+    cast: boolean,
+  ): void {
+    if (lane === LANE_TALL_N) {
+      for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s);
+      return;
+    }
+    if (lane === LANE_TALL_S) {
+      for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s);
+      return;
+    }
+    if (lane === LANE_UNDER) {
+      this.buildRoots(st, f, s);
+      for (const b of st.geom.under) this.buildBlade(b, st, wind, f, s, cast);
+      // Tall thickets y-sort their standing mass via collectTall —
+      // the under pass owes only their casts (live tiles; baked casts
+      // ride the shade canvas).
+      if (cast && t === Tile.GrassTall) {
+        for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s, true, false);
+        for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s, true, false);
+      }
+      for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s, cast);
+      for (const sd of st.geom.seeds) this.buildSeed(sd, st, wind, f, s, cast);
+      return;
+    }
+    this.buildRoots(st, f, s);
+    for (const b of st.geom.under) this.buildBlade(b, st, wind, f, s);
+    for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s);
+    for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s);
+    for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s);
+    for (const sd of st.geom.seeds) this.buildSeed(sd, st, wind, f, s);
+  }
+
+  /**
+   * Bake one row cell into a sprite. SAME-BRUSH: the live builders
+   * paint under a re-anchored tile frame (local origin at the cell's
+   * first tile, the row's own sx/sy), so bake output is the live
+   * output verbatim. Returns the stored entry, or null when the
+   * frame's bake spend is gone (the caller draws live and retries).
+   */
+  private bakeRowCell(
+    key: number,
+    lane: number,
+    ty: number,
+    c0: number,
+    s: number,
+    dpr: number,
+    usedMask: number,
+    liveNowMask: number,
+    sig: number,
+    wts: WTS,
+    urgent: boolean,
+    iLo: number,
+    iHi: number,
+  ): RowSprite | null {
+    if (urgent) {
+      if (this.urgentMsLeft <= 0) return null;
+    } else if (this.bakeMsLeft <= 0) {
+      // THE CACHE ALWAYS GAINS GROUND: one guaranteed bake per frame
+      // keeps the cadence queue draining under any budget.
+      if (this.bakeFloorLeft <= 0) return null;
+      this.bakeFloorLeft--;
+    }
+    const t0 = performance.now();
+    const f0 = this.tileFrame(c0 + iLo, ty, wts);
+    const sx = f0.sx;
+    const sy = f0.sy;
+    // Margins: sideways lean + wind throw + clump fan (≤ ~0.65 tiles,
+    // seed stalks streaming); above, the tallest accent blade or stem.
+    const mx = s * 0.8;
+    const my = s * 0.8 + 4;
+    const wCss = (iHi - iLo + 1) * Math.abs(sx) + mx * 2;
+    const hCss = my + Math.abs(sy) + 2;
+    // Canvases allocate at the 64px shape class, so every pool bucket
+    // holds identically-sized canvases and reuse never reallocates.
+    const w = Math.ceil((wCss * dpr) / 64) * 64;
+    const h = Math.ceil((hCss * dpr) / 64) * 64;
+    const bytes = w * h * 4;
+    let sp = this.rowSprites.get(key);
+    const reuseInPlace = sp?.canvas !== undefined && sp.canvas !== null
+      && sp.canvas.width === w && sp.canvas.height === h;
+    if (sp && !reuseInPlace) this.dropRowSprite(key);
+    if (!sp) {
+      sp = {
+        canvas: null,
+        bytes: 0,
+        w,
+        h,
+        scale: s,
+        dpr,
+        sx,
+        sy,
+        mx,
+        my,
+        bakedAtMs: this.nowMs,
+        bakedTerm: 0,
+        liveMask: liveNowMask,
+        sig,
+        used: this.frameNo,
+        txOff: iLo,
+        center: c0 + (iLo + iHi + 1) / 2,
+      };
+      this.rowSprites.set(key, sp);
+    }
+    let canvas = sp.canvas;
+    if (!canvas) {
+      // THE BUDGET IS AN ADMISSION GATE — decide before painting.
+      if (admitGrassSprite(this.rowBytes, bytes) !== GrassVerdict.Admit) {
+        sp.canvas = null;
+        sp.bytes = 0;
+        sp.bakedAtMs = this.nowMs; // the decline's retry clock
+        sp.sig = sig;
+        sp.scale = s;
+        sp.dpr = dpr;
+        sp.liveMask = liveNowMask;
+        return sp;
+      }
+      const bucket = this.rowPool.get(grassPoolClass(w, h));
+      canvas = bucket && bucket.length > 0 ? bucket.pop()! : null;
+      if (canvas) {
+        this.rowPoolBytes -= canvas.width * canvas.height * 4;
+      } else {
+        canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+      }
+      this.rowBytes += bytes;
+      sp.canvas = canvas;
+      sp.bytes = bytes;
+    }
+    const sctx = canvas.getContext('2d')!;
+    // A borrowed canvas must be CLEARED and have its TRANSFORM RESET —
+    // it holds the previous bake's pixels and anchor (round 11's law).
+    sctx.setTransform(1, 0, 0, 1, 0, 0);
+    sctx.clearRect(0, 0, w, h);
+    sctx.setTransform(dpr, 0, 0, dpr, mx * dpr, my * dpr);
+    // Swap the shared bucket containers for the bake (bakeUnder's own
+    // ceremony) — the builders all write through `this`.
+    const prevPaths = this.paths;
+    const prevFlags = this.touchedFlag;
+    const prevTouched = this.touched;
+    const prevShadow = this.shadowPath;
+    const paths = new Array<Path2D>(BUCKETS);
+    for (let i = 0; i < BUCKETS; i++) paths[i] = new Path2D();
+    this.paths = paths;
+    this.touchedFlag = new Uint8Array(BUCKETS);
+    this.touched = [];
+    this.shadowPath = null;
+    const bakeMask = usedMask & ~liveNowMask;
+    for (let i = iLo; i <= iHi; i++) {
+      if ((bakeMask & (1 << i)) === 0) continue;
+      const tx = c0 + i;
+      const st = this.cellSt[i]!;
+      const wind = windAtInto(WIND_SCRATCH, tx + 0.5, ty + 0.5, this.tSec);
+      this.gatherNear(tx, ty);
+      this.buildLaneTile(lane, st, this.cellT[i]!, wind, { x0: (i - iLo) * sx, y0: 0, sx, sy }, s, false);
+    }
+    this.fillBuckets(sctx, paths, this.touchedFlag);
+    this.paths = prevPaths;
+    this.touchedFlag = prevFlags;
+    this.touched = prevTouched;
+    this.shadowPath = prevShadow;
+    sp.center = c0 + (iLo + iHi + 1) / 2;
+    const wc = windAtInto(WIND_SCRATCH, sp.center, ty + 0.5, this.tSec);
+    sp.w = w;
+    sp.h = h;
+    sp.scale = s;
+    sp.dpr = dpr;
+    sp.sx = sx;
+    sp.sy = sy;
+    sp.mx = mx;
+    sp.my = my;
+    sp.bakedAtMs = this.nowMs;
+    sp.bakedTerm = windTerm(wc.bx, wc.by);
+    sp.liveMask = liveNowMask;
+    sp.sig = sig;
+    sp.txOff = iLo;
+    const dt = performance.now() - t0;
+    if (urgent) this.urgentMsLeft -= dt;
+    else this.bakeMsLeft -= dt;
+    this.rowStats.bake++;
+    return sp;
+  }
+
+  /**
+   * Blit one baked cell through the live wind-delta shear about the
+   * row's mid-depth base line: tips track the cantilever at frame
+   * rate, and a missed cadence beat degrades into a larger (capped)
+   * shear instead of a stutter.
+   */
+  private blitRowSprite(
+    ctx: CanvasRenderingContext2D,
+    m: DOMMatrix,
+    sp: RowSprite,
+    c0: number,
+    ty: number,
+    wts: WTS,
+    s: number,
+  ): void {
+    const p = wts(c0 + sp.txOff, ty);
+    const wNow = windAtInto(WIND_SCRATCH, sp.center, ty + 0.5, this.tSec);
+    const shx = rowShear(windTerm(wNow.bx, wNow.by), sp.bakedTerm);
+    const K = m.a * (s / sp.scale);
+    const bx = m.a * p.x + m.e;
+    const by = m.d * p.y + m.f;
+    const refY = sp.sy * 0.5;
+    ctx.setTransform(
+      K / sp.dpr,
+      0,
+      (-K * shx) / sp.dpr,
+      K / sp.dpr,
+      bx - K * sp.mx + K * shx * (refY + sp.my),
+      by - K * sp.my,
+    );
+    ctx.drawImage(sp.canvas!, 0, 0, sp.w, sp.h, 0, 0, sp.w, sp.h);
+    ctx.setTransform(m);
+    this.rowStats.blit++;
+  }
+
+  /**
+   * One cell of one lane, one frame: scan, decide, blit through the
+   * live wind-delta shear, and build the excluded tiles live. The
+   * sprite is a cache, never a mode — every decline or miss paints
+   * live through the exact pre-sprite path (THE STILL-WORLD BARGAIN).
+   * The under lane hands its blit to `defer` so the meadow's shade
+   * can composite beneath every calm blade.
+   */
+  private handleRowCell(
+    ctx: CanvasRenderingContext2D,
+    m: DOMMatrix,
+    lane: number,
+    level: number,
+    ty: number,
+    c0: number,
+    ground: Sampler,
+    detail: DetailFn,
+    wts: WTS,
+    s: number,
+    defer: Array<{ sp: RowSprite; c0: number; ty: number }> | null = null,
+  ): void {
+    let sig = 0;
+    let usedMask = 0;
+    let liveNowMask = 0;
+    for (let i = 0; i < GRASS_CELL_SPAN; i++) {
+      const tx = c0 + i;
+      const t = ground(tx, ty);
+      const use = lane === LANE_ROW ? t === Tile.Grass || t === Tile.GrassTall : t === Tile.GrassTall;
+      this.cellSt[i] = null;
+      if (!use) {
+        sig = (sig * 31) | 0;
+        continue;
+      }
+      const det = detail(tx, ty);
+      sig = (sig * 31 + (t! * 8 + det + 1)) | 0;
+      usedMask |= 1 << i;
+      const st = this.tile(tx, ty, t!, det, ground);
+      this.cellSt[i] = st;
+      this.cellT[i] = t!;
+      let liveTile = false;
+      const e = this.disturberIndex.get((ty + 8192) * 16384 + (tx + 8192));
+      if (e !== undefined && e.epoch === this.indexEpoch) {
+        // Settled bodies bake their (static) parting in — THE SETTLED
+        // BODY JOINS THE CALM, the same bargain the calm canvas keeps.
+        for (const d of e.list) {
+          if (!d.settled) {
+            liveTile = true;
+            break;
+          }
+        }
+      }
+      if (!liveTile && st.wakeAt > 0 && this.nowMs - st.wakeAt < WAKE_LIVE_MS) liveTile = true;
+      if (liveTile) liveNowMask |= 1 << i;
+    }
+    if (usedMask === 0) return;
+    // A cell of one lone tile builds live for less than its sprite's
+    // bookkeeping — no bake, no ledger entry.
+    let iLo = 0;
+    while ((usedMask & (1 << iLo)) === 0) iLo++;
+    let iHi = GRASS_CELL_SPAN - 1;
+    while ((usedMask & (1 << iHi)) === 0) iHi--;
+    if (iLo === iHi || !this.rowSpritesOn) {
+      for (let i = iLo; i <= iHi; i++) {
+        if ((usedMask & (1 << i)) === 0) continue;
+        const st = this.cellSt[i]!;
+        const tx = c0 + i;
+        const wind = windAtInto(WIND_SCRATCH, tx + 0.5, ty + 0.5, this.tSec);
+        this.gatherNear(tx, ty);
+        this.buildLaneTile(lane, st, this.cellT[i]!, wind, this.tileFrame(tx, ty, wts), s, lane === LANE_UNDER);
+        this.rowStats.live++;
+      }
+      return;
+    }
+    const dpr = m.a || 1;
+    const key = GrassSystem.rowKey(lane, level, ty, c0);
+    let sp = this.rowSprites.get(key);
+    // A live tile the bake did not exclude means the sprite's pixels
+    // under a moving body are wrong THIS frame — the hatch rebakes
+    // now, exactly like the calm canvas's escape hatch.
+    const hatch = sp !== undefined && sp.canvas !== null && (liveNowMask & ~sp.liveMask) !== 0;
+    if (sp === undefined || sp.sig !== sig || sp.dpr !== dpr || hatch) {
+      sp = this.bakeRowCell(key, lane, ty, c0, s, dpr, usedMask, liveNowMask, sig, wts, true, iLo, iHi) ?? sp;
+    } else if (
+      this.nowMs - sp.bakedAtMs > this.rowCadenceMs + rowCadenceJitter(key, this.rowCadenceMs) ||
+      (sp.canvas !== null && !scaleFresh(s, sp.scale))
+    ) {
+      sp = this.bakeRowCell(key, lane, ty, c0, s, dpr, usedMask, liveNowMask, sig, wts, false, iLo, iHi) ?? sp;
+    }
+    const usable =
+      sp !== undefined &&
+      sp.canvas !== null &&
+      sp.sig === sig &&
+      sp.dpr === dpr &&
+      scaleFresh(s, sp.scale) &&
+      (liveNowMask & ~sp.liveMask) === 0;
+    let liveMask: number;
+    if (usable) {
+      const spr = sp!;
+      spr.used = this.frameNo;
+      if (defer) defer.push({ sp: spr, c0, ty });
+      else this.blitRowSprite(ctx, m, spr, c0, ty, wts, s);
+      liveMask = (spr.liveMask | liveNowMask) & usedMask;
+    } else {
+      this.rowStats.over++;
+      liveMask = usedMask;
+    }
+    if (liveMask !== 0) {
+      for (let i = 0; i < GRASS_CELL_SPAN; i++) {
+        if ((liveMask & (1 << i)) === 0) continue;
+        const st = this.cellSt[i];
+        if (!st) continue;
+        const tx = c0 + i;
+        const wind = windAtInto(WIND_SCRATCH, tx + 0.5, ty + 0.5, this.tSec);
+        const f = this.tileFrame(tx, ty, wts);
+        this.gatherNear(tx, ty);
+        this.buildLaneTile(lane, st, this.cellT[i]!, wind, f, s, lane === LANE_UNDER);
+        this.rowStats.live++;
+      }
+    }
   }
 
   /**
@@ -1518,30 +2030,30 @@ export class GrassSystem {
     s: number,
   ): void {
     for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
-      // All tall tiles in a row share their two band depths, so a whole
-      // row-run batches into two items — one Path2D flush each, however
-      // wide the thicket is.
-      let row: GrassTileState[] | null = null;
+      // All tall tiles in a row share their two band depths, so a
+      // whole row batches into two items. Each band walks the row's
+      // world-aligned cells: calm cells blit their cadence sprite
+      // through the live shear, disturbed tiles build live.
+      let any = false;
       for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
-        if (ground(tx, ty) !== Tile.GrassTall) continue;
-        (row ??= []).push(this.tile(tx, ty, Tile.GrassTall, detail(tx, ty), ground));
+        if (ground(tx, ty) === Tile.GrassTall) {
+          any = true;
+          break;
+        }
       }
-      if (!row) continue;
-      const tiles = row;
-      const bands: Array<['north' | 'south', number]> = [
-        ['north', ty + 0.26],
-        ['south', ty + 0.76],
+      if (!any) continue;
+      const bands: Array<[number, number]> = [
+        [LANE_TALL_N, ty + 0.26],
+        [LANE_TALL_S, ty + 0.76],
       ];
-      for (const [half, sortY] of bands) {
+      for (const [lane, sortY] of bands) {
         items.push({
           sortY,
           draw: () => {
             this.ensurePaths();
-            for (const st of tiles) {
-              const wind = windAtInto(WIND_SCRATCH, st.tx + 0.5, st.ty + 0.5, this.tSec);
-              const f = this.tileFrame(st.tx, st.ty, wts);
-              this.gatherNear(st.tx, st.ty);
-              for (const b of st.geom[half]) this.buildBlade(b, st, wind, f, s);
+            const m = ctx.getTransform();
+            for (let c0 = cellStartTx(bounds.minTx); c0 <= bounds.maxTx; c0 += GRASS_CELL_SPAN) {
+              this.handleRowCell(ctx, m, lane, 0, ty, c0, ground, detail, wts, s);
             }
             this.flush(ctx);
           },
@@ -1562,22 +2074,13 @@ export class GrassSystem {
     bounds: GrassBounds,
     wts: WTS,
     s: number,
+    level = 0,
   ): void {
     this.ensurePaths();
+    const m = ctx.getTransform();
     for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
-      for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
-        const t = ground(tx, ty);
-        if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
-        const st = this.tile(tx, ty, t, detail(tx, ty), ground);
-        const wind = windAtInto(WIND_SCRATCH, tx + 0.5, ty + 0.5, this.tSec);
-        const f = this.tileFrame(tx, ty, wts);
-        this.gatherNear(tx, ty);
-        this.buildRoots(st, f, s);
-        for (const b of st.geom.under) this.buildBlade(b, st, wind, f, s);
-        for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s);
-        for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s);
-        for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s);
-        for (const sd of st.geom.seeds) this.buildSeed(sd, st, wind, f, s);
+      for (let c0 = cellStartTx(bounds.minTx); c0 <= bounds.maxTx; c0 += GRASS_CELL_SPAN) {
+        this.handleRowCell(ctx, m, LANE_ROW, level, ty, c0, ground, detail, wts, s);
       }
     }
     this.flush(ctx);

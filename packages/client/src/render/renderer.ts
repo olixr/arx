@@ -4007,6 +4007,7 @@ export class Renderer {
                     rowBounds,
                     this.liftedWTS,
                     s,
+                    level,
                   );
                 },
               });
@@ -20334,6 +20335,12 @@ export class Renderer {
     parts.push(
       `trees offscreen ${ls.offscreen}`,
     );
+    // THE MEADOW RIDES THE SHEAR: calm row cells blit; `live` is the
+    // disturbed-tile tail, `over` is cells the gate declined (drawing
+    // live) — a steady non-zero `over` means the view outgrew the
+    // sprite budget.
+    const gs = this.grass.rowStats;
+    parts.push(`grass blit ${gs.blit} live ${gs.live} bake ${gs.bake} over ${gs.over}`);
     return parts.join('\n');
   }
 

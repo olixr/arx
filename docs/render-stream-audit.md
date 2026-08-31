@@ -1136,3 +1136,123 @@ memo (a WeakMap on model identity) died with it each time.
 DB `arx_rig_36`, probe `perf12_probe` / `probe-owl-9127` char Prowler
 (look CONFIRMED — the mirror stays shut). Drivers in scratchpad
 pattern: survey12/attribute12/cliff-proof/profile12.
+
+---
+
+## Round 13 — THE MEADOW RIDES THE SHEAR (2026-08-31)
+
+Owner's report: **"jitter and big frame drops on other machines — a
+Windows box with a 3080 stutters where the M4 mini glides."** A
+discrete GPU buys nothing from canvas2d when the cost is main-thread
+path building and periodic burst work — so this round hunted per-frame
+op volume and PERIODIC spikes, the two shapes that read as jitter.
+Rig lane 36 reused; new drivers survey13/grass-attr/ab13/treadmill.
+
+### The measurement, and two false leads paid for honestly
+
+The op census (Path2D wrap included — round 6's law) found the
+game-wide top steady consumer hiding in plain sight: **grass blade
+building, 20-60k Path2D segment ops per frame in every scene** —
+avenue 5,450 blades/frame, graveyard 7,141, forest 3,435. Three lanes
+owned it: `drawRow` (EVERY blade on elevated terraces, live, per
+frame — the calm canvas never reached elevation), `collectTall` (every
+thicket band, live, per frame), and — found only after fixing a
+classifier bug — the calm canvas itself.
+
+- **False lead 1**: a steady-state "chunk re-bake treadmill" implied
+  by census-run allocations. A direct probe measured **0 replaces in
+  20s** across three scenes — the instrumented run's slow frames had
+  simply not finished draining arrival bakes before sampling began.
+  The chunk pipeline is clean; the over-budget `ground` ledger
+  (232-301MB vs 192) is the un-evictable visible working set, benign.
+- **False lead 2**: `'.draw'` as a stack marker for the tall lane
+  MATCHES `.drawUnder` — half the "tall" attribution was really the
+  under-layer. **Substring lane classifiers must test the longest
+  names first.**
+
+### Shipped
+
+1. **THE MEADOW RIDES THE SHEAR** (`grass.ts` +
+   `grassSpriteBudget.ts`, pure + 26 tests): the tree lane's law one
+   size down. Grass rows bake into per-cell sprites (world-aligned
+   16-tile cells; lanes: elevated row / tall-north / tall-south /
+   under) via SAME-BRUSH (the live builders paint under a re-anchored
+   tile frame), and every frame blits through a horizontal SHEAR about
+   the row's mid-depth base line by the wind term's movement since the
+   bake (`Δterm × 0.273`, the constant traced from buildBlade's own
+   cantilever; capped at 0.1 so a starved queue lags instead of
+   skating roots). Primary sway runs at frame rate at ANY cadence;
+   a missed beat degrades into a larger shear, never a stutter.
+   Disturbed/waking tiles are excluded at bake and keep the live path
+   (partings never lag a frame); the calm-canvas hatch law carries
+   over per cell. THE SPRITE FITS ITS FRAME: cells bake their used
+   extent, and a lone-tile cell just draws live.
+2. **THE CADENCE PAYS A BUDGET, NOT A SCHEDULE**: a fixed 350ms beat
+   × 150 cells re-baked 12-16 cells EVERY frame — the whole live cost
+   back as a treadmill. The beat now self-tunes to a repaint target
+   (>3 bakes/frame stretches it toward 4s, idle eases back to 500ms),
+   plus keyed deadline jitter so an arrival's cells never thunder
+   together. Cadence refreshes ride a 1.5ms/frame budget with a
+   one-bake floor; first sight and hatches ride a 12ms urgent guard
+   (THE ARRIVAL PAYS ONCE).
+3. **THE SWEEP KEEPS THE HEADROOM, relearned**: the first cut swept
+   only past the CEILING — a scene change parked the old working set
+   at 95.6MB against a 96MB budget and **latched the admission gate
+   shut** (zero admissions, every cell declining, forever). The sweep
+   now triggers at relief (96MB against a 128MB ceiling), coldest
+   first, never a sprite used this frame. Ledger byte-symmetric,
+   pooled by 64px shape class, ONE DOOR (`dropRowSprite`), all of it
+   pure arithmetic in `grassSpriteBudget.ts`.
+4. **THE REACH IS THE BODY'S OWN** (`disturbReach`): the fixed
+   2.3-tile disturber box was ~4x the area the push falloff
+   (`d.r + 0.62`) can touch for a walking body — the whole
+   live-exclusion set rode on it (140-350 live tiles/frame) — while
+   UNDER-covering large bodies (an ogre's parting clipped at the box
+   edge). Every consumer (disturber index, bake exclusion, escape
+   hatch) now derives `d.r + 0.7` from one function. Live tiles
+   (walker-position dependent): avenue 353→70-140, forest 200→35-55.
+5. **THE SHADE KEEPS ONE CANVAS, AND ONLY THE SHADE** (`bakeShade`,
+   née `bakeUnder`): the calm canvas's 66ms full-viewport
+   re-tessellation (~29k blades per beat in the forest — a measured
+   multi-ms burst at 15Hz, micro-stutter on fast panels, THE exact
+   symptom reported) is retired. Under-layer BLADES ride the cell
+   lane; the monolithic bake now builds ONLY cast quads (casts must
+   merge on one canvas so overlaps never stack — the shadow-layer
+   law), pre-gated on the builders' own cast conditions (`h*s` bound
+   + bin parity — the nap can never cast and owes the pass nothing):
+   forest 3,455 → 635 amortized blade-visits/frame.
+6. `rowSpritesOn` (dev lever, the `staticLayerOn` pattern) for
+   interleaved A/B and parity proofs; `?perf` grows
+   **`grass blit N live N bake N over N`** — a steady non-zero `over`
+   means the view outgrew the sprite budget.
+
+### Proven
+
+- **Interleaved A/B** (4 cycles × 6s, medians, spreads disjoint;
+  sprites-only delta — reach/shade fixes active on both sides):
+  world EMA avenue 20.6→16.8 (−18%), crown 23.5→21.1 (−10%),
+  graveyard 12.9→10.3 (−20%); hoargate/forest neutral (their cost was
+  the live set and the shade beat, cut by #4/#5 on both sides).
+- **Counts (the cross-machine truth)**: total blade builds/frame —
+  avenue 5,450→412 (−92%), crown 3,254→489 (−85%), graveyard
+  7,141→1,858 (−74%), forest 3,435→1,493 (−57%), hoargate −33%.
+  `over 0` in every scene at zoom 1 and 1.8.
+- **Eyeball proofs**: graveyard calm-canvas-vs-cells screenshots
+  pixel-faithful (density, tone patches, seed drifts, shade); close
+  zoom 1.8 crisp; zoom-glide settle clean; no seams, no ghosting, no
+  holes. 766/766 client tests, typecheck clean.
+
+### Still open, ranked (updated)
+
+1. **THE SETTLED CUT JOINS THE BAND** (round 12 #1, unchanged —
+   crown still reads `hot 20`): wants its own interactive harness.
+2. **The under-layer's shade beat** is down ~4x but still a 66ms
+   monolith; if it ever spikes on a weak machine, the design sketch
+   is: per-cell shade sprites blitted opaquely onto ONE shared
+   accumulator canvas per frame, composited once at alpha (merge law
+   preserved, seam-free).
+3. Hair/beard/hem Path2D churn (round 12 #2, unchanged).
+4. Live-tile tail in NPC-rich scenes (graveyard `live ~112`) — the
+   parting fidelity cost, now honestly sized by the reach law.
+5. Waterfall churn; Hoargate `bands 0/0`; the two avenue TooBig
+   stragglers (all unchanged).
