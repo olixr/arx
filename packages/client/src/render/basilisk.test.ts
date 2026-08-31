@@ -187,6 +187,51 @@ test('THE UNBENDING LAW: a hard about-face sweeps the tail, it never scrunches',
   assert.ok(tip.x > sim.nodes[0]!.x, 'the tail settled astern of the new facing');
 });
 
+test('THE STEADY OAR: field conditions never turn the scull into a rattle', () => {
+  // The rattlesnake bug lived where the old law test never looked:
+  // a wall clock minutes deep (a speed-dependent frequency times
+  // ABSOLUTE time leaps whole radians whenever speed wobbles a
+  // frame) and per-frame anchor jitter (interpolated netcode never
+  // feeds a constant), with the constraint corrections reflecting
+  // elastically off the verlet history. Walk the fen — supplest
+  // chain, biggest wave — under both, and the tip must move like a
+  // heavy oar: never far past body speed, its acceleration bounded.
+  const look = basiliskLook('fen_basilisk', 11);
+  const sim = new CrocTailSim(11, 0.45, {
+    len: look.tailLen,
+    heavy: look.tailHeavy,
+    stiff: look.tailStiff,
+    wave: look.tailWave,
+  });
+  // Mulberry32 — deterministic jitter.
+  let rs = 1234 >>> 0;
+  const rand = (): number => {
+    rs = (rs + 0x6d2b79f5) | 0;
+    let t = Math.imul(rs ^ (rs >>> 15), 1 | rs);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  let x = 0;
+  let y = 0;
+  let dir = 0;
+  let tSec = 900; // minutes into the session — where the leap lived
+  const az = look.bodyH * 0.45;
+  for (let i = 0; i < 600; i++) {
+    const dt = 1 / 60 + (rand() - 0.5) * 0.004;
+    const spd = 1.8 * (0.85 + 0.3 * rand());
+    dir += (rand() - 0.5) * 0.02;
+    x += Math.cos(dir) * spd * dt;
+    y += Math.sin(dir) * spd * dt;
+    tSec += dt;
+    sim.update(x, y, az, dir, dt, tSec, 1);
+    if (i < 180) continue; // let the stroke settle
+    assert.ok(
+      sim.tipSpd < 5,
+      `frame ${i}: the tip flails at ${sim.tipSpd.toFixed(1)} t/s behind a 1.8 t/s walk`,
+    );
+  }
+});
+
 test('the fen keeps the banks, the gaze line keeps the dry country', () => {
   // A bank at tier 3 by day: the fen lurker works the wet margin.
   const bank = wildCandidates(3, 'grass', 12, true).map((e) => e.npc);

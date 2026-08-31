@@ -145,6 +145,17 @@ export declare class CrocTailSim {
      *  body turns the tail like a ship's boom instead of teleporting
      *  its root through the chain. */
     private dirS;
+    /** THE STEADY OAR: the scull's phase is INTEGRATED (phase += hz·dt),
+     *  never computed as tSec·hz — a speed-dependent frequency times
+     *  absolute clock time leaps whole radians whenever speed wobbles a
+     *  frame (Δphase = 2π·Δhz·tSec, and tSec is minutes), which turned
+     *  the slow stroke into random-phase forcing at the tip: the
+     *  rattlesnake bug. */
+    private scullPhase;
+    /** Smoothed anchor speed — mass swells its stroke over ~⅛ s; the
+     *  raw per-frame speed carries interpolation jitter straight into
+     *  the wave's amplitude and carriage. */
+    private spdS;
     private live;
     private isFront;
     private restlessUntil;

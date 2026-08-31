@@ -336,6 +336,17 @@ export class CrocTailSim {
    *  body turns the tail like a ship's boom instead of teleporting
    *  its root through the chain. */
   private dirS = 0;
+  /** THE STEADY OAR: the scull's phase is INTEGRATED (phase += hz·dt),
+   *  never computed as tSec·hz — a speed-dependent frequency times
+   *  absolute clock time leaps whole radians whenever speed wobbles a
+   *  frame (Δphase = 2π·Δhz·tSec, and tSec is minutes), which turned
+   *  the slow stroke into random-phase forcing at the tip: the
+   *  rattlesnake bug. */
+  private scullPhase: number;
+  /** Smoothed anchor speed — mass swells its stroke over ~⅛ s; the
+   *  raw per-frame speed carries interpolation jitter straight into
+   *  the wave's amplitude and carriage. */
+  private spdS = 0;
   private live = false;
   private isFront = false;
   private restlessUntil = 0;
@@ -352,6 +363,7 @@ export class CrocTailSim {
     this.segs = 9;
     this.segLen = opts.len / this.segs;
     this.phase = (seed % 97) * 0.613;
+    this.scullPhase = this.phase;
   }
 
   /** The rest height of node ti (0..1) given the stern height az. */
@@ -380,6 +392,10 @@ export class CrocTailSim {
     while (dDiff > Math.PI) dDiff -= Math.PI * 2;
     while (dDiff < -Math.PI) dDiff += Math.PI * 2;
     this.dirS += Math.sign(dDiff) * Math.min(Math.abs(dDiff), 7 * h0);
+    // THE BRACED SWING: while the slewed heading still chases the
+    // body's, the muscle stiffens — the boom sweeps a braced, extended
+    // tail through the turn instead of letting the chord curl short.
+    const brace = 1 + 0.9 * Math.min(1, Math.abs(dDiff) / 1.2);
     const fx = Math.cos(this.dirS);
     const fy = Math.sin(this.dirS);
     const cx = ax - fx * this.rootOff * sizeK;
@@ -404,6 +420,7 @@ export class CrocTailSim {
       }
       this.lastAx = ax;
       this.lastAy = ay;
+      this.spdS = 0;
       this.live = true;
     }
 
@@ -413,9 +430,17 @@ export class CrocTailSim {
     const ret = Math.exp(-5.4 * h);
     const hh = h * h;
 
-    const spd = Math.min(7, Math.hypot(ax - this.lastAx, ay - this.lastAy) / h);
+    const spdRaw = Math.min(7, Math.hypot(ax - this.lastAx, ay - this.lastAy) / h);
     this.lastAx = ax;
     this.lastAy = ay;
+    this.spdS += (spdRaw - this.spdS) * Math.min(1, h * 8);
+    const spd = this.spdS;
+
+    // THE STEADY OAR: advance the scull's phase by this frame's beat.
+    // The frequency may drift with speed all it likes — the phase only
+    // ever moves continuously, so the stroke stays one slow wave.
+    const hz = 0.85 + Math.min(0.6, spd * 0.16);
+    this.scullPhase += hz * Math.PI * 2 * h;
 
     const lastI = n - 1;
     for (let i = 1; i < n; i++) {
@@ -443,9 +468,8 @@ export class CrocTailSim {
       // quickens with speed (mass sets the cadence, not urgency);
       // what speed buys is AMPLITUDE — the walking sway opening into
       // the full swimming stroke.
-      const hz = 0.85 + Math.min(0.6, spd * 0.16);
       const swim =
-        Math.sin(tSec * hz * Math.PI * 2 + this.phase + ti * 3.6) *
+        Math.sin(this.scullPhase + ti * 3.6) *
         (0.35 + 2.2 * Math.min(1, spd / 3.2)) *
         Math.pow(ti, 1.4) *
         2.4 *
@@ -510,9 +534,19 @@ export class CrocTailSim {
           dy = q.y - p.y;
           dz = q.z - p.z;
           const dl = Math.hypot(dx, dy, dz) || 1e-6;
+          // MUSCLE HOLDS, IT NEVER RICOCHETS: the straighten spring
+          // and the clamp below reposition the node, and neither
+          // displacement may read back as velocity next frame — this
+          // blend runs four iterations a frame, and fed back through
+          // the verlet history it is a near-Nyquist oscillator: the
+          // tip chatters at frame rate (the rattlesnake bug). Record
+          // the seat, carry the history along with the correction.
+          const qx0 = q.x;
+          const qy0 = q.y;
+          const qz0 = q.z;
           // The straightening spring: blend toward the parent line,
-          // strongest at the root.
-          const straight = o.stiff * (0.5 - 0.34 * ti);
+          // strongest at the root — braced harder through a turn.
+          const straight = Math.min(0.85, o.stiff * (0.5 - 0.34 * ti) * brace);
           const sx = p.x + ux * dl;
           const sy = p.y + uy * dl;
           const sz = p.z + uz * dl;
@@ -545,15 +579,23 @@ export class CrocTailSim {
             q.y = p.y + (uy * cosMax + oy * sinMax) * dl2;
             q.z = p.z + (uz * cosMax + oz * sinMax) * dl2;
           }
+          q.px += q.x - qx0;
+          q.py += q.y - qy0;
+          q.pz += q.z - qz0;
         }
 
-        if (q.z < CROC_GROUND_Z) q.z = CROC_GROUND_Z;
+        // The ground is dirt, not a trampoline — absorb the clamp so
+        // the dragging third rests instead of hopping.
+        if (q.z < CROC_GROUND_Z) {
+          q.pz += CROC_GROUND_Z - q.z;
+          q.z = CROC_GROUND_Z;
+        }
       }
     }
 
     const tip = this.nodes[lastI]!;
     this.tipSpd = Math.hypot(tip.x - tip.px, tip.y - tip.py, tip.z - tip.pz) / h;
-    if (spd > 0.25 || this.tipSpd > 0.4) this.restlessUntil = tSec + 0.5;
+    if (spdRaw > 0.25 || this.tipSpd > 0.4) this.restlessUntil = tSec + 0.5;
     this.restless = tSec < this.restlessUntil;
   }
 
