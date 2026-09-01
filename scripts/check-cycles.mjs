@@ -16,10 +16,10 @@ import { join, resolve, dirname } from 'node:path';
 // value back-imports and the cms trio) and charted for F7's endgame in
 // docs/foundations-plan.md.
 const BASELINES = {
-  'packages/client/src': 14,
+  'packages/client/src': 3, // the cms trio: app-shaped (leaves speak to the live editor state) — sanctioned
   'packages/server/src': 0,
   'packages/shared/src': 0,
-  'packages/content/src': 2,
+  'packages/content/src': 1, // loot tables<->analyze: a documented deliberate cycle (see loot/tables.ts)
 };
 
 function walk(dir, out = []) {

@@ -1,3 +1,5 @@
+import { HANDIWORK_FACE, STATION_FACE } from './panelFaces.js';
+export { HANDIWORK_FACE, STATION_FACE } from './panelFaces.js';
 import * as stationArt from './stationScreens.js';
 import {
   Tile,
@@ -83,84 +85,7 @@ import { registerSheetProvider, type SheetVerb } from './kit/contextSheet.js';
  *   exactly when the server would start refusing its actions.
  */
 
-/** Every crafting station's face: name, icon, accent, and craft verb. */
-export const STATION_FACE: Record<
-  string,
-  { label: string; icon: string | null; accent: string; verb: string; hint: string }
-> = {
-  fire: {
-    label: 'Cooking',
-    icon: 'trout',
-    accent: '#e8944a',
-    verb: 'Cook',
-    hint: 'The fire is lit. Raw makings come straight from your pack.',
-  },
-  furnace: {
-    label: 'Smelting',
-    icon: 'bronze_bar',
-    accent: '#ff8a4a',
-    verb: 'Smelt',
-    hint: 'Ore in, bars out. The furnace does not negotiate.',
-  },
-  anvil: {
-    label: 'Smithing',
-    icon: 'bronze_sword',
-    accent: '#9aa2ac',
-    verb: 'Forge',
-    hint: 'Bars become blades here. Bring metal and intent.',
-  },
-  workbench: {
-    label: 'Handiwork',
-    icon: null,
-    accent: '#d9a441',
-    verb: 'Make',
-    hint: 'Work that needs only your two hands.',
-  },
-  alembic: {
-    label: 'Herbalism',
-    icon: 'sagewort',
-    accent: '#7ac4a0',
-    verb: 'Brew',
-    hint: 'Leaf and root, distilled to their useful truth.',
-  },
-  tanning_rack: {
-    label: 'Leatherworking',
-    icon: 'leather',
-    accent: '#b08a5c',
-    verb: 'Cure',
-    hint: 'Hides cure into armor under patient hands.',
-  },
-  loom: {
-    label: 'Tailoring',
-    icon: 'cloth',
-    accent: '#c9a8e8',
-    verb: 'Weave',
-    hint: 'Thread crosses thread until it counts as cloth.',
-  },
-  carving_bench: {
-    label: 'Woodworking',
-    icon: 'oak_log',
-    accent: '#a8794a',
-    verb: 'Carve',
-    hint: 'Lumber shaped to purpose, one pass at a time.',
-  },
-  enchanting_table: {
-    label: 'Enchanting',
-    icon: 'arcane_dust',
-    accent: '#b49af0',
-    verb: 'Bind',
-    hint: 'Power pressed into gear, for good.',
-  },
-  sawhorse: {
-    label: 'Sawing',
-    icon: 'board',
-    accent: '#c98d4b',
-    verb: 'Saw',
-    hint: 'One log, three boards. The saw keeps an honest count.',
-  },
-};
 
-export const HANDIWORK_FACE = STATION_FACE.workbench!;
 
 /** The station's face (label, icon, accent, verb) — the work card wears it too. */
 export function craftStationFace(station: StationType | null): {

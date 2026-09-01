@@ -1,3 +1,4 @@
+export { HANDIWORK_FACE, STATION_FACE } from './panelFaces.js';
 import { type EquippedItem, type EquipSlot, type InvSlot, type ItemRoll, type PetInfo, type SkillXp, type StationType } from '@arx/shared';
 import { type WorkStation, type BuildableDef, type RecipeDef } from '@arx/content';
 import { type VaultSort } from './vaultOrder.js';
@@ -21,21 +22,6 @@ import { type VaultSort } from './vaultOrder.js';
  *   belongs to its tile: walk out of reach and it closes itself,
  *   exactly when the server would start refusing its actions.
  */
-/** Every crafting station's face: name, icon, accent, and craft verb. */
-export declare const STATION_FACE: Record<string, {
-    label: string;
-    icon: string | null;
-    accent: string;
-    verb: string;
-    hint: string;
-}>;
-export declare const HANDIWORK_FACE: {
-    label: string;
-    icon: string | null;
-    accent: string;
-    verb: string;
-    hint: string;
-};
 /** The station's face (label, icon, accent, verb) — the work card wears it too. */
 export declare function craftStationFace(station: StationType | null): {
     label: string;

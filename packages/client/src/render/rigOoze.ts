@@ -9,7 +9,7 @@ import { shade } from './tint.js';
 // The engine's shared grammar comes back from rig.ts — the same
 // deferred cycle golems.ts has always ridden (touched only at draw
 // time, long after both modules initialize).
-import { OUTLINE, oozeStrike } from './rig.js';
+import { OUTLINE, oozeStrike } from './rigKit.js';
 
 /**
  * THE OOZE FAMILY (docs/ooze-family-plan.md) — THE SLIME SHAPE LAW,

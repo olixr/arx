@@ -9,7 +9,7 @@ import { shade } from './tint.js';
 // The engine's shared grammar comes back from rig.ts — the same
 // deferred cycle golems.ts has always ridden (touched only at draw
 // time, long after both modules initialize).
-import { MESH_COLS, MESH_COL_K, MESH_COL_RANK, SNAPPER_BANDS, SNAPPER_BAND_K, paintBlockBody } from './rig.js';
+import { MESH_COLS, MESH_COL_K, MESH_COL_RANK, SNAPPER_BANDS, SNAPPER_BAND_K, paintBlockBody } from './rigKit.js';
 import type { BeastBlockFrame, BeastSpec } from './rig.js';
 
 export const TURTLE_CLAW_FAN = [-0.55, 0, 0.55] as const;

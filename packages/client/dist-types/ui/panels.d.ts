@@ -1,18 +1,8 @@
+export { SKILL_FACE, WIELD_WORD } from './panelFaces.js';
 import { type EquipSlot, type EquippedItem, type InvSlot, type Look, type SkillId, type SkillXp, type TechniqueDef } from '@arx/shared';
 import { type CallingDef } from '@arx/content';
 import { type Socket } from './kit/plates.js';
 import { type ProvingGround } from './artDiagram.js';
-/** Card display colors for the three armor weight classes. */
-/** The when clause's word for each weapon style in hand. */
-export declare const WIELD_WORD: Record<string, string>;
-/**
- * Every skill's face: an item that embodies the craft, and an accent
- * the card's plaque and meter wear. Pure data — a new skill is a row.
- */
-export declare const SKILL_FACE: Record<string, {
-    icon: string;
-    color: string;
-}>;
 /**
  * One quiet line under each skill's name — what the craft IS. Shared
  * with the level-up plaque, which says it once as the citation line.

@@ -11,7 +11,7 @@ import { SABERCAT_LOOKS } from './rigFeline.js';
 // The engine's shared grammar comes back from rig.ts — the same
 // deferred cycle golems.ts has always ridden (touched only at draw
 // time, long after both modules initialize).
-import { MOUNT_SPEC_CACHE, OUTLINE, faceProfileK, paintBlockBody } from './rig.js';
+import { MOUNT_SPEC_CACHE, OUTLINE, faceProfileK, paintBlockBody } from './rigKit.js';
 import type { BeastBlockFrame, BeastSpec } from './rig.js';
 
 /**
