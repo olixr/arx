@@ -320,5 +320,16 @@ TOTAL over `S2CMessage['t']` — new S2C types fail to compile unhandled (the cl
 of F6's protocol goal, landed early). Characterization pins (messageLaws.test.ts, written
 against the switch) pass identically against the table; `break` semantics audited
 (switch-breaks → returns, loop breaks kept). Band six merged to main.
-REMAINING in F5 (charted): F5.3 Panel base + Arts/Callings wing + nine station screens;
-GameEvents domain adapters; FrameClocks; renderer.screenAnchor.
+**F5.3 — THE GREAT ROOMS DIVIDE (c8bc227f, 2026-09-01).** New rig FIRST: THE PANEL WALK
+(scratchpad/panel-walk.mjs — clicks every tab-chip/sort-chip + the arts rail inside all
+13 screens; 44 clicks, zero errors, baselined before the cut). ui/panelsArts.ts takes
+the 47-method arts/callings wing (panels.ts 4,921 → 2,757); ui/stationScreens.ts takes
+the nine station render passes + shared ledgerRow/vaultCell (stationPanels.ts 2,802 →
+1,092) — panels-mover (scratchpad/panels-mover.py) generalizes the server-mover to UI
+classes (host-first functions, publics stay, host-param collision scan is MANDATORY —
+a local `const p` bit once; `host` chosen after scanning). Honest residual: station-only
+rooms (bank/stable/shop/plant) exercised by tsc+tests, not yet the walk — a
+station-visit probe is charted with the Panel base. Band seven merged to main.
+
+REMAINING in F5 (charted): the Panel base convention + per-screen station files +
+station-visit probe; GameEvents domain adapters; FrameClocks; renderer.screenAnchor.
