@@ -1509,6 +1509,14 @@ interface DrawItem {
    *  live fallbacks push bounded paints). Set at the push site — an
    *  explicit, reviewable promise, kept honest by the parity gates. */
   stageSafe?: true;
+  /** THE WALL LANE (phase A2p3): a reconstruction closure for items
+   *  whose brushes closed over the frame ctx at collect time (THE
+   *  CAPTURE LAW) — it re-emits the member under the CURRENT this.ctx
+   *  and draws only this item's part. The bakes' own pattern; pb is
+   *  its bounds. Doorways and windows are permanent live items by
+   *  design, and were the dominant split class (fps ~linear in
+   *  splits: avenue 29fps at 147 splits). */
+  stageRebuild?: () => void;
   occX0?: number;
   occY0?: number;
   occX1?: number;
@@ -7845,7 +7853,12 @@ export class Renderer {
         this.bandEmitted.set(ck, this.frameNo);
         this.emitStretch(game, items, reg, ck, ly, si, runSeen);
       } else {
+        // The non-bandable family (doorways, windows, hung walls —
+        // permanent live items by design): the wall lane's main
+        // population, reconstruction-marked for the stage.
+        const before = items.length;
         this.emitRaisedMember(game, items, ms[k]!, runSeen);
+        if (this.stageWorld) this.stageMarkRaised(game, items, before, ms[k]!);
       }
     }
     ms.length = 0;
@@ -7884,7 +7897,11 @@ export class Renderer {
       )
         continue;
       const m = classifyRaised(this.regHost, tx, ty);
-      if (m !== null) this.emitRaisedMember(game, items, m, runSeen);
+      if (m !== null) {
+        const before = items.length;
+        this.emitRaisedMember(game, items, m, runSeen);
+        if (this.stageWorld) this.stageMarkRaised(game, items, before, m);
+      }
     }
   }
 
@@ -8525,9 +8542,51 @@ export class Renderer {
         return;
       }
     }
-    // THE STILL-WORLD BARGAIN: the live path, verbatim.
+    // THE STILL-WORLD BARGAIN: the live path, verbatim — plus, when
+    // the stage is on, each emitted item carries its reconstruction
+    // closure and a member-level bounds box (the bake head-room
+    // table's own numbers).
     this.bandStats.live++;
-    for (let i = s.i0; i <= s.i1; i++) this.emitRaisedMember(game, items, list[i]!, runSeen);
+    for (let i = s.i0; i <= s.i1; i++) {
+      const before = items.length;
+      this.emitRaisedMember(game, items, list[i]!, runSeen);
+      if (this.stageWorld) this.stageMarkRaised(game, items, before, list[i]!);
+    }
+  }
+
+  /** Reusable throwaway set for rebuild-time re-emission (the ramp
+   *  dedupe wants A set; the real runSeen already served collect). */
+  private readonly stageRebuildSeen = new Set<number>();
+
+  private stageMarkRaised(game: ClientGame, items: DrawItem[], before: number, m: RaisedMember): void {
+    if (items.length === before) return;
+    const s = this.camera.scale;
+    const e = game.world.elevAt(m.tx, m.ty);
+    const garrison = m.kind === RaisedKind.GarrisonWall;
+    const rampish = m.kind === RaisedKind.RampRun || m.kind === RaisedKind.RampSingle;
+    const wallish = m.kind === RaisedKind.Wall || m.kind === RaisedKind.DiagWall;
+    const northT = (garrison ? 4.6 : wallish ? 2.8 : 2.4) + e * ELEV_H + (rampish ? 1.5 : 0);
+    const southT = rampish ? 1.7 : 0.7;
+    const spanS = rampish ? m.len : 1;
+    const p0 = this.camera.worldToScreen(m.tx, m.ty, this.w, this.h);
+    const p1 = this.camera.worldToScreen(m.endX + 1, m.ty + spanS, this.w, this.h);
+    const pb = {
+      x: p0.x - 1.2 * s,
+      y: p0.y - northT * s,
+      w: p1.x - p0.x + 2.4 * s,
+      h: p1.y - p0.y + (northT + southT) * s,
+    };
+    for (let j = before; j < items.length; j++) {
+      const it = items[j]!;
+      const idx = j - before;
+      it.pb = pb;
+      it.stageRebuild = () => {
+        const scratch: DrawItem[] = [];
+        this.emitRaisedMember(game, scratch, m, this.stageRebuildSeen);
+        this.stageRebuildSeen.clear();
+        scratch[idx]?.draw?.();
+      };
+    }
   }
 
   /** Blit one band bucket at its snapped anchor projection.
@@ -20661,6 +20720,8 @@ export class Renderer {
    *  blit sites emit quads instead of ctx calls. */
   private stageAssembling = false;
   private readonly stageWorldStats = { quads: 0, paints: 0, splits: 0 };
+  /** Dev diagnosis: what KINDS still split (read from the probe). */
+  readonly stageSplitKinds = new Map<string, number>();
 
   private stageWorldActive(): boolean {
     if (!this.stageWorld || this.stageDead) return false;
@@ -20813,6 +20874,49 @@ export class Renderer {
     try {
     for (let i = 0; i < n; i++) {
       const item = items[i]!;
+      // A particle RUN coalesces into one scanned-bounds paint: the
+      // shapes (rotated streaks, flame licks, shadow ellipses) are
+      // sculpted art the quad lane cannot express, and a run is one
+      // scratch pass however many grains it carries.
+      if (item.bulk === BulkKind.Particle) {
+        let j = i;
+        let x0 = Infinity;
+        let y0 = Infinity;
+        let x1 = -Infinity;
+        let y1 = -Infinity;
+        while (j < n && items[j]!.bulk === BulkKind.Particle) {
+          const pt = items[j]!.bulkArg as { x: number; y: number };
+          const pp = this.liftedWTS(pt.x, pt.y);
+          if (pp.x < x0) x0 = pp.x;
+          if (pp.x > x1) x1 = pp.x;
+          if (pp.y < y0) y0 = pp.y;
+          if (pp.y > y1) y1 = pp.y;
+          j++;
+        }
+        const runItems = items.slice(i, j);
+        const pad = 0.3 * sc + 10;
+        this.stageWorldItems.push({
+          kind: 'paint',
+          px: x0 - pad,
+          py: y0 - pad - 2 * sc, // altitude lifts in full screen px
+          pw: x1 - x0 + pad * 2,
+          ph: y1 - y0 + pad * 2 + 2 * sc,
+          paint: (ctx: CanvasRenderingContext2D) => {
+            const saved = this.ctx;
+            this.ctx = ctx;
+            this.particles.beginRun();
+            try {
+              for (const it of runItems) this.dispatchWorldItem(it);
+            } finally {
+              this.particles.endRun();
+              this.ctx = saved;
+            }
+          },
+        });
+        st.paints++;
+        i = j - 1;
+        continue;
+      }
       // Mature trees: assembly always — the painter's blit sites emit
       // quads when the sprite stands and push a bounded live paint
       // when it does not. occCulled trees emit nothing (round 9).
@@ -20884,14 +20988,51 @@ export class Renderer {
         }
         continue;
       }
-      // item.pb (push-site bounds) exists for part 2's quadification;
-      // part 1 measured static rows through scratch at ~2MB/frame
-      // each — static content belongs in quads, so rows ride the
-      // split census until then.
+      // THE WALL LANE: reconstruction paints for the capture-law
+      // family. CONSECUTIVE lane items coalesce into ONE scratch pass
+      // under their union box — 258 per-item passes measured 22fps at
+      // the avenue purely on per-pass overhead (a texImage2D each);
+      // a row of doorways and sills is one union strip.
+      if (item.stageRebuild !== undefined && item.pb !== undefined) {
+        let j = i;
+        let ux0 = Infinity;
+        let uy0 = Infinity;
+        let ux1 = -Infinity;
+        let uy1 = -Infinity;
+        while (j < n) {
+          const it2 = items[j]!;
+          if (it2.stageRebuild === undefined || it2.pb === undefined) break;
+          const bb = it2.pb;
+          if (bb.x < ux0) ux0 = bb.x;
+          if (bb.y < uy0) uy0 = bb.y;
+          if (bb.x + bb.w > ux1) ux1 = bb.x + bb.w;
+          if (bb.y + bb.h > uy1) uy1 = bb.y + bb.h;
+          j++;
+        }
+        const run = items.slice(i, j);
+        this.stagePushPaintRaw(ux0, uy0, ux1 - ux0, uy1 - uy0, () => {
+          for (const it2 of run) {
+            if (it2.elevated) it2.drawShadow?.();
+            it2.stageRebuild!();
+          }
+        });
+        i = j - 1;
+        continue;
+      }
+      // Bulk singles (debris, grounded birds, seat halos): the datum
+      // projects; a body's breadth of pad covers tumble and wing.
+      if (item.bulk !== undefined) {
+        const d = item.bulkArg as { x: number; y: number };
+        const pd = this.liftedWTS(d.x, d.y);
+        this.stagePaintItem(item, pd.x - 1.8 * sc, pd.y - 2.6 * sc, 3.6 * sc, 3.8 * sc);
+        continue;
+      }
       // No honest bounds: the SPLIT path. Composite what stands, run
       // the item on the real frame between composites, resume clean.
       this.stageWorldFlush();
       st.splits++;
+      const kind = item.band ? 'band' : item.body ? 'body' : item.bulk !== undefined ? `bulk${item.bulk}` : item.elevated ? 'elev-draw' : item.stageSafe ? 'safe-fail' : 'draw';
+      this.stageSplitKinds.set(kind, (this.stageSplitKinds.get(kind) ?? 0) + 1);
       this.dispatchWorldItem(item);
     }
     this.stageWorldFlush();

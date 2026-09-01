@@ -449,6 +449,43 @@ emitRaisedMember), particles as instanced fills, the atlas +
 explicit handle lifecycle, then the A2 perf gate (forest ≤~40 draws,
 stage ≥ canvas on real hardware).
 
+**A2 PART 3 — AS BUILT (2026-08-31).** The wall lane, the bulk
+lanes, and TWO measured lessons that reshape part 4:
+
+- **THE WALL LANE**: every emitRaisedMember consumer (the stretch
+  live path, the non-bandable family — doorways, windows, hung
+  walls, permanent live items by design — and the register-stale
+  scan) marks its items with a reconstruction closure (re-emit the
+  member under the CURRENT ctx, draw only this item's part by
+  emission index — the bakes' own pattern, demanded by THE CAPTURE
+  LAW) plus a member-level box from the bake head-room table.
+  Avenue splits 147 → 21.
+- **Particle runs returned** as coalesced scanned-bounds paints
+  (their sculpted shapes — rotated streaks, flame licks, shadow
+  ellipses — are art the quad lane cannot express); debris/birds
+  ride projected per-item bounds.
+- **LESSON: PER-PASS OVERHEAD IS THE SCRATCH LANE'S COST** — 258
+  per-item wall paints measured 22fps at the avenue (a texImage2D
+  submission each); coalescing CONSECUTIVE lane items under a union
+  box recovered 36fps. Fragmentation by interleaved bodies/props
+  caps the win.
+- **LESSON: CACHING BEATS RECONSTRUCTION FOR STATIC CONTENT** — the
+  wall family re-paints ~300MB/frame of scratch at the avenue for
+  pixels that barely change. The real fix is a doorway/window/hung-
+  wall SPRITE LANE (they are static art with tiny state), which
+  retires most of the scratch volume AND the canvas path's own
+  per-frame vector cost — a win for both backends.
+
+**Gates**: five-scene parity ALL PASS within noise; 786/786 tests.
+**Frontier (Metal, stage vs canvas 120)**: forest 79-90 (split 0),
+dawnmead 101, graveyard 72, hoargate 40 (split 112 — an UNMARKED
+plain-draw class, 137/frame, factory not yet identified), avenue 36
+/ crown 35 (paints ~170-190, scr ~300-450MB/frame). **Part 4's
+charter**: identify+mark the hoargate draw class (split attribution
+now ships in stageSplitKinds), the doorway/window sprite lane,
+run-defragmentation (sort-stable grouping of wall paints), the
+atlas + explicit lifecycle, then the perf gate.
+
 ### A3 — The dark and the light (shadow layer, lightmap, overreach)
 
 The shadow layer becomes an FBO: shadow quads (sprites, masks, grass
