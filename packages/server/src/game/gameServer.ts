@@ -672,6 +672,8 @@ import {
 } from '@arx/shared';
 import { config } from '../config.js';
 import { CHAT_COMMANDS } from './commands/index.js';
+import * as runSys from './dungeonRuns.js';
+import * as keySys from './keyring.js';
 import * as interestSys from './interest.js';
 import * as meleeSys from './melee.js';
 import * as procSys from './procs.js';
@@ -2729,7 +2731,7 @@ export class GameServer {
   private readonly graveByChar = new Map<number, EntityId>();
 
   /** Telegraphed blasts (ground AoEs) waiting to detonate. */
-  private readonly pendingBlasts: PendingBlast[] = [];
+  readonly pendingBlasts: PendingBlast[] = [];
 
   /**
    * THE TRAVELED ROAD (THE CROSSING): every body currently crossing
@@ -2739,7 +2741,7 @@ export class GameServer {
   private readonly transits = new Map<EntityId, Transit>();
 
   /** Lingering hazard zones (ground_field) pulsing while they live. */
-  private readonly activeFields: ActiveField[] = [];
+  readonly activeFields: ActiveField[] = [];
   /**
    * THE PET'S BREATH: pulse-shaped companion arts (the undertow's
    * three pulls, the flurry's rakes) queue their later waves here —
@@ -2948,8 +2950,8 @@ export class GameServer {
   private timer: NodeJS.Timeout | null = null;
 
   /** Active per-character dungeon instances. */
-  private readonly dungeons = new Map<number, DungeonInstance>();
-  private nextDungeonSlot = 0;
+  readonly dungeons = new Map<number, DungeonInstance>();
+  nextDungeonSlot = 0;
 
   /**
    * THE SAND AND THE ROAR: live matches by venue id (one claim per
@@ -2967,7 +2969,7 @@ export class GameServer {
    * as the row lives in memory — and it does, because rows only ever
    * append or splice, never renumber.
    */
-  private nextKeyRingId = 1;
+  nextKeyRingId = 1;
 
   // ------------------------------------------------- procedural POIs
 
@@ -3129,7 +3131,7 @@ export class GameServer {
    * def re-tables the loot (the riftgate key faucet) or wards the lid
    * while the garrison stands (the champion's cache).
    */
-  private readonly poiChests = new Map<
+  readonly poiChests = new Map<
     string,
     { cell: string; table?: string; warded?: boolean; level?: number }
   >();
@@ -3258,7 +3260,7 @@ export class GameServer {
   private readonly social: SocialSystem;
 
   /** Fellowships: membership, invites, and the partypos ticker. */
-  private readonly party: PartySystem;
+  readonly party: PartySystem;
 
   /**
    * Name the ground under (x, y). Every zone — authored or dungeon
@@ -3457,7 +3459,7 @@ export class GameServer {
    * otherwise fail in silence: locked lids, full packs, short levels,
    * a beast that noses your pack and finds nothing.
    */
-  private speak(
+  speak(
     player: { session: Session | null } | undefined,
     word: string,
     text: string,
@@ -4646,7 +4648,7 @@ export class GameServer {
    * Resolve a social sender: a real, persisted character. Guests get a
    * gentle nudge — the friend ledger lives in the database they don't have.
    */
-  private socialActor(eid: EntityId, session: Session): { id: number; name: string } | null {
+  socialActor(eid: EntityId, session: Session): { id: number; name: string } | null {
     const player = this.players.get(eid);
     if (!player) return null;
     if (player.characterId <= 0) {
@@ -4858,7 +4860,7 @@ export class GameServer {
    * never be lost to a crash); re-recording an id overwrites a faded
    * marker with the fresh truth.
    */
-  private recordDiscovery(player: PlayerComp, d: DiscoveryWire, epoch?: number): void {
+  recordDiscovery(player: PlayerComp, d: DiscoveryWire, epoch?: number): void {
     // A poi: footfall arms the boldness clock's gate and stamps the
     // site's LIVE stage onto the wire (stage is world truth merged at
     // send time — never stored per character).
@@ -8006,7 +8008,7 @@ export class GameServer {
     }
   }
 
-  private placeDrop(
+  placeDrop(
     plane: PlaneId,
     item: string,
     qty: number,
@@ -9676,7 +9678,7 @@ export class GameServer {
    * (slots were deactivated, never reclaimed) while tickSpawns walked
    * the whole array every tick.
    */
-  private freeSpawnSlot(i: number): void {
+  freeSpawnSlot(i: number): void {
     const spawn = this.spawnPoints[i];
     if (!spawn) return;
     spawn.active = false;
@@ -13134,15 +13136,8 @@ export class GameServer {
 
   // ------------------------------------------------- THE KEY RING
 
-  /**
-   * Mint a whole fresh key roll: common tier, a dungeon nobody has
-   * ever walked, full use budget. The landing place for every legacy
-   * roll-less key (pre-ring shop stock, /give, counted bank stacks) —
-   * a shelf of seed-0 twins becomes real, distinct dungeons.
-   */
   mintFreshKeyRoll(): ItemRoll {
-    const seed = Math.floor(Math.random() * 0x100000000) >>> 0;
-    return { rar: 'common', seed, pwr: mintKeyPower('common', seed), uses: keyUsesForTier('common') };
+    return keySys.mintFreshKeyRoll(this, );
   }
 
   /** Push the full ring mirror down the wire (sent on any change). */
@@ -13150,27 +13145,16 @@ export class GameServer {
     player.session?.sendJson({ t: 'keyring', keys: player.keyRing });
   }
 
-  /**
-   * A dungeon key lands on the ring — never in the pack. The ring has
-   * no cap, so this cannot fail: a key found in the field always has
-   * a place to go. Returns the new ring row.
-   */
   addKeyToRing(
     player: PlayerComp,
     roll: ItemRoll | undefined,
     sync = true, // batch callers land many, then send the mirror once
   ): { id: number; roll: ItemRoll } {
-    const row = { id: this.nextKeyRingId++, roll: roll ? { ...roll } : this.mintFreshKeyRoll() };
-    player.keyRing.push(row);
-    player.keyRingDirty = true;
-    // THE KEY LEDGER: the moment a door is held, it is known forever.
-    this.recordKeyLore(player, row.roll, sync);
-    if (sync) this.sendKeyRing(player);
-    return row;
+    return keySys.addKeyToRing(this, player, roll, sync);
   }
 
   /** Push the full ledger mirror down the wire (sent on any change). */
-  private sendKeyLore(player: PlayerComp): void {
+  sendKeyLore(player: PlayerComp): void {
     player.session?.sendJson({ t: 'keylore', known: [...player.keyLore.values()] });
   }
 
@@ -13179,7 +13163,7 @@ export class GameServer {
    * (seed/tier/power) and the clock; later touches change nothing —
    * only the reader's own label ever moves after that (keyLabel).
    */
-  private recordKeyLore(player: PlayerComp, roll: ItemRoll, sync = true): void {
+  recordKeyLore(player: PlayerComp, roll: ItemRoll, sync = true): void {
     const seed = roll.seed >>> 0;
     if (player.keyLore.has(seed)) return;
     const lore: KeyLore = { seed, rar: roll.rar };
@@ -13189,33 +13173,12 @@ export class GameServer {
     if (sync) this.sendKeyLore(player);
   }
 
-  /**
-   * THE MARGIN NOTE: name (or clear) a ledgered door. The label is the
-   * reader's own — it never rides a traded key, and the server re-runs
-   * the shared sanitizer whatever the client showed.
-   */
   keyLabel(eid: EntityId, seed: number, label: string | undefined): void {
-    const player = this.players.get(eid);
-    if (!player) return;
-    const lore = player.keyLore.get(seed >>> 0);
-    if (!lore) return;
-    const clean = label === undefined || label.trim() === '' ? null : sanitizeKeyLabel(label);
-    if (clean === null && label !== undefined && label.trim() !== '') {
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: 'That label will not take — 2 to 24 plain characters.',
-      });
-      return;
-    }
-    if (clean === null) delete lore.label;
-    else lore.label = clean;
-    if (player.characterId > 0) this.accounts.labelKeyLore(player.characterId, lore.seed, clean);
-    this.sendKeyLore(player);
+    return keySys.keyLabel(this, eid, seed, label);
   }
 
   /** The Keywright within working reach of this player, or null. */
-  private keywrightNear(eid: EntityId): boolean {
+  keywrightNear(eid: EntityId): boolean {
     const pos = this.positions.get(eid);
     if (!pos) return false;
     for (const [actorEid, comp] of this.actors) {
@@ -13227,150 +13190,24 @@ export class GameServer {
     return false;
   }
 
-  /**
-   * THE KEYWRIGHT CLOSES THE LOOP: pay the fee, and a ledgered door is
-   * cut again — full fresh budget of turns, the same halls to the last
-   * stalagmite (the seed IS the dungeon). Refusals are spoken: away
-   * from the bench, an unknown door, a copy still on the ring (THE ONE
-   * COPY — the forge is a safety net, never a duplicator), or a light
-   * purse. The wear economy stands; a loved door is only expensive,
-   * never lost.
-   */
   keyForge(eid: EntityId, seed: number): void {
-    const player = this.players.get(eid);
-    if (!player || player.session === null) return;
-    if (!this.keywrightNear(eid)) {
-      this.speak(player, 'Needs the Keywright', 'Only the Keywright can cut a remembered door.');
-      return;
-    }
-    const lore = player.keyLore.get(seed >>> 0);
-    if (!lore) {
-      this.speak(player, 'Unknown door', 'You have never held that key — the ledger holds only what your hands have known.');
-      return;
-    }
-    if (player.keyRing.some((k) => (k.roll.seed >>> 0) === lore.seed)) {
-      this.speak(player, 'Already on your ring', 'That key still hangs on your ring — the forge cuts lost doors, not copies.');
-      return;
-    }
-    const price = keyForgePrice(lore.rar);
-    const coins = countItem(player.inventory, 'coins');
-    if (coins < price) {
-      this.speak(player, `Needs ${price} coins`, `The Keywright asks ${price} coins for that cut — you carry ${coins}.`);
-      return;
-    }
-    removeItem(player.inventory, 'coins', price);
-    const roll: ItemRoll = { rar: lore.rar, seed: lore.seed, uses: keyUsesForTier(lore.rar) };
-    if (lore.pwr !== undefined) roll.pwr = lore.pwr;
-    this.addKeyToRing(player, roll);
-    player.session.sendJson({ t: 'inv', slots: player.inventory });
-    const spec = dungeonSpecFromRoll(roll);
-    player.session.sendJson({
-      t: 'chat',
-      channel: 'system',
-      text: `The Keywright's file sings. ${spec.name} (${spec.sigil}) hangs whole on your ring again — ${price} coins, fairly cut.`,
-    });
+    return keySys.keyForge(this, eid, seed);
   }
 
-  /**
-   * THE WORN WARD's last beat: a key at zero uses crumbles once the
-   * run it paid for no longer stands. Called after every teardown and
-   * at login (a run never survives a restart). Spares the key whose
-   * seed matches the character's LIVE instance — the door it opened
-   * is still open, and it must keep working until that door closes.
-   */
-  private sweepWornKeys(player: PlayerComp): void {
-    const liveSeed = this.dungeons.get(player.characterId)?.seed;
-    let crumbled = 0;
-    for (let i = player.keyRing.length - 1; i >= 0; i--) {
-      const row = player.keyRing[i]!;
-      if (keyUsesLeft(row.roll) > 0) continue;
-      if (row.roll.seed === liveSeed) continue;
-      player.keyRing.splice(i, 1);
-      crumbled++;
-    }
-    if (crumbled === 0) return;
-    player.keyRingDirty = true;
-    this.sendKeyRing(player);
-    this.speak(
-      player,
-      crumbled === 1 ? 'A key crumbles' : `${crumbled} keys crumble`,
-      crumbled === 1
-        ? 'A worn-through dungeon key crumbles from your ring — its last door has closed.'
-        : `${crumbled} worn-through dungeon keys crumble from your ring — their last doors have closed.`,
-    );
+  sweepWornKeys(player: PlayerComp): void {
+    return keySys.sweepWornKeys(this, player);
   }
 
-  /**
-   * THE KEY LEAVES THE RING: drop a key at the feet as an ordinary
-   * ground item — the ONE way keys trade hands. The parcel carries
-   * the full roll, worn uses included; whoever picks it up receives
-   * it straight onto their own ring.
-   */
   keyDrop(eid: EntityId, keyId: number): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos) return;
-    const idx = player.keyRing.findIndex((k) => k.id === keyId);
-    if (idx === -1) return;
-    const [row] = player.keyRing.splice(idx, 1);
-    player.keyRingDirty = true;
-    this.sendKeyRing(player);
-    // Land the key a step ahead of the player, dropItem's own grammar —
-    // a wall in the way puts it at their feet instead of in the masonry.
-    let dx = pos.x + Math.cos(pos.dir) * 0.9;
-    let dy = pos.y + Math.sin(pos.dir) * 0.9;
-    if (this.worldOf(pos.plane).isSolid(Math.floor(dx), Math.floor(dy))) {
-      dx = pos.x;
-      dy = pos.y;
-    }
-    this.placeDrop(pos.plane, DUNGEON_KEY_ITEM, 1, dx, dy, {
-      ownerEid: null,
-      ownerUntil: 0,
-      despawnAt: Date.now() + 12 * 60_000,
-      pickupAfter: Date.now() + 2000,
-      roll: row!.roll,
-    });
-    const spec = dungeonSpecFromRoll(row!.roll);
-    player.session?.sendJson({
-      t: 'chat',
-      channel: 'system',
-      text: `You set down the key to ${spec.name} (${spec.sigil}).`,
-    });
+    return keySys.keyDrop(this, eid, keyId);
   }
 
-  /**
-   * The Riftgate answers an interact by opening the key panel — the
-   * client lists the keys from its own ring mirror; `usekey` names
-   * one by ring id. `live` marks the caller's standing run so a
-   * worn-out key can still re-enter the door it already paid for.
-   */
-  private openRiftgate(eid: EntityId, player: PlayerComp): void {
-    const inst = this.dungeons.get(player.characterId);
-    // The gates are one network: any fellow's live run stands open here.
-    const partyRuns: Array<{ name: string; dungeon: string; tier: string; power: number }> = [];
-    for (const fellowId of this.party.fellowsOf(player.characterId)) {
-      const fellowInst = this.dungeons.get(fellowId);
-      if (!fellowInst) continue;
-      const name = this.accounts.characterName(fellowId);
-      if (!name) continue;
-      partyRuns.push({ name, dungeon: fellowInst.name, tier: fellowInst.tier, power: fellowInst.power });
-    }
-    player.session?.sendJson({
-      t: 'riftgate',
-      live: inst ? { seed: inst.seed, tier: inst.tier, power: inst.power } : undefined,
-      partyRuns: partyRuns.length > 0 ? partyRuns : undefined,
-    });
-    if (player.keyRing.length === 0 && partyRuns.length === 0) {
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: 'The Riftgate stands dark. It wants a dungeon key — the deep places and their keepers drop them.',
-      });
-    }
+  openRiftgate(eid: EntityId, player: PlayerComp): void {
+    return runSys.openRiftgate(this, eid, player);
   }
 
   /** A riftgate portal tile within reach of this position, or null. */
-  private riftgateNear(pos: { plane: PlaneId; x: number; y: number }): { x: number; y: number } | null {
+  riftgateNear(pos: { plane: PlaneId; x: number; y: number }): { x: number; y: number } | null {
     const world = this.worldOf(pos.plane);
     const cx = Math.floor(pos.x);
     const cy = Math.floor(pos.y);
@@ -13385,239 +13222,25 @@ export class GameServer {
     return null;
   }
 
-  /**
-   * Turn the key named by ring id. Re-entering the run this key
-   * already paid for is free — the door is open. A different key (or
-   * a fresh turn of the same key after its run closed) is a FRESH
-   * CUT: the old instance dies, the new one is cut from the seed, and
-   * THE WORN WARD spends one use. A key at zero uses can only walk
-   * back through its own standing door; once that door closes, it
-   * crumbles (sweepWornKeys).
-   */
   useKey(eid: EntityId, keyId: number): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos || player.session === null) return;
-    const sys = (text: string) =>
-      player.session!.sendJson({ t: 'chat', channel: 'system', text });
-    const gate = this.riftgateNear(pos);
-    if (!gate) {
-      this.speak(player, 'Needs a Riftgate', 'You need to stand at a Riftgate to turn a dungeon key.');
-      return;
-    }
-    const row = player.keyRing.find((k) => k.id === keyId);
-    if (!row) {
-      sys('That key is not on your ring.');
-      return;
-    }
-    const spec = dungeonSpecFromRoll(row.roll);
-    const inst = this.dungeons.get(player.characterId);
-    const reenter =
-      !!inst && inst.seed === spec.seed && inst.tier === spec.tier && inst.power === spec.power;
-    if (!reenter && keyUsesLeft(row.roll) <= 0) {
-      this.speak(
-        player,
-        'The key is spent',
-        `The key to ${spec.name} is worn through — its ward has nothing left to open.`,
-      );
-      return;
-    }
-    // A gate a key has turned at is a place worth keeping: pin it on
-    // the map forever. The threshold banner is the ceremony here — the
-    // client shows no discovery splash for the 'dungeon' kind.
-    const gateId = dungeonDiscoveryId(gate.x, gate.y);
-    if (!player.discoveries.has(gateId)) {
-      this.recordDiscovery(player, {
-        id: gateId,
-        kind: 'dungeon',
-        name: 'Riftgate',
-        x: gate.x,
-        y: gate.y,
-        // The gate pins on the chart of the plane it stands on — the
-        // first underworld-authored riftgate must not misfile onto
-        // the surface's parchment.
-        plane: pos.plane,
-      });
-    }
-    this.enterDungeon(eid, player, spec, { plane: pos.plane, x: pos.x, y: pos.y });
-    if (!reenter) {
-      // THE WORN WARD: the fresh cut spends one use, stamped onto the
-      // roll so the wear rides every save, drop, and trade.
-      row.roll.uses = Math.max(0, keyUsesLeft(row.roll) - 1);
-      player.keyRingDirty = true;
-      this.sendKeyRing(player);
-      // The key swap tore the previous run down — any key that was
-      // only alive because that door stood open crumbles now.
-      this.sweepWornKeys(player);
-    }
+    return keySys.useKey(this, eid, keyId);
   }
 
-  private enterDungeon(
+  enterDungeon(
     eid: EntityId,
     player: PlayerComp,
     spec: DungeonSpec,
     returnTo: PlanePos,
   ): void {
-    let inst = this.dungeons.get(player.characterId);
-    if (inst && inst.seed === spec.seed && inst.tier === spec.tier && inst.power === spec.power) {
-      this.transferPlane(eid, inst.plane, inst.entry.x, inst.entry.y);
-      return;
-    }
-    if (inst) this.teardownDungeon(player.characterId);
-    const slot = this.nextDungeonSlot++;
-    // THE WORLDS APART: the run is cut onto its own rift plane —
-    // minted here, dropped whole at teardown. The plane IS the
-    // isolation; every run generates at the same quiet origin.
-    const plane = riftPlaneId(slot);
-    const result = generateDungeon(spec, DUNGEON_ORIGIN, returnTo, slot);
-    this.planes.add(riftPlaneDef(plane, spec.name), [result.zone]);
-    const spawnIndexes = this.registerSpawns(result.zone.spawns ?? [], plane);
-    inst = {
-      zoneId: result.zone.id,
-      spawnIndexes,
-      slot,
-      plane,
-      entry: result.entry,
-      seed: spec.seed,
-      tier: spec.tier,
-      power: spec.power,
-      ownerId: player.characterId,
-      ownerReturn: returnTo,
-      name: spec.name,
-      sigil: spec.sigil,
-      theme: spec.theme,
-      guests: new Map(),
-      // registerSpawns flattens one point per BODY — the champion's
-      // global index is offset by every earlier entry's count.
-      bossSpawnIdx: (() => {
-        if (result.bossSpawnIndex === null) return undefined;
-        let flat = 0;
-        for (let i = 0; i < result.bossSpawnIndex; i++) {
-          flat += result.zone.spawns?.[i]?.count ?? 0;
-        }
-        return spawnIndexes[flat];
-      })(),
-      cutAt: Date.now(),
-      courtExit: result.courtExit ?? undefined,
-    };
-    this.dungeons.set(player.characterId, inst);
-    // THE COURT WARDS THE PRIZE: the champion's chest refuses the hand
-    // while he stands — the fight is the key, not the sneak.
-    if (result.bossChest) {
-      this.poiChests.set(`${plane}|${result.bossChest.x},${result.bossChest.y}`, {
-        cell: `dg:${player.characterId}`,
-        warded: true,
-      });
-    }
-    const modNames = dungeonModifiers(spec.seed, spec.tier).map((m) => m.name);
-    player.session?.sendJson({
-      t: 'dungeon',
-      name: spec.name,
-      sigil: spec.sigil,
-      tier: spec.tier,
-      theme: spec.theme,
-      power: spec.power,
-      mods: modNames.length > 0 ? modNames : undefined,
-    });
-    player.session?.sendJson({
-      t: 'chat',
-      channel: 'system',
-      text: `${spec.name} — sigil ${spec.sigil}, power ${spec.power}${modNames.length > 0 ? `, ${modNames.join(', ').toLowerCase()}` : ''}. The way out is where you land; the boss is where you'd least like him.`,
-    });
-    this.transferPlane(eid, plane, result.entry.x, result.entry.y);
-    // Offer the fellowship the door (any riftgate carries them in).
-    if (player.characterId > 0) {
-      this.party.notifyDelve(player.characterId, player.name, spec.name);
-    }
+    return runSys.enterDungeon(this, eid, player, spec, returnTo);
   }
 
   teardownDungeon(characterId: number): void {
-    const dungeon = this.dungeons.get(characterId);
-    if (!dungeon) return;
-    // Anyone still standing in the halls goes home before the rock
-    // closes — guests to their own gate, anyone else to the spawn.
-    for (const [eid, player] of this.players) {
-      if (player.characterId === characterId) continue;
-      const pos = this.positions.get(eid);
-      if (!pos || pos.plane !== dungeon.plane) continue;
-      const back = dungeon.guests.get(player.characterId) ?? this.planes.worldSpawn;
-      this.transferPlane(eid, back.plane, back.x, back.y);
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: 'The rift closes behind its keyholder — the world takes you back.',
-      });
-    }
-    dungeon.guests.clear();
-    // The run's slots return to the pool — every dungeon ever cut used
-    // to permanently fatten spawnPoints (the one retirement door law).
-    for (const idx of dungeon.spawnIndexes) this.freeSpawnSlot(idx);
-    // THE ROCK TAKES ITS DEAD: anything still breathing on the plane
-    // that the roster never knew — a crown's raised adds spawn with
-    // spawnIndex -1 — goes with the world it stood in. Companions are
-    // the one exception: a friend follows its keeper, never the rubble.
-    const strays: EntityId[] = [];
-    for (const [neid] of this.npcs) {
-      if (this.pets.has(neid) || this.companions.has(neid)) continue;
-      const npos = this.positions.get(neid);
-      if (!npos || npos.plane !== dungeon.plane) continue;
-      strays.push(neid);
-    }
-    for (const neid of strays) {
-      this.removeFromChunks(neid);
-      this.ecs.destroy(neid);
-    }
-    // THE PLANE'S EPHEMERA GO WITH IT (post-ship audit): a projectile
-    // still in flight would ask worldOf() for a plane that no longer
-    // stands on the very next tick — one arrow loosed at the exit door
-    // used to kill the whole server. Drops and summons share the sweep
-    // (loot on a dead plane is loot nobody can ever reach), and
-    // scheduled blasts and fields on the plane die unexploded.
-    const ephemera: EntityId[] = [];
-    for (const [peid] of this.projectiles) {
-      if (this.positions.get(peid)?.plane === dungeon.plane) ephemera.push(peid);
-    }
-    for (const [deid] of this.drops) {
-      if (this.positions.get(deid)?.plane === dungeon.plane) ephemera.push(deid);
-    }
-    for (const [seid] of this.summons) {
-      if (this.positions.get(seid)?.plane === dungeon.plane) ephemera.push(seid);
-    }
-    for (const eeid of ephemera) {
-      this.removeFromChunks(eeid);
-      this.ecs.destroy(eeid);
-    }
-    for (let i = this.pendingBlasts.length - 1; i >= 0; i--) {
-      if (this.pendingBlasts[i]!.plane === dungeon.plane) this.pendingBlasts.splice(i, 1);
-    }
-    for (let i = this.activeFields.length - 1; i >= 0; i--) {
-      if (this.activeFields[i]!.plane === dungeon.plane) this.activeFields.splice(i, 1);
-    }
-    // THE UNLOAD IS THE POINT: the whole plane goes — zones, chunks,
-    // portals, signs, memory — in one drop.
-    this.planes.drop(dungeon.plane);
-    // The chunk index sheds the dead plane's now-empty sets — slot ids
-    // recycle, but these keys used to pile up for the whole uptime.
-    const deadPrefix = `${dungeon.plane}|`;
-    for (const [key, set] of this.chunks) {
-      if (set.size === 0 && key.startsWith(deadPrefix)) this.chunks.delete(key);
-    }
-    this.dungeons.delete(characterId);
-    // The court's ward retires with its halls.
-    for (const [tileKey, over] of this.poiChests) {
-      if (over.cell === `dg:${characterId}`) this.poiChests.delete(tileKey);
-    }
-    // THE WORN WARD's last beat rides every door-close: a spent key
-    // that was only standing because this run stood crumbles now.
-    const ownerEid = this.characterEids.get(characterId);
-    if (ownerEid !== undefined) {
-      const owner = this.players.get(ownerEid);
-      if (owner) this.sweepWornKeys(owner);
-    }
+    return runSys.teardownDungeon(this, characterId);
   }
 
   /** The live instance living on this plane, if any. */
-  private dungeonOnPlane(plane: PlaneId): DungeonInstance | null {
+  dungeonOnPlane(plane: PlaneId): DungeonInstance | null {
     if (!isRiftPlane(plane)) return null;
     for (const inst of this.dungeons.values()) {
       if (inst.plane === plane) return inst;
@@ -13630,25 +13253,8 @@ export class GameServer {
     return this.dungeonOnPlane(plane)?.power ?? null;
   }
 
-  /**
-   * THE MANY ARE MET: how many souls of the run (owner + guests)
-   * currently stand inside the instance that owns this tile — 1 when
-   * the ground is no dungeon. The garrison meets the party through
-   * this number: each extra soul thickens every body's effective hide
-   * and stiffens its arm, so a fellowship fights a fight instead of
-   * a harvest, and a key's power reads as the SOLO recommendation.
-   */
-  private dungeonHeadcount(plane: PlaneId): number {
-    const inst = this.dungeonOnPlane(plane);
-    if (!inst) return 1;
-    let n = 0;
-    for (const [peid, p] of this.players) {
-      if (p.characterId !== inst.ownerId && !inst.guests.has(p.characterId)) continue;
-      if (p.session === null && p.disconnectedAt !== null) continue;
-      const pp = this.positions.get(peid);
-      if (pp && pp.plane === inst.plane) n++;
-    }
-    return Math.max(1, n);
+  dungeonHeadcount(plane: PlaneId): number {
+    return runSys.dungeonHeadcount(this, plane);
   }
 
   /**
@@ -13666,109 +13272,16 @@ export class GameServer {
     return s.eid !== null || s.respawnAt !== Number.POSITIVE_INFINITY;
   }
 
-  /**
-   * THE COURT FALLS: the champion of a run went down. If the felled
-   * spawn is the run's own crown, the run is CLEARED — every soul of
-   * the fellowship present gets the ceremony (banner + line, with the
-   * run clock read honest), and the sealed rift-mouth below the dais
-   * tears open so the victors step home instead of walking the whole
-   * cleared spine back. Fires at most once per cut: THE CLEARED HALL
-   * pins the champion's respawn to Infinity, so he falls only once.
-   */
-  private noteDungeonCleared(spawnIndex: number, plane: PlaneId): void {
-    const inst = this.dungeonOnPlane(plane);
-    if (!inst || inst.bossSpawnIdx !== spawnIndex) return;
-    const sec = Math.max(1, Math.round((Date.now() - inst.cutAt) / 1000));
-    if (inst.courtExit) {
-      this.setWorldTile(inst.plane, inst.courtExit.x, inst.courtExit.y, Tile.PortalUp);
-      this.broadcastFx(inst.plane, {
-        t: 'fx',
-        kind: 'summon',
-        x: inst.courtExit.x + 0.5,
-        y: inst.courtExit.y + 0.5,
-        radius: 1.6,
-        color: '#8f7ae8',
-      });
-    }
-    const mm = Math.floor(sec / 60);
-    const ss = String(sec % 60).padStart(2, '0');
-    const line = `${inst.name} is cleared — the court fell in ${mm}:${ss}. The champion's chest lies open to claim${inst.courtExit ? ', and a way home stands torn open below the dais' : ''}.`;
-    for (const [peid, p] of this.players) {
-      if (p.characterId !== inst.ownerId && !inst.guests.has(p.characterId)) continue;
-      const pp = this.positions.get(peid);
-      if (!pp || pp.plane !== inst.plane) continue;
-      p.session?.sendJson({ t: 'dgclear', name: inst.name, sigil: inst.sigil, sec });
-      p.session?.sendJson({ t: 'chat', channel: 'system', text: line });
-    }
+  noteDungeonCleared(spawnIndex: number, plane: PlaneId): void {
+    return runSys.noteDungeonCleared(this, spawnIndex, plane);
   }
 
-  /**
-   * Step into a party member's live run. The riftgates are one network —
-   * any gate can carry a fellow into a run the keyholder holds open.
-   */
   partyJoinRun(eid: EntityId, session: Session, name: string): void {
-    const actor = this.socialActor(eid, session);
-    if (!actor) return;
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos) return;
-    const sys = (text: string) => session.sendJson({ t: 'chat', channel: 'system', text });
-    if (!this.riftgateNear(pos)) {
-      sys('You need to stand at a Riftgate to follow your party.');
-      return;
-    }
-    void (async () => {
-      const target = await this.accounts.findCharacterByName(name.trim());
-      if (!target) return sys('No one by that name.');
-      if (!this.party.fellowsOf(actor.id).includes(target.id)) {
-        return sys(`${target.name} is not in your party.`);
-      }
-      const inst = this.dungeons.get(target.id);
-      if (!inst) return sys(`${target.name} holds no rift open.`);
-      inst.guests.set(actor.id, { plane: pos.plane, x: pos.x, y: pos.y });
-      // The banner + fog-mask reset ride the same message the owner got.
-      const guestMods = dungeonModifiers(inst.seed, inst.tier as ItemRoll['rar']).map((m) => m.name);
-      session.sendJson({
-        t: 'dungeon',
-        name: inst.name,
-        sigil: inst.sigil,
-        tier: inst.tier,
-        theme: inst.theme,
-        power: inst.power,
-        mods: guestMods.length > 0 ? guestMods : undefined,
-      });
-      this.transferPlane(eid, inst.plane, inst.entry.x, inst.entry.y);
-      const ownerEid = this.characterEids.get(target.id);
-      if (ownerEid !== undefined) {
-        this.players.get(ownerEid)?.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `${actor.name} steps through the rift to join you.`,
-        });
-      }
-    })().catch((err: Error) => console.error('[party]', err.message));
+    return runSys.partyJoinRun(this, eid, session, name);
   }
 
-  /**
-   * A character stopped being party to their fellows — if they were
-   * guesting in one's dungeon, the rift no longer knows them.
-   */
-  private evictFromGuestDungeon(characterId: number): void {
-    const eid = this.characterEids.get(characterId);
-    for (const inst of this.dungeons.values()) {
-      const back = inst.guests.get(characterId);
-      if (back === undefined) continue;
-      inst.guests.delete(characterId);
-      if (eid === undefined) continue;
-      const pos = this.positions.get(eid);
-      if (!pos || pos.plane !== inst.plane) continue;
-      this.transferPlane(eid, back.plane, back.x, back.y);
-      this.players.get(eid)?.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: 'The rift no longer knows you — it hands you back to your gate.',
-      });
-    }
+  evictFromGuestDungeon(characterId: number): void {
+    return runSys.evictFromGuestDungeon(this, characterId);
   }
 
   // --------------------------------------------- THE SAND AND THE ROAR
