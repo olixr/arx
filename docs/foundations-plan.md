@@ -374,3 +374,17 @@ validate pair. Final baselines, each survivor NAMED in the gate: client 3 (the c
 — app-shaped, leaves speak to live editor state), server 0, shared 0, content 1 (loot's
 documented deliberate pair). 46 → 4. Scanner law: a statement-end scan must not stop on
 a balanced type-annotation line — cut const tables at the literal `};`. Band ten.
+
+**THE POLISH PASS (2609e183, 34ea9a06, bf51b8f7 — band eleven, 2026-09-01).**
+`scripts/gen-registries.mjs` + `npm run gen:registries`: the actor/dialogue JSON
+registries generate themselves (565→99, 1,001→70 lines; registryAgreement pins fail on
+drift; `--check` joins the band pipeline). scripts/probes/ + scripts/refactor/: the six
+live rigs and two movers move INTO the repo with an operating README (playwright path,
+blinded-watcher law, PID-file kills) — the epic's tools outlive the session. NEW rig:
+station-visit.mjs (the Silverfall vault at ~-479,-297; /tp adjacent + interact key opens
+bank-panel) — F5.3's residual closed for the deepest station room; extend to stable/shop
+by adding tile ids to its visits table. tiles.ts → tilesEnum (enums + DYE_COUNT) /
+tilesDefs (TileDef + table + dye loop + awning bases) / hub (packed readers, sets,
+re-exports). REMAINING charted: GameEvents adapters + FrameClocks; the Panel base +
+per-screen station files; F2 runner-up (cast/stageCast twins); the iron_rest prefab
+authoring pass (route legs over the 12-hop cap).
