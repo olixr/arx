@@ -140,8 +140,10 @@ export const POWER_PER_LEVEL = 0.055;
 /** Vendor value grows with surplus power (shy of stat growth). */
 export const POWER_VALUE_PER_LEVEL = 0.04;
 
-/** Base-stat multiplier for an instance at `eff` power over `native`. */
-export function powerMult(native: number, eff: number): number {
+/** Base-stat multiplier for an instance at `eff` power over `native`.
+ * (Named for the GEAR axis — `@arx/shared` has a different `powerMult`
+ * for entity-level scaling; the two barrels must not collide.) */
+export function gearPowerMult(native: number, eff: number): number {
   return 1 + Math.max(0, eff - native) * POWER_PER_LEVEL;
 }
 

@@ -58,7 +58,7 @@
  *   shade(); dark seams draw as STROKES.
  */
 import { chamferRect } from './shapes.js';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import type { EarCarriage } from './earPhysics.js';
 
 export interface HobgoblinLook {

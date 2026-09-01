@@ -69,7 +69,8 @@ import { COMPOST_BATCH_WORTH, MUSEUM_PLANE_ID, abilityDef, bandDy, enchantDef, i
 import { farmApiaries, farmBins, farmJobs, farmPlots, farmTroughs, predictedGrade } from '../game/farmCare.js';
 import { shortestAngle } from '../net/interpolation.js';
 import type { ClientGame } from '../game/clientGame.js';
-import { WORD_LIFE_MS } from '../game/clientGame.js';
+import { WORD_LIFE_MS } from '../game/wordLife.js';
+import { playerColor } from './playerColors.js';
 import {
   WORK_BOOK,
   resolveWork,
@@ -474,20 +475,12 @@ const SPRITE_BAKE_MS = 2.5;
  * same order as the bake it refused) and buys nothing. So an arrival
  * pays, in one covered hitch, at the moment the screen is already
  * changing. The ceiling here is only the runaway guard for a
- * pathological scene — one visible hitch, never a phase-out; past it
- * the stragglers paint live (see paintPropLive) and bake next frame.
+ * pathological scene — one visible hitch, never a phase-out; past
+ * BOTH it and the count floor, stragglers skip the frame and fade in
+ * when their mint arrives (see bakeAdmission — bounded pop-in, never
+ * a live repaint).
  */
 const VIS_SPRITE_BAKE_MS = 60;
-/**
- * Per-frame allowance (ms) for putting the outline ring on a LIVE
- * fallback paint (see paintPropLive). A handful of stragglers — the
- * ordinary case — all get rung, and the fallback is then pixel-
- * identical to the cached blit it stands in for. A mass arrival
- * (hundreds of pieces on their first frame) paints bare art past the
- * allowance rather than spending seconds in ring taps. Presence is
- * never at stake either way.
- */
-const LIVE_RING_MS = 1.5;
 /**
  * Idle body-sprite re-sample cadence, in frames (see the olKey fields
  * on DrawItem): a resting body's cosmetic life — breathing, gaze,
@@ -608,10 +601,6 @@ const FG_PAD_S = 15;
 /** fgGround sentinel for "chunk not loaded" (groundAt = undefined). */
 const FG_NO_GROUND = 0xffff;
 
-/** Identity tints for undressed player rigs — also the party marker
- * inks (map tokens + wayfinder pills), so a fellow reads as the same
- * color on the chart as in the world. */
-export const PLAYER_COLORS = ['#c4553d', '#3d78c4', '#3da865', '#c4a03d', '#8a55c4', '#3da8a0', '#c47a3d'];
 /** Flight height of projectiles above their ground point, in tiles —
  * arrows leave the bow's nock and bolts the staff's crown, chest-high. */
 const PROJ_AIR = 0.62;
@@ -5147,7 +5136,6 @@ export class Renderer {
     this.spriteBakeMsLeft = SPRITE_BAKE_MS;
     this.visSpriteMsLeft = VIS_SPRITE_BAKE_MS;
     this.visArrivalCount = ARRIVAL_MIN_COUNT;
-    this.liveRingMsLeft = LIVE_RING_MS;
     this.forcedBakeUsed = false;
     // THE FRAME CONFESSES WHAT IT COULD NOT CACHE: the live-paint
     // fallbacks are correct but they are also the cost the caches
@@ -21379,18 +21367,15 @@ export class Renderer {
   private visSpriteMsLeft = 0;
   /** Law 2's count floor (bakeAdmission.ARRIVAL_MIN_COUNT a frame). */
   private visArrivalCount = 0;
-  /** Per-frame allowance (ms) for ringing live fallback paints — see
-   *  paintPropLive / LIVE_RING_MS. */
-  private liveRingMsLeft = 0;
   /** The frame's y-sorted draw list — persistent, cleared at reuse. */
   private readonly drawItems: DrawItem[] = [];
 
-  // ---- THE PAINTED WORLD TAKES THE STAGE (phase A1: the ground lane) ----
-  /** Dev flag (?stage): the level-0 chunk ground composites through
-   *  the GL stage and lands in the 2d frame as ONE same-task
-   *  drawImage (a GPU-side copy between accelerated canvases), so
-   *  lighting, post and the reel keep working unchanged while the
-   *  frame migrates pass by pass. The Display toggle arrives in A5. */
+  // ---- THE PAINTED WORLD TAKES THE STAGE (the ground lane) ----
+  /** The level-0 chunk ground composites through the GL stage and
+   *  lands in the 2d frame as ONE same-task drawImage (a GPU-side
+   *  copy between accelerated canvases), so lighting, post and the
+   *  reel keep working unchanged. Shipped as the "Accelerated
+   *  display (beta)" Display toggle (arx.stage); ?stage forces it. */
   stageGround = false;
   private stageGl: GlStage | null = null;
   /** webgl2 unavailable or init threw — the canvas lane IS the product. */
@@ -23174,45 +23159,6 @@ export class Renderer {
     )
       return 1;
     return this.occluderFade(key, dx0, dy0, dw, dh, ty + 0.9 - this.ownPY > -FRONT_EPS);
-  }
-
-  /**
-   * Paint a discrete prop with no cached sprite STRAIGHT TO THE FRAME,
-   * ring and all — the pre-cache engine's own path, kept alive on
-   * purpose as the sprite cache's floor.
-   *
-   * This is the same scratch build the body pass uses (art into A, the
-   * dilated ring into B, ring under art), minus the body relight: a
-   * barrel is not a body and never took the exposure lift. Cost is one
-   * live outline pass — the very cost the cache exists to amortise —
-   * so a frame that pays it for a handful of misses is paying exactly
-   * what the engine paid for every prop before the cache existed. What
-   * it does NOT do is leave a hole.
-   */
-  private paintPropLive(b: { x: number; y: number; w: number; h: number }, paint: () => void): void {
-    // THE RING PAYS ITS OWN WAY. The dilated ring is eight full-sprite
-    // taps plus a tint over a canvas the size of the piece — for a
-    // mature tree that is millions of pixel-ops EACH, and an arrival
-    // frame can want hundreds of fallbacks at once (measured on the
-    // rig: a 790-tree first frame spent SECONDS entirely inside the
-    // ring taps). Presence is the floor; the ring is polish. While the
-    // per-frame live-ring allowance lasts — which covers the ordinary
-    // case of a handful of stragglers, and there the fallback is
-    // pixel-identical to the blit it stands in for — the piece gets
-    // its ring. Past it the art paints bare for a frame or two until
-    // the bakes catch up, which is precisely what a felled tree
-    // (bendOverride) has always done on this engine's live path.
-    if (!this.outlineOn || this.liveRingMsLeft <= 0) {
-      paint();
-      return;
-    }
-    const t0 = performance.now();
-    const dpr = this.dpr();
-    const geo = this.paintOutlineScratch({ sortY: 0, body: b, draw: paint });
-    const ctx = this.ctx;
-    ctx.drawImage(this.outlineB, 0, 0, geo.w, geo.h, b.x - geo.m, b.y - geo.m, geo.w / dpr, geo.h / dpr);
-    ctx.drawImage(this.outlineA, 0, 0, geo.w, geo.h, b.x - geo.m, b.y - geo.m, geo.w / dpr, geo.h / dpr);
-    this.liveRingMsLeft -= performance.now() - t0;
   }
 
   private drawPropOutlined(
@@ -58658,7 +58604,7 @@ export class Renderer {
             mount: remote.meta.appearance?.mount,
             color: remote.meta.appearance?.look
               ? CLOTH_COLORS[remote.meta.appearance.look.shirt]!
-              : PLAYER_COLORS[hashString(remote.meta.name ?? String(eid)) % PLAYER_COLORS.length]!,
+              : playerColor(remote.meta.name ?? String(eid)),
           });
           this.dressForWater(game, item, eid, s.x, s.y);
           item.strat = this.stratAt(s.x, s.y);
@@ -58979,7 +58925,7 @@ export class Renderer {
         look: game.ownLook ?? undefined,
         color: game.ownLook
           ? CLOTH_COLORS[game.ownLook.shirt]!
-          : PLAYER_COLORS[hashString(game.ownName) % PLAYER_COLORS.length]!,
+          : playerColor(game.ownName),
         drawTOverride: game.ownDrawT,
         // THE PREDICTED TRADE: through the swap beat's first half the
         // own body stows — the standing sheathe ease plays the ride to

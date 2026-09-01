@@ -30,7 +30,7 @@
 import { Tile } from '@arx/shared';
 import { isCropTile } from '@arx/content';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { windScalarAt } from './grass.js';
 import {
   OUTLINE,

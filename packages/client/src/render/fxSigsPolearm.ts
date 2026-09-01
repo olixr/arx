@@ -49,7 +49,7 @@
  * standing art and its signature (fxSigsShield.ts) is untouched.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { srand, burstStarPath } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { blood, dust, storm, asMatter } from './matter/index.js';

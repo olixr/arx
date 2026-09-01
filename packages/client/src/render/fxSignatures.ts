@@ -29,7 +29,7 @@
  *  7. No two signatures share their centerpiece.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { srand, burstStarPath, type FxStyle } from './abilityFx.js';
 import type { Particles } from './particles.js';
 import { fire, frost, dust, shadow, smoke, asMatter } from './matter/index.js';

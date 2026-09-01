@@ -1,3 +1,4 @@
+import { type StageItem } from './stage/stageTypes.js';
 export interface WindSample {
     /** Bend vector in world tiles (unit cantilever at reference height). */
     bx: number;
@@ -134,28 +135,23 @@ export declare class GrassSystem {
     /** Disturbers near the tile currently being built. */
     private near;
     /**
-     * THE CALM CANVAS. Re-tessellating every visible blade every frame
-     * cost ~2ms steady at 0.85× zoom (and its allocation churn drew GC
-     * pauses of up to 15ms into this very pass) — and even the Path2D
-     * cache that fixed THAT still re-FILLED every bucket every frame,
-     * which is what kept the meadow's density starved. A calm meadow
-     * only MOVES at wind rate — so the under-layer now RENDERS all
-     * undisturbed tiles into an offscreen canvas at UNDER_CACHE_MS
-     * cadence (~15Hz wind sampling, the tree-cadence law) and each frame
-     * blits it with ONE drawImage translated by the camera delta. The
-     * coat's 3-4× blade density rides on this: quads are only paid at
-     * bake time. Grass shadows bake into a second canvas the same way
-     * (opaque at bake, alpha at blit — overlaps inside the meadow's own
-     * shade merge instead of stacking, the shadow-layer law). Only tiles
-     * a body (or its predicted path — a swept box over the cache window)
-     * can reach, plus fresh wakes, are excluded and rebuilt live per
-     * frame. A disturber that escapes its predicted box forces an
-     * immediate rebake, so displacement NEVER lags a frame.
+     * THE SHADE CACHE (né THE CALM CANVAS). Round 6 baked the whole calm
+     * under-layer — blades and casts — into offscreen canvases at 66ms
+     * cadence; round 13 moved the BLADES onto the budgeted row-sprite
+     * lane (THE MEADOW RIDES THE SHEAR — the 15Hz full re-tessellation
+     * was a measured multi-ms burst that read as micro-stutter on fast
+     * panels), and this cache now carries only the meadow's merged CAST
+     * canvas (cast-only build, ~a quarter of the old beat) plus the
+     * live-exclusion set both consumers share. Casts stay monolithic on
+     * purpose: one canvas is the only place overlapping shade can merge
+     * instead of stacking (the shadow-layer law). Only tiles a body (or
+     * its predicted path — a swept box over the cache window) can
+     * reach, plus fresh wakes, are excluded and rebuilt live per frame.
+     * A disturber that escapes its predicted box forces an immediate
+     * rebake, so displacement NEVER lags a frame.
      */
     private underCache;
-    /** The calm canvas + its shadow twin, reused across bakes. */
-    private underCanvas;
-    private underCtx;
+    /** The meadow's merged cast canvas, reused across bakes. */
     private shadowCanvas;
     private shadowCtx;
     /** The shadow fill the NEXT bake will use (set via setShadow). */
@@ -165,6 +161,80 @@ export declare class GrassSystem {
     /** This frame's cached-fill translation (drawUnder → flushShadows). */
     private cacheDx;
     private cacheDy;
+    /**
+     * THE MEADOW RIDES THE SHEAR: cadence-baked sprites for the two
+     * lanes that could never join the calm canvas because they y-sort
+     * per row — tall thicket bands and elevated-surface rows. Each
+     * sprite blits through a live wind-delta shear about the row's base
+     * line, so primary sway runs at frame rate at any cadence (the tree
+     * lane's law, one size down). Byte-ledgered, admission-gated,
+     * pooled — rounds 10-12's metering laws verbatim.
+     */
+    private readonly rowSprites;
+    private rowBytes;
+    private readonly rowPool;
+    private rowPoolBytes;
+    private frameNo;
+    /** Per-frame bake spend: cadence refreshes ride `bakeMsLeft`, first
+     *  sight and hatches ride `urgentMsLeft` (the runaway guard). */
+    private bakeMsLeft;
+    private urgentMsLeft;
+    /** Law 2's count floor for first-sight cells (mirrors
+     *  bakeAdmission.ARRIVAL_MIN_COUNT): a Mac-tuned ms window admits
+     *  ~1 cell on a slow machine — the floor keeps convergence real. */
+    private firstCellsLeft;
+    /** One guaranteed cadence bake per frame keeps the queue draining
+     *  even when a single bake overruns the whole budget. */
+    private bakeFloorLeft;
+    /** THE FRAME CONFESSES: read by the renderer's ?perf line. */
+    readonly rowStats: {
+        blit: number;
+        live: number;
+        bake: number;
+        over: number;
+    };
+    /** Dev/proof lever (the staticLayerOn pattern): false = every cell
+     *  builds live through the exact pre-sprite path. */
+    rowSpritesOn: boolean;
+    /** THE CADENCE PAYS A BUDGET: live beat, self-tuned per frame. */
+    private rowCadenceMs;
+    /** Cell-scan scratch (span-sized; no per-frame allocation). */
+    private readonly cellSt;
+    private readonly cellT;
+    private readonly rowSweepScratch;
+    /** Under-lane deferred blits (cell sprites paint after the shade). */
+    private readonly underBlitScratch;
+    /**
+     * THE WORLD ON STAGE hook (phase A2p2): set by the renderer during
+     * world assembly. blitRowSprite emits quads through it, and the
+     * live-tile tails defer into ONE bounded paint per band/row (see
+     * stageDrainLive). Null = the classic canvas path, untouched.
+     */
+    stagePush: ((item: StageItem) => void) | null;
+    private readonly stageLive;
+    private readonly stageTexMap;
+    private stageRevSeq;
+    /** Handles key by the CANVAS (the renderer's shadow law, same
+     *  two-axis invalidation): a pooled canvas claimed by another cell
+     *  re-uploads unconditionally; a cell's own rebake rides its
+     *  bake stamp. */
+    private stageTexFor;
+    /** Drain the deferred live tiles as ONE bounded paint item. The
+     *  tiles rebuild inside the closure from the samplers — everything
+     *  they need is recomputable, so nothing captures a stale frame. */
+    private stageDrainLive;
+    /**
+     * Per-frame ctx transform memo. Every lane's entry point read
+     * ctx.getTransform() per row item — ~100-130 DOMMatrix allocations
+     * a frame in a capital — but the base transform is constant across
+     * a frame's grass passes (the renderer's height-lean transforms
+     * live INSIDE wall painters, never around item dispatch), so one
+     * read per frame per ctx serves them all.
+     */
+    private ctxM;
+    private ctxMOwner;
+    private ctxMFrame;
+    private frameTransform;
     /**
      * Tile → disturbers-in-range, rebuilt once per frame from each
      * disturber's footprint (~5×5 tiles). Inverts the old per-tile scan
@@ -208,6 +278,9 @@ export declare class GrassSystem {
      * stays as the safety drain for any cast gathered after the under
      * pass, keeping the shared-layer merge law for that remainder.
      */
+    /** Anything queued for the shade pass this frame? (The stage skips
+     *  the layer paint entirely on shadeless frames.) */
+    hasShadows(): boolean;
     flushShadows(ctx: CanvasRenderingContext2D, fill: string, alpha: number): void;
     private tile;
     private ensurePaths;
@@ -235,22 +308,67 @@ export declare class GrassSystem {
     private flush;
     /** Painter's order for one bucket set: roots under blades under flowers. */
     private fillBuckets;
-    /** Build one tile's under-layer content into the CURRENT containers
-     *  (roots, under blades, tall-thicket casts, flowers deferred). */
-    private buildUnderTile;
-    /** Flowers and seed-heads are their own layer: heads read above the lawn. */
-    private buildFlowerTiles;
-    /** Rebake the calm canvas (see underCache). */
-    private bakeUnder;
+    /**
+     * Rebake the meadow's SHADE canvas (see underCache). Round 13
+     * slimmed this from the old full calm-canvas bake: the blades
+     * themselves now live on the row-sprite lane (budgeted, sheared),
+     * so this pass builds ONLY the cast quads — ~a quarter of the old
+     * beat, and the one place the whole meadow's casts still merge on a
+     * single canvas so overlaps never stack (the shadow-layer law).
+     */
+    private bakeShade;
     /**
      * The under-layer: every short blade, nap chip, clump, flower, and
      * seed-head in bounds — drawn beneath entities. Tall thickets
      * contribute only their nap underbrush here; their mass y-sorts via
-     * collectTall. Calm tiles come from the cadence-baked calm canvas
-     * (ONE drawImage, however dense the coat); only disturbed/waking
-     * tiles rebuild per frame.
+     * collectTall. Since round 13 the blades ride the row-sprite lane
+     * (THE MEADOW RIDES THE SHEAR): calm cells blit their cadence
+     * sprites through the live wind shear, disturbed/waking tiles build
+     * live — the old monolithic calm canvas re-tessellated the entire
+     * viewport's coat every 66ms, a measured multi-ms burst at 15Hz
+     * that read as micro-stutter on fast panels. Only the SHADE still
+     * bakes monolithically (cast-only, ~a quarter of the old beat),
+     * because casts must merge on one canvas so overlaps never stack.
      */
     drawUnder(ctx: CanvasRenderingContext2D, ground: Sampler, detail: DetailFn, bounds: GrassBounds, wts: WTS, s: number): void;
+    /** World-stable cell identity: lane, elevation level, row, cell. */
+    private static rowKey;
+    /**
+     * THE LEDGER HAS ONE DOOR: release a sprite's canvas back through
+     * the pool (or to GC past the pool's byte ceiling) and return its
+     * bytes. The caller owns the map entry itself.
+     */
+    private dropRowSprite;
+    /** One lane-tile of live geometry — the SAME brush the sprites bake
+     *  with, and the same order the old per-frame loops drew in. `cast`
+     *  is true only for LIVE under-lane tiles: a cell bake never casts
+     *  (the shade bake owns the merged cast canvas), and the tall/row
+     *  lanes never did. */
+    private buildLaneTile;
+    /**
+     * Bake one row cell into a sprite. SAME-BRUSH: the live builders
+     * paint under a re-anchored tile frame (local origin at the cell's
+     * first tile, the row's own sx/sy), so bake output is the live
+     * output verbatim. Returns the stored entry, or null when the
+     * frame's bake spend is gone (the caller draws live and retries).
+     */
+    private bakeRowCell;
+    /**
+     * Blit one baked cell through the live wind-delta shear about the
+     * row's mid-depth base line: tips track the cantilever at frame
+     * rate, and a missed cadence beat degrades into a larger (capped)
+     * shear instead of a stutter.
+     */
+    private blitRowSprite;
+    /**
+     * One cell of one lane, one frame: scan, decide, blit through the
+     * live wind-delta shear, and build the excluded tiles live. The
+     * sprite is a cache, never a mode — every decline or miss paints
+     * live through the exact pre-sprite path (THE STILL-WORLD BARGAIN).
+     * The under lane hands its blit to `defer` so the meadow's shade
+     * can composite beneath every calm blade.
+     */
+    private handleRowCell;
     /**
      * Tall grass as y-sorted items: each thicket splits at its midline
      * into two depth bands, so a body standing inside it is wrapped —
@@ -259,13 +377,14 @@ export declare class GrassSystem {
     collectTall(items: Array<{
         sortY: number;
         draw?: () => void;
+        stageSafe?: true;
     }>, ctx: CanvasRenderingContext2D, ground: Sampler, detail: DetailFn, bounds: GrassBounds, wts: WTS, s: number): void;
     /**
      * Elevated rows: the plateau band item draws its own strip of living
      * grass right after its surface — already y-granular, so everything
      * (tall included) goes down in one pass.
      */
-    drawRow(ctx: CanvasRenderingContext2D, ground: Sampler, detail: DetailFn, bounds: GrassBounds, wts: WTS, s: number): void;
+    drawRow(ctx: CanvasRenderingContext2D, ground: Sampler, detail: DetailFn, bounds: GrassBounds, wts: WTS, s: number, level?: number): void;
 }
 export {};
 //# sourceMappingURL=grass.d.ts.map

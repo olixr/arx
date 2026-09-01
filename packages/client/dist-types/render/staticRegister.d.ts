@@ -143,6 +143,18 @@ export declare function buildRegisterRows(host: RegisterHost, cx: number, cy: nu
  * it and a stale-ratio blit can never open a hairline there.
  */
 export declare const BAND_MAX_SPAN = 12;
+/**
+ * THE SHELF CUTS TO THE CROWN (round 14). A band canvas's height is
+ * set by its tallest FAMILY (garrison crowns bake ~4.6 tiles of
+ * head-room against a house wall's 2.8), so a garrison stretch at the
+ * full 12-tile span costs ~8MB at zoom 1 on a retina panel — past the
+ * 6MB per-band ceiling, refused at the gate, and painted live
+ * forever. That was round 12's "TooBig straggler": measured at the
+ * Silverfall falls as ~2,700 path ops a frame of masonry, merlons and
+ * tapestries that never stopped. Garrison shelves cut at half span so
+ * the same crown fits the same ceiling.
+ */
+export declare const BAND_MAX_SPAN_TALL = 6;
 export interface StretchRef {
     /** Member index range [i0, i1] inclusive, into the row's list. */
     i0: number;

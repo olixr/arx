@@ -1,7 +1,15 @@
 /**
  * @arx/content — data-driven game definitions.
  * Items, NPCs, skills, recipes, loot tables, maps, and spawn tables all
- * live here as typed data, validated at build time by tools/validate.
+ * live here as typed data. Integrity is enforced twice: content.test.ts
+ * cross-references every id at test time, and the server re-validates
+ * defs at boot (server/src/index.ts) when it loads DB-authored
+ * overrides through the replace*() registries.
+ *
+ * NOTE THE MUTATION CONTRACT: the replace*() calls swap module-level
+ * registries at runtime — this package is NOT a frozen catalog once a
+ * server has booted over it. Tools and tests that import defs directly
+ * see the authored baseline only until something calls replace*().
  */
 export * from './abilities.js';
 export * from './ladderModel.js';

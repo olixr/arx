@@ -26,7 +26,7 @@
  * PULLS, not a border that mourns.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { burstStarPath, jaggedRingPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { dust, fire, frost, smoke, storm, asMatter } from './matter/index.js';

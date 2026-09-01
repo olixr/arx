@@ -21,7 +21,7 @@ import {
   valueNoise,
 } from '@arx/shared';
 import { chamferRect, facetCircle } from './shapes.js';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { CHANNEL_FEED_RANGE } from '@arx/content';
 import { farmPlots, wellNearClient } from '../game/farmCare.js';
 import { DYE_SWATCHES } from './icons.js';

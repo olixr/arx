@@ -1,6 +1,6 @@
-import { hashString, valueNoise } from '@arx/shared';
+import { valueNoise } from '@arx/shared';
 import type { DiscoveryWire } from '@arx/shared';
-import { PLAYER_COLORS } from '../../render/renderer.js';
+import { playerColor } from '../../render/playerColors.js';
 import { bakeOutlinedSprite } from '../../render/icons.js';
 import { INK } from '../kit/tokens.js';
 
@@ -372,7 +372,7 @@ export function drawPlayerToken(
 
 /** A fellow's identity ink — the tint their undressed rig would wear. */
 export function partyColor(name: string): string {
-  return PLAYER_COLORS[hashString(name) % PLAYER_COLORS.length]!;
+  return playerColor(name);
 }
 
 /**

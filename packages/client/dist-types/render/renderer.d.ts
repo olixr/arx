@@ -6,10 +6,6 @@ import { Debris, type SmashKind } from './debris.js';
 import { Birds } from './birds.js';
 import { InteriorMap } from './interiors.js';
 import { type FxStyle } from './abilityFx.js';
-/** Identity tints for undressed player rigs — also the party marker
- * inks (map tokens + wayfinder pills), so a fellow reads as the same
- * color on the chart as in the world. */
-export declare const PLAYER_COLORS: string[];
 /** Player zoom bounds: 1 = the classic framing (also the default). */
 export declare const ZOOM_MIN = 0.85;
 export declare const ZOOM_MAX = 2;
@@ -936,6 +932,44 @@ export declare class Renderer {
     private castBody;
     /** A small thing's plain contact ellipse (drops, summons). */
     private castContact;
+    /** The cast lane's kill switch (every lane has one): off, the
+     *  brushes fall through to their raw painters — the pre-lane
+     *  pixels — for A/B bisection and as the emergency door. */
+    stageCastLane: boolean;
+    private readonly castSprites;
+    /** Bake-or-fetch one cast sprite. `w/h/ax/ay` are device px; the
+     *  painter draws in device px with (ax, ay) as the shape's anchor. */
+    private castSprite;
+    /** Count + sample a raw sdw painter reached under assembly — the
+     *  stack names the factory (dev forensics, split-sample pattern). */
+    readonly stageCastLeakSamples: string[];
+    private stageCastLeak;
+    /** The in-sort contact alpha (beginContactFill's own arithmetic;
+     *  sdwLayerAlpha is 1 during the sorted pass). */
+    private contactAlpha;
+    /** Emit one cast sprite as a stage quad. `m` rotates/shears when
+     *  given; otherwise the sprite lands axis-aligned with its anchor
+     *  at (refX, refY). Alpha 0 emits nothing. */
+    private stageCastQuadAt;
+    /** The glide fallback: one bounded scratch paint that runs the real
+     *  cast brush with this.sdw swapped to the scratch ctx (the cast
+     *  helpers paint through sdw, not this.ctx — the swap the old
+     *  extraction famously forgot). */
+    private stageCastScratch;
+    /** Assembly branch of castEdgeQuad: the quantized parallelogram,
+     *  baked once, thrown as a quad. */
+    private stageCastEdge;
+    /** Shared ellipse sprite (castContact and castBody's every part):
+     *  axis-aligned bake, rotation carried by the quad matrix. */
+    private stageCastEllipse;
+    /** Assembly branch of castBlob: the seeded facet blob, baked once
+     *  per (r, seed), thrown along the sun and away from each light —
+     *  the same sprite serves every throw. A smeared blob (no current
+     *  in-sort caller) keeps the honest scratch fallback. */
+    private stageCastBlob;
+    /** Assembly branch of castBody: contact ellipse + sun lobe + light
+     *  lobes, each an ellipse quad (rotation in the matrix). */
+    private stageCastBody;
     /** Bake resolution, px per tile — masks scale to the live zoom. */
     private static readonly MASK_S;
     /**
@@ -1311,6 +1345,24 @@ export declare class Renderer {
     private bakePx;
     private drawGroundChunks;
     /**
+     * Emit one visible chunk into the stage lane. The handle syncs at
+     * EMISSION — the pooled bake swap retargets it, and an in-flight
+     * sliced job repaints its canvas between frames, so the shadow
+     * follows the truth with zero coupling to the bake internals. The
+     * upload rides the urgent budget (THE ARRIVAL PAYS ONCE with a
+     * runaway guard); a declined upload paints through the late lane.
+     */
+    private stageEmitChunk;
+    /**
+     * Render the collected ground quads on the GL stage and land them
+     * in the 2d frame as ONE drawImage — same task, so no readback and
+     * no present race — drawn through the LIVE ctx transform so a
+     * zoom-pulse scales the ground exactly as it scaled the per-chunk
+     * blits. Late (declined) chunks paint over it through the canvas
+     * lane, exactly where they would have landed.
+     */
+    private stageFlushGround;
+    /**
      * Start a sliced bake for a chunk with no cache entry. `live` jobs
      * blit their in-progress canvas (brand-new ground shows its meadow
      * placeholder immediately, then sweeps in detail); the entry is
@@ -1590,14 +1642,34 @@ export declare class Renderer {
      *  byte-for-byte as on screen. */
     private bandGridPx;
     /**
-     * THE HOT MEMBER RULE's predicate, reusing the live path's own gates
-     * verbatim: a stretch is hot if any wall member's reveal height is
-     * off full (checked only inside the cut's known support window — the
-     * same early-outs wallHeightAt itself takes), if its north neighbor
-     * is (the REAR RISER repaints on the neighbor's ease), or if a
-     * destructible member is mid-shake.
+     * THE HOT MEMBER RULE's walk, upgraded for THE SETTLED CUT (round
+     * 14). Returns:
+     *  -1 — must draw LIVE this frame (a destructible mid-shake, or a
+     *       tall prop inside the step-aside fade's support box — both
+     *       animate per frame and can never bake);
+     *   0 — fully standing (every reveal height at rest): the ordinary
+     *       cold band path;
+     *  >0 — a CUT SIGNATURE: some wall/garrison member is revealed, and
+     *       this hash quantizes every off-full height (own row + north
+     *       neighbor — the REAR RISER paints on the neighbor's ease) to
+     *       1/48 tile. While the player MOVES the signature churns every
+     *       frame and the stretch stays live, exactly as before; once
+     *       the player settles the signature holds still, and after a
+     *       short stability window the stretch may bake AT ITS CUT
+     *       HEIGHTS — standing inside a furnished building no longer
+     *       keeps ~20 wall stretches painting live vectors forever
+     *       (round 12's #1 open item, measured as the crown's `hot 20`).
      */
-    private stretchHot;
+    private stretchCutSig;
+    /** Per-stretch cut stability: sig last seen + how long it has held.
+     *  Entries prune on a cadence (seen-stamped) — the map only ever
+     *  holds stretches currently inside a reveal window. */
+    private readonly bandCutStates;
+    /** Frames a cut signature must hold before its stretch may bake —
+     *  a whisker over interpolation jitter, well under a reader's
+     *  patience. Motion churns the sig every frame, so walking keeps
+     *  today's live path untouched. */
+    private static readonly CUT_STABLE_FRAMES;
     /**
      * Emit one stretch: blit its bake when standing and cold, bake it
      * when the budget allows, and fall back to per-member live emission
@@ -1606,6 +1678,10 @@ export declare class Renderer {
      * every stable-sort tie exactly where the scan put it.
      */
     private emitStretch;
+    /** Reusable throwaway set for rebuild-time re-emission (the ramp
+     *  dedupe wants A set; the real runSeen already served collect). */
+    private readonly stageRebuildSeen;
+    private stageMarkRaised;
     /** Blit one band bucket at its snapped anchor projection.
      *
      *  THE EXACT LATTICE PATH: at settled zoom on the bake's own dpr,
@@ -2613,6 +2689,12 @@ export declare class Renderer {
      * its rest and settles; closing is a shorter, sober pull-to. A
      * 'shake' ease holds the posture (the door never moved).
      */
+    /** Is this door inside its animation window (swing ease or refusal
+     *  shudder)? Expiry-aware: a stale entry (the ease finished while
+     *  the door was off-screen and no painter queried it) reads as
+     *  settled and is dropped — `has()` alone would pin the stretch
+     *  live forever. */
+    private doorHot;
     private doorOpenness;
     /**
      * Signed shudder offset for a locked door's refusal — a quick
@@ -2658,11 +2740,130 @@ export declare class Renderer {
      *  cadence re-bakes) — see SPRITE_BAKE_MS. */
     private spriteBakeMsLeft;
     private visSpriteMsLeft;
-    /** Per-frame allowance (ms) for ringing live fallback paints — see
-     *  paintPropLive / LIVE_RING_MS. */
-    private liveRingMsLeft;
+    /** Law 2's count floor (bakeAdmission.ARRIVAL_MIN_COUNT a frame). */
+    private visArrivalCount;
     /** The frame's y-sorted draw list — persistent, cleared at reuse. */
     private readonly drawItems;
+    /** The level-0 chunk ground composites through the GL stage and
+     *  lands in the 2d frame as ONE same-task drawImage (a GPU-side
+     *  copy between accelerated canvases), so lighting, post and the
+     *  reel keep working unchanged. Shipped as the "Accelerated
+     *  display (beta)" Display toggle (arx.stage); ?stage forces it. */
+    stageGround: boolean;
+    private stageGl;
+    /** webgl2 unavailable or init threw — the canvas lane IS the product. */
+    private stageDead;
+    private readonly stageQuads;
+    /** THE STILL-WORLD BARGAIN's lane: chunks whose texture the upload
+     *  guard declined this frame blit through the canvas AFTER the GL
+     *  image lands (they would be covered otherwise). */
+    private readonly stageLate;
+    private stageUpMsLeft;
+    private readonly stageStats;
+    /** ?stage=world (phase A2): the whole y-sorted world pass renders
+     *  on a second, ALPHA GL stage and composites over the 2d frame's
+     *  ground+water. Cached lanes emit quads at assembly; everything
+     *  else replays the dispatch cell through the scratch lane with
+     *  honest bounds; the rare boundless item takes the split path
+     *  (composite, paint on the frame, resume) and is counted. */
+    stageWorld: boolean;
+    private stageWorldGl;
+    /** The frame's world stream. NOT readonly: the shadow prepass
+     *  temporarily swaps the sink so the cast brushes' assembly
+     *  branches emit into the LAYER stream (A3) with zero new plumbing
+     *  at the push sites. */
+    private stageWorldItems;
+    /** THE SHADOW LAYER RIDES THE STAGE (A3): the prepass collected as
+     *  stage items, rendered into the world stage's alpha FBO and
+     *  composited once at the layer alpha — the first content of the
+     *  frame's first flush, exactly where the 2d layer composite sat. */
+    private readonly stageShadowItems;
+    private stageShadowAlpha;
+    private stageShadowPending;
+    /** True while the world pass assembles the stage stream — painters'
+     *  blit sites emit quads instead of ctx calls. */
+    private stageAssembling;
+    private readonly stageWorldStats;
+    /** Dev diagnosis: what KINDS still split (read from the probe). */
+    readonly stageSplitKinds: Map<string, number>;
+    readonly stageSplitSamples: string[];
+    private stageWorldActive;
+    /** Composite the accumulated world stream over the 2d frame —
+     *  same-task, through the live transform (the ground flush's law). */
+    private stageWorldFlush;
+    /** Per-frame paint composition by source tag — the census that
+     *  names where the scratch mass actually comes from. */
+    readonly stagePaintKinds: Map<string, {
+        n: number;
+        mb: number;
+    }>;
+    private stagePaintCount;
+    /** Push a raw closure through the scratch lane (SAME-BRUSH swap) —
+     *  the painters' own door for live fallbacks with known rects. */
+    private stagePushPaintRaw;
+    /**
+     * Assembly-run one item: its stage-aware painters emit quads (and
+     * push their own bounded fallbacks); the item's alpha folds into
+     * stageItemAlpha so stealth ghosts ride the quads. The elevated
+     * cast runs FIRST, under assembly, exactly where the sorted loop
+     * has always run it — the cast brushes' own assembly branches emit
+     * it as sprite quads (THE CAST SPEAKS IN QUADS), so an elevated
+     * item no longer needs a named box just to keep its shadow.
+     */
+    private stageAssemble;
+    /** Set by a painter's assembly branch when this frame's content
+     *  cannot be staged (see stageAssemble) — never touched elsewhere. */
+    private stageNeedsSplit;
+    /** Wrap one item's dispatch cell as a bounded paint closure — the
+     *  SAME-BRUSH swap: the cell runs against the scratch ctx. An
+     *  elevated item's cast emits FIRST as sprite quads (the cast
+     *  brushes paint through this.sdw, which the ctx swap below never
+     *  touches — deferred, it would land on the real frame). */
+    private stagePaintItem;
+    /**
+     * THE WORLD ON STAGE (phase A2 part 1). Classification, in order:
+     * particle runs coalesce into scanned-bounds paints; mature trees
+     * with a live sprite assembly-run their painter (the blit sites
+     * emit quads; bounds and shear are the painter's own numbers);
+     * band blits become quads the same way; bodies and outlined props
+     * ride their own body rect; bulk singles project their datum; and
+     * whatever names no bounds takes the SPLIT path — correct, counted,
+     * and the working list for part 2's quadification.
+     */
+    private stageWorldPass;
+    /** Assembly-time alpha for quad-emitting painters (band fades). */
+    private stageItemAlpha;
+    /** Could relightBody paint anything this frame? Its own first
+     *  gates, hoisted — by day (or with the budget spent) a cached
+     *  body is a pure blit and may ride the quad lane. */
+    private bodyRelightPossible;
+    /**
+     * Sprite-lane texture handles, keyed by their cache record. Part-1
+     * deviation from the explicit-release law, recorded: sprite caches
+     * churn through pooled canvases at cadence, so their handles ride
+     * glStage's ORPHAN SWEEP (records unused for ~900 frames are
+     * reclaimed) instead of per-evictor hooks; part 2's atlas brings
+     * the explicit lifecycle. `rev` comes from the caller (the sprite's
+     * own bake stamp), so an in-place repaint re-uploads exactly once.
+     */
+    private readonly stageTexOf;
+    private stageRevSeq;
+    /**
+     * THE TEXTURE IS THE CANVAS'S SHADOW, taken literally: handles key
+     * by the CANVAS — sprite caches mint fresh record objects at every
+     * cadence re-bake (measured: ~720 orphaned handles/second, 6.3GB of
+     * texture churn in a dense forest when records were the key), while
+     * the pooled canvases are the bounded population. Two invalidation
+     * axes, both airtight: a pooled canvas claimed by a NEW owner
+     * re-uploads unconditionally (the graveyard's stale-band bug when
+     * rev alone was trusted), and the SAME owner's in-place re-bake
+     * re-uploads via its own frame stamp.
+     */
+    private stageSpriteTex;
+    /** Lazily stand the stage up; a context loss parks it until the
+     *  restore handler clears the flag (THE TOGGLE IS THE PRODUCT'S
+     *  SAFETY — the canvas path serves every parked frame). */
+    private stageActive;
     /** Stale-chunk re-bake candidates this frame (center-first pacing). */
     private readonly replaceQueue;
     /**
@@ -2710,6 +2911,12 @@ export declare class Renderer {
      *  switch if a canopy ever blinks. */
     occlusionOn: boolean;
     /** The closure-free bulk lane's one dispatch (see DrawItem.bulk). */
+    /**
+     * One world item, exactly as the sorted loop has always run it —
+     * extracted so the stage lane's paint closures replay the SAME
+     * cell against a scratch ctx (SAME-BRUSH, one truth, two modes).
+     */
+    private dispatchWorldItem;
     private drawBulkItem;
     /**
      * One seated halo (see the HALO dials by BulkKind): the POOL as a
@@ -2900,20 +3107,6 @@ export declare class Renderer {
      * and neither does the seat the own body is mounted on.
      */
     private propFade;
-    /**
-     * Paint a discrete prop with no cached sprite STRAIGHT TO THE FRAME,
-     * ring and all — the pre-cache engine's own path, kept alive on
-     * purpose as the sprite cache's floor.
-     *
-     * This is the same scratch build the body pass uses (art into A, the
-     * dilated ring into B, ring under art), minus the body relight: a
-     * barrel is not a body and never took the exposure lift. Cost is one
-     * live outline pass — the very cost the cache exists to amortise —
-     * so a frame that pays it for a handful of misses is paying exactly
-     * what the engine paid for every prop before the cache existed. What
-     * it does NOT do is leave a hole.
-     */
-    private paintPropLive;
     private drawPropOutlined;
     /** Pool-aware canvas acquisition shared by the world-prop sprite bakes. */
     private acquireSpriteCanvas;
@@ -2982,6 +3175,10 @@ export declare class Renderer {
     private readonly shadowBox;
     private treeShadowPath;
     private drawTreeShadow;
+    /** The light-throw half of a tree's cast, extracted so the stage's
+     *  bounded fallback replays EXACTLY this (throws re-read at flush —
+     *  same frame, same lights). */
+    private drawTreeThrowShadows;
     /**
      * THE TREE COMES DOWN IN ACTS — the felling ceremony (timeline ms):
      *

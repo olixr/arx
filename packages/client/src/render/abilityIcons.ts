@@ -1,7 +1,7 @@
 import { PASSIVES } from '@arx/shared';
 import { burstStarPath, fxStyleFor, jaggedRingPath, type FxStyle } from './abilityFx.js';
 import { paintedIconUrl, paintedIconUrlIfBaked, queueIconTask } from './icons.js';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 
 /**
  * THE SPELL-PLATE SET — a bespoke painted icon for every castable in

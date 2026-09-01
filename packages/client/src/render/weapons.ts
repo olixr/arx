@@ -1,4 +1,4 @@
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 
 /**
  * Sword visual styles — the CAPE_STYLES pattern for the blade roster.

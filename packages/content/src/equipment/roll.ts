@@ -16,7 +16,7 @@ import {
   RARITY_VALUE_MULT,
   affixCount,
   affixMagnitudeCap,
-  powerMult,
+  gearPowerMult,
 } from './tables.js';
 
 /**
@@ -66,7 +66,7 @@ export function rolledStats(itemId: string, roll?: ItemRoll): RolledStats | null
   // ignored (heirlooms never downgrade).
   const native = gear.levelReq?.level ?? 1;
   const eff = Math.max(native, r.pwr ?? 0);
-  const mult = RARITY_BASE_MULT[r.rar] * powerMult(native, eff);
+  const mult = RARITY_BASE_MULT[r.rar] * gearPowerMult(native, eff);
 
   const cap = affixMagnitudeCap(eff);
   const [fLo, fHi] = AFFIX_ROLL_FRAC[r.rar];

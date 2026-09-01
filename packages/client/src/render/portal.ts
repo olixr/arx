@@ -25,7 +25,7 @@
  */
 
 import { hashCoords } from '@arx/shared';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import type { Particles } from './particles.js';
 
 /** Ground-plane squash: circles lying flat draw as 0.6 ellipses. */

@@ -43,7 +43,7 @@
  *   corpses, and sheets paint exactly what the game relaxes to.
  */
 import { chamferRect } from './shapes.js';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 
 /** The fixed camera's vertical compression — one constant, one law. */
 const YK = 0.6;

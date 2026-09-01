@@ -26,7 +26,7 @@
  * own — forcing fire or venom onto CARE would make the library lie.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { burstStarPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { dust, asMatter } from './matter/index.js';

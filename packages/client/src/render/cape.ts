@@ -1,5 +1,5 @@
 import { itemDef } from '@arx/content';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { SLOT_GLINT_PHASE, glintAt, type SlotLight } from './wornLight.js';
 
 /**

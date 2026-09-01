@@ -1,5 +1,5 @@
 import { chamferRect } from './shapes.js';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import {
   RING_STEPS,
   azDelta,

@@ -1,5 +1,5 @@
 import { ELEMENT_COLORS, ENCHANT_DEFS, GRADED_PRODUCE, ITEMS, RECIPES, gradedId, itemDef } from '@arx/content';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { BOW_STYLES, DAGGER_STYLES, GREAT_STYLES, POLE_STYLES, STAFF_STYLES, SWORD_STYLES, drawBow, drawGreatweapon, drawPole, drawStaff, drawSword } from './weapons.js';
 import { TOOL_STYLES, drawTool } from './tools.js';
 import { bodyStyle, bootStyle, gloveStyle, helmStyle, legStyle, offhandStyle } from './armor.js';

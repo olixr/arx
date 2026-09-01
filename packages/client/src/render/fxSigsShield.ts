@@ -23,7 +23,7 @@
  * champions_wall's pulse index reads off bornAt (c.now - c.age).
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { srand, burstStarPath } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { dust, asMatter } from './matter/index.js';

@@ -13,7 +13,7 @@
  * wire color, so a missing entry degrades gracefully, never invisibly.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 
 // ------------------------------------------------------------- style
 

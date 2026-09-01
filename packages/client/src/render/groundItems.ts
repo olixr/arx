@@ -6,7 +6,7 @@ import {
   type ItemDef,
 } from '@arx/content';
 import { RARITY_COLORS, rarityIndex, type ItemRoll } from '@arx/shared';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import {
   bladeStyle,

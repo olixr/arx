@@ -35,7 +35,7 @@
 
 import { Tile, hashCoords } from '@arx/shared';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { windScalarAt } from './grass.js';
 
 export const OUTLINE = 'rgba(26, 20, 36, 0.45)';

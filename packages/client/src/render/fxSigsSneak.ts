@@ -19,7 +19,7 @@
  * path ops a hook, and no two centerpieces alike.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { srand, burstStarPath } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { venom, smoke, shadow, asMatter } from './matter/index.js';

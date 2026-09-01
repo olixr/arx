@@ -23,7 +23,7 @@
  * the world keeps what landed.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { boltPath, burstStarPath, jaggedRingPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { blood, dust, fire, frost, storm, asMatter } from './matter/index.js';

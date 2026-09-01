@@ -1,4 +1,4 @@
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 
 /**
  * The gatherer's roster: every axe, pickaxe, and rod resolves a style

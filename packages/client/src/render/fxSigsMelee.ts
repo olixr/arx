@@ -26,7 +26,7 @@
  * gilded return — all retired whole).
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { burstStarPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { dust, blood, asMatter } from './matter/index.js';

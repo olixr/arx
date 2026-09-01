@@ -145,6 +145,7 @@ export type InteractTarget =
   | { kind: 'bed'; tx: number; ty: number }
   | { kind: 'sign'; tx: number; ty: number; mine: boolean; blank: boolean };
 import { STATUS_INK } from '../render/statusFx.js';
+import { WORD_LIFE_MS } from './wordLife.js';
 import { Connection } from '../net/connection.js';
 import { InterpBuffer, shortestAngle } from '../net/interpolation.js';
 import { Predictor, type CastMove } from '../net/prediction.js';
@@ -196,8 +197,7 @@ export interface ChatLine {
   text: string;
 }
 
-/** One word-life — shared by the dedupe law and the renderer's prune. */
-export const WORD_LIFE_MS = 1400;
+export { WORD_LIFE_MS };
 
 /** A combat effect in flight (nova ring, telegraph, blast, reaction). */
 export interface ActiveFx {

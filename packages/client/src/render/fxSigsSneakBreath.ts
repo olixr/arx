@@ -29,7 +29,7 @@
  * cut and the snuffing is the BELL, not the flame.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { burstStarPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { asMatter, blood, frost, shadow, smoke, venom } from './matter/index.js';
