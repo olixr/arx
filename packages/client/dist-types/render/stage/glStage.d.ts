@@ -34,6 +34,9 @@ export declare class GlStage implements StageBackend {
     private readonly scratch;
     private scratchBytes;
     private frameNo;
+    /** Staging canvas for dirty-rect subuploads (grown, never shrunk). */
+    private staging;
+    private stagingFor;
     scratchPaints: number;
     scratchUploadBytes: number;
     /**

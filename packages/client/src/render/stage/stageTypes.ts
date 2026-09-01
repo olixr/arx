@@ -57,6 +57,15 @@ export interface StageTexture {
   /** Sampling for scaled blits — 'linear' matches the renderer's
    *  imageSmoothingEnabled=true default. */
   filter: 'linear' | 'nearest';
+  /**
+   * THE DIRT LIST (the atlas's economy): rects repainted since the
+   * last upload, in canvas px. A backend that can subupload consumes
+   * them with texSubImage2D and clears the list; absent or oversized
+   * dirt falls back to the full upload. Producers PUSH, the GL
+   * backend CLEARS — the canvas backend reads pixels live and never
+   * touches it.
+   */
+  dirty?: Array<[number, number, number, number]>;
 }
 
 /**

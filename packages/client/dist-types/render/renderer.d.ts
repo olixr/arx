@@ -2602,6 +2602,7 @@ export declare class Renderer {
      * the explicit lifecycle. `rev` comes from the caller (the sprite's
      * own bake stamp), so an in-place repaint re-uploads exactly once.
      */
+    private readonly spriteAtlas;
     private readonly stageTexOf;
     private stageRevSeq;
     /**
@@ -2615,6 +2616,15 @@ export declare class Renderer {
      * rev alone was trusted), and the SAME owner's in-place re-bake
      * re-uploads via its own frame stamp.
      */
+    /** THE SPRITE ATLAS's door: small sprites pack into shared pages
+     *  (few binds, dirty-rect uploads); anything oversized rides its
+     *  solo texture exactly as before. Returns the texture and the
+     *  source offset to add to a quad's sx/sy. */
+    stageAtlasTex(canvas: HTMLCanvasElement, rev: number, owner: object): {
+        tex: StageTexture;
+        ox: number;
+        oy: number;
+    };
     stageSpriteTex(canvas: HTMLCanvasElement, rev: number, owner: object): StageTexture;
     /** Lazily stand the stage up; a context loss parks it until the
      *  restore handler clears the flag (THE TOGGLE IS THE PRODUCT'S

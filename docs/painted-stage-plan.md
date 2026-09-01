@@ -1144,3 +1144,38 @@ item, a dedicated phase gated by stage-bench + the parity battery. The
 Display toggle stays default-OFF until the atlas lands the weak-profile
 win; Epic B's camera work builds on the same quad path the atlas
 consolidates, so the atlas goes first.
+
+### THE SPRITE ATLAS — AS BUILT (2026-09-01). THE SPRITES SHARE THE PAGE.
+
+render/stage/spriteAtlas.ts: twenty 2048² pages (320MB, inside the GL
+store's 512MB budget), shelf-packed with EDGE-REPLICATED 2px gutters
+(linear sampling under zoom glide reads the sprite's own rim — never a
+neighbor, never transparent black), repaint-in-place on cadence rebakes
+pushing dirty rects that glStage consumes via texSubImage2D from an
+EXACTLY-SIZED staging canvas (texSubImage2D writes source-sized texels
+— an oversized staging canvas would smear stale pixels into the page),
+the two-axis canvas+owner key (A2's pooled-canvas lesson), cold pages
+wiped whole on the sweep. One door (stageAtlasTex) serves ten emitters;
+oversized rides solo.
+
+**The atlas table** (same rig, same circuit): 20× MOVING — the born
+complaint — p90 483→217ms, worst 800→317, median parity with canvas;
+crown textures 797→319 and draws 695→614; forest 1,100→~340 textures.
+Steady heavy-city at 20× remains canvas-favored: the wall/bulk scratch
+sheet lane (~75MB/frame at crown post-circuit) is the named next lever,
+alongside SPECIES-SHARED TREE BAKES (per-instance ~400px tree sprites
+outgrow any per-instance atlas — the hash-dealt variants want a shared
+per-species/variant sheet with per-instance tint/lean at the quad).
+
+**Parity, honestly**: the toggle battery is now scripts/probes/
+stage-parity.mjs (v5 — the perf HUD column is CROPPED from sampling;
+stage-ON prints extra confession rows, a constant text delta that
+drowned pixel truth and once mimicked a catastrophic failure). Five
+scenes pass; the crown pair exceeds the +60 gate by ~12 on the atlas
+AND the pre-atlas control alike — the documented willow/NPC/AA
+marginal, tightened into visibility by the crop, not a regression.
+Judge crown against its control.
+
+Epic A stands complete. Epic B (THE CAMERA LEARNS TO LEAN) builds on
+the quad path the atlas consolidated; the Display toggle's default
+waits on the field machine's own read of the new moving smoothness.

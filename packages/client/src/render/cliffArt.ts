@@ -994,9 +994,9 @@ export function drawCliffRun(rend: PaintHost,
     if (rend.stageAssembling) {
       rend.stageWorldItems.push({
         kind: 'quad',
-        tex: rend.stageSpriteTex(sp.canvas, 0, sp),
-        sx: 0,
-        sy: 0,
+        ...((at) => ({ tex: at.tex, sx: at.ox, sy: at.oy }))(
+          rend.stageAtlasTex(sp.canvas, 0, sp),
+        ),
         sw: sp.w,
         sh: sp.h,
         dw: sp.w * k,
