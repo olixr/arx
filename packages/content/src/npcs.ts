@@ -1,3 +1,5 @@
+import { BOSS_KIT_MAX, TEMPERAMENT_BOUNDS } from './npcs/limits.js';
+export { BOSS_KIT_MAX, TEMPERAMENT_BOUNDS } from './npcs/limits.js';
 import { NPC_DEFS } from './npcs/defs.js';
 export { NPC_DEFS } from './npcs/defs.js';
 export { validateNpcDef } from './npcs/validate.js';
@@ -353,18 +355,6 @@ export const TEMPERAMENT_DEFAULTS: ResolvedTemperament = {
   variance: 0.15,
 };
 
-/** Validator bounds, [min, max] per dial — the CMS sliders' rails too. */
-export const TEMPERAMENT_BOUNDS: Record<keyof NpcTemperament, readonly [number, number]> = {
-  keen: [0.25, 3],
-  nerve: [0.25, 4],
-  investigateSec: [3, 60],
-  searchSec: [5, 90],
-  gritSec: [0, 600],
-  pursuitSec: [1, 30],
-  anticipateTiles: [0, 12],
-  searchLegs: [0, 12],
-  variance: [0, 0.5],
-};
 
 /** One resolved heart: authored dials over the shared defaults. */
 export function npcTemperament(def: NpcDef): ResolvedTemperament {
@@ -415,8 +405,6 @@ export function quirkTemperament(base: ResolvedTemperament, quirk: number): Reso
   };
 }
 
-/** Bosses may carry more voices than trash — phase gates keep each moment's hand small. */
-export const BOSS_KIT_MAX = 10;
 /** A crowned foe is shoved a step, not juggled (default knockback scale). */
 export const BOSS_KNOCKBACK_MULT = 0.25;
 /** ...and staggered a beat, not stun-chained (default shock-stagger scale). */

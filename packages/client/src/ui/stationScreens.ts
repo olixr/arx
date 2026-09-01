@@ -13,7 +13,7 @@ import { BUILDABLES, BUILD_CATEGORIES, BuildableDef, COMPOST_BATCH_WORTH, COMPOS
 import { EquipSlot, ItemRoll, PET_CAP, SkillXp, Tile, diagWallInfo, levelForXp } from '@arx/shared';
 // Back-imports from the host file — the deferred cycle every split
 // rides; touched only at render time, long after both initialize.
-import { HANDIWORK_FACE, STATION_FACE } from './stationPanels.js';
+import { HANDIWORK_FACE, STATION_FACE } from './panelFaces.js';
 import type { StationPanels } from './stationPanels.js';
 
 export function renderStable(host: StationPanels): void {

@@ -10,7 +10,7 @@ import { shade } from './tint.js';
 // The engine's shared grammar comes back from rig.ts — the same
 // deferred cycle golems.ts has always ridden (touched only at draw
 // time, long after both modules initialize).
-import { OUTLINE, faceProfileK, paintBlockBody } from './rig.js';
+import { OUTLINE, faceProfileK, paintBlockBody } from './rigKit.js';
 import type { BeastBlockFrame, BeastSpec } from './rig.js';
 
 /**

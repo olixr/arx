@@ -4,9 +4,7 @@
  */
 import { SURFACE_PLANE_ID, isRiftPlane } from '@arx/content';
 import { DoorInfo, doorInfo } from '@arx/shared';
-// Value import into the parent's own importer: legal because the class
-// is only touched inside run(), long after both modules initialize.
-import { GameServer } from '../gameServer.js';
+import { HEARTH_CD_MS } from '../tuning.js';
 import type { ChatCommand } from './types.js';
 
 // /lock — toggle the lock on the nearest shut door in reach. A
@@ -75,7 +73,7 @@ const cmdRecall: ChatCommand = {
       sys('The hearth cannot reach you in the heat of battle — break away from combat first.');
       return;
     }
-    const left = player.hearthAt + GameServer.HEARTH_CD_MS - now;
+    const left = player.hearthAt + HEARTH_CD_MS - now;
     if (left > 0) {
       const mins = Math.floor(left / 60000);
       const secs = Math.ceil((left % 60000) / 1000);

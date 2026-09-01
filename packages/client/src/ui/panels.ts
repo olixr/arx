@@ -1,3 +1,5 @@
+import { SKILL_FACE, WIELD_WORD } from './panelFaces.js';
+export { SKILL_FACE, WIELD_WORD } from './panelFaces.js';
 import * as artsWing from './panelsArts.js';
 import {
   CAST_STILL_FACTOR,
@@ -87,14 +89,6 @@ import { attachAmbient } from './kit/ambient.js';
 import { provingGround, type ProvingGround } from './artDiagram.js';
 
 /** Card display colors for the three armor weight classes. */
-/** The when clause's word for each weapon style in hand. */
-export const WIELD_WORD: Record<string, string> = {
-  onehand: 'a one-hand blade',
-  twohand: 'a two-hander',
-  polearm: 'a polearm',
-  archery: 'a bow',
-  arx: 'a staff',
-};
 
 const CLASS_COLORS: Record<string, string> = {
   cloth: '#c9a8e8',
@@ -122,40 +116,6 @@ function affixName(stat: string): string {
   return stat.charAt(0).toUpperCase() + stat.slice(1);
 }
 
-/**
- * Every skill's face: an item that embodies the craft, and an accent
- * the card's plaque and meter wear. Pure data — a new skill is a row.
- */
-export const SKILL_FACE: Record<string, { icon: string; color: string }> = {
-  vitality: { icon: 'bread', color: '#d95763' },
-  combat: { icon: 'iron_helm', color: '#b0623c' },
-  onehand: { icon: 'bronze_sword', color: '#c4553d' },
-  defence: { icon: 'oak_kiteshield', color: '#8ac4e8' },
-  archery: { icon: 'stickbow', color: '#7dc46a' },
-  arx: { icon: 'apprentice_staff', color: '#b49af0' },
-  mining: { icon: 'bronze_pickaxe', color: '#9aa2ac' },
-  woodcutting: { icon: 'bronze_axe', color: '#b08a5c' },
-  fishing: { icon: 'fishing_rod', color: '#7fb2d9' },
-  smithing: { icon: 'bronze_bar', color: '#e8944a' },
-  woodworking: { icon: 'oak_log', color: '#a8794a' },
-  leatherworking: { icon: 'leather', color: '#b08a5c' },
-  tailoring: { icon: 'cloth', color: '#c9a8e8' },
-  cooking: { icon: 'trout', color: '#e8b64c' },
-  construction: { icon: 'log', color: '#c98d4b' },
-  farming: { icon: 'carrot', color: '#7ac46a' },
-  foraging: { icon: 'berries', color: '#9ac46a' },
-  herbalism: { icon: 'sagewort', color: '#7ac4a0' },
-  enchanting: { icon: 'arcane_dust', color: '#b49af0' },
-  beastcraft: { icon: 'bones', color: '#c4b590' },
-  sneak: { icon: 'bronze_dagger', color: '#8a7fae' },
-  twohand: { icon: 'iron_greatblade', color: '#c47a3d' },
-  // The reaching school's coin wears the CREST (the head half zoomed
-  // to the box), not the item icon — a full-length spear at coin size
-  // reads as a hairline.
-  polearm: { icon: 'polearm_crest', color: '#9a8560' },
-  dualwield: { icon: 'bronze_dagger', color: '#d9a441' },
-  shield: { icon: 'tower_shield', color: '#9db6cc' },
-};
 
 /**
  * One quiet line under each skill's name — what the craft IS. Shared

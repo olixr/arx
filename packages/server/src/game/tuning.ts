@@ -11,3 +11,10 @@ export const MIN_GATHER_TICKS = 60;
 export const MILK_TICKS = 60;
 /** How long suspicion keeps a hunter dwelling on a last-known spot. */
 export const SUS_DWELL_TICKS = 24;
+
+/** How far a chaining working looks for its next foe, tiles. */
+export const CHAIN_PROC_RANGE = 5;
+
+  /** How long the hearth rests between recalls. */
+export const HEARTH_CD_MS = 10 * 60 * 1000;
+export const WILD_MAX_R = 56;

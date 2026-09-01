@@ -15,7 +15,7 @@ import { CALLING_MAX_RANK, CallingCondition, CallingDef, CallingEffect, CallingG
 import { CAST_STILL_FACTOR, HIDDEN_SKILLS, RANK_ROMAN, SKILL_IDS, SkillId, TECHNIQUE_MAX_RANK, TechniqueDef, callingCost, focusBudget, honedAbility, levelForXp, masteryXp, rankLevel, skillName, techniqueAnchor, techniqueRankFor } from '@arx/shared';
 // Back-imports from the host file — the deferred cycle every split
 // rides; touched only at render time, long after both initialize.
-import { SKILL_FACE, WIELD_WORD } from './panels.js';
+import { SKILL_FACE, WIELD_WORD } from './panelFaces.js';
 import type { Panels } from './panels.js';
 
 /** Combat schools owning a technique ladder, hidden law honored. */

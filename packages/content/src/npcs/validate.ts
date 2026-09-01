@@ -4,7 +4,7 @@
  */
 import { DAMAGE_LANES } from '../npcLanes.js';
 import { STATUS_IDS, StatusId } from '@arx/shared';
-import { BOSS_KIT_MAX, TEMPERAMENT_BOUNDS } from '../npcs.js';
+import { BOSS_KIT_MAX, TEMPERAMENT_BOUNDS } from './limits.js';
 import type { NpcTemperament } from '../npcs.js';
 
 /**

@@ -13,9 +13,8 @@ import { advanceStages, questAvailable, questReady } from '../quests.js';
 import { stampFire } from '../triggers.js';
 import { APIARY_MINUTES, APIARY_STORE_CAP, ARENAS, ArxElement, CALLINGS, CALLING_MAX_RANK, COMPANIONS, COMPOST_MINUTES, ELEMENT_COLORS, FACTIONS, FRONTIER, GROWTH_BARE, GROWTH_DRIFTED, GROWTH_STATE_NAMES, GrowthRow, MOUNTS, MUSEUM_PLANE_ID, NPCS, POI_DEFS, ProcAction, STRONGHOLD_DEFS, SURFACE_PLANE_ID, TAMES, TriggerEdge, WORK_RECIPES, arenaTitleFor, callingDef, companionDef, creepWaitFor, crownPoolFor, dangerLaw, enchantDef, factionDef, familiesOf, forgeCrown, groundProbeAt, growMs, growthDialectOf, itemDef, makeRoll, mountDef, petArtDef, projectGrowth, shoreProbeAt, standingBand, tameDef, territoryAt, totalXpForArenaRank, triggerOnceFlag, wildCandidates } from '@arx/content';
 import { CHUNK_SIZE, COMPANION_CAP, ChestKind, Detail, ItemRoll, MAX_ITEM_POWER, PET_CAP, PET_REST_HOME_MS, RANK_ROMAN, RARITY_TIERS, STATUS_IDS, TICK_RATE, TIME_NAMES, Tile, bracketSignDetail, clockHoursAtTick, closedChestTile, dungeonSpecFromRoll, isRarityTier, isSkillId, keyUsesForTier, levelForXp, mintKeyPower, ofsForHours, pennantDetail, petBondRank, petFocusMax, petLevelFor, trellisDetail, wallBannerDetail, wallHungInfo } from '@arx/shared';
-// Value import into the parent's own importer: legal because the class
-// is only touched inside run(), long after both modules initialize.
-import { GameServer } from '../gameServer.js';
+import { hearthOwnerOf } from '../formulas.js';
+import { HEARTH_CD_MS, WILD_MAX_R } from '../tuning.js';
 import type { ChatCommand } from './types.js';
 
 /** One sample of every action shape, for the /proc dev lever. */
@@ -1578,7 +1577,7 @@ const cmdWilds: ChatCommand = {
     let near = 0;
     for (const weid of srv.wildBodies.keys()) {
       const wpos = srv.positions.get(weid);
-      if (wpos && Math.hypot(wpos.x - pos.x, wpos.y - pos.y) <= GameServer.WILD_MAX_R + 24) {
+      if (wpos && Math.hypot(wpos.x - pos.x, wpos.y - pos.y) <= WILD_MAX_R + 24) {
         near++;
       }
     }
@@ -2027,7 +2026,7 @@ const cmdFrontier: ChatCommand = {
       if (r.site === null) continue;
       if (r.site.defId === 'road_toll') tolls++;
       else if (r.site.defId === 'peddler_rest') peddlers++;
-      else if (GameServer.hearthOwnerOf(r.originCell) !== null) squats++;
+      else if (hearthOwnerOf(r.originCell) !== null) squats++;
       else if (r.originCell !== null) sats++;
       else if (r.stage > 0) staged++;
     }

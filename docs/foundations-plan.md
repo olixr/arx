@@ -349,3 +349,16 @@ F7-endgame targets. renderer.screenAnchor ends the six-fold HUD triple. Band eig
 Ops laws learned twice: kill rigs by PID FILE (/tmp/rig36.pid now), never pkill by
 pattern (it ate the standing rig-36 twice); never gate a probe through `| tail` (the
 pipe eats the exit code — one commit went in unproven and was re-proven after the fact).
+
+**F4 wave two — F4.6 interest (0da2ff7a) / F4.7 keyring+dungeonRuns (2fbdf428) /
+F4.8 arena (b414e56d, characterization-first: arenaDoors.test.ts pins THE GATE MUST
+OPEN ONTO GROUND) / F4.9 farming (ce81124b) / the pace-laws leaf (d447f052),
+2026-09-01.** 59 methods to five modules behind the delegator law; gameServer.ts
+29,808 → 28,168. **THE RATCHET'S FIRST CATCH:** the band's first cut was refused by
+check-cycles in the merge pipeline — farming's value back-import for two statics would
+have been a new gameServer pair. The fix is the pattern for the whole F7 endgame:
+constants flow DOWNHILL (game/tuning.ts took MIN_GATHER/MILK/SUS_DWELL ticks), the
+farming AND standing edges dropped, and the server baseline tightened 4 → 3. Found
+content debt, pre-existing: data/prefabs/poi_iron_rest.json is skipped at boot (route
+legs over the 12-hop cap — six legs, max 19) — worth an authoring pass. Dialogue stays
+the last charted F4 seam (needs characterization tests). Band nine merged to main.

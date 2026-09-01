@@ -11,6 +11,7 @@ import {
   stageWaitFor,
 } from '@arx/content';
 import { GameServer } from './gameServer.js';
+import { hearthOwnerOf } from './formulas.js';
 import { POI_CELL, poiCellKey, poiContext, poiForCell, composePoi, type PoiSite } from '../world/pois.js';
 import { config } from '../config.js';
 
@@ -583,9 +584,6 @@ const proto4 = GameServer.prototype as unknown as {
   liveDangerTier: Fn;
   poiCtx: Fn;
 };
-const hearthOwnerOf = (
-  GameServer as unknown as { hearthOwnerOf: (o: string | null) => number | null }
-).hearthOwnerOf;
 const hearthOrigin = (
   GameServer as unknown as { hearthOrigin: (id: number) => string }
 ).hearthOrigin;

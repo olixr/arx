@@ -5,9 +5,7 @@
  */
 import { PlaneId, isRiftPlane, itemDef, movesetFor, rolledStats, strikePose, weaponStrikeEffects } from '@arx/content';
 import { BACKSTAB_MULT_DEFAULT, COMBO_STAGES, DestructibleInfo, EntityId, EntityKind, GUARD_SWEEP_KNOCKBACK, GUARD_SWEEP_RANGE, GUARD_SWEEP_WINDUP, PLAYER_POWER_PER_LEVEL, POLEARM_WAR_GRIP_MULT, STRIKE_CLOCKS, SkillId, StatusId, TILE_DEFS, TWOHAND_ARC_HALF, Tile, advanceCombo, destructibleInfo, isBehind, levelForXp, nearestFloorTile, offhandDamageFactor, powerMult as powerMultFn, statusSwingFactor, swingCooldown, swingMult } from '@arx/shared';
-// Deferred value import of the parent module's own helpers — touched
-// only inside the moved functions, long after both modules initialize.
-import { rollBasic, surgeCritPct, surgeDmgMult } from './gameServer.js';
+import { rollBasic, surgeCritPct, surgeDmgMult } from './formulas.js';
 import type { GameServer, PlayerComp } from './gameServer.js';
 
 export function equippedWeapon(srv: GameServer, player: PlayerComp) {
