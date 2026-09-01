@@ -304,3 +304,21 @@ lane mutates (visSpriteMsLeft, visArrivalCount, cliffMemo/cliffSprites, stage* s
 renderer.ts 33,869 → 28,456. Falls coverage verified in-frame before trusting parity
 (crown scenes: 1,559 fallMemo entries). Parity PASS ×7; band five merged to main.
 F2's runner-up (unifying the cast/stageCast brush twins) remains charted, not done.
+
+**F5.1 — THE SHELL FINDS ITS ROOMS (bcc7d2da) / F5.2 — THE WIRE'S TABLE (570c9861),
+2026-09-01.** New proof rigs FIRST: THE SHELL SMOKE (scratchpad/ui-smoke.mjs — all 13
+dock screens open/Escape-close, world alive, zero page errors) and THE LOGIN VIEWS probe
+(scratchpad/login-views.mjs — signin↔register↔roster/quick, card written and dealt).
+F5.1: ui/dock.ts (roster + badges; click wiring now DERIVED from the roster),
+ui/displaySettings.ts (returns the walk-over box; game reached via a deferred callback —
+TDZ law: shell singletons construct in script order, so extracted init calls either stay
+put with lazy closures or move below their deps), ui/screenRouter.ts (THE ONE SCREEN LAW
+whole, benchReturn behind accessors, router constructed AFTER all panels stand),
+ui/loginFlow.ts (owns view/roster/chosen; shell keeps tokens + in-flight attempt).
+main.ts 4,492 → 4,072. F5.2: handleMessage's 72 arms → `S2C_HANDLERS`, a static table
+TOTAL over `S2CMessage['t']` — new S2C types fail to compile unhandled (the client half
+of F6's protocol goal, landed early). Characterization pins (messageLaws.test.ts, written
+against the switch) pass identically against the table; `break` semantics audited
+(switch-breaks → returns, loop breaks kept). Band six merged to main.
+REMAINING in F5 (charted): F5.3 Panel base + Arts/Callings wing + nine station screens;
+GameEvents domain adapters; FrameClocks; renderer.screenAnchor.
