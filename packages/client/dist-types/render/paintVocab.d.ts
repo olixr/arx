@@ -82,4 +82,29 @@ export declare const FENCE_RAIL = "#8a6534";
  *  Garrison gates carve out the same way: they belong to the
  *  garrison run pipeline, never the building-doorway one. */
 export declare const PANEL_DOOR_TILES: Set<number>;
+/**
+ * The knee-high stub every revealed wall sinks to — ONE height, shared
+ * by every wall kind in every zone, so adjacent runs of different
+ * materials (or a doorframe mid-run) always meet at the same crown
+ * line while cut. Waist on the body scale: low enough to see over,
+ * tall enough to still read as the wall's footprint.
+ */
+export declare const WALL_STUB = 0.62;
+/**
+ * THE GARRISON SCALE — curtain-wall height in tiles. Fortification
+ * reads as fortification only when it dwarfs the house grammar: the
+ * rampart stands half again over WALL_H (2.05) and three bodies over
+ * the 1.15-tile rig, with the crenellated parapet rising MERLON_H
+ * above the wall-walk on top of that. Anything between "house" and
+ * "keep" muddies both reads — if this ever changes, re-audit the
+ * deep-south culling admission (a 3.4 + 0.5 crown spans ~6.5 screen
+ * rows at yScale 0.6) and the lighting tallH callback with it.
+ */
+export declare const GARRISON_H = 3.4;
+/** Parapet tooth above the wall-walk — chest-high on the crown. */
+export declare const MERLON_H = 0.5;
+/** Gatehouse leaves: iron-bound oak, darker than any house door. */
+export declare const GAR_LEAF = "#4e3a20";
+/** Deterministic per-stone jitter, world-keyed like the terrain bake. */
+export declare function stone01(a: number, b: number, c: number): number;
 //# sourceMappingURL=paintVocab.d.ts.map
