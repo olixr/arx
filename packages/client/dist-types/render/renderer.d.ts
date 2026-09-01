@@ -319,7 +319,7 @@ export declare class Renderer {
     private sdwLayerAlpha;
     /** True while a silhouette mask bake replays a painter offscreen —
      *  gates side effects (glow queues, sparkles) out of the bake. */
-    private bakingMask;
+    bakingMask: boolean;
     /** Cached silhouette masks for TRUE-FORM cast shadows, keyed per
      *  formation; cleared wholesale when the cap trips (rebakes are
      *  cheap and only visible formations rebake). */
@@ -540,8 +540,8 @@ export declare class Renderer {
      */
     private zoomGliding;
     private frameDt;
-    private w;
-    private h;
+    w: number;
+    h: number;
     private hitstopUntil;
     private vignetteUntil;
     /** Hurt-band ink — a DoT tick tints the edge toward its wound. */
@@ -944,7 +944,7 @@ export declare class Renderer {
      * renderLift runs for every body and item every frame, and a per-
      * call sampler allocation is real garbage in a hot path.
      */
-    private porchAt;
+    porchAt(game: ClientGame, tx: number, ty: number): boolean;
     /** Ramp mouth probe directions, hoisted — this literal used to be
      *  allocated fresh on every renderLift call over a ramp tile. */
     private static readonly RAMP_DIRS;
@@ -1559,14 +1559,6 @@ export declare class Renderer {
      *  identity is exactly right; never use for signature content. */
     private olObjId;
     /** Wall-run auto-tiler membership — shared law (tiles.ts). */
-    /** Every WALL doorway tile — open and shut, both orientations and
-     *  widths. Fence gates are doors on the wire (locks, occupancy,
-     *  auto-close all ride DOOR_INFO) but they are fence props to the
-     *  renderer — kept OUT of this set so the wall-doorway pipeline
-     *  (side-notch law, wide merges, veil, wallish) never sees them.
-     *  Garrison gates carve out the same way: they belong to the
-     *  garrison run pipeline, never the building-doorway one. */
-    private static readonly DOOR_TILES;
     /** The whole fortification family — shared law (tiles.ts). */
     private static readonly GARRISON;
     /** Garrison tiles that are MASS (wall, 45° turns, shut gate) — what
@@ -1595,7 +1587,7 @@ export declare class Renderer {
      * wall. South-facing doorways still merge (their frame carries the
      * run through the opening).
      */
-    private wallish;
+    wallish(game: ClientGame, tx: number, ty: number): boolean;
     /** What stops lamplight — shared law (tiles.ts). */
     private static readonly LIGHT_BLOCKERS;
     /** The stone plinth every timber wall stands on. */
@@ -1933,148 +1925,6 @@ export declare class Renderer {
      */
     private woodCrownPlate;
     /**
-     * THE HANGING LAW — wall-hung cloth. Detail.BannerCrown, BannerMoon,
-     * and Tapestry are authored ON a wall tile and painted by that
-     * wall's own face pass, inside the face frame: the cloth leans,
-     * sinks, and sorts with the masonry it hangs from, and like glazing
-     * it sheds when the reveal eases the wall below hanging height — a
-     * sinking wall drops its rod before the crown could swallow it. The
-     * ground bake draws nothing for these details (WALL_HUNG_DETAILS).
-     * Coordinates are face-local: x in screen px, y rising NEGATIVE
-     * from 0 at the wall's south base.
-     */
-    private wallHangings;
-    /**
-     * THE WALL TAKES A HANGING — the player's banner: the royal
-     * swallowtail grammar in the ten common dyes, a woven diamond
-     * where the crown would sit. Two-beat cloth (hoist sways, tails
-     * trail), its own shadow seating it on the masonry.
-     */
-    private playerBannerOnFace;
-    /**
-     * The woven charge at a great cloth's heart, drawn in the house
-     * metal. Features stay at or above the chest-law minimum — bold
-     * marks the avenue reads, never embroidery only a zoom sees.
-     */
-    private paintBannerEmblem;
-    /**
-     * THE GREAT CLOTH — the castle drop shared by the wall's
-     * GreatBanner and the standing BannerStand (one cooper: never fork
-     * the dialect). A square-bodied drop with a CRENELLATED hem — two
-     * square notches biting up between three teeth, the castle-pillar
-     * cut; the swallowtail stays the royals' and the street's. TRUE
-     * SEWN BORDER law: the border is a trim-colored fill of the full
-     * silhouette with the dye field inset, never a stroked line.
-     * THE COLOR IS THE HOUSE: the woven charge follows the DYE (dye %
-     * BANNER_EMBLEM_COUNT) — never a position hash, whose grid seams
-     * once flew two different houses on one authored gatefront. Choose
-     * the cloth, choose the charge; a matched pair can never argue.
-     * Returns the outer path for the caller's ink.
-     */
-    paintGreatCloth(cx: number, yTop: number, bw: number, bl: number, dye: number, s: number, sway: number, lag: number): Path2D;
-    /**
-     * THE WALL TAKES THE STEEL — mounted arms on the armory face.
-     * Steel is STILL: nothing here samples the breeze but the great
-     * crest's mantling ribbons — a mounted sword that swayed would
-     * read as hanging by a thread. Every piece throws a soft SE ghost
-     * on the masonry (the WeaponRack's iron-off-the-wood law), wears
-     * one west light, and rings its own exposed silhouette; lapped
-     * steel inks under the piece that laps it (the woodpile law
-     * brought to the wall).
-     */
-    private wallArmsOnFace;
-    /**
-     * THE CASTLE DROP — the great hall banner off a lance rod. Taller,
-     * wider, and crenel-hemmed against the street banner's swallowtail;
-     * garrison faces fly it garrison-tall so the avenue reads the
-     * colors from the market. Charge by the sixteen-tile heraldry.
-     */
-    private greatBannerOnFace;
-    /**
-     * THE LONG FALL — a floor-length drape off a turned timber rod:
-     * gathered at a corded waist, flaring to a hem that PUDDLES on the
-     * boards (cloth long enough to spill is the luxury the castle pays
-     * for). Interior cloth has weight: the hem barely breathes, the
-     * tie tassel swings a touch — never the street banner's ripple.
-     */
-    private drapeFallOnFace;
-    /**
-     * THE HERALD'S ROW — hanging pennants: a wrought rail bearing three
-     * long tapered pennons in the chosen dye, each bordered in its cream
-     * partner (the fill is trim, the inner field cloth — a true sewn
-     * border, never a stroked cheat), the center pennon longer and
-     * charged with the woven diamond, the points running out solid trim
-     * into a bound tassel. Headers are pinned to the rail; the body
-     * sways and the tip trails a beat behind (the two-beat law), each
-     * pennon a phase out of step with its neighbours. Adjacent pennant
-     * tiles merge into one continuous rail — straps only at true free
-     * ends (the ONE RAIL law brought to the wall). ONE PATH: each
-     * pennon's silhouette is both its fill and its ring.
-     */
-    private pennantOnFace;
-    /**
-     * The bracket sign — PERSPECTIVE-HONEST: a board hung perpendicular
-     * to a south face would show the camera only its edge, so on these
-     * faces the trade board hangs FLAT IN THE WALL PLANE — a wrought
-     * rod above it, two chains to its corners, the whole sign swinging
-     * as a pendulum in that plane (an honest motion for an in-plane
-     * board). The face-on read is legitimate carpentry, not a cheat:
-     * wall-hung painted boards are period signage. Eight carved motifs,
-     * chunky enough to read at street zoom.
-     */
-    private bracketSignOnFace;
-    /**
-     * One carved trade motif, centered at (mx,my) in a w-wide field —
-     * chunky flat-vector, two tones, readable at street zoom. Order is
-     * FOREVER (the id math): mug, loaf, blade, fish, sprig, boot, bed,
-     * hammer.
-     */
-    private signMotif;
-    /**
-     * The trellis: garden lattice up the wall face, a climbing vine
-     * choosing its species — ivy's deep green, the madder rose in
-     * bloom, the hopvine's pale cones. Leaf tips flutter; the blooms
-     * carry a glint (the beacon law, whispered).
-     */
-    private trellisOnFace;
-    /**
-     * The wall basket: a wicker bowl off a bracket peg, blooms in the
-     * FlowerBox's own mixed palette, swaying on its rope like a slow
-     * pendulum. The gardener's smallest word.
-     */
-    private wallBasketOnFace;
-    /**
-     * THE HERBALIST'S SILL: three glazed pots standing on the window's
-     * sill course, herbs by mix — the one hanging painted by the window
-     * stack itself. Coordinates arrive in the wall's leaned face frame;
-     * sillY is the glass's bottom edge (the sill course paints just
-     * below it). GLAZED WARE NEVER BARE CLAY: the pots deal from the
-     * jar-glaze roster, each with its slip band and lit cheek, and the
-     * row is dealt — heights, jitter, and species stations vary by the
-     * world hash so no two sills in a street read as one stamp.
-     */
-    private sillHerbsOnSill;
-    /**
-     * THE HARVEST ON THE BEAM: a pegged oak batten across the wall
-     * face, three heads-down drying bundles and a seed string swinging
-     * on the banner's two-beat breeze — the herbalist's overflow where
-     * the freestanding rack is the workshop station. Bundle heads reuse
-     * the rack's layered-teardrop grammar at wall scale; the mix keys
-     * the hues (green harvest / healer's mix / seed heads).
-     */
-    private herbBundlesOnFace;
-    /**
-     * The grand tapestry — the Silverfall weave. Adjacent wall tiles of
-     * the same run carrying Detail.Tapestry merge into ONE wide hanging:
-     * every member computes the run's extent, draws the ENTIRE
-     * composition, and clips to its own face span, so the picture
-     * assembles seamlessly from identical geometry (the one-loom law,
-     * raised onto the wall). The scene is the city's own: the silver
-     * fall dropping from the ridge saddle past the keep to the water,
-     * under a gold sun.
-     */
-    private tapestryOnFace;
-    /**
      * A 45° wall corner tile. The mass fills one triangle (named by the
      * tile); the open triangle faces the exterior. NE/NW-mass variants
      * cut a building's camera-side corners and show their SLOPED
@@ -2122,7 +1972,7 @@ export declare class Renderer {
      * a N-S run breaks the run exactly like a side doorway, so the
      * curtain shows real jambs at an edge-on passage.
      */
-    private garrisonish;
+    garrisonish(game: ClientGame, tx: number, ty: number): boolean;
     /**
      * SIDE-GATE LAW: a garrison gate's orientation comes from the
      * curtain it pierces — solid garrison mass (or more of the same
@@ -2678,60 +2528,6 @@ export declare class Renderer {
      * so it survives elevated shelves, but before anything standing on it.
      */
     private rampApronItem;
-    private static readonly ORE_STYLES;
-    private static readonly BARREN_STONE;
-    private static readonly BARREN_DIM;
-    /**
-     * One rectangular stone block, spoken in the cliff dialect: broad
-     * front face, lit cap strip across the top, shaded lane down the
-     * off-light flank — hard 45° top chamfers, flat fills, one crisp
-     * dark outline. `lean` shears the top edge sideways so stacked
-     * blocks read geologic, never machined. Returns the silhouette so
-     * callers can clip veins INTO the stone.
-     */
-    private stoneBlock;
-    /**
-     * One TALL hewn monolith: a single tapering silhouette with a
-     * stepped ledge on each flank — the "you walk up against it"
-     * landmark mass. Same flat grammar as stoneBlock (lit cap, shaded
-     * lane, shader-rung silhouette) but drawn as ONE rock, so height never reads
-     * as a pancake tower of crates. Returns the silhouette so callers
-     * can clip veins INTO the stone.
-     */
-    private monolith;
-    /**
-     * One BIG rectangular ore node: a deep-toned frame around a bright
-     * mineral face, capped with a hard square glint. The nodes are the
-     * protagonists of a deposit — blocky, rigid, sized to read from
-     * across the screen, planted proud of the host stone.
-     */
-    private oreNode;
-    /**
-     * THE GROWING FRAME's body: three bent withy hoops over the bed, a
-     * ridge lath, and the oiled cloth — rolled to one side on a bare
-     * frame, drawn as a low translucent skirt over a planted one (the
-     * plant shows through; the cloth is the promise of warmth, never a
-     * curtain over the art).
-     */
-    drawGrowingFrame(bx: number, gy: number, h: number, planted: boolean): void;
-    /** A four-point star twinkle - the "this is mineable" beacon. */
-    sparkle(x: number, y: number, r: number, alpha: number, color: string): void;
-    /** Blocky spall scattered at a formation's feet - grounds the mass. */
-    rubble(px: number, py: number, s: number, h: number, colors: string[]): void;
-    /**
-     * MINING NODES — every metal is a bespoke LANDMARK in the brutalist
-     * dialect: rectangular blocks, hard chamfers, flat fills, no
-     * pebble-circles. Copper raises a rust obelisk with a seam of raw
-     * metal climbing its full height. Tin lays an oblong ridge crested
-     * by a march of cubic crystals. Iron stacks banded slabs into a
-     * natural anvil. Coal drives a jagged black seam-wall up between
-     * grey shoulders. Gold splits a standing pillar with a quartz vein
-     * crowned in nuggets. Deposits stand player-tall or better, and all
-     * of them twinkle at idle — the eye finds a mineable node before
-     * the tooltip does. Every formation mirrors and resizes off its
-     * world hash so no two reads stamped.
-     */
-    private drawRockFormation;
     /**
      * The forest is GROWN, not authored: render/trees.ts turns each
      * tile's hash into a deterministic branching skeleton — species
@@ -2815,12 +2611,12 @@ export declare class Renderer {
      *  settled and is dropped — `has()` alone would pin the stretch
      *  live forever. */
     private doorHot;
-    private doorOpenness;
+    doorOpenness(tx: number, ty: number, open: boolean): number;
     /**
      * Signed shudder offset for a locked door's refusal — a quick
      * decaying knock-knock in the frame. Zero when quiet.
      */
-    private doorShakeAt;
+    doorShakeAt(tx: number, ty: number): number;
     /**
      * PROP SHUDDER — a durable prop absorbing a blow that didn't finish
      * it. Same decaying-knock clock as the door rattle; keyed per tile,
@@ -3340,242 +3136,7 @@ export declare class Renderer {
      * blit a ring-baked sprite (regrowth, felling shudder).
      */
     private treeBody;
-    /** Everything a chest painter needs for one frame. */
-    private static chestPose;
-    /**
-     * The revealed mouth: the body's own plan as a dark cavity — one
-     * bold lining band on the near wall, one sunlit near-rim lane.
-     */
-    private chestMouth;
-    /**
-     * The standing open lid: the lid's inner face as a square slab
-     * rising behind the box — frame color around a lining inset, a cap
-     * strip along the top. Bespoke trim is painted by the caller.
-     */
-    private chestStandingLid;
-    /**
-     * A moss slab: a low-poly rectangular patch — deep seat offset
-     * down-right, square body, one bold lit top strip. Never a blob.
-     */
-    private mossSlab;
-    /**
-     * WOOD — the traveller's trunk. Honest warm boards carried by two
-     * broad silver straps and a silver arris cap: the metal is the
-     * contrast, the wood stays quiet.
-     */
-    drawChestWood(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number): void;
-    /**
-     * MOSSY — the wayside elder. A batten-built chest with no metal
-     * left worth naming, being claimed one square slab of moss at a
-     * time. Blocky moss, blocky mushrooms, quiet wood.
-     */
-    drawChestMossy(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number): void;
-    /**
-     * IRON — the strongchest. Dark timber in an iron grip: corner
-     * columns, one massive belt, and a padlock the size of a fist.
-     * The lock IS the promise; it goes with the key that opens it.
-     */
-    drawChestIron(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number): void;
-    /**
-     * GILDED — the coffer. A stepped gold crown over a lacquer inlay:
-     * treasure-house work, all big faces and one set stone. The value
-     * ladder does the shining; the sparkles only visit.
-     */
-    drawChestGilded(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number, t: number, h: number): void;
-    /**
-     * BOSS — the black cache. A pedestal-set black mass in angular
-     * iron, fronted by a bone skull whose sockets smoulder while the
-     * hoard is still inside. Legendary is a silhouette, not a shimmer.
-     */
-    drawChestBoss(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number, t: number, h: number): void;
     /** Trees, rocks, stations — the object layer, redrawn with character. */
-    /** Fence-family connectivity: rails reach toward these neighbours. */
-    private fenceish;
-    /**
-     * A square-hewn fence post wearing a foreshortened cap plane — the
-     * 2.5D anchor every fence mass hangs from (crate-lid grammar: lit
-     * plane, shaded far edge, sunlit front arris). Paints its own brand
-     * outline; call it AFTER the rails so the post face covers their
-     * run-through seams and every joint reads carpentered.
-     */
-    private drawFencePost;
-    /**
-     * THE FENCE REBUILD — post-and-rail stock fencing in the game's
-     * 2.5D dialect. One capped post per tile; two rails with REAL board
-     * thickness (a lit top plane over a front face) reach half a tile
-     * toward every fence-family neighbour, so a run reads as one
-     * carpentered line. N-S runs are the honest edge-on projection:
-     * each rail shows only its top plane, a narrow strip marching
-     * up-screen — the sunlit upper strip overlays the shaded lower one,
-     * and the two-board step surfaces only where a run dies south into
-     * a post (never mid-run: the south neighbour repaints it). 45°
-     * tiles stride corner-to-corner with sheared boards; straight tiles
-     * grow a matching stub toward any 45° neighbour whose line points
-     * back at them, so turns are continuous rail, not butted ends.
-     * Every mass strokes its own structural outline live (the wall law:
-     * exposed edges only, shared edges never) — estate-length runs ring
-     * seamlessly with no bake cap, and the post, drawn last, covers
-     * every joint.
-     */
-    private fenceItem;
-    /**
-     * THE FENCE GATE — a waist-high five-bar field gate hung between
-     * two stout capped hinge posts, riding the door law wholesale (the
-     * tile is the state; doorOpenness eases the swing, a locked rattle
-     * shudders it). E-W gates swing the leaf flat against the west
-     * hinge (the door-leaf law: width compresses toward the hinge,
-     * edge-on shade deepens, detail collapses to a slab). N-S gates
-     * read edge-on when shut — a framed strip barring the gap — and
-     * throw ONE leaf front-on into the east column when open (the
-     * side-door law: never a pair).
-     */
-    private fenceGateItem;
-    /**
-     * Palisade connectivity: the war camp's wall merges ONLY with its
-     * own kind (the separate-masonry law, third family) — a goblin
-     * stockade dying into a town fence or house wall would read as one
-     * builder's work, and they are not.
-     */
-    private palisadeish;
-    /**
-     * ONE GIANT CARVED LOG — the unit the whole wall is built from. A
-     * quarter-tile round hewn from a whole trunk: four value bands roll
-     * the cylinder (FLAT FORGE — planes, never strokes), one or two
-     * axe-notch carvings bite the face, and the crown is a big two-facet
-     * chisel cut with an undercut shadow seating it on the body. Each
-     * log wears its OWN brand ring — a palisade is a row of monuments,
-     * not a fence panel — and overlapping logs occlude each other's ink
-     * honestly because fill and ink land together, log by log.
-     */
-    private giantLog;
-    /** Shoulder height for log k of a tile — big and uneven (1.3 to
-     *  1.62 tiles over the 1.15-tile body: the wall MEANS it). */
-    private logShoulder;
-    /**
-     * THE HEAVY LASH: a thick rope course bound across a span of logs —
-     * dark wrap band, two lit strands, a shadowed wrap tick where it
-     * rounds each log seam, and a knot with a dangling end at one
-     * hash-picked log. Fill-only value work (the logs own the ink).
-     */
-    private palisadeRope;
-    /**
-     * A GATE POST: the fattest log in the wall, with a rope hinge
-     * collar and — on one side of every gate — the camp's skull staring
-     * down the road.
-     */
-    private drawPalisadePost;
-    /**
-     * THE SPIKED WALL, rebuilt — GIANT CARVED LOGS, not a fence. Four
-     * whole trunks to the tile (each its own monument: rolled value
-     * bands, axe notches, a big two-facet point, its own black ring),
-     * bound by heavy rope courses. Every direction speaks the same
-     * vocabulary of STANDING logs:
-     *  - E-W runs: logs shoulder to shoulder, widths hash-split so no
-     *    two neighbors match, half-tile pitch so runs meet log-true.
-     *  - N-S runs: logs MARCH UP-SCREEN in depth — each drawn whole,
-     *    the next-south overlapping it, leaving a ridge of crowned
-     *    points climbing the screen (never an extruded strip).
-     *  - 45° strides: the same marching logs stepping corner-to-corner
-     *    — vertical giants on a diagonal line, never sheared planks.
-     * A fat junction log anchors every corner, tee, and run end.
-     */
-    private palisadeItem;
-    /**
-     * THE GREAT GATE — the camp's one piece of architecture. Two
-     * towering gate posts (the fattest logs in the wall, rope hinge
-     * collars, the skull watching the road) carry a squared lintel beam
-     * overhead: a true top plane for the bird's eye, three carved
-     * spikes standing on it, lashed to the posts at both ends. Below
-     * swing DOUBLE doors of lashed half-logs that meet at a rope-bound
-     * center seam — open, each leaf folds flat against its own post.
-     * N-S gates keep the posts-and-leaf grammar edge-on (a lintel seen
-     * end-on is a sliver, so the vertical gate lets its posts carry the
-     * height instead).
-     */
-    private palisadeGateItem;
-    /**
-     * Iron-fence connectivity: the graveyard's wall merges ONLY with
-     * its own kind (the separate-masonry law, FIFTH family) — a
-     * smith's railing dying into a timber fence or clipped green would
-     * read as one builder's work, and a smith is neither carpenter nor
-     * gardener.
-     */
-    private ironish;
-    /**
-     * ONE WROUGHT BAR — the unit the whole railing is forged from. A
-     * slim square bar, blue-black (this iron drinks the light), one
-     * cool lit arris down the west edge, crowned by a two-facet spear
-     * leaf above the top rail. The smith's work was true; the years
-     * were not: a rare bar stands bent at the shoulder, and a rarer
-     * one is gone at the root with only a rust bloom to say so. The
-     * gaps are the POINT — a graveyard rail is drawn so the eye passes
-     * between the bars and finds the stones it keeps.
-     */
-    private ironBar;
-    /**
-     * THE CURB — the granite course the railing is leaded into. A low
-     * coursed-stone footing with a TRUE foreshortened top plane (the
-     * bird's eye sees stone, never a paint stripe), joint ticks on the
-     * half-tile, and the yard's damp green creeping up the shaded
-     * spots. Every run stands on this; iron never touches soil.
-     */
-    private ironCurbEW;
-    /**
-     * A GRAVE PIER — the masonry that anchors every corner, tee, run
-     * end, and gate. Stepped plinth, coursed granite shaft, a molded
-     * cap with a TRUE top plane for the bird's eye, and a dark iron
-     * finial standing on it: an urn on the piers that keep the yard,
-     * an orb-and-spike on the piers that carry the gate.
-     */
-    private drawGravePier;
-    /** A rail band: dark iron with one lit top thread, drawn OVER the
-     *  bars so every bar reads as pierced through, never glued on. */
-    private ironRail;
-    /**
-     * THE ORNAMENT BAND: what the smith did between the second rail
-     * and the top one. Hash-dealt per half-tile panel — a ring, a
-     * facing pair of C-scrolls, or honest plain bars — so no two
-     * panels down a long run repeat, and the whole run still reads as
-     * one commission.
-     */
-    private ironOrnament;
-    /**
-     * THE IRON REST — the graveyard's wall. Wrought spear-topped bars
-     * leaded into a granite curb, three rails, an ornament band, and a
-     * masonry pier at every corner, tee, and run end. The gaps between
-     * the bars are the design: the yard shows through its own wall.
-     * Every direction speaks the same vocabulary of STANDING bars:
-     *  - E-W runs: the full panel faces the camera — curb, bars,
-     *    rails over them, the smith's ornament in its band.
-     *  - N-S runs: the bars march up-screen in depth on the curb's
-     *    strip, a dense comb with a ridge of spear leaves climbing.
-     *  - 45° strides: vertical bars stationed corner-to-corner under
-     *    honestly slanted rails — never a sheared panel.
-     */
-    private ironFenceItem;
-    /**
-     * THE GRAVEYARD GATE — the yard's one piece of ceremony. Twin
-     * granite piers under orb-and-spike finials carry a wrought
-     * OVERTHROW: an arched iron band sweeping pier to pier, scroll
-     * curls at its springings, a spear finial at its crown — and, some
-     * nights, a crow that will not move. Below swing double leaves of
-     * barred iron, each top rail sweeping down from its pier toward
-     * the meeting stiles, spear leaves riding the curve; open, each
-     * leaf folds back against its own pier. N-S gates keep the
-     * pier-and-leaf grammar edge-on (an overthrow seen end-on is a
-     * sliver, so the vertical gate lets its piers carry the ceremony).
-     */
-    private ironGateItem;
-    /**
-     * Hedge connectivity: the garden's wall merges ONLY with its own
-     * kind (the separate-masonry law, FOURTH family) — clipped green
-     * dying into a timber fence or house wall would read as one
-     * builder's work, and a gardener is not a carpenter.
-     */
-    private hedgeish;
-    /** Half-tile crown-lobe amplitude, WORLD-keyed (channel per axis)
-     *  so run-mates agree at every shared seam. */
-    private hedgeLobe;
     /**
      * The clipped crown profile: per segment, two quadratic leaf-lobes
      * meeting at a shallow shear notch — a gardener's line, organically
@@ -3584,71 +3145,6 @@ export declare class Renderer {
      * half-tile boundaries) meet crown-true at every seam. Used for
      * BOTH the fill silhouette and the ink (one geometry, one truth).
      */
-    /**
-     * ONE MASS, ONE SILHOUETTE — the hedge's bespoke unit painter (the
-     * round-three verdict: composing slabs, strips, knuckles, and piers
-     * per tile left interior ink crossing every junction and gates
-     * reading as bollards beside gaps — wall-family thinking; a hedge
-     * is not a wall). The caller hands a closed clockwise PLAN loop of
-     * typed segments (crown = north-facing free edge, skirt = south-
-     * facing free edge wearing the face, sideW/sideE = west/east free
-     * edges, cut = a shared tile seam where a neighbor's mass
-     * continues) plus the crown texture cells and pillow-parting
-     * creases; this paints the WHOLE mass as one truth: the crown
-     * plane filled from a single decorated outline (crown lobes on
-     * north edges, pinch-and-bulge caterpillar sides keyed so both
-     * tiles at any seam agree, gently bellied skirts, rounded convex
-     * corners, filleted concave junctions), the south faces hung from
-     * the skirt edges with the full face kit, and ONE ink pass that
-     * strokes the outer silhouette only — cuts never take ink, so
-     * merged runs, corners, tees, and gate stubs read as one clipped
-     * body across any number of tiles.
-     */
-    private hedgeMassPaint;
-    /**
-     * THE CLIPPED GREEN, AT THE WAIST — a hedgerow, not a wall. The
-     * unit is the CUSHION RUN: a hip-high bed of clipped pillows whose
-     * sunlit top plane is the DOMINANT surface under the bird's-eye
-     * camera (a low hedge is seen mostly from above), riding a short
-     * shaded south face that seats into the turf through a tufted
-     * skirt. The mass FILLS its tile in plan — skirt near the south
-     * edge, crown back near the north — so a hedgerow laid against a
-     * building reads as planted against it, never a fence floating in
-     * grass. World-keyed half-tile lobes billow the crown so runs fold
-     * seamlessly; pillow creases part the plane at those same
-     * boundaries (each tile owns its west/north seam crease — one
-     * crease per boundary, never doubled) and a soft dome sheen rounds
-     * every cushion. E-W runs are one continuous pillowed bed; N-S
-     * runs march the near-full-width crown plane up-screen; corners,
-     * tees, N-S run ends, and 45° strides are anchored by fuller
-     * junction cushions in the same vocabulary. THE BODY HOLDS STILL
-     * (per-tile wind bend would print seam kinks a run must never
-     * show); the LIFE is layered on: the wind field's long luminance
-     * swell rolls light across the crowns, stray sprigs the shears
-     * missed flutter above the silhouette, leaf glints breathe on the
-     * plane, and one tile in six flowers on its crown. Ink is the wall
-     * law live-stroked: crown silhouette always, plumb sides only at
-     * true free ends, seams never — estate-length hedgerows ring
-     * seamlessly.
-     */
-    private hedgeItem;
-    /**
-     * THE GARDEN WICKET — the hedge gate, round four. The living arch
-     * DIED here: a 1.42-tile trained span over a 0.5-tile hedgerow was
-     * nearly three times the mass it bridged — the out-of-scale tower
-     * the user called out. What a hip-high garden actually gates its
-     * path with is a hip-high gate: the hedgerow itself runs up to two
-     * post cushions AT ITS OWN HEIGHT AND PLAN (their outer edges are
-     * CUTS, so the neighbor runs fuse in seamlessly — the gate is the
-     * hedge, thickened at the gap), a waist-high timber wicket swings
-     * in the opening (the one piece of carpentry the garden allows,
-     * riding the door law wholesale — doorOpenness eases the swing, a
-     * locked rattle shakes it), and a clipped FINIAL BALL on each post
-     * crown says "gatepost" in the topiary's own voice instead of with
-     * height. N-S gates keep the same body edge-on: two run-width
-     * stubs with cut seams, the wicket a paled bar between them.
-     */
-    private hedgeGateItem;
     /**
      * THE STANDING-HOOP LAW: a hoop on an upright cask is a HORIZONTAL
      * ring, and this tilted camera sees its FRONT ARC bowing DOWN
@@ -4465,6 +3961,15 @@ export declare class Renderer {
      * is what is shown). Empty when clean — no furniture for nothing.
      */
     private drawOwnWounds;
+    drawChestBoss(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number, t: number, h: number): void;
+    drawChestGilded(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number, t: number, h: number): void;
+    drawChestIron(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number): void;
+    drawChestMossy(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number): void;
+    drawChestWood(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number): void;
+    drawGrowingFrame(bx: number, gy: number, h: number, planted: boolean): void;
+    paintGreatCloth(cx: number, yTop: number, bw: number, bl: number, dye: number, s: number, sway: number, lag: number): Path2D;
+    rubble(px: number, py: number, s: number, h: number, colors: string[]): void;
+    sparkle(x: number, y: number, r: number, alpha: number, color: string): void;
 }
 export {};
 //# sourceMappingURL=renderer.d.ts.map

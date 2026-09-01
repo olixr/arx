@@ -671,6 +671,8 @@ import {
   type SteerMemory,
 } from '@arx/shared';
 import { config } from '../config.js';
+import { CHAT_COMMANDS } from './commands/index.js';
+import { DEV_COMMANDS } from './commands/devCommands.js';
 import { Session, sanitizeName } from '../net/session.js';
 import type { AccountStore, CharacterRow, CompanionRow, PetRow } from '../db/accounts.js';
 import type { WorldSource } from '../world/worldSource.js';
@@ -1873,7 +1875,7 @@ interface ArenaMatchState {
   lastBeatTick: number;
 }
 
-interface PlayerComp {
+export interface PlayerComp {
   /** The comp's own entity id — stamped at spawn, never reassigned. */
   eid: EntityId;
   name: string;
@@ -2329,19 +2331,6 @@ const BONDING_VOICE: Record<EnchantTier, string> = {
 /** Enchanting xp for drawing a working back out of a piece. */
 const SUNDER_XP = 45;
 
-/** One sample of every action shape, for the /proc dev lever. */
-const DEV_PROC_ACTIONS: Record<string, ProcAction> = {
-  status: { do: 'status', status: 'burn', power: 2, ticks: 60 },
-  nova: { do: 'nova', damage: 6, radius: 3 },
-  bolt: { do: 'bolt', damage: 8 },
-  chain: { do: 'chain', damage: 5, jumps: 3 },
-  ward: { do: 'ward', absorb: 30, ticks: 100 },
-  heal: { do: 'heal', amount: 15 },
-  surge: { do: 'surge', stat: 'crit', pct: 25, ticks: 100 },
-  cleanse: { do: 'cleanse' },
-  yield: { do: 'yield', extra: 2 },
-  reveal: { do: 'reveal', radius: 10, of: 'node' },
-};
 
 /** Every chest a reveal working counts as a cache, open or shut —
  * the shared chest roster minus the boss caches, which announce
@@ -2680,7 +2669,7 @@ export class GameServer {
   /** World-clock offset in ticks; only the dev `/time` command bends it. */
   timeOfsTicks = 0;
 
-  private readonly ecs = new EcsWorld();
+  readonly ecs = new EcsWorld();
   readonly kinds = this.ecs.register<EntityKind>();
   readonly positions = this.ecs.register<PositionComp>();
   readonly poses = this.ecs.register<PoseState>();
@@ -2713,7 +2702,7 @@ export class GameServer {
   /** THE PROP MUSEUM: where /museum walks each reviewer back out to.
    *  Dev-only convenience state — never persisted, stale rows guarded
    *  by a does-this-plane-still-stand check at use. */
-  private readonly museumReturn = new Map<EntityId, PlanePos>();
+  readonly museumReturn = new Map<EntityId, PlanePos>();
 
   /**
    * The walk-back beacon: each character's latest spill spot, keyed by
@@ -2756,10 +2745,10 @@ export class GameServer {
 
   private readonly spawnPoints: SpawnState[] = [];
   /** Actor definitions by slug — loaded from the DB at boot (DB-first). */
-  private readonly actorDefs = new Map<string, NpcActorDef>();
+  readonly actorDefs = new Map<string, NpcActorDef>();
   private readonly actorSpawnPoints: ActorSpawnState[] = [];
   /** Routine definitions by id — loaded from the DB at boot (DB-first). */
-  private readonly routineDefs = new Map<string, RoutineDef>();
+  readonly routineDefs = new Map<string, RoutineDef>();
   /**
    * Re-reads routines from the DB (wired by index.ts at boot). The
    * tooling edits rows, then /routinereload swaps the live registry —
@@ -2790,7 +2779,7 @@ export class GameServer {
    */
   dialogueSource: (() => Promise<{ dialogues: DialogueDef[]; errors: string[] }>) | null = null;
   /** Quest defs by id — DB-loaded, already validated. */
-  private readonly questDefs = new Map<string, QuestDef>();
+  readonly questDefs = new Map<string, QuestDef>();
   /** Quest ids by giver actor slug (the "!" index). */
   private readonly questsByGiver = new Map<string, string[]>();
   /** Quest ids by turn-in actor slug (the turn-in mark index). */
@@ -2825,13 +2814,13 @@ export class GameServer {
    * registered at construction; which triggers feed which slug, with
    * what payload, is the Studio's to compose.
    */
-  private readonly triggerDefs = new Map<string, TriggerDef>();
-  private triggerRoster: CompiledTrigger[] = [];
-  private readonly triggerHooks = new Map<string, TriggerHandler[]>();
+  readonly triggerDefs = new Map<string, TriggerDef>();
+  triggerRoster: CompiledTrigger[] = [];
+  readonly triggerHooks = new Map<string, TriggerHandler[]>();
   /** Re-reads triggers from the DB (wired by index.ts at boot). */
   triggerSource: (() => Promise<{ defs: TriggerDef[]; errors: string[] }>) | null = null;
 
-  private readonly sessions = new Set<Session>();
+  readonly sessions = new Set<Session>();
   /** In-world players by character id (blocks duplicate logins). */
   private readonly characterEids = new Map<number, EntityId>();
   /** Ephemeral guest tokens -> eid (guests have no DB session). */
@@ -2943,13 +2932,13 @@ export class GameServer {
    * ownership arrive with a later epic. In-memory, like every other
    * world mutation.
    */
-  private readonly doorLocks = new Set<string>();
+  readonly doorLocks = new Set<string>();
 
   /** Players some NPC is chasing this tick — drives the DETECTED status bit. */
   private readonly chasedPlayers = new Set<EntityId>();
 
   /** Planted crops by "tx,ty". */
-  private readonly crops = new Map<string, CropState>();
+  readonly crops = new Map<string, CropState>();
 
   private timer: NodeJS.Timeout | null = null;
 
@@ -2962,8 +2951,8 @@ export class GameServer {
    * venue — that IS the claim law) + the rest each venue takes after
    * any card, and the purse-ward roster while a victory chest stands.
    */
-  private readonly arenaMatches = new Map<string, ArenaMatchState>();
-  private readonly arenaCooldowns = new Map<string, number>();
+  readonly arenaMatches = new Map<string, ArenaMatchState>();
+  readonly arenaCooldowns = new Map<string, number>();
   private readonly arenaChestClaims = new Map<string, Set<number>>();
 
   /**
@@ -2988,9 +2977,9 @@ export class GameServer {
    * seed, so cached forever until the one live input (claim rings)
    * changes and clears it (the ring-cache discipline).
    */
-  private readonly capitalCache = new Map<string, CapitalSeat | null>();
+  readonly capitalCache = new Map<string, CapitalSeat | null>();
   /** Standing capitals, lattice key → live record. */
-  private readonly strongholdLive = new Map<
+  readonly strongholdLive = new Map<
     string,
     {
       zoneId: string;
@@ -3006,7 +2995,7 @@ export class GameServer {
   /** spawnIndex → capital lattice key (the poiSpawnCells dialect). */
   private readonly strongholdSpawnCells = new Map<number, string>();
   /** The world_strongholds ledger, loaded at boot (deviations only). */
-  private readonly strongholdLedger = new Map<
+  readonly strongholdLedger = new Map<
     string,
     {
       layoutId: string;
@@ -3022,7 +3011,7 @@ export class GameServer {
     }
   >();
 
-  private readonly poiLedger = new Map<
+  readonly poiLedger = new Map<
     string,
     {
       epoch: number;
@@ -3055,21 +3044,21 @@ export class GameServer {
    * FRONTIER.regionCells of a stamp see no stage-ups, satellites,
    * fallow wakes, or renewal landings until calm_until passes.
    */
-  private readonly frontierCalm = new Map<string, number>();
+  readonly frontierCalm = new Map<string, number>();
   /**
    * THE CONSERVATION LAW's debt: sites the frontier owes the world
    * after ember dissolves. Spent by tickFrontier standing fresh rolls
    * in the offscreen ring around active players; persisted so a
    * restart never forgives the debt.
    */
-  private frontierCredits = 0;
+  frontierCredits = 0;
   /**
    * Cells handled this uptime (live zone or decided empty). `fighters`
    * is the participation ledger: every characterId that landed real
    * damage on the garrison — the wipe credit and the bounty pay ALL of
    * them, never just the last blow.
    */
-  private readonly poiLive = new Map<
+  readonly poiLive = new Map<
     string,
     {
       zoneId?: string;
@@ -3088,11 +3077,11 @@ export class GameServer {
    * once a find has been cleared; bits belong to their epoch and stop
    * matching after a turn). findsLive is per-uptime standing state.
    */
-  private readonly minorLedger = new Map<string, { epoch: number; cleared: number }>();
+  readonly minorLedger = new Map<string, { epoch: number; cleared: number }>();
 
   /** THE BITS KNOW THEIR ROSTER: the live minor-roster print (debt 6). */
   private minorRosterFp?: number;
-  private readonly findsLive = new Map<
+  readonly findsLive = new Map<
     string,
     { zoneId: string; spawnIdx: number[]; spawnSlots: number[]; finds: MinorFind[] }
   >();
@@ -3104,9 +3093,9 @@ export class GameServer {
    * these mouths; clearing the find deletes the entry and the pull
    * goes quiet.
    */
-  private readonly habitatFinds = new Map<string, { habitat: string; x: number; y: number }>();
+  readonly habitatFinds = new Map<string, { habitat: string; x: number; y: number }>();
   /** POI prefab library; null until initPois — tickPois no-ops before boot wiring. */
-  private poiPrefabs: Map<string, PrefabDef> | null = null;
+  poiPrefabs: Map<string, PrefabDef> | null = null;
   /**
    * Runtime haven anchors by cell key — every LEDGER site whose def
    * declares a haven, materialized or not (the lamp burns whether or
@@ -3114,7 +3103,7 @@ export class GameServer {
    * changes; every danger read in this class goes through
    * dangerAnchors(), so civilization genuinely pushes the field back.
    */
-  private readonly poiHavens = new Map<string, DangerAnchor>();
+  readonly poiHavens = new Map<string, DangerAnchor>();
   private anchorCache: DangerAnchor[] | null = null;
   /**
    * THE HEARTH WATCH: every claimed home bed in the world, offline
@@ -3129,7 +3118,7 @@ export class GameServer {
    * nothing else; they never join dangerAnchors (THE HAVEN LAW: a bed
    * in tier-4 country must not flatten the frontier around it).
    */
-  private ringCache: ClaimRing[] | null = null;
+  ringCache: ClaimRing[] | null = null;
   /**
    * Strongbox overrides by world-tile key "tx,ty": POI chests whose
    * def re-tables the loot (the riftgate key faucet) or wards the lid
@@ -3190,7 +3179,7 @@ export class GameServer {
   constructor(
     // Public: the dev maps API reads the live zone lists off it.
     readonly planes: Planes,
-    private readonly accounts: AccountStore,
+    readonly accounts: AccountStore,
   ) {
     for (const s of TOWN_SPAWNS) {
       const key = GameServer.townSpawnKey(s);
@@ -3332,13 +3321,13 @@ export class GameServer {
    * THE ONE CLOCK for a crop row: wall time (a framed row's runs 15%
    * fast — the frame's warmth) plus every banked watering credit.
    */
-  private cropElapsed(state: CropState, now: number): number {
+  cropElapsed(state: CropState, now: number): number {
     const wall = now - state.plantedAt;
     return (state.framed ? Math.round(wall * 1.15) : wall) + state.boostMs;
   }
 
   /** THE LIVING SOIL: compost bins by "tx,ty". */
-  private readonly farmBins = new Map<string, FarmBinState>();
+  readonly farmBins = new Map<string, FarmBinState>();
 
   /** Load persisted compost bins at boot. */
   loadFarmBins(
@@ -3733,7 +3722,7 @@ export class GameServer {
   }
 
   /** The live zone rect a 'zone' trigger area resolves through. */
-  private zoneRectOf(zoneId: string): ZoneRectLive | null {
+  zoneRectOf(zoneId: string): ZoneRectLive | null {
     for (const world of this.planes.all()) {
       for (const z of world.zoneDefs) {
         if (z.id === zoneId) {
@@ -4916,7 +4905,7 @@ export class GameServer {
    * it ages to rumor — one cross-character UPDATE for the offline,
    * an in-memory flip plus a thin push for the online.
    */
-  private fadePoiDiscoveries(cellKey: string): void {
+  fadePoiDiscoveries(cellKey: string): void {
     const id = `poi:${cellKey}`;
     this.discoveredPoiCells.delete(cellKey); // the boldness gate closes with the site
     this.accounts.fadeDiscovery(id);
@@ -5376,7 +5365,7 @@ export class GameServer {
    * north-most member) keys locks, auto-close entries, and rattles.
    * Plain doorways never merge: each is its own unit.
    */
-  private doorUnit(
+  doorUnit(
     plane: PlaneId,
     tx: number,
     ty: number,
@@ -5715,7 +5704,7 @@ export class GameServer {
    * carry a can and it's thirsty, otherwise report the wait.
    */
   /** How long the hearth rests between recalls. */
-  private static readonly HEARTH_CD_MS = 10 * 60 * 1000;
+  static readonly HEARTH_CD_MS = 10 * 60 * 1000;
 
   // ----------------------------------------------------------- seating
 
@@ -5821,7 +5810,7 @@ export class GameServer {
    * chosen beast. Mounting is a deed — it stands the body out of any
    * seat or crouch first — and dungeon ground refuses the saddle.
    */
-  private mountToggle(eid: EntityId, player: PlayerComp, pos: PositionComp): void {
+  mountToggle(eid: EntityId, player: PlayerComp, pos: PositionComp): void {
     if (player.mountId) {
       this.dismount(eid, player);
       return;
@@ -5851,7 +5840,7 @@ export class GameServer {
   }
 
   /** Boots on the ground. Safe no-op afoot, so every yield site may call it. */
-  private dismount(eid: EntityId, player: PlayerComp): void {
+  dismount(eid: EntityId, player: PlayerComp): void {
     if (!player.mountId) return;
     player.mountId = null;
     this.broadcastMetaUpdate(eid);
@@ -6199,7 +6188,7 @@ export class GameServer {
    * replaced bed dissolves the claim on the spot — home is the BED,
    * not the coordinates it used to stand on.
    */
-  private homeBedside(player: PlayerComp): { x: number; y: number } | null {
+  homeBedside(player: PlayerComp): { x: number; y: number } | null {
     const home = player.home;
     if (!home) return null;
     this.surface.ensure(Math.floor(home.x / CHUNK_SIZE), Math.floor(home.y / CHUNK_SIZE));
@@ -6309,7 +6298,7 @@ export class GameServer {
   // ---------------------------------------------- the living soil
 
   /** Persist one crop row whole (every care fact rides every write). */
-  private saveCrop(state: CropState): void {
+  saveCrop(state: CropState): void {
     this.accounts.upsertCrop(
       state.tx,
       state.ty,
@@ -6338,7 +6327,7 @@ export class GameServer {
     for (const s of this.sessions) s.sendJson({ t: 'farm', plots: [info] });
   }
 
-  private mirrorBin(bin: FarmBinState): void {
+  mirrorBin(bin: FarmBinState): void {
     const info = {
       tx: bin.tx,
       ty: bin.ty,
@@ -6629,13 +6618,13 @@ export class GameServer {
    * interact door. THE BATCH IS AS GOOD AS ITS WEAKEST MEASURE: the
    * loader consumes the highest grades first and records the minimum.
    */
-  private readonly farmJobs = new Map<
+  readonly farmJobs = new Map<
     string,
     { tx: number; ty: number; recipe: string; qty: number; startedAt: number; grade: number; owner: number }
   >();
 
   /** The hives, by "tx,ty" — only a clock; flowers do the grading. */
-  private readonly farmApiaries = new Map<string, { tx: number; ty: number; since: number }>();
+  readonly farmApiaries = new Map<string, { tx: number; ty: number; since: number }>();
 
   loadStationJobs(
     rows: Array<{ tx: number; ty: number; recipe: string; qty: number; startedAt: number; grade: number; owner: number }>,
@@ -6647,7 +6636,7 @@ export class GameServer {
     for (const row of rows) this.farmApiaries.set(`${row.tx},${row.ty}`, { ...row });
   }
 
-  private mirrorJob(job: { tx: number; ty: number; recipe: string; qty: number; startedAt: number; grade: number }): void {
+  mirrorJob(job: { tx: number; ty: number; recipe: string; qty: number; startedAt: number; grade: number }): void {
     for (const s of this.sessions) {
       s.sendJson({
         t: 'farm',
@@ -6656,7 +6645,7 @@ export class GameServer {
     }
   }
 
-  private mirrorApiary(tx: number, ty: number, since: number): void {
+  mirrorApiary(tx: number, ty: number, since: number): void {
     for (const s of this.sessions) s.sendJson({ t: 'farm', apiaries: [{ tx, ty, since }] });
   }
 
@@ -6897,10 +6886,10 @@ export class GameServer {
    * and on release, anchored to a feed trough, alive whether the
    * keeper is or not. Never a pet: no combat, no follow, no heel.
    */
-  private readonly livestock = new Map<EntityId, LivestockComp>();
+  readonly livestock = new Map<EntityId, LivestockComp>();
 
   /** Trough feed by "tx,ty" — the yard's mangers. */
-  private readonly farmTroughs = new Map<string, { tx: number; ty: number; feed: number }>();
+  readonly farmTroughs = new Map<string, { tx: number; ty: number; feed: number }>();
 
   loadFarmTroughs(rows: Array<{ tx: number; ty: number; feed: number }>): void {
     for (const row of rows) this.farmTroughs.set(`${row.tx},${row.ty}`, { ...row });
@@ -6979,7 +6968,7 @@ export class GameServer {
     return n;
   }
 
-  private mirrorTrough(trough: { tx: number; ty: number; feed: number }): void {
+  mirrorTrough(trough: { tx: number; ty: number; feed: number }): void {
     for (const s of this.sessions) {
       s.sendJson({ t: 'farm', troughs: [{ tx: trough.tx, ty: trough.ty, feed: trough.feed }] });
     }
@@ -7563,7 +7552,7 @@ export class GameServer {
   }
 
   /** Advance planted crops; the slow tick calls this every 2s. */
-  private tickCrops(now: number): void {
+  tickCrops(now: number): void {
     for (const state of this.crops.values()) {
       // THE FED CHANNEL: a live irrigation line waters the stage on
       // its own, before the stage math so the credit lands the moment
@@ -9375,7 +9364,7 @@ export class GameServer {
     player.session.sendJson({ t: 'inv', slots: player.inventory });
   }
 
-  private grantXp(eid: EntityId, player: PlayerComp, skill: SkillId, amount: number): void {
+  grantXp(eid: EntityId, player: PlayerComp, skill: SkillId, amount: number): void {
     // Stored data can still carry a retired id: a Studio-touched quest
     // row keeps the skill it was authored with, and a reseed leaves it
     // alone. Resolve at the one door so no reward pays a dead school.
@@ -9605,7 +9594,7 @@ export class GameServer {
   }
 
   /** Mutate the world and stream the patch to everyone nearby. */
-  private setWorldTile(plane: PlaneId, tx: number, ty: number, tile: Tile): void {
+  setWorldTile(plane: PlaneId, tx: number, ty: number, tile: Tile): void {
     // Fresh tile, fresh wood: any change at this coord resets prop
     // durability (respawn, build, demolish, the burst itself).
     this.propDamage.delete(`${plane}|${tx},${ty}`);
@@ -9881,7 +9870,7 @@ export class GameServer {
   }
 
   /** Danger tier at a world tile over the LIVE anchor list. */
-  private liveDangerTier(tx: number, ty: number): number {
+  liveDangerTier(tx: number, ty: number): number {
     return dangerAt(config.worldSeed, tx, ty, this.dangerAnchors());
   }
 
@@ -9907,7 +9896,7 @@ export class GameServer {
    * (claimR) grown to cover the owner's built flood within claimReach
    * of the bed, plus pad. Rebuilt lazily; builds and claims invalidate.
    */
-  private claimRings(): readonly ClaimRing[] {
+  claimRings(): readonly ClaimRing[] {
     if (this.ringCache) return this.ringCache;
     const rings: ClaimRing[] = [];
     for (const [characterId, home] of this.homesByCharacter) {
@@ -9979,7 +9968,7 @@ export class GameServer {
   }
 
   /** The (cached) capital seat of a territory lattice cell. */
-  private cachedSeat(gx: number, gy: number): CapitalSeat | null {
+  cachedSeat(gx: number, gy: number): CapitalSeat | null {
     const key = capitalKey(gx, gy);
     const hit = this.capitalCache.get(key);
     if (hit !== undefined) return hit;
@@ -10049,7 +10038,7 @@ export class GameServer {
    * the LAST STAND alone (Phase 4: the chief's court is the lock;
    * the outlying wards are chapters, not tumblers).
    */
-  private strongholdGarrisonStands(key: string, ward?: number): boolean {
+  strongholdGarrisonStands(key: string, ward?: number): boolean {
     const live = this.strongholdLive.get(key);
     if (!live) return false;
     for (const i of live.spawnIdx) {
@@ -10259,7 +10248,7 @@ export class GameServer {
     }
   }
 
-  private materializeCapital(seat: CapitalSeat, opts: { exactLayout?: boolean } = {}): void {
+  materializeCapital(seat: CapitalSeat, opts: { exactLayout?: boolean } = {}): void {
     const key = capitalKey(seat.gx, seat.gy);
     const preRow = this.strongholdLedger.get(key);
     // A resting seat raises nothing — the fallow holds until the
@@ -10401,7 +10390,7 @@ export class GameServer {
   }
 
   /** Persist a capital ledger row (the full-row upsert). */
-  private saveStrongholdRow(gx: number, gy: number): void {
+  saveStrongholdRow(gx: number, gy: number): void {
     const row = this.strongholdLedger.get(capitalKey(gx, gy));
     if (!row) return;
     this.accounts.saveStrongholdState(gx, gy, row);
@@ -10576,7 +10565,7 @@ export class GameServer {
   }
 
   /** Retire a standing capital (content edits; future lifecycle). */
-  private retireCapital(key: string): void {
+  retireCapital(key: string): void {
     const live = this.strongholdLive.get(key);
     if (!live) return;
     this.unloadZone(live.zoneId);
@@ -10959,7 +10948,7 @@ export class GameServer {
    * emptiness). The re-decision writes through recordPoiCell, so the
    * ledger keeps exactly one row per cell and cleared_at resets.
    */
-  private fallowSweep(cutoffMs: number): { turned: number; rerolled: number } {
+  fallowSweep(cutoffMs: number): { turned: number; rerolled: number } {
     if (!this.poiPrefabs) return { turned: 0, rerolled: 0 };
     const authored = this.authoredCells();
     let turned = 0;
@@ -11383,7 +11372,7 @@ export class GameServer {
    * dissolve banks one renewal credit: the trouble moves on, it does
    * not vanish (the conservation law).
    */
-  private dissolveOneEmber(now: number): boolean {
+  dissolveOneEmber(now: number): boolean {
     const authored = this.authoredCells();
     for (const [key, row] of this.poiLedger) {
       // An ember clock alone is enough — a cleared camp AND a scattered
@@ -11445,7 +11434,7 @@ export class GameServer {
    * camp reborn. Deferred while anyone stands close enough to watch
    * tents pitch themselves.
    */
-  private wakeOneFallow(now: number): boolean {
+  wakeOneFallow(now: number): boolean {
     if (!this.poiPrefabs) return false;
     const authored = this.authoredCells();
     for (const [key, row] of this.poiLedger) {
@@ -11503,7 +11492,7 @@ export class GameServer {
    * lawful candidate this pass = the debt waits; it never rushes a
    * bad site.
    */
-  private spendRenewalCredit(now: number): boolean {
+  spendRenewalCredit(now: number): boolean {
     if (this.frontierCredits <= 0 || !this.poiPrefabs) return false;
     const surface: EntityId[] = [];
     for (const [eid, player] of this.players) {
@@ -11589,7 +11578,7 @@ export class GameServer {
    * weather); dignity like everyone else. The ember clock is stamped
    * ON ARRIVAL — nobody solves a peddler, she just moves on.
    */
-  private standOnePeddler(
+  standOnePeddler(
     points: ReadonlyArray<{ tx: number; ty: number }>,
     now: number,
   ): PoiSite | null {
@@ -11699,7 +11688,7 @@ export class GameServer {
   }
 
   /** The stage-up rumor + pip push to every online holder of the marker. */
-  private pushStageRumor(cellKey: string, defName: string, stage: number): void {
+  pushStageRumor(cellKey: string, defName: string, stage: number): void {
     const id = `poi:${cellKey}`;
     const lines = [
       `Word from the road: ${defName} grows bolder — more fires burn there than before.`,
@@ -11726,7 +11715,7 @@ export class GameServer {
    * standing camp only when nobody is close enough to watch tents
    * pitch themselves.
    */
-  private stageOnePoi(now: number): boolean {
+  stageOnePoi(now: number): boolean {
     const authored = this.authoredCells();
     for (const [key, row] of this.poiLedger) {
       if (row.site === null || row.clearedAt !== null || row.emberUntil !== null) continue;
@@ -11782,8 +11771,8 @@ export class GameServer {
    * /frontier tick so a designer can read the bounds working ("all
    * three townward cells occupied" is the system honest, not broken).
    */
-  private satTrace: string[] = [];
-  private seedOneSatellite(now: number): boolean {
+  satTrace: string[] = [];
+  seedOneSatellite(now: number): boolean {
     if (!this.poiPrefabs) return false;
     this.satTrace = [];
     const authored = this.authoredCells();
@@ -11914,8 +11903,8 @@ export class GameServer {
    * failure state is more game on the road, never less town. One toll
    * per family, towns' guards name it through world:toll_near.
    */
-  private tollTrace: string[] = [];
-  private forkOneToll(now: number): boolean {
+  tollTrace: string[] = [];
+  forkOneToll(now: number): boolean {
     if (!this.poiPrefabs || !POI_DEFS.has('road_toll')) return false;
     this.tollTrace = [];
     const authored = this.authoredCells();
@@ -12037,7 +12026,7 @@ export class GameServer {
   }
 
   /** Parse a hearth-tied origin back to its settler, or null. */
-  private static hearthOwnerOf(originCell: string | null | undefined): number | null {
+  static hearthOwnerOf(originCell: string | null | undefined): number | null {
     if (!originCell || !originCell.startsWith('hearth:')) return null;
     const id = Number(originCell.slice(7));
     return Number.isFinite(id) ? id : null;
@@ -12046,7 +12035,7 @@ export class GameServer {
   /** When the global dice next roll (the Valheim law: one clock, one shard). */
   private nextRaidRollAt = Date.now() + FRONTIER.raidRollMs;
   /** Why the last raid pass refused — the /frontier raid lever reads it. */
-  private raidTrace: string[] = [];
+  raidTrace: string[] = [];
 
   /**
    * THE COVETOUS CAMP (Phase 4.2): every raidRollMs, ONE roll per
@@ -12059,7 +12048,7 @@ export class GameServer {
    * owner is away, never inside the yard, never destroys a tile —
    * and the defender's bounty is stamped the moment the fuse lights.
    */
-  private tickRaidDice(now: number, force = false): boolean {
+  tickRaidDice(now: number, force = false): boolean {
     if (!this.poiPrefabs) return false;
     if (!force) {
       if (now < this.nextRaidRollAt) return false;
@@ -12256,7 +12245,7 @@ export class GameServer {
    * construction. The ledger records the decision (deviations only:
    * settled tier-0 cells are skipped, they can never host a POI).
    */
-  private materializePoiCell(
+  materializePoiCell(
     cellX: number,
     cellY: number,
     opts: { force?: string | true; epoch?: number } = {},
@@ -12437,7 +12426,7 @@ export class GameServer {
    * but tickSpawns never re-stands them. Livestock and staff actors
    * keep their lives — a freed cow grazing the wreck IS the story.
    */
-  private standDownGarrison(spawnIdx: readonly number[]): void {
+  standDownGarrison(spawnIdx: readonly number[]): void {
     for (const i of spawnIdx) {
       const s = this.spawnPoints[i];
       if (s?.active && this.poiSpawnFights(s)) s.active = false;
@@ -12871,7 +12860,7 @@ export class GameServer {
   }
 
   /** Retire a cell's standing zone + bodies (the /poi levers ride this). */
-  private retirePoiCell(key: string): void {
+  retirePoiCell(key: string): void {
     const live = this.poiLive.get(key);
     if (live?.zoneId) {
       this.unloadZone(live.zoneId);
@@ -13034,7 +13023,7 @@ export class GameServer {
 
   // ------------------------------------------------- portals & dungeons
 
-  private teleport(eid: EntityId, x: number, y: number): void {
+  teleport(eid: EntityId, x: number, y: number): void {
     const player = this.players.get(eid);
     const pos = this.positions.get(eid);
     if (!player || !pos) return;
@@ -13152,7 +13141,7 @@ export class GameServer {
   }
 
   /** Push the full ring mirror down the wire (sent on any change). */
-  private sendKeyRing(player: PlayerComp): void {
+  sendKeyRing(player: PlayerComp): void {
     player.session?.sendJson({ t: 'keyring', keys: player.keyRing });
   }
 
@@ -13161,7 +13150,7 @@ export class GameServer {
    * no cap, so this cannot fail: a key found in the field always has
    * a place to go. Returns the new ring row.
    */
-  private addKeyToRing(
+  addKeyToRing(
     player: PlayerComp,
     roll: ItemRoll | undefined,
     sync = true, // batch callers land many, then send the mirror once
@@ -13537,7 +13526,7 @@ export class GameServer {
     }
   }
 
-  private teardownDungeon(characterId: number): void {
+  teardownDungeon(characterId: number): void {
     const dungeon = this.dungeons.get(characterId);
     if (!dungeon) return;
     // Anyone still standing in the halls goes home before the rock
@@ -13786,7 +13775,7 @@ export class GameServer {
   // setWorldTile, npcAggro, sayAloud, the chest law.
 
   /** The venue's live match holding this soul, if any. */
-  private arenaOf(characterId: number): ArenaMatchState | null {
+  arenaOf(characterId: number): ArenaMatchState | null {
     for (const m of this.arenaMatches.values()) {
       if (m.members.has(characterId)) return m;
     }
@@ -13838,7 +13827,7 @@ export class GameServer {
     }
   }
 
-  private arenaFoesLeft(match: ArenaMatchState): number {
+  arenaFoesLeft(match: ArenaMatchState): number {
     let n = 0;
     for (const eid of match.waveEids) if (this.ecs.isAlive(eid)) n++;
     return n;
@@ -14171,7 +14160,7 @@ export class GameServer {
   }
 
   /** THE WIPE RESETS THE SAND: the card is lost whole. */
-  private arenaWipe(match: ArenaMatchState): void {
+  arenaWipe(match: ArenaMatchState): void {
     this.arenaBark(match, stockBark('wipe', match.seed, match.round));
     for (const cid of match.members.keys()) {
       const eid = this.characterEids.get(cid);
@@ -14203,7 +14192,7 @@ export class GameServer {
    * teardown — victory grace, wipe, cancel, and the backstop all end
    * here (the teardownDungeon lesson: one door out, however it went).
    */
-  private arenaReset(
+  arenaReset(
     match: ArenaMatchState,
     opts: { silent?: boolean; keepWipeWord?: boolean } = {},
   ): void {
@@ -17084,7 +17073,7 @@ export class GameServer {
    * was gentled). Safe no-op when a body already stands or nothing
    * is at heel — every arrival path may call it blind.
    */
-  private trySpawnPet(eid: EntityId, player: PlayerComp, at?: { x: number; y: number }): void {
+  trySpawnPet(eid: EntityId, player: PlayerComp, at?: { x: number; y: number }): void {
     if (player.petEid !== null) return;
     const row = player.pets.find((p) => p.state === 'heel');
     if (!row) return;
@@ -17144,7 +17133,7 @@ export class GameServer {
   }
 
   /** Take the companion's body out of the world (trailing, stabling, logout). */
-  private despawnPetEntity(player: PlayerComp): void {
+  despawnPetEntity(player: PlayerComp): void {
     if (player.petEid === null) return;
     // Wounds walk with the body — trailing is never a heal.
     const h = this.healths.get(player.petEid);
@@ -17902,7 +17891,7 @@ export class GameServer {
    * THE ROPE's ledger: bond in, knots announced. The rank climb is a
    * ceremony worth a line — it may have just paid a focus point.
    */
-  private grantPetBond(owner: PlayerComp, row: PetRow, amount: number): void {
+  grantPetBond(owner: PlayerComp, row: PetRow, amount: number): void {
     if (amount <= 0) return;
     const before = petBondRank(row.bondXp);
     row.bondXp += amount;
@@ -18366,7 +18355,7 @@ export class GameServer {
    * `ceremony` bypasses the gate and names a just-tamed slot so the
    * client raises the naming card exactly once.
    */
-  private sendPet(player: PlayerComp, ceremony?: number): void {
+  sendPet(player: PlayerComp, ceremony?: number): void {
     if (!player.session) return;
     const bc = levelForXp(player.skills.beastcraft ?? 0);
     const petHp = player.petEid !== null ? this.healths.get(player.petEid) : null;
@@ -18568,7 +18557,7 @@ export class GameServer {
    * is at heel — every arrival path may call it blind (the
    * trySpawnPet law, held separately).
    */
-  private trySpawnCompanion(eid: EntityId, player: PlayerComp, at?: { x: number; y: number }): void {
+  trySpawnCompanion(eid: EntityId, player: PlayerComp, at?: { x: number; y: number }): void {
     if (player.companionEid !== null) return;
     const row = player.companions.find((c) => c.state === 'heel');
     if (!row) return;
@@ -18603,7 +18592,7 @@ export class GameServer {
   }
 
   /** Take the companion's body out of the world (trailing, home, logout). */
-  private despawnCompanionEntity(player: PlayerComp): void {
+  despawnCompanionEntity(player: PlayerComp): void {
     if (player.companionEid === null) return;
     this.removeFromChunks(player.companionEid);
     this.ecs.destroy(player.companionEid);
@@ -18696,7 +18685,7 @@ export class GameServer {
    * `ceremony` bypasses the gate and names a just-befriended slot so
    * the client raises the naming card exactly once.
    */
-  private sendCompanions(player: PlayerComp, ceremony?: number): void {
+  sendCompanions(player: PlayerComp, ceremony?: number): void {
     if (!player.session) return;
     const sig = player.companions
       .map(
@@ -18927,7 +18916,7 @@ export class GameServer {
     };
   }
 
-  private worldFlagAnswer(flag: string, player: PlayerComp, sx: number, sy: number): boolean {
+  worldFlagAnswer(flag: string, player: PlayerComp, sx: number, sy: number): boolean {
     if (flag === 'world:bounty_open') {
       // Reads through openBounties so a mark whose camp dissolved
       // without the player lifts itself the next time anyone asks.
@@ -18983,7 +18972,7 @@ export class GameServer {
    * news, and counting them would leave some posts uneasy forever.
    * Standing = staffed: cleared trophies and scattered embers are over.
    */
-  private watchSurvey(sx: number, sy: number): { near: boolean; bold: boolean; toll: boolean } {
+  watchSurvey(sx: number, sy: number): { near: boolean; bold: boolean; toll: boolean } {
     const authored = this.authoredCells();
     const watch = FRONTIER.watchTiles;
     const out = { near: false, bold: false, toll: false };
@@ -19013,7 +19002,7 @@ export class GameServer {
   }
 
   /** Any relax window still running within `reach` tiles of a point? */
-  private calmWithinTiles(sx: number, sy: number, reach: number): boolean {
+  calmWithinTiles(sx: number, sy: number, reach: number): boolean {
     const now = Date.now();
     for (const [key, until] of this.frontierCalm) {
       if (until <= now) continue;
@@ -19487,7 +19476,7 @@ export class GameServer {
    * no longer stands (dissolved, scattered, or wiped without them): a
    * dead mark neither gates dialogue nor haunts the ledger.
    */
-  private openBounties(player: PlayerComp): string[] {
+  openBounties(player: PlayerComp): string[] {
     const out: string[] = [];
     for (const flag of [...player.flags.keys()]) {
       if (!flag.startsWith(BOUNTY_FLAG_PREFIX)) continue;
@@ -19513,7 +19502,7 @@ export class GameServer {
   // ------------------------------------------------------------ quests
 
   /** The pure module's window onto one player — built fresh per ask. */
-  private questCtx(player: PlayerComp): QuestPlayerCtx {
+  questCtx(player: PlayerComp): QuestPlayerCtx {
     return {
       quests: player.quests,
       // faction: band gates are speakerless and legal in quest
@@ -19913,7 +19902,7 @@ export class GameServer {
    * bind, every quest mutation, every flag write, level-ups, and the
    * slow ticker (cooldown clocks expire without any event).
    */
-  private pushQuestAvail(player: PlayerComp): void {
+  pushQuestAvail(player: PlayerComp): void {
     const list = this.questAvailList(player);
     const sig = list.map((a) => a.id).join(',');
     if (sig === player.questAvailSig) return;
@@ -19922,7 +19911,7 @@ export class GameServer {
   }
 
   /** The full ledger, pushed once at bind. */
-  private sendQuestsFull(player: PlayerComp): void {
+  sendQuestsFull(player: PlayerComp): void {
     if (!player.session) return;
     const ctx = this.questCtx(player);
     const names = this.questNames();
@@ -19943,7 +19932,7 @@ export class GameServer {
   }
 
   /** Persist one ledger row the moment it changes (guests: memory). */
-  private persistQuest(player: PlayerComp, questId: string): void {
+  persistQuest(player: PlayerComp, questId: string): void {
     if (player.characterId <= 0) return;
     const q = player.quests.get(questId);
     if (!q) {
@@ -19962,7 +19951,7 @@ export class GameServer {
   }
 
   /** Quiet wire: one active quest's current shape. */
-  private pushQuestWire(player: PlayerComp, def: QuestDef, q: QuestProgress): void {
+  pushQuestWire(player: PlayerComp, def: QuestDef, q: QuestProgress): void {
     player.session?.sendJson({
       t: 'questupd',
       quest: questWire(
@@ -19980,7 +19969,7 @@ export class GameServer {
    * Accept a quest — the guarded transaction behind the quest_accept
    * hook, item-starts, and the dev lever. A stale plate no-ops.
    */
-  private questAccept(eid: EntityId, player: PlayerComp, questId: string): boolean {
+  questAccept(eid: EntityId, player: PlayerComp, questId: string): boolean {
     const def = this.questDefs.get(questId);
     if (!def) return false;
     const ctx = this.questCtx(player);
@@ -20012,7 +20001,7 @@ export class GameServer {
    * pay the rewards (overflow lands at the feet, the give-hook law),
    * and mark the ledger. Repeatables start their cooldown here.
    */
-  private questTurnIn(eid: EntityId, player: PlayerComp, questId: string): boolean {
+  questTurnIn(eid: EntityId, player: PlayerComp, questId: string): boolean {
     const def = this.questDefs.get(questId);
     const q = player.quests.get(questId);
     if (!def || !q) return false;
@@ -20245,7 +20234,7 @@ export class GameServer {
   }
 
   /** Set a durable story flag; persisted immediately (guests: memory). */
-  private setPlayerFlag(player: PlayerComp, flag: string, value = 1): void {
+  setPlayerFlag(player: PlayerComp, flag: string, value = 1): void {
     // The world answers; nobody writes it. (The validator already
     // refuses authored writes — this holds the line for every caller.)
     // The quest ledger and the standing bands answer their own
@@ -20286,7 +20275,7 @@ export class GameServer {
    * authored deltas (quest rewards, story hooks) omit it and state
    * both sides themselves. Cross-pay never re-crosses.
    */
-  private creditStanding(
+  creditStanding(
     player: PlayerComp,
     factionId: string,
     delta: number,
@@ -20331,7 +20320,7 @@ export class GameServer {
   }
 
   /** A systemic deed by name — value read from the live doc, matrix paid. */
-  private creditDeed(
+  creditDeed(
     player: PlayerComp,
     factionId: string | null,
     deed: 'bountyHonored' | 'tollBroken' | 'assaultEnforcer' | 'slayMember' | 'theftWitnessed',
@@ -20361,7 +20350,7 @@ export class GameServer {
   }
 
   /** The owner's standings, every roster row (neutral rows included). */
-  private repWire(player: PlayerComp): RepStandingWire[] {
+  repWire(player: PlayerComp): RepStandingWire[] {
     return FACTIONS.roster.map((f) => {
       const value = player.standing.get(f.id) ?? 0;
       return { faction: f.id, name: f.name, value, band: standingBand(value) };
@@ -20373,7 +20362,7 @@ export class GameServer {
   }
 
   /** Quiet standing patch, diff-guarded — the questupd twin. */
-  private pushRep(player: PlayerComp): void {
+  pushRep(player: PlayerComp): void {
     const standings = this.repWire(player);
     const sig = this.repSigOf(standings);
     if (sig === player.repSig) return;
@@ -21008,7 +20997,7 @@ export class GameServer {
    * fresh classCounts, and the one-site perk dials rebuild — ONE
    * recompute site serves the wardrobe and the character alike.
    */
-  private recomputeGear(eid: EntityId, player: PlayerComp): void {
+  recomputeGear(eid: EntityId, player: PlayerComp): void {
     player.gear = aggregateGearStats(player.equipment);
     const perks = defaultPerks();
     const callingProcs: ProcEffect[] = [];
@@ -21113,7 +21102,7 @@ export class GameServer {
   }
 
   /** The wire's shape for the answered set: ids + applied ranks (additive). */
-  private callingsMessage(player: PlayerComp): S2CCallings {
+  callingsMessage(player: PlayerComp): S2CCallings {
     const ranks: Record<string, number> = {};
     for (const [id, rank] of player.callings) if (rank > 1) ranks[id] = rank;
     return {
@@ -21998,7 +21987,7 @@ export class GameServer {
     return levelForXp(player.skills[tech.style] ?? 0) < tech.unlockLevel;
   }
 
-  private sendCooldowns(player: PlayerComp): void {
+  sendCooldowns(player: PlayerComp): void {
     if (!player.session) return;
     const max = [0, 0, 0, 0] as [number, number, number, number];
     for (let slot = 0; slot < ABILITY_SLOTS; slot++) {
@@ -23954,7 +23943,7 @@ export class GameServer {
    * facts about the call graph, with the procDepth guard as the
    * structural belt-and-braces underneath.
    */
-  private layStatusOnNpc(
+  layStatusOnNpc(
     npcEid: EntityId,
     apply: StatusApply,
     sourceEid: EntityId,
@@ -24260,7 +24249,7 @@ export class GameServer {
    * to its page's lock, and a holdsPlayers stagger locks the hands
    * (stunLeft — read by the held gates at the attack/cast doors).
    */
-  private applyStatusToPlayer(eid: EntityId, apply: StatusApply, sourceEid: EntityId): void {
+  applyStatusToPlayer(eid: EntityId, apply: StatusApply, sourceEid: EntityId): void {
     const page = pageOf(apply.status);
     // FAIR HANDS: the immunity window holds at the player door too
     // (inline for the slate-test law — no state touched unless a page
@@ -25135,7 +25124,7 @@ export class GameServer {
    * despawn, the limp home) hold the player and not the id, and a
    * ref that outlives its player flushes into a null session no-op.
    */
-  private rideDirty = new Set<PlayerComp>();
+  rideDirty = new Set<PlayerComp>();
   private petDirty = new Set<PlayerComp>();
   /** The company mirror's own dirty set — the petDirty discipline, held apart. */
   private companionDirty = new Set<PlayerComp>();
@@ -25157,7 +25146,7 @@ export class GameServer {
    * only what the server alone knows; the client resolves name, school,
    * and icon from the roster by id.
    */
-  private sendCharges(player: PlayerComp): void {
+  sendCharges(player: PlayerComp): void {
     const charges: ChargeInfo[] = [];
     const add = (p: ProcEffect): void => {
       if (p.trigger.on !== 'stacks') return;
@@ -25340,7 +25329,7 @@ export class GameServer {
    * THE ANSWERED ECHO's door can refuse proc-born landings by
    * construction.
    */
-  private runProc(eid: EntityId, player: PlayerComp, p: ProcEffect, ctx: ProcContext): number {
+  runProc(eid: EntityId, player: PlayerComp, p: ProcEffect, ctx: ProcContext): number {
     // Slate-safe bookkeeping (the slate law): a bare rig without the
     // counter still walks the door.
     this.procDepth = (this.procDepth ?? 0) + 1;
@@ -25548,7 +25537,7 @@ export class GameServer {
   }
 
   /** Living foes inside a circle, nearest first. */
-  private npcsWithin(plane: PlaneId, x: number, y: number, radius: number): EntityId[] {
+  npcsWithin(plane: PlaneId, x: number, y: number, radius: number): EntityId[] {
     const found: Array<{ eid: EntityId; d: number }> = [];
     this.forEachNpcNear(plane, x, y, radius, (npcEid, npc, np) => {
       const d = Math.hypot(np.x - x, np.y - y) - npc.def.radius;
@@ -26145,7 +26134,7 @@ export class GameServer {
     return credited;
   }
 
-  private killNpc(npcEid: EntityId, npc: NpcComp, killerEid: EntityId, style?: SkillId): void {
+  killNpc(npcEid: EntityId, npc: NpcComp, killerEid: EntityId, style?: SkillId): void {
     // Idempotent: reaction cascades can route two lethal blows into the
     // same tick — the second finds the entity already gone.
     if (!this.ecs.isAlive(npcEid)) return;
@@ -27061,7 +27050,7 @@ export class GameServer {
 
   /** Live ambient bodies (spawnIndex -1) and the roster window each
    * came in on; killNpc and the despawn pass prune it. */
-  private readonly wildBodies = new Map<EntityId, { from: number; to: number } | null>();
+  readonly wildBodies = new Map<EntityId, { from: number; to: number } | null>();
 
   /** Crowned-but-unforgeable seats already warned about (once per def id). */
   private readonly crownWarned = new Set<string>();
@@ -27093,7 +27082,7 @@ export class GameServer {
 
   /** Ambient spawns keep this far out / this near a player (tiles). */
   private static readonly WILD_MIN_R = 34;
-  private static readonly WILD_MAX_R = 56;
+  static readonly WILD_MAX_R = 56;
   /** Beyond this from every player an ambient body slips away. */
   private static readonly WILD_DESPAWN_R = 100;
 
@@ -27361,7 +27350,7 @@ export class GameServer {
    * halves, dev-spawned): killNpc's spawn-point lookup finds nothing and
    * schedules no respawn.
    */
-  private spawnNpc(
+  spawnNpc(
     def: NpcDef,
     plane: PlaneId,
     x: number,
@@ -27457,7 +27446,7 @@ export class GameServer {
    * Their NpcComp.spawnIndex stays -1; respawn belongs to the ACTOR
    * spawn table, which killNpc services through the ActorComp.
    */
-  private spawnActor(
+  spawnActor(
     actor: NpcActorDef,
     plane: PlaneId,
     x: number,
@@ -28037,7 +28026,7 @@ export class GameServer {
   }
 
   /** The task the schedule assigns this comp right now. */
-  private routineTask(rc: RoutineComp): RoutineTask {
+  routineTask(rc: RoutineComp): RoutineTask {
     return rc.slot < 0 ? rc.def.base : (rc.def.slots?.[rc.slot]?.task ?? rc.def.base);
   }
 
@@ -31156,1983 +31145,19 @@ export class GameServer {
   chat(eid: EntityId, text: string): void {
     const player = this.players.get(eid);
     if (!player) return;
-    // /lock — toggle the lock on the nearest shut door in reach. A
-    // player feature, not dev-gated: the first rung of the locking
-    // ladder (keys and ownership arrive with a later epic).
-    if (text.trim() === '/lock') {
-      const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      const cx = Math.floor(pos.x);
-      const cy = Math.floor(pos.y);
-      let best: { tx: number; ty: number; info: DoorInfo; d: number } | null = null;
-      for (let ty = cy - 2; ty <= cy + 2; ty++) {
-        for (let tx = cx - 2; tx <= cx + 2; tx++) {
-          const g = this.worldOf(pos.plane).groundAt(tx, ty);
-          const info = g === undefined ? null : doorInfo(g);
-          if (!info) continue;
-          const dx = tx + 0.5 - pos.x;
-          const dy = ty + 0.5 - pos.y;
-          const d = dx * dx + dy * dy;
-          if (d <= 2.2 * 2.2 && (!best || d < best.d)) best = { tx, ty, info, d };
-        }
-      }
-      if (!best) {
-        sys('No door within reach.');
-        return;
-      }
-      if (best.info.open) {
-        sys(
-          best.info.material === 'fence' ||
-            best.info.material === 'palisade' ||
-            best.info.material === 'hedge'
-            ? 'Close the gate before locking it.'
-            : 'Close the door before locking it.',
-        );
-        return;
-      }
-      const unit = this.doorUnit(pos.plane, best.tx, best.ty, best.info);
-      const key = `${pos.plane}|${unit.ax},${unit.ay}`;
-      if (this.doorLocks.delete(key)) sys('The lock clicks open.');
-      else {
-        this.doorLocks.add(key);
-        sys('The lock snaps shut.');
-      }
-      return;
-    }
-    // /recall (or /home) — the hearth pull: carry the body back to the
-    // claimed home bed. A player feature, not dev-gated. Out of combat
-    // only, and the hearth rests ten minutes between recalls.
-    if (text.trim() === '/recall' || text.trim() === '/home') {
-      const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      if (!player.home) {
-        sys('You have no home yet — walk up to a bed and interact with it to claim one.');
-        return;
-      }
-      const now = Date.now();
-      if (now - player.lastCombatAt < 8000) {
-        sys('The hearth cannot reach you in the heat of battle — break away from combat first.');
-        return;
-      }
-      const left = player.hearthAt + GameServer.HEARTH_CD_MS - now;
-      if (left > 0) {
-        const mins = Math.floor(left / 60000);
-        const secs = Math.ceil((left % 60000) / 1000);
-        sys(
-          `The hearth still gathers its strength — ready in ${mins > 0 ? `${mins}m ${secs}s` : `${secs}s`}.`,
-        );
-        return;
-      }
-      const bedside = this.homeBedside(player);
-      if (!bedside) {
-        sys(
-          player.home
-            ? 'Your bed is walled in — there is no floor beside it to wake on.'
-            : 'Your bed is gone — claim another to recall again.',
-        );
-        return;
-      }
-      const pos = this.positions.get(eid);
-      const fromInstance = pos !== undefined && isRiftPlane(pos.plane);
-      // The hearth is a surface institution — THE CROSSING carries the
-      // body home (a bare teleport when already on the surface).
-      this.transferPlane(eid, SURFACE_PLANE_ID, bedside.x, bedside.y);
-      // Recalling out of a personal dungeon ends the run, same as
-      // walking its exit portal.
-      if (fromInstance) this.teardownDungeon(player.characterId);
-      player.hearthAt = now;
-      if (player.characterId > 0) this.accounts.saveHearthAt(player.characterId, now);
-      sys('The world folds around you — you are home.');
-      return;
-    }
-    // Dev-only utility commands, never broadcast.
-    if (config.devCommands && text.startsWith('/tp ')) {
-      const [, xRaw, yRaw] = text.split(/\s+/);
-      const x = Number.parseFloat(xRaw ?? '');
-      const y = Number.parseFloat(yRaw ?? '');
-      if (Number.isFinite(x) && Number.isFinite(y)) {
-        // Land on the CENTER of the nearest walkable tile. A raw corner
-        // teleport can overlap the player's radius into a solid
-        // neighbor — an embedded body fails every movement candidate
-        // and freezes in place with zero feedback.
-        // /tp stays a SAME-PLANE teleport — the invoker's own world.
-        const tpWorld = this.worldAt(eid);
-        const tx0 = Math.floor(x);
-        const ty0 = Math.floor(y);
-        outer: for (let r = 0; r <= 4; r++) {
-          for (let dy = -r; dy <= r; dy++) {
-            for (let dx = -r; dx <= r; dx++) {
-              if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-              const tx = tx0 + dx;
-              const ty = ty0 + dy;
-              tpWorld.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
-              if (!tpWorld.isSolid(tx, ty)) {
-                this.teleport(eid, tx + 0.5, ty + 0.5);
-                break outer;
-              }
-            }
-          }
-        }
-      }
-      return;
-    }
-    if (config.devCommands && (text === '/museum' || text.startsWith('/museum '))) {
-      // THE PROP MUSEUM: the review hall's one door. First call walks
-      // you in at the entrance plinth; calling it from inside walks
-      // you back to the exact spot you left (or home, if that world
-      // has since been torn down — a rift never waits).
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      if (!this.planes.get(MUSEUM_PLANE_ID)) {
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: 'The museum does not stand on this server.' });
-        return;
-      }
-      if (pos.plane === MUSEUM_PLANE_ID) {
-        const saved = this.museumReturn.get(eid);
-        const back = saved && this.planes.get(saved.plane) ? saved : this.planes.worldSpawn;
-        this.museumReturn.delete(eid);
-        this.transferPlane(eid, back.plane, back.x, back.y);
-      } else {
-        const entry = this.planes.spawnOf('museum');
-        if (!entry) return;
-        this.museumReturn.set(eid, { plane: pos.plane, x: pos.x, y: pos.y });
-        this.transferPlane(eid, entry.plane, entry.x, entry.y);
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: 'The Prop Museum — walk the wings north to south; /museum returns you.',
-        });
-      }
-      return;
-    }
-    if (config.devCommands && text.startsWith('/settile ')) {
-      // Rig fixture brush: /settile <tileId> <w> <h> [gapX gapY] fills
-      // a rectangle of tiles south-east of the player through the one
-      // setWorldTile door (patches stream like any build). Gaps carve
-      // walkable lanes so dense prop fields stay traversable.
-      const [, idRaw, wRaw, hRaw, gxRaw, gyRaw] = text.split(/\s+/);
-      const tile = Number.parseInt(idRaw ?? '', 10);
-      const w = Math.min(64, Number.parseInt(wRaw ?? '1', 10) || 1);
-      const h = Math.min(64, Number.parseInt(hRaw ?? '1', 10) || 1);
-      const gapX = Number.parseInt(gxRaw ?? '0', 10) || 0;
-      const gapY = Number.parseInt(gyRaw ?? '0', 10) || 0;
-      const pos = this.positions.get(eid);
-      if (pos && Number.isFinite(tile)) {
-        const tx0 = Math.floor(pos.x) + 2;
-        const ty0 = Math.floor(pos.y) + 2;
-        let n = 0;
-        for (let dy = 0; dy < h; dy++) {
-          if (gapY > 0 && dy % (gapY + 1) === gapY) continue;
-          for (let dx = 0; dx < w; dx++) {
-            if (gapX > 0 && dx % (gapX + 1) === gapX) continue;
-            this.worldOf(pos.plane).ensure(
-              Math.floor((tx0 + dx) / CHUNK_SIZE),
-              Math.floor((ty0 + dy) / CHUNK_SIZE),
-            );
-            this.setWorldTile(pos.plane, tx0 + dx, ty0 + dy, tile as Tile);
-            n++;
-          }
-        }
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `Set ${n} tiles of ${tile} at ${tx0},${ty0}.`,
-        });
-      }
-      return;
-    }
-    if (config.devCommands && text.startsWith('/time')) {
-      const arg = text.split(/\s+/)[1] ?? '';
-      const target = TIME_NAMES[arg] ?? Number.parseFloat(arg);
-      if (Number.isFinite(target) && target >= 0 && target < 24) {
-        this.timeOfsTicks += ofsForHours(this.tickCount + this.timeOfsTicks, target);
-        for (const s of this.sessions) s.sendJson({ t: 'time', ofs: this.timeOfsTicks });
-        const now = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
-        const hh = Math.floor(now);
-        const mm = Math.floor((now - hh) * 60);
-        this.systemChatAll(`Time set: ${hh}:${String(mm).padStart(2, '0')}`);
-      } else {
-        const names = Object.keys(TIME_NAMES).join(', ');
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: `/time <0-24 | ${names}>` });
-      }
-      return;
-    }
-    if (config.devCommands && text.startsWith('/xp ')) {
-      const [, skillRaw, amountRaw] = text.split(/\s+/);
-      const amount = Math.max(1, Math.min(10_000_000, Number.parseInt(amountRaw ?? '0', 10) || 0));
-      if (skillRaw && isSkillId(skillRaw) && amount > 0) {
-        this.grantXp(eid, player, skillRaw, amount);
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: `+${amount} ${skillRaw} xp` });
-      } else {
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: '/xp <skill> <amount>' });
-      }
-      return;
-    }
-    if (config.devCommands && (text === '/grow' || text.startsWith('/grow '))) {
-      const pos = this.positions.get(eid);
-      const now = Date.now();
-      let grown = 0;
-      for (const state of this.crops.values()) {
-        if (pos && Math.hypot(state.tx + 0.5 - pos.x, state.ty + 0.5 - pos.y) > 20) continue;
-        const remaining = growMs(state.def) - this.cropElapsed(state, now);
-        if (remaining <= 0) continue;
-        state.boostMs += remaining;
-        this.saveCrop(state);
-        grown++;
-      }
-      // THE LIVING SOIL: the same lever hurries a working compost
-      // batch to done (dev worlds cannot wait half an hour on a heap).
-      let turned = 0;
-      for (const bin of this.farmBins.values()) {
-        if (pos && Math.hypot(bin.tx + 0.5 - pos.x, bin.ty + 0.5 - pos.y) > 20) continue;
-        if (bin.startedAt === 0 || now >= bin.startedAt + COMPOST_MINUTES * 60_000) continue;
-        bin.startedAt = now - COMPOST_MINUTES * 60_000;
-        this.accounts.upsertFarmBin(bin.tx, bin.ty, bin.fill, bin.graded, bin.startedAt);
-        this.mirrorBin(bin);
-        turned++;
-      }
-      // THE ANIMALS OF THE YARD: and hurries every nearby udder,
-      // fleece, and snout to ready (same dev-world mercy).
-      for (const [stockEid, comp] of this.livestock) {
-        const spos = this.positions.get(stockEid);
-        if (!spos || (pos && Math.hypot(spos.x - pos.x, spos.y - pos.y) > 20)) continue;
-        const npc2 = this.npcs.get(stockEid);
-        if (!npc2 || now >= npc2.nextProduceAt) continue;
-        npc2.nextProduceAt = now;
-        comp.row.nextProduceAt = now;
-        this.accounts.saveLivestock(comp.row);
-      }
-      // THE WORKING YARD: and matures every nearby batch and hive.
-      for (const job of this.farmJobs.values()) {
-        if (pos && Math.hypot(job.tx + 0.5 - pos.x, job.ty + 0.5 - pos.y) > 20) continue;
-        const recipe = WORK_RECIPES.get(job.recipe);
-        if (!recipe || job.qty <= 0) continue;
-        job.startedAt = now - recipe.minutes * 60_000 * job.qty;
-        this.accounts.upsertStationJob(job.tx, job.ty, job.recipe, job.qty, job.startedAt, job.grade, job.owner);
-        this.mirrorJob(job);
-      }
-      for (const hive of this.farmApiaries.values()) {
-        if (pos && Math.hypot(hive.tx + 0.5 - pos.x, hive.ty + 0.5 - pos.y) > 20) continue;
-        hive.since = now - APIARY_MINUTES * 60_000 * APIARY_STORE_CAP;
-        this.accounts.upsertFarmApiary(hive.tx, hive.ty, hive.since);
-        this.mirrorApiary(hive.tx, hive.ty, hive.since);
-      }
-      this.tickCrops(now);
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: `Ripened ${grown} crops${turned > 0 ? `, hurried ${turned} bins` : ''}.`,
-      });
-      return;
-    }
-    if (config.devCommands && (text === '/clearfarm' || text.startsWith('/clearfarm '))) {
-      // THE PROVING GROUND: level a radius to bare grass — crops,
-      // bins, troughs, and built tiles all cleared. Dev worlds only;
-      // the harness stages on virgin ground instead of playing the
-      // terrain lottery (10-minute suites died of that lottery).
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      const r = Math.min(16, Math.max(2, Number(text.split(/\s+/)[1]) || 8));
-      const cx = Math.floor(pos.x);
-      const cy = Math.floor(pos.y);
-      let cleared = 0;
-      for (let ty = cy - r; ty <= cy + r; ty++) {
-        for (let tx = cx - r; tx <= cx + r; tx++) {
-          const key = `${tx},${ty}`;
-          if (this.crops.has(key)) {
-            this.crops.delete(key);
-            this.accounts.deleteCrop(tx, ty);
-            this.surface.unregisterCropTile(tx, ty);
-            for (const s of this.sessions) s.sendJson({ t: 'farm', remove: [{ tx, ty }] });
-          }
-          if (this.farmBins.has(key)) {
-            this.farmBins.delete(key);
-            this.accounts.deleteFarmBin(tx, ty);
-            this.mirrorBin({ tx, ty, fill: 0, graded: 0, startedAt: 0 });
-          }
-          if (this.farmTroughs.has(key)) {
-            this.farmTroughs.delete(key);
-            this.accounts.deleteFarmTrough(tx, ty);
-            this.mirrorTrough({ tx, ty, feed: 0 });
-          }
-          if (this.worldOf(pos.plane).builtAt(tx, ty)) {
-            this.worldOf(pos.plane).unregisterBuilt(tx, ty);
-            this.accounts.deleteBuiltTile(pos.plane, tx, ty);
-            this.ringCache = null;
-    this.capitalCache?.clear();
-          }
-          const g = this.worldOf(pos.plane).groundAt(tx, ty);
-          if (g !== undefined && g !== Tile.Grass) {
-            this.setWorldTile(pos.plane, tx, ty, Tile.Grass);
-            cleared++;
-          }
-        }
-      }
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: `Cleared ${cleared} tiles to grass (r=${r}).`,
-      });
-      return;
-    }
-    if (config.devCommands && text.startsWith('/proc')) {
-      // /proc <action> [element] — wake a working on the spot.
-      //
-      // THE DEEPER SIGIL ships its engine before its roster, so this is
-      // how the whole path (action → fx → floaty → sound) is exercised
-      // in a real session while enchants.ts still carries no procs. It
-      // fires runProc DIRECTLY, so it deliberately proves nothing about
-      // triggers, rest timers, or meters — those are pinned by tests.
-      const [, actionRaw, elemRaw] = text.split(/\s+/);
-      const pos = this.positions.get(eid);
-      const action = actionRaw ? DEV_PROC_ACTIONS[actionRaw] : undefined;
-      if (!pos || !action) {
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `Workings: ${Object.keys(DEV_PROC_ACTIONS).join(', ')}`,
-        });
-        return;
-      }
-      const element = (elemRaw && elemRaw in ELEMENT_COLORS ? elemRaw : 'arcane') as ArxElement;
-      const target = this.npcsWithin(pos.plane, pos.x, pos.y, 8)[0];
-      const tp = target !== undefined ? this.positions.get(target) : undefined;
-      this.runProc(
-        eid,
-        player,
-        {
-          kind: 'proc',
-          id: `dev_${actionRaw}`,
-          name: 'Dev Working',
-          trigger: { on: 'crit' },
-          action,
-          icd: 20,
-          element,
-        },
-        { x: tp?.x ?? pos.x, y: tp?.y ?? pos.y, targetEid: target, style: 'arx' },
-      );
-      return;
-    }
-    if (config.devCommands && text.startsWith('/calling')) {
-      // /calling <id> [off] — answer (or set down) a Calling IGNORING
-      // the unlock and the budget, session-only: nothing is persisted,
-      // and sanitizeCallings reclaims any over-held answer at the next
-      // login. The rig's hand for walking the package engine — the
-      // proc lane, the meters, the folds — without leveling a hand to
-      // its seat first. The real toggle path (setCalling) keeps the
-      // law; this lever deliberately steps past it, like /proc steps
-      // past the triggers.
-      const [, id, offRaw] = text.split(/\s+/);
-      const def = id ? callingDef(id) : undefined;
-      if (!def) {
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `Callings: ${[...CALLINGS.keys()].join(', ')}`,
-        });
-        return;
-      }
-      // /calling <id> [off | <rank 1..4>]
-      const on = offRaw !== 'off';
-      const devRank = Math.max(1, Math.min(CALLING_MAX_RANK, Number(offRaw) || 1));
-      if (on) player.callings.set(def.id, devRank);
-      else player.callings.delete(def.id);
-      this.recomputeGear(eid, player);
-      player.session?.sendJson(this.callingsMessage(player));
-      this.sendCooldowns(player);
-      this.sendCharges(player);
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: on
-          ? `${def.name} answers at Rank ${RANK_ROMAN[devRank]} (dev, unpersisted).`
-          : `${def.name} set down (dev).`,
-      });
-      return;
-    }
-    if (config.devCommands && text.startsWith('/status')) {
-      // /status <id> [power] [durTicks] — lay a status on the nearest
-      // foe (or on yourself when nothing stands near).
-      //
-      // THE TWO LANES ships sunder and coexistence ahead of their
-      // sources, so this is how the lanes are walked in a live
-      // session: stack venom from two hands, land a spark on a
-      // wounded body and watch the wound ride through the flash. It
-      // calls the real apply doors, so resists/weaknesses and the
-      // reaction law all answer honestly; the lane laws themselves
-      // are pinned by statusLanes.test.ts.
-      const [, idRaw, powRaw, durRaw] = text.split(/\s+/);
-      const pos = this.positions.get(eid);
-      const id = STATUS_IDS.find((s) => s === idRaw);
-      if (!pos || !id) {
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `Statuses: ${STATUS_IDS.join(', ')}`,
-        });
-        return;
-      }
-      const power = Math.max(0, Number(powRaw) || 3);
-      const durationTicks = Math.max(1, Number(durRaw) || 200);
-      const target = this.npcsWithin(pos.plane, pos.x, pos.y, 8)[0];
-      if (target !== undefined) {
-        // The lay door on purpose: the rig can prove THE ANSWERED
-        // ECHO end to end with /calling + /status alone.
-        this.layStatusOnNpc(target, { status: id, power, durationTicks }, eid, 'arx');
-      } else {
-        this.applyStatusToPlayer(eid, { status: id, power, durationTicks }, eid);
-      }
-      return;
-    }
-    if (config.devCommands && text.startsWith('/mount')) {
-      // /mount            — list mounts and what's owned
-      // /mount <id>       — grant + choose + saddle up (the dev whistle)
-      // /mount off        — boots on the ground
-      const [, arg] = text.split(/\s+/);
-      const pos = this.positions.get(eid);
-      if (!arg) {
-        const rows = MOUNTS.map(
-          (m) => `${player.mountsOwned.has(m.id) ? '●' : '○'} ${m.id} (${m.speedMult}×)`,
-        );
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `Mounts: ${rows.join(', ')}${player.mountId ? ` — riding ${player.mountId}` : ''}`,
-        });
-        return;
-      }
-      if (arg === 'off') {
-        this.dismount(eid, player);
-        return;
-      }
-      const def = mountDef(arg);
-      if (!def || !pos) {
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: `No mount '${arg}'.` });
-        return;
-      }
-      player.mountsOwned.add(def.id);
-      player.mountChosen = def.id;
-      this.rideDirty.add(player); // owned set changed — the mirror must speak
-      this.dismount(eid, player); // switching beasts steps down first
-      this.mountToggle(eid, player, pos);
-      return;
-    }
-    if (config.devCommands && text.startsWith('/tame')) {
-      // /tame               — list the tame roster and the household
-      // /tame <species>     — grant a companion at heel (skips the gentling)
-      // /tame drop <slot>   — release a stall (the stable door owns the real ceremony)
-      // /tame heel <slot>   — the stable door's swap, penless (staging lever)
-      const [, arg, arg2] = text.split(/\s+/);
-      const say = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      if (!arg) {
-        const roster = [...TAMES.keys()].join(', ');
-        const held = player.pets
-          .map((p) => `${p.slot}:${p.name} (${p.species}, ${p.state})`)
-          .join(', ');
-        say(`Tames: ${roster}. Stalls: ${held || 'empty'}.`);
-        return;
-      }
-      if (arg === 'heel') {
-        const slot = Number.parseInt(arg2 ?? '', 10);
-        const row2 = player.pets.find((p) => p.slot === slot);
-        if (!row2) {
-          say(`No companion in stall ${arg2}.`);
-          return;
-        }
-        const prevHeel = player.pets.find((p) => p.state === 'heel');
-        if (prevHeel && prevHeel !== row2) {
-          prevHeel.state = 'stabled';
-          if (player.characterId > 0) this.accounts.savePetState(player.characterId, prevHeel.slot, 'stabled');
-          this.despawnPetEntity(player);
-        }
-        row2.state = 'heel';
-        row2.restedAt = null;
-        if (player.characterId > 0) this.accounts.savePetRest(player.characterId, row2.slot, 'heel', null);
-        player.petHp = null;
-        this.trySpawnPet(eid, player);
-        this.sendPet(player);
-        say(`${row2.name} comes to your side.`);
-        return;
-      }
-      if (arg === 'drop') {
-        const slot = Number.parseInt(arg2 ?? '', 10);
-        const idx = player.pets.findIndex((p) => p.slot === slot);
-        if (idx < 0) {
-          say(`No companion in stall ${arg2}.`);
-          return;
-        }
-        const [row] = player.pets.splice(idx, 1);
-        if (row!.state === 'heel') this.despawnPetEntity(player);
-        if (player.characterId > 0) this.accounts.deletePet(player.characterId, row!.slot);
-        say(`${row!.name} returns to the wild.`);
-        this.sendPet(player);
-        return;
-      }
-      const tame = tameDef(arg);
-      if (!tame) {
-        say(`No tame '${arg}'.`);
-        return;
-      }
-      if (player.pets.length >= PET_CAP) {
-        say('Your stalls are full. Three is a household.');
-        return;
-      }
-      const used = new Set(player.pets.map((p) => p.slot));
-      let slot = 0;
-      while (used.has(slot)) slot++;
-      const prev = player.pets.find((p) => p.state === 'heel');
-      if (prev) {
-        prev.state = 'stabled';
-        if (player.characterId > 0) this.accounts.savePetState(player.characterId, prev.slot, 'stabled');
-        this.despawnPetEntity(player);
-      }
-      const tamedAt = Date.now();
-      const row: PetRow = {
-        slot,
-        species: tame.species,
-        name: NPCS.get(tame.species)?.name ?? tame.species,
-        xp: 0,
-        state: 'heel',
-        restedAt: null,
-        bondXp: 0,
-        arts: [],
-        tamedAt,
-        tamedLevel: levelForXp(player.skills.beastcraft ?? 0),
-        kills: 0,
-        downs: 0,
-        // No wild body stood for the dev whistle: roll the coat once.
-        lookSeed: (Math.random() * 0x7fffffff) | 0,
-      };
-      player.pets.push(row);
-      if (player.characterId > 0) this.accounts.savePet(player.characterId, row, tamedAt);
-      player.petHp = null;
-      player.petBondAt.delete(slot);
-      this.trySpawnPet(eid, player);
-      // Ceremony on purpose: the dev whistle exercises the naming card.
-      this.sendPet(player, slot);
-      return;
-    }
-    if (config.devCommands && text.startsWith('/company')) {
-      // THE COMPANY YOU KEEP's staging lever:
-      // /company                — list the roster and the kept company
-      // /company <species>      — befriend at heel (skips the treat)
-      // /company heel <slot>    — call a kept friend out (the real op)
-      // /company home <slot>    — send the heel friend home (the real op)
-      // /company part <slot>    — the goodbye (the real op)
-      const [, arg, arg2] = text.split(/\s+/);
-      const say = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      if (!arg) {
-        const roster = [...COMPANIONS.keys()].join(', ');
-        const held = player.companions
-          .map((c) => `${c.slot}:${c.name} (${c.species}, ${c.state})`)
-          .join(', ');
-        say(`Company: ${roster}. Kept: ${held || 'none'}.`);
-        return;
-      }
-      if (arg === 'heel' || arg === 'home' || arg === 'part') {
-        // The real door, refusals and all — the /petarts precedent.
-        this.companionOp(eid, arg, Number.parseInt(arg2 ?? '', 10));
-        return;
-      }
-      const cdef = companionDef(arg);
-      if (!cdef) {
-        say(`No companion '${arg}'.`);
-        return;
-      }
-      if (player.companions.length >= COMPANION_CAP) {
-        say('Your company is full.');
-        return;
-      }
-      let slot = 0;
-      while (player.companions.some((c) => c.slot === slot)) slot++;
-      const current = player.companions.find((c) => c.state === 'heel');
-      if (current) {
-        this.despawnCompanionEntity(player);
-        current.state = 'home';
-        if (player.characterId > 0) this.accounts.saveCompanionState(player.characterId, current.slot, 'home');
-      }
-      const row: CompanionRow = {
-        slot,
-        species: cdef.species,
-        name: NPCS.get(cdef.species)?.name ?? cdef.species,
-        state: 'heel',
-        // No wild body stood for the dev whistle: roll the coat once.
-        lookSeed: (Math.random() * 0x7fffffff) | 0,
-        metAt: Date.now(),
-      };
-      player.companions.push(row);
-      if (player.characterId > 0) this.accounts.saveCompanion(player.characterId, row);
-      this.trySpawnCompanion(eid, player);
-      // Ceremony on purpose: the dev whistle exercises the naming card.
-      this.sendCompanions(player, slot);
-      return;
-    }
-    if (config.devCommands && text.startsWith('/petbond')) {
-      // The rope lever: '/petbond <slot> <amount>' — walks the bond
-      // through the REAL faucet door (grantPetBond), so rank
-      // ceremonies and focus growth are exercised, never bypassed.
-      // The /xp precedent: a dev lever raises the ledger, the laws
-      // still do all the talking.
-      const parts = text.split(/\s+/).slice(1);
-      const slot = Number(parts[0] ?? '0');
-      const amount = Math.max(0, Math.min(100000, Number(parts[1] ?? '0')));
-      const row = player.pets.find((p) => p.slot === slot);
-      if (!row) {
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: 'No companion keeps that stall.' });
-        return;
-      }
-      this.grantPetBond(player, row, amount);
-      this.sendPet(player);
-      return;
-    }
-    if (config.devCommands && text.startsWith('/petarts')) {
-      // The collar lever: '/petarts <slot> [id id id]' — the real op,
-      // refusals and all, so the harness proves the same door players
-      // use. No ids = an empty loadout (yesterday's wolf).
-      const parts = text.split(/\s+/).slice(1);
-      const slot = Number(parts[0] ?? '0');
-      this.petArtsOp(eid, slot, parts.slice(1));
-      return;
-    }
-    if (config.devCommands && text.startsWith('/petstate')) {
-      // The companion lens: household rows + the live body's truth.
-      const say = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      const pos2 = this.positions.get(eid);
-      const rows = player.pets.map((p) => {
-        const live = player.petEid !== null && this.pets.get(player.petEid)?.slot === p.slot;
-        const ppos = live ? this.positions.get(player.petEid!) : null;
-        const hp = live ? this.healths.get(player.petEid!) : null;
-        const comp = live ? this.pets.get(player.petEid!) : null;
-        const d = ppos && pos2 ? Math.hypot(ppos.x - pos2.x, ppos.y - pos2.y).toFixed(1) : null;
-        const downLeft =
-          comp && comp.downedUntil > this.tickCount ? ` down=${comp.downedUntil - this.tickCount}t` : '';
-        const restLeft =
-          p.state === 'resting' && p.restedAt !== null
-            ? ` rest=${Math.max(0, Math.ceil((p.restedAt + PET_REST_HOME_MS - Date.now()) / 1000))}s`
-            : '';
-        // THE KEEPER'S TONGUE: live surge/guard windows, for the bench
-        // and the proving harness both.
-        const surgeLeft =
-          comp?.surge && comp.surge.untilTick > this.tickCount
-            ? ` surge=${comp.surge.untilTick - this.tickCount}t x${comp.surge.dmgMult}${comp.surge.temper ? ' temper' : ''}`
-            : '';
-        const guardLeft =
-          comp?.guard && comp.guard.untilTick > this.tickCount
-            ? ` guard=${comp.guard.untilTick - this.tickCount}t +${comp.guard.armor}`
-            : '';
-        const bcNow = levelForXp(player.skills.beastcraft ?? 0);
-        const lvlNow = petLevelFor(p.xp, NPCS.get(p.species)?.level ?? 1, bcNow);
-        const spent = p.arts.reduce((s, id) => s + (petArtDef(id)?.focus ?? 0), 0);
-        return (
-          `${p.slot}: ${p.name} (${p.species}) ${p.state}${restLeft}` +
-          (live
-            ? ` LIVE d=${d} hp=${hp?.hp}/${hp?.maxHp} tgt=${comp?.target ?? '-'}${downLeft}${surgeLeft}${guardLeft}`
-            : '') +
-          ` xp=${p.xp} bond=${p.bondXp}(${petBondRank(p.bondXp)}) focus=${spent}/${petFocusMax(lvlNow, petBondRank(p.bondXp))}` +
-          ` arts=[${p.arts.join(',')}] kills=${p.kills} downs=${p.downs}`
-        );
-      });
-      say(rows.length > 0 ? rows.join(' | ') + ` calm=${player.petCalmTicks}` : 'No companions.');
-      return;
-    }
-    if (config.devCommands && text.startsWith('/give ')) {
-      // /give <item> [qty] [rarity] [power] [enchant] — gear/trinkets
-      // mint a fresh roll at the requested tier, item power, and
-      // enchant. The Playwright lever.
-      const [, item, qtyRaw, rarRaw, pwrRaw, enchRaw] = text.split(/\s+/);
-      const def = itemDef(item ?? '');
-      const qty = Math.max(1, Math.min(1000, Number.parseInt(qtyRaw ?? '1', 10) || 1));
-      const rar = isRarityTier(rarRaw ?? '') ? (rarRaw as ItemRoll['rar']) : undefined;
-      const pwrParsed = Number.parseInt(pwrRaw ?? '', 10);
-      const pwr =
-        Number.isInteger(pwrParsed) && pwrParsed >= 1 && pwrParsed <= MAX_ITEM_POWER
-          ? pwrParsed
-          : undefined;
-      const ench = enchantDef(enchRaw)?.id;
-      if (def && (def.dungeonKey || hasSpaceFor(player.inventory, def.id))) {
-        if (def.dungeonKey) {
-          // Keys land on the ring with a REAL minted roll each — the
-          // seed-0 roll-less twin defect is dead.
-          const tier = rar ?? 'common';
-          for (let i = 0; i < qty; i++) {
-            const seed = Math.floor(Math.random() * 0x100000000) >>> 0;
-            this.addKeyToRing(
-              player,
-              { rar: tier, seed, pwr: pwr ?? mintKeyPower(tier, seed), uses: keyUsesForTier(tier) },
-              false,
-            );
-          }
-          this.sendKeyRing(player);
-        } else if (def.gear || def.relic || def.sigil) {
-          for (let i = 0; i < qty; i++) {
-            const roll = makeRoll(rar ?? 'common');
-            roll.pwr = pwr;
-            roll.ench = ench;
-            addItem(player.inventory, def.id, 1, roll);
-          }
-        } else {
-          addItem(player.inventory, def.id, qty);
-        }
-        player.session?.sendJson({ t: 'inv', slots: player.inventory });
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `Given: ${def.name} ×${qty}${rar ? ` (${rar})` : ''}${pwr ? ` [power ${pwr}]` : ''}`,
-        });
-      } else {
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: `Can't give '${item}'.` });
-      }
-      return;
-    }
-    if (config.devCommands && text.startsWith('/hang')) {
-      // /hang <what> [tx ty] — THE SECOND LAYER's Playwright lever,
-      // driving the REAL hang lane (register + persist + patch).
-      // <what> = a raw detail id, or kind[:variant]: banner:3,
-      // pennant:0, sign:2, trellis:1, basket, tapestry, crown, moon.
-      // Default target: the tile one north (stand before the wall).
-      const [, whatRaw, txRaw, tyRaw] = text.split(/\s+/);
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      const tx = Number.isInteger(Number.parseInt(txRaw ?? '', 10))
-        ? Number.parseInt(txRaw!, 10)
-        : Math.floor(pos.x);
-      const ty = Number.isInteger(Number.parseInt(tyRaw ?? '', 10))
-        ? Number.parseInt(tyRaw!, 10)
-        : Math.floor(pos.y) - 1;
-      const [kind, variantRaw] = (whatRaw ?? '').split(':');
-      const variant = Number.parseInt(variantRaw ?? '0', 10) || 0;
-      let detail = Number.parseInt(kind ?? '', 10);
-      if (!Number.isInteger(detail)) {
-        try {
-          detail =
-            kind === 'banner'
-              ? wallBannerDetail(variant)
-              : kind === 'pennant'
-                ? pennantDetail(variant)
-                : kind === 'sign'
-                  ? bracketSignDetail(variant)
-                  : kind === 'trellis'
-                    ? trellisDetail(variant)
-                    : kind === 'basket'
-                      ? Detail.WallBasket
-                      : kind === 'tapestry'
-                        ? Detail.Tapestry
-                        : kind === 'crown'
-                          ? Detail.BannerCrown
-                          : kind === 'moon'
-                            ? Detail.BannerMoon
-                            : -1;
-        } catch {
-          detail = -1;
-        }
-      }
-      if (wallHungInfo(detail) === null) {
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: `Can't hang '${whatRaw}'.` });
-        return;
-      }
-      if (this.hangDetail(eid, tx, ty, detail)) {
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `Hung detail ${detail} at ${tx},${ty}.`,
-        });
-      }
-      return;
-    }
-    if (config.devCommands && text.startsWith('/unhang')) {
-      // /unhang [tx ty] — take your own hanging down through the real
-      // removal lane; the face's prior detail returns.
-      const [, txRaw, tyRaw] = text.split(/\s+/);
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      const tx = Number.isInteger(Number.parseInt(txRaw ?? '', 10))
-        ? Number.parseInt(txRaw!, 10)
-        : Math.floor(pos.x);
-      const ty = Number.isInteger(Number.parseInt(tyRaw ?? '', 10))
-        ? Number.parseInt(tyRaw!, 10)
-        : Math.floor(pos.y) - 1;
-      if (this.removeHanging(eid, tx, ty)) {
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `Taken down at ${tx},${ty}.`,
-        });
-      }
-      return;
-    }
-    if (config.devCommands && text.startsWith('/spawnmob')) {
-      // /spawnmob <npcId> [count] — ephemeral mobs (no respawn) beside
-      // the caller. The staging lever: line up the whole bestiary.
-      const [, id, countRaw] = text.split(/\s+/);
-      const def = id ? NPCS.get(id) : undefined;
-      if (!def) {
-        const ids = [...NPCS.keys()].join(', ');
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: `/spawnmob <id> [count] — ${ids}` });
-        return;
-      }
-      const count = Math.max(1, Math.min(8, Number.parseInt(countRaw ?? '1', 10) || 1));
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      let placed = 0;
-      for (let i = 0; i < count; i++) {
-        let x = pos.x + 1.5;
-        let y = pos.y;
-        for (let tries = 0; tries < 10; tries++) {
-          const a = Math.random() * Math.PI * 2;
-          const r = 1.2 + Math.random() * 2.2;
-          const tx = pos.x + Math.cos(a) * r;
-          const ty = pos.y + Math.sin(a) * r;
-          if (!this.worldOf(pos.plane).isSolid(Math.floor(tx), Math.floor(ty))) {
-            x = tx;
-            y = ty;
-            break;
-          }
-        }
-        this.spawnNpc(def, pos.plane, x, y, -1);
-        placed++;
-      }
-      player.session?.sendJson({ t: 'chat', channel: 'system', text: `Spawned ${def.name} ×${placed}.` });
-      return;
-    }
-    if (config.devCommands && text.startsWith('/forgecrown')) {
-      // /forgecrown <baseId> [seed] — THE WILD CROWN's staging lever:
-      // forge a boss variant beside the caller, deterministic in the
-      // seed (the proving lane's whole handle on the forge).
-      const [, id, seedRaw] = text.split(/\s+/);
-      const base = id ? NPCS.get(id) : undefined;
-      const pool = id ? crownPoolFor(id) : null;
-      if (!base || !base.kit || base.boss || !pool) {
-        const ids = [...NPCS.keys()].filter((k) => crownPoolFor(k) && !NPCS.get(k)!.boss);
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `/forgecrown <base> [seed] — forgeable: ${ids.join(', ')}`,
-        });
-        return;
-      }
-      const seed = Number.parseInt(seedRaw ?? '', 10) || ((Math.random() * 0x7fffffff) | 0);
-      const forged = forgeCrown(base, seed);
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      let x = pos.x + 1.5;
-      let y = pos.y;
-      for (let tries = 0; tries < 10; tries++) {
-        const a = Math.random() * Math.PI * 2;
-        const r = 1.5 + Math.random() * 2;
-        const tx = pos.x + Math.cos(a) * r;
-        const ty = pos.y + Math.sin(a) * r;
-        if (!this.worldOf(pos.plane).isSolid(Math.floor(tx), Math.floor(ty))) {
-          x = tx;
-          y = ty;
-          break;
-        }
-      }
-      this.spawnNpc(forged, pos.plane, x, y, -1);
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: `Forged ${forged.name} — ${forged.boss!.title} (seed ${seed}).`,
-      });
-      return;
-    }
-    if (config.devCommands && text.startsWith('/npcstate')) {
-      // Nearby NPC combat brains, closest first — the aggro-debug lens.
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      const rows: string[] = [];
-      for (const [nEid, npc] of this.npcs) {
-        const npos = this.positions.get(nEid);
-        if (!npos) continue;
-        const d = Math.hypot(npos.x - pos.x, npos.y - pos.y);
-        if (d > 20) continue;
-        const hp = this.healths.get(nEid);
-        rows.push(
-          `${npc.def.id}#${nEid} d=${d.toFixed(1)} ${npc.state} tgt=${npc.targetEid ?? '-'} ` +
-          `hp=${hp?.hp}/${hp?.maxHp} alert=${Math.round(npc.alert)}@${npc.alertEid ?? '-'} ` +
-          `sulk=${Math.max(0, npc.noAggroUntilTick - this.tickCount)} ` +
-          `helpEid=${npc.helpEid ?? '-'} called=${npc.helpCalled}`,
-        );
-      }
-      rows.sort();
-      const send = (t: string) =>
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      if (rows.length === 0) send('No NPCs within 20 tiles.');
-      for (const r of rows.slice(0, 12)) send(r);
-      return;
-    }
-    if (config.devCommands && text.startsWith('/spawnnpc')) {
-      // /spawnnpc <slug> — ephemeral copy of a defined actor beside
-      // the caller (no post, no respawn). The staging lever: audit any
-      // actor's face, gear, and voice without walking to their post.
-      const [, slug] = text.split(/\s+/);
-      const actor = slug ? this.actorDefs.get(slug) : undefined;
-      if (!actor) {
-        const ids = [...this.actorDefs.keys()].join(', ');
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: `/spawnnpc <slug> — ${ids}` });
-        return;
-      }
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      let x = pos.x + 1.5;
-      let y = pos.y;
-      for (let tries = 0; tries < 10; tries++) {
-        const a = Math.random() * Math.PI * 2;
-        const r = 1.2 + Math.random() * 1.6;
-        const tx = pos.x + Math.cos(a) * r;
-        const ty = pos.y + Math.sin(a) * r;
-        if (!this.worldOf(pos.plane).isSolid(Math.floor(tx), Math.floor(ty))) {
-          x = tx;
-          y = ty;
-          break;
-        }
-      }
-      this.spawnActor(actor, pos.plane, x, y, -1);
-      player.session?.sendJson({ t: 'chat', channel: 'system', text: `Spawned ${actor.name}.` });
-      return;
-    }
-    if (config.devCommands && text.startsWith('/dlgreload')) {
-      if (!this.dialogueSource) return;
-      void this.reloadDialogues()
-        .then((fresh) => {
-          const errs = fresh.errors.length > 0 ? `, ${fresh.errors.length} invalid` : '';
-          player.session?.sendJson({
-            t: 'chat',
-            channel: 'system',
-            text: `Dialogues reloaded: ${fresh.count}${errs}.`,
-          });
-        })
-        .catch((err: Error) => console.error('[dlg]', err.message));
-      return;
-    }
-    if (config.devCommands && text.startsWith('/routinereload')) {
-      // /routinereload — swap in the DB's current routines, live.
-      // Walking bodies re-resolve their schedule on the next tick.
-      if (!this.routineSource) return;
-      void this.routineSource()
-        .then((fresh) => {
-          this.routineDefs.clear();
-          this.registerRoutines(fresh.routines);
-          for (const [, rc] of this.routines) {
-            const def = this.routineDefs.get(rc.def.id);
-            if (def) {
-              rc.def = def;
-              rc.slot = -2; // force a fresh schedule resolve
-            }
-          }
-          const errs = fresh.errors.length > 0 ? `, ${fresh.errors.length} invalid` : '';
-          player.session?.sendJson({
-            t: 'chat',
-            channel: 'system',
-            text: `Routines reloaded: ${fresh.routines.length}${errs}.`,
-          });
-        })
-        .catch((err: Error) => console.error('[routine]', err.message));
-      return;
-    }
-    if (config.devCommands && text.startsWith('/routines')) {
-      // /routines — where is everyone in their day right now?
-      const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
-      const hh = Math.floor(hours);
-      const mm = Math.floor((hours - hh) * 60);
-      const lines: string[] = [`Routines at ${hh}:${String(mm).padStart(2, '0')} —`];
-      for (const [eid, rc] of this.routines) {
-        const actor = this.actors.get(eid)?.actor;
-        const pos = this.positions.get(eid);
-        const npc = this.npcs.get(eid);
-        const task = this.routineTask(rc);
-        const state =
-          npc && npc.state !== 'idle'
-            ? npc.state
-            : this.tickCount < rc.pauseUntilTick
-              ? 'paused'
-              : rc.phase;
-        const where = pos ? ` @ ${pos.x.toFixed(1)},${pos.y.toFixed(1)}` : '';
-        const leg = task.kind === 'path' ? ` wp${rc.wpIndex}` : '';
-        lines.push(
-          `${actor?.name ?? '?'}: ${rc.def.id} slot ${rc.slot} ${task.kind}${leg} ${state}${where}`,
-        );
-      }
-      if (this.routines.size === 0) lines.push('nobody keeps hours here');
-      player.session?.sendJson({ t: 'chat', channel: 'system', text: lines.join('\n') });
-      return;
-    }
-    if (config.devCommands && text.startsWith('/flagreset')) {
-      // /flagreset [prefix] — wipe story flags (optionally by prefix,
-      // e.g. `/flagreset dlg:` replays every one-time conversation).
-      const prefix = text.slice('/flagreset'.length).trim();
-      let n = 0;
-      for (const flag of [...player.flags.keys()]) {
-        if (prefix && !flag.startsWith(prefix)) continue;
-        player.flags.delete(flag);
-        if (player.characterId > 0) this.accounts.clearFlag(player.characterId, flag);
-        n++;
-      }
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: `Cleared ${n} flag${n === 1 ? '' : 's'}.`,
-      });
-      return;
-    }
-    if (config.devCommands && text.startsWith('/flag')) {
-      // /flag — list; /flag <name> [value] — set; /flag <name> 0 — clear.
-      const [, flag, valueRaw] = text.split(/\s+/);
-      if (!flag) {
-        const list = [...player.flags.keys()].sort().join(', ');
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: player.flags.size === 0 ? 'No flags set.' : `Flags: ${list}`,
-        });
-        return;
-      }
-      if (valueRaw === '0') {
-        player.flags.delete(flag);
-        if (player.characterId > 0) this.accounts.clearFlag(player.characterId, flag);
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: `Flag '${flag}' cleared.` });
-      } else {
-        this.setPlayerFlag(player, flag, Number.parseInt(valueRaw ?? '1', 10) || 1);
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: `Flag '${flag}' set.` });
-      }
-      return;
-    }
-    if (config.devCommands && text.startsWith('/standing')) {
-      // /standing — list mine; /standing <faction> <value|band> — set;
-      // /standing reset — wipe the ledger (memory + rows).
-      const [, a, b] = text.split(/\s+/);
-      const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      if (!a) {
-        sys(
-          this.repWire(player)
-            .map((s) => `${s.faction}: ${s.value} (${s.band})`)
-            .join(' · '),
-        );
-        return;
-      }
-      if (a === 'reset') {
-        player.standing.clear();
-        if (player.characterId > 0) this.accounts.deleteStandings(player.characterId);
-        this.pushRep(player);
-        this.pushQuestAvail(player);
-        sys('Standing ledger wiped.');
-        return;
-      }
-      const def = factionDef(a);
-      if (!def || b === undefined) {
-        sys(`Usage: /standing [<faction> <value|band>] [reset] — factions: ${FACTIONS.roster.map((f) => f.id).join(', ')}`);
-        return;
-      }
-      const bandTargets: Record<string, number> = {
-        hunted: FACTIONS.bands.hunted,
-        outlaw: FACTIONS.bands.outlaw,
-        suspect: FACTIONS.bands.suspect,
-        neutral: 0,
-        known: FACTIONS.bands.known,
-        trusted: FACTIONS.bands.trusted,
-        champion: FACTIONS.bands.champion,
-      };
-      const target = b in bandTargets ? bandTargets[b]! : Number(b);
-      if (!Number.isFinite(target)) {
-        sys(`'${b}' is neither a value nor a band.`);
-        return;
-      }
-      // Route through the one door as a raw delta (no cross) so the
-      // ceremony/persist/push rails all fire exactly as in real play.
-      this.creditStanding(player, a, target - (player.standing.get(a) ?? 0));
-      sys(`${def.name}: ${player.standing.get(a) ?? 0} (${standingBand(player.standing.get(a) ?? 0)})`);
-      return;
-    }
-    if (config.devCommands && text.startsWith('/deed')) {
-      // /deed <bountyHonored|tollBroken|assaultEnforcer|slayMember> <faction>
-      const [, kind, fac] = text.split(/\s+/);
-      const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      const kinds = ['bountyHonored', 'tollBroken', 'assaultEnforcer', 'slayMember'] as const;
-      const k = kinds.find((x) => x === kind);
-      if (!k || !fac || !factionDef(fac)) {
-        sys(`Usage: /deed <${kinds.join('|')}> <faction>`);
-        return;
-      }
-      this.creditDeed(player, fac, k);
-      return;
-    }
-    if (config.devCommands && text.startsWith('/quest')) {
-      // /quest — list; /quest accept <id>; /quest complete <id> (fills
-      // the current stage's event counters — collects still need the
-      // items); /quest reset [id]; /quest reload (swap from the DB).
-      const [, sub, arg] = text.split(/\s+/);
-      const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      if (!sub) {
-        const ctx = this.questCtx(player);
-        const lines: string[] = [];
-        for (const def of this.questDefs.values()) {
-          const q = player.quests.get(def.id);
-          const state = q
-            ? q.status === 'active'
-              ? questReady(def, q, ctx)
-                ? 'READY'
-                : `active s${q.stage} [${q.progress.join(',')}]`
-              : `done ×${q.completions}`
-            : questAvailable(def, ctx)
-              ? 'available'
-              : 'gated';
-          lines.push(`${def.id}: ${state}`);
-        }
-        sys(lines.length === 0 ? 'No quests registered.' : lines.join(' · '));
-        return;
-      }
-      if (sub === 'accept' && arg) {
-        sys(this.questAccept(eid, player, arg) ? `Accepted '${arg}'.` : `'${arg}' is not available.`);
-        return;
-      }
-      if (sub === 'complete' && arg) {
-        const def = this.questDefs.get(arg);
-        const q = player.quests.get(arg);
-        if (!def || !q || q.status !== 'active') {
-          sys(`'${arg}' is not active.`);
-          return;
-        }
-        const stage = def.stages[q.stage];
-        stage?.objectives.forEach((obj, i) => {
-          if (obj.kind !== 'collect') q.progress[i] = obj.kind === 'kill' ? obj.count : 1;
-        });
-        advanceStages(def, q, this.questCtx(player));
-        this.persistQuest(player, arg);
-        this.pushQuestWire(player, def, q);
-        sys(`Filled '${arg}' to stage ${q.stage}.`);
-        return;
-      }
-      if (sub === 'turnin' && arg) {
-        sys(this.questTurnIn(eid, player, arg) ? `Turned in '${arg}'.` : `'${arg}' is not ready.`);
-        return;
-      }
-      if (sub === 'reset') {
-        const ids = arg ? [arg] : [...player.quests.keys()];
-        for (const id of ids) {
-          player.quests.delete(id);
-          this.persistQuest(player, id);
-          player.session?.sendJson({ t: 'questupd', remove: id });
-        }
-        this.pushQuestAvail(player);
-        this.sendQuestsFull(player);
-        sys(`Reset ${ids.length} quest(s).`);
-        return;
-      }
-      if (sub === 'reload') {
-        void this.reloadQuests().then((res) => {
-          sys(`Quests reloaded: ${res.count}${res.errors.length ? ` (${res.errors.length} invalid)` : ''}.`);
-          for (const p of this.players.values()) this.sendQuestsFull(p);
-        });
-        return;
-      }
-      sys('/quest — list · accept <id> · complete <id> · turnin <id> · reset [id] · reload');
-      return;
-    }
-    if (config.devCommands && text.startsWith('/givekey')) {
-      // /givekey [tier] [power] [seed] — mint a dungeon key. The
-      // staging lever for the whole dungeon system: any tier, any
-      // power, or an exact seed to revisit a known layout.
-      const [, tierRaw, powerRaw, seedRaw] = text.split(/\s+/);
-      const tier = tierRaw ?? 'common';
-      if (!isRarityTier(tier)) {
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `/givekey [${RARITY_TIERS.join('|')}] [power] [seed]`,
-        });
-        return;
-      }
-      const seed = seedRaw !== undefined
-        ? (Number.parseInt(seedRaw, 10) >>> 0)
-        : (Math.floor(Math.random() * 0x100000000) >>> 0);
-      const powerNum = Number.parseInt(powerRaw ?? '', 10);
-      const pwr = Number.isFinite(powerNum) && powerNum >= 1
-        ? Math.min(99, powerNum)
-        : mintKeyPower(tier, seed);
-      // Minted straight onto the ring — keys never touch the pack.
-      const roll: ItemRoll = { rar: tier, seed, pwr, uses: keyUsesForTier(tier) };
-      this.addKeyToRing(player, roll);
-      const spec = dungeonSpecFromRoll(roll);
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: `Key minted: ${spec.name} (${spec.sigil}) — ${tier}, power ${spec.power}.`,
-      });
-      return;
-    }
-    if (config.devCommands && text.startsWith('/danger')) {
-      // /danger — the field readout at your feet: tier, cell, ledger.
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      if (pos.plane !== SURFACE_PLANE_ID) {
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: 'The danger field is a surface law — there is no field down here.',
-        });
-        return;
-      }
-      const tx = Math.floor(pos.x);
-      const ty = Math.floor(pos.y);
-      const tier = this.liveDangerTier(tx, ty);
-      const cx = poiCellOf(tx);
-      const cy = poiCellOf(ty);
-      const row = this.poiLedger.get(poiCellKey(cx, cy));
-      const state =
-        row === undefined ? 'undecided'
-        : row.site === null ? `decided empty (epoch ${row.epoch})`
-        : `${row.site.defId} at ${row.site.anchorX},${row.site.anchorY} (epoch ${row.epoch})`;
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: `Danger tier ${tier} · cell ${cx},${cy} · ${state}.`,
-      });
-      return;
-    }
-    if (config.devCommands && text.startsWith('/stronghold')) {
-      // /stronghold — the nearest seats and their states.
-      // /stronghold here <layout> — force-stand a layout at your feet.
-      const [, sub, arg] = text.split(/\s+/);
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      const px = Math.floor(pos.x);
-      const py = Math.floor(pos.y);
-      const say = (t: string) =>
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      if (sub === 'here' && arg) {
-        const layout = STRONGHOLD_DEFS.get(arg);
-        const prefab = layout ? this.poiPrefabs?.get(layout.prefab) : undefined;
-        if (!layout || !prefab) {
-          say(`No layout '${arg}' on the shelf.`);
-          return;
-        }
-        const gx = Math.floor(px / 384);
-        const gy = Math.floor(py / 384);
-        const key = capitalKey(gx, gy);
-        if (this.strongholdLive.has(key)) {
-          say(`Lattice cell ${key} already hosts a capital.`);
-          return;
-        }
-        const tier = Math.max(3, this.liveDangerTier(px, py));
-        const forced: CapitalSeat = {
-          gx,
-          gy,
-          x: px,
-          y: py,
-          rect: {
-            x: px - Math.floor(prefab.width / 2),
-            y: py - Math.floor(prefab.height / 2),
-            w: prefab.width,
-            h: prefab.height,
-          },
-          family: layout.family,
-          tier,
-          layoutId: layout.id,
-        };
-        this.materializeCapital(forced, { exactLayout: true });
-        say(`'${layout.id}' stands at ${px},${py} (tier ${tier}) — dev-forced.`);
-        return;
-      }
-      if (sub === 'clear') {
-        const gx = Math.floor(px / 384);
-        const gy = Math.floor(py / 384);
-        this.retireCapital(capitalKey(gx, gy));
-        say(`Capital at lattice ${gx},${gy} retired (ledger row kept).`);
-        return;
-      }
-      if (sub === 'stage') {
-        const gx = Math.floor(px / 384);
-        const gy = Math.floor(py / 384);
-        const row = this.strongholdLedger.get(capitalKey(gx, gy));
-        if (!row) {
-          say('No capital ledger row in this lattice cell.');
-          return;
-        }
-        row.stage = Math.max(0, Math.min(FRONTIER.stageMax, Number(arg ?? row.stage + 1) || 0));
-        row.stageAt = Date.now();
-        this.saveStrongholdRow(gx, gy);
-        this.retireCapital(capitalKey(gx, gy));
-        say(`Capital staged to ${row.stage} — it re-stands bolder on approach.`);
-        return;
-      }
-      if (sub === 'ember') {
-        const gx = Math.floor(px / 384);
-        const gy = Math.floor(py / 384);
-        const row = this.strongholdLedger.get(capitalKey(gx, gy));
-        if (!row) {
-          say('No capital ledger row in this lattice cell.');
-          return;
-        }
-        const min = Math.max(0.05, Number(arg ?? 1) || 1);
-        row.clearedAt = Date.now();
-        row.emberUntil = Date.now() + Math.round(min * 60_000);
-        this.saveStrongholdRow(gx, gy);
-        const live = this.strongholdLive.get(capitalKey(gx, gy));
-        if (live) this.standDownGarrison(live.spawnIdx);
-        say(`Capital embered for ~${min}m — a staged wipe without the fight.`);
-        return;
-      }
-      // Info: this lattice neighborhood's seats.
-      const gx = Math.floor(px / 384);
-      const gy = Math.floor(py / 384);
-      const lines: string[] = [];
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          const seat = this.cachedSeat(gx + dx, gy + dy);
-          if (!seat) continue;
-          const key = capitalKey(seat.gx, seat.gy);
-          const row = this.strongholdLedger.get(key);
-          const bits = row?.wardsCleared ?? 0;
-          let brokenWards = 0;
-          for (let b = bits; b > 0; b >>= 1) brokenWards += b & 1;
-          const now = Date.now();
-          const state = row?.fallowUntil
-            ? `fallow ${Math.round((row.fallowUntil - now) / 60_000)}m`
-            : row?.emberUntil
-              ? `ember ${Math.round((row.emberUntil - now) / 60_000)}m`
-              : this.strongholdLive.has(key)
-                ? this.strongholdGarrisonStands(key)
-                  ? (row?.stage ? `standing, stage ${row.stage}` : 'standing') +
-                    (brokenWards > 0 ? `, ${brokenWards} ward(s) broken` : '')
-                  : 'broken'
-                : row
-                  ? 'known, beyond the fog'
-                  : 'unfound';
-          const d = Math.round(Math.hypot(seat.x - px, seat.y - py));
-          lines.push(
-            `${key}: ${seat.layoutId} t${seat.tier} at ${seat.x},${seat.y} (${d} tiles) · ${state}`,
-          );
-        }
-      }
-      say(
-        lines.length > 0
-          ? `Capitals in the marches: ${lines.join(' · ')}`
-          : 'No country in this neighborhood keeps a capital.',
-      );
-      return;
-    }
-    if (config.devCommands && text.startsWith('/poi')) {
-      // /poi info — this cell's state.
-      // /poi here [archetype] — force-materialize the current cell.
-      // /poi reroll — retire the cell and re-roll it at epoch+1.
-      const [, sub, arg] = text.split(/\s+/);
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      const cx = poiCellOf(pos.x);
-      const cy = poiCellOf(pos.y);
-      const key = poiCellKey(cx, cy);
-      const say = (t: string) =>
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      if (sub === 'here') {
-        const live = this.poiLive.get(key);
-        if (live?.zoneId) {
-          say(`Cell ${key} already hosts '${live.zoneId}' — /poi reroll to replace it.`);
-          return;
-        }
-        if (this.poiLedger.get(key)?.site) this.fadePoiDiscoveries(key);
-        this.poiLive.delete(key);
-        this.poiLedger.delete(key);
-        const site = this.materializePoiCell(cx, cy, { force: arg ?? true, epoch: 0 });
-        say(
-          site
-            ? `${site.defId} (${site.prefabId}) stands at ${site.anchorX},${site.anchorY}.`
-            : arg !== undefined && !POI_DEFS.has(arg)
-              ? `Unknown archetype '${arg}' — ${[...POI_DEFS.keys()].join(', ')}.`
-              : 'No suitable ground in this cell (settled, water, or broken terrain).',
-        );
-        return;
-      }
-      if (sub === 'reroll') {
-        const prior = this.poiLedger.get(key);
-        const epoch = (prior?.epoch ?? 0) + 1;
-        if (prior?.site) this.fadePoiDiscoveries(key);
-        this.retirePoiCell(key);
-        this.poiLedger.delete(key);
-        const site = this.materializePoiCell(cx, cy, { epoch });
-        say(
-          site
-            ? `Epoch ${epoch}: ${site.defId} stands at ${site.anchorX},${site.anchorY}.`
-            : `Epoch ${epoch}: the cell rolled empty.`,
-        );
-        return;
-      }
-      if (sub === 'fallow') {
-        // /poi fallow [days] — run the epoch turn now. 0 = every
-        // cleared cell turns immediately (the staging lever).
-        const days = Number.parseFloat(arg ?? '');
-        const cutoff = Date.now() - (Number.isFinite(days) && days >= 0 ? days : 7) * 86_400_000;
-        const res = this.fallowSweep(cutoff);
-        say(
-          res.turned === 0
-            ? 'No cleared cells past the fallow cutoff.'
-            : `Fallow turn: ${res.turned} cells re-rolled — ${res.rerolled} stand anew, ` +
-              `${res.turned - res.rerolled} rolled empty. Walk near them to see.`,
-        );
-        return;
-      }
-      if (sub === 'havens') {
-        // /poi havens — every lamp burning on the frontier.
-        say(
-          this.poiHavens.size === 0
-            ? 'No haven lamps burning.'
-            : [...this.poiHavens.entries()]
-                .map(([k, a]) => `${k}: ${a.x},${a.y} r${a.safeR}`)
-                .join(' · '),
-        );
-        return;
-      }
-      const row = this.poiLedger.get(key);
-      const live = this.poiLive.get(key);
-      say(
-        `Cell ${key}: ` +
-          (row === undefined ? 'undecided' :
-            row.site === null ? `decided empty (epoch ${row.epoch})` :
-            `${row.site.defId} (${row.site.prefabId}) tier ${row.site.tier} at ` +
-            `${row.site.anchorX},${row.site.anchorY}, epoch ${row.epoch}`) +
-          (row?.clearedAt ? ` · cleared ${Math.round((Date.now() - row.clearedAt) / 60000)}m ago` : '') +
-          (live?.zoneId ? ' · standing' : '') +
-          ' — /poi here [archetype] · /poi reroll · /poi fallow [days] · /poi havens · /frontier',
-      );
-      return;
-    }
-    if (config.devCommands && text.startsWith('/wilds')) {
-      // The ambience lens (lived-in-land Phase 1): what the wild
-      // spawner owes and holds at your feet — the tier's body budget,
-      // how much of it stands nearby, and the roster the clock and
-      // biome would deal here right now.
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      const say = (t: string) =>
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      if (pos.plane !== SURFACE_PLANE_ID) {
-        say('The danger field is a surface law — there is no wild ambience down here.');
-        return;
-      }
-      const tier = this.liveDangerTier(Math.floor(pos.x), Math.floor(pos.y));
-      const law = dangerLaw(tier);
-      const budget = tier > 0 ? Math.round(FRONTIER.wildBudgetBase * law.wildDensity) : 0;
-      let near = 0;
-      for (const weid of this.wildBodies.keys()) {
-        const wpos = this.positions.get(weid);
-        if (wpos && Math.hypot(wpos.x - pos.x, wpos.y - pos.y) <= GameServer.WILD_MAX_R + 24) {
-          near++;
-        }
-      }
-      const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
-      const biome = groundProbeAt(config.worldSeed, Math.floor(pos.x), Math.floor(pos.y));
-      const shore = shoreProbeAt(config.worldSeed, Math.floor(pos.x), Math.floor(pos.y));
-      const pool =
-        biome === 'grass' || biome === 'forest'
-          ? wildCandidates(tier, biome, hours, shore)
-          : [];
-      const roster = pool
-        .map((e) => {
-          const [lo, hi] = e.band ?? [1, 1];
-          const lead = e.lead ? `+${e.lead.npc}` : '';
-          return `${e.npc}x${lo}${hi > lo ? `-${hi}` : ''}${lead}`;
-        })
-        .join(', ');
-      say(
-        `wilds: tier ${tier}, ${near}/${budget} bodies near ` +
-          `(${this.wildBodies.size} world-wide), ${biome}${shore ? ' shore' : ''} underfoot` +
-          (pool.length > 0 ? ` | roster: ${roster}` : ' | roster: empty here'),
-      );
-      return;
-    }
-    if (config.devCommands && text.startsWith('/territory')) {
-      // The country lens (lived-in-land Phase 5): whose land you stand
-      // on, the surrounding cells' countries, and the atlas roster.
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      const say = (t: string) =>
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      const families = familiesOf([...POI_DEFS.values()]);
-      const here = territoryAt(
-        config.worldSeed,
-        Math.floor(pos.x),
-        Math.floor(pos.y),
-        families,
-      );
-      const cx = poiCellOf(pos.x);
-      const cy = poiCellOf(pos.y);
-      const rows: string[] = [];
-      for (let dy = -1; dy <= 1; dy++) {
-        const row: string[] = [];
-        for (let dx = -1; dx <= 1; dx++) {
-          const f = territoryAt(
-            config.worldSeed,
-            (cx + dx) * POI_CELL + POI_CELL / 2,
-            (cy + dy) * POI_CELL + POI_CELL / 2,
-            families,
-          );
-          row.push(f ?? 'none');
-        }
-        rows.push(row.join(' '));
-      }
-      say(
-        `territory: ${here ?? 'none'} country at your feet (bias x${FRONTIER.territoryBias}) | ` +
-          `cells around: [${rows.join(' / ')}] | atlas: ${families.sort().join(', ')}`,
-      );
-      return;
-    }
-    if (config.devCommands && text.startsWith('/finds')) {
-      // The texture lens (lived-in-land Phase 2): what the lattice
-      // dealt in this cell, which slots are cleared, and how many
-      // habitat mouths are pulling knots world-wide.
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      const say = (t: string) =>
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      const cx = poiCellOf(pos.x);
-      const cy = poiCellOf(pos.y);
-      const key = poiCellKey(cx, cy);
-      const fl = this.findsLive.get(key);
-      const ledger = this.minorLedger.get(key);
-      const epoch = this.poiLedger.get(key)?.epoch ?? 0;
-      const cleared = ledger && ledger.epoch === epoch ? ledger.cleared : 0;
-      if (!fl || fl.finds.length === 0) {
-        say(
-          `finds: cell ${key} holds none — ` +
-            `${this.findsLive.size} cells standing, ${this.habitatFinds.size} habitat mouths live`,
-        );
-        return;
-      }
-      const list = fl.finds
-        .map((f) => {
-          const bit = (cleared >>> f.slot) & 1;
-          const hab = f.habitat !== undefined ? ` [${f.habitat}]` : '';
-          return `${f.defId}@${f.anchorX},${f.anchorY} t${f.tier}${hab}${bit ? ' CLEARED' : ''}`;
-        })
-        .join(' | ');
-      say(
-        `finds: cell ${key} (epoch ${epoch}) deals ${fl.finds.length}: ${list} — ` +
-          `${this.habitatFinds.size} habitat mouths live`,
-      );
-      return;
-    }
-    if (config.devCommands && text.startsWith('/growth')) {
-      // The land's-clock lens (second-growth Phase 1): the domain
-      // underfoot, the ledger census by dialect and age, and the
-      // nearest healing ground with its honest deadline.
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      const say = (t: string) =>
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      const domain = this.surface.growthDomainAt(Math.floor(pos.x), Math.floor(pos.y));
-      const census = new Map<string, number>();
-      let nearest: GrowthRow | null = null;
-      let nearestD = Infinity;
-      const now = Date.now();
-      for (const row of this.surface.growthLedger.values()) {
-        // A sealed mouth (host ground over a wandered-away resource)
-        // has no dialect of its own — name it honestly.
-        const dialect =
-          growthDialectOf(row.tile) ?? (row.state === GROWTH_DRIFTED ? 'sealed' : 'gone');
-        const age =
-          row.state === GROWTH_BARE
-            ? row.due === null
-              ? 'bare-dormant'
-              : 'bare-seeded'
-            : (GROWTH_STATE_NAMES[row.state] ?? `state${row.state}`);
-        const k = `${dialect} ${age}`;
-        census.set(k, (census.get(k) ?? 0) + 1);
-        const d = Math.hypot(row.tx + 0.5 - pos.x, row.ty + 0.5 - pos.y);
-        if (d < nearestD) {
-          nearestD = d;
-          nearest = row;
-        }
-      }
-      const parts = [...census.entries()]
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([k, n]) => `${k} x${n}`)
-        .join(', ');
-      let near = 'none';
-      if (nearest) {
-        const proj = projectGrowth(config.worldSeed, nearest, now);
-        const eta = proj.ripe
-          ? 'ripe, awaiting the beat'
-          : proj.due === null
-            ? proj.state === GROWTH_DRIFTED
-              ? 'a drifted crown, at rest'
-              : 'dormant, waiting on the world'
-            : `${Math.max(0, Math.round((proj.due - now) / 60000))}m to next age`;
-        near =
-          `${nearest.tx},${nearest.ty} (${Math.round(nearestD)} tiles) ` +
-          `${GROWTH_STATE_NAMES[proj.state] ?? proj.state}, ${eta}`;
-      }
-      const sown = [...this.surface.growthLedger.values()].filter((r) => r.owner !== null).length;
-      say(
-        `growth: ${domain} ground underfoot | ledger ${this.surface.growthLedger.size}` +
-          (sown > 0 ? ` (${sown} sown)` : '') +
-          (parts.length > 0 ? ` (${parts})` : '') +
-          ` | nearest: ${near}`,
-      );
-      return;
-    }
-    if (config.devCommands && text.startsWith('/triggers')) {
-      // THE WATCHFUL GROUND's lens:
-      //   /triggers        — the roster, who holds you, your cooldown stamps
-      //   /triggers reload — re-read the DB roster (the Studio's lever)
-      const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      const [, verb] = text.split(/\s+/);
-      if (verb === 'reload') {
-        void this.reloadTriggers().then((r) => {
-          sys(`triggers reloaded: ${r.count}${r.errors.length ? ` (${r.errors.length} refused)` : ''}`);
-          for (const e of r.errors.slice(0, 4)) sys(`  ${e}`);
-        });
-        return;
-      }
-      const pos = this.positions.get(eid);
-      if (this.triggerRoster.length === 0) {
-        sys('trigger roster: empty');
-        return;
-      }
-      const zones = (id: string) => this.zoneRectOf(id);
-      const rows = this.triggerRoster.map((c) => {
-        const d = c.def;
-        const holding =
-          pos !== undefined && player.triggerInside?.has(d.id) === true;
-        const zoneMissing =
-          d.area.kind === 'zone' && this.zoneRectOf(d.area.zone) === null;
-        const listeners = this.triggerHooks.get(d.event)?.length ?? 0;
-        const bits = [
-          `${d.id} -> ${d.event}${listeners === 0 ? ' (no subscriber)' : ''}`,
-          d.on,
-          holding ? 'HOLDING YOU' : '',
-          d.disabled ? 'disabled' : '',
-          zoneMissing ? 'ZONE MISSING' : '',
-        ].filter(Boolean);
-        return bits.join(' · ');
-      });
-      sys(`triggers (${rows.length}):`);
-      for (const r of rows) sys(`  ${r}`);
-      const stamps = [...(player.triggerCooldowns ?? [])]
-        .filter(([, until]) => until > this.tickCount)
-        .map(([g, until]) => `${g} ${(Math.max(0, until - this.tickCount) / TICK_RATE).toFixed(0)}s`);
-      if (stamps.length > 0) sys(`cooldowns: ${stamps.join(' · ')}`);
-      if (pos) {
-        const here = this.triggerRoster
-          .filter((c) => c.contains(pos.plane, pos.x, pos.y, zones))
-          .map((c) => c.def.id);
-        sys(`under your feet: ${here.length > 0 ? here.join(', ') : 'open ground'}`);
-      }
-      return;
-    }
-    if (config.devCommands && text.startsWith('/trigger ')) {
-      // /trigger <id> [enter|exit] — force-fire through the full door,
-      // gates bypassed (stamps still land, so the theatre reads true).
-      const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      const [, id, edgeArg] = text.split(/\s+/);
-      const def = id !== undefined ? this.triggerDefs.get(id) : undefined;
-      if (!def) {
-        sys(`Usage: /trigger <id> [enter|exit] — ids: ${[...this.triggerDefs.keys()].join(', ')}`);
-        return;
-      }
-      const edge: TriggerEdge = edgeArg === 'exit' ? 'exit' : 'enter';
-      stampFire(player.triggerCooldowns ??= new Map(), def, this.tickCount);
-      if (def.once) this.setPlayerFlag(player, triggerOnceFlag(def.id));
-      if (def.setFlag) this.setPlayerFlag(player, def.setFlag);
-      const handlers = this.triggerHooks.get(def.event) ?? [];
-      for (const handler of handlers) handler({ def, edge, eid, player });
-      sys(`fired ${def.id} (${edge}) -> '${def.event}' (${handlers.length} subscriber${handlers.length === 1 ? '' : 's'})`);
-      return;
-    }
-    if (config.devCommands && text.startsWith('/frontier')) {
-      // The living-frontier lens + staging levers (the /poi family's kin):
-      //   /frontier          — credits + this cell's ember/fallow state + world counts
-      //   /frontier tick     — force one full frontier pass now
-      //   /frontier ember [minutes] — re-stamp the current cleared cell's linger
-      //   /frontier credit [n]      — grant renewal credits (staging)
-      const [, sub, arg] = text.split(/\s+/);
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      const cx = poiCellOf(pos.x);
-      const cy = poiCellOf(pos.y);
-      const key = poiCellKey(cx, cy);
-      const say = (t: string) =>
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      if (sub === 'tick') {
-        // The full work ladder, one unit — mirrors tickFrontier exactly.
-        const now = Date.now();
-        const did = this.dissolveOneEmber(now)
-          ? 'dissolved an ember'
-          : this.wakeOneFallow(now)
-            ? 'woke a fallow cell'
-            : this.stageOnePoi(now)
-              ? 'moved the boldness clock'
-              : this.seedOneSatellite(now)
-                ? 'seeded (or scattered) a satellite'
-                : this.forkOneToll(now)
-                  ? 'forked a road toll'
-                  : this.spendRenewalCredit(now)
-                    ? 'spent a renewal credit'
-                    : 'nothing due';
-        const traces =
-          (this.satTrace.length > 0 ? ` [sat: ${this.satTrace.join(' ')}]` : '') +
-          (this.tollTrace.length > 0 ? ` [toll: ${this.tollTrace.join(' ')}]` : '');
-        say(`Frontier pass: ${did}.${traces}`);
-        return;
-      }
-      if (sub === 'creep') {
-        // /frontier creep — backdate this cell's top-rung clock past
-        // its creep wait so the next pass may fork the toll (staging).
-        const row = this.poiLedger.get(key);
-        if (!row?.site) {
-          say('This cell holds no site to creep.');
-          return;
-        }
-        row.stageAt = Date.now() - creepWaitFor(config.worldSeed, cx, cy) - 1;
-        this.accounts.markPoiStage(cx, cy, row.stage, row.stageAt);
-        say(`Creep clock backdated — /frontier tick may fork the toll now (stage ${row.stage}).`);
-        return;
-      }
-      if (sub === 'raid') {
-        // /frontier raid — force the covetous dice NOW (qualification
-        // still applies; the trace tells you who refused and why).
-        // /frontier raid calm — lift your own mercy stamp (staging).
-        if (arg === 'calm') {
-          player.raidCalmUntil = 0;
-          if (player.characterId > 0) this.accounts.resetRaidCalm(player.characterId);
-          say('Your raid mercy stamp is lifted — the dice may pick you again.');
-          return;
-        }
-        const stood = this.tickRaidDice(Date.now(), true);
-        say(
-          `Raid dice (forced): ${stood ? 'a squat stands' : 'nothing stood'}.` +
-            (this.raidTrace.length > 0 ? ` [${this.raidTrace.join(' ')}]` : ''),
-        );
-        return;
-      }
-      if (sub === 'peddler') {
-        // /frontier peddler — deal fortune NOW at the most road-true
-        // lawful spot in the renewal ring around you (staging: same
-        // laws as the real fork, no credit spent).
-        const pts: Array<{ tx: number; ty: number }> = [];
-        const [pMin, pMax] = FRONTIER.renewalRing;
-        for (let t = 0; t < FRONTIER.renewalTries * 2; t++) {
-          const ang = Math.random() * Math.PI * 2;
-          const d = pMin + Math.random() * (pMax - pMin);
-          pts.push({
-            tx: Math.round(pos.x + Math.cos(ang) * d),
-            ty: Math.round(pos.y + Math.sin(ang) * d),
-          });
-        }
-        const parked = this.standOnePeddler(pts, Date.now());
-        say(
-          parked
-            ? `Fortune on the road: a peddler parks her cart at ${parked.anchorX},${parked.anchorY}.`
-            : 'No lawful verge for a cart this pass — try again.',
-        );
-        return;
-      }
-      if (sub === 'watch') {
-        // /frontier watch — the world answers, read from where you stand
-        // (what a speaker HERE would know), plus your open bounty marks.
-        const s = this.watchSurvey(pos.x, pos.y);
-        const relief = !s.near && this.calmWithinTiles(pos.x, pos.y, FRONTIER.marchTiles);
-        const peddler = this.worldFlagAnswer('world:peddler_near', player, pos.x, pos.y);
-        const bounties = this.openBounties(player);
-        say(
-          `The world answers here: threat_near=${s.near} threat_bold=${s.bold} ` +
-            `toll_near=${s.toll} calm=${!s.near} relief=${relief} peddler_near=${peddler}. ` +
-            `Open bounties: ${bounties.length > 0 ? bounties.join(' · ') : 'none'}.`,
-        );
-        return;
-      }
-      if (sub === 'ember') {
-        // Any standing ember clock may be re-stamped — cleared camps,
-        // scattered satellites, and a peddler's departure alike.
-        const row = this.poiLedger.get(key);
-        if (!row?.site || (row.clearedAt === null && row.emberUntil === null)) {
-          say('This cell holds no ember clock to re-stamp.');
-          return;
-        }
-        const mins = Number.parseFloat(arg ?? '0');
-        row.emberUntil = Date.now() + (Number.isFinite(mins) && mins >= 0 ? mins : 0) * 60_000;
-        this.accounts.setPoiEmber(cx, cy, row.emberUntil);
-        say(`Ember re-stamped: dissolves in ${Math.round((row.emberUntil - Date.now()) / 1000)}s (dignity permitting).`);
-        return;
-      }
-      if (sub === 'credit') {
-        const n = Number.parseInt(arg ?? '1', 10);
-        this.frontierCredits += Number.isFinite(n) ? n : 1;
-        this.accounts.saveFrontierCredits(this.frontierCredits);
-        say(`Renewal debt now ${this.frontierCredits}.`);
-        return;
-      }
-      if (sub === 'stage') {
-        // /frontier stage [n] — force this cell's boldness rung (staging).
-        const row = this.poiLedger.get(key);
-        const def = row?.site ? POI_DEFS.get(row.site.defId) : undefined;
-        if (!row?.site || !def) {
-          say('This cell holds no site to stage.');
-          return;
-        }
-        const max = Math.min(FRONTIER.stageMax, def.boldness?.stages.length ?? 0);
-        if (max === 0) {
-          say(`${def.name} carries no boldness ladder.`);
-          return;
-        }
-        const n = Number.parseInt(arg ?? '', 10);
-        const want = Number.isInteger(n)
-          ? Math.max(0, Math.min(n, max))
-          : Math.min(row.stage + 1, max);
-        row.stage = want;
-        row.stageAt = Date.now();
-        this.accounts.markPoiStage(cx, cy, want, row.stageAt);
-        this.retirePoiCell(key);
-        if (want > 0) this.pushStageRumor(key, def.name, want);
-        say(`${def.name} set to stage ${want}/${max} — it recomposes as the world streams back.`);
-        return;
-      }
-      if (sub === 'calm') {
-        // /frontier calm [clear] — inspect or lift the relax windows.
-        if (arg === 'clear') {
-          this.frontierCalm.clear();
-          this.accounts.pruneFrontierCalm(Number.MAX_SAFE_INTEGER);
-          say('All relax windows lifted.');
-          return;
-        }
-        say(
-          this.frontierCalm.size === 0
-            ? 'No relax windows standing.'
-            : [...this.frontierCalm.entries()]
-                .map(([k, u]) => `${k}: ${Math.max(0, Math.round((u - Date.now()) / 60000))}m`)
-                .join(' · '),
-        );
-        return;
-      }
-      let embers = 0;
-      let fallows = 0;
-      for (const r of this.poiLedger.values()) {
-        // Cleared embers AND scattered satellites both count — any
-        // standing site with a dissolve clock is an ember.
-        if (r.site !== null && r.emberUntil !== null) embers++;
-        if (r.site === null && r.fallowUntil !== null) fallows++;
-      }
-      const row = this.poiLedger.get(key);
-      const now = Date.now();
-      const satTag = (r: NonNullable<ReturnType<typeof this.poiLedger.get>>): string =>
-        r.originCell !== null ? ` (satellite of ${r.originCell})` : r.stage > 0 ? ` (stage ${r.stage})` : '';
-      const cellState =
-        row === undefined
-          ? 'undecided'
-          : row.site && row.emberUntil !== null
-            ? `${row.site.defId}${satTag(row)} EMBER — dissolves in ~${Math.max(0, Math.round((row.emberUntil - now) / 60000))}m`
-            : row.site
-              ? `${row.site.defId}${satTag(row)} standing`
-              : row.fallowUntil !== null
-                ? `fallow — may host in ~${Math.max(0, Math.round((row.fallowUntil - now) / 60000))}m`
-                : `decided empty (epoch ${row.epoch})`;
-      let staged = 0;
-      let sats = 0;
-      let tolls = 0;
-      let squats = 0;
-      let peddlers = 0;
-      for (const r of this.poiLedger.values()) {
-        if (r.site === null) continue;
-        if (r.site.defId === 'road_toll') tolls++;
-        else if (r.site.defId === 'peddler_rest') peddlers++;
-        else if (GameServer.hearthOwnerOf(r.originCell) !== null) squats++;
-        else if (r.originCell !== null) sats++;
-        else if (r.stage > 0) staged++;
-      }
-      say(
-        `Frontier: ${embers} ember(s), ${fallows} fallow, ${staged} staged core(s), ` +
-          `${sats} satellite(s), ${tolls} toll(s), ${squats} squat(s), ${peddlers} peddler(s), ` +
-          `${this.frontierCalm.size} calm, debt ${this.frontierCredits}, rings ${this.claimRings().length}. ` +
-          `Cell ${key}: ${cellState} — /frontier tick · ember [min] · stage [n] · creep · raid [calm] · peddler · watch · calm [clear] · credit [n]`,
-      );
-      return;
-    }
-    if (config.devCommands && text.startsWith('/spawnchest')) {
-      // /spawnchest [wood|iron|gilded|mossy] — a closed chest on the
-      // nearest open tile beside the caller. Transient (not a built
-      // tile): chunk regen sweeps it, which is what staging wants.
-      const [, kindRaw] = text.split(/\s+/);
-      const kind = (kindRaw ?? 'wood') as ChestKind;
-      if (!['wood', 'mossy', 'iron', 'gilded', 'boss'].includes(kind)) {
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: '/spawnchest [wood|mossy|iron|gilded|boss]',
-        });
-        return;
-      }
-      const pos = this.positions.get(eid);
-      if (!pos) return;
-      for (let tries = 0; tries < 14; tries++) {
-        const a = (tries / 14) * Math.PI * 2;
-        const r = 1.4 + Math.floor(tries / 7) * 0.9;
-        const tx = Math.floor(pos.x + Math.cos(a) * r);
-        const ty = Math.floor(pos.y + Math.sin(a) * r);
-        if (this.worldOf(pos.plane).isSolid(tx, ty)) continue;
-        if (Math.floor(pos.x) === tx && Math.floor(pos.y) === ty) continue;
-        this.setWorldTile(pos.plane, tx, ty, closedChestTile(kind));
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `A ${kind} chest lands at ${tx}, ${ty}.`,
-        });
-        return;
-      }
-      player.session?.sendJson({ t: 'chat', channel: 'system', text: 'No open ground nearby.' });
-      return;
-    }
-    if (config.devCommands && text.startsWith('/arena')) {
-      // THE SAND AND THE ROAR staging levers. All through the REAL
-      // doors (the queue, the wipe, the kill path) — never a bypass.
-      const sys = (line: string): void => {
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: line });
-      };
-      const [, verb, arg] = text.split(/\s+/);
-      const mine = this.arenaOf(player.characterId);
-      if (verb === 'start' && arg !== undefined) {
-        // The real claim ceremony, fee waived; stand near a venue.
-        this.arenaQueue(eid, arg, { devFree: true });
-        return;
-      }
-      if (verb === 'muster' && mine && mine.phase === 'muster') {
-        mine.deadlineTick = this.tickCount + 1;
-        sys('The muster clock snaps forward.');
-        return;
-      }
-      if (verb === 'win' && mine && mine.phase === 'round') {
-        for (const weid of [...mine.waveEids]) {
-          const npc = this.npcs.get(weid);
-          if (npc && this.ecs.isAlive(weid)) this.killNpc(weid, npc, eid);
-        }
-        return;
-      }
-      if (verb === 'wipe' && mine) {
-        this.arenaWipe(mine);
-        return;
-      }
-      if (verb === 'reset') {
-        for (const m of [...this.arenaMatches.values()]) this.arenaReset(m, { silent: true });
-        this.arenaCooldowns.clear();
-        sys('Every sand raked, every claim freed.');
-        return;
-      }
-      if (verb === 'rank' && arg !== undefined) {
-        const rank = Math.max(0, Math.min(ARENAS.ladder.maxRank, Number(arg) | 0));
-        player.arena.rank = rank;
-        player.arena.xp = totalXpForArenaRank(rank);
-        if (player.characterId > 0) this.accounts.saveArena(player.characterId, player.arena);
-        sys(`The board writes you at rank ${rank} (${arenaTitleFor(rank) || 'unranked'}).`);
-        return;
-      }
-      const state = mine
-        ? `${mine.venueId}: ${mine.def.id} ${mine.phase} round ${mine.round + 1}/` +
-          `${mine.plan.rounds.length}, foes ${this.arenaFoesLeft(mine)}, ` +
-          `members ${[...mine.members.values()].filter((m) => m.alive).length}/${mine.members.size}`
-        : 'no card underway';
-      sys(`/arena start <match> | muster | win | wipe | reset | rank <n> — ${state}`);
+    // THE COMMAND LEDGER (foundations F4): slash commands live in
+    // commands/ — walked in order, first claim wins; dev entries answer
+    // only behind the same config gate they always wore.
+    for (const cmd of CHAT_COMMANDS) {
+      if (DEV_COMMANDS.includes(cmd) && !config.devCommands) continue;
+      if (!cmd.claims(text)) continue;
+      cmd.run(this, eid, player, text);
       return;
     }
     this.sayAloud(eid, player.name, text);
   }
 
-  private systemChatAll(text: string): void {
+  systemChatAll(text: string): void {
     for (const s of this.sessions) s.sendJson({ t: 'chat', channel: 'system', text });
   }
 
