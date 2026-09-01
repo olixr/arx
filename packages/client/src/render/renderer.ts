@@ -2917,6 +2917,17 @@ export class Renderer {
   private readonly liftMemo = new Map<number, { k: number; v: number; a: number; b: number }>();
   private liftMemoVersion = -1;
 
+  /**
+   * THE ONE ANCHOR: the screen point of a world position with its
+   * render lift applied — the HUD idiom (waypoints, party pips, speech
+   * bubbles, sign plates) in one door instead of five copies.
+   */
+  screenAnchor(wx: number, wy: number, w: number, h: number): { x: number; y: number } {
+    const p = this.camera.worldToScreen(wx, wy, w, h);
+    p.y -= this.renderLift(wx, wy) * this.camera.scale;
+    return p;
+  }
+
   renderLift(x: number, y: number): number {
     const game = this.game;
     if (!game) return 0;

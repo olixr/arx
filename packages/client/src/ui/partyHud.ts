@@ -36,8 +36,7 @@ export class PartyHud {
       // THE WORLDS APART: fellows across the plane veil are
       // unpointable — coordinates in another world mean nothing here.
       if (f.plane !== game.plane.id) continue;
-      const p = renderer.camera.worldToScreen(f.x, f.y, w, h);
-      p.y -= renderer.renderLift(f.x, f.y) * renderer.camera.scale;
+      const p = renderer.screenAnchor(f.x, f.y, w, h);
       const onScreen = p.x >= 0 && p.x <= w && p.y >= 0 && p.y <= h;
       if (onScreen) continue; // visible kin need no pointing at
       seen.add(f.name);

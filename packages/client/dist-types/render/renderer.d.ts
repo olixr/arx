@@ -1048,6 +1048,15 @@ export declare class Renderer {
      */
     private readonly liftMemo;
     private liftMemoVersion;
+    /**
+     * THE ONE ANCHOR: the screen point of a world position with its
+     * render lift applied — the HUD idiom (waypoints, party pips, speech
+     * bubbles, sign plates) in one door instead of five copies.
+     */
+    screenAnchor(wx: number, wy: number, w: number, h: number): {
+        x: number;
+        y: number;
+    };
     renderLift(x: number, y: number): number;
     private classifyLift;
     /** The pre-ledger walk, verbatim — deck-fill tiles still need it. */
