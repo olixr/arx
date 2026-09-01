@@ -2,6 +2,8 @@
  * THE BOOK OF STATES' ENGINE — laying, stacking (four models), ticking and reading the status ledger for NPCs and players.
  * Moved verbatim off GameServer (foundations F4); the class keeps
  * one-line delegators so every caller and test slate reads unchanged.
+ * Intra-family calls dispatch through srv.* ON PURPOSE — test slates
+ * stub siblings, and the stub must win over the module's own copy.
  */
 import { bossStunTicks } from './bossMind.js';
 import { ProcEffect } from '@arx/content';
@@ -33,7 +35,7 @@ export function layStatusOnNpc(srv: GameServer,
   sourceEid: EntityId,
   style: SkillId,
 ): void {
-  if (!applyStatusToNpc(srv, npcEid, apply, sourceEid, style)) return;
+  if (!srv.applyStatusToNpc(npcEid, apply, sourceEid, style)) return;
   if ((srv.procDepth ?? 0) > 0) return;
   const src = srv.players?.get(sourceEid);
   if (!src) return;
@@ -272,7 +274,7 @@ export function applyStatusToNpc(srv: GameServer,
               return;
             }
             infected.add(otherEid);
-            applyStatusToNpc(srv, otherEid, plague, sourceEid, style);
+            srv.applyStatusToNpc(otherEid, plague, sourceEid, style);
           });
           break;
         }
@@ -507,7 +509,7 @@ export function tickStatuses(srv: GameServer, ): void {
             via: s.id as 'burn' | 'bleed' | 'venom',
           });
         } else if (srv.npcs.has(eid)) {
-          dotNpc(srv, eid, pulse, s.sourceEid, s.id as 'burn' | 'bleed' | 'venom', s.fromPet);
+          srv.dotNpc(eid, pulse, s.sourceEid, s.id as 'burn' | 'bleed' | 'venom', s.fromPet);
         } else if (srv.players.has(eid)) {
           // Bitter Blood: the herbalist's constitution dulls the drip.
           const p = srv.players.get(eid)!;

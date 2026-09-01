@@ -2,6 +2,8 @@
  * THE STANDING LEDGER — factions, deeds, fines, theft and its witnesses: the law's bookkeeping.
  * Moved verbatim off GameServer (foundations F4); the class keeps
  * one-line delegators so every caller and test slate reads unchanged.
+ * Intra-family calls dispatch through srv.* ON PURPOSE — test slates
+ * stub siblings, and the stub must win over the module's own copy.
  */
 import { addItem, countItem, hasSpaceFor, removeItem } from './inventory.js';
 import { FACTIONS, PlaneId, STANDING_CLAMP, crossDeltas, factionDef, factionOfActor, factionOfNpc, itemDef, standingBand, theftChance } from '@arx/content';
@@ -58,7 +60,7 @@ export function creditStanding(srv: GameServer,
   }
   if (opts.cross) {
     for (const c of crossDeltas(factionId, applied, before)) {
-      creditStanding(srv, player, c.faction, c.delta);
+      srv.creditStanding(player, c.faction, c.delta);
     }
   }
 }
@@ -70,7 +72,7 @@ export function creditDeed(srv: GameServer,
   deed: 'bountyHonored' | 'tollBroken' | 'assaultEnforcer' | 'slayMember' | 'theftWitnessed',
 ): void {
   if (factionId === null) return;
-  creditStanding(srv, player, factionId, FACTIONS.deeds[deed], { cross: true });
+  srv.creditStanding(player, factionId, FACTIONS.deeds[deed], { cross: true });
 }
 
 /**
@@ -106,7 +108,7 @@ export function runFine(srv: GameServer, player: PlayerComp, factionId: string, 
   sys(`${owed} coins, counted twice. The book moves your name to the watched column.`);
   // Through the one door: the quiet line, the ceremony, the gates
   // all re-answer — and the deficit lands exactly on the floor.
-  creditStanding(srv, player, factionId, deficit);
+  srv.creditStanding(player, factionId, deficit);
 }
 
 /**
@@ -118,7 +120,7 @@ export function runFine(srv: GameServer, player: PlayerComp, factionId: string, 
 export function chargeAssault(srv: GameServer, attackerEid: EntityId, npcEid: EntityId): void {
   const player = srv.players.get(attackerEid);
   if (!player) return;
-  creditDeed(srv, player, srv.npcEnforcerFid(npcEid), 'assaultEnforcer');
+  srv.creditDeed(player, srv.npcEnforcerFid(npcEid), 'assaultEnforcer');
 }
 
 /**
@@ -180,7 +182,7 @@ export function chargeTheft(srv: GameServer,
   chargeFid?: string,
 ): boolean {
   if (witnesses.length === 0) return false;
-  creditDeed(srv, player, chargeFid ?? witnesses[0]!.fid, 'theftWitnessed');
+  srv.creditDeed(player, chargeFid ?? witnesses[0]!.fid, 'theftWitnessed');
   let turned = 0;
   for (const w of witnesses) {
     if (turned >= 3) break;
@@ -270,8 +272,8 @@ export function pickpocket(srv: GameServer,
   const cries = ['Hey — my pocket!', 'Thief! A thief!', 'Hands! I felt hands!'];
   srv.sayAloud(targetEid, actorComp.actor.name, cries[(targetEid + srv.tickCount) % cries.length]!);
   sys('The grab misses.');
-  const witnesses = theftWitnesses(srv, pos.plane, pos.x, pos.y, targetEid);
+  const witnesses = srv.theftWitnesses(pos.plane, pos.x, pos.y, targetEid);
   const markFid = factionOfActor(actorComp.actor.id);
   if (markFid !== null) witnesses.unshift({ eid: targetEid, fid: markFid });
-  chargeTheft(srv, eid, player, pos.x, pos.y, witnesses);
+  srv.chargeTheft(eid, player, pos.x, pos.y, witnesses);
 }
