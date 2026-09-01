@@ -8295,6 +8295,17 @@ export class Renderer {
       case RaisedKind.RampRun:
       case RaisedKind.RampSingle:
         return true;
+      case RaisedKind.BridgeRails:
+      case RaisedKind.DeckFillRail:
+        // Parapets are pure static geometry (posts, rails, aprons —
+        // zero time or reveal dependencies; verified by census). They
+        // were live only so bodies sort against them, and the band
+        // buckets preserve exactly that per-(sortY,strat) granularity.
+        // Neighbor deck/water changes ride chunk revs into the
+        // register sig like every wall join. Measured live at 36
+        // items/frame on the avenue bridge — the wall lane's single
+        // largest member.
+        return true;
       case RaisedKind.Generic:
         // Phase 4: inert single-tile props ride the bands; everything
         // animated, run-merged, or glowing keeps its existing cache.
@@ -20791,9 +20802,37 @@ export class Renderer {
     list.length = 0;
   }
 
+  /** Per-frame paint composition by source tag — the census that
+   *  names where the scratch mass actually comes from. */
+  readonly stagePaintKinds = new Map<string, { n: number; mb: number }>();
+
+  private stagePaintCount(tag: string, pw: number, ph: number): void {
+    const dpr = this.dpr();
+    const mb = (Math.ceil(pw * dpr) * Math.ceil(ph * dpr) * 4) / 1048576;
+    const e = this.stagePaintKinds.get(tag);
+    if (e) {
+      e.n++;
+      e.mb += mb;
+    } else {
+      this.stagePaintKinds.set(tag, { n: 1, mb });
+    }
+  }
+
   /** Push a raw closure through the scratch lane (SAME-BRUSH swap) —
    *  the painters' own door for live fallbacks with known rects. */
-  private stagePushPaintRaw(px: number, py: number, pw: number, ph: number, paint: () => void): void {
+  private stagePushPaintRaw(px: number, py: number, pw: number, ph: number, paint: () => void, tag = 'raw'): void {
+    // An off-screen paint is an invisible paint: clip every box to
+    // the viewport (+ a filter pad) and skip empty intersections
+    // outright — no scratch pass, no upload, no draw.
+    const pad = 8;
+    const x1 = Math.min(px + pw, this.w + pad);
+    const y1 = Math.min(py + ph, this.h + pad);
+    px = Math.max(px, -pad);
+    py = Math.max(py, -pad);
+    pw = x1 - px;
+    ph = y1 - py;
+    if (pw <= 0 || ph <= 0) return;
+    this.stagePaintCount(tag, pw, ph);
     this.stageWorldItems.push({
       kind: 'paint',
       px,
@@ -20828,7 +20867,18 @@ export class Renderer {
     const mark = this.stageWorldItems.length;
     if (item.elevated && item.drawShadow && shadowBox) {
       const sh = item.drawShadow;
-      this.stagePushPaintRaw(shadowBox.x, shadowBox.y, shadowBox.w, shadowBox.h, () => sh());
+      // A cast is a ground smear at the item's BASE — the box is the
+      // bottom strip, never the crown headroom (the full item box
+      // measured 287MB/frame of cast scratch on the crown terraces).
+      const strip = 4.2 * this.camera.scale;
+      this.stagePushPaintRaw(
+        shadowBox.x,
+        shadowBox.y + Math.max(0, shadowBox.h - strip),
+        shadowBox.w,
+        Math.min(shadowBox.h, strip),
+        () => sh(),
+        'elev-cast',
+      );
     }
     this.stageAssembling = true;
     this.stageNeedsSplit = false;
@@ -20867,6 +20917,15 @@ export class Renderer {
   /** Wrap one item's dispatch cell as a bounded paint closure — the
    *  SAME-BRUSH swap: the cell runs against the scratch ctx. */
   private stagePaintItem(item: DrawItem, px: number, py: number, pw: number, ph: number): void {
+    const pad = 8;
+    const x1 = Math.min(px + pw, this.w + pad);
+    const y1 = Math.min(py + ph, this.h + pad);
+    px = Math.max(px, -pad);
+    py = Math.max(py, -pad);
+    pw = x1 - px;
+    ph = y1 - py;
+    if (pw <= 0 || ph <= 0) return;
+    this.stagePaintCount(item.body ? 'body' : item.bulk !== undefined ? 'bulk' : 'item', pw, ph);
     this.stageWorldItems.push({
       kind: 'paint',
       px,
@@ -21051,12 +21110,19 @@ export class Renderer {
           j++;
         }
         const run = items.slice(i, j);
-        this.stagePushPaintRaw(ux0, uy0, ux1 - ux0, uy1 - uy0, () => {
-          for (const it2 of run) {
-            if (it2.elevated) it2.drawShadow?.();
-            it2.stageRebuild!();
-          }
-        });
+        this.stagePushPaintRaw(
+          ux0,
+          uy0,
+          ux1 - ux0,
+          uy1 - uy0,
+          () => {
+            for (const it2 of run) {
+              if (it2.elevated) it2.drawShadow?.();
+              it2.stageRebuild!();
+            }
+          },
+          'wall-run',
+        );
         i = j - 1;
         continue;
       }

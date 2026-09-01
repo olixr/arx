@@ -515,6 +515,39 @@ windows and hung walls each have an exclusion reason to read first),
 the falls scroll-bake, the atlas + explicit lifecycle, the perf
 gate.
 
+**A2 PART 5 — AS BUILT (2026-08-31).** Exclusions read, one banded,
+and the paint census that redirected the whole hunt:
+
+- **Exclusion verdicts**: hung walls stay live LEGITIMATELY (six of
+  seven hanging painters sample time — wind-swayed banners, pennants,
+  trellises; only the tapestry is still). Doorways carry a 380-520ms
+  ease plus a locked-refusal shudder over a world-data open flag —
+  bandable via the settled-cut sig pattern, deferred with the reason
+  measured (below). BRIDGE PARAPETS (BridgeRails/DeckFillRail) were
+  an OVERSIGHT: pure static geometry, live only for y-sort
+  granularity — which band buckets preserve by construction. Banded;
+  parity green; `bands 80/82` at the avenue.
+- **THE PAINT CENSUS** (stagePaintKinds — per-tag N and MB at the
+  doors): the scratch mass was NOT doors or windows. It was
+  ELEV-CAST — every elevated band/prop pushing its in-sort cast as a
+  separate FULL-ITEM-BOX paint: crown 105 paints / 287MB per frame.
+  A census of markings had misled; only a census at the doors names
+  the truth.
+- **THE CAST IS A BASE STRIP**: a cast is a ground smear at the
+  item's base — its box is now the bottom strip, never the crown
+  headroom. **AND EVERY PAINT CLIPS TO THE VIEWPORT** (an off-screen
+  paint is an invisible paint; empty intersections skip the pass
+  outright). Avenue scratch 282 → 107MB/frame.
+
+**Gates**: five-scene parity ALL PASS; 786/786. **Scoreboard (Metal
+vs canvas 120)**: dawnmead 102, graveyard 94, forest 85, avenue 57,
+hoargate 44, crown 39. **Part 6's charter**: cast PASS-COUNT is the
+crown's drag (105 passes at fixed per-pass overhead — needs an
+order-safe batching design: in-sort casts legitimately paint over
+earlier items, so naive reordering is banned); doorway banding via
+the settled-cut sig; the falls scroll-bake; the atlas; the perf
+gate.
+
 ### A3 — The dark and the light (shadow layer, lightmap, overreach)
 
 The shadow layer becomes an FBO: shadow quads (sprites, masks, grass
