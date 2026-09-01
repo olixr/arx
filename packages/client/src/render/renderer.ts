@@ -21864,7 +21864,7 @@ export class Renderer {
         const ws = this.stageWorldStats;
         parts.push(
           `stage world q ${ws.quads} p ${ws.paints} split ${ws.splits} ` +
-            `scr ${(w.scratchUploadBytes / 1048576).toFixed(1)}MB/${w.scratchPaints} ` +
+            `scr ${(w.scratchUploadBytes / 1048576).toFixed(1)}MB/${w.scratchPaints} sheets ${w.sheetUploads} ` +
             `up ${(w.uploadedBytes / 1048576).toFixed(1)}MB tex ${(w.textureBytes / 1048576).toFixed(0)}MB/${w.textureCount} draws ${w.drawCalls}`,
         );
       }

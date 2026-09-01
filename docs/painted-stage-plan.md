@@ -711,6 +711,49 @@ sweep; cast/glow/scratch tenants first — fewer texture switches,
 fewer passes); scratch-pass coalescing for the remaining lanes; then
 the A2 perf gate call.
 
+**A2 PART 9 — AS BUILT (2026-09-01). THE SCRATCH SHEET, AND THE GATE.**
+The four-config isolation probe settled the attribution in one run:
+ground-only 120fps, world-only 61 — the ground stage's composite is
+free; the world stage's SCRATCH LANE was the whole fps floor. And
+the cost tracked pass COUNT, not bytes (graveyard 46 passes/92MB at
+106fps vs hoargate 74/41MB at 61): each pass's paint→texImage2D→draw
+round-trip serializes the 2d raster backend against GL — a sync
+ping-pong per pass, invisible to the CPU phase clock.
+
+**THE SCRATCH SHEET**: a pre-pass shelf-packs every eligible pass
+box into a few large pooled canvases (3 × 2048×1024 cap, 2px
+gutters), paints them all while the raster pipeline stays on one
+target, uploads each touched sheet ONCE, and the paint sentinels
+become plain quads sampling their cells. Order is untouched — the
+sentinels draw exactly where they always did; the cell clip
+reproduces the legacy canvas-edge boundary exactly; boxes past the
+eligibility cut (768×512 device) and pool overflow keep the legacy
+per-pass lane. Sheets die with the context like every scratch
+resource.
+
+**THE SCOREBOARD — STAGE AT THE DISPLAY CAP, ALL SIX SCENES**:
+hoargate 60→120, crown 86→120, avenue 96→120, forest 94→120,
+graveyard 106→120, dawnmead 101→120 — stage == canvas == 120 (the
+cap) everywhere, with 1-3 sheet uploads/frame replacing 44-74
+round-trips. With the world-phase ms already FAVORING the stage on
+the wall towns (avenue 2.8 vs 3.3, hoargate 1.9 vs 3.0),
+**THE A2 PERF GATE IS MET: stage ≥ canvas on real hardware.**
+
+**Gates**: parity v4 six PASS + crown-noon at its stable documented
+marginal (452 vs 416 — the verified willow/NPC/AA class, range
+437-487 across every run since part 6); lab 19/19; the A1 soak
+(ledger flat ×4 laps, steady uploads 0, context-loss recovery)
+PASSES through the sheet lane; 786/786.
+
+**Deliberately deferred, with reasons**: the SPRITE atlas (draw
+calls 350-650/frame are texture-switch bound) no longer gates on
+this hardware at the display cap — its value is weak-GPU headroom
+and lifecycle hygiene, so it moves to the weak-GPU validation round
+alongside the orphan sweep's retirement (which stands as the
+documented deviation until then). **A2 IS COMPLETE.** Next: A3 (the
+shadow/light FBO passes), A4 (water/particles/post), A5 (toggle
+rollout) — then Epic B.
+
 ### A3 — The dark and the light (shadow layer, lightmap, overreach)
 
 The shadow layer becomes an FBO: shadow quads (sprites, masks, grass
