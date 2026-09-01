@@ -1650,1075 +1650,1013 @@ export class ClientGame {
    */
   private stoodInWorld = false;
 
-  private handleMessage(msg: S2CMessage): void {
-    switch (msg.t) {
-      case 'welcome': {
-        this.ownEid = msg.eid;
-        this.ownName = msg.name;
-        this.worldSeed = msg.seed ?? null;
-        this.setHavens(msg.havens ?? [], msg.anchors);
-        // The plan is editable data server-side — the map must chart
-        // the live truth, never the bundled copy.
-        if (msg.geo) {
-          try {
-            replaceGeography(msg.geo as GeographyDef);
-          } catch (err) {
-            console.warn('[map] welcome geo rejected:', err);
-          }
+  /**
+   * THE WIRE'S TABLE (foundations F5.2): one handler per message type,
+   * TOTAL over the S2C union — a new message type fails to compile
+   * until it has a row here. Static, so rows reach the class's private
+   * rooms; each row is one former switch arm, moved verbatim.
+   */
+  private static readonly S2C_HANDLERS: {
+    readonly [K in S2CMessage['t']]: (g: ClientGame, msg: Extract<S2CMessage, { t: K }>) => void;
+  } = {
+    welcome: (g, msg) => {
+      g.ownEid = msg.eid;
+      g.ownName = msg.name;
+      g.worldSeed = msg.seed ?? null;
+      g.setHavens(msg.havens ?? [], msg.anchors);
+      // The plan is editable data server-side — the map must chart
+      // the live truth, never the bundled copy.
+      if (msg.geo) {
+        try {
+          replaceGeography(msg.geo as GeographyDef);
+        } catch (err) {
+          console.warn('[map] welcome geo rejected:', err);
         }
-        this.waypoint = msg.waypoint ?? null;
-        // THE CHOSEN HAND: the persisted walk-over preference (an
-        // older server sends nothing — the founding behavior).
-        this.lootAuto = msg.lootAuto ?? true;
-        // THE CHAMPION'S MARK: the standing banners ride the welcome —
-        // they arrive settled (no fly-in replays a stranger's victory).
-        this.trophies.clear();
-        this.trophyBorn.clear();
-        for (const t of msg.trophies ?? []) this.trophies.set(t.id, t);
-        this.party = null;
-        // THE SAND AND THE ROAR: a reconnect stands a fresh soul — a
-        // severed member gets no 'off' (their socket was gone), so the
-        // welcome lowers the card itself (the audit's find).
-        this.arenaMatch = null;
-        this.partyPos.clear();
-        // THE WORLDS APART: the welcome names the waking plane; every
-        // chart starts over (the login push refills the persistent
-        // masks plane by plane).
-        const wake: PlaneWire = msg.plane ?? {
-          id: 'surface',
-          name: '',
-          underground: false,
-          persistent: true,
-        };
-        // THE SECOND DOOR (post-ship audit): a reconnect can wake on a
-        // DIFFERENT plane than the one on screen — the wire died during
-        // a server-side transfer, and the 'plane' message it carried
-        // died with it. Without the crossing reset every old-plane
-        // cache survives and the client renders a mixed world. The
-        // first welcome of a session never fires it.
-        if (this.stoodInWorld && wake.id !== this.plane.id) {
-          this.crossPlane(wake);
+      }
+      g.waypoint = msg.waypoint ?? null;
+      // THE CHOSEN HAND: the persisted walk-over preference (an
+      // older server sends nothing — the founding behavior).
+      g.lootAuto = msg.lootAuto ?? true;
+      // THE CHAMPION'S MARK: the standing banners ride the welcome —
+      // they arrive settled (no fly-in replays a stranger's victory).
+      g.trophies.clear();
+      g.trophyBorn.clear();
+      for (const t of msg.trophies ?? []) g.trophies.set(t.id, t);
+      g.party = null;
+      // THE SAND AND THE ROAR: a reconnect stands a fresh soul — a
+      // severed member gets no 'off' (their socket was gone), so the
+      // welcome lowers the card itself (the audit's find).
+      g.arenaMatch = null;
+      g.partyPos.clear();
+      // THE WORLDS APART: the welcome names the waking plane; every
+      // chart starts over (the login push refills the persistent
+      // masks plane by plane).
+      const wake: PlaneWire = msg.plane ?? {
+        id: 'surface',
+        name: '',
+        underground: false,
+        persistent: true,
+      };
+      // THE SECOND DOOR (post-ship audit): a reconnect can wake on a
+      // DIFFERENT plane than the one on screen — the wire died during
+      // a server-side transfer, and the 'plane' message it carried
+      // died with it. Without the crossing reset every old-plane
+      // cache survives and the client renders a mixed world. The
+      // first welcome of a session never fires it.
+      if (g.stoodInWorld && wake.id !== g.plane.id) {
+        g.crossPlane(wake);
+      } else {
+        g.plane = wake;
+      }
+      g.stoodInWorld = true;
+      g.exploredByPlane.clear();
+      g.dungeonExplored.clear();
+      g.discoveries.clear();
+      g.chartVersion++;
+      g.quests.clear();
+      g.questsDone.clear();
+      g.questAvailable = [];
+      g.questVersion++;
+      g.repStandings.clear();
+      g.repMembers = {};
+      g.repPrefixes = {};
+      g.repVersion++;
+      g.ownLook = msg.look ?? null;
+      g.token = msg.token;
+      g.serverTick = msg.tick;
+      g.entities.clear();
+      g.ownShots.length = 0;
+      g.projHandoffs.clear();
+      g.staffReadySeq = 0;
+      resetCombo(g.comboLocal);
+      g.ownCombo = null;
+      g.ownSwing = null;
+      g.meleeReadySeq = 0;
+      g.meleeBufferedUntilSeq = 0;
+      g.staffBufferedUntilSeq = 0;
+      g.prevLocalButtons = 0;
+      g.castFreezeUntilSeq = 0;
+      g.ownCast = null;
+      // The seq-domain lock and the sheathe claim belong to the OLD
+      // input numbering — the server reset its twins the same way.
+      g.drawLockUntilSeq = 0;
+      g.ownSheathed = null;
+      g.ownSheathedAt = 0;
+      g.clockOffset = null;
+      g.reconnectDelay = 500;
+      g.emitStatus('ingame');
+      if (msg.motd) g.events.onChat({ channel: 'system', text: msg.motd });
+      if (!g.ownLook) g.events.onNeedLook?.();
+      if (g.pingTimer) clearInterval(g.pingTimer);
+      g.pingTimer = setInterval(() => {
+        g.conn?.send({ t: 'ping', ct: performance.now() });
+      }, 2000);
+    },
+    reject: (g, msg) => {
+      g.stopped = true;
+      g.emitStatus('rejected', msg.reason);
+    },
+    authRequired: (g, msg) => {
+      g.emitStatus('authRequired');
+    },
+    authErr: (g, msg) => {
+      g.emitStatus('authErr', msg.reason);
+    },
+    enter: (g, msg) => {
+      for (const meta of msg.entities) {
+        if (meta.eid === g.ownEid) {
+          g.predictor.reset({ x: meta.x, y: meta.y });
+          continue;
+        }
+        const existing = g.entities.get(meta.eid);
+        if (existing) {
+          existing.meta = meta;
         } else {
-          this.plane = wake;
-        }
-        this.stoodInWorld = true;
-        this.exploredByPlane.clear();
-        this.dungeonExplored.clear();
-        this.discoveries.clear();
-        this.chartVersion++;
-        this.quests.clear();
-        this.questsDone.clear();
-        this.questAvailable = [];
-        this.questVersion++;
-        this.repStandings.clear();
-        this.repMembers = {};
-        this.repPrefixes = {};
-        this.repVersion++;
-        this.ownLook = msg.look ?? null;
-        this.token = msg.token;
-        this.serverTick = msg.tick;
-        this.entities.clear();
-        this.ownShots.length = 0;
-        this.projHandoffs.clear();
-        this.staffReadySeq = 0;
-        resetCombo(this.comboLocal);
-        this.ownCombo = null;
-        this.ownSwing = null;
-        this.meleeReadySeq = 0;
-        this.meleeBufferedUntilSeq = 0;
-        this.staffBufferedUntilSeq = 0;
-        this.prevLocalButtons = 0;
-        this.castFreezeUntilSeq = 0;
-        this.ownCast = null;
-        // The seq-domain lock and the sheathe claim belong to the OLD
-        // input numbering — the server reset its twins the same way.
-        this.drawLockUntilSeq = 0;
-        this.ownSheathed = null;
-        this.ownSheathedAt = 0;
-        this.clockOffset = null;
-        this.reconnectDelay = 500;
-        this.emitStatus('ingame');
-        if (msg.motd) this.events.onChat({ channel: 'system', text: msg.motd });
-        if (!this.ownLook) this.events.onNeedLook?.();
-        if (this.pingTimer) clearInterval(this.pingTimer);
-        this.pingTimer = setInterval(() => {
-          this.conn?.send({ t: 'ping', ct: performance.now() });
-        }, 2000);
-        break;
-      }
-      case 'reject': {
-        this.stopped = true;
-        this.emitStatus('rejected', msg.reason);
-        break;
-      }
-      case 'authRequired': {
-        this.emitStatus('authRequired');
-        break;
-      }
-      case 'authErr': {
-        this.emitStatus('authErr', msg.reason);
-        break;
-      }
-      case 'enter': {
-        for (const meta of msg.entities) {
-          if (meta.eid === this.ownEid) {
-            this.predictor.reset({ x: meta.x, y: meta.y });
-            continue;
-          }
-          const existing = this.entities.get(meta.eid);
-          if (existing) {
-            existing.meta = meta;
-          } else {
-            const buffer = new InterpBuffer();
-            // THE ENTER GLIDE: seed the buffer at the enter position
-            // on the render timeline, so a fresh body renders at once
-            // and its first real samples INTERPOLATE from here — the
-            // old empty buffer froze the body at meta.x/y for the
-            // interp delay, then hopped onto the snapshot path (every
-            // border re-enter and reappear paid it). Projectiles are
-            // exempt: their v9 ballistic enter path projects on the
-            // server-NOW timeline and a delayed seed would misplace
-            // the first-in-flight frames.
-            if (meta.kind !== EntityKind.Projectile) {
-              const t0 = this.renderTime();
-              if (t0 > 0) {
-                buffer.push({
-                  t: t0,
-                  x: meta.x,
-                  y: meta.y,
-                  dir: meta.dir ?? 0,
-                  pose: 0,
-                  // Wire scale: 255 = full (u8), NOT a percent. Seeding
-                  // 100 painted every freshly entered body at ~39% until
-                  // its first real snapshot row landed — which the zone
-                  // -entry chunk flood (snapshot backpressure) can hold
-                  // off for seconds.
-                  hpPct: 255,
-                  status: 0,
-                  alert: 0,
-                });
-              }
-            }
-            this.entities.set(meta.eid, { meta, buffer });
-          }
-          // Ballistic truth (v9): a projectile's known flight speed
-          // lets the buffer project from its very first sample.
-          if (meta.kind === EntityKind.Projectile && meta.speed !== undefined) {
-            this.entities.get(meta.eid)!.buffer.ballisticSpeed = meta.speed;
-          }
-          // Tracer handoff (v8): our own projectile arrived — marry it
-          // to the predicted shot that fired on (nearly) that seq. ±2
-          // absorbs the case where cooldown expiry lands a frame later
-          // server-side than the local mirror guessed; rapid-fire
-          // shots are ≥6 seqs apart, so the window can't cross-match.
-          if (
-            meta.kind === EntityKind.Projectile &&
-            meta.ownerEid === this.ownEid &&
-            meta.seq !== undefined
-          ) {
-            // THE VOLLEY MARRIES BY ANGLE: seq distance ranks first,
-            // heading closeness breaks the tie — the overcharge fan's
-            // three shafts share one seq, and each entity now finds
-            // the tracer that flew ITS ray instead of all three
-            // fighting over the first. (The snap-fan's second arrow
-            // stays honestly unpredicted: its tracer was already
-            // claimed by the first marriage, and an unclaimed candidate
-            // 0.14 rad off still beats no candidate at all.)
-            let best: OwnShot | null = null;
-            let bestIdx = -1;
-            let bestScore = Infinity;
-            for (let i = 0; i < this.ownShots.length; i++) {
-              const shot = this.ownShots[i]!;
-              const d = Math.abs(shot.seq - meta.seq);
-              if (d > 2) continue;
-              const a = meta.dir !== undefined ? Math.abs(shortestAngle(shot.dir, meta.dir)) : 0;
-              const score = d * 10 + a;
-              if (score < bestScore) {
-                best = shot;
-                bestIdx = i;
-                bestScore = score;
-              }
-            }
-            // Ordered-stream fallback: a server input-queue stall drops
-            // frames and permanently shifts the seq↔tick mapping,
-            // pushing every later shot outside the ±2 window. Both
-            // streams are ordered, so marry the oldest unclaimed tracer
-            // of the same kind whose heading agrees rather than draw
-            // the shot twice — arrows included now (the heading gate is
-            // what the old arx-only rule was missing: it keeps a
-            // cross-seq marriage from pairing shots aimed apart).
-            if (!best && meta.defId) {
-              for (let i = 0; i < this.ownShots.length; i++) {
-                const shot = this.ownShots[i]!;
-                if (shot.defId !== meta.defId) continue;
-                if (meta.dir !== undefined && Math.abs(shortestAngle(shot.dir, meta.dir)) > 0.6) {
-                  continue;
-                }
-                best = shot;
-                bestIdx = i;
-                break;
-              }
-            }
-            if (best) {
-              this.ownShots.splice(bestIdx, 1);
-              this.projHandoffs.set(meta.eid, {
-                shot: best,
-                ox: 0,
-                oy: 0,
-                od: 0,
-                along: 0,
-                repayMs: 0,
-                capturedAt: 0,
+          const buffer = new InterpBuffer();
+          // THE ENTER GLIDE: seed the buffer at the enter position
+          // on the render timeline, so a fresh body renders at once
+          // and its first real samples INTERPOLATE from here — the
+          // old empty buffer froze the body at meta.x/y for the
+          // interp delay, then hopped onto the snapshot path (every
+          // border re-enter and reappear paid it). Projectiles are
+          // exempt: their v9 ballistic enter path projects on the
+          // server-NOW timeline and a delayed seed would misplace
+          // the first-in-flight frames.
+          if (meta.kind !== EntityKind.Projectile) {
+            const t0 = g.renderTime();
+            if (t0 > 0) {
+              buffer.push({
+                t: t0,
+                x: meta.x,
+                y: meta.y,
+                dir: meta.dir ?? 0,
+                pose: 0,
+                // Wire scale: 255 = full (u8), NOT a percent. Seeding
+                // 100 painted every freshly entered body at ~39% until
+                // its first real snapshot row landed — which the zone
+                // -entry chunk flood (snapshot backpressure) can hold
+                // off for seconds.
+                hpPct: 255,
+                status: 0,
+                alert: 0,
               });
             }
           }
+          g.entities.set(meta.eid, { meta, buffer });
         }
-        break;
-      }
-      case 'leave': {
-        for (const eid of msg.eids) {
-          const e = this.entities.get(eid);
-          // A projectile leaving the world is an impact (or a spent
-          // shaft) — hand its last known flight state to the renderer.
-          if (e?.meta.kind === EntityKind.Projectile && this.projectileEnds.length < 64) {
-            const last = e.buffer.latest();
-            let ex = last?.x ?? e.meta.x;
-            let ey = last?.y ?? e.meta.y;
-            const edir = last?.dir ?? e.meta.dir ?? 0;
-            // The shot died server-side within one tick of its last
-            // sample (v9): advance that final step in the server's own
-            // sub-steps, holding before the first solid — the shaft
-            // sticks AT the wall face instead of a stride short of it.
-            // Boomerangs end in the caster's hand; no advance.
-            if (e.meta.speed !== undefined && !e.meta.returns) {
-              const step = (e.meta.speed * TICK_MS) / 1000;
-              const subs = Math.max(1, Math.ceil(step / 0.25));
-              for (let i = 0; i < subs; i++) {
-                const nx = ex + Math.cos(edir) * (step / subs);
-                const ny = ey + Math.sin(edir) * (step / subs);
-                if (pointHitsShot(this.world, nx, ny)) break;
-                ex = nx;
-                ey = ny;
-              }
+        // Ballistic truth (v9): a projectile's known flight speed
+        // lets the buffer project from its very first sample.
+        if (meta.kind === EntityKind.Projectile && meta.speed !== undefined) {
+          g.entities.get(meta.eid)!.buffer.ballisticSpeed = meta.speed;
+        }
+        // Tracer handoff (v8): our own projectile arrived — marry it
+        // to the predicted shot that fired on (nearly) that seq. ±2
+        // absorbs the case where cooldown expiry lands a frame later
+        // server-side than the local mirror guessed; rapid-fire
+        // shots are ≥6 seqs apart, so the window can't cross-match.
+        if (
+          meta.kind === EntityKind.Projectile &&
+          meta.ownerEid === g.ownEid &&
+          meta.seq !== undefined
+        ) {
+          // THE VOLLEY MARRIES BY ANGLE: seq distance ranks first,
+          // heading closeness breaks the tie — the overcharge fan's
+          // three shafts share one seq, and each entity now finds
+          // the tracer that flew ITS ray instead of all three
+          // fighting over the first. (The snap-fan's second arrow
+          // stays honestly unpredicted: its tracer was already
+          // claimed by the first marriage, and an unclaimed candidate
+          // 0.14 rad off still beats no candidate at all.)
+          let best: OwnShot | null = null;
+          let bestIdx = -1;
+          let bestScore = Infinity;
+          for (let i = 0; i < g.ownShots.length; i++) {
+            const shot = g.ownShots[i]!;
+            const d = Math.abs(shot.seq - meta.seq);
+            if (d > 2) continue;
+            const a = meta.dir !== undefined ? Math.abs(shortestAngle(shot.dir, meta.dir)) : 0;
+            const score = d * 10 + a;
+            if (score < bestScore) {
+              best = shot;
+              bestIdx = i;
+              bestScore = score;
             }
-            this.projectileEnds.push({ x: ex, y: ey, dir: edir, style: e.meta.defId ?? '' });
           }
-          this.entities.delete(eid);
+          // Ordered-stream fallback: a server input-queue stall drops
+          // frames and permanently shifts the seq↔tick mapping,
+          // pushing every later shot outside the ±2 window. Both
+          // streams are ordered, so marry the oldest unclaimed tracer
+          // of the same kind whose heading agrees rather than draw
+          // the shot twice — arrows included now (the heading gate is
+          // what the old arx-only rule was missing: it keeps a
+          // cross-seq marriage from pairing shots aimed apart).
+          if (!best && meta.defId) {
+            for (let i = 0; i < g.ownShots.length; i++) {
+              const shot = g.ownShots[i]!;
+              if (shot.defId !== meta.defId) continue;
+              if (meta.dir !== undefined && Math.abs(shortestAngle(shot.dir, meta.dir)) > 0.6) {
+                continue;
+              }
+              best = shot;
+              bestIdx = i;
+              break;
+            }
+          }
+          if (best) {
+            g.ownShots.splice(bestIdx, 1);
+            g.projHandoffs.set(meta.eid, {
+              shot: best,
+              ox: 0,
+              oy: 0,
+              od: 0,
+              along: 0,
+              repayMs: 0,
+              capturedAt: 0,
+            });
+          }
         }
-        break;
       }
-      case 'chat': {
-        this.events.onChat({ channel: msg.channel, from: msg.from, eid: msg.eid, text: msg.text });
-        break;
+    },
+    leave: (g, msg) => {
+      for (const eid of msg.eids) {
+        const e = g.entities.get(eid);
+        // A projectile leaving the world is an impact (or a spent
+        // shaft) — hand its last known flight state to the renderer.
+        if (e?.meta.kind === EntityKind.Projectile && g.projectileEnds.length < 64) {
+          const last = e.buffer.latest();
+          let ex = last?.x ?? e.meta.x;
+          let ey = last?.y ?? e.meta.y;
+          const edir = last?.dir ?? e.meta.dir ?? 0;
+          // The shot died server-side within one tick of its last
+          // sample (v9): advance that final step in the server's own
+          // sub-steps, holding before the first solid — the shaft
+          // sticks AT the wall face instead of a stride short of it.
+          // Boomerangs end in the caster's hand; no advance.
+          if (e.meta.speed !== undefined && !e.meta.returns) {
+            const step = (e.meta.speed * TICK_MS) / 1000;
+            const subs = Math.max(1, Math.ceil(step / 0.25));
+            for (let i = 0; i < subs; i++) {
+              const nx = ex + Math.cos(edir) * (step / subs);
+              const ny = ey + Math.sin(edir) * (step / subs);
+              if (pointHitsShot(g.world, nx, ny)) break;
+              ex = nx;
+              ey = ny;
+            }
+          }
+          g.projectileEnds.push({ x: ex, y: ey, dir: edir, style: e.meta.defId ?? '' });
+        }
+        g.entities.delete(eid);
       }
-      case 'notice': {
-        // ONE MESSAGE, TWO VOICES: the sentence keeps the log honest,
-        // the word stands up where the refusal happened.
-        this.events.onChat({ channel: 'system', text: msg.text });
-        const own = this.predictor.renderPos();
-        const x = msg.x ?? own.x;
-        const y = msg.y ?? own.y;
-        const now = performance.now();
-        // THE DEDUPE LAW: mashing the verb re-bumps the standing word
-        // (the renderer re-pops it) — never a stack of copies.
-        const standing = this.words.find(
-          (w) => w.word === msg.word && Math.hypot(w.x - x, w.y - y) < 0.75 && now - w.bornAt < WORD_LIFE_MS,
+    },
+    chat: (g, msg) => {
+      g.events.onChat({ channel: msg.channel, from: msg.from, eid: msg.eid, text: msg.text });
+    },
+    notice: (g, msg) => {
+      // ONE MESSAGE, TWO VOICES: the sentence keeps the log honest,
+      // the word stands up where the refusal happened.
+      g.events.onChat({ channel: 'system', text: msg.text });
+      const own = g.predictor.renderPos();
+      const x = msg.x ?? own.x;
+      const y = msg.y ?? own.y;
+      const now = performance.now();
+      // THE DEDUPE LAW: mashing the verb re-bumps the standing word
+      // (the renderer re-pops it) — never a stack of copies.
+      const standing = g.words.find(
+        (w) => w.word === msg.word && Math.hypot(w.x - x, w.y - y) < 0.75 && now - w.bornAt < WORD_LIFE_MS,
+      );
+      if (standing) {
+        standing.bornAt = now;
+        standing.bumpedAt = now;
+        standing.x = x;
+        standing.y = y;
+      } else {
+        g.words.push({ x, y, word: msg.word, tone: msg.tone ?? 'deny', bornAt: now, bumpedAt: now });
+      }
+    },
+    pong: (g, msg) => {
+      g.rttMs = performance.now() - msg.ct;
+    },
+    inv: (g, msg) => {
+      g.inventory = msg.slots;
+      g.events.onInventory(msg.slots);
+    },
+    keyring: (g, msg) => {
+      g.keyRing = msg.keys;
+      g.events.onKeyRing?.(msg.keys);
+    },
+    keylore: (g, msg) => {
+      g.keyLore = msg.known;
+      g.events.onKeyLore?.(msg.known);
+    },
+    keyforgeopen: (g, msg) => {
+      g.events.onKeyForgeOpen?.();
+    },
+    skills: (g, msg) => {
+      g.skills = msg.xp;
+      g.events.onSkills(msg.xp);
+    },
+    recipes: (g, msg) => {
+      g.knownRecipes = new Set(msg.known);
+    },
+    shopopen: (g, msg) => {
+      g.events.onShopOpen?.(msg.shop, msg.priceMult ?? 1);
+    },
+    xp: (g, msg) => {
+      g.skills[msg.skill] = msg.xp;
+      g.events.onSkills(g.skills);
+      g.events.onXp({
+        skill: msg.skill,
+        gained: msg.gained,
+        level: msg.level,
+        levelledUp: msg.levelledUp,
+      });
+    },
+    ownbuilt: (g, msg) => {
+      g.ownBuilt = new Set(msg.keys);
+      g.events.onOwnBuilt?.(g.ownBuilt);
+    },
+    action: (g, msg) => {
+      if (msg.state === 'start') {
+        g.action = {
+          startedAt: performance.now(),
+          durationMs: (msg.ticks ?? 0) * TICK_MS,
+          recipe: msg.recipe,
+          made: msg.made,
+          total: msg.total,
+          ability: msg.ability,
+          slot: msg.slot,
+        };
+        g.events.onActionStart?.(
+          msg.ticks ?? 0,
+          msg.recipe !== undefined
+            ? { recipe: msg.recipe, made: msg.made ?? 0, total: msg.total ?? 1 }
+            : undefined,
         );
-        if (standing) {
-          standing.bornAt = now;
-          standing.bumpedAt = now;
-          standing.x = x;
-          standing.y = y;
-        } else {
-          this.words.push({ x, y, word: msg.word, tone: msg.tone ?? 'deny', bornAt: now, bumpedAt: now });
-        }
-        break;
+      } else {
+        g.action = null;
+        g.events.onActionEnd?.(msg.reason, msg.made);
       }
-      case 'pong': {
-        this.rttMs = performance.now() - msg.ct;
-        break;
-      }
-      case 'inv': {
-        this.inventory = msg.slots;
-        this.events.onInventory(msg.slots);
-        break;
-      }
-      case 'keyring': {
-        this.keyRing = msg.keys;
-        this.events.onKeyRing?.(msg.keys);
-        break;
-      }
-      case 'keylore': {
-        this.keyLore = msg.known;
-        this.events.onKeyLore?.(msg.known);
-        break;
-      }
-      case 'keyforgeopen': {
-        this.events.onKeyForgeOpen?.();
-        break;
-      }
-      case 'skills': {
-        this.skills = msg.xp;
-        this.events.onSkills(msg.xp);
-        break;
-      }
-      case 'recipes': {
-        this.knownRecipes = new Set(msg.known);
-        break;
-      }
-      case 'shopopen': {
-        this.events.onShopOpen?.(msg.shop, msg.priceMult ?? 1);
-        break;
-      }
-      case 'xp': {
-        this.skills[msg.skill] = msg.xp;
-        this.events.onSkills(this.skills);
-        this.events.onXp({
-          skill: msg.skill,
-          gained: msg.gained,
-          level: msg.level,
-          levelledUp: msg.levelledUp,
-        });
-        break;
-      }
-      case 'ownbuilt': {
-        this.ownBuilt = new Set(msg.keys);
-        this.events.onOwnBuilt?.(this.ownBuilt);
-        break;
-      }
-      case 'action': {
-        if (msg.state === 'start') {
-          this.action = {
-            startedAt: performance.now(),
-            durationMs: (msg.ticks ?? 0) * TICK_MS,
-            recipe: msg.recipe,
-            made: msg.made,
-            total: msg.total,
-            ability: msg.ability,
-            slot: msg.slot,
-          };
-          this.events.onActionStart?.(
-            msg.ticks ?? 0,
-            msg.recipe !== undefined
-              ? { recipe: msg.recipe, made: msg.made ?? 0, total: msg.total ?? 1 }
-              : undefined,
-          );
-        } else {
-          this.action = null;
-          this.events.onActionEnd?.(msg.reason, msg.made);
-        }
-        break;
-      }
-      case 'equip': {
-        this.equipment = msg.equipment;
-        if (msg.carry) this.carryStyle = msg.carry;
-        if (msg.carryOff) this.carryOff = msg.carryOff;
-        // Prediction must brake during a draw exactly like the server.
-        this.predictor.weaponStyle = this.equippedWeaponDef()?.style ?? null;
-        this.events.onEquipment(msg.equipment);
-        break;
-      }
-      case 'hit': {
-        let x: number | undefined;
-        let y: number | undefined;
-        if (msg.eid === this.ownEid) {
-          const p = this.predictor.renderPos();
-          x = p.x;
-          y = p.y;
-          if (msg.dmg > 0) this.ownHurtUntil = performance.now() + 180;
-        } else {
-          const remote = this.entities.get(msg.eid);
-          if (remote) {
-            const latest = remote.buffer.latest();
-            x = latest?.x ?? remote.meta.x;
-            y = latest?.y ?? remote.meta.y;
-            if (msg.dmg > 0) {
-              remote.hurtUntil = performance.now() + 180;
-              // Remember the blow's direction: if this hit kills, the
-              // ragdoll flies the way the weapon sent it.
-              if (msg.kx !== undefined || msg.ky !== undefined) {
-                remote.lastKnock = {
-                  kx: msg.kx ?? 0,
-                  ky: msg.ky ?? 0,
-                  at: performance.now(),
-                  crit: msg.crit === true,
-                  dmg: msg.dmg,
-                };
-              }
+    },
+    equip: (g, msg) => {
+      g.equipment = msg.equipment;
+      if (msg.carry) g.carryStyle = msg.carry;
+      if (msg.carryOff) g.carryOff = msg.carryOff;
+      // Prediction must brake during a draw exactly like the server.
+      g.predictor.weaponStyle = g.equippedWeaponDef()?.style ?? null;
+      g.events.onEquipment(msg.equipment);
+    },
+    hit: (g, msg) => {
+      let x: number | undefined;
+      let y: number | undefined;
+      if (msg.eid === g.ownEid) {
+        const p = g.predictor.renderPos();
+        x = p.x;
+        y = p.y;
+        if (msg.dmg > 0) g.ownHurtUntil = performance.now() + 180;
+      } else {
+        const remote = g.entities.get(msg.eid);
+        if (remote) {
+          const latest = remote.buffer.latest();
+          x = latest?.x ?? remote.meta.x;
+          y = latest?.y ?? remote.meta.y;
+          if (msg.dmg > 0) {
+            remote.hurtUntil = performance.now() + 180;
+            // Remember the blow's direction: if this hit kills, the
+            // ragdoll flies the way the weapon sent it.
+            if (msg.kx !== undefined || msg.ky !== undefined) {
+              remote.lastKnock = {
+                kx: msg.kx ?? 0,
+                ky: msg.ky ?? 0,
+                at: performance.now(),
+                crit: msg.crit === true,
+                dmg: msg.dmg,
+              };
             }
           }
         }
-        if (x !== undefined && y !== undefined) {
-          const crit = msg.crit === true;
-          if (msg.dmg > 0 && (msg.kx !== undefined || msg.ky !== undefined)) {
-            this.events.onImpact?.({
-              x,
-              y,
-              kx: msg.kx ?? 0,
-              ky: msg.ky ?? 0,
-              crit,
-              isOwnTarget: msg.eid !== this.ownEid,
-            });
-          }
-          this.floaties.push({
-            x: x + (Math.random() - 0.5) * 0.3,
-            y: y - 0.4,
-            // A warded blow says so in words — a bare "0" reads as a
-            // bad roll, not an unbreakable guard.
-            text: msg.im ? 'Immune' : String(msg.dmg),
-            // A signed DoT pulse prints in its wound's ink (ONE
-            // GRAMMAR: the same hex as the ambience and the state
-            // blocks), quieter than a struck blow — and the ink wins
-            // over the own-body red: WHAT is eating you outranks THAT
-            // something is (the vignette tint carries the "you").
-            color: crit
-              ? '#ffd24a'
-              : msg.im
-                ? '#9db7d6'
-                : msg.dmg === 0
-                  ? '#7fb2d9'
-                  : msg.via
-                    ? STATUS_INK[msg.via]!
-                    : msg.eid === this.ownEid
-                      ? '#ff7b6b'
-                      : '#f4efe4',
-            bornAt: performance.now(),
-            sizeMul: crit ? 1.6 : msg.via ? 0.85 : 1,
-          });
-          if (msg.bs) {
-            this.floaties.push({
-              x,
-              y: y - 0.9,
-              text: 'Backstab!',
-              color: '#b49af0',
-              bornAt: performance.now(),
-              sizeMul: 1.3,
-            });
-          }
-          this.events.onHit({
+      }
+      if (x !== undefined && y !== undefined) {
+        const crit = msg.crit === true;
+        if (msg.dmg > 0 && (msg.kx !== undefined || msg.ky !== undefined)) {
+          g.events.onImpact?.({
             x,
             y,
-            dmg: msg.dmg,
-            isOwn: msg.eid === this.ownEid,
+            kx: msg.kx ?? 0,
+            ky: msg.ky ?? 0,
             crit,
-            backstab: msg.bs === true,
-            via: msg.via,
+            isOwnTarget: msg.eid !== g.ownEid,
           });
         }
-        break;
-      }
-      case 'update': {
-        for (const meta of msg.entities) {
-          if (meta.eid === this.ownEid) continue;
-          const remote = this.entities.get(meta.eid);
-          if (remote) remote.meta = meta;
-        }
-        break;
-      }
-      case 'bank': {
-        this.events.onBank(msg.items, msg.gear);
-        break;
-      }
-      case 'signs': {
-        for (const sign of msg.signs) {
-          const key = signKey(sign.tx, sign.ty);
-          if (sign.gone) this.signs.delete(key);
-          else this.signs.set(key, sign);
-          this.events.onSignChanged?.(sign.tx, sign.ty);
-        }
-        break;
-      }
-      case 'riftgate': {
-        // The gate opens the panel; the keys themselves come from our
-        // ring mirror (instance-addressing law). `live` marks the run
-        // still standing so a spent key can re-enter its open door.
-        this.events.onRiftgate?.(msg.live, msg.partyRuns);
-        break;
-      }
-      case 'dungeon': {
-        // A fresh instance was cut — the old run's chart is gone with it.
-        this.dungeonExplored.clear();
-        this.chartVersion++;
-        this.events.onDungeon?.({
-          name: msg.name,
-          sigil: msg.sigil,
-          tier: msg.tier,
-          theme: msg.theme,
-          power: msg.power,
-          mods: msg.mods,
+        g.floaties.push({
+          x: x + (Math.random() - 0.5) * 0.3,
+          y: y - 0.4,
+          // A warded blow says so in words — a bare "0" reads as a
+          // bad roll, not an unbreakable guard.
+          text: msg.im ? 'Immune' : String(msg.dmg),
+          // A signed DoT pulse prints in its wound's ink (ONE
+          // GRAMMAR: the same hex as the ambience and the state
+          // blocks), quieter than a struck blow — and the ink wins
+          // over the own-body red: WHAT is eating you outranks THAT
+          // something is (the vignette tint carries the "you").
+          color: crit
+            ? '#ffd24a'
+            : msg.im
+              ? '#9db7d6'
+              : msg.dmg === 0
+                ? '#7fb2d9'
+                : msg.via
+                  ? STATUS_INK[msg.via]!
+                  : msg.eid === g.ownEid
+                    ? '#ff7b6b'
+                    : '#f4efe4',
+          bornAt: performance.now(),
+          sizeMul: crit ? 1.6 : msg.via ? 0.85 : 1,
         });
-        break;
-      }
-      case 'dgclear': {
-        this.events.onDungeonClear?.({ name: msg.name, sigil: msg.sigil, sec: msg.sec });
-        break;
-      }
-      case 'arenaboard': {
-        this.events.onArenaBoard?.(msg);
-        break;
-      }
-      case 'arena': {
-        // Phase 'off' lowers everything; anything else replaces the
-        // card whole (the ticker is authoritative, the partypos law).
-        this.arenaMatch =
-          msg.phase === 'off'
-            ? null
-            : {
-                phase: msg.phase,
-                venue: msg.venue,
-                name: msg.name,
-                round: msg.round,
-                rounds: msg.rounds,
-                deadlineAt:
-                  msg.remainMs !== undefined ? performance.now() + msg.remainMs : null,
-                foes: msg.foes,
-                ...(msg.spec === true ? { specAt: performance.now() } : {}),
-                ...(msg.phase === 'wipe' ? { wipeAt: performance.now() } : {}),
-              };
-        this.events.onArenaState?.(msg);
-        break;
-      }
-      case 'plane': {
-        // THE CROSSING (docs/planes-plan.md §2.4) — the ONE reset
-        // door (the reconnect welcome above is its twin). Drop it
-        // all, stand the body at the carried point, and let the
-        // fresh plane stream in behind the veil.
-        this.crossPlane(msg.plane, { x: msg.x, y: msg.y });
-        break;
-      }
-      case 'dlgopen': {
-        this.events.onDialogueOpen?.({
-          eid: msg.eid,
-          name: msg.name,
-          title: msg.title,
-          prefetch: msg.prefetch,
-          voiceDials: msg.voiceDials,
-        });
-        break;
-      }
-      case 'dlgnode': {
-        this.events.onDialogueNode?.({
-          speaker: msg.speaker,
-          text: msg.text,
-          choices: msg.choices,
-          last: msg.last,
-          gifts: msg.gifts,
-          quest: msg.quest,
-          questChoices: msg.questChoices,
-          shopChoices: msg.shopChoices,
-          arenaChoices: msg.arenaChoices,
-          voice: msg.voice,
-        });
-        break;
-      }
-      case 'dlgclose': {
-        this.events.onDialogueClose?.();
-        break;
-      }
-      case 'vq': {
-        this.events.onVoiceQuip?.({ x: msg.x, y: msg.y, url: msg.url });
-        break;
-      }
-      case 'death': {
-        if (this.npcDeaths.length < 32) {
-          const remote = this.entities.get(msg.eid);
-          const k = remote?.lastKnock;
-          const fresh = k && performance.now() - k.at < 700 ? k : null;
-          this.npcDeaths.push({
-            eid: msg.eid,
-            x: msg.x,
-            y: msg.y,
-            defId: msg.defId,
-            dir: remote?.buffer.latest()?.dir ?? 0,
-            kx: fresh?.kx ?? 0,
-            ky: fresh?.ky ?? 0,
-            crit: fresh?.crit ?? false,
-            dmg: fresh?.dmg ?? 2,
-            look: remote?.meta.appearance?.look,
-            equip: remote?.meta.appearance?.equip,
-            ench: remote?.meta.appearance?.ench,
-          });
-        }
-        this.events.onDeath({ x: msg.x, y: msg.y, defId: msg.defId });
-        break;
-      }
-      case 'cast': {
-        // THE DRAWN BREATH's truth channel. `start` backfills a breath
-        // the local mirror missed (it should never happen; belt and
-        // braces); `fire` pays off with the committed cue the instants
-        // play at their press; `break` ends the bar without ceremony.
-        if (msg.state === 'start') {
-          if (!this.ownCast) {
-            const ab = this.slotAbilityDef(msg.slot as AbilitySlot);
-            if (ab) {
-              this.ownCast = {
-                slot: msg.slot as AbilitySlot,
-                ab,
-                progress: 0,
-                total: msg.ticks ?? ab.castTicks ?? 0,
-                rate: 1,
-              };
-            }
-          }
-        } else {
-          const cast = this.ownCast;
-          this.ownCast = null;
-          if (msg.state === 'fire') {
-            const ab = cast?.ab ?? this.slotAbilityDef(msg.slot as AbilitySlot);
-            if (ab) {
-              this.onCastFx?.(msg.slot as AbilitySlot, ab);
-              // THE CHARGED ROOT: a cast-time art roots the server
-              // body for castFreezeTicks at its FIRE — the client used
-              // to keep walking at full speed through the whole
-              // commitment (and a charged dash-strike moved the server
-              // body with zero prediction). Anchor on the last applied
-              // frame: the root starts one wire-trip late and ends
-              // equally late, a bounded skew instead of a total miss.
-              const freeze = ab.castFreezeTicks ?? 0;
-              // THE CROSSING: a charged transport art re-registers its
-              // whole road (or its blink door) on the last applied
-              // frame — the same one-wire-trip skew the root carries.
-              const kind = travelKindOf(ab);
-              const tiles = Math.abs(ab.dashTiles ?? (ab.shape === 'leap_slam' ? 4 : 3));
-              const sign = Math.sign(ab.dashTiles ?? 1) || 1;
-              const move: CastMove | null =
-                kind && tiles > 0.05
-                  ? {
-                      kind,
-                      dirX: Math.cos(this.aim) * sign,
-                      dirY: Math.sin(this.aim) * sign,
-                      dist: tiles,
-                    }
-                  : null;
-              if (freeze > 0 || move) {
-                const anchor = this.inputSeq - 1;
-                this.castFreezeUntilSeq = Math.max(this.castFreezeUntilSeq, anchor + freeze);
-                this.predictor.registerCast(anchor, freeze, move);
-              }
-            }
-          }
-        }
-        break;
-      }
-      case 'cooldowns': {
-        const now = performance.now();
-        this.abilityMax = [msg.max[0], msg.max[1], msg.max[2], msg.max[3]];
-        for (let i = 0; i < 4; i++) this.abilityReadyAt[i] = now + msg.cd[i]! * TICK_MS;
-        break;
-      }
-      case 'combo': {
-        // THE SPOKEN BEAT: the stage the server just swung, the run,
-        // and how long the string stays alive, on the local clock.
-        const bornMs = performance.now();
-        this.ownCombo = {
-          stage: msg.stage,
-          len: msg.len,
-          run: msg.run,
-          bornMs,
-          graceUntilMs: bornMs + msg.grace * TICK_MS,
-        };
-        break;
-      }
-      case 'techniques': {
-        this.techniques = [msg.chosen[0], msg.chosen[1]];
-        this.earnedArts = msg.earned ?? [];
-        this.lessons = msg.lessons ?? {};
-        this.onTechniques?.();
-        break;
-      }
-      case 'callings': {
-        this.callings = msg.answered;
-        this.callingRanks = msg.ranks ?? {};
-        this.onCallings?.();
-        break;
-      }
-      case 'buffs': {
-        this.buffs = msg.buffs;
-        this.buffsAt = performance.now();
-        // THE SWING CHANNEL rides the buff push; absent = trained pace.
-        this.swingMult = msg.swing ?? 1;
-        // THE STANDING SHELL: dome presence, and the break moment —
-        // a ward that stood and now reads 0 shatters ONCE.
-        const ward = msg.ward ?? 0;
-        if (this.ownWard > 0 && ward === 0) this.wardShatteredAt = performance.now();
-        this.ownWard = ward;
-        this.onBuffs?.();
-        break;
-      }
-      case 'farm': {
-        // THE ONE CARE MIRROR: plots re-bake their chunk (the soil
-        // shows its state); bins live-paint and need no bake.
-        for (const p of msg.plots ?? []) {
-          farmPlots.set(farmKey(p.tx, p.ty), { w: p.w, soil: p.soil, m: p.m, f: p.f ?? 0, wet: false });
-          refreshWet(p.tx, p.ty, this.world.groundAt(p.tx, p.ty));
-          // THE REGISTER IS THE SCAN, COMPILED: the plot's OWN chunk
-          // rev must bump too — care state is a side table, so no
-          // setGround covers the center, and the soil paint lives in
-          // that chunk's bake.
-          this.touchChunk(Math.floor(p.tx / CHUNK_SIZE), Math.floor(p.ty / CHUNK_SIZE));
-          this.touchNeighbors(Math.floor(p.tx / CHUNK_SIZE), Math.floor(p.ty / CHUNK_SIZE));
-        }
-        for (const b of msg.bins ?? []) {
-          if (b.fill === 0 && b.readyAt === 0) farmBins.delete(farmKey(b.tx, b.ty));
-          else farmBins.set(farmKey(b.tx, b.ty), { fill: b.fill, graded: b.graded, readyAt: b.readyAt });
-        }
-        for (const tr of msg.troughs ?? []) {
-          if (tr.feed <= 0) farmTroughs.delete(farmKey(tr.tx, tr.ty));
-          else farmTroughs.set(farmKey(tr.tx, tr.ty), { feed: tr.feed });
-        }
-        for (const j of msg.jobs ?? []) {
-          if (j.qty <= 0) farmJobs.delete(farmKey(j.tx, j.ty));
-          else farmJobs.set(farmKey(j.tx, j.ty), { recipe: j.recipe, qty: j.qty, startedAt: j.startedAt, grade: j.grade });
-        }
-        for (const a of msg.apiaries ?? []) {
-          if (a.since <= 0) farmApiaries.delete(farmKey(a.tx, a.ty));
-          else farmApiaries.set(farmKey(a.tx, a.ty), { since: a.since });
-        }
-        for (const r of msg.remove ?? []) {
-          farmPlots.delete(farmKey(r.tx, r.ty));
-          this.touchChunk(Math.floor(r.tx / CHUNK_SIZE), Math.floor(r.ty / CHUNK_SIZE));
-          this.touchNeighbors(Math.floor(r.tx / CHUNK_SIZE), Math.floor(r.ty / CHUNK_SIZE));
-        }
-        if ((msg.plots?.length ?? 0) > 0 || (msg.remove?.length ?? 0) > 0) this.worldVersion++;
-        this.onFarm?.();
-        break;
-      }
-      case 'stockname': {
-        // THE ANIMALS OF THE YARD: the release ceremony — the naming
-        // card opens for the newest animal in the yard.
-        this.onStockCeremony?.(msg.slot, msg.species);
-        break;
-      }
-      case 'larder': {
-        for (const f of msg.fills) larderFills.set(f.shop, { epoch: f.epoch, filled: f.filled });
-        break;
-      }
-      case 'charges': {
-        this.charges = msg.charges;
-        break;
-      }
-      case 'ride': {
-        // THE PREDICTOR LEARNS ITS LEGS: the steady multiplier lands
-        // in the predictor the same message that changes the truth,
-        // so mounted prediction agrees with the server to the digit.
-        this.ownMount = msg.mount;
-        this.ownedMounts = msg.owned;
-        this.predictor.speedMult = msg.mult;
-        // ...and its drawn-bow walk: the perk-folded factor (Longstride)
-        // rides the same mirror; the bare constant is only the fallback.
-        this.predictor.drawFactor = msg.draw ?? DRAW_MOVE_FACTOR;
-        this.onRide?.();
-        break;
-      }
-      case 'pet': {
-        this.ownPets = msg.pets;
-        // THE QUIET HEEL: the wire says how long until kindness pays
-        // again; we pin it to a local clock and count down between
-        // sends (the mirror only resends when a pet fact changes).
-        for (const p of msg.pets) {
-          if (p.bondSec !== undefined) {
-            this.petBondReadyAt.set(p.slot, Date.now() + p.bondSec * 1000);
-          }
-        }
-        if (msg.ceremony !== undefined) {
-          const fresh = msg.pets.find((p) => p.slot === msg.ceremony);
-          this.onPetCeremony?.(msg.ceremony, fresh?.name ?? '');
-        }
-        this.onPet?.();
-        break;
-      }
-      case 'companions': {
-        // THE COMPANY YOU KEEP: the company's own mirror — never
-        // folded into the pet lane above, so neither system can jog
-        // the other's elbow.
-        this.ownCompanions = msg.companions;
-        if (msg.ceremony !== undefined) {
-          const fresh = msg.companions.find((c) => c.slot === msg.ceremony);
-          this.onCompanionCeremony?.(msg.ceremony, fresh?.name ?? '');
-        }
-        this.onCompanions?.();
-        break;
-      }
-      case 'time': {
-        this.timeOfs = msg.ofs;
-        break;
-      }
-      case 'havens': {
-        // A waystation stood up (or turned fallow) — or the plan
-        // itself changed. The danger field shifts under our feet,
-        // and the music with it.
-        this.setHavens(msg.list, msg.settled);
-        break;
-      }
-      case 'explored': {
-        const mask = this.exploredFor(msg.plane ?? 'surface');
-        for (const [rx, ry, b64] of msg.regions) {
-          mask.loadRegion(rx, ry, b64ToU8(b64));
-        }
-        this.chartVersion++;
-        break;
-      }
-      case 'discoveries': {
-        this.discoveries.clear();
-        for (const d of msg.list) this.discoveries.set(d.id, d);
-        this.chartVersion++;
-        break;
-      }
-      case 'trophies': {
-        // THE CHAMPION'S MARK roster turned: whole-list replace, and
-        // the fresh id starts its local fly-in clock (only the fresh
-        // one — a roster refresh never re-stakes standing banners).
-        this.trophies.clear();
-        for (const t of msg.list) this.trophies.set(t.id, t);
-        for (const id of [...this.trophyBorn.keys()]) {
-          if (!this.trophies.has(id)) this.trophyBorn.delete(id);
-        }
-        if (msg.fresh !== undefined) {
-          const fresh = this.trophies.get(msg.fresh);
-          if (fresh) {
-            this.trophyBorn.set(msg.fresh, performance.now());
-            this.events.onTrophyStaked?.(fresh);
-          }
-        }
-        break;
-      }
-      case 'poicleared': {
-        this.events.onPoiCleared?.(msg);
-        break;
-      }
-      case 'discovery': {
-        this.discoveries.set(msg.d.id, msg.d);
-        this.chartVersion++;
-        this.events.onDiscovery?.(msg.d);
-        break;
-      }
-      case 'discoveryfade': {
-        for (const id of msg.ids) {
-          const d = this.discoveries.get(id);
-          if (d) d.faded = true;
-        }
-        this.chartVersion++;
-        break;
-      }
-      case 'discoverystage': {
-        // The site climbed a boldness rung — repaint its stage pips.
-        // The rumor line arrives as ordinary system chat; no ceremony.
-        const d = this.discoveries.get(msg.id);
-        if (d) {
-          d.stage = msg.stage;
-          this.chartVersion++;
-        }
-        break;
-      }
-      case 'waypoint': {
-        // The server plants the mark (a guard's bounty) — adopted
-        // exactly as if the player pinned it: pin, pill, chart redraw.
-        // The plane rides along so a tagged mark files onto its own
-        // chart (server pushes today are surface; absent = surface).
-        this.waypoint =
-          msg.x !== undefined && msg.y !== undefined ? { x: msg.x, y: msg.y, plane: msg.plane } : null;
-        this.chartVersion++;
-        break;
-      }
-      case 'deathmark': {
-        // The walk-back beacon: duration on the wire, stamped against
-        // the local clock here (clocks drift; durations don't). The
-        // plane rides along so the skull files onto the RIGHT chart —
-        // a death in the underworld must not mark the surface.
-        this.deathMark = msg.mark
-          ? {
-              x: msg.mark.x,
-              y: msg.mark.y,
-              until: Date.now() + msg.mark.remainMs,
-              plane: msg.mark.plane,
-            }
-          : null;
-        this.chartVersion++;
-        break;
-      }
-      case 'quests': {
-        // The full ledger, once at bind.
-        this.quests.clear();
-        this.questsDone.clear();
-        for (const q of msg.active) this.quests.set(q.id, q);
-        for (const d of msg.done) this.questsDone.set(d.id, d);
-        this.questAvailable = msg.available;
-        this.questVersion++;
-        this.events.onQuestsChanged?.();
-        break;
-      }
-      case 'questupd': {
-        // A quiet patch — present fields apply, nothing celebrates.
-        if (msg.remove !== undefined) this.quests.delete(msg.remove);
-        if (msg.quest) this.quests.set(msg.quest.id, msg.quest);
-        if (msg.done) this.questsDone.set(msg.done.id, msg.done);
-        if (msg.available) this.questAvailable = msg.available;
-        this.questVersion++;
-        this.events.onQuestsChanged?.();
-        break;
-      }
-      case 'questevent': {
-        this.events.onQuestEvent?.({
-          kind: msg.kind,
-          id: msg.id,
-          name: msg.name,
-          rewards: msg.rewards,
-        });
-        break;
-      }
-      case 'rep': {
-        // The full standing ledger + live membership tables, at bind.
-        this.repStandings.clear();
-        for (const s of msg.standings) this.repStandings.set(s.faction, s);
-        this.repMembers = msg.members;
-        this.repPrefixes = msg.prefixes;
-        this.repEnforcers = new Set(msg.enforcers);
-        this.repPeaceBand = msg.peaceBand;
-        this.repPrices = msg.prices;
-        this.repVersion++;
-        this.events.onRepChanged?.();
-        break;
-      }
-      case 'repupd': {
-        // A quiet patch — nothing celebrates. The delta ledger is
-        // pure presentation: the Standing screen's "lately" line.
-        for (const s of msg.standings) {
-          const prev = this.repStandings.get(s.faction);
-          if (prev !== undefined && prev.value !== s.value) {
-            this.repLastDelta.set(s.faction, { delta: s.value - prev.value, at: Date.now() });
-          }
-          this.repStandings.set(s.faction, s);
-        }
-        this.repVersion++;
-        this.events.onRepChanged?.();
-        break;
-      }
-      case 'repevent': {
-        this.events.onRepEvent?.({
-          faction: msg.faction,
-          name: msg.name,
-          band: msg.band,
-          rose: msg.rose,
-        });
-        break;
-      }
-      case 'social': {
-        this.events.onSocial?.({ friends: msg.friends, incoming: msg.incoming, outgoing: msg.outgoing });
-        break;
-      }
-      case 'friendsearch': {
-        this.events.onFriendSearch?.(msg.results);
-        break;
-      }
-      case 'friendevent': {
-        this.events.onFriendEvent?.({ kind: msg.kind, name: msg.name });
-        break;
-      }
-      case 'party': {
-        this.party = { members: msg.members, invites: msg.invites, outgoing: msg.outgoing };
-        // Names no longer of the party stop haunting the wayfinder.
-        for (const name of [...this.partyPos.keys()]) {
-          if (!msg.members.some((m) => m.name === name)) this.partyPos.delete(name);
-        }
-        this.events.onParty?.(this.party);
-        break;
-      }
-      case 'partyevent': {
-        this.events.onPartyEvent?.({ kind: msg.kind, name: msg.name, detail: msg.detail });
-        break;
-      }
-      case 'partypos': {
-        // The ticker is authoritative for who is placed right now.
-        this.partyPos.clear();
-        const at = performance.now();
-        for (const m of msg.members) {
-          this.partyPos.set(m.name, { x: m.x, y: m.y, plane: m.plane ?? 'surface', at });
-        }
-        break;
-      }
-      case 'fx': {
-        // Door rattles, prop smashes, and candle flips are scenery
-        // feedback, not combat VFX — hand them straight to the fx
-        // hook without joining the ability list.
-        if (msg.kind === 'rattle' || msg.kind === 'smash' || msg.kind === 'candle') {
-          this.onFx?.({
-            kind: msg.kind,
-            x: msg.x,
-            y: msg.y,
-            radius: msg.radius,
-            dir: msg.dir,
-            id: msg.id,
+        if (msg.bs) {
+          g.floaties.push({
+            x,
+            y: y - 0.9,
+            text: 'Backstab!',
+            color: '#b49af0',
             bornAt: performance.now(),
+            sizeMul: 1.3,
           });
-          break;
         }
-        // THE FOE'S BREATH: a charge carrying an eid is an enemy
-        // wind-up — the overhead pip ledger anchors to the body.
-        // ticks > 0 opens/refreshes the read; ticks 0 is the fizzle
-        // (brokeAt lets the pip gutter instead of vanishing).
-        if (msg.kind === 'charge' && msg.eid !== undefined) {
-          const now = performance.now();
-          if ((msg.ticks ?? 0) > 0) {
-            const endsAt = now + (msg.ticks ?? 0) * TICK_MS;
-            const prev = this.npcCasts.get(msg.eid);
-            if (prev && !prev.brokeAt && prev.id === msg.id) {
-              prev.endsAt = endsAt; // re-emit: trust the newest clock
-            } else {
-              // A fresh breath (or a different voice over a lingering
-              // entry) opens its own read.
-              this.npcCasts.set(msg.eid, { startAt: now, endsAt, color: msg.color, id: msg.id });
-            }
-          } else {
-            const cast = this.npcCasts.get(msg.eid);
-            if (cast) cast.brokeAt = now;
+        g.events.onHit({
+          x,
+          y,
+          dmg: msg.dmg,
+          isOwn: msg.eid === g.ownEid,
+          crit,
+          backstab: msg.bs === true,
+          via: msg.via,
+        });
+      }
+    },
+    update: (g, msg) => {
+      for (const meta of msg.entities) {
+        if (meta.eid === g.ownEid) continue;
+        const remote = g.entities.get(meta.eid);
+        if (remote) remote.meta = meta;
+      }
+    },
+    bank: (g, msg) => {
+      g.events.onBank(msg.items, msg.gear);
+    },
+    signs: (g, msg) => {
+      for (const sign of msg.signs) {
+        const key = signKey(sign.tx, sign.ty);
+        if (sign.gone) g.signs.delete(key);
+        else g.signs.set(key, sign);
+        g.events.onSignChanged?.(sign.tx, sign.ty);
+      }
+    },
+    riftgate: (g, msg) => {
+      // The gate opens the panel; the keys themselves come from our
+      // ring mirror (instance-addressing law). `live` marks the run
+      // still standing so a spent key can re-enter its open door.
+      g.events.onRiftgate?.(msg.live, msg.partyRuns);
+    },
+    dungeon: (g, msg) => {
+      // A fresh instance was cut — the old run's chart is gone with it.
+      g.dungeonExplored.clear();
+      g.chartVersion++;
+      g.events.onDungeon?.({
+        name: msg.name,
+        sigil: msg.sigil,
+        tier: msg.tier,
+        theme: msg.theme,
+        power: msg.power,
+        mods: msg.mods,
+      });
+    },
+    dgclear: (g, msg) => {
+      g.events.onDungeonClear?.({ name: msg.name, sigil: msg.sigil, sec: msg.sec });
+    },
+    arenaboard: (g, msg) => {
+      g.events.onArenaBoard?.(msg);
+    },
+    arena: (g, msg) => {
+      // Phase 'off' lowers everything; anything else replaces the
+      // card whole (the ticker is authoritative, the partypos law).
+      g.arenaMatch =
+        msg.phase === 'off'
+          ? null
+          : {
+              phase: msg.phase,
+              venue: msg.venue,
+              name: msg.name,
+              round: msg.round,
+              rounds: msg.rounds,
+              deadlineAt:
+                msg.remainMs !== undefined ? performance.now() + msg.remainMs : null,
+              foes: msg.foes,
+              ...(msg.spec === true ? { specAt: performance.now() } : {}),
+              ...(msg.phase === 'wipe' ? { wipeAt: performance.now() } : {}),
+            };
+      g.events.onArenaState?.(msg);
+    },
+    plane: (g, msg) => {
+      // THE CROSSING (docs/planes-plan.md §2.4) — the ONE reset
+      // door (the reconnect welcome above is its twin). Drop it
+      // all, stand the body at the carried point, and let the
+      // fresh plane stream in behind the veil.
+      g.crossPlane(msg.plane, { x: msg.x, y: msg.y });
+    },
+    dlgopen: (g, msg) => {
+      g.events.onDialogueOpen?.({
+        eid: msg.eid,
+        name: msg.name,
+        title: msg.title,
+        prefetch: msg.prefetch,
+        voiceDials: msg.voiceDials,
+      });
+    },
+    dlgnode: (g, msg) => {
+      g.events.onDialogueNode?.({
+        speaker: msg.speaker,
+        text: msg.text,
+        choices: msg.choices,
+        last: msg.last,
+        gifts: msg.gifts,
+        quest: msg.quest,
+        questChoices: msg.questChoices,
+        shopChoices: msg.shopChoices,
+        arenaChoices: msg.arenaChoices,
+        voice: msg.voice,
+      });
+    },
+    dlgclose: (g, msg) => {
+      g.events.onDialogueClose?.();
+    },
+    vq: (g, msg) => {
+      g.events.onVoiceQuip?.({ x: msg.x, y: msg.y, url: msg.url });
+    },
+    death: (g, msg) => {
+      if (g.npcDeaths.length < 32) {
+        const remote = g.entities.get(msg.eid);
+        const k = remote?.lastKnock;
+        const fresh = k && performance.now() - k.at < 700 ? k : null;
+        g.npcDeaths.push({
+          eid: msg.eid,
+          x: msg.x,
+          y: msg.y,
+          defId: msg.defId,
+          dir: remote?.buffer.latest()?.dir ?? 0,
+          kx: fresh?.kx ?? 0,
+          ky: fresh?.ky ?? 0,
+          crit: fresh?.crit ?? false,
+          dmg: fresh?.dmg ?? 2,
+          look: remote?.meta.appearance?.look,
+          equip: remote?.meta.appearance?.equip,
+          ench: remote?.meta.appearance?.ench,
+        });
+      }
+      g.events.onDeath({ x: msg.x, y: msg.y, defId: msg.defId });
+    },
+    cast: (g, msg) => {
+      // THE DRAWN BREATH's truth channel. `start` backfills a breath
+      // the local mirror missed (it should never happen; belt and
+      // braces); `fire` pays off with the committed cue the instants
+      // play at their press; `break` ends the bar without ceremony.
+      if (msg.state === 'start') {
+        if (!g.ownCast) {
+          const ab = g.slotAbilityDef(msg.slot as AbilitySlot);
+          if (ab) {
+            g.ownCast = {
+              slot: msg.slot as AbilitySlot,
+              ab,
+              progress: 0,
+              total: msg.ticks ?? ab.castTicks ?? 0,
+              rate: 1,
+            };
           }
         }
-        const fx: ActiveFx = {
+      } else {
+        const cast = g.ownCast;
+        g.ownCast = null;
+        if (msg.state === 'fire') {
+          const ab = cast?.ab ?? g.slotAbilityDef(msg.slot as AbilitySlot);
+          if (ab) {
+            g.onCastFx?.(msg.slot as AbilitySlot, ab);
+            // THE CHARGED ROOT: a cast-time art roots the server
+            // body for castFreezeTicks at its FIRE — the client used
+            // to keep walking at full speed through the whole
+            // commitment (and a charged dash-strike moved the server
+            // body with zero prediction). Anchor on the last applied
+            // frame: the root starts one wire-trip late and ends
+            // equally late, a bounded skew instead of a total miss.
+            const freeze = ab.castFreezeTicks ?? 0;
+            // THE CROSSING: a charged transport art re-registers its
+            // whole road (or its blink door) on the last applied
+            // frame — the same one-wire-trip skew the root carries.
+            const kind = travelKindOf(ab);
+            const tiles = Math.abs(ab.dashTiles ?? (ab.shape === 'leap_slam' ? 4 : 3));
+            const sign = Math.sign(ab.dashTiles ?? 1) || 1;
+            const move: CastMove | null =
+              kind && tiles > 0.05
+                ? {
+                    kind,
+                    dirX: Math.cos(g.aim) * sign,
+                    dirY: Math.sin(g.aim) * sign,
+                    dist: tiles,
+                  }
+                : null;
+            if (freeze > 0 || move) {
+              const anchor = g.inputSeq - 1;
+              g.castFreezeUntilSeq = Math.max(g.castFreezeUntilSeq, anchor + freeze);
+              g.predictor.registerCast(anchor, freeze, move);
+            }
+          }
+        }
+      }
+    },
+    cooldowns: (g, msg) => {
+      const now = performance.now();
+      g.abilityMax = [msg.max[0], msg.max[1], msg.max[2], msg.max[3]];
+      for (let i = 0; i < 4; i++) g.abilityReadyAt[i] = now + msg.cd[i]! * TICK_MS;
+    },
+    combo: (g, msg) => {
+      // THE SPOKEN BEAT: the stage the server just swung, the run,
+      // and how long the string stays alive, on the local clock.
+      const bornMs = performance.now();
+      g.ownCombo = {
+        stage: msg.stage,
+        len: msg.len,
+        run: msg.run,
+        bornMs,
+        graceUntilMs: bornMs + msg.grace * TICK_MS,
+      };
+    },
+    techniques: (g, msg) => {
+      g.techniques = [msg.chosen[0], msg.chosen[1]];
+      g.earnedArts = msg.earned ?? [];
+      g.lessons = msg.lessons ?? {};
+      g.onTechniques?.();
+    },
+    callings: (g, msg) => {
+      g.callings = msg.answered;
+      g.callingRanks = msg.ranks ?? {};
+      g.onCallings?.();
+    },
+    buffs: (g, msg) => {
+      g.buffs = msg.buffs;
+      g.buffsAt = performance.now();
+      // THE SWING CHANNEL rides the buff push; absent = trained pace.
+      g.swingMult = msg.swing ?? 1;
+      // THE STANDING SHELL: dome presence, and the break moment —
+      // a ward that stood and now reads 0 shatters ONCE.
+      const ward = msg.ward ?? 0;
+      if (g.ownWard > 0 && ward === 0) g.wardShatteredAt = performance.now();
+      g.ownWard = ward;
+      g.onBuffs?.();
+    },
+    farm: (g, msg) => {
+      // THE ONE CARE MIRROR: plots re-bake their chunk (the soil
+      // shows its state); bins live-paint and need no bake.
+      for (const p of msg.plots ?? []) {
+        farmPlots.set(farmKey(p.tx, p.ty), { w: p.w, soil: p.soil, m: p.m, f: p.f ?? 0, wet: false });
+        refreshWet(p.tx, p.ty, g.world.groundAt(p.tx, p.ty));
+        // THE REGISTER IS THE SCAN, COMPILED: the plot's OWN chunk
+        // rev must bump too — care state is a side table, so no
+        // setGround covers the center, and the soil paint lives in
+        // that chunk's bake.
+        g.touchChunk(Math.floor(p.tx / CHUNK_SIZE), Math.floor(p.ty / CHUNK_SIZE));
+        g.touchNeighbors(Math.floor(p.tx / CHUNK_SIZE), Math.floor(p.ty / CHUNK_SIZE));
+      }
+      for (const b of msg.bins ?? []) {
+        if (b.fill === 0 && b.readyAt === 0) farmBins.delete(farmKey(b.tx, b.ty));
+        else farmBins.set(farmKey(b.tx, b.ty), { fill: b.fill, graded: b.graded, readyAt: b.readyAt });
+      }
+      for (const tr of msg.troughs ?? []) {
+        if (tr.feed <= 0) farmTroughs.delete(farmKey(tr.tx, tr.ty));
+        else farmTroughs.set(farmKey(tr.tx, tr.ty), { feed: tr.feed });
+      }
+      for (const j of msg.jobs ?? []) {
+        if (j.qty <= 0) farmJobs.delete(farmKey(j.tx, j.ty));
+        else farmJobs.set(farmKey(j.tx, j.ty), { recipe: j.recipe, qty: j.qty, startedAt: j.startedAt, grade: j.grade });
+      }
+      for (const a of msg.apiaries ?? []) {
+        if (a.since <= 0) farmApiaries.delete(farmKey(a.tx, a.ty));
+        else farmApiaries.set(farmKey(a.tx, a.ty), { since: a.since });
+      }
+      for (const r of msg.remove ?? []) {
+        farmPlots.delete(farmKey(r.tx, r.ty));
+        g.touchChunk(Math.floor(r.tx / CHUNK_SIZE), Math.floor(r.ty / CHUNK_SIZE));
+        g.touchNeighbors(Math.floor(r.tx / CHUNK_SIZE), Math.floor(r.ty / CHUNK_SIZE));
+      }
+      if ((msg.plots?.length ?? 0) > 0 || (msg.remove?.length ?? 0) > 0) g.worldVersion++;
+      g.onFarm?.();
+    },
+    stockname: (g, msg) => {
+      // THE ANIMALS OF THE YARD: the release ceremony — the naming
+      // card opens for the newest animal in the yard.
+      g.onStockCeremony?.(msg.slot, msg.species);
+    },
+    larder: (g, msg) => {
+      for (const f of msg.fills) larderFills.set(f.shop, { epoch: f.epoch, filled: f.filled });
+    },
+    charges: (g, msg) => {
+      g.charges = msg.charges;
+    },
+    ride: (g, msg) => {
+      // THE PREDICTOR LEARNS ITS LEGS: the steady multiplier lands
+      // in the predictor the same message that changes the truth,
+      // so mounted prediction agrees with the server to the digit.
+      g.ownMount = msg.mount;
+      g.ownedMounts = msg.owned;
+      g.predictor.speedMult = msg.mult;
+      // ...and its drawn-bow walk: the perk-folded factor (Longstride)
+      // rides the same mirror; the bare constant is only the fallback.
+      g.predictor.drawFactor = msg.draw ?? DRAW_MOVE_FACTOR;
+      g.onRide?.();
+    },
+    pet: (g, msg) => {
+      g.ownPets = msg.pets;
+      // THE QUIET HEEL: the wire says how long until kindness pays
+      // again; we pin it to a local clock and count down between
+      // sends (the mirror only resends when a pet fact changes).
+      for (const p of msg.pets) {
+        if (p.bondSec !== undefined) {
+          g.petBondReadyAt.set(p.slot, Date.now() + p.bondSec * 1000);
+        }
+      }
+      if (msg.ceremony !== undefined) {
+        const fresh = msg.pets.find((p) => p.slot === msg.ceremony);
+        g.onPetCeremony?.(msg.ceremony, fresh?.name ?? '');
+      }
+      g.onPet?.();
+    },
+    companions: (g, msg) => {
+      // THE COMPANY YOU KEEP: the company's own mirror — never
+      // folded into the pet lane above, so neither system can jog
+      // the other's elbow.
+      g.ownCompanions = msg.companions;
+      if (msg.ceremony !== undefined) {
+        const fresh = msg.companions.find((c) => c.slot === msg.ceremony);
+        g.onCompanionCeremony?.(msg.ceremony, fresh?.name ?? '');
+      }
+      g.onCompanions?.();
+    },
+    time: (g, msg) => {
+      g.timeOfs = msg.ofs;
+    },
+    havens: (g, msg) => {
+      // A waystation stood up (or turned fallow) — or the plan
+      // itself changed. The danger field shifts under our feet,
+      // and the music with it.
+      g.setHavens(msg.list, msg.settled);
+    },
+    explored: (g, msg) => {
+      const mask = g.exploredFor(msg.plane ?? 'surface');
+      for (const [rx, ry, b64] of msg.regions) {
+        mask.loadRegion(rx, ry, b64ToU8(b64));
+      }
+      g.chartVersion++;
+    },
+    discoveries: (g, msg) => {
+      g.discoveries.clear();
+      for (const d of msg.list) g.discoveries.set(d.id, d);
+      g.chartVersion++;
+    },
+    trophies: (g, msg) => {
+      // THE CHAMPION'S MARK roster turned: whole-list replace, and
+      // the fresh id starts its local fly-in clock (only the fresh
+      // one — a roster refresh never re-stakes standing banners).
+      g.trophies.clear();
+      for (const t of msg.list) g.trophies.set(t.id, t);
+      for (const id of [...g.trophyBorn.keys()]) {
+        if (!g.trophies.has(id)) g.trophyBorn.delete(id);
+      }
+      if (msg.fresh !== undefined) {
+        const fresh = g.trophies.get(msg.fresh);
+        if (fresh) {
+          g.trophyBorn.set(msg.fresh, performance.now());
+          g.events.onTrophyStaked?.(fresh);
+        }
+      }
+    },
+    poicleared: (g, msg) => {
+      g.events.onPoiCleared?.(msg);
+    },
+    discovery: (g, msg) => {
+      g.discoveries.set(msg.d.id, msg.d);
+      g.chartVersion++;
+      g.events.onDiscovery?.(msg.d);
+    },
+    discoveryfade: (g, msg) => {
+      for (const id of msg.ids) {
+        const d = g.discoveries.get(id);
+        if (d) d.faded = true;
+      }
+      g.chartVersion++;
+    },
+    discoverystage: (g, msg) => {
+      // The site climbed a boldness rung — repaint its stage pips.
+      // The rumor line arrives as ordinary system chat; no ceremony.
+      const d = g.discoveries.get(msg.id);
+      if (d) {
+        d.stage = msg.stage;
+        g.chartVersion++;
+      }
+    },
+    waypoint: (g, msg) => {
+      // The server plants the mark (a guard's bounty) — adopted
+      // exactly as if the player pinned it: pin, pill, chart redraw.
+      // The plane rides along so a tagged mark files onto its own
+      // chart (server pushes today are surface; absent = surface).
+      g.waypoint =
+        msg.x !== undefined && msg.y !== undefined ? { x: msg.x, y: msg.y, plane: msg.plane } : null;
+      g.chartVersion++;
+    },
+    deathmark: (g, msg) => {
+      // The walk-back beacon: duration on the wire, stamped against
+      // the local clock here (clocks drift; durations don't). The
+      // plane rides along so the skull files onto the RIGHT chart —
+      // a death in the underworld must not mark the surface.
+      g.deathMark = msg.mark
+        ? {
+            x: msg.mark.x,
+            y: msg.mark.y,
+            until: Date.now() + msg.mark.remainMs,
+            plane: msg.mark.plane,
+          }
+        : null;
+      g.chartVersion++;
+    },
+    quests: (g, msg) => {
+      // The full ledger, once at bind.
+      g.quests.clear();
+      g.questsDone.clear();
+      for (const q of msg.active) g.quests.set(q.id, q);
+      for (const d of msg.done) g.questsDone.set(d.id, d);
+      g.questAvailable = msg.available;
+      g.questVersion++;
+      g.events.onQuestsChanged?.();
+    },
+    questupd: (g, msg) => {
+      // A quiet patch — present fields apply, nothing celebrates.
+      if (msg.remove !== undefined) g.quests.delete(msg.remove);
+      if (msg.quest) g.quests.set(msg.quest.id, msg.quest);
+      if (msg.done) g.questsDone.set(msg.done.id, msg.done);
+      if (msg.available) g.questAvailable = msg.available;
+      g.questVersion++;
+      g.events.onQuestsChanged?.();
+    },
+    questevent: (g, msg) => {
+      g.events.onQuestEvent?.({
+        kind: msg.kind,
+        id: msg.id,
+        name: msg.name,
+        rewards: msg.rewards,
+      });
+    },
+    rep: (g, msg) => {
+      // The full standing ledger + live membership tables, at bind.
+      g.repStandings.clear();
+      for (const s of msg.standings) g.repStandings.set(s.faction, s);
+      g.repMembers = msg.members;
+      g.repPrefixes = msg.prefixes;
+      g.repEnforcers = new Set(msg.enforcers);
+      g.repPeaceBand = msg.peaceBand;
+      g.repPrices = msg.prices;
+      g.repVersion++;
+      g.events.onRepChanged?.();
+    },
+    repupd: (g, msg) => {
+      // A quiet patch — nothing celebrates. The delta ledger is
+      // pure presentation: the Standing screen's "lately" line.
+      for (const s of msg.standings) {
+        const prev = g.repStandings.get(s.faction);
+        if (prev !== undefined && prev.value !== s.value) {
+          g.repLastDelta.set(s.faction, { delta: s.value - prev.value, at: Date.now() });
+        }
+        g.repStandings.set(s.faction, s);
+      }
+      g.repVersion++;
+      g.events.onRepChanged?.();
+    },
+    repevent: (g, msg) => {
+      g.events.onRepEvent?.({
+        faction: msg.faction,
+        name: msg.name,
+        band: msg.band,
+        rose: msg.rose,
+      });
+    },
+    social: (g, msg) => {
+      g.events.onSocial?.({ friends: msg.friends, incoming: msg.incoming, outgoing: msg.outgoing });
+    },
+    friendsearch: (g, msg) => {
+      g.events.onFriendSearch?.(msg.results);
+    },
+    friendevent: (g, msg) => {
+      g.events.onFriendEvent?.({ kind: msg.kind, name: msg.name });
+    },
+    party: (g, msg) => {
+      g.party = { members: msg.members, invites: msg.invites, outgoing: msg.outgoing };
+      // Names no longer of the party stop haunting the wayfinder.
+      for (const name of [...g.partyPos.keys()]) {
+        if (!msg.members.some((m) => m.name === name)) g.partyPos.delete(name);
+      }
+      g.events.onParty?.(g.party);
+    },
+    partyevent: (g, msg) => {
+      g.events.onPartyEvent?.({ kind: msg.kind, name: msg.name, detail: msg.detail });
+    },
+    partypos: (g, msg) => {
+      // The ticker is authoritative for who is placed right now.
+      g.partyPos.clear();
+      const at = performance.now();
+      for (const m of msg.members) {
+        g.partyPos.set(m.name, { x: m.x, y: m.y, plane: m.plane ?? 'surface', at });
+      }
+    },
+    fx: (g, msg) => {
+      // Door rattles, prop smashes, and candle flips are scenery
+      // feedback, not combat VFX — hand them straight to the fx
+      // hook without joining the ability list.
+      if (msg.kind === 'rattle' || msg.kind === 'smash' || msg.kind === 'candle') {
+        g.onFx?.({
           kind: msg.kind,
           x: msg.x,
           y: msg.y,
           radius: msg.radius,
-          ticks: msg.ticks,
-          color: msg.color,
-          text: msg.text,
-          id: msg.id,
           dir: msg.dir,
-          x2: msg.x2,
-          y2: msg.y2,
+          id: msg.id,
           bornAt: performance.now(),
-        };
-        this.fx.push(fx);
-        if (this.fx.length > 48) this.fx.shift();
-        this.onFx?.(fx);
-        // THE DEEPER SIGIL: a working says its name once and never a
-        // number. The damage it deals already floats through the normal
-        // hit stream, so printing a figure here would double-count the
-        // same blow and turn feedback into noise. Sized under a
-        // reaction's shout: a proc punctuates, a reaction interrupts.
-        if (msg.kind === 'proc' && msg.text) {
-          this.floaties.push({
-            x: msg.x,
-            y: msg.y - 0.95,
-            text: msg.text,
-            color: msg.color ?? '#f4efe4',
-            bornAt: performance.now(),
-            sizeMul: 1.05,
-          });
-        }
-        // Reactions announce themselves — the name IS the reward.
-        if (msg.kind === 'reaction' && msg.text) {
-          this.floaties.push({
-            x: msg.x,
-            y: msg.y - 0.8,
-            text: msg.text,
-            color: msg.color ?? '#f4efe4',
-            bornAt: performance.now(),
-            sizeMul: msg.text.startsWith('+') || msg.text === 'Resist' ? 0.9 : 1.45,
-          });
-        }
-        break;
+        });
+        return;
       }
-    }
+      // THE FOE'S BREATH: a charge carrying an eid is an enemy
+      // wind-up — the overhead pip ledger anchors to the body.
+      // ticks > 0 opens/refreshes the read; ticks 0 is the fizzle
+      // (brokeAt lets the pip gutter instead of vanishing).
+      if (msg.kind === 'charge' && msg.eid !== undefined) {
+        const now = performance.now();
+        if ((msg.ticks ?? 0) > 0) {
+          const endsAt = now + (msg.ticks ?? 0) * TICK_MS;
+          const prev = g.npcCasts.get(msg.eid);
+          if (prev && !prev.brokeAt && prev.id === msg.id) {
+            prev.endsAt = endsAt; // re-emit: trust the newest clock
+          } else {
+            // A fresh breath (or a different voice over a lingering
+            // entry) opens its own read.
+            g.npcCasts.set(msg.eid, { startAt: now, endsAt, color: msg.color, id: msg.id });
+          }
+        } else {
+          const cast = g.npcCasts.get(msg.eid);
+          if (cast) cast.brokeAt = now;
+        }
+      }
+      const fx: ActiveFx = {
+        kind: msg.kind,
+        x: msg.x,
+        y: msg.y,
+        radius: msg.radius,
+        ticks: msg.ticks,
+        color: msg.color,
+        text: msg.text,
+        id: msg.id,
+        dir: msg.dir,
+        x2: msg.x2,
+        y2: msg.y2,
+        bornAt: performance.now(),
+      };
+      g.fx.push(fx);
+      if (g.fx.length > 48) g.fx.shift();
+      g.onFx?.(fx);
+      // THE DEEPER SIGIL: a working says its name once and never a
+      // number. The damage it deals already floats through the normal
+      // hit stream, so printing a figure here would double-count the
+      // same blow and turn feedback into noise. Sized under a
+      // reaction's shout: a proc punctuates, a reaction interrupts.
+      if (msg.kind === 'proc' && msg.text) {
+        g.floaties.push({
+          x: msg.x,
+          y: msg.y - 0.95,
+          text: msg.text,
+          color: msg.color ?? '#f4efe4',
+          bornAt: performance.now(),
+          sizeMul: 1.05,
+        });
+      }
+      // Reactions announce themselves — the name IS the reward.
+      if (msg.kind === 'reaction' && msg.text) {
+        g.floaties.push({
+          x: msg.x,
+          y: msg.y - 0.8,
+          text: msg.text,
+          color: msg.color ?? '#f4efe4',
+          bornAt: performance.now(),
+          sizeMul: msg.text.startsWith('+') || msg.text === 'Resist' ? 0.9 : 1.45,
+        });
+      }
+    },
+  };
+
+  private handleMessage(msg: S2CMessage): void {
+    (ClientGame.S2C_HANDLERS[msg.t] as (g: ClientGame, m: S2CMessage) => void)(this, msg);
   }
 
   private handleChunk(chunk: ChunkData): void {

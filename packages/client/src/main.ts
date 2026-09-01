@@ -8,6 +8,10 @@ import { WORK_RECIPES, WORK_VERBS, workDone, type WorkStation } from '@arx/conte
 import { InputManager } from './input/inputManager.js';
 import { GroundAimController } from './input/groundAim.js';
 import { bindings, padGlyph, padGlyphInline, type ActionId } from './input/bindings.js';
+import { DOCK_BUTTONS, initDock } from './ui/dock.js';
+import { initDisplaySettings } from './ui/displaySettings.js';
+import { initLoginFlow } from './ui/loginFlow.js';
+import { BENCH_RETURN_DELAY_MS, createScreenRouter, type ScreenId } from './ui/screenRouter.js';
 import { installControlsMenu } from './ui/controlsMenu.js';
 import { Renderer } from './render/renderer.js';
 import { FOOTPRINT_TUNE } from './render/footprints.js';
@@ -33,8 +37,6 @@ import { UiNav } from './ui/padUI.js';
 import { LootPanel } from './ui/lootPanel.js';
 import { GroundList } from './ui/groundList.js';
 import { registerSheetProvider, type SheetVerb } from './ui/kit/contextSheet.js';
-import { forgetAccount, loadRoster, rememberAccount, type RememberedAccount } from './ui/loginRoster.js';
-import { chosenPlate, renderRosterShelf } from './ui/loginShelf.js';
 import { SocialPanel } from './ui/socialPanel.js';
 import { MapScreen } from './ui/map/mapScreen.js';
 import { MapOverlay } from './ui/map/mapOverlay.js';
@@ -114,61 +116,7 @@ if (new URLSearchParams(location.search).has('herald')) {
 // rebind in Controls redraws every badge at once.
 // ONE TABLE, ONE ORDER: the dock keys, the bumper cycle, and the
 // Screen Ring all read this roster — they can never disagree again.
-const DOCK_BUTTONS = [
-  ['btn-inventory', 'pack', 'Pack', 'screenPack', 'inv'],
-  ['btn-skills', 'skills', 'Skills', 'screenSkills', 'skills'],
-  ['btn-arts', 'arts', 'Techniques', 'screenArts', 'arts'],
-  ['btn-beasts', 'beast', 'Beasts', 'screenBeasts', 'beasts'],
-  ['btn-companions', 'companion', 'Companions', 'screenCompanions', 'companions'],
-  ['btn-craft', 'handiwork', 'Handiwork', 'screenCraft', 'craft'],
-  ['btn-build', 'build', 'Build', 'screenBuild', 'build'],
-  ['btn-social', 'social', 'Social', 'screenSocial', 'social'],
-  ['btn-quests', 'quest', 'Journal', 'screenQuests', 'quests'],
-  ['btn-rep', 'rep', 'Standing', 'screenRep', 'rep'],
-  ['btn-keys', 'keys', 'Key Ring', 'screenKeys', 'keys'],
-  ['btn-map', 'map', 'Map', 'screenMap', 'map'],
-  ['btn-audio', 'sound', 'Settings', 'screenSettings', 'audio'],
-] as const;
-
-/* THE RAIL RESTS QUIET: the keys wear no permanent shortcut chips —
-   eleven overhanging tokens were most of the old keypad's noise. The
-   binding lives in the one tooltip instead (tipname + tipsub), read
-   LIVE from the keymap so a rebind in Controls reteaches every key. */
-function renderDockBadges(): void {
-  for (const [id, , tip, action] of DOCK_BUTTONS) {
-    const btn = document.getElementById(id);
-    if (!btn) continue;
-    // The tooltip carries the name; a native title would double it.
-    btn.removeAttribute('title');
-    btn.setAttribute('aria-label', tip);
-    const kbKey = bindings.kbBadge(action);
-    btn.dataset.tipsub = kbKey ? `Press ${kbKey}` : '';
-  }
-}
-
-for (const [id, kind, tip] of [
-  ...DOCK_BUTTONS.map(([i, k, t]) => [i, k, t] as const),
-  ['touch-attack', 'attack', ''] as const,
-]) {
-  const btn = document.getElementById(id);
-  if (btn) {
-    const img = document.createElement('img');
-    // Painted at double the resting display size so the sigils stay
-    // crisp under the root scale's 4K stretch.
-    img.src = dockGlyphUrl(kind, 48);
-    img.draggable = false;
-    btn.appendChild(img);
-    if (tip) {
-      btn.dataset.nav = '';
-      btn.dataset.navkey = `dock:${id}`;
-      btn.dataset.tipname = tip;
-      btn.dataset.acta = 'Open';
-    }
-  }
-}
-renderDockBadges();
-bindings.onChange(renderDockBadges);
-
+initDock();
 const audioEngine = new AudioEngine();
 const sfx = new Sfx(audioEngine);
 const music = new TrackPlayer(audioEngine);
@@ -206,13 +154,10 @@ document.body.appendChild(crossingVeil);
 let veilHoldUntil = 0;
 let veilWaiting = false;
 
-let registerMode = false;
 let authReady = false;
 // THE DOOR REMEMBERS: the shelf of saved sign-in cards, the card the
 // player picked, the username riding the in-flight attempt, and the
 // account behind the live session (for refreshing its card).
-let roster = loadRoster();
-let chosen: RememberedAccount | null = null;
 let pendingUser: string | null = null;
 let sessionUser: string | null = null;
 /** THE THIN THREAD: the reconnecting pill, live only while the socket is down. */
@@ -384,109 +329,7 @@ FOOTPRINT_TUNE.enabled = localStorage.getItem('arx.footprints') !== 'off';
 
 /** THE CHOSEN HAND's settings box — frame-synced to the server truth. */
 let walkoverBox: HTMLInputElement | null = null;
-{
-  const rows = document.getElementById('display-rows')!;
-  const toggle = (label: string, initial: boolean, apply: (on: boolean) => void): void => {
-    const row = document.createElement('div');
-    row.className = 'audio-row';
-    const lab = document.createElement('label');
-    lab.textContent = label;
-    const box = document.createElement('input');
-    box.type = 'checkbox';
-    box.checked = initial;
-    // The pad walks the display toggles like everything else: Ⓐ flips.
-    box.dataset.nav = '';
-    box.dataset.navkey = `display:${label}`;
-    box.dataset.acta = 'Toggle';
-    box.dataset.tipname = label;
-    box.addEventListener('change', () => apply(box.checked));
-    row.appendChild(lab);
-    row.appendChild(box);
-    rows.appendChild(row);
-  };
-  // THE DISPLAY TOGGLE: the whole painted-stage epic behind one
-  // honest switch. Applies live — the parity drills toggle it
-  // mid-frame hundreds of times a session.
-  toggle('Accelerated display (beta)', renderer.stageWorld, (on) => {
-    renderer.stageGround = on;
-    renderer.stageWorld = on;
-    localStorage.setItem('arx.stage', on ? 'on' : 'off');
-  });
-  {
-    const box = rows.lastElementChild!.querySelector('input');
-    if (box) {
-      box.dataset.tipsub =
-        'Draws the world through your graphics card. This can lift the frame rate on machines where the standard display struggles; if it ever fails, the game returns to the standard display on its own.';
-    }
-  }
-  toggle('Water reflections', renderer.reflectionsOn, (on) => {
-    renderer.reflectionsOn = on;
-    localStorage.setItem('arx.reflections', on ? 'on' : 'off');
-  });
-  toggle('Water motion', renderer.waterFxFull, (on) => {
-    renderer.waterFxFull = on;
-    localStorage.setItem('arx.waterfx', on ? 'full' : 'basic');
-  });
-
-  toggle('Footprints', FOOTPRINT_TUNE.enabled, (on) => {
-    FOOTPRINT_TUNE.enabled = on;
-    localStorage.setItem('arx.footprints', on ? 'on' : 'off');
-  });
-
-  toggle('Interface motion', localStorage.getItem('arx.uimotion') !== 'off', (on) => {
-    localStorage.setItem('arx.uimotion', on ? 'on' : 'off');
-    document.body.classList.toggle('no-ui-motion', !on);
-  });
-
-  // THE CHOSEN HAND: walk-over looting is a preference, not a fate.
-  // Server-persisted per character (the welcome carries the truth —
-  // the frame loop keeps this box honest to it); its twin chip lives
-  // in the loot tray's head, right where the itch is felt.
-  toggle('Walk-over looting', true, (on) => game.setLootPref(on));
-  walkoverBox = rows.lastElementChild!.querySelector('input');
-  if (walkoverBox) {
-    walkoverBox.dataset.tipsub =
-      'Off = running over loot picks up nothing; you choose every take from the ground list.';
-  }
-
-  // The player's hand on the one ruler: Snug / Standard / Grand
-  // multiply the automatic fit. Applies live, no restart.
-  const sizeRow = document.createElement('div');
-  sizeRow.className = 'audio-row';
-  const sizeLab = document.createElement('label');
-  sizeLab.textContent = 'Interface size';
-  const chips = document.createElement('span');
-  chips.className = 'size-chips';
-  const paint = (): void => {
-    chips.querySelectorAll('button').forEach((b) => {
-      b.classList.toggle('active', b.dataset.size === uiSize());
-    });
-  };
-  for (const s of UI_SIZES) {
-    const chip = document.createElement('button');
-    chip.className = 'sort-chip';
-    chip.textContent = s.label;
-    chip.dataset.size = s.id;
-    chip.dataset.nav = '';
-    chip.dataset.navkey = `display:uisize:${s.id}`;
-    chip.dataset.acta = 'Choose';
-    chip.dataset.tipname = `${s.label} interface`;
-    chip.dataset.tipsub =
-      s.id === 'grand'
-        ? 'Larger menus and HUD. Suits a far couch.'
-        : s.id === 'snug'
-          ? 'Smaller menus and HUD. More world in view.'
-          : 'The fitted size for this display.';
-    chip.addEventListener('click', () => {
-      setUiSize(s.id);
-      paint();
-    });
-    chips.appendChild(chip);
-  }
-  sizeRow.append(sizeLab, chips);
-  rows.appendChild(sizeRow);
-  paint();
-}
+walkoverBox = initDisplaySettings(renderer, (on) => game.setLootPref(on));
 input.setTypingCheck(
   () =>
     chat.isTyping ||
@@ -720,7 +563,7 @@ const stationPanels = new StationPanels(
   (recipe, qty) => {
     // The bench remembers itself the moment work begins — captured
     // BEFORE the panel closes over it (THE BENCH CALLS YOU BACK).
-    benchReturn = stationPanels.craftBench;
+    screens.setBenchReturn(stationPanels.craftBench);
     game.craft(recipe, qty);
   },
   (op, item, qty, gearId) => {
@@ -958,7 +801,7 @@ const panels = new Panels(
   // The alcove's standing figure is painted from the same look the
   // world renders — the case shows exactly the hero the world meets.
   () => ({ name: game.ownName, look: game.ownLook }),
-  () => toggleScreen('arts'),
+  () => screens.toggle('arts'),
   (calling, on, rank) => game.sendCalling(calling, on, rank),
   // THE SECOND GRIP: the rack's Draw/Trade fires the same one-frame
   // queue the backquote press does — one door, every surface.
@@ -1006,9 +849,9 @@ const nav = new UiNav(input, {
   },
   closeItemMenu: (): boolean => panels.closeMenu(),
   // Ⓑ closes EVERYTHING Esc closes — the two backstops must agree.
-  onCloseAll: () => closeAllUi(),
-  onScreenAction: (id) => screenAction(id),
-  onCycleScreen: (dir) => cycleScreen(dir),
+  onCloseAll: () => screens.closeAll(),
+  onScreenAction: (id) => screens.action(id),
+  onCycleScreen: (dir) => screens.cycle(dir),
   packActionLabel: () =>
     stationPanels.bankOpen ? 'Deposit' : stationPanels.shopOpen ? 'Sell' : null,
   onFocusMove: () => sfx.uiTick(),
@@ -1017,10 +860,10 @@ const nav = new UiNav(input, {
   onModeChange: () => panels.refreshDevice(),
   // THE SCREEN RING: hold Start, flick, release — any room, one
   // gesture. Same exclusivity gate as every other door.
-  onRingPick: (id) => toggleScreen(id as Parameters<typeof toggleScreen>[0]),
+  onRingPick: (id) => screens.toggle(id as ScreenId),
   ringItems: () =>
-    DOCK_BUTTONS.map(([, kind, label], i) => ({
-      id: SCREEN_ORDER[i]!,
+    DOCK_BUTTONS.map(([, kind, label, , which]) => ({
+      id: which,
       label,
       icon: dockGlyphUrl(kind, 40),
     })),
@@ -1062,230 +905,9 @@ document.addEventListener('pointerover', (e) => {
   else nav.hideTooltip();
 });
 
-// ---- the one screen law: ONE screen owns the stage at a time --------
-// Opening any screen closes every other; the sole exception is the
-// deliberate bank/shop + pack pairing, composed in activateTarget and
-// onBank. (Function declarations — hoisted, safe to hand to UiNav.)
-
-/**
- * THE BENCH CALLS YOU BACK: a batch begun at the bench remembers its
- * bench, and when the work ends well the bench reopens on the same
- * recipe — the menu got out of the way for the WATCHING, not to make
- * you re-walk the ledger. Any deliberate move on the player's part
- * (opening a room, closing UI, walking off, starting other work)
- * lets the memory go: the bench never ambushes.
- */
-let benchReturn: (typeof stationPanels)['craftBench'] = null;
-const BENCH_RETURN_DELAY_MS = 1250;
-
-function closeAllUi(): void {
-  benchReturn = null;
-  stationPanels.closeAll();
-  panels.closeAll();
-  lootPanel.close();
-  riftgate.close();
-  audioMenu.close();
-  socialPanel.close();
-  mapScreen.close();
-  questLog.close();
-  repScreen.close();
-  keyRingPanel.close();
-  beastHall.close();
-  companionsPanel.close();
-  arenaBoard.close();
-  signHud.close();
-}
-
-function toggleScreen(
-  which: 'inv' | 'skills' | 'arts' | 'craft' | 'build' | 'audio' | 'loot' | 'social' | 'map' | 'quests' | 'rep' | 'keys' | 'beasts' | 'companions',
-): void {
-  // A conversation owns the stage: no screen may open over it, from
-  // any device — hotkeys, dock clicks, and pad shortcuts all pass
-  // through this one gate.
-  if (cinema.open) return;
-  const wasOpen =
-    which === 'inv'
-      ? panels.invOpen
-      : which === 'skills'
-        ? panels.skillsOpen
-        : which === 'arts'
-          ? panels.artsOpen
-          : which === 'craft'
-            ? stationPanels.craftOpen
-            : which === 'build'
-              ? stationPanels.buildOpen
-              : which === 'audio'
-                ? audioMenu.isOpen
-                : which === 'social'
-                  ? socialPanel.isOpen
-                  : which === 'map'
-                    ? mapScreen.isOpen
-                    : which === 'quests'
-                      ? questLog.isOpen
-                      : which === 'rep'
-                        ? repScreen.isOpen
-                        : which === 'keys'
-                          ? keyRingPanel.isOpen
-                          : which === 'beasts'
-                            ? beastHall.isOpen
-                            : which === 'companions'
-                              ? companionsPanel.isOpen
-                              : lootPanel.isOpen;
-  closeAllUi();
-  if (wasOpen) return;
-  switch (which) {
-    case 'inv':
-      panels.showInventory();
-      break;
-    case 'skills':
-      panels.showSkills();
-      break;
-    case 'arts':
-      panels.showArts();
-      break;
-    case 'craft':
-      stationPanels.openCraft(null, game.skills, game.knownRecipes);
-      break;
-    case 'build':
-      stationPanels.openBuild(game.skills, buildMode);
-      break;
-    case 'audio':
-      audioMenu.open();
-      break;
-    case 'social':
-      socialPanel.open();
-      break;
-    case 'map':
-      mapScreen.open();
-      break;
-    case 'quests':
-      questLog.open();
-      break;
-    case 'rep':
-      document.getElementById('btn-rep')?.classList.remove('has-new');
-      repScreen.open();
-      break;
-    case 'keys':
-      keyRingPanel.open();
-      break;
-    case 'beasts':
-      beastHall.open(game);
-      break;
-    case 'companions':
-      companionsPanel.open(game);
-      break;
-    case 'loot':
-      if (game.nearbyLoot(2.4).length > 0) lootPanel.open();
-      break;
-  }
-}
-
-/**
- * The shelf of screens, in bumper order — LB/RB walk it while any
- * screen is open, so every screen is pad-reachable from any other.
- */
-/** Derived from the one dock roster — never a second hand-kept list. */
-const SCREEN_ORDER = DOCK_BUTTONS.map(([, , , , which]) => which);
-
-function currentScreen(): (typeof SCREEN_ORDER)[number] | null {
-  if (panels.invOpen) return 'inv';
-  if (panels.skillsOpen) return 'skills';
-  if (panels.artsOpen) return 'arts';
-  if (stationPanels.craftOpen) return 'craft';
-  if (stationPanels.buildOpen) return 'build';
-  if (socialPanel.isOpen) return 'social';
-  if (questLog.isOpen) return 'quests';
-  if (repScreen.isOpen) return 'rep';
-  if (keyRingPanel.isOpen) return 'keys';
-  if (beastHall.isOpen) return 'beasts';
-  if (companionsPanel.isOpen) return 'companions';
-  if (mapScreen.isOpen) return 'map';
-  if (audioMenu.isOpen) return 'audio';
-  return null;
-}
-
-/* THE LIT KEY: the rail marks whichever screen owns the stage.
-   Screens open and close down a dozen paths (hotkeys, dock clicks,
-   the ring, bumpers, close buttons, walking off a station), so the
-   frame loop re-reads the one truth — currentScreen() — and touches
-   the DOM only when the answer changes. */
-let litDockKey: (typeof SCREEN_ORDER)[number] | null = null;
-function syncDockActive(): void {
-  const cur = currentScreen();
-  if (cur === litDockKey) return;
-  litDockKey = cur;
-  for (let i = 0; i < DOCK_BUTTONS.length; i++) {
-    document
-      .getElementById(DOCK_BUTTONS[i]![0])
-      ?.classList.toggle('active', SCREEN_ORDER[i] === cur);
-  }
-}
-
-function cycleScreen(dir: -1 | 1): void {
-  if (cinema.open) return;
-  const cur = currentScreen();
-  // An anchored room that is NOT on the shelf (store counter, the
-  // stalls) never yields to a bumper walk — a stray press must not
-  // slam the counter shut mid-trade. The vault answers its bumpers
-  // with its own section rail before this is ever asked.
-  if (cur === null && (stationPanels.shopOpen || stationPanels.stableOpen || stationPanels.bankOpen)) {
-    return;
-  }
-  // The bench is a counter too: a station-anchored workshop (smithy,
-  // stove, enchanting table, the seed furrow) holds its ground even
-  // when its list dealt no pager to take the bumpers — an empty seed
-  // pouch must not turn LB into "close the furrow, open the skills".
-  if (stationPanels.anchorTile !== null) return;
-  // The stakes board is a counter too: the ringmaster opened it from
-  // the far side of a conversation, and no bumper walk may reach back
-  // and slam it — LB/RB step the plates' room, they do not leave it.
-  if (arenaBoard.isOpen) return;
-  const idx = cur === null ? (dir === 1 ? -1 : 0) : SCREEN_ORDER.indexOf(cur);
-  const next = SCREEN_ORDER[(idx + dir + SCREEN_ORDER.length) % SCREEN_ORDER.length]!;
-  if (next === cur) return;
-  closeAllUi();
-  toggleScreen(next);
-}
-
-/** One rebindable screen shortcut fired — keyboard key or pad button. */
-function screenAction(id: ActionId): void {
-  if (id === 'mapGlass') {
-    if (!cinema.open) mapOverlay.toggle();
-    return;
-  }
-  const SCREEN_FOR: Partial<Record<ActionId, Parameters<typeof toggleScreen>[0]>> = {
-    screenPack: 'inv',
-    screenSkills: 'skills',
-    screenArts: 'arts',
-    screenCraft: 'craft',
-    screenBuild: 'build',
-    screenSocial: 'social',
-    screenMap: 'map',
-    screenQuests: 'quests',
-    screenRep: 'rep',
-    screenKeys: 'keys',
-    screenBeasts: 'beasts',
-    screenCompanions: 'companions',
-    screenSettings: 'audio',
-    screenLoot: 'loot',
-  };
-  const which = SCREEN_FOR[id];
-  if (which) toggleScreen(which);
-}
-
-document.getElementById('btn-inventory')!.addEventListener('click', () => toggleScreen('inv'));
-document.getElementById('btn-skills')!.addEventListener('click', () => toggleScreen('skills'));
-document.getElementById('btn-arts')!.addEventListener('click', () => toggleScreen('arts'));
-document.getElementById('btn-craft')!.addEventListener('click', () => toggleScreen('craft'));
-document.getElementById('btn-build')!.addEventListener('click', () => toggleScreen('build'));
-document.getElementById('btn-audio')!.addEventListener('click', () => toggleScreen('audio'));
-document.getElementById('btn-social')!.addEventListener('click', () => toggleScreen('social'));
-document.getElementById('btn-map')!.addEventListener('click', () => toggleScreen('map'));
-document.getElementById('btn-quests')!.addEventListener('click', () => toggleScreen('quests'));
-document.getElementById('btn-rep')!.addEventListener('click', () => toggleScreen('rep'));
-document.getElementById('btn-keys')!.addEventListener('click', () => toggleScreen('keys'));
-document.getElementById('btn-beasts')!.addEventListener('click', () => toggleScreen('beasts'));
-document.getElementById('btn-companions')!.addEventListener('click', () => toggleScreen('companions'));
+// ---- the one screen law lives in ui/screenRouter.ts (foundations
+// F5.1); the router itself is created further down, once every panel
+// it governs has been built. ----
 
 function showLoginError(text: string): void {
   loginError.textContent = text;
@@ -1298,8 +920,7 @@ const looks = new LookCreator((look) => {
   // The freshly chosen face reaches this device's sign-in card too,
   // so the shelf shows the real portrait on the next visit.
   if (sessionUser) {
-    roster = rememberAccount({ user: sessionUser, name: game.ownName, look, at: Date.now() });
-    renderLoginRoster();
+    loginFlow.remember({ user: sessionUser, name: game.ownName, look, at: Date.now() });
   }
   chat.addLine({ channel: 'system', text: 'Your look is set. Welcome to the world.' });
 });
@@ -1374,7 +995,7 @@ const game = new ClientGame(input, {
       stationPanels.refreshOpen();
     } else {
       // Other work claimed the hands — the bench lets its memory go.
-      benchReturn = null;
+      screens.setBenchReturn(null);
     }
   },
   // Work the world refused mid-swing says why instead of going mute.
@@ -1392,16 +1013,17 @@ const game = new ClientGame(input, {
     // bench on the same recipe after a breath for the work card's
     // ceremony — unless the player has moved on by then (walked off,
     // opened a room, started other work). Any other end lets go.
-    if (made !== undefined && reason !== 'done') benchReturn = null;
-    if (reason === 'done' && made !== undefined && made > 0 && benchReturn) {
-      const bench = benchReturn;
+    if (made !== undefined && reason !== 'done') screens.setBenchReturn(null);
+    if (reason === 'done' && made !== undefined && made > 0 && screens.benchReturn()) {
+      const bench = screens.benchReturn();
+      if (!bench) return;
       const stood = { ...game.predictor.pos };
       window.setTimeout(() => {
-        if (benchReturn !== bench) return; // superseded or let go
-        benchReturn = null;
+        if (screens.benchReturn() !== bench) return; // superseded or let go
+        screens.setBenchReturn(null);
         const pos = game.predictor.pos;
         if (Math.hypot(pos.x - stood.x, pos.y - stood.y) > 0.75) return;
-        if (cinema.open || game.action || stationPanels.anyOpen || currentScreen() !== null) return;
+        if (cinema.open || game.action || stationPanels.anyOpen || screens.current() !== null) return;
         stationPanels.openCraft(
           bench.station,
           game.skills,
@@ -1451,19 +1073,18 @@ const game = new ClientGame(input, {
         sessionUser = pendingUser;
       } else if (!sessionUser) {
         const tokenUser = localStorage.getItem('arx.tokenuser');
-        const card = roster.find((c) => c.user === tokenUser);
+        const card = loginFlow.rosterCardFor(tokenUser);
         sessionUser = card && card.name === game.ownName ? tokenUser : null;
       }
       pendingUser = null;
       if (sessionUser) {
         localStorage.setItem('arx.tokenuser', sessionUser);
-        roster = rememberAccount({
+        loginFlow.remember({
           user: sessionUser,
           name: game.ownName,
           look: game.ownLook,
           at: Date.now(),
         });
-        renderLoginRoster();
       }
       if (!localStorage.getItem('arx.tipsShown')) {
         localStorage.setItem('arx.tipsShown', '1');
@@ -1655,14 +1276,14 @@ const game = new ClientGame(input, {
   onBank: (items, gear) => {
     if (stationPanels.bankOpen) stationPanels.refreshBank(items, gear);
     else {
-      closeAllUi();
+      screens.closeAll();
       stationPanels.openBank(items, lastBankAnchor ?? undefined, gear);
       panels.showInventory();
     }
   },
   onRiftgate: (live, partyRuns) => {
     // A server-driven screen, like the vault: through the one gate.
-    closeAllUi();
+    screens.closeAll();
     riftgate.open(live, partyRuns);
   },
   onKeyRing: () => {
@@ -1677,14 +1298,14 @@ const game = new ClientGame(input, {
   },
   onKeyForgeOpen: () => {
     // The Keywright's bench: a server-driven door, through the one gate.
-    closeAllUi();
+    screens.closeAll();
     keyRingPanel.openForge();
   },
   onDialogueOpen: (o) => {
     // A conversation takes the whole stage: every screen closes, the
     // camera leaves the follow, and the input goes quiet — Space
     // turns pages now, it doesn't swing swords.
-    closeAllUi();
+    screens.closeAll();
     buildMode = null;
     buildOrient = 'auto';
     buildQueue.length = 0;
@@ -1725,7 +1346,7 @@ const game = new ClientGame(input, {
   },
   onShopOpen: (shop, priceMult) => {
     // A trainer opened their wares — same store screen, their shelf.
-    closeAllUi();
+    screens.closeAll();
     stationPanels.openShop(shop, undefined, priceMult);
     panels.showInventory();
   },
@@ -1764,7 +1385,7 @@ const game = new ClientGame(input, {
   },
   onArenaBoard: (b) => {
     // The ringmaster's counter: a server-driven door, one gate.
-    closeAllUi();
+    screens.closeAll();
     arenaBoard.open(b);
   },
   onArenaState: (s) => {
@@ -2066,7 +1687,7 @@ const showAreaOnChart = (ring: {
   label: string;
   quest: string;
 }): void => {
-  if (!mapScreen.isOpen) toggleScreen('map');
+  if (!mapScreen.isOpen) screens.toggle('map');
   if (mapScreen.isOpen) mapScreen.focusQuest(ring.quest, ring);
 };
 questLog.onShowArea = showAreaOnChart;
@@ -2077,7 +1698,7 @@ mapScreen.view.getFollowed = () => questLog.trackedId();
 mapOverlay.setFollowedSource(() => questLog.trackedId());
 const objectiveTracker = new ObjectiveTracker(game, () => questLog.trackedId(), {
   onOpen: (id) => {
-    if (!questLog.isOpen) toggleScreen('quests');
+    if (!questLog.isOpen) screens.toggle('quests');
     if (questLog.isOpen) questLog.inspectQuest(id);
   },
   onShowArea: showAreaOnChart,
@@ -2283,6 +1904,29 @@ beastPlaque.onPat = () => {
 // THE COMPANY YOU KEEP: the roster room and the northwest chip — the
 // company's acts ride its own wire; the rename re-uses the one card.
 const companionsPanel = new CompanionsPanel();
+
+// THE ONE SCREEN LAW's gate, armed now that every screen it governs
+// stands (foundations F5.1).
+const screens = createScreenRouter({
+  cinema,
+  panels,
+  stationPanels,
+  lootPanel,
+  riftgate,
+  audioMenu,
+  socialPanel,
+  mapScreen,
+  questLog,
+  repScreen,
+  keyRingPanel,
+  beastHall,
+  companionsPanel,
+  arenaBoard,
+  signHud,
+  mapOverlay,
+  game,
+  buildMode: () => buildMode,
+});
 companionsPanel.onOp = (op, slot) => game.companionOp(op, slot);
 companionsPanel.onRename = (slot, current) =>
   petNaming.open(slot, current, (name) => game.companionRename(slot, name));
@@ -2893,93 +2537,29 @@ if (new URLSearchParams(location.search).has('reel')) {
 // deals the saved cards as faces; picking one enters 'quick', where
 // the username rides hidden and only the password is asked. 'signin'
 // is the classic form, 'register' adds the adventurer fields.
-type LoginView = 'roster' | 'quick' | 'signin' | 'register';
-let loginView: LoginView = 'signin';
-
-function homeView(): LoginView {
-  return roster.length > 0 ? 'roster' : 'signin';
-}
-
-function renderLoginRoster(): void {
-  renderRosterShelf(loginRosterEl, roster, {
-    onPick: (c) => {
-      chosen = c;
-      loginUser.value = c.user;
-      setLoginView('quick');
-    },
-    onForget: (c) => {
-      roster = forgetAccount(c.user);
-      renderLoginRoster();
-      if (roster.length === 0) setLoginView('signin');
-    },
-  });
-}
-
-function setLoginView(view: LoginView): void {
-  loginView = view;
-  registerMode = view === 'register';
-  const shelf = view === 'roster';
-  const quick = view === 'quick';
-  if (!quick) chosen = null;
-  loginRosterEl.classList.toggle('hidden', !shelf);
-  loginChosen.classList.toggle('hidden', !quick);
-  if (quick && chosen) loginChosen.replaceChildren(chosenPlate(chosen));
-  loginUser.classList.toggle('hidden', shelf || quick);
-  loginPass.classList.toggle('hidden', shelf);
-  loginCharName.classList.toggle('hidden', !registerMode);
-  loginCharName.required = registerMode;
-  // The invite field is not marked required — the server decides
-  // whether registration is gated (dev servers leave it open).
-  loginInvite.classList.toggle('hidden', !registerMode);
-  loginSubmit.classList.toggle('hidden', shelf);
-  loginSubmit.textContent = registerMode ? 'Create & Enter World' : 'Enter World';
-  loginToggle.textContent = registerMode
-    ? 'Have an account? Sign in'
-    : 'New here? Create an account';
-  loginOther.classList.toggle('hidden', !shelf && !quick);
-  loginOther.textContent = quick ? 'Not you? Choose another' : 'Sign in with a username';
-  loginError.classList.add('hidden');
-  if (quick) {
-    loginPass.value = '';
-    loginPass.focus();
-  }
-}
-
-loginToggle.addEventListener('click', () => {
-  setLoginView(registerMode ? homeView() : 'register');
-});
-
-loginOther.addEventListener('click', () => {
-  if (loginView === 'quick') {
-    setLoginView(homeView());
-  } else {
-    loginUser.value = '';
-    loginPass.value = '';
-    setLoginView('signin');
-    loginUser.focus();
-  }
-});
-
-renderLoginRoster();
-setLoginView(homeView());
-
-loginForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  if (!authReady || loginView === 'roster') return;
-  loginError.classList.add('hidden');
-  loginStatus.textContent = registerMode ? 'Creating your adventurer…' : 'Signing in…';
-  loginStatus.classList.remove('hidden');
-  pendingUser = loginUser.value.trim() || null;
-  if (registerMode) {
-    game.sendRegister(
-      loginUser.value.trim(),
-      loginPass.value,
-      loginCharName.value.trim(),
-      loginInvite.value.trim(),
-    );
-  } else {
-    game.sendLogin(loginUser.value.trim(), loginPass.value);
-  }
+// THE DOOR REMEMBERS lives in ui/loginFlow.ts (foundations F5.1); the
+// shell keeps only the auth lifecycle (tokens, the in-flight attempt).
+const loginFlow = initLoginFlow({
+  els: {
+    form: loginForm,
+    user: loginUser,
+    pass: loginPass,
+    charName: loginCharName,
+    invite: loginInvite,
+    submit: loginSubmit,
+    toggle: loginToggle,
+    other: loginOther,
+    error: loginError,
+    status: loginStatus,
+    rosterEl: loginRosterEl,
+    chosenEl: loginChosen,
+  },
+  isAuthReady: () => authReady,
+  submit: (kind, f) => {
+    pendingUser = f.user || null;
+    if (kind === 'register') game.sendRegister(f.user, f.pass, f.name, f.invite);
+    else game.sendLogin(f.user, f.pass);
+  },
 });
 
 function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void {
@@ -2991,18 +2571,18 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
     case 'station':
       // The Workshop tells the whole material story itself — the pack
       // stays closed so the bench gets the room.
-      closeAllUi();
+      screens.closeAll();
       stationPanels.openCraft(target.station, game.skills, game.knownRecipes, target);
       break;
     case 'bank':
-      closeAllUi();
+      screens.closeAll();
       lastBankAnchor = { tx: target.tx, ty: target.ty };
       game.interact(target.tx, target.ty); // server replies with the vault
       break;
     case 'stable':
       // The household mirror is already here — the stalls open on
       // local truth, and every act re-proves the tile server-side.
-      closeAllUi();
+      screens.closeAll();
       stationPanels.openStable({ tx: target.tx, ty: target.ty }, game.ownPets);
       break;
     case 'portal': {
@@ -3032,12 +2612,12 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       break;
     }
     case 'shop':
-      closeAllUi();
+      screens.closeAll();
       stationPanels.openShop('general_store', target);
       panels.showInventory();
       break;
     case 'plot': {
-      closeAllUi();
+      screens.closeAll();
       const plotGround = game.world.groundAt(target.tx, target.ty);
       const bed =
         plotGround === Tile.MushroomLog ? 'log' : plotGround === Tile.GrowingFrame ? 'frame' : 'tilled';
@@ -3061,13 +2641,13 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       if (binReady(target.tx, target.ty)) {
         game.interact(target.tx, target.ty);
       } else {
-        closeAllUi();
+        screens.closeAll();
         stationPanels.openCompost(target.tx, target.ty, target);
         panels.showInventory();
       }
       break;
     case 'trough':
-      closeAllUi();
+      screens.closeAll();
       stationPanels.openTrough(target.tx, target.ty, target);
       panels.showInventory();
       break;
@@ -3079,7 +2659,7 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       if (job && wr && workDone(wr, job.startedAt, job.qty, Date.now()) > 0) {
         game.interact(target.tx, target.ty);
       } else {
-        closeAllUi();
+        screens.closeAll();
         stationPanels.openWork(target.tx, target.ty, target.work, target);
         panels.showInventory();
       }
@@ -3113,7 +2693,7 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       // The words are already here (they streamed in with the chunk),
       // so the read opens locally and instantly. The server hears the
       // interact too — it answers only the blank-board case.
-      closeAllUi();
+      screens.closeAll();
       signHud.open(target.tx, target.ty);
       game.interact(target.tx, target.ty);
       break;
@@ -3123,7 +2703,7 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
     case 'loot':
       // One bag: just take it. A pile: open the ground manager and choose.
       if (game.nearbyLoot(2.4).length > 1) {
-        closeAllUi();
+        screens.closeAll();
         lootPanel.open();
       } else {
         game.pickup(target.eid);
@@ -3177,7 +2757,7 @@ window.addEventListener('keydown', (e) => {
     if (bindings.kbMatches(id, e.code)) {
       // Tab (the glass's default) must stop the browser's focus walk.
       e.preventDefault();
-      screenAction(id);
+      screens.action(id);
     }
   }
   if (e.code === 'Escape') {
@@ -3186,7 +2766,7 @@ window.addEventListener('keydown', (e) => {
     const hadUi =
       document.querySelector('.ui-screen:not(.hidden), .ui-tray:not(.hidden)') !== null ||
       buildMode !== null;
-    closeAllUi();
+    screens.closeAll();
     buildMode = null;
     buildOrient = 'auto';
     buildQueue.length = 0;
@@ -3628,7 +3208,7 @@ function frame(now: number): void {
     voice.setListener(ear.x, ear.y);
   }
   panelAudioCues();
-  syncDockActive();
+  screens.syncDock();
   // The station being talked to (open panel) animates its in-use
   // choreography — chest lid open, furnace stoked — via renderer heat.
   renderer.stationFocus = stationPanels.anchorTile;

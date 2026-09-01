@@ -294,3 +294,13 @@ name pattern, spans moved whole, cross-bucket imports resolved, shared grammar v
 existing deferred golems-style cycle), rig.ts re-exporting every door — 96 importers,
 16 labs, 13 species suites unchanged. Refactor-parity PASS ×7 at every sub-phase
 (baseline advanced each time). Band four merged to main.
+
+**F2 wave B — THE PAINTER WINGS CLOSE (2b91cfab, 2026-09-01).** waterfalls (17 methods
+— the art merged INTO the pre-existing THE SPILL LAW module after the generator's one
+collision was caught and merged, not clobbered), garrisonArt (6), hudOverlay (10),
+wornAura (4), cliffArt (9) + 15 family statics routed (13 family-local, GAR_LEAF +
+stone01 → vocab). PaintHost grew to carry the bake-budget/stage-sink surfaces the cliff
+lane mutates (visSpriteMsLeft, visArrivalCount, cliffMemo/cliffSprites, stage* sinks).
+renderer.ts 33,869 → 28,456. Falls coverage verified in-frame before trusting parity
+(crown scenes: 1,559 fallMemo entries). Parity PASS ×7; band five merged to main.
+F2's runner-up (unifying the cast/stageCast brush twins) remains charted, not done.
