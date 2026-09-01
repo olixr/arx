@@ -496,6 +496,36 @@ async function main(): Promise<void> {
     aOracle.end();
     const gc = threw2(() => gl.begin(W, H, 1, null));
     const cc = threw2(() => oracle.begin(W, H, 1, null));
+    // THE SHADOW LAYER RIDES THE STAGE (A3): drawLayer renders a
+    // stream into an offscreen alpha layer — where the interior punch
+    // (destination-out) is LEGAL even over the opaque main stage —
+    // and composites once at the layer alpha. Pins the FBO's Y
+    // orientation, the punch, and the composite in one image.
+    {
+      const layerItems: StageItem[] = [
+        { kind: 'fill', color: 0x181020, dw: 90, dh: 60, m: stageAt(15, 20), alpha: 1, blend: StageBlend.SourceOver },
+        quad(tex(srcSprite, 'linear'), stageAt(70, 30)),
+        { kind: 'fill', color: 0x000000, dw: 30, dh: 22, m: stageAt(40, 35), alpha: 1, blend: StageBlend.DestinationOut },
+      ];
+      const worldItems: StageItem[] = [
+        { kind: 'fill', color: 0x3a7a3a, dw: 40, dh: 26, m: stageAt(90, 70), alpha: 1, blend: StageBlend.SourceOver },
+      ];
+      gl.begin(W, H, 1, '#6a8a5a');
+      gl.drawLayer(layerItems, 0.42);
+      gl.draw(worldItems);
+      gl.end();
+      oracle.begin(W, H, 1, '#6a8a5a');
+      oracle.drawLayer(layerItems, 0.42);
+      oracle.draw(worldItems);
+      oracle.end();
+      const gImg = readback(gl.canvas);
+      const cImg = readback(oracle.canvas);
+      const d2 = diffImages(gImg, cImg);
+      const res2: CaseResult = { name: 'shadow-layer-punch', policy: 'le1', max: d2.max, mean: d2.mean, over1: d2.over1, over2: d2.over2, pixels: d2.px, pass: d2.max <= 1 };
+      results.push(res2);
+      show('shadow-layer-punch', res2, gImg, cImg, d2.diff);
+    }
+
     const ok = gm !== null && gm === cm && gc !== null && gc === cc;
     results.push({
       name: 'contract-alpha-symmetry',

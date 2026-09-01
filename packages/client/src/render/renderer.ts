@@ -3872,7 +3872,9 @@ export class Renderer {
   /** The in-sort contact alpha (beginContactFill's own arithmetic;
    *  sdwLayerAlpha is 1 during the sorted pass). */
   private contactAlpha(): number {
-    return Math.min(1, Math.min(CONTACT_MAX, Math.max(CONTACT_MIN, this.sky.shadowAlpha)));
+    // Divides by the layer alpha like every in-layer brush (1 during
+    // the in-sort pass; the prepass layer restores the product).
+    return Math.min(1, Math.min(CONTACT_MAX, Math.max(CONTACT_MIN, this.sky.shadowAlpha)) / this.sdwLayerAlpha);
   }
 
   /** Emit one cast sprite as a stage quad. `m` rotates/shears when
@@ -3919,6 +3921,11 @@ export class Renderer {
     ph = y1 - py;
     if (pw <= 0 || ph <= 0) return;
     this.stagePaintCount('cast-scr', pw, ph);
+    // Capture the COLLECTION-time layer alpha: a deferred brush runs
+    // at flush, after sdwLayerAlpha resets to 1 — without the capture
+    // a prepass shadow deferred to scratch would skip its layer
+    // division and land double-dark once the layer composites.
+    const la = this.sdwLayerAlpha;
     this.stageWorldItems.push({
       kind: 'paint',
       px,
@@ -3927,11 +3934,14 @@ export class Renderer {
       ph,
       paint: (ctx: CanvasRenderingContext2D) => {
         const saved = this.sdw;
+        const savedLa = this.sdwLayerAlpha;
         this.sdw = ctx;
+        this.sdwLayerAlpha = la;
         try {
           run();
         } finally {
           this.sdw = saved;
+          this.sdwLayerAlpha = savedLa;
         }
       },
     });
@@ -4008,7 +4018,7 @@ export class Renderer {
       x0 - (a00 * ax + a01 * ay) / dpr,
       y0 - (a10 * ax + a11 * ay) / dpr,
     ];
-    this.stageCastQuadAt(en, x0, y0, Math.min(1, this.sky.shadowAlpha), m);
+    this.stageCastQuadAt(en, x0, y0, Math.min(1, this.sky.shadowAlpha / this.sdwLayerAlpha), m);
   }
 
   /** Shared ellipse sprite (castContact and castBody's every part):
@@ -4115,7 +4125,7 @@ export class Renderer {
     };
     if (this.sky.shadowAlpha >= 0.02) {
       const off = this.castOffset(hTiles);
-      emitBlob(r, bx + off.x, by + off.y, Math.min(1, this.sky.shadowAlpha));
+      emitBlob(r, bx + off.x, by + off.y, Math.min(1, this.sky.shadowAlpha / this.sdwLayerAlpha));
     }
     if (throws.length > 0) {
       const s = this.camera.scale;
@@ -4123,7 +4133,7 @@ export class Renderer {
       for (const th of throws) {
         const ox = th.ux * th.len * hTiles * s;
         const oy = th.uy * th.len * hTiles * s * ys;
-        emitBlob(r * 0.92, bx + ox, by + oy, Math.min(1, th.alpha));
+        emitBlob(r * 0.92, bx + ox, by + oy, Math.min(1, th.alpha / this.sdwLayerAlpha));
       }
     }
   }
@@ -4141,7 +4151,7 @@ export class Renderer {
         r * 0.5 + len * 0.5,
         r * 0.4,
         ang,
-        Math.min(1, alpha),
+        Math.min(1, alpha / this.sdwLayerAlpha),
       );
     };
     if (this.sky.shadowAlpha >= 0.02) {
@@ -5643,6 +5653,75 @@ export class Renderer {
       1,
       Math.max(this.sky.shadowAlpha, CONTACT_MIN, this.frameLights[0]?.a ?? 0),
     );
+    if (this.stageWorldActive()) {
+      // THE SHADOW LAYER RIDES THE STAGE (A3): the prepass collects
+      // as stage items — the cast brushes' assembly branches emit
+      // exactly as they do in-sort, into the LAYER stream (the sink
+      // swap below is the whole plumbing) — rendered into the world
+      // stage's alpha FBO and composited once at the layer alpha in
+      // the frame's first flush, exactly where this 2d composite sat.
+      const prev = this.stageWorldItems;
+      this.stageWorldItems = this.stageShadowItems;
+      this.stageShadowItems.length = 0;
+      this.stageWorldStats.quads = 0;
+      this.stageWorldStats.paints = 0;
+      this.stageAssembling = true;
+      try {
+        for (const item of items) {
+          if (!item.elevated) item.drawShadow?.();
+        }
+        if (this.grass.hasShadows()) {
+          // The meadow's shade: one bounded paint; the closure runs
+          // the same flush against the scratch ctx at flush time.
+          const gcol = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
+          const ga = Math.min(1, (this.sky.shadowAlpha * 0.85) / this.sdwLayerAlpha);
+          this.stagePushPaintRaw(
+            0,
+            0,
+            this.w,
+            this.h,
+            () => this.grass.flushShadows(this.ctx, gcol, ga),
+            'grass-shade',
+          );
+        }
+        // SHELTERED ROOMS RECEIVE NO SKY: the interior punch is a
+        // DestinationOut fill — the blend the layer target legalizes
+        // (the A0 refusal symmetry anticipated exactly this).
+        if (this.visibleRegions.length > 0) {
+          const s2 = this.camera.scale;
+          for (const region of this.visibleRegions) {
+            const lift = region.elevLevel * ELEV_H * s2;
+            for (let ty = region.y0; ty <= region.y1; ty++) {
+              let run = -1;
+              for (let tx = region.x0; tx <= region.x1 + 1; tx++) {
+                const inside = tx <= region.x1 && region.tiles.has(packTile(tx, ty));
+                if (inside && run < 0) run = tx;
+                else if (!inside && run >= 0) {
+                  const a = this.camera.worldToScreen(run, ty, this.w, this.h);
+                  const b = this.camera.worldToScreen(tx, ty + 1, this.w, this.h);
+                  this.stageShadowItems.push({
+                    kind: 'fill',
+                    color: 0x000000,
+                    dw: b.x - a.x,
+                    dh: b.y - a.y,
+                    m: stageAt(a.x, a.y - lift),
+                    alpha: 1,
+                    blend: StageBlend.DestinationOut,
+                  });
+                  run = -1;
+                }
+              }
+            }
+          }
+        }
+      } finally {
+        this.stageAssembling = false;
+        this.stageWorldItems = prev;
+      }
+      this.stageShadowAlpha = this.sdwLayerAlpha;
+      this.stageShadowPending = this.stageShadowItems.length > 0;
+    } else {
+    this.stageShadowPending = false; // a mid-frame toggle must not replay stale items
     for (const item of items) {
       if (!item.elevated) item.drawShadow?.();
     }
@@ -5684,6 +5763,7 @@ export class Renderer {
     this.ctx.globalAlpha = this.sdwLayerAlpha;
     this.ctx.drawImage(this.shadowLayer, 0, 0, this.shadowLayer.width, this.shadowLayer.height, 0, 0, this.w, this.h);
     this.ctx.restore();
+    } // end legacy 2d prepass
     // In-sort (plateau) shadows draw straight into the frame.
     this.sdw = this.ctx;
     this.sdwLayerAlpha = 1;
@@ -15987,15 +16067,27 @@ export class Renderer {
               const A = this.camera.worldToScreen(ax, ay, this.w, this.h);
               const B = this.camera.worldToScreen(bx, by, this.w, this.h);
               const skew = Math.max(-s * 0.6, Math.min(s * 0.6, this.castOffset(0.5).x));
-              const c = this.beginContactFill();
-              c.beginPath();
-              c.moveTo(A.x, A.y - baseLift - 1);
-              c.lineTo(B.x, B.y - baseLift - 1);
-              c.lineTo(B.x + skew, B.y - baseLift + s * 0.42);
-              c.lineTo(A.x + skew, A.y - baseLift + s * 0.42);
-              c.closePath();
-              c.fill();
-              c.globalAlpha = 1;
+              const fill = (): void => {
+                const c = this.beginContactFill();
+                c.beginPath();
+                c.moveTo(A.x, A.y - baseLift - 1);
+                c.lineTo(B.x, B.y - baseLift - 1);
+                c.lineTo(B.x + skew, B.y - baseLift + s * 0.42);
+                c.lineTo(A.x + skew, A.y - baseLift + s * 0.42);
+                c.closePath();
+                c.fill();
+                c.globalAlpha = 1;
+              };
+              if (this.stageAssembling) {
+                // The seam rides the layer as a bounded scratch strip.
+                const x0 = Math.min(A.x, B.x) + Math.min(0, skew) - 1;
+                const x1b = Math.max(A.x, B.x) + Math.max(0, skew) + 1;
+                const y0 = Math.min(A.y, B.y) - baseLift - 2;
+                const y1b = Math.max(A.y, B.y) - baseLift + s * 0.42 + 1;
+                this.stageCastScratch(x0, y0, x1b - x0, y1b - y0, fill);
+                return;
+              }
+              fill();
             }
           : undefined,
       draw: () => {
@@ -16338,15 +16430,26 @@ export class Renderer {
               const A = this.camera.worldToScreen(ax, ay, this.w, this.h);
               const B = this.camera.worldToScreen(bx, ay, this.w, this.h);
               const skew = Math.max(-s * 0.6, Math.min(s * 0.6, this.castOffset(0.5).x));
-              const c = this.beginContactFill();
-              c.beginPath();
-              c.moveTo(A.x, A.y - baseLift - 1);
-              c.lineTo(B.x, B.y - baseLift - 1);
-              c.lineTo(B.x + skew, B.y - baseLift + s * 0.42);
-              c.lineTo(A.x + skew, A.y - baseLift + s * 0.42);
-              c.closePath();
-              c.fill();
-              c.globalAlpha = 1;
+              const fill = (): void => {
+                const c = this.beginContactFill();
+                c.beginPath();
+                c.moveTo(A.x, A.y - baseLift - 1);
+                c.lineTo(B.x, B.y - baseLift - 1);
+                c.lineTo(B.x + skew, B.y - baseLift + s * 0.42);
+                c.lineTo(A.x + skew, A.y - baseLift + s * 0.42);
+                c.closePath();
+                c.fill();
+                c.globalAlpha = 1;
+              };
+              if (this.stageAssembling) {
+                const x0 = Math.min(A.x, B.x) + Math.min(0, skew) - 1;
+                const x1b = Math.max(A.x, B.x) + Math.max(0, skew) + 1;
+                const y0 = Math.min(A.y, B.y) - baseLift - 2;
+                const y1b = Math.max(A.y, B.y) - baseLift + s * 0.42 + 1;
+                this.stageCastScratch(x0, y0, x1b - x0, y1b - y0, fill);
+                return;
+              }
+              fill();
             }
           : undefined,
       draw: () => this.drawCliffRun(game, level, faces, o0, o1, rev),
@@ -16639,9 +16742,17 @@ export class Renderer {
               const ya = Math.round(A.y) - (isTop ? 1 : 0);
               const yb = Math.round(B.y) + (isBottom ? s * 0.2 : 0);
               const wS = nx >= 0 ? Math.max(3, s * 0.24) : Math.max(2, s * 0.09);
-              const c = this.beginContactFill();
-              c.fillRect(Math.round(A.x) - (nx >= 0 ? 0 : wS), ya, wS, yb - ya);
-              c.globalAlpha = 1;
+              const rx = Math.round(A.x) - (nx >= 0 ? 0 : wS);
+              const fill = (): void => {
+                const c = this.beginContactFill();
+                c.fillRect(rx, ya, wS, yb - ya);
+                c.globalAlpha = 1;
+              };
+              if (this.stageAssembling) {
+                this.stageCastScratch(rx - 1, ya - 1, wS + 2, yb - ya + 2, fill);
+                return;
+              }
+              fill();
             }
           : undefined,
       draw: () => {
@@ -21303,7 +21414,18 @@ export class Renderer {
    *  (composite, paint on the frame, resume) and is counted. */
   stageWorld = false;
   private stageWorldGl: GlStage | null = null;
-  private readonly stageWorldItems: StageItem[] = [];
+  /** The frame's world stream. NOT readonly: the shadow prepass
+   *  temporarily swaps the sink so the cast brushes' assembly
+   *  branches emit into the LAYER stream (A3) with zero new plumbing
+   *  at the push sites. */
+  private stageWorldItems: StageItem[] = [];
+  /** THE SHADOW LAYER RIDES THE STAGE (A3): the prepass collected as
+   *  stage items, rendered into the world stage's alpha FBO and
+   *  composited once at the layer alpha — the first content of the
+   *  frame's first flush, exactly where the 2d layer composite sat. */
+  private readonly stageShadowItems: StageItem[] = [];
+  private stageShadowAlpha = 1;
+  private stageShadowPending = false;
   /** True while the world pass assembles the stage stream — painters'
    *  blit sites emit quads instead of ctx calls. */
   private stageAssembling = false;
@@ -21330,8 +21452,15 @@ export class Renderer {
   private stageWorldFlush(): void {
     const gl = this.stageWorldGl!;
     const list = this.stageWorldItems;
-    if (list.length === 0) return;
+    if (list.length === 0 && !this.stageShadowPending) return;
     gl.begin(this.w, this.h, this.dpr(), null);
+    if (this.stageShadowPending) {
+      // The prepass shadows: layer-rendered, composited once at the
+      // layer alpha — under everything the world stream paints.
+      gl.drawLayer(this.stageShadowItems, this.stageShadowAlpha);
+      this.stageShadowPending = false;
+      this.stageShadowItems.length = 0;
+    }
     gl.draw(list);
     gl.end();
     this.ctx.imageSmoothingEnabled = true;
@@ -21494,8 +21623,8 @@ export class Renderer {
     const out = this.stageWorldItems;
     out.length = 0;
     const st = this.stageWorldStats;
-    st.quads = 0;
-    st.paints = 0;
+    // Stats reset at the SHADOW PREPASS (the frame's first stage
+    // collection) — resetting here erased the layer's quad counts.
     st.splits = 0;
     const sc = this.camera.scale;
     const n = items.length;
@@ -24078,7 +24207,7 @@ export class Renderer {
                 m: sway
                   ? [k, 0, sx * k, k, bx - sh.ax * k - sh.ay * sx * k, groundY - sh.ay * k]
                   : stageAt(dx0, dy0),
-                alpha: Math.min(1, this.sky.shadowAlpha),
+                alpha: Math.min(1, this.sky.shadowAlpha / this.sdwLayerAlpha),
                 blend: StageBlend.SourceOver,
               });
               this.stageWorldStats.quads++;

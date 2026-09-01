@@ -145,6 +145,16 @@ export class GlStage implements StageBackend {
   private static readonly SHEET_CELL_H = 512;
   sheetUploads = 0;
 
+  /** THE SHADOW LAYER RIDES THE STAGE (A3): one pooled FBO+texture
+   *  pair; drawLayer renders a stream into it and composites once at
+   *  layer alpha. Inside it alpha-target blends are legal on either
+   *  stage (the punch), opaque-only blends stay refused. */
+  private layerFbo: WebGLFramebuffer | null = null;
+  private layerTex: WebGLTexture | null = null;
+  private layerW = 0;
+  private layerH = 0;
+  private inLayer = false;
+
   /** True after webglcontextlost; the caller flips to the canvas
    *  backend the same frame (THE TOGGLE IS THE PRODUCT'S SAFETY). */
   contextLost = false;
@@ -190,6 +200,10 @@ export class GlStage implements StageBackend {
       this.scratch.clear();
       this.scratchBytes = 0;
       this.sheets.length = 0;
+      this.layerFbo = null;
+      this.layerTex = null;
+      this.layerW = 0;
+      this.layerH = 0;
       this.initGL();
       this.contextLost = false;
     });
@@ -629,12 +643,12 @@ export class GlStage implements StageBackend {
         this.paintScratch(it, runFirst[ri]!);
         continue;
       }
-      if (!this.isAlpha && blendNeedsAlphaTarget(run.blend)) {
+      if (!this.isAlpha && !this.inLayer && blendNeedsAlphaTarget(run.blend)) {
         // Same refusal, same words, as the canvas oracle: a contract
         // error must not depend on which backend caught it.
         throw new Error('stage: alpha-target blend on the opaque main target');
       }
-      if (this.isAlpha && blendNeedsOpaqueTarget(run.blend)) {
+      if ((this.isAlpha || this.inLayer) && blendNeedsOpaqueTarget(run.blend)) {
         // The mirror half of the symmetry: multiply/screen's fixed-
         // function forms assume Da = 1 and lie quietly on an alpha
         // layer. They belong to the lighting/post passes, which
@@ -725,6 +739,76 @@ export class GlStage implements StageBackend {
     const [sf, df] = BLEND_GL_FUNC[0]!; // paints composite source-over
     gl.blendFunc(sf, df);
     gl.drawArrays(gl.TRIANGLES, firstVert, VERTS_PER_QUAD);
+    this.drawCalls++;
+  }
+
+  drawLayer(items: readonly StageItem[], alpha: number): void {
+    if (items.length === 0 || alpha <= 0) return;
+    const gl = this.gl;
+    if (!this.layerFbo) {
+      this.layerFbo = gl.createFramebuffer()!;
+      this.layerTex = gl.createTexture()!;
+    }
+    if (this.layerW !== this.bw || this.layerH !== this.bh) {
+      gl.bindTexture(gl.TEXTURE_2D, this.layerTex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.bw, this.bh, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.layerFbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.layerTex, 0);
+      this.layerW = this.bw;
+      this.layerH = this.bh;
+    } else {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.layerFbo);
+    }
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    this.inLayer = true;
+    try {
+      // The full pipeline — batching, sheets, uploads — against the
+      // layer target; uRes/viewport already match (same dimensions).
+      this.draw(items);
+    } finally {
+      this.inLayer = false;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+    // Composite: one full-target quad at layer alpha. The vertex
+    // shader flips Y for the backbuffer, so FBO content sits flipped
+    // in its texture — V flips back here (top samples v=1).
+    const a = Math.min(1, alpha);
+    const pa = Math.round(255 * a);
+    const f32 = this.f32;
+    const u8 = this.u8;
+    let v = 0;
+    const emitC = (px: number, py: number, uu: number, vv: number): void => {
+      const fo = v * 5;
+      f32[fo] = px;
+      f32[fo + 1] = py;
+      f32[fo + 2] = uu;
+      f32[fo + 3] = vv;
+      const bo = v * VERTEX_BYTES + 16;
+      u8[bo] = pa;
+      u8[bo + 1] = pa;
+      u8[bo + 2] = pa;
+      u8[bo + 3] = pa;
+      v++;
+    };
+    emitC(0, 0, 0, 1);
+    emitC(this.bw, 0, 1, 1);
+    emitC(0, this.bh, 0, 0);
+    emitC(0, this.bh, 0, 0);
+    emitC(this.bw, 0, 1, 1);
+    emitC(this.bw, this.bh, 1, 0);
+    gl.bindVertexArray(this.vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, this.u8.subarray(0, v * VERTEX_BYTES), gl.STREAM_DRAW);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.layerTex);
+    const [sf, df] = BLEND_GL_FUNC[0]!; // premultiplied source-over
+    gl.blendFunc(sf, df);
+    gl.drawArrays(gl.TRIANGLES, 0, VERTS_PER_QUAD);
     this.drawCalls++;
   }
 

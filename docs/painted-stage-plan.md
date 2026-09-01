@@ -754,6 +754,47 @@ documented deviation until then). **A2 IS COMPLETE.** Next: A3 (the
 shadow/light FBO passes), A4 (water/particles/post), A5 (toggle
 rollout) — then Epic B.
 
+### A3 — AS BUILT (2026-09-01). THE SHADOW LAYER RIDES THE STAGE.
+
+The prepass shadow layer is now an FBO pass inside the world stage:
+
+- **The contract grew one verb**: `drawLayer(items, alpha)` on BOTH
+  backends — render a stream into an offscreen ALPHA layer
+  (overlapping shadows land opaque and merge into one density — the
+  layer's whole point), composite once at the layer alpha. Inside
+  the layer, alpha-target blends (destination-out — the interior
+  punch) are legal on either stage; opaque-only blends stay refused.
+  The A0 refusal symmetry anticipated exactly this. GlStage renders
+  through its full pipeline (batching, scratch sheets, uploads)
+  against a pooled FBO, composited with V flipped (the vertex shader
+  flips Y for the backbuffer); the oracle uses a layer canvas.
+  Lab case `shadow-layer-punch` pins FBO orientation, punch, and
+  composite in one image — 20/20.
+- **The prepass collects as items with ZERO new plumbing at the push
+  sites**: the sink-swap (stageWorldItems → stageShadowItems for the
+  prepass walk) reuses every cast brush's assembly branch from part
+  6 verbatim. Interior punches emit DestinationOut fills; the
+  meadow's shade is one bounded paint; the layer composites as the
+  first content of the frame's first flush — exactly where the 2d
+  composite sat, so order is preserved by construction.
+- **THE LAYER ALPHA IS CAPTURED AT COLLECTION**: brushes divide
+  their alphas by sdwLayerAlpha (1 in-sort — byte-identical to
+  before), and deferred scratch closures capture the collection-time
+  value — a prepass shadow deferred to flush would otherwise skip
+  its layer division and land double-dark.
+- **The last raw prepass painters got branches**: the three cliff
+  contact-shadow closures (trapezoid seams) ride bounded scratch;
+  cast-RAW-LEAK reads zero everywhere.
+
+**Gates**: parity v4 six PASS + crown-noon stable marginal; night
+parity ×3 (dawnmead/crown/graveyard 22:00) wide margins; lab 20/20;
+soak PASS; 786/786. Fps: forest/hoargate-night hold 120; crown-
+evening 97, dawnmead-evening 112 (the layer's quads are new stage
+draws — the sprite atlas remains the named headroom). Per plan, the
+LIGHTMAP keeps its canvas painter and 2d multiply for now — its
+quad form needs the opaque main target to be GL, which is the full-
+GL-frame step (A5's shape), not this pass.
+
 ### A3 — The dark and the light (shadow layer, lightmap, overreach)
 
 The shadow layer becomes an FBO: shadow quads (sprites, masks, grass

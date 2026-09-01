@@ -149,6 +149,17 @@ export interface StageBackend {
   begin(w: number, h: number, dpr: number, clear: string | null): void;
   /** Composite one sorted stream. Order is law. */
   draw(items: readonly StageItem[]): void;
+  /**
+   * THE SHADOW LAYER RIDES THE STAGE (A3): render `items` into an
+   * offscreen ALPHA layer (overlapping shadows land opaque and merge
+   * into one density instead of stacking — the layer's whole point),
+   * then composite the layer over the current target ONCE at
+   * `alpha`. Inside the layer the alpha-target blends
+   * (destination-out — the interior punch) are legal on EITHER
+   * stage; the opaque-only blends stay refused. Call between begin()
+   * and the frame's world draw()s.
+   */
+  drawLayer(items: readonly StageItem[], alpha: number): void;
   /** Frame end: flush everything to the backend's canvas. */
   end(): void;
 }

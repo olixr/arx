@@ -19,6 +19,11 @@ export class CanvasStage implements StageBackend {
   private w = 0;
   private h = 0;
   readonly isAlpha: boolean;
+  /** True while drawing into an offscreen alpha layer (drawLayer):
+   *  alpha-target blends become legal there on either stage. */
+  private inLayer = false;
+  private layerCv: HTMLCanvasElement | null = null;
+  private layerCtx: CanvasRenderingContext2D | null = null;
 
   constructor(readonly canvas: HTMLCanvasElement, opts?: { alpha?: boolean }) {
     this.isAlpha = opts?.alpha === true;
@@ -55,7 +60,38 @@ export class CanvasStage implements StageBackend {
   }
 
   draw(items: readonly StageItem[]): void {
+    this.drawInto(this.ctx, items);
+  }
+
+  drawLayer(items: readonly StageItem[], alpha: number): void {
+    if (items.length === 0 || alpha <= 0) return;
+    if (!this.layerCv) {
+      this.layerCv = document.createElement('canvas');
+      this.layerCtx = this.layerCv.getContext('2d')!;
+    }
+    const cv = this.layerCv;
+    if (cv.width !== this.canvas.width || cv.height !== this.canvas.height) {
+      cv.width = this.canvas.width;
+      cv.height = this.canvas.height;
+    }
+    const lc = this.layerCtx!;
+    lc.setTransform(1, 0, 0, 1, 0, 0);
+    lc.clearRect(0, 0, cv.width, cv.height);
+    this.inLayer = true;
+    try {
+      this.drawInto(lc, items);
+    } finally {
+      this.inLayer = false;
+    }
     const ctx = this.ctx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.drawImage(cv, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+  }
+
+  private drawInto(ctx: CanvasRenderingContext2D, items: readonly StageItem[]): void {
     const dpr = this.dpr;
     for (const it of items) {
       if (it.kind === 'paint') {
@@ -75,13 +111,13 @@ export class CanvasStage implements StageBackend {
         ctx.restore();
         continue;
       }
-      if (this.isAlpha && blendNeedsOpaqueTarget(it.blend)) {
+      if ((this.isAlpha || this.inLayer) && blendNeedsOpaqueTarget(it.blend)) {
         throw new Error('stage: opaque-target blend on an alpha stage');
       }
-      if (!this.isAlpha && blendNeedsAlphaTarget(it.blend)) {
+      if (!this.isAlpha && !this.inLayer && blendNeedsAlphaTarget(it.blend)) {
         // The main target is opaque by contract; an alpha-erasing
         // blend here would diverge from the GL backbuffer silently.
-        // Phase A3's layer targets accept it; the main frame refuses.
+        // A3's layer targets accept it; the main frame refuses.
         throw new Error('stage: alpha-target blend on the opaque main target');
       }
       const m = it.m;

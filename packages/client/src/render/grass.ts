@@ -1089,6 +1089,12 @@ export class GrassSystem {
    * stays as the safety drain for any cast gathered after the under
    * pass, keeping the shared-layer merge law for that remainder.
    */
+  /** Anything queued for the shade pass this frame? (The stage skips
+   *  the layer paint entirely on shadeless frames.) */
+  hasShadows(): boolean {
+    return this.shadowPath !== null;
+  }
+
   flushShadows(ctx: CanvasRenderingContext2D, fill: string, alpha: number): void {
     if (!this.shadowPath) return;
     ctx.globalAlpha = alpha;
