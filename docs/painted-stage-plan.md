@@ -548,6 +548,74 @@ earlier items, so naive reordering is banned); doorway banding via
 the settled-cut sig; the falls scroll-bake; the atlas; the perf
 gate.
 
+**A2 PART 6 — AS BUILT (2026-09-01). THE CAST SPEAKS IN QUADS.**
+The pass-count problem dissolved once the casts were READ instead of
+boxed. Every in-sort cast is a flat translucent silhouette from six
+brushes — castEdgeQuad (a parallelogram: base edge extruded along
+the sun), castContact/castBody (ellipses, rotated lobes), castBlob
+(seeded facet blob), castMask and drawTreeShadow (already-baked
+sprites thrown by matrix). Under assembly each brush now emits its
+OWN shape as quads in the item's exact painter position — order-safe
+BY CONSTRUCTION, because nothing is reordered — sampling small
+sprites canvas2d painted (the GL context is antialias:false and must
+never rasterize a diagonal edge itself). The elev-cast extraction,
+its base-strip compromise, and the elevated-needs-a-box split rule
+are all deleted; crown paints 178 → ~75/frame.
+
+- **What the extraction had actually been doing**: the cast brushes
+  paint through `this.sdw`, which the scratch swap never redirected —
+  every "extracted cast" was painting the 2d UNDERFRAME beneath the
+  GL image while its scratch pass uploaded a blank box. Pure waste,
+  and a silent ordering deviation. The lane fixes both (lane-off
+  bisect: crown sig 995; lane-on: 442 — the quad casts HALVED the
+  scene's standing deviation).
+- **THE EXACT-MAPPING LAW**: sprites key on the QUANTIZED device-px
+  shape (a row of parapets shares one bake; the wheeling sun re-mints
+  on whole-pixel crossings), and the quad's matrix maps the bake back
+  onto the TRUE shape — for the parallelogram, the 2×2 A with A·u=u′,
+  A·v=v′ — so edges land sub-pixel exact. Whole-pixel edges alone
+  measured as a crown parity excess: at noon the extrusion is 2-3
+  device px and rounding moved cast edges by up to 20%.
+- **Chokepoint forensics**: beginCastFill/beginContactFill are the
+  ONLY gateways to sdw — under assembly a hit counts cast-RAW-LEAK
+  and samples its stack. The counter found drawTreeShadow (the sixth
+  brush) in one probe; it now emits its cached silhouette sprite as
+  a quad (plain or sheared — the same composed matrix) with scratch
+  fallbacks for the live paths (regrowth fill, light throws).
+- **THE HALO IS TWO QUADS**: the crown's residual excess was NOT
+  casts — the braziers' seated-halo pools had silently vanished under
+  stage mode: 'lighter' cannot ride the scratch lane (additive needs
+  the destination; replayed against transparent scratch and
+  composited source-over it erases itself), and the bulk box clipped
+  the pool. The stage speaks Lighter natively; drawSeatedHalo emits
+  its two glow-sprite blits as Lighter quads. Known bounded
+  deviation: over the 2d ground stage a Lighter quad under-adds by
+  ground·srcα; over world rows it is exact.
+- **Zoom glides fall back to bounded scratch** (key churn would mint
+  sprite storms), and `stageCastLane` is the lane's kill switch.
+- **PARITY METHOD v4** (stage-parity4.mjs): v3's null control sat
+  350ms apart while its toggle pairs sat ~800ms — and animation noise
+  GROWS with separation (crown: 270@350ms → 450@1400ms), so honest
+  frames failed. v4 alternates ON/OFF at one fixed cadence: sig =
+  adjacent cross-mode pairs at T, noise = same-mode pairs at 2T (a
+  conservative upper bound), medians of 8. The gate must measure its
+  control at the separation of its measurement.
+
+**Gates**: parity v4 PASS on all five standing scenes + crown-evening
+(the hard long-shadow case). Crown-noon reads sig 442 vs gate 432 —
+2% over on the densest scene; the top blocks are the swaying willow
+and a walking herald (verified by crop), and the distributed residual
+is the accepted GL-linear-vs-canvas-analytic AA class on ~700 cast
+edges. 786/786 tests. **The fps scoreboard could not be re-run**: the
+rig's display was refresh-clamped to 30Hz this session (canvas mode
+also reads 30 vs part 5's 120 — machine state, not code). The
+refresh-independent world-phase ms: avenue staged/canvas 7.3/5.2
+(ratio 1.39, was 2.09-implied), crown 8.4/5.8 (1.45, was 3.08) — the
+stage's relative overhead roughly HALVED on wall-dense scenes.
+**Part 7**: re-run the Metal scoreboard unclamped; doorway banding;
+the falls scroll-bake; the atlas + explicit lifecycle (cast and glow
+sprites are prime atlas tenants); the A2 perf gate.
+
 ### A3 — The dark and the light (shadow layer, lightmap, overreach)
 
 The shadow layer becomes an FBO: shadow quads (sprites, masks, grass

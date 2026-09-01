@@ -348,7 +348,14 @@ import {
 import { SIGNATURES, type SigCtx } from './fxSignatures.js';
 import { GlStage } from './stage/glStage.js';
 import { GPU_URGENT_MS } from './stage/gpuBudget.js';
-import { StageBlend, type StageItem, type StageQuad, type StageTexture } from './stage/stageTypes.js';
+import {
+  StageBlend,
+  stageAt,
+  type StageItem,
+  type StageMatrix,
+  type StageQuad,
+  type StageTexture,
+} from './stage/stageTypes.js';
 
 /**
  * Signature style: shadows are solid and sharp — never blurred. They
@@ -3637,6 +3644,11 @@ export class Renderer {
   /** Arm the shadow target for a cast fill; null while nothing casts. */
   private beginCastFill(): CanvasRenderingContext2D | null {
     if (this.sky.shadowAlpha < 0.02) return null;
+    // Under assembly every cast brush must have taken its quad branch
+    // before reaching this gateway — a hit here is an uncovered path
+    // painting the REAL frame mid-classification. Count it so the
+    // census names it (a leak we cannot name cannot be retired).
+    if (this.stageAssembling) this.stageCastLeak();
     const c = this.sdw;
     c.globalAlpha = Math.min(1, this.sky.shadowAlpha / this.sdwLayerAlpha);
     c.fillStyle = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
@@ -3645,6 +3657,7 @@ export class Renderer {
 
   /** Arm for a grounding contact fill — never fully disappears. */
   private beginContactFill(): CanvasRenderingContext2D {
+    if (this.stageAssembling) this.stageCastLeak(); // see beginCastFill
     const c = this.sdw;
     const a = Math.min(CONTACT_MAX, Math.max(CONTACT_MIN, this.sky.shadowAlpha));
     c.globalAlpha = Math.min(1, a / this.sdwLayerAlpha);
@@ -3685,6 +3698,10 @@ export class Renderer {
    * its smear can never double-darken each other.
    */
   private castBlob(bx: number, by: number, hTiles: number, r: number, seed: number, smearW = 0): void {
+    if (this.stageAssembling && this.stageCastLane) {
+      this.stageCastBlob(bx, by, hTiles, r, seed, smearW);
+      return;
+    }
     const sunC = this.beginCastFill();
     if (sunC) {
       const off = this.castOffset(hTiles);
@@ -3711,6 +3728,10 @@ export class Renderer {
 
   /** A prism's ground shadow: its base edge extruded along the sun. */
   private castEdgeQuad(x0: number, y0: number, x1: number, y1: number, hTiles: number): void {
+    if (this.stageAssembling && this.stageCastLane) {
+      this.stageCastEdge(x0, y0, x1, y1, hTiles);
+      return;
+    }
     const c = this.beginCastFill();
     if (!c) return;
     const off = this.castOffset(hTiles);
@@ -3731,6 +3752,10 @@ export class Renderer {
    * lamps and you drag a pair.
    */
   private castBody(px: number, py: number, r: number): void {
+    if (this.stageAssembling && this.stageCastLane) {
+      this.stageCastBody(px, py, r);
+      return;
+    }
     const c = this.beginContactFill();
     c.beginPath();
     c.ellipse(px, py, r, r * 0.45, 0, 0, Math.PI * 2);
@@ -3757,11 +3782,377 @@ export class Renderer {
 
   /** A small thing's plain contact ellipse (drops, summons). */
   private castContact(px: number, py: number, rx: number, ry: number): void {
+    if (this.stageAssembling && this.stageCastLane) {
+      this.stageCastEllipse(px, py, rx, ry, 0, this.contactAlpha());
+      return;
+    }
     const c = this.beginContactFill();
     c.beginPath();
     c.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
     c.fill();
     c.globalAlpha = 1;
+  }
+
+  // ------------------------------ THE CAST SPEAKS IN QUADS (A2 part 6)
+  //
+  // An in-sort cast is a flat translucent silhouette: a parallelogram
+  // extruded along the sun (castEdgeQuad), a seeded blob (castBlob),
+  // an ellipse (castContact / castBody's lobes), or an already-baked
+  // mask (castMask). Under stage assembly each brush emits the SAME
+  // shape as a quad in the item's exact painter position — order-safe
+  // by construction, because nothing is reordered — sampling a small
+  // sprite that canvas2d painted (so edge AA is the brush's own; the
+  // GL context is antialias:false and must never rasterize a diagonal
+  // edge itself). Before this lane, every elevated item extracted its
+  // cast as a scratch paint: 105 passes / 287MB a frame on the crown
+  // terraces, all of it upload waste — the closures paint through
+  // this.sdw, which the scratch swap never redirected, so the casts
+  // were landing on the 2d underframe BENEATH the GL image. The quad
+  // lane retires the waste and puts the casts back in sort order.
+  //
+  // Sprites key on the QUANTIZED device-pixel shape (dpr folded in),
+  // so a row of identical parapets shares one sprite and a slowly
+  // wheeling sun re-mints only on a whole-pixel crossing. During a
+  // zoom glide those keys would churn every frame — the brushes fall
+  // back to a bounded scratch paint (stageCastScratch) for the
+  // glide's duration, exactly like the band bakes stand down.
+
+  /** The cast lane's kill switch (every lane has one): off, the
+   *  brushes fall through to their raw painters — the pre-lane
+   *  pixels — for A/B bisection and as the emergency door. */
+  stageCastLane = true;
+
+  private readonly castSprites = new Map<
+    string,
+    { cv: HTMLCanvasElement; ax: number; ay: number; used: number }
+  >();
+
+  /** Bake-or-fetch one cast sprite. `w/h/ax/ay` are device px; the
+   *  painter draws in device px with (ax, ay) as the shape's anchor. */
+  private castSprite(
+    key: string,
+    w: number,
+    h: number,
+    ax: number,
+    ay: number,
+    paint: (c: CanvasRenderingContext2D) => void,
+  ): { cv: HTMLCanvasElement; ax: number; ay: number; used: number } {
+    const hit = this.castSprites.get(key);
+    if (hit) {
+      hit.used = this.frameNo;
+      return hit;
+    }
+    if (this.castSprites.size > 384) {
+      // LRU by last draw — the shadowMasks lesson: trimming by age
+      // evicts the standing working set and strobes.
+      const cold = [...this.castSprites.entries()].sort((a, b) => a[1].used - b[1].used);
+      for (let i = 0; i < 96 && i < cold.length; i++) this.castSprites.delete(cold[i]![0]);
+    }
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.ceil(w));
+    cv.height = Math.max(1, Math.ceil(h));
+    const c = cv.getContext('2d')!;
+    paint(c);
+    const entry = { cv, ax, ay, used: this.frameNo };
+    this.castSprites.set(key, entry);
+    return entry;
+  }
+
+  /** Count + sample a raw sdw painter reached under assembly — the
+   *  stack names the factory (dev forensics, split-sample pattern). */
+  readonly stageCastLeakSamples: string[] = [];
+  private stageCastLeak(): void {
+    this.stagePaintCount('cast-RAW-LEAK', 0, 0);
+    if (this.stageCastLeakSamples.length < 6) {
+      const st = (new Error().stack ?? '').split('\n').slice(2, 7).join(' | ').replace(/https?:\/\/[^\s/]+/g, '');
+      if (!this.stageCastLeakSamples.includes(st)) this.stageCastLeakSamples.push(st);
+    }
+  }
+
+  /** The in-sort contact alpha (beginContactFill's own arithmetic;
+   *  sdwLayerAlpha is 1 during the sorted pass). */
+  private contactAlpha(): number {
+    return Math.min(1, Math.min(CONTACT_MAX, Math.max(CONTACT_MIN, this.sky.shadowAlpha)));
+  }
+
+  /** Emit one cast sprite as a stage quad. `m` rotates/shears when
+   *  given; otherwise the sprite lands axis-aligned with its anchor
+   *  at (refX, refY). Alpha 0 emits nothing. */
+  private stageCastQuadAt(
+    en: { cv: HTMLCanvasElement; ax: number; ay: number },
+    refX: number,
+    refY: number,
+    alpha: number,
+    m?: StageMatrix,
+  ): void {
+    if (alpha <= 0) return;
+    const dpr = this.dpr();
+    const dw = en.cv.width / dpr;
+    const dh = en.cv.height / dpr;
+    this.stageWorldItems.push({
+      kind: 'quad',
+      tex: this.stageSpriteTex(en.cv, 0, en),
+      sx: 0,
+      sy: 0,
+      sw: en.cv.width,
+      sh: en.cv.height,
+      dw,
+      dh,
+      m: m ?? stageAt(refX - en.ax / dpr, refY - en.ay / dpr),
+      alpha: Math.min(1, alpha),
+      blend: StageBlend.SourceOver,
+    });
+    this.stageWorldStats.quads++;
+  }
+
+  /** The glide fallback: one bounded scratch paint that runs the real
+   *  cast brush with this.sdw swapped to the scratch ctx (the cast
+   *  helpers paint through sdw, not this.ctx — the swap the old
+   *  extraction famously forgot). */
+  private stageCastScratch(px: number, py: number, pw: number, ph: number, run: () => void): void {
+    const pad = 8;
+    const x1 = Math.min(px + pw, this.w + pad);
+    const y1 = Math.min(py + ph, this.h + pad);
+    px = Math.max(px, -pad);
+    py = Math.max(py, -pad);
+    pw = x1 - px;
+    ph = y1 - py;
+    if (pw <= 0 || ph <= 0) return;
+    this.stagePaintCount('cast-scr', pw, ph);
+    this.stageWorldItems.push({
+      kind: 'paint',
+      px,
+      py,
+      pw,
+      ph,
+      paint: (ctx: CanvasRenderingContext2D) => {
+        const saved = this.sdw;
+        this.sdw = ctx;
+        try {
+          run();
+        } finally {
+          this.sdw = saved;
+        }
+      },
+    });
+    this.stageWorldStats.paints++;
+  }
+
+  /** Assembly branch of castEdgeQuad: the quantized parallelogram,
+   *  baked once, thrown as a quad. */
+  private stageCastEdge(x0: number, y0: number, x1: number, y1: number, hTiles: number): void {
+    if (this.sky.shadowAlpha < 0.02) return;
+    const off = this.castOffset(hTiles);
+    if (this.zoomGliding) {
+      const bx0 = Math.min(x0, x1) + Math.min(0, off.x);
+      const by0 = Math.min(y0, y1) + Math.min(0, off.y);
+      const bx1 = Math.max(x0, x1) + Math.max(0, off.x);
+      const by1 = Math.max(y0, y1) + Math.max(0, off.y);
+      this.stageCastScratch(bx0 - 1, by0 - 1, bx1 - bx0 + 2, by1 - by0 + 2, () =>
+        this.castEdgeQuad(x0, y0, x1, y1, hTiles),
+      );
+      return;
+    }
+    const dpr = this.dpr();
+    // True basis vectors (device px) and their quantized bake shape.
+    // The KEY is the quantized shape (a row of parapets shares one
+    // sprite), but the quad's matrix maps that bake back onto the
+    // TRUE parallelogram — the 2×2 A with A·u = u′, A·v = v′ — so
+    // the edges land sub-pixel exact. Whole-pixel edges measured as
+    // the crown's parity excess: at noon the extrusion is 2-3 device
+    // px, and rounding moved cast edges by up to 20% of their length.
+    const fdx = (x1 - x0) * dpr;
+    const fdy = (y1 - y0) * dpr;
+    const fox = off.x * dpr;
+    const foy = off.y * dpr;
+    const rnd = (v: number): number => {
+      const r = Math.round(v);
+      return r === 0 ? (v >= 0 ? 1 : -1) * (Math.abs(v) > 0.05 ? 1 : 0) : r;
+    };
+    const dx = rnd(fdx);
+    const dy = rnd(fdy);
+    const ox = rnd(fox);
+    const oy = rnd(foy);
+    if ((dx === 0 && dy === 0) || (ox === 0 && oy === 0)) return; // zero area
+    const det = dx * oy - dy * ox;
+    if (det === 0) return; // degenerate sliver (< 1px² of translucent smear)
+    const moon = this.sky.moonlit;
+    const key = `e:${dx}:${dy}:${ox}:${oy}:${moon ? 1 : 0}`;
+    const pad = 1;
+    const minX = Math.min(0, dx, ox, dx + ox);
+    const minY = Math.min(0, dy, oy, dy + oy);
+    const w = Math.max(0, dx, ox, dx + ox) - minX + pad * 2;
+    const h = Math.max(0, dy, oy, dy + oy) - minY + pad * 2;
+    const ax = pad - minX;
+    const ay = pad - minY;
+    const en = this.castSprite(key, w, h, ax, ay, (c) => {
+      c.fillStyle = moon ? SHADOW_MOON : SHADOW_SUN;
+      c.beginPath();
+      c.moveTo(ax, ay);
+      c.lineTo(ax + dx, ay + dy);
+      c.lineTo(ax + dx + ox, ay + dy + oy);
+      c.lineTo(ax + ox, ay + oy);
+      c.closePath();
+      c.fill();
+    });
+    // A = [u′ v′]·[u v]⁻¹ (bake px → true device px, then /dpr → CSS).
+    const a00 = (fdx * oy - fox * dy) / det;
+    const a01 = (fox * dx - fdx * ox) / det;
+    const a10 = (fdy * oy - foy * dy) / det;
+    const a11 = (foy * dx - fdy * ox) / det;
+    const m: StageMatrix = [
+      a00,
+      a10,
+      a01,
+      a11,
+      x0 - (a00 * ax + a01 * ay) / dpr,
+      y0 - (a10 * ax + a11 * ay) / dpr,
+    ];
+    this.stageCastQuadAt(en, x0, y0, Math.min(1, this.sky.shadowAlpha), m);
+  }
+
+  /** Shared ellipse sprite (castContact and castBody's every part):
+   *  axis-aligned bake, rotation carried by the quad matrix. */
+  private stageCastEllipse(
+    px: number,
+    py: number,
+    rx: number,
+    ry: number,
+    ang: number,
+    alpha: number,
+  ): void {
+    if (alpha <= 0) return;
+    if (this.zoomGliding) {
+      const r = Math.max(rx, ry);
+      this.stageCastScratch(px - r - 1, py - r - 1, r * 2 + 2, r * 2 + 2, () => {
+        const c = this.sdw;
+        c.globalAlpha = alpha;
+        c.fillStyle = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
+        c.beginPath();
+        c.ellipse(px, py, rx, ry, ang, 0, Math.PI * 2);
+        c.fill();
+        c.globalAlpha = 1;
+      });
+      return;
+    }
+    const dpr = this.dpr();
+    const rxD = Math.max(1, Math.round(rx * dpr));
+    const ryD = Math.max(1, Math.round(ry * dpr));
+    if (rx * dpr < 0.05 || ry * dpr < 0.05) return; // sub-pixel sliver
+    const moon = this.sky.moonlit;
+    const key = `c:${rxD}:${ryD}:${moon ? 1 : 0}`;
+    const pad = 1;
+    const en = this.castSprite(key, rxD * 2 + pad * 2, ryD * 2 + pad * 2, rxD + pad, ryD + pad, (c) => {
+      c.fillStyle = moon ? SHADOW_MOON : SHADOW_SUN;
+      c.beginPath();
+      c.ellipse(rxD + pad, ryD + pad, rxD, ryD, 0, 0, Math.PI * 2);
+      c.fill();
+    });
+    // The bake is the quantized ellipse; the matrix stretches it back
+    // to the true radii (kx, ky) — same exact-mapping law as the
+    // parallelogram — with the rotation composed on the outside.
+    const kx = (rx * dpr) / rxD;
+    const ky = (ry * dpr) / ryD;
+    const dw = en.cv.width / dpr;
+    const dh = en.cv.height / dpr;
+    const cos = Math.cos(ang);
+    const sin = Math.sin(ang);
+    const a = cos * kx;
+    const b = sin * kx;
+    const cc = -sin * ky;
+    const d = cos * ky;
+    // Sprite center = anchor; center lands at (px, py).
+    const m: StageMatrix = [
+      a,
+      b,
+      cc,
+      d,
+      px - (a * dw) / 2 - (cc * dh) / 2,
+      py - (b * dw) / 2 - (d * dh) / 2,
+    ];
+    this.stageCastQuadAt(en, px, py, alpha, m);
+  }
+
+  /** Assembly branch of castBlob: the seeded facet blob, baked once
+   *  per (r, seed), thrown along the sun and away from each light —
+   *  the same sprite serves every throw. A smeared blob (no current
+   *  in-sort caller) keeps the honest scratch fallback. */
+  private stageCastBlob(bx: number, by: number, hTiles: number, r: number, seed: number, smearW: number): void {
+    const throws = this.lightThrows(bx, by, 0.6);
+    if (smearW > 0 || this.zoomGliding) {
+      const off = this.castOffset(hTiles);
+      let reach = Math.max(Math.abs(off.x), Math.abs(off.y));
+      for (const th of throws) reach = Math.max(reach, th.len * hTiles * this.camera.scale * 1.2);
+      const pad = r * 1.5 + smearW + reach + 2;
+      this.stageCastScratch(bx - pad, by - pad, pad * 2, pad * 2, () =>
+        this.castBlob(bx, by, hTiles, r, seed, smearW),
+      );
+      return;
+    }
+    const emitBlob = (rr: number, cx: number, cy: number, alpha: number): void => {
+      const dpr = this.dpr();
+      const rD = Math.round(rr * dpr);
+      if (rD <= 0) return;
+      const moon = this.sky.moonlit;
+      const key = `b:${rD}:${seed}:${moon ? 1 : 0}`;
+      const ext = Math.ceil(rD * 1.4) + 1; // facetBlob amplitude 0.35
+      const eyt = Math.ceil(ext * 0.62) + 1;
+      const en = this.castSprite(key, ext * 2, eyt * 2, ext, eyt, (c) => {
+        c.fillStyle = moon ? SHADOW_MOON : SHADOW_SUN;
+        c.save();
+        c.translate(ext, eyt);
+        c.scale(1, 0.62);
+        c.beginPath();
+        facetBlob(c, 0, 0, rD, seed, 7, 0.35);
+        c.restore();
+        c.fill();
+      });
+      // Exact-mapping law: the bake is the quantized-radius blob; the
+      // matrix scales it back to the true radius.
+      const k = (rr * dpr) / rD;
+      const m: StageMatrix = [k, 0, 0, k, cx - (k * en.ax) / dpr, cy - (k * en.ay) / dpr];
+      this.stageCastQuadAt(en, cx, cy, alpha, m);
+    };
+    if (this.sky.shadowAlpha >= 0.02) {
+      const off = this.castOffset(hTiles);
+      emitBlob(r, bx + off.x, by + off.y, Math.min(1, this.sky.shadowAlpha));
+    }
+    if (throws.length > 0) {
+      const s = this.camera.scale;
+      const ys = this.camera.yScale;
+      for (const th of throws) {
+        const ox = th.ux * th.len * hTiles * s;
+        const oy = th.uy * th.len * hTiles * s * ys;
+        emitBlob(r * 0.92, bx + ox, by + oy, Math.min(1, th.alpha));
+      }
+    }
+  }
+
+  /** Assembly branch of castBody: contact ellipse + sun lobe + light
+   *  lobes, each an ellipse quad (rotation in the matrix). */
+  private stageCastBody(px: number, py: number, r: number): void {
+    this.stageCastEllipse(px, py, r, r * 0.45, 0, this.contactAlpha());
+    const lobe = (ox: number, oy: number, alpha: number): void => {
+      const ang = Math.atan2(oy, ox);
+      const len = Math.hypot(ox, oy);
+      this.stageCastEllipse(
+        px + ox * 0.55,
+        py + oy * 0.55,
+        r * 0.5 + len * 0.5,
+        r * 0.4,
+        ang,
+        Math.min(1, alpha),
+      );
+    };
+    if (this.sky.shadowAlpha >= 0.02) {
+      const off = this.castOffset(0.42);
+      lobe(off.x, off.y, this.sky.shadowAlpha * 0.75);
+    }
+    const s = this.camera.scale;
+    const ys = this.camera.yScale;
+    for (const th of this.lightThrows(px, py, 0.15)) {
+      lobe(th.ux * th.len * 0.42 * s, th.uy * th.len * 0.42 * s * ys, th.alpha);
+    }
   }
 
   // ------------------------------------- TRUE-FORM silhouette shadows
@@ -3883,6 +4274,25 @@ export class Renderer {
       const a = Math.min(1, alpha / this.sdwLayerAlpha);
       const tx = px - entry.au * q + kx * q * entry.av;
       const ty = baseY + ky * q * entry.av;
+      if (this.stageAssembling && this.stageCastLane) {
+        // The mask is already a baked sprite — the in-sort throw IS a
+        // quad: same canvas, same shear matrix, exact by construction.
+        this.stageWorldItems.push({
+          kind: 'quad',
+          tex: this.stageSpriteTex(entry.cv, 0, entry),
+          sx: 0,
+          sy: 0,
+          sw: entry.cv.width,
+          sh: entry.cv.height,
+          dw: entry.cv.width,
+          dh: entry.cv.height,
+          m: [q, 0, -kx * q, -ky * q, tx, ty],
+          alpha: a,
+          blend: StageBlend.SourceOver,
+        });
+        this.stageWorldStats.quads++;
+        return;
+      }
       if (onLayer) {
         c.globalAlpha = a;
         c.setTransform(q * dprL, 0, -kx * q * dprL, -ky * q * dprL, tx * dprL, ty * dprL);
@@ -20856,34 +21266,18 @@ export class Renderer {
    * Assembly-run one item: its stage-aware painters emit quads (and
    * push their own bounded fallbacks); the item's alpha folds into
    * stageItemAlpha so stealth ghosts ride the quads. The elevated
-   * cast, which would paint the real frame from inside the item, is
-   * extracted FIRST as its own bounded paint when the item can name a
-   * box — an elevated item that cannot is the caller's split.
+   * cast runs FIRST, under assembly, exactly where the sorted loop
+   * has always run it — the cast brushes' own assembly branches emit
+   * it as sprite quads (THE CAST SPEAKS IN QUADS), so an elevated
+   * item no longer needs a named box just to keep its shadow.
    */
-  private stageAssemble(item: DrawItem, shadowBox?: { x: number; y: number; w: number; h: number }): boolean {
-    // An elevated caster with no named box would lose its in-sort
-    // shadow silently — the round-7 invisibility class. It splits.
-    if (item.elevated && item.drawShadow && !shadowBox) return false;
+  private stageAssemble(item: DrawItem): boolean {
     const mark = this.stageWorldItems.length;
-    if (item.elevated && item.drawShadow && shadowBox) {
-      const sh = item.drawShadow;
-      // A cast is a ground smear at the item's BASE — the box is the
-      // bottom strip, never the crown headroom (the full item box
-      // measured 287MB/frame of cast scratch on the crown terraces).
-      const strip = 4.2 * this.camera.scale;
-      this.stagePushPaintRaw(
-        shadowBox.x,
-        shadowBox.y + Math.max(0, shadowBox.h - strip),
-        shadowBox.w,
-        Math.min(shadowBox.h, strip),
-        () => sh(),
-        'elev-cast',
-      );
-    }
     this.stageAssembling = true;
     this.stageNeedsSplit = false;
     this.stageItemAlpha = item.alpha ?? 1;
     try {
+      if (item.elevated) item.drawShadow?.();
       if (item.occCulled) {
         // round 9's verdict: nothing of it lies in the viewport.
       } else if (this.outlineOn && item.body) {
@@ -20915,8 +21309,20 @@ export class Renderer {
   private stageNeedsSplit = false;
 
   /** Wrap one item's dispatch cell as a bounded paint closure — the
-   *  SAME-BRUSH swap: the cell runs against the scratch ctx. */
+   *  SAME-BRUSH swap: the cell runs against the scratch ctx. An
+   *  elevated item's cast emits FIRST as sprite quads (the cast
+   *  brushes paint through this.sdw, which the ctx swap below never
+   *  touches — deferred, it would land on the real frame). */
   private stagePaintItem(item: DrawItem, px: number, py: number, pw: number, ph: number): void {
+    const hasCast = item.elevated === true && item.drawShadow !== undefined;
+    if (hasCast) {
+      this.stageAssembling = true;
+      try {
+        item.drawShadow!();
+      } finally {
+        this.stageAssembling = false;
+      }
+    }
     const pad = 8;
     const x1 = Math.min(px + pw, this.w + pad);
     const y1 = Math.min(py + ph, this.h + pad);
@@ -20936,7 +21342,7 @@ export class Renderer {
         const saved = this.ctx;
         this.ctx = ctx;
         try {
-          this.dispatchWorldItem(item);
+          this.dispatchWorldItem(item, hasCast);
         } finally {
           this.ctx = saved;
         }
@@ -21019,38 +21425,20 @@ export class Renderer {
       }
       // Mature trees: assembly always — the painter's blit sites emit
       // quads when the sprite stands and push a bounded live paint
-      // when it does not. occCulled trees emit nothing (round 9).
+      // when it does not. occCulled trees still cast (the shadow lies
+      // on the ground and may be visible from inside the cull).
       if (item.occKey !== undefined && item.occX0 !== undefined) {
-        if (item.occCulled) continue;
-        const pad = 26; // the cull margin's own shear slack
-        if (
-          !this.stageAssemble(item, {
-            x: item.occX0 - pad,
-            y: item.occY0! - pad,
-            w: item.occX1! - item.occX0 + pad * 2,
-            h: item.occY1! - item.occY0! + pad * 2,
-          })
-        ) {
+        if (!this.stageAssemble(item)) {
           this.stageWorldFlush();
           st.splits++;
           this.dispatchWorldItem(item);
         }
         continue;
       }
-      // Band buckets: a pure lattice blit — quad at assembly; an
-      // elevated bucket's re-minted cast is the shadow box.
+      // Band buckets: a pure lattice blit — quad at assembly; the
+      // elevated bucket's re-minted casts emit as sprite quads.
       if (item.band !== undefined) {
-        const bkq = item.band.bk;
-        const kb = this.camera.scale / item.band.sb.gridPx;
-        const pA = this.camera.worldToScreen(item.band.sb.wx0, item.band.sb.rowY, this.w, this.h);
-        if (
-          !this.stageAssemble(item, {
-            x: pA.x - bkq.padL * kb - 3 * sc,
-            y: pA.y - bkq.padT * kb - 3 * sc,
-            w: bkq.canvas.width * kb + 6 * sc,
-            h: bkq.canvas.height * kb + 6 * sc,
-          })
-        ) {
+        if (!this.stageAssemble(item)) {
           this.stageWorldFlush();
           st.splits++;
           this.dispatchWorldItem(item);
@@ -21059,9 +21447,9 @@ export class Renderer {
       }
       // Push-site-marked stage-safe items (props, flora, cliffs,
       // elevated rows): their painters carry the quad and fallback
-      // branches; pb doubles as the elevated-cast box when present.
+      // branches.
       if (item.stageSafe === true) {
-        if (!this.stageAssemble(item, item.pb)) {
+        if (!this.stageAssemble(item)) {
           this.stageWorldFlush();
           st.splits++;
           this.dispatchWorldItem(item);
@@ -21080,7 +21468,7 @@ export class Renderer {
         const padBot = 0.7 * sc + (item.elevated ? 3 * sc : 0);
         const box = { x: b.x - padX, y: b.y - padTop, w: b.w + padX * 2, h: b.h + padTop + padBot };
         if (this.outlineOn && !this.bodyRelightPossible()) {
-          if (!this.stageAssemble(item, box)) {
+          if (!this.stageAssemble(item)) {
             this.stagePaintItem(item, box.x, box.y, box.w, box.h);
           }
         } else {
@@ -21110,24 +21498,46 @@ export class Renderer {
           j++;
         }
         const run = items.slice(i, j);
+        // The run's elevated casts emit FIRST as sprite quads (under
+        // everything the run paints — drawShadow-before-draw, the
+        // sorted loop's own order). The old closure ran them through
+        // this.sdw, which the scratch swap never redirected: they
+        // were landing on the 2d underframe beneath the GL image.
+        this.stageAssembling = true;
+        try {
+          for (const it2 of run) {
+            if (it2.elevated) it2.drawShadow?.();
+          }
+        } finally {
+          this.stageAssembling = false;
+        }
         this.stagePushPaintRaw(
           ux0,
           uy0,
           ux1 - ux0,
           uy1 - uy0,
           () => {
-            for (const it2 of run) {
-              if (it2.elevated) it2.drawShadow?.();
-              it2.stageRebuild!();
-            }
+            for (const it2 of run) it2.stageRebuild!();
           },
           'wall-run',
         );
         i = j - 1;
         continue;
       }
-      // Bulk singles (debris, grounded birds, seat halos): the datum
-      // projects; a body's breadth of pad covers tumble and wing.
+      // Seated halos: two Lighter quads, straight from the brush —
+      // additive content can never ride the scratch lane (see
+      // drawSeatedHalo).
+      if (item.bulk === BulkKind.Halo) {
+        this.stageAssembling = true;
+        try {
+          this.drawBulkItem(item);
+        } finally {
+          this.stageAssembling = false;
+        }
+        continue;
+      }
+      // Bulk singles (debris, grounded birds): the datum projects; a
+      // body's breadth of pad covers tumble and wing.
       if (item.bulk !== undefined) {
         const d = item.bulkArg as { x: number; y: number };
         const pd = this.liftedWTS(d.x, d.y);
@@ -21371,12 +21781,12 @@ export class Renderer {
    * extracted so the stage lane's paint closures replay the SAME
    * cell against a scratch ctx (SAME-BRUSH, one truth, two modes).
    */
-  private dispatchWorldItem(item: DrawItem): void {
+  private dispatchWorldItem(item: DrawItem, castDone = false): void {
     // Stealth ghost: wrap OUTSIDE the outline pass so the dilated
     // silhouette ring fades with the body (alpha inside draw() would
     // leave the ring solid). The nameplate stays opaque.
     if (item.alpha !== undefined) this.ctx.globalAlpha = item.alpha;
-    if (item.elevated) item.drawShadow?.();
+    if (item.elevated && !castDone) item.drawShadow?.();
     // THE OFF-SCREEN TREE STANDS DOWN: nothing of it lies in the
     // viewport. Its shadow above still casts — that lies on the
     // ground and may well be visible from inside it.
@@ -21414,19 +21824,51 @@ export class Renderer {
    * core glints later in the post pass (drawGlows).
    */
   private drawSeatedHalo(g: EmitterGlowOut): void {
-    const ctx = this.ctx;
     const s = this.camera.scale;
     const ys = this.camera.yScale;
     const sprite = radialGlowSprite(g.rgb, GLOW_STOPS, 0.08);
-    ctx.globalCompositeOperation = 'lighter';
     const p = this.liftedWTS(g.x, g.gy);
     const pr = g.r * s;
+    const q = this.liftedWTS(g.x, g.y);
+    const cr = pr * HALO_CORONA_R;
+    if (this.stageAssembling) {
+      // THE HALO IS TWO QUADS — the stage speaks Lighter natively.
+      // The scratch lane could never carry this brush: additive needs
+      // the destination, and replaying 'lighter' against a transparent
+      // scratch then compositing source-over quietly erased the glow
+      // (the crown's braziers lost their pools — a measured parity
+      // excess, not a visible bug report). Over the 2d GROUND stage a
+      // quad-lane halo still under-adds by ground·srcα (the alpha
+      // stage composites source-over); over world content it is
+      // exact — and the pool sits on world rows wherever fixtures
+      // stand on dressed ground.
+      const emit = (cx: number, cy: number, rw: number, rh: number, alpha: number): void => {
+        if (alpha < 0.01) return;
+        this.stageWorldItems.push({
+          kind: 'quad',
+          tex: this.stageSpriteTex(sprite, 0, sprite),
+          sx: 0,
+          sy: 0,
+          sw: sprite.width,
+          sh: sprite.height,
+          dw: rw * 2,
+          dh: rh * 2,
+          m: stageAt(cx - rw, cy - rh),
+          alpha: Math.min(1, alpha),
+          blend: StageBlend.Lighter,
+        });
+        this.stageWorldStats.quads++;
+      };
+      emit(p.x, p.y, pr, pr * ys, g.a * HALO_POOL_A);
+      emit(q.x, q.y, cr, cr, g.a * HALO_CORONA_A);
+      return;
+    }
+    const ctx = this.ctx;
+    ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = Math.min(1, g.a * HALO_POOL_A);
     ctx.drawImage(sprite, p.x - pr, p.y - pr * ys, pr * 2, pr * 2 * ys);
     // A ground flame's corona hugs its pool; an air-mounted one rises
     // to its bracket — the projAir offset is already inside g.y.
-    const q = this.liftedWTS(g.x, g.y);
-    const cr = pr * HALO_CORONA_R;
     ctx.globalAlpha = Math.min(1, g.a * HALO_CORONA_A);
     ctx.drawImage(sprite, q.x - cr, q.y - cr, cr * 2, cr * 2);
     ctx.globalAlpha = 1;
@@ -23361,12 +23803,25 @@ export class Renderer {
     const m = this.treeOrSaplingModel(tile, h);
     const ys = this.camera.yScale;
     if (sunOn) {
-      const c = this.beginCastFill();
-      if (c) {
+      // Under assembly the sprite blit becomes a quad (THE CAST
+      // SPEAKS IN QUADS — same canvas, same matrix, like castMask);
+      // the live paths (regrowth's animated fill) take a bounded
+      // scratch paint. The sprite-ensure logic below is shared by
+      // both modes — one cache, one budget, one truth.
+      const asm = this.stageAssembling && this.stageCastLane;
+      const c = asm ? null : this.beginCastFill();
+      if (c || asm) {
         const s = this.camera.scale;
         if (grow < 1) {
           // Regrowth animates shape per frame — build live.
-          c.fill(
+          if (asm) {
+            const pad = s * (h * 2 + 3);
+            this.stageCastScratch(bx - pad, groundY - pad, pad * 2, pad * 2, () =>
+              this.drawTreeShadow(bx, by, wx, wy, h, tile, tSec, grow),
+            );
+            return;
+          }
+          c!.fill(
             this.treeShadowPath(
               m,
               bx,
@@ -23447,6 +23902,27 @@ export class Renderer {
             // down (same law as the body cull, one layer lower).
             if (dx0 + dwS + smg < 0 || dx0 - smg > this.w || dy0 + dhS < 0 || dy0 > this.h) {
               // nothing on screen to shade
+            } else if (asm) {
+              // The blit as a quad: plain when the sway is sub-pixel,
+              // else the SAME composed shear matrix. rev = the bake's
+              // frame stamp, so a cadence re-bake re-uploads once.
+              const sway = Math.abs(sx) * dhS >= 1.5;
+              this.stageWorldItems.push({
+                kind: 'quad',
+                tex: this.stageSpriteTex(sh.canvas, sh.frame, sh),
+                sx: 0,
+                sy: 0,
+                sw: pw2,
+                sh: ph2,
+                dw: sway ? sh.cw : dwS,
+                dh: sway ? sh.ch : dhS,
+                m: sway
+                  ? [k, 0, sx * k, k, bx - sh.ax * k - sh.ay * sx * k, groundY - sh.ay * k]
+                  : stageAt(dx0, dy0),
+                alpha: Math.min(1, this.sky.shadowAlpha),
+                blend: StageBlend.SourceOver,
+              });
+              this.stageWorldStats.quads++;
             } else if (Math.abs(sx) * dhS < 1.5) {
               // Sub-pixel sway: the plain 9-arg blit carries the
               // scale ratio in its dest rect and skips the matrix
@@ -23454,31 +23930,58 @@ export class Renderer {
               // their sway gate is twice the body's 0.75px — the
               // wider gate halves the transform-pair population and
               // is invisible on a blob (the body keeps its own).
-              c.drawImage(sh.canvas, 0, 0, pw2, ph2, dx0, dy0, dwS, dhS);
+              c!.drawImage(sh.canvas, 0, 0, pw2, ph2, dx0, dy0, dwS, dhS);
             } else {
               // ONE composed transform + its exact inverse (b = 0
               // keeps it closed-form): translate(bx,gy)·[k, sx·k; 0,
               // k]. Six matrix ops per cast were a measured cost of
               // dense meadows; two are not.
-              c.transform(k, 0, sx * k, k, bx, groundY);
-              c.drawImage(sh.canvas, 0, 0, pw2, ph2, -sh.ax, -sh.ay, sh.cw, sh.ch);
-              c.transform(1 / k, 0, -sx / k, 1 / k, (sx * groundY - bx) / k, -groundY / k);
+              c!.transform(k, 0, sx * k, k, bx, groundY);
+              c!.drawImage(sh.canvas, 0, 0, pw2, ph2, -sh.ax, -sh.ay, sh.cw, sh.ch);
+              c!.transform(1 / k, 0, -sx / k, 1 / k, (sx * groundY - bx) / k, -groundY / k);
             }
           }
         }
-        c.globalAlpha = 1;
+        if (c) c.globalAlpha = 1;
       }
     }
     if (throws.length > 0) {
-      const c = this.sdw;
-      const wind = windScalarAt(wx, wy, tSec);
-      c.fillStyle = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
-      for (const th of throws) {
-        c.globalAlpha = Math.min(1, th.alpha / this.sdwLayerAlpha);
-        c.fill(this.treeShadowPath(m, bx, groundY, grow, wind, th.ux * th.len, th.uy * th.len * ys));
+      if (this.stageAssembling && this.stageCastLane) {
+        // Light throws are live path fills (wind in the silhouette) —
+        // one bounded scratch paint per tree, night-and-lamp only.
+        const pad = this.camera.scale * (h * 2 + 3);
+        this.stageCastScratch(bx - pad, groundY - pad, pad * 2, pad * 2, () =>
+          this.drawTreeThrowShadows(m, bx, groundY, grow, wx, wy, tSec),
+        );
+        return;
       }
-      c.globalAlpha = 1;
+      this.drawTreeThrowShadows(m, bx, groundY, grow, wx, wy, tSec);
     }
+  }
+
+  /** The light-throw half of a tree's cast, extracted so the stage's
+   *  bounded fallback replays EXACTLY this (throws re-read at flush —
+   *  same frame, same lights). */
+  private drawTreeThrowShadows(
+    m: TreeModel,
+    bx: number,
+    groundY: number,
+    grow: number,
+    wx: number,
+    wy: number,
+    tSec: number,
+  ): void {
+    const throws = this.lightThrows(bx, groundY, 0.6);
+    if (throws.length === 0) return;
+    const ys = this.camera.yScale;
+    const c = this.sdw;
+    const wind = windScalarAt(wx, wy, tSec);
+    c.fillStyle = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
+    for (const th of throws) {
+      c.globalAlpha = Math.min(1, th.alpha / this.sdwLayerAlpha);
+      c.fill(this.treeShadowPath(m, bx, groundY, grow, wind, th.ux * th.len, th.uy * th.len * ys));
+    }
+    c.globalAlpha = 1;
   }
 
 
