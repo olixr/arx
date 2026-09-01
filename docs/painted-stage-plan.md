@@ -1179,3 +1179,37 @@ Judge crown against its control.
 Epic A stands complete. Epic B (THE CAMERA LEARNS TO LEAN) builds on
 the quad path the atlas consolidated; the Display toggle's default
 waits on the field machine's own read of the new moving smoothness.
+
+## As-built — THE MUSEUM PAYS ITS DEBTS (2026-09-01, band fourteen 9841a4e9)
+
+The sprite-atlas pass ended with an eye-level audit of every prop the
+atlas now serves; the audit's open fixes shipped as one screenshot-
+judged batch (fix → vite --force → museum plane → DPR-4 macro shot →
+judged before commit):
+
+- **Dither rides the zoom** (renderer.ts): the Bayer cell scales with
+  camera zoom, quantized to half-steps in the cache key.
+- **The basin holds water** (props/house.ts): rebuilt on the
+  open-volume law — feet, chamfered sky-lit rim, sunk water with far
+  shadow and drifting glint, hash-dealt chip and moss.
+- **The tilted trench** (terrain.ts): the irrigation channel shows its
+  far inner wall, sinks its water, bites the near lip over the cut,
+  and carpenters open ends shut with cap boards between corner posts.
+- **The cap owns the cross** (props/farm.ts): windmill cap dome with
+  overhang and lit cheek, windshaft housing carrying the sail cross
+  proud of the tower, fat hub boss, east shade lane, stone plinth,
+  framed door.
+- **The cloth reads sewn** (props/house.ts): awning batten seams on
+  the top canvas; the chevron style carries its points onto the top.
+- **The shingle names its trade** (props/house.ts): hanging signs deal
+  tankard/loaf/fish/boot/key by placement hash.
+- **The strays stop paving** (terrain.ts): BannerPoleDyed,
+  IrrigationChannel, HerbPlanter, TiedParcels join the nearestFloor
+  underlay law. LESSON: drawTileDetail's `m` is the RESOLVED material
+  — resolving a detail-bearing tile's underlay erases its detail; the
+  raw authored ground now threads through as `rawAt`, and the trench's
+  paint + run connectivity key on it.
+
+Remaining audit items charted, not started: snow stray islands at the
+graveyard (dressing pass), guard stride, graveyard blade calibration,
+gravestone variants, face marks.
