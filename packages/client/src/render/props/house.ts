@@ -8,7 +8,7 @@ import { windAtInto } from '../grass.js';
 import { packTile } from '../interiors.js';
 import { AWNING_CLOTHS, STALL_BANNERS, TRD_STEEL, TRD_STEEL_LIT, WALL_TILES, WIND_TMP, twinkle } from '../paintVocab.js';
 import { shade } from '../rig.js';
-import { chamferRect, facetCircle } from '../shapes.js';
+import { chamferRect, facetBlob, facetCircle } from '../shapes.js';
 import { GARDEN_DYES } from './palette.js';
 import { BED_RUN_CAP, Tile, bannerStandInfo, hashCoords } from '@arx/shared';
 import type { DrawItem } from '../renderer.js';
@@ -1988,8 +1988,28 @@ function paintMarketStall(rend: PropHost, env: PropFrame): DrawItem {
         if (style.kind === 'chevron') {
           ctx.fillStyle = style.b;
           ctx.fillRect(oxL, hemY - s * 0.08, oxR - oxL, s * 0.08);
+          // The top carries the hem's points north over the band,
+          // so both planes read as one sewn cloth.
+          for (let k = 0; k < 4; k++) {
+            const vx = tileL + k * bandW;
+            ctx.beginPath();
+            ctx.moveTo(vx + bandW * 0.18, hemY - s * 0.08);
+            ctx.lineTo(vx + bandW * 0.82, hemY - s * 0.08);
+            ctx.lineTo(vx + bandW * 0.5, hemY - s * 0.26);
+            ctx.closePath();
+            ctx.fill();
+          }
         }
       }
+      // Batten seams: the top is four bolts of cloth stretched
+      // over ribs — a shade seam at each joint with a sun ridge
+      // beside it, so the big plane reads sewn, never painted.
+      ctx.fillStyle = 'rgba(20, 14, 28, 0.16)';
+      for (let k = 1; k < 4; k++)
+        ctx.fillRect(tileL + k * bandW - s * 0.01, canTop, s * 0.02, hemY - canTop);
+      ctx.fillStyle = 'rgba(255, 252, 235, 0.1)';
+      for (let k = 1; k < 4; k++)
+        ctx.fillRect(tileL + k * bandW + s * 0.012, canTop, s * 0.012, hemY - canTop);
       // The cloth answers the same wind the grass feels: broad
       // shimmer swells, a sun-warmed hem, a shaded back lip.
       ctx.fillStyle = `rgba(255, 252, 235, ${0.03 + 0.04 * Math.max(0, wind.l)})`;
@@ -2203,12 +2223,58 @@ function paintHangingSign(rend: PropHost, env: PropFrame): DrawItem {
       ctx.beginPath();
       chamferRect(ctx, -s * 0.17, s * 0.16, s * 0.34, s * 0.22, s * 0.025);
       ctx.fill();
-      // The device: a simple tankard silhouette with a handle.
+      // The device: the trade's mark, hash-dealt so a lane of
+      // shingles reads as different shops — tankard, loaf, fish,
+      // boot, key — never one tavern cloned down the street.
+      const dev = hashCoords(151, tx, ty) % 5;
       ctx.fillStyle = '#e8dfc8';
-      ctx.fillRect(-s * 0.055, s * 0.2, s * 0.1, s * 0.13);
-      ctx.fillRect(s * 0.05, s * 0.23, s * 0.035, s * 0.06);
-      ctx.fillStyle = 'rgba(36, 22, 10, 0.35)';
-      ctx.fillRect(-s * 0.055, s * 0.215, s * 0.1, s * 0.02);
+      if (dev === 0) {
+        // The tankard with a handle.
+        ctx.fillRect(-s * 0.055, s * 0.2, s * 0.1, s * 0.13);
+        ctx.fillRect(s * 0.05, s * 0.23, s * 0.035, s * 0.06);
+        ctx.fillStyle = 'rgba(36, 22, 10, 0.35)';
+        ctx.fillRect(-s * 0.055, s * 0.215, s * 0.1, s * 0.02);
+      } else if (dev === 1) {
+        // The loaf: a fat oval wearing three bakers' scores.
+        ctx.beginPath();
+        ctx.ellipse(0, s * 0.27, s * 0.085, s * 0.055, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(36, 22, 10, 0.4)';
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        for (const u of [-0.03, 0, 0.03] as const) {
+          ctx.beginPath();
+          ctx.moveTo(u * s - s * 0.02, s * 0.245);
+          ctx.lineTo(u * s + s * 0.02, s * 0.3);
+          ctx.stroke();
+        }
+      } else if (dev === 2) {
+        // The fish: body, tail fan, one dark eye.
+        ctx.beginPath();
+        ctx.ellipse(-s * 0.015, s * 0.27, s * 0.075, s * 0.04, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(s * 0.05, s * 0.27);
+        ctx.lineTo(s * 0.095, s * 0.235);
+        ctx.lineTo(s * 0.095, s * 0.305);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = 'rgba(36, 22, 10, 0.5)';
+        ctx.fillRect(-s * 0.06, s * 0.258, s * 0.016, s * 0.016);
+      } else if (dev === 3) {
+        // The boot: shaft and foot with a dark sole line.
+        ctx.fillRect(-s * 0.05, s * 0.2, s * 0.055, s * 0.12);
+        ctx.fillRect(-s * 0.05, s * 0.29, s * 0.115, s * 0.045);
+        ctx.fillStyle = 'rgba(36, 22, 10, 0.35)';
+        ctx.fillRect(-s * 0.05, s * 0.322, s * 0.115, s * 0.013);
+      } else {
+        // The key: bow, shaft, two teeth.
+        ctx.beginPath();
+        ctx.arc(-s * 0.045, s * 0.245, s * 0.032, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(-s * 0.03, s * 0.24, s * 0.11, s * 0.022);
+        ctx.fillRect(s * 0.05, s * 0.26, s * 0.018, s * 0.035);
+        ctx.fillRect(s * 0.018, s * 0.26, s * 0.018, s * 0.025);
+      }
       ctx.restore();
     },
   };
@@ -3293,25 +3359,86 @@ function paintBasin(rend: PropHost, env: PropFrame): DrawItem {
       // Draw-time ctx capture: the outline pass swaps rend.ctx
       // to its scratch — the build-time capture would paint past it.
       const ctx = rend.ctx;
-      // Contact shade + stone trough with standing water.
-      ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
-      ctx.fillRect(p.x - s * 0.42, baseY - s * 0.01, s * 0.84, s * 0.045);
-      ctx.fillStyle = '#5b5566';
+      // THE TROUGH IS AN OPEN VOLUME (art audit #5): the camera looks
+      // INTO the basin — foreshortened rim, the far inner wall showing
+      // as a shaded band, water sunk below the lip and darkest at the
+      // far edge — the well's own cylinder law in rectangular form.
+      // THE HASH DEALS THE STONE: tone, the rim chip and the moss lick
+      // vary per placement, so a courtyard of basins never twins.
+      const stone = shade('#5b5566', ((h >> 3) & 3) * 4 - 4);
+      const hw = s * 0.42;
+      const wallT = s * 0.055;
+      const rimY = baseY - s * 0.4;
+      const rimDepth = syT * 0.16;
+      const footH = s * 0.05;
+      // Contact shade seats the stone (an ellipse, not a smear).
+      ctx.fillStyle = 'rgba(18, 12, 26, 0.24)';
       ctx.beginPath();
-      chamferRect(ctx, p.x - s * 0.42, baseY - s * 0.42, s * 0.84, s * 0.42, s * 0.06);
+      ctx.ellipse(p.x, baseY + s * 0.012, hw * 1.04, syT * 0.06, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = shade('#5b5566', -10);
-      ctx.fillRect(p.x - s * 0.42, baseY - s * 0.1, s * 0.84, s * 0.1);
-      ctx.fillStyle = shade('#5b5566', 16);
-      ctx.fillRect(p.x - s * 0.4, baseY - s * 0.42, s * 0.8, s * 0.05);
+      // Two squat feet — the trough stands on the floor, never floats.
+      ctx.fillStyle = shade(stone, -18);
+      ctx.fillRect(p.x - hw * 0.72, baseY - footH, s * 0.12, footH);
+      ctx.fillRect(p.x + hw * 0.72 - s * 0.12, baseY - footH, s * 0.12, footH);
+      // The body: front face with the sun-law lit west arris.
+      ctx.fillStyle = stone;
+      ctx.beginPath();
+      chamferRect(ctx, p.x - hw, rimY, hw * 2, baseY - rimY - footH, s * 0.05);
+      ctx.fill();
+      ctx.fillStyle = shade(stone, 12);
+      ctx.fillRect(p.x - hw + s * 0.015, rimY + s * 0.03, s * 0.05, baseY - rimY - footH - s * 0.06);
+      ctx.fillStyle = shade(stone, -12);
+      ctx.fillRect(p.x - hw, baseY - footH - s * 0.07, hw * 2, s * 0.07);
+      // A tooled seam band low on the face — one quiet secondary read.
+      ctx.fillStyle = shade(stone, -7);
+      ctx.fillRect(p.x - hw + s * 0.04, baseY - footH - s * 0.16, hw * 2 - s * 0.08, s * 0.02);
+      // THE RIM: the sky-lit top plane, foreshortened, brighter than
+      // any face (the crate-lid grammar), with a chipped corner dealt
+      // by the hash.
+      ctx.fillStyle = shade(stone, 22);
+      ctx.beginPath();
+      chamferRect(ctx, p.x - hw, rimY - rimDepth, hw * 2, rimDepth + s * 0.02, s * 0.03);
+      ctx.fill();
+      if (((h >> 6) & 3) === 0) {
+        const chipX = p.x + (((h >> 8) & 1) ? hw * 0.6 : -hw * 0.7);
+        ctx.fillStyle = shade(stone, -6);
+        ctx.beginPath();
+        facetBlob(ctx, chipX, rimY - rimDepth * 0.4, s * 0.035, h ^ 91, 5, 0.6);
+        ctx.fill();
+      }
+      // THE OPENING: inner walls seen from above — the far (north)
+      // band deepest in shadow, thin side lips, then the water SUNK
+      // below the rim.
+      const ix = p.x - hw + wallT;
+      const iw = hw * 2 - wallT * 2;
+      const innerTop = rimY - rimDepth + syT * 0.045;
+      const innerH = rimDepth + s * 0.1;
+      ctx.fillStyle = shade(stone, -26);
+      ctx.fillRect(ix, innerTop, iw, innerH);
+      ctx.fillStyle = shade(stone, -34);
+      ctx.fillRect(ix, innerTop, iw, syT * 0.05);
+      // The water, a half-wall down: deep at the far edge, lit toward
+      // the near lip, one drifting glint and a still rim reflection.
+      const wTop = innerTop + syT * 0.05;
+      const wH = innerH - syT * 0.05 - s * 0.02;
+      ctx.fillStyle = '#33619e';
+      ctx.fillRect(ix + s * 0.008, wTop, iw - s * 0.016, wH);
       ctx.fillStyle = '#3d6fb8';
-      ctx.beginPath();
-      chamferRect(ctx, p.x - s * 0.33, baseY - s * 0.36, s * 0.66, s * 0.16, s * 0.04);
-      ctx.fill();
-      // A drifting glint keeps the water alive.
-      const gx2 = p.x - s * 0.24 + ((t * 0.15 + h * 0.1) % 1) * s * 0.4;
+      ctx.fillRect(ix + s * 0.008, wTop + wH * 0.45, iw - s * 0.016, wH * 0.55);
+      ctx.fillStyle = 'rgba(20, 32, 58, 0.5)';
+      ctx.fillRect(ix + s * 0.008, wTop, iw - s * 0.016, syT * 0.03);
+      const gx2 = ix + s * 0.05 + ((t * 0.15 + h * 0.1) % 1) * (iw - s * 0.2);
       ctx.fillStyle = 'rgba(214, 230, 255, 0.5)';
-      ctx.fillRect(gx2, baseY - s * 0.31, s * 0.09, s * 0.025);
+      ctx.fillRect(gx2, wTop + wH * 0.55, s * 0.09, s * 0.022);
+      ctx.fillStyle = 'rgba(214, 230, 255, 0.16)';
+      ctx.fillRect(ix + s * 0.02, wTop + wH - s * 0.03, iw - s * 0.04, s * 0.014);
+      // The moss lick at one foot, when the hash wills it.
+      if (((h >> 10) & 3) === 0) {
+        ctx.fillStyle = 'rgba(74, 97, 56, 0.55)';
+        ctx.beginPath();
+        facetBlob(ctx, p.x - hw * 0.66, baseY - footH - s * 0.02, s * 0.05, h ^ 47, 5, 0.62);
+        ctx.fill();
+      }
     },
   };
 }

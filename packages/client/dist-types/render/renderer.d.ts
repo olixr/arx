@@ -2912,7 +2912,12 @@ export declare class Renderer {
      */
     private drawGhostEmber;
     /** The Bayer screen-door tile at device resolution — shared by the
-     *  veil window and the ghost ember's weave. */
+     *  veil window and the ghost ember's weave. THE WEAVE RIDES THE
+     *  ZOOM: the cell scales with the camera so the ember reads as the
+     *  same cloth at every magnification — a fixed device cell turned
+     *  into shimmering 1px noise against a zoomed body (the art
+     *  audit's #1). Quantized to half-steps so the glide never mints a
+     *  pattern per frame. */
     private ditherPattern;
     /**
      * THE STEP-ASIDE FADE's per-sprite gate: returns the alpha this
