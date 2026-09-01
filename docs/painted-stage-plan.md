@@ -1104,3 +1104,43 @@ round entry. The rig lanes (36 et al) serve both trees.
 - Mobile-specific work (the toggle + fallback covers it).
 - Editor/landing/map renderers.
 - The Three.js spike branch (reference only).
+
+### THE WEAK-GPU ROUND, PART 2 — AS BUILT (2026-09-01). THE STORE KEEPS A BUDGET, AND THE TABLE IS HONEST.
+
+**The before/after table** (this machine, headless Chrome, 30fps display
+cap; CDP setCPUThrottlingRate(20) = the weak-machine method; fresh page
+per configuration, stage chosen AT LOGIN — toggling mid-run measures
+arrival churn, not the product; scripts/probes/stage-bench.mjs):
+
+| profile | scene | Canvas2D (initial) | Hybrid (stage ON) |
+|---|---|---|---|
+| x1 | steady ×3 | 30fps cap | 30fps cap |
+| x1 | moving circuit | cap, worst 34ms | cap, worst 100ms |
+| x20 | dawnmead steady | 8fps | 8fps |
+| x20 | crown steady | 6fps (world 77ms) | 4fps (world 185ms) |
+| x20 | moving circuit | 4fps p90 483 | 3fps p90 600 |
+
+**THE STORE KEEPS A BUDGET** (the orphan sweep's missing half, and the
+round's real find): the GL texture ledger had no ceiling — eight
+fresh-map hops stacked 7,696 textures / 3.1GB in the ~30s the periodic
+sweep tolerates, enough to kill the browser's GPU process (it did,
+mid-bench). glStage records are now a true LRU (re-insert on touch) with
+a 512MB byte budget evicted at upload time, never touching the current
+frame's working set. Post-fix: the circuit pins the ledger at exactly
+512MB, no crash, and the OLD lane measured 3fps/2fps where the budgeted
+lane holds 4fps/3fps — the budget pays for itself in eviction hygiene.
+
+**No foundations regression**: cold-login confessions old-vs-new are
+identical (world ~2.3ms, same uploads/textures); the epic-era 7-10fps
+part-1 figure came from a different, shallower circuit — this table's
+circuit fans through fully fresh wilds and is the standing benchmark.
+
+**What the numbers order next** (the atlas's case is now measured, not
+predicted): crown ON at x20 spends its world phase switch- and
+upload-bound — 581 draws across 2,221 textures, 5.0MB/frame texImage2D.
+THE SPRITE ATLAS (pack sprite bakes into shared pages; targets: draws
+581 → <60, steady uploads → <1MB/frame) is the one remaining Epic A
+item, a dedicated phase gated by stage-bench + the parity battery. The
+Display toggle stays default-OFF until the atlas lands the weak-profile
+win; Epic B's camera work builds on the same quad path the atlas
+consolidates, so the atlas goes first.

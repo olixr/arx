@@ -80,6 +80,8 @@ export class GlStage implements StageBackend {
   private readonly records = new Map<StageTexture, TexRecord>();
   /** Exact resident texture bytes (the `?perf` gpu line's source). */
   textureBytes = 0;
+  /** The texture store's ceiling — ~2x a settled town's working set. */
+  private static readonly TEX_BUDGET_BYTES = 512 * 1024 * 1024;
   /** Bytes uploaded since the last statsReset — the jitter signal. */
   uploadedBytes = 0;
   uploads = 0;
@@ -265,8 +267,13 @@ export class GlStage implements StageBackend {
     let rec = this.records.get(tex);
     if (!rec) {
       rec = { glTex: gl.createTexture()!, uploadedRev: -1, w: 0, h: 0, bytes: 0, filter: tex.filter, used: this.frameNo };
-      this.records.set(tex, rec);
+    } else {
+      // THE LEDGER IS AN LRU: a Map iterates in insertion order, so
+      // re-inserting on every touch keeps the coldest record first —
+      // what the byte budget below evicts from.
+      this.records.delete(tex);
     }
+    this.records.set(tex, rec);
     rec.used = this.frameNo;
     if (rec.uploadedRev !== tex.rev || rec.filter !== tex.filter) {
       const c = tex.canvas;
@@ -281,6 +288,21 @@ export class GlStage implements StageBackend {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       const bytes = c.width * c.height * 4;
       this.textureBytes += bytes - rec.bytes;
+      // THE STORE KEEPS A BUDGET (the orphan sweep's missing half):
+      // eight fresh-map hops can stack gigabytes of retired world in
+      // the 30s the periodic sweep tolerates — enough to take a weak
+      // GPU process down. Over budget, the coldest records go NOW;
+      // the current frame's working set (used === frameNo) is never
+      // touched, so nothing on screen can evict itself.
+      if (this.textureBytes > GlStage.TEX_BUDGET_BYTES) {
+        for (const [t2, r2] of this.records) {
+          if (this.textureBytes <= GlStage.TEX_BUDGET_BYTES) break;
+          if (r2.used >= this.frameNo) break; // insertion order: all hotter beyond
+          gl.deleteTexture(r2.glTex);
+          this.textureBytes -= r2.bytes;
+          this.records.delete(t2);
+        }
+      }
       this.uploadedBytes += bytes;
       this.uploads++;
       rec.bytes = bytes;
