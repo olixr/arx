@@ -1,0 +1,218 @@
+# Foundations — THE MONOLITHS COME DOWN
+
+*Charter written 2026-09-01, on `epic/foundations` cut from main at 62044c7a. Line anchors
+below are as of that commit and will drift as phases land — trust the names, re-grep the lines.*
+
+The render-performance and painted-stage campaigns reworked nearly every part of the
+pipeline, and in doing so mapped every seam in the codebase. This epic spends that
+knowledge on structure: the monoliths come down into modules that follow the codebase's
+own proven patterns, so the next campaign starts from rooms instead of one great hall.
+
+## §1 The audit (five territories, surveyed 2026-09-01)
+
+**The monoliths.** `render/renderer.ts` 70,042 lines (426 methods, ~200 fields — and
+`objectItem()` alone is 29,416 lines, a 326-case switch, 42% of the file).
+`server/game/gameServer.ts` 34,235 lines (one class, ~603 members — 49.7% of the server).
+`render/armor.ts` 28,284 (two painter functions own 18,300 of them: `drawHelmet` 12,020,
+`drawTorsoGarment` 6,290). `render/rig.ts` 26,142 (half engine, half a ~25-species painter
+catalog; 96 importers). `ui/panels.ts` + `ui/stationPanels.ts` 7,716 lines, two god-classes,
+zero tests. `main.ts` 4,492 (75 imports; a 659-line event-callback literal; a 912-line frame fn).
+`game/clientGame.ts` 4,125 (72-case message switch + a 41-callback event surface — the same
+list twice; 34 importers, zero tests).
+
+**The good bones (found, not hoped for).** No god-globals anywhere — wiring is constructor
+injection from `main.ts`. Package layering is strict and clean: `shared ← content ← {server,
+client}`, zero deep-path imports, zero package cycles, project references wired, no committed
+dist. Server tests (36 files) drive private methods through hand-built state slates — each
+slate is a ready-made interface spec for extraction. 2,321 tests green at baseline
+(client 788 / server 616 / shared 298 / content 619).
+
+**The debts.** 46 file-level import cycles in two families (`fxSignatures ↔ fxSigs*` ×30,
+`rig ↔ armor/species/…` ×11, plus 5 in cms). ~30 modules import 26k-line `rig.ts` only for
+`shade()`. Duplicated truths: `QuestWire` family re-declared in `server/game/quests.ts`;
+`CHEST_TILES` hand-listed in gameServer; `EQUIP_SLOTS` re-ordered twice in the client;
+`powerMult` means two different things in the two package barrels. A recording-canvas test
+Proxy re-implemented in 24 test files with no shared helper. Registries of 200–440
+hand-written JSON imports (`actors/registry.ts`, `dialogues/registry.ts`). `parseC2S` is a
+480-line hand switch whose 69 cases correspond to the 68-member union only by eye. Dead:
+`paintPropLive` (orphaned by the count-floor fix), `tools/validate` script pointing at a
+directory that doesn't exist, stale "arriving in A5" stage comments.
+
+## §2 The laws of this epic
+
+1. **THE HOUSE PATTERN IS THE PATTERN.** Every split follows a shape the codebase already
+   proved: the `Record<string, Painter>` registry (`icons.ts` PAINTERS, `shields.ts`
+   SIGNATURES), the per-roster file spread into a hub (`fxSigs*` → `SIGNATURES`), the
+   per-species sibling module (`golems.ts`/`ogre.ts`/`skral.ts`/`hobgoblin.ts`), the
+   host-callback system object (`SocialSystem`/`PartySystem`), the content directory quintet
+   (`types/validate/defs/registry/serialize`), the barrel-over-leaves (`render/matter/`),
+   the provider registry (`ui/kit/contextSheet.ts`). No new frameworks are invented here.
+2. **A MOVE IS NOT A REWRITE.** Phases are behavior-preserving moves. Refinement of what a
+   function *does* is a separate commit from moving it, and rare in this epic. The diff of a
+   move should be judgeable as a move.
+3. **THE GATE IS THE SAME FOUR EVERY TIME.** `npm run typecheck` green, all package suites
+   green, the client production build green, and — for any renderer-touching phase — the
+   refactor-parity rig (§7) green across the seven standard scenes.
+4. **TESTS MOVE WITH THEIR LAW, DELEGATORS BUY TIME.** When a server method leaves
+   `GameServer`, a one-line prototype delegator stays behind so the 36 slate-driven test
+   files keep compiling; tests migrate in the same phase where cheap, a follow-up where not.
+   Uncovered regions (chat, pets, dialogue, auth, panels, clientGame) get characterization
+   tests BEFORE they move, not after.
+5. **PUBLIC SURFACES ONLY SHRINK.** Extractions may not widen a module's export list beyond
+   what its consumers already used. Where a consumer reached through a field
+   (`renderer.camera.worldToScreen` ×5 copy-paste), the extraction adds the one method that
+   ends the reaching (`renderer.screenAnchor`).
+6. **ONE PHASE, ONE COMMIT** on `epic/foundations`; merge to main `--no-ff` per the shared-tree
+   git law when a phase band is proven.
+
+## §3 Phase slate
+
+### F0 — THE SMALL DEBTS PAID (hygiene wave, one commit)
+Cheap, high-leverage, unblocks later phases:
+- `shade()` (+ nothing else) → new `render/tint.ts`; `rig.ts` re-exports for compat;
+  `armor.ts` and the ~30 `fxSigs*`/leaf importers switch to `tint.js`. Kills the
+  `rig ↔ armor` cycle and ~30 edges into the 26k-line file.
+- `WORD_LIFE_MS` → own tiny module; removes the runtime `render → game/clientGame` edge
+  (renderer keeps only the `ClientGame` *type* import).
+- `PLAYER_COLORS` → `render/playerColors.ts`; `ui/map/markers.ts` stops importing 70k lines
+  for a color table.
+- Delete `paintPropLive` + fix the three stale doc comments that describe the removed
+  live-paint lane; fix stale "phase A5" comments now that the toggle shipped.
+- Cross-package truths: server `quests.ts` imports the `QuestWire` family from `@arx/shared`
+  (delete the ~90-line duplicate); gameServer's hand-listed `CHEST_TILES` replaced by the
+  shared set; content's `powerMult` renamed (`gearPowerMult`) so the two barrels stop
+  exporting different functions under one name; `EQUIP_SLOTS` display orders get their own
+  named export/comment trail; drop the dead `tools validate` script + stale index.ts claim.
+- `render/testkit.ts`: the shared recording-ctx Proxy (checkNums + shape counting) that 24
+  test files each re-implement. New tests use it now; old tests migrate opportunistically.
+
+### F1 — THE PROP HALL (objectItem comes down, ~29.4k lines)
+The flagship. `objectItem`'s 326 cases split by their existing family boundaries into
+`render/props/` — `warCamp.ts`, `elven.ts`, `dungeon.ts`, `graveyard.ts`, `skral.ts`,
+`town.ts`, `street.ts`, `house.ts`, `farm.ts`, `stations.ts` — each exporting painters into
+a `Map<Tile, PropPainter>` registry (`render/props/index.ts`), with the family palette
+blocks (~215 lines of file-top constants) travelling to their families. `objectItem` becomes
+a lookup + the delegating cases (trees/rocks/fences → family painters). The `PropPaint`
+context (ctx, camera, p/s/h/t, station-body helper, cast/outline hooks) is defined once in
+`props/types.ts`. Renderer drops to ~40k lines in one phase.
+
+### F2 — THE PAINTER WINGS (renderer families, ~10–12k lines)
+In seam order (coupling surface verified by audit): `wallHung.ts` (16 painters, cleanest
+cut), `barriers.ts` (fence/palisade/iron/hedge — four families, one identical 10-symbol
+host), `waterfalls.ts` (owns its four memos as a class), `rockArt.ts`, `chestArt.ts`,
+`hudOverlay.ts` (post-world screen pass), `wornLight` subsystem, garrison masonry,
+`cliffs.ts` (as a class taking a bake-budget handle). Each hands the renderer a narrow host
+interface instead of `this`. Runner-up left for later: unifying the hand-mirrored
+`cast*`/`stageCast*` brush twins behind one sink interface.
+
+### F3 — THE WARDROBE AND THE MENAGERIE (armor.ts + rig.ts)
+- `armorClocks.ts` — the 20 pure FX-clock helpers (cheapest cut in the file).
+- `drawHelmet` → `Record<string, HelmPainter>` registries split at the FORGE LAW line:
+  `armorHelmsCloth.ts` (42 kinds) / `armorHelmsMetal.ts` (17 kinds).
+- `drawTorsoGarment` → ordered `TorsoLayer[]` (flag + paint) in grouped layer files;
+  order-significance is the contract, so the array IS the order.
+- `drawPauldron` → `armorPauldron.ts`; styles/rosters/colorways → `armorStyles.ts`.
+- `rig.ts` species catalog → per-species files on the `golems.ts` template (`rigCanid`,
+  `rigFeline`, `rigFox`, `rigHerd`, `rigMount`, `rigArthropod`, `rigTurtle`, `rigBasilisk`,
+  `rigOoze`, `rigOwl`, `rigCritter`, `rigUrsine`, plus skeleton/kobold/gnoll/goblin), each
+  with the established 5-name export shape; `drawBeast`'s `paintBody` dispatch becomes the
+  registry. The species labs and species tests already anticipate exactly this split.
+  rig.ts lands at ~9k lines of genuine engine.
+
+### F4 — THE SERVER QUARTERS (gameServer.ts, audited seam order)
+1. `game/commands/` — the 1,979-line `chat` if-chain becomes a verb registry; the ~43
+   dev-gated commands go to `devCommands.ts`, the 3 player verbs stay wired. Zero test risk.
+2. `game/standing.ts` (lowest-risk sizable seam; three suites already isolate it).
+3. `game/statuses.ts` — with the four stacking models extracted first as a pure `stack.ts`.
+4. `game/procs.ts` — `ProcEngine.offer(moment, ctx)` → effect list; `procDepth` guard moves.
+5. `game/melee.ts` (+ smashable props), on the slate `combatRhythm.test.ts` already proves.
+6. `net/interest.ts` + `net/snapshot.ts` — spatial hash + serialization, pure mechanics.
+7. `game/keyring.ts` / `game/dungeonRuns.ts` (clean split at the useKey/enterDungeon line).
+8. `game/arena.ts` as `ArenaSystem` (host-callback object; characterization tests first).
+9. `game/farming.ts` (crops/bins/troughs/livestock ledgers; wild-growth half →
+   `world/growth.ts` beside its test).
+10. `game/dialogue.ts` (tree walker + voice resolution; `runDialogueHook` stays server-side
+    as the effect applier; characterization tests first).
+Deferred by design: `tickNpcs`, `castAbility`, `damageNpc`/`damagePlayer` (the hub shrinks
+as its callers leave), `enterWorld` (boot path, untested — characterize first), and the tick
+ordering contract, which never changes in this epic. `PlayerComp` (104 fields) narrows into
+per-domain sub-records only as each domain extraction demands it.
+
+### F5 — THE CLIENT SHELL (main.ts, clientGame.ts, panels)
+- `main.ts` sheds: `ui/settings/displaySettings.ts` (+ one `prefs.ts` for the 25 scattered
+  localStorage reads), `game/buildMode.ts`, `ui/screenRouter.ts` (the "one screen law"),
+  `ui/loginFlow.ts`, the 41-callback literal split into domain adapters, the 30 frame-loop
+  module-lets into a `FrameClocks` object, the dock table to `ui/dock.ts`.
+- `clientGame.ts`: typed message table collapses the 72-case switch and the 41-callback
+  surface into one map; panels take narrow per-panel interfaces (`QuestSource`,…) instead
+  of the whole 117-method class. Characterization tests first (it has none).
+- `ui/panel.ts` grows the missing `Panel` base (root element, open/close/refresh, dress,
+  sheet-provider registration); the Arts/Callings wing (~2,200 lines) and each of the nine
+  station screens move to their own files on it.
+- `renderer.screenAnchor(x,y)` ends the 5× copy-pasted camera/lift triple.
+
+### F6 — THE CATALOG SHELVES (content + shared)
+- `abilities.ts` → `abilities/` directory: per-school def files (the ~40 banner comments are
+  the split lines) + `techniques.ts` + registry, mirroring `equipment/`.
+- `npcs.ts` → `npcs/` quintet (`types/temperament/defs/validate`).
+- `equipment/defs.ts` → material files + `sets/` on the existing early-cloth/leather/plate axis.
+- `world/tiles.ts` → `tiles/` (`enum` / `defs` / `packed` / `sets`).
+- `protocol`: `parseC2S` becomes a per-message validator registry keyed by an exhaustive
+  `Record<C2SMessage['t'], …>` so a new union member fails to compile until parsed;
+  repeated field-check idioms become tiny combinators. No wire format change.
+- The 200–440-line hand-written JSON import registries get a codegen script (checked-in
+  output, verified by a test that the directory and the registry agree).
+- Document (and fence with an assertion helper) the `replace*()` boot-time mutation
+  contract in `content/src/index.ts` — the package's biggest latent hazard.
+
+### F7 — THE CYCLES CUT (import hygiene endgame)
+- `fxSignatures ↔ fxSigs*` ×30: `SigCtx`/`AbilitySig` + shared helpers move to
+  `render/fx/sigTypes.ts`; the hub keeps only the spread. Matter-style barrel.
+- `rig ↔ {armor,species,…}` ×11: after F0's tint cut and F3's species split, the remaining
+  back-edges resolve into `rigTypes.ts`.
+- `cms/cms.ts ↔ editors` ×5: same treatment.
+- A `scripts/check-cycles.mjs` (madge or hand-rolled DFS) joins the typecheck script so the
+  count only goes down.
+
+## §4 What this buys beyond tidiness
+- **Build/dev speed:** Vite transform and tsc units shrink; the 70k-line hot file stops
+  invalidating on every prop tweak; labs import leaf modules instead of the world.
+- **Optimization headroom:** per-family prop modules make per-family bake/skip policies
+  (the next weak-GPU rounds) local edits instead of switch surgery; the stage sink's
+  brush-twin unification (F2 runner-up) removes a whole class of hand-sync bugs.
+- **Testability:** slate-driven server modules become constructor-injected systems; panels
+  and clientGame become testable for the first time; the shared testkit ends 24 private
+  Proxy forks.
+- **Refactor safety forever after:** exhaustive protocol table, cycle gate, codegen'd
+  registries — drift that today is caught by eye becomes drift that fails to compile.
+
+## §5 Sequencing and risk
+F0 first (everything else gets cheaper). F1 next while the renderer knowledge is freshest —
+it is the largest single de-risking of the file every future optimization touches. F2/F3
+can proceed in parallel bands after F1. F4 is independent of the client phases and can
+interleave. F5 wants F0's testkit; F6/F7 close.
+
+Biggest risks and their answers: **silent paint drift in F1/F2/F3** → the refactor-parity
+rig (§7) plus the painter test suites; **server test breakage in F4** → prototype
+delegators + slate reuse; **uncovered regions** → characterization tests are part of the
+phase, not optional; **long-lived branch drift** → phases merge to main in small bands, no
+mega-merge at the end.
+
+## §6 Standard gates (every phase)
+1. `npm run typecheck` — green.
+2. `npm test` all four suites — green, count never below baseline 2,321.
+3. `npm run build` (client production) — green.
+4. Renderer-touching phases: refactor-parity rig across the seven standard scenes — PASS.
+5. Server-touching phases: the relevant proving script(s) against a live dev server where
+   one exists for the moved region.
+
+## §7 The refactor-parity rig
+Adapted from stage-parity4: same seven scenes (dawnmead, avenue, graveyard, hoargate,
+forest, crown-noon, crown-evening), but instead of toggling the stage it compares BUILDS —
+capture cadence-paired frames on the pre-phase commit and the post-phase commit under
+identical seed/time/zoom, gate cross-build median diff against same-build animation noise.
+A pure move must sit inside the noise band. Script lives in the session scratchpad as
+`refactor-parity.mjs`; scenes and login are the standing perf-probe account.
+
+## §8 As-built log
+*(appended as phases land)*
