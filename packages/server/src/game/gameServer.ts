@@ -672,6 +672,7 @@ import {
 } from '@arx/shared';
 import { config } from '../config.js';
 import { CHAT_COMMANDS } from './commands/index.js';
+import * as farmSys from './farming.js';
 import * as arenaSys from './arena.js';
 import * as runSys from './dungeonRuns.js';
 import * as keySys from './keyring.js';
@@ -817,7 +818,7 @@ interface BuildAction {
   dye?: number;
 }
 
-interface HarvestAction {
+export interface HarvestAction {
   kind: 'harvest';
   tx: number;
   ty: number;
@@ -911,7 +912,7 @@ type PlayerAction =
   | ChannelAction;
 
 /** A planted crop; stage derives from (now − plantedAt + boostMs). */
-interface CropState {
+export interface CropState {
   def: CropDef;
   tx: number;
   ty: number;
@@ -939,7 +940,7 @@ interface CropState {
  * bin gathers scraps; nonzero = the batch's working clock (pure wall
  * time — collect reads the clock, no tick owns the heap).
  */
-interface FarmBinState {
+export interface FarmBinState {
   tx: number;
   ty: number;
   fill: number;
@@ -951,7 +952,7 @@ interface FarmBinState {
  * THE ANIMALS OF THE YARD: one kept animal's durable truth —
  * slot-addressed per character, anchored to a trough tile.
  */
-interface LivestockRow {
+export interface LivestockRow {
   characterId: number;
   slot: number;
   species: string;
@@ -964,7 +965,7 @@ interface LivestockRow {
   bornAt: number;
 }
 
-interface LivestockComp {
+export interface LivestockComp {
   row: LivestockRow;
   /**
    * THE FLEECE TELLS THE TIME: the shorn state last spoken on the
@@ -1003,7 +1004,7 @@ interface NavState {
   steer: SteerMemory;
 }
 
-interface NpcComp {
+export interface NpcComp {
   def: NpcDef;
   originX: number;
   originY: number;
@@ -4947,7 +4948,7 @@ export class GameServer {
    * multiply out to. Harvesting is labor, not vacuuming — the floor is
    * what keeps a starsteel axe from mowing a copse flat in a blink.
    */
-  private static readonly MIN_GATHER_TICKS = 60;
+  static readonly MIN_GATHER_TICKS = 60;
 
   /** Attempt to start gathering at a tile. */
   interact(eid: EntityId, tx: number, ty: number): void {
@@ -5528,7 +5529,7 @@ export class GameServer {
   }
 
   /** Best gathering-speed multiplier across active buffs (forge: best-of). */
-  private gatherSpeedOf(player: PlayerComp): number {
+  gatherSpeedOf(player: PlayerComp): number {
     return buffGatherSpeed(player.buffs);
   }
 
@@ -5563,7 +5564,7 @@ export class GameServer {
     return Math.max(GameServer.MIN_GATHER_TICKS, Math.round(node.baseTicks / speedup));
   }
 
-  private cancelAction(eid: EntityId, player: PlayerComp, reason?: string): void {
+  cancelAction(eid: EntityId, player: PlayerComp, reason?: string): void {
     if (!player.action) return;
     // A craft batch reports its tally on the way out — the work card's
     // "Made N" face and the interrupt lines both read from this.
@@ -6322,80 +6323,24 @@ export class GameServer {
     );
   }
 
-  /** THE ONE CARE MIRROR: every session hears a field's facts change. */
-  private mirrorPlot(state: CropState): void {
-    const info = {
-      tx: state.tx,
-      ty: state.ty,
-      w: state.watered,
-      soil: state.soil,
-      m: state.mulched,
-      f: state.framed,
-    };
-    for (const s of this.sessions) s.sendJson({ t: 'farm', plots: [info] });
+  mirrorPlot(state: CropState): void {
+    return farmSys.mirrorPlot(this, state);
   }
 
   mirrorBin(bin: FarmBinState): void {
-    const info = {
-      tx: bin.tx,
-      ty: bin.ty,
-      fill: bin.fill,
-      graded: bin.graded,
-      readyAt: bin.startedAt === 0 ? 0 : bin.startedAt + COMPOST_MINUTES * 60_000,
-    };
-    for (const s of this.sessions) s.sendJson({ t: 'farm', bins: [info] });
+    return farmSys.mirrorBin(this, bin);
   }
 
-  /** The whole farm's care facts, for a fresh session. */
-  private sendFarm(session: Session): void {
-    const plots = [...this.crops.values()]
-      .filter((c) => c.watered !== 0 || c.soil !== 0 || c.mulched !== 0 || c.framed !== 0)
-      .map((c) => ({ tx: c.tx, ty: c.ty, w: c.watered, soil: c.soil, m: c.mulched, f: c.framed }));
-    const bins = [...this.farmBins.values()].map((b) => ({
-      tx: b.tx,
-      ty: b.ty,
-      fill: b.fill,
-      graded: b.graded,
-      readyAt: b.startedAt === 0 ? 0 : b.startedAt + COMPOST_MINUTES * 60_000,
-    }));
-    const troughs = [...this.farmTroughs.values()].map((t) => ({
-      tx: t.tx,
-      ty: t.ty,
-      feed: t.feed,
-    }));
-    const jobs = [...this.farmJobs.values()]
-      .filter((j) => j.qty > 0)
-      .map((j) => ({ tx: j.tx, ty: j.ty, recipe: j.recipe, qty: j.qty, startedAt: j.startedAt, grade: j.grade }));
-    const apiaries = [...this.farmApiaries.values()].map((a) => ({ tx: a.tx, ty: a.ty, since: a.since }));
-    if (plots.length > 0 || bins.length > 0 || troughs.length > 0 || jobs.length > 0 || apiaries.length > 0) {
-      session.sendJson({ t: 'farm', plots, bins, troughs, jobs, apiaries });
-    }
+  sendFarm(session: Session): void {
+    return farmSys.sendFarm(this, session);
   }
 
-  /**
-   * Apply one watering to a growing crop's CURRENT stage: sets the
-   * stage's watered bit and credits 35% of the stage's remainder.
-   * Pays no XP itself — hand-watering pays at its call site, the fed
-   * channel deliberately never does (the automation law).
-   */
-  private waterCrop(state: CropState, now: number): boolean {
-    // The dark bed drinks nothing (shade culture keeps its own law).
-    if (state.def.bed === 'log') return false;
-    const effective = this.cropElapsed(state, now);
-    const stage = stageForElapsed(state.def, effective);
-    if (stage === 2) return false;
-    const bit = 1 << stage;
-    if (state.watered & bit) return false;
-    const stageEnd = stageEndMs(state.def, stage as 0 | 1);
-    state.watered |= bit;
-    state.boostMs += Math.max(0, Math.round((stageEnd - effective) * 0.35));
-    this.saveCrop(state);
-    this.mirrorPlot(state);
-    return true;
+  waterCrop(state: CropState, now: number): boolean {
+    return farmSys.waterCrop(this, state, now);
   }
 
   /** Is a well standing within range (chebyshev) of this tile? */
-  private wellNear(tx: number, ty: number, range: number = WELL_SWEEP_RANGE): boolean {
+  wellNear(tx: number, ty: number, range: number = WELL_SWEEP_RANGE): boolean {
     // Warm the corner chunks so a well across a seam still answers.
     for (const [cx, cy] of [
       [tx - range, ty - range],
@@ -6413,19 +6358,8 @@ export class GameServer {
     return false;
   }
 
-  /**
-   * THE FED CHANNEL: is this plot beside a live irrigation channel
-   * (adjacent channel tile with a well within its feed range)?
-   */
-  private irrigatedAt(tx: number, ty: number): boolean {
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        if (dx === 0 && dy === 0) continue;
-        if (this.surface.groundAt(tx + dx, ty + dy) !== Tile.IrrigationChannel) continue;
-        if (this.wellNear(tx + dx, ty + dy, CHANNEL_FEED_RANGE)) return true;
-      }
-    }
-    return false;
+  irrigatedAt(tx: number, ty: number): boolean {
+    return farmSys.irrigatedAt(this, tx, ty);
   }
 
   /**
@@ -6433,160 +6367,22 @@ export class GameServer {
    * from the surface ledgers, so off-surface hands are turned away
    * politely before any ledger is touched. Returns true when refused.
    */
-  private refuseFarmingOffSurface(player: PlayerComp, pos: PositionComp): boolean {
+  refuseFarmingOffSurface(player: PlayerComp, pos: PositionComp): boolean {
     if (pos.plane === SURFACE_PLANE_ID) return false;
     this.speak(player, 'Nothing grows here', 'Nothing grows here — no sun ever reaches this ground.', undefined, 'note');
     return true;
   }
 
-  /**
-   * Work compost into a planted crop's soil. One tier per act: plain
-   * compost enriches plain ground; prime compost makes any ground
-   * rich. Deterministic, once each — never a repeatable faucet.
-   */
   fertilize(eid: EntityId, tx: number, ty: number): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos || player.session === null) return;
-    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
-    if (player.characterId < 0) {
-      sys('Guests cannot tend crops. Make an account!');
-      return;
-    }
-    const dx = tx + 0.5 - pos.x;
-    const dy = ty + 0.5 - pos.y;
-    if (dx * dx + dy * dy > 2.2 * 2.2) return;
-    if (this.refuseFarmingOffSurface(player, pos)) return;
-    const state = this.crops.get(`${tx},${ty}`);
-    if (!state) {
-      if (this.surface.groundAt(tx, ty) === Tile.Tilled) {
-        sys('Plant first. The soil takes its meal through roots.');
-      }
-      return;
-    }
-    if (state.def.bed === 'log') {
-      sys('The log asks for shade, nothing more.');
-      return;
-    }
-    const stage = stageForElapsed(state.def, this.cropElapsed(state, Date.now()));
-    if (stage === 2) {
-      sys('It has grown all it will. Harvest it.');
-      return;
-    }
-    if (state.soil >= SOIL_RICH) {
-      sys('The soil is as rich as it gets.');
-      return;
-    }
-    // Plain compost lifts plain ground; prime compost makes any
-    // ground rich outright. The cheaper meal is spent first so a
-    // carried prime barrow is never wasted on a half step.
-    if (state.soil < SOIL_ENRICHED && removeItem(player.inventory, 'compost', 1) === 1) {
-      state.soil = SOIL_ENRICHED;
-      sys('You work compost into the soil.');
-    } else if (removeItem(player.inventory, 'prime_compost', 1) === 1) {
-      state.soil = SOIL_RICH;
-      sys('You work prime compost in. The ground turns dark and willing.');
-    } else {
-      sys(
-        state.soil >= SOIL_ENRICHED
-          ? 'Only prime compost can better this ground.'
-          : 'You need compost in your pack.',
-      );
-      return;
-    }
-    // THE PLOT PAYS FOR ITS TIME: tending pays a tenth, same as water.
-    this.grantXp(eid, player, 'farming', Math.ceil(state.def.xp / 10));
-    this.setPose(eid, PoseState.Gather, 20);
-    this.saveCrop(state);
-    this.mirrorPlot(state);
-    player.session.sendJson({ t: 'inv', slots: player.inventory });
+    return farmSys.fertilize(this, eid, tx, ty);
   }
 
-  /** Lay a fibre blanket around a growing crop. Once per planting. */
   mulch(eid: EntityId, tx: number, ty: number): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos || player.session === null) return;
-    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
-    if (player.characterId < 0) {
-      sys('Guests cannot tend crops. Make an account!');
-      return;
-    }
-    const dx = tx + 0.5 - pos.x;
-    const dy = ty + 0.5 - pos.y;
-    if (dx * dx + dy * dy > 2.2 * 2.2) return;
-    if (this.refuseFarmingOffSurface(player, pos)) return;
-    const state = this.crops.get(`${tx},${ty}`);
-    if (!state) return;
-    if (state.def.bed === 'log') {
-      sys('The log asks for shade, nothing more.');
-      return;
-    }
-    const stage = stageForElapsed(state.def, this.cropElapsed(state, Date.now()));
-    if (stage === 2) {
-      sys('It has grown all it will. Harvest it.');
-      return;
-    }
-    if (state.mulched) {
-      sys('A mulch blanket already lies here.');
-      return;
-    }
-    // Count BEFORE removing: removeItem takes what it can, and a
-    // short pack must not lose its last strand to a refusal.
-    if (countItem(player.inventory, 'plant_fibre') < MULCH_FIBRE_COST) {
-      sys('Mulch wants plant fibre. Two strands to a blanket.');
-      return;
-    }
-    removeItem(player.inventory, 'plant_fibre', MULCH_FIBRE_COST);
-    state.mulched = 1;
-    this.setPose(eid, PoseState.Gather, 20);
-    this.grantXp(eid, player, 'farming', Math.ceil(state.def.xp / 10));
-    this.saveCrop(state);
-    this.mirrorPlot(state);
-    player.session.sendJson({ t: 'inv', slots: player.inventory });
-    sys('You lay a fibre blanket around the stems.');
+    return farmSys.mulch(this, eid, tx, ty);
   }
 
-  /**
-   * THE ORCHARD'S KNIFE: cut a recurring crop's deadwood mid-cycle.
-   * Costs nothing, pays tending XP, and banks one care point toward
-   * the cycle's grade — once per cycle behind its own mask bit.
-   */
   prune(eid: EntityId, tx: number, ty: number): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos || player.session === null) return;
-    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
-    if (player.characterId < 0) {
-      sys('Guests cannot tend crops. Make an account!');
-      return;
-    }
-    const dx = tx + 0.5 - pos.x;
-    const dy = ty + 0.5 - pos.y;
-    if (dx * dx + dy * dy > 2.2 * 2.2) return;
-    if (this.refuseFarmingOffSurface(player, pos)) return;
-    const state = this.crops.get(`${tx},${ty}`);
-    if (!state || !state.def.recurring) return;
-    const stage = stageForElapsed(state.def, this.cropElapsed(state, Date.now()));
-    if (stage === 2) {
-      sys('Pick the fruit first. Then the knife.');
-      return;
-    }
-    if (state.watered & PRUNED_BIT) {
-      sys('The wood is already clean this season.');
-      return;
-    }
-    state.watered |= PRUNED_BIT;
-    this.grantXp(
-      eid,
-      player,
-      'farming',
-      Math.ceil(harvestXp(state.def, state.cycles) / 10),
-    );
-    this.setPose(eid, PoseState.Gather, 20);
-    this.saveCrop(state);
-    this.mirrorPlot(state);
-    sys('You cut the deadwood away. The tree breathes.');
+    return farmSys.prune(this, eid, tx, ty);
   }
 
   // ------------------------------------------------ the larder board
@@ -6645,244 +6441,35 @@ export class GameServer {
   }
 
   mirrorJob(job: { tx: number; ty: number; recipe: string; qty: number; startedAt: number; grade: number }): void {
-    for (const s of this.sessions) {
-      s.sendJson({
-        t: 'farm',
-        jobs: [{ tx: job.tx, ty: job.ty, recipe: job.recipe, qty: job.qty, startedAt: job.startedAt, grade: job.grade }],
-      });
-    }
+    return farmSys.mirrorJob(this, job);
   }
 
   mirrorApiary(tx: number, ty: number, since: number): void {
-    for (const s of this.sessions) s.sendJson({ t: 'farm', apiaries: [{ tx, ty, since }] });
+    return farmSys.mirrorApiary(this, tx, ty, since);
   }
 
-  /**
-   * Load a batch: prove the tile and recipe, gate the level, consume
-   * inputs highest-grade-first, and set the clock. Every refusal is
-   * spoken; nothing is consumed before the last gate passes.
-   */
   workStart(eid: EntityId, tx: number, ty: number, recipeId: string, qty: number): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos || player.session === null) return;
-    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
-    if (player.characterId < 0) {
-      sys('Guests cannot work the yard. Make an account!');
-      return;
-    }
-    const dx = tx + 0.5 - pos.x;
-    const dy = ty + 0.5 - pos.y;
-    if (dx * dx + dy * dy > 2.6 * 2.6) return;
-    if (this.refuseFarmingOffSurface(player, pos)) return;
-    const ground = this.surface.groundAt(tx, ty);
-    const station = ground === undefined ? undefined : WORK_STATION_TILES.get(ground as Tile);
-    const recipe = WORK_RECIPES.get(recipeId);
-    if (!station || !recipe || recipe.station !== station) return;
-    const key = `${tx},${ty}`;
-    const existing = this.farmJobs.get(key);
-    if (existing && existing.qty > 0) {
-      this.speak(
-        player,
-        'Still working',
-        'The station is already working. Collect first.',
-        { x: tx + 0.5, y: ty + 0.5 },
-        'note',
-      );
-      return;
-    }
-    const level = this.effectiveLevel(player, recipe.skill);
-    if (level < recipe.levelReq) {
-      this.speak(
-        player,
-        `Needs ${recipe.skill} ${recipe.levelReq}`,
-        `You need ${recipe.skill} level ${recipe.levelReq} for ${recipe.name.toLowerCase()}.`,
-      );
-      return;
-    }
-    const batch = Math.min(qty, WORK_BATCH_CAP);
-    // Count first (nothing spent on a refusal): each input unit may
-    // be satisfied by any grade of its family.
-    const familyCount = (base: string): number => {
-      let n = 0;
-      for (const s of player.inventory) {
-        if (!s || s.stolen) continue;
-        if (gradeOf(s.item).base === base) n += s.qty;
-      }
-      return n;
-    };
-    for (const input of recipe.inputs) {
-      if (familyCount(input.item) < input.qty * batch) {
-        sys(`Short of ${itemDef(input.item)?.name.toLowerCase() ?? input.item} for ${batch}.`);
-        return;
-      }
-    }
-    // Consume highest grades first; the batch records its weakest.
-    let batchGrade: number | null = null;
-    for (const input of recipe.inputs) {
-      const gradable = GRADED_PRODUCE.has(input.item);
-      for (let u = 0; u < input.qty * batch; u++) {
-        let taken = -1;
-        for (const g of [2, 1, 0] as const) {
-          const id = g === 0 ? input.item : gradedId(input.item, g);
-          if (removeItem(player.inventory, id, 1) === 1) {
-            taken = g;
-            break;
-          }
-        }
-        if (taken === -1) return; // raced; counts said otherwise
-        if (gradable) batchGrade = batchGrade === null ? taken : Math.min(batchGrade, taken);
-      }
-    }
-    const job = {
-      tx,
-      ty,
-      recipe: recipeId,
-      qty: batch,
-      startedAt: Date.now(),
-      grade: batchGrade ?? 0,
-      owner: player.characterId,
-    };
-    this.farmJobs.set(key, job);
-    this.accounts.upsertStationJob(tx, ty, recipeId, batch, job.startedAt, job.grade, job.owner);
-    this.mirrorJob(job);
-    // A beat of body at the vessel: the loading read (the client's
-    // 'tend' choreography at the station tile).
-    this.setPose(eid, PoseState.Craft, 24);
-    player.session.sendJson({ t: 'inv', slots: player.inventory });
-    sys(`The ${itemDef(recipe.output.item)?.name.toLowerCase() ?? recipe.output.item} work begins. It runs while you wander.`);
+    return farmSys.workStart(this, eid, tx, ty, recipeId, qty);
   }
 
-  /**
-   * The interact door for a working station: hand over whatever has
-   * matured (owner only), and let the rest keep working.
-   */
-  private interactWorkStation(
+  interactWorkStation(
     eid: EntityId,
     player: PlayerComp,
     tx: number,
     ty: number,
     sys: (text: string) => void,
   ): void {
-    const wsPos = this.positions.get(eid);
-    if (!wsPos || this.refuseFarmingOffSurface(player, wsPos)) return;
-    const key = `${tx},${ty}`;
-    const job = this.farmJobs.get(key);
-    if (!job || job.qty <= 0) {
-      sys('The station stands idle. Load it and let it work.');
-      return;
-    }
-    const recipe = WORK_RECIPES.get(job.recipe);
-    if (!recipe) return;
-    if (job.owner !== player.characterId) {
-      sys('This batch is another hand\'s work.');
-      return;
-    }
-    const now = Date.now();
-    const done = workDone(recipe, job.startedAt, job.qty, now);
-    if (done <= 0) {
-      const mins = Math.max(1, Math.ceil((job.startedAt + recipe.minutes * 60_000 - now) / 60_000));
-      sys(`The work goes on. About ${mins} min to the next measure.`);
-      return;
-    }
-    const itemId = workOutputId(recipe, job.grade as 0 | 1 | 2);
-    for (let i = 0; i < done * recipe.output.qty; i++) {
-      if (addItem(player.inventory, itemId, 1) === 0) {
-        this.spawnDrop(SURFACE_PLANE_ID, itemId, 1, tx + 0.5, ty + 0.5, eid);
-      }
-    }
-    this.grantXp(eid, player, recipe.skill, recipe.xp * done);
-    job.qty -= done;
-    job.startedAt += done * recipe.minutes * 60_000;
-    if (job.qty <= 0) {
-      this.farmJobs.delete(key);
-      this.accounts.deleteStationJob(tx, ty);
-      this.mirrorJob({ tx, ty, recipe: job.recipe, qty: 0, startedAt: 0, grade: 0 });
-    } else {
-      this.accounts.upsertStationJob(tx, ty, job.recipe, job.qty, job.startedAt, job.grade, job.owner);
-      this.mirrorJob(job);
-    }
-    this.setPose(eid, PoseState.Craft, 24);
-    player.session?.sendJson({ t: 'inv', slots: player.inventory });
-    sys(
-      `You collect ${done * recipe.output.qty} ${itemDef(itemId)?.name.toLowerCase() ?? itemId}${job.qty > 0 ? `. ${job.qty} still working.` : '. The station rests.'}`,
-    );
+    return farmSys.interactWorkStation(this, eid, player, tx, ty, sys);
   }
 
-  /**
-   * THE HIVE: honey and wax on the bees' own clock, graded by the
-   * real flowers standing near when you lift the lid.
-   */
-  private interactApiary(
+  interactApiary(
     eid: EntityId,
     player: PlayerComp,
     tx: number,
     ty: number,
     sys: (text: string) => void,
   ): void {
-    if (player.characterId < 0) return;
-    const hivePos = this.positions.get(eid);
-    if (!hivePos || this.refuseFarmingOffSurface(player, hivePos)) return;
-    const built = this.surface.builtAt(tx, ty);
-    if (built && built.owner !== player.characterId) {
-      sys('These bees answer another keeper.');
-      return;
-    }
-    const key = `${tx},${ty}`;
-    const now = Date.now();
-    const hive = this.farmApiaries.get(key) ?? { tx, ty, since: now };
-    if (!this.farmApiaries.has(key)) {
-      // First touch starts the clock (a fresh hive settles in).
-      this.farmApiaries.set(key, hive);
-      this.accounts.upsertFarmApiary(tx, ty, hive.since);
-      this.mirrorApiary(tx, ty, hive.since);
-      sys('The bees settle into the new box. Give them time.');
-      return;
-    }
-    const units = Math.min(APIARY_STORE_CAP, Math.floor((now - hive.since) / (APIARY_MINUTES * 60_000)));
-    if (units <= 0) {
-      const mins = Math.max(1, Math.ceil((hive.since + APIARY_MINUTES * 60_000 - now) / 60_000));
-      sys(`The comb is thin yet. About ${mins} min.`);
-      return;
-    }
-    // Count the flowers the bees actually work: flower boxes and the
-    // blooming crops (sunflower, moonbell, dawnveil) in the hive's
-    // range. World-state only — plant a garden, sweeten the honey.
-    let flowers = 0;
-    for (let fy = ty - APIARY_FLOWER_RANGE; fy <= ty + APIARY_FLOWER_RANGE; fy++) {
-      for (let fx = tx - APIARY_FLOWER_RANGE; fx <= tx + APIARY_FLOWER_RANGE; fx++) {
-        const g = this.surface.groundAt(fx, fy);
-        if (
-          g === Tile.FlowerBox ||
-          g === Tile.SunflowerMid ||
-          g === Tile.SunflowerRipe ||
-          g === Tile.MoonbellMid ||
-          g === Tile.MoonbellRipe ||
-          g === Tile.DawnveilMid ||
-          g === Tile.DawnveilRipe
-        ) {
-          flowers++;
-        }
-      }
-    }
-    const grade = apiaryGrade(flowers);
-    const honeyId = grade > 0 ? gradedId('honey', grade) : 'honey';
-    for (let i = 0; i < units; i++) {
-      if (addItem(player.inventory, honeyId, 1) === 0) this.spawnDrop(SURFACE_PLANE_ID, honeyId, 1, tx + 0.5, ty + 0.5, eid);
-      if (addItem(player.inventory, 'beeswax', 1) === 0) this.spawnDrop(SURFACE_PLANE_ID, 'beeswax', 1, tx + 0.5, ty + 0.5, eid);
-    }
-    this.grantXp(eid, player, 'farming', 12 * units);
-    hive.since = now;
-    this.accounts.upsertFarmApiary(tx, ty, hive.since);
-    this.mirrorApiary(tx, ty, hive.since);
-    player.session?.sendJson({ t: 'inv', slots: player.inventory });
-    sys(
-      grade === 2
-        ? 'The comb runs heavy and bright. The garden did this.'
-        : grade === 1
-          ? 'Good comb, sweetened by the flowers near.'
-          : 'You take fair comb. Bees do better beside a garden.',
-    );
+    return farmSys.interactApiary(this, eid, player, tx, ty, sys);
   }
 
   // ------------------------------------------ the animals of the yard
@@ -6907,49 +6494,12 @@ export class GameServer {
     for (const row of rows) this.spawnLivestockEntity(row);
   }
 
-  /** Stand a kept animal in the world beside its trough. */
-  private spawnLivestockEntity(row: LivestockRow): EntityId | null {
-    const def = npcDef(row.species);
-    if (!def || !LIVESTOCK.has(row.species)) return null;
-    this.surface.ensure(Math.floor(row.tx / CHUNK_SIZE), Math.floor(row.ty / CHUNK_SIZE));
-    // Scatter the herd on the trough's south apron, dealt by slot so
-    // a yard reloads into the same loose arrangement.
-    const x = row.tx + 0.5 + ((row.slot % 3) - 1) * 1.2 + ((row.slot * 7) % 5) * 0.1;
-    const y = row.ty + 1.6 + Math.floor(row.slot / 3) * 1.1;
-    const eid = this.spawnNpc(def, SURFACE_PLANE_ID, x, y, -1);
-    this.livestock.set(eid, {
-      row,
-      shornShown: row.species === 'sheep' ? row.nextProduceAt > Date.now() : undefined,
-    });
-    const npc = this.npcs.get(eid);
-    if (npc) {
-      npc.nextProduceAt = row.nextProduceAt;
-      // A kept hen lays for the hand, never the ground: the registry
-      // pays at the Gather, so the wild lay clock stays dark.
-      npc.nextLayAt = 0;
-    }
-    return eid;
+  spawnLivestockEntity(row: LivestockRow): EntityId | null {
+    return farmSys.spawnLivestockEntity(this, row);
   }
 
-  /**
-   * THE FLEECE TELLS THE TIME — the slow wool clock (~1s beat). A
-   * kept sheep's body shows its produce state to every watcher:
-   * clipped after the shear, a full cloud once the wool regrows.
-   * The shear itself broadcasts at the payout; this sweep carries
-   * the regrow (and any dev lever that hurries the clock), speaking
-   * on the meta channel only when the state actually flips.
-   */
-  private tickFleece(now: number): void {
-    for (const [stockEid, comp] of this.livestock) {
-      if (comp.row.species !== 'sheep') continue;
-      const npc = this.npcs.get(stockEid);
-      if (!npc) continue;
-      const shorn = npc.nextProduceAt > now;
-      if (shorn !== (comp.shornShown ?? false)) {
-        comp.shornShown = shorn;
-        this.broadcastMetaUpdate(stockEid);
-      }
-    }
+  tickFleece(now: number): void {
+    return farmSys.tickFleece(this, now);
   }
 
   private livestockEidFor(characterId: number, slot: number): EntityId | null {
@@ -6960,7 +6510,7 @@ export class GameServer {
   }
 
   /** Rows anchored to one trough (the stock cap's counter). */
-  private livestockAtTrough(tx: number, ty: number): number {
+  livestockAtTrough(tx: number, ty: number): number {
     let n = 0;
     for (const comp of this.livestock.values()) {
       if (comp.row.tx === tx && comp.row.ty === ty) n++;
@@ -6968,7 +6518,7 @@ export class GameServer {
     return n;
   }
 
-  private livestockCountFor(characterId: number): number {
+  livestockCountFor(characterId: number): number {
     let n = 0;
     for (const comp of this.livestock.values()) {
       if (comp.row.characterId === characterId) n++;
@@ -6977,93 +6527,16 @@ export class GameServer {
   }
 
   mirrorTrough(trough: { tx: number; ty: number; feed: number }): void {
-    for (const s of this.sessions) {
-      s.sendJson({ t: 'farm', troughs: [{ tx: trough.tx, ty: trough.ty, feed: trough.feed }] });
-    }
+    return farmSys.mirrorTrough(this, trough);
   }
 
-  /**
-   * Release a crated young at the keeper's own trough — the buy's
-   * second half (useItem routes crates here, slot-addressed).
-   */
-  private releaseLivestock(
+  releaseLivestock(
     eid: EntityId,
     player: PlayerComp,
     slotIndex: number,
     crateId: string,
   ): void {
-    const sys = (text: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text });
-    const ldef = LIVESTOCK_BY_CRATE.get(crateId)!;
-    if (player.characterId < 0) {
-      sys('Guests cannot keep animals. Make an account!');
-      return;
-    }
-    const pos = this.positions.get(eid);
-    if (!pos) return;
-    // The trough within arm's reach that YOU raised is the yard.
-    let trough: { tx: number; ty: number } | null = null;
-    for (let dy = -2; dy <= 2 && !trough; dy++) {
-      for (let dx = -2; dx <= 2 && !trough; dx++) {
-        const tx = Math.floor(pos.x) + dx;
-        const ty = Math.floor(pos.y) + dy;
-        if (this.surface.groundAt(tx, ty) !== Tile.FeedTrough) continue;
-        const built = this.surface.builtAt(tx, ty);
-        if (built && built.owner === player.characterId) trough = { tx, ty };
-      }
-    }
-    if (!trough) {
-      sys('Release it at your own feed trough. The yard is the animal\'s home.');
-      return;
-    }
-    const level = this.effectiveLevel(player, 'beastcraft');
-    if (level < ldef.levelReq) {
-      this.speak(
-        player,
-        `Needs beastcraft ${ldef.levelReq}`,
-        `You need beastcraft level ${ldef.levelReq} to keep a ${ldef.name.toLowerCase()}.`,
-      );
-      return;
-    }
-    if (this.livestockCountFor(player.characterId) >= LIVESTOCK_CAP) {
-      this.speak(player, 'Yards full', 'Your yards are full. Lead one away first.');
-      return;
-    }
-    if (this.livestockAtTrough(trough.tx, trough.ty) >= TROUGH_STOCK_CAP) {
-      sys('This trough feeds all it can. Raise another.');
-      return;
-    }
-    // First free slot is the animal's identity forever.
-    const used = new Set<number>();
-    for (const comp of this.livestock.values()) {
-      if (comp.row.characterId === player.characterId) used.add(comp.row.slot);
-    }
-    let slot = -1;
-    for (let i = 0; i < LIVESTOCK_CAP; i++) {
-      if (!used.has(i)) {
-        slot = i;
-        break;
-      }
-    }
-    if (slot === -1) return;
-    if (!takeSlot(player.inventory, slotIndex, 1)) return;
-    const row: LivestockRow = {
-      characterId: player.characterId,
-      slot,
-      species: ldef.species,
-      name: ldef.name,
-      tx: trough.tx,
-      ty: trough.ty,
-      bond: 0,
-      brushedAt: 0,
-      nextProduceAt: Date.now() + ldef.produce.cooldownSec * 1000,
-      bornAt: Date.now(),
-    };
-    this.accounts.saveLivestock(row);
-    this.spawnLivestockEntity(row);
-    player.session?.sendJson({ t: 'inv', slots: player.inventory });
-    // The naming card opens on the ceremony — the pet card, reused.
-    player.session?.sendJson({ t: 'stockname', slot, species: ldef.species });
-    sys(`The ${ldef.name.toLowerCase()} steps into your yard and looks around, deciding things.`);
+    return farmSys.releaseLivestock(this, eid, player, slotIndex, crateId);
   }
 
   /** Name (or re-name) a kept animal — the pet-sanitize law guards it. */
@@ -7084,14 +6557,7 @@ export class GameServer {
     player.session?.sendJson({ t: 'chat', channel: 'system', text: `${clean} it is.` });
   }
 
-  /**
-   * The whole yard conversation, in one cascade: another keeper's
-   * animal offers a word of refusal; the lead walks yours away; a
-   * ready udder or fleece opens the collect action (the milking
-   * rail, reused whole); an open brush window pays the bond; else
-   * the animal tells you how it is doing.
-   */
-  private interactLivestock(
+  interactLivestock(
     eid: EntityId,
     player: PlayerComp,
     targetEid: EntityId,
@@ -7099,173 +6565,15 @@ export class GameServer {
     comp: LivestockComp,
     sys: (text: string) => void,
   ): void {
-    const row = comp.row;
-    const ldef = LIVESTOCK.get(row.species)!;
-    if (row.characterId !== player.characterId) {
-      this.speak(
-        player,
-        'Not yours',
-        `${row.name} belongs to another yard.`,
-        this.positions.get(targetEid) ?? undefined,
-      );
-      return;
-    }
-    const now = Date.now();
-    if (now >= npc.nextProduceAt) {
-      if (!hasSpaceFor(player.inventory, ldef.produce.item)) {
-        this.speak(player, 'Pack full', 'Your pack is full.');
-        return;
-      }
-      const pos = this.positions.get(eid);
-      const npos = this.positions.get(targetEid);
-      if (!pos || !npos) return;
-      if (player.action) this.cancelAction(eid, player);
-      const ticks = Math.max(
-        GameServer.MIN_GATHER_TICKS,
-        Math.round(GameServer.MILK_TICKS / this.gatherSpeedOf(player)),
-      );
-      player.action = { kind: 'milk', targetEid, ticksLeft: ticks };
-      pos.dir = Math.atan2(npos.y - pos.y, npos.x - pos.x);
-      npc.holdUntilTick = this.tickCount + ticks + 20;
-      this.poses.set(eid, PoseState.Milk);
-      player.session?.sendJson({ t: 'action', state: 'start', ticks });
-      return;
-    }
-    if (now - row.brushedAt >= BRUSH_COOLDOWN_MS * player.perks.brushRestMult) {
-      row.brushedAt = now;
-      if (row.bond < BOND_CAP) row.bond += 1;
-      this.accounts.saveLivestock(row);
-      this.grantXp(eid, player, 'beastcraft', BRUSH_XP);
-      sys(`You brush ${row.name} down. ${row.bond >= BOND_PRIME ? 'It would follow you anywhere it could.' : 'It leans into the strokes.'}`);
-      return;
-    }
-    // THE LEAD WAITS ITS TURN: it fires only when the animal has
-    // nothing else to offer — a keeper carrying one can still milk,
-    // shear, and brush their own yard (the harness caught the lead
-    // eating the first-ever interact; a farewell must never outrank
-    // the living work). Half the crate's worth comes back.
-    if (countItem(player.inventory, 'drovers_lead') > 0) {
-      removeItem(player.inventory, 'drovers_lead', 1);
-      const refund = Math.floor((itemDef(ldef.crateItem)?.value ?? 0) / 2);
-      if (refund > 0) addItem(player.inventory, 'coins', refund);
-      this.accounts.deleteLivestock(row.characterId, row.slot);
-      this.livestock.delete(targetEid);
-      this.removeFromChunks(targetEid);
-      this.ecs.destroy(targetEid);
-      player.session?.sendJson({ t: 'inv', slots: player.inventory });
-      sys(`You lead ${row.name} back to the drover trade. The yard is quieter for it.`);
-      return;
-    }
-    const mins = Math.max(1, Math.ceil((npc.nextProduceAt - now) / 60_000));
-    sys(`${row.name} is content. Nothing to ${ldef.produce.verb.toLowerCase()} yet (about ${mins} min).`);
+    return farmSys.interactLivestock(this, eid, player, targetEid, npc, comp, sys);
   }
 
-  /**
-   * Feed one pack slot's item into a compost bin. Slot-addressed; the
-   * bin, the worth, and the idle state are all re-proved here.
-   */
   compostAdd(eid: EntityId, tx: number, ty: number, slot: number): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos || player.session === null) return;
-    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
-    if (player.characterId < 0) {
-      sys('Guests cannot use the bin. Make an account!');
-      return;
-    }
-    const dx = tx + 0.5 - pos.x;
-    const dy = ty + 0.5 - pos.y;
-    if (dx * dx + dy * dy > 2.2 * 2.2) return;
-    if (this.refuseFarmingOffSurface(player, pos)) return;
-    if (this.surface.groundAt(tx, ty) !== Tile.CompostBin) return;
-    const key = `${tx},${ty}`;
-    const bin = this.farmBins.get(key) ?? { tx, ty, fill: 0, graded: 0, startedAt: 0 };
-    if (bin.startedAt !== 0) {
-      sys(
-        Date.now() >= bin.startedAt + COMPOST_MINUTES * 60_000
-          ? 'The batch is done. Turn the bin out first.'
-          : 'The bin is working. Let it be.',
-      );
-      return;
-    }
-    const held = player.inventory[slot];
-    if (!held) return;
-    if (held.stolen) {
-      sys('Not with goods that would burn an honest heap.');
-      return;
-    }
-    const worth = compostWorthOf(held.item, itemDef(held.item));
-    if (!worth) {
-      sys('That has no place in the bin.');
-      return;
-    }
-    takeSlot(player.inventory, slot, 1);
-    bin.fill += worth.worth;
-    bin.graded += worth.graded;
-    if (bin.fill >= COMPOST_BATCH_WORTH - player.perks.compostDiscount) {
-      bin.startedAt = Date.now();
-      sys('The lid closes. The heap sets to work.');
-    }
-    this.farmBins.set(key, bin);
-    this.accounts.upsertFarmBin(tx, ty, bin.fill, bin.graded, bin.startedAt);
-    this.mirrorBin(bin);
-    this.setPose(eid, PoseState.Craft, 24);
-    player.session.sendJson({ t: 'inv', slots: player.inventory });
+    return farmSys.compostAdd(this, eid, tx, ty, slot);
   }
 
-  /**
-   * Load one pack slot's feed into a trough. Anyone may feed a
-   * neighbor's manger (the watering law's generosity); the door
-   * proves the tile, the worth, and the cap.
-   */
   troughAdd(eid: EntityId, tx: number, ty: number, slot: number): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos || player.session === null) return;
-    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
-    if (player.characterId < 0) {
-      sys('Guests cannot tend the yard. Make an account!');
-      return;
-    }
-    const dx = tx + 0.5 - pos.x;
-    const dy = ty + 0.5 - pos.y;
-    if (dx * dx + dy * dy > 2.2 * 2.2) return;
-    if (this.refuseFarmingOffSurface(player, pos)) return;
-    if (this.surface.groundAt(tx, ty) !== Tile.FeedTrough) return;
-    const key = `${tx},${ty}`;
-    const trough = this.farmTroughs.get(key) ?? { tx, ty, feed: 0 };
-    if (trough.feed >= TROUGH_FEED_CAP) {
-      this.speak(player, 'Manger full', 'The manger is heaped full.', {
-        x: tx + 0.5,
-        y: ty + 0.5,
-      });
-      return;
-    }
-    const held = player.inventory[slot];
-    if (!held) return;
-    if (held.stolen) {
-      sys('Not with goods that would sour an honest manger.');
-      return;
-    }
-    const worth = feedWorthOf(held.item, gradeOf, (base) => GRADED_PRODUCE.has(base));
-    if (worth === null) {
-      this.speak(
-        player,
-        "Won't eat that",
-        'The herd has no use for that.',
-        { x: tx + 0.5, y: ty + 0.5 },
-        'note',
-      );
-      return;
-    }
-    takeSlot(player.inventory, slot, 1);
-    trough.feed = Math.min(TROUGH_FEED_CAP, trough.feed + worth);
-    this.farmTroughs.set(key, trough);
-    this.accounts.upsertFarmTrough(tx, ty, trough.feed);
-    this.mirrorTrough(trough);
-    this.setPose(eid, PoseState.Craft, 24);
-    player.session.sendJson({ t: 'inv', slots: player.inventory });
-    sys('You fill the manger. Somebody noticed immediately.');
+    return farmSys.troughAdd(this, eid, tx, ty, slot);
   }
 
   /**
@@ -7324,89 +6632,8 @@ export class GameServer {
     );
   }
 
-  /** Plant a seed into a tilled plot (instant; the growing takes time). */
   plant(eid: EntityId, tx: number, ty: number, seed: string): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos || player.session === null) return;
-    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
-
-    if (player.characterId < 0) {
-      sys('Guests cannot plant crops — make an account!');
-      return;
-    }
-    const dx = tx + 0.5 - pos.x;
-    const dy = ty + 0.5 - pos.y;
-    if (dx * dx + dy * dy > 2.2 * 2.2) return;
-    if (this.refuseFarmingOffSurface(player, pos)) return;
-
-    this.surface.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
-    const ground = this.surface.groundAt(tx, ty);
-    const key = `${tx},${ty}`;
-    if (this.crops.has(key)) return; // someone beat you to the plot
-    // THE SOWN LINE (second-growth Phase 4): tree and bush seeds skip
-    // the crop rows and join the wild's own growth ledger instead.
-    const species = GROWTH_SEEDS.get(seed);
-    if (species !== undefined) {
-      if (ground !== Tile.Tilled) {
-        sys('Wild seeds want open tilled earth.');
-        return;
-      }
-      this.plantWild(eid, player, tx, ty, seed, species, sys);
-      return;
-    }
-    const def = CROP_BY_SEED.get(seed);
-    if (!def) return;
-    // THE BED LAW (Phase 2): tilled-bed crops take a garden plot or a
-    // growing frame; the dark bed's spores take only a laid log.
-    if (def.bed === 'log') {
-      if (ground !== Tile.MushroomLog) {
-        sys('Spores want a laid mushroom log.');
-        return;
-      }
-    } else if (ground !== Tile.Tilled && ground !== Tile.GrowingFrame) {
-      this.speak(player, 'Needs tilled soil', 'Seeds need a tilled garden plot.');
-      return;
-    }
-    if (def.recurring && ground === Tile.GrowingFrame) {
-      sys('A tree wants open sky, not a frame.');
-      return;
-    }
-    const level = this.effectiveLevel(player, 'farming');
-    if (level < def.levelReq) {
-      this.speak(
-        player,
-        `Needs farming ${def.levelReq}`,
-        `You need farming level ${def.levelReq} to plant ${def.name.toLowerCase()}.`,
-      );
-      return;
-    }
-    if (removeItem(player.inventory, seed, 1) === 0) return;
-
-    const state: CropState = {
-      def,
-      tx,
-      ty,
-      plantedAt: Date.now(),
-      boostMs: 0,
-      watered: 0,
-      owner: player.characterId,
-      lastStage: 0,
-      soil: 0,
-      mulched: 0,
-      framed: ground === Tile.GrowingFrame ? 1 : 0,
-      cycles: 0,
-    };
-    const sproutTile = tileForStage(def, 0);
-    this.crops.set(key, state);
-    this.surface.registerCropTile(tx, ty, sproutTile);
-    this.saveCrop(state);
-    this.setWorldTile(SURFACE_PLANE_ID, tx, ty, sproutTile);
-    if (state.framed) this.mirrorPlot(state);
-    this.grantXp(eid, player, 'farming', Math.max(1, Math.ceil(def.xp / 4)));
-    this.setPose(eid, PoseState.Gather, 20);
-    player.session.sendJson({ t: 'inv', slots: player.inventory });
-    sys(`You plant ${def.name.toLowerCase()}. Ready in about ${def.growMinutes} min.`);
+    return farmSys.plant(this, eid, tx, ty, seed);
   }
 
   /**
@@ -7418,7 +6645,7 @@ export class GameServer {
    * ground keeps germinating inside its planter's own claim ring
    * (the gardener's yard grows for the gardener).
    */
-  private plantWild(
+  plantWild(
     eid: EntityId,
     player: PlayerComp,
     tx: number,
@@ -7466,126 +6693,12 @@ export class GameServer {
     sys('You set the seed in the earth. The wild takes it from here.');
   }
 
-  private tickHarvest(eid: EntityId, player: PlayerComp): void {
-    const action = player.action! as HarvestAction;
-    const key = `${action.tx},${action.ty}`;
-    const state = this.crops.get(key);
-    // Demolished, /grow-raced, or otherwise gone from under us.
-    if (!state || this.surface.groundAt(action.tx, action.ty) !== state.def.matureTile) {
-      this.cancelAction(eid, player, 'gone');
-      return;
-    }
-    if (--action.ticksLeft > 0) return;
-
-    const def = state.def;
-    const roll = (min: number, max: number) => min + Math.floor(Math.random() * (max - min + 1));
-    // Pack overflow spills onto the plot rather than vanishing.
-    const giveOrDrop = (item: string, qty: number) => {
-      const added = addItem(player.inventory, item, qty);
-      if (added < qty) {
-        this.spawnDrop(SURFACE_PLANE_ID, item, qty - added, action.tx + 0.5, action.ty + 0.5, eid);
-      }
-    };
-    // Bounty doubles the basket some seasons; Green Thumb sometimes
-    // hands next season back with it.
-    let yieldQty = roll(def.yield.min, def.yield.max);
-    if (Math.random() < player.perks.doubleHarvestChance) yieldQty *= 2;
-    // THE DEEPER SIGIL: the plot answers a yield working the same way
-    // the ore seam does.
-    yieldQty += this.bodyMoment(eid, player, 'gather', {
-      x: action.tx + 0.5,
-      y: action.ty + 0.5,
-      style: 'farming',
-    });
-    // THE CARE FOLD: the grade was earned across the planting's whole
-    // life — waterings, soil, mulch, and (orchards) the prune — and
-    // is decided here, once, deterministically. A graded harvest is
-    // its own item id. The dark bed never grades (no care facts).
-    const grade =
-      def.bed === 'log'
-        ? 0
-        : gradeFor(
-            wateringsOf(state.watered),
-            state.soil,
-            state.mulched,
-            state.watered & PRUNED_BIT ? 1 : 0,
-          );
-    giveOrDrop(grade > 0 ? gradedId(def.yield.item, grade) : def.yield.item, yieldQty);
-    if (grade > 0) {
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: grade === 2 ? 'A prime harvest. The care shows.' : 'A fine harvest.',
-      });
-    }
-    // THE ORCHARD SHAPE: a recurring crop stands after the pick. Pay
-    // the cycle (first pick pays the whole growth), re-aim the clock
-    // into the mid stage, reset the cycle's own care bits (water and
-    // prune re-earn; soil and mulch feed the STANDING plant), and let
-    // the world see the tree again, fruitless and patient.
-    if (def.recurring) {
-      // The pruned wood sometimes strikes as a new cutting.
-      const cuttings = roll(def.seedReturn.min, def.seedReturn.max);
-      if (cuttings > 0) giveOrDrop(def.seedItem, cuttings);
-      this.grantXp(eid, player, 'farming', harvestXp(def, state.cycles));
-      state.cycles += 1;
-      state.plantedAt = Date.now();
-      state.boostMs = growMs(def) - def.recurring.cooldownMinutes * 60_000;
-      state.watered = 0;
-      state.lastStage = 1;
-      this.crops.set(key, state);
-      this.saveCrop(state);
-      this.surface.registerCropTile(action.tx, action.ty, def.midTile);
-      this.setWorldTile(SURFACE_PLANE_ID, action.tx, action.ty, def.midTile);
-      this.mirrorPlot(state);
-      player.session?.sendJson({ t: 'inv', slots: player.inventory });
-      this.cancelAction(eid, player, 'done');
-      return;
-    }
-    let seeds = roll(def.seedReturn.min, def.seedReturn.max);
-    if (Math.random() < player.perks.seedRefundChance) seeds += 1;
-    if (seeds > 0) giveOrDrop(def.seedItem, seeds);
-    this.grantXp(eid, player, 'farming', def.xp);
-
-    this.crops.delete(key);
-    this.accounts.deleteCrop(action.tx, action.ty);
-    this.surface.unregisterCropTile(action.tx, action.ty);
-    this.setWorldTile(SURFACE_PLANE_ID, action.tx, action.ty, bedTileFor(def, state.framed === 1));
-    // The care mirror lets go of the harvested row.
-    for (const s of this.sessions) {
-      s.sendJson({ t: 'farm', remove: [{ tx: action.tx, ty: action.ty }] });
-    }
-    player.session?.sendJson({ t: 'inv', slots: player.inventory });
-    this.cancelAction(eid, player, 'done');
+  tickHarvest(eid: EntityId, player: PlayerComp): void {
+    return farmSys.tickHarvest(this, eid, player);
   }
 
-  /** Advance planted crops; the slow tick calls this every 2s. */
   tickCrops(now: number): void {
-    for (const state of this.crops.values()) {
-      // THE FED CHANNEL: a live irrigation line waters the stage on
-      // its own, before the stage math so the credit lands the moment
-      // the channel can give it. Pays NO XP — the automation law.
-      // The watered-bit gate comes first: a slaked stage never pays
-      // for the channel scan again. A framed row is ALWAYS watered
-      // (the frame's cloth holds the damp in) — same law, no scan.
-      {
-        const st = stageForElapsed(state.def, this.cropElapsed(state, now));
-        if (
-          st < 2 &&
-          !(state.watered & (1 << st)) &&
-          (state.framed === 1 || this.irrigatedAt(state.tx, state.ty))
-        ) {
-          this.waterCrop(state, now);
-        }
-      }
-      const stage = stageForElapsed(state.def, this.cropElapsed(state, now));
-      if (stage > state.lastStage) {
-        state.lastStage = stage;
-        const tile = tileForStage(state.def, stage);
-        this.surface.registerCropTile(state.tx, state.ty, tile);
-        this.setWorldTile(SURFACE_PLANE_ID, state.tx, state.ty, tile);
-      }
-    }
+    return farmSys.tickCrops(this, now);
   }
 
   /**
@@ -7951,7 +7064,7 @@ export class GameServer {
   }
 
   /** Spawn a free-for-all ground drop (harvest overflow, laid eggs). */
-  private spawnDrop(
+  spawnDrop(
     plane: PlaneId,
     item: string,
     qty: number,
@@ -14975,7 +14088,7 @@ export class GameServer {
   }
 
   /** One full milking, in ticks (3s), before gather-speed brews. */
-  private static readonly MILK_TICKS = 60;
+  static readonly MILK_TICKS = 60;
 
   private tickMilk(eid: EntityId, player: PlayerComp): void {
     const action = player.action! as MilkAction;
@@ -19536,7 +18649,7 @@ export class GameServer {
   }
 
   /** Re-send an entity's meta to every session that can see it. */
-  private broadcastMetaUpdate(eid: EntityId): void {
+  broadcastMetaUpdate(eid: EntityId): void {
     const meta = this.buildMeta(eid);
     // One stringify for the whole fan (see broadcastFx).
     let json: string | undefined;
