@@ -672,10 +672,16 @@ import {
 } from '@arx/shared';
 import { config } from '../config.js';
 import { CHAT_COMMANDS } from './commands/index.js';
+import * as farmSys from './farming.js';
+import * as arenaSys from './arena.js';
+import * as runSys from './dungeonRuns.js';
+import * as keySys from './keyring.js';
+import * as interestSys from './interest.js';
 import * as meleeSys from './melee.js';
 import * as procSys from './procs.js';
 import * as statusSys from './statuses.js';
 import * as standingSys from './standing.js';
+import { MILK_TICKS, MIN_GATHER_TICKS, SUS_DWELL_TICKS } from './tuning.js';
 import { DEV_COMMANDS } from './commands/devCommands.js';
 import { Session, sanitizeName } from '../net/session.js';
 import type { AccountStore, CharacterRow, CompanionRow, PetRow } from '../db/accounts.js';
@@ -813,7 +819,7 @@ interface BuildAction {
   dye?: number;
 }
 
-interface HarvestAction {
+export interface HarvestAction {
   kind: 'harvest';
   tx: number;
   ty: number;
@@ -907,7 +913,7 @@ type PlayerAction =
   | ChannelAction;
 
 /** A planted crop; stage derives from (now − plantedAt + boostMs). */
-interface CropState {
+export interface CropState {
   def: CropDef;
   tx: number;
   ty: number;
@@ -935,7 +941,7 @@ interface CropState {
  * bin gathers scraps; nonzero = the batch's working clock (pure wall
  * time — collect reads the clock, no tick owns the heap).
  */
-interface FarmBinState {
+export interface FarmBinState {
   tx: number;
   ty: number;
   fill: number;
@@ -947,7 +953,7 @@ interface FarmBinState {
  * THE ANIMALS OF THE YARD: one kept animal's durable truth —
  * slot-addressed per character, anchored to a trough tile.
  */
-interface LivestockRow {
+export interface LivestockRow {
   characterId: number;
   slot: number;
   species: string;
@@ -960,7 +966,7 @@ interface LivestockRow {
   bornAt: number;
 }
 
-interface LivestockComp {
+export interface LivestockComp {
   row: LivestockRow;
   /**
    * THE FLEECE TELLS THE TIME: the shorn state last spoken on the
@@ -999,7 +1005,7 @@ interface NavState {
   steer: SteerMemory;
 }
 
-interface NpcComp {
+export interface NpcComp {
   def: NpcDef;
   originX: number;
   originY: number;
@@ -1842,7 +1848,7 @@ interface DungeonInstance {
  * everything placed on it is recorded here so the reset can sweep the
  * sand clean no matter how the card ended.
  */
-interface ArenaMatchState {
+export interface ArenaMatchState {
   venueId: string;
   /**
    * The card AND the venue, SNAPSHOTTED at purchase — a Studio save
@@ -2728,7 +2734,7 @@ export class GameServer {
   private readonly graveByChar = new Map<number, EntityId>();
 
   /** Telegraphed blasts (ground AoEs) waiting to detonate. */
-  private readonly pendingBlasts: PendingBlast[] = [];
+  readonly pendingBlasts: PendingBlast[] = [];
 
   /**
    * THE TRAVELED ROAD (THE CROSSING): every body currently crossing
@@ -2738,7 +2744,7 @@ export class GameServer {
   private readonly transits = new Map<EntityId, Transit>();
 
   /** Lingering hazard zones (ground_field) pulsing while they live. */
-  private readonly activeFields: ActiveField[] = [];
+  readonly activeFields: ActiveField[] = [];
   /**
    * THE PET'S BREATH: pulse-shaped companion arts (the undertow's
    * three pulls, the flurry's rakes) queue their later waves here —
@@ -2764,7 +2770,7 @@ export class GameServer {
    * of DB-loaded trees. The tree stands alone; only bindings put words
    * in a mouth (props and objects will index here under new kinds).
    */
-  private readonly dialoguesByActor = new Map<string, DialogueOffer[]>();
+  readonly dialoguesByActor = new Map<string, DialogueOffer[]>();
   /** Node lookup per dialogue id, built once at registration. */
   private readonly dialogueNodes = new Map<string, ReadonlyMap<string, DialogueNode>>();
   /** The live voice-clip ledger — the resolver reads it per beat. */
@@ -2826,7 +2832,7 @@ export class GameServer {
 
   readonly sessions = new Set<Session>();
   /** In-world players by character id (blocks duplicate logins). */
-  private readonly characterEids = new Map<number, EntityId>();
+  readonly characterEids = new Map<number, EntityId>();
   /** Ephemeral guest tokens -> eid (guests have no DB session). */
   private readonly guestTokens = new Map<string, EntityId>();
   private nextGuestId = -1;
@@ -2910,8 +2916,8 @@ export class GameServer {
   }
 
   /** chunkKey -> entities inside; the interest-management index. */
-  private readonly chunks = new Map<string, Set<EntityId>>();
-  private readonly entityChunk = new Map<EntityId, string>();
+  readonly chunks = new Map<string, Set<EntityId>>();
+  readonly entityChunk = new Map<EntityId, string>();
 
   /** Depleted nodes waiting to come back. */
   readonly respawnQueue: Array<{
@@ -2947,8 +2953,8 @@ export class GameServer {
   private timer: NodeJS.Timeout | null = null;
 
   /** Active per-character dungeon instances. */
-  private readonly dungeons = new Map<number, DungeonInstance>();
-  private nextDungeonSlot = 0;
+  readonly dungeons = new Map<number, DungeonInstance>();
+  nextDungeonSlot = 0;
 
   /**
    * THE SAND AND THE ROAR: live matches by venue id (one claim per
@@ -2957,7 +2963,7 @@ export class GameServer {
    */
   readonly arenaMatches = new Map<string, ArenaMatchState>();
   readonly arenaCooldowns = new Map<string, number>();
-  private readonly arenaChestClaims = new Map<string, Set<number>>();
+  readonly arenaChestClaims = new Map<string, Set<number>>();
 
   /**
    * THE KEY RING's id mint: session-scoped, monotonic, never reused.
@@ -2966,7 +2972,7 @@ export class GameServer {
    * as the row lives in memory — and it does, because rows only ever
    * append or splice, never renumber.
    */
-  private nextKeyRingId = 1;
+  nextKeyRingId = 1;
 
   // ------------------------------------------------- procedural POIs
 
@@ -3128,7 +3134,7 @@ export class GameServer {
    * def re-tables the loot (the riftgate key faucet) or wards the lid
    * while the garrison stands (the champion's cache).
    */
-  private readonly poiChests = new Map<
+  readonly poiChests = new Map<
     string,
     { cell: string; table?: string; warded?: boolean; level?: number }
   >();
@@ -3257,7 +3263,7 @@ export class GameServer {
   private readonly social: SocialSystem;
 
   /** Fellowships: membership, invites, and the partypos ticker. */
-  private readonly party: PartySystem;
+  readonly party: PartySystem;
 
   /**
    * Name the ground under (x, y). Every zone — authored or dungeon
@@ -3398,7 +3404,7 @@ export class GameServer {
    * waits on a round-trip. Blank player boards ride along too: their
    * owner needs the record to find the edit affordance.
    */
-  private sendChunkSigns(session: Session, cx: number, cy: number): void {
+  sendChunkSigns(session: Session, cx: number, cy: number): void {
     const plane = this.sessionPlane(session);
     if (plane === null) return;
     const charId = this.players.get(session.playerEid!)?.characterId ?? -1;
@@ -3456,7 +3462,7 @@ export class GameServer {
    * otherwise fail in silence: locked lids, full packs, short levels,
    * a beast that noses your pack and finds nothing.
    */
-  private speak(
+  speak(
     player: { session: Session | null } | undefined,
     word: string,
     text: string,
@@ -4645,7 +4651,7 @@ export class GameServer {
    * Resolve a social sender: a real, persisted character. Guests get a
    * gentle nudge — the friend ledger lives in the database they don't have.
    */
-  private socialActor(eid: EntityId, session: Session): { id: number; name: string } | null {
+  socialActor(eid: EntityId, session: Session): { id: number; name: string } | null {
     const player = this.players.get(eid);
     if (!player) return null;
     if (player.characterId <= 0) {
@@ -4823,7 +4829,7 @@ export class GameServer {
    * cadence). Zones by containment, frontier sites by anchor proximity
    * from the 3×3 ledger cells around the walker.
    */
-  private checkDiscoveries(eid: EntityId): void {
+  checkDiscoveries(eid: EntityId): void {
     const player = this.players.get(eid);
     const pos = this.positions.get(eid);
     if (!player || !pos || isRiftPlane(pos.plane)) return;
@@ -4857,7 +4863,7 @@ export class GameServer {
    * never be lost to a crash); re-recording an id overwrites a faded
    * marker with the fresh truth.
    */
-  private recordDiscovery(player: PlayerComp, d: DiscoveryWire, epoch?: number): void {
+  recordDiscovery(player: PlayerComp, d: DiscoveryWire, epoch?: number): void {
     // A poi: footfall arms the boldness clock's gate and stamps the
     // site's LIVE stage onto the wire (stage is world truth merged at
     // send time — never stored per character).
@@ -4943,7 +4949,6 @@ export class GameServer {
    * multiply out to. Harvesting is labor, not vacuuming — the floor is
    * what keeps a starsteel axe from mowing a copse flat in a blink.
    */
-  private static readonly MIN_GATHER_TICKS = 60;
 
   /** Attempt to start gathering at a tile. */
   interact(eid: EntityId, tx: number, ty: number): void {
@@ -5399,7 +5404,7 @@ export class GameServer {
    * never closes INTO someone half-across the threshold and leaves
    * them embedded in a solid tile.
    */
-  private bodyOnTile(plane: PlaneId, tx: number, ty: number, pad = 0.4): boolean {
+  bodyOnTile(plane: PlaneId, tx: number, ty: number, pad = 0.4): boolean {
     const cx = Math.floor((tx + 0.5) / CHUNK_SIZE);
     const cy = Math.floor((ty + 0.5) / CHUNK_SIZE);
     for (let dy = -1; dy <= 1; dy++) {
@@ -5524,7 +5529,7 @@ export class GameServer {
   }
 
   /** Best gathering-speed multiplier across active buffs (forge: best-of). */
-  private gatherSpeedOf(player: PlayerComp): number {
+  gatherSpeedOf(player: PlayerComp): number {
     return buffGatherSpeed(player.buffs);
   }
 
@@ -5556,10 +5561,10 @@ export class GameServer {
       const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
       if (hours < SUNRISE || hours > SUNSET) speedup *= player.perks.nightGatherMult;
     }
-    return Math.max(GameServer.MIN_GATHER_TICKS, Math.round(node.baseTicks / speedup));
+    return Math.max(MIN_GATHER_TICKS, Math.round(node.baseTicks / speedup));
   }
 
-  private cancelAction(eid: EntityId, player: PlayerComp, reason?: string): void {
+  cancelAction(eid: EntityId, player: PlayerComp, reason?: string): void {
     if (!player.action) return;
     // A craft batch reports its tally on the way out — the work card's
     // "Made N" face and the interrupt lines both read from this.
@@ -6318,80 +6323,24 @@ export class GameServer {
     );
   }
 
-  /** THE ONE CARE MIRROR: every session hears a field's facts change. */
-  private mirrorPlot(state: CropState): void {
-    const info = {
-      tx: state.tx,
-      ty: state.ty,
-      w: state.watered,
-      soil: state.soil,
-      m: state.mulched,
-      f: state.framed,
-    };
-    for (const s of this.sessions) s.sendJson({ t: 'farm', plots: [info] });
+  mirrorPlot(state: CropState): void {
+    return farmSys.mirrorPlot(this, state);
   }
 
   mirrorBin(bin: FarmBinState): void {
-    const info = {
-      tx: bin.tx,
-      ty: bin.ty,
-      fill: bin.fill,
-      graded: bin.graded,
-      readyAt: bin.startedAt === 0 ? 0 : bin.startedAt + COMPOST_MINUTES * 60_000,
-    };
-    for (const s of this.sessions) s.sendJson({ t: 'farm', bins: [info] });
+    return farmSys.mirrorBin(this, bin);
   }
 
-  /** The whole farm's care facts, for a fresh session. */
-  private sendFarm(session: Session): void {
-    const plots = [...this.crops.values()]
-      .filter((c) => c.watered !== 0 || c.soil !== 0 || c.mulched !== 0 || c.framed !== 0)
-      .map((c) => ({ tx: c.tx, ty: c.ty, w: c.watered, soil: c.soil, m: c.mulched, f: c.framed }));
-    const bins = [...this.farmBins.values()].map((b) => ({
-      tx: b.tx,
-      ty: b.ty,
-      fill: b.fill,
-      graded: b.graded,
-      readyAt: b.startedAt === 0 ? 0 : b.startedAt + COMPOST_MINUTES * 60_000,
-    }));
-    const troughs = [...this.farmTroughs.values()].map((t) => ({
-      tx: t.tx,
-      ty: t.ty,
-      feed: t.feed,
-    }));
-    const jobs = [...this.farmJobs.values()]
-      .filter((j) => j.qty > 0)
-      .map((j) => ({ tx: j.tx, ty: j.ty, recipe: j.recipe, qty: j.qty, startedAt: j.startedAt, grade: j.grade }));
-    const apiaries = [...this.farmApiaries.values()].map((a) => ({ tx: a.tx, ty: a.ty, since: a.since }));
-    if (plots.length > 0 || bins.length > 0 || troughs.length > 0 || jobs.length > 0 || apiaries.length > 0) {
-      session.sendJson({ t: 'farm', plots, bins, troughs, jobs, apiaries });
-    }
+  sendFarm(session: Session): void {
+    return farmSys.sendFarm(this, session);
   }
 
-  /**
-   * Apply one watering to a growing crop's CURRENT stage: sets the
-   * stage's watered bit and credits 35% of the stage's remainder.
-   * Pays no XP itself — hand-watering pays at its call site, the fed
-   * channel deliberately never does (the automation law).
-   */
-  private waterCrop(state: CropState, now: number): boolean {
-    // The dark bed drinks nothing (shade culture keeps its own law).
-    if (state.def.bed === 'log') return false;
-    const effective = this.cropElapsed(state, now);
-    const stage = stageForElapsed(state.def, effective);
-    if (stage === 2) return false;
-    const bit = 1 << stage;
-    if (state.watered & bit) return false;
-    const stageEnd = stageEndMs(state.def, stage as 0 | 1);
-    state.watered |= bit;
-    state.boostMs += Math.max(0, Math.round((stageEnd - effective) * 0.35));
-    this.saveCrop(state);
-    this.mirrorPlot(state);
-    return true;
+  waterCrop(state: CropState, now: number): boolean {
+    return farmSys.waterCrop(this, state, now);
   }
 
   /** Is a well standing within range (chebyshev) of this tile? */
-  private wellNear(tx: number, ty: number, range: number = WELL_SWEEP_RANGE): boolean {
+  wellNear(tx: number, ty: number, range: number = WELL_SWEEP_RANGE): boolean {
     // Warm the corner chunks so a well across a seam still answers.
     for (const [cx, cy] of [
       [tx - range, ty - range],
@@ -6409,19 +6358,8 @@ export class GameServer {
     return false;
   }
 
-  /**
-   * THE FED CHANNEL: is this plot beside a live irrigation channel
-   * (adjacent channel tile with a well within its feed range)?
-   */
-  private irrigatedAt(tx: number, ty: number): boolean {
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        if (dx === 0 && dy === 0) continue;
-        if (this.surface.groundAt(tx + dx, ty + dy) !== Tile.IrrigationChannel) continue;
-        if (this.wellNear(tx + dx, ty + dy, CHANNEL_FEED_RANGE)) return true;
-      }
-    }
-    return false;
+  irrigatedAt(tx: number, ty: number): boolean {
+    return farmSys.irrigatedAt(this, tx, ty);
   }
 
   /**
@@ -6429,160 +6367,22 @@ export class GameServer {
    * from the surface ledgers, so off-surface hands are turned away
    * politely before any ledger is touched. Returns true when refused.
    */
-  private refuseFarmingOffSurface(player: PlayerComp, pos: PositionComp): boolean {
+  refuseFarmingOffSurface(player: PlayerComp, pos: PositionComp): boolean {
     if (pos.plane === SURFACE_PLANE_ID) return false;
     this.speak(player, 'Nothing grows here', 'Nothing grows here — no sun ever reaches this ground.', undefined, 'note');
     return true;
   }
 
-  /**
-   * Work compost into a planted crop's soil. One tier per act: plain
-   * compost enriches plain ground; prime compost makes any ground
-   * rich. Deterministic, once each — never a repeatable faucet.
-   */
   fertilize(eid: EntityId, tx: number, ty: number): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos || player.session === null) return;
-    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
-    if (player.characterId < 0) {
-      sys('Guests cannot tend crops. Make an account!');
-      return;
-    }
-    const dx = tx + 0.5 - pos.x;
-    const dy = ty + 0.5 - pos.y;
-    if (dx * dx + dy * dy > 2.2 * 2.2) return;
-    if (this.refuseFarmingOffSurface(player, pos)) return;
-    const state = this.crops.get(`${tx},${ty}`);
-    if (!state) {
-      if (this.surface.groundAt(tx, ty) === Tile.Tilled) {
-        sys('Plant first. The soil takes its meal through roots.');
-      }
-      return;
-    }
-    if (state.def.bed === 'log') {
-      sys('The log asks for shade, nothing more.');
-      return;
-    }
-    const stage = stageForElapsed(state.def, this.cropElapsed(state, Date.now()));
-    if (stage === 2) {
-      sys('It has grown all it will. Harvest it.');
-      return;
-    }
-    if (state.soil >= SOIL_RICH) {
-      sys('The soil is as rich as it gets.');
-      return;
-    }
-    // Plain compost lifts plain ground; prime compost makes any
-    // ground rich outright. The cheaper meal is spent first so a
-    // carried prime barrow is never wasted on a half step.
-    if (state.soil < SOIL_ENRICHED && removeItem(player.inventory, 'compost', 1) === 1) {
-      state.soil = SOIL_ENRICHED;
-      sys('You work compost into the soil.');
-    } else if (removeItem(player.inventory, 'prime_compost', 1) === 1) {
-      state.soil = SOIL_RICH;
-      sys('You work prime compost in. The ground turns dark and willing.');
-    } else {
-      sys(
-        state.soil >= SOIL_ENRICHED
-          ? 'Only prime compost can better this ground.'
-          : 'You need compost in your pack.',
-      );
-      return;
-    }
-    // THE PLOT PAYS FOR ITS TIME: tending pays a tenth, same as water.
-    this.grantXp(eid, player, 'farming', Math.ceil(state.def.xp / 10));
-    this.setPose(eid, PoseState.Gather, 20);
-    this.saveCrop(state);
-    this.mirrorPlot(state);
-    player.session.sendJson({ t: 'inv', slots: player.inventory });
+    return farmSys.fertilize(this, eid, tx, ty);
   }
 
-  /** Lay a fibre blanket around a growing crop. Once per planting. */
   mulch(eid: EntityId, tx: number, ty: number): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos || player.session === null) return;
-    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
-    if (player.characterId < 0) {
-      sys('Guests cannot tend crops. Make an account!');
-      return;
-    }
-    const dx = tx + 0.5 - pos.x;
-    const dy = ty + 0.5 - pos.y;
-    if (dx * dx + dy * dy > 2.2 * 2.2) return;
-    if (this.refuseFarmingOffSurface(player, pos)) return;
-    const state = this.crops.get(`${tx},${ty}`);
-    if (!state) return;
-    if (state.def.bed === 'log') {
-      sys('The log asks for shade, nothing more.');
-      return;
-    }
-    const stage = stageForElapsed(state.def, this.cropElapsed(state, Date.now()));
-    if (stage === 2) {
-      sys('It has grown all it will. Harvest it.');
-      return;
-    }
-    if (state.mulched) {
-      sys('A mulch blanket already lies here.');
-      return;
-    }
-    // Count BEFORE removing: removeItem takes what it can, and a
-    // short pack must not lose its last strand to a refusal.
-    if (countItem(player.inventory, 'plant_fibre') < MULCH_FIBRE_COST) {
-      sys('Mulch wants plant fibre. Two strands to a blanket.');
-      return;
-    }
-    removeItem(player.inventory, 'plant_fibre', MULCH_FIBRE_COST);
-    state.mulched = 1;
-    this.setPose(eid, PoseState.Gather, 20);
-    this.grantXp(eid, player, 'farming', Math.ceil(state.def.xp / 10));
-    this.saveCrop(state);
-    this.mirrorPlot(state);
-    player.session.sendJson({ t: 'inv', slots: player.inventory });
-    sys('You lay a fibre blanket around the stems.');
+    return farmSys.mulch(this, eid, tx, ty);
   }
 
-  /**
-   * THE ORCHARD'S KNIFE: cut a recurring crop's deadwood mid-cycle.
-   * Costs nothing, pays tending XP, and banks one care point toward
-   * the cycle's grade — once per cycle behind its own mask bit.
-   */
   prune(eid: EntityId, tx: number, ty: number): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos || player.session === null) return;
-    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
-    if (player.characterId < 0) {
-      sys('Guests cannot tend crops. Make an account!');
-      return;
-    }
-    const dx = tx + 0.5 - pos.x;
-    const dy = ty + 0.5 - pos.y;
-    if (dx * dx + dy * dy > 2.2 * 2.2) return;
-    if (this.refuseFarmingOffSurface(player, pos)) return;
-    const state = this.crops.get(`${tx},${ty}`);
-    if (!state || !state.def.recurring) return;
-    const stage = stageForElapsed(state.def, this.cropElapsed(state, Date.now()));
-    if (stage === 2) {
-      sys('Pick the fruit first. Then the knife.');
-      return;
-    }
-    if (state.watered & PRUNED_BIT) {
-      sys('The wood is already clean this season.');
-      return;
-    }
-    state.watered |= PRUNED_BIT;
-    this.grantXp(
-      eid,
-      player,
-      'farming',
-      Math.ceil(harvestXp(state.def, state.cycles) / 10),
-    );
-    this.setPose(eid, PoseState.Gather, 20);
-    this.saveCrop(state);
-    this.mirrorPlot(state);
-    sys('You cut the deadwood away. The tree breathes.');
+    return farmSys.prune(this, eid, tx, ty);
   }
 
   // ------------------------------------------------ the larder board
@@ -6641,244 +6441,35 @@ export class GameServer {
   }
 
   mirrorJob(job: { tx: number; ty: number; recipe: string; qty: number; startedAt: number; grade: number }): void {
-    for (const s of this.sessions) {
-      s.sendJson({
-        t: 'farm',
-        jobs: [{ tx: job.tx, ty: job.ty, recipe: job.recipe, qty: job.qty, startedAt: job.startedAt, grade: job.grade }],
-      });
-    }
+    return farmSys.mirrorJob(this, job);
   }
 
   mirrorApiary(tx: number, ty: number, since: number): void {
-    for (const s of this.sessions) s.sendJson({ t: 'farm', apiaries: [{ tx, ty, since }] });
+    return farmSys.mirrorApiary(this, tx, ty, since);
   }
 
-  /**
-   * Load a batch: prove the tile and recipe, gate the level, consume
-   * inputs highest-grade-first, and set the clock. Every refusal is
-   * spoken; nothing is consumed before the last gate passes.
-   */
   workStart(eid: EntityId, tx: number, ty: number, recipeId: string, qty: number): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos || player.session === null) return;
-    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
-    if (player.characterId < 0) {
-      sys('Guests cannot work the yard. Make an account!');
-      return;
-    }
-    const dx = tx + 0.5 - pos.x;
-    const dy = ty + 0.5 - pos.y;
-    if (dx * dx + dy * dy > 2.6 * 2.6) return;
-    if (this.refuseFarmingOffSurface(player, pos)) return;
-    const ground = this.surface.groundAt(tx, ty);
-    const station = ground === undefined ? undefined : WORK_STATION_TILES.get(ground as Tile);
-    const recipe = WORK_RECIPES.get(recipeId);
-    if (!station || !recipe || recipe.station !== station) return;
-    const key = `${tx},${ty}`;
-    const existing = this.farmJobs.get(key);
-    if (existing && existing.qty > 0) {
-      this.speak(
-        player,
-        'Still working',
-        'The station is already working. Collect first.',
-        { x: tx + 0.5, y: ty + 0.5 },
-        'note',
-      );
-      return;
-    }
-    const level = this.effectiveLevel(player, recipe.skill);
-    if (level < recipe.levelReq) {
-      this.speak(
-        player,
-        `Needs ${recipe.skill} ${recipe.levelReq}`,
-        `You need ${recipe.skill} level ${recipe.levelReq} for ${recipe.name.toLowerCase()}.`,
-      );
-      return;
-    }
-    const batch = Math.min(qty, WORK_BATCH_CAP);
-    // Count first (nothing spent on a refusal): each input unit may
-    // be satisfied by any grade of its family.
-    const familyCount = (base: string): number => {
-      let n = 0;
-      for (const s of player.inventory) {
-        if (!s || s.stolen) continue;
-        if (gradeOf(s.item).base === base) n += s.qty;
-      }
-      return n;
-    };
-    for (const input of recipe.inputs) {
-      if (familyCount(input.item) < input.qty * batch) {
-        sys(`Short of ${itemDef(input.item)?.name.toLowerCase() ?? input.item} for ${batch}.`);
-        return;
-      }
-    }
-    // Consume highest grades first; the batch records its weakest.
-    let batchGrade: number | null = null;
-    for (const input of recipe.inputs) {
-      const gradable = GRADED_PRODUCE.has(input.item);
-      for (let u = 0; u < input.qty * batch; u++) {
-        let taken = -1;
-        for (const g of [2, 1, 0] as const) {
-          const id = g === 0 ? input.item : gradedId(input.item, g);
-          if (removeItem(player.inventory, id, 1) === 1) {
-            taken = g;
-            break;
-          }
-        }
-        if (taken === -1) return; // raced; counts said otherwise
-        if (gradable) batchGrade = batchGrade === null ? taken : Math.min(batchGrade, taken);
-      }
-    }
-    const job = {
-      tx,
-      ty,
-      recipe: recipeId,
-      qty: batch,
-      startedAt: Date.now(),
-      grade: batchGrade ?? 0,
-      owner: player.characterId,
-    };
-    this.farmJobs.set(key, job);
-    this.accounts.upsertStationJob(tx, ty, recipeId, batch, job.startedAt, job.grade, job.owner);
-    this.mirrorJob(job);
-    // A beat of body at the vessel: the loading read (the client's
-    // 'tend' choreography at the station tile).
-    this.setPose(eid, PoseState.Craft, 24);
-    player.session.sendJson({ t: 'inv', slots: player.inventory });
-    sys(`The ${itemDef(recipe.output.item)?.name.toLowerCase() ?? recipe.output.item} work begins. It runs while you wander.`);
+    return farmSys.workStart(this, eid, tx, ty, recipeId, qty);
   }
 
-  /**
-   * The interact door for a working station: hand over whatever has
-   * matured (owner only), and let the rest keep working.
-   */
-  private interactWorkStation(
+  interactWorkStation(
     eid: EntityId,
     player: PlayerComp,
     tx: number,
     ty: number,
     sys: (text: string) => void,
   ): void {
-    const wsPos = this.positions.get(eid);
-    if (!wsPos || this.refuseFarmingOffSurface(player, wsPos)) return;
-    const key = `${tx},${ty}`;
-    const job = this.farmJobs.get(key);
-    if (!job || job.qty <= 0) {
-      sys('The station stands idle. Load it and let it work.');
-      return;
-    }
-    const recipe = WORK_RECIPES.get(job.recipe);
-    if (!recipe) return;
-    if (job.owner !== player.characterId) {
-      sys('This batch is another hand\'s work.');
-      return;
-    }
-    const now = Date.now();
-    const done = workDone(recipe, job.startedAt, job.qty, now);
-    if (done <= 0) {
-      const mins = Math.max(1, Math.ceil((job.startedAt + recipe.minutes * 60_000 - now) / 60_000));
-      sys(`The work goes on. About ${mins} min to the next measure.`);
-      return;
-    }
-    const itemId = workOutputId(recipe, job.grade as 0 | 1 | 2);
-    for (let i = 0; i < done * recipe.output.qty; i++) {
-      if (addItem(player.inventory, itemId, 1) === 0) {
-        this.spawnDrop(SURFACE_PLANE_ID, itemId, 1, tx + 0.5, ty + 0.5, eid);
-      }
-    }
-    this.grantXp(eid, player, recipe.skill, recipe.xp * done);
-    job.qty -= done;
-    job.startedAt += done * recipe.minutes * 60_000;
-    if (job.qty <= 0) {
-      this.farmJobs.delete(key);
-      this.accounts.deleteStationJob(tx, ty);
-      this.mirrorJob({ tx, ty, recipe: job.recipe, qty: 0, startedAt: 0, grade: 0 });
-    } else {
-      this.accounts.upsertStationJob(tx, ty, job.recipe, job.qty, job.startedAt, job.grade, job.owner);
-      this.mirrorJob(job);
-    }
-    this.setPose(eid, PoseState.Craft, 24);
-    player.session?.sendJson({ t: 'inv', slots: player.inventory });
-    sys(
-      `You collect ${done * recipe.output.qty} ${itemDef(itemId)?.name.toLowerCase() ?? itemId}${job.qty > 0 ? `. ${job.qty} still working.` : '. The station rests.'}`,
-    );
+    return farmSys.interactWorkStation(this, eid, player, tx, ty, sys);
   }
 
-  /**
-   * THE HIVE: honey and wax on the bees' own clock, graded by the
-   * real flowers standing near when you lift the lid.
-   */
-  private interactApiary(
+  interactApiary(
     eid: EntityId,
     player: PlayerComp,
     tx: number,
     ty: number,
     sys: (text: string) => void,
   ): void {
-    if (player.characterId < 0) return;
-    const hivePos = this.positions.get(eid);
-    if (!hivePos || this.refuseFarmingOffSurface(player, hivePos)) return;
-    const built = this.surface.builtAt(tx, ty);
-    if (built && built.owner !== player.characterId) {
-      sys('These bees answer another keeper.');
-      return;
-    }
-    const key = `${tx},${ty}`;
-    const now = Date.now();
-    const hive = this.farmApiaries.get(key) ?? { tx, ty, since: now };
-    if (!this.farmApiaries.has(key)) {
-      // First touch starts the clock (a fresh hive settles in).
-      this.farmApiaries.set(key, hive);
-      this.accounts.upsertFarmApiary(tx, ty, hive.since);
-      this.mirrorApiary(tx, ty, hive.since);
-      sys('The bees settle into the new box. Give them time.');
-      return;
-    }
-    const units = Math.min(APIARY_STORE_CAP, Math.floor((now - hive.since) / (APIARY_MINUTES * 60_000)));
-    if (units <= 0) {
-      const mins = Math.max(1, Math.ceil((hive.since + APIARY_MINUTES * 60_000 - now) / 60_000));
-      sys(`The comb is thin yet. About ${mins} min.`);
-      return;
-    }
-    // Count the flowers the bees actually work: flower boxes and the
-    // blooming crops (sunflower, moonbell, dawnveil) in the hive's
-    // range. World-state only — plant a garden, sweeten the honey.
-    let flowers = 0;
-    for (let fy = ty - APIARY_FLOWER_RANGE; fy <= ty + APIARY_FLOWER_RANGE; fy++) {
-      for (let fx = tx - APIARY_FLOWER_RANGE; fx <= tx + APIARY_FLOWER_RANGE; fx++) {
-        const g = this.surface.groundAt(fx, fy);
-        if (
-          g === Tile.FlowerBox ||
-          g === Tile.SunflowerMid ||
-          g === Tile.SunflowerRipe ||
-          g === Tile.MoonbellMid ||
-          g === Tile.MoonbellRipe ||
-          g === Tile.DawnveilMid ||
-          g === Tile.DawnveilRipe
-        ) {
-          flowers++;
-        }
-      }
-    }
-    const grade = apiaryGrade(flowers);
-    const honeyId = grade > 0 ? gradedId('honey', grade) : 'honey';
-    for (let i = 0; i < units; i++) {
-      if (addItem(player.inventory, honeyId, 1) === 0) this.spawnDrop(SURFACE_PLANE_ID, honeyId, 1, tx + 0.5, ty + 0.5, eid);
-      if (addItem(player.inventory, 'beeswax', 1) === 0) this.spawnDrop(SURFACE_PLANE_ID, 'beeswax', 1, tx + 0.5, ty + 0.5, eid);
-    }
-    this.grantXp(eid, player, 'farming', 12 * units);
-    hive.since = now;
-    this.accounts.upsertFarmApiary(tx, ty, hive.since);
-    this.mirrorApiary(tx, ty, hive.since);
-    player.session?.sendJson({ t: 'inv', slots: player.inventory });
-    sys(
-      grade === 2
-        ? 'The comb runs heavy and bright. The garden did this.'
-        : grade === 1
-          ? 'Good comb, sweetened by the flowers near.'
-          : 'You take fair comb. Bees do better beside a garden.',
-    );
+    return farmSys.interactApiary(this, eid, player, tx, ty, sys);
   }
 
   // ------------------------------------------ the animals of the yard
@@ -6903,49 +6494,12 @@ export class GameServer {
     for (const row of rows) this.spawnLivestockEntity(row);
   }
 
-  /** Stand a kept animal in the world beside its trough. */
-  private spawnLivestockEntity(row: LivestockRow): EntityId | null {
-    const def = npcDef(row.species);
-    if (!def || !LIVESTOCK.has(row.species)) return null;
-    this.surface.ensure(Math.floor(row.tx / CHUNK_SIZE), Math.floor(row.ty / CHUNK_SIZE));
-    // Scatter the herd on the trough's south apron, dealt by slot so
-    // a yard reloads into the same loose arrangement.
-    const x = row.tx + 0.5 + ((row.slot % 3) - 1) * 1.2 + ((row.slot * 7) % 5) * 0.1;
-    const y = row.ty + 1.6 + Math.floor(row.slot / 3) * 1.1;
-    const eid = this.spawnNpc(def, SURFACE_PLANE_ID, x, y, -1);
-    this.livestock.set(eid, {
-      row,
-      shornShown: row.species === 'sheep' ? row.nextProduceAt > Date.now() : undefined,
-    });
-    const npc = this.npcs.get(eid);
-    if (npc) {
-      npc.nextProduceAt = row.nextProduceAt;
-      // A kept hen lays for the hand, never the ground: the registry
-      // pays at the Gather, so the wild lay clock stays dark.
-      npc.nextLayAt = 0;
-    }
-    return eid;
+  spawnLivestockEntity(row: LivestockRow): EntityId | null {
+    return farmSys.spawnLivestockEntity(this, row);
   }
 
-  /**
-   * THE FLEECE TELLS THE TIME — the slow wool clock (~1s beat). A
-   * kept sheep's body shows its produce state to every watcher:
-   * clipped after the shear, a full cloud once the wool regrows.
-   * The shear itself broadcasts at the payout; this sweep carries
-   * the regrow (and any dev lever that hurries the clock), speaking
-   * on the meta channel only when the state actually flips.
-   */
-  private tickFleece(now: number): void {
-    for (const [stockEid, comp] of this.livestock) {
-      if (comp.row.species !== 'sheep') continue;
-      const npc = this.npcs.get(stockEid);
-      if (!npc) continue;
-      const shorn = npc.nextProduceAt > now;
-      if (shorn !== (comp.shornShown ?? false)) {
-        comp.shornShown = shorn;
-        this.broadcastMetaUpdate(stockEid);
-      }
-    }
+  tickFleece(now: number): void {
+    return farmSys.tickFleece(this, now);
   }
 
   private livestockEidFor(characterId: number, slot: number): EntityId | null {
@@ -6956,7 +6510,7 @@ export class GameServer {
   }
 
   /** Rows anchored to one trough (the stock cap's counter). */
-  private livestockAtTrough(tx: number, ty: number): number {
+  livestockAtTrough(tx: number, ty: number): number {
     let n = 0;
     for (const comp of this.livestock.values()) {
       if (comp.row.tx === tx && comp.row.ty === ty) n++;
@@ -6964,7 +6518,7 @@ export class GameServer {
     return n;
   }
 
-  private livestockCountFor(characterId: number): number {
+  livestockCountFor(characterId: number): number {
     let n = 0;
     for (const comp of this.livestock.values()) {
       if (comp.row.characterId === characterId) n++;
@@ -6973,93 +6527,16 @@ export class GameServer {
   }
 
   mirrorTrough(trough: { tx: number; ty: number; feed: number }): void {
-    for (const s of this.sessions) {
-      s.sendJson({ t: 'farm', troughs: [{ tx: trough.tx, ty: trough.ty, feed: trough.feed }] });
-    }
+    return farmSys.mirrorTrough(this, trough);
   }
 
-  /**
-   * Release a crated young at the keeper's own trough — the buy's
-   * second half (useItem routes crates here, slot-addressed).
-   */
-  private releaseLivestock(
+  releaseLivestock(
     eid: EntityId,
     player: PlayerComp,
     slotIndex: number,
     crateId: string,
   ): void {
-    const sys = (text: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text });
-    const ldef = LIVESTOCK_BY_CRATE.get(crateId)!;
-    if (player.characterId < 0) {
-      sys('Guests cannot keep animals. Make an account!');
-      return;
-    }
-    const pos = this.positions.get(eid);
-    if (!pos) return;
-    // The trough within arm's reach that YOU raised is the yard.
-    let trough: { tx: number; ty: number } | null = null;
-    for (let dy = -2; dy <= 2 && !trough; dy++) {
-      for (let dx = -2; dx <= 2 && !trough; dx++) {
-        const tx = Math.floor(pos.x) + dx;
-        const ty = Math.floor(pos.y) + dy;
-        if (this.surface.groundAt(tx, ty) !== Tile.FeedTrough) continue;
-        const built = this.surface.builtAt(tx, ty);
-        if (built && built.owner === player.characterId) trough = { tx, ty };
-      }
-    }
-    if (!trough) {
-      sys('Release it at your own feed trough. The yard is the animal\'s home.');
-      return;
-    }
-    const level = this.effectiveLevel(player, 'beastcraft');
-    if (level < ldef.levelReq) {
-      this.speak(
-        player,
-        `Needs beastcraft ${ldef.levelReq}`,
-        `You need beastcraft level ${ldef.levelReq} to keep a ${ldef.name.toLowerCase()}.`,
-      );
-      return;
-    }
-    if (this.livestockCountFor(player.characterId) >= LIVESTOCK_CAP) {
-      this.speak(player, 'Yards full', 'Your yards are full. Lead one away first.');
-      return;
-    }
-    if (this.livestockAtTrough(trough.tx, trough.ty) >= TROUGH_STOCK_CAP) {
-      sys('This trough feeds all it can. Raise another.');
-      return;
-    }
-    // First free slot is the animal's identity forever.
-    const used = new Set<number>();
-    for (const comp of this.livestock.values()) {
-      if (comp.row.characterId === player.characterId) used.add(comp.row.slot);
-    }
-    let slot = -1;
-    for (let i = 0; i < LIVESTOCK_CAP; i++) {
-      if (!used.has(i)) {
-        slot = i;
-        break;
-      }
-    }
-    if (slot === -1) return;
-    if (!takeSlot(player.inventory, slotIndex, 1)) return;
-    const row: LivestockRow = {
-      characterId: player.characterId,
-      slot,
-      species: ldef.species,
-      name: ldef.name,
-      tx: trough.tx,
-      ty: trough.ty,
-      bond: 0,
-      brushedAt: 0,
-      nextProduceAt: Date.now() + ldef.produce.cooldownSec * 1000,
-      bornAt: Date.now(),
-    };
-    this.accounts.saveLivestock(row);
-    this.spawnLivestockEntity(row);
-    player.session?.sendJson({ t: 'inv', slots: player.inventory });
-    // The naming card opens on the ceremony — the pet card, reused.
-    player.session?.sendJson({ t: 'stockname', slot, species: ldef.species });
-    sys(`The ${ldef.name.toLowerCase()} steps into your yard and looks around, deciding things.`);
+    return farmSys.releaseLivestock(this, eid, player, slotIndex, crateId);
   }
 
   /** Name (or re-name) a kept animal — the pet-sanitize law guards it. */
@@ -7080,14 +6557,7 @@ export class GameServer {
     player.session?.sendJson({ t: 'chat', channel: 'system', text: `${clean} it is.` });
   }
 
-  /**
-   * The whole yard conversation, in one cascade: another keeper's
-   * animal offers a word of refusal; the lead walks yours away; a
-   * ready udder or fleece opens the collect action (the milking
-   * rail, reused whole); an open brush window pays the bond; else
-   * the animal tells you how it is doing.
-   */
-  private interactLivestock(
+  interactLivestock(
     eid: EntityId,
     player: PlayerComp,
     targetEid: EntityId,
@@ -7095,173 +6565,15 @@ export class GameServer {
     comp: LivestockComp,
     sys: (text: string) => void,
   ): void {
-    const row = comp.row;
-    const ldef = LIVESTOCK.get(row.species)!;
-    if (row.characterId !== player.characterId) {
-      this.speak(
-        player,
-        'Not yours',
-        `${row.name} belongs to another yard.`,
-        this.positions.get(targetEid) ?? undefined,
-      );
-      return;
-    }
-    const now = Date.now();
-    if (now >= npc.nextProduceAt) {
-      if (!hasSpaceFor(player.inventory, ldef.produce.item)) {
-        this.speak(player, 'Pack full', 'Your pack is full.');
-        return;
-      }
-      const pos = this.positions.get(eid);
-      const npos = this.positions.get(targetEid);
-      if (!pos || !npos) return;
-      if (player.action) this.cancelAction(eid, player);
-      const ticks = Math.max(
-        GameServer.MIN_GATHER_TICKS,
-        Math.round(GameServer.MILK_TICKS / this.gatherSpeedOf(player)),
-      );
-      player.action = { kind: 'milk', targetEid, ticksLeft: ticks };
-      pos.dir = Math.atan2(npos.y - pos.y, npos.x - pos.x);
-      npc.holdUntilTick = this.tickCount + ticks + 20;
-      this.poses.set(eid, PoseState.Milk);
-      player.session?.sendJson({ t: 'action', state: 'start', ticks });
-      return;
-    }
-    if (now - row.brushedAt >= BRUSH_COOLDOWN_MS * player.perks.brushRestMult) {
-      row.brushedAt = now;
-      if (row.bond < BOND_CAP) row.bond += 1;
-      this.accounts.saveLivestock(row);
-      this.grantXp(eid, player, 'beastcraft', BRUSH_XP);
-      sys(`You brush ${row.name} down. ${row.bond >= BOND_PRIME ? 'It would follow you anywhere it could.' : 'It leans into the strokes.'}`);
-      return;
-    }
-    // THE LEAD WAITS ITS TURN: it fires only when the animal has
-    // nothing else to offer — a keeper carrying one can still milk,
-    // shear, and brush their own yard (the harness caught the lead
-    // eating the first-ever interact; a farewell must never outrank
-    // the living work). Half the crate's worth comes back.
-    if (countItem(player.inventory, 'drovers_lead') > 0) {
-      removeItem(player.inventory, 'drovers_lead', 1);
-      const refund = Math.floor((itemDef(ldef.crateItem)?.value ?? 0) / 2);
-      if (refund > 0) addItem(player.inventory, 'coins', refund);
-      this.accounts.deleteLivestock(row.characterId, row.slot);
-      this.livestock.delete(targetEid);
-      this.removeFromChunks(targetEid);
-      this.ecs.destroy(targetEid);
-      player.session?.sendJson({ t: 'inv', slots: player.inventory });
-      sys(`You lead ${row.name} back to the drover trade. The yard is quieter for it.`);
-      return;
-    }
-    const mins = Math.max(1, Math.ceil((npc.nextProduceAt - now) / 60_000));
-    sys(`${row.name} is content. Nothing to ${ldef.produce.verb.toLowerCase()} yet (about ${mins} min).`);
+    return farmSys.interactLivestock(this, eid, player, targetEid, npc, comp, sys);
   }
 
-  /**
-   * Feed one pack slot's item into a compost bin. Slot-addressed; the
-   * bin, the worth, and the idle state are all re-proved here.
-   */
   compostAdd(eid: EntityId, tx: number, ty: number, slot: number): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos || player.session === null) return;
-    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
-    if (player.characterId < 0) {
-      sys('Guests cannot use the bin. Make an account!');
-      return;
-    }
-    const dx = tx + 0.5 - pos.x;
-    const dy = ty + 0.5 - pos.y;
-    if (dx * dx + dy * dy > 2.2 * 2.2) return;
-    if (this.refuseFarmingOffSurface(player, pos)) return;
-    if (this.surface.groundAt(tx, ty) !== Tile.CompostBin) return;
-    const key = `${tx},${ty}`;
-    const bin = this.farmBins.get(key) ?? { tx, ty, fill: 0, graded: 0, startedAt: 0 };
-    if (bin.startedAt !== 0) {
-      sys(
-        Date.now() >= bin.startedAt + COMPOST_MINUTES * 60_000
-          ? 'The batch is done. Turn the bin out first.'
-          : 'The bin is working. Let it be.',
-      );
-      return;
-    }
-    const held = player.inventory[slot];
-    if (!held) return;
-    if (held.stolen) {
-      sys('Not with goods that would burn an honest heap.');
-      return;
-    }
-    const worth = compostWorthOf(held.item, itemDef(held.item));
-    if (!worth) {
-      sys('That has no place in the bin.');
-      return;
-    }
-    takeSlot(player.inventory, slot, 1);
-    bin.fill += worth.worth;
-    bin.graded += worth.graded;
-    if (bin.fill >= COMPOST_BATCH_WORTH - player.perks.compostDiscount) {
-      bin.startedAt = Date.now();
-      sys('The lid closes. The heap sets to work.');
-    }
-    this.farmBins.set(key, bin);
-    this.accounts.upsertFarmBin(tx, ty, bin.fill, bin.graded, bin.startedAt);
-    this.mirrorBin(bin);
-    this.setPose(eid, PoseState.Craft, 24);
-    player.session.sendJson({ t: 'inv', slots: player.inventory });
+    return farmSys.compostAdd(this, eid, tx, ty, slot);
   }
 
-  /**
-   * Load one pack slot's feed into a trough. Anyone may feed a
-   * neighbor's manger (the watering law's generosity); the door
-   * proves the tile, the worth, and the cap.
-   */
   troughAdd(eid: EntityId, tx: number, ty: number, slot: number): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos || player.session === null) return;
-    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
-    if (player.characterId < 0) {
-      sys('Guests cannot tend the yard. Make an account!');
-      return;
-    }
-    const dx = tx + 0.5 - pos.x;
-    const dy = ty + 0.5 - pos.y;
-    if (dx * dx + dy * dy > 2.2 * 2.2) return;
-    if (this.refuseFarmingOffSurface(player, pos)) return;
-    if (this.surface.groundAt(tx, ty) !== Tile.FeedTrough) return;
-    const key = `${tx},${ty}`;
-    const trough = this.farmTroughs.get(key) ?? { tx, ty, feed: 0 };
-    if (trough.feed >= TROUGH_FEED_CAP) {
-      this.speak(player, 'Manger full', 'The manger is heaped full.', {
-        x: tx + 0.5,
-        y: ty + 0.5,
-      });
-      return;
-    }
-    const held = player.inventory[slot];
-    if (!held) return;
-    if (held.stolen) {
-      sys('Not with goods that would sour an honest manger.');
-      return;
-    }
-    const worth = feedWorthOf(held.item, gradeOf, (base) => GRADED_PRODUCE.has(base));
-    if (worth === null) {
-      this.speak(
-        player,
-        "Won't eat that",
-        'The herd has no use for that.',
-        { x: tx + 0.5, y: ty + 0.5 },
-        'note',
-      );
-      return;
-    }
-    takeSlot(player.inventory, slot, 1);
-    trough.feed = Math.min(TROUGH_FEED_CAP, trough.feed + worth);
-    this.farmTroughs.set(key, trough);
-    this.accounts.upsertFarmTrough(tx, ty, trough.feed);
-    this.mirrorTrough(trough);
-    this.setPose(eid, PoseState.Craft, 24);
-    player.session.sendJson({ t: 'inv', slots: player.inventory });
-    sys('You fill the manger. Somebody noticed immediately.');
+    return farmSys.troughAdd(this, eid, tx, ty, slot);
   }
 
   /**
@@ -7320,89 +6632,8 @@ export class GameServer {
     );
   }
 
-  /** Plant a seed into a tilled plot (instant; the growing takes time). */
   plant(eid: EntityId, tx: number, ty: number, seed: string): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos || player.session === null) return;
-    const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
-
-    if (player.characterId < 0) {
-      sys('Guests cannot plant crops — make an account!');
-      return;
-    }
-    const dx = tx + 0.5 - pos.x;
-    const dy = ty + 0.5 - pos.y;
-    if (dx * dx + dy * dy > 2.2 * 2.2) return;
-    if (this.refuseFarmingOffSurface(player, pos)) return;
-
-    this.surface.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
-    const ground = this.surface.groundAt(tx, ty);
-    const key = `${tx},${ty}`;
-    if (this.crops.has(key)) return; // someone beat you to the plot
-    // THE SOWN LINE (second-growth Phase 4): tree and bush seeds skip
-    // the crop rows and join the wild's own growth ledger instead.
-    const species = GROWTH_SEEDS.get(seed);
-    if (species !== undefined) {
-      if (ground !== Tile.Tilled) {
-        sys('Wild seeds want open tilled earth.');
-        return;
-      }
-      this.plantWild(eid, player, tx, ty, seed, species, sys);
-      return;
-    }
-    const def = CROP_BY_SEED.get(seed);
-    if (!def) return;
-    // THE BED LAW (Phase 2): tilled-bed crops take a garden plot or a
-    // growing frame; the dark bed's spores take only a laid log.
-    if (def.bed === 'log') {
-      if (ground !== Tile.MushroomLog) {
-        sys('Spores want a laid mushroom log.');
-        return;
-      }
-    } else if (ground !== Tile.Tilled && ground !== Tile.GrowingFrame) {
-      this.speak(player, 'Needs tilled soil', 'Seeds need a tilled garden plot.');
-      return;
-    }
-    if (def.recurring && ground === Tile.GrowingFrame) {
-      sys('A tree wants open sky, not a frame.');
-      return;
-    }
-    const level = this.effectiveLevel(player, 'farming');
-    if (level < def.levelReq) {
-      this.speak(
-        player,
-        `Needs farming ${def.levelReq}`,
-        `You need farming level ${def.levelReq} to plant ${def.name.toLowerCase()}.`,
-      );
-      return;
-    }
-    if (removeItem(player.inventory, seed, 1) === 0) return;
-
-    const state: CropState = {
-      def,
-      tx,
-      ty,
-      plantedAt: Date.now(),
-      boostMs: 0,
-      watered: 0,
-      owner: player.characterId,
-      lastStage: 0,
-      soil: 0,
-      mulched: 0,
-      framed: ground === Tile.GrowingFrame ? 1 : 0,
-      cycles: 0,
-    };
-    const sproutTile = tileForStage(def, 0);
-    this.crops.set(key, state);
-    this.surface.registerCropTile(tx, ty, sproutTile);
-    this.saveCrop(state);
-    this.setWorldTile(SURFACE_PLANE_ID, tx, ty, sproutTile);
-    if (state.framed) this.mirrorPlot(state);
-    this.grantXp(eid, player, 'farming', Math.max(1, Math.ceil(def.xp / 4)));
-    this.setPose(eid, PoseState.Gather, 20);
-    player.session.sendJson({ t: 'inv', slots: player.inventory });
-    sys(`You plant ${def.name.toLowerCase()}. Ready in about ${def.growMinutes} min.`);
+    return farmSys.plant(this, eid, tx, ty, seed);
   }
 
   /**
@@ -7414,7 +6645,7 @@ export class GameServer {
    * ground keeps germinating inside its planter's own claim ring
    * (the gardener's yard grows for the gardener).
    */
-  private plantWild(
+  plantWild(
     eid: EntityId,
     player: PlayerComp,
     tx: number,
@@ -7462,126 +6693,12 @@ export class GameServer {
     sys('You set the seed in the earth. The wild takes it from here.');
   }
 
-  private tickHarvest(eid: EntityId, player: PlayerComp): void {
-    const action = player.action! as HarvestAction;
-    const key = `${action.tx},${action.ty}`;
-    const state = this.crops.get(key);
-    // Demolished, /grow-raced, or otherwise gone from under us.
-    if (!state || this.surface.groundAt(action.tx, action.ty) !== state.def.matureTile) {
-      this.cancelAction(eid, player, 'gone');
-      return;
-    }
-    if (--action.ticksLeft > 0) return;
-
-    const def = state.def;
-    const roll = (min: number, max: number) => min + Math.floor(Math.random() * (max - min + 1));
-    // Pack overflow spills onto the plot rather than vanishing.
-    const giveOrDrop = (item: string, qty: number) => {
-      const added = addItem(player.inventory, item, qty);
-      if (added < qty) {
-        this.spawnDrop(SURFACE_PLANE_ID, item, qty - added, action.tx + 0.5, action.ty + 0.5, eid);
-      }
-    };
-    // Bounty doubles the basket some seasons; Green Thumb sometimes
-    // hands next season back with it.
-    let yieldQty = roll(def.yield.min, def.yield.max);
-    if (Math.random() < player.perks.doubleHarvestChance) yieldQty *= 2;
-    // THE DEEPER SIGIL: the plot answers a yield working the same way
-    // the ore seam does.
-    yieldQty += this.bodyMoment(eid, player, 'gather', {
-      x: action.tx + 0.5,
-      y: action.ty + 0.5,
-      style: 'farming',
-    });
-    // THE CARE FOLD: the grade was earned across the planting's whole
-    // life — waterings, soil, mulch, and (orchards) the prune — and
-    // is decided here, once, deterministically. A graded harvest is
-    // its own item id. The dark bed never grades (no care facts).
-    const grade =
-      def.bed === 'log'
-        ? 0
-        : gradeFor(
-            wateringsOf(state.watered),
-            state.soil,
-            state.mulched,
-            state.watered & PRUNED_BIT ? 1 : 0,
-          );
-    giveOrDrop(grade > 0 ? gradedId(def.yield.item, grade) : def.yield.item, yieldQty);
-    if (grade > 0) {
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: grade === 2 ? 'A prime harvest. The care shows.' : 'A fine harvest.',
-      });
-    }
-    // THE ORCHARD SHAPE: a recurring crop stands after the pick. Pay
-    // the cycle (first pick pays the whole growth), re-aim the clock
-    // into the mid stage, reset the cycle's own care bits (water and
-    // prune re-earn; soil and mulch feed the STANDING plant), and let
-    // the world see the tree again, fruitless and patient.
-    if (def.recurring) {
-      // The pruned wood sometimes strikes as a new cutting.
-      const cuttings = roll(def.seedReturn.min, def.seedReturn.max);
-      if (cuttings > 0) giveOrDrop(def.seedItem, cuttings);
-      this.grantXp(eid, player, 'farming', harvestXp(def, state.cycles));
-      state.cycles += 1;
-      state.plantedAt = Date.now();
-      state.boostMs = growMs(def) - def.recurring.cooldownMinutes * 60_000;
-      state.watered = 0;
-      state.lastStage = 1;
-      this.crops.set(key, state);
-      this.saveCrop(state);
-      this.surface.registerCropTile(action.tx, action.ty, def.midTile);
-      this.setWorldTile(SURFACE_PLANE_ID, action.tx, action.ty, def.midTile);
-      this.mirrorPlot(state);
-      player.session?.sendJson({ t: 'inv', slots: player.inventory });
-      this.cancelAction(eid, player, 'done');
-      return;
-    }
-    let seeds = roll(def.seedReturn.min, def.seedReturn.max);
-    if (Math.random() < player.perks.seedRefundChance) seeds += 1;
-    if (seeds > 0) giveOrDrop(def.seedItem, seeds);
-    this.grantXp(eid, player, 'farming', def.xp);
-
-    this.crops.delete(key);
-    this.accounts.deleteCrop(action.tx, action.ty);
-    this.surface.unregisterCropTile(action.tx, action.ty);
-    this.setWorldTile(SURFACE_PLANE_ID, action.tx, action.ty, bedTileFor(def, state.framed === 1));
-    // The care mirror lets go of the harvested row.
-    for (const s of this.sessions) {
-      s.sendJson({ t: 'farm', remove: [{ tx: action.tx, ty: action.ty }] });
-    }
-    player.session?.sendJson({ t: 'inv', slots: player.inventory });
-    this.cancelAction(eid, player, 'done');
+  tickHarvest(eid: EntityId, player: PlayerComp): void {
+    return farmSys.tickHarvest(this, eid, player);
   }
 
-  /** Advance planted crops; the slow tick calls this every 2s. */
   tickCrops(now: number): void {
-    for (const state of this.crops.values()) {
-      // THE FED CHANNEL: a live irrigation line waters the stage on
-      // its own, before the stage math so the credit lands the moment
-      // the channel can give it. Pays NO XP — the automation law.
-      // The watered-bit gate comes first: a slaked stage never pays
-      // for the channel scan again. A framed row is ALWAYS watered
-      // (the frame's cloth holds the damp in) — same law, no scan.
-      {
-        const st = stageForElapsed(state.def, this.cropElapsed(state, now));
-        if (
-          st < 2 &&
-          !(state.watered & (1 << st)) &&
-          (state.framed === 1 || this.irrigatedAt(state.tx, state.ty))
-        ) {
-          this.waterCrop(state, now);
-        }
-      }
-      const stage = stageForElapsed(state.def, this.cropElapsed(state, now));
-      if (stage > state.lastStage) {
-        state.lastStage = stage;
-        const tile = tileForStage(state.def, stage);
-        this.surface.registerCropTile(state.tx, state.ty, tile);
-        this.setWorldTile(SURFACE_PLANE_ID, state.tx, state.ty, tile);
-      }
-    }
+    return farmSys.tickCrops(this, now);
   }
 
   /**
@@ -7947,7 +7064,7 @@ export class GameServer {
   }
 
   /** Spawn a free-for-all ground drop (harvest overflow, laid eggs). */
-  private spawnDrop(
+  spawnDrop(
     plane: PlaneId,
     item: string,
     qty: number,
@@ -8005,7 +7122,7 @@ export class GameServer {
     }
   }
 
-  private placeDrop(
+  placeDrop(
     plane: PlaneId,
     item: string,
     qty: number,
@@ -9675,7 +8792,7 @@ export class GameServer {
    * (slots were deactivated, never reclaimed) while tickSpawns walked
    * the whole array every tick.
    */
-  private freeSpawnSlot(i: number): void {
+  freeSpawnSlot(i: number): void {
     const spawn = this.spawnPoints[i];
     if (!spawn) return;
     spawn.active = false;
@@ -13133,15 +12250,8 @@ export class GameServer {
 
   // ------------------------------------------------- THE KEY RING
 
-  /**
-   * Mint a whole fresh key roll: common tier, a dungeon nobody has
-   * ever walked, full use budget. The landing place for every legacy
-   * roll-less key (pre-ring shop stock, /give, counted bank stacks) —
-   * a shelf of seed-0 twins becomes real, distinct dungeons.
-   */
   mintFreshKeyRoll(): ItemRoll {
-    const seed = Math.floor(Math.random() * 0x100000000) >>> 0;
-    return { rar: 'common', seed, pwr: mintKeyPower('common', seed), uses: keyUsesForTier('common') };
+    return keySys.mintFreshKeyRoll(this, );
   }
 
   /** Push the full ring mirror down the wire (sent on any change). */
@@ -13149,27 +12259,16 @@ export class GameServer {
     player.session?.sendJson({ t: 'keyring', keys: player.keyRing });
   }
 
-  /**
-   * A dungeon key lands on the ring — never in the pack. The ring has
-   * no cap, so this cannot fail: a key found in the field always has
-   * a place to go. Returns the new ring row.
-   */
   addKeyToRing(
     player: PlayerComp,
     roll: ItemRoll | undefined,
     sync = true, // batch callers land many, then send the mirror once
   ): { id: number; roll: ItemRoll } {
-    const row = { id: this.nextKeyRingId++, roll: roll ? { ...roll } : this.mintFreshKeyRoll() };
-    player.keyRing.push(row);
-    player.keyRingDirty = true;
-    // THE KEY LEDGER: the moment a door is held, it is known forever.
-    this.recordKeyLore(player, row.roll, sync);
-    if (sync) this.sendKeyRing(player);
-    return row;
+    return keySys.addKeyToRing(this, player, roll, sync);
   }
 
   /** Push the full ledger mirror down the wire (sent on any change). */
-  private sendKeyLore(player: PlayerComp): void {
+  sendKeyLore(player: PlayerComp): void {
     player.session?.sendJson({ t: 'keylore', known: [...player.keyLore.values()] });
   }
 
@@ -13178,7 +12277,7 @@ export class GameServer {
    * (seed/tier/power) and the clock; later touches change nothing —
    * only the reader's own label ever moves after that (keyLabel).
    */
-  private recordKeyLore(player: PlayerComp, roll: ItemRoll, sync = true): void {
+  recordKeyLore(player: PlayerComp, roll: ItemRoll, sync = true): void {
     const seed = roll.seed >>> 0;
     if (player.keyLore.has(seed)) return;
     const lore: KeyLore = { seed, rar: roll.rar };
@@ -13188,33 +12287,12 @@ export class GameServer {
     if (sync) this.sendKeyLore(player);
   }
 
-  /**
-   * THE MARGIN NOTE: name (or clear) a ledgered door. The label is the
-   * reader's own — it never rides a traded key, and the server re-runs
-   * the shared sanitizer whatever the client showed.
-   */
   keyLabel(eid: EntityId, seed: number, label: string | undefined): void {
-    const player = this.players.get(eid);
-    if (!player) return;
-    const lore = player.keyLore.get(seed >>> 0);
-    if (!lore) return;
-    const clean = label === undefined || label.trim() === '' ? null : sanitizeKeyLabel(label);
-    if (clean === null && label !== undefined && label.trim() !== '') {
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: 'That label will not take — 2 to 24 plain characters.',
-      });
-      return;
-    }
-    if (clean === null) delete lore.label;
-    else lore.label = clean;
-    if (player.characterId > 0) this.accounts.labelKeyLore(player.characterId, lore.seed, clean);
-    this.sendKeyLore(player);
+    return keySys.keyLabel(this, eid, seed, label);
   }
 
   /** The Keywright within working reach of this player, or null. */
-  private keywrightNear(eid: EntityId): boolean {
+  keywrightNear(eid: EntityId): boolean {
     const pos = this.positions.get(eid);
     if (!pos) return false;
     for (const [actorEid, comp] of this.actors) {
@@ -13226,150 +12304,24 @@ export class GameServer {
     return false;
   }
 
-  /**
-   * THE KEYWRIGHT CLOSES THE LOOP: pay the fee, and a ledgered door is
-   * cut again — full fresh budget of turns, the same halls to the last
-   * stalagmite (the seed IS the dungeon). Refusals are spoken: away
-   * from the bench, an unknown door, a copy still on the ring (THE ONE
-   * COPY — the forge is a safety net, never a duplicator), or a light
-   * purse. The wear economy stands; a loved door is only expensive,
-   * never lost.
-   */
   keyForge(eid: EntityId, seed: number): void {
-    const player = this.players.get(eid);
-    if (!player || player.session === null) return;
-    if (!this.keywrightNear(eid)) {
-      this.speak(player, 'Needs the Keywright', 'Only the Keywright can cut a remembered door.');
-      return;
-    }
-    const lore = player.keyLore.get(seed >>> 0);
-    if (!lore) {
-      this.speak(player, 'Unknown door', 'You have never held that key — the ledger holds only what your hands have known.');
-      return;
-    }
-    if (player.keyRing.some((k) => (k.roll.seed >>> 0) === lore.seed)) {
-      this.speak(player, 'Already on your ring', 'That key still hangs on your ring — the forge cuts lost doors, not copies.');
-      return;
-    }
-    const price = keyForgePrice(lore.rar);
-    const coins = countItem(player.inventory, 'coins');
-    if (coins < price) {
-      this.speak(player, `Needs ${price} coins`, `The Keywright asks ${price} coins for that cut — you carry ${coins}.`);
-      return;
-    }
-    removeItem(player.inventory, 'coins', price);
-    const roll: ItemRoll = { rar: lore.rar, seed: lore.seed, uses: keyUsesForTier(lore.rar) };
-    if (lore.pwr !== undefined) roll.pwr = lore.pwr;
-    this.addKeyToRing(player, roll);
-    player.session.sendJson({ t: 'inv', slots: player.inventory });
-    const spec = dungeonSpecFromRoll(roll);
-    player.session.sendJson({
-      t: 'chat',
-      channel: 'system',
-      text: `The Keywright's file sings. ${spec.name} (${spec.sigil}) hangs whole on your ring again — ${price} coins, fairly cut.`,
-    });
+    return keySys.keyForge(this, eid, seed);
   }
 
-  /**
-   * THE WORN WARD's last beat: a key at zero uses crumbles once the
-   * run it paid for no longer stands. Called after every teardown and
-   * at login (a run never survives a restart). Spares the key whose
-   * seed matches the character's LIVE instance — the door it opened
-   * is still open, and it must keep working until that door closes.
-   */
-  private sweepWornKeys(player: PlayerComp): void {
-    const liveSeed = this.dungeons.get(player.characterId)?.seed;
-    let crumbled = 0;
-    for (let i = player.keyRing.length - 1; i >= 0; i--) {
-      const row = player.keyRing[i]!;
-      if (keyUsesLeft(row.roll) > 0) continue;
-      if (row.roll.seed === liveSeed) continue;
-      player.keyRing.splice(i, 1);
-      crumbled++;
-    }
-    if (crumbled === 0) return;
-    player.keyRingDirty = true;
-    this.sendKeyRing(player);
-    this.speak(
-      player,
-      crumbled === 1 ? 'A key crumbles' : `${crumbled} keys crumble`,
-      crumbled === 1
-        ? 'A worn-through dungeon key crumbles from your ring — its last door has closed.'
-        : `${crumbled} worn-through dungeon keys crumble from your ring — their last doors have closed.`,
-    );
+  sweepWornKeys(player: PlayerComp): void {
+    return keySys.sweepWornKeys(this, player);
   }
 
-  /**
-   * THE KEY LEAVES THE RING: drop a key at the feet as an ordinary
-   * ground item — the ONE way keys trade hands. The parcel carries
-   * the full roll, worn uses included; whoever picks it up receives
-   * it straight onto their own ring.
-   */
   keyDrop(eid: EntityId, keyId: number): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos) return;
-    const idx = player.keyRing.findIndex((k) => k.id === keyId);
-    if (idx === -1) return;
-    const [row] = player.keyRing.splice(idx, 1);
-    player.keyRingDirty = true;
-    this.sendKeyRing(player);
-    // Land the key a step ahead of the player, dropItem's own grammar —
-    // a wall in the way puts it at their feet instead of in the masonry.
-    let dx = pos.x + Math.cos(pos.dir) * 0.9;
-    let dy = pos.y + Math.sin(pos.dir) * 0.9;
-    if (this.worldOf(pos.plane).isSolid(Math.floor(dx), Math.floor(dy))) {
-      dx = pos.x;
-      dy = pos.y;
-    }
-    this.placeDrop(pos.plane, DUNGEON_KEY_ITEM, 1, dx, dy, {
-      ownerEid: null,
-      ownerUntil: 0,
-      despawnAt: Date.now() + 12 * 60_000,
-      pickupAfter: Date.now() + 2000,
-      roll: row!.roll,
-    });
-    const spec = dungeonSpecFromRoll(row!.roll);
-    player.session?.sendJson({
-      t: 'chat',
-      channel: 'system',
-      text: `You set down the key to ${spec.name} (${spec.sigil}).`,
-    });
+    return keySys.keyDrop(this, eid, keyId);
   }
 
-  /**
-   * The Riftgate answers an interact by opening the key panel — the
-   * client lists the keys from its own ring mirror; `usekey` names
-   * one by ring id. `live` marks the caller's standing run so a
-   * worn-out key can still re-enter the door it already paid for.
-   */
-  private openRiftgate(eid: EntityId, player: PlayerComp): void {
-    const inst = this.dungeons.get(player.characterId);
-    // The gates are one network: any fellow's live run stands open here.
-    const partyRuns: Array<{ name: string; dungeon: string; tier: string; power: number }> = [];
-    for (const fellowId of this.party.fellowsOf(player.characterId)) {
-      const fellowInst = this.dungeons.get(fellowId);
-      if (!fellowInst) continue;
-      const name = this.accounts.characterName(fellowId);
-      if (!name) continue;
-      partyRuns.push({ name, dungeon: fellowInst.name, tier: fellowInst.tier, power: fellowInst.power });
-    }
-    player.session?.sendJson({
-      t: 'riftgate',
-      live: inst ? { seed: inst.seed, tier: inst.tier, power: inst.power } : undefined,
-      partyRuns: partyRuns.length > 0 ? partyRuns : undefined,
-    });
-    if (player.keyRing.length === 0 && partyRuns.length === 0) {
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: 'The Riftgate stands dark. It wants a dungeon key — the deep places and their keepers drop them.',
-      });
-    }
+  openRiftgate(eid: EntityId, player: PlayerComp): void {
+    return runSys.openRiftgate(this, eid, player);
   }
 
   /** A riftgate portal tile within reach of this position, or null. */
-  private riftgateNear(pos: { plane: PlaneId; x: number; y: number }): { x: number; y: number } | null {
+  riftgateNear(pos: { plane: PlaneId; x: number; y: number }): { x: number; y: number } | null {
     const world = this.worldOf(pos.plane);
     const cx = Math.floor(pos.x);
     const cy = Math.floor(pos.y);
@@ -13384,239 +12336,25 @@ export class GameServer {
     return null;
   }
 
-  /**
-   * Turn the key named by ring id. Re-entering the run this key
-   * already paid for is free — the door is open. A different key (or
-   * a fresh turn of the same key after its run closed) is a FRESH
-   * CUT: the old instance dies, the new one is cut from the seed, and
-   * THE WORN WARD spends one use. A key at zero uses can only walk
-   * back through its own standing door; once that door closes, it
-   * crumbles (sweepWornKeys).
-   */
   useKey(eid: EntityId, keyId: number): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos || player.session === null) return;
-    const sys = (text: string) =>
-      player.session!.sendJson({ t: 'chat', channel: 'system', text });
-    const gate = this.riftgateNear(pos);
-    if (!gate) {
-      this.speak(player, 'Needs a Riftgate', 'You need to stand at a Riftgate to turn a dungeon key.');
-      return;
-    }
-    const row = player.keyRing.find((k) => k.id === keyId);
-    if (!row) {
-      sys('That key is not on your ring.');
-      return;
-    }
-    const spec = dungeonSpecFromRoll(row.roll);
-    const inst = this.dungeons.get(player.characterId);
-    const reenter =
-      !!inst && inst.seed === spec.seed && inst.tier === spec.tier && inst.power === spec.power;
-    if (!reenter && keyUsesLeft(row.roll) <= 0) {
-      this.speak(
-        player,
-        'The key is spent',
-        `The key to ${spec.name} is worn through — its ward has nothing left to open.`,
-      );
-      return;
-    }
-    // A gate a key has turned at is a place worth keeping: pin it on
-    // the map forever. The threshold banner is the ceremony here — the
-    // client shows no discovery splash for the 'dungeon' kind.
-    const gateId = dungeonDiscoveryId(gate.x, gate.y);
-    if (!player.discoveries.has(gateId)) {
-      this.recordDiscovery(player, {
-        id: gateId,
-        kind: 'dungeon',
-        name: 'Riftgate',
-        x: gate.x,
-        y: gate.y,
-        // The gate pins on the chart of the plane it stands on — the
-        // first underworld-authored riftgate must not misfile onto
-        // the surface's parchment.
-        plane: pos.plane,
-      });
-    }
-    this.enterDungeon(eid, player, spec, { plane: pos.plane, x: pos.x, y: pos.y });
-    if (!reenter) {
-      // THE WORN WARD: the fresh cut spends one use, stamped onto the
-      // roll so the wear rides every save, drop, and trade.
-      row.roll.uses = Math.max(0, keyUsesLeft(row.roll) - 1);
-      player.keyRingDirty = true;
-      this.sendKeyRing(player);
-      // The key swap tore the previous run down — any key that was
-      // only alive because that door stood open crumbles now.
-      this.sweepWornKeys(player);
-    }
+    return keySys.useKey(this, eid, keyId);
   }
 
-  private enterDungeon(
+  enterDungeon(
     eid: EntityId,
     player: PlayerComp,
     spec: DungeonSpec,
     returnTo: PlanePos,
   ): void {
-    let inst = this.dungeons.get(player.characterId);
-    if (inst && inst.seed === spec.seed && inst.tier === spec.tier && inst.power === spec.power) {
-      this.transferPlane(eid, inst.plane, inst.entry.x, inst.entry.y);
-      return;
-    }
-    if (inst) this.teardownDungeon(player.characterId);
-    const slot = this.nextDungeonSlot++;
-    // THE WORLDS APART: the run is cut onto its own rift plane —
-    // minted here, dropped whole at teardown. The plane IS the
-    // isolation; every run generates at the same quiet origin.
-    const plane = riftPlaneId(slot);
-    const result = generateDungeon(spec, DUNGEON_ORIGIN, returnTo, slot);
-    this.planes.add(riftPlaneDef(plane, spec.name), [result.zone]);
-    const spawnIndexes = this.registerSpawns(result.zone.spawns ?? [], plane);
-    inst = {
-      zoneId: result.zone.id,
-      spawnIndexes,
-      slot,
-      plane,
-      entry: result.entry,
-      seed: spec.seed,
-      tier: spec.tier,
-      power: spec.power,
-      ownerId: player.characterId,
-      ownerReturn: returnTo,
-      name: spec.name,
-      sigil: spec.sigil,
-      theme: spec.theme,
-      guests: new Map(),
-      // registerSpawns flattens one point per BODY — the champion's
-      // global index is offset by every earlier entry's count.
-      bossSpawnIdx: (() => {
-        if (result.bossSpawnIndex === null) return undefined;
-        let flat = 0;
-        for (let i = 0; i < result.bossSpawnIndex; i++) {
-          flat += result.zone.spawns?.[i]?.count ?? 0;
-        }
-        return spawnIndexes[flat];
-      })(),
-      cutAt: Date.now(),
-      courtExit: result.courtExit ?? undefined,
-    };
-    this.dungeons.set(player.characterId, inst);
-    // THE COURT WARDS THE PRIZE: the champion's chest refuses the hand
-    // while he stands — the fight is the key, not the sneak.
-    if (result.bossChest) {
-      this.poiChests.set(`${plane}|${result.bossChest.x},${result.bossChest.y}`, {
-        cell: `dg:${player.characterId}`,
-        warded: true,
-      });
-    }
-    const modNames = dungeonModifiers(spec.seed, spec.tier).map((m) => m.name);
-    player.session?.sendJson({
-      t: 'dungeon',
-      name: spec.name,
-      sigil: spec.sigil,
-      tier: spec.tier,
-      theme: spec.theme,
-      power: spec.power,
-      mods: modNames.length > 0 ? modNames : undefined,
-    });
-    player.session?.sendJson({
-      t: 'chat',
-      channel: 'system',
-      text: `${spec.name} — sigil ${spec.sigil}, power ${spec.power}${modNames.length > 0 ? `, ${modNames.join(', ').toLowerCase()}` : ''}. The way out is where you land; the boss is where you'd least like him.`,
-    });
-    this.transferPlane(eid, plane, result.entry.x, result.entry.y);
-    // Offer the fellowship the door (any riftgate carries them in).
-    if (player.characterId > 0) {
-      this.party.notifyDelve(player.characterId, player.name, spec.name);
-    }
+    return runSys.enterDungeon(this, eid, player, spec, returnTo);
   }
 
   teardownDungeon(characterId: number): void {
-    const dungeon = this.dungeons.get(characterId);
-    if (!dungeon) return;
-    // Anyone still standing in the halls goes home before the rock
-    // closes — guests to their own gate, anyone else to the spawn.
-    for (const [eid, player] of this.players) {
-      if (player.characterId === characterId) continue;
-      const pos = this.positions.get(eid);
-      if (!pos || pos.plane !== dungeon.plane) continue;
-      const back = dungeon.guests.get(player.characterId) ?? this.planes.worldSpawn;
-      this.transferPlane(eid, back.plane, back.x, back.y);
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: 'The rift closes behind its keyholder — the world takes you back.',
-      });
-    }
-    dungeon.guests.clear();
-    // The run's slots return to the pool — every dungeon ever cut used
-    // to permanently fatten spawnPoints (the one retirement door law).
-    for (const idx of dungeon.spawnIndexes) this.freeSpawnSlot(idx);
-    // THE ROCK TAKES ITS DEAD: anything still breathing on the plane
-    // that the roster never knew — a crown's raised adds spawn with
-    // spawnIndex -1 — goes with the world it stood in. Companions are
-    // the one exception: a friend follows its keeper, never the rubble.
-    const strays: EntityId[] = [];
-    for (const [neid] of this.npcs) {
-      if (this.pets.has(neid) || this.companions.has(neid)) continue;
-      const npos = this.positions.get(neid);
-      if (!npos || npos.plane !== dungeon.plane) continue;
-      strays.push(neid);
-    }
-    for (const neid of strays) {
-      this.removeFromChunks(neid);
-      this.ecs.destroy(neid);
-    }
-    // THE PLANE'S EPHEMERA GO WITH IT (post-ship audit): a projectile
-    // still in flight would ask worldOf() for a plane that no longer
-    // stands on the very next tick — one arrow loosed at the exit door
-    // used to kill the whole server. Drops and summons share the sweep
-    // (loot on a dead plane is loot nobody can ever reach), and
-    // scheduled blasts and fields on the plane die unexploded.
-    const ephemera: EntityId[] = [];
-    for (const [peid] of this.projectiles) {
-      if (this.positions.get(peid)?.plane === dungeon.plane) ephemera.push(peid);
-    }
-    for (const [deid] of this.drops) {
-      if (this.positions.get(deid)?.plane === dungeon.plane) ephemera.push(deid);
-    }
-    for (const [seid] of this.summons) {
-      if (this.positions.get(seid)?.plane === dungeon.plane) ephemera.push(seid);
-    }
-    for (const eeid of ephemera) {
-      this.removeFromChunks(eeid);
-      this.ecs.destroy(eeid);
-    }
-    for (let i = this.pendingBlasts.length - 1; i >= 0; i--) {
-      if (this.pendingBlasts[i]!.plane === dungeon.plane) this.pendingBlasts.splice(i, 1);
-    }
-    for (let i = this.activeFields.length - 1; i >= 0; i--) {
-      if (this.activeFields[i]!.plane === dungeon.plane) this.activeFields.splice(i, 1);
-    }
-    // THE UNLOAD IS THE POINT: the whole plane goes — zones, chunks,
-    // portals, signs, memory — in one drop.
-    this.planes.drop(dungeon.plane);
-    // The chunk index sheds the dead plane's now-empty sets — slot ids
-    // recycle, but these keys used to pile up for the whole uptime.
-    const deadPrefix = `${dungeon.plane}|`;
-    for (const [key, set] of this.chunks) {
-      if (set.size === 0 && key.startsWith(deadPrefix)) this.chunks.delete(key);
-    }
-    this.dungeons.delete(characterId);
-    // The court's ward retires with its halls.
-    for (const [tileKey, over] of this.poiChests) {
-      if (over.cell === `dg:${characterId}`) this.poiChests.delete(tileKey);
-    }
-    // THE WORN WARD's last beat rides every door-close: a spent key
-    // that was only standing because this run stood crumbles now.
-    const ownerEid = this.characterEids.get(characterId);
-    if (ownerEid !== undefined) {
-      const owner = this.players.get(ownerEid);
-      if (owner) this.sweepWornKeys(owner);
-    }
+    return runSys.teardownDungeon(this, characterId);
   }
 
   /** The live instance living on this plane, if any. */
-  private dungeonOnPlane(plane: PlaneId): DungeonInstance | null {
+  dungeonOnPlane(plane: PlaneId): DungeonInstance | null {
     if (!isRiftPlane(plane)) return null;
     for (const inst of this.dungeons.values()) {
       if (inst.plane === plane) return inst;
@@ -13629,25 +12367,8 @@ export class GameServer {
     return this.dungeonOnPlane(plane)?.power ?? null;
   }
 
-  /**
-   * THE MANY ARE MET: how many souls of the run (owner + guests)
-   * currently stand inside the instance that owns this tile — 1 when
-   * the ground is no dungeon. The garrison meets the party through
-   * this number: each extra soul thickens every body's effective hide
-   * and stiffens its arm, so a fellowship fights a fight instead of
-   * a harvest, and a key's power reads as the SOLO recommendation.
-   */
-  private dungeonHeadcount(plane: PlaneId): number {
-    const inst = this.dungeonOnPlane(plane);
-    if (!inst) return 1;
-    let n = 0;
-    for (const [peid, p] of this.players) {
-      if (p.characterId !== inst.ownerId && !inst.guests.has(p.characterId)) continue;
-      if (p.session === null && p.disconnectedAt !== null) continue;
-      const pp = this.positions.get(peid);
-      if (pp && pp.plane === inst.plane) n++;
-    }
-    return Math.max(1, n);
+  dungeonHeadcount(plane: PlaneId): number {
+    return runSys.dungeonHeadcount(this, plane);
   }
 
   /**
@@ -13665,109 +12386,16 @@ export class GameServer {
     return s.eid !== null || s.respawnAt !== Number.POSITIVE_INFINITY;
   }
 
-  /**
-   * THE COURT FALLS: the champion of a run went down. If the felled
-   * spawn is the run's own crown, the run is CLEARED — every soul of
-   * the fellowship present gets the ceremony (banner + line, with the
-   * run clock read honest), and the sealed rift-mouth below the dais
-   * tears open so the victors step home instead of walking the whole
-   * cleared spine back. Fires at most once per cut: THE CLEARED HALL
-   * pins the champion's respawn to Infinity, so he falls only once.
-   */
-  private noteDungeonCleared(spawnIndex: number, plane: PlaneId): void {
-    const inst = this.dungeonOnPlane(plane);
-    if (!inst || inst.bossSpawnIdx !== spawnIndex) return;
-    const sec = Math.max(1, Math.round((Date.now() - inst.cutAt) / 1000));
-    if (inst.courtExit) {
-      this.setWorldTile(inst.plane, inst.courtExit.x, inst.courtExit.y, Tile.PortalUp);
-      this.broadcastFx(inst.plane, {
-        t: 'fx',
-        kind: 'summon',
-        x: inst.courtExit.x + 0.5,
-        y: inst.courtExit.y + 0.5,
-        radius: 1.6,
-        color: '#8f7ae8',
-      });
-    }
-    const mm = Math.floor(sec / 60);
-    const ss = String(sec % 60).padStart(2, '0');
-    const line = `${inst.name} is cleared — the court fell in ${mm}:${ss}. The champion's chest lies open to claim${inst.courtExit ? ', and a way home stands torn open below the dais' : ''}.`;
-    for (const [peid, p] of this.players) {
-      if (p.characterId !== inst.ownerId && !inst.guests.has(p.characterId)) continue;
-      const pp = this.positions.get(peid);
-      if (!pp || pp.plane !== inst.plane) continue;
-      p.session?.sendJson({ t: 'dgclear', name: inst.name, sigil: inst.sigil, sec });
-      p.session?.sendJson({ t: 'chat', channel: 'system', text: line });
-    }
+  noteDungeonCleared(spawnIndex: number, plane: PlaneId): void {
+    return runSys.noteDungeonCleared(this, spawnIndex, plane);
   }
 
-  /**
-   * Step into a party member's live run. The riftgates are one network —
-   * any gate can carry a fellow into a run the keyholder holds open.
-   */
   partyJoinRun(eid: EntityId, session: Session, name: string): void {
-    const actor = this.socialActor(eid, session);
-    if (!actor) return;
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos) return;
-    const sys = (text: string) => session.sendJson({ t: 'chat', channel: 'system', text });
-    if (!this.riftgateNear(pos)) {
-      sys('You need to stand at a Riftgate to follow your party.');
-      return;
-    }
-    void (async () => {
-      const target = await this.accounts.findCharacterByName(name.trim());
-      if (!target) return sys('No one by that name.');
-      if (!this.party.fellowsOf(actor.id).includes(target.id)) {
-        return sys(`${target.name} is not in your party.`);
-      }
-      const inst = this.dungeons.get(target.id);
-      if (!inst) return sys(`${target.name} holds no rift open.`);
-      inst.guests.set(actor.id, { plane: pos.plane, x: pos.x, y: pos.y });
-      // The banner + fog-mask reset ride the same message the owner got.
-      const guestMods = dungeonModifiers(inst.seed, inst.tier as ItemRoll['rar']).map((m) => m.name);
-      session.sendJson({
-        t: 'dungeon',
-        name: inst.name,
-        sigil: inst.sigil,
-        tier: inst.tier,
-        theme: inst.theme,
-        power: inst.power,
-        mods: guestMods.length > 0 ? guestMods : undefined,
-      });
-      this.transferPlane(eid, inst.plane, inst.entry.x, inst.entry.y);
-      const ownerEid = this.characterEids.get(target.id);
-      if (ownerEid !== undefined) {
-        this.players.get(ownerEid)?.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `${actor.name} steps through the rift to join you.`,
-        });
-      }
-    })().catch((err: Error) => console.error('[party]', err.message));
+    return runSys.partyJoinRun(this, eid, session, name);
   }
 
-  /**
-   * A character stopped being party to their fellows — if they were
-   * guesting in one's dungeon, the rift no longer knows them.
-   */
-  private evictFromGuestDungeon(characterId: number): void {
-    const eid = this.characterEids.get(characterId);
-    for (const inst of this.dungeons.values()) {
-      const back = inst.guests.get(characterId);
-      if (back === undefined) continue;
-      inst.guests.delete(characterId);
-      if (eid === undefined) continue;
-      const pos = this.positions.get(eid);
-      if (!pos || pos.plane !== inst.plane) continue;
-      this.transferPlane(eid, back.plane, back.x, back.y);
-      this.players.get(eid)?.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: 'The rift no longer knows you — it hands you back to your gate.',
-      });
-    }
+  evictFromGuestDungeon(characterId: number): void {
+    return runSys.evictFromGuestDungeon(this, characterId);
   }
 
   // --------------------------------------------- THE SAND AND THE ROAR
@@ -13778,853 +12406,99 @@ export class GameServer {
   // these methods are the effect glue on existing seams — spawnNpc,
   // setWorldTile, npcAggro, sayAloud, the chest law.
 
-  /** The venue's live match holding this soul, if any. */
   arenaOf(characterId: number): ArenaMatchState | null {
-    for (const m of this.arenaMatches.values()) {
-      if (m.members.has(characterId)) return m;
-    }
-    return null;
+    return arenaSys.arenaOf(this, characterId);
   }
 
-  /** The venue whose SHUT gates hold this soul (the death-spill ask). */
-  private arenaEnrolledVenue(characterId: number): ArenaVenueDef | undefined {
-    const m = this.arenaOf(characterId);
-    if (!m || !m.gatesShut) return undefined;
-    if (m.members.get(characterId)?.alive !== true) return undefined;
-    return m.venue;
+  arenaEnrolledVenue(characterId: number): ArenaVenueDef | undefined {
+    return arenaSys.arenaEnrolledVenue(this, characterId);
   }
 
   /** Fan a message to every member's live session. */
-  /**
-   * Fan a message to members. Plain state fans reach the LIVING only
-   * (the audit's find: a fallen member's `off` was undone by the very
-   * next fan, riding their corpse home wearing a live match card);
-   * ceremony fans (`all: true` — wipe, off, victory) reach everyone.
-   */
-  private arenaSend(match: ArenaMatchState, msg: S2CMessage, opts: { all?: boolean } = {}): void {
-    for (const [cid, m] of match.members) {
-      if (!opts.all && m.alive !== true) continue;
-      const eid = this.characterEids.get(cid);
-      if (eid === undefined) continue;
-      this.players.get(eid)?.session?.sendJson(msg);
-    }
+  arenaSend(match: ArenaMatchState, msg: S2CMessage, opts: { all?: boolean } = {}): void {
+    return arenaSys.arenaSend(this, match, msg, opts);
   }
 
-  /**
-   * THE STANDS SEE THE CARD: fan a state to members AND to every
-   * bystander near the pit (spec-tagged — their HUD self-clears when
-   * the fan goes quiet, so no teardown owes them an 'off').
-   */
-  private arenaStateFan(match: ArenaMatchState, all = false): void {
-    const state = this.arenaState(match);
-    this.arenaSend(match, state, { all });
-    const venue = match.venue;
-    const plane = venue.plane ?? SURFACE_PLANE_ID;
-    const reach = Math.max(venue.pit.rx, venue.pit.ry) + 14;
-    const spec = { ...state, spec: true as const };
-    for (const [peid, p] of this.players) {
-      if (match.members.has(p.characterId)) continue;
-      const pp = this.positions.get(peid);
-      if (!pp || pp.plane !== plane) continue;
-      if (Math.hypot(pp.x - venue.pit.x, pp.y - venue.pit.y) > reach) continue;
-      p.session?.sendJson(spec);
-    }
+  arenaStateFan(match: ArenaMatchState, all = false): void {
+    return arenaSys.arenaStateFan(this, match, all);
   }
 
   arenaFoesLeft(match: ArenaMatchState): number {
-    let n = 0;
-    for (const eid of match.waveEids) if (this.ecs.isAlive(eid)) n++;
-    return n;
+    return arenaSys.arenaFoesLeft(this, match);
   }
 
-  /** The match's living state on the wire (remainMs = a DURATION). */
-  private arenaState(
+  arenaState(
     match: ArenaMatchState,
     phase: S2CArenaState['phase'] = match.phase,
   ): S2CArenaState {
-    const remain =
-      match.deadlineTick > this.tickCount
-        ? (match.deadlineTick - this.tickCount) * TICK_MS
-        : undefined;
-    return {
-      t: 'arena',
-      phase,
-      venue: match.venueId,
-      name: match.def.name,
-      round: Math.min(match.round + 1, match.plan.rounds.length),
-      rounds: match.plan.rounds.length,
-      ...(remain !== undefined ? { remainMs: remain } : {}),
-      ...(match.phase === 'round' ? { foes: this.arenaFoesLeft(match) } : {}),
-    };
+    return arenaSys.arenaState(this, match, phase);
   }
 
-  /**
-   * THE ANNOUNCER IS A THROAT: every called line leaves the
-   * ringmaster's own body through the spoken air. An uncast throat
-   * (Phase 5 pending) falls back to the quiet quartermaster so the
-   * beat is never silent — but the fallback is a system line, never a
-   * fake bubble.
-   */
-  private arenaBark(match: ArenaMatchState, text: string): void {
-    if (text.length === 0) return;
-    const venue = match.venue;
-    if (!venue) return;
-    if (match.masterEid === null || !this.ecs.isAlive(match.masterEid)) {
-      match.masterEid = null;
-      const plane = venue.plane ?? SURFACE_PLANE_ID;
-      for (const [aeid, comp] of this.actors) {
-        if (comp.actor.id !== venue.master) continue;
-        const p = this.positions.get(aeid);
-        if (p && p.plane === plane) {
-          match.masterEid = aeid;
-          break;
-        }
-      }
-    }
-    if (match.masterEid !== null) {
-      const comp = this.actors.get(match.masterEid);
-      this.sayAloud(match.masterEid, comp?.actor.name ?? 'The Ringmaster', text);
-    } else {
-      this.arenaSend(match, { t: 'chat', channel: 'system', text });
-    }
+  arenaBark(match: ArenaMatchState, text: string): void {
+    return arenaSys.arenaBark(this, match, text);
   }
 
-  /**
-   * Shut or open the venue's gates through the door machinery. A shut
-   * never lands on a body (the embed law) — blocked leaves stand open
-   * and the per-beat retry in tickArenas closes them as they clear.
-   * Unbuilt ground (no door tile — a venue drawn before Phase 5's
-   * masonry) no-ops politely so the engine can rehearse anywhere.
-   */
-  private arenaSetGates(match: ArenaMatchState, shut: boolean): void {
-    const venue = match.venue;
-    if (!venue) return;
-    const plane = venue.plane ?? SURFACE_PLANE_ID;
-    const world = this.worldOf(plane);
-    let allSet = true;
-    for (const g of match.gateTiles) {
-      const now = world.groundAt(g.x, g.y);
-      if (now === undefined) continue;
-      if (shut) {
-        const target = shutDoorTile(g.open);
-        if (target === null || now === target) continue;
-        if (this.bodyOnTile(plane, g.x, g.y)) {
-          allSet = false;
-          continue;
-        }
-        this.setWorldTile(plane, g.x, g.y, target);
-        this.broadcastFx(plane, {
-          t: 'fx',
-          kind: 'rattle',
-          x: g.x + 0.5,
-          y: g.y + 0.5,
-          radius: 1,
-        });
-      } else {
-        const target = g.open;
-        if (now !== target && shutDoorTile(g.open) === now) {
-          this.setWorldTile(plane, g.x, g.y, target);
-        }
-      }
-    }
-    match.gatesShut = shut && allSet;
+  arenaSetGates(match: ArenaMatchState, shut: boolean): void {
+    return arenaSys.arenaSetGates(this, match, shut);
   }
 
-  /** Open the stakes board — the arena dialogue hook's good ending. */
   arenaBoardOpen(eid: EntityId, player: PlayerComp, venueId: string): void {
-    const venue = arenaVenue(venueId);
-    if (!venue) {
-      this.speak(player, 'Closed', 'The ring is not drawn yet. Come back when the sand is laid.');
-      return;
-    }
-    const bank = player.arena;
-    const cards = matchesForVenue(venueId).map((m) => ({
-      id: m.id,
-      name: m.name,
-      ...(m.blurb !== undefined ? { blurb: m.blurb } : {}),
-      level: m.level,
-      fee: m.fee,
-      rounds: m.rounds.length,
-      ...(m.rankReq !== undefined ? { rankReq: m.rankReq } : {}),
-      ...((m.rankReq ?? 0) > bank.rank ? { locked: true } : {}),
-    }));
-    player.session?.sendJson({
-      t: 'arenaboard',
-      venue: venueId,
-      name: venue.name,
-      matches: cards,
-      rank: bank.rank,
-      title: arenaTitleFor(bank.rank),
-      xp: bank.xp,
-      xpPrev: totalXpForArenaRank(bank.rank),
-      ...(bank.rank < ARENAS.ladder.maxRank
-        ? { xpNext: totalXpForArenaRank(bank.rank + 1) }
-        : {}),
-      // THE STANDING: the record and the next named rung, so the foot
-      // of the board can wear the buyer's whole story (all additive).
-      wins: bank.wins,
-      losses: bank.losses,
-      maxRank: ARENAS.ladder.maxRank,
-      ...(() => {
-        const up = ARENAS.ladder.titles.find((t) => t.rank > bank.rank);
-        return up ? { nextTitle: up.title, nextTitleRank: up.rank } : {};
-      })(),
-    });
+    return arenaSys.arenaBoardOpen(this, eid, player, venueId);
   }
 
-  /**
-   * Buy a card: the claim ceremony. The server judges everything —
-   * the venue within hail, the claim free, the rest raked, the rank
-   * gate, the stake in coin — and refuses through the risen word.
-   */
   arenaQueue(eid: EntityId, matchId: string, opts: { devFree?: boolean } = {}): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos) return;
-    const def = arenaMatchDef(matchId);
-    if (!def) {
-      this.speak(player, 'No card', 'The board holds no such card.');
-      return;
-    }
-    // The venue is WHERE YOU STAND: the nearest ring on this plane
-    // whose counter lists the card, within hail of its sand.
-    let venue: ArenaVenueDef | null = null;
-    let best = Number.POSITIVE_INFINITY;
-    for (const v of ARENAS.venues) {
-      if ((v.plane ?? SURFACE_PLANE_ID) !== pos.plane) continue;
-      if (!matchesForVenue(v.id).some((m) => m.id === matchId)) continue;
-      const d = Math.hypot(pos.x - v.pit.x, pos.y - v.pit.y);
-      if (d < best) {
-        best = d;
-        venue = v;
-      }
-    }
-    if (venue === null || best > 40) {
-      this.speak(player, 'No ring', 'No ring within hail answers that card.');
-      return;
-    }
-    if (this.arenaMatches.has(venue.id)) {
-      this.speak(player, 'Claimed', 'The sand is claimed. Watch, or wait your turn.');
-      return;
-    }
-    const rest = this.arenaCooldowns.get(venue.id) ?? 0;
-    if (Date.now() < rest) {
-      this.speak(player, 'Raked', 'The sand is being raked. Give it a moment.');
-      return;
-    }
-    if (this.arenaOf(player.characterId) !== null) {
-      this.speak(player, 'Enrolled', 'You are already on a card.');
-      return;
-    }
-    if ((def.rankReq ?? 0) > player.arena.rank) {
-      this.speak(player, 'Unproven', `The board wants rank ${def.rankReq} for that card.`);
-      return;
-    }
-    if (!opts.devFree && def.fee > 0) {
-      const coins = countItem(player.inventory, 'coins');
-      if (coins < def.fee) {
-        this.speak(player, 'Short', `The stake is ${def.fee} coins. You carry ${coins}.`);
-        return;
-      }
-      removeItem(player.inventory, 'coins', def.fee);
-      player.session?.sendJson({ t: 'inv', slots: player.inventory });
-    }
-    const plane = venue.plane ?? SURFACE_PLANE_ID;
-    const world = this.worldOf(plane);
-    const seed = (Date.now() ^ (eid * 0x9e3779b1)) >>> 1;
-    const match: ArenaMatchState = {
-      venueId: venue.id,
-      def: JSON.parse(JSON.stringify(def)) as ArenaMatchDef,
-      venue: JSON.parse(JSON.stringify(venue)) as ArenaVenueDef,
-      plan: rollMatchPlan(def, seed),
-      seed,
-      phase: 'muster',
-      round: 0,
-      deadlineTick: this.tickCount + ARENAS.dials.musterSec * 20,
-      members: new Map([[player.characterId, { alive: true }]]),
-      initiatorChar: player.characterId,
-      waveEids: new Set(),
-      propTiles: [],
-      gateTiles: venue.gates.map((g) => ({
-        x: g.x,
-        y: g.y,
-        open: world.groundAt(g.x, g.y) ?? 0,
-      })),
-      gatesShut: false,
-      chestPrev: null,
-      masterEid: null,
-      startedAt: Date.now(),
-      lastBeatTick: this.tickCount,
-    };
-    this.arenaMatches.set(venue.id, match);
-    // The muster call reaches the whole party — the fellows see the
-    // clock even from across the district. A fellow already on a live
-    // card keeps their own fight (the audit's find: double enrollment
-    // made arenaOf insertion-order-dependent and misrouted their
-    // leave and their HUD).
-    for (const cid of this.party.fellowsOf(player.characterId)) {
-      if (this.arenaOf(cid) === null) match.members.set(cid, { alive: true });
-    }
-    this.arenaStateFan(match);
-    this.arenaBark(match, stockBark('muster', seed, 0));
-    this.broadcastFx(plane, {
-      t: 'fx',
-      kind: 'horn',
-      x: venue.pit.x,
-      y: venue.pit.y,
-      radius: 8,
-    });
+    return arenaSys.arenaQueue(this, eid, matchId, opts);
   }
 
-  /** Walk away: a muster cancel (initiator, refunded) or a forfeit. */
   arenaLeave(eid: EntityId): void {
-    const player = this.players.get(eid);
-    if (!player) return;
-    const match = this.arenaOf(player.characterId);
-    if (!match) return;
-    if (match.phase === 'muster' && match.initiatorChar === player.characterId) {
-      if (match.def.fee > 0) {
-        addItem(player.inventory, 'coins', match.def.fee);
-        player.session?.sendJson({ t: 'inv', slots: player.inventory });
-      }
-      this.speak(player, 'Returned', 'The stake returns to your purse.', undefined, 'note');
-      this.arenaReset(match, { silent: true });
-      return;
-    }
-    if (match.phase === 'muster') {
-      // A fellow declining the muster simply steps off the roster —
-      // gate-shut re-derives enrollment, and a deleted name cannot be
-      // silently re-enrolled by standing in the wrong place.
-      match.members.delete(player.characterId);
-      player.session?.sendJson({ t: 'arena', phase: 'off' });
-      if (match.members.size === 0) this.arenaReset(match, { silent: true });
-      return;
-    }
-    const m = match.members.get(player.characterId);
-    if (m?.alive === true) {
-      m.alive = false;
-      const venue = match.venue;
-      const pos = this.positions.get(eid);
-      // The walk-of-shame is for a body ON the sand — never a
-      // cross-map ferry (the audit's find: a far-away fellow could
-      // ride the forfeit teleport across the whole plane).
-      if (pos && pos.plane === (venue.plane ?? SURFACE_PLANE_ID) && inPit(venue.pit, pos.x, pos.y, 1.5)) {
-        this.teleport(eid, venue.exit.x + 0.5, venue.exit.y + 0.5);
-      }
-      player.session?.sendJson({ t: 'arena', phase: 'off' });
-      this.arenaWipeCheck(match);
-    }
+    return arenaSys.arenaLeave(this, eid);
   }
 
-  /** A member fell (the death branch's call). */
-  private arenaMemberFell(player: PlayerComp): void {
-    const match = this.arenaOf(player.characterId);
-    if (!match) return;
-    if (match.phase === 'muster') {
-      // A muster that loses its buyer folds politely, stake returned.
-      if (match.initiatorChar === player.characterId) {
-        if (match.def.fee > 0) {
-          addItem(player.inventory, 'coins', match.def.fee);
-          player.session?.sendJson({ t: 'inv', slots: player.inventory });
-        }
-        this.arenaReset(match, { silent: true });
-      } else {
-        match.members.delete(player.characterId);
-      }
-      return;
-    }
-    const m = match.members.get(player.characterId);
-    if (m?.alive !== true) return;
-    m.alive = false;
-    player.session?.sendJson({ t: 'arena', phase: 'off' });
-    this.arenaStateFan(match);
-    this.arenaWipeCheck(match);
+  arenaMemberFell(player: PlayerComp): void {
+    return arenaSys.arenaMemberFell(this, player);
   }
 
-  /** A member's session died — the sand counts them severed. */
-  private arenaMemberSevered(characterId: number): void {
-    const match = this.arenaOf(characterId);
-    if (!match) return;
-    if (match.phase === 'muster') {
-      match.members.delete(characterId);
-      if (match.members.size === 0) this.arenaReset(match, { silent: true });
-      return;
-    }
-    const m = match.members.get(characterId);
-    if (m?.alive === true) {
-      m.alive = false;
-      this.arenaWipeCheck(match);
-    }
+  arenaMemberSevered(characterId: number): void {
+    return arenaSys.arenaMemberSevered(this, characterId);
   }
 
-  private arenaWipeCheck(match: ArenaMatchState): void {
-    if (match.phase === 'victory') return;
-    for (const m of match.members.values()) if (m.alive) return;
-    this.arenaWipe(match);
+  arenaWipeCheck(match: ArenaMatchState): void {
+    return arenaSys.arenaWipeCheck(this, match);
   }
 
-  /** THE WIPE RESETS THE SAND: the card is lost whole. */
   arenaWipe(match: ArenaMatchState): void {
-    this.arenaBark(match, stockBark('wipe', match.seed, match.round));
-    for (const cid of match.members.keys()) {
-      const eid = this.characterEids.get(cid);
-      const player = eid !== undefined ? this.players.get(eid) : undefined;
-      if (player) {
-        player.arena.losses++;
-        if (player.characterId > 0) this.accounts.saveArena(player.characterId, player.arena);
-      } else if (cid > 0) {
-        // An offline member still takes the loss — best effort.
-        void this.accounts
-          .loadArena(cid)
-          .then((row) => {
-            const backEid = this.characterEids.get(cid);
-            const back = backEid !== undefined ? this.players.get(backEid) : undefined;
-            const bank = back ? back.arena : (row ?? freshArenaBank());
-            bank.losses++;
-            this.accounts.saveArena(cid, bank);
-          })
-          .catch(() => undefined);
-      }
-    }
-    this.arenaSend(match, { ...this.arenaState(match, 'wipe'), remainMs: undefined }, { all: true });
-    this.arenaReset(match, { keepWipeWord: true });
+    return arenaSys.arenaWipe(this, match);
   }
 
-  /**
-   * Rake the sand: sweep every body and prop the match placed, stand
-   * the gates open, retire the purse, and free the claim. The ONE
-   * teardown — victory grace, wipe, cancel, and the backstop all end
-   * here (the teardownDungeon lesson: one door out, however it went).
-   */
   arenaReset(
     match: ArenaMatchState,
     opts: { silent?: boolean; keepWipeWord?: boolean } = {},
   ): void {
-    const venue = match.venue;
-    const plane = venue?.plane ?? SURFACE_PLANE_ID;
-    // The sand takes its dead: wave bodies leave with a death burst
-    // (the disbandCourt manner) and their own summons go with them.
-    for (const weid of match.waveEids) {
-      if (!this.ecs.isAlive(weid)) continue;
-      const npc = this.npcs.get(weid);
-      const wpos = this.positions.get(weid);
-      if (npc) this.disbandCourt(npc);
-      if (wpos) {
-        for (const s of this.sessions) {
-          if (s.knownEntities.has(weid)) {
-            s.sendJson({ t: 'death', eid: weid, x: wpos.x, y: wpos.y, defId: npc?.def.id ?? '' });
-          }
-        }
-      }
-      this.wildBodies.delete(weid);
-      this.removeFromChunks(weid);
-      this.ecs.destroy(weid);
-    }
-    match.waveEids.clear();
-    // Props and purse go back to the ground they stood on, and the
-    // respawn queue forgets them — a smashed barrel must not respawn
-    // onto raked sand, nor a reclose resurrect a retired purse.
-    const swept = new Set<string>();
-    for (const p of match.propTiles) {
-      this.setWorldTile(plane, p.x, p.y, p.prev);
-      swept.add(`${p.x},${p.y}`);
-    }
-    match.propTiles.length = 0;
-    if (venue && match.chestPrev !== null) {
-      this.setWorldTile(plane, venue.chest.x, venue.chest.y, match.chestPrev);
-      this.poiChests.delete(`${plane}|${venue.chest.x},${venue.chest.y}`);
-      swept.add(`${venue.chest.x},${venue.chest.y}`);
-      match.chestPrev = null;
-    }
-    this.arenaChestClaims.delete(match.venueId);
-    for (const g of match.gateTiles) swept.add(`${g.x},${g.y}`);
-    for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
-      const entry = this.respawnQueue[i]!;
-      if (entry.plane === plane && swept.has(`${entry.tx},${entry.ty}`)) {
-        this.respawnQueue.splice(i, 1);
-      }
-    }
-    this.arenaSetGates(match, false);
-    // THE WIPE KEEPS ITS BEAT (the audit's find: 'wipe' then 'off' in
-    // the same tick meant the lost frame never rendered): on the wipe
-    // path no 'off' is sent at all — the client holds the wipe card
-    // for its own 2.6 s beat and lowers itself. Every other path
-    // lowers the HUD for everyone, fallen included.
-    if (!opts.keepWipeWord) {
-      this.arenaSend(match, { t: 'arena', phase: 'off' }, { all: true });
-    }
-    this.arenaMatches.delete(match.venueId);
-    this.arenaCooldowns.set(match.venueId, Date.now() + ARENAS.dials.cooldownSec * 1000);
+    return arenaSys.arenaReset(this, match, opts);
   }
 
-  /** Gate-shut: enrollment crystallizes and the sand empties of guests. */
-  private arenaGateShut(match: ArenaMatchState): void {
-    const venue = match.venue;
-    if (!venue) {
-      this.arenaReset(match, { silent: true });
-      return;
-    }
-    const plane = venue.plane ?? SURFACE_PLANE_ID;
-    // Who stands the sand stands the card (party members only).
-    const enrolled = new Map<number, { alive: boolean }>();
-    for (const cid of match.members.keys()) {
-      const eid = this.characterEids.get(cid);
-      if (eid === undefined) continue;
-      const p = this.positions.get(eid);
-      if (!p || p.plane !== plane) continue;
-      if (inPit(venue.pit, p.x, p.y, 1)) enrolled.set(cid, { alive: true });
-    }
-    if (enrolled.size === 0) {
-      // Nobody took the sand: the stake returns and the claim folds.
-      const eid = this.characterEids.get(match.initiatorChar);
-      const player = eid !== undefined ? this.players.get(eid) : undefined;
-      if (player && match.def.fee > 0) {
-        addItem(player.inventory, 'coins', match.def.fee);
-        player.session?.sendJson({ t: 'inv', slots: player.inventory });
-        this.speak(player, 'Folded', 'Nobody took the sand. The stake returns.', undefined, 'note');
-      }
-      this.arenaReset(match, { silent: true });
-      return;
-    }
-    match.members.clear();
-    for (const [cid, m] of enrolled) match.members.set(cid, m);
-    this.arenaGuardSweep(match, venue);
-    match.phase = 'gates';
-    match.deadlineTick = this.tickCount + 40;
-    this.arenaSetGates(match, true);
-    this.arenaBark(match, stockBark('gates', match.seed, 1));
-    // 'field', not 'charge': charge is a pure instrument client-side
-    // (no signature crown) — the gates' iron set-piece rides a field
-    // wire so THE BAR COMES DOWN actually draws.
-    this.broadcastFx(plane, {
-      t: 'fx',
-      kind: 'field',
-      x: venue.pit.x,
-      y: venue.pit.y,
-      radius: Math.max(venue.pit.rx, venue.pit.ry),
-      id: 'arena:gates',
-      ticks: 40,
-    });
-    this.arenaStateFan(match);
+  arenaGateShut(match: ArenaMatchState): void {
+    return arenaSys.arenaGateShut(this, match);
   }
 
-  /** Field the current round onto the sand. */
-  private arenaSpawnRound(match: ArenaMatchState): void {
-    const venue = match.venue;
-    const round = match.plan.rounds[match.round];
-    if (!venue || !round) {
-      this.arenaReset(match, { silent: true });
-      return;
-    }
-    const plane = venue.plane ?? SURFACE_PLANE_ID;
-    const world = this.worldOf(plane);
-    const walkable = (x: number, y: number): boolean =>
-      !world.isSolid(Math.floor(x), Math.floor(y));
-    const spots = scatterSpots(
-      venue.pit,
-      round.bodies.length + round.props,
-      match.seed ^ (match.round * 0x9109),
-      walkable,
-    );
-    let si = 0;
-    for (const b of round.bodies) {
-      const base = NPCS.get(b.npc);
-      if (!base) continue;
-      let def = scaleNpcDef(base, b.level, b.name);
-      if (b.crownSeed !== undefined && !def.boss && def.kit && crownPoolFor(b.npc)) {
-        def = forgeCrown(def, b.crownSeed, b.name !== undefined ? { name: b.name } : undefined);
-      }
-      const spot = spots[si++] ?? { x: venue.pit.x, y: venue.pit.y };
-      // Every wave body flies the 'arena' banner: kin-peace keeps a
-      // mixed card from hunting itself, and no matrix row exists so
-      // the town watch has no standing feud with the sport.
-      const neid = this.spawnNpc(def, plane, spot.x, spot.y, -1, undefined, undefined, 'arena');
-      const npc = this.npcs.get(neid);
-      if (npc) npc.arenaMatch = match.venueId;
-      match.waveEids.add(neid);
-      this.broadcastFx(plane, {
-        t: 'fx',
-        kind: 'summon',
-        x: spot.x,
-        y: spot.y,
-        radius: Math.max(0.8, def.radius * 1.6),
-      });
-    }
-    // Cover for the round: barrels and crates, smashable, swept at
-    // the reset (the destructible law's own hits/respawn dials run
-    // while the round lives).
-    for (let i = 0; i < round.props; i++) {
-      const spot = spots[si++];
-      if (!spot) break;
-      const tx = Math.floor(spot.x);
-      const ty = Math.floor(spot.y);
-      if (world.isSolid(tx, ty)) continue;
-      if (venue.gates.some((g) => g.x === tx && g.y === ty)) continue;
-      if (venue.chest.x === tx && venue.chest.y === ty) continue;
-      const prev = world.groundAt(tx, ty);
-      if (prev === undefined) continue;
-      this.setWorldTile(plane, tx, ty, i % 2 === 0 ? Tile.Barrel : Tile.Crate);
-      match.propTiles.push({ x: tx, y: ty, prev });
-    }
-    const last = match.round === match.plan.rounds.length - 1;
-    this.arenaBark(
-      match,
-      round.bark ?? stockBark(last ? 'final' : 'round', match.seed, 10 + match.round),
-    );
-    this.broadcastFx(plane, {
-      t: 'fx',
-      kind: 'horn',
-      x: venue.pit.x,
-      y: venue.pit.y,
-      radius: 8,
-    });
-    match.phase = 'round';
-    match.deadlineTick = 0;
-    this.arenaStateFan(match);
+  arenaSpawnRound(match: ArenaMatchState): void {
+    return arenaSys.arenaSpawnRound(this, match);
   }
 
-  /** A wave body left the sand — the kill path's notification. */
-  private arenaBodyFell(npcEid: EntityId, venueId: string): void {
-    const match = this.arenaMatches.get(venueId);
-    if (!match) return;
-    match.waveEids.delete(npcEid);
-    if (match.phase !== 'round') return;
-    if (this.arenaFoesLeft(match) > 0) {
-      this.arenaStateFan(match);
-      return;
-    }
-    if (match.round >= match.plan.rounds.length - 1) {
-      this.arenaVictory(match);
-    } else {
-      match.round++;
-      match.phase = 'breather';
-      match.deadlineTick = this.tickCount + ARENAS.dials.countdownSec * 20;
-      this.arenaBark(match, stockBark('round', match.seed, 20 + match.round));
-      this.arenaStateFan(match);
-    }
+  arenaBodyFell(npcEid: EntityId, venueId: string): void {
+    return arenaSys.arenaBodyFell(this, npcEid, venueId);
   }
 
-  /** The card is won: the show, the ladder, the purse. */
-  private arenaVictory(match: ArenaMatchState): void {
-    const venue = match.venue;
-    if (!venue) {
-      this.arenaReset(match, { silent: true });
-      return;
-    }
-    const plane = venue.plane ?? SURFACE_PLANE_ID;
-    match.phase = 'victory';
-    match.deadlineTick = this.tickCount + ARENAS.dials.chestGraceSec * 20;
-    this.arenaSetGates(match, false);
-    // The ladder pays every enrolled soul — the fallen at the doc's
-    // fraction (they bought the card too; the sand remembers).
-    for (const [cid, m] of match.members) {
-      const pay = arenaPayFor(match.def, m.alive);
-      const eid = this.characterEids.get(cid);
-      const player = eid !== undefined ? this.players.get(eid) : undefined;
-      if (player) {
-        const { climbed } = bankArenaXp(player.arena, pay);
-        player.arena.wins++;
-        if (player.characterId > 0) this.accounts.saveArena(player.characterId, player.arena);
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `The card pays ${pay} arena marks.`,
-        });
-        for (const rank of climbed) {
-          const title = arenaTitleFor(rank);
-          const held = arenaTitleFor(rank - 1);
-          const pos = eid !== undefined ? this.positions.get(eid) : undefined;
-          this.speak(
-            player,
-            `Rank ${rank}`,
-            title !== held
-              ? `The board writes you at rank ${rank}. The crowd has a name for you now: ${title}.`
-              : `The board writes you at rank ${rank}.`,
-            pos ? { x: pos.x, y: pos.y } : undefined,
-            'good',
-          );
-        }
-      } else if (cid > 0) {
-        void this.accounts
-          .loadArena(cid)
-          .then((row) => {
-            // If the soul relogged while the read was in flight, pay
-            // the LIVE bank (the audit's find: the async save would
-            // otherwise be clobbered by the next live write).
-            const backEid = this.characterEids.get(cid);
-            const back = backEid !== undefined ? this.players.get(backEid) : undefined;
-            const bank = back ? back.arena : (row ?? freshArenaBank());
-            bankArenaXp(bank, pay);
-            bank.wins++;
-            this.accounts.saveArena(cid, bank);
-          })
-          .catch(() => undefined);
-      }
-    }
-    // The purse rises on the sand, warded to the enrolled, rolled at
-    // the card's own level (the chest-law overlay carries both).
-    const chestGround = this.worldOf(plane).groundAt(venue.chest.x, venue.chest.y);
-    if (chestGround !== undefined && !this.worldOf(plane).isSolid(venue.chest.x, venue.chest.y)) {
-      match.chestPrev = chestGround;
-      this.setWorldTile(plane, venue.chest.x, venue.chest.y, closedChestTile(match.def.chest ?? 'boss'));
-      this.poiChests.set(`${plane}|${venue.chest.x},${venue.chest.y}`, {
-        cell: `arena:${match.venueId}`,
-        table: match.def.lootTable ?? arenaPurseTableFor(match.def.level),
-        level: match.def.level,
-      });
-      this.arenaChestClaims.set(match.venueId, new Set(match.members.keys()));
-      this.broadcastFx(plane, {
-        t: 'fx',
-        kind: 'summon',
-        x: venue.chest.x + 0.5,
-        y: venue.chest.y + 0.5,
-        radius: 1.4,
-        id: 'arena:purse',
-      });
-    }
-    this.arenaBark(match, stockBark('victory', match.seed, 30));
-    this.arenaBark(match, stockBark('chest', match.seed, 31));
-    this.broadcastFx(plane, {
-      t: 'fx',
-      kind: 'nova',
-      x: venue.pit.x,
-      y: venue.pit.y,
-      radius: Math.max(venue.pit.rx, venue.pit.ry),
-      id: 'arena:victory',
-    });
-    this.arenaStateFan(match, true);
+  arenaVictory(match: ArenaMatchState): void {
+    return arenaSys.arenaVictory(this, match);
   }
 
-  /** THE CLAIM IS THE PARTY'S: walk the uninvited off the sand. */
-  private arenaGuardSweep(match: ArenaMatchState, venue: ArenaVenueDef): void {
-    const plane = venue.plane ?? SURFACE_PLANE_ID;
-    for (const [peid, p] of this.players) {
-      const pp = this.positions.get(peid);
-      if (!pp || pp.plane !== plane) continue;
-      // The sand, plus the gate line, plus the gatehouse recesses: a
-      // body parked ON a gate tile would hold the bar open all match
-      // and rob the death spill of its gate (the audit's find), and a
-      // body in a carved passage row between gate and sand (the Grand
-      // Ring's two-tile crown, §10 fix) would be sealed in with the
-      // card. Pad 1.5 reaches the recesses; everything the wider
-      // ellipse adds beyond them is solid wall no body can stand in.
-      const onGate = match.gateTiles.some(
-        (g) => Math.floor(pp.x) === g.x && Math.floor(pp.y) === g.y,
-      );
-      if (!onGate && !inPit(venue.pit, pp.x, pp.y, 1.5)) continue;
-      if (match.members.get(p.characterId)?.alive === true) continue;
-      this.teleport(peid, venue.exit.x + 0.5, venue.exit.y + 0.5);
-      p.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: 'The sand is claimed. The stands are free.',
-      });
-    }
+  arenaGuardSweep(match: ArenaMatchState, venue: ArenaVenueDef): void {
+    return arenaSys.arenaGuardSweep(this, match, venue);
   }
 
-  /** The 5 Hz beat: clocks, sweeps, engagement, the backstop. */
-  private tickArenas(now: number): void {
-    if (this.arenaMatches.size === 0) return;
-    for (const match of [...this.arenaMatches.values()]) {
-      const venue = match.venue;
-      if (!venue) {
-        this.arenaReset(match, { silent: true });
-        continue;
-      }
-      const plane = venue.plane ?? SURFACE_PLANE_ID;
-      // The backstop: no claim outlives its cap, however it hung —
-      // except a card already WON, which is not hung at all: its own
-      // grace deadline ends it (the audit's find: the backstop was
-      // banking a loss on top of a banked win).
-      if (match.phase !== 'victory' && now - match.startedAt > ARENAS.dials.matchCapSec * 1000) {
-        this.arenaWipe(match);
-        continue;
-      }
-      if (match.phase !== 'muster' && match.phase !== 'victory') {
-        // Gates that a body blocked shut on the retry; the sweep walks
-        // creepers out; absent members read as severed.
-        if (!match.gatesShut) this.arenaSetGates(match, true);
-        this.arenaGuardSweep(match, venue);
-        for (const [cid, m] of match.members) {
-          if (!m.alive) continue;
-          const eid = this.characterEids.get(cid);
-          const pp = eid !== undefined ? this.positions.get(eid) : undefined;
-          if (
-            !pp ||
-            pp.plane !== plane ||
-            Math.hypot(pp.x - venue.pit.x, pp.y - venue.pit.y) > 60
-          ) {
-            m.alive = false;
-            this.arenaWipeCheck(match);
-          }
-        }
-        if (!this.arenaMatches.has(match.venueId)) continue;
-      }
-      if (match.phase === 'round') {
-        // The sand suffers no shy fighter: an idle wave body past its
-        // first breath is pressed onto the nearest enrolled soul
-        // through the ONE aggro door, forced.
-        for (const weid of match.waveEids) {
-          const npc = this.npcs.get(weid);
-          if (!npc || npc.state !== 'idle') continue;
-          if (this.tickCount < npc.noAggroUntilTick) continue;
-          let bestEid: EntityId | null = null;
-          let bestD = Number.POSITIVE_INFINITY;
-          const wpos = this.positions.get(weid);
-          if (!wpos) continue;
-          for (const [cid, m] of match.members) {
-            if (!m.alive) continue;
-            const eid = this.characterEids.get(cid);
-            const pp = eid !== undefined ? this.positions.get(eid) : undefined;
-            if (!pp || pp.plane !== plane) continue;
-            const d = Math.hypot(pp.x - wpos.x, pp.y - wpos.y);
-            if (d < bestD) {
-              bestD = d;
-              bestEid = eid!;
-            }
-          }
-          if (bestEid !== null) this.npcAggro(weid, npc, bestEid, { force: true });
-        }
-        // Safety net beside the kill-path check (a body swept by any
-        // other door must not hold the round open forever).
-        if (this.arenaFoesLeft(match) === 0 && match.waveEids.size === 0) {
-          if (match.round >= match.plan.rounds.length - 1) this.arenaVictory(match);
-          else {
-            match.round++;
-            match.phase = 'breather';
-            match.deadlineTick = this.tickCount + ARENAS.dials.countdownSec * 20;
-            this.arenaStateFan(match);
-          }
-          continue;
-        }
-      }
-      if (match.deadlineTick > 0 && this.tickCount >= match.deadlineTick) {
-        switch (match.phase) {
-          case 'muster':
-            this.arenaGateShut(match);
-            break;
-          case 'gates':
-            match.phase = 'breather';
-            match.deadlineTick = this.tickCount + ARENAS.dials.countdownSec * 20;
-            this.arenaStateFan(match);
-            break;
-          case 'breather':
-            this.arenaSpawnRound(match);
-            break;
-          case 'victory':
-            this.arenaReset(match);
-            break;
-          case 'round':
-            break;
-        }
-        continue;
-      }
-      // The once-a-second heartbeat keeps every running clock honest.
-      if (match.deadlineTick > this.tickCount && this.tickCount - match.lastBeatTick >= 20) {
-        match.lastBeatTick = this.tickCount;
-        this.arenaStateFan(match);
-      }
-    }
+  tickArenas(now: number): void {
+    return arenaSys.tickArenas(this, now);
   }
 
   // ------------------------------------------------------- equipment
@@ -16205,7 +14079,7 @@ export class GameServer {
     // in for a few seconds while the animal stands for it. The yield,
     // xp, and cooldown all land in tickMilk when the pail fills.
     if (player.action) this.cancelAction(eid, player);
-    const ticks = Math.max(GameServer.MIN_GATHER_TICKS, Math.round(GameServer.MILK_TICKS / this.gatherSpeedOf(player)));
+    const ticks = Math.max(MIN_GATHER_TICKS, Math.round(MILK_TICKS / this.gatherSpeedOf(player)));
     player.action = { kind: 'milk', targetEid, ticksLeft: ticks };
     pos.dir = Math.atan2(npos.y - pos.y, npos.x - pos.x);
     npc.holdUntilTick = this.tickCount + ticks + 20;
@@ -16214,7 +14088,6 @@ export class GameServer {
   }
 
   /** One full milking, in ticks (3s), before gather-speed brews. */
-  private static readonly MILK_TICKS = 60;
 
   private tickMilk(eid: EntityId, player: PlayerComp): void {
     const action = player.action! as MilkAction;
@@ -20775,7 +18648,7 @@ export class GameServer {
   }
 
   /** Re-send an entity's meta to every session that can see it. */
-  private broadcastMetaUpdate(eid: EntityId): void {
+  broadcastMetaUpdate(eid: EntityId): void {
     const meta = this.buildMeta(eid);
     // One stringify for the whole fan (see broadcastFx).
     let json: string | undefined;
@@ -26082,7 +23955,6 @@ export class GameServer {
   /** Perception cadence: each body looks every 5th tick (4 Hz), staggered. */
   private static readonly PERCEPTION_PERIOD = 5;
   /** Suspicious stand-and-stare before walking over to see (1.2s). */
-  static readonly SUS_DWELL_TICKS = 24;
   /** An investigator that SEES its interest holds off at this range. */
   private static readonly WATCH_STANDOFF = 3.2;
   /**
@@ -27037,7 +24909,7 @@ export class GameServer {
     return left > 0;
   }
 
-  private npcAggro(
+  npcAggro(
     eid: EntityId,
     npc: NpcComp,
     targetEid: EntityId,
@@ -27212,7 +25084,7 @@ export class GameServer {
         c.npc.alertX = tpos.x;
         c.npc.alertY = tpos.y;
         c.npc.alertSeenTick = this.tickCount;
-        c.npc.huntUntilTick = this.tickCount + GameServer.SUS_DWELL_TICKS * 2;
+        c.npc.huntUntilTick = this.tickCount + SUS_DWELL_TICKS * 2;
       }
     }
   }
@@ -27455,7 +25327,7 @@ export class GameServer {
       }
       if (npc.state === 'idle' && npc.alert >= ALERT_SUS) {
         npc.state = 'suspicious';
-        npc.huntUntilTick = this.tickCount + GameServer.SUS_DWELL_TICKS;
+        npc.huntUntilTick = this.tickCount + SUS_DWELL_TICKS;
         npc.navBest = Infinity;
         npc.navStuck = 0;
       }
@@ -28270,7 +26142,7 @@ export class GameServer {
    * could raise nothing). Distance despawn covers the abandoned rest:
    * summons enter wildBodies at birth.
    */
-  private disbandCourt(npc: NpcComp): void {
+  disbandCourt(npc: NpcComp): void {
     for (const ceid of npc.summonedEids ?? []) {
       const child = this.npcs.get(ceid);
       if (!child) continue;
@@ -30263,411 +28135,31 @@ export class GameServer {
 
   // ------------------------------------------------- interest management
 
-  /**
-   * THE WORLDS APART: the entity-chunk index is keyed plane-first, so
-   * a proximity scan can only ever see bodies whose coordinates share
-   * a coordinate space. Session.knownChunks stays bare "cx,cy" — a
-   * session streams exactly one plane at a time and is cleared whole
-   * at every crossing.
-   */
-  private chunkKeyOf(plane: PlaneId, x: number, y: number): string {
-    return `${plane}|${chunkKey(Math.floor(x / CHUNK_SIZE), Math.floor(y / CHUNK_SIZE))}`;
+  chunkKeyOf(plane: PlaneId, x: number, y: number): string {
+    return interestSys.chunkKeyOf(this, plane, x, y);
   }
 
-  private updateChunkMembership(eid: EntityId): void {
-    const pos = this.positions.must(eid);
-    const key = this.chunkKeyOf(pos.plane, pos.x, pos.y);
-    const prev = this.entityChunk.get(eid);
-    if (prev === key) return;
-    if (prev !== undefined) this.chunks.get(prev)?.delete(eid);
-    let set = this.chunks.get(key);
-    if (!set) {
-      set = new Set();
-      this.chunks.set(key, set);
-    }
-    set.add(eid);
-    this.entityChunk.set(eid, key);
+  updateChunkMembership(eid: EntityId): void {
+    return interestSys.updateChunkMembership(this, eid);
   }
 
-  private removeFromChunks(eid: EntityId): void {
-    const prev = this.entityChunk.get(eid);
-    if (prev !== undefined) {
-      this.chunks.get(prev)?.delete(eid);
-      this.entityChunk.delete(eid);
-    }
+  removeFromChunks(eid: EntityId): void {
+    return interestSys.removeFromChunks(this, eid);
   }
 
-  /** Diff the session's known set against what's visible; send enter/leave. */
-  private updateInterest(session: Session): void {
-    const eid = session.playerEid!;
-    const pos = this.positions.get(eid);
-    if (!pos) return;
-
-    const ccx = Math.floor(pos.x / CHUNK_SIZE);
-    const ccy = Math.floor(pos.y / CHUNK_SIZE);
-
-    // Discovery runs on the center-chunk EDGE — the new-chunk branch
-    // below fires for chunks 2 away (64+ tiles out), far too early to
-    // shout "discovered" about anything.
-    const center = chunkKey(ccx, ccy);
-    if (session.lastCenterChunk !== center) {
-      session.lastCenterChunk = center;
-      this.checkDiscoveries(eid);
-    }
-
-    // The session streams the player's OWN plane and nothing else —
-    // knownChunks keys stay bare "cx,cy" (the plane is the session's),
-    // while the entity index reads through plane-first keys.
-    const world = this.planes.require(pos.plane);
-    const visible = new Set<EntityId>();
-    const windowKeys = new Set<string>();
-    for (let cy = ccy - INTEREST_CHUNK_RADIUS; cy <= ccy + INTEREST_CHUNK_RADIUS; cy++) {
-      for (let cx = ccx - INTEREST_CHUNK_RADIUS; cx <= ccx + INTEREST_CHUNK_RADIUS; cx++) {
-        const key = chunkKey(cx, cy);
-        windowKeys.add(key);
-        if (!session.knownChunks.has(key)) {
-          session.knownChunks.add(key);
-          session.sendBinary(encodeChunk(world.ensure(cx, cy)));
-          // The words ride in with the board they belong to.
-          this.sendChunkSigns(session, cx, cy);
-        }
-        const set = this.chunks.get(`${pos.plane}|${key}`);
-        if (set) for (const e of set) visible.add(e);
-      }
-    }
-    // CHUNK HYSTERESIS: forget a streamed chunk only when it falls a
-    // full ring beyond the interest window. Evicting at the window's
-    // exact edge meant a player pacing across a chunk border
-    // re-downloaded the same five chunks (~25KB) on every crossing —
-    // the client caches them forever, so the resend was pure waste.
-    for (const key of session.knownChunks) {
-      if (windowKeys.has(key)) continue;
-      const comma = key.indexOf(',');
-      const cx = Number(key.slice(0, comma));
-      const cy = Number(key.slice(comma + 1));
-      if (
-        Math.abs(cx - ccx) > INTEREST_CHUNK_RADIUS + 1 ||
-        Math.abs(cy - ccy) > INTEREST_CHUNK_RADIUS + 1
-      ) {
-        session.knownChunks.delete(key);
-      }
-    }
-
-    // Fully-hidden players simply aren't there to anyone else: the diff
-    // below issues the leave (and later the fresh re-enter) for free, and
-    // snapshots only iterate knownEntities so nothing leaks meanwhile.
-    for (const e of visible) {
-      if (e !== eid && this.players.get(e)?.hidden) visible.delete(e);
-    }
-
-    const enters: EntityMeta[] = [];
-    for (const e of visible) {
-      if (!session.knownEntities.has(e)) {
-        session.knownEntities.add(e);
-        enters.push(this.buildMeta(e));
-      }
-    }
-    const leaves: EntityId[] = [];
-    for (const e of session.knownEntities) {
-      if (visible.has(e)) continue;
-      // ENTITY HYSTERESIS: the mirror of the chunk rule above. Leaving
-      // at the window's exact edge meant a player pacing across a chunk
-      // border leave/re-entered every outer-ring entity on each crossing
-      // — the re-enter wipes sentSnapSig and the client's interp buffer,
-      // so the entity visibly pops. Keep a known entity for one extra
-      // ring instead: it stays in knownEntities so snapshots keep
-      // streaming it, and THE QUIET WIRE makes the ring nearly free (an
-      // unchanged row never resends). Hidden players still leave at
-      // once (anti-ESP), and a despawned body has no ring to hold.
-      // A body on another plane leaves AT ONCE — hysteresis is a
-      // border comfort, and there is no border between worlds.
-      const kept = this.positions.get(e);
-      if (kept && kept.plane === pos.plane && !this.players.get(e)?.hidden) {
-        const ecx = Math.floor(kept.x / CHUNK_SIZE);
-        const ecy = Math.floor(kept.y / CHUNK_SIZE);
-        if (
-          Math.abs(ecx - ccx) <= INTEREST_CHUNK_RADIUS + 1 &&
-          Math.abs(ecy - ccy) <= INTEREST_CHUNK_RADIUS + 1
-        ) {
-          continue;
-        }
-      }
-      session.knownEntities.delete(e);
-      session.sentSnapSig.delete(e);
-      leaves.push(e);
-    }
-
-    if (enters.length > 0) session.sendJson({ t: 'enter', entities: enters });
-    if (leaves.length > 0) session.sendJson({ t: 'leave', eids: leaves });
+  updateInterest(session: Session): void {
+    return interestSys.updateInterest(this, session);
   }
 
-  private buildMeta(eid: EntityId): EntityMeta {
-    const kind = this.kinds.must(eid);
-    const pos = this.positions.must(eid);
-    const meta: EntityMeta = { eid, kind, x: pos.x, y: pos.y };
-    const player = this.players.get(eid);
-    if (player) {
-      meta.name = player.name;
-      // Appearance carries item IDS only — rendering never needs rolls.
-      // Enchants are the exception: they change how gear LOOKS, so the
-      // enchanted slots ride along (ids only, still no rolls).
-      // THE QUIET BACK (user verdict, 2026-08-14, amends LAW 6): only
-      // the ACTIVE set shows on the body — the waiting pair drew as a
-      // crossed back rank for one commit and read as overstuffed, and
-      // double-sheathing piled scabbards on scabbards. The SLEEPING
-      // STEEL exclusion is total now: stowed slots leave the wire here
-      // too (nothing renders them, so nothing should carry them).
-      const equip: Partial<Record<EquipSlot, string>> = {};
-      let ench: Partial<Record<EquipSlot, string>> | undefined;
-      for (const [slot, worn] of Object.entries(player.equipment)) {
-        if (!worn) continue;
-        if (isStowedSlot(slot as EquipSlot)) continue;
-        equip[slot as EquipSlot] = worn.id;
-        if (worn.roll?.ench) {
-          ench ??= {};
-          ench[slot as EquipSlot] = worn.roll.ench;
-        }
-      }
-      meta.appearance = {
-        bodyColor: '',
-        equip,
-        ench,
-        look: player.look ?? undefined,
-        carry: player.carryStyle === 'rogue' ? 'rogue' : undefined,
-        carryOff: player.carryOff === 'rogue' ? 'rogue' : undefined,
-        mount: player.mountId ?? undefined,
-      };
-    }
-    const npc = this.npcs.get(eid);
-    if (npc) {
-      meta.name = npc.def.name;
-      meta.defId = npc.def.id;
-      meta.level = npc.def.level;
-      // THE DREAD CROWN: the banner's whole read — ladder length, the
-      // standing rung, its reveal line, and the gate notches (each
-      // later rung's hpBelow, so the gauge shows where the fight will
-      // turn). Re-broadcast through the one meta door on every turn
-      // and on the arena reset.
-      const boss = npc.def.boss;
-      if (boss) {
-        const phase = npc.bossPhase ?? 0;
-        const gates = boss.phases
-          .slice(1)
-          .map((p) => p.hpBelow)
-          .filter((g): g is number => g !== undefined);
-        meta.boss = {
-          title: boss.title,
-          phases: boss.phases.length,
-          phase,
-          phaseName: boss.phases[phase]?.name,
-          gates: gates.length > 0 ? gates : undefined,
-        };
-      }
-    }
-    // THE COLLAR TELLS THE TALE: ownership is the one companion fact
-    // every watcher must know — it changes what the entity IS
-    // (somebody's, not the wild's; never a fight offer). Name and
-    // level read from the keeper's row; the species body carries the
-    // art unchanged (the collar render itself lands Phase 5).
-    const petComp = this.pets.get(eid);
-    if (petComp && npc) {
-      const keeper = this.players.get(petComp.ownerEid);
-      const row = keeper?.pets.find((p) => p.slot === petComp.slot);
-      if (keeper && row) {
-        meta.name = row.name;
-        meta.level = petLevelFor(row.xp, npc.def.level, levelForXp(keeper.skills.beastcraft ?? 0));
-      }
-      meta.ownerEid = petComp.ownerEid;
-      meta.friendly = true;
-      // THE COAT OUTLIVES THE BODY: the courted look rides the wire
-      // so every watcher dresses the same friend, every respawn.
-      if (row?.lookSeed != null) meta.seed = row.lookSeed;
-    }
-    // THE COMPANY YOU KEEP: a befriended companion wears its name and
-    // the `company` mark — what tells the two owned lanes apart on
-    // the wire (no collar, no level gem, no fight offer, ever).
-    const compComp = this.companions.get(eid);
-    if (compComp && npc) {
-      const keeper = this.players.get(compComp.ownerEid);
-      const row = keeper?.companions.find((c) => c.slot === compComp.slot);
-      if (row) meta.name = row.name;
-      // Company has no ladder: the species' wild level (stamped for
-      // every npc above) leaves the plate — 'Pip', never 'Pip (1)'.
-      delete meta.level;
-      meta.ownerEid = compComp.ownerEid;
-      meta.friendly = true;
-      meta.company = true;
-      if (row?.lookSeed != null) meta.seed = row.lookSeed;
-    }
-    // THE ANIMALS OF THE YARD: a kept animal wears its given name and
-    // the stock marker (never fightable); ownerEid rides only while
-    // the keeper is online, aiming the keeper's own prompts.
-    const stockComp = this.livestock.get(eid);
-    if (stockComp && npc) {
-      meta.name = stockComp.row.name;
-      meta.stock = true;
-      meta.friendly = true;
-      const keeperEid = this.characterEids.get(stockComp.row.characterId);
-      if (keeperEid !== undefined) meta.ownerEid = keeperEid;
-      // THE FLEECE TELLS THE TIME: a sheep wears its produce clock —
-      // clipped while the wool regrows, a full cloud when shearable.
-      if (stockComp.row.species === 'sheep' && npc.nextProduceAt > Date.now()) {
-        meta.shorn = true;
-      }
-    }
-    const actorComp = this.actors.get(eid);
-    if (actorComp) {
-      const actor = actorComp.actor;
-      meta.name = actor.name;
-      if (actor.title) meta.title = actor.title;
-      if (actor.model.kind === 'creature') {
-        // The bestiary body carries the art; the actor carries the name.
-        meta.defId = actor.model.creature;
-      } else {
-        // Humanoids ride the wire exactly like players: a Look plus
-        // worn item ids, rendered by the one humanoid rig.
-        const appearance = actorAppearance(actor);
-        if (appearance) {
-          // THE SADDLE IN THE SCHEDULE: a riding body carries its
-          // beast on the same appearance channel a player does — one
-          // identity fact, every watcher, one render path.
-          if (actorComp.mount) appearance.mount = actorComp.mount;
-          meta.appearance = appearance;
-        }
-      }
-      // No combat body = never attackable: clients offer Talk, and no
-      // combat loop can even see this entity.
-      if (!npc) meta.friendly = true;
-      // Has a voice — clients offer Talk even on fightable neutrals.
-      if (this.dialoguesByActor.has(actor.id) || (actor.lines?.length ?? 0) > 0) {
-        meta.talk = true;
-      }
-      // The slug is static identity (v20): each client resolves its
-      // OWN quest marks against it — per-viewer truth off the wire.
-      meta.actor = actor.id;
-    }
-    const drop = this.drops.get(eid);
-    if (drop) {
-      meta.defId = drop.item;
-      meta.qty = drop.qty;
-      meta.roll = drop.roll;
-    }
-    const proj = this.projectiles.get(eid);
-    if (proj) {
-      const base = proj.heavy ? `${proj.style}_heavy` : proj.style;
-      meta.defId = proj.element ? `${base}:${proj.element}` : base;
-      // Tracer handoff identity (v8): the owner's client matches its
-      // predicted shot to this entity by (ownerEid, seq).
-      meta.ownerEid = proj.ownerEid;
-      if (proj.spawnSeq !== undefined) meta.seq = proj.spawnSeq;
-      // Ballistic truth (v9): heading + speed let every client fly
-      // this shot from its first sample instead of freezing on it
-      // until a snapshot pair reveals the velocity.
-      meta.dir = Math.atan2(proj.dirY, proj.dirX);
-      meta.speed = proj.speed;
-      if (proj.returns) meta.returns = true;
-    }
-    const summon = this.summons.get(eid);
-    if (summon) meta.defId = `summon_${summon.kind}`;
-    const grave = this.graves.get(eid);
-    if (grave) {
-      meta.defId = 'gravestone';
-      meta.name = grave.name;
-    }
-    return meta;
+  buildMeta(eid: EntityId): EntityMeta {
+    return interestSys.buildMeta(this, eid);
   }
 
-  /**
-   * The overhead telegraph, a pure read of the state ladder — THE
-   * EYE ABOVE THE HEAD. Every rung the player can act on wears its
-   * own face: the ENGAGED lock (the eye is ON you), the PURSUIT
-   * slash (the committed blind run — sight broken, still coming:
-   * keep running), the HUNTING sweep (hide now, the chain is
-   * broken), the LOOKING walk-over, the WARY stare. A chase never
-   * lies about its eye anymore: the blind leg telegraphs blind.
-   */
-  private npcAlertByte(eid: EntityId): number {
-    const npc = this.npcs.get(eid);
-    if (!npc) return ALERT_ICON_NONE;
-    if (npc.state === 'chase' || npc.state === 'seekhelp') {
-      return npc.pursuitSinceTick !== undefined ? ALERT_ICON_PURSUIT : ALERT_ICON_ENGAGED;
-    }
-    if (npc.state === 'search') return ALERT_ICON_HUNTING;
-    if (npc.state === 'investigate') return ALERT_ICON_LOOKING;
-    if (npc.state === 'suspicious') return ALERT_ICON_WARY;
-    return ALERT_ICON_NONE;
+  npcAlertByte(eid: EntityId): number {
+    return interestSys.npcAlertByte(this, eid);
   }
 
-  private sendSnapshot(session: Session): void {
-    const player = this.players.get(session.playerEid!);
-    if (!player) return;
-    // BACKPRESSURE: a congested socket gets no snapshots — they are
-    // superseded data, and stacking them onto a stalled receiver only
-    // deepens how far behind it wakes. Events and chunks still queue
-    // (they are one-shot truths); the first drained snapshot carries
-    // the current world.
-    if (session.congested) return;
-    const TAU = Math.PI * 2;
-    const entities: SnapshotEntity[] = [];
-    for (const eid of session.knownEntities) {
-      const pos = this.positions.get(eid);
-      if (!pos) continue;
-      const health = this.healths.get(eid);
-      // A living body never rounds to the death byte — 1/255 is the
-      // honest floor for "bloodied but breathing".
-      const hpPct = health
-        ? health.hp > 0
-          ? Math.max(1, Math.round((health.hp / health.maxHp) * 255))
-          : 0
-        : 255;
-      const pose = this.poses.get(eid) ?? PoseState.Idle;
-      const status = this.statusBits(eid);
-      const alert = this.npcAlertByte(eid);
-      // THE QUIET WIRE: compare in WIRE precision (the encoder's own
-      // quantization) so float dust can't force a resend, and skip
-      // any entity whose whole row is unchanged. The own body always
-      // ships — reconciliation runs on its presence.
-      const xq = Math.round(pos.x * POS_SCALE);
-      const yq = Math.round(pos.y * POS_SCALE);
-      const dirq = Math.round(((((pos.dir % TAU) + TAU) % TAU) / TAU) * 255) & 0xff;
-      if (eid !== session.playerEid) {
-        const sig = session.sentSnapSig.get(eid);
-        if (
-          sig &&
-          sig[0] === xq &&
-          sig[1] === yq &&
-          sig[2] === dirq &&
-          sig[3] === pose &&
-          sig[4] === hpPct &&
-          sig[5] === status &&
-          sig[6] === alert
-        ) {
-          continue;
-        }
-        if (sig) {
-          sig[0] = xq; sig[1] = yq; sig[2] = dirq; sig[3] = pose;
-          sig[4] = hpPct; sig[5] = status; sig[6] = alert;
-        } else {
-          session.sentSnapSig.set(eid, Int32Array.of(xq, yq, dirq, pose, hpPct, status, alert));
-        }
-      }
-      entities.push({
-        eid,
-        x: pos.x,
-        y: pos.y,
-        dir: pos.dir,
-        pose,
-        hpPct,
-        status,
-        alert,
-      });
-    }
-    session.sendBinary(
-      encodeSnapshot({
-        serverTick: this.tickCount,
-        lastInputSeq: player.lastProcessedSeq,
-        entities,
-      }),
-    );
+  sendSnapshot(session: Session): void {
+    return interestSys.sendSnapshot(this, session);
   }
 }

@@ -332,4 +332,20 @@ rooms (bank/stable/shop/plant) exercised by tsc+tests, not yet the walk — a
 station-visit probe is charted with the Panel base. Band seven merged to main.
 
 REMAINING in F5 (charted): the Panel base convention + per-screen station files +
-station-visit probe; GameEvents domain adapters; FrameClocks; renderer.screenAnchor.
+station-visit probe; GameEvents domain adapters; FrameClocks.
+
+**F6.1 WIRE'S GATE (8c438e07) / F6.2 ABILITY SHELVES (a67d0e2c) / F6.3 NPC SHELF
+(23539573) / F7 RATCHET + ONE ANCHOR (578c3804), 2026-09-01.** parseC2S → total
+validator table in protocol/parseC2S.ts (68/68; with F5.2 the protocol is compile-time
+exhaustive BOTH directions; live-proven on a scratch server). abilities.ts 8,906 → 71-line
+hub over eleven shelves in content/abilities/ (banner sections were the split lines; the
+619-pin cross-reference gate held). npcs.ts 3,863 → 599 hub + npcs/defs + npcs/validate.
+**THE CYCLE GATE** (scripts/check-cycles.mjs, `npm run check:cycles`, in the band
+pipeline): counts runtime mutual-import pairs per package, type-only edges exempt (they
+are the sanctioned Pick-slice mechanism); baselines client 14 / server 4 / shared 0 /
+content 2 — the audit counted 46; the twenty that remain are each named (cms trio, rig
+species back-imports, panel wings, server delegator back-imports, loot/analyze) and are
+F7-endgame targets. renderer.screenAnchor ends the six-fold HUD triple. Band eight.
+Ops laws learned twice: kill rigs by PID FILE (/tmp/rig36.pid now), never pkill by
+pattern (it ate the standing rig-36 twice); never gate a probe through `| tail` (the
+pipe eats the exit code — one commit went in unproven and was re-proven after the fact).
