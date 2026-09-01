@@ -672,6 +672,7 @@ import {
 } from '@arx/shared';
 import { config } from '../config.js';
 import { CHAT_COMMANDS } from './commands/index.js';
+import * as interestSys from './interest.js';
 import * as meleeSys from './melee.js';
 import * as procSys from './procs.js';
 import * as statusSys from './statuses.js';
@@ -2764,7 +2765,7 @@ export class GameServer {
    * of DB-loaded trees. The tree stands alone; only bindings put words
    * in a mouth (props and objects will index here under new kinds).
    */
-  private readonly dialoguesByActor = new Map<string, DialogueOffer[]>();
+  readonly dialoguesByActor = new Map<string, DialogueOffer[]>();
   /** Node lookup per dialogue id, built once at registration. */
   private readonly dialogueNodes = new Map<string, ReadonlyMap<string, DialogueNode>>();
   /** The live voice-clip ledger — the resolver reads it per beat. */
@@ -2826,7 +2827,7 @@ export class GameServer {
 
   readonly sessions = new Set<Session>();
   /** In-world players by character id (blocks duplicate logins). */
-  private readonly characterEids = new Map<number, EntityId>();
+  readonly characterEids = new Map<number, EntityId>();
   /** Ephemeral guest tokens -> eid (guests have no DB session). */
   private readonly guestTokens = new Map<string, EntityId>();
   private nextGuestId = -1;
@@ -2910,8 +2911,8 @@ export class GameServer {
   }
 
   /** chunkKey -> entities inside; the interest-management index. */
-  private readonly chunks = new Map<string, Set<EntityId>>();
-  private readonly entityChunk = new Map<EntityId, string>();
+  readonly chunks = new Map<string, Set<EntityId>>();
+  readonly entityChunk = new Map<EntityId, string>();
 
   /** Depleted nodes waiting to come back. */
   readonly respawnQueue: Array<{
@@ -3398,7 +3399,7 @@ export class GameServer {
    * waits on a round-trip. Blank player boards ride along too: their
    * owner needs the record to find the edit affordance.
    */
-  private sendChunkSigns(session: Session, cx: number, cy: number): void {
+  sendChunkSigns(session: Session, cx: number, cy: number): void {
     const plane = this.sessionPlane(session);
     if (plane === null) return;
     const charId = this.players.get(session.playerEid!)?.characterId ?? -1;
@@ -4823,7 +4824,7 @@ export class GameServer {
    * cadence). Zones by containment, frontier sites by anchor proximity
    * from the 3×3 ledger cells around the walker.
    */
-  private checkDiscoveries(eid: EntityId): void {
+  checkDiscoveries(eid: EntityId): void {
     const player = this.players.get(eid);
     const pos = this.positions.get(eid);
     if (!player || !pos || isRiftPlane(pos.plane)) return;
@@ -30263,411 +30264,31 @@ export class GameServer {
 
   // ------------------------------------------------- interest management
 
-  /**
-   * THE WORLDS APART: the entity-chunk index is keyed plane-first, so
-   * a proximity scan can only ever see bodies whose coordinates share
-   * a coordinate space. Session.knownChunks stays bare "cx,cy" — a
-   * session streams exactly one plane at a time and is cleared whole
-   * at every crossing.
-   */
-  private chunkKeyOf(plane: PlaneId, x: number, y: number): string {
-    return `${plane}|${chunkKey(Math.floor(x / CHUNK_SIZE), Math.floor(y / CHUNK_SIZE))}`;
+  chunkKeyOf(plane: PlaneId, x: number, y: number): string {
+    return interestSys.chunkKeyOf(this, plane, x, y);
   }
 
-  private updateChunkMembership(eid: EntityId): void {
-    const pos = this.positions.must(eid);
-    const key = this.chunkKeyOf(pos.plane, pos.x, pos.y);
-    const prev = this.entityChunk.get(eid);
-    if (prev === key) return;
-    if (prev !== undefined) this.chunks.get(prev)?.delete(eid);
-    let set = this.chunks.get(key);
-    if (!set) {
-      set = new Set();
-      this.chunks.set(key, set);
-    }
-    set.add(eid);
-    this.entityChunk.set(eid, key);
+  updateChunkMembership(eid: EntityId): void {
+    return interestSys.updateChunkMembership(this, eid);
   }
 
-  private removeFromChunks(eid: EntityId): void {
-    const prev = this.entityChunk.get(eid);
-    if (prev !== undefined) {
-      this.chunks.get(prev)?.delete(eid);
-      this.entityChunk.delete(eid);
-    }
+  removeFromChunks(eid: EntityId): void {
+    return interestSys.removeFromChunks(this, eid);
   }
 
-  /** Diff the session's known set against what's visible; send enter/leave. */
-  private updateInterest(session: Session): void {
-    const eid = session.playerEid!;
-    const pos = this.positions.get(eid);
-    if (!pos) return;
-
-    const ccx = Math.floor(pos.x / CHUNK_SIZE);
-    const ccy = Math.floor(pos.y / CHUNK_SIZE);
-
-    // Discovery runs on the center-chunk EDGE — the new-chunk branch
-    // below fires for chunks 2 away (64+ tiles out), far too early to
-    // shout "discovered" about anything.
-    const center = chunkKey(ccx, ccy);
-    if (session.lastCenterChunk !== center) {
-      session.lastCenterChunk = center;
-      this.checkDiscoveries(eid);
-    }
-
-    // The session streams the player's OWN plane and nothing else —
-    // knownChunks keys stay bare "cx,cy" (the plane is the session's),
-    // while the entity index reads through plane-first keys.
-    const world = this.planes.require(pos.plane);
-    const visible = new Set<EntityId>();
-    const windowKeys = new Set<string>();
-    for (let cy = ccy - INTEREST_CHUNK_RADIUS; cy <= ccy + INTEREST_CHUNK_RADIUS; cy++) {
-      for (let cx = ccx - INTEREST_CHUNK_RADIUS; cx <= ccx + INTEREST_CHUNK_RADIUS; cx++) {
-        const key = chunkKey(cx, cy);
-        windowKeys.add(key);
-        if (!session.knownChunks.has(key)) {
-          session.knownChunks.add(key);
-          session.sendBinary(encodeChunk(world.ensure(cx, cy)));
-          // The words ride in with the board they belong to.
-          this.sendChunkSigns(session, cx, cy);
-        }
-        const set = this.chunks.get(`${pos.plane}|${key}`);
-        if (set) for (const e of set) visible.add(e);
-      }
-    }
-    // CHUNK HYSTERESIS: forget a streamed chunk only when it falls a
-    // full ring beyond the interest window. Evicting at the window's
-    // exact edge meant a player pacing across a chunk border
-    // re-downloaded the same five chunks (~25KB) on every crossing —
-    // the client caches them forever, so the resend was pure waste.
-    for (const key of session.knownChunks) {
-      if (windowKeys.has(key)) continue;
-      const comma = key.indexOf(',');
-      const cx = Number(key.slice(0, comma));
-      const cy = Number(key.slice(comma + 1));
-      if (
-        Math.abs(cx - ccx) > INTEREST_CHUNK_RADIUS + 1 ||
-        Math.abs(cy - ccy) > INTEREST_CHUNK_RADIUS + 1
-      ) {
-        session.knownChunks.delete(key);
-      }
-    }
-
-    // Fully-hidden players simply aren't there to anyone else: the diff
-    // below issues the leave (and later the fresh re-enter) for free, and
-    // snapshots only iterate knownEntities so nothing leaks meanwhile.
-    for (const e of visible) {
-      if (e !== eid && this.players.get(e)?.hidden) visible.delete(e);
-    }
-
-    const enters: EntityMeta[] = [];
-    for (const e of visible) {
-      if (!session.knownEntities.has(e)) {
-        session.knownEntities.add(e);
-        enters.push(this.buildMeta(e));
-      }
-    }
-    const leaves: EntityId[] = [];
-    for (const e of session.knownEntities) {
-      if (visible.has(e)) continue;
-      // ENTITY HYSTERESIS: the mirror of the chunk rule above. Leaving
-      // at the window's exact edge meant a player pacing across a chunk
-      // border leave/re-entered every outer-ring entity on each crossing
-      // — the re-enter wipes sentSnapSig and the client's interp buffer,
-      // so the entity visibly pops. Keep a known entity for one extra
-      // ring instead: it stays in knownEntities so snapshots keep
-      // streaming it, and THE QUIET WIRE makes the ring nearly free (an
-      // unchanged row never resends). Hidden players still leave at
-      // once (anti-ESP), and a despawned body has no ring to hold.
-      // A body on another plane leaves AT ONCE — hysteresis is a
-      // border comfort, and there is no border between worlds.
-      const kept = this.positions.get(e);
-      if (kept && kept.plane === pos.plane && !this.players.get(e)?.hidden) {
-        const ecx = Math.floor(kept.x / CHUNK_SIZE);
-        const ecy = Math.floor(kept.y / CHUNK_SIZE);
-        if (
-          Math.abs(ecx - ccx) <= INTEREST_CHUNK_RADIUS + 1 &&
-          Math.abs(ecy - ccy) <= INTEREST_CHUNK_RADIUS + 1
-        ) {
-          continue;
-        }
-      }
-      session.knownEntities.delete(e);
-      session.sentSnapSig.delete(e);
-      leaves.push(e);
-    }
-
-    if (enters.length > 0) session.sendJson({ t: 'enter', entities: enters });
-    if (leaves.length > 0) session.sendJson({ t: 'leave', eids: leaves });
+  updateInterest(session: Session): void {
+    return interestSys.updateInterest(this, session);
   }
 
-  private buildMeta(eid: EntityId): EntityMeta {
-    const kind = this.kinds.must(eid);
-    const pos = this.positions.must(eid);
-    const meta: EntityMeta = { eid, kind, x: pos.x, y: pos.y };
-    const player = this.players.get(eid);
-    if (player) {
-      meta.name = player.name;
-      // Appearance carries item IDS only — rendering never needs rolls.
-      // Enchants are the exception: they change how gear LOOKS, so the
-      // enchanted slots ride along (ids only, still no rolls).
-      // THE QUIET BACK (user verdict, 2026-08-14, amends LAW 6): only
-      // the ACTIVE set shows on the body — the waiting pair drew as a
-      // crossed back rank for one commit and read as overstuffed, and
-      // double-sheathing piled scabbards on scabbards. The SLEEPING
-      // STEEL exclusion is total now: stowed slots leave the wire here
-      // too (nothing renders them, so nothing should carry them).
-      const equip: Partial<Record<EquipSlot, string>> = {};
-      let ench: Partial<Record<EquipSlot, string>> | undefined;
-      for (const [slot, worn] of Object.entries(player.equipment)) {
-        if (!worn) continue;
-        if (isStowedSlot(slot as EquipSlot)) continue;
-        equip[slot as EquipSlot] = worn.id;
-        if (worn.roll?.ench) {
-          ench ??= {};
-          ench[slot as EquipSlot] = worn.roll.ench;
-        }
-      }
-      meta.appearance = {
-        bodyColor: '',
-        equip,
-        ench,
-        look: player.look ?? undefined,
-        carry: player.carryStyle === 'rogue' ? 'rogue' : undefined,
-        carryOff: player.carryOff === 'rogue' ? 'rogue' : undefined,
-        mount: player.mountId ?? undefined,
-      };
-    }
-    const npc = this.npcs.get(eid);
-    if (npc) {
-      meta.name = npc.def.name;
-      meta.defId = npc.def.id;
-      meta.level = npc.def.level;
-      // THE DREAD CROWN: the banner's whole read — ladder length, the
-      // standing rung, its reveal line, and the gate notches (each
-      // later rung's hpBelow, so the gauge shows where the fight will
-      // turn). Re-broadcast through the one meta door on every turn
-      // and on the arena reset.
-      const boss = npc.def.boss;
-      if (boss) {
-        const phase = npc.bossPhase ?? 0;
-        const gates = boss.phases
-          .slice(1)
-          .map((p) => p.hpBelow)
-          .filter((g): g is number => g !== undefined);
-        meta.boss = {
-          title: boss.title,
-          phases: boss.phases.length,
-          phase,
-          phaseName: boss.phases[phase]?.name,
-          gates: gates.length > 0 ? gates : undefined,
-        };
-      }
-    }
-    // THE COLLAR TELLS THE TALE: ownership is the one companion fact
-    // every watcher must know — it changes what the entity IS
-    // (somebody's, not the wild's; never a fight offer). Name and
-    // level read from the keeper's row; the species body carries the
-    // art unchanged (the collar render itself lands Phase 5).
-    const petComp = this.pets.get(eid);
-    if (petComp && npc) {
-      const keeper = this.players.get(petComp.ownerEid);
-      const row = keeper?.pets.find((p) => p.slot === petComp.slot);
-      if (keeper && row) {
-        meta.name = row.name;
-        meta.level = petLevelFor(row.xp, npc.def.level, levelForXp(keeper.skills.beastcraft ?? 0));
-      }
-      meta.ownerEid = petComp.ownerEid;
-      meta.friendly = true;
-      // THE COAT OUTLIVES THE BODY: the courted look rides the wire
-      // so every watcher dresses the same friend, every respawn.
-      if (row?.lookSeed != null) meta.seed = row.lookSeed;
-    }
-    // THE COMPANY YOU KEEP: a befriended companion wears its name and
-    // the `company` mark — what tells the two owned lanes apart on
-    // the wire (no collar, no level gem, no fight offer, ever).
-    const compComp = this.companions.get(eid);
-    if (compComp && npc) {
-      const keeper = this.players.get(compComp.ownerEid);
-      const row = keeper?.companions.find((c) => c.slot === compComp.slot);
-      if (row) meta.name = row.name;
-      // Company has no ladder: the species' wild level (stamped for
-      // every npc above) leaves the plate — 'Pip', never 'Pip (1)'.
-      delete meta.level;
-      meta.ownerEid = compComp.ownerEid;
-      meta.friendly = true;
-      meta.company = true;
-      if (row?.lookSeed != null) meta.seed = row.lookSeed;
-    }
-    // THE ANIMALS OF THE YARD: a kept animal wears its given name and
-    // the stock marker (never fightable); ownerEid rides only while
-    // the keeper is online, aiming the keeper's own prompts.
-    const stockComp = this.livestock.get(eid);
-    if (stockComp && npc) {
-      meta.name = stockComp.row.name;
-      meta.stock = true;
-      meta.friendly = true;
-      const keeperEid = this.characterEids.get(stockComp.row.characterId);
-      if (keeperEid !== undefined) meta.ownerEid = keeperEid;
-      // THE FLEECE TELLS THE TIME: a sheep wears its produce clock —
-      // clipped while the wool regrows, a full cloud when shearable.
-      if (stockComp.row.species === 'sheep' && npc.nextProduceAt > Date.now()) {
-        meta.shorn = true;
-      }
-    }
-    const actorComp = this.actors.get(eid);
-    if (actorComp) {
-      const actor = actorComp.actor;
-      meta.name = actor.name;
-      if (actor.title) meta.title = actor.title;
-      if (actor.model.kind === 'creature') {
-        // The bestiary body carries the art; the actor carries the name.
-        meta.defId = actor.model.creature;
-      } else {
-        // Humanoids ride the wire exactly like players: a Look plus
-        // worn item ids, rendered by the one humanoid rig.
-        const appearance = actorAppearance(actor);
-        if (appearance) {
-          // THE SADDLE IN THE SCHEDULE: a riding body carries its
-          // beast on the same appearance channel a player does — one
-          // identity fact, every watcher, one render path.
-          if (actorComp.mount) appearance.mount = actorComp.mount;
-          meta.appearance = appearance;
-        }
-      }
-      // No combat body = never attackable: clients offer Talk, and no
-      // combat loop can even see this entity.
-      if (!npc) meta.friendly = true;
-      // Has a voice — clients offer Talk even on fightable neutrals.
-      if (this.dialoguesByActor.has(actor.id) || (actor.lines?.length ?? 0) > 0) {
-        meta.talk = true;
-      }
-      // The slug is static identity (v20): each client resolves its
-      // OWN quest marks against it — per-viewer truth off the wire.
-      meta.actor = actor.id;
-    }
-    const drop = this.drops.get(eid);
-    if (drop) {
-      meta.defId = drop.item;
-      meta.qty = drop.qty;
-      meta.roll = drop.roll;
-    }
-    const proj = this.projectiles.get(eid);
-    if (proj) {
-      const base = proj.heavy ? `${proj.style}_heavy` : proj.style;
-      meta.defId = proj.element ? `${base}:${proj.element}` : base;
-      // Tracer handoff identity (v8): the owner's client matches its
-      // predicted shot to this entity by (ownerEid, seq).
-      meta.ownerEid = proj.ownerEid;
-      if (proj.spawnSeq !== undefined) meta.seq = proj.spawnSeq;
-      // Ballistic truth (v9): heading + speed let every client fly
-      // this shot from its first sample instead of freezing on it
-      // until a snapshot pair reveals the velocity.
-      meta.dir = Math.atan2(proj.dirY, proj.dirX);
-      meta.speed = proj.speed;
-      if (proj.returns) meta.returns = true;
-    }
-    const summon = this.summons.get(eid);
-    if (summon) meta.defId = `summon_${summon.kind}`;
-    const grave = this.graves.get(eid);
-    if (grave) {
-      meta.defId = 'gravestone';
-      meta.name = grave.name;
-    }
-    return meta;
+  buildMeta(eid: EntityId): EntityMeta {
+    return interestSys.buildMeta(this, eid);
   }
 
-  /**
-   * The overhead telegraph, a pure read of the state ladder — THE
-   * EYE ABOVE THE HEAD. Every rung the player can act on wears its
-   * own face: the ENGAGED lock (the eye is ON you), the PURSUIT
-   * slash (the committed blind run — sight broken, still coming:
-   * keep running), the HUNTING sweep (hide now, the chain is
-   * broken), the LOOKING walk-over, the WARY stare. A chase never
-   * lies about its eye anymore: the blind leg telegraphs blind.
-   */
-  private npcAlertByte(eid: EntityId): number {
-    const npc = this.npcs.get(eid);
-    if (!npc) return ALERT_ICON_NONE;
-    if (npc.state === 'chase' || npc.state === 'seekhelp') {
-      return npc.pursuitSinceTick !== undefined ? ALERT_ICON_PURSUIT : ALERT_ICON_ENGAGED;
-    }
-    if (npc.state === 'search') return ALERT_ICON_HUNTING;
-    if (npc.state === 'investigate') return ALERT_ICON_LOOKING;
-    if (npc.state === 'suspicious') return ALERT_ICON_WARY;
-    return ALERT_ICON_NONE;
+  npcAlertByte(eid: EntityId): number {
+    return interestSys.npcAlertByte(this, eid);
   }
 
-  private sendSnapshot(session: Session): void {
-    const player = this.players.get(session.playerEid!);
-    if (!player) return;
-    // BACKPRESSURE: a congested socket gets no snapshots — they are
-    // superseded data, and stacking them onto a stalled receiver only
-    // deepens how far behind it wakes. Events and chunks still queue
-    // (they are one-shot truths); the first drained snapshot carries
-    // the current world.
-    if (session.congested) return;
-    const TAU = Math.PI * 2;
-    const entities: SnapshotEntity[] = [];
-    for (const eid of session.knownEntities) {
-      const pos = this.positions.get(eid);
-      if (!pos) continue;
-      const health = this.healths.get(eid);
-      // A living body never rounds to the death byte — 1/255 is the
-      // honest floor for "bloodied but breathing".
-      const hpPct = health
-        ? health.hp > 0
-          ? Math.max(1, Math.round((health.hp / health.maxHp) * 255))
-          : 0
-        : 255;
-      const pose = this.poses.get(eid) ?? PoseState.Idle;
-      const status = this.statusBits(eid);
-      const alert = this.npcAlertByte(eid);
-      // THE QUIET WIRE: compare in WIRE precision (the encoder's own
-      // quantization) so float dust can't force a resend, and skip
-      // any entity whose whole row is unchanged. The own body always
-      // ships — reconciliation runs on its presence.
-      const xq = Math.round(pos.x * POS_SCALE);
-      const yq = Math.round(pos.y * POS_SCALE);
-      const dirq = Math.round(((((pos.dir % TAU) + TAU) % TAU) / TAU) * 255) & 0xff;
-      if (eid !== session.playerEid) {
-        const sig = session.sentSnapSig.get(eid);
-        if (
-          sig &&
-          sig[0] === xq &&
-          sig[1] === yq &&
-          sig[2] === dirq &&
-          sig[3] === pose &&
-          sig[4] === hpPct &&
-          sig[5] === status &&
-          sig[6] === alert
-        ) {
-          continue;
-        }
-        if (sig) {
-          sig[0] = xq; sig[1] = yq; sig[2] = dirq; sig[3] = pose;
-          sig[4] = hpPct; sig[5] = status; sig[6] = alert;
-        } else {
-          session.sentSnapSig.set(eid, Int32Array.of(xq, yq, dirq, pose, hpPct, status, alert));
-        }
-      }
-      entities.push({
-        eid,
-        x: pos.x,
-        y: pos.y,
-        dir: pos.dir,
-        pose,
-        hpPct,
-        status,
-        alert,
-      });
-    }
-    session.sendBinary(
-      encodeSnapshot({
-        serverTick: this.tickCount,
-        lastInputSeq: player.lastProcessedSeq,
-        entities,
-      }),
-    );
+  sendSnapshot(session: Session): void {
+    return interestSys.sendSnapshot(this, session);
   }
 }
