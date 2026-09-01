@@ -204,7 +204,7 @@ import { radialGlowSprite } from './glowSprite.js';
 import { Birds, type Bird, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample } from './grass.js';
 import { paintTree, saplingModel, treeExtent,
-  treeModel, type TreeModel } from './trees.js';
+  treeModel, TREE_VARIANT_COUNT, treeVariantHash, type TreeModel } from './trees.js';
 import { dust } from './matter/dust.js';
 import { fire } from './matter/fire.js';
 import { frost } from './matter/frost.js';
@@ -1700,6 +1700,8 @@ export class Renderer {
     this.propShakes.clear();
     this.treeSprites.clear();
     this.treeShadows.clear();
+    this.treeVariantSprites.clear();
+    this.treeVariantShadows.clear();
     // Cliff curtains go back through the pool — a bare clear() is how
     // a plane crossing leaks a working set (round 10's phantom).
     for (const sp of this.cliffSprites.values()) this.poolCanvas(sp.canvas);
@@ -13064,6 +13066,12 @@ export class Renderer {
    * (bendOverride) and regrowth (grow < 1) stay fully live.
    */
   private readonly treeSprites = new Map<number, WorldSprite>();
+  /** THE SPECIES SHEET: shared tree-body bakes, one per (tile,
+   *  variant) — see treeVariantKey. Bounded (~tiles × 16), so it
+   *  needs no eviction sweep; cleared with the per-instance caches
+   *  on plane cross. Trees no longer occupy treeSprites (flora and
+   *  outlined props still do). */
+  private readonly treeVariantSprites = new Map<number, WorldSprite>();
   /** Sun-shadow twin: the projected TRUE-FORM silhouette, RASTERIZED —
    *  built at origin on the sprite cadence and stamped with one
    *  drawImage per frame (the per-frame fill of the complex Path2D was
@@ -13086,6 +13094,12 @@ export class Renderer {
       windAt: number;
       ky: number;
     }
+  >();
+  /** THE SPECIES SHEET, shadow half: shared silhouette bakes keyed
+   *  like treeVariantSprites. Same bounded population, same clears. */
+  private readonly treeVariantShadows = new Map<
+    number,
+    NonNullable<ReturnType<Renderer['treeShadows']['get']>>
   >();
   treeBakeBudget = 0;
   /** Running average sprite-bake cost (ms) — the admission estimate
@@ -13617,8 +13631,15 @@ export class Renderer {
     canvas: HTMLCanvasElement,
     rev: number,
     owner: object,
+    // THE USED REGION: pooled sprite canvases are size-class rounded
+    // (and a pool hit can be outright oversized) — judging atlas fit
+    // by canvas.width ejected sprites whose INK fits a page. Callers
+    // that know their used device rect pass it; the atlas packs and
+    // paints exactly that.
+    uw?: number,
+    uh?: number,
   ): { tex: StageTexture; ox: number; oy: number } {
-    const placed = this.spriteAtlas.place(canvas, rev, owner);
+    const placed = this.spriteAtlas.place(canvas, rev, owner, uw, uh);
     if (placed) return placed;
     return { tex: this.stageSpriteTex(canvas, rev, owner), ox: 0, oy: 0 };
   }
@@ -15013,7 +15034,7 @@ export class Renderer {
       this.stageWorldItems.push({
         kind: 'quad',
         ...((at) => ({ tex: at.tex, sx: at.ox, sy: at.oy }))(
-          this.stageAtlasTex(sp.canvas, sp.frame, sp),
+          this.stageAtlasTex(sp.canvas, sp.frame, sp, sw, sh),
         ),
         sw,
         sh,
@@ -15172,7 +15193,13 @@ export class Renderer {
         this.stageWorldItems.push({
           kind: 'quad',
           ...((at) => ({ tex: at.tex, sx: at.ox, sy: at.oy }))(
-            this.stageAtlasTex(sp.canvas, sp.frame, sp),
+            this.stageAtlasTex(
+              sp.canvas,
+              sp.frame,
+              sp,
+              Math.ceil(sp.cw * sp.dpr),
+              Math.ceil(sp.ch * sp.dpr),
+            ),
           ),
           sw: Math.ceil(sp.cw * sp.dpr),
           sh: Math.ceil(sp.ch * sp.dpr),
@@ -15430,10 +15457,29 @@ export class Renderer {
 
   /** THE PROMISE LAW: a sapling tile draws its own bespoke young form
    *  (saplingModel) of the adult it will become; tree tiles draw the
-   *  grown wood. One door for every tree-model read in the renderer. */
+   *  grown wood. One door for every tree-model read in the renderer.
+   *  THE SPECIES SHEET rides this door: the instance hash quantizes
+   *  to its variant's dealt hash HERE, so the drawn shape, the
+   *  occlusion box, the felling animation, and the shared bake all
+   *  describe the same tree — a shape that morphed at grow=1 or at
+   *  the chop would be the door split in two. */
   private treeOrSaplingModel(tile: Tile, h: number) {
+    const hq = treeVariantHash(tile, h);
     const adult = treeOfSapling(tile);
-    return adult !== null ? saplingModel(adult, h) : treeModel(tile, h);
+    return adult !== null ? saplingModel(adult, hq) : treeModel(tile, hq);
+  }
+
+  /** The shared-bake key: (tile, variant) — one sprite per archetype,
+   *  every instance of it a quad. */
+  private treeVariantKey(tile: Tile, h: number): number {
+    return ((tile as number) << 6) | (h & (TREE_VARIANT_COUNT - 1));
+  }
+
+  /** THE STANDING LEAN: a constant hash-dealt shear bias (±0.028) so
+   *  shared-variant neighbors hold different postures — silhouette
+   *  diversity paid at the quad, not the bake. */
+  private treeLean(h: number): number {
+    return (((h >>> 6) & 7) - 3.5) * 0.008;
   }
 
   private drawTree(
@@ -15486,11 +15532,17 @@ export class Renderer {
       // it, so a taiga's few soft trees keep the fine re-bake rate.
       const rigid = m.rigid === true;
       if (!rigid) this.treesVisible++;
-      let sp = this.treeSprites.get(key);
-      // Each tree re-bakes on its own phase of the (adaptive) cadence,
-      // derived from its key, so the herd never re-bakes in one frame —
-      // a phase-locked wave read as a p95 hitch every Nth frame.
-      const due = !rigid && (this.frameNo + key) % this.treeCadence === 0;
+      // THE SPECIES SHEET: the bake belongs to the (tile, variant)
+      // archetype, not the instance — a forest of hundreds shares ~16
+      // sprites per species, and the cadence flutter treadmill
+      // re-paints archetypes, not trees.
+      const vkey = this.treeVariantKey(tile, h);
+      let sp = this.treeVariantSprites.get(vkey);
+      // Each variant re-bakes on its own phase of the (adaptive)
+      // cadence, derived from its key, so the sheet never re-bakes in
+      // one frame; sp.frame guards the many instances that all reach
+      // the due frame together.
+      const due = !rigid && (this.frameNo + vkey) % this.treeCadence === 0;
       const stale =
         !sp ||
         (due && sp.frame !== this.frameNo) ||
@@ -15514,9 +15566,14 @@ export class Renderer {
         if (lane !== BakeLane.None) {
           this.treeBakeBudget--;
           const t0 = performance.now();
-          // A rigid tree bakes its NEUTRAL pose — the shear below is
-          // the only wind it will ever need.
-          sp = this.bakeTreeSprite(sp, m, wx, wy, tSec, rigid ? 0 : undefined);
+          // Every shared bake is the NEUTRAL pose (windOverride 0) —
+          // the rigid law generalized: the per-quad shear below
+          // carries each instance's FULL live wind, so one archetype
+          // serves trees standing in different gusts. The pseudo
+          // world position decorrelates flutter phase BETWEEN
+          // variants; tSec keeps flutter moving across cadence
+          // re-bakes.
+          sp = this.bakeTreeSprite(sp, m, (vkey % 61) * 1.7, (vkey % 53) * 2.3, tSec, 0);
           const took = performance.now() - t0;
           this.spriteBakeMsLeft -= took;
           this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
@@ -15524,7 +15581,7 @@ export class Renderer {
             this.visSpriteMsLeft -= took;
             this.visArrivalCount--;
           }
-          this.treeSprites.set(key, sp);
+          this.treeVariantSprites.set(vkey, sp);
         }
       }
       if (!sp) {
@@ -15563,7 +15620,11 @@ export class Renderer {
       // Sub-pixel gate: the shear only earns its two matrix ops once
       // the crown's throw crosses ~¾ of a pixel — right after a
       // re-bake the delta is near zero and the plain blit is exact.
-      const kSh = (wind - sp.windAt) * 0.055;
+      // THE STANDING LEAN rides the same matrix: a constant per-
+      // instance bias so shared-variant neighbors hold different
+      // postures (shared bakes are neutral, so the delta here IS the
+      // full live wind).
+      const kSh = (wind - sp.windAt) * 0.055 + this.treeLean(h);
       if (this.stageAssembling) {
         // THE WORLD ON STAGE: the same numbers, as a quad — the shear
         // is four floats of per-quad matrix, and the step-aside fade
@@ -15573,7 +15634,7 @@ export class Renderer {
         this.stageWorldItems.push({
           kind: 'quad',
           ...((at) => ({ tex: at.tex, sx: at.ox, sy: at.oy }))(
-            this.stageAtlasTex(sp.canvas, sp.frame, sp),
+            this.stageAtlasTex(sp.canvas, sp.frame, sp, sw, sh),
           ),
           sw,
           sh,
@@ -15800,11 +15861,13 @@ export class Renderer {
           // a windless silhouette on a SLOW cadence — a ground blob
           // doesn't read a lean, but the sun's azimuth still drifts
           // and the silhouette must follow it.
-          const key = treeKey(wx, wy, tile);
-          let sh = this.treeShadows.get(key);
+          // THE SPECIES SHEET, shadow half: the silhouette belongs
+          // to the archetype like the body does.
+          const vkey = this.treeVariantKey(tile, h);
+          let sh = this.treeVariantShadows.get(vkey);
           const rigid = m.rigid === true;
           const due =
-            (this.frameNo + key) %
+            (this.frameNo + vkey) %
               (rigid ? 240 : this.treeCadence * TREE_SHADOW_CADENCE_MUL) ===
             0;
           const tone = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
@@ -15826,9 +15889,12 @@ export class Renderer {
           ) {
             this.treeShadowBudget--;
             const t0 = performance.now();
-            sh = this.bakeTreeShadowSprite(sh, m, wx, wy, tSec, rigid);
+            // Neutral pose for every shared silhouette (the `true`
+            // here is wind-neutrality, not rigidity) — the shear
+            // below carries each instance's full live wind.
+            sh = this.bakeTreeShadowSprite(sh, m, wx, wy, tSec, true);
             this.spriteBakeMsLeft -= performance.now() - t0;
-            this.treeShadows.set(key, sh);
+            this.treeVariantShadows.set(vkey, sh);
           }
           if (sh) {
             sh.used = this.frameNo;
@@ -15842,7 +15908,11 @@ export class Renderer {
             // pair per tree was measurable at ~240 casts a frame.
             let sx = 0;
             if (!rigid && Math.abs(sh.ky) > 0.12) {
-              sx = ((windScalarAt(wx, wy, tSec) - sh.windAt) * 0.055) / sh.ky;
+              // Full live wind (shared bakes are neutral) + the same
+              // standing lean the body wears, so the cast leans with
+              // its own tree.
+              sx =
+                ((windScalarAt(wx, wy, tSec) - sh.windAt) * 0.055 + this.treeLean(h)) / sh.ky;
             }
             const pw2 = Math.ceil(sh.cw * SHADOW_SPRITE_RES);
             const ph2 = Math.ceil(sh.ch * SHADOW_SPRITE_RES);
@@ -15869,7 +15939,7 @@ export class Renderer {
               this.stageWorldItems.push({
                 kind: 'quad',
                 ...((at) => ({ tex: at.tex, sx: at.ox, sy: at.oy }))(
-                  this.stageAtlasTex(sh.canvas, sh.frame, sh),
+                  this.stageAtlasTex(sh.canvas, sh.frame, sh, pw2, ph2),
                 ),
                 sw: pw2,
                 sh: ph2,
@@ -20900,7 +20970,7 @@ export class Renderer {
       this.stageWorldItems.push({
         kind: 'quad',
         ...((at) => ({ tex: at.tex, sx: at.ox, sy: at.oy }))(
-          this.stageAtlasTex(sp.canvas, sp.frame, sp),
+          this.stageAtlasTex(sp.canvas, sp.frame, sp, sp.w, sp.h),
         ),
         sw: sp.w,
         sh: sp.h,

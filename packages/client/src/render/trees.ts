@@ -602,6 +602,25 @@ export function treeExtent(m: TreeModel): TreeExtent {
 }
 
 
+/**
+ * THE SPECIES SHEET (painted-stage): the forest deals K archetypes
+ * per species instead of a model per tile hash. A per-instance model
+ * meant a per-instance ~400px bake — ~600 sprites in a padded forest,
+ * every one minted, re-minted on cadence, uploaded, and bound alone
+ * (the atlas census: 66 packed / 478 solo). With K archetypes the
+ * whole forest shares ~K bakes per species; the instance keeps its
+ * identity through the live wind shear (THE SHEAR CARRIES THE SWAY —
+ * per-quad), a hash-dealt standing lean, and placement itself. The
+ * variant hash is re-spread through hashCoords so K low bits still
+ * deal decorrelated heights, bows, and cluster layouts.
+ */
+export const TREE_VARIANT_COUNT = 16;
+
+/** The instance hash reduced to its variant's dealt 16-bit hash. */
+export function treeVariantHash(tile: Tile, h: number): number {
+  return hashCoords(67, tile as number, h & (TREE_VARIANT_COUNT - 1)) & 0xffff;
+}
+
 /** Grow (or recall) the tree standing on a tile with world-hash `h`. */
 export function treeModel(tile: Tile, h: number): TreeModel {
   const key = ((tile as number) << 16) | (h & 0xffff);

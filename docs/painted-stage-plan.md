@@ -1240,3 +1240,57 @@ The crown pair's marginal was run to ground and codified:
   overshoot +42; the empty-plane failure signature still fails the
   widened gate by 33). All other scenes stay at +60. Battery: 7/7
   PASS on the atlas lane; control crown passes under the same rule.
+
+## As-built — THE SPECIES SHEET (2026-09-01)
+
+The charted tree-bake lever, landed. A per-instance model meant a
+per-instance ~400px bake — ~600 sprites in a padded forest, every one
+minted, re-minted on cadence, uploaded, and mostly bound alone.
+
+**The design**: trees.ts deals TREE_VARIANT_COUNT=16 archetypes per
+species (the low hash bits re-spread through hashCoords so K variants
+still deal decorrelated heights, bows, and cluster layouts). The
+quantization lives INSIDE treeOrSaplingModel — the drawn shape, the
+occlusion box, the felling animation, and the shared bake all describe
+the same tree. Shared bakes are the NEUTRAL pose (the rigid law
+generalized): the per-quad shear carries each instance's FULL live
+wind, plus THE STANDING LEAN — a constant hash-dealt shear bias
+(±0.028) so shared-variant neighbors hold different postures. Bake
+pseudo-positions decorrelate flutter phase BETWEEN variants; tSec
+keeps flutter moving across cadence re-bakes, which now re-paint
+archetypes, not trees. Shadows share identically (treeVariantShadows);
+the cast wears the same lean as its body. Saplings join through the
+same door. Felling and regrowth stay fully live per instance.
+
+**THE USED REGION** (spriteAtlas): pooled sprite canvases are
+size-class rounded (and a pool hit can be oversized) — judging atlas
+fit by canvas.width ejected sprites whose INK fits a page. place()
+takes the used device rect; fitness, packing, painting and dirty
+rects all follow it. Every quad emitter passes its known dims. A
+forest census after: 6 pages / 282 slots — the trees page.
+
+**Judged by eye** (dense canopy + sparse stands, control alongside):
+no adjacent twins at either density; distinct silhouettes, leans and
+species mixes in open meadow; outlines and shadows intact.
+
+**Measured** (same day, same rig):
+- Forest single-scene stream (vs pre-atlas control): textures 1,494→
+  ~200, tex bytes 482→~110MB, uploads 7.6→~0.9MB/frame, draws 941→~520.
+- Species sheet's own delta (vs the band-15 battery that morning):
+  uploads 4.2→0.7MB/frame; forest textures ~340→~200; dawnmead tex
+  bytes 512→159MB.
+- 20× throttle: steady forest ON reaches CANVAS PARITY (med 99.9 vs
+  100.0, p90 100.1) — the atlas-era table had ON at ~200. Steady
+  crown ON 266.6→183.3 (vs same-day pre-atlas control). MOVING ON
+  med 366.8→150.1, p90 650→300 (control conflates the budget+atlas
+  bands; the sheet's share is the mint/upload relief).
+- Parity battery 7/7 PASS; forest sig sits far under its noise floor.
+
+**Note for future benches**: the `p N` in the stage confession is
+scratch paints, NOT atlas placements — read atlas truth from
+spriteAtlas.stats() (pages/slots) or the tex count. And full-battery
+tex/draw counts carry cross-scene LRU residue — single-scene sessions
+are the honest stream measure.
+
+NEXT (unchanged): the wall/bulk scratch sheet lane (~75MB/frame at
+crown post-circuit); Epic B on the consolidated quad path.

@@ -18,7 +18,7 @@ const browser = await chromium.launch({ channel: 'chrome', headless: true });
 async function run(rate, stage) {
   const ctx = await browser.newContext({ viewport: { width: 1500, height: 900 }, deviceScaleFactor: 2 });
   const page = await ctx.newPage();
-  await page.goto('http://localhost:5231/?perf' + (stage ? '&stage=world' : ''));
+  await page.goto((process.env.ORIGIN ?? 'http://localhost:5231') + '/?perf' + (stage ? '&stage=world' : ''));
   try {
     await page.waitForFunction(() => window.dcGame && window.dcGame.connStatus === 'ingame', null, { timeout: 6000 });
   } catch {

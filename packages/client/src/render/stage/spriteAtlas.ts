@@ -104,10 +104,20 @@ export class SpriteAtlas {
     }
   }
 
-  /** Place (or refresh) a sprite canvas; null = rides alone. */
-  place(canvas: HTMLCanvasElement, rev: number, owner: object): AtlasPlacement | null {
-    const w = canvas.width;
-    const h = canvas.height;
+  /** Place (or refresh) a sprite canvas; null = rides alone.
+   *  THE USED REGION: `uw`/`uh` name the sprite's actual ink rect in
+   *  device px — pooled canvases are size-class rounded (and a pool
+   *  hit can be oversized), so fitness and packing judge the ink,
+   *  never the backing store. Omitted = the whole canvas. */
+  place(
+    canvas: HTMLCanvasElement,
+    rev: number,
+    owner: object,
+    uw?: number,
+    uh?: number,
+  ): AtlasPlacement | null {
+    const w = Math.min(uw ?? canvas.width, canvas.width);
+    const h = Math.min(uh ?? canvas.height, canvas.height);
     if (w > ATLAS_MAX_SIDE || h > ATLAS_MAX_SIDE || w === 0 || h === 0) return null;
     let slot = this.slots.get(canvas);
     if (slot && (slot.w !== w + GUT * 2 || slot.h !== h + GUT * 2)) {
@@ -141,7 +151,9 @@ export class SpriteAtlas {
     const ih = h - GUT * 2;
     const c = page.ctx;
     c.clearRect(x, y, w, h);
-    c.drawImage(cv, x + GUT, y + GUT);
+    // Sub-rect blit: only the used region (the slot was sized from
+    // it) — a pooled canvas's rounding slack never reaches the page.
+    c.drawImage(cv, 0, 0, iw, ih, x + GUT, y + GUT, iw, ih);
     // Edge replication: stretch each 1px rim into the gutter, then
     // pin the four corners from the corner texels.
     c.drawImage(cv, 0, 0, iw, 1, x + GUT, y, iw, GUT); // top
