@@ -231,7 +231,7 @@ import {
   stackCover,
   wallCover,
 } from './reveal.js';
-import { admitBake, BakeLane, type BakeBudgets } from './bakeAdmission.js';
+import { ARRIVAL_MIN_COUNT, admitBake, BakeLane, type BakeBudgets } from './bakeAdmission.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { BobtailSim, CrocTailSim, TailSim, drawBobtail, drawFeyBrush, drawFoxBrush, drawHorseTail, drawHousecatTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
@@ -5146,6 +5146,7 @@ export class Renderer {
     this.treeShadowBudget = TREE_BAKE_BUDGET;
     this.spriteBakeMsLeft = SPRITE_BAKE_MS;
     this.visSpriteMsLeft = VIS_SPRITE_BAKE_MS;
+    this.visArrivalCount = ARRIVAL_MIN_COUNT;
     this.liveRingMsLeft = LIVE_RING_MS;
     this.forcedBakeUsed = false;
     // THE FRAME CONFESSES WHAT IT COULD NOT CACHE: the live-paint
@@ -16507,7 +16508,10 @@ export class Renderer {
         const took = performance.now() - t0;
         this.spriteBakeMsLeft -= took;
         this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
-        if (lane === BakeLane.Arrival) this.visSpriteMsLeft -= took;
+        if (lane === BakeLane.Arrival) {
+          this.visSpriteMsLeft -= took;
+          this.visArrivalCount--;
+        }
         if (fresh) {
           this.cliffSprites.set(key, fresh);
           sp = fresh;
@@ -21373,6 +21377,8 @@ export class Renderer {
    *  cadence re-bakes) — see SPRITE_BAKE_MS. */
   private spriteBakeMsLeft = 0;
   private visSpriteMsLeft = 0;
+  /** Law 2's count floor (bakeAdmission.ARRIVAL_MIN_COUNT a frame). */
+  private visArrivalCount = 0;
   /** Per-frame allowance (ms) for ringing live fallback paints — see
    *  paintPropLive / LIVE_RING_MS. */
   private liveRingMsLeft = 0;
@@ -22238,6 +22244,7 @@ export class Renderer {
   private admitSpriteBake(missing: boolean, visNow: boolean): BakeLane {
     const b = this.bakeBudgets;
     b.arrivalMsLeft = this.visSpriteMsLeft;
+    b.arrivalCount = this.visArrivalCount;
     b.budgetMsLeft = this.spriteBakeMsLeft;
     b.count = this.treeBakeBudget;
     b.costEma = this.bakeCostEma;
@@ -22252,6 +22259,7 @@ export class Renderer {
   /** Reused admission-state record — the frame loop mints no garbage. */
   private readonly bakeBudgets: BakeBudgets = {
     arrivalMsLeft: 0,
+    arrivalCount: 0,
     budgetMsLeft: 0,
     budgetMsFull: SPRITE_BAKE_MS,
     count: 0,
@@ -23248,7 +23256,10 @@ export class Renderer {
         const took = performance.now() - t0;
         this.spriteBakeMsLeft -= took;
         this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
-        if (lane === BakeLane.Arrival) this.visSpriteMsLeft -= took;
+        if (lane === BakeLane.Arrival) {
+          this.visSpriteMsLeft -= took;
+          this.visArrivalCount--;
+        }
         this.treeSprites.set(key, sp);
       }
     }
@@ -23268,21 +23279,16 @@ export class Renderer {
     // its only legitimate job, which is deciding WHEN we pay to make
     // the next frame cheaper, never WHETHER the world is on screen.
     if (!sp) {
-      // Off screen with no sprite: nothing to draw, nothing to pay —
-      // a budgeted frame bakes it before it scrolls in.
-      if (!visNow) return;
-      if (this.stageAssembling) {
-        // The live brush closed over the frame ctx at collect time
-        // (the capture law) — it cannot be staged. Withdraw; the sink
-        // runs the whole item on the real frame.
-        this.stageNeedsSplit = true;
-        return;
-      }
+      // LAW 2 COMPLETED (the weak-GPU stall, 2026-09-01): a declined
+      // visible miss SKIPS the frame. The old live-paint fallback
+      // repainted the piece at the same order of cost as the denied
+      // bake, every frame, feeding no cache — measured at 20x CPU
+      // throttle as ~130ms/frame of live paints (the 3fps field
+      // report). The count floor guarantees this piece's mint within
+      // a few frames, and propFade eases it in when it lands —
+      // bounded pop-in, never unbounded absence (the 08-18 deadlock
+      // class cannot recur: the floor cannot starve).
       this.liveStats.prop++;
-      const live = this.propFade(key, tile, tx, ty, b.x, b.y, b.w, b.h);
-      if (live < 1) this.ctx.globalAlpha = live;
-      this.paintPropLive(b, paint);
-      if (live < 1) this.ctx.globalAlpha = 1;
       return;
     }
     sp.used = this.frameNo;
@@ -23450,36 +23456,21 @@ export class Renderer {
         const took = performance.now() - t0;
         this.spriteBakeMsLeft -= took;
         this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
-        if (lane === BakeLane.Arrival) this.visSpriteMsLeft -= took;
+        if (lane === BakeLane.Arrival) {
+          this.visSpriteMsLeft -= took;
+          this.visArrivalCount--;
+        }
         this.treeSprites.set(key, sp);
       }
     }
-    // THE STILL-WORLD BARGAIN REACHES THE LEAF (see drawPropOutlined):
-    // a starved budget must never delete a plant from the world. With
-    // no sprite in hand the node paints live, ring and all — the exact
-    // pass this cache was built to amortise.
+    // LAW 2 COMPLETED: a declined visible miss skips the frame and
+    // fades in on its minted frame — the count floor guarantees that
+    // frame is near (see drawPropOutlined for the measured story).
     if (!sp) {
-      // Off screen with no sprite: nothing to draw, nothing to pay.
-      if (!visNow) return;
-      if (this.stageAssembling) {
-        this.stageNeedsSplit = true;
-        return;
-      }
       this.liveStats.flora++;
-      this.paintPropLive(
-        { x: bx - half, y: gy - top, w: half * 2, h: top + 0.35 * s },
-        () =>
-          paintPlant(this.ctx, fm, {
-            bx,
-            groundY: gy,
-            s,
-            wx: tx + 0.5,
-            wy: ty + 0.5,
-            tSec,
-            flame: this.sky.flame,
-          }),
-      );
-    } else {
+      return;
+    }
+    {
       sp.used = this.frameNo;
       const k = s / sp.scale;
       if (this.stageAssembling) {
@@ -23831,37 +23822,19 @@ export class Renderer {
           const took = performance.now() - t0;
           this.spriteBakeMsLeft -= took;
           this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
-          if (lane === BakeLane.Arrival) this.visSpriteMsLeft -= took;
+          if (lane === BakeLane.Arrival) {
+            this.visSpriteMsLeft -= took;
+            this.visArrivalCount--;
+          }
           this.treeSprites.set(key, sp);
         }
       }
       if (!sp) {
-        // THE STILL-WORLD BARGAIN REACHES THE LEAF (see
-        // drawPropOutlined): a starved bake budget is never allowed to
-        // delete a tree from the forest that is ON SCREEN. With no
-        // sprite in hand the tree paints live at its TRUE current wind
-        // — no shear, no override; the shear exists only to carry a
-        // bake forward, and a live pose needs no carrying. The ring
-        // comes with it, so the switch between blit and live paint is
-        // invisible.
-        if (!visNow) return;
+        // LAW 2 COMPLETED: a declined visible miss skips the frame —
+        // its mint is a few frames out behind the count floor, and it
+        // fades in when it lands (see drawPropOutlined for the
+        // measured 3fps story this replaces).
         this.liveStats.tree++;
-        const fade = this.occluderFade(
-          key,
-          bx - half,
-          gy - top,
-          half * 2,
-          top + 0.3 * s,
-          wy - this.ownPY > -FRONT_EPS,
-        );
-        if (fade < 1) this.ctx.globalAlpha = fade;
-        this.paintPropLive({ x: bx - half, y: gy - top, w: half * 2, h: top + 0.3 * s }, () => {
-          paintTree(this.ctx, m, { bx, groundY: gy, s, syT, wx, wy, tSec, grow, foliage });
-        });
-        if (fade < 1) this.ctx.globalAlpha = 1;
-        // The leaf-shed below is skipped by design on a fallback frame:
-        // a tree the frame could not even afford to cache has no
-        // business minting particles.
         return;
       }
       sp.used = this.frameNo;

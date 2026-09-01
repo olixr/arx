@@ -39,9 +39,17 @@
  *     at once, and would only re-bake AGAIN at the settled scale).
  */
 
+/** How many visible-miss mints every frame is guaranteed, whatever
+ *  they cost. Sized so walking (a handful of reveals per frame at the
+ *  viewport edge) never skips, and a teleport's ~100-piece arrival
+ *  converges inside ~2 seconds of bounded frames. */
+export const ARRIVAL_MIN_COUNT = 8;
+
 /** Which lane a bake was admitted on — the caller charges accordingly. */
 export const enum BakeLane {
-  /** Declined: paint live if on screen, skip if not. */
+  /** Declined. A visible miss SKIPS the frame (it fades in when its
+   *  mint arrives — bounded pop-in, never a live repaint); off
+   *  screen there was nothing to see anyway. */
   None = 0,
   /** The visible-now arrival lane — charges the arrival ceiling. */
   Arrival = 1,
@@ -56,6 +64,10 @@ export const enum BakeLane {
 export interface BakeBudgets {
   /** Arrival ceiling left this frame (VIS_SPRITE_BAKE_MS at frame top). */
   arrivalMsLeft: number;
+  /** Arrival COUNT floor left this frame — law 2's guarantee that
+   *  convergence never stalls behind a Mac-tuned ms window on a
+   *  machine whose single bake outcosts it. */
+  arrivalCount: number;
   /** Ordinary allowance left this frame (SPRITE_BAKE_MS at frame top). */
   budgetMsLeft: number;
   /** The ordinary allowance's full size — what law 1 clamps against. */
@@ -84,8 +96,25 @@ export function admitBake(b: BakeBudgets, missing: boolean, visNow: boolean): Ba
   const budgeted = b.count > 0 && b.budgetMsLeft > ask;
   // Law 4: a stale sprite is already drawing correctly — polish only.
   if (!missing) return budgeted && !b.gliding ? BakeLane.Budgeted : BakeLane.None;
-  // Law 2: on screen and absent is the one case with no alternative.
-  if (visNow && b.arrivalMsLeft > 0) return BakeLane.Arrival;
+  // Law 2, COMPLETED (2026-09-01, the weak-GPU field report): the
+  // arrival lane carries a COUNT FLOOR beside its ms ceiling, and a
+  // declined visible piece SKIPS the frame instead of painting live.
+  // The old shape — decline past the ms ceiling, fall back to a live
+  // paint — was the 3fps death spiral on slow-canvas machines: a
+  // Mac-tuned 4ms window admits ~1 bake there, so ~100 pieces
+  // repainted live at the same order of cost as the bake they were
+  // denied, EVERY frame, feeding no cache and starving the budgets
+  // that would end them. Unbounded admission was measured too (this
+  // machine, 20x throttle): it concentrates convergence into 2-3
+  // SECOND arrival frames. The count floor bounds both failure
+  // modes: every frame mints at least ARRIVAL_MIN_COUNT visible
+  // sprites whatever they cost, convergence is guaranteed in
+  // N/count frames, the skipped remainder fades in behind the
+  // propFade it already wears, and WALKING — where the viewport edge
+  // reveals a handful of pieces a frame — never skips at all.
+  if (visNow) {
+    return b.arrivalMsLeft > 0 || b.arrivalCount > 0 ? BakeLane.Arrival : BakeLane.None;
+  }
   if (budgeted) return BakeLane.Budgeted;
   // Law 3: the floor — one guaranteed mint a frame, always.
   if (!b.floorUsed) return BakeLane.Floor;
