@@ -616,6 +616,60 @@ stage's relative overhead roughly HALVED on wall-dense scenes.
 the falls scroll-bake; the atlas + explicit lifecycle (cast and glow
 sprites are prime atlas tenants); the A2 perf gate.
 
+**A2 PART 7 — AS BUILT (2026-09-01). THE DOOR JOINS THE BAND.**
+Doorway/GarrisonGate banded — THE TILE IS THE STATE carried the whole
+correctness argument: open and shut are DIFFERENT TILES, so a toggle
+is a tile patch → chunk rev → content sig, and the bake at rest is a
+pure world function. Three dynamic terms ride the existing settled-cut
+machinery in stretchCutSig: doorHot (the 380-520ms swing ease and the
+460ms refusal shudder → live, expiry-aware so an off-screen ease can
+never pin a stretch hot), the threshold veil (proximity-continuous —
+quantized 1/32, churns to live while bodies walk, settles when they
+rest), and the reveal heights (doors sink with the runs they join —
+folded exactly like their wall family). Side variants
+(SideDoorway/GarrisonSideGate) merge VERTICALLY and the bake head-room
+only spans horizontal runs — they stay live, documented. Gates wear
+THE SHELF CUTS TO THE CROWN's tall span (a gate-joined garrison run at
+full span burst the per-band ceiling — the crown's `over 6`).
+
+**Windowed walls banded** under a new law: **THE SKY MAY KEY A BAKE
+ONLY QUANTIZED** — hearth glass warms with sky.flame, a slow
+smoothstep of the game clock (never per-frame flicker); 24 sig steps
+make re-bakes a handful per dawn/dusk, each under 0.008 glass alpha,
+and day sigs stay byte-identical to old. SKY NEVER KEYS A BAKE stands
+for anything that flickers.
+
+**THE WET SPAN**: the elevated-row water overlay was paying the whole
+row's scratch box for one fountain tile — 16-20MB/frame of `elev-wet`
+on the terrace towns (it had been hiding as the untagged `raw` class;
+every push now carries a census tag). The paint box clips to the wet
+tile span: dry pixels inside any box repaint what the layer quad
+already shows, so a narrow box is exactly as correct as a wide one.
+The class vanished from the census.
+
+**Gates**: parity v4 ×6 PASS + crown-noon at its established marginal
+(441 vs 427 — the verified willow/NPC/AA class, unchanged by this
+part); night toggles PASS with wide margins (dawnmead/crown 22:00).
+Door dynamics drill: forced ease → band goes hot, leaves animate
+live, settles clean, no lingering hot. ABSOLUTE fidelity drill
+(bands serve BOTH backends, so parity alone cannot see a bake-pose
+bug): pinned-hot live pixels vs settled banded pixels at the same
+rest pose diff within noise (107 vs 62 on 30k samples — a wrong pose
+would light thousands). 786/786.
+
+**The ledger** (world-phase ms, staged/canvas, display still
+30Hz-clamped): avenue 4.7/3.8 (was 7.3/5.2 — BOTH backends ~30%
+faster; ratio 1.39 → 1.23), crown 5.7/4.7 (was 8.4/5.8; 1.45 → 1.22),
+forest 3.1/1.8, dawnmead 2.7/2.0. Avenue stage paints 66 → 32/frame
+(scratch 65 → 41MB); crown 75 → 41 (96 → 73MB). Part 3's verdict
+held: CACHING BEATS RECONSTRUCTION pays on both backends. The crown's
+remaining wall-run (22 paints/53MB) = hung walls (wind — legitimate),
+4 elevation-tall bands past the byte ceiling, and the hot cut window.
+
+**Part 8**: the falls scroll-bake (avenue's 21 splits); the atlas +
+explicit handle lifecycle; the unclamped scoreboard; the A2 perf
+gate.
+
 ### A3 — The dark and the light (shadow layer, lightmap, overreach)
 
 The shadow layer becomes an FBO: shadow quads (sprites, masks, grass

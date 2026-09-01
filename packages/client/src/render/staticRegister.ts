@@ -321,8 +321,12 @@ export function planStretches(
       }
       // THE SHELF CUTS TO THE CROWN: a garrison member anywhere in the
       // segment holds the whole segment to the tall-family span (the
-      // canvas is as tall as its tallest member).
-      const mSpan = m.kind === RaisedKind.GarrisonWall ? BAND_MAX_SPAN_TALL : maxSpan;
+      // canvas is as tall as its tallest member). Gates joined the
+      // bands in A2 part 7 and wear the same crown.
+      const mSpan =
+        m.kind === RaisedKind.GarrisonWall || m.kind === RaisedKind.GarrisonGate
+          ? BAND_MAX_SPAN_TALL
+          : maxSpan;
       // A SHELF, NOT A WALL: the span is measured to the member's EAST
       // end, so one run-merged member can never smuggle a whole chunk
       // row into a single canvas. A member that would burst the span

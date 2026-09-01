@@ -4490,24 +4490,37 @@ export class Renderer {
                   };
                   if (this.stageAssembling) {
                     // Dry rows (nearly all of them) owe the live-water
-                    // pass NOTHING on the stage — scan honestly first.
-                    let wet = false;
+                    // pass NOTHING on the stage — scan honestly first,
+                    // and keep the WET SPAN: the paint box clips to
+                    // the wet tiles (a fountain row was paying the
+                    // whole row's scratch — 16-20MB/frame of elev-wet
+                    // on the terrace towns). Dry pixels inside the box
+                    // repaint what the layer quad already shows, so a
+                    // narrow box is exactly as correct as a wide one.
+                    let wetX0 = -1;
+                    let wetX1 = -1;
                     for (let tx = rowBounds.minTx; tx <= rowBounds.maxTx; tx++) {
                       const t = rowGround(tx, worldTy);
                       if (t !== undefined && (t === Tile.Water || isFishingTile(t))) {
-                        wet = true;
-                        break;
+                        if (wetX0 < 0) wetX0 = tx;
+                        wetX1 = tx;
                       }
                     }
-                    if (wet) {
+                    if (wetX0 >= 0) {
                       const now2 = performance.now();
+                      const sx0 = Math.max(x0, this.camera.worldToScreen(wetX0, worldTy, this.w, this.h).x - s);
+                      const sx1 = Math.min(
+                        Math.round(pB.x),
+                        this.camera.worldToScreen(wetX1 + 1, worldTy, this.w, this.h).x + s,
+                      );
                       this.stagePushPaintRaw(
-                        x0,
+                        sx0,
                         y0 - 0.5 * s,
-                        Math.round(pB.x) - x0,
+                        sx1 - sx0,
                         Math.round(pB.y) - lift - y0 + s,
                         () =>
                           drawLiveGround(this.ctx, rowGround, rowBounds, this.liftedWTS, s, now2, this.waterFx()),
+                        'elev-wet',
                       );
                     }
                   } else {
@@ -8693,13 +8706,25 @@ export class Renderer {
    */
   private memberBandable(m: RaisedMember): boolean {
     switch (m.kind) {
-      case RaisedKind.Wall: {
-        const t = m.tile as Tile;
-        if (t === Tile.WallWoodWindow || t === Tile.WallStoneWindow) return false;
+      case RaisedKind.Wall:
+        // Windowed walls joined the bands in A2 part 7: their one sky
+        // read (hearth-lit glass warms with sky.flame) is a SLOW clock
+        // ramp, quantized into the dynamic sig — THE SKY MAY KEY A
+        // BAKE ONLY QUANTIZED. Hung walls still breathe with the
+        // breeze and stay live.
         return !wallHungInfo(this.regGame!.world.detailAt(m.tx, m.ty));
-      }
       case RaisedKind.GarrisonWall:
         return !wallHungInfo(this.regGame!.world.detailAt(m.tx, m.ty));
+      case RaisedKind.Doorway:
+      case RaisedKind.GarrisonGate:
+        // THE TILE IS THE STATE: open and shut are different tiles, so
+        // a toggle is a tile patch → chunk rev → content sig, and the
+        // bake at rest is a pure world function. The 380-520ms ease,
+        // the locked-refusal shudder (doorHot) and the threshold veil
+        // (proximity, quantized) ride the dynamic sig. Side variants
+        // (SideDoorway/GarrisonSideGate) merge VERTICALLY and the bake
+        // head-room only spans horizontal runs — they stay live.
+        return true;
       case RaisedKind.DiagWall:
       case RaisedKind.Rail:
       case RaisedKind.RampRun:
@@ -8783,6 +8808,18 @@ export class Renderer {
               }
             }
           }
+          // THE SKY MAY KEY A BAKE ONLY QUANTIZED: hearth-lit glass
+          // warms with sky.flame — a slow smoothstep of the game
+          // clock, never per-frame flicker. 24 steps make re-bakes a
+          // handful per dawn/dusk, each step under 0.008 of glass
+          // alpha. 0 by day, so day sigs are byte-identical to old.
+          if (m.tile === Tile.WallWoodWindow || m.tile === Tile.WallStoneWindow) {
+            const f = Math.round(this.sky.flame * 24);
+            if (f > 0) {
+              anyCut = true;
+              sig = (sig * 31 + 601 * 7 + f) | 0;
+            }
+          }
           break;
         }
         case RaisedKind.GarrisonWall: {
@@ -8793,6 +8830,42 @@ export class Renderer {
             if (h0 !== GARRISON_H || h1 !== GARRISON_H) {
               anyCut = true;
               sig = (sig * 31 + Math.round(h0 * 48) * 397 + Math.round(h1 * 48)) | 0;
+            }
+          }
+          break;
+        }
+        case RaisedKind.Doorway:
+        case RaisedKind.GarrisonGate: {
+          // A door mid-ease (or mid-refusal-shudder) animates per
+          // frame — live, exactly like a shaking destructible. At
+          // rest THE TILE IS THE STATE: the settled pose is already
+          // in the content sig via the chunk rev.
+          if (this.doorHot(m.tx, m.ty)) return -1;
+          // The threshold veil melts as bodies near — continuous in
+          // their motion, so it churns the sig while they walk (live,
+          // via the stability window) and settles when they rest.
+          const v = Math.round(this.doorVeil(game, m.tx + m.len / 2, m.ty + 0.5) * 32);
+          if (v < 32) {
+            anyCut = true;
+            sig = (sig * 31 + 419 * (m.kind === RaisedKind.Doorway ? 3 : 5) + v) | 0;
+          }
+          // Doors sink with the runs they join — fold the reveal
+          // heights exactly like their wall family.
+          const garr = m.kind === RaisedKind.GarrisonGate;
+          if (garr || this.cutCtx > 0.001) {
+            const dy = m.ty - this.ownPY;
+            if (dy >= -2.5 && dy <= (garr ? 16.5 : 12.5) && Math.abs(m.tx + 0.5 - this.ownPX) <= 13.5) {
+              const full = garr ? GARRISON_H : WALL_H;
+              const hAt = garr
+                ? this.garrisonHeightAt(game, m.tx, m.ty)
+                : this.wallHeightAt(game, m.tx, m.ty);
+              const hN = garr
+                ? this.garrisonHeightAt(game, m.tx, m.ty - 1)
+                : this.wallHeightAt(game, m.tx, m.ty - 1);
+              if (hAt !== full || hN !== full) {
+                anyCut = true;
+                sig = (sig * 31 + Math.round(hAt * 48) * 397 + Math.round(hN * 48)) | 0;
+              }
             }
           }
           break;
@@ -8983,9 +9056,10 @@ export class Renderer {
     if (items.length === before) return;
     const s = this.camera.scale;
     const e = game.world.elevAt(m.tx, m.ty);
-    const garrison = m.kind === RaisedKind.GarrisonWall;
+    const garrison = m.kind === RaisedKind.GarrisonWall || m.kind === RaisedKind.GarrisonGate;
     const rampish = m.kind === RaisedKind.RampRun || m.kind === RaisedKind.RampSingle;
-    const wallish = m.kind === RaisedKind.Wall || m.kind === RaisedKind.DiagWall;
+    const wallish =
+      m.kind === RaisedKind.Wall || m.kind === RaisedKind.DiagWall || m.kind === RaisedKind.Doorway;
     const northT = (garrison ? 4.6 : wallish ? 2.8 : 2.4) + e * ELEV_H + (rampish ? 1.5 : 0);
     const southT = rampish ? 1.7 : 0.7;
     const spanS = rampish ? m.len : 1;
@@ -9096,7 +9170,11 @@ export class Renderer {
       if (m.endX + 1 > wx1) wx1 = m.endX + 1;
       const e = game.world.elevAt(m.tx, m.ty);
       if (e > maxElev) maxElev = e;
-      if (m.kind === RaisedKind.GarrisonWall) garrison = true;
+      if (
+        m.kind === RaisedKind.GarrisonWall ||
+        m.kind === RaisedKind.GarrisonGate
+      )
+        garrison = true;
       if (m.kind === RaisedKind.RampRun || m.kind === RaisedKind.RampSingle) rampish = true;
       if (m.kind === RaisedKind.Generic && this.outlineOn) {
         // Prop bands composite the ring-baked sprites (the sprite IS
@@ -9121,7 +9199,8 @@ export class Renderer {
     let wallish = false;
     for (let i = s.i0; i <= s.i1; i++) {
       const k = list[i]!.kind;
-      if (k === RaisedKind.Wall || k === RaisedKind.DiagWall) wallish = true;
+      if (k === RaisedKind.Wall || k === RaisedKind.DiagWall || k === RaisedKind.Doorway)
+        wallish = true;
     }
     // Head-room by the tallest family present: garrison crowns reach
     // ~4.2 tiles, house walls ~2.7, the banded prop set tops out near
@@ -16396,6 +16475,7 @@ export class Renderer {
             ).draw!();
           }
         },
+        'cliff',
       );
       return;
     }
@@ -21035,6 +21115,23 @@ export class Renderer {
    * its rest and settles; closing is a shorter, sober pull-to. A
    * 'shake' ease holds the posture (the door never moved).
    */
+  /** Is this door inside its animation window (swing ease or refusal
+   *  shudder)? Expiry-aware: a stale entry (the ease finished while
+   *  the door was off-screen and no painter queried it) reads as
+   *  settled and is dropped — `has()` alone would pin the stretch
+   *  live forever. */
+  private doorHot(tx: number, ty: number): boolean {
+    const key = `${tx},${ty}`;
+    const ease = this.doorEases.get(key);
+    if (ease === undefined) return false;
+    const dur = ease.dir === 'open' ? 520 : ease.dir === 'close' ? 380 : 460;
+    if (performance.now() - ease.born >= dur) {
+      this.doorEases.delete(key);
+      return false;
+    }
+    return true;
+  }
+
   private doorOpenness(tx: number, ty: number, open: boolean): number {
     const key = `${tx},${ty}`;
     const ease = this.doorEases.get(key);
@@ -23239,8 +23336,13 @@ export class Renderer {
     if (care?.f) {
       if (this.stageAssembling) {
         const gyf = by + syT * 0.3;
-        this.stagePushPaintRaw(bx - 0.6 * s, gyf - 0.7 * s, 1.2 * s, 1.1 * s, () =>
-          this.drawGrowingFrame(bx, gyf, h, true),
+        this.stagePushPaintRaw(
+          bx - 0.6 * s,
+          gyf - 0.7 * s,
+          1.2 * s,
+          1.1 * s,
+          () => this.drawGrowingFrame(bx, gyf, h, true),
+          'crop-frame',
         );
       } else {
         this.drawGrowingFrame(bx, by + syT * 0.3, h, true);
