@@ -50,12 +50,6 @@ export interface TorsoFrame {
         y: number;
     }>;
 }
-/**
- * Torso garment. Replaces the fixed tunic: the `tunic` silhouette with
- * no details is stroke-for-stroke the original body. Pauldrons are NOT
- * drawn here — they are true shoulder joints, painted in screen space
- * on the solved shoulder anchors (drawPauldron) so they ride the arms.
- */
 export declare function drawTorsoGarment(ctx: CanvasRenderingContext2D, st: BodyStyle, f: TorsoFrame): void;
 /**
  * A pauldron as a real shoulder JOINT: painted in screen space on the
