@@ -6,9 +6,8 @@
 import { ELEMENT_COLORS, ProcEffect, ProcMoment, ProcRuntime, SURFACE_PLANE_ID, TARGETED_ACTIONS, mkProcRuntime, procWakes, weaponStrikeEffects } from '@arx/content';
 import { EntityId, EquippedItem, SkillId, survivesCleanse } from '@arx/shared';
 import type { GameServer, PlayerComp, ProcContext } from './gameServer.js';
-// Deferred value import of the parent module's own helpers — touched
-// only inside the moved functions, long after both modules initialize.
-import { CHAIN_PROC_RANGE, mkBuff } from './gameServer.js';
+import { mkBuff } from './formulas.js';
+import { CHAIN_PROC_RANGE } from './tuning.js';
 
 export function procState(srv: GameServer, player: PlayerComp, id: string): ProcRuntime {
   let st = player.procs.get(id);

@@ -17,7 +17,7 @@ import { join, resolve, dirname } from 'node:path';
 // docs/foundations-plan.md.
 const BASELINES = {
   'packages/client/src': 14,
-  'packages/server/src': 3,
+  'packages/server/src': 0,
   'packages/shared/src': 0,
   'packages/content/src': 2,
 };
