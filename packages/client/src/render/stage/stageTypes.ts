@@ -138,6 +138,14 @@ export interface StagePaint {
   pw: number;
   ph: number;
   paint: (ctx: CanvasRenderingContext2D) => void;
+  /** THE SCRATCH LEDGER: a paint that names its identity and content
+   *  version keeps a cached texture in the GL backend — the closure
+   *  runs (and the texture uploads) ONLY when `rev` changes. Content
+   *  must be box-anchored (the closure's output at a fixed offset
+   *  from px/py regardless of camera), or the cache would smear.
+   *  Omitted = the classic live lane: repaint + upload every frame. */
+  key?: number;
+  rev?: number;
 }
 
 export type StageItem = StageQuad | StageFill | StagePaint;

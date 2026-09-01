@@ -1164,6 +1164,14 @@ export interface DrawItem {
    *  over the split path. Sized honest-and-generous; the oracle's
    *  clip makes an undersized box a visible defect, not a quiet one. */
   pb?: { x: number; y: number; w: number; h: number };
+  /** THE SCRATCH LEDGER: this wall-lane member's identity hash (world
+   *  anchor + kind + emission index + its chunk's data rev), chained
+   *  into the run key so the GL backend can cache the run's texture.
+   *  A chunk edit changes the rev, the key, and thus the pixels. */
+  pbKey?: number;
+  /** The member's paint is animation-bound (hung walls breathe): its
+   *  run re-revs on a short cadence instead of caching flat. */
+  pbLive?: boolean;
   /** Stage-safe (phase A2p2): this item's draw touches this.ctx ONLY
    *  through stage-aware painters (their blit sites emit quads, their
    *  live fallbacks push bounded paints). Set at the push site — an
@@ -8753,10 +8761,26 @@ export class Renderer {
       w: p1.x - p0.x + 2.4 * s,
       h: p1.y - p0.y + (northT + southT) * s,
     };
+    // THE SCRATCH LEDGER's identity: world anchor + kind + emission
+    // index + the chunk's data rev. Breathing members (hung walls)
+    // mark the run live so it re-revs on a cadence.
+    const crev =
+      game.world.get(Math.floor(m.tx / CHUNK_SIZE), Math.floor(m.ty / CHUNK_SIZE))?.rev ?? 0;
+    const breathes =
+      (m.kind === RaisedKind.Wall || m.kind === RaisedKind.GarrisonWall) &&
+      !!wallHungInfo(game.world.detailAt(m.tx, m.ty));
+    const keyBase =
+      (hashCoords(73, m.tx, m.ty) ^
+        ((m.kind as number) << 2) ^
+        (m.endX << 9) ^
+        Math.imul(crev | 0, 0x85eb)) |
+      0;
     for (let j = before; j < items.length; j++) {
       const it = items[j]!;
       const idx = j - before;
       it.pb = pb;
+      it.pbKey = (keyBase ^ (idx << 17)) | 0;
+      it.pbLive = breathes;
       it.stageRebuild = () => {
         const scratch: DrawItem[] = [];
         this.emitRaisedMember(game, scratch, m, this.stageRebuildSeen);
@@ -13072,6 +13096,9 @@ export class Renderer {
    *  on plane cross. Trees no longer occupy treeSprites (flora and
    *  outlined props still do). */
   private readonly treeVariantSprites = new Map<number, WorldSprite>();
+  /** THE SCRATCH LEDGER's diagnostic: why each wall-run kept or lost
+   *  its key this session (probe-read, never printed). */
+  readonly wallRunWhy = { nokey: 0, big: 0, player: 0, anim: 0, flat: 0 };
   /** Sun-shadow twin: the projected TRUE-FORM silhouette, RASTERIZED —
    *  built at origin on the sprite cadence and stamped with one
    *  drawImage per frame (the per-frame fill of the complex Path2D was
@@ -13224,18 +13251,34 @@ export class Renderer {
 
   /** Push a raw closure through the scratch lane (SAME-BRUSH swap) —
    *  the painters' own door for live fallbacks with known rects. */
-  stagePushPaintRaw(px: number, py: number, pw: number, ph: number, paint: () => void, tag = 'raw'): void {
+  stagePushPaintRaw(
+    px: number,
+    py: number,
+    pw: number,
+    ph: number,
+    paint: () => void,
+    tag = 'raw',
+    key?: number,
+    rev?: number,
+  ): void {
     // An off-screen paint is an invisible paint: clip every box to
     // the viewport (+ a filter pad) and skip empty intersections
     // outright — no scratch pass, no upload, no draw.
+    // THE SCRATCH LEDGER exception: a KEYED box is never clipped —
+    // clipping would resize it every panning frame and thrash the
+    // cache; the GPU clips the cached quad for free. Fully off-screen
+    // still skips.
     const pad = 8;
-    const x1 = Math.min(px + pw, this.w + pad);
-    const y1 = Math.min(py + ph, this.h + pad);
-    px = Math.max(px, -pad);
-    py = Math.max(py, -pad);
-    pw = x1 - px;
-    ph = y1 - py;
-    if (pw <= 0 || ph <= 0) return;
+    if (px + pw <= -pad || px >= this.w + pad || py + ph <= -pad || py >= this.h + pad) return;
+    if (key === undefined || rev === undefined) {
+      const x1 = Math.min(px + pw, this.w + pad);
+      const y1 = Math.min(py + ph, this.h + pad);
+      px = Math.max(px, -pad);
+      py = Math.max(py, -pad);
+      pw = x1 - px;
+      ph = y1 - py;
+      if (pw <= 0 || ph <= 0) return;
+    }
     this.stagePaintCount(tag, pw, ph);
     this.stageWorldItems.push({
       kind: 'paint',
@@ -13243,6 +13286,8 @@ export class Renderer {
       py,
       pw,
       ph,
+      key,
+      rev,
       paint: (ctx: CanvasRenderingContext2D) => {
         const saved = this.ctx;
         this.ctx = ctx;
@@ -13532,16 +13577,90 @@ export class Renderer {
         } finally {
           this.stageAssembling = false;
         }
-        this.stagePushPaintRaw(
-          ux0,
-          uy0,
-          ux1 - ux0,
-          uy1 - uy0,
-          () => {
-            for (const it2 of run) it2.stageRebuild!();
-          },
-          'wall-run',
-        );
+        // THE SCRATCH LEDGER: the run caches under (member-chain key,
+        // content rev) unless correctness demands live paint —
+        // fade/cut reads the own body's position (a run wrapping the
+        // player repaints every frame), and oversized boxes fall back
+        // rather than mint monster textures. Breathing runs (hung
+        // walls) re-rev on a 3-frame cadence: cloth sway at 20Hz,
+        // uploads cut 3×; static runs paint once per zoom/dpr/edit.
+        let runKey = 0x51ed;
+        let anim = false;
+        let keyable = true;
+        for (const it2 of run) {
+          if (it2.pbKey === undefined) {
+            keyable = false;
+            this.wallRunWhy.nokey++;
+            break;
+          }
+          runKey = (Math.imul(runKey, 31) + it2.pbKey) | 0;
+          if (it2.pbLive === true) anim = true;
+        }
+        const uw = ux1 - ux0;
+        const uh = uy1 - uy0;
+        if (keyable) {
+          const dprN = this.dpr();
+          const dw = uw * dprN;
+          const dh = uh * dprN;
+          if (dw > 4096 || dh > 4096 || dw * dh > 8_000_000) {
+            keyable = false;
+            this.wallRunWhy.big++;
+          }
+        }
+        if (keyable) {
+          // Fade/cut only ever applies to walls IN FRONT of the own
+          // body (south rows, drawn over it) — a run behind the
+          // player can cache no matter how its tall box overlaps.
+          const front = run[0]!.sortY > this.ownPY - 0.6;
+          if (front) {
+            const op = this.camera.worldToScreen(this.ownPX, this.ownPY, this.w, this.h);
+            const padP = this.camera.scale * 1.5;
+            if (
+              op.x > ux0 - padP &&
+              op.x < ux1 + padP &&
+              op.y > uy0 - padP &&
+              op.y < uy1 + padP
+            ) {
+              keyable = false;
+              this.wallRunWhy.player++;
+            }
+          }
+        }
+        if (keyable) this.wallRunWhy[anim ? 'anim' : 'flat']++;
+        if (keyable) {
+          const rev =
+            (Math.imul(Math.round(this.camera.scale * 50), 31) ^
+              (this.dpr() * 7) ^
+              (this.outlineOn ? 0x40000 : 0) ^
+              (this.sky.moonlit ? 0x80000 : 0) ^
+              // Per-run phase stagger (the tree-cadence law): the
+              // breathing herd never repaints in one frame.
+              (anim ? Math.imul(((this.frameNo + (runKey & 63)) / 3) | 0, 0x9e37) : 0)) |
+            0;
+          this.stagePushPaintRaw(
+            ux0,
+            uy0,
+            uw,
+            uh,
+            () => {
+              for (const it2 of run) it2.stageRebuild!();
+            },
+            'wall-run',
+            runKey,
+            rev,
+          );
+        } else {
+          this.stagePushPaintRaw(
+            ux0,
+            uy0,
+            uw,
+            uh,
+            () => {
+              for (const it2 of run) it2.stageRebuild!();
+            },
+            'wall-run',
+          );
+        }
         i = j - 1;
         continue;
       }
@@ -13753,7 +13872,7 @@ export class Renderer {
         const ws = this.stageWorldStats;
         parts.push(
           `stage world q ${ws.quads} p ${ws.paints} split ${ws.splits} ` +
-            `scr ${(w.scratchUploadBytes / 1048576).toFixed(1)}MB/${w.scratchPaints} sheets ${w.sheetUploads} ` +
+            `scr ${(w.scratchUploadBytes / 1048576).toFixed(1)}MB/${w.scratchPaints} c${w.scratchCachedHits} sheets ${w.sheetUploads} ` +
             `up ${(w.uploadedBytes / 1048576).toFixed(1)}MB tex ${(w.textureBytes / 1048576).toFixed(0)}MB/${w.textureCount} draws ${w.drawCalls}`,
         );
       }

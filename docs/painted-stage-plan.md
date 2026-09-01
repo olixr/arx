@@ -1294,3 +1294,50 @@ are the honest stream measure.
 
 NEXT (unchanged): the wall/bulk scratch sheet lane (~75MB/frame at
 crown post-circuit); Epic B on the consolidated quad path.
+
+## As-built — THE SCRATCH LEDGER (2026-09-01)
+
+The wall/bulk scratch lane's charted cure, landed. The census (the
+long-unwired stagePaintKinds map, pointed at by a probe) decomposed
+the crown's ~75MB/frame: wall-run 22 paints/~48MB, 'item' 12/~5MB,
+two full-page sheet uploads 16.8MB. grass-shade never fired there.
+
+**The design**:
+- StagePaint gains `key`/`rev`; the GL backend keeps a keyed
+  exact-size canvas+texture per run (128MB LRU cap, 600-frame sweep,
+  cleared on context loss). A rev hit = bind + drawArrays; a miss =
+  repaint + upload. The confession grows `cN` (cached hits).
+- Wall-runs key on the member chain (world anchor + kind + emission
+  index + the member chunk's data rev — a door toggle invalidates by
+  key, per chunk, no stream-in thrash). Rev = quantized zoom ^ dpr ^
+  outline ^ moonlit; breathing runs (hung walls) re-rev on a 3-frame
+  cadence with per-run phase stagger (the tree-cadence law).
+- CORRECTNESS GUARDS: a run in FRONT of the own body whose box wraps
+  it stays fully live (fade/cut read the player); oversized boxes
+  (>4096px side or >8Mpx) fall back live; KEYED boxes skip the
+  viewport clip (clipping would resize them every panning frame) —
+  fully off-screen still skips.
+- THE USED ROWS: sheet uploads shrink to the rows the pack reached
+  (storage allocated once at openSheet; texSubImage2D from an
+  exact-sized staging copy — the atlas's source-sized-texels law).
+  Stale rows below are never sampled: UVs only address this frame's
+  cells.
+
+**THE VERIFIED TELEPORT (probe law, learned here)**: the chat rate
+limiter silently eats commands — a battery PASSed while measuring
+four scenes at the graveyard (their confessions were identical; that
+was the tell). Both stage probes now send, verify dcRenderer.ownPX/Y
+landed, and retry. Distinct per-scene confessions are the health
+check on every battery read.
+
+**Measured** (same day, same rig): crown scratch 75→~31MB/frame
+(−59%), ~14-16 cached hits/frame, burst-free rhythm. 20× steady
+crown: ON 166.7 vs OFF 166.6 med — THE HEAVY-CITY GAP IS CLOSED
+(morning band-16 build: ON 183.3 vs OFF 133); 20× MOVING ON 116.7 =
+OFF 116.7. Every 20× scenario now ON ≈ OFF or better. Parity 7/7
+with verified teleports; crown distribution 6/6 under the existing
++100 allowance (sig unchanged 190-260; the ledger lowered the ON
+floor further — the documented quiet-lane mechanism, not divergence).
+
+NEXT: Epic B (THE CAMERA LEARNS TO LEAN) on a stage lane that now
+holds canvas parity everywhere it plays.
