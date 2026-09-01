@@ -835,6 +835,57 @@ table for the audit doc's §THE COMPOSED FRAME, and let ITS numbers
 order the remaining A4 migrations + the sprite atlas. Epic B waits
 on that table, per A5's own law (default-ON survives a week first).
 
+### THE WEAK-GPU ROUND, PART 1 — AS BUILT (2026-09-01).
+### THE ARRIVAL PAYS ONCE, COMPLETED.
+
+The owner's field report from the RTX/Windows machine: settled scenes
+40-50fps (toggle helping), but MOVING into unbaked map = 3-4fps.
+Reproduced honestly on this Mac at 20x CDP CPU throttle: 3-8fps on a
+fresh-map hop circuit, p50 frames 114-326ms — and the confession
+named it in one probe: **world 133ms with 78 props + 22 trees + 171
+grass cells painting LIVE every frame**. THE STILL-WORLD BARGAIN's
+live fallback was the death spiral on slow-canvas machines: a
+declined visible piece repaints at the same order of cost as the
+bake it was denied, every frame, feeding no cache and starving the
+budgets that would end it — bakeAdmission's own comment ("every
+deferred frame repaints live at the same order of cost and buys
+nothing") already knew, but the arrival ceiling still declined.
+
+Both naive completions were measured and rejected: the Mac-tuned 4ms
+ceiling admits ~1 bake at 20x (the spiral), and UNBOUNDED admission
+concentrates convergence into 2-3 SECOND arrival frames (measured).
+The landed law:
+
+- **THE COUNT FLOOR** (bakeAdmission.ARRIVAL_MIN_COUNT = 8): every
+  frame mints at least 8 visible-miss sprites whatever they cost, on
+  top of the ms window while it lasts. Convergence in N/count frames
+  is guaranteed; the floor cannot starve.
+- **A DECLINED VISIBLE MISS SKIPS, NEVER LIVE-PAINTS**: it fades in
+  on its minted frame (propFade already eases it). Bounded pop-in
+  replaces both unbounded absence (the 08-18 deadlock class — dead
+  at the admission layer) and the live-paint spiral. Unthrottled
+  pop-in measured: ZERO frames — fast machines never skip at all;
+  walking reveals a handful of pieces a frame, under the floor.
+- **LONE GRASS TILES JOIN THE SPRITE LANE**: the "cheaper than its
+  sprite's bookkeeping" exemption was true for one frame on a fast
+  machine and ~85ms/frame of the wilds stall on a slow one. Grass
+  first-sight cells ride the same count floor (8/frame); hatches
+  (usable pixels under a moving body) keep the runaway guard; cells
+  with WRONG pixels in hand still draw live (stale art is worse than
+  paying for right art).
+
+**Measured at 20x throttle, same circuit**: world phase 133 → 17-33
+ms; live paints ZERO across the board; grass live 171 → 0; worst
+frame 844 → 228ms; 3-8fps → 7-10fps (de-throttled ≈ 25-45fps moving
+on the field machine, from 3-4). Side bonus: rural scratch lanes
+nearly emptied (forest paints 30 → 0 — lone grass tiles are quads
+now). Parity six PASS + the stable crown-noon marginal; 788/788.
+
+**Still open for part 2** (by the same confession, all paced-honest
+now, no pathology): ground 28 / world 30 / collect 15 / chunks 11 at
+20x mid-arrival — chunk-bake slicing, register build pacing. Tune
+against the NEXT field report.
+
 ### A3 — The dark and the light (shadow layer, lightmap, overreach)
 
 The shadow layer becomes an FBO: shadow quads (sprites, masks, grass

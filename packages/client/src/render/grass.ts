@@ -770,6 +770,10 @@ export class GrassSystem {
    *  sight and hatches ride `urgentMsLeft` (the runaway guard). */
   private bakeMsLeft = 0;
   private urgentMsLeft = 0;
+  /** Law 2's count floor for first-sight cells (mirrors
+   *  bakeAdmission.ARRIVAL_MIN_COUNT): a Mac-tuned ms window admits
+   *  ~1 cell on a slow machine — the floor keeps convergence real. */
+  private firstCellsLeft = 0;
   /** One guaranteed cadence bake per frame keeps the queue draining
    *  even when a single bake overruns the whole budget. */
   private bakeFloorLeft = 0;
@@ -933,6 +937,7 @@ export class GrassSystem {
     this.rowStats.over = 0;
     this.bakeMsLeft = GRASS_BAKE_MS_BUDGET;
     this.urgentMsLeft = GRASS_URGENT_MS;
+    this.firstCellsLeft = 8;
     this.bakeFloorLeft = 1;
     // Sweep the row-sprite ledger toward relief — coldest first, never
     // a sprite this frame drew with. Runs before any draw so the gate
@@ -1836,12 +1841,28 @@ export class GrassSystem {
     liveNowMask: number,
     sig: number,
     wts: WTS,
-    urgent: boolean,
+    urgent: 'first' | 'hatch' | 'cadence',
     iLo: number,
     iHi: number,
   ): RowSprite | null {
-    if (urgent) {
+    if (urgent === 'hatch') {
+      // A hatch has USABLE pixels in hand — declining it degrades to
+      // a live draw of a cell that will settle on its own. The
+      // runaway guard is legitimate here.
       if (this.urgentMsLeft <= 0) return null;
+    } else if (urgent === 'first') {
+      // LAW 2 COMPLETED (bakeAdmission's law): a first-sight cell
+      // rides the ms window while it lasts and a COUNT FLOOR past it
+      // — declined, the cell SKIPS the frame (blades pop in a few
+      // frames later) instead of rebuilding its full blade geometry
+      // live. The live rebuild was the grass half of the measured
+      // 3fps spiral (171 cells a frame at 20x throttle); unbounded
+      // admission measured as 2-3 second arrival frames. The floor
+      // bounds both.
+      if (this.urgentMsLeft <= 0) {
+        if (this.firstCellsLeft <= 0) return null;
+        this.firstCellsLeft--;
+      }
     } else if (this.bakeMsLeft <= 0) {
       // THE CACHE ALWAYS GAINS GROUND: one guaranteed bake per frame
       // keeps the cadence queue draining under any budget.
@@ -1963,7 +1984,7 @@ export class GrassSystem {
     sp.sig = sig;
     sp.txOff = iLo;
     const dt = performance.now() - t0;
-    if (urgent) this.urgentMsLeft -= dt;
+    if (urgent !== 'cadence') this.urgentMsLeft -= dt;
     else this.bakeMsLeft -= dt;
     this.rowStats.bake++;
     return sp;
@@ -2095,7 +2116,12 @@ export class GrassSystem {
     while ((usedMask & (1 << iLo)) === 0) iLo++;
     let iHi = GRASS_CELL_SPAN - 1;
     while ((usedMask & (1 << iHi)) === 0) iHi--;
-    if (iLo === iHi || !this.rowSpritesOn) {
+    // Lone tiles USED to build live ("less than the sprite's
+    // bookkeeping") — true for one frame on a fast machine, and the
+    // measured wilds stall on a slow one: scattered single grass
+    // tiles rebuilt full blade geometry every frame, ~85ms of the
+    // 20x-throttle frame. They ride the sprite lane now.
+    if (!this.rowSpritesOn) {
       for (let i = iLo; i <= iHi; i++) {
         if ((usedMask & (1 << i)) === 0) continue;
         const tx = c0 + i;
@@ -2118,13 +2144,18 @@ export class GrassSystem {
     // under a moving body are wrong THIS frame — the hatch rebakes
     // now, exactly like the calm canvas's escape hatch.
     const hatch = sp !== undefined && sp.canvas !== null && (liveNowMask & ~sp.liveMask) !== 0;
-    if (sp === undefined || sp.sig !== sig || sp.dpr !== dpr || hatch) {
-      sp = this.bakeRowCell(key, lane, ty, c0, s, dpr, usedMask, liveNowMask, sig, wts, true, iLo, iHi) ?? sp;
+    // First sight = NOTHING usable in hand (absent, content-stale, or
+    // wrong grid) — the unconditional lane. A hatch has good pixels
+    // and merely needs them refreshed under a moving body.
+    const missing = sp === undefined || sp.canvas === null || sp.sig !== sig || sp.dpr !== dpr;
+    if (missing || hatch) {
+      sp = this.bakeRowCell(key, lane, ty, c0, s, dpr, usedMask, liveNowMask, sig, wts, missing ? 'first' : 'hatch', iLo, iHi) ?? sp;
     } else if (
-      this.nowMs - sp.bakedAtMs > this.rowCadenceMs + rowCadenceJitter(key, this.rowCadenceMs) ||
-      (sp.canvas !== null && !scaleFresh(s, sp.scale))
+      // !missing implies sp is defined (missing covers undefined).
+      this.nowMs - sp!.bakedAtMs > this.rowCadenceMs + rowCadenceJitter(key, this.rowCadenceMs) ||
+      (sp!.canvas !== null && !scaleFresh(s, sp!.scale))
     ) {
-      sp = this.bakeRowCell(key, lane, ty, c0, s, dpr, usedMask, liveNowMask, sig, wts, false, iLo, iHi) ?? sp;
+      sp = this.bakeRowCell(key, lane, ty, c0, s, dpr, usedMask, liveNowMask, sig, wts, 'cadence', iLo, iHi) ?? sp;
     }
     const usable =
       sp !== undefined &&
@@ -2140,6 +2171,14 @@ export class GrassSystem {
       if (defer) defer.push({ sp: spr, c0, ty });
       else this.blitRowSprite(ctx, m, spr, c0, ty, wts, s);
       liveMask = (spr.liveMask | liveNowMask) & usedMask;
+    } else if (sp === undefined || sp.canvas === null) {
+      // LAW 2's decline: nothing usable in hand and no mint this
+      // frame — the cell skips (blades pop in when its mint lands)
+      // instead of rebuilding live. Cells with WRONG pixels in hand
+      // (sig/scale stale below) still draw live: showing stale art
+      // is worse than paying for right art.
+      this.rowStats.over++;
+      liveMask = 0;
     } else {
       this.rowStats.over++;
       liveMask = usedMask;
