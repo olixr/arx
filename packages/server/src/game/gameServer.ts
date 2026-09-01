@@ -672,6 +672,10 @@ import {
 } from '@arx/shared';
 import { config } from '../config.js';
 import { CHAT_COMMANDS } from './commands/index.js';
+import * as meleeSys from './melee.js';
+import * as procSys from './procs.js';
+import * as statusSys from './statuses.js';
+import * as standingSys from './standing.js';
 import { DEV_COMMANDS } from './commands/devCommands.js';
 import { Session, sanitizeName } from '../net/session.js';
 import type { AccountStore, CharacterRow, CompanionRow, PetRow } from '../db/accounts.js';
@@ -1273,7 +1277,7 @@ interface NpcComp {
  * what makes them unhittable — no NpcComp, no membership in any
  * combat loop, by construction.
  */
-interface ActorComp {
+export interface ActorComp {
   actor: NpcActorDef;
   /** Index into actorSpawnPoints to free on death; -1 = ephemeral. */
   spawnIndex: number;
@@ -2298,7 +2302,7 @@ export interface PlayerComp {
 }
 
 /** Where a working woke, and what it has to work with. */
-interface ProcContext {
+export interface ProcContext {
   x: number;
   y: number;
   /** The foe in the moment, when there was one. */
@@ -2308,7 +2312,7 @@ interface ProcContext {
 }
 
 /** How far a chaining working looks for its next foe, tiles. */
-const CHAIN_PROC_RANGE = 5;
+export const CHAIN_PROC_RANGE = 5;
 /** Most things one reveal may mark — a rich seam must not flood the wire. */
 const REVEAL_PROC_CAP = 24;
 /** Hard ceiling on a reveal's tile scan, whatever radius the def asks for. */
@@ -2410,7 +2414,7 @@ interface PlayerBuff {
 }
 
 /** Buff with the passive-combat defaults filled in. */
-function mkBuff(partial: Partial<PlayerBuff> & { untilTick: number }): PlayerBuff {
+export function mkBuff(partial: Partial<PlayerBuff> & { untilTick: number }): PlayerBuff {
   return {
     speedMult: 1,
     attackSpeedMult: 1,
@@ -2434,11 +2438,11 @@ function mkBuff(partial: Partial<PlayerBuff> & { untilTick: number }): PlayerBuf
  * (crit additive, dmgMult additive-of-excess — two workings that each
  * sharpen the edge are both felt, and neither replaces the other).
  */
-function surgeCritPct(player: PlayerComp): number {
+export function surgeCritPct(player: PlayerComp): number {
   return buffCritPct(player.buffs);
 }
 
-function surgeDmgMult(player: PlayerComp): number {
+export function surgeDmgMult(player: PlayerComp): number {
   return buffDmgMult(player.buffs);
 }
 
@@ -2642,7 +2646,7 @@ function rollDamage(maxHit: number, critBonusPct = 0): { dmg: number; crit: bool
  * hack-and-slash cadence a stream of zero-rolls reads as broken, and
  * reliable chips are what make on-hit haste a rhythm you can trust.
  */
-function rollBasic(maxHit: number, critBonusPct = 0): { dmg: number; crit: boolean } {
+export function rollBasic(maxHit: number, critBonusPct = 0): { dmg: number; crit: boolean } {
   const roll = rollDamage(maxHit, critBonusPct);
   return { dmg: Math.max(1, roll.dmg), crit: roll.crit };
 }
@@ -2689,7 +2693,7 @@ export class GameServer {
    * shipped page authors a window yet, so this map stays empty until
    * wave one).
    */
-  private readonly ccImmunity = new Map<EntityId, Partial<Record<StatusId, number>>>();
+  readonly ccImmunity = new Map<EntityId, Partial<Record<StatusId, number>>>();
   readonly summons = this.ecs.register<SummonComp>();
   /** Tamed companions at heel — the pointer home; rows on PlayerComp.pets. */
   readonly pets = this.ecs.register<PetComp>();
@@ -2885,7 +2889,7 @@ export class GameServer {
   }
 
   /** An NPC's position `ticksAgo` ticks back (clamped to the ring). */
-  private npcPosAt(eid: EntityId, ticksAgo: number): { x: number; y: number; dir: number } | null {
+  npcPosAt(eid: EntityId, ticksAgo: number): { x: number; y: number; dir: number } | null {
     const live = this.positions.get(eid);
     if (!live) return null;
     if (ticksAgo <= 0) return live;
@@ -2897,7 +2901,7 @@ export class GameServer {
   }
 
   /** How many ticks back this player's screen is showing NPCs. */
-  private viewRewindTicks(player: PlayerComp): number {
+  viewRewindTicks(player: PlayerComp): number {
     const rtt = player.session?.viewRttMs ?? 0;
     // v8 clients report their live adaptive interp delay; the constant
     // is only the fallback for a client that hasn't reported yet.
@@ -2910,7 +2914,7 @@ export class GameServer {
   private readonly entityChunk = new Map<EntityId, string>();
 
   /** Depleted nodes waiting to come back. */
-  private readonly respawnQueue: Array<{
+  readonly respawnQueue: Array<{
     at: number;
     /** THE WORLDS APART: the plane whose ground restores. */
     plane: PlaneId;
@@ -2935,7 +2939,7 @@ export class GameServer {
   readonly doorLocks = new Set<string>();
 
   /** Players some NPC is chasing this tick — drives the DETECTED status bit. */
-  private readonly chasedPlayers = new Set<EntityId>();
+  readonly chasedPlayers = new Set<EntityId>();
 
   /** Planted crops by "tx,ty". */
   readonly crops = new Map<string, CropState>();
@@ -13135,7 +13139,7 @@ export class GameServer {
    * roll-less key (pre-ring shop stock, /give, counted bank stacks) —
    * a shelf of seed-0 twins becomes real, distinct dungeons.
    */
-  private mintFreshKeyRoll(): ItemRoll {
+  mintFreshKeyRoll(): ItemRoll {
     const seed = Math.floor(Math.random() * 0x100000000) >>> 0;
     return { rar: 'common', seed, pwr: mintKeyPower('common', seed), uses: keyUsesForTier('common') };
   }
@@ -15874,7 +15878,7 @@ export class GameServer {
     return parts.length > 0 ? parts.slice(0, 3).join(', ') : undefined;
   }
 
-  private sendBuffs(player: PlayerComp): void {
+  sendBuffs(player: PlayerComp): void {
     // THE VISIBLE FIGHT (buildcraft Phase 5): the invisible-buff era
     // ends. Consumables keep their chips; NAMED combat buffs — proc
     // wards and surges, stance riders, the passives' bursts — join
@@ -17974,7 +17978,7 @@ export class GameServer {
    * and applies the species' own resists to whatever rode the blow.
    * Players never reach it — their door, damageNpc, refuses pets.
    */
-  private damagePet(
+  damagePet(
     petEid: EntityId,
     raw: number,
     opts: {
@@ -20267,66 +20271,21 @@ export class GameServer {
     return answerFactionFlag(player.standing.get(parsed.faction) ?? 0, parsed);
   }
 
-  /**
-   * THE ONE DOOR (docs/factions-plan.md): every standing move in the
-   * game lands here — clamp, persist-on-mutation, the quiet ledger
-   * line, and the band-crossing ceremony (the ONLY repevent trigger).
-   * `cross: true` pays the opposition matrix under THE BORDER LAW;
-   * authored deltas (quest rewards, story hooks) omit it and state
-   * both sides themselves. Cross-pay never re-crosses.
-   */
   creditStanding(
     player: PlayerComp,
     factionId: string,
     delta: number,
     opts: { cross?: boolean } = {},
   ): void {
-    const def = factionDef(factionId);
-    const applied = Math.round(delta);
-    if (!def || applied === 0) return;
-    const before = player.standing.get(factionId) ?? 0;
-    const after = Math.max(-STANDING_CLAMP, Math.min(STANDING_CLAMP, before + applied));
-    if (after !== before) {
-      player.standing.set(factionId, after);
-      if (player.characterId > 0) this.accounts.saveStanding(player.characterId, factionId, after);
-      const moved = after - before;
-      // THE DEED IS PUBLIC: every delta prints its quiet ledger line.
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: `${def.name} ${moved > 0 ? '+' : '−'}${Math.abs(moved)} — ${
-          moved > 0 ? 'word of it travels well' : 'the deed is marked'
-        }.`,
-      });
-      const bandAfter = standingBand(after);
-      if (bandAfter !== standingBand(before)) {
-        player.session?.sendJson({
-          t: 'repevent',
-          faction: factionId,
-          name: def.name,
-          band: bandAfter,
-          rose: after > before,
-        });
-        // A band can open (or close) a quest gate or a tree.
-        this.pushQuestAvail(player);
-      }
-      this.pushRep(player);
-    }
-    if (opts.cross) {
-      for (const c of crossDeltas(factionId, applied, before)) {
-        this.creditStanding(player, c.faction, c.delta);
-      }
-    }
+    return standingSys.creditStanding(this, player, factionId, delta, opts);
   }
 
-  /** A systemic deed by name — value read from the live doc, matrix paid. */
   creditDeed(
     player: PlayerComp,
     factionId: string | null,
     deed: 'bountyHonored' | 'tollBroken' | 'assaultEnforcer' | 'slayMember' | 'theftWitnessed',
   ): void {
-    if (factionId === null) return;
-    this.creditStanding(player, factionId, FACTIONS.deeds[deed], { cross: true });
+    return standingSys.creditDeed(this, player, factionId, deed);
   }
 
   /**
@@ -20436,7 +20395,7 @@ export class GameServer {
   }
 
   /** The faction this body POLICES (per the live roster), or null. */
-  private npcEnforcerFid(eid: EntityId): string | null {
+  npcEnforcerFid(eid: EntityId): string | null {
     const actor = this.actors.get(eid);
     if (!actor) return null;
     const fid = factionOfActor(actor.actor.id);
@@ -20466,105 +20425,24 @@ export class GameServer {
     return null;
   }
 
-  /**
-   * THE ROAD BACK (Phase 3): the fine counter behind the `fine` hook.
-   * Quote answers the arithmetic; payment takes the coins and lifts
-   * standing to EXACTLY the doc's fineFloor through the one door —
-   * you buy back the courtroom, never the hearts. Every dial read
-   * live; every no-op answered politely in the clerk's voice.
-   */
-  private runFine(player: PlayerComp, factionId: string, quote: boolean): void {
-    const def = factionDef(factionId);
-    const session = player.session;
-    if (!def || !session) return;
-    const sys = (text: string) => session.sendJson({ t: 'chat', channel: 'system', text });
-    const standing = player.standing.get(factionId) ?? 0;
-    const deficit = FACTIONS.fineFloor - standing;
-    if (deficit <= 0) {
-      sys('Your name needs no buying back here.');
-      return;
-    }
-    const owed = deficit * FACTIONS.finePerPoint;
-    const coins = countItem(player.inventory, 'coins');
-    if (quote) {
-      sys(`The fine stands at ${owed} coins${coins < owed ? ` — you carry ${coins}` : ''}.`);
-      return;
-    }
-    if (coins < owed) {
-      sys(`The fine stands at ${owed} coins. You carry ${coins}. Come back heavier.`);
-      return;
-    }
-    removeItem(player.inventory, 'coins', owed);
-    session.sendJson({ t: 'inv', slots: player.inventory });
-    sys(`${owed} coins, counted twice. The book moves your name to the watched column.`);
-    // Through the one door: the quiet line, the ceremony, the gates
-    // all re-answer — and the deficit lands exactly on the floor.
-    this.creditStanding(player, factionId, deficit);
+  runFine(player: PlayerComp, factionId: string, quote: boolean): void {
+    return standingSys.runFine(this, player, factionId, quote);
   }
 
-  /**
-   * A player broke an enforcer's peace: the assault deed, charged
-   * exactly at the rest→war flip (the calling damage sites gate on
-   * npcAtPeace), so a whole fight is ONE deed — and cycling the
-   * guard's leash to farm outrage only digs the outlaw hole deeper.
-   */
-  private chargeAssault(attackerEid: EntityId, npcEid: EntityId): void {
-    const player = this.players.get(attackerEid);
-    if (!player) return;
-    this.creditDeed(player, this.npcEnforcerFid(npcEid), 'assaultEnforcer');
+  chargeAssault(attackerEid: EntityId, npcEid: EntityId): void {
+    return standingSys.chargeAssault(this, attackerEid, npcEid);
   }
 
-  /**
-   * THE WITNESS LAW (Phase 5): the faction bodies that actually SAW
-   * a spot — inside the doc's radius, with an honest sightline (walls
-   * seal, cover counts — the perception epic's own ray). Civilians
-   * witness too: a grocer watching you rob the smith is a witness;
-   * only bodies with a combat brain can also turn suspicious.
-   */
-  private theftWitnesses(
+  theftWitnesses(
     plane: PlaneId,
     x: number,
     y: number,
     markEid: EntityId,
   ): Array<{ eid: EntityId; fid: string }> {
-    const out: Array<{ eid: EntityId; fid: string }> = [];
-    const r = FACTIONS.theft.witnessRadius;
-    // Eyes live on the theft's OWN plane, and the sight ray runs
-    // through that plane's walls — the Deep Market's keepers judge a
-    // lifted purse by the Undercroft's rock, not by whatever the
-    // surface happens to have built at the same coordinates.
-    const world = this.worldOf(plane);
-    const seen = (opos: { plane: PlaneId; x: number; y: number }): boolean => {
-      if (opos.plane !== plane) return false;
-      const dx = opos.x - x;
-      const dy = opos.y - y;
-      if (dx * dx + dy * dy > r * r) return false;
-      return sightVisibility(sightLine(world, opos.x, opos.y, x, y)) > 0;
-    };
-    for (const [oEid, actor] of this.actors) {
-      if (oEid === markEid) continue;
-      const fid = factionOfActor(actor.actor.id);
-      if (fid === null) continue;
-      const opos = this.positions.get(oEid);
-      if (opos && seen(opos)) out.push({ eid: oEid, fid });
-    }
-    for (const [oEid, npc] of this.npcs) {
-      if (oEid === markEid || this.actors.has(oEid)) continue;
-      const fid = factionOfNpc(npc.def.id);
-      if (fid === null) continue;
-      const opos = this.positions.get(oEid);
-      if (opos && seen(opos)) out.push({ eid: oEid, fid });
-    }
-    return out;
+    return standingSys.theftWitnesses(this, plane, x, y, markEid);
   }
 
-  /**
-   * A witnessed theft: the deed through the one door, then a bounded
-   * alarm — heads turn toward the spot, nobody rallies to a pocket
-   * the way they would to a scream over steel. Returns whether any
-   * faction body saw it (unseen is unswayed).
-   */
-  private chargeTheft(
+  chargeTheft(
     thiefEid: EntityId,
     player: PlayerComp,
     x: number,
@@ -20572,36 +20450,10 @@ export class GameServer {
     witnesses: Array<{ eid: EntityId; fid: string }>,
     chargeFid?: string,
   ): boolean {
-    if (witnesses.length === 0) return false;
-    this.creditDeed(player, chargeFid ?? witnesses[0]!.fid, 'theftWitnessed');
-    let turned = 0;
-    for (const w of witnesses) {
-      if (turned >= 3) break;
-      const npc = this.npcs.get(w.eid);
-      if (!npc || npc.state !== 'idle') continue;
-      npc.state = 'suspicious';
-      npc.alert = Math.max(npc.alert, ALERT_SUS);
-      npc.alertEid = thiefEid;
-      npc.alertX = x;
-      npc.alertY = y;
-      npc.alertSeenTick = this.tickCount;
-      npc.huntUntilTick = this.tickCount + GameServer.SUS_DWELL_TICKS * 2;
-      turned++;
-    }
-    return true;
+    return standingSys.chargeTheft(this, thiefEid, player, x, y, witnesses, chargeFid);
   }
 
-  /**
-   * THE LIGHT FINGERS (Phase 5): the lift itself. The roll is public
-   * arithmetic (theftChance — the sneak hand against the mark),
-   * success skims one row of the mark's authored pockets (coins by
-   * the doc's cap and coin is coin, never stolen; goods carry the
-   * facet to the fence), and failure is a spun mark, a cry, and —
-   * only if a faction body truly saw it — the theftWitnessed deed.
-   * The mark stays wary either way: wariness, not pity, meters the
-   * take.
-   */
-  private pickpocket(
+  pickpocket(
     eid: EntityId,
     player: PlayerComp,
     pos: { plane: PlaneId; x: number; y: number; dir: number },
@@ -20610,63 +20462,7 @@ export class GameServer {
     npos: { plane: PlaneId; x: number; y: number; dir: number },
     sys: (text: string) => void,
   ): void {
-    const rows = actorComp.actor.inventory ?? [];
-    if (rows.length === 0) {
-      sys('Nothing worth lifting.');
-      return;
-    }
-    const now = Date.now();
-    if (now < (player.markWary.get(targetEid) ?? 0)) {
-      sys('Too soon — the mark is wary.');
-      return;
-    }
-    const row = rows[Math.floor(Math.random() * rows.length)]!;
-    // Keys land on the ring — no pack room needed.
-    if (!itemDef(row.item)?.dungeonKey && !hasSpaceFor(player.inventory, row.item)) {
-      sys('Your pack has no room for other folk’s goods.');
-      return;
-    }
-    const markLevel = this.npcs.get(targetEid)?.def.level ?? 10;
-    const chance = theftChance(this.effectiveLevel(player, 'sneak'), markLevel);
-    player.markWary.set(targetEid, now + FACTIONS.theft.retrySec * 1000);
-    if (Math.random() < chance) {
-      const coins = row.item === 'coins';
-      const qty = coins ? Math.min(row.qty, FACTIONS.theft.coinCap) : 1;
-      const def = itemDef(row.item);
-      // THE KEY RING: a lifted key clips onto the ring minted whole
-      // (common — theft never mints rarity, the flood law's border).
-      // The ring takes no stolen facet: a key opens ITS dungeon and
-      // nothing else, so there is nothing to launder through it.
-      if (def?.dungeonKey) {
-        this.addKeyToRing(player, this.mintFreshKeyRoll());
-        sys(`You slip away with: ${def.name}.`);
-        this.grantXp(eid, player, 'sneak', 8 + markLevel);
-        return;
-      }
-      // Skimmed gear wears the shop-counter baseline — theft never
-      // mints rarity (the flood law keeps its border here too).
-      const roll = def && !def.stackable ? { rar: 'common' as const, seed: 0 } : undefined;
-      const got = addItem(player.inventory, row.item, qty, roll, !coins);
-      if (got === 0) return;
-      player.session?.sendJson({ t: 'inv', slots: player.inventory });
-      sys(
-        coins
-          ? `You slip away with ${got} coins.`
-          : `You slip away with: ${def?.name ?? row.item}.`,
-      );
-      this.grantXp(eid, player, 'sneak', 8 + markLevel);
-      return;
-    }
-    // Caught: the crouch is blown, the mark spins and cries.
-    this.revealPlayer(eid, player);
-    npos.dir = Math.atan2(pos.y - npos.y, pos.x - npos.x);
-    const cries = ['Hey — my pocket!', 'Thief! A thief!', 'Hands! I felt hands!'];
-    this.sayAloud(targetEid, actorComp.actor.name, cries[(targetEid + this.tickCount) % cries.length]!);
-    sys('The grab misses.');
-    const witnesses = this.theftWitnesses(pos.plane, pos.x, pos.y, targetEid);
-    const markFid = factionOfActor(actorComp.actor.id);
-    if (markFid !== null) witnesses.unshift({ eid: targetEid, fid: markFid });
-    this.chargeTheft(eid, player, pos.x, pos.y, witnesses);
+    return standingSys.pickpocket(this, eid, player, pos, targetEid, actorComp, npos, sys);
   }
 
   /**
@@ -20720,7 +20516,7 @@ export class GameServer {
    * when its meter fills. The ceremony is told to the doer alone; the
    * codex seats the art on arrival.
    */
-  private grantArt(player: PlayerComp, artId: string): void {
+  grantArt(player: PlayerComp, artId: string): void {
     const tech = techniquePoolDef(artId);
     if (!tech || (!tech.hidden && !tech.secret)) return;
     const flag = artFlag(artId);
@@ -21242,7 +21038,7 @@ export class GameServer {
    * gathering, farming, crafting, and building — the RS boosting feel.
    * Equip requirements, technique unlocks, and max HP stay BASE.
    */
-  private effectiveLevel(player: PlayerComp, skill: SkillId): number {
+  effectiveLevel(player: PlayerComp, skill: SkillId): number {
     // Old Campaigner: the veteran fights every weapon school a little
     // above their letter — the four schools only, never trades.
     const schooled =
@@ -21278,22 +21074,12 @@ export class GameServer {
 
   // ----------------------------------------------------------- combat
 
-  private equippedWeapon(player: PlayerComp) {
-    const worn = player.equipment.weapon;
-    if (!worn) return null;
-    const def = itemDef(worn.id);
-    if (!def?.weapon) return null;
-    // Rolled weapons carry rarity in the edge: derive the instance's
-    // damage (fractional — every maxHit site rounds downstream). Weapons
-    // not yet migrated into the gear schema pass through untouched.
-    const rolled = rolledStats(worn.id, worn.roll);
-    const weapon =
-      rolled?.damage !== undefined ? { ...def.weapon, damage: rolled.damage } : def.weapon;
-    return { id: worn.id, weapon };
+  equippedWeapon(player: PlayerComp) {
+    return meleeSys.equippedWeapon(this, player);
   }
 
   /** The offhand WEAPON, when dual wielding — null for shields/tomes/empty. */
-  private offhandWeapon(player: PlayerComp) {
+  offhandWeapon(player: PlayerComp) {
     const worn = player.equipment.offhand;
     if (!worn) return null;
     const def = itemDef(worn.id);
@@ -21304,24 +21090,11 @@ export class GameServer {
     return { id: worn.id, weapon };
   }
 
-  /**
-   * THE SPOKEN BEAT: tell the swinging session what stage just played
-   * and how long its string stays alive. Own-session only, one tiny
-   * message per basic — the combo stops being a server secret.
-   * Stamped AFTER the lane sets recovery + grace, so `grace` is the
-   * honest remaining window from this tick.
-   */
-  private speakCombo(player: PlayerComp, stage: number, len = COMBO_STAGES): void {
-    player.session?.sendJson({
-      t: 'combo',
-      stage,
-      len,
-      grace: Math.max(0, player.combo.graceUntilTick - this.tickCount),
-      run: player.combo.run,
-    });
+  speakCombo(player: PlayerComp, stage: number, len = COMBO_STAGES): void {
+    return meleeSys.speakCombo(this, player, stage, len);
   }
 
-  private tryPlayerAttack(
+  tryPlayerAttack(
     eid: EntityId,
     player: PlayerComp,
     aim: number,
@@ -21329,320 +21102,30 @@ export class GameServer {
     tapped = false,
     pressLagTicks = 0,
   ): void {
-    if (player.attackCooldown > 0) return;
-    // FAIR HANDS: a held body (a riding stagger) swings nothing
-    // (inline — the slate-test law).
-    if (this.statuses?.get(eid)?.some((s) => (s.stunLeft ?? 0) > 0)) return;
-    const equipped = this.equippedWeapon(player);
-    if (process.env.COMBAT_DEBUG) {
-      console.log(`[combat] attack eid=${eid} weapon=${equipped?.id ?? 'none'} style=${equipped?.weapon.style ?? '-'}`);
-    }
-    if (!equipped) return;
-    const { weapon } = equipped;
-    // THE MOVESET BOOK: the weapon's page IS the lane. Archery routes
-    // through tickBowDraw before this door ever sees it, and a style
-    // with no page pays nothing and fires nothing — checked BEFORE the
-    // cooldown/reveal pay.
-    const moveset = movesetFor(weapon, equipped.id);
-    if (!moveset) {
-      if (process.env.COMBAT_DEBUG) {
-        console.log(`[combat] no moveset page for style=${weapon.style}`);
-      }
-      return;
-    }
-
-    // THE SWING CHANNEL (buff forge): worn gear × riding buffs, band-
-    // clamped — the ONE swing multiplier, paid here and mirrored by
-    // the client's prediction lanes through the same shared math. The
-    // bow keeps its own draw clock (a deliberate Phase 5 door).
-    const swing = swingMult(
-      (player.gear.attackSpeedMult ?? 1) * statusSwingFactor(this.statuses?.get(eid)),
-      player.buffs,
-    );
-    player.attackCooldown = swingCooldown(weapon.cooldownTicks, swing);
-    player.lastCombatAt = Date.now();
-    // Backstab eligibility is judged at the moment of the swing — capture
-    // stealth BEFORE the attack reveals us.
-    const wasHidden = player.hidden;
-    this.revealPlayer(eid, player);
-
-    const level = this.effectiveLevel(player, weapon.style);
-    // School-tuned gear (Blazing Edge etc.) amplifies bolts of its element.
-    const elementMult =
-      weapon.style === 'arx' && weapon.element
-        ? (player.gear.elementDmgMult[weapon.element] ?? 1)
-        : 1;
-    // THE VERSATILE GRIP: an empty off fist takes the war grip — both
-    // hands on the haft, the d6→d8 step. Resolved live at this door,
-    // never stored; a back-mounted quiver leaves the grip free.
-    const offSlot = player.equipment.offhand;
-    const warGrip =
-      weapon.style === 'polearm' && (!offSlot || itemDef(offSlot.id)?.backMounted === true);
-    const maxHit = Math.max(
-      1,
-      Math.round(
-        weapon.damage *
-          powerMultFn(level, PLAYER_POWER_PER_LEVEL) *
-          player.gear.styleDmgMult[weapon.style] *
-          elementMult *
-          (warGrip ? POLEARM_WAR_GRIP_MULT + player.perks.warGripBonus : 1),
-      ),
-    );
-
-    // One data-driven door for every page: advance the ONE track, read
-    // the beat's strike (a rhythm TAP takes the branch where one is
-    // authored), pay its recovery, speak it, pose it, and land it on
-    // the choreography's impact frame.
-    const len = moveset.string.length;
-    const stage = advanceCombo(player.combo, equipped.id, this.tickCount, len);
-    const beat = moveset.string[stage]!;
-    const strike = tapped && beat.alt ? beat.alt : beat;
-    const finisher = stage === len - 1;
-    // The strike's recovery pays through the swing channel too, with
-    // THE CHOREOGRAPHY FLOOR: haste never starts the next swing before
-    // this one's pose hold ends (the client mirror does the same math).
-    const swingClock = STRIKE_CLOCKS[weapon.style as keyof typeof STRIKE_CLOCKS];
-    const holdFloor = swingClock
-      ? finisher
-        ? swingClock.finisher.holdTicks
-        : swingClock.swing.holdTicks
-      : 1;
-    player.attackCooldown = swingCooldown(
-      Math.round(weapon.cooldownTicks * strike.recoveryMult),
-      swing,
-      holdFloor,
-    );
-    player.combo.graceUntilTick = this.tickCount + player.attackCooldown + moveset.graceTicks;
-    this.speakCombo(player, stage, len);
-    // THE GUARD SWEEP: a foe inside the pole's reach turns a wand beat
-    // into a STRIKE — the moulinet the staff choreography always knew,
-    // not a bolt spawned inside the enemy's chest. Same beat, same
-    // damage, same rhythm stage; the delivery answers the range, and
-    // the pose speaks steel so the pole choreography plays.
-    const pos = this.positions.must(eid);
-    // THE SWEEP JUDGES WHAT YOU SAW: the doorstep is measured against
-    // the foe positions the shooter's screen was showing at the press
-    // (the same rewind law melee hit tests ride) — the client's guard
-    // mirror reads its interpolated view, which IS that rewound state,
-    // so bolt-vs-pole stops flickering against a strafing foe.
-    const guard =
-      moveset.style === 'arx' &&
-      this.foeWithin(pos, GUARD_SWEEP_RANGE, this.viewRewindTicks(player));
-    // THE STRIKE CLOCK + THE POSE ALTERNATION LAW: any string length
-    // rides the existing pose bytes, adjacent beats never repeating
-    // (a guard beat between bolts still flips the byte — steel vs
-    // Cast — so the anim clock stays honest).
-    const clock = STRIKE_CLOCKS[moveset.style][finisher ? 'finisher' : 'swing'];
-    this.setPose(
-      eid,
-      strikePose(guard ? 'steel' : moveset.poseDialect, stage, len),
-      clock.holdTicks,
-    );
-    // TEMPO: rhythm held past one full string quickens the hand — the
-    // windup shaves a tick. Speed, never damage (the cadence contract).
-    const windup = guard
-      ? GUARD_SWEEP_WINDUP
-      : Math.max(0, strike.windupTicks - (player.combo.run > len ? 1 : 0));
-
-    if (moveset.style === 'arx' && !guard) {
-      // Wand rhythm: bolt → bolt → orb. The bolt spawns at the press —
-      // its flight is already the honest travel (windup 0 by authoring).
-      const proj = this.ecs.create();
-      this.kinds.set(proj, EntityKind.Projectile);
-      this.positions.set(proj, { x: pos.x, y: pos.y, dir: aim, plane: pos.plane });
-      this.projectiles.set(proj, {
-        ownerEid: eid,
-        style: 'arx',
-        maxHit: Math.round(maxHit * strike.dmgMult),
-        dirX: Math.cos(aim),
-        dirY: Math.sin(aim),
-        speed: (weapon.projectileSpeed ?? 12) * (strike.speedMult ?? 1),
-        distLeft: weapon.range,
-        basic: true,
-        spawnSeq: seq,
-        element: weapon.element,
-        heavy: finisher || undefined,
-        splashRadius: strike.splash,
-        // Ember Bolt passive: the payoff beat sets things burning.
-        status:
-          finisher && this.hasPassive(player, 'ember_bolt')
-            ? { status: 'burn', power: 1, durationTicks: 60 }
-            : undefined,
-      });
-      // THE SHOT REMEMBERS ITS PRESS: fly the wire's worth of ticks
-      // now, through the same step door — the bolt is born where the
-      // shooter's tracer already is.
-      this.preFlyProjectile(proj, pressLagTicks);
-      return;
-    }
-
-    // Steel lanes — THE HONEST SWING: the blow is committed at the
-    // press (cooldown, pose, the spoken beat) and LANDS at the impact
-    // frame. Every number is captured now: the promise made is the
-    // promise kept, a mid-windup swap changes nothing.
-    const strikeData = {
-      at: this.tickCount + windup,
-      pressTick: this.tickCount,
-      aim,
-      // Follow-Through rides only the finisher — the rhythm's payoff.
-      maxHit: finisher
-        ? Math.round(maxHit * strike.dmgMult * player.perks.finisherBonusMult)
-        : Math.round(maxHit * strike.dmgMult),
-      kbMult: guard ? GUARD_SWEEP_KNOCKBACK : strike.kbMult,
-      // The pole's turn clears the doorstep; steel beats read the page.
-      sweepAll: guard ? true : strike.sweepAll,
-      wasHidden,
-      backstabMult: weapon.backstabMult ?? BACKSTAB_MULT_DEFAULT,
-      xpStyle: moveset.style as SkillId,
-      arcHalf: guard
-        ? TWOHAND_ARC_HALF
-        : (strike.arcHalf ?? (moveset.style === 'twohand' ? TWOHAND_ARC_HALF : Math.PI / 3)),
-      // Farcleaver: the edge arrives before the argument.
-      range: guard
-        ? GUARD_SWEEP_RANGE
-        : weapon.range +
-          (moveset.style === 'twohand'
-            ? player.perks.greatReach
-            : moveset.style === 'polearm'
-              ? player.perks.poleReach
-              : 0),
-      deed: moveset.style === 'twohand',
-      // THE READING EDGE: the beat's consume clause is captured at
-      // the press like every other number — the promise made is the
-      // promise kept. The guard sweep is a doorstep clearing, not a
-      // page beat, and spends nothing.
-      consumes: guard ? undefined : strike.consumes,
-    };
-    if (windup === 0) this.landStrike(eid, player, strikeData);
-    else player.pendingStrike = strikeData;
-    // Dual wield: the off blade echoes every mainhand swing a
-    // half-beat later. Scheduled from the press, so the echo still
-    // trails the main IMPACT by the rig's one-two beat.
-    if (moveset.style === 'onehand' && this.offhandWeapon(player)) {
-      // Ambidexter tightens the echo's schedule.
-      player.offhandEchoTicks = player.perks.offhandDelayTicks;
-      player.offhandEchoAim = aim;
-      // THE WEAVE: the echo breathes with the string — soft on the
-      // chips, heavy on the payoff — normalized by the page's own
-      // average, so the echo's cycle output is EXACTLY what the flat
-      // echo paid (Σ dmgMult/avg = len, by construction).
-      const avg = moveset.string.reduce((a, b) => a + b.dmgMult, 0) / len;
-      player.offhandEchoMult = strike.dmgMult / avg;
-    }
+    return meleeSys.tryPlayerAttack(this, eid, player, aim, seq, tapped, pressLagTicks);
   }
 
-  /**
-   * A living foe (never a companion) inside `range` of this body.
-   * `rewindTicks` > 0 measures against the foe's REWOUND position —
-   * what the asking player's screen showed — via the same history
-   * ring melee lag comp reads.
-   */
-  private foeWithin(pos: { plane: PlaneId; x: number; y: number }, range: number, rewindTicks = 0): boolean {
-    let found = false;
-    this.forEachNpcNear(pos.plane, pos.x, pos.y, range, (npcEid, npc) => {
-      if (this.pets.has(npcEid) || this.companions.has(npcEid)) return;
-      const hp = this.healths.get(npcEid);
-      if (!hp || hp.hp <= 0) return;
-      const npos = this.npcPosAt(npcEid, rewindTicks);
-      if (!npos) return;
-      if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius <= range) {
-        found = true;
-        return true;
-      }
-    });
-    return found;
+  foeWithin(pos: { plane: PlaneId; x: number; y: number }, range: number, rewindTicks = 0): boolean {
+    return meleeSys.foeWithin(this, pos, range, rewindTicks);
   }
 
-  /** The impact frame arriving: a committed strike lands. */
-  private landStrike(
+  landStrike(
     eid: EntityId,
     player: PlayerComp,
     s: NonNullable<PlayerComp['pendingStrike']>,
   ): void {
-    const felled = this.meleeSwing(
-      eid,
-      player,
-      s.aim,
-      s.range,
-      s.maxHit,
-      s.kbMult,
-      s.sweepAll,
-      s.wasHidden,
-      s.backstabMult,
-      s.xpStyle,
-      s.arcHalf,
-      // Lag comp: the world the attacker saw at the PRESS — the base
-      // rewind plus however long this blow has been in flight.
-      this.tickCount - s.pressTick,
-      s.consumes ? { ...s.consumes, consume: true } : undefined,
-    );
-    // THE UNWRITTEN PAGE: three felled by ONE turn of the great
-    // steel is the whirlwind's deed — the crowd taught the turning.
-    if (s.deed && felled >= 3) this.grantArt(player, 'whirling_ruin');
+    return meleeSys.landStrike(this, eid, player, s);
   }
 
-  /** The per-tick landing door for blows in flight. */
-  private resolvePendingStrike(eid: EntityId, player: PlayerComp): void {
-    const s = player.pendingStrike;
-    if (!s || this.tickCount < s.at) return;
-    player.pendingStrike = null;
-    this.landStrike(eid, player, s);
+  resolvePendingStrike(eid: EntityId, player: PlayerComp): void {
+    return meleeSys.resolvePendingStrike(this, eid, player);
   }
 
-  /**
-   * The offhand echo: a second, lighter cut from the off blade. Damage
-   * scales by offhandDamageFactor(dualwield) — clumsy at discovery,
-   * near-mirrored at mastery — and every landed echo trains dualwield
-   * (that's the ONLY way it trains). The base scaling still rides
-   * onehand: it is a one-handed strike, thrown by the weaker hand.
-   */
-  private offhandStrike(eid: EntityId, player: PlayerComp, aim: number): void {
-    const off = this.offhandWeapon(player);
-    if (!off) return;
-    const dwLevel = levelForXp(player.skills.dualwield ?? 0);
-    const level = this.effectiveLevel(player, 'onehand');
-    // Twin Tempo lifts the echo — the never-mirrors cap holds.
-    const trained = Math.min(0.85, offhandDamageFactor(dwLevel) + player.perks.offhandFactorBonus);
-    // THE MIRRORED HAND: while the stance rides, the echo lands at the
-    // buff's weight when that beats the trained factor — parity at the
-    // stance's honed peak, never past it (the off hand never OUT-hits
-    // the main; the passive curve's law stands untouched).
-    let stanceWeight = 0;
-    for (const b of player.buffs) {
-      if (b.untilTick > this.tickCount) stanceWeight = Math.max(stanceWeight, b.offhandWeight);
-    }
-    const maxHit = Math.max(
-      1,
-      Math.round(
-        off.weapon.damage *
-          powerMultFn(level, PLAYER_POWER_PER_LEVEL) *
-          player.gear.styleDmgMult.onehand *
-          Math.max(trained, Math.min(1, stanceWeight)) *
-          // THE WEAVE: the off blade breathes with the string it
-          // mirrors — soft on the chips, heavy on the payoff beat.
-          player.offhandEchoMult,
-      ),
-    );
-    // NO pose here: the echo is pure client choreography (the rig's
-    // one-two law animates the off blade inside the MAIN swing's
-    // pose beat). Re-posing mid-swing restarted the main hand's
-    // animation clock — the client played a second mainhand cut over
-    // the first, and the off blade never moved: the "flailing" bug.
-    this.meleeSwing(
-      eid,
-      player,
-      aim,
-      off.weapon.range,
-      maxHit,
-      0.6,
-      false,
-      false,
-      off.weapon.backstabMult ?? BACKSTAB_MULT_DEFAULT,
-      'dualwield',
-    );
+  offhandStrike(eid: EntityId, player: PlayerComp, aim: number): void {
+    return meleeSys.offhandStrike(this, eid, player, aim);
   }
 
-  private meleeSwing(
+  meleeSwing(
     eid: EntityId,
     player: PlayerComp,
     aim: number,
@@ -21661,145 +21144,18 @@ export class GameServer {
     vs?: { status: StatusId; mult: number; consume?: boolean },
     /** @returns bodies FELLED by this one swing (the whirlwind's deed). */
   ): number {
-    const pos = this.positions.must(eid);
-    // Every swing sweeps the scenery too: destructible clutter in the
-    // arc bursts regardless of what the blade finds to bleed — through
-    // the SAME cone the blade cuts (a greatweapon's wide reap clears
-    // wide scenery; this used to hardcode the sword's ±60°).
-    this.smashPropsInArc(pos, aim, range, arcHalf);
-    // Strike effects live on the blade that lands — the echo cut reads
-    // the offhand instance, exactly like coats.
-    const struckWeapon =
-      xpStyle === 'dualwield' ? player.equipment.offhand : player.equipment.weapon;
-    if (struckWeapon) {
-      backstabMult += weaponStrikeEffects(struckWeapon.id, struckWeapon.roll).backstabBonus;
-    }
-    // Opportunist: the turned back pays the practiced hand more.
-    backstabMult += player.perks.backstabBonus;
-    const critPct = player.gear.critPct + surgeCritPct(player);
-    maxHit = Math.max(1, Math.round(maxHit * surgeDmgMult(player)));
-    // LAG COMP: test the swing against the world the ATTACKER saw —
-    // NPC positions rewound by their view delay (see npcHist), plus
-    // the windup this blow spent in flight since its press. Damage
-    // and knockback still resolve on the live entity.
-    const rewind = this.viewRewindTicks(player) + extraRewind;
-    // A strike out of full stealth backstabs from any angle; otherwise a
-    // sneaking attacker must be inside the cone behind the target's facing.
-    const backstabs = (npos: { x: number; y: number; dir: number }): boolean =>
-      wasHidden || (player.sneaking && isBehind(pos.x, pos.y, npos.x, npos.y, npos.dir));
-    let bestTarget: EntityId | null = null;
-    let bestDist = Infinity;
-    const inArc: EntityId[] = [];
-    this.forEachNpcNear(pos.plane, pos.x, pos.y, range, (npcEid, npc) => {
-      // A companion is not a target — the blade picks the mob behind it.
-      if (this.pets.has(npcEid) || this.companions.has(npcEid)) return;
-      const npos = this.npcPosAt(npcEid, rewind);
-      if (!npos) return;
-      const dx = npos.x - pos.x;
-      const dy = npos.y - pos.y;
-      const dist = Math.hypot(dx, dy) - npc.def.radius;
-      if (dist > range) return;
-      // Within the weapon's sweep arc of the aim direction; anything
-      // practically touching the player is hittable regardless of aim
-      // (feel > sim).
-      const angleTo = Math.atan2(dy, dx);
-      let diff = Math.abs(angleTo - aim) % (Math.PI * 2);
-      if (diff > Math.PI) diff = Math.PI * 2 - diff;
-      if (diff > arcHalf && dist > 0.9) return;
-      inArc.push(npcEid);
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestTarget = npcEid;
-      }
-    });
-    if (sweepAll) {
-      // The finisher clears the crowd — everyone in the arc eats it.
-      let felled = 0;
-      for (const npcEid of inArc) {
-        const backstab = backstabs(this.npcPosAt(npcEid, rewind) ?? this.positions.must(npcEid));
-        let { dmg, crit } = rollBasic(backstab ? Math.round(maxHit * backstabMult) : maxHit, critPct);
-        // Executioner: greatblows bite deeper into the nearly-felled.
-        if (dmg > 0 && xpStyle === 'twohand' && player.perks.greatExecute > 0) {
-          const hp = this.healths.get(npcEid);
-          if (hp && hp.hp / hp.maxHp < 0.25) dmg = Math.round(dmg * (1 + player.perks.greatExecute));
-        }
-        this.damageNpc(npcEid, dmg, eid, xpStyle, {
-          crit,
-          knockbackMult,
-          basic: true,
-          backstab,
-          offhand: xpStyle === 'dualwield',
-          vs,
-        });
-        const after = this.healths.get(npcEid);
-        if (!after || after.hp <= 0) felled++;
-      }
-      return felled;
-    }
-    if (process.env.COMBAT_DEBUG) {
-      let nearest = Infinity;
-      for (const [npcEid] of this.npcs) {
-        const npos = this.positions.get(npcEid);
-        if (npos) nearest = Math.min(nearest, Math.hypot(npos.x - pos.x, npos.y - pos.y));
-      }
-      console.log(
-        `[combat] swing eid=${eid} at(${pos.x.toFixed(1)},${pos.y.toFixed(1)}) aim=${aim.toFixed(2)} ` +
-          `target=${bestTarget} nearestNpc=${nearest.toFixed(2)}`,
-      );
-    }
-    if (bestTarget !== null) {
-      const backstab = backstabs(this.npcPosAt(bestTarget, rewind) ?? this.positions.must(bestTarget));
-      const { dmg, crit } = rollBasic(backstab ? Math.round(maxHit * backstabMult) : maxHit, critPct);
-      this.damageNpc(bestTarget, dmg, eid, xpStyle, {
-        crit,
-        knockbackMult,
-        basic: true,
-        backstab,
-        offhand: xpStyle === 'dualwield',
-        vs,
-      });
-      const after = this.healths.get(bestTarget);
-      if (!after || after.hp <= 0) return 1;
-    }
-    return 0;
+    return meleeSys.meleeSwing(this, eid, player, aim, range, maxHit, knockbackMult, sweepAll, wasHidden, backstabMult, xpStyle, arcHalf, extraRewind, vs);
   }
 
   // ---------------------------------------------------- smashable props
 
-  /**
-   * Sweep the strike arc for destructible clutter — same cone law as
-   * the NPC sweep (the caller's arcHalf of aim, touch range always
-   * counts) so a swing that would cut a goblin also bursts the barrel
-   * beside it. Every prop in the arc goes at once: clearing a room is
-   * the fantasy.
-   */
-  private smashPropsInArc(
+  smashPropsInArc(
     pos: { plane: PlaneId; x: number; y: number },
     aim: number,
     range: number,
     arcHalf = Math.PI / 3,
   ): void {
-    const world = this.worldOf(pos.plane);
-    const r = Math.ceil(range + 1);
-    const ptx = Math.floor(pos.x);
-    const pty = Math.floor(pos.y);
-    for (let ty = pty - r; ty <= pty + r; ty++) {
-      for (let tx = ptx - r; tx <= ptx + r; tx++) {
-        const g = world.groundAt(tx, ty);
-        if (g === undefined) continue;
-        const info = destructibleInfo(g);
-        if (!info) continue;
-        const dx = tx + 0.5 - pos.x;
-        const dy = ty + 0.5 - pos.y;
-        const dist = Math.hypot(dx, dy) - 0.35;
-        if (dist > range) continue;
-        const angleTo = Math.atan2(dy, dx);
-        let diff = Math.abs(angleTo - aim) % (Math.PI * 2);
-        if (diff > Math.PI) diff = Math.PI * 2 - diff;
-        if (diff > arcHalf && dist > 0.9) continue;
-        this.hitProp(pos.plane, tx, ty, g as Tile, info, angleTo);
-      }
-    }
+    return meleeSys.smashPropsInArc(this, pos, aim, range, arcHalf);
   }
 
   /**
@@ -21807,16 +21163,9 @@ export class GameServer {
    * door locks; any tile change at the coord wipes the entry (see
    * setWorldTile) — a respawned or freshly built prop is fresh wood.
    */
-  private readonly propDamage = new Map<string, number>();
+  readonly propDamage = new Map<string, number>();
 
-  /**
-   * Land one blow on a destructible prop. Durability is counted in
-   * HITS, not damage — bulk reads as bulk at every level. A blow that
-   * leaves wood standing broadcasts the same 'smash' fx with the
-   * remaining fraction in `radius` (the client shudders the prop and
-   * spits chips); the last blow runs the full burst.
-   */
-  private hitProp(
+  hitProp(
     plane: PlaneId,
     tx: number,
     ty: number,
@@ -21824,35 +21173,10 @@ export class GameServer {
     info: DestructibleInfo,
     dir: number,
   ): void {
-    const key = `${plane}|${tx},${ty}`;
-    const left = (this.propDamage.get(key) ?? info.hits) - 1;
-    if (left > 0) {
-      this.propDamage.set(key, left);
-      this.broadcastFx(plane, {
-        t: 'fx',
-        kind: 'smash',
-        x: tx + 0.5,
-        y: ty + 0.5,
-        radius: left / info.hits,
-        dir,
-        id: info.kind,
-      });
-      return;
-    }
-    this.propDamage.delete(key);
-    this.smashProp(plane, tx, ty, tile, info, dir);
+    return meleeSys.hitProp(this, plane, tx, ty, tile, info, dir);
   }
 
-  /**
-   * Burst a destructible prop. The tile becomes the floor beneath it
-   * (the shared nearestFloorTile law — exactly the underlay the client
-   * already painted, so nothing pops), collision and pathing follow
-   * the ordinary patch, and the respawn queue stands the prop back up
-   * after its absence has been enjoyed. The debris itself is pure
-   * client-side theatre keyed off ONE broadcast fx — the server never
-   * simulates a splinter.
-   */
-  private smashProp(
+  smashProp(
     plane: PlaneId,
     tx: number,
     ty: number,
@@ -21860,40 +21184,7 @@ export class GameServer {
     info: DestructibleInfo,
     dir: number,
   ): void {
-    // Fx FIRST: it carries the impact heading + kind, and must land
-    // before the tile patch that erases the prop.
-    this.broadcastFx(plane, {
-      t: 'fx',
-      kind: 'smash',
-      x: tx + 0.5,
-      y: ty + 0.5,
-      radius: 0, // nothing left standing — the burst
-      dir,
-      id: info.kind,
-    });
-    // A player-built prop remembers its true ground; authored clutter
-    // reveals the same floor the client bakes beneath it.
-    const world = this.worldOf(plane);
-    const built = world.builtAt(tx, ty);
-    const floor =
-      built && !TILE_DEFS[built.prevTile as Tile]?.solid
-        ? (built.prevTile as Tile)
-        : nearestFloorTile((x, y) => world.groundAt(x, y), tx, ty);
-    this.setWorldTile(plane, tx, ty, floor);
-    // THE CLEARED HALL STAYS CLEARED: inside a live delve nothing
-    // stands back up — a smashed cracked wall stays open (never
-    // resealing a hidden room mid-run), a scattered bone pile stays
-    // scattered. The re-cut on the next key turn is the reset.
-    if (!isRiftPlane(plane)) {
-      this.respawnQueue.push({
-        at: Date.now() + info.respawnSec * 1000,
-        plane,
-        tx,
-        ty,
-        tile,
-        over: floor,
-      });
-    }
+    return meleeSys.smashProp(this, plane, tx, ty, tile, info, dir);
   }
 
   // --------------------------------------------------------- abilities
@@ -22014,7 +21305,7 @@ export class GameServer {
     return out;
   }
 
-  private hasPassive(player: PlayerComp, id: PassiveId): boolean {
+  hasPassive(player: PlayerComp, id: PassiveId): boolean {
     for (const [slot, worn] of Object.entries(player.equipment)) {
       if (isStowedSlot(slot as EquipSlot)) continue;
       if (itemDef(worn?.id ?? '')?.passive === id) return true;
@@ -22130,14 +21421,14 @@ export class GameServer {
   }
 
   /** Attacking or taking damage drops stealth and locks re-hiding briefly. */
-  private revealPlayer(eid: EntityId, player: PlayerComp): void {
+  revealPlayer(eid: EntityId, player: PlayerComp): void {
     player.revealLockUntilTick = this.tickCount + SNEAK_REVEAL_LOCK_TICKS;
     player.sneakStillTicks = 0;
     if (player.hidden) this.setHidden(eid, player, false);
   }
 
   /** Combat FX go to every session close enough to possibly see them. */
-  private broadcastFx(plane: PlaneId, fx: S2CFx): void {
+  broadcastFx(plane: PlaneId, fx: S2CFx): void {
     // Stringify ONCE, fan the same bytes: a busy fight's fx used to
     // pay one JSON.stringify per fx per session for identical output
     // (a casting NPC alone emits a charge every 10 ticks).
@@ -23924,474 +23215,32 @@ export class GameServer {
    * Resists shrug any lane off; weaknesses double it; a CC page with
    * an authored immunity window is refused while the window holds.
    */
-  /**
-   * A PLAYER'S OWN HAND laying a page — the door that rings THE
-   * ANSWERED ECHO. The apply door itself (applyStatusToNpc) answers
-   * whether the page truly LANDED (a resist, a ward, or an immunity
-   * window is a refusal; a spark spent into a reaction is a landing —
-   * the page answered, in fire instead of residence), and a true
-   * landing offers the source's stateApplied workings their moment,
-   * status-matched HERE so the arbitration stays pure. The echo fires
-   * AFTER the door returns — never mid-apply, so a woken working that
-   * lays its own pages can never alias the list being written.
-   *
-   * Who rings it is a routing law, not a flag: the player-hand sites
-   * (ability statuses, coats, strike edges, buff edges, house words)
-   * call THIS door; pets, NPC self-pages, reaction plagues, and proc
-   * actions call applyStatusToNpc directly and never echo — PROCS
-   * NEVER BEGET PROCS and THE METER IS THE FIGHTER'S OWN HAND are
-   * facts about the call graph, with the procDepth guard as the
-   * structural belt-and-braces underneath.
-   */
   layStatusOnNpc(
     npcEid: EntityId,
     apply: StatusApply,
     sourceEid: EntityId,
     style: SkillId,
   ): void {
-    if (!this.applyStatusToNpc(npcEid, apply, sourceEid, style)) return;
-    if ((this.procDepth ?? 0) > 0) return;
-    const src = this.players?.get(sourceEid);
-    if (!src) return;
-    let ctx: ProcContext | undefined;
-    const offer = (p: ProcEffect): void => {
-      if (p.trigger.on !== 'stateApplied' || p.trigger.status !== apply.status) return;
-      if (!ctx) {
-        const pos = this.positions?.get(sourceEid);
-        ctx = { x: pos?.x ?? 0, y: pos?.y ?? 0, targetEid: npcEid, style };
-      }
-      this.offerProc(sourceEid, src, p, 'stateApplied', ctx);
-    };
-    for (const p of src.gear?.procs ?? []) offer(p);
-    for (const p of src.callingProcs ?? []) offer(p);
+    return statusSys.layStatusOnNpc(this, npcEid, apply, sourceEid, style);
   }
 
-  private applyStatusToNpc(
+  applyStatusToNpc(
     npcEid: EntityId,
     apply: StatusApply,
     sourceEid: EntityId,
     style: SkillId,
     fromPet = false,
   ): boolean {
-    const npc = this.npcs.get(npcEid);
-    if (!npc) return false;
-    // The ward keeps venom off the blade's target entirely — no
-    // status decals, no reaction fuel, nothing to detonate later.
-    if (this.actors.get(npcEid)?.actor.protection === 'invulnerable') return false;
-    if (npc.def.resist?.includes(apply.status)) {
-      const pos = this.positions.get(npcEid);
-      if (pos) {
-        this.broadcastFx(pos.plane, {
-          t: 'fx',
-          kind: 'reaction',
-          x: pos.x,
-          y: pos.y,
-          radius: 0,
-          color: '#9a94a8',
-          text: 'Resist',
-        });
-      }
-      return false;
-    }
-    let power = apply.power;
-    let duration = apply.durationTicks;
-    if (npc.def.weak?.includes(apply.status)) {
-      power *= 2;
-      duration = Math.round(duration * 1.5);
-    }
-    // THE BOOK OF STATES: the door reads the page and dispatches on
-    // its stacking model — the lanes became data. The six shipped
-    // pages transcribe the exact pre-book behavior (statusLanes pins
-    // it); the count model is the composable workhorse waiting for
-    // wave-one pages.
-    const page = pageOf(apply.status);
-    // A root's hold IS its status: the page's lock bounds the clock
-    // (weakness stretches inside the bound, never past it).
-    if (page.cc?.kind === 'root') duration = Math.min(duration, page.cc.maxTicks);
-    // FAIR HANDS: a CC page with an authored immunity window is
-    // refused while the window holds (no shipped page authors one, so
-    // this guard costs a field read and passes — and touches no state,
-    // the slate-test law). Expired stamps clean at the check.
-    if (page.cc && page.cc.immunityTicks > 0) {
-      const rec = this.ccImmunity.get(npcEid);
-      const until = rec?.[page.id];
-      if (until !== undefined) {
-        if (this.tickCount < until) return false;
-        delete rec![page.id];
-      }
-    }
-    const list = this.statuses.get(npcEid) ?? [];
-
-    // -------------------------------------- the perSource model (wounds)
-    if (page.stacking.model === 'perSource') {
-      const own = list.find(
-        (s) =>
-          s.id === apply.status && s.sourceEid === sourceEid && (s.fromPet ?? false) === fromPet,
-      );
-      if (own) {
-        // The same hand re-opening its own wound: refresh, never stack.
-        refreshMax(own, power, duration);
-      } else {
-        const riding = list.filter((s) => s.id === apply.status);
-        if (riding.length >= page.stacking.max) {
-          // The body is at the cap: the new wound folds into the
-          // weakest riding entry, so the blow still counts for
-          // something and no source's credit is silently dropped.
-          refreshMax(weakestOf(riding), power, duration);
-        } else {
-          list.push({
-            id: apply.status,
-            power,
-            ticksLeft: duration,
-            sourceEid,
-            ...(fromPet ? { fromPet: true } : {}),
-          });
-        }
-      }
-      this.statuses.set(npcEid, list);
-      return true;
-    }
-
-    // --------------------------------------- the highest model (the mark)
-    if (page.stacking.model === 'highest') {
-      const same = list.find((s) => s.id === apply.status);
-      if (same) {
-        // Highest wins; a lesser mark still keeps the crack open.
-        refreshMax(same, power, duration);
-      } else {
-        list.push({ id: apply.status, power, ticksLeft: duration, sourceEid });
-      }
-      this.statuses.set(npcEid, list);
-      return true;
-    }
-
-    // ------------------------------------------------------ the count model
-    if (page.stacking.model === 'count') {
-      const verdict = applyCount(list, page, power, duration, () => ({
-        id: apply.status,
-        power,
-        ticksLeft: duration,
-        sourceEid,
-        ...(fromPet ? { fromPet: true } : {}),
-      }));
-      if (list.length > 0) this.statuses.set(npcEid, list);
-      else this.statuses.delete(npcEid);
-      const pos = this.positions.get(npcEid);
-      // A STACK IS A THING YOU CAN SEE: tiers speak as they are reached.
-      if (pos) {
-        for (const t of verdict.crossed) {
-          this.broadcastFx(pos.plane, {
-            t: 'fx',
-            kind: 'reaction',
-            x: pos.x,
-            y: pos.y,
-            radius: 0,
-            color: page.visuals.ink,
-            text: t.name,
-          });
-        }
-      }
-      if (verdict.outcome === 'consumed' && verdict.detonation) {
-        // The filled stack spends itself — spend, don't mint.
-        const det = verdict.detonation;
-        if (pos) {
-          this.broadcastFx(pos.plane, {
-            t: 'fx',
-            kind: 'reaction',
-            x: pos.x,
-            y: pos.y,
-            radius: det.radius,
-            color: page.visuals.ink,
-            text: page.name,
-          });
-        }
-        this.damageNpc(npcEid, det.damage, sourceEid, style, {});
-        if (pos && det.radius > 0) {
-          // The ring pays once (core-audit debt 12's law holds here too).
-          const paid = new Set<EntityId>([npcEid]);
-          this.forEachNpcNear(pos.plane, pos.x, pos.y, det.radius, (otherEid, otherNpc, opos) => {
-            if (paid.has(otherEid)) return;
-            if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - otherNpc.def.radius > det.radius) {
-              return;
-            }
-            paid.add(otherEid);
-            this.damageNpc(otherEid, det.damage, sourceEid, style, {});
-          });
-        }
-      }
-      return true;
-    }
-
-    // ------------------------- the refresh model (sparks keep reactions)
-    const other =
-      page.lane === 'spark'
-        ? list.find((s) => s.id !== apply.status && isSpark(s.id))
-        : undefined;
-    const reaction = other ? reactionFor(other.id, apply.status) : null;
-
-    if (other && reaction) {
-      // Detonate: both statuses consumed in the flash.
-      list.splice(list.indexOf(other), 1);
-      const pos = this.positions.get(npcEid);
-      if (pos) {
-        this.broadcastFx(pos.plane, {
-          t: 'fx',
-          kind: 'reaction',
-          x: pos.x,
-          y: pos.y,
-          radius: reaction.radius,
-          color: reaction.color,
-          text: reaction.name,
-        });
-      }
-      const dmg = reactionDamage(other.power, power, reaction);
-      this.damageNpc(npcEid, dmg, sourceEid, style, {});
-      if (pos) {
-        switch (reaction.effect) {
-          case 'aoe':
-          case 'chain': {
-            // Arc/blast into everything else nearby. THE INDEX SERVES
-            // THE FIGHT here too (core-audit debt 12): reaction radii
-            // are small and authored (2.2 tiles at the widest), so
-            // the whole-map this.npcs walk paid the world for a ring.
-            // Pay once: damageNpc can knock a struck body into a new
-            // chunk (or off the books) mid-visit, and the ring must
-            // never bill the same body twice for the re-file.
-            const paid = new Set<EntityId>([npcEid]);
-            this.forEachNpcNear(pos.plane, pos.x, pos.y, reaction.radius, (otherEid, otherNpc, opos) => {
-              if (paid.has(otherEid)) return;
-              if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - otherNpc.def.radius > reaction.radius) {
-                return;
-              }
-              paid.add(otherEid);
-              this.damageNpc(otherEid, dmg, sourceEid, style, {});
-            });
-            break;
-          }
-          case 'spread': {
-            // The affliction finds new hosts — burn for Immolate,
-            // venom for Contagion (the reaction names its own plague).
-            const carried = reaction.spreadStatus ?? 'burn';
-            const plague: StatusApply =
-              apply.status === carried
-                ? { status: carried, power: apply.power, durationTicks: apply.durationTicks }
-                : { status: carried, power: other.power, durationTicks: 60 };
-            // The ring again (core-audit debt 12), and the pay-once
-            // Set matters MORE here: applyStatusToNpc can detonate a
-            // fresh reaction on a neighbor mid-visit — recursion that
-            // kills and re-chunks bodies under the iterator — and a
-            // twice-visited host would double-dip the plague.
-            const infected = new Set<EntityId>([npcEid]);
-            this.forEachNpcNear(pos.plane, pos.x, pos.y, reaction.radius, (otherEid, otherNpc, opos) => {
-              if (infected.has(otherEid)) return;
-              if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - otherNpc.def.radius > reaction.radius) {
-                return;
-              }
-              infected.add(otherEid);
-              this.applyStatusToNpc(otherEid, plague, sourceEid, style);
-            });
-            break;
-          }
-          case 'stun': {
-            list.push({
-              id: 'shock',
-              power: 0,
-              ticksLeft: SHOCK_MAX_TICKS,
-              sourceEid,
-              // THE STUBBORN CROWN: a crowned body's hard stagger is
-              // dialed (the status itself rides on as reaction fuel).
-              stunLeft: bossStunTicks(npc.def, SHOCK_MAX_TICKS),
-            });
-            break;
-          }
-          case 'burst':
-            break;
-        }
-      }
-      this.statuses.set(npcEid, list);
-      return true;
-    }
-
-    const same = list.find((s) => s.id === apply.status);
-    if (same) {
-      refreshMax(same, power, duration);
-      if (page.cc) {
-        // The page declares the lock; the body dials it (STUBBORN CROWN).
-        same.stunLeft = Math.max(same.stunLeft ?? 0, bossStunTicks(npc.def, ccTicksFor(page, duration)));
-      }
-    } else {
-      list.push({
-        id: apply.status,
-        power,
-        ticksLeft: duration,
-        sourceEid,
-        // The stagger is brief; the charge rides on as reaction fodder.
-        // (A crowned body's stagger is dialed — THE STUBBORN CROWN.)
-        stunLeft: page.cc ? bossStunTicks(npc.def, ccTicksFor(page, duration)) : undefined,
-        ...(fromPet ? { fromPet: true } : {}),
-      });
-    }
-    this.statuses.set(npcEid, list);
-    return true;
+    return statusSys.applyStatusToNpc(this, npcEid, apply, sourceEid, style, fromPet);
   }
 
-  /**
-   * The player door. Players get no reactions (sparks refresh-max,
-   * never detonate — the pre-lanes shape stands), but THE LEDGER
-   * ANSWERED (book-plan Phase 3, green-lit): afflictions now stack
-   * PER SOURCE on players exactly as they do on NPCs — capped at the
-   * page's max, the new hand folding into the weakest wound, so a
-   * pack's pressure is real and each wolf's own wound is honest. The
-   * ONE deliberate number move of the phase, priced by the plan's
-   * ledger; cleanse, kiting, and the visible stack row are the
-   * counterplay. COUNT-model pages walk their own door on any body.
-   * FAIR HANDS holds here too: immunity windows refuse, root clamps
-   * to its page's lock, and a holdsPlayers stagger locks the hands
-   * (stunLeft — read by the held gates at the attack/cast doors).
-   */
   applyStatusToPlayer(eid: EntityId, apply: StatusApply, sourceEid: EntityId): void {
-    const page = pageOf(apply.status);
-    // FAIR HANDS: the immunity window holds at the player door too
-    // (inline for the slate-test law — no state touched unless a page
-    // authors a window).
-    if (page.cc && page.cc.immunityTicks > 0) {
-      const rec = this.ccImmunity.get(eid);
-      const until = rec?.[page.id];
-      if (until !== undefined) {
-        if (this.tickCount < until) return;
-        delete rec![page.id];
-      }
-    }
-    // A root's hold IS its status: the page's lock bounds the clock.
-    const duration =
-      page.cc?.kind === 'root'
-        ? Math.min(apply.durationTicks, page.cc.maxTicks)
-        : apply.durationTicks;
-    const list = this.statuses.get(eid) ?? [];
-    if (page.stacking.model === 'count') {
-      const verdict = applyCount(list, page, apply.power, duration, () => ({
-        id: apply.status,
-        power: apply.power,
-        ticksLeft: duration,
-        sourceEid,
-      }));
-      if (list.length > 0) this.statuses.set(eid, list);
-      else this.statuses.delete(eid);
-      const pos = this.positions.get(eid);
-      if (pos) {
-        for (const t of verdict.crossed) {
-          this.broadcastFx(pos.plane, {
-            t: 'fx',
-            kind: 'reaction',
-            x: pos.x,
-            y: pos.y,
-            radius: 0,
-            color: page.visuals.ink,
-            text: t.name,
-          });
-        }
-      }
-      if (verdict.outcome === 'consumed' && verdict.detonation) {
-        // The filled stack answers on the wearer. The wound is already
-        // inside (the DoT law), so the burst pierces like a pulse; the
-        // radius stays the NPC door's — a player-worn state never
-        // rings the neighbors.
-        this.damagePlayer(eid, verdict.detonation.damage, {
-          pierceArmor: true,
-          sourceEid,
-        });
-      }
-      // A boon that moves the swing channel re-mirrors it at once.
-      if (page.statMods?.attackSpeedMult !== undefined) {
-        const p = this.players.get(eid);
-        if (p) this.sendBuffs(p);
-      }
-      return;
-    }
-    // THE LEDGER ANSWERED: afflictions stack per source on players,
-    // the NPC shape exactly (cap at the page's max, fold into the
-    // weakest at the cap, the same hand refreshes its own wound).
-    if (page.stacking.model === 'perSource') {
-      const own = list.find((s) => s.id === apply.status && s.sourceEid === sourceEid);
-      if (own) {
-        refreshMax(own, apply.power, duration);
-      } else {
-        const riding = list.filter((s) => s.id === apply.status);
-        if (riding.length >= page.stacking.max) {
-          refreshMax(weakestOf(riding), apply.power, duration);
-        } else {
-          list.push({ id: apply.status, power: apply.power, ticksLeft: duration, sourceEid });
-        }
-      }
-      this.statuses.set(eid, list);
-      return;
-    }
-    const same = list.find((s) => s.id === apply.status);
-    if (same) {
-      refreshMax(same, apply.power, duration);
-      if (page.cc?.holdsPlayers) {
-        same.stunLeft = Math.max(same.stunLeft ?? 0, ccTicksFor(page, duration));
-      }
-    } else {
-      list.push({
-        id: apply.status,
-        power: apply.power,
-        ticksLeft: duration,
-        sourceEid,
-        // FAIR HANDS, the player half: only a page that declares
-        // holdsPlayers locks the hands (shock never does — the
-        // historic law is the page's own word now).
-        stunLeft: page.cc?.holdsPlayers ? ccTicksFor(page, duration) : undefined,
-      });
-    }
-    this.statuses.set(eid, list);
+    return statusSys.applyStatusToPlayer(this, eid, apply, sourceEid);
   }
 
 
-  private statusBits(eid: EntityId): number {
-    let bits = 0;
-    const list = this.statuses.get(eid);
-    if (list) {
-      let stacks = 0;
-      let count = 0;
-      for (const s of list) {
-        bits |= STATUS_BIT[s.id];
-        // Two nibbles, two honest meanings (THE WIDER WOUND): the
-        // affliction nibble counts per-source entries exactly as v29
-        // wrote it; the count nibble carries a count-model page's own
-        // depth in the high word.
-        const model = pageOf(s.id).stacking.model;
-        if (model === 'perSource') stacks++;
-        else if (model === 'count') count += s.stacks ?? 1;
-      }
-      bits |= Math.min(stacks, 15) << AFFLICTION_STACKS_SHIFT;
-      bits |= Math.min(count, 15) << COUNT_STACKS_SHIFT;
-    }
-    // Stealth bits ride the same byte. Snapshots for a hidden player only
-    // ever reach their own session (interest suppression), so HIDDEN is
-    // effectively owner-only; DETECTED drives the own eye chip.
-    const player = this.players.get(eid);
-    if (player) {
-      if (player.hidden) bits |= SNEAK_HIDDEN_BIT;
-      if (this.chasedPlayers.has(eid)) bits |= SNEAK_DETECTED_BIT;
-      if (player.sheathed) bits |= SHEATHED_BIT;
-    } else {
-      // NPC sheathe is a pure function of disposition and combat state:
-      // friendly actors (no combat body) always keep arms away; a
-      // fightable actor with the preference stows only while idle — the
-      // moment a chase begins the bit drops and the client plays the
-      // draw. Plain bestiary mobs never stow.
-      const npc = this.npcs.get(eid);
-      // Wariness is not war: a suspicious or investigating guard
-      // keeps the blade on the hip — steel comes out for the chase
-      // and stays out through the search.
-      const stowed =
-        npc?.state === 'idle' || npc?.state === 'suspicious' || npc?.state === 'investigate';
-      if (npc ? npc.sheathePref && stowed : this.actors.has(eid)) {
-        bits |= SHEATHED_BIT;
-      }
-    }
-    return bits;
+  statusBits(eid: EntityId): number {
+    return statusSys.statusBits(this, eid);
   }
 
   private isShocked(eid: EntityId): boolean {
@@ -24402,120 +23251,18 @@ export class GameServer {
     return this.statuses.get(eid)?.some((s) => s.id === 'chill') ?? false;
   }
 
-  private tickStatuses(): void {
-    for (const [eid, list] of this.statuses) {
-      for (let i = list.length - 1; i >= 0; i--) {
-        const s = list[i]!;
-        s.ticksLeft--;
-        if (s.stunLeft !== undefined && s.stunLeft > 0) s.stunLeft--;
-        // THE BOOK OF STATES: the page owns the clock and the ramp.
-        // The six shipped pages pulse exactly the pre-book numbers
-        // (no ramps authored); a count page's pulse deepens per stack.
-        const page = pageOf(s.id);
-        const spec = page.tick;
-        if (spec && s.ticksLeft > 0 && s.ticksLeft % spec.every === 0) {
-          const pulse = effectivePower(page, s);
-          if (spec.kind === 'heal') {
-            // THE MEND DOOR: a heal-kind page raises its holder — the
-            // HoT lane's engine seat. No shipped page authors it yet;
-            // the boon wave gives it a voice when it gives it a name.
-            const h = this.healths.get(eid);
-            if (h && h.hp > 0) h.hp = Math.min(h.maxHp, h.hp + pulse);
-          } else if (this.pets.has(eid)) {
-            // A companion's DoT walks the pet rail (dotNpc would hit
-            // the friendly-fire wall in damageNpc) — the drip pierces
-            // armor exactly as it does for players: the wound's
-            // already inside.
-            this.damagePet(eid, pulse, {
-              pierceArmor: true,
-              sourceEid: s.sourceEid,
-              via: s.id as 'burn' | 'bleed' | 'venom',
-            });
-          } else if (this.npcs.has(eid)) {
-            this.dotNpc(eid, pulse, s.sourceEid, s.id as 'burn' | 'bleed' | 'venom', s.fromPet);
-          } else if (this.players.has(eid)) {
-            // Bitter Blood: the herbalist's constitution dulls the drip.
-            const p = this.players.get(eid)!;
-            // The pulse carries its burner: a hurt moment with no
-            // source in hand left every targeted hurt working rolling,
-            // winning, and no-oping — its rest banked against nothing.
-            this.damagePlayer(eid, Math.max(1, Math.round(pulse * p.perks.dotResistMult)), {
-              pierceArmor: true,
-              sourceEid: s.sourceEid,
-              via: s.id as 'burn' | 'bleed' | 'venom',
-            });
-          }
-        }
-        if (s.ticksLeft <= 0) {
-          // The page owns the leaving too: stepDown sheds one stack
-          // and re-arms; expire ends the state whole. A CC page with
-          // an authored immunity window stamps it as the lock lifts.
-          if (decayAtZero(page, s) === 'stepped') continue;
-          list.splice(i, 1);
-          if (page.cc && page.cc.immunityTicks > 0) {
-            const rec = this.ccImmunity.get(eid) ?? {};
-            rec[s.id] = this.tickCount + page.cc.immunityTicks;
-            this.ccImmunity.set(eid, rec);
-          }
-          // A swing-channel boon leaving re-mirrors the mult at once.
-          if (page.statMods?.attackSpeedMult !== undefined) {
-            const sp = this.players.get(eid);
-            if (sp) this.sendBuffs(sp);
-          }
-        }
-      }
-      if (list.length === 0) this.statuses.delete(eid);
-    }
+  tickStatuses(): void {
+    return statusSys.tickStatuses(this, );
   }
 
-  /**
-   * DoT damage: hurts without flinching the target — a burning goblin
-   * still fights; only direct hits interrupt windups.
-   */
-  private dotNpc(
+  dotNpc(
     npcEid: EntityId,
     dmg: number,
     sourceEid: EntityId,
     kind: 'burn' | 'bleed' | 'venom',
     fromPet = false,
   ): void {
-    const npc = this.npcs.get(npcEid);
-    const health = this.healths.get(npcEid);
-    if (!npc || !health || dmg <= 0) return;
-    // THE READING EDGE: the sunder mark amplifies the drip too — a
-    // cracked guard lets everything through, wounds included. Gear
-    // vs clauses stay OFF the pulse until a temper is authored to
-    // read ticks (recorded in the plan; the seam covers direct blows).
-    dmg = Math.round(dmg * sunderAmp(this.statuses.get(npcEid)));
-    // Nothing burns through the ward — a status that somehow landed
-    // before protection was set still ticks for zero.
-    if (this.actors.get(npcEid)?.actor.protection === 'invulnerable') return;
-    // The pulse signs its wound: the client inks the number per status.
-    this.broadcastHit(npcEid, dmg, false, 0, 0, false, false, kind);
-    health.hp -= dmg;
-    const source = this.players.get(sourceEid);
-    // BLOOD DRINK and VENOM SUP: the pet's own DoT ticks feed it a
-    // sip — read from the CURRENT friend at heel (a dose that
-    // outlives its layer simply feeds nobody).
-    if (fromPet && source && source.petEid !== null) {
-      const sipper = this.pets.get(source.petEid);
-      const leech = sipper?.bundle?.statusLeech;
-      if (sipper && leech !== undefined) {
-        const ph = this.healths.get(source.petEid);
-        if (ph && ph.hp > 0 && ph.hp < ph.maxHp) {
-          ph.hp = Math.min(ph.maxHp, ph.hp + Math.max(1, Math.round(dmg * leech)));
-        }
-      }
-    }
-    if (source && !fromPet) {
-      const style: SkillId = kind === 'burn' ? 'arx' : kind === 'venom' ? 'sneak' : 'onehand';
-      // The drip draws the same mark budget as the blow that set it,
-      // and pays under the school rate (0.5/dmg beside the school's 0.75).
-      const credited = this.creditMark(npc, sourceEid, dmg);
-      if (credited > 0) this.grantXp(sourceEid, source, style, Math.round(credited * 0.5));
-    }
-    // A DoT tail is not a struck blow — no style rides to the deed rail.
-    if (health.hp <= 0) this.killNpc(npcEid, npc, sourceEid);
+    return statusSys.dotNpc(this, npcEid, dmg, sourceEid, kind, fromPet);
   }
 
   // ------------------------------------------------------------ summons
@@ -24721,7 +23468,7 @@ export class GameServer {
    * die inside its own catch-up spends what lag it can and keeps the
    * rest — the kill lands next tick, where every watcher can see it.
    */
-  private preFlyProjectile(eid: EntityId, ticks: number): void {
+  preFlyProjectile(eid: EntityId, ticks: number): void {
     const proj = this.projectiles.get(eid);
     if (!proj) return;
     const pos = this.positions.must(eid);
@@ -25097,7 +23844,7 @@ export class GameServer {
    * end of tick() so a whirlwind that feeds three meters in one blow
    * still costs one message.
    */
-  private chargesDirty = new Set<EntityId>();
+  chargesDirty = new Set<EntityId>();
 
   /**
    * PROCS NEVER BEGET PROCS, made structural (callings-v2 Phase 2):
@@ -25109,7 +23856,7 @@ export class GameServer {
    * walks the kill plumbing inside the action, and an inner flag
    * reset would strip the outer guard.
    */
-  private procDepth = 0;
+  procDepth = 0;
 
   /**
    * THE MIRRORS GO EVENT-DRIVEN (core-audit debt 12): sendRide and
@@ -25129,13 +23876,8 @@ export class GameServer {
   /** The company mirror's own dirty set — the petDirty discipline, held apart. */
   private companionDirty = new Set<PlayerComp>();
 
-  private procState(player: PlayerComp, id: string): ProcRuntime {
-    let st = player.procs.get(id);
-    if (!st) {
-      st = mkProcRuntime();
-      player.procs.set(id, st);
-    }
-    return st;
+  procState(player: PlayerComp, id: string): ProcRuntime {
+    return procSys.procState(this, player, id);
   }
 
   /**
@@ -25159,16 +23901,7 @@ export class GameServer {
     player.session?.sendJson({ t: 'charges', charges });
   }
 
-  /**
-   * THE ONE PROC DOOR. Every trigger site funnels through here, so the
-   * rest timer, the meter, and the firing all live at one seam. The
-   * arbitration itself is pure and lives in content/equipment (see
-   * procWakes) so the ordering laws can be pinned without a server.
-   *
-   * Returns whatever the action hands back (a yield working's extra),
-   * 0 for everything else.
-   */
-  private offerProc(
+  offerProc(
     eid: EntityId,
     player: PlayerComp,
     p: ProcEffect,
@@ -25176,364 +23909,47 @@ export class GameServer {
     ctx: ProcContext,
     amount = 1,
   ): number {
-    const st = this.procState(player, p.id);
-    // A stacking meter that moves — a charge banked, or the spend when
-    // the working answers — reaches the wearer's HUD at tick end.
-    const banked = st.stacks;
-    const woke = procWakes(p, st, on, this.tickCount, undefined, amount);
-    if (st.stacks !== banked) this.chargesDirty.add(eid);
-    if (!woke) return 0;
-    return this.runProc(eid, player, p, ctx);
+    return procSys.offerProc(this, eid, player, p, on, ctx, amount);
   }
 
-  /**
-   * Offer a moment to every working the BODY carries — the gear
-   * aggregate and, since THE WAKING HAND, the answered packages'
-   * workings beside them. Two lists, one door, one meter law. The
-   * preconditions are door law, INLINE per the slate-test law, never
-   * arbitration — procWakes stays pure:
-   *  - a targeted working cannot answer a moment with no live foe in
-   *    hand (no chance rolled, no rest stamped on a sure no-op);
-   *  - a hitState working is skipped when the struck body does not
-   *    carry its state (THE READING EDGE — the body lane hears it
-   *    now too, since a calling's edge is the hand itself and rides
-   *    aggregate-side);
-   *  - a pet-targeted boon is skipped when no companion stands
-   *    (THE PACK'S BLESSING — the same targeted-moment law spoken
-   *    for the leash: a downed or absent companion is a sure no-op).
-   *
-   * All three are pinned in wornBookDoors.test.ts / procDoors.test.ts.
-   */
-  private bodyMoment(
+  bodyMoment(
     eid: EntityId,
     player: PlayerComp,
     on: ProcMoment,
     ctx: ProcContext,
   ): number {
-    let extra = 0;
-    const offer = (p: ProcEffect): void => {
-      if (
-        (TARGETED_ACTIONS as readonly string[]).includes(p.action.do) &&
-        (ctx.targetEid === undefined || !this.npcs.has(ctx.targetEid))
-      ) {
-        return;
-      }
-      if (p.trigger.on === 'hitState') {
-        const wanted = p.trigger.status;
-        const riding =
-          ctx.targetEid !== undefined &&
-          (this.statuses?.get(ctx.targetEid)?.some((s) => s.id === wanted) ?? false);
-        if (!riding) return;
-      }
-      // THE PACK'S BLESSING door law (THE WORN BOOK): a pet-targeted
-      // working cannot answer a moment with no companion standing —
-      // no charge banked, no rest stamped on a sure no-op (the
-      // targeted-moment law, spoken for the leash).
-      if (p.action.do === 'boon' && p.action.target === 'pet') {
-        const petEid = player.petEid ?? null;
-        if (petEid === null || (this.healths?.get(petEid)?.hp ?? 0) <= 0) return;
-      }
-      extra += this.offerProc(eid, player, p, on, ctx);
-    };
-    for (const p of player.gear.procs) offer(p);
-    for (const p of player.callingProcs ?? []) offer(p);
-    return extra;
+    return procSys.bodyMoment(this, eid, player, on, ctx);
   }
 
-  /**
-   * Offer a moment to the workings on the steel that LANDED, then to
-   * the body. Two dual-wielded blades carry two different edges and
-   * each answers only when its own steel connects, exactly as coats do.
-   */
-  private steelMoment(
+  steelMoment(
     eid: EntityId,
     player: PlayerComp,
     worn: EquippedItem | undefined,
     on: ProcMoment,
     ctx: ProcContext,
   ): void {
-    if (worn) {
-      for (const p of weaponStrikeEffects(worn.id, worn.roll).procs) {
-        // THE READING EDGE door law: a hitState working is skipped
-        // BEFORE arbitration when the struck body does not carry its
-        // state — no roll spent, no rest banked (the targeted-moment
-        // law), so the published chance holds against marked bodies.
-        if (p.trigger.on === 'hitState') {
-          const wanted = p.trigger.status;
-          const riding =
-            ctx.targetEid !== undefined &&
-            (this.statuses?.get(ctx.targetEid)?.some((s) => s.id === wanted) ?? false);
-          if (!riding) continue;
-        }
-        this.offerProc(eid, player, p, on, ctx);
-      }
-    }
-    this.bodyMoment(eid, player, on, ctx);
+    return procSys.steelMoment(this, eid, player, worn, on, ctx);
   }
 
-  /**
-   * THE CROSSING: a lowHp working answers the fall past its line and
-   * then goes quiet until the wearer climbs back over it. The crossing
-   * is read from the health BEFORE the wound against the health after
-   * it, so re-arming needs no call from any heal site — food, tonics,
-   * drains, totems, lifesteal, and the regen tick all re-arm the
-   * working simply by lifting the wearer over the line before the
-   * next fall. One dive past the mark is one answer however many
-   * small hits carried it down.
-   *
-   * THE DOOR REPAIR (callings-v2 Phase 2): the crossing check stays
-   * here (it reads the health component — a door fact, like
-   * hitState's list read), but the rest law and the firing walk
-   * through offerProc with everything else. No hand-rolled icd
-   * anywhere.
-   */
-  private lowHpMoment(eid: EntityId, player: PlayerComp, prevHp: number): void {
-    const health = this.healths.get(eid);
-    if (!health || health.maxHp <= 0 || health.hp <= 0) return;
-    const frac = health.hp / health.maxHp;
-    const prevFrac = prevHp / health.maxHp;
-    const pos = this.positions.get(eid);
-    const ctx: ProcContext = { x: pos?.x ?? 0, y: pos?.y ?? 0 };
-    const offer = (p: ProcEffect): void => {
-      if (p.trigger.on !== 'lowHp') return;
-      if (prevFrac <= p.trigger.pct || frac > p.trigger.pct) return;
-      this.offerProc(eid, player, p, 'lowHp', ctx);
-    };
-    for (const p of player.gear.procs) offer(p);
-    for (const p of player.callingProcs ?? []) offer(p);
+  lowHpMoment(eid: EntityId, player: PlayerComp, prevHp: number): void {
+    return procSys.lowHpMoment(this, eid, player, prevHp);
   }
 
-  /** Ground covered on foot feeds every stride working (one door law). */
-  private strideMoment(eid: EntityId, player: PlayerComp, tiles: number): void {
-    if (tiles <= 0) return;
-    let ctx: ProcContext | undefined;
-    const offer = (p: ProcEffect): void => {
-      if (p.trigger.on !== 'stride') return;
-      if (!ctx) {
-        const pos = this.positions.get(eid);
-        ctx = { x: pos?.x ?? 0, y: pos?.y ?? 0 };
-      }
-      this.offerProc(eid, player, p, 'stride', ctx, tiles);
-    };
-    for (const p of player.gear.procs) offer(p);
-    for (const p of player.callingProcs ?? []) offer(p);
+  strideMoment(eid: EntityId, player: PlayerComp, tiles: number): void {
+    return procSys.strideMoment(this, eid, player, tiles);
   }
 
-  /**
-   * A woken working does its work and says its name. The name floats
-   * once and no number ever does: a proc is an event in the fight, and
-   * a second damage number every other second is noise, not feedback.
-   *
-   * The wrapper holds the procDepth guard: everything an action does —
-   * status lays, damage, kills the damage causes — runs under it, so
-   * THE ANSWERED ECHO's door can refuse proc-born landings by
-   * construction.
-   */
   runProc(eid: EntityId, player: PlayerComp, p: ProcEffect, ctx: ProcContext): number {
-    // Slate-safe bookkeeping (the slate law): a bare rig without the
-    // counter still walks the door.
-    this.procDepth = (this.procDepth ?? 0) + 1;
-    try {
-      return this.runProcInner(eid, player, p, ctx);
-    } finally {
-      this.procDepth--;
-    }
+    return procSys.runProc(this, eid, player, p, ctx);
   }
 
-  private runProcInner(
+  runProcInner(
     eid: EntityId,
     player: PlayerComp,
     p: ProcEffect,
     ctx: ProcContext,
   ): number {
-    // The working fires on its bearer's plane.
-    const procPlane = this.positions.get(eid)?.plane ?? SURFACE_PLANE_ID;
-    const a = p.action;
-    const color = ELEMENT_COLORS[p.element ?? 'arcane'];
-    const style: SkillId = ctx.style ?? 'arx';
-    const at = this.positions.get(eid);
-    let radius = 0.6;
-    let x2: number | undefined;
-    let y2: number | undefined;
-    let extra = 0;
-
-    switch (a.do) {
-      case 'status': {
-        if (ctx.targetEid === undefined || !this.npcs.has(ctx.targetEid)) break;
-        this.applyStatusToNpc(
-          ctx.targetEid,
-          { status: a.status, power: a.power, durationTicks: a.ticks },
-          eid,
-          style,
-        );
-        break;
-      }
-      case 'boon': {
-        // THE SELF-BLESSING: the working lays a boon page on its own
-        // wearer through the real player apply door — count stacks,
-        // swing re-mirror, chips, the whole visible layer answer as
-        // they do for any other page. Boon-lane-only is load law
-        // (procMismatch); the door needs no second check.
-        //
-        // THE PACK'S BLESSING (THE WORN BOOK): target 'pet' hands the
-        // page to the companion instead, through the pet's own NPC
-        // apply door — a quickened pet TRULY swings faster, the NPC
-        // swing sites fold statusSwingFactor already. No companion
-        // standing means a silent refusal (the aggregate lane also
-        // refuses at the door, charge unspent), and the page can never
-        // reach any other player: only the wearer's own petEid is a
-        // candidate.
-        if (a.target === 'pet') {
-          const petEid = player.petEid ?? null;
-          if (petEid === null || (this.healths?.get(petEid)?.hp ?? 0) <= 0) return extra;
-          this.applyStatusToNpc(
-            petEid,
-            { status: a.status, power: a.power, durationTicks: a.ticks },
-            eid,
-            'beastcraft',
-          );
-          const pp = this.positions?.get(petEid);
-          if (at && pp) {
-            x2 = pp.x;
-            y2 = pp.y;
-          }
-          radius = 0.9;
-          break;
-        }
-        this.applyStatusToPlayer(eid, { status: a.status, power: a.power, durationTicks: a.ticks }, eid);
-        radius = 0.9;
-        break;
-      }
-      case 'bolt': {
-        if (ctx.targetEid === undefined || !this.npcs.has(ctx.targetEid)) break;
-        const tp = this.positions.get(ctx.targetEid);
-        if (at && tp) {
-          x2 = tp.x;
-          y2 = tp.y;
-        }
-        this.damageNpc(ctx.targetEid, a.damage, eid, style, { fromProc: true });
-        break;
-      }
-      case 'nova': {
-        radius = a.radius;
-        for (const npcEid of this.npcsWithin(procPlane, ctx.x, ctx.y, a.radius)) {
-          this.damageNpc(npcEid, a.damage, eid, style, {
-            knockFrom: { x: ctx.x, y: ctx.y },
-            fromProc: true,
-          });
-        }
-        break;
-      }
-      case 'chain': {
-        // The struck foe first, then the nearest others outward — the
-        // same walk the reaction table's chain effect takes.
-        const hit = ctx.targetEid !== undefined && this.npcs.has(ctx.targetEid) ? [ctx.targetEid] : [];
-        for (const npcEid of this.npcsWithin(procPlane, ctx.x, ctx.y, CHAIN_PROC_RANGE)) {
-          if (hit.length > a.jumps) break;
-          if (!hit.includes(npcEid)) hit.push(npcEid);
-        }
-        let from = { x: ctx.x, y: ctx.y };
-        for (const npcEid of hit) {
-          const tp = this.positions.get(npcEid);
-          if (tp) {
-            this.broadcastFx(procPlane, {
-              t: 'fx',
-              kind: 'proc',
-              x: from.x,
-              y: from.y,
-              x2: tp.x,
-              y2: tp.y,
-              radius: 0.4,
-              color,
-              // The final broadcast's `<action>:<procId>` convention —
-              // a bare proc id fell back to the status shape client-side.
-              id: `${a.do}:${p.id}`,
-            });
-            from = { x: tp.x, y: tp.y };
-          }
-          this.damageNpc(npcEid, a.damage, eid, style, { fromProc: true });
-        }
-        break;
-      }
-      case 'ward': {
-        player.buffs.push(
-          mkBuff({ shieldHp: a.absorb, name: p.name, untilTick: this.tickCount + a.ticks }),
-        );
-        this.sendBuffs(player);
-        radius = 0.9;
-        break;
-      }
-      case 'heal': {
-        // A mend that lifts the wearer over a lowHp line re-arms the
-        // workings that watch it by nature now: the crossing is read
-        // from prev-vs-new health at the next wound, so no re-arm
-        // call is owed here (or at any other heal site).
-        const health = this.healths.get(eid);
-        if (health) health.hp = Math.min(health.maxHp, health.hp + a.amount);
-        break;
-      }
-      case 'surge': {
-        const until = this.tickCount + a.ticks;
-        const lift = a.pct / 100;
-        player.buffs.push(
-          mkBuff({
-            name: p.name,
-            ...(a.stat === 'speed'
-              ? { speedMult: 1 + lift, untilTick: until }
-              : a.stat === 'swing'
-                ? { attackSpeedMult: 1 + lift, untilTick: until }
-                : a.stat === 'armor'
-                  ? { armor: a.pct, untilTick: until }
-                  : a.stat === 'regen'
-                    ? { regenPer4s: a.pct, untilTick: until }
-                    : a.stat === 'crit'
-                      ? { critPct: a.pct, untilTick: until }
-                      : { dmgMult: 1 + lift, untilTick: until }),
-          }),
-        );
-        this.sendBuffs(player);
-        // A speed surge moves the steady mult — the ride mirror's law.
-        if (a.stat === 'speed') this.rideDirty.add(player);
-        radius = 0.9;
-        break;
-      }
-      case 'cleanse': {
-        // THE HONEST CLEANSE: hostile pages strip; boons ride on (a
-        // mend must never die to its bearer's own dispel).
-        const clist = this.statuses.get(eid)?.filter((s) => survivesCleanse(s.id));
-        if (clist && clist.length > 0) this.statuses.set(eid, clist);
-        else this.statuses.delete(eid);
-        radius = 0.9;
-        break;
-      }
-      case 'yield': {
-        extra = a.extra;
-        break;
-      }
-      case 'reveal': {
-        radius = a.radius;
-        this.revealNearby(eid, ctx, a.radius, a.of, color);
-        break;
-      }
-    }
-
-    this.broadcastFx(procPlane, {
-      t: 'fx',
-      kind: 'proc',
-      x: ctx.x,
-      y: ctx.y,
-      x2,
-      y2,
-      radius,
-      color,
-      text: p.name,
-      // `<action>:<procId>` — the projectile defId's `arx:<element>`
-      // convention. The client shapes the moment off the ACTION so a
-      // working looks right the day it is authored, and still gets to
-      // override with a bespoke signature registered under either key.
-      id: `${a.do}:${p.id}`,
-    });
-    return extra;
+    return procSys.runProcInner(this, eid, player, p, ctx);
   }
 
   /** Living foes inside a circle, nearest first. */
@@ -25553,7 +23969,7 @@ export class GameServer {
    * not a flare for the whole field. Capped so a rich seam cannot flood
    * the wire.
    */
-  private revealNearby(
+  revealNearby(
     eid: EntityId,
     ctx: ProcContext,
     radius: number,
@@ -25593,7 +24009,7 @@ export class GameServer {
     }
   }
 
-  private damageNpc(
+  damageNpc(
     npcEid: EntityId,
     dmg: number,
     attackerEid: EntityId,
@@ -26124,7 +24540,7 @@ export class GameServer {
    * each attacker draws their own budget down independently and the
    * bank dies with the body. Returns credited damage points.
    */
-  private creditMark(npc: NpcComp, attackerEid: EntityId, dmg: number): number {
+  creditMark(npc: NpcComp, attackerEid: EntityId, dmg: number): number {
     const allowance = xpMarkAllowance(npc.def.xpReward);
     const bank = (npc.xpMarks ??= new Map());
     const spent = bank.get(attackerEid) ?? 0;
@@ -26466,7 +24882,7 @@ export class GameServer {
     if (npc.arenaMatch !== undefined) this.arenaBodyFell(npcEid, npc.arenaMatch);
   }
 
-  private damagePlayer(
+  damagePlayer(
     eid: EntityId,
     raw: number,
     opts: {
@@ -26898,7 +25314,7 @@ export class GameServer {
     }
   }
 
-  private broadcastHit(
+  broadcastHit(
     eid: EntityId,
     dmg: number,
     crit = false,
@@ -26929,7 +25345,7 @@ export class GameServer {
     }
   }
 
-  private setPose(eid: EntityId, pose: PoseState, ticks: number): void {
+  setPose(eid: EntityId, pose: PoseState, ticks: number): void {
     this.poses.set(eid, pose);
     const player = this.players.get(eid);
     if (player) player.poseUntilTick = this.tickCount + ticks;
@@ -27666,7 +26082,7 @@ export class GameServer {
   /** Perception cadence: each body looks every 5th tick (4 Hz), staggered. */
   private static readonly PERCEPTION_PERIOD = 5;
   /** Suspicious stand-and-stare before walking over to see (1.2s). */
-  private static readonly SUS_DWELL_TICKS = 24;
+  static readonly SUS_DWELL_TICKS = 24;
   /** An investigator that SEES its interest holds off at this range. */
   private static readonly WATCH_STANDOFF = 3.2;
   /**
@@ -27937,7 +26353,7 @@ export class GameServer {
    * so any NPC whose BODY can touch the circle is visited. Return true
    * from the visit to stop early (the for-of `break` of the old walks).
    */
-  private forEachNpcNear(
+  forEachNpcNear(
     plane: PlaneId,
     x: number,
     y: number,
@@ -28858,7 +27274,7 @@ export class GameServer {
    * line lands in the log AND stands up in a bubble over the head
    * that said it — the eid is what lets the bubble find the head.
    */
-  private sayAloud(eid: EntityId, from: string, text: string): void {
+  sayAloud(eid: EntityId, from: string, text: string): void {
     for (const s of this.sessions) {
       if (s.playerEid === eid || s.knownEntities.has(eid)) {
         s.sendJson({ t: 'chat', channel: 'local', from, eid, text });
