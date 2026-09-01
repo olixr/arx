@@ -13,6 +13,8 @@ export declare class GlStage implements StageBackend {
     private readonly records;
     /** Exact resident texture bytes (the `?perf` gpu line's source). */
     textureBytes: number;
+    /** The texture store's ceiling — ~2x a settled town's working set. */
+    private static readonly TEX_BUDGET_BYTES;
     /** Bytes uploaded since the last statsReset — the jitter signal. */
     uploadedBytes: number;
     uploads: number;
