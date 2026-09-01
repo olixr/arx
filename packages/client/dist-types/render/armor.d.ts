@@ -80,10 +80,6 @@ export interface HeadFrame {
     /** Wall-clock ms — hat-tip sway, living micro-motion. */
     nowMs: number;
 }
-/**
- * Styled head gear. `dome` reproduces the original helmet exactly;
- * the other kinds extend the same band grammar the face uses.
- */
 export declare function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: HeadFrame): void;
 /**
  * Arm-carried offhand, strapped to the solved off forearm — drawn in
