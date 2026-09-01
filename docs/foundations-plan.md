@@ -233,4 +233,34 @@ wilds/barrier groups (44 labels) whose growth/occlusion machinery stays engine-s
 Registry throws on double booking; registry.test.ts pins size 282 and the engine/hall
 boundary. **The refactor-parity rig (§7) ran as designed and PASSED all seven scenes**
 (sig inside noise band everywhere; rig at scratchpad/refactor-parity.mjs, baseline
-worktree + second vite on :5232). Full gates green; band F0+F1 merged to main.
+worktree + second vite on :5232). Full gates green; band F0+F1 merged to main
+(b59020f0) and verified live on arx.gg (release 76690279).
+
+**F2 wave A — THE PAINTER WINGS (4f4e15fd, 2026-09-01).** wallHungArt (16 painters),
+barrierArt (fence/palisade/iron/hedge + their inks and *ish predicates), chestArt
+(+chestPose), rockArt (+ORE_STYLES/BARREN_*) — 55 methods moved verbatim; ONE shared
+`PaintHost = Pick<Renderer, 16 members>` (paintHost.ts) keeps cross-family calls
+assignable; engine call sites go module-direct (`this: Renderer` satisfies any Pick);
+a nine-door delegator shelf keeps PropHost narrow. `PANEL_DOOR_TILES` (the doorway
+painter's own door set) and engine-shared barrier inks join paintVocab. renderer.ts
+40,519 → 33,870. Refactor-parity PASS ×7 (baseline advanced to F1). Mover script
+generalized at scratchpad/wavea.py; hard-won scanner laws: body brace = LAST 0→1
+depth transition; never strip strings when censusing identifiers (template-literal
+apostrophes); spread (`...NAME`) needs its own census pattern.
+
+**F4.1 — THE COMMAND LEDGER (96ae50c5, 2026-09-01).** chat's 46-command if-chain →
+game/commands/ (playerCommands ×2, devCommands ×44, typed ChatCommand claims/run,
+ledger walked in order, first claim wins). All 46 blocks verified terminal before the
+move. 138 GameServer members drop `private` (the visibility the 36 slate-driven test
+files always treated as real). ledger.test.ts pins shape + claim order (/flagreset
+before /flag, /triggers before /trigger). LIVE-PROVEN on a scratch server (fresh
+auto-created DB, guest join): /proc, /lock, /tp, plain speech — CHAT LEDGER LIVE
+PASS. gameServer.ts 34,235 → 32,258. Band two (waves A + F4.1) merged to main
+(bf9d0063) with full gates in the isolated worktree.
+
+**F4.2 — THE STANDING LEDGER (2026-09-01).** creditStanding/creditDeed/runFine/
+chargeAssault/theftWitnesses/chargeTheft/pickpocket → game/standing.ts via the
+reusable server-mover (scratchpad/server-mover.py): module functions take
+`srv: GameServer`, the class keeps one-line delegators so every caller and test
+slate reads unchanged. PlayerComp/ActorComp exported as types; class statics reach
+the module through a deliberate deferred value-import of the parent class.
