@@ -1,10 +1,11 @@
-import { Tile, type Vec2 } from '@arx/shared';
+import { Tile, type DaylightSample, type Vec2 } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import { FootprintField } from './footprints.js';
 import { Particles } from './particles.js';
 import { Debris, type SmashKind } from './debris.js';
 import { Birds } from './birds.js';
 import { InteriorMap } from './interiors.js';
+import { type BandBucket, type StretchBake } from './staticRegister.js';
 import { type FxStyle } from './abilityFx.js';
 /** Player zoom bounds: 1 = the classic framing (also the default). */
 export declare const ZOOM_MIN = 0.85;
@@ -68,6 +69,142 @@ export declare class Camera {
     worldToScreenInto(wx: number, wy: number, w: number, h: number, out: Vec2): Vec2;
     screenToWorld(sx: number, sy: number, w: number, h: number): Vec2;
 }
+declare const enum BulkKind {
+    Particle = 0,
+    Debris = 1,
+    GroundedBird = 2,
+    /** A standing emitter's seated halo — THE SOURCE HAS A BODY (lighting
+     *  v4 phase 2): world-sorted light geometry, never a screen disc. */
+    Halo = 3
+}
+export interface DrawItem {
+    sortY: number;
+    /**
+     * THE SHELF LAW — the world sort runs on ONE compound key:
+     * (strat, sortY). `sortY` is always the item's RAW world row (its
+     * true camera depth — never a lifted/screen-space row), and `strat`
+     * is the shelf the item STANDS ON:
+     *
+     *   - objects, entities, and airborne matter: the elevation level of
+     *     the tile under their feet (omitted when 0);
+     *   - cliff faces and side planes: their BASE level (level − 1) — a
+     *     wall loses to everything standing on its own crown, and wins
+     *     over everything at its base level standing behind it (raw row
+     *     settles that within the shelf);
+     *   - elevated ground rows: shelf 0 for positive levels (the crown
+     *     is landscape — bodies at a cliff foot must peek over it), the
+     *     level itself for sunken rows (pit floors draw under whatever
+     *     stands in the pit);
+     *   - ramp flights/aprons: the LOW level (a body at the mouth paints
+     *     over the treads); landings: the high level.
+     *
+     * Higher shelves draw later. Within a shelf, the proven flat-land
+     * raw-row order applies unchanged — flat ground (all shelf 0) is
+     * bit-for-bit the old sort. This one key retires three generations
+     * of pairwise patches (the armory-crop face law, the Lantern Row
+     * awning exemption, the face-contest object shift) whose mixed sort
+     * spaces let plateau rows slice standing trees and ore.
+     */
+    strat?: number;
+    draw?: () => void;
+    /**
+     * CLOSURE-FREE BULK LANE (particles, debris, grounded birds): the
+     * hot loops used to mint a DrawItem closure PER PARTICLE PER FRAME
+     * (~150-300k allocations/sec in combat at 120Hz — the frame loop's
+     * largest GC source). Bulk items carry a kind tag + datum instead
+     * and route through drawBulkItem; `draw` stays for everything else.
+     */
+    bulk?: BulkKind;
+    bulkArg?: unknown;
+    drawShadow?: () => void;
+    /**
+     * THE OFF-SCREEN TREE STANDS DOWN — set only by mature-tree items
+     * (see cullHiddenTrees). `occKey` finds the cached sprite so a culled
+     * tree can keep its entry warm; occX0..occY1 is the screen box the
+     * blit would cover. `occCulled` is the pass's verdict.
+     */
+    occKey?: number;
+    /** Band-bucket marker (stage lane): a pure lattice blit the world
+     *  sink may quadify at assembly. Set only by emitStretch. */
+    band?: {
+        sb: StretchBake;
+        bk: BandBucket;
+    };
+    /** Paint bounds (stage lane): the screen rect this item's closure
+     *  may touch, for push sites that know it — the sink prefers this
+     *  over the split path. Sized honest-and-generous; the oracle's
+     *  clip makes an undersized box a visible defect, not a quiet one. */
+    pb?: {
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+    };
+    /** Stage-safe (phase A2p2): this item's draw touches this.ctx ONLY
+     *  through stage-aware painters (their blit sites emit quads, their
+     *  live fallbacks push bounded paints). Set at the push site — an
+     *  explicit, reviewable promise, kept honest by the parity gates. */
+    stageSafe?: true;
+    /** THE WALL LANE (phase A2p3): a reconstruction closure for items
+     *  whose brushes closed over the frame ctx at collect time (THE
+     *  CAPTURE LAW) — it re-emits the member under the CURRENT this.ctx
+     *  and draws only this item's part. The bakes' own pattern; pb is
+     *  its bounds. Doorways and windows are permanent live items by
+     *  design, and were the dominant split class (fps ~linear in
+     *  splits: avenue 29fps at 147 splits). */
+    stageRebuild?: () => void;
+    occX0?: number;
+    occY0?: number;
+    occX1?: number;
+    occY1?: number;
+    occCulled?: boolean;
+    /**
+     * Screen-space bounds of the body paint. Present = this entity is a
+     * living silhouette the outline pass may ring (player preference);
+     * labels are excluded via drawLabel.
+     */
+    body?: {
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+    };
+    /** Nameplates/HP — drawn on the main canvas AFTER any outline pass. */
+    drawLabel?: () => void;
+    /**
+     * Standing on lifted terrain: the shadow must land ON the plateau
+     * surface, so it draws in sorted order (just before the sprite)
+     * instead of in the ground-level shadow prepass — otherwise the
+     * plateau band, drawn later, would paint it out.
+     */
+    elevated?: boolean;
+    /**
+     * Whole-sprite translucency (the own player's stealth ghost). Applied
+     * OUTSIDE the outline pass so the silhouette ring fades with the body.
+     */
+    alpha?: number;
+    /**
+     * BODY-SPRITE CACHE fields (see paintOutlined). A stable identity
+     * opts this item into the outlined-composite cache: while `olSig`
+     * matches the cached bake and `olDyn` is false, the frame pays ONE
+     * blit instead of paint + 8-tap dilate + tint (~47μs/body — 40% of
+     * a town frame at 57 bodies). Idle micro-life (breathing, tail
+     * swish, blade shimmer) re-samples on the OL_IDLE_CADENCE stagger —
+     * the tree-cadence law applied to living bodies. Items without a
+     * key (live stations, legless bodies whose whole locomotion is
+     * time-driven) keep the direct per-frame pass.
+     */
+    olKey?: number | string;
+    /** Content signature: any change forces a re-bake this frame. */
+    olSig?: string;
+    /** True while genuinely animating (moving/turning/fighting/blending)
+     *  — forces full-rate re-bakes; cheap idle life waits for cadence. */
+    olDyn?: boolean;
+    /** World-space ground anchor of the body — opts the item into the
+     *  base-exposure relight pass (see relightBody). */
+    baseX?: number;
+    baseY?: number;
+}
 export declare class Renderer {
     private readonly canvas;
     readonly camera: Camera;
@@ -91,7 +228,7 @@ export declare class Renderer {
     /** Regions discovered in view this frame (feeds the shadow shelter). */
     private visibleRegions;
     /** The frame's sky sample — every shadow and light reads this. */
-    private sky;
+    sky: DaylightSample;
     /** Surface→deep-cave ambient blend, eased over ~1s of real time.
      *  0 = surface sky rules, 1 = the fixed underground ambient. */
     private ugBlend;
@@ -201,7 +338,7 @@ export declare class Renderer {
      */
     private prevDynamic;
     private nextDynamic;
-    private ctx;
+    ctx: CanvasRenderingContext2D;
     /**
      * The outline "shader": entities paint FLAT (no baked strokes), and
      * this post-pass rings each living body's silhouette by dilating its
@@ -673,8 +810,6 @@ export declare class Renderer {
      * `heightTiles` and leaned coherently. Pair with ctx.restore().
      */
     private beginHeightLayer;
-    /** The world's outline color — the dark edge entities and props wear. */
-    private static readonly STRUCT_OUTLINE;
     /**
      * Arm the context to stroke an architecture silhouette: the same
      * bold dark edge the entity ring gives props and characters, drawn
@@ -684,7 +819,7 @@ export declare class Renderer {
      * none), so runs stay seamless — only the building perimeter and
      * its openings are ringed.
      */
-    private beginStructOutline;
+    beginStructOutline(): void;
     /**
      * Trace a wall-like mass's crown top edge + its exposed vertical
      * sides into `path` (screen space). `cTop` is the crown's north
@@ -732,26 +867,11 @@ export declare class Renderer {
      */
     private findMilkTarget;
     /**
-     * The stall wardrobe: every market stand draws one bolt of cloth
-     * from this roster, keyed by the run's west-anchor tile hash — so a
-     * merged stall wears one banner, neighbouring stands differ, and
-     * every town's market reads bespoke with zero authoring plumbing.
-     */
-    private static readonly STALL_BANNERS;
-    /**
-     * THE DYE LAW's cloths, index-married to the shared roster (linen 0
-     * … rose 9; rename in place, never reorder). The bolt color `a`
-     * comes from icons' DYE_SWATCHES — the one client color truth for
-     * dyes — and `b` is its stripe/trim partner: undyed cream for most,
-     * a paler self for pale cloths so stripes never vanish.
-     */
-    private static readonly AWNING_CLOTHS;
-    /**
      * One ware on a stall's display top. Kinds: produce, bread, bottles,
      * cloth bolts, pottery, berry basket — small enough to sit under the
      * awning window, distinct enough to read at market distance.
      */
-    private drawStallGood;
+    drawStallGood(kind: number, gx: number, gy: number, s: number, seed: number): void;
     /** Tiles that count as workable stations for interaction heat. */
     private static readonly HEAT_STATION_TILES;
     /**
@@ -761,7 +881,7 @@ export declare class Renderer {
      * panel. Painters layer the in-use choreography over the idle art by
      * reading this — lids glide open, fires flare, beams work harder.
      */
-    private readonly stationHeat;
+    readonly stationHeat: Map<number, number>;
     /** THE IMPACT IS ONE TRUTH: the last hammer-clang instant per
      *  station tile — the anvil painter's white flash and spark fan
      *  latch to the swung hammer's own beat, never a private sine. */
@@ -814,7 +934,11 @@ export declare class Renderer {
      * lagged secondary beat (the two-beat law), plus the gust factor
      * for painters with their own extras.
      */
-    private breezeAt;
+    breezeAt(tx: number, ty: number, t: number, ph: number, s: number, ampA: number, ampB: number): {
+        sway: number;
+        lag: number;
+        gust: number;
+    };
     /**
      * The renderer's mirror of terrain's isPorchSurface, closure-free:
      * renderLift runs for every body and item every frame, and a per-
@@ -920,9 +1044,9 @@ export declare class Renderer {
      * lamp wears both. Each throw is one path, one fill, so a blob and
      * its smear can never double-darken each other.
      */
-    private castBlob;
+    castBlob(bx: number, by: number, hTiles: number, r: number, seed: number, smearW?: number): void;
     /** A prism's ground shadow: its base edge extruded along the sun. */
-    private castEdgeQuad;
+    castEdgeQuad(x0: number, y0: number, x1: number, y1: number, hTiles: number): void;
     /**
      * A body's grounding: foot ellipse, a low lobe cast along the sun,
      * and a lobe away from every nearby light — step up to a campfire
@@ -931,7 +1055,7 @@ export declare class Renderer {
      */
     private castBody;
     /** A small thing's plain contact ellipse (drops, summons). */
-    private castContact;
+    castContact(px: number, py: number, rx: number, ry: number): void;
     /** The cast lane's kill switch (every lane has one): off, the
      *  brushes fall through to their raw painters — the pre-lane
      *  pixels — for A/B bisection and as the emergency door. */
@@ -1002,7 +1126,7 @@ export declare class Renderer {
      * zeroed). Same variant-fold law as castRockShadow: 8 masks per
      * plant kind, a sibling's sheared silhouette reads identically.
      */
-    private castFloraShadow;
+    castFloraShadow(px: number, baseY: number, tile: Tile, h: number): void;
     /**
      * Screen → world: the exact inverse of liftedWTS. A click on a
      * plateau top must land on the plateau, not on the (hidden) ground
@@ -1435,7 +1559,6 @@ export declare class Renderer {
      *  identity is exactly right; never use for signature content. */
     private olObjId;
     /** Wall-run auto-tiler membership — shared law (tiles.ts). */
-    private static readonly WALL_TILES;
     /** Every WALL doorway tile — open and shut, both orientations and
      *  widths. Fence gates are doors on the wire (locks, occupancy,
      *  auto-close all ride DOOR_INFO) but they are fence props to the
@@ -1848,7 +1971,7 @@ export declare class Renderer {
      * the cloth, choose the charge; a matched pair can never argue.
      * Returns the outer path for the caller's ink.
      */
-    private paintGreatCloth;
+    paintGreatCloth(cx: number, yTop: number, bw: number, bl: number, dye: number, s: number, sway: number, lag: number): Path2D;
     /**
      * THE WALL TAKES THE STEEL — mounted arms on the armory face.
      * Steel is STILL: nothing here samples the breeze but the great
@@ -2558,7 +2681,6 @@ export declare class Renderer {
     private static readonly ORE_STYLES;
     private static readonly BARREN_STONE;
     private static readonly BARREN_DIM;
-    private static readonly ROCK_TILES;
     /**
      * One rectangular stone block, spoken in the cliff dialect: broad
      * front face, lit cap strip across the top, shaded lane down the
@@ -2591,13 +2713,11 @@ export declare class Renderer {
      * plant shows through; the cloth is the promise of warmth, never a
      * curtain over the art).
      */
-    private drawGrowingFrame;
+    drawGrowingFrame(bx: number, gy: number, h: number, planted: boolean): void;
     /** A four-point star twinkle - the "this is mineable" beacon. */
-    private sparkle;
-    /** Staggered twinkle window: brief flash once per period. */
-    private static twinkle;
+    sparkle(x: number, y: number, r: number, alpha: number, color: string): void;
     /** Blocky spall scattered at a formation's feet - grounds the mass. */
-    private rubble;
+    rubble(px: number, py: number, s: number, h: number, colors: string[]): void;
     /**
      * MINING NODES — every metal is a bespoke LANDMARK in the brutalist
      * dialect: rectangular blocks, hard chamfers, flat fills, no
@@ -2672,7 +2792,7 @@ export declare class Renderer {
      * before the lid FLINGS past vertical and settles with growEase's
      * overshoot. Closing is a shorter, sober fall back onto the rim.
      */
-    private chestOpenness;
+    chestOpenness(tx: number, ty: number, open: boolean): number;
     /**
      * DOOR EASES — the same clock pattern as chests: main.ts kicks an
      * ease on the tile patch (or a 'rattle' fx for a locked refusal) and
@@ -2987,7 +3107,6 @@ export declare class Renderer {
     private readonly bakeBudgets;
     /** THE FLOOR's one-per-frame token (see admitSpriteBake). */
     private forcedBakeUsed;
-    private static treeKey;
     private bakeTreeSprite;
     /**
      * Rasterize the TRUE-FORM sun-shadow silhouette (see treeShadows):
@@ -3119,7 +3238,7 @@ export declare class Renderer {
      */
     private bakeFloraSprite;
     /** Cached-sprite draw for a grown plant — forage node or farm crop. */
-    private drawFlora;
+    drawFlora(bx: number, by: number, tx: number, ty: number, tile: Tile, h: number, tSec: number): void;
     /**
      * The world's outline ring, baked INTO a sprite canvas: dilate the
      * sprite's own alpha into scratch B, tint, slip the ring UNDER the
@@ -3244,31 +3363,31 @@ export declare class Renderer {
      * broad silver straps and a silver arris cap: the metal is the
      * contrast, the wood stays quiet.
      */
-    private drawChestWood;
+    drawChestWood(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number): void;
     /**
      * MOSSY — the wayside elder. A batten-built chest with no metal
      * left worth naming, being claimed one square slab of moss at a
      * time. Blocky moss, blocky mushrooms, quiet wood.
      */
-    private drawChestMossy;
+    drawChestMossy(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number): void;
     /**
      * IRON — the strongchest. Dark timber in an iron grip: corner
      * columns, one massive belt, and a padlock the size of a fist.
      * The lock IS the promise; it goes with the key that opens it.
      */
-    private drawChestIron;
+    drawChestIron(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number): void;
     /**
      * GILDED — the coffer. A stepped gold crown over a lacquer inlay:
      * treasure-house work, all big faces and one set stone. The value
      * ladder does the shining; the sparkles only visit.
      */
-    private drawChestGilded;
+    drawChestGilded(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number, t: number, h: number): void;
     /**
      * BOSS — the black cache. A pedestal-set black mass in angular
      * iron, fronted by a bone skull whose sockets smoulder while the
      * hoard is still inside. Legendary is a silhouette, not a shimmer.
      */
-    private drawChestBoss;
+    drawChestBoss(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number, t: number, h: number): void;
     /** Trees, rocks, stations — the object layer, redrawn with character. */
     /** Fence-family connectivity: rails reach toward these neighbours. */
     private fenceish;
@@ -3541,7 +3660,7 @@ export declare class Renderer {
      * width (the head-ellipse ry scaled down the belly). Reads
      * this.ctx at call time — the outline pass swaps it.
      */
-    private paintStandingHoop;
+    paintStandingHoop(cx: number, yh: number, wk: number, dip: number, s: number): void;
     /**
      * THE STREET CASK — ONE COOPER for the whole game. The upright
      * barrel as a TURNED VOLUME under this camera: a coopered bulge on
@@ -3559,7 +3678,12 @@ export declare class Renderer {
      * the silhouette first, for castings that LAP other casks (the
      * cart-wheel law). Reads this.ctx at call time.
      */
-    private paintStreetCask;
+    paintStreetCask(cx: number, by: number, wr: number, bh: number, s: number, tone: number, seed: number, opts?: {
+        water?: boolean;
+        ink?: boolean;
+        inkBelowY?: number;
+        t?: number;
+    }): void;
     /**
      * THE SHELVING CONTRACT — one dispatcher, nine goods kinds, every
      * good drawn from its bottom-center (gx, gy) so anything seats on
@@ -3570,7 +3694,7 @@ export declare class Renderer {
      * of the hash. Reads this.ctx at CALL time, so the outline pass's
      * scratch swap is honored wherever the caller sits.
      */
-    private paintShelfGood;
+    paintShelfGood(kind: number, gx: number, gy: number, sd: number, s: number): void;
     private objectItem;
     /**
      * THE CLOTH TAKES THE STREET — the awning painter, v3, the
@@ -3658,14 +3782,14 @@ export declare class Renderer {
      *  handoff). */
     private drawBedFlip;
     /** A bedpost capped with a turned finial — the shared post brush. */
-    private bedFinialPost;
+    bedFinialPost(fx2: number, fy2: number, ph2: number): void;
     /**
      * The vertical bed's footboard — rail and finial posts as their OWN
      * layer: the bed paints it over the drape, and the sleeper's tuck
      * and the thrown-cover flip repaint it over their cloth, so the
      * posts always stand in FRONT of the blanket (user z-index law).
      */
-    private bedFootboardVert;
+    bedFootboardVert(x0: number, x1: number, dBot: number, yFn: number): void;
     /**
      * The bed's patchwork quilt — ONE painter shared by the bed case
      * and the sleeper's tuck, so the covers over a body are pixel-
@@ -3680,13 +3804,13 @@ export declare class Renderer {
      * the head edge. Row count derives from the quilt's own height so
      * bed and tuck always agree on the pattern.
      */
-    private bedCoversVert;
+    bedCoversVert(x0: number, x1: number, yQ: number, dBot: number, qMain: string, qDark: string): void;
     /**
      * A side-on bed's covers: the foot-end patchwork with the deck's
      * far-third shade and the vertical fold-back sheet band at the
      * head edge. Shared by the painter and the sleeper's tuck.
      */
-    private bedCoversSide;
+    bedCoversSide(qx0: number, qw2: number, dTop: number, dBot: number, sgn: number, qMain: string, qDark: string): void;
     private humanoidItem;
     /** Per-entity alert badge animation state (icon + when it changed). */
     private readonly alertAnim;
@@ -4342,4 +4466,5 @@ export declare class Renderer {
      */
     private drawOwnWounds;
 }
+export {};
 //# sourceMappingURL=renderer.d.ts.map
