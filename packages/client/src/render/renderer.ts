@@ -188,6 +188,7 @@ import {
 import { buildableIconUrl, itemIconUrl } from './icons.js';
 import { AWNING_CLOTHS, GAR_LEAF, GY_MOSS, GY_STONE, GY_STONE_LIT, HRB_MOON, HRB_MOON_DEEP, HRB_SAGE, HRB_SAGE_DEEP, HRB_SOIL_WET, PALI_BONE, PALI_LOG, PALI_ROPE, PALI_ROPE_DARK, ROCK_TILES, STALL_BANNERS, STRUCT_OUTLINE, TRD_CRUST, TRD_CRUST_LIT, TRD_HERB, TRD_HERB_DRY, TRD_LEATHER_LIT, TRD_STEEL, TRD_STEEL_LIT, TWN_BRONZE, TWN_BRONZE_LIT, TWN_IRON, TWN_OAK, TWN_OAK_DARK, TWN_OAK_LIT, TWN_ROPE, WALL_TILES, WIND_TMP, stone01, treeKey, twinkle } from './paintVocab.js';
 import { PROP_PAINTERS } from './props/index.js';
+import { SpriteAtlas } from './stage/spriteAtlas.js';
 import * as waterfalls from './waterfalls.js';
 import * as garrisonArt from './garrisonArt.js';
 import * as hudOverlay from './hudOverlay.js';
@@ -3512,9 +3513,9 @@ export class Renderer {
     const dh = en.cv.height / dpr;
     this.stageWorldItems.push({
       kind: 'quad',
-      tex: this.stageSpriteTex(en.cv, 0, en),
-      sx: 0,
-      sy: 0,
+      ...((at) => ({ tex: at.tex, sx: at.ox, sy: at.oy }))(
+        this.stageAtlasTex(en.cv, 0, en),
+      ),
       sw: en.cv.width,
       sh: en.cv.height,
       dw,
@@ -3908,9 +3909,9 @@ export class Renderer {
         // quad: same canvas, same shear matrix, exact by construction.
         this.stageWorldItems.push({
           kind: 'quad',
-          tex: this.stageSpriteTex(entry.cv, 0, entry),
-          sx: 0,
-          sy: 0,
+          ...((at) => ({ tex: at.tex, sx: at.ox, sy: at.oy }))(
+            this.stageAtlasTex(entry.cv, 0, entry),
+          ),
           sw: entry.cv.width,
           sh: entry.cv.height,
           dw: entry.cv.width,
@@ -4766,6 +4767,7 @@ export class Renderer {
     this.spriteBakeMsLeft = SPRITE_BAKE_MS;
     this.visSpriteMsLeft = VIS_SPRITE_BAKE_MS;
     this.visArrivalCount = ARRIVAL_MIN_COUNT;
+    this.spriteAtlas.frame();
     this.forcedBakeUsed = false;
     // THE FRAME CONFESSES WHAT IT COULD NOT CACHE: the live-paint
     // fallbacks are correct but they are also the cost the caches
@@ -8795,9 +8797,9 @@ export class Renderer {
       // a quad; the hot<->cold fade rides stageItemAlpha.
       this.stageWorldItems.push({
         kind: 'quad',
-        tex: this.stageSpriteTex(bk.canvas, 0, bk),
-        sx: 0,
-        sy: 0,
+        ...((at) => ({ tex: at.tex, sx: at.ox, sy: at.oy }))(
+          this.stageAtlasTex(bk.canvas, 0, bk),
+        ),
         sw: bk.canvas.width,
         sh: bk.canvas.height,
         dw: bk.canvas.width * k,
@@ -13589,6 +13591,7 @@ export class Renderer {
    * the explicit lifecycle. `rev` comes from the caller (the sprite's
    * own bake stamp), so an in-place repaint re-uploads exactly once.
    */
+  private readonly spriteAtlas = new SpriteAtlas();
   private readonly stageTexOf = new WeakMap<
     HTMLCanvasElement,
     { tex: StageTexture; owner: object; frameRev: number }
@@ -13606,6 +13609,20 @@ export class Renderer {
    * rev alone was trusted), and the SAME owner's in-place re-bake
    * re-uploads via its own frame stamp.
    */
+  /** THE SPRITE ATLAS's door: small sprites pack into shared pages
+   *  (few binds, dirty-rect uploads); anything oversized rides its
+   *  solo texture exactly as before. Returns the texture and the
+   *  source offset to add to a quad's sx/sy. */
+  stageAtlasTex(
+    canvas: HTMLCanvasElement,
+    rev: number,
+    owner: object,
+  ): { tex: StageTexture; ox: number; oy: number } {
+    const placed = this.spriteAtlas.place(canvas, rev, owner);
+    if (placed) return placed;
+    return { tex: this.stageSpriteTex(canvas, rev, owner), ox: 0, oy: 0 };
+  }
+
   stageSpriteTex(canvas: HTMLCanvasElement, rev: number, owner: object): StageTexture {
     let rec = this.stageTexOf.get(canvas);
     if (!rec) {
@@ -13851,9 +13868,9 @@ export class Renderer {
         if (alpha < 0.01) return;
         this.stageWorldItems.push({
           kind: 'quad',
-          tex: this.stageSpriteTex(sprite, 0, sprite),
-          sx: 0,
-          sy: 0,
+          ...((at) => ({ tex: at.tex, sx: at.ox, sy: at.oy }))(
+            this.stageAtlasTex(sprite, 0, sprite),
+          ),
           sw: sprite.width,
           sh: sprite.height,
           dw: rw * 2,
@@ -14995,9 +15012,9 @@ export class Renderer {
       if (dx0 + dw < 0 || dx0 > this.w || dy0 + dh < 0 || dy0 > this.h) return;
       this.stageWorldItems.push({
         kind: 'quad',
-        tex: this.stageSpriteTex(sp.canvas, sp.frame, sp),
-        sx: 0,
-        sy: 0,
+        ...((at) => ({ tex: at.tex, sx: at.ox, sy: at.oy }))(
+          this.stageAtlasTex(sp.canvas, sp.frame, sp),
+        ),
         sw,
         sh,
         dw,
@@ -15154,9 +15171,9 @@ export class Renderer {
         if (fx0 + sp.cw * k < 0 || fx0 > this.w || fy0 + sp.ch * k < 0 || fy0 > this.h) return;
         this.stageWorldItems.push({
           kind: 'quad',
-          tex: this.stageSpriteTex(sp.canvas, sp.frame, sp),
-          sx: 0,
-          sy: 0,
+          ...((at) => ({ tex: at.tex, sx: at.ox, sy: at.oy }))(
+            this.stageAtlasTex(sp.canvas, sp.frame, sp),
+          ),
           sw: Math.ceil(sp.cw * sp.dpr),
           sh: Math.ceil(sp.ch * sp.dpr),
           dw: sp.cw * k,
@@ -15548,9 +15565,9 @@ export class Renderer {
         const sheared = Math.abs(kSh) * dh > 0.75;
         this.stageWorldItems.push({
           kind: 'quad',
-          tex: this.stageSpriteTex(sp.canvas, sp.frame, sp),
-          sx: 0,
-          sy: 0,
+          ...((at) => ({ tex: at.tex, sx: at.ox, sy: at.oy }))(
+            this.stageAtlasTex(sp.canvas, sp.frame, sp),
+          ),
           sw,
           sh,
           dw,
@@ -15844,9 +15861,9 @@ export class Renderer {
               const sway = Math.abs(sx) * dhS >= 1.5;
               this.stageWorldItems.push({
                 kind: 'quad',
-                tex: this.stageSpriteTex(sh.canvas, sh.frame, sh),
-                sx: 0,
-                sy: 0,
+                ...((at) => ({ tex: at.tex, sx: at.ox, sy: at.oy }))(
+                  this.stageAtlasTex(sh.canvas, sh.frame, sh),
+                ),
                 sw: pw2,
                 sh: ph2,
                 dw: sway ? sh.cw : dwS,
@@ -20875,9 +20892,9 @@ export class Renderer {
       // off whenever assembly is chosen (bodyRelightPossible).
       this.stageWorldItems.push({
         kind: 'quad',
-        tex: this.stageSpriteTex(sp.canvas, sp.frame, sp),
-        sx: 0,
-        sy: 0,
+        ...((at) => ({ tex: at.tex, sx: at.ox, sy: at.oy }))(
+          this.stageAtlasTex(sp.canvas, sp.frame, sp),
+        ),
         sw: sp.w,
         sh: sp.h,
         dw,

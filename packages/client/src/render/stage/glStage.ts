@@ -110,6 +110,22 @@ export class GlStage implements StageBackend {
   }>();
   private scratchBytes = 0;
   private frameNo = 0;
+  /** Staging canvas for dirty-rect subuploads (grown, never shrunk). */
+  private staging: { cv: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null = null;
+
+  private stagingFor(w: number, h: number): { cv: HTMLCanvasElement; ctx: CanvasRenderingContext2D } {
+    // texSubImage2D writes SOURCE-SIZED texels: the staging canvas must
+    // be EXACTLY the dirty rect, or stale texels beyond it would land
+    // in the page. Resizing also clears — both properties load-bearing.
+    let st = this.staging;
+    if (!st) {
+      st = this.staging = { cv: document.createElement('canvas'), ctx: null! };
+    }
+    st.cv.width = w;
+    st.cv.height = h;
+    st.ctx = st.cv.getContext('2d')!;
+    return st;
+  }
   scratchPaints = 0;
   scratchUploadBytes = 0;
 
@@ -277,6 +293,33 @@ export class GlStage implements StageBackend {
     rec.used = this.frameNo;
     if (rec.uploadedRev !== tex.rev || rec.filter !== tex.filter) {
       const c = tex.canvas;
+      // THE DIRT LIST: an atlas page whose size and filter stand can
+      // re-upload only its repainted rects — the cadence economy that
+      // turns a 4MB page upload into a few kilobytes of sprite.
+      const dirty = tex.dirty;
+      if (
+        dirty !== undefined &&
+        dirty.length > 0 &&
+        rec.uploadedRev >= 0 &&
+        rec.w === c.width &&
+        rec.h === c.height &&
+        rec.filter === tex.filter
+      ) {
+        gl.bindTexture(gl.TEXTURE_2D, rec.glTex);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+        for (const [dx, dy, dw, dh] of dirty) {
+          const st = this.stagingFor(dw, dh);
+          st.ctx.drawImage(c, dx, dy, dw, dh, 0, 0, dw, dh);
+          gl.texSubImage2D(gl.TEXTURE_2D, 0, dx, dy, gl.RGBA, gl.UNSIGNED_BYTE, st.cv);
+          this.uploadedBytes += dw * dh * 4;
+          this.uploads++;
+        }
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+        tex.dirty = [];
+        rec.uploadedRev = tex.rev;
+        return rec;
+      }
+      if (dirty !== undefined) tex.dirty = [];
       gl.bindTexture(gl.TEXTURE_2D, rec.glTex);
       gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c);

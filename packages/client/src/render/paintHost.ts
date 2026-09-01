@@ -64,6 +64,7 @@ export type PaintHost = Pick<
   'stageCastScratch' |
   'stageItemAlpha' |
   'stagePushPaintRaw' |
+  'stageAtlasTex' |
   'stageSpriteTex' |
   'stageWorld' |
   'stageWorldItems' |
