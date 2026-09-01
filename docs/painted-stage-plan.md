@@ -1213,3 +1213,30 @@ judged before commit):
 Remaining audit items charted, not started: snow stray islands at the
 graveyard (dressing pass), guard stride, graveyard blade calibration,
 gravestone variants, face marks.
+
+## As-built — THE CROWN CONTROL VERDICT (2026-09-01, parity v7)
+
+The crown pair's marginal was run to ground and codified:
+
+- **The false alarm first**: the probe account had been left in the
+  museum plane by the audit's screenshot sessions — `/museum` is a
+  toggle that persists across logins, so every scene `/tp` landed on
+  empty shelf ground (q 165 / draws 71 posing as the crown). Both
+  stage probes now check `dcGame.plane?.id` after login and leave the
+  museum before teleporting. THE PLANE CHECK is probe law.
+- **The distributions**: 3-4 crown runs per lane, margins against the
+  +60 gate — atlas −20..+33, pre-atlas control −18..+42. Coinciding
+  distributions: the atlas is exonerated.
+- **The mechanism**: noise2T split by mode parity shows stage ON-ON
+  pairs quiet (~80-120 — sprited animation re-mints less often) while
+  canvas OFF-OFF pairs run ~165-195 (live animation every frame). A
+  cross-mode pair on brazier/willow-dense crown therefore carries an
+  irreducible animation-PHASE offset on top of the documented
+  willow/NPC/AA class. A same-mode tail at the sig pairs' own 400ms
+  separation (v6, kept as diagnostic + floor guard) proved the held
+  mode's floor CANNOT close the gap — the offset is real, bounded,
+  and pre-existing.
+- **The gate**: crown scenes carry a +100 allowance (max observed
+  overshoot +42; the empty-plane failure signature still fails the
+  widened gate by 33). All other scenes stay at +60. Battery: 7/7
+  PASS on the atlas lane; control crown passes under the same rule.
