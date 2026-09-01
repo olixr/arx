@@ -4462,4 +4462,8 @@ function frame(now: number): void {
   }
 }
 renderer.perfHud = new URLSearchParams(location.search).has('perf');
+// THE PAINTED WORLD TAKES THE STAGE (phase A1, dev lane): ?stage
+// routes the level-0 chunk ground through the WebGL compositor. The
+// player-facing Display toggle ships with phase A5.
+renderer.stageGround = new URLSearchParams(location.search).has('stage');
 requestAnimationFrame(frame);

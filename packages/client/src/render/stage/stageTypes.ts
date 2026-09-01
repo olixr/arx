@@ -46,7 +46,12 @@ export const enum StageBlend {
  * canvas oracle reads `canvas` directly and ignores the rest.
  */
 export interface StageTexture {
-  readonly canvas: HTMLCanvasElement;
+  /** The wrapped canvas. MUTABLE on purpose: the pooled caches swap
+   *  a successor canvas into an entry at bake completion (round 11's
+   *  chunk pool), and the handle follows — retarget the field and
+   *  bump `rev`, and the next ensure/draw uploads the new content
+   *  into the same GL texture (the ledger absorbs any size change). */
+  canvas: HTMLCanvasElement;
   /** Content version. Bump after every repaint of `canvas`. */
   rev: number;
   /** Sampling for scaled blits — 'linear' matches the renderer's

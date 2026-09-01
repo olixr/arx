@@ -89,6 +89,33 @@ test('blend tables carry their derivations', async (t) => {
   });
 });
 
+test('THE UPLOAD IS A BAKE — the budget arithmetic', async (t) => {
+  const { GPU_COST_SEED_MS_PER_MB, admitUpload, nextUploadCost, uploadEstMs } = await import('./gpuBudget.js');
+  const MB = 1048576;
+  await t.test('estimates scale with bytes at the measured rate', () => {
+    assert.equal(uploadEstMs(4 * MB, 2), 8);
+    assert.equal(uploadEstMs(0, 2), 0);
+  });
+  await t.test('admission fits the budget…', () => {
+    assert.equal(admitUpload(6, 5.9, false), true);
+    assert.equal(admitUpload(6, 6.1, false), false);
+  });
+  await t.test('…but THE CACHE ALWAYS GAINS GROUND: the first admission is a floor', () => {
+    // Round 7's deadlock shape: a cost estimate that closed the lane
+    // could never be corrected because nothing ever ran to re-sample
+    // it. The per-frame floor makes that unrepresentable.
+    assert.equal(admitUpload(0.1, 40, true), true);
+    assert.equal(admitUpload(0.1, 40, false), false);
+  });
+  await t.test('the cost EMA converges onto real samples and washes out the seed', () => {
+    let ema = GPU_COST_SEED_MS_PER_MB;
+    for (let i = 0; i < 20; i++) ema = nextUploadCost(ema, 0.5, 1 * MB);
+    assert.ok(Math.abs(ema - 0.5) < 0.01, `ema ${ema}`);
+    // Zero-byte samples must not poison the estimate.
+    assert.equal(nextUploadCost(1.5, 3, 0), 1.5);
+  });
+});
+
 test('the dest-matrix convention', () => {
   // m maps [0..dw]×[0..dh] dest-local CSS px to CSS screen space;
   // stageAt is the axis-aligned 9-arg drawImage equivalent.

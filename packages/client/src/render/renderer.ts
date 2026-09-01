@@ -346,6 +346,9 @@ import {
   type FxStyle,
 } from './abilityFx.js';
 import { SIGNATURES, type SigCtx } from './fxSignatures.js';
+import { GlStage } from './stage/glStage.js';
+import { GPU_URGENT_MS } from './stage/gpuBudget.js';
+import { StageBlend, type StageQuad, type StageTexture } from './stage/stageTypes.js';
 
 /**
  * Signature style: shadows are solid and sharp — never blurred. They
@@ -1332,6 +1335,11 @@ interface BakedChunk {
   canvas: HTMLCanvasElement;
   data: ChunkData;
   rev: number;
+  /** THE TEXTURE IS THE CANVAS'S SHADOW (stage lane): the GL handle
+   *  for this entry's base canvas. Created at first stage emission,
+   *  retargeted there when the pooled bake swap replaces the canvas,
+   *  released in recycleBakedEntry — one owner, one lifecycle. */
+  stageTex?: StageTexture;
   /** Pixels per tile this bake was rendered at (zoom-tier dependent). */
   px: number;
   /**
@@ -1940,6 +1948,12 @@ export class Renderer {
   /** Every canvas a baked entry owns — its base and its lifted layers. */
   private recycleBakedEntry(entry: BakedChunk | undefined): void {
     if (!entry) return;
+    // The GL shadow dies with its entry (ONE LIFECYCLE) — the pooled
+    // canvas will serve another chunk under a fresh handle.
+    if (entry.stageTex) {
+      this.stageGl?.release(entry.stageTex);
+      entry.stageTex = undefined;
+    }
     this.recycleChunkCanvas(entry.canvas);
     if (entry.lifted) {
       for (const l of entry.lifted) this.recycleChunkCanvas(l.canvas);
@@ -6745,6 +6759,15 @@ export class Renderer {
     const minCy = Math.floor(b.minTy / CHUNK_SIZE);
     const maxCy = Math.floor(b.maxTy / CHUNK_SIZE);
     const bakePx = this.bakePx();
+    // Stage lane, frame start: budgets and confession counters reset;
+    // quads/late-blits were drained by last frame's flush.
+    const stage = this.stageActive();
+    if (stage) {
+      this.stageGl!.statsReset();
+      this.stageUpMsLeft = GPU_URGENT_MS;
+      this.stageStats.absent = 0;
+      this.stageStats.stale = 0;
+    }
     // ALL bake work is TIME-SLICED (see startChunkBake): a full chunk
     // bake is 10-40ms, so nothing here ever runs one whole inside a
     // frame. The visible loop only DISCOVERS work — brand-new chunks
@@ -6834,17 +6857,13 @@ export class Renderer {
         // edge (the old hairline-seam bug).
         const gut = bakeGutter(baked.px);
         const srcSz = CHUNK_SIZE * baked.px;
-        this.ctx.drawImage(
-          baked.canvas,
-          gut,
-          gut,
-          srcSz,
-          srcSz,
-          x0,
-          y0,
-          this.camera.snapPx(p1.x) - x0,
-          this.camera.snapPx(p1.y) - y0,
-        );
+        const dw = this.camera.snapPx(p1.x) - x0;
+        const dh = this.camera.snapPx(p1.y) - y0;
+        if (stage) {
+          this.stageEmitChunk(baked, gut, srcSz, x0, y0, dw, dh);
+        } else {
+          this.ctx.drawImage(baked.canvas, gut, gut, srcSz, srcSz, x0, y0, dw, dh);
+        }
       }
     }
     // PRE-BAKE RING: chunks one step outside the viewport bake (one
@@ -6907,6 +6926,83 @@ export class Renderer {
       }
       if (msLeft <= 0) break;
     }
+    if (stage) this.stageFlushGround();
+  }
+
+  /**
+   * Emit one visible chunk into the stage lane. The handle syncs at
+   * EMISSION — the pooled bake swap retargets it, and an in-flight
+   * sliced job repaints its canvas between frames, so the shadow
+   * follows the truth with zero coupling to the bake internals. The
+   * upload rides the urgent budget (THE ARRIVAL PAYS ONCE with a
+   * runaway guard); a declined upload paints through the late lane.
+   */
+  private stageEmitChunk(
+    baked: BakedChunk,
+    gut: number,
+    srcSz: number,
+    x0: number,
+    y0: number,
+    dw: number,
+    dh: number,
+  ): void {
+    const gl = this.stageGl!;
+    let tex = baked.stageTex;
+    if (!tex) {
+      tex = baked.stageTex = { canvas: baked.canvas, rev: 0, filter: 'linear' };
+    }
+    if (tex.canvas !== baked.canvas) {
+      tex.canvas = baked.canvas;
+      tex.rev++;
+    } else if (baked.pending) {
+      tex.rev++;
+    }
+    const r = gl.ensure(tex, this.stageUpMsLeft);
+    this.stageUpMsLeft -= r.spentMs;
+    if (r.state === 'absent') {
+      this.stageStats.absent++;
+      this.stageLate.push({ c: baked.canvas, sx: gut, sy: gut, ss: srcSz, x0, y0, dw, dh });
+      return;
+    }
+    if (r.state === 'stale') this.stageStats.stale++;
+    this.stageQuads.push({
+      kind: 'quad',
+      tex,
+      sx: gut,
+      sy: gut,
+      sw: srcSz,
+      sh: srcSz,
+      dw,
+      dh,
+      m: [1, 0, 0, 1, x0, y0],
+      alpha: 1,
+      blend: StageBlend.SourceOver,
+    });
+  }
+
+  /**
+   * Render the collected ground quads on the GL stage and land them
+   * in the 2d frame as ONE drawImage — same task, so no readback and
+   * no present race — drawn through the LIVE ctx transform so a
+   * zoom-pulse scales the ground exactly as it scaled the per-chunk
+   * blits. Late (declined) chunks paint over it through the canvas
+   * lane, exactly where they would have landed.
+   */
+  private stageFlushGround(): void {
+    const gl = this.stageGl!;
+    if (this.stageQuads.length > 0) {
+      gl.begin(this.w, this.h, this.dpr(), '#141020');
+      gl.draw(this.stageQuads);
+      gl.end();
+      this.ctx.imageSmoothingEnabled = true;
+      this.ctx.drawImage(gl.canvas, 0, 0, gl.canvas.width, gl.canvas.height, 0, 0, this.w, this.h);
+    }
+    for (const l of this.stageLate) {
+      this.ctx.imageSmoothingEnabled = true;
+      this.ctx.drawImage(l.c, l.sx, l.sy, l.ss, l.ss, l.x0, l.y0, l.dw, l.dh);
+    }
+    this.stageQuads.length = 0;
+    this.stageLate.length = 0;
   }
 
   /**
@@ -20381,6 +20477,49 @@ export class Renderer {
   /** The frame's y-sorted draw list — persistent, cleared at reuse. */
   private readonly drawItems: DrawItem[] = [];
 
+  // ---- THE PAINTED WORLD TAKES THE STAGE (phase A1: the ground lane) ----
+  /** Dev flag (?stage): the level-0 chunk ground composites through
+   *  the GL stage and lands in the 2d frame as ONE same-task
+   *  drawImage (a GPU-side copy between accelerated canvases), so
+   *  lighting, post and the reel keep working unchanged while the
+   *  frame migrates pass by pass. The Display toggle arrives in A5. */
+  stageGround = false;
+  private stageGl: GlStage | null = null;
+  /** webgl2 unavailable or init threw — the canvas lane IS the product. */
+  private stageDead = false;
+  private readonly stageQuads: StageQuad[] = [];
+  /** THE STILL-WORLD BARGAIN's lane: chunks whose texture the upload
+   *  guard declined this frame blit through the canvas AFTER the GL
+   *  image lands (they would be covered otherwise). */
+  private readonly stageLate: Array<{
+    c: HTMLCanvasElement;
+    sx: number;
+    sy: number;
+    ss: number;
+    x0: number;
+    y0: number;
+    dw: number;
+    dh: number;
+  }> = [];
+  private stageUpMsLeft = 0;
+  private readonly stageStats = { absent: 0, stale: 0 };
+
+  /** Lazily stand the stage up; a context loss parks it until the
+   *  restore handler clears the flag (THE TOGGLE IS THE PRODUCT'S
+   *  SAFETY — the canvas path serves every parked frame). */
+  private stageActive(): boolean {
+    if (!this.stageGround || this.stageDead) return false;
+    if (!this.stageGl) {
+      try {
+        this.stageGl = new GlStage(document.createElement('canvas'));
+      } catch {
+        this.stageDead = true;
+        return false;
+      }
+    }
+    return !this.stageGl.contextLost;
+  }
+
   /** Stale-chunk re-bake candidates this frame (center-first pacing). */
   private readonly replaceQueue: Array<{
     baked: BakedChunk;
@@ -20439,6 +20578,19 @@ export class Renderer {
     // sprite budget.
     const gs = this.grass.rowStats;
     parts.push(`grass blit ${gs.blit} live ${gs.live} bake ${gs.bake} over ${gs.over}`);
+    // The stage confesses (phase A1): per-frame upload volume, the
+    // exact resident texture ledger, draw calls, and the two fallback
+    // tails. A steady non-zero `live` means the upload budget is
+    // starving the ground; a growing `tex` with a shrinking cache
+    // means a release hook is missing (the round-10 phantom class).
+    if (this.stageGround && this.stageGl) {
+      const g = this.stageGl;
+      parts.push(
+        `stage up ${(g.uploadedBytes / 1048576).toFixed(1)}MB/${g.uploads} ` +
+          `tex ${(g.textureBytes / 1048576).toFixed(0)}MB/${g.textureCount} ` +
+          `draws ${g.drawCalls} live ${this.stageStats.absent} stale ${this.stageStats.stale}`,
+      );
+    }
     return parts.join('\n');
   }
 

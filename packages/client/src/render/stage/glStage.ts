@@ -24,6 +24,7 @@
  */
 import { computeRuns } from './stageBatch.js';
 import { BLEND_GL_FUNC, blendNeedsAlphaTarget } from './stageBlend.js';
+import { GPU_COST_SEED_MS_PER_MB, admitUpload, nextUploadCost, uploadEstMs } from './gpuBudget.js';
 import type { StageBackend, StageItem, StageTexture } from './stageTypes.js';
 
 const VERT_SRC = `#version 300 es
@@ -81,6 +82,10 @@ export class GlStage implements StageBackend {
   uploadedBytes = 0;
   uploads = 0;
   drawCalls = 0;
+  /** Measured submission cost, ms per MB (gpuBudget EMA). */
+  uploadCostMsPerMb = GPU_COST_SEED_MS_PER_MB;
+  /** True once a budgeted ensure() admitted this frame (the floor). */
+  private uploadedThisFrame = false;
 
   /** True after webglcontextlost; the caller flips to the canvas
    *  backend the same frame (THE TOGGLE IS THE PRODUCT'S SAFETY). */
@@ -204,6 +209,43 @@ export class GlStage implements StageBackend {
     return rec;
   }
 
+  /**
+   * THE UPLOAD IS A BAKE — the budgeted lane for emitters that can
+   * fall back (the ground pass paints an un-uploadable chunk through
+   * the canvas lane instead; THE STILL-WORLD BARGAIN at the right
+   * layer). Returns the handle's drawable state:
+   *
+   *  'current' — texture matches rev (uploaded now or already fresh);
+   *  'stale'   — an older upload exists and may blit while the budget
+   *              catches up (a stale bake still serves — the band
+   *              layer's own law);
+   *  'absent'  — nothing uploaded and the guard declined: the caller
+   *              MUST paint this item through its live lane.
+   *
+   * `msLeft` is the frame's remaining lane budget as the caller
+   * tracks it; the return includes the ms actually spent so the
+   * caller can decrement. draw() itself still uploads unconditionally
+   * whatever it meets un-synced — a forgotten ensure() may cost a
+   * hitch, never a hole.
+   */
+  ensure(tex: StageTexture, msLeft: number): { state: 'current' | 'stale' | 'absent'; spentMs: number } {
+    const rec = this.records.get(tex);
+    if (rec && rec.uploadedRev === tex.rev && rec.filter === tex.filter) {
+      return { state: 'current', spentMs: 0 };
+    }
+    const bytes = tex.canvas.width * tex.canvas.height * 4;
+    const est = uploadEstMs(bytes, this.uploadCostMsPerMb);
+    if (!admitUpload(msLeft, est, !this.uploadedThisFrame)) {
+      return { state: rec && rec.uploadedRev >= 0 ? 'stale' : 'absent', spentMs: 0 };
+    }
+    this.uploadedThisFrame = true;
+    const t0 = performance.now();
+    this.sync(tex);
+    const spentMs = performance.now() - t0;
+    this.uploadCostMsPerMb = nextUploadCost(this.uploadCostMsPerMb, spentMs, bytes);
+    return { state: 'current', spentMs };
+  }
+
   /** ONE LIFECYCLE's release door — call from the cache evictors. */
   release(tex: StageTexture): void {
     const rec = this.records.get(tex);
@@ -213,10 +255,16 @@ export class GlStage implements StageBackend {
     this.records.delete(tex);
   }
 
+  /** Live texture records — the ledger's companion count. */
+  get textureCount(): number {
+    return this.records.size;
+  }
+
   statsReset(): void {
     this.uploadedBytes = 0;
     this.uploads = 0;
     this.drawCalls = 0;
+    this.uploadedThisFrame = false;
   }
 
   begin(w: number, h: number, dpr: number, clear: string): void {

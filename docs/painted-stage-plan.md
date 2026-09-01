@@ -285,6 +285,49 @@ under noise vs canvas2d; teleport storm uploads within budget;
 ledgers exact across 5-min soak (the round-11 soak harness, extended
 to count GPU bytes).
 
+**A1 — AS BUILT (2026-08-31).** SCOPE CORRECTION, discovered by
+architecture and recorded here: bands, cliffs and lifted elevation
+layers are Y-SORTED WORLD ITEMS — they interleave with entities and
+cannot join a bottom ground layer; they move to A2 where the world
+pass migrates whole. A1 shipped the LEVEL-0 CHUNK GROUND plus the
+full upload economy:
+
+- **The hybrid seam**: the GL stage renders the ground quads and the
+  2d frame consumes them as ONE same-task drawImage (a GPU-side copy
+  between accelerated canvases — no readback), drawn through the live
+  ctx transform so the zoom-pulse scales the ground exactly as it
+  scaled per-chunk blits. Lighting, post, and the reel keep working
+  unchanged through the whole migration. `?stage` is the dev flag;
+  the Display toggle remains A5.
+- **Emission-time shadow sync**: the chunk entry's StageTexture
+  retargets and re-revs at EMIT (pooled bake swaps, in-flight sliced
+  jobs) — zero coupling to bake internals; released in
+  recycleBakedEntry (ONE LIFECYCLE — the round-10 phantom class is
+  unrepresentable).
+- **THE UPLOAD IS A BAKE** (`gpuBudget.ts`, pure + tests): urgent
+  6ms guard + one-admission floor + MEASURED cost EMA (ms/MB from
+  the machine's own texImage2D). Declined chunks paint through the
+  LATE canvas lane after the GL image lands — the STILL-WORLD
+  BARGAIN at the emitter, so nothing can ever fail to draw. draw()
+  itself still uploads whatever it meets un-synced: a forgotten
+  ensure may cost a hitch, never a hole.
+- **Correctness-first API split**: `ensure()` = the budgeted lane
+  with fallback; `draw()` = unconditional.
+
+**Gates, all green on the live rig** (lane :5231 → the standing
+rig-36 server; wire untouched): interleaved single-session parity
+(live `stageGround` toggle, null controls) — on-vs-off within the
+animation noise floor in all five scenes; soak — texture ledger flat
+across 4 circuit laps (tex 18/73MB = the visible working set; ring
+chunks correctly textureless), peak 89MB in transit, steady-state
+uploads 0; in-game context-loss drill — frames keep flowing on
+canvas during loss, auto-recovery after restore; Metal measured
+uploads at ~0.01ms/MB (the seed washed out in four samples).
+Method lesson re-banked the hard way: cross-SESSION pixel compares
+are drowned by per-session animation clocks (round 9's law) — the
+first parity driver was rebuilt as a single-session live toggle.
+786/786 client tests.
+
 ### A2 — The standing world (sprites, bodies, the live lane)
 
 - **Cached sprites** (trees, props, flora, grass cells, masks, glows):
