@@ -1119,6 +1119,13 @@ export declare class ClientGame {
      * welcome's caches are empty; no veil is wanted there).
      */
     private stoodInWorld;
+    /**
+     * THE WIRE'S TABLE (foundations F5.2): one handler per message type,
+     * TOTAL over the S2C union — a new message type fails to compile
+     * until it has a row here. Static, so rows reach the class's private
+     * rooms; each row is one former switch arm, moved verbatim.
+     */
+    private static readonly S2C_HANDLERS;
     private handleMessage;
     private handleChunk;
     /** Wall/door flags per streamed chunk key — the interiors gate. */
