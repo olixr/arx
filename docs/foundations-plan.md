@@ -275,3 +275,22 @@ intra-family calls dispatch through `srv.*` — pinned in the mover and noted in
 module head. Mover hardening along the way: body brace = last 0→1 depth transition,
 param-list comment stripping, import-alias preservation, parent-type auto-import.
 gameServer.ts 32,258 → 30,674. Band three (F4.2–F4.5) merged to main.
+
+**F3 — THE WARDROBE AND THE MENAGERIE (653744d9, fce0a93a, 487a15c4, bee73244,
+2026-09-01).** armor.ts 28,284 → 2,758 in three cuts: **F3.1** clocks (20 pure phase
+helpers → armorClocks.ts), styles (contracts + rosters + colorways + resolvers →
+armorStyles.ts, armor.ts re-exports), drawPauldron whole (+pauldron-only coldLick).
+**F3.2** drawHelmet's 59 kinds → CLOTH_HELMS (42, terminal painters — the branch
+returns proved every soft crown skips the forge tail) and METAL_HELMS (17 painters /
+18 kinds; greathelm+bascinet share an arm) dispatched through a scratch HelmCtx
+(WIND_TMP idiom, zero new allocations; the shared closures ride the ctx). **F3.3**
+drawTorsoGarment's !hurt region (89 flag blocks + 2 front-plane markers, zero early
+returns) → armorTorsoLayers.ts as a 91-entry ordered array — THE ORDER IS THE DRESS
+CODE. New proof style: ROLL CALLS — every authored style (386 helm, 73 body) driven
+through the registries in multiple poses on the recording ctx, whose finite-geometry
+assert catches exactly a lost local (testkit learned gradient stubs). **F3.4** rig.ts
+26,142 → 15,774: sixteen species files on the golems.ts template (163 defs bucketed by
+name pattern, spans moved whole, cross-bucket imports resolved, shared grammar via the
+existing deferred golems-style cycle), rig.ts re-exporting every door — 96 importers,
+16 labs, 13 species suites unchanged. Refactor-parity PASS ×7 at every sub-phase
+(baseline advanced each time). Band four merged to main.
