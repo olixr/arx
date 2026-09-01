@@ -5,7 +5,7 @@
  * the engine. Everything here is data or a pure function; nothing reads
  * frame state.
  */
-import { Tile, WALL_RUN_TILES } from '@arx/shared';
+import { DOOR_TILES, doorInfo, Tile, WALL_RUN_TILES } from '@arx/shared';
 import { DYE_SWATCHES } from './icons.js';
 import type { WindSample } from './grass.js';
 
@@ -120,3 +120,38 @@ export const HRB_SAGE_DEEP = '#5b8a5e';
 export const HRB_MOON = '#8f9ed6';
 export const HRB_MOON_DEEP = '#5c6693';
 export const HRB_SOIL_WET = '#3a2d1e';
+
+// ---- lifted with F2 WAVE A: barrier inks the engine still speaks ----
+/**
+ * The fence family's timber — golden oak, the regionless wood-skin
+ * baseline, so player fencing matches unenclosed builds everywhere.
+ * One palette for straight runs, 45° turns, and gates: a pen must
+ * read as ONE carpentered line. Rail fills are deliberately constant
+ * per tile (no hash jitter) — N-S strips and E-W boards continue
+ * across tile joins, and any per-tile tone would print the grid.
+ */
+export const FENCE_POST = '#6e4b29';
+export const FENCE_RAIL = '#8a6534';
+
+/** Door ids whose leaf/frame the doorway painter itself owns — fence,
+ * garrison, palisade and hedge gates belong to their family painters. */
+/** Every WALL doorway tile — open and shut, both orientations and
+ *  widths. Fence gates are doors on the wire (locks, occupancy,
+ *  auto-close all ride DOOR_INFO) but they are fence props to the
+ *  renderer — kept OUT of this set so the wall-doorway pipeline
+ *  (side-notch law, wide merges, veil, wallish) never sees them.
+ *  Garrison gates carve out the same way: they belong to the
+ *  garrison run pipeline, never the building-doorway one. */
+export const PANEL_DOOR_TILES = new Set<number>(
+  [...DOOR_TILES].filter(
+    (t) =>
+      doorInfo(t)!.material !== 'fence' &&
+      doorInfo(t)!.material !== 'garrison' &&
+      // The camp gate belongs to the palisade family's painter.
+      doorInfo(t)!.material !== 'palisade' &&
+      // The garden arch belongs to the hedge family's painter.
+      doorInfo(t)!.material !== 'hedge' &&
+      // The graveyard gate belongs to the iron-fence family's painter.
+      doorInfo(t)!.material !== 'iron',
+  ),
+);

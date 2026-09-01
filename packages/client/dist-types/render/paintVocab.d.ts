@@ -62,4 +62,24 @@ export declare const HRB_SAGE_DEEP = "#5b8a5e";
 export declare const HRB_MOON = "#8f9ed6";
 export declare const HRB_MOON_DEEP = "#5c6693";
 export declare const HRB_SOIL_WET = "#3a2d1e";
+/**
+ * The fence family's timber — golden oak, the regionless wood-skin
+ * baseline, so player fencing matches unenclosed builds everywhere.
+ * One palette for straight runs, 45° turns, and gates: a pen must
+ * read as ONE carpentered line. Rail fills are deliberately constant
+ * per tile (no hash jitter) — N-S strips and E-W boards continue
+ * across tile joins, and any per-tile tone would print the grid.
+ */
+export declare const FENCE_POST = "#6e4b29";
+export declare const FENCE_RAIL = "#8a6534";
+/** Door ids whose leaf/frame the doorway painter itself owns — fence,
+ * garrison, palisade and hedge gates belong to their family painters. */
+/** Every WALL doorway tile — open and shut, both orientations and
+ *  widths. Fence gates are doors on the wire (locks, occupancy,
+ *  auto-close all ride DOOR_INFO) but they are fence props to the
+ *  renderer — kept OUT of this set so the wall-doorway pipeline
+ *  (side-notch law, wide merges, veil, wallish) never sees them.
+ *  Garrison gates carve out the same way: they belong to the
+ *  garrison run pipeline, never the building-doorway one. */
+export declare const PANEL_DOOR_TILES: Set<number>;
 //# sourceMappingURL=paintVocab.d.ts.map
