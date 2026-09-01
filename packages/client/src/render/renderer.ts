@@ -348,7 +348,7 @@ import {
 import { SIGNATURES, type SigCtx } from './fxSignatures.js';
 import { GlStage } from './stage/glStage.js';
 import { GPU_URGENT_MS } from './stage/gpuBudget.js';
-import { StageBlend, type StageQuad, type StageTexture } from './stage/stageTypes.js';
+import { StageBlend, type StageItem, type StageQuad, type StageTexture } from './stage/stageTypes.js';
 
 /**
  * Signature style: shadows are solid and sharp — never blurred. They
@@ -1496,6 +1496,14 @@ interface DrawItem {
    * blit would cover. `occCulled` is the pass's verdict.
    */
   occKey?: number;
+  /** Band-bucket marker (stage lane): a pure lattice blit the world
+   *  sink may quadify at assembly. Set only by emitStretch. */
+  band?: { sb: StretchBake; bk: BandBucket };
+  /** Paint bounds (stage lane): the screen rect this item's closure
+   *  may touch, for push sites that know it — the sink prefers this
+   *  over the split path. Sized honest-and-generous; the oracle's
+   *  clip makes an undersized box a visible defect, not a quiet one. */
+  pb?: { x: number; y: number; w: number; h: number };
   occX0?: number;
   occY0?: number;
   occX1?: number;
@@ -3986,8 +3994,19 @@ export class Renderer {
               const worldTy = cy * CHUNK_SIZE + r;
               if (worldTy > b.maxTy + elevPadS || worldTy < b.minTy - ELEV_H * 3 - 1) continue;
               const level = layer.level;
+              const pbA = this.camera.worldToScreen(cx * CHUNK_SIZE, worldTy, this.w, this.h);
+              const pbB = this.camera.worldToScreen((cx + 1) * CHUNK_SIZE, worldTy + 1, this.w, this.h);
+              const pbLift = Math.round(level * ELEV_H * s);
               items.push({
                 sortY: worldTy - 0.01,
+                // Stage bounds: the row slice at its lift, plus the
+                // grass layer's blade headroom above and lean slack.
+                pb: {
+                  x: pbA.x - s,
+                  y: pbA.y - pbLift - 1.6 * s,
+                  w: pbB.x - pbA.x + 2 * s,
+                  h: pbB.y - pbA.y + 1.6 * s + 0.4 * s,
+                },
                 // THE SHELF LAW: positive crowns are landscape (shelf 0
                 // — a body at the cliff foot peeks over the rim, and
                 // everything standing on the crown paints over its own
@@ -5292,31 +5311,21 @@ export class Renderer {
     // Consecutive particle items form a RUN: nothing else touches
     // fillStyle inside one, so setFill dedupes across the run exactly
     // like the overlay batch (a storm's grains sort adjacent).
-    let inParticleRun = false;
-    for (const item of items) {
-      const isParticle = item.bulk === BulkKind.Particle;
-      if (isParticle !== inParticleRun) {
-        if (isParticle) this.particles.beginRun();
-        else this.particles.endRun();
-        inParticleRun = isParticle;
+    if (this.stageWorldActive()) {
+      this.stageWorldPass(items);
+    } else {
+      let inParticleRun = false;
+      for (const item of items) {
+        const isParticle = item.bulk === BulkKind.Particle;
+        if (isParticle !== inParticleRun) {
+          if (isParticle) this.particles.beginRun();
+          else this.particles.endRun();
+          inParticleRun = isParticle;
+        }
+        this.dispatchWorldItem(item);
       }
-      // Stealth ghost: wrap OUTSIDE the outline pass so the dilated
-      // silhouette ring fades with the body (alpha inside draw() would
-      // leave the ring solid). The nameplate stays opaque.
-      if (item.alpha !== undefined) this.ctx.globalAlpha = item.alpha;
-      if (item.elevated) item.drawShadow?.();
-      // THE OFF-SCREEN TREE STANDS DOWN: nothing of it lies in the
-      // viewport. Its shadow above still casts — that lies on the
-      // ground and may well be visible from inside it.
-      if (item.occCulled) {
-        // nothing: the pass proved no pixel would differ
-      } else if (this.outlineOn && item.body) this.paintOutlined(item);
-      else if (item.draw) item.draw();
-      else this.drawBulkItem(item);
-      if (item.alpha !== undefined) this.ctx.globalAlpha = 1;
-      if (this.chrome === 'all') item.drawLabel?.();
+      if (inParticleRun) this.particles.endRun();
     }
-    if (inParticleRun) this.particles.endRun();
     this.perfMark('world');
     // THE GHOST EMBER rides over the world pass, under the overlay FX.
     this.drawGhostEmber();
@@ -8439,6 +8448,7 @@ export class Renderer {
           items.push({
             sortY: bk.sortY,
             strat: bk.strat,
+            band: { sb: bake, bk },
             elevated: bk.elevated ? true : undefined,
             drawShadow:
               bi === sd0 || bi === sd1
@@ -8491,6 +8501,25 @@ export class Renderer {
       !this.zoomGliding && sb.gridPx === this.bandGridPx()
         ? 1 / cam.snapDpr
         : cam.scale / sb.gridPx;
+    if (this.stageAssembling) {
+      // THE WORLD ON STAGE: the EXACT LATTICE PATH's own numbers, as
+      // a quad; the hot<->cold fade rides stageItemAlpha.
+      this.stageWorldItems.push({
+        kind: 'quad',
+        tex: this.stageSpriteTex(bk, bk.canvas, 0),
+        sx: 0,
+        sy: 0,
+        sw: bk.canvas.width,
+        sh: bk.canvas.height,
+        dw: bk.canvas.width * k,
+        dh: bk.canvas.height * k,
+        m: [1, 0, 0, 1, x0 - bk.padL * k, y0 - bk.padT * k],
+        alpha: this.stageItemAlpha,
+        blend: StageBlend.SourceOver,
+      });
+      this.stageWorldStats.quads++;
+      return;
+    }
     ctx.drawImage(
       bk.canvas,
       x0 - bk.padL * k,
@@ -20504,6 +20533,202 @@ export class Renderer {
   private stageUpMsLeft = 0;
   private readonly stageStats = { absent: 0, stale: 0 };
 
+  /** ?stage=world (phase A2): the whole y-sorted world pass renders
+   *  on a second, ALPHA GL stage and composites over the 2d frame's
+   *  ground+water. Cached lanes emit quads at assembly; everything
+   *  else replays the dispatch cell through the scratch lane with
+   *  honest bounds; the rare boundless item takes the split path
+   *  (composite, paint on the frame, resume) and is counted. */
+  stageWorld = false;
+  private stageWorldGl: GlStage | null = null;
+  private readonly stageWorldItems: StageItem[] = [];
+  /** True while the world pass assembles the stage stream — painters'
+   *  blit sites emit quads instead of ctx calls. */
+  private stageAssembling = false;
+  private readonly stageWorldStats = { quads: 0, paints: 0, splits: 0 };
+
+  private stageWorldActive(): boolean {
+    if (!this.stageWorld || this.stageDead) return false;
+    if (!this.stageWorldGl) {
+      try {
+        this.stageWorldGl = new GlStage(document.createElement('canvas'), { alpha: true });
+      } catch {
+        this.stageDead = true;
+        return false;
+      }
+    }
+    return !this.stageWorldGl.contextLost;
+  }
+
+  /** Composite the accumulated world stream over the 2d frame —
+   *  same-task, through the live transform (the ground flush's law). */
+  private stageWorldFlush(): void {
+    const gl = this.stageWorldGl!;
+    const list = this.stageWorldItems;
+    if (list.length === 0) return;
+    gl.begin(this.w, this.h, this.dpr(), null);
+    gl.draw(list);
+    gl.end();
+    this.ctx.imageSmoothingEnabled = true;
+    this.ctx.drawImage(gl.canvas, 0, 0, gl.canvas.width, gl.canvas.height, 0, 0, this.w, this.h);
+    list.length = 0;
+  }
+
+  /** Wrap one item's dispatch cell as a bounded paint closure — the
+   *  SAME-BRUSH swap: the cell runs against the scratch ctx. */
+  private stagePaintItem(item: DrawItem, px: number, py: number, pw: number, ph: number): void {
+    this.stageWorldItems.push({
+      kind: 'paint',
+      px,
+      py,
+      pw,
+      ph,
+      paint: (ctx: CanvasRenderingContext2D) => {
+        const saved = this.ctx;
+        this.ctx = ctx;
+        try {
+          this.dispatchWorldItem(item);
+        } finally {
+          this.ctx = saved;
+        }
+      },
+    });
+    this.stageWorldStats.paints++;
+  }
+
+  /**
+   * THE WORLD ON STAGE (phase A2 part 1). Classification, in order:
+   * particle runs coalesce into scanned-bounds paints; mature trees
+   * with a live sprite assembly-run their painter (the blit sites
+   * emit quads; bounds and shear are the painter's own numbers);
+   * band blits become quads the same way; bodies and outlined props
+   * ride their own body rect; bulk singles project their datum; and
+   * whatever names no bounds takes the SPLIT path — correct, counted,
+   * and the working list for part 2's quadification.
+   */
+  private stageWorldPass(items: DrawItem[]): void {
+    const gl = this.stageWorldGl!;
+    gl.statsReset();
+    const out = this.stageWorldItems;
+    out.length = 0;
+    const st = this.stageWorldStats;
+    st.quads = 0;
+    st.paints = 0;
+    st.splits = 0;
+    const sc = this.camera.scale;
+    const n = items.length;
+    for (let i = 0; i < n; i++) {
+      const item = items[i]!;
+      // Mature trees: quad-native when the sprite stands, paint-lane
+      // (occ box bounds) when it does not. occCulled trees emit
+      // nothing at all — round 9's verdict, unchanged.
+      if (item.occKey !== undefined && item.occX0 !== undefined) {
+        if (item.occCulled) continue;
+        const sp = this.treeSprites.get(item.occKey);
+        const pad = 26; // the cull margin's own shear slack
+        if (sp) {
+          this.stageAssembling = true;
+          try {
+            this.dispatchWorldItem(item);
+          } finally {
+            this.stageAssembling = false;
+          }
+        } else {
+          this.stagePaintItem(item, item.occX0 - pad, item.occY0! - pad, item.occX1! - item.occX0 + pad * 2, item.occY1! - item.occY0! + pad * 2);
+        }
+        continue;
+      }
+      // Band buckets: a pure lattice blit — quad at assembly. An
+      // elevated bucket's re-minted cast runs first as its own paint.
+      if (item.band !== undefined) {
+        if (item.elevated && item.drawShadow) {
+          const bkq = item.band.bk;
+          const kb = this.camera.scale / item.band.sb.gridPx;
+          const bw = bkq.canvas.width * kb;
+          const bh = bkq.canvas.height * kb;
+          const pA = this.camera.worldToScreen(item.band.sb.wx0, item.band.sb.rowY, this.w, this.h);
+          this.stageWorldItems.push({
+            kind: 'paint',
+            px: pA.x - bkq.padL * kb - 3 * sc,
+            py: pA.y - bkq.padT * kb - 3 * sc,
+            pw: bw + 6 * sc,
+            ph: bh + 6 * sc,
+            paint: (ctx) => {
+              const saved = this.ctx;
+              this.ctx = ctx;
+              try {
+                item.drawShadow!();
+              } finally {
+                this.ctx = saved;
+              }
+            },
+          });
+          st.paints++;
+        }
+        this.stageAssembling = true;
+        try {
+          if (item.alpha !== undefined) {
+            // carried onto the quad by the emit branch via stageAlpha
+            this.stageItemAlpha = item.alpha;
+          }
+          item.draw?.();
+        } finally {
+          this.stageItemAlpha = 1;
+          this.stageAssembling = false;
+        }
+        continue;
+      }
+      // Bodies and outlined props: the body rect, padded for the
+      // nameplate crown, relight halo and weapon overhang.
+      const b = item.body;
+      if (b !== undefined) {
+        const padX = 0.9 * sc;
+        const padTop = 1.7 * sc;
+        const padBot = 0.7 * sc + (item.elevated ? 3 * sc : 0);
+        this.stagePaintItem(item, b.x - padX, b.y - padTop, b.w + padX * 2, b.h + padTop + padBot);
+        continue;
+      }
+      // item.pb (push-site bounds) exists for part 2's quadification;
+      // part 1 measured static rows through scratch at ~2MB/frame
+      // each — static content belongs in quads, so rows ride the
+      // split census until then.
+      // No honest bounds: the SPLIT path. Composite what stands, run
+      // the item on the real frame between composites, resume clean.
+      this.stageWorldFlush();
+      st.splits++;
+      this.dispatchWorldItem(item);
+    }
+    this.stageWorldFlush();
+  }
+
+  /** Assembly-time alpha for quad-emitting painters (band fades). */
+  private stageItemAlpha = 1;
+
+  /**
+   * Sprite-lane texture handles, keyed by their cache record. Part-1
+   * deviation from the explicit-release law, recorded: sprite caches
+   * churn through pooled canvases at cadence, so their handles ride
+   * glStage's ORPHAN SWEEP (records unused for ~900 frames are
+   * reclaimed) instead of per-evictor hooks; part 2's atlas brings
+   * the explicit lifecycle. `rev` comes from the caller (the sprite's
+   * own bake stamp), so an in-place repaint re-uploads exactly once.
+   */
+  private readonly stageTexOf = new WeakMap<object, StageTexture>();
+
+  private stageSpriteTex(owner: object, canvas: HTMLCanvasElement, rev: number): StageTexture {
+    let t = this.stageTexOf.get(owner);
+    if (!t) {
+      t = { canvas, rev, filter: 'linear' };
+      this.stageTexOf.set(owner, t);
+      return t;
+    }
+    if (t.canvas !== canvas || t.rev !== rev) {
+      t.canvas = canvas;
+      t.rev = rev;
+    }
+    return t;
+  }
+
   /** Lazily stand the stage up; a context loss parks it until the
    *  restore handler clears the flag (THE TOGGLE IS THE PRODUCT'S
    *  SAFETY — the canvas path serves every parked frame). */
@@ -20590,6 +20815,15 @@ export class Renderer {
           `tex ${(g.textureBytes / 1048576).toFixed(0)}MB/${g.textureCount} ` +
           `draws ${g.drawCalls} live ${this.stageStats.absent} stale ${this.stageStats.stale}`,
       );
+      if (this.stageWorld && this.stageWorldGl) {
+        const w = this.stageWorldGl;
+        const ws = this.stageWorldStats;
+        parts.push(
+          `stage world q ${ws.quads} p ${ws.paints} split ${ws.splits} ` +
+            `scr ${(w.scratchUploadBytes / 1048576).toFixed(1)}MB/${w.scratchPaints} ` +
+            `up ${(w.uploadedBytes / 1048576).toFixed(1)}MB tex ${(w.textureBytes / 1048576).toFixed(0)}MB/${w.textureCount} draws ${w.drawCalls}`,
+        );
+      }
     }
     return parts.join('\n');
   }
@@ -20652,6 +20886,29 @@ export class Renderer {
   occlusionOn = true;
 
   /** The closure-free bulk lane's one dispatch (see DrawItem.bulk). */
+  /**
+   * One world item, exactly as the sorted loop has always run it —
+   * extracted so the stage lane's paint closures replay the SAME
+   * cell against a scratch ctx (SAME-BRUSH, one truth, two modes).
+   */
+  private dispatchWorldItem(item: DrawItem): void {
+    // Stealth ghost: wrap OUTSIDE the outline pass so the dilated
+    // silhouette ring fades with the body (alpha inside draw() would
+    // leave the ring solid). The nameplate stays opaque.
+    if (item.alpha !== undefined) this.ctx.globalAlpha = item.alpha;
+    if (item.elevated) item.drawShadow?.();
+    // THE OFF-SCREEN TREE STANDS DOWN: nothing of it lies in the
+    // viewport. Its shadow above still casts — that lies on the
+    // ground and may well be visible from inside it.
+    if (item.occCulled) {
+      // nothing: the pass proved no pixel would differ
+    } else if (this.outlineOn && item.body) this.paintOutlined(item);
+    else if (item.draw) item.draw();
+    else this.drawBulkItem(item);
+    if (item.alpha !== undefined) this.ctx.globalAlpha = 1;
+    if (this.chrome === 'all') item.drawLabel?.();
+  }
+
   private drawBulkItem(item: DrawItem): void {
     switch (item.bulk) {
       case BulkKind.Particle:
@@ -22363,7 +22620,27 @@ export class Renderer {
       // the crown's throw crosses ~¾ of a pixel — right after a
       // re-bake the delta is near zero and the plain blit is exact.
       const kSh = (wind - sp.windAt) * 0.055;
-      if (Math.abs(kSh) * dh > 0.75) {
+      if (this.stageAssembling) {
+        // THE WORLD ON STAGE: the same numbers, as a quad — the shear
+        // is four floats of per-quad matrix, and the step-aside fade
+        // rides the quad's alpha.
+        const gy = by + syT * 0.3;
+        const sheared = Math.abs(kSh) * dh > 0.75;
+        this.stageWorldItems.push({
+          kind: 'quad',
+          tex: this.stageSpriteTex(sp, sp.canvas, sp.frame),
+          sx: 0,
+          sy: 0,
+          sw,
+          sh,
+          dw,
+          dh,
+          m: sheared ? [1, 0, -kSh, 1, dx0 + kSh * (gy - dy0), dy0] : [1, 0, 0, 1, dx0, dy0],
+          alpha: fade < 1 ? fade : 1,
+          blend: StageBlend.SourceOver,
+        });
+        this.stageWorldStats.quads++;
+      } else if (Math.abs(kSh) * dh > 0.75) {
         const gy = by + syT * 0.3;
         this.ctx.transform(1, 0, -kSh, 1, kSh * gy, 0);
         this.ctx.drawImage(sp.canvas, 0, 0, sw, sh, dx0, dy0, dw, dh);

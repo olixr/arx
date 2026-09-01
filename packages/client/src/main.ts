@@ -4465,5 +4465,9 @@ renderer.perfHud = new URLSearchParams(location.search).has('perf');
 // THE PAINTED WORLD TAKES THE STAGE (phase A1, dev lane): ?stage
 // routes the level-0 chunk ground through the WebGL compositor. The
 // player-facing Display toggle ships with phase A5.
-renderer.stageGround = new URLSearchParams(location.search).has('stage');
+{
+  const stageParam = new URLSearchParams(location.search).get('stage');
+  renderer.stageGround = stageParam !== null;
+  renderer.stageWorld = stageParam === 'world';
+}
 requestAnimationFrame(frame);

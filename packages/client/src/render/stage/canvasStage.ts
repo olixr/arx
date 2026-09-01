@@ -9,21 +9,25 @@
  * shim to be retired — it is the epic's ground truth, kept green in
  * CI for as long as the stage exists.
  */
-import { BLEND_CANVAS_OP, blendNeedsAlphaTarget } from './stageBlend.js';
+import { BLEND_CANVAS_OP, blendNeedsAlphaTarget, blendNeedsOpaqueTarget } from './stageBlend.js';
 import type { StageBackend, StageItem } from './stageTypes.js';
 
 export class CanvasStage implements StageBackend {
   readonly kind = 'canvas' as const;
   private readonly ctx: CanvasRenderingContext2D;
   private dpr = 1;
+  private w = 0;
+  private h = 0;
+  readonly isAlpha: boolean;
 
-  constructor(readonly canvas: HTMLCanvasElement) {
+  constructor(readonly canvas: HTMLCanvasElement, opts?: { alpha?: boolean }) {
+    this.isAlpha = opts?.alpha === true;
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('canvas2d unavailable');
     this.ctx = ctx;
   }
 
-  begin(w: number, h: number, dpr: number, clear: string): void {
+  begin(w: number, h: number, dpr: number, clear: string | null): void {
     const bw = Math.round(w * dpr);
     const bh = Math.round(h * dpr);
     if (this.canvas.width !== bw || this.canvas.height !== bh) {
@@ -31,14 +35,23 @@ export class CanvasStage implements StageBackend {
       this.canvas.height = bh;
     }
     this.dpr = dpr;
+    this.w = w;
+    this.h = h;
     const ctx = this.ctx;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
-    // The target is OPAQUE by contract (stageBlend's multiply/screen
-    // reductions depend on it): the clear is a paint, not a wipe.
-    ctx.fillStyle = clear;
-    ctx.fillRect(0, 0, w, h);
+    if (clear === null) {
+      // Same words as the GL stage — a contract error must not
+      // depend on which backend caught it.
+      if (!this.isAlpha) throw new Error('stage: transparent clear on the opaque main target');
+      ctx.clearRect(0, 0, w, h);
+    } else {
+      // The target is OPAQUE by contract (stageBlend's multiply/screen
+      // reductions depend on it): the clear is a paint, not a wipe.
+      ctx.fillStyle = clear;
+      ctx.fillRect(0, 0, w, h);
+    }
   }
 
   draw(items: readonly StageItem[]): void {
@@ -47,14 +60,25 @@ export class CanvasStage implements StageBackend {
     for (const it of items) {
       if (it.kind === 'paint') {
         // The live lane: the brush runs against the frame's own base
-        // transform, exactly as painters have always been called.
+        // transform, exactly as painters have always been called —
+        // CLIPPED to the item's declared bounds, the same edge the GL
+        // scratch enforces, so an undersized bounds is the same
+        // visible defect on both backends.
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'source-over';
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(it.px, it.py, it.pw, it.ph);
+        ctx.clip();
         it.paint(ctx);
+        ctx.restore();
         continue;
       }
-      if (blendNeedsAlphaTarget(it.blend)) {
+      if (this.isAlpha && blendNeedsOpaqueTarget(it.blend)) {
+        throw new Error('stage: opaque-target blend on an alpha stage');
+      }
+      if (!this.isAlpha && blendNeedsAlphaTarget(it.blend)) {
         // The main target is opaque by contract; an alpha-erasing
         // blend here would diverge from the GL backbuffer silently.
         // Phase A3's layer targets accept it; the main frame refuses.

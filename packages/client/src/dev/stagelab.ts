@@ -332,6 +332,50 @@ const CASES: StageCase[] = [
   },
 ];
 
+const PAINT_CASES: StageCase[] = [
+  {
+    // THE SCRATCH LANE: a live brush between quads, painting art that
+    // deliberately CROSSES its declared bounds — both backends must
+    // clip at the same edge, so the overflow is equally absent.
+    name: 'paint-scratch-clip',
+    policy: 'le1',
+    items: () => [
+      quad(tex(srcChecker, 'nearest'), stageAt(6, 6)),
+      {
+        kind: 'paint',
+        px: 30,
+        py: 20,
+        pw: 40,
+        ph: 30,
+        paint: (ctx) => {
+          ctx.fillStyle = '#d04870';
+          ctx.fillRect(34, 24, 20, 14);
+          ctx.strokeStyle = '#f0e0a0';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(50, 35, 11, 0, Math.PI * 2);
+          ctx.stroke();
+          // The overflow: a slab reaching well past the bounds.
+          ctx.fillStyle = '#3070c0';
+          ctx.fillRect(60, 15, 40, 50);
+        },
+      },
+      quad(tex(srcSprite, 'nearest'), stageAt(52, 28)),
+    ],
+  },
+  {
+    // Two paint items of different size classes plus a same-class
+    // reuse — the pooled pair must serve them sequentially.
+    name: 'paint-scratch-reuse',
+    policy: 'le1',
+    items: () => [
+      { kind: 'paint', px: 4, py: 4, pw: 30, ph: 20, paint: (ctx) => { ctx.fillStyle = '#405030'; ctx.fillRect(4, 4, 30, 20); } },
+      { kind: 'paint', px: 40, py: 4, pw: 30, ph: 20, paint: (ctx) => { ctx.fillStyle = '#807030'; ctx.fillRect(40, 4, 28, 18); } },
+      { kind: 'paint', px: 76, py: 4, pw: 70, ph: 60, paint: (ctx) => { ctx.fillStyle = '#306070'; ctx.fillRect(78, 8, 60, 50); } },
+    ],
+  },
+];
+
 function runCase(c: StageCase, gl: GlStage, oracle: CanvasStage): { res: CaseResult; glImg: ImageData; cvImg: ImageData; diff: ImageData } {
   const dpr = c.dpr ?? 1;
   const items = c.items();
@@ -398,6 +442,72 @@ async function main(): Promise<void> {
     const { res, glImg, cvImg, diff } = runCase(c, gl, oracle);
     results.push(res);
     show(c.name, res, glImg, cvImg, diff);
+  }
+
+  for (const c of PAINT_CASES) {
+    const { res, glImg, cvImg, diff } = runCase(c, gl, oracle);
+    results.push(res);
+    show(c.name, res, glImg, cvImg, diff);
+  }
+
+  // THE ALPHA STAGE: the world layer's contract — transparent clear,
+  // quads + a paint over it, diffed WITH the alpha channel (the
+  // readback compares straight RGBA, so layer transparency is part
+  // of the parity claim, not flattened away).
+  {
+    const aGl = new GlStage(makeCanvas(W, H), { alpha: true });
+    const aOracle = new CanvasStage(makeCanvas(W, H), { alpha: true });
+    const items: StageItem[] = [
+      quad(tex(srcSprite, 'nearest'), stageAt(20, 12)),
+      { kind: 'fill', color: 0x902020, dw: 50, dh: 30, m: stageAt(60, 40), alpha: 0.6, blend: StageBlend.Lighter },
+      { kind: 'paint', px: 90, py: 60, pw: 50, ph: 40, paint: (ctx) => { ctx.fillStyle = 'rgba(40,160,90,0.8)'; ctx.fillRect(92, 62, 40, 30); } },
+    ];
+    aGl.begin(W, H, 1, null);
+    aGl.draw(items);
+    aGl.end();
+    aOracle.begin(W, H, 1, null);
+    aOracle.draw(items);
+    aOracle.end();
+    const glImg = readback(aGl.canvas);
+    const cvImg = readback(aOracle.canvas);
+    const d = diffImages(glImg, cvImg);
+    const res: CaseResult = { name: 'alpha-stage-layer', policy: 'le1', max: d.max, mean: d.mean, over1: d.over1, over2: d.over2, pixels: d.px, pass: d.max <= 1 };
+    results.push(res);
+    show('alpha-stage-layer', res, glImg, cvImg, d.diff);
+
+    // The mirrored refusals: multiply on the alpha stage; transparent
+    // clear on the opaque one. Same words on both backends.
+    const threw2 = (fn: () => void): string | null => {
+      try {
+        fn();
+        return null;
+      } catch (e) {
+        return (e as Error).message;
+      }
+    };
+    const mulItems: StageItem[] = [
+      { kind: 'fill', color: 0x808080, dw: 10, dh: 10, m: stageAt(2, 2), alpha: 1, blend: StageBlend.Multiply },
+    ];
+    aGl.begin(W, H, 1, null);
+    const gm = threw2(() => aGl.draw(mulItems));
+    aGl.end();
+    aOracle.begin(W, H, 1, null);
+    const cm = threw2(() => aOracle.draw(mulItems));
+    aOracle.end();
+    const gc = threw2(() => gl.begin(W, H, 1, null));
+    const cc = threw2(() => oracle.begin(W, H, 1, null));
+    const ok = gm !== null && gm === cm && gc !== null && gc === cc;
+    results.push({
+      name: 'contract-alpha-symmetry',
+      policy: 'exact',
+      max: 0,
+      mean: 0,
+      over1: 0,
+      over2: 0,
+      pixels: 0,
+      pass: ok,
+      note: ok ? `refused: "${gm}" / "${gc}"` : `gl:${gm} cv:${cm} | gl:${gc} cv:${cc}`,
+    });
   }
 
   // The contract-refusal case: destination-out on the opaque main

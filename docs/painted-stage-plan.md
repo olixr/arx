@@ -361,6 +361,52 @@ GPU (the owner's Windows/3080 box and a low-end laptop — SwiftShader
 undersells GPU blits, round 13's law, so THIS gate needs real
 hardware).
 
+**A2 PART 1 — AS BUILT (2026-08-31).** The phase split in two, as its
+two-round sizing predicted; part 1 is the MACHINERY, parity-gated:
+
+- **The scratch lane** (glStage.paintScratch): StagePaint gained
+  REQUIRED screen-space bounds; both backends clip to them (the
+  oracle explicitly, the GL scratch by its canvas edge) so an
+  undersized bounds is the same visible defect on both. One pooled
+  canvas+texture pair per 64px class serves a whole frame
+  sequentially — GL snapshots texture content at the draw call, so
+  reuse is sound by spec. The A0 StagePaint refusal is retired.
+- **The alpha world stage**: a second GlStage (alpha:true) hosts the
+  y-sorted pass and composites over the 2d ground/water; the blend
+  symmetry completed — transparent clear refused on the opaque
+  stage, multiply/screen refused on the alpha stage, same words both
+  backends (lab-pinned, 19/19 cases green incl. scratch-clip parity
+  and the alpha-layer RGBA diff).
+- **The sink** (stageWorldPass): one dispatch cell extracted and
+  shared by both modes (SAME-BRUSH); classification = mature trees
+  quad-native at assembly (blit sites emit quads — the sway shear is
+  four floats of matrix; step-aside fade rides quad alpha; spriteless
+  trees ride their occ box through the paint lane), band buckets
+  quad-native (the EXACT LATTICE PATH's own numbers; elevated bucket
+  casts as separate bounded paints), bodies/outlined props through
+  the scratch lane on their own body rect (padded), and everything
+  else the SPLIT path — composite, paint on the real frame in order,
+  resume — counted per frame. `?stage=world`; the confession grows
+  `stage world q/p/split/scr/tex/draws`.
+- **Deviations recorded**: sprite-lane texture handles ride an ORPHAN
+  SWEEP (15s LRU) instead of explicit release until part 2's atlas;
+  `item.pb` (push-site paint bounds) is plumbed and populated for
+  elevated rows but its lane is parked — routing STATIC rows through
+  per-frame scratch measured ~2MB/frame each, and static content
+  belongs in quads.
+
+**Gates**: 19/19 lab cases; five-scene single-session parity ALL
+PASS within the animation noise floor; 786/786 tests. **The honest
+performance ledger** (real Metal, avenue): stage-world 41fps vs
+canvas 120 — the diagnostic mode is parity-correct and
+performance-negative until part 2, by design. Part 2's worklist is
+now MEASURED, not guessed: splits 60-437/frame (props, flora,
+cliffs, rows — the quadification tail), body scratch ~144MB/frame
+(bodies are ALREADY cached in bodySprites — quadifying
+blitBodySprite like the trees kills most of it), and the sprite
+texture population (forest 792MB/1,182 records) is the atlas
+phase's motivating number.
+
 ### A3 — The dark and the light (shadow layer, lightmap, overreach)
 
 The shadow layer becomes an FBO: shadow quads (sprites, masks, grass

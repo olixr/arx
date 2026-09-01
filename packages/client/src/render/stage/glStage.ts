@@ -23,7 +23,7 @@
  * canvas. Blend derivations live in stageBlend.ts.
  */
 import { computeRuns } from './stageBatch.js';
-import { BLEND_GL_FUNC, blendNeedsAlphaTarget } from './stageBlend.js';
+import { BLEND_GL_FUNC, blendNeedsAlphaTarget, blendNeedsOpaqueTarget } from './stageBlend.js';
 import { GPU_COST_SEED_MS_PER_MB, admitUpload, nextUploadCost, uploadEstMs } from './gpuBudget.js';
 import type { StageBackend, StageItem, StageTexture } from './stageTypes.js';
 
@@ -62,6 +62,8 @@ interface TexRecord {
   h: number;
   bytes: number;
   filter: 'linear' | 'nearest';
+  /** Frame stamp of the last ensure/draw — the orphan sweep's clock. */
+  used: number;
 }
 
 export class GlStage implements StageBackend {
@@ -87,6 +89,28 @@ export class GlStage implements StageBackend {
   /** True once a budgeted ensure() admitted this frame (the floor). */
   private uploadedThisFrame = false;
 
+  /**
+   * THE SCRATCH LANE (phase A2): pooled canvas+texture pairs, one per
+   * 64px size class, that live-paint closures run through. GL reads a
+   * texture's content as of the draw CALL, so one pair per class
+   * serves every paint item of a frame sequentially — zero per-item
+   * allocation, uploads being the only recurring cost (GPU-to-GPU on
+   * accelerated canvases). Stats feed the ?perf confession.
+   */
+  private readonly scratch = new Map<number, {
+    cv: HTMLCanvasElement;
+    ctx: CanvasRenderingContext2D;
+    glTex: WebGLTexture;
+    w: number;
+    h: number;
+    bytes: number;
+    used: number;
+  }>();
+  private scratchBytes = 0;
+  private frameNo = 0;
+  scratchPaints = 0;
+  scratchUploadBytes = 0;
+
   /** True after webglcontextlost; the caller flips to the canvas
    *  backend the same frame (THE TOGGLE IS THE PRODUCT'S SAFETY). */
   contextLost = false;
@@ -100,9 +124,16 @@ export class GlStage implements StageBackend {
   private f32 = new Float32Array(this.buf);
   private u8 = new Uint8Array(this.buf);
 
-  constructor(readonly canvas: HTMLCanvasElement) {
+  /** Alpha stage: the world layer composites OVER the 2d ground, so
+   *  it needs a real alpha channel; the main/ground stage stays
+   *  opaque so the page can never bleed through. The two refuse each
+   *  other's illegal ops symmetrically (see begin/draw). */
+  readonly isAlpha: boolean;
+
+  constructor(readonly canvas: HTMLCanvasElement, opts?: { alpha?: boolean }) {
+    this.isAlpha = opts?.alpha === true;
     const gl = canvas.getContext('webgl2', {
-      alpha: false,
+      alpha: this.isAlpha,
       antialias: false,
       depth: false,
       stencil: false,
@@ -122,6 +153,8 @@ export class GlStage implements StageBackend {
       // the canvases, the truth, never went anywhere).
       this.records.clear();
       this.textureBytes = 0;
+      this.scratch.clear();
+      this.scratchBytes = 0;
       this.initGL();
       this.contextLost = false;
     });
@@ -182,9 +215,10 @@ export class GlStage implements StageBackend {
     const gl = this.gl;
     let rec = this.records.get(tex);
     if (!rec) {
-      rec = { glTex: gl.createTexture()!, uploadedRev: -1, w: 0, h: 0, bytes: 0, filter: tex.filter };
+      rec = { glTex: gl.createTexture()!, uploadedRev: -1, w: 0, h: 0, bytes: 0, filter: tex.filter, used: this.frameNo };
       this.records.set(tex, rec);
     }
+    rec.used = this.frameNo;
     if (rec.uploadedRev !== tex.rev || rec.filter !== tex.filter) {
       const c = tex.canvas;
       gl.bindTexture(gl.TEXTURE_2D, rec.glTex);
@@ -265,9 +299,11 @@ export class GlStage implements StageBackend {
     this.uploads = 0;
     this.drawCalls = 0;
     this.uploadedThisFrame = false;
+    this.scratchPaints = 0;
+    this.scratchUploadBytes = 0;
   }
 
-  begin(w: number, h: number, dpr: number, clear: string): void {
+  begin(w: number, h: number, dpr: number, clear: string | null): void {
     const gl = this.gl;
     this.dpr = dpr;
     this.bw = Math.round(w * dpr);
@@ -279,9 +315,36 @@ export class GlStage implements StageBackend {
     gl.viewport(0, 0, this.bw, this.bh);
     gl.useProgram(this.program);
     gl.uniform2f(this.uRes, this.bw, this.bh);
-    const c = parseInt(clear.slice(1), 16);
-    gl.clearColor(((c >> 16) & 255) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255, 1);
+    if (clear === null) {
+      if (!this.isAlpha) throw new Error('stage: transparent clear on the opaque main target');
+      gl.clearColor(0, 0, 0, 0);
+    } else {
+      const c = parseInt(clear.slice(1), 16);
+      gl.clearColor(((c >> 16) & 255) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255, 1);
+    }
     gl.clear(gl.COLOR_BUFFER_BIT);
+    // Scratch hygiene: retire class pairs nothing has touched lately.
+    if (++this.frameNo % 600 === 0) {
+      for (const [cls, sc] of this.scratch) {
+        if (sc.used < this.frameNo - 600) {
+          gl.deleteTexture(sc.glTex);
+          this.scratchBytes -= sc.bytes;
+          this.scratch.delete(cls);
+        }
+      }
+      // THE ORPHAN SWEEP: sprite-lane handles (WeakMap-owned, no
+      // explicit evictor hook until part 2's atlas) reclaim here once
+      // nothing has drawn them for ~15s. Chunks and bands still go
+      // through their explicit release doors — this is the safety
+      // net, not the lifecycle.
+      for (const [tex, rec] of this.records) {
+        if (rec.used < this.frameNo - 900) {
+          gl.deleteTexture(rec.glTex);
+          this.textureBytes -= rec.bytes;
+          this.records.delete(tex);
+        }
+      }
+    }
   }
 
   draw(items: readonly StageItem[]): void {
@@ -290,7 +353,7 @@ export class GlStage implements StageBackend {
     const runs = computeRuns(items);
     // Size the scratch for the frame's quads, grow geometrically.
     let quadCount = 0;
-    for (const r of runs) quadCount += r.quads;
+    for (const r of runs) quadCount += r.quads === 0 ? 1 : r.quads;
     const need = quadCount * VERTS_PER_QUAD * VERTEX_BYTES;
     if (need > this.buf.byteLength) {
       let cap = this.buf.byteLength;
@@ -308,7 +371,44 @@ export class GlStage implements StageBackend {
     for (let ri = 0; ri < runs.length; ri++) {
       const run = runs[ri]!;
       runFirst[ri] = v;
-      if (run.quads === 0) continue;
+      if (run.quads === 0) {
+        // A paint sentinel: one axis-aligned quad over its bounds.
+        // UVs address the class-rounded scratch pair the run walk
+        // will paint into — the class dims are a pure function of
+        // the bounds, so vertex fill and paint agree by arithmetic.
+        const it = items[run.i0]!;
+        if (it.kind !== 'paint') continue;
+        const pwDev = Math.ceil(it.pw * dpr);
+        const phDev = Math.ceil(it.ph * dpr);
+        const cw = Math.ceil(pwDev / 64) * 64;
+        const ch = Math.ceil(phDev / 64) * 64;
+        const x0 = dpr * it.px;
+        const y0 = dpr * it.py;
+        const x1 = x0 + pwDev;
+        const y1 = y0 + phDev;
+        const u1 = pwDev / cw;
+        const v1 = phDev / ch;
+        const emitP = (px: number, py: number, uu: number, vv: number): void => {
+          const fo = v * 5;
+          f32[fo] = px;
+          f32[fo + 1] = py;
+          f32[fo + 2] = uu;
+          f32[fo + 3] = vv;
+          const bo = v * VERTEX_BYTES + 16;
+          u8[bo] = 255;
+          u8[bo + 1] = 255;
+          u8[bo + 2] = 255;
+          u8[bo + 3] = 255;
+          v++;
+        };
+        emitP(x0, y0, 0, 0);
+        emitP(x1, y0, u1, 0);
+        emitP(x0, y1, 0, v1);
+        emitP(x0, y1, 0, v1);
+        emitP(x1, y0, u1, 0);
+        emitP(x1, y1, u1, v1);
+        continue;
+      }
       // Texel scale for the run's texture (fills use the white texel).
       const rec = run.tex ? this.sync(run.tex) : null;
       const tw = rec ? rec.w : 1;
@@ -388,13 +488,22 @@ export class GlStage implements StageBackend {
     for (let ri = 0; ri < runs.length; ri++) {
       const run = runs[ri]!;
       if (run.quads === 0) {
-        // A paint item reached the GL stage: not legal until A2.
-        throw new Error('glStage: StagePaint requires the scratch-quad lane (phase A2)');
+        const it = items[run.i0]!;
+        if (it.kind !== 'paint') continue;
+        this.paintScratch(it, runFirst[ri]!);
+        continue;
       }
-      if (blendNeedsAlphaTarget(run.blend)) {
+      if (!this.isAlpha && blendNeedsAlphaTarget(run.blend)) {
         // Same refusal, same words, as the canvas oracle: a contract
         // error must not depend on which backend caught it.
         throw new Error('stage: alpha-target blend on the opaque main target');
+      }
+      if (this.isAlpha && blendNeedsOpaqueTarget(run.blend)) {
+        // The mirror half of the symmetry: multiply/screen's fixed-
+        // function forms assume Da = 1 and lie quietly on an alpha
+        // layer. They belong to the lighting/post passes, which
+        // composite on the opaque frame.
+        throw new Error('stage: opaque-target blend on an alpha stage');
       }
       const rec = run.tex ? this.records.get(run.tex)! : null;
       gl.bindTexture(gl.TEXTURE_2D, rec ? rec.glTex : this.white);
@@ -403,6 +512,53 @@ export class GlStage implements StageBackend {
       gl.drawArrays(gl.TRIANGLES, runFirst[ri]!, run.quads * VERTS_PER_QUAD);
       this.drawCalls++;
     }
+  }
+
+  /**
+   * One paint item through the scratch lane: run the closure against
+   * the class pair's 2d canvas (screen coordinates preserved by the
+   * translate), upload, draw its pre-filled quad. The pair is reused
+   * by the very next paint item — GL snapshots texture content at the
+   * draw call, so sequential reuse is sound by spec.
+   */
+  private paintScratch(it: { px: number; py: number; pw: number; ph: number; paint: (ctx: CanvasRenderingContext2D) => void }, firstVert: number): void {
+    const gl = this.gl;
+    const dpr = this.dpr;
+    const pwDev = Math.ceil(it.pw * dpr);
+    const phDev = Math.ceil(it.ph * dpr);
+    const cw = Math.ceil(pwDev / 64) * 64;
+    const ch = Math.ceil(phDev / 64) * 64;
+    const cls = (cw / 64) * 4096 + ch / 64;
+    let sc = this.scratch.get(cls);
+    if (!sc) {
+      const cv = document.createElement('canvas');
+      cv.width = cw;
+      cv.height = ch;
+      const ctx = cv.getContext('2d')!;
+      sc = { cv, ctx, glTex: gl.createTexture()!, w: cw, h: ch, bytes: cw * ch * 4, used: this.frameNo };
+      this.scratchBytes += sc.bytes;
+      this.scratch.set(cls, sc);
+    }
+    sc.used = this.frameNo;
+    const ctx = sc.ctx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.setTransform(dpr, 0, 0, dpr, -it.px * dpr, -it.py * dpr);
+    it.paint(ctx);
+    gl.bindTexture(gl.TEXTURE_2D, sc.glTex);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sc.cv);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    this.scratchPaints++;
+    this.scratchUploadBytes += cw * ch * 4;
+    const [sf, df] = BLEND_GL_FUNC[0]!; // paints composite source-over
+    gl.blendFunc(sf, df);
+    gl.drawArrays(gl.TRIANGLES, firstVert, VERTS_PER_QUAD);
+    this.drawCalls++;
   }
 
   end(): void {

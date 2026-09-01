@@ -113,14 +113,21 @@ export interface StageFill {
 
 /**
  * A live-painted item: a canvas2d closure that must run a real brush
- * this frame (THE STILL-WORLD BARGAIN's lane — cache misses, water,
- * anything not yet migrated). The canvas backend runs it in place; the
- * GL backend does not accept it until phase A2 introduces the
- * scratch-quad lane, and ASSERTS if one arrives before then — a
- * silent skip would be the round-7 invisibility bug reborn.
+ * this frame (THE STILL-WORLD BARGAIN's lane — bodies, cache misses,
+ * anything not yet quad-native). The closure paints in SCREEN
+ * coordinates exactly as painters always have; `px..ph` is the
+ * screen-space CSS rect the paint may touch. BOTH backends clip to
+ * it — the GL scratch by its canvas edge, the oracle by an explicit
+ * clip — so an undersized bounds shows as the SAME visible defect on
+ * both, and the fat-margin proof method applies (round 8). Bounds
+ * are part of the item's honesty, not a hint.
  */
 export interface StagePaint {
   kind: 'paint';
+  px: number;
+  py: number;
+  pw: number;
+  ph: number;
   paint: (ctx: CanvasRenderingContext2D) => void;
 }
 
@@ -134,8 +141,12 @@ export type StageItem = StageQuad | StageFill | StagePaint;
  */
 export interface StageBackend {
   readonly kind: 'gl' | 'canvas';
-  /** Frame start: CSS viewport size, device pixel ratio, clear color. */
-  begin(w: number, h: number, dpr: number, clear: string): void;
+  /** Frame start: CSS viewport size, device pixel ratio, clear color.
+   *  `null` clears TRANSPARENT — legal only on an alpha stage (the
+   *  world layer composites over the 2d ground); an opaque stage
+   *  refuses it, and an alpha stage refuses the opaque-only blends
+   *  (multiply/screen) — the two halves of one symmetry. */
+  begin(w: number, h: number, dpr: number, clear: string | null): void;
   /** Composite one sorted stream. Order is law. */
   draw(items: readonly StageItem[]): void;
   /** Frame end: flush everything to the backend's canvas. */

@@ -24,7 +24,7 @@ function fill(blend = StageBlend.SourceOver): StageItem {
   return { kind: 'fill', color: 0xff00ff, dw: 4, dh: 4, m: stageAt(0, 0), alpha: 1, blend };
 }
 function paint(): StageItem {
-  return { kind: 'paint', paint: () => {} };
+  return { kind: 'paint', px: 0, py: 0, pw: 8, ph: 8, paint: () => {} };
 }
 
 test('THE ORDER IS THE SORT — batching merges only adjacent same-state items', async (t) => {
