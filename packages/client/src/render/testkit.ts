@@ -59,6 +59,21 @@ export function recordingCtx(): TestCtx {
   return new Proxy(counter, {
     get(target, prop: string) {
       if (prop in target) return target[prop as keyof typeof target];
+      // Gradients and patterns must come back as objects the painter can
+      // keep talking to; their stops are NaN-checked like everything else.
+      if (prop === 'createLinearGradient' || prop === 'createRadialGradient' || prop === 'createConicGradient') {
+        return (...args: unknown[]) => {
+          target.calls.push(prop);
+          checkNums(args);
+          return { addColorStop: (off: unknown) => checkNums([off]) };
+        };
+      }
+      if (prop === 'createPattern') {
+        return () => {
+          target.calls.push(prop);
+          return {};
+        };
+      }
       const record = (...args: unknown[]): void => {
         target.calls.push(prop);
         checkNums(args);

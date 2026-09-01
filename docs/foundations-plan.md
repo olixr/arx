@@ -258,9 +258,20 @@ auto-created DB, guest join): /proc, /lock, /tp, plain speech — CHAT LEDGER LI
 PASS. gameServer.ts 34,235 → 32,258. Band two (waves A + F4.1) merged to main
 (bf9d0063) with full gates in the isolated worktree.
 
-**F4.2 — THE STANDING LEDGER (2026-09-01).** creditStanding/creditDeed/runFine/
+**F4.2 — THE STANDING LEDGER (ddb3adb4, 2026-09-01).** creditStanding/creditDeed/runFine/
 chargeAssault/theftWitnesses/chargeTheft/pickpocket → game/standing.ts via the
 reusable server-mover (scratchpad/server-mover.py): module functions take
 `srv: GameServer`, the class keeps one-line delegators so every caller and test
 slate reads unchanged. PlayerComp/ActorComp exported as types; class statics reach
 the module through a deliberate deferred value-import of the parent class.
+
+**F4.3 statuses (50a0e794 + a98d0a9f) / F4.4 procs (bd21f7c3) / F4.5 melee (fd67c926),
+2026-09-01.** game/statuses.ts (lay/apply×2/bits/tick/dot), game/procs.ts (procState,
+offerProc, the four moment doors, the guarded runner), game/melee.ts (equippedWeapon
+through smashProp, 11 methods) — all by the mover, all behind delegators. THE STUB WINS
+THE DOOR: procDoors' ANSWERED ECHO caught the one behavior change a module-direct
+intra-family call smuggled in (test slates stub siblings; the stub must win), so
+intra-family calls dispatch through `srv.*` — pinned in the mover and noted in each
+module head. Mover hardening along the way: body brace = last 0→1 depth transition,
+param-list comment stripping, import-alias preservation, parent-type auto-import.
+gameServer.ts 32,258 → 30,674. Band three (F4.2–F4.5) merged to main.

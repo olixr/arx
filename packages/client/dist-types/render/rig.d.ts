@@ -1,6 +1,33 @@
 import { PoseState, type Look } from '@arx/shared';
 import { shade } from './tint.js';
-import type { BobtailDrawOpts } from './tail.js';
+import type { CrabLook } from './rigArthropod.js';
+import type { BasiliskLook } from './rigBasilisk.js';
+import type { WolfLook, WorgLook } from './rigCanid.js';
+import type { BoarLook } from './rigCritter.js';
+import type { HousecatLook, LynxLook } from './rigFeline.js';
+import type { GnollLook } from './rigGnoll.js';
+import type { GoblinLook } from './rigGoblin.js';
+import type { RamLook, SheepLook, StagLook } from './rigHerd.js';
+import type { KoboldLook } from './rigKobold.js';
+import type { OwlLook } from './rigOwl.js';
+import type { SkeletonLook } from './rigSkeleton.js';
+import type { BearLook } from './rigUrsine.js';
+export * from './rigArthropod.js';
+export * from './rigBasilisk.js';
+export * from './rigCanid.js';
+export * from './rigCritter.js';
+export * from './rigFeline.js';
+export * from './rigFox.js';
+export * from './rigGnoll.js';
+export * from './rigGoblin.js';
+export * from './rigHerd.js';
+export * from './rigKobold.js';
+export * from './rigMount.js';
+export * from './rigOoze.js';
+export * from './rigOwl.js';
+export * from './rigSkeleton.js';
+export * from './rigTurtle.js';
+export * from './rigUrsine.js';
 import { type GolemLook } from './golems.js';
 import { type GutSim, type OgreLook, type PendantSim } from './ogre.js';
 import { type SkralLook } from './skral.js';
@@ -9,6 +36,14 @@ import { LegRig, type LegPose, type LegRigConfig } from './legs.js';
 import { type CraftWorkKind } from './work.js';
 import { EarSim } from './earPhysics.js';
 export type { LegPose } from './legs.js';
+/**
+ * Procedural rigs with genuine two-segment IK legs — the humanoid
+ * puppet and the beast bodies both walk on the universal LegRig
+ * (legs.ts): feet planted in world space, steps committed when the
+ * body drifts, knees solved by two-bone IK. Everything here is the
+ * PAINT over that shared skeleton.
+ */
+export declare const OUTLINE = "#241a2e";
 /**
  * THE GIANT GAIT (docs/ogres-plan.md): the humanoid solver, statured.
  * A 2.5× body walked on the size-1 config planted its feet on a
@@ -345,14 +380,6 @@ export declare const SHOULDER_SETTLE_K = 0.85;
  */
 export declare function shoulderTuckK(fx: number): number;
 /**
- * THE TURNED BAR's fore-aft stagger (units of tw, signed along the
- * facing): side-on, the leading arm hangs a half-step ahead of the
- * chest line and the trailing arm behind it — the same stagger the
- * feet already take (legs.ts `stag`). Zero face-on; grows with the
- * profile so the diagonals inherit a taste of it.
- */
-export declare function shoulderStagK(fx: number): number;
-/**
  * THE PERSPECTIVE SHEET (dev-only): when `on`, drawHumanoid records
  * the solved shoulder geometry of the last figure drawn so a lab can
  * overlay red/green calibration lines — the solved bar, the settle
@@ -434,364 +461,6 @@ export declare function solveArm(sx: number, sy: number, hx: number, hy: number,
     kx: number;
     ky: number;
 };
-export interface SkeletonLook {
-    /** Base bone tone — each variant aged differently in the ground. */
-    bone: string;
-    /** The dark of the rib cavity behind the rib bars — the depth read. */
-    cavity: string;
-    /** Light living in the sockets; undefined = the hollow dark stare. */
-    glow?: string;
-    /** Royalty among the dead wears its crown into battle. */
-    crown?: {
-        band: string;
-        gem: string;
-    };
-    /** Bone thickness multiplier: gracile archer 0.92 → champion 1.3. */
-    heavy: number;
-    /** Old battle damage: a skull crack down the trailing brow. */
-    cracked: boolean;
-}
-export declare const SKELETON_LOOKS: Record<string, SkeletonLook>;
-/** Variant lookup with the rank-and-file as the unknown-id fallback. */
-export declare function skeletonLook(defId: string): SkeletonLook;
-export interface SkullFrame {
-    s: number;
-    headX: number;
-    headY: number;
-    hw: number;
-    hh: number;
-    cut: number;
-    headR: number;
-    fx: number;
-    fy: number;
-    profileK: number;
-    backK: number;
-    lead: number;
-    hurt: boolean;
-    nowMs: number;
-    /** 0..1 jaw drop — the combat bite; 0 keeps the jaw seated. */
-    gape: number;
-}
-/**
- * The skull, drawn in the head block's own frame so helmets still fit.
- * Reads skull by SILHOUETTE first: a broad cranium dome stepping in to
- * a narrower maxilla and a separate mandible — then the band-aware
- * face: sockets that slide with the facing and vanish around the
- * corner, a nasal wedge, a tooth row, suture lines on the back band.
- */
-export declare function paintSkull(ctx: CanvasRenderingContext2D, sk: SkeletonLook, f: SkullFrame): void;
-export interface RibcageFrame {
-    s: number;
-    tw: number;
-    ww: number;
-    th: number;
-    fx: number;
-    lead: number;
-    profileK: number;
-    backK: number;
-    hurt: boolean;
-}
-/**
- * The skeletal torso, drawn in the garment's local frame (y=0 at the
- * hip line, −th at the shoulders): clavicle bar and shoulder knobs, a
- * rib barrel over the dark cavity with the sternum riding the leading
- * edge, scapulae and spine from behind — and below it a REAL gap where
- * a waist should be, crossed only by vertebrae down to the iliac-wing
- * pelvis. The see-through waist is the whole-body skeleton read.
- */
-export declare function paintRibcage(ctx: CanvasRenderingContext2D, sk: SkeletonLook, f: RibcageFrame): void;
-export interface KoboldLook {
-    /** Hide base — each variant weathered its own tunnel. */
-    hide: string;
-    /** Pale under-hide: jaw, muzzle underside, the tail's low edge. */
-    belly: string;
-    /** The lit eye bead — small, bright, watching. */
-    eye: string;
-    /** The bare nose pad at the snout tip. */
-    nose: string;
-    /**
-     * Ragged mane shag over crown and nape; undefined = the digger's
-     * short bristle scruff instead.
-     */
-    mane?: string;
-    /** Frame multiplier: jaw mass, ear dish, tail girth. */
-    heavy: number;
-}
-export declare const KOBOLD_LOOKS: Record<string, KoboldLook>;
-/** Variant lookup with the rank-and-file as the unknown-id fallback. */
-export declare function koboldLook(defId: string): KoboldLook;
-/**
- * A tapered filled ribbon along a quadratic spine — the law learned on
- * the ram's horns: curved mass reads as carved form only when drawn as
- * a filled shape with an outline, never as a stroke chain. Width
- * tapers base→tip; returns the sampled spine so callers can seat
- * details on it.
- */
-export declare function scaleRibbon(ctx: CanvasRenderingContext2D, x0: number, y0: number, cx: number, cy: number, x1: number, y1: number, w0: number, fill: string, outline: string): Array<{
-    x: number;
-    y: number;
-    px: number;
-    py: number;
-    w: number;
-}>;
-export interface KoboldHeadFrame {
-    s: number;
-    headX: number;
-    headY: number;
-    hw: number;
-    hh: number;
-    cut: number;
-    fx: number;
-    fy: number;
-    profileK: number;
-    backK: number;
-    lead: number;
-    hurt: boolean;
-    nowMs: number;
-    /** 0..1 jaw drop — the combat yip-and-snap; 0 keeps the jaw seated. */
-    gape: number;
-}
-/**
- * The kobold head, drawn in the head block's own frame. Reads kobold
- * by SILHOUETTE first: a low cranium between big dish ears under the
- * candle crown, and a LONG snout that leads the facing — hanging low
- * face-on, run out level and drooping at profile — ending in a bare
- * nose pad with whiskers and buck incisors. The pale mandible drops
- * with the gape. From behind there is NO face: hide plates, the nape,
- * the ears' backs, and the scruff or mane riding the crown.
- */
-export declare function paintKoboldHead(ctx: CanvasRenderingContext2D, kb: KoboldLook, f: KoboldHeadFrame): void;
-export interface KoboldHumpFrame {
-    s: number;
-    tw: number;
-    th: number;
-    fx: number;
-    backK: number;
-    hurt: boolean;
-}
-/**
- * The shoulder hump: the bent back the whole species carries, drawn
- * in the torso's local frame AFTER the garment and BEFORE the head —
- * a rounded mass rising behind the neck that the low-slung skull sinks
- * into. It trails the facing at profile and reads as bowed shoulders
- * face-on and from behind.
- */
-export declare function paintKoboldHump(ctx: CanvasRenderingContext2D, kb: KoboldLook, garment: string, f: KoboldHumpFrame): void;
-export interface KoboldTailFrame {
-    s: number;
-    fx: number;
-    fy: number;
-    profileK: number;
-    backK: number;
-    lead: number;
-    nowMs: number;
-    runF: number;
-    poleX: number;
-    hurt: boolean;
-}
-/**
- * The naked tail — THE LIVING WHIP. Drawn in the torso's squashed
- * local frame BEFORE the garment so the root always tucks behind the
- * body. A wave travels root-to-tip on the wall clock, quickening and
- * widening with the gait, so the tail is never a dead ribbon: it
- * snakes at a stand, lashes at a run. Hide at the root eases to bare
- * flesh at the tip. It trails the facing — run out long at profile,
- * hanging low and swaying seen from behind, tip peeking past the hip
- * face-on.
- */
-export declare function paintKoboldTail(ctx: CanvasRenderingContext2D, kb: KoboldLook, f: KoboldTailFrame): void;
-/**
- * THE FUR DIALECT — the gnoll, the hyena-headed scavenger. Like the
- * bone and scale dialects it swaps head, hair, and face wholesale and
- * adds species mass (crest hump, bushy tail, bare paws) while the IK
- * rig, carriage, and facing bands keep working untouched. Each variant
- * is its own DESIGN, never a scale-up: the rank-and-file skulker in
- * its speckled coat, and the packlord's storm-dark bulk under the
- * standing crest. The rank-and-file additionally rolls a COAT CLUSTER
- * from its spawn seed — a warband reads as individuals from one stock,
- * never as one body stamped four times.
- */
-export interface GnollLook {
-    /** Coat base — the speckled gray-brown fur that carries the body. */
-    fur: string;
-    /** Pale underfur: throat, belly panel, jaw underside, tail's low edge. */
-    underfur: string;
-    /** Bare umber hide where the fur thins: paw pads and the ear dish. */
-    skin: string;
-    /** Speckle ink — the hyena's broken spot field over the coat. */
-    spot: string;
-    /** The bristled crest: crown, nape, and down the hunched back. */
-    mane: string;
-    /**
-     * The dark face mask — brow ledge, muzzle bridge, eye sockets, claw
-     * ink, the dorsal saddle. The menace tone: everything that scowls
-     * wears it.
-     */
-    mask: string;
-    /** The lit eye bead — small, close-set, watching the weakest. */
-    eye: string;
-    /** The bare nose pad at the muzzle tip. */
-    nose: string;
-    /** Frame multiplier: jaw mass, ear reach, crest height, tail girth. */
-    heavy: number;
-    /** Battle-worn: notched ear and a muzzle scar — the packlord's ledger. */
-    scarred?: boolean;
-    /** Spawn seed carried on the resolved look — drives the spot field. */
-    seed?: number;
-}
-export declare const GNOLL_LOOKS: Record<string, GnollLook>;
-/**
- * Variant lookup with the rank-and-file as the unknown-id fallback.
- * The seed (spawn eid) rolls the skulker's coat cluster plus a small
- * shade jitter; named looks (the packlord) hold their authored design.
- * Resolved looks are cached — this runs per body per frame.
- */
-export declare function gnollLook(defId: string, seed?: number): GnollLook;
-/**
- * The gnoll head, drawn in the head block's own frame. Reads gnoll by
- * SILHOUETTE first: a broad low skull between TALL ROUND ears, a
- * bristled crest breaking off the crown, and a BLUNT DEEP muzzle — a
- * bone-cracking jaw, not the wolf's spike — ending in a broad nose
- * with the underbite's teeth proud of the lip. Muzzle length leads the
- * facing (short face-on, run out at profile) and the whole face is
- * gone from behind (the cattle muzzle law): occiput fur, spot courses,
- * ear backs, and the crest pouring down the nape.
- */
-export declare function paintGnollHead(ctx: CanvasRenderingContext2D, gn: GnollLook, f: KoboldHeadFrame, seed?: number): void;
-/**
- * The crest hump: the gnoll's hunched shoulders drawn in the torso's
- * local frame AFTER the garment and BEFORE the head — high withers in
- * FUR (the scraps a gnoll wears never cover its own back) with the
- * mane's bristle ridge marching down the slope. The low-slung skull
- * sinks into it; face-on and from behind it reads as the bowed back
- * the whole species carries.
- */
-export declare function paintGnollCrest(ctx: CanvasRenderingContext2D, gn: GnollLook, f: KoboldHumpFrame): void;
-/** Torso-local frame for the gnoll body coat overpaint. */
-export interface GnollBodyFrame {
-    s: number;
-    tw: number;
-    ww: number;
-    th: number;
-    fx: number;
-    fy: number;
-    profileK: number;
-    backK: number;
-    lead: number;
-    hurt: boolean;
-}
-/**
- * THE BODY COAT — the gnoll's torso overpaint, drawn in the torso's
- * local frame AFTER the garment quad (which paints in plain fur) and
- * BEFORE the crest hump. It turns the flat tunic block into an
- * animal: pale belly panel face-on, the dark dorsal saddle from
- * behind, seeded rosettes on the flanks, a ragged pelt fringe over
- * the hip seam, and the scavenger's crude hide harness with its bone
- * fetishes — species dressing painted on, never equipment (nothing
- * here drops, so nothing here lies).
- */
-export declare function paintGnollBody(ctx: CanvasRenderingContext2D, gn: GnollLook, f: GnollBodyFrame): void;
-/**
- * THE GREENSKIN DIALECT — the goblin, done at last as its own species.
- * Fifth head-swap dialect after bone, scale, fur, and construct: it
- * swaps head, hair, and face wholesale and reshapes the body's ARGUMENT
- * — the biggest head in the game on the smallest frame, a pot gut over
- * bandy shanks, overlong arms ending in knuckly hands — while the IK
- * rig, carriage, and facing bands keep working untouched. Where the
- * skeleton grins, the kobold bucks, and the gnoll juts, the goblin
- * FLARES: enormous back-swept wing ears wider than the shoulders, the
- * one silhouette that reads goblin at any distance. Each variant is a
- * DESIGN, never a scale-up; the rank-and-file additionally roll a HIDE
- * CLUSTER from the spawn seed so a warband reads as family, never as
- * one body stamped five times.
- */
-export interface GoblinLook {
-    /** Hide base — the green that names the species. */
-    hide: string;
-    /** Pale underhide: the pot gut, jaw, palms, and the ear membranes. */
-    belly: string;
-    /** The dark face ink: pupils, nostrils, maw, claw ticks, the scowl. */
-    ink: string;
-    /** The lit eye bead — bright, mean, and too small for the head. */
-    eye: string;
-    /**
-     * The loincloth wrap: every goblin owns real underwear — a cloth
-     * band lapping the pelvis with a torn apron front and seat. Dirty
-     * scrap-cloth on the rabble, school-dyed on the casters, oiled
-     * leather under the warboss iron.
-     */
-    cloth: string;
-    /**
-     * The casters' ragged half-cowl and shawl; undefined = the bare
-     * chest and scrap belt of the rank-and-file.
-     */
-    garb?: string;
-    /** The warboss war-knot: a rag-tied bristle spike on the crown. */
-    topknot?: string;
-    /** Paired up-tusks proud of the lip — the warboss jaw. */
-    tusks?: boolean;
-    /** Battle-worn: a notched ear and a cheek scar — rank as ledger. */
-    scarred?: boolean;
-    /** Frame multiplier: jaw mass, ear reach, gut swell. */
-    heavy: number;
-    /** Spawn seed carried on the resolved look — per-body wear marks. */
-    seed?: number;
-}
-export declare const GOBLIN_LOOKS: Record<string, GoblinLook>;
-/**
- * Variant lookup with the rank-and-file as the unknown-id fallback.
- * The seed (spawn eid) rolls the chopper's and the thrower's hide
- * cluster plus a small shade jitter; named looks (the casters, the
- * warboss) hold their authored design. Resolved looks are cached —
- * this runs per body per frame.
- */
-export declare function goblinLook(defId: string, seed?: number): GoblinLook;
-/**
- * The goblin head, drawn in the head block's own frame. Reads goblin
- * by SILHOUETTE first: WING EARS swept back and out past the shoulder
- * line — the widest thing on the body — over a low broad cranium with
- * no chin to speak of, a HOOKED nose leading the facing, beady bright
- * eyes under a born scowl, and the needle grin ear to ear. The jaw
- * drops through every strike beat and the ears PIN BACK with it: the
- * goblin JEERS as it swings. From behind there is no face — occiput
- * hide, the nape wedge, the ears' backs, and the warboss war-knot.
- */
-export declare function paintGoblinHead(ctx: CanvasRenderingContext2D, gb: GoblinLook, f: KoboldHeadFrame): void;
-/** Torso-local frame for the goblin body overpaint. */
-export interface GoblinBodyFrame {
-    s: number;
-    tw: number;
-    ww: number;
-    th: number;
-    fx: number;
-    fy: number;
-    profileK: number;
-    backK: number;
-    lead: number;
-    hurt: boolean;
-}
-/**
- * THE LOINCLOTH — every goblin owns real underwear. A cloth wrap
- * lapping the pelvis hip to hip, with a torn apron hanging over the
- * front and a seat flap covering the back band: coverage from every
- * facing, never a naked hip line. Drawn in the torso's local frame
- * over the legs and UNDER the gut overpaint, and — unlike the gut —
- * for EVERY variant: the warboss wears its wrap under the scavenged
- * iron the way every soldier ever has.
- */
-export declare function paintGoblinLoincloth(ctx: CanvasRenderingContext2D, gb: GoblinLook, f: GoblinBodyFrame): void;
-/**
- * THE POT GUT — the goblin's torso overpaint, drawn in the torso's
- * local frame AFTER the garment quad (which paints in plain hide) and
- * gated OFF whenever a real body item is worn (the warboss keeps its
- * scavenged iron; nothing here may cover gear that drops). It turns
- * the flat tunic block into a body: the low-slung belly with its lit
- * pale panel and navel, the crease shading under the overhang, a
- * crude rope belt cinched UNDER the gut with the scrap pouch on the
- * hip — and for the casters, the ragged half-shawl with its torn hem
- * over the shoulders. Species dressing painted on, never equipment.
- */
-export declare function paintGoblinTorso(ctx: CanvasRenderingContext2D, gb: GoblinLook, f: GoblinBodyFrame): void;
 export declare function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void;
 /**
  * Back-mounted gear layered relative to the CAPE — called by the
@@ -859,82 +528,15 @@ export interface BeastSpec {
  * so future creatures have working legs before they have a look.
  */
 export declare function beastSpec(defId: string, radius: number, speed: number): BeastSpec;
-/**
- * Cattle are drawn as true 2.5D blocks — the same dialect as the wall
- * prisms: a chamfered footprint extruded straight up, lit back slab
- * over hard-shaded flanks. Everything species-flavored (hide, patches,
- * horns, muzzle, udder) lives in this look table so the dairy cow and
- * the bull share one painter.
- */
-export interface CattleLook {
-    hide: string;
-    /** Seeded body patches; the count says how many. */
-    patch: string;
-    spots: number;
-    muzzle: string;
-    horn: string;
-    hornTip: string;
-    /** Horn reach (tiles) — stubs on the cow, sweeps on the bull. */
-    hornLen: number;
-    udder?: string;
-    noseRing?: string;
-    /** A strap-hung cowbell at the throat (dairy herd charm). */
-    bell?: string;
-    /** Body half-width (tiles); length comes from the BeastSpec. */
-    bodyW: number;
-    bellyH: number;
-    backH: number;
-    /** Extra shoulder mass ramped toward the chest (bull). */
-    humpH: number;
-    headW: number;
-    headH: number;
-}
-export declare const CATTLE_LOOKS: Record<string, CattleLook>;
-export interface CattleBodyFrame {
-    /** Screen position of the body's ground point. */
-    bx: number;
-    gy: number;
-    s: number;
-    fx: number;
-    fy: number;
-    /** Camera foreshorten (1 for ragdolls drawn in screen space). */
-    ys: number;
-    seed: number;
-    hurt: boolean;
-    /** Gait bob (tiles) and side roll — 0 for corpses. */
-    bob: number;
-    roll: number;
-    /** Heights (tiles) — corpses pass a collapsed backH. */
-    backH: number;
-    bellyH: number;
-}
-/**
- * The cattle body block: chamfered octagon footprint projected at
- * belly and back height, silhouette = convex hull of both rings.
- * Paint order inside the clip makes the light model: base hide, then
- * the seeded patches, then a hard shade step on everything below the
- * back plane, then the lit back facet — so each patch reads darker
- * where it spills over the flank, exactly like the torso shade-half.
- */
-export declare function paintCattleBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: CattleLook, f: CattleBodyFrame): void;
-/**
- * The cattle head: a billboard chamfered slab (like the humanoid head)
- * whose muzzle, ears, horns and eyes orbit with the facing. Shared by
- * the live rig and the ragdoll — corpses pass `dead` (no face marks)
- * and ys=1.
- */
-export declare function drawCattleHead(ctx: CanvasRenderingContext2D, look: CattleLook, o: {
+export declare function ringPath(pts: Array<{
     x: number;
     y: number;
-    s: number;
-    fx: number;
-    fy: number;
-    ys: number;
-    hurt?: boolean;
-    dead?: boolean;
-    /** Slow lateral cud-grind offset (screen px), idle only. */
-    chew?: number;
-}): void;
+}>): Path2D;
+/** Convex hull (monotone chain) — the silhouette of an extruded slab. */
+export declare function hullPath(pts: Array<{
+    x: number;
+    y: number;
+}>): Path2D;
 /**
  * Shared 2.5D block-body core for the bespoke beasts: a footprint
  * polygon extruded from a belly line up to a lit back facet, the
@@ -961,35 +563,13 @@ export interface BeastBlockFrame {
     /** Corpses flatten the belly line to the ground. */
     botH?: number;
 }
+export declare function paintBlockBody(ctx: CanvasRenderingContext2D, f: BeastBlockFrame, foot: Array<[number, number]>, topH: (X: number) => number, botH: (X: number) => number, base: string, marks?: (gx: (X: number, Y: number) => number, gyy: (X: number, Y: number) => number, lift: number) => void): void;
 /**
  * A tapered ribbon along a quadratic spine — the wolf's brush and the
  * rat's naked tail both build from this, live and dead. `widthAt`
  * returns the half-width at t∈[0,1] so species shape their own taper.
  */
 export declare function taperedSpinePath(x0: number, y0: number, cx: number, cy: number, x1: number, y1: number, widthAt: (t: number) => number): Path2D;
-/**
- * The wolf: a lean predator prism — deep chest, tucked waist, shoulder
- * hump, dark saddle cape over pale underparts, erect ears, long
- * foreshortening muzzle, amber eyes and a bushy dark-tipped brush.
- */
-export interface WolfLook {
-    coat: string;
-    saddle: string;
-    under: string;
-    earIn: string;
-    eye: string;
-    /** Body half-width (tiles); length comes from the BeastSpec. */
-    bodyW: number;
-    backH: number;
-    /** Extra mass ramped up over the shoulders. */
-    shoulderH: number;
-    /** Belly height at the chest (deep) and the waist (tucked). */
-    chestH: number;
-    tuckH: number;
-    headW: number;
-    headH: number;
-}
-export declare const WOLF_LOOK: WolfLook;
 export declare function paintWolfBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: WolfLook, f: BeastBlockFrame): void;
 /**
  * The wolf head: angular skull slab with erect ears and a long tapered
@@ -1047,18 +627,6 @@ export interface DireWolfLook {
     headW: number;
     headH: number;
 }
-export declare const DIREWOLF_LOOK: DireWolfLook;
-/**
- * OLD FANG (the dread crown, the wolf boss): the dire painter worn
- * by an authored DESIGN, never a reskin — aged iron-grey where the
- * dire runs storm-charcoal, and the frost ticking laid on HEAVY: a
- * coat gone white at the guard hairs the way an old muzzle goes
- * white. Old-gold eyes (the dire's burn ember), pale scar rake wider
- * than hers — his ledger is longer. Frame reads OLD AND RANGY:
- * leaner in the body and lower at the back than the matriarch,
- * carried on the longest lope in the wood.
- */
-export declare const OLDFANG_LOOK: DireWolfLook;
 export declare function paintDireWolfBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: DireWolfLook, f: BeastBlockFrame): void;
 /**
  * The dire wolf head: a heavier skull than any wolf's — broad brow
@@ -1118,7 +686,6 @@ export interface FeyWolfLook {
     headW: number;
     headH: number;
 }
-export declare const FEYWOLF_LOOK: FeyWolfLook;
 export declare function paintFeyWolfBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: FeyWolfLook, f: BeastBlockFrame): void;
 /**
  * The fey wolf head: a fine long skull carried highest of any canid —
@@ -1148,37 +715,6 @@ export declare function drawFeyWolfHead(ctx: CanvasRenderingContext2D, look: Fey
     /** THE EAR IS A SIMULATION: the live elastic pair. */
     ears?: EarSim;
 }): void;
-/**
- * The worg: goblin-kin war-hound, designed around ONE silhouette
- * element: the HYENA SLOPE — towering shoulders falling hard down a
- * pencil-thin rump, the head slung LOW off the withers. A bear-trap
- * skull with an underbite whose fang-tusks hook up past the muzzle,
- * big ragged bat ears torn at the edges, mange-dappled dun hide over
- * a bare-skin chest, a short ratty kink of a tail — nothing about it
- * reads noble. The eyes are sickly green and set forward: it is
- * thinking about you specifically.
- */
-export interface WorgLook {
-    hide: string;
-    /** Mange dapple blotches across the shoulders. */
-    dapple: string;
-    /** The short choppy bristle strip down the nape — patchy, not a mane. */
-    mane: string;
-    /** Bare skin: chest bib, muzzle, tail hide. */
-    bare: string;
-    earIn: string;
-    eye: string;
-    fang: string;
-    bodyW: number;
-    /** Withers height — the tall front of the slope. */
-    shoulderH: number;
-    /** Rump height — the low rear of the slope. */
-    rumpH: number;
-    chestH: number;
-    headW: number;
-    headH: number;
-}
-export declare const WORG_LOOK: WorgLook;
 export declare function paintWorgBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: WorgLook, f: BeastBlockFrame): void;
 /**
  * The worg head: a bear-trap — broad short skull, heavier below than
@@ -1200,102 +736,6 @@ export declare function drawWorgHead(ctx: CanvasRenderingContext2D, look: WorgLo
     gape?: number;
     /** 0..1 idle ear swivel. */
     flick?: number;
-}): void;
-/**
- * THE FEATHER-AND-DISC DIALECT — the great owl, the parliament's
- * hunter. A TWO-POST beast unlike anything else on the rig: an
- * upright keg of plumage on backward-kneed bird legs, a facial disc
- * that carries BOTH eyes forward (the one face in the bestiary that
- * meets yours), and a head that turns on its own clock while the
- * body stands stone-still. Straight out of the oldest bestiaries — a
- * horned hunter the size of a shepherd — rebuilt in the Arx facet
- * dialect: block-prism body, chamfered feather fans, hard shade
- * steps, square pupils, no soft pill anywhere.
- */
-export interface OwlLook {
-    /** Mantle — the folded-wing cloak that IS the back and shoulders. */
-    mantle: string;
-    /** Breast keel and underwing — the pale flash of the threat bloom. */
-    breast: string;
-    /** Barring ink: breast chevrons, feather tips, tail bands. */
-    bar: string;
-    /** The facial disc plate. */
-    disc: string;
-    /** The disc's dark rim — what makes the disc a DISC. */
-    discRim: string;
-    /** The iris — the lamp of the face. */
-    eye: string;
-    /** Beak horn. */
-    horn: string;
-    /** Body half-width (tiles); length comes from the BeastSpec. */
-    bodyW: number;
-    /** Shoulder-dome height of the upright keg (tiles). */
-    backH: number;
-    /** Belly clearance over the shanks (tiles). */
-    bellyH: number;
-    headW: number;
-    headH: number;
-    /** Ear-tuft reach (tiles) — the horned crown; the elder's is a crest. */
-    tuftLen: number;
-    /** Tail-fan blade reach past the rump (tiles). */
-    tailLen: number;
-    /** Leading-primary reach of one spread wing (tiles). */
-    wingSpan: number;
-    /** Doubled disc ring, frost crown ticks — the elder's ledger. */
-    elder?: boolean;
-    /** Spawn seed carried on the resolved look — drives barring phase. */
-    seed?: number;
-}
-/** The rank-and-file hunter: tawny bark camouflage, amber lamps. */
-export declare const GREAT_OWL_LOOK: OwlLook;
-/**
- * The elder: the parliament's high seat — never a scale-up. Storm
- * slate over moon-pale cream where the wing is bark over buff, a
- * TALL tufted crest for a crown, the disc ring doubled like a
- * weathered court seal, and frost ticked through the crown feathers.
- * It out-masses the hunter in every dimension that counts.
- */
-export declare const ELDER_GREAT_OWL_LOOK: OwlLook;
-/**
- * Variant lookup with the hunter as the unknown-id fallback. The seed
- * (spawn eid) rolls the rank-and-file's plumage cluster plus a small
- * shade jitter — hashed first, because knot members spawn with
- * CONSECUTIVE eids and raw bits would dress a whole wing in one coat.
- * The elder holds its authored design. Cached; runs per body per frame.
- */
-export declare function owlLook(defId: string, seed?: number): OwlLook;
-/**
- * One feathered wing fan in the facet dialect: a bone-dark leading
- * arm and four chamfered primary blades stepping back from it — a
- * STEPPED silhouette, never a soft fan. Pale on the underside, so a
- * raised wing flashes the mantle warning every prey animal in the
- * wood understands. Screen-space like the bat's membranes (billboard
- * wings read at every body facing); the corpse splay squashes the
- * same fan onto the ground.
- */
-export declare function owlWingFan(ctx: CanvasRenderingContext2D, look: OwlLook, o: {
-    /** Shoulder pivot on screen. */
-    x: number;
-    y: number;
-    s: number;
-    /** Screen angle of the leading edge (radians). */
-    ang: number;
-    /** 0..1 fan opening. */
-    spread: number;
-    /** Leading-primary reach (tiles). */
-    span: number;
-    /** Show the pale underside (wings up = the mantle flash). */
-    under?: boolean;
-    /** Vertical squash for corpse splays flat on the ground. */
-    squash?: number;
-    /**
-     * Fan-opening scale: 1 = the full mantling droop (the standing
-     * threat bloom). Level flight carries the blade flatter — cruise
-     * ~0.6, a locked-out glide flatter still.
-     */
-    openK?: number;
-    hurt?: boolean;
-    seed?: number;
 }): void;
 /**
  * The owl body: the upright keg — a tall block-prism (the wall-prism
@@ -1332,101 +772,6 @@ export declare function drawOwlHead(ctx: CanvasRenderingContext2D, look: OwlLook
     blink?: number;
     seed?: number;
 }): void;
-/** Flight ceiling per rank (tiles over the ground anchor): the elder
- *  rides higher — rank you can read from across the glade. */
-export declare function owlHoverHeight(look: OwlLook): number;
-/**
- * The giant rat: a low hunched wedge — rump high and round, body
- * tapering into a pointed twitchy head with big dish ears, whiskers,
- * buck teeth and a long naked tail dragging an S behind it.
- */
-export interface RatLook {
-    fur: string;
-    dorsal: string;
-    belly: string;
-    /** Naked skin — tail, nose, inner ear. */
-    skin: string;
-    earIn: string;
-    bodyW: number;
-    /** Height of the hunched rump peak. */
-    humpH: number;
-    headW: number;
-    headH: number;
-}
-export declare const RAT_LOOK: RatLook;
-export declare function paintRatBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: RatLook, f: BeastBlockFrame): void;
-/**
- * The rat head: pointed snout wedge off a small skull, dish ears
- * behind, beady eyes, whiskers and buck teeth. Muzzle and eyes obey
- * the same foreshortening laws as the cattle and wolf.
- */
-export declare function drawRatHead(ctx: CanvasRenderingContext2D, look: RatLook, o: {
-    x: number;
-    y: number;
-    s: number;
-    fx: number;
-    fy: number;
-    ys: number;
-    hurt?: boolean;
-    dead?: boolean;
-    /** -1..1 fast whisker twitch, idle only. */
-    twitch?: number;
-}): void;
-/**
- * The boar: a battering wedge built around four reads owned by no
- * other body — THE RAZOR HUMP (a shoulder tower falling away to a
- * lean low stern; the whole topline is a charge waiting to happen),
- * THE HEDGE CREST (a continuous serrated bristle ridge crown-to-
- * midback that erects when the charge winds up), THE RAVAGER TUSKS
- * (up-swept ivory crescents off the jaw corners), and THE GRIZZLE
- * MASK (a pale band down the snout ridge under furious little eyes).
- * The dire boar is a DESIGN, never an upscale: the mountain hump,
- * frost-tipped quills over cold iron, four aged tusks, rake scars.
- */
-export interface BoarLook {
-    hide: string;
-    bristle: string;
-    /** Lit quill tips — the crest must read on its own dark hedge. */
-    quillTip: string;
-    /** Grizzled dust: the snout-ridge mask and the flank band. */
-    grizzle: string;
-    snout: string;
-    tusk: string;
-    earIn: string;
-    /** The furious little lamp set in the dark eye mask. */
-    eye: string;
-    bodyW: number;
-    /** Stern topline height — the LOW end of the razorback slope. */
-    backH: number;
-    /** Shoulder-hump rise over the withers — the tower the slope falls from. */
-    humpH: number;
-    /** Bristle-quill height over the hump line. */
-    crestH: number;
-    /** Belly clearance at the deep chest / at the tucked stern. */
-    chestH: number;
-    tuckH: number;
-    headW: number;
-    headH: number;
-    /** Tusk reach as a fraction of headW — the ravager dial. */
-    tuskLen: number;
-    /** The dire pair: upper hooks seated over the lower scimitars. */
-    fourTusk?: boolean;
-    /** Pale rake-scars on the flank — the dire's war record (seeded). */
-    scar?: string;
-    /** Heavy jowl masses framing the jaw (the dire's old-bruiser face). */
-    jowl?: boolean;
-    /** Tail cord length multiplier — the dire drags a longer rope. */
-    tailK: number;
-}
-export declare const BOAR_LOOK: BoarLook;
-/**
- * THE SCARRED IRON: the dire boar wears a cold iron-umber coat under
- * a frost-tipped quill hedge — a mountain at the shoulder where the
- * boar is a wedge, aged four-tusk jaws where the boar carries two
- * clean crescents, and garnet eyes sunk in heavy jowls. At any zoom
- * the two must never read as one silhouette twice.
- */
-export declare const DIREBOAR_LOOK: BoarLook;
 export declare function paintBoarBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: BoarLook, f: BeastBlockFrame, 
 /** 0..1 charge windup — the hackles stand and the crest leans in. */
 hackle?: number): void;
@@ -1453,88 +798,7 @@ export declare function drawBoarHead(ctx: CanvasRenderingContext2D, look: BoarLo
     /** Stable per-entity seed — the dire's chipped tusk picks a side. */
     seed?: number;
 }): void;
-/**
- * The giant spider: two block masses — a low cephalothorax carrying the
- * eye cluster and fang chips, a domed abdomen behind wearing pale
- * chevrons — slung between eight thin stalking legs. No head or tail
- * painter: the whole animal is the body.
- */
-export interface SpiderLook {
-    carapace: string;
-    abdomen: string;
-    mark: string;
-    eye: string;
-    fang: string;
-    /** Abdomen half-width; the cephalothorax runs narrower. */
-    bodyW: number;
-    abdH: number;
-    cephH: number;
-}
-export declare const SPIDER_LOOK: SpiderLook;
-export declare function paintSpiderBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: SpiderLook, f: BeastBlockFrame, at?: number): void;
-/**
- * The wild ram: a boxy fleece loaf on sturdy legs with a dark bare
- * face — and the signature, big ridged horns curling back around the
- * ears. The charge drops the whole head into a battering line.
- */
-export interface RamLook {
-    wool: string;
-    /** Bare face and leg tone — dark against the fleece. */
-    face: string;
-    horn: string;
-    hornRib: string;
-    bodyW: number;
-    backH: number;
-    chestH: number;
-    headW: number;
-    headH: number;
-    /** Horn curl radius (tiles). */
-    hornR: number;
-}
 export declare const RAM_LOOK: RamLook;
-export declare function paintRamBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: RamLook, f: BeastBlockFrame): void;
-/**
- * The ram head: horns first — each curls in its sagittal plane, up
- * over the ear, back, down and forward, drifting outward through the
- * spiral so the front view reads as two curls flanking the poll.
- * Growth ribs cross the curl. The bare face is a dark slab under a
- * wool cap.
- */
-export declare function drawRamHead(ctx: CanvasRenderingContext2D, look: RamLook, o: {
-    x: number;
-    y: number;
-    s: number;
-    fx: number;
-    fy: number;
-    ys: number;
-    hurt?: boolean;
-    dead?: boolean;
-    /** 0..1 through the charge telegraph. */
-    charge?: number;
-}): void;
-/**
- * The kept ewe — THE FLEECE TELLS THE TIME. Two bodies in one
- * painter: a full cloud of scalloped cream fleece while the wool
- * stands ready for the shears, and a clipped, slimmer trim while it
- * regrows — the produce clock worn as silhouette, readable across a
- * whole yard. Dark bare face, drooping ears, no horns: kin to the
- * crag ram, but nobody's charger.
- */
-export interface SheepLook {
-    /** Standing fleece — and the duller clipped tone beneath it. */
-    wool: string;
-    woolShorn: string;
-    /** Bare face, ears, and legs — dark against the cream. */
-    face: string;
-    bodyW: number;
-    /** Fleece height standing full — and trimmed after the shears. */
-    backH: number;
-    backHShorn: number;
-    chestH: number;
-    headW: number;
-    headH: number;
-}
-export declare const SHEEP_LOOK: SheepLook;
 export declare function paintSheepBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: SheepLook, f: BeastBlockFrame, shorn: boolean): void;
 /**
  * The ewe head: drooping dark ears off the poll, a bare slab face
@@ -1553,41 +817,6 @@ export declare function drawSheepHead(ctx: CanvasRenderingContext2D, look: Sheep
     /** Body tone behind the poll cap — the shorn trim dulls it. */
     capTone?: string;
 }): void;
-/**
- * The stag: elegance by proportion — a slim barrel held HIGH on long
- * legs, a proud rising neck column, pale rump patch, and branched
- * antlers swept back off the crown. The alarm-charge levels the
- * antlers forward.
- */
-export interface StagLook {
-    coat: string;
-    belly: string;
-    /** The pale rump patch — the deer flag. */
-    rump: string;
-    antler: string;
-    muzzle: string;
-    bodyW: number;
-    backH: number;
-    chestH: number;
-    headW: number;
-    headH: number;
-    /** How far the head rides above the back line (tiles). */
-    neckRise: number;
-    /**
-     * Branched crown or bare poll — the hind shares the whole deer
-     * dialect and differs exactly here: no beams, leaf ears instead
-     * (everything species-flavored lives in the look table).
-     */
-    antlers: boolean;
-}
-export declare const STAG_LOOK: StagLook;
-/**
- * The hind: the stag's dialect at herd scale — a hand smaller, a
- * shade warmer, the neck a touch lower, and big leaf ears where the
- * stag carries his crown. Reads "deer" beside the stag and "not the
- * stag" on her own.
- */
-export declare const HIND_LOOK: StagLook;
 export declare function paintStagBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: StagLook, f: BeastBlockFrame): void;
 /**
  * The stag head: a small wedge carried high, alert ears, and the
@@ -1605,25 +834,6 @@ export declare function drawStagHead(ctx: CanvasRenderingContext2D, look: StagLo
     hurt?: boolean;
     dead?: boolean;
 }): void;
-/**
- * The black bear: sheer mass — a broad slab with the shoulder hump
- * peaked over the front legs, belly nearly brushing the ground, and a
- * huge low head with round ears and a pale short muzzle. The pounce
- * bares teeth like the wolf, but everything about it is heavier.
- */
-export interface BearLook {
-    fur: string;
-    muzzle: string;
-    earIn: string;
-    bodyW: number;
-    backH: number;
-    /** Extra shoulder mass over the front legs. */
-    humpH: number;
-    chestH: number;
-    headW: number;
-    headH: number;
-}
-export declare const BEAR_LOOK: BearLook;
 export declare function paintBearBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: BearLook, f: BeastBlockFrame): void;
 /**
  * The bear head: a wide chamfered slab with small round ears, a short
@@ -1642,30 +852,6 @@ export declare function drawBearHead(ctx: CanvasRenderingContext2D, look: BearLo
     /** 0..1 through the attack telegraph. */
     snarl?: number;
 }): void;
-/**
- * The mudcrab: a wide flat carapace slung sideways across the facing,
- * two chunky pincers held forward (the left one the bigger crusher),
- * and stalked eyes off the front rim. The whole animal is the body
- * painter — head and tail branches return early.
- *
- * THE LIVING STALKS, inherited (the giant crab's doctrine come home):
- * the eyes ride the ear sim — they lag the turn, sway with the
- * scuttle, and pin flat through the clamp. The old rigged eyes hid
- * behind two facing gates (`fy > -0.5`, the far-eye profile skip);
- * stalks that grow off the TOP of the animal have no business
- * disappearing at any band — THE SOCKET RIDES THE CROWN slides the
- * root station onto visible shell instead, and the stalks always
- * paint over the hull.
- */
-export interface CrabLook {
-    shell: string;
-    claw: string;
-    eye: string;
-    /** Half-WIDTH across the facing — wider than the body is long. */
-    bodyW: number;
-    shellH: number;
-}
-export declare const CRAB_LOOK: CrabLook;
 export declare function paintCrabBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: CrabLook, f: BeastBlockFrame, at?: number, nowMs?: number, 
 /** THE LIVING STALKS: the live ear sim; absent = the ONE REST chain. */
 eyes?: EarSim): void;
@@ -1713,7 +899,6 @@ export interface GiantCrabLook {
     /** Daylight under the hull: the skirt's height off the ground. */
     rimBot: number;
 }
-export declare const GIANTCRAB_LOOK: GiantCrabLook;
 /**
  * THE SIEGE CRUSHER + the cutter — the giant crab's arms, a
  * standalone pass so drawBeast can compose them in TRUE depth: the
@@ -1742,464 +927,38 @@ eyes?: EarSim,
  */
 deferNearClaws?: boolean): void;
 /**
- * The giant beetle: domed elytra split by a center seam with an
- * iridescent sheen, a darker pronotum plate at the front, and a rhino
- * horn hooking up off the head between two elbowed antennae. Whole
- * animal in the body painter — head and tail branches return early.
+ * THE SPIKE IS THE PLATE — the carapace is ONE lattice. A shared
+ * vertex grid tiles the dome into scute plates, and EVERY plate
+ * grows its own horn whose base ring IS the plate's corners (inset
+ * a hair so the seam still reads between neighbors). Base-of-spike
+ * matches base-of-shell at every band by construction — there is
+ * no separate thorn layout left to drift against the mesh at the
+ * quarters. The authored hand lives in the PROFILES: a per-column
+ * height rank (the crown column is the vertebral saw, the flanks
+ * step down toward the rim) and a per-band taper (tallest
+ * amidships, dropping to bow and stern), per species.
  */
-export interface BeetleLook {
-    shell: string;
-    plate: string;
-    seam: string;
-    /** Iridescent highlight glazed over the lit dome. */
-    sheen: string;
-    horn: string;
-    bodyW: number;
-    elyH: number;
-    plateH: number;
-}
-export declare const BEETLE_LOOK: BeetleLook;
-export declare function paintBeetleBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: BeetleLook, f: BeastBlockFrame, at?: number): void;
-/**
- * THE SHELL WALKS — the giant turtles. Four reads owned by no other
- * body: THE KEEP (a scute-mailed dome with a serrated rim — the
- * whole silhouette is the shell), THE HOOK (a beaked shear on a neck
- * that fires like a sprung trap while the feet stay planted), THE
- * COLUMNS (pillar legs splayed from under the rim on the widest
- * track in the wood), and THE MAIL (every scute an individually lit
- * pyramid seated on the dome's curve — armor built plate by plate,
- * never a painted grid).
- *
- * TWO BODIES, TWO SPECIES (this is the law of the pair): the giant
- * turtle is THE SNAPPER — a low, long, jagged vault dragging its rim
- * near the ground on a sprawled track, blade-keeled like the old
- * bestiary plates; the colossus is THE MOUNTAIN — a high tortoise
- * dome on true elephant columns with daylight under the keep, moss
- * on its crown plates and a head like a stone outcrop. They must
- * never read as one silhouette at two zooms.
- */
-export interface TurtleLook {
-    /** Crown plates — the mail's base tone; facets derive from it. */
-    shell: string;
-    /** The marginal band riding the shell's lower edge. */
-    rim: string;
-    /** Keel blades and rim saw-teeth. */
-    spike: string;
-    /** Hide: neck, legs, tail. */
-    skin: string;
-    /** Pale throat and lower jaw. */
-    throat: string;
-    beak: string;
-    eye: string;
-    /** The colossus wears the years: moss caps on the crown plates. */
-    moss?: string;
-    /** Shell half-width (tiles); length comes from the BeastSpec. */
-    bodyW: number;
-    /** Dome height at the peak. */
-    shellH: number;
-    /** Keel blade height above the crown at the tallest station. */
-    spikeH: number;
-    headW: number;
-    headH: number;
-    /** Head carry height above ground (the rim line). */
-    headRise: number;
-    /** Daylight under the keep: the rim's height off the ground. */
-    rimBot: number;
-    /** Heavier brow, barbels, moss, crown plate — the ancient read. */
-    ancient?: boolean;
-}
-export declare const TURTLE_LOOK: TurtleLook;
-export declare const COLOSSUS_LOOK: TurtleLook;
-export declare function paintTurtleBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: TurtleLook, f: BeastBlockFrame): void;
-export declare function drawTurtleHead(ctx: CanvasRenderingContext2D, look: TurtleLook, o: {
-    x: number;
-    y: number;
-    s: number;
-    fx: number;
-    fy: number;
-    ys: number;
-    hurt?: boolean;
-    /** 0..1 jaw gape — open through the windup, clamped on the hit. */
-    gape?: number;
-    /** Corpse: lids down, jaw slack, nothing watching. */
-    dead?: boolean;
-}): void;
-export interface BasiliskLook {
-    /** Body base hide. */
-    hide: string;
-    /** The canonical yellowish underbelly + throat + jaw shovel. */
-    belly: string;
-    /** Osteoderm scute rows — a step BRIGHTER than the hide (the
-     *  turtle mail law: darker plates read as windows). */
-    plate: string;
-    /** Ridge saw, brow horns, claws — raised horn, its own material. */
-    horn: string;
-    /** Pale-green fire. */
-    eye: string;
-    /** Half-width of the hull (tiles). */
-    bodyW: number;
-    /** Back height of the block extrusion (tiles). */
-    bodyH: number;
-    /** Vertebral saw height (tiles). */
-    ridgeH: number;
-    headW: number;
-    headH: number;
-    /** Head-carry height above the ground line (tiles) — LOW: the
-     *  court carries its skull level with the back, never raised. */
-    headRise: number;
-    /** Tail sim weight dial (crest heights, ring weights, settle mass). */
-    tailHeavy: number;
-    /** THE WEAPON OFF THE STERN: total tail length (tiles) — longer
-     *  than the body on every member of the court; the sim, painter,
-     *  analytic rest, corpse, and sprite bounds all read this ONE
-     *  number so the tail can never be cropped or shortchanged. */
-    tailLen: number;
-    /** Tail root half-width (tiles) — meets the hull's stern width so
-     *  the tail is the body continuing, never a rope tied on. */
-    tailRootW: number;
-    /** Sim rigidity 0..1 (THE UNBENDING ROOT dial). */
-    tailStiff: number;
-    /** Scull wave amplitude scale (the swimmer beats hardest). */
-    tailWave: number;
-    /** The fen cousin: keeled swimming fin instead of the saw. */
-    fin?: boolean;
-    /** The elder alone: horn crown, plate mass, lichen, barbels. */
-    elder?: boolean;
-    /** Elder lichen saddles. */
-    moss?: string;
-}
+export declare const SNAPPER_BANDS: readonly number[];
+export declare const SNAPPER_BAND_K: readonly number[];
+/** Column edges as fractions of the hull's local half-width. */
+export declare const MESH_COLS: readonly number[];
+/** Per-column height rank and cant class (crown, inner, outer). */
+export declare const MESH_COL_K: readonly number[];
+export declare const MESH_COL_RANK: readonly number[];
 /** Resolve a basilisk body's full look from its defId + spawn seed. */
 export declare function basiliskLook(defId: string, seed: number): BasiliskLook;
 /**
- * THE COURT'S HULL: the basilisk body is a sprawled saurian trunk —
- * shoulder swell, a saddle over the mid-legs, the haunch swell where
- * the drivers root, tapering into neck and tail stubs the dedicated
- * painters continue. Painted as a block extrusion (the shared 2.5D
- * dialect) with the family's three reads layered INSIDE the
- * hull-clipped marks pass (the crab fixture law — nothing floats):
- * the yellowish BELLY BAND on the down-screen flank, the OSTEODERM
- * ROWS a step brighter than the hide, and — after the hull — the
- * VERTEBRAL SAW riding the crown by the ridge law.
+ * The cube's strike clock: gather (0..0.7), then the forward surge
+ * (0.7..1) — a wall deciding to include you. (The hopper's jump-slam
+ * runs its own three-beat curve inside the painter.)
  */
-export declare function paintBasiliskBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: BasiliskLook, f: BeastBlockFrame): void;
-/**
- * THE COURT'S SKULL — dragon out of crocodile: a long broad muzzle
- * that is the skull's own flesh (MOUTH IS A CUT, never a cone), the
- * grim saurian grin with interlocked teeth, raised nostril bumps on
- * the snout's top plane, a heavy brow ledge — and the species read:
- * eyes lit with pale-green fire. The basilisk wears two backswept
- * brow horns; the elder a four-point crown and chin barbels; the fen
- * keeps a low hunter's brow and nothing it doesn't need.
- */
-export declare function drawBasiliskHead(ctx: CanvasRenderingContext2D, look: BasiliskLook, o: {
-    x: number;
-    y: number;
-    s: number;
-    fx: number;
-    fy: number;
-    ys: number;
-    hurt?: boolean;
-    /** 0..1 jaw gape — open through the windup, clamped on the hit. */
-    gape?: number;
-    /** Corpse: fire out, jaw slack. */
-    dead?: boolean;
-    /** Which family body (horn dress + fen brow fork). */
-    fen?: boolean;
-}): void;
-export interface BasiliskTailStyle {
-    hide: string;
-    horn: string;
-    /** The yellowish underbelly, carried down the tail's lower edge. */
-    belly: string;
-    /** Root half-width (tiles) — MUST meet the body's stern width so
-     *  the tail reads as the hull continuing, never a rope tied on. */
-    rootW: number;
-    /** Mass dial: crest heights and ring weights. */
-    heavy: number;
-    /** The fen cousin: the tall swimmer's fin instead of the crests. */
-    fin?: boolean;
-}
-/**
- * THE WEAPON OFF THE STERN — the basilisk tail painter, rebuilt for
- * the croc-tail sim (user mandate: huge, meaty, dramatic). The
- * silhouette is a MUSCLE WEDGE: root as wide as the hull's stern,
- * holding most of its width through the first half (meat), then
- * closing on a hard whip point. The reads, in croc grammar: the
- * DOUBLE CREST — two scute rows riding the tail base that MERGE into
- * one tall keel saw at mid-length (the signature of every reference
- * crocodilian) — the BELLY BAND carried down the lower edge, and
- * quiet muscle rings at the joints. The fen swaps the crests for one
- * tall swimmer's fin. Dials ride the style (the canid-lane law);
- * plain path calls — no Path2D — so node tests walk every coordinate.
- */
-export declare function drawBasiliskTail(ctx: CanvasRenderingContext2D, pts: Array<{
-    x: number;
-    y: number;
-}>, st: BasiliskTailStyle, wk: number, opts: BobtailDrawOpts): void;
-/**
- * THE OOZE FAMILY (docs/ooze-family-plan.md) — THE SLIME SHAPE LAW,
- * final form (user verdict 2026-08-15, round three): the family owns
- * exactly TWO silhouettes — the HOPPER (the chamfered gel block that
- * carries the whole brand) and the CUBE (the corridor prism). Every
- * other body plan is dead. Variety lives in the DRESS: bespoke
- * material dressings on the hopper — verdant gel, stone-gray grit,
- * frost rime and shards, dripping tar — never a naked palette swap.
- * And A SLIME ATTACKS WITH ITS BODY: the strike is a crouch, a leap,
- * and a flat-out landing slam — no pseudopods, no punches, ever.
- */
-export type OozePlan = 'hopper' | 'cube';
-/** The material a hopper is made of — each dress is its own kit of
- *  inclusions, sheen, and weather, painted bespoke inside the gel. */
-export type OozeDress = 'verdant' | 'stone' | 'frost' | 'tar';
-export interface OozeLook {
-    plan: OozePlan;
-    /** Landmark hoppers carry swallowed pebbles and a second gloss. */
-    giant: boolean;
-    dress: OozeDress;
-}
-/** The family register, painter-side: routing + the no-corpse law. */
-export declare function oozeLook(defId: string): OozeLook | undefined;
-export interface OozeOpts {
-    x: number;
-    y: number;
-    s: number;
-    dir: number;
-    radius: number;
-    color: string;
-    hurt: boolean;
-    walkPhase: number;
-    nowMs: number;
-    seed: number;
-    /** 0..1 how much the body is actually travelling — stills the cycle. */
-    moveK: number;
-    attackT?: number;
-    ys: number;
-}
-/**
- * Sprite-cache extents in TILES — the hopper buys HEADROOM for the
- * strike leap (a body cropped mid-jump is the cache's oldest sin),
- * the cube buys room for its surge.
- */
-export declare function oozeExtents(look: OozeLook, radius: number): {
-    halfW: number;
-    top: number;
-    bottom: number;
+export declare function oozeStrike(at: number): {
+    gath: number;
+    spr: number;
 };
-/** One ooze, routed by its body plan. */
-export declare function drawOoze(ctx: CanvasRenderingContext2D, look: OozeLook, o: OozeOpts): void;
-/**
- * THE TRAIL DAB: one glisten print on the ground an ooze crossed —
- * painted by the renderer's shadow pass so every body walks OVER the
- * wet. A flattened seeded facet, never a stamped circle.
- */
-export declare function drawOozeTrailDab(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, seed: number, color: string, alpha: number): void;
-/**
- * The giant adder: a slithering tapered ribbon — the body is a sampled
- * S-wave behind the head, diamond-patterned down the spine, with a
- * raised viper head that strikes along the facing.
- */
-export declare function drawSnake(ctx: CanvasRenderingContext2D, o: {
-    x: number;
-    y: number;
-    s: number;
-    dir: number;
-    radius: number;
-    color: string;
-    hurt: boolean;
-    walkPhase: number;
-    nowMs: number;
-    seed: number;
-    moveK: number;
-    attackT?: number;
-    ys: number;
-}): void;
-/**
- * The Dawnlands courser — the first saddle beast (THE ROAD GROWS
- * SHORT). A working horse in the brutalist dialect: tall block barrel
- * held high on long hoofed legs, a strong rising neck under a fallen
- * mane, a long plain head, and its tack worn honestly — blanket, seat,
- * girth, reins looped to the pommel. Coats keyed by MOUNT def id.
- */
-export interface CourserLook {
-    coat: string;
-    belly: string;
-    mane: string;
-    muzzle: string;
-    /** Lower-leg tone (the socks) — becomes the spec's legColor. */
-    sock: string;
-    /** Tack cloth under the saddle — the owner-visible identity color. */
-    blanket: string;
-    leather: string;
-    /** Grey coats dapple; solid coats stay plain. */
-    dapple?: boolean;
-    /** Mountain shag: belly fringe and a heavier mane fall (the garron). */
-    shaggy?: boolean;
-    bodyW: number;
-    backH: number;
-    chestH: number;
-    headW: number;
-    headH: number;
-    neckRise: number;
-}
-export declare const COURSER_LOOKS: Record<string, CourserLook>;
-/**
- * Rider anchor geometry, tile units above the beast's ground point.
- * The renderer builds the rider's seat, stirrups, and pommel grip from
- * these; the tack painter draws to the same numbers — one ruler, so
- * the boot always meets the stirrup iron and the fists the pommel.
- */
-export declare const COURSER_SADDLE: {
-    seatH: number;
-    stirrupH: number;
-    stirrupSide: number;
-    stirrupFwd: number;
-    pommelFwd: number;
-    pommelH: number;
-    radius: number;
-};
-/** One rig for every coat — only the sock color varies. */
-export declare function mountSpec(mountId: string): BeastSpec;
-/**
- * Rider geometry per body — the garron seats lower than the courser.
- * Same shape as COURSER_SADDLE; the renderer picks by mount id.
- */
-export declare function saddleFor(mountId: string): typeof COURSER_SADDLE;
-export declare function paintCourserBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: CourserLook, f: BeastBlockFrame, saddle?: typeof COURSER_SADDLE): void;
-/**
- * The courser's head: a long plain skull with pricked ears, the
- * muzzle running well past the cheek to a soft dark nose — the length
- * is what separates horse from deer at a glance. The forelock falls
- * between the ears in the mane's color.
- */
-export declare function drawCourserHead(ctx: CanvasRenderingContext2D, look: CourserLook, o: {
-    x: number;
-    y: number;
-    s: number;
-    fx: number;
-    fy: number;
-    ys: number;
-    hurt?: boolean;
-}): void;
-/**
- * The night sabercat — the prestige saddle beast (THE ROAD GROWS
- * SHORT Phase 5). A cat is not a horse and is not painted like one:
- * low-slung length, shoulder blades riding ABOVE the spine line, a
- * deep waist tuck, flank stripes, a round skull with a short broad
- * muzzle, and the two ivory sabers that name it. It wears a HARNESS,
- * not a saddle: strap ring at the shoulders, low seat pad, breast
- * band. Ridden low — the seat sits where the cat's back actually is.
- */
-export interface SabercatLook {
-    coat: string;
-    /** Flank banding — the saber stripe read. */
-    stripe: string;
-    under: string;
-    earIn: string;
-    eye: string;
-    fang: string;
-    /** Harness leather (the tack constant) and the seat pad's cloth. */
-    leather: string;
-    pad: string;
-    bodyW: number;
-    backH: number;
-    /** The feline shoulder rise — blades above the spine at the walk. */
-    shoulderH: number;
-    chestH: number;
-    tuckH: number;
-    headW: number;
-    headH: number;
-}
-export declare const SABERCAT_LOOKS: Record<string, SabercatLook>;
-export declare function paintSabercatBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: SabercatLook, f: BeastBlockFrame): void;
-/**
- * The sabercat head: a round skull where the wolf carries a slab, a
- * short broad muzzle where the wolf runs a spike, blunt round-backed
- * ears, pale-gold eyes, and the two ivory sabers dropping past the
- * jaw — visible at every facing the muzzle is, because they ARE the
- * animal.
- */
-export declare function drawSabercatHead(ctx: CanvasRenderingContext2D, look: SabercatLook, o: {
-    x: number;
-    y: number;
-    s: number;
-    fx: number;
-    fy: number;
-    ys: number;
-    hurt?: boolean;
-    dead?: boolean;
-}): void;
-/**
- * The lynx: the tufted shadow of the deep wood, designed around FOUR
- * reads no other beast owns — black EAR TUFTS spiking off triangular
- * ears, the pale facial RUFF framing the face in fur chops, a
- * black-tipped BOBTAIL perched high, and a RUMP-HIGH topline on legs
- * longer than a wolf's (the cat's mass sits over its haunches, the
- * inverse of the wolf's shoulder keel). Rosette spots write the coat.
- */
-export interface LynxLook {
-    coat: string;
-    /** Rosette ink — the spots that name the cat. */
-    rosette: string;
-    under: string;
-    /** Dark streaks seaming the pale ruff chops. */
-    ruffDark: string;
-    earIn: string;
-    /** Ear-tuft and tail-tip ink. Tufts are STROKES (the fur-dialect law). */
-    tuft: string;
-    eye: string;
-    /** Nose-leather ink — the downward triangle every cat face carries. */
-    nose: string;
-    bodyW: number;
-    backH: number;
-    /** The cat carries its mass BEHIND: extra height ramped over the haunches. */
-    haunchH: number;
-    /** A modest shoulder rise — always below the haunch line. */
-    shoulderH: number;
-    chestH: number;
-    tuckH: number;
-    headW: number;
-    headH: number;
-    /**
-     * The duskruff dresses further: the storm mantle, silver grizzle,
-     * and the old scar rake. Champions never roll a cluster — the
-     * duskruff is a DESIGN (the packlord law).
-     */
-    champion?: boolean;
-    grizzle?: string;
-    scar?: string;
-    seed?: number;
-}
-export declare const LYNX_LOOKS: Record<string, LynxLook>;
+export declare const MOUNT_SPEC_CACHE: Map<string, BeastSpec>;
 export declare function lynxLook(defId: string, seed?: number): LynxLook;
 export declare function paintLynxBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: LynxLook, f: BeastBlockFrame): void;
-/**
- * THE MUSCLED LIMB: the lynx's leg is drawn as MASS, never as stick
- * strokes — a filled haunch ball feeding a tapered thigh, a slim hock,
- * and the oversized paw a snow-cat actually stands on. Every shape is
- * built in the solved bones' own frames (hip→knee, knee→paw), so the
- * masses articulate honestly through all eight facing bands, the
- * pounce stretch, and every mid-turn joint memory — flat value planes
- * per the forge law, one coat family per cluster.
- */
-export declare function drawCatLimb(ctx: CanvasRenderingContext2D, o: {
-    hipX: number;
-    hipY: number;
-    kx: number;
-    ky: number;
-    ex: number;
-    ey: number;
-    /** Upper-leg thickness in px (spec.legW × scale). */
-    w: number;
-    s: number;
-    hind: boolean;
-    coat: string;
-    champion: boolean;
-    /** Far-side legs step into shadow so pairs never merge mid-stride. */
-    far: boolean;
-    hurt: boolean;
-    /** Paw fill override (white mitts, seal points). Absent = the coat's dark step. */
-    paw?: string;
-}): void;
 /**
  * THE EQUINE LIMB: a horse's leg is not a stroke — it is a muscled
  * upper story over a bone-and-tendon lower story, and the break
@@ -2275,190 +1034,12 @@ export declare function drawLynxHead(ctx: CanvasRenderingContext2D, look: LynxLo
     flick?: number;
 }): void;
 /**
- * THE HOUSE CAT — the hearth's shadow, the first animal in the game
- * that exists purely for company. Nothing here is borrowed from the
- * lynx beyond the feline LAWS it must obey (the flat muzzle plate,
- * the canid wedge ban, the long-thigh bones): where the lynx is a
- * wild ambusher built on four predator reads, the house cat is built
- * on WARDROBE and CARRIAGE — a curated coat cabinet a whole town's
- * cats spread across (seeded, never random-hued), the raised
- * question-mark tail no wild cat carries, and THE SIT, the settled
- * upright rest that says "domestic" from across a market square.
- */
-export interface HousecatLook {
-    /** Base coat. */
-    coat: string;
-    /** Underparts: belly, chest, muzzle plate — and the tuxedo's dress. */
-    under: string;
-    /** Pattern ink: tabby bars, the cap, patches, the points. */
-    mark: string;
-    /** Second patch ink (calico, tortoiseshell). */
-    mark2?: string;
-    /** Inner-ear fan. */
-    earIn: string;
-    eye: string;
-    nose: string;
-    /**
-     * The written pattern. 'solid' wears the coat plain; 'tabby' bars
-     * the back and flanks and writes the crown M; 'bicolor' carries
-     * white underparts high up the flank; 'tuxedo' is the black dress
-     * over a white bib and blaze; 'capped' is a clean pale body under
-     * a dark skullcap (the head painter owns the cap); 'patched'
-     * scatters seeded color patches (calico, tortie); 'points' darkens
-     * the extremities only — mask, ears, paws, tail.
-     */
-    pattern: 'solid' | 'tabby' | 'bicolor' | 'tuxedo' | 'capped' | 'patched' | 'points';
-    /**
-     * Long hair reads in the TAIL first (the plume vs the whip), then
-     * the cheek fluff, the chest ruff, and the belly fringe.
-     */
-    longhair: boolean;
-    /** Tail dress: ringed (the raccoon read), dark-tipped, plain coat, or mark-dark end to end. */
-    tail: 'rings' | 'tip' | 'coat' | 'dark';
-    /** White mitts on all four paws. */
-    mitts?: boolean;
-    /** The chest locket — one pale patch where the collarbones meet. */
-    locket?: boolean;
-    /** Body half-width (tiles); length comes from the BeastSpec. */
-    bodyW: number;
-    backH: number;
-    /** The mild rump rise — a kept cat, never the lynx's coiled ramp. */
-    haunchH: number;
-    shoulderH: number;
-    chestH: number;
-    tuckH: number;
-    headW: number;
-    headH: number;
-    seed?: number;
-}
-/**
  * Resolve one cat's whole look from its stable seed. Wild bodies
  * dress off their eid; a kept companion dresses off the lookSeed the
  * wire carries (THE COAT OUTLIVES THE BODY) — the FULL seed keys the
  * cache because pet seeds are 31-bit rolls, not small eids.
  */
 export declare function housecatLook(defId: string, seed?: number): HousecatLook;
-/**
- * The house cat's body: a compact level-backed loaf on the block
- * dialect, morphing continuously into THE SIT — haunches folded
- * under, spine sloping up to a lifted chest — as `sitK` rises. The
- * sit is the species' whole domestic identity, so the morph is a
- * first-class body state, not a pose hack: footprint, topline, and
- * belly all interpolate, and the folded haunch paints as real mass.
- */
-export declare function paintHousecatBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: HousecatLook, f: BeastBlockFrame, sitK?: number): void;
-/**
- * The house cat's head — the feline grammar (the lynx's law: a FLAT
- * face, the muzzle plate barely leaving the skull at profile, the
- * canid wedge banned forever) recut CUTE: a round skull, eyes a full
- * size up from any wild cat's, small neat ears on the elastic pair,
- * the pink leather triangle, and the whisker fan at close zoom. The
- * ears ride EarSim — they lag the turn, flap with the trot, and
- * flick at rest; sim-less callers get THE ONE REST.
- */
-export declare function drawHousecatHead(ctx: CanvasRenderingContext2D, look: HousecatLook, o: {
-    x: number;
-    y: number;
-    s: number;
-    fx: number;
-    fy: number;
-    ys: number;
-    hurt?: boolean;
-    dead?: boolean;
-    /** Wall clock for the ear sim and the blink; absent = settled rest. */
-    nowMs?: number;
-    ears?: EarSim;
-    /** 0..1 through THE SIT — steadies the ears, slows the blink. */
-    sitK?: number;
-}): void;
-/**
- * THE FOX — the cunning made flesh, and none of it borrowed: not the
- * wolf's slab skull, not the lynx's flat plate, not the worg's slope.
- * Four reads own the species. THE BRUSH: a tail nearly the body's own
- * length ending in the white flag — the one mark that survives any
- * zoom, any coat, any light. THE SOOT EARS: oversized triangles,
- * black-backed, so the fox reads from BEHIND by its ears alone. THE
- * SNIPE: a fine tapering muzzle under amber eyes cut with the vertical
- * pupil — the only canid in the wood wearing a cat's eye. THE
- * STOCKINGS: dark legs under a warm coat, the fox stepping in soot.
- */
-export interface FoxLook {
-    coat: string;
-    /** Cream bib, underbelly, and the pale side of every mark. */
-    under: string;
-    /** The dark stockings — a fox walks in soot to the knee. */
-    sock: string;
-    /** Soot backing the oversized ears — the from-behind read. */
-    earBack: string;
-    earIn: string;
-    eye: string;
-    nose: string;
-    /** The brush flag: white for the wild skulk, smoke for the queen. */
-    tip: string;
-    /** The brush's darker root third — volume, not a banded raccoon. */
-    brushRoot: string;
-    /**
-     * The cross-fox mark: a dark dorsal stripe crossed by a shoulder
-     * bar. One wild cluster wears it faint; the matriarch wears it
-     * burned deep — the cross writ large.
-     */
-    mantle?: string;
-    /** Silver ticking — the sable cluster's frost, the queen's winters. */
-    grizzle?: string;
-    bodyW: number;
-    backH: number;
-    /** A modest wither rise — the fox carries its head HIGH and alert. */
-    shoulderH: number;
-    /** The light spring coiled behind — well under the lynx's ramp. */
-    haunchH: number;
-    chestH: number;
-    /** High tuck: the leggy waist that says featherweight at any zoom. */
-    tuckH: number;
-    headW: number;
-    headH: number;
-    /**
-     * The matriarch dresses further: the great pale ruff collar, the
-     * silvered mask, the ember ring on her smoke brush. Champions never
-     * roll a cluster — the vixen is a DESIGN (the packlord law).
-     */
-    champion?: boolean;
-    /** The queen's ember ring, banded below her smoke tip. */
-    ember?: string;
-    /** The great ruff collar — pale, chest-deep, no lean fox carries it. */
-    ruff?: string;
-    seed?: number;
-}
-export declare const FOX_LOOKS: Record<string, FoxLook>;
-export declare function foxLook(defId: string, seed?: number): FoxLook;
-export declare function paintFoxBody(ctx: CanvasRenderingContext2D, spec: BeastSpec, look: FoxLook, f: BeastBlockFrame): void;
-/**
- * The fox head: a compact near-round skull (deeper chamfers than the
- * wolf slab, shy of the cat's circle) crowned by the SOOT EARS —
- * triangles taller than any canid's, black-backed so the species reads
- * from behind — over THE SNIPE: a fine tapering muzzle, pale-jawed,
- * dotted with the small black nose. The eyes are the fox's secret:
- * amber almonds cut with the VERTICAL pupil — a cat's eye in a canid
- * face, the cunning made visible. `snarl` pins the ears and gapes the
- * needle jaw through the pounce telegraph; corpses pass `dead`.
- */
-export declare function drawFoxHead(ctx: CanvasRenderingContext2D, look: FoxLook, o: {
-    x: number;
-    y: number;
-    s: number;
-    fx: number;
-    fy: number;
-    ys: number;
-    hurt?: boolean;
-    dead?: boolean;
-    /** 0..1 through the attack telegraph. */
-    snarl?: number;
-    /** Wall clock for the ear sim tick; absent = the settled rest. */
-    nowMs?: number;
-    /** THE EAR IS A SIMULATION: the live elastic pair. Sim-less
-     *  callers (portraits, CMS, ragdoll) fall to earRestChain — THE
-     *  ONE REST, the exact silhouette the live game relaxes to. */
-    ears?: EarSim;
-}): void;
 export declare function drawBeast(ctx: CanvasRenderingContext2D, opts: {
     /** Screen position of the body's ground point. */
     x: number;
