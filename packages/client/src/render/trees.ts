@@ -88,7 +88,7 @@
 
 import { Tile, hashCoords } from '@arx/shared';
 import { BLOB_M, unitBlob } from './shapes.js';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { windScalarAt } from './grass.js';
 
 export interface TreeBranch {

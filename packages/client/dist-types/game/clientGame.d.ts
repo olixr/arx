@@ -126,6 +126,7 @@ export type InteractTarget = {
     mine: boolean;
     blank: boolean;
 };
+import { WORD_LIFE_MS } from './wordLife.js';
 import { InterpBuffer } from '../net/interpolation.js';
 import { Predictor } from '../net/prediction.js';
 import type { InputManager } from '../input/inputManager.js';
@@ -177,8 +178,7 @@ export interface ChatLine {
     eid?: EntityId;
     text: string;
 }
-/** One word-life — shared by the dedupe law and the renderer's prune. */
-export declare const WORD_LIFE_MS = 1400;
+export { WORD_LIFE_MS };
 /** A combat effect in flight (nova ring, telegraph, blast, reaction). */
 export interface ActiveFx {
     kind: S2CFx['kind'];

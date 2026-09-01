@@ -1,4 +1,5 @@
 import { CLOTH_COLORS, HAIR_COLORS, PoseState, SKIN_TONES, type Look } from '@arx/shared';
+import { shade } from './tint.js';
 import { ELEMENT_COLORS, enchantDef, itemDef } from '@arx/content';
 import { arxMark, markPulse, resolveWornLight, SLOT_GLINT_PHASE, type ArxMark, type SlotLight } from './wornLight.js';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
@@ -10279,14 +10280,7 @@ export function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   }
 }
 
-/** Darken/lighten a hex color by a flat amount — flat-art shading. */
-export function shade(hex: string, amount: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  const r = Math.max(0, Math.min(255, (n >> 16) + amount));
-  const g = Math.max(0, Math.min(255, ((n >> 8) & 0xff) + amount));
-  const b = Math.max(0, Math.min(255, (n & 0xff) + amount));
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
-}
+export { shade };
 
 /** Part library: how each holdable draws in the hand. */
 /**

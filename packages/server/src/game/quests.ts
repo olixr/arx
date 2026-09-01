@@ -1,5 +1,6 @@
 import type { QuestDef, QuestObjective } from '@arx/content';
-import type { SkillId } from '@arx/shared';
+import type { QuestHintWire, QuestObjectiveWire, QuestRewardsWire, QuestWire, SkillId } from '@arx/shared';
+export type { QuestHintWire, QuestObjectiveWire, QuestRewardsWire, QuestWire };
 
 /**
  * THE QUEST LEDGER's pure logic — availability, credit, readiness,
@@ -202,70 +203,8 @@ export interface QuestNameRefs {
   placeName(id: string): string;
 }
 
-/** A generalized whereabouts: a soft circle on the chart, never a pin. */
-export interface QuestHintWire {
-  x: number;
-  y: number;
-  /** Radius in tiles — deliberately generous. */
-  r: number;
-  /** THE WORLDS APART: the plane the neighborhood lies on (absent = surface). */
-  plane?: string;
-  /**
-   * false = a RUMOR: grounds where such things are known to roam,
-   * derived from the world's own laws rather than a witnessed spot.
-   * Absent = someone could point a finger.
-   */
-  sure?: boolean;
-  /** A short word for this one ground ("wolf runs", "a war camp"). */
-  word?: string;
-}
-
-export interface QuestObjectiveWire {
-  kind: 'kill' | 'collect' | 'discover' | 'talk';
-  /** The referenced id in its own namespace — the client's icon key. */
-  item?: string;
-  npc?: string;
-  actor?: string;
-  place?: string;
-  label: string;
-  have: number;
-  need: number;
-  /** Where this ask can be answered, when the world knows. */
-  hint?: QuestHintWire;
-  /**
-   * THE FINGER ON THE CHART — every ground the world can honestly
-   * offer, best first (`hints[0]` === `hint`), at most four. Absent
-   * when the one `hint` (or silence) is the whole answer.
-   */
-  hints?: QuestHintWire[];
-}
-
-/** Reward summary for the wire — ids and counts only. */
-export interface QuestRewardsWire {
-  xp?: Array<{ skill: string; amount: number }>;
-  items?: Array<{ item: string; qty: number }>;
-  coins?: number;
-}
-
-export interface QuestWire {
-  id: string;
-  name: string;
-  status: 'active' | 'ready';
-  giver: string;
-  giverName: string;
-  turnIn: string;
-  turnInName: string;
-  /** 0-based stage index and the total, for "Part n of m". */
-  stage: number;
-  stages: number;
-  journal: string;
-  objectives: QuestObjectiveWire[];
-  repeatable?: boolean;
-  /** Where the finished work is handed in. */
-  turnInHint?: QuestHintWire;
-  /** What the work pays — the journal shows the terms. */
-  rewards?: QuestRewardsWire;
-}
+// The wire shapes live in @arx/shared (protocol/messages.ts) — the
+// client reads the same declarations, so the two ends cannot drift.
 
 /**
  * THE WORLD ANSWERS "WHERE" — the server's spatial registries at

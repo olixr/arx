@@ -1,5 +1,5 @@
 import { markPulse, SLOT_GLINT_PHASE, type ArxMark } from './wornLight.js';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { WIELD_GROUND_K } from './wield.js';
 
 /* ======================= THE SHIELD IS A PLANE =======================

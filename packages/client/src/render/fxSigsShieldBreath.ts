@@ -28,7 +28,7 @@
  * here reads in the CURLS it peels, not the wheel that peeled them.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { burstStarPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { dust, fire, frost, radiance, storm, water, asMatter } from './matter/index.js';

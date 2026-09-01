@@ -28,7 +28,7 @@
 import { srand, burstStarPath } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { blood, dust, asMatter } from './matter/index.js';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 
 /** Screen point r px from the heart along ground angle a. */
 function groundPt(c: SigCtx, r: number, a: number): { x: number; y: number } {

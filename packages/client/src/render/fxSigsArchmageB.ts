@@ -25,7 +25,7 @@
  * and world-fabric stay each art's own.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { boltPath, burstStarPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { venom, fire, frost, radiance, storm, blood, asMatter } from './matter/index.js';

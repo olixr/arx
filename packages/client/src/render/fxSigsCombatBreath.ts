@@ -30,7 +30,7 @@
 import { boltPath, burstStarPath, jaggedRingPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { dust, storm, water, blood, frost, asMatter } from './matter/index.js';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 
 // The school's unowned matter — deliberate literals, per law 8.
 const IRON_LIT = '#c9ced8';

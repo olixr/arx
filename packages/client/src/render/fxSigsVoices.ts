@@ -24,7 +24,7 @@
  * thread, courtesy, and geometry stay the staffs' own.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { burstStarPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { radiance, frost, fire, blood, storm, asMatter } from './matter/index.js';

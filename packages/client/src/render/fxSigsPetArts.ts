@@ -37,7 +37,7 @@
  * fire onto a wolf's breath would make the library lie).
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { burstStarPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { asMatter, blood, dust, frost, shadow, venom, water } from './matter/index.js';

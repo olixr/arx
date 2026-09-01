@@ -1,4 +1,4 @@
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { chamferRect } from './shapes.js';
 import { drawShieldAt, isShieldKind, shieldStyle } from './shields.js';
 import {

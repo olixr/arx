@@ -34,7 +34,7 @@
  * bone, and quiet stay the relics' own.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { boltPath, burstStarPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { fire, smoke, dust, storm, blood, venom, asMatter } from './matter/index.js';

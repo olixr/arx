@@ -25,7 +25,7 @@
  * the elsewhere-sky stay bespoke.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { srand, burstStarPath } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { dust, fire, frost, storm, blood, asMatter } from './matter/index.js';

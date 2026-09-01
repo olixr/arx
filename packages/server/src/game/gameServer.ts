@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import {
+  CHEST_TILES,
   CHUNK_SIZE,
   EcsWorld,
   EntityKind,
@@ -2342,17 +2343,13 @@ const DEV_PROC_ACTIONS: Record<string, ProcAction> = {
   reveal: { do: 'reveal', radius: 10, of: 'node' },
 };
 
-/** Every chest a reveal working counts as a cache, open or shut. */
-const CHEST_TILES: ReadonlySet<Tile> = new Set([
-  Tile.ChestWood,
-  Tile.ChestWoodOpen,
-  Tile.ChestIron,
-  Tile.ChestIronOpen,
-  Tile.ChestGilded,
-  Tile.ChestGildedOpen,
-  Tile.ChestMossy,
-  Tile.ChestMossyOpen,
-]);
+/** Every chest a reveal working counts as a cache, open or shut —
+ * the shared chest roster minus the boss caches, which announce
+ * themselves (a dread crown's reward needs no dowsing). Derived, so
+ * a new chest kind joins the dowse the day it joins the world. */
+const REVEAL_CHEST_TILES: ReadonlySet<Tile> = new Set(
+  [...CHEST_TILES].filter((t) => t !== Tile.ChestBoss && t !== Tile.ChestBossOpen),
+);
 
 /**
  * A timed self-effect; multiple can ride at once. THE FOLD TABLE for
@@ -25599,7 +25596,7 @@ export class GameServer {
         const wanted =
           of === 'node'
             ? NODES_BY_TILE.has(ground as Tile)
-            : CHEST_TILES.has(ground as Tile);
+            : REVEAL_CHEST_TILES.has(ground as Tile);
         if (!wanted) continue;
         mark(tx + 0.5, ty + 0.5);
         marked++;

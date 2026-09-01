@@ -25,7 +25,7 @@
  * loom's weft stay the flights' own.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { boltPath, burstStarPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { fire, frost, storm, dust, asMatter } from './matter/index.js';

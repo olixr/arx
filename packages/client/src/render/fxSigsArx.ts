@@ -16,7 +16,7 @@
  * one.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { boltPath, burstStarPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { storm, fire, frost, dust, smoke, water, radiance, asMatter } from './matter/index.js';

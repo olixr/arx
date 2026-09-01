@@ -36,7 +36,7 @@
  * silver, kelp, star-stone, and script stay each art's own.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { boltPath, burstStarPath, jaggedRingPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { dust, blood, fire, frost, storm, water, radiance, smoke, shadow as gloom, asMatter } from './matter/index.js';

@@ -217,26 +217,41 @@ export declare function treeExtent(m: TreeModel): TreeExtent;
 /** Grow (or recall) the tree standing on a tile with world-hash `h`. */
 export declare function treeModel(tile: Tile, h: number): TreeModel;
 /**
- * THE SAPLING STANDS ALONE (second-growth polish): a young tree is a
- * BESPOKE form, never the adult model shrunk. The adult dome is a
- * ring of shoulder clusters whose heart the old young-thinning law
- * left unfilled — at sapling scale that read as a DONUT with the
- * trunk showing through the crown, the exact kind of cheat this
- * studio does not ship. Every species grows a true juvenile: a
- * slender whip of a stem with a root flare, a pair of seed-leaves
- * low on the stem, and a TIGHT overlapping tuft of crown clusters —
- * solid mass at every zoom, the same three light bands (shaded
- * underside, body, lit cap with a sun facet) and the same wind
- * grammar as the grown wood, so a stand of saplings breathes with
- * the forest it will become.
+ * THE NURSERY EARNS ITS NAME (sapling recut — supersedes the
+ * one-tuft-fits-all draft): a young tree is a BESPOKE form, never
+ * the adult model shrunk — and never the SAME form nine times in
+ * different bark. The first bespoke cut still read as one lollipop
+ * grammar with a floating seed-leaf blob beside the stem (a detached
+ * blob mints its own ink ring and halos — the garden law), so the
+ * juvenile grammar was rebuilt from real nursery anatomy:
  *
- * Species dialects: the OAK squats broad on a stout stem; the PINE
- * stacks three tierlets to a green tip and keeps a dead whorl stub
- * (rigid, like its elder); the WILLOW leans hard and hangs two low
- * lobes — the weep before the curtains; the YEW holds a dense dark
- * column; the COMMON WOODS read their adult grammar's hash so every
- * sapling grows into exactly the tree it promised (same species,
- * same variant, same lean).
+ * - THE WHIP AND THE LEADER: a slender stem with a root flare that
+ *   climbs INTO the head and keeps going — the apical leader carries
+ *   its own small lit tuft above the cap, the upward reach every
+ *   young broadleaf actually has. Nothing detaches: every cluster
+ *   overlaps the chain into one silhouette.
+ * - NODE BRANCHLETS: one or two true side twigs at stem nodes, each
+ *   carrying its own leaf tuft whose mass buries the twig tip (seam
+ *   law) and OVERLAPS the head — young trees read as trees, not
+ *   balls on sticks. Twigs are level-1 wood: the grow-in ease keeps
+ *   the youngest stage a clean whip.
+ * - THE PROMISE IS DERIVED, NOT RESTATED: proportions come off the
+ *   adult grammar the same hash grows — head width from crownW,
+ *   stature from the species height band, lean and crown-shift from
+ *   the windswept dials, and a forked grammar (the twin, the
+ *   storm-split oak) forks the SAPLING into twin whips too. Salt 53
+ *   replays the adult's variant pick; salt 97 deals juvenile jitter.
+ * - THE SPECIES SPEAKS ITS OWN DIALECT, young: the WILLOW hangs real
+ *   curtain strands off its nodding crown — the weep before the
+ *   cascade, pendulum wind and combed part-lines included, hems
+ *   staggered with daylight between them (hem law). The PINE stacks
+ *   true serrated chevron plates with west-lit facets, shadow-ribbon
+ *   shingle lines, a POINTED spire tip and a dead whorl stub on the
+ *   bare bole (nothing round anywhere — rigid, like its elder). The
+ *   YEW holds a dense near-black column on a rusty shin. The BIRCH
+ *   lifts a small airy head high on its pale stem. The OAK squats
+ *   broad and stout. Light is banded on every head: dark seat
+ *   hugging the underside, mid body, lit cap with a sun facet.
  */
 export declare function saplingModel(tile: Tile, h: number): TreeModel;
 export interface TreeFrame {

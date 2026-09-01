@@ -21,7 +21,7 @@
  * warm, and a room-clearing rampage can never grow the draw bill.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 
 /** The game's outline-shader ink (bakeOutlineRing / the entity ring). */
 const BRAND_OUTLINE = '#241a2e';

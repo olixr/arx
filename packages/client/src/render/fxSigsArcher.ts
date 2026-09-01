@@ -32,7 +32,7 @@
  * determinism, frameDt-gated emission, ≤ ~60 path ops per hook.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { burstStarPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import { dust, blood, frost, fire, asMatter } from './matter/index.js';

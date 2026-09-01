@@ -30,7 +30,7 @@
  *   per-frame randomness. Micro-motion is analytic off nowMs.
  */
 import { chamferRect } from './shapes.js';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 
 export type GolemBuild = 'rock' | 'iron' | 'fire' | 'ice';
 

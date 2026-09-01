@@ -74,7 +74,12 @@
 export declare const BAND_BUDGET_BYTES: number;
 /** What the sweep aims for, leaving the gate its headroom (law 4). */
 export declare const BAND_RELIEF_BYTES: number;
-/** No single band may claim more than this — it draws live (law 3). */
+/** No single band may claim more than this — it draws live (law 3).
+ *  Sized from the tallest honest customer (round 14): a garrison
+ *  stretch on a level-3 terrace at zoom 1 / dpr 2 is ~6.5MB even at
+ *  the tall-family half span — at the old 6MB it declined forever and
+ *  its masonry painted live as ~500 fillRects a frame. 8MB seats it;
+ *  the Undercroft's 11MB cave monsters stay refused. */
 export declare const BAND_ONE_MAX_BYTES: number;
 /**
  * Canvas pool ceilings (law 5).

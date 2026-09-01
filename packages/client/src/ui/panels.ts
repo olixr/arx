@@ -222,7 +222,7 @@ const SKILL_WINGS: Array<{ title: string; skills: SkillId[] }> = [
  * body place via a CSS grid-area named after the slot itself
  * (#equip-anatomy's grid-template-areas is the single map).
  */
-const EQUIP_SLOTS: EquipSlot[] = [
+const EQUIP_SLOTS = [
   'cape',
   'head',
   'sigil',
@@ -239,7 +239,12 @@ const EQUIP_SLOTS: EquipSlot[] = [
   // the active set (THE QUIET BACK).
   'stowWeapon',
   'stowOffhand',
-];
+] as const satisfies readonly EquipSlot[];
+/** Compile-time roll call: a slot added to the shared EquipSlot union
+ *  fails HERE until it is given a place on the stand. */
+type MissingEquipSlot = Exclude<EquipSlot, (typeof EQUIP_SLOTS)[number]>;
+const equipSlotsComplete: [MissingEquipSlot] extends [never] ? true : { missing: MissingEquipSlot } = true;
+void equipSlotsComplete;
 
 /** The rack's sockets speak plain names, never their wire ids. */
 const SLOT_NAMES: Partial<Record<EquipSlot, string>> = {

@@ -28,7 +28,7 @@
  * hairpin, the arrow of noon, the wheeling murder.
  */
 
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import { burstStarPath, jaggedRingPath, srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
 import {

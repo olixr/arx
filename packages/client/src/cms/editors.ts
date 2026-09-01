@@ -1,4 +1,4 @@
-import { DEFAULT_LOOK, RARITY_TIERS, SKILL_IDS, STATUS_IDS, type Look, type RarityTier } from '@arx/shared';
+import { DEFAULT_LOOK, RARITY_TIERS, SKILL_IDS, STATUS_IDS, type EquipSlot, type Look, type RarityTier } from '@arx/shared';
 import {
   ABILITIES,
   DANGER_LAWS,
@@ -1301,7 +1301,9 @@ function lootUsedByRows(root: HTMLElement, tableId: string): void {
 
 // -------------------------------------------------------------- actors
 
-const EQUIP_SLOTS: Array<{ slot: string; label: string }> = [
+// The DRESSABLE subset of the shared EquipSlot union — actors wear
+// clothes and arms, never tools/trinkets/rack slots.
+const EQUIP_SLOTS: Array<{ slot: EquipSlot; label: string }> = [
   { slot: 'head', label: 'head' },
   { slot: 'body', label: 'body' },
   { slot: 'legs', label: 'legs' },

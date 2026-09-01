@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "bot": "tsx src/bot/bot.ts",
-    "validate": "tsx src/validate/validate.ts",
     "prove:secret-arts": "tsx src/proving/secretArts.ts",
     "prove:drawn-breath": "tsx src/proving/drawnBreath.ts",
     "prove:lesson-combat": "tsx src/proving/lessonCombat.ts",

@@ -1,7 +1,7 @@
 import { markPulse, SLOT_GLINT_PHASE, type ArxMark } from './wornLight.js';
 import { itemDef } from '@arx/content';
 import { chamferRect } from './shapes.js';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 
 /**
  * THE DAYBREAK clock — dawnsworn's one sky, shared by the hood disc,

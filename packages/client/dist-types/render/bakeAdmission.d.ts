@@ -38,9 +38,16 @@
  *     through a zoom glide (the whole herd crosses the scale threshold
  *     at once, and would only re-bake AGAIN at the settled scale).
  */
+/** How many visible-miss mints every frame is guaranteed, whatever
+ *  they cost. Sized so walking (a handful of reveals per frame at the
+ *  viewport edge) never skips, and a teleport's ~100-piece arrival
+ *  converges inside ~2 seconds of bounded frames. */
+export declare const ARRIVAL_MIN_COUNT = 8;
 /** Which lane a bake was admitted on — the caller charges accordingly. */
 export declare const enum BakeLane {
-    /** Declined: paint live if on screen, skip if not. */
+    /** Declined. A visible miss SKIPS the frame (it fades in when its
+     *  mint arrives — bounded pop-in, never a live repaint); off
+     *  screen there was nothing to see anyway. */
     None = 0,
     /** The visible-now arrival lane — charges the arrival ceiling. */
     Arrival = 1,
@@ -54,6 +61,10 @@ export declare const enum BakeLane {
 export interface BakeBudgets {
     /** Arrival ceiling left this frame (VIS_SPRITE_BAKE_MS at frame top). */
     arrivalMsLeft: number;
+    /** Arrival COUNT floor left this frame — law 2's guarantee that
+     *  convergence never stalls behind a Mac-tuned ms window on a
+     *  machine whose single bake outcosts it. */
+    arrivalCount: number;
     /** Ordinary allowance left this frame (SPRITE_BAKE_MS at frame top). */
     budgetMsLeft: number;
     /** The ordinary allowance's full size — what law 1 clamps against. */

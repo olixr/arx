@@ -1,4 +1,5 @@
-import { shade, type FoxLook, type GnollLook, type LynxLook } from './rig.js';
+import { type FoxLook, type GnollLook, type LynxLook } from './rig.js';
+import { shade } from './tint.js';
 
 /**
  * THE TAIL IS A SIMULATION, NOT A POSE — the cape contract in muscle.

@@ -46,7 +46,7 @@
  *   can show from behind stays above '#30' after its deepest shade().
  */
 import { chamferRect } from './shapes.js';
-import { shade } from './rig.js';
+import { shade } from './tint.js';
 import type { EarCarriage } from './earPhysics.js';
 
 export interface SkralLook {

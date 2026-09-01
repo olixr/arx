@@ -1,4 +1,5 @@
 import { PoseState, type Look } from '@arx/shared';
+import { shade } from './tint.js';
 import type { BobtailDrawOpts } from './tail.js';
 import { type GolemLook } from './golems.js';
 import { type GutSim, type OgreLook, type PendantSim } from './ogre.js';
@@ -800,8 +801,7 @@ export declare function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose
  * quiver whenever hasCape is set.
  */
 export declare function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void;
-/** Darken/lighten a hex color by a flat amount — flat-art shading. */
-export declare function shade(hex: string, amount: number): string;
+export { shade };
 /**
  * Overlay an enchant's fx channel on a resolved weapon style — the
  * style object is data, so a shallow clone re-aims the existing mote
