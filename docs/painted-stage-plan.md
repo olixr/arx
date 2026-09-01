@@ -486,6 +486,35 @@ now ships in stageSplitKinds), the doorway/window sprite lane,
 run-defragmentation (sort-stable grouping of wall paints), the
 atlas + explicit lifecycle, then the perf gate.
 
+**A2 PART 4 — AS BUILT (2026-08-31).** The hunt and the cliff lanes:
+
+- **Split forensics ship** (stageSplitSamples: the first few split
+  closures' SOURCE names the factory — a split we cannot name cannot
+  be retired). It named Hoargate's 137/frame in one probe: the CLIFF
+  FAMILY's live geometry — edge-on side strips (cliffSideItem) and
+  diagonal faces (cliffFaceItem), per-segment live by design since
+  round 12, captured-ctx factories both.
+- **The wall lane reaches the cliffs**: both push sites mark their
+  items with reconstruction closures over plain captured args and
+  face-extent boxes; they flow into part 3's coalescer (consecutive
+  faces on a row become one union strip). Hoargate splits 112 → 10
+  (40 → 50fps); graveyard 50 → 0 (72 → 77).
+- **The avenue's last splits are named**: the Silverfall FALLS
+  (fallTones/fallNoise — animated water columns, the round-12
+  scroll-bake future) plus one empty-closure item. Nothing unmarked
+  remains anywhere in the five scenes.
+
+**Gates**: five-scene parity ALL PASS within noise; 786/786.
+**Scoreboard (Metal, stage vs canvas 120)**: dawnmead 99, forest 92,
+graveyard 77, hoargate 50, avenue 38, crown 34. The wall-dense pair's
+remaining mass is exactly the named item: ~300-450MB/frame of
+reconstruction scratch for near-static doorway/window/hung-wall/
+settled-live art. **Part 5's charter**: the three banding exclusions
+(doorways carry an open/close ease → the settled-cut sig pattern;
+windows and hung walls each have an exclusion reason to read first),
+the falls scroll-bake, the atlas + explicit lifecycle, the perf
+gate.
+
 ### A3 — The dark and the light (shadow layer, lightmap, overreach)
 
 The shadow layer becomes an FBO: shadow quads (sprites, masks, grass

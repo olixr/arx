@@ -15094,9 +15094,32 @@ export class Renderer {
           runEnd = fr[ri + 1]!;
           ri += 3;
         } else if (o > runEnd) {
-          items.push(
-            this.cliffFaceItem(game, f[i]!, f[i + 1]!, f[i + 2]!, f[i + 3]!, f[i + 4]!, lv.level, f[i + 6]!, f[i + 7]!),
-          );
+          const fit = this.cliffFaceItem(game, f[i]!, f[i + 1]!, f[i + 2]!, f[i + 3]!, f[i + 4]!, lv.level, f[i + 6]!, f[i + 7]!);
+          if (this.stageWorld) {
+            // THE WALL LANE reaches the diagonals (part 4): captured-
+            // ctx factories reconstruct under the swapped brush inside
+            // a face-extent box — Hoargate's unmarked 137/frame class.
+            const ax2 = f[i]!;
+            const ay2 = f[i + 1]!;
+            const bx2 = f[i + 2]!;
+            const by2 = f[i + 3]!;
+            const k2 = f[i + 4]!;
+            const g6 = f[i + 6]!;
+            const g7 = f[i + 7]!;
+            const lvl = lv.level;
+            const sS = this.camera.scale;
+            const pA2 = this.camera.worldToScreen(Math.min(ax2, bx2), Math.min(ay2, by2), this.w, this.h);
+            const pB2 = this.camera.worldToScreen(Math.max(ax2, bx2), Math.max(ay2, by2), this.w, this.h);
+            fit.pb = {
+              x: pA2.x - 1.2 * sS,
+              y: pA2.y - (lvl * ELEV_H + 1.9) * sS,
+              w: pB2.x - pA2.x + 2.4 * sS,
+              h: pB2.y - pA2.y + (lvl * ELEV_H + 1.9 + 1.4) * sS,
+            };
+            fit.stageRebuild = () =>
+              this.cliffFaceItem(game, ax2, ay2, bx2, by2, k2, lvl, g6, g7).draw!();
+          }
+          items.push(fit);
         }
         this.pushSouthFallItems(game, items, f[i]!, f[i + 1]!, f[i + 2]!, f[i + 3]!, f[i + 4]!, f[i + 5]!, lv.level);
       }
@@ -15355,7 +15378,24 @@ export class Renderer {
     for (let r = Math.floor(a); r < b; r++) {
       const s0 = Math.max(a, r);
       const s1 = Math.min(b, r + 1);
-      items.push(this.cliffSideItem(x, s0, s1, nx, level, a, s0 === a, s1 === b));
+      {
+        const sit = this.cliffSideItem(x, s0, s1, nx, level, a, s0 === a, s1 === b);
+        if (this.stageWorld) {
+          const isTop2 = s0 === a;
+          const isBot2 = s1 === b;
+          const sS = this.camera.scale;
+          const pA2 = this.camera.worldToScreen(x, s0, this.w, this.h);
+          const pB2 = this.camera.worldToScreen(x, s1, this.w, this.h);
+          sit.pb = {
+            x: pA2.x - 0.8 * sS,
+            y: pA2.y - (level * ELEV_H + 0.4) * sS,
+            w: 1.6 * sS,
+            h: pB2.y - pA2.y + (level * ELEV_H + 1.2) * sS,
+          };
+          sit.stageRebuild = () => this.cliffSideItem(x, s0, s1, nx, level, a, isTop2, isBot2).draw!();
+        }
+        items.push(sit);
+      }
       const fi = this.fallAt(game, x, r + 0.5, nx, 0, level);
       if (fi) {
         if (!fallInfo) {
@@ -20722,6 +20762,7 @@ export class Renderer {
   private readonly stageWorldStats = { quads: 0, paints: 0, splits: 0 };
   /** Dev diagnosis: what KINDS still split (read from the probe). */
   readonly stageSplitKinds = new Map<string, number>();
+  readonly stageSplitSamples: string[] = [];
 
   private stageWorldActive(): boolean {
     if (!this.stageWorld || this.stageDead) return false;
@@ -21033,6 +21074,13 @@ export class Renderer {
       st.splits++;
       const kind = item.band ? 'band' : item.body ? 'body' : item.bulk !== undefined ? `bulk${item.bulk}` : item.elevated ? 'elev-draw' : item.stageSafe ? 'safe-fail' : 'draw';
       this.stageSplitKinds.set(kind, (this.stageSplitKinds.get(kind) ?? 0) + 1);
+      // Dev forensics: the first few split closures' SOURCE names the
+      // factory that made them — the probe reads this to hunt the
+      // unmarked classes (a split we cannot name cannot be retired).
+      if (this.stageSplitSamples.length < 12 && item.draw) {
+        const src = item.draw.toString().replace(/\s+/g, ' ').slice(0, 140);
+        if (!this.stageSplitSamples.includes(src)) this.stageSplitSamples.push(src);
+      }
       this.dispatchWorldItem(item);
     }
     this.stageWorldFlush();
