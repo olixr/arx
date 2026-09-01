@@ -672,6 +672,7 @@ import {
 } from '@arx/shared';
 import { config } from '../config.js';
 import { CHAT_COMMANDS } from './commands/index.js';
+import * as procSys from './procs.js';
 import * as statusSys from './statuses.js';
 import * as standingSys from './standing.js';
 import { DEV_COMMANDS } from './commands/devCommands.js';
@@ -2310,7 +2311,7 @@ export interface ProcContext {
 }
 
 /** How far a chaining working looks for its next foe, tiles. */
-const CHAIN_PROC_RANGE = 5;
+export const CHAIN_PROC_RANGE = 5;
 /** Most things one reveal may mark — a rich seam must not flood the wire. */
 const REVEAL_PROC_CAP = 24;
 /** Hard ceiling on a reveal's tile scan, whatever radius the def asks for. */
@@ -2412,7 +2413,7 @@ interface PlayerBuff {
 }
 
 /** Buff with the passive-combat defaults filled in. */
-function mkBuff(partial: Partial<PlayerBuff> & { untilTick: number }): PlayerBuff {
+export function mkBuff(partial: Partial<PlayerBuff> & { untilTick: number }): PlayerBuff {
   return {
     speedMult: 1,
     attackSpeedMult: 1,
@@ -24347,7 +24348,7 @@ export class GameServer {
    * end of tick() so a whirlwind that feeds three meters in one blow
    * still costs one message.
    */
-  private chargesDirty = new Set<EntityId>();
+  chargesDirty = new Set<EntityId>();
 
   /**
    * PROCS NEVER BEGET PROCS, made structural (callings-v2 Phase 2):
@@ -24379,13 +24380,8 @@ export class GameServer {
   /** The company mirror's own dirty set — the petDirty discipline, held apart. */
   private companionDirty = new Set<PlayerComp>();
 
-  private procState(player: PlayerComp, id: string): ProcRuntime {
-    let st = player.procs.get(id);
-    if (!st) {
-      st = mkProcRuntime();
-      player.procs.set(id, st);
-    }
-    return st;
+  procState(player: PlayerComp, id: string): ProcRuntime {
+    return procSys.procState(this, player, id);
   }
 
   /**
@@ -24409,15 +24405,6 @@ export class GameServer {
     player.session?.sendJson({ t: 'charges', charges });
   }
 
-  /**
-   * THE ONE PROC DOOR. Every trigger site funnels through here, so the
-   * rest timer, the meter, and the firing all live at one seam. The
-   * arbitration itself is pure and lives in content/equipment (see
-   * procWakes) so the ordering laws can be pinned without a server.
-   *
-   * Returns whatever the action hands back (a yield working's extra),
-   * 0 for everything else.
-   */
   offerProc(
     eid: EntityId,
     player: PlayerComp,
@@ -24426,364 +24413,47 @@ export class GameServer {
     ctx: ProcContext,
     amount = 1,
   ): number {
-    const st = this.procState(player, p.id);
-    // A stacking meter that moves — a charge banked, or the spend when
-    // the working answers — reaches the wearer's HUD at tick end.
-    const banked = st.stacks;
-    const woke = procWakes(p, st, on, this.tickCount, undefined, amount);
-    if (st.stacks !== banked) this.chargesDirty.add(eid);
-    if (!woke) return 0;
-    return this.runProc(eid, player, p, ctx);
+    return procSys.offerProc(this, eid, player, p, on, ctx, amount);
   }
 
-  /**
-   * Offer a moment to every working the BODY carries — the gear
-   * aggregate and, since THE WAKING HAND, the answered packages'
-   * workings beside them. Two lists, one door, one meter law. The
-   * preconditions are door law, INLINE per the slate-test law, never
-   * arbitration — procWakes stays pure:
-   *  - a targeted working cannot answer a moment with no live foe in
-   *    hand (no chance rolled, no rest stamped on a sure no-op);
-   *  - a hitState working is skipped when the struck body does not
-   *    carry its state (THE READING EDGE — the body lane hears it
-   *    now too, since a calling's edge is the hand itself and rides
-   *    aggregate-side);
-   *  - a pet-targeted boon is skipped when no companion stands
-   *    (THE PACK'S BLESSING — the same targeted-moment law spoken
-   *    for the leash: a downed or absent companion is a sure no-op).
-   *
-   * All three are pinned in wornBookDoors.test.ts / procDoors.test.ts.
-   */
-  private bodyMoment(
+  bodyMoment(
     eid: EntityId,
     player: PlayerComp,
     on: ProcMoment,
     ctx: ProcContext,
   ): number {
-    let extra = 0;
-    const offer = (p: ProcEffect): void => {
-      if (
-        (TARGETED_ACTIONS as readonly string[]).includes(p.action.do) &&
-        (ctx.targetEid === undefined || !this.npcs.has(ctx.targetEid))
-      ) {
-        return;
-      }
-      if (p.trigger.on === 'hitState') {
-        const wanted = p.trigger.status;
-        const riding =
-          ctx.targetEid !== undefined &&
-          (this.statuses?.get(ctx.targetEid)?.some((s) => s.id === wanted) ?? false);
-        if (!riding) return;
-      }
-      // THE PACK'S BLESSING door law (THE WORN BOOK): a pet-targeted
-      // working cannot answer a moment with no companion standing —
-      // no charge banked, no rest stamped on a sure no-op (the
-      // targeted-moment law, spoken for the leash).
-      if (p.action.do === 'boon' && p.action.target === 'pet') {
-        const petEid = player.petEid ?? null;
-        if (petEid === null || (this.healths?.get(petEid)?.hp ?? 0) <= 0) return;
-      }
-      extra += this.offerProc(eid, player, p, on, ctx);
-    };
-    for (const p of player.gear.procs) offer(p);
-    for (const p of player.callingProcs ?? []) offer(p);
-    return extra;
+    return procSys.bodyMoment(this, eid, player, on, ctx);
   }
 
-  /**
-   * Offer a moment to the workings on the steel that LANDED, then to
-   * the body. Two dual-wielded blades carry two different edges and
-   * each answers only when its own steel connects, exactly as coats do.
-   */
-  private steelMoment(
+  steelMoment(
     eid: EntityId,
     player: PlayerComp,
     worn: EquippedItem | undefined,
     on: ProcMoment,
     ctx: ProcContext,
   ): void {
-    if (worn) {
-      for (const p of weaponStrikeEffects(worn.id, worn.roll).procs) {
-        // THE READING EDGE door law: a hitState working is skipped
-        // BEFORE arbitration when the struck body does not carry its
-        // state — no roll spent, no rest banked (the targeted-moment
-        // law), so the published chance holds against marked bodies.
-        if (p.trigger.on === 'hitState') {
-          const wanted = p.trigger.status;
-          const riding =
-            ctx.targetEid !== undefined &&
-            (this.statuses?.get(ctx.targetEid)?.some((s) => s.id === wanted) ?? false);
-          if (!riding) continue;
-        }
-        this.offerProc(eid, player, p, on, ctx);
-      }
-    }
-    this.bodyMoment(eid, player, on, ctx);
+    return procSys.steelMoment(this, eid, player, worn, on, ctx);
   }
 
-  /**
-   * THE CROSSING: a lowHp working answers the fall past its line and
-   * then goes quiet until the wearer climbs back over it. The crossing
-   * is read from the health BEFORE the wound against the health after
-   * it, so re-arming needs no call from any heal site — food, tonics,
-   * drains, totems, lifesteal, and the regen tick all re-arm the
-   * working simply by lifting the wearer over the line before the
-   * next fall. One dive past the mark is one answer however many
-   * small hits carried it down.
-   *
-   * THE DOOR REPAIR (callings-v2 Phase 2): the crossing check stays
-   * here (it reads the health component — a door fact, like
-   * hitState's list read), but the rest law and the firing walk
-   * through offerProc with everything else. No hand-rolled icd
-   * anywhere.
-   */
-  private lowHpMoment(eid: EntityId, player: PlayerComp, prevHp: number): void {
-    const health = this.healths.get(eid);
-    if (!health || health.maxHp <= 0 || health.hp <= 0) return;
-    const frac = health.hp / health.maxHp;
-    const prevFrac = prevHp / health.maxHp;
-    const pos = this.positions.get(eid);
-    const ctx: ProcContext = { x: pos?.x ?? 0, y: pos?.y ?? 0 };
-    const offer = (p: ProcEffect): void => {
-      if (p.trigger.on !== 'lowHp') return;
-      if (prevFrac <= p.trigger.pct || frac > p.trigger.pct) return;
-      this.offerProc(eid, player, p, 'lowHp', ctx);
-    };
-    for (const p of player.gear.procs) offer(p);
-    for (const p of player.callingProcs ?? []) offer(p);
+  lowHpMoment(eid: EntityId, player: PlayerComp, prevHp: number): void {
+    return procSys.lowHpMoment(this, eid, player, prevHp);
   }
 
-  /** Ground covered on foot feeds every stride working (one door law). */
-  private strideMoment(eid: EntityId, player: PlayerComp, tiles: number): void {
-    if (tiles <= 0) return;
-    let ctx: ProcContext | undefined;
-    const offer = (p: ProcEffect): void => {
-      if (p.trigger.on !== 'stride') return;
-      if (!ctx) {
-        const pos = this.positions.get(eid);
-        ctx = { x: pos?.x ?? 0, y: pos?.y ?? 0 };
-      }
-      this.offerProc(eid, player, p, 'stride', ctx, tiles);
-    };
-    for (const p of player.gear.procs) offer(p);
-    for (const p of player.callingProcs ?? []) offer(p);
+  strideMoment(eid: EntityId, player: PlayerComp, tiles: number): void {
+    return procSys.strideMoment(this, eid, player, tiles);
   }
 
-  /**
-   * A woken working does its work and says its name. The name floats
-   * once and no number ever does: a proc is an event in the fight, and
-   * a second damage number every other second is noise, not feedback.
-   *
-   * The wrapper holds the procDepth guard: everything an action does —
-   * status lays, damage, kills the damage causes — runs under it, so
-   * THE ANSWERED ECHO's door can refuse proc-born landings by
-   * construction.
-   */
   runProc(eid: EntityId, player: PlayerComp, p: ProcEffect, ctx: ProcContext): number {
-    // Slate-safe bookkeeping (the slate law): a bare rig without the
-    // counter still walks the door.
-    this.procDepth = (this.procDepth ?? 0) + 1;
-    try {
-      return this.runProcInner(eid, player, p, ctx);
-    } finally {
-      this.procDepth--;
-    }
+    return procSys.runProc(this, eid, player, p, ctx);
   }
 
-  private runProcInner(
+  runProcInner(
     eid: EntityId,
     player: PlayerComp,
     p: ProcEffect,
     ctx: ProcContext,
   ): number {
-    // The working fires on its bearer's plane.
-    const procPlane = this.positions.get(eid)?.plane ?? SURFACE_PLANE_ID;
-    const a = p.action;
-    const color = ELEMENT_COLORS[p.element ?? 'arcane'];
-    const style: SkillId = ctx.style ?? 'arx';
-    const at = this.positions.get(eid);
-    let radius = 0.6;
-    let x2: number | undefined;
-    let y2: number | undefined;
-    let extra = 0;
-
-    switch (a.do) {
-      case 'status': {
-        if (ctx.targetEid === undefined || !this.npcs.has(ctx.targetEid)) break;
-        this.applyStatusToNpc(
-          ctx.targetEid,
-          { status: a.status, power: a.power, durationTicks: a.ticks },
-          eid,
-          style,
-        );
-        break;
-      }
-      case 'boon': {
-        // THE SELF-BLESSING: the working lays a boon page on its own
-        // wearer through the real player apply door — count stacks,
-        // swing re-mirror, chips, the whole visible layer answer as
-        // they do for any other page. Boon-lane-only is load law
-        // (procMismatch); the door needs no second check.
-        //
-        // THE PACK'S BLESSING (THE WORN BOOK): target 'pet' hands the
-        // page to the companion instead, through the pet's own NPC
-        // apply door — a quickened pet TRULY swings faster, the NPC
-        // swing sites fold statusSwingFactor already. No companion
-        // standing means a silent refusal (the aggregate lane also
-        // refuses at the door, charge unspent), and the page can never
-        // reach any other player: only the wearer's own petEid is a
-        // candidate.
-        if (a.target === 'pet') {
-          const petEid = player.petEid ?? null;
-          if (petEid === null || (this.healths?.get(petEid)?.hp ?? 0) <= 0) return extra;
-          this.applyStatusToNpc(
-            petEid,
-            { status: a.status, power: a.power, durationTicks: a.ticks },
-            eid,
-            'beastcraft',
-          );
-          const pp = this.positions?.get(petEid);
-          if (at && pp) {
-            x2 = pp.x;
-            y2 = pp.y;
-          }
-          radius = 0.9;
-          break;
-        }
-        this.applyStatusToPlayer(eid, { status: a.status, power: a.power, durationTicks: a.ticks }, eid);
-        radius = 0.9;
-        break;
-      }
-      case 'bolt': {
-        if (ctx.targetEid === undefined || !this.npcs.has(ctx.targetEid)) break;
-        const tp = this.positions.get(ctx.targetEid);
-        if (at && tp) {
-          x2 = tp.x;
-          y2 = tp.y;
-        }
-        this.damageNpc(ctx.targetEid, a.damage, eid, style, { fromProc: true });
-        break;
-      }
-      case 'nova': {
-        radius = a.radius;
-        for (const npcEid of this.npcsWithin(procPlane, ctx.x, ctx.y, a.radius)) {
-          this.damageNpc(npcEid, a.damage, eid, style, {
-            knockFrom: { x: ctx.x, y: ctx.y },
-            fromProc: true,
-          });
-        }
-        break;
-      }
-      case 'chain': {
-        // The struck foe first, then the nearest others outward — the
-        // same walk the reaction table's chain effect takes.
-        const hit = ctx.targetEid !== undefined && this.npcs.has(ctx.targetEid) ? [ctx.targetEid] : [];
-        for (const npcEid of this.npcsWithin(procPlane, ctx.x, ctx.y, CHAIN_PROC_RANGE)) {
-          if (hit.length > a.jumps) break;
-          if (!hit.includes(npcEid)) hit.push(npcEid);
-        }
-        let from = { x: ctx.x, y: ctx.y };
-        for (const npcEid of hit) {
-          const tp = this.positions.get(npcEid);
-          if (tp) {
-            this.broadcastFx(procPlane, {
-              t: 'fx',
-              kind: 'proc',
-              x: from.x,
-              y: from.y,
-              x2: tp.x,
-              y2: tp.y,
-              radius: 0.4,
-              color,
-              // The final broadcast's `<action>:<procId>` convention —
-              // a bare proc id fell back to the status shape client-side.
-              id: `${a.do}:${p.id}`,
-            });
-            from = { x: tp.x, y: tp.y };
-          }
-          this.damageNpc(npcEid, a.damage, eid, style, { fromProc: true });
-        }
-        break;
-      }
-      case 'ward': {
-        player.buffs.push(
-          mkBuff({ shieldHp: a.absorb, name: p.name, untilTick: this.tickCount + a.ticks }),
-        );
-        this.sendBuffs(player);
-        radius = 0.9;
-        break;
-      }
-      case 'heal': {
-        // A mend that lifts the wearer over a lowHp line re-arms the
-        // workings that watch it by nature now: the crossing is read
-        // from prev-vs-new health at the next wound, so no re-arm
-        // call is owed here (or at any other heal site).
-        const health = this.healths.get(eid);
-        if (health) health.hp = Math.min(health.maxHp, health.hp + a.amount);
-        break;
-      }
-      case 'surge': {
-        const until = this.tickCount + a.ticks;
-        const lift = a.pct / 100;
-        player.buffs.push(
-          mkBuff({
-            name: p.name,
-            ...(a.stat === 'speed'
-              ? { speedMult: 1 + lift, untilTick: until }
-              : a.stat === 'swing'
-                ? { attackSpeedMult: 1 + lift, untilTick: until }
-                : a.stat === 'armor'
-                  ? { armor: a.pct, untilTick: until }
-                  : a.stat === 'regen'
-                    ? { regenPer4s: a.pct, untilTick: until }
-                    : a.stat === 'crit'
-                      ? { critPct: a.pct, untilTick: until }
-                      : { dmgMult: 1 + lift, untilTick: until }),
-          }),
-        );
-        this.sendBuffs(player);
-        // A speed surge moves the steady mult — the ride mirror's law.
-        if (a.stat === 'speed') this.rideDirty.add(player);
-        radius = 0.9;
-        break;
-      }
-      case 'cleanse': {
-        // THE HONEST CLEANSE: hostile pages strip; boons ride on (a
-        // mend must never die to its bearer's own dispel).
-        const clist = this.statuses.get(eid)?.filter((s) => survivesCleanse(s.id));
-        if (clist && clist.length > 0) this.statuses.set(eid, clist);
-        else this.statuses.delete(eid);
-        radius = 0.9;
-        break;
-      }
-      case 'yield': {
-        extra = a.extra;
-        break;
-      }
-      case 'reveal': {
-        radius = a.radius;
-        this.revealNearby(eid, ctx, a.radius, a.of, color);
-        break;
-      }
-    }
-
-    this.broadcastFx(procPlane, {
-      t: 'fx',
-      kind: 'proc',
-      x: ctx.x,
-      y: ctx.y,
-      x2,
-      y2,
-      radius,
-      color,
-      text: p.name,
-      // `<action>:<procId>` — the projectile defId's `arx:<element>`
-      // convention. The client shapes the moment off the ACTION so a
-      // working looks right the day it is authored, and still gets to
-      // override with a bespoke signature registered under either key.
-      id: `${a.do}:${p.id}`,
-    });
-    return extra;
+    return procSys.runProcInner(this, eid, player, p, ctx);
   }
 
   /** Living foes inside a circle, nearest first. */
@@ -24803,7 +24473,7 @@ export class GameServer {
    * not a flare for the whole field. Capped so a rich seam cannot flood
    * the wire.
    */
-  private revealNearby(
+  revealNearby(
     eid: EntityId,
     ctx: ProcContext,
     radius: number,
