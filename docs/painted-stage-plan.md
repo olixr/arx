@@ -795,6 +795,46 @@ LIGHTMAP keeps its canvas painter and 2d multiply for now — its
 quad form needs the opaque main target to be GL, which is the full-
 GL-frame step (A5's shape), not this pass.
 
+### A4/A5 — AS BUILT (2026-09-01). THE GATES, AND THE TOGGLE.
+
+**The honest scoping call**: A4's remaining migrations (water as a
+dirty-rect texture quad, instanced particles, the post stack as FBO
+passes) all presuppose the MAIN frame becoming GL — and on this
+machine, at the 120Hz cap with post+water+particles reading ~0.2ms
+on the phase clock, there is no measurement to steer that work by.
+The scratch-sheet lesson cuts both ways: the costs that matter are
+off-clock and hardware-specific, so those migrations move BEHIND the
+weak-GPU validation (the CPU-bound Windows/RTX machines this epic
+was born on), to be built against real numbers. What A4 owed
+REGARDLESS was its verification gates, and A5 owed the lever that
+makes the weak-GPU round possible at all:
+
+- **Reel capture verified on the stage**: canvas.captureStream +
+  MediaRecorder on the game canvas with the stage live — 455KB of
+  webm in a 2s smoke, one video track. The hybrid seam keeps the 2d
+  canvas as the one honest tap, so the reel room needs NOTHING.
+- **Screenshot tooling verified**: toDataURL serves every parity
+  probe and diff crop in this epic with the stage live.
+- **Falls-district parity**: the avenue passes the battery (part 8
+  moved the falls onto the bounded scratch lane).
+- **THE DISPLAY TOGGLE SHIPS** (default-OFF): "Accelerated display
+  (beta)" in Settings → Display, persisted as arx.stage, applying
+  LIVE (the parity drills toggle it mid-frame hundreds of times a
+  session — that is the proof it is safe to flip). ?stage stays the
+  dev override lane. WebGL2-missing and context-loss both fall back
+  to the standard display the same frame, silently. Drill: default
+  off → flip on → reload restores → frames flow → flip off. 
+- **THE ZOOM STORM**: 10s of zoom oscillation + teleport hops under
+  the stage — 60fps sustained (headless cap), zero page errors, and
+  the crown-evening battery PASSES after settling (sig 480 vs 489
+  gate): nothing stale survives a storm.
+
+**Remaining for the weak-GPU round** (the epic's born purpose): flip
+the toggle on the Windows/RTX machine, capture the before/after fps
+table for the audit doc's §THE COMPOSED FRAME, and let ITS numbers
+order the remaining A4 migrations + the sprite atlas. Epic B waits
+on that table, per A5's own law (default-ON survives a week first).
+
 ### A3 — The dark and the light (shadow layer, lightmap, overreach)
 
 The shadow layer becomes an FBO: shadow quads (sprites, masks, grass
