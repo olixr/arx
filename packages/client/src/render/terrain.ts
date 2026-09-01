@@ -578,6 +578,19 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     if (t >= Tile.Barrel && t <= Tile.Basin) return nearestFloor(ground, tx, ty);
     // War-camp props stand on the camp's trampled ground the same way.
     if (t >= Tile.StandingTorch && t <= Tile.HideFrame) return nearestFloor(ground, tx, ty);
+    // The strays that fell past every family branch and paved their
+    // own grass diamond onto any floor: the dyed banner pole (the
+    // classic pole rides the Barrel..Basin band), the irrigation
+    // trench (cut INTO whatever field or yard holds it), and the
+    // herbalist's late shelf. None of them paves.
+    if (
+      (t >= Tile.BannerPoleDyed && t < Tile.BannerPoleDyed + DYE_COUNT) ||
+      t === Tile.IrrigationChannel ||
+      t === Tile.HerbPlanter ||
+      t === Tile.TiedParcels
+    ) {
+      return nearestFloor(ground, tx, ty);
+    }
     // Elven props (crafted AND imbued) stand on whatever fine floor
     // the fair house laid.
     if (t >= Tile.ArcaneBeacon && t <= Tile.RunePillar) return nearestFloor(ground, tx, ty);
@@ -902,7 +915,7 @@ export function startChunkBake(
           const ty = baseY + ly;
           // Raised/sunken tiles' details belong to their lifted layer.
           if (elev(tx, ty) !== 0) continue;
-          drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail, g);
+          drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail, g, ground);
         }
       }
     });
@@ -2248,6 +2261,11 @@ function drawTileDetail(
   px: number,
   dAt?: (x: number, y: number) => number,
   gAt?: (x: number, y: number) => number | undefined,
+  // The RAW authored ground, pre-underlay: a tile whose material
+  // resolves to the surrounding floor (the irrigation trench cut
+  // into a stone yard) still needs its own detail painted, and its
+  // run-connectivity read, from what the map actually says.
+  rawAt?: (x: number, y: number) => number | undefined,
 ): void {
   const hg = hashCoords(83, tx, ty);
   const gx = lx * px;
@@ -2366,7 +2384,8 @@ function drawTileDetail(
       }
     }
   }
-  if (m === Tile.IrrigationChannel) {
+  const rawHere = rawAt !== undefined ? rawAt(tx, ty) : undefined;
+  if (m === Tile.IrrigationChannel || rawHere === Tile.IrrigationChannel) {
     d = Detail.None;
     // THE FED CHANNEL: a board-lined trench. Runs join across
     // adjacent channel tiles (the fence-connectivity idea spoken in
@@ -2374,15 +2393,24 @@ function drawTileDetail(
     // water, otherwise the bottom lies dry and cracked. Bake-time
     // truth — the well set lives client-side and a well raised or
     // razed re-bakes the neighborhood like any patch.
-    const chanN = gAt !== undefined && gAt(tx, ty - 1) === Tile.IrrigationChannel;
-    const chanS = gAt !== undefined && gAt(tx, ty + 1) === Tile.IrrigationChannel;
-    const chanW = gAt !== undefined && gAt(tx - 1, ty) === Tile.IrrigationChannel;
-    const chanE = gAt !== undefined && gAt(tx + 1, ty) === Tile.IrrigationChannel;
+    // THE TILTED TRENCH: the cut obeys the bird's-eye — the far
+    // inner wall shows as a shadowed board face below the far bank
+    // (north on a level run, west on a falling one), the water
+    // stands sunk beneath it, the near bank bites a hair over the
+    // bed, and an open end is carpentered shut with a cap board
+    // between two corner posts. No trench ends mid-air.
+    const nAt = rawAt ?? gAt;
+    const chanN = nAt !== undefined && nAt(tx, ty - 1) === Tile.IrrigationChannel;
+    const chanS = nAt !== undefined && nAt(tx, ty + 1) === Tile.IrrigationChannel;
+    const chanW = nAt !== undefined && nAt(tx - 1, ty) === Tile.IrrigationChannel;
+    const chanE = nAt !== undefined && nAt(tx + 1, ty) === Tile.IrrigationChannel;
     // Orientation: default east-west; a north-south neighbor with no
     // east-west one turns the run.
     const ns = (chanN || chanS) && !(chanW || chanE);
     const fed = wellNearClient(tx, ty, CHANNEL_FEED_RANGE);
     const inset = px * 0.26;
+    const bd = px * 0.055;
+    const wall = px * 0.085;
     const bx0 = ns ? gx + inset : chanW ? gx : gx + px * 0.1;
     const bx1 = ns ? gx + px - inset : chanE ? gx + px : gx + px * 0.9;
     const by0 = ns ? (chanN ? gy : gy + px * 0.1) : gy + inset;
@@ -2390,30 +2418,25 @@ function drawTileDetail(
     // The cut: dark trench bed.
     ctx.fillStyle = 'rgba(26, 18, 11, 0.82)';
     ctx.fillRect(bx0, by0, bx1 - bx0, by1 - by0);
-    // Board lining along both banks, sun on the near edge.
-    ctx.fillStyle = '#8a6234';
-    if (ns) {
-      ctx.fillRect(bx0 - px * 0.055, by0, px * 0.055, by1 - by0);
-      ctx.fillRect(bx1, by0, px * 0.055, by1 - by0);
-      ctx.fillStyle = 'rgba(214, 175, 122, 0.5)';
-      ctx.fillRect(bx0 - px * 0.055, by0, px * 0.02, by1 - by0);
-    } else {
-      ctx.fillRect(bx0, by0 - px * 0.055, bx1 - bx0, px * 0.055);
-      ctx.fillRect(bx0, by1, bx1 - bx0, px * 0.055);
-      ctx.fillStyle = 'rgba(214, 175, 122, 0.5)';
-      ctx.fillRect(bx0, by0 - px * 0.055, bx1 - bx0, px * 0.02);
-    }
+    // Bed content sits below the far inner wall.
+    const wx0 = ns ? bx0 + wall : bx0;
+    const wy0 = ns ? by0 : by0 + wall;
     if (fed) {
-      // Standing water with two pale catches of sky.
+      // Standing water with two pale catches of sky, sunk beneath
+      // the far wall, and a deep-shade seam right under it where the
+      // wall meets its own reflection.
       ctx.fillStyle = '#35597e';
-      ctx.fillRect(bx0 + px * 0.02, by0 + px * 0.02, bx1 - bx0 - px * 0.04, by1 - by0 - px * 0.04);
+      ctx.fillRect(wx0 + px * 0.02, wy0 + px * 0.02, bx1 - wx0 - px * 0.04, by1 - wy0 - px * 0.04);
+      ctx.fillStyle = 'rgba(16, 24, 40, 0.5)';
+      if (ns) ctx.fillRect(wx0 + px * 0.02, wy0 + px * 0.02, px * 0.05, by1 - wy0 - px * 0.04);
+      else ctx.fillRect(wx0 + px * 0.02, wy0 + px * 0.02, bx1 - wx0 - px * 0.04, px * 0.05);
       ctx.fillStyle = 'rgba(160, 196, 232, 0.4)';
       const hh = hashCoords(281, tx, ty);
       if (ns) {
-        ctx.fillRect(bx0 + px * 0.06, gy + (0.15 + (hh % 50) / 100) * px, px * 0.05, px * 0.16);
+        ctx.fillRect(wx0 + px * 0.06, gy + (0.15 + (hh % 50) / 100) * px, px * 0.05, px * 0.16);
         ctx.fillRect(bx1 - px * 0.11, gy + (0.5 + ((hh >> 5) % 30) / 100) * px, px * 0.04, px * 0.12);
       } else {
-        ctx.fillRect(gx + (0.15 + (hh % 50) / 100) * px, by0 + px * 0.06, px * 0.16, px * 0.05);
+        ctx.fillRect(gx + (0.15 + (hh % 50) / 100) * px, wy0 + px * 0.06, px * 0.16, px * 0.05);
         ctx.fillRect(gx + (0.5 + ((hh >> 5) % 30) / 100) * px, by1 - px * 0.11, px * 0.12, px * 0.04);
       }
     } else {
@@ -2421,17 +2444,78 @@ function drawTileDetail(
       ctx.fillStyle = 'rgba(150, 116, 76, 0.55)';
       const hh = hashCoords(283, tx, ty);
       for (let k = 0; k < 3; k++) {
-        const cx = bx0 + (0.12 + ((hh >> (k * 4)) % 60) / 100) * (bx1 - bx0);
-        const cy = by0 + (0.1 + ((hh >> (k * 3 + 2)) % 62) / 100) * (by1 - by0);
+        const cx = wx0 + (0.12 + ((hh >> (k * 4)) % 60) / 100) * (bx1 - wx0);
+        const cy = wy0 + (0.1 + ((hh >> (k * 3 + 2)) % 62) / 100) * (by1 - wy0);
         ctx.fillRect(cx, cy, px * 0.07, px * 0.05);
       }
       ctx.strokeStyle = 'rgba(26, 18, 11, 0.6)';
       ctx.lineWidth = Math.max(1, px * 0.014);
       ctx.beginPath();
-      ctx.moveTo(bx0 + (bx1 - bx0) * 0.3, by0 + (by1 - by0) * 0.2);
-      ctx.lineTo(bx0 + (bx1 - bx0) * 0.5, by0 + (by1 - by0) * 0.7);
-      ctx.lineTo(bx0 + (bx1 - bx0) * 0.75, by0 + (by1 - by0) * 0.45);
+      ctx.moveTo(wx0 + (bx1 - wx0) * 0.3, wy0 + (by1 - wy0) * 0.2);
+      ctx.lineTo(wx0 + (bx1 - wx0) * 0.5, wy0 + (by1 - wy0) * 0.7);
+      ctx.lineTo(wx0 + (bx1 - wx0) * 0.75, wy0 + (by1 - wy0) * 0.45);
       ctx.stroke();
+    }
+    // The far inner wall: a board face in its own shadow, laid over
+    // the bed so depth reads before water does.
+    ctx.fillStyle = '#4a3319';
+    if (ns) ctx.fillRect(bx0, by0, wall, by1 - by0);
+    else ctx.fillRect(bx0, by0, bx1 - bx0, wall);
+    // Board lining along both banks — sky on the top faces, and the
+    // near board overlaps the cut by a hair so the bank reads as a
+    // lip standing over the water, not a frame around a picture.
+    ctx.fillStyle = '#8a6234';
+    if (ns) {
+      ctx.fillRect(bx0 - bd, by0, bd, by1 - by0);
+      ctx.fillRect(bx1 - px * 0.012, by0, bd + px * 0.012, by1 - by0);
+      ctx.fillStyle = 'rgba(214, 175, 122, 0.5)';
+      ctx.fillRect(bx0 - bd, by0, px * 0.02, by1 - by0);
+      ctx.fillRect(bx1 - px * 0.012, by0, px * 0.02, by1 - by0);
+    } else {
+      ctx.fillRect(bx0, by0 - bd, bx1 - bx0, bd);
+      ctx.fillRect(bx0, by1 - px * 0.012, bx1 - bx0, bd + px * 0.012);
+      ctx.fillStyle = 'rgba(214, 175, 122, 0.5)';
+      ctx.fillRect(bx0, by0 - bd, bx1 - bx0, px * 0.02);
+      ctx.fillRect(bx0, by1 - px * 0.012, bx1 - bx0, px * 0.02);
+    }
+    // Open ends get a cap board between corner posts; a continuing
+    // run keeps its mouth open into the neighbor tile.
+    const post = px * 0.09;
+    const capAt = (cx: number, cy: number, w: number, h: number) => {
+      ctx.fillStyle = '#7a5427';
+      ctx.fillRect(cx, cy, w, h);
+      ctx.fillStyle = 'rgba(214, 175, 122, 0.45)';
+      if (w > h) ctx.fillRect(cx, cy, w, px * 0.018);
+      else ctx.fillRect(cx, cy, px * 0.018, h);
+    };
+    const postAt = (cx: number, cy: number) => {
+      ctx.fillStyle = '#5e401f';
+      ctx.fillRect(cx - post / 2, cy - post / 2, post, post);
+      ctx.fillStyle = 'rgba(222, 186, 132, 0.55)';
+      ctx.fillRect(cx - post / 2, cy - post / 2, post, px * 0.022);
+    };
+    if (ns) {
+      if (!chanN) {
+        capAt(bx0 - bd, by0 - bd, bx1 - bx0 + bd * 2, bd);
+        postAt(bx0 - bd / 2, by0);
+        postAt(bx1 + bd / 2, by0);
+      }
+      if (!chanS) {
+        capAt(bx0 - bd, by1, bx1 - bx0 + bd * 2, bd);
+        postAt(bx0 - bd / 2, by1);
+        postAt(bx1 + bd / 2, by1);
+      }
+    } else {
+      if (!chanW) {
+        capAt(bx0 - bd, by0 - bd, bd, by1 - by0 + bd * 2);
+        postAt(bx0, by0 - bd / 2);
+        postAt(bx0, by1 + bd / 2);
+      }
+      if (!chanE) {
+        capAt(bx1, by0 - bd, bd, by1 - by0 + bd * 2);
+        postAt(bx1, by0 - bd / 2);
+        postAt(bx1, by1 + bd / 2);
+      }
     }
   }
       if (m === Tile.WaterShallow) {
@@ -3635,7 +3719,7 @@ export function startElevatedBake(
             const tx = baseX + lx;
             const ty = baseY + ly;
             if (!member(tx, ty)) continue;
-            drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail, g);
+            drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail, g, ground);
           }
         }
       }),

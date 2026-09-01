@@ -15339,10 +15339,17 @@ export class Renderer {
   }
 
   /** The Bayer screen-door tile at device resolution — shared by the
-   *  veil window and the ghost ember's weave. */
+   *  veil window and the ghost ember's weave. THE WEAVE RIDES THE
+   *  ZOOM: the cell scales with the camera so the ember reads as the
+   *  same cloth at every magnification — a fixed device cell turned
+   *  into shimmering 1px noise against a zoomed body (the art
+   *  audit's #1). Quantized to half-steps so the glide never mints a
+   *  pattern per frame. */
   private ditherPattern(dpr: number): HTMLCanvasElement {
-    if (this.ditherPat && this.ditherPat.dpr === dpr) return this.ditherPat.canvas;
-    const cell = Math.max(1, Math.round(DITHER_CELL * dpr));
+    const zoomQ = Math.max(1, Math.round(this.camera.zoom * 2) / 2);
+    const key = dpr * 16 + zoomQ;
+    if (this.ditherPat && this.ditherPat.dpr === key) return this.ditherPat.canvas;
+    const cell = Math.max(1, Math.round(DITHER_CELL * dpr * zoomQ));
     const c = document.createElement('canvas');
     c.width = c.height = cell * 4;
     const g = c.getContext('2d')!;
@@ -15352,7 +15359,7 @@ export class Renderer {
         g.fillRect(i * cell, j * cell, cell, cell);
       }
     }
-    this.ditherPat = { canvas: c, dpr };
+    this.ditherPat = { canvas: c, dpr: key };
     return c;
   }
 

@@ -1264,6 +1264,28 @@ function paintWindmill(rend: PropHost, env: PropFrame): DrawItem {
       ctx.lineTo(p.x - towerW * 0.2, yB);
       ctx.closePath();
       ctx.fill();
+      // The east lane falls off into shade — two lanes and the
+      // tower turns round; one and it stays a pasteboard cutout.
+      ctx.fillStyle = shade('#8d8798', -14);
+      ctx.beginPath();
+      ctx.moveTo(p.x + towerW * 0.5, yB);
+      ctx.lineTo(p.x + towerW * 0.34, capY);
+      ctx.lineTo(p.x + towerW * 0.18, capY);
+      ctx.lineTo(p.x + towerW * 0.26, yB);
+      ctx.closePath();
+      ctx.fill();
+      // The footing: a stone plinth course so the tower stands ON
+      // the ground instead of resting its skin against it.
+      ctx.fillStyle = shade('#8d8798', -24);
+      ctx.beginPath();
+      ctx.moveTo(p.x - towerW * 0.53, yB);
+      ctx.lineTo(p.x - towerW * 0.49, yB - s * 0.12);
+      ctx.lineTo(p.x + towerW * 0.49, yB - s * 0.12);
+      ctx.lineTo(p.x + towerW * 0.53, yB);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(222, 214, 232, 0.35)';
+      ctx.fillRect(p.x - towerW * 0.49, yB - s * 0.12, towerW * 0.98, Math.max(1, s * 0.018));
       ctx.strokeStyle = 'rgba(26, 20, 36, 0.25)';
       ctx.lineWidth = Math.max(1, s * 0.016);
       for (let k = 1; k < 4; k++) {
@@ -1274,23 +1296,51 @@ function paintWindmill(rend: PropHost, env: PropFrame): DrawItem {
         ctx.lineTo(p.x + w2 / 2, cy2 + s * 0.02);
         ctx.stroke();
       }
-      // The door at the foot, warm inside when working.
+      // The door at the foot, warm inside when working, hung in a
+      // timber frame with a lintel so the wall owns an opening
+      // instead of wearing a sticker.
+      ctx.fillStyle = '#5f4426';
+      ctx.beginPath();
+      ctx.roundRect(p.x - s * 0.125, yB - s * 0.37, s * 0.25, s * 0.37, s * 0.07);
+      ctx.fill();
       ctx.fillStyle = working ? '#c98a3c' : '#3a2c18';
       ctx.beginPath();
       ctx.roundRect(p.x - s * 0.1, yB - s * 0.34, s * 0.2, s * 0.34, s * 0.06);
       ctx.fill();
-      // The gallery cap: a foreshortened timber dome.
+      // The gallery cap: a foreshortened timber dome — base plate,
+      // then the dome rising off it with a lit west cheek, hanging
+      // a finger of overhang past the crown.
       ctx.fillStyle = '#a8794a';
       ctx.beginPath();
-      ctx.ellipse(p.x, capY, towerW * 0.44, syT * 0.16, 0, 0, Math.PI * 2);
+      ctx.ellipse(p.x, capY, towerW * 0.48, syT * 0.17, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
       ctx.lineWidth = Math.max(1, s * 0.02);
       ctx.stroke();
-      // The sails: four cloth arms off the cap hub, turning on
-      // the clock while the batch runs, still when it rests.
+      ctx.fillStyle = '#b98753';
+      ctx.beginPath();
+      ctx.ellipse(p.x, capY - syT * 0.03, towerW * 0.38, syT * 0.24, 0, Math.PI, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(236, 216, 188, 0.35)';
+      ctx.beginPath();
+      ctx.ellipse(p.x - towerW * 0.14, capY - syT * 0.08, towerW * 0.12, syT * 0.1, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+      // The windshaft: an axle housing breaking the cap's south
+      // brow, carrying the cross proud of the tower — the sails
+      // plane IN FRONT of the stone, never perched on the crown.
       const hubX = p.x;
-      const hubY = capY - s * 0.06;
+      const hubY = capY + syT * 0.12;
+      ctx.fillStyle = '#5f4426';
+      ctx.beginPath();
+      ctx.roundRect(hubX - s * 0.05, capY - syT * 0.02, s * 0.1, hubY - capY + syT * 0.08, s * 0.03);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(26, 20, 36, 0.5)';
+      ctx.lineWidth = Math.max(1, s * 0.016);
+      ctx.stroke();
+      // The sails: four cloth arms off the windshaft hub, turning
+      // on the clock while the batch runs, still when it rests.
       const ang = working ? (t * 0.9) % (Math.PI * 2) : 0.4;
       for (let k = 0; k < 4; k++) {
         const a = ang + (k * Math.PI) / 2;
@@ -1324,9 +1374,15 @@ function paintWindmill(rend: PropHost, env: PropFrame): DrawItem {
         ctx.fillRect(s * 0.2, s * 0.015, s * 0.06, s * 0.13);
         ctx.restore();
       }
+      // The hub boss: a fat iron nave with one catch of light, big
+      // enough to own the four arms bolted through it.
       ctx.fillStyle = '#3a2c18';
       ctx.beginPath();
-      ctx.arc(hubX, hubY, s * 0.05, 0, Math.PI * 2);
+      ctx.arc(hubX, hubY, s * 0.07, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(222, 186, 132, 0.5)';
+      ctx.beginPath();
+      ctx.arc(hubX - s * 0.02, hubY - s * 0.02, s * 0.024, 0, Math.PI * 2);
       ctx.fill();
     },
   };
