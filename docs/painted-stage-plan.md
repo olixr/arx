@@ -407,6 +407,48 @@ blitBodySprite like the trees kills most of it), and the sprite
 texture population (forest 792MB/1,182 records) is the atlas
 phase's motivating number.
 
+**A2 PART 2 — AS BUILT (2026-08-31).** The measured worklist,
+quadified — with two defects caught by the gates and turned into
+laws:
+
+- **Quad lanes**: props and flora (drawPropOutlined/drawFlora blit
+  sites; live fallbacks signal NEEDS-SPLIT — their brushes closed
+  over the frame ctx at collect time, THE CAPTURE LAW, and cannot be
+  deferred), bodies (blitBodySprite emits quads whenever
+  bodyRelightPossible() is false — by day the 144MB/frame body
+  scratch stops existing; night relight bodies keep the bounded
+  scratch), cliffs (blit + a reconstruction-closure fallback — items
+  built INSIDE the deferred closure, the bakes' own pattern), grass
+  tall cells and elevated-row cells (GrassSystem.stagePush emits the
+  shear quads; live tiles defer into ONE bounded paint per band/row
+  via stageDrainLive), elevated rows (lifted-layer quad + an honest
+  per-row wet scan so dry rows owe the live-water pass nothing).
+  stageAssemble consolidates the ceremony: alpha folding, the
+  elevated-cast box, and the withdraw-on-needs-split protocol.
+- **THE OFF-SCREEN QUAD STANDS DOWN**: pad-band flora/prop blits are
+  clipped free on canvas but MINT TEXTURES on the stage — a dense
+  forest measured 2.7GB of VRAM before the emission cull.
+- **THE SHADOW IS KEYED BY THE CANVAS, INVALIDATED ON TWO AXES**:
+  record-keyed handles churned ~720 textures/second (6.3GB in the
+  forest); canvas-keyed handles with a bare rev aliased POOLED
+  canvases (a new band bucket inherited the old band's pixels — the
+  graveyard's stale-fence corruption, caught by the parity gate
+  within minutes). Owner-switch re-uploads unconditionally;
+  same-owner re-bakes ride the frame stamp; revs are monotonic.
+
+**Gates**: 19/19 lab; five-scene parity ALL PASS within noise;
+786/786 tests. **The measured frontier (real Metal, fps stage vs
+canvas 120)**: forest 94 (split 0), dawnmead 97 (split 5), graveyard
+58 (split 90), hoargate 58 (split 143), avenue 29 (split 147) — the
+gap correlates LINEARLY with split count, and the census names the
+classes: the wall family (doorways/windows are permanent live items
+BY DESIGN, plus hot and garrison members), water tall items, and the
+particle/debris/bird bulk lanes. **Part 3's charter, measured**: the
+WALL LANE (stageRebuild reconstruction closures + pb boxes through
+emitRaisedMember), particles as instanced fills, the atlas +
+explicit handle lifecycle, then the A2 perf gate (forest ≤~40 draws,
+stage ≥ canvas on real hardware).
+
 ### A3 — The dark and the light (shadow layer, lightmap, overreach)
 
 The shadow layer becomes an FBO: shadow quads (sprites, masks, grass
