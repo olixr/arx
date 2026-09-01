@@ -155,3 +155,36 @@ export const PANEL_DOOR_TILES = new Set<number>(
       doorInfo(t)!.material !== 'iron',
   ),
 );
+
+// ---- lifted with F2 WAVE B ----
+/**
+ * The knee-high stub every revealed wall sinks to — ONE height, shared
+ * by every wall kind in every zone, so adjacent runs of different
+ * materials (or a doorframe mid-run) always meet at the same crown
+ * line while cut. Waist on the body scale: low enough to see over,
+ * tall enough to still read as the wall's footprint.
+ */
+export const WALL_STUB = 0.62;
+/**
+ * THE GARRISON SCALE — curtain-wall height in tiles. Fortification
+ * reads as fortification only when it dwarfs the house grammar: the
+ * rampart stands half again over WALL_H (2.05) and three bodies over
+ * the 1.15-tile rig, with the crenellated parapet rising MERLON_H
+ * above the wall-walk on top of that. Anything between "house" and
+ * "keep" muddies both reads — if this ever changes, re-audit the
+ * deep-south culling admission (a 3.4 + 0.5 crown spans ~6.5 screen
+ * rows at yScale 0.6) and the lighting tallH callback with it.
+ */
+export const GARRISON_H = 3.4;
+/** Parapet tooth above the wall-walk — chest-high on the crown. */
+export const MERLON_H = 0.5;
+
+// ---- lifted with F2 WAVE B: garrison leaf ink + the stone hash ----
+/** Gatehouse leaves: iron-bound oak, darker than any house door. */
+export const GAR_LEAF = '#4e3a20';
+/** Deterministic per-stone jitter, world-keyed like the terrain bake. */
+export function stone01(a: number, b: number, c: number): number {
+  let t = (Math.imul(a, 374761393) + Math.imul(b, 668265263) + Math.imul(c, 974634599)) | 0;
+  t = Math.imul(t ^ (t >>> 13), 1274126177);
+  return ((t ^ (t >>> 16)) >>> 0) / 4294967296;
+}

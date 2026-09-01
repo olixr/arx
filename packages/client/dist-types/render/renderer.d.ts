@@ -2,11 +2,50 @@ import { Tile, type DaylightSample, type Vec2 } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import { FootprintField } from './footprints.js';
 import { Particles } from './particles.js';
+import { type SpillInfo } from './waterfalls.js';
 import { Debris, type SmashKind } from './debris.js';
+import { type ElementTint } from './wornLight.js';
 import { Birds } from './birds.js';
+import { BakeLane } from './bakeAdmission.js';
 import { InteriorMap } from './interiors.js';
 import { type BandBucket, type StretchBake } from './staticRegister.js';
+/** The waterfall palette for one lighting state (fallTones()). */
+export interface FallTones {
+    foam: string;
+    crest: string;
+    /** rgba prefix (open paren) for the churn's shaded back lobes. */
+    churnBack: string;
+    /** rgba prefix (open paren) for the aerated outwash sheet. */
+    wash: string;
+    dim: number;
+    /** OPAQUE sheet column tones, glassy → aerated — the POUR bands.
+     *  Flat-vector law: the curtain is stepped opaque bands of the
+     *  world's own water palette, never a translucent gradient. */
+    band: readonly string[];
+    /** The lower, air-charged half of each band (hard step, no fade). */
+    bandLow: readonly string[];
+    /** The race body — open channel water continuing to the lip. */
+    race: string;
+    /** The race's darker mid-current lane tone. */
+    raceDeep: string;
+    /** The acceleration shelf — a HALF-step between race and the pale
+     *  bands, so the lip is a gradient of tone steps, not one cliff. */
+    shelf: string;
+    /** The lit top plane of the crest roll (the 2.5D curl). */
+    rollLit: string;
+    /** The curl's under-shadow ink. */
+    rollInk: string;
+    /** OPAQUE splash-zone tones, impact → pool: pale charged water
+     *  under the mound rank, then the shallow spreading ring. The
+     *  shoreline grammar — stepped opaque zones with wavy boundaries,
+     *  never a translucent apron. */
+    splashPale: string;
+    splashMid: string;
+    /** OPAQUE shaded billow tone for the churn's back rank. */
+    churnDeep: string;
+}
 import { type FxStyle } from './abilityFx.js';
+import { type StageItem, type StageTexture } from './stage/stageTypes.js';
 /** Player zoom bounds: 1 = the classic framing (also the default). */
 export declare const ZOOM_MIN = 0.85;
 export declare const ZOOM_MAX = 2;
@@ -204,6 +243,27 @@ export interface DrawItem {
      *  base-exposure relight pass (see relightBody). */
     baseX?: number;
     baseY?: number;
+}
+/**
+ * One cached world sprite — a tree, a forage plant, a discrete prop.
+ * The three bakes share this shape so the caches, the eviction, the
+ * canvas pool and the occlusion pass all speak one language.
+ */
+/** THE CLIFF JOINS THE STANDING WORLD: one straight rim run, baked
+ *  once and blitted — the strata art is world-keyed and still, so the
+ *  bake is a cache in front of the very painter it replaces. The
+ *  canvas may be pool-oversized (32px shape classes), so blits read
+ *  the recorded w/h, never canvas.width. */
+export interface CliffRunBake {
+    canvas: HTMLCanvasElement;
+    ctx: CanvasRenderingContext2D;
+    w: number;
+    h: number;
+    gridPx: number;
+    dpr: number;
+    padX: number;
+    padTop: number;
+    used: number;
 }
 export declare class Renderer {
     private readonly canvas;
@@ -526,7 +586,7 @@ export declare class Renderer {
      * ±zoom drift) so the held shot stays alive. The pair sits in the
      * upper two-thirds: the speech sheet owns the lower third.
      */
-    private cineEid;
+    cineEid: number | null;
     private cineSavedZoom;
     private cineT0;
     /**
@@ -538,8 +598,8 @@ export declare class Renderer {
      * on a 2.0→0.85 glide; pure blits hold the frame budget). Missing
      * sprites still bake — a blurry hold beats a hole.
      */
-    private zoomGliding;
-    private frameDt;
+    zoomGliding: boolean;
+    frameDt: number;
     w: number;
     h: number;
     private hitstopUntil;
@@ -660,7 +720,22 @@ export declare class Renderer {
      * only ever carries positions. Keyed by eid (or 'own'); swept when a
      * body stops being drawn.
      */
-    private readonly wornMotion;
+    readonly wornMotion: Map<string | number, {
+        x: number;
+        y: number;
+        t: number;
+        speed: number;
+        stride: number;
+        foot: number;
+        seen: number;
+        /**
+         * Direction of TRAVEL, measured from the position delta before
+         * the sync — never the aim. In a mouse-aim game the two disagree
+         * constantly (strafing), and prints must land along the line the
+         * feet actually ran. NaN until the body has moved.
+         */
+        heading: number;
+    }>;
     /**
      * Live footprints. A ring buffer, hard-capped, because this is the
      * only system in the game allowed to write on the ground and an
@@ -668,9 +743,12 @@ export declare class Renderer {
      */
     private readonly trailPrints;
     /** Where "near" is measured from — the own body, or the camera. */
-    private wornOrigin;
+    wornOrigin: {
+        x: number;
+        y: number;
+    };
     /** Lit bodies counted this frame, for the crowd backstop. */
-    private wornLitBodies;
+    wornLitBodies: number;
     /**
      * The own body's equip/ench maps, rebuilt only when the equipment
      * actually changes. resolveWornLight's cache keys on the ench
@@ -741,11 +819,14 @@ export declare class Renderer {
         bornAt: number;
     } | null;
     /** THE OWN-WORK OVERLAY: parsed own-built tiles, glinted in build mode. */
-    private ownBuiltTiles;
+    ownBuiltTiles: Array<{
+        tx: number;
+        ty: number;
+    }>;
     setOwnBuilt(keys: ReadonlySet<string>): void;
     /** Ghost icon bitmaps by buildable id — data-URL images decode async,
      *  so the first frame may skip the icon; it pops in a beat later. */
-    private readonly ghostIcons;
+    readonly ghostIcons: Map<string, HTMLImageElement>;
     /**
      * Loot HUD inputs, fed by main.ts each frame: the pointer (for
      * hovering bags), and the reveal hold (Alt / left trigger) that pops
@@ -809,7 +890,7 @@ export declare class Renderer {
      * this transform, drawing FOOTPRINT coordinates paints them lifted by
      * `heightTiles` and leaned coherently. Pair with ctx.restore().
      */
-    private beginHeightLayer;
+    beginHeightLayer(heightTiles: number): void;
     /**
      * Arm the context to stroke an architecture silhouette: the same
      * bold dark edge the entity ring gives props and characters, drawn
@@ -834,7 +915,7 @@ export declare class Renderer {
     private cssW;
     private cssH;
     /** The game being rendered this frame (for world lookups in painters). */
-    private game;
+    game: ClientGame | null;
     /**
      * Fires once per tool-impact while someone gathers ('tree' | 'rock'
      * | 'forage' | 'anvil' | 'furnace') — with WHERE the beat landed and
@@ -987,7 +1068,7 @@ export declare class Renderer {
     /** Write a threat point into the pooled scratch; returns the new count. */
     private pushBirdThreat;
     /** worldToScreen that also rides the terrain lift under the point. */
-    private liftedWTS;
+    liftedWTS: (wx: number, wy: number) => Vec2;
     /**
      * liftedWTS for the bulk lanes (particles, debris, birds): returns
      * ONE reused scratch, so thousands of projections a frame allocate
@@ -1007,7 +1088,7 @@ export declare class Renderer {
      */
     private projAirWorldY;
     /** Screen-px offset of a shadow cast from `hTiles` above the ground. */
-    private castOffset;
+    castOffset(hTiles: number): Vec2;
     /**
      * Gather the frame's shadow-casting lights: strong scene lights plus
      * last frame's dynamic ones, gated by darkness (point-light shadows
@@ -1035,7 +1116,7 @@ export declare class Renderer {
     /** Arm the shadow target for a cast fill; null while nothing casts. */
     private beginCastFill;
     /** Arm for a grounding contact fill — never fully disappears. */
-    private beginContactFill;
+    beginContactFill(): CanvasRenderingContext2D;
     /** One silhouette throw: flattened blob + footprint smear, one path. */
     private blobShadowPath;
     /**
@@ -1079,7 +1160,7 @@ export declare class Renderer {
      *  cast brush with this.sdw swapped to the scratch ctx (the cast
      *  helpers paint through sdw, not this.ctx — the swap the old
      *  extraction famously forgot). */
-    private stageCastScratch;
+    stageCastScratch(px: number, py: number, pw: number, ph: number, run: () => void): void;
     /** Assembly branch of castEdgeQuad: the quantized parallelogram,
      *  baked once, thrown as a quad. */
     private stageCastEdge;
@@ -1220,7 +1301,7 @@ export declare class Renderer {
      *  a frame, exactly as before. */
     private dprMemo;
     private dprMemoFrame;
-    private dpr;
+    dpr(): number;
     /**
      * The frame's effective dpr, readable from outside — satellite
      * canvases (the map screen) size through the same accessor so a rig
@@ -1447,7 +1528,7 @@ export declare class Renderer {
      * the scans' exact visit order (bucket insertion is draw order).
      */
     private buildWetLists;
-    private fgElevAt;
+    fgElevAt(tx: number, ty: number): number;
     /**
      * THE SHELF LAW: the shelf a standing item sorts on — the elevation
      * level of the tile under its feet (see DrawItem.strat). Undefined
@@ -1457,10 +1538,15 @@ export declare class Renderer {
     /** Stamp a shelf onto every item pushed since `from` (multi-item emitters). */
     private stampStrat;
     /** Ground tile through the frame grid; ChunkStore fallback off-window. */
-    private fgGroundAt;
+    fgGroundAt(tx: number, ty: number): number | undefined;
     /** Detail id through the frame grid; ChunkStore fallback off-window. */
     private fgDetailAt;
-    private visibleTileBounds;
+    visibleTileBounds(): {
+        minTx: number;
+        maxTx: number;
+        minTy: number;
+        maxTy: number;
+    };
     /**
      * Bake resolution follows the zoom tier: past ~1.05× the 32px bakes
      * would upscale into mush, so chunks re-bake at 64px/tile. Keyed off
@@ -1686,7 +1772,15 @@ export declare class Renderer {
      * one thing that should never be seen — it means the caches are not
      * converging and a budget wants raising.
      */
-    private readonly liveStats;
+    readonly liveStats: {
+        prop: number;
+        tree: number;
+        flora: number;
+        chunk: number;
+        mask: number;
+        offscreen: number;
+        cliff: number;
+    };
     /**
      * THE BAND BUDGET IS A FUSE, NOT A BROOM — the whole doctrine, the
      * measurements that forced it, and the arithmetic itself live in
@@ -1705,7 +1799,7 @@ export declare class Renderer {
     private staticBakeMsLeft;
     /** True while a band bake paints: the veil fields read full height
      *  and collect-side glow effects stay quiet (bakingMask). */
-    private bakeVeilFull;
+    bakeVeilFull: boolean;
     /**
      * THE BANDED JOINT WEARS AN UNDERLAP (bake-only). A stretch's outer
      * edge abuts content drawn from ANOTHER surface — the live windowed
@@ -1725,11 +1819,11 @@ export declare class Renderer {
      * edge — THE SHARED-EDGE LAW stands untouched. Keys are packTile of
      * the end members; -1 outside bakes.
      */
-    private bakeBleedW;
-    private bakeBleedE;
+    bakeBleedW: number;
+    bakeBleedE: number;
     /** The underlap span in CSS px on the bake ctx (dprB-scaled): ~3
      *  device px — misregistration bound (~1.5) plus resample fringe. */
-    private bakeBleedPx;
+    bakeBleedPx: number;
     /** Bound once — planStretches calls it per member. */
     private readonly memberBandableFn;
     /**
@@ -1747,7 +1841,7 @@ export declare class Renderer {
      *  verticals about the LIVE screen center — a bake would freeze the
      *  lean about the stretch's own canvas center (THE STRAIGHT-WORLD
      *  PREREQUISITE; the fuse blows if the lean is ever revived). */
-    private staticLayerOn;
+    staticLayerOn(): boolean;
     /** Device pixels per tile for band bakes (THE CRISP GRID LAW):
      *  targetZoom (one flip per zoom, never mid-glide) × the adaptive
      *  dpr — the treeSprites resolution model, never the ground tier
@@ -1755,7 +1849,7 @@ export declare class Renderer {
      *  a replica of the LIVE environment (CSS-scaled ctx at dpr, snap
      *  on the device lattice), so painters and sprite blits behave
      *  byte-for-byte as on screen. */
-    private bandGridPx;
+    bandGridPx(): number;
     /**
      * THE HOT MEMBER RULE's walk, upgraded for THE SETTLED CUT (round
      * 14). Returns:
@@ -1951,20 +2045,6 @@ export declare class Renderer {
      * running-bond for stone) — change them together.
      */
     private paintFaceBands;
-    /** Rampart ashlar — cooler and deeper than house stone on purpose. */
-    private static readonly GAR_FACE;
-    /** The battered talus footing the curtain flares into. */
-    private static readonly GAR_PLINTH;
-    /** The wall-walk flags between the parapets. */
-    private static readonly GAR_TOP;
-    /** Sun-catching merlon caps — the lightest stone in the kit. */
-    private static readonly GAR_MERLON_TOP;
-    /** Dressed trim for gate piers, thresholds, and side-gate landings. */
-    private static readonly GAR_TRIM;
-    /** Gatehouse leaves: iron-bound oak, darker than any house door. */
-    private static readonly GAR_LEAF;
-    /** Portcullis and strap iron. */
-    private static readonly GAR_IRON;
     /**
      * Garrison-run neighbour test — the separate-masonry law's auto-
      * tiler. Curtain runs merge ONLY with garrison tiles (a keep's
@@ -2001,41 +2081,7 @@ export declare class Renderer {
      * kind, so a curtain meeting a building run cuts to one shared
      * crown line.
      */
-    private garrisonHeightAt;
-    /**
-     * Great-ashlar face masonry, drawn in the CURRENT frame with the
-     * base line at y = 0 and the face rising to -hs (callers set up
-     * plain or sheared frames — a diagonal's courses land parallel to
-     * its hypotenuse exactly like paintFaceBands). The block grid is
-     * WORLD-ANCHORED: joints and per-block tints key off world-space
-     * block indices, so a course runs unbroken across every tile of a
-     * run and two neighbours can never disagree about a joint.
-     */
-    private paintGarrisonMasonry;
-    /**
-     * One parapet merlon — a square-hewn tooth standing mh above the
-     * wall-walk. Drawn inside the crown's height layer in plan coords:
-     * (mx0, my0) is the tooth's plan footprint (mw × md); the outward
-     * face rises from the footprint's south edge and the cap plane
-     * lifts by mh, so the 2.5D top-plane law holds at parapet scale.
-     */
-    private merlonBox;
-    /**
-     * A straight curtain-wall tile. Same structural skeleton as
-     * wallItem (shared-edge snapping, rear riser, one crown layer) with
-     * the garrison dialect throughout — and the crenellated struct
-     * outline: the crown silhouette steps over every parapet tooth, so
-     * even at far zoom the black edge itself reads castellated.
-     */
-    private garrisonWallItem;
-    /**
-     * A 45° curtain turn. Same geometry laws as diagWallItem (near-row
-     * sort for camera-facing masses, sheared face frame so courses land
-     * parallel to the hypotenuse) with garrison masonry, and parapet
-     * teeth marching along the hyp — square-hewn blocks stepping the
-     * diagonal, which is exactly how real crenellation turns a corner.
-     */
-    private garrisonDiagItem;
+    garrisonHeightAt(game: ClientGame, tx: number, ty: number): number;
     /**
      * One iron-bound gatehouse leaf, drawn in the door frame (y = 0 at
      * the threshold). Heavier than any house door: vertical board
@@ -2043,36 +2089,13 @@ export declare class Renderer {
      * the free edge catching light as it stands ajar. The swing
      * compresses width toward the hinge exactly like the French pair.
      */
-    private paintGarrisonLeaf;
-    /**
-     * THE GATEHOUSE — a merged E-W garrison gate run as ONE arched
-     * passage through the curtain. (tx,ty) is the run's west anchor.
-     * The composition, ground up: worn threshold flags; a pair of
-     * iron-bound leaves to the spring line (doorOpenness swings them,
-     * a locked refusal shudders them); the raised portcullis showing
-     * its teeth in the arch head; a dressed voussoir arch with a proud
-     * keystone; garrison ashlar above; a machicolation band under the
-     * parapet; flanking piers with quoined edges wearing raised caps —
-     * and the curtain's crenellation marching unbroken over the whole
-     * gate. Every element rides the same veil height as the runs it
-     * joins, so a revealed gate sinks with its wall.
-     */
-    private garrisonGateItem;
-    /**
-     * A garrison gate in a N-S curtain — the edge-on passage, in the
-     * side-doorway grammar at fortification scale: the curtain run ENDS
-     * at the opening (honest notch), worn passage flags with landing
-     * slabs poking out both approaches, and ONE tall iron-bound leaf —
-     * thrown open it stands outside the wall line in the neighbour
-     * column; shut it reads as the edge-on slab barring the notch.
-     */
-    private garrisonSideGateItems;
+    paintGarrisonLeaf(hx: number, dir: 1 | -1, w: number, yTop: number, h: number, oc: number, s: number): void;
     /**
      * How veiled a doorway's dark interior fill is: 1 far away, easing
      * to 0 as any body nears the threshold — the door "opens" for
      * whoever approaches, no swinging leaf needed.
      */
-    private doorVeil;
+    doorVeil(_game: ClientGame, cx: number, cy: number): number;
     /**
      * One paneled timber door leaf on a south face, drawn in the current
      * (leaned) frame. `hx` is the hinge edge, `dir` which way the leaf
@@ -2251,18 +2274,6 @@ export declare class Renderer {
      * south-west turns catch the light - the three tones that make a
      * turned corner read as a solid mass.
      */
-    /** Contour segments per marching-squares mask, with outward normals.
-     *  Endpoints in dual-cell units: T(0,-.5) R(.5,0) B(0,.5) L(-.5,0). */
-    private static readonly FACE_SEGS;
-    /**
-     * SQUARE-CORNER contour variant, used for dual cells that touch a
-     * stair tile. A beveled (diagonal) corner cuts a quarter-tile into
-     * the neighbouring column — beside a stair that hangs the corner's
-     * curtain over the flight. Square corners hug the tile boundary, so
-     * the stair's column stays sacrosanct: walls turn AT its edge, with
-     * an edge-on side piece (M = cell center = the shared tile corner).
-     */
-    private static readonly SQUARE_SEGS;
     /**
      * THE STANDING WORLD phase 3 — the cliff contour memo. The
      * marching-squares scan (mask + stair ownership per dual cell, per
@@ -2276,223 +2287,39 @@ export declare class Renderer {
      * per-frame, and the paint is byte-identical because nothing
      * downstream of the scan changed.
      */
-    /** Runs cut every this many tiles — a shelf, not a wall (round
-     *  10's law: one piece is never a budget), and the same ledger
-     *  covers ~4x the rim. */
-    private static readonly CLIFF_RUN_MAX_SPAN;
-    /** Bake box in tiles around a run's row line: above the crown top
-     *  (brow tuck + margin), below the base (AO stroke + scree), and
-     *  sideways past the span (tuft overhang, joint lean). Proven by a
-     *  fat-margin rig bake, round 8's method. */
-    private static readonly CLIFF_BAKE_NORTH_T;
-    private static readonly CLIFF_BAKE_SOUTH_T;
-    private static readonly CLIFF_BAKE_PAD_X_T;
     /** THE CLIFF JOINS THE STANDING WORLD — cached curtain bakes, keyed
      *  run geometry + world rev + grid (zoom/dpr). Evicted beside the
      *  tree sprites; recycled through the shape pool. */
-    private readonly cliffSprites;
-    private cliffMemo;
-    /** Chunk revs over the padded scan window — the memo's world key. */
-    private cliffRevKey;
-    private collectCliffFaces;
-    private buildCliffMemo;
-    /**
-     * One merged side run, emitted per world row with live water-fall
-     * probing — the scan's old emitRun closure, verbatim. Falls stay
-     * fully live: their clips and race read the world each frame.
-     */
-    private emitCliffSideRun;
-    /** One contour segment extruded into a face curtain (level -> level-1). */
-    private cliffFaceItem;
-    /**
-     * One straight rim run as a single DrawItem. Strat, sortY and the
-     * contact shadow reproduce cliffFaceItem's own formulas exactly —
-     * members of a straight run share ay === by, so min(ay, by) is ay
-     * for every member and one item sorts precisely where its members
-     * did. The contact quad over the whole span is the union of the
-     * members' colinear quads, pixel for pixel.
-     */
-    private cliffRunItem;
-    /**
-     * Blit the run's cached curtain; bake it through the shared sprite
-     * admission lanes when missing; and when no bake stands (declined,
-     * mid-glide, layer off) fall back to the members' own live paint —
-     * THE STILL-WORLD BARGAIN: a bake is a cache, never a mode.
-     */
-    private drawCliffRun;
-    /**
-     * Bake one run (THE SAME-BRUSH LAW): the ctx, camera, snap lattice
-     * and viewport swap to the curtain canvas, and the members' items
-     * are constructed AGAIN under the swap and draw themselves — the
-     * bake is byte-for-byte the live painter's own work. Anchor pads
-     * round to whole device pixels (THE ANCHOR SITS ON THE LATTICE).
-     */
-    private bakeCliffRun;
-    /**
-     * Wall THICKNESS for one row-slice of a north-south rim run (world
-     * x, world y s0..s1, flags marking the run's true ends). The plane
-     * itself is edge-on to the orthographic camera, so we cheat a strip
-     * of the wall's outward flank into view: faces terminate into it and
-     * jogged rims read as one continuous mass. Slices partition the
-     * run's screen extent exactly (each covers [wts(s0)-topLift,
-     * wts(s1)-topLift]; the bottom slice extends to the base), so the
-     * flat fill tiles seamlessly. Each slice sorts EARLY — a zero-width
-     * plane must lose every overlap contest against rocks, props and
-     * entities standing beside it; only the sky above them shows wall.
-     * EVERY slice sorts at the RUN's north end (runTop), not its own
-     * row: a per-slice sort let a southern slice beat a body standing
-     * north of it and crop the blade it swung past the rim (the
-     * armory-crop fix) — the strip never honestly occludes anything,
-     * so the whole run loses together.
-     */
-    private cliffSideItem;
+    readonly cliffSprites: Map<string, CliffRunBake>;
+    cliffMemo: {
+        key: string;
+        levels: Array<{
+            level: number;
+            /** Flat records: ax, ay, bx, by, nx, ny, ci, cj per south face. */
+            faces: number[];
+            /** Flat records: ax, ay, bx, by, nx, ny per north fall. */
+            norths: number[];
+            /** Flat records: nx, x, a, b per merged side run. */
+            runs: number[];
+            /** Flat records: o0, o1, rev per straight-south face run —
+             *  ordinals into `faces` (÷8), grouped once per memo so the
+             *  cached-curtain lane never re-derives them per frame. */
+            fruns: number[];
+        }>;
+    } | null;
     /** Memoized SPILL-LAW lookup (waterfalls.ts) — pure world data, so
      *  results cache across frames and clear with the world, like
      *  dockMemo. Keys quantize the normal but pass the TRUE normal
      *  through: the diagonal start-tile offsets depend on it. */
-    private readonly fallMemo;
-    private fallMemoVersion;
-    private fallAt;
+    readonly fallMemo: Map<string, SpillInfo | null>;
+    fallMemoVersion: number;
     /** Organic water-region clip paths for the falls (world tile coords,
      *  applied under the camera affine like the reflection composite) —
      *  cached per fall run, cleared with the world like fallMemo. */
-    private readonly fallClipMemo;
-    private fallClipVersion;
-    private fallClip;
-    /** Clip the ctx to a world-coordinate region path lifted by `lift`
-     *  screen px — the reflection-composite idiom: transform, clip,
-     *  restore the transform but keep the clip. Callers wrap in
-     *  save()/restore(). */
-    private clipFallRegion;
-    /**
-     * THE MOUTH REGION — the feed channel's drawn water region EXTENDED
-     * through the dry rim strip to the crest by a VIRTUAL sampler: the
-     * spill columns' rim tiles count as water, so marching squares
-     * grows organic banks that CONTINUE the channel's own drawn banks
-     * exactly (the shared tile edges hash to the same crossings). The
-     * headrace tongue clipped to this region meets the authored water
-     * edge seamlessly — the alignment the straight tile-edge tongue
-     * never had. `axis` is the run's direction; (runA..runB) the tile
-     * range along it; `rim` the first dry tile row/col on the high
-     * side; `step` walks from the rim toward the feed water.
-     */
-    private mouthClipFor;
-    /** THE LANDING REGION — the real drawn water at the landing
-     *  elevation around a fall's foot. Pool dressing (outwash entering
-     *  the pool, rings, rafts, the strong mist veil) clips to it so
-     *  nothing paints onto drawn grass past the meandering shoreline. */
-    private landClipFor;
-    /** The contiguous spill run through a boundary column — the mouth
-     *  region must span the WHOLE run (per-segment virtual sets would
-     *  seam mid-channel). Walks quarter-point spill tests both ways. */
-    private fallRunColsX;
-    /** Smooth value noise over one world axis, level-salted — the falls'
-     *  anti-repetition lattice (the cliff-face world-keying law). */
-    private static fallNoise;
-    private fallTones;
-    /** THE BREAKWATER — where the sheet knifes into the pool. Not a
-     *  band and never a slab: a rank of low-poly FOAM MOUNDS in the
-     *  world's own two-tone blob language (wash base under a lit foam
-     *  cap, chunky 7-vertex polygons like every canopy and pool blob
-     *  in the game), overlapping along a WORLD-KEYED grid so segment
-     *  seams vanish, and tapering to nothing at true run ends
-     *  (capL/capR) — the foam ends because the mounds shrink away,
-     *  never because a fill stops. Behind the rank, the dark LAP line
-     *  grounds the impact; in front, crescent backwash slides off into
-     *  the pool and the dissolving tail carries the last flecks out.
-     *  (ox,oy) = low-side push; `push` = screen-px drop to meet the
-     *  dipped sheet base. */
-    private drawFallChurn;
-    /** Airborne life at a fall's landing: drifting mist motes and darting
-     *  spray, dt-gated per visible fall (the portal-emitter idiom).
-     *  Enhancement layer — rides the Water motion setting. */
-    private emitFallHaze;
-    /**
-     * Spill tests for one downhill face segment, emitting the curtain
-     * and its low-ground dressing. Halves are tested independently (the
-     * same quarter-offset law as ramp ownership) so the curtain starts
-     * and stops on the channel's tile edges, not the dual cell's.
-     */
-    private pushSouthFallItems;
-    /**
-     * THE WATERFALL CURTAIN — water continuing over a cliff face,
-     * painted in THE POUR dialect: the world's flat-vector water
-     * language folded over an edge. Everything is OPAQUE stepped tone —
-     * never a translucent gradient (a see-through curtain reads as
-     * wallpaper on the wall, the shipped proof-of-concept failure).
-     * Top to bottom: the HEADRACE (the channel's own open-water tone
-     * carried solid to the lip, mid-current lanes stretching as the
-     * water gathers speed, a pale acceleration shelf where it thins
-     * over the arris), the CREST ROLL (the foreshortened curl — the
-     * top-plane law applied to water: a lit convex band riding the
-     * arris, tearing off in world-keyed scallops, casting one crisp
-     * shadow on the sheet), and the SHEET itself (0.4-tile world-grid
-     * bands of the water palette, each breaking at a world-keyed height
-     * into its air-charged lower half — a hard step, not a fade; base
-     * DIPPED south of the wall foot and free ends FLARED outward as
-     * the unconfined edge fans in air — the 2.5D pitch-out read; foam
-     * threads at constant SCREEN speed — phase rate divides by drop
-     * height so a two-level fall doesn't cascade twice as fast).
-     * Churn, outwash, rings and mist live in per-row items on the low
-     * ground (fallOutwashRowItem) so elevated landing rows — which
-     * blit as items at rowTy-0.01 — can't paint over them; diagonals,
-     * whose landing is a corner pocket rather than a row, draw their
-     * dressing right here. Every mark is keyed to WORLD coordinates
-     * (the cliff-face law): the sheet runs unbroken across segment
-     * seams and around 45° turns, and both dip and band edges key to
-     * world x so abutting segments join pixel-true.
-     */
-    private waterfallItem;
-    /**
-     * One low-ground row of a straight fall's landing: the outwash
-     * tongue slice (spreading as it runs, whitest at impact); row 0 adds
-     * the churn mound over the sheet's foot; the last row adds pool
-     * rings (FLAT-law 0.6 ellipses), drifting foam rafts, the mist veil,
-     * and owns the haze particles. Per-row items because elevated
-     * landing rows blit as items at rowTy-0.01 — one spanning item
-     * would be painted over by every row after its own.
-     */
-    private fallOutwashRowItem;
-    /**
-     * THE SIDE FALL — water over a pure north-south rim. The face is
-     * edge-on (the cliffSideItem cheat strip), so the fall reads as a
-     * narrow ribbon hugging the rim line: crest fold at the top, scroll
-     * threads at constant screen speed, aerating body, churn stack at
-     * the landing. One item per contiguous water streak of the run —
-     * the sheet's motion needs the whole height, not row-sliced phases.
-     * Sorts at its FIRST row without the side item's early bias: every
-     * wall slice that can overlap sorts earlier by construction (their
-     * bias is the full crown lift), while bodies beside the rim still
-     * win against the wall line itself.
-     */
-    private fallRibbonItem;
-    /**
-     * A side fall's flat-ground dressing: the crown headrace running
-     * sideways into the rim line, the outwash fanning across the low
-     * ground, pool rings and the mist veil. Sorts after every crown and
-     * landing row blit it can touch ((r1-1)+0.03 beats rowTy-0.01).
-     */
-    private fallSideDressItem;
-    /**
-     * NORTH falls: the face looks away from the camera, so the visible
-     * story is the crown — the race running away toward the edge, the
-     * boil at the silhouette, the peeking top of the hidden sheet — and
-     * beyond the ridge, the far basin's churn (occluded by the lifted
-     * crown exactly where it should be) plus a rising plume. Diagonal
-     * back-bevels are skipped: the flanking cardinal faces carry them.
-     */
-    private pushNorthFallItems;
-    /** The crown half of a north fall: race away to the edge + the boil
-     *  line at the silhouette. Sorts after every crown row it crosses. */
-    private northFallRaceItem;
-    /** The far-basin half of a north fall: churn, rings and a small
-     *  veil at the landing, sorted to draw BEFORE the lifted crown rows
-     *  so the ridge occludes it exactly where it should. */
-    private northFallChurnItem;
+    readonly fallClipMemo: Map<string, Path2D | null>;
+    fallClipVersion: number;
     /** Descent direction of a Ramp tile: the cardinal neighbor a level down. */
     private rampDir;
-    /** Deterministic per-stone jitter, world-keyed like the terrain bake. */
-    private static stone01;
     /**
      * A stone stair crossing the cliff line - real STEPPED PRISMS, not a
      * striped slab. Flights climbing away from the camera show receding
@@ -2645,19 +2472,19 @@ export declare class Renderer {
      *  same live shear delta the body blit wears; `tone` re-bakes on the
      *  sun/moon flip. */
     private readonly treeShadows;
-    private treeBakeBudget;
+    treeBakeBudget: number;
     /** Running average sprite-bake cost (ms) — the admission estimate
      *  for the cost-aware budget gates. Admitting at "budget > 0" let a
      *  0.01ms remainder start a full 0.15-0.6ms bake; every gate now
      *  asks for ~half the average cost up front. */
-    private bakeCostEma;
+    bakeCostEma: number;
     private treeShadowBudget;
     /** Per-frame time budget for non-visible sprite bakes (pad bands,
      *  cadence re-bakes) — see SPRITE_BAKE_MS. */
-    private spriteBakeMsLeft;
-    private visSpriteMsLeft;
+    spriteBakeMsLeft: number;
+    visSpriteMsLeft: number;
     /** Law 2's count floor (bakeAdmission.ARRIVAL_MIN_COUNT a frame). */
-    private visArrivalCount;
+    visArrivalCount: number;
     /** The frame's y-sorted draw list — persistent, cleared at reuse. */
     private readonly drawItems;
     /** The level-0 chunk ground composites through the GL stage and
@@ -2688,7 +2515,7 @@ export declare class Renderer {
      *  temporarily swaps the sink so the cast brushes' assembly
      *  branches emit into the LAYER stream (A3) with zero new plumbing
      *  at the push sites. */
-    private stageWorldItems;
+    stageWorldItems: StageItem[];
     /** THE SHADOW LAYER RIDES THE STAGE (A3): the prepass collected as
      *  stage items, rendered into the world stage's alpha FBO and
      *  composited once at the layer alpha — the first content of the
@@ -2698,8 +2525,12 @@ export declare class Renderer {
     private stageShadowPending;
     /** True while the world pass assembles the stage stream — painters'
      *  blit sites emit quads instead of ctx calls. */
-    private stageAssembling;
-    private readonly stageWorldStats;
+    stageAssembling: boolean;
+    readonly stageWorldStats: {
+        quads: number;
+        paints: number;
+        splits: number;
+    };
     /** Dev diagnosis: what KINDS still split (read from the probe). */
     readonly stageSplitKinds: Map<string, number>;
     readonly stageSplitSamples: string[];
@@ -2716,7 +2547,7 @@ export declare class Renderer {
     private stagePaintCount;
     /** Push a raw closure through the scratch lane (SAME-BRUSH swap) —
      *  the painters' own door for live fallbacks with known rects. */
-    private stagePushPaintRaw;
+    stagePushPaintRaw(px: number, py: number, pw: number, ph: number, paint: () => void, tag?: string): void;
     /**
      * Assembly-run one item: its stage-aware painters emit quads (and
      * push their own bounded fallbacks); the item's alpha folds into
@@ -2748,7 +2579,7 @@ export declare class Renderer {
      */
     private stageWorldPass;
     /** Assembly-time alpha for quad-emitting painters (band fades). */
-    private stageItemAlpha;
+    stageItemAlpha: number;
     /** Could relightBody paint anything this frame? Its own first
      *  gates, hoisted — by day (or with the budget spent) a cached
      *  body is a pure blit and may ride the quad lane. */
@@ -2775,7 +2606,7 @@ export declare class Renderer {
      * rev alone was trusted), and the SAME owner's in-place re-bake
      * re-uploads via its own frame stamp.
      */
-    private stageSpriteTex;
+    stageSpriteTex(canvas: HTMLCanvasElement, rev: number, owner: object): StageTexture;
     /** Lazily stand the stage up; a context loss parks it until the
      *  restore handler clears the flag (THE TOGGLE IS THE PRODUCT'S
      *  SAFETY — the canvas path serves every parked frame). */
@@ -2856,7 +2687,7 @@ export declare class Renderer {
     private readonly debrisProbe;
     /** Per-frame shadow-mask bake allowance — see shadowMask. */
     private maskBakeBudget;
-    private frameNo;
+    frameNo: number;
     /** Trees drawn last frame — feeds the adaptive re-bake cadence. */
     private treesVisible;
     private treeCadence;
@@ -2898,7 +2729,7 @@ export declare class Renderer {
      * forbids shipped once and took the world off the screen with it);
      * this is only the frame's state, handed over.
      */
-    private admitSpriteBake;
+    admitSpriteBake(missing: boolean, visNow: boolean): BakeLane;
     /** Reused admission-state record — the frame loop mints no garbage. */
     private readonly bakeBudgets;
     /** THE FLOOR's one-per-frame token (see admitSpriteBake). */
@@ -3024,7 +2855,13 @@ export declare class Renderer {
     private propFade;
     private drawPropOutlined;
     /** Pool-aware canvas acquisition shared by the world-prop sprite bakes. */
-    private acquireSpriteCanvas;
+    acquireSpriteCanvas(prev: {
+        canvas: HTMLCanvasElement;
+        ctx: CanvasRenderingContext2D;
+    } | undefined, pw: number, ph: number): {
+        canvas: HTMLCanvasElement;
+        sctx: CanvasRenderingContext2D;
+    };
     /**
      * Wild forage nodes, cached exactly like trees: per-instance sprite
      * re-baked on the shared adaptive cadence, outline ring baked in.
@@ -3706,48 +3543,15 @@ export declare class Renderer {
     private drawOwnWardDome;
     private statusAmbience;
     /**
-     * The world-space half of the worn-light grammar (wornLight.ts holds
-     * the law): the trail under the boots, the wake off the cape, and the
-     * body-wide corona. The body-space half — brow, weave, knuckles,
-     * greaves, rune face — rides the rig, where the joints are known.
-     *
-     * Called once per lit body per frame from collectEntities. Rate-gated
-     * on frameDt exactly like statusAmbience, so the effect costs the
-     * same at 30fps and 144fps.
-     */
-    private wornLight;
-    /**
-     * Ground speed, in tiles per second, for a body we only ever see
-     * positions of. Remote bodies arrive interpolated and own arrives
-     * predicted, so measuring the delta is both the simplest and the most
-     * honest source: whatever the body VISIBLY did is what the trail
-     * answers to.
-     */
-    private trackWornMotion;
-    /**
      * THE TRAIL. Prints stamped one stride apart, alternating left and
      * right of the line of travel, plus motes shed while moving. Speed
      * gated: walking leaves nothing, only a runner paints.
      */
-    private trail;
-    /**
-     * THE WAKE. The cape's channel: matter shedding off the trailing hem,
-     * behind the body and low, so it reads as the garment leaving light
-     * behind rather than the body being on fire. Motion-scaled, because a
-     * standing cape has no wake.
-     */
-    private capeWake;
-    /**
-     * The body-wide corona. Tier is loudness: a tier-1 kit gets nothing
-     * here (its whole voice is the per-slot glint on the rig), tier 2
-     * gets a quiet lamp that becomes real scene light after dark, and
-     * tier 3 gets the living charge that marks a walking masterwork.
-     *
-     * The corona answers the STRONGEST worn working only. Summing eight
-     * of them would put a bonfire on anyone with a full kit and undo the
-     * per-slot reading the whole grammar is built on.
-     */
-    private wornCorona;
+    trail(key: string | number, x: number, y: number, dir: number, speed: number, slot: {
+        element: string;
+        tier: number;
+        tint: ElementTint;
+    }, voice: number, mayShed: boolean): void;
     /** Placed summons: totem, snare trap, straw decoy. */
     /**
      * THE STONE REMEMBERS: a little headstone over a spilled pack, up
@@ -3913,54 +3717,6 @@ export declare class Renderer {
     private drawCombatFx;
     /** An annular sector (arc band) path in ground perspective. */
     private fxSectorPath;
-    /** Screen-space footprint of a tile, elevation-lifted. */
-    private ghostFootprint;
-    /** The mass triangle of a 45° piece over a footprint rect. */
-    private ghostDiagPath;
-    private drawBuildGhost;
-    private drawActionProgress;
-    /**
-     * THE SPOKEN BEAT's face: stage pips under the own body while a
-     * string is alive. Filled pips = beats already swung, the next pip
-     * ghosted; the whole row is the GRACE EMBER — it burns down with the
-     * window and fades out as the string dies. THE RUN warms the pips
-     * once the rhythm holds past one full string. Same canvas dialect as
-     * the cast bar above it; single-beat lanes (len 1) stay silent.
-     */
-    private drawComboBeat;
-    private drawFloaties;
-    /**
-     * THE RISEN WORD: interaction answers standing in the world —
-     * "LOCKED" over the chest, "PACK FULL" over your own head. A
-     * different voice from damage numbers on purpose: capitals, letter
-     * air, the full eight-tap ink ring (the icons' outline dialect), a
-     * settle instead of a flight. A deny-toned word is born with a short
-     * head-shake — the shape of "no" you can read before the letters.
-     * Words live on game.words under the dedupe law (a re-ask re-pops
-     * the standing word via its refreshed bornAt).
-     */
-    private drawWords;
-    /**
-     * THE PROP MUSEUM (dev builds only): on the museum plane every
-     * plinth speaks at once — each sign's title hangs as a small plate
-     * beneath its post so a reviewer reads a whole aisle at a glance
-     * instead of plaque-by-plaque through the sign HUD's 2.9-tile
-     * radius. Loot-plate dialect, calmer: no ration, no climb — the
-     * floor plan already spaces the plinths. Off-plane this is a single
-     * string compare per frame.
-     */
-    private drawMuseumLabels;
-    private drawHpBar;
-    /**
-     * THE WOUND ROW (visible-buildcraft V2): the player's own riding
-     * states, on the vitality gauge's shoulder. ONE GRAMMAR, EVERY
-     * SCALE — the same inks, the same priority order, and the same xN
-     * stack voice as every nameplate, scaled up for the owner. It
-     * stands ABOVE the bar because the hotbar owns the south edge; no
-     * timers are invented (the wire carries bits and stacks, and that
-     * is what is shown). Empty when clean — no furniture for nothing.
-     */
-    private drawOwnWounds;
     drawChestBoss(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number, t: number, h: number): void;
     drawChestGilded(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number, t: number, h: number): void;
     drawChestIron(ctx: CanvasRenderingContext2D, cx: number, baseY: number, s: number, o: number): void;
