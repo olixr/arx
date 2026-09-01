@@ -346,6 +346,16 @@ import {
   type FxStyle,
 } from './abilityFx.js';
 import { SIGNATURES, type SigCtx } from './fxSignatures.js';
+import { GlStage } from './stage/glStage.js';
+import { GPU_URGENT_MS } from './stage/gpuBudget.js';
+import {
+  StageBlend,
+  stageAt,
+  type StageItem,
+  type StageMatrix,
+  type StageQuad,
+  type StageTexture,
+} from './stage/stageTypes.js';
 
 /**
  * Signature style: shadows are solid and sharp — never blurred. They
@@ -1332,6 +1342,11 @@ interface BakedChunk {
   canvas: HTMLCanvasElement;
   data: ChunkData;
   rev: number;
+  /** THE TEXTURE IS THE CANVAS'S SHADOW (stage lane): the GL handle
+   *  for this entry's base canvas. Created at first stage emission,
+   *  retargeted there when the pooled bake swap replaces the canvas,
+   *  released in recycleBakedEntry — one owner, one lifecycle. */
+  stageTex?: StageTexture;
   /** Pixels per tile this bake was rendered at (zoom-tier dependent). */
   px: number;
   /**
@@ -1488,6 +1503,27 @@ interface DrawItem {
    * blit would cover. `occCulled` is the pass's verdict.
    */
   occKey?: number;
+  /** Band-bucket marker (stage lane): a pure lattice blit the world
+   *  sink may quadify at assembly. Set only by emitStretch. */
+  band?: { sb: StretchBake; bk: BandBucket };
+  /** Paint bounds (stage lane): the screen rect this item's closure
+   *  may touch, for push sites that know it — the sink prefers this
+   *  over the split path. Sized honest-and-generous; the oracle's
+   *  clip makes an undersized box a visible defect, not a quiet one. */
+  pb?: { x: number; y: number; w: number; h: number };
+  /** Stage-safe (phase A2p2): this item's draw touches this.ctx ONLY
+   *  through stage-aware painters (their blit sites emit quads, their
+   *  live fallbacks push bounded paints). Set at the push site — an
+   *  explicit, reviewable promise, kept honest by the parity gates. */
+  stageSafe?: true;
+  /** THE WALL LANE (phase A2p3): a reconstruction closure for items
+   *  whose brushes closed over the frame ctx at collect time (THE
+   *  CAPTURE LAW) — it re-emits the member under the CURRENT this.ctx
+   *  and draws only this item's part. The bakes' own pattern; pb is
+   *  its bounds. Doorways and windows are permanent live items by
+   *  design, and were the dominant split class (fps ~linear in
+   *  splits: avenue 29fps at 147 splits). */
+  stageRebuild?: () => void;
   occX0?: number;
   occY0?: number;
   occX1?: number;
@@ -1940,6 +1976,12 @@ export class Renderer {
   /** Every canvas a baked entry owns — its base and its lifted layers. */
   private recycleBakedEntry(entry: BakedChunk | undefined): void {
     if (!entry) return;
+    // The GL shadow dies with its entry (ONE LIFECYCLE) — the pooled
+    // canvas will serve another chunk under a fresh handle.
+    if (entry.stageTex) {
+      this.stageGl?.release(entry.stageTex);
+      entry.stageTex = undefined;
+    }
     this.recycleChunkCanvas(entry.canvas);
     if (entry.lifted) {
       for (const l of entry.lifted) this.recycleChunkCanvas(l.canvas);
@@ -3602,6 +3644,11 @@ export class Renderer {
   /** Arm the shadow target for a cast fill; null while nothing casts. */
   private beginCastFill(): CanvasRenderingContext2D | null {
     if (this.sky.shadowAlpha < 0.02) return null;
+    // Under assembly every cast brush must have taken its quad branch
+    // before reaching this gateway — a hit here is an uncovered path
+    // painting the REAL frame mid-classification. Count it so the
+    // census names it (a leak we cannot name cannot be retired).
+    if (this.stageAssembling) this.stageCastLeak();
     const c = this.sdw;
     c.globalAlpha = Math.min(1, this.sky.shadowAlpha / this.sdwLayerAlpha);
     c.fillStyle = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
@@ -3610,6 +3657,7 @@ export class Renderer {
 
   /** Arm for a grounding contact fill — never fully disappears. */
   private beginContactFill(): CanvasRenderingContext2D {
+    if (this.stageAssembling) this.stageCastLeak(); // see beginCastFill
     const c = this.sdw;
     const a = Math.min(CONTACT_MAX, Math.max(CONTACT_MIN, this.sky.shadowAlpha));
     c.globalAlpha = Math.min(1, a / this.sdwLayerAlpha);
@@ -3650,6 +3698,10 @@ export class Renderer {
    * its smear can never double-darken each other.
    */
   private castBlob(bx: number, by: number, hTiles: number, r: number, seed: number, smearW = 0): void {
+    if (this.stageAssembling && this.stageCastLane) {
+      this.stageCastBlob(bx, by, hTiles, r, seed, smearW);
+      return;
+    }
     const sunC = this.beginCastFill();
     if (sunC) {
       const off = this.castOffset(hTiles);
@@ -3676,6 +3728,10 @@ export class Renderer {
 
   /** A prism's ground shadow: its base edge extruded along the sun. */
   private castEdgeQuad(x0: number, y0: number, x1: number, y1: number, hTiles: number): void {
+    if (this.stageAssembling && this.stageCastLane) {
+      this.stageCastEdge(x0, y0, x1, y1, hTiles);
+      return;
+    }
     const c = this.beginCastFill();
     if (!c) return;
     const off = this.castOffset(hTiles);
@@ -3696,6 +3752,10 @@ export class Renderer {
    * lamps and you drag a pair.
    */
   private castBody(px: number, py: number, r: number): void {
+    if (this.stageAssembling && this.stageCastLane) {
+      this.stageCastBody(px, py, r);
+      return;
+    }
     const c = this.beginContactFill();
     c.beginPath();
     c.ellipse(px, py, r, r * 0.45, 0, 0, Math.PI * 2);
@@ -3722,11 +3782,387 @@ export class Renderer {
 
   /** A small thing's plain contact ellipse (drops, summons). */
   private castContact(px: number, py: number, rx: number, ry: number): void {
+    if (this.stageAssembling && this.stageCastLane) {
+      this.stageCastEllipse(px, py, rx, ry, 0, this.contactAlpha());
+      return;
+    }
     const c = this.beginContactFill();
     c.beginPath();
     c.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
     c.fill();
     c.globalAlpha = 1;
+  }
+
+  // ------------------------------ THE CAST SPEAKS IN QUADS (A2 part 6)
+  //
+  // An in-sort cast is a flat translucent silhouette: a parallelogram
+  // extruded along the sun (castEdgeQuad), a seeded blob (castBlob),
+  // an ellipse (castContact / castBody's lobes), or an already-baked
+  // mask (castMask). Under stage assembly each brush emits the SAME
+  // shape as a quad in the item's exact painter position — order-safe
+  // by construction, because nothing is reordered — sampling a small
+  // sprite that canvas2d painted (so edge AA is the brush's own; the
+  // GL context is antialias:false and must never rasterize a diagonal
+  // edge itself). Before this lane, every elevated item extracted its
+  // cast as a scratch paint: 105 passes / 287MB a frame on the crown
+  // terraces, all of it upload waste — the closures paint through
+  // this.sdw, which the scratch swap never redirected, so the casts
+  // were landing on the 2d underframe BENEATH the GL image. The quad
+  // lane retires the waste and puts the casts back in sort order.
+  //
+  // Sprites key on the QUANTIZED device-pixel shape (dpr folded in),
+  // so a row of identical parapets shares one sprite and a slowly
+  // wheeling sun re-mints only on a whole-pixel crossing. During a
+  // zoom glide those keys would churn every frame — the brushes fall
+  // back to a bounded scratch paint (stageCastScratch) for the
+  // glide's duration, exactly like the band bakes stand down.
+
+  /** The cast lane's kill switch (every lane has one): off, the
+   *  brushes fall through to their raw painters — the pre-lane
+   *  pixels — for A/B bisection and as the emergency door. */
+  stageCastLane = true;
+
+  private readonly castSprites = new Map<
+    string,
+    { cv: HTMLCanvasElement; ax: number; ay: number; used: number }
+  >();
+
+  /** Bake-or-fetch one cast sprite. `w/h/ax/ay` are device px; the
+   *  painter draws in device px with (ax, ay) as the shape's anchor. */
+  private castSprite(
+    key: string,
+    w: number,
+    h: number,
+    ax: number,
+    ay: number,
+    paint: (c: CanvasRenderingContext2D) => void,
+  ): { cv: HTMLCanvasElement; ax: number; ay: number; used: number } {
+    const hit = this.castSprites.get(key);
+    if (hit) {
+      hit.used = this.frameNo;
+      return hit;
+    }
+    if (this.castSprites.size > 384) {
+      // LRU by last draw — the shadowMasks lesson: trimming by age
+      // evicts the standing working set and strobes.
+      const cold = [...this.castSprites.entries()].sort((a, b) => a[1].used - b[1].used);
+      for (let i = 0; i < 96 && i < cold.length; i++) this.castSprites.delete(cold[i]![0]);
+    }
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.ceil(w));
+    cv.height = Math.max(1, Math.ceil(h));
+    const c = cv.getContext('2d')!;
+    paint(c);
+    const entry = { cv, ax, ay, used: this.frameNo };
+    this.castSprites.set(key, entry);
+    return entry;
+  }
+
+  /** Count + sample a raw sdw painter reached under assembly — the
+   *  stack names the factory (dev forensics, split-sample pattern). */
+  readonly stageCastLeakSamples: string[] = [];
+  private stageCastLeak(): void {
+    this.stagePaintCount('cast-RAW-LEAK', 0, 0);
+    if (this.stageCastLeakSamples.length < 6) {
+      const st = (new Error().stack ?? '').split('\n').slice(2, 7).join(' | ').replace(/https?:\/\/[^\s/]+/g, '');
+      if (!this.stageCastLeakSamples.includes(st)) this.stageCastLeakSamples.push(st);
+    }
+  }
+
+  /** The in-sort contact alpha (beginContactFill's own arithmetic;
+   *  sdwLayerAlpha is 1 during the sorted pass). */
+  private contactAlpha(): number {
+    // Divides by the layer alpha like every in-layer brush (1 during
+    // the in-sort pass; the prepass layer restores the product).
+    return Math.min(1, Math.min(CONTACT_MAX, Math.max(CONTACT_MIN, this.sky.shadowAlpha)) / this.sdwLayerAlpha);
+  }
+
+  /** Emit one cast sprite as a stage quad. `m` rotates/shears when
+   *  given; otherwise the sprite lands axis-aligned with its anchor
+   *  at (refX, refY). Alpha 0 emits nothing. */
+  private stageCastQuadAt(
+    en: { cv: HTMLCanvasElement; ax: number; ay: number },
+    refX: number,
+    refY: number,
+    alpha: number,
+    m?: StageMatrix,
+  ): void {
+    if (alpha <= 0) return;
+    const dpr = this.dpr();
+    const dw = en.cv.width / dpr;
+    const dh = en.cv.height / dpr;
+    this.stageWorldItems.push({
+      kind: 'quad',
+      tex: this.stageSpriteTex(en.cv, 0, en),
+      sx: 0,
+      sy: 0,
+      sw: en.cv.width,
+      sh: en.cv.height,
+      dw,
+      dh,
+      m: m ?? stageAt(refX - en.ax / dpr, refY - en.ay / dpr),
+      alpha: Math.min(1, alpha),
+      blend: StageBlend.SourceOver,
+    });
+    this.stageWorldStats.quads++;
+  }
+
+  /** The glide fallback: one bounded scratch paint that runs the real
+   *  cast brush with this.sdw swapped to the scratch ctx (the cast
+   *  helpers paint through sdw, not this.ctx — the swap the old
+   *  extraction famously forgot). */
+  private stageCastScratch(px: number, py: number, pw: number, ph: number, run: () => void): void {
+    const pad = 8;
+    const x1 = Math.min(px + pw, this.w + pad);
+    const y1 = Math.min(py + ph, this.h + pad);
+    px = Math.max(px, -pad);
+    py = Math.max(py, -pad);
+    pw = x1 - px;
+    ph = y1 - py;
+    if (pw <= 0 || ph <= 0) return;
+    this.stagePaintCount('cast-scr', pw, ph);
+    // Capture the COLLECTION-time layer alpha: a deferred brush runs
+    // at flush, after sdwLayerAlpha resets to 1 — without the capture
+    // a prepass shadow deferred to scratch would skip its layer
+    // division and land double-dark once the layer composites.
+    const la = this.sdwLayerAlpha;
+    this.stageWorldItems.push({
+      kind: 'paint',
+      px,
+      py,
+      pw,
+      ph,
+      paint: (ctx: CanvasRenderingContext2D) => {
+        const saved = this.sdw;
+        const savedLa = this.sdwLayerAlpha;
+        this.sdw = ctx;
+        this.sdwLayerAlpha = la;
+        try {
+          run();
+        } finally {
+          this.sdw = saved;
+          this.sdwLayerAlpha = savedLa;
+        }
+      },
+    });
+    this.stageWorldStats.paints++;
+  }
+
+  /** Assembly branch of castEdgeQuad: the quantized parallelogram,
+   *  baked once, thrown as a quad. */
+  private stageCastEdge(x0: number, y0: number, x1: number, y1: number, hTiles: number): void {
+    if (this.sky.shadowAlpha < 0.02) return;
+    const off = this.castOffset(hTiles);
+    if (this.zoomGliding) {
+      const bx0 = Math.min(x0, x1) + Math.min(0, off.x);
+      const by0 = Math.min(y0, y1) + Math.min(0, off.y);
+      const bx1 = Math.max(x0, x1) + Math.max(0, off.x);
+      const by1 = Math.max(y0, y1) + Math.max(0, off.y);
+      this.stageCastScratch(bx0 - 1, by0 - 1, bx1 - bx0 + 2, by1 - by0 + 2, () =>
+        this.castEdgeQuad(x0, y0, x1, y1, hTiles),
+      );
+      return;
+    }
+    const dpr = this.dpr();
+    // True basis vectors (device px) and their quantized bake shape.
+    // The KEY is the quantized shape (a row of parapets shares one
+    // sprite), but the quad's matrix maps that bake back onto the
+    // TRUE parallelogram — the 2×2 A with A·u = u′, A·v = v′ — so
+    // the edges land sub-pixel exact. Whole-pixel edges measured as
+    // the crown's parity excess: at noon the extrusion is 2-3 device
+    // px, and rounding moved cast edges by up to 20% of their length.
+    const fdx = (x1 - x0) * dpr;
+    const fdy = (y1 - y0) * dpr;
+    const fox = off.x * dpr;
+    const foy = off.y * dpr;
+    const rnd = (v: number): number => {
+      const r = Math.round(v);
+      return r === 0 ? (v >= 0 ? 1 : -1) * (Math.abs(v) > 0.05 ? 1 : 0) : r;
+    };
+    const dx = rnd(fdx);
+    const dy = rnd(fdy);
+    const ox = rnd(fox);
+    const oy = rnd(foy);
+    if ((dx === 0 && dy === 0) || (ox === 0 && oy === 0)) return; // zero area
+    const det = dx * oy - dy * ox;
+    if (det === 0) return; // degenerate sliver (< 1px² of translucent smear)
+    const moon = this.sky.moonlit;
+    const key = `e:${dx}:${dy}:${ox}:${oy}:${moon ? 1 : 0}`;
+    const pad = 1;
+    const minX = Math.min(0, dx, ox, dx + ox);
+    const minY = Math.min(0, dy, oy, dy + oy);
+    const w = Math.max(0, dx, ox, dx + ox) - minX + pad * 2;
+    const h = Math.max(0, dy, oy, dy + oy) - minY + pad * 2;
+    const ax = pad - minX;
+    const ay = pad - minY;
+    const en = this.castSprite(key, w, h, ax, ay, (c) => {
+      c.fillStyle = moon ? SHADOW_MOON : SHADOW_SUN;
+      c.beginPath();
+      c.moveTo(ax, ay);
+      c.lineTo(ax + dx, ay + dy);
+      c.lineTo(ax + dx + ox, ay + dy + oy);
+      c.lineTo(ax + ox, ay + oy);
+      c.closePath();
+      c.fill();
+    });
+    // A = [u′ v′]·[u v]⁻¹ (bake px → true device px, then /dpr → CSS).
+    const a00 = (fdx * oy - fox * dy) / det;
+    const a01 = (fox * dx - fdx * ox) / det;
+    const a10 = (fdy * oy - foy * dy) / det;
+    const a11 = (foy * dx - fdy * ox) / det;
+    const m: StageMatrix = [
+      a00,
+      a10,
+      a01,
+      a11,
+      x0 - (a00 * ax + a01 * ay) / dpr,
+      y0 - (a10 * ax + a11 * ay) / dpr,
+    ];
+    this.stageCastQuadAt(en, x0, y0, Math.min(1, this.sky.shadowAlpha / this.sdwLayerAlpha), m);
+  }
+
+  /** Shared ellipse sprite (castContact and castBody's every part):
+   *  axis-aligned bake, rotation carried by the quad matrix. */
+  private stageCastEllipse(
+    px: number,
+    py: number,
+    rx: number,
+    ry: number,
+    ang: number,
+    alpha: number,
+  ): void {
+    if (alpha <= 0) return;
+    if (this.zoomGliding) {
+      const r = Math.max(rx, ry);
+      this.stageCastScratch(px - r - 1, py - r - 1, r * 2 + 2, r * 2 + 2, () => {
+        const c = this.sdw;
+        c.globalAlpha = alpha;
+        c.fillStyle = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
+        c.beginPath();
+        c.ellipse(px, py, rx, ry, ang, 0, Math.PI * 2);
+        c.fill();
+        c.globalAlpha = 1;
+      });
+      return;
+    }
+    const dpr = this.dpr();
+    const rxD = Math.max(1, Math.round(rx * dpr));
+    const ryD = Math.max(1, Math.round(ry * dpr));
+    if (rx * dpr < 0.05 || ry * dpr < 0.05) return; // sub-pixel sliver
+    const moon = this.sky.moonlit;
+    const key = `c:${rxD}:${ryD}:${moon ? 1 : 0}`;
+    const pad = 1;
+    const en = this.castSprite(key, rxD * 2 + pad * 2, ryD * 2 + pad * 2, rxD + pad, ryD + pad, (c) => {
+      c.fillStyle = moon ? SHADOW_MOON : SHADOW_SUN;
+      c.beginPath();
+      c.ellipse(rxD + pad, ryD + pad, rxD, ryD, 0, 0, Math.PI * 2);
+      c.fill();
+    });
+    // The bake is the quantized ellipse; the matrix stretches it back
+    // to the true radii (kx, ky) — same exact-mapping law as the
+    // parallelogram — with the rotation composed on the outside.
+    const kx = (rx * dpr) / rxD;
+    const ky = (ry * dpr) / ryD;
+    const dw = en.cv.width / dpr;
+    const dh = en.cv.height / dpr;
+    const cos = Math.cos(ang);
+    const sin = Math.sin(ang);
+    const a = cos * kx;
+    const b = sin * kx;
+    const cc = -sin * ky;
+    const d = cos * ky;
+    // Sprite center = anchor; center lands at (px, py).
+    const m: StageMatrix = [
+      a,
+      b,
+      cc,
+      d,
+      px - (a * dw) / 2 - (cc * dh) / 2,
+      py - (b * dw) / 2 - (d * dh) / 2,
+    ];
+    this.stageCastQuadAt(en, px, py, alpha, m);
+  }
+
+  /** Assembly branch of castBlob: the seeded facet blob, baked once
+   *  per (r, seed), thrown along the sun and away from each light —
+   *  the same sprite serves every throw. A smeared blob (no current
+   *  in-sort caller) keeps the honest scratch fallback. */
+  private stageCastBlob(bx: number, by: number, hTiles: number, r: number, seed: number, smearW: number): void {
+    const throws = this.lightThrows(bx, by, 0.6);
+    if (smearW > 0 || this.zoomGliding) {
+      const off = this.castOffset(hTiles);
+      let reach = Math.max(Math.abs(off.x), Math.abs(off.y));
+      for (const th of throws) reach = Math.max(reach, th.len * hTiles * this.camera.scale * 1.2);
+      const pad = r * 1.5 + smearW + reach + 2;
+      this.stageCastScratch(bx - pad, by - pad, pad * 2, pad * 2, () =>
+        this.castBlob(bx, by, hTiles, r, seed, smearW),
+      );
+      return;
+    }
+    const emitBlob = (rr: number, cx: number, cy: number, alpha: number): void => {
+      const dpr = this.dpr();
+      const rD = Math.round(rr * dpr);
+      if (rD <= 0) return;
+      const moon = this.sky.moonlit;
+      const key = `b:${rD}:${seed}:${moon ? 1 : 0}`;
+      const ext = Math.ceil(rD * 1.4) + 1; // facetBlob amplitude 0.35
+      const eyt = Math.ceil(ext * 0.62) + 1;
+      const en = this.castSprite(key, ext * 2, eyt * 2, ext, eyt, (c) => {
+        c.fillStyle = moon ? SHADOW_MOON : SHADOW_SUN;
+        c.save();
+        c.translate(ext, eyt);
+        c.scale(1, 0.62);
+        c.beginPath();
+        facetBlob(c, 0, 0, rD, seed, 7, 0.35);
+        c.restore();
+        c.fill();
+      });
+      // Exact-mapping law: the bake is the quantized-radius blob; the
+      // matrix scales it back to the true radius.
+      const k = (rr * dpr) / rD;
+      const m: StageMatrix = [k, 0, 0, k, cx - (k * en.ax) / dpr, cy - (k * en.ay) / dpr];
+      this.stageCastQuadAt(en, cx, cy, alpha, m);
+    };
+    if (this.sky.shadowAlpha >= 0.02) {
+      const off = this.castOffset(hTiles);
+      emitBlob(r, bx + off.x, by + off.y, Math.min(1, this.sky.shadowAlpha / this.sdwLayerAlpha));
+    }
+    if (throws.length > 0) {
+      const s = this.camera.scale;
+      const ys = this.camera.yScale;
+      for (const th of throws) {
+        const ox = th.ux * th.len * hTiles * s;
+        const oy = th.uy * th.len * hTiles * s * ys;
+        emitBlob(r * 0.92, bx + ox, by + oy, Math.min(1, th.alpha / this.sdwLayerAlpha));
+      }
+    }
+  }
+
+  /** Assembly branch of castBody: contact ellipse + sun lobe + light
+   *  lobes, each an ellipse quad (rotation in the matrix). */
+  private stageCastBody(px: number, py: number, r: number): void {
+    this.stageCastEllipse(px, py, r, r * 0.45, 0, this.contactAlpha());
+    const lobe = (ox: number, oy: number, alpha: number): void => {
+      const ang = Math.atan2(oy, ox);
+      const len = Math.hypot(ox, oy);
+      this.stageCastEllipse(
+        px + ox * 0.55,
+        py + oy * 0.55,
+        r * 0.5 + len * 0.5,
+        r * 0.4,
+        ang,
+        Math.min(1, alpha / this.sdwLayerAlpha),
+      );
+    };
+    if (this.sky.shadowAlpha >= 0.02) {
+      const off = this.castOffset(0.42);
+      lobe(off.x, off.y, this.sky.shadowAlpha * 0.75);
+    }
+    const s = this.camera.scale;
+    const ys = this.camera.yScale;
+    for (const th of this.lightThrows(px, py, 0.15)) {
+      lobe(th.ux * th.len * 0.42 * s, th.uy * th.len * 0.42 * s * ys, th.alpha);
+    }
   }
 
   // ------------------------------------- TRUE-FORM silhouette shadows
@@ -3848,6 +4284,25 @@ export class Renderer {
       const a = Math.min(1, alpha / this.sdwLayerAlpha);
       const tx = px - entry.au * q + kx * q * entry.av;
       const ty = baseY + ky * q * entry.av;
+      if (this.stageAssembling && this.stageCastLane) {
+        // The mask is already a baked sprite — the in-sort throw IS a
+        // quad: same canvas, same shear matrix, exact by construction.
+        this.stageWorldItems.push({
+          kind: 'quad',
+          tex: this.stageSpriteTex(entry.cv, 0, entry),
+          sx: 0,
+          sy: 0,
+          sw: entry.cv.width,
+          sh: entry.cv.height,
+          dw: entry.cv.width,
+          dh: entry.cv.height,
+          m: [q, 0, -kx * q, -ky * q, tx, ty],
+          alpha: a,
+          blend: StageBlend.SourceOver,
+        });
+        this.stageWorldStats.quads++;
+        return;
+      }
       if (onLayer) {
         c.globalAlpha = a;
         c.setTransform(q * dprL, 0, -kx * q * dprL, -ky * q * dprL, tx * dprL, ty * dprL);
@@ -3972,8 +4427,20 @@ export class Renderer {
               const worldTy = cy * CHUNK_SIZE + r;
               if (worldTy > b.maxTy + elevPadS || worldTy < b.minTy - ELEV_H * 3 - 1) continue;
               const level = layer.level;
+              const pbA = this.camera.worldToScreen(cx * CHUNK_SIZE, worldTy, this.w, this.h);
+              const pbB = this.camera.worldToScreen((cx + 1) * CHUNK_SIZE, worldTy + 1, this.w, this.h);
+              const pbLift = Math.round(level * ELEV_H * s);
               items.push({
                 sortY: worldTy - 0.01,
+                stageSafe: true,
+                // Stage bounds: the row slice at its lift, plus the
+                // grass layer's blade headroom above and lean slack.
+                pb: {
+                  x: pbA.x - s,
+                  y: pbA.y - pbLift - 1.6 * s,
+                  w: pbB.x - pbA.x + 2 * s,
+                  h: pbB.y - pbA.y + 1.6 * s + 0.4 * s,
+                },
                 // THE SHELF LAW: positive crowns are landscape (shelf 0
                 // — a body at the cliff foot peeks over the rim, and
                 // everything standing on the crown paints over its own
@@ -3992,17 +4459,34 @@ export class Renderer {
                   const y0 = Math.round(pA.y) - lift;
                   const px = baked.px;
                   const gut = bakeGutter(px);
-                  this.ctx.drawImage(
-                    layer.canvas,
-                    gut,
-                    gut + r * px,
-                    CHUNK_SIZE * px,
-                    px,
-                    x0,
-                    y0,
-                    Math.round(pB.x) - x0,
-                    Math.round(pB.y) - lift - y0,
-                  );
+                  if (this.stageAssembling) {
+                    this.stageWorldItems.push({
+                      kind: 'quad',
+                      tex: this.stageSpriteTex(layer.canvas, 0, layer),
+                      sx: gut,
+                      sy: gut + r * px,
+                      sw: CHUNK_SIZE * px,
+                      sh: px,
+                      dw: Math.round(pB.x) - x0,
+                      dh: Math.round(pB.y) - lift - y0,
+                      m: [1, 0, 0, 1, x0, y0],
+                      alpha: this.stageItemAlpha,
+                      blend: StageBlend.SourceOver,
+                    });
+                    this.stageWorldStats.quads++;
+                  } else {
+                    this.ctx.drawImage(
+                      layer.canvas,
+                      gut,
+                      gut + r * px,
+                      CHUNK_SIZE * px,
+                      px,
+                      x0,
+                      y0,
+                      Math.round(pB.x) - x0,
+                      Math.round(pB.y) - lift - y0,
+                    );
+                  }
                   // The plateau's own living layer: grass and flowers on
                   // the lifted surface, drawn on top of the row (already
                   // y-granular, so tall blades go down in the same pass).
@@ -4014,15 +4498,52 @@ export class Renderer {
                     minTy: worldTy,
                     maxTy: worldTy,
                   };
-                  drawLiveGround(
-                    this.ctx,
-                    rowGround,
-                    rowBounds,
-                    this.liftedWTS,
-                    s,
-                    performance.now(),
-                    this.waterFx(),
-                  );
+                  if (this.stageAssembling) {
+                    // Dry rows (nearly all of them) owe the live-water
+                    // pass NOTHING on the stage — scan honestly first,
+                    // and keep the WET SPAN: the paint box clips to
+                    // the wet tiles (a fountain row was paying the
+                    // whole row's scratch — 16-20MB/frame of elev-wet
+                    // on the terrace towns). Dry pixels inside the box
+                    // repaint what the layer quad already shows, so a
+                    // narrow box is exactly as correct as a wide one.
+                    let wetX0 = -1;
+                    let wetX1 = -1;
+                    for (let tx = rowBounds.minTx; tx <= rowBounds.maxTx; tx++) {
+                      const t = rowGround(tx, worldTy);
+                      if (t !== undefined && (t === Tile.Water || isFishingTile(t))) {
+                        if (wetX0 < 0) wetX0 = tx;
+                        wetX1 = tx;
+                      }
+                    }
+                    if (wetX0 >= 0) {
+                      const now2 = performance.now();
+                      const sx0 = Math.max(x0, this.camera.worldToScreen(wetX0, worldTy, this.w, this.h).x - s);
+                      const sx1 = Math.min(
+                        Math.round(pB.x),
+                        this.camera.worldToScreen(wetX1 + 1, worldTy, this.w, this.h).x + s,
+                      );
+                      this.stagePushPaintRaw(
+                        sx0,
+                        y0 - 0.5 * s,
+                        sx1 - sx0,
+                        Math.round(pB.y) - lift - y0 + s,
+                        () =>
+                          drawLiveGround(this.ctx, rowGround, rowBounds, this.liftedWTS, s, now2, this.waterFx()),
+                        'elev-wet',
+                      );
+                    }
+                  } else {
+                    drawLiveGround(
+                      this.ctx,
+                      rowGround,
+                      rowBounds,
+                      this.liftedWTS,
+                      s,
+                      performance.now(),
+                      this.waterFx(),
+                    );
+                  }
                   this.grass.drawRow(
                     this.ctx,
                     rowGround,
@@ -5132,6 +5653,75 @@ export class Renderer {
       1,
       Math.max(this.sky.shadowAlpha, CONTACT_MIN, this.frameLights[0]?.a ?? 0),
     );
+    if (this.stageWorldActive()) {
+      // THE SHADOW LAYER RIDES THE STAGE (A3): the prepass collects
+      // as stage items — the cast brushes' assembly branches emit
+      // exactly as they do in-sort, into the LAYER stream (the sink
+      // swap below is the whole plumbing) — rendered into the world
+      // stage's alpha FBO and composited once at the layer alpha in
+      // the frame's first flush, exactly where this 2d composite sat.
+      const prev = this.stageWorldItems;
+      this.stageWorldItems = this.stageShadowItems;
+      this.stageShadowItems.length = 0;
+      this.stageWorldStats.quads = 0;
+      this.stageWorldStats.paints = 0;
+      this.stageAssembling = true;
+      try {
+        for (const item of items) {
+          if (!item.elevated) item.drawShadow?.();
+        }
+        if (this.grass.hasShadows()) {
+          // The meadow's shade: one bounded paint; the closure runs
+          // the same flush against the scratch ctx at flush time.
+          const gcol = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
+          const ga = Math.min(1, (this.sky.shadowAlpha * 0.85) / this.sdwLayerAlpha);
+          this.stagePushPaintRaw(
+            0,
+            0,
+            this.w,
+            this.h,
+            () => this.grass.flushShadows(this.ctx, gcol, ga),
+            'grass-shade',
+          );
+        }
+        // SHELTERED ROOMS RECEIVE NO SKY: the interior punch is a
+        // DestinationOut fill — the blend the layer target legalizes
+        // (the A0 refusal symmetry anticipated exactly this).
+        if (this.visibleRegions.length > 0) {
+          const s2 = this.camera.scale;
+          for (const region of this.visibleRegions) {
+            const lift = region.elevLevel * ELEV_H * s2;
+            for (let ty = region.y0; ty <= region.y1; ty++) {
+              let run = -1;
+              for (let tx = region.x0; tx <= region.x1 + 1; tx++) {
+                const inside = tx <= region.x1 && region.tiles.has(packTile(tx, ty));
+                if (inside && run < 0) run = tx;
+                else if (!inside && run >= 0) {
+                  const a = this.camera.worldToScreen(run, ty, this.w, this.h);
+                  const b = this.camera.worldToScreen(tx, ty + 1, this.w, this.h);
+                  this.stageShadowItems.push({
+                    kind: 'fill',
+                    color: 0x000000,
+                    dw: b.x - a.x,
+                    dh: b.y - a.y,
+                    m: stageAt(a.x, a.y - lift),
+                    alpha: 1,
+                    blend: StageBlend.DestinationOut,
+                  });
+                  run = -1;
+                }
+              }
+            }
+          }
+        }
+      } finally {
+        this.stageAssembling = false;
+        this.stageWorldItems = prev;
+      }
+      this.stageShadowAlpha = this.sdwLayerAlpha;
+      this.stageShadowPending = this.stageShadowItems.length > 0;
+    } else {
+    this.stageShadowPending = false; // a mid-frame toggle must not replay stale items
     for (const item of items) {
       if (!item.elevated) item.drawShadow?.();
     }
@@ -5173,6 +5763,7 @@ export class Renderer {
     this.ctx.globalAlpha = this.sdwLayerAlpha;
     this.ctx.drawImage(this.shadowLayer, 0, 0, this.shadowLayer.width, this.shadowLayer.height, 0, 0, this.w, this.h);
     this.ctx.restore();
+    } // end legacy 2d prepass
     // In-sort (plateau) shadows draw straight into the frame.
     this.sdw = this.ctx;
     this.sdwLayerAlpha = 1;
@@ -5278,31 +5869,21 @@ export class Renderer {
     // Consecutive particle items form a RUN: nothing else touches
     // fillStyle inside one, so setFill dedupes across the run exactly
     // like the overlay batch (a storm's grains sort adjacent).
-    let inParticleRun = false;
-    for (const item of items) {
-      const isParticle = item.bulk === BulkKind.Particle;
-      if (isParticle !== inParticleRun) {
-        if (isParticle) this.particles.beginRun();
-        else this.particles.endRun();
-        inParticleRun = isParticle;
+    if (this.stageWorldActive()) {
+      this.stageWorldPass(items);
+    } else {
+      let inParticleRun = false;
+      for (const item of items) {
+        const isParticle = item.bulk === BulkKind.Particle;
+        if (isParticle !== inParticleRun) {
+          if (isParticle) this.particles.beginRun();
+          else this.particles.endRun();
+          inParticleRun = isParticle;
+        }
+        this.dispatchWorldItem(item);
       }
-      // Stealth ghost: wrap OUTSIDE the outline pass so the dilated
-      // silhouette ring fades with the body (alpha inside draw() would
-      // leave the ring solid). The nameplate stays opaque.
-      if (item.alpha !== undefined) this.ctx.globalAlpha = item.alpha;
-      if (item.elevated) item.drawShadow?.();
-      // THE OFF-SCREEN TREE STANDS DOWN: nothing of it lies in the
-      // viewport. Its shadow above still casts — that lies on the
-      // ground and may well be visible from inside it.
-      if (item.occCulled) {
-        // nothing: the pass proved no pixel would differ
-      } else if (this.outlineOn && item.body) this.paintOutlined(item);
-      else if (item.draw) item.draw();
-      else this.drawBulkItem(item);
-      if (item.alpha !== undefined) this.ctx.globalAlpha = 1;
-      if (this.chrome === 'all') item.drawLabel?.();
+      if (inParticleRun) this.particles.endRun();
     }
-    if (inParticleRun) this.particles.endRun();
     this.perfMark('world');
     // THE GHOST EMBER rides over the world pass, under the overlay FX.
     this.drawGhostEmber();
@@ -6745,6 +7326,15 @@ export class Renderer {
     const minCy = Math.floor(b.minTy / CHUNK_SIZE);
     const maxCy = Math.floor(b.maxTy / CHUNK_SIZE);
     const bakePx = this.bakePx();
+    // Stage lane, frame start: budgets and confession counters reset;
+    // quads/late-blits were drained by last frame's flush.
+    const stage = this.stageActive();
+    if (stage) {
+      this.stageGl!.statsReset();
+      this.stageUpMsLeft = GPU_URGENT_MS;
+      this.stageStats.absent = 0;
+      this.stageStats.stale = 0;
+    }
     // ALL bake work is TIME-SLICED (see startChunkBake): a full chunk
     // bake is 10-40ms, so nothing here ever runs one whole inside a
     // frame. The visible loop only DISCOVERS work — brand-new chunks
@@ -6834,17 +7424,13 @@ export class Renderer {
         // edge (the old hairline-seam bug).
         const gut = bakeGutter(baked.px);
         const srcSz = CHUNK_SIZE * baked.px;
-        this.ctx.drawImage(
-          baked.canvas,
-          gut,
-          gut,
-          srcSz,
-          srcSz,
-          x0,
-          y0,
-          this.camera.snapPx(p1.x) - x0,
-          this.camera.snapPx(p1.y) - y0,
-        );
+        const dw = this.camera.snapPx(p1.x) - x0;
+        const dh = this.camera.snapPx(p1.y) - y0;
+        if (stage) {
+          this.stageEmitChunk(baked, gut, srcSz, x0, y0, dw, dh);
+        } else {
+          this.ctx.drawImage(baked.canvas, gut, gut, srcSz, srcSz, x0, y0, dw, dh);
+        }
       }
     }
     // PRE-BAKE RING: chunks one step outside the viewport bake (one
@@ -6907,6 +7493,83 @@ export class Renderer {
       }
       if (msLeft <= 0) break;
     }
+    if (stage) this.stageFlushGround();
+  }
+
+  /**
+   * Emit one visible chunk into the stage lane. The handle syncs at
+   * EMISSION — the pooled bake swap retargets it, and an in-flight
+   * sliced job repaints its canvas between frames, so the shadow
+   * follows the truth with zero coupling to the bake internals. The
+   * upload rides the urgent budget (THE ARRIVAL PAYS ONCE with a
+   * runaway guard); a declined upload paints through the late lane.
+   */
+  private stageEmitChunk(
+    baked: BakedChunk,
+    gut: number,
+    srcSz: number,
+    x0: number,
+    y0: number,
+    dw: number,
+    dh: number,
+  ): void {
+    const gl = this.stageGl!;
+    let tex = baked.stageTex;
+    if (!tex) {
+      tex = baked.stageTex = { canvas: baked.canvas, rev: 0, filter: 'linear' };
+    }
+    if (tex.canvas !== baked.canvas) {
+      tex.canvas = baked.canvas;
+      tex.rev++;
+    } else if (baked.pending) {
+      tex.rev++;
+    }
+    const r = gl.ensure(tex, this.stageUpMsLeft);
+    this.stageUpMsLeft -= r.spentMs;
+    if (r.state === 'absent') {
+      this.stageStats.absent++;
+      this.stageLate.push({ c: baked.canvas, sx: gut, sy: gut, ss: srcSz, x0, y0, dw, dh });
+      return;
+    }
+    if (r.state === 'stale') this.stageStats.stale++;
+    this.stageQuads.push({
+      kind: 'quad',
+      tex,
+      sx: gut,
+      sy: gut,
+      sw: srcSz,
+      sh: srcSz,
+      dw,
+      dh,
+      m: [1, 0, 0, 1, x0, y0],
+      alpha: 1,
+      blend: StageBlend.SourceOver,
+    });
+  }
+
+  /**
+   * Render the collected ground quads on the GL stage and land them
+   * in the 2d frame as ONE drawImage — same task, so no readback and
+   * no present race — drawn through the LIVE ctx transform so a
+   * zoom-pulse scales the ground exactly as it scaled the per-chunk
+   * blits. Late (declined) chunks paint over it through the canvas
+   * lane, exactly where they would have landed.
+   */
+  private stageFlushGround(): void {
+    const gl = this.stageGl!;
+    if (this.stageQuads.length > 0) {
+      gl.begin(this.w, this.h, this.dpr(), '#141020');
+      gl.draw(this.stageQuads);
+      gl.end();
+      this.ctx.imageSmoothingEnabled = true;
+      this.ctx.drawImage(gl.canvas, 0, 0, gl.canvas.width, gl.canvas.height, 0, 0, this.w, this.h);
+    }
+    for (const l of this.stageLate) {
+      this.ctx.imageSmoothingEnabled = true;
+      this.ctx.drawImage(l.c, l.sx, l.sy, l.ss, l.ss, l.x0, l.y0, l.dw, l.dh);
+    }
+    this.stageQuads.length = 0;
+    this.stageLate.length = 0;
   }
 
   /**
@@ -7693,7 +8356,12 @@ export class Renderer {
         this.bandEmitted.set(ck, this.frameNo);
         this.emitStretch(game, items, reg, ck, ly, si, runSeen);
       } else {
+        // The non-bandable family (doorways, windows, hung walls —
+        // permanent live items by design): the wall lane's main
+        // population, reconstruction-marked for the stage.
+        const before = items.length;
         this.emitRaisedMember(game, items, ms[k]!, runSeen);
+        if (this.stageWorld) this.stageMarkRaised(game, items, before, ms[k]!);
       }
     }
     ms.length = 0;
@@ -7732,7 +8400,11 @@ export class Renderer {
       )
         continue;
       const m = classifyRaised(this.regHost, tx, ty);
-      if (m !== null) this.emitRaisedMember(game, items, m, runSeen);
+      if (m !== null) {
+        const before = items.length;
+        this.emitRaisedMember(game, items, m, runSeen);
+        if (this.stageWorld) this.stageMarkRaised(game, items, before, m);
+      }
     }
   }
 
@@ -8002,6 +8674,12 @@ export class Renderer {
           if (shakeX !== 0) {
             const inner = item.draw!; // prop items always paint
             item.draw = () => {
+              if (this.stageAssembling) {
+                // The shudder is a ctx translate quads would ignore —
+                // a mid-knock prop paints on the frame (380ms, rare).
+                this.stageNeedsSplit = true;
+                return;
+              }
               const ctx = this.ctx;
               ctx.save();
               ctx.translate(shakeX, 0);
@@ -8011,6 +8689,10 @@ export class Renderer {
           }
         }
         if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
+        // THE WORLD ON STAGE: objectItem's family draws only through
+        // stage-aware painters (drawPropOutlined / drawFlora / the
+        // body-outline path) — the sink may assembly-run it.
+        item.stageSafe = true;
         items.push(item);
         return;
       }
@@ -8104,17 +8786,40 @@ export class Renderer {
    */
   private memberBandable(m: RaisedMember): boolean {
     switch (m.kind) {
-      case RaisedKind.Wall: {
-        const t = m.tile as Tile;
-        if (t === Tile.WallWoodWindow || t === Tile.WallStoneWindow) return false;
+      case RaisedKind.Wall:
+        // Windowed walls joined the bands in A2 part 7: their one sky
+        // read (hearth-lit glass warms with sky.flame) is a SLOW clock
+        // ramp, quantized into the dynamic sig — THE SKY MAY KEY A
+        // BAKE ONLY QUANTIZED. Hung walls still breathe with the
+        // breeze and stay live.
         return !wallHungInfo(this.regGame!.world.detailAt(m.tx, m.ty));
-      }
       case RaisedKind.GarrisonWall:
         return !wallHungInfo(this.regGame!.world.detailAt(m.tx, m.ty));
+      case RaisedKind.Doorway:
+      case RaisedKind.GarrisonGate:
+        // THE TILE IS THE STATE: open and shut are different tiles, so
+        // a toggle is a tile patch → chunk rev → content sig, and the
+        // bake at rest is a pure world function. The 380-520ms ease,
+        // the locked-refusal shudder (doorHot) and the threshold veil
+        // (proximity, quantized) ride the dynamic sig. Side variants
+        // (SideDoorway/GarrisonSideGate) merge VERTICALLY and the bake
+        // head-room only spans horizontal runs — they stay live.
+        return true;
       case RaisedKind.DiagWall:
       case RaisedKind.Rail:
       case RaisedKind.RampRun:
       case RaisedKind.RampSingle:
+        return true;
+      case RaisedKind.BridgeRails:
+      case RaisedKind.DeckFillRail:
+        // Parapets are pure static geometry (posts, rails, aprons —
+        // zero time or reveal dependencies; verified by census). They
+        // were live only so bodies sort against them, and the band
+        // buckets preserve exactly that per-(sortY,strat) granularity.
+        // Neighbor deck/water changes ride chunk revs into the
+        // register sig like every wall join. Measured live at 36
+        // items/frame on the avenue bridge — the wall lane's single
+        // largest member.
         return true;
       case RaisedKind.Generic:
         // Phase 4: inert single-tile props ride the bands; everything
@@ -8183,6 +8888,18 @@ export class Renderer {
               }
             }
           }
+          // THE SKY MAY KEY A BAKE ONLY QUANTIZED: hearth-lit glass
+          // warms with sky.flame — a slow smoothstep of the game
+          // clock, never per-frame flicker. 24 steps make re-bakes a
+          // handful per dawn/dusk, each step under 0.008 of glass
+          // alpha. 0 by day, so day sigs are byte-identical to old.
+          if (m.tile === Tile.WallWoodWindow || m.tile === Tile.WallStoneWindow) {
+            const f = Math.round(this.sky.flame * 24);
+            if (f > 0) {
+              anyCut = true;
+              sig = (sig * 31 + 601 * 7 + f) | 0;
+            }
+          }
           break;
         }
         case RaisedKind.GarrisonWall: {
@@ -8193,6 +8910,42 @@ export class Renderer {
             if (h0 !== GARRISON_H || h1 !== GARRISON_H) {
               anyCut = true;
               sig = (sig * 31 + Math.round(h0 * 48) * 397 + Math.round(h1 * 48)) | 0;
+            }
+          }
+          break;
+        }
+        case RaisedKind.Doorway:
+        case RaisedKind.GarrisonGate: {
+          // A door mid-ease (or mid-refusal-shudder) animates per
+          // frame — live, exactly like a shaking destructible. At
+          // rest THE TILE IS THE STATE: the settled pose is already
+          // in the content sig via the chunk rev.
+          if (this.doorHot(m.tx, m.ty)) return -1;
+          // The threshold veil melts as bodies near — continuous in
+          // their motion, so it churns the sig while they walk (live,
+          // via the stability window) and settles when they rest.
+          const v = Math.round(this.doorVeil(game, m.tx + m.len / 2, m.ty + 0.5) * 32);
+          if (v < 32) {
+            anyCut = true;
+            sig = (sig * 31 + 419 * (m.kind === RaisedKind.Doorway ? 3 : 5) + v) | 0;
+          }
+          // Doors sink with the runs they join — fold the reveal
+          // heights exactly like their wall family.
+          const garr = m.kind === RaisedKind.GarrisonGate;
+          if (garr || this.cutCtx > 0.001) {
+            const dy = m.ty - this.ownPY;
+            if (dy >= -2.5 && dy <= (garr ? 16.5 : 12.5) && Math.abs(m.tx + 0.5 - this.ownPX) <= 13.5) {
+              const full = garr ? GARRISON_H : WALL_H;
+              const hAt = garr
+                ? this.garrisonHeightAt(game, m.tx, m.ty)
+                : this.wallHeightAt(game, m.tx, m.ty);
+              const hN = garr
+                ? this.garrisonHeightAt(game, m.tx, m.ty - 1)
+                : this.wallHeightAt(game, m.tx, m.ty - 1);
+              if (hAt !== full || hN !== full) {
+                anyCut = true;
+                sig = (sig * 31 + Math.round(hAt * 48) * 397 + Math.round(hN * 48)) | 0;
+              }
             }
           }
           break;
@@ -8343,6 +9096,7 @@ export class Renderer {
           items.push({
             sortY: bk.sortY,
             strat: bk.strat,
+            band: { sb: bake, bk },
             elevated: bk.elevated ? true : undefined,
             drawShadow:
               bi === sd0 || bi === sd1
@@ -8362,9 +9116,52 @@ export class Renderer {
         return;
       }
     }
-    // THE STILL-WORLD BARGAIN: the live path, verbatim.
+    // THE STILL-WORLD BARGAIN: the live path, verbatim — plus, when
+    // the stage is on, each emitted item carries its reconstruction
+    // closure and a member-level bounds box (the bake head-room
+    // table's own numbers).
     this.bandStats.live++;
-    for (let i = s.i0; i <= s.i1; i++) this.emitRaisedMember(game, items, list[i]!, runSeen);
+    for (let i = s.i0; i <= s.i1; i++) {
+      const before = items.length;
+      this.emitRaisedMember(game, items, list[i]!, runSeen);
+      if (this.stageWorld) this.stageMarkRaised(game, items, before, list[i]!);
+    }
+  }
+
+  /** Reusable throwaway set for rebuild-time re-emission (the ramp
+   *  dedupe wants A set; the real runSeen already served collect). */
+  private readonly stageRebuildSeen = new Set<number>();
+
+  private stageMarkRaised(game: ClientGame, items: DrawItem[], before: number, m: RaisedMember): void {
+    if (items.length === before) return;
+    const s = this.camera.scale;
+    const e = game.world.elevAt(m.tx, m.ty);
+    const garrison = m.kind === RaisedKind.GarrisonWall || m.kind === RaisedKind.GarrisonGate;
+    const rampish = m.kind === RaisedKind.RampRun || m.kind === RaisedKind.RampSingle;
+    const wallish =
+      m.kind === RaisedKind.Wall || m.kind === RaisedKind.DiagWall || m.kind === RaisedKind.Doorway;
+    const northT = (garrison ? 4.6 : wallish ? 2.8 : 2.4) + e * ELEV_H + (rampish ? 1.5 : 0);
+    const southT = rampish ? 1.7 : 0.7;
+    const spanS = rampish ? m.len : 1;
+    const p0 = this.camera.worldToScreen(m.tx, m.ty, this.w, this.h);
+    const p1 = this.camera.worldToScreen(m.endX + 1, m.ty + spanS, this.w, this.h);
+    const pb = {
+      x: p0.x - 1.2 * s,
+      y: p0.y - northT * s,
+      w: p1.x - p0.x + 2.4 * s,
+      h: p1.y - p0.y + (northT + southT) * s,
+    };
+    for (let j = before; j < items.length; j++) {
+      const it = items[j]!;
+      const idx = j - before;
+      it.pb = pb;
+      it.stageRebuild = () => {
+        const scratch: DrawItem[] = [];
+        this.emitRaisedMember(game, scratch, m, this.stageRebuildSeen);
+        this.stageRebuildSeen.clear();
+        scratch[idx]?.draw?.();
+      };
+    }
   }
 
   /** Blit one band bucket at its snapped anchor projection.
@@ -8395,6 +9192,25 @@ export class Renderer {
       !this.zoomGliding && sb.gridPx === this.bandGridPx()
         ? 1 / cam.snapDpr
         : cam.scale / sb.gridPx;
+    if (this.stageAssembling) {
+      // THE WORLD ON STAGE: the EXACT LATTICE PATH's own numbers, as
+      // a quad; the hot<->cold fade rides stageItemAlpha.
+      this.stageWorldItems.push({
+        kind: 'quad',
+        tex: this.stageSpriteTex(bk.canvas, 0, bk),
+        sx: 0,
+        sy: 0,
+        sw: bk.canvas.width,
+        sh: bk.canvas.height,
+        dw: bk.canvas.width * k,
+        dh: bk.canvas.height * k,
+        m: [1, 0, 0, 1, x0 - bk.padL * k, y0 - bk.padT * k],
+        alpha: this.stageItemAlpha,
+        blend: StageBlend.SourceOver,
+      });
+      this.stageWorldStats.quads++;
+      return;
+    }
     ctx.drawImage(
       bk.canvas,
       x0 - bk.padL * k,
@@ -8434,7 +9250,11 @@ export class Renderer {
       if (m.endX + 1 > wx1) wx1 = m.endX + 1;
       const e = game.world.elevAt(m.tx, m.ty);
       if (e > maxElev) maxElev = e;
-      if (m.kind === RaisedKind.GarrisonWall) garrison = true;
+      if (
+        m.kind === RaisedKind.GarrisonWall ||
+        m.kind === RaisedKind.GarrisonGate
+      )
+        garrison = true;
       if (m.kind === RaisedKind.RampRun || m.kind === RaisedKind.RampSingle) rampish = true;
       if (m.kind === RaisedKind.Generic && this.outlineOn) {
         // Prop bands composite the ring-baked sprites (the sprite IS
@@ -8459,7 +9279,8 @@ export class Renderer {
     let wallish = false;
     for (let i = s.i0; i <= s.i1; i++) {
       const k = list[i]!.kind;
-      if (k === RaisedKind.Wall || k === RaisedKind.DiagWall) wallish = true;
+      if (k === RaisedKind.Wall || k === RaisedKind.DiagWall || k === RaisedKind.Doorway)
+        wallish = true;
     }
     // Head-room by the tallest family present: garrison crowns reach
     // ~4.2 tiles, house walls ~2.7, the banded prop set tops out near
@@ -14853,9 +15674,32 @@ export class Renderer {
           runEnd = fr[ri + 1]!;
           ri += 3;
         } else if (o > runEnd) {
-          items.push(
-            this.cliffFaceItem(game, f[i]!, f[i + 1]!, f[i + 2]!, f[i + 3]!, f[i + 4]!, lv.level, f[i + 6]!, f[i + 7]!),
-          );
+          const fit = this.cliffFaceItem(game, f[i]!, f[i + 1]!, f[i + 2]!, f[i + 3]!, f[i + 4]!, lv.level, f[i + 6]!, f[i + 7]!);
+          if (this.stageWorld) {
+            // THE WALL LANE reaches the diagonals (part 4): captured-
+            // ctx factories reconstruct under the swapped brush inside
+            // a face-extent box — Hoargate's unmarked 137/frame class.
+            const ax2 = f[i]!;
+            const ay2 = f[i + 1]!;
+            const bx2 = f[i + 2]!;
+            const by2 = f[i + 3]!;
+            const k2 = f[i + 4]!;
+            const g6 = f[i + 6]!;
+            const g7 = f[i + 7]!;
+            const lvl = lv.level;
+            const sS = this.camera.scale;
+            const pA2 = this.camera.worldToScreen(Math.min(ax2, bx2), Math.min(ay2, by2), this.w, this.h);
+            const pB2 = this.camera.worldToScreen(Math.max(ax2, bx2), Math.max(ay2, by2), this.w, this.h);
+            fit.pb = {
+              x: pA2.x - 1.2 * sS,
+              y: pA2.y - (lvl * ELEV_H + 1.9) * sS,
+              w: pB2.x - pA2.x + 2.4 * sS,
+              h: pB2.y - pA2.y + (lvl * ELEV_H + 1.9 + 1.4) * sS,
+            };
+            fit.stageRebuild = () =>
+              this.cliffFaceItem(game, ax2, ay2, bx2, by2, k2, lvl, g6, g7).draw!();
+          }
+          items.push(fit);
         }
         this.pushSouthFallItems(game, items, f[i]!, f[i + 1]!, f[i + 2]!, f[i + 3]!, f[i + 4]!, f[i + 5]!, lv.level);
       }
@@ -15114,7 +15958,24 @@ export class Renderer {
     for (let r = Math.floor(a); r < b; r++) {
       const s0 = Math.max(a, r);
       const s1 = Math.min(b, r + 1);
-      items.push(this.cliffSideItem(x, s0, s1, nx, level, a, s0 === a, s1 === b));
+      {
+        const sit = this.cliffSideItem(x, s0, s1, nx, level, a, s0 === a, s1 === b);
+        if (this.stageWorld) {
+          const isTop2 = s0 === a;
+          const isBot2 = s1 === b;
+          const sS = this.camera.scale;
+          const pA2 = this.camera.worldToScreen(x, s0, this.w, this.h);
+          const pB2 = this.camera.worldToScreen(x, s1, this.w, this.h);
+          sit.pb = {
+            x: pA2.x - 0.8 * sS,
+            y: pA2.y - (level * ELEV_H + 0.4) * sS,
+            w: 1.6 * sS,
+            h: pB2.y - pA2.y + (level * ELEV_H + 1.2) * sS,
+          };
+          sit.stageRebuild = () => this.cliffSideItem(x, s0, s1, nx, level, a, isTop2, isBot2).draw!();
+        }
+        items.push(sit);
+      }
       const fi = this.fallAt(game, x, r + 0.5, nx, 0, level);
       if (fi) {
         if (!fallInfo) {
@@ -15206,15 +16067,27 @@ export class Renderer {
               const A = this.camera.worldToScreen(ax, ay, this.w, this.h);
               const B = this.camera.worldToScreen(bx, by, this.w, this.h);
               const skew = Math.max(-s * 0.6, Math.min(s * 0.6, this.castOffset(0.5).x));
-              const c = this.beginContactFill();
-              c.beginPath();
-              c.moveTo(A.x, A.y - baseLift - 1);
-              c.lineTo(B.x, B.y - baseLift - 1);
-              c.lineTo(B.x + skew, B.y - baseLift + s * 0.42);
-              c.lineTo(A.x + skew, A.y - baseLift + s * 0.42);
-              c.closePath();
-              c.fill();
-              c.globalAlpha = 1;
+              const fill = (): void => {
+                const c = this.beginContactFill();
+                c.beginPath();
+                c.moveTo(A.x, A.y - baseLift - 1);
+                c.lineTo(B.x, B.y - baseLift - 1);
+                c.lineTo(B.x + skew, B.y - baseLift + s * 0.42);
+                c.lineTo(A.x + skew, A.y - baseLift + s * 0.42);
+                c.closePath();
+                c.fill();
+                c.globalAlpha = 1;
+              };
+              if (this.stageAssembling) {
+                // The seam rides the layer as a bounded scratch strip.
+                const x0 = Math.min(A.x, B.x) + Math.min(0, skew) - 1;
+                const x1b = Math.max(A.x, B.x) + Math.max(0, skew) + 1;
+                const y0 = Math.min(A.y, B.y) - baseLift - 2;
+                const y1b = Math.max(A.y, B.y) - baseLift + s * 0.42 + 1;
+                this.stageCastScratch(x0, y0, x1b - x0, y1b - y0, fill);
+                return;
+              }
+              fill();
             }
           : undefined,
       draw: () => {
@@ -15557,18 +16430,42 @@ export class Renderer {
               const A = this.camera.worldToScreen(ax, ay, this.w, this.h);
               const B = this.camera.worldToScreen(bx, ay, this.w, this.h);
               const skew = Math.max(-s * 0.6, Math.min(s * 0.6, this.castOffset(0.5).x));
-              const c = this.beginContactFill();
-              c.beginPath();
-              c.moveTo(A.x, A.y - baseLift - 1);
-              c.lineTo(B.x, B.y - baseLift - 1);
-              c.lineTo(B.x + skew, B.y - baseLift + s * 0.42);
-              c.lineTo(A.x + skew, A.y - baseLift + s * 0.42);
-              c.closePath();
-              c.fill();
-              c.globalAlpha = 1;
+              const fill = (): void => {
+                const c = this.beginContactFill();
+                c.beginPath();
+                c.moveTo(A.x, A.y - baseLift - 1);
+                c.lineTo(B.x, B.y - baseLift - 1);
+                c.lineTo(B.x + skew, B.y - baseLift + s * 0.42);
+                c.lineTo(A.x + skew, A.y - baseLift + s * 0.42);
+                c.closePath();
+                c.fill();
+                c.globalAlpha = 1;
+              };
+              if (this.stageAssembling) {
+                const x0 = Math.min(A.x, B.x) + Math.min(0, skew) - 1;
+                const x1b = Math.max(A.x, B.x) + Math.max(0, skew) + 1;
+                const y0 = Math.min(A.y, B.y) - baseLift - 2;
+                const y1b = Math.max(A.y, B.y) - baseLift + s * 0.42 + 1;
+                this.stageCastScratch(x0, y0, x1b - x0, y1b - y0, fill);
+                return;
+              }
+              fill();
             }
           : undefined,
       draw: () => this.drawCliffRun(game, level, faces, o0, o1, rev),
+      stageSafe: true,
+      pb: (() => {
+        const ax = faces[o0 * 8]!;
+        const ay = faces[o0 * 8 + 1]!;
+        const bx2 = faces[o1 * 8 + 2]!;
+        const s2 = this.camera.scale;
+        const pA = this.camera.worldToScreen(ax, ay, this.w, this.h);
+        const pB = this.camera.worldToScreen(bx2, ay, this.w, this.h);
+        const north = (level * ELEV_H + Renderer.CLIFF_BAKE_NORTH_T) * s2;
+        const south = (Renderer.CLIFF_BAKE_SOUTH_T - (level - 1) * ELEV_H) * s2;
+        const padX = Renderer.CLIFF_BAKE_PAD_X_T * s2;
+        return { x: pA.x - padX, y: pA.y - north, w: pB.x - pA.x + padX * 2, h: north + south };
+      })(),
     };
   }
 
@@ -15625,6 +16522,23 @@ export class Renderer {
       const x0 = cam.snapPx(pA.x);
       const y0 = cam.snapPx(pA.y);
       const k = !this.zoomGliding && sp.gridPx === gridPx ? 1 / cam.snapDpr : s / sp.gridPx;
+      if (this.stageAssembling) {
+        this.stageWorldItems.push({
+          kind: 'quad',
+          tex: this.stageSpriteTex(sp.canvas, 0, sp),
+          sx: 0,
+          sy: 0,
+          sw: sp.w,
+          sh: sp.h,
+          dw: sp.w * k,
+          dh: sp.h * k,
+          m: [1, 0, 0, 1, x0 - sp.padX * k, y0 - sp.padTop * k],
+          alpha: this.stageItemAlpha,
+          blend: StageBlend.SourceOver,
+        });
+        this.stageWorldStats.quads++;
+        return;
+      }
       this.ctx.drawImage(
         sp.canvas,
         0,
@@ -15639,6 +16553,35 @@ export class Renderer {
       return;
     }
     if (visNow) this.liveStats.cliff++;
+    if (this.stageAssembling) {
+      // THE STILL-WORLD BARGAIN through the scratch lane: the member
+      // items are constructed INSIDE the closure, under the swapped
+      // ctx — the same reconstruction the bakes use (the capture law).
+      this.stagePushPaintRaw(
+        pA.x - padXCss,
+        pA.y - northCss,
+        pB.x - pA.x + padXCss * 2,
+        northCss + southCss,
+        () => {
+          for (let o = o0; o <= o1; o++) {
+            const f = o * 8;
+            this.cliffFaceItem(
+              game,
+              faces[f]!,
+              faces[f + 1]!,
+              faces[f + 2]!,
+              faces[f + 3]!,
+              faces[f + 4]!,
+              level,
+              faces[f + 6]!,
+              faces[f + 7]!,
+            ).draw!();
+          }
+        },
+        'cliff',
+      );
+      return;
+    }
     for (let o = o0; o <= o1; o++) {
       const f = o * 8;
       this.cliffFaceItem(
@@ -15799,9 +16742,17 @@ export class Renderer {
               const ya = Math.round(A.y) - (isTop ? 1 : 0);
               const yb = Math.round(B.y) + (isBottom ? s * 0.2 : 0);
               const wS = nx >= 0 ? Math.max(3, s * 0.24) : Math.max(2, s * 0.09);
-              const c = this.beginContactFill();
-              c.fillRect(Math.round(A.x) - (nx >= 0 ? 0 : wS), ya, wS, yb - ya);
-              c.globalAlpha = 1;
+              const rx = Math.round(A.x) - (nx >= 0 ? 0 : wS);
+              const fill = (): void => {
+                const c = this.beginContactFill();
+                c.fillRect(rx, ya, wS, yb - ya);
+                c.globalAlpha = 1;
+              };
+              if (this.stageAssembling) {
+                this.stageCastScratch(rx - 1, ya - 1, wS + 2, yb - ya + 2, fill);
+                return;
+              }
+              fill();
             }
           : undefined,
       draw: () => {
@@ -16566,11 +17517,25 @@ export class Renderer {
     diagonal: boolean,
     mouth: Path2D | null,
   ): DrawItem {
-    const ctx = this.ctx;
     const s = this.camera.scale;
     const topLift = level * ELEV_H * s;
     const landLift = info.landElev * ELEV_H * s;
     const levels = level - info.landElev;
+    // The curtain's honest screen box (THE FALL RIDES THE SCRATCH,
+    // A2 part 8): the falls are animated by design — every layer
+    // carries its own phase or wobble, so the round-12 scroll-bake
+    // idea dies here honestly. What they never needed was the SPLIT:
+    // with a bounded box they ride the scratch lane in sort order
+    // like any live art. Pads cover the crest roll above the lip,
+    // the dipped base + churn below, and the flared free ends.
+    const pA0 = this.camera.worldToScreen(ax, ay, this.w, this.h);
+    const pB0 = this.camera.worldToScreen(bx, by, this.w, this.h);
+    const pb = {
+      x: Math.min(pA0.x, pB0.x) - 2 * s,
+      y: Math.min(pA0.y, pB0.y) - topLift - 1.6 * s,
+      w: Math.abs(pB0.x - pA0.x) + 4 * s,
+      h: Math.abs(pB0.y - pA0.y) + (topLift - landLift) + 3.4 * s,
+    };
     return {
       // THE SHELF LAW: the fall hangs down to its landing — it rides
       // the landing's shelf so a body at the foot (same shelf, larger
@@ -16578,7 +17543,12 @@ export class Renderer {
       // (higher shelf) beats it outright.
       strat: info.landElev !== 0 ? info.landElev : undefined,
       sortY: Math.min(ay, by) + 0.0015,
+      pb,
       draw: () => {
+        // Draw-time ctx: the scratch lane swaps this.ctx under us
+        // (the capture law — a creation-time ctx would paint the
+        // real frame from inside a bounded pass).
+        const ctx = this.ctx;
         const t = performance.now() / 1000;
         const tones = this.fallTones();
         const fine = s >= 26;
@@ -17155,7 +18125,6 @@ export class Renderer {
     runX0: number,
     runX1: number,
   ): DrawItem {
-    const ctx = this.ctx;
     const s = this.camera.scale;
     const landLift = info.landElev * ELEV_H * s;
     const rowY = foot + r;
@@ -17167,10 +18136,17 @@ export class Renderer {
     const wet = (wx: number, wy: number): boolean =>
       game.world.elevAt(Math.floor(wx), Math.floor(wy)) === info.landElev &&
       isFallWater(game.world.groundAt(Math.floor(wx), Math.floor(wy)));
+    // One landing row's box: the outwash tongue, veils, rings and
+    // mist all live within the run span + spread; generous pads are
+    // transparent-cheap, a clipped veil is a visible bug.
+    const pR0 = this.camera.worldToScreen(Math.min(x0, runX0) - 1.6, rowY - 0.6, this.w, this.h);
+    const pR1 = this.camera.worldToScreen(Math.max(x1, runX1) + 1.6, rowY + 1.8, this.w, this.h);
     return {
       strat: info.landElev !== 0 ? info.landElev : undefined,
       sortY: rowY + 0.0015,
+      pb: { x: pR0.x, y: pR0.y - landLift, w: pR1.x - pR0.x, h: pR1.y - pR0.y },
       draw: () => {
+        const ctx = this.ctx; // draw-time: the scratch lane swaps it
         const t = performance.now() / 1000;
         const tones = this.fallTones();
         const vn = (v: number, salt: number, ks: number) =>
@@ -17673,15 +18649,20 @@ export class Renderer {
     land: Path2D | null,
     apron: Path2D | null,
   ): DrawItem {
-    const ctx = this.ctx;
     const s = this.camera.scale;
     const topLift = level * ELEV_H * s;
     const landLift = info.landElev * ELEV_H * s;
     const dir = nx >= 0 ? 1 : -1;
+    // The side dressing spans from the feed tongue at the top lift
+    // down the corner pocket to the landing — one box, both lifts.
+    const pS0 = this.camera.worldToScreen(x - info.race - 2.2, r0 - 1.2, this.w, this.h);
+    const pS1 = this.camera.worldToScreen(x + info.race + 2.2, r1 + 1.8, this.w, this.h);
     return {
       strat: info.landElev !== 0 ? info.landElev : undefined,
       sortY: r1 - 1 + 0.03,
+      pb: { x: pS0.x, y: pS0.y - topLift, w: pS1.x - pS0.x, h: pS1.y - pS0.y + (topLift - landLift) },
       draw: () => {
+        const ctx = this.ctx; // draw-time: the scratch lane swaps it
         const t = performance.now() / 1000;
         const tones = this.fallTones();
         const vn = (v: number, salt: number, ks: number) =>
@@ -20275,6 +21256,23 @@ export class Renderer {
    * its rest and settles; closing is a shorter, sober pull-to. A
    * 'shake' ease holds the posture (the door never moved).
    */
+  /** Is this door inside its animation window (swing ease or refusal
+   *  shudder)? Expiry-aware: a stale entry (the ease finished while
+   *  the door was off-screen and no painter queried it) reads as
+   *  settled and is dropped — `has()` alone would pin the stretch
+   *  live forever. */
+  private doorHot(tx: number, ty: number): boolean {
+    const key = `${tx},${ty}`;
+    const ease = this.doorEases.get(key);
+    if (ease === undefined) return false;
+    const dur = ease.dir === 'open' ? 520 : ease.dir === 'close' ? 380 : 460;
+    if (performance.now() - ease.born >= dur) {
+      this.doorEases.delete(key);
+      return false;
+    }
+    return true;
+  }
+
   private doorOpenness(tx: number, ty: number, open: boolean): number {
     const key = `${tx},${ty}`;
     const ease = this.doorEases.get(key);
@@ -20381,6 +21379,545 @@ export class Renderer {
   /** The frame's y-sorted draw list — persistent, cleared at reuse. */
   private readonly drawItems: DrawItem[] = [];
 
+  // ---- THE PAINTED WORLD TAKES THE STAGE (phase A1: the ground lane) ----
+  /** Dev flag (?stage): the level-0 chunk ground composites through
+   *  the GL stage and lands in the 2d frame as ONE same-task
+   *  drawImage (a GPU-side copy between accelerated canvases), so
+   *  lighting, post and the reel keep working unchanged while the
+   *  frame migrates pass by pass. The Display toggle arrives in A5. */
+  stageGround = false;
+  private stageGl: GlStage | null = null;
+  /** webgl2 unavailable or init threw — the canvas lane IS the product. */
+  private stageDead = false;
+  private readonly stageQuads: StageQuad[] = [];
+  /** THE STILL-WORLD BARGAIN's lane: chunks whose texture the upload
+   *  guard declined this frame blit through the canvas AFTER the GL
+   *  image lands (they would be covered otherwise). */
+  private readonly stageLate: Array<{
+    c: HTMLCanvasElement;
+    sx: number;
+    sy: number;
+    ss: number;
+    x0: number;
+    y0: number;
+    dw: number;
+    dh: number;
+  }> = [];
+  private stageUpMsLeft = 0;
+  private readonly stageStats = { absent: 0, stale: 0 };
+
+  /** ?stage=world (phase A2): the whole y-sorted world pass renders
+   *  on a second, ALPHA GL stage and composites over the 2d frame's
+   *  ground+water. Cached lanes emit quads at assembly; everything
+   *  else replays the dispatch cell through the scratch lane with
+   *  honest bounds; the rare boundless item takes the split path
+   *  (composite, paint on the frame, resume) and is counted. */
+  stageWorld = false;
+  private stageWorldGl: GlStage | null = null;
+  /** The frame's world stream. NOT readonly: the shadow prepass
+   *  temporarily swaps the sink so the cast brushes' assembly
+   *  branches emit into the LAYER stream (A3) with zero new plumbing
+   *  at the push sites. */
+  private stageWorldItems: StageItem[] = [];
+  /** THE SHADOW LAYER RIDES THE STAGE (A3): the prepass collected as
+   *  stage items, rendered into the world stage's alpha FBO and
+   *  composited once at the layer alpha — the first content of the
+   *  frame's first flush, exactly where the 2d layer composite sat. */
+  private readonly stageShadowItems: StageItem[] = [];
+  private stageShadowAlpha = 1;
+  private stageShadowPending = false;
+  /** True while the world pass assembles the stage stream — painters'
+   *  blit sites emit quads instead of ctx calls. */
+  private stageAssembling = false;
+  private readonly stageWorldStats = { quads: 0, paints: 0, splits: 0 };
+  /** Dev diagnosis: what KINDS still split (read from the probe). */
+  readonly stageSplitKinds = new Map<string, number>();
+  readonly stageSplitSamples: string[] = [];
+
+  private stageWorldActive(): boolean {
+    if (!this.stageWorld || this.stageDead) return false;
+    if (!this.stageWorldGl) {
+      try {
+        this.stageWorldGl = new GlStage(document.createElement('canvas'), { alpha: true });
+      } catch {
+        this.stageDead = true;
+        return false;
+      }
+    }
+    return !this.stageWorldGl.contextLost;
+  }
+
+  /** Composite the accumulated world stream over the 2d frame —
+   *  same-task, through the live transform (the ground flush's law). */
+  private stageWorldFlush(): void {
+    const gl = this.stageWorldGl!;
+    const list = this.stageWorldItems;
+    if (list.length === 0 && !this.stageShadowPending) return;
+    gl.begin(this.w, this.h, this.dpr(), null);
+    if (this.stageShadowPending) {
+      // The prepass shadows: layer-rendered, composited once at the
+      // layer alpha — under everything the world stream paints.
+      gl.drawLayer(this.stageShadowItems, this.stageShadowAlpha);
+      this.stageShadowPending = false;
+      this.stageShadowItems.length = 0;
+    }
+    gl.draw(list);
+    gl.end();
+    this.ctx.imageSmoothingEnabled = true;
+    this.ctx.drawImage(gl.canvas, 0, 0, gl.canvas.width, gl.canvas.height, 0, 0, this.w, this.h);
+    list.length = 0;
+  }
+
+  /** Per-frame paint composition by source tag — the census that
+   *  names where the scratch mass actually comes from. */
+  readonly stagePaintKinds = new Map<string, { n: number; mb: number }>();
+
+  private stagePaintCount(tag: string, pw: number, ph: number): void {
+    const dpr = this.dpr();
+    const mb = (Math.ceil(pw * dpr) * Math.ceil(ph * dpr) * 4) / 1048576;
+    const e = this.stagePaintKinds.get(tag);
+    if (e) {
+      e.n++;
+      e.mb += mb;
+    } else {
+      this.stagePaintKinds.set(tag, { n: 1, mb });
+    }
+  }
+
+  /** Push a raw closure through the scratch lane (SAME-BRUSH swap) —
+   *  the painters' own door for live fallbacks with known rects. */
+  private stagePushPaintRaw(px: number, py: number, pw: number, ph: number, paint: () => void, tag = 'raw'): void {
+    // An off-screen paint is an invisible paint: clip every box to
+    // the viewport (+ a filter pad) and skip empty intersections
+    // outright — no scratch pass, no upload, no draw.
+    const pad = 8;
+    const x1 = Math.min(px + pw, this.w + pad);
+    const y1 = Math.min(py + ph, this.h + pad);
+    px = Math.max(px, -pad);
+    py = Math.max(py, -pad);
+    pw = x1 - px;
+    ph = y1 - py;
+    if (pw <= 0 || ph <= 0) return;
+    this.stagePaintCount(tag, pw, ph);
+    this.stageWorldItems.push({
+      kind: 'paint',
+      px,
+      py,
+      pw,
+      ph,
+      paint: (ctx: CanvasRenderingContext2D) => {
+        const saved = this.ctx;
+        this.ctx = ctx;
+        try {
+          paint();
+        } finally {
+          this.ctx = saved;
+        }
+      },
+    });
+    this.stageWorldStats.paints++;
+  }
+
+  /**
+   * Assembly-run one item: its stage-aware painters emit quads (and
+   * push their own bounded fallbacks); the item's alpha folds into
+   * stageItemAlpha so stealth ghosts ride the quads. The elevated
+   * cast runs FIRST, under assembly, exactly where the sorted loop
+   * has always run it — the cast brushes' own assembly branches emit
+   * it as sprite quads (THE CAST SPEAKS IN QUADS), so an elevated
+   * item no longer needs a named box just to keep its shadow.
+   */
+  private stageAssemble(item: DrawItem): boolean {
+    const mark = this.stageWorldItems.length;
+    this.stageAssembling = true;
+    this.stageNeedsSplit = false;
+    this.stageItemAlpha = item.alpha ?? 1;
+    try {
+      if (item.elevated) item.drawShadow?.();
+      if (item.occCulled) {
+        // round 9's verdict: nothing of it lies in the viewport.
+      } else if (this.outlineOn && item.body) {
+        this.paintOutlined(item);
+      } else if (item.draw) {
+        item.draw();
+      } else {
+        this.drawBulkItem(item);
+      }
+    } finally {
+      this.stageItemAlpha = 1;
+      this.stageAssembling = false;
+    }
+    if (this.stageNeedsSplit) {
+      // A painter met content it cannot stage this frame (a live
+      // fallback whose brush closed over the frame ctx at collect
+      // time — the capture law). It painted NOTHING under assembly;
+      // withdraw the item's partial pushes and let the caller run it
+      // whole on the real frame.
+      this.stageWorldItems.length = mark;
+      this.stageNeedsSplit = false;
+      return false;
+    }
+    return true;
+  }
+
+  /** Set by a painter's assembly branch when this frame's content
+   *  cannot be staged (see stageAssemble) — never touched elsewhere. */
+  private stageNeedsSplit = false;
+
+  /** Wrap one item's dispatch cell as a bounded paint closure — the
+   *  SAME-BRUSH swap: the cell runs against the scratch ctx. An
+   *  elevated item's cast emits FIRST as sprite quads (the cast
+   *  brushes paint through this.sdw, which the ctx swap below never
+   *  touches — deferred, it would land on the real frame). */
+  private stagePaintItem(item: DrawItem, px: number, py: number, pw: number, ph: number): void {
+    const hasCast = item.elevated === true && item.drawShadow !== undefined;
+    if (hasCast) {
+      this.stageAssembling = true;
+      try {
+        item.drawShadow!();
+      } finally {
+        this.stageAssembling = false;
+      }
+    }
+    const pad = 8;
+    const x1 = Math.min(px + pw, this.w + pad);
+    const y1 = Math.min(py + ph, this.h + pad);
+    px = Math.max(px, -pad);
+    py = Math.max(py, -pad);
+    pw = x1 - px;
+    ph = y1 - py;
+    if (pw <= 0 || ph <= 0) return;
+    this.stagePaintCount(item.body ? 'body' : item.bulk !== undefined ? 'bulk' : 'item', pw, ph);
+    this.stageWorldItems.push({
+      kind: 'paint',
+      px,
+      py,
+      pw,
+      ph,
+      paint: (ctx: CanvasRenderingContext2D) => {
+        const saved = this.ctx;
+        this.ctx = ctx;
+        try {
+          this.dispatchWorldItem(item, hasCast);
+        } finally {
+          this.ctx = saved;
+        }
+      },
+    });
+    this.stageWorldStats.paints++;
+  }
+
+  /**
+   * THE WORLD ON STAGE (phase A2 part 1). Classification, in order:
+   * particle runs coalesce into scanned-bounds paints; mature trees
+   * with a live sprite assembly-run their painter (the blit sites
+   * emit quads; bounds and shear are the painter's own numbers);
+   * band blits become quads the same way; bodies and outlined props
+   * ride their own body rect; bulk singles project their datum; and
+   * whatever names no bounds takes the SPLIT path — correct, counted,
+   * and the working list for part 2's quadification.
+   */
+  private stageWorldPass(items: DrawItem[]): void {
+    const gl = this.stageWorldGl!;
+    gl.statsReset();
+    const out = this.stageWorldItems;
+    out.length = 0;
+    const st = this.stageWorldStats;
+    // Stats reset at the SHADOW PREPASS (the frame's first stage
+    // collection) — resetting here erased the layer's quad counts.
+    st.splits = 0;
+    const sc = this.camera.scale;
+    const n = items.length;
+    this.grass.stagePush = (q) => {
+      this.stageWorldItems.push(q);
+      if (q.kind === 'quad') st.quads++;
+      else st.paints++;
+    };
+    try {
+    for (let i = 0; i < n; i++) {
+      const item = items[i]!;
+      // A particle RUN coalesces into one scanned-bounds paint: the
+      // shapes (rotated streaks, flame licks, shadow ellipses) are
+      // sculpted art the quad lane cannot express, and a run is one
+      // scratch pass however many grains it carries.
+      if (item.bulk === BulkKind.Particle) {
+        let j = i;
+        let x0 = Infinity;
+        let y0 = Infinity;
+        let x1 = -Infinity;
+        let y1 = -Infinity;
+        while (j < n && items[j]!.bulk === BulkKind.Particle) {
+          const pt = items[j]!.bulkArg as { x: number; y: number };
+          const pp = this.liftedWTS(pt.x, pt.y);
+          if (pp.x < x0) x0 = pp.x;
+          if (pp.x > x1) x1 = pp.x;
+          if (pp.y < y0) y0 = pp.y;
+          if (pp.y > y1) y1 = pp.y;
+          j++;
+        }
+        const runItems = items.slice(i, j);
+        const pad = 0.3 * sc + 10;
+        this.stageWorldItems.push({
+          kind: 'paint',
+          px: x0 - pad,
+          py: y0 - pad - 2 * sc, // altitude lifts in full screen px
+          pw: x1 - x0 + pad * 2,
+          ph: y1 - y0 + pad * 2 + 2 * sc,
+          paint: (ctx: CanvasRenderingContext2D) => {
+            const saved = this.ctx;
+            this.ctx = ctx;
+            this.particles.beginRun();
+            try {
+              for (const it of runItems) this.dispatchWorldItem(it);
+            } finally {
+              this.particles.endRun();
+              this.ctx = saved;
+            }
+          },
+        });
+        st.paints++;
+        i = j - 1;
+        continue;
+      }
+      // Mature trees: assembly always — the painter's blit sites emit
+      // quads when the sprite stands and push a bounded live paint
+      // when it does not. occCulled trees still cast (the shadow lies
+      // on the ground and may be visible from inside the cull).
+      if (item.occKey !== undefined && item.occX0 !== undefined) {
+        if (!this.stageAssemble(item)) {
+          this.stageWorldFlush();
+          st.splits++;
+          this.stageSplitKinds.set('tree-fail', (this.stageSplitKinds.get('tree-fail') ?? 0) + 1);
+          this.dispatchWorldItem(item);
+        }
+        continue;
+      }
+      // Band buckets: a pure lattice blit — quad at assembly; the
+      // elevated bucket's re-minted casts emit as sprite quads.
+      if (item.band !== undefined) {
+        if (!this.stageAssemble(item)) {
+          this.stageWorldFlush();
+          st.splits++;
+          this.stageSplitKinds.set('band-fail', (this.stageSplitKinds.get('band-fail') ?? 0) + 1);
+          this.dispatchWorldItem(item);
+        }
+        continue;
+      }
+      // Push-site-marked stage-safe items (props, flora, cliffs,
+      // elevated rows): their painters carry the quad and fallback
+      // branches.
+      if (item.stageSafe === true) {
+        if (this.stageAssemble(item)) continue;
+        // Assembly failed (a sprite the budget hasn't baked yet, a
+        // live fallback). A member with a reconstruction closure
+        // does NOT split: stageRebuild re-mints the item under the
+        // swapped ctx (objectItem's brushes capture this.ctx at
+        // mint time — re-minting under the swap is what makes them
+        // scratch-safe), so it falls through to the wall lane below.
+        // Hoargate's last 10 splits were exactly this: ore
+        // formations whose sprites the bake budget kept declining.
+        if (item.stageRebuild === undefined || item.pb === undefined) {
+          this.stageWorldFlush();
+          st.splits++;
+          this.stageSplitKinds.set('safe-fail', (this.stageSplitKinds.get('safe-fail') ?? 0) + 1);
+          // Forensics for the fail class too — the split closure's
+          // source names the factory (a split we cannot name cannot
+          // be retired).
+          if (this.stageSplitSamples.length < 12 && item.draw) {
+            const src = item.draw.toString().replace(/\s+/g, ' ').slice(0, 140);
+            if (!this.stageSplitSamples.includes(src)) this.stageSplitSamples.push(src);
+          }
+          this.dispatchWorldItem(item);
+          continue;
+        }
+      }
+      // Bodies and outlined props. By day (or with the relight budget
+      // spent) the cached composite is a pure blit — assembly emits
+      // quads and part 1's 144MB/frame body scratch stops existing.
+      // When a night relight could fire, the body keeps the scratch
+      // lane: the tint composite is real painting.
+      const b = item.body;
+      if (b !== undefined) {
+        const padX = 0.9 * sc;
+        const padTop = 1.7 * sc;
+        const padBot = 0.7 * sc + (item.elevated ? 3 * sc : 0);
+        const box = { x: b.x - padX, y: b.y - padTop, w: b.w + padX * 2, h: b.h + padTop + padBot };
+        if (this.outlineOn && !this.bodyRelightPossible()) {
+          if (!this.stageAssemble(item)) {
+            this.stagePaintItem(item, box.x, box.y, box.w, box.h);
+          }
+        } else {
+          this.stagePaintItem(item, box.x, box.y, box.w, box.h);
+        }
+        continue;
+      }
+      // Self-bounded live art (the falls family): a plain draw item
+      // that names its own screen box rides the scratch lane in sort
+      // order — no split, no flush barrier. Painters on this route
+      // read this.ctx at DRAW time (the capture law).
+      if (item.pb !== undefined && item.stageRebuild === undefined && item.draw !== undefined) {
+        this.stagePaintItem(item, item.pb.x, item.pb.y, item.pb.w, item.pb.h);
+        continue;
+      }
+      // THE WALL LANE: reconstruction paints for the capture-law
+      // family. CONSECUTIVE lane items coalesce into ONE scratch pass
+      // under their union box — 258 per-item passes measured 22fps at
+      // the avenue purely on per-pass overhead (a texImage2D each);
+      // a row of doorways and sills is one union strip.
+      if (item.stageRebuild !== undefined && item.pb !== undefined) {
+        let j = i;
+        let ux0 = Infinity;
+        let uy0 = Infinity;
+        let ux1 = -Infinity;
+        let uy1 = -Infinity;
+        while (j < n) {
+          const it2 = items[j]!;
+          if (it2.stageRebuild === undefined || it2.pb === undefined) break;
+          const bb = it2.pb;
+          if (bb.x < ux0) ux0 = bb.x;
+          if (bb.y < uy0) uy0 = bb.y;
+          if (bb.x + bb.w > ux1) ux1 = bb.x + bb.w;
+          if (bb.y + bb.h > uy1) uy1 = bb.y + bb.h;
+          j++;
+        }
+        const run = items.slice(i, j);
+        // The run's elevated casts emit FIRST as sprite quads (under
+        // everything the run paints — drawShadow-before-draw, the
+        // sorted loop's own order). The old closure ran them through
+        // this.sdw, which the scratch swap never redirected: they
+        // were landing on the 2d underframe beneath the GL image.
+        this.stageAssembling = true;
+        try {
+          for (const it2 of run) {
+            if (it2.elevated) it2.drawShadow?.();
+          }
+        } finally {
+          this.stageAssembling = false;
+        }
+        this.stagePushPaintRaw(
+          ux0,
+          uy0,
+          ux1 - ux0,
+          uy1 - uy0,
+          () => {
+            for (const it2 of run) it2.stageRebuild!();
+          },
+          'wall-run',
+        );
+        i = j - 1;
+        continue;
+      }
+      // Seated halos: two Lighter quads, straight from the brush —
+      // additive content can never ride the scratch lane (see
+      // drawSeatedHalo).
+      if (item.bulk === BulkKind.Halo) {
+        this.stageAssembling = true;
+        try {
+          this.drawBulkItem(item);
+        } finally {
+          this.stageAssembling = false;
+        }
+        continue;
+      }
+      // Bulk singles (debris, grounded birds): the datum projects; a
+      // body's breadth of pad covers tumble and wing.
+      if (item.bulk !== undefined) {
+        const d = item.bulkArg as { x: number; y: number };
+        const pd = this.liftedWTS(d.x, d.y);
+        this.stagePaintItem(item, pd.x - 1.8 * sc, pd.y - 2.6 * sc, 3.6 * sc, 3.8 * sc);
+        continue;
+      }
+      // No honest bounds: the SPLIT path. Composite what stands, run
+      // the item on the real frame between composites, resume clean.
+      this.stageWorldFlush();
+      st.splits++;
+      const kind = item.band ? 'band' : item.body ? 'body' : item.bulk !== undefined ? `bulk${item.bulk}` : item.elevated ? 'elev-draw' : item.stageSafe ? 'safe-fail' : 'draw';
+      this.stageSplitKinds.set(kind, (this.stageSplitKinds.get(kind) ?? 0) + 1);
+      // Dev forensics: the first few split closures' SOURCE names the
+      // factory that made them — the probe reads this to hunt the
+      // unmarked classes (a split we cannot name cannot be retired).
+      if (this.stageSplitSamples.length < 12 && item.draw) {
+        const src = item.draw.toString().replace(/\s+/g, ' ').slice(0, 140);
+        if (!this.stageSplitSamples.includes(src)) this.stageSplitSamples.push(src);
+      }
+      this.dispatchWorldItem(item);
+    }
+    this.stageWorldFlush();
+    } finally {
+      this.grass.stagePush = null;
+    }
+  }
+
+  /** Assembly-time alpha for quad-emitting painters (band fades). */
+  private stageItemAlpha = 1;
+
+  /** Could relightBody paint anything this frame? Its own first
+   *  gates, hoisted — by day (or with the budget spent) a cached
+   *  body is a pure blit and may ride the quad lane. */
+  private bodyRelightPossible(): boolean {
+    return this.sky.darkness >= 0.06 && this.relitLeft > 0;
+  }
+
+  /**
+   * Sprite-lane texture handles, keyed by their cache record. Part-1
+   * deviation from the explicit-release law, recorded: sprite caches
+   * churn through pooled canvases at cadence, so their handles ride
+   * glStage's ORPHAN SWEEP (records unused for ~900 frames are
+   * reclaimed) instead of per-evictor hooks; part 2's atlas brings
+   * the explicit lifecycle. `rev` comes from the caller (the sprite's
+   * own bake stamp), so an in-place repaint re-uploads exactly once.
+   */
+  private readonly stageTexOf = new WeakMap<
+    HTMLCanvasElement,
+    { tex: StageTexture; owner: object; frameRev: number }
+  >();
+  private stageRevSeq = 0;
+
+  /**
+   * THE TEXTURE IS THE CANVAS'S SHADOW, taken literally: handles key
+   * by the CANVAS — sprite caches mint fresh record objects at every
+   * cadence re-bake (measured: ~720 orphaned handles/second, 6.3GB of
+   * texture churn in a dense forest when records were the key), while
+   * the pooled canvases are the bounded population. Two invalidation
+   * axes, both airtight: a pooled canvas claimed by a NEW owner
+   * re-uploads unconditionally (the graveyard's stale-band bug when
+   * rev alone was trusted), and the SAME owner's in-place re-bake
+   * re-uploads via its own frame stamp.
+   */
+  private stageSpriteTex(canvas: HTMLCanvasElement, rev: number, owner: object): StageTexture {
+    let rec = this.stageTexOf.get(canvas);
+    if (!rec) {
+      rec = { tex: { canvas, rev: ++this.stageRevSeq, filter: 'linear' }, owner, frameRev: rev };
+      this.stageTexOf.set(canvas, rec);
+      return rec.tex;
+    }
+    if (rec.owner !== owner) {
+      rec.owner = owner;
+      rec.frameRev = rev;
+      rec.tex.rev = ++this.stageRevSeq;
+    } else if (rec.frameRev !== rev) {
+      rec.frameRev = rev;
+      rec.tex.rev = ++this.stageRevSeq;
+    }
+    return rec.tex;
+  }
+
+  /** Lazily stand the stage up; a context loss parks it until the
+   *  restore handler clears the flag (THE TOGGLE IS THE PRODUCT'S
+   *  SAFETY — the canvas path serves every parked frame). */
+  private stageActive(): boolean {
+    if (!this.stageGround || this.stageDead) return false;
+    if (!this.stageGl) {
+      try {
+        this.stageGl = new GlStage(document.createElement('canvas'));
+      } catch {
+        this.stageDead = true;
+        return false;
+      }
+    }
+    return !this.stageGl.contextLost;
+  }
+
   /** Stale-chunk re-bake candidates this frame (center-first pacing). */
   private readonly replaceQueue: Array<{
     baked: BakedChunk;
@@ -20439,6 +21976,28 @@ export class Renderer {
     // sprite budget.
     const gs = this.grass.rowStats;
     parts.push(`grass blit ${gs.blit} live ${gs.live} bake ${gs.bake} over ${gs.over}`);
+    // The stage confesses (phase A1): per-frame upload volume, the
+    // exact resident texture ledger, draw calls, and the two fallback
+    // tails. A steady non-zero `live` means the upload budget is
+    // starving the ground; a growing `tex` with a shrinking cache
+    // means a release hook is missing (the round-10 phantom class).
+    if (this.stageGround && this.stageGl) {
+      const g = this.stageGl;
+      parts.push(
+        `stage up ${(g.uploadedBytes / 1048576).toFixed(1)}MB/${g.uploads} ` +
+          `tex ${(g.textureBytes / 1048576).toFixed(0)}MB/${g.textureCount} ` +
+          `draws ${g.drawCalls} live ${this.stageStats.absent} stale ${this.stageStats.stale}`,
+      );
+      if (this.stageWorld && this.stageWorldGl) {
+        const w = this.stageWorldGl;
+        const ws = this.stageWorldStats;
+        parts.push(
+          `stage world q ${ws.quads} p ${ws.paints} split ${ws.splits} ` +
+            `scr ${(w.scratchUploadBytes / 1048576).toFixed(1)}MB/${w.scratchPaints} sheets ${w.sheetUploads} ` +
+            `up ${(w.uploadedBytes / 1048576).toFixed(1)}MB tex ${(w.textureBytes / 1048576).toFixed(0)}MB/${w.textureCount} draws ${w.drawCalls}`,
+        );
+      }
+    }
     return parts.join('\n');
   }
 
@@ -20500,6 +22059,29 @@ export class Renderer {
   occlusionOn = true;
 
   /** The closure-free bulk lane's one dispatch (see DrawItem.bulk). */
+  /**
+   * One world item, exactly as the sorted loop has always run it —
+   * extracted so the stage lane's paint closures replay the SAME
+   * cell against a scratch ctx (SAME-BRUSH, one truth, two modes).
+   */
+  private dispatchWorldItem(item: DrawItem, castDone = false): void {
+    // Stealth ghost: wrap OUTSIDE the outline pass so the dilated
+    // silhouette ring fades with the body (alpha inside draw() would
+    // leave the ring solid). The nameplate stays opaque.
+    if (item.alpha !== undefined) this.ctx.globalAlpha = item.alpha;
+    if (item.elevated && !castDone) item.drawShadow?.();
+    // THE OFF-SCREEN TREE STANDS DOWN: nothing of it lies in the
+    // viewport. Its shadow above still casts — that lies on the
+    // ground and may well be visible from inside it.
+    if (item.occCulled) {
+      // nothing: the pass proved no pixel would differ
+    } else if (this.outlineOn && item.body) this.paintOutlined(item);
+    else if (item.draw) item.draw();
+    else this.drawBulkItem(item);
+    if (item.alpha !== undefined) this.ctx.globalAlpha = 1;
+    if (this.chrome === 'all') item.drawLabel?.();
+  }
+
   private drawBulkItem(item: DrawItem): void {
     switch (item.bulk) {
       case BulkKind.Particle:
@@ -20525,19 +22107,51 @@ export class Renderer {
    * core glints later in the post pass (drawGlows).
    */
   private drawSeatedHalo(g: EmitterGlowOut): void {
-    const ctx = this.ctx;
     const s = this.camera.scale;
     const ys = this.camera.yScale;
     const sprite = radialGlowSprite(g.rgb, GLOW_STOPS, 0.08);
-    ctx.globalCompositeOperation = 'lighter';
     const p = this.liftedWTS(g.x, g.gy);
     const pr = g.r * s;
+    const q = this.liftedWTS(g.x, g.y);
+    const cr = pr * HALO_CORONA_R;
+    if (this.stageAssembling) {
+      // THE HALO IS TWO QUADS — the stage speaks Lighter natively.
+      // The scratch lane could never carry this brush: additive needs
+      // the destination, and replaying 'lighter' against a transparent
+      // scratch then compositing source-over quietly erased the glow
+      // (the crown's braziers lost their pools — a measured parity
+      // excess, not a visible bug report). Over the 2d GROUND stage a
+      // quad-lane halo still under-adds by ground·srcα (the alpha
+      // stage composites source-over); over world content it is
+      // exact — and the pool sits on world rows wherever fixtures
+      // stand on dressed ground.
+      const emit = (cx: number, cy: number, rw: number, rh: number, alpha: number): void => {
+        if (alpha < 0.01) return;
+        this.stageWorldItems.push({
+          kind: 'quad',
+          tex: this.stageSpriteTex(sprite, 0, sprite),
+          sx: 0,
+          sy: 0,
+          sw: sprite.width,
+          sh: sprite.height,
+          dw: rw * 2,
+          dh: rh * 2,
+          m: stageAt(cx - rw, cy - rh),
+          alpha: Math.min(1, alpha),
+          blend: StageBlend.Lighter,
+        });
+        this.stageWorldStats.quads++;
+      };
+      emit(p.x, p.y, pr, pr * ys, g.a * HALO_POOL_A);
+      emit(q.x, q.y, cr, cr, g.a * HALO_CORONA_A);
+      return;
+    }
+    const ctx = this.ctx;
+    ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = Math.min(1, g.a * HALO_POOL_A);
     ctx.drawImage(sprite, p.x - pr, p.y - pr * ys, pr * 2, pr * 2 * ys);
     // A ground flame's corona hugs its pool; an air-mounted one rises
     // to its bracket — the projAir offset is already inside g.y.
-    const q = this.liftedWTS(g.x, g.y);
-    const cr = pr * HALO_CORONA_R;
     ctx.globalAlpha = Math.min(1, g.a * HALO_CORONA_A);
     ctx.drawImage(sprite, q.x - cr, q.y - cr, cr * 2, cr * 2);
     ctx.globalAlpha = 1;
@@ -21657,6 +23271,13 @@ export class Renderer {
       // Off screen with no sprite: nothing to draw, nothing to pay —
       // a budgeted frame bakes it before it scrolls in.
       if (!visNow) return;
+      if (this.stageAssembling) {
+        // The live brush closed over the frame ctx at collect time
+        // (the capture law) — it cannot be staged. Withdraw; the sink
+        // runs the whole item on the real frame.
+        this.stageNeedsSplit = true;
+        return;
+      }
       this.liveStats.prop++;
       const live = this.propFade(key, tile, tx, ty, b.x, b.y, b.w, b.h);
       if (live < 1) this.ctx.globalAlpha = live;
@@ -21686,6 +23307,28 @@ export class Renderer {
     // pillars, canopies, walls' own veil). The seat the own body is
     // MOUNTED on stands its ground by the same law.
     const fade = this.propFade(key, tile, tx, ty, dx0, dy0, dw, dh);
+    if (this.stageAssembling) {
+      // THE OFF-SCREEN QUAD STANDS DOWN (round 9's law, stage form):
+      // the canvas clips pad-band blits for free, but a staged quad
+      // MINTS A TEXTURE — a dense forest's padded population measured
+      // 2.7GB of VRAM before this gate. The sprite stays warm.
+      if (dx0 + dw < 0 || dx0 > this.w || dy0 + dh < 0 || dy0 > this.h) return;
+      this.stageWorldItems.push({
+        kind: 'quad',
+        tex: this.stageSpriteTex(sp.canvas, sp.frame, sp),
+        sx: 0,
+        sy: 0,
+        sw,
+        sh,
+        dw,
+        dh,
+        m: [1, 0, 0, 1, dx0, dy0],
+        alpha: this.stageItemAlpha * fade,
+        blend: StageBlend.SourceOver,
+      });
+      this.stageWorldStats.quads++;
+      return;
+    }
     if (fade < 1) this.ctx.globalAlpha = fade;
     this.ctx.drawImage(sp.canvas, 0, 0, sw, sh, dx0, dy0, dw, dh);
     if (fade < 1) this.ctx.globalAlpha = 1;
@@ -21818,6 +23461,10 @@ export class Renderer {
     if (!sp) {
       // Off screen with no sprite: nothing to draw, nothing to pay.
       if (!visNow) return;
+      if (this.stageAssembling) {
+        this.stageNeedsSplit = true;
+        return;
+      }
       this.liveStats.flora++;
       this.paintPropLive(
         { x: bx - half, y: gy - top, w: half * 2, h: top + 0.35 * s },
@@ -21835,23 +23482,58 @@ export class Renderer {
     } else {
       sp.used = this.frameNo;
       const k = s / sp.scale;
-      this.ctx.drawImage(
-        sp.canvas,
-        0,
-        0,
-        Math.ceil(sp.cw * sp.dpr),
-        Math.ceil(sp.ch * sp.dpr),
-        bx - sp.ax * k,
-        by + syT * 0.3 - sp.ay * k,
-        sp.cw * k,
-        sp.ch * k,
-      );
+      if (this.stageAssembling) {
+        const fx0 = bx - sp.ax * k;
+        const fy0 = by + syT * 0.3 - sp.ay * k;
+        // THE OFF-SCREEN QUAD STANDS DOWN (see drawPropOutlined).
+        if (fx0 + sp.cw * k < 0 || fx0 > this.w || fy0 + sp.ch * k < 0 || fy0 > this.h) return;
+        this.stageWorldItems.push({
+          kind: 'quad',
+          tex: this.stageSpriteTex(sp.canvas, sp.frame, sp),
+          sx: 0,
+          sy: 0,
+          sw: Math.ceil(sp.cw * sp.dpr),
+          sh: Math.ceil(sp.ch * sp.dpr),
+          dw: sp.cw * k,
+          dh: sp.ch * k,
+          m: [1, 0, 0, 1, fx0, fy0],
+          alpha: this.stageItemAlpha,
+          blend: StageBlend.SourceOver,
+        });
+        this.stageWorldStats.quads++;
+      } else {
+        this.ctx.drawImage(
+          sp.canvas,
+          0,
+          0,
+          Math.ceil(sp.cw * sp.dpr),
+          Math.ceil(sp.ch * sp.dpr),
+          bx - sp.ax * k,
+          by + syT * 0.3 - sp.ay * k,
+          sp.cw * k,
+          sp.ch * k,
+        );
+      }
     }
     // THE GROWING FRAME: a framed row wears its hoops over the plant
     // (the cloth is over the crop — that is the point of it). Live
     // over the blit; the sprite cache never learns about frames.
     const care = farmPlots.get(`${tx},${ty}`);
-    if (care?.f) this.drawGrowingFrame(bx, by + syT * 0.3, h, true);
+    if (care?.f) {
+      if (this.stageAssembling) {
+        const gyf = by + syT * 0.3;
+        this.stagePushPaintRaw(
+          bx - 0.6 * s,
+          gyf - 0.7 * s,
+          1.2 * s,
+          1.1 * s,
+          () => this.drawGrowingFrame(bx, gyf, h, true),
+          'crop-frame',
+        );
+      } else {
+        this.drawGrowingFrame(bx, by + syT * 0.3, h, true);
+      }
+    }
     // THE CARE FOLD's beacon: a ripe crop that has EARNED a grade
     // wears an extra twinkle over the cached sprite — gold and eager
     // for prime, a single quiet silver wink for fine. Live math over
@@ -22211,7 +23893,27 @@ export class Renderer {
       // the crown's throw crosses ~¾ of a pixel — right after a
       // re-bake the delta is near zero and the plain blit is exact.
       const kSh = (wind - sp.windAt) * 0.055;
-      if (Math.abs(kSh) * dh > 0.75) {
+      if (this.stageAssembling) {
+        // THE WORLD ON STAGE: the same numbers, as a quad — the shear
+        // is four floats of per-quad matrix, and the step-aside fade
+        // rides the quad's alpha.
+        const gy = by + syT * 0.3;
+        const sheared = Math.abs(kSh) * dh > 0.75;
+        this.stageWorldItems.push({
+          kind: 'quad',
+          tex: this.stageSpriteTex(sp.canvas, sp.frame, sp),
+          sx: 0,
+          sy: 0,
+          sw,
+          sh,
+          dw,
+          dh,
+          m: sheared ? [1, 0, -kSh, 1, dx0 + kSh * (gy - dy0), dy0] : [1, 0, 0, 1, dx0, dy0],
+          alpha: fade < 1 ? fade : 1,
+          blend: StageBlend.SourceOver,
+        });
+        this.stageWorldStats.quads++;
+      } else if (Math.abs(kSh) * dh > 0.75) {
         const gy = by + syT * 0.3;
         this.ctx.transform(1, 0, -kSh, 1, kSh * gy, 0);
         this.ctx.drawImage(sp.canvas, 0, 0, sw, sh, dx0, dy0, dw, dh);
@@ -22389,12 +24091,25 @@ export class Renderer {
     const m = this.treeOrSaplingModel(tile, h);
     const ys = this.camera.yScale;
     if (sunOn) {
-      const c = this.beginCastFill();
-      if (c) {
+      // Under assembly the sprite blit becomes a quad (THE CAST
+      // SPEAKS IN QUADS — same canvas, same matrix, like castMask);
+      // the live paths (regrowth's animated fill) take a bounded
+      // scratch paint. The sprite-ensure logic below is shared by
+      // both modes — one cache, one budget, one truth.
+      const asm = this.stageAssembling && this.stageCastLane;
+      const c = asm ? null : this.beginCastFill();
+      if (c || asm) {
         const s = this.camera.scale;
         if (grow < 1) {
           // Regrowth animates shape per frame — build live.
-          c.fill(
+          if (asm) {
+            const pad = s * (h * 2 + 3);
+            this.stageCastScratch(bx - pad, groundY - pad, pad * 2, pad * 2, () =>
+              this.drawTreeShadow(bx, by, wx, wy, h, tile, tSec, grow),
+            );
+            return;
+          }
+          c!.fill(
             this.treeShadowPath(
               m,
               bx,
@@ -22475,6 +24190,27 @@ export class Renderer {
             // down (same law as the body cull, one layer lower).
             if (dx0 + dwS + smg < 0 || dx0 - smg > this.w || dy0 + dhS < 0 || dy0 > this.h) {
               // nothing on screen to shade
+            } else if (asm) {
+              // The blit as a quad: plain when the sway is sub-pixel,
+              // else the SAME composed shear matrix. rev = the bake's
+              // frame stamp, so a cadence re-bake re-uploads once.
+              const sway = Math.abs(sx) * dhS >= 1.5;
+              this.stageWorldItems.push({
+                kind: 'quad',
+                tex: this.stageSpriteTex(sh.canvas, sh.frame, sh),
+                sx: 0,
+                sy: 0,
+                sw: pw2,
+                sh: ph2,
+                dw: sway ? sh.cw : dwS,
+                dh: sway ? sh.ch : dhS,
+                m: sway
+                  ? [k, 0, sx * k, k, bx - sh.ax * k - sh.ay * sx * k, groundY - sh.ay * k]
+                  : stageAt(dx0, dy0),
+                alpha: Math.min(1, this.sky.shadowAlpha / this.sdwLayerAlpha),
+                blend: StageBlend.SourceOver,
+              });
+              this.stageWorldStats.quads++;
             } else if (Math.abs(sx) * dhS < 1.5) {
               // Sub-pixel sway: the plain 9-arg blit carries the
               // scale ratio in its dest rect and skips the matrix
@@ -22482,31 +24218,58 @@ export class Renderer {
               // their sway gate is twice the body's 0.75px — the
               // wider gate halves the transform-pair population and
               // is invisible on a blob (the body keeps its own).
-              c.drawImage(sh.canvas, 0, 0, pw2, ph2, dx0, dy0, dwS, dhS);
+              c!.drawImage(sh.canvas, 0, 0, pw2, ph2, dx0, dy0, dwS, dhS);
             } else {
               // ONE composed transform + its exact inverse (b = 0
               // keeps it closed-form): translate(bx,gy)·[k, sx·k; 0,
               // k]. Six matrix ops per cast were a measured cost of
               // dense meadows; two are not.
-              c.transform(k, 0, sx * k, k, bx, groundY);
-              c.drawImage(sh.canvas, 0, 0, pw2, ph2, -sh.ax, -sh.ay, sh.cw, sh.ch);
-              c.transform(1 / k, 0, -sx / k, 1 / k, (sx * groundY - bx) / k, -groundY / k);
+              c!.transform(k, 0, sx * k, k, bx, groundY);
+              c!.drawImage(sh.canvas, 0, 0, pw2, ph2, -sh.ax, -sh.ay, sh.cw, sh.ch);
+              c!.transform(1 / k, 0, -sx / k, 1 / k, (sx * groundY - bx) / k, -groundY / k);
             }
           }
         }
-        c.globalAlpha = 1;
+        if (c) c.globalAlpha = 1;
       }
     }
     if (throws.length > 0) {
-      const c = this.sdw;
-      const wind = windScalarAt(wx, wy, tSec);
-      c.fillStyle = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
-      for (const th of throws) {
-        c.globalAlpha = Math.min(1, th.alpha / this.sdwLayerAlpha);
-        c.fill(this.treeShadowPath(m, bx, groundY, grow, wind, th.ux * th.len, th.uy * th.len * ys));
+      if (this.stageAssembling && this.stageCastLane) {
+        // Light throws are live path fills (wind in the silhouette) —
+        // one bounded scratch paint per tree, night-and-lamp only.
+        const pad = this.camera.scale * (h * 2 + 3);
+        this.stageCastScratch(bx - pad, groundY - pad, pad * 2, pad * 2, () =>
+          this.drawTreeThrowShadows(m, bx, groundY, grow, wx, wy, tSec),
+        );
+        return;
       }
-      c.globalAlpha = 1;
+      this.drawTreeThrowShadows(m, bx, groundY, grow, wx, wy, tSec);
     }
+  }
+
+  /** The light-throw half of a tree's cast, extracted so the stage's
+   *  bounded fallback replays EXACTLY this (throws re-read at flush —
+   *  same frame, same lights). */
+  private drawTreeThrowShadows(
+    m: TreeModel,
+    bx: number,
+    groundY: number,
+    grow: number,
+    wx: number,
+    wy: number,
+    tSec: number,
+  ): void {
+    const throws = this.lightThrows(bx, groundY, 0.6);
+    if (throws.length === 0) return;
+    const ys = this.camera.yScale;
+    const c = this.sdw;
+    const wind = windScalarAt(wx, wy, tSec);
+    c.fillStyle = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
+    for (const th of throws) {
+      c.globalAlpha = Math.min(1, th.alpha / this.sdwLayerAlpha);
+      c.fill(this.treeShadowPath(m, bx, groundY, grow, wind, th.ux * th.len, th.uy * th.len * ys));
+    }
+    c.globalAlpha = 1;
   }
 
 
@@ -60024,6 +61787,26 @@ export class Renderer {
     const dy = b.y - sp.m * k;
     const dw = sp.wCss * k;
     const dh = sp.hCss * k;
+    if (this.stageAssembling) {
+      // The cached body composite is a pure blit — a quad, with the
+      // stealth ghost's alpha folded in. relightBody below is gated
+      // off whenever assembly is chosen (bodyRelightPossible).
+      this.stageWorldItems.push({
+        kind: 'quad',
+        tex: this.stageSpriteTex(sp.canvas, sp.frame, sp),
+        sx: 0,
+        sy: 0,
+        sw: sp.w,
+        sh: sp.h,
+        dw,
+        dh,
+        m: [1, 0, 0, 1, dx, dy],
+        alpha: this.stageItemAlpha,
+        blend: StageBlend.SourceOver,
+      });
+      this.stageWorldStats.quads++;
+      return;
+    }
     this.ctx.drawImage(sp.canvas, 0, 0, sp.w, sp.h, dx, dy, dw, dh);
     if (item) {
       // The ring radius the sprite was BAKED with (paintOutlineScratch
@@ -60088,6 +61871,12 @@ export class Renderer {
 
   /** Direct (uncached) outline pass: scratch build + two blits. */
   private paintOutlinedDirect(item: DrawItem): void {
+    if (this.stageAssembling) {
+      // Un-keyed bodies rebuild their composite every frame — real
+      // painting, not a blit. The sink's bounded scratch lane owns it.
+      this.stageNeedsSplit = true;
+      return;
+    }
     const b = item.body!;
     const dpr = this.dpr();
     const geo = this.paintOutlineScratch(item);

@@ -1,4 +1,5 @@
 import { Tile, hashCoords, valueNoise } from '@arx/shared';
+import { StageBlend, type StageItem, type StageTexture } from './stage/stageTypes.js';
 import {
   GRASS_BAKE_MS_BUDGET,
   GRASS_CELL_SPAN,
@@ -785,6 +786,89 @@ export class GrassSystem {
   private readonly rowSweepScratch: Array<{ key: number; used: number }> = [];
   /** Under-lane deferred blits (cell sprites paint after the shade). */
   private readonly underBlitScratch: Array<{ sp: RowSprite; c0: number; ty: number }> = [];
+
+  /**
+   * THE WORLD ON STAGE hook (phase A2p2): set by the renderer during
+   * world assembly. blitRowSprite emits quads through it, and the
+   * live-tile tails defer into ONE bounded paint per band/row (see
+   * stageDrainLive). Null = the classic canvas path, untouched.
+   */
+  stagePush: ((item: StageItem) => void) | null = null;
+  private readonly stageLive: Array<{ lane: number; tx: number; ty: number }> = [];
+  private readonly stageTexMap = new WeakMap<
+    HTMLCanvasElement,
+    { tex: StageTexture; owner: object; frameRev: number }
+  >();
+  private stageRevSeq = 0;
+
+  /** Handles key by the CANVAS (the renderer's shadow law, same
+   *  two-axis invalidation): a pooled canvas claimed by another cell
+   *  re-uploads unconditionally; a cell's own rebake rides its
+   *  bake stamp. */
+  private stageTexFor(sp: RowSprite): StageTexture {
+    const canvas = sp.canvas!;
+    let rec = this.stageTexMap.get(canvas);
+    if (!rec) {
+      rec = { tex: { canvas, rev: ++this.stageRevSeq, filter: 'linear' }, owner: sp, frameRev: sp.bakedAtMs };
+      this.stageTexMap.set(canvas, rec);
+      return rec.tex;
+    }
+    if (rec.owner !== sp || rec.frameRev !== sp.bakedAtMs) {
+      rec.owner = sp;
+      rec.frameRev = sp.bakedAtMs;
+      rec.tex.rev = ++this.stageRevSeq;
+    }
+    return rec.tex;
+  }
+
+  /** Drain the deferred live tiles as ONE bounded paint item. The
+   *  tiles rebuild inside the closure from the samplers — everything
+   *  they need is recomputable, so nothing captures a stale frame. */
+  private stageDrainLive(ground: Sampler, detail: DetailFn, wts: WTS, s: number): void {
+    if (this.stageLive.length === 0) return;
+    const tiles = this.stageLive.splice(0);
+    let minTx = Infinity;
+    let maxTx = -Infinity;
+    let minTy = Infinity;
+    let maxTy = -Infinity;
+    for (const d of tiles) {
+      if (d.tx < minTx) minTx = d.tx;
+      if (d.tx > maxTx) maxTx = d.tx;
+      if (d.ty < minTy) minTy = d.ty;
+      if (d.ty > maxTy) maxTy = d.ty;
+    }
+    const p0 = wts(minTx, minTy);
+    const p1 = wts(maxTx + 1, maxTy + 1);
+    const x0 = Math.min(p0.x, p1.x) - s;
+    const x1 = Math.max(p0.x, p1.x) + s;
+    const y0 = Math.min(p0.y, p1.y) - 1.6 * s;
+    const y1 = Math.max(p0.y, p1.y) + 0.4 * s;
+    this.stagePush!({
+      kind: 'paint',
+      px: x0,
+      py: y0,
+      pw: x1 - x0,
+      ph: y1 - y0,
+      paint: (ctx) => {
+        this.ensurePaths();
+        for (const d of tiles) {
+          const t = ground(d.tx, d.ty);
+          const use =
+            d.lane === LANE_ROW || d.lane === LANE_UNDER
+              ? t === Tile.Grass || t === Tile.GrassTall
+              : t === Tile.GrassTall;
+          if (!use) continue;
+          const st = this.tile(d.tx, d.ty, t!, detail(d.tx, d.ty), ground);
+          const wind = windAtInto(WIND_SCRATCH, d.tx + 0.5, d.ty + 0.5, this.tSec);
+          const f = this.tileFrame(d.tx, d.ty, wts);
+          this.gatherNear(d.tx, d.ty);
+          this.buildLaneTile(d.lane, st, t!, wind, f, s, d.lane === LANE_UNDER);
+          this.rowStats.live++;
+        }
+        this.flush(ctx);
+      },
+    });
+  }
   /**
    * Per-frame ctx transform memo. Every lane's entry point read
    * ctx.getTransform() per row item — ~100-130 DOMMatrix allocations
@@ -1005,6 +1089,12 @@ export class GrassSystem {
    * stays as the safety drain for any cast gathered after the under
    * pass, keeping the shared-layer merge law for that remainder.
    */
+  /** Anything queued for the shade pass this frame? (The stage skips
+   *  the layer paint entirely on shadeless frames.) */
+  hasShadows(): boolean {
+    return this.shadowPath !== null;
+  }
+
   flushShadows(ctx: CanvasRenderingContext2D, fill: string, alpha: number): void {
     if (!this.shadowPath) return;
     ctx.globalAlpha = alpha;
@@ -1897,6 +1987,36 @@ export class GrassSystem {
     const p = wts(c0 + sp.txOff, ty);
     const wNow = windAtInto(WIND_SCRATCH, sp.center, ty + 0.5, this.tSec);
     const shx = rowShear(windTerm(wNow.bx, wNow.by), sp.bakedTerm);
+    if (this.stagePush) {
+      // THE WORLD ON STAGE: the same shear, as a quad. Dest-local is
+      // the sprite's own device px; a = r/dpr maps them to CSS at the
+      // rescale ratio, exactly the setTransform below divided by the
+      // live device ratio (the backend multiplies it back).
+      const r = s / sp.scale;
+      const refY = sp.sy * 0.5;
+      this.stagePush({
+        kind: 'quad',
+        tex: this.stageTexFor(sp),
+        sx: 0,
+        sy: 0,
+        sw: sp.w,
+        sh: sp.h,
+        dw: sp.w,
+        dh: sp.h,
+        m: [
+          r / sp.dpr,
+          0,
+          (-r * shx) / sp.dpr,
+          r / sp.dpr,
+          p.x - r * sp.mx + r * shx * (refY + sp.my),
+          p.y - r * sp.my,
+        ],
+        alpha: 1,
+        blend: StageBlend.SourceOver,
+      });
+      this.rowStats.blit++;
+      return;
+    }
     const K = m.a * (s / sp.scale);
     const bx = m.a * p.x + m.e;
     const by = m.d * p.y + m.f;
@@ -1978,8 +2098,12 @@ export class GrassSystem {
     if (iLo === iHi || !this.rowSpritesOn) {
       for (let i = iLo; i <= iHi; i++) {
         if ((usedMask & (1 << i)) === 0) continue;
-        const st = this.cellSt[i]!;
         const tx = c0 + i;
+        if (this.stagePush) {
+          this.stageLive.push({ lane, tx, ty });
+          continue;
+        }
+        const st = this.cellSt[i]!;
         const wind = windAtInto(WIND_SCRATCH, tx + 0.5, ty + 0.5, this.tSec);
         this.gatherNear(tx, ty);
         this.buildLaneTile(lane, st, this.cellT[i]!, wind, this.tileFrame(tx, ty, wts), s, lane === LANE_UNDER);
@@ -2026,6 +2150,10 @@ export class GrassSystem {
         const st = this.cellSt[i];
         if (!st) continue;
         const tx = c0 + i;
+        if (this.stagePush) {
+          this.stageLive.push({ lane, tx, ty });
+          continue;
+        }
         const wind = windAtInto(WIND_SCRATCH, tx + 0.5, ty + 0.5, this.tSec);
         const f = this.tileFrame(tx, ty, wts);
         this.gatherNear(tx, ty);
@@ -2041,7 +2169,7 @@ export class GrassSystem {
    * blades behind it draw first, blades in front draw over.
    */
   collectTall(
-    items: Array<{ sortY: number; draw?: () => void }>,
+    items: Array<{ sortY: number; draw?: () => void; stageSafe?: true }>,
     ctx: CanvasRenderingContext2D,
     ground: Sampler,
     detail: DetailFn,
@@ -2069,13 +2197,15 @@ export class GrassSystem {
       for (const [lane, sortY] of bands) {
         items.push({
           sortY,
+          stageSafe: true,
           draw: () => {
             this.ensurePaths();
             const m = this.frameTransform(ctx);
             for (let c0 = cellStartTx(bounds.minTx); c0 <= bounds.maxTx; c0 += GRASS_CELL_SPAN) {
               this.handleRowCell(ctx, m, lane, 0, ty, c0, ground, detail, wts, s);
             }
-            this.flush(ctx);
+            if (this.stagePush) this.stageDrainLive(ground, detail, wts, s);
+            else this.flush(ctx);
           },
         });
       }
@@ -2103,6 +2233,7 @@ export class GrassSystem {
         this.handleRowCell(ctx, m, LANE_ROW, level, ty, c0, ground, detail, wts, s);
       }
     }
-    this.flush(ctx);
+    if (this.stagePush) this.stageDrainLive(ground, detail, wts, s);
+    else this.flush(ctx);
   }
 }

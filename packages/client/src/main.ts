@@ -316,6 +316,18 @@ renderer.waterFxFull = localStorage.getItem('arx.waterfx') !== 'basic';
 // THE TRACKED GROUND is a preference too: the whole footprint field
 // rides one switch — off empties it instantly (the perf kill switch).
 FOOTPRINT_TUNE.enabled = localStorage.getItem('arx.footprints') !== 'off';
+// THE DISPLAY TOGGLE (THE PAINTED WORLD, phase A5): the accelerated
+// display ships default-OFF behind the settings pane. ?stage /
+// ?stage=world stay the dev override lane; the player's choice rides
+// localStorage like every render preference. If WebGL2 is missing or
+// the context dies, the renderer falls back to the standard display
+// on its own the same frame (THE TOGGLE IS THE PRODUCT'S SAFETY).
+{
+  const stageParam = new URLSearchParams(location.search).get('stage');
+  const stored = localStorage.getItem('arx.stage') === 'on';
+  renderer.stageGround = stageParam !== null || stored;
+  renderer.stageWorld = stageParam === 'world' || (stageParam === null && stored);
+}
 // SETTINGS' TAB RAIL: Sound / Display / Controls, one bench standing
 // at a time, LT/RT stepping them like every room's pager.
 {
@@ -392,6 +404,21 @@ let walkoverBox: HTMLInputElement | null = null;
     row.appendChild(box);
     rows.appendChild(row);
   };
+  // THE DISPLAY TOGGLE: the whole painted-stage epic behind one
+  // honest switch. Applies live — the parity drills toggle it
+  // mid-frame hundreds of times a session.
+  toggle('Accelerated display (beta)', renderer.stageWorld, (on) => {
+    renderer.stageGround = on;
+    renderer.stageWorld = on;
+    localStorage.setItem('arx.stage', on ? 'on' : 'off');
+  });
+  {
+    const box = rows.lastElementChild!.querySelector('input');
+    if (box) {
+      box.dataset.tipsub =
+        'Draws the world through your graphics card. This can lift the frame rate on machines where the standard display struggles; if it ever fails, the game returns to the standard display on its own.';
+    }
+  }
   toggle('Water reflections', renderer.reflectionsOn, (on) => {
     renderer.reflectionsOn = on;
     localStorage.setItem('arx.reflections', on ? 'on' : 'off');
