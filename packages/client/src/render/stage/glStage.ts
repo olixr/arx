@@ -25,7 +25,7 @@
 import { computeRuns } from './stageBatch.js';
 import { BLEND_GL_FUNC, blendNeedsAlphaTarget, blendNeedsOpaqueTarget } from './stageBlend.js';
 import { GPU_COST_SEED_MS_PER_MB, admitUpload, nextUploadCost, uploadEstMs } from './gpuBudget.js';
-import type { StageBackend, StageItem, StageTexture } from './stageTypes.js';
+import type { StageBackend, StageItem, StagePaint, StageTexture } from './stageTypes.js';
 
 const VERT_SRC = `#version 300 es
 layout(location=0) in vec2 aPos;
@@ -109,6 +109,23 @@ export class GlStage implements StageBackend {
     used: number;
   }>();
   private scratchBytes = 0;
+  /** THE SCRATCH LEDGER: keyed paints keep their own exact-size
+   *  canvas+texture and repaint/re-upload ONLY on a rev change — the
+   *  wall-run lane's cure (~48MB/frame of identical wall strips
+   *  re-uploaded at the crown). Bounded by the LRU sweep + byte cap. */
+  private readonly keyed = new Map<number, {
+    cv: HTMLCanvasElement;
+    ctx: CanvasRenderingContext2D;
+    glTex: WebGLTexture;
+    w: number;
+    h: number;
+    rev: number;
+    bytes: number;
+    used: number;
+  }>();
+  private keyedBytes = 0;
+  private static readonly KEYED_BUDGET = 128 * 1024 * 1024;
+  scratchCachedHits = 0;
   private frameNo = 0;
   /** Staging canvas for dirty-rect subuploads (grown, never shrunk). */
   private staging: { cv: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null = null;
@@ -151,6 +168,10 @@ export class GlStage implements StageBackend {
     ctx: CanvasRenderingContext2D;
     glTex: WebGLTexture;
     dirty: boolean;
+    /** Rows the current frame's pack actually reached — the upload
+     *  stops there (UVs only address this frame's cells, so stale
+     *  rows below are never sampled). */
+    usedH: number;
   }> = [];
   private static readonly SHEET_W = 2048;
   private static readonly SHEET_H = 1024;
@@ -217,6 +238,8 @@ export class GlStage implements StageBackend {
       this.textureBytes = 0;
       this.scratch.clear();
       this.scratchBytes = 0;
+      this.keyed.clear();
+      this.keyedBytes = 0;
       this.sheets.length = 0;
       this.layerFbo = null;
       this.layerTex = null;
@@ -415,6 +438,7 @@ export class GlStage implements StageBackend {
     this.uploadedThisFrame = false;
     this.scratchPaints = 0;
     this.scratchUploadBytes = 0;
+    this.scratchCachedHits = 0;
     this.sheetUploads = 0;
   }
 
@@ -445,6 +469,15 @@ export class GlStage implements StageBackend {
           gl.deleteTexture(sc.glTex);
           this.scratchBytes -= sc.bytes;
           this.scratch.delete(cls);
+        }
+      }
+      // The keyed ledger retires on the same cadence — a run that
+      // left the viewport keeps its texture ~10s, then lets go.
+      for (const [k, e] of this.keyed) {
+        if (e.used < this.frameNo - 600) {
+          gl.deleteTexture(e.glTex);
+          this.keyedBytes -= e.bytes;
+          this.keyed.delete(k);
         }
       }
       // THE ORPHAN SWEEP: sprite-lane handles (WeakMap-owned, no
@@ -494,6 +527,11 @@ export class GlStage implements StageBackend {
         if (run.quads !== 0) continue;
         const it = items[run.i0]!;
         if (it.kind !== 'paint') continue;
+        // Keyed paints own a cached texture — never sheet material.
+        if (it.key !== undefined && it.rev !== undefined) {
+          cells[ri] = null;
+          continue;
+        }
         const pwDev = Math.ceil(it.pw * dpr);
         const phDev = Math.ceil(it.ph * dpr);
         if (pwDev > GlStage.SHEET_CELL_W || phDev > GlStage.SHEET_CELL_H) {
@@ -540,18 +578,31 @@ export class GlStage implements StageBackend {
         this.scratchPaints++;
         sx += pwDev + GUT;
         if (phDev > rowH) rowH = phDev;
+        if (sy + phDev + GUT > sh.usedH) sh.usedH = sy + phDev + GUT;
       }
     }
     for (const sh of this.sheets) {
       if (!sh.dirty) continue;
+      // THE USED ROWS: the pack rarely fills a page — upload only the
+      // rows it reached (storage was allocated whole at openSheet;
+      // texSubImage2D from an EXACT-sized staging copy, the same
+      // source-sized-texels law as the atlas dirty rects).
+      const uh = Math.min(GlStage.SHEET_H, sh.usedH);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, sh.glTex);
       gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sh.cv);
+      if (uh >= GlStage.SHEET_H - 1) {
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sh.cv);
+      } else {
+        const st = this.stagingFor(GlStage.SHEET_W, uh);
+        st.ctx.drawImage(sh.cv, 0, 0, GlStage.SHEET_W, uh, 0, 0, GlStage.SHEET_W, uh);
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, st.cv);
+      }
       gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
       sh.dirty = false;
+      sh.usedH = 0;
       this.sheetUploads++;
-      this.scratchUploadBytes += GlStage.SHEET_W * GlStage.SHEET_H * 4;
+      this.scratchUploadBytes += GlStage.SHEET_W * Math.max(1, uh) * 4;
     }
     // Fill vertices in stream order; record per-run vertex offsets.
     const f32 = this.f32;
@@ -587,6 +638,10 @@ export class GlStage implements StageBackend {
           v0 = cell.gy / GlStage.SHEET_H;
           u1 = (cell.gx + pwDev) / GlStage.SHEET_W;
           v1 = (cell.gy + phDev) / GlStage.SHEET_H;
+        } else if (it.key !== undefined && it.rev !== undefined) {
+          // Keyed: the cached canvas is EXACT-size — full UV span.
+          u1 = 1;
+          v1 = 1;
         } else {
           const cw = Math.ceil(pwDev / 64) * 64;
           const ch = Math.ceil(phDev / 64) * 64;
@@ -705,7 +760,11 @@ export class GlStage implements StageBackend {
           this.drawCalls++;
           continue;
         }
-        this.paintScratch(it, runFirst[ri]!);
+        if (it.key !== undefined && it.rev !== undefined) {
+          this.paintKeyed(it as StagePaint & { key: number; rev: number }, runFirst[ri]!);
+        } else {
+          this.paintScratch(it, runFirst[ri]!);
+        }
         continue;
       }
       if (!this.isAlpha && !this.inLayer && blendNeedsAlphaTarget(run.blend)) {
@@ -755,7 +814,7 @@ export class GlStage implements StageBackend {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      this.sheets.push({ cv, ctx, glTex, dirty: false });
+      this.sheets.push({ cv, ctx, glTex, dirty: false, usedH: 0 });
     }
     return i;
   }
@@ -801,6 +860,89 @@ export class GlStage implements StageBackend {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     this.scratchPaints++;
     this.scratchUploadBytes += cw * ch * 4;
+    const [sf, df] = BLEND_GL_FUNC[0]!; // paints composite source-over
+    gl.blendFunc(sf, df);
+    gl.drawArrays(gl.TRIANGLES, firstVert, VERTS_PER_QUAD);
+    this.drawCalls++;
+  }
+
+  /**
+   * THE SCRATCH LEDGER's draw: a keyed paint owns an exact-size
+   * canvas+texture pair; the closure runs and the texture uploads
+   * ONLY when the item's rev (or its box size) changed. A cache hit
+   * is a bind and a drawArrays — the wall strips that measured
+   * ~48MB/frame of identical uploads at the crown become, in effect,
+   * quads that repaint on world/zoom/cadence edges alone.
+   */
+  private paintKeyed(it: StagePaint & { key: number; rev: number }, firstVert: number): void {
+    const gl = this.gl;
+    const dpr = this.dpr;
+    const pwDev = Math.ceil(it.pw * dpr);
+    const phDev = Math.ceil(it.ph * dpr);
+    let e = this.keyed.get(it.key);
+    if (e && (e.w !== pwDev || e.h !== phDev)) {
+      gl.deleteTexture(e.glTex);
+      this.keyedBytes -= e.bytes;
+      this.keyed.delete(it.key);
+      e = undefined;
+    }
+    if (!e) {
+      // Byte cap: evict the coldest entries before minting past the
+      // budget; never an entry drawn THIS frame.
+      const bytes = pwDev * phDev * 4;
+      while (this.keyedBytes + bytes > GlStage.KEYED_BUDGET && this.keyed.size > 0) {
+        let coldK = -1;
+        let coldUsed = Infinity;
+        for (const [k, v2] of this.keyed) {
+          if (v2.used < coldUsed) {
+            coldUsed = v2.used;
+            coldK = k;
+          }
+        }
+        const cold = this.keyed.get(coldK);
+        if (!cold || cold.used >= this.frameNo) break;
+        gl.deleteTexture(cold.glTex);
+        this.keyedBytes -= cold.bytes;
+        this.keyed.delete(coldK);
+      }
+      const cv = document.createElement('canvas');
+      cv.width = pwDev;
+      cv.height = phDev;
+      e = {
+        cv,
+        ctx: cv.getContext('2d')!,
+        glTex: gl.createTexture()!,
+        w: pwDev,
+        h: phDev,
+        rev: it.rev - 1, // force the first paint
+        bytes,
+        used: this.frameNo,
+      };
+      this.keyedBytes += bytes;
+      this.keyed.set(it.key, e);
+      gl.bindTexture(gl.TEXTURE_2D, e.glTex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    }
+    e.used = this.frameNo;
+    gl.bindTexture(gl.TEXTURE_2D, e.glTex);
+    if (e.rev !== it.rev) {
+      const ctx = e.ctx;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, e.w, e.h);
+      ctx.setTransform(dpr, 0, 0, dpr, -it.px * dpr, -it.py * dpr);
+      it.paint(ctx);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, e.cv);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+      e.rev = it.rev;
+      this.scratchPaints++;
+      this.scratchUploadBytes += e.bytes;
+    } else {
+      this.scratchCachedHits++;
+    }
     const [sf, df] = BLEND_GL_FUNC[0]!; // paints composite source-over
     gl.blendFunc(sf, df);
     gl.drawArrays(gl.TRIANGLES, firstVert, VERTS_PER_QUAD);

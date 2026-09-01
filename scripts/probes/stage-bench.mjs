@@ -56,7 +56,22 @@ async function run(rate, stage) {
   }, ms);
   const fmt = (r) => `med ${r.med.toFixed(1)}ms p90 ${r.p90.toFixed(1)} worst ${r.worst.toFixed(0)} (~${r.fps.toFixed(0)}fps)`;
   for (const sc of SCENES) {
-    await page.evaluate((t) => { window.dcGame.sendChat('/time 12'); window.dcGame.sendChat(t); }, sc.tp);
+    // THE VERIFIED TELEPORT (see stage-parity.mjs): the chat rate
+    // limiter silently eats commands — send, verify, retry.
+    {
+      const [tx, ty] = sc.tp.split(' ').slice(1).map(Number);
+      for (let a = 0; a < 6; a++) {
+        await page.evaluate((t) => { window.dcGame.sendChat('/time 12'); window.dcGame.sendChat(t); }, sc.tp);
+        try {
+          await page.waitForFunction(
+            ([x, y]) => Math.abs(window.dcRenderer.ownPX - x) < 4 && Math.abs(window.dcRenderer.ownPY - y) < 4,
+            [tx, ty],
+            { timeout: 2500 },
+          );
+          break;
+        } catch { /* eaten — retry */ }
+      }
+    }
     await page.waitForTimeout(rate === 1 ? 4000 : 10000);
     console.log(`${label} steady ${sc.name.padEnd(9)} ${fmt(await sample(rate === 1 ? 3000 : 5000))}`);
   }

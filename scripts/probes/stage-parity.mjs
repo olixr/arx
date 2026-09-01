@@ -79,8 +79,27 @@ const median = (xs) => [...xs].sort((a, b) => a - b)[xs.length >> 1];
 const setStage = (on) => page.evaluate((v) => { window.dcRenderer.stageGround = v; window.dcRenderer.stageWorld = v; }, on);
 
 let allOk = true;
+// THE VERIFIED TELEPORT: the chat rate limiter silently eats
+// commands (a battery once measured four scenes at the graveyard
+// while PASSing) — send, verify the renderer's own position landed,
+// retry until it does.
+const tpTo = async (tp, time) => {
+  const [tx, ty] = tp.split(' ').slice(1).map(Number);
+  for (let a = 0; a < 6; a++) {
+    await page.evaluate(({ tp: t, time: tm }) => { window.dcGame.sendChat(tm ?? '/time 12'); window.dcGame.sendChat(t); }, { tp, time });
+    try {
+      await page.waitForFunction(
+        ([x, y]) => Math.abs(window.dcRenderer.ownPX - x) < 4 && Math.abs(window.dcRenderer.ownPY - y) < 4,
+        [tx, ty],
+        { timeout: 2500 },
+      );
+      return;
+    } catch { /* eaten — retry */ }
+  }
+  throw new Error(`teleport never landed: ${tp}`);
+};
 for (const scene of SCENES) {
-  await page.evaluate(({ tp, time }) => { window.dcGame.sendChat(time ?? '/time 12'); window.dcGame.sendChat(tp); }, scene);
+  await tpTo(scene.tp, scene.time);
   await page.waitForTimeout(5000);
   // 9 captures, alternating ON/OFF, fixed 400ms cadence.
   const caps = [];
