@@ -1,4 +1,10 @@
-import { type EquipSlot, type EquippedItem, type InvSlot, type Look, type SkillXp } from '@arx/shared';
+import { type EquipSlot, type EquippedItem, type InvSlot, type Look, type SkillId, type SkillXp, type TechniqueDef } from '@arx/shared';
+import { type CallingDef } from '@arx/content';
+import { type Socket } from './kit/plates.js';
+import { type ProvingGround } from './artDiagram.js';
+/** Card display colors for the three armor weight classes. */
+/** The when clause's word for each weapon style in hand. */
+export declare const WIELD_WORD: Record<string, string>;
 /**
  * Every skill's face: an item that embodies the craft, and an accent
  * the card's plaque and meter wear. Pure data — a new skill is a row.
@@ -30,7 +36,7 @@ export type SlotAction = 'use' | 'stow' | 'offhand' | 'stowOffhand' | 'deposit' 
 export declare class Panels {
     private readonly onUseSlot;
     private readonly onUnequip;
-    private readonly onTechnique;
+    readonly onTechnique: (ability: string, slot: 0 | 2) => void;
     private readonly onInvMove;
     private readonly onDropToWorld;
     private readonly onSlotAction;
@@ -47,7 +53,7 @@ export declare class Panels {
     /** Opens the Techniques codex (skill cards link into it). */
     private readonly onOpenArts;
     /** Answer or set down a Calling (server enforces THE FOCUS LAW). */
-    private readonly onCalling;
+    readonly onCalling: (calling: string, on: boolean, rank?: number) => void;
     /** THE SECOND GRIP: fire the swap verb (the rack's Draw/Trade). */
     private readonly onSwapSets;
     private readonly invPanel;
@@ -65,34 +71,34 @@ export declare class Panels {
     private readonly skillsHero;
     /** The skill standing on the hero pane. */
     private skillSel;
-    private readonly artsPanel;
-    private readonly artsRail;
-    private readonly artsLoadout;
-    private readonly artsSchools;
-    private readonly artsDetail;
+    readonly artsPanel: HTMLElement;
+    readonly artsRail: HTMLElement;
+    readonly artsLoadout: HTMLElement;
+    readonly artsSchools: HTMLElement;
+    readonly artsDetail: HTMLElement;
     /** THE PROVING GROUND: the live diagram pane of the chosen art. */
     private readonly artsGroundHost;
-    private readonly ground;
+    readonly ground: ProvingGround;
     /** The Hand's two art seats, kept for the seat-flight landing flash. */
-    private altarSockets;
+    altarSockets: Socket[];
     /** The technique the codex bench is laying out (null = auto-pick). */
-    private artsSel;
+    artsSel: string | null;
     /** The school standing on the stage (the rail's choice). */
-    private artsSchoolSel;
+    artsSchoolSel: SkillId | null;
     /** Which wing of the codex is open: the actives or the passives. */
-    private artsWing;
+    artsWing: 'arts' | 'callings';
     /** THE OPEN HALL: the skill whose calling ladder stands on the stage. */
-    private callingSkillSel;
+    callingSkillSel: SkillId | null;
     /** The Calling the bench is laying out (callings wing). */
-    private callingSel;
+    callingSel: string | null;
     /** Answered Callings, mirrored from the server. */
-    private callings;
+    callings: string[];
     /** APPLIED ranks past I by id (absent = Rank I). */
     private callingRanks;
     /** Unlocked techniques the player has inspected — the NEW-pip ledger. */
-    private readonly seenTech;
+    readonly seenTech: Set<string>;
     /** Unlocked Callings the player has inspected — the NEW-pip ledger. */
-    private readonly seenCallings;
+    readonly seenCallings: Set<string>;
     private readonly gearStrip;
     /**
      * THE HERO'S ALCOVE: the arched niche at the stand's heart where the
@@ -115,14 +121,14 @@ export declare class Panels {
     private readonly menu;
     /** THE FREE HAND: the one slotted technique, mirrored from the server. */
     /** THE SECOND HAND: the seated techniques, [Q, R] (server truth). */
-    private techniques;
+    techniques: [string | null, string | null];
     /** THE LESSON LAW's banks (server truth; cost derives from the dial). */
-    private lessons;
+    lessons: Record<string, number>;
     /** Hidden arts earned by deed, mirrored from the server. */
     private earnedArts;
-    private lastSkills;
+    lastSkills: SkillXp;
     private lastSlots;
-    private lastEquipment;
+    lastEquipment: Partial<Record<string, EquippedItem>>;
     /**
      * ONE TRUTH FOR THE COUNT (visible-buildcraft V3): the aggregate of
      * the worn kit, computed ONCE per equipment push by the shared
@@ -324,20 +330,20 @@ export declare class Panels {
     /** Server-confirmed technique seats; re-renders whoever shows them. */
     setTechniques(chosen: [string | null, string | null], earned?: string[], lessons?: Record<string, number>): void;
     /** The seat an ability occupies (0 = Q, 1 = R), or null. */
-    private seatOf;
+    seatOf(ability: string): 0 | 1 | null;
     /** THE LOAN LAW's teaching hands, read off the worn weapons. */
-    private equippedArtIds;
+    equippedArtIds(): Set<string>;
     /** An art owned outright: a deed page or a mastered secret. */
-    private ownsArt;
+    ownsArt(ability: string): boolean;
     /**
      * THE MASTER'S LICENSE, derived here from the answered set exactly
      * as recomputeGear derives it (THE QUIET WIRE: no new field —
      * both ends read the same packages at the same applied ranks):
      * ability → the deepest licensing calling's rank.
      */
-    private licensedArts;
+    licensedArts(): Map<string, number>;
     /** The calling licensing this art (the deepest, if several), for the bench's word. */
-    private licensingCalling;
+    licensingCalling(ability: string): CallingDef | undefined;
     /**
      * THE UNWRITTEN PAGE's codex law: a hidden art simply does not exist
      * here until its deed is done — no veiled plate, no rumor to
@@ -346,11 +352,11 @@ export declare class Panels {
      * seat, or once it is mastered — 114 arts stay a world of rumors,
      * never a spreadsheet.
      */
-    private visibleTechniques;
+    visibleTechniques(style: SkillId): TechniqueDef[];
     /** Server-confirmed answered Callings + applied ranks; re-renders whoever shows them. */
     setCallings(answered: string[], ranks?: Record<string, number>): void;
     /** The APPLIED rank an answered Calling is held at (Rank I when unlisted). */
-    private appliedRank;
+    appliedRank(id: string): number;
     /** Build one skill card for the hall. */
     /**
      * One emblem on the wall: the skill's mark ringed by its climb to
@@ -372,211 +378,5 @@ export declare class Panels {
      * the chosen skill reads whole on the hero pane to the right.
      */
     renderSkills(xp: SkillXp): void;
-    /** Roman numerals for the four rungs of every school's ladder. */
-    /** Combat schools owning a technique ladder, hidden law honored. */
-    private artsSchoolIds;
-    /**
-     * THE HONED-ART LAW, mirrored: the rank the BASE level has earned.
-     * THE LOAN LAW holds an unmastered secret at Rank I — the borrowed
-     * motion is correct but not yet yours.
-     */
-    private techRank;
-    /** A technique's rung state against the player's skill level. */
-    private techState;
-    /** Record that an unlocked art has been laid eyes on. */
-    private markTechSeen;
-    /** The dock button's glint: any unlocked art or Calling not yet inspected. */
-    private updateArtsPip;
-    /**
-     * THE SCHOOL RAIL — one crest per school, the Callings last, LT/RT
-     * stepping the stops. It replaced the wing tabs AND the jump strip:
-     * one school stands on the stage at a time, so the eight-ladder
-     * scroll is gone and nothing lives below the fold.
-     */
-    private renderArtsRail;
-    /** Step or click to a rail stop: a school (or a skill's ladder) onto the stage. */
-    private pickRailStop;
-    /** THE OPEN HALL's door: swap the wing, keeping the skill on the stage when both wings own it. */
-    private setArtsWing;
-    /** The codex, whole: altar, rail, the standing stop, the bench. */
-    renderArts(): void;
-    /** Skills whose Callings may show — the hidden-skill law honored. */
-    private callingSkillIds;
-    private callingState;
-    private focusUsed;
-    /** Unlocked-but-never-inspected Callings (the NEW-pip ledger). */
-    private unseenCallings;
-    private markCallingSeen;
-    /**
-     * THE ANSWERED LIFE — the callings wing's foot band, the build in
-     * one look: the Focus instrument, the roster of every answered
-     * Calling worn as its gem, and THE SUM of what the whole answered
-     * set gives, told in engraved chips.
-     */
-    private renderAnsweredLife;
-    /**
-     * THE SUM's gauges: the always-on aggregates summed honestly, the
-     * verbs counted, and EVERY gauge carrying the names of the
-     * Callings that feed it — so the tooltip answers "where is this
-     * from?" without a spreadsheet. Conditional edges are never folded
-     * into flat sums (a vs-state clause is a clause, not armor).
-     */
-    private answeredSums;
-    /** A gem in the foot band pressed: walk the hall to its own seat. */
-    private jumpToCalling;
-    /**
-     * THE OPEN HALL (callings-v2 Phase 5): the passives wing rebuilt for
-     * a ten-seat world. ONE skill's ladder stands on the stage at a time
-     * (the rail picks it — never 250 chips in one scroll, pad nav stays
-     * key-true); the ladder is a path ribbon of seat plates in the arts
-     * stage's own vocabulary; the Focus meter rides the loadout strip;
-     * the bench reads the package.
-     */
-    private renderCallingsWing;
-    /** The wing toggle that sits in every stage head: Arts ◇ Callings. */
-    private wingToggle;
-    /**
-     * THE ROAD (the callings wing rebuilt): one skill's sixteen seats
-     * as a serpentine tree — two runs of eight, the second walking
-     * back, joined by a forged turn — so the whole ladder stands on the
-     * stage at once, every seat a large plaque the hand can press. The
-     * pad's down press lands on the true ladder neighbor by geometry.
-     */
-    private callingStage;
-    /** The wheel walks the ladder in seat order, whatever the road's bends. */
-    private stepCallingLadder;
-    /**
-     * One seat as a PLAQUE: the painted well holding the calling's gem,
-     * the seat level cut into a corner shield, THE RANK PIPS beneath,
-     * and the name on the plate. States are drawn, never labeled:
-     * answered floods the gem's own color, an open seat sits lit and
-     * waiting, a locked seat is a dark socket with its level engraved.
-     */
-    private seatPlaque;
-    /**
-     * Light the bench for one calling without rebuilding the stage:
-     * focus and hover ride this, so reading is free and the ring never
-     * loses the plate it stands on.
-     */
-    private inspectCalling;
-    /**
-     * THE PACKAGE, spoken: one plain line per entry. Gear entries ride
-     * the enchant vocabulary's own reader (one truth for cards and
-     * benches); procs speak trigger and action; a when clause speaks
-     * its condition and its grant; the trade dials and perks speak in
-     * their own units.
-     */
-    private describeCallingEffect;
-    private describeCondition;
-    private describeGrant;
-    /** The grant's dials alone, no chip name — the working plate's head. */
-    private grantParts;
-    /** The one-site dials in plain words — the map PERK_DIALS documents, spoken. */
-    private describePerk;
-    /** The bench: the chosen Calling laid out large, the answer button. */
-    /**
-     * THE BENCH of the callings wing, rebuilt as its own furniture: the
-     * gem in a painted well, the state worn as a forged SEAL (never a
-     * labeled box), the package as illuminated VERSES each led by its
-     * kind's glyph, THE RANK SPINE instrument for the four depths, and
-     * the verbs on brass. Everything drawn, nothing web.
-     */
-    private renderCallingBench;
-    /**
-     * THE WORKING, split for its plate: the MECHANIC as the bold head
-     * (what actually happens, numbers first) and the condition as the
-     * line beneath it (when it happens). The star is the effect.
-     */
-    private callingWorking;
-    /** The glyph family a package entry belongs to, for the verse lead. */
-    private callingKindOf;
-    /**
-     * The action a technique seat answers to (seat 0 casts ability1,
-     * seat 1 ability3). EVERY GLYPH KNOWS ITS DEVICE: the seat is only
-     * ever NAMED by a seatChip built from this action — never by a bare
-     * letter baked into a sentence. `seatKey` died here in the Grand
-     * Refit, Phase 3.
-     */
-    private seatAction;
-    /** The raw pad button a seat rides — THE SEAT ANSWERS ITS OWN BUTTON. */
-    private seatPadButton;
-    /**
-     * The seat sheet: the verbs a technique plate offers, seat chips
-     * set into them. Seating an art is one press at the plate — the
-     * two-column trip to the bench buttons is over.
-     */
-    private seatVerbs;
-    /**
-     * THE LOADOUT ALTAR — four painted seats, always visible: the two
-     * art seats side by side, then the trinkets, THE PAIRED HAND's
-     * order matching the hotbar exactly. Each seat is a kit socket
-     * wearing its live chip; a filled art seat presses through to its
-     * plate on the stage.
-     */
-    private renderArtsLoadout;
-    /**
-     * THE PATH — one school's arts as a single center-staged ribbon.
-     * Everything unlocked stands linked on a forged spine; the FIRST
-     * locked rung shows its name and level; every deeper rung condenses
-     * into ONE veil cap ("✦ N more wait past Lv X") — the mist at the
-     * ladder's end, not a row of question marks. Secrets ride the same
-     * ribbon past a forged seam (THE QUIET SHELF still holds: only
-     * secrets this hand has met). The track slides so the chosen art
-     * stands center stage; `overflow: clip` on the ribbon keeps
-     * scrollIntoView from ever fighting the slide.
-     */
-    private artsStage;
-    /** Step the ribbon's choice to the neighboring plate. */
-    private stepRibbon;
-    /**
-     * The ladder's mist: one plate standing for every rung past the
-     * next — it admits how much waits without spelling any of it.
-     */
-    private veilCap;
-    /**
-     * Slide the ribbon so the chosen plate stands center stage. The
-     * track rides the `translate` channel (compositor-only), clamped so
-     * the ribbon never shows void past either end.
-     */
-    private recenterRibbon;
-    /**
-     * THE LOAN LAW's dormancy, mirrored for the codex: a seated secret
-     * whose teaching weapon left the hands sleeps until it returns.
-     */
-    private secretDormant;
-    /** One plate on a rail — rung, page, and secret speak the same shape. */
-    private techPlate;
-    /**
-     * Light the bench for one art without rebuilding the stage: focus
-     * and hover ride this, so reading is free and the ring never loses
-     * the plate it stands on.
-     */
-    private inspectArt;
-    /**
-     * THE SEAT FLIGHT — the chosen plate's face flies from the ribbon
-     * into its seat, so seating an art is a thing you SEE land. Pure
-     * grace note: gated by the Interface-motion setting, and the server
-     * echo (setTechniques) repaints the truth under it either way.
-     */
-    private seatFlight;
-    /**
-     * THE SCHOOL ENVELOPE — the maxima the reading's gauges measure
-     * against, so every bar is a COMPARISON, not a lone number: a
-     * damage bar filled halfway means half the hardest hit this school
-     * knows. Veiled rungs stay out of the envelope (no spoilers in the
-     * scale).
-     */
-    private schoolEnvelope;
-    /**
-     * One gauge of the reading: a forged channel with the fill measured
-     * against the school envelope, faceted by ticks when the unit is
-     * countable (tiles), the numeral standing at the end. The stat
-     * cards died here — a measure is an instrument, not a plaque.
-     */
-    private measureRow;
-    /** One small forged seal in the marks row — a fact, worn not listed. */
-    private markSeal;
-    /** THE READING: the chosen art laid out as instruments, not cards. */
-    private renderArtsBench;
 }
 //# sourceMappingURL=panels.d.ts.map
