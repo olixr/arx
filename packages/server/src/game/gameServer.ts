@@ -672,6 +672,7 @@ import {
 } from '@arx/shared';
 import { config } from '../config.js';
 import { CHAT_COMMANDS } from './commands/index.js';
+import * as arenaSys from './arena.js';
 import * as runSys from './dungeonRuns.js';
 import * as keySys from './keyring.js';
 import * as interestSys from './interest.js';
@@ -1845,7 +1846,7 @@ interface DungeonInstance {
  * everything placed on it is recorded here so the reset can sweep the
  * sand clean no matter how the card ended.
  */
-interface ArenaMatchState {
+export interface ArenaMatchState {
   venueId: string;
   /**
    * The card AND the venue, SNAPSHOTTED at purchase — a Studio save
@@ -2960,7 +2961,7 @@ export class GameServer {
    */
   readonly arenaMatches = new Map<string, ArenaMatchState>();
   readonly arenaCooldowns = new Map<string, number>();
-  private readonly arenaChestClaims = new Map<string, Set<number>>();
+  readonly arenaChestClaims = new Map<string, Set<number>>();
 
   /**
    * THE KEY RING's id mint: session-scoped, monotonic, never reused.
@@ -5402,7 +5403,7 @@ export class GameServer {
    * never closes INTO someone half-across the threshold and leaves
    * them embedded in a solid tile.
    */
-  private bodyOnTile(plane: PlaneId, tx: number, ty: number, pad = 0.4): boolean {
+  bodyOnTile(plane: PlaneId, tx: number, ty: number, pad = 0.4): boolean {
     const cx = Math.floor((tx + 0.5) / CHUNK_SIZE);
     const cy = Math.floor((ty + 0.5) / CHUNK_SIZE);
     for (let dy = -1; dy <= 1; dy++) {
@@ -13292,853 +13293,99 @@ export class GameServer {
   // these methods are the effect glue on existing seams — spawnNpc,
   // setWorldTile, npcAggro, sayAloud, the chest law.
 
-  /** The venue's live match holding this soul, if any. */
   arenaOf(characterId: number): ArenaMatchState | null {
-    for (const m of this.arenaMatches.values()) {
-      if (m.members.has(characterId)) return m;
-    }
-    return null;
+    return arenaSys.arenaOf(this, characterId);
   }
 
-  /** The venue whose SHUT gates hold this soul (the death-spill ask). */
-  private arenaEnrolledVenue(characterId: number): ArenaVenueDef | undefined {
-    const m = this.arenaOf(characterId);
-    if (!m || !m.gatesShut) return undefined;
-    if (m.members.get(characterId)?.alive !== true) return undefined;
-    return m.venue;
+  arenaEnrolledVenue(characterId: number): ArenaVenueDef | undefined {
+    return arenaSys.arenaEnrolledVenue(this, characterId);
   }
 
   /** Fan a message to every member's live session. */
-  /**
-   * Fan a message to members. Plain state fans reach the LIVING only
-   * (the audit's find: a fallen member's `off` was undone by the very
-   * next fan, riding their corpse home wearing a live match card);
-   * ceremony fans (`all: true` — wipe, off, victory) reach everyone.
-   */
-  private arenaSend(match: ArenaMatchState, msg: S2CMessage, opts: { all?: boolean } = {}): void {
-    for (const [cid, m] of match.members) {
-      if (!opts.all && m.alive !== true) continue;
-      const eid = this.characterEids.get(cid);
-      if (eid === undefined) continue;
-      this.players.get(eid)?.session?.sendJson(msg);
-    }
+  arenaSend(match: ArenaMatchState, msg: S2CMessage, opts: { all?: boolean } = {}): void {
+    return arenaSys.arenaSend(this, match, msg, opts);
   }
 
-  /**
-   * THE STANDS SEE THE CARD: fan a state to members AND to every
-   * bystander near the pit (spec-tagged — their HUD self-clears when
-   * the fan goes quiet, so no teardown owes them an 'off').
-   */
-  private arenaStateFan(match: ArenaMatchState, all = false): void {
-    const state = this.arenaState(match);
-    this.arenaSend(match, state, { all });
-    const venue = match.venue;
-    const plane = venue.plane ?? SURFACE_PLANE_ID;
-    const reach = Math.max(venue.pit.rx, venue.pit.ry) + 14;
-    const spec = { ...state, spec: true as const };
-    for (const [peid, p] of this.players) {
-      if (match.members.has(p.characterId)) continue;
-      const pp = this.positions.get(peid);
-      if (!pp || pp.plane !== plane) continue;
-      if (Math.hypot(pp.x - venue.pit.x, pp.y - venue.pit.y) > reach) continue;
-      p.session?.sendJson(spec);
-    }
+  arenaStateFan(match: ArenaMatchState, all = false): void {
+    return arenaSys.arenaStateFan(this, match, all);
   }
 
   arenaFoesLeft(match: ArenaMatchState): number {
-    let n = 0;
-    for (const eid of match.waveEids) if (this.ecs.isAlive(eid)) n++;
-    return n;
+    return arenaSys.arenaFoesLeft(this, match);
   }
 
-  /** The match's living state on the wire (remainMs = a DURATION). */
-  private arenaState(
+  arenaState(
     match: ArenaMatchState,
     phase: S2CArenaState['phase'] = match.phase,
   ): S2CArenaState {
-    const remain =
-      match.deadlineTick > this.tickCount
-        ? (match.deadlineTick - this.tickCount) * TICK_MS
-        : undefined;
-    return {
-      t: 'arena',
-      phase,
-      venue: match.venueId,
-      name: match.def.name,
-      round: Math.min(match.round + 1, match.plan.rounds.length),
-      rounds: match.plan.rounds.length,
-      ...(remain !== undefined ? { remainMs: remain } : {}),
-      ...(match.phase === 'round' ? { foes: this.arenaFoesLeft(match) } : {}),
-    };
+    return arenaSys.arenaState(this, match, phase);
   }
 
-  /**
-   * THE ANNOUNCER IS A THROAT: every called line leaves the
-   * ringmaster's own body through the spoken air. An uncast throat
-   * (Phase 5 pending) falls back to the quiet quartermaster so the
-   * beat is never silent — but the fallback is a system line, never a
-   * fake bubble.
-   */
-  private arenaBark(match: ArenaMatchState, text: string): void {
-    if (text.length === 0) return;
-    const venue = match.venue;
-    if (!venue) return;
-    if (match.masterEid === null || !this.ecs.isAlive(match.masterEid)) {
-      match.masterEid = null;
-      const plane = venue.plane ?? SURFACE_PLANE_ID;
-      for (const [aeid, comp] of this.actors) {
-        if (comp.actor.id !== venue.master) continue;
-        const p = this.positions.get(aeid);
-        if (p && p.plane === plane) {
-          match.masterEid = aeid;
-          break;
-        }
-      }
-    }
-    if (match.masterEid !== null) {
-      const comp = this.actors.get(match.masterEid);
-      this.sayAloud(match.masterEid, comp?.actor.name ?? 'The Ringmaster', text);
-    } else {
-      this.arenaSend(match, { t: 'chat', channel: 'system', text });
-    }
+  arenaBark(match: ArenaMatchState, text: string): void {
+    return arenaSys.arenaBark(this, match, text);
   }
 
-  /**
-   * Shut or open the venue's gates through the door machinery. A shut
-   * never lands on a body (the embed law) — blocked leaves stand open
-   * and the per-beat retry in tickArenas closes them as they clear.
-   * Unbuilt ground (no door tile — a venue drawn before Phase 5's
-   * masonry) no-ops politely so the engine can rehearse anywhere.
-   */
-  private arenaSetGates(match: ArenaMatchState, shut: boolean): void {
-    const venue = match.venue;
-    if (!venue) return;
-    const plane = venue.plane ?? SURFACE_PLANE_ID;
-    const world = this.worldOf(plane);
-    let allSet = true;
-    for (const g of match.gateTiles) {
-      const now = world.groundAt(g.x, g.y);
-      if (now === undefined) continue;
-      if (shut) {
-        const target = shutDoorTile(g.open);
-        if (target === null || now === target) continue;
-        if (this.bodyOnTile(plane, g.x, g.y)) {
-          allSet = false;
-          continue;
-        }
-        this.setWorldTile(plane, g.x, g.y, target);
-        this.broadcastFx(plane, {
-          t: 'fx',
-          kind: 'rattle',
-          x: g.x + 0.5,
-          y: g.y + 0.5,
-          radius: 1,
-        });
-      } else {
-        const target = g.open;
-        if (now !== target && shutDoorTile(g.open) === now) {
-          this.setWorldTile(plane, g.x, g.y, target);
-        }
-      }
-    }
-    match.gatesShut = shut && allSet;
+  arenaSetGates(match: ArenaMatchState, shut: boolean): void {
+    return arenaSys.arenaSetGates(this, match, shut);
   }
 
-  /** Open the stakes board — the arena dialogue hook's good ending. */
   arenaBoardOpen(eid: EntityId, player: PlayerComp, venueId: string): void {
-    const venue = arenaVenue(venueId);
-    if (!venue) {
-      this.speak(player, 'Closed', 'The ring is not drawn yet. Come back when the sand is laid.');
-      return;
-    }
-    const bank = player.arena;
-    const cards = matchesForVenue(venueId).map((m) => ({
-      id: m.id,
-      name: m.name,
-      ...(m.blurb !== undefined ? { blurb: m.blurb } : {}),
-      level: m.level,
-      fee: m.fee,
-      rounds: m.rounds.length,
-      ...(m.rankReq !== undefined ? { rankReq: m.rankReq } : {}),
-      ...((m.rankReq ?? 0) > bank.rank ? { locked: true } : {}),
-    }));
-    player.session?.sendJson({
-      t: 'arenaboard',
-      venue: venueId,
-      name: venue.name,
-      matches: cards,
-      rank: bank.rank,
-      title: arenaTitleFor(bank.rank),
-      xp: bank.xp,
-      xpPrev: totalXpForArenaRank(bank.rank),
-      ...(bank.rank < ARENAS.ladder.maxRank
-        ? { xpNext: totalXpForArenaRank(bank.rank + 1) }
-        : {}),
-      // THE STANDING: the record and the next named rung, so the foot
-      // of the board can wear the buyer's whole story (all additive).
-      wins: bank.wins,
-      losses: bank.losses,
-      maxRank: ARENAS.ladder.maxRank,
-      ...(() => {
-        const up = ARENAS.ladder.titles.find((t) => t.rank > bank.rank);
-        return up ? { nextTitle: up.title, nextTitleRank: up.rank } : {};
-      })(),
-    });
+    return arenaSys.arenaBoardOpen(this, eid, player, venueId);
   }
 
-  /**
-   * Buy a card: the claim ceremony. The server judges everything —
-   * the venue within hail, the claim free, the rest raked, the rank
-   * gate, the stake in coin — and refuses through the risen word.
-   */
   arenaQueue(eid: EntityId, matchId: string, opts: { devFree?: boolean } = {}): void {
-    const player = this.players.get(eid);
-    const pos = this.positions.get(eid);
-    if (!player || !pos) return;
-    const def = arenaMatchDef(matchId);
-    if (!def) {
-      this.speak(player, 'No card', 'The board holds no such card.');
-      return;
-    }
-    // The venue is WHERE YOU STAND: the nearest ring on this plane
-    // whose counter lists the card, within hail of its sand.
-    let venue: ArenaVenueDef | null = null;
-    let best = Number.POSITIVE_INFINITY;
-    for (const v of ARENAS.venues) {
-      if ((v.plane ?? SURFACE_PLANE_ID) !== pos.plane) continue;
-      if (!matchesForVenue(v.id).some((m) => m.id === matchId)) continue;
-      const d = Math.hypot(pos.x - v.pit.x, pos.y - v.pit.y);
-      if (d < best) {
-        best = d;
-        venue = v;
-      }
-    }
-    if (venue === null || best > 40) {
-      this.speak(player, 'No ring', 'No ring within hail answers that card.');
-      return;
-    }
-    if (this.arenaMatches.has(venue.id)) {
-      this.speak(player, 'Claimed', 'The sand is claimed. Watch, or wait your turn.');
-      return;
-    }
-    const rest = this.arenaCooldowns.get(venue.id) ?? 0;
-    if (Date.now() < rest) {
-      this.speak(player, 'Raked', 'The sand is being raked. Give it a moment.');
-      return;
-    }
-    if (this.arenaOf(player.characterId) !== null) {
-      this.speak(player, 'Enrolled', 'You are already on a card.');
-      return;
-    }
-    if ((def.rankReq ?? 0) > player.arena.rank) {
-      this.speak(player, 'Unproven', `The board wants rank ${def.rankReq} for that card.`);
-      return;
-    }
-    if (!opts.devFree && def.fee > 0) {
-      const coins = countItem(player.inventory, 'coins');
-      if (coins < def.fee) {
-        this.speak(player, 'Short', `The stake is ${def.fee} coins. You carry ${coins}.`);
-        return;
-      }
-      removeItem(player.inventory, 'coins', def.fee);
-      player.session?.sendJson({ t: 'inv', slots: player.inventory });
-    }
-    const plane = venue.plane ?? SURFACE_PLANE_ID;
-    const world = this.worldOf(plane);
-    const seed = (Date.now() ^ (eid * 0x9e3779b1)) >>> 1;
-    const match: ArenaMatchState = {
-      venueId: venue.id,
-      def: JSON.parse(JSON.stringify(def)) as ArenaMatchDef,
-      venue: JSON.parse(JSON.stringify(venue)) as ArenaVenueDef,
-      plan: rollMatchPlan(def, seed),
-      seed,
-      phase: 'muster',
-      round: 0,
-      deadlineTick: this.tickCount + ARENAS.dials.musterSec * 20,
-      members: new Map([[player.characterId, { alive: true }]]),
-      initiatorChar: player.characterId,
-      waveEids: new Set(),
-      propTiles: [],
-      gateTiles: venue.gates.map((g) => ({
-        x: g.x,
-        y: g.y,
-        open: world.groundAt(g.x, g.y) ?? 0,
-      })),
-      gatesShut: false,
-      chestPrev: null,
-      masterEid: null,
-      startedAt: Date.now(),
-      lastBeatTick: this.tickCount,
-    };
-    this.arenaMatches.set(venue.id, match);
-    // The muster call reaches the whole party — the fellows see the
-    // clock even from across the district. A fellow already on a live
-    // card keeps their own fight (the audit's find: double enrollment
-    // made arenaOf insertion-order-dependent and misrouted their
-    // leave and their HUD).
-    for (const cid of this.party.fellowsOf(player.characterId)) {
-      if (this.arenaOf(cid) === null) match.members.set(cid, { alive: true });
-    }
-    this.arenaStateFan(match);
-    this.arenaBark(match, stockBark('muster', seed, 0));
-    this.broadcastFx(plane, {
-      t: 'fx',
-      kind: 'horn',
-      x: venue.pit.x,
-      y: venue.pit.y,
-      radius: 8,
-    });
+    return arenaSys.arenaQueue(this, eid, matchId, opts);
   }
 
-  /** Walk away: a muster cancel (initiator, refunded) or a forfeit. */
   arenaLeave(eid: EntityId): void {
-    const player = this.players.get(eid);
-    if (!player) return;
-    const match = this.arenaOf(player.characterId);
-    if (!match) return;
-    if (match.phase === 'muster' && match.initiatorChar === player.characterId) {
-      if (match.def.fee > 0) {
-        addItem(player.inventory, 'coins', match.def.fee);
-        player.session?.sendJson({ t: 'inv', slots: player.inventory });
-      }
-      this.speak(player, 'Returned', 'The stake returns to your purse.', undefined, 'note');
-      this.arenaReset(match, { silent: true });
-      return;
-    }
-    if (match.phase === 'muster') {
-      // A fellow declining the muster simply steps off the roster —
-      // gate-shut re-derives enrollment, and a deleted name cannot be
-      // silently re-enrolled by standing in the wrong place.
-      match.members.delete(player.characterId);
-      player.session?.sendJson({ t: 'arena', phase: 'off' });
-      if (match.members.size === 0) this.arenaReset(match, { silent: true });
-      return;
-    }
-    const m = match.members.get(player.characterId);
-    if (m?.alive === true) {
-      m.alive = false;
-      const venue = match.venue;
-      const pos = this.positions.get(eid);
-      // The walk-of-shame is for a body ON the sand — never a
-      // cross-map ferry (the audit's find: a far-away fellow could
-      // ride the forfeit teleport across the whole plane).
-      if (pos && pos.plane === (venue.plane ?? SURFACE_PLANE_ID) && inPit(venue.pit, pos.x, pos.y, 1.5)) {
-        this.teleport(eid, venue.exit.x + 0.5, venue.exit.y + 0.5);
-      }
-      player.session?.sendJson({ t: 'arena', phase: 'off' });
-      this.arenaWipeCheck(match);
-    }
+    return arenaSys.arenaLeave(this, eid);
   }
 
-  /** A member fell (the death branch's call). */
-  private arenaMemberFell(player: PlayerComp): void {
-    const match = this.arenaOf(player.characterId);
-    if (!match) return;
-    if (match.phase === 'muster') {
-      // A muster that loses its buyer folds politely, stake returned.
-      if (match.initiatorChar === player.characterId) {
-        if (match.def.fee > 0) {
-          addItem(player.inventory, 'coins', match.def.fee);
-          player.session?.sendJson({ t: 'inv', slots: player.inventory });
-        }
-        this.arenaReset(match, { silent: true });
-      } else {
-        match.members.delete(player.characterId);
-      }
-      return;
-    }
-    const m = match.members.get(player.characterId);
-    if (m?.alive !== true) return;
-    m.alive = false;
-    player.session?.sendJson({ t: 'arena', phase: 'off' });
-    this.arenaStateFan(match);
-    this.arenaWipeCheck(match);
+  arenaMemberFell(player: PlayerComp): void {
+    return arenaSys.arenaMemberFell(this, player);
   }
 
-  /** A member's session died — the sand counts them severed. */
-  private arenaMemberSevered(characterId: number): void {
-    const match = this.arenaOf(characterId);
-    if (!match) return;
-    if (match.phase === 'muster') {
-      match.members.delete(characterId);
-      if (match.members.size === 0) this.arenaReset(match, { silent: true });
-      return;
-    }
-    const m = match.members.get(characterId);
-    if (m?.alive === true) {
-      m.alive = false;
-      this.arenaWipeCheck(match);
-    }
+  arenaMemberSevered(characterId: number): void {
+    return arenaSys.arenaMemberSevered(this, characterId);
   }
 
-  private arenaWipeCheck(match: ArenaMatchState): void {
-    if (match.phase === 'victory') return;
-    for (const m of match.members.values()) if (m.alive) return;
-    this.arenaWipe(match);
+  arenaWipeCheck(match: ArenaMatchState): void {
+    return arenaSys.arenaWipeCheck(this, match);
   }
 
-  /** THE WIPE RESETS THE SAND: the card is lost whole. */
   arenaWipe(match: ArenaMatchState): void {
-    this.arenaBark(match, stockBark('wipe', match.seed, match.round));
-    for (const cid of match.members.keys()) {
-      const eid = this.characterEids.get(cid);
-      const player = eid !== undefined ? this.players.get(eid) : undefined;
-      if (player) {
-        player.arena.losses++;
-        if (player.characterId > 0) this.accounts.saveArena(player.characterId, player.arena);
-      } else if (cid > 0) {
-        // An offline member still takes the loss — best effort.
-        void this.accounts
-          .loadArena(cid)
-          .then((row) => {
-            const backEid = this.characterEids.get(cid);
-            const back = backEid !== undefined ? this.players.get(backEid) : undefined;
-            const bank = back ? back.arena : (row ?? freshArenaBank());
-            bank.losses++;
-            this.accounts.saveArena(cid, bank);
-          })
-          .catch(() => undefined);
-      }
-    }
-    this.arenaSend(match, { ...this.arenaState(match, 'wipe'), remainMs: undefined }, { all: true });
-    this.arenaReset(match, { keepWipeWord: true });
+    return arenaSys.arenaWipe(this, match);
   }
 
-  /**
-   * Rake the sand: sweep every body and prop the match placed, stand
-   * the gates open, retire the purse, and free the claim. The ONE
-   * teardown — victory grace, wipe, cancel, and the backstop all end
-   * here (the teardownDungeon lesson: one door out, however it went).
-   */
   arenaReset(
     match: ArenaMatchState,
     opts: { silent?: boolean; keepWipeWord?: boolean } = {},
   ): void {
-    const venue = match.venue;
-    const plane = venue?.plane ?? SURFACE_PLANE_ID;
-    // The sand takes its dead: wave bodies leave with a death burst
-    // (the disbandCourt manner) and their own summons go with them.
-    for (const weid of match.waveEids) {
-      if (!this.ecs.isAlive(weid)) continue;
-      const npc = this.npcs.get(weid);
-      const wpos = this.positions.get(weid);
-      if (npc) this.disbandCourt(npc);
-      if (wpos) {
-        for (const s of this.sessions) {
-          if (s.knownEntities.has(weid)) {
-            s.sendJson({ t: 'death', eid: weid, x: wpos.x, y: wpos.y, defId: npc?.def.id ?? '' });
-          }
-        }
-      }
-      this.wildBodies.delete(weid);
-      this.removeFromChunks(weid);
-      this.ecs.destroy(weid);
-    }
-    match.waveEids.clear();
-    // Props and purse go back to the ground they stood on, and the
-    // respawn queue forgets them — a smashed barrel must not respawn
-    // onto raked sand, nor a reclose resurrect a retired purse.
-    const swept = new Set<string>();
-    for (const p of match.propTiles) {
-      this.setWorldTile(plane, p.x, p.y, p.prev);
-      swept.add(`${p.x},${p.y}`);
-    }
-    match.propTiles.length = 0;
-    if (venue && match.chestPrev !== null) {
-      this.setWorldTile(plane, venue.chest.x, venue.chest.y, match.chestPrev);
-      this.poiChests.delete(`${plane}|${venue.chest.x},${venue.chest.y}`);
-      swept.add(`${venue.chest.x},${venue.chest.y}`);
-      match.chestPrev = null;
-    }
-    this.arenaChestClaims.delete(match.venueId);
-    for (const g of match.gateTiles) swept.add(`${g.x},${g.y}`);
-    for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
-      const entry = this.respawnQueue[i]!;
-      if (entry.plane === plane && swept.has(`${entry.tx},${entry.ty}`)) {
-        this.respawnQueue.splice(i, 1);
-      }
-    }
-    this.arenaSetGates(match, false);
-    // THE WIPE KEEPS ITS BEAT (the audit's find: 'wipe' then 'off' in
-    // the same tick meant the lost frame never rendered): on the wipe
-    // path no 'off' is sent at all — the client holds the wipe card
-    // for its own 2.6 s beat and lowers itself. Every other path
-    // lowers the HUD for everyone, fallen included.
-    if (!opts.keepWipeWord) {
-      this.arenaSend(match, { t: 'arena', phase: 'off' }, { all: true });
-    }
-    this.arenaMatches.delete(match.venueId);
-    this.arenaCooldowns.set(match.venueId, Date.now() + ARENAS.dials.cooldownSec * 1000);
+    return arenaSys.arenaReset(this, match, opts);
   }
 
-  /** Gate-shut: enrollment crystallizes and the sand empties of guests. */
-  private arenaGateShut(match: ArenaMatchState): void {
-    const venue = match.venue;
-    if (!venue) {
-      this.arenaReset(match, { silent: true });
-      return;
-    }
-    const plane = venue.plane ?? SURFACE_PLANE_ID;
-    // Who stands the sand stands the card (party members only).
-    const enrolled = new Map<number, { alive: boolean }>();
-    for (const cid of match.members.keys()) {
-      const eid = this.characterEids.get(cid);
-      if (eid === undefined) continue;
-      const p = this.positions.get(eid);
-      if (!p || p.plane !== plane) continue;
-      if (inPit(venue.pit, p.x, p.y, 1)) enrolled.set(cid, { alive: true });
-    }
-    if (enrolled.size === 0) {
-      // Nobody took the sand: the stake returns and the claim folds.
-      const eid = this.characterEids.get(match.initiatorChar);
-      const player = eid !== undefined ? this.players.get(eid) : undefined;
-      if (player && match.def.fee > 0) {
-        addItem(player.inventory, 'coins', match.def.fee);
-        player.session?.sendJson({ t: 'inv', slots: player.inventory });
-        this.speak(player, 'Folded', 'Nobody took the sand. The stake returns.', undefined, 'note');
-      }
-      this.arenaReset(match, { silent: true });
-      return;
-    }
-    match.members.clear();
-    for (const [cid, m] of enrolled) match.members.set(cid, m);
-    this.arenaGuardSweep(match, venue);
-    match.phase = 'gates';
-    match.deadlineTick = this.tickCount + 40;
-    this.arenaSetGates(match, true);
-    this.arenaBark(match, stockBark('gates', match.seed, 1));
-    // 'field', not 'charge': charge is a pure instrument client-side
-    // (no signature crown) — the gates' iron set-piece rides a field
-    // wire so THE BAR COMES DOWN actually draws.
-    this.broadcastFx(plane, {
-      t: 'fx',
-      kind: 'field',
-      x: venue.pit.x,
-      y: venue.pit.y,
-      radius: Math.max(venue.pit.rx, venue.pit.ry),
-      id: 'arena:gates',
-      ticks: 40,
-    });
-    this.arenaStateFan(match);
+  arenaGateShut(match: ArenaMatchState): void {
+    return arenaSys.arenaGateShut(this, match);
   }
 
-  /** Field the current round onto the sand. */
-  private arenaSpawnRound(match: ArenaMatchState): void {
-    const venue = match.venue;
-    const round = match.plan.rounds[match.round];
-    if (!venue || !round) {
-      this.arenaReset(match, { silent: true });
-      return;
-    }
-    const plane = venue.plane ?? SURFACE_PLANE_ID;
-    const world = this.worldOf(plane);
-    const walkable = (x: number, y: number): boolean =>
-      !world.isSolid(Math.floor(x), Math.floor(y));
-    const spots = scatterSpots(
-      venue.pit,
-      round.bodies.length + round.props,
-      match.seed ^ (match.round * 0x9109),
-      walkable,
-    );
-    let si = 0;
-    for (const b of round.bodies) {
-      const base = NPCS.get(b.npc);
-      if (!base) continue;
-      let def = scaleNpcDef(base, b.level, b.name);
-      if (b.crownSeed !== undefined && !def.boss && def.kit && crownPoolFor(b.npc)) {
-        def = forgeCrown(def, b.crownSeed, b.name !== undefined ? { name: b.name } : undefined);
-      }
-      const spot = spots[si++] ?? { x: venue.pit.x, y: venue.pit.y };
-      // Every wave body flies the 'arena' banner: kin-peace keeps a
-      // mixed card from hunting itself, and no matrix row exists so
-      // the town watch has no standing feud with the sport.
-      const neid = this.spawnNpc(def, plane, spot.x, spot.y, -1, undefined, undefined, 'arena');
-      const npc = this.npcs.get(neid);
-      if (npc) npc.arenaMatch = match.venueId;
-      match.waveEids.add(neid);
-      this.broadcastFx(plane, {
-        t: 'fx',
-        kind: 'summon',
-        x: spot.x,
-        y: spot.y,
-        radius: Math.max(0.8, def.radius * 1.6),
-      });
-    }
-    // Cover for the round: barrels and crates, smashable, swept at
-    // the reset (the destructible law's own hits/respawn dials run
-    // while the round lives).
-    for (let i = 0; i < round.props; i++) {
-      const spot = spots[si++];
-      if (!spot) break;
-      const tx = Math.floor(spot.x);
-      const ty = Math.floor(spot.y);
-      if (world.isSolid(tx, ty)) continue;
-      if (venue.gates.some((g) => g.x === tx && g.y === ty)) continue;
-      if (venue.chest.x === tx && venue.chest.y === ty) continue;
-      const prev = world.groundAt(tx, ty);
-      if (prev === undefined) continue;
-      this.setWorldTile(plane, tx, ty, i % 2 === 0 ? Tile.Barrel : Tile.Crate);
-      match.propTiles.push({ x: tx, y: ty, prev });
-    }
-    const last = match.round === match.plan.rounds.length - 1;
-    this.arenaBark(
-      match,
-      round.bark ?? stockBark(last ? 'final' : 'round', match.seed, 10 + match.round),
-    );
-    this.broadcastFx(plane, {
-      t: 'fx',
-      kind: 'horn',
-      x: venue.pit.x,
-      y: venue.pit.y,
-      radius: 8,
-    });
-    match.phase = 'round';
-    match.deadlineTick = 0;
-    this.arenaStateFan(match);
+  arenaSpawnRound(match: ArenaMatchState): void {
+    return arenaSys.arenaSpawnRound(this, match);
   }
 
-  /** A wave body left the sand — the kill path's notification. */
-  private arenaBodyFell(npcEid: EntityId, venueId: string): void {
-    const match = this.arenaMatches.get(venueId);
-    if (!match) return;
-    match.waveEids.delete(npcEid);
-    if (match.phase !== 'round') return;
-    if (this.arenaFoesLeft(match) > 0) {
-      this.arenaStateFan(match);
-      return;
-    }
-    if (match.round >= match.plan.rounds.length - 1) {
-      this.arenaVictory(match);
-    } else {
-      match.round++;
-      match.phase = 'breather';
-      match.deadlineTick = this.tickCount + ARENAS.dials.countdownSec * 20;
-      this.arenaBark(match, stockBark('round', match.seed, 20 + match.round));
-      this.arenaStateFan(match);
-    }
+  arenaBodyFell(npcEid: EntityId, venueId: string): void {
+    return arenaSys.arenaBodyFell(this, npcEid, venueId);
   }
 
-  /** The card is won: the show, the ladder, the purse. */
-  private arenaVictory(match: ArenaMatchState): void {
-    const venue = match.venue;
-    if (!venue) {
-      this.arenaReset(match, { silent: true });
-      return;
-    }
-    const plane = venue.plane ?? SURFACE_PLANE_ID;
-    match.phase = 'victory';
-    match.deadlineTick = this.tickCount + ARENAS.dials.chestGraceSec * 20;
-    this.arenaSetGates(match, false);
-    // The ladder pays every enrolled soul — the fallen at the doc's
-    // fraction (they bought the card too; the sand remembers).
-    for (const [cid, m] of match.members) {
-      const pay = arenaPayFor(match.def, m.alive);
-      const eid = this.characterEids.get(cid);
-      const player = eid !== undefined ? this.players.get(eid) : undefined;
-      if (player) {
-        const { climbed } = bankArenaXp(player.arena, pay);
-        player.arena.wins++;
-        if (player.characterId > 0) this.accounts.saveArena(player.characterId, player.arena);
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `The card pays ${pay} arena marks.`,
-        });
-        for (const rank of climbed) {
-          const title = arenaTitleFor(rank);
-          const held = arenaTitleFor(rank - 1);
-          const pos = eid !== undefined ? this.positions.get(eid) : undefined;
-          this.speak(
-            player,
-            `Rank ${rank}`,
-            title !== held
-              ? `The board writes you at rank ${rank}. The crowd has a name for you now: ${title}.`
-              : `The board writes you at rank ${rank}.`,
-            pos ? { x: pos.x, y: pos.y } : undefined,
-            'good',
-          );
-        }
-      } else if (cid > 0) {
-        void this.accounts
-          .loadArena(cid)
-          .then((row) => {
-            // If the soul relogged while the read was in flight, pay
-            // the LIVE bank (the audit's find: the async save would
-            // otherwise be clobbered by the next live write).
-            const backEid = this.characterEids.get(cid);
-            const back = backEid !== undefined ? this.players.get(backEid) : undefined;
-            const bank = back ? back.arena : (row ?? freshArenaBank());
-            bankArenaXp(bank, pay);
-            bank.wins++;
-            this.accounts.saveArena(cid, bank);
-          })
-          .catch(() => undefined);
-      }
-    }
-    // The purse rises on the sand, warded to the enrolled, rolled at
-    // the card's own level (the chest-law overlay carries both).
-    const chestGround = this.worldOf(plane).groundAt(venue.chest.x, venue.chest.y);
-    if (chestGround !== undefined && !this.worldOf(plane).isSolid(venue.chest.x, venue.chest.y)) {
-      match.chestPrev = chestGround;
-      this.setWorldTile(plane, venue.chest.x, venue.chest.y, closedChestTile(match.def.chest ?? 'boss'));
-      this.poiChests.set(`${plane}|${venue.chest.x},${venue.chest.y}`, {
-        cell: `arena:${match.venueId}`,
-        table: match.def.lootTable ?? arenaPurseTableFor(match.def.level),
-        level: match.def.level,
-      });
-      this.arenaChestClaims.set(match.venueId, new Set(match.members.keys()));
-      this.broadcastFx(plane, {
-        t: 'fx',
-        kind: 'summon',
-        x: venue.chest.x + 0.5,
-        y: venue.chest.y + 0.5,
-        radius: 1.4,
-        id: 'arena:purse',
-      });
-    }
-    this.arenaBark(match, stockBark('victory', match.seed, 30));
-    this.arenaBark(match, stockBark('chest', match.seed, 31));
-    this.broadcastFx(plane, {
-      t: 'fx',
-      kind: 'nova',
-      x: venue.pit.x,
-      y: venue.pit.y,
-      radius: Math.max(venue.pit.rx, venue.pit.ry),
-      id: 'arena:victory',
-    });
-    this.arenaStateFan(match, true);
+  arenaVictory(match: ArenaMatchState): void {
+    return arenaSys.arenaVictory(this, match);
   }
 
-  /** THE CLAIM IS THE PARTY'S: walk the uninvited off the sand. */
-  private arenaGuardSweep(match: ArenaMatchState, venue: ArenaVenueDef): void {
-    const plane = venue.plane ?? SURFACE_PLANE_ID;
-    for (const [peid, p] of this.players) {
-      const pp = this.positions.get(peid);
-      if (!pp || pp.plane !== plane) continue;
-      // The sand, plus the gate line, plus the gatehouse recesses: a
-      // body parked ON a gate tile would hold the bar open all match
-      // and rob the death spill of its gate (the audit's find), and a
-      // body in a carved passage row between gate and sand (the Grand
-      // Ring's two-tile crown, §10 fix) would be sealed in with the
-      // card. Pad 1.5 reaches the recesses; everything the wider
-      // ellipse adds beyond them is solid wall no body can stand in.
-      const onGate = match.gateTiles.some(
-        (g) => Math.floor(pp.x) === g.x && Math.floor(pp.y) === g.y,
-      );
-      if (!onGate && !inPit(venue.pit, pp.x, pp.y, 1.5)) continue;
-      if (match.members.get(p.characterId)?.alive === true) continue;
-      this.teleport(peid, venue.exit.x + 0.5, venue.exit.y + 0.5);
-      p.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: 'The sand is claimed. The stands are free.',
-      });
-    }
+  arenaGuardSweep(match: ArenaMatchState, venue: ArenaVenueDef): void {
+    return arenaSys.arenaGuardSweep(this, match, venue);
   }
 
-  /** The 5 Hz beat: clocks, sweeps, engagement, the backstop. */
-  private tickArenas(now: number): void {
-    if (this.arenaMatches.size === 0) return;
-    for (const match of [...this.arenaMatches.values()]) {
-      const venue = match.venue;
-      if (!venue) {
-        this.arenaReset(match, { silent: true });
-        continue;
-      }
-      const plane = venue.plane ?? SURFACE_PLANE_ID;
-      // The backstop: no claim outlives its cap, however it hung —
-      // except a card already WON, which is not hung at all: its own
-      // grace deadline ends it (the audit's find: the backstop was
-      // banking a loss on top of a banked win).
-      if (match.phase !== 'victory' && now - match.startedAt > ARENAS.dials.matchCapSec * 1000) {
-        this.arenaWipe(match);
-        continue;
-      }
-      if (match.phase !== 'muster' && match.phase !== 'victory') {
-        // Gates that a body blocked shut on the retry; the sweep walks
-        // creepers out; absent members read as severed.
-        if (!match.gatesShut) this.arenaSetGates(match, true);
-        this.arenaGuardSweep(match, venue);
-        for (const [cid, m] of match.members) {
-          if (!m.alive) continue;
-          const eid = this.characterEids.get(cid);
-          const pp = eid !== undefined ? this.positions.get(eid) : undefined;
-          if (
-            !pp ||
-            pp.plane !== plane ||
-            Math.hypot(pp.x - venue.pit.x, pp.y - venue.pit.y) > 60
-          ) {
-            m.alive = false;
-            this.arenaWipeCheck(match);
-          }
-        }
-        if (!this.arenaMatches.has(match.venueId)) continue;
-      }
-      if (match.phase === 'round') {
-        // The sand suffers no shy fighter: an idle wave body past its
-        // first breath is pressed onto the nearest enrolled soul
-        // through the ONE aggro door, forced.
-        for (const weid of match.waveEids) {
-          const npc = this.npcs.get(weid);
-          if (!npc || npc.state !== 'idle') continue;
-          if (this.tickCount < npc.noAggroUntilTick) continue;
-          let bestEid: EntityId | null = null;
-          let bestD = Number.POSITIVE_INFINITY;
-          const wpos = this.positions.get(weid);
-          if (!wpos) continue;
-          for (const [cid, m] of match.members) {
-            if (!m.alive) continue;
-            const eid = this.characterEids.get(cid);
-            const pp = eid !== undefined ? this.positions.get(eid) : undefined;
-            if (!pp || pp.plane !== plane) continue;
-            const d = Math.hypot(pp.x - wpos.x, pp.y - wpos.y);
-            if (d < bestD) {
-              bestD = d;
-              bestEid = eid!;
-            }
-          }
-          if (bestEid !== null) this.npcAggro(weid, npc, bestEid, { force: true });
-        }
-        // Safety net beside the kill-path check (a body swept by any
-        // other door must not hold the round open forever).
-        if (this.arenaFoesLeft(match) === 0 && match.waveEids.size === 0) {
-          if (match.round >= match.plan.rounds.length - 1) this.arenaVictory(match);
-          else {
-            match.round++;
-            match.phase = 'breather';
-            match.deadlineTick = this.tickCount + ARENAS.dials.countdownSec * 20;
-            this.arenaStateFan(match);
-          }
-          continue;
-        }
-      }
-      if (match.deadlineTick > 0 && this.tickCount >= match.deadlineTick) {
-        switch (match.phase) {
-          case 'muster':
-            this.arenaGateShut(match);
-            break;
-          case 'gates':
-            match.phase = 'breather';
-            match.deadlineTick = this.tickCount + ARENAS.dials.countdownSec * 20;
-            this.arenaStateFan(match);
-            break;
-          case 'breather':
-            this.arenaSpawnRound(match);
-            break;
-          case 'victory':
-            this.arenaReset(match);
-            break;
-          case 'round':
-            break;
-        }
-        continue;
-      }
-      // The once-a-second heartbeat keeps every running clock honest.
-      if (match.deadlineTick > this.tickCount && this.tickCount - match.lastBeatTick >= 20) {
-        match.lastBeatTick = this.tickCount;
-        this.arenaStateFan(match);
-      }
-    }
+  tickArenas(now: number): void {
+    return arenaSys.tickArenas(this, now);
   }
 
   // ------------------------------------------------------- equipment
@@ -26551,7 +25798,7 @@ export class GameServer {
     return left > 0;
   }
 
-  private npcAggro(
+  npcAggro(
     eid: EntityId,
     npc: NpcComp,
     targetEid: EntityId,
@@ -27784,7 +27031,7 @@ export class GameServer {
    * could raise nothing). Distance despawn covers the abandoned rest:
    * summons enter wildBodies at birth.
    */
-  private disbandCourt(npc: NpcComp): void {
+  disbandCourt(npc: NpcComp): void {
     for (const ceid of npc.summonedEids ?? []) {
       const child = this.npcs.get(ceid);
       if (!child) continue;
