@@ -670,6 +670,47 @@ remaining wall-run (22 paints/53MB) = hung walls (wind — legitimate),
 explicit handle lifecycle; the unclamped scoreboard; the A2 perf
 gate.
 
+**A2 PART 8 — AS BUILT (2026-09-01). THE FRAME NEVER BREAKS.**
+Zero splits across all six scenes — the world composites in ONE
+unbroken pass everywhere, and the split path is now purely a safety
+net. Two retirements:
+
+- **THE FALL RIDES THE SCRATCH**: the round-12 scroll-bake idea dies
+  honestly — the falls' animation permeates every layer (per-rope
+  phases, sine wobbles, breathing scallops); nothing there is a
+  scrolled still. What the falls never needed was the SPLIT: all
+  three fall factories (curtain, outwash rows, side dress) now name
+  their own screen boxes (pb) and read this.ctx at DRAW time, and a
+  new sink branch routes any self-bounded plain item through the
+  bounded scratch lane in sort order. Avenue splits 21 → 0; the
+  crown's 12 were falls too → 0.
+- **THE FAILED PROP FALLS THROUGH, NOT OUT**: the assembly-failure
+  branches (tree/band/safe) never recorded their split kind — once
+  instrumented, hoargate's last 10 named themselves in one probe:
+  ore formations whose sprites the bake budget kept declining. A
+  member with a reconstruction closure does not split — stageRebuild
+  re-mints the item UNDER the swapped ctx (what makes objectItem's
+  mint-time ctx captures scratch-safe), so a stageSafe failure with
+  rebuild+pb falls through to the wall lane. Hoargate 10 → 0.
+
+**Gates**: parity v4 — six scenes PASS, crown-noon at its stable
+known marginal (439 vs 380+60; the verified willow/NPC/AA class,
+unchanged). 786/786. **THE CLAMP LIFTED mid-part** (refresh probe
+86Hz): the first honest scoreboard since part 5 — stage/canvas fps:
+graveyard 106/120, dawnmead 101/120, avenue 96/120, forest 94/120,
+crown 86/120, hoargate 60/119. And the world-phase ms now FAVORS the
+stage on the wall towns: avenue 2.8 vs 3.3, crown 4.3 vs 4.6,
+hoargate 1.9 vs 3.0 (only forest behind, 3.1 vs 1.9 — the tree-quad
+mass). The fps gap with a CHEAPER world phase localizes the
+remainder off the CPU phase clock: per-pass scratch uploads (74
+passes at hoargate) and the GL-canvas composite sync — exactly the
+atlas + coalescing charter.
+
+**Part 9**: the atlas + explicit handle lifecycle (kill the orphan
+sweep; cast/glow/scratch tenants first — fewer texture switches,
+fewer passes); scratch-pass coalescing for the remaining lanes; then
+the A2 perf gate call.
+
 ### A3 — The dark and the light (shadow layer, lightmap, overreach)
 
 The shadow layer becomes an FBO: shadow quads (sprites, masks, grass

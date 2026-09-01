@@ -17406,11 +17406,25 @@ export class Renderer {
     diagonal: boolean,
     mouth: Path2D | null,
   ): DrawItem {
-    const ctx = this.ctx;
     const s = this.camera.scale;
     const topLift = level * ELEV_H * s;
     const landLift = info.landElev * ELEV_H * s;
     const levels = level - info.landElev;
+    // The curtain's honest screen box (THE FALL RIDES THE SCRATCH,
+    // A2 part 8): the falls are animated by design — every layer
+    // carries its own phase or wobble, so the round-12 scroll-bake
+    // idea dies here honestly. What they never needed was the SPLIT:
+    // with a bounded box they ride the scratch lane in sort order
+    // like any live art. Pads cover the crest roll above the lip,
+    // the dipped base + churn below, and the flared free ends.
+    const pA0 = this.camera.worldToScreen(ax, ay, this.w, this.h);
+    const pB0 = this.camera.worldToScreen(bx, by, this.w, this.h);
+    const pb = {
+      x: Math.min(pA0.x, pB0.x) - 2 * s,
+      y: Math.min(pA0.y, pB0.y) - topLift - 1.6 * s,
+      w: Math.abs(pB0.x - pA0.x) + 4 * s,
+      h: Math.abs(pB0.y - pA0.y) + (topLift - landLift) + 3.4 * s,
+    };
     return {
       // THE SHELF LAW: the fall hangs down to its landing — it rides
       // the landing's shelf so a body at the foot (same shelf, larger
@@ -17418,7 +17432,12 @@ export class Renderer {
       // (higher shelf) beats it outright.
       strat: info.landElev !== 0 ? info.landElev : undefined,
       sortY: Math.min(ay, by) + 0.0015,
+      pb,
       draw: () => {
+        // Draw-time ctx: the scratch lane swaps this.ctx under us
+        // (the capture law — a creation-time ctx would paint the
+        // real frame from inside a bounded pass).
+        const ctx = this.ctx;
         const t = performance.now() / 1000;
         const tones = this.fallTones();
         const fine = s >= 26;
@@ -17995,7 +18014,6 @@ export class Renderer {
     runX0: number,
     runX1: number,
   ): DrawItem {
-    const ctx = this.ctx;
     const s = this.camera.scale;
     const landLift = info.landElev * ELEV_H * s;
     const rowY = foot + r;
@@ -18007,10 +18025,17 @@ export class Renderer {
     const wet = (wx: number, wy: number): boolean =>
       game.world.elevAt(Math.floor(wx), Math.floor(wy)) === info.landElev &&
       isFallWater(game.world.groundAt(Math.floor(wx), Math.floor(wy)));
+    // One landing row's box: the outwash tongue, veils, rings and
+    // mist all live within the run span + spread; generous pads are
+    // transparent-cheap, a clipped veil is a visible bug.
+    const pR0 = this.camera.worldToScreen(Math.min(x0, runX0) - 1.6, rowY - 0.6, this.w, this.h);
+    const pR1 = this.camera.worldToScreen(Math.max(x1, runX1) + 1.6, rowY + 1.8, this.w, this.h);
     return {
       strat: info.landElev !== 0 ? info.landElev : undefined,
       sortY: rowY + 0.0015,
+      pb: { x: pR0.x, y: pR0.y - landLift, w: pR1.x - pR0.x, h: pR1.y - pR0.y },
       draw: () => {
+        const ctx = this.ctx; // draw-time: the scratch lane swaps it
         const t = performance.now() / 1000;
         const tones = this.fallTones();
         const vn = (v: number, salt: number, ks: number) =>
@@ -18513,15 +18538,20 @@ export class Renderer {
     land: Path2D | null,
     apron: Path2D | null,
   ): DrawItem {
-    const ctx = this.ctx;
     const s = this.camera.scale;
     const topLift = level * ELEV_H * s;
     const landLift = info.landElev * ELEV_H * s;
     const dir = nx >= 0 ? 1 : -1;
+    // The side dressing spans from the feed tongue at the top lift
+    // down the corner pocket to the landing — one box, both lifts.
+    const pS0 = this.camera.worldToScreen(x - info.race - 2.2, r0 - 1.2, this.w, this.h);
+    const pS1 = this.camera.worldToScreen(x + info.race + 2.2, r1 + 1.8, this.w, this.h);
     return {
       strat: info.landElev !== 0 ? info.landElev : undefined,
       sortY: r1 - 1 + 0.03,
+      pb: { x: pS0.x, y: pS0.y - topLift, w: pS1.x - pS0.x, h: pS1.y - pS0.y + (topLift - landLift) },
       draw: () => {
+        const ctx = this.ctx; // draw-time: the scratch lane swaps it
         const t = performance.now() / 1000;
         const tones = this.fallTones();
         const vn = (v: number, salt: number, ks: number) =>
@@ -21528,6 +21558,7 @@ export class Renderer {
         if (!this.stageAssemble(item)) {
           this.stageWorldFlush();
           st.splits++;
+          this.stageSplitKinds.set('tree-fail', (this.stageSplitKinds.get('tree-fail') ?? 0) + 1);
           this.dispatchWorldItem(item);
         }
         continue;
@@ -21538,6 +21569,7 @@ export class Renderer {
         if (!this.stageAssemble(item)) {
           this.stageWorldFlush();
           st.splits++;
+          this.stageSplitKinds.set('band-fail', (this.stageSplitKinds.get('band-fail') ?? 0) + 1);
           this.dispatchWorldItem(item);
         }
         continue;
@@ -21546,12 +21578,29 @@ export class Renderer {
       // elevated rows): their painters carry the quad and fallback
       // branches.
       if (item.stageSafe === true) {
-        if (!this.stageAssemble(item)) {
+        if (this.stageAssemble(item)) continue;
+        // Assembly failed (a sprite the budget hasn't baked yet, a
+        // live fallback). A member with a reconstruction closure
+        // does NOT split: stageRebuild re-mints the item under the
+        // swapped ctx (objectItem's brushes capture this.ctx at
+        // mint time — re-minting under the swap is what makes them
+        // scratch-safe), so it falls through to the wall lane below.
+        // Hoargate's last 10 splits were exactly this: ore
+        // formations whose sprites the bake budget kept declining.
+        if (item.stageRebuild === undefined || item.pb === undefined) {
           this.stageWorldFlush();
           st.splits++;
+          this.stageSplitKinds.set('safe-fail', (this.stageSplitKinds.get('safe-fail') ?? 0) + 1);
+          // Forensics for the fail class too — the split closure's
+          // source names the factory (a split we cannot name cannot
+          // be retired).
+          if (this.stageSplitSamples.length < 12 && item.draw) {
+            const src = item.draw.toString().replace(/\s+/g, ' ').slice(0, 140);
+            if (!this.stageSplitSamples.includes(src)) this.stageSplitSamples.push(src);
+          }
           this.dispatchWorldItem(item);
+          continue;
         }
-        continue;
       }
       // Bodies and outlined props. By day (or with the relight budget
       // spent) the cached composite is a pure blit — assembly emits
@@ -21571,6 +21620,14 @@ export class Renderer {
         } else {
           this.stagePaintItem(item, box.x, box.y, box.w, box.h);
         }
+        continue;
+      }
+      // Self-bounded live art (the falls family): a plain draw item
+      // that names its own screen box rides the scratch lane in sort
+      // order — no split, no flush barrier. Painters on this route
+      // read this.ctx at DRAW time (the capture law).
+      if (item.pb !== undefined && item.stageRebuild === undefined && item.draw !== undefined) {
+        this.stagePaintItem(item, item.pb.x, item.pb.y, item.pb.w, item.pb.h);
         continue;
       }
       // THE WALL LANE: reconstruction paints for the capture-law
