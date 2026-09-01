@@ -226,6 +226,37 @@ to the canvas2d backend, restore re-uploads lazily via law 4.
 **Deliverable**: empty-scene triangle → textured quad parity harness
 (a fixed test pattern composited by both backends, diffed to zero).
 
+**A0 — AS BUILT (2026-08-31).** Shipped: `render/stage/` —
+`stageTypes.ts` (the contract: StageQuad/StageFill/StagePaint, the
+dest-matrix convention `screen = m · local`, StageTexture rev-sync
+handles), `stageBlend.ts` (both mapping tables WITH their
+premultiplied derivations written out), `stageBatch.ts` (pure run
+computation), `glStage.ts` (WebGL2: one program, white-texel fills,
+interleaved 20-byte vertices, exact byte ledger, context-loss →
+canvas flip + lazy re-upload on restore), `canvasStage.ts` (the
+oracle), `stagelab.html` + `src/dev/stagelab.ts` (the battery), 14
+node tests. **All 15 lab cases pass on BOTH rasterizers** — headless
+SwiftShader and real ANGLE/Metal — with near-total EXACTNESS: the
+lattice/subrect/dpr-2 cases, shear, linear upscale, and the
+300-quad order stress all diff at max 0; only multiply shows the
+predicted single-LSB rounding (max 1). Two laws were DISCOVERED by
+the harness and promoted into code:
+
+- **THE ALPHA-TARGET REFUSAL**: destination-out is meaningless on
+  the opaque main frame (the GL backbuffer is alpha:false so the
+  page can never bleed through) — both backends now refuse it with
+  identical words; the interior punch composites on A3's alpha FBO,
+  where it belongs. A contract error never depends on which backend
+  caught it.
+- **Nearest-downscale sample points differ between rasterizers** at
+  non-1:1 ratios (both backends' own convention, both "correct") —
+  irrelevant on the real pipeline's snapped lattice, pinned as an
+  info case so nobody rediscovers it as a bug.
+
+Also banked: `restoreContext()` is refused while the loss event is
+still dispatching — step to a macrotask before restoring (the drill
+does, and documents why).
+
 ### A1 — The ground on stage (chunks, bands, cliffs)
 
 The largest textures and the simplest quads: chunk canvases (and

@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Stage Lab — compositor parity</title>
+    <style>
+      body { margin: 0; background: #1c1626; color: #d8d2e4; font: 13px/1.5 ui-monospace, monospace; padding: 16px; }
+      h1 { font-size: 15px; margin: 0 0 12px; }
+      .case { margin-bottom: 18px; }
+      .case h2 { font-size: 13px; margin: 0 0 4px; font-weight: 600; }
+      .row { display: flex; gap: 8px; align-items: flex-start; }
+      .row figure { margin: 0; }
+      .row figcaption { font-size: 11px; opacity: 0.7; }
+      canvas { image-rendering: pixelated; background: #000; }
+      .pass { color: #8fd18a; }
+      .fail { color: #e08a8a; }
+      .info { color: #c9b46a; }
+    </style>
+  </head>
+  <body>
+    <h1>STAGE LAB — GL compositor vs canvas2d oracle, case by case</h1>
+    <div id="cases"></div>
+    <script type="module" src="/src/dev/stagelab.ts"></script>
+  </body>
+</html>
