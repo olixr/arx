@@ -360,5 +360,17 @@ have been a new gameServer pair. The fix is the pattern for the whole F7 endgame
 constants flow DOWNHILL (game/tuning.ts took MIN_GATHER/MILK/SUS_DWELL ticks), the
 farming AND standing edges dropped, and the server baseline tightened 4 → 3. Found
 content debt, pre-existing: data/prefabs/poi_iron_rest.json is skipped at boot (route
-legs over the 12-hop cap — six legs, max 19) — worth an authoring pass. Dialogue stays
-the last charted F4 seam (needs characterization tests). Band nine merged to main.
+legs over the 12-hop cap — six legs, max 19) — worth an authoring pass. Band nine.
+
+**F4.10 + F7 ENDGAME (3894c070, 0a7f4bf0, 2026-09-01).** Dialogue (13 methods,
+characterized first — dialogueDoors.test pins the bounty flag, the peddler reach, the
+unrationed quip) closes the last charted server seam; gameServer.ts 27,626 — half its
+epic-start size. Then the downhill sweep: game/formulas.ts (compass8, mkBuff, rollBasic,
+rollDamage, surge reads, hearthOwnerOf) + tuning additions kill every server value
+back-import — **server cycle count ZERO, baked at zero**; render/rigKit.ts (block body,
+hull family, ring path, colossus bands, ooze strike, mount-spec cache) kills the nine
+species pairs; ui/panelFaces.ts kills both wing pairs; content npcs/limits.ts kills the
+validate pair. Final baselines, each survivor NAMED in the gate: client 3 (the cms trio
+— app-shaped, leaves speak to live editor state), server 0, shared 0, content 1 (loot's
+documented deliberate pair). 46 → 4. Scanner law: a statement-end scan must not stop on
+a balanced type-annotation line — cut const tables at the literal `};`. Band ten.
