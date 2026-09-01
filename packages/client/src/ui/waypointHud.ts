@@ -76,8 +76,7 @@ export class WaypointHud {
 
     const w = window.innerWidth;
     const h = window.innerHeight;
-    const p = renderer.camera.worldToScreen(wp.x + 0.5, wp.y + 0.5, w, h);
-    p.y -= renderer.renderLift(wp.x + 0.5, wp.y + 0.5) * renderer.camera.scale;
+    const p = renderer.screenAnchor(wp.x + 0.5, wp.y + 0.5, w, h);
 
     const distTiles = Math.hypot(wp.x + 0.5 - pos.x, wp.y + 0.5 - pos.y);
     this.dist.textContent = `${Math.max(0, Math.round(distTiles))}`;

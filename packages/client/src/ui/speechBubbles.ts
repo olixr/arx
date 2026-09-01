@@ -201,8 +201,7 @@ export class SpeechBubbles {
         b.el.classList.add('bowing');
       }
       if (a === null) continue;
-      const p = cam.worldToScreen(a.x, a.y, vw, vh);
-      p.y -= this.renderer.renderLift(a.x, a.y) * cam.scale;
+      const p = this.renderer.screenAnchor(a.x, a.y, vw, vh);
       const sy = p.y - a.tiles * cam.scale;
       // Far off the viewport: keep the clock, skip the paint.
       const off = p.x < -160 || p.x > vw + 160 || sy < -260 || p.y > vh + 160;

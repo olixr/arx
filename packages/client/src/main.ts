@@ -3396,13 +3396,7 @@ function frame(now: number): void {
   if (game.ownEid !== null && !buildMode && !cinema.open) {
     const near = game.nearestSign();
     if (near) {
-      const p = renderer.camera.worldToScreen(
-        near.tx + 0.5,
-        near.ty + 0.5,
-        window.innerWidth,
-        window.innerHeight,
-      );
-      p.y -= renderer.renderLift(near.tx + 0.5, near.ty + 0.5) * renderer.camera.scale;
+      const p = renderer.screenAnchor(near.tx + 0.5, near.ty + 0.5, window.innerWidth, window.innerHeight);
       signHud.update(near, p.x, p.y - renderer.camera.scale * 1.35);
     } else {
       signHud.update(null);
@@ -3411,13 +3405,7 @@ function frame(now: number): void {
     // its names on approach — the same passive law, the gold dialect.
     const trophy = game.nearestTrophy();
     if (trophy) {
-      const p = renderer.camera.worldToScreen(
-        trophy.x,
-        trophy.y,
-        window.innerWidth,
-        window.innerHeight,
-      );
-      p.y -= renderer.renderLift(trophy.x, trophy.y) * renderer.camera.scale;
+      const p = renderer.screenAnchor(trophy.x, trophy.y, window.innerWidth, window.innerHeight);
       trophyHud.update(trophy, p.x, p.y - renderer.camera.scale * 2.75);
     } else {
       trophyHud.update(null);
@@ -3430,8 +3418,7 @@ function frame(now: number): void {
   if (game.ownEid !== null && !uiOpen && !buildMode && !cinema.open) {
     const target = game.findNearbyTarget();
     if (target) {
-      const p = renderer.camera.worldToScreen(target.tx + 0.5, target.ty + 0.5, window.innerWidth, window.innerHeight);
-      p.y -= renderer.renderLift(target.tx + 0.5, target.ty + 0.5) * renderer.camera.scale;
+      const p = renderer.screenAnchor(target.tx + 0.5, target.ty + 0.5, window.innerWidth, window.innerHeight);
       // Is the OWN body mounted on this piece of furniture? Seats are
       // one tile; a bed run answers for its neighbor tile too.
       const onTarget = (t: { tx: number; ty: number }, bed = false): boolean => {
