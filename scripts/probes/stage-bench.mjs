@@ -27,6 +27,12 @@ async function run(rate, stage) {
     await page.click('#login-submit');
     await page.waitForFunction(() => window.dcGame && window.dcGame.connStatus === 'ingame', null, { timeout: 30000 });
   }
+  // THE PLANE CHECK (see stage-parity.mjs): the probe account keeps
+  // its plane across logins — leave the museum before any scene /tp.
+  if (await page.evaluate(() => window.dcGame.plane?.id === 'museum')) {
+    await page.evaluate(() => window.dcGame.sendChat('/museum'));
+    await page.waitForTimeout(2500);
+  }
   await page.evaluate(() => { window.dcRenderer.camera.setZoom(1); });
   const cdp = await ctx.newCDPSession(page);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate });
