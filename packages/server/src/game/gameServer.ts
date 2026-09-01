@@ -681,6 +681,7 @@ import * as meleeSys from './melee.js';
 import * as procSys from './procs.js';
 import * as statusSys from './statuses.js';
 import * as standingSys from './standing.js';
+import { MILK_TICKS, MIN_GATHER_TICKS, SUS_DWELL_TICKS } from './tuning.js';
 import { DEV_COMMANDS } from './commands/devCommands.js';
 import { Session, sanitizeName } from '../net/session.js';
 import type { AccountStore, CharacterRow, CompanionRow, PetRow } from '../db/accounts.js';
@@ -4948,7 +4949,6 @@ export class GameServer {
    * multiply out to. Harvesting is labor, not vacuuming — the floor is
    * what keeps a starsteel axe from mowing a copse flat in a blink.
    */
-  static readonly MIN_GATHER_TICKS = 60;
 
   /** Attempt to start gathering at a tile. */
   interact(eid: EntityId, tx: number, ty: number): void {
@@ -5561,7 +5561,7 @@ export class GameServer {
       const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
       if (hours < SUNRISE || hours > SUNSET) speedup *= player.perks.nightGatherMult;
     }
-    return Math.max(GameServer.MIN_GATHER_TICKS, Math.round(node.baseTicks / speedup));
+    return Math.max(MIN_GATHER_TICKS, Math.round(node.baseTicks / speedup));
   }
 
   cancelAction(eid: EntityId, player: PlayerComp, reason?: string): void {
@@ -14079,7 +14079,7 @@ export class GameServer {
     // in for a few seconds while the animal stands for it. The yield,
     // xp, and cooldown all land in tickMilk when the pail fills.
     if (player.action) this.cancelAction(eid, player);
-    const ticks = Math.max(GameServer.MIN_GATHER_TICKS, Math.round(GameServer.MILK_TICKS / this.gatherSpeedOf(player)));
+    const ticks = Math.max(MIN_GATHER_TICKS, Math.round(MILK_TICKS / this.gatherSpeedOf(player)));
     player.action = { kind: 'milk', targetEid, ticksLeft: ticks };
     pos.dir = Math.atan2(npos.y - pos.y, npos.x - pos.x);
     npc.holdUntilTick = this.tickCount + ticks + 20;
@@ -14088,7 +14088,6 @@ export class GameServer {
   }
 
   /** One full milking, in ticks (3s), before gather-speed brews. */
-  static readonly MILK_TICKS = 60;
 
   private tickMilk(eid: EntityId, player: PlayerComp): void {
     const action = player.action! as MilkAction;
@@ -23956,7 +23955,6 @@ export class GameServer {
   /** Perception cadence: each body looks every 5th tick (4 Hz), staggered. */
   private static readonly PERCEPTION_PERIOD = 5;
   /** Suspicious stand-and-stare before walking over to see (1.2s). */
-  static readonly SUS_DWELL_TICKS = 24;
   /** An investigator that SEES its interest holds off at this range. */
   private static readonly WATCH_STANDOFF = 3.2;
   /**
@@ -25086,7 +25084,7 @@ export class GameServer {
         c.npc.alertX = tpos.x;
         c.npc.alertY = tpos.y;
         c.npc.alertSeenTick = this.tickCount;
-        c.npc.huntUntilTick = this.tickCount + GameServer.SUS_DWELL_TICKS * 2;
+        c.npc.huntUntilTick = this.tickCount + SUS_DWELL_TICKS * 2;
       }
     }
   }
@@ -25329,7 +25327,7 @@ export class GameServer {
       }
       if (npc.state === 'idle' && npc.alert >= ALERT_SUS) {
         npc.state = 'suspicious';
-        npc.huntUntilTick = this.tickCount + GameServer.SUS_DWELL_TICKS;
+        npc.huntUntilTick = this.tickCount + SUS_DWELL_TICKS;
         npc.navBest = Infinity;
         npc.navStuck = 0;
       }

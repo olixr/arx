@@ -9,9 +9,7 @@ import { addItem, countItem, hasSpaceFor, removeItem } from './inventory.js';
 import { FACTIONS, PlaneId, STANDING_CLAMP, crossDeltas, factionDef, factionOfActor, factionOfNpc, itemDef, standingBand, theftChance } from '@arx/content';
 import { ALERT_SUS, EntityId, sightLine, sightVisibility } from '@arx/shared';
 import type { ActorComp, GameServer, PlayerComp } from './gameServer.js';
-// Value import of the parent class for its statics — touched only at
-// runtime, long after both modules initialize.
-import { GameServer as GameServerClass } from './gameServer.js';
+import { SUS_DWELL_TICKS } from './tuning.js';
 
 /**
  * THE ONE DOOR (docs/factions-plan.md): every standing move in the
@@ -194,7 +192,7 @@ export function chargeTheft(srv: GameServer,
     npc.alertX = x;
     npc.alertY = y;
     npc.alertSeenTick = srv.tickCount;
-    npc.huntUntilTick = srv.tickCount + GameServerClass.SUS_DWELL_TICKS * 2;
+    npc.huntUntilTick = srv.tickCount + SUS_DWELL_TICKS * 2;
     turned++;
   }
   return true;

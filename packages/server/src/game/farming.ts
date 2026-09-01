@@ -8,9 +8,7 @@ import { addItem, countItem, hasSpaceFor, removeItem, takeSlot } from './invento
 import { APIARY_FLOWER_RANGE, APIARY_MINUTES, APIARY_STORE_CAP, BOND_CAP, BOND_PRIME, BRUSH_COOLDOWN_MS, BRUSH_XP, CHANNEL_FEED_RANGE, COMPOST_BATCH_WORTH, COMPOST_MINUTES, CROP_BY_SEED, GRADED_PRODUCE, GROWTH_SEEDS, LIVESTOCK, LIVESTOCK_BY_CRATE, LIVESTOCK_CAP, MULCH_FIBRE_COST, PRUNED_BIT, SOIL_ENRICHED, SOIL_RICH, SURFACE_PLANE_ID, TROUGH_FEED_CAP, TROUGH_STOCK_CAP, WORK_BATCH_CAP, WORK_RECIPES, WORK_STATION_TILES, apiaryGrade, bedTileFor, compostWorthOf, feedWorthOf, gradeFor, gradeOf, gradedId, growMs, harvestXp, itemDef, npcDef, stageEndMs, stageForElapsed, tileForStage, wateringsOf, workDone, workOutputId } from '@arx/content';
 import { CHUNK_SIZE, EntityId, PoseState, Tile } from '@arx/shared';
 import type { CropState, FarmBinState, GameServer, HarvestAction, LivestockComp, LivestockRow, NpcComp, PlayerComp } from './gameServer.js';
-// Value import of the parent class for its statics — touched only at
-// runtime, long after both modules initialize.
-import { GameServer as GameServerClass } from './gameServer.js';
+import { MILK_TICKS, MIN_GATHER_TICKS } from './tuning.js';
 
 /** THE ONE CARE MIRROR: every session hears a field's facts change. */
 export function mirrorPlot(srv: GameServer, state: CropState): void {
@@ -662,8 +660,8 @@ export function interactLivestock(srv: GameServer,
     if (!pos || !npos) return;
     if (player.action) srv.cancelAction(eid, player);
     const ticks = Math.max(
-      GameServerClass.MIN_GATHER_TICKS,
-      Math.round(GameServerClass.MILK_TICKS / srv.gatherSpeedOf(player)),
+      MIN_GATHER_TICKS,
+      Math.round(MILK_TICKS / srv.gatherSpeedOf(player)),
     );
     player.action = { kind: 'milk', targetEid, ticksLeft: ticks };
     pos.dir = Math.atan2(npos.y - pos.y, npos.x - pos.x);
