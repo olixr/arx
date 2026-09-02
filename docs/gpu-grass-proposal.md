@@ -123,6 +123,48 @@ indistinguishable from — then better than — today's baked meadow.**
 
 ---
 
+## §4b · The walk-through finding (2026-09-02, measured & reverted)
+
+The tall-grass **walk-through** — a body standing *in* a thicket, blades
+rooted north of it behind, south of it in front — is the one grass piece
+that does NOT fit the "offscreen WebGL + one blit below entities" bridge,
+and the reason is architectural, now measured.
+
+**What was tried.** The baked field y-sorts tall grass as two DrawItems
+per row (N band behind bodies, S band in front). The GPU mirror: the
+root-sorted tall buffer sliced into depth buckets, each bucket emitted as
+a y-sorted DrawItem that renders its slice into a scissored strip of the
+grass offscreen and `drawImage`s that strip at its depth — so buckets
+interleave with the canvas2d entities.
+
+**The measurement (rig-36, dense tall-grass scene, same spot both ways):**
+
+| path | fps | world pass |
+|------|-----|-----------|
+| baked meadow | 61 | 1.94 ms |
+| flat GPU field (one blit below entities) | 61 | ~1.6 ms |
+| **GPU per-bucket walk-through** | **42** | **11.6 ms** |
+
+A ~30% fps regression. The cost is **one GPU→CPU sync per bucket**: each
+`ctx.drawImage(webglCanvas, …)` interleaved in the y-sort flushes the GL
+pipeline, and ~30 buckets means ~30 stalls. Coarsening buckets trades the
+sync count against interleave accuracy — neither end is acceptable
+(few buckets = visibly wrong depth ordering; many = the stall tax).
+
+**The verdict.** Do NOT interleave per-band WebGL renders with canvas2d
+entities. The correct *and* performant walk-through needs **grass and
+bodies depth-sorted in ONE GPU pass** — i.e. entities rendered on the
+stage's world lane (or a shared depth buffer the grass writes and the
+entities test against), so the interleave is a depth test, not a blit per
+band. That is a dependency on the painted-stage world lane, not a grass
+change. Until then the GPU field draws flat below entities (fast, correct
+in every other respect); the walk-through waits for the stage.
+
+*(Reverted to the flat field at eba62706. The split-collector and
+per-slice draw code were reverted with it; the finding is the keeper.)*
+
+---
+
 ## §5. WebGL2 now, WebGPU later
 
 - **WebGL2 (now, verifiable):** instanced rendering (`drawArraysInstanced`,
