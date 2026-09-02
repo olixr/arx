@@ -4848,6 +4848,16 @@ export class Renderer {
     return this.dpr();
   }
 
+  /** THE CAMERA LEARNS TO LEAN (Epic B, B-1c): a billboard's size scalar
+   *  — `camera.scale` foreshortened by depth at the sprite's foot. 1×
+   *  depthScale at q=0, so byte-identical until the lean turns on. Every
+   *  point-anchored creature/body/mount draw scales its whole rig by
+   *  this (its screen POSITION already leans through worldToScreen);
+   *  surfaces (walls/cliffs/ground) do NOT use it — they warp per B-1b. */
+  private spriteScale(footY: number): number {
+    return this.camera.scale * this.camera.depthScale(footY);
+  }
+
   /** THE RENDER SCALE (A2): the factor (0 < s ≤ 1) the WebGL stage
    *  rasterizes its backbuffer at, from the live window size, dpr, and
    *  the resolution tier. 1 = native dpr (byte-identical to pre-A2 and
@@ -5209,7 +5219,10 @@ export class Renderer {
     this.ownItem = null; // collectEntities re-stashes each frame
     let cover = 0;
     if (this.revealArmed) {
-      const s = this.camera.scale;
+      // B-1c: the step-aside box is sized to the OWN body's on-screen
+      // extent, so it must foreshorten with the same depthScale the body
+      // does — or the reveal/veil would misalign under a lean.
+      const s = this.spriteScale(this.ownPY);
       const a = this.liftedWTS(this.ownPX, this.ownPY);
       // Horse and rider are one silhouette: the step-aside box grows
       // to the mounted envelope so a wall never crops the beast while
@@ -19843,7 +19856,7 @@ export class Renderer {
     // byte-identical until the lean turns on. (This is the first threaded
     // billboard; the remaining mob/mount body draws follow the same one-
     // multiply pattern in B-1c's continuation — see the epic plan.)
-    const s = this.camera.scale * this.camera.depthScale(e.y);
+    const s = this.spriteScale(e.y);
     const now = performance.now();
     const anim = this.animFor(e.eid, e.x, e.y, e.pose, now);
     // THE GIANT GAIT: giant-kin walk on a statured solver — world-true
@@ -22533,7 +22546,7 @@ export class Renderer {
     if (meta.ownerEid !== undefined) nameInk = '#9fd39a';
     const def = npcDef(defId);
     const radius = def?.radius ?? 0.3;
-    const scale = this.camera.scale;
+    const scale = this.spriteScale(s.y); // B-1c: foreshorten the body with depth
     const terrainLift = this.renderLift(s.x, s.y) * scale;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= terrainLift;
@@ -22863,7 +22876,7 @@ export class Renderer {
     }
 
     const def = npcDef(defId);
-    const scale = this.camera.scale;
+    const scale = this.spriteScale(s.y); // B-1c: foreshorten the body with depth
     const r = (def?.radius ?? 0.3) * scale;
     const terrainLift = this.renderLift(s.x, s.y) * scale;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
@@ -23458,7 +23471,7 @@ export class Renderer {
     nameInk?: string,
   ): DrawItem {
     const def = npcDef(defId);
-    const scale = this.camera.scale;
+    const scale = this.spriteScale(s.y); // B-1c: foreshorten the body with depth
     const radius = def?.radius ?? 0.3;
     const r = radius * scale;
     const terrainLift = this.renderLift(s.x, s.y) * scale;
@@ -23627,7 +23640,7 @@ export class Renderer {
     nameInk?: string,
   ): DrawItem {
     const def = npcDef(defId);
-    const scale = this.camera.scale;
+    const scale = this.spriteScale(s.y); // B-1c: foreshorten the body with depth
     const radius = def?.radius ?? 0.3;
     const r = radius * scale;
     const terrainLift = this.renderLift(s.x, s.y) * scale;
@@ -24953,7 +24966,7 @@ export class Renderer {
    * castBody pool, sun/lamp lobes and all.
    */
   private corpseItem(c: (typeof this.corpses)[number], now: number): DrawItem {
-    const scale = this.camera.scale;
+    const scale = this.spriteScale(c.y); // B-1c: foreshorten the body with depth
     const p = this.liftedWTS(c.x, c.y);
     const b = c.rag.bounds();
     // The fade clock: set at settle, pulled earlier by the budget
