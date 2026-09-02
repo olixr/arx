@@ -26,6 +26,15 @@ import { computeRuns } from './stageBatch.js';
 import { BLEND_GL_FUNC, blendNeedsAlphaTarget, blendNeedsOpaqueTarget } from './stageBlend.js';
 import { GPU_COST_SEED_MS_PER_MB, GPU_URGENT_MS, admitUpload, nextUploadCost, uploadEstMs } from './gpuBudget.js';
 import type { StageBackend, StageItem, StagePaint, StageTexture } from './stageTypes.js';
+import { StageVram } from './stageVram.js';
+import type { EvictCandidate, VramLanes, VramStage } from './stageVram.js';
+
+/** Wall-clock ms, with a monotonic-free fallback for hosts (some test
+ *  shims) that lack performance.now(). */
+const nowMs = (): number =>
+  typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
 
 const VERT_SRC = `#version 300 es
 layout(location=0) in vec2 aPos;
@@ -64,6 +73,9 @@ interface TexRecord {
   filter: 'linear' | 'nearest';
   /** Frame stamp of the last ensure/draw — the orphan sweep's clock. */
   used: number;
+  /** Wall-clock ms of the last touch — the cross-stage governor sorts
+   *  candidates from stages with independent frame clocks by this. */
+  usedMs: number;
 }
 
 /** THE SCRATCH LEDGER's cell: one keyed paint's exact-size
@@ -79,8 +91,11 @@ interface KeyedEntry {
   used: number;
 }
 
-export class GlStage implements StageBackend {
+export class GlStage implements StageBackend, VramStage {
   readonly kind = 'gl' as const;
+  /** THE VRAM CEILING (A1): this stage's name in the cross-stage
+   *  governor's ledger and confession ('world' / 'ground'). */
+  readonly vramLabel: string;
   private gl: WebGL2RenderingContext;
   private program!: WebGLProgram;
   private uRes!: WebGLUniformLocation;
@@ -244,9 +259,13 @@ export class GlStage implements StageBackend {
    *  other's illegal ops symmetrically (see begin/draw). */
   readonly isAlpha: boolean;
 
-  constructor(readonly canvas: HTMLCanvasElement, opts?: { alpha?: boolean; texBudgetBytes?: number }) {
+  constructor(
+    readonly canvas: HTMLCanvasElement,
+    opts?: { alpha?: boolean; texBudgetBytes?: number; label?: string },
+  ) {
     this.isAlpha = opts?.alpha === true;
     this.texBudgetBytes = opts?.texBudgetBytes ?? 512 * 1024 * 1024;
+    this.vramLabel = opts?.label ?? 'stage';
     const gl = canvas.getContext('webgl2', {
       alpha: this.isAlpha,
       antialias: false,
@@ -260,27 +279,50 @@ export class GlStage implements StageBackend {
     canvas.addEventListener('webglcontextlost', (e) => {
       e.preventDefault();
       this.contextLost = true;
+      // THE LEDGER FOLLOWS THE HARDWARE (A1): the driver frees every
+      // texture on loss, so drop our now-dangling handles and ZERO the
+      // byte ledgers HERE, not only on restore. The two stages hold
+      // separate GL contexts and the cross-stage governor sums
+      // residentBytes every frame regardless of stage liveness — a lost
+      // stage that kept its ~1GB ledger until a much-later (or never)
+      // restore would inflate the combined total by memory that is
+      // already free, and could make enforce() evict the HEALTHY
+      // stage's cold records to chase a phantom ceiling.
+      this.forgetGpuResources();
       this.onContextLost?.();
     });
     canvas.addEventListener('webglcontextrestored', () => {
       // Records die with the context; revs force lazy re-upload on
       // the next frame that references each handle (ONE LIFECYCLE —
-      // the canvases, the truth, never went anywhere).
-      this.records.clear();
-      this.textureBytes = 0;
-      this.scratch.clear();
-      this.scratchBytes = 0;
-      this.keyed.clear();
-      this.keyedBytes = 0;
-      this.sheets.length = 0;
-      this.layerFbo = null;
-      this.layerTex = null;
-      this.layerW = 0;
-      this.layerH = 0;
+      // the canvases, the truth, never went anywhere). The ledger was
+      // already zeroed at loss; clear again for the (spec-permitted)
+      // case of a restore without a preceding loss event.
+      this.forgetGpuResources();
       this.initGL();
       this.contextLost = false;
     });
     this.initGL();
+    StageVram.register(this);
+  }
+
+  /** Drop every GPU-resident handle this stage tracks and zero the byte
+   *  ledgers. The GL textures themselves are already gone (context loss)
+   *  or about to be re-created (restore/initGL), so this only forgets
+   *  our bookkeeping — the paint-factory canvases (the truth) are
+   *  untouched and re-upload lazily. Shared by both context handlers so
+   *  the governor's cross-stage sum never counts freed memory. */
+  private forgetGpuResources(): void {
+    this.records.clear();
+    this.textureBytes = 0;
+    this.scratch.clear();
+    this.scratchBytes = 0;
+    this.keyed.clear();
+    this.keyedBytes = 0;
+    this.sheets.length = 0;
+    this.layerFbo = null;
+    this.layerTex = null;
+    this.layerW = 0;
+    this.layerH = 0;
   }
 
   private initGL(): void {
@@ -337,7 +379,7 @@ export class GlStage implements StageBackend {
     const gl = this.gl;
     let rec = this.records.get(tex);
     if (!rec) {
-      rec = { glTex: gl.createTexture()!, uploadedRev: -1, w: 0, h: 0, bytes: 0, filter: tex.filter, used: this.frameNo };
+      rec = { glTex: gl.createTexture()!, uploadedRev: -1, w: 0, h: 0, bytes: 0, filter: tex.filter, used: this.frameNo, usedMs: nowMs() };
     } else {
       // THE LEDGER IS AN LRU: a Map iterates in insertion order, so
       // re-inserting on every touch keeps the coldest record first —
@@ -346,6 +388,7 @@ export class GlStage implements StageBackend {
     }
     this.records.set(tex, rec);
     rec.used = this.frameNo;
+    rec.usedMs = nowMs();
     if (rec.uploadedRev !== tex.rev || rec.filter !== tex.filter) {
       const c = tex.canvas;
       // THE DIRT LIST: an atlas page whose size and filter stand can
@@ -542,6 +585,7 @@ export class GlStage implements StageBackend {
         this.records.delete(tex);
         this.records.set(tex, rec);
         rec.used = this.frameNo;
+        rec.usedMs = nowMs();
         this.drawDeferred++;
         return rec;
       }
@@ -587,6 +631,52 @@ export class GlStage implements StageBackend {
   /** Resident keyed-cell bytes (probe/confession). */
   get keyedResidentBytes(): number {
     return this.keyedBytes;
+  }
+
+  /** THE VRAM CEILING (A1): this stage's resident bytes broken out by
+   *  lane — the standing diagnostic the cross-stage governor sums and
+   *  ?perf/probes read (the band-21 hunt computed this by hand). */
+  residentBreakdown(): VramLanes {
+    return {
+      records: this.textureBytes,
+      keyed: this.keyedBytes,
+      scratch: this.scratchBytes,
+      sheets: this.sheets.length * GlStage.SHEET_W * GlStage.SHEET_H * 4,
+      layer: this.layerTex ? this.layerW * this.layerH * 4 : 0,
+    };
+  }
+
+  /** THE VRAM CEILING (A1): offer this stage's cold records to the
+   *  cross-stage governor. Only records NOT drawn this frame and NOT
+   *  pinned (atlas pages) are evictable — an evicted record re-uploads
+   *  the next frame its quad draws (syncForDraw), so this sheds only
+   *  genuinely-cold off-screen mass, never the working set. Scratch and
+   *  keyed stay under their own per-instance caps and are not offered:
+   *  they are hot, re-paint (not re-upload) to restore, and the record
+   *  mass is where a big window's surplus actually lives. */
+  collectEvictable(out: EvictCandidate[]): void {
+    for (const [tex, rec] of this.records) {
+      if (rec.used < this.frameNo && tex.pinned !== true) {
+        out.push({
+          stamp: rec.usedMs,
+          bytes: rec.bytes,
+          evict: () => {
+            // Guard on record IDENTITY, not just key presence: enforce()
+            // gathers then evicts synchronously with no sync() between,
+            // so today a handle cannot be re-keyed mid-pass — but if a
+            // future change ever interleaved an upload, a `tex` deleted
+            // and re-inserted with a fresh record must not be evicted
+            // against this stale closure. Identity survives that.
+            if (this.records.get(tex) !== rec) return 0;
+            const b = rec.bytes;
+            this.gl.deleteTexture(rec.glTex);
+            this.textureBytes -= b;
+            this.records.delete(tex);
+            return b;
+          },
+        });
+      }
+    }
   }
 
   statsReset(): void {
