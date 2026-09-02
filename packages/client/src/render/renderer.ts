@@ -202,7 +202,7 @@ import * as rockArt from './rockArt.js';
 import { FENCE_POST, FENCE_RAIL, PANEL_DOOR_TILES } from './paintVocab.js';
 import { radialGlowSprite } from './glowSprite.js';
 import { Birds, type Bird, type BirdEnv } from './birds.js';
-import { GrassSystem, windAtInto, windScalarAt, BLADE_FILLS, type Disturber, type WindSample, type Blade, type GrassBounds } from './grass.js';
+import { GrassSystem, windAtInto, windScalarAt, BLADE_FILLS, ORNAMENT_FILLS, type Disturber, type WindSample, type Blade, type GrassBounds, type Flower, type SeedHead } from './grass.js';
 import { GrassGpuLayer, type GrassFrame } from './grassGpuLayer.js';
 import { MAX_DISTURB } from './grassGpuRenderer.js';
 import { paintTree, saplingModel, treeExtent,
@@ -1386,6 +1386,8 @@ export class Renderer {
   private grassGpuActive = false;
   /** Pooled scratch for the GPU path — never reallocated per frame. */
   private readonly grassBlades: Blade[] = [];
+  private readonly grassFlowers: Flower[] = [];
+  private readonly grassSeeds: SeedHead[] = [];
   private readonly grassDisturb = new Float32Array(MAX_DISTURB * 4);
   private readonly lighting = new LightingSystem();
   /** Derived building-interior regions (cutaway, facades, windows). */
@@ -18909,10 +18911,11 @@ export class Renderer {
     detail: (tx: number, ty: number) => number,
     bounds: GrassBounds,
   ): boolean {
-    if (!this.grassGpuLayer) this.grassGpuLayer = new GrassGpuLayer(BLADE_FILLS);
+    if (!this.grassGpuLayer) this.grassGpuLayer = new GrassGpuLayer(BLADE_FILLS, ORNAMENT_FILLS);
     const layer = this.grassGpuLayer;
     if (!layer.ok) return false;
     this.grass.collectGpuBlades(ground, detail, bounds, this.grassBlades);
+    this.grass.collectGpuOrnaments(ground, detail, bounds, this.grassFlowers, this.grassSeeds);
     // This frame's disturbers → the trample uniform. Body radius (~0.3t) is
     // the footprint CENTRE; the parted patch spreads wider, so scale it.
     const src = this.frameDisturbers;
@@ -18938,7 +18941,7 @@ export class Renderer {
       windGain: 0.12,
       disturb: dn > 0 ? dz.subarray(0, dn * 4) : undefined,
     };
-    const canvas = layer.render(this.grassBlades, frame);
+    const canvas = layer.render(this.grassBlades, this.grassFlowers, this.grassSeeds, frame);
     if (!canvas) return false;
     this.ctx.drawImage(canvas, 0, 0, this.w, this.h);
     return true;

@@ -18,7 +18,8 @@
  */
 import { GrassGpuRenderer } from './grassGpuRenderer.js';
 import { GRASS_INSTANCE_FLOATS, grassViewMatrix, packBladeInstances } from './grassGpu.js';
-import type { Blade } from './grass.js';
+import { GrassOrnamentRenderer, ORNAMENT_INSTANCE_FLOATS, packOrnamentInstances } from './grassOrnament.js';
+import type { Blade, Flower, SeedHead } from './grass.js';
 
 /** The camera + timing for one frame, in the renderer's own terms. */
 export interface GrassFrame {
@@ -46,13 +47,17 @@ export class GrassGpuLayer {
   readonly canvas: HTMLCanvasElement;
   private gl: WebGL2RenderingContext | null = null;
   private renderer: GrassGpuRenderer | null = null;
+  private ornaments: GrassOrnamentRenderer | null = null;
   private readonly palette: readonly string[];
+  private readonly ornPalette: readonly string[];
   private instances: Float32Array = new Float32Array(0);
+  private ornInstances: Float32Array = new Float32Array(0);
   private readonly viewMat = new Float32Array(9);
   private lost = false;
 
-  constructor(palette: readonly string[]) {
+  constructor(palette: readonly string[], ornamentPalette: readonly string[]) {
     this.palette = palette;
+    this.ornPalette = ornamentPalette;
     this.canvas = document.createElement('canvas');
     // Context loss is normal on the web (GPU reset, tab sleep). Handle it
     // so a lost context degrades to the baked meadow, then self-heals.
@@ -83,16 +88,20 @@ export class GrassGpuLayer {
     if (!this.gl || this.lost) return;
     try {
       this.renderer = new GrassGpuRenderer(this.gl, this.palette);
+      this.ornaments = new GrassOrnamentRenderer(this.gl, this.ornPalette);
     } catch {
-      // A driver that can't compile the program → stay inert (baked meadow).
+      // A driver that can't compile a program → stay inert (baked meadow).
+      this.renderer?.dispose();
+      this.ornaments?.dispose();
       this.renderer = null;
+      this.ornaments = null;
       this.gl = null;
     }
   }
 
-  /** True when the layer can render this frame (context + program alive). */
+  /** True when the layer can render this frame (context + programs alive). */
   get ok(): boolean {
-    return this.gl !== null && this.renderer !== null && !this.lost;
+    return this.gl !== null && this.renderer !== null && this.ornaments !== null && !this.lost;
   }
 
   /**
@@ -102,8 +111,13 @@ export class GrassGpuLayer {
    * in draw order — sorted back-to-front by world-y — because the blades
    * are opaque and there is no depth buffer; order is the depth.
    */
-  render(blades: readonly Blade[], f: GrassFrame): HTMLCanvasElement | null {
-    if (!this.ok || !this.gl || !this.renderer) return null;
+  render(
+    blades: readonly Blade[],
+    flowers: readonly Flower[],
+    seeds: readonly SeedHead[],
+    f: GrassFrame,
+  ): HTMLCanvasElement | null {
+    if (!this.ok || !this.gl || !this.renderer || !this.ornaments) return null;
     const gl = this.gl;
     const wDev = Math.max(1, Math.round(f.wCss * f.dpr));
     const hDev = Math.max(1, Math.round(f.hCss * f.dpr));
@@ -112,22 +126,32 @@ export class GrassGpuLayer {
     gl.viewport(0, 0, wDev, hDev);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
-    if (blades.length === 0) return this.canvas; // a clean transparent frame
+    if (blades.length === 0 && flowers.length === 0 && seeds.length === 0) {
+      return this.canvas; // a clean transparent frame
+    }
 
-    this.instances = packBladeInstances(blades, this.instances);
-    this.renderer.upload(this.instances, blades.length);
     grassViewMatrix(f.scale, f.yScale, f.ox, f.oy, f.wCss, f.hCss, this.viewMat);
-    this.renderer.draw(this.viewMat, f.timeSec, {
-      windGain: f.windGain,
-      disturb: f.disturb,
-    });
+    // Blades first, then the ornaments OVER them (blooms sit on the field).
+    if (blades.length > 0) {
+      this.instances = packBladeInstances(blades, this.instances);
+      this.renderer.upload(this.instances, blades.length);
+      this.renderer.draw(this.viewMat, f.timeSec, { windGain: f.windGain, disturb: f.disturb });
+    }
+    const ornN = flowers.length + seeds.length;
+    if (ornN > 0) {
+      this.ornInstances = packOrnamentInstances(flowers, seeds, this.ornInstances);
+      this.ornaments.upload(this.ornInstances, ornN);
+      this.ornaments.draw(this.viewMat, f.timeSec);
+    }
     return this.canvas;
   }
 
-  /** Free the GL program/buffers and drop the context. Idempotent. */
+  /** Free the GL programs/buffers and drop the context. Idempotent. */
   dispose(): void {
     this.renderer?.dispose();
+    this.ornaments?.dispose();
     this.renderer = null;
+    this.ornaments = null;
     this.gl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.gl = null;
     this.lost = true;
@@ -137,6 +161,6 @@ export class GrassGpuLayer {
 /** Floats the disturb buffer needs per entity — [x, y, radius, strength]. */
 export const DISTURB_STRIDE = 4;
 
-/** Reference so downstream imports of GRASS_INSTANCE_FLOATS stay one hop
- *  from the layer without reaching into grassGpu directly. */
-export { GRASS_INSTANCE_FLOATS };
+/** Reference so downstream imports of these strides stay one hop from the
+ *  layer without reaching into the substrate modules directly. */
+export { GRASS_INSTANCE_FLOATS, ORNAMENT_INSTANCE_FLOATS };

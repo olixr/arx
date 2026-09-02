@@ -509,6 +509,16 @@ const BUCKET_FILLS: string[] = [
   TONE_BASE[0]!, // stems: the deepest blade green — never below the turf
 ];
 
+/** GPU ornament palette (grassOrnament.ts) — the EXACT flower/seed colours
+ *  the baked meadow uses, so the instanced blooms match. Fixed order:
+ *  [petal0..3, core, gold, stem]. */
+export const ORNAMENT_FILLS: readonly string[] = [
+  ...FLOWER_PALS,
+  FLOWER_CORE,
+  SEED_GOLD,
+  TONE_BASE[0]!,
+];
+
 // -------------------------------------------------------------- physics
 
 /** Radial falloff of a body pushing into grass: 1 at center, 0 at R. */
@@ -1804,6 +1814,35 @@ export class GrassSystem {
     // Back-to-front: opaque GPU draw with no depth buffer — order is depth.
     out.sort((a, b) => a.by - b.by);
     return out.length;
+  }
+
+  /**
+   * The GPU path's ORNAMENT gatherer (proposal G-2) — flowers and
+   * seed-heads for the visible field, from the SAME tile cache
+   * collectGpuBlades walks. The ornament pass draws OVER the blades, so
+   * these need no depth sort among themselves. Both output arrays are
+   * caller-owned and pooled (truncated here); the immutable cached
+   * records are pushed by reference. Returns the total written.
+   */
+  collectGpuOrnaments(
+    ground: Sampler,
+    detail: DetailFn,
+    bounds: GrassBounds,
+    flowersOut: Flower[],
+    seedsOut: SeedHead[],
+  ): number {
+    flowersOut.length = 0;
+    seedsOut.length = 0;
+    for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
+      for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
+        const t = ground(tx, ty);
+        if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
+        const geom = this.tile(tx, ty, t, detail(tx, ty), ground).geom;
+        for (const fl of geom.flowers) flowersOut.push(fl);
+        for (const sd of geom.seeds) seedsOut.push(sd);
+      }
+    }
+    return flowersOut.length + seedsOut.length;
   }
 
   // ---------------------------- THE MEADOW RIDES THE SHEAR (round 13)
