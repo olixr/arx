@@ -410,7 +410,9 @@ export function drawFallChurn(rend: PaintHost,
     const wx = x0 + (x1 - x0) * f + ox * off;
     const wy = y0 + (y1 - y0) * f + oy * off;
     const p = rend.camera.worldToScreen(wx, wy, rend.w, rend.h);
-    p.y = p.y - landLift + push;
+    // B-3 spanning warp: this splash rides the landing plane — its lift
+    // foreshortens by the impact point's own depthScale (q=0 → ×1.0).
+    p.y = p.y - landLift * rend.camera.depthScale(wy) + push;
     return p;
   };
   // End envelope: sizes shrink to zero over the last ~0.7 tiles of
@@ -903,10 +905,17 @@ export function waterfallItem(rend: PaintHost,
       A.y = Math.round(A.y);
       B.x = Math.round(B.x);
       B.y = Math.round(B.y);
-      const yTopA = A.y - topLift - 1.5;
-      const yTopB = B.y - topLift - 1.5;
-      const yBaseA = A.y - landLift;
-      const yBaseB = B.y - landLift;
+      // B-3 spanning warp: the curtain spans two corners (ay north, by
+      // south) at different depths — each foreshortens by ITS OWN
+      // depthScale, so the sheet recedes as a true trapezoid. The whole
+      // sheet/bands/threads ride yTop*/yBase* via the interpolators
+      // below, so warping these four warps the fall. q=0 → ×1.0 exactly.
+      const dsA = rend.camera.depthScale(ay);
+      const dsB = rend.camera.depthScale(by);
+      const yTopA = A.y - topLift * dsA - 1.5;
+      const yTopB = B.y - topLift * dsB - 1.5;
+      const yBaseA = A.y - landLift * dsA;
+      const yBaseB = B.y - landLift * dsB;
       const wxSpan = bx - ax || 1e-6;
       const fOf = (wx: number) => (wx - ax) / wxSpan;
       const sxAt = (f: number) => A.x + (B.x - A.x) * f;
@@ -953,11 +962,11 @@ export function waterfallItem(rend: PaintHost,
             const wx = ax - ovL + (bx + ovR - (ax - ovL)) * (k / RT);
             const wy = raceTop + (vn(wx, 165, 0.5) - 0.5) * 0.3;
             const p = rend.camera.worldToScreen(wx, wy, rend.w, rend.h);
-            if (k === 0) ctx.moveTo(p.x, p.y - topLift);
-            else ctx.lineTo(p.x, p.y - topLift);
+            if (k === 0) ctx.moveTo(p.x, p.y - topLift * rend.camera.depthScale(wy)); // B-3 spanning warp
+            else ctx.lineTo(p.x, p.y - topLift * rend.camera.depthScale(wy)); // B-3 spanning warp
           }
-          ctx.lineTo(pBR.x, pBR.y - topLift);
-          ctx.lineTo(pTL.x, pBR.y - topLift);
+          ctx.lineTo(pBR.x, pBR.y - topLift * rend.camera.depthScale(ay + 0.1) /* B-3 spanning warp */);
+          ctx.lineTo(pTL.x, pBR.y - topLift * rend.camera.depthScale(ay + 0.1) /* B-3 spanning warp */);
         }
         ctx.closePath();
         ctx.fill();
@@ -978,8 +987,8 @@ export function waterfallItem(rend: PaintHost,
           ctx.globalAlpha = (0.2 + 0.3 * ph) * tones.dim;
           ctx.lineWidth = Math.max(1.2, s * 0.035);
           ctx.beginPath();
-          ctx.moveTo(p0.x, p0.y - topLift);
-          ctx.lineTo(p1.x, p1.y - topLift);
+          ctx.moveTo(p0.x, p0.y - topLift * rend.camera.depthScale(wy0)); // B-3 spanning warp
+          ctx.lineTo(p1.x, p1.y - topLift * rend.camera.depthScale(wy1)); // B-3 spanning warp
           ctx.stroke();
         }
         ctx.globalAlpha = 1;
@@ -992,11 +1001,11 @@ export function waterfallItem(rend: PaintHost,
           const wx = ax - ovL + ((bx + ovR) - (ax - ovL)) * (k / SH);
           const wy = ay - 0.3 + (vn(wx, 160, 0.4) - 0.5) * 0.16;
           const p = rend.camera.worldToScreen(wx, wy, rend.w, rend.h);
-          if (k === 0) ctx.moveTo(p.x, p.y - topLift);
-          else ctx.lineTo(p.x, p.y - topLift);
+          if (k === 0) ctx.moveTo(p.x, p.y - topLift * rend.camera.depthScale(wy)); // B-3 spanning warp
+          else ctx.lineTo(p.x, p.y - topLift * rend.camera.depthScale(wy)); // B-3 spanning warp
         }
-        ctx.lineTo(pBR.x, pBR.y - topLift);
-        ctx.lineTo(pTL.x, pBR.y - topLift);
+        ctx.lineTo(pBR.x, pBR.y - topLift * rend.camera.depthScale(ay + 0.1) /* B-3 spanning warp */);
+        ctx.lineTo(pTL.x, pBR.y - topLift * rend.camera.depthScale(ay + 0.1) /* B-3 spanning warp */);
         ctx.closePath();
         ctx.fillStyle = tones.shelf;
         ctx.fill();
@@ -1025,15 +1034,15 @@ export function waterfallItem(rend: PaintHost,
             ctx.fillStyle = tones.band[tone]!;
             const aFull = 0.14 * (0.5 + 0.5 * n01(k, 144));
             ctx.globalAlpha = aFull * 0.45;
-            ctx.fillRect(pL0.x, pL0.y - topLift, pR.x - pL0.x, pL1.y - pL0.y);
+            ctx.fillRect(pL0.x, pL0.y - topLift * rend.camera.depthScale(start), pR.x - pL0.x, pL1.y - pL0.y); // B-3 spanning warp
             ctx.globalAlpha = aFull;
-            ctx.fillRect(pL1.x, pL1.y - topLift, pR.x - pL1.x, pL2.y - pL1.y);
+            ctx.fillRect(pL1.x, pL1.y - topLift * rend.camera.depthScale(mid), pR.x - pL1.x, pL2.y - pL1.y); // B-3 spanning warp
             // A third, stronger step hugging the lip: the column is
             // nearly formed by the time the sheet's wavy top edge
             // takes over, so the hand-off is a small step, not a
             // jump at a visible line.
             ctx.globalAlpha = Math.min(0.5, aFull * 2.2);
-            ctx.fillRect(pL2.x, pL2.y - topLift, pR.x - pL2.x, pR.y - pL2.y);
+            ctx.fillRect(pL2.x, pL2.y - topLift * rend.camera.depthScale(near), pR.x - pL2.x, pR.y - pL2.y); // B-3 spanning warp
           }
           ctx.globalAlpha = 1;
         }
@@ -1048,7 +1057,7 @@ export function waterfallItem(rend: PaintHost,
             const p = rend.camera.worldToScreen(wx, wy, rend.w, rend.h);
             ctx.globalAlpha = (0.2 + 0.4 * ph) * tones.dim;
             const rw = Math.max(1.5, s * 0.035);
-            ctx.fillRect(p.x - rw / 2, p.y - topLift, rw, Math.max(2, s * 0.05));
+            ctx.fillRect(p.x - rw / 2, p.y - topLift * rend.camera.depthScale(wy), rw, Math.max(2, s * 0.05)); // B-3 spanning warp
           }
           ctx.globalAlpha = 1;
         }
@@ -1065,8 +1074,8 @@ export function waterfallItem(rend: PaintHost,
         ctx.beginPath();
         ctx.moveTo(sxAt(0), yTopAt(0) + 1.5);
         ctx.lineTo(sxAt(1), yTopAt(1) + 1.5);
-        ctx.lineTo(p1.x, p1.y - topLift);
-        ctx.lineTo(p0.x, p0.y - topLift);
+        ctx.lineTo(p1.x, p1.y - topLift * rend.camera.depthScale(by - ny * rr)); // B-3 spanning warp
+        ctx.lineTo(p0.x, p0.y - topLift * rend.camera.depthScale(ay - ny * rr)); // B-3 spanning warp
         ctx.closePath();
         ctx.fillStyle = tones.race;
         ctx.globalAlpha = 0.92 * (tones.dim * 0.4 + 0.6);
@@ -1499,7 +1508,7 @@ export function fallOutwashRowItem(rend: PaintHost,
       const n01 = (a: number, sa: number) => stone01(a, sa, 911 + level * 17);
       const wts = (wx: number, wy: number) => {
         const p = rend.camera.worldToScreen(wx, wy, rend.w, rend.h);
-        p.y -= landLift;
+        p.y -= landLift * rend.camera.depthScale(wy); // B-3 spanning warp
         return p;
       };
       // The outwash tongue — the RAPID racing across the apron rock
@@ -1823,8 +1832,12 @@ export function fallRibbonItem(rend: PaintHost,
       const dir = nx >= 0 ? 1 : -1;
       const w = Math.max(7, s * 0.34);
       const xWall = nx >= 0 ? sx - Math.max(1, s * 0.03) : sx + Math.max(1, s * 0.03);
-      const yT = Math.round(A.y - topLift) - 1;
-      const yLand = Math.round(B.y - landLift) + Math.round(s * 0.06);
+      // B-3 spanning warp: the edge-on ribbon spans crest (r0) to
+      // landing (r1) at different depths — each end foreshortens by its
+      // own corner's depthScale, so the whole body (yT..yLand, H) rides
+      // a true trapezoid. q=0 depthScale is exactly 1 → byte-identical.
+      const yT = Math.round(A.y - topLift * rend.camera.depthScale(r0)) - 1;
+      const yLand = Math.round(B.y - landLift * rend.camera.depthScale(r1)) + Math.round(s * 0.06);
       const H = yLand - yT;
       const n01 = (a: number, sa: number) => stone01(a, sa, 911 + level * 17);
       // The edge-on sheet: wall edge dead straight on the rim line,
@@ -1935,7 +1948,7 @@ export function fallRibbonItem(rend: PaintHost,
       // to the drawn plunge water.
       ctx.save();
       if (land) clipFallRegion(rend, land, landLift);
-      const yFootTop = Math.round(A.y - landLift);
+      const yFootTop = Math.round(A.y - landLift * rend.camera.depthScale(r0)); // B-3 spanning warp
       for (let yy = yFootTop; yy < yLand + s * 0.06; yy += s * 0.2) {
         const idx = Math.round(yy / (s * 0.2));
         const pulse = 0.5 + 0.5 * Math.sin(t * (2.2 + 0.6 * n01(idx, 74)) + idx * 1.9);
@@ -2015,12 +2028,12 @@ export function fallSideDressItem(rend: PaintHost,
       const n01 = (a: number, sa: number) => stone01(a, sa, 911 + level * 17);
       const wtsT = (wx: number, wy: number) => {
         const p = rend.camera.worldToScreen(wx, wy, rend.w, rend.h);
-        p.y -= topLift;
+        p.y -= topLift * rend.camera.depthScale(wy); // B-3 spanning warp
         return p;
       };
       const wtsL = (wx: number, wy: number) => {
         const p = rend.camera.worldToScreen(wx, wy, rend.w, rend.h);
-        p.y -= landLift;
+        p.y -= landLift * rend.camera.depthScale(wy); // B-3 spanning warp
         return p;
       };
       // Headrace: the sideways tongue from the feed to the rim line
@@ -2276,7 +2289,7 @@ export function northFallRaceItem(rend: PaintHost,
       const n01 = (a: number, sa: number) => stone01(a, sa, 911 + level * 17);
       const wtsT = (wx: number, wy: number) => {
         const p = rend.camera.worldToScreen(wx, wy, rend.w, rend.h);
-        p.y -= topLift;
+        p.y -= topLift * rend.camera.depthScale(wy); // B-3 spanning warp
         return p;
       };
       // The race, flowing AWAY (north) to the edge — full-width fill
@@ -2446,7 +2459,7 @@ export function northFallChurnItem(rend: PaintHost,
       const n01 = (a: number, sa: number) => stone01(a, sa, 911 + level * 17);
       const wts = (wx: number, wy: number) => {
         const p = rend.camera.worldToScreen(wx, wy, rend.w, rend.h);
-        p.y -= landLift;
+        p.y -= landLift * rend.camera.depthScale(wy); // B-3 spanning warp
         return p;
       };
       // A faint free mist first — air overhangs the banks.
