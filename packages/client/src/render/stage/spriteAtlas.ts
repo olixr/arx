@@ -18,9 +18,14 @@
  *   rect onto the page's StageTexture — the GL backend consumes rects
  *   with texSubImage2D and only falls back to a full upload when the
  *   dirt covers most of the page.
- * - THE PAGE FORGETS THE COLD. A page more than half-stale (slots
- *   untouched ~30s) is wiped whole and refills lazily — allocation
- *   stays a bump pointer, never a free-list.
+ * - THE PAGE FORGETS THE COLD. A page whose reclaimable area (stale
+ *   slots + dead cells) outweighs its live area is wiped whole and
+ *   refills lazily — allocation stays a bump pointer, never a
+ *   free-list. Dead cells are FIRST-CLASS: a slot abandoned by a
+ *   size change (and a GC'd sprite canvas) leaves area the bump
+ *   pointer can never reuse; the sweep tallies it by AREA via the
+ *   ledger's slot handles, so a fragmented page reclaims instead of
+ *   silently exhausting the atlas into the solo-texture regime.
  * - TOO BIG RIDES ALONE. Anything over MAX_SIDE keeps its solo
  *   texture; bands, layers and chunk bakes were never atlas material.
  */
@@ -59,6 +64,9 @@ export interface AtlasPage {
   top: number;
   slots: number;
   stale: number;
+  /** Area (px²) of cells no live canvas maps to — unreachable until a
+   *  wipe. Accrued by the sweep as it compacts the ledger. */
+  deadPx: number;
 }
 
 export interface AtlasPlacement {
@@ -70,9 +78,15 @@ export interface AtlasPlacement {
 export class SpriteAtlas {
   private readonly pages: AtlasPage[] = [];
   private readonly slots = new WeakMap<HTMLCanvasElement, AtlasSlot>();
-  /** Live slot list per page for the sweep (WeakRef so a dead sprite
-   *  canvas never pins its slot). */
-  private readonly ledger = new Map<AtlasPage, Array<{ ref: WeakRef<HTMLCanvasElement> }>>();
+  /** Per-page slot list for the sweep (WeakRef so a dead sprite canvas
+   *  never pins its slot). Each entry carries ITS slot so a GC'd or
+   *  superseded (re-sized) placement still confesses its area as dead
+   *  space — and the sweep compacts stale entries instead of letting
+   *  the list grow one duplicate per re-size forever. */
+  private readonly ledger = new Map<
+    AtlasPage,
+    Array<{ ref: WeakRef<HTMLCanvasElement>; slot: AtlasSlot }>
+  >();
   private revSeq = 1;
   private frameNo = 0;
 
@@ -85,22 +99,42 @@ export class SpriteAtlas {
     },
   ) {}
 
-  /** Advance the atlas clock; sweep cold pages on cadence. */
+  /** Advance the atlas clock; sweep cold pages on cadence.
+   *
+   *  The sweep judges by AREA, not entry count: an entry whose canvas
+   *  is gone or whose slot was superseded by a re-size is dead space
+   *  (compacted out of the ledger, its area banked in page.deadPx);
+   *  the rest split stale/live on the ~30s touch clock. A page is
+   *  wiped when the cold outweighs the warm — stale area past live
+   *  area, or a substantially-allocated page more than half
+   *  reclaimable — so fragmentation can never permanently exhaust
+   *  the atlas. */
   frame(): void {
     this.frameNo++;
     if (this.frameNo % SWEEP_EVERY !== 0) return;
     for (const page of this.pages) {
       const list = this.ledger.get(page) ?? [];
-      let live = 0;
-      let stale = 0;
-      for (const { ref } of list) {
-        const cv = ref.deref();
-        const slot = cv && this.slots.get(cv);
-        if (!slot || slot.page !== page) continue;
-        if (this.frameNo - slot.used > STALE_FRAMES) stale++;
-        else live++;
+      let livePx = 0;
+      let stalePx = 0;
+      const keep: Array<{ ref: WeakRef<HTMLCanvasElement>; slot: AtlasSlot }> = [];
+      for (const e of list) {
+        const cv = e.ref.deref();
+        if (!cv || this.slots.get(cv) !== e.slot) {
+          page.deadPx += e.slot.w * e.slot.h;
+          continue;
+        }
+        if (this.frameNo - e.slot.used > STALE_FRAMES) stalePx += e.slot.w * e.slot.h;
+        else livePx += e.slot.w * e.slot.h;
+        keep.push(e);
       }
-      if (stale > live) this.wipe(page);
+      this.ledger.set(page, keep);
+      const packedPx = page.top * ATLAS_PAGE;
+      if (
+        (livePx === 0 && page.top > 0) ||
+        stalePx > livePx ||
+        (page.top > ATLAS_PAGE * 0.75 && page.deadPx + stalePx > packedPx * 0.5)
+      )
+        this.wipe(page);
     }
   }
 
@@ -130,6 +164,7 @@ export class SpriteAtlas {
       this.slots.set(canvas, slot);
       (this.ledger.get(slot.page) ?? this.ledger.set(slot.page, []).get(slot.page)!).push({
         ref: new WeakRef(canvas),
+        slot,
       });
       slot.rev = rev - 1; // force the first paint
       slot.owner = owner;
@@ -178,11 +213,12 @@ export class SpriteAtlas {
       const page: AtlasPage = {
         cv,
         ctx: cv.getContext('2d')!,
-        tex: { canvas: cv, rev: ++this.revSeq, filter: 'linear' },
+        tex: { canvas: cv, rev: ++this.revSeq, filter: 'linear', pinned: true },
         shelves: [],
         top: 0,
         slots: 0,
         stale: 0,
+        deadPx: 0,
       };
       this.pages.push(page);
       return this.allocIn(page, w, h);
@@ -191,13 +227,19 @@ export class SpriteAtlas {
   }
 
   private allocIn(page: AtlasPage, w: number, h: number): AtlasSlot | null {
+    // Best-fit shelf: the tightest height that still fits — first-fit
+    // measured tall shelves squandered on short sprites, and shelf
+    // height is the one packing decision that can never be revisited.
+    let best: { y: number; h: number; x: number } | null = null;
     for (const shelf of page.shelves) {
-      if (h <= shelf.h && shelf.x + w <= ATLAS_PAGE) {
-        const slot: AtlasSlot = { page, x: shelf.x, y: shelf.y, w, h, rev: 0, owner: this, used: this.frameNo };
-        shelf.x += w;
-        page.slots++;
-        return slot;
-      }
+      if (h <= shelf.h && shelf.x + w <= ATLAS_PAGE && (best === null || shelf.h < best.h))
+        best = shelf;
+    }
+    if (best !== null) {
+      const slot: AtlasSlot = { page, x: best.x, y: best.y, w, h, rev: 0, owner: this, used: this.frameNo };
+      best.x += w;
+      page.slots++;
+      return slot;
     }
     if (page.top + h <= ATLAS_PAGE) {
       const shelf = { y: page.top, h, x: w };
@@ -220,13 +262,31 @@ export class SpriteAtlas {
     page.shelves = [];
     page.top = 0;
     page.slots = 0;
+    page.deadPx = 0;
     page.ctx.clearRect(0, 0, ATLAS_PAGE, ATLAS_PAGE);
     page.tex.rev = ++this.revSeq;
-    page.tex.dirty = undefined; // a wiped page re-uploads whole once
+    // The clear must REACH the GPU. `dirty = undefined` intended a
+    // whole-page upload, but a page is only ever synced when drawn,
+    // and drawing means a same-frame place() whose paint() re-arms
+    // the dirty list — so the backend's dirty-rect branch won every
+    // time and the page-wide clear never uploaded (stale dead pixels
+    // lived on in the GPU copy). A full-page dirty rect says the
+    // same thing in the one dialect sync() always honors.
+    page.tex.dirty = [[0, 0, ATLAS_PAGE, ATLAS_PAGE]];
+  }
+
+  /** Forget every page — the plane-cross broom (consumers re-place
+   *  lazily, exactly like a page wipe). */
+  clear(): void {
+    for (const page of this.pages) this.wipe(page);
   }
 
   /** Confession counters. */
-  stats(): { pages: number; slots: number } {
-    return { pages: this.pages.length, slots: this.pages.reduce((n, p) => n + p.slots, 0) };
+  stats(): { pages: number; slots: number; deadPx: number } {
+    return {
+      pages: this.pages.length,
+      slots: this.pages.reduce((n, p) => n + p.slots, 0),
+      deadPx: this.pages.reduce((n, p) => n + p.deadPx, 0),
+    };
   }
 }

@@ -1,7 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TREE_TILES as TREE_TILE_SET, Tile, hashCoords, treeOfSapling } from '@arx/shared';
-import { treeModel, treeExtent, saplingModel, type TreeModel } from './trees.js';
+import {
+  treeModel,
+  treeExtent,
+  saplingModel,
+  treeVariantHash,
+  TREE_VARIANT_COUNT,
+  type TreeModel,
+} from './trees.js';
 
 /**
  * THE FRAME CONTAINS THE TREE.
@@ -27,21 +34,30 @@ const WIND_MAX = 1.4;
 
 /** The worst case each painter can reach for one model, walked the
  *  long way round — clusters, wood and cascade, at full wind both
- *  ways. Mirrors paintTree, never imports treeExtent's own maths. */
-function bruteExtent(m: TreeModel): { x0: number; x1: number; y0: number; y1: number } {
+ *  ways (or at the NEUTRAL pose with windMax 0 — the species-sheet
+ *  bake pose). Mirrors paintTree, never imports treeExtent's own
+ *  maths. */
+function bruteExtent(
+  m: TreeModel,
+  windMax = WIND_MAX,
+  shear = 0,
+): { x0: number; x1: number; y0: number; y1: number } {
   const H = m.height;
   let x0 = 0;
   let x1 = 0;
   let y0 = 0;
   let y1 = 0;
   const hit = (x: number, y: number): void => {
-    if (x < x0) x0 = x;
-    if (x > x1) x1 = x;
+    // The blit shear throws a point at height y by shear · y about
+    // the ground line — per ELEMENT, exactly as the quad draws it.
+    const t = shear * Math.max(0, y);
+    if (x - t < x0) x0 = x - t;
+    if (x + t > x1) x1 = x + t;
     if (y < y0) y0 = y;
     if (y > y1) y1 = y;
   };
   const disp = (hf: number): number =>
-    WIND_MAX * 0.055 * H * Math.pow(Math.min(1, Math.max(0, hf)), 1.4);
+    windMax * 0.055 * H * Math.pow(Math.min(1, Math.max(0, hf)), 1.4);
 
   for (const c of m.clusters) {
     // facetBlob vertex jitter 0.82..1.12; the shade stamp is the
@@ -61,7 +77,7 @@ function bruteExtent(m: TreeModel): { x0: number; x1: number; y0: number; y1: nu
     }
   }
 
-  const tipDrag = 2 * WIND_MAX * 0.055 * H + 0.05 * H + 1.2 * 0.02 * (0.5 + m.spread);
+  const tipDrag = 2 * windMax * 0.055 * H + 0.05 * H + 1.2 * 0.02 * (0.5 + m.spread);
   for (const b of m.branches) {
     const last = b.pts.length - 1;
     for (let i = 0; i <= last; i++) {
@@ -169,5 +185,63 @@ test('treeExtent', async (t) => {
   await t.test('the same model gets the same frame object (memoized)', () => {
     const m = treeModel(TREE_TILES[0]!, hashCoords(1, 2, 3));
     assert.equal(treeExtent(m), treeExtent(m));
+  });
+
+  // THE SPECIES SHEET narrowed the shipping population to exactly 16
+  // archetypes per species (treeVariantHash) — a different model set
+  // than the raw seeds above. A bad archetype now repeats stand-wide,
+  // so the shipping population gets its own exhaustive walk: every
+  // archetype of every species, contained, root floor included (the
+  // below-trunk reach must stay inside the extent's own floor — a
+  // clipped base is a flat truncation on every copy in the stand).
+  await t.test('every shipping archetype is contained, root floor included', () => {
+    let checked = 0;
+    for (const tile of TREE_TILES) {
+      for (let v = 0; v < TREE_VARIANT_COUNT; v++) {
+        const m = treeModel(tile, treeVariantHash(tile, v));
+        if (m.clusters.length === 0 && m.branches.length === 0) continue;
+        checked++;
+        const e = treeExtent(m);
+        const b = bruteExtent(m);
+        assert.ok(e.x0 <= b.x0 && e.x1 >= b.x1, `${tile}/v${v}: sides clipped`);
+        assert.ok(e.y0 <= b.y0, `${tile}/v${v}: base clipped ${e.y0} > ${b.y0}`);
+        assert.ok(e.y1 >= b.y1, `${tile}/v${v}: crown clipped ${e.y1} < ${b.y1}`);
+      }
+    }
+    assert.ok(checked > TREE_TILES.length * 8, `only ${checked} archetypes exercised`);
+  });
+
+  // ONE FRAME CONTAINS EVERY POSE THE BLIT CAN DRAW (foundation
+  // audit): shared bakes are the NEUTRAL pose and the blit shears by
+  // the FULL live wind plus THE STANDING LEAN about the ground line —
+  // a throw the delta-shear era never made, LINEAR in height where
+  // the painter's wind term is hf^1.4 (this very test caught an
+  // archetype escaping the wind-only box by 0.024 tiles). The extent
+  // now folds the sheared-neutral envelope in (TREE_SHEAR_MAX); every
+  // neutral-ink point under the worst |kSh| must sit inside the bare
+  // box — no side-channel pads anywhere.
+  await t.test('the sheared neutral bake stays inside the frame itself', () => {
+    const K_SH_MAX = WIND_MAX * 0.055 + 0.028;
+    let checked = 0;
+    for (const tile of TREE_TILES) {
+      for (let v = 0; v < TREE_VARIANT_COUNT; v++) {
+        const m = treeModel(tile, treeVariantHash(tile, v));
+        if (m.clusters.length === 0 && m.branches.length === 0) continue;
+        checked++;
+        const e = treeExtent(m);
+        // The bake pose (wind 0) under the worst blit shear, thrown
+        // per element — exactly what the quad can put on screen.
+        const n = bruteExtent(m, 0, K_SH_MAX);
+        assert.ok(
+          n.x1 <= e.x1 + 1e-9,
+          `${tile}/v${v}: sheared ink escapes right by ${(n.x1 - e.x1).toFixed(3)}`,
+        );
+        assert.ok(
+          n.x0 >= e.x0 - 1e-9,
+          `${tile}/v${v}: sheared ink escapes left by ${(e.x0 - n.x0).toFixed(3)}`,
+        );
+      }
+    }
+    assert.ok(checked > TREE_TILES.length * 8, `only ${checked} archetypes exercised`);
   });
 });

@@ -2322,7 +2322,7 @@ export class ClientGame {
         // setGround covers the center, and the soil paint lives in
         // that chunk's bake.
         g.touchChunk(Math.floor(p.tx / CHUNK_SIZE), Math.floor(p.ty / CHUNK_SIZE));
-        g.touchNeighbors(Math.floor(p.tx / CHUNK_SIZE), Math.floor(p.ty / CHUNK_SIZE));
+        g.touchNeighborsNear(p.tx, p.ty);
       }
       for (const b of msg.bins ?? []) {
         if (b.fill === 0 && b.readyAt === 0) farmBins.delete(farmKey(b.tx, b.ty));
@@ -2343,7 +2343,7 @@ export class ClientGame {
       for (const r of msg.remove ?? []) {
         farmPlots.delete(farmKey(r.tx, r.ty));
         g.touchChunk(Math.floor(r.tx / CHUNK_SIZE), Math.floor(r.ty / CHUNK_SIZE));
-        g.touchNeighbors(Math.floor(r.tx / CHUNK_SIZE), Math.floor(r.ty / CHUNK_SIZE));
+        g.touchNeighborsNear(r.tx, r.ty);
       }
       if ((msg.plots?.length ?? 0) > 0 || (msg.remove?.length ?? 0) > 0) g.worldVersion++;
       g.onFarm?.();
@@ -2682,7 +2682,18 @@ export class ClientGame {
         );
       }
     }
-    this.touchNeighbors(chunk.cx, chunk.cy);
+    // THE BUMP IS EARNED (foundation audit): a neighbor's bake reads
+    // this chunk only through a border fringe (blob halo 2 rings,
+    // detail margin 1 tile), and a full neighbor re-bake is ~29
+    // sliced steps — so a REPLACED chunk bumps only the neighbors
+    // whose facing border strip actually changed. A brand-new chunk
+    // (prev === undefined) still bumps all 8: their earlier bakes
+    // sampled its absence through the Grass fallback.
+    if (prev === undefined) {
+      this.touchNeighbors(chunk.cx, chunk.cy);
+    } else {
+      this.touchChangedEdges(chunk.cx, chunk.cy, prev, chunk);
+    }
     this.worldVersion++;
     // Interiors re-derive only when this arrival can actually touch a
     // room: rooms are bounded by wall/door tiles, and a region reaches
@@ -2734,7 +2745,7 @@ export class ClientGame {
       );
     }
     // Blob rendering blends across tiles — rebake the neighborhood.
-    this.touchNeighbors(Math.floor(patch.tx / CHUNK_SIZE), Math.floor(patch.ty / CHUNK_SIZE));
+    this.touchNeighborsNear(patch.tx, patch.ty);
     this.worldVersion++;
     // A posture swap of the SAME door leaves every room's shape alone.
     const doorSwap =
@@ -2823,7 +2834,7 @@ export class ClientGame {
   private handleDetailPatch(patch: DetailPatch): void {
     const prev = this.world.detailAt(patch.tx, patch.ty);
     this.world.setDetail(patch.tx, patch.ty, patch.detail);
-    this.touchNeighbors(Math.floor(patch.tx / CHUNK_SIZE), Math.floor(patch.ty / CHUNK_SIZE));
+    this.touchNeighborsNear(patch.tx, patch.ty);
     this.worldVersion++;
     this.onDetailChange?.(patch.tx, patch.ty, prev, patch.detail);
   }
@@ -2845,6 +2856,66 @@ export class ClientGame {
         if (chunk) chunk.rev = (chunk.rev ?? 0) + 1;
       }
     }
+  }
+
+  /** THE BUMP IS EARNED, replace half: compare the border strips of
+   *  old vs new payload per edge, and bump only neighbors
+   *  facing a changed strip (corner neighbors ride either adjacent
+   *  edge — their halo samples the corner block, which lies inside
+   *  both strips). An interior-only edit bumps nobody. */
+  private touchChangedEdges(cx: number, cy: number, prev: ChunkData, next: ChunkData): void {
+    // Depth 3: blob halo 2 rings + one spare for deck lookahead —
+    // matches touchNeighborsNear's reach.
+    const D = 3;
+    const stripSame = (lx0: number, lx1: number, ly0: number, ly1: number): boolean => {
+      for (let ly = ly0; ly <= ly1; ly++) {
+        for (let lx = lx0; lx <= lx1; lx++) {
+          const i = ly * CHUNK_SIZE + lx;
+          if (
+            prev.ground[i] !== next.ground[i] ||
+            prev.detail[i] !== next.detail[i] ||
+            prev.elev[i] !== next.elev[i]
+          )
+            return false;
+        }
+      }
+      return true;
+    };
+    const M = CHUNK_SIZE - 1;
+    const n = !stripSame(0, M, 0, D - 1);
+    const s = !stripSame(0, M, CHUNK_SIZE - D, M);
+    const w = !stripSame(0, D - 1, 0, M);
+    const e = !stripSame(CHUNK_SIZE - D, M, 0, M);
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        if (!((dx < 0 && w) || (dx > 0 && e) || (dy < 0 && n) || (dy > 0 && s))) continue;
+        const chunk = this.world.get(cx + dx, cy + dy);
+        if (chunk) chunk.rev = (chunk.rev ?? 0) + 1;
+      }
+    }
+  }
+
+  /** THE BUMP IS EARNED, patch half: a single-tile edit reaches a
+   *  neighbor's bake only when it sits within the border fringe —
+   *  bump just the neighbors its 2-tile reach actually touches (an
+   *  interior door toggle used to re-bake all 8 neighbors whole). */
+  private touchNeighborsNear(tx: number, ty: number): void {
+    const cx = Math.floor(tx / CHUNK_SIZE);
+    const cy = Math.floor(ty / CHUNK_SIZE);
+    const lx = tx - cx * CHUNK_SIZE;
+    const ly = ty - cy * CHUNK_SIZE;
+    // Reach 3: blob halo 2 rings + one spare for deck lookahead.
+    const dxDir = lx <= 2 ? -1 : lx >= CHUNK_SIZE - 3 ? 1 : 0;
+    const dyDir = ly <= 2 ? -1 : ly >= CHUNK_SIZE - 3 ? 1 : 0;
+    const bump = (dx: number, dy: number): void => {
+      if (dx === 0 && dy === 0) return;
+      const chunk = this.world.get(cx + dx, cy + dy);
+      if (chunk) chunk.rev = (chunk.rev ?? 0) + 1;
+    };
+    if (dxDir !== 0) bump(dxDir, 0);
+    if (dyDir !== 0) bump(0, dyDir);
+    if (dxDir !== 0 && dyDir !== 0) bump(dxDir, dyDir);
   }
 
   /**

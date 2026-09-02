@@ -1341,3 +1341,152 @@ floor further — the documented quiet-lane mechanism, not divergence).
 
 NEXT: Epic B (THE CAMERA LEARNS TO LEAN) on a stage lane that now
 holds canvas parity everywhere it plays.
+
+## THE FOUNDATION AUDIT PAYS ITS DEBTS (2026-09-01, foundation audit round)
+
+A 14-agent audit workflow (7 dimensions × adversarial verification)
+swept the stage pipeline for the owner's two field reports — edge
+trees cutting off / outline oddities while moving, and the
+new-area re-bake hitch — plus named debt. 38 findings confirmed,
+7 refuted; three waves shipped.
+
+### Wave 1 — the ledger tells the whole truth (correctness)
+- **THE REV TELLS THE WHOLE TRUTH**: memberCutSig() extracted from
+  stretchCutSig (one law, two consumers); every keyed wall-run rev
+  folds the member dynamic sigs (reveal heights 1/48, door veil
+  1/32, hearth glass 1/24) via pbDyn chaining; -1 members (door
+  swing, shake, step-aside) refuse the key and the run paints live —
+  the audit's confirmed freeze (veils/cuts holding mint-frame pixels
+  while NPCs walked the far reveal field) is cured.
+- **THE PROMISED FADE**: the arrival law promised fade-in in three
+  places and no code implemented it. WorldSprite.mint + mintAlpha():
+  fresh mints ease in over ~9 frames in trees/props/flora, both
+  backends; **THE CAST WAITS FOR ITS TREE** — a shadow whose body
+  archetype has not minted stands down, then blooms on the body's
+  own ramp (the cast-without-tree artifact at the leading edge).
+- **ONE FRAME CONTAINS EVERY POSE THE BLIT CAN DRAW**: treeExtent
+  now folds the sheared-NEUTRAL envelope (TREE_SHEAR_MAX = full wind
+  0.077 + standing lean 0.028, linear in height where the painter's
+  wind term is hf^1.4). The new proof battery (shipping 16
+  archetypes × species, sheared-neutral containment, root floor)
+  CAUGHT A REAL ESCAPE — species 12/v1 exited the old box by 0.024
+  tiles at gust+lean extremes, the field symptom's mechanism class.
+  Cull boxes drop their side-channel pads; the dead treeSprites
+  keep-warm went with them.
+- **THE DEVICE GRID reaches the scratch lane**: stagePushPaintRaw /
+  stagePaintItem snap boxes outward to the device lattice with
+  PHASE-FREE size (ceil css + 1 cover texel) — kills the double
+  filter (~1px softening) and pins keyed device dims against pan
+  phase.
+- Atlas page wipes reach the GPU (full-page dirty rect — the old
+  `dirty = undefined` never uploaded the clear).
+
+### Wave 2 — the arrival learns to pace itself
+- **THE UPLOAD FOLLOWS THE PAINT**: stageEmitChunk bumps rev only
+  when the live job's slice clock (job.next) moved and only when the
+  job paints the blitted canvas — replace jobs upload NOTHING until
+  their swap (was: full multi-MB re-upload EVERY pending frame).
+- **THE STALE BAKE STILL SERVES**: StageTexture.staleOk +
+  GlStage.syncForDraw — draw-time REFRESHES meter against the shared
+  per-frame pool and may bind older texels (chunk grounds; same-dims
+  guard so tier flips upload now); a missing record still uploads
+  unconditionally — never a hole. ensure() prices dirty-rect
+  refreshes by their rects and spends the same shared pool.
+- **THE BUMP IS EARNED**: replaced chunks bump only neighbors whose
+  facing 3-tile border strip changed; tile patches bump only the ≤3
+  neighbors in reach (an interior door toggle used to re-bake all 8
+  neighbors whole); brand-new chunks keep the full 8 (their absence
+  was sampled through the Grass fallback).
+- **THE QUEUE WALKS OUT FROM THE PLAYER, ROUND-ROBIN**: chunkJobQueue
+  distance-sorts and advances one slice per entry per lap — the
+  screen corner no longer finishes before the ground underfoot.
+- **THE STEADY LANE FINDS ITS CONSUMER**: completed ring bakes
+  prepay their uploads velocity-forward in GPU_STEADY_MS —
+  floor=false (prefetch never forces an admission; the floor forced
+  a ~chunk upload per moving frame at 20×, world 33→48ms, caught by
+  the bench and reverted to fit-only admission).
+- **THE ARRIVAL TELLS JUMP FROM WALK**: VIS_SPRITE_WALK_MS=12 for
+  smooth-motion frames; jumps (teleport/plane hop/spawn) keep the
+  covered 60ms hitch. Slicing, not deferral — the count floor and
+  THE PROMISED FADE absorb the spread.
+- **THE CLOCK IS A FRAME, NOT A FLUSH**: GlStage.frame() pumped once
+  per real frame by the renderer (aging, sweeps, shared upload
+  pool); begin() ticks only for hosts that never call it (lab).
+- **THE LEDGER KNOWS ITS CHUNK**: bandKeysByChunk index — the
+  register-rebuild band sweep stops walking the whole cache.
+
+### Wave 3 — the store keeps its house
+- Atlas: ledger entries carry their slots (GC'd/superseded cells
+  confess their area as deadPx), the sweep compacts + judges by
+  AREA, pages reclaim on fragmentation (live 0 / stale>live / >75%
+  packed & >50% reclaimable), best-fit shelves, wipe-all on plane
+  cross; atlas pages are PINNED against the orphan sweep (an
+  undrawn page's 16.8MB return re-upload was a manufactured arrival
+  cost).
+- **THE CAP IS HARD**: keyed mints refuse past 128MB (same-frame
+  entries rightly unevictable) — reserve moves to the vertex pass
+  (ensureKeyedEntry) so a refusal falls to scratch with the right
+  UVs; the run caches on a calmer frame.
+- Grow-only staging + per-page dirty-rect coalescing + 9-arg
+  texSubImage2D (premultiply verified honored on this path by a
+  dedicated probe); sheets upload used rows straight from the sheet
+  canvas — the per-sheet staging realloc + raster copy is gone.
+- **THE WHOLE COMMIT CONFESSES**: residentBytes (records + keyed +
+  scratch + sheets + layer) and drawDeferred ride the confession
+  (`res NMB kN defer N`); ground stage takes a 256MB store
+  (chunk-only working set ~200MB measured).
+
+### Parity v8 — THE VEIL JOINS THE PHASE CLASS
+Restoring veil/cut liveness moved crown wall content from frozen to
+NPC-tracking — honest rendering the cross-mode instrument scores as
+grown animation-phase divergence. Interleaved distributions (one
+machine, same day): new sig medians 260-307 (6 runs) vs pre-fix
+control 212-251; flag-bisected to the rev fold alone via the new
+FLAG= runtime-bisect lever in the probe (BISECT_NO_DYN → 240 PASS;
+fade/snap/sub9 exonerated). Crown scenes gain an absolute cap rail
+(330, requiring live-scene noise ≥ 60) beside floor+100; the
+degenerate empty-plane signature still fails both rails.
+
+### Probe laws banked this round
+- A single-shot cross-mode heatmap is DROWNED by NPC/weather
+  variance (runs swung 22-53k hot px on identical code) — bisect
+  through the battery's own medians with FLAG= switches, never
+  through one frame. (Round 9's null-control law, relearned.)
+- The premultiply behavior of a new upload overload is a 2-minute
+  readback probe, not a guess.
+
+### Charted, deliberately not started (the named debt)
+- **THE FRINGE RE-BAKE**: a neighbor bump's honest cost is a ~3-tile
+  border strip, not 29 steps × 9 chunks. Wants a clip-rect mode
+  through startChunkBake (meadow x-range, detail lx/ly narrowing,
+  skin ctx clips) + register border rebuild — its own round with its
+  own seam harness (the settled-cut precedent). THE BUMP IS EARNED
+  removed the redundant re-bakes; this removes the honest ones'
+  waste.
+- **Run identity is composition-sensitive**: an interleaving body
+  splits a wall run and mints new keyed variants (~10s retention;
+  k~cap in city confessions is partly this). Sketch: key per
+  register stretch, draw split segments as UV windows of one cached
+  strip.
+- Chunk bake slices know their painted rows — dirty-rect uploads for
+  pending live chunks would cut arrival upload bytes further.
+- worldVersion-keyed viewport memos clear whole on any arrival
+  (low); hair/water Path2D (R14); Hoargate bands 0/0; avenue TooBig
+  residual 1 (all pre-existing, unchanged).
+
+### Measured (same rig, same day; 20× CPU throttle, fresh page/config)
+- Steady crown: ON 150.0 = OFF 150.0 med (band 17: both 166.6) —
+  the earned bumps + band index paid BOTH lanes a full quantum.
+- Steady forest: ON 83.4 med vs OFF 99.9 — the stage lane LEADS a
+  scenario outright for the first time.
+- Steady dawnmead: ON 100.0 = OFF 100.0.
+- MOVING circuit: med ON 116.7 = OFF 116.6; p90 ON 216.6 / OFF
+  183.3 — both ~17ms better than band 17 (233/200). The residual
+  moving p90 gap is the arrival ground bake (~45ms phase at 20×) —
+  the charted fringe re-bake's target.
+- Parity v8: 7/7 PASS (crown 302/301 under the cap rail, floors
+  125/148); stagelab 20/20; ui-smoke 13/13; 800/800 client tests
+  (+2 new containment proofs); build green.
+- Visual proofs: arrival bloom at +593ms post-teleport (willow
+  mid-fade, zero holes, zero cast-without-tree); crown gate veil
+  clean in motion.

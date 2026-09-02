@@ -66,6 +66,23 @@ export interface StageTexture {
    * touches it.
    */
   dirty?: Array<[number, number, number, number]>;
+  /**
+   * THE STALE BAKE STILL SERVES (foundation audit): an OLDER upload
+   * of this handle shows the SAME content, merely behind — so a
+   * draw-time refresh may defer under upload-budget pressure and
+   * bind the previous texels instead (chunk grounds, band bakes:
+   * successive revs are successive repaints of one world surface).
+   * Leave unset for handles whose cells REMAP between revs (atlas
+   * pages — a stale page shows the wrong sprite in a re-placed cell,
+   * which is corruption, not lag). A missing record always uploads:
+   * never a hole.
+   */
+  staleOk?: boolean;
+  /** Exempt from the GL orphan sweep (atlas pages: long-lived shared
+   *  targets whose 16.8MB re-upload on return is exactly the arrival
+   *  cost the sweep must not manufacture). Pinned handles die only by
+   *  explicit release or context loss. */
+  pinned?: boolean;
 }
 
 /**
