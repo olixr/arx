@@ -455,7 +455,12 @@ const CHUNK_REPLACE_STARTS = 2;
 // few more canvases in flight — four extra slots keep the pool
 // serving both without re-minting 4.3MB backing stores (round 11's
 // churn class).
-const CHUNK_POOL_MAX = 16;
+/** THE CHUNK CANVAS POOL is bounded by BYTES (B2): tight lifted layers
+ *  ended the one-size invariant a count relied on, and a count was
+ *  already tier-blind. 128MB covers the recycle→retake transient at
+ *  either zoom tier (px32 base 4.3MB, px64 base 17MB, plus lifted
+ *  spans) without hoarding idle backing store. */
+const CHUNK_POOL_BUDGET = 256 * 1048576;
 
 /**
  * Byte ceiling on the baked-ground cache. The old cap counted SLOTS
@@ -1043,6 +1048,10 @@ interface BakedChunk {
     level: number;
     canvas: HTMLCanvasElement;
     bands: Array<[number, number]>;
+    /** THE LIFTED LAYER PAYS FOR ITS ROWS (B2): the chunk row this
+     *  level's tight canvas begins at — the draw samples row r at
+     *  `sy = gut + (r - rowOrigin)·px`. 0 for a full-height canvas. */
+    rowOrigin: number;
   }>;
   /**
    * In-flight sliced bake (see startChunkBake). `live` jobs blit their
@@ -1644,7 +1653,25 @@ export class Renderer {
    * them would consume the entire 32MB sprite budget and starve the
    * lane that turns over thousands of small sprites a scene.
    */
-  private readonly chunkCanvasPool: HTMLCanvasElement[] = [];
+  /** THE CHUNK POOL IS KEYED BY SHAPE (B2): base squares and the
+   *  row-tight lifted canvases are different shapes, and a flat free
+   *  list fragments — a take for one shape finds only others (measured
+   *  ~30% hit-rate at px64). One free list per (w,h), like the sprite
+   *  pool, restores per-shape reuse; a global FIFO orders cross-shape
+   *  eviction under the byte budget. */
+  private readonly chunkCanvasPool = new Map<number, HTMLCanvasElement[]>();
+  /** Global insertion order across all shape buckets — the eviction
+   *  queue when a push would overflow CHUNK_POOL_BUDGET. */
+  private readonly chunkPoolFifo: HTMLCanvasElement[] = [];
+  /** Backing-store bytes the chunk canvas pool currently holds (B2's
+   *  byte bound — see CHUNK_POOL_BUDGET). */
+  private chunkPoolBytes = 0;
+  /** Pool effectiveness telemetry (B2): a take served from the pool
+   *  (hit) versus a fresh allocation (miss). A rising miss rate during
+   *  a pan at the px64 tier is the churn signal the byte budget must be
+   *  large enough to avoid. Cumulative; read off the `?perf` ground line. */
+  private chunkPoolHits = 0;
+  private chunkPoolMisses = 0;
   /** Live bytes held by `baked` (base canvases + every lifted layer). */
   private bakedBytes = 0;
 
@@ -1678,16 +1705,37 @@ export class Renderer {
   }
 
   /**
-   * Retire a chunk canvas: off the ledger, then into the free list if
-   * it still has room. The pool is capped by COUNT here and that is
-   * honest — unlike the sprite lane, every canvas in it is one of two
-   * known sizes, so a count IS a byte bound.
+   * Retire a chunk canvas: off the live ledger, then into the free
+   * list. Bounded by BYTES, not a count. A count cap was honest only
+   * while every chunk canvas was one of two square sizes — but it was
+   * already tier-blind (16 canvases = 68MB at px32, 272MB at px64), and
+   * B2's tight lifted layers (row-span heights) end the one-size
+   * invariant outright, so a count would price a byte-varied pool
+   * dishonestly. Oldest-out when a push would overflow the budget.
    */
   private recycleChunkCanvas(c: HTMLCanvasElement | undefined): void {
     if (!c) return;
-    this.bakedBytes -= Renderer.canvasBytes(c);
-    if (this.chunkCanvasPool.length >= CHUNK_POOL_MAX) return;
-    this.chunkCanvasPool.push(c);
+    const bytes = Renderer.canvasBytes(c);
+    this.bakedBytes -= bytes;
+    if (bytes > CHUNK_POOL_BUDGET) return; // larger than the whole pool — let it go
+    // Oldest-out (global FIFO) until the incoming canvas fits the budget.
+    while (this.chunkPoolBytes + bytes > CHUNK_POOL_BUDGET && this.chunkPoolFifo.length > 0) {
+      const old = this.chunkPoolFifo.shift()!;
+      const oldKey = Renderer.poolKey(old.width, old.height);
+      const oldBucket = this.chunkCanvasPool.get(oldKey);
+      if (oldBucket) {
+        const i = oldBucket.indexOf(old);
+        if (i >= 0) oldBucket.splice(i, 1);
+        if (oldBucket.length === 0) this.chunkCanvasPool.delete(oldKey);
+      }
+      this.chunkPoolBytes -= Renderer.canvasBytes(old);
+    }
+    const key = Renderer.poolKey(c.width, c.height);
+    const bucket = this.chunkCanvasPool.get(key);
+    if (bucket) bucket.push(c);
+    else this.chunkCanvasPool.set(key, [c]);
+    this.chunkPoolFifo.push(c);
+    this.chunkPoolBytes += bytes;
   }
 
   /** Every canvas a baked entry owns — its base and its lifted layers. */
@@ -1722,20 +1770,25 @@ export class Renderer {
     }
   }
 
-  /** A free chunk canvas of the requested tier, or undefined. */
-  private takeChunkCanvas(px: number): HTMLCanvasElement | undefined {
-    const want = CHUNK_SIZE * px + bakeGutter(px) * 2;
-    for (let i = this.chunkCanvasPool.length - 1; i >= 0; i--) {
-      const c = this.chunkCanvasPool[i]!;
-      if (c.width === want && c.height === want) {
-        this.chunkCanvasPool.splice(i, 1);
-        return c;
-      }
+  /** A free chunk canvas of the requested tier and row span, or
+   *  undefined. `rows` (B2) defaults to a full-height base canvas; a
+   *  lifted layer asks for its bucketed row-span height. Exact (w,h)
+   *  fit-search — the byte-bounded pool holds mixed shapes now. */
+  private takeChunkCanvas(px: number, rows: number = CHUNK_SIZE): HTMLCanvasElement | undefined {
+    const G = bakeGutter(px);
+    const wantW = CHUNK_SIZE * px + G * 2;
+    const wantH = rows * px + G * 2;
+    const bucket = this.chunkCanvasPool.get(Renderer.poolKey(wantW, wantH));
+    if (bucket && bucket.length > 0) {
+      const c = bucket.pop()!;
+      if (bucket.length === 0) this.chunkCanvasPool.delete(Renderer.poolKey(wantW, wantH));
+      const fi = this.chunkPoolFifo.indexOf(c);
+      if (fi >= 0) this.chunkPoolFifo.splice(fi, 1);
+      this.chunkPoolBytes -= Renderer.canvasBytes(c);
+      this.chunkPoolHits++;
+      return c;
     }
-    // A pool full of the other tier's canvases is dead weight after a
-    // zoom flip — drop one so the wrong tier drains instead of
-    // permanently denying the right one a slot.
-    if (this.chunkCanvasPool.length >= CHUNK_POOL_MAX) this.chunkCanvasPool.shift();
+    this.chunkPoolMisses++;
     return undefined;
   }
 
@@ -4163,7 +4216,8 @@ export class Renderer {
                       kind: 'quad',
                       tex: this.stageSpriteTex(layer.canvas, 0, layer),
                       sx: gut,
-                      sy: gut + r * px,
+                      // B2: the tight lifted canvas begins at rowOrigin.
+                      sy: gut + (r - layer.rowOrigin) * px,
                       sw: CHUNK_SIZE * px,
                       sh: px,
                       dw: Math.round(pB.x) - x0,
@@ -4177,7 +4231,7 @@ export class Renderer {
                     this.ctx.drawImage(
                       layer.canvas,
                       gut,
-                      gut + r * px,
+                      gut + (r - layer.rowOrigin) * px,
                       CHUNK_SIZE * px,
                       px,
                       x0,
@@ -8002,7 +8056,12 @@ export class Renderer {
       rev: data.rev ?? 0,
       px: bakePx,
       startElev: (level: number) =>
-        startElevatedBake(ground, detail, elev, cx, cy, bakePx, level, this.takeChunkCanvas(bakePx)),
+        // B2: the tight lifted canvas's height is known only after the
+        // bake's row scan, so hand it a pooled-canvas taker keyed on the
+        // row count it computes, not a pre-sized square.
+        startElevatedBake(ground, detail, elev, cx, cy, bakePx, level, (rows) =>
+          this.takeChunkCanvas(bakePx, rows),
+        ),
       fringeRev: data.fringeRev ?? 0,
       fringeMask: fringe?.mask ?? data.fringeMask ?? 0,
     };
@@ -8029,7 +8088,7 @@ export class Renderer {
           band[0] = Math.max(0, band[0] - 1);
           band[1] = Math.min(CHUNK_SIZE - 1, band[1] + 1);
         }
-        p.lifted.push({ level: ej.level, canvas: ej.job.canvas, bands });
+        p.lifted.push({ level: ej.level, canvas: ej.job.canvas, bands, rowOrigin: ej.job.rowOrigin });
         p.elevJob = undefined;
       }
     } else if (p.levels.length > 0) {
@@ -14669,7 +14728,9 @@ export class Renderer {
     // canvases standing by; a healthy walk keeps it non-zero, because
     // a zero pool means every re-bake is paying full allocation.
     parts.push(
-      `ground ${(this.bakedBytes / 1048576).toFixed(0)}MB/${this.baked.size} pool ${this.chunkCanvasPool.length}`,
+      `ground ${(this.bakedBytes / 1048576).toFixed(0)}MB/${this.baked.size} ` +
+        `pool ${this.chunkPoolFifo.length}/${(this.chunkPoolBytes / 1048576).toFixed(0)}MB ` +
+        `hit ${this.chunkPoolHits} miss ${this.chunkPoolMisses}`,
     );
     const ls = this.liveStats;
     parts.push(
