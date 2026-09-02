@@ -1387,6 +1387,12 @@ export class Renderer {
    *  of the canvas2d baked meadow. Off = byte-identical baked path. */
   grassGpu = false;
   private grassGpuLayer: GrassGpuLayer | null = null;
+  /** THE CAMERA LEARNS TO LEAN (Epic B, B-2): the lean is a DIAL. This is
+   *  the target lean `q`, set opt-in (?lean / arx.lean). 0 = OFF = the
+   *  orthographic frame, byte-identical to everything shipped. Each frame
+   *  camera.q is clamped from this so the horizon stays above the viewport
+   *  (and forced to 0 under the editor/shot camera). */
+  leanTarget = 0;
   /** Whether the GPU path actually drew this frame (→ skip the canvas2d
    *  coat and the tall y-sort pass; false → the baked meadow ran). */
   private grassGpuActive = false;
@@ -5026,6 +5032,15 @@ export class Renderer {
       Math.max(TREE_REBAKE_FRAMES, Math.ceil(this.treesVisible / TREE_BAKES_PER_FRAME)),
     );
     this.treesVisible = 0;
+    // B-2: apply the lean dial. Clamp q so the horizon (h/2 − 1/q) stays
+    // safely above the viewport — the moderate-lean invariant (no sky/void
+    // yet). The editor/shot camera stays orthographic (leans would fight a
+    // pinned frame; staticLayerOn also requires q=0 there). leanTarget=0 →
+    // camera.q=0 → byte-identical to every ortho frame.
+    this.camera.q =
+      this.leanTarget > 0 && this.cameraOverride === null
+        ? Math.min(this.leanTarget, 1.5 / this.h)
+        : 0;
     // The sky rules the frame: shadows, exposure, grade all read it.
     this.sky = daylightAt(game.clockHoursNow());
     // UNDERGROUND LAW: the dark band never sees the surface sky. Below
