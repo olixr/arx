@@ -42,6 +42,39 @@ export function packBladeInstances(blades: readonly Blade[], out?: Float32Array)
 }
 
 /**
+ * Build the world→clip `mat3` (column-major, 9 floats) the grass vertex
+ * shader consumes as `uView` — for the ORTHO camera (q=0, the shipping
+ * default). It composes the renderer's affine world→screen projection
+ * (`screenX = wx·scale + ox`, `screenY = wy·scale·yScale + oy`, matching
+ * cameraProject's q=0 fast path) with the GL screen→NDC map, folding in
+ * the Y-FLIP the stage shader applies (`ndcY = 1 − 2·screenY/h`), so
+ * `uView · vec3(world,1)` lands each blade root exactly where the canvas2d
+ * meadow paints it. `ox`/`oy` are the snapped screen origins (camOriginX/Y);
+ * `w`/`h` are the frame's CSS pixel dimensions. Alloc-free with `out`.
+ *
+ * NOTE q>0 (camera lean): a lean is a true projective map needing a
+ * per-vertex w — not expressible in this affine mat3, and the shader
+ * currently forces gl_Position.w = 1. The live camera ships q=0, so this
+ * is exact today; the lean is a later sub-phase (proposal G-2, the lean).
+ */
+export function grassViewMatrix(
+  scale: number,
+  yScale: number,
+  ox: number,
+  oy: number,
+  w: number,
+  h: number,
+  out?: Float32Array,
+): Float32Array {
+  const m = out && out.length >= 9 ? out : new Float32Array(9);
+  // column 0 (∂ndc/∂wx), column 1 (∂ndc/∂wy), column 2 (translation)
+  m[0] = (2 * scale) / w;   m[1] = 0;                       m[2] = 0;
+  m[3] = 0;                 m[4] = (-2 * scale * yScale) / h; m[5] = 0;
+  m[6] = (2 * ox) / w - 1;  m[7] = 1 - (2 * oy) / h;         m[8] = 1;
+  return m;
+}
+
+/**
  * THE ONE WIND in GLSL. Returns `vec4(bendX, bendY, strength, lum)` —
  * the same four fields as WindSample — for a world point `w` at time
  * `t`. The wind direction (WX/WY) is templated from grass.ts so the two
