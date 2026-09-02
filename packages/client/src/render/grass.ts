@@ -480,7 +480,10 @@ function mixHex(a: string, b: string, t: number): string {
  * passing gust GLIDE across the field — three coarse steps popped.
  */
 const LIGHTS = 7;
-const BLADE_FILLS: string[] = ALL_TONES.flatMap((tone, row) =>
+/** Exported as the GPU grass's palette source (grassGpuRenderer.ts) —
+ *  the exact shade→base→lit ramp, so the instanced blades wear the same
+ *  colours as the baked meadow. Tone-major: [tone·LIGHTS + light]. */
+export const BLADE_FILLS: string[] = ALL_TONES.flatMap((tone, row) =>
   Array.from({ length: LIGHTS }, (_, i) => {
     // Lift-only ramp: the trough IS the base tone, and the swell adds
     // a modest glow on top. Never downward. The nap lifts a touch less
