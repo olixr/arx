@@ -469,8 +469,14 @@ const CHUNK_POOL_BUDGET = 256 * 1048576;
 /** THE CAMERA LEARNS TO LEAN (Epic B): the perspective frustum's far
  *  reach, as a multiple of the orthographic view depth. A moderate lean
  *  reaches ~1.5–2× before the horizon; the cap bounds the bake set under
- *  a strong lean (and marks where a horizon fade will later sit). */
-const FRUSTUM_FAR_MULT = 3;
+ *  a strong lean and IS where the horizon fog sits (drawGrade). Tightened
+ *  3→2 (B-6 lever 2) now that the fog buries the cut — fewer far tiles,
+ *  no hole. Used ONLY in the q>0 frustum branch, so q=0 is unaffected. */
+const FRUSTUM_FAR_MULT = 2;
+
+/** The moderate reference lean q the fog/LOD ramps are tuned against (the
+ *  B-2 milestone lean). Fog and far-fade reach full strength here. */
+const PERSP_LEAN_REF = 0.0016;
 
 /**
  * Byte ceiling on the baked-ground cache. The old cap counted SLOTS
@@ -6494,6 +6500,25 @@ export class Renderer {
     sky.addColorStop(1, `rgba(${hr | 0}, ${hg | 0}, ${hb | 0}, 0)`);
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, this.w, this.h * 0.34);
+    // THE HORIZON FOG (Epic B, B-6): under a lean the far ground compresses
+    // to the horizon and the frustum is capped there — atmospheric haze
+    // washes that far band into the hour's sky, giving the vista real depth
+    // AND burying the far cut so the cap can pull in (levers 1-2 pay for
+    // each other). It rides the SAME sky colour as the haze above, only
+    // deeper and anchored to the lean. Eases in with q; OFF at q=0 (no
+    // horizon) → the frame is byte-identical to every ortho frame shipped.
+    if (this.camera.q > 0) {
+      const fogAmt = Math.min(1, this.camera.q / PERSP_LEAN_REF);
+      const bandH = this.h * (0.26 + 0.22 * fogAmt);
+      const peak = Math.min(1, (ha + 0.28) * (0.45 + 0.55 * fogAmt));
+      const c = (a: number) => `rgba(${hr | 0}, ${hg | 0}, ${hb | 0}, ${a})`;
+      const fog = ctx.createLinearGradient(0, 0, 0, bandH);
+      fog.addColorStop(0, c(peak));
+      fog.addColorStop(0.55, c(peak * 0.42));
+      fog.addColorStop(1, c(0));
+      ctx.fillStyle = fog;
+      ctx.fillRect(0, 0, this.w, bandH);
+    }
     ctx.save();
     ctx.globalCompositeOperation = 'soft-light';
     // Underground the grade stands down: the cool bottom-wash and the
