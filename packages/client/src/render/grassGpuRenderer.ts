@@ -2,14 +2,15 @@
  * THE LIVING MEADOW GOES TO THE GPU (grass proposal, G-1) — the
  * instanced blade renderer.
  *
- * One WebGL2 program draws a whole field of painterly blades from a
- * single instance buffer. Each blade is a tapered triangle-strip the
- * vertex shader builds from its instance record (root, height, width,
- * lean, phase, tone), curves, and bends to THE ONE WIND (grassWindGlsl —
- * the exact CPU wind); the fragment shader colours it flat from the
- * shade→base→lit shimmer ramp (BLADE_FILLS) exactly as the baked meadow
- * does, so the art is ours, not approximated — no texture atlas needed,
- * because our blades are graded flat shapes, not textured detail.
+ * One WebGL2 program draws a whole field of blocky, low-poly blades from
+ * a single instance buffer. Each blade is a near-rectangular strip (a
+ * blunt chisel top, not a spike) the vertex shader builds from its
+ * instance record (root, height, width, lean, phase, tone) and leans to
+ * THE ONE WIND (grassWindGlsl — the exact CPU wind); the fragment shader
+ * shades it in FLAT tone bands — shaded root (AO) → body → lit cap, hard
+ * steps off the shimmer ramp (BLADE_FILLS), never a gradient — so the
+ * blade reads as our vectorized, faceted brand, not a soft smear. No
+ * texture atlas: the blades are flat graded facets, not textured detail.
  *
  * This is the renderer in isolation (fed instances, a view matrix, and
  * time). Scene integration — the camera homography, depth-LOD, the
@@ -17,9 +18,9 @@
  */
 import { grassWindGlsl, GRASS_INSTANCE_FLOATS } from './grassGpu.js';
 
-/** Up-segments in a blade's triangle strip — enough for a smooth curved
- *  spine without over-tessellating a sub-inch blade. Verts = (SEG+1)·2. */
-const BLADE_SEGMENTS = 8;
+/** Up-segments in a blade's strip — a blocky blade leans as a gentle arc,
+ *  so a few segments suffice (fewer = crisper, blockier). Verts=(SEG+1)·2. */
+const BLADE_SEGMENTS = 5;
 const BLADE_VERTS = (BLADE_SEGMENTS + 1) * 2;
 
 /** Palette dimensions (must match ALL_TONES × LIGHTS in grass.ts). */
@@ -41,21 +42,23 @@ ${grassWindGlsl()}
 void main() {
   float up = aTmpl.y;
   float side = aTmpl.x;
-  // A LEAF SILHOUETTE, not a ribbon: full through the lower third, then
-  // tapering to a fine point — the painterly blade, not a spike.
-  float taper = (1.0 - up * up) * (0.55 + 0.45 * sqrt(1.0 - up));
+  // A BLOCKY blade, not a spike: near-constant width, then a BLUNT
+  // (chisel) top — a flat-cut low-poly blade, not a sharp triangle.
+  // Per-blade width varies a little; the base is a touch wider (rooted).
+  float taper = mix(1.08, 0.62, smoothstep(0.72, 1.0, up));
+  float wj = 0.9 + 0.35 * fract(iShape.w * 7.31);
   vec4 wind = grassWind(iRoot, uTime + iShape.w * 6.2831853);
-  // A smooth curved spine: static lean + live wind, growing with height
-  // (an arc, not a hinge). Per-blade phase tilts the arc for variety.
-  float arc = smoothstep(0.0, 1.0, up) * up;
-  float k = (iShape.z * uWindGain.y + wind.x * uWindGain.x) * arc
-          + iShape.z * 0.35 * up;      // a little standing curve at rest
+  // A RESTRAINED lean: the blade stands upright and blocky, tipping only
+  // a little at its very top (bendUp = up^3 keeps the lower stalk plumb).
+  // Static lean + live wind, both gentle — no scythe-like curl.
+  float bendUp = up * up * up;
+  float k = (iShape.z * uWindGain.y + wind.x * uWindGain.x) * bendUp
+          + iShape.z * 0.12 * up;
   vec2 world = iRoot;
-  // Half-width jittered per blade (phase) so no two read the same.
-  float hw = iShape.y * (0.85 + 0.5 * fract(iShape.w * 7.31));
+  float hw = iShape.y * 1.55 * wj;
   world.x += k + side * hw * taper;
   world.y -= up * iShape.x;            // grow up-screen
-  world.y += wind.y * arc * uWindGain.x * 0.4; // a little forward sway
+  world.y += wind.y * bendUp * uWindGain.x * 0.35; // slight forward sway
   vec3 p = uView * vec3(world, 1.0);
   gl_Position = vec4(p.xy, 0.0, 1.0);
   vUp = up;
@@ -71,15 +74,21 @@ in float vShimmer;
 uniform sampler2D uPalette;  // ${PAL_LIGHTS} lights × ${PAL_TONES} tones
 out vec4 o;
 void main() {
-  // Colour from the shimmer ramp, as the baked meadow: the shimmer wave
-  // lifts the light step, and the TIP catches the sun (bent blades flash
-  // lit up high) while the root sits in shade — the painterly depth.
-  float light = clamp(0.18 + vShimmer * 0.45 + vUp * 0.22, 0.0, 1.0);
-  float u = (light * float(${PAL_LIGHTS - 1}) + 0.5) / float(${PAL_LIGHTS});
+  // FLAT LOW-POLY SHADING — discrete facets, never a gradient. The blade
+  // reads as a few flat tone STEPS stacked up its height: a shaded root
+  // (ambient occlusion where it meets the ground), a body, and a lit cap
+  // where the sun catches — each a hard step from the shimmer ramp, which
+  // the wind shifts as one. This is the vectorized, faceted depth of our
+  // brand, not a smooth smear.
+  float band = vUp < 0.34 ? 0.0        // shaded root (AO)
+             : vUp < 0.74 ? 1.0        // body
+                          : 2.0;       // lit cap
+  float lightF = 0.10 + vShimmer * 0.42 + band * 0.27;
+  float step = clamp(floor(lightF * float(${PAL_LIGHTS - 1}) + 0.5),
+                     0.0, float(${PAL_LIGHTS - 1}));
+  float u = (step + 0.5) / float(${PAL_LIGHTS});
   float v = (vTone + 0.5) / float(${PAL_TONES});
   vec3 col = texture(uPalette, vec2(u, v)).rgb;
-  // Root shade: the lowest sliver sits darker (rooted, not floating).
-  col *= mix(0.72, 1.0, clamp(vUp * 2.6, 0.0, 1.0));
   o = vec4(col, 1.0);
 }`;
 
@@ -131,7 +140,8 @@ export class GrassGpuRenderer {
     gl.useProgram(program);
     gl.uniform1i(gl.getUniformLocation(program, 'uPalette'), 0);
 
-    // The blade template — a tapered triangle strip up the blade.
+    // The blade template — a strip of side pairs up the blade; the vertex
+    // shader gives it its rectangular width and lean.
     const tmpl = new Float32Array(BLADE_VERTS * 2);
     for (let i = 0; i <= BLADE_SEGMENTS; i++) {
       const up = i / BLADE_SEGMENTS;
@@ -179,8 +189,10 @@ export class GrassGpuRenderer {
       }
     }
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, PAL_LIGHTS, PAL_TONES, 0, gl.RGBA, gl.UNSIGNED_BYTE, px);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    // NEAREST: the palette is a set of discrete flat tones — no blending
+    // between steps, so the banded facet shading stays crisp and vectored.
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   }
