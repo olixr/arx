@@ -368,6 +368,7 @@ import { SIGNATURES, type SigCtx } from './fxSignatures.js';
 import { GlStage } from './stage/glStage.js';
 import type { GpuStageBackend } from './stage/stageTypes.js';
 import { StageVram } from './stage/stageVram.js';
+import { depthScaleWorld, projectWorld, unprojectScreen } from './cameraProject.js';
 import { stageRenderScale, type StageResTier } from './stage/renderScale.js';
 import { GPU_STEADY_MS, GPU_URGENT_MS } from './stage/gpuBudget.js';
 import {
@@ -963,6 +964,24 @@ export class Camera {
   readonly yScale = 0.6;
 
   /**
+   * THE CAMERA LEARNS TO LEAN (Epic B, B-1): the perspective lean
+   * strength. 0 = the pitched-orthographic camera above (byte-identical
+   * to every frame shipped so far — the projection short-circuits to the
+   * old affine math). q > 0 recedes the ground plane toward a horizon at
+   * screen row `h/2 − 1/q`, with `depthScale = 1/(1 − q·(wy−camY)·scale·
+   * yScale)` scaling every billboard, lift and shadow by depth. Held at
+   * 0 until the lean is deliberately turned on (band B-2); see
+   * docs/epic-b-camera-lean-plan.md and cameraProject.ts. */
+  q = 0;
+
+  /** The local size multiplier at world-depth `wy` (Epic B): 1 at the
+   *  camera's look-at row, <1 farther, >1 nearer; exactly 1 at q=0. The
+   *  one factor billboard scale / elevation lift / shadow radius ride. */
+  depthScale(wy: number): number {
+    return depthScaleWorld(this.scale, this.yScale, this.y, this.q, wy);
+  }
+
+  /**
    * THE DEVICE GRID: the real pixel lattice belongs to the BACKING
    * STORE, not CSS space. The context is scaled by the (possibly
    * FRACTIONAL) devicePixelRatio — a browser zoom mints 1.25/1.75, and
@@ -981,43 +1000,25 @@ export class Camera {
     return Math.round(v * this.snapDpr) / this.snapDpr;
   }
 
-  /**
-   * The camera's screen-space origin, SNAPPED to whole DEVICE pixels.
-   * Every layer then translates by the same device-pixel step each
-   * frame — terrain blits, wall geometry and sprites move in lockstep.
-   * With a subpixel origin, anything that pixel-rounds its own
-   * coordinates (walls, stair seams) crosses pixel boundaries on
-   * different frames than the smoothly-resampled ground and appears
-   * to oscillate on its own layer. Standard pixel-camera discipline:
-   * snap once, at the source, on the true lattice.
-   */
-  private originX(w: number): number {
-    return this.snapPx(w / 2 - this.x * this.scale);
-  }
-
-  private originY(h: number): number {
-    return this.snapPx(h / 2 - this.y * this.scale * this.yScale);
-  }
+  // The camera's screen-space origin — `w/2 − x·scale` snapped to whole
+  // DEVICE pixels (so every layer translates in lockstep and nothing
+  // oscillates against the smoothly-resampled ground) — now lives in
+  // cameraProject.ts (camOriginX / camOriginY), the single source of
+  // truth the perspective projection and its inverse share.
 
   worldToScreen(wx: number, wy: number, w: number, h: number): Vec2 {
-    return {
-      x: wx * this.scale + this.originX(w),
-      y: wy * this.scale * this.yScale + this.originY(h),
-    };
+    const out = { x: 0, y: 0 };
+    return projectWorld(this.scale, this.yScale, this.x, this.y, this.q, this.snapDpr, wx, wy, w, h, out);
   }
 
   /** Allocation-free worldToScreen for per-particle hot paths. */
   worldToScreenInto(wx: number, wy: number, w: number, h: number, out: Vec2): Vec2 {
-    out.x = wx * this.scale + this.originX(w);
-    out.y = wy * this.scale * this.yScale + this.originY(h);
-    return out;
+    return projectWorld(this.scale, this.yScale, this.x, this.y, this.q, this.snapDpr, wx, wy, w, h, out);
   }
 
   screenToWorld(sx: number, sy: number, w: number, h: number): Vec2 {
-    return {
-      x: (sx - this.originX(w)) / this.scale,
-      y: (sy - this.originY(h)) / (this.scale * this.yScale),
-    };
+    const out = { x: 0, y: 0 };
+    return unprojectScreen(this.scale, this.yScale, this.x, this.y, this.q, this.snapDpr, sx, sy, w, h, out);
   }
 }
 
