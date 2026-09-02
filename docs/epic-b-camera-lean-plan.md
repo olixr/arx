@@ -485,3 +485,41 @@ rows alone.
    cleanup only.
 
 Order for the rest of B-6: 2+3 with the horizon fog, then 4; 5 last.
+
+## §E · B-3 surface status (2026-09-02)
+
+B-3 splits into two classes:
+
+**PER-TILE verticals — DONE (foreshorten by base depthScale, like B-1c).**
+Each is drawn at ONE tile anchor (base on the leaned ground, rising by
+`s`), so `s = spriteScale(anchor.y)` shrinks its height with depth;
+byte-identical at q=0. Threaded: wallItem (1bfd5525), diagWall, doorway,
+arch, portal, pillar, rail (a7a26ae4). Verified: a wall run foreshortens
+and stays connected (per-tile depthScale changes slowly ⇒ no visible step
+at moderate q).
+
+**SPANNING surfaces — REMAINING (the per-vertex warp, a dedicated pass).**
+These interpolate a face/run ACROSS world coords between two corners at
+DIFFERENT depths, so a single `s` is wrong — each corner needs its own
+depthScale and the quad becomes a trapezoid:
+- `cliffFaceItem` (cliffArt.ts:465) — curtain height `topLift/baseLift =
+  level·ELEV_H·s`; warp = per-corner `spriteScale(cornerA.y)` vs
+  `spriteScale(cornerB.y)` for the top edge (a trapezoid curtain). CACHED
+  (curtain sprites via the memo + fit.pb bbox), so the warp applies at the
+  corner projection, and the cache key/bbox must follow — the heaviest,
+  most careful piece.
+- `emitCliffSideRun` (side runs), the north/south FALLS, `deckFillRailItem`
+  (diagonal rail run between corner anchors), `rampItem`/`rampLandingItem`/
+  `rampApronItem` (sloped deck surfaces spanning tiles) — same per-corner
+  treatment.
+- WATER: `drawReflections` reflection matrix + `drawWadeUnderlays` +
+  waterfall sheets — the reflection transform must fold the homography.
+
+Approach for the pass: give each spanning surface per-corner
+`spriteScale(corner.y)` for its vertical extent and project both corners
+through the homography (worldToScreen already does), so the face reads as a
+trapezoid. Test-scene finding: reliable cliff/ramp scenes are hard to reach
+by /tp — build a fixed probe that scans for Cliff/ramp tiles and frames one
+before this pass. At a MODERATE lean the un-warped spanning heights are
+tolerable (a distant cliff slightly too tall), so this is a polish pass,
+not a B-2 blocker.
