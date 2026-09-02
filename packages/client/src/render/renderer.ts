@@ -4879,6 +4879,12 @@ export class Renderer {
     return this.camera.scale * this.camera.depthScale(footY);
   }
 
+  /** Per-item depth factor for the FX modules (particles/debris/birds) —
+   *  each billboard foreshortens at its OWN world-y, so those modules take
+   *  this callback instead of a single scalar. A stable bound field (no
+   *  per-frame closure). Exactly 1 at q=0 → byte-identical. */
+  private readonly camDepthAt = (wy: number): number => this.camera.depthScale(wy);
+
   /** THE RENDER SCALE (A2): the factor (0 < s ≤ 1) the WebGL stage
    *  rasterizes its backbuffer at, from the live window size, dpr, and
    *  the resolution tier. 1 = native dpr (byte-identical to pre-A2 and
@@ -5744,10 +5750,10 @@ export class Renderer {
     // Birds on the wing cross OVER the world, under the overlay FX —
     // altitude is a screen lift; the turf shadow stays at the ground point.
     for (const bd of this.birds.airborne()) {
-      this.birds.drawOne(this.ctx, bd, this.liftedWTSScratch, this.camera.scale, this.outlineOn, this.birdEnv.tSec);
+      this.birds.drawOne(this.ctx, bd, this.liftedWTSScratch, this.camera.scale, this.outlineOn, this.birdEnv.tSec, this.camDepthAt);
     }
 
-    this.particles.draw(this.ctx, this.liftedWTSScratch, this.camera.scale);
+    this.particles.draw(this.ctx, this.liftedWTSScratch, this.camera.scale, this.camDepthAt);
     // The aim guide rides OVER the world pass: elevated ground repaints
     // the whole plateau as y-sorted items, so drawing it early buried
     // the guide anywhere above level 0 (the drawAimGuide-under-items
@@ -14998,13 +15004,13 @@ export class Renderer {
   private drawBulkItem(item: DrawItem): void {
     switch (item.bulk) {
       case BulkKind.Particle:
-        this.particles.drawOne(this.ctx, item.bulkArg as Particle, this.liftedWTSScratch, this.camera.scale);
+        this.particles.drawOne(this.ctx, item.bulkArg as Particle, this.liftedWTSScratch, this.camera.scale, this.camDepthAt);
         break;
       case BulkKind.Debris:
-        this.debris.drawOne(this.ctx, item.bulkArg as DebrisChunk, this.liftedWTSScratch, this.camera.scale, this.outlineOn);
+        this.debris.drawOne(this.ctx, item.bulkArg as DebrisChunk, this.liftedWTSScratch, this.camera.scale, this.outlineOn, this.camDepthAt);
         break;
       case BulkKind.GroundedBird:
-        this.birds.drawOne(this.ctx, item.bulkArg as Bird, this.liftedWTSScratch, this.camera.scale, this.outlineOn, this.birdEnv.tSec);
+        this.birds.drawOne(this.ctx, item.bulkArg as Bird, this.liftedWTSScratch, this.camera.scale, this.outlineOn, this.birdEnv.tSec, this.camDepthAt);
         break;
       case BulkKind.Halo:
         this.drawSeatedHalo(item.bulkArg as EmitterGlowOut);
@@ -16093,7 +16099,12 @@ export class Renderer {
     b: { x: number; y: number; w: number; h: number },
     paint: () => void,
   ): void {
-    const s = this.camera.scale;
+    // B-1c depth thread: the prop blit foreshortens by its tile's world-y.
+    // `s` here drives ONLY the blit (k = s/sp.scale) and the staleness gate
+    // — the bake takes the caller's `b`/`paint` (canonical camera.scale), so
+    // the shared sprite never re-bakes per depth (staleness keys on
+    // camera.scale below). spriteScale === camera.scale at q=0.
+    const s = this.spriteScale(ty + 0.5);
     const key = treeKey(tx + 0.5, ty + 0.5, tile);
     this.treesVisible++;
     let sp = this.treeSprites.get(key);
@@ -16102,7 +16113,7 @@ export class Renderer {
     const stale =
       !sp ||
       (due && sp.frame !== this.frameNo) ||
-      Math.abs(sp.scale - s) > s * 0.2 ||
+      Math.abs(sp.scale - this.camera.scale) > this.camera.scale * 0.2 ||
       // The effective dpr moved (browser zoom, rig override): re-bake to the
       // new grid (paced by the budget — the blit stays correct
       // meanwhile because the source rect reads the BAKE's dpr).
@@ -16301,7 +16312,9 @@ export class Renderer {
 
   /** Cached-sprite draw for a grown plant — forage node or farm crop. */
   drawFlora(bx: number, by: number, tx: number, ty: number, tile: Tile, h: number, tSec: number): void {
-    const s = this.camera.scale;
+    // B-1c depth thread: flora foreshortens by its tile's world-y; baked at
+    // the canonical camera.scale (shared cache), only the blit scales.
+    const s = this.spriteScale(ty + 0.5);
     const syT = s * this.camera.yScale;
     const fm = plantModel(tile, h);
     const key = treeKey(tx + 0.5, ty + 0.5, tile);
@@ -16313,7 +16326,9 @@ export class Renderer {
     const stale =
       !sp ||
       (due && sp.frame !== this.frameNo) ||
-      Math.abs(sp.scale - s) > s * 0.2 ||
+      // Staleness keys on the canonical bake scale, not the depth-scaled s
+      // (else depth variation thrashes the shared sheet — see drawTree).
+      Math.abs(sp.scale - this.camera.scale) > this.camera.scale * 0.2 ||
       sp.dpr !== this.dpr() ||
       sp.outlined !== this.outlineOn;
     // The storm law (see drawPropOutlined): visible-now misses take the
@@ -16664,7 +16679,14 @@ export class Renderer {
     grow = 1,
     foliage = 1,
   ): void {
-    const s = this.camera.scale;
+    // B-1c DEPTH THREAD (Epic B): a tree foreshortens with depth like every
+    // other billboard — its on-screen SIZE rides spriteScale at the trunk's
+    // world-y (`wy`). The sprite is BAKED at the canonical camera.scale
+    // (bakeTreeSprite, shared across the forest); only the blit scales, so
+    // depth variation never thrashes the shared species sheet (the
+    // staleness check below keys on camera.scale, not this depth-scaled s).
+    // At q=0 spriteScale === camera.scale, so this is byte-identical.
+    const s = this.spriteScale(wy);
     const syT = s * this.camera.yScale;
     const m = this.treeOrSaplingModel(tile, h);
     let wind: number;
@@ -16716,7 +16738,12 @@ export class Renderer {
       const stale =
         !sp ||
         (due && sp.frame !== this.frameNo) ||
-        Math.abs(sp.scale - s) > s * 0.2 ||
+        // Key the re-bake on the CANONICAL scale the sprite is baked at
+        // (camera.scale), NOT the depth-scaled blit `s` — otherwise trees
+        // at different depths would each demand their own bake and thrash
+        // the shared species sheet under the lean. The blit's `k = s/scale`
+        // carries the foreshortening instead.
+        Math.abs(sp.scale - this.camera.scale) > this.camera.scale * 0.2 ||
         // The effective dpr moved — even rigid
         // trees (no cadence) must re-bake to the new grid.
         sp.dpr !== this.dpr() ||
@@ -16991,7 +17018,9 @@ export class Renderer {
     tSec: number,
     grow = 1,
   ): void {
-    const syT = this.camera.scale * this.camera.yScale;
+    // B-1c depth thread: the cast foreshortens with its tree (foot = wy);
+    // the shadow sheet bakes at the canonical scale (staleness keys on it).
+    const syT = this.spriteScale(wy) * this.camera.yScale;
     const groundY = by + syT * 0.3;
     const sunOn = this.sky.shadowAlpha >= 0.02;
     const throws = this.lightThrows(bx, groundY, 0.6);
@@ -17007,7 +17036,7 @@ export class Renderer {
       const asm = this.stageAssembling && this.stageCastLane;
       const c = asm ? null : this.beginCastFill();
       if (c || asm) {
-        const s = this.camera.scale;
+        const s = this.spriteScale(wy); // B-1c depth thread (blit; bake canonical)
         if (grow < 1) {
           // Regrowth animates shape per frame — build live.
           if (asm) {
@@ -17050,7 +17079,8 @@ export class Renderer {
           const stale =
             !sh ||
             (due && sh.frame !== this.frameNo) ||
-            Math.abs(sh.scale - s) > s * 0.2 ||
+            // Canonical bake scale, not the depth-scaled blit s (see drawTree).
+            Math.abs(sh.scale - this.camera.scale) > this.camera.scale * 0.2 ||
             sh.tone !== tone;
           // Re-bakes ride the same ms budget as the body sprites — a
           // count-only gate let a dense meadow burst dozens of canvas
@@ -23871,7 +23901,7 @@ export class Renderer {
     roll?: ItemRoll,
   ): DrawItem {
     const ctx = this.ctx;
-    const k = this.camera.scale;
+    const k = this.spriteScale(s.y); // B-1c depth thread
     const terrainLift = this.renderLift(s.x, s.y) * k;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= terrainLift;
@@ -24115,7 +24145,8 @@ export class Renderer {
 
   private projectileItem(eid: number, style: string, s: { x: number; y: number; dir: number }): DrawItem {
     const ctx = this.ctx;
-    const scale = this.camera.scale;
+    // B-1c depth thread: the shot foreshortens by its ground anchor's depth.
+    const scale = this.spriteScale(s.y);
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= this.renderLift(s.x, s.y) * scale;
     // Shots fly at CHEST height — leaving the bow's nock / the staff's
@@ -25211,7 +25242,7 @@ export class Renderer {
     now: number,
   ): DrawItem {
     const ctx = this.ctx;
-    const scale = this.camera.scale;
+    const scale = this.spriteScale(a.y); // B-1c depth thread
     const p = this.camera.worldToScreen(a.x, a.y, this.w, this.h);
     p.y -= this.renderLift(a.x, a.y) * scale;
     if (a.wall) p.y -= a.wall.h * scale;
@@ -25230,11 +25261,11 @@ export class Renderer {
    *  drops from chest height, and pitches nose-down into the landing. */
   private fallingShaftItem(f: { x: number; y: number; dir: number; born: number }, now: number): DrawItem {
     const ctx = this.ctx;
-    const scale = this.camera.scale;
     const t = Math.min(1, (now - f.born) / FALLING_SHAFT_MS);
     const adv = FALLING_SHAFT_ADVANCE * (1 - (1 - t) * (1 - t));
     const wx = f.x + Math.cos(f.dir) * adv;
     const wy = f.y + Math.sin(f.dir) * adv;
+    const scale = this.spriteScale(wy); // B-1c depth thread (foot = landing wy)
     const height = PROJ_AIR * (1 - t * t);
     const p = this.camera.worldToScreen(wx, wy, this.w, this.h);
     p.y -= this.renderLift(wx, wy) * scale;
@@ -25291,7 +25322,7 @@ export class Renderer {
     s: { x: number; y: number },
   ): DrawItem {
     const ctx = this.ctx;
-    const scale = this.camera.scale;
+    const scale = this.spriteScale(s.y); // B-1c depth thread (match host body)
     return {
       sortY: s.y + 0.02,
       draw: () => {
@@ -25823,7 +25854,7 @@ export class Renderer {
    */
   private gravestoneItem(eid: number, s: { x: number; y: number }): DrawItem {
     const ctx = this.ctx;
-    const sc = this.camera.scale;
+    const sc = this.spriteScale(s.y); // B-1c depth thread
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= this.renderLift(s.x, s.y) * sc;
     // Per-stone identity: lean, crack side, pebble scatter.
@@ -25984,7 +26015,7 @@ export class Renderer {
     now: number,
   ): DrawItem {
     const ctx = this.ctx;
-    const sc = this.camera.scale;
+    const sc = this.spriteScale(s.y); // B-1c depth thread
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= this.renderLift(s.x, s.y) * sc;
     return {

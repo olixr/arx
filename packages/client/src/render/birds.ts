@@ -529,11 +529,15 @@ export class Birds {
     scale: number,
     outlined: boolean,
     tSec: number,
+    /** B-1c depth thread: per-item depth factor (ds=1 at q=0). */
+    depthAt: (wy: number) => number = () => 1,
   ): void {
     const p = worldToScreen(b.x, b.y);
+    // B-1c depth thread: foreshorten this billboard by its own depth (ds=1 at q=0)
+    const ds = depthAt(b.y);
     // Author space: 100 units = 1 tile, with a nudge up so the body
     // reads at a long stride's distance — still well under the knee.
-    const k = (scale / 100) * 1.15;
+    const k = (scale / 100) * 1.15 * ds;
     const flying = b.alt > 0.12 || b.mode === 'pass';
 
     // Contact shadow — flat ellipse on the turf, thinning with height.
@@ -547,10 +551,12 @@ export class Birds {
     ctx.globalAlpha = 1;
 
     ctx.save();
-    ctx.translate(p.x, p.y - b.alt * scale * 0.92);
+    // B-1c depth thread: foreshorten this billboard by its own depth (ds=1 at q=0)
+    ctx.translate(p.x, p.y - b.alt * scale * 0.92 * ds);
     // A lighter ring than a full-size body wears: at sparrow scale the
     // standard dilation swallows the fill (the debris tiny-chip clamp).
-    const ring = Math.min(Math.max(1.1, scale * 0.03), 2.0) / k;
+    // B-1c depth thread: foreshorten this billboard by its own depth (ds=1 at q=0)
+    const ring = Math.min(Math.max(1.1, scale * 0.03 * ds), 2.0) / k;
     if (!flying) {
       ctx.scale(b.dir * k, k);
       this.paintGrounded(ctx, b, ring, outlined, tSec);
