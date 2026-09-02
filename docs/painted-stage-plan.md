@@ -1607,3 +1607,74 @@ own read stands as the arbiter (the toggle default question's
 precedent). CHUNK_POOL_MAX 12 → 16: a fringe job borrows a second
 chunk-tier canvas (the scratch), and the pool must serve both
 without re-minting 4.3MB stores (round 11's churn class).
+
+## THE FIELD TRIAGE — THREE DEFECTS, THREE ROOTS (2026-09-01)
+
+The owner's cross-machine report named three symptoms; each reproduced
+to a distinct root cause, fixed, and proven by eye.
+
+### 1. THE FADE ONLY WHERE YOU STAND BEHIND (reveal over-aggression)
+Report: "the reveal/veil is aggressive — objects at range I'm not even
+behind get occluded." Reproduced at a forest tree (fadeMap held one
+entry at k=1 on a tree the player stood in FRONT of). ROOT: a tree
+hands occluderFade its trunk-BASE row (wy = ty+0.5), but its canopy
+arcs a full crown-height NORTH of that base, and `fronts` used
+`wy - ownPY > -FRONT_EPS` — so a tree whose base sat up to ~0.6 tile
+NORTH of the player still counted as fronting and faded its whole
+canopy from above (the round-9 claim-test: the body center sat at
+sprite-local (0.17, 0.76) — the canopy's lower-left rim, nowhere near
+the trunk). FIX: `FADE_TALL_FRONT = 0.6` (reveal.ts) — a TALL occluder
+must be genuinely SOUTH before its canopy counts as between you and
+the camera. Applied to both drawTree fade calls and to propFade (tall
+props reach north the same way, and were even looser at a full tile).
+Proven: beside a tree fadeMap 0 (was ghosted); buried in dense forest
+the canopy directly overhead still dithers to reveal the body; a
+building interior full of bookshelves/cabinets ghosts nothing.
+
+### 2. THE COAT RETURNS (grass shadows without blades)
+Report: "grass isn't rendering — sometimes just the shadows, not the
+placements." Reproduced everywhere: open meadow rendered flat with
+cast shade but no nap. ROOT: `handleRowCell`'s lane gate read
+`lane === LANE_ROW ? grass||tall : tall` — folding the UNDER lane
+(which owns the nap, roots, flowers AND seed-heads of EVERY grass
+tile, per THE COAT LAW) into the tall-only branch. The whole open
+meadow lost its coat; casts kept drawing (the shade pass reads
+geometry directly, not the lane gate) → "shadows with no grass",
+exactly. FIX: extracted `laneUses(lane, tile)` (pure, exported,
+test-pinned) — UNDER and ROW take both grass tiles; only the tall
+standing-mass lanes are thickets-only. The coat is back (screenshot-
+proven: nap waves + seed drifts across the meadow). Follow-on: with
+the real cell census restored the sprite ledger pinned at 128/128MB
+(`over 21`) — R13's cap was validated against the gate-bugged
+(halved) population; measured true demand ~130MB/92 cells and raised
+GRASS_SPRITE_BUDGET 128→192MB / relief 96→144 (same ratio, same
+overflow-draws-live semantics). `over 0` after.
+
+### 3. THE CAPITAL TILES WITHOUT SEAMS (Y-movement cut-offs)
+Report: "moving up/down on Y, the tiling cuts off or pulls off
+details." Reproduced in Silverfall: `bands 35/63 ... over 28 128MB` —
+28 masonry band-stretches starved past the ledger ceiling, drawing
+live vector art that churns against baked neighbors as the player
+moves (the exact seam). ROOT: round-12 sized BAND_BUDGET at 128MB
+for the capital's then-working-set; the interior at zoom 1 now wants
+~150-170MB (67 baked + 12 live measured). FIX: BAND_BUDGET 128→192MB,
+relief 96→148 (measured, same round-12 method — the gate prices the
+whole ledger, so this buys coverage at a known byte cost; the ground
+cache at a terraced capital is ~1GB, so +64MB band is noise beside
+the real memory story). After: interior over 12→1, gate over 28→7
+(the residual are the by-design live members — breathing banners, hot
+doorway thresholds), ledger 146-191MB under the 192 ceiling. Masonry
+tiles seamlessly on the Y-walk.
+
+### Gates
+tsc clean; 806 client tests (+1 coat-law test on laneUses); build
+green; ui-smoke 13/13; fringe-seam 10/10 (grass/band/fade changes
+left the fringe untouched); parity v8 7/7.
+
+### Named, not chased this round
+The terraced-capital ground cache measured 1008MB (24 hi-res chunks ×
+lifted layers, un-evictable while on screen) — far past BAKED_BUDGET
+192MB, the real weak-machine memory story. It is an architectural
+item (hi-res-tier working set, a WebGL-texture or tier-demotion
+question), not a seam; charted for its own round before Epic B if the
+field flags memory pressure.

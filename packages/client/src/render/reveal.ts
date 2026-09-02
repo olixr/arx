@@ -81,6 +81,18 @@ export const FADE_TALL_TILES = 1.45;
 /** A sprite fronts the body when its base row sits at or south of
  *  the body's continuous y (the y-sort then draws it over you). */
 export const FRONT_EPS = 0.1;
+/**
+ * THE CANOPY REACHES NORTH, THE FADE DOES NOT (field fix). A tree
+ * hands occluderFade its trunk-BASE row (wy = ty+0.5), but a tree's
+ * canopy arcs a full crown-height NORTH of that base — so a tree
+ * whose base sits up to FRONT_EPS/… north of you still overlapped
+ * the body box from ABOVE and faded its whole canopy, though you
+ * stand in front of it (the base draws before you). The reported
+ * over-aggression. A TALL occluder must be genuinely SOUTH — its
+ * base at least this far past the body's row — before its canopy
+ * counts as between you and the camera. Props keep the tight
+ * FRONT_EPS (their bounds ARE their base; no overhead crown). */
+export const FADE_TALL_FRONT = 0.6;
 
 /** Character rig height in tiles (the scale-anchor law: the body IS
  *  the unit of measure — wall cover is judged against it). */
