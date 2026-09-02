@@ -17,8 +17,11 @@ const renderer = new GrassGpuRenderer(gl, BLADE_FILLS);
 
 // A field of tiles → blades. Varied tile/detail ids for strand/stand/
 // clump/flower variety, exactly as the meadow deals them.
-const NX = 20;
-const NY = 13;
+// A CLOSE hero window (few tiles, big blades) so the blocky blade shape
+// and flat tone facets read at a judgeable size — the game-zoom profile,
+// not a top-down carpet.
+const NX = 9;
+const NY = 6;
 const blades: Blade[] = [];
 // A cheap hash for the dense coat scatter (deterministic per tile+i).
 const h2 = (a: number, b: number): number => {
@@ -91,7 +94,7 @@ function frame(): void {
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.clearColor(0.39, 0.53, 0.33, 1); // meadow ground green
   gl.clear(gl.COLOR_BUFFER_BIT);
-  renderer.draw(view, (performance.now() - start) / 1000, 0.6, 1);
+  renderer.draw(view, (performance.now() - start) / 1000, 0.3, 0.4);
   requestAnimationFrame(frame);
 }
 frame();
