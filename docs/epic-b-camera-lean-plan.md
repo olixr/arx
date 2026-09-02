@@ -526,3 +526,31 @@ by /tp — build a fixed probe that scans for Cliff/ramp tiles and frames one
 before this pass. At a MODERATE lean the un-warped spanning heights are
 tolerable (a distant cliff slightly too tall), so this is a polish pass,
 not a B-2 blocker.
+
+## §F · B-2.5 hardening for on-by-default (2026-09-02)
+
+A lean-health sweep (?lean, q=0.0016, six parity scenes) plus a picking
+round-trip audit:
+
+- **INPUT/PICKING is EXACT under the lean.** `worldToScreen∘screenToWorld`
+  round-trips to **0px** in every scene (pickWorld → screenToWorld →
+  unprojectScreen's exact q>0 closed form). Click-to-move / interaction
+  target the right tile. (Elevated-terrain pick via solveLiftedY doesn't
+  fold depthScale yet — a minor refinement, flat ground is exact.)
+- **ZERO page errors** across dawnmead / avenue / graveyard / hoargate /
+  forest / crown under the lean.
+- **Steady-state perf holds 60fps** even in the densest scene: hoargate at
+  the real lean draws 3× the tiles (1443→4400) yet settles to 16.7ms
+  (rAF cap) once chunks bake. The lean is effectively free at steady state
+  on a capable machine.
+- **The one cost is a TRANSIENT stream-in dip:** entering a dense area
+  under the lean, the wider frustum queues ~3× the chunk bakes at once, so
+  fps dips (hoargate ~25fps for a few seconds, `miss 84`) before catching
+  up. Bounded and self-healing; it is the B-6 levers 3-4 target (distance
+  LOD / far-chunk coarse bakes so the fog band doesn't bake at full res).
+
+**Verdict:** the lean is FUNCTIONALLY ready for on-by-default (picking
+exact, no errors, steady-state 60fps). Before flipping the default: smooth
+the stream-in transient + weak-machine cost (levers 3-4), and the product
+call itself. B-4 (exact far lighting) and B-5 (sky/cinematic) are the
+artful finish, not gates.
