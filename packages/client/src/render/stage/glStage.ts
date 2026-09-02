@@ -127,6 +127,20 @@ export class GlStage implements StageBackend {
     used: number;
   }>();
   private scratchBytes = 0;
+  /**
+   * THE SCRATCH POOL KEEPS A BUDGET (field fix, 2026-09-02). The
+   * class pool was bounded only by a 600-frame IDLE sweep — so on a
+   * large (maximized Retina) window, where wall runs and bodies mint
+   * a wide spread of size classes, it ballooned to 2.3GB resident
+   * across 300+ classes (measured), and with the keyed/record/sheet
+   * lanes the world stage held 3.2GB of GPU memory. That overflows a
+   * browser's per-tab GPU budget on ordinary machines (Mac Chrome on
+   * prod, reported) and the driver silently reclaims textures — the
+   * "sprites vanish under accelerated display" defect. A byte cap
+   * with coldest-first LRU (the keyed evictor's exact shape) bounds
+   * it; the frame's own working set (~15-20 distinct classes) is far
+   * under the cap, so nothing thrashes. */
+  private static readonly SCRATCH_BUDGET = 320 * 1024 * 1024;
   /** THE SCRATCH LEDGER: keyed paints keep their own exact-size
    *  canvas+texture and repaint/re-upload ONLY on a rev change — the
    *  wall-run lane's cure (~48MB/frame of identical wall strips
@@ -632,6 +646,26 @@ export class GlStage implements StageBackend {
   private tickFrame(): void {
     const gl = this.gl;
     this.uploadMsLeft = GPU_URGENT_MS;
+    // THE STORE HOLDS ITS CEILING EVEN WHEN IDLE (field fix): record
+    // eviction lived only in the upload path, so a STATIC big-window
+    // scene (nothing re-uploading) kept records parked above budget
+    // — measured 800MB against a 512MB store on a maximized Retina
+    // window. Sweep proactively here too: coldest-first, never a
+    // record drawn this frame, never a PINNED page (atlas). An
+    // evicted record re-uploads the next frame its quad is drawn
+    // (syncForDraw), so this only sheds genuinely-cold off-screen
+    // textures — the working set stays resident.
+    if (this.textureBytes > this.texBudgetBytes) {
+      const cold: Array<[StageTexture, TexRecord]> = [];
+      for (const e of this.records) if (e[1].used < this.frameNo && e[0].pinned !== true) cold.push(e);
+      cold.sort((a, b) => a[1].used - b[1].used);
+      for (const [tex, rec] of cold) {
+        if (this.textureBytes <= this.texBudgetBytes) break;
+        gl.deleteTexture(rec.glTex);
+        this.textureBytes -= rec.bytes;
+        this.records.delete(tex);
+      }
+    }
     // Scratch hygiene: retire class pairs nothing has touched lately.
     if (++this.frameNo % 600 === 0) {
       for (const [cls, sc] of this.scratch) {
@@ -1032,11 +1066,31 @@ export class GlStage implements StageBackend {
     const cls = (cw / 64) * 4096 + ch / 64;
     let sc = this.scratch.get(cls);
     if (!sc) {
+      // THE SCRATCH POOL KEEPS A BUDGET: evict coldest classes (never
+      // one drawn THIS frame) before minting past the cap — the keyed
+      // evictor's shape. Bounds the pool that otherwise reached 2.3GB
+      // on a large window (see SCRATCH_BUDGET).
+      const bytes = cw * ch * 4;
+      while (this.scratchBytes + bytes > GlStage.SCRATCH_BUDGET && this.scratch.size > 0) {
+        let coldK = -1;
+        let coldUsed = Infinity;
+        for (const [k, v2] of this.scratch) {
+          if (v2.used < coldUsed) {
+            coldUsed = v2.used;
+            coldK = k;
+          }
+        }
+        const cold = this.scratch.get(coldK);
+        if (!cold || cold.used >= this.frameNo) break;
+        gl.deleteTexture(cold.glTex);
+        this.scratchBytes -= cold.bytes;
+        this.scratch.delete(coldK);
+      }
       const cv = document.createElement('canvas');
       cv.width = cw;
       cv.height = ch;
       const ctx = cv.getContext('2d')!;
-      sc = { cv, ctx, glTex: gl.createTexture()!, w: cw, h: ch, bytes: cw * ch * 4, used: this.frameNo };
+      sc = { cv, ctx, glTex: gl.createTexture()!, w: cw, h: ch, bytes, used: this.frameNo };
       this.scratchBytes += sc.bytes;
       this.scratch.set(cls, sc);
     }

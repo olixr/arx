@@ -1678,3 +1678,64 @@ lifted layers, un-evictable while on screen) — far past BAKED_BUDGET
 item (hi-res-tier working set, a WebGL-texture or tier-demotion
 question), not a seam; charted for its own round before Epic B if the
 field flags memory pressure.
+
+## THE STORE FITS THE TAB — the vanishing-sprites cure (2026-09-02)
+
+Field report (Mac Chrome, arx.gg prod, hard-refreshed): with
+accelerated display ON, sprites vanish — beds, nightstands, hedge
+bodies gone; canvas mode (OFF) whole. The audit's charted "no total
+VRAM ceiling / ~1.3GB worst case" made real, and worse than charted.
+
+### The hunt
+Not reproducible at my test window sizes (~1000px) — every scene
+rendered identically ON/OFF. The missed variable: a MAXIMIZED RETINA
+window (2560×1440 CSS at dpr 2 → a 5120×2880 backbuffer, 3-6× the
+texture memory and item count). At that scale the world stage held
+**res 3269MB** of GPU memory with **up 410MB/frame** — far past a
+browser tab's GPU budget, so Chrome silently reclaims textures and
+any sprite whose texture was reclaimed vanishes. Canvas uploads no
+GPU textures, so OFF stays whole. Machine-agnostic (mainstream Mac
+Chrome hits it), intermittent (the LRU reclaims different things).
+
+### The root, measured
+A resident breakdown at the big window: records 754MB, keyed 128MB,
+sheets 24, layer 56 — and **scratch 2304MB across 323 classes**. The
+scratch class pool (paintScratch) was bounded ONLY by a 600-frame
+idle sweep — no byte cap, unlike its keyed twin — so a wide window's
+spread of wall-run/body box sizes, and any long session, grew it
+without limit. Exactly the audit's flagged gap.
+
+### The fix
+- **THE SCRATCH POOL KEEPS A BUDGET**: SCRATCH_BUDGET = 320MB with
+  coldest-first LRU eviction in paintScratch (the keyed evictor's
+  exact shape — never evict a class drawn this frame). The frame's
+  own working set (~38 distinct classes / ~195MB) sits under the
+  cap, so nothing thrashes; re-mints produce identical pixels (no
+  flicker). Scratch 2304MB → 314MB.
+- **THE STORE HOLDS ITS CEILING EVEN WHEN IDLE**: record eviction
+  lived only in the upload path, so a static big scene parked
+  records above budget. tickFrame now sweeps records over
+  texBudgetBytes proactively — coldest-first, never this-frame,
+  never a PINNED atlas page; an evicted record re-uploads the next
+  frame its quad draws (syncForDraw). Sheds cold off-screen textures
+  a long session accumulates; the on-screen working set stays.
+
+### Measured
+Big maximized Retina window (2560×1440 dpr2), same roam+scene:
+**res 3269MB → 1233MB (−62%)**, scratch 2304→~315MB, well within a
+tab's GPU budget. Records 712MB at the big window is the genuine
+on-screen working set (335MB pinned atlas + ~380MB visible chunk/
+band/sprite textures) — all drawn this frame, not evictable without
+thrash; that is the honest floor for a huge window, and the pool now
+holds it rather than climbing past it. Normal windows unaffected
+(scratch never approached the cap there).
+
+### Honest limit
+I could not reproduce the actual texture RECLAMATION on my rig — its
+unified memory holds 3.2GB, so it renders the big window without
+vanishing. The fix is verified by the RESIDENT NUMBER dropping 62%
+and staying bounded, and by the mechanism (unbounded scratch growth
+→ over-budget → driver reclaim → vanish) being measured directly.
+Final confirmation is the owner's prod session; `?perf`'s `res N` on
+the stage-world line is the number to watch (should stay ~1.2GB, not
+climb to 3GB+).
