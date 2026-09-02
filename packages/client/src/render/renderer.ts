@@ -16664,7 +16664,14 @@ export class Renderer {
     grow = 1,
     foliage = 1,
   ): void {
-    const s = this.camera.scale;
+    // B-1c DEPTH THREAD (Epic B): a tree foreshortens with depth like every
+    // other billboard — its on-screen SIZE rides spriteScale at the trunk's
+    // world-y (`wy`). The sprite is BAKED at the canonical camera.scale
+    // (bakeTreeSprite, shared across the forest); only the blit scales, so
+    // depth variation never thrashes the shared species sheet (the
+    // staleness check below keys on camera.scale, not this depth-scaled s).
+    // At q=0 spriteScale === camera.scale, so this is byte-identical.
+    const s = this.spriteScale(wy);
     const syT = s * this.camera.yScale;
     const m = this.treeOrSaplingModel(tile, h);
     let wind: number;
@@ -16716,7 +16723,12 @@ export class Renderer {
       const stale =
         !sp ||
         (due && sp.frame !== this.frameNo) ||
-        Math.abs(sp.scale - s) > s * 0.2 ||
+        // Key the re-bake on the CANONICAL scale the sprite is baked at
+        // (camera.scale), NOT the depth-scaled blit `s` — otherwise trees
+        // at different depths would each demand their own bake and thrash
+        // the shared species sheet under the lean. The blit's `k = s/scale`
+        // carries the foreshortening instead.
+        Math.abs(sp.scale - this.camera.scale) > this.camera.scale * 0.2 ||
         // The effective dpr moved — even rigid
         // trees (no cadence) must re-bake to the new grid.
         sp.dpr !== this.dpr() ||
