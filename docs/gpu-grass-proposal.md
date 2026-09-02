@@ -229,3 +229,47 @@ show off the technique — the technique disappears into the immersion.
 `BLADE_FILLS` tone ramp, `GrassSystem` bake/cache), the painted-stage
 `StageBackend` seam, the Epic-B homography (`cameraProject.ts`,
 `camera.depthScale`), and the WebGPU seam-conformance plan.*
+
+---
+
+## §A · G-1 build — the substrate (shipped) and the renderer (spec)
+
+**Shipped (the pure, tested substrate — `grassGpu.ts`):**
+- **THE ONE WIND, in GLSL.** `grassWindGlsl()` returns the exact
+  `windAtInto` formula for the vertex shader, its wind direction
+  templated from grass.ts's exported `WX`/`WY` (single source, no axis
+  drift). `grassGpu.test.ts` pins it byte-for-byte to the CPU wind across
+  a 200-sample position/time lattice (< 1e-9) — "ONE WIND, literally,"
+  and the test breaks the instant either formula drifts.
+- **The instance packing.** The `Blade` struct `generateGrassTile`
+  already produces IS the instance record; `packBladeInstances` packs it
+  into the interleaved `Float32Array` the instanced draw uploads
+  (`GRASS_INSTANCE_FLOATS = 8`: rootXY, height, halfWidth, lean, phase,
+  tone, seg2), pooled (reuses a big-enough `out`). Tested.
+
+**The instanced renderer (next focused build):**
+1. **The blade atlas.** Bake the current painterly blade / flower /
+   seed-head shapes (the `BLADE_FILLS` shimmer ramp) into a small texture
+   atlas — reuse the existing blade-draw code as the authoring source, so
+   the art is ours, not approximated. Rows = tone; columns = blade type /
+   growth. One-time bake, pinned.
+2. **The instanced GL program** (a new stage lane). Per-vertex: a blade
+   TEMPLATE (a short triangle strip, a few segments up the blade). Per-
+   instance (`vertexAttribDivisor` = 1): the packed record. Vertex shader
+   builds the blade from root+height+halfWidth, curves it, applies
+   `grassWind(root, t)` scaled by height (tip bends more), applies the
+   Epic-B homography (`uProj`/`depthScale`) so blades lean and foreshorten
+   with the ground, and LODs by depth (a per-instance keep test +
+   shortened far blades). Fragment: sample the atlas at the instance's
+   tone/type with the shimmer `l`. `drawArraysInstanced`.
+3. **Integration.** A new `GrassSystem` path behind `?grass=gpu` (baked
+   meadow the fallback): collect visible-tile blades → `packBladeInstances`
+   into a pooled per-tile buffer → upload → one instanced draw per texture
+   batch, composited in the world stage at the grass's y-sort slot.
+4. **Parity.** The canvas oracle draws the instances as individual blade
+   sprites (the reference); GL instances match within tolerance. Still-
+   frame parity vs the BAKED meadow is the art gate (5 scenes, at rest
+   and in wind), screenshot-judged — the bar of §3/§9.
+5. **Gate.** `?grass=gpu` off = baked meadow byte-identical; on = the
+   instanced field matches the baked still frame, at measured higher
+   density and fps. Then G-2 wires depth-LOD to the lean.

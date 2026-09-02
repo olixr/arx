@@ -60,9 +60,10 @@ import {
 
 // ------------------------------------------------------------------ wind
 
-/** Wind direction — matches the treeline so the whole scene agrees. */
-const WX = 0.94;
-const WY = 0.34;
+/** Wind direction — matches the treeline so the whole scene agrees.
+ *  Exported as the single source the GPU grass shares (grassGpu.ts). */
+export const WX = 0.94;
+export const WY = 0.34;
 
 export interface WindSample {
   /** Bend vector in world tiles (unit cantilever at reference height). */
