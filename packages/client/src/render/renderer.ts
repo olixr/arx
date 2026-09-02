@@ -19812,7 +19812,14 @@ export class Renderer {
      */
     mount?: string;
   }): DrawItem {
-    const s = this.camera.scale;
+    // THE CAMERA LEARNS TO LEAN (Epic B, B-1c): the billboard foreshortens
+    // with depth — one multiply by depthScale at the FOOT (e.y), because
+    // `s` is the single scalar the whole rig (feet, geometry, tail,
+    // shadow) is measured against. depthScale is 1 at q=0, so this is
+    // byte-identical until the lean turns on. (This is the first threaded
+    // billboard; the remaining mob/mount body draws follow the same one-
+    // multiply pattern in B-1c's continuation — see the epic plan.)
+    const s = this.camera.scale * this.camera.depthScale(e.y);
     const now = performance.now();
     const anim = this.animFor(e.eid, e.x, e.y, e.pose, now);
     // THE GIANT GAIT: giant-kin walk on a statured solver — world-true

@@ -289,3 +289,80 @@ wider frustum.
 
 *Standing probes it will lean on: stage-parity (the `q=0` invariant),
 ground-cache (the wider frustum's memory), the screenshot A/B rigs.*
+
+---
+
+## §A · B-1b implementation spec (the ground shader) — worked out
+
+*Design pinned during B-1 so the epic's heaviest band starts from a spec,
+not a blank page. The recon-verified crux: the affine `m` can't make a
+trapezoid, and per-corner LINEAR UV interpolation would swim (PS1-style).
+Real `gl_Position.w` fixes both — and for a PLANAR ground quad, hardware
+perspective-correct interpolation makes **4 corners sufficient** (no GL-
+side subdivision). The friction is entirely on the canvas oracle.*
+
+**Two regimes, because of the device-px snap law.** The shared-corner
+snap (round screen corners to whole device px so neighbours share edges,
+no hairline) is done on the CPU today. Perspective must project shared
+WORLD corners deterministically instead (same world corner → same screen
+point for both neighbours; linear filtering hides the sub-pixel edge). So:
+- **q=0 keeps the old path verbatim** — CPU affine + snap, screen-space
+  affine quad. Byte-identical (the shipping frame). The perspective code
+  is dormant.
+- **q>0 takes the ground path** — no screen-snap; deterministic
+  per-vertex projection.
+
+**The GL ground path.**
+1. `StageQuad` gains `space?: 'screen' | 'ground'` (default screen); the
+   batcher (`computeRuns`) adds `space` to the run key, so ground and
+   screen quads form separate runs (node-testable).
+2. A ground quad carries the **four world-plane corners** (not an affine
+   `m`); the renderer projects each corner through the perspective
+   `worldToScreen` (from B-1) to a screen position, and computes its
+   perspective weight `w = 1/depthScale(corner)`.
+3. The GL vertex pipeline gains a per-vertex `w`: `gl_Position =
+   vec4(clip.xy * w, 0.0, w)`. After the divide, `xy = clip`; the UVs
+   interpolate **perspective-correct** with weight `w`. At `w = 1`
+   (screen quads, and ground quads at q=0) this is exactly today's
+   `vec4(clip, 0, 1)` — byte-identical. Screen quads always pass `w=1`.
+   (Ground quads are few — chunk-count — so the +4 bytes/vertex rides a
+   cold lane; the hot screen lane can keep the 20-byte format via a
+   default-1 path or a second program, whichever measures cleaner.)
+
+**The canvas oracle — the real work.** canvas2d `setTransform` is affine-
+only, so a ground quad at q>0 is drawn by **mesh-subdividing** into an
+N×N grid of small affine sub-tiles (each near-affine at that scale;
+error → 0 as N grows) with matching source sub-rects. N chosen so the
+oracle is within parity tolerance of the GL trapezoid; documented and
+bounded. At q=0 the oracle draws the screen-space quad unchanged.
+
+**Verification (no game lean needed).** Extend the stagelab battery with
+a **q>0 ground-quad case**: one textured ground quad at a real lean,
+rendered on GL (perspective-correct) vs the canvas oracle (subdivided),
+pixel-compared. This proves the perspective raster + the oracle agree in
+isolation — the C1 three-way discipline, one backend pair at a time —
+before the renderer emits a single ground quad or `q` ever leaves 0.
+
+**Renderer wiring (B-1b-ii).** `drawGroundChunks` / `stageEmitChunk`
+emit `space:'ground'` quads carrying world corners when `q>0`, the old
+snapped screen quads when `q=0`. Elevated row-slices (already per-row
+world quads) follow the same shape — their per-row depth-scaled lift
+(§7) composes with the ground path.
+
+**Gate.** q=0 parity 7/7 byte-identical (dormant path); stagelab q>0
+ground case GL↔oracle within tolerance; the batcher run-separation test;
+fringe-seam, ui-smoke, full suite.
+
+---
+
+## §B · Progress
+
+- **B-1 (2cf4d80c)** — the homography camera at q=0. `cameraProject.ts`
+  (pure, tested), `Camera.q`/`depthScale`, delegated projection. Byte-
+  identical; 8 unit tests; parity 7/7.
+- **B-1c, first thread** — the humanoid billboard foreshortens with
+  depth (`s = scale·depthScale(footY)`), byte-identical at q=0. The
+  remaining mob/mount body draws follow the same one-multiply; the
+  SURFACE `s` sites (walls/cliffs/decor) are B-1b/B-3, not this pattern.
+- **Next** — B-1b per §A (the ground shader + oracle), then the rest of
+  the billboard threading, then B-2 turns `q` on.
