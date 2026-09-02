@@ -5376,17 +5376,22 @@ export class Renderer {
     // canopy padding in visibleTileBounds would be ~150 wasted tiles.
     //
     // THE CAMERA LEARNS TO LEAN (Epic B, perf): under a lean the frustum
-    // reaches far up-screen to the horizon, but grass blades there
-    // compress to sub-pixel and read as nothing — processing them
-    // (per-blade, the heaviest per-tile pass) is pure waste. Cap the
-    // grass far edge at the ORTHOGRAPHIC reach; the ground and trees
-    // still fill the distance, but the meadow stops where a blade would
-    // stop being visible. At q=0 orthoMinTy === bounds.minTy, so this is
-    // byte-identical (the cap never bites).
+    // reaches far up-screen to the horizon AND fans out east-west, but
+    // grass blades out there compress to sub-pixel and read as nothing —
+    // processing them (per-blade, the heaviest per-tile pass) is pure
+    // waste. Cap the grass field to the ORTHOGRAPHIC reach on BOTH axes;
+    // the ground and trees still fill the leaned distance, but the meadow
+    // stops where a blade would stop being visible. (B-6 measured: the
+    // north cap alone left the uncapped E-W fan spilling ~3× the columns
+    // into the live path — `grass over` spiked. This closes that.) At q=0
+    // the ortho reach === bounds on every edge, so the caps never bite —
+    // byte-identical to every frame shipped so far.
     const orthoMinTy = Math.floor(this.camera.y - this.h / 2 / (this.camera.scale * this.camera.yScale)) - 5;
+    const orthoMinTx = Math.floor(this.camera.x - this.w / 2 / this.camera.scale) - 2;
+    const orthoMaxTx = Math.floor(this.camera.x + this.w / 2 / this.camera.scale) + 2;
     const grassBounds = {
-      minTx: bounds.minTx + 1,
-      maxTx: bounds.maxTx - 1,
+      minTx: Math.max(bounds.minTx, orthoMinTx) + 1,
+      maxTx: Math.min(bounds.maxTx, orthoMaxTx) - 1,
       minTy: Math.max(bounds.minTy, orthoMinTy) + 3,
       maxTy: bounds.maxTy - 1,
     };
