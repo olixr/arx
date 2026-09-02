@@ -366,6 +366,7 @@ import {
 } from './abilityFx.js';
 import { SIGNATURES, type SigCtx } from './fxSignatures.js';
 import { GlStage } from './stage/glStage.js';
+import type { GpuStageBackend } from './stage/stageTypes.js';
 import { StageVram } from './stage/stageVram.js';
 import { stageRenderScale, type StageResTier } from './stage/renderScale.js';
 import { GPU_STEADY_MS, GPU_URGENT_MS } from './stage/gpuBudget.js';
@@ -13987,7 +13988,11 @@ export class Renderer {
    *  reel keep working unchanged. Shipped as the "Accelerated
    *  display (beta)" Display toggle (arx.stage); ?stage forces it. */
   stageGround = false;
-  private stageGl: GlStage | null = null;
+  // Typed to the backend CONTRACT, not the concrete class (C1): the
+  // renderer drives only GpuStageBackend, so a WebGPU backend drops into
+  // this field with no renderer change, and tsc proves the contract is
+  // complete (any GL-only member the renderer reached for would fail here).
+  private stageGl: GpuStageBackend | null = null;
   /** webgl2 unavailable or init threw — the canvas lane IS the product. */
   private stageDead = false;
   private readonly stageQuads: StageQuad[] = [];
@@ -14024,7 +14029,7 @@ export class Renderer {
    *  localStorage 'arx.stageres' at boot (main.ts) and by the Display
    *  settings row; applies live, next frame. */
   stageResTier: StageResTier = 'auto';
-  private stageWorldGl: GlStage | null = null;
+  private stageWorldGl: GpuStageBackend | null = null;
   /** The frame's world stream. NOT readonly: the shadow prepass
    *  temporarily swaps the sink so the cast brushes' assembly
    *  branches emit into the LAYER stream (A3) with zero new plumbing

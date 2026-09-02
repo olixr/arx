@@ -25,9 +25,9 @@
 import { computeRuns } from './stageBatch.js';
 import { BLEND_GL_FUNC, blendNeedsAlphaTarget, blendNeedsOpaqueTarget } from './stageBlend.js';
 import { GPU_COST_SEED_MS_PER_MB, GPU_URGENT_MS, admitUpload, nextUploadCost, uploadEstMs } from './gpuBudget.js';
-import type { StageBackend, StageItem, StagePaint, StageTexture } from './stageTypes.js';
+import type { GpuStageBackend, GpuStageOpts, StageItem, StagePaint, StageTexture } from './stageTypes.js';
 import { StageVram } from './stageVram.js';
-import type { EvictCandidate, VramLanes, VramStage } from './stageVram.js';
+import type { EvictCandidate, VramLanes } from './stageVram.js';
 
 /** Wall-clock ms, with a monotonic-free fallback for hosts (some test
  *  shims) that lack performance.now(). */
@@ -91,7 +91,7 @@ interface KeyedEntry {
   used: number;
 }
 
-export class GlStage implements StageBackend, VramStage {
+export class GlStage implements GpuStageBackend {
   readonly kind = 'gl' as const;
   /** THE VRAM CEILING (A1): this stage's name in the cross-stage
    *  governor's ledger and confession ('world' / 'ground'). */
@@ -271,7 +271,7 @@ export class GlStage implements StageBackend, VramStage {
 
   constructor(
     readonly canvas: HTMLCanvasElement,
-    opts?: { alpha?: boolean; texBudgetBytes?: number; label?: string },
+    opts?: GpuStageOpts,
   ) {
     this.isAlpha = opts?.alpha === true;
     this.texBudgetBytes = opts?.texBudgetBytes ?? 512 * 1024 * 1024;
