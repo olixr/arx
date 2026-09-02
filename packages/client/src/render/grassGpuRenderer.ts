@@ -36,32 +36,34 @@ uniform mat3 uView;   // world -> clip (xy)
 uniform float uTime;
 uniform vec2 uWindGain; // x = bend gain, y = lean gain
 out float vUp;
+out float vSide;
 out float vTone;
 out float vShimmer;
 ${grassWindGlsl()}
 void main() {
   float up = aTmpl.y;
   float side = aTmpl.x;
-  // A BLOCKY blade, not a spike: near-constant width, then a BLUNT
-  // (chisel) top — a flat-cut low-poly blade, not a sharp triangle.
-  // Per-blade width varies a little; the base is a touch wider (rooted).
-  float taper = mix(1.08, 0.62, smoothstep(0.72, 1.0, up));
-  float wj = 0.9 + 0.35 * fract(iShape.w * 7.31);
+  // A BLOCKY COLUMN: a tall, narrow, straight-sided rectangular prism —
+  // FLAT top, no taper (just a hair off the razor top edge). The blade
+  // stands bolt upright; only its very tip drifts with the wind. This is
+  // the vertical-slab grass of our low-poly brand, not a leaf.
+  float taper = 1.0 - smoothstep(0.94, 1.0, up) * 0.10;
+  float wj = 0.82 + 0.26 * fract(iShape.w * 7.31);
   vec4 wind = grassWind(iRoot, uTime + iShape.w * 6.2831853);
-  // A RESTRAINED lean: the blade stands upright and blocky, tipping only
-  // a little at its very top (bendUp = up^3 keeps the lower stalk plumb).
-  // Static lean + live wind, both gentle — no scythe-like curl.
-  float bendUp = up * up * up;
-  float k = (iShape.z * uWindGain.y + wind.x * uWindGain.x) * bendUp
-          + iShape.z * 0.12 * up;
+  // DEAD STRAIGHT: the column ignores the source blade's lean entirely
+  // (that's the soft-meadow art); only the very TOP (up^6) drifts a hair
+  // in the wind, so the bars stay vertical and blocky.
+  float tipDrift = pow(up, 8.0);        // only the very crown drifts
+  float k = wind.x * uWindGain.x * tipDrift;
   vec2 world = iRoot;
-  float hw = iShape.y * 1.55 * wj;
+  float hw = iShape.y * 1.42 * wj;      // chunky bars (not hairlines)
   world.x += k + side * hw * taper;
-  world.y -= up * iShape.x;            // grow up-screen
-  world.y += wind.y * bendUp * uWindGain.x * 0.35; // slight forward sway
+  world.y -= up * iShape.x * 1.55;      // TALL columns (grow up-screen)
+  world.y += wind.y * tipDrift * uWindGain.x * 0.2;
   vec3 p = uView * vec3(world, 1.0);
   gl_Position = vec4(p.xy, 0.0, 1.0);
   vUp = up;
+  vSide = side;
   vTone = iTone.x;
   vShimmer = wind.w;
 }`;
@@ -69,21 +71,27 @@ void main() {
 const FRAG_SRC = `#version 300 es
 precision mediump float;
 in float vUp;
+in float vSide;
 in float vTone;
 in float vShimmer;
 uniform sampler2D uPalette;  // ${PAL_LIGHTS} lights × ${PAL_TONES} tones
 out vec4 o;
 void main() {
-  // FLAT LOW-POLY SHADING — discrete facets, never a gradient. The blade
-  // reads as a few flat tone STEPS stacked up its height: a shaded root
-  // (ambient occlusion where it meets the ground), a body, and a lit cap
-  // where the sun catches — each a hard step from the shimmer ramp, which
-  // the wind shifts as one. This is the vectorized, faceted depth of our
-  // brand, not a smooth smear.
-  float band = vUp < 0.34 ? 0.0        // shaded root (AO)
-             : vUp < 0.74 ? 1.0        // body
-                          : 2.0;       // lit cap
-  float lightF = 0.10 + vShimmer * 0.42 + band * 0.27;
+  // FLAT LOW-POLY PRISM SHADING — the column reads as a 3D slab from a
+  // few HARD tone steps, never a gradient:
+  //   · a LIT TOP CAP (the flat top catches the overhead light),
+  //   · a shadowed vertical FACE (one half a step darker → the column's
+  //     turned side, meeting the lit half at a central 3D edge),
+  //   · a body, and an AO base where it roots into the ground.
+  // The wind shifts the whole blade's step as one. This is the faceted,
+  // vectorized depth of our brand.
+  float bandLight = vUp > 0.82 ? 0.74   // lit top cap (flat top to the sun)
+                  : vUp < 0.16 ? 0.04   // AO base (rooted in shadow)
+                               : 0.40;  // body
+  // The column's two vertical faces: one lit, one turned into shadow,
+  // meeting at a central 3D edge — the strongest low-poly block cue.
+  float faceShade = vSide < 0.0 ? 0.18 : -0.05;
+  float lightF = bandLight + vShimmer * 0.14 - faceShade;
   float step = clamp(floor(lightF * float(${PAL_LIGHTS - 1}) + 0.5),
                      0.0, float(${PAL_LIGHTS - 1}));
   float u = (step + 0.5) / float(${PAL_LIGHTS});

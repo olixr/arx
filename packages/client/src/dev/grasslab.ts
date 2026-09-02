@@ -94,7 +94,7 @@ function frame(): void {
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.clearColor(0.39, 0.53, 0.33, 1); // meadow ground green
   gl.clear(gl.COLOR_BUFFER_BIT);
-  renderer.draw(view, (performance.now() - start) / 1000, 0.3, 0.4);
+  renderer.draw(view, (performance.now() - start) / 1000, 0.12, 0);
   requestAnimationFrame(frame);
 }
 frame();
