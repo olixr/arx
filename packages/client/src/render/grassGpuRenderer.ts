@@ -41,7 +41,6 @@ uniform vec2 uWindGain; // x = wind shear gain, y = reserved
 uniform vec4 uDisturb[${MAX_DISTURB}]; // xy = world pos, z = radius, w = strength
 uniform int uDisturbN;
 out float vUp;
-out float vSide;
 out float vTone;
 out float vShimmer;
 out float vPress;
@@ -98,7 +97,6 @@ void main() {
   vec3 p = uView * vec3(world, 1.0);
   gl_Position = vec4(p.xy, 0.0, 1.0);
   vUp = up;
-  vSide = side;
   vTone = iTone.x;
   vShimmer = wind.w;
   vPress = press;
@@ -107,48 +105,26 @@ void main() {
 const FRAG_SRC = `#version 300 es
 precision mediump float;
 in float vUp;
-in float vSide;
 in float vTone;
 in float vShimmer;
 in float vPress;
 uniform sampler2D uPalette;  // ${PAL_LIGHTS} lights × ${PAL_TONES} tones
-uniform float uOutline;      // 0 = none, 1 = brand self-contour
 out vec4 o;
 void main() {
-  // FLAT LOW-POLY PRISM SHADING — the column reads as a 3D slab from a
-  // few HARD tone steps, never a gradient:
-  //   · a LIT TOP CAP (the flat top catches the overhead light),
-  //   · a shadowed vertical FACE (one half a step darker → the column's
-  //     turned side, meeting the lit half at a central 3D edge),
-  //   · a body, and an AO base where it roots into the ground.
-  // The wind shifts the whole blade's step as one. This is the faceted,
-  // vectorized depth of our brand.
-  float bandLight = vUp > 0.82 ? 0.74   // lit top cap (flat top to the sun)
-                  : vUp < 0.16 ? 0.04   // AO base (rooted in shadow)
-                               : 0.40;  // body
-  // The column's two vertical faces: one lit, one turned into shadow,
-  // meeting at a central 3D edge — the strongest low-poly block cue.
-  float faceShade = vSide < 0.0 ? 0.18 : -0.05;
-  // Trampled blades sink a step into shadow (pressed under the walker).
-  float lightF = bandLight + vShimmer * 0.14 - faceShade - vPress * 0.22;
+  // FLAT-VECTORIZED, TOP-LIT depth — NOT a 3D pillar. The sun is overhead,
+  // so each blade is a flat shape lit at the TIP and sinking to SHADOW at
+  // the ROOT: a two-point vertical tone ramp resolved into a few HARD flat
+  // steps (NEAREST palette). No side/face shading (we're flat-vectorized,
+  // not volumetric), no gradient smear, no dark cap — light comes from
+  // above, so the top is brightest and the base holds the shadow.
+  float lightF = 0.18 + vUp * 0.48;      // root shadow → tip light
+  lightF += vShimmer * 0.12;             // the gust lifts the blade a touch
+  lightF -= vPress * 0.20;               // trampled blades sink into shadow
   float step = clamp(floor(lightF * float(${PAL_LIGHTS - 1}) + 0.5),
                      0.0, float(${PAL_LIGHTS - 1}));
   float u = (step + 0.5) / float(${PAL_LIGHTS});
   float v = (vTone + 0.5) / float(${PAL_TONES});
   vec3 col = texture(uPalette, vec2(u, v)).rgb;
-
-  // BRAND OUTLINE (optional) — a dark contour on the blade's OWN
-  // silhouette (its side edges and flat top), echoing the black-outline
-  // shader our entities wear, at a weight that reads without muddying a
-  // field of thousands. Off by default: grass is ground-cover, and every
-  // blade stroked reads as noise; the flat-step prism shading is the
-  // depth. This exists so the choice is a look, not a guess.
-  if (uOutline > 0.5) {
-    float sideEdge = smoothstep(0.80, 0.98, abs(vSide));
-    float topEdge = smoothstep(0.90, 1.0, vUp);
-    float rim = max(sideEdge, topEdge);
-    col = mix(col, vec3(0.05, 0.06, 0.04), rim * 0.85);
-  }
   o = vec4(col, 1.0);
 }`;
 
@@ -181,7 +157,6 @@ export class GrassGpuRenderer {
   private readonly uWindGain: WebGLUniformLocation;
   private readonly uDisturb: WebGLUniformLocation;
   private readonly uDisturbN: WebGLUniformLocation;
-  private readonly uOutline: WebGLUniformLocation;
   private instanceCount = 0;
 
   /** `paletteFills` is BLADE_FILLS (PAL_TONES·PAL_LIGHTS `#rrggbb`, tone-
@@ -202,7 +177,6 @@ export class GrassGpuRenderer {
     this.uWindGain = gl.getUniformLocation(program, 'uWindGain')!;
     this.uDisturb = gl.getUniformLocation(program, 'uDisturb')!;
     this.uDisturbN = gl.getUniformLocation(program, 'uDisturbN')!;
-    this.uOutline = gl.getUniformLocation(program, 'uOutline')!;
     gl.useProgram(program);
     gl.uniform1i(gl.getUniformLocation(program, 'uPalette'), 0);
 
@@ -278,12 +252,11 @@ export class GrassGpuRenderer {
    *   · disturb  — walkers pressing the grass, packed 4 floats each
    *     [worldX, worldY, radius, strength], up to MAX_DISTURB; the scene
    *     feeds the nearby players/entities here each frame.
-   *   · outline  — draw the brand self-contour on each blade (default off).
    */
   draw(
     view: Float32Array,
     timeSec: number,
-    opts: { windGain?: number; disturb?: Float32Array; outline?: boolean } = {},
+    opts: { windGain?: number; disturb?: Float32Array } = {},
   ): void {
     const gl = this.gl;
     if (this.instanceCount === 0) return;
@@ -295,7 +268,6 @@ export class GrassGpuRenderer {
     const n = disturb ? Math.min(MAX_DISTURB, Math.floor(disturb.length / 4)) : 0;
     gl.uniform1i(this.uDisturbN, n);
     if (n > 0) gl.uniform4fv(this.uDisturb, disturb!.subarray(0, n * 4));
-    gl.uniform1f(this.uOutline, opts.outline ? 1 : 0);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.palTex);
     gl.enable(gl.BLEND);
