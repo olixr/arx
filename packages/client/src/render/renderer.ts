@@ -4379,7 +4379,14 @@ export class Renderer {
    */
   private drawReflections(game: ClientGame): void {
     const list = this.reflectables;
-    if (!this.reflectionsOn) {
+    // B-5: the mirror composite clips to the water region via an AFFINE
+    // world→screen matrix (canvas matrices can't carry the lean's `w`), so
+    // under a lean it clips the correctly-leaned reflection to the water's
+    // ORTHO position — a misplaced rectangle. Until the clip path is rebuilt
+    // in screen space (q-aware, per-frame), skip reflections under the lean:
+    // no reflection reads better than a displaced one. Full at q=0 (the
+    // default when the lean is off), byte-identical there.
+    if (!this.reflectionsOn || this.camera.q > 0) {
       list.length = 0;
       return;
     }
@@ -5037,9 +5044,13 @@ export class Renderer {
     // yet). The editor/shot camera stays orthographic (leans would fight a
     // pinned frame; staticLayerOn also requires q=0 there). leanTarget=0 →
     // camera.q=0 → byte-identical to every ortho frame.
+    // Clamp q so the horizon stays in the upper band, never past ~h·0.12
+    // down (2.6/h ⇒ hY = h/2 − h/2.6 ≈ 0.115h): a comfortable moderate lean
+    // keeps it off-screen; a CINEMATIC lean (B-5) rises it into view where
+    // the sky fills above (drawGrade). Editor/shot camera stays ortho.
     this.camera.q =
       this.leanTarget > 0 && this.cameraOverride === null
-        ? Math.min(this.leanTarget, 1.5 / this.h)
+        ? Math.min(this.leanTarget, 2.6 / this.h)
         : 0;
     // The sky rules the frame: shadows, exposure, grade all read it.
     this.sky = daylightAt(game.clockHoursNow());
@@ -6524,15 +6535,37 @@ export class Renderer {
     // horizon) → the frame is byte-identical to every ortho frame shipped.
     if (this.camera.q > 0) {
       const fogAmt = Math.min(1, this.camera.q / PERSP_LEAN_REF);
+      const c = (a: number) => `rgba(${hr | 0}, ${hg | 0}, ${hb | 0}, ${a})`;
+      // The horizon screen row (h/2 − 1/q). Below the viewport top (< 0) at
+      // a moderate lean — then the fog rides from the top exactly as before
+      // (byte-compatible). At a CINEMATIC lean it rises INTO view.
+      const hY = this.h / 2 - 1 / this.camera.q;
+      // THE SKYLINE (Epic B, B-5): where the horizon is in view there is no
+      // ground above it — a real SKY fills the void, DEEPER up high (cooler,
+      // and it sinks with the hour) and meeting the horizon haze exactly at
+      // the line, so sky → haze → receding ground read as one atmosphere.
+      if (hY > 0.5) {
+        const deep = (v: number, k: number) => Math.max(0, Math.round(v * (1 - k)));
+        const skyG = ctx.createLinearGradient(0, 0, 0, hY);
+        skyG.addColorStop(0, `rgb(${deep(hr, 0.14)}, ${deep(hg, 0.09)}, ${deep(hb, 0.02)})`);
+        skyG.addColorStop(1, `rgb(${hr | 0}, ${hg | 0}, ${hb | 0})`);
+        ctx.fillStyle = skyG;
+        ctx.fillRect(0, 0, this.w, Math.ceil(hY) + 1);
+      }
+      // THE HORIZON FOG (B-6): the far ground compresses to the horizon and
+      // the frustum is capped there; atmospheric haze washes that far band
+      // into the hour's sky — anchored AT the horizon (or the top, when the
+      // horizon is off-screen) and fading DOWN into the near ground. Buries
+      // the far cut so the cap can pull in. Eases in with q.
+      const fogTop = Math.max(0, hY);
       const bandH = this.h * (0.26 + 0.22 * fogAmt);
       const peak = Math.min(1, (ha + 0.28) * (0.45 + 0.55 * fogAmt));
-      const c = (a: number) => `rgba(${hr | 0}, ${hg | 0}, ${hb | 0}, ${a})`;
-      const fog = ctx.createLinearGradient(0, 0, 0, bandH);
+      const fog = ctx.createLinearGradient(0, fogTop, 0, fogTop + bandH);
       fog.addColorStop(0, c(peak));
       fog.addColorStop(0.55, c(peak * 0.42));
       fog.addColorStop(1, c(0));
       ctx.fillStyle = fog;
-      ctx.fillRect(0, 0, this.w, bandH);
+      ctx.fillRect(0, fogTop, this.w, bandH);
     }
     ctx.save();
     ctx.globalCompositeOperation = 'soft-light';
