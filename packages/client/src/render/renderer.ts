@@ -11049,7 +11049,7 @@ export class Renderer {
   ): DrawItem {
     const info = diagWallInfo(tile)!;
     const ctx = this.ctx;
-    const s = this.camera.scale;
+    const s = this.spriteScale(ty); // B-3 surface depth thread (foreshorten by base depth)
     const syT = s * this.camera.yScale;
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
@@ -11572,7 +11572,7 @@ export class Renderer {
     region: InteriorRegion | null = null,
   ): DrawItem {
     const ctx = this.ctx;
-    const s = this.camera.scale;
+    const s = this.spriteScale(ty); // B-3 surface depth thread (foreshorten by base depth)
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const isWallAt = (x: number, y: number) => this.wallish(game, x, y);
@@ -12026,7 +12026,7 @@ export class Renderer {
    */
   private archItem(tx: number, ty: number, game: ClientGame): DrawItem {
     const ctx = this.ctx;
-    const s = this.camera.scale;
+    const s = this.spriteScale(ty); // B-3 surface depth thread (foreshorten by base depth)
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const isArch = (t: number | undefined) => t === Tile.ArchStone;
@@ -12136,7 +12136,7 @@ export class Renderer {
    * portals are rare enough that caching would buy nothing.
    */
   private portalItem(tx: number, ty: number, up: boolean, game: ClientGame): DrawItem {
-    const s = this.camera.scale;
+    const s = this.spriteScale(ty); // B-3 surface depth thread (foreshorten by base depth)
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const syT = s * this.camera.yScale;
@@ -12172,7 +12172,7 @@ export class Renderer {
    * like a prop.
    */
   private pillarItem(tx: number, ty: number, game: ClientGame): DrawItem {
-    const s = this.camera.scale;
+    const s = this.spriteScale(ty + 0.5); // B-3 surface depth thread (foreshorten by base depth)
     const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const syT = s * this.camera.yScale;
@@ -12286,7 +12286,7 @@ export class Renderer {
    * one continuous handrail.
    */
   private railItem(tx: number, ty: number, game: ClientGame): DrawItem {
-    const s = this.camera.scale;
+    const s = this.spriteScale(ty + 0.5); // B-3 surface depth thread (foreshorten by base depth)
     const syT = s * this.camera.yScale;
     const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
