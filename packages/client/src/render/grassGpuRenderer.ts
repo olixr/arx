@@ -27,6 +27,9 @@ const BLADE_VERTS = (BLADE_SEGMENTS + 1) * 2;
 const PAL_TONES = 8;
 const PAL_LIGHTS = 7;
 
+/** Max simultaneous disturbers (walkers/entities pressing the grass). */
+const MAX_DISTURB = 8;
+
 const VERT_SRC = `#version 300 es
 layout(location=0) in vec2 aTmpl;   // x = side [-1,1], y = up [0,1]
 layout(location=1) in vec2 iRoot;   // world root
@@ -34,38 +37,64 @@ layout(location=2) in vec4 iShape;  // height, halfWidth, lean, phase
 layout(location=3) in vec2 iTone;   // tone index, seg2
 uniform mat3 uView;   // world -> clip (xy)
 uniform float uTime;
-uniform vec2 uWindGain; // x = bend gain, y = lean gain
+uniform vec2 uWindGain; // x = wind shear gain, y = reserved
+uniform vec4 uDisturb[${MAX_DISTURB}]; // xy = world pos, z = radius, w = strength
+uniform int uDisturbN;
 out float vUp;
 out float vSide;
 out float vTone;
 out float vShimmer;
+out float vPress;
 ${grassWindGlsl()}
 void main() {
   float up = aTmpl.y;
   float side = aTmpl.x;
-  // A BLOCKY COLUMN: a tall, narrow, straight-sided rectangular prism —
-  // FLAT top, no taper (just a hair off the razor top edge). The blade
-  // stands bolt upright; only its very tip drifts with the wind. This is
-  // the vertical-slab grass of our low-poly brand, not a leaf.
-  float taper = 1.0 - smoothstep(0.94, 1.0, up) * 0.10;
+  // A BLOCKY COLUMN: a tall, narrow, straight-sided rectangular prism with
+  // a FLAT top and no taper — the vertical-slab grass of our low-poly
+  // brand, not a leaf.
   float wj = 0.82 + 0.26 * fract(iShape.w * 7.31);
   vec4 wind = grassWind(iRoot, uTime + iShape.w * 6.2831853);
-  // DEAD STRAIGHT: the column ignores the source blade's lean entirely
-  // (that's the soft-meadow art); only the very TOP (up^6) drifts a hair
-  // in the wind, so the bars stay vertical and blocky.
-  float tipDrift = pow(up, 8.0);        // only the very crown drifts
-  float k = wind.x * uWindGain.x * tipDrift;
-  vec2 world = iRoot;
-  float hw = iShape.y * 1.42 * wj;      // chunky bars (not hairlines)
-  world.x += k + side * hw * taper;
-  world.y -= up * iShape.x * 1.55;      // TALL columns (grow up-screen)
-  world.y += wind.y * tipDrift * uWindGain.x * 0.2;
+  vec2 root = iRoot;
+  float height = iShape.x * 1.55;       // TALL
+  float hw = iShape.y * 1.42 * wj;      // chunky bars, not hairlines
+
+  // WIND — a whole-blade SHEAR, linear in height: the blade leans as a
+  // clean parallelogram with straight edges and a flat top. No per-vertex
+  // kink, no nudged tip — one cohesive blade of grass.
+  float lean = wind.x * uWindGain.x;
+
+  // TRAMPLING — entities pressing through splay the blades radially and
+  // press them flat; the field springs back as they pass. Summed over
+  // nearby disturbers with a smoothstep falloff.
+  vec2 push = vec2(0.0);
+  float press = 0.0;
+  for (int i = 0; i < ${MAX_DISTURB}; i++) {
+    if (i >= uDisturbN) break;
+    vec2 d = root - uDisturb[i].xy;
+    float r = max(uDisturb[i].z, 1e-3);
+    float f = 1.0 - clamp(length(d) / r, 0.0, 1.0);
+    f = f * f * (3.0 - 2.0 * f);                    // smoothstep falloff
+    float s = f * uDisturb[i].w;
+    vec2 dir = length(d) > 1e-4 ? normalize(d) : vec2(0.0, 1.0);
+    push += dir * s;
+    press = max(press, s);
+  }
+  press = clamp(press, 0.0, 1.0);
+
+  vec2 world = root;
+  world.x += side * hw;                            // straight column width
+  world.x += up * lean;                            // wind shear
+  world.x += up * push.x * height;                 // trampled lay-over (x)
+  world.y -= up * height * (1.0 - press);          // grow up; flattened when pressed
+  world.y += up * push.y * height;                 // trampled lay-over (y)
+  world.y += wind.y * up * uWindGain.x * 0.15;     // slight sway
   vec3 p = uView * vec3(world, 1.0);
   gl_Position = vec4(p.xy, 0.0, 1.0);
   vUp = up;
   vSide = side;
   vTone = iTone.x;
   vShimmer = wind.w;
+  vPress = press;
 }`;
 
 const FRAG_SRC = `#version 300 es
@@ -74,7 +103,9 @@ in float vUp;
 in float vSide;
 in float vTone;
 in float vShimmer;
+in float vPress;
 uniform sampler2D uPalette;  // ${PAL_LIGHTS} lights × ${PAL_TONES} tones
+uniform float uOutline;      // 0 = none, 1 = brand self-contour
 out vec4 o;
 void main() {
   // FLAT LOW-POLY PRISM SHADING — the column reads as a 3D slab from a
@@ -91,12 +122,26 @@ void main() {
   // The column's two vertical faces: one lit, one turned into shadow,
   // meeting at a central 3D edge — the strongest low-poly block cue.
   float faceShade = vSide < 0.0 ? 0.18 : -0.05;
-  float lightF = bandLight + vShimmer * 0.14 - faceShade;
+  // Trampled blades sink a step into shadow (pressed under the walker).
+  float lightF = bandLight + vShimmer * 0.14 - faceShade - vPress * 0.22;
   float step = clamp(floor(lightF * float(${PAL_LIGHTS - 1}) + 0.5),
                      0.0, float(${PAL_LIGHTS - 1}));
   float u = (step + 0.5) / float(${PAL_LIGHTS});
   float v = (vTone + 0.5) / float(${PAL_TONES});
   vec3 col = texture(uPalette, vec2(u, v)).rgb;
+
+  // BRAND OUTLINE (optional) — a dark contour on the blade's OWN
+  // silhouette (its side edges and flat top), echoing the black-outline
+  // shader our entities wear, at a weight that reads without muddying a
+  // field of thousands. Off by default: grass is ground-cover, and every
+  // blade stroked reads as noise; the flat-step prism shading is the
+  // depth. This exists so the choice is a look, not a guess.
+  if (uOutline > 0.5) {
+    float sideEdge = smoothstep(0.80, 0.98, abs(vSide));
+    float topEdge = smoothstep(0.90, 1.0, vUp);
+    float rim = max(sideEdge, topEdge);
+    col = mix(col, vec3(0.05, 0.06, 0.04), rim * 0.85);
+  }
   o = vec4(col, 1.0);
 }`;
 
@@ -127,6 +172,9 @@ export class GrassGpuRenderer {
   private readonly uView: WebGLUniformLocation;
   private readonly uTime: WebGLUniformLocation;
   private readonly uWindGain: WebGLUniformLocation;
+  private readonly uDisturb: WebGLUniformLocation;
+  private readonly uDisturbN: WebGLUniformLocation;
+  private readonly uOutline: WebGLUniformLocation;
   private instanceCount = 0;
 
   /** `paletteFills` is BLADE_FILLS (PAL_TONES·PAL_LIGHTS `#rrggbb`, tone-
@@ -145,6 +193,9 @@ export class GrassGpuRenderer {
     this.uView = gl.getUniformLocation(program, 'uView')!;
     this.uTime = gl.getUniformLocation(program, 'uTime')!;
     this.uWindGain = gl.getUniformLocation(program, 'uWindGain')!;
+    this.uDisturb = gl.getUniformLocation(program, 'uDisturb')!;
+    this.uDisturbN = gl.getUniformLocation(program, 'uDisturbN')!;
+    this.uOutline = gl.getUniformLocation(program, 'uOutline')!;
     gl.useProgram(program);
     gl.uniform1i(gl.getUniformLocation(program, 'uPalette'), 0);
 
@@ -213,15 +264,31 @@ export class GrassGpuRenderer {
     this.instanceCount = count;
   }
 
-  /** Draw the field. `view` is a 3×3 world→clip matrix (column-major, 9
-   *  floats); `bendGain`/`leanGain` scale the live wind and static lean. */
-  draw(view: Float32Array, timeSec: number, bendGain = 0.5, leanGain = 1): void {
+  /**
+   * Draw the field. `view` is a 3×3 world→clip matrix (column-major, 9
+   * floats). Options:
+   *   · windGain — scales the whole-blade wind shear (default 0.12).
+   *   · disturb  — walkers pressing the grass, packed 4 floats each
+   *     [worldX, worldY, radius, strength], up to MAX_DISTURB; the scene
+   *     feeds the nearby players/entities here each frame.
+   *   · outline  — draw the brand self-contour on each blade (default off).
+   */
+  draw(
+    view: Float32Array,
+    timeSec: number,
+    opts: { windGain?: number; disturb?: Float32Array; outline?: boolean } = {},
+  ): void {
     const gl = this.gl;
     if (this.instanceCount === 0) return;
     gl.useProgram(this.program);
     gl.uniformMatrix3fv(this.uView, false, view);
     gl.uniform1f(this.uTime, timeSec);
-    gl.uniform2f(this.uWindGain, bendGain, leanGain);
+    gl.uniform2f(this.uWindGain, opts.windGain ?? 0.12, 0);
+    const disturb = opts.disturb;
+    const n = disturb ? Math.min(MAX_DISTURB, Math.floor(disturb.length / 4)) : 0;
+    gl.uniform1i(this.uDisturbN, n);
+    if (n > 0) gl.uniform4fv(this.uDisturb, disturb!.subarray(0, n * 4));
+    gl.uniform1f(this.uOutline, opts.outline ? 1 : 0);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.palTex);
     gl.enable(gl.BLEND);

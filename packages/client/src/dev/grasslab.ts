@@ -89,12 +89,28 @@ function resize(): void {
 resize();
 window.addEventListener('resize', resize);
 
+// `#outline` toggles the brand self-contour so both looks can be judged.
+const OUTLINE = location.hash.includes('outline');
+// `#still` parks the walker mid-field for a clean trampling screenshot.
+const STILL = location.hash.includes('still');
+// One walker crossing the field — proves trampling: blades splay outward
+// and press flat around it, springing back as it passes. The scene feeds
+// real player/entity positions into this same array.
+const disturb = new Float32Array(4);
+
 const start = performance.now();
 function frame(): void {
+  const t = (performance.now() - start) / 1000;
+  const wx = STILL ? NX * 0.5 : NX * 0.5 + Math.cos(t * 0.5) * NX * 0.3;
+  const wy = STILL ? NY * 0.52 : NY * 0.5 + Math.sin(t * 0.5) * NY * 0.28;
+  disturb[0] = wx;
+  disturb[1] = wy;
+  disturb[2] = 2.1; // radius (tiles)
+  disturb[3] = 1.0; // strength
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.clearColor(0.39, 0.53, 0.33, 1); // meadow ground green
   gl.clear(gl.COLOR_BUFFER_BIT);
-  renderer.draw(view, (performance.now() - start) / 1000, 0.12, 0);
+  renderer.draw(view, t, { windGain: 0.12, disturb, outline: OUTLINE });
   requestAnimationFrame(frame);
 }
 frame();
