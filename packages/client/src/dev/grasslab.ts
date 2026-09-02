@@ -89,8 +89,6 @@ function resize(): void {
 resize();
 window.addEventListener('resize', resize);
 
-// `#outline` toggles the brand self-contour so both looks can be judged.
-const OUTLINE = location.hash.includes('outline');
 // `#still` parks the walker mid-field for a clean trampling screenshot.
 const STILL = location.hash.includes('still');
 // One walker crossing the field — proves trampling: blades splay outward
@@ -110,7 +108,7 @@ function frame(): void {
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.clearColor(0.39, 0.53, 0.33, 1); // meadow ground green
   gl.clear(gl.COLOR_BUFFER_BIT);
-  renderer.draw(view, t, { windGain: 0.12, disturb, outline: OUTLINE });
+  renderer.draw(view, t, { windGain: 0.12, disturb });
   requestAnimationFrame(frame);
 }
 frame();
