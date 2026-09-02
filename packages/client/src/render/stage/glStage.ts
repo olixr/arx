@@ -40,12 +40,20 @@ const VERT_SRC = `#version 300 es
 layout(location=0) in vec2 aPos;
 layout(location=1) in vec2 aUV;
 layout(location=2) in vec4 aCol;
+layout(location=3) in float aW;
 uniform vec2 uRes;
 out vec2 vUV;
 out vec4 vCol;
 void main() {
+  // THE CAMERA LEARNS TO LEAN (Epic B, B-1b): per-vertex homogeneous w.
+  // A screen-space quad passes aW=1 and this is exactly the old
+  // orthographic map (byte-identical). A perspective GROUND quad passes
+  // each corner's weight w = 1/depthScale; placing the vertex at
+  // clip·w with gl_Position.w = w makes the hardware interpolate the
+  // texture PERSPECTIVE-CORRECT across the trapezoid — 4 corners
+  // suffice for a planar tile, no subdivision.
   vec2 c = (aPos / uRes) * 2.0 - 1.0;
-  gl_Position = vec4(c.x, -c.y, 0.0, 1.0);
+  gl_Position = vec4(c.x * aW, -c.y * aW, 0.0, aW);
   vUV = aUV;
   vCol = aCol;
 }`;
@@ -61,7 +69,10 @@ void main() {
 }`;
 
 /** Bytes per vertex: pos 2f (8) + uv 2f (8) + color 4×u8 (4). */
-const VERTEX_BYTES = 20;
+// pos(2f) + uv(2f) + color(4×u8, one float slot) + w(1f) = 6 floats.
+// The `w` (B-1b) is 1 for every screen-space quad — byte-identical to
+// the pre-B1b 20-byte format on screen output; ground quads vary it.
+const VERTEX_BYTES = 24;
 const VERTS_PER_QUAD = 6;
 
 interface TexRecord {
@@ -368,6 +379,8 @@ export class GlStage implements GpuStageBackend {
     gl.vertexAttribPointer(1, 2, gl.FLOAT, false, VERTEX_BYTES, 8);
     gl.enableVertexAttribArray(2);
     gl.vertexAttribPointer(2, 4, gl.UNSIGNED_BYTE, true, VERTEX_BYTES, 16);
+    gl.enableVertexAttribArray(3);
+    gl.vertexAttribPointer(3, 1, gl.FLOAT, false, VERTEX_BYTES, 20); // aW (B-1b)
 
     // The white texel: fills sample it, so fill and textured quads
     // share one program and batch across each other.
@@ -979,7 +992,7 @@ export class GlStage implements GpuStageBackend {
           v1 = phDev / ch;
         }
         const emitP = (px: number, py: number, uu: number, vv: number): void => {
-          const fo = v * 5;
+          const fo = v * 6;
           f32[fo] = px;
           f32[fo + 1] = py;
           f32[fo + 2] = uu;
@@ -989,6 +1002,7 @@ export class GlStage implements GpuStageBackend {
           u8[bo + 1] = 255;
           u8[bo + 2] = 255;
           u8[bo + 3] = 255;
+          f32[fo + 5] = 1; // aW: this lane is always screen-space (B-1b)
           v++;
         };
         emitP(x0, y0, u0, v0);
@@ -1052,12 +1066,13 @@ export class GlStage implements GpuStageBackend {
         const pg = Math.round(cg * al);
         const pb = Math.round(cb * al);
         const pa = Math.round(255 * al);
-        const emit = (px: number, py: number, uu: number, vv: number): void => {
-          const fo = v * 5; // 5 floats of stride, last float aliased by u8 color
+        const emit = (px: number, py: number, uu: number, vv: number, pw = 1): void => {
+          const fo = v * 6; // 6 floats: pos.xy, uv.xy, color(float 4, u8-aliased), w
           f32[fo] = px;
           f32[fo + 1] = py;
           f32[fo + 2] = uu;
           f32[fo + 3] = vv;
+          f32[fo + 5] = pw; // aW (B-1b): 1 for screen quads, corner weight for ground
           const bo = v * VERTEX_BYTES + 16;
           u8[bo] = pr;
           u8[bo + 1] = pg;
@@ -1366,11 +1381,12 @@ export class GlStage implements GpuStageBackend {
     const u8 = this.u8;
     let v = 0;
     const emitC = (px: number, py: number, uu: number, vv: number): void => {
-      const fo = v * 5;
+      const fo = v * 6;
       f32[fo] = px;
       f32[fo + 1] = py;
       f32[fo + 2] = uu;
       f32[fo + 3] = vv;
+      f32[fo + 5] = 1; // aW: the layer composite is screen-space (B-1b)
       const bo = v * VERTEX_BYTES + 16;
       u8[bo] = pa;
       u8[bo + 1] = pa;
