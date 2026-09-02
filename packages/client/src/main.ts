@@ -283,6 +283,19 @@ FOOTPRINT_TUNE.enabled = localStorage.getItem('arx.footprints') !== 'off';
   // falls back on its own. Mirrors the accelerated-display toggle idiom.
   const grassParam = new URLSearchParams(location.search).get('grass');
   renderer.grassGpu = grassParam === 'gpu' || localStorage.getItem('arx.grass') === 'gpu';
+  // THE CAMERA LEARNS TO LEAN (Epic B, B-2 preview): ?lean turns the
+  // perspective lean ON opt-in — `?lean` (default moderate) or `?lean=<q>`
+  // for a specific dial, or the stored pref. Default OFF = the ortho frame,
+  // byte-identical. The renderer clamps q so the horizon stays off-screen.
+  const leanParam = new URLSearchParams(location.search).get('lean');
+  const leanStored = localStorage.getItem('arx.lean');
+  if (leanParam !== null) {
+    const q = Number.parseFloat(leanParam);
+    renderer.leanTarget = Number.isFinite(q) && q > 0 ? q : 0.0013;
+  } else if (leanStored && leanStored !== 'off') {
+    const q = Number.parseFloat(leanStored);
+    renderer.leanTarget = Number.isFinite(q) && q > 0 ? q : 0.0013;
+  }
 }
 // SETTINGS' TAB RAIL: Sound / Display / Controls, one bench standing
 // at a time, LT/RT stepping them like every room's pager.
