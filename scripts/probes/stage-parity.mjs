@@ -1,4 +1,22 @@
-// Parity gate v7 (the toggle battery): hybrid vs canvas in ONE session.
+// Parity gate v8 (the toggle battery): hybrid vs canvas in ONE session.
+// v8 = THE VEIL JOINS THE PHASE CLASS (2026-09-01, foundation audit).
+// THE REV TELLS THE WHOLE TRUTH restored door-veil/reveal-cut
+// liveness to the keyed wall lane (they froze at mint before), so
+// crown thresholds now TRACK NPCs in the stage lane exactly as the
+// canvas lane always did. Honest rendering, but a cross-mode pair at
+// 400ms separation now reads NPC-threshold phase across whole door
+// areas — the irreducible animation-phase class grew. Measured
+// interleaved on one machine: new sig medians 260-307 (6 runs)
+// vs same-day pre-fix control 212-251 (6/6 PASS at +100); flag-
+// bisected to the rev fold alone (BISECT_NO_DYN → sig 240 PASS).
+// The crown scenes gain a second rail: an ABSOLUTE cap (330 ≈
+// measured max median +8%), because the floor undersamples the veil
+// class whenever NPCs pause between same-mode pairs — a pure
+// allowance whipsaws with the floor. The cap rail DEMANDS A LIVE
+// SCENE (noise2T >= 60): the degenerate empty-plane signature
+// (sig ~150 on noise ~17) is refused the cap rail outright and
+// still fails the +100 rail by 33. Gate:
+//   sig <= floor + allow  OR  (sig <= absCap AND noise2T >= 60).
 // v7 = the CROWN VERDICT codified (2026-09-01). The crown pair
 // hovered at the +60 gate (margins −20..+42 over 7 runs) on the
 // atlas AND the pre-atlas control alike — coinciding distributions,
@@ -39,14 +57,19 @@ const SCENES = [
   { name: 'graveyard', tp: '/tp -512 -212' },
   { name: 'hoargate', tp: '/tp -333 -261' },
   { name: 'forest', tp: '/tp 34 110' },
-  // The crown pair's +100 allowance is the codified verdict — see
-  // the v7 header for the paired-lane distributions behind it.
-  { name: 'crown-noon', tp: '/tp -448 -320', allow: 100 },
-  { name: 'crown-evening', tp: '/tp -448 -320', time: '/time 16.5', allow: 100 },
+  // The crown pair: +100 allowance (v7 verdict) + absolute cap 330
+  // (v8 — THE VEIL JOINS THE PHASE CLASS; see header).
+  { name: 'crown-noon', tp: '/tp -448 -320', allow: 100, absCap: 330 },
+  { name: 'crown-evening', tp: '/tp -448 -320', time: '/time 16.5', allow: 100, absCap: 330 },
 ].filter((s) => !ONLY || ONLY.includes(s.name));
 
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const page = await (await browser.newContext({ viewport: { width: 1500, height: 900 }, deviceScaleFactor: 2 })).newPage();
+// FLAG=NAME sets window.NAME=true before the client boots — the
+// runtime-bisect lever (pair it with a temporary in-code switch to
+// A/B a suspect change through this battery's own medians; the v8
+// crown verdict was isolated exactly this way).
+if (process.env.FLAG) await page.addInitScript(`window.${process.env.FLAG} = true;`);
 page.on('pageerror', (e) => console.log('[pageerror]', e.message.slice(0, 300)));
 await page.goto((process.env.ORIGIN ?? 'http://localhost:5231') + '/?perf&stage=world');
 await page.fill('#login-user', 'perf12_probe');
@@ -129,7 +152,9 @@ for (const scene of SCENES) {
   const floor = Math.max(noise, noiseT);
   const perf = await page.evaluate(() => window.dcRenderer.perfSummary());
   const line = perf.split('\n').filter((l) => l.startsWith('stage world')).join('');
-  const ok = sig <= floor + (scene.allow ?? 60);
+  const ok =
+    sig <= floor + (scene.allow ?? 60) ||
+    (scene.absCap !== undefined && sig <= scene.absCap && noise >= 60);
   allOk = allOk && ok;
   console.log(`${ok ? 'PASS' : 'FAIL'} ${scene.name}: sig ${sig} (${sigs.join(',')})  noise2T ${noise} (${noises.join(',')})  noiseT ${noiseT} (${noiseTs.join(',')})  | ${line}`);
 }

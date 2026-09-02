@@ -362,7 +362,7 @@ import {
 } from './abilityFx.js';
 import { SIGNATURES, type SigCtx } from './fxSignatures.js';
 import { GlStage } from './stage/glStage.js';
-import { GPU_URGENT_MS } from './stage/gpuBudget.js';
+import { GPU_STEADY_MS, GPU_URGENT_MS } from './stage/gpuBudget.js';
 import {
   StageBlend,
   stageAt,
@@ -489,6 +489,19 @@ const SPRITE_BAKE_MS = 2.5;
  * a live repaint).
  */
 const VIS_SPRITE_BAKE_MS = 60;
+/**
+ * THE ARRIVAL TELLS JUMP FROM WALK (foundation audit). The 60ms
+ * ceiling is sized for a teleport — ONE covered hitch on a frame
+ * where the whole screen is changing anyway. But the same lane
+ * serves smooth walking, where a lagging chunk can drop dozens of
+ * already-on-screen visible-misses into a single quiet frame and the
+ * ceiling legally burns most of it: a hitch mid-stride. A smooth-
+ * motion frame gets this walking ceiling instead; the 8-count floor
+ * still guarantees convergence within a few frames and THE PROMISED
+ * FADE blooms the spread mints in. Slicing, never deferral — total
+ * mints are unchanged.
+ */
+const VIS_SPRITE_WALK_MS = 12;
 /**
  * Idle body-sprite re-sample cadence, in frames (see the olKey fields
  * on DrawItem): a resting body's cosmetic life — breathing, gaze,
@@ -995,6 +1008,9 @@ interface BakedChunk {
   canvas: HTMLCanvasElement;
   data: ChunkData;
   rev: number;
+  /** Chunk coordinates — the bake queue's distance order reads them. */
+  cx: number;
+  cy: number;
   /** THE TEXTURE IS THE CANVAS'S SHADOW (stage lane): the GL handle
    *  for this entry's base canvas. Created at first stage emission,
    *  retargeted there when the pooled bake swap replaces the canvas,
@@ -1033,6 +1049,13 @@ interface BakedChunk {
     elevJob?: { job: ElevatedBakeJob; level: number };
     startElev: (level: number) => ElevatedBakeJob | null;
   };
+  /** THE UPLOAD FOLLOWS THE PAINT (foundation audit): the base job's
+   *  step counter at the last stage rev bump. A pending frame where
+   *  no slice ran owes no upload — the old code bumped rev EVERY
+   *  pending frame, re-submitting an unchanged multi-MB canvas per
+   *  frame for the whole life of a sliced bake (and for replace jobs,
+   *  whose blitted canvas never changes before the swap at all). */
+  stageSeenNext?: number;
 }
 
 const enum BulkKind {
@@ -1169,6 +1192,11 @@ export interface DrawItem {
    *  into the run key so the GL backend can cache the run's texture.
    *  A chunk edit changes the rev, the key, and thus the pixels. */
   pbKey?: number;
+  /** THE REV TELLS THE WHOLE TRUTH: the member's quantized dynamic-
+   *  paint signature (memberCutSig — reveal heights, door veil,
+   *  hearth glass), chained into the run REV so a cached run repaints
+   *  when the inputs its painter reads actually move. 0 = at rest. */
+  pbDyn?: number;
   /** The member's paint is animation-bound (hung walls breathe): its
    *  run re-revs on a short cadence instead of caching flat. */
   pbLive?: boolean;
@@ -1273,6 +1301,14 @@ interface WorldSprite {
    *  species bake neutral (0) and the same delta gives them their full
    *  shear — one blit path for every species. */
   windAt: number;
+  /** THE PROMISED FADE (foundation audit): frame the record FIRST
+   *  minted. A declined visible miss SKIPS its frame (the arrival
+   *  law) — this ramp is the fade-in the law wrote in three places
+   *  and no code implemented: fresh records ease from transparent
+   *  over ~9 frames, so the skipped remainder of a streaming forest
+   *  arrives as a bloom, never a single-frame pop. Cadence and zoom
+   *  re-bakes reuse the record and never re-fade. */
+  mint?: number;
 }
 
 export class Renderer {
@@ -1710,6 +1746,13 @@ export class Renderer {
     this.treeShadows.clear();
     this.treeVariantSprites.clear();
     this.treeVariantShadows.clear();
+    this.arrivalJump = true; // a plane hop is a jump whatever the coords say
+    // The atlas serves whichever canvases place() sees, so the old
+    // plane's population would age out on its own — but a crossing
+    // replaces the ENTIRE working set at once, and lazily re-placed
+    // survivors would pack around a page of corpses for ~10s. Wipe
+    // whole; the new plane's sprites re-place on their mint frames.
+    this.spriteAtlas.clear();
     // Cliff curtains go back through the pool — a bare clear() is how
     // a plane crossing leaks a working set (round 10's phantom).
     for (const sp of this.cliffSprites.values()) this.poolCanvas(sp.canvas);
@@ -4775,7 +4818,22 @@ export class Renderer {
     this.treeBakeBudget = TREE_BAKE_BUDGET;
     this.treeShadowBudget = TREE_BAKE_BUDGET;
     this.spriteBakeMsLeft = SPRITE_BAKE_MS;
-    this.visSpriteMsLeft = VIS_SPRITE_BAKE_MS;
+    // THE ARRIVAL TELLS JUMP FROM WALK: a camera jump (teleport,
+    // plane hop, spawn) keeps the covered-hitch ceiling; smooth
+    // motion paces the same mints across a few faded frames. The
+    // read lags one frame (the camera moves later in the pass) —
+    // the count floor covers the jump frame itself and the full
+    // ceiling lands on the next.
+    {
+      const jumped =
+        this.arrivalJump ||
+        Math.hypot(this.camera.x - this.arrivalPrevCamX, this.camera.y - this.arrivalPrevCamY) >
+          3;
+      this.arrivalJump = false;
+      this.arrivalPrevCamX = this.camera.x;
+      this.arrivalPrevCamY = this.camera.y;
+      this.visSpriteMsLeft = jumped ? VIS_SPRITE_BAKE_MS : VIS_SPRITE_WALK_MS;
+    }
     this.visArrivalCount = ARRIVAL_MIN_COUNT;
     this.spriteAtlas.frame();
     this.forcedBakeUsed = false;
@@ -6961,6 +7019,12 @@ export class Renderer {
     // quads/late-blits were drained by last frame's flush.
     const stage = this.stageActive();
     if (stage) {
+      // THE CLOCK IS A FRAME, NOT A FLUSH: pump the GL frame clock
+      // once per real frame (aging, sweeps, the shared upload pool)
+      // — begin() used to tick it per flush, which aged caches in
+      // flush units and let a later flush evict the same frame's
+      // working set.
+      this.stageGl!.frame();
       this.stageGl!.statsReset();
       this.stageUpMsLeft = GPU_URGENT_MS;
       this.stageStats.absent = 0;
@@ -7109,22 +7173,83 @@ export class Renderer {
       this.replaceQueue.length = 0;
     }
 
-    // THE BAKE BUDGET: advance queued jobs (visible first — the queue
-    // was filled in scan order, ring work appended last) until the
-    // per-frame slice budget is spent. At least one step always runs
+    // THE BAKE BUDGET: advance queued jobs until the per-frame slice
+    // budget is spent. THE QUEUE WALKS OUT FROM THE PLAYER, ROUND-
+    // ROBIN (foundation audit): the old loop drained the whole
+    // budget into the raster-scan-first entry, so the screen-corner
+    // chunk could finish before the ground under the player's feet
+    // and every other entry starved (re-uploading placeholders all
+    // the while). Distance order + one slice per entry per lap cuts
+    // every entry's pending window. At least one step always runs
     // when work exists, so progress is guaranteed even if a single
     // step overruns the budget (a hi-res detail band can).
     this.liveStats.chunk = newStarts;
+    if (this.chunkJobQueue.length > 1) {
+      const qcx = this.camera.x / CHUNK_SIZE - 0.5;
+      const qcy = this.camera.y / CHUNK_SIZE - 0.5;
+      this.chunkJobQueue.sort(
+        (a, b) =>
+          (a.cx - qcx) ** 2 + (a.cy - qcy) ** 2 - ((b.cx - qcx) ** 2 + (b.cy - qcy) ** 2),
+      );
+    }
     let msLeft = CHUNK_BAKE_MS;
-    for (const entry of this.chunkJobQueue) {
-      while (entry.pending && msLeft > 0) {
+    let anyPending = true;
+    while (msLeft > 0 && anyPending) {
+      anyPending = false;
+      for (const entry of this.chunkJobQueue) {
+        if (!entry.pending) continue;
         const t0 = performance.now();
         this.advanceChunkPending(entry);
         msLeft -= performance.now() - t0;
+        if (entry.pending) anyPending = true;
+        if (msLeft <= 0) break;
       }
-      if (msLeft <= 0) break;
     }
     if (stage) this.stageFlushGround();
+    if (stage) {
+      // THE STEADY LANE FINDS ITS CONSUMER (foundation audit):
+      // GPU_STEADY_MS was declared with zero consumers, so a ring
+      // chunk whose bake completed off-screen paid its 4.3MB texture
+      // upload on the exact frame it scrolled into view. Prepay
+      // completed ring bakes now, velocity-forward first — the
+      // leftover urgent allowance is genuinely idle here (visible
+      // chunks already synced above), and the LRU reclaims a wrong
+      // guess for free.
+      const glg = this.stageGl!;
+      const vx = this.camera.x - this.stagePrevCamX;
+      const vy = this.camera.y - this.stagePrevCamY;
+      this.stagePrevCamX = this.camera.x;
+      this.stagePrevCamY = this.camera.y;
+      const ccx = this.camera.x / CHUNK_SIZE - 0.5;
+      const ccy = this.camera.y / CHUNK_SIZE - 0.5;
+      let steadyMs = GPU_STEADY_MS;
+      const cands: Array<{ b: BakedChunk; score: number }> = [];
+      for (let cy = minCy - 1; cy <= maxCy + 1; cy++) {
+        for (let cx = minCx - 1; cx <= maxCx + 1; cx++) {
+          if (cx >= minCx && cx <= maxCx && cy >= minCy && cy <= maxCy) continue;
+          const bk = this.baked.get(`${cx},${cy}`);
+          if (!bk || bk.pending) continue;
+          let tex = bk.stageTex;
+          if (!tex) {
+            tex = bk.stageTex = { canvas: bk.canvas, rev: 0, filter: 'linear', staleOk: true };
+          }
+          if (tex.canvas !== bk.canvas) {
+            tex.canvas = bk.canvas;
+            tex.rev++;
+            bk.stageSeenNext = undefined;
+          }
+          cands.push({ b: bk, score: (cx + 0.5 - ccx) * vx + (cy + 0.5 - ccy) * vy });
+        }
+      }
+      cands.sort((a, b2) => b2.score - a.score);
+      for (const c of cands) {
+        if (steadyMs <= 0) break;
+        // floor=false: prefetch never forces an admission — a weak
+        // machine skips the prepay and pays at scroll-in as before.
+        const r = glg.ensure(c.b.stageTex!, steadyMs, false);
+        steadyMs -= r.spentMs;
+      }
+    }
   }
 
   /**
@@ -7147,13 +7272,23 @@ export class Renderer {
     const gl = this.stageGl!;
     let tex = baked.stageTex;
     if (!tex) {
-      tex = baked.stageTex = { canvas: baked.canvas, rev: 0, filter: 'linear' };
+      tex = baked.stageTex = { canvas: baked.canvas, rev: 0, filter: 'linear', staleOk: true };
     }
     if (tex.canvas !== baked.canvas) {
       tex.canvas = baked.canvas;
       tex.rev++;
-    } else if (baked.pending) {
-      tex.rev++;
+      baked.stageSeenNext = undefined;
+    } else if (baked.pending && baked.pending.job.canvas === baked.canvas) {
+      // THE UPLOAD FOLLOWS THE PAINT: a LIVE sliced job repaints the
+      // blitted canvas between frames — but only frames where a slice
+      // actually ran owe an upload; a queued-but-unadvanced job (and
+      // every replace job, which builds into a DIFFERENT canvas)
+      // re-submitted an unchanged multi-MB canvas every frame of an
+      // arrival, unmetered. job.next is the slice clock.
+      if (baked.pending.job.next !== baked.stageSeenNext) {
+        tex.rev++;
+        baked.stageSeenNext = baked.pending.job.next;
+      }
     }
     const r = gl.ensure(tex, this.stageUpMsLeft);
     this.stageUpMsLeft -= r.spentMs;
@@ -7223,6 +7358,8 @@ export class Renderer {
       canvas: pending.job.canvas,
       data,
       rev: data.rev ?? 0,
+      cx,
+      cy,
       px: bakePx,
       lifted: [],
       pending,
@@ -7884,16 +8021,23 @@ export class Renderer {
     entry: ChunkRegister<ChunkData>,
   ): ChunkRegister<ChunkData> {
     // Stale bakes for stretches that no longer exist die here; kept
-    // sigs revalidate lazily at emission.
-    const pfx = key + '|';
-    for (const bk of this.bandCache.keys()) {
-      if (bk.startsWith(pfx)) {
+    // sigs revalidate lazily at emission. THE LEDGER KNOWS ITS CHUNK
+    // (foundation audit): reads go through the per-chunk index — the
+    // old whole-cache startsWith scan ran once per register rebuild,
+    // O(total bands) × 9 rebuilds per arrival.
+    const set = this.bandKeysByChunk.get(key);
+    if (set) {
+      for (const bk of [...set]) {
         const live = entry.stretches.some((ss) => ss?.some((st) => key + '|' + st.key === bk));
         if (!live) this.dropBand(bk);
       }
     }
     return entry;
   }
+
+  /** Band keys ("cx,cy|stretch") grouped by chunk — maintained at the
+   *  cache's one set site and its ONE DOOR (dropBand/dropAllBands). */
+  private readonly bandKeysByChunk = new Map<string, Set<string>>();
 
   /**
    * Replay one register row for one chunk segment, in the scan's own
@@ -8483,104 +8627,118 @@ export class Renderer {
     let sig = 17;
     let anyCut = false;
     for (let i = s.i0; i <= s.i1; i++) {
-      const m = list[i]!;
-      switch (m.kind) {
-        case RaisedKind.Wall:
-        case RaisedKind.DiagWall: {
-          if (this.cutCtx > 0.001) {
-            const dy = m.ty - this.ownPY;
-            if (dy >= -2.5 && dy <= 12.5 && Math.abs(m.tx + 0.5 - this.ownPX) <= 13.5) {
-              const h0 = this.wallHeightAt(game, m.tx, m.ty);
-              const h1 = this.wallHeightAt(game, m.tx, m.ty - 1);
-              if (h0 !== WALL_H || h1 !== WALL_H) {
-                anyCut = true;
-                sig = (sig * 31 + Math.round(h0 * 48) * 397 + Math.round(h1 * 48)) | 0;
-              }
-            }
-          }
-          // THE SKY MAY KEY A BAKE ONLY QUANTIZED: hearth-lit glass
-          // warms with sky.flame — a slow smoothstep of the game
-          // clock, never per-frame flicker. 24 steps make re-bakes a
-          // handful per dawn/dusk, each step under 0.008 of glass
-          // alpha. 0 by day, so day sigs are byte-identical to old.
-          if (m.tile === Tile.WallWoodWindow || m.tile === Tile.WallStoneWindow) {
-            const f = Math.round(this.sky.flame * 24);
-            if (f > 0) {
-              anyCut = true;
-              sig = (sig * 31 + 601 * 7 + f) | 0;
-            }
-          }
-          break;
-        }
-        case RaisedKind.GarrisonWall: {
-          const dy = m.ty - this.ownPY;
-          if (dy >= -2.5 && dy <= 16.5 && Math.abs(m.tx + 0.5 - this.ownPX) <= 13.5) {
-            const h0 = this.garrisonHeightAt(game, m.tx, m.ty);
-            const h1 = this.garrisonHeightAt(game, m.tx, m.ty - 1);
-            if (h0 !== GARRISON_H || h1 !== GARRISON_H) {
-              anyCut = true;
-              sig = (sig * 31 + Math.round(h0 * 48) * 397 + Math.round(h1 * 48)) | 0;
-            }
-          }
-          break;
-        }
-        case RaisedKind.Doorway:
-        case RaisedKind.GarrisonGate: {
-          // A door mid-ease (or mid-refusal-shudder) animates per
-          // frame — live, exactly like a shaking destructible. At
-          // rest THE TILE IS THE STATE: the settled pose is already
-          // in the content sig via the chunk rev.
-          if (this.doorHot(m.tx, m.ty)) return -1;
-          // The threshold veil melts as bodies near — continuous in
-          // their motion, so it churns the sig while they walk (live,
-          // via the stability window) and settles when they rest.
-          const v = Math.round(this.doorVeil(game, m.tx + m.len / 2, m.ty + 0.5) * 32);
-          if (v < 32) {
-            anyCut = true;
-            sig = (sig * 31 + 419 * (m.kind === RaisedKind.Doorway ? 3 : 5) + v) | 0;
-          }
-          // Doors sink with the runs they join — fold the reveal
-          // heights exactly like their wall family.
-          const garr = m.kind === RaisedKind.GarrisonGate;
-          if (garr || this.cutCtx > 0.001) {
-            const dy = m.ty - this.ownPY;
-            if (dy >= -2.5 && dy <= (garr ? 16.5 : 12.5) && Math.abs(m.tx + 0.5 - this.ownPX) <= 13.5) {
-              const full = garr ? GARRISON_H : WALL_H;
-              const hAt = garr
-                ? this.garrisonHeightAt(game, m.tx, m.ty)
-                : this.wallHeightAt(game, m.tx, m.ty);
-              const hN = garr
-                ? this.garrisonHeightAt(game, m.tx, m.ty - 1)
-                : this.wallHeightAt(game, m.tx, m.ty - 1);
-              if (hAt !== full || hN !== full) {
-                anyCut = true;
-                sig = (sig * 31 + Math.round(hAt * 48) * 397 + Math.round(hN * 48)) | 0;
-              }
-            }
-          }
-          break;
-        }
-        case RaisedKind.Generic: {
-          // THE STEP-ASIDE FADE's support box: a tall prop near the
-          // own body fades per frame, so it draws live there. The box
-          // is conservative — a few live props beside the player is
-          // exactly today's cost.
-          if (
-            Math.abs(m.tx + 0.5 - this.ownPX) <= 4.5 &&
-            m.ty - this.ownPY >= -2.5 &&
-            m.ty - this.ownPY <= 6.5
-          )
-            return -1;
-          break;
-        }
-        default:
-          break; // ramps and rails never animate
+      const c = this.memberCutSig(game, list[i]!);
+      if (c === -1) return -1;
+      if (c !== 0) {
+        anyCut = true;
+        sig = (Math.imul(sig, 31) + c) | 0;
       }
-      if (this.propShakes.size > 0 && destructibleInfo(m.tile) && this.propShakeX(m.tx, m.ty) !== 0)
-        return -1;
     }
     if (!anyCut) return 0;
     return sig === 0 || sig === -1 ? 1 : sig;
+  }
+
+  /**
+   * One member's dynamic-paint signature — the per-member atom the
+   * stretch sig folds, and (since the foundation audit) the term the
+   * keyed wall-run rev folds too. ONE LAW, TWO CONSUMERS: any input a
+   * raised painter reads that can move between frames must appear
+   * here, or a cached run freezes mid-ease (the audit's confirmed
+   * failure: reveal cuts, door veils and hearth glass froze while the
+   * player moved through the far half of the reveal field).
+   *
+   *  -1 — animates continuously THIS frame (door swing, shake,
+   *       step-aside support): the stretch stays hot and the wall
+   *       run refuses its key;
+   *   0 — nothing dynamic touches this member;
+   *  >0 — quantized hash of every off-rest input (heights 1/48 tile,
+   *       veil 1/32, flame 1/24).
+   */
+  private memberCutSig(game: ClientGame, m: RaisedMember): number {
+    let sig = 0;
+    switch (m.kind) {
+      case RaisedKind.Wall:
+      case RaisedKind.DiagWall: {
+        if (this.cutCtx > 0.001) {
+          const dy = m.ty - this.ownPY;
+          if (dy >= -2.5 && dy <= 12.5 && Math.abs(m.tx + 0.5 - this.ownPX) <= 13.5) {
+            const h0 = this.wallHeightAt(game, m.tx, m.ty);
+            const h1 = this.wallHeightAt(game, m.tx, m.ty - 1);
+            if (h0 !== WALL_H || h1 !== WALL_H)
+              sig = (sig * 31 + Math.round(h0 * 48) * 397 + Math.round(h1 * 48) + 17) | 0;
+          }
+        }
+        // THE SKY MAY KEY A BAKE ONLY QUANTIZED: hearth-lit glass
+        // warms with sky.flame — a slow smoothstep of the game
+        // clock, never per-frame flicker. 24 steps make re-bakes a
+        // handful per dawn/dusk, each step under 0.008 of glass
+        // alpha. 0 by day, so day sigs are byte-identical to old.
+        if (m.tile === Tile.WallWoodWindow || m.tile === Tile.WallStoneWindow) {
+          const f = Math.round(this.sky.flame * 24);
+          if (f > 0) sig = (sig * 31 + 601 * 7 + f) | 0;
+        }
+        break;
+      }
+      case RaisedKind.GarrisonWall: {
+        const dy = m.ty - this.ownPY;
+        if (dy >= -2.5 && dy <= 16.5 && Math.abs(m.tx + 0.5 - this.ownPX) <= 13.5) {
+          const h0 = this.garrisonHeightAt(game, m.tx, m.ty);
+          const h1 = this.garrisonHeightAt(game, m.tx, m.ty - 1);
+          if (h0 !== GARRISON_H || h1 !== GARRISON_H)
+            sig = (sig * 31 + Math.round(h0 * 48) * 397 + Math.round(h1 * 48) + 17) | 0;
+        }
+        break;
+      }
+      case RaisedKind.Doorway:
+      case RaisedKind.GarrisonGate: {
+        // A door mid-ease (or mid-refusal-shudder) animates per
+        // frame — live, exactly like a shaking destructible. At
+        // rest THE TILE IS THE STATE: the settled pose is already
+        // in the content sig via the chunk rev.
+        if (this.doorHot(m.tx, m.ty)) return -1;
+        // The threshold veil melts as bodies near — continuous in
+        // their motion, so it churns the sig while they walk (live,
+        // via the stability window) and settles when they rest.
+        const v = Math.round(this.doorVeil(game, m.tx + m.len / 2, m.ty + 0.5) * 32);
+        if (v < 32) sig = (sig * 31 + 419 * (m.kind === RaisedKind.Doorway ? 3 : 5) + v) | 0;
+        // Doors sink with the runs they join — fold the reveal
+        // heights exactly like their wall family.
+        const garr = m.kind === RaisedKind.GarrisonGate;
+        if (garr || this.cutCtx > 0.001) {
+          const dy = m.ty - this.ownPY;
+          if (dy >= -2.5 && dy <= (garr ? 16.5 : 12.5) && Math.abs(m.tx + 0.5 - this.ownPX) <= 13.5) {
+            const full = garr ? GARRISON_H : WALL_H;
+            const hAt = garr
+              ? this.garrisonHeightAt(game, m.tx, m.ty)
+              : this.wallHeightAt(game, m.tx, m.ty);
+            const hN = garr
+              ? this.garrisonHeightAt(game, m.tx, m.ty - 1)
+              : this.wallHeightAt(game, m.tx, m.ty - 1);
+            if (hAt !== full || hN !== full)
+              sig = (sig * 31 + Math.round(hAt * 48) * 397 + Math.round(hN * 48) + 17) | 0;
+          }
+        }
+        break;
+      }
+      case RaisedKind.Generic: {
+        // THE STEP-ASIDE FADE's support box: a tall prop near the
+        // own body fades per frame, so it draws live there. The box
+        // is conservative — a few live props beside the player is
+        // exactly today's cost.
+        if (
+          Math.abs(m.tx + 0.5 - this.ownPX) <= 4.5 &&
+          m.ty - this.ownPY >= -2.5 &&
+          m.ty - this.ownPY <= 6.5
+        )
+          return -1;
+        break;
+      }
+      default:
+        break; // ramps and rails never animate
+    }
+    if (this.propShakes.size > 0 && destructibleInfo(m.tile) && this.propShakeX(m.tx, m.ty) !== 0)
+      return -1;
+    return sig === -1 ? 1 : sig;
   }
 
   /** Per-stretch cut stability: sig last seen + how long it has held.
@@ -8664,6 +8822,13 @@ export class Renderer {
           this.bandStats.bakes++;
           if (bake) this.releaseStretchBake(bake);
           this.bandCache.set(ck, fresh);
+          {
+            // THE LEDGER KNOWS ITS CHUNK: index beside the one set.
+            const cpfx = ck.slice(0, ck.indexOf('|'));
+            let set = this.bandKeysByChunk.get(cpfx);
+            if (!set) this.bandKeysByChunk.set(cpfx, (set = new Set()));
+            set.add(ck);
+          }
           bake = fresh;
         }
       }
@@ -8742,6 +8907,11 @@ export class Renderer {
    *  dedupe wants A set; the real runSeen already served collect). */
   private readonly stageRebuildSeen = new Set<number>();
 
+  /** THE PROMISED FADE's ramp (see WorldSprite.mint). */
+  private mintAlpha(sp: { mint?: number }): number {
+    return sp.mint !== undefined ? Math.min(1, (this.frameNo - sp.mint + 1) / 9) : 1;
+  }
+
   private stageMarkRaised(game: ClientGame, items: DrawItem[], before: number, m: RaisedMember): void {
     if (items.length === before) return;
     const s = this.camera.scale;
@@ -8769,6 +8939,14 @@ export class Renderer {
     const breathes =
       (m.kind === RaisedKind.Wall || m.kind === RaisedKind.GarrisonWall) &&
       !!wallHungInfo(game.world.detailAt(m.tx, m.ty));
+    // THE REV TELLS THE WHOLE TRUTH (foundation audit): the member's
+    // dynamic-paint signature — reveal cut heights, door veil, hearth
+    // glass — rides the item into the run rev, so a cached run
+    // repaints the moment the very thing that animates it moves. A
+    // continuously-animating member (-1: door swing, shake,
+    // step-aside) refuses the key outright and the run paints live,
+    // exactly the band lane's hot semantics.
+    const dyn = this.memberCutSig(game, m);
     const keyBase =
       (hashCoords(73, m.tx, m.ty) ^
         ((m.kind as number) << 2) ^
@@ -8779,7 +8957,10 @@ export class Renderer {
       const it = items[j]!;
       const idx = j - before;
       it.pb = pb;
-      it.pbKey = (keyBase ^ (idx << 17)) | 0;
+      if (dyn !== -1) {
+        it.pbKey = (keyBase ^ (idx << 17)) | 0;
+        it.pbDyn = dyn;
+      }
       it.pbLive = breathes;
       it.stageRebuild = () => {
         const scratch: DrawItem[] = [];
@@ -9133,12 +9314,19 @@ export class Renderer {
     if (!sb) return;
     this.releaseStretchBake(sb);
     this.bandCache.delete(key);
+    const cpfx = key.slice(0, key.indexOf('|'));
+    const set = this.bandKeysByChunk.get(cpfx);
+    if (set) {
+      set.delete(key);
+      if (set.size === 0) this.bandKeysByChunk.delete(cpfx);
+    }
   }
 
   /** Every band at once, through the same door (THE CROSSING). */
   private dropAllBands(): void {
     for (const sb of this.bandCache.values()) this.releaseStretchBake(sb);
     this.bandCache.clear();
+    this.bandKeysByChunk.clear();
     // The ledger is derived, never drifted: with no bands standing,
     // the only honest total is zero. Float dust from the per-bucket
     // arithmetic dies here rather than accreting across a session.
@@ -13139,6 +13327,11 @@ export class Renderer {
    *  cadence re-bakes) — see SPRITE_BAKE_MS. */
   spriteBakeMsLeft = 0;
   visSpriteMsLeft = 0;
+  /** THE ARRIVAL TELLS JUMP FROM WALK: last frame's camera + the
+   *  plane-hop flag feed the arrival ceiling's classification. */
+  private arrivalPrevCamX = 0;
+  private arrivalPrevCamY = 0;
+  private arrivalJump = true;
   /** Law 2's count floor (bakeAdmission.ARRIVAL_MIN_COUNT a frame). */
   visArrivalCount = 0;
   /** The frame's y-sorted draw list — persistent, cleared at reuse. */
@@ -13169,6 +13362,10 @@ export class Renderer {
     dh: number;
   }> = [];
   private stageUpMsLeft = 0;
+  /** Camera position last frame — the steady prepay lane's velocity
+   *  read (THE STEADY LANE FINDS ITS CONSUMER). */
+  private stagePrevCamX = 0;
+  private stagePrevCamY = 0;
   private readonly stageStats = { absent: 0, stale: 0 };
 
   /** ?stage=world (phase A2): the whole y-sorted world pass renders
@@ -13279,6 +13476,23 @@ export class Renderer {
       ph = y1 - py;
       if (pw <= 0 || ph <= 0) return;
     }
+    // THE DEVICE GRID reaches the scratch lane (foundation audit):
+    // boxes snap OUTWARD to the device lattice, so the GL paint
+    // translate and the sentinel quad both land on whole texels. An
+    // unsnapped box put the painters' snapPx-disciplined ink on
+    // fractional texels and sampled it back LINEAR at a fractional
+    // dest — two filters deep, up to ~1px of per-object softening the
+    // canvas oracle (one rasterization) never shows. The size snaps
+    // PHASE-FREE (ceil of the css size + one cover texel) so a keyed
+    // box's device dims never alternate as the camera pans — a
+    // phase-coupled ceil would re-mint the cache every other frame.
+    {
+      const d = this.dpr();
+      px = Math.floor(px * d) / d;
+      py = Math.floor(py * d) / d;
+      pw = (Math.ceil(pw * d) + 1) / d;
+      ph = (Math.ceil(ph * d) + 1) / d;
+    }
     this.stagePaintCount(tag, pw, ph);
     this.stageWorldItems.push({
       kind: 'paint',
@@ -13370,6 +13584,14 @@ export class Renderer {
     pw = x1 - px;
     ph = y1 - py;
     if (pw <= 0 || ph <= 0) return;
+    // THE DEVICE GRID reaches the scratch lane (see stagePushPaintRaw).
+    {
+      const d = this.dpr();
+      px = Math.floor(px * d) / d;
+      py = Math.floor(py * d) / d;
+      pw = (Math.ceil(pw * d) + 1) / d;
+      ph = (Math.ceil(ph * d) + 1) / d;
+    }
     this.stagePaintCount(item.body ? 'body' : item.bulk !== undefined ? 'bulk' : 'item', pw, ph);
     this.stageWorldItems.push({
       kind: 'paint',
@@ -13402,6 +13624,7 @@ export class Renderer {
    */
   private stageWorldPass(items: DrawItem[]): void {
     const gl = this.stageWorldGl!;
+    gl.frame(); // THE CLOCK IS A FRAME, NOT A FLUSH (see stageGl)
     gl.statsReset();
     const out = this.stageWorldItems;
     out.length = 0;
@@ -13585,6 +13808,7 @@ export class Renderer {
         // walls) re-rev on a 3-frame cadence: cloth sway at 20Hz,
         // uploads cut 3×; static runs paint once per zoom/dpr/edit.
         let runKey = 0x51ed;
+        let runDyn = 0;
         let anim = false;
         let keyable = true;
         for (const it2 of run) {
@@ -13594,6 +13818,7 @@ export class Renderer {
             break;
           }
           runKey = (Math.imul(runKey, 31) + it2.pbKey) | 0;
+          runDyn = (Math.imul(runDyn, 31) + (it2.pbDyn ?? 0)) | 0;
           if (it2.pbLive === true) anim = true;
         }
         const uw = ux1 - ux0;
@@ -13633,6 +13858,14 @@ export class Renderer {
               (this.dpr() * 7) ^
               (this.outlineOn ? 0x40000 : 0) ^
               (this.sky.moonlit ? 0x80000 : 0) ^
+              // THE REV TELLS THE WHOLE TRUTH: the chained member
+              // dynamic sigs — a reveal cut or door veil in motion
+              // re-revs the run the frame it moves, and holds the
+              // cached pose the frame it settles. Without this term
+              // the audit's confirmed freeze: cuts/veils driven from
+              // the far reveal field (or by NPCs) held their
+              // mint-frame pixels while the world animated.
+              (runDyn !== 0 ? Math.imul(runDyn, 0x27d4eb2f) : 0) ^
               // Per-run phase stagger (the tree-cadence law): the
               // breathing herd never repaints in one frame.
               (anim ? Math.imul(((this.frameNo + (runKey & 63)) / 3) | 0, 0x9e37) : 0)) |
@@ -13788,7 +14021,12 @@ export class Renderer {
     if (!this.stageGround || this.stageDead) return false;
     if (!this.stageGl) {
       try {
-        this.stageGl = new GlStage(document.createElement('canvas'));
+        // The ground stage holds only chunk quads (~200MB measured
+        // working set) — half the default store is already 25%
+        // headroom (see GlStage.texBudgetBytes).
+        this.stageGl = new GlStage(document.createElement('canvas'), {
+          texBudgetBytes: 256 * 1024 * 1024,
+        });
       } catch {
         this.stageDead = true;
         return false;
@@ -13873,7 +14111,11 @@ export class Renderer {
         parts.push(
           `stage world q ${ws.quads} p ${ws.paints} split ${ws.splits} ` +
             `scr ${(w.scratchUploadBytes / 1048576).toFixed(1)}MB/${w.scratchPaints} c${w.scratchCachedHits} sheets ${w.sheetUploads} ` +
-            `up ${(w.uploadedBytes / 1048576).toFixed(1)}MB tex ${(w.textureBytes / 1048576).toFixed(0)}MB/${w.textureCount} draws ${w.drawCalls}`,
+            `up ${(w.uploadedBytes / 1048576).toFixed(1)}MB tex ${(w.textureBytes / 1048576).toFixed(0)}MB/${w.textureCount} draws ${w.drawCalls} ` +
+            // THE WHOLE COMMIT CONFESSES: total resident GPU bytes
+            // (records + keyed + scratch + sheets + layer) and
+            // draw-time refreshes served stale under the budget.
+            `res ${(w.residentBytes / 1048576).toFixed(0)}MB k${(w.keyedResidentBytes / 1048576).toFixed(0)} defer ${w.drawDeferred}`,
         );
       }
     }
@@ -13911,12 +14153,13 @@ export class Renderer {
    */
   private cullHiddenTrees(items: DrawItem[]): void {
     if (!this.occlusionOn) return;
-    // A margin of insurance. The box comes from treeExtent, which is
-    // the painter's own reach — but the BLIT then shears the whole
-    // sprite about its ground line by the live wind's delta from the
-    // bake, and a hair of that lands outside the modelled box. It costs
-    // a few trees at the frame edge that would have been skipped; a
-    // crown popping in at the border costs the scene.
+    // A margin of insurance. The box comes from treeExtent (the
+    // painter's own reach, wind terms included) grown by the standing
+    // lean's crown throw at collect time — so every modelled source
+    // of overhang is in the box itself and M covers only AA bleed and
+    // future drift. It costs a few trees at the frame edge that would
+    // have been skipped; a crown popping in at the border costs the
+    // scene.
     const M = 24;
     const W = this.w + M;
     const H = this.h + M;
@@ -13927,8 +14170,9 @@ export class Renderer {
       if (it.occX1! > -M && it.occY1! > -M && it.occX0! < W && it.occY0! < H) continue;
       it.occCulled = true;
       offscreen++;
-      const sp = this.treeSprites.get(it.occKey);
-      if (sp) sp.used = this.frameNo; // never re-bake on scrolling back in
+      // (No keep-warm touch since THE SPECIES SHEET: trees left
+      // treeSprites for the bounded archetype map, which never
+      // evicts — a culled stand costs nothing to scroll back to.)
     }
     this.liveStats.offscreen = offscreen;
   }
@@ -15079,6 +15323,7 @@ export class Renderer {
     // and nothing to pay for.
     const visNow = b.x < this.w && b.x + b.w > 0 && b.y < this.h && b.y + b.h > 0;
     if (stale) {
+      const hadSp = sp !== undefined;
       const lane = this.admitSpriteBake(!sp, visNow);
       if (lane !== BakeLane.None) {
         this.treeBakeBudget--;
@@ -15091,6 +15336,7 @@ export class Renderer {
           this.visSpriteMsLeft -= took;
           this.visArrivalCount--;
         }
+        if (!hadSp) sp.mint = this.frameNo; // THE PROMISED FADE
         this.treeSprites.set(key, sp);
       }
     }
@@ -15143,7 +15389,10 @@ export class Renderer {
     // and the fade stays reserved for true body-hiders (bookcases,
     // pillars, canopies, walls' own veil). The seat the own body is
     // MOUNTED on stands its ground by the same law.
-    const fade = this.propFade(key, tile, tx, ty, dx0, dy0, dw, dh);
+    // THE PROMISED FADE: fresh mints ease in over ~9 frames — the
+    // arrival law's written promise, now kept.
+    const mintA = this.mintAlpha(sp);
+    const fade = this.propFade(key, tile, tx, ty, dx0, dy0, dw, dh) * mintA;
     if (this.stageAssembling) {
       // THE OFF-SCREEN QUAD STANDS DOWN (round 9's law, stage form):
       // the canvas clips pad-band blits for free, but a staged quad
@@ -15279,6 +15528,7 @@ export class Renderer {
     const gy = by + syT * 0.3;
     const visNow = bx + half > 0 && bx - half < this.w && gy + s * 0.5 > 0 && gy - top < this.h;
     if (stale) {
+      const hadSp = sp !== undefined;
       const lane = this.admitSpriteBake(!sp, visNow);
       if (lane !== BakeLane.None) {
         this.treeBakeBudget--;
@@ -15291,6 +15541,7 @@ export class Renderer {
           this.visSpriteMsLeft -= took;
           this.visArrivalCount--;
         }
+        if (!hadSp) sp.mint = this.frameNo; // THE PROMISED FADE
         this.treeSprites.set(key, sp);
       }
     }
@@ -15304,6 +15555,8 @@ export class Renderer {
     {
       sp.used = this.frameNo;
       const k = s / sp.scale;
+      // THE PROMISED FADE (see drawPropOutlined).
+      const mintA = this.mintAlpha(sp);
       if (this.stageAssembling) {
         const fx0 = bx - sp.ax * k;
         const fy0 = by + syT * 0.3 - sp.ay * k;
@@ -15325,11 +15578,12 @@ export class Renderer {
           dw: sp.cw * k,
           dh: sp.ch * k,
           m: [1, 0, 0, 1, fx0, fy0],
-          alpha: this.stageItemAlpha,
+          alpha: this.stageItemAlpha * mintA,
           blend: StageBlend.SourceOver,
         });
         this.stageWorldStats.quads++;
       } else {
+        if (mintA < 1) this.ctx.globalAlpha = mintA;
         this.ctx.drawImage(
           sp.canvas,
           0,
@@ -15341,6 +15595,7 @@ export class Renderer {
           sp.cw * k,
           sp.ch * k,
         );
+        if (mintA < 1) this.ctx.globalAlpha = 1;
       }
     }
     // THE GROWING FRAME: a framed row wears its hoops over the plant
@@ -15681,6 +15936,7 @@ export class Renderer {
       const gy = by + syT * 0.3;
       const visNow = bx + half > 0 && bx - half < this.w && gy + s * 0.5 > 0 && gy - top < this.h;
       if (stale) {
+        const hadSp = sp !== undefined;
         const lane = this.admitSpriteBake(!sp, visNow);
         if (lane !== BakeLane.None) {
           this.treeBakeBudget--;
@@ -15700,6 +15956,7 @@ export class Renderer {
             this.visSpriteMsLeft -= took;
             this.visArrivalCount--;
           }
+          if (!hadSp) sp.mint = this.frameNo; // THE PROMISED FADE
           this.treeVariantSprites.set(vkey, sp);
         }
       }
@@ -15721,7 +15978,11 @@ export class Renderer {
       const dh = sp.ch * k;
       // THE STEP-ASIDE FADE: a canopy that truly occludes the own
       // body politely fades — plain globalAlpha, exact layering.
-      const fade = this.occluderFade(key, dx0, dy0, dw, dh, wy - this.ownPY > -FRONT_EPS);
+      // THE PROMISED FADE rides the same alpha: a freshly-minted
+      // archetype eases every instance in together over ~9 frames.
+      const mintA = this.mintAlpha(sp);
+      const fade =
+        this.occluderFade(key, dx0, dy0, dw, dh, wy - this.ownPY > -FRONT_EPS) * mintA;
       if (fade < 1) this.ctx.globalAlpha = fade;
       wind = windScalarAt(wx, wy, tSec);
       // THE SHEAR CARRIES THE SWAY: every species shears the cached
@@ -16015,7 +16276,16 @@ export class Renderer {
             this.spriteBakeMsLeft -= performance.now() - t0;
             this.treeVariantShadows.set(vkey, sh);
           }
-          if (sh) {
+          // THE CAST WAITS FOR ITS TREE (foundation audit): shadow
+          // first-bakes are unbudgeted (a missing cast is visible),
+          // so on arrival a silhouette could land frames before its
+          // body archetype — a cast with no tree over it read as a
+          // broken trunk at the leading screen edge. The stamp
+          // stands down until the body exists, then blooms in on
+          // the body's own mint ramp (THE PROMISED FADE).
+          const bodySp = this.treeVariantSprites.get(vkey);
+          if (sh && bodySp) {
+            const mintA = this.mintAlpha(bodySp);
             sh.used = this.frameNo;
             const k = s / sh.scale;
             // THE SHEAR CARRIES THE SWAY, shadow half: the live wind's
@@ -16040,6 +16310,9 @@ export class Renderer {
             const dwS = sh.cw * k;
             const dhS = sh.ch * k;
             const smg = Math.abs(sx) * dhS + 4;
+            // THE PROMISED FADE, canvas half (the end-of-pass
+            // globalAlpha reset restores it).
+            if (mintA < 1 && c) c.globalAlpha *= mintA;
             // THE OFF-SCREEN CAST STANDS DOWN (round 14): the padded
             // grid collects trees well outside the viewport so crowns
             // can lean in — but a cast is a ground smear at its base,
@@ -16067,7 +16340,7 @@ export class Renderer {
                 m: sway
                   ? [k, 0, sx * k, k, bx - sh.ax * k - sh.ay * sx * k, groundY - sh.ay * k]
                   : stageAt(dx0, dy0),
-                alpha: Math.min(1, this.sky.shadowAlpha / this.sdwLayerAlpha),
+                alpha: Math.min(1, this.sky.shadowAlpha / this.sdwLayerAlpha) * mintA,
                 blend: StageBlend.SourceOver,
               });
               this.stageWorldStats.quads++;
@@ -17180,6 +17453,11 @@ export class Renderer {
         const shiver = this.nodeShiverAt(tx, ty) * s * 0.028;
         const occ = grow >= 1 ? treeExtent(this.treeOrSaplingModel(tile, h)) : null;
         const occGy = p.y + s * this.camera.yScale * 0.3;
+        // ONE FRAME CONTAINS EVERY POSE THE BLIT CAN DRAW (foundation
+        // audit): treeExtent now folds the sheared-neutral envelope —
+        // full wind + standing lean about the ground line — into the
+        // box itself (TREE_SHEAR_MAX), proven per shipping archetype
+        // by treeExtent.test.ts. No side-channel pads here.
         return {
           sortY: ty + 0.9,
           occKey: occ ? treeKey(tx + 0.5, ty + 0.5, tile) : undefined,

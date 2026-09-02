@@ -498,6 +498,21 @@ export interface TreeExtent {
  */
 const WIND_MAX = 1.4;
 
+/**
+ * THE SHEAR'S OWN CEILING (foundation audit). Since THE SPECIES SHEET
+ * the bake is the NEUTRAL pose and the blit shears it about the ground
+ * line by the FULL live wind (|wind| · 0.055) plus THE STANDING LEAN
+ * (treeLean: ±3.5 · 0.008 = ±0.028). That throw is LINEAR in height
+ * while the painter's own wind displacement follows hf^1.4 — so at mid
+ * heights the sheared neutral ink can poke past the wind-pose
+ * envelope, and the proof battery caught an archetype escaping the old
+ * box by 0.024 tiles. The extent below therefore contains BOTH poses:
+ * the wind-painted ink and the neutral ink under the worst blit shear.
+ * ONE FRAME CONTAINS EVERY POSE THE BLIT CAN DRAW — cull boxes and
+ * bake canvases stop needing side-channel pads.
+ */
+export const TREE_SHEAR_MAX = WIND_MAX * 0.055 + 0.028;
+
 /** Blob-stamp reach, as a multiple of a cluster's r (see the cluster
  *  stamp in paintTree and facetBlob's 0.82..1.12 vertex jitter): the
  *  widest of the three stamps is the shade blob — scale 0.98, squash
@@ -538,6 +553,13 @@ export function treeExtent(m: TreeModel): TreeExtent {
     const dy = amp * 0.55;
     grow(c.x - BLOB_X0 * r - dx, c.y - BLOB_DOWN * r - dy);
     grow(c.x + BLOB_X1 * r + dx, c.y + BLOB_UP * r + dy);
+    // The sheared NEUTRAL pose (see TREE_SHEAR_MAX): the blit throws
+    // the cluster's rest-position edge by shear · height. The rest
+    // pose keeps the gust clamp (±0.05H — sampled from the gust
+    // field, not scaled by the wind override) and the flutter amp.
+    const yTop = Math.max(0, c.y + BLOB_UP * r + dy);
+    grow(c.x - BLOB_X0 * r - 0.05 * H - amp - TREE_SHEAR_MAX * yTop, c.y);
+    grow(c.x + BLOB_X1 * r + 0.05 * H + amp + TREE_SHEAR_MAX * yTop, c.y);
   }
 
   // --- Wood. A limb's polygon offsets each spine point by its
@@ -557,6 +579,14 @@ export function treeExtent(m: TreeModel): TreeExtent {
       const drag = b.tip >= 0 ? tipDrag * u * u : 0;
       grow(px - w - sway - drag, py - w - drag);
       grow(px + w + sway + drag, py + w + drag);
+      // The sheared NEUTRAL spine point (see TREE_SHEAR_MAX): the
+      // rest pose keeps the windless share of the tip drag (gust
+      // clamp + flutter), and the throw reads the point's TOP edge —
+      // the shear is linear in height, so the highest ink governs.
+      const drag0 = b.tip >= 0 ? (0.05 * H + 1.2 * 0.02 * (0.5 + m.spread)) * u * u : 0;
+      const shearT = TREE_SHEAR_MAX * Math.max(0, py + w + drag0);
+      grow(px - w - drag0 - shearT, py);
+      grow(px + w + drag0 + shearT, py);
       // The bark seam ticks stand 0.13 tiles above their spine point.
       if (b.level === 0) grow(px, py + 0.13);
     }
@@ -574,6 +604,12 @@ export function treeExtent(m: TreeModel): TreeExtent {
       const [px, py] = cu.pts[k]!;
       grow(px - swing, py);
       grow(px + swing, py + lift);
+      // The sheared NEUTRAL vertex (see TREE_SHEAR_MAX): rest swing
+      // (pendulum + ripple, no wind) thrown by shear · height, read
+      // at the LIFTED vertex — the swing's high end governs.
+      const nSwing = sw + 0.085 + TREE_SHEAR_MAX * Math.max(0, py + lift);
+      grow(px - nSwing, py);
+      grow(px + nSwing, py);
     }
   }
 

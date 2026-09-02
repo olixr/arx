@@ -24,7 +24,7 @@
  */
 import { computeRuns } from './stageBatch.js';
 import { BLEND_GL_FUNC, blendNeedsAlphaTarget, blendNeedsOpaqueTarget } from './stageBlend.js';
-import { GPU_COST_SEED_MS_PER_MB, admitUpload, nextUploadCost, uploadEstMs } from './gpuBudget.js';
+import { GPU_COST_SEED_MS_PER_MB, GPU_URGENT_MS, admitUpload, nextUploadCost, uploadEstMs } from './gpuBudget.js';
 import type { StageBackend, StageItem, StagePaint, StageTexture } from './stageTypes.js';
 
 const VERT_SRC = `#version 300 es
@@ -66,6 +66,19 @@ interface TexRecord {
   used: number;
 }
 
+/** THE SCRATCH LEDGER's cell: one keyed paint's exact-size
+ *  canvas+texture pair (see paintKeyed). */
+interface KeyedEntry {
+  cv: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  glTex: WebGLTexture;
+  w: number;
+  h: number;
+  rev: number;
+  bytes: number;
+  used: number;
+}
+
 export class GlStage implements StageBackend {
   readonly kind = 'gl' as const;
   private gl: WebGL2RenderingContext;
@@ -80,8 +93,13 @@ export class GlStage implements StageBackend {
   private readonly records = new Map<StageTexture, TexRecord>();
   /** Exact resident texture bytes (the `?perf` gpu line's source). */
   textureBytes = 0;
-  /** The texture store's ceiling — ~2x a settled town's working set. */
-  private static readonly TEX_BUDGET_BYTES = 512 * 1024 * 1024;
+  /** The texture store's ceiling — ~2x a settled town's working set.
+   *  Per-instance since the foundation audit: the renderer runs TWO
+   *  stages, and two full 512MB stores plus the keyed/scratch/sheet
+   *  classes stacked past a gigabyte of budget-legal worst case. The
+   *  GROUND stage carries only chunk quads (~200MB measured working
+   *  set) and takes the smaller store at construction. */
+  private readonly texBudgetBytes: number;
   /** Bytes uploaded since the last statsReset — the jitter signal. */
   uploadedBytes = 0;
   uploads = 0;
@@ -113,16 +131,7 @@ export class GlStage implements StageBackend {
    *  canvas+texture and repaint/re-upload ONLY on a rev change — the
    *  wall-run lane's cure (~48MB/frame of identical wall strips
    *  re-uploaded at the crown). Bounded by the LRU sweep + byte cap. */
-  private readonly keyed = new Map<number, {
-    cv: HTMLCanvasElement;
-    ctx: CanvasRenderingContext2D;
-    glTex: WebGLTexture;
-    w: number;
-    h: number;
-    rev: number;
-    bytes: number;
-    used: number;
-  }>();
+  private readonly keyed = new Map<number, KeyedEntry>();
   private keyedBytes = 0;
   private static readonly KEYED_BUDGET = 128 * 1024 * 1024;
   scratchCachedHits = 0;
@@ -131,16 +140,24 @@ export class GlStage implements StageBackend {
   private staging: { cv: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null = null;
 
   private stagingFor(w: number, h: number): { cv: HTMLCanvasElement; ctx: CanvasRenderingContext2D } {
-    // texSubImage2D writes SOURCE-SIZED texels: the staging canvas must
-    // be EXACTLY the dirty rect, or stale texels beyond it would land
-    // in the page. Resizing also clears — both properties load-bearing.
+    // GROW-ONLY (foundation audit): the 9-arg texSubImage2D overload
+    // names its source region explicitly, so an oversized staging
+    // canvas never leaks stale texels into the page — and a canvas
+    // width/height assignment REALLOCATES AND CLEARS the bitmap, a
+    // cost the old exact-size discipline paid once per dirty rect,
+    // every frame. Callers clearRect their own region before the
+    // copy and pass (w, h) to the subupload.
     let st = this.staging;
     if (!st) {
       st = this.staging = { cv: document.createElement('canvas'), ctx: null! };
     }
-    st.cv.width = w;
-    st.cv.height = h;
-    st.ctx = st.cv.getContext('2d')!;
+    if (st.cv.width < w || st.cv.height < h) {
+      st.cv.width = Math.max(w, st.cv.width);
+      st.cv.height = Math.max(h, st.cv.height);
+      st.ctx = st.cv.getContext('2d')!;
+    } else if (st.ctx === null) {
+      st.ctx = st.cv.getContext('2d')!;
+    }
     return st;
   }
   scratchPaints = 0;
@@ -213,8 +230,9 @@ export class GlStage implements StageBackend {
    *  other's illegal ops symmetrically (see begin/draw). */
   readonly isAlpha: boolean;
 
-  constructor(readonly canvas: HTMLCanvasElement, opts?: { alpha?: boolean }) {
+  constructor(readonly canvas: HTMLCanvasElement, opts?: { alpha?: boolean; texBudgetBytes?: number }) {
     this.isAlpha = opts?.alpha === true;
+    this.texBudgetBytes = opts?.texBudgetBytes ?? 512 * 1024 * 1024;
     const gl = canvas.getContext('webgl2', {
       alpha: this.isAlpha,
       antialias: false,
@@ -330,10 +348,35 @@ export class GlStage implements StageBackend {
       ) {
         gl.bindTexture(gl.TEXTURE_2D, rec.glTex);
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-        for (const [dx, dy, dw, dh] of dirty) {
+        // Coalesce overlapping/adjacent rects first: an arrival burst
+        // pushes one rect per sprite mint, and neighbors on a shelf
+        // merge into one copy + one subupload instead of N.
+        const merged: Array<[number, number, number, number]> = [];
+        for (const r of dirty) {
+          let cur: [number, number, number, number] = [r[0], r[1], r[2], r[3]];
+          for (let i = merged.length - 1; i >= 0; i--) {
+            const m2 = merged[i]!;
+            if (
+              cur[0] <= m2[0] + m2[2] + 2 &&
+              m2[0] <= cur[0] + cur[2] + 2 &&
+              cur[1] <= m2[1] + m2[3] + 2 &&
+              m2[1] <= cur[1] + cur[3] + 2
+            ) {
+              const x0 = Math.min(cur[0], m2[0]);
+              const y0 = Math.min(cur[1], m2[1]);
+              const x1 = Math.max(cur[0] + cur[2], m2[0] + m2[2]);
+              const y1 = Math.max(cur[1] + cur[3], m2[1] + m2[3]);
+              cur = [x0, y0, x1 - x0, y1 - y0];
+              merged.splice(i, 1);
+            }
+          }
+          merged.push(cur);
+        }
+        for (const [dx, dy, dw, dh] of merged) {
           const st = this.stagingFor(dw, dh);
+          st.ctx.clearRect(0, 0, dw, dh);
           st.ctx.drawImage(c, dx, dy, dw, dh, 0, 0, dw, dh);
-          gl.texSubImage2D(gl.TEXTURE_2D, 0, dx, dy, gl.RGBA, gl.UNSIGNED_BYTE, st.cv);
+          gl.texSubImage2D(gl.TEXTURE_2D, 0, dx, dy, dw, dh, gl.RGBA, gl.UNSIGNED_BYTE, st.cv);
           this.uploadedBytes += dw * dh * 4;
           this.uploads++;
         }
@@ -360,9 +403,9 @@ export class GlStage implements StageBackend {
       // GPU process down. Over budget, the coldest records go NOW;
       // the current frame's working set (used === frameNo) is never
       // touched, so nothing on screen can evict itself.
-      if (this.textureBytes > GlStage.TEX_BUDGET_BYTES) {
+      if (this.textureBytes > this.texBudgetBytes) {
         for (const [t2, r2] of this.records) {
-          if (this.textureBytes <= GlStage.TEX_BUDGET_BYTES) break;
+          if (this.textureBytes <= this.texBudgetBytes) break;
           if (r2.used >= this.frameNo) break; // insertion order: all hotter beyond
           gl.deleteTexture(r2.glTex);
           this.textureBytes -= r2.bytes;
@@ -399,22 +442,104 @@ export class GlStage implements StageBackend {
    * whatever it meets un-synced — a forgotten ensure() may cost a
    * hitch, never a hole.
    */
-  ensure(tex: StageTexture, msLeft: number): { state: 'current' | 'stale' | 'absent'; spentMs: number } {
+  ensure(
+    tex: StageTexture,
+    msLeft: number,
+    floor = true,
+  ): { state: 'current' | 'stale' | 'absent'; spentMs: number } {
     const rec = this.records.get(tex);
     if (rec && rec.uploadedRev === tex.rev && rec.filter === tex.filter) {
       return { state: 'current', spentMs: 0 };
     }
-    const bytes = tex.canvas.width * tex.canvas.height * 4;
+    const bytes = this.pendingUploadBytes(tex, rec);
     const est = uploadEstMs(bytes, this.uploadCostMsPerMb);
-    if (!admitUpload(msLeft, est, !this.uploadedThisFrame)) {
+    // Admission consults the caller's lane AND the shared per-frame
+    // pool — independent lanes can no longer stack full budgets into
+    // one frame (the audit's cross-lane governor, at the one place
+    // every upload passes). `floor = false` waives the guaranteed
+    // first admission: PREFETCH lanes (the ring prepay) must never
+    // force a multi-MB submission a weak machine cannot afford —
+    // measured at 20×, the floor turned the 2ms steady lane into a
+    // forced ~full-chunk upload per moving frame (world phase
+    // 33→48ms). Visible work keeps the floor; a prefetch that does
+    // not fit simply waits for the urgent lane at scroll-in, which
+    // is exactly the pre-prepay behavior.
+    if (!admitUpload(Math.min(msLeft, this.uploadMsLeft), est, floor && !this.uploadedThisFrame)) {
       return { state: rec && rec.uploadedRev >= 0 ? 'stale' : 'absent', spentMs: 0 };
     }
     this.uploadedThisFrame = true;
     const t0 = performance.now();
     this.sync(tex);
     const spentMs = performance.now() - t0;
+    this.uploadMsLeft -= spentMs;
     this.uploadCostMsPerMb = nextUploadCost(this.uploadCostMsPerMb, spentMs, bytes);
     return { state: 'current', spentMs };
+  }
+
+  /** Honest refresh pricing: a dirty-rect refresh costs its RECTS,
+   *  not the whole canvas (ensure once priced an atlas page's few-KB
+   *  cadence dirt at 16.8MB and declined it for nothing). */
+  private pendingUploadBytes(tex: StageTexture, rec: TexRecord | undefined): number {
+    const c = tex.canvas;
+    const dirty = tex.dirty;
+    if (
+      dirty !== undefined &&
+      dirty.length > 0 &&
+      rec !== undefined &&
+      rec.uploadedRev >= 0 &&
+      rec.w === c.width &&
+      rec.h === c.height &&
+      rec.filter === tex.filter
+    ) {
+      let b = 0;
+      for (const [, , dw, dh] of dirty) b += dw * dh * 4;
+      return Math.min(b, c.width * c.height * 4);
+    }
+    return c.width * c.height * 4;
+  }
+
+  /**
+   * Draw-time sync with the stale-bake escape (foundation audit):
+   * draw() must never meet a missing texture (never a hole), but a
+   * REFRESH of content already uploaded may defer under budget
+   * pressure when the handle says stale content still serves
+   * (staleOk — chunk grounds, band bakes). The old unconditional
+   * sync was the recorded safety net turned main road: every
+   * declined ensure() re-uploaded at draw anyway, unmetered, which
+   * made the whole upload economy advisory.
+   */
+  private syncForDraw(tex: StageTexture): TexRecord {
+    const rec = this.records.get(tex);
+    if (
+      rec !== undefined &&
+      rec.uploadedRev >= 0 &&
+      tex.staleOk === true &&
+      // Same dims only: quads compute UVs against the CURRENT canvas
+      // shape — serving old texels through a resized mapping would
+      // stretch the ground for a frame (tier flips upload now).
+      rec.w === tex.canvas.width &&
+      rec.h === tex.canvas.height &&
+      (rec.uploadedRev !== tex.rev || rec.filter !== tex.filter)
+    ) {
+      const bytes = this.pendingUploadBytes(tex, rec);
+      const est = uploadEstMs(bytes, this.uploadCostMsPerMb);
+      if (!admitUpload(this.uploadMsLeft, est, !this.uploadedThisFrame)) {
+        // Serve the stale texels; keep the record hot in the LRU.
+        this.records.delete(tex);
+        this.records.set(tex, rec);
+        rec.used = this.frameNo;
+        this.drawDeferred++;
+        return rec;
+      }
+      this.uploadedThisFrame = true;
+      const t0 = performance.now();
+      const r = this.sync(tex);
+      const spent = performance.now() - t0;
+      this.uploadMsLeft -= spent;
+      this.uploadCostMsPerMb = nextUploadCost(this.uploadCostMsPerMb, spent, bytes);
+      return r;
+    }
+    return this.sync(tex);
   }
 
   /** ONE LIFECYCLE's release door — call from the cache evictors. */
@@ -431,6 +556,25 @@ export class GlStage implements StageBackend {
     return this.records.size;
   }
 
+  /** THE WHOLE COMMIT CONFESSES (foundation audit): every byte this
+   *  stage holds resident on the GPU — records, keyed cells, scratch
+   *  classes, sheets, the layer FBO. The per-class ledgers were each
+   *  honest and none of them summed. */
+  get residentBytes(): number {
+    return (
+      this.textureBytes +
+      this.keyedBytes +
+      this.scratchBytes +
+      this.sheets.length * GlStage.SHEET_W * GlStage.SHEET_H * 4 +
+      (this.layerTex ? this.layerW * this.layerH * 4 : 0)
+    );
+  }
+
+  /** Resident keyed-cell bytes (probe/confession). */
+  get keyedResidentBytes(): number {
+    return this.keyedBytes;
+  }
+
   statsReset(): void {
     this.uploadedBytes = 0;
     this.uploads = 0;
@@ -440,6 +584,7 @@ export class GlStage implements StageBackend {
     this.scratchUploadBytes = 0;
     this.scratchCachedHits = 0;
     this.sheetUploads = 0;
+    this.drawDeferred = 0;
   }
 
   begin(w: number, h: number, dpr: number, clear: string | null): void {
@@ -462,6 +607,31 @@ export class GlStage implements StageBackend {
       gl.clearColor(((c >> 16) & 255) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255, 1);
     }
     gl.clear(gl.COLOR_BUFFER_BIT);
+    // THE CLOCK IS A FRAME, NOT A FLUSH (foundation audit): aging
+    // used to tick here, but the world stage begins once per FLUSH
+    // and the split path flushes mid-frame — sweeps ran early and
+    // the "never evict this frame's working set" guards treated an
+    // earlier flush of the SAME frame as evictable. The renderer now
+    // pumps frame() once per real frame; a host that never calls it
+    // (the lab, tests) keeps the legacy per-begin tick.
+    if (!this.externalClock) this.tickFrame();
+  }
+
+  /** True once the host ever called frame() — the authoritative
+   *  per-real-frame clock; begin() stops ticking on its own then. */
+  private externalClock = false;
+
+  /** Advance the frame clock: aging, sweeps, and the per-frame
+   *  upload allowance. Call ONCE per rendered frame, before any
+   *  ensure()/draw() of that frame. */
+  frame(): void {
+    this.externalClock = true;
+    this.tickFrame();
+  }
+
+  private tickFrame(): void {
+    const gl = this.gl;
+    this.uploadMsLeft = GPU_URGENT_MS;
     // Scratch hygiene: retire class pairs nothing has touched lately.
     if (++this.frameNo % 600 === 0) {
       for (const [cls, sc] of this.scratch) {
@@ -480,13 +650,16 @@ export class GlStage implements StageBackend {
           this.keyed.delete(k);
         }
       }
-      // THE ORPHAN SWEEP: sprite-lane handles (WeakMap-owned, no
-      // explicit evictor hook until part 2's atlas) reclaim here once
-      // nothing has drawn them for ~15s. Chunks and bands still go
-      // through their explicit release doors — this is the safety
-      // net, not the lifecycle.
+      // THE ORPHAN SWEEP — the SOLO sprite lane's permanent
+      // lifecycle (oversized sprites ride WeakMap-owned handles with
+      // no explicit evictor; the atlas owns only the packable ones).
+      // Chunks and bands still go through their explicit release
+      // doors. PINNED handles (atlas pages) are exempt: sweeping an
+      // undrawn page while the player was indoors made the return
+      // frame pay a full 16.8MB re-upload per page, unmetered —
+      // exactly an arrival frame.
       for (const [tex, rec] of this.records) {
-        if (rec.used < this.frameNo - 900) {
+        if (tex.pinned !== true && rec.used < this.frameNo - 900) {
           gl.deleteTexture(rec.glTex);
           this.textureBytes -= rec.bytes;
           this.records.delete(tex);
@@ -494,6 +667,14 @@ export class GlStage implements StageBackend {
       }
     }
   }
+
+  /** The shared per-frame upload allowance (THE UPLOAD IS A BAKE):
+   *  ensure() and draw-time refreshes spend from ONE pool, so N
+   *  independent lanes can no longer each claim a full budget in the
+   *  same frame. */
+  private uploadMsLeft = GPU_URGENT_MS;
+  /** Draw-time refreshes deferred to a stale bind this frame (probe). */
+  drawDeferred = 0;
 
   draw(items: readonly StageItem[]): void {
     if (items.length === 0) return;
@@ -584,9 +765,11 @@ export class GlStage implements StageBackend {
     for (const sh of this.sheets) {
       if (!sh.dirty) continue;
       // THE USED ROWS: the pack rarely fills a page — upload only the
-      // rows it reached (storage was allocated whole at openSheet;
-      // texSubImage2D from an EXACT-sized staging copy, the same
-      // source-sized-texels law as the atlas dirty rects).
+      // rows it reached (storage was allocated whole at openSheet).
+      // The 9-arg WebGL2 subupload names the source region, so the
+      // rows come straight off the sheet canvas — the old exact-size
+      // staging hop (a realloc + a raster copy per sheet per frame)
+      // is gone.
       const uh = Math.min(GlStage.SHEET_H, sh.usedH);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, sh.glTex);
@@ -594,9 +777,7 @@ export class GlStage implements StageBackend {
       if (uh >= GlStage.SHEET_H - 1) {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sh.cv);
       } else {
-        const st = this.stagingFor(GlStage.SHEET_W, uh);
-        st.ctx.drawImage(sh.cv, 0, 0, GlStage.SHEET_W, uh, 0, 0, GlStage.SHEET_W, uh);
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, st.cv);
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, GlStage.SHEET_W, uh, gl.RGBA, gl.UNSIGNED_BYTE, sh.cv);
       }
       gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
       sh.dirty = false;
@@ -609,6 +790,9 @@ export class GlStage implements StageBackend {
     const u8 = this.u8;
     let v = 0; // vertex index
     const runFirst: number[] = new Array(runs.length);
+    /** Keyed cells reserved (or refused) in this pass — the UV choice
+     *  and the run walk must agree on where each paint lands. */
+    const keyedEntries: Array<KeyedEntry | null | undefined> = new Array(runs.length);
     for (let ri = 0; ri < runs.length; ri++) {
       const run = runs[ri]!;
       runFirst[ri] = v;
@@ -638,8 +822,14 @@ export class GlStage implements StageBackend {
           v0 = cell.gy / GlStage.SHEET_H;
           u1 = (cell.gx + pwDev) / GlStage.SHEET_W;
           v1 = (cell.gy + phDev) / GlStage.SHEET_H;
-        } else if (it.key !== undefined && it.rev !== undefined) {
+        } else if (
+          it.key !== undefined &&
+          it.rev !== undefined &&
+          (keyedEntries[ri] = this.ensureKeyedEntry(it as StagePaint & { key: number; rev: number }))
+        ) {
           // Keyed: the cached canvas is EXACT-size — full UV span.
+          // (Reserved HERE because a hard-cap refusal must fall back
+          // to the scratch class's UV mapping below.)
           u1 = 1;
           v1 = 1;
         } else {
@@ -670,7 +860,10 @@ export class GlStage implements StageBackend {
         continue;
       }
       // Texel scale for the run's texture (fills use the white texel).
-      const rec = run.tex ? this.sync(run.tex) : null;
+      // Budget-aware: a staleOk refresh may bind older texels under
+      // upload pressure (syncForDraw); a missing record still uploads
+      // unconditionally — never a hole.
+      const rec = run.tex ? this.syncForDraw(run.tex) : null;
       const tw = rec ? rec.w : 1;
       const th = rec ? rec.h : 1;
       for (let i = run.i0; i <= run.i1; i++) {
@@ -760,9 +953,12 @@ export class GlStage implements StageBackend {
           this.drawCalls++;
           continue;
         }
-        if (it.key !== undefined && it.rev !== undefined) {
-          this.paintKeyed(it as StagePaint & { key: number; rev: number }, runFirst[ri]!);
+        const ke = keyedEntries[ri];
+        if (it.key !== undefined && it.rev !== undefined && ke) {
+          this.paintKeyed(ke, it as StagePaint & { key: number; rev: number }, runFirst[ri]!);
         } else {
+          // Unkeyed — or a keyed mint the hard cap refused in the
+          // vertex pass (the quad already wears scratch-class UVs).
           this.paintScratch(it, runFirst[ri]!);
         }
         continue;
@@ -874,7 +1070,14 @@ export class GlStage implements StageBackend {
    * ~48MB/frame of identical uploads at the crown become, in effect,
    * quads that repaint on world/zoom/cadence edges alone.
    */
-  private paintKeyed(it: StagePaint & { key: number; rev: number }, firstVert: number): void {
+  /**
+   * Reserve (or refuse) a keyed cell for this item — get, size-check,
+   * evict, mint; NO GL painting. Runs in the VERTEX pass, because the
+   * refusal decides the quad's UV mapping (keyed cells span [0,1];
+   * the scratch fallback samples a class-rounded pair) and vertices
+   * are written before the run walk paints anything.
+   */
+  private ensureKeyedEntry(it: StagePaint & { key: number; rev: number }): KeyedEntry | null {
     const gl = this.gl;
     const dpr = this.dpr;
     const pwDev = Math.ceil(it.pw * dpr);
@@ -905,6 +1108,13 @@ export class GlStage implements StageBackend {
         this.keyedBytes -= cold.bytes;
         this.keyed.delete(coldK);
       }
+      // THE CAP IS HARD (foundation audit): same-frame entries are
+      // rightly unevictable, so a mint storm could once overshoot
+      // the budget without bound — N new runs in one frame allocated
+      // N textures past the cap on exactly the machines the cap
+      // exists for. Refuse instead; the scratch lane paints this
+      // frame and the run caches when pressure eases.
+      if (this.keyedBytes + bytes > GlStage.KEYED_BUDGET) return null;
       const cv = document.createElement('canvas');
       cv.width = pwDev;
       cv.height = phDev;
@@ -927,6 +1137,12 @@ export class GlStage implements StageBackend {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     }
     e.used = this.frameNo;
+    return e;
+  }
+
+  private paintKeyed(e: KeyedEntry, it: StagePaint & { key: number; rev: number }, firstVert: number): void {
+    const gl = this.gl;
+    const dpr = this.dpr;
     gl.bindTexture(gl.TEXTURE_2D, e.glTex);
     if (e.rev !== it.rev) {
       const ctx = e.ctx;
