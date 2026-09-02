@@ -447,3 +447,41 @@ because it directly answers "the lean makes creatures foreshorten but not
 the trees around them," it's `q=0` byte-identical, and it divvies cleanly
 across sprite families. Then Group 3 (§5-B is a small, high-leverage fix)
 and a B-6 perf pass at a trial `q`, before B-2 turns the lean on.
+
+## §D · B-6 perf findings (measured 2026-09-02)
+
+A read-only investigation (headless rig, forest + meadow, q swept 0 →
+0.0016) settled where the lean's cost is:
+
+**The cost is the WIDER FRUSTUM drawing more content, not the projection
+math.** `visibleTileBounds` becomes the AABB of the unprojected trapezoid:
+measured **5.8× tiles** at q=0.0016 (E-W span uncapped fans 3.5×, north
+capped at FRUSTUM_FAR_MULT=3). Frame time tracked tile COUNT: forest
+8.4→18.8 ms as q rose. The q>0 `projectWorld` divide is ~free — at
+q=0.0004 (+30% tiles, every call on the divide branch) frame time didn't
+move; only tile count moves it. **Do not micro-optimize the divide.**
+
+**The ?perf HUD hides the GPU cost.** `perfMark` phases time only main-
+thread CPU between marks; GPU raster + stage composite + present happen
+after `render()` returns and show ONLY in `frameEma` (and `frameEma −
+Σ phaseMs`, the uncounted gap). On a fill-bound machine the q>0 cost lands
+entirely there. Measure with `frameEma`, `visibleTileBounds()` tile count,
+`liveStats.offscreen`, and the stage draw-call/upload rows — not the phase
+rows alone.
+
+**Ranked levers (impact × risk):**
+1. ✅ **DONE (0bdf9274)** — cap the meadow E-W to the ortho reach. Killed
+   the `grass over` spill (the +8ms ground spike), byte-identical at q=0.
+2. **Tighten FRUSTUM_FAR_MULT + horizon fog** — shrink the AABB directly;
+   fog lets far tiles both fade and stop drawing. Ship fog + cap together
+   (a tighter cap alone risks holes near the top). Attacks CPU AABB AND
+   the uncounted GPU-fill cost.
+3. **Distance LOD (bakePx tiers)** — far rows compress to a few px but blit
+   full-res baked chunks; a coarser tier past the ortho reach cuts fill +
+   upload bytes. Needs hysteresis vs bake-pool thrash.
+4. **Cull trees/props by projected screen size** — `liveStats.offscreen`
+   went 157→810; a `camDepthAt(wy)` gate drops them before build/sort.
+5. **Memoize per-row projection** — low impact (divide is cheap); optional
+   cleanup only.
+
+Order for the rest of B-6: 2+3 with the horizon fog, then 4; 5 last.
