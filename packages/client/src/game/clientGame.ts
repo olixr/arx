@@ -2853,9 +2853,29 @@ export class ClientGame {
       for (let dx = -1; dx <= 1; dx++) {
         if (dx === 0 && dy === 0) continue;
         const chunk = this.world.get(cx + dx, cy + dy);
-        if (chunk) chunk.rev = (chunk.rev ?? 0) + 1;
+        if (chunk) ClientGame.bumpFringe(chunk, ClientGame.fringeBits(dx, dy));
       }
     }
+  }
+
+  /** THE FRINGE RE-BAKE's bump: a NEIGHBOR-driven rev bump also
+   *  advances fringeRev and records which edge the change reaches in
+   *  from — own-content bumps (touchChunk, patches) advance rev
+   *  alone, which is exactly how the renderer tells a strip re-bake
+   *  from a full one. */
+  private static bumpFringe(chunk: ChunkData, bits: number): void {
+    chunk.rev = (chunk.rev ?? 0) + 1;
+    chunk.fringeRev = (chunk.fringeRev ?? 0) + 1;
+    chunk.fringeMask = (chunk.fringeMask ?? 0) | bits;
+  }
+
+  /** Edge bits for a neighbor at offset (dx, dy) FROM the source: the
+   *  source lies at (−dx, −dy) from the neighbor, so dx>0 means the
+   *  change reaches in from the neighbor's WEST side. Corner offsets
+   *  set both adjacent bits (the N/S strips span the full width, so
+   *  the corner block is covered either way). */
+  private static fringeBits(dx: number, dy: number): number {
+    return (dy > 0 ? 1 : 0) | (dy < 0 ? 2 : 0) | (dx > 0 ? 4 : 0) | (dx < 0 ? 8 : 0);
   }
 
   /** THE BUMP IS EARNED, replace half: compare the border strips of
@@ -2891,7 +2911,7 @@ export class ClientGame {
         if (dx === 0 && dy === 0) continue;
         if (!((dx < 0 && w) || (dx > 0 && e) || (dy < 0 && n) || (dy > 0 && s))) continue;
         const chunk = this.world.get(cx + dx, cy + dy);
-        if (chunk) chunk.rev = (chunk.rev ?? 0) + 1;
+        if (chunk) ClientGame.bumpFringe(chunk, ClientGame.fringeBits(dx, dy));
       }
     }
   }
@@ -2911,7 +2931,7 @@ export class ClientGame {
     const bump = (dx: number, dy: number): void => {
       if (dx === 0 && dy === 0) return;
       const chunk = this.world.get(cx + dx, cy + dy);
-      if (chunk) chunk.rev = (chunk.rev ?? 0) + 1;
+      if (chunk) ClientGame.bumpFringe(chunk, ClientGame.fringeBits(dx, dy));
     };
     if (dxDir !== 0) bump(dxDir, 0);
     if (dyDir !== 0) bump(0, dyDir);

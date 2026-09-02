@@ -1490,3 +1490,120 @@ degenerate empty-plane signature still fails both rails.
 - Visual proofs: arrival bloom at +593ms post-teleport (willow
   mid-fade, zero holes, zero cast-without-tree); crown gate veil
   clean in motion.
+
+## THE FRINGE RE-BAKE (2026-09-01, the charted arrival lever)
+
+A neighbor arrival's honest cost is a border strip, not ~29 sliced
+steps over the whole canvas — and one arrival bumps up to 8
+neighbors. Shipped as THE STRIP PAINTS ASIDE, with its own seam
+harness (the settled-cut precedent honored), after a forensic
+descent that rewrote the design twice and unearthed a pre-existing
+determinism bug.
+
+### The mechanism (as built)
+- **Bookkeeping (THE BUMP IS EARNED, completed)**: ChunkData grows
+  `fringeRev` + `fringeMask` (client annotations beside `rev`);
+  every NEIGHBOR-driven bump advances both and records the reaching
+  edge (bumpFringe/fringeBits); own-content bumps advance `rev`
+  alone — that asymmetry IS the eligibility test.
+- **Eligibility (renderer.fringeSpecFor)**: no job in flight, same
+  data object, same tier, rev delta === fringeRev delta, nonzero
+  mask, and NO elevation inside the strips+1 (reused lifted layers
+  must be provably out of the changed data's reach). Eligible jobs
+  share the entry's lifted canvases (completion + recycleBakedEntry
+  guard the shared identity); consumed mask bits clear at
+  completion; mid-job bumps survive for the restart.
+- **THE STRIP PAINTS ASIDE (terrain.startChunkBake fringe mode)**:
+  the real canvas copies the prior bake whole; every step runs
+  against a POOLED SCRATCH chunk canvas at the same integer
+  translate (identical rasterization by construction) — the scratch
+  is ALSO seeded with the base and its strips cleared (THE SCRATCH
+  WEARS THE SAME COAT); a final step clears the strip rects on the
+  real canvas (disjoint by fringeStrips — translucent content never
+  composites twice at a corner) and copies them across. FRINGE_TILES
+  = 4 (reach 3 + bleed). MEADOW narrows per strip rect
+  (lattice-snapped cells — it is HALF the bake: 1.6-1.8ms of 3.4
+  measured per-step); DETAILS narrow to strip tiles ±3; SKINS run
+  whole (truncating their boundary runs shifts stroke phase).
+  Replace-job shape throughout: old blit serves until the atomic
+  swap; THE UPLOAD FOLLOWS THE PAINT = one upload at completion.
+
+### What the rasterizer taught (each claim measured, most twice)
+1. **Identical op streams are byte-exact** — null-full-vs-full 0,
+   copy fidelity 0, a no-narrowing fringe 0 differing bytes.
+2. **clip() re-rounds interior AA** (±1 on ~0.4% of strip pixels,
+   plain fills exact) — the first design (clip-per-step) was
+   rejected on this evidence; no clip survives anywhere.
+3. **Any op-stream change re-rolls scattered AA pixels across the
+   WHOLE canvas**, magnitude scaling with the stream delta (one
+   mutated tile ±14; the meadow's absent thousands of fills ±27) —
+   two full bakes differing by one early op differ far afield; a
+   fringe bake merely preserves the prior roll. Every such pixel is
+   a legitimate rendering of the same content, landing as singles
+   and short boundary chains.
+4. **THE GATE IS STRUCTURAL**: a real defect is a CONTIGUOUS
+   region. Gate = largest 4-connected cluster of >8-delta pixels
+   ≤ 24, hard per-channel cap 48. Measured separation: honest
+   clusters 0-17; canaries 28-2507 (maxd 96-132).
+5. **THE POOLED CANVAS FORGETS ITS PAST** (pre-existing bug,
+   unearthed by the scramble probe): pooled bake canvases carried
+   the dead bake's lineCap/join/dash, and skin strokes consume
+   inherited stroke state (12.5k px moved under a scrambled
+   cap/join) — every bake's exact output was a pool lottery.
+   bakeCanvasFor now ctx.reset()s reused canvases.
+
+### The proof harness (permanent dev instruments)
+- `renderer.fringeProof`: nulls, statics per mask, real neighbor-
+  border mutations at several depths, and a SELF-VALIDATING canary
+  (walks east-border tiles flipping each to water until one visibly
+  changes the full bake, then asserts the wrong-mask fringe misses
+  it; pavement borders that hide every flip declare
+  'canary-unavailable' honestly).
+- `scripts/probes/fringe-seam.mjs`: 5 biomes × 2 chunks, the
+  structural gate, and a battery-wide canary population floor
+  (≥6 real of 10). **PASS 10/10.**
+- `fringeProofSteps` (step-prefix bisect — it pinned the diverging
+  step to skin li=3 in one pass), `fringeScrambleProbe` (ctx-state
+  leak detector), `fringeCost` (per-bake + per-step timings) stay
+  as dev levers; `fringeStrips` geometry is unit-pinned (5 tests).
+
+### Measured
+- Per-bake: full 3.4-3.6ms; fringe single-edge 1.6-2.1ms (−44 to
+  −56%); full-ring 2.8ms. Per-step census: meadow 4 steps = ~half
+  the bake, details ~0.6-0.8, skins ~0.5-0.8.
+- Fresh-map hop circuit: re-bake census **fringe 34 / full 1** —
+  97% of replacement re-bakes ride the strip lane. Border-walk
+  screenshot clean. `?perf` live row grows `fringe N`;
+  `renderer.fringeStats` keeps the cumulative census.
+- Gates: 805/805 tests (+5 fringeStrips), build green, ui-smoke
+  13/13, parity 7/7 (v8 rails), seam battery 10/10.
+
+### THE FRINGE WAITS ITS TURN (the 20× discovery)
+The interleaved A/B (fringeOn kill switch — the staticLayerOn
+pattern, also the field refuge) exposed that at 20× the census read
+**fringe 0 / full 13**: sliced bakes outlive arrival gaps on weak
+machines, so every neighbor bump hit the `entry.pending` restart
+path and re-baked whole — on exactly the hardware the lever is for.
+The carve-out: a PURELY neighbor-driven bump (same data object, rev
+delta === fringeRev delta) lets the in-flight job FINISH — its own
+content is precisely what the old canvas is blitting anyway — and
+the standing rev mismatch starts the strip job against the
+completed base. Own-content changes still restart unconditionally
+(never finish a stale bake). Convergence is by construction: the
+pending job completes regardless of bumps, then exactly one fringe
+job settles the accumulated mask. Measured: 20× circuit full
+restarts 13 → 0; unthrottled census 23 fringe + 1 full vs the
+pre-deferral 34 + 1 — deferral COALESCES stacked bumps into single
+strip jobs, cutting total re-bake work by a third on top of each
+job costing 44-56% less.
+
+### Honest bench statement
+At 20× the frame medians are noise-bound on this rig late-session
+(consecutive OFF-lane runs swung two 16.7ms quanta with no code
+change); the per-frame bake budget is 3ms, so the fringe's wins land
+as shorter pending windows, a third fewer re-bakes, and half-price
+strip jobs — not as a movable frame median here. The field machine's
+own read stands as the arbiter (the toggle default question's
+precedent). CHUNK_POOL_MAX 12 → 16: a fringe job borrows a second
+chunk-tier canvas (the scratch), and the pool must serve both
+without re-minting 4.3MB stores (round 11's churn class).

@@ -305,6 +305,9 @@ import {
   fillContains,
   type BridgeApron,
   isWaterTile,
+  FRINGE_TILES,
+  fringeStrips,
+  type FringeSpec,
   startChunkBake,
   startElevatedBake,
   stepChunkBake,
@@ -444,7 +447,12 @@ const CHUNK_REPLACE_STARTS = 2;
  * so this count is a true byte bound: at most 12 x 17MB at the hi-res
  * tier, 12 x 4.3MB at the base one.
  */
-const CHUNK_POOL_MAX = 12;
+// 12 → 16 with THE FRINGE RE-BAKE: a fringe job borrows a SECOND
+// chunk-tier canvas (the strip scratch), so arrival storms carry a
+// few more canvases in flight — four extra slots keep the pool
+// serving both without re-minting 4.3MB backing stores (round 11's
+// churn class).
+const CHUNK_POOL_MAX = 16;
 
 /**
  * Byte ceiling on the baked-ground cache. The old cap counted SLOTS
@@ -1011,6 +1019,10 @@ interface BakedChunk {
   /** Chunk coordinates — the bake queue's distance order reads them. */
   cx: number;
   cy: number;
+  /** THE FRINGE RE-BAKE's baseline: data.fringeRev at this entry's
+   *  last completed bake. rev delta === fringeRev delta means every
+   *  bump since was neighbor-driven — strip-eligible. */
+  fringeRev?: number;
   /** THE TEXTURE IS THE CANVAS'S SHADOW (stage lane): the GL handle
    *  for this entry's base canvas. Created at first stage emission,
    *  retargeted there when the pooled bake swap replaces the canvas,
@@ -1048,6 +1060,11 @@ interface BakedChunk {
      *  atomic 10-40ms call — the single biggest chunk-stream hitch). */
     elevJob?: { job: ElevatedBakeJob; level: number };
     startElev: (level: number) => ElevatedBakeJob | null;
+    /** THE FRINGE RE-BAKE's capture at build time: the fringeRev this
+     *  job settles and the mask bits it consumes (completion clears
+     *  exactly these — bits set mid-job survive for the restart). */
+    fringeRev: number;
+    fringeMask: number;
   };
   /** THE UPLOAD FOLLOWS THE PAINT (foundation audit): the base job's
    *  step counter at the last stage rev bump. A pending frame where
@@ -1691,8 +1708,14 @@ export class Renderer {
     const p = entry.pending;
     if (p) {
       if (p.job.canvas !== entry.canvas) this.recycleChunkCanvas(p.job.canvas);
+      this.recycleChunkCanvas(p.job.fringeScratch);
       if (p.elevJob) this.recycleChunkCanvas(p.elevJob.job.canvas);
-      for (const l of p.lifted) this.recycleChunkCanvas(l.canvas);
+      // A fringe job SHARES the entry's lifted canvases (they were
+      // provably out of reach) — the entry loop above already pooled
+      // those; pooling them twice would hand one canvas to two
+      // future bakes.
+      for (const l of p.lifted)
+        if (!entry.lifted.some((e) => e.canvas === l.canvas)) this.recycleChunkCanvas(l.canvas);
     }
   }
 
@@ -4847,6 +4870,7 @@ export class Renderer {
     this.liveStats.flora = 0;
     this.liveStats.chunk = 0;
     this.liveStats.mask = 0;
+    this.liveStats.fringe = 0;
     this.liveStats.offscreen = 0;
     this.liveStats.cliff = 0;
     // Shadow-mask misses per frame: masks are shared per (kind,
@@ -7081,9 +7105,22 @@ export class Renderer {
         } else if (baked.pending) {
           // Mid-bake: if the world moved on underneath, restart the
           // job at the new content — never finish a stale bake.
+          // THE FRINGE WAITS ITS TURN (foundation follow-on): a
+          // PURELY neighbor-driven bump is the exception — the job's
+          // own content is exactly what is blitting today, so it may
+          // finish; the standing rev mismatch then starts the strip
+          // job against the completed base. Without this, 20×
+          // machines restarted every in-flight bake whole (bakes
+          // outlive arrival gaps there) and the census read
+          // fringe 0 / full 13 on the very hardware the lever is
+          // for. Own-content changes still restart unconditionally.
           const p = baked.pending;
           if (p.data !== data || p.rev !== (data.rev ?? 0)) {
-            this.replaceQueue.push({ baked, cx, cy, data });
+            const dRev = (data.rev ?? 0) - p.rev;
+            const dFr = (data.fringeRev ?? 0) - p.fringeRev;
+            const pureFringe =
+              this.fringeOn && p.data === data && dRev > 0 && dRev === dFr;
+            if (!pureFringe) this.replaceQueue.push({ baked, cx, cy, data });
           }
         } else if (
           baked.data !== data ||
@@ -7381,8 +7418,514 @@ export class Renderer {
     data: NonNullable<ReturnType<ClientGame['world']['get']>>,
     bakePx: number,
   ): void {
-    entry.pending = this.buildChunkPending(game, cx, cy, data, bakePx, false);
+    // THE FRINGE RE-BAKE: a purely neighbor-driven re-bake repaints
+    // only its border strips (behind the blit, swap at completion —
+    // the replace job's own shape). Anything else repaints whole.
+    const fringe = this.fringeSpecFor(game, entry, cx, cy, data, bakePx);
+    if (fringe) this.liveStats.fringe++;
+    this.fringeStats[fringe ? 'fringe' : 'full']++;
+    entry.pending = this.buildChunkPending(game, cx, cy, data, bakePx, false, fringe ?? undefined);
+    if (entry.pending.job.fringeScratch)
+      this.bakedBytes += Renderer.canvasBytes(entry.pending.job.fringeScratch);
+    if (fringe) {
+      // The strips hold no elevation (the gate checked), so every
+      // lifted layer is out of the changed data's reach — the job
+      // carries the entry's canvases through untouched and the
+      // completion swap recycles nothing.
+      entry.pending.levels.length = 0;
+      entry.pending.lifted = entry.lifted;
+    }
     this.bakedBytes += Renderer.canvasBytes(entry.pending.job.canvas);
+  }
+
+  /** Cumulative re-bake census for probes (never reset): how many
+   *  replacements rode the strip lane vs repainted whole. */
+  readonly fringeStats = { fringe: 0, full: 0 };
+
+  /** THE FRINGE RE-BAKE's kill switch (the staticLayerOn pattern) —
+   *  the A/B door for rig proofs and the one-flip refuge if a seam
+   *  ever shows in the field. FRINGE_OFF at boot (the parity FLAG
+   *  lever) disables it for whole-battery A/Bs. */
+  fringeOn = (globalThis as unknown as { FRINGE_OFF?: boolean }).FRINGE_OFF !== true;
+
+  /**
+   * THE FRINGE RE-BAKE's gate. Strip-eligible only when the honest
+   * conditions all hold: no job in flight (a partial canvas cannot
+   * seed the copy), the chunk's own payload object unchanged, the
+   * same bake tier, EVERY rev bump since the last bake accounted for
+   * by fringe bumps, a nonzero mask, and no elevation inside the
+   * strips (lifted-layer contours could reach the changed border).
+   */
+  private fringeSpecFor(
+    game: ClientGame,
+    entry: BakedChunk,
+    cx: number,
+    cy: number,
+    data: NonNullable<ReturnType<ClientGame['world']['get']>>,
+    bakePx: number,
+  ): FringeSpec | null {
+    if (!this.fringeOn) return null;
+    if (entry.pending) return null;
+    if (entry.data !== data) return null;
+    if (entry.px !== bakePx) return null;
+    const mask = data.fringeMask ?? 0;
+    if (mask === 0) return null;
+    const dRev = (data.rev ?? 0) - entry.rev;
+    const dFr = (data.fringeRev ?? 0) - (entry.fringeRev ?? 0);
+    if (dRev <= 0 || dRev !== dFr) return null;
+    if (this.fringeStripHasElev(game, cx, cy, mask)) return null;
+    return { mask, copyFrom: entry.canvas, scratch: this.takeChunkCanvas(bakePx) ?? null };
+  }
+
+  /**
+   * DEV — THE SEAM PROOF (THE FRINGE RE-BAKE's harness). For this
+   * chunk, at the current tier: a fringe bake seeded from a full
+   * bake must match a fresh full bake STRUCTURALLY (see the fringe
+   * doc in terrain.ts — identical op streams are byte-exact, any
+   * stream change re-rolls scattered AA singles, a real defect is a
+   * contiguous cluster) — statically for every mask, and across
+   * real neighbor-border mutations at several depths. The
+   * self-validating wrong-mask CANARY must violate the cluster rail
+   * or the proof proves nothing. scripts/probes/fringe-seam.mjs
+   * drives this across biomes and owns the gate numbers.
+   */
+  /** Scratch: last diff's sampled positions [x, y, |delta|] in canvas
+   *  px (gutter included) — probe-read beside fringeProof. */
+  fringeProofSamples: Array<[number, number, number]> = [];
+  /** Last diff's per-32px-row-band counts + raw value pairs. */
+  fringeProofRows: Array<[number, number]> = [];
+  fringeProofPairs: Array<{ x: number; y: number; a: number[]; b: number[] }> = [];
+  /** The worst-delta pixel of the last diff (position + values). */
+  fringeProofWorst: { x: number; y: number; a: number[]; b: number[] } | null = null;
+  /** The last static case's canvases — the visual harness reads them. */
+  fringeProofLastPair: { base: HTMLCanvasElement; fringe: HTMLCanvasElement } | null = null;
+  fringeProofByCase: Record<
+    string,
+    {
+      rows: Array<[number, number]>;
+      pairs: Array<{ x: number; y: number; a: number[]; b: number[] }>;
+      worst?: { x: number; y: number; a: number[]; b: number[] } | null;
+    }
+  > = {};
+
+  fringeProof(
+    game: ClientGame,
+    cx: number,
+    cy: number,
+  ): Array<{ name: string; diff: number; maxd: number; cluster: number }> {
+    const px = this.bakePx();
+    const ground = (tx: number, ty: number) => game.world.groundAt(tx, ty);
+    const detail = (tx: number, ty: number) => this.detailAt(game, tx, ty);
+    const elev = (tx: number, ty: number) => game.world.elevAt(tx, ty);
+    const woodSkin = (tx: number, ty: number) =>
+      this.woodSkinFor(this.interiors.regionAt(game, tx, ty) ?? this.wallRegion(game, tx, ty));
+    const run = (fringe?: FringeSpec): HTMLCanvasElement => {
+      const job = startChunkBake(ground, detail, elev, cx, cy, px, woodSkin, false, null, fringe);
+      while (!stepChunkBake(job)) {
+        /* to completion */
+      }
+      return job.canvas;
+    };
+    let lastMaxd = 0;
+    let lastCluster = 0;
+    const diff = (a: HTMLCanvasElement, b: HTMLCanvasElement, label = ''): number => {
+      const da = a.getContext('2d')!.getImageData(0, 0, a.width, a.height).data;
+      const db = b.getContext('2d')!.getImageData(0, 0, b.width, b.height).data;
+      let n = 0;
+      let maxd = 0;
+      const w = a.width;
+      const samples: Array<[number, number, number]> = [];
+      const rows = new Map<number, number>();
+      const pairs: Array<{ x: number; y: number; a: number[]; b: number[] }> = [];
+      let step = 1;
+      for (let i = 0; i < da.length; i += 4) {
+        const d =
+          Math.abs(da[i]! - db[i]!) +
+          Math.abs(da[i + 1]! - db[i + 1]!) +
+          Math.abs(da[i + 2]! - db[i + 2]!) +
+          Math.abs(da[i + 3]! - db[i + 3]!);
+        if (d > 0) {
+          n++;
+          const dc = Math.max(
+            Math.abs(da[i]! - db[i]!),
+            Math.abs(da[i + 1]! - db[i + 1]!),
+            Math.abs(da[i + 2]! - db[i + 2]!),
+            Math.abs(da[i + 3]! - db[i + 3]!),
+          );
+          if (dc > maxd) {
+            maxd = dc;
+            const pw = i >> 2;
+            this.fringeProofWorst = {
+              x: pw % w,
+              y: Math.floor(pw / w),
+              a: [da[i]!, da[i + 1]!, da[i + 2]!, da[i + 3]!],
+              b: [db[i]!, db[i + 1]!, db[i + 2]!, db[i + 3]!],
+            };
+          }
+          const pi = i >> 2;
+          const x = pi % w;
+          const y = Math.floor(pi / w);
+          const band = y >> 5;
+          rows.set(band, (rows.get(band) ?? 0) + 1);
+          if (samples.length < 24) {
+            samples.push([x, y, d]);
+            pairs.push({
+              x,
+              y,
+              a: [da[i]!, da[i + 1]!, da[i + 2]!, da[i + 3]!],
+              b: [db[i]!, db[i + 1]!, db[i + 2]!, db[i + 3]!],
+            });
+            step = Math.ceil(step * 1.7) + 1; // spread across the scan
+          }
+        }
+      }
+      // THE CLUSTER METRIC: the largest 4-connected component of
+      // pixels whose per-channel delta exceeds 8. Scattered AA
+      // re-rolls (the op-stream class) land as singles and short
+      // boundary chains; a genuinely missing shape is a contiguous
+      // region. This is the structural definition of "seam-free".
+      {
+        const wA = a.width;
+        const hA = a.height;
+        const hot = new Uint8Array(wA * hA);
+        const daf = a.getContext('2d')!.getImageData(0, 0, wA, hA).data;
+        const dbf = b.getContext('2d')!.getImageData(0, 0, wA, hA).data;
+        for (let i = 0, pI = 0; i < daf.length; i += 4, pI++) {
+          const dc = Math.max(
+            Math.abs(daf[i]! - dbf[i]!),
+            Math.abs(daf[i + 1]! - dbf[i + 1]!),
+            Math.abs(daf[i + 2]! - dbf[i + 2]!),
+            Math.abs(daf[i + 3]! - dbf[i + 3]!),
+          );
+          if (dc > 8) hot[pI] = 1;
+        }
+        let best = 0;
+        const stack: number[] = [];
+        for (let pI = 0; pI < hot.length; pI++) {
+          if (hot[pI] !== 1) continue;
+          let size = 0;
+          stack.push(pI);
+          hot[pI] = 2;
+          while (stack.length > 0) {
+            const q = stack.pop()!;
+            size++;
+            const qx = q % wA;
+            for (const nb of [q - wA, q + wA, qx > 0 ? q - 1 : -1, qx < wA - 1 ? q + 1 : -1]) {
+              if (nb >= 0 && nb < hot.length && hot[nb] === 1) {
+                hot[nb] = 2;
+                stack.push(nb);
+              }
+            }
+          }
+          if (size > best) best = size;
+        }
+        lastCluster = best;
+      }
+      this.fringeProofSamples = samples;
+      this.fringeProofRows = [...rows.entries()].sort((p1, p2) => p1[0] - p2[0]);
+      this.fringeProofPairs = pairs;
+      if (label !== '') {
+        this.fringeProofByCase[label] = {
+          rows: this.fringeProofRows,
+          pairs,
+          worst: this.fringeProofWorst,
+        };
+      }
+      lastMaxd = maxd;
+      return n;
+    };
+    const push = (name: string, d: number): void => {
+      out.push({ name, diff: d, maxd: lastMaxd, cluster: lastCluster });
+    };
+    const out: Array<{ name: string; diff: number; maxd: number; cluster: number }> = [];
+    const base = run();
+    // THE NULL CONTROL (round 9's law): two consecutive FULL bakes of
+    // identical data must be byte-equal, or a painter in the bake
+    // path is nondeterministic and no fringe comparison means a
+    // thing. Diff here = find that painter first.
+    push('null-full-vs-full', diff(base, run()));
+    // Copy fidelity: mask 0 = copy the base, clear nothing, clip
+    // everything out — the fringe output IS the drawImage copy.
+    push('null-copy-only', diff(base, run({ mask: 0, copyFrom: base })));
+    this.fringeProofByCase = {};
+    for (const mask of [1, 2, 4, 8, 15]) {
+      const fr = run({ mask, copyFrom: base });
+      push(`static-m${mask}`, diff(base, fr, `static-m${mask}`));
+      // Expose the pair for the visual harness (dev scratch).
+      this.fringeProofLastPair = { base, fringe: fr };
+    }
+    // Real mutations: flip a neighbor border tile, fringe from the OLD
+    // full must match a FRESH full. Restore before returning.
+    const flip = (tx: number, ty: number): (() => void) => {
+      const prev = game.world.groundAt(tx, ty);
+      const next = prev === Tile.Dirt ? Tile.Sand : Tile.Dirt;
+      game.world.setGround(tx, ty, next);
+      return () => game.world.setGround(tx, ty, prev ?? Tile.Grass);
+    };
+    const bx = cx * CHUNK_SIZE;
+    const by = cy * CHUNK_SIZE;
+    const mid = CHUNK_SIZE >> 1;
+    const cases: Array<[string, number, number, number]> = [
+      ['mut-N-d0', bx + mid, by - 1, 1],
+      ['mut-N-d2', bx + 7, by - 3, 1],
+      ['mut-S-d0', bx + mid, by + CHUNK_SIZE, 2],
+      ['mut-W-d1', bx - 2, by + mid, 4],
+      ['mut-E-d0', bx + CHUNK_SIZE, by + mid, 8],
+      ['mut-corner-NW', bx - 1, by - 1, 1 | 4],
+    ];
+    for (const [name, tx, ty, mask] of cases) {
+      const restore = flip(tx, ty);
+      try {
+        const fr = run({ mask, copyFrom: base });
+        const full = run();
+        push(name, diff(full, fr, name));
+        this.fringeProofLastPair = { base: full, fringe: fr };
+      } finally {
+        restore();
+      }
+    }
+    // THE CANARY: an east-border mutation repainted with a WEST-only
+    // mask must diverge — a proof that cannot fail proves nothing.
+    // The canary VALIDATES ITSELF: it walks candidate east-border
+    // tiles flipping each to water until one visibly changes the
+    // full bake (maxd > 40 — under pavement or a deck, a flip can be
+    // genuinely invisible and such a spot cannot canary), then
+    // asserts the wrong-mask fringe misses that change. No visible
+    // candidate = 'canary-unavailable' (the probe requires real
+    // canaries on most spots, not every one).
+    {
+      let done = false;
+      for (const off of [mid, mid - 5, mid + 5, 6, CHUNK_SIZE - 6]) {
+        const ctx2 = bx + CHUNK_SIZE;
+        const cty = by + off;
+        const t0 = game.world.groundAt(ctx2, cty);
+        game.world.setGround(ctx2, cty, t0 === Tile.Water ? Tile.Dirt : Tile.Water);
+        try {
+          const post = run();
+          diff(base, post);
+          if (lastMaxd > 40) {
+            push('canary-wrong-mask', diff(post, run({ mask: 4, copyFrom: base })));
+            done = true;
+          }
+        } finally {
+          game.world.setGround(ctx2, cty, t0 ?? Tile.Grass);
+        }
+        if (done) break;
+      }
+      if (!done) push('canary-unavailable', 0);
+    }
+    return out;
+  }
+
+  /**
+   * DEV — step-prefix bisect for the seam proof: for each prefix
+   * length k, run BOTH a full bake and a fringe bake truncated to
+   * their first k paint steps (the fringe's copy-back always runs),
+   * and report the first k where they diverge past the LSB class.
+   * Names the exact diverging step in one pass.
+   */
+  fringeProofSteps(
+    game: ClientGame,
+    cx: number,
+    cy: number,
+    mask: number,
+  ): Array<{ k: number; n: number; maxd: number }> {
+    const px = this.bakePx();
+    const ground = (tx: number, ty: number) => game.world.groundAt(tx, ty);
+    const detail = (tx: number, ty: number) => this.detailAt(game, tx, ty);
+    const elev = (tx: number, ty: number) => game.world.elevAt(tx, ty);
+    const woodSkin = (tx: number, ty: number) =>
+      this.woodSkinFor(this.interiors.regionAt(game, tx, ty) ?? this.wallRegion(game, tx, ty));
+    const mkJob = (fringe?: FringeSpec) =>
+      startChunkBake(ground, detail, elev, cx, cy, px, woodSkin, false, null, fringe);
+    const runK = (fringe: FringeSpec | undefined, k: number): HTMLCanvasElement => {
+      const job = mkJob(fringe);
+      const last = job.steps.length - 1;
+      for (let i = 0; i < job.steps.length; i++) {
+        const isCopyBack = fringe !== undefined && i === last;
+        if (i < k || isCopyBack) job.steps[i]!();
+      }
+      return job.canvas;
+    };
+    // Compare ONLY inside the strip rects — outside them a truncated
+    // full bake legitimately trails the fringe's complete base copy.
+    const G = bakeGutter(px);
+    const rects = fringeStrips(mask, px, G).map(
+      ([rx, ry, rw, rh]) => [rx + G, ry + G, rw, rh] as [number, number, number, number],
+    );
+    const cmp = (a: HTMLCanvasElement, b: HTMLCanvasElement): { n: number; maxd: number } => {
+      const ca = a.getContext('2d')!;
+      const cb = b.getContext('2d')!;
+      let n = 0;
+      let maxd = 0;
+      for (const [rx, ry, rw, rh] of rects) {
+        const x0 = Math.max(0, rx);
+        const y0 = Math.max(0, ry);
+        const w = Math.min(a.width, rx + rw) - x0;
+        const h = Math.min(a.height, ry + rh) - y0;
+        if (w <= 0 || h <= 0) continue;
+        const da = ca.getImageData(x0, y0, w, h).data;
+        const db = cb.getImageData(x0, y0, w, h).data;
+        for (let i = 0; i < da.length; i += 4) {
+          const dc = Math.max(
+            Math.abs(da[i]! - db[i]!),
+            Math.abs(da[i + 1]! - db[i + 1]!),
+            Math.abs(da[i + 2]! - db[i + 2]!),
+            Math.abs(da[i + 3]! - db[i + 3]!),
+          );
+          if (dc > 0) {
+            n++;
+            if (dc > maxd) maxd = dc;
+          }
+        }
+      }
+      return { n, maxd };
+    };
+    const base = runK(undefined, 1_000_000);
+    const total = mkJob().steps.length;
+    const out: Array<{ k: number; n: number; maxd: number }> = [];
+    for (let k = 0; k <= total; k++) {
+      const full = runK(undefined, k);
+      const fr = runK({ mask, copyFrom: base }, k);
+      const { n, maxd } = cmp(full, fr);
+      out.push({ k, n, maxd });
+    }
+    return out;
+  }
+
+  /** DEV — the state-leak probe: bake full twice, once with the
+   *  FRINGE_SCRAMBLE step armed (fillStyle/strokeStyle/lineWidth
+   *  scrambled between meadow and skins). ANY diff = a painter that
+   *  draws without setting its own style. */
+  fringeScrambleProbe(
+    game: ClientGame,
+    cx: number,
+    cy: number,
+  ): { n: number; maxd: number; worst: { x: number; y: number; a: number[]; b: number[] } | null } {
+    const px = this.bakePx();
+    const ground = (tx: number, ty: number) => game.world.groundAt(tx, ty);
+    const detail = (tx: number, ty: number) => this.detailAt(game, tx, ty);
+    const elev = (tx: number, ty: number) => game.world.elevAt(tx, ty);
+    const woodSkin = (tx: number, ty: number) =>
+      this.woodSkinFor(this.interiors.regionAt(game, tx, ty) ?? this.wallRegion(game, tx, ty));
+    const g = globalThis as unknown as { FRINGE_SCRAMBLE?: boolean };
+    const run = (): HTMLCanvasElement => {
+      const job = startChunkBake(ground, detail, elev, cx, cy, px, woodSkin, false, null);
+      while (!stepChunkBake(job)) {
+        /* to completion */
+      }
+      return job.canvas;
+    };
+    g.FRINGE_SCRAMBLE = false;
+    const a = run();
+    g.FRINGE_SCRAMBLE = true;
+    const b = run();
+    g.FRINGE_SCRAMBLE = false;
+    const da = a.getContext('2d')!.getImageData(0, 0, a.width, a.height).data;
+    const db = b.getContext('2d')!.getImageData(0, 0, b.width, b.height).data;
+    let n = 0;
+    let maxd = 0;
+    let worst: { x: number; y: number; a: number[]; b: number[] } | null = null;
+    for (let i = 0; i < da.length; i += 4) {
+      const dc = Math.max(
+        Math.abs(da[i]! - db[i]!),
+        Math.abs(da[i + 1]! - db[i + 1]!),
+        Math.abs(da[i + 2]! - db[i + 2]!),
+        Math.abs(da[i + 3]! - db[i + 3]!),
+      );
+      if (dc > 0) {
+        n++;
+        if (dc > maxd) {
+          maxd = dc;
+          const pw = i >> 2;
+          worst = {
+            x: pw % a.width,
+            y: Math.floor(pw / a.width),
+            a: [da[i]!, da[i + 1]!, da[i + 2]!, da[i + 3]!],
+            b: [db[i]!, db[i + 1]!, db[i + 2]!, db[i + 3]!],
+          };
+        }
+      }
+    }
+    return { n, maxd, worst };
+  }
+
+  /** DEV — per-bake cost: median ms of full vs fringe (single edge +
+   *  ring) bakes for this chunk at the current tier. */
+  fringeCost(
+    game: ClientGame,
+    cx: number,
+    cy: number,
+  ): { full: number; fringeEdge: number; fringeRing: number; steps?: number[] } {
+    const px = this.bakePx();
+    const ground = (tx: number, ty: number) => game.world.groundAt(tx, ty);
+    const detail = (tx: number, ty: number) => this.detailAt(game, tx, ty);
+    const elev = (tx: number, ty: number) => game.world.elevAt(tx, ty);
+    const woodSkin = (tx: number, ty: number) =>
+      this.woodSkinFor(this.interiors.regionAt(game, tx, ty) ?? this.wallRegion(game, tx, ty));
+    const run = (fringe?: FringeSpec): HTMLCanvasElement => {
+      const job = startChunkBake(ground, detail, elev, cx, cy, px, woodSkin, false, null, fringe);
+      while (!stepChunkBake(job)) {
+        /* to completion */
+      }
+      return job.canvas;
+    };
+    const base = run();
+    const time = (fn: () => void): number => {
+      const t: number[] = [];
+      for (let i = 0; i < 7; i++) {
+        const t0 = performance.now();
+        fn();
+        t.push(performance.now() - t0);
+      }
+      t.sort((a, b) => a - b);
+      return t[3]!;
+    };
+    // Per-step cost distribution of one full bake (median of 5).
+    const stepMs: number[] = [];
+    for (let rep = 0; rep < 5; rep++) {
+      const job = startChunkBake(ground, detail, elev, cx, cy, px, woodSkin, false, null);
+      for (let i = 0; !stepChunkBake(job); i++) {
+        // stepChunkBake advanced step i — time it externally instead:
+      }
+    }
+    // (timed variant below — stepChunkBake hides indices, run manually)
+    {
+      const job = startChunkBake(ground, detail, elev, cx, cy, px, woodSkin, false, null);
+      for (let i = 0; i < job.steps.length; i++) {
+        const t0 = performance.now();
+        job.steps[i]!();
+        stepMs.push(performance.now() - t0);
+      }
+    }
+    return {
+      full: time(() => run()),
+      fringeEdge: time(() => run({ mask: 1, copyFrom: base })),
+      fringeRing: time(() => run({ mask: 15, copyFrom: base })),
+      steps: stepMs.map((m) => Math.round(m * 100) / 100),
+    };
+  }
+
+  /** Any elevated tile inside a strip (+1 ring of paint bleed) sends
+   *  the re-bake down the full lane — ground strips repaint their own
+   *  elev masks fine, but reused lifted layers must be provably out
+   *  of the changed data's reach. */
+  private fringeStripHasElev(game: ClientGame, cx: number, cy: number, mask: number): boolean {
+    const bx = cx * CHUNK_SIZE;
+    const by = cy * CHUNK_SIZE;
+    const D = FRINGE_TILES; // mask tiles are grown by 1 inside the bake; +1 here too
+    const scan = (lx0: number, lx1: number, ly0: number, ly1: number): boolean => {
+      for (let ly = ly0; ly <= ly1; ly++)
+        for (let lx = lx0; lx <= lx1; lx++)
+          if (game.world.elevAt(bx + lx, by + ly) !== 0) return true;
+      return false;
+    };
+    const M = CHUNK_SIZE - 1;
+    if ((mask & 1) !== 0 && scan(0, M, 0, D)) return true;
+    if ((mask & 2) !== 0 && scan(0, M, CHUNK_SIZE - 1 - D, M)) return true;
+    if ((mask & 4) !== 0 && scan(0, D, 0, M)) return true;
+    if ((mask & 8) !== 0 && scan(CHUNK_SIZE - 1 - D, M, 0, M)) return true;
+    return false;
   }
 
   /** The shared job body: terrain steps + one step per elevation level. */
@@ -7393,6 +7936,7 @@ export class Renderer {
     data: NonNullable<ReturnType<ClientGame['world']['get']>>,
     bakePx: number,
     live: boolean,
+    fringe?: FringeSpec,
   ): NonNullable<BakedChunk['pending']> {
     const ground = (tx: number, ty: number) => game.world.groundAt(tx, ty);
     const detail = (tx: number, ty: number) => this.detailAt(game, tx, ty);
@@ -7419,7 +7963,18 @@ export class Renderer {
       levels.push(level);
     }
     return {
-      job: startChunkBake(ground, detail, elev, cx, cy, bakePx, woodSkin, live, this.takeChunkCanvas(bakePx)),
+      job: startChunkBake(
+        ground,
+        detail,
+        elev,
+        cx,
+        cy,
+        bakePx,
+        woodSkin,
+        live,
+        this.takeChunkCanvas(bakePx),
+        fringe,
+      ),
       levels,
       lifted: [],
       live,
@@ -7428,6 +7983,8 @@ export class Renderer {
       px: bakePx,
       startElev: (level: number) =>
         startElevatedBake(ground, detail, elev, cx, cy, bakePx, level, this.takeChunkCanvas(bakePx)),
+      fringeRev: data.fringeRev ?? 0,
+      fringeMask: fringe?.mask ?? data.fringeMask ?? 0,
     };
   }
 
@@ -7485,6 +8042,13 @@ export class Renderer {
     entry.data = p.data;
     entry.rev = p.rev;
     entry.px = p.px;
+    // THE FRINGE RE-BAKE's settlement: the baseline advances to the
+    // build-time capture and the consumed mask bits clear — bits set
+    // mid-job survive for the restart the rev mismatch forces.
+    entry.fringeRev = p.fringeRev;
+    if (p.data.fringeMask !== undefined) p.data.fringeMask &= ~p.fringeMask;
+    // THE STRIP PAINTS ASIDE: the scratch goes back to the pool.
+    this.recycleChunkCanvas(p.job.fringeScratch);
     entry.pending = undefined;
   }
 
@@ -8481,7 +9045,7 @@ export class Renderer {
    * one thing that should never be seen — it means the caches are not
    * converging and a budget wants raising.
    */
-  readonly liveStats = { prop: 0, tree: 0, flora: 0, chunk: 0, mask: 0, offscreen: 0, cliff: 0 };
+  readonly liveStats = { prop: 0, tree: 0, flora: 0, chunk: 0, mask: 0, offscreen: 0, cliff: 0, fringe: 0 };
 
   /**
    * THE BAND BUDGET IS A FUSE, NOT A BROOM — the whole doctrine, the
@@ -14082,7 +14646,7 @@ export class Renderer {
     );
     const ls = this.liveStats;
     parts.push(
-      `live prop ${ls.prop} tree ${ls.tree} flora ${ls.flora} chunk ${ls.chunk} mask ${ls.mask} cliff ${ls.cliff}`,
+      `live prop ${ls.prop} tree ${ls.tree} flora ${ls.flora} chunk ${ls.chunk} mask ${ls.mask} cliff ${ls.cliff} fringe ${ls.fringe}`,
     );
     parts.push(
       `trees offscreen ${ls.offscreen}`,

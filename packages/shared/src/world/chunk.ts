@@ -22,6 +22,16 @@ export interface ChunkData {
   elev: Int8Array;
   /** Bumped on in-place mutation so render caches can invalidate. */
   rev?: number;
+  /** THE FRINGE RE-BAKE's bookkeeping (client render annotations,
+   *  like `rev`): fringeRev counts the rev bumps that were NEIGHBOR-
+   *  driven — when every bump since a chunk's last bake was a fringe
+   *  bump (rev delta === fringeRev delta) and its own payload object
+   *  is unchanged, the re-bake may repaint only the border strips
+   *  named by fringeMask (1 N, 2 S, 4 W, 8 E) instead of the whole
+   *  canvas. The renderer clears consumed mask bits at bake
+   *  completion. */
+  fringeRev?: number;
+  fringeMask?: number;
 }
 
 export function chunkKey(cx: number, cy: number): string {

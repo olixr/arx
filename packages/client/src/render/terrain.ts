@@ -733,6 +733,9 @@ export interface ChunkBakeJob {
   /** Remaining paint steps; each sized to fit a slice of frame budget. */
   steps: Array<() => void>;
   next: number;
+  /** THE STRIP PAINTS ASIDE's scratch canvas (fringe jobs only) —
+   *  the caller pools it when the job completes or dies. */
+  fringeScratch?: HTMLCanvasElement;
 }
 
 /** Advance a sliced bake by one step; true when the bake is complete. */
@@ -784,8 +787,27 @@ function bakeCanvasFor(
   if (reuse && reuse.width === size && reuse.height === size) {
     canvas = reuse;
     const c = canvas.getContext('2d')!;
-    c.setTransform(1, 0, 0, 1, 0, 0);
-    c.clearRect(0, 0, size, size);
+    // THE POOLED CANVAS FORGETS ITS PAST (fringe round's discovery):
+    // a pooled ctx keeps the dead bake's lineCap/join/dash/alpha —
+    // and the scramble probe PROVED skin strokes consume inherited
+    // stroke state (12.5k px moved under a scrambled cap/join/dash).
+    // Until now every bake's output depended on which pooled canvas
+    // it drew — a determinism lottery. reset() clears state AND
+    // pixels without reallocating; the manual fallback covers old
+    // engines.
+    if (typeof c.reset === 'function') {
+      c.reset();
+    } else {
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.clearRect(0, 0, size, size);
+      c.globalAlpha = 1;
+      c.globalCompositeOperation = 'source-over';
+      c.setLineDash([]);
+      c.lineDashOffset = 0;
+      c.lineCap = 'butt';
+      c.lineJoin = 'miter';
+      c.miterLimit = 10;
+    }
   } else {
     canvas = document.createElement('canvas');
     canvas.width = size;
@@ -795,6 +817,82 @@ function bakeCanvasFor(
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.translate(G, G);
   return { canvas, ctx };
+}
+
+/**
+ * THE FRINGE RE-BAKE (foundation audit's charted lever). A neighbor
+ * arrival can only change a chunk's painted pixels within a border
+ * fringe — the blob halo reaches 2 rings, the detail pass 1 tile,
+ * deck lookahead a hair more — yet a fringe bump used to re-run all
+ * ~29 sliced steps over the whole canvas, and one arrival bumps up
+ * to 8 neighbors. A fringe job instead COPIES the prior bake whole,
+ * CLEARS the affected border strips, and re-runs every step CLIPPED
+ * to them (loops narrowed where they dominate). Determinism makes
+ * this pixel-exact: the strip is wide enough (FRINGE_TILES = reach 3
+ * + 1 paint bleed) that every pixel at a strip boundary depends only
+ * on unchanged data, strips sit on tile boundaries (integer px — the
+ * clip edge is crisp, no partial coverage), and the cleared strip
+ * recomposes from the base up in the full bake's own step order.
+ * scripts/probes/fringe-seam.mjs is the proof, and its gate is
+ * STRUCTURAL — the measured truth about this GPU canvas, in order
+ * of discovery: (1) identical op streams on identical canvases are
+ * BYTE-EXACT (the null cases pin it; a no-narrowing fringe measured
+ * zero differing bytes). (2) clip() re-rounds AA coverage on
+ * interior pixels — which is why the strips paint ASIDE, never
+ * under a clip. (3) ANY op-stream change re-rolls scattered AA edge
+ * pixels across the whole canvas, magnitude scaling with the stream
+ * delta (one mutated tile ±14; the narrowed meadow's absent
+ * thousands of fills ±27) — but every such pixel is a legitimate
+ * roll of the same content, landing as SINGLES and short boundary
+ * chains. A real defect is a CONTIGUOUS region. The gate therefore
+ * bounds the largest 4-connected cluster of >8-delta pixels (24)
+ * plus a hard per-channel cap (48); measured: honest clusters 0-17,
+ * canaries 28-2507.
+ */
+export interface FringeSpec {
+  /** Edge mask: 1 = N, 2 = S, 4 = W, 8 = E — the sides changed
+   *  neighbor data reaches in from. */
+  mask: number;
+  /** The prior COMPLETE bake of the same data at the same tier —
+   *  copied whole; the strips are overwritten at completion. */
+  copyFrom: HTMLCanvasElement;
+  /** Pooled canvas for the strip scratch (see THE STRIP PAINTS
+   *  ASIDE), or null to mint one. The job returns it via
+   *  ChunkBakeJob.fringeScratch for the caller to recycle. */
+  scratch?: HTMLCanvasElement | null;
+}
+
+/** Strip depth in tiles: neighbor-data reach (3 — THE BUMP IS
+ *  EARNED's own constant) + 1 tile of paint bleed, so clip-boundary
+ *  pixels depend only on unchanged data. */
+export const FRINGE_TILES = 4;
+
+/**
+ * The affected strips as DISJOINT rects in bake-ctx coordinates
+ * (post gutter-translate: the chunk spans [0, CHUNK*px), the gutter
+ * [-G, 0) and [CHUNK*px, CHUNK*px+G)). Disjointness is load-bearing:
+ * strips clear once and every repaint pass visits a pixel once —
+ * translucent content (detail flecks, skin crumbs) is not
+ * double-composited at corners. N/S strips take the full width;
+ * W/E strips take only the rows between them.
+ */
+export function fringeStrips(
+  mask: number,
+  px: number,
+  G: number,
+): Array<[number, number, number, number]> {
+  const span = CHUNK_SIZE * px;
+  const D = FRINGE_TILES * px;
+  const rects: Array<[number, number, number, number]> = [];
+  const n = (mask & 1) !== 0;
+  const s = (mask & 2) !== 0;
+  const midY0 = n ? D : -G;
+  const midY1 = s ? span - D : span + G;
+  if (n) rects.push([-G, -G, span + G * 2, D + G]);
+  if (s) rects.push([-G, span - D, span + G * 2, D + G]);
+  if ((mask & 4) !== 0 && midY1 > midY0) rects.push([-G, midY0, D + G, midY1 - midY0]);
+  if ((mask & 8) !== 0 && midY1 > midY0) rects.push([span - D, midY0, D + G, midY1 - midY0]);
+  return rects;
 }
 
 export function startChunkBake(
@@ -807,9 +905,10 @@ export function startChunkBake(
   woodSkin?: WoodSkinSampler,
   live = true,
   reuse?: HTMLCanvasElement | null,
+  fringe?: FringeSpec,
 ): ChunkBakeJob {
   const G = bakeGutter(px);
-  const { canvas, ctx } = bakeCanvasFor(px, reuse);
+  const { canvas, ctx: mainCtx } = bakeCanvasFor(px, reuse);
   const baseX = cx * CHUNK_SIZE;
   const baseY = cy * CHUNK_SIZE;
 
@@ -817,6 +916,68 @@ export function startChunkBake(
 
   const steps: Array<() => void> = [];
   const darkBand = baseY >= 512;
+
+  // THE STRIP PAINTS ASIDE (the fringe mechanism). Clipping was the
+  // obvious shape and it CANNOT be byte-exact: this browser rounds
+  // antialiased coverage differently through a clip mask (measured:
+  // ±1-per-channel on ~0.4% of strip pixels — scattered AA edges of
+  // skin blobs and flecks; plain fills exact). So no clip anywhere:
+  // fringe steps paint a SCRATCH chunk canvas at the very same
+  // device coordinates (same integer translate — identical
+  // rasterization by construction), and one final step clears the
+  // strip rects on the real canvas and copies them across (both ops
+  // proven byte-exact by the null cases). Steps run in the full
+  // bake's own order from the same default state, so inter-step
+  // context leakage — whatever it may be — is identical too. The
+  // skins deliberately run WHOLE: their worn-band strokes and crumb
+  // runs phase along multi-cell boundary paths, and truncating a
+  // run shifts everything downstream of the cut; meadow and detail
+  // are per-cell/per-tile and narrow safely.
+  const fRects = fringe ? fringeStrips(fringe.mask, px, G) : null;
+  let fTileMask: Uint8Array | null = null; // tiles -1..CHUNK per axis, grown 1
+  let fringeScratch: HTMLCanvasElement | undefined;
+  let ctx = mainCtx;
+  if (fringe && fRects) {
+    mainCtx.save();
+    mainCtx.setTransform(1, 0, 0, 1, 0, 0);
+    mainCtx.drawImage(fringe.copyFrom, 0, 0);
+    mainCtx.restore();
+    const sc = bakeCanvasFor(px, fringe.scratch ?? null);
+    fringeScratch = sc.canvas;
+    ctx = sc.ctx;
+    // THE SCRATCH WEARS THE SAME COAT: seed it with the base too and
+    // clear only the strips. The GPU canvas rasterizes big skin
+    // region paths content-sensitively — with TRANSPARENT
+    // out-of-strip texels underneath, skin-boundary AA inside the
+    // strip moved by up to 27; with the base's opaque pixels there
+    // (never copied back, so correctness owes them nothing), the
+    // divergence collapses into the ordinary op-stream class, and
+    // the meadow can narrow again — it is HALF the bake (1.6-1.8ms
+    // of 3.4 measured per-step).
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(fringe.copyFrom, 0, 0);
+    ctx.restore();
+    for (const [rx, ry, rw, rh] of fRects) ctx.clearRect(rx, ry, rw, rh);
+    const TS = CHUNK_SIZE + 2;
+    fTileMask = new Uint8Array(TS * TS);
+    for (const [rx, ry, rw, rh] of fRects) {
+      // Detail reach 3: most flecks stay within their tile, but the
+      // long ornaments (snow drift streaks, shore scatter) paint up
+      // to ~3 tiles from their anchor — the seam battery measured
+      // maxd 15-27 of missing streak ink at growth 1 on snow/coast/
+      // forest strips, and clean at 3.
+      const tx0 = Math.max(-1, Math.floor(rx / px) - 3);
+      const tx1 = Math.min(CHUNK_SIZE, Math.ceil((rx + rw) / px) + 2);
+      const ty0 = Math.max(-1, Math.floor(ry / px) - 3);
+      const ty1 = Math.min(CHUNK_SIZE, Math.ceil((ry + rh) / px) + 2);
+      for (let ty = ty0; ty <= ty1; ty++)
+        for (let tx = tx0; tx <= tx1; tx++) fTileMask[tx + 1 + (ty + 1) * TS] = 1;
+    }
+  }
+  const add = (fn: () => void): void => {
+    steps.push(fn);
+  };
 
   // 1. Meadow base: large soft noise patches, no per-tile checker.
   // THE PROLOGUE JOINS THE QUEUE: the fine pass is ~17k fillRects with
@@ -827,9 +988,19 @@ export function startChunkBake(
   // repaints over it in row-band steps. Replacement jobs build behind
   // the old blit, so they defer even the placeholder to the steps.
   const cell = Math.max(4, Math.floor(px / 4));
-  const paintMeadow = (y0: number, y1: number): void => {
-    for (let y = y0; y < y1; y += cell) {
-      for (let x = -G; x < CHUNK_SIZE * px + G; x += cell) {
+  const paintMeadow = (
+    y0: number,
+    y1: number,
+    x0 = -G,
+    x1 = CHUNK_SIZE * px + G,
+  ): void => {
+    // Cells snap to the -G lattice so a narrowed range paints the
+    // SAME cells (same tones at the same corners) the full pass
+    // would — a free-running start would shift every sample point.
+    const xs = -G + Math.floor((x0 + G) / cell) * cell;
+    const ys = -G + Math.floor((y0 + G) / cell) * cell;
+    for (let y = ys; y < y1; y += cell) {
+      for (let x = xs; x < x1; x += cell) {
         ctx.fillStyle = meadowTone(baseX + x / px, baseY + y / px);
         ctx.fillRect(x, y, cell, cell);
       }
@@ -865,8 +1036,18 @@ export function startChunkBake(
     const band = Math.ceil(span / 4 / cell) * cell;
     for (let y0 = -G; y0 < CHUNK_SIZE * px + G; y0 += band) {
       const y1 = Math.min(y0 + band, CHUNK_SIZE * px + G);
-      steps.push(() => {
-        paintMeadow(y0, y1);
+      add(() => {
+        if (fRects !== null) {
+          // Narrowed per disjoint rect (THE SCRATCH WEARS THE SAME
+          // COAT makes this safe — see the fringe init above).
+          for (const [rx, ry, rw, rh] of fRects) {
+            const by0 = Math.max(y0, ry);
+            const by1 = Math.min(y1, ry + rh);
+            if (by1 > by0) paintMeadow(by0, by1, rx, rx + rw);
+          }
+        } else {
+          paintMeadow(y0, y1);
+        }
         ctx.save();
         ctx.beginPath();
         ctx.rect(-G, y0, CHUNK_SIZE * px + G * 2, y1 - y0);
@@ -878,19 +1059,34 @@ export function startChunkBake(
   }
   // Restore the placeholder order over the fine repaint (and paint it
   // at all, for replacement jobs that skipped the synchronous pass).
-  steps.push(paintBase);
+  add(paintBase);
 
   // 2. Material skins, lowest to highest, contoured on the dual grid —
   // one layer per step. The halo index is shared by every layer step.
+  if ((globalThis as unknown as { FRINGE_SCRAMBLE?: boolean }).FRINGE_SCRAMBLE) {
+    // DEV (seam bisect): scramble carry-over ctx state before the
+    // skins — a painter that draws without setting its own style
+    // shows up as a diff against an unscrambled full bake.
+    steps.push(() => {
+      ctx.fillStyle = '#ff00ff';
+      ctx.strokeStyle = '#00ffff';
+      ctx.lineWidth = 3.7;
+      ctx.setLineDash([5, 3]);
+      ctx.lineDashOffset = 2.2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.miterLimit = 2;
+    });
+  }
   let idx: Int8Array | null = null;
   for (let li = 0; li < BLOB_LAYERS.length; li++) {
-    steps.push(() => {
+    add(() => {
       idx ??= computeLayerIdx(g, baseX, baseY);
       paintLayerSkin(ctx, idx, li, baseX, baseY, px, g);
     });
   }
 
-  steps.push(() => {
+  add(() => {
     // 2b. Ground under raised OR sunken terrain: the lifted surfaces
     // and cliff faces cover almost all of it, but any sliver that
     // survives a seam must read as shadowed rock — never sunny grass
@@ -906,11 +1102,15 @@ export function startChunkBake(
   // One tile of margin so flecks straddling a chunk edge reach into
   // the gutter — the neighbor bakes the identical fleck at the same
   // world position, so both sides agree. Sliced in row bands.
+  const TS = CHUNK_SIZE + 2;
   for (let r0 = -1; r0 <= CHUNK_SIZE; r0 += DETAIL_STEP_ROWS) {
     const r1 = Math.min(r0 + DETAIL_STEP_ROWS - 1, CHUNK_SIZE);
-    steps.push(() => {
+    add(() => {
       for (let ly = r0; ly <= r1; ly++) {
         for (let lx = -1; lx <= CHUNK_SIZE; lx++) {
+          // Fringe: only tiles whose paint can reach a strip (the
+          // detail margin is 1 tile; the mask is grown by it).
+          if (fTileMask !== null && fTileMask[lx + 1 + (ly + 1) * TS] === 0) continue;
           const tx = baseX + lx;
           const ty = baseY + ly;
           // Raised/sunken tiles' details belong to their lifted layer.
@@ -926,13 +1126,31 @@ export function startChunkBake(
   // cell) covers that neighbor's water details instead of wearing
   // them. Ground-level decks only — a deck on a terrace paints into
   // its own elevated layer (bakeElevated), which blits over these
-  // rows shifted; painting it here too would bury it.
+  // rows shifted; painting it here too would bury it. (Fringe: the
+  // scans stay whole — a run's board tones are row-keyed and world-
+  // keyed, so the clip alone keeps them exact; the scan is ~1k tile
+  // reads, not a paint cost.)
   const groundDeck = (tx: number, ty: number): boolean => elev(tx, ty) === 0;
-  steps.push(() => drawDocks(ctx, ground, baseX, baseY, px, groundDeck));
-  steps.push(() => drawBridges(ctx, ground, baseX, baseY, px, groundDeck));
-  steps.push(() => drawPorchDecks(ctx, ground, baseX, baseY, px, woodSkin, groundDeck));
+  add(() => drawDocks(ctx, ground, baseX, baseY, px, groundDeck));
+  add(() => drawBridges(ctx, ground, baseX, baseY, px, groundDeck));
+  add(() => drawPorchDecks(ctx, ground, baseX, baseY, px, woodSkin, groundDeck));
+  if (fRects !== null && fringeScratch !== undefined) {
+    const sc = fringeScratch;
+    steps.push(() => {
+      // THE STRIP COMES HOME: clear each strip on the real canvas and
+      // copy the scratch's identical-coordinates content across —
+      // integer offsets, no filtering, byte-exact.
+      mainCtx.save();
+      mainCtx.setTransform(1, 0, 0, 1, 0, 0);
+      for (const [rx, ry, rw, rh] of fRects) {
+        mainCtx.clearRect(rx + G, ry + G, rw, rh);
+        mainCtx.drawImage(sc, rx + G, ry + G, rw, rh, rx + G, ry + G, rw, rh);
+      }
+      mainCtx.restore();
+    });
+  }
 
-  return { canvas, steps, next: 0 };
+  return { canvas, steps, next: 0, fringeScratch };
 }
 
 /** The one-shot bake: start + run every step. Output is identical to
