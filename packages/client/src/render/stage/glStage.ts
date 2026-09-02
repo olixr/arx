@@ -1035,14 +1035,39 @@ export class GlStage implements GpuStageBackend {
         const x1 = it.dw;
         const y1 = it.dh;
         // Corners: (0,0) (dw,0) (0,dh) (dw,dh) through the matrix.
-        const p0x = e;
-        const p0y = f;
-        const p1x = a * x1 + e;
-        const p1y = b * x1 + f;
-        const p2x = cM * y1 + e;
-        const p2y = d * y1 + f;
-        const p3x = a * x1 + cM * y1 + e;
-        const p3y = b * x1 + d * y1 + f;
+        let p0x = e;
+        let p0y = f;
+        let p1x = a * x1 + e;
+        let p1y = b * x1 + f;
+        let p2x = cM * y1 + e;
+        let p2y = d * y1 + f;
+        let p3x = a * x1 + cM * y1 + e;
+        let p3y = b * x1 + d * y1 + f;
+        // Per-corner homogeneous weight — 1 for a screen quad (byte-
+        // identical), the projected weight for a perspective GROUND quad.
+        let w0 = 1;
+        let w1 = 1;
+        let w2 = 1;
+        let w3 = 1;
+        if (it.kind === 'quad' && it.ground) {
+          // THE CAMERA LEARNS TO LEAN (B-1b): four explicit projected
+          // corners (device px = dpr·CSS) override the affine rect, and
+          // gl_Position.w carries the perspective (see the vertex shader).
+          const gc = it.ground.c;
+          const gw = it.ground.w;
+          p0x = dpr * gc[0]; // TL
+          p0y = dpr * gc[1];
+          p1x = dpr * gc[2]; // TR
+          p1y = dpr * gc[3];
+          p2x = dpr * gc[4]; // BL
+          p2y = dpr * gc[5];
+          p3x = dpr * gc[6]; // BR
+          p3y = dpr * gc[7];
+          w0 = gw[0];
+          w1 = gw[1];
+          w2 = gw[2];
+          w3 = gw[3];
+        }
         let u0 = 0;
         let v0 = 0;
         let u1 = 1;
@@ -1080,12 +1105,12 @@ export class GlStage implements GpuStageBackend {
           u8[bo + 3] = pa;
           v++;
         };
-        emit(p0x, p0y, u0, v0);
-        emit(p1x, p1y, u1, v0);
-        emit(p2x, p2y, u0, v1);
-        emit(p2x, p2y, u0, v1);
-        emit(p1x, p1y, u1, v0);
-        emit(p3x, p3y, u1, v1);
+        emit(p0x, p0y, u0, v0, w0);
+        emit(p1x, p1y, u1, v0, w1);
+        emit(p2x, p2y, u0, v1, w2);
+        emit(p2x, p2y, u0, v1, w2);
+        emit(p1x, p1y, u1, v0, w1);
+        emit(p3x, p3y, u1, v1, w3);
       }
     }
     // One upload, then one draw per run.
