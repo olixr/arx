@@ -17,9 +17,9 @@
  */
 import { grassWindGlsl, GRASS_INSTANCE_FLOATS } from './grassGpu.js';
 
-/** Up-segments in a blade's triangle strip — enough to read the curve
- *  without over-tessellating a sub-inch blade. Verts = (SEG+1)·2. */
-const BLADE_SEGMENTS = 6;
+/** Up-segments in a blade's triangle strip — enough for a smooth curved
+ *  spine without over-tessellating a sub-inch blade. Verts = (SEG+1)·2. */
+const BLADE_SEGMENTS = 8;
 const BLADE_VERTS = (BLADE_SEGMENTS + 1) * 2;
 
 /** Palette dimensions (must match ALL_TONES × LIGHTS in grass.ts). */
@@ -41,15 +41,21 @@ ${grassWindGlsl()}
 void main() {
   float up = aTmpl.y;
   float side = aTmpl.x;
-  // Taper to a point at the tip — a blade, not a ribbon.
-  float taper = pow(1.0 - up, 0.7);
+  // A LEAF SILHOUETTE, not a ribbon: full through the lower third, then
+  // tapering to a fine point — the painterly blade, not a spike.
+  float taper = (1.0 - up * up) * (0.55 + 0.45 * sqrt(1.0 - up));
   vec4 wind = grassWind(iRoot, uTime + iShape.w * 6.2831853);
-  // Tip bends most (up^2): static lean + live wind, along the wind bend.
-  float k = (iShape.z * uWindGain.y + wind.x * uWindGain.x) * up * up;
+  // A smooth curved spine: static lean + live wind, growing with height
+  // (an arc, not a hinge). Per-blade phase tilts the arc for variety.
+  float arc = smoothstep(0.0, 1.0, up) * up;
+  float k = (iShape.z * uWindGain.y + wind.x * uWindGain.x) * arc
+          + iShape.z * 0.35 * up;      // a little standing curve at rest
   vec2 world = iRoot;
-  world.x += k + side * iShape.y * taper;
-  world.y -= up * iShape.x;          // grow up-screen
-  world.y += wind.y * up * up * uWindGain.x * 0.4; // a little forward sway
+  // Half-width jittered per blade (phase) so no two read the same.
+  float hw = iShape.y * (0.85 + 0.5 * fract(iShape.w * 7.31));
+  world.x += k + side * hw * taper;
+  world.y -= up * iShape.x;            // grow up-screen
+  world.y += wind.y * arc * uWindGain.x * 0.4; // a little forward sway
   vec3 p = uView * vec3(world, 1.0);
   gl_Position = vec4(p.xy, 0.0, 1.0);
   vUp = up;
@@ -65,14 +71,15 @@ in float vShimmer;
 uniform sampler2D uPalette;  // ${PAL_LIGHTS} lights × ${PAL_TONES} tones
 out vec4 o;
 void main() {
-  // Flat blade colour from the shimmer ramp, exactly as the baked meadow:
-  // the shimmer wave lifts the light step; the base darkens toward root.
-  float light = clamp(0.25 + vShimmer * 0.5, 0.0, 1.0);
+  // Colour from the shimmer ramp, as the baked meadow: the shimmer wave
+  // lifts the light step, and the TIP catches the sun (bent blades flash
+  // lit up high) while the root sits in shade — the painterly depth.
+  float light = clamp(0.18 + vShimmer * 0.45 + vUp * 0.22, 0.0, 1.0);
   float u = (light * float(${PAL_LIGHTS - 1}) + 0.5) / float(${PAL_LIGHTS});
   float v = (vTone + 0.5) / float(${PAL_TONES});
   vec3 col = texture(uPalette, vec2(u, v)).rgb;
-  // Root shade: the lowest sliver sits a touch darker (rooted, not floating).
-  col *= mix(0.82, 1.0, clamp(vUp * 3.0, 0.0, 1.0));
+  // Root shade: the lowest sliver sits darker (rooted, not floating).
+  col *= mix(0.72, 1.0, clamp(vUp * 2.6, 0.0, 1.0));
   o = vec4(col, 1.0);
 }`;
 

@@ -20,16 +20,43 @@ const renderer = new GrassGpuRenderer(gl, BLADE_FILLS);
 const NX = 20;
 const NY = 13;
 const blades: Blade[] = [];
+// A cheap hash for the dense coat scatter (deterministic per tile+i).
+const h2 = (a: number, b: number): number => {
+  let n = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+  return n - Math.floor(n);
+};
 for (let ty = 0; ty < NY; ty++) {
   for (let tx = 0; tx < NX; tx++) {
     const tileId = 1; // a grass ground tile
-    const detailId = (tx * 7 + ty * 3) % 11 === 0 ? 3 : 0; // scatter tufts (DETAIL_TUFT=3-ish)
+    const detailId = (tx * 7 + ty * 3) % 11 === 0 ? 3 : 0; // scatter tufts
     const g = generateGrassTile(tx, ty, tileId, detailId);
     for (const b of g.under) blades.push(b);
     for (const b of g.north) blades.push(b);
     for (const b of g.south) blades.push(b);
+    // THE COAT (density): the GPU affords a lush carpet the baked meadow
+    // paints — scatter short nap blades to close the ground. ~26/tile.
+    const COAT = 26;
+    for (let i = 0; i < COAT; i++) {
+      const rx = h2(tx * 13 + i, ty * 7 + i * 3);
+      const ry = h2(ty * 17 + i * 5, tx * 11 + i);
+      const rh = h2(i * 2 + tx, i * 3 + ty);
+      blades.push({
+        bx: tx + rx,
+        by: ty + ry,
+        h: 0.16 + rh * 0.32, // short coat blades
+        w: 0.022 + rh * 0.01,
+        lean: (h2(i, tx + ty) - 0.5) * 0.18,
+        phase: h2(i * 4 + tx, i + ty * 2),
+        bin: 0,
+        lumJit: 0,
+        tone: Math.floor(h2(tx + i, ty - i) * 8), // full tone range incl. nap
+        seg2: false,
+      });
+    }
   }
 }
+// Root-up sort so nearer (larger by) blades draw over farther ones.
+blades.sort((a, b) => a.by - b.by);
 const instances = new Float32Array(blades.length * GRASS_INSTANCE_FLOATS);
 packBladeInstances(blades, instances);
 renderer.upload(instances, blades.length);
