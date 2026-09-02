@@ -464,6 +464,12 @@ const CHUNK_REPLACE_STARTS = 2;
  *  spans) without hoarding idle backing store. */
 const CHUNK_POOL_BUDGET = 256 * 1048576;
 
+/** THE CAMERA LEARNS TO LEAN (Epic B): the perspective frustum's far
+ *  reach, as a multiple of the orthographic view depth. A moderate lean
+ *  reaches ~1.5–2× before the horizon; the cap bounds the bake set under
+ *  a strong lean (and marks where a horizon fade will later sit). */
+const FRUSTUM_FAR_MULT = 3;
+
 /**
  * Byte ceiling on the baked-ground cache. The old cap counted SLOTS
  * (80, or 28 hi-res) and so meant wildly different amounts of memory
@@ -7098,16 +7104,43 @@ export class Renderer {
 
   visibleTileBounds(): { minTx: number; maxTx: number; minTy: number; maxTy: number } {
     const s = this.camera.scale;
+    // These are the GROUND bounds: modest pads for flat content. Tall
+    // content adds its own class pad on top (TREE_PAD_S/X, PROP_PAD_S,
+    // LIGHT_PAD, the elevated-ground south pad) — never widen these
+    // shared pads for one tall class, every consumer pays for the extra
+    // rows (the grass pass even shrinks them).
+    const orthoRows = this.h / 2 / (s * this.camera.yScale);
+    if (this.camera.q === 0) {
+      // The pitched-orthographic frustum is an axis-aligned rect — the
+      // affine inverse, byte-identical to every frame shipped so far.
+      return {
+        minTx: Math.floor(this.camera.x - this.w / 2 / s) - 2,
+        maxTx: Math.floor(this.camera.x + this.w / 2 / s) + 2,
+        minTy: Math.floor(this.camera.y - orthoRows) - 5,
+        maxTy: Math.floor(this.camera.y + orthoRows) + 2,
+      };
+    }
+    // THE CAMERA LEARNS TO LEAN (Epic B): under a lean the visible
+    // region is a TRAPEZOID to the horizon — far (top) rows are wider
+    // and much deeper, so the affine rect would leave HOLES near the
+    // top. Unproject the four screen corners and bound them. The far
+    // reach is CAPPED (FRUSTUM_FAR_MULT × the ortho depth) so a strong
+    // lean — where the top edge approaches the horizon and unprojects
+    // toward infinity — cannot pull the whole map into the bake set;
+    // the capped band is where a horizon fog will later sit.
+    const W = this.w;
+    const H = this.h;
+    const c00 = this.camera.screenToWorld(0, 0, W, H);
+    const c10 = this.camera.screenToWorld(W, 0, W, H);
+    const c01 = this.camera.screenToWorld(0, H, W, H);
+    const c11 = this.camera.screenToWorld(W, H, W, H);
+    const farMinTy = this.camera.y - orthoRows * FRUSTUM_FAR_MULT;
+    const minTy = Math.max(farMinTy, Math.min(c00.y, c10.y, c01.y, c11.y));
     return {
-      // These are the GROUND bounds: modest pads for flat content.
-      // Tall content adds its own class pad on top (TREE_PAD_S/X,
-      // PROP_PAD_S, LIGHT_PAD, the elevated-ground south pad) — never
-      // widen these shared pads for one tall class, every consumer
-      // pays for the extra rows (the grass pass even shrinks them).
-      minTx: Math.floor(this.camera.x - this.w / 2 / s) - 2,
-      maxTx: Math.floor(this.camera.x + this.w / 2 / s) + 2,
-      minTy: Math.floor(this.camera.y - this.h / 2 / (s * this.camera.yScale)) - 5,
-      maxTy: Math.floor(this.camera.y + this.h / 2 / (s * this.camera.yScale)) + 2,
+      minTx: Math.floor(Math.min(c00.x, c10.x, c01.x, c11.x)) - 2,
+      maxTx: Math.ceil(Math.max(c00.x, c10.x, c01.x, c11.x)) + 2,
+      minTy: Math.floor(minTy) - 5,
+      maxTy: Math.ceil(Math.max(c00.y, c10.y, c01.y, c11.y)) + 2,
     };
   }
 
