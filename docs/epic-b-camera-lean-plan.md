@@ -355,14 +355,95 @@ fringe-seam, ui-smoke, full suite.
 
 ---
 
-## §B · Progress
+## §B · Progress (as-built)
+
+The MACHINERY is built and the lean is still OFF — `q = 0` /
+`PERSP_LEAN = 0`, so every band below is byte-identical to the shipping
+ortho frame until B-2 raises `q`.
 
 - **B-1 (2cf4d80c)** — the homography camera at q=0. `cameraProject.ts`
   (pure, tested), `Camera.q`/`depthScale`, delegated projection. Byte-
-  identical; 8 unit tests; parity 7/7.
-- **B-1c, first thread** — the humanoid billboard foreshortens with
-  depth (`s = scale·depthScale(footY)`), byte-identical at q=0. The
-  remaining mob/mount body draws follow the same one-multiply; the
-  SURFACE `s` sites (walls/cliffs/decor) are B-1b/B-3, not this pattern.
-- **Next** — B-1b per §A (the ground shader + oracle), then the rest of
-  the billboard threading, then B-2 turns `q` on.
+  identical; unit tests; parity 7/7. Exact closed-form inverse.
+- **B-1b core (b3aeb62c)** — the GL vertex pipeline gains a per-vertex
+  `w` (vertex 20→24B, attr `aW`, `gl_Position = vec4(c·aW, 0, aW)`).
+  aW=1 byte-identical; perspective-CAPABLE (HW perspective-correct interp
+  → 4 ground corners suffice, no subdivision, no swim).
+- **B-1b-ii (38d96d1a)** — THE GROUND PLANE LEANS (screenshot-proven).
+  `StageQuad.ground` = 4 world corners + weights; `drawGroundChunks`
+  projects them at q>0 (shared-corner-deterministic → seam-free). q=0
+  byte-identical; q>0 the ground recedes correctly.
+- **B-1c (0c97fcf9)** — CREATURES FORESHORTEN. `spriteScale(footY)` =
+  `scale·depthScale(footY)` threaded into humanoid / npc / downed-beast /
+  legless / owl / corpse bodies + the reveal box. q=0 byte-identical.
+- **Frustum fix (36513872)** — `visibleTileBounds` is perspective-aware
+  (unproject 4 screen corners, `FRUSTUM_FAR_MULT=3`) → no horizon holes
+  at q>0; q=0 byte-identical; the forest recedes with no pop.
+- **THE GRASS LEVER (this session — `gpu-grass-proposal.md`).** The
+  meadow is the heaviest per-tile pass and the wider frustum's worst-hit
+  content, so it was the first thing the lean needed off the CPU. Moved
+  to GPU instances: blocky flat-vector blades bending to the ONE WIND
+  (ported to GLSL, pinned == CPU), trample, flowers & seed-heads — in the
+  live game behind `?grass=gpu`, world-lit, camera-matrix driven, **61 fps
+  in dense scenes**, byte-identical with the flag off. The tall-grass
+  walk-through was built, **measured (~30% fps regression from per-band
+  GPU→2d syncs), and reverted** — it needs entities on the GPU (see §C
+  Group 7), a finding that shapes the rest of the epic.
+
+## §C · Remaining work & division
+
+Grouped so independent lanes can run in parallel; every Group-1/2 item is
+`q=0` byte-identical until B-2.
+
+**Group 1 — THE DEPTH THREAD (POINT sprites still on plain `camera.scale`;
+thread `spriteScale(footY)` exactly as B-1c did).** Highly parallelizable
+— each sprite family is an independent site-survey + one-multiply.
+- **Trees, saplings & flora** — `drawTree` (renderer.ts:16667) uses
+  `const s = camera.scale`; under the lean a distant tree must shrink like
+  a distant creature. The biggest visual item — tall, and the wider
+  frustum stacks more of them to the horizon. Includes tree/throw shadows.
+- **FX / particles / matter** (dust, fire, frost), **projectiles**, ground
+  decals — most inherit `worldToScreen` for position but still apply an
+  affine `·scale` height; thread the depth factor.
+- **Props** — summon/drop/gravestone, standing decor, rockArt bodies.
+- **Elevated-row content** — sprites on plateaus/upper bands.
+
+**Group 2 — SURFACE porting (B-3 vertical surfaces).** The hard, structural
+class — they interpolate/blit across world coords, so each needs the
+ground-quad per-vertex-`w` treatment or a CPU sub-mesh:
+- **cliffArt** face curtains (span two projected corners by screen-lerp —
+  the heaviest surface), **waterfalls**,
+- **walls / garrisonArt** masonry runs, run-spanning decor,
+- elevated terrain bake, the **water reflection** matrix, shadow edge quads.
+
+**Group 3 — THE TWO HARD PROBLEMS (gate q>0 correctness).**
+- **§5-A** the canvas parity oracle can't draw a trapezoid → mesh-subdivide
+  the oracle for q>0 parity (B-1b-iii).
+- **§5-B** the static-layer cache fuses OFF under lean (`staticLayerOn`
+  keys on `PERSP_LEAN`, not `camera.q`) → walls draw un-leaned at q>0.
+
+**Group 4 — INVERSE.** `screenToWorld`→`pickWorld`→`solveLiftedY` and the
+`visibleTileBounds` culling trapezoid, plus ~15 consumers (input, editor,
+groundAim, rockArt glow-reproject). Needs rework + tests.
+
+**Group 5 — B-6 PERF (the gate the lean turns on behind).** The trapezoid
+frustum reveals far more content. Grass was the first lever; still needed:
+distance LOD / ppt demotion (B-3), memoize the per-row projection in hot
+loops, and re-measure fps at a moderate `q`.
+
+**Group 6 — B-4 CONSTANTS & LIGHTING, then B-2 TURNS `q` ON.** Port
+`lighting.ts`'s hand-built world→screen constants to the homography, then
+raise `q` to a moderate, clamped, settings/zone-driven lean. **The
+moderate-lean MILESTONE = B-1…B-4.**
+
+**Group 7 — ENTITIES ON THE GPU STAGE (cross-cutting enabler).** The
+grass walk-through finding showed that grass and bodies must depth-sort in
+ONE GPU pass for correct+fast interleave. Moving entities onto the stage
+world lane unlocks that walk-through AND is part of the B-6 perf story. A
+larger architectural thread; sequence after the moderate-lean milestone or
+alongside B-6.
+
+**Recommended next:** Group 1 (the depth thread — trees/foliage/FX/props),
+because it directly answers "the lean makes creatures foreshorten but not
+the trees around them," it's `q=0` byte-identical, and it divvies cleanly
+across sprite families. Then Group 3 (§5-B is a small, high-leverage fix)
+and a B-6 perf pass at a trial `q`, before B-2 turns the lean on.
