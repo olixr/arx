@@ -488,6 +488,9 @@ Order for the rest of B-6: 2+3 with the horizon fog, then 4; 5 last.
 
 ## §E · B-3 surface status (2026-09-02)
 
+**STATUS 2026-09-02: B-3 COMPLETE.** Spanning surfaces done — cliff faces & side runs (61d5445f), ramps/landings/aprons + deck-rails (15ba2b03), garrison masonry (ae8bf86c), waterfall sheets (98464a4a); water reflection needed no change (re-draws depth-threaded sprites). Left un-warped by design: clipFallRegion's single-affine terrace clip and the reveal/pb bounding boxes (over-cover, gate paint only). The lean is now clean on every surface class. Remaining Epic B: B-4 (lightmap perspective), B-5 (sky/cinematic), B-6 levers 3-4 (perf polish) — all deferred as acceptable at a moderate lean; then consider on-by-default.
+
+
 B-3 splits into two classes:
 
 **PER-TILE verticals — DONE (foreshorten by base depthScale, like B-1c).**
