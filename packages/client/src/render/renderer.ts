@@ -9365,9 +9365,15 @@ export class Renderer {
    *  the camera and patches tiles at brush rate, and leanX bends
    *  verticals about the LIVE screen center — a bake would freeze the
    *  lean about the stretch's own canvas center (THE STRAIGHT-WORLD
-   *  PREREQUISITE; the fuse blows if the lean is ever revived). */
+   *  PREREQUISITE; the fuse blows if the lean is ever revived).
+   *
+   *  §5-B: the fuse now reads the RUNTIME lean (`camera.q`), not just the
+   *  compile-time PERSP_LEAN — when B-2 raises q the flat static bake would
+   *  render walls un-leaned about the wrong center, so the layer must fuse
+   *  OFF for any q≠0 (live-draw the static world under perspective until the
+   *  bake itself is made lean-aware, a B-3 surface task). q=0 is unchanged. */
   staticLayerOn(): boolean {
-    return this.cameraOverride === null && PERSP_LEAN === 0;
+    return this.cameraOverride === null && PERSP_LEAN === 0 && this.camera.q === 0;
   }
 
   /** Device pixels per tile for band bakes (THE CRISP GRID LAW):
