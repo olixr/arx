@@ -780,11 +780,17 @@ const DETAIL_STEP_ROWS = 5;
 function bakeCanvasFor(
   px: number,
   reuse?: HTMLCanvasElement | null,
+  rows: number = CHUNK_SIZE,
 ): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } {
   const G = bakeGutter(px);
-  const size = CHUNK_SIZE * px + G * 2;
+  // Width is always the full chunk (row slices blit full width); height
+  // is the row span — a lifted level covering `rows` of CHUNK_SIZE rows
+  // (B2) pays only for those, the base bake passing the default full
+  // height (byte-identical to before).
+  const w = CHUNK_SIZE * px + G * 2;
+  const h = rows * px + G * 2;
   let canvas: HTMLCanvasElement;
-  if (reuse && reuse.width === size && reuse.height === size) {
+  if (reuse && reuse.width === w && reuse.height === h) {
     canvas = reuse;
     const c = canvas.getContext('2d')!;
     // THE POOLED CANVAS FORGETS ITS PAST (fringe round's discovery):
@@ -799,7 +805,7 @@ function bakeCanvasFor(
       c.reset();
     } else {
       c.setTransform(1, 0, 0, 1, 0, 0);
-      c.clearRect(0, 0, size, size);
+      c.clearRect(0, 0, w, h);
       c.globalAlpha = 1;
       c.globalCompositeOperation = 'source-over';
       c.setLineDash([]);
@@ -810,8 +816,8 @@ function bakeCanvasFor(
     }
   } else {
     canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
+    canvas.width = w;
+    canvas.height = h;
   }
   const ctx = canvas.getContext('2d')!;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -3755,6 +3761,12 @@ export interface ElevatedBake {
   canvas: HTMLCanvasElement;
   /** Chunk rows (local ly) containing any lifted content at this level. */
   rows: boolean[];
+  /** THE LIFTED LAYER PAYS FOR ITS ROWS (B2): the tight canvas covers
+   *  only [rowOrigin ..], with painting shifted up by rowOrigin·px — a
+   *  consumer must sample row r at `sy = gut + (r - rowOrigin)·px`, not
+   *  the pre-B2 `gut + r·px`. Carried here so the one-shot bake can
+   *  never hand back a shifted canvas without the offset to read it. */
+  rowOrigin: number;
 }
 
 /**
@@ -3766,6 +3778,41 @@ export interface ElevatedBake {
  */
 export interface ElevatedBakeJob extends ChunkBakeJob {
   rows: boolean[];
+  /** THE LIFTED LAYER PAYS FOR ITS ROWS (B2): the chunk row this
+   *  level's tight canvas begins at. The canvas covers only the
+   *  occupied (±1-padded) row span, and every paint was shifted up by
+   *  rowOrigin·px, so the draw samples `sy = gut + (r - rowOrigin)·px`. */
+  rowOrigin: number;
+}
+
+/** How tall a lifted level's tight canvas must be (B2), and where it
+ *  begins, given the per-row occupancy scan.
+ *
+ *  The renderer draws each band ±1-padded and clamped to [0, CHUNK-1]
+ *  (advanceChunkPending), so the canvas must cover [firstRow-1 ..
+ *  lastRow+1]. The height is then bucketed UP to a multiple of `bucket`
+ *  rows so the byte-bounded chunk pool sees only a handful of lifted
+ *  shapes and retired canvases still find reuse — the extra rows sit
+ *  unused below the sampled span (the draw only reads rowOrigin..lastRow
+ *  +1). Returns a full-height span if the level somehow has no rows
+ *  (defensive; callers gate on `any`). */
+export function liftedRowSpan(
+  rows: readonly boolean[],
+  chunkSize: number = CHUNK_SIZE,
+  bucket = 8,
+): { rowOrigin: number; rowCount: number } {
+  let firstRow = -1;
+  let lastRow = -1;
+  for (let r = 0; r < chunkSize; r++) {
+    if (!rows[r]) continue;
+    if (firstRow < 0) firstRow = r;
+    lastRow = r;
+  }
+  if (firstRow < 0) return { rowOrigin: 0, rowCount: chunkSize };
+  const rowOrigin = Math.max(0, firstRow - 1);
+  const rowEnd = Math.min(chunkSize - 1, lastRow + 1);
+  const rowCount = Math.min(chunkSize, Math.ceil((rowEnd - rowOrigin + 1) / bucket) * bucket);
+  return { rowOrigin, rowCount };
 }
 
 export function startElevatedBake(
@@ -3776,7 +3823,7 @@ export function startElevatedBake(
   cy: number,
   px: number,
   level: number,
-  reuse?: HTMLCanvasElement | null,
+  takeCanvas?: (rows: number) => HTMLCanvasElement | null | undefined,
 ): ElevatedBakeJob | null {
   const baseX = cx * CHUNK_SIZE;
   const baseY = cy * CHUNK_SIZE;
@@ -3834,12 +3881,24 @@ export function startElevatedBake(
   }
   if (!any) return null;
 
+  // THE LIFTED LAYER PAYS FOR ITS ROWS (B2): this level's content lives
+  // only in the scanned rows; the tight canvas covers just the ±1-
+  // padded span (see liftedRowSpan) and every painter's Y comes from
+  // the single ctx translate (proven), so one extra `-rowOrigin·px`
+  // shift relocates the whole bake.
+  const { rowOrigin, rowCount } = liftedRowSpan(rows);
+
   // Same gutter as the base bake (see bakeGutter): the row-slice blits
   // sample real content instead of a transparent canvas edge. The
   // crown contour cells already reach half a tile past the chunk, so
   // the margin content exists without widening any contour loop.
   const G = bakeGutter(px);
-  const { canvas, ctx } = bakeCanvasFor(px, reuse);
+  const reuse = takeCanvas ? takeCanvas(rowCount) : null;
+  const { canvas, ctx } = bakeCanvasFor(px, reuse, rowCount);
+  // Shift every painter up by the row origin — composes with
+  // bakeCanvasFor's translate(G,G) into translate(G, G - rowOrigin·px),
+  // and survives every sliced step (nothing re-transforms the ctx).
+  if (rowOrigin > 0) ctx.translate(0, -rowOrigin * px);
 
   // The plateau-top silhouette, contoured between tile centers.
   // Cells touching a stair of THIS level turn with square corners
@@ -4044,7 +4103,7 @@ export function startElevatedBake(
     drawPorchDecks(ctx, ground, baseX, baseY, px, undefined, deckHere);
   });
 
-  return { canvas, rows, steps, next: 0 };
+  return { canvas, rows, steps, next: 0, rowOrigin };
 }
 
 /** The one-shot elevated bake: start + run every step. Output is
@@ -4063,7 +4122,7 @@ export function bakeElevated(
   while (!stepChunkBake(job)) {
     /* run to completion */
   }
-  return { canvas: job.canvas, rows: job.rows };
+  return { canvas: job.canvas, rows: job.rows, rowOrigin: job.rowOrigin };
 }
 
 /**
