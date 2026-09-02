@@ -4042,8 +4042,12 @@ export class Renderer {
     entry: { cv: HTMLCanvasElement; au: number; av: number },
     px: number,
     baseY: number,
+    // B-1c depth thread: the mask bakes at the canonical MASK_S; the caller
+    // passes the depth-scaled screen scale so a distant caster's cast
+    // shrinks with its body. Defaults to camera.scale → identical at q=0.
+    sc: number = this.camera.scale,
   ): void {
-    const q = this.camera.scale / Renderer.MASK_S;
+    const q = sc / Renderer.MASK_S;
     const ys = this.camera.yScale;
     const c = this.sdw;
     // On the shadow layer the base transform is a bare dpr scale, so
@@ -4115,14 +4119,21 @@ export class Renderer {
    * baked dozens in one frame, the worst arrival stagger) into a tiny
    * fixed set per ore kind.
    */
-  private castRockShadow(px: number, py: number, tile: Tile, h: number, crowded: boolean): void {
+  private castRockShadow(
+    px: number,
+    py: number,
+    tile: Tile,
+    h: number,
+    crowded: boolean,
+    sc: number = this.camera.scale, // B-1c depth thread (foreshortened cast)
+  ): void {
     if (this.sky.shadowAlpha < 0.02 && this.frameLights.length === 0) return;
     const B = Renderer.MASK_S;
     const hv = (((h % 8) + 8) % 8) * 2654435761;
     const entry = this.shadowMask(`r${tile}.${hv}.${crowded ? 1 : 0}`, 2.7, 2.0, 0.4, (_m, au, av) => {
       rockArt.drawRockFormation(this, au, av - B * 0.28, B, hv, tile, 0, crowded);
     });
-    if (entry) this.castMask(entry, px, py + this.camera.scale * 0.28);
+    if (entry) this.castMask(entry, px, py + sc * 0.28, sc);
   }
 
   /**
@@ -17362,7 +17373,7 @@ export class Renderer {
         strat: this.stratAt(br.tx, br.ty),
         draw: () => {
           const ctx = this.ctx;
-          const s = this.camera.scale;
+          const s = this.spriteScale(br.ty + 0.5); // B-1c depth thread
           const p = this.camera.worldToScreen(br.tx + 0.5, br.ty + 0.5, this.w, this.h);
           p.y -= lift;
           const baseY = p.y + s * 0.35; // crush toward the ground line
@@ -18359,6 +18370,12 @@ export class Renderer {
         const south = game.world.groundAt(tx, ty + 1);
         const crowded =
           south !== undefined && ROCK_TILES.has(south) && game.world.elevAt(tx, ty + 1) === game.world.elevAt(tx, ty);
+        // B-1c depth thread: the rock (a LIVE painter, not a cached sprite)
+        // foreshortens by its tile's world-y. objectItem's shared `s` stays
+        // canonical for the cases that BAKE; this case paints live, so it
+        // takes the depth-scaled scale directly — body, shadow and paint all
+        // ride `rs` so the outline ring and cast track the smaller stone.
+        const rs = this.spriteScale(ty + 0.5);
         return {
           sortY: ty + 0.85,
           // Depleted rocks go ringless on purpose: the outline doubles
@@ -18366,15 +18383,15 @@ export class Renderer {
           // visibly retires it.
           body: depleted
             ? undefined
-            : { x: p.x - s * 1.2, y: p.y - s * 1.5, w: s * 2.4, h: s * 2.1 },
-          drawShadow: () => this.castRockShadow(p.x, p.y, tile, h, crowded),
+            : { x: p.x - rs * 1.2, y: p.y - rs * 1.5, w: rs * 2.4, h: rs * 2.1 },
+          drawShadow: () => this.castRockShadow(p.x, p.y, tile, h, crowded, rs),
           // Struck stone barely gives — a tighter, smaller ring than
           // the tree's whip: mass answers, it doesn't sway.
           draw: () =>
-            rockArt.drawRockFormation(this, 
-              p.x + this.nodeShiverAt(tx, ty) * s * 0.012,
+            rockArt.drawRockFormation(this,
+              p.x + this.nodeShiverAt(tx, ty) * rs * 0.012,
               p.y,
-              s,
+              rs,
               h,
               tile,
               t,
