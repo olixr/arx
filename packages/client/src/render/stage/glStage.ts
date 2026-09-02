@@ -246,8 +246,18 @@ export class GlStage implements StageBackend, VramStage {
   onContextLost: (() => void) | null = null;
 
   private dpr = 1;
+  /** THE RENDER SCALE (A2): the backbuffer/viewport/layer-FBO size in
+   *  device px — the RESOLUTION the stage rasterizes at. */
   private bw = 0;
   private bh = 0;
+  /** The GEOMETRY space in device px (uRes) — the coordinate frame the
+   *  quad positions live in, always at FULL dpr. When bw/bh < uw/uh
+   *  (render scale < 1) the shader still maps aPos/uRes correctly and
+   *  the smaller viewport rasterizes the same geometry at lower
+   *  resolution; the composite drawImage upsamples it. Equal when the
+   *  render scale is 1, so a full-scale frame is byte-identical. */
+  private uw = 0;
+  private uh = 0;
   /** Interleaved vertex scratch, grown geometrically, reused. */
   private buf = new ArrayBuffer(4096 * VERTEX_BYTES);
   private f32 = new Float32Array(this.buf);
@@ -691,18 +701,24 @@ export class GlStage implements StageBackend, VramStage {
     this.drawDeferred = 0;
   }
 
-  begin(w: number, h: number, dpr: number, clear: string | null): void {
+  begin(w: number, h: number, dpr: number, clear: string | null, renderScale = 1): void {
     const gl = this.gl;
     this.dpr = dpr;
-    this.bw = Math.round(w * dpr);
-    this.bh = Math.round(h * dpr);
+    // Geometry space is ALWAYS full dpr (the quads arrive in full-dpr
+    // device px); the backbuffer/viewport shrink by the render scale.
+    this.uw = Math.round(w * dpr);
+    this.uh = Math.round(h * dpr);
+    const s = renderScale >= 1 ? 1 : Math.max(0.1, renderScale);
+    this.bw = s === 1 ? this.uw : Math.max(1, Math.round(this.uw * s));
+    this.bh = s === 1 ? this.uh : Math.max(1, Math.round(this.uh * s));
     if (this.canvas.width !== this.bw || this.canvas.height !== this.bh) {
       this.canvas.width = this.bw;
       this.canvas.height = this.bh;
     }
     gl.viewport(0, 0, this.bw, this.bh);
     gl.useProgram(this.program);
-    gl.uniform2f(this.uRes, this.bw, this.bh);
+    // uRes is the GEOMETRY space (full dpr), not the reduced backbuffer.
+    gl.uniform2f(this.uRes, this.uw, this.uh);
     if (clear === null) {
       if (!this.isAlpha) throw new Error('stage: transparent clear on the opaque main target');
       gl.clearColor(0, 0, 0, 0);
@@ -1362,12 +1378,15 @@ export class GlStage implements StageBackend, VramStage {
       u8[bo + 3] = pa;
       v++;
     };
+    // Positions span the GEOMETRY space (uRes/full dpr), not the reduced
+    // backbuffer — the shader maps aPos/uRes and the smaller viewport
+    // scales the full-screen quad down to cover the whole backbuffer.
     emitC(0, 0, 0, 1);
-    emitC(this.bw, 0, 1, 1);
-    emitC(0, this.bh, 0, 0);
-    emitC(0, this.bh, 0, 0);
-    emitC(this.bw, 0, 1, 1);
-    emitC(this.bw, this.bh, 1, 0);
+    emitC(this.uw, 0, 1, 1);
+    emitC(0, this.uh, 0, 0);
+    emitC(0, this.uh, 0, 0);
+    emitC(this.uw, 0, 1, 1);
+    emitC(this.uw, this.uh, 1, 0);
     gl.bindVertexArray(this.vao);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
     gl.bufferData(gl.ARRAY_BUFFER, this.u8.subarray(0, v * VERTEX_BYTES), gl.STREAM_DRAW);

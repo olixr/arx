@@ -367,6 +367,7 @@ import {
 import { SIGNATURES, type SigCtx } from './fxSignatures.js';
 import { GlStage } from './stage/glStage.js';
 import { StageVram } from './stage/stageVram.js';
+import { stageRenderScale, type StageResTier } from './stage/renderScale.js';
 import { GPU_STEADY_MS, GPU_URGENT_MS } from './stage/gpuBudget.js';
 import {
   StageBlend,
@@ -4791,6 +4792,14 @@ export class Renderer {
     return this.dpr();
   }
 
+  /** THE RENDER SCALE (A2): the factor (0 < s ≤ 1) the WebGL stage
+   *  rasterizes its backbuffer at, from the live window size, dpr, and
+   *  the resolution tier. 1 = native dpr (byte-identical to pre-A2 and
+   *  what small/medium windows and the parity rig always get). */
+  stageScale(): number {
+    return stageRenderScale(this.cssW, this.cssH, this.dpr(), this.stageResTier);
+  }
+
   private resize(): void {
     const dpr = this.dpr();
     // Observer-fed CSS size (see constructor); the one direct read
@@ -7372,7 +7381,7 @@ export class Renderer {
   private stageFlushGround(): void {
     const gl = this.stageGl!;
     if (this.stageQuads.length > 0) {
-      gl.begin(this.w, this.h, this.dpr(), '#141020');
+      gl.begin(this.w, this.h, this.dpr(), '#141020', this.stageScale());
       gl.draw(this.stageQuads);
       gl.end();
       this.ctx.imageSmoothingEnabled = true;
@@ -13950,6 +13959,12 @@ export class Renderer {
    *  honest bounds; the rare boundless item takes the split path
    *  (composite, paint on the frame, resume) and is counted. */
   stageWorld = false;
+  /** THE RENDER SCALE (A2): the accelerated display's resolution tier —
+   *  'auto' caps the effective dpr to 1.5 only on huge Retina windows,
+   *  'full' never caps, 'balanced' caps to 1.25 everywhere. Set from
+   *  localStorage 'arx.stageres' at boot (main.ts) and by the Display
+   *  settings row; applies live, next frame. */
+  stageResTier: StageResTier = 'auto';
   private stageWorldGl: GlStage | null = null;
   /** The frame's world stream. NOT readonly: the shadow prepass
    *  temporarily swaps the sink so the cast brushes' assembly
@@ -13990,7 +14005,7 @@ export class Renderer {
     const gl = this.stageWorldGl!;
     const list = this.stageWorldItems;
     if (list.length === 0 && !this.stageShadowPending) return;
-    gl.begin(this.w, this.h, this.dpr(), null);
+    gl.begin(this.w, this.h, this.dpr(), null, this.stageScale());
     if (this.stageShadowPending) {
       // The prepass shadows: layer-rendered, composited once at the
       // layer alpha — under everything the world stream paints.
@@ -14703,9 +14718,13 @@ export class Renderer {
     // `shed` means the working set itself is at the cap: reduce it via
     // A2/A3/B, do not raise the ceiling and hand the driver the reclaim).
     if (this.stageGl || this.stageWorldGl) {
+      // THE RENDER SCALE (A2): the tier, the live scale, and the
+      // effective dpr the stage rasterizes at — `rs 1.00` means native.
+      const s = this.stageScale();
       parts.push(
         `stage vram resTOT ${(StageVram.totalResidentBytes() / 1048576).toFixed(0)}/` +
-          `${(StageVram.ceilingBytes / 1048576).toFixed(0)}MB shed ${(StageVram.lastShedBytes / 1048576).toFixed(1)}MB`,
+          `${(StageVram.ceilingBytes / 1048576).toFixed(0)}MB shed ${(StageVram.lastShedBytes / 1048576).toFixed(1)}MB ` +
+          `${this.stageResTier} rs ${s.toFixed(2)} eff ${(this.dpr() * s).toFixed(2)}x`,
       );
     }
     return parts.join('\n');

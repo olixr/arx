@@ -180,7 +180,11 @@ export interface StageBackend {
    *  world layer composites over the 2d ground); an opaque stage
    *  refuses it, and an alpha stage refuses the opaque-only blends
    *  (multiply/screen) — the two halves of one symmetry. */
-  begin(w: number, h: number, dpr: number, clear: string | null): void;
+  /** `renderScale` (A2, default 1) is the fraction of native dpr the
+   *  backend rasterizes its backbuffer at — a GL memory/fill lever. A
+   *  backend that has no backbuffer to shrink (the canvas oracle) treats
+   *  it as 1 so it stays the full-resolution parity reference. */
+  begin(w: number, h: number, dpr: number, clear: string | null, renderScale?: number): void;
   /** Composite one sorted stream. Order is law. */
   draw(items: readonly StageItem[]): void;
   /**
