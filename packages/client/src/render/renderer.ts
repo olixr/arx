@@ -236,6 +236,7 @@ import {
   FADE_INSET_TOP,
   FADE_INSET_X,
   FADE_TALL_TILES,
+  FADE_TALL_FRONT,
   FRONT_EPS,
   GHOST_ALPHA,
   GHOST_EASE_S,
@@ -15851,7 +15852,13 @@ export class Renderer {
       this.ownSeatTiles?.has((tx + 0x8000) * 0x10000 + (ty + 0x8000)) === true
     )
       return 1;
-    return this.occluderFade(key, dx0, dy0, dw, dh, ty + 0.9 - this.ownPY > -FRONT_EPS);
+    // THE CANOPY REACHES NORTH (see FADE_TALL_FRONT): a tall prop
+    // (bookshelf, pillar, market stall) reaches high above its base
+    // row, so a prop whose base sits a hair north still overlapped
+    // the body box from above and ghosted though the player stands
+    // in front of it. Only fade when the base is genuinely south —
+    // the prop's ground anchor here is ty + 0.9.
+    return this.occluderFade(key, dx0, dy0, dw, dh, ty + 0.9 - this.ownPY > FADE_TALL_FRONT);
   }
 
   private drawPropOutlined(
@@ -16447,7 +16454,7 @@ export class Renderer {
         by + syT * 0.3 - top,
         half * 2,
         top + 0.3 * s,
-        wy - this.ownPY > -FRONT_EPS,
+        wy - this.ownPY > FADE_TALL_FRONT,
       );
       if (fade < 1) this.ctx.globalAlpha = fade;
       wind = paintTree(this.ctx, m, {
@@ -16546,7 +16553,7 @@ export class Renderer {
       // archetype eases every instance in together over ~9 frames.
       const mintA = this.mintAlpha(sp);
       const fade =
-        this.occluderFade(key, dx0, dy0, dw, dh, wy - this.ownPY > -FRONT_EPS) * mintA;
+        this.occluderFade(key, dx0, dy0, dw, dh, wy - this.ownPY > FADE_TALL_FRONT) * mintA;
       if (fade < 1) this.ctx.globalAlpha = fade;
       wind = windScalarAt(wx, wy, tSec);
       // THE SHEAR CARRIES THE SWAY: every species shears the cached

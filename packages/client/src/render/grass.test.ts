@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Tile } from '@arx/shared';
-import { disturbFalloff, generateGrassTile, windAt } from './grass.js';
+import { disturbFalloff, generateGrassTile, laneUses, windAt } from './grass.js';
 
 // ------------------------------------------------------------------ wind
 
@@ -124,5 +124,33 @@ test('displacement falls off smoothly and monotonically from body to rim', () =>
     const f = disturbFalloff(d, R);
     assert.ok(f <= prev && f >= 0, `falloff not monotonic at ${d}`);
     prev = f;
+  }
+});
+
+// THE COAT LAW, pinned at the lane gate (field-regression guard). The
+// under lane owns the nap/roots/flowers/seeds of EVERY grass tile —
+// a gate that lumped it with the tall-only lanes silently balded the
+// whole open meadow (casts kept drawing: "grass shadows, no grass").
+test('the under lane coats BOTH grass tiles; tall lanes are thickets-only', () => {
+  const LANE_ROW = 0;
+  const LANE_TALL_N = 1;
+  const LANE_TALL_S = 2;
+  const LANE_UNDER = 3;
+  // UNDER: both short and tall grass wear the coat.
+  assert.equal(laneUses(LANE_UNDER, Tile.Grass), true, 'under coats short grass');
+  assert.equal(laneUses(LANE_UNDER, Tile.GrassTall), true, 'under coats tall grass');
+  // ROW: both grass tiles (accent stands).
+  assert.equal(laneUses(LANE_ROW, Tile.Grass), true);
+  assert.equal(laneUses(LANE_ROW, Tile.GrassTall), true);
+  // TALL lanes: standing mass is thickets only.
+  assert.equal(laneUses(LANE_TALL_N, Tile.Grass), false, 'no tall stand on short grass');
+  assert.equal(laneUses(LANE_TALL_S, Tile.Grass), false);
+  assert.equal(laneUses(LANE_TALL_N, Tile.GrassTall), true);
+  assert.equal(laneUses(LANE_TALL_S, Tile.GrassTall), true);
+  // Non-grass never uses any lane.
+  for (const lane of [LANE_ROW, LANE_TALL_N, LANE_TALL_S, LANE_UNDER]) {
+    assert.equal(laneUses(lane, Tile.Dirt), false);
+    assert.equal(laneUses(lane, null), false);
+    assert.equal(laneUses(lane, undefined), false);
   }
 });

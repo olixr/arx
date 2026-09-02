@@ -81,13 +81,16 @@ export function rowCadenceJitter(key: number, cadenceMs: number): number {
  *  frame keeps the estimate sampled (bakeAdmission's own law). */
 export const GRASS_BAKE_MS_BUDGET = 1.5;
 
-/** Ledger ceiling / sweep target. Sized from measurement, not hope: a
- *  dense-forest working set at zoom 1 / dpr 2 is ~90MB of band sprites
- *  even extent-fitted, and a capital's elevated rows are comparable —
- *  the band ledger (128MB) went through the same sizing in round 12.
- *  Overflow rows draw live at the gate. */
-export const GRASS_SPRITE_BUDGET_BYTES = 128 * 1048576;
-export const GRASS_SPRITE_RELIEF_BYTES = 96 * 1048576;
+/** Ledger ceiling / sweep target. Sized from measurement, not hope —
+ *  TWICE now: R13's 128MB fit the population it could see, but the
+ *  under-lane gate bug (fixed in the triage round: laneUses) had
+ *  silently halved the real cell census, and with THE COAT restored
+ *  a plain wilds view at zoom 1.8 / dpr 2 measures ~130MB across 92
+ *  cells (the under cells are the meadow's densest). 192/144 keeps
+ *  the same relief ratio and the same overflow semantics: rows past
+ *  the gate draw live. */
+export const GRASS_SPRITE_BUDGET_BYTES = 192 * 1048576;
+export const GRASS_SPRITE_RELIEF_BYTES = 144 * 1048576;
 
 /** No single cell may claim this much — past it the cell draws live. */
 export const GRASS_SPRITE_ONE_MAX_BYTES = 4 * 1048576;

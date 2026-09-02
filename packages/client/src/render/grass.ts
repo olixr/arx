@@ -596,6 +596,23 @@ const LANE_TALL_N = 1;
 const LANE_TALL_S = 2;
 const LANE_UNDER = 3;
 
+/**
+ * Which tiles a cell lane owns. THE COAT LAW anchors the under lane:
+ * every short-grass tile wears the nap (plus roots, flowers and
+ * seed-heads — all under-lane residents), so the UNDER lane takes
+ * BOTH grass tiles; only the tall standing-mass lanes are thickets-
+ * only. The original cell gate lumped UNDER into the "not ROW"
+ * branch and silently balded the entire open meadow — casts kept
+ * drawing (the shade pass reads geometry directly), so the field
+ * report was "shadows of the grass with no grass". Exported pure so
+ * grass.test.ts pins it.
+ */
+export function laneUses(lane: number, t: Tile | null | undefined): boolean {
+  if (t == null || (t !== Tile.Grass && t !== Tile.GrassTall)) return false;
+  if (lane === LANE_TALL_N || lane === LANE_TALL_S) return t === Tile.GrassTall;
+  return true;
+}
+
 /** A tile stays live this long after its last wake (spring-back runs
  *  at frame rate — the same window bakeUnder honors). */
 const WAKE_LIVE_MS = 800;
@@ -2082,7 +2099,7 @@ export class GrassSystem {
     for (let i = 0; i < GRASS_CELL_SPAN; i++) {
       const tx = c0 + i;
       const t = ground(tx, ty);
-      const use = lane === LANE_ROW ? t === Tile.Grass || t === Tile.GrassTall : t === Tile.GrassTall;
+      const use = laneUses(lane, t);
       this.cellSt[i] = null;
       if (!use) {
         sig = (sig * 31) | 0;
