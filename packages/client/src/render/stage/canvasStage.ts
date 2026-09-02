@@ -32,7 +32,10 @@ export class CanvasStage implements StageBackend {
     this.ctx = ctx;
   }
 
-  begin(w: number, h: number, dpr: number, clear: string | null): void {
+  begin(w: number, h: number, dpr: number, clear: string | null, _renderScale = 1): void {
+    // The canvas oracle has no separate backbuffer to downsample — it IS
+    // the full-resolution parity reference — so it ignores renderScale by
+    // design (the param exists for interface parity with the GL stage).
     const bw = Math.round(w * dpr);
     const bh = Math.round(h * dpr);
     if (this.canvas.width !== bw || this.canvas.height !== bh) {

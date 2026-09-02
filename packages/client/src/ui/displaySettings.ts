@@ -8,6 +8,7 @@
 import type { Renderer } from '../render/renderer.js';
 import { FOOTPRINT_TUNE } from '../render/footprints.js';
 import { UI_SIZES, setUiSize, uiSize } from './kit/scale.js';
+import type { StageResTier } from '../render/stage/renderScale.js';
 
 export function initDisplaySettings(renderer: Renderer, setLootPref: (on: boolean) => void): HTMLInputElement | null {
   let walkoverBox: HTMLInputElement | null = null;
@@ -44,6 +45,49 @@ export function initDisplaySettings(renderer: Renderer, setLootPref: (on: boolea
         box.dataset.tipsub =
           'Draws the world through your graphics card. This can lift the frame rate on machines where the standard display struggles; if it ever fails, the game returns to the standard display on its own.';
       }
+    }
+    // THE RENDER SCALE (A2): the accelerated display's resolution tier.
+    // Auto keeps native sharpness everywhere but a very large HiDPI
+    // window, where it trades a little crispness for frame rate and
+    // graphics memory. Shown only when the accelerated display can be
+    // used — it governs nothing otherwise.
+    {
+      const resRow = document.createElement('div');
+      resRow.className = 'audio-row';
+      const resLab = document.createElement('label');
+      resLab.textContent = 'Render resolution';
+      const resChips = document.createElement('span');
+      resChips.className = 'size-chips';
+      const tiers: Array<{ id: StageResTier; label: string; sub: string }> = [
+        { id: 'auto', label: 'Auto', sub: 'Full sharpness, easing back only on a very large high-resolution window to keep the frame rate up.' },
+        { id: 'full', label: 'Full', sub: 'Always the display’s native sharpness. Best-looking; heaviest on the graphics card.' },
+        { id: 'balanced', label: 'Balanced', sub: 'Favors frame rate on every high-resolution window. Softer, lighter on the graphics card.' },
+      ];
+      const paintRes = (): void => {
+        resChips.querySelectorAll('button').forEach((b) => {
+          b.classList.toggle('active', b.dataset.res === renderer.stageResTier);
+        });
+      };
+      for (const t of tiers) {
+        const chip = document.createElement('button');
+        chip.className = 'sort-chip';
+        chip.textContent = t.label;
+        chip.dataset.res = t.id;
+        chip.dataset.nav = '';
+        chip.dataset.navkey = `display:stageres:${t.id}`;
+        chip.dataset.acta = 'Choose';
+        chip.dataset.tipname = `${t.label} render resolution`;
+        chip.dataset.tipsub = t.sub;
+        chip.addEventListener('click', () => {
+          renderer.stageResTier = t.id;
+          localStorage.setItem('arx.stageres', t.id);
+          paintRes();
+        });
+        resChips.appendChild(chip);
+      }
+      resRow.append(resLab, resChips);
+      rows.appendChild(resRow);
+      paintRes();
     }
     toggle('Water reflections', renderer.reflectionsOn, (on) => {
       renderer.reflectionsOn = on;

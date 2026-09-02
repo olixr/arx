@@ -1,4 +1,5 @@
 import { procShape } from './render/wornLight.js';
+import { isStageResTier } from './render/stage/renderScale.js';
 import { deckFillAt, fillContains } from './render/terrain.js';
 import { AWNING_HOST_TILES, AWNING_SHAPES, CHUNK_SIZE, EntityKind, FENCE_TILES, GARRISON_TILES, HEDGE_TILES, PoseState, ROCK_TILES, SWAP_BEAT_MS, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, hangHostTiles, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo, type EntityMeta, type EquipSlot } from '@arx/shared';
 import { BUILDABLES, DYE_PIGMENTS, ELEMENT_COLORS, POI_DEFS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, isDaggerStats, itemDef, npcActor, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
@@ -272,6 +273,10 @@ FOOTPRINT_TUNE.enabled = localStorage.getItem('arx.footprints') !== 'off';
   const stored = localStorage.getItem('arx.stage') === 'on';
   renderer.stageGround = stageParam !== null || stored;
   renderer.stageWorld = stageParam === 'world' || (stageParam === null && stored);
+  // THE RENDER SCALE (A2): the accelerated display's resolution tier —
+  // 'auto' caps only huge Retina windows, the player owns the trade.
+  const res = localStorage.getItem('arx.stageres');
+  if (isStageResTier(res)) renderer.stageResTier = res;
 }
 // SETTINGS' TAB RAIL: Sound / Display / Controls, one bench standing
 // at a time, LT/RT stepping them like every room's pager.
