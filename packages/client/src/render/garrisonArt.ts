@@ -193,7 +193,7 @@ export function garrisonWallItem(rend: PaintHost,
   whT: number,
 ): DrawItem {
   const ctx = rend.ctx;
-  const s = rend.camera.scale;
+  const s = rend.camera.scale * rend.camera.depthScale(ty); // B-3 depth thread
   const p = rend.camera.worldToScreen(tx, ty, rend.w, rend.h);
   p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
   const n = rend.garrisonish(game, tx, ty - 1);
@@ -383,7 +383,7 @@ export function garrisonDiagItem(rend: PaintHost,
 ): DrawItem {
   const info = diagWallInfo(tile)!;
   const ctx = rend.ctx;
-  const s = rend.camera.scale;
+  const s = rend.camera.scale * rend.camera.depthScale(ty); // B-3 depth thread
   const syT = s * rend.camera.yScale;
   const p = rend.camera.worldToScreen(tx, ty, rend.w, rend.h);
   p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
@@ -562,7 +562,7 @@ export function garrisonGateItem(rend: PaintHost,
   runLen: number,
 ): DrawItem {
   const ctx = rend.ctx;
-  const s = rend.camera.scale;
+  const s = rend.camera.scale * rend.camera.depthScale(ty); // B-3 depth thread
   const p = rend.camera.worldToScreen(tx, ty, rend.w, rend.h);
   p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
   const syT = s * rend.camera.yScale;
@@ -962,7 +962,7 @@ export function garrisonSideGateItems(rend: PaintHost,
   runLen: number,
   items: DrawItem[],
 ): void {
-  const s = rend.camera.scale;
+  const s = rend.camera.scale * rend.camera.depthScale(ty); // B-3 depth thread
   const p = rend.camera.worldToScreen(tx, ty, rend.w, rend.h);
   p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
   const elevated = game.world.elevAt(tx, ty) !== 0;
