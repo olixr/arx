@@ -366,6 +366,7 @@ import {
 } from './abilityFx.js';
 import { SIGNATURES, type SigCtx } from './fxSignatures.js';
 import { GlStage } from './stage/glStage.js';
+import { StageVram } from './stage/stageVram.js';
 import { GPU_STEADY_MS, GPU_URGENT_MS } from './stage/gpuBudget.js';
 import {
   StageBlend,
@@ -4860,6 +4861,15 @@ export class Renderer {
     }
     this.visArrivalCount = ARRIVAL_MIN_COUNT;
     this.spriteAtlas.frame();
+    // THE VRAM CEILING (foundation A1): before this frame's draws, the
+    // cross-stage governor sums both stages' resident texture bytes and,
+    // if the combined total is over its soft ceiling, sheds the
+    // globally-coldest records — so we evict before the driver silently
+    // reclaims (the vanish defect's structural cure across stages).
+    // Runs here, ahead of either stage's own per-frame tick, so each
+    // stage's `used < frameNo` guard still protects last frame's working
+    // set; near-zero cost when under ceiling.
+    StageVram.enforce();
     this.forcedBakeUsed = false;
     // THE FRAME CONFESSES WHAT IT COULD NOT CACHE: the live-paint
     // fallbacks are correct but they are also the cost the caches
@@ -13965,7 +13975,7 @@ export class Renderer {
     if (!this.stageWorld || this.stageDead) return false;
     if (!this.stageWorldGl) {
       try {
-        this.stageWorldGl = new GlStage(document.createElement('canvas'), { alpha: true });
+        this.stageWorldGl = new GlStage(document.createElement('canvas'), { alpha: true, label: 'world' });
       } catch {
         this.stageDead = true;
         return false;
@@ -14591,6 +14601,7 @@ export class Renderer {
         // headroom (see GlStage.texBudgetBytes).
         this.stageGl = new GlStage(document.createElement('canvas'), {
           texBudgetBytes: 256 * 1024 * 1024,
+          label: 'ground',
         });
       } catch {
         this.stageDead = true;
@@ -14668,7 +14679,8 @@ export class Renderer {
       parts.push(
         `stage up ${(g.uploadedBytes / 1048576).toFixed(1)}MB/${g.uploads} ` +
           `tex ${(g.textureBytes / 1048576).toFixed(0)}MB/${g.textureCount} ` +
-          `draws ${g.drawCalls} live ${this.stageStats.absent} stale ${this.stageStats.stale}`,
+          `draws ${g.drawCalls} live ${this.stageStats.absent} stale ${this.stageStats.stale} ` +
+          `res ${(g.residentBytes / 1048576).toFixed(0)}MB`,
       );
       if (this.stageWorld && this.stageWorldGl) {
         const w = this.stageWorldGl;
@@ -14683,6 +14695,18 @@ export class Renderer {
             `res ${(w.residentBytes / 1048576).toFixed(0)}MB k${(w.keyedResidentBytes / 1048576).toFixed(0)} defer ${w.drawDeferred}`,
         );
       }
+    }
+    // THE VRAM CEILING (A1): the combined resident total across EVERY
+    // governed stage against the ceiling, and bytes shed last frame —
+    // gated on the governor, not on one stage, so it confesses whenever
+    // any stage is live (a resTOT parked at the ceiling with a steady
+    // `shed` means the working set itself is at the cap: reduce it via
+    // A2/A3/B, do not raise the ceiling and hand the driver the reclaim).
+    if (this.stageGl || this.stageWorldGl) {
+      parts.push(
+        `stage vram resTOT ${(StageVram.totalResidentBytes() / 1048576).toFixed(0)}/` +
+          `${(StageVram.ceilingBytes / 1048576).toFixed(0)}MB shed ${(StageVram.lastShedBytes / 1048576).toFixed(1)}MB`,
+      );
     }
     return parts.join('\n');
   }
