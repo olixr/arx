@@ -63,9 +63,13 @@ void main() {
   // kink, no nudged tip — one cohesive blade of grass.
   float lean = wind.x * uWindGain.x;
 
-  // TRAMPLING — entities pressing through splay the blades radially and
-  // press them flat; the field springs back as they pass. Summed over
-  // nearby disturbers with a smoothstep falloff.
+  // TRAMPLING — entities pressing through splay the blades outward and
+  // press them over; the field springs back as they pass. Summed over
+  // nearby disturbers with a smoothstep falloff. A per-blade lay JITTER
+  // rotates each blade's push a little off pure-radial, so a stepped-on
+  // patch bends over naturally instead of skewering into a starburst.
+  float jit = (fract(iShape.w * 17.13) - 0.5) * 0.8; // ±0.4 rad per blade
+  float cj = cos(jit), sj = sin(jit);
   vec2 push = vec2(0.0);
   float press = 0.0;
   for (int i = 0; i < ${MAX_DISTURB}; i++) {
@@ -76,10 +80,13 @@ void main() {
     f = f * f * (3.0 - 2.0 * f);                    // smoothstep falloff
     float s = f * uDisturb[i].w;
     vec2 dir = length(d) > 1e-4 ? normalize(d) : vec2(0.0, 1.0);
+    dir = vec2(dir.x * cj - dir.y * sj, dir.x * sj + dir.y * cj); // jittered
     push += dir * s;
     press = max(press, s);
   }
-  press = clamp(press, 0.0, 1.0);
+  // Cap the press: a trodden patch LAYS OVER but is never a bare hole —
+  // the grass keeps ~20% of its height, still present, just flattened.
+  press = clamp(press, 0.0, 0.8);
 
   vec2 world = root;
   world.x += side * hw;                            // straight column width
