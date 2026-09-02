@@ -150,6 +150,7 @@ export class GrassGpuRenderer {
   private readonly gl: WebGL2RenderingContext;
   private readonly program: WebGLProgram;
   private readonly vao: WebGLVertexArrayObject;
+  private readonly tmplBuf: WebGLBuffer;
   private readonly instanceBuf: WebGLBuffer;
   private readonly palTex: WebGLTexture;
   private readonly uView: WebGLUniformLocation;
@@ -158,18 +159,35 @@ export class GrassGpuRenderer {
   private readonly uDisturb: WebGLUniformLocation;
   private readonly uDisturbN: WebGLUniformLocation;
   private instanceCount = 0;
+  private disposed = false;
 
   /** `paletteFills` is BLADE_FILLS (PAL_TONES·PAL_LIGHTS `#rrggbb`, tone-
    *  major) — passed in so the renderer shares the meadow's exact ramp
    *  without importing the whole grass module's generation side. */
   constructor(gl: WebGL2RenderingContext, paletteFills: readonly string[]) {
     this.gl = gl;
+    if (paletteFills.length < PAL_TONES * PAL_LIGHTS) {
+      // The palette drives every blade's colour; a short one would silently
+      // fall back tone-by-tone and mis-shade the field. Fail loud instead.
+      throw new Error(
+        `grass palette must be ${PAL_TONES}×${PAL_LIGHTS}=${PAL_TONES * PAL_LIGHTS} fills, got ${paletteFills.length}`,
+      );
+    }
     const program = gl.createProgram()!;
-    gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, VERT_SRC));
-    gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER, FRAG_SRC));
+    // Shaders are retained by the program once linked; delete our handles so
+    // they don't outlive the link (the program owns them thereafter).
+    const vs = compile(gl, gl.VERTEX_SHADER, VERT_SRC);
+    const fs = compile(gl, gl.FRAGMENT_SHADER, FRAG_SRC);
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
     gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      throw new Error(`grass program link failed: ${gl.getProgramInfoLog(program)}`);
+    const linked = gl.getProgramParameter(program, gl.LINK_STATUS);
+    gl.deleteShader(vs);
+    gl.deleteShader(fs);
+    if (!linked) {
+      const log = gl.getProgramInfoLog(program);
+      gl.deleteProgram(program);
+      throw new Error(`grass program link failed: ${log}`);
     }
     this.program = program;
     this.uView = gl.getUniformLocation(program, 'uView')!;
@@ -193,8 +211,8 @@ export class GrassGpuRenderer {
 
     this.vao = gl.createVertexArray()!;
     gl.bindVertexArray(this.vao);
-    const tmplBuf = gl.createBuffer()!;
-    gl.bindBuffer(gl.ARRAY_BUFFER, tmplBuf);
+    this.tmplBuf = gl.createBuffer()!;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.tmplBuf);
     gl.bufferData(gl.ARRAY_BUFFER, tmpl, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);
@@ -239,6 +257,7 @@ export class GrassGpuRenderer {
 
   /** Upload the packed instance buffer for this frame's blades. */
   upload(instances: Float32Array, count: number): void {
+    if (this.disposed) return;
     const gl = this.gl;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuf);
     gl.bufferData(gl.ARRAY_BUFFER, instances.subarray(0, count * GRASS_INSTANCE_FLOATS), gl.DYNAMIC_DRAW);
@@ -259,7 +278,7 @@ export class GrassGpuRenderer {
     opts: { windGain?: number; disturb?: Float32Array } = {},
   ): void {
     const gl = this.gl;
-    if (this.instanceCount === 0) return;
+    if (this.disposed || this.instanceCount === 0) return;
     gl.useProgram(this.program);
     gl.uniformMatrix3fv(this.uView, false, view);
     gl.uniform1f(this.uTime, timeSec);
@@ -275,5 +294,22 @@ export class GrassGpuRenderer {
     gl.bindVertexArray(this.vao);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, BLADE_VERTS, this.instanceCount);
     gl.bindVertexArray(null);
+  }
+
+  /**
+   * Free every GL object this renderer owns. Call when swapping the flag
+   * off, changing maps, or before re-creating on context restore — a
+   * long-lived game must not leak programs/buffers/textures. Idempotent.
+   */
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    const gl = this.gl;
+    gl.deleteBuffer(this.tmplBuf);
+    gl.deleteBuffer(this.instanceBuf);
+    gl.deleteVertexArray(this.vao);
+    gl.deleteTexture(this.palTex);
+    gl.deleteProgram(this.program);
+    this.instanceCount = 0;
   }
 }
