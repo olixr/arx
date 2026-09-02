@@ -5342,10 +5342,20 @@ export class Renderer {
     // The meadow under everyone's feet: short blades, clumps, flowers.
     // Grass bounds are TIGHT — blades reach < 1 tile up, so the 5-row
     // canopy padding in visibleTileBounds would be ~150 wasted tiles.
+    //
+    // THE CAMERA LEARNS TO LEAN (Epic B, perf): under a lean the frustum
+    // reaches far up-screen to the horizon, but grass blades there
+    // compress to sub-pixel and read as nothing — processing them
+    // (per-blade, the heaviest per-tile pass) is pure waste. Cap the
+    // grass far edge at the ORTHOGRAPHIC reach; the ground and trees
+    // still fill the distance, but the meadow stops where a blade would
+    // stop being visible. At q=0 orthoMinTy === bounds.minTy, so this is
+    // byte-identical (the cap never bites).
+    const orthoMinTy = Math.floor(this.camera.y - this.h / 2 / (this.camera.scale * this.camera.yScale)) - 5;
     const grassBounds = {
       minTx: bounds.minTx + 1,
       maxTx: bounds.maxTx - 1,
-      minTy: bounds.minTy + 3,
+      minTy: Math.max(bounds.minTy, orthoMinTy) + 3,
       maxTy: bounds.maxTy - 1,
     };
     // Arm the meadow's cast BEFORE the under pass builds blades: each
