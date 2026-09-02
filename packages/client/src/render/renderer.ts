@@ -12504,7 +12504,8 @@ export class Renderer {
     const southFacing = legs[0] === 'N';
     const post = '#6f4d26';
     const rail = '#8a6534';
-    const hr = 0.46 * s;
+    // B-3 spanning warp: the rail's post height foreshortens with its deck.
+    const hr = 0.46 * this.spriteScale(ty + 0.5);
     const railT = Math.max(2, s * 0.07);
     items.push({
       sortY: southFacing ? ty + 1.02 : ty + 0.04,
@@ -12512,8 +12513,9 @@ export class Renderer {
       draw: () => {
         const a = this.camera.worldToScreen(ax, ty, this.w, this.h);
         const b = this.camera.worldToScreen(bx, ty + 1, this.w, this.h);
-        a.y -= lift * s;
-        b.y -= lift * s;
+        // Each corner's deck lift foreshortens by its own depth (ty vs ty+1).
+        a.y -= lift * s * this.camera.depthScale(ty);
+        b.y -= lift * s * this.camera.depthScale(ty + 1);
         ctx.fillStyle = post;
         for (const f of [0.3, 0.7]) {
           const x = a.x + (b.x - a.x) * f;
@@ -13040,7 +13042,11 @@ export class Renderer {
    */
   private rampItem(tx: number, ty: number, game: ClientGame, runLen: number): DrawItem {
     const ctx = this.ctx;
-    const s = this.camera.scale;
+    // B-3 surface depth thread: a flight is short, so it foreshortens
+    // uniformly by its base row's depth (step heights + masonry ride `s`;
+    // x-positions come from worldToScreen and lean on their own). Matches
+    // the landing/apron warp at the same row. spriteScale === scale at q=0.
+    const s = this.spriteScale(ty);
     const lvl = game.world.elevAt(tx, ty);
     const dir = this.rampDir(game, tx, ty);
     const N = 5;
@@ -13292,7 +13298,9 @@ export class Renderer {
         // wide landings into a row of little arches).
         const x0 = Math.round(wts(tx, ty).x);
         const x1 = Math.round(wts(tx + runLen, ty).x);
-        const yTop = wts(tx, ty).y - lift;
+        // B-3 spanning warp: the landing sits on the flight's elevated top,
+        // so its lift foreshortens by the row's depth.
+        const yTop = wts(tx, ty).y - lift * this.camera.depthScale(ty);
         const inset = s * 0.09;
         const reach = s * 0.32; // how far the worn patch spills north
         ctx.fillStyle = '#6d5642';
@@ -13343,7 +13351,9 @@ export class Renderer {
         // flight's mouth, flared only at its two ends.
         const x0 = Math.round(wts(tx, ty).x);
         const x1 = Math.round(wts(tx + runLen, ty).x);
-        const yMouth = wts(tx, ty + 1).y - baseLift;
+        // B-3 spanning warp: the apron mouth sits at the base level, lift
+        // foreshortened by the mouth row's depth.
+        const yMouth = wts(tx, ty + 1).y - baseLift * this.camera.depthScale(ty + 1);
         const fan = s * 0.34;
         const flare = s * 0.12;
         ctx.fillStyle = '#6d5642';
