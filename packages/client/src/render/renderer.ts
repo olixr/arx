@@ -7234,8 +7234,30 @@ export class Renderer {
         const srcSz = CHUNK_SIZE * baked.px;
         const dw = this.camera.snapPx(p1.x) - x0;
         const dh = this.camera.snapPx(p1.y) - y0;
+        // THE CAMERA LEARNS TO LEAN (B-1b): under a lean the chunk is a
+        // TRAPEZOID, not an axis-aligned rect — project all four world
+        // corners (unsnapped: shared world corners project identically
+        // for both neighbours, so edges align without device snapping)
+        // and carry their perspective weights. Absent at q=0 = the old
+        // snapped 2-corner rect, byte-identical.
+        let ground: StageQuad['ground'];
+        if (this.camera.q !== 0) {
+          const cs = CHUNK_SIZE;
+          const W = this.w;
+          const H = this.h;
+          const tl = this.camera.worldToScreen(cx * cs, cy * cs, W, H);
+          const tr = this.camera.worldToScreen((cx + 1) * cs, cy * cs, W, H);
+          const bl = this.camera.worldToScreen(cx * cs, (cy + 1) * cs, W, H);
+          const br = this.camera.worldToScreen((cx + 1) * cs, (cy + 1) * cs, W, H);
+          const wTop = 1 / this.camera.depthScale(cy * cs);
+          const wBot = 1 / this.camera.depthScale((cy + 1) * cs);
+          ground = {
+            c: [tl.x, tl.y, tr.x, tr.y, bl.x, bl.y, br.x, br.y],
+            w: [wTop, wTop, wBot, wBot],
+          };
+        }
         if (stage) {
-          this.stageEmitChunk(baked, gut, srcSz, x0, y0, dw, dh);
+          this.stageEmitChunk(baked, gut, srcSz, x0, y0, dw, dh, ground);
         } else {
           this.ctx.drawImage(baked.canvas, gut, gut, srcSz, srcSz, x0, y0, dw, dh);
         }
@@ -7381,6 +7403,7 @@ export class Renderer {
     y0: number,
     dw: number,
     dh: number,
+    ground?: StageQuad['ground'],
   ): void {
     const gl = this.stageGl!;
     let tex = baked.stageTex;
@@ -7423,6 +7446,7 @@ export class Renderer {
       m: [1, 0, 0, 1, x0, y0],
       alpha: 1,
       blend: StageBlend.SourceOver,
+      ground,
     });
   }
 

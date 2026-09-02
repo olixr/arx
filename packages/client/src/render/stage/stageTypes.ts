@@ -131,6 +131,20 @@ export interface StageQuad {
   /** globalAlpha equivalent, 0..1. */
   alpha: number;
   blend: StageBlend;
+  /**
+   * THE CAMERA LEARNS TO LEAN (Epic B, B-1b): a PERSPECTIVE GROUND quad.
+   * When present it OVERRIDES `m`/`dw`/`dh`: `c` is the four screen
+   * corners in CSS px — [TLx,TLy, TRx,TRy, BLx,BLy, BRx,BRy] — the
+   * renderer projected through the perspective camera, and `w` their
+   * homogeneous weights (= 1/depthScale). The GL stage draws the
+   * trapezoid perspective-correct via `gl_Position.w` (4 corners
+   * suffice for a planar tile); the canvas oracle mesh-subdivides. UVs
+   * still come from `sx/sy/sw/sh`. Absent (and always at q=0) = an
+   * ordinary affine screen quad through `m`. */
+  ground?: {
+    c: readonly [number, number, number, number, number, number, number, number];
+    w: readonly [number, number, number, number];
+  };
 }
 
 /** A solid-color quad (particles, punch rects, debug fills): same
