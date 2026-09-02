@@ -202,7 +202,9 @@ import * as rockArt from './rockArt.js';
 import { FENCE_POST, FENCE_RAIL, PANEL_DOOR_TILES } from './paintVocab.js';
 import { radialGlowSprite } from './glowSprite.js';
 import { Birds, type Bird, type BirdEnv } from './birds.js';
-import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample } from './grass.js';
+import { GrassSystem, windAtInto, windScalarAt, BLADE_FILLS, type Disturber, type WindSample, type Blade, type GrassBounds } from './grass.js';
+import { GrassGpuLayer, type GrassFrame } from './grassGpuLayer.js';
+import { MAX_DISTURB } from './grassGpuRenderer.js';
 import { paintTree, saplingModel, treeExtent,
   treeModel, TREE_VARIANT_COUNT, treeVariantHash, type TreeModel } from './trees.js';
 import { dust } from './matter/dust.js';
@@ -368,7 +370,7 @@ import { SIGNATURES, type SigCtx } from './fxSignatures.js';
 import { GlStage } from './stage/glStage.js';
 import type { GpuStageBackend } from './stage/stageTypes.js';
 import { StageVram } from './stage/stageVram.js';
-import { depthScaleWorld, projectWorld, unprojectScreen } from './cameraProject.js';
+import { camOriginX, camOriginY, depthScaleWorld, projectWorld, unprojectScreen } from './cameraProject.js';
 import { stageRenderScale, type StageResTier } from './stage/renderScale.js';
 import { GPU_STEADY_MS, GPU_URGENT_MS } from './stage/gpuBudget.js';
 import {
@@ -1374,6 +1376,17 @@ export class Renderer {
     threatCount: 0,
   };
   private readonly grass = new GrassSystem();
+  /** GPU grass (proposal G-2, behind ?grass=gpu). When true, the visible
+   *  field renders instanced on the GPU (blitted at the grass slot) instead
+   *  of the canvas2d baked meadow. Off = byte-identical baked path. */
+  grassGpu = false;
+  private grassGpuLayer: GrassGpuLayer | null = null;
+  /** Whether the GPU path actually drew this frame (→ skip the canvas2d
+   *  coat and the tall y-sort pass; false → the baked meadow ran). */
+  private grassGpuActive = false;
+  /** Pooled scratch for the GPU path — never reallocated per frame. */
+  private readonly grassBlades: Blade[] = [];
+  private readonly grassDisturb = new Float32Array(MAX_DISTURB * 4);
   private readonly lighting = new LightingSystem();
   /** Derived building-interior regions (cutaway, facades, windows). */
   readonly interiors = new InteriorMap();
@@ -5372,7 +5385,22 @@ export class Renderer {
       this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN,
       Math.min(1, this.sky.shadowAlpha * 0.85),
     );
-    this.grass.drawUnder(this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
+    // THE GPU MEADOW (proposal G-2, ?grass=gpu): the whole visible field
+    // renders instanced on the GPU and blits here — below entities, before
+    // the world lightmap (so it's world-lit for free, like the baked
+    // meadow). On success the canvas2d coat AND the tall y-sort pass are
+    // skipped (the GPU field is one flat layer this phase). Any failure
+    // (no context, lost) falls back to the byte-identical baked path.
+    if (this.grassGpu && this.drawGrassGpu(groundLvl0, detail, grassBounds)) {
+      this.grassGpuActive = true;
+    } else {
+      this.grassGpuActive = false;
+      if (this.grassGpuLayer && !this.grassGpu) {
+        this.grassGpuLayer.dispose();
+        this.grassGpuLayer = null;
+      }
+      this.grass.drawUnder(this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
+    }
 
     // The Riftgates' blighted ground: painted OVER the meadow (like a
     // decal) so the stain visibly smothers the blades, but under the
@@ -5430,8 +5458,13 @@ export class Renderer {
     const items = this.drawItems;
     items.length = 0;
     this.bulkItemUsed = 0;
-    // Tall thickets y-sort with the world: you walk THROUGH them.
-    this.grass.collectTall(items, this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
+    // Tall thickets y-sort with the world: you walk THROUGH them. Skipped
+    // under the GPU path — it drew the whole field (tall included) flat
+    // below entities this phase (the walk-through interleave is a later
+    // sub-phase). See drawGrassGpu.
+    if (!this.grassGpuActive) {
+      this.grass.collectTall(items, this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
+    }
     this.collectElevatedGround(game, items);
     cliffArt.collectCliffFaces(this, game, items);
     this.collectRaisedTiles(game, items);
@@ -18862,6 +18895,55 @@ export class Renderer {
    * included. The grass system derives velocities itself (it remembers
    * last positions per id), so this is just who-is-where.
    */
+  /**
+   * THE GPU MEADOW (proposal G-2, ?grass=gpu). Gather the visible field's
+   * blades (cache-reusing), render them instanced into the layer's private
+   * offscreen canvas under the ortho camera + this frame's disturbers, and
+   * blit it into the 2d frame at the grass slot. Returns true if it drew
+   * (caller skips the baked coat + tall pass), false to fall back to the
+   * baked meadow this frame. The lightmap multiply runs after this slot, so
+   * the blitted field is world-lit exactly like the baked meadow.
+   */
+  private drawGrassGpu(
+    ground: (tx: number, ty: number) => number | undefined,
+    detail: (tx: number, ty: number) => number,
+    bounds: GrassBounds,
+  ): boolean {
+    if (!this.grassGpuLayer) this.grassGpuLayer = new GrassGpuLayer(BLADE_FILLS);
+    const layer = this.grassGpuLayer;
+    if (!layer.ok) return false;
+    this.grass.collectGpuBlades(ground, detail, bounds, this.grassBlades);
+    // This frame's disturbers → the trample uniform. Body radius (~0.3t) is
+    // the footprint CENTRE; the parted patch spreads wider, so scale it.
+    const src = this.frameDisturbers;
+    const dz = this.grassDisturb;
+    const dn = Math.min(MAX_DISTURB, src.length);
+    for (let i = 0; i < dn; i++) {
+      const d = src[i]!;
+      dz[i * 4] = d.x;
+      dz[i * 4 + 1] = d.y;
+      dz[i * 4 + 2] = Math.max(0.9, d.r * 3.2); // parted spread, not body radius
+      dz[i * 4 + 3] = 1;
+    }
+    const cam = this.camera;
+    const frame: GrassFrame = {
+      scale: cam.scale,
+      yScale: cam.yScale,
+      ox: camOriginX(cam.scale, cam.x, cam.snapDpr, this.w),
+      oy: camOriginY(cam.scale, cam.yScale, cam.y, cam.snapDpr, this.h),
+      wCss: this.w,
+      hCss: this.h,
+      dpr: this.dpr(),
+      timeSec: performance.now() / 1000,
+      windGain: 0.12,
+      disturb: dn > 0 ? dz.subarray(0, dn * 4) : undefined,
+    };
+    const canvas = layer.render(this.grassBlades, frame);
+    if (!canvas) return false;
+    this.ctx.drawImage(canvas, 0, 0, this.w, this.h);
+    return true;
+  }
+
   /** This frame's moving bodies (players + NPCs), pooled records.
    *  Shared by the grass system AND the doorway veil — one gather. */
   private readonly frameDisturbers: Disturber[] = [];

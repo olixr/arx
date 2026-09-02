@@ -1769,6 +1769,43 @@ export class GrassSystem {
     this.flush(ctx);
   }
 
+  /**
+   * THE GPU PATH'S BLADE GATHERER (proposal G-2). Walk the SAME
+   * level-0 visible tiles drawUnder walks and, instead of drawing,
+   * collect each tile's CACHED blade geometry into `out` for the
+   * instanced GPU renderer. Reuses the identical this.tile() cache
+   * drawUnder reads (no separate generation path — cache misses mint
+   * exactly the geometry drawUnder would). Gathers the `under` coat
+   * (both grass tiles wear it — THE COAT LAW) plus the tall `north`
+   * and `south` blades (GrassTall only) — Blade geometry ONLY; flowers,
+   * seeds and roots are separate instance types handled later. The
+   * blades land SORTED back-to-front by world-y (`by` ascending): the
+   * GPU draws them opaque with no depth buffer, so paint order IS the
+   * depth. The immutable cached Blade objects are pushed by reference
+   * (no copy). `out` is caller-owned and pooled — it is truncated here.
+   * Returns the number of blades written.
+   */
+  collectGpuBlades(ground: Sampler, detail: DetailFn, bounds: GrassBounds, out: Blade[]): number {
+    out.length = 0;
+    for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
+      for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
+        const t = ground(tx, ty);
+        // The same gate laneUses applies: the UNDER lane owns both
+        // grass tiles; the tall N/S lanes are thickets (GrassTall) only.
+        if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
+        const geom = this.tile(tx, ty, t, detail(tx, ty), ground).geom;
+        for (const b of geom.under) out.push(b);
+        if (t === Tile.GrassTall) {
+          for (const b of geom.north) out.push(b);
+          for (const b of geom.south) out.push(b);
+        }
+      }
+    }
+    // Back-to-front: opaque GPU draw with no depth buffer — order is depth.
+    out.sort((a, b) => a.by - b.by);
+    return out.length;
+  }
+
   // ---------------------------- THE MEADOW RIDES THE SHEAR (round 13)
 
   /** World-stable cell identity: lane, elevation level, row, cell. */

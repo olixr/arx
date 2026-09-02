@@ -28,7 +28,7 @@ const PAL_TONES = 8;
 const PAL_LIGHTS = 7;
 
 /** Max simultaneous disturbers (walkers/entities pressing the grass). */
-const MAX_DISTURB = 8;
+export const MAX_DISTURB = 8;
 
 const VERT_SRC = `#version 300 es
 layout(location=0) in vec2 aTmpl;   // x = side [-1,1], y = up [0,1]

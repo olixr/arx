@@ -277,6 +277,12 @@ FOOTPRINT_TUNE.enabled = localStorage.getItem('arx.footprints') !== 'off';
   // 'auto' caps only huge Retina windows, the player owns the trade.
   const res = localStorage.getItem('arx.stageres');
   if (isStageResTier(res)) renderer.stageResTier = res;
+  // THE GPU MEADOW (proposal G-2, dev preview): ?grass=gpu (or the stored
+  // pref) renders the visible field instanced on the GPU instead of the
+  // canvas2d baked meadow. Off = byte-identical baked path; a lost context
+  // falls back on its own. Mirrors the accelerated-display toggle idiom.
+  const grassParam = new URLSearchParams(location.search).get('grass');
+  renderer.grassGpu = grassParam === 'gpu' || localStorage.getItem('arx.grass') === 'gpu';
 }
 // SETTINGS' TAB RAIL: Sound / Display / Controls, one bench standing
 // at a time, LT/RT stepping them like every room's pager.
