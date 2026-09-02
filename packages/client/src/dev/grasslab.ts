@@ -37,8 +37,8 @@ for (let ty = 0; ty < NY; ty++) {
     for (const b of g.north) blades.push(b);
     for (const b of g.south) blades.push(b);
     // THE COAT (density): the GPU affords a lush carpet the baked meadow
-    // paints — scatter short nap blades to close the ground. ~26/tile.
-    const COAT = 26;
+    // paints — scatter short nap blades to close the ground. ~36/tile.
+    const COAT = 36;
     for (let i = 0; i < COAT; i++) {
       const rx = h2(tx * 13 + i, ty * 7 + i * 3);
       const ry = h2(ty * 17 + i * 5, tx * 11 + i);
@@ -105,8 +105,8 @@ function frame(): void {
   const wy = STILL ? NY * 0.52 : NY * 0.5 + Math.sin(t * 0.5) * NY * 0.28;
   disturb[0] = wx;
   disturb[1] = wy;
-  disturb[2] = 2.1; // radius (tiles)
-  disturb[3] = 1.0; // strength
+  disturb[2] = 1.5; // radius (tiles) ≈ a character's footprint — the scene
+  disturb[3] = 1.0; // sizes this per entity (a boar treads wider than a fox)
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.clearColor(0.39, 0.53, 0.33, 1); // meadow ground green
   gl.clear(gl.COLOR_BUFFER_BIT);
