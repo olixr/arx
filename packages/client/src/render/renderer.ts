@@ -10321,7 +10321,12 @@ export class Renderer {
     region: InteriorRegion | null = null,
   ): DrawItem {
     const ctx = this.ctx;
-    const s = this.camera.scale;
+    // B-3 surface depth thread: a wall is drawn PER TILE (base on the leaned
+    // ground, rising by `s`), so — like a billboard — it foreshortens by the
+    // depthScale at its base (`ty`, matching the worldToScreen anchor). The
+    // ground under it already warps (B-1b); this shrinks the masonry's height
+    // with distance so a far wall doesn't loom. spriteScale === scale at q=0.
+    const s = this.spriteScale(ty);
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const n = this.wallish(game, tx, ty - 1);
