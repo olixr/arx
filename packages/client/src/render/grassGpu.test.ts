@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { windAtInto, type Blade } from './grass.js';
-import { GRASS_INSTANCE_FLOATS, grassWindGlsl, grassWindMirror, packBladeInstances } from './grassGpu.js';
+import { GRASS_INSTANCE_FLOATS, grassViewMatrix, grassWindGlsl, grassWindMirror, packBladeInstances } from './grassGpu.js';
 
 /**
  * THE LIVING MEADOW GOES TO THE GPU (G-1) — the substrate, pinned.
@@ -74,4 +74,28 @@ test('packBladeInstances reuses a big-enough out buffer (pooled, no re-mint)', (
   const buf2 = packBladeInstances([blade({}), blade({})], small);
   assert.notEqual(buf2, small);
   assert.equal(buf2.length, 2 * GRASS_INSTANCE_FLOATS);
+});
+
+test('grassViewMatrix maps world→NDC exactly matching the affine screen projection', () => {
+  // The matrix must place a blade root at the SAME pixel the canvas2d
+  // meadow paints it: worldToScreen (affine) then screen→NDC with y-flip.
+  const scale = 48, yScale = 0.86, ox = 512.3, oy = 288.7, w = 1280, h = 720;
+  const m = grassViewMatrix(scale, yScale, ox, oy, w, h);
+  const applyX = (wx: number, wy: number) => m[0]! * wx + m[3]! * wy + m[6]!;
+  const applyY = (wx: number, wy: number) => m[1]! * wx + m[4]! * wy + m[7]!;
+  for (const [wx, wy] of [[0, 0], [3.5, -2.25], [-40, 60], [128.5, 199.75]] as const) {
+    const screenX = wx * scale + ox;
+    const screenY = wy * scale * yScale + oy;
+    const ndcX = (2 * screenX) / w - 1;      // GL screen→NDC
+    const ndcY = 1 - (2 * screenY) / h;      // …with the stage's Y-flip
+    // Float32 matrix storage → ~1e-6 precision (well under a pixel).
+    assert.ok(Math.abs(applyX(wx, wy) - ndcX) < 1e-5, `ndcX @ ${wx},${wy}`);
+    assert.ok(Math.abs(applyY(wx, wy) - ndcY) < 1e-5, `ndcY @ ${wx},${wy}`);
+  }
+});
+
+test('grassViewMatrix reuses a big-enough out buffer (alloc-free per frame)', () => {
+  const out = new Float32Array(9);
+  const m = grassViewMatrix(1, 1, 0, 0, 2, 2, out);
+  assert.equal(m, out);
 });
