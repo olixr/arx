@@ -174,3 +174,52 @@ test('pooled scratch is reused (members aliases the scratch array)', () => {
   assert.equal(v!.members, scratch.members);
   assert.equal(v!.count, 3);
 });
+
+// ── THE ONE RENDER A2: the wall-run coalesce contract ─────────────────────
+// The wall painter (emitWallVolume) coalesces a run by MATERIAL class, so a
+// straight run of mixed wall tiles (incl. windowed variants) reads as ONE
+// rectangular crown loop — the property `wallCrownRunItem` relies on for its
+// single continuous topPlane fill + the `poly.length === 4` dressing guard,
+// and `emitWallVolume`'s thin-run test (`x1===x0 || y1===y0`).
+const wallMat = (t: Tile): number | null => {
+  const m = t === Tile.WallWoodWindow ? Tile.WallWood : t === Tile.WallStoneWindow ? Tile.WallStone : t;
+  if (m === Tile.WallWood) return 0;
+  if (m === Tile.WallStone) return 1;
+  return null;
+};
+
+test('A2: a straight E-W wall run (windowed variant included) coalesces to one 4-corner loop', () => {
+  const s = sampleOf([
+    [3, 5, Tile.WallWood],
+    [4, 5, Tile.WallWoodWindow], // a window mid-run must NOT split the material class
+    [5, 5, Tile.WallWood],
+    [6, 5, Tile.WallWood],
+  ]);
+  const v = collectVolume(s, 3, 5, wallMat);
+  assert.ok(v, 'run collects');
+  assert.equal(v!.count, 4);
+  // Thin run: single row ⇒ y0 === y1.
+  assert.equal(v!.y0, v!.y1);
+  assert.notEqual(v!.x0, v!.x1);
+  // One exposed loop, a rectangle: exactly 4 corners after collinear-merge.
+  assert.equal(v!.perimeter.length, 1);
+  assert.equal(v!.perimeter[0]!.length, 4);
+  assert.deepEqual(loopKeys(v!.perimeter[0]!), ['3,5', '7,5', '7,6', '3,6']);
+});
+
+test('A2: a wood run does NOT coalesce across a stone tile (material class splits)', () => {
+  const s = sampleOf([
+    [3, 5, Tile.WallWood],
+    [4, 5, Tile.WallStone], // different material — a class boundary
+    [5, 5, Tile.WallWood],
+  ]);
+  const v = collectVolume(s, 3, 5, wallMat);
+  assert.deepEqual(memberKeys(v!.members), ['3,5']); // the wood seed stops at stone
+});
+
+test('A2: a building footprint is NOT a thin run (both extents > 0)', () => {
+  const s = sampleOf(rect(2, 2, 5, 4, Tile.WallStone));
+  const v = collectVolume(s, 2, 2, wallMat);
+  assert.notEqual(v!.x0, v!.x1);
+  assert.notEqual(v!.y0, v!.y1); // ⇒ emitWallVolume falls back to per-tile
+});
