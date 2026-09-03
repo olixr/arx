@@ -5787,9 +5787,10 @@ export class Renderer {
     // THE GPU MEADOW (proposal G-2, ?grass=gpu): the whole visible field
     // renders instanced on the GPU and blits here — below entities, before
     // the world lightmap (so it's world-lit for free, like the baked
-    // meadow). On success the canvas2d coat AND the tall y-sort pass are
-    // skipped (the GPU field is one flat layer this phase). Any failure
-    // (no context, lost) falls back to the byte-identical baked path.
+    // meadow). On success the canvas2d coat is skipped (the GPU field
+    // carries the short `under` coat as one flat layer); the tall y-sort
+    // pass still runs (B3 — tall thickets interleave with bodies). Any
+    // failure (no context, lost) falls back to the byte-identical baked path.
     if (this.grassGpu && this.drawGrassGpu(groundLvl0, detail, grassBounds)) {
       this.grassGpuActive = true;
     } else {
@@ -5857,13 +5858,14 @@ export class Renderer {
     const items = this.drawItems;
     items.length = 0;
     this.bulkItemUsed = 0;
-    // Tall thickets y-sort with the world: you walk THROUGH them. Skipped
-    // under the GPU path — it drew the whole field (tall included) flat
-    // below entities this phase (the walk-through interleave is a later
-    // sub-phase). See drawGrassGpu.
-    if (!this.grassGpuActive) {
-      this.grass.collectTall(items, this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
-    }
+    // Tall thickets y-sort with the world: you walk THROUGH them. This
+    // runs on BOTH paths (B3 — THE TALL BLADE INTERLEAVES): under the GPU
+    // meadow the flat field carries only the short `under` coat (below all
+    // entities, which is correct), while the tall standing mass draws here
+    // at its y-sort slot so a body inside a thicket is wrapped — blades in
+    // front (nearer/south) occlude its lower body, blades behind do not.
+    // See drawGrassGpu / collectGpuBlades(tallInterleave).
+    this.grass.collectTall(items, this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
     this.collectElevatedGround(game, items);
     cliffArt.collectCliffFaces(this, game, items);
     this.collectRaisedTiles(game, items);
@@ -20652,9 +20654,10 @@ export class Renderer {
    * blades (cache-reusing), render them instanced into the layer's private
    * offscreen canvas under the ortho camera + this frame's disturbers, and
    * blit it into the 2d frame at the grass slot. Returns true if it drew
-   * (caller skips the baked coat + tall pass), false to fall back to the
-   * baked meadow this frame. The lightmap multiply runs after this slot, so
-   * the blitted field is world-lit exactly like the baked meadow.
+   * (caller skips the baked coat; the tall standing mass still interleaves
+   * via collectTall — B3), false to fall back to the baked meadow this
+   * frame. The lightmap multiply runs after this slot, so the blitted field
+   * is world-lit exactly like the baked meadow.
    */
   private drawGrassGpu(
     ground: (tx: number, ty: number) => number | undefined,
@@ -20664,7 +20667,10 @@ export class Renderer {
     if (!this.grassGpuLayer) this.grassGpuLayer = new GrassGpuLayer(BLADE_FILLS, ORNAMENT_FILLS);
     const layer = this.grassGpuLayer;
     if (!layer.ok) return false;
-    this.grass.collectGpuBlades(ground, detail, bounds, this.grassBlades);
+    // B3 — TALL INTERLEAVE: the GPU flat field carries only the short
+    // `under` coat; the tall standing mass rides the CPU collectTall
+    // y-sort (below) so bodies walk THROUGH thickets.
+    this.grass.collectGpuBlades(ground, detail, bounds, this.grassBlades, true);
     this.grass.collectGpuOrnaments(ground, detail, bounds, this.grassFlowers, this.grassSeeds);
     // This frame's disturbers → the trample uniform. Body radius (~0.3t) is
     // the footprint CENTRE; the parted patch spreads wider, so scale it.
