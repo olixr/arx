@@ -9,6 +9,7 @@ import { ELEV_H } from './elevPick.js';
 import { packTile } from './interiors.js';
 import { GARRISON_H, GAR_LEAF, MERLON_H, WALL_STUB, stone01 } from './paintVocab.js';
 import { shade } from './rig.js';
+import { faceBand, faceFill, faceSeam } from './structureFace.js';
 import { Tile, diagWallInfo, doorInfo, hashCoords } from '@arx/shared';
 import type { DrawItem } from './renderer.js';
 import { wallHangings } from './wallHungArt.js';
@@ -331,35 +332,14 @@ export function garrisonWallItem(rend: PaintHost,
           bLift: number,
           litD: number,
         ): void => {
-          ctx.fillStyle = shade(GAR_FACE, litD);
-          ctx.beginPath();
-          ctx.moveTo(ax, ay);
-          ctx.lineTo(ax, ay - aLift);
-          ctx.lineTo(bx, by - bLift);
-          ctx.lineTo(bx, by);
-          ctx.closePath();
-          ctx.fill();
-          const band = (f0: number, f1: number, col: string): void => {
-            ctx.fillStyle = col;
-            ctx.beginPath();
-            ctx.moveTo(ax, ay - aLift * f0);
-            ctx.lineTo(ax, ay - aLift * f1);
-            ctx.lineTo(bx, by - bLift * f1);
-            ctx.lineTo(bx, by - bLift * f0);
-            ctx.closePath();
-            ctx.fill();
-          };
-          const hline = (f: number, wpx: number, col: string): void => {
-            const wa = Math.max(1, wpx);
-            ctx.fillStyle = col;
-            ctx.beginPath();
-            ctx.moveTo(ax, ay - aLift * f);
-            ctx.lineTo(bx, by - bLift * f);
-            ctx.lineTo(bx, by - bLift * f + wa);
-            ctx.lineTo(ax, ay - aLift * f + wa);
-            ctx.closePath();
-            ctx.fill();
-          };
+          // THE STRUCTURE FACE (screen-space shape): corners are already
+          // projected + snapped and the lifts pre-foreshortened, so the
+          // shared trapezoid/band/seam helpers draw them verbatim.
+          faceFill(ctx, ax, ay, aLift, bx, by, bLift, shade(GAR_FACE, litD));
+          const band = (f0: number, f1: number, col: string): void =>
+            faceBand(ctx, ax, ay, aLift, bx, by, bLift, f0, f1, col);
+          const hline = (f: number, wpx: number, col: string): void =>
+            faceSeam(ctx, ax, ay, aLift, bx, by, bLift, f, wpx, col);
           // The battered talus footing wraps the corner.
           const plinthH = Math.min(s * 0.55, hs * 0.42);
           band(0, plinthH / hs, shade(GAR_PLINTH, litD));
