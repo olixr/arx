@@ -10,6 +10,7 @@ import {
   type FaceCamera,
   type FaceCtx,
 } from './structureFace.js';
+import { depthScaleWorld, projectWorld, type XY } from './cameraProject.js';
 
 /**
  * THE STRUCTURE FACE — the shared world-geometry face primitive, pinned.
@@ -206,4 +207,103 @@ test('faceSeam draws a min-1px seam at a fraction', () => {
     'close',
     'fill #222',
   ]);
+});
+
+/**
+ * THE ONE RENDER — F0 foundation gate: the q=0 RECT-EQUIVALENCE invariant,
+ * pinned through the REAL projection (`cameraProject.projectWorld` /
+ * `depthScaleWorld`), not a hand-tuned stub. Track A rebuilds walls,
+ * garrison and hedges as run-continuous `structureFace` volumes (faceStrip
+ * / topPlane); A1's contract is that at q=0 these new run-continuous
+ * primitives reproduce today's axis-aligned rects EXACTLY. This test is the
+ * gate that contract runs against: a real camera at q=0, an E-W ground run,
+ * and the assertion that its side face is an axis-aligned rectangle.
+ */
+
+// A representative camera; the same shape cameraProject's own tests use.
+const RS = { scale: 40, yScale: 0.6, camX: 12.5, camY: -7.25, snapDpr: 2 };
+
+/** A FaceCamera backed by the SHIPPED projection at a chosen q. */
+function realCamera(q: number): FaceCamera {
+  const scratch: XY = { x: 0, y: 0 };
+  return {
+    worldToScreen: (wx, wy, w, h) => {
+      projectWorld(RS.scale, RS.yScale, RS.camX, RS.camY, q, RS.snapDpr, wx, wy, w, h, scratch);
+      return { x: scratch.x, y: scratch.y };
+    },
+    depthScale: (wy) => depthScaleWorld(RS.scale, RS.yScale, RS.camY, q, wy),
+  };
+}
+
+test('F0: at q=0 an E-W run face is an axis-aligned rectangle (A1 must preserve)', () => {
+  const cam = realCamera(0);
+  // An east–west run: two ground corners share a world row (ay === by).
+  const ay = 4,
+    by = 4,
+    ax = 2,
+    bx = 9;
+  const liftTop = 60,
+    liftBot = 0;
+  const g = projectFace(cam, W, H, ax, ay, bx, by, liftTop, liftBot);
+
+  // Left and right edges are VERTICAL (each corner keeps its own screen x
+  // top and bottom) — a rect has two vertical sides.
+  assert.ok(g.ax < g.bx, 'west corner left of east corner');
+  // Both corners share one depthScale (=1) at q=0, so the top edge is
+  // horizontal and the base edge is horizontal: an axis-aligned rect.
+  assert.equal(g.dsA, 1);
+  assert.equal(g.dsB, 1);
+  assert.equal(g.ay, g.by); // base edge horizontal
+  assert.equal(g.yTopA, g.yTopB); // top edge horizontal
+  assert.equal(g.yBotA, g.yBotB);
+  // The rect's height is the plain lift (no per-corner foreshortening).
+  assert.equal(g.ay - g.yTopA, liftTop);
+  assert.equal(g.by - g.yTopB, liftTop);
+});
+
+test('F0: a receding run gets equal depthScale at q=0 but NOT under lean', () => {
+  // A run whose two ground corners sit at DIFFERENT world depths
+  // (ay ≠ by). At q=0 both corners still share depthScale 1 — the flat
+  // collapse. Under a lean the nearer corner foreshortens more than the
+  // farther one, so the two depthScales diverge and the face becomes a
+  // true trapezoid. This proves the q=0 rect-equivalence above is a real
+  // property of q=0, not something projectFace yields for any camera.
+  const ax = 2,
+    ay = 1,
+    bx = 9,
+    by = 14; // corners at different depths
+  const flat = projectFace(realCamera(0), W, H, ax, ay, bx, by, 60, 0);
+  assert.equal(flat.dsA, 1);
+  assert.equal(flat.dsB, 1);
+  assert.equal(flat.dsA, flat.dsB);
+
+  const lean = projectFace(realCamera(0.0013), W, H, ax, ay, bx, by, 60, 0);
+  assert.notEqual(lean.dsA, lean.dsB);
+  // The nearer (larger wy, down-screen) corner foreshortens MORE (>1).
+  assert.ok(lean.dsB > lean.dsA, 'nearer corner has the larger depthScale');
+});
+
+test('F0: at q=0 faceUV over the projected run collapses to plain rect placement', () => {
+  const cam = realCamera(0);
+  // Project an E-W run's base + top corners through the real camera, then
+  // feed faceUV the four screen corners (base row, lifted top row).
+  const ay = 4,
+    by = 4,
+    ax = 2,
+    bx = 9,
+    lift = 80;
+  const g = projectFace(cam, W, H, ax, ay, bx, by, lift, 0);
+  const S = faceUV(g.ax, g.ay, g.bx, g.by, g.ax, g.yTopA, g.bx, g.yTopB);
+  // x depends only on u (both rows share each corner's x); y only on v
+  // (both corners share each row's y) — the axis-aligned collapse a
+  // window/door keyed to the face relies on at q=0.
+  const lo = S(0.3, 0.2);
+  const hi = S(0.3, 0.9);
+  assert.equal(lo.x, hi.x, 'x is v-independent at q=0');
+  const left = S(0.1, 0.6);
+  const right = S(0.8, 0.6);
+  assert.equal(left.y, right.y, 'y is u-independent at q=0');
+  // Corners land exactly on the projected rect corners.
+  assert.deepEqual(S(0, 0), { x: g.ax, y: g.ay });
+  assert.deepEqual(S(1, 1), { x: g.bx, y: g.yTopB });
 });
