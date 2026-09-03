@@ -279,6 +279,7 @@ import {
 import { collectEmitter, type EmitterGlowOut } from './emitters.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
 import { collectVolume, crownSpans, diagSpans } from './collectVolume.js';
+import { DRAW_ORDER } from './drawOrder.js';
 import type { CrownSpan } from './collectVolume.js';
 import {
   RaisedKind,
@@ -1242,8 +1243,10 @@ const WOOD_FACE_TILES: ReadonlySet<number> = new Set<number>([
   ...PALISADE_TILES,
 ]);
 
-/** THE SHELF LAW's one comparator, hoisted — a fresh closure per frame
- *  de-optimized the hottest sort in the engine.
+/** THE SHELF LAW's one comparator lives in `./drawOrder.ts` (a pure module
+ *  so the A5 pitch-aware depth law can be pinned by node tests) — hoisted
+ *  out of the frame loop since a fresh closure per frame de-optimized the
+ *  hottest sort in the engine.
  *
  *  THE SHELF CLAMP (2026-08-17): positive shelves flatten to ONE rank
  *  before comparing. A shelf exists so raised content can beat the
@@ -1258,13 +1261,13 @@ const WOOD_FACE_TILES: ReadonlySet<number> = new Set<number>([
  *  has; every within-terrace contract the law names (climber over
  *  flight, wall over the body behind it, face under its own crown's
  *  standers — billboards paint no pixels below their feet, so row
- *  order never bleeds) still holds, now by row instead of by rank. */
-const SHELF = (v: number | undefined): number => {
-  const s = v ?? 0;
-  return s > 1 ? 1 : s;
-};
-const DRAW_ORDER = (a: DrawItem, b: DrawItem): number =>
-  SHELF(a.strat) - SHELF(b.strat) || a.sortY - b.sortY;
+ *  order never bleeds) still holds, now by row instead of by rank.
+ *
+ *  THE ONE RENDER — A5 (pitch-aware depth) adds the secondary depth term:
+ *  a world-geometry VOLUME sorts by its NEAR (south) ground-edge row
+ *  (`nearRow`, set only under the `occlusionOn` kill-switch), and on a
+ *  depth TIE a billboard at the wall's base draws in front. See
+ *  `drawOrder.ts` for the full contract. */
 
 /** The dynamic-glow falloff profile, hoisted — a per-glow-per-frame
  *  array literal defeated the glow sprite cache's identity memo. */
@@ -1444,6 +1447,25 @@ export interface DrawItem {
    *  base-exposure relight pass (see relightBody). */
   baseX?: number;
   baseY?: number;
+  /**
+   * THE ONE RENDER — A5: pitch-aware depth key for a WORLD-GEOMETRY
+   * VOLUME (wall/garrison/diag crown run, hedge run). It is the world
+   * ROW of the volume's SOUTH/NEAR ground edge — the face you walk
+   * BEHIND — so a billboard whose foot is south of (nearer than) this
+   * row sorts AFTER the volume (drawn in front) and one north of it
+   * sorts before (behind). A row comparison ⇒ zoom-invariant. At q=0
+   * this equals the volume's raw south-edge sortY (walls already sort
+   * at `y1+1`), so the flat order is preserved (golden gate).
+   *
+   * DRAW_ORDER prefers `nearRow` over `sortY` as the depth term, and on
+   * an exact depth TIE a volume (nearRow set) draws BEFORE a billboard
+   * (nearRow unset) — the tie rule "billboard foot ≥ volume near-row ⇒
+   * in front" (a body at the base of a wall must win; billboards paint
+   * no pixels below their feet). Set ONLY while `occlusionOn` is true —
+   * the A5 kill-switch — so with occlusion off DRAW_ORDER reduces to the
+   * exact old `sortY` comparator.
+   */
+  nearRow?: number;
 }
 
 /**
@@ -11513,6 +11535,12 @@ export class Renderer {
     };
     return {
       sortY: cv.sortY,
+      // A5 pitch-aware depth: this crown SPAN's own near (south) ground
+      // edge — one row south of its south-most member — so a building's
+      // north-wall span sorts nearer-than a body just inside it, not by
+      // the whole run's south edge (`cv.sortY`). At q=0 spans still paint
+      // south-after-north by row, matching the flat look.
+      nearRow: this.occlusionOn ? span.y1 + 1 : undefined,
       strat: cv.strat,
       pb: { x: bx0 - pad, y: by0 - pad, w: bx1 - bx0 + pad * 2, h: by1 - by0 + pad * 2 },
       pbKey,
@@ -11770,6 +11798,10 @@ export class Renderer {
     const H = barrierArt.HEDGE_VOL_H;
     return {
       sortY,
+      // A5 pitch-aware depth: the hedge run's near (south) ground edge
+      // (`sortY` is already `y1+1`), so a body at the hedge base draws in
+      // front of it under the lean, not squished behind. q=0 unchanged.
+      nearRow: this.occlusionOn ? sortY : undefined,
       strat,
       draw: () => {
         const sil = beginSilhouette();
@@ -11988,6 +12020,9 @@ export class Renderer {
 
     return {
       sortY: ty + 1,
+      // A5 pitch-aware depth: this per-tile wall's near (south) ground
+      // edge; a body at its base draws in front under the lean.
+      nearRow: this.occlusionOn ? ty + 1 : undefined,
       drawShadow: sw
         ? undefined
         : () => {
@@ -12942,6 +12977,10 @@ export class Renderer {
 
     return {
       sortY: front ? ty + 0.001 : ty + 1,
+      // A5 pitch-aware depth: a 45° face sorts at its NEAR row (the
+      // pocket behind the line is solid wall) — bodies sharing its rows
+      // are in front. Match sortY so q=0 is unchanged.
+      nearRow: this.occlusionOn ? (front ? ty + 0.001 : ty + 1) : undefined,
       drawShadow: front
         ? () => this.castEdgeQuad(hypW[0], hypW[1], hypE[0], hypE[1], whT)
         : nS
@@ -13524,6 +13563,8 @@ export class Renderer {
     const radii: [number, number, number, number] = [!nW && !w ? r : 0, !nE && !e ? r : 0, 0, 0];
     return {
       sortY: ty + 1,
+      // A5 pitch-aware depth: the gateway wall's near (south) ground edge.
+      nearRow: this.occlusionOn ? ty + 1 : undefined,
       drawShadow: () => {
         // Only the jambs cast — light passes through the opening. The base is
         // the PROJECTED south foot so the cast stays pinned to the leaned wall
@@ -14005,6 +14046,8 @@ export class Renderer {
     const r = s * 0.26;
     return {
       sortY: ty + 1,
+      // A5 pitch-aware depth: the arcade wall's near (south) ground edge.
+      nearRow: this.occlusionOn ? ty + 1 : undefined,
       drawShadow: () => {
         // Piers cast; the open mouth passes light. Base = projected south foot
         // (byte-identical at q=0, where southBaseY === p.y + syT).
