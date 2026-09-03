@@ -1,5 +1,5 @@
 import { Tile, hashCoords, valueNoise } from '@arx/shared';
-import { StageBlend, type StageItem, type StageTexture } from './stage/stageTypes.js';
+import { StageBlend, type StageItem, type StageQuad, type StageTexture } from './stage/stageTypes.js';
 import {
   GRASS_BAKE_MS_BUDGET,
   GRASS_CELL_SPAN,
@@ -627,6 +627,81 @@ export function laneUses(lane: number, t: Tile | null | undefined): boolean {
   return true;
 }
 
+/**
+ * THE MEADOW RIDES THE LEAN (Epic B, FG). A row cell is baked once (its
+ * tile frame frozen into the sprite pixels) but blitted for many frames
+ * as the camera pans and leans. A cell is ONE tile deep (a single `ty`),
+ * so under a pitch-only lean the whole cell sits at ONE depth — the
+ * ground beneath it compresses UNIFORMLY, no across-cell trapezoid. So
+ * the blit only has to re-derive the row's CURRENT tile frame and scale
+ * the cached sprite by the ratio to its baked frame: `dsx = fcSx/spSx`
+ * (footprint width) and `dsy = fcSy/spSy` (row depth + height). Applied
+ * about the sprite's (already perspective-projected) anchor, this lands
+ * every tile exactly where the leaned ground puts it — no spill, no
+ * stair-step at the grass/lane seam — while the blades keep standing.
+ *
+ * At the bake instant fc === the baked frame, so ds = 1 and the blit
+ * reproduces the live path byte-for-byte. At q=0 every tile frame is the
+ * camera-position-independent ortho constant (sx=scale, sy=scale·yScale),
+ * so ds would be 1 too — but float subtraction of large coordinates is
+ * not exactly 1, so callers MUST gate this on an explicit `q !== 0` and
+ * leave the q=0 path untouched (byte-identity by construction).
+ */
+export function rowLeanScale(
+  fcSx: number,
+  fcSy: number,
+  spSx: number,
+  spSy: number,
+): { dsx: number; dsy: number } {
+  return {
+    dsx: spSx !== 0 ? fcSx / spSx : 1,
+    dsy: spSy !== 0 ? fcSy / spSy : 1,
+  };
+}
+
+/**
+ * THE MEADOW RIDES THE GROUND QUAD (Epic B, clause 3). A baked row-cell
+ * sprite is a rectangle in the FROZEN bake frame: the west tile's NW
+ * ground corner sits at bake-CSS (0,0), one tile is `spSx`×`spSy` CSS px,
+ * and the raster overhangs it by the bake margins (`mx` left, `my` above)
+ * — the blade tips live in the `my` band above the ground line. So the
+ * raster's four corners map to FIXED WORLD points (camera-independent):
+ * left/right of the cell by `mx/spSx` tiles, and above/below by
+ * `my/spSy` / `(hCss−my)/spSy` tile-rows. Projecting these four world
+ * corners each frame (the exact ground-chunk construction) and drawing
+ * the cached raster across the resulting trapezoid locks grass to the
+ * ground and foreshortens it identically — no swim. Pure so grass.test
+ * pins it; the caller projects the corners and weights them 1/depthScale.
+ *
+ *   (westX,northY) ── (eastX,northY)      raster TL/TR (blade tips)
+ *        │                 │
+ *   (westX,southY) ── (eastX,southY)      raster BL/BR (just past south)
+ *
+ * By construction `(eastX−westX)·spSx === wCss` and
+ * `(southY−northY)·spSy === hCss` (the raster's CSS extent), and with
+ * zero margins the corners collapse onto the cell's tile footprint
+ * [cellTx‥cellTx+wCss/spSx] × [ty‥ty+hCss/spSy].
+ */
+export function grassCellWorldCorners(
+  cellTx: number,
+  ty: number,
+  spSx: number,
+  spSy: number,
+  mx: number,
+  my: number,
+  wCss: number,
+  hCss: number,
+): { westX: number; eastX: number; northY: number; southY: number } {
+  const invSx = spSx !== 0 ? 1 / spSx : 0;
+  const invSy = spSy !== 0 ? 1 / spSy : 0;
+  return {
+    westX: cellTx - mx * invSx,
+    eastX: cellTx + (wCss - mx) * invSx,
+    northY: ty - my * invSy,
+    southY: ty + (hCss - my) * invSy,
+  };
+}
+
 /** A tile stays live this long after its last wake (spring-back runs
  *  at frame rate — the same window bakeUnder honors). */
 const WAKE_LIVE_MS = 800;
@@ -771,6 +846,12 @@ export class GrassSystem {
     shFill: string;
     /** Whether the shadow canvas holds any content this bake. */
     hasShadow: boolean;
+    /** THE SHADE LEARNS TO LEAN (Epic B): true when this bake ran under a
+     *  lean — the calm casts were kept LIVE in shadowPath (no monolith
+     *  canvas), so a flat drawImage would seat them at ortho and float a
+     *  hard rectangular band over the receded ground. A mode flip (lean↔
+     *  ortho) forces a rebake so the cache never carries the wrong kind. */
+    leanBake: boolean;
   } | null = null;
   /** The meadow's merged cast canvas, reused across bakes. */
   private shadowCanvas: HTMLCanvasElement | null = null;
@@ -829,6 +910,24 @@ export class GrassSystem {
    * stageDrainLive). Null = the classic canvas path, untouched.
    */
   stagePush: ((item: StageItem) => void) | null = null;
+  /**
+   * THE MEADOW RIDES THE LEAN (Epic B, FG): the frame's camera lean
+   * parameter `q`, set by the renderer each frame. When non-zero the
+   * cell blits re-scale their cached sprite to the row's current depth
+   * (see rowLeanScale); at 0 (the default, and legacy canvas mode) every
+   * blit runs the exact pre-lean path — byte-identical.
+   */
+  leanQ = 0;
+  /**
+   * THE MEADOW RIDES THE GROUND QUAD (Epic B, clause 3): the frame's
+   * camera depth-scale, `wy → depthScale(wy)`, set by the renderer
+   * beside `leanQ`. Under a lean each row-cell blit re-projects its four
+   * frozen world corners and carries per-corner weights `1/depthScale`,
+   * so the cached raster is drawn as a perspective TRAPEZOID locked to
+   * the ground (the ground-chunk construction) instead of stretched by a
+   * single-depth affine — killing the swim. Null at q=0 (the affine path
+   * runs untouched, byte-identical). */
+  leanDepthScale: ((wy: number) => number) | null = null;
   private readonly stageLive: Array<{ lane: number; tx: number; ty: number }> = [];
   private readonly stageTexMap = new WeakMap<
     HTMLCanvasElement,
@@ -1590,6 +1689,16 @@ export class GrassSystem {
       }
     }
 
+    // THE SHADE LEARNS TO LEAN (Epic B): a single baked monolith is one
+    // flat drawImage — it cannot per-row depth-warp, so under a lean it
+    // seats the whole calm meadow's cast at ortho and floats a hard,
+    // axis-aligned rectangular band over the receded ground (the reported
+    // defect, world-stage-only because the lean rides the GL compositor).
+    // When leaning, KEEP the freshly-built casts live in shadowPath (they
+    // were built THIS frame at leaned tile frames) and skip the monolith
+    // entirely — drawUnder fills them with the live tiles' casts, all at
+    // one depth-warped position. q=0 keeps the cached monolith verbatim.
+    const leaning = this.leanQ !== 0;
     // Rasterize the merged casts, anchored at the padded bounds'
     // top-left in the bake frame's screen space (CSS px onto a
     // dpr-resolution backing). Margin covers cast throw past a tile.
@@ -1600,27 +1709,29 @@ export class GrassSystem {
     const canvasY0 = Math.floor(Math.min(pTL.y, pBR.y) - margin);
     const cw = Math.ceil(Math.abs(pBR.x - pTL.x) + margin * 2);
     const chh = Math.ceil(Math.abs(pBR.y - pTL.y) + margin * 2);
-    const bw = Math.ceil(cw * dpr);
-    const bh = Math.ceil(chh * dpr);
-    if (!this.shadowCanvas) {
-      this.shadowCanvas = document.createElement('canvas');
-      this.shadowCtx = this.shadowCanvas.getContext('2d');
-    }
-    const scv = this.shadowCanvas;
-    if (scv.width !== bw || scv.height !== bh) {
-      scv.width = bw;
-      scv.height = bh;
-    }
     const hasShadow = this.shadowPath !== null;
-    if (hasShadow || this.underCache?.hasShadow) {
-      const sctx = this.shadowCtx!;
-      sctx.setTransform(dpr, 0, 0, dpr, -canvasX0 * dpr, -canvasY0 * dpr);
-      sctx.clearRect(canvasX0, canvasY0, cw, chh);
-      if (this.shadowPath) {
-        // Opaque at bake: the meadow's own overlapping casts merge into
-        // one density here; flushShadows applies the layer alpha.
-        sctx.fillStyle = this.shFill;
-        sctx.fill(this.shadowPath);
+    if (!leaning) {
+      const bw = Math.ceil(cw * dpr);
+      const bh = Math.ceil(chh * dpr);
+      if (!this.shadowCanvas) {
+        this.shadowCanvas = document.createElement('canvas');
+        this.shadowCtx = this.shadowCanvas.getContext('2d');
+      }
+      const scv = this.shadowCanvas;
+      if (scv.width !== bw || scv.height !== bh) {
+        scv.width = bw;
+        scv.height = bh;
+      }
+      if (hasShadow || this.underCache?.hasShadow) {
+        const sctx = this.shadowCtx!;
+        sctx.setTransform(dpr, 0, 0, dpr, -canvasX0 * dpr, -canvasY0 * dpr);
+        sctx.clearRect(canvasX0, canvasY0, cw, chh);
+        if (this.shadowPath) {
+          // Opaque at bake: the meadow's own overlapping casts merge into
+          // one density here; flushShadows applies the layer alpha.
+          sctx.fillStyle = this.shFill;
+          sctx.fill(this.shadowPath);
+        }
       }
     }
 
@@ -1641,9 +1752,16 @@ export class GrassSystem {
       shKy: this.shKy,
       shOn: this.shOn,
       shFill: this.shFill,
-      hasShadow,
+      // Under lean the calm casts ride shadowPath, not the monolith — so
+      // the cache holds no blit-able canvas content (hasShadow=false) and
+      // is marked a lean bake (a mode flip forces the next rebake).
+      hasShadow: leaning ? false : hasShadow,
+      leanBake: leaning,
     };
-    this.shadowPath = prevShadow;
+    // Ortho: restore the caller's live path (the monolith owns the calm
+    // casts). Lean: KEEP the built calm casts in shadowPath so drawUnder
+    // paints them, depth-warped, with the live tiles' casts.
+    if (!leaning) this.shadowPath = prevShadow;
   }
 
   /**
@@ -1674,7 +1792,15 @@ export class GrassSystem {
     const m = this.frameTransform(ctx);
     const dpr = m.a || 1;
     let c = this.underCache;
+    // THE SHADE LEARNS TO LEAN (Epic B): under a lean the calm casts are
+    // rebuilt LIVE each frame at the current leaned tile frames (a flat
+    // monolith blit floats a rectangular band over the receded ground),
+    // so force a rebake every frame; and force one on a lean↔ortho flip so
+    // the cache never carries the wrong kind. q=0 with an ortho cache in
+    // hand leaves both conditions false — byte-identical to today.
     let needBake =
+      this.leanQ !== 0 ||
+      c?.leanBake === true ||
       !c ||
       c.scale !== s ||
       c.dpr !== dpr ||
@@ -2105,13 +2231,81 @@ export class GrassSystem {
     const p = wts(c0 + sp.txOff, ty);
     const wNow = windAtInto(WIND_SCRATCH, sp.center, ty + 0.5, this.tSec);
     const shx = rowShear(windTerm(wNow.bx, wNow.by), sp.bakedTerm);
+    // THE MEADOW RIDES THE LEAN (Epic B, FG): under a lean re-derive the
+    // row's CURRENT tile frame and scale the cached sprite by its ratio
+    // to the baked frame, so the footprint tracks the compressed ground
+    // (one depth per cell → uniform ds, no across-cell trapezoid). At
+    // q=0 this branch is skipped entirely — the blit below is the exact
+    // pre-lean path, byte-identical.
+    let dsx = 1;
+    let dsy = 1;
+    if (this.leanQ !== 0) {
+      const fc = this.tileFrame(c0 + sp.txOff, ty, wts);
+      const ds = rowLeanScale(fc.sx, fc.sy, sp.sx, sp.sy);
+      dsx = ds.dsx;
+      dsy = ds.dsy;
+    }
     if (this.stagePush) {
       // THE WORLD ON STAGE: the same shear, as a quad. Dest-local is
       // the sprite's own device px; a = r/dpr maps them to CSS at the
       // rescale ratio, exactly the setTransform below divided by the
       // live device ratio (the backend multiplies it back).
       const r = s / sp.scale;
+      const rx = r * dsx;
+      const ry = r * dsy;
       const refY = sp.sy * 0.5;
+      // THE MEADOW RIDES THE GROUND QUAD (clause 3): under a lean the
+      // cell is a PERSPECTIVE TRAPEZOID, re-projected each frame from its
+      // four frozen world corners with per-corner weights 1/depthScale —
+      // the exact ground-chunk construction (renderer.ts) — so the cached
+      // raster foreshortens with and stays rigidly locked to the ground.
+      // The old affine below stretched the frozen raster through a SINGLE
+      // depth ratio (`ds`), first-order-correct only at the anchor row;
+      // the residual swept as the cell crossed screen-depth = the swim.
+      // `ground` OVERRIDES `m`, so the live wind-delta shear the affine
+      // carried in `m` rides here as a horizontal offset on the corners
+      // (pivoting about mid-cell ground, `refY`, as the affine did).
+      // Absent at q=0 → the affine `m` below is emitted verbatim,
+      // byte-identical to the pre-lean path.
+      let ground: StageQuad['ground'];
+      if (this.leanQ !== 0 && this.leanDepthScale) {
+        const wCss = sp.w / sp.dpr;
+        const hCss = sp.h / sp.dpr;
+        const c = grassCellWorldCorners(
+          c0 + sp.txOff,
+          ty,
+          sp.sx,
+          sp.sy,
+          sp.mx,
+          sp.my,
+          wCss,
+          hCss,
+        );
+        const tl = wts(c.westX, c.northY);
+        const tr = wts(c.eastX, c.northY);
+        const bl = wts(c.westX, c.southY);
+        const br = wts(c.eastX, c.southY);
+        // Wind-delta shear as a horizontal screen offset (the affine's
+        // shx term): +rx·shx·(refY+my − cssFromTop), tips (cssFromTop=0)
+        // to base and past south (cssFromTop=hCss).
+        const shTop = rx * shx * (refY + sp.my);
+        const shBot = rx * shx * (refY + sp.my - hCss);
+        const wTop = 1 / this.leanDepthScale(c.northY);
+        const wBot = 1 / this.leanDepthScale(c.southY);
+        ground = {
+          c: [
+            tl.x + shTop,
+            tl.y,
+            tr.x + shTop,
+            tr.y,
+            bl.x + shBot,
+            bl.y,
+            br.x + shBot,
+            br.y,
+          ],
+          w: [wTop, wTop, wBot, wBot],
+        };
+      }
       this.stagePush({
         kind: 'quad',
         tex: this.stageTexFor(sp),
@@ -2122,13 +2316,14 @@ export class GrassSystem {
         dw: sp.w,
         dh: sp.h,
         m: [
-          r / sp.dpr,
+          rx / sp.dpr,
           0,
-          (-r * shx) / sp.dpr,
-          r / sp.dpr,
-          p.x - r * sp.mx + r * shx * (refY + sp.my),
-          p.y - r * sp.my,
+          (-rx * shx) / sp.dpr,
+          ry / sp.dpr,
+          p.x - rx * sp.mx + rx * shx * (refY + sp.my),
+          p.y - ry * sp.my,
         ],
+        ...(ground ? { ground } : {}),
         alpha: 1,
         blend: StageBlend.SourceOver,
       });
@@ -2136,16 +2331,18 @@ export class GrassSystem {
       return;
     }
     const K = m.a * (s / sp.scale);
+    const Kx = K * dsx;
+    const Ky = K * dsy;
     const bx = m.a * p.x + m.e;
     const by = m.d * p.y + m.f;
     const refY = sp.sy * 0.5;
     ctx.setTransform(
-      K / sp.dpr,
+      Kx / sp.dpr,
       0,
-      (-K * shx) / sp.dpr,
-      K / sp.dpr,
-      bx - K * sp.mx + K * shx * (refY + sp.my),
-      by - K * sp.my,
+      (-Kx * shx) / sp.dpr,
+      Ky / sp.dpr,
+      bx - Kx * sp.mx + Kx * shx * (refY + sp.my),
+      by - Ky * sp.my,
     );
     ctx.drawImage(sp.canvas!, 0, 0, sp.w, sp.h, 0, 0, sp.w, sp.h);
     ctx.setTransform(m);

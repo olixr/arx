@@ -3,10 +3,13 @@ import assert from 'node:assert/strict';
 import {
   camOriginX,
   camOriginY,
+  depthScaleAtScreen,
   depthScaleWorld,
   horizonScreenY,
+  lightmapStrip,
   projectWorld,
   unprojectScreen,
+  type LightStrip,
   type XY,
 } from './cameraProject.js';
 
@@ -94,6 +97,22 @@ test('depthScale increases monotonically from far to near', () => {
   }
 });
 
+test('depthScaleAtScreen is exactly 1 at q=0, at every screen row', () => {
+  for (let sy = 0; sy <= H; sy += 137) assert.equal(depthScaleAtScreen(0, H, sy), 1);
+});
+
+test('depthScaleAtScreen(sy) == depthScaleWorld(wy) for the row that projects to sy', () => {
+  // The screen-keyed factor must equal the world-keyed one at the SAME
+  // ground point — this is the identity ground casts rely on to foreshorten.
+  const q = 0.001;
+  for (const [, wy] of pts) {
+    projectWorld(S.scale, S.yScale, S.camX, S.camY, q, S.snapDpr, S.camX, wy, W, H, out);
+    const viaScreen = depthScaleAtScreen(q, H, out.y);
+    const viaWorld = depthScaleWorld(S.scale, S.yScale, S.camY, q, wy);
+    assert.ok(Math.abs(viaScreen - viaWorld) < 1e-9, `${viaScreen} ≈ ${viaWorld} at wy=${wy}`);
+  }
+});
+
 test('the horizon sits at a fixed screen row h/2 - 1/q, above the viewport for a clamped lean', () => {
   assert.equal(horizonScreenY(0, H), -Infinity);
   const q = 0.001;
@@ -116,4 +135,53 @@ test('the near singularity is clamped, never blows up or flips sign', () => {
   // A point far down-screen (very near, past the singularity) stays finite.
   projectWorld(S.scale, S.yScale, S.camX, S.camY, q, S.snapDpr, S.camX, S.camY + 1000, W, H, out);
   assert.ok(Number.isFinite(out.x) && Number.isFinite(out.y), 'clamped to finite');
+});
+
+/**
+ * THE SHADE LEARNS TO LEAN — the lightmap composite's strip mapping.
+ * The lightmap is built at the ortho origin and warped once here; these
+ * pin the two things the warp must get right: q=0 is the exact full-
+ * screen stretch, and the strips tile the viewport with shared seams.
+ */
+test('lightmapStrip at q=0 is the exact full-screen stretch, in N even bands', () => {
+  const N = 48;
+  const mh = 333;
+  const s: LightStrip = { sy: 0, sh: 0, dx: 0, dy: 0, dw: 0, dh: 0 };
+  for (let i = 0; i < N; i++) {
+    lightmapStrip(0, W, H, mh, N, i, s);
+    // Full width, no horizontal offset (wdiv=1 everywhere at q=0).
+    assert.equal(s.dx, 0);
+    assert.equal(s.dw, W);
+    // Source band [i/N, (i+1)/N]·mh maps to dest band [i/N,(i+1)/N]·H.
+    assert.ok(Math.abs(s.sy - (i / N) * mh) < 1e-9);
+    assert.ok(Math.abs(s.sy + s.sh - ((i + 1) / N) * mh) < 1e-9);
+    assert.ok(Math.abs(s.dy - (i / N) * H) < 1e-9);
+    assert.ok(Math.abs(s.dy + s.dh - ((i + 1) / N) * H) < 1e-9);
+  }
+});
+
+test('lightmapStrip tiles the whole viewport with shared, gapless seams under lean', () => {
+  const N = 48;
+  const mh = 333;
+  const q = 0.0008; // horizon above the viewport for H=1000
+  const s: LightStrip = { sy: 0, sh: 0, dx: 0, dy: 0, dw: 0, dh: 0 };
+  let prevBottom = 0;
+  let prevSrcBottom = 0;
+  for (let i = 0; i < N; i++) {
+    lightmapStrip(q, W, H, mh, N, i, s);
+    // Vertical seams are shared exactly: each strip's top is the last
+    // strip's bottom (both are leanY of the same boundary).
+    assert.ok(Math.abs(s.dy - prevBottom) < 1e-9, `strip ${i} seam`);
+    prevBottom = s.dy + s.dh;
+    // Source rows are contiguous and cover the whole map.
+    assert.ok(Math.abs(s.sy - prevSrcBottom) < 1e-9, `strip ${i} source seam`);
+    prevSrcBottom = s.sy + s.sh;
+    // Horizontal warp scales about the centre: dx + dw/2 === cx.
+    assert.ok(Math.abs(s.dx + s.dw / 2 - W / 2) < 1e-9, 'x scales about centre');
+    // Down-screen bands (nearer) magnify; the width exceeds the viewport.
+    if (s.dy > H / 2) assert.ok(s.dw > W, 'near bands magnify');
+  }
+  // The first strip is pinned to y=0 and the last to viewH — full cover.
+  assert.equal(prevBottom, H);
+  assert.ok(Math.abs(prevSrcBottom - mh) < 1e-9);
 });

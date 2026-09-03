@@ -105,6 +105,32 @@ export function depthScaleWorld(scale: number, yScale: number, camY: number, q: 
 }
 
 /**
+ * The local size multiplier at a leaned SCREEN row `sy` — the same
+ * factor `depthScaleWorld` gives, but keyed to a point already projected
+ * to screen space rather than to its world row. Ground cast-shadows (and
+ * any world offset extruded from an already-leaned base) foreshorten by
+ * this, so they shrink with the receding ground instead of standing at
+ * their ortho length and detaching from the caster.
+ *
+ * It is the exact composition `depthScaleWorld(unproject(sy))`: from the
+ * inverse (unprojectScreen), the ortho row offset of `sy` is
+ * `u = dy/(1 + q·dy)` with `dy = sy − cy`, and the scale is the same
+ * `1/(1 − q·u)` projectWorld would apply there. At q=0 it is exactly 1
+ * (fast-path short-circuit), so a caller multiplying by it is byte-
+ * identical to the ortho frame. Pure and alloc-free.
+ */
+export function depthScaleAtScreen(q: number, h: number, sy: number): number {
+  if (q === 0) return 1;
+  const cy = h / 2;
+  const dy = sy - cy;
+  // Clamp the un-divide denominator so a base at/above the horizon
+  // (never reached by on-ground casts at a moderate lean) can neither
+  // blow up nor flip sign.
+  const u = dy / Math.max(MIN_W, 1 + q * dy);
+  return 1 / Math.max(MIN_W, 1 - q * u);
+}
+
+/**
  * Screen → world, into `out` (the exact inverse of projectWorld). The
  * perspective un-divide is a closed form: with `dy = sy − cy`,
  * `sy0 − cy = dy / (1 + q·dy)`. At q=0 it is the old affine inverse.
@@ -148,4 +174,66 @@ export function unprojectScreen(
 export function horizonScreenY(q: number, h: number): number {
   if (q <= 0) return -Infinity;
   return h / 2 - 1 / q;
+}
+
+/** One strip of THE SHADE LEARNS TO LEAN: source rect in the ortho
+ *  lightmap and destination rect on the leaned screen. */
+export interface LightStrip {
+  /** Source top row / height, in map pixels. */
+  sy: number;
+  sh: number;
+  /** Destination rect, in CSS screen pixels. */
+  dx: number;
+  dy: number;
+  dw: number;
+  dh: number;
+}
+
+/**
+ * THE SHADE LEARNS TO LEAN: map strip `i` of an ortho lightmap (built at
+ * the ortho origin, `mh` map-rows tall covering the full screen height)
+ * to its leaned screen band under lean `q`, into `out` (alloc-free).
+ *
+ * The lightmap holds the scene at ORTHO screen positions; the full
+ * homography is applied here, once, at composite. A source row maps to
+ * ortho screen-y `oy = (row/mh)·viewH`; the homography warps ONLY in y
+ * for the band edges (`sy = cy + (oy−cy)/wdiv`, `wdiv = 1 − q·(oy−cy)`),
+ * and within the band scales x uniformly about `cx` by `1/wdiv` at the
+ * band centre. Adjacent strips compute a shared boundary the same way,
+ * so vertical seams are exact; the map is blurred (the tilt-shift law)
+ * so the per-strip horizontal-scale step is invisible at a modest count.
+ * The first strip is stretched up to y=0 and the last down to viewH so
+ * the composite still covers the whole viewport.
+ */
+export function lightmapStrip(
+  q: number,
+  viewW: number,
+  viewH: number,
+  mh: number,
+  strips: number,
+  i: number,
+  out: LightStrip,
+): LightStrip {
+  const cx = viewW / 2;
+  const cy = viewH / 2;
+  const f0 = i / strips;
+  const f1 = (i + 1) / strips;
+  // Ortho screen-y of the band's top/bottom (source → full-screen stretch).
+  const oy0 = f0 * viewH;
+  const oy1 = f1 * viewH;
+  const leanY = (oy: number): number => {
+    const wdiv = Math.max(MIN_W, 1 - q * (oy - cy));
+    return cy + (oy - cy) / wdiv;
+  };
+  let dTop = i === 0 ? 0 : leanY(oy0);
+  const dBot = i === strips - 1 ? viewH : leanY(oy1);
+  // Horizontal scale about cx from the band centre's divisor.
+  const wdivC = Math.max(MIN_W, 1 - q * ((oy0 + oy1) / 2 - cy));
+  out.sy = f0 * mh;
+  out.sh = f1 * mh - f0 * mh;
+  out.dx = cx - cx / wdivC;
+  out.dw = viewW / wdivC;
+  out.dy = dTop;
+  out.dh = dBot - dTop;
+  return out;
 }
