@@ -194,7 +194,7 @@ import * as garrisonArt from './garrisonArt.js';
 import * as hudOverlay from './hudOverlay.js';
 import * as wornAura from './wornAura.js';
 import * as cliffArt from './cliffArt.js';
-import { emit as emitStructureFace, faceBand as sfBand, faceFill as sfFill, faceSeam as sfSeam } from './structureFace.js';
+import { emit as emitStructureFace, faceBand as sfBand, faceFill as sfFill, faceSeam as sfSeam, faceUV } from './structureFace.js';
 import { WALL_STUB, GARRISON_H, MERLON_H } from './paintVocab.js';
 import * as wallHungArt from './wallHungArt.js';
 import * as barrierArt from './barrierArt.js';
@@ -11164,7 +11164,24 @@ export class Renderer {
           // of tint and a glint then say "glass". The hole is carved
           // with an evenodd fill and held open by an evenodd clip
           // through the whole detail pass.
-          const skew = (lx(p.x + s / 2) - (p.x + s / 2)) / -hs;
+          // FEATURE-ON-FACE (Epic B P2): the window opening, its dressing,
+          // wall-hangings and sill pots ride the FACE'S OWN plane — mapped
+          // through its four projected corners in face UV (u along the wall
+          // W→E, v up the height base→crown) — NOT the north-row `p.x`.
+          // Under lean the near south row spreads WIDER than the north row
+          // and sits at swx..sex; anchoring the window at `p.x + s*frac`
+          // put it inboard of the face, so it slid off-centre and cropped
+          // against the face clip as the camera panned. Everything in this
+          // stack draws inside translate(0, yBase), so the map is built in
+          // FRAME-LOCAL coords: base row is the south foot (v=0 ⇒ y=0), the
+          // top the crown south edge (v=1 ⇒ y=-hs). At q=0 the south row
+          // projects to p.x..p.x+s, top and base share x, and the map
+          // collapses to today's rect ⇒ pixel-for-pixel identical. The
+          // legacy `leanX` skew is retired here: PERSP_LEAN=0 makes it a
+          // no-op, and the lean now lives in the projected corners.
+          const fpx = q === 0 ? p.x : swx; // face west origin (frame-local x)
+          const fs = q === 0 ? s : sex - swx; // face width in screen px (== sS)
+          const faceMap = faceUV(fpx, 0, fpx + fs, 0, fpx, -hs, fpx + fs, -hs);
           // The glazed opening, set at the body's eye line: sill at
           // ~0.9 tiles, head at ~1.6 — a window a person stands at.
           // THE WIDE LIGHT: consecutive window tiles in a run merge
@@ -11174,15 +11191,22 @@ export class Renderer {
           // hole; slices butt pixel-true on the snapped shared edge.
           const winW = window && this.fgGroundAt(tx - 1, ty) === tile;
           const winE = window && this.fgGroundAt(tx + 1, ty) === tile;
-          const wx = winW ? x0 : p.x + s * 0.28;
-          const wxE = winE ? x1 : p.x + s * 0.72;
+          // Singles ride the face at 28%/72% of its width (u mapped
+          // through the face corners); merged edges butt the neighbour on
+          // the snapped shared face edge (x0/x1 are already south-row).
+          const wx = winW ? x0 : faceMap(0.28, 0).x;
+          const wxE = winE ? x1 : faceMap(0.72, 0).x;
           const ww = wxE - wx;
-          const wy = -s * 1.62;
-          const wh2 = s * 0.7;
+          // The height band mapped to face scale: head at 1.62 tiles up,
+          // sill 0.7 tiles below it (fs === s at q=0 ⇒ today's -s*1.62 /
+          // s*0.7). Equivalent to faceMap's v-band; kept as a direct face
+          // height so the wall's foreshortening carries the opening.
+          const wy = -fs * 1.62;
+          const wh2 = fs * 0.7;
           let hole: Path2D | null = null;
           if (window) {
             hole = new Path2D();
-            const cr = s * 0.05;
+            const cr = fs * 0.05;
             chamferRect(hole, wx, wy, ww, wh2, [
               winW ? 0 : cr,
               winE ? 0 : cr,
@@ -11190,10 +11214,10 @@ export class Renderer {
               winW ? 0 : cr,
             ]);
           }
-          // The skewed face frame as a matrix: detail coordinates in,
-          // leaned screen geometry out — it maps the hole into the
-          // face fill below and the tint pass after.
-          const frame = new DOMMatrix([1, 0, skew, 1, 0, yBase]);
+          // The face-local → screen shift: the hole is built in frame-local
+          // coords (v=0 at the south foot), so it drops into the screen-
+          // space face fill and the passes after via one translate(0,yBase).
+          const frame = new DOMMatrix([1, 0, 0, 1, 0, yBase]);
           ctx.fillStyle = face;
           const facePath = new Path2D();
           facePath.moveTo(x0, yBase + 0.5);
@@ -11203,11 +11227,10 @@ export class Renderer {
           facePath.closePath();
           if (hole) facePath.addPath(hole, frame);
           ctx.fill(facePath, 'evenodd');
-          // Material detail inside the face's own skewed frame, so
-          // courses and plank seams follow the lean coherently.
+          // Material detail inside the face's own frame, so courses and
+          // plank seams sit level with the leaned face top.
           ctx.save();
           ctx.translate(0, yBase);
-          ctx.transform(1, 0, skew, 1, 0, 0);
           if (hole) {
             // Courses, girts, and seams must never paint across the
             // glass — clip them to the face minus the opening.
@@ -11470,8 +11493,11 @@ export class Renderer {
             }
           }
           // Wall-hung cloth (banners, tapestry) on the face — skipped
-          // on glazed walls, whose guard clip would eat the drop.
-          if (!window) wallHungArt.wallHangings(this, game, tx, ty, p.x, s, whT, false);
+          // on glazed walls, whose guard clip would eat the drop. Pinned
+          // to the FACE (fpx origin, fs width/scale) so it stays centred
+          // on the wall under lean instead of drifting off the north row;
+          // fpx===p.x, fs===s at q=0 ⇒ unchanged.
+          if (!window) wallHungArt.wallHangings(this, game, tx, ty, fpx, fs, whT, false);
           // Ambient-occlusion seam where the face meets the ground.
           ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
           ctx.fillRect(x0, -s * 0.06, x1 - x0, s * 0.06);
@@ -11485,7 +11511,6 @@ export class Renderer {
             // carpentry sitting proud of the pane.
             ctx.save();
             ctx.translate(0, yBase);
-            ctx.transform(1, 0, skew, 1, 0, 0);
             const warm = hearth ? this.sky.flame : 0;
             ctx.fillStyle =
               warm > 0.05
@@ -11553,8 +11578,7 @@ export class Renderer {
             if (sillInfo?.kind === 'sill') {
               ctx.save();
               ctx.translate(0, yBase);
-              ctx.transform(1, 0, skew, 1, 0, 0);
-              wallHungArt.sillHerbsOnSill(this, tx, ty, wx, wxE, wy + wh2, s, sillInfo.mix ?? 0);
+              wallHungArt.sillHerbsOnSill(this, tx, ty, wx, wxE, wy + wh2, fs, sillInfo.mix ?? 0);
               ctx.restore();
             }
           }

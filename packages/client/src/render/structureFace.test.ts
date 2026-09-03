@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { emit, faceBand, faceFill, faceSeam, projectFace, type FaceCamera, type FaceCtx } from './structureFace.js';
+import {
+  emit,
+  faceBand,
+  faceFill,
+  faceSeam,
+  faceUV,
+  projectFace,
+  type FaceCamera,
+  type FaceCtx,
+} from './structureFace.js';
 
 /**
  * THE STRUCTURE FACE — the shared world-geometry face primitive, pinned.
@@ -132,6 +141,56 @@ test('faceBand spans wall-height fractions on both corners', () => {
     'close',
     'fill #111',
   ]);
+});
+
+/**
+ * FEATURE-ON-FACE UV — the bilinear that pins windows / doors / hangings
+ * to the face's own projected plane. At q=0 the four corners are an
+ * axis-aligned rect, so the map must reduce to plain rect placement; at
+ * q>0 (a receding trapezoid) it must bilerp the four corners.
+ */
+test('faceUV over an axis-aligned rect reduces to rect placement', () => {
+  // Base row y=0, top row y=-100 (frame-local, as the wall face feeds it);
+  // west x=10, east x=50 on BOTH rows ⇒ q=0 face.
+  const S = faceUV(10, 0, 50, 0, 10, -100, 50, -100);
+  // Corners land on the corners.
+  assert.deepEqual(S(0, 0), { x: 10, y: 0 });
+  assert.deepEqual(S(1, 0), { x: 50, y: 0 });
+  assert.deepEqual(S(0, 1), { x: 10, y: -100 });
+  assert.deepEqual(S(1, 1), { x: 50, y: -100 });
+  // x depends only on u, y only on v — the axis-aligned collapse.
+  assert.deepEqual(S(0.28, 0.5), { x: 10 + 40 * 0.28, y: -50 });
+  assert.deepEqual(S(0.72, 0.9), { x: 10 + 40 * 0.72, y: -90 });
+});
+
+test('faceUV bilerps a receding trapezoid (q>0)', () => {
+  // A leaned face: base wider (0..100) than the top (20..80), top lifted
+  // and the far/near rows at different y — a true trapezoid.
+  const S = faceUV(0, 0, 100, 0, 20, -60, 80, -80);
+  // Corners exact.
+  assert.deepEqual(S(0, 0), { x: 0, y: 0 });
+  assert.deepEqual(S(1, 0), { x: 100, y: 0 });
+  assert.deepEqual(S(0, 1), { x: 20, y: -60 });
+  assert.deepEqual(S(1, 1), { x: 80, y: -80 });
+  // Mid-height west edge: halfway up the west side, base(0,0)→top(20,-60).
+  assert.deepEqual(S(0, 0.5), { x: 10, y: -30 });
+  // Dead centre: bilerp of all four — u across the v=0.5 span.
+  const westMidX = 0 + (20 - 0) * 0.5; // 10
+  const eastMidX = 100 + (80 - 100) * 0.5; // 90
+  const westMidY = 0 + (-60 - 0) * 0.5; // -30
+  const eastMidY = 0 + (-80 - 0) * 0.5; // -40
+  assert.deepEqual(S(0.5, 0.5), {
+    x: westMidX + (eastMidX - westMidX) * 0.5,
+    y: westMidY + (eastMidY - westMidY) * 0.5,
+  });
+});
+
+test('faceUV writes into a reused out point when given one', () => {
+  const S = faceUV(0, 0, 10, 0, 0, -10, 10, -10);
+  const out = { x: -1, y: -1 };
+  const r = S(0.5, 0.5, out);
+  assert.equal(r, out); // same object, no allocation
+  assert.deepEqual(out, { x: 5, y: -5 });
 });
 
 test('faceSeam draws a min-1px seam at a fraction', () => {

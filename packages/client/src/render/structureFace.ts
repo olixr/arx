@@ -122,6 +122,69 @@ export function emit(
   paint(projectFace(cam, w, h, ax, ay, bx, by, liftTop, liftBot));
 }
 
+/** A point on the face, in whatever screen/frame space the caller feeds. */
+export interface FacePt {
+  x: number;
+  y: number;
+}
+
+/**
+ * FEATURE-ON-FACE UV (Epic B P2, P3) — map a face-local (u,v) onto the
+ * face's OWN projected plane through its four corners, so windows, doors
+ * and wall-hangings ride the face itself instead of a stale row anchor.
+ *
+ * `u` runs along the wall (0 = west corner, 1 = east); `v` runs up the
+ * height (0 = ground/base row, 1 = crown/top row). The map is the
+ * standard bilinear over the four corners — interpolate up each side
+ * edge by `v`, then across by `u`:
+ *
+ *   S(u,v) = lerp( lerp(baseW, topW; v), lerp(baseE, topE; v); u )
+ *
+ * Corners are handed in whatever space the caller draws in (this renderer
+ * feeds frame-local corners: base row y=0, top row y=-hs). GL interpolates
+ * the four corners perspective-correctly across the quad, so four corners
+ * suffice; the canvas oracle mesh-subdivides (P4's concern, not this one).
+ *
+ * At q=0 the four corners form an axis-aligned rect (top and base share
+ * x; both rows are horizontal), so `S(u,v).x` is v-independent and
+ * `S(u,v).y` is u-independent — the map collapses to today's plain rect
+ * placement, and a feature keyed to it lands pixel-for-pixel where it did
+ * before the lean.
+ *
+ * The corner deltas are captured once; the returned mapper is alloc-free
+ * when handed an `out` point (the hot path reuses one), else it returns a
+ * fresh `{x,y}`.
+ */
+export function faceUV(
+  baseWx: number,
+  baseWy: number,
+  baseEx: number,
+  baseEy: number,
+  topWx: number,
+  topWy: number,
+  topEx: number,
+  topEy: number,
+): (u: number, v: number, out?: FacePt) => FacePt {
+  const dWx = topWx - baseWx; // west edge, base → top
+  const dWy = topWy - baseWy;
+  const dEx = topEx - baseEx; // east edge, base → top
+  const dEy = topEy - baseEy;
+  return (u: number, v: number, out?: FacePt): FacePt => {
+    const wx = baseWx + dWx * v; // point up the west edge
+    const wy = baseWy + dWy * v;
+    const ex = baseEx + dEx * v; // point up the east edge
+    const ey = baseEy + dEy * v;
+    const x = wx + (ex - wx) * u; // then across, west → east
+    const y = wy + (ey - wy) * u;
+    if (out) {
+      out.x = x;
+      out.y = y;
+      return out;
+    }
+    return { x, y };
+  };
+}
+
 /** A minimal 2D canvas surface — the drawing subset the side faces use. */
 export interface FaceCtx {
   fillStyle: string | CanvasGradient | CanvasPattern;
