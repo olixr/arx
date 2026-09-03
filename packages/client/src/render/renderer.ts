@@ -4245,9 +4245,18 @@ export class Renderer {
   pickWorld(sx: number, sy: number): Vec2 {
     const flat = this.camera.screenToWorld(sx, sy, this.w, this.h);
     if (!this.game) return flat;
+    // Under lean a lifted surface at world-depth wy draws its lift
+    // foreshortened by depthScale(wy) (liftedWTS / the elevated draw), so
+    // the inversion must ride the SAME depth-scaled forward model or the
+    // edge of a lifted tile/stair mis-picks. q=0 → lean undefined → the
+    // solve short-circuits to the old affine form (byte-identical).
+    const lean =
+      this.camera.q !== 0
+        ? { q: this.camera.q, scale: this.camera.scale, camY: this.camera.y }
+        : undefined;
     return {
       x: flat.x,
-      y: solveLiftedY(flat.y, this.camera.yScale, (wy) => this.renderLift(flat.x, wy)),
+      y: solveLiftedY(flat.y, this.camera.yScale, (wy) => this.renderLift(flat.x, wy), lean),
     };
   }
 
