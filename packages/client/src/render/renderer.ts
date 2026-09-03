@@ -5048,8 +5048,15 @@ export class Renderer {
     // down (2.6/h ⇒ hY = h/2 − h/2.6 ≈ 0.115h): a comfortable moderate lean
     // keeps it off-screen; a CINEMATIC lean (B-5) rises it into view where
     // the sky fills above (drawGrade). Editor/shot camera stays ortho.
+    // B-2 F0 (THE WORLD COMMITS TO THE LEAN): the lean is only geometrically
+    // sound on the GL stage — the canvas2d ground blit is an axis-aligned
+    // affine that cannot form the perspective trapezoid, so neighbours seam.
+    // WebGL is the one architecture forward; canvas2d is a legacy fallback and
+    // never leans. So q holds at 0 unless the GL ground stage is live (and it
+    // auto-drops to flat on a context loss, the toggle's safety). q=0 stays
+    // byte-identical to every ortho frame.
     this.camera.q =
-      this.leanTarget > 0 && this.cameraOverride === null
+      this.leanTarget > 0 && this.cameraOverride === null && this.stageActive()
         ? Math.min(this.leanTarget, 2.6 / this.h)
         : 0;
     // The sky rules the frame: shadows, exposure, grade all read it.

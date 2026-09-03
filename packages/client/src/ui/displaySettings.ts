@@ -49,15 +49,26 @@ export function initDisplaySettings(renderer: Renderer, setLootPref: (on: boolea
     // THE CAMERA LEARNS TO LEAN (Epic B, B-2): the perspective lean behind
     // one honest switch. leanTarget is the dial the renderer clamps per
     // frame (0 = today's orthographic frame, byte-identical). Applies live.
+    // B-2 F0: the lean is sound only on the GL stage (the canvas2d ground
+    // cannot draw the perspective trapezoid), so turning the lean ON also
+    // turns the accelerated display ON — the renderer holds q=0 until the GL
+    // ground is live regardless, this just keeps the switches honest to that.
     toggle('Perspective camera (beta)', renderer.leanTarget > 0, (on) => {
       renderer.leanTarget = on ? 0.0013 : 0; // moderate, horizon-safe (renderer clamps)
       localStorage.setItem('arx.lean', on ? 'on' : 'off');
+      if (on && !renderer.stageWorld) {
+        renderer.stageGround = true;
+        renderer.stageWorld = true;
+        localStorage.setItem('arx.stage', 'on');
+        const accel = rows.querySelector<HTMLInputElement>('input[data-navkey="display:Accelerated display (beta)"]');
+        if (accel) accel.checked = true;
+      }
     });
     {
       const box = rows.lastElementChild!.querySelector('input');
       if (box) {
         box.dataset.tipsub =
-          'Leans the camera into a gentle perspective, so the world recedes toward the horizon with depth and grandeur. A moderate, comfortable tilt — off returns the classic flat view.';
+          'Leans the camera into a gentle perspective, so the world recedes toward the horizon with depth and grandeur. Uses the accelerated display (turns it on). A moderate, comfortable tilt — off returns the classic flat view.';
       }
     }
     // THE RENDER SCALE (A2): the accelerated display's resolution tier.
