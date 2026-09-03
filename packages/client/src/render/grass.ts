@@ -1,5 +1,5 @@
 import { Tile, hashCoords, valueNoise } from '@arx/shared';
-import { StageBlend, type StageItem, type StageQuad, type StageTexture } from './stage/stageTypes.js';
+import { StageBlend, type StageItem, type StageTexture } from './stage/stageTypes.js';
 import {
   GRASS_BAKE_MS_BUDGET,
   GRASS_CELL_SPAN,
@@ -2254,58 +2254,21 @@ export class GrassSystem {
       const rx = r * dsx;
       const ry = r * dsy;
       const refY = sp.sy * 0.5;
-      // THE MEADOW RIDES THE GROUND QUAD (clause 3): under a lean the
-      // cell is a PERSPECTIVE TRAPEZOID, re-projected each frame from its
-      // four frozen world corners with per-corner weights 1/depthScale —
-      // the exact ground-chunk construction (renderer.ts) — so the cached
-      // raster foreshortens with and stays rigidly locked to the ground.
-      // The old affine below stretched the frozen raster through a SINGLE
-      // depth ratio (`ds`), first-order-correct only at the anchor row;
-      // the residual swept as the cell crossed screen-depth = the swim.
-      // `ground` OVERRIDES `m`, so the live wind-delta shear the affine
-      // carried in `m` rides here as a horizontal offset on the corners
-      // (pivoting about mid-cell ground, `refY`, as the affine did).
-      // Absent at q=0 → the affine `m` below is emitted verbatim,
-      // byte-identical to the pre-lean path.
-      let ground: StageQuad['ground'];
-      if (this.leanQ !== 0 && this.leanDepthScale) {
-        const wCss = sp.w / sp.dpr;
-        const hCss = sp.h / sp.dpr;
-        const c = grassCellWorldCorners(
-          c0 + sp.txOff,
-          ty,
-          sp.sx,
-          sp.sy,
-          sp.mx,
-          sp.my,
-          wCss,
-          hCss,
-        );
-        const tl = wts(c.westX, c.northY);
-        const tr = wts(c.eastX, c.northY);
-        const bl = wts(c.westX, c.southY);
-        const br = wts(c.eastX, c.southY);
-        // Wind-delta shear as a horizontal screen offset (the affine's
-        // shx term): +rx·shx·(refY+my − cssFromTop), tips (cssFromTop=0)
-        // to base and past south (cssFromTop=hCss).
-        const shTop = rx * shx * (refY + sp.my);
-        const shBot = rx * shx * (refY + sp.my - hCss);
-        const wTop = 1 / this.leanDepthScale(c.northY);
-        const wBot = 1 / this.leanDepthScale(c.southY);
-        ground = {
-          c: [
-            tl.x + shTop,
-            tl.y,
-            tr.x + shTop,
-            tr.y,
-            bl.x + shBot,
-            bl.y,
-            br.x + shBot,
-            br.y,
-          ],
-          w: [wTop, wTop, wBot, wBot],
-        };
-      }
+      // THE MEADOW STANDS ON ITS OWN TILE (Epic B, bleed fix): under a
+      // lean the row cell is a BILLBOARD, not a flat ground quad. The
+      // affine `m` below already pins the raster's ground line (roots,
+      // raster CSS (mx,my)) to `p` = wts(westTile, ty) — roots ON the
+      // ground — and stands the blades UP by `ry·my` screen px, both
+      // foreshortened by the cell's single-depth ratio `ds` (rowLeanScale,
+      // exact for a one-`ty` cell). A prior pass wrapped the whole raster
+      // — INCLUDING the `my` blade-HEIGHT band above the tile — in a
+      // ground-plane trapezoid (corners at `ty − my/sy`), which projected
+      // the standing tips FLAT onto the tile(s) NORTH of the grass: dirt
+      // and paths there wore grass under lean (user-confirmed). Treating
+      // the height band as ground was the bug; the billboard keeps tips
+      // standing over their own tile, so nothing lands on the neighbor.
+      // At q=0 `ds` is the ortho constant (dsx=dsy=1) so this is the exact
+      // pre-lean affine, byte-identical.
       this.stagePush({
         kind: 'quad',
         tex: this.stageTexFor(sp),
@@ -2323,7 +2286,6 @@ export class GrassSystem {
           p.x - rx * sp.mx + rx * shx * (refY + sp.my),
           p.y - ry * sp.my,
         ],
-        ...(ground ? { ground } : {}),
         alpha: 1,
         blend: StageBlend.SourceOver,
       });

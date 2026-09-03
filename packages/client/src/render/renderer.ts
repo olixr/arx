@@ -16849,8 +16849,24 @@ export class Renderer {
     const k = s / sp.scale;
     const sw = Math.ceil(sp.cw * sp.dpr);
     const sh = Math.ceil(sp.ch * sp.dpr);
-    const dx0 = b.x - sp.ax * k;
-    const dy0 = b.y - sp.ay * k;
+    // B-3 FOOT ANCHOR (float fix): the depth-foreshortened blit (k =
+    // spriteScale/bakeScale = depthScale at this row) must pivot about the
+    // prop's GROUND FOOT — exactly as drawTree anchors its trunk base — not
+    // the baked box's top-left corner. The box `b` and the sprite anchor
+    // (sp.ax, sp.ay = the bake margin, i.e. the box's top-left) form a
+    // canonical-scale frame; scaling that frame about its top-left lifts the
+    // foot off the leaned ground by (footY − b.y)·(1 − k), so a far prop
+    // (small depthScale) HOVERS and only settles as it nears (k → 1). This
+    // was the mailbox/chairs float. Re-derive the foot in screen space — the
+    // tile centre's leaned ground, raised by the SAME renderLift the caller
+    // folded into `b` (elevAt·ELEV_H + porch DOCK_LIFT, at spriteScale) — and
+    // pivot the blit there. At q=0, k === 1, so dx0/dy0 collapse to
+    // `b.x − sp.ax` / `b.y − sp.ay`, byte-identical to the pre-lean path.
+    const foot = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
+    const footX = foot.x;
+    const footY = foot.y - this.renderLift(tx + 0.5, ty + 0.5) * s;
+    const dx0 = footX - (footX - b.x + sp.ax) * k;
+    const dy0 = footY - (footY - b.y + sp.ay) * k;
     const dw = sp.cw * k;
     const dh = sp.ch * k;
     // THE STEP-ASIDE FADE reaches man-height props: a bookshelf or
