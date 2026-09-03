@@ -5193,6 +5193,11 @@ export class Renderer {
       this.camera.x,
       this.camera.y,
     );
+    // THE MEADOW RIDES THE LEAN (Epic B, FG): hand grass the frame's
+    // lean so its cached cell blits track the compressed ground. q=0
+    // (the shippable invariant, and legacy canvas mode) leaves every
+    // grass blit byte-identical.
+    this.grass.leanQ = this.camera.q;
 
     // The breeze layer: water glints, ripples, portal swirls.
     const bounds = this.visibleTileBounds();

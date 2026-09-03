@@ -627,6 +627,38 @@ export function laneUses(lane: number, t: Tile | null | undefined): boolean {
   return true;
 }
 
+/**
+ * THE MEADOW RIDES THE LEAN (Epic B, FG). A row cell is baked once (its
+ * tile frame frozen into the sprite pixels) but blitted for many frames
+ * as the camera pans and leans. A cell is ONE tile deep (a single `ty`),
+ * so under a pitch-only lean the whole cell sits at ONE depth — the
+ * ground beneath it compresses UNIFORMLY, no across-cell trapezoid. So
+ * the blit only has to re-derive the row's CURRENT tile frame and scale
+ * the cached sprite by the ratio to its baked frame: `dsx = fcSx/spSx`
+ * (footprint width) and `dsy = fcSy/spSy` (row depth + height). Applied
+ * about the sprite's (already perspective-projected) anchor, this lands
+ * every tile exactly where the leaned ground puts it — no spill, no
+ * stair-step at the grass/lane seam — while the blades keep standing.
+ *
+ * At the bake instant fc === the baked frame, so ds = 1 and the blit
+ * reproduces the live path byte-for-byte. At q=0 every tile frame is the
+ * camera-position-independent ortho constant (sx=scale, sy=scale·yScale),
+ * so ds would be 1 too — but float subtraction of large coordinates is
+ * not exactly 1, so callers MUST gate this on an explicit `q !== 0` and
+ * leave the q=0 path untouched (byte-identity by construction).
+ */
+export function rowLeanScale(
+  fcSx: number,
+  fcSy: number,
+  spSx: number,
+  spSy: number,
+): { dsx: number; dsy: number } {
+  return {
+    dsx: spSx !== 0 ? fcSx / spSx : 1,
+    dsy: spSy !== 0 ? fcSy / spSy : 1,
+  };
+}
+
 /** A tile stays live this long after its last wake (spring-back runs
  *  at frame rate — the same window bakeUnder honors). */
 const WAKE_LIVE_MS = 800;
@@ -829,6 +861,14 @@ export class GrassSystem {
    * stageDrainLive). Null = the classic canvas path, untouched.
    */
   stagePush: ((item: StageItem) => void) | null = null;
+  /**
+   * THE MEADOW RIDES THE LEAN (Epic B, FG): the frame's camera lean
+   * parameter `q`, set by the renderer each frame. When non-zero the
+   * cell blits re-scale their cached sprite to the row's current depth
+   * (see rowLeanScale); at 0 (the default, and legacy canvas mode) every
+   * blit runs the exact pre-lean path — byte-identical.
+   */
+  leanQ = 0;
   private readonly stageLive: Array<{ lane: number; tx: number; ty: number }> = [];
   private readonly stageTexMap = new WeakMap<
     HTMLCanvasElement,
@@ -2105,12 +2145,28 @@ export class GrassSystem {
     const p = wts(c0 + sp.txOff, ty);
     const wNow = windAtInto(WIND_SCRATCH, sp.center, ty + 0.5, this.tSec);
     const shx = rowShear(windTerm(wNow.bx, wNow.by), sp.bakedTerm);
+    // THE MEADOW RIDES THE LEAN (Epic B, FG): under a lean re-derive the
+    // row's CURRENT tile frame and scale the cached sprite by its ratio
+    // to the baked frame, so the footprint tracks the compressed ground
+    // (one depth per cell → uniform ds, no across-cell trapezoid). At
+    // q=0 this branch is skipped entirely — the blit below is the exact
+    // pre-lean path, byte-identical.
+    let dsx = 1;
+    let dsy = 1;
+    if (this.leanQ !== 0) {
+      const fc = this.tileFrame(c0 + sp.txOff, ty, wts);
+      const ds = rowLeanScale(fc.sx, fc.sy, sp.sx, sp.sy);
+      dsx = ds.dsx;
+      dsy = ds.dsy;
+    }
     if (this.stagePush) {
       // THE WORLD ON STAGE: the same shear, as a quad. Dest-local is
       // the sprite's own device px; a = r/dpr maps them to CSS at the
       // rescale ratio, exactly the setTransform below divided by the
       // live device ratio (the backend multiplies it back).
       const r = s / sp.scale;
+      const rx = r * dsx;
+      const ry = r * dsy;
       const refY = sp.sy * 0.5;
       this.stagePush({
         kind: 'quad',
@@ -2122,12 +2178,12 @@ export class GrassSystem {
         dw: sp.w,
         dh: sp.h,
         m: [
-          r / sp.dpr,
+          rx / sp.dpr,
           0,
-          (-r * shx) / sp.dpr,
-          r / sp.dpr,
-          p.x - r * sp.mx + r * shx * (refY + sp.my),
-          p.y - r * sp.my,
+          (-rx * shx) / sp.dpr,
+          ry / sp.dpr,
+          p.x - rx * sp.mx + rx * shx * (refY + sp.my),
+          p.y - ry * sp.my,
         ],
         alpha: 1,
         blend: StageBlend.SourceOver,
@@ -2136,16 +2192,18 @@ export class GrassSystem {
       return;
     }
     const K = m.a * (s / sp.scale);
+    const Kx = K * dsx;
+    const Ky = K * dsy;
     const bx = m.a * p.x + m.e;
     const by = m.d * p.y + m.f;
     const refY = sp.sy * 0.5;
     ctx.setTransform(
-      K / sp.dpr,
+      Kx / sp.dpr,
       0,
-      (-K * shx) / sp.dpr,
-      K / sp.dpr,
-      bx - K * sp.mx + K * shx * (refY + sp.my),
-      by - K * sp.my,
+      (-Kx * shx) / sp.dpr,
+      Ky / sp.dpr,
+      bx - Kx * sp.mx + Kx * shx * (refY + sp.my),
+      by - Ky * sp.my,
     );
     ctx.drawImage(sp.canvas!, 0, 0, sp.w, sp.h, 0, 0, sp.w, sp.h);
     ctx.setTransform(m);

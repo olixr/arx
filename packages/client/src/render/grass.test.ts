@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Tile } from '@arx/shared';
-import { disturbFalloff, generateGrassTile, laneUses, windAt } from './grass.js';
+import { disturbFalloff, generateGrassTile, laneUses, rowLeanScale, windAt } from './grass.js';
 
 // ------------------------------------------------------------------ wind
 
@@ -37,6 +37,34 @@ test('wind actually travels: the field at a point changes over time', () => {
 
 test('grass generation is deterministic — same tile, same meadow, every session', () => {
   assert.deepEqual(generateGrassTile(12, 34, Tile.Grass, 0), generateGrassTile(12, 34, Tile.Grass, 0));
+});
+
+// ------------------------------------------------------- lean cell scale
+
+test('rowLeanScale: identical bake/blit frames leave the sprite untouched (ds=1)', () => {
+  // At the bake instant the current frame equals the baked frame, so the
+  // blit must reproduce the sprite 1:1 — the still-world bargain.
+  const { dsx, dsy } = rowLeanScale(48, 24, 48, 24);
+  assert.equal(dsx, 1);
+  assert.equal(dsy, 1);
+});
+
+test('rowLeanScale: a compressed row scales the cached sprite to match', () => {
+  // The camera leaned/panned since bake: the row now projects narrower
+  // and shorter. ds is exactly the compression ratio, so a sprite baked
+  // near the look-at row lands on the ground when re-blit far up-screen.
+  const spSx = 64;
+  const spSy = 32;
+  // Row now half as deep (depthScale 0.5) → tile frame halves.
+  const { dsx, dsy } = rowLeanScale(spSx * 0.5, spSy * 0.5, spSx, spSy);
+  assert.ok(Math.abs(dsx - 0.5) < 1e-12, `dsx ${dsx}`);
+  assert.ok(Math.abs(dsy - 0.5) < 1e-12, `dsy ${dsy}`);
+});
+
+test('rowLeanScale: a degenerate baked frame is inert, never NaN', () => {
+  const { dsx, dsy } = rowLeanScale(10, 10, 0, 0);
+  assert.equal(dsx, 1);
+  assert.equal(dsy, 1);
 });
 
 test('every blade roots inside (or fanning just past) its tile, heights sane', () => {
