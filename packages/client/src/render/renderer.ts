@@ -1287,9 +1287,11 @@ const GLOW_STOPS: ReadonlyArray<readonly [number, number]> = [
 interface CrownVolume {
   /** Which world-geometry family this run is — picks the crown ART in
    *  `crownSpanItem`: 'wall' (wood/stone/dark beam + slab crown),
-   *  'garrison' (great-ashlar wall-walk + crenellated parapet teeth), or
-   *  'diag' (a 45° corner/run: a lifted mass-triangle crown + sloped arris). */
-  kind: 'wall' | 'garrison' | 'diag';
+   *  'garrison' (great-ashlar wall-walk + crenellated parapet teeth),
+   *  'diag' (a 45° corner/run: a lifted mass-triangle crown + sloped arris),
+   *  or 'hedge' (an upright clipped-green run: pillow-bed crown + leaf faces,
+   *  drawn PER SPAN so corners/tees/rings coalesce seam-free — A4b). */
+  kind: 'wall' | 'garrison' | 'diag' | 'hedge';
   /** For kind 'diag': the run's (uniform) 45° tile — its material + mass. */
   diagTile?: Tile;
   /** Wall material class (0 wood, 1 stone, 2 dark) — picks the crown colour. */
@@ -9960,22 +9962,28 @@ export class Renderer {
         return;
       }
       case RaisedKind.Generic: {
-        // THE ONE RENDER A4: under lean (q>0), a HEDGE run coalesces into
-        // ONE upright hedge-wall volume — run-continuous side faces +
-        // whole-run crown + one silhouette via the structureFace
-        // primitives — so it stands up as a solid seamless hedge-LINE
+        // THE ONE RENDER A4/A4b: under lean (q>0), a HEDGE run coalesces into
+        // ONE upright hedge-wall volume through the SAME per-edge crown-span
+        // machinery walls/garrison/diag use (`floodHedgeCrown` →
+        // `floodCrown('hedge')`) — so straight runs, solid blocks, CORNERS,
+        // TEES and garden-border RINGS all stand up as a solid seamless
+        // hedge-LINE (each perimeter edge a thin coalesced span, seam-free)
         // instead of the flat per-tile pillow bed lying under the building
-        // corner (the owner's bush complaint). Live draw only (bakes are
-        // q=0); q=0 keeps the proven per-tile pillow-bed path the golden
-        // gate pins. Falls back per-tile for gates, diagonals and big rings.
-        if (
-          this.hedgeVolumeOn &&
-          this.camera.q > 0 &&
-          !this.bakingMask &&
-          this.hedgish(game, tx, ty) &&
-          this.emitHedgeVolume(game, items, tile, tx, ty, runSeen)
-        )
-          return;
+        // corner (the owner's bush complaint). The flood suppresses every
+        // coalesced member's per-tile draw (whole body drawn by the run's
+        // crown spans); a non-coalesced run (gate, diagonal, elevated/terraced,
+        // over-large) leaves the tile unsuppressed and falls through to the
+        // proven per-tile `hedgeItem` path. Live draw only (bakes are q=0);
+        // q=0 keeps the proven per-tile pillow-bed the golden gate pins.
+        if (this.hedgeVolumeOn && this.camera.q > 0 && !this.bakingMask && this.hedgish(game, tx, ty)) {
+          this.floodHedgeCrown(game, tx, ty);
+          // A coalesced hedge member draws NOTHING per-tile — its whole upright
+          // body (faces + pillow crown) is the run's crown spans, flushed after
+          // the scan. (Unlike a wall, whose per-tile face still paints; a hedge
+          // tile's per-tile art is the flat pillow bed, which the upright run
+          // replaces entirely.)
+          if (this.crownSuppressed.has(packTile(tx, ty))) return;
+        }
         // Run-merging furniture rings as one whole-component unit.
         if (
           this.outlineOn &&
@@ -11251,10 +11259,16 @@ export class Renderer {
     ty: number,
     region: InteriorRegion | null,
     cfg: {
-      kind: 'wall' | 'garrison';
+      kind: 'wall' | 'garrison' | 'hedge';
       matClass: number;
       classOf: (t: Tile) => number | null;
       heightAt: (mx: number, my: number) => number;
+      /** A4b: hedges keep the per-tile pillow-bed path when raised (the A2b
+       *  contract for elevated/terraced runs), so the flood bails on any
+       *  non-zero elevation instead of lifting the crown by the terrace. */
+      bailElevated?: boolean;
+      /** Max member-tile count before the flood bails to per-tile (default 256). */
+      cap?: number;
     },
   ): void {
     if (this.crownRunSeen.has(packTile(tx, ty))) return;
@@ -11263,7 +11277,7 @@ export class Renderer {
       tx,
       ty,
       (t) => cfg.classOf(t),
-      { cap: 256, perimeter: true, scratch: this.wallVolScratch, heightAt: (mx, my) => cfg.heightAt(mx, my) },
+      { cap: cfg.cap ?? 256, perimeter: true, scratch: this.wallVolScratch, heightAt: (mx, my) => cfg.heightAt(mx, my) },
     );
     if (!vol) return;
     // Copy members out of the aliased scratch before anything else floods it.
@@ -11274,6 +11288,8 @@ export class Renderer {
     if (vol.perimeter.length === 0) return;
     const seedWhT = cfg.heightAt(tx, ty);
     const seedElev = game.world.elevAt(tx, ty);
+    // A4b: a raised hedge keeps the proven per-tile pillow-bed path.
+    if (cfg.bailElevated && seedElev !== 0) return;
     for (let i = 0; i < mem.length; i += 2) {
       const mx = mem[i]!;
       const my = mem[i + 1]!;
@@ -11489,6 +11505,54 @@ export class Renderer {
         this.paintDiagCrownSpan(cv, span, top, pbKey);
         return;
       }
+      if (cv.kind === 'hedge') {
+        // THE ONE RENDER — A4b: an upright hedge span. The clipped-green LEAF
+        // FACES stand plumb on every exposed unit edge of the span (turf→crown)
+        // and the whole-span pillow-bed CROWN lays on top, each world corner
+        // projected once (via liftedCornerPt / topPlane's shared arithmetic) so
+        // adjacent spans of a corner/tee/ring meet seam-free. Both feed ONE
+        // silhouette the same alpha-dilate ring bodies wear (A3), so the whole
+        // ring/corner rings continuously — no per-tile seam.
+        const sil = this.outlineOn ? beginSilhouette() : undefined;
+        const face = (ax: number, ay: number, bx: number, by: number): void => {
+          const af = this.liftedCornerPt(ax, ay, footH);
+          const bf = this.liftedCornerPt(bx, by, footH);
+          const at = this.liftedCornerPt(ax, ay, crownH);
+          const bt = this.liftedCornerPt(bx, by, crownH);
+          barrierArt.paintHedgeFace(this, {
+            ax: af.x,
+            ay: af.y,
+            bx: bf.x,
+            by: bf.y,
+            yTopA: at.y,
+            yTopB: bt.y,
+          });
+          sil?.add([af as FacePt, bf as FacePt, bt as FacePt, at as FacePt]);
+        };
+        for (let my = span.y0; my <= span.y1; my++) {
+          for (let mx = span.x0; mx <= span.x1; mx++) {
+            if (!cv.members.has(packTile(mx, my - 1))) face(mx, my, mx + 1, my); // north
+            if (!cv.members.has(packTile(mx, my + 1))) face(mx, my + 1, mx + 1, my + 1); // south
+            if (!cv.members.has(packTile(mx - 1, my))) face(mx, my, mx, my + 1); // west
+            if (!cv.members.has(packTile(mx + 1, my))) face(mx + 1, my, mx + 1, my + 1); // east
+          }
+        }
+        // The span's pillow-bed crown (a 4-corner rect → the tiled bed, no clip),
+        // keyed to the ABSOLUTE world half-tile grid so run-mates and neighbouring
+        // spans roll their pillows the same way at every join.
+        topPlane(
+          this.camera,
+          this.w,
+          this.h,
+          loop,
+          crownH,
+          (plane: TopPlaneGeom) =>
+            barrierArt.paintHedgeCrown(this, plane, span.x0, span.y0, span.x1 + 1, span.y1 + 1),
+          { silhouette: sil },
+        );
+        if (sil) this.paintVolumeRing(sil, pbKey);
+        return;
+      }
       if (garrison) {
         const sil = this.outlineOn ? beginSilhouette() : undefined;
         garrisonArt.garrisonCrownSpan(this, span, crownH, footH, cv.whT, cv.members, sil);
@@ -11647,22 +11711,22 @@ export class Renderer {
   }
 
   /**
-   * THE ONE RENDER — A4: reclassify a HEDGE run as an upright, seamless
-   * hedge-wall VOLUME (the wall thin-run volume A2 built, parameterized
-   * for the hedge's material and its low, hip-high height). Under lean a
-   * hedge stands up as a solid clipped hedge-LINE — run-continuous side
-   * faces (`faceStrip`) + a whole-run crown (`topPlane`) + one silhouette
-   * (`beginSilhouette`) — instead of the flat per-tile pillow bed the old
-   * `hedgeMassPaint` affine hack laid on the ground (with its per-tile
-   * seams / SE-corner approximation). Toggle via `window.dcRenderer
-   * .hedgeVolumeOn`.
+   * THE ONE RENDER — A4/A4b: reclassify a HEDGE run as an upright, seamless
+   * hedge-wall VOLUME drawn through the SAME per-edge crown-span machinery
+   * walls/garrison/diag use (`floodCrown`). Under lean a hedge stands up as
+   * a solid clipped hedge-LINE — its exposed perimeter edges as coalesced
+   * spans, each a `topPlane` pillow-bed crown + `paintHedgeFace` leaf faces +
+   * one silhouette — instead of the flat per-tile pillow bed the old
+   * `hedgeMassPaint` affine hack laid on the ground.
+   *
+   * A4 coalesced ONLY straight runs / solid blocks (whose exposed perimeter
+   * is a clean 4-corner rect); A4b routes CORNERS, TEES and garden-border
+   * RINGS through the same path, because `crownSpans` partitions ANY member
+   * set (a hollow ring included) into maximal straight spans that share world
+   * corners → each edge coalesces seam-free with no per-tile seam. Toggle via
+   * `window.dcRenderer.hedgeVolumeOn`.
    */
   hedgeVolumeOn = true;
-  private readonly hedgeVolScratch = {
-    members: [] as number[],
-    seen: new Set<number>(),
-    queue: [] as number[],
-  };
 
   /** Hedge coalesce class: only the STRAIGHT hedge (`Tile.Hedge`) joins a
    *  volume run. Diagonals (their cushions don't fit the thin-run model)
@@ -11675,135 +11739,25 @@ export class Renderer {
     return t === Tile.Hedge ? 0 : null;
   }
 
-  /** A thin hedge run coalesces at any length up to this (small crown
-   *  scratch — A2's thin-wall lesson); a SOLID rectangular block up to this
-   *  bbox tile-area. Only these two shapes are safe: their exposed perimeter
-   *  is a simple 4-corner rectangle. A CORNER / TEE / RING is a PINCHED (or
-   *  hollow) polyomino whose 1-tile-thick boundary `collectVolume` explicitly
-   *  does NOT resolve into a clean loop (a pinch corner has two exposed edges
-   *  out) — those fall back to the proven per-tile path, awaiting A2b's
-   *  per-edge crown helper (small scratch each), which is not on this branch. */
-  private static readonly HEDGE_VOL_AREA_MAX = 24;
-  private static readonly HEDGE_VOL_THIN_MAX = 96;
-
   /**
-   * Try to draw the hedge RUN seeded at (tx,ty) as one coalesced upright
-   * volume. Returns true when it consumed the run; false to fall back to
-   * the proven per-tile `hedgeItem` path.
-   *
-   * Coalesces ONLY straight runs (single row/column) and solid rectangular
-   * blocks — the shapes whose exposed perimeter is a clean 4-corner rect.
-   * Falls back for corners, tees, garden-border rings (pinched/hollow
-   * polyominoes), elevated ground, and over-large clusters. Gated to q>0 by
-   * the caller — q=0 keeps the proven per-tile pillow-bed the golden pins.
+   * THE ONE RENDER — A4b: the hedge twin of `floodWallCrown` /
+   * `floodGarrisonCrown`. Floods the straight-hedge RUN seeded at (tx,ty)
+   * and, when it coalesces (uniform ground elevation — the A2b contract keeps
+   * raised/terraced hedges on the per-tile path via `bailElevated`), suppresses
+   * every member's per-tile draw and records ONE `CrownVolume` (kind 'hedge').
+   * `crownSpans` splits the members into per-edge straight spans, so a CORNER,
+   * TEE or garden-border RING coalesces edge-by-edge, seam-free (shared world
+   * corners) — NOT one bbox-spanning item (the A2b perf lesson). Only ever
+   * called at q>0 — q=0 keeps the flat pillow-bed the golden gate pins.
    */
-  private emitHedgeVolume(
-    game: ClientGame,
-    items: DrawItem[],
-    tile: Tile,
-    tx: number,
-    ty: number,
-    runSeen: Set<number>,
-  ): boolean {
-    if (runSeen.has(packTile(tx, ty))) return true;
-    if (Renderer.hedgeMatClass(tile) === null) return false;
-    const vol = collectVolume(
-      (mx, my) => game.world.groundAt(mx, my),
-      tx,
-      ty,
-      (t) => Renderer.hedgeMatClass(t),
-      { cap: 96, perimeter: true, scratch: this.hedgeVolScratch, heightAt: () => barrierArt.HEDGE_VOL_H },
-    );
-    if (!vol || vol.perimeter.length !== 1) return false;
-    const bw = vol.x1 - vol.x0 + 1;
-    const bh = vol.y1 - vol.y0 + 1;
-    const thin = bw === 1 || bh === 1;
-    // Coalesce a straight run or a SOLID rectangular block only — a
-    // partially-filled bbox (count < area) is a pinched corner/tee/ring
-    // whose boundary loop is unreliable, so it keeps the per-tile path.
-    const solidRect = vol.count === bw * bh;
-    if (thin) {
-      if (Math.max(bw, bh) > Renderer.HEDGE_VOL_THIN_MAX) return false;
-    } else if (!solidRect || bw * bh > Renderer.HEDGE_VOL_AREA_MAX) {
-      return false;
-    }
-    // Copy members out of the aliased scratch before it can be clobbered.
-    const mem = vol.members.slice();
-    for (let i = 0; i < mem.length; i += 2) {
-      if (game.world.elevAt(mem[i]!, mem[i + 1]!) !== 0) return false;
-    }
-    const loops: WorldCorner[][] = vol.perimeter.map((lp) => lp.map((c) => ({ x: c.x, y: c.y })));
-    for (let i = 0; i < mem.length; i += 2) runSeen.add(packTile(mem[i]!, mem[i + 1]!));
-    // A3 outline-ring cache key: the run's world extent + its chunk rev, so the
-    // dilated ring bakes once per run and reblits until an edit re-revs it.
-    const hedgeRev = game.world.get(Math.floor(vol.ax / CHUNK_SIZE), Math.floor(vol.ay / CHUNK_SIZE))?.rev ?? 0;
-    const ringKey =
-      (hashCoords(97, vol.x0, vol.y0) ^ (bw << 15) ^ (bh << 21) ^ Math.imul(hedgeRev | 0, 0x85eb)) | 0;
-    // ONE upright volume: faces + crown + silhouette for the whole run.
-    // sortY at the run's near (south) foot, as A2's wall crown sorts — so
-    // the hedge already reads in front of what sits north of it (A5 does
-    // the pitch-aware depth in full).
-    items.push(
-      this.hedgeVolItem(loops, vol.x0, vol.y0, vol.x1 + 1, vol.y1 + 1, vol.y1 + 1, this.stratAt(tx, ty), ringKey),
-    );
-    return true;
-  }
-
-  /**
-   * The hedge run's upright body: run-continuous side faces (`faceStrip`),
-   * whole-run crown (`topPlane`) with the clipped-green pillow dressing in
-   * crown-UV, and ONE silhouette (`beginSilhouette`) fed by both — ringed by
-   * the same per-silhouette alpha-DILATE bodies wear (A3), keyed+cached per
-   * run so it bakes once and reblits. Every world corner is projected once, so
-   * the run/corner/tee tiles seam-free.
-   */
-  private hedgeVolItem(
-    loops: WorldCorner[][],
-    wx0: number,
-    wy0: number,
-    wx1: number,
-    wy1: number,
-    sortY: number,
-    strat: number | undefined,
-    ringKey: number,
-  ): DrawItem {
-    const H = barrierArt.HEDGE_VOL_H;
-    return {
-      sortY,
-      strat,
-      draw: () => {
-        const sil = beginSilhouette();
-        for (const loop of loops) {
-          if (loop.length < 3) continue;
-          // Side faces: the exposed perimeter, standing plumb from the
-          // turf (liftBot 0) to the crown (liftTop H). One shared world
-          // corner ⇒ one projected pixel ⇒ seam-free run. `faceStrip`
-          // walks an OPEN chain, so repeat the first corner to close the
-          // ring (every exposed edge gets a face + enters the silhouette).
-          faceStrip(
-            this.camera,
-            this.w,
-            this.h,
-            [...loop, loop[0]!],
-            H,
-            0,
-            (seg: FaceGeom) => barrierArt.paintHedgeFace(this, seg),
-            { silhouette: sil },
-          );
-          // The whole-run crown, dressed in its own UV.
-          topPlane(
-            this.camera,
-            this.w,
-            this.h,
-            loop,
-            H,
-            (plane: TopPlaneGeom) => barrierArt.paintHedgeCrown(this, plane, wx0, wy0, wx1, wy1),
-            { silhouette: sil },
-          );
-        }
-        if (this.outlineOn) this.paintVolumeRing(sil, ringKey);
-      },
-    };
+  private floodHedgeCrown(game: ClientGame, tx: number, ty: number): void {
+    this.floodCrown(game, tx, ty, null, {
+      kind: 'hedge',
+      matClass: 0,
+      classOf: (t) => Renderer.hedgeMatClass(t),
+      heightAt: () => barrierArt.HEDGE_VOL_H,
+      bailElevated: true,
+    });
   }
 
   private wallItem(

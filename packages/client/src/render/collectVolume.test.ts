@@ -389,3 +389,92 @@ test('diagSpans: a lone 45° corner → a single 1×1 span (equivalent to per-ti
   assert.deepEqual(spanExtent(spans[0]!), { w: 1, h: 1 });
   assert.deepEqual(coverKeys(spans), ['7,7']);
 });
+
+// ── A4b: hedges through the crown-span path (corners / tees / garden RINGS) ──
+//
+// A4 coalesced only straight hedge runs / solid blocks; A4b routes a hedge
+// CORNER, TEE and garden-border RING through the SAME `collectVolume` →
+// `crownSpans` machinery walls/garrison use, so every edge coalesces
+// seam-free with no per-tile seam and no bbox-spanning item (the A2b perf
+// lesson). The hedge coalesce class is `Tile.Hedge → 0` (mirrors the
+// renderer's `hedgeMatClass`); a diagonal / gate maps to null and never joins.
+const hedgeClass = (t: Tile) => (t === Tile.Hedge ? 0 : null);
+
+test('hedge RING (garden border): collectVolume → hollow ring, crownSpans → 4 thin edge spans', () => {
+  // A herb-garden border like Amberford's (~world 537,-25): a 1-tile-thick
+  // hollow rectangle of Tile.Hedge (in the test grid's ±32 box).
+  const cells = ring(2, 2, 7, 7, Tile.Hedge); // 6×6 border ring, hole 4×4
+  const s = sampleOf(cells);
+  const vol = collectVolume(s, 2, 2, hedgeClass, { perimeter: true });
+  assert.ok(vol, 'the hedge ring floods as one component');
+  // The hollow interior is not a member — the ring is genuinely 1 tile thick.
+  assert.equal(vol!.count, cells.length);
+  assert.ok(!memberKeys(vol!.members).includes('4,4'), 'interior herb bed is not a hedge member');
+  // Two boundary loops (outer + the hole) — proof it is a real ring.
+  assert.equal(vol!.perimeter.length, 2);
+  const spans = crownSpans(vol!.members);
+  // Top row + bottom row (horizontal) + the two side columns' middles (vertical).
+  assert.equal(spans.length, 4);
+  for (const sp of spans) {
+    const { w, h } = spanExtent(sp);
+    assert.ok(Math.min(w, h) === 1, `each ring edge is a 1-tile-thick strip, got ${w}×${h}`);
+    assert.ok(w < 6 || h === 1, 'no span balloons to the ring bbox (the 30× A2b blowup)');
+  }
+  // The spans crown EXACTLY the hedge tiles — never the enclosed herb bed.
+  assert.deepEqual(coverKeys(spans), memberKeys(vol!.members));
+  assert.ok(!coverKeys(spans).includes('4,4'), 'the open interior is never crowned');
+});
+
+test('hedge RING: adjacent edge spans SHARE identical corner coords (seam-free join)', () => {
+  const cells = ring(2, 2, 7, 7, Tile.Hedge);
+  const vol = collectVolume(sampleOf(cells), 2, 2, hedgeClass, { perimeter: true });
+  const spans = crownSpans(vol!.members);
+  const seen = new Map<string, number>();
+  for (const sp of spans) for (const c of spanCorners(sp)) seen.set(c, (seen.get(c) ?? 0) + 1);
+  // The ring's NW corner tile (2,2) has SW corner (2,3), shared by the top
+  // horizontal edge span and the left vertical edge span → one projected device
+  // pixel → the crown/faces of the two edges abut with no seam.
+  assert.ok((seen.get('2,3') ?? 0) >= 2, 'the NW join corner is shared by two spans');
+  assert.ok((seen.get('8,3') ?? 0) >= 2, 'the NE join corner is shared by two spans');
+});
+
+test('hedge CORNER (L): crownSpans covers each tile once, no bbox balloon', () => {
+  // An L: a west→east arm meeting a north→south arm at the corner tile.
+  const cells = [...rect(2, 3, 6, 3, Tile.Hedge), ...rect(6, 4, 6, 7, Tile.Hedge)];
+  const vol = collectVolume(sampleOf(cells), 2, 3, hedgeClass, { perimeter: true });
+  assert.ok(vol);
+  const spans = crownSpans(vol!.members);
+  for (const sp of spans) {
+    const { w, h } = spanExtent(sp);
+    assert.ok(Math.min(w, h) === 1, `an L arm is a 1-tile-thick strip, got ${w}×${h}`);
+  }
+  assert.deepEqual(coverKeys(spans), memberKeys(vol!.members));
+});
+
+test('hedge TEE: crownSpans covers each tile exactly once, every span thin', () => {
+  // A tee: a 5-wide E–W bar (x 2..6, y 4) with a stem dropping south (x 4, y 5..7).
+  const cells = [...rect(2, 4, 6, 4, Tile.Hedge), ...rect(4, 5, 4, 7, Tile.Hedge)];
+  const vol = collectVolume(sampleOf(cells), 2, 4, hedgeClass, { perimeter: true });
+  assert.ok(vol);
+  const spans = crownSpans(vol!.members);
+  for (const sp of spans) {
+    const { w, h } = spanExtent(sp);
+    assert.ok(Math.min(w, h) === 1, `each tee arm is a 1-tile-thick strip, got ${w}×${h}`);
+  }
+  assert.deepEqual(coverKeys(spans), memberKeys(vol!.members));
+});
+
+test('hedge run stops at a gate / diagonal (they map to null, never coalesce)', () => {
+  // A straight hedge broken by a gate tile in the middle: the flood from the
+  // west end reaches only the west segment; the gate keeps the per-tile path.
+  const cells = [
+    ...rect(2, 3, 4, 3, Tile.Hedge),
+    [5, 3, Tile.HedgeGateShut] as [number, number, Tile],
+    ...rect(6, 3, 8, 3, Tile.Hedge),
+  ];
+  const vol = collectVolume(sampleOf(cells), 2, 3, hedgeClass, { perimeter: true });
+  assert.ok(vol);
+  assert.deepEqual(memberKeys(vol!.members), ['2,3', '3,3', '4,3'], 'the run stops at the gate');
+  // The gate itself is not a hedge member → collectVolume seeded on it is null.
+  assert.equal(collectVolume(sampleOf(cells), 5, 3, hedgeClass), null);
+});
