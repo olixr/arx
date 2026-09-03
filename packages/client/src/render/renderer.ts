@@ -11074,6 +11074,106 @@ export class Renderer {
           ctx.fill();
           flankDetail(x1, tx1);
         }
+        // TRUE SIDE FACES (B-FW side walls): a receding vertical face on
+        // every EXPOSED footprint edge that has no south face — the deck
+        // model (deckStandFace / deckCarpentryItems). A N–S side wall is a
+        // column of tiles each of which HAS a wall to its south, so the
+        // south-face block below never runs for it and, at q>0, the crown
+        // caps foreshorten and lift up-screen leaving a SEE-THROUGH band
+        // between each crown's near edge and the ground — you see the
+        // interior floor or the exterior through where the side wall
+        // should be. Fill that band with a real trapezoid down each
+        // exposed edge, from the crown's matching slanted edge to the
+        // ground, so the run reads solid and encloses the room.
+        //
+        // Each face spans the crown's own snapped corners (xN* at the far
+        // row ty lifted by hsN, x* at the near row ty+1 lifted by hs), so
+        // its top edge seats exactly under the crown's E/W (or N) edge and
+        // consecutive tiles' faces meet on the same device pixel — the
+        // shared-edge law, no gap. Heights honour the live `whT` (the
+        // wall-sink veil), so a sunk near-wall's side shrinks with it and
+        // the camera still sees in. GUARDED behind q>0: at q=0 the crowns
+        // tile the column densely and cover it, so nothing new is emitted
+        // and the output stays byte-identical to today.
+        if (q > 0) {
+          // Draw the receding face between north corner (ax,ay lifted by
+          // aLift) and south/far corner (bx,by lifted by bLift), wearing
+          // the same course carpentry the south face carries. Course beds
+          // are fractions of the wall height, lifted at each corner by its
+          // OWN depthScale (aLift / bLift), so they slant to match the
+          // crown and stay level with the south face's own courses.
+          const sideStandFace = (
+            ax: number,
+            ay: number,
+            aLift: number,
+            bx: number,
+            by: number,
+            bLift: number,
+            litD: number,
+          ): void => {
+            ctx.fillStyle = shade(sideCol, litD);
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(ax, ay - aLift);
+            ctx.lineTo(bx, by - bLift);
+            ctx.lineTo(bx, by);
+            ctx.closePath();
+            ctx.fill();
+            // A course band between wall-height fractions f0..f1.
+            const band = (f0: number, f1: number, col: string): void => {
+              ctx.fillStyle = col;
+              ctx.beginPath();
+              ctx.moveTo(ax, ay - aLift * f0);
+              ctx.lineTo(ax, ay - aLift * f1);
+              ctx.lineTo(bx, by - bLift * f1);
+              ctx.lineTo(bx, by - bLift * f0);
+              ctx.closePath();
+              ctx.fill();
+            };
+            // A thin seam line at fraction f, constant device thickness.
+            const hline = (f: number, wpx: number, col: string): void => {
+              const wa = Math.max(1, wpx);
+              ctx.fillStyle = col;
+              ctx.beginPath();
+              ctx.moveTo(ax, ay - aLift * f);
+              ctx.lineTo(bx, by - bLift * f);
+              ctx.lineTo(bx, by - bLift * f + wa);
+              ctx.lineTo(ax, ay - aLift * f + wa);
+              ctx.closePath();
+              ctx.fill();
+            };
+            if (mat === Tile.WallWood) {
+              // Foundation, sill beam and wall-plate wrap the corner (the
+              // flankDetail law): the side is never a different build than
+              // its face. Fractions match flankDetail / the south stack.
+              band(0, plinthH / hs, shade(Renderer.PLINTH_COL, litD - 12));
+              if (sillH > 0) band(plinthH / hs, (plinthH + sillH) / hs, shade(skin.plate, litD - 16));
+              band(1 - plateH / hs, 1, shade(skin.plate, litD - 8));
+              // Chinking lines between courses at the face pitch.
+              for (let i = 1; i < nLogs; i++) {
+                const f = (plinthH + sillH + i * logH + (i - 0.5) * chinkG) / hs;
+                hline(f, s * 0.04, shade(skin.chink, litD - 22));
+              }
+            } else {
+              // Running-bond masonry: mortar beds at absolute stone pitch
+              // (0.39 tile), plus a darker foundation course at the base.
+              band(0, Math.min(0.1, s * 0.39 * 0.5 / hs), shade(sideCol, litD - 12));
+              for (let cf = s * 0.39; cf < hs * 0.96; cf += s * 0.39) {
+                hline(cf / hs, s * 0.03, 'rgba(20, 14, 28, 0.35)');
+              }
+            }
+          };
+          // West edge — SW→NW, exposed when no wall to the west. Sunlit.
+          if (!w) sideStandFace(xN0, y0, hsN, x0, y1, hs, 8);
+          // East edge — SE→NE, exposed when no wall to the east. Shaded.
+          if (!e) sideStandFace(xN1, y0, hsN, x1, y1, hs, -12);
+          // North back face — the outward face of a north wall, exposed
+          // when no wall to the north (mostly hidden by the crown under
+          // lean, drawn for completeness so the building's back reads
+          // solid). Both corners ride row ty, so it is a flat rectangle.
+          // Skipped when the REAR RISER already anchors a sunk neighbour.
+          if (!n && !nDoor) sideStandFace(xN0, y0, hsN, xN1, y0, hsN, -6);
+        }
         // South face: base edge on the ground, top edge leaned — the
         // vertical surface you walk behind.
         if (!sw) {

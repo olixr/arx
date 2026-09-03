@@ -305,6 +305,82 @@ export function garrisonWallItem(rend: PaintHost,
           ctx.fillRect(xN0, yRTop, xN1 - xN0, yRBot - yRTop);
         }
       }
+      // TRUE SIDE FACES (B-FW side walls): a receding vertical face on
+      // every EXPOSED footprint edge with no south face — the deck model
+      // (deckStandFace). A N–S curtain run is a column of tiles each with
+      // a wall to its south, so the south-face block above never runs and,
+      // at q>0, the wall-walk crown caps foreshorten and lift up-screen,
+      // leaving a SEE-THROUGH band under each crown where the side of the
+      // rampart should be. Fill it with a real trapezoid down each exposed
+      // edge, from the crown's matching slanted edge to the ground, so the
+      // curtain reads solid. Spans the crown's own snapped corners (xN*/x*
+      // at hsN/hs) ⇒ consecutive tiles' faces meet seam-free and seat under
+      // the crown. Height honours the live whT (the veil sink). GUARDED
+      // behind q>0: at q=0 the crowns tile the column and cover it, so
+      // nothing new is emitted — byte-identical to today.
+      if (q > 0) {
+        const cp = s * 0.5; // ashlar course pitch (matches paintGarrisonMasonry)
+        const jw = Math.max(1, s * 0.03);
+        const jointCol = 'rgba(20, 14, 28, 0.4)';
+        const sideFace = (
+          ax: number,
+          ay: number,
+          aLift: number,
+          bx: number,
+          by: number,
+          bLift: number,
+          litD: number,
+        ): void => {
+          ctx.fillStyle = shade(GAR_FACE, litD);
+          ctx.beginPath();
+          ctx.moveTo(ax, ay);
+          ctx.lineTo(ax, ay - aLift);
+          ctx.lineTo(bx, by - bLift);
+          ctx.lineTo(bx, by);
+          ctx.closePath();
+          ctx.fill();
+          const band = (f0: number, f1: number, col: string): void => {
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.moveTo(ax, ay - aLift * f0);
+            ctx.lineTo(ax, ay - aLift * f1);
+            ctx.lineTo(bx, by - bLift * f1);
+            ctx.lineTo(bx, by - bLift * f0);
+            ctx.closePath();
+            ctx.fill();
+          };
+          const hline = (f: number, wpx: number, col: string): void => {
+            const wa = Math.max(1, wpx);
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.moveTo(ax, ay - aLift * f);
+            ctx.lineTo(bx, by - bLift * f);
+            ctx.lineTo(bx, by - bLift * f + wa);
+            ctx.lineTo(ax, ay - aLift * f + wa);
+            ctx.closePath();
+            ctx.fill();
+          };
+          // The battered talus footing wraps the corner.
+          const plinthH = Math.min(s * 0.55, hs * 0.42);
+          band(0, plinthH / hs, shade(GAR_PLINTH, litD));
+          // Great ashlar bed joints at absolute stone pitch above the talus.
+          for (let ci = 1; ; ci++) {
+            const lift = plinthH + ci * cp;
+            if (lift >= hs * 0.99) break;
+            hline(lift / hs, jw, jointCol);
+          }
+          // The string course band, only on a full-standing face.
+          if (hs > s * 2.5) band((hs - s * 2.2) / hs, (hs - s * 2.07) / hs, shade(GAR_FACE, litD + 20));
+        };
+        // West edge — SW→NW, exposed with no wall west. Sunlit.
+        if (!w) sideFace(xN0, y0, hsN, x0, y1, hs, 6);
+        // East edge — SE→NE, exposed with no wall east. Shaded.
+        if (!e) sideFace(xN1, y0, hsN, x1, y1, hs, -12);
+        // North back face — the curtain's outward back (flat rectangle,
+        // both corners on row ty). Mostly hidden by the crown under lean;
+        // skipped where the REAR RISER already anchors a sunk neighbour.
+        if (!n) sideFace(xN0, y0, hsN, xN1, y0, hsN, -6);
+      }
       // CROWN: the wall-walk as a TRUE trapezoid drawn in absolute screen
       // coords — its NORTH edge (xN0..xN1 at cNy, lifted by the far
       // depthScale) joins its SOUTH edge (x0..x1 at cSy, the near
