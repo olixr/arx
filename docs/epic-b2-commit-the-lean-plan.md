@@ -76,8 +76,13 @@ Coupling: wall shadow (`castEdgeQuad`) uses the same flat south edge — fix
 together; `reveal.ts wallCover` (:147) flat-space occlusion drifts (secondary).
 
 ## FJ — Junctions / decks / docks  (D4)
-- **FJ-1 (small, first):** live dock/deck rails+posts use flat `syT=s*yScale`
-  (renderer.ts:12682/12834) → staircase. Depth-scale the vertical span/lift.
+- **FJ-1 (small, first) — SHIPPED:** live dock/deck rails+posts built vertical
+  span from flat `syT=s*yScale` → staircase off the leaned deck. Now depth-scaled
+  in `bridgeRailItems` (renderer.ts, dy≠0 and dx≠0 branches): horizontal rails use
+  one `depthScale(edgeY)` (ty north / ty+1 south) + projected south base; edge-on
+  rails ride the projected deck point at each depth fraction (cliffArt trapezoid);
+  post heights via `spriteScale(ty+f)`. `deckFillRailItem` diagonal was already
+  depth-scaled. All guarded so q=0 runs the exact old flat expression (byte-id).
 - **FJ-2 (large):** vertical carpentry (pilings `paintDeckPile` terrain.ts:1803,
   fascia/skirt `paintDeckWallSkirt` :1782, stairs, ramp aprons) is baked into the
   terrain chunk (flat pixel space) then warped as ground → foreshortened wrong.
@@ -134,3 +139,123 @@ far chunks. Steady-state already ~60fps; smooth the transient.
 4. **FPerf**, then **F1**.
 Serialize merges to epic/foundations → main; full gate (typecheck + client
 tests + build) before each deploy. Update this doc + memory as each lands.
+
+---
+
+## FJ-2 detail — the baked deck carpentry stands up
+
+**Problem.** The deck TOP boards legitimately ride the ground quad (they ARE the
+ground surface of the deck). But every VERTICAL piece of a deck is currently
+baked FLAT into the terrain chunk canvas, in local pixel space
+(`gx = lx*px`, `gy = ly*px`, lift `liftB = level*ELEV_H + DOCK_LIFT` in px), and
+then the whole chunk (or elevated row slice) is drawn/warped as if it were a
+patch of GROUND. Under lean a vertical piece must foreshorten by its OWN
+depthScale from base to top (cliffArt trapezoid); warped-as-ground it instead
+shears with the surface plane and detaches. Affected bake pieces:
+
+- `paintDeckPile` (terrain.ts:1803) — driven pilings + seat-shadow ellipse +
+  waterline collar. A `fillRect(cx-pw/2, top, pw, bot-top)` vertical leg.
+- `paintDeckWallSkirt` (terrain.ts:1782) — the wall-foot shadow skirt on the
+  boards (this one is a shadow ON the top surface — see split below).
+- `paintDeckSideFascia` (terrain.ts:1746) — side rim board, `fillRect(x0, dy0,
+  ew, h)` where `h = px + (hasS ? liftB : 0)` (the vertical drop from board top
+  down the fascia to the water/bank).
+- south fascia band (terrain.ts ~1326-1339) — the south-edge drop face.
+- stair treads (terrain.ts ~1349-1353) — stacked step faces.
+- ramp apron shear (terrain.ts ~2150-2167) — the `ctx.transform` shear/stretch
+  that slopes the whole apron kit; a ground-plane shear, not a standing face.
+
+Bake entry points: `startChunkBake`/`bakeChunk` call `drawDocks`/`drawBridges`/
+`drawPorchDecks` (terrain.ts:1140-1142) for ground-level decks; `bakeElevated`
+(terrain.ts ~4101-4103) for decks on terraces. Draw/warp: `drawGroundChunks` and
+the elevated-row slice (renderer.ts ~4248) blit/quad the baked canvas onto the
+(leaned) ground quad.
+
+### The split: top-surface (stays baked) vs vertical (stands up)
+
+1. **STAYS in the flat bake, rides the ground quad** (these live in the deck's
+   own ground plane and warp correctly as ground):
+   - deck top boards, plank courses, kerbs, thresholds, board seams.
+   - `paintDeckWallSkirt` and any contact/seam SHADOW painted onto the top
+     surface (it is a mark on the plane, not a standing face).
+   - the ramp apron's board field — the apron IS a tilted ground plane; its
+     shear should become part of the ground-quad projection (see risk 3), not a
+     standing pass.
+
+2. **LIFTS OUT into a new screen-space standing pass** (per-corner depthScale
+   trapezoid, cliffArt method): pilings (`paintDeckPile` leg + collar; the
+   seat-shadow ellipse stays on the water plane), side fascia
+   (`paintDeckSideFascia` rim drop), south fascia band, stair-tread faces.
+
+### Mechanism
+
+- Add a deck **carpentry collector** parallel to the existing rail collectors
+  (`bridgeRailItems`/`deckFillRailItem`) that emits y-sorted `DrawItem`s in
+  SCREEN space at draw time — never into the chunk bake. It walks the same
+  dock/bridge/porch tiles the bake walks (reuse the `isDockAt`/`deckFill`/apron
+  memos), and for each exposed vertical edge projects the two base corners with
+  `camera.worldToScreen`, lifts top & base by **each corner's own**
+  `camera.depthScale` (exactly `cliffArt.ts:559-609`), and fills the trapezoid
+  with the same tones the bake used (`deckRimTone`, pile body/lit, tread tones).
+- Refactor the bake's vertical painters into pure tone/geometry helpers callable
+  from BOTH paths, or duplicate the few `fillRect`s as trapezoids in the new
+  pass; the bake stops emitting them (guard the vertical draws behind a
+  `standingPass` flag so the bake still draws them when the pass is OFF — see
+  q=0). Keep the seat-shadow ellipse and top-surface marks in the bake.
+- Y-sort: the standing pieces sort like the rails — a south-facing fascia sorts
+  in FRONT of bodies north of it, a far fascia behind deck traffic; pilings sort
+  below the deck top (they are under it). Reuse the rail `sortY` conventions
+  (`ty+1.02` south-facing / `ty+0.04` north-facing).
+- Elevated decks (`bakeElevated`): the same lift-out applies; the standing pass
+  reads `elevAt` for the tile's lift and projects from the elevated base, so it
+  composes with the row-slice quad (renderer.ts:4248) rather than baking into it.
+
+### How q=0 stays byte-identical
+
+- The standing pass runs ONLY at `camera.q !== 0`. At `q === 0` the vertical
+  pieces stay in the flat bake exactly as today (guard `bakeChunk`/`bakeElevated`
+  vertical draws with `if (standingPass) skip`, where `standingPass` is false at
+  q=0), and the new collector emits nothing. So the baked chunk is the same bytes
+  and the frame is unchanged — the invariant holds by construction, not by
+  arithmetic limit.
+- At q>0 the bake omits the vertical pieces (the flat versions would be wrong
+  anyway) and the standing pass draws them projected. There is no q=0 pixel that
+  changes, so parity 7/7 stays green; the q>0 look is verified on the rig.
+- Bake cache keying must include `q===0` vs `q>0` (a boolean is enough — the
+  standing-pass flag) so a chunk baked at q=0 is not reused at q>0 with its
+  vertical pieces still burned in, and vice-versa. Simplest: fold the flag into
+  the existing chunk cache key alongside world-rev/grid.
+
+### Risks
+
+1. **Bake-cache correctness.** If the flag is not in the key, toggling lean shows
+   ghost or missing fascia. Mitigate: add the flag to the key; invalidate on
+   toggle. (Low once keyed.)
+2. **Y-sort seams.** Pilings/fascia are many small items; wrong sort vs deck top
+   or bodies causes flicker. Mitigate: mirror the proven rail sort conventions;
+   test a multi-tile pier with a body walking the deck.
+3. **Ramp aprons.** The apron shear (terrain.ts:2150-2167) is a ground-plane
+   transform, not a standing face. Under lean the apron should be a projected
+   tilted quad, which the ground-quad path (FGr / StageQuad.ground corners)
+   should own — NOT this standing pass. FJ-2 should leave aprons to the ground
+   pipeline and only stand up true vertical faces; deciding the apron seam is the
+   subtle part and may need its own sub-band.
+4. **Scope / surface area.** Touches terrain bake, a new renderer collector,
+   y-sort, and elevated-row slicing — large. Sequence AFTER FW/FO settle the
+   standing-pass + cache-key conventions so this reuses them.
+5. **Cost.** Per-frame trapezoid emission for every deck vertical edge in view
+   replaces a one-time bake; a big pier is many items. Mitigate: only exposed
+   (water/bank-facing) edges emit, memoized like the rail edges; measure on a
+   dense harbor scene.
+
+### Files touched (implementation, when scheduled)
+- `packages/client/src/render/terrain.ts` — `paintDeckPile`, `paintDeckSideFascia`,
+  south fascia ~1326-1339, stair treads ~1349-1353, ramp apron ~2150-2167,
+  `startChunkBake`/`bakeChunk` (1140-1142), `bakeElevated` (~4101-4103); add the
+  `standingPass` guard + factor vertical tone/geometry into shared helpers.
+- `packages/client/src/render/renderer.ts` — new deck-carpentry standing-pass
+  collector next to `bridgeRailItems`; elevated-row slice interaction (~4248);
+  chunk-cache key gains the lean flag.
+- Verify: q=0 byte-identical (parity 7/7), q>0 dock scene on the rig (pilings,
+  fascia, treads stand and foreshorten with the deck; no shear/detach), typecheck
+  + client tests green.
