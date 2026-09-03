@@ -105,6 +105,32 @@ export function depthScaleWorld(scale: number, yScale: number, camY: number, q: 
 }
 
 /**
+ * The local size multiplier at a leaned SCREEN row `sy` — the same
+ * factor `depthScaleWorld` gives, but keyed to a point already projected
+ * to screen space rather than to its world row. Ground cast-shadows (and
+ * any world offset extruded from an already-leaned base) foreshorten by
+ * this, so they shrink with the receding ground instead of standing at
+ * their ortho length and detaching from the caster.
+ *
+ * It is the exact composition `depthScaleWorld(unproject(sy))`: from the
+ * inverse (unprojectScreen), the ortho row offset of `sy` is
+ * `u = dy/(1 + q·dy)` with `dy = sy − cy`, and the scale is the same
+ * `1/(1 − q·u)` projectWorld would apply there. At q=0 it is exactly 1
+ * (fast-path short-circuit), so a caller multiplying by it is byte-
+ * identical to the ortho frame. Pure and alloc-free.
+ */
+export function depthScaleAtScreen(q: number, h: number, sy: number): number {
+  if (q === 0) return 1;
+  const cy = h / 2;
+  const dy = sy - cy;
+  // Clamp the un-divide denominator so a base at/above the horizon
+  // (never reached by on-ground casts at a moderate lean) can neither
+  // blow up nor flip sign.
+  const u = dy / Math.max(MIN_W, 1 + q * dy);
+  return 1 / Math.max(MIN_W, 1 - q * u);
+}
+
+/**
  * Screen → world, into `out` (the exact inverse of projectWorld). The
  * perspective un-divide is a closed form: with `dy = sy − cy`,
  * `sy0 − cy = dy / (1 + q·dy)`. At q=0 it is the old affine inverse.

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   camOriginX,
   camOriginY,
+  depthScaleAtScreen,
   depthScaleWorld,
   horizonScreenY,
   lightmapStrip,
@@ -93,6 +94,22 @@ test('depthScale increases monotonically from far to near', () => {
   for (let d = -30; d <= 30; d += 3) vals.push(depthScaleWorld(S.scale, S.yScale, S.camY, q, S.camY + d));
   for (let i = 1; i < vals.length; i++) {
     assert.ok(vals[i]! > vals[i - 1]!, `monotonic increasing at index ${i}`);
+  }
+});
+
+test('depthScaleAtScreen is exactly 1 at q=0, at every screen row', () => {
+  for (let sy = 0; sy <= H; sy += 137) assert.equal(depthScaleAtScreen(0, H, sy), 1);
+});
+
+test('depthScaleAtScreen(sy) == depthScaleWorld(wy) for the row that projects to sy', () => {
+  // The screen-keyed factor must equal the world-keyed one at the SAME
+  // ground point — this is the identity ground casts rely on to foreshorten.
+  const q = 0.001;
+  for (const [, wy] of pts) {
+    projectWorld(S.scale, S.yScale, S.camX, S.camY, q, S.snapDpr, S.camX, wy, W, H, out);
+    const viaScreen = depthScaleAtScreen(q, H, out.y);
+    const viaWorld = depthScaleWorld(S.scale, S.yScale, S.camY, q, wy);
+    assert.ok(Math.abs(viaScreen - viaWorld) < 1e-9, `${viaScreen} ≈ ${viaWorld} at wy=${wy}`);
   }
 });
 

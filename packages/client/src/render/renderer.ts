@@ -370,7 +370,14 @@ import { SIGNATURES, type SigCtx } from './fxSignatures.js';
 import { GlStage } from './stage/glStage.js';
 import type { GpuStageBackend } from './stage/stageTypes.js';
 import { StageVram } from './stage/stageVram.js';
-import { camOriginX, camOriginY, depthScaleWorld, projectWorld, unprojectScreen } from './cameraProject.js';
+import {
+  camOriginX,
+  camOriginY,
+  depthScaleAtScreen,
+  depthScaleWorld,
+  projectWorld,
+  unprojectScreen,
+} from './cameraProject.js';
 import { stageRenderScale, type StageResTier } from './stage/renderScale.js';
 import { GPU_STEADY_MS, GPU_URGENT_MS } from './stage/gpuBudget.js';
 import {
@@ -993,6 +1000,14 @@ export class Camera {
    *  one factor billboard scale / elevation lift / shadow radius ride. */
   depthScale(wy: number): number {
     return depthScaleWorld(this.scale, this.yScale, this.y, this.q, wy);
+  }
+
+  /** depthScale (see above) at a leaned SCREEN row, for a point known
+   *  only by its already-projected screen-y — ground cast-shadows extrude
+   *  by this so they foreshorten with the receding ground instead of
+   *  standing at ortho length and floating off the caster. 1 at q=0. */
+  depthScaleAtScreenY(sy: number, h: number): number {
+    return depthScaleAtScreen(this.q, h, sy);
   }
 
   /**
@@ -3330,8 +3345,16 @@ export class Renderer {
   // ------------------------------------------------------- shadows
 
   /** Screen-px offset of a shadow cast from `hTiles` above the ground. */
-  castOffset(hTiles: number): Vec2 {
-    const len = this.sky.shadowLen * hTiles * this.camera.scale;
+  castOffset(hTiles: number, depthMul = 1): Vec2 {
+    // Epic B (FRV): a ground cast is a WORLD offset (shadowLen·hTiles
+    // tiles along the ground) extruded from an already-leaned base. Under
+    // q>0 the ground beneath the far tip has receded, so the offset must
+    // foreshorten by the ground's local scale THERE (depthMul, the base
+    // row's depthScale) — without it the cast overshoots at ortho length
+    // and lifts off the caster's foot as a floating dark band. depthMul
+    // is 1 at q=0 (and by default), so this is byte-identical to the
+    // ortho frame; callers pass camera.depthScaleAtScreenY(baseY,h).
+    const len = this.sky.shadowLen * hTiles * this.camera.scale * depthMul;
     return {
       x: this.sky.shadowX * len,
       y: this.sky.shadowY * len * this.camera.yScale,
@@ -3489,9 +3512,13 @@ export class Renderer {
       this.stageCastBlob(bx, by, hTiles, r, seed, smearW);
       return;
     }
+    // Epic B (FRV): the ground offset foreshortens by the base row's
+    // depthScale (1 at q=0 → byte-identical). Shared by the sun cast and
+    // every light throw so they recede together under lean.
+    const d = this.camera.q !== 0 ? this.camera.depthScaleAtScreenY(by, this.h) : 1;
     const sunC = this.beginCastFill();
     if (sunC) {
-      const off = this.castOffset(hTiles);
+      const off = this.castOffset(hTiles, d);
       this.blobShadowPath(sunC, bx, by, off.x, off.y, r, seed, smearW);
       sunC.fill();
       sunC.globalAlpha = 1;
@@ -3499,7 +3526,7 @@ export class Renderer {
     const throws = this.lightThrows(bx, by, 0.6);
     if (throws.length > 0) {
       const c = this.sdw;
-      const s = this.camera.scale;
+      const s = this.camera.scale * d;
       const ys = this.camera.yScale;
       c.fillStyle = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
       for (const th of throws) {
@@ -3521,7 +3548,11 @@ export class Renderer {
     }
     const c = this.beginCastFill();
     if (!c) return;
-    const off = this.castOffset(hTiles);
+    // Epic B (FRV): foreshorten the extrusion by the base edge's row
+    // depthScale so the far edge seats on the receded ground (1 at q=0).
+    const d =
+      this.camera.q !== 0 ? this.camera.depthScaleAtScreenY((y0 + y1) / 2, this.h) : 1;
+    const off = this.castOffset(hTiles, d);
     c.beginPath();
     c.moveTo(x0, y0);
     c.lineTo(x1, y1);
@@ -3555,11 +3586,14 @@ export class Renderer {
       c.ellipse(px + ox * 0.55, py + oy * 0.55, r * 0.5 + len * 0.5, r * 0.4, ang, 0, Math.PI * 2);
       c.fill();
     };
+    // Epic B (FRV): the sun/light lobes are ground offsets — foreshorten
+    // by the foot row's depthScale (1 at q=0 → byte-identical).
+    const d = this.camera.q !== 0 ? this.camera.depthScaleAtScreenY(py, this.h) : 1;
     if (this.sky.shadowAlpha >= 0.02) {
-      const off = this.castOffset(0.42);
+      const off = this.castOffset(0.42, d);
       lobe(off.x, off.y, this.sky.shadowAlpha * 0.75);
     }
-    const s = this.camera.scale;
+    const s = this.camera.scale * d;
     const ys = this.camera.yScale;
     for (const th of this.lightThrows(px, py, 0.15)) {
       lobe(th.ux * th.len * 0.42 * s, th.uy * th.len * 0.42 * s * ys, th.alpha);
@@ -3739,7 +3773,10 @@ export class Renderer {
    *  baked once, thrown as a quad. */
   private stageCastEdge(x0: number, y0: number, x1: number, y1: number, hTiles: number): void {
     if (this.sky.shadowAlpha < 0.02) return;
-    const off = this.castOffset(hTiles);
+    // Epic B (FRV): foreshorten the extrusion by the base edge's row (1 at q=0).
+    const d =
+      this.camera.q !== 0 ? this.camera.depthScaleAtScreenY((y0 + y1) / 2, this.h) : 1;
+    const off = this.castOffset(hTiles, d);
     if (this.zoomGliding) {
       const bx0 = Math.min(x0, x1) + Math.min(0, off.x);
       const by0 = Math.min(y0, y1) + Math.min(0, off.y);
@@ -3876,10 +3913,13 @@ export class Renderer {
    *  in-sort caller) keeps the honest scratch fallback. */
   private stageCastBlob(bx: number, by: number, hTiles: number, r: number, seed: number, smearW: number): void {
     const throws = this.lightThrows(bx, by, 0.6);
+    // Epic B (FRV): the ground offset foreshortens by the base row's
+    // depthScale, shared by the sun cast and every throw (1 at q=0).
+    const d = this.camera.q !== 0 ? this.camera.depthScaleAtScreenY(by, this.h) : 1;
     if (smearW > 0 || this.zoomGliding) {
-      const off = this.castOffset(hTiles);
+      const off = this.castOffset(hTiles, d);
       let reach = Math.max(Math.abs(off.x), Math.abs(off.y));
-      for (const th of throws) reach = Math.max(reach, th.len * hTiles * this.camera.scale * 1.2);
+      for (const th of throws) reach = Math.max(reach, th.len * hTiles * this.camera.scale * d * 1.2);
       const pad = r * 1.5 + smearW + reach + 2;
       this.stageCastScratch(bx - pad, by - pad, pad * 2, pad * 2, () =>
         this.castBlob(bx, by, hTiles, r, seed, smearW),
@@ -3911,11 +3951,11 @@ export class Renderer {
       this.stageCastQuadAt(en, cx, cy, alpha, m);
     };
     if (this.sky.shadowAlpha >= 0.02) {
-      const off = this.castOffset(hTiles);
+      const off = this.castOffset(hTiles, d);
       emitBlob(r, bx + off.x, by + off.y, Math.min(1, this.sky.shadowAlpha / this.sdwLayerAlpha));
     }
     if (throws.length > 0) {
-      const s = this.camera.scale;
+      const s = this.camera.scale * d;
       const ys = this.camera.yScale;
       for (const th of throws) {
         const ox = th.ux * th.len * hTiles * s;
@@ -3941,11 +3981,13 @@ export class Renderer {
         Math.min(1, alpha / this.sdwLayerAlpha),
       );
     };
+    // Epic B (FRV): foreshorten the ground lobes by the foot row (1 at q=0).
+    const d = this.camera.q !== 0 ? this.camera.depthScaleAtScreenY(py, this.h) : 1;
     if (this.sky.shadowAlpha >= 0.02) {
-      const off = this.castOffset(0.42);
+      const off = this.castOffset(0.42, d);
       lobe(off.x, off.y, this.sky.shadowAlpha * 0.75);
     }
-    const s = this.camera.scale;
+    const s = this.camera.scale * d;
     const ys = this.camera.yScale;
     for (const th of this.lightThrows(px, py, 0.15)) {
       lobe(th.ux * th.len * 0.42 * s, th.uy * th.len * 0.42 * s * ys, th.alpha);
@@ -4176,7 +4218,18 @@ export class Renderer {
         });
       },
     );
-    if (entry) this.castMask(entry, px, baseY);
+    // Epic B (FRV): thread the depth-scaled screen scale (like castRockShadow)
+    // so a distant plant's silhouette cast foreshortens instead of shearing
+    // at ortho length. camera.scale at q=0 → byte-identical.
+    if (entry)
+      this.castMask(
+        entry,
+        px,
+        baseY,
+        this.camera.q !== 0
+          ? this.camera.scale * this.camera.depthScaleAtScreenY(baseY, this.h)
+          : this.camera.scale,
+      );
   }
 
   /**
