@@ -5853,10 +5853,15 @@ export class Renderer {
         // DestinationOut fill — the blend the layer target legalizes
         // (the A0 refusal symmetry anticipated exactly this).
         if (this.visibleRegions.length > 0) {
-          const s2 = this.camera.scale;
           for (const region of this.visibleRegions) {
-            const lift = region.elevLevel * ELEV_H * s2;
             for (let ty = region.y0; ty <= region.y1; ty++) {
+              // B-3 lift law: the punch must land on the SAME lifted floor
+              // the elevated-ground pass drew — that lift foreshortens by
+              // depthScale at its own row (spriteScale(ty)), so a flat
+              // camera.scale lift here would over-lift a distant raised
+              // room and re-open the sun wedge on its floor under lean.
+              // spriteScale === camera.scale at q=0 → byte-identical.
+              const lift = region.elevLevel * ELEV_H * this.spriteScale(ty);
               let run = -1;
               for (let tx = region.x0; tx <= region.x1 + 1; tx++) {
                 const inside = tx <= region.x1 && region.tiles.has(packTile(tx, ty));
@@ -5903,12 +5908,14 @@ export class Renderer {
     // into its own room — the dark wedge on an inn floor was the north
     // wall's sun shadow falling "indoors".
     if (this.visibleRegions.length > 0) {
-      const s2 = this.camera.scale;
       sc.globalCompositeOperation = 'destination-out';
       sc.fillStyle = '#000';
       for (const region of this.visibleRegions) {
-        const lift = region.elevLevel * ELEV_H * s2;
         for (let ty = region.y0; ty <= region.y1; ty++) {
+          // B-3 lift law (see the stage punch above): match the elevated
+          // floor's per-row depthScale lift so the shelter mask stays on
+          // the leaned floor. spriteScale === camera.scale at q=0.
+          const lift = region.elevLevel * ELEV_H * this.spriteScale(ty);
           let run = -1;
           for (let tx = region.x0; tx <= region.x1 + 1; tx++) {
             const inside = tx <= region.x1 && region.tiles.has(packTile(tx, ty));
@@ -16458,7 +16465,13 @@ export class Renderer {
       memberItems.push(this.objectItem(tile, members[i]!, members[i + 1]!, game));
     }
     const s = this.camera.scale;
-    const lift = game.world.elevAt(ax, ay) * ELEV_H * s;
+    // B-3 lift law (see objectItem): the run's bounds/padding stay at the
+    // canonical `s` (the sheet bakes once; drawPropOutlined's k
+    // foreshortens the blit), but the elevation lift is a screen offset
+    // that must ride depthScale at the run's foot so a merged table on a
+    // raised floor sits ON the leaned boards. spriteScale === scale at
+    // q=0 → byte-identical when not leaning.
+    const lift = game.world.elevAt(ax, ay) * ELEV_H * this.spriteScale(ay + 0.5);
     const pMin = this.camera.worldToScreen(x0 + 0.5, y0 + 0.5, this.w, this.h);
     const pMax = this.camera.worldToScreen(x1 + 0.5, y1 + 0.5, this.w, this.h);
     pMin.y -= lift;
@@ -18837,10 +18850,19 @@ export class Renderer {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
-    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    // B-3 lift law: the shared `s` stays canonical (camera.scale) so the
+    // cases that BAKE bake at one density and the blit foreshortens by k
+    // (see drawPropOutlined) — but a world HEIGHT that repositions the
+    // anchor (elevation, the porch board) is a screen offset and MUST
+    // ride depthScale at this prop's own foot, exactly like wallItem's
+    // crown/elev lift. A flat lift left a raised-floor prop floating off
+    // its leaned floor. spriteScale(ty+0.5) === camera.scale at q=0, so
+    // the anchor is byte-identical when not leaning.
+    const sLift = this.spriteScale(ty + 0.5);
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * sLift;
     // A prop on the porch stands ON the boards (the carried-deck
     // rule): its whole painter rides the same lift the feet do.
-    if (this.porchAt(game, tx, ty)) p.y -= DOCK_LIFT * s;
+    if (this.porchAt(game, tx, ty)) p.y -= DOCK_LIFT * sLift;
     const h = hashCoords(41, tx, ty);
     const t = performance.now() / 1000;
     // Interactables wear the character outline ring — one generous
