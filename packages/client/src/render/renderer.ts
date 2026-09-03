@@ -10941,7 +10941,14 @@ export class Renderer {
         }
         // Crown: the whole top layer drawn in the leaned height frame —
         // footprint coordinates in, coherent lifted geometry out.
-        this.beginHeightLayer(whT);
+        // Epic B (FW): lift the crown by the DEPTH-SCALED wall height so the
+        // top slab seats on the depth-scaled face top (hs = whT*s) instead
+        // of floating above it — beginHeightLayer lifts by raw camera.scale,
+        // which under lean detaches the crown from its own face. At q=0
+        // s === camera.scale and PERSP_LEAN is 0, so this is byte-identical
+        // to beginHeightLayer(whT).
+        ctx.save();
+        ctx.translate(0, -whT * s);
         ctx.fillStyle = top;
         ctx.beginPath();
         chamferRect(ctx, x0, y0, x1 - x0, y1 - y0, radii);
@@ -11136,7 +11143,14 @@ export class Renderer {
           this.paintFaceBands([x0, yS], [x1, yS], hs, s, stone, skin, face, tx, ty, whT);
         }
         // Crown: the mass triangle, lifted.
-        this.beginHeightLayer(whT);
+        // Epic B (FW): lift the crown by the DEPTH-SCALED wall height so the
+        // top slab seats on the depth-scaled face top (hs = whT*s) instead
+        // of floating above it — beginHeightLayer lifts by raw camera.scale,
+        // which under lean detaches the crown from its own face. At q=0
+        // s === camera.scale and PERSP_LEAN is 0, so this is byte-identical
+        // to beginHeightLayer(whT).
+        ctx.save();
+        ctx.translate(0, -whT * s);
         const triPath = new Path2D();
         triPath.moveTo(tri[0]![0], tri[0]![1]);
         triPath.lineTo(tri[1]![0], tri[1]![1]);
@@ -11788,7 +11802,14 @@ export class Renderer {
         ctx.fillRect(x0 + jw, -s * 0.07, x1 - x0 - jw * 2, s * 0.07);
         ctx.restore();
         // Crown: the run's top mass continues unbroken over the door.
-        this.beginHeightLayer(whT);
+        // Epic B (FW): lift the crown by the DEPTH-SCALED wall height so the
+        // top slab seats on the depth-scaled face top (hs = whT*s) instead
+        // of floating above it — beginHeightLayer lifts by raw camera.scale,
+        // which under lean detaches the crown from its own face. At q=0
+        // s === camera.scale and PERSP_LEAN is 0, so this is byte-identical
+        // to beginHeightLayer(whT).
+        ctx.save();
+        ctx.translate(0, -whT * s);
         ctx.fillStyle = top;
         ctx.beginPath();
         chamferRect(ctx, x0, p.y - 0.25, rw + 0.5, syT + 0.5, radii);
@@ -12126,7 +12147,11 @@ export class Renderer {
         if (!ae) pier(x1 - pw, -1);
         ctx.restore();
         // Crown: the arch's own top slab.
-        this.beginHeightLayer(WALL_H);
+        // Epic B (FW): depth-scaled crown lift (see wallItem) — seats the
+        // slab on the depth-scaled face top instead of the raw-scale float.
+        // Byte-identical at q=0 (s === camera.scale, PERSP_LEAN=0).
+        ctx.save();
+        ctx.translate(0, -WALL_H * s);
         ctx.fillStyle = top;
         ctx.beginPath();
         chamferRect(ctx, x0, p.y - 0.25, s + 0.5, syT + 0.5, [aw ? 0 : r, ae ? 0 : r, 0, 0]);
