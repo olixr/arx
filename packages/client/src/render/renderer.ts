@@ -12765,7 +12765,6 @@ export class Renderer {
     const post = '#6f4d26';
     const rail = '#8a6534';
     const RAIL_H = 0.46;
-    const hr = RAIL_H * s;
     const railT = Math.max(2, s * 0.07);
 
     for (const [dx, dy] of [
@@ -12795,13 +12794,27 @@ export class Renderer {
           draw: () => {
             const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
             const edge = north ? 0 : syT;
-            const yAt = (f: number): number => p.y + edge - liftAt(f) * s;
+            // B-FJ span warp: a horizontal rail rides ONE depth row (ty
+            // north / ty+1 south), so a single depthScale foreshortens
+            // its post height (hrD) and ramp lift, and the south base
+            // rides the PROJECTED south corner instead of a flat +syT.
+            // q=0: ds=1, base=p.y+edge, hrD=RAIL_H*s → byte-identical.
+            const q0 = this.camera.q === 0;
+            const edgeY = north ? ty : ty + 1;
+            const ds = q0 ? 1 : this.camera.depthScale(edgeY);
+            const baseY = q0
+              ? p.y + edge
+              : north
+                ? p.y
+                : this.camera.worldToScreen(tx, ty + 1, this.w, this.h).y;
+            const hrD = RAIL_H * this.spriteScale(edgeY);
+            const yAt = (f: number): number => baseY - liftAt(f) * s * ds;
             ctx.fillStyle = post;
             for (const fx of [0.28, 0.72]) {
-              ctx.fillRect(p.x + s * fx - s * 0.035, yAt(fx) - hr, s * 0.07, hr);
+              ctx.fillRect(p.x + s * fx - s * 0.035, yAt(fx) - hrD, s * 0.07, hrD);
             }
-            if (!contW && !mouthW) ctx.fillRect(p.x - 0.25, yAt(0) - hr, s * 0.1, hr);
-            if (!contE && !mouthE) ctx.fillRect(p.x + s + 0.25 - s * 0.1, yAt(1) - hr, s * 0.1, hr);
+            if (!contW && !mouthW) ctx.fillRect(p.x - 0.25, yAt(0) - hrD, s * 0.1, hrD);
+            if (!contE && !mouthE) ctx.fillRect(p.x + s + 0.25 - s * 0.1, yAt(1) - hrD, s * 0.1, hrD);
             // Members as quads between the two end heights, so a
             // ramp's rail slopes with its deck; on a flat span they
             // collapse to the straight fence law. Mid rail behind
@@ -12816,11 +12829,11 @@ export class Renderer {
               ctx.fill();
             };
             ctx.fillStyle = shade(rail, -10);
-            member(hr * 0.52, railT * 0.7);
+            member(hrD * 0.52, railT * 0.7);
             ctx.fillStyle = rail;
-            member(hr, railT * 1.15);
+            member(hrD, railT * 1.15);
             ctx.fillStyle = shade(rail, 14);
-            member(hr, Math.max(1, s * 0.02));
+            member(hrD, Math.max(1, s * 0.02));
             // Outline-shader law (the fence dialect): the handrail
             // board's silhouette lines ride the slope BUTT-capped so
             // neighbor segments fuse into one continuous line, and a
@@ -12830,16 +12843,16 @@ export class Renderer {
               this.beginStructOutline();
               octx.lineCap = 'butt';
               octx.beginPath();
-              octx.moveTo(p.x - 0.25, yAt(0) - hr);
-              octx.lineTo(p.x + s + 0.25, yAt(1) - hr);
-              octx.moveTo(p.x - 0.25, yAt(0) - hr + railT * 1.15);
-              octx.lineTo(p.x + s + 0.25, yAt(1) - hr + railT * 1.15);
+              octx.moveTo(p.x - 0.25, yAt(0) - hrD);
+              octx.lineTo(p.x + s + 0.25, yAt(1) - hrD);
+              octx.moveTo(p.x - 0.25, yAt(0) - hrD + railT * 1.15);
+              octx.lineTo(p.x + s + 0.25, yAt(1) - hrD + railT * 1.15);
               octx.stroke();
-              if (!contW && !mouthW) octx.strokeRect(p.x - 0.25, yAt(0) - hr, s * 0.1, hr);
-              if (!contE && !mouthE) octx.strokeRect(p.x + s + 0.25 - s * 0.1, yAt(1) - hr, s * 0.1, hr);
+              if (!contW && !mouthW) octx.strokeRect(p.x - 0.25, yAt(0) - hrD, s * 0.1, hrD);
+              if (!contE && !mouthE) octx.strokeRect(p.x + s + 0.25 - s * 0.1, yAt(1) - hrD, s * 0.1, hrD);
             }
-            if (mouthW) this.drawRailNewel(p.x, yAt(0), s, hr, post);
-            if (mouthE) this.drawRailNewel(p.x + s, yAt(1), s, hr, post);
+            if (mouthW) this.drawRailNewel(p.x, yAt(0), s, hrD, post);
+            if (mouthE) this.drawRailNewel(p.x + s, yAt(1), s, hrD, post);
           },
         });
       } else {
@@ -12873,8 +12886,21 @@ export class Renderer {
           draw: () => {
             const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
             const ex = p.x + (west ? s * 0.055 : s - s * 0.055);
-            // Depth fraction → screen y, riding the ramp's lift.
-            const yAt = (f: number): number => p.y + syT * f - liftAt(f) * s;
+            // B-FJ span warp: an edge-on rail spans the tile's DEPTH
+            // (ty→ty+1), so its screen y rides the PROJECTED deck point
+            // at each depth fraction (cliffArt trapezoid law) and its
+            // lift + post height foreshorten by depthScale AT that depth
+            // — matching the receding deck instead of staircasing off it.
+            // q=0: worldToScreen is affine (p.y+syT*f) and depthScale=1
+            // → the exact old flat span, byte-identical.
+            const q0 = this.camera.q === 0;
+            const yAt = q0
+              ? (f: number): number => p.y + syT * f - liftAt(f) * s
+              : (f: number): number =>
+                  this.camera.worldToScreen(tx, ty + f, this.w, this.h).y -
+                  liftAt(f) * s * this.camera.depthScale(ty + f);
+            // Post height foreshortens at each post's own depth.
+            const hrAt = (f: number): number => RAIL_H * this.spriteScale(ty + f);
             const fTop = contN ? 0 : 0.5;
             const fBot = contS ? 1 : 0.5;
             // THE EDGE-ON BALUSTRADE (the fence railNS dialect): ONE
@@ -12887,7 +12913,7 @@ export class Renderer {
             // deck" wound), and a floating band with see-through gaps
             // read as a chain.
             const hw2 = s * 0.068;
-            const bandTop = yAt(fTop) - hr;
+            const bandTop = yAt(fTop) - hrAt(fTop);
             const bandBot = yAt(fBot) + railT * 0.4;
             ctx.fillStyle = shade(rail, 10);
             ctx.fillRect(ex - hw2, bandTop, hw2 * 2, bandBot - bandTop);
@@ -12911,35 +12937,35 @@ export class Renderer {
               octx.lineTo(outerX, bandBot);
               octx.stroke();
             }
-            const postAt = (px2: number, py2: number, ringed: boolean): void => {
+            const postAt = (px2: number, py2: number, ringed: boolean, ph: number): void => {
               ctx.fillStyle = post;
               ctx.beginPath();
-              chamferRect(ctx, px2 - s * 0.06, py2 - hr, s * 0.12, hr, [s * 0.035, s * 0.035, 0, 0]);
+              chamferRect(ctx, px2 - s * 0.06, py2 - ph, s * 0.12, ph, [s * 0.035, s * 0.035, 0, 0]);
               ctx.fill();
               ctx.fillStyle = shade(post, 16);
-              ctx.fillRect(px2 - s * 0.045, py2 - hr + s * 0.015, s * 0.09, s * 0.045);
+              ctx.fillRect(px2 - s * 0.045, py2 - ph + s * 0.015, s * 0.09, s * 0.045);
               if (ringed && this.outlineOn) {
                 const octx = this.ctx;
                 this.beginStructOutline();
                 octx.beginPath();
-                chamferRect(octx, px2 - s * 0.06, py2 - hr, s * 0.12, hr, [s * 0.035, s * 0.035, 0, 0]);
+                chamferRect(octx, px2 - s * 0.06, py2 - ph, s * 0.12, ph, [s * 0.035, s * 0.035, 0, 0]);
                 octx.stroke();
               }
             };
             // Posts punctuate the strip in depth — the post-and-rail
             // read the twin wires never had.
             for (const f of [0.3, 0.7]) {
-              if (f > fTop && f < fBot) postAt(ex, yAt(f) + railT, false);
+              if (f > fTop && f < fBot) postAt(ex, yAt(f) + railT, false, hrAt(f));
             }
             // A strip stopping mid-tile plants its end post; a fill
             // joint plants one ringed at the exact corner, covering
             // the seam where the dive meets the diagonal's handrail.
-            if (fTop === 0.5 || fBot === 0.5) postAt(ex, yAt(0.5) + railT, true);
-            if (jointN) postAt(ex, yAt(0) + railT, true);
-            if (jointS) postAt(ex, yAt(1) + railT, true);
+            if (fTop === 0.5 || fBot === 0.5) postAt(ex, yAt(0.5) + railT, true, hrAt(0.5));
+            if (jointN) postAt(ex, yAt(0) + railT, true, hrAt(0));
+            if (jointS) postAt(ex, yAt(1) + railT, true, hrAt(1));
             // THE LANDFALL NEWEL at an entrance mouth.
-            if (mouthN) this.drawRailNewel(ex, yAt(0) + railT, s, hr, post);
-            if (mouthS) this.drawRailNewel(ex, yAt(1) + railT, s, hr, post);
+            if (mouthN) this.drawRailNewel(ex, yAt(0) + railT, s, hrAt(0), post);
+            if (mouthS) this.drawRailNewel(ex, yAt(1) + railT, s, hrAt(1), post);
           },
         });
       }
