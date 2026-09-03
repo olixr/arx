@@ -4257,6 +4257,41 @@ export class Renderer {
                   const y0 = Math.round(pA.y) - lift;
                   const px = baked.px;
                   const gut = bakeGutter(px);
+                  // THE CAMERA LEARNS TO LEAN (B-1b): under a lean the
+                  // lifted row is a TRAPEZOID like the ground chunks —
+                  // the old per-row affine rect mixed the top row's left-x
+                  // with the bottom row's right-x, so adjacent rows didn't
+                  // share edges and the plateau top waved/broke. Project
+                  // all four world corners (unsnapped: shared world
+                  // corners project identically for both neighbours, so
+                  // rows/columns of one level share edges) and shift each
+                  // by the level's single rounded lift. Absent at q=0 =
+                  // today's affine rect, byte-identical.
+                  let ground: StageQuad['ground'];
+                  if (this.camera.q !== 0) {
+                    const cs = CHUNK_SIZE;
+                    const W = this.w;
+                    const H = this.h;
+                    const tl = this.camera.worldToScreen(cx * cs, worldTy, W, H);
+                    const tr = this.camera.worldToScreen((cx + 1) * cs, worldTy, W, H);
+                    const bl = this.camera.worldToScreen(cx * cs, worldTy + 1, W, H);
+                    const br = this.camera.worldToScreen((cx + 1) * cs, worldTy + 1, W, H);
+                    const wTop = 1 / this.camera.depthScale(worldTy);
+                    const wBot = 1 / this.camera.depthScale(worldTy + 1);
+                    ground = {
+                      c: [
+                        tl.x,
+                        tl.y - lift,
+                        tr.x,
+                        tr.y - lift,
+                        bl.x,
+                        bl.y - lift,
+                        br.x,
+                        br.y - lift,
+                      ],
+                      w: [wTop, wTop, wBot, wBot],
+                    };
+                  }
                   if (this.stageAssembling) {
                     this.stageWorldItems.push({
                       kind: 'quad',
@@ -4271,6 +4306,7 @@ export class Renderer {
                       m: [1, 0, 0, 1, x0, y0],
                       alpha: this.stageItemAlpha,
                       blend: StageBlend.SourceOver,
+                      ground,
                     });
                     this.stageWorldStats.quads++;
                   } else {
@@ -7634,7 +7670,16 @@ export class Renderer {
     this.stageUpMsLeft -= r.spentMs;
     if (r.state === 'absent') {
       this.stageStats.absent++;
-      this.stageLate.push({ c: baked.canvas, sx: gut, sy: gut, ss: srcSz, x0, y0, dw, dh });
+      // THE CAMERA LEARNS TO LEAN (B-1b): the late lane is a 2d affine
+      // ctx.drawImage of the CPU canvas — correct only when the ground is
+      // an axis-aligned rect. Under a lean (ground present) an affine blit
+      // would seam against its neighbours' perspective trapezoids, so
+      // DEFER the chunk: skip it this frame and let the upload retry next
+      // frame, landing as a correct GL trapezoid rather than a warped
+      // rect. At q=0 (no ground) the affine fallback is byte-identical.
+      if (!ground) {
+        this.stageLate.push({ c: baked.canvas, sx: gut, sy: gut, ss: srcSz, x0, y0, dw, dh });
+      }
       return;
     }
     if (r.state === 'stale') this.stageStats.stale++;
