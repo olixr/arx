@@ -271,6 +271,7 @@ import {
 } from './lighting.js';
 import { collectEmitter, type EmitterGlowOut } from './emitters.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
+import { collectVolume } from './collectVolume.js';
 import {
   RaisedKind,
   buildRegisterRows,
@@ -9110,6 +9111,18 @@ export class Renderer {
     if (t === undefined || !WALL_TILES.has(t)) return false;
     return !(PANEL_DOOR_TILES.has(t) && this.isSideDoorway(game, tx, ty));
   }
+
+  /**
+   * THE ONE RENDER — A0 scaffolding: the hedge-run neighbour test, the
+   * `HEDGE_TILES` sibling of `wallish`. Defined now so A4 can dispatch
+   * hedges through the shared world-geometry volume path (collectVolume
+   * with `classOf = hedgish → one class`) instead of the flat prop hack;
+   * it is intentionally NOT wired into any dispatch yet (A4 owns that).
+   */
+  hedgish(game: ClientGame, tx: number, ty: number): boolean {
+    const t = game.world.groundAt(tx, ty);
+    return t !== undefined && HEDGE_TILES.has(t);
+  }
   /** What stops lamplight — shared law (tiles.ts). */
   private static readonly LIGHT_BLOCKERS = new Set<number>(LIGHT_BLOCKING_TILES);
   /** The stone plinth every timber wall stands on. */
@@ -17398,12 +17411,12 @@ export class Renderer {
    * era). `cap` bounds the BFS — a component past it (estate fencing)
    * goes ringless rather than paying a wall-sized bake.
    */
-  /** Pooled BFS scratch for tryRunRingItem (flat x,y interleaved). */
+  /** Pooled BFS scratch for tryRunRingItem's collectVolume flood
+   *  (flat x,y interleaved). The neighbour order now lives in
+   *  collectVolume, the shared flood primitive. */
   private static readonly runMembers: number[] = [];
   private static readonly runSeenScratch = new Set<number>();
   private static readonly runQueue: number[] = [];
-  private static readonly RUN_NEIGH_X = [1, -1, 0, 0] as const;
-  private static readonly RUN_NEIGH_Y = [0, 0, 1, -1] as const;
 
   private static readonly RUN_RING_TILES = new Map<
     Tile,
@@ -17448,46 +17461,34 @@ export class Renderer {
   ): boolean {
     const cfg = Renderer.RUN_RING_TILES.get(tile);
     if (!cfg) return false;
-    // BFS the component, capped — into POOLED scratch: this runs for
-    // every visible run tile every frame, and fresh members/seen/queue
-    // per call was ~15MB/s of garbage in a furniture-dense town.
-    const members = Renderer.runMembers;
-    const seen = Renderer.runSeenScratch;
-    const queue = Renderer.runQueue;
-    members.length = 0;
-    queue.length = 0;
-    seen.clear();
-    queue.push(tx, ty);
-    seen.add(packTile(tx, ty));
-    while (queue.length > 0) {
-      if (members.length > cfg.cap * 2) return false; // too big — ringless
-      const cy = queue.pop()!;
-      const cx = queue.pop()!;
-      members.push(cx, cy);
-      for (let n = 0; n < 4; n++) {
-        const nx = cx + Renderer.RUN_NEIGH_X[n]!;
-        const ny = cy + Renderer.RUN_NEIGH_Y[n]!;
-        const k = packTile(nx, ny);
-        if (!seen.has(k) && game.world.groundAt(nx, ny) === tile) {
-          seen.add(k);
-          queue.push(nx, ny);
-        }
-      }
-    }
-    // Anchor: lexicographic min — stable no matter which member the
-    // visible scan meets first.
-    let ax = tx;
-    let ay = ty;
-    let x0 = tx, x1 = tx, y0 = ty, y1 = ty;
-    for (let i = 0; i < members.length; i += 2) {
-      const mx = members[i]!;
-      const my = members[i + 1]!;
-      if (my < ay || (my === ay && mx < ax)) { ax = mx; ay = my; }
-      if (mx < x0) x0 = mx;
-      if (mx > x1) x1 = mx;
-      if (my < y0) y0 = my;
-      if (my > y1) y1 = my;
-    }
+    // Flood the component through the shared A0 primitive (collectVolume)
+    // — ONE flood implementation for run-rings and (later) walls/hedges.
+    // The run-ring path keeps its old contract exactly: exact-tile
+    // membership (classOf returns the tile so kinds never merge), the
+    // POOLED scratch (this runs for every visible run tile every frame;
+    // fresh members/seen/queue per call was ~15MB/s of garbage in a
+    // furniture-dense town), the `cap*2` bail (→ null → ringless here),
+    // and the DFS neighbour order that fixes members[] draw layering.
+    // perimeter:false — the run-ring bake needs only members + bbox, so
+    // no per-frame edge work is added on this hot path.
+    const vol = collectVolume(
+      (nx, ny) => game.world.groundAt(nx, ny),
+      tx,
+      ty,
+      (t) => (t === tile ? tile : null),
+      {
+        cap: cfg.cap,
+        perimeter: false,
+        scratch: {
+          members: Renderer.runMembers,
+          seen: Renderer.runSeenScratch,
+          queue: Renderer.runQueue,
+        },
+      },
+    );
+    if (!vol) return false; // too big — ringless
+    const members = vol.members;
+    const { ax, ay, x0, y0, x1, y1 } = vol;
     const runKey = packTile(ax, ay);
     if (runSeen.has(runKey)) return true; // another member already emitted it
     runSeen.add(runKey);
