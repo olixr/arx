@@ -71,6 +71,43 @@ test('round-trip is exact at q=0 AND under a real lean', () => {
   }
 });
 
+test('the projection origin is device-snapped at q=0 but SMOOTH under lean (jitter fix)', () => {
+  // At q=0 the origin lands on the device lattice (snapDpr=2 → 0.5 px).
+  const snapped = camOriginX(S.scale, S.camX, S.snapDpr, W, 0);
+  assert.equal(snapped, Math.round((W / 2 - S.camX * S.scale) * S.snapDpr) / S.snapDpr);
+  // Under a lean the origin is the raw, UNSNAPPED value — no pre-divide
+  // sawtooth for the perspective divide to amplify in the near field.
+  const q = 0.001;
+  assert.equal(camOriginX(S.scale, S.camX, S.snapDpr, W, q), W / 2 - S.camX * S.scale);
+  assert.equal(camOriginY(S.scale, S.yScale, S.camY, S.snapDpr, H, q), H / 2 - S.camY * S.scale * S.yScale);
+});
+
+test('under lean, a smooth pan gives a smooth (non-sawtooth) near-field screen-x', () => {
+  // The jitter was a ±0.5 device-px step in the origin as camX slid,
+  // amplified by 1/wdiv near the bottom of the screen. With the origin
+  // unsnapped under lean, sweeping camX makes the projected screen-x of a
+  // fixed near-field world point move by near-constant, same-sign steps —
+  // no reversals (the sawtooth signature).
+  const q = 0.001;
+  const wx = 40; // a point off to the side so the divide moves x
+  const wy = S.camY + 15; // near field (down-screen), where 1/wdiv > 1
+  let prev = Infinity;
+  let prevDelta = 0;
+  for (let k = 0; k <= 40; k++) {
+    const camX = S.camX + k * 0.01; // a fine, continuous pan
+    projectWorld(S.scale, S.yScale, camX, S.camY, q, S.snapDpr, wx, wy, W, H, out);
+    if (prev !== Infinity) {
+      const delta = out.x - prev;
+      if (prevDelta !== 0) {
+        // Same sign every step (monotone) — a sawtooth would reverse.
+        assert.ok(delta * prevDelta > 0, `screen-x reversed at k=${k} (sawtooth)`);
+      }
+      prevDelta = delta;
+    }
+    prev = out.x;
+  }
+});
+
 test('depthScale is exactly 1 at q=0, at every depth', () => {
   for (const [, wy] of pts) {
     assert.equal(depthScaleWorld(S.scale, S.yScale, S.camY, 0, wy), 1);

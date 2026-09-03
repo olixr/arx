@@ -711,6 +711,20 @@ const WAKE_LIVE_MS = 800;
  *  order of cost and converges never); this is only the runaway guard. */
 const GRASS_URGENT_MS = 12;
 
+/** COARSE-LIVE stride (THE MEADOW NEVER PAINTS FLAT, Epic B): a
+ *  not-yet-baked cell under lean paints every N-th blade live so the
+ *  frustum's deep first-sight sweep never shows bare green — the sprite
+ *  mint corrects it within a few frames. LEAN-ONLY; q=0 never draws
+ *  coarse, so byte-identical. */
+const GRASS_COARSE_STRIDE = 3;
+
+/** FRUSTUM-DEPTH bake-floor multiplier under lean: the deep perspective
+ *  frustum sweeps in more first-sight cells per frame than the ortho
+ *  count floor admits, so the sprite cache converges too slowly and the
+ *  coarse-live pass lingers. 3× tracks the reach without an ms blowup
+ *  (the ms ceilings still bound frame time). q=0 never applies it. */
+const GRASS_LEAN_FLOOR_MULT = 3;
+
 /**
  * One baked row-cell sprite. `liveMask` records which of the cell's
  * tiles were EXCLUDED at bake (bit i = tile cellTx+i): excluded tiles
@@ -928,7 +942,7 @@ export class GrassSystem {
    * single-depth affine — killing the swim. Null at q=0 (the affine path
    * runs untouched, byte-identical). */
   leanDepthScale: ((wy: number) => number) | null = null;
-  private readonly stageLive: Array<{ lane: number; tx: number; ty: number }> = [];
+  private readonly stageLive: Array<{ lane: number; tx: number; ty: number; coarse?: boolean }> = [];
   private readonly stageTexMap = new WeakMap<
     HTMLCanvasElement,
     { tex: StageTexture; owner: object; frameRev: number }
@@ -996,7 +1010,7 @@ export class GrassSystem {
           const wind = windAtInto(WIND_SCRATCH, d.tx + 0.5, d.ty + 0.5, this.tSec);
           const f = this.tileFrame(d.tx, d.ty, wts);
           this.gatherNear(d.tx, d.ty);
-          this.buildLaneTile(d.lane, st, t!, wind, f, s, d.lane === LANE_UNDER);
+          this.buildLaneTile(d.lane, st, t!, wind, f, s, d.lane === LANE_UNDER, d.coarse ?? false);
           this.rowStats.live++;
         }
         this.flush(ctx);
@@ -1067,7 +1081,15 @@ export class GrassSystem {
     this.rowStats.over = 0;
     this.bakeMsLeft = GRASS_BAKE_MS_BUDGET;
     this.urgentMsLeft = GRASS_URGENT_MS;
-    this.firstCellsLeft = 8;
+    // FRUSTUM-DEPTH SCALING (Epic B): under a lean the frustum reaches
+    // ~5× deeper, so a pan sweeps in many more first-sight cells than
+    // the ortho-tuned floor admits. Scale the first-sight COUNT floor
+    // (not the ms ceilings — those bound frame time) so the sprite
+    // cache converges in step with the deeper reach, shortening the
+    // window the coarse-live pass has to cover. `leanQ` lags one frame
+    // (set after beginFrame) — immaterial for a count floor. q=0 keeps
+    // the exact ortho floor, byte-identical.
+    this.firstCellsLeft = this.leanQ !== 0 ? 8 * GRASS_LEAN_FLOOR_MULT : 8;
     this.bakeFloorLeft = 1;
     // Sweep the row-sprite ledger toward relief — coldest first, never
     // a sprite this frame drew with. Runs before any draw so the gate
@@ -2015,18 +2037,31 @@ export class GrassSystem {
     f: TileFrame,
     s: number,
     cast: boolean,
+    // COARSE-LIVE (Epic B, THE MEADOW NEVER PAINTS FLAT): a cheap live
+    // pass for a not-yet-baked cell under lean — a strided subset of
+    // blades gives the upright silhouette so the cell is never bladeless
+    // while its sprite mints. `false` = the full live/bake brush,
+    // verbatim — q=0 never takes the coarse path, so byte-identical.
+    coarse = false,
   ): void {
+    // COARSE stride: paint every N-th blade. Roots stay (cheap ground
+    // coverage); flowers/seeds (sparse accents) are dropped — the pass
+    // exists only to break the flat-green read, not to be faithful.
+    const stride = coarse ? GRASS_COARSE_STRIDE : 1;
     if (lane === LANE_TALL_N) {
-      for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s);
+      const a = st.geom.north;
+      for (let i = 0; i < a.length; i += stride) this.buildBlade(a[i]!, st, wind, f, s);
       return;
     }
     if (lane === LANE_TALL_S) {
-      for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s);
+      const a = st.geom.south;
+      for (let i = 0; i < a.length; i += stride) this.buildBlade(a[i]!, st, wind, f, s);
       return;
     }
     if (lane === LANE_UNDER) {
       this.buildRoots(st, f, s);
-      for (const b of st.geom.under) this.buildBlade(b, st, wind, f, s, cast);
+      const u = st.geom.under;
+      for (let i = 0; i < u.length; i += stride) this.buildBlade(u[i]!, st, wind, f, s, cast);
       // Tall thickets y-sort their standing mass via collectTall —
       // the under pass owes only their casts (live tiles; baked casts
       // ride the shade canvas).
@@ -2034,16 +2069,23 @@ export class GrassSystem {
         for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s, true, false);
         for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s, true, false);
       }
-      for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s, cast);
-      for (const sd of st.geom.seeds) this.buildSeed(sd, st, wind, f, s, cast);
+      if (!coarse) {
+        for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s, cast);
+        for (const sd of st.geom.seeds) this.buildSeed(sd, st, wind, f, s, cast);
+      }
       return;
     }
     this.buildRoots(st, f, s);
-    for (const b of st.geom.under) this.buildBlade(b, st, wind, f, s);
-    for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s);
-    for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s);
-    for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s);
-    for (const sd of st.geom.seeds) this.buildSeed(sd, st, wind, f, s);
+    const u = st.geom.under;
+    for (let i = 0; i < u.length; i += stride) this.buildBlade(u[i]!, st, wind, f, s);
+    const n = st.geom.north;
+    for (let i = 0; i < n.length; i += stride) this.buildBlade(n[i]!, st, wind, f, s);
+    const so = st.geom.south;
+    for (let i = 0; i < so.length; i += stride) this.buildBlade(so[i]!, st, wind, f, s);
+    if (!coarse) {
+      for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s);
+      for (const sd of st.geom.seeds) this.buildSeed(sd, st, wind, f, s);
+    }
   }
 
   /**
@@ -2421,6 +2463,10 @@ export class GrassSystem {
       scaleFresh(s, sp.scale) &&
       (liveNowMask & ~sp.liveMask) === 0;
     let liveMask: number;
+    // COARSE-LIVE (THE MEADOW NEVER PAINTS FLAT): true only for the
+    // lean decline below — the cheap strided live pass. Full-live
+    // (stale pixels) and q=0 always paint the full brush.
+    let coarse = false;
     if (usable) {
       const spr = sp!;
       spr.used = this.frameNo;
@@ -2429,12 +2475,21 @@ export class GrassSystem {
       liveMask = (spr.liveMask | liveNowMask) & usedMask;
     } else if (sp === undefined || sp.canvas === null) {
       // LAW 2's decline: nothing usable in hand and no mint this
-      // frame — the cell skips (blades pop in when its mint lands)
-      // instead of rebuilding live. Cells with WRONG pixels in hand
-      // (sig/scale stale below) still draw live: showing stale art
-      // is worse than paying for right art.
+      // frame. At ortho (q=0) the cell SKIPS (blades pop in when its
+      // mint lands) — byte-identical to today. But under LEAN the
+      // frustum reaches ~5× deeper, so a sideways pan sweeps in far
+      // more first-sight cells than the bake budget admits, and a
+      // skip paints BARE GREEN (the base ground chunk) that only
+      // corrects on settle — the most-cited defect. So under lean we
+      // draw a CHEAP COARSE live pass instead: never a bladeless
+      // frame, and the mint still replaces it within a few frames.
       this.rowStats.over++;
-      liveMask = 0;
+      if (this.leanQ !== 0) {
+        liveMask = usedMask;
+        coarse = true;
+      } else {
+        liveMask = 0;
+      }
     } else {
       this.rowStats.over++;
       liveMask = usedMask;
@@ -2446,13 +2501,13 @@ export class GrassSystem {
         if (!st) continue;
         const tx = c0 + i;
         if (this.stagePush) {
-          this.stageLive.push({ lane, tx, ty });
+          this.stageLive.push({ lane, tx, ty, coarse });
           continue;
         }
         const wind = windAtInto(WIND_SCRATCH, tx + 0.5, ty + 0.5, this.tSec);
         const f = this.tileFrame(tx, ty, wts);
         this.gatherNear(tx, ty);
-        this.buildLaneTile(lane, st, this.cellT[i]!, wind, f, s, lane === LANE_UNDER);
+        this.buildLaneTile(lane, st, this.cellT[i]!, wind, f, s, lane === LANE_UNDER, coarse);
         this.rowStats.live++;
       }
     }
