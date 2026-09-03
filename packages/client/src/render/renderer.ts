@@ -437,6 +437,37 @@ const TREE_SHADOW_CADENCE_MUL = 3;
 /** Hard per-frame backstop (teleports/zoom flips force-bake herds). */
 const TREE_BAKE_BUDGET = 48;
 /**
+ * THE DEPTH LOD LAW (Epic B, the lean). Under q≠0 a cached sprite's
+ * on-screen SIZE is scale·depthScale(footRow): near the camera it is
+ * MAGNIFIED (depthScale > 1), toward the horizon MINIFIED (< 1). A
+ * sprite whose pixels were baked for the flat camera.scale is then
+ * upscaled (blurry) when magnified and downscaled (wasted RAM, and it
+ * POPS as depth changes) when minified — the reported "wrong LOD tier
+ * under lean". The cure keys a sprite's bake DENSITY (its dpr) off the
+ * EFFECTIVE depth-scaled size, not the flat zoom: bakeDpr = dpr ·
+ * depthScale, so a near tree gets a denser sheet and a far one a
+ * sparser sheet, each blitting ~1:1. Geometry (scale, extents, the
+ * blit's k = spriteScale/scale) is UNTOUCHED, so the fix rides the
+ * existing dpr lane and the blit math is unchanged.
+ *
+ * The density is QUANTIZED to coarse √2 tiers (tier = round(log₂
+ * depthScale · 2), dpr multiplier 2^(tier/2)) so a MOVING camera
+ * re-tiers rarely, not every frame — churn = re-bakes = the perf cost
+ * this whole pass exists to avoid. Clamped to bound sprite VRAM: the
+ * near cap keeps an extreme foreground tree from minting a 16×-area
+ * sheet; the far floor stops at half density (its sprite is tiny on
+ * screen anyway). q=0 → depthScale 1 → tier 0 → multiplier 1 →
+ * bakeDpr === dpr() → byte-identical to every pre-lean bake.
+ */
+const LOD_TIER_MIN = -2;
+const LOD_TIER_MAX = 4;
+/** Tier hysteresis dead-band (in continuous-tier units): a sprite
+ *  keeps its current tier until the wanted density drifts a FULL step
+ *  past that tier's center (±1.0), not merely across the ±0.5 rounding
+ *  boundary — so a per-instance sprite (prop/flora) baked near a
+ *  boundary does not re-bake every frame as the camera jitters. */
+const LOD_TIER_HYST = 1.0;
+/**
  * Per-frame time budget (ms) for sliced chunk-bake steps — ground
  * layers, detail row bands, elevation levels (see startChunkBake). A
  * full chunk bake is 10-40ms; slices keep every frame inside the
@@ -5070,6 +5101,38 @@ export class Renderer {
    *  per-frame closure). Exactly 1 at q=0 → byte-identical. */
   private readonly camDepthAt = (wy: number): number => this.camera.depthScale(wy);
 
+  /** THE DEPTH LOD LAW (see LOD_TIER_MIN): the coarse √2 density tier a
+   *  cached sprite whose foot sits at world-row `footY` should bake at,
+   *  so its baked pixels match its EFFECTIVE (depth-scaled) on-screen
+   *  size instead of the flat zoom. 0 at q=0 (depthScale 1) → the flat
+   *  tier → byte-identical. Pass `curTier` (the tier a live sprite was
+   *  last baked at) to apply the hysteresis dead-band so a per-instance
+   *  sprite near a boundary does not re-tier every frame. */
+  private lodTier(footY: number, curTier?: number): number {
+    if (this.camera.q === 0) return 0;
+    const c = Math.log2(this.camera.depthScale(footY)) * 2;
+    let tier = Math.round(c);
+    if (curTier !== undefined && Math.abs(c - curTier) < LOD_TIER_HYST) tier = curTier;
+    return Math.max(LOD_TIER_MIN, Math.min(LOD_TIER_MAX, tier));
+  }
+
+  /** The bake dpr for a depth LOD tier (see lodTier): the frame's dpr
+   *  scaled by the tier's √2 density multiplier. Tier 0 → dpr() exactly
+   *  → byte-identical. Blits read sp.dpr for their source rect, so a
+   *  denser/sparser sheet needs no blit change. */
+  private lodDpr(tier: number): number {
+    return tier === 0 ? this.dpr() : this.dpr() * 2 ** (tier / 2);
+  }
+
+  /** Recover the tier a cached sprite was baked at, from its stored dpr
+   *  (density) relative to the current base dpr — the anchor lodTier's
+   *  hysteresis reads. A base-dpr change (browser zoom) yields a
+   *  fractional result that resnaps, forcing the re-bake that a moved
+   *  device grid needs. */
+  private lodTierOfDpr(spDpr: number): number {
+    return Math.round(Math.log2(spDpr / this.dpr()) * 2);
+  }
+
   /** THE RENDER SCALE (A2): the factor (0 < s ≤ 1) the WebGL stage
    *  rasterizes its backbuffer at, from the live window size, dpr, and
    *  the resolution tier. 1 = native dpr (byte-identical to pre-A2 and
@@ -8714,6 +8777,30 @@ export class Renderer {
         if (this.treeSprites.size <= 560) break;
       }
     }
+    // THE SPECIES SHEET, tiered: the shared bake used to be bounded
+    // (~species × 16 variants) and rode NO sweep. THE DEPTH LOD LAW
+    // splits it by depth tier, so a leaning walk leaves cold tier sheets
+    // behind (the tiers you were standing among). Drop sheets unseen for
+    // ~4s and, under a hard cap, the coldest — q=0 has only tier 0, so
+    // the population never leaves the old bound and this never fires.
+    for (const [key, sp] of this.treeVariantSprites) {
+      if (sp.used < cutoff) {
+        this.treeVariantSprites.delete(key);
+        this.poolCanvas(sp.canvas);
+      }
+    }
+    if (this.treeVariantSprites.size > 512) {
+      for (const [key, sp] of this.treeVariantSprites) {
+        if (sp.used < this.frameNo - 2) {
+          this.treeVariantSprites.delete(key);
+          this.poolCanvas(sp.canvas);
+        }
+        if (this.treeVariantSprites.size <= 448) break;
+      }
+    }
+    // The shadow half stays keyed by the UN-tiered vkey (a soft ground
+    // blob reads no density change), so its population is bounded exactly
+    // as before and keeps its no-sweep contract.
     // Body sprites ride the interest radius: entities leave, corpses
     // rot — drop composites unseen for ~2s, canvases back to the pool.
     for (const [key, sp] of this.bodySprites) {
@@ -15608,11 +15695,15 @@ export class Renderer {
     wx: number,
     wy: number,
     tSec: number,
-    windOverride?: number,
+    windOverride: number | undefined,
+    bakeDpr: number,
   ): WorldSprite {
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
-    const dpr = this.dpr();
+    // THE DEPTH LOD LAW: bake density (dpr) rides the caller's tier, so
+    // near sprites carry more pixels and far ones fewer; geometry stays
+    // at camera.scale. bakeDpr === dpr() at q=0 → byte-identical.
+    const dpr = bakeDpr;
     // THE TREE FITS ITS FRAME (trees.ts treeExtent): the canvas is
     // sized to the ink the painter can actually reach, not to a
     // generous guess. The guess (spread * 1.15 + 0.08h + 0.45 sideways,
@@ -16378,12 +16469,14 @@ export class Renderer {
     prev: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | undefined,
     b: { x: number; y: number; w: number; h: number },
     paint: () => void,
+    bakeDpr: number,
   ): WorldSprite {
     const r = Math.max(1.25, this.camera.scale * 0.04);
     const m = Math.ceil(r) + 2;
     const cw = Math.ceil(b.w) + m * 2;
     const ch = Math.ceil(b.h) + m * 2;
-    const dpr = this.dpr();
+    // THE DEPTH LOD LAW: density rides the tier (see bakeTreeSprite).
+    const dpr = bakeDpr;
     const pw = Math.max(1, Math.ceil(cw * dpr));
     const ph = Math.max(1, Math.ceil(ch * dpr));
     const { canvas, sctx } = this.acquireSpriteCanvas(prev, pw, ph);
@@ -16525,16 +16618,25 @@ export class Renderer {
     const key = treeKey(tx + 0.5, ty + 0.5, tile);
     this.treesVisible++;
     let sp = this.treeSprites.get(key);
+    // THE DEPTH LOD LAW: a per-instance prop bakes at the density its
+    // depth-scaled on-screen size wants (near = dense, far = sparse),
+    // quantized to √2 tiers with a hysteresis dead-band anchored on the
+    // sprite's current tier so a moving camera does not re-tier — and
+    // re-bake — every frame. tier 0 at q=0 → lodDpr === dpr(), and the
+    // staleness/bake below reduce to the pre-lean path exactly.
+    const tier = this.lodTier(ty + 0.5, sp ? this.lodTierOfDpr(sp.dpr) : undefined);
+    const bakeDpr = this.lodDpr(tier);
     const cadence = Renderer.STATIC_RING_TILES.has(tile) ? 240 : this.treeCadence;
     const due = (this.frameNo + key) % cadence === 0;
     const stale =
       !sp ||
       (due && sp.frame !== this.frameNo) ||
       Math.abs(sp.scale - this.camera.scale) > this.camera.scale * 0.2 ||
-      // The effective dpr moved (browser zoom, rig override): re-bake to the
-      // new grid (paced by the budget — the blit stays correct
-      // meanwhile because the source rect reads the BAKE's dpr).
-      sp.dpr !== this.dpr() ||
+      // The effective bake density moved (browser zoom/rig override, OR
+      // the depth tier crossed its hysteresis band): re-bake to the new
+      // grid (paced by the budget — the blit stays correct meanwhile
+      // because the source rect reads the BAKE's dpr).
+      sp.dpr !== bakeDpr ||
       !sp.outlined;
     // THE STORM LAW (shared by drawTree/drawFlora): a missing sprite
     // bakes on the visible-now lane only when its extent is on screen
@@ -16552,7 +16654,7 @@ export class Renderer {
       if (lane !== BakeLane.None) {
         this.treeBakeBudget--;
         const t0 = performance.now();
-        sp = this.bakePropSprite(sp, b, paint);
+        sp = this.bakePropSprite(sp, b, paint, bakeDpr);
         const took = performance.now() - t0;
         this.spriteBakeMsLeft -= took;
         this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
@@ -16687,6 +16789,7 @@ export class Renderer {
     wx: number,
     wy: number,
     tSec: number,
+    bakeDpr: number,
   ): WorldSprite {
     const s = this.camera.scale;
     // Headroom: sway throw sideways, payload twinkle above, base below.
@@ -16695,7 +16798,8 @@ export class Renderer {
     const below = 0.35 * s;
     const cw = Math.ceil(half * 2);
     const ch = Math.ceil(top + below);
-    const dpr = this.dpr();
+    // THE DEPTH LOD LAW: density rides the tier (see bakeTreeSprite).
+    const dpr = bakeDpr;
     const pw = Math.max(1, Math.ceil(cw * dpr));
     const ph = Math.max(1, Math.ceil(ch * dpr));
     const { canvas, sctx } = this.acquireSpriteCanvas(prev, pw, ph);
@@ -16739,6 +16843,11 @@ export class Renderer {
     // eviction, canvas pool. Keys can't collide — tile ids differ.
     this.treesVisible++;
     let sp = this.treeSprites.get(key);
+    // THE DEPTH LOD LAW: bake density tracks the depth-scaled size, √2-
+    // quantized with a hysteresis band (see drawPropOutlined). tier 0 at
+    // q=0 → lodDpr === dpr() → byte-identical.
+    const tier = this.lodTier(ty + 0.5, sp ? this.lodTierOfDpr(sp.dpr) : undefined);
+    const bakeDpr = this.lodDpr(tier);
     const due = (this.frameNo + key) % this.treeCadence === 0;
     const stale =
       !sp ||
@@ -16746,7 +16855,7 @@ export class Renderer {
       // Staleness keys on the canonical bake scale, not the depth-scaled s
       // (else depth variation thrashes the shared sheet — see drawTree).
       Math.abs(sp.scale - this.camera.scale) > this.camera.scale * 0.2 ||
-      sp.dpr !== this.dpr() ||
+      sp.dpr !== bakeDpr ||
       sp.outlined !== this.outlineOn;
     // The storm law (see drawPropOutlined): visible-now misses take the
     // emergency lane and, failing that, paint live; pad-band misses and
@@ -16761,7 +16870,7 @@ export class Renderer {
       if (lane !== BakeLane.None) {
         this.treeBakeBudget--;
         const t0 = performance.now();
-        sp = this.bakeFloraSprite(sp, fm, tx + 0.5, ty + 0.5, tSec);
+        sp = this.bakeFloraSprite(sp, fm, tx + 0.5, ty + 0.5, tSec, bakeDpr);
         const took = performance.now() - t0;
         this.spriteBakeMsLeft -= took;
         this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
@@ -17077,6 +17186,20 @@ export class Renderer {
     return ((tile as number) << 6) | (h & (TREE_VARIANT_COUNT - 1));
   }
 
+  /** THE DEPTH LOD LAW meets THE SPECIES SHEET: the shared archetype
+   *  sheet is split by depth tier, so near trees share a dense sheet
+   *  and far trees a sparse one instead of one flat sheet fought over
+   *  by every depth (which would thrash the shared bake every frame
+   *  under the lean). Each depth band picks an EXISTING neighbour's
+   *  sheet as a tree crosses a boundary — a cheap key swap, not a
+   *  re-bake. At q=0 there is only tier 0, so a variant occupies one
+   *  sheet exactly as before; the pixel-affecting flutter phase and
+   *  cadence still key off the UN-tiered vkey (see drawTree), so q=0
+   *  output is byte-identical. */
+  private treeVariantKeyLod(tile: Tile, h: number, tier: number): number {
+    return this.treeVariantKey(tile, h) * (LOD_TIER_MAX - LOD_TIER_MIN + 1) + (tier - LOD_TIER_MIN);
+  }
+
   /** THE STANDING LEAN: a constant hash-dealt shear bias (±0.028) so
    *  shared-variant neighbors hold different postures — silhouette
    *  diversity paid at the quad, not the bake. */
@@ -17146,7 +17269,16 @@ export class Renderer {
       // sprites per species, and the cadence flutter treadmill
       // re-paints archetypes, not trees.
       const vkey = this.treeVariantKey(tile, h);
-      let sp = this.treeVariantSprites.get(vkey);
+      // THE DEPTH LOD LAW: the species sheet is split by the tree's own
+      // depth tier so a near tree carries a dense sheet and a far one a
+      // sparse sheet — the reported "wrong LOD under lean" cured at the
+      // bake. tier 0 at q=0 → one sheet per variant as before. The
+      // pixel-affecting flutter phase and cadence still key off the
+      // UN-tiered vkey, so q=0 is byte-identical.
+      const tier = this.lodTier(wy);
+      const lodKey = this.treeVariantKeyLod(tile, h, tier);
+      let sp = this.treeVariantSprites.get(lodKey);
+      const bakeDpr = this.lodDpr(tier);
       // Each variant re-bakes on its own phase of the (adaptive)
       // cadence, derived from its key, so the sheet never re-bakes in
       // one frame; sp.frame guards the many instances that all reach
@@ -17161,9 +17293,11 @@ export class Renderer {
         // the shared species sheet under the lean. The blit's `k = s/scale`
         // carries the foreshortening instead.
         Math.abs(sp.scale - this.camera.scale) > this.camera.scale * 0.2 ||
-        // The effective dpr moved — even rigid
-        // trees (no cadence) must re-bake to the new grid.
-        sp.dpr !== this.dpr() ||
+        // The effective bake density moved (dpr change, OR the depth tier
+        // — but the tier lives in the KEY, so a tier change is a fresh
+        // lookup, and this only fires on a device-grid change). tier 0 →
+        // lodDpr === dpr(), so q=0 is the old `sp.dpr !== this.dpr()`.
+        sp.dpr !== bakeDpr ||
         sp.outlined !== this.outlineOn;
       // The storm law (see drawPropOutlined): visible-now misses take
       // the emergency lane and, failing that, paint live; pad-band
@@ -17188,7 +17322,7 @@ export class Renderer {
           // world position decorrelates flutter phase BETWEEN
           // variants; tSec keeps flutter moving across cadence
           // re-bakes.
-          sp = this.bakeTreeSprite(sp, m, (vkey % 61) * 1.7, (vkey % 53) * 2.3, tSec, 0);
+          sp = this.bakeTreeSprite(sp, m, (vkey % 61) * 1.7, (vkey % 53) * 2.3, tSec, 0, bakeDpr);
           const took = performance.now() - t0;
           this.spriteBakeMsLeft -= took;
           this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
@@ -17197,7 +17331,7 @@ export class Renderer {
             this.visArrivalCount--;
           }
           if (!hadSp) sp.mint = this.frameNo; // THE PROMISED FADE
-          this.treeVariantSprites.set(vkey, sp);
+          this.treeVariantSprites.set(lodKey, sp);
         }
       }
       if (!sp) {
@@ -17526,7 +17660,14 @@ export class Renderer {
           // broken trunk at the leading screen edge. The stamp
           // stands down until the body exists, then blooms in on
           // the body's own mint ramp (THE PROMISED FADE).
-          const bodySp = this.treeVariantSprites.get(vkey);
+          // THE CAST WAITS FOR ITS TREE reads the body sheet by the
+          // SAME depth-tier key drawTree stored it under (the body sheet
+          // is split by tier; the shadow sheet is not — a soft ground
+          // blob reads no density change). tier 0 at q=0 → the pre-lean
+          // sheet.
+          const bodySp = this.treeVariantSprites.get(
+            this.treeVariantKeyLod(tile, h, this.lodTier(wy)),
+          );
           if (sh && bodySp) {
             const mintA = this.mintAlpha(bodySp);
             sh.used = this.frameNo;
