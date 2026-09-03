@@ -1,16 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  beginSilhouette,
   emit,
   faceBand,
   faceFill,
   faceSeam,
+  faceStrip,
   faceUV,
   projectFace,
+  topPlane,
   type FaceCamera,
   type FaceCtx,
+  type FaceGeom,
+  type FacePt,
+  type WorldCorner,
 } from './structureFace.js';
 import { depthScaleWorld, projectWorld, type XY } from './cameraProject.js';
+import { collectVolume, type VolPoint } from './collectVolume.js';
+import { Tile } from '@arx/shared';
 
 /**
  * THE STRUCTURE FACE — the shared world-geometry face primitive, pinned.
@@ -29,10 +37,11 @@ const H = 1000;
  * fractional part so rounding is exercised); depthScale is a fixed table
  * keyed on world y, so per-corner foreshortening is testable in isolation.
  */
-function stubCamera(ds: (wy: number) => number): FaceCamera {
+function stubCamera(ds: (wy: number) => number, scale = 40): FaceCamera {
   return {
     worldToScreen: (wx, wy) => ({ x: wx * 40 + 0.4, y: wy * 24 - 0.4 }),
     depthScale: ds,
+    scale,
   };
 }
 
@@ -232,6 +241,7 @@ function realCamera(q: number): FaceCamera {
       return { x: scratch.x, y: scratch.y };
     },
     depthScale: (wy) => depthScaleWorld(RS.scale, RS.yScale, RS.camY, q, wy),
+    scale: RS.scale,
   };
 }
 
@@ -307,3 +317,275 @@ test('F0: at q=0 faceUV over the projected run collapses to plain rect placement
   assert.deepEqual(S(0, 0), { x: g.ax, y: g.ay });
   assert.deepEqual(S(1, 1), { x: g.bx, y: g.yTopB });
 });
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * THE ONE RENDER — A1: run-continuous primitives (`faceStrip` / `topPlane` /
+ * silhouette accumulation). These are PURE ADDITIONS: no caller yet, so the
+ * q=0 golden look is untouched. The tests pin the two contracts A2/A4 build
+ * on — (1) at q=0 a straight run reproduces today's axis-aligned rects
+ * across a MULTI-segment chain (not just one face), and (2) at q>0 a world
+ * corner shared by two segments projects to the IDENTICAL device vertex
+ * (the seamlessness guarantee) — both through the REAL `cameraProject`.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+/** The per-tile corner chain of an E–W run at world row `y`, x in [x0,x1]. */
+function ewChain(x0: number, x1: number, y: number): WorldCorner[] {
+  const chain: WorldCorner[] = [];
+  for (let x = x0; x <= x1; x++) chain.push({ x, y });
+  return chain;
+}
+
+test('A1: faceStrip at q=0 is an axis-aligned rectangle strip over a multi-segment run', () => {
+  const cam = realCamera(0);
+  // A per-tile chain (4 corners ⇒ 3 segments) along one E–W run edge.
+  const chain = ewChain(2, 5, 4);
+  const H_TILES = 1.5; // world height
+  const segs: FaceGeom[] = [];
+  faceStrip(cam, W, H, chain, H_TILES, 0, (seg) => segs.push({ ...seg }));
+  assert.equal(segs.length, 3, 'one trapezoid per adjacent corner pair');
+
+  const liftPx = H_TILES * RS.scale; // world height → screen lift (ds===1)
+  for (const g of segs) {
+    // Every corner shares depthScale 1 at q=0 ⇒ each segment is a rect.
+    assert.equal(g.dsA, 1);
+    assert.equal(g.dsB, 1);
+    assert.equal(g.ay, g.by, 'base edge horizontal');
+    assert.equal(g.yTopA, g.yTopB, 'top edge horizontal');
+    assert.ok(g.ax < g.bx, 'west corner left of east corner');
+    // Height is the plain lift, no per-corner foreshortening.
+    assert.equal(g.ay - g.yTopA, liftPx);
+    assert.equal(g.by - g.yTopB, liftPx);
+  }
+  // Uniform tile pitch: every segment is the same width at q=0.
+  assert.equal(segs[0]!.bx - segs[0]!.ax, segs[1]!.bx - segs[1]!.ax);
+  assert.equal(segs[1]!.bx - segs[1]!.ax, segs[2]!.bx - segs[2]!.ax);
+});
+
+test('A1: faceStrip shares one device vertex between adjacent segments (seam-free, q>0)', () => {
+  const cam = realCamera(0.0013); // leaned — the case seams appeared in
+  const chain = ewChain(2, 5, 4);
+  const segs: FaceGeom[] = [];
+  faceStrip(cam, W, H, chain, 1.5, 0, (seg) => segs.push({ ...seg }));
+  assert.equal(segs.length, 3);
+  for (let i = 0; i < segs.length - 1; i++) {
+    const a = segs[i]!;
+    const b = segs[i + 1]!;
+    // The shared world corner projected ONCE ⇒ identical device vertex,
+    // identical depthScale, identical top/base y. The fills abut exactly.
+    assert.equal(a.bx, b.ax, 'shared x — no double-rounded seam');
+    assert.equal(a.by, b.ay, 'shared base y');
+    assert.equal(a.yTopB, b.yTopA, 'shared top y');
+    assert.equal(a.yBotB, b.yBotA, 'shared bottom y');
+    assert.equal(a.dsB, b.dsA, 'shared depthScale');
+  }
+  // The strip really is leaned: an E–W run sits at one depth (its top stays
+  // horizontal), but depthScale is no longer 1 and the tile pitch on screen
+  // spreads from the vanishing centre (near-row widths differ across the
+  // run) — proof the perspective path is engaged, not the q=0 affine.
+  assert.notEqual(segs[0]!.dsA, 1, 'depthScale ≠ 1 under lean');
+  assert.notEqual(
+    segs[0]!.bx - segs[0]!.ax,
+    segs[2]!.bx - segs[2]!.ax,
+    'tile pitch varies across the run under lean',
+  );
+});
+
+test('A1: faceStrip vs projectFace — a segment equals the two-corner face', () => {
+  // Each faceStrip segment must be exactly what projectFace yields for those
+  // two corners with the world height converted to a screen lift — proving
+  // the run path reuses the pinned per-corner arithmetic.
+  const cam = realCamera(0.0013);
+  const chain = ewChain(2, 4, 6);
+  const H_TILES = 1.25;
+  const segs: FaceGeom[] = [];
+  faceStrip(cam, W, H, chain, H_TILES, 0, (seg) => segs.push({ ...seg }));
+  const liftPx = H_TILES * RS.scale;
+  for (let i = 0; i < segs.length; i++) {
+    const a = chain[i]!;
+    const b = chain[i + 1]!;
+    const g = projectFace(cam, W, H, a.x, a.y, b.x, b.y, liftPx, 0);
+    assert.deepEqual(segs[i], g);
+  }
+});
+
+test('A1: faceStrip accumulates a closed outer silhouette ring', () => {
+  const cam = realCamera(0.0013);
+  const chain = ewChain(2, 5, 4); // 4 corners
+  const sil = beginSilhouette();
+  faceStrip(cam, W, H, chain, 1.5, 0, () => {}, { silhouette: sil });
+  assert.equal(sil.rings.length, 1);
+  const ring = sil.rings[0]!;
+  // Ground edge forward (4 pts) + top edge back (4 pts) = 8-point ring.
+  assert.equal(ring.length, 8);
+  // First half rides the base y of each corner; second half the tops, in
+  // reverse — a proper closed loop around the whole strip.
+  const segs: FaceGeom[] = [];
+  faceStrip(cam, W, H, chain, 1.5, 0, (seg) => segs.push({ ...seg }));
+  assert.deepEqual(ring[0], { x: segs[0]!.ax, y: segs[0]!.yBotA });
+  assert.deepEqual(ring[3], { x: segs[2]!.bx, y: segs[2]!.yBotB });
+  assert.deepEqual(ring[4], { x: segs[2]!.bx, y: segs[2]!.yTopB });
+  assert.deepEqual(ring[7], { x: segs[0]!.ax, y: segs[0]!.yTopA });
+
+  // emit() replays every ring into a Path2D-like sink as a closed subpath.
+  const ops: string[] = [];
+  sil.emit({
+    moveTo: (x, y) => ops.push(`M ${x} ${y}`),
+    lineTo: (x, y) => ops.push(`L ${x} ${y}`),
+    closePath: () => ops.push('close'),
+  });
+  assert.equal(ops[0], `M ${ring[0]!.x} ${ring[0]!.y}`);
+  assert.equal(ops[ops.length - 1], 'close');
+  assert.equal(ops.filter((o) => o === 'close').length, 1);
+});
+
+test('A1: topPlane at q=0 collapses its UV to plain-rect placement', () => {
+  const cam = realCamera(0);
+  // A straight E–W run one tile deep: crown loop is the rectangle
+  // (2,4)-(6,4)-(6,5)-(2,5).
+  const loop: WorldCorner[] = [
+    { x: 2, y: 4 },
+    { x: 6, y: 4 },
+    { x: 6, y: 5 },
+    { x: 2, y: 5 },
+  ];
+  let geom: { poly: FacePt[]; uv: (u: number, v: number, out?: FacePt) => FacePt } | undefined;
+  topPlane(cam, W, H, loop, 1.5, (g) => {
+    geom = g;
+  });
+  assert.ok(geom);
+  const { uv } = geom!;
+  // x depends only on u, y only on v — the axis-aligned collapse that
+  // reproduces woodCrownPlate's flat fillRect look at q=0.
+  assert.equal(uv(0.3, 0.2).x, uv(0.3, 0.9).x, 'x is v-independent at q=0');
+  assert.equal(uv(0.1, 0.6).y, uv(0.8, 0.6).y, 'y is u-independent at q=0');
+  // The whole projected crown loop is axis-aligned (two north-row y's equal,
+  // two south-row y's equal) at q=0.
+  assert.equal(geom!.poly[0]!.y, geom!.poly[1]!.y, 'north crown edge horizontal');
+  assert.equal(geom!.poly[2]!.y, geom!.poly[3]!.y, 'south crown edge horizontal');
+});
+
+test('A1: topPlane at q>0 recedes — its UV bilerps and far corners lift less', () => {
+  const q = 0.0013;
+  const loop: WorldCorner[] = [
+    { x: 2, y: 4 },
+    { x: 6, y: 4 },
+    { x: 6, y: 5 },
+    { x: 2, y: 5 },
+  ];
+  let flat: { poly: FacePt[] } | undefined;
+  let lean: { poly: FacePt[]; uv: (u: number, v: number, out?: FacePt) => FacePt } | undefined;
+  topPlane(realCamera(0), W, H, loop, 1.5, (g) => {
+    flat = g;
+  });
+  topPlane(realCamera(q), W, H, loop, 1.5, (g) => {
+    lean = g;
+  });
+  // Under lean the crown top is a true trapezoid: the UV x now varies with v
+  // (a receding quad), unlike the q=0 collapse above.
+  assert.notEqual(lean!.uv(0.3, 0.2).x, lean!.uv(0.3, 0.9).x, 'x depends on v under lean');
+  // The near (south) row and far (north) row diverge in lift, so the two
+  // crown rows are NOT the flat q=0 rectangle.
+  assert.notEqual(lean!.poly[0]!.y, flat!.poly[0]!.y);
+});
+
+test('A1: faceStrip writes into fresh geoms — reused out on the UV mapper', () => {
+  // topPlane's uv reuses an out point exactly like faceUV.
+  const cam = realCamera(0);
+  const loop: WorldCorner[] = [
+    { x: 0, y: 0 },
+    { x: 4, y: 0 },
+    { x: 4, y: 1 },
+    { x: 0, y: 1 },
+  ];
+  let uv: ((u: number, v: number, out?: FacePt) => FacePt) | undefined;
+  topPlane(cam, W, H, loop, 1, (g) => {
+    uv = g.uv;
+  });
+  const out = { x: -1, y: -1 };
+  const r = uv!(0.5, 0.5, out);
+  assert.equal(r, out, 'same object — no allocation in the hot mapper');
+});
+
+/* ───────────────────────────────────────────────────────────────────────
+ * A1 × A0 INTEGRATION: the run-continuous primitives consume a real
+ * `collectVolume.perimeter`. This is the end-to-end path A2/A4 take — flood
+ * the run, walk its exposed loop, and hand it straight to `topPlane`
+ * (crown) and one edge of it to `faceStrip` (side). A straight E–W run and
+ * an L-shape both yield correct continuous geometry.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+/** A tile sampler over an explicit member set (a mock world). */
+function memberSampler(members: Set<string>): (tx: number, ty: number) => Tile | undefined {
+  return (tx, ty) => (members.has(`${tx},${ty}`) ? Tile.WallStone : undefined);
+}
+const ALL_ONE_CLASS = () => 1;
+
+test('A1×A0: a straight E–W run — perimeter → topPlane crown + faceStrip side', () => {
+  // Three tiles in a row at y=4, x∈{2,3,4}.
+  const members = new Set(['2,4', '3,4', '4,4']);
+  const vol = collectVolume(memberSampler(members), 3, 4, ALL_ONE_CLASS);
+  assert.ok(vol);
+  assert.equal(vol!.perimeter.length, 1, 'one boundary loop');
+  const loop = vol!.perimeter[0]!;
+  // Collinear merge ⇒ the run's boundary is a 4-corner rectangle.
+  assert.equal(loop.length, 4);
+
+  // The whole loop feeds topPlane — the run-continuous crown.
+  const cam = realCamera(0);
+  let poly: FacePt[] | undefined;
+  topPlane(cam, W, H, loop, 1.5, (g) => {
+    poly = g.poly;
+  });
+  assert.equal(poly!.length, 4, 'crown poly tracks the loop corners');
+
+  // The SOUTH edge of the loop is the exposed face you walk behind; slice it
+  // and hand it to faceStrip. (The rectangle loop, canonicalized CW from its
+  // min corner, contains the y=5 south run as two adjacent corners.)
+  const south = southEdge(loop);
+  assert.ok(south.length >= 2, 'south run edge found');
+  const segs: FaceGeom[] = [];
+  faceStrip(cam, W, H, south, 1.5, 0, (seg) => segs.push({ ...seg }));
+  assert.equal(segs.length, south.length - 1);
+  // A straight south run at q=0 is an axis-aligned rect.
+  for (const g of segs) {
+    assert.equal(g.ay, g.by);
+    assert.equal(g.yTopA, g.yTopB);
+  }
+});
+
+test('A1×A0: an L-shape run — perimeter → continuous topPlane crown', () => {
+  // An L: (0,0),(1,0),(0,1).
+  const members = new Set(['0,0', '1,0', '0,1']);
+  const vol = collectVolume(memberSampler(members), 0, 0, ALL_ONE_CLASS);
+  assert.ok(vol);
+  assert.equal(vol!.perimeter.length, 1);
+  const loop = vol!.perimeter[0]!;
+  // An L-boundary has 6 corners after collinear merge.
+  assert.equal(loop.length, 6);
+
+  const cam = realCamera(0);
+  let poly: FacePt[] | undefined;
+  let uv: ((u: number, v: number, out?: FacePt) => FacePt) | undefined;
+  topPlane(cam, W, H, loop, 1, (g) => {
+    poly = g.poly;
+    uv = g.uv;
+  });
+  // The crown poly carries all six corners — a continuous L crown, not a
+  // per-tile plate. The whole-run UV still spans the L's world bbox.
+  assert.equal(poly!.length, 6);
+  assert.equal(uv!(0.3, 0.2).x, uv!(0.3, 0.9).x, 'UV collapses over the L bbox at q=0');
+  // Under lean the same L crown recedes (its UV bilerps).
+  let leanUv: ((u: number, v: number, out?: FacePt) => FacePt) | undefined;
+  topPlane(realCamera(0.0013), W, H, loop, 1, (g) => {
+    leanUv = g.uv;
+  });
+  assert.notEqual(leanUv!(0.3, 0.2).x, leanUv!(0.3, 0.9).x);
+});
+
+/** Extract the southern (max-y) horizontal run of a rectilinear loop. */
+function southEdge(loop: VolPoint[]): WorldCorner[] {
+  let maxY = -Infinity;
+  for (const p of loop) if (p.y > maxY) maxY = p.y;
+  const onSouth = loop.filter((p) => p.y === maxY).sort((a, b) => a.x - b.x);
+  return onSouth.map((p) => ({ x: p.x, y: p.y }));
+}
