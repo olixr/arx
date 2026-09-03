@@ -10273,10 +10273,29 @@ export class Renderer {
         ? s *
           Math.max(1, this.camera.depthScale(m.ty), this.camera.depthScale(m.ty + spanS))
         : s;
+    // THE BOX SPANS BOTH ROWS (lean corner-sliver fix): p0/p1 name only
+    // the NW (far/north row) and SE (near/south row) footprint corners.
+    // Under the lean the NEAR row spreads WIDER than the far row from the
+    // vanishing centre, so for a run off the screen centre the true
+    // horizontal extent is the SW/NE corners this two-corner box never
+    // sampled — the wall art then clips to an axis-aligned slab narrower
+    // than the leaned masonry and shears a thin sliver off the corner
+    // (the background/fog showed through). Bound x by ALL FOUR projected
+    // footprint corners. At q=0 worldToScreen x is a pure function of tx
+    // (rows share one scale), so SW.x===NW.x and NE.x===SE.x → xL/xR
+    // collapse to p0.x/p1.x, byte-identical to the ortho frame.
+    let xL = p0.x;
+    let xR = p1.x;
+    if (this.camera.q !== 0) {
+      const sw2 = this.camera.worldToScreen(m.tx, m.ty + spanS, this.w, this.h);
+      const ne2 = this.camera.worldToScreen(m.endX + 1, m.ty, this.w, this.h);
+      xL = Math.min(p0.x, p1.x, sw2.x, ne2.x);
+      xR = Math.max(p0.x, p1.x, sw2.x, ne2.x);
+    }
     const pb = {
-      x: p0.x - 1.2 * sPad,
+      x: xL - 1.2 * sPad,
       y: p0.y - northT * sPad,
-      w: p1.x - p0.x + 2.4 * sPad,
+      w: xR - xL + 2.4 * sPad,
       h: p1.y - p0.y + (northT + southT) * sPad,
     };
     // THE SCRATCH LEDGER's identity: world anchor + kind + emission
