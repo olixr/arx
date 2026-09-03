@@ -9,6 +9,7 @@ import {
   faceStrip,
   faceUV,
   projectFace,
+  silhouetteBounds,
   topPlane,
   type FaceCamera,
   type FaceCtx,
@@ -436,6 +437,45 @@ test('A1: faceStrip accumulates a closed outer silhouette ring', () => {
   assert.equal(ops[0], `M ${ring[0]!.x} ${ring[0]!.y}`);
   assert.equal(ops[ops.length - 1], 'close');
   assert.equal(ops.filter((o) => o === 'close').length, 1);
+});
+
+test('A3: silhouetteBounds returns null for an empty silhouette', () => {
+  assert.equal(silhouetteBounds(beginSilhouette()), null);
+});
+
+test('A3: silhouetteBounds is the min/max over every ring point (crown + faces)', () => {
+  const sil = beginSilhouette();
+  // A crown loop and a taller face ring, added independently (as the wall/
+  // garrison outline path does) — the bbox must span the UNION, not one ring.
+  sil.add([
+    { x: 10, y: 40 },
+    { x: 90, y: 40 },
+    { x: 90, y: 60 },
+    { x: 10, y: 60 },
+  ]);
+  sil.add([
+    { x: 8, y: 60 }, // west of the crown, below it (a face reaching the foot)
+    { x: 92, y: 60 },
+    { x: 92, y: 100 },
+    { x: 8, y: 100 },
+  ]);
+  const b = silhouetteBounds(sil)!;
+  assert.deepEqual(b, { x0: 8, y0: 40, x1: 92, y1: 100 });
+});
+
+test('A3: silhouetteBounds matches a faceStrip ring under lean', () => {
+  const cam = realCamera(0.0013);
+  const chain = ewChain(2, 5, 4);
+  const sil = beginSilhouette();
+  faceStrip(cam, W, H, chain, 1.5, 0, () => {}, { silhouette: sil });
+  const b = silhouetteBounds(sil)!;
+  const ring = sil.rings[0]!;
+  const xs = ring.map((p) => p.x);
+  const ys = ring.map((p) => p.y);
+  assert.equal(b.x0, Math.min(...xs));
+  assert.equal(b.x1, Math.max(...xs));
+  assert.equal(b.y0, Math.min(...ys));
+  assert.equal(b.y1, Math.max(...ys));
 });
 
 test('A1: topPlane at q=0 collapses its UV to plain-rect placement', () => {

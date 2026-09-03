@@ -10,6 +10,7 @@ import { packTile } from './interiors.js';
 import { GARRISON_H, GAR_LEAF, MERLON_H, WALL_STUB, stone01 } from './paintVocab.js';
 import { shade } from './rig.js';
 import { faceBand, faceFill, faceSeam } from './structureFace.js';
+import type { Silhouette } from './structureFace.js';
 import { Tile, diagWallInfo, doorInfo, hashCoords } from '@arx/shared';
 import type { DrawItem } from './renderer.js';
 import { wallHangings } from './wallHungArt.js';
@@ -541,6 +542,12 @@ export function garrisonCrownSpan(
   footH: number,
   whT: number,
   members: ReadonlySet<number>,
+  // THE ONE RENDER — A3: when given, the crenellated crown SILHOUETTE (the
+  // wall-walk rect + each parapet tooth's outward face) is accumulated here as
+  // projected rings for the per-run alpha-DILATE ring, replacing the interim
+  // castellated vector stroke this function used to draw itself. The caller
+  // adds the tall side faces + blits the ring.
+  sil?: Silhouette,
 ): void {
   const ctx = rend.ctx;
   const cam = rend.camera;
@@ -573,6 +580,8 @@ export function garrisonCrownSpan(
   ctx.lineTo(sw.x, sw.y);
   ctx.closePath();
   ctx.fill();
+  // A3 silhouette: the wall-walk rect is the crown base of the ring.
+  sil?.add([nw, ne, se, sw]);
 
   // A tooth (merlon) footprint corners: [outerL, outerR, innerR, innerL],
   // the outward edge = corners 0,1. Draw the outward face (crownH→capH) and
@@ -609,6 +618,9 @@ export function garrisonCrownSpan(
     ctx.lineTo(b0.x, b0.y);
     ctx.closePath();
     ctx.fill();
+    // A3 silhouette: the tooth rising above the walk (outward face + cap),
+    // so the dilated ring steps over every merlon — the castellated read.
+    sil?.add([a0, c0, c1, b0]);
   };
 
   // 2. Teeth on every exposed crown edge, per member tile. Up-screen (north)
@@ -642,67 +654,11 @@ export function garrisonCrownSpan(
     }
   }
 
-  // 3. THE CASTELLATED OUTLINE: the crown top edge stepping over each tooth
-  //    (the signature silhouette) + the foot drop, stroked only on exposed
-  //    unit edges (member-tested) so the run rings continuously with no
-  //    internal seams. Interim vector stroke — A3 swaps it for alpha-dilate.
-  if (rend.outlineOn) {
-    const o = new Path2D();
-    // A crenellated crown edge from world A→B with tooth centres `cs`. `pt(f)`
-    // maps a fraction 0..1 along A→B to a world point; a tooth at centre cf
-    // steps up mhW over its width (in fractions of the edge span).
-    const crenel = (
-      awx: number, awy: number, bwx: number, bwy: number,
-      cs: Array<{ f: number; hf: number }>,
-    ): void => {
-      const dx = bwx - awx;
-      const dy = bwy - awy;
-      const pt = (f: number, h: number): { x: number; y: number } => P(awx + dx * f, awy + dy * f, h);
-      let m = pt(0, crownH);
-      o.moveTo(m.x, m.y);
-      if (mhW > 0.002) {
-        for (const { f, hf } of cs) {
-          let p = pt(f - hf, crownH); o.lineTo(p.x, p.y);
-          p = pt(f - hf, capH); o.lineTo(p.x, p.y);
-          p = pt(f + hf, capH); o.lineTo(p.x, p.y);
-          p = pt(f + hf, crownH); o.lineTo(p.x, p.y);
-        }
-      }
-      m = pt(1, crownH);
-      o.lineTo(m.x, m.y);
-    };
-    const foot = (awx: number, awy: number, bwx: number, bwy: number): void => {
-      const a = P(awx, awy, footH);
-      const b = P(bwx, bwy, footH);
-      o.moveTo(a.x, a.y);
-      o.lineTo(b.x, b.y);
-    };
-    // tooth half-width as a fraction of a unit edge.
-    const hf = tw / 2;
-    for (let ty = span.y0; ty <= span.y1; ty++) {
-      for (let tx = span.x0; tx <= span.x1; tx++) {
-        const cens = CS.map((c) => ({ f: c, hf }));
-        if (!members.has(packTile(tx, ty - 1))) {
-          crenel(tx, ty, tx + 1, ty, cens);
-          foot(tx, ty, tx + 1, ty);
-        }
-        if (!members.has(packTile(tx, ty + 1))) {
-          crenel(tx, ty + 1, tx + 1, ty + 1, cens);
-          foot(tx, ty + 1, tx + 1, ty + 1);
-        }
-        if (!members.has(packTile(tx - 1, ty))) {
-          crenel(tx, ty, tx, ty + 1, cens);
-          foot(tx, ty, tx, ty + 1);
-        }
-        if (!members.has(packTile(tx + 1, ty))) {
-          crenel(tx + 1, ty, tx + 1, ty + 1, cens);
-          foot(tx + 1, ty, tx + 1, ty + 1);
-        }
-      }
-    }
-    rend.beginStructOutline();
-    ctx.stroke(o);
-  }
+  // 3. THE CASTELLATED OUTLINE is now the per-run alpha-DILATE ring (A3): the
+  //    crenellated silhouette (wall-walk rect + each parapet tooth, above) was
+  //    accumulated into `sil`; the caller adds the tall side faces and blits
+  //    the dilated ring, so the run rings continuously with no internal seams
+  //    and steps over every merlon — the same weight/tint bodies wear.
 }
 
 /**
