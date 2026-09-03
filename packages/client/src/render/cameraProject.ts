@@ -256,3 +256,84 @@ export function lightmapStrip(
   out.dh = dBot - dTop;
   return out;
 }
+
+/**
+ * THE SHADE BAKES ONCE (Epic1 B4): the screen-only inverse of the lean
+ * homography — map a LEANED screen point back to the ORTHO screen point
+ * it came from, WITHOUT the round-trip through world space. It is the
+ * screen half of `unprojectScreen`: with `dy = sy − cy`, the ortho row
+ * offset is `u = dy/(1 + q·dy)` and the ortho x un-scales about `cx` by
+ * the same `wdiv` the forward divide applied. At q=0 it is the identity
+ * (fast-path short-circuit) so a caller stays byte-identical to ortho.
+ *
+ * The grass cast-shade bakes its calm monolith in ORTHO screen space
+ * (camera-independent, pan-corrected by a translate, `q`-independent —
+ * `screenOrthoFromLean(projectWorld(p)) === orthoScreen(p)` for ANY q),
+ * then warps it to the receded ground each frame via `shadeStrip`. Pure
+ * and alloc-free (writes `out`).
+ */
+export function screenOrthoFromLean(
+  q: number,
+  cx: number,
+  cy: number,
+  sx: number,
+  sy: number,
+  out: XY,
+): XY {
+  if (q === 0) {
+    out.x = sx;
+    out.y = sy;
+    return out;
+  }
+  const dy = sy - cy;
+  const u = dy / (1 + q * dy);
+  const wdiv = Math.max(MIN_W, 1 - q * u);
+  out.x = cx + (sx - cx) * wdiv;
+  out.y = cy + u;
+  return out;
+}
+
+/**
+ * THE SHADE LEARNS TO LEAN, for a SUB-REGION (Epic1 B4). Strip `i` of an
+ * ORTHO-baked canvas covering the CSS-screen rect `[rectX,rectY,rectW,
+ * rectH]` (its `srcH` source device-rows tall) mapped to its leaned
+ * screen band under lean `q`. The generalization of `lightmapStrip` off
+ * the full screen: the vertical band edges warp by the ground homography
+ * (`sy = cy + (oy−cy)/wdiv`, `wdiv = 1 − q·(oy−cy)`) and the band's width
+ * scales uniformly about `cx` by `1/wdiv` at the band centre — so the
+ * cast-shade recedes with the ground it lies on. Unlike `lightmapStrip`
+ * (which stretches its first/last strip to cover the whole viewport), a
+ * sub-region maps its own extent exactly: no full-screen clamp. With
+ * `rectX=rectY=0, rectW=viewW, rectH=viewH, srcH=mh` the interior strips
+ * are identical to `lightmapStrip` (pinned by test). Pure, writes `out`.
+ */
+export function shadeStrip(
+  q: number,
+  cx: number,
+  cy: number,
+  rectX: number,
+  rectY: number,
+  rectW: number,
+  rectH: number,
+  srcH: number,
+  strips: number,
+  i: number,
+  out: LightStrip,
+): LightStrip {
+  const f0 = i / strips;
+  const f1 = (i + 1) / strips;
+  const oy0 = rectY + f0 * rectH;
+  const oy1 = rectY + f1 * rectH;
+  const leanY = (oy: number): number => {
+    const wdiv = Math.max(MIN_W, 1 - q * (oy - cy));
+    return cy + (oy - cy) / wdiv;
+  };
+  const wdivC = Math.max(MIN_W, 1 - q * ((oy0 + oy1) / 2 - cy));
+  out.sy = f0 * srcH;
+  out.sh = (f1 - f0) * srcH;
+  out.dx = cx + (rectX - cx) / wdivC;
+  out.dw = rectW / wdivC;
+  out.dy = leanY(oy0);
+  out.dh = leanY(oy1) - leanY(oy0);
+  return out;
+}
