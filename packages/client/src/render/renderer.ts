@@ -194,6 +194,7 @@ import * as garrisonArt from './garrisonArt.js';
 import * as hudOverlay from './hudOverlay.js';
 import * as wornAura from './wornAura.js';
 import * as cliffArt from './cliffArt.js';
+import { emit as emitStructureFace, faceBand as sfBand, faceFill as sfFill, faceSeam as sfSeam } from './structureFace.js';
 import { WALL_STUB, GARRISON_H, MERLON_H } from './paintVocab.js';
 import * as wallHungArt from './wallHungArt.js';
 import * as barrierArt from './barrierArt.js';
@@ -11111,37 +11112,16 @@ export class Renderer {
             bLift: number,
             litD: number,
           ): void => {
-            ctx.fillStyle = shade(sideCol, litD);
-            ctx.beginPath();
-            ctx.moveTo(ax, ay);
-            ctx.lineTo(ax, ay - aLift);
-            ctx.lineTo(bx, by - bLift);
-            ctx.lineTo(bx, by);
-            ctx.closePath();
-            ctx.fill();
+            // THE STRUCTURE FACE (screen-space shape): corners are already
+            // projected + snapped and the lifts pre-foreshortened, so the
+            // shared trapezoid/band/seam helpers draw them verbatim.
+            sfFill(ctx, ax, ay, aLift, bx, by, bLift, shade(sideCol, litD));
             // A course band between wall-height fractions f0..f1.
-            const band = (f0: number, f1: number, col: string): void => {
-              ctx.fillStyle = col;
-              ctx.beginPath();
-              ctx.moveTo(ax, ay - aLift * f0);
-              ctx.lineTo(ax, ay - aLift * f1);
-              ctx.lineTo(bx, by - bLift * f1);
-              ctx.lineTo(bx, by - bLift * f0);
-              ctx.closePath();
-              ctx.fill();
-            };
+            const band = (f0: number, f1: number, col: string): void =>
+              sfBand(ctx, ax, ay, aLift, bx, by, bLift, f0, f1, col);
             // A thin seam line at fraction f, constant device thickness.
-            const hline = (f: number, wpx: number, col: string): void => {
-              const wa = Math.max(1, wpx);
-              ctx.fillStyle = col;
-              ctx.beginPath();
-              ctx.moveTo(ax, ay - aLift * f);
-              ctx.lineTo(bx, by - bLift * f);
-              ctx.lineTo(bx, by - bLift * f + wa);
-              ctx.lineTo(ax, ay - aLift * f + wa);
-              ctx.closePath();
-              ctx.fill();
-            };
+            const hline = (f: number, wpx: number, col: string): void =>
+              sfSeam(ctx, ax, ay, aLift, bx, by, bLift, f, wpx, col);
             if (mat === Tile.WallWood) {
               // Foundation, sill beam and wall-plate wrap the corner (the
               // flankDetail law): the side is never a different build than
@@ -13504,18 +13484,14 @@ export class Renderer {
       strat,
       elevated,
       draw: () => {
-        const A = cam.worldToScreen(ax, ay, W, H);
-        const B = cam.worldToScreen(bx, by, W, H);
-        A.x = Math.round(A.x);
-        A.y = Math.round(A.y);
-        B.x = Math.round(B.x);
-        B.y = Math.round(B.y);
-        const dsA = cam.depthScale(ay);
-        const dsB = cam.depthScale(by);
-        const yTopA = A.y - topLift * s * dsA;
-        const yTopB = B.y - topLift * s * dsB;
-        const yBaseA = A.y - baseLift * s * dsA;
-        const yBaseB = B.y - baseLift * s * dsB;
+        // THE STRUCTURE FACE (cliffArt/deck law): one screen-space trapezoid
+        // between world corners (ax,ay)-(bx,by), each foreshortened by its own
+        // depthScale, shared corners rounded to the device pixel. `emit`
+        // projects; the callback paints the deck fascia + dressing bands.
+        emitStructureFace(cam, W, H, ax, ay, bx, by, topLift * s, baseLift * s, (f) => {
+        const { ax: Ax, bx: Bx, dsA, dsB, yTopA, yTopB, yBotA: yBaseA, yBotB: yBaseB } = f;
+        const A = { x: Ax };
+        const B = { x: Bx };
         ctx.fillStyle = body;
         ctx.beginPath();
         ctx.moveTo(A.x, yTopA);
@@ -13598,6 +13574,7 @@ export class Renderer {
           ctx.closePath();
           ctx.stroke();
         }
+        });
       },
     });
   }

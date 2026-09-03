@@ -14,6 +14,7 @@ import { FALL_LOOKAHEAD, SpillInfo, fallAt, fallRibbonItem, fallSideDressItem, l
 import { CHUNK_SIZE, Tile, hashCoords } from '@arx/shared';
 import type { DrawItem } from './renderer.js';
 import { stone01 } from './paintVocab.js';
+import { projectFace } from './structureFace.js';
 import type { CliffRunBake, Renderer } from './renderer.js';
 import type { PaintHost } from './paintHost.js';
 
@@ -557,24 +558,24 @@ export function cliffFaceItem(rend: PaintHost,
           }
         : undefined,
     draw: () => {
-      const A = rend.camera.worldToScreen(ax, ay, rend.w, rend.h);
-      const B = rend.camera.worldToScreen(bx, by, rend.w, rend.h);
-      // Snap shared endpoints to whole pixels so adjacent curtains
-      // meet without hairlines.
-      A.x = Math.round(A.x); A.y = Math.round(A.y);
-      B.x = Math.round(B.x); B.y = Math.round(B.y);
-      // B-3 SPANNING WARP (Epic B): the face spans two corners at different
-      // depths, so each foreshortens by ITS OWN depthScale — the curtain
-      // recedes as a true trapezoid (the far corner shorter), not a
-      // parallel-shifted band. Every detail below rides yTop*/yBase* via
-      // the interpolators, so warping these four warps the whole face. At
-      // q=0 depthScale is exactly 1 → byte-identical.
-      const dsA = rend.camera.depthScale(ay);
-      const dsB = rend.camera.depthScale(by);
-      const yTopA = A.y - topLift * dsA - 1.5; // tucked under the crown band
-      const yTopB = B.y - topLift * dsB - 1.5;
-      const yBaseA = A.y - baseLift * dsA;
-      const yBaseB = B.y - baseLift * dsB;
+      // THE STRUCTURE FACE (cliffArt/deck law): project the two world
+      // corners, round shared endpoints to whole pixels so adjacent
+      // curtains meet without hairlines, and foreshorten each corner by
+      // ITS OWN depthScale — the curtain recedes as a true trapezoid (the
+      // far corner shorter), not a parallel-shifted band. topLift/baseLift
+      // are already scaled by `s`, so they pass as the screen-space lifts.
+      // B-3 SPANNING WARP (Epic B): every detail below rides yTop*/yBase*
+      // via the interpolators, so warping these four warps the whole face.
+      // At q=0 depthScale is exactly 1 → byte-identical.
+      const g = projectFace(rend.camera, rend.w, rend.h, ax, ay, bx, by, topLift, baseLift);
+      const A = { x: g.ax, y: g.ay };
+      const B = { x: g.bx, y: g.by };
+      const dsA = g.dsA;
+      const dsB = g.dsB;
+      const yTopA = g.yTopA - 1.5; // tucked under the crown band
+      const yTopB = g.yTopB - 1.5;
+      const yBaseA = g.yBotA;
+      const yBaseB = g.yBotB;
       // EVERY mark below is keyed to WORLD x, never to segment-local
       // fractions: beds, joints, blocks and tufts continue unbroken
       // across curtain seams and around diagonal turns, and no two
