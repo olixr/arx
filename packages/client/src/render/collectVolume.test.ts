@@ -313,3 +313,79 @@ test('crownSpans: an L-shape covers each tile exactly once', () => {
   const spans = crownSpans(flatMembers(cells));
   assert.deepEqual(coverKeys(spans), memberKeys(flatMembers(cells)));
 });
+
+// ── A2c: crownSpans on a GARRISON curtain run (the crenellation-span path) ──
+
+test('crownSpans: a thin garrison curtain run → ONE horizontal span (crenellation tiles unbroken)', () => {
+  // A straight E–W garrison curtain is one class of tiles; the crenellation
+  // draw walks the ONE span at world tooth-phase, so the toothed top is
+  // continuous across the run (no per-tile segmentation).
+  const members = flatMembers(rect(10, 5, 17, 5, Tile.WallGarrison));
+  const spans = crownSpans(members);
+  assert.equal(spans.length, 1);
+  assert.deepEqual(spanExtent(spans[0]!), { w: 8, h: 1 });
+  assert.deepEqual(coverKeys(spans), memberKeys(members));
+});
+
+test('crownSpans: a thick garrison rampart → per-row strips, union = the rampart, no bbox balloon', () => {
+  // A 6×2 rampart: two horizontal row spans, each a 1-tile-thick strip.
+  const members = flatMembers(rect(10, 5, 15, 6, Tile.WallGarrison));
+  const spans = crownSpans(members);
+  for (const sp of spans) {
+    const { w, h } = spanExtent(sp);
+    assert.ok(Math.min(w, h) === 1, `span is a 1-tile-thick strip, got ${w}×${h}`);
+  }
+  assert.deepEqual(coverKeys(spans), memberKeys(members));
+});
+
+// ── A2c: diagSpans — the 45° (diagonal) run partition ──────────────────────
+
+/** A 45° staircase of `n` same-mass diag tiles from (x,y) stepping by (dx,dy). */
+function diagRun(x: number, y: number, dx: number, dy: number, n: number, t: Tile): Array<[number, number, Tile]> {
+  const out: Array<[number, number, Tile]> = [];
+  for (let i = 0; i < n; i++) out.push([x + dx * i, y + dy * i, t]);
+  return out;
+}
+
+import { diagSpans } from './collectVolume.js';
+
+test('diagSpans: a 45° NE staircase → one 1×1 span per member, union = the run', () => {
+  // NE mass runs along the NW–SE diagonal: step (1,1).
+  const cells = diagRun(4, 4, 1, 1, 5, Tile.WallStoneDiagNE);
+  const members = flatMembers(cells);
+  const spans = diagSpans(members);
+  assert.equal(spans.length, 5);
+  for (const sp of spans) assert.deepEqual(spanExtent(sp), { w: 1, h: 1 }); // tiny bbox, no blowup
+  assert.deepEqual(coverKeys(spans), memberKeys(members));
+});
+
+test('diagSpans: a 45° NW staircase (step 1,-1) → per-member spans, union = the run', () => {
+  const cells = diagRun(4, 10, 1, -1, 4, Tile.WallGarrisonDiagNW);
+  const members = flatMembers(cells);
+  const spans = diagSpans(members);
+  assert.equal(spans.length, 4);
+  assert.deepEqual(coverKeys(spans), memberKeys(members));
+});
+
+test('diagSpans: consecutive members SHARE exactly one tile-corner (seam-free arris)', () => {
+  // Tiles (x,y) and (x+1,y+1) own unit squares that touch at the SINGLE corner
+  // (x+1,y+1). Projected once, that shared corner is one device pixel → the
+  // hypotenuse arrises of adjacent members meet with no seam.
+  const cells = diagRun(4, 4, 1, 1, 3, Tile.WallStoneDiagNE);
+  const spans = diagSpans(cells.flatMap(([x, y]) => [x, y]));
+  const cornersOf = (sp: CrownSpan): Set<string> =>
+    new Set(spanCorners(sp));
+  for (let i = 0; i < spans.length - 1; i++) {
+    const a = cornersOf(spans[i]!);
+    const b = cornersOf(spans[i + 1]!);
+    const shared = [...a].filter((c) => b.has(c));
+    assert.equal(shared.length, 1, `members ${i}/${i + 1} share exactly one corner, got ${shared.length}`);
+  }
+});
+
+test('diagSpans: a lone 45° corner → a single 1×1 span (equivalent to per-tile)', () => {
+  const spans = diagSpans([7, 7]);
+  assert.equal(spans.length, 1);
+  assert.deepEqual(spanExtent(spans[0]!), { w: 1, h: 1 });
+  assert.deepEqual(coverKeys(spans), ['7,7']);
+});
