@@ -56,9 +56,11 @@ export function fenceish(rend: PaintHost, game: ClientGame, x: number, y: number
  * outline; call it AFTER the rails so the post face covers their
  * run-through seams and every joint reads carpentered.
  */
-export function drawFencePost(rend: PaintHost, x: number, baseY: number, w: number, hTot: number): void {
+export function drawFencePost(rend: PaintHost, x: number, baseY: number, w: number, hTot: number, ds = 1): void {
   const ctx = rend.ctx;
-  const s = rend.camera.scale;
+  // Epic B (FW): caller's w/hTot already foreshorten by the tile's depthScale;
+  // ds recedes this helper's own detail with them. ds=1 → byte-identical.
+  const s = rend.camera.scale * ds;
   const syT = s * rend.camera.yScale;
   const capD = 0.15 * syT;
   const hw = w / 2;
@@ -108,7 +110,8 @@ export function drawFencePost(rend: PaintHost, x: number, baseY: number, w: numb
  * every joint.
  */
 export function fenceItem(rend: PaintHost, tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
-  const s = rend.camera.scale;
+  const ds = rend.camera.depthScale(ty + 0.5); // Epic B (FW): billboard foreshortens by tile depth; ds=1 at q=0 → byte-identical
+  const s = rend.camera.scale * ds;
   const syT = s * rend.camera.yScale;
   const p = rend.camera.worldToScreen(tx + 0.5, ty + 0.5, rend.w, rend.h);
   p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
@@ -318,7 +321,8 @@ export function fenceItem(rend: PaintHost, tile: Tile, tx: number, ty: number, g
  * side-door law: never a pair).
  */
 export function fenceGateItem(rend: PaintHost, tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
-  const s = rend.camera.scale;
+  const ds = rend.camera.depthScale(ty + 0.5); // Epic B (FW): billboard foreshortens by tile depth; ds=1 at q=0 → byte-identical
+  const s = rend.camera.scale * ds;
   const syT = s * rend.camera.yScale;
   const p = rend.camera.worldToScreen(tx + 0.5, ty + 0.5, rend.w, rend.h);
   p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
@@ -479,9 +483,10 @@ export function giantLog(rend: PaintHost,
   shoulder: number,
   seed: number,
   ink: boolean,
+  ds = 1,
 ): void {
   const ctx = rend.ctx;
-  const s = rend.camera.scale;
+  const s = rend.camera.scale * ds; // Epic B (FW): spike/detail recede with the trunk
   const tone = ((seed >> 2) & 7) - 4;
   const apexX = x + w * (0.42 + ((seed >> 5) & 7) * 0.02);
   const spikeH = s * (0.24 + ((seed >> 8) & 3) * 0.035);
@@ -569,9 +574,10 @@ export function palisadeRope(rend: PaintHost,
   y: number,
   seams: readonly number[],
   knotSeed: number,
+  ds = 1,
 ): void {
   const ctx = rend.ctx;
-  const s = rend.camera.scale;
+  const s = rend.camera.scale * ds; // Epic B (FW): recede with the logs it laces
   ctx.fillStyle = PALI_ROPE_DARK;
   ctx.fillRect(xw, y, xe - xw, s * 0.085);
   ctx.fillStyle = PALI_ROPE;
@@ -597,16 +603,16 @@ export function palisadeRope(rend: PaintHost,
  * collar and — on one side of every gate — the camp's skull staring
  * down the road.
  */
-export function drawPalisadePost(rend: PaintHost, x: number, baseY: number, w: number, hTot: number, skull: boolean): void {
+export function drawPalisadePost(rend: PaintHost, x: number, baseY: number, w: number, hTot: number, skull: boolean, ds = 1): void {
   const ctx = rend.ctx;
-  const s = rend.camera.scale;
+  const s = rend.camera.scale * ds; // Epic B (FW): recede with the gate it hangs on
   const hw = w / 2;
   const shoulder = baseY - hTot;
   ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
   ctx.beginPath();
   ctx.ellipse(x, baseY + s * 0.012, hw * 1.5, s * 0.05, 0, 0, Math.PI * 2);
   ctx.fill();
-  giantLog(rend, x - hw, baseY, w, shoulder, hashCoords(61, Math.round(x), Math.round(baseY)), true);
+  giantLog(rend, x - hw, baseY, w, shoulder, hashCoords(61, Math.round(x), Math.round(baseY)), true, ds);
   // The rope hinge collar, doubled — a gate hangs real weight.
   ctx.fillStyle = PALI_ROPE_DARK;
   ctx.fillRect(x - hw - s * 0.014, baseY - hTot * 0.6, w + s * 0.028, s * 0.09);
@@ -645,7 +651,8 @@ export function drawPalisadePost(rend: PaintHost, x: number, baseY: number, w: n
  * A fat junction log anchors every corner, tee, and run end.
  */
 export function palisadeItem(rend: PaintHost, tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
-  const s = rend.camera.scale;
+  const ds = rend.camera.depthScale(ty + 0.5); // Epic B (FW): billboard foreshortens by tile depth; ds=1 at q=0 → byte-identical
+  const s = rend.camera.scale * ds;
   const syT = s * rend.camera.yScale;
   const p = rend.camera.worldToScreen(tx + 0.5, ty + 0.5, rend.w, rend.h);
   p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
@@ -713,7 +720,7 @@ export function palisadeItem(rend: PaintHost, tile: Tile, tx: number, ty: number
         const lx = p.x + fx * s - w / 2 + (((seed >> 6) & 3) - 1.5) * s * 0.012;
         const ly = baseY + fy * syT;
         const shoulder = ly - logShoulder(rend, tx, ty, k) * s;
-        giantLog(rend, lx, ly, w, shoulder, seed, true);
+        giantLog(rend, lx, ly, w, shoulder, seed, true, ds);
       };
 
       // The E-W course: four giants to the tile, widths hash-split
@@ -730,14 +737,14 @@ export function palisadeItem(rend: PaintHost, tile: Tile, tx: number, ty: number
           const k0 = hi * 2;
           const sh0 = baseY - logShoulder(rend, tx, ty, k0) * s;
           const sh1 = baseY - logShoulder(rend, tx, ty, k0 + 1) * s;
-          giantLog(rend, hx, baseY, w0, sh0, hashCoords(47, tx * 8 + k0, ty), true);
-          giantLog(rend, hx + w0, baseY, s * 0.5 - w0, sh1, hashCoords(47, tx * 8 + k0 + 1, ty), true);
+          giantLog(rend, hx, baseY, w0, sh0, hashCoords(47, tx * 8 + k0, ty), true, ds);
+          giantLog(rend, hx + w0, baseY, s * 0.5 - w0, sh1, hashCoords(47, tx * 8 + k0 + 1, ty), true, ds);
           seams.push(hx + w0);
           if (hi === 1 && xw < p.x) seams.push(p.x);
         }
         // THE HEAVY LASH: two thick rope courses bind the giants.
-        palisadeRope(rend, xw, xe, baseY - s * 1.02, seams, h);
-        palisadeRope(rend, xw, xe, baseY - s * 0.52, seams, h >> 3);
+        palisadeRope(rend, xw, xe, baseY - s * 1.02, seams, h, ds);
+        palisadeRope(rend, xw, xe, baseY - s * 0.52, seams, h >> 3, ds);
         // The trophy: one weathered skull lashed mid-run, sized to
         // be a WARNING, never a knot in the wood.
         if (((h >> 5) & 7) === 2 && xe - xw > s * 0.9) {
@@ -794,14 +801,14 @@ export function palisadeItem(rend: PaintHost, tile: Tile, tx: number, ty: number
         // course here — one extra-fat giant at the tile heart.
         const seed = hashCoords(53, tx, ty);
         const w = s * 0.3;
-        giantLog(rend, p.x - w / 2, baseY, w, baseY - s * (1.42 + ((seed >> 4) & 3) * 0.04), seed, true);
+        giantLog(rend, p.x - w / 2, baseY, w, baseY - s * (1.42 + ((seed >> 4) & 3) * 0.04), seed, true, ds);
       }
       if (ewAny) {
         courseEW();
         if (needAnchor) {
           const seed = hashCoords(53, tx, ty);
           const w = s * 0.3;
-          giantLog(rend, p.x - w / 2, baseY, w, baseY - s * (1.46 + ((seed >> 4) & 3) * 0.04), seed, true);
+          giantLog(rend, p.x - w / 2, baseY, w, baseY - s * (1.46 + ((seed >> 4) & 3) * 0.04), seed, true, ds);
         }
       }
       if (cs) courseNS('s');
@@ -823,7 +830,8 @@ export function palisadeItem(rend: PaintHost, tile: Tile, tx: number, ty: number
  * height instead).
  */
 export function palisadeGateItem(rend: PaintHost, tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
-  const s = rend.camera.scale;
+  const ds = rend.camera.depthScale(ty + 0.5); // Epic B (FW): billboard foreshortens by tile depth; ds=1 at q=0 → byte-identical
+  const s = rend.camera.scale * ds;
   const syT = s * rend.camera.yScale;
   const p = rend.camera.worldToScreen(tx + 0.5, ty + 0.5, rend.w, rend.h);
   p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
@@ -959,8 +967,8 @@ export function palisadeGateItem(rend: PaintHost, tile: Tile, tx: number, ty: nu
           ctx.fillRect(p.x - s * 0.032, baseY - s * 0.69, s * 0.064, s * 0.08);
         }
         // The towering posts flank the opening.
-        drawPalisadePost(rend, postL, baseY, POST_W, POST_H, ((h >> 4) & 1) === 1);
-        drawPalisadePost(rend, postR, baseY, POST_W, POST_H, ((h >> 4) & 1) === 0);
+        drawPalisadePost(rend, postL, baseY, POST_W, POST_H, ((h >> 4) & 1) === 1, ds);
+        drawPalisadePost(rend, postR, baseY, POST_W, POST_H, ((h >> 4) & 1) === 0, ds);
         // THE LINTEL: a squared beam spanning overhead — dark front
         // face, a TRUE lit top plane for the bird's eye, lashed to
         // both post crowns, three carved spikes standing on it.
@@ -1045,7 +1053,7 @@ export function palisadeGateItem(rend: PaintHost, tile: Tile, tx: number, ty: nu
       } else {
         const yN = baseY - syT * 0.5;
         const yS = baseY + syT * 0.5;
-        drawPalisadePost(rend, p.x, yN, POST_W, POST_H, ((h >> 4) & 1) === 1);
+        drawPalisadePost(rend, p.x, yN, POST_W, POST_H, ((h >> 4) & 1) === 1, ds);
         if (o < 0.98) {
           // Shut: the leaf edge-on, a crowned strip barring the
           // gap, retracting toward its north hinge as it swings.
@@ -1073,7 +1081,7 @@ export function palisadeGateItem(rend: PaintHost, tile: Tile, tx: number, ty: nu
           const oo = Math.sin((o * Math.PI) / 2);
           drawLeaf(p.x + 0.08 * s, 1, 0.72 * s * oo, 0);
         }
-        drawPalisadePost(rend, p.x, yS, POST_W, POST_H, false);
+        drawPalisadePost(rend, p.x, yS, POST_W, POST_H, false, ds);
       }
       if (shakeX !== 0) ctx.restore();
     },
@@ -1096,9 +1104,10 @@ export function ironBar(rend: PaintHost,
   tipY: number,
   seed: number,
   dim: number,
+  ds = 1,
 ): void {
   const ctx = rend.ctx;
-  const s = rend.camera.scale;
+  const s = rend.camera.scale * ds; // Epic B (FW): the bar's spearhead recedes with the run
   const bw = s * 0.036;
   const spearH = s * 0.2;
   const spearW = s * 0.075;
@@ -1170,7 +1179,7 @@ export function ironBar(rend: PaintHost,
  */
 export function ironCurbEW(rend: PaintHost, xw: number, xe: number, baseY: number, tx: number, ty: number): void {
   const ctx = rend.ctx;
-  const s = rend.camera.scale;
+  const s = rend.camera.scale * rend.camera.depthScale(ty + 0.5); // Epic B (FW)
   const syT = s * rend.camera.yScale;
   const faceH = s * 0.15;
   const capD = syT * 0.09;
@@ -1216,9 +1225,10 @@ export function drawGravePier(rend: PaintHost,
   w: number,
   hTot: number,
   finial: 'urn' | 'orb',
+  ds = 1,
 ): void {
   const ctx = rend.ctx;
-  const s = rend.camera.scale;
+  const s = rend.camera.scale * ds; // Epic B (FW): the pier's finial recedes with the run
   const syT = s * rend.camera.yScale;
   const hw = w / 2;
   const capY = baseY - hTot;
@@ -1339,9 +1349,9 @@ export function ironRail(rend: PaintHost, x0: number, x1: number, y: number, t: 
  * panels down a long run repeat, and the whole run still reads as
  * one commission.
  */
-export function ironOrnament(rend: PaintHost, cx: number, yTop: number, yBot: number, seed: number, dim: number): void {
+export function ironOrnament(rend: PaintHost, cx: number, yTop: number, yBot: number, seed: number, dim: number, ds = 1): void {
   const ctx = rend.ctx;
-  const s = rend.camera.scale;
+  const s = rend.camera.scale * ds; // Epic B (FW): scrollwork recedes with the rail
   const midY = (yTop + yBot) / 2;
   const kind = seed & 3;
   if (kind === 3) return; // the plain panel breathes
@@ -1389,7 +1399,8 @@ export function ironOrnament(rend: PaintHost, cx: number, yTop: number, yBot: nu
  *    honestly slanted rails — never a sheared panel.
  */
 export function ironFenceItem(rend: PaintHost, tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
-  const s = rend.camera.scale;
+  const ds = rend.camera.depthScale(ty + 0.5); // Epic B (FW): billboard foreshortens by tile depth; ds=1 at q=0 → byte-identical
+  const s = rend.camera.scale * ds;
   const syT = s * rend.camera.yScale;
   const p = rend.camera.worldToScreen(tx + 0.5, ty + 0.5, rend.w, rend.h);
   p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
@@ -1465,7 +1476,7 @@ export function ironFenceItem(rend: PaintHost, tile: Tile, tx: number, ty: numbe
         const seed = hashCoords(167, tx * 16 + k, ty * 16 + Math.round(fy * 16));
         const bx = p.x + fx * s + (((seed >> 8) & 3) - 1.5) * s * 0.008;
         const by = baseY + fy * syT;
-        ironBar(rend, bx, by - CURB_H * 0.5, tipAt(k) + fy * syT, seed, 0);
+        ironBar(rend, bx, by - CURB_H * 0.5, tipAt(k) + fy * syT, seed, 0, ds);
       };
 
       // The E-W course: the full panel faces the camera.
@@ -1478,7 +1489,7 @@ export function ironFenceItem(rend: PaintHost, tile: Tile, tx: number, ty: numbe
           // Seam bars land where runs join — the neighbor draws the
           // same bar at the same x, so the double paint is idempotent.
           const k = Math.round((bx - (p.x - s * 0.5)) / (s * PITCH));
-          ironBar(rend, bx, foot, tipAt(k), hashCoords(167, tx * 16 + k, ty), 0);
+          ironBar(rend, bx, foot, tipAt(k), hashCoords(167, tx * 16 + k, ty), 0, ds);
         }
         ironRail(rend, xw, xe, RAIL_LO, railT, 0);
         ironRail(rend, xw, xe, RAIL_MID, railT * 0.8, 0);
@@ -1488,7 +1499,7 @@ export function ironFenceItem(rend: PaintHost, tile: Tile, tx: number, ty: numbe
         if (xw < p.x) halves.push([p.x - s * 0.25, 0]);
         if (xe > p.x) halves.push([p.x + s * 0.25, 1]);
         for (const [hx, hi] of halves) {
-          ironOrnament(rend, hx, RAIL_HI + railT / 2, RAIL_MID - railT / 2, hashCoords(173, tx * 2 + hi, ty), 0);
+          ironOrnament(rend, hx, RAIL_HI + railT / 2, RAIL_MID - railT / 2, hashCoords(173, tx * 2 + hi, ty), 0, ds);
         }
         // THE STANDARD: a heavier forged upright at every second
         // tile seam — collar rings over the rails, a taller spear —
@@ -1646,7 +1657,7 @@ export function ironFenceItem(rend: PaintHost, tile: Tile, tx: number, ty: numbe
       if (anyDiag || isoNE || isoNW) diagCourses();
       if (ewAny) courseEW();
       if (needAnchor) {
-        drawGravePier(rend, p.x, baseY + s * 0.02, s * 0.26, s * 1.52, 'urn');
+        drawGravePier(rend, p.x, baseY + s * 0.02, s * 0.26, s * 1.52, 'urn', ds);
       } else if (nsAny) {
         // The joint of a through N-S run: the standard covers it
         // (the wood fence's post law), one per tile.
@@ -1683,7 +1694,8 @@ export function ironFenceItem(rend: PaintHost, tile: Tile, tx: number, ty: numbe
  * sliver, so the vertical gate lets its piers carry the ceremony).
  */
 export function ironGateItem(rend: PaintHost, tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
-  const s = rend.camera.scale;
+  const ds = rend.camera.depthScale(ty + 0.5); // Epic B (FW): billboard foreshortens by tile depth; ds=1 at q=0 → byte-identical
+  const s = rend.camera.scale * ds;
   const syT = s * rend.camera.yScale;
   const p = rend.camera.worldToScreen(tx + 0.5, ty + 0.5, rend.w, rend.h);
   p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
@@ -1748,7 +1760,7 @@ export function ironGateItem(rend: PaintHost, tile: Tile, tx: number, ty: number
           // A gate leaf keeps every bar it was hung with: the seed's
           // low bits are pinned so the decay variants never deal here.
           const seed = hashCoords(181, tx * 8 + i, ty + dir * 3);
-          ironBar(rend, bx, yBot, topAt(fx) - 0.2 * s, (seed & ~127) | 1, dim);
+          ironBar(rend, bx, yBot, topAt(fx) - 0.2 * s, (seed & ~127) | 1, dim, ds);
         }
         // The bottom rail and the swept top rail.
         ctx.fillStyle = shade(IRON_DARK, dim);
@@ -1804,8 +1816,8 @@ export function ironGateItem(rend: PaintHost, tile: Tile, tx: number, ty: number
           ctx.stroke();
         }
         // The piers flank the opening.
-        drawGravePier(rend, pierL, baseY, PIER_W, PIER_H, 'orb');
-        drawGravePier(rend, pierR, baseY, PIER_W, PIER_H, 'orb');
+        drawGravePier(rend, pierL, baseY, PIER_W, PIER_H, 'orb', ds);
+        drawGravePier(rend, pierR, baseY, PIER_W, PIER_H, 'orb', ds);
         // THE OVERTHROW: the wrought band arching pier to pier —
         // this is the silhouette the whole yard is known by. The
         // band springs from the pier CAPS (iron seats on masonry,
@@ -1902,7 +1914,7 @@ export function ironGateItem(rend: PaintHost, tile: Tile, tx: number, ty: number
       } else {
         const yN = baseY - syT * 0.5;
         const yS = baseY + syT * 0.5;
-        drawGravePier(rend, p.x, yN, PIER_W, PIER_H, 'orb');
+        drawGravePier(rend, p.x, yN, PIER_W, PIER_H, 'orb', ds);
         if (o < 0.98) {
           // Shut: the leaf edge-on — a dark comb barring the gap,
           // spear ridge cascading, retracting toward its north
@@ -1933,7 +1945,7 @@ export function ironGateItem(rend: PaintHost, tile: Tile, tx: number, ty: number
           const oo = Math.sin((o * Math.PI) / 2);
           drawLeaf(p.x + 0.07 * s, 1, 0.7 * s * oo, 0);
         }
-        drawGravePier(rend, p.x, yS, PIER_W, PIER_H, 'orb');
+        drawGravePier(rend, p.x, yS, PIER_W, PIER_H, 'orb', ds);
       }
       if (shakeX !== 0) ctx.restore();
     },
@@ -1981,7 +1993,7 @@ export function hedgeMassPaint(rend: PaintHost,
   inkSides = true,
 ): void {
   const ctx = rend.ctx;
-  const s = rend.camera.scale;
+  const s = rend.camera.scale * rend.camera.depthScale(ty + 0.5); // Epic B (FW)
   const syT = s * rend.camera.yScale;
   const X = (u: number) => px + u * s;
   const Y = (v: number) => py + v * syT - h * s;
@@ -2463,7 +2475,8 @@ export function hedgeMassPaint(rend: PaintHost,
  * seamlessly.
  */
 export function hedgeItem(rend: PaintHost, tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
-  const s = rend.camera.scale;
+  const ds = rend.camera.depthScale(ty + 0.5); // Epic B (FW): billboard foreshortens by tile depth; ds=1 at q=0 → byte-identical
+  const s = rend.camera.scale * ds;
   const syT = s * rend.camera.yScale;
   const p = rend.camera.worldToScreen(tx + 0.5, ty + 0.5, rend.w, rend.h);
   p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
@@ -2722,7 +2735,8 @@ export function hedgeItem(rend: PaintHost, tile: Tile, tx: number, ty: number, g
  * stubs with cut seams, the wicket a paled bar between them.
  */
 export function hedgeGateItem(rend: PaintHost, tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
-  const s = rend.camera.scale;
+  const ds = rend.camera.depthScale(ty + 0.5); // Epic B (FW): billboard foreshortens by tile depth; ds=1 at q=0 → byte-identical
+  const s = rend.camera.scale * ds;
   const syT = s * rend.camera.yScale;
   const p = rend.camera.worldToScreen(tx + 0.5, ty + 0.5, rend.w, rend.h);
   p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
