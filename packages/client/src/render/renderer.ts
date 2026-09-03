@@ -278,7 +278,7 @@ import {
 } from './lighting.js';
 import { collectEmitter, type EmitterGlowOut } from './emitters.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
-import { collectVolume, crownSpans } from './collectVolume.js';
+import { collectVolume, crownSpans, diagSpans } from './collectVolume.js';
 import type { CrownSpan } from './collectVolume.js';
 import {
   RaisedKind,
@@ -1285,6 +1285,13 @@ const GLOW_STOPS: ReadonlyArray<readonly [number, number]> = [
  * continuously with no per-tile wedges and no internal seams.
  */
 interface CrownVolume {
+  /** Which world-geometry family this run is — picks the crown ART in
+   *  `crownSpanItem`: 'wall' (wood/stone/dark beam + slab crown),
+   *  'garrison' (great-ashlar wall-walk + crenellated parapet teeth), or
+   *  'diag' (a 45° corner/run: a lifted mass-triangle crown + sloped arris). */
+  kind: 'wall' | 'garrison' | 'diag';
+  /** For kind 'diag': the run's (uniform) 45° tile — its material + mass. */
+  diagTile?: Tile;
   /** Wall material class (0 wood, 1 stone, 2 dark) — picks the crown colour. */
   matClass: number;
   /** Uniform crown height (tiles) of the whole run. */
@@ -9752,9 +9759,22 @@ export class Renderer {
       }
       case RaisedKind.GarrisonWall: {
         const whT = this.garrisonHeightAt(game, tx, ty);
-        const item = diagWallInfo(tile)
+        const isDiag = diagWallInfo(tile) !== null;
+        // THE ONE RENDER A2c: under lean, coalesce a STRAIGHT curtain RUN
+        // into ONE crenellated crown drawn per straight span (continuous
+        // wall-walk + parapet teeth + castellated outline), instead of the
+        // per-tile caps/teeth/outline that wedge and segment under pitch —
+        // the garrison twin of the wall crown. The member tiles keep their
+        // per-tile ashlar FACE (already seam-free via shared corners); only
+        // the crown + outline move to the run. 45° turns keep their bespoke
+        // painter. q=0 keeps the proven per-tile / band-baked flat look.
+        if (!isDiag && this.wallVolumeOn && this.camera.q > 0 && !this.bakingMask) {
+          this.floodGarrisonCrown(game, tx, ty);
+        }
+        const gSuppress = !isDiag && this.crownSuppressed.has(packTile(tx, ty));
+        const item = isDiag
           ? garrisonArt.garrisonDiagItem(this, tile, tx, ty, game, whT)
-          : garrisonArt.garrisonWallItem(this, tile, tx, ty, game, whT);
+          : garrisonArt.garrisonWallItem(this, tile, tx, ty, game, whT, gSuppress);
         if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
         item.strat = this.stratAt(tx, ty);
         items.push(item);
@@ -9853,6 +9873,16 @@ export class Renderer {
         // facade). They ride the SAME reveal height field as the
         // straight runs — the whole corner bows with its walls, so
         // a cut run never ends at a full-height stump.
+        // THE ONE RENDER A2c: under lean, coalesce a 45° RUN (staircase of
+        // same-tile members) into ONE continuous mass-triangle crown +
+        // outline drawn per member off shared world corners — retiring the
+        // per-tile crown cap + per-tile outline that wedge/segment under
+        // pitch. The member keeps its per-tile sloped FACE. q=0 keeps the
+        // proven per-tile path.
+        if (this.wallVolumeOn && this.camera.q > 0 && !this.bakingMask) {
+          this.floodDiagCrown(game, tile, tx, ty);
+        }
+        const dSuppress = this.crownSuppressed.has(packTile(tx, ty));
         const item = this.diagWallItem(
           tile,
           tx,
@@ -9860,6 +9890,7 @@ export class Renderer {
           game,
           this.wallHeightAt(game, tx, ty),
           this.wallRegion(game, tx, ty),
+          dSuppress,
         );
         if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
         item.strat = this.stratAt(tx, ty);
@@ -11137,15 +11168,70 @@ export class Renderer {
     ty: number,
     region: InteriorRegion | null,
   ): void {
-    if (this.crownRunSeen.has(packTile(tx, ty))) return;
     const seedClass = Renderer.wallMatClass(tile);
     if (seedClass === null) return;
+    this.floodCrown(game, tx, ty, region, {
+      kind: 'wall',
+      matClass: seedClass,
+      classOf: (t) => Renderer.wallMatClass(t),
+      heightAt: (mx, my) => this.wallHeightAt(game, mx, my),
+    });
+  }
+
+  /**
+   * THE ONE RENDER — A2c: the garrison twin of `floodWallCrown`. A curtain
+   * run's crenellated wall-walk (great-ashlar top + parapet teeth) is the
+   * exact analogue of a wall's crown: under lean the per-tile parapet caps
+   * and the castellated per-tile outline WEDGE and SEGMENT, so the run's
+   * crown moves to ONE continuous coalesced span path (`crownSpanItem`,
+   * kind 'garrison') while the members keep their per-tile ashlar FACE. The
+   * flood keys off `garrisonHeightAt` (the taller curtain veil) and only
+   * STRAIGHT garrison mass tiles coalesce — gates and 45° turns keep their
+   * bespoke painters (the flood's `classOf` excludes them, so the perimeter
+   * routes around a gateway exactly as it routes around a doorway).
+   */
+  private floodGarrisonCrown(
+    game: ClientGame,
+    tx: number,
+    ty: number,
+  ): void {
+    this.floodCrown(game, tx, ty, null, {
+      kind: 'garrison',
+      matClass: 1,
+      classOf: (t) =>
+        Renderer.GARRISON_MASS.has(t) && diagWallInfo(t) === null && doorInfo(t) === null ? 0 : null,
+      heightAt: (mx, my) => this.garrisonHeightAt(game, mx, my),
+    });
+  }
+
+  /**
+   * The shared crown flood behind `floodWallCrown` / `floodGarrisonCrown`.
+   * Floods the same-class RUN seeded at (tx,ty) once; if it coalesces (one
+   * elevation, one uniform veil height across the whole run), marks every
+   * member's per-tile crown suppressed and records ONE `CrownVolume` (the
+   * continuous crown drawn PER STRAIGHT SPAN via `crownSpans`). Falls back
+   * to per-tile when the run is too big, terraced, or height-non-uniform.
+   * Only ever called at q>0 — q=0 keeps the band-baked flat look.
+   */
+  private floodCrown(
+    game: ClientGame,
+    tx: number,
+    ty: number,
+    region: InteriorRegion | null,
+    cfg: {
+      kind: 'wall' | 'garrison';
+      matClass: number;
+      classOf: (t: Tile) => number | null;
+      heightAt: (mx: number, my: number) => number;
+    },
+  ): void {
+    if (this.crownRunSeen.has(packTile(tx, ty))) return;
     const vol = collectVolume(
       (mx, my) => game.world.groundAt(mx, my),
       tx,
       ty,
-      (t) => Renderer.wallMatClass(t),
-      { cap: 256, perimeter: true, scratch: this.wallVolScratch, heightAt: (mx, my) => this.wallHeightAt(game, mx, my) },
+      (t) => cfg.classOf(t),
+      { cap: 256, perimeter: true, scratch: this.wallVolScratch, heightAt: (mx, my) => cfg.heightAt(mx, my) },
     );
     if (!vol) return;
     // Copy members out of the aliased scratch before anything else floods it.
@@ -11154,7 +11240,7 @@ export class Renderer {
     // later-scanned members neither re-flood nor emit a second run crown.
     for (let i = 0; i < mem.length; i += 2) this.crownRunSeen.add(packTile(mem[i]!, mem[i + 1]!));
     if (vol.perimeter.length === 0) return;
-    const seedWhT = this.wallHeightAt(game, tx, ty);
+    const seedWhT = cfg.heightAt(tx, ty);
     const seedElev = game.world.elevAt(tx, ty);
     for (let i = 0; i < mem.length; i += 2) {
       const mx = mem[i]!;
@@ -11164,13 +11250,11 @@ export class Renderer {
       // terraced run stepping elevation, keeps the per-tile path — a single
       // plane cannot express the step. A whole building foundation is at ONE
       // elevation, so its walls DO coalesce (the crown lifts by that
-      // elevation, below). A doorway is NOT a wall tile, so the flood already
-      // routes the perimeter around the opening and the crown spans stop at
-      // its jambs — no per-run bail needed for doors (which is why BUILDINGS,
-      // all of which have a door, now coalesce); the span rectangles are
-      // square-cornered, so the jamb square-corner law holds by construction.
+      // elevation, below). A doorway/gateway is NOT a member tile, so the
+      // flood already routes the perimeter around the opening and the crown
+      // spans stop at its jambs — no per-run bail needed for openings.
       if (game.world.elevAt(mx, my) !== seedElev) return;
-      if (Math.abs(this.wallHeightAt(game, mx, my) - seedWhT) > 1e-4) return;
+      if (Math.abs(cfg.heightAt(mx, my) - seedWhT) > 1e-4) return;
     }
     // Coalesce: suppress every member's per-tile crown; defer the run crown.
     const members = new Set<number>();
@@ -11180,7 +11264,8 @@ export class Renderer {
       members.add(k);
     }
     this.crownVolumes.push({
-      matClass: seedClass,
+      kind: cfg.kind,
+      matClass: cfg.matClass,
       whT: seedWhT,
       // The run's foundation lift in WORLD tiles (elevation levels × ELEV_H),
       // added to every crown/foot height so the plane seats on the lifted wall
@@ -11193,6 +11278,87 @@ export class Renderer {
       keyX: vol.ax,
       keyY: vol.ay,
       sortY: vol.y1 + 1,
+      strat: this.stratAt(tx, ty),
+    });
+  }
+
+  /** The two diagonal run-neighbour offsets for a 45° mass — the direction
+   *  its hypotenuse continues. NE/SW ride the NW–SE diagonal (±1,±1 same
+   *  sign); NW/SE ride the SW–NE diagonal (±1,∓1). Members sharing a mass
+   *  and one of these offsets are one continuous 45° run. */
+  private static diagRunDirs(mass: 'NE' | 'NW' | 'SE' | 'SW'): [number, number][] {
+    return mass === 'NE' || mass === 'SW'
+      ? [[1, 1], [-1, -1]]
+      : [[1, -1], [-1, 1]];
+  }
+
+  /**
+   * THE ONE RENDER — A2c: the diagonal twin of `floodWallCrown`. A 45° wall
+   * is a STAIRCASE of same-tile triangular members (classified `len:1`),
+   * diagonally — not 4- — connected, so it needs a bespoke flood along the
+   * mass's hypotenuse direction. A uniform-height run coalesces: every
+   * member's per-tile crown + outline is suppressed and ONE `CrownVolume`
+   * (kind 'diag') draws the run's crowns via `crownSpanItem`, each member a
+   * self-bounded item projected off shared world corners (the arrises meet
+   * seam-free) with only the RUN-END edge inked. Falls back per-tile for a
+   * terraced / veil-sinking run. q>0 only — q=0 keeps the proven per-tile
+   * diag path (the golden gate has no diag scene, so q=0 is left untouched).
+   */
+  private floodDiagCrown(game: ClientGame, tile: Tile, tx: number, ty: number): void {
+    if (this.crownRunSeen.has(packTile(tx, ty))) return;
+    const info = diagWallInfo(tile);
+    if (info === null) return;
+    const dirs = Renderer.diagRunDirs(info.mass);
+    // Bespoke diagonal flood: same tile id, along the two hyp directions.
+    const mem: number[] = [tx, ty];
+    const seen = new Set<number>([packTile(tx, ty)]);
+    const queue: number[] = [tx, ty];
+    while (queue.length > 0 && mem.length < 512) {
+      const cy = queue.pop()!;
+      const cx = queue.pop()!;
+      for (const [dx, dy] of dirs) {
+        const nx = cx + dx;
+        const ny = cy + dy;
+        const k = packTile(nx, ny);
+        if (seen.has(k)) continue;
+        if (game.world.groundAt(nx, ny) !== tile) continue;
+        seen.add(k);
+        mem.push(nx, ny);
+        queue.push(nx, ny);
+      }
+    }
+    for (let i = 0; i < mem.length; i += 2) this.crownRunSeen.add(packTile(mem[i]!, mem[i + 1]!));
+    // ONE crown = ONE height + ONE elevation across the run (per the wall law).
+    const seedWhT = this.wallHeightAt(game, tx, ty);
+    const seedElev = game.world.elevAt(tx, ty);
+    let ax = tx, ay = ty, y1 = ty;
+    for (let i = 0; i < mem.length; i += 2) {
+      const mx = mem[i]!;
+      const my = mem[i + 1]!;
+      if (game.world.elevAt(mx, my) !== seedElev) return;
+      if (Math.abs(this.wallHeightAt(game, mx, my) - seedWhT) > 1e-4) return;
+      if (my < ay || (my === ay && mx < ax)) { ax = mx; ay = my; }
+      if (my > y1) y1 = my;
+    }
+    const members = new Set<number>();
+    for (let i = 0; i < mem.length; i += 2) {
+      const k = packTile(mem[i]!, mem[i + 1]!);
+      this.crownSuppressed.add(k);
+      members.add(k);
+    }
+    this.crownVolumes.push({
+      kind: 'diag',
+      diagTile: tile,
+      matClass: info.material === 'stone' ? 1 : 0,
+      whT: seedWhT,
+      elevLift: seedElev * ELEV_H,
+      region: this.wallRegion(game, tx, ty),
+      spans: diagSpans(mem),
+      members,
+      rev: game.world.get(Math.floor(ax / CHUNK_SIZE), Math.floor(ay / CHUNK_SIZE))?.rev ?? 0,
+      keyX: ax,
+      keyY: ay,
+      sortY: y1 + 1,
       strat: this.stratAt(tx, ty),
     });
   }
@@ -11220,6 +11386,7 @@ export class Renderer {
    * no flush, no wall-lane union. A3 swaps the interim stroke for alpha-dilate.
    */
   private crownSpanItem(cv: CrownVolume, span: CrownSpan): DrawItem {
+    const garrison = cv.kind === 'garrison';
     const skin = this.woodSkinFor(cv.region);
     const top = cv.matClass === 0 ? skin.top : cv.matClass === 1 ? '#8c8798' : '#3a3444';
     const crownH = cv.whT + cv.elevLift; // span top above elev-0 ground
@@ -11231,11 +11398,15 @@ export class Renderer {
       { x: span.x1 + 1, y: span.y1 + 1 },
       { x: span.x0, y: span.y1 + 1 },
     ];
-    // pb: the projected screen box of the span, from all four corners at both
-    // the crown and the foot lift (+ a pad for the outline stroke width).
+    // A garrison crown carries parapet teeth rising MERLON_H above the walk,
+    // so its screen box must reach the tooth CAP height, not just the crown.
+    const mkK = garrison ? Math.max(0, Math.min(1, (cv.whT - WALL_STUB) / (GARRISON_H - WALL_STUB))) : 0;
+    const capH = crownH + (garrison ? MERLON_H * mkK : 0);
+    // pb: the projected screen box of the span, from all four corners at the
+    // crown/foot (and tooth cap for garrison) lift (+ a pad for the stroke).
     let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
     for (const c of loop) {
-      for (const H of [crownH, footH]) {
+      for (const H of garrison ? [capH, footH] : [crownH, footH]) {
         const p = this.liftedCornerPt(c.x, c.y, H);
         if (p.x < bx0) bx0 = p.x;
         if (p.x > bx1) bx1 = p.x;
@@ -11246,6 +11417,14 @@ export class Renderer {
     const pad = 4;
     const draw = (): void => {
       const ctx = this.ctx;
+      if (cv.kind === 'diag') {
+        this.paintDiagCrownSpan(cv, span, top);
+        return;
+      }
+      if (garrison) {
+        garrisonArt.garrisonCrownSpan(this, span, crownH, footH, cv.whT, cv.members);
+        return;
+      }
       topPlane(this.camera, this.w, this.h, loop, crownH, (plane: TopPlaneGeom) =>
         this.paintWallCrown(plane, top, cv.matClass),
       );
@@ -11288,6 +11467,7 @@ export class Renderer {
         ((span.x1 - span.x0 + 1) << 15) ^
         ((span.y1 - span.y0 + 1) << 21) ^
         (cv.matClass << 27) ^
+        (garrison ? 0x4000_0000 : 0) ^
         Math.imul(cv.rev | 0, 0x85eb)) |
       0;
     return {
@@ -11299,6 +11479,96 @@ export class Renderer {
       stageRebuild: draw,
       draw,
     };
+  }
+
+  /**
+   * THE ONE RENDER — A2c: paint ONE 45° member of a coalesced diagonal run's
+   * crown, in ABSOLUTE screen coords projected off the member's WORLD corners
+   * (each rounded + lifted the same way the wall/garrison crowns are), so
+   * consecutive members' hypotenuse arrises meet on the same device pixel —
+   * the run reads as ONE continuous 45° crown, not per-tile panels. Retires
+   * the per-tile diag crown cap + per-tile diag outline onto the coalesced
+   * path (the per-tile `diagWallItem` suppresses them for run members). The
+   * outline is the lifted outward arris + the visible face's ground contact +
+   * the RUN-END verticals only (a mid-run end sits on a shared corner with the
+   * next member, so it is not inked — no internal seam). Interim vector stroke;
+   * A3 swaps it for the alpha-dilate that rings the whole run.
+   */
+  private paintDiagCrownSpan(cv: CrownVolume, span: CrownSpan, top: string): void {
+    const info = diagWallInfo(cv.diagTile!);
+    if (info === null) return;
+    const ctx = this.ctx;
+    const tx = span.x0;
+    const ty = span.y0;
+    const crownH = cv.whT + cv.elevLift;
+    const footH = cv.elevLift;
+    const mass = info.mass;
+    // Crown (lifted) + ground (foot) corners, each projected + rounded once.
+    const NWc = this.liftedCornerPt(tx, ty, crownH);
+    const NEc = this.liftedCornerPt(tx + 1, ty, crownH);
+    const SWc = this.liftedCornerPt(tx, ty + 1, crownH);
+    const SEc = this.liftedCornerPt(tx + 1, ty + 1, crownH);
+    const NWg = this.liftedCornerPt(tx, ty, footH);
+    const NEg = this.liftedCornerPt(tx + 1, ty, footH);
+    const SWg = this.liftedCornerPt(tx, ty + 1, footH);
+    const SEg = this.liftedCornerPt(tx + 1, ty + 1, footH);
+    // The mass triangle at the crown (matches diagWallItem / garrisonDiagItem).
+    const tri =
+      mass === 'NE'
+        ? [NWc, NEc, SEc]
+        : mass === 'NW'
+          ? [NWc, NEc, SWc]
+          : mass === 'SE'
+            ? [NEc, SEc, SWc]
+            : [NWc, SEc, SWc];
+    const front = mass === 'NE' || mass === 'NW';
+    // The outward hypotenuse: NE/SW on the NW–SE diagonal, NW/SE on SW–NE.
+    const hypW = mass === 'NE' || mass === 'SW' ? NWc : SWc;
+    const hypE = mass === 'NE' || mass === 'SW' ? SEc : NEc;
+    const hypWg = mass === 'NE' || mass === 'SW' ? NWg : SWg;
+    const hypEg = mass === 'NE' || mass === 'SW' ? SEg : NEg;
+    // Fill the mass triangle.
+    ctx.fillStyle = top;
+    ctx.beginPath();
+    ctx.moveTo(tri[0]!.x, tri[0]!.y);
+    ctx.lineTo(tri[1]!.x, tri[1]!.y);
+    ctx.lineTo(tri[2]!.x, tri[2]!.y);
+    ctx.closePath();
+    ctx.fill();
+    // Sun-lit lip on the camera-side arris grounds the height read.
+    ctx.strokeStyle = shade(top, 16);
+    ctx.lineWidth = Math.max(1, this.camera.scale * 0.14);
+    ctx.beginPath();
+    ctx.moveTo(hypW.x, hypW.y);
+    ctx.lineTo(hypE.x, hypE.y);
+    ctx.stroke();
+    if (!this.outlineOn) return;
+    // Run-end tests: the two ends of the hyp continue to diagonal neighbours.
+    // East end rides dirs[0], west end dirs[1]; a shared end is not inked.
+    const dirs = Renderer.diagRunDirs(mass);
+    const eastNb = cv.members.has(packTile(tx + dirs[0]![0], ty + dirs[0]![1]));
+    const westNb = cv.members.has(packTile(tx + dirs[1]![0], ty + dirs[1]![1]));
+    const o = new Path2D();
+    // The lifted outward arris (always the run's continuous top edge).
+    o.moveTo(hypW.x, hypW.y);
+    o.lineTo(hypE.x, hypE.y);
+    if (front) {
+      // Hyp ground contact + run-end verticals.
+      o.moveTo(hypWg.x, hypWg.y);
+      o.lineTo(hypEg.x, hypEg.y);
+      if (!westNb) { o.moveTo(hypW.x, hypW.y); o.lineTo(hypWg.x, hypWg.y); }
+      if (!eastNb) { o.moveTo(hypE.x, hypE.y); o.lineTo(hypEg.x, hypEg.y); }
+    } else {
+      // Back corner (SE/SW): the near read is the crown's south base edge
+      // (SW→SE for both masses); the arris above is the far edge. Run-end
+      // verticals drop only where the run does not continue.
+      o.moveTo(SWc.x, SWc.y);
+      o.lineTo(SEc.x, SEc.y);
+      if (!westNb) { o.moveTo(hypW.x, hypW.y); o.lineTo(hypWg.x, hypWg.y); }
+      if (!eastNb) { o.moveTo(hypE.x, hypE.y); o.lineTo(hypEg.x, hypEg.y); }
+    }
+    this.beginStructOutline();
+    ctx.stroke(o);
   }
 
   /** Paint one crown top plane: fill + a run-continuous beam read (arris
@@ -12439,6 +12709,11 @@ export class Renderer {
     game: ClientGame,
     whT: number,
     region: InteriorRegion | null,
+    // THE ONE RENDER A2c: a member of a COALESCED 45° run (floodDiagCrown)
+    // paints only its sloped FACE here; the run's continuous mass-triangle
+    // crown + outline are drawn once by the coalesced path (paintDiagCrownSpan).
+    // q=0 never sets this (it keeps the proven per-tile crown + outline).
+    suppressTop = false,
   ): DrawItem {
     const info = diagWallInfo(tile)!;
     const ctx = this.ctx;
@@ -12488,6 +12763,9 @@ export class Renderer {
         } else if (!nS) {
           this.paintFaceBands([x0, yS], [x1, yS], hs, s, stone, skin, face, tx, ty, whT);
         }
+        // A coalesced-run member paints only its FACE (above): the run's
+        // mass-triangle crown + outline are drawn once by paintDiagCrownSpan.
+        if (suppressTop) return;
         // Crown: the mass triangle, lifted.
         // Epic B (FW): lift the crown by the DEPTH-SCALED wall height so the
         // top slab seats on the depth-scaled face top (hs = whT*s) instead

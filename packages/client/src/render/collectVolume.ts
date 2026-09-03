@@ -343,6 +343,35 @@ export function crownSpans(members: number[]): CrownSpan[] {
   return spans;
 }
 
+/**
+ * THE ONE RENDER — A2c: partition a DIAGONAL wall run's members into
+ * per-column crown SPANS. A 45° wall is a STAIRCASE of triangular tiles
+ * (each classified `len:1`), diagonally — not 4-  — connected: consecutive
+ * members share exactly ONE projected hypotenuse corner. There is no
+ * multi-tile straight span to coalesce (each tile is its own triangle), so
+ * the partition yields ONE 1×1 span per member — mirroring how `crownSpans`
+ * yields a single span for an isolated tile. The seamlessness comes not from
+ * merging bboxes (each stays a single tile = tiny scratch, no blowup) but
+ * from the DRAW projecting each member's crown off shared WORLD corners, so
+ * adjacent members' hypotenuse arrises meet on the same device pixel, and
+ * from the outline testing the run member set so the shared corner never
+ * inks an internal seam — exactly the garrison/wall span law, applied along
+ * the 45° run. Union of the spans === the run; every member covered once.
+ */
+export function diagSpans(members: number[]): CrownSpan[] {
+  const spans: CrownSpan[] = [];
+  const seen = new Set<number>();
+  for (let i = 0; i < members.length; i += 2) {
+    const x = members[i]!;
+    const y = members[i + 1]!;
+    const k = packTile(x, y);
+    if (seen.has(k)) continue; // a member listed once covers itself once
+    seen.add(k);
+    spans.push({ x0: x, y0: y, x1: x, y1: y });
+  }
+  return spans;
+}
+
 /** Drop points that sit on a straight (axis-aligned) run between neighbours. */
 function mergeCollinear(loop: VolPoint[]): VolPoint[] {
   const n = loop.length;
