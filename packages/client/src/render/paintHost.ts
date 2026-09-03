@@ -18,7 +18,6 @@ export type PaintHost = Pick<
   'bakingMask' |
   'bandGridPx' |
   'beginContactFill' |
-  'beginHeightLayer' |
   'beginStructOutline' |
   'breezeAt' |
   'buildGhost' |

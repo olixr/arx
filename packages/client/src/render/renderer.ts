@@ -660,15 +660,6 @@ const WALL_H = 2.05;
 // elevation solve live in elevPick.ts so the solve stays pure and
 // testable; everything here still derives from that one number.
 /**
- * Horizontal lean per tile of height. ZERO: verticals rise straight on
- * screen, exactly like the billboard sprites — the classic 3/4-view
- * contract. Leaning tops read as a warped world, not a moved camera
- * (tried, rejected). The machinery stays for a possible future
- * cutscene-camera, but gameplay is straight-vertical.
- */
-const PERSP_LEAN = 0;
-
-/**
  * TALL-CONTENT CULLING PADS. 2.5D law: an h-tile-tall thing spans
  * h / yScale SCREEN ROWS above its base row, because heights rise in
  * straight s-units while ground rows compress by yScale (0.6). Every
@@ -2551,31 +2542,6 @@ export class Renderer {
   private readonly npcArrows = new Map<number, Array<{ dir: number; hy: number; ox: number }>>();
   /** Projectiles already given their muzzle flash. */
   private readonly projSeen = new Set<number>();
-
-  /**
-   * Perspective lean, applied PER VERTEX: a point `heightTiles` above
-   * the ground at screen column `x` lands at `leanX(x, h)` — an affine
-   * horizontal scale of that height-layer about the screen center.
-   * Because it's affine, two structures sharing an edge share exactly
-   * the same leaned edge: runs of walls, trunks meeting canopies, and
-   * abutting crowns can never crack, at any lean strength.
-   */
-  private leanX(x: number, heightTiles: number): number {
-    return x + (x - this.w / 2) * PERSP_LEAN * heightTiles;
-  }
-
-  /**
-   * Enter the leaned frame for a whole layer at a given height: after
-   * this transform, drawing FOOTPRINT coordinates paints them lifted by
-   * `heightTiles` and leaned coherently. Pair with ctx.restore().
-   */
-  beginHeightLayer(heightTiles: number): void {
-    const k = 1 + PERSP_LEAN * heightTiles;
-    this.ctx.save();
-    this.ctx.translate(this.w / 2, -heightTiles * this.camera.scale);
-    this.ctx.scale(k, 1);
-    this.ctx.translate(-this.w / 2, 0);
-  }
 
   /**
    * Arm the context to stroke an architecture silhouette: the same
@@ -9927,18 +9893,17 @@ export class Renderer {
   }
 
   /** The layer stands down where its premises fail: the editor pins
-   *  the camera and patches tiles at brush rate, and leanX bends
-   *  verticals about the LIVE screen center — a bake would freeze the
-   *  lean about the stretch's own canvas center (THE STRAIGHT-WORLD
-   *  PREREQUISITE; the fuse blows if the lean is ever revived).
+   *  the camera and patches tiles at brush rate, and a bake would freeze
+   *  the perspective about the stretch's own canvas center rather than the
+   *  LIVE screen center (THE STRAIGHT-WORLD PREREQUISITE).
    *
-   *  §5-B: the fuse now reads the RUNTIME lean (`camera.q`), not just the
-   *  compile-time PERSP_LEAN — when B-2 raises q the flat static bake would
-   *  render walls un-leaned about the wrong center, so the layer must fuse
-   *  OFF for any q≠0 (live-draw the static world under perspective until the
-   *  bake itself is made lean-aware, a B-3 surface task). q=0 is unchanged. */
+   *  §5-B: the fuse reads the RUNTIME lean (`camera.q`) — when B-2 raises q
+   *  the flat static bake would render walls un-leaned about the wrong
+   *  center, so the layer must fuse OFF for any q≠0 (live-draw the static
+   *  world under perspective until the bake itself is made lean-aware, a
+   *  B-3 surface task). q=0 is unchanged. */
   staticLayerOn(): boolean {
-    return this.cameraOverride === null && PERSP_LEAN === 0 && this.camera.q === 0;
+    return this.cameraOverride === null && this.camera.q === 0;
   }
 
   /** Device pixels per tile for band bakes (THE CRISP GRID LAW):
@@ -10305,11 +10270,42 @@ export class Renderer {
       xL = Math.min(p0.x, p1.x, sw2.x, ne2.x);
       xR = Math.max(p0.x, p1.x, sw2.x, ne2.x);
     }
+    // THE BOX RIDES THE PROJECTED FACE (Epic B P3.5): the wall's draw
+    // closure lifts each crown corner by its OWN row depthScale — the far
+    // north edge by hsN (= whT·scale·depthScale(ty)), the near south edge
+    // by hs (= whT·scale·depthScale(ty+spanS)) — and the face/side/crown
+    // span between those projected corners, NOT the single billboard scalar.
+    // Size the box's vertical extent from the bounding box of the FOUR
+    // projected face corners: the two ground base rows (north p0.y / south
+    // p1.y) and the two crown tops (each base row lifted by the crown height
+    // at that row's own depthScale). This is the true envelope of the leaned
+    // face + slanted crown, so nothing the closure draws can escape it.
+    // The crown lift uses the box's own `northT` pad (>= the drawn whT) and
+    // `s`=camera.scale (the closure's spriteScale = s·depthScale is folded
+    // into the per-row depthScale here), so the corner box is >= the drawn
+    // art at every corner. Unioned with the legacy pad extent (padTop/padBot)
+    // so the bake bounds can only GROW — never clip less than today's proven
+    // bound. At q=0 every depthScale is 1, so both crown corners reduce to
+    // p0.y/p1.y − northT·s, the base rows to p0.y/p1.y, and the union equals
+    // today's `p0.y − northT·sPad` … `p1.y + southT·sPad` rect exactly —
+    // byte-identical to the ortho frame.
+    const dsN = this.camera.depthScale(m.ty);
+    const dsS = this.camera.depthScale(m.ty + spanS);
+    const crownN = p0.y - northT * s * dsN; // north crown top (far)
+    const crownS = p1.y - northT * s * dsS; // south crown top (near)
+    const faceTop = Math.min(crownN, crownS, p0.y, p1.y);
+    const faceBot = Math.max(p0.y, p1.y) + southT * s * dsS;
+    // Legacy pad bound (today's box) — the union floor: the box never
+    // shrinks below it, so it can only ever grow to contain the face.
+    const padTop = p0.y - northT * sPad;
+    const padBot = p1.y + southT * sPad;
+    const boxTop = Math.min(faceTop, padTop);
+    const boxBot = Math.max(faceBot, padBot);
     const pb = {
       x: xL - 1.2 * sPad,
-      y: p0.y - northT * sPad,
+      y: boxTop,
       w: xR - xL + 2.4 * sPad,
-      h: p1.y - p0.y + (northT + southT) * sPad,
+      h: boxBot - boxTop,
     };
     // THE SCRATCH LEDGER's identity: world anchor + kind + emission
     // index + the chunk's data rev. Breathing members (hung walls)
@@ -10952,7 +10948,6 @@ export class Renderer {
       sex = pS.x + sS; // world x = tx+1 at row ty+1 (= worldToScreen(tx+1,ty+1).x)
       southBaseY = pS.y - elevLift; // same elevation basis as p.y (as today)
     }
-    const lx = (x: number): number => this.leanX(x, whT);
     // THE SHARED-EDGE LAW: run-mates meet on ONE pixel-snapped edge.
     // A bleed on a joined side would overlap the neighbour by a
     // half-pixel, and whichever tile draws second re-blends its whole
@@ -11017,8 +11012,11 @@ export class Renderer {
       draw: () => {
         const yBase = southBaseY; // projected south edge at ground level
         const yTop = yBase - hs; // south edge, lifted to the crown
-        const tx0 = lx(x0);
-        const tx1 = lx(x1);
+        // The legacy per-height `leanX` skew is retired (PERSP_LEAN=0 made
+        // it the identity); the crown/flank corners ride the projected x
+        // directly. tx0/tx1 kept as the face's top-edge x (== x0/x1).
+        const tx0 = x0;
+        const tx1 = x1;
         // Flank revealed by the lean: a prism right of the screen
         // center leans right, showing its WEST side (and vice versa).
         // Skipped inside joined runs. Timber flanks carry the course
@@ -11594,10 +11592,10 @@ export class Renderer {
           if (yRBot > yRTop + 0.5) {
             ctx.fillStyle = shade(face, -14);
             ctx.beginPath();
-            ctx.moveTo(lx(xN0), yRTop);
-            ctx.lineTo(lx(xN1), yRTop);
-            ctx.lineTo(this.leanX(xN1, nH), yRBot);
-            ctx.lineTo(this.leanX(xN0, nH), yRBot);
+            ctx.moveTo(xN0, yRTop);
+            ctx.lineTo(xN1, yRTop);
+            ctx.lineTo(xN1, yRBot);
+            ctx.lineTo(xN0, yRBot);
             ctx.closePath();
             ctx.fill();
           }
@@ -13156,7 +13154,7 @@ export class Renderer {
         // the column onto the main canvas and bake an empty sprite).
         const ctx = this.ctx;
         const baseY = p.y + syT * 0.16;
-        const topX = this.leanX(p.x, H);
+        const topX = p.x; // legacy leanX(p.x, H) retired (PERSP_LEAN=0 identity)
         const topY = baseY - H * s;
         // Contact shade roots the column to the pavement.
         ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
