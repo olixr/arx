@@ -253,6 +253,12 @@ import {
 } from './reveal.js';
 import { ARRIVAL_MIN_COUNT, admitBake, BakeLane, type BakeBudgets } from './bakeAdmission.js';
 import { leanBudgetMult } from './leanBudget.js';
+import {
+  chunkBakePxWarp,
+  chunkResDeficit,
+  inNearRing,
+  lodTierWarp,
+} from './bakeWarp.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { BobtailSim, CrocTailSim, TailSim, drawBobtail, drawFeyBrush, drawFoxBrush, drawHorseTail, drawHousecatTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
@@ -495,18 +501,16 @@ const CHUNK_BAKE_MS = 3;
 const CHUNK_REPLACE_STARTS = 2;
 
 /**
- * THE GROUND RESOLUTION LEANS (Epic B perf): per-chunk bake-tier
- * hysteresis. Under a lean the near field is magnified (needs 64px/tile
- * for crisp material edges) while the far field is minified (32px is
- * plenty — it was 32px pre-lean anyway). A chunk's tier is chosen from
- * its center depthScale against the boundary 1.0; a chunk KEEPS its tier
- * until its depth crosses that boundary by this margin, so panning never
- * oscillates a chunk between 32/64 px (which would re-bake it every
- * frame — worse than the memory it saves). The dead-band is
- * [1−HYST, 1+HYST]; a chunk crosses it exactly once as it scrolls from
- * near to far, a bounded one-time re-bake paced by CHUNK_REPLACE_STARTS.
+ * THE ONE RENDER (B5b): the Chebyshev radius, in chunks from the camera's
+ * chunk, of the STATIONARY near-field resolution-deficit lane. Radius 1 =
+ * the 3×3 = 9 chunks beneath and around the player — the near field that
+ * actually magnifies under a lean. A near chunk carried in at the sparse
+ * tier (minted during the lean ramp / a glide) is topped up to the dense
+ * tier through a priority lane bounded to this ring, so standing still
+ * resolves the ground sharp within a frame or two without a step taken.
+ * Bounded small so a whole leaned viewport's far chunks never flood it.
  */
-const CHUNK_PX_HYST = 0.15;
+const NEAR_RING_RADIUS = 1;
 
 /**
  * Retired chunk canvases held for reuse. Sized to the working set a
@@ -5176,10 +5180,20 @@ export class Renderer {
    *  sprite near a boundary does not re-tier every frame. */
   private lodTier(footY: number, curTier?: number): number {
     if (this.camera.q === 0) return 0;
-    const c = Math.log2(this.camera.depthScale(footY)) * 2;
-    let tier = Math.round(c);
-    if (curTier !== undefined && Math.abs(c - curTier) < LOD_TIER_HYST) tier = curTier;
-    return Math.max(LOD_TIER_MIN, Math.min(LOD_TIER_MAX, tier));
+    // WARP-DOWN (B5a): a per-instance sprite baked at a denser tier is
+    // DOWNSCALED by its blit as it recedes, so its tier RATCHETS — never
+    // re-baking DOWN (the LOD pop as the camera moved) and rising only
+    // when a nearer depth genuinely out-resolves the sheet by a full
+    // step. curTier is passed only by the per-instance callers
+    // (drawPropOutlined / the shrub path); the shared-sheet tree path
+    // passes none, so lodTierWarp reduces to the plain √2 tier there.
+    return lodTierWarp(
+      this.camera.depthScale(footY),
+      curTier,
+      LOD_TIER_HYST,
+      LOD_TIER_MIN,
+      LOD_TIER_MAX,
+    );
   }
 
   /** The bake dpr for a depth LOD tier (see lodTier): the frame's dpr
@@ -7685,41 +7699,48 @@ export class Renderer {
   }
 
   /**
-   * THE GROUND RESOLUTION LEANS (Epic B perf): the bake resolution for
-   * ONE chunk, chosen from its depth under a lean. The uniform bakePx()
-   * above took 64px for EVERY visible chunk the moment the camera leaned
-   * — but only the NEAR field is magnified enough to need it; the far
-   * field is compressed toward the horizon and paid 4× memory + fill for
-   * texels it never shows. Here each chunk picks its tier from its center
-   * `depthScale`: near chunks (depthScale > 1, magnified, bottom of the
-   * screen) bake at 64px so the material-edge AA still reads clean under
-   * the near-field blow-up; far chunks (depthScale < 1, minified) drop to
-   * 32px — the pre-lean value, oversampled when drawn <1× so it stays
-   * crisp — reclaiming the far-field memory the uniform 64 wasted.
+   * THE GROUND RESOLUTION WARPS DOWN (THE ONE RENDER, B5a): the bake
+   * resolution for ONE chunk under a lean. The uniform bakePx() above
+   * took 64px for EVERY visible chunk the moment the camera leaned — but
+   * only the NEAR field is magnified enough to need it; the far field is
+   * compressed toward the horizon and paid 4× memory + fill for texels it
+   * never shows. Here each chunk picks its tier from its NEAREST (south)
+   * edge `depthScale`: a chunk whose near edge is at or past the look-at
+   * (depthScale ≥ 1, magnified, bottom of the screen) bakes at 64px so the
+   * material-edge AA still reads clean under the near-field blow-up; a
+   * chunk whose near edge is still north of the look-at only ever minifies
+   * and bakes at 32px — the pre-lean value, oversampled when drawn <1×.
    *
-   * CHURN-FREE: the tier is quantized to two values with a HYSTERESIS
-   * dead-band (CHUNK_PX_HYST) around the boundary, and the hysteresis
-   * STATE is the entry's own `px` (prevPx) — a chunk flips tier only when
-   * its depth clearly crosses the boundary, so a camera pan re-bakes each
-   * chunk at most once as it transitions near→far, never per frame.
+   * WARP-DOWN, not re-bake: the 64px NEAR tier covers the whole near band
+   * up to the clamped max lean, and the GL stage warps a baked chunk
+   * perspective-correct (StageQuad.ground) — so a chunk baked at its near
+   * edge stays crisp at EVERY farther depth for free. This is a ONE-TIME
+   * mint decision: the caller never re-bakes a chunk because its depth
+   * later crossed the boundary (that churn is the "LOD flips as you move"
+   * defect, and its re-bakes were what left a near chunk carried in coarse
+   * BLURRY until you walked). A near chunk carried in at the sparse tier —
+   * minted during the lean ramp or a glide, before it entered the near
+   * band — is topped up by the STATIONARY deficit lane (B5b), not by a
+   * depth re-bake; see drawGroundChunks.
    *
    * q === 0 → returns exactly bakePx() (the zoom tier), so the flat game
    * is byte-identical to every ortho frame ever shipped.
    */
-  private chunkBakePx(cy: number, prevPx?: number): number {
+  private chunkBakePx(cy: number): number {
     if (this.camera.q === 0) return this.bakePx();
-    const NEAR = TILE_PX * 2;
-    const FAR = TILE_PX;
-    // Center-of-chunk depth: >1 magnified (near), <1 minified (far).
-    const ds = this.camera.depthScale((cy + 0.5) * CHUNK_SIZE);
-    // Keep the current tier until depth crosses the boundary by the
-    // dead-band margin (state carried in the entry's px).
-    if (prevPx === NEAR) return ds < 1 - CHUNK_PX_HYST ? FAR : NEAR;
-    if (prevPx === FAR) return ds > 1 + CHUNK_PX_HYST ? NEAR : FAR;
-    // No prior tier (brand-new chunk): classify at the boundary. A
-    // chunk carried in from a q=0 zoom tier already holds NEAR or FAR
-    // (both equal one of TILE_PX·2 / TILE_PX), so it takes a branch above.
-    return ds >= 1 ? NEAR : FAR;
+    // WARP-DOWN (B5a): classify by the chunk's NEAREST (south) edge, not
+    // its center — a chunk magnifies most at its near edge, and a chunk
+    // straddling the look-at is half blown-up but was baked at the FAR
+    // tier under the old center rule (the "blurry until you walk" root:
+    // its center read <1, so it minted sparse and no depth re-bake ever
+    // fixed it while stationary). The near-worst NEAR tier covers the
+    // whole near band up to the clamped max lean; warp-down keeps it
+    // crisp at every farther depth, so this is a ONE-TIME mint decision —
+    // the caller never re-bakes a chunk because its depth later crossed
+    // the boundary. A chunk whose near edge is still north of the look-at
+    // only ever minifies, so the sparse FAR tier stays oversampled.
+    const nearEdgeDs = this.camera.depthScale((cy + 1) * CHUNK_SIZE);
+    return chunkBakePxWarp(TILE_PX * 2, TILE_PX, nearEdgeDs);
   }
 
   private drawGroundChunks(game: ClientGame): void {
@@ -7764,6 +7785,9 @@ export class Renderer {
     // the ground under the player's feet re-bakes before the screen
     // corner does. An unstarted stale entry keeps its old blit.
     this.replaceQueue.length = 0;
+    // B5b: the stationary near-field resolution-deficit lane, refilled
+    // by the visible scan below.
+    this.deficitQueue.length = 0;
 
     // NO VISIBLE CHUNK GOES UNPAINTED (2026-08-18). Brand-new chunk
     // starts used to be PACED at 4 per frame: each live start pays a
@@ -7789,9 +7813,10 @@ export class Renderer {
         if (!data) continue;
         const key = `${cx},${cy}`;
         let baked = this.baked.get(key);
-        // THE GROUND RESOLUTION LEANS: the depth-tiered px this chunk
-        // wants, with its own current px as the hysteresis anchor.
-        const chunkPx = this.chunkBakePx(cy, baked?.px);
+        // WARP-DOWN (B5a): the resolution this chunk wants at its NEAREST
+        // edge — the near-worst tier it will ever need, warped down to
+        // whatever depth it currently sits at.
+        const chunkPx = this.chunkBakePx(cy);
         if (!baked) {
           // Brand-new VISIBLE chunk: start a live job unconditionally —
           // the placeholder blits this same frame, so streaming never
@@ -7827,16 +7852,39 @@ export class Renderer {
           // FJ-2: lean-state flip — the flat bake's deck carpentry is
           // now wrong (present at q=0, must be absent at q≠0, or v.v.).
           (baked.leanBaked ?? false) !== (this.camera.q !== 0) ||
-          // Tier flips wait out the glide: chunkBakePx is keyed off
-          // targetZoom (at q=0) and the chunk's settled depth, so a
-          // mid-glide re-bake would render for a scale the camera
-          // hasn't reached — and the settle pass would just re-blit
-          // them anyway. Depth tier flips (q>0) ride the same guard;
-          // the hysteresis dead-band keeps them one-time per chunk.
-          (baked.px !== chunkPx && !this.zoomGliding)
+          // ZOOM tier flip (q=0 only): bakePx steps 32↔64 as targetZoom
+          // crosses 1.05. This is a genuine RESOLUTION change of the flat
+          // ground, paced through the replace queue exactly as ever, and
+          // waits out the glide (a mid-glide re-bake would render for a
+          // scale the camera hasn't reached). Under a LEAN this branch is
+          // gone — a depth crossing no longer re-bakes (WARP-DOWN, B5a);
+          // the near-field deficit lane below tops up the sparse ones.
+          (this.camera.q === 0 && baked.px !== chunkPx && !this.zoomGliding)
         ) {
-          // Content or tier re-bake behind the old blit.
+          // Content / zoom-tier re-bake behind the old blit.
           this.replaceQueue.push({ baked, cx, cy, data, px: chunkPx });
+        } else if (
+          // STATIONARY NEAR-FIELD RESOLUTION (B5b): a cached near chunk
+          // whose CURRENT depth out-resolves its baked texture — it is
+          // being warped UP from too few texels (blurry though the world
+          // is still). This is NOT a content re-bake and NOT paced by the
+          // glide/replace cap: bounded to the near ring under the player
+          // and started on a priority lane, so standing still resolves
+          // sharp within a frame or two, then goes quiet (deficit gone
+          // once the dense tier lands). Only while settled — a glide is
+          // changing depth, so the top-up waits for it to end.
+          this.camera.q !== 0 &&
+          !this.zoomGliding &&
+          chunkResDeficit(baked.px, chunkPx) &&
+          inNearRing(
+            cx,
+            cy,
+            Math.floor(this.camera.x / CHUNK_SIZE),
+            Math.floor(this.camera.y / CHUNK_SIZE),
+            NEAR_RING_RADIUS,
+          )
+        ) {
+          this.deficitQueue.push({ baked, cx, cy, data, px: chunkPx });
         }
         if (baked.pending) this.chunkJobQueue.push(baked);
         // SHARED-CORNER SNAP LAW: each chunk's destination rect comes
@@ -7903,9 +7951,9 @@ export class Renderer {
         if (!data) continue;
         const key = `${cx},${cy}`;
         const baked = this.baked.get(key);
-        // Off-screen ring: depth-tier px too, anchored on its own px so
-        // a pre-baked chunk keeps its tier until re-evaluated on screen.
-        const rpx = this.chunkBakePx(cy, baked?.px);
+        // Off-screen ring: bake at the near-worst tier for this row too
+        // (WARP-DOWN, B5a) so a pre-baked chunk arrives already crisp.
+        const rpx = this.chunkBakePx(cy);
         if (!baked) {
           const entry = this.startChunkEntry(game, cx, cy, data, rpx, true);
           this.chunkJobQueue.push(entry);
@@ -7949,6 +7997,23 @@ export class Renderer {
         if (!this.chunkJobQueue.includes(r.baked)) this.chunkJobQueue.push(r.baked);
       }
       this.replaceQueue.length = 0;
+    }
+
+    // STATIONARY NEAR-FIELD RESOLUTION LANE (B5b): top up near-ring
+    // chunks carried in at the sparse tier — UNCAPPED (not the paced
+    // CHUNK_REPLACE_STARTS the depth-crossing churn used to ride) but
+    // bounded by construction to NEAR_RING_RADIUS's 3×3, so at most a
+    // handful of starts. The bake itself is still time-sliced by the
+    // CHUNK_BAKE_MS budget below and swaps atomically behind the old
+    // blit, so a top-up costs uploads, never a hole or a hitch. Standing
+    // still, this fires once per deficient chunk and then goes quiet —
+    // the "blurry until you walk" report cured without a step taken.
+    if (this.deficitQueue.length > 0) {
+      for (const r of this.deficitQueue) {
+        this.startChunkReplace(r.baked, game, r.cx, r.cy, r.data, r.px);
+        if (!this.chunkJobQueue.includes(r.baked)) this.chunkJobQueue.push(r.baked);
+      }
+      this.deficitQueue.length = 0;
     }
 
     // THE BAKE BUDGET: advance queued jobs until the per-frame slice
@@ -16689,9 +16754,22 @@ export class Renderer {
     cx: number;
     cy: number;
     data: ChunkData;
-    /** THE GROUND RESOLUTION LEANS: the depth-tiered px this chunk should
-     *  re-bake at (chosen once in the visible scan, carried to the paced
-     *  start so the tier decision and the bake agree). */
+    /** WARP-DOWN (B5a): the near-worst px this chunk should re-bake at
+     *  (chosen once in the visible scan, carried to the paced start so
+     *  the tier decision and the bake agree). */
+    px: number;
+  }> = [];
+
+  /** B5b — near-field resolution-DEFICIT candidates this frame: near-ring
+   *  chunks carried in at the sparse tier that the current depth now
+   *  out-resolves. A priority lane, uncapped but bounded to the near
+   *  ring, so standing still resolves the ground sharp without a step.
+   *  Distinct from replaceQueue (content / zoom-tier re-bakes). */
+  private readonly deficitQueue: Array<{
+    baked: BakedChunk;
+    cx: number;
+    cy: number;
+    data: ChunkData;
     px: number;
   }> = [];
 
