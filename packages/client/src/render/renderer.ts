@@ -3656,6 +3656,11 @@ export class Renderer {
       this.stageCastBody(px, py, r);
       return;
     }
+    // Radius must never be negative: a transient caller value (a tiny/edge
+    // entity's foreshortened spread under motion) once fed ellipse() a
+    // negative major axis and threw, dropping the frame. Floor it — a
+    // 0-radius shadow draws a point; positive inputs are unchanged.
+    r = Math.max(0, r);
     const c = this.beginContactFill();
     c.beginPath();
     c.ellipse(px, py, r, r * 0.45, 0, 0, Math.PI * 2);
@@ -3689,6 +3694,8 @@ export class Renderer {
       this.stageCastEllipse(px, py, rx, ry, 0, this.contactAlpha());
       return;
     }
+    rx = Math.max(0, rx); // never a negative radius (see castBody)
+    ry = Math.max(0, ry);
     const c = this.beginContactFill();
     c.beginPath();
     c.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
@@ -3938,6 +3945,11 @@ export class Renderer {
     alpha: number,
   ): void {
     if (alpha <= 0) return;
+    // A negative radius (a transient foreshortened value under motion) threw
+    // ellipse() in the zoom-glide branch below and dropped the frame; floor it
+    // (the steady branch already returns early on sub-pixel/negative radii).
+    rx = Math.max(0, rx);
+    ry = Math.max(0, ry);
     if (this.zoomGliding) {
       const r = Math.max(rx, ry);
       this.stageCastScratch(px - r - 1, py - r - 1, r * 2 + 2, r * 2 + 2, () => {
