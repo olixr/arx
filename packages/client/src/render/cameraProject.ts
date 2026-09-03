@@ -49,12 +49,31 @@ export function snapCam(v: number, snapDpr: number): number {
   return Math.round(v * snapDpr) / snapDpr;
 }
 
-export function camOriginX(scale: number, camX: number, snapDpr: number, w: number): number {
-  return snapCam(w / 2 - camX * scale, snapDpr);
+/**
+ * THE ORIGIN LEANS SMOOTH (jitter fix). At **q = 0** the projection
+ * origin is rounded onto the device-pixel lattice, exactly as before —
+ * the ortho camera wants its origin snapped so hard-edged art lands on
+ * whole device pixels (byte-identical, the sacred invariant). But under
+ * a lean (q ≠ 0) that pre-divide snap is WRONG: during a smooth pan
+ * `w/2 − camX·scale` slides continuously while the snapped value steps
+ * in a ±0.5 device-px sawtooth, and `projectWorld` then feeds that
+ * residual through the perspective divide where `1/wdiv` AMPLIFIES it in
+ * the near field — the live-drawn character re-rasterizes at a wobbling
+ * sub-pixel offset and its vector silhouette edge-crawls (jitters). So
+ * at q ≠ 0 we return the UNSNAPPED origin, making `worldToScreen` a
+ * smooth continuous function of camX with no sawtooth to amplify. The
+ * ground doesn't need the snap (it samples a bilinear-smoothed
+ * trapezoid), and the exact inverse `unprojectScreen` uses the same
+ * gated origin so the round-trip stays exact at any q.
+ */
+export function camOriginX(scale: number, camX: number, snapDpr: number, w: number, q = 0): number {
+  const raw = w / 2 - camX * scale;
+  return q !== 0 ? raw : snapCam(raw, snapDpr);
 }
 
-export function camOriginY(scale: number, yScale: number, camY: number, snapDpr: number, h: number): number {
-  return snapCam(h / 2 - camY * scale * yScale, snapDpr);
+export function camOriginY(scale: number, yScale: number, camY: number, snapDpr: number, h: number, q = 0): number {
+  const raw = h / 2 - camY * scale * yScale;
+  return q !== 0 ? raw : snapCam(raw, snapDpr);
 }
 
 /**
@@ -75,8 +94,8 @@ export function projectWorld(
   h: number,
   out: XY,
 ): XY {
-  const ox = camOriginX(scale, camX, snapDpr, w);
-  const oy = camOriginY(scale, yScale, camY, snapDpr, h);
+  const ox = camOriginX(scale, camX, snapDpr, w, q);
+  const oy = camOriginY(scale, yScale, camY, snapDpr, h, q);
   const sx0 = wx * scale + ox;
   const sy0 = wy * scale * yScale + oy;
   if (q === 0) {
@@ -159,8 +178,8 @@ export function unprojectScreen(
     const wdiv = Math.max(MIN_W, 1 - q * u);
     sx0 = cx + (sx - cx) * wdiv;
   }
-  const ox = camOriginX(scale, camX, snapDpr, w);
-  const oy = camOriginY(scale, yScale, camY, snapDpr, h);
+  const ox = camOriginX(scale, camX, snapDpr, w, q);
+  const oy = camOriginY(scale, yScale, camY, snapDpr, h, q);
   out.x = (sx0 - ox) / scale;
   out.y = (sy0 - oy) / (scale * yScale);
   return out;
