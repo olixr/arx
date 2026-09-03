@@ -194,8 +194,8 @@ import * as garrisonArt from './garrisonArt.js';
 import * as hudOverlay from './hudOverlay.js';
 import * as wornAura from './wornAura.js';
 import * as cliffArt from './cliffArt.js';
-import { emit as emitStructureFace, faceBand as sfBand, faceFill as sfFill, faceSeam as sfSeam, faceUV, faceStrip, topPlane, beginSilhouette } from './structureFace.js';
-import type { FaceGeom, TopPlaneGeom, WorldCorner } from './structureFace.js';
+import { emit as emitStructureFace, faceBand as sfBand, faceFill as sfFill, faceSeam as sfSeam, faceUV, faceStrip, topPlane, beginSilhouette, silhouetteBounds } from './structureFace.js';
+import type { FaceGeom, FacePt, Silhouette, TopPlaneGeom, WorldCorner } from './structureFace.js';
 import { WALL_STUB, GARRISON_H, MERLON_H } from './paintVocab.js';
 import * as wallHungArt from './wallHungArt.js';
 import * as barrierArt from './barrierArt.js';
@@ -1769,6 +1769,21 @@ export class Renderer {
   private readonly outlineB = document.createElement('canvas');
   private readonly outlineACtx = this.outlineA.getContext('2d')!;
   private readonly outlineBCtx = this.outlineB.getContext('2d')!;
+  /** THE ONE RENDER — A3: dedicated scratches for the world-VOLUME outline
+   *  dilate, kept apart from the body scratches so a long wall run's mask can
+   *  never balloon the per-body outline canvases. `volMaskA` holds the solid
+   *  silhouette, `volMaskB` the dilated tinted annulus (see paintVolumeRing). */
+  private readonly volMaskA = document.createElement('canvas');
+  private readonly volMaskB = document.createElement('canvas');
+  private readonly volMaskACtx = this.volMaskA.getContext('2d')!;
+  private readonly volMaskBCtx = this.volMaskB.getContext('2d')!;
+  /** Baked per-run outline-ring annuli, keyed by run identity (see
+   *  paintVolumeRing). Canvases ride the shared sprite pool; evicted when a
+   *  run scrolls away or its baked shape (scale/dpr/q/size) changes. */
+  private readonly volRingCache = new Map<
+    number,
+    { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; sig: number; used: number; w: number; h: number }
+  >();
   /** Cached outlined composites (ring + art) per body — see the olKey
    *  fields on DrawItem. Canvases ride the shared sprite pool. */
   private readonly bodySprites = new Map<
@@ -6381,6 +6396,7 @@ export class Renderer {
     this.evictEases();
     this.evictAnims();
     this.evictTreeSprites();
+    this.evictVolRings();
     this.perfMark('post');
   }
 
@@ -11431,46 +11447,6 @@ export class Renderer {
       }
     }
     const pad = 4;
-    const draw = (): void => {
-      const ctx = this.ctx;
-      if (cv.kind === 'diag') {
-        this.paintDiagCrownSpan(cv, span, top);
-        return;
-      }
-      if (garrison) {
-        garrisonArt.garrisonCrownSpan(this, span, crownH, footH, cv.whT, cv.members);
-        return;
-      }
-      topPlane(this.camera, this.w, this.h, loop, crownH, (plane: TopPlaneGeom) =>
-        this.paintWallCrown(plane, top, cv.matClass),
-      );
-      if (this.outlineOn) {
-        // Stroke only the span's EXPOSED unit edges — the crown top edge and
-        // the foot drop below it — so the run rings continuously with no
-        // internal (shared-with-neighbour) seams.
-        const path = new Path2D();
-        const edge = (ax: number, ay: number, bx: number, by: number): void => {
-          const at = this.liftedCornerPt(ax, ay, crownH);
-          const bt = this.liftedCornerPt(bx, by, crownH);
-          const af = this.liftedCornerPt(ax, ay, footH);
-          const bf = this.liftedCornerPt(bx, by, footH);
-          path.moveTo(at.x, at.y); // crown top edge
-          path.lineTo(bt.x, bt.y);
-          path.moveTo(af.x, af.y); // foot edge
-          path.lineTo(bf.x, bf.y);
-        };
-        for (let ty = span.y0; ty <= span.y1; ty++) {
-          for (let tx = span.x0; tx <= span.x1; tx++) {
-            if (!cv.members.has(packTile(tx, ty - 1))) edge(tx, ty, tx + 1, ty); // north
-            if (!cv.members.has(packTile(tx, ty + 1))) edge(tx, ty + 1, tx + 1, ty + 1); // south
-            if (!cv.members.has(packTile(tx - 1, ty))) edge(tx, ty, tx, ty + 1); // west
-            if (!cv.members.has(packTile(tx + 1, ty))) edge(tx + 1, ty, tx + 1, ty + 1); // east
-          }
-        }
-        this.beginStructOutline();
-        ctx.stroke(path);
-      }
-    };
     // THE SCRATCH LEDGER: cache the span's crown texture keyed by the run
     // anchor + this span's extent + material + chunk rev, so a static crown
     // uploads once and reblits (a coalesced run is height-uniform by the flood
@@ -11486,6 +11462,55 @@ export class Renderer {
         (garrison ? 0x4000_0000 : 0) ^
         Math.imul(cv.rev | 0, 0x85eb)) |
       0;
+    // THE ONE RENDER — A3: the run's exposed side faces as silhouette rings —
+    // each exposed unit edge is a foot→crown quad (world corners projected +
+    // rounded ONCE via liftedCornerPt, so run-mates share device pixels). The
+    // crown loop + these faces are the whole run silhouette the alpha-dilate
+    // rings, replacing the interim per-edge vector stroke.
+    const addFaceQuads = (sil: Silhouette): void => {
+      const quad = (ax: number, ay: number, bx: number, by: number): void => {
+        const af = this.liftedCornerPt(ax, ay, footH);
+        const bf = this.liftedCornerPt(bx, by, footH);
+        const at = this.liftedCornerPt(ax, ay, crownH);
+        const bt = this.liftedCornerPt(bx, by, crownH);
+        sil.add([af as FacePt, bf as FacePt, bt as FacePt, at as FacePt]);
+      };
+      for (let ty = span.y0; ty <= span.y1; ty++) {
+        for (let tx = span.x0; tx <= span.x1; tx++) {
+          if (!cv.members.has(packTile(tx, ty - 1))) quad(tx, ty, tx + 1, ty); // north
+          if (!cv.members.has(packTile(tx, ty + 1))) quad(tx, ty + 1, tx + 1, ty + 1); // south
+          if (!cv.members.has(packTile(tx - 1, ty))) quad(tx, ty, tx, ty + 1); // west
+          if (!cv.members.has(packTile(tx + 1, ty))) quad(tx + 1, ty, tx + 1, ty + 1); // east
+        }
+      }
+    };
+    const draw = (): void => {
+      if (cv.kind === 'diag') {
+        this.paintDiagCrownSpan(cv, span, top, pbKey);
+        return;
+      }
+      if (garrison) {
+        const sil = this.outlineOn ? beginSilhouette() : undefined;
+        garrisonArt.garrisonCrownSpan(this, span, crownH, footH, cv.whT, cv.members, sil);
+        if (sil) {
+          addFaceQuads(sil);
+          this.paintVolumeRing(sil, pbKey);
+        }
+        return;
+      }
+      topPlane(this.camera, this.w, this.h, loop, crownH, (plane: TopPlaneGeom) =>
+        this.paintWallCrown(plane, top, cv.matClass),
+      );
+      if (this.outlineOn) {
+        // ONE alpha-dilate ring around the whole run silhouette (crown loop +
+        // exposed side faces) — the SAME ring bodies/props wear. Retires the
+        // per-edge vector stroke (mixed near/far corners → wedges + seams).
+        const sil = beginSilhouette();
+        sil.add(loop.map((c) => this.liftedCornerPt(c.x, c.y, crownH) as FacePt));
+        addFaceQuads(sil);
+        this.paintVolumeRing(sil, pbKey);
+      }
+    };
     return {
       sortY: cv.sortY,
       strat: cv.strat,
@@ -11507,10 +11532,11 @@ export class Renderer {
    * path (the per-tile `diagWallItem` suppresses them for run members). The
    * outline is the lifted outward arris + the visible face's ground contact +
    * the RUN-END verticals only (a mid-run end sits on a shared corner with the
-   * next member, so it is not inked — no internal seam). Interim vector stroke;
-   * A3 swaps it for the alpha-dilate that rings the whole run.
+   * next member, so it is not inked — no internal seam). A3: the outline is now
+   * the SAME per-silhouette alpha-dilate ring bodies wear (crown triangle +
+   * visible face), keyed+cached per run via `paintVolumeRing`.
    */
-  private paintDiagCrownSpan(cv: CrownVolume, span: CrownSpan, top: string): void {
+  private paintDiagCrownSpan(cv: CrownVolume, span: CrownSpan, top: string, key: number): void {
     const info = diagWallInfo(cv.diagTile!);
     if (info === null) return;
     const ctx = this.ctx;
@@ -11559,32 +11585,22 @@ export class Renderer {
     ctx.lineTo(hypE.x, hypE.y);
     ctx.stroke();
     if (!this.outlineOn) return;
-    // Run-end tests: the two ends of the hyp continue to diagonal neighbours.
-    // East end rides dirs[0], west end dirs[1]; a shared end is not inked.
-    const dirs = Renderer.diagRunDirs(mass);
-    const eastNb = cv.members.has(packTile(tx + dirs[0]![0], ty + dirs[0]![1]));
-    const westNb = cv.members.has(packTile(tx + dirs[1]![0], ty + dirs[1]![1]));
-    const o = new Path2D();
-    // The lifted outward arris (always the run's continuous top edge).
-    o.moveTo(hypW.x, hypW.y);
-    o.lineTo(hypE.x, hypE.y);
+    // A3: ring the member's silhouette (crown mass triangle + its visible
+    // face down to the foot) with the same alpha-dilate the bodies wear. The
+    // union of consecutive members' triangles + faces (each projected off
+    // shared world corners) rings the whole 45° run seam-free; a hollow
+    // annulus never covers the arris fill, so blit order is free.
+    const sil = beginSilhouette();
+    sil.add(tri.map((c) => ({ x: c.x, y: c.y }) as FacePt));
     if (front) {
-      // Hyp ground contact + run-end verticals.
-      o.moveTo(hypWg.x, hypWg.y);
-      o.lineTo(hypEg.x, hypEg.y);
-      if (!westNb) { o.moveTo(hypW.x, hypW.y); o.lineTo(hypWg.x, hypWg.y); }
-      if (!eastNb) { o.moveTo(hypE.x, hypE.y); o.lineTo(hypEg.x, hypEg.y); }
+      // The outward hyp face, crown arris down to its ground contact.
+      sil.add([hypW, hypE, hypEg, hypWg].map((c) => ({ x: c.x, y: c.y }) as FacePt));
     } else {
       // Back corner (SE/SW): the near read is the crown's south base edge
-      // (SW→SE for both masses); the arris above is the far edge. Run-end
-      // verticals drop only where the run does not continue.
-      o.moveTo(SWc.x, SWc.y);
-      o.lineTo(SEc.x, SEc.y);
-      if (!westNb) { o.moveTo(hypW.x, hypW.y); o.lineTo(hypWg.x, hypWg.y); }
-      if (!eastNb) { o.moveTo(hypE.x, hypE.y); o.lineTo(hypEg.x, hypEg.y); }
+      // (SW→SE) dropping to the foot.
+      sil.add([SWc, SEc, SEg, SWg].map((c) => ({ x: c.x, y: c.y }) as FacePt));
     }
-    this.beginStructOutline();
-    ctx.stroke(o);
+    this.paintVolumeRing(sil, key);
   }
 
   /** Paint one crown top plane: fill + a run-continuous beam read (arris
@@ -11718,21 +11734,28 @@ export class Renderer {
     }
     const loops: WorldCorner[][] = vol.perimeter.map((lp) => lp.map((c) => ({ x: c.x, y: c.y })));
     for (let i = 0; i < mem.length; i += 2) runSeen.add(packTile(mem[i]!, mem[i + 1]!));
+    // A3 outline-ring cache key: the run's world extent + its chunk rev, so the
+    // dilated ring bakes once per run and reblits until an edit re-revs it.
+    const hedgeRev = game.world.get(Math.floor(vol.ax / CHUNK_SIZE), Math.floor(vol.ay / CHUNK_SIZE))?.rev ?? 0;
+    const ringKey =
+      (hashCoords(97, vol.x0, vol.y0) ^ (bw << 15) ^ (bh << 21) ^ Math.imul(hedgeRev | 0, 0x85eb)) | 0;
     // ONE upright volume: faces + crown + silhouette for the whole run.
     // sortY at the run's near (south) foot, as A2's wall crown sorts — so
     // the hedge already reads in front of what sits north of it (A5 does
     // the pitch-aware depth in full).
-    items.push(this.hedgeVolItem(loops, vol.x0, vol.y0, vol.x1 + 1, vol.y1 + 1, vol.y1 + 1, this.stratAt(tx, ty)));
+    items.push(
+      this.hedgeVolItem(loops, vol.x0, vol.y0, vol.x1 + 1, vol.y1 + 1, vol.y1 + 1, this.stratAt(tx, ty), ringKey),
+    );
     return true;
   }
 
   /**
    * The hedge run's upright body: run-continuous side faces (`faceStrip`),
    * whole-run crown (`topPlane`) with the clipped-green pillow dressing in
-   * crown-UV, and ONE silhouette (`beginSilhouette`) fed by both — stroked
-   * now as the interim continuous outline (A3 replaces it with the alpha
-   * dilate off this same accumulator). Every world corner is projected
-   * once, so the run/corner/tee tiles seam-free.
+   * crown-UV, and ONE silhouette (`beginSilhouette`) fed by both — ringed by
+   * the same per-silhouette alpha-DILATE bodies wear (A3), keyed+cached per
+   * run so it bakes once and reblits. Every world corner is projected once, so
+   * the run/corner/tee tiles seam-free.
    */
   private hedgeVolItem(
     loops: WorldCorner[][],
@@ -11742,13 +11765,13 @@ export class Renderer {
     wy1: number,
     sortY: number,
     strat: number | undefined,
+    ringKey: number,
   ): DrawItem {
     const H = barrierArt.HEDGE_VOL_H;
     return {
       sortY,
       strat,
       draw: () => {
-        const ctx = this.ctx;
         const sil = beginSilhouette();
         for (const loop of loops) {
           if (loop.length < 3) continue;
@@ -11778,12 +11801,7 @@ export class Renderer {
             { silhouette: sil },
           );
         }
-        if (this.outlineOn) {
-          const ring = new Path2D();
-          sil.emit(ring);
-          this.beginStructOutline();
-          ctx.stroke(ring);
-        }
+        if (this.outlineOn) this.paintVolumeRing(sil, ringKey);
       },
     };
   }
@@ -19044,6 +19062,133 @@ export class Renderer {
     sctx.globalCompositeOperation = 'destination-over';
     sctx.drawImage(this.outlineB, 0, 0, pw, ph, 0, 0, pw, ph);
     sctx.restore();
+  }
+
+  /**
+   * THE ONE RENDER — A3: THE VOLUME WEARS THE SAME RING. Outline a coalesced
+   * world-geometry VOLUME (a wall / garrison / diagonal / hedge run) with the
+   * SAME 8-tap alpha-DILATE ring characters and props already wear, retiring
+   * the per-tile / per-edge vector STROKE the coalesced path hand-rolled (its
+   * mixed near/far corners were the wall-top wedge + seam source).
+   *
+   * `sil` is the run's projected outer SILHOUETTE in css screen px — the crown
+   * loop plus the exposed side-face rings, each world corner projected+rounded
+   * ONCE (so the run's members share device pixels and the ring is seamless).
+   * The rings are filled to a solid mask, dilated by the body ring radius,
+   * tinted STRUCT_OUTLINE, and then the silhouette is SUBTRACTED so the result
+   * is a hollow ANNULUS: it paints only OUTSIDE the art, so it may be blitted
+   * in any order without ever covering the faces (which are drawn per-tile as
+   * separate DrawItems). At q=0 the coalesced path is never taken (q>0-only),
+   * so the flat golden look is untouched.
+   *
+   * CACHED PER RUN: the annulus is baked once per `key` and reblitted until the
+   * run's baked SHAPE changes (camera scale / dpr / q / on-screen size) — never
+   * re-dilated per frame per tile. Panning does not rebake (q=0 shape is
+   * translation-invariant; q>0 reblits the near-identical shape, exactly as the
+   * crown scratch cache already does). Cost is O(visible silhouette bbox): the
+   * mask is clamped to the viewport so an off-screen run tail rasterizes nil.
+   */
+  private paintVolumeRing(sil: Silhouette, key: number): void {
+    const rings = sil.rings;
+    const bounds = silhouetteBounds(sil); // silhouette screen bbox (css px)
+    if (bounds === null) return;
+    let { x0, y0, x1, y1 } = bounds;
+    const dpr = this.dpr();
+    // Ring radius + margin: EXACTLY the body ring (bakeOutlineRing), so world
+    // geometry wears the same weight as every character and prop.
+    const r = Math.max(1.25, this.camera.scale * 0.04);
+    const m = Math.ceil(r) + 2;
+    // Clamp to the viewport (+ apron) so a long run's mask never rasterizes
+    // megapixels off-screen — the dilate is O(visible bbox), not run length.
+    const vpad = m + 8;
+    x0 = Math.max(x0, -vpad);
+    y0 = Math.max(y0, -vpad);
+    x1 = Math.min(x1, this.w + vpad);
+    y1 = Math.min(y1, this.h + vpad);
+    if (x1 <= x0 || y1 <= y0) return; // fully off-screen
+    const ox = Math.round(x0) - m; // integer css blit origin (no resample)
+    const oy = Math.round(y0) - m;
+    const wCss = Math.ceil(x1 - ox) + m;
+    const hCss = Math.ceil(y1 - oy) + m;
+    const w = Math.max(1, Math.ceil(wCss * dpr));
+    const h = Math.max(1, Math.ceil(hCss * dpr));
+    // Cache signature: the run key plus everything that changes the baked
+    // SHAPE (scale, q, dpr, device size). Position is NOT in it — the annulus
+    // is origin-relative and reblitted at the current bbox each frame.
+    const sig =
+      ((Math.round(this.camera.scale * 16) & 0xffff) |
+        ((Math.round(this.camera.q * 1e6) & 0x3ff) << 16)) ^
+      Math.imul(w, 0x9e37) ^
+      Math.imul(h, 0x85eb) ^
+      (Math.round(dpr * 4) << 27);
+    let entry = this.volRingCache.get(key);
+    if (!entry || entry.sig !== sig || entry.w !== w || entry.h !== h) {
+      // (Re)bake the annulus into a pooled cache canvas.
+      const { canvas, sctx } = this.acquireSpriteCanvas(entry, w, h);
+      // 1. Solid silhouette mask into scratch A (device px, origin ox,oy). Each
+      //    ring is filled on its own so opposite windings union (never cancel).
+      if (this.volMaskA.width < w) this.volMaskA.width = this.volMaskB.width = w;
+      if (this.volMaskA.height < h) this.volMaskA.height = this.volMaskB.height = h;
+      const a = this.volMaskACtx;
+      const b = this.volMaskBCtx;
+      const apron = Math.ceil(r * dpr) + 4;
+      const cw = Math.min(this.volMaskA.width, w + apron);
+      const ch = Math.min(this.volMaskA.height, h + apron);
+      a.setTransform(1, 0, 0, 1, 0, 0);
+      a.clearRect(0, 0, cw, ch);
+      a.setTransform(dpr, 0, 0, dpr, -ox * dpr, -oy * dpr);
+      a.fillStyle = '#000';
+      for (const ring of rings) {
+        if (ring.length < 3) continue;
+        a.beginPath();
+        a.moveTo(ring[0]!.x, ring[0]!.y);
+        for (let i = 1; i < ring.length; i++) a.lineTo(ring[i]!.x, ring[i]!.y);
+        a.closePath();
+        a.fill();
+      }
+      a.setTransform(1, 0, 0, 1, 0, 0);
+      // 2. Dilate A → grown, tinted silhouette in B (integer taps, bake law —
+      //    see bakeOutlineRing).
+      const ri = Math.max(1, Math.round(r * dpr));
+      const rd = Math.max(1, Math.round(r * 0.71 * dpr));
+      b.setTransform(1, 0, 0, 1, 0, 0);
+      b.clearRect(0, 0, cw, ch);
+      for (const [tx, ty] of Renderer.OUTLINE_TAPS) {
+        const diag = tx !== 0 && ty !== 0;
+        const oxT = Math.sign(tx) * (diag ? rd : ri);
+        const oyT = Math.sign(ty) * (diag ? rd : ri);
+        b.drawImage(this.volMaskA, 0, 0, w, h, oxT, oyT, w, h);
+      }
+      b.globalCompositeOperation = 'source-in';
+      b.fillStyle = STRUCT_OUTLINE;
+      b.fillRect(0, 0, w, h);
+      // 3. Subtract the silhouette itself → a HOLLOW ring that never covers art.
+      b.globalCompositeOperation = 'destination-out';
+      b.drawImage(this.volMaskA, 0, 0, w, h, 0, 0, w, h);
+      b.globalCompositeOperation = 'source-over';
+      // 4. Copy the annulus into the pooled cache canvas.
+      sctx.setTransform(1, 0, 0, 1, 0, 0);
+      sctx.clearRect(0, 0, canvas.width, canvas.height);
+      sctx.drawImage(this.volMaskB, 0, 0, w, h, 0, 0, w, h);
+      entry = { canvas, ctx: sctx, sig, used: this.frameNo, w, h };
+      this.volRingCache.set(key, entry);
+    }
+    entry.used = this.frameNo;
+    // Blit the cached annulus at the current bbox origin (hollow ⇒ order-free).
+    this.ctx.drawImage(entry.canvas, 0, 0, w, h, ox, oy, wCss, hCss);
+  }
+
+  /** Drop volume outline-ring annuli scrolled away for ~4s; pool their
+   *  canvases. Called each frame beside the other camera-riding caches. */
+  private evictVolRings(): void {
+    if (this.volRingCache.size === 0) return;
+    const cutoff = this.frameNo - 240;
+    for (const [key, e] of this.volRingCache) {
+      if (e.used < cutoff) {
+        this.volRingCache.delete(key);
+        this.poolCanvas(e.canvas);
+      }
+    }
   }
 
   /**

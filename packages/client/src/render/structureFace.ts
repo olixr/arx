@@ -334,6 +334,30 @@ export interface SilhouetteSink {
   closePath(): void;
 }
 
+/** The screen-space bounding box of a silhouette's accumulated rings (device
+ *  or css px, whatever space the rings were added in), or `null` if empty.
+ *  A3's `paintVolumeRing` sizes its dilate scratch to this. Pure + alloc-lean
+ *  (one record); extracted so the ring's extent is node-testable off the same
+ *  rings the renderer dilates. */
+export function silhouetteBounds(
+  sil: Silhouette,
+): { x0: number; y0: number; x1: number; y1: number } | null {
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const ring of sil.rings) {
+    for (const p of ring) {
+      if (p.x < x0) x0 = p.x;
+      if (p.x > x1) x1 = p.x;
+      if (p.y < y0) y0 = p.y;
+      if (p.y > y1) y1 = p.y;
+    }
+  }
+  if (x1 < x0 || y1 < y0) return null;
+  return { x0, y0, x1, y1 };
+}
+
 /** Open a fresh silhouette accumulator for ONE volume. */
 export function beginSilhouette(): Silhouette {
   const rings: FacePt[][] = [];
