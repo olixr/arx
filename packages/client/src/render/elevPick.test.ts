@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ELEV_H, solveLiftedY } from './elevPick.js';
+import { depthScaleWorld, projectWorld, unprojectScreen, type XY } from './cameraProject.js';
 
 const YS = 0.6; // the camera pitch squash
 
@@ -76,4 +77,109 @@ test('cliff face: no surface answers, the flat inverse is the fallback', () => {
   // crown, ground candidates land on the mesa — no root anywhere.
   const liftAt = (wy: number): number => (wy < 20 ? ELEV_H : 0);
   assert.equal(solveLiftedY(19, YS, liftAt), 19);
+});
+
+// ── THE CAMERA LEARNS TO LEAN: the lift inversion rides depthScale ──
+
+// A lean camera whose ortho origin lands on the pixel lattice (no
+// snap rounding), so a forward→inverse round-trip is machine-exact.
+const CAM = { scale: 40, yScale: YS, camX: 0, camY: 15, snap: 1, w: 1200, h: 800 };
+const A = CAM.scale * CAM.yScale; // camY*A = 360, h/2 = 400 → oy = 40 (integer)
+
+/** Screen-y the renderer draws a lifted ground point at world-depth wy:
+ *  the flat-plane projection minus the DEPTH-SCALED lift (the forward
+ *  model pickWorld must invert). */
+function fwdScreenY(q: number, wy: number, lift: number): number {
+  const out: XY = { x: 0, y: 0 };
+  projectWorld(CAM.scale, CAM.yScale, CAM.camX, CAM.camY, q, CAM.snap, 0, wy, CAM.w, CAM.h, out);
+  const ds = depthScaleWorld(CAM.scale, CAM.yScale, CAM.camY, q, wy);
+  return out.y - lift * CAM.scale * ds;
+}
+
+/** The flat-plane world row the pixel unprojects to (pickWorld's flatY). */
+function flatOf(q: number, sy: number): number {
+  const out: XY = { x: 0, y: 0 };
+  unprojectScreen(CAM.scale, CAM.yScale, CAM.camX, CAM.camY, q, CAM.snap, 0, sy, CAM.w, CAM.h, out);
+  return out.y;
+}
+
+const lean = (q: number): { q: number; scale: number; camY: number } => ({
+  q,
+  scale: CAM.scale,
+  camY: CAM.camY,
+});
+
+test('lean off (q=0): the depth-scaled solve is byte-identical to the ortho solve', () => {
+  const cases: Array<(wy: number) => number> = [
+    () => 0,
+    () => ELEV_H,
+    () => -ELEV_H,
+    (wy) => (wy >= 10 ? ELEV_H : 0),
+    (wy) => (wy < 20 ? ELEV_H : wy < 21 ? ELEV_H * (21 - wy) : 0),
+  ];
+  for (const liftAt of cases) {
+    for (const flatY of [8, 9, 12.5, 19, 20.9, 30]) {
+      const ortho = solveLiftedY(flatY, YS, liftAt);
+      const withLean = solveLiftedY(flatY, YS, liftAt, lean(0));
+      assert.equal(withLean, ortho, `q=0 must match ortho at flatY=${flatY}`);
+    }
+  }
+});
+
+test('lean on: a lifted plateau click round-trips to the correct world row', () => {
+  const q = 0.0015;
+  // +1 plateau everywhere; a surface point at wy=22 (lift ELEV_H).
+  const liftAt = (): number => ELEV_H;
+  const wy = 22;
+  const sy = fwdScreenY(q, wy, ELEV_H);
+  const flatY = flatOf(q, sy);
+  const got = solveLiftedY(flatY, YS, liftAt, lean(q));
+  assert.ok(Math.abs(got - wy) < 1e-3, `expected wy≈${wy}, got ${got}`);
+});
+
+test('lean on: the ortho inverse mis-picks; the depth-scaled inverse nails the tile', () => {
+  // A plateau (+1) occupies tiles wy≥20; ground south of it. Click the
+  // edge tile of the plateau at wy=20.5. Under lean the ortho solve
+  // (no depthScale) lands on the WRONG tile; the depth-scaled solve
+  // recovers the true tile.
+  const q = 0.0022;
+  const liftAt = (w: number): number => (w >= 20 ? ELEV_H : 0);
+  const wy = 20.5;
+  const sy = fwdScreenY(q, wy, ELEV_H);
+  const flatY = flatOf(q, sy);
+
+  const orthoWrong = solveLiftedY(flatY, YS, liftAt); // the pre-fix behavior
+  const fixed = solveLiftedY(flatY, YS, liftAt, lean(q));
+
+  assert.ok(Math.abs(fixed - wy) < 1e-3, `depth-scaled must recover wy≈${wy}, got ${fixed}`);
+  assert.equal(Math.floor(fixed), 20, 'depth-scaled picks tile row 20');
+  // The bug: the ortho inverse over-shifts the lift and picks a
+  // different tile than the one drawn under the cursor.
+  assert.ok(
+    Math.abs(orthoWrong - wy) > 0.1,
+    `ortho inverse should mis-pick under lean, got ${orthoWrong}`,
+  );
+});
+
+test('lean on: a ramp tread round-trips (steep |lift′| — no fixed-point)', () => {
+  const q = 0.0018;
+  // Plateau north of wy=20, one-tile ramp [20,21), ground south.
+  const liftAt = (w: number): number => (w < 20 ? ELEV_H : w < 21 ? ELEV_H * (21 - w) : 0);
+  const wy = 20.4; // mid-tread
+  const lift = liftAt(wy);
+  const sy = fwdScreenY(q, wy, lift);
+  const flatY = flatOf(q, sy);
+  const got = solveLiftedY(flatY, YS, liftAt, lean(q));
+  assert.ok(got >= 20 && got < 21, `expected a tread pick, got ${got}`);
+  assert.ok(Math.abs(got - wy) < 1e-2, `expected wy≈${wy}, got ${got}`);
+});
+
+test('lean on: a dell floor (negative lift) round-trips', () => {
+  const q = 0.0015;
+  const liftAt = (w: number): number => (w >= 5 && w < 15 ? -ELEV_H : 0);
+  const wy = 9;
+  const sy = fwdScreenY(q, wy, -ELEV_H);
+  const flatY = flatOf(q, sy);
+  const got = solveLiftedY(flatY, YS, liftAt, lean(q));
+  assert.ok(Math.abs(got - wy) < 1e-3, `expected wy≈${wy}, got ${got}`);
 });
