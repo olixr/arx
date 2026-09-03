@@ -5389,6 +5389,33 @@ export class Renderer {
     this.ctx.fillStyle = '#141020';
     this.ctx.fillRect(0, 0, this.w, this.h);
 
+    // THE LEAN'S SKY BACKDROP (Epic B, fog-edges): under a lean the ground
+    // plane narrows toward the horizon (far rows compress toward centre,
+    // see projectWorld), so the far LEFT/RIGHT corners of the frame expose
+    // the bare #141020 clear behind the ground's diagonal edge — a HARD
+    // seam on the SIDES that the horizon haze (painted translucent in
+    // drawGrade, AFTER the ground) cannot bury. Paint the hour's sky BEHIND
+    // the ground across the upper frame: solid to just under the horizon,
+    // then a long feather that dies out where the ground has re-widened to
+    // the full frame. The ground overpaints the centre, the exposed side
+    // wedges read as sky (not void), and drawGrade's haze then feathers the
+    // far ground into this SAME sky — no hard edge on any side. q=0 →
+    // skipped entirely, so every ortho frame stays byte-identical.
+    if (this.camera.q > 0) {
+      const fogAmt = Math.min(1, this.camera.q / PERSP_LEAN_REF);
+      const hY = this.h / 2 - 1 / this.camera.q;
+      const [sr, sg, sb] = this.sky.sky;
+      const solidBot = Math.max(0, hY) + this.h * 0.03;
+      const fadeBot = solidBot + this.h * (0.24 + 0.2 * fogAmt);
+      const col = (a: number) => `rgba(${sr | 0}, ${sg | 0}, ${sb | 0}, ${a})`;
+      const back = this.ctx.createLinearGradient(0, 0, 0, fadeBot);
+      back.addColorStop(0, col(1));
+      back.addColorStop(Math.min(0.999, solidBot / fadeBot), col(1));
+      back.addColorStop(1, col(0));
+      this.ctx.fillStyle = back;
+      this.ctx.fillRect(0, 0, this.w, Math.ceil(fadeBot));
+    }
+
     // Kill zoom-pulse: a screen-space scale kick easing back out. The
     // dialogue cinematic adds its slow breath here too — a 0..1.4%
     // swell (never below 1: shrinking would peel the canvas edge) that
