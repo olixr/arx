@@ -14941,10 +14941,38 @@ export class Renderer {
         let uy0 = Infinity;
         let ux1 = -Infinity;
         let uy1 = -Infinity;
+        // THE RUN STAYS SPATIALLY WHOLE (lean fix): at q=0 the y-sort
+        // places a wall's members in physical order, so greedily
+        // unioning every consecutive lane item bounds one contiguous
+        // strip. Under the lean the SAME sort interleaves spatially
+        // SCATTERED members (a far member at screen x=997 landing next
+        // to members at x=-147…414), and the greedy union then spans
+        // nearly the whole screen — one ~1297px-wide scratch cell,
+        // hundreds per frame. Those monster cells are the translucent
+        // dark bands (the wide box bakes/clips its foreshortened,
+        // scattered members into an axis-aligned slab — see the
+        // masonry-band note at emitRaisedMember) and they tank perf.
+        // So under lean ONLY, break the run when the next member's box
+        // is spatially DISJOINT from the accumulated union (a gap past
+        // ~1 world tile in x or y): a real wall's members overlap the
+        // union and stay coalesced; an interleaved distant member
+        // starts a fresh run. q=0 keeps the exact greedy merge below
+        // (byte-identical — the wide cell composites correctly there).
+        const leaned = this.camera.q !== 0;
+        const gap = leaned ? this.camera.scale : 0; // one world tile of slack
         while (j < n) {
           const it2 = items[j]!;
           if (it2.stageRebuild === undefined || it2.pb === undefined) break;
           const bb = it2.pb;
+          if (
+            leaned &&
+            j > i &&
+            (bb.x > ux1 + gap ||
+              bb.x + bb.w < ux0 - gap ||
+              bb.y > uy1 + gap ||
+              bb.y + bb.h < uy0 - gap)
+          )
+            break;
           if (bb.x < ux0) ux0 = bb.x;
           if (bb.y < uy0) uy0 = bb.y;
           if (bb.x + bb.w > ux1) ux1 = bb.x + bb.w;
