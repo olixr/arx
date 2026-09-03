@@ -4289,7 +4289,7 @@ export class Renderer {
               const level = layer.level;
               const pbA = this.camera.worldToScreen(cx * CHUNK_SIZE, worldTy, this.w, this.h);
               const pbB = this.camera.worldToScreen((cx + 1) * CHUNK_SIZE, worldTy + 1, this.w, this.h);
-              const pbLift = Math.round(level * ELEV_H * s);
+              const pbLift = Math.round(level * ELEV_H * s * this.camera.depthScale(worldTy));
               items.push({
                 sortY: worldTy - 0.01,
                 stageSafe: true,
@@ -4314,7 +4314,13 @@ export class Renderer {
                   // every row of a plateau rides the same offset.
                   const pA = this.camera.worldToScreen(cx * CHUNK_SIZE, worldTy, this.w, this.h);
                   const pB = this.camera.worldToScreen((cx + 1) * CHUNK_SIZE, worldTy + 1, this.w, this.h);
-                  const lift = Math.round(level * ELEV_H * s);
+                  // THE LIFT RIDES ITS ROW (Epic B, clause 2): a world
+                  // height must foreshorten by depthScale at its own foot
+                  // row — a flat `camera.scale` lift over-lifts by
+                  // (1/depthScale − 1) up-screen, so distant terraces float
+                  // and settle as you approach. depthScale(worldTy) = 1 at
+                  // q=0 → this rounds to the old value, byte-identical.
+                  const lift = Math.round(level * ELEV_H * s * this.camera.depthScale(worldTy));
                   const x0 = Math.round(pA.x);
                   const y0 = Math.round(pA.y) - lift;
                   const px = baked.px;
@@ -12077,7 +12083,10 @@ export class Renderer {
     runLen: number,
     items: DrawItem[],
   ): void {
-    const s = this.camera.scale;
+    // B-3 surface depth thread (Epic B, clause 2): the prop rides its
+    // elevation by a lift that must foreshorten at its own foot row —
+    // spriteScale(ty) === camera.scale at q=0, byte-identical.
+    const s = this.spriteScale(ty);
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const elevated = game.world.elevAt(tx, ty) !== 0;
