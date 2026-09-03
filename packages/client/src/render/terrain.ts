@@ -912,6 +912,13 @@ export function startChunkBake(
   live = true,
   reuse?: HTMLCanvasElement | null,
   fringe?: FringeSpec,
+  // FJ-2 THE DECK CARPENTRY STANDS UP: under a camera lean (q≠0) the
+  // deck's VERTICAL carpentry (side/south fascia, pilings) is lifted
+  // OUT of this flat bake into a screen-space standing pass
+  // (deckCarpentryItems) so consecutive tiles share exact projected
+  // edges. When true the bake omits those vertical pieces; the flat
+  // deck TOP still rides the ground quad. false at q=0 = byte-identical.
+  standingPass = false,
 ): ChunkBakeJob {
   const G = bakeGutter(px);
   const { canvas, ctx: mainCtx } = bakeCanvasFor(px, reuse);
@@ -1137,9 +1144,9 @@ export function startChunkBake(
   // keyed, so the clip alone keeps them exact; the scan is ~1k tile
   // reads, not a paint cost.)
   const groundDeck = (tx: number, ty: number): boolean => elev(tx, ty) === 0;
-  add(() => drawDocks(ctx, ground, baseX, baseY, px, groundDeck));
+  add(() => drawDocks(ctx, ground, baseX, baseY, px, groundDeck, standingPass));
   add(() => drawBridges(ctx, ground, baseX, baseY, px, groundDeck));
-  add(() => drawPorchDecks(ctx, ground, baseX, baseY, px, woodSkin, groundDeck));
+  add(() => drawPorchDecks(ctx, ground, baseX, baseY, px, woodSkin, groundDeck, standingPass));
   if (fRects !== null && fringeScratch !== undefined) {
     const sc = fringeScratch;
     steps.push(() => {
@@ -1230,6 +1237,9 @@ function drawPorchDecks(
   px: number,
   skinAt?: WoodSkinSampler,
   include?: (tx: number, ty: number) => boolean,
+  // FJ-2: omit the vertical carpentry (side/south fascia, footing
+  // blocks, tread step) under lean; the standing pass draws them.
+  standingPass = false,
 ): void {
   const liftB = Math.round((DOCK_LIFT / FLAT) * px);
   // One skin per connected patch: flood (capped) looking for a wall.
@@ -1313,8 +1323,8 @@ function drawPorchDecks(
       }
       // Rim boards edge-on at the open sides, and header beams where
       // an adjoining porch arm turns its rhythm.
-      if (!hasW) paintDeckSideFascia(ctx, gx, gy, px, liftB, 'porch', true, !hasS, fasciaBase);
-      if (!hasE) paintDeckSideFascia(ctx, gx, gy, px, liftB, 'porch', false, !hasS, fasciaBase);
+      if (!hasW && !standingPass) paintDeckSideFascia(ctx, gx, gy, px, liftB, 'porch', true, !hasS, fasciaBase);
+      if (!hasE && !standingPass) paintDeckSideFascia(ctx, gx, gy, px, liftB, 'porch', false, !hasS, fasciaBase);
       if (isPorchSurface(ground, tx - 1, ty) && porchArm(tx - 1, ty) !== armV) {
         paintHeaderBeam(ctx, gx, dy0, px, fasciaBase, true);
       }
@@ -1322,8 +1332,9 @@ function drawPorchDecks(
         paintHeaderBeam(ctx, gx, dy0, px, fasciaBase, false);
       }
       // South fascia: the rim joist that makes the lift honest, with
-      // squared footing blocks carrying it to the ground.
-      if (!hasS) {
+      // squared footing blocks carrying it to the ground. (FJ-2: lifted
+      // to the standing pass under lean.)
+      if (!hasS && !standingPass) {
         const fy = gy + px - liftB;
         ctx.fillStyle = shade(fasciaBase, -26);
         ctx.fillRect(gx, fy, px, liftB);
@@ -1341,7 +1352,7 @@ function drawPorchDecks(
       // The tread step: a full-width squared course where the deck
       // opens onto walkable ground (the porch invites the yard in).
       const southT = ground(tx, ty + 1);
-      if (!hasS && southT !== undefined && !tileDef(southT).solid && southT !== Tile.PorchDeck) {
+      if (!hasS && !standingPass && southT !== undefined && !tileDef(southT).solid && southT !== Tile.PorchDeck) {
         const sw = px * 0.56;
         const sx2 = gx + (px - sw) / 2;
         const stepH = Math.max(2, liftB * 0.5);
@@ -1361,15 +1372,18 @@ function drawPorchDecks(
         ctx.moveTo(gx, topY);
         ctx.lineTo(gx + px, topY);
       }
+      // Under lean the west/east verticals stop at the top plane (the
+      // drop lifts out); at q=0 they run the full drop as before.
+      const sideFoot = standingPass ? gy + px - liftB : gy + px - (hasS ? liftB : 0);
       if (!hasW) {
         ctx.moveTo(gx, topY);
-        ctx.lineTo(gx, gy + px - (hasS ? liftB : 0));
+        ctx.lineTo(gx, sideFoot);
       }
       if (!hasE) {
         ctx.moveTo(gx + px, topY);
-        ctx.lineTo(gx + px, gy + px - (hasS ? liftB : 0));
+        ctx.lineTo(gx + px, sideFoot);
       }
-      if (!hasS) {
+      if (!hasS && !standingPass) {
         ctx.moveTo(gx, gy + px);
         ctx.lineTo(gx + px, gy + px);
       }
@@ -1385,6 +1399,11 @@ function drawDocks(
   baseY: number,
   px: number,
   include?: (tx: number, ty: number) => boolean,
+  // FJ-2: when true, the vertical carpentry (piles, south fascia, side
+  // fascia, and the vertical-face silhouette) is omitted here and drawn
+  // by the screen-space standing pass instead. The deck TOP, board
+  // field, kerbs, seams, and ground-plane AO shadows always bake.
+  standingPass = false,
 ): void {
   const liftB = Math.round((DOCK_LIFT / FLAT) * px);
   for (let ly = -1; ly <= CHUNK_SIZE; ly++) {
@@ -1430,8 +1449,9 @@ function drawDocks(
         ctx.fillRect(gx, gy - liftB - px * 0.05, px, px * 0.05);
       }
 
-      // Piles: the legs the whole structure stands on.
-      if (!hasS && southWater) {
+      // Piles: the legs the whole structure stands on. (FJ-2: lifted
+      // out under lean — they stand as projected legs, not flat texels.)
+      if (!hasS && southWater && !standingPass) {
         for (const fpos of [0.18, 0.82]) {
           paintDeckPile(
             ctx,
@@ -1464,7 +1484,9 @@ function drawDocks(
         ctx.fillStyle = 'rgba(20, 34, 62, 0.09)';
         ctx.fillRect(side < 0 ? edgeX - px * 0.21 : edgeX + px * 0.12, gy, px * 0.09, px);
         // The pile: world-keyed row so a 2-tile bay never doubles up.
-        if (hashCoords(151, tx * (side + 2), ty) % 2 === 0) {
+        // (FJ-2: lifted to the standing pass under lean; the AO band
+        // above stays baked — it is a mark on the water plane.)
+        if (!standingPass && hashCoords(151, tx * (side + 2), ty) % 2 === 0) {
           paintDeckPile(
             ctx,
             edgeX,
@@ -1478,8 +1500,9 @@ function drawDocks(
         }
       }
 
-      // South fascia: the deck's thickness made visible.
-      if (!hasS) {
+      // South fascia: the deck's thickness made visible. (FJ-2: lifted
+      // to the standing pass under lean.)
+      if (!hasS && !standingPass) {
         ctx.fillStyle = '#6d5130';
         ctx.fillRect(gx, gy + px - liftB, px, liftB);
         const joist = Math.max(1.5, liftB * 0.22);
@@ -1501,9 +1524,10 @@ function drawDocks(
         paintDeckWallSkirt(ctx, gx, dy0, px);
       }
       // Rim boards on the side edges, then the header beams where a
-      // neighboring arm's rhythm (or family) turns.
-      if (!hasW) paintDeckSideFascia(ctx, gx, gy, px, liftB, 'dock', true, !hasS);
-      if (!hasE) paintDeckSideFascia(ctx, gx, gy, px, liftB, 'dock', false, !hasS);
+      // neighboring arm's rhythm (or family) turns. (FJ-2: the side
+      // rim's vertical drop lifts to the standing pass under lean.)
+      if (!hasW && !standingPass) paintDeckSideFascia(ctx, gx, gy, px, liftB, 'dock', true, !hasS);
+      if (!hasE && !standingPass) paintDeckSideFascia(ctx, gx, gy, px, liftB, 'dock', false, !hasS);
       paintDeckSeams(ctx, ground, tx, ty, gx, gy, px, liftB, 'dock', vertRun);
 
       // Silhouette ring, exposed edges only (the outline-shader law:
@@ -1517,17 +1541,23 @@ function drawDocks(
         ctx.lineTo(gx + px, dy0);
       }
       if (!hasS) {
+        // The deck-top south edge is a top-plane silhouette: always baked.
         ctx.moveTo(gx, dy0 + px);
         ctx.lineTo(gx + px, dy0 + px);
-        ctx.moveTo(gx, gy + px);
-        ctx.lineTo(gx + px, gy + px);
-        if (!southExposed(ground, tx - 1, ty) && deckFillAt(ground, tx - 1, ty)?.legs !== 'NE') {
-          ctx.moveTo(gx, dy0 + px);
-          ctx.lineTo(gx, gy + px);
-        }
-        if (!southExposed(ground, tx + 1, ty) && deckFillAt(ground, tx + 1, ty)?.legs !== 'NW') {
-          ctx.moveTo(gx + px, dy0 + px);
+        // The south FACE's foot + end verticals belong to the standing
+        // carpentry — skip them under lean (the standing pass rings its
+        // own trapezoid) so no flat ink is left where the face lifts out.
+        if (!standingPass) {
+          ctx.moveTo(gx, gy + px);
           ctx.lineTo(gx + px, gy + px);
+          if (!southExposed(ground, tx - 1, ty) && deckFillAt(ground, tx - 1, ty)?.legs !== 'NE') {
+            ctx.moveTo(gx, dy0 + px);
+            ctx.lineTo(gx, gy + px);
+          }
+          if (!southExposed(ground, tx + 1, ty) && deckFillAt(ground, tx + 1, ty)?.legs !== 'NW') {
+            ctx.moveTo(gx + px, dy0 + px);
+            ctx.lineTo(gx + px, gy + px);
+          }
         }
       }
       if (!hasW) {
@@ -3824,6 +3854,10 @@ export function startElevatedBake(
   px: number,
   level: number,
   takeCanvas?: (rows: number) => HTMLCanvasElement | null | undefined,
+  // FJ-2: see startChunkBake — omit the deck vertical carpentry from an
+  // elevated (terrace) deck's flat bake under lean; the standing pass
+  // draws it projected from the elevated base.
+  standingPass = false,
 ): ElevatedBakeJob | null {
   const baseX = cx * CHUNK_SIZE;
   const baseY = cy * CHUNK_SIZE;
@@ -4098,9 +4132,9 @@ export function startElevatedBake(
     // so a lower span in the same chunk never paints into a layer that
     // blits shifted.
     const deckHere = (tx: number, ty: number): boolean => elev(tx, ty) === level;
-    drawDocks(ctx, ground, baseX, baseY, px, deckHere);
+    drawDocks(ctx, ground, baseX, baseY, px, deckHere, standingPass);
     drawBridges(ctx, ground, baseX, baseY, px, deckHere);
-    drawPorchDecks(ctx, ground, baseX, baseY, px, undefined, deckHere);
+    drawPorchDecks(ctx, ground, baseX, baseY, px, undefined, deckHere, standingPass);
   });
 
   return { canvas, rows, steps, next: 0, rowOrigin };

@@ -306,6 +306,10 @@ import {
   DOCK_LIFT,
   drawLiveGround,
   fillContains,
+  fillCoversEdge,
+  isDeckGround,
+  isDockTile,
+  isPorchSurface,
   type BridgeApron,
   isWaterTile,
   FRINGE_TILES,
@@ -1137,6 +1141,12 @@ interface BakedChunk {
   stageTex?: StageTexture;
   /** Pixels per tile this bake was rendered at (zoom-tier dependent). */
   px: number;
+  /** FJ-2 THE DECK CARPENTRY STANDS UP: whether this bake omitted the
+   *  deck vertical carpentry (baked with standingPass = camera.q≠0). A
+   *  chunk baked flat (q=0) must not be reused under lean with its
+   *  fascia/pilings burned in, and vice-versa — a lean-state flip forces
+   *  a re-bake, exactly like a content or tier change. */
+  leanBaked?: boolean;
   /**
    * Lifted-terrain layers, one per elevation level present in the
    * chunk. Bands are contiguous row runs [startRow, endRow] (inclusive,
@@ -1176,6 +1186,9 @@ interface BakedChunk {
      *  exactly these — bits set mid-job survive for the restart). */
     fringeRev: number;
     fringeMask: number;
+    /** FJ-2: the lean state (camera.q≠0) this job was started under —
+     *  copied onto entry.leanBaked at completion. */
+    standingPass: boolean;
   };
   /** THE UPLOAD FOLLOWS THE PAINT (foundation audit): the base job's
    *  step counter at the last stage rev bump. A pending frame where
@@ -7764,16 +7777,22 @@ export class Renderer {
           // fringe 0 / full 13 on the very hardware the lever is
           // for. Own-content changes still restart unconditionally.
           const p = baked.pending;
-          if (p.data !== data || p.rev !== (data.rev ?? 0)) {
+          // FJ-2: an in-flight bake started under the wrong lean state
+          // (its deck carpentry burned in or missing) must restart whole.
+          const leanFlip = p.standingPass !== (this.camera.q !== 0);
+          if (leanFlip || p.data !== data || p.rev !== (data.rev ?? 0)) {
             const dRev = (data.rev ?? 0) - p.rev;
             const dFr = (data.fringeRev ?? 0) - p.fringeRev;
             const pureFringe =
-              this.fringeOn && p.data === data && dRev > 0 && dRev === dFr;
+              !leanFlip && this.fringeOn && p.data === data && dRev > 0 && dRev === dFr;
             if (!pureFringe) this.replaceQueue.push({ baked, cx, cy, data, px: chunkPx });
           }
         } else if (
           baked.data !== data ||
           baked.rev !== (data.rev ?? 0) ||
+          // FJ-2: lean-state flip — the flat bake's deck carpentry is
+          // now wrong (present at q=0, must be absent at q≠0, or v.v.).
+          (baked.leanBaked ?? false) !== (this.camera.q !== 0) ||
           // Tier flips wait out the glide: chunkBakePx is keyed off
           // targetZoom (at q=0) and the chunk's settled depth, so a
           // mid-glide re-bake would render for a scale the camera
@@ -8649,6 +8668,10 @@ export class Renderer {
       if (level === 0 && minLevel >= 0) continue;
       levels.push(level);
     }
+    // FJ-2: under a lean the deck vertical carpentry is omitted from
+    // the flat bake (the standing pass draws it projected). Captured at
+    // job start; a lean flip forces a full re-bake (see leanBaked).
+    const standingPass = this.camera.q !== 0;
     return {
       job: startChunkBake(
         ground,
@@ -8661,6 +8684,7 @@ export class Renderer {
         live,
         this.takeChunkCanvas(bakePx),
         fringe,
+        standingPass,
       ),
       levels,
       lifted: [],
@@ -8673,10 +8697,11 @@ export class Renderer {
         // bake's row scan, so hand it a pooled-canvas taker keyed on the
         // row count it computes, not a pre-sized square.
         startElevatedBake(ground, detail, elev, cx, cy, bakePx, level, (rows) =>
-          this.takeChunkCanvas(bakePx, rows),
+          this.takeChunkCanvas(bakePx, rows), standingPass,
         ),
       fringeRev: data.fringeRev ?? 0,
       fringeMask: fringe?.mask ?? data.fringeMask ?? 0,
+      standingPass,
     };
   }
 
@@ -8734,6 +8759,9 @@ export class Renderer {
     entry.data = p.data;
     entry.rev = p.rev;
     entry.px = p.px;
+    // FJ-2: record the lean state this bake settled under, so a later
+    // q flip re-bakes rather than reusing burned-in (or missing) fascia.
+    entry.leanBaked = p.standingPass;
     // THE FRINGE RE-BAKE's settlement: the baseline advances to the
     // build-time capture and the consumed mask bits clear — bits set
     // mid-job survive for the restart the rev mismatch forces.
@@ -9127,6 +9155,24 @@ export class Renderer {
         const reg = this.registerFor(key, cx, cy, data);
         if (reg) this.emitRegisterRow(game, items, reg, key, ly, ty, segX0, segX1, b, runSeen);
         else this.scanRaisedRange(game, items, ty, segX0, segX1, b, runSeen);
+      }
+    }
+    // FJ-2 THE DECK CARPENTRY STANDS UP. Docks and porch decks bake
+    // their vertical faces (fascia, pilings) FLAT into the ground chunk
+    // and warp them as ground — under a lean each tile's baked face
+    // foreshortens as a ground band and consecutive tiles detach into
+    // floating stepped blocks. Under q≠0 the bake OMITS those faces
+    // (standingPass) and this sweep emits them as screen-space standing
+    // trapezoids anchored to the projected deck edge: adjacent tiles
+    // share the exact projected world corner, so the edge is continuous
+    // like a cliff face. At q=0 nothing runs and the flat bake is
+    // unchanged (byte-identical). The +1 pad admits a face whose base
+    // row sits just off the bottom edge.
+    if (this.camera.q !== 0) {
+      for (let ty = b.minTy; ty <= b.maxTy + 1; ty++) {
+        for (let tx = b.minTx - 1; tx <= b.maxTx + 1; tx++) {
+          this.deckCarpentryItems(game, tx, ty, items);
+        }
       }
     }
   }
@@ -13220,6 +13266,181 @@ export class Renderer {
       if (this.railEdgeAt(game, x, y, dx, dy)) return true;
     }
     return false;
+  }
+
+  /**
+   * FJ-2 THE DECK CARPENTRY STANDS UP. For one dock or porch-deck tile,
+   * emit the vertical carpentry the flat bake omits under lean —
+   * side/south fascia and (over water) driven pilings — as screen-space
+   * STANDING trapezoids, the cliffArt method: project each edge's world
+   * corners with worldToScreen and lift top & base by EACH corner's own
+   * depthScale, so a face recedes as a true trapezoid and consecutive
+   * tiles, sharing the exact projected world corner, form one continuous
+   * edge (no floating stepped blocks). Only exposed (non-deck) edges
+   * emit. Called ONLY at q≠0; the flat deck TOP stays baked on the
+   * ground quad. See collectRaisedTiles.
+   */
+  private deckCarpentryItems(game: ClientGame, tx: number, ty: number, items: DrawItem[]): void {
+    const g = (x: number, y: number): number | undefined => game.world.groundAt(x, y);
+    const t = g(tx, ty);
+    if (t === undefined) return;
+    const isDock = t === Tile.Dock && isDockTile(g, tx, ty);
+    const isPorch = !isDock && isPorchSurface(g, tx, ty);
+    if (!isDock && !isPorch) return;
+
+    // Exposure — matches the bake exactly: a dock edge is covered by a
+    // deck neighbour OR a 45° notch fill welded to it; a porch edge only
+    // by another porch surface.
+    const covered = (nx: number, ny: number, edge: 'N' | 'S' | 'E' | 'W'): boolean =>
+      isDock
+        ? isDeckGround(g(nx, ny)) || fillCoversEdge(g, nx, ny, edge)
+        : isPorchSurface(g, nx, ny);
+    const hasN = covered(tx, ty - 1, 'S');
+    const hasS = covered(tx, ty + 1, 'N');
+    const hasE = covered(tx + 1, ty, 'W');
+    const hasW = covered(tx - 1, ty, 'E');
+    if (hasN && hasS && hasE && hasW) return; // interior tile, no faces
+
+    const ctx = this.ctx;
+    const cam = this.camera;
+    const s = cam.scale;
+    const W = this.w;
+    const H = this.h;
+    const elevLvl = game.world.elevAt(tx, ty);
+    const baseLift = elevLvl * ELEV_H; // terrace / water surface
+    const topLift = baseLift + DOCK_LIFT; // the deck's board top
+    const strat = elevLvl !== 0 ? elevLvl : undefined;
+    const elevated = elevLvl !== 0;
+    const FLAT = 0.6; // deck ellipse flatten, mirrors terrain
+    // Rim tones: the flat bake's dock south fascia is '#6d5130', its side
+    // rim lit +12 (west) / −16 (east); porch shares the tone.
+    const rim = '#6d5130';
+
+    // One standing face between two world-ground corners (ax,ay)-(bx,by),
+    // filled from topLift down to baseLift, each corner foreshortened by
+    // its OWN depthScale. Shared corners round to the same device pixel,
+    // so neighbours meet seam-free.
+    const faceItem = (
+      ax: number,
+      ay: number,
+      bx: number,
+      by: number,
+      sortY: number,
+      body: string,
+      joistTop: boolean,
+    ): void => {
+      items.push({
+        sortY,
+        strat,
+        elevated,
+        draw: () => {
+          const A = cam.worldToScreen(ax, ay, W, H);
+          const B = cam.worldToScreen(bx, by, W, H);
+          A.x = Math.round(A.x);
+          A.y = Math.round(A.y);
+          B.x = Math.round(B.x);
+          B.y = Math.round(B.y);
+          const dsA = cam.depthScale(ay);
+          const dsB = cam.depthScale(by);
+          const yTopA = A.y - topLift * s * dsA;
+          const yTopB = B.y - topLift * s * dsB;
+          const yBaseA = A.y - baseLift * s * dsA;
+          const yBaseB = B.y - baseLift * s * dsB;
+          ctx.fillStyle = body;
+          ctx.beginPath();
+          ctx.moveTo(A.x, yTopA);
+          ctx.lineTo(B.x, yTopB);
+          ctx.lineTo(B.x, yBaseB);
+          ctx.lineTo(A.x, yBaseA);
+          ctx.closePath();
+          ctx.fill();
+          // The rim-joist shadow band under the deck lip + a thin lit
+          // catch on the top arris, keyed off the face height so it
+          // foreshortens with the trapezoid.
+          const joist = (dsA + dsB) * 0.5 * s * DOCK_LIFT * 0.22;
+          if (joistTop) {
+            ctx.fillStyle = 'rgba(30, 19, 9, 0.45)';
+            ctx.beginPath();
+            ctx.moveTo(A.x, yTopA);
+            ctx.lineTo(B.x, yTopB);
+            ctx.lineTo(B.x, yTopB + joist);
+            ctx.lineTo(A.x, yTopA + joist);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = 'rgba(214, 178, 120, 0.28)';
+            ctx.beginPath();
+            ctx.moveTo(A.x, yTopA);
+            ctx.lineTo(B.x, yTopB);
+            ctx.lineTo(B.x, yTopB + Math.max(1, joist * 0.16));
+            ctx.lineTo(A.x, yTopA + Math.max(1, joist * 0.16));
+            ctx.closePath();
+            ctx.fill();
+          }
+          if (this.outlineOn) {
+            this.beginStructOutline();
+            ctx.beginPath();
+            ctx.moveTo(A.x, yTopA);
+            ctx.lineTo(B.x, yTopB);
+            ctx.lineTo(B.x, yBaseB);
+            ctx.lineTo(A.x, yBaseA);
+            ctx.closePath();
+            ctx.stroke();
+          }
+        },
+      });
+    };
+
+    // One driven pile at world (wx,wy): a leg from just under the deck
+    // lip down into the water, with its seat shadow + waterline collar.
+    const pileItem = (wx: number, wy: number, sortY: number): void => {
+      items.push({
+        sortY,
+        strat,
+        elevated,
+        draw: () => {
+          const P = cam.worldToScreen(wx, wy, W, H);
+          const ds = cam.depthScale(wy);
+          const pw = Math.max(1.5, s * ds * 0.11);
+          const topY = P.y - (baseLift + DOCK_LIFT * 0.75) * s * ds;
+          const botY = P.y - (baseLift - 0.14) * s * ds;
+          // Seat shadow: the water darkens where the leg stands in it.
+          ctx.fillStyle = 'rgba(20, 34, 62, 0.28)';
+          ctx.beginPath();
+          ctx.ellipse(P.x, botY, pw * 1.1, pw * 1.1 * FLAT, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#4e3a22';
+          ctx.fillRect(P.x - pw / 2, topY, pw, botY - topY);
+          ctx.fillStyle = '#77593a'; // sun-law lit west edge
+          ctx.fillRect(P.x - pw / 2, topY, Math.max(1, pw * 0.3), botY - topY);
+          ctx.strokeStyle = 'rgba(226, 240, 251, 0.38)';
+          ctx.lineWidth = Math.max(1, s * ds * 0.022);
+          ctx.beginPath();
+          ctx.ellipse(P.x, botY, pw * 0.62, pw * 0.62 * FLAT, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        },
+      });
+    };
+
+    // South face — a rim across the tile's south edge (row ty+1).
+    if (!hasS) faceItem(tx, ty + 1, tx + 1, ty + 1, ty + 1.02, rim, true);
+    // West / East faces — trapezoids down each N-S edge (rows ty..ty+1),
+    // lit like the flat bake's rim (west sunlit, east shaded).
+    if (!hasW) faceItem(tx, ty, tx, ty + 1, ty + 1.0, shade(rim, 12), false);
+    if (!hasE) faceItem(tx + 1, ty, tx + 1, ty + 1, ty + 1.0, shade(rim, -16), false);
+
+    // Driven pilings on water-facing dock edges (docks only; a ground
+    // porch has footing behind its fascia, drawn within the face).
+    if (isDock) {
+      if (!hasS && isWaterTile(g(tx, ty + 1))) {
+        for (const fpos of [0.18, 0.82]) pileItem(tx + fpos, ty + 1, ty + 1.01);
+      }
+      if (!hasW && isWaterTile(g(tx - 1, ty)) && hashCoords(151, tx * 1, ty) % 2 === 0) {
+        pileItem(tx, ty + 0.55, ty + 0.99);
+      }
+      if (!hasE && isWaterTile(g(tx + 1, ty)) && hashCoords(151, tx * 3, ty) % 2 === 0) {
+        pileItem(tx + 1, ty + 0.55, ty + 0.99);
+      }
+    }
   }
 
   private bridgeRailItems(tx: number, ty: number, game: ClientGame, items: DrawItem[]): void {
