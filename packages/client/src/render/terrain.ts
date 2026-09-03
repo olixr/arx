@@ -1145,7 +1145,7 @@ export function startChunkBake(
   // reads, not a paint cost.)
   const groundDeck = (tx: number, ty: number): boolean => elev(tx, ty) === 0;
   add(() => drawDocks(ctx, ground, baseX, baseY, px, groundDeck, standingPass));
-  add(() => drawBridges(ctx, ground, baseX, baseY, px, groundDeck));
+  add(() => drawBridges(ctx, ground, baseX, baseY, px, groundDeck, standingPass));
   add(() => drawPorchDecks(ctx, ground, baseX, baseY, px, woodSkin, groundDeck, standingPass));
   if (fRects !== null && fringeScratch !== undefined) {
     const sc = fringeScratch;
@@ -1416,7 +1416,7 @@ function drawDocks(
         // 45° notch fills owned by this pass (deckFillAt).
         const f = deckFillAt(ground, tx, ty);
         if (f !== null && f.family === 'dock' && (!include || include(tx, ty))) {
-          drawDeckFill(ctx, ground, f, tx, ty, gx, gy, px);
+          drawDeckFill(ctx, ground, f, tx, ty, gx, gy, px, standingPass);
         }
         continue;
       }
@@ -2004,6 +2004,15 @@ function drawBridges(
   baseY: number,
   px: number,
   include?: (tx: number, ty: number) => boolean,
+  // FJ-2: when true, the FULL-HEIGHT vertical carpentry (south rim
+  // joist + its face silhouette, the driven pile pairs + X-brace, and
+  // a flat span's edge-on side fascia) is omitted here and drawn by
+  // the screen-space standing pass instead (bridgeCarpentryItems /
+  // deckFillCarpentryItems). The deck TOP, boards, kerbs, thresholds,
+  // ground-plane AO shadows, and every RAMP-sheared piece (the raked
+  // stringer, apron side fascia) always bake — they shear with the
+  // ground quad and never float. false at q=0 = byte-identical.
+  standingPass = false,
 ): void {
   const liftB = Math.round((DOCK_LIFT / FLAT) * px);
   const isLand = (t: number | undefined): boolean =>
@@ -2020,7 +2029,7 @@ function drawBridges(
         // 45° notch fills owned by this pass (deckFillAt).
         const f = deckFillAt(ground, tx, ty);
         if (f !== null && f.family === 'bridge' && (!include || include(tx, ty))) {
-          drawDeckFill(ctx, ground, f, tx, ty, gx, gy, px);
+          drawDeckFill(ctx, ground, f, tx, ty, gx, gy, px, standingPass);
         }
         continue;
       }
@@ -2069,7 +2078,7 @@ function drawBridges(
       // south edge is at full lift, so it keeps its piles. An X of
       // cross-bracing ties each pair — the carpentry that sells a
       // standing trestle.
-      if (!hasS && waterS && (apron === 'none' || apron === 'N')) {
+      if (!standingPass && !hasS && waterS && (apron === 'none' || apron === 'N')) {
         const pw = px * 0.13;
         const top = gy + px - liftB * 0.3;
         const braceBot = gy + px + px * 0.3;
@@ -2128,26 +2137,31 @@ function drawBridges(
       if (!hasS && (apron === 'none' || apron === 'N')) {
         // Rim joist: the deck's visible timber thickness — a weathered
         // board hung under the south edge, over water and land alike.
-        ctx.fillStyle = BRIDGE_TIMBER.rim;
-        ctx.fillRect(gx, gy + px - liftB, px, liftB);
-        // Catch-light lip, the under-deck shadow foot, and support
-        // ticks tying the rim to its pile stations.
-        ctx.fillStyle = 'rgba(222, 184, 122, 0.32)';
-        ctx.fillRect(gx, gy + px - liftB, px, Math.max(1, px * 0.02));
-        ctx.fillStyle = 'rgba(20, 14, 7, 0.42)';
-        ctx.fillRect(gx, gy + px - Math.max(1.5, liftB * 0.16), px, Math.max(1.5, liftB * 0.16));
-        if (waterS) {
-          ctx.fillStyle = 'rgba(24, 16, 8, 0.28)';
-          for (const fpos of [0.18, 0.82]) {
-            ctx.fillRect(gx + fpos * px - px * 0.02, gy + px - liftB, px * 0.04, liftB);
+        // (FJ-2: the rim board, its dressing and its face silhouette lift
+        // to the standing pass under lean; the bank seat shadow stays —
+        // it is a mark on the ground plane.)
+        if (!standingPass) {
+          ctx.fillStyle = BRIDGE_TIMBER.rim;
+          ctx.fillRect(gx, gy + px - liftB, px, liftB);
+          // Catch-light lip, the under-deck shadow foot, and support
+          // ticks tying the rim to its pile stations.
+          ctx.fillStyle = 'rgba(222, 184, 122, 0.32)';
+          ctx.fillRect(gx, gy + px - liftB, px, Math.max(1, px * 0.02));
+          ctx.fillStyle = 'rgba(20, 14, 7, 0.42)';
+          ctx.fillRect(gx, gy + px - Math.max(1.5, liftB * 0.16), px, Math.max(1.5, liftB * 0.16));
+          if (waterS) {
+            ctx.fillStyle = 'rgba(24, 16, 8, 0.28)';
+            for (const fpos of [0.18, 0.82]) {
+              ctx.fillRect(gx + fpos * px - px * 0.02, gy + px - liftB, px * 0.04, liftB);
+            }
           }
-        }
-        // A rim joint where the world says the board breaks.
-        const hj = hashCoords(171, tx, ty);
-        if (hj % 3 === 0) {
-          const fx = 0.2 + ((hj >>> 4) % 60) / 100;
-          ctx.fillStyle = 'rgba(30, 20, 10, 0.35)';
-          ctx.fillRect(gx + fx * px, gy + px - liftB, Math.max(1, px * 0.02), liftB);
+          // A rim joint where the world says the board breaks.
+          const hj = hashCoords(171, tx, ty);
+          if (hj % 3 === 0) {
+            const fx = 0.2 + ((hj >>> 4) % 60) / 100;
+            ctx.fillStyle = 'rgba(30, 20, 10, 0.35)';
+            ctx.fillRect(gx + fx * px, gy + px - liftB, Math.max(1, px * 0.02), liftB);
+          }
         }
         if (landS) {
           // The seat shadow on the bank: the mass presses into land.
@@ -2157,20 +2171,23 @@ function drawBridges(
         // Silhouette foot: the rim closes at its bottom edge, capped
         // at either end unless a neighbor face (straight rim or a 45°
         // fill fascia) carries the line onward — no more floating rim
-        // ends at the bank junctions.
-        beginDeckOutline(ctx, px);
-        ctx.beginPath();
-        ctx.moveTo(gx, gy + px);
-        ctx.lineTo(gx + px, gy + px);
-        if (!southExposed(ground, tx - 1, ty) && deckFillAt(ground, tx - 1, ty)?.legs !== 'NE') {
-          ctx.moveTo(gx, gy + px - liftB);
-          ctx.lineTo(gx, gy + px);
-        }
-        if (!southExposed(ground, tx + 1, ty) && deckFillAt(ground, tx + 1, ty)?.legs !== 'NW') {
-          ctx.moveTo(gx + px, gy + px - liftB);
+        // ends at the bank junctions. (FJ-2: the face silhouette is the
+        // standing trapezoid's own ring under lean.)
+        if (!standingPass) {
+          beginDeckOutline(ctx, px);
+          ctx.beginPath();
+          ctx.moveTo(gx, gy + px);
           ctx.lineTo(gx + px, gy + px);
+          if (!southExposed(ground, tx - 1, ty) && deckFillAt(ground, tx - 1, ty)?.legs !== 'NE') {
+            ctx.moveTo(gx, gy + px - liftB);
+            ctx.lineTo(gx, gy + px);
+          }
+          if (!southExposed(ground, tx + 1, ty) && deckFillAt(ground, tx + 1, ty)?.legs !== 'NW') {
+            ctx.moveTo(gx + px, gy + px - liftB);
+            ctx.lineTo(gx + px, gy + px);
+          }
+          ctx.stroke();
         }
-        ctx.stroke();
       }
 
       // THE RAMP TRANSFORM: aprons draw the same flat deck kit and
@@ -2246,10 +2263,15 @@ function drawBridges(
       // exposes over water, which carry neither kerb nor threshold —
       // wear the rim board edge-on like every dock side (THE EDGE HAS
       // A BODY); a bare ink line there read as a torn mat.
-      if (!hasW && !kerbW && !thW && apron !== 'W') {
+      // FJ-2: a flat span's edge-on side fascia is a full-height vertical
+      // face — lift it to the standing pass under lean. On a ramp the
+      // fascia is sheared inside the apron transform (it rides the ground
+      // quad), so it stays baked.
+      const liftSideFascia = standingPass && apron === 'none';
+      if (!hasW && !kerbW && !thW && apron !== 'W' && !liftSideFascia) {
         paintDeckSideFascia(ctx, gx, gy, px, liftB, 'bridge', true, !hasS);
       }
-      if (!hasE && !kerbE && !thE && apron !== 'E') {
+      if (!hasE && !kerbE && !thE && apron !== 'E' && !liftSideFascia) {
         paintDeckSideFascia(ctx, gx, gy, px, liftB, 'bridge', false, !hasS);
       }
 
@@ -2350,6 +2372,12 @@ function drawDeckFill(
   gx: number,
   gy: number,
   px: number,
+  // FJ-2: under lean the diagonal fill's VERTICAL carpentry (its hyp
+  // fascia, midpoint pile, and the face's foot/cap silhouette) is
+  // omitted here and drawn as a screen-space standing trapezoid by
+  // deckFillCarpentryItems. The lifted deck triangle TOP, its boards,
+  // kerb, hyp-top silhouette and the ground-plane AO bands always bake.
+  standingPass = false,
 ): void {
   const liftB = Math.round((DOCK_LIFT / FLAT) * px);
   const { legs, family, bank } = fill;
@@ -2409,43 +2437,48 @@ function drawDeckFill(
 
       // One leg at the hyp midpoint: a driven timber pile for either
       // family — the diagonal stands on the water like every straight
-      // bay does.
-      const mx = (ax0 + bx0) / 2;
-      const myG = (ayG + byG) / 2;
-      const pw = bridge ? px * 0.13 : px * 0.11;
-      const top = myG - liftB * (bridge ? 0.3 : 0.25);
-      paintDeckPile(
-        ctx,
-        mx,
-        top,
-        px,
-        pw,
-        hashCoords(157, tx, ty),
-        bridge ? BRIDGE_TIMBER.pile : '#4e3a22',
-        bridge ? BRIDGE_TIMBER.pileLit : '#77593a',
-      );
+      // bay does. (FJ-2: lifted to the standing pass under lean.)
+      if (!standingPass) {
+        const mx = (ax0 + bx0) / 2;
+        const myG = (ayG + byG) / 2;
+        const pw = bridge ? px * 0.13 : px * 0.11;
+        const top = myG - liftB * (bridge ? 0.3 : 0.25);
+        paintDeckPile(
+          ctx,
+          mx,
+          top,
+          px,
+          pw,
+          hashCoords(157, tx, ty),
+          bridge ? BRIDGE_TIMBER.pile : '#4e3a22',
+          bridge ? BRIDGE_TIMBER.pileLit : '#77593a',
+        );
+      }
     }
 
     // The face under the hyp: deck thickness made visible, sheared
     // along the diagonal — the family's timber rim, wearing the same
-    // dressing lines as the straight bays.
-    const face = (yTop: number, yBot: number, style: string): void => {
-      ctx.fillStyle = style;
-      ctx.beginPath();
-      ctx.moveTo(ax0, ayL + yTop);
-      ctx.lineTo(bx0, byL + yTop);
-      ctx.lineTo(bx0, byL + yBot);
-      ctx.lineTo(ax0, ayL + yBot);
-      ctx.closePath();
-      ctx.fill();
-    };
-    face(0, liftB, bridge ? BRIDGE_TIMBER.rim : '#6d5130');
-    if (bridge) {
-      face(0, Math.max(1, px * 0.02), 'rgba(222, 184, 122, 0.32)');
-      face(liftB - Math.max(1.5, liftB * 0.16), liftB, 'rgba(20, 14, 7, 0.42)');
-    } else {
-      face(liftB - Math.max(1.5, liftB * 0.22), liftB, 'rgba(30, 19, 9, 0.45)');
-      face(0, Math.max(1, px * 0.02), 'rgba(214, 178, 120, 0.28)');
+    // dressing lines as the straight bays. (FJ-2: the whole camera-
+    // facing fascia lifts to the standing pass under lean.)
+    if (!standingPass) {
+      const face = (yTop: number, yBot: number, style: string): void => {
+        ctx.fillStyle = style;
+        ctx.beginPath();
+        ctx.moveTo(ax0, ayL + yTop);
+        ctx.lineTo(bx0, byL + yTop);
+        ctx.lineTo(bx0, byL + yBot);
+        ctx.lineTo(ax0, ayL + yBot);
+        ctx.closePath();
+        ctx.fill();
+      };
+      face(0, liftB, bridge ? BRIDGE_TIMBER.rim : '#6d5130');
+      if (bridge) {
+        face(0, Math.max(1, px * 0.02), 'rgba(222, 184, 122, 0.32)');
+        face(liftB - Math.max(1.5, liftB * 0.16), liftB, 'rgba(20, 14, 7, 0.42)');
+      } else {
+        face(liftB - Math.max(1.5, liftB * 0.22), liftB, 'rgba(30, 19, 9, 0.45)');
+        face(0, Math.max(1, px * 0.02), 'rgba(214, 178, 120, 0.28)');
+      }
     }
   }
 
@@ -2490,7 +2523,10 @@ function drawDeckFill(
   ctx.beginPath();
   ctx.moveTo(ax0, ayL);
   ctx.lineTo(bx0, byL);
-  if (southFacing) {
+  // The face's foot along the ground diagonal and its high-end cap are
+  // the vertical fascia's own ring — under lean the standing trapezoid
+  // draws them, so skip them here (the hyp-TOP edge above always bakes).
+  if (southFacing && !standingPass) {
     ctx.moveTo(ax0, ayG);
     ctx.lineTo(bx0, byG);
     ctx.moveTo(ax0, ayL);
@@ -4133,7 +4169,7 @@ export function startElevatedBake(
     // blits shifted.
     const deckHere = (tx: number, ty: number): boolean => elev(tx, ty) === level;
     drawDocks(ctx, ground, baseX, baseY, px, deckHere, standingPass);
-    drawBridges(ctx, ground, baseX, baseY, px, deckHere);
+    drawBridges(ctx, ground, baseX, baseY, px, deckHere, standingPass);
     drawPorchDecks(ctx, ground, baseX, baseY, px, undefined, deckHere, standingPass);
   });
 

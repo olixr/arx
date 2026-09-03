@@ -307,6 +307,7 @@ import {
   drawLiveGround,
   fillContains,
   fillCoversEdge,
+  isBridgeTile,
   isDeckGround,
   isDockTile,
   isPorchSurface,
@@ -9172,6 +9173,8 @@ export class Renderer {
       for (let ty = b.minTy; ty <= b.maxTy + 1; ty++) {
         for (let tx = b.minTx - 1; tx <= b.maxTx + 1; tx++) {
           this.deckCarpentryItems(game, tx, ty, items);
+          this.bridgeCarpentryItems(game, tx, ty, items);
+          this.deckFillCarpentryItems(game, tx, ty, items);
         }
       }
     }
@@ -10270,10 +10273,29 @@ export class Renderer {
         ? s *
           Math.max(1, this.camera.depthScale(m.ty), this.camera.depthScale(m.ty + spanS))
         : s;
+    // THE BOX SPANS BOTH ROWS (lean corner-sliver fix): p0/p1 name only
+    // the NW (far/north row) and SE (near/south row) footprint corners.
+    // Under the lean the NEAR row spreads WIDER than the far row from the
+    // vanishing centre, so for a run off the screen centre the true
+    // horizontal extent is the SW/NE corners this two-corner box never
+    // sampled — the wall art then clips to an axis-aligned slab narrower
+    // than the leaned masonry and shears a thin sliver off the corner
+    // (the background/fog showed through). Bound x by ALL FOUR projected
+    // footprint corners. At q=0 worldToScreen x is a pure function of tx
+    // (rows share one scale), so SW.x===NW.x and NE.x===SE.x → xL/xR
+    // collapse to p0.x/p1.x, byte-identical to the ortho frame.
+    let xL = p0.x;
+    let xR = p1.x;
+    if (this.camera.q !== 0) {
+      const sw2 = this.camera.worldToScreen(m.tx, m.ty + spanS, this.w, this.h);
+      const ne2 = this.camera.worldToScreen(m.endX + 1, m.ty, this.w, this.h);
+      xL = Math.min(p0.x, p1.x, sw2.x, ne2.x);
+      xR = Math.max(p0.x, p1.x, sw2.x, ne2.x);
+    }
     const pb = {
-      x: p0.x - 1.2 * sPad,
+      x: xL - 1.2 * sPad,
       y: p0.y - northT * sPad,
-      w: p1.x - p0.x + 2.4 * sPad,
+      w: xR - xL + 2.4 * sPad,
       h: p1.y - p0.y + (northT + southT) * sPad,
     };
     // THE SCRATCH LEDGER's identity: world anchor + kind + emission
@@ -13301,145 +13323,370 @@ export class Renderer {
     const hasW = covered(tx - 1, ty, 'E');
     if (hasN && hasS && hasE && hasW) return; // interior tile, no faces
 
-    const ctx = this.ctx;
-    const cam = this.camera;
-    const s = cam.scale;
-    const W = this.w;
-    const H = this.h;
     const elevLvl = game.world.elevAt(tx, ty);
     const baseLift = elevLvl * ELEV_H; // terrace / water surface
     const topLift = baseLift + DOCK_LIFT; // the deck's board top
     const strat = elevLvl !== 0 ? elevLvl : undefined;
     const elevated = elevLvl !== 0;
-    const FLAT = 0.6; // deck ellipse flatten, mirrors terrain
     // Rim tones: the flat bake's dock south fascia is '#6d5130', its side
     // rim lit +12 (west) / −16 (east); porch shares the tone.
     const rim = '#6d5130';
 
-    // One standing face between two world-ground corners (ax,ay)-(bx,by),
-    // filled from topLift down to baseLift, each corner foreshortened by
-    // its OWN depthScale. Shared corners round to the same device pixel,
-    // so neighbours meet seam-free.
-    const faceItem = (
-      ax: number,
-      ay: number,
-      bx: number,
-      by: number,
-      sortY: number,
-      body: string,
-      joistTop: boolean,
-    ): void => {
-      items.push({
-        sortY,
-        strat,
-        elevated,
-        draw: () => {
-          const A = cam.worldToScreen(ax, ay, W, H);
-          const B = cam.worldToScreen(bx, by, W, H);
-          A.x = Math.round(A.x);
-          A.y = Math.round(A.y);
-          B.x = Math.round(B.x);
-          B.y = Math.round(B.y);
-          const dsA = cam.depthScale(ay);
-          const dsB = cam.depthScale(by);
-          const yTopA = A.y - topLift * s * dsA;
-          const yTopB = B.y - topLift * s * dsB;
-          const yBaseA = A.y - baseLift * s * dsA;
-          const yBaseB = B.y - baseLift * s * dsB;
-          ctx.fillStyle = body;
+    // South face — a rim across the tile's south edge (row ty+1).
+    if (!hasS)
+      this.deckStandFace(items, tx, ty + 1, tx + 1, ty + 1, ty + 1.02, rim, topLift, baseLift, 'dockJoist', strat, elevated);
+    // West / East faces — trapezoids down each N-S edge (rows ty..ty+1),
+    // lit like the flat bake's rim (west sunlit, east shaded).
+    if (!hasW)
+      this.deckStandFace(items, tx, ty, tx, ty + 1, ty + 1.0, shade(rim, 12), topLift, baseLift, 'none', strat, elevated);
+    if (!hasE)
+      this.deckStandFace(items, tx + 1, ty, tx + 1, ty + 1, ty + 1.0, shade(rim, -16), topLift, baseLift, 'none', strat, elevated);
+
+    // Driven pilings on water-facing dock edges (docks only; a ground
+    // porch has footing behind its fascia, drawn within the face).
+    if (isDock) {
+      if (!hasS && isWaterTile(g(tx, ty + 1))) {
+        for (const fpos of [0.18, 0.82])
+          this.deckStandPile(items, tx + fpos, ty + 1, ty + 1.01, baseLift, strat, elevated, '#4e3a22', '#77593a');
+      }
+      if (!hasW && isWaterTile(g(tx - 1, ty)) && hashCoords(151, tx * 1, ty) % 2 === 0) {
+        this.deckStandPile(items, tx, ty + 0.55, ty + 0.99, baseLift, strat, elevated, '#4e3a22', '#77593a');
+      }
+      if (!hasE && isWaterTile(g(tx + 1, ty)) && hashCoords(151, tx * 3, ty) % 2 === 0) {
+        this.deckStandPile(items, tx + 1, ty + 0.55, ty + 0.99, baseLift, strat, elevated, '#4e3a22', '#77593a');
+      }
+    }
+  }
+
+  /**
+   * FJ-2 shared standing face: ONE screen-space trapezoid between two
+   * world-ground corners (ax,ay)-(bx,by), filled from `topLift` down to
+   * `baseLift`, each corner foreshortened by its OWN depthScale. Shared
+   * corners round to the same device pixel, so consecutive pieces meet
+   * seam-free — the cliffArt law that keeps docks, porches, bridges and
+   * notch fills continuous under lean. `band` dresses the top arris:
+   * 'dockJoist' (dock/porch — a shadow band + lit catch on the lip),
+   * 'bridgeRim' (a catch-light lip + a shadow foot), or 'none'.
+   */
+  private deckStandFace(
+    items: DrawItem[],
+    ax: number,
+    ay: number,
+    bx: number,
+    by: number,
+    sortY: number,
+    body: string,
+    topLift: number,
+    baseLift: number,
+    band: 'dockJoist' | 'bridgeRim' | 'dockFill' | 'none',
+    strat: number | undefined,
+    elevated: boolean,
+  ): void {
+    const ctx = this.ctx;
+    const cam = this.camera;
+    const s = cam.scale;
+    const W = this.w;
+    const H = this.h;
+    items.push({
+      sortY,
+      strat,
+      elevated,
+      draw: () => {
+        const A = cam.worldToScreen(ax, ay, W, H);
+        const B = cam.worldToScreen(bx, by, W, H);
+        A.x = Math.round(A.x);
+        A.y = Math.round(A.y);
+        B.x = Math.round(B.x);
+        B.y = Math.round(B.y);
+        const dsA = cam.depthScale(ay);
+        const dsB = cam.depthScale(by);
+        const yTopA = A.y - topLift * s * dsA;
+        const yTopB = B.y - topLift * s * dsB;
+        const yBaseA = A.y - baseLift * s * dsA;
+        const yBaseB = B.y - baseLift * s * dsB;
+        ctx.fillStyle = body;
+        ctx.beginPath();
+        ctx.moveTo(A.x, yTopA);
+        ctx.lineTo(B.x, yTopB);
+        ctx.lineTo(B.x, yBaseB);
+        ctx.lineTo(A.x, yBaseA);
+        ctx.closePath();
+        ctx.fill();
+        // Dressing bands, keyed off the face height so they foreshorten
+        // with the trapezoid.
+        const joist = (dsA + dsB) * 0.5 * s * DOCK_LIFT * 0.22;
+        if (band === 'dockJoist') {
+          // The rim-joist shadow band under the deck lip + a thin lit
+          // catch on the top arris.
+          ctx.fillStyle = 'rgba(30, 19, 9, 0.45)';
+          ctx.beginPath();
+          ctx.moveTo(A.x, yTopA);
+          ctx.lineTo(B.x, yTopB);
+          ctx.lineTo(B.x, yTopB + joist);
+          ctx.lineTo(A.x, yTopA + joist);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = 'rgba(214, 178, 120, 0.28)';
+          ctx.beginPath();
+          ctx.moveTo(A.x, yTopA);
+          ctx.lineTo(B.x, yTopB);
+          ctx.lineTo(B.x, yTopB + Math.max(1, joist * 0.16));
+          ctx.lineTo(A.x, yTopA + Math.max(1, joist * 0.16));
+          ctx.closePath();
+          ctx.fill();
+        } else if (band === 'bridgeRim') {
+          // A bridge rim wears a catch-light lip at the top and a firm
+          // shadow foot at the base (mirrors the flat bake's dressing).
+          const catchH = Math.max(1, (dsA + dsB) * 0.5 * s * 0.02);
+          ctx.fillStyle = 'rgba(222, 184, 122, 0.32)';
+          ctx.beginPath();
+          ctx.moveTo(A.x, yTopA);
+          ctx.lineTo(B.x, yTopB);
+          ctx.lineTo(B.x, yTopB + catchH);
+          ctx.lineTo(A.x, yTopA + catchH);
+          ctx.closePath();
+          ctx.fill();
+          const footH = Math.max(1.5, joist * 0.73);
+          ctx.fillStyle = 'rgba(20, 14, 7, 0.42)';
+          ctx.beginPath();
+          ctx.moveTo(A.x, yBaseA - footH);
+          ctx.lineTo(B.x, yBaseB - footH);
+          ctx.lineTo(B.x, yBaseB);
+          ctx.lineTo(A.x, yBaseA);
+          ctx.closePath();
+          ctx.fill();
+        } else if (band === 'dockFill') {
+          // A dock notch fill's fascia: a thin lit catch at the top and
+          // a firm shadow foot at the base (mirrors the flat bake).
+          const catchH = Math.max(1, (dsA + dsB) * 0.5 * s * 0.02);
+          ctx.fillStyle = 'rgba(214, 178, 120, 0.28)';
+          ctx.beginPath();
+          ctx.moveTo(A.x, yTopA);
+          ctx.lineTo(B.x, yTopB);
+          ctx.lineTo(B.x, yTopB + catchH);
+          ctx.lineTo(A.x, yTopA + catchH);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = 'rgba(30, 19, 9, 0.45)';
+          ctx.beginPath();
+          ctx.moveTo(A.x, yBaseA - joist);
+          ctx.lineTo(B.x, yBaseB - joist);
+          ctx.lineTo(B.x, yBaseB);
+          ctx.lineTo(A.x, yBaseA);
+          ctx.closePath();
+          ctx.fill();
+        }
+        if (this.outlineOn) {
+          this.beginStructOutline();
           ctx.beginPath();
           ctx.moveTo(A.x, yTopA);
           ctx.lineTo(B.x, yTopB);
           ctx.lineTo(B.x, yBaseB);
           ctx.lineTo(A.x, yBaseA);
           ctx.closePath();
-          ctx.fill();
-          // The rim-joist shadow band under the deck lip + a thin lit
-          // catch on the top arris, keyed off the face height so it
-          // foreshortens with the trapezoid.
-          const joist = (dsA + dsB) * 0.5 * s * DOCK_LIFT * 0.22;
-          if (joistTop) {
-            ctx.fillStyle = 'rgba(30, 19, 9, 0.45)';
-            ctx.beginPath();
-            ctx.moveTo(A.x, yTopA);
-            ctx.lineTo(B.x, yTopB);
-            ctx.lineTo(B.x, yTopB + joist);
-            ctx.lineTo(A.x, yTopA + joist);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = 'rgba(214, 178, 120, 0.28)';
-            ctx.beginPath();
-            ctx.moveTo(A.x, yTopA);
-            ctx.lineTo(B.x, yTopB);
-            ctx.lineTo(B.x, yTopB + Math.max(1, joist * 0.16));
-            ctx.lineTo(A.x, yTopA + Math.max(1, joist * 0.16));
-            ctx.closePath();
-            ctx.fill();
-          }
-          if (this.outlineOn) {
-            this.beginStructOutline();
-            ctx.beginPath();
-            ctx.moveTo(A.x, yTopA);
-            ctx.lineTo(B.x, yTopB);
-            ctx.lineTo(B.x, yBaseB);
-            ctx.lineTo(A.x, yBaseA);
-            ctx.closePath();
-            ctx.stroke();
-          }
-        },
-      });
-    };
-
-    // One driven pile at world (wx,wy): a leg from just under the deck
-    // lip down into the water, with its seat shadow + waterline collar.
-    const pileItem = (wx: number, wy: number, sortY: number): void => {
-      items.push({
-        sortY,
-        strat,
-        elevated,
-        draw: () => {
-          const P = cam.worldToScreen(wx, wy, W, H);
-          const ds = cam.depthScale(wy);
-          const pw = Math.max(1.5, s * ds * 0.11);
-          const topY = P.y - (baseLift + DOCK_LIFT * 0.75) * s * ds;
-          const botY = P.y - (baseLift - 0.14) * s * ds;
-          // Seat shadow: the water darkens where the leg stands in it.
-          ctx.fillStyle = 'rgba(20, 34, 62, 0.28)';
-          ctx.beginPath();
-          ctx.ellipse(P.x, botY, pw * 1.1, pw * 1.1 * FLAT, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#4e3a22';
-          ctx.fillRect(P.x - pw / 2, topY, pw, botY - topY);
-          ctx.fillStyle = '#77593a'; // sun-law lit west edge
-          ctx.fillRect(P.x - pw / 2, topY, Math.max(1, pw * 0.3), botY - topY);
-          ctx.strokeStyle = 'rgba(226, 240, 251, 0.38)';
-          ctx.lineWidth = Math.max(1, s * ds * 0.022);
-          ctx.beginPath();
-          ctx.ellipse(P.x, botY, pw * 0.62, pw * 0.62 * FLAT, 0, 0, Math.PI * 2);
           ctx.stroke();
-        },
-      });
-    };
+        }
+      },
+    });
+  }
 
-    // South face — a rim across the tile's south edge (row ty+1).
-    if (!hasS) faceItem(tx, ty + 1, tx + 1, ty + 1, ty + 1.02, rim, true);
-    // West / East faces — trapezoids down each N-S edge (rows ty..ty+1),
-    // lit like the flat bake's rim (west sunlit, east shaded).
-    if (!hasW) faceItem(tx, ty, tx, ty + 1, ty + 1.0, shade(rim, 12), false);
-    if (!hasE) faceItem(tx + 1, ty, tx + 1, ty + 1, ty + 1.0, shade(rim, -16), false);
+  /**
+   * FJ-2 shared standing pile: one driven leg at world (wx,wy) from just
+   * under the deck lip down into the water, with its seat shadow +
+   * waterline collar. `pwK` sets the leg width (dock 0.11, bridge 0.13).
+   */
+  private deckStandPile(
+    items: DrawItem[],
+    wx: number,
+    wy: number,
+    sortY: number,
+    baseLift: number,
+    strat: number | undefined,
+    elevated: boolean,
+    body: string,
+    lit: string,
+    pwK = 0.11,
+  ): void {
+    const ctx = this.ctx;
+    const cam = this.camera;
+    const s = cam.scale;
+    const W = this.w;
+    const H = this.h;
+    const FLAT = 0.6; // deck ellipse flatten, mirrors terrain
+    items.push({
+      sortY,
+      strat,
+      elevated,
+      draw: () => {
+        const P = cam.worldToScreen(wx, wy, W, H);
+        const ds = cam.depthScale(wy);
+        const pw = Math.max(1.5, s * ds * pwK);
+        const topY = P.y - (baseLift + DOCK_LIFT * 0.75) * s * ds;
+        const botY = P.y - (baseLift - 0.14) * s * ds;
+        // Seat shadow: the water darkens where the leg stands in it.
+        ctx.fillStyle = 'rgba(20, 34, 62, 0.28)';
+        ctx.beginPath();
+        ctx.ellipse(P.x, botY, pw * 1.1, pw * 1.1 * FLAT, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = body;
+        ctx.fillRect(P.x - pw / 2, topY, pw, botY - topY);
+        ctx.fillStyle = lit; // sun-law lit west edge
+        ctx.fillRect(P.x - pw / 2, topY, Math.max(1, pw * 0.3), botY - topY);
+        ctx.strokeStyle = 'rgba(226, 240, 251, 0.38)';
+        ctx.lineWidth = Math.max(1, s * ds * 0.022);
+        ctx.beginPath();
+        ctx.ellipse(P.x, botY, pw * 0.62, pw * 0.62 * FLAT, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      },
+    });
+  }
 
-    // Driven pilings on water-facing dock edges (docks only; a ground
-    // porch has footing behind its fascia, drawn within the face).
-    if (isDock) {
-      if (!hasS && isWaterTile(g(tx, ty + 1))) {
-        for (const fpos of [0.18, 0.82]) pileItem(tx + fpos, ty + 1, ty + 1.01);
+  /**
+   * FJ-2 THE BRIDGE CARPENTRY STANDS UP. A bridge span bakes its
+   * full-height vertical timber — the south rim joist, the driven pile
+   * pairs + their X-brace, and a flat span's edge-on side fascia — FLAT
+   * into the ground chunk; under lean each floats off as a stepped
+   * block. Under q≠0 the bake omits them (standingPass) and this sweep
+   * re-emits them as screen-space standing trapezoids/legs that share
+   * projected world corners with their neighbours (the cliffArt law the
+   * docks use), so a whole crossing reads as one continuous standing
+   * trestle. Ramp-sheared pieces (the raked stringer, an apron's own
+   * side fascia) stay baked — they ride and shear with the ground quad
+   * and never float. Nothing runs at q=0.
+   */
+  private bridgeCarpentryItems(game: ClientGame, tx: number, ty: number, items: DrawItem[]): void {
+    const g = (x: number, y: number): number | undefined => game.world.groundAt(x, y);
+    if (!isBridgeTile(g, tx, ty)) return;
+    const ctx = this.ctx;
+
+    const sT = g(tx, ty + 1);
+    const eT = g(tx + 1, ty);
+    const wT = g(tx - 1, ty);
+    const isLand = (t: number | undefined): boolean =>
+      t !== undefined && !isDeckGround(t) && !isWaterTile(t);
+    const deckS = isDeckGround(sT);
+    const deckE = isDeckGround(eT);
+    const deckW = isDeckGround(wT);
+    const hasS = deckS || fillCoversEdge(g, tx, ty + 1, 'N');
+    const hasE = deckE || fillCoversEdge(g, tx + 1, ty, 'W');
+    const hasW = deckW || fillCoversEdge(g, tx - 1, ty, 'E');
+    const landW = !deckW && isLand(wT);
+    const landE = !deckE && isLand(eT);
+    const waterS = isWaterTile(sT);
+
+    const vertRun = this.bridgeWalkVert(game, tx, ty);
+    const apron = this.bridgeApron(game, tx, ty);
+
+    const elevLvl = game.world.elevAt(tx, ty);
+    const baseLift = elevLvl * ELEV_H;
+    const topLift = baseLift + DOCK_LIFT;
+    const strat = elevLvl !== 0 ? elevLvl : undefined;
+    const elevated = elevLvl !== 0;
+
+    // Bridge timber tones (BRIDGE_TIMBER in terrain.ts, kept in sync).
+    const rim = '#5c4527';
+    const pile = '#4a3620';
+    const pileLit = '#6d5233';
+    const brace = '#3f2d18';
+
+    // The full-height south rim joist + its pile pairs and X-brace —
+    // exactly the bake's `!hasS && (apron 'none' | 'N')` condition.
+    if (!hasS && (apron === 'none' || apron === 'N')) {
+      this.deckStandFace(items, tx, ty + 1, tx + 1, ty + 1, ty + 1.02, rim, topLift, baseLift, 'bridgeRim', strat, elevated);
+      if (waterS) {
+        for (const fpos of [0.18, 0.82])
+          this.deckStandPile(items, tx + fpos, ty + 1, ty + 1.01, baseLift, strat, elevated, pile, pileLit, 0.13);
+        // The cross-brace tying the pile pair — a standing X from just
+        // under the deck lip down below the waterline, foreshortened at
+        // the south edge's own depth.
+        const cam = this.camera;
+        const s = cam.scale;
+        const W = this.w;
+        const H = this.h;
+        items.push({
+          sortY: ty + 1.005,
+          strat,
+          elevated,
+          draw: () => {
+            const P0 = cam.worldToScreen(tx + 0.18, ty + 1, W, H);
+            const P1 = cam.worldToScreen(tx + 0.82, ty + 1, W, H);
+            const ds = cam.depthScale(ty + 1);
+            const topY = P0.y - (baseLift + DOCK_LIFT * 0.7) * s * ds;
+            const botY = P0.y - (baseLift - 0.1) * s * ds;
+            ctx.strokeStyle = brace;
+            ctx.lineWidth = Math.max(1.2, s * ds * 0.032);
+            ctx.globalAlpha = 0.75;
+            ctx.beginPath();
+            ctx.moveTo(P0.x, topY);
+            ctx.lineTo(P1.x, botY);
+            ctx.moveTo(P1.x, topY);
+            ctx.lineTo(P0.x, botY);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          },
+        });
       }
-      if (!hasW && isWaterTile(g(tx - 1, ty)) && hashCoords(151, tx * 1, ty) % 2 === 0) {
-        pileItem(tx, ty + 0.55, ty + 0.99);
-      }
-      if (!hasE && isWaterTile(g(tx + 1, ty)) && hashCoords(151, tx * 3, ty) % 2 === 0) {
-        pileItem(tx + 1, ty + 0.55, ty + 0.99);
-      }
+    }
+
+    // A FLAT span's edge-on side fascia (an E-W walk's water-facing W/E
+    // step faces). Mirrors the bake's `apron === 'none'` gate; a ramp's
+    // fascia is sheared inside the apron transform and stays baked.
+    if (apron === 'none') {
+      const kerbW = !hasW && vertRun;
+      const kerbE = !hasE && vertRun;
+      const thW = landW && !vertRun;
+      const thE = landE && !vertRun;
+      if (!hasW && !kerbW && !thW)
+        this.deckStandFace(items, tx, ty, tx, ty + 1, ty + 1.0, shade(rim, 12), topLift, baseLift, 'none', strat, elevated);
+      if (!hasE && !kerbE && !thE)
+        this.deckStandFace(items, tx + 1, ty, tx + 1, ty + 1, ty + 1.0, shade(rim, -16), topLift, baseLift, 'none', strat, elevated);
+    }
+  }
+
+  /**
+   * FJ-2: a 45° notch fill's vertical carpentry stands up under lean —
+   * its camera-facing hypotenuse fascia (ONE standing trapezoid between
+   * the two hyp world corners, projected with per-corner depthScale so
+   * it welds seam-free to the straight rims it abuts) and the midpoint
+   * driven pile. The lifted deck triangle TOP, boards, kerb and the
+   * hyp-TOP silhouette stay baked on the ground quad. Only a camera-
+   * facing (south) hyp shows a face; nothing runs at q=0.
+   */
+  private deckFillCarpentryItems(game: ClientGame, tx: number, ty: number, items: DrawItem[]): void {
+    const f = this.deckFill(game, tx, ty);
+    if (f === null) return;
+    const southFacing = f.legs[0] === 'N'; // hypotenuse faces the camera
+    if (!southFacing) return;
+    const bridge = f.family === 'bridge';
+    const diagMain = f.legs === 'NE' || f.legs === 'SW';
+    // Hyp world corners: the tile's top-row corner A to its bottom-row
+    // corner B — the same endpoints the flat bake sheared its face over.
+    const ax = diagMain ? tx : tx + 1;
+    const ay = ty;
+    const bx = diagMain ? tx + 1 : tx;
+    const by = ty + 1;
+
+    const elevLvl = game.world.elevAt(tx, ty);
+    const baseLift = elevLvl * ELEV_H;
+    const topLift = baseLift + DOCK_LIFT;
+    const strat = elevLvl !== 0 ? elevLvl : undefined;
+    const elevated = elevLvl !== 0;
+
+    const faceColor = bridge ? '#5c4527' : '#6d5130';
+    this.deckStandFace(
+      items, ax, ay, bx, by, ty + 1.02, faceColor, topLift, baseLift,
+      bridge ? 'bridgeRim' : 'dockFill', strat, elevated,
+    );
+
+    // The midpoint driven pile — only over water (a bank fill presses
+    // into land and stands nothing). Mirrors drawDeckFill's `!bank`.
+    if (!f.bank) {
+      const mx = (ax + bx) / 2;
+      const my = (ay + by) / 2;
+      this.deckStandPile(
+        items, mx, my, ty + 1.01, baseLift, strat, elevated,
+        bridge ? '#4a3620' : '#4e3a22', bridge ? '#6d5233' : '#77593a', bridge ? 0.13 : 0.11,
+      );
     }
   }
 
