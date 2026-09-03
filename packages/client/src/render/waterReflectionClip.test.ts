@@ -80,13 +80,13 @@ test('projector threads through every vertex and control point', () => {
   assert.equal(leaned.ops.length, world.ops.length, 'same op count / topology');
 
   for (let k = 0; k < world.ops.length; k++) {
-    const w = world.ops[k]!;
-    const l = leaned.ops[k]!;
+    const w: Op = world.ops[k]!;
+    const l: Op = leaned.ops[k]!;
     assert.equal(l.t, w.t, `op ${k} type matches`);
     if (w.t === 'close') continue;
     // world args are (x0,y0[,x1,y1]) pairs; project each pair.
-    const wa = (w as { a: number[] }).a;
-    const la = (l as { a: number[] }).a;
+    const wa: number[] = (w as { a: number[] }).a;
+    const la: number[] = (l as { a: number[] }).a;
     assert.equal(la.length, wa.length, `op ${k} arg count`);
     for (let p = 0; p < wa.length; p += 2) {
       assert.ok(Math.abs(la[p]! - (ax * wa[p]! + bx)) < 1e-9, `op ${k} x[${p}] projected`);
