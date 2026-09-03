@@ -5353,6 +5353,11 @@ export class Renderer {
     // (the shippable invariant, and legacy canvas mode) leaves every
     // grass blit byte-identical.
     this.grass.leanQ = this.camera.q;
+    // THE MEADOW RIDES THE GROUND QUAD (clause 3): hand grass the frame's
+    // depth-scale so each row-cell blits as a perspective trapezoid locked
+    // to the ground (weights 1/depthScale). Null at q=0 = the affine path.
+    this.grass.leanDepthScale =
+      this.camera.q !== 0 ? (wy: number) => this.camera.depthScale(wy) : null;
 
     // The breeze layer: water glints, ripples, portal swirls.
     const bounds = this.visibleTileBounds();

@@ -1,7 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Tile } from '@arx/shared';
-import { disturbFalloff, generateGrassTile, laneUses, rowLeanScale, windAt } from './grass.js';
+import {
+  disturbFalloff,
+  generateGrassTile,
+  grassCellWorldCorners,
+  laneUses,
+  rowLeanScale,
+  windAt,
+} from './grass.js';
 
 // ------------------------------------------------------------------ wind
 
@@ -65,6 +72,49 @@ test('rowLeanScale: a degenerate baked frame is inert, never NaN', () => {
   const { dsx, dsy } = rowLeanScale(10, 10, 0, 0);
   assert.equal(dsx, 1);
   assert.equal(dsy, 1);
+});
+
+test('grassCellWorldCorners: the raster world extent maps back to its CSS size', () => {
+  // The four world corners must span EXACTLY the raster's CSS footprint:
+  // width·spSx === wCss and depth·spSy === hCss, so projecting them and
+  // drawing the cached raster across the trapezoid is lossless — the
+  // ground-quad invariant the GL stage relies on.
+  const spSx = 40; // CSS px per tile, x (bake frame)
+  const spSy = 20; // CSS px per tile, y (bake frame)
+  const mx = 12; // left margin, CSS px
+  const my = 18; // top (blade-height) margin, CSS px
+  const wCss = 200; // raster CSS width
+  const hCss = 60; // raster CSS height
+  const cellTx = 7;
+  const ty = 3;
+  const c = grassCellWorldCorners(cellTx, ty, spSx, spSy, mx, my, wCss, hCss);
+  assert.ok(Math.abs((c.eastX - c.westX) * spSx - wCss) < 1e-9, 'width');
+  assert.ok(Math.abs((c.southY - c.northY) * spSy - hCss) < 1e-9, 'depth');
+  // Margins sit OUTSIDE the tile footprint: west/north pushed back by the
+  // margin in tiles, so the tile's own NW ground corner is inside.
+  assert.ok(Math.abs(c.westX - (cellTx - mx / spSx)) < 1e-9, 'westX');
+  assert.ok(Math.abs(c.northY - (ty - my / spSy)) < 1e-9, 'northY');
+});
+
+test('grassCellWorldCorners: zero margins collapse onto the tile footprint', () => {
+  // No margins → the raster IS the cell's ground footprint, so the north
+  // edge is exactly ty and the west edge exactly the cell start.
+  const spSx = 32;
+  const spSy = 16;
+  const wCss = spSx * 4; // four tiles wide
+  const hCss = spSy * 1; // one tile deep
+  const c = grassCellWorldCorners(5, 9, spSx, spSy, 0, 0, wCss, hCss);
+  assert.equal(c.westX, 5);
+  assert.equal(c.eastX, 9); // 5 + 4 tiles
+  assert.equal(c.northY, 9);
+  assert.equal(c.southY, 10); // 9 + 1 tile
+});
+
+test('grassCellWorldCorners: a degenerate bake frame is inert, never NaN', () => {
+  const c = grassCellWorldCorners(2, 2, 0, 0, 8, 8, 100, 40);
+  assert.ok(Number.isFinite(c.westX) && Number.isFinite(c.northY));
+  assert.equal(c.westX, 2);
+  assert.equal(c.northY, 2);
 });
 
 test('every blade roots inside (or fanning just past) its tile, heights sane', () => {
