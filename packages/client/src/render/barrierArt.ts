@@ -2143,8 +2143,64 @@ export function hedgeMassPaint(rend: PaintHost,
   const ctx = rend.ctx;
   const s = rend.camera.scale * rend.camera.depthScale(ty + 0.5); // Epic B (FW)
   const syT = s * rend.camera.yScale;
+  // Epic B (FW) HEDGE STANDS UP UNDER THE LEAN — SPLIT FOOTPRINT FROM
+  // EXTRUSION. The bug: the whole mass was wrapped in ONE ground-plane
+  // affine, so the vertical lift `-h*s` (living inside the plan frame)
+  // was SHEARED by that affine and flattened onto the ground — the hedge
+  // lay down while trees/bushes (screen-space billboards) stood up. The
+  // fix keeps the single wrap affine (so the FOOTPRINT/rootline still
+  // projects corner-exact and merged runs tile seam-free) but images the
+  // extrusion back through the affine's inverse: a plan-frame offset
+  // (liftX, liftY) that the affine maps to EXACTLY (0, −h·s) on screen —
+  // the same pure screen-space vertical rise a wall face or tree
+  // billboard uses (h·s already carries the tile's depthScale via `s`).
+  // At q=0 the affine is the identity, so liftX=0, liftY=−h·s and every
+  // mark is byte-identical to today.
+  let liftX = 0;
+  let liftY = -h * s;
+  const hmA = { x: 0, y: 0 };
+  const hmB = { x: 0, y: 0 };
+  const hmC = { x: 0, y: 0 };
+  let hmFramed = false;
+  if (rend.camera.q !== 0) {
+    const elevLift = (rend.game?.world.elevAt(tx, ty) ?? 0) * ELEV_H * s;
+    const nw = rend.camera.worldToScreenInto(tx, ty, rend.w, rend.h, hmA);
+    const nwx = nw.x;
+    const nwy = nw.y - elevLift;
+    const ne = rend.camera.worldToScreenInto(tx + 1, ty, rend.w, rend.h, hmB);
+    const sw = rend.camera.worldToScreenInto(tx, ty + 1, rend.w, rend.h, hmC);
+    const ma = (ne.x - nwx) / s;
+    const mb = (ne.y - elevLift - nwy) / s;
+    const mc = (sw.x - nwx) / syT;
+    const mdd = (sw.y - elevLift - nwy) / syT;
+    // Pre-image the pure screen rise (0, −h·s) through the affine's
+    // linear inverse so the wrap maps it back to exactly that on screen.
+    const det = ma * mdd - mc * mb;
+    const k = det !== 0 ? (h * s) / det : 0;
+    liftX = mc * k;
+    liftY = -ma * k;
+    const dnwx = px - 0.5 * s; // plan-frame NW corner
+    const dnwy = py - 0.5 * syT;
+    // Calibrated exact at NW/NE/SW so north/west seams (and the shared SW
+    // corner every south-running run meets) land on the true projected
+    // world corner and merged runs tile seam-true; the SE corner is the
+    // affine's one-tile approximation of the trapezoid (sub-pixel at a
+    // moderate lean).
+    ctx.save();
+    ctx.transform(ma, mb, mc, mdd, nwx - ma * dnwx - mc * dnwy, nwy - mb * dnwx - mdd * dnwy);
+    hmFramed = true;
+  }
+  // THE COORDINATE LAW UNDER THE LEAN: X = a footprint (ground) x; Y = a
+  // fully-lifted (crown-top) point, carrying the whole extrusion; YG = a
+  // ground y. xL(u, frac) interpolates the horizontal component of the
+  // lift by a point's height fraction (1 = crown top, 0 = on the ground)
+  // so a face's slanting side edge leans true from its rooted foot up to
+  // its lifted top. At q=0 liftX=0 and liftY=−h·s, so X≡xL≡XL and Y is
+  // the old lift — byte-identical.
   const X = (u: number) => px + u * s;
-  const Y = (v: number) => py + v * syT - h * s;
+  const xL = (u: number, frac: number) => px + u * s + frac * liftX;
+  const XL = (u: number) => px + u * s + liftX;
+  const Y = (v: number) => py + v * syT + liftY;
   const YG = (v: number) => py + v * syT;
   const n = parts.length;
   // Corner radii per joint: rounded where convex (keyed, the
@@ -2197,8 +2253,8 @@ export function hedgeMassPaint(rend: PaintHost,
       const w = next - cur;
       const col = tx * 2 + Math.round(((cur + next) / 2 + 0.5) * 2 - 0.5);
       const amp = hedgeLobe(rend, 71, col, ty * 3 + salt) * s * Math.min(1, Math.abs(w) / 0.42);
-      t.quadraticCurveTo(X(cur + w * 0.24), Y(v) - amp * 2.1, X(cur + w * 0.5), Y(v) - amp * 0.55);
-      t.quadraticCurveTo(X(cur + w * 0.76), Y(v) - amp * 1.8, X(next), Y(v));
+      t.quadraticCurveTo(XL(cur + w * 0.24), Y(v) - amp * 2.1, XL(cur + w * 0.5), Y(v) - amp * 0.55);
+      t.quadraticCurveTo(XL(cur + w * 0.76), Y(v) - amp * 1.8, XL(next), Y(v));
       cur = next;
     }
   };
@@ -2206,7 +2262,7 @@ export function hedgeMassPaint(rend: PaintHost,
     const kseed = hashCoords(171, tx * 4 + Math.round(u0 + u1) + salt, ty * 4);
     const mo = (((kseed >>> 8) % 20) - 10) / 400;
     const bow = (0.02 + ((kseed >>> 5) & 3) * 0.012) * Math.min(1, Math.abs(u1 - u0) / 0.5);
-    t.quadraticCurveTo(X((u0 + u1) / 2 + mo), Y(v) + bow * syT, X(u1), Y(v));
+    t.quadraticCurveTo(XL((u0 + u1) / 2 + mo), Y(v) + bow * syT, XL(u1), Y(v));
   };
   // THE ROOTLINE (round five — the user's cut-off verdict): the
   // face's ground edge is not a ruled line, it is where foliage
@@ -2257,7 +2313,7 @@ export function hedgeMassPaint(rend: PaintHost,
       const at = 0.34 + ((aseed >>> 6) % 32) / 100;
       const vi = ty * 2 + Math.round((next + 0.5) * 2);
       const nu = last ? uEnd : baseU + inward * pinchOf(vi, inward > 0 ? 157 : 163);
-      t.quadraticCurveTo(X(ax), Y(cur + (next - cur) * at), X(nu), Y(next));
+      t.quadraticCurveTo(XL(ax), Y(cur + (next - cur) * at), XL(nu), Y(next));
       cur = next;
     }
   };
@@ -2290,12 +2346,12 @@ export function hedgeMassPaint(rend: PaintHost,
           ? { u: g.bu - Math.sign(g.bu - g.au) * rB, v: g.bv }
           : { u: g.bu, v: g.bv - Math.sign(g.bv - g.av) * rB };
       if (!pen) {
-        t.moveTo(X(sA.u), Y(sA.v));
+        t.moveTo(XL(sA.u), Y(sA.v));
         pen = true;
       }
       switch (g.k) {
         case 0:
-          t.lineTo(X(sB.u), Y(sB.v));
+          t.lineTo(XL(sB.u), Y(sB.v));
           break;
         case 1:
           crownTo(t, sA.u, g.av, sB.u);
@@ -2316,41 +2372,10 @@ export function hedgeMassPaint(rend: PaintHost,
         const nx = (i + 1) % n;
         const ns = segStart(nx);
         if (!ink || (parts[nx]!.k !== 0 && parts[nx]!.k !== 2))
-          t.quadraticCurveTo(X(g.bu), Y(g.bv), X(ns.u), Y(ns.v));
+          t.quadraticCurveTo(XL(g.bu), Y(g.bv), XL(ns.u), Y(ns.v));
       }
     }
   };
-  // Epic B (FW) HEDGE UNDER THE LEAN: every mark below is emitted through
-  // X(u)/Y(v)/YG(v) in the tile's plan-screen frame. Rather than thread
-  // the perspective divide into each, wrap the whole mass in ONE affine
-  // frame that maps that plan frame onto the tile's PROJECTED corners —
-  // calibrated exact at NW/NE/SW so the north and west seams (and the SW
-  // corner every south-running run shares with the tile below) land on
-  // the true projected world corner and merged runs meet seam-true; the
-  // SE corner is the affine's one-tile approximation of the trapezoid
-  // (sub-pixel at a moderate lean). At q=0 the map is the identity and
-  // nothing here changes — byte-identical.
-  const hmA = { x: 0, y: 0 };
-  const hmB = { x: 0, y: 0 };
-  const hmC = { x: 0, y: 0 };
-  let hmFramed = false;
-  if (rend.camera.q !== 0) {
-    const elevLift = (rend.game?.world.elevAt(tx, ty) ?? 0) * ELEV_H * s;
-    const nw = rend.camera.worldToScreenInto(tx, ty, rend.w, rend.h, hmA);
-    const nwx = nw.x;
-    const nwy = nw.y - elevLift;
-    const ne = rend.camera.worldToScreenInto(tx + 1, ty, rend.w, rend.h, hmB);
-    const sw = rend.camera.worldToScreenInto(tx, ty + 1, rend.w, rend.h, hmC);
-    const ma = (ne.x - nwx) / s;
-    const mb = (ne.y - elevLift - nwy) / s;
-    const mc = (sw.x - nwx) / syT;
-    const mdd = (sw.y - elevLift - nwy) / syT;
-    const dnwx = px - 0.5 * s; // plan-frame NW corner
-    const dnwy = py - 0.5 * syT;
-    ctx.save();
-    ctx.transform(ma, mb, mc, mdd, nwx - ma * dnwx - mc * dnwy, nwy - mb * dnwx - mdd * dnwy);
-    hmFramed = true;
-  }
   // --- FACES first (the crown covers their top edge) ---
   // THE CHEEK (round four): the face is no longer a rectangle. At
   // every free shoulder its side edge continues the crown side's
@@ -2378,13 +2403,15 @@ export function hedgeMassPaint(rend: PaintHost,
     const ck = cheekOf(uEdge, v);
     const yTop = Y(v);
     const yG = YG(v);
+    // frac = height fraction (1 at the lifted top, 0 on the ground), so
+    // the cheek's horizontal lift-offset eases out as it roots.
     t.quadraticCurveTo(
-      X(uEdge + out * ck.swell),
+      xL(uEdge + out * ck.swell, 0.84),
       yTop + (yG - yTop) * 0.16,
-      X(uEdge + out * ck.swell * 0.85),
+      xL(uEdge + out * ck.swell * 0.85, 0.45),
       yTop + (yG - yTop) * 0.55,
     );
-    t.quadraticCurveTo(X(uEdge + out * ck.swell * 0.35), yG - (yG - yTop) * 0.12, X(uEdge - out * ck.tuck), yG);
+    t.quadraticCurveTo(xL(uEdge + out * ck.swell * 0.35, 0.12), yG - (yG - yTop) * 0.12, xL(uEdge - out * ck.tuck, 0), yG);
   };
   const cheekUp = (
     t: Path2D | CanvasRenderingContext2D,
@@ -2397,12 +2424,12 @@ export function hedgeMassPaint(rend: PaintHost,
     const yTop = Y(v);
     const yG = YG(v);
     t.quadraticCurveTo(
-      X(uEdge + out * ck.swell * 0.35),
+      xL(uEdge + out * ck.swell * 0.35, 0.12),
       yG - (yG - yTop) * 0.12,
-      X(uEdge + out * ck.swell * 0.85),
+      xL(uEdge + out * ck.swell * 0.85, 0.45),
       yTop + (yG - yTop) * 0.55,
     );
-    t.quadraticCurveTo(X(uEdge + out * ck.swell), yTop + (yG - yTop) * 0.16, X(uEdge), Y(v - r));
+    t.quadraticCurveTo(xL(uEdge + out * ck.swell, 0.84), yTop + (yG - yTop) * 0.16, XL(uEdge), Y(v - r));
   };
   for (let i = 0; i < n; i++) {
     const g = parts[i]!;
@@ -2415,19 +2442,19 @@ export function hedgeMassPaint(rend: PaintHost,
     const footB = jB > 0 ? g.bu - du * cheekOf(g.bu, g.bv).tuck : g.bu;
     const face = new Path2D();
     if (jA > 0) {
-      face.moveTo(X(g.au), Y(g.av - jA));
+      face.moveTo(XL(g.au), Y(g.av - jA));
       cheekDown(face, g.au, g.av, -du);
     } else {
-      face.moveTo(X(g.au), Y(g.av));
+      face.moveTo(XL(g.au), Y(g.av));
       face.lineTo(X(g.au), gy);
     }
     rootTo(face, footA, g.av, footB);
     if (jB > 0) {
       cheekUp(face, g.bu, g.bv, du, jB);
     } else {
-      face.lineTo(X(g.bu), Y(g.bv));
+      face.lineTo(XL(g.bu), Y(g.bv));
     }
-    face.lineTo(X(g.au), Y(g.av - jA));
+    face.lineTo(XL(g.au), Y(g.av - jA));
     face.closePath();
     ctx.fillStyle = HEDGE_LEAF;
     ctx.fill(face);
@@ -2503,7 +2530,7 @@ export function hedgeMassPaint(rend: PaintHost,
     const aIn = radii[(i + n - 1) % n]! * 0.8;
     const bIn = radii[i]! * 0.8;
     ctx.beginPath();
-    ctx.moveTo(X(g.au + du * aIn), Y(g.av));
+    ctx.moveTo(XL(g.au + du * aIn), Y(g.av));
     skirtTo(ctx, g.au + du * aIn, g.av, g.bu - du * bIn);
     ctx.stroke();
   }
@@ -2514,7 +2541,7 @@ export function hedgeMassPaint(rend: PaintHost,
     ctx.fillStyle = 'rgba(214, 236, 176, 0.15)';
     ctx.beginPath();
     ctx.ellipse(
-      X(c.u + ((((dseed >>> 3) % 24) - 12) / 100)),
+      XL(c.u + ((((dseed >>> 3) % 24) - 12) / 100)),
       Y(c.v + ((((dseed >>> 7) % 16) - 8) / 100)),
       s * 0.15,
       syT * 0.11,
@@ -2528,7 +2555,7 @@ export function hedgeMassPaint(rend: PaintHost,
     ctx.beginPath();
     facetBlob(
       ctx,
-      X(c.u + ((((cseed >>> 4) % 30) - 15) / 100)),
+      XL(c.u + ((((cseed >>> 4) % 30) - 15) / 100)),
       Y(c.v + ((((cseed >>> 9) % 24) - 12) / 100)),
       s * (0.045 + ((cseed >>> 12) & 3) * 0.009),
       cseed,
@@ -2540,7 +2567,7 @@ export function hedgeMassPaint(rend: PaintHost,
       const gseed = hashCoords(97, c.ku * 4 + k + salt, c.kv);
       ctx.fillStyle = (gseed & 8) === 0 ? shade(HEDGE_LIT, 18) : shade(HEDGE_LEAF, -5);
       ctx.fillRect(
-        X(c.u + ((((gseed >>> 3) % 34) - 17) / 100)),
+        XL(c.u + ((((gseed >>> 3) % 34) - 17) / 100)),
         Y(c.v + ((((gseed >>> 8) % 26) - 13) / 100)),
         s * 0.032,
         s * 0.026,
@@ -2556,7 +2583,7 @@ export function hedgeMassPaint(rend: PaintHost,
         ctx.beginPath();
         facetCircle(
           ctx,
-          X(bu) + ((((bseed >>> 2) % 30) - 15) / 100) * s,
+          XL(bu) + ((((bseed >>> 2) % 30) - 15) / 100) * s,
           Y(bv) + ((((bseed >>> 7) % 24) - 12) / 100) * s,
           s * (k === 3 ? 0.02 : 0.028),
           5,
@@ -2574,15 +2601,15 @@ export function hedgeMassPaint(rend: PaintHost,
   for (const cr of vcreases) {
     const bow = ((((hashCoords(149, cr.key + salt, ty * 2) >>> 4) % 12) - 6) / 100) * s;
     ctx.beginPath();
-    ctx.moveTo(X(cr.u), Y(cr.v0) + s * 0.02);
-    ctx.quadraticCurveTo(X(cr.u) + bow, Y((cr.v0 + cr.v1) / 2), X(cr.u), Y(cr.v1) - s * 0.012);
+    ctx.moveTo(XL(cr.u), Y(cr.v0) + s * 0.02);
+    ctx.quadraticCurveTo(XL(cr.u) + bow, Y((cr.v0 + cr.v1) / 2), XL(cr.u), Y(cr.v1) - s * 0.012);
     ctx.stroke();
   }
   for (const cr of hcreases) {
     const bow = ((((hashCoords(149, tx * 2 + salt, cr.key) >>> 4) % 12) - 4) / 100) * s;
     ctx.beginPath();
-    ctx.moveTo(X(cr.u0) + s * 0.02, Y(cr.v));
-    ctx.quadraticCurveTo(X((cr.u0 + cr.u1) / 2) + bow, Y(cr.v) + syT * 0.08, X(cr.u1) - s * 0.02, Y(cr.v));
+    ctx.moveTo(XL(cr.u0) + s * 0.02, Y(cr.v));
+    ctx.quadraticCurveTo(XL((cr.u0 + cr.u1) / 2) + bow, Y(cr.v) + syT * 0.08, XL(cr.u1) - s * 0.02, Y(cr.v));
     ctx.stroke();
   }
   // --- ONE ink pass: the outer silhouette only. Cuts never take
@@ -2610,7 +2637,7 @@ export function hedgeMassPaint(rend: PaintHost,
         const footA = jA > 0 ? g.au + du * cheekOf(g.au, g.av).tuck : g.au;
         const footB = jB > 0 ? g.bu - du * cheekOf(g.bu, g.bv).tuck : g.bu;
         if (parts[(i + n - 1) % n]!.k !== 0) {
-          ctx.moveTo(X(g.au), Y(g.av - jA));
+          ctx.moveTo(XL(g.au), Y(g.av - jA));
           if (jA > 0) cheekDown(ctx, g.au, g.av, -du);
           else ctx.lineTo(X(g.au), YG(g.av));
         } else {
@@ -2619,7 +2646,7 @@ export function hedgeMassPaint(rend: PaintHost,
         rootTo(ctx, footA, g.av, footB);
         if (parts[(i + 1) % n]!.k !== 0) {
           if (jB > 0) cheekUp(ctx, g.bu, g.bv, du, jB);
-          else ctx.lineTo(X(g.bu), Y(g.bv));
+          else ctx.lineTo(XL(g.bu), Y(g.bv));
         }
       }
     }
@@ -2711,7 +2738,17 @@ export function hedgeItem(rend: PaintHost, tile: Tile, tx: number, ty: number, g
   // it, the 1.15-tile body sees clean over it) and the crown plane
   // goes DEEP: 0.72 tiles in plan, so the bird's eye reads a bed of
   // pillows, not the top edge of a wall.
-  const HED_H = 0.5;
+  //
+  // Epic B (FW) — THE CROWN FORESHORTENS UNDER THE LEAN: top-down (q=0)
+  // the deep 0.72-tile crown is exactly right (a bird's eye sees mostly
+  // the top). As the camera leans, less top and more upright FACE come
+  // into view, so the crown grows shallower (VN pulled south, in the
+  // draw closure) while the mass grows taller (HED_H rises). leanF is 0
+  // at q=0 — byte-identical today — and rises with the lean, bounded to
+  // 1; hMul scales the lone-cushion heights by the same growth.
+  const leanF = rend.camera.q > 0 ? Math.min(1, rend.camera.q * 520) : 0;
+  const HED_H = 0.5 + leanF * 0.3; // 0.5 top-down → 0.8 fully leaned
+  const hMul = HED_H / 0.5; // 1 at q=0 → exact
   const DEEP = 0.72 * syT;
   return {
     sortY: ty + 0.8,
@@ -2744,7 +2781,10 @@ export function hedgeItem(rend: PaintHost, tile: Tile, tx: number, ty: number, g
       // boundary index, so both tiles narrow to the identical
       // waist and the run reads as one body through every tile.
       const CU = 0.44;
-      const VN = -0.32;
+      // The crown's north (back) edge pulls south as the lean grows so
+      // the top plane foreshortens; the south skirt VS holds (the face
+      // roots there). VN = -0.32 exactly at q=0.
+      const VN = -0.32 * (1 - leanF * 0.5);
       const VS = 0.4;
       const KCUT = 0;
       const KCROWN = 1;
@@ -2853,16 +2893,16 @@ export function hedgeItem(rend: PaintHost, tile: Tile, tx: number, ty: number, g
       if (isoNW) diagC.push([0.5, 0.5, 14]);
       diagC.sort((a, b) => a[1] - b[1]);
       for (const [fx, fy, k] of diagC) {
-        if (fy < 0) cushion(fx, fy, 0.34, 0.46, k, false);
+        if (fy < 0) cushion(fx, fy, 0.34, 0.46 * hMul, k, false);
       }
       if (straight) {
         const { vc, hc } = blobCreases();
         hedgeMassPaint(rend, p.x, p.y, tx, ty, blobParts(), HED_H, wind, 0, blobCells(), vc, hc);
       } else {
-        cushion(0, 0, 0.48, 0.52, 7, true);
+        cushion(0, 0, 0.48, 0.52 * hMul, 7, true);
       }
       for (const [fx, fy, k] of diagC) {
-        if (fy >= 0) cushion(fx, fy, 0.34, 0.46, k, false);
+        if (fy >= 0) cushion(fx, fy, 0.34, 0.46 * hMul, k, false);
       }
 
       // THE SHEARS MISSED A FEW: stray sprigs above the crown, the
@@ -2953,9 +2993,13 @@ export function hedgeGateItem(rend: PaintHost, tile: Tile, tx: number, ty: numbe
       // a CUT — no ink, no profile break — so the hedgerow flows
       // straight into its gateposts. Only the wicket's timber and
       // the finial balls say "gate".
-      const VN = -0.32;
+      // Epic B (FW) — the gateposts follow the run's own lean rebalance
+      // (see hedgeItem): crown foreshortens (VN south), hip rises. All
+      // collapse to today's exact values at q=0.
+      const leanF = rend.camera.q > 0 ? Math.min(1, rend.camera.q * 520) : 0;
+      const VN = -0.32 * (1 - leanF * 0.5);
       const VS = 0.4;
-      const HIP = 0.5;
+      const HIP = 0.5 + leanF * 0.3;
       const pillar = (
         u0: number,
         v0: number,
