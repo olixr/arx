@@ -37,6 +37,7 @@
  */
 import type { DaylightSample } from '@arx/shared';
 import { radialGlowSprite, rampSprite } from './glowSprite.js';
+import { lightmapStrip, type LightStrip } from './cameraProject.js';
 
 /** A light living in the world, gathered fresh each frame. */
 export interface WorldLight {
@@ -76,9 +77,19 @@ export interface LightView {
   h: number;
   scale: number;
   yScale: number;
-  /** Screen-space origin: worldToScreen(0,0). */
+  /**
+   * Screen-space ORTHO origin (the q=0 worldToScreen(0,0)). The map is
+   * built at the ortho origin so the final composite can apply the FULL
+   * perspective homography exactly once (THE SHADE LEARNS TO LEAN) — a
+   * leaned origin here would double-lean. At q=0 the ortho origin equals
+   * the leaned origin, so the map build is byte-identical.
+   */
   ox: number;
   oy: number;
+  /** THE CAMERA LEARNS TO LEAN (Epic B): the perspective lean. 0 = the
+   *  pitched-ortho camera — the composite short-circuits to the exact
+   *  single full-screen stretch shipped so far. */
+  q: number;
 }
 
 /** A merged occluder rectangle, in whole tiles. */
@@ -257,6 +268,8 @@ export class LightingSystem {
   >();
   private frame = 0;
   private offScaleRebuilds = 0;
+  /** Scratch for the leaned composite's strip blit — one per frame. */
+  private readonly strip: LightStrip = { sy: 0, sh: 0, dx: 0, dy: 0, dw: 0, dh: 0 };
 
   /** THE CROSSING: lamp patches are position-keyed on the current
    *  plane — drop them whole when the world changes under the lights. */
@@ -374,7 +387,22 @@ export class LightingSystem {
     ctx.save();
     ctx.globalCompositeOperation = 'multiply';
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(this.map, 0, 0, mw, mh, 0, 0, view.w, view.h);
+    if (view.q === 0) {
+      // ORTHO: the map covers the screen 1:1 — one linear stretch, the
+      // exact path shipped so far (byte-identical by construction).
+      ctx.drawImage(this.map, 0, 0, mw, mh, 0, 0, view.w, view.h);
+    } else {
+      // LEAN: warp the whole composite through the camera homography in
+      // horizontal strips. Pools, lit faces and wall-shadows are all
+      // baked into the map, so warping the composite re-leans them all
+      // together, consistent with the ground (THE SHADE LEARNS TO LEAN).
+      const N = 48;
+      for (let i = 0; i < N; i++) {
+        const s = lightmapStrip(view.q, view.w, view.h, mh, N, i, this.strip);
+        if (s.sh <= 0 || s.dh <= 0 || s.dw <= 0) continue;
+        ctx.drawImage(this.map, 0, s.sy, mw, s.sh, s.dx, s.dy, s.dw, s.dh);
+      }
+    }
     ctx.restore();
   }
 

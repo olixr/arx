@@ -5823,7 +5823,13 @@ export class Renderer {
     // Depth & atmosphere: the exposure pass (multiply lightmap) sets
     // the scene's darkness, THEN emissive bloom pops over it, then the
     // tilted-camera tilt-shift bands and the grade. HUD stays crisp.
-    const origin = this.camera.worldToScreen(0, 0, this.w, this.h);
+    // THE SHADE LEARNS TO LEAN: the lightmap is built at the ORTHO
+    // origin (the q=0 worldToScreen(0,0)) and the exposure composite
+    // applies the full perspective homography once. Passing the leaned
+    // origin here would double-lean; at q=0 the two origins coincide, so
+    // the map build stays byte-identical.
+    const orthoOx = camOriginX(this.camera.scale, this.camera.x, this.camera.snapDpr, this.w);
+    const orthoOy = camOriginY(this.camera.scale, this.camera.yScale, this.camera.y, this.camera.snapDpr, this.h);
     // Lit-face heights in world-y units: faces rise N tiles of SCREEN
     // height, so divide the camera squash back out.
     const ys = this.camera.yScale;
@@ -5841,7 +5847,7 @@ export class Renderer {
     try {
       this.lighting.draw(
         this.ctx,
-        { w: this.w, h: this.h, scale: this.camera.scale, yScale: ys, ox: origin.x, oy: origin.y },
+        { w: this.w, h: this.h, scale: this.camera.scale, yScale: ys, ox: orthoOx, oy: orthoOy, q: this.camera.q },
         this.sky,
         this.lights,
         this.blocksAt,
