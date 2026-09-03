@@ -11614,17 +11614,27 @@ export class Renderer {
         }
         ctx.closePath();
         ctx.fill();
-        if (mat === Tile.WallWood)
-          this.woodCrownPlate(
-            { x: p.x, y: cNy },
-            cSy - cNy,
-            s,
-            Math.min(xN0, x0),
-            Math.max(xN1, x1),
-            tx,
-            ty,
-            (n || sw) && !(w || e),
-          );
+        if (mat === Tile.WallWood) {
+          // THE CONTINUOUS CROWN: at q>0 paint the wall-plate beam in the
+          // leaned crown trapezoid's own UV (run-continuous), so the run's
+          // top reads as one coherent plate instead of per-tile ortho caps
+          // that ignore the pitch. At q=0 keep woodCrownPlate verbatim —
+          // byte-identical. Corners (xN0/x0 on the far/near rows) are the
+          // shared world corners, so consecutive tiles' beams meet head-on.
+          if (q > 0)
+            this.woodCrownRun(xN0, cNy, xN1, cNy, x0, cSy, x1, cSy, s, tx, ty, (n || sw) && !(w || e));
+          else
+            this.woodCrownPlate(
+              { x: p.x, y: cNy },
+              cSy - cNy,
+              s,
+              Math.min(xN0, x0),
+              Math.max(xN1, x1),
+              tx,
+              ty,
+              (n || sw) && !(w || e),
+            );
+        }
         // Lit south lip of the crown grounds the height read — a thin band
         // just inside the (horizontal) near edge.
         if (!sw) {
@@ -11723,6 +11733,115 @@ export class Renderer {
         ctx.fillRect(jx - s * 0.075, p.y + syT * 0.28, s * 0.042, s * 0.042);
         ctx.fillRect(jx + s * 0.04, p.y + syT * 0.6, s * 0.042, s * 0.042);
       }
+    }
+    ctx.restore();
+  }
+
+  /**
+   * THE CONTINUOUS CROWN (Epic B, q>0) — the wall-plate beam read as ONE
+   * coherent top along the whole run, not a row of per-tile hashed caps.
+   *
+   * woodCrownPlate paints the beam in ORTHO rect coords (fillRect on
+   * p.x / p.y / syT), so under the lean every tile's cap ignores the pitch
+   * and a straight run reads stepped / segmented. This paints the SAME
+   * carpentry — hard arris shadows down the beam's two long edges, a
+   * sun-lit spine, a long grain streak, a pegged butt joint — in the
+   * leaned crown trapezoid's own UV: `u` ALONG the run, `v` ACROSS the beam
+   * thickness, bilerped over the four projected crown corners (NW/NE on the
+   * far row, SW/SE on the near row). Because consecutive tiles share a
+   * crown edge (the SAME projected world corner ⇒ the same device pixel)
+   * and every feature is keyed to a `u`/`v` FRACTION, the spine, arris and
+   * grain lines run head-on across the joint — the whole run reads as one
+   * continuous plate. Per-tile whT (the reveal veil) and per-tile sort are
+   * untouched: only the DETAIL moves into crown-plane space, so a sunk
+   * neighbour still steps its own height while the level run stays coherent.
+   *
+   * The feature hash stays `hashCoords(177, tx, ty)` — this tile's own unit
+   * of the run — so the beam's varied dressing matches woodCrownPlate's
+   * statistics unit-for-unit; the continuity comes purely from drawing in
+   * the leaned UV rather than from re-seeding. Guarded to q>0 by the caller;
+   * q=0 keeps woodCrownPlate verbatim (byte-identical). Call with the crown
+   * fill path still current — it clips the dressing to the chamfered top.
+   */
+  private woodCrownRun(
+    nwx: number,
+    nwy: number,
+    nex: number,
+    ney: number,
+    swx: number,
+    swy: number,
+    sex: number,
+    sey: number,
+    s: number,
+    tx: number,
+    ty: number,
+    vert: boolean,
+  ): void {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.clip();
+    // Corner assignment so ONE feature routine serves both orientations:
+    //   vert  (N–S run): u north→south, v west→east
+    //   horiz (E–W run): u west→east,  v north→south
+    let c00x: number;
+    let c00y: number;
+    let c10x: number;
+    let c10y: number;
+    let c01x: number;
+    let c01y: number;
+    let c11x: number;
+    let c11y: number;
+    if (vert) {
+      c00x = nwx; c00y = nwy; c10x = swx; c10y = swy; // v=0 (west): u N→S
+      c01x = nex; c01y = ney; c11x = sex; c11y = sey; // v=1 (east)
+    } else {
+      c00x = nwx; c00y = nwy; c10x = nex; c10y = ney; // v=0 (north): u W→E
+      c01x = swx; c01y = swy; c11x = sex; c11y = sey; // v=1 (south)
+    }
+    // Bilinear crown-plane point from (u,v) in [0,1]².
+    const px = (u: number, v: number): number => {
+      const a = 1 - u;
+      const b = 1 - v;
+      return a * b * c00x + u * b * c10x + a * v * c01x + u * v * c11x;
+    };
+    const py = (u: number, v: number): number => {
+      const a = 1 - u;
+      const b = 1 - v;
+      return a * b * c00y + u * b * c10y + a * v * c01y + u * v * c11y;
+    };
+    const quad = (u0: number, v0: number, u1: number, v1: number, col: string): void => {
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(px(u0, v0), py(u0, v0));
+      ctx.lineTo(px(u1, v0), py(u1, v0));
+      ctx.lineTo(px(u1, v1), py(u1, v1));
+      ctx.lineTo(px(u0, v1), py(u0, v1));
+      ctx.closePath();
+      ctx.fill();
+    };
+    // Device spans for constant-thickness dressing (seam lines, pegs).
+    const alongPx = Math.hypot(px(1, 0) - px(0, 0), py(1, 0) - py(0, 0)) || 1;
+    const acrossPx = Math.hypot(px(0, 1) - px(0, 0), py(0, 1) - py(0, 0)) || 1;
+    const seam = Math.max(1, s * 0.025);
+    const hj = hashCoords(177, tx, ty);
+    // Hard arris shadows where the beam's long edges fall to the faces.
+    quad(0, 0, 1, 0.1, 'rgba(30, 18, 8, 0.24)');
+    quad(0, 0.9, 1, 1, 'rgba(30, 18, 8, 0.24)');
+    // Sun-lit spine along the beam's back.
+    quad(0, 0.32, 1, 0.68, 'rgba(255, 226, 175, 0.14)');
+    // Long grain following the run.
+    if ((hj & 3) === 1) {
+      const v0 = 0.2 + ((hj >>> 6) % 30) / 100;
+      quad(0.12, v0, 0.74, Math.min(1, v0 + seam / acrossPx), 'rgba(40, 24, 10, 0.2)');
+    }
+    // Rare butt joint, pegged either side — beams are FITTED.
+    if ((hj & 7) === 2) {
+      const u0 = 0.2 + (hj % 55) / 100;
+      quad(u0, 0.08, Math.min(1, u0 + seam / alongPx), 0.92, 'rgba(40, 24, 10, 0.38)');
+      const peg = s * 0.042;
+      ctx.fillStyle = 'rgba(40, 24, 10, 0.5)';
+      ctx.fillRect(px(u0, 0.28) - peg * 0.75, py(u0, 0.28) - peg, peg, peg);
+      ctx.fillRect(px(u0, 0.6) + peg * 0.4, py(u0, 0.6), peg, peg);
     }
     ctx.restore();
   }
