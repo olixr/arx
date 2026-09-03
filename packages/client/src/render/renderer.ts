@@ -14870,9 +14870,21 @@ export class Renderer {
       // lane: the tint composite is real painting.
       const b = item.body;
       if (b !== undefined) {
-        const padX = 0.9 * sc;
-        const padTop = 1.7 * sc;
-        const padBot = 0.7 * sc + (item.elevated ? 3 * sc : 0);
+        // THE BODY SCRATCH PAD RIDES THE LEAN (Epic B, canopy-clip fix):
+        // the pad is HEADROOM the live paint reaches into (a crown's sway,
+        // a weapon's arc, a canopy's overhang), and that art foreshortens
+        // by depthScale under q>0 — a raw camera.scale pad under-covers a
+        // NEAR body/crown and the scratch cell hard-clips the overflow
+        // (flat top / edge sliver). Grow the pad by the foot row's
+        // depthScale (>=1, so a far body never shrinks below today's
+        // headroom). depthScaleAtScreenY is 1 at q=0 → byte-identical.
+        const dPad =
+          this.camera.q !== 0
+            ? Math.max(1, this.camera.depthScaleAtScreenY(b.y + b.h, this.h))
+            : 1;
+        const padX = 0.9 * sc * dPad;
+        const padTop = 1.7 * sc * dPad;
+        const padBot = (0.7 * sc + (item.elevated ? 3 * sc : 0)) * dPad;
         const box = { x: b.x - padX, y: b.y - padTop, w: b.w + padX * 2, h: b.h + padTop + padBot };
         if (this.outlineOn && !this.bodyRelightPossible()) {
           if (!this.stageAssemble(item)) {
@@ -17924,9 +17936,20 @@ export class Renderer {
     h: number,
     px: number,
     py: number,
+    wy: number,
   ): { x: number; y: number; w: number; h: number } {
     const m = this.treeOrSaplingModel(tile, h);
-    const s = this.camera.scale;
+    // THE TREE BODY BOX RIDES THE LEAN (Epic B, canopy-clip fix): a
+    // growing tree/sapling paints LIVE through the scratch/paint lane
+    // (paintOutlinedDirect splits, then stagePaintItem bounds it), and
+    // drawTree sizes that live paint by spriteScale(wy) = scale·depthScale.
+    // Sizing THIS box by the raw camera.scale left it TALLER/WIDER art
+    // than box under q>0 — the world stage's scratch CELL then hard-clips
+    // the overflow, slicing a flat top off the crown (and the class-canvas
+    // UV bound can sample past the cell → an edge sliver). Size the box by
+    // the SAME spriteScale the draw uses so cell and art always agree.
+    // spriteScale === camera.scale at q=0 → byte-identical to the ortho box.
+    const s = this.spriteScale(wy);
     const half = (m.spread * 1.15 + 0.08 * m.height + 0.45) * s;
     const top = (m.height * 1.18 + 0.45) * s;
     const groundY = py + s * this.camera.yScale * 0.3;
@@ -18644,7 +18667,7 @@ export class Renderer {
           // Mature trees carry the ring baked into their cached sprite
           // (bakeOutlineRing) — only the live-painted regrowth ease
           // goes through the per-frame outline pass.
-          body: grow < 1 ? this.treeBody(tile, h, p.x, p.y) : undefined,
+          body: grow < 1 ? this.treeBody(tile, h, p.x, p.y, ty + 0.5) : undefined,
           drawShadow: () => this.drawTreeShadow(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, grow),
           // A struck trunk answers the axe: a damped screen-x ring on
           // the whole sprite for a quarter second after each bite.
@@ -18680,7 +18703,7 @@ export class Renderer {
           // sprite exactly like mature trees — a body here would send
           // the already-ringed blit through paintOutlined and dilate
           // the ring a second time (a doubled, twice-thick stroke).
-          body: grow < 1 ? this.treeBody(tile, h, p.x, p.y) : undefined,
+          body: grow < 1 ? this.treeBody(tile, h, p.x, p.y, ty + 0.5) : undefined,
           drawShadow: () => this.drawTreeShadow(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, grow),
           draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, undefined, grow),
         };
