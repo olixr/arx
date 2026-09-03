@@ -251,6 +251,7 @@ import {
   wallCover,
 } from './reveal.js';
 import { ARRIVAL_MIN_COUNT, admitBake, BakeLane, type BakeBudgets } from './bakeAdmission.js';
+import { leanBudgetMult } from './leanBudget.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { BobtailSim, CrocTailSim, TailSim, drawBobtail, drawFeyBrush, drawFoxBrush, drawHorseTail, drawHousecatTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
@@ -5125,6 +5126,18 @@ export class Renderer {
     return this.camera.scale * this.camera.depthScale(footY);
   }
 
+  /** THE ARRIVAL FOLLOWS THE FRUSTUM (Epic B, shared-root fix): the
+   *  multiplier the sprite-bake arrival budgets scale by under a lean,
+   *  tracking how much deeper the perspective frustum reaches than the
+   *  ortho view. Ramps with the lean q (0 at q=0 → 1×; full at the B-2
+   *  reference lean) and is HARD-capped at FRUSTUM_FAR_MULT so a
+   *  near-singular grazing lean can never blow the per-frame mint count.
+   *  Returns 1 at q=0, so callers gate on camera.q≠0 and stay
+   *  byte-identical. */
+  private leanFrustumBudgetMult(): number {
+    return leanBudgetMult(this.camera.q, PERSP_LEAN_REF, FRUSTUM_FAR_MULT);
+  }
+
   /** Per-item depth factor for the FX modules (particles/debris/birds) —
    *  each billboard foreshortens at its OWN world-y, so those modules take
    *  this callback instead of a single scalar. A stable bound field (no
@@ -5307,6 +5320,22 @@ export class Renderer {
       this.leanTarget > 0 && this.cameraOverride === null && this.stageActive()
         ? Math.min(this.leanTarget, 2.6 / this.h)
         : 0;
+    // THE ARRIVAL FOLLOWS THE FRUSTUM (Epic B, the shared-root fix):
+    // the sprite-bake admission ceilings (arrival count + ms) were
+    // tuned for the ORTHO frustum, but the lean frustum reaches
+    // ~FRUSTUM_FAR_MULT× deeper — so a pan under q>0 sweeps in that
+    // many more first-sight prop/flora sprites than the budget admits,
+    // and the surplus SKIPS (props draw as split coalesced runs, the
+    // near ground arrives at a stale tier). Scale both arrival lanes by
+    // the frustum's extra depth so admission keeps pace with reach.
+    // Bounded by the far-reach multiple; count grows with it, ms grows
+    // more gently (it also bounds frame time). q=0 leaves both exactly
+    // at their ortho values set above — byte-identical.
+    if (this.camera.q !== 0) {
+      const mult = this.leanFrustumBudgetMult();
+      this.visArrivalCount = Math.round(this.visArrivalCount * mult);
+      this.visSpriteMsLeft = Math.min(VIS_SPRITE_BAKE_MS, this.visSpriteMsLeft * Math.min(mult, 2));
+    }
     // The sky rules the frame: shadows, exposure, grade all read it.
     this.sky = daylightAt(game.clockHoursNow());
     // UNDERGROUND LAW: the dark band never sees the surface sky. Below
@@ -7876,7 +7905,19 @@ export class Renderer {
         (a, b) =>
           (a.cx - ccx) ** 2 + (a.cy - ccy) ** 2 - ((b.cx - ccx) ** 2 + (b.cy - ccy) ** 2),
       );
-      const n = Math.min(CHUNK_REPLACE_STARTS, this.replaceQueue.length);
+      // THE GROUND KEEPS PACE WITH THE FRUSTUM (Epic B): under a lean
+      // the near field wants the 64px tier but a fresh chunk streams in
+      // at the base/stale tier and upgrades only CHUNK_REPLACE_STARTS at
+      // a time — soft, seamy ground while walking. The deeper frustum
+      // also queues more tier flips per pan. Start more replacements per
+      // frame under lean (still bounded, still center-first, still
+      // behind CHUNK_POOL_BUDGET) so the near tier lands promptly. q=0
+      // keeps the exact ortho pacing — byte-identical.
+      const starts =
+        this.camera.q !== 0
+          ? Math.round(CHUNK_REPLACE_STARTS * this.leanFrustumBudgetMult())
+          : CHUNK_REPLACE_STARTS;
+      const n = Math.min(starts, this.replaceQueue.length);
       for (let i = 0; i < n; i++) {
         const r = this.replaceQueue[i]!;
         this.startChunkReplace(r.baked, game, r.cx, r.cy, r.data, r.px);
