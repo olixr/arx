@@ -12442,7 +12442,8 @@ export class Renderer {
     const ctx = this.ctx;
     const s = this.spriteScale(ty); // B-3 surface depth thread (foreshorten by base depth)
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
-    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const elevLift = game.world.elevAt(tx, ty) * ELEV_H * s;
+    p.y -= elevLift;
     const isWallAt = (x: number, y: number) => this.wallish(game, x, y);
     const ex = tx + runLen - 1; // east-most tile of the run
     const nW = isWallAt(tx, ty - 1);
@@ -12465,32 +12466,73 @@ export class Renderer {
     // entrances must be findable at a glance from across the plaza.
     const trim = stone ? '#8a8496' : skin.trim;
     const syT = s * this.camera.yScale;
-    const hs = whT * s;
-    const rw = s * runLen; // the opening spans the whole run
-    const x0 = p.x - 0.25;
-    const x1 = p.x + rw + 0.25;
-    const jw = s * 0.15;
+    const rw = s * runLen; // the opening spans the whole run (NORTH-frame width)
+    // B-FW DOOR FACE (Epic B P3): a doorway is a wall tile with an opening,
+    // so — exactly like wallItem's south face — its face rides the PROJECTED
+    // south row (ty+1), NOT the affine `p.y + syT`. Under lean the near row
+    // spreads WIDER and sits at a DIFFERENT screen height than `p.y + syT`
+    // (row spacing is nonlinear in depth); anchoring the door to the north
+    // `p.x`/`p.y+syT` frame with a leanX skew floated it off its own wall
+    // foot and let the panel crop/detach/slide when the camera panned. Project
+    // the south row for real — matching the neighbour wall's southBaseY / swx
+    // / sex / hs = whT·sS — so the whole opening is mathematically part of the
+    // wall face and cannot come loose. At q=0 worldToScreen is exact-affine,
+    // sS === s, the south row projects to p.x / p.y+syT, and every value below
+    // collapses to today's rect ⇒ byte-identical (pinned on the q===0 branch,
+    // no reassociated arithmetic).
+    const q = this.camera.q;
+    const sS = q === 0 ? s : this.camera.scale * this.camera.depthScale(ty + 1);
+    const hs = whT * sS; // SOUTH face lift (was whT * s)
+    let swx: number;
+    let sex: number;
+    let southBaseY: number;
+    if (q === 0) {
+      swx = p.x;
+      sex = p.x + rw;
+      southBaseY = p.y + syT;
+    } else {
+      const pS = this.camera.worldToScreen(tx, ty + 1, this.w, this.h);
+      swx = pS.x; // world x = tx        at row ty+1
+      sex = pS.x + sS * runLen; // world x = tx+runLen at row ty+1 (row is affine in x)
+      southBaseY = pS.y - elevLift; // same elevation basis as p.y
+    }
+    // NORTH-frame edges — the CROWN (top slab) is unchanged from today.
+    const nx0 = p.x - 0.25;
+    const nx1 = p.x + rw + 0.25;
+    // SOUTH-frame edges — the FACE (opening, jambs, header, leaf, threshold).
+    const x0 = swx - 0.25;
+    const x1 = sex + 0.25;
+    const jw = sS * 0.15;
     const r = s * 0.26;
     const radii: [number, number, number, number] = [!nW && !w ? r : 0, !nE && !e ? r : 0, 0, 0];
-    const skew = (this.leanX(p.x + rw / 2, whT) - (p.x + rw / 2)) / -hs;
     return {
       sortY: ty + 1,
       drawShadow: () => {
-        // Only the jambs cast — light passes through the opening.
-        const yB = p.y + syT;
-        this.castEdgeQuad(x0, yB, x0 + jw, yB, whT);
-        this.castEdgeQuad(x1 - jw, yB, x1, yB, whT);
+        // Only the jambs cast — light passes through the opening. The base is
+        // the PROJECTED south foot so the cast stays pinned to the leaned wall
+        // (byte-identical at q=0, where southBaseY === p.y + syT).
+        this.castEdgeQuad(x0, southBaseY, x0 + jw, southBaseY, whT);
+        this.castEdgeQuad(x1 - jw, southBaseY, x1, southBaseY, whT);
       },
       draw: () => {
-        const yBase = p.y + syT;
-        // All face-work in the leaned frame so jambs, header, and the
-        // neighbouring walls' faces agree on the same skew.
+        const yBase = southBaseY;
+        // FEATURE-ON-FACE (Epic B P3): the opening, jambs, header, leaf and
+        // threshold ride the FACE'S OWN plane — mapped through its four
+        // projected south-row corners in face UV (u along the wall W→E, v up
+        // the height base→crown). Everything below draws inside translate(0,
+        // yBase) in FRAME-LOCAL coords (base row v=0 ⇒ y=0, crown v=1 ⇒
+        // y=-hs). At q=0 the south row projects to p.x..p.x+rw, top and base
+        // share x, and the map collapses to today's plain rect ⇒ pixel-for-
+        // pixel identical. The legacy leanX skew is retired: the lean now
+        // lives entirely in the projected south-row corners.
+        const fpx = q === 0 ? p.x : swx; // face west origin (frame-local x)
+        const fs = q === 0 ? rw : sex - swx; // face width in screen px (== sS·runLen)
+        const faceMap = faceUV(fpx, 0, fpx + fs, 0, fpx, -hs, fpx + fs, -hs);
         ctx.save();
         ctx.translate(0, yBase);
-        ctx.transform(1, 0, skew, 1, 0, 0);
         // The dark interior seen through the opening; melts away as
         // anyone approaches the threshold.
-        const hh = Math.max(0, hs - s * 1.56); // opening is FIXED height; the header grows (stubs have none)
+        const hh = Math.max(0, hs - sS * 1.56); // opening is FIXED height (face-scaled); the header grows (stubs have none)
         // THE DOOR OPENS ONTO A ROOM, NOT THE MAP. A doorway is a
         // hole, and a hole shows whatever the frame already holds —
         // which for a door whose far side is open country is raw
@@ -12577,7 +12619,7 @@ export class Renderer {
             ctx.fill();
           }
           ctx.fillStyle = shade(trim, 14);
-          const mid = p.x + rw / 2; // keystone rides the run's centre
+          const mid = faceMap(0.5, 0).x; // keystone rides the run's centre on the face
           ctx.beginPath();
           ctx.moveTo(mid - s * 0.12, -hs + hh + s * 0.02);
           ctx.lineTo(mid + s * 0.12, -hs + hh + s * 0.02);
@@ -12626,12 +12668,12 @@ export class Renderer {
         ctx.translate(0, -whT * s);
         ctx.fillStyle = top;
         ctx.beginPath();
-        chamferRect(ctx, x0, p.y - 0.25, rw + 0.5, syT + 0.5, radii);
+        chamferRect(ctx, nx0, p.y - 0.25, rw + 0.5, syT + 0.5, radii);
         ctx.fill();
-        if (!stone) this.woodCrownPlate(p, syT, s, x0, x1, tx, ty, (n || sw) && !(w || e));
+        if (!stone) this.woodCrownPlate(p, syT, s, nx0, nx1, tx, ty, (n || sw) && !(w || e));
         if (!sw) {
           ctx.fillStyle = shade(top, 16);
-          ctx.fillRect(x0, p.y + syT - s * 0.08, rw + 0.5, s * 0.08);
+          ctx.fillRect(nx0, p.y + syT - s * 0.08, rw + 0.5, s * 0.08);
         }
         ctx.restore();
         // SILHOUETTE OUTLINE: crown perimeter like a wall, PLUS the
@@ -12639,8 +12681,8 @@ export class Renderer {
         // it reads as a real threshold, not a painted gap. The jamb
         // feet ring the wall's ground contact either side of the door.
         if (this.outlineOn) {
-          const cTop = p.y - 0.25 - hs;
-          const fBot = p.y + syT;
+          const cTop = p.y - 0.25 - whT * s; // crown top (north lift, as the crown block draws it)
+          const fBot = southBaseY; // face foot on the projected south row
           const headBot = fBot - hs + hh; // header underside
           const outline = new Path2D();
           this.addCrownPerimeter(outline, x0, x1, cTop, fBot, fBot, radii[0], radii[1], n, e, w);
@@ -12906,31 +12948,64 @@ export class Renderer {
     const ctx = this.ctx;
     const s = this.spriteScale(ty); // B-3 surface depth thread (foreshorten by base depth)
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
-    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const elevLift = game.world.elevAt(tx, ty) * ELEV_H * s;
+    p.y -= elevLift;
     const isArch = (t: number | undefined) => t === Tile.ArchStone;
     const ae = isArch(game.world.groundAt(tx + 1, ty));
     const aw = isArch(game.world.groundAt(tx - 1, ty));
     const top = '#8c8798';
     const face = '#5b5566';
     const syT = s * this.camera.yScale;
-    const hs = WALL_H * s;
-    const x0 = p.x - 0.25;
-    const x1 = p.x + s + 0.25;
-    const pw = s * 0.2;
+    // B-FW ARCH FACE (Epic B P3): the same migration as doorwayItem — the
+    // arch's lintel, opening and piers ride the PROJECTED south row (ty+1),
+    // NOT the affine `p.y + syT`, so the voussoirs/reveals stay seated in the
+    // wall face and cannot crop/detach/slide under lean. The legacy leanX skew
+    // is retired (the lean lives in the projected corners). At q=0 sS === s,
+    // the south row projects to p.x / p.y+syT, and every value below collapses
+    // to today's rect ⇒ byte-identical (pinned q===0, no reassociated math).
+    const q = this.camera.q;
+    const sS = q === 0 ? s : this.camera.scale * this.camera.depthScale(ty + 1);
+    const hs = WALL_H * sS; // SOUTH face lift (was WALL_H * s)
+    let swx: number;
+    let sex: number;
+    let southBaseY: number;
+    if (q === 0) {
+      swx = p.x;
+      sex = p.x + s;
+      southBaseY = p.y + syT;
+    } else {
+      const pS = this.camera.worldToScreen(tx, ty + 1, this.w, this.h);
+      swx = pS.x; // world x = tx   at row ty+1
+      sex = pS.x + sS; // world x = tx+1 at row ty+1
+      southBaseY = pS.y - elevLift; // same elevation basis as p.y
+    }
+    // NORTH-frame west edge — the CROWN (top slab) is unchanged from today.
+    const nx0 = p.x - 0.25;
+    // SOUTH-frame edges — the FACE (lintel, opening, piers).
+    const x0 = swx - 0.25;
+    const x1 = sex + 0.25;
+    const pw = sS * 0.2;
     const r = s * 0.26;
-    const skew = (this.leanX(p.x + s / 2, WALL_H) - (p.x + s / 2)) / -hs;
     return {
       sortY: ty + 1,
       drawShadow: () => {
-        const yB = p.y + syT;
-        if (!aw) this.castEdgeQuad(x0, yB, x0 + pw, yB, WALL_H);
-        if (!ae) this.castEdgeQuad(x1 - pw, yB, x1, yB, WALL_H);
+        // Piers cast; the open mouth passes light. Base = projected south foot
+        // (byte-identical at q=0, where southBaseY === p.y + syT).
+        if (!aw) this.castEdgeQuad(x0, southBaseY, x0 + pw, southBaseY, WALL_H);
+        if (!ae) this.castEdgeQuad(x1 - pw, southBaseY, x1, southBaseY, WALL_H);
       },
       draw: () => {
-        const yBase = p.y + syT;
+        const yBase = southBaseY;
+        // FEATURE-ON-FACE (Epic B P3): lintel/opening/piers ride the FACE'S
+        // OWN plane — its four projected south-row corners in face UV. With the
+        // face's top corners vertically above its base (topW.x == baseW.x), the
+        // bilinear faceUV(fpx,0,fpx+fs,0, fpx,-hs,fpx+fs,-hs) reduces to
+        // S(u,v) = (fpx + fs·u, -hs·v): the translated south-row rect the
+        // features below span in x0..x1 × 0..-hs. Frame-local inside
+        // translate(0, yBase): base v=0 ⇒ y=0, crown v=1 ⇒ y=-hs. At q=0
+        // fpx=p.x, fs=s ⇒ today's rect, pixel-for-pixel identical.
         ctx.save();
         ctx.translate(0, yBase);
-        ctx.transform(1, 0, skew, 1, 0, 0);
         // Lintel band spanning the tile (continuous through a run),
         // with a course line so the entablature reads as laid stone.
         const hh = hs * 0.26;
@@ -12971,18 +13046,18 @@ export class Renderer {
         ctx.translate(0, -WALL_H * s);
         ctx.fillStyle = top;
         ctx.beginPath();
-        chamferRect(ctx, x0, p.y - 0.25, s + 0.5, syT + 0.5, [aw ? 0 : r, ae ? 0 : r, 0, 0]);
+        chamferRect(ctx, nx0, p.y - 0.25, s + 0.5, syT + 0.5, [aw ? 0 : r, ae ? 0 : r, 0, 0]);
         ctx.fill();
         ctx.fillStyle = shade(top, 16);
-        ctx.fillRect(x0, p.y + syT - s * 0.08, s + 0.5, s * 0.08);
+        ctx.fillRect(nx0, p.y + syT - s * 0.08, s + 0.5, s * 0.08);
         ctx.restore();
         // SILHOUETTE OUTLINE: crown top + pier sides, and the archway
         // void. The lintel underside spans every tile (arcades read as
         // one continuous span), but the opening's vertical reveals are
         // stroked ONLY at run ends where a pier actually stands.
         if (this.outlineOn) {
-          const cTop = p.y - 0.25 - hs;
-          const fBot = p.y + syT;
+          const cTop = p.y - 0.25 - WALL_H * s; // crown top (north lift, as the crown block draws it)
+          const fBot = southBaseY; // face foot on the projected south row
           const lintelBot = fBot - hs + hh;
           const leftInner = aw ? x0 : x0 + pw;
           const rightInner = ae ? x1 : x1 - pw;
