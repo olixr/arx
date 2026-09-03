@@ -10799,7 +10799,8 @@ export class Renderer {
     // with distance so a far wall doesn't loom. spriteScale === scale at q=0.
     const s = this.spriteScale(ty);
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
-    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const elevLift = game.world.elevAt(tx, ty) * ELEV_H * s;
+    p.y -= elevLift;
     const n = this.wallish(game, tx, ty - 1);
     const e = this.wallish(game, tx + 1, ty);
     const sw = this.wallish(game, tx, ty + 1);
@@ -10838,7 +10839,38 @@ export class Renderer {
       0,
     ];
     const syT = s * this.camera.yScale; // foreshortened tile depth
-    const hs = whT * s;
+    // B-FW WALL TRAPEZOID: a wall tile is a real box, not a single-depth
+    // billboard. Its NORTH (far) edge rides row `ty`; its SOUTH (near)
+    // edge — the face you walk behind — rides row `ty+1`, which under the
+    // lean projects to a DIFFERENT screen position than `p.y + syT` (row
+    // spacing is nonlinear in depth) and a WIDER screen x (near rows
+    // spread from the vanishing centre). Project that south row for real
+    // so tile(ty)'s south edge lands exactly where tile(ty+1)'s north
+    // edge does (same world corner ⇒ same projection ⇒ no gap), the way
+    // cliffArt.ts spans a curtain between two projected corners. The far
+    // edge lifts by ITS OWN depthScale (whT·s), the near edge by the
+    // south row's (whT·sS), so the crown seats on the leaned face top.
+    // At q=0 the perspective divide is off: worldToScreen is exact-affine,
+    // sS === s, the south row projects to p.x / p.y + syT, and every
+    // value below collapses to today's single-depthScale rect — byte-
+    // identical (pinned on the q===0 branch, no reassociated arithmetic).
+    const q = this.camera.q;
+    const sS = q === 0 ? s : this.camera.scale * this.camera.depthScale(ty + 1);
+    const hsN = whT * s; // NORTH (far) edge lift — today's `hs`
+    const hs = whT * sS; // SOUTH (near/face) edge lift
+    let swx: number;
+    let sex: number;
+    let southBaseY: number;
+    if (q === 0) {
+      swx = p.x;
+      sex = p.x + s;
+      southBaseY = p.y + syT;
+    } else {
+      const pS = this.camera.worldToScreen(tx, ty + 1, this.w, this.h);
+      swx = pS.x; // world x = tx  at row ty+1
+      sex = pS.x + sS; // world x = tx+1 at row ty+1 (= worldToScreen(tx+1,ty+1).x)
+      southBaseY = pS.y - elevLift; // same elevation basis as p.y (as today)
+    }
     const lx = (x: number): number => this.leanX(x, whT);
     // THE SHARED-EDGE LAW: run-mates meet on ONE pixel-snapped edge.
     // A bleed on a joined side would overlap the neighbour by a
@@ -10858,22 +10890,35 @@ export class Renderer {
     const keyHere = packTile(tx, ty);
     const bleedW = this.bakeBleedW === keyHere;
     const bleedE = this.bakeBleedE === keyHere;
-    const x0 = w ? (bleedW ? p.x - this.bakeBleedPx : this.camera.snapPx(p.x)) : p.x - 0.25;
-    const x1 = e ? (bleedE ? p.x + s + this.bakeBleedPx : this.camera.snapPx(p.x + s)) : p.x + s + 0.25;
+    // NORTH footprint edge (crown far side) — the old x0/x1/y0 basis.
+    const xN0 = w ? (bleedW ? p.x - this.bakeBleedPx : this.camera.snapPx(p.x)) : p.x - 0.25;
+    const xN1 = e ? (bleedE ? p.x + s + this.bakeBleedPx : this.camera.snapPx(p.x + s)) : p.x + s + 0.25;
     const y0 = n || nDoor ? this.camera.snapPx(p.y) : p.y - 0.25;
-    const y1 = sw ? this.camera.snapPx(p.y + syT) : p.y + syT + 0.25;
+    // SOUTH footprint / face-foot edge (crown near side, the face you walk
+    // behind). x0/x1/y1 carry the FACE geometry — the bulk of the detail
+    // below spans x0..x1 at yBase, so keying them to the projected south
+    // row leans the whole face without touching the material passes. A
+    // south corner here is the SAME projected world corner the tile one
+    // row south uses for its north corner ⇒ the snapped edges coincide.
+    const x0 = w ? (bleedW ? swx - this.bakeBleedPx : this.camera.snapPx(swx)) : swx - 0.25;
+    const x1 = e ? (bleedE ? sex + this.bakeBleedPx : this.camera.snapPx(sex)) : sex + 0.25;
+    const y1 = sw ? this.camera.snapPx(southBaseY) : southBaseY + 0.25;
     const sideCol = shade(mat === Tile.WallWood ? skin.log : mat === Tile.WallStone ? '#6f697c' : '#2b2536', -6);
     // Shared timber course geometry — face, flanks, and corner ends
     // must agree on where every log beds. The stack reads bottom-up:
     // stone plinth, squared sill beam, whole chinked log courses at
     // ~0.42-tile pitch (absolute — taller walls stack MORE logs),
     // squared wall-plate beam under the crown. Stubs drop the sill.
-    const plinthH = s * 0.22;
-    const sillH = whT >= 1 ? s * 0.11 : 0;
-    const plateH = s * 0.13;
+    // Course stack is drawn on the SOUTH face, so it scales by that row's
+    // depthScale (sS) and its lift (hs = whT·sS); at q=0 sS === s so this
+    // is byte-identical. E–W run-mates share row ty+1 ⇒ identical sS ⇒
+    // identical course heights ⇒ beds meet head-on across the joint.
+    const plinthH = sS * 0.22;
+    const sillH = whT >= 1 ? sS * 0.11 : 0;
+    const plateH = sS * 0.13;
     const spanPx = hs - plateH - plinthH - sillH;
-    const nLogs = Math.max(1, Math.round(spanPx / (s * 0.42)));
-    const chinkG = Math.min(s * 0.055, spanPx * 0.05);
+    const nLogs = Math.max(1, Math.round(spanPx / (sS * 0.42)));
+    const chinkG = Math.min(sS * 0.055, spanPx * 0.05);
     const logH = (spanPx - chinkG * (nLogs - 1)) / nLogs;
 
     return {
@@ -10884,10 +10929,12 @@ export class Renderer {
             // A body this tall throws a real shadow across the ground,
             // cast from its south base edge along the sun. Shared-edge
             // spans keep run-mates' translucent shadows from doubling.
-            this.castEdgeQuad(x0, p.y + syT, x1, p.y + syT, whT);
+            // The base is the PROJECTED south foot so the cast stays
+            // pinned to the leaned wall (byte-identical at q=0).
+            this.castEdgeQuad(x0, southBaseY, x1, southBaseY, whT);
           },
       draw: () => {
-        const yBase = p.y + syT; // south edge at ground level
+        const yBase = southBaseY; // projected south edge at ground level
         const yTop = yBase - hs; // south edge, lifted to the crown
         const tx0 = lx(x0);
         const tx1 = lx(x1);
@@ -11357,39 +11404,72 @@ export class Renderer {
         // north edge down to the sunken neighbour's crown north edge;
         // our own crown and the neighbour's stub overdraw the rest.
         if (n && nH < whT - 0.04) {
-          const yRTop = p.y - hs;
+          // North-edge feature: rides the crown's FAR edge (xN*, hsN).
+          const yRTop = p.y - hsN;
           const yRBot = p.y - syT - nH * s;
           if (yRBot > yRTop + 0.5) {
             ctx.fillStyle = shade(face, -14);
             ctx.beginPath();
-            ctx.moveTo(lx(x0), yRTop);
-            ctx.lineTo(lx(x1), yRTop);
-            ctx.lineTo(this.leanX(x1, nH), yRBot);
-            ctx.lineTo(this.leanX(x0, nH), yRBot);
+            ctx.moveTo(lx(xN0), yRTop);
+            ctx.lineTo(lx(xN1), yRTop);
+            ctx.lineTo(this.leanX(xN1, nH), yRBot);
+            ctx.lineTo(this.leanX(xN0, nH), yRBot);
             ctx.closePath();
             ctx.fill();
           }
         }
-        // Crown: the whole top layer drawn in the leaned height frame —
-        // footprint coordinates in, coherent lifted geometry out.
-        // Epic B (FW): lift the crown by the DEPTH-SCALED wall height so the
-        // top slab seats on the depth-scaled face top (hs = whT*s) instead
-        // of floating above it — beginHeightLayer lifts by raw camera.scale,
-        // which under lean detaches the crown from its own face. At q=0
-        // s === camera.scale and PERSP_LEAN is 0, so this is byte-identical
-        // to beginHeightLayer(whT).
+        // Crown: the top slab, a TRUE trapezoid drawn in absolute screen
+        // coords. Its NORTH edge rides row ty (footprint xN0..xN1 at y0,
+        // lifted by the far depthScale hsN); its SOUTH edge rides row ty+1
+        // (x0..x1 at y1, lifted by the near depthScale hs). Both rows are
+        // horizontal (all points on a row share one screen y), so the slab
+        // is a flat-topped trapezoid whose slanted E/W sides join the far
+        // edge to the near. Because each edge is the PROJECTED shared world
+        // corner, tile(ty)'s south crown edge coincides with tile(ty+1)'s
+        // north crown edge, and tile(tx)'s east with tile(tx+1)'s west —
+        // no gap is representable. At q=0 hsN===hs, the rows project to the
+        // same width, and the trapezoid collapses to today's lifted
+        // chamferRect vertex-for-vertex (byte-identical).
+        const cNy = y0 - hsN; // north crown top (far, higher up-screen)
+        const cSy = y1 - hs; // south crown top (near), == the face top
+        // Same corner clamp chamferRect applies, keyed to the far edge the
+        // chamfer cuts (byte-identical to today's clamp at q=0).
+        const cCap = Math.min(xN1 - xN0, y1 - y0) / 2;
+        const rTL = Math.min(radii[0], cCap);
+        const rTR = Math.min(radii[1], cCap);
         ctx.save();
-        ctx.translate(0, -whT * s);
         ctx.fillStyle = top;
         ctx.beginPath();
-        chamferRect(ctx, x0, y0, x1 - x0, y1 - y0, radii);
+        ctx.moveTo(xN0 + rTL, cNy);
+        ctx.lineTo(xN1 - rTR, cNy);
+        if (rTR > 0) ctx.lineTo(xN1, cNy + rTR);
+        else ctx.lineTo(xN1, cNy);
+        ctx.lineTo(x1, cSy);
+        ctx.lineTo(x0, cSy);
+        if (rTL > 0) {
+          ctx.lineTo(xN0, cNy + rTL);
+          ctx.lineTo(xN0 + rTL, cNy);
+        } else {
+          ctx.lineTo(xN0, cNy);
+        }
+        ctx.closePath();
         ctx.fill();
         if (mat === Tile.WallWood)
-          this.woodCrownPlate({ x: p.x, y: y0 }, y1 - y0, s, x0, x1, tx, ty, (n || sw) && !(w || e));
-        // Lit south lip of the crown grounds the height read.
+          this.woodCrownPlate(
+            { x: p.x, y: cNy },
+            cSy - cNy,
+            s,
+            Math.min(xN0, x0),
+            Math.max(xN1, x1),
+            tx,
+            ty,
+            (n || sw) && !(w || e),
+          );
+        // Lit south lip of the crown grounds the height read — a thin band
+        // just inside the (horizontal) near edge.
         if (!sw) {
           ctx.fillStyle = shade(top, 16);
-          ctx.fillRect(x0 + radii[3] * 0.8, y1 - s * 0.08, x1 - x0 - (radii[2] + radii[3]) * 0.8, s * 0.08);
+          ctx.fillRect(x0 + radii[3] * 0.8, cSy - s * 0.08, x1 - x0 - (radii[2] + radii[3]) * 0.8, s * 0.08);
         }
         ctx.restore();
         // SILHOUETTE OUTLINE: the flat-art edge, on exposed perimeter
@@ -11397,9 +11477,9 @@ export class Renderer {
         // ground contact. Run-shared edges (n/e/w/sw) are skipped so
         // the run reads as one mass, only its outer boundary ringed.
         if (this.outlineOn) {
-          const cTop = y0 - hs; // crown north edge, lifted
-          const cBot = y1 - hs; // crown south lip
-          const fBot = p.y + syT; // face foot on the ground
+          const cTop = y0 - hsN; // crown north (far) edge, lifted
+          const cBot = y1 - hs; // crown south lip (near)
+          const fBot = southBaseY; // projected face foot on the ground
           const sideBot = sw ? cBot : fBot; // no face ⇒ stop at the crown
           const outline = new Path2D();
           this.addCrownPerimeter(outline, x0, x1, cTop, sideBot, sideBot, radii[0], radii[1], n, e, w);
