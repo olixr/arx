@@ -375,6 +375,7 @@ import {
   camOriginY,
   depthScaleAtScreen,
   depthScaleWorld,
+  horizonScreenY,
   projectWorld,
   unprojectScreen,
 } from './cameraProject.js';
@@ -473,13 +474,35 @@ const CHUNK_REPLACE_STARTS = 2;
  *  spans) without hoarding idle backing store. */
 const CHUNK_POOL_BUDGET = 256 * 1048576;
 
-/** THE CAMERA LEARNS TO LEAN (Epic B): the perspective frustum's far
- *  reach, as a multiple of the orthographic view depth. A moderate lean
- *  reaches ~1.5–2× before the horizon; the cap bounds the bake set under
- *  a strong lean and IS where the horizon fog sits (drawGrade). Tightened
- *  3→2 (B-6 lever 2) now that the fog buries the cut — fewer far tiles,
- *  no hole. Used ONLY in the q>0 frustum branch, so q=0 is unaffected. */
-const FRUSTUM_FAR_MULT = 2;
+/** THE CAMERA LEARNS TO LEAN (Epic B): a HARD safety ceiling on the
+ *  perspective frustum's far reach, as a multiple of the orthographic view
+ *  depth. The true visible far row is now taken from the unprojected
+ *  frustum itself (see visibleTileBounds — clamped to a margin below the
+ *  horizon so the divisor stays well-conditioned); this multiple only
+ *  bounds the pathological case (the top edge grazing the horizon, where
+ *  the honest reach diverges). A moderate lean's honest reach peaks near
+ *  ~4.5× just before the horizon rises into view, so 5 leaves headroom
+ *  without letting a near-singular lean pull the whole map into the bake
+ *  set. Used ONLY in the q>0 frustum branch, so q=0 is unaffected.
+ *
+ *  WAS 2 (B-6 lever 2), on the theory the horizon fog buried the cut. But
+ *  the fog is a SEMI-transparent haze, not an opaque wall, so at the
+ *  shipping lean — where the top edge honestly sees ~3.5× ortho depth —
+ *  the 2× cut fell in clear view: ground, tables and props POPPED OUT in
+ *  the far third of the screen. The far row must follow the real frustum,
+ *  not a fixed multiple that clips it. */
+const FRUSTUM_FAR_MULT = 5;
+
+/** THE CAMERA LEARNS TO LEAN (Epic B): how far below the horizon (as a
+ *  fraction of viewport height) the far cull row sits when the horizon has
+ *  risen into view. Two jobs: (1) keep the unproject divisor away from the
+ *  horizon singularity (a row AT the horizon recedes to infinite world-y),
+ *  and (2) land the far cut inside the dense part of the horizon fog band
+ *  so what little the cull still drops is already washed into the haze.
+ *  When the horizon is off-screen (a moderate lean) this never bites — the
+ *  top edge is already well below the horizon and the far corners are read
+ *  there. q=0 has no horizon, so this is never consulted. */
+const FRUSTUM_HORIZON_MARGIN_FRAC = 0.15;
 
 /** The moderate reference lean q the fog/LOD ramps are tuned against (the
  *  B-2 milestone lean). Fog and far-fade reach full strength here. */
@@ -7435,25 +7458,39 @@ export class Renderer {
     }
     // THE CAMERA LEARNS TO LEAN (Epic B): under a lean the visible
     // region is a TRAPEZOID to the horizon — far (top) rows are wider
-    // and much deeper, so the affine rect would leave HOLES near the
-    // top. Unproject the four screen corners and bound them. The far
-    // reach is CAPPED (FRUSTUM_FAR_MULT × the ortho depth) so a strong
-    // lean — where the top edge approaches the horizon and unprojects
-    // toward infinity — cannot pull the whole map into the bake set;
-    // the capped band is where a horizon fog will later sit.
+    // and MUCH deeper, so an ortho rect (or a fixed far multiple that
+    // undershoots the real reach) leaves the far band UNCOLLECTED and
+    // ground/tables/props POP OUT there. Take the far edge from the real
+    // frustum: unproject the four screen corners, but read the FAR pair
+    // at a row held a margin below the horizon — never AT it, where the
+    // unproject divisor is singular and the reach diverges. When the
+    // horizon is off-screen (a moderate lean) that far row IS the top
+    // edge, so the honest deep+wide reach (~3.5× ortho at the shipping
+    // lean) is collected whole; when the horizon rises into view the far
+    // row rides down with it so the cut stays inside the horizon fog and
+    // we never over-collect the compressed near-horizon band. A hard
+    // FRUSTUM_FAR_MULT ceiling still bounds the pathological grazing lean.
     const W = this.w;
     const H = this.h;
-    const c00 = this.camera.screenToWorld(0, 0, W, H);
-    const c10 = this.camera.screenToWorld(W, 0, W, H);
-    const c01 = this.camera.screenToWorld(0, H, W, H);
-    const c11 = this.camera.screenToWorld(W, H, W, H);
+    // The deepest screen row still collected: below the horizon by the
+    // margin (so the divisor is well-conditioned), clamped to the top
+    // edge when the horizon is off-screen above it (max(0, …) → 0).
+    const hY = horizonScreenY(this.camera.q, H);
+    const farY = Math.max(0, hY + H * FRUSTUM_HORIZON_MARGIN_FRAC);
+    const f0 = this.camera.screenToWorld(0, farY, W, H);
+    const f1 = this.camera.screenToWorld(W, farY, W, H);
+    const n0 = this.camera.screenToWorld(0, H, W, H);
+    const n1 = this.camera.screenToWorld(W, H, W, H);
+    // Hard ceiling: even the margin cannot save a lean whose far row is
+    // driven near the singularity — clamp the WORLD far row so the bake
+    // set can never swallow the whole map.
     const farMinTy = this.camera.y - orthoRows * FRUSTUM_FAR_MULT;
-    const minTy = Math.max(farMinTy, Math.min(c00.y, c10.y, c01.y, c11.y));
+    const minTy = Math.max(farMinTy, Math.min(f0.y, f1.y, n0.y, n1.y));
     return {
-      minTx: Math.floor(Math.min(c00.x, c10.x, c01.x, c11.x)) - 2,
-      maxTx: Math.ceil(Math.max(c00.x, c10.x, c01.x, c11.x)) + 2,
+      minTx: Math.floor(Math.min(f0.x, f1.x, n0.x, n1.x)) - 2,
+      maxTx: Math.ceil(Math.max(f0.x, f1.x, n0.x, n1.x)) + 2,
       minTy: Math.floor(minTy) - 5,
-      maxTy: Math.ceil(Math.max(c00.y, c10.y, c01.y, c11.y)) + 2,
+      maxTy: Math.ceil(Math.max(n0.y, n1.y)) + 2,
     };
   }
 
