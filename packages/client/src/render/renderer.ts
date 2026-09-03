@@ -194,6 +194,7 @@ import * as garrisonArt from './garrisonArt.js';
 import * as hudOverlay from './hudOverlay.js';
 import * as wornAura from './wornAura.js';
 import * as cliffArt from './cliffArt.js';
+import { emit as emitStructureFace, faceBand as sfBand, faceFill as sfFill, faceSeam as sfSeam, faceUV } from './structureFace.js';
 import { WALL_STUB, GARRISON_H, MERLON_H } from './paintVocab.js';
 import * as wallHungArt from './wallHungArt.js';
 import * as barrierArt from './barrierArt.js';
@@ -11111,37 +11112,16 @@ export class Renderer {
             bLift: number,
             litD: number,
           ): void => {
-            ctx.fillStyle = shade(sideCol, litD);
-            ctx.beginPath();
-            ctx.moveTo(ax, ay);
-            ctx.lineTo(ax, ay - aLift);
-            ctx.lineTo(bx, by - bLift);
-            ctx.lineTo(bx, by);
-            ctx.closePath();
-            ctx.fill();
+            // THE STRUCTURE FACE (screen-space shape): corners are already
+            // projected + snapped and the lifts pre-foreshortened, so the
+            // shared trapezoid/band/seam helpers draw them verbatim.
+            sfFill(ctx, ax, ay, aLift, bx, by, bLift, shade(sideCol, litD));
             // A course band between wall-height fractions f0..f1.
-            const band = (f0: number, f1: number, col: string): void => {
-              ctx.fillStyle = col;
-              ctx.beginPath();
-              ctx.moveTo(ax, ay - aLift * f0);
-              ctx.lineTo(ax, ay - aLift * f1);
-              ctx.lineTo(bx, by - bLift * f1);
-              ctx.lineTo(bx, by - bLift * f0);
-              ctx.closePath();
-              ctx.fill();
-            };
+            const band = (f0: number, f1: number, col: string): void =>
+              sfBand(ctx, ax, ay, aLift, bx, by, bLift, f0, f1, col);
             // A thin seam line at fraction f, constant device thickness.
-            const hline = (f: number, wpx: number, col: string): void => {
-              const wa = Math.max(1, wpx);
-              ctx.fillStyle = col;
-              ctx.beginPath();
-              ctx.moveTo(ax, ay - aLift * f);
-              ctx.lineTo(bx, by - bLift * f);
-              ctx.lineTo(bx, by - bLift * f + wa);
-              ctx.lineTo(ax, ay - aLift * f + wa);
-              ctx.closePath();
-              ctx.fill();
-            };
+            const hline = (f: number, wpx: number, col: string): void =>
+              sfSeam(ctx, ax, ay, aLift, bx, by, bLift, f, wpx, col);
             if (mat === Tile.WallWood) {
               // Foundation, sill beam and wall-plate wrap the corner (the
               // flankDetail law): the side is never a different build than
@@ -11184,7 +11164,24 @@ export class Renderer {
           // of tint and a glint then say "glass". The hole is carved
           // with an evenodd fill and held open by an evenodd clip
           // through the whole detail pass.
-          const skew = (lx(p.x + s / 2) - (p.x + s / 2)) / -hs;
+          // FEATURE-ON-FACE (Epic B P2): the window opening, its dressing,
+          // wall-hangings and sill pots ride the FACE'S OWN plane — mapped
+          // through its four projected corners in face UV (u along the wall
+          // W→E, v up the height base→crown) — NOT the north-row `p.x`.
+          // Under lean the near south row spreads WIDER than the north row
+          // and sits at swx..sex; anchoring the window at `p.x + s*frac`
+          // put it inboard of the face, so it slid off-centre and cropped
+          // against the face clip as the camera panned. Everything in this
+          // stack draws inside translate(0, yBase), so the map is built in
+          // FRAME-LOCAL coords: base row is the south foot (v=0 ⇒ y=0), the
+          // top the crown south edge (v=1 ⇒ y=-hs). At q=0 the south row
+          // projects to p.x..p.x+s, top and base share x, and the map
+          // collapses to today's rect ⇒ pixel-for-pixel identical. The
+          // legacy `leanX` skew is retired here: PERSP_LEAN=0 makes it a
+          // no-op, and the lean now lives in the projected corners.
+          const fpx = q === 0 ? p.x : swx; // face west origin (frame-local x)
+          const fs = q === 0 ? s : sex - swx; // face width in screen px (== sS)
+          const faceMap = faceUV(fpx, 0, fpx + fs, 0, fpx, -hs, fpx + fs, -hs);
           // The glazed opening, set at the body's eye line: sill at
           // ~0.9 tiles, head at ~1.6 — a window a person stands at.
           // THE WIDE LIGHT: consecutive window tiles in a run merge
@@ -11194,15 +11191,22 @@ export class Renderer {
           // hole; slices butt pixel-true on the snapped shared edge.
           const winW = window && this.fgGroundAt(tx - 1, ty) === tile;
           const winE = window && this.fgGroundAt(tx + 1, ty) === tile;
-          const wx = winW ? x0 : p.x + s * 0.28;
-          const wxE = winE ? x1 : p.x + s * 0.72;
+          // Singles ride the face at 28%/72% of its width (u mapped
+          // through the face corners); merged edges butt the neighbour on
+          // the snapped shared face edge (x0/x1 are already south-row).
+          const wx = winW ? x0 : faceMap(0.28, 0).x;
+          const wxE = winE ? x1 : faceMap(0.72, 0).x;
           const ww = wxE - wx;
-          const wy = -s * 1.62;
-          const wh2 = s * 0.7;
+          // The height band mapped to face scale: head at 1.62 tiles up,
+          // sill 0.7 tiles below it (fs === s at q=0 ⇒ today's -s*1.62 /
+          // s*0.7). Equivalent to faceMap's v-band; kept as a direct face
+          // height so the wall's foreshortening carries the opening.
+          const wy = -fs * 1.62;
+          const wh2 = fs * 0.7;
           let hole: Path2D | null = null;
           if (window) {
             hole = new Path2D();
-            const cr = s * 0.05;
+            const cr = fs * 0.05;
             chamferRect(hole, wx, wy, ww, wh2, [
               winW ? 0 : cr,
               winE ? 0 : cr,
@@ -11210,10 +11214,10 @@ export class Renderer {
               winW ? 0 : cr,
             ]);
           }
-          // The skewed face frame as a matrix: detail coordinates in,
-          // leaned screen geometry out — it maps the hole into the
-          // face fill below and the tint pass after.
-          const frame = new DOMMatrix([1, 0, skew, 1, 0, yBase]);
+          // The face-local → screen shift: the hole is built in frame-local
+          // coords (v=0 at the south foot), so it drops into the screen-
+          // space face fill and the passes after via one translate(0,yBase).
+          const frame = new DOMMatrix([1, 0, 0, 1, 0, yBase]);
           ctx.fillStyle = face;
           const facePath = new Path2D();
           facePath.moveTo(x0, yBase + 0.5);
@@ -11223,11 +11227,10 @@ export class Renderer {
           facePath.closePath();
           if (hole) facePath.addPath(hole, frame);
           ctx.fill(facePath, 'evenodd');
-          // Material detail inside the face's own skewed frame, so
-          // courses and plank seams follow the lean coherently.
+          // Material detail inside the face's own frame, so courses and
+          // plank seams sit level with the leaned face top.
           ctx.save();
           ctx.translate(0, yBase);
-          ctx.transform(1, 0, skew, 1, 0, 0);
           if (hole) {
             // Courses, girts, and seams must never paint across the
             // glass — clip them to the face minus the opening.
@@ -11490,8 +11493,11 @@ export class Renderer {
             }
           }
           // Wall-hung cloth (banners, tapestry) on the face — skipped
-          // on glazed walls, whose guard clip would eat the drop.
-          if (!window) wallHungArt.wallHangings(this, game, tx, ty, p.x, s, whT, false);
+          // on glazed walls, whose guard clip would eat the drop. Pinned
+          // to the FACE (fpx origin, fs width/scale) so it stays centred
+          // on the wall under lean instead of drifting off the north row;
+          // fpx===p.x, fs===s at q=0 ⇒ unchanged.
+          if (!window) wallHungArt.wallHangings(this, game, tx, ty, fpx, fs, whT, false);
           // Ambient-occlusion seam where the face meets the ground.
           ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
           ctx.fillRect(x0, -s * 0.06, x1 - x0, s * 0.06);
@@ -11505,7 +11511,6 @@ export class Renderer {
             // carpentry sitting proud of the pane.
             ctx.save();
             ctx.translate(0, yBase);
-            ctx.transform(1, 0, skew, 1, 0, 0);
             const warm = hearth ? this.sky.flame : 0;
             ctx.fillStyle =
               warm > 0.05
@@ -11573,8 +11578,7 @@ export class Renderer {
             if (sillInfo?.kind === 'sill') {
               ctx.save();
               ctx.translate(0, yBase);
-              ctx.transform(1, 0, skew, 1, 0, 0);
-              wallHungArt.sillHerbsOnSill(this, tx, ty, wx, wxE, wy + wh2, s, sillInfo.mix ?? 0);
+              wallHungArt.sillHerbsOnSill(this, tx, ty, wx, wxE, wy + wh2, fs, sillInfo.mix ?? 0);
               ctx.restore();
             }
           }
@@ -11634,17 +11638,27 @@ export class Renderer {
         }
         ctx.closePath();
         ctx.fill();
-        if (mat === Tile.WallWood)
-          this.woodCrownPlate(
-            { x: p.x, y: cNy },
-            cSy - cNy,
-            s,
-            Math.min(xN0, x0),
-            Math.max(xN1, x1),
-            tx,
-            ty,
-            (n || sw) && !(w || e),
-          );
+        if (mat === Tile.WallWood) {
+          // THE CONTINUOUS CROWN: at q>0 paint the wall-plate beam in the
+          // leaned crown trapezoid's own UV (run-continuous), so the run's
+          // top reads as one coherent plate instead of per-tile ortho caps
+          // that ignore the pitch. At q=0 keep woodCrownPlate verbatim —
+          // byte-identical. Corners (xN0/x0 on the far/near rows) are the
+          // shared world corners, so consecutive tiles' beams meet head-on.
+          if (q > 0)
+            this.woodCrownRun(xN0, cNy, xN1, cNy, x0, cSy, x1, cSy, s, tx, ty, (n || sw) && !(w || e));
+          else
+            this.woodCrownPlate(
+              { x: p.x, y: cNy },
+              cSy - cNy,
+              s,
+              Math.min(xN0, x0),
+              Math.max(xN1, x1),
+              tx,
+              ty,
+              (n || sw) && !(w || e),
+            );
+        }
         // Lit south lip of the crown grounds the height read — a thin band
         // just inside the (horizontal) near edge.
         if (!sw) {
@@ -11743,6 +11757,115 @@ export class Renderer {
         ctx.fillRect(jx - s * 0.075, p.y + syT * 0.28, s * 0.042, s * 0.042);
         ctx.fillRect(jx + s * 0.04, p.y + syT * 0.6, s * 0.042, s * 0.042);
       }
+    }
+    ctx.restore();
+  }
+
+  /**
+   * THE CONTINUOUS CROWN (Epic B, q>0) — the wall-plate beam read as ONE
+   * coherent top along the whole run, not a row of per-tile hashed caps.
+   *
+   * woodCrownPlate paints the beam in ORTHO rect coords (fillRect on
+   * p.x / p.y / syT), so under the lean every tile's cap ignores the pitch
+   * and a straight run reads stepped / segmented. This paints the SAME
+   * carpentry — hard arris shadows down the beam's two long edges, a
+   * sun-lit spine, a long grain streak, a pegged butt joint — in the
+   * leaned crown trapezoid's own UV: `u` ALONG the run, `v` ACROSS the beam
+   * thickness, bilerped over the four projected crown corners (NW/NE on the
+   * far row, SW/SE on the near row). Because consecutive tiles share a
+   * crown edge (the SAME projected world corner ⇒ the same device pixel)
+   * and every feature is keyed to a `u`/`v` FRACTION, the spine, arris and
+   * grain lines run head-on across the joint — the whole run reads as one
+   * continuous plate. Per-tile whT (the reveal veil) and per-tile sort are
+   * untouched: only the DETAIL moves into crown-plane space, so a sunk
+   * neighbour still steps its own height while the level run stays coherent.
+   *
+   * The feature hash stays `hashCoords(177, tx, ty)` — this tile's own unit
+   * of the run — so the beam's varied dressing matches woodCrownPlate's
+   * statistics unit-for-unit; the continuity comes purely from drawing in
+   * the leaned UV rather than from re-seeding. Guarded to q>0 by the caller;
+   * q=0 keeps woodCrownPlate verbatim (byte-identical). Call with the crown
+   * fill path still current — it clips the dressing to the chamfered top.
+   */
+  private woodCrownRun(
+    nwx: number,
+    nwy: number,
+    nex: number,
+    ney: number,
+    swx: number,
+    swy: number,
+    sex: number,
+    sey: number,
+    s: number,
+    tx: number,
+    ty: number,
+    vert: boolean,
+  ): void {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.clip();
+    // Corner assignment so ONE feature routine serves both orientations:
+    //   vert  (N–S run): u north→south, v west→east
+    //   horiz (E–W run): u west→east,  v north→south
+    let c00x: number;
+    let c00y: number;
+    let c10x: number;
+    let c10y: number;
+    let c01x: number;
+    let c01y: number;
+    let c11x: number;
+    let c11y: number;
+    if (vert) {
+      c00x = nwx; c00y = nwy; c10x = swx; c10y = swy; // v=0 (west): u N→S
+      c01x = nex; c01y = ney; c11x = sex; c11y = sey; // v=1 (east)
+    } else {
+      c00x = nwx; c00y = nwy; c10x = nex; c10y = ney; // v=0 (north): u W→E
+      c01x = swx; c01y = swy; c11x = sex; c11y = sey; // v=1 (south)
+    }
+    // Bilinear crown-plane point from (u,v) in [0,1]².
+    const px = (u: number, v: number): number => {
+      const a = 1 - u;
+      const b = 1 - v;
+      return a * b * c00x + u * b * c10x + a * v * c01x + u * v * c11x;
+    };
+    const py = (u: number, v: number): number => {
+      const a = 1 - u;
+      const b = 1 - v;
+      return a * b * c00y + u * b * c10y + a * v * c01y + u * v * c11y;
+    };
+    const quad = (u0: number, v0: number, u1: number, v1: number, col: string): void => {
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(px(u0, v0), py(u0, v0));
+      ctx.lineTo(px(u1, v0), py(u1, v0));
+      ctx.lineTo(px(u1, v1), py(u1, v1));
+      ctx.lineTo(px(u0, v1), py(u0, v1));
+      ctx.closePath();
+      ctx.fill();
+    };
+    // Device spans for constant-thickness dressing (seam lines, pegs).
+    const alongPx = Math.hypot(px(1, 0) - px(0, 0), py(1, 0) - py(0, 0)) || 1;
+    const acrossPx = Math.hypot(px(0, 1) - px(0, 0), py(0, 1) - py(0, 0)) || 1;
+    const seam = Math.max(1, s * 0.025);
+    const hj = hashCoords(177, tx, ty);
+    // Hard arris shadows where the beam's long edges fall to the faces.
+    quad(0, 0, 1, 0.1, 'rgba(30, 18, 8, 0.24)');
+    quad(0, 0.9, 1, 1, 'rgba(30, 18, 8, 0.24)');
+    // Sun-lit spine along the beam's back.
+    quad(0, 0.32, 1, 0.68, 'rgba(255, 226, 175, 0.14)');
+    // Long grain following the run.
+    if ((hj & 3) === 1) {
+      const v0 = 0.2 + ((hj >>> 6) % 30) / 100;
+      quad(0.12, v0, 0.74, Math.min(1, v0 + seam / acrossPx), 'rgba(40, 24, 10, 0.2)');
+    }
+    // Rare butt joint, pegged either side — beams are FITTED.
+    if ((hj & 7) === 2) {
+      const u0 = 0.2 + (hj % 55) / 100;
+      quad(u0, 0.08, Math.min(1, u0 + seam / alongPx), 0.92, 'rgba(40, 24, 10, 0.38)');
+      const peg = s * 0.042;
+      ctx.fillStyle = 'rgba(40, 24, 10, 0.5)';
+      ctx.fillRect(px(u0, 0.28) - peg * 0.75, py(u0, 0.28) - peg, peg, peg);
+      ctx.fillRect(px(u0, 0.6) + peg * 0.4, py(u0, 0.6), peg, peg);
     }
     ctx.restore();
   }
@@ -12319,7 +12442,8 @@ export class Renderer {
     const ctx = this.ctx;
     const s = this.spriteScale(ty); // B-3 surface depth thread (foreshorten by base depth)
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
-    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const elevLift = game.world.elevAt(tx, ty) * ELEV_H * s;
+    p.y -= elevLift;
     const isWallAt = (x: number, y: number) => this.wallish(game, x, y);
     const ex = tx + runLen - 1; // east-most tile of the run
     const nW = isWallAt(tx, ty - 1);
@@ -12342,32 +12466,73 @@ export class Renderer {
     // entrances must be findable at a glance from across the plaza.
     const trim = stone ? '#8a8496' : skin.trim;
     const syT = s * this.camera.yScale;
-    const hs = whT * s;
-    const rw = s * runLen; // the opening spans the whole run
-    const x0 = p.x - 0.25;
-    const x1 = p.x + rw + 0.25;
-    const jw = s * 0.15;
+    const rw = s * runLen; // the opening spans the whole run (NORTH-frame width)
+    // B-FW DOOR FACE (Epic B P3): a doorway is a wall tile with an opening,
+    // so — exactly like wallItem's south face — its face rides the PROJECTED
+    // south row (ty+1), NOT the affine `p.y + syT`. Under lean the near row
+    // spreads WIDER and sits at a DIFFERENT screen height than `p.y + syT`
+    // (row spacing is nonlinear in depth); anchoring the door to the north
+    // `p.x`/`p.y+syT` frame with a leanX skew floated it off its own wall
+    // foot and let the panel crop/detach/slide when the camera panned. Project
+    // the south row for real — matching the neighbour wall's southBaseY / swx
+    // / sex / hs = whT·sS — so the whole opening is mathematically part of the
+    // wall face and cannot come loose. At q=0 worldToScreen is exact-affine,
+    // sS === s, the south row projects to p.x / p.y+syT, and every value below
+    // collapses to today's rect ⇒ byte-identical (pinned on the q===0 branch,
+    // no reassociated arithmetic).
+    const q = this.camera.q;
+    const sS = q === 0 ? s : this.camera.scale * this.camera.depthScale(ty + 1);
+    const hs = whT * sS; // SOUTH face lift (was whT * s)
+    let swx: number;
+    let sex: number;
+    let southBaseY: number;
+    if (q === 0) {
+      swx = p.x;
+      sex = p.x + rw;
+      southBaseY = p.y + syT;
+    } else {
+      const pS = this.camera.worldToScreen(tx, ty + 1, this.w, this.h);
+      swx = pS.x; // world x = tx        at row ty+1
+      sex = pS.x + sS * runLen; // world x = tx+runLen at row ty+1 (row is affine in x)
+      southBaseY = pS.y - elevLift; // same elevation basis as p.y
+    }
+    // NORTH-frame edges — the CROWN (top slab) is unchanged from today.
+    const nx0 = p.x - 0.25;
+    const nx1 = p.x + rw + 0.25;
+    // SOUTH-frame edges — the FACE (opening, jambs, header, leaf, threshold).
+    const x0 = swx - 0.25;
+    const x1 = sex + 0.25;
+    const jw = sS * 0.15;
     const r = s * 0.26;
     const radii: [number, number, number, number] = [!nW && !w ? r : 0, !nE && !e ? r : 0, 0, 0];
-    const skew = (this.leanX(p.x + rw / 2, whT) - (p.x + rw / 2)) / -hs;
     return {
       sortY: ty + 1,
       drawShadow: () => {
-        // Only the jambs cast — light passes through the opening.
-        const yB = p.y + syT;
-        this.castEdgeQuad(x0, yB, x0 + jw, yB, whT);
-        this.castEdgeQuad(x1 - jw, yB, x1, yB, whT);
+        // Only the jambs cast — light passes through the opening. The base is
+        // the PROJECTED south foot so the cast stays pinned to the leaned wall
+        // (byte-identical at q=0, where southBaseY === p.y + syT).
+        this.castEdgeQuad(x0, southBaseY, x0 + jw, southBaseY, whT);
+        this.castEdgeQuad(x1 - jw, southBaseY, x1, southBaseY, whT);
       },
       draw: () => {
-        const yBase = p.y + syT;
-        // All face-work in the leaned frame so jambs, header, and the
-        // neighbouring walls' faces agree on the same skew.
+        const yBase = southBaseY;
+        // FEATURE-ON-FACE (Epic B P3): the opening, jambs, header, leaf and
+        // threshold ride the FACE'S OWN plane — mapped through its four
+        // projected south-row corners in face UV (u along the wall W→E, v up
+        // the height base→crown). Everything below draws inside translate(0,
+        // yBase) in FRAME-LOCAL coords (base row v=0 ⇒ y=0, crown v=1 ⇒
+        // y=-hs). At q=0 the south row projects to p.x..p.x+rw, top and base
+        // share x, and the map collapses to today's plain rect ⇒ pixel-for-
+        // pixel identical. The legacy leanX skew is retired: the lean now
+        // lives entirely in the projected south-row corners.
+        const fpx = q === 0 ? p.x : swx; // face west origin (frame-local x)
+        const fs = q === 0 ? rw : sex - swx; // face width in screen px (== sS·runLen)
+        const faceMap = faceUV(fpx, 0, fpx + fs, 0, fpx, -hs, fpx + fs, -hs);
         ctx.save();
         ctx.translate(0, yBase);
-        ctx.transform(1, 0, skew, 1, 0, 0);
         // The dark interior seen through the opening; melts away as
         // anyone approaches the threshold.
-        const hh = Math.max(0, hs - s * 1.56); // opening is FIXED height; the header grows (stubs have none)
+        const hh = Math.max(0, hs - sS * 1.56); // opening is FIXED height (face-scaled); the header grows (stubs have none)
         // THE DOOR OPENS ONTO A ROOM, NOT THE MAP. A doorway is a
         // hole, and a hole shows whatever the frame already holds —
         // which for a door whose far side is open country is raw
@@ -12454,7 +12619,7 @@ export class Renderer {
             ctx.fill();
           }
           ctx.fillStyle = shade(trim, 14);
-          const mid = p.x + rw / 2; // keystone rides the run's centre
+          const mid = faceMap(0.5, 0).x; // keystone rides the run's centre on the face
           ctx.beginPath();
           ctx.moveTo(mid - s * 0.12, -hs + hh + s * 0.02);
           ctx.lineTo(mid + s * 0.12, -hs + hh + s * 0.02);
@@ -12503,12 +12668,12 @@ export class Renderer {
         ctx.translate(0, -whT * s);
         ctx.fillStyle = top;
         ctx.beginPath();
-        chamferRect(ctx, x0, p.y - 0.25, rw + 0.5, syT + 0.5, radii);
+        chamferRect(ctx, nx0, p.y - 0.25, rw + 0.5, syT + 0.5, radii);
         ctx.fill();
-        if (!stone) this.woodCrownPlate(p, syT, s, x0, x1, tx, ty, (n || sw) && !(w || e));
+        if (!stone) this.woodCrownPlate(p, syT, s, nx0, nx1, tx, ty, (n || sw) && !(w || e));
         if (!sw) {
           ctx.fillStyle = shade(top, 16);
-          ctx.fillRect(x0, p.y + syT - s * 0.08, rw + 0.5, s * 0.08);
+          ctx.fillRect(nx0, p.y + syT - s * 0.08, rw + 0.5, s * 0.08);
         }
         ctx.restore();
         // SILHOUETTE OUTLINE: crown perimeter like a wall, PLUS the
@@ -12516,8 +12681,8 @@ export class Renderer {
         // it reads as a real threshold, not a painted gap. The jamb
         // feet ring the wall's ground contact either side of the door.
         if (this.outlineOn) {
-          const cTop = p.y - 0.25 - hs;
-          const fBot = p.y + syT;
+          const cTop = p.y - 0.25 - whT * s; // crown top (north lift, as the crown block draws it)
+          const fBot = southBaseY; // face foot on the projected south row
           const headBot = fBot - hs + hh; // header underside
           const outline = new Path2D();
           this.addCrownPerimeter(outline, x0, x1, cTop, fBot, fBot, radii[0], radii[1], n, e, w);
@@ -12783,31 +12948,64 @@ export class Renderer {
     const ctx = this.ctx;
     const s = this.spriteScale(ty); // B-3 surface depth thread (foreshorten by base depth)
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
-    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
+    const elevLift = game.world.elevAt(tx, ty) * ELEV_H * s;
+    p.y -= elevLift;
     const isArch = (t: number | undefined) => t === Tile.ArchStone;
     const ae = isArch(game.world.groundAt(tx + 1, ty));
     const aw = isArch(game.world.groundAt(tx - 1, ty));
     const top = '#8c8798';
     const face = '#5b5566';
     const syT = s * this.camera.yScale;
-    const hs = WALL_H * s;
-    const x0 = p.x - 0.25;
-    const x1 = p.x + s + 0.25;
-    const pw = s * 0.2;
+    // B-FW ARCH FACE (Epic B P3): the same migration as doorwayItem — the
+    // arch's lintel, opening and piers ride the PROJECTED south row (ty+1),
+    // NOT the affine `p.y + syT`, so the voussoirs/reveals stay seated in the
+    // wall face and cannot crop/detach/slide under lean. The legacy leanX skew
+    // is retired (the lean lives in the projected corners). At q=0 sS === s,
+    // the south row projects to p.x / p.y+syT, and every value below collapses
+    // to today's rect ⇒ byte-identical (pinned q===0, no reassociated math).
+    const q = this.camera.q;
+    const sS = q === 0 ? s : this.camera.scale * this.camera.depthScale(ty + 1);
+    const hs = WALL_H * sS; // SOUTH face lift (was WALL_H * s)
+    let swx: number;
+    let sex: number;
+    let southBaseY: number;
+    if (q === 0) {
+      swx = p.x;
+      sex = p.x + s;
+      southBaseY = p.y + syT;
+    } else {
+      const pS = this.camera.worldToScreen(tx, ty + 1, this.w, this.h);
+      swx = pS.x; // world x = tx   at row ty+1
+      sex = pS.x + sS; // world x = tx+1 at row ty+1
+      southBaseY = pS.y - elevLift; // same elevation basis as p.y
+    }
+    // NORTH-frame west edge — the CROWN (top slab) is unchanged from today.
+    const nx0 = p.x - 0.25;
+    // SOUTH-frame edges — the FACE (lintel, opening, piers).
+    const x0 = swx - 0.25;
+    const x1 = sex + 0.25;
+    const pw = sS * 0.2;
     const r = s * 0.26;
-    const skew = (this.leanX(p.x + s / 2, WALL_H) - (p.x + s / 2)) / -hs;
     return {
       sortY: ty + 1,
       drawShadow: () => {
-        const yB = p.y + syT;
-        if (!aw) this.castEdgeQuad(x0, yB, x0 + pw, yB, WALL_H);
-        if (!ae) this.castEdgeQuad(x1 - pw, yB, x1, yB, WALL_H);
+        // Piers cast; the open mouth passes light. Base = projected south foot
+        // (byte-identical at q=0, where southBaseY === p.y + syT).
+        if (!aw) this.castEdgeQuad(x0, southBaseY, x0 + pw, southBaseY, WALL_H);
+        if (!ae) this.castEdgeQuad(x1 - pw, southBaseY, x1, southBaseY, WALL_H);
       },
       draw: () => {
-        const yBase = p.y + syT;
+        const yBase = southBaseY;
+        // FEATURE-ON-FACE (Epic B P3): lintel/opening/piers ride the FACE'S
+        // OWN plane — its four projected south-row corners in face UV. With the
+        // face's top corners vertically above its base (topW.x == baseW.x), the
+        // bilinear faceUV(fpx,0,fpx+fs,0, fpx,-hs,fpx+fs,-hs) reduces to
+        // S(u,v) = (fpx + fs·u, -hs·v): the translated south-row rect the
+        // features below span in x0..x1 × 0..-hs. Frame-local inside
+        // translate(0, yBase): base v=0 ⇒ y=0, crown v=1 ⇒ y=-hs. At q=0
+        // fpx=p.x, fs=s ⇒ today's rect, pixel-for-pixel identical.
         ctx.save();
         ctx.translate(0, yBase);
-        ctx.transform(1, 0, skew, 1, 0, 0);
         // Lintel band spanning the tile (continuous through a run),
         // with a course line so the entablature reads as laid stone.
         const hh = hs * 0.26;
@@ -12848,18 +13046,18 @@ export class Renderer {
         ctx.translate(0, -WALL_H * s);
         ctx.fillStyle = top;
         ctx.beginPath();
-        chamferRect(ctx, x0, p.y - 0.25, s + 0.5, syT + 0.5, [aw ? 0 : r, ae ? 0 : r, 0, 0]);
+        chamferRect(ctx, nx0, p.y - 0.25, s + 0.5, syT + 0.5, [aw ? 0 : r, ae ? 0 : r, 0, 0]);
         ctx.fill();
         ctx.fillStyle = shade(top, 16);
-        ctx.fillRect(x0, p.y + syT - s * 0.08, s + 0.5, s * 0.08);
+        ctx.fillRect(nx0, p.y + syT - s * 0.08, s + 0.5, s * 0.08);
         ctx.restore();
         // SILHOUETTE OUTLINE: crown top + pier sides, and the archway
         // void. The lintel underside spans every tile (arcades read as
         // one continuous span), but the opening's vertical reveals are
         // stroked ONLY at run ends where a pier actually stands.
         if (this.outlineOn) {
-          const cTop = p.y - 0.25 - hs;
-          const fBot = p.y + syT;
+          const cTop = p.y - 0.25 - WALL_H * s; // crown top (north lift, as the crown block draws it)
+          const fBot = southBaseY; // face foot on the projected south row
           const lintelBot = fBot - hs + hh;
           const leftInner = aw ? x0 : x0 + pw;
           const rightInner = ae ? x1 : x1 - pw;
@@ -13504,18 +13702,14 @@ export class Renderer {
       strat,
       elevated,
       draw: () => {
-        const A = cam.worldToScreen(ax, ay, W, H);
-        const B = cam.worldToScreen(bx, by, W, H);
-        A.x = Math.round(A.x);
-        A.y = Math.round(A.y);
-        B.x = Math.round(B.x);
-        B.y = Math.round(B.y);
-        const dsA = cam.depthScale(ay);
-        const dsB = cam.depthScale(by);
-        const yTopA = A.y - topLift * s * dsA;
-        const yTopB = B.y - topLift * s * dsB;
-        const yBaseA = A.y - baseLift * s * dsA;
-        const yBaseB = B.y - baseLift * s * dsB;
+        // THE STRUCTURE FACE (cliffArt/deck law): one screen-space trapezoid
+        // between world corners (ax,ay)-(bx,by), each foreshortened by its own
+        // depthScale, shared corners rounded to the device pixel. `emit`
+        // projects; the callback paints the deck fascia + dressing bands.
+        emitStructureFace(cam, W, H, ax, ay, bx, by, topLift * s, baseLift * s, (f) => {
+        const { ax: Ax, bx: Bx, dsA, dsB, yTopA, yTopB, yBotA: yBaseA, yBotB: yBaseB } = f;
+        const A = { x: Ax };
+        const B = { x: Bx };
         ctx.fillStyle = body;
         ctx.beginPath();
         ctx.moveTo(A.x, yTopA);
@@ -13598,6 +13792,7 @@ export class Renderer {
           ctx.closePath();
           ctx.stroke();
         }
+        });
       },
     });
   }
