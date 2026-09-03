@@ -17,7 +17,7 @@
  * the head layout in the vertex shader. Colours come from ORNAMENT_FILLS
  * (grass.ts) so the blooms match the baked meadow to the byte.
  */
-import { grassWindGlsl } from './grassGpu.js';
+import { grassWindGlsl, grassProjectGlsl, type GrassProj } from './grassGpu.js';
 import type { Flower, SeedHead } from './grass.js';
 
 /** Floats per ornament instance:
@@ -79,11 +79,11 @@ const VERT_SRC = `#version 300 es
 layout(location=0) in vec3 aVert;  // slot, cu(0/1), cv(0/1)
 layout(location=1) in vec4 iA;     // rootX, rootY, height, size
 layout(location=2) in vec4 iB;     // kind, pal, phase, lean
-uniform mat3 uView;
 uniform float uTime;
 uniform float uBobGain;
 out float vPart;  // 0 stem, 1 petal, 2 core, 3 gold
 out float vPal;
+${grassProjectGlsl()}
 ${grassWindGlsl()}
 void main() {
   float slot = aVert.x;
@@ -149,8 +149,7 @@ void main() {
     vec2 corner = vec2(aVert.y * 2.0 - 1.0, aVert.z * 2.0 - 1.0);
     pos = center + corner * hf;
   }
-  vec3 clip = uView * vec3(pos, 1.0);
-  gl_Position = vec4(clip.xy, 0.0, 1.0);
+  gl_Position = grassProject(pos);   // ONE PROJECTION (projectWorld homography)
   vPart = part;
   vPal = pal;
 }`;
@@ -195,7 +194,11 @@ export class GrassOrnamentRenderer {
   private readonly tmplBuf: WebGLBuffer;
   private readonly instanceBuf: WebGLBuffer;
   private readonly palTex: WebGLTexture;
-  private readonly uView: WebGLUniformLocation;
+  private readonly uScale: WebGLUniformLocation;
+  private readonly uYScale: WebGLUniformLocation;
+  private readonly uOrigin: WebGLUniformLocation;
+  private readonly uQ: WebGLUniformLocation;
+  private readonly uViewport: WebGLUniformLocation;
   private readonly uTime: WebGLUniformLocation;
   private readonly uBobGain: WebGLUniformLocation;
   private instanceCount = 0;
@@ -222,7 +225,11 @@ export class GrassOrnamentRenderer {
       throw new Error(`ornament program link failed: ${log}`);
     }
     this.program = program;
-    this.uView = gl.getUniformLocation(program, 'uView')!;
+    this.uScale = gl.getUniformLocation(program, 'uScale')!;
+    this.uYScale = gl.getUniformLocation(program, 'uYScale')!;
+    this.uOrigin = gl.getUniformLocation(program, 'uOrigin')!;
+    this.uQ = gl.getUniformLocation(program, 'uQ')!;
+    this.uViewport = gl.getUniformLocation(program, 'uViewport')!;
     this.uTime = gl.getUniformLocation(program, 'uTime')!;
     this.uBobGain = gl.getUniformLocation(program, 'uBobGain')!;
     gl.useProgram(program);
@@ -287,13 +294,17 @@ export class GrassOrnamentRenderer {
     this.instanceCount = count;
   }
 
-  /** Draw every ornament. `view` is the same world→clip mat3 the blades
-   *  use; `bobGain` scales the wind nod (1 = the baked meadow's sway). */
-  draw(view: Float32Array, timeSec: number, bobGain = 1): void {
+  /** Draw every ornament. `proj` is the same projectWorld homography the
+   *  blades use; `bobGain` scales the wind nod (1 = the baked meadow's sway). */
+  draw(proj: GrassProj, timeSec: number, bobGain = 1): void {
     const gl = this.gl;
     if (this.disposed || this.instanceCount === 0) return;
     gl.useProgram(this.program);
-    gl.uniformMatrix3fv(this.uView, false, view);
+    gl.uniform1f(this.uScale, proj.scale);
+    gl.uniform1f(this.uYScale, proj.yScale);
+    gl.uniform2f(this.uOrigin, proj.ox, proj.oy);
+    gl.uniform1f(this.uQ, proj.q);
+    gl.uniform2f(this.uViewport, proj.wCss, proj.hCss);
     gl.uniform1f(this.uTime, timeSec);
     gl.uniform1f(this.uBobGain, bobGain);
     gl.activeTexture(gl.TEXTURE0);

@@ -17,7 +17,7 @@
  * depth-sorted blades, a camera frame, and packed disturbers.
  */
 import { GrassGpuRenderer } from './grassGpuRenderer.js';
-import { GRASS_INSTANCE_FLOATS, grassViewMatrix, packBladeInstances } from './grassGpu.js';
+import { GRASS_INSTANCE_FLOATS, packBladeInstances, type GrassProj } from './grassGpu.js';
 import { GrassOrnamentRenderer, ORNAMENT_INSTANCE_FLOATS, packOrnamentInstances } from './grassOrnament.js';
 import type { Blade, Flower, SeedHead } from './grass.js';
 
@@ -26,9 +26,13 @@ export interface GrassFrame {
   /** World→screen zoom (Camera.scale) and vertical squash (yScale). */
   scale: number;
   yScale: number;
-  /** Snapped screen origins in CSS px (camOriginX / camOriginY). */
+  /** Screen origins in CSS px (camOriginX / camOriginY). Snapped at q=0;
+   *  UNSNAPPED under a lean (q≠0), matching cameraProject / the world feed —
+   *  the pre-divide snap would sawtooth-jitter through the perspective divide. */
   ox: number;
   oy: number;
+  /** Lean parameter (Camera.q). 0 = flat/ortho, >0 = pitched perspective. */
+  q: number;
   /** Frame size in CSS px. */
   wCss: number;
   hCss: number;
@@ -52,7 +56,6 @@ export class GrassGpuLayer {
   private readonly ornPalette: readonly string[];
   private instances: Float32Array = new Float32Array(0);
   private ornInstances: Float32Array = new Float32Array(0);
-  private readonly viewMat = new Float32Array(9);
   private lost = false;
 
   constructor(palette: readonly string[], ornamentPalette: readonly string[]) {
@@ -130,18 +133,29 @@ export class GrassGpuLayer {
       return this.canvas; // a clean transparent frame
     }
 
-    grassViewMatrix(f.scale, f.yScale, f.ox, f.oy, f.wCss, f.hCss, this.viewMat);
+    // ONE PROJECTION: the whole meadow projects through projectWorld's
+    // homography (grassProjectGlsl), so blades and blooms parallax with the
+    // world at exactly the player's rate under any lean.
+    const proj: GrassProj = {
+      scale: f.scale,
+      yScale: f.yScale,
+      ox: f.ox,
+      oy: f.oy,
+      q: f.q,
+      wCss: f.wCss,
+      hCss: f.hCss,
+    };
     // Blades first, then the ornaments OVER them (blooms sit on the field).
     if (blades.length > 0) {
       this.instances = packBladeInstances(blades, this.instances);
       this.renderer.upload(this.instances, blades.length);
-      this.renderer.draw(this.viewMat, f.timeSec, { windGain: f.windGain, disturb: f.disturb });
+      this.renderer.draw(proj, f.timeSec, { windGain: f.windGain, disturb: f.disturb });
     }
     const ornN = flowers.length + seeds.length;
     if (ornN > 0) {
       this.ornInstances = packOrnamentInstances(flowers, seeds, this.ornInstances);
       this.ornaments.upload(this.ornInstances, ornN);
-      this.ornaments.draw(this.viewMat, f.timeSec);
+      this.ornaments.draw(proj, f.timeSec);
     }
     return this.canvas;
   }

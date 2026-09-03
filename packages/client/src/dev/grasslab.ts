@@ -7,7 +7,7 @@
  */
 import { generateGrassTile, BLADE_FILLS, type Blade } from '../render/grass.js';
 import { GrassGpuRenderer } from '../render/grassGpuRenderer.js';
-import { packBladeInstances, GRASS_INSTANCE_FLOATS } from '../render/grassGpu.js';
+import { packBladeInstances, GRASS_INSTANCE_FLOATS, type GrassProj } from '../render/grassGpu.js';
 
 const canvas = document.getElementById('gl') as HTMLCanvasElement;
 const gl = canvas.getContext('webgl2', { alpha: false, antialias: true })!;
@@ -66,20 +66,29 @@ renderer.upload(instances, blades.length);
 (document.getElementById('count') as HTMLElement).textContent =
   `${blades.length.toLocaleString()} blades · 1 instanced draw`;
 
-// World→clip: fit the NX×NY field with margin, y flipped (world-y down =
-// screen down). Column-major 3×3.
-function viewMatrix(): Float32Array {
+// World→screen: fit the NX×NY field with margin, in the projectWorld terms
+// the shader now consumes (GrassProj). Ortho (q=0). The lab has separate
+// x/y fits, folded into scale (x px/world) + yScale (y/x ratio). The centre
+// (NX/2, NY/2+2 — a bias so blades, which grow up, sit lower) lands mid-view.
+function viewProj(): GrassProj {
+  const vw = canvas.width;
+  const vh = canvas.height;
   const cx = NX / 2;
-  const cy = NY / 2 + 2; // bias so blades (which grow up) sit lower
-  const sx = (2 * 0.92) / NX;
-  const sy = (2 * 0.92) / NY;
-  const m = new Float32Array(9);
-  m[0] = sx; m[1] = 0; m[2] = 0;
-  m[3] = 0; m[4] = -sy; m[5] = 0;
-  m[6] = -cx * sx; m[7] = cy * sy; m[8] = 1;
-  return m;
+  const cy = NY / 2 + 2;
+  const xPx = (0.92 * vw) / NX; // world unit → px along x
+  const yPx = (0.92 * vh) / NY;
+  const scale = xPx;
+  const yScale = yPx / xPx;
+  return {
+    scale,
+    yScale,
+    ox: vw / 2 - cx * scale,
+    oy: vh / 2 - cy * scale * yScale,
+    q: 0,
+    wCss: vw,
+    hCss: vh,
+  };
 }
-const view = viewMatrix();
 
 function resize(): void {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -108,7 +117,7 @@ function frame(): void {
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.clearColor(0.39, 0.53, 0.33, 1); // meadow ground green
   gl.clear(gl.COLOR_BUFFER_BIT);
-  renderer.draw(view, t, { windGain: 0.12, disturb });
+  renderer.draw(viewProj(), t, { windGain: 0.12, disturb });
   requestAnimationFrame(frame);
 }
 frame();

@@ -16,7 +16,7 @@
  * time). Scene integration — the camera homography, depth-LOD, the
  * y-sort slot, the ?grass=gpu flag — rides on top (proposal §A / G-2).
  */
-import { grassWindGlsl, GRASS_INSTANCE_FLOATS } from './grassGpu.js';
+import { grassWindGlsl, grassProjectGlsl, GRASS_INSTANCE_FLOATS, type GrassProj } from './grassGpu.js';
 
 /** Up-segments in a blade's strip — a blocky blade leans as a gentle arc,
  *  so a few segments suffice (fewer = crisper, blockier). Verts=(SEG+1)·2. */
@@ -35,7 +35,6 @@ layout(location=0) in vec2 aTmpl;   // x = side [-1,1], y = up [0,1]
 layout(location=1) in vec2 iRoot;   // world root
 layout(location=2) in vec4 iShape;  // height, halfWidth, lean, phase
 layout(location=3) in vec2 iTone;   // tone index, seg2
-uniform mat3 uView;   // world -> clip (xy)
 uniform float uTime;
 uniform vec2 uWindGain; // x = wind shear gain, y = reserved
 uniform vec4 uDisturb[${MAX_DISTURB}]; // xy = world pos, z = radius, w = strength
@@ -44,6 +43,7 @@ out float vUp;
 out float vTone;
 out float vShimmer;
 out float vPress;
+${grassProjectGlsl()}
 ${grassWindGlsl()}
 void main() {
   float up = aTmpl.y;
@@ -94,8 +94,10 @@ void main() {
   world.y -= up * height * (1.0 - press);          // grow up; flattened when pressed
   world.y += up * push.y * height;                 // trampled lay-over (y)
   world.y += wind.y * up * uWindGain.x * 0.15;     // slight sway
-  vec3 p = uView * vec3(world, 1.0);
-  gl_Position = vec4(p.xy, 0.0, 1.0);
+  // ONE PROJECTION: the full projectWorld homography (perspective divide in
+  // the shader), so the whole blade — root through leaned/trampled tip —
+  // recedes with the world at exactly the player's parallax rate.
+  gl_Position = grassProject(world);
   vUp = up;
   vTone = iTone.x;
   vShimmer = wind.w;
@@ -153,7 +155,11 @@ export class GrassGpuRenderer {
   private readonly tmplBuf: WebGLBuffer;
   private readonly instanceBuf: WebGLBuffer;
   private readonly palTex: WebGLTexture;
-  private readonly uView: WebGLUniformLocation;
+  private readonly uScale: WebGLUniformLocation;
+  private readonly uYScale: WebGLUniformLocation;
+  private readonly uOrigin: WebGLUniformLocation;
+  private readonly uQ: WebGLUniformLocation;
+  private readonly uViewport: WebGLUniformLocation;
   private readonly uTime: WebGLUniformLocation;
   private readonly uWindGain: WebGLUniformLocation;
   private readonly uDisturb: WebGLUniformLocation;
@@ -190,7 +196,11 @@ export class GrassGpuRenderer {
       throw new Error(`grass program link failed: ${log}`);
     }
     this.program = program;
-    this.uView = gl.getUniformLocation(program, 'uView')!;
+    this.uScale = gl.getUniformLocation(program, 'uScale')!;
+    this.uYScale = gl.getUniformLocation(program, 'uYScale')!;
+    this.uOrigin = gl.getUniformLocation(program, 'uOrigin')!;
+    this.uQ = gl.getUniformLocation(program, 'uQ')!;
+    this.uViewport = gl.getUniformLocation(program, 'uViewport')!;
     this.uTime = gl.getUniformLocation(program, 'uTime')!;
     this.uWindGain = gl.getUniformLocation(program, 'uWindGain')!;
     this.uDisturb = gl.getUniformLocation(program, 'uDisturb')!;
@@ -265,22 +275,26 @@ export class GrassGpuRenderer {
   }
 
   /**
-   * Draw the field. `view` is a 3×3 world→clip matrix (column-major, 9
-   * floats). Options:
+   * Draw the field. `proj` carries the frame's projectWorld homography
+   * inputs (the whole meadow rides one projection). Options:
    *   · windGain — scales the whole-blade wind shear (default 0.12).
    *   · disturb  — walkers pressing the grass, packed 4 floats each
    *     [worldX, worldY, radius, strength], up to MAX_DISTURB; the scene
    *     feeds the nearby players/entities here each frame.
    */
   draw(
-    view: Float32Array,
+    proj: GrassProj,
     timeSec: number,
     opts: { windGain?: number; disturb?: Float32Array } = {},
   ): void {
     const gl = this.gl;
     if (this.disposed || this.instanceCount === 0) return;
     gl.useProgram(this.program);
-    gl.uniformMatrix3fv(this.uView, false, view);
+    gl.uniform1f(this.uScale, proj.scale);
+    gl.uniform1f(this.uYScale, proj.yScale);
+    gl.uniform2f(this.uOrigin, proj.ox, proj.oy);
+    gl.uniform1f(this.uQ, proj.q);
+    gl.uniform2f(this.uViewport, proj.wCss, proj.hCss);
     gl.uniform1f(this.uTime, timeSec);
     gl.uniform2f(this.uWindGain, opts.windGain ?? 0.12, 0);
     const disturb = opts.disturb;

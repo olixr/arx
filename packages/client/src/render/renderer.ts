@@ -20682,8 +20682,12 @@ export class Renderer {
     const frame: GrassFrame = {
       scale: cam.scale,
       yScale: cam.yScale,
-      ox: camOriginX(cam.scale, cam.x, cam.snapDpr, this.w),
-      oy: camOriginY(cam.scale, cam.yScale, cam.y, cam.snapDpr, this.h),
+      // Pass q so the origin is UNSNAPPED under a lean, exactly as the world
+      // feed uses it — a snapped pre-divide origin sawtooths through the
+      // perspective divide (grass parallax + jitter). q=0 keeps the snap.
+      ox: camOriginX(cam.scale, cam.x, cam.snapDpr, this.w, cam.q),
+      oy: camOriginY(cam.scale, cam.yScale, cam.y, cam.snapDpr, this.h, cam.q),
+      q: cam.q,
       wCss: this.w,
       hCss: this.h,
       dpr: this.dpr(),
