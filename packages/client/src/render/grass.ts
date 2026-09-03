@@ -803,6 +803,12 @@ export class GrassSystem {
     shFill: string;
     /** Whether the shadow canvas holds any content this bake. */
     hasShadow: boolean;
+    /** THE SHADE LEARNS TO LEAN (Epic B): true when this bake ran under a
+     *  lean — the calm casts were kept LIVE in shadowPath (no monolith
+     *  canvas), so a flat drawImage would seat them at ortho and float a
+     *  hard rectangular band over the receded ground. A mode flip (lean↔
+     *  ortho) forces a rebake so the cache never carries the wrong kind. */
+    leanBake: boolean;
   } | null = null;
   /** The meadow's merged cast canvas, reused across bakes. */
   private shadowCanvas: HTMLCanvasElement | null = null;
@@ -1630,6 +1636,16 @@ export class GrassSystem {
       }
     }
 
+    // THE SHADE LEARNS TO LEAN (Epic B): a single baked monolith is one
+    // flat drawImage — it cannot per-row depth-warp, so under a lean it
+    // seats the whole calm meadow's cast at ortho and floats a hard,
+    // axis-aligned rectangular band over the receded ground (the reported
+    // defect, world-stage-only because the lean rides the GL compositor).
+    // When leaning, KEEP the freshly-built casts live in shadowPath (they
+    // were built THIS frame at leaned tile frames) and skip the monolith
+    // entirely — drawUnder fills them with the live tiles' casts, all at
+    // one depth-warped position. q=0 keeps the cached monolith verbatim.
+    const leaning = this.leanQ !== 0;
     // Rasterize the merged casts, anchored at the padded bounds'
     // top-left in the bake frame's screen space (CSS px onto a
     // dpr-resolution backing). Margin covers cast throw past a tile.
@@ -1640,27 +1656,29 @@ export class GrassSystem {
     const canvasY0 = Math.floor(Math.min(pTL.y, pBR.y) - margin);
     const cw = Math.ceil(Math.abs(pBR.x - pTL.x) + margin * 2);
     const chh = Math.ceil(Math.abs(pBR.y - pTL.y) + margin * 2);
-    const bw = Math.ceil(cw * dpr);
-    const bh = Math.ceil(chh * dpr);
-    if (!this.shadowCanvas) {
-      this.shadowCanvas = document.createElement('canvas');
-      this.shadowCtx = this.shadowCanvas.getContext('2d');
-    }
-    const scv = this.shadowCanvas;
-    if (scv.width !== bw || scv.height !== bh) {
-      scv.width = bw;
-      scv.height = bh;
-    }
     const hasShadow = this.shadowPath !== null;
-    if (hasShadow || this.underCache?.hasShadow) {
-      const sctx = this.shadowCtx!;
-      sctx.setTransform(dpr, 0, 0, dpr, -canvasX0 * dpr, -canvasY0 * dpr);
-      sctx.clearRect(canvasX0, canvasY0, cw, chh);
-      if (this.shadowPath) {
-        // Opaque at bake: the meadow's own overlapping casts merge into
-        // one density here; flushShadows applies the layer alpha.
-        sctx.fillStyle = this.shFill;
-        sctx.fill(this.shadowPath);
+    if (!leaning) {
+      const bw = Math.ceil(cw * dpr);
+      const bh = Math.ceil(chh * dpr);
+      if (!this.shadowCanvas) {
+        this.shadowCanvas = document.createElement('canvas');
+        this.shadowCtx = this.shadowCanvas.getContext('2d');
+      }
+      const scv = this.shadowCanvas;
+      if (scv.width !== bw || scv.height !== bh) {
+        scv.width = bw;
+        scv.height = bh;
+      }
+      if (hasShadow || this.underCache?.hasShadow) {
+        const sctx = this.shadowCtx!;
+        sctx.setTransform(dpr, 0, 0, dpr, -canvasX0 * dpr, -canvasY0 * dpr);
+        sctx.clearRect(canvasX0, canvasY0, cw, chh);
+        if (this.shadowPath) {
+          // Opaque at bake: the meadow's own overlapping casts merge into
+          // one density here; flushShadows applies the layer alpha.
+          sctx.fillStyle = this.shFill;
+          sctx.fill(this.shadowPath);
+        }
       }
     }
 
@@ -1681,9 +1699,16 @@ export class GrassSystem {
       shKy: this.shKy,
       shOn: this.shOn,
       shFill: this.shFill,
-      hasShadow,
+      // Under lean the calm casts ride shadowPath, not the monolith — so
+      // the cache holds no blit-able canvas content (hasShadow=false) and
+      // is marked a lean bake (a mode flip forces the next rebake).
+      hasShadow: leaning ? false : hasShadow,
+      leanBake: leaning,
     };
-    this.shadowPath = prevShadow;
+    // Ortho: restore the caller's live path (the monolith owns the calm
+    // casts). Lean: KEEP the built calm casts in shadowPath so drawUnder
+    // paints them, depth-warped, with the live tiles' casts.
+    if (!leaning) this.shadowPath = prevShadow;
   }
 
   /**
@@ -1714,7 +1739,15 @@ export class GrassSystem {
     const m = this.frameTransform(ctx);
     const dpr = m.a || 1;
     let c = this.underCache;
+    // THE SHADE LEARNS TO LEAN (Epic B): under a lean the calm casts are
+    // rebuilt LIVE each frame at the current leaned tile frames (a flat
+    // monolith blit floats a rectangular band over the receded ground),
+    // so force a rebake every frame; and force one on a lean↔ortho flip so
+    // the cache never carries the wrong kind. q=0 with an ortho cache in
+    // hand leaves both conditions false — byte-identical to today.
     let needBake =
+      this.leanQ !== 0 ||
+      c?.leanBake === true ||
       !c ||
       c.scale !== s ||
       c.dpr !== dpr ||
