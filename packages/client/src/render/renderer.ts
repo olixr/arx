@@ -9902,11 +9902,24 @@ export class Renderer {
     const spanS = rampish ? m.len : 1;
     const p0 = this.camera.worldToScreen(m.tx, m.ty, this.w, this.h);
     const p1 = this.camera.worldToScreen(m.endX + 1, m.ty + spanS, this.w, this.h);
+    // THE SCRATCH BOX RIDES THE LEAN (Epic B, FRv follow-on): the wall art
+    // foreshortens by spriteScale (= scale·depthScale, see wallItem), so
+    // under q>0 a NEAR wall draws TALLER/WIDER than a raw-scale pad — and
+    // the world stage's scratch cell HARD-CLIPS whatever overflows the box,
+    // printing an axis-aligned dark (masonry) band the 2d path (no cell
+    // clip) never shows. Size the pad by the nearer row's depthScale so the
+    // leaned art always fits its box. depthScale is 1 at q=0, so `s`/`sPad`
+    // are identical there → byte-identical to the ortho frame.
+    const sPad =
+      this.camera.q !== 0
+        ? s *
+          Math.max(1, this.camera.depthScale(m.ty), this.camera.depthScale(m.ty + spanS))
+        : s;
     const pb = {
-      x: p0.x - 1.2 * s,
-      y: p0.y - northT * s,
-      w: p1.x - p0.x + 2.4 * s,
-      h: p1.y - p0.y + (northT + southT) * s,
+      x: p0.x - 1.2 * sPad,
+      y: p0.y - northT * sPad,
+      w: p1.x - p0.x + 2.4 * sPad,
+      h: p1.y - p0.y + (northT + southT) * sPad,
     };
     // THE SCRATCH LEDGER's identity: world anchor + kind + emission
     // index + the chunk's data rev. Breathing members (hung walls)
