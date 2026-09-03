@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Tile } from '@arx/shared';
 import { packTile } from './interiors.js';
-import { collectVolume, type VolPoint } from './collectVolume.js';
+import { collectVolume, crownSpans, type VolPoint } from './collectVolume.js';
 
 /** A tiny grid: every cell is Grass unless placed; off a small box = off-map. */
 function sampleOf(cells: Array<[number, number, Tile]>): (tx: number, ty: number) => Tile | undefined {
@@ -222,4 +222,94 @@ test('A2: a building footprint is NOT a thin run (both extents > 0)', () => {
   const v = collectVolume(s, 2, 2, wallMat);
   assert.notEqual(v!.x0, v!.x1);
   assert.notEqual(v!.y0, v!.y1); // ⇒ emitWallVolume falls back to per-tile
+});
+
+// ── A2b: crownSpans — per-edge crown partition (small bbox, shared corners) ──
+
+/** Flatten a member key list "x,y" back to the flat [x,y,…] crownSpans wants. */
+function flatMembers(cells: Array<[number, number, Tile]>): number[] {
+  const out: number[] = [];
+  for (const [x, y] of cells) out.push(x, y);
+  return out;
+}
+
+/** A hollow ring of one tile kind: rect [x0..x1]×[y0..y1] minus its interior. */
+function ring(x0: number, y0: number, x1: number, y1: number, t: Tile): Array<[number, number, Tile]> {
+  const out: Array<[number, number, Tile]> = [];
+  for (let y = y0; y <= y1; y++)
+    for (let x = x0; x <= x1; x++)
+      if (x === x0 || x === x1 || y === y0 || y === y1) out.push([x, y, t]);
+  return out;
+}
+
+import type { CrownSpan } from './collectVolume.js';
+
+/** span extent in tile coords: [w, h] where a 1-tile-thick strip is 1 in one axis. */
+function spanExtent(sp: CrownSpan): { w: number; h: number } {
+  return { w: sp.x1 - sp.x0 + 1, h: sp.y1 - sp.y0 + 1 };
+}
+
+/** Every tile the spans cover, as a sorted key set — proves the union. */
+function coverKeys(spans: CrownSpan[]): string[] {
+  const s = new Set<string>();
+  for (const sp of spans)
+    for (let y = sp.y0; y <= sp.y1; y++) for (let x = sp.x0; x <= sp.x1; x++) s.add(`${x},${y}`);
+  return [...s].sort();
+}
+
+/** The 4 tile-corners of a span rect (NW,NE,SE,SW), as "x,y" keys. */
+function spanCorners(sp: CrownSpan): string[] {
+  return [`${sp.x0},${sp.y0}`, `${sp.x1 + 1},${sp.y0}`, `${sp.x1 + 1},${sp.y1 + 1}`, `${sp.x0},${sp.y1 + 1}`];
+}
+
+test('crownSpans: thin E–W run → one horizontal span covering the whole run', () => {
+  const members = flatMembers(rect(2, 3, 6, 3, Tile.WallWood));
+  const spans = crownSpans(members);
+  assert.equal(spans.length, 1);
+  assert.deepEqual(spanExtent(spans[0]!), { w: 5, h: 1 }); // 5 wide, 1 deep
+  assert.deepEqual(coverKeys(spans), memberKeys(members));
+});
+
+test('crownSpans: thin N–S run → one vertical span covering the whole column', () => {
+  const members = flatMembers(rect(4, 2, 4, 7, Tile.WallWood));
+  const spans = crownSpans(members);
+  assert.equal(spans.length, 1);
+  assert.deepEqual(spanExtent(spans[0]!), { w: 1, h: 6 }); // 1 wide, 6 deep
+  assert.deepEqual(coverKeys(spans), memberKeys(members));
+});
+
+test('crownSpans: a building footprint ring → 4 small edge spans, union = the ring', () => {
+  const members = flatMembers(ring(2, 2, 8, 6, Tile.WallStone)); // 7×5 ring
+  const spans = crownSpans(members);
+  // Top row, bottom row (horizontal); the two side columns' middles (vertical).
+  assert.equal(spans.length, 4);
+  // No span spans the whole footprint bbox — each is a thin strip.
+  for (const sp of spans) {
+    const { w, h } = spanExtent(sp);
+    assert.ok(Math.min(w, h) === 1, `span is a 1-tile-thick strip, got ${w}×${h}`);
+    assert.ok(w < 7 || h === 1, 'no span balloons to the footprint bbox');
+  }
+  // The spans cover EXACTLY the wall tiles — never the enclosed interior.
+  assert.deepEqual(coverKeys(spans), memberKeys(members));
+  assert.ok(!coverKeys(spans).includes('5,4'), 'interior floor tile is never crowned');
+});
+
+test('crownSpans: adjacent spans SHARE identical corner coords (seam-free)', () => {
+  const members = flatMembers(ring(2, 2, 8, 6, Tile.WallStone));
+  const spans = crownSpans(members);
+  // A shared world corner appears in ≥2 spans with the SAME integer coords —
+  // projected once → the same device pixel → no seam between the crown pieces.
+  const seen = new Map<string, number>();
+  for (const sp of spans) for (const c of spanCorners(sp)) seen.set(c, (seen.get(c) ?? 0) + 1);
+  // The top-left wall corner (2,2)'s SW corner (2,3) is shared by the top
+  // horizontal span and the left vertical span.
+  assert.ok((seen.get('2,3') ?? 0) >= 2, 'the NW seam corner is shared by two spans');
+  assert.ok((seen.get('9,3') ?? 0) >= 2, 'the NE seam corner is shared by two spans');
+});
+
+test('crownSpans: an L-shape covers each tile exactly once', () => {
+  // Horizontal arm (2..6,3) + vertical arm (6,3..7).
+  const cells = [...rect(2, 3, 6, 3, Tile.WallWood), ...rect(6, 4, 6, 7, Tile.WallWood)];
+  const spans = crownSpans(flatMembers(cells));
+  assert.deepEqual(coverKeys(spans), memberKeys(flatMembers(cells)));
 });

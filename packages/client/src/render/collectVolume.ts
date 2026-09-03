@@ -269,6 +269,80 @@ function exposedPerimeter(members: number[], seen: Set<number>): VolPoint[][] {
   return loops;
 }
 
+/**
+ * THE ONE RENDER — A2b: partition a volume's MEMBER tiles into maximal
+ * straight CROWN SPANS, each a small 4-corner rectangle loop covering that
+ * span's tiles at their footprint (before lift). Every member tile is
+ * covered by EXACTLY ONE span, so the union of the spans is the wall's
+ * top footprint — the crown area — NOT the enclosed interior a `perimeter`
+ * outer loop would fill (a building ring's perimeter fills its floor).
+ *
+ * Why per-span, not one crown poly: a whole-footprint crown DrawItem
+ * rasterizes to ONE scratch texture the size of the footprint bbox — a
+ * town of buildings blows the scratch/VRAM budget (the constraint that
+ * scoped A2 to thin runs). Each span's bbox is a thin strip (≤ the run
+ * length in one axis, 1 tile in the other), so its scratch stays small,
+ * while adjacent spans SHARE world corners (same integer coords → the same
+ * rounded device pixel when projected) so the crown stays seam-free across
+ * the whole loop — the seamlessness invariant, kept.
+ *
+ * Partition rule (covers each tile once, prefers long spans in BOTH axes):
+ *   1. maximal HORIZONTAL runs of length ≥ 2 (contiguous same-row members);
+ *   2. the leftover single-in-their-row tiles → maximal VERTICAL runs.
+ * A building ring yields its top row + bottom row (horizontal) and its two
+ * side columns' middles (vertical) = the four perimeter edges, robustly.
+ * A thin E–W run is one horizontal span; a thin N–S run one vertical span;
+ * an isolated tile a 1×1 span.
+ *
+ * Corners wind clockwise in screen (y-down) space, interior on the right,
+ * matching `exposedPerimeter` — winding is immaterial to a filled crown but
+ * kept consistent for callers that ring a span.
+ */
+/** An inclusive tile-rect crown span (a thin strip: one axis is a single tile). */
+export interface CrownSpan {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+export function crownSpans(members: number[]): CrownSpan[] {
+  const n = members.length;
+  if (n === 0) return [];
+  const isMem = new Set<number>();
+  for (let i = 0; i < n; i += 2) isMem.add(packTile(members[i]!, members[i + 1]!));
+  const spans: CrownSpan[] = [];
+  const covered = new Set<number>();
+  // 1. Horizontal runs of length ≥ 2. A tile joins a horizontal run iff its
+  //    east neighbour is also a member — scan each member, start a run at a
+  //    tile whose WEST neighbour is not a member, extend east.
+  for (let i = 0; i < n; i += 2) {
+    const x = members[i]!;
+    const y = members[i + 1]!;
+    if (isMem.has(packTile(x - 1, y))) continue; // not a run start
+    if (!isMem.has(packTile(x + 1, y))) continue; // length 1 — defer to vertical
+    let xb = x;
+    while (isMem.has(packTile(xb + 1, y))) xb++;
+    for (let cx = x; cx <= xb; cx++) covered.add(packTile(cx, y));
+    spans.push({ x0: x, y0: y, x1: xb, y1: y });
+  }
+  // 2. Vertical runs over the leftover (single-in-row) tiles. Start at a
+  //    tile whose NORTH neighbour is not a leftover, extend south.
+  const isLeft = (cx: number, cy: number): boolean =>
+    isMem.has(packTile(cx, cy)) && !covered.has(packTile(cx, cy));
+  for (let i = 0; i < n; i += 2) {
+    const x = members[i]!;
+    const y = members[i + 1]!;
+    if (!isLeft(x, y)) continue;
+    if (isLeft(x, y - 1)) continue; // not a column start
+    let yb = y;
+    while (isLeft(x, yb + 1)) yb++;
+    for (let cy = y; cy <= yb; cy++) covered.add(packTile(x, cy));
+    spans.push({ x0: x, y0: y, x1: x, y1: yb });
+  }
+  return spans;
+}
+
 /** Drop points that sit on a straight (axis-aligned) run between neighbours. */
 function mergeCollinear(loop: VolPoint[]): VolPoint[] {
   const n = loop.length;
