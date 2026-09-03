@@ -262,7 +262,14 @@ export function garrisonWallItem(rend: PaintHost,
         }
       }
       // Crown: the wall-walk, flag joints, embrasure sill, parapet.
-      rend.beginHeightLayer(whT);
+      // Epic B (FW): lift the crown by the DEPTH-SCALED wall height so the
+      // wall-walk and teeth seat on the face top instead of floating above
+      // it — beginHeightLayer lifts by raw camera.scale, which detaches the
+      // crown from the depth-scaled face (hs = whT*s) under lean. At q=0
+      // s === camera.scale and there is no horizontal lean (PERSP_LEAN=0),
+      // so this is byte-identical to beginHeightLayer(whT).
+      ctx.save();
+      ctx.translate(0, -whT * s);
       ctx.fillStyle = GAR_TOP;
       ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
       // Sparse walk flags — world-hashed so the paving never grids.
@@ -438,7 +445,14 @@ export function garrisonDiagItem(rend: PaintHost,
       }
       // Crown: the mass triangle as wall-walk, then teeth along the
       // hypotenuse continuing the parapet rhythm around the turn.
-      rend.beginHeightLayer(whT);
+      // Epic B (FW): lift the crown by the DEPTH-SCALED wall height so the
+      // wall-walk and teeth seat on the face top instead of floating above
+      // it — beginHeightLayer lifts by raw camera.scale, which detaches the
+      // crown from the depth-scaled face (hs = whT*s) under lean. At q=0
+      // s === camera.scale and there is no horizontal lean (PERSP_LEAN=0),
+      // so this is byte-identical to beginHeightLayer(whT).
+      ctx.save();
+      ctx.translate(0, -whT * s);
       const triPath = new Path2D();
       triPath.moveTo(tri[0]![0], tri[0]![1]);
       triPath.lineTo(tri[1]![0], tri[1]![1]);
@@ -832,7 +846,14 @@ export function garrisonGateItem(rend: PaintHost,
       // to carry it — it narrows away northward on the same archK
       // that fades the dressing. At the stub the crown is two pier
       // tops with open sky between them: the gap IS the gate.
-      rend.beginHeightLayer(whT);
+      // Epic B (FW): lift the crown by the DEPTH-SCALED wall height so the
+      // wall-walk and teeth seat on the face top instead of floating above
+      // it — beginHeightLayer lifts by raw camera.scale, which detaches the
+      // crown from the depth-scaled face (hs = whT*s) under lean. At q=0
+      // s === camera.scale and there is no horizontal lean (PERSP_LEAN=0),
+      // so this is byte-identical to beginHeightLayer(whT).
+      ctx.save();
+      ctx.translate(0, -whT * s);
       const cd = y1 - y0;
       ctx.fillStyle = GAR_TOP;
       ctx.fillRect(x0, y0, ox0 - x0, cd);
