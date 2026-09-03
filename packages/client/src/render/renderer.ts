@@ -3157,7 +3157,14 @@ export class Renderer {
    */
   screenAnchor(wx: number, wy: number, w: number, h: number): { x: number; y: number } {
     const p = this.camera.worldToScreen(wx, wy, w, h);
-    p.y -= this.renderLift(wx, wy) * this.camera.scale;
+    // THE LIFT RIDES ITS ROW (Epic1 B1, float-on-zoom): the elevation
+    // lift is a world height that must foreshorten by depthScale at its
+    // own foot row — exactly as the elevated GROUND lifts by
+    // `ELEV_H*s*depthScale(worldTy)`. A bare `*scale` over-lifts by
+    // (1/depthScale − 1) up-screen, so the anchor detaches from its
+    // terrace and drifts as zoom changes. depthScale(wy) === 1 at q=0,
+    // so this is byte-identical to the flat frame.
+    p.y -= this.renderLift(wx, wy) * this.camera.scale * this.camera.depthScale(wy);
     return p;
   }
 
@@ -3362,7 +3369,10 @@ export class Renderer {
   /** worldToScreen that also rides the terrain lift under the point. */
   liftedWTS = (wx: number, wy: number): Vec2 => {
     const p = this.camera.worldToScreen(wx, wy, this.w, this.h);
-    p.y -= this.renderLift(wx, wy) * this.camera.scale;
+    // THE LIFT RIDES ITS ROW (Epic1 B1): foreshorten the elevation lift
+    // by depthScale(wy) to match the ground under it — see screenAnchor.
+    // Byte-identical at q=0 (depthScale === 1).
+    p.y -= this.renderLift(wx, wy) * this.camera.scale * this.camera.depthScale(wy);
     return p;
   };
 
@@ -3376,7 +3386,10 @@ export class Renderer {
   private readonly wtsScratch: Vec2 = { x: 0, y: 0 };
   private liftedWTSScratch = (wx: number, wy: number): Vec2 => {
     const p = this.camera.worldToScreenInto(wx, wy, this.w, this.h, this.wtsScratch);
-    p.y -= this.renderLift(wx, wy) * this.camera.scale;
+    // THE LIFT RIDES ITS ROW (Epic1 B1): the bulk lane (particles,
+    // debris, birds) foreshortens its elevation lift by depthScale(wy)
+    // too — see screenAnchor. Byte-identical at q=0.
+    p.y -= this.renderLift(wx, wy) * this.camera.scale * this.camera.depthScale(wy);
     return p;
   };
 
@@ -3387,9 +3400,17 @@ export class Renderer {
    * with a screen-lifted sprite (projectile trails, muzzle/impact
    * bursts, glows) divides the squash back out — a raw `y - PROJ_AIR`
    * rides ~40% low and the trail visibly detaches from the shot.
+   *
+   * THE AIR RIDES ITS ROW (Epic1 B1): the sprite it aligns with lifts by
+   * `PROJ_AIR * spriteScale(y)` (screen px, depthScale-aware via B-1c),
+   * but a fixed world-y offset projects with depthScale² through the
+   * homography — so the glow sinks below the shot as depth grows. Divide
+   * the world offset by depthScale(y) so the projected air height tracks
+   * the sprite's `*depthScale` lift. depthScale === 1 at q=0 → the old
+   * `PROJ_AIR / yScale`, byte-identical.
    */
   private projAirWorldY(y: number): number {
-    return y - PROJ_AIR / this.camera.yScale;
+    return y - PROJ_AIR / (this.camera.yScale * this.camera.depthScale(y));
   }
 
   // ------------------------------------------------------- shadows
@@ -19016,7 +19037,14 @@ export class Renderer {
         continue;
       }
       const u = ms / DUR;
-      const lift = this.renderLift(br.tx + 0.5, br.ty + 0.5) * this.camera.scale;
+      // THE LIFT RIDES ITS ROW (Epic1 B1): the debris art draws at
+      // spriteScale (depthScale-aware) but its terrain lift used a bare
+      // scale — fold depthScale so the crumbling rock stays on its
+      // terrace under lean/zoom. depthScale === 1 at q=0.
+      const lift =
+        this.renderLift(br.tx + 0.5, br.ty + 0.5) *
+        this.camera.scale *
+        this.camera.depthScale(br.ty + 0.5);
       items.push({
         // A hair above the depleted rock underneath, which it hides.
         sortY: br.ty + 0.86,
@@ -19177,7 +19205,10 @@ export class Renderer {
       // blinks off at the first lean the way it used to.
       const s = this.camera.scale;
       const syT = s * this.camera.yScale;
-      const lift = this.renderLift(cx, cy) * s;
+      // THE LIFT RIDES ITS ROW (Epic1 B1): the falling-tree outline is
+      // world matter — foreshorten its terrain lift by depthScale so the
+      // ground pivot stays pinned under lean/zoom. 1 at q=0.
+      const lift = this.renderLift(cx, cy) * s * this.camera.depthScale(cy);
       const p = this.camera.worldToScreen(cx, cy, this.w, this.h);
       p.y -= lift;
       const groundY = p.y + syT * 0.3;
@@ -28089,11 +28120,15 @@ export class Renderer {
   ): SigCtx {
     const sc = this.camera.scale;
     const p = this.camera.worldToScreen(fx.x, fx.y, this.w, this.h);
-    p.y -= this.renderLift(fx.x, fx.y) * sc;
+    // THE LIFT RIDES ITS ROW (Epic1 B1): FX anchors ride the terrain
+    // lift by depthScale so the signature stays on its terrace under
+    // lean/zoom (only the vertical lift; the art size stays at `sc`).
+    // depthScale === 1 at q=0.
+    p.y -= this.renderLift(fx.x, fx.y) * sc * this.camera.depthScale(fx.y);
     const wx2 = fx.x2 ?? fx.x;
     const wy2 = fx.y2 ?? fx.y;
     const q = this.camera.worldToScreen(wx2, wy2, this.w, this.h);
-    q.y -= this.renderLift(wx2, wy2) * sc;
+    q.y -= this.renderLift(wx2, wy2) * sc * this.camera.depthScale(wy2);
     return {
       ctx: this.ctx,
       st,
@@ -28947,7 +28982,10 @@ export class Renderer {
     const t = (now - d.bornAt) / d.life;
     if (t >= 1) return;
     const p = this.camera.worldToScreen(d.x, d.y, this.w, this.h);
-    p.y -= this.renderLift(d.x, d.y) * sc;
+    // THE LIFT RIDES ITS ROW (Epic1 B1): the ground decal's terrain lift
+    // foreshortens with depthScale so it stays on the raised terrace
+    // under lean/zoom. 1 at q=0.
+    p.y -= this.renderLift(d.x, d.y) * sc * this.camera.depthScale(d.y);
     const squash = Renderer.FX_SQUASH;
     const rand = srand(d.seed);
     const rPx = d.r * sc * 0.85;
@@ -29245,7 +29283,10 @@ export class Renderer {
         continue;
       }
       const p = this.camera.worldToScreen(pr.x, pr.y, this.w, this.h);
-      p.y -= this.renderLift(pr.x, pr.y) * sc;
+      // THE LIFT RIDES ITS ROW (Epic1 B1): the footprint trail's terrain
+      // lift foreshortens with depthScale so prints stay on their
+      // terrace under lean/zoom. 1 at q=0.
+      p.y -= this.renderLift(pr.x, pr.y) * sc * this.camera.depthScale(pr.y);
       // Off screen prints still age; they just cost nothing to skip.
       if (p.x < -80 || p.x > this.w + 80 || p.y < -80 || p.y > this.h + 80) continue;
       const rand = srand(pr.seed);
@@ -29498,9 +29539,12 @@ export class Renderer {
     const ease = 1 - (1 - inT) * (1 - inT);
 
     const o = this.camera.worldToScreen(g.ox, g.oy, this.w, this.h);
-    o.y -= this.renderLift(g.ox, g.oy) * sc;
+    // THE LIFT RIDES ITS ROW (Epic1 B1): the aim ghost's ground anchors
+    // ride the terrain lift by depthScale so the ring stays on its
+    // terrace under lean/zoom. 1 at q=0.
+    o.y -= this.renderLift(g.ox, g.oy) * sc * this.camera.depthScale(g.oy);
     const p = this.camera.worldToScreen(g.x, g.y, this.w, this.h);
-    p.y -= this.renderLift(g.x, g.y) * sc;
+    p.y -= this.renderLift(g.x, g.y) * sc * this.camera.depthScale(g.y);
     const rPx = g.radius * sc * (0.75 + 0.25 * ease);
     const rangePx = g.range * sc;
 
@@ -29676,7 +29720,8 @@ export class Renderer {
       const t = age / life;
       const st = fxStyleFor(fx.id, fx.color);
       const p = this.camera.worldToScreen(fx.x, fx.y, this.w, this.h);
-      p.y -= this.renderLift(fx.x, fx.y) * sc;
+      // THE LIFT RIDES ITS ROW (Epic1 B1): FX foot foreshortens with depthScale (1 at q=0).
+      p.y -= this.renderLift(fx.x, fx.y) * sc * this.camera.depthScale(fx.y);
       const rPx = fx.radius * sc;
       const seed = (fx.bornAt * 31) & 0x7fffffff;
 
@@ -30094,7 +30139,8 @@ export class Renderer {
             const lx2 = fx.x2;
             const ly2 = fx.y2 ?? fx.y;
             const q = this.camera.worldToScreen(lx2, ly2, this.w, this.h);
-            q.y -= this.renderLift(lx2, ly2) * sc;
+            // THE LIFT RIDES ITS ROW (Epic1 B1): 1 at q=0.
+          q.y -= this.renderLift(lx2, ly2) * sc * this.camera.depthScale(ly2);
             ctx.globalAlpha = (1 - t / 0.5) * 0.5 * voice.weight;
             ctx.strokeStyle = t < 0.18 ? st.core : st.mid;
             ctx.lineWidth = Math.max(1, sc * 0.03);
@@ -30186,7 +30232,8 @@ export class Renderer {
           const bx = fx.x2 ?? fx.x;
           const by = fx.y2 ?? fx.y;
           const q0 = this.camera.worldToScreen(bx, by, this.w, this.h);
-          q0.y -= this.renderLift(bx, by) * sc;
+          // THE LIFT RIDES ITS ROW (Epic1 B1): 1 at q=0.
+          q0.y -= this.renderLift(bx, by) * sc * this.camera.depthScale(by);
           ctx.save();
           ctx.globalAlpha = (1 - t) * 0.3;
           ctx.fillStyle = st.mid;
@@ -30202,7 +30249,8 @@ export class Renderer {
           const bx = fx.x2 ?? fx.x;
           const by = fx.y2 ?? fx.y;
           const q0 = this.camera.worldToScreen(bx, by, this.w, this.h);
-          q0.y -= this.renderLift(bx, by) * sc;
+          // THE LIFT RIDES ITS ROW (Epic1 B1): 1 at q=0.
+          q0.y -= this.renderLift(bx, by) * sc * this.camera.depthScale(by);
           const grow = Math.min(1, age / 70);
           ctx.save();
           ctx.globalAlpha = (1 - t) * 0.32;
@@ -30226,7 +30274,8 @@ export class Renderer {
           const bx = fx.x2 ?? fx.x;
           const by = fx.y2 ?? fx.y;
           const q1 = this.camera.worldToScreen(bx, by, this.w, this.h);
-          q1.y -= this.renderLift(bx, by) * sc;
+          // THE LIFT RIDES ITS ROW (Epic1 B1): 1 at q=0.
+          q1.y -= this.renderLift(bx, by) * sc * this.camera.depthScale(by);
           ctx.save();
           if (fx.radius > 0) {
             const rr = rPx * Math.sqrt(t);
@@ -30278,7 +30327,8 @@ export class Renderer {
           ay = fx.y2 ?? fx.y;
         }
         const ap = this.camera.worldToScreen(ax, ay, this.w, this.h);
-        ap.y -= this.renderLift(ax, ay) * sc;
+        // THE LIFT RIDES ITS ROW (Epic1 B1): 1 at q=0.
+        ap.y -= this.renderLift(ax, ay) * sc * this.camera.depthScale(ay);
         // A summon's wire radius is its INFLUENCE (taunt reach, bait
         // draw) — the stagecraft itself stays body-sized.
         const motifR = fx.kind === 'summon' ? Math.min(rPx, sc * 1.1) : Math.max(rPx, sc * 0.9);
@@ -30841,7 +30891,8 @@ export class Renderer {
       const t = age / life;
       const st = fxStyleFor(fx.id, fx.color);
       const p = this.camera.worldToScreen(fx.x, fx.y, this.w, this.h);
-      p.y -= this.renderLift(fx.x, fx.y) * sc;
+      // THE LIFT RIDES ITS ROW (Epic1 B1): FX foot foreshortens with depthScale (1 at q=0).
+      p.y -= this.renderLift(fx.x, fx.y) * sc * this.camera.depthScale(fx.y);
       const rPx = fx.radius * sc;
       const seed = (fx.bornAt * 31) & 0x7fffffff;
 
@@ -30886,7 +30937,8 @@ export class Renderer {
           // streak at once (the old one-beat grammar, kept for every
           // legacy emitter).
           const q = this.camera.worldToScreen(fx.x2 ?? fx.x, fx.y2 ?? fx.y, this.w, this.h);
-          q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc;
+          // THE LIFT RIDES ITS ROW (Epic1 B1): link endpoint foreshortens with depthScale (1 at q=0).
+      q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc * this.camera.depthScale(fx.y2 ?? fx.y);
           const roadMs = fx.ticks !== undefined ? fx.ticks * TICK_MS : 0;
           const travelT = roadMs > 0 ? Math.min(1, age / roadMs) : 1;
           if (!fx.spawned) {
@@ -30987,7 +31039,8 @@ export class Renderer {
           // relic's embers); the grammar here is the shared truth of
           // leaving one place and owning another.
           const q = this.camera.worldToScreen(fx.x2 ?? fx.x, fx.y2 ?? fx.y, this.w, this.h);
-          q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc;
+          // THE LIFT RIDES ITS ROW (Epic1 B1): link endpoint foreshortens with depthScale (1 at q=0).
+      q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc * this.camera.depthScale(fx.y2 ?? fx.y);
           if (!fx.spawned) {
             fx.spawned = true;
             // The collapse exhales where you left...
@@ -31079,7 +31132,8 @@ export class Renderer {
         case 'bolt': {
           // Jagged lightning that re-kinks as it lives, with branches.
           const q = this.camera.worldToScreen(fx.x2 ?? fx.x, fx.y2 ?? fx.y, this.w, this.h);
-          q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc;
+          // THE LIFT RIDES ITS ROW (Epic1 B1): link endpoint foreshortens with depthScale (1 at q=0).
+      q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc * this.camera.depthScale(fx.y2 ?? fx.y);
           if (!fx.spawned) {
             fx.spawned = true;
             this.fxDebris(fx.x2 ?? fx.x, fx.y2 ?? fx.y, st, 6);
@@ -31156,7 +31210,8 @@ export class Renderer {
           // The corridor of light: three nested bands that snap on,
           // hold, then shatter into blocks as they dissolve.
           const q = this.camera.worldToScreen(fx.x2 ?? fx.x, fx.y2 ?? fx.y, this.w, this.h);
-          q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc;
+          // THE LIFT RIDES ITS ROW (Epic1 B1): link endpoint foreshortens with depthScale (1 at q=0).
+      q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc * this.camera.depthScale(fx.y2 ?? fx.y);
           if (!fx.spawned) {
             fx.spawned = true;
             const dir = Math.atan2((fx.y2 ?? fx.y) - fx.y, (fx.x2 ?? fx.x) - fx.x);
