@@ -10993,9 +10993,40 @@ export class Renderer {
     const sillH = whT >= 1 ? sS * 0.11 : 0;
     const plateH = sS * 0.13;
     const spanPx = hs - plateH - plinthH - sillH;
-    const nLogs = Math.max(1, Math.round(spanPx / (sS * 0.42)));
-    const chinkG = Math.min(sS * 0.055, spanPx * 0.05);
-    const logH = (spanPx - chinkG * (nLogs - 1)) / nLogs;
+    // THE ABSOLUTE COURSE PITCH. At q=0 the legacy round-and-redistribute
+    // path divides THIS tile's own spanPx into an integer log count that
+    // fills it exactly — kept verbatim, byte-identical (pinned on q===0).
+    // Under the lean (q>0) that per-tile rounding is the E–W run's enemy:
+    // every tile's reveal-veil-eased hs rounds to a DIFFERENT nLogs and a
+    // DIFFERENT logH, so a run's courses land at mismatched heights (the
+    // wallcourse bug). Instead bed the courses on an ABSOLUTE world pitch
+    // from a fixed foot (base + li·logPitch, all in sS units), which every
+    // E–W run-mate shares (same plinth/sill/pitch, they differ only in the
+    // veil-eased hs). Each tile's eased hs then merely CLIPS how many
+    // courses show (nLogs), never where a course beds — so beds meet
+    // head-on across the whole run, exactly as the masonry branch already
+    // does. The wall-plate cap (pinned at the eased crown, -hs) rides over
+    // and hides the partial top course. All three timber emitters below —
+    // the south face (li loop), the flank chink lines, and the side-face
+    // chink lines — read nLogs/logH/chinkG, so keying them here keeps the
+    // three in lockstep at both q=0 and q>0.
+    let nLogs: number;
+    let chinkG: number;
+    let logH: number;
+    if (q === 0) {
+      nLogs = Math.max(1, Math.round(spanPx / (sS * 0.42)));
+      chinkG = Math.min(sS * 0.055, spanPx * 0.05);
+      logH = (spanPx - chinkG * (nLogs - 1)) / nLogs;
+    } else {
+      const logPitch = sS * 0.42;
+      chinkG = sS * 0.055;
+      logH = logPitch - chinkG; // logH + chinkG === logPitch (the loop's stride)
+      // Count only courses whose TOP stays below the eased crown; taller
+      // tiles show more courses, but each bed sits at the same absolute
+      // height, so no course top ever overshoots -hs (the plate covers the
+      // partial remainder).
+      nLogs = Math.max(0, Math.ceil((hs - plinthH - sillH - logH) / logPitch));
+    }
 
     return {
       sortY: ty + 1,
@@ -12080,9 +12111,24 @@ export class Renderer {
       const sillH = whT >= 1 ? s * 0.11 : 0;
       const plateH = s * 0.13;
       const spanPx = hs - plateH - plinthH - sillH;
-      const nLogs = Math.max(1, Math.round(spanPx / (s * 0.42)));
-      const chinkG = Math.min(s * 0.055, spanPx * 0.05);
-      const logH = (spanPx - chinkG * (nLogs - 1)) / nLogs;
+      // Same absolute-pitch law as wallItem's south face: at q=0 keep the
+      // legacy round-and-redistribute fill (byte-identical); under the lean
+      // bed the courses on a fixed foot + pitch so a diagonal run's beds
+      // align with its neighbours instead of each veil-eased tile rounding
+      // to its own count. The plate cap hides the partial top course.
+      let nLogs: number;
+      let chinkG: number;
+      let logH: number;
+      if (this.camera.q === 0) {
+        nLogs = Math.max(1, Math.round(spanPx / (s * 0.42)));
+        chinkG = Math.min(s * 0.055, spanPx * 0.05);
+        logH = (spanPx - chinkG * (nLogs - 1)) / nLogs;
+      } else {
+        const logPitch = s * 0.42;
+        chinkG = s * 0.055;
+        logH = logPitch - chinkG; // logH + chinkG === logPitch (the loop's stride)
+        nLogs = Math.max(0, Math.ceil((hs - plinthH - sillH - logH) / logPitch));
+      }
       ctx.fillStyle = Renderer.PLINTH_COL;
       ctx.fillRect(0, -plinthH, w2, plinthH);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
