@@ -7455,8 +7455,26 @@ export class Renderer {
    * Bake resolution follows the zoom tier: past ~1.05× the 32px bakes
    * would upscale into mush, so chunks re-bake at 64px/tile. Keyed off
    * targetZoom (not the gliding zoom) so a zoom flips the tier once.
+   *
+   * THE CAMERA LEARNS TO LEAN (Epic B): under a lean the near-field
+   * ground is MAGNIFIED by the perspective quad (depthScale > 1 at the
+   * bottom of the screen — up to ~2.3× at the clamped max lean). A
+   * material boundary (a stone plaza meeting grass, a paved lane meeting
+   * a field) is contoured and anti-aliased INTO the chunk texture at
+   * bake resolution; that sub-texel AA reads clean when the chunk is
+   * drawn ~1.25× at q=0, but once the near rows are blown up ~2-3× the
+   * boundary's staircase risers (one per baked texel row) grow past a
+   * device pixel and the diagonal edge visibly STAIR-STEPS. The bake
+   * needs more pixels-per-tile to feed the enlarged near-field. We take
+   * the 64px tier whenever the camera is actually leaning so bilinear
+   * has twice the texels to smooth the boundary across. q === 0 is
+   * untouched → byte-identical to every ortho frame. (Uniform, not
+   * per-chunk, so it flips ONCE when the lean toggles rather than
+   * re-baking chunks as they cross a depth threshold on every pan — the
+   * depth-aware per-chunk refinement is deferred, see the plan.)
    */
   private bakePx(): number {
+    if (this.camera.q !== 0) return TILE_PX * 2;
     return this.camera.targetZoom > 1.05 ? TILE_PX * 2 : TILE_PX;
   }
 
