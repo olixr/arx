@@ -486,6 +486,20 @@ const CHUNK_BAKE_MS = 3;
 const CHUNK_REPLACE_STARTS = 2;
 
 /**
+ * THE GROUND RESOLUTION LEANS (Epic B perf): per-chunk bake-tier
+ * hysteresis. Under a lean the near field is magnified (needs 64px/tile
+ * for crisp material edges) while the far field is minified (32px is
+ * plenty — it was 32px pre-lean anyway). A chunk's tier is chosen from
+ * its center depthScale against the boundary 1.0; a chunk KEEPS its tier
+ * until its depth crosses that boundary by this margin, so panning never
+ * oscillates a chunk between 32/64 px (which would re-bake it every
+ * frame — worse than the memory it saves). The dead-band is
+ * [1−HYST, 1+HYST]; a chunk crosses it exactly once as it scrolls from
+ * near to far, a bounded one-time re-bake paced by CHUNK_REPLACE_STARTS.
+ */
+const CHUNK_PX_HYST = 0.15;
+
+/**
  * Retired chunk canvases held for reuse. Sized to the working set a
  * scene actually turns over — a viewport holds well under a dozen
  * chunks, and the churn is replacement (a tile changed, a tier
@@ -7623,6 +7637,44 @@ export class Renderer {
     return this.camera.targetZoom > 1.05 ? TILE_PX * 2 : TILE_PX;
   }
 
+  /**
+   * THE GROUND RESOLUTION LEANS (Epic B perf): the bake resolution for
+   * ONE chunk, chosen from its depth under a lean. The uniform bakePx()
+   * above took 64px for EVERY visible chunk the moment the camera leaned
+   * — but only the NEAR field is magnified enough to need it; the far
+   * field is compressed toward the horizon and paid 4× memory + fill for
+   * texels it never shows. Here each chunk picks its tier from its center
+   * `depthScale`: near chunks (depthScale > 1, magnified, bottom of the
+   * screen) bake at 64px so the material-edge AA still reads clean under
+   * the near-field blow-up; far chunks (depthScale < 1, minified) drop to
+   * 32px — the pre-lean value, oversampled when drawn <1× so it stays
+   * crisp — reclaiming the far-field memory the uniform 64 wasted.
+   *
+   * CHURN-FREE: the tier is quantized to two values with a HYSTERESIS
+   * dead-band (CHUNK_PX_HYST) around the boundary, and the hysteresis
+   * STATE is the entry's own `px` (prevPx) — a chunk flips tier only when
+   * its depth clearly crosses the boundary, so a camera pan re-bakes each
+   * chunk at most once as it transitions near→far, never per frame.
+   *
+   * q === 0 → returns exactly bakePx() (the zoom tier), so the flat game
+   * is byte-identical to every ortho frame ever shipped.
+   */
+  private chunkBakePx(cy: number, prevPx?: number): number {
+    if (this.camera.q === 0) return this.bakePx();
+    const NEAR = TILE_PX * 2;
+    const FAR = TILE_PX;
+    // Center-of-chunk depth: >1 magnified (near), <1 minified (far).
+    const ds = this.camera.depthScale((cy + 0.5) * CHUNK_SIZE);
+    // Keep the current tier until depth crosses the boundary by the
+    // dead-band margin (state carried in the entry's px).
+    if (prevPx === NEAR) return ds < 1 - CHUNK_PX_HYST ? FAR : NEAR;
+    if (prevPx === FAR) return ds > 1 + CHUNK_PX_HYST ? NEAR : FAR;
+    // No prior tier (brand-new chunk): classify at the boundary. A
+    // chunk carried in from a q=0 zoom tier already holds NEAR or FAR
+    // (both equal one of TILE_PX·2 / TILE_PX), so it takes a branch above.
+    return ds >= 1 ? NEAR : FAR;
+  }
+
   private drawGroundChunks(game: ClientGame): void {
     const s = this.camera.scale;
     const b = this.visibleTileBounds();
@@ -7630,7 +7682,9 @@ export class Renderer {
     const maxCx = Math.floor(b.maxTx / CHUNK_SIZE);
     const minCy = Math.floor(b.minTy / CHUNK_SIZE);
     const maxCy = Math.floor(b.maxTy / CHUNK_SIZE);
-    const bakePx = this.bakePx();
+    // THE GROUND RESOLUTION LEANS: bake px is now chosen PER CHUNK from
+    // its depth (chunkBakePx) rather than one uniform bakePx() for the
+    // whole viewport — see each chunk's chunkPx below.
     // Stage lane, frame start: budgets and confession counters reset;
     // quads/late-blits were drained by last frame's flush.
     const stage = this.stageActive();
@@ -7688,12 +7742,15 @@ export class Renderer {
         if (!data) continue;
         const key = `${cx},${cy}`;
         let baked = this.baked.get(key);
+        // THE GROUND RESOLUTION LEANS: the depth-tiered px this chunk
+        // wants, with its own current px as the hysteresis anchor.
+        const chunkPx = this.chunkBakePx(cy, baked?.px);
         if (!baked) {
           // Brand-new VISIBLE chunk: start a live job unconditionally —
           // the placeholder blits this same frame, so streaming never
           // leaves a hole.
           newStarts++;
-          baked = this.startChunkEntry(game, cx, cy, data, bakePx, true);
+          baked = this.startChunkEntry(game, cx, cy, data, chunkPx, true);
         } else if (baked.pending) {
           // Mid-bake: if the world moved on underneath, restart the
           // job at the new content — never finish a stale bake.
@@ -7712,19 +7769,21 @@ export class Renderer {
             const dFr = (data.fringeRev ?? 0) - p.fringeRev;
             const pureFringe =
               this.fringeOn && p.data === data && dRev > 0 && dRev === dFr;
-            if (!pureFringe) this.replaceQueue.push({ baked, cx, cy, data });
+            if (!pureFringe) this.replaceQueue.push({ baked, cx, cy, data, px: chunkPx });
           }
         } else if (
           baked.data !== data ||
           baked.rev !== (data.rev ?? 0) ||
-          // Tier flips wait out the glide: bakePx is keyed off
-          // targetZoom, so mid-glide re-bakes render for a scale the
-          // camera hasn't reached — and the settle pass would just
-          // re-blit them anyway.
-          (baked.px !== bakePx && !this.zoomGliding)
+          // Tier flips wait out the glide: chunkBakePx is keyed off
+          // targetZoom (at q=0) and the chunk's settled depth, so a
+          // mid-glide re-bake would render for a scale the camera
+          // hasn't reached — and the settle pass would just re-blit
+          // them anyway. Depth tier flips (q>0) ride the same guard;
+          // the hysteresis dead-band keeps them one-time per chunk.
+          (baked.px !== chunkPx && !this.zoomGliding)
         ) {
           // Content or tier re-bake behind the old blit.
-          this.replaceQueue.push({ baked, cx, cy, data });
+          this.replaceQueue.push({ baked, cx, cy, data, px: chunkPx });
         }
         if (baked.pending) this.chunkJobQueue.push(baked);
         // SHARED-CORNER SNAP LAW: each chunk's destination rect comes
@@ -7791,15 +7850,18 @@ export class Renderer {
         if (!data) continue;
         const key = `${cx},${cy}`;
         const baked = this.baked.get(key);
+        // Off-screen ring: depth-tier px too, anchored on its own px so
+        // a pre-baked chunk keeps its tier until re-evaluated on screen.
+        const rpx = this.chunkBakePx(cy, baked?.px);
         if (!baked) {
-          const entry = this.startChunkEntry(game, cx, cy, data, bakePx, true);
+          const entry = this.startChunkEntry(game, cx, cy, data, rpx, true);
           this.chunkJobQueue.push(entry);
           break ring; // one new ring job per frame is plenty of lead
         }
         if (baked.pending) {
           this.chunkJobQueue.push(baked);
         } else if (baked.data !== data || baked.rev !== (data.rev ?? 0)) {
-          this.startChunkReplace(baked, game, cx, cy, data, bakePx);
+          this.startChunkReplace(baked, game, cx, cy, data, rpx);
           this.chunkJobQueue.push(baked);
           break ring;
         }
@@ -7818,7 +7880,7 @@ export class Renderer {
       const n = Math.min(CHUNK_REPLACE_STARTS, this.replaceQueue.length);
       for (let i = 0; i < n; i++) {
         const r = this.replaceQueue[i]!;
-        this.startChunkReplace(r.baked, game, r.cx, r.cy, r.data, bakePx);
+        this.startChunkReplace(r.baked, game, r.cx, r.cy, r.data, r.px);
         if (!this.chunkJobQueue.includes(r.baked)) this.chunkJobQueue.push(r.baked);
       }
       this.replaceQueue.length = 0;
@@ -15398,6 +15460,10 @@ export class Renderer {
     cx: number;
     cy: number;
     data: ChunkData;
+    /** THE GROUND RESOLUTION LEANS: the depth-tiered px this chunk should
+     *  re-bake at (chosen once in the visible scan, carried to the paced
+     *  start so the tier decision and the bake agree). */
+    px: number;
   }> = [];
 
   /**
