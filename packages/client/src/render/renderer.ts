@@ -278,7 +278,8 @@ import {
 } from './lighting.js';
 import { collectEmitter, type EmitterGlowOut } from './emitters.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
-import { collectVolume } from './collectVolume.js';
+import { collectVolume, crownSpans } from './collectVolume.js';
+import type { CrownSpan } from './collectVolume.js';
 import {
   RaisedKind,
   buildRegisterRows,
@@ -1272,6 +1273,42 @@ const GLOW_STOPS: ReadonlyArray<readonly [number, number]> = [
   [0.55, 0.38],
   [1, 0],
 ];
+
+/**
+ * THE ONE RENDER — A2b: a coalesced wall-run crown, collected during the
+ * raised-tile scan and flushed after it as ONE self-bounded DrawItem per
+ * straight SPAN. Each span is a thin strip (≤ run length × 1 tile), so its
+ * scratch cell stays small — never the footprint bbox that scoped A2 to thin
+ * runs — while adjacent spans share world corners (projected+rounded once)
+ * so the crown tiles seam-free. The outline is stroked per span over only its
+ * EXPOSED unit edges (tested against `members`), so it rings the whole run
+ * continuously with no per-tile wedges and no internal seams.
+ */
+interface CrownVolume {
+  /** Wall material class (0 wood, 1 stone, 2 dark) — picks the crown colour. */
+  matClass: number;
+  /** Uniform crown height (tiles) of the whole run. */
+  whT: number;
+  /** Foundation lift (world tiles) added to every crown/foot height. */
+  elevLift: number;
+  /** Seed region → wood skin for the crown dressing. */
+  region: InteriorRegion | null;
+  /** Per-straight-span crown rects (each a thin strip of member tiles). */
+  spans: CrownSpan[];
+  /** Packed member-tile set, for per-span exposed-edge outline tests. */
+  members: Set<number>;
+  /** Seed chunk data rev — chained into each span's cache key so an edit
+   *  re-mints; anchored to the run's lexicographic-min seed for stability. */
+  rev: number;
+  /** Stable per-run key seed (the anchor coords), so a span's cache key is
+   *  the same whichever member the scan met first. */
+  keyX: number;
+  keyY: number;
+  /** Sort row (the run's south-most row + 1). */
+  sortY: number;
+  /** Elevation shelf, if any. */
+  strat: number | undefined;
+}
 
 export interface DrawItem {
   sortY: number;
@@ -9242,6 +9279,14 @@ export class Renderer {
     const b = this.visibleTileBounds();
     // Run-merged components already emitted this frame, by anchor.
     const runSeen = new Set<number>();
+    // THE ONE RENDER A2b: coalesced-crown bookkeeping for this collect pass.
+    // A wall/garrison/diag RUN is flooded once (crownRunSeen dedupes the
+    // component); its member tiles suppress their per-tile crown (crownSuppressed)
+    // and ONE continuous crown + silhouette outline is deferred to crownVolumes,
+    // flushed after the scan so it never rides a member's scratch box.
+    this.crownRunSeen.clear();
+    this.crownSuppressed.clear();
+    this.crownVolumes.length = 0;
     this.regGame = game;
     this.bandEmitted.clear();
     this.bandStats.blit = 0;
@@ -9299,6 +9344,16 @@ export class Renderer {
           this.deckFillCarpentryItems(game, tx, ty, items);
         }
       }
+    }
+    // THE ONE RENDER A2b: flush the coalesced crowns collected during the
+    // scan as ONE self-bounded DrawItem per straight span. Emitted here
+    // (after every member) so they never sit inside a per-member
+    // stageMarkRaised box; each carries its own small `pb` (thin span strip),
+    // so it rides the self-bounded scratch path — bounded scratch, no flush,
+    // no wall-lane union balloon — drawn in y-sort order like any item.
+    for (let i = 0; i < this.crownVolumes.length; i++) {
+      const cv = this.crownVolumes[i]!;
+      for (let s = 0; s < cv.spans.length; s++) items.push(this.crownSpanItem(cv, cv.spans[s]!));
     }
   }
 
@@ -9813,25 +9868,29 @@ export class Renderer {
       }
       case RaisedKind.Wall: {
         const wregion = this.wallRegion(game, tx, ty);
-        // THE ONE RENDER A2: under lean (q>0), coalesce the wall run into
-        // ONE world volume — continuous crown + silhouette outline via the
-        // structureFace primitives — instead of the per-tile crown caps and
-        // per-tile outline strokes that wedge/segment under pitch. Live
-        // draw only (bakes are q=0 and per-stretch — A6 makes them lean-
-        // aware); q=0 keeps the proven per-tile / band-baked flat look the
-        // golden gate pins. Falls back per-tile for the tricky junctions.
-        if (
-          this.wallVolumeOn &&
-          this.camera.q > 0 &&
-          !this.bakingMask &&
-          this.emitWallVolume(game, items, tile, tx, ty, wregion, runSeen)
-        )
-          return;
+        // THE ONE RENDER A2/A2b: under lean (q>0), coalesce the wall RUN —
+        // straight run, building footprint, or L — into ONE world volume:
+        // a continuous crown drawn PER STRAIGHT SPAN (small scratch each,
+        // shared world corners → seam-free) + ONE silhouette outline, via
+        // the structureFace primitives — instead of the per-tile crown caps
+        // and per-tile outline strokes that wedge/segment under pitch. The
+        // flood runs once per component (crownRunSeen); its members suppress
+        // their per-tile crown (crownSuppressed) and the crown is deferred to
+        // crownVolumes (flushed after the scan, off the member scratch box).
+        // Live draw only (bakes are q=0 and per-stretch — A6 makes them
+        // lean-aware); q=0 keeps the proven per-tile / band-baked flat look
+        // the golden gate pins.
+        if (this.wallVolumeOn && this.camera.q > 0 && !this.bakingMask) {
+          this.floodWallCrown(game, tile, tx, ty, wregion);
+        }
         // ONE VEIL LAW: every wall tile between the player and the
         // camera reads its height off the one reveal field —
         // surface buildings, ruins, and dungeon corridors alike.
         const whT = this.wallHeightAt(game, tx, ty);
-        const item = this.wallItem(tile, tx, ty, game, whT, wregion?.hasHearth ?? false, wregion);
+        // A coalesced member paints only its south-face art; the run draws
+        // its crown + outline once (crownSuppressed set by floodWallCrown).
+        const suppress = this.crownSuppressed.has(packTile(tx, ty));
+        const item = this.wallItem(tile, tx, ty, game, whT, wregion?.hasHearth ?? false, wregion, suppress);
         // A destructible wall (the cracked cave seam) absorbing a
         // blow shudders like any durable prop — the knock translates
         // the whole drawn prism at draw time.
@@ -11041,37 +11100,46 @@ export class Renderer {
     return 2; // cave / cracked-cave / other dark masonry
   }
 
+  /** Components already flooded this collect pass (dedupe the flood). */
+  private readonly crownRunSeen = new Set<number>();
+  /** Wall/garrison/diag tiles whose PER-TILE crown is drawn instead by a
+   *  coalesced run crown — their `wallItem`/garrison painter suppresses its
+   *  own crown cap + outline stroke. */
+  private readonly crownSuppressed = new Set<number>();
+  /** Coalesced crowns collected during the scan, flushed to `items` after it
+   *  (so none rides a member's scratch box). */
+  private readonly crownVolumes: CrownVolume[] = [];
+
   /**
-   * Try to draw the wall RUN seeded at (tx,ty) as one coalesced volume.
-   * Returns true when it consumed the run (the caller must not also emit
-   * the per-tile item); false to fall back to the proven per-tile path.
+   * THE ONE RENDER — A2b: flood the wall RUN seeded at (tx,ty) once, and if
+   * it coalesces, mark every member's per-tile crown suppressed and record
+   * ONE run crown (continuous crown + silhouette outline) for the whole
+   * component — straight run, building FOOTPRINT, or L alike.
    *
-   * Falls back (per-tile) when: the run is too big (cap), sits on elevated
-   * ground, touches a doorway (the per-tile path owns the jamb square-corner
-   * law), or is NOT height-uniform (a sinking cutaway steps per column — a
-   * single-height crown cannot express that). All the reported-bug scenes
-   * (clean curtain / market / graveyard runs) coalesce; the tricky junctions
-   * keep the old path, so nothing regresses.
+   * The crown draws PER STRAIGHT SPAN (`crownSpans`): each span's scratch is
+   * a thin strip, so a footprint never mints a bbox-sized texture (the
+   * measured blowup that scoped A2 to thin runs), while adjacent spans share
+   * world corners → the crown tiles seam-free across the loop.
    *
-   * The members still draw their SOUTH face art per tile (windows, logs,
-   * hangings) via `wallItem(..., suppressTop=true)`; only the crown and the
-   * outline move to the run. Gated to q>0 by the caller — q=0 keeps the
-   * band-baked flat look the golden gate pins.
+   * Falls back to the per-tile crown (no coalesce) when the run is too big
+   * (cap), sits on elevated ground, is NOT height-uniform (a sinking cutaway
+   * steps per column — a single-height crown cannot express that), or touches
+   * a doorway (the per-tile path owns the jamb square-corner law). The whole
+   * component is marked seen either way, so it floods exactly once. Members
+   * still paint their SOUTH-face art per tile via `wallItem(…, suppress)`;
+   * only the crown + outline move to the run. Called only at q>0 — q=0 keeps
+   * the band-baked flat look the golden gate pins.
    */
-  private emitWallVolume(
+  private floodWallCrown(
     game: ClientGame,
-    items: DrawItem[],
     tile: Tile,
     tx: number,
     ty: number,
     region: InteriorRegion | null,
-    runSeen: Set<number>,
-  ): boolean {
-    // Already consumed as part of its run (any member the visible scan met
-    // first floods + emits the whole component, then marks every member).
-    if (runSeen.has(packTile(tx, ty))) return true;
+  ): void {
+    if (this.crownRunSeen.has(packTile(tx, ty))) return;
     const seedClass = Renderer.wallMatClass(tile);
-    if (seedClass === null) return false;
+    if (seedClass === null) return;
     const vol = collectVolume(
       (mx, my) => game.world.groundAt(mx, my),
       tx,
@@ -11079,117 +11147,157 @@ export class Renderer {
       (t) => Renderer.wallMatClass(t),
       { cap: 256, perimeter: true, scratch: this.wallVolScratch, heightAt: (mx, my) => this.wallHeightAt(game, mx, my) },
     );
-    if (!vol || vol.perimeter.length === 0) return false;
-    // THIN RUNS ONLY. The owner's bug is straight runs SEGMENTING into
-    // panels — an E-W line (one row) or a N-S line (one column). Coalescing
-    // a whole BUILDING footprint would emit a run-crown DrawItem the size of
-    // the footprint, which the WebGL stage rasterizes to one large scratch
-    // texture re-minted every frame (a town of buildings = a scratch-VRAM
-    // blowup, measured 30×). Buildings keep the proven per-tile path (its
-    // small tiles are cached); the reported segmentation is on thin runs.
-    if (vol.x1 !== vol.x0 && vol.y1 !== vol.y0) return false;
-    // Copy members out of the aliased scratch before any nested flood.
+    if (!vol) return;
+    // Copy members out of the aliased scratch before anything else floods it.
     const mem = vol.members.slice();
+    // Flood ONCE per component: mark every member seen whatever we decide, so
+    // later-scanned members neither re-flood nor emit a second run crown.
+    for (let i = 0; i < mem.length; i += 2) this.crownRunSeen.add(packTile(mem[i]!, mem[i + 1]!));
+    if (vol.perimeter.length === 0) return;
     const seedWhT = this.wallHeightAt(game, tx, ty);
+    const seedElev = game.world.elevAt(tx, ty);
     for (let i = 0; i < mem.length; i += 2) {
       const mx = mem[i]!;
       const my = mem[i + 1]!;
-      // Elevated, sinking, or doorway-adjacent runs keep the per-tile path.
-      if (game.world.elevAt(mx, my) !== 0) return false;
-      if (Math.abs(this.wallHeightAt(game, mx, my) - seedWhT) > 1e-4) return false;
-      if (
-        PANEL_DOOR_TILES.has(game.world.groundAt(mx, my - 1) ?? -1) ||
-        PANEL_DOOR_TILES.has(game.world.groundAt(mx, my + 1) ?? -1) ||
-        PANEL_DOOR_TILES.has(game.world.groundAt(mx - 1, my) ?? -1) ||
-        PANEL_DOOR_TILES.has(game.world.groundAt(mx + 1, my) ?? -1)
-      )
-        return false;
+      // The crown is ONE lifted plane, so it needs ONE height and ONE
+      // elevation across the run. A sinking (reveal-veil) column, or a
+      // terraced run stepping elevation, keeps the per-tile path — a single
+      // plane cannot express the step. A whole building foundation is at ONE
+      // elevation, so its walls DO coalesce (the crown lifts by that
+      // elevation, below). A doorway is NOT a wall tile, so the flood already
+      // routes the perimeter around the opening and the crown spans stop at
+      // its jambs — no per-run bail needed for doors (which is why BUILDINGS,
+      // all of which have a door, now coalesce); the span rectangles are
+      // square-cornered, so the jamb square-corner law holds by construction.
+      if (game.world.elevAt(mx, my) !== seedElev) return;
+      if (Math.abs(this.wallHeightAt(game, mx, my) - seedWhT) > 1e-4) return;
     }
-    // Snapshot the exposed perimeter (aliased scratch would be clobbered by
-    // the members' own wallItem calls, which flood nothing but be safe).
-    const loops: WorldCorner[][] = vol.perimeter.map((lp) => lp.map((c) => ({ x: c.x, y: c.y })));
-
-    // Members paint their south face art per tile (crown + outline suppressed).
+    // Coalesce: suppress every member's per-tile crown; defer the run crown.
+    const members = new Set<number>();
     for (let i = 0; i < mem.length; i += 2) {
-      const mx = mem[i]!;
-      const my = mem[i + 1]!;
-      runSeen.add(packTile(mx, my));
-      const mt = game.world.groundAt(mx, my)!;
-      const mreg = this.wallRegion(game, mx, my);
-      const item = this.wallItem(mt, mx, my, game, seedWhT, mreg?.hasHearth ?? false, mreg, true);
-      if (this.propShakes.size > 0 && destructibleInfo(mt)) {
-        const shakeX = this.propShakeX(mx, my);
-        if (shakeX !== 0) {
-          const inner = item.draw!;
-          item.draw = () => {
-            const wctx = this.ctx;
-            wctx.save();
-            wctx.translate(shakeX, 0);
-            inner();
-            wctx.restore();
-          };
-        }
-      }
-      item.strat = this.stratAt(mx, my);
-      items.push(item);
+      const k = packTile(mem[i]!, mem[i + 1]!);
+      this.crownSuppressed.add(k);
+      members.add(k);
     }
+    this.crownVolumes.push({
+      matClass: seedClass,
+      whT: seedWhT,
+      // The run's foundation lift in WORLD tiles (elevation levels × ELEV_H),
+      // added to every crown/foot height so the plane seats on the lifted wall
+      // exactly as wallItem's `elevAt·ELEV_H·s` lifts the per-tile face.
+      elevLift: seedElev * ELEV_H,
+      region,
+      spans: crownSpans(mem),
+      members,
+      rev: game.world.get(Math.floor(vol.ax / CHUNK_SIZE), Math.floor(vol.ay / CHUNK_SIZE))?.rev ?? 0,
+      keyX: vol.ax,
+      keyY: vol.ay,
+      sortY: vol.y1 + 1,
+      strat: this.stratAt(tx, ty),
+    });
+  }
 
-    // ONE crown + ONE silhouette outline for the whole run.
-    items.push(this.wallCrownRunItem(tile, seedClass, seedWhT, region, loops, vol.y1 + 1, this.stratAt(tx, ty)));
-    return true;
+  /** One world corner, projected+rounded then lifted `height` world tiles —
+   *  the exact `structureFace.liftedCorner` arithmetic, shared so a span crown
+   *  and its outline seat on the SAME device pixel as the side `faceStrip`. */
+  private liftedCornerPt(cx: number, cy: number, height: number): { x: number; y: number } {
+    const P = this.camera.worldToScreen(cx, cy, this.w, this.h);
+    return {
+      x: Math.round(P.x),
+      y: Math.round(P.y) - height * this.camera.scale * this.camera.depthScale(cy),
+    };
   }
 
   /**
-   * The run's continuous CROWN slab + silhouette outline, drawn once via
-   * `topPlane` (whole-run crown, seam-free because every world corner is
-   * projected once) and `beginSilhouette` (the run's outer ring, stroked
-   * now as the interim outline and stashed on the item for A3's alpha
-   * dilate). Retires `woodCrownPlate`, the per-tile crown trapezoid and the
-   * per-tile `addCrownPerimeter` stroke on this path.
+   * ONE self-bounded crown piece for a single straight SPAN (A2b): its FILL
+   * (a `topPlane` over the span's four world corners, lifted to the crown) +
+   * its OUTLINE, stroked over only the span's EXPOSED unit edges (the crown
+   * top edge + its foot drop), tested against the run's member set so shared
+   * span-to-span edges are never stroked (no internal seams) and the run rings
+   * continuously (adjacent spans meet on identical projected corners). Carries
+   * its own `pb` = the span's projected screen box, so it rides the
+   * self-bounded scratch path: a thin scratch cell, never the footprint bbox,
+   * no flush, no wall-lane union. A3 swaps the interim stroke for alpha-dilate.
    */
-  private wallCrownRunItem(
-    seedTile: Tile,
-    matClass: number,
-    whT: number,
-    region: InteriorRegion | null,
-    loops: WorldCorner[][],
-    sortY: number,
-    strat: number | undefined,
-  ): DrawItem {
-    const skin = this.woodSkinFor(region);
-    const top = matClass === 0 ? skin.top : matClass === 1 ? '#8c8798' : '#3a3444';
-    void seedTile;
+  private crownSpanItem(cv: CrownVolume, span: CrownSpan): DrawItem {
+    const skin = this.woodSkinFor(cv.region);
+    const top = cv.matClass === 0 ? skin.top : cv.matClass === 1 ? '#8c8798' : '#3a3444';
+    const crownH = cv.whT + cv.elevLift; // span top above elev-0 ground
+    const footH = cv.elevLift; // span foot (on the foundation)
+    // The span's four world corners (tile-corner coords), NW→NE→SE→SW.
+    const loop: WorldCorner[] = [
+      { x: span.x0, y: span.y0 },
+      { x: span.x1 + 1, y: span.y0 },
+      { x: span.x1 + 1, y: span.y1 + 1 },
+      { x: span.x0, y: span.y1 + 1 },
+    ];
+    // pb: the projected screen box of the span, from all four corners at both
+    // the crown and the foot lift (+ a pad for the outline stroke width).
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    for (const c of loop) {
+      for (const H of [crownH, footH]) {
+        const p = this.liftedCornerPt(c.x, c.y, H);
+        if (p.x < bx0) bx0 = p.x;
+        if (p.x > bx1) bx1 = p.x;
+        if (p.y < by0) by0 = p.y;
+        if (p.y > by1) by1 = p.y;
+      }
+    }
+    const pad = 4;
+    const draw = (): void => {
+      const ctx = this.ctx;
+      topPlane(this.camera, this.w, this.h, loop, crownH, (plane: TopPlaneGeom) =>
+        this.paintWallCrown(plane, top, cv.matClass),
+      );
+      if (this.outlineOn) {
+        // Stroke only the span's EXPOSED unit edges — the crown top edge and
+        // the foot drop below it — so the run rings continuously with no
+        // internal (shared-with-neighbour) seams.
+        const path = new Path2D();
+        const edge = (ax: number, ay: number, bx: number, by: number): void => {
+          const at = this.liftedCornerPt(ax, ay, crownH);
+          const bt = this.liftedCornerPt(bx, by, crownH);
+          const af = this.liftedCornerPt(ax, ay, footH);
+          const bf = this.liftedCornerPt(bx, by, footH);
+          path.moveTo(at.x, at.y); // crown top edge
+          path.lineTo(bt.x, bt.y);
+          path.moveTo(af.x, af.y); // foot edge
+          path.lineTo(bf.x, bf.y);
+        };
+        for (let ty = span.y0; ty <= span.y1; ty++) {
+          for (let tx = span.x0; tx <= span.x1; tx++) {
+            if (!cv.members.has(packTile(tx, ty - 1))) edge(tx, ty, tx + 1, ty); // north
+            if (!cv.members.has(packTile(tx, ty + 1))) edge(tx, ty + 1, tx + 1, ty + 1); // south
+            if (!cv.members.has(packTile(tx - 1, ty))) edge(tx, ty, tx, ty + 1); // west
+            if (!cv.members.has(packTile(tx + 1, ty))) edge(tx + 1, ty, tx + 1, ty + 1); // east
+          }
+        }
+        this.beginStructOutline();
+        ctx.stroke(path);
+      }
+    };
+    // THE SCRATCH LEDGER: cache the span's crown texture keyed by the run
+    // anchor + this span's extent + material + chunk rev, so a static crown
+    // uploads once and reblits (a coalesced run is height-uniform by the flood
+    // gate, so its paint is NOT animation-bound — pbDyn 0). stageRebuild
+    // repaints it under the swapped scratch ctx. An edit re-revs the key.
+    const pbKey =
+      (hashCoords(91, cv.keyX, cv.keyY) ^
+        (span.x0 << 3) ^
+        (span.y0 << 9) ^
+        ((span.x1 - span.x0 + 1) << 15) ^
+        ((span.y1 - span.y0 + 1) << 21) ^
+        (cv.matClass << 27) ^
+        Math.imul(cv.rev | 0, 0x85eb)) |
+      0;
     return {
-      sortY,
-      strat,
-      draw: () => {
-        const ctx = this.ctx;
-        // A3 HANDOFF: the run's outer silhouette is accumulated here (crown
-        // loop + foot loop) and stroked NOW as the interim continuous
-        // outline — no per-tile mixed-corner wedges. A3 replaces this stroke
-        // with the alpha-dilate ring built off this same accumulator.
-        const sil = beginSilhouette();
-        for (const loop of loops) {
-          if (loop.length < 3) continue;
-          topPlane(
-            this.camera,
-            this.w,
-            this.h,
-            loop,
-            whT,
-            (plane: TopPlaneGeom) => this.paintWallCrown(plane, top, matClass),
-            { silhouette: sil },
-          );
-          // The ground ring too, so the mass silhouette closes at the foot.
-          topPlane(this.camera, this.w, this.h, loop, 0, () => {}, { silhouette: sil });
-        }
-        if (this.outlineOn) {
-          const ring = new Path2D();
-          sil.emit(ring);
-          this.beginStructOutline();
-          ctx.stroke(ring);
-        }
-      },
+      sortY: cv.sortY,
+      strat: cv.strat,
+      pb: { x: bx0 - pad, y: by0 - pad, w: bx1 - bx0 + pad * 2, h: by1 - by0 + pad * 2 },
+      pbKey,
+      pbDyn: 0,
+      stageRebuild: draw,
+      draw,
     };
   }
 
