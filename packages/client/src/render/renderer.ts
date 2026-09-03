@@ -4468,14 +4468,13 @@ export class Renderer {
    */
   private drawReflections(game: ClientGame): void {
     const list = this.reflectables;
-    // B-5: the mirror composite clips to the water region via an AFFINE
-    // world→screen matrix (canvas matrices can't carry the lean's `w`), so
-    // under a lean it clips the correctly-leaned reflection to the water's
-    // ORTHO position — a misplaced rectangle. Until the clip path is rebuilt
-    // in screen space (q-aware, per-frame), skip reflections under the lean:
-    // no reflection reads better than a displaced one. Full at q=0 (the
-    // default when the lean is off), byte-identical there.
-    if (!this.reflectionsOn || this.camera.q > 0) {
+    // FR: the mirror composite clips to the water region. At q=0 the clip is
+    // a world-coord Path2D applied through the AFFINE world→screen matrix
+    // (below); under a lean (q>0) that matrix can't carry the perspective
+    // divide, so waterClipFor traces the clip in SCREEN space instead and it
+    // is applied under the identity transform — matching the reflected
+    // sprites, which are already drawn at leaned positions via liftedWTS.
+    if (!this.reflectionsOn) {
       list.length = 0;
       return;
     }
@@ -4559,23 +4558,37 @@ export class Renderer {
     const ctx = this.ctx;
     const prior = ctx.getTransform();
     ctx.save();
-    const o = this.camera.worldToScreen(0, 0, this.w, this.h);
-    ctx.transform(
-      this.camera.scale,
-      0,
-      0,
-      this.camera.scale * this.camera.yScale,
-      o.x,
-      o.y,
-    );
-    ctx.clip(path);
-    // Structure occlusion: punch the deck-covered cells out of the
-    // mirror (even-odd: outer frame minus disjoint cover rects) so a
-    // reflection dies at the boards and rim joists it would otherwise
-    // paint across.
     const cover = this.waterClip?.cover;
-    if (cover) ctx.clip(cover, 'evenodd');
-    ctx.setTransform(prior);
+    if (this.camera.q === 0) {
+      // ORTHO: the clip path is world-coord — apply the affine world→screen
+      // matrix, clip, then restore the prior transform for the composite.
+      const o = this.camera.worldToScreen(0, 0, this.w, this.h);
+      ctx.transform(
+        this.camera.scale,
+        0,
+        0,
+        this.camera.scale * this.camera.yScale,
+        o.x,
+        o.y,
+      );
+      ctx.clip(path);
+      // Structure occlusion: punch the deck-covered cells out of the
+      // mirror (even-odd: outer frame minus disjoint cover rects) so a
+      // reflection dies at the boards and rim joists it would otherwise
+      // paint across.
+      if (cover) ctx.clip(cover, 'evenodd');
+      ctx.setTransform(prior);
+    } else {
+      // LEAN: the clip path is already in CSS SCREEN space (waterClipFor ran
+      // every vertex through camera.worldToScreen, which returns CSS-space
+      // coords). The composite below draws at CSS dest coords under `prior`
+      // (the dpr transform), so the clip must ride the SAME `prior` — the
+      // transform is already `prior` here (only ctx.save() ran), so clip
+      // directly. This lands the clip exactly where liftedWTS drew the
+      // leaned reflected sprites.
+      ctx.clip(path);
+      if (cover) ctx.clip(cover, 'evenodd');
+    }
     ctx.globalAlpha = 0.38;
     ctx.drawImage(
       this.reflLayer,
@@ -4598,14 +4611,33 @@ export class Renderer {
     game: ClientGame,
     bounds: { minTx: number; maxTx: number; minTy: number; maxTy: number },
   ): Path2D | null {
-    const key = `${bounds.minTx},${bounds.minTy},${bounds.maxTx},${bounds.maxTy},${game.worldVersion}`;
+    // THE LEANED CLIP (FR): under a lean (q>0) the region and its cover are
+    // traced in SCREEN space (the affine ctx.transform can't carry the
+    // perspective divide), so the cached path MUST NOT be shared between the
+    // ortho and leaned regimes — nor reused across camera motion under the
+    // lean, since a screen-space path moves with the camera even between
+    // tile crossings. The key folds a lean discriminator: '0' when q=0 (the
+    // path is world-space, only bounds+world matter), else the full camera
+    // projection state so any pan/zoom/lean change rebuilds.
+    const q = this.camera.q;
+    const lean =
+      q === 0
+        ? '0'
+        : `${q},${this.camera.x},${this.camera.y},${this.camera.scale},${this.w},${this.h}`;
+    const key = `${bounds.minTx},${bounds.minTy},${bounds.maxTx},${bounds.maxTy},${game.worldVersion},${lean}`;
     if (this.waterClip?.key !== key) {
       const ground = (tx: number, ty: number): number | undefined =>
         game.world.elevAt(tx, ty) !== 0 ? undefined : game.world.groundAt(tx, ty);
+      // Under the lean, project every path vertex to screen; at q=0 pass no
+      // projector so the builders take their exact world-coord id path.
+      const project =
+        q === 0
+          ? undefined
+          : (wx: number, wy: number) => this.camera.worldToScreen(wx, wy, this.w, this.h);
       // The wet-cell list stands for THIS frame's visible bounds — the
       // same bounds every rebuild here is keyed on (drawReflections
       // passes visibleTileBounds(), and the ledger builds before it).
-      const path = waterRegionPath(ground, bounds, this.wetLists.cells);
+      const path = waterRegionPath(ground, bounds, this.wetLists.cells, project);
       // THE MIRROR STOPS AT THE STRUCTURE (round 7): the raw water
       // region includes cells the lifted decks paint INTO — fill
       // triangles, fascia bands, the boards' reach into the cell
@@ -4621,15 +4653,34 @@ export class Renderer {
         );
         if (rects.length > 0) {
           cover = new Path2D();
-          // The outer frame: everything KEPT by the even-odd clip…
-          cover.rect(
-            bounds.minTx - 4,
-            bounds.minTy - 4,
-            bounds.maxTx - bounds.minTx + 8,
-            bounds.maxTy - bounds.minTy + 8,
-          );
-          // …minus each deck-covered rect, punched out once.
-          for (const r of rects) cover.rect(r.x, r.y, r.w, r.h);
+          const fx = bounds.minTx - 4;
+          const fy = bounds.minTy - 4;
+          const fw = bounds.maxTx - bounds.minTx + 8;
+          const fh = bounds.maxTy - bounds.minTy + 8;
+          if (project) {
+            // Under the lean the cover rides screen space too: the outer
+            // frame and every deck rect become PROJECTED quads (rects are
+            // disjoint in world, so their images stay disjoint on screen —
+            // the even-odd punch is preserved).
+            const quad = (x: number, y: number, w: number, h: number): void => {
+              const a = project(x, y);
+              const b = project(x + w, y);
+              const c = project(x + w, y + h);
+              const d = project(x, y + h);
+              cover!.moveTo(a.x, a.y);
+              cover!.lineTo(b.x, b.y);
+              cover!.lineTo(c.x, c.y);
+              cover!.lineTo(d.x, d.y);
+              cover!.closePath();
+            };
+            quad(fx, fy, fw, fh);
+            for (const r of rects) quad(r.x, r.y, r.w, r.h);
+          } else {
+            // The outer frame: everything KEPT by the even-odd clip…
+            cover.rect(fx, fy, fw, fh);
+            // …minus each deck-covered rect, punched out once.
+            for (const r of rects) cover.rect(r.x, r.y, r.w, r.h);
+          }
         }
       }
       this.waterClip = { key, path, cover };
