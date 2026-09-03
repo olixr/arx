@@ -1,5 +1,5 @@
 import { Tile, hashCoords, valueNoise } from '@arx/shared';
-import { StageBlend, type StageItem, type StageTexture } from './stage/stageTypes.js';
+import { StageBlend, type StageItem, type StageQuad, type StageTexture } from './stage/stageTypes.js';
 import {
   GRASS_BAKE_MS_BUDGET,
   GRASS_CELL_SPAN,
@@ -659,6 +659,49 @@ export function rowLeanScale(
   };
 }
 
+/**
+ * THE MEADOW RIDES THE GROUND QUAD (Epic B, clause 3). A baked row-cell
+ * sprite is a rectangle in the FROZEN bake frame: the west tile's NW
+ * ground corner sits at bake-CSS (0,0), one tile is `spSx`×`spSy` CSS px,
+ * and the raster overhangs it by the bake margins (`mx` left, `my` above)
+ * — the blade tips live in the `my` band above the ground line. So the
+ * raster's four corners map to FIXED WORLD points (camera-independent):
+ * left/right of the cell by `mx/spSx` tiles, and above/below by
+ * `my/spSy` / `(hCss−my)/spSy` tile-rows. Projecting these four world
+ * corners each frame (the exact ground-chunk construction) and drawing
+ * the cached raster across the resulting trapezoid locks grass to the
+ * ground and foreshortens it identically — no swim. Pure so grass.test
+ * pins it; the caller projects the corners and weights them 1/depthScale.
+ *
+ *   (westX,northY) ── (eastX,northY)      raster TL/TR (blade tips)
+ *        │                 │
+ *   (westX,southY) ── (eastX,southY)      raster BL/BR (just past south)
+ *
+ * By construction `(eastX−westX)·spSx === wCss` and
+ * `(southY−northY)·spSy === hCss` (the raster's CSS extent), and with
+ * zero margins the corners collapse onto the cell's tile footprint
+ * [cellTx‥cellTx+wCss/spSx] × [ty‥ty+hCss/spSy].
+ */
+export function grassCellWorldCorners(
+  cellTx: number,
+  ty: number,
+  spSx: number,
+  spSy: number,
+  mx: number,
+  my: number,
+  wCss: number,
+  hCss: number,
+): { westX: number; eastX: number; northY: number; southY: number } {
+  const invSx = spSx !== 0 ? 1 / spSx : 0;
+  const invSy = spSy !== 0 ? 1 / spSy : 0;
+  return {
+    westX: cellTx - mx * invSx,
+    eastX: cellTx + (wCss - mx) * invSx,
+    northY: ty - my * invSy,
+    southY: ty + (hCss - my) * invSy,
+  };
+}
+
 /** A tile stays live this long after its last wake (spring-back runs
  *  at frame rate — the same window bakeUnder honors). */
 const WAKE_LIVE_MS = 800;
@@ -875,6 +918,16 @@ export class GrassSystem {
    * blit runs the exact pre-lean path — byte-identical.
    */
   leanQ = 0;
+  /**
+   * THE MEADOW RIDES THE GROUND QUAD (Epic B, clause 3): the frame's
+   * camera depth-scale, `wy → depthScale(wy)`, set by the renderer
+   * beside `leanQ`. Under a lean each row-cell blit re-projects its four
+   * frozen world corners and carries per-corner weights `1/depthScale`,
+   * so the cached raster is drawn as a perspective TRAPEZOID locked to
+   * the ground (the ground-chunk construction) instead of stretched by a
+   * single-depth affine — killing the swim. Null at q=0 (the affine path
+   * runs untouched, byte-identical). */
+  leanDepthScale: ((wy: number) => number) | null = null;
   private readonly stageLive: Array<{ lane: number; tx: number; ty: number }> = [];
   private readonly stageTexMap = new WeakMap<
     HTMLCanvasElement,
@@ -2201,6 +2254,58 @@ export class GrassSystem {
       const rx = r * dsx;
       const ry = r * dsy;
       const refY = sp.sy * 0.5;
+      // THE MEADOW RIDES THE GROUND QUAD (clause 3): under a lean the
+      // cell is a PERSPECTIVE TRAPEZOID, re-projected each frame from its
+      // four frozen world corners with per-corner weights 1/depthScale —
+      // the exact ground-chunk construction (renderer.ts) — so the cached
+      // raster foreshortens with and stays rigidly locked to the ground.
+      // The old affine below stretched the frozen raster through a SINGLE
+      // depth ratio (`ds`), first-order-correct only at the anchor row;
+      // the residual swept as the cell crossed screen-depth = the swim.
+      // `ground` OVERRIDES `m`, so the live wind-delta shear the affine
+      // carried in `m` rides here as a horizontal offset on the corners
+      // (pivoting about mid-cell ground, `refY`, as the affine did).
+      // Absent at q=0 → the affine `m` below is emitted verbatim,
+      // byte-identical to the pre-lean path.
+      let ground: StageQuad['ground'];
+      if (this.leanQ !== 0 && this.leanDepthScale) {
+        const wCss = sp.w / sp.dpr;
+        const hCss = sp.h / sp.dpr;
+        const c = grassCellWorldCorners(
+          c0 + sp.txOff,
+          ty,
+          sp.sx,
+          sp.sy,
+          sp.mx,
+          sp.my,
+          wCss,
+          hCss,
+        );
+        const tl = wts(c.westX, c.northY);
+        const tr = wts(c.eastX, c.northY);
+        const bl = wts(c.westX, c.southY);
+        const br = wts(c.eastX, c.southY);
+        // Wind-delta shear as a horizontal screen offset (the affine's
+        // shx term): +rx·shx·(refY+my − cssFromTop), tips (cssFromTop=0)
+        // to base and past south (cssFromTop=hCss).
+        const shTop = rx * shx * (refY + sp.my);
+        const shBot = rx * shx * (refY + sp.my - hCss);
+        const wTop = 1 / this.leanDepthScale(c.northY);
+        const wBot = 1 / this.leanDepthScale(c.southY);
+        ground = {
+          c: [
+            tl.x + shTop,
+            tl.y,
+            tr.x + shTop,
+            tr.y,
+            bl.x + shBot,
+            bl.y,
+            br.x + shBot,
+            br.y,
+          ],
+          w: [wTop, wTop, wBot, wBot],
+        };
+      }
       this.stagePush({
         kind: 'quad',
         tex: this.stageTexFor(sp),
@@ -2218,6 +2323,7 @@ export class GrassSystem {
           p.x - rx * sp.mx + rx * shx * (refY + sp.my),
           p.y - ry * sp.my,
         ],
+        ...(ground ? { ground } : {}),
         alpha: 1,
         blend: StageBlend.SourceOver,
       });
