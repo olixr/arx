@@ -242,6 +242,7 @@ import {
   FADE_INSET_X,
   FADE_TALL_TILES,
   FADE_TALL_FRONT,
+  MAX_FADE_SOUTH,
   FRONT_EPS,
   GHOST_ALPHA,
   GHOST_EASE_S,
@@ -251,6 +252,8 @@ import {
   emberEase,
   stackCover,
   wallCover,
+  occluderCover,
+  fadeStrength,
 } from './reveal.js';
 import { ARRIVAL_MIN_COUNT, admitBake, BakeLane, type BakeBudgets } from './bakeAdmission.js';
 import { leanBudgetMult } from './leanBudget.js';
@@ -18906,7 +18909,7 @@ export class Renderer {
     // the body box from above and ghosted though the player stands
     // in front of it. Only fade when the base is genuinely south —
     // the prop's ground anchor here is ty + 0.9.
-    return this.occluderFade(key, dx0, dy0, dw, dh, ty + 0.9 - this.ownPY > FADE_TALL_FRONT);
+    return this.occluderFade(key, dx0, dy0, dw, dh, ty + 0.9 - this.ownPY);
   }
 
   private drawPropOutlined(
@@ -19633,24 +19636,50 @@ export class Renderer {
     dy0: number,
     dw: number,
     dh: number,
-    fronts: boolean,
+    southRows: number,
   ): number {
     if (!this.revealArmed) return 1;
+    // THE FADE HAS A SOUTHERN HORIZON (world-row early-out): a tall
+    // sprite's screen rect spans its whole height, so an occluder far
+    // to the SOUTH — base well below the body, rect-top still reaching
+    // the body's row — used to fade, fanning a translucent wedge of
+    // far trees/buildings though none stands between the body and the
+    // near-top-down camera. Its base row keys the truth: past
+    // MAX_FADE_SOUTH it can never occlude — bail in O(1) before any
+    // screen math (fronts already caps the north side).
+    if (southRows > MAX_FADE_SOUTH) {
+      this.fadeMap.delete(key);
+      return 1;
+    }
+    // THE CANOPY REACHES NORTH: a tall sprite's base must sit genuinely
+    // south (past FADE_TALL_FRONT) before its overhead crown counts as
+    // between the body and the camera.
+    const fronts = southRows > FADE_TALL_FRONT;
     const ix = dw * FADE_INSET_X;
-    // FADE HYSTERESIS: the overlap test is a step function on the
-    // sprite's screen rect, so a tangential walk grazing the boundary
-    // flipped occlusion every few frames and the ease oscillated —
-    // trees flickering between clear and glass. A sprite already
-    // fading keeps a slack margin: entering needs true overlap,
-    // leaving needs clear separation, and the boundary can't strobe.
+    // FADE HYSTERESIS: a sprite already fading keeps a slack margin so a
+    // tangential walk grazing the boundary can't strobe the coverage.
     const f0 = this.fadeMap.get(key);
     const slack = f0 !== undefined && f0.k > 0.05 ? dw * 0.06 : 0;
-    const occludes =
-      fronts &&
-      dx0 + ix - slack < this.fadeBX1 &&
-      dx0 + dw - ix + slack > this.fadeBX0 &&
-      dy0 + dh * FADE_INSET_TOP - slack < this.fadeBY1 &&
-      dy0 + dh + slack > this.fadeBY0;
+    // COVER-FRACTION GATE: fade strength tracks how much of the body's
+    // screen box the occluder's inset silhouette genuinely COVERS — not
+    // a binary rect clip. A grazing crown-tip (low cover) fades nothing;
+    // the tree you stand squarely behind (high cover) reaches the
+    // presence floor, and the boundary eases in/out. OCCLUSION, NOT
+    // PROXIMITY — the far south wedge (cover 0) never arms.
+    const cover = fronts
+      ? occluderCover(
+          dx0 + ix - slack,
+          dx0 + dw - ix + slack,
+          dy0 + dh * FADE_INSET_TOP - slack,
+          dy0 + dh + slack,
+          this.fadeBX0,
+          this.fadeBX1,
+          this.fadeBY0,
+          this.fadeBY1,
+        )
+      : 0;
+    const target = fadeStrength(cover);
+    const occludes = target > 0.001;
     let f = f0;
     if (!f) {
       if (!occludes) return 1;
@@ -19659,7 +19688,7 @@ export class Renderer {
     }
     f.used = this.frameNo;
     const step = this.frameDt / FADE_EASE_S;
-    f.k += Math.max(-step, Math.min(step, (occludes ? 1 : 0) - f.k));
+    f.k += Math.max(-step, Math.min(step, target - f.k));
     // CORE = the silhouette covers the torso itself — this sprite
     // genuinely shades the body, so it feeds the ember's stack.
     if (occludes) {
@@ -19753,7 +19782,7 @@ export class Renderer {
         by + syT * 0.3 - top,
         half * 2,
         top + 0.3 * s,
-        wy - this.ownPY > FADE_TALL_FRONT,
+        wy - this.ownPY,
       );
       if (fade < 1) this.ctx.globalAlpha = fade;
       wind = paintTree(this.ctx, m, {
@@ -19868,7 +19897,7 @@ export class Renderer {
       // archetype eases every instance in together over ~9 frames.
       const mintA = this.mintAlpha(sp);
       const fade =
-        this.occluderFade(key, dx0, dy0, dw, dh, wy - this.ownPY > FADE_TALL_FRONT) * mintA;
+        this.occluderFade(key, dx0, dy0, dw, dh, wy - this.ownPY) * mintA;
       if (fade < 1) this.ctx.globalAlpha = fade;
       wind = windScalarAt(wx, wy, tSec);
       // THE SHEAR CARRIES THE SWAY: every species shears the cached
