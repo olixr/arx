@@ -105,6 +105,43 @@ test('a volume with nearRow === sortY sorts identically to the old key against o
 
 // ── A5: the interleave a hedge-line needs ─────────────────────────────────
 
+// ── G-PERF: THE STABLE TIEBREAK — a per-item sequence id ───────────────────
+
+test('seq is the final tiebreak: exact (depth, rank) ties resolve by seq, not array position', () => {
+  // Two billboards on the SAME row — a tall-grass band blit and a body.
+  const grass: DrawOrderItem = { sortY: 42, seq: 3 };
+  const bodyItem: DrawOrderItem = { sortY: 42, seq: 7 };
+  // Whichever way they arrive, the lower seq draws first (behind).
+  assert.deepEqual(order([grass, bodyItem]), [grass, bodyItem]);
+  assert.deepEqual(order([bodyItem, grass]), [grass, bodyItem]);
+  assert.ok(DRAW_ORDER(grass, bodyItem) < 0);
+  assert.ok(DRAW_ORDER(bodyItem, grass) > 0);
+});
+
+test('seq only decides EXACT ties — depth and shelf still dominate', () => {
+  const north: DrawOrderItem = { sortY: 10, seq: 100 };
+  const south: DrawOrderItem = { sortY: 11, seq: 1 };
+  // Depth wins over seq: the north (smaller row) draws first despite big seq.
+  assert.deepEqual(order([south, north]), [north, south]);
+  const lowShelf: DrawOrderItem = { sortY: 50, strat: 0, seq: 99 };
+  const highShelf: DrawOrderItem = { sortY: 5, strat: 2, seq: 0 };
+  // Shelf wins over both depth and seq.
+  assert.deepEqual(order([highShelf, lowShelf]), [lowShelf, highShelf]);
+});
+
+test('seq absent (default 0) preserves the pre-tiebreak behaviour', () => {
+  // Two bodies on the same row with no seq — the comparator returns 0 (the
+  // old stable-sort tie), byte-identical to before the tiebreak existed.
+  const p = body(5);
+  const q = body(5);
+  assert.equal(DRAW_ORDER(p, q), 0);
+  // The volume/billboard rank still outranks seq: a volume with a HIGHER seq
+  // than a same-row body still draws first (rank beats seq).
+  const wall: DrawOrderItem = { sortY: 8, nearRow: 8, seq: 100 };
+  const atBase: DrawOrderItem = { sortY: 8, seq: 0 };
+  assert.deepEqual(order([atBase, wall]), [wall, atBase]);
+});
+
 test('a body walking a hedge line: in front when south of it, behind when north', () => {
   const hedge = vol(20); // hedge run south edge at row 20
   const south = body(21); // south of the hedge ⇒ in front

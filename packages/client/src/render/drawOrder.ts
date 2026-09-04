@@ -41,6 +41,16 @@ export interface DrawOrderItem {
    *  while the `occlusionOn` kill-switch is on; absent ⇒ this is a
    *  billboard and the depth term falls back to `sortY`. */
   nearRow?: number;
+  /** THE STABLE TIEBREAK (grass G-PERF). A per-item sequence id — the
+   *  collect-order index the renderer stamps on every item just before the
+   *  sort. It is the FINAL key, so an EXACT (shelf, depth, rank) tie — a
+   *  tall-grass band blit and a body whose foot lands on the band's row, say
+   *  — resolves by this deliberate id, never by the accident of where in the
+   *  array the item happened to land. Absent ⇒ 0 (the pre-tiebreak order,
+   *  which relied on JS sort stability); with every item stamped it makes
+   *  the comparator a TOTAL order, so the result is deterministic even under
+   *  a non-stable sort and cannot flicker frame-to-frame. */
+  seq?: number;
 }
 
 /** THE SHELF CLAMP: positive shelves flatten to ONE rank so raised-vs-
@@ -57,6 +67,11 @@ export const DRAW_ORDER = (a: DrawOrderItem, b: DrawOrderItem): number => {
   const bd = b.nearRow ?? b.sortY;
   if (ad !== bd) return ad - bd;
   // Tie: the volume (nearRow defined ⇒ rank 0) draws first, the billboard
-  // (rank 1) after ⇒ in front. Equal ranks preserve the caller's order.
-  return (a.nearRow === undefined ? 1 : 0) - (b.nearRow === undefined ? 1 : 0);
+  // (rank 1) after ⇒ in front.
+  const rank = (a.nearRow === undefined ? 1 : 0) - (b.nearRow === undefined ? 1 : 0);
+  if (rank !== 0) return rank;
+  // THE STABLE TIEBREAK: equal ranks resolve by the deliberate per-item
+  // sequence id, not by incidental array position — a total order that never
+  // flickers. Absent ⇒ 0 (the old stable-sort order preserved).
+  return (a.seq ?? 0) - (b.seq ?? 0);
 };

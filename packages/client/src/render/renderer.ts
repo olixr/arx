@@ -207,7 +207,7 @@ import { radialGlowSprite } from './glowSprite.js';
 import { Birds, type Bird, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, generateSkirtBlades, BLADE_FILLS, ORNAMENT_FILLS, type Disturber, type WindSample, type Blade, type GrassBounds, type Flower, type SeedHead } from './grass.js';
 import { GrassGpuLayer, type GrassFrame, type BandBlit } from './grassGpuLayer.js';
-import { partitionTallBands, type TallBand } from './grassGpu.js';
+import { partitionTallBands, coalesceTallBands, type TallBand } from './grassGpu.js';
 import { grassRootedSkirtAt } from './grassSkirt.js';
 import { MAX_DISTURB } from './grassGpuRenderer.js';
 import { grassShadowOffset, shadeRgb01 } from './grassGpuShadow.js';
@@ -1378,6 +1378,11 @@ export interface DrawItem {
    * spaces let plateau rows slice standing trees and ore.
    */
   strat?: number;
+  /** THE STABLE TIEBREAK (grass G-PERF): the collect-order index, stamped on
+   *  every item just before the world sort so exact depth ties resolve
+   *  deterministically (see DrawOrderItem.seq). Assigned per frame; not read
+   *  by any painter. */
+  seq?: number;
   draw?: () => void;
   /**
    * CLOSURE-FREE BULK LANE (particles, debris, grounded birds): the
@@ -1631,6 +1636,11 @@ export class Renderer {
    *  so the tall mass interleaves with bodies. Empty ⇒ CPU tall fallback. */
   private grassTallBlits: readonly BandBlit[] = [];
   private grassTallCanvas: HTMLCanvasElement | null = null;
+  /** G-PERF diagnostics (?perf): fine band count before coalescing vs the
+   *  coalesced sub-draw count actually rendered — the sub-draw reduction the
+   *  optimization buys, confessed on the grass line. */
+  private grassBandFine = 0;
+  private grassBandCoalesced = 0;
   /** G4 — THE OVER-FOOT SKIRT. This frame's grass-rooted objects (tree,
    *  bush, rock, prop on a grass tile), gathered as objectItems are emitted
    *  so each carries its true foot sort row. After the world collect, each
@@ -6366,6 +6376,14 @@ export class Renderer {
       items.push(this.takeBulkItem(g.gy + 0.02, this.stratAt(g.x, g.gy), BulkKind.Halo, g));
     }
     this.perfMark('collect');
+    // THE STABLE TIEBREAK (grass G-PERF): stamp each item with its collect
+    // index so an EXACT (shelf, depth, rank) tie — a tall-grass band blit and
+    // a body whose foot lands on the band's row, say — resolves by this
+    // deliberate id rather than the accident of array position. This is the
+    // order JS's stable sort already yields today (so no visual change), but
+    // now it is a TOTAL order the comparator owns: deterministic, and immune
+    // to any residual tie flicker.
+    for (let i = 0; i < items.length; i++) items[i]!.seq = i;
     // THE SHELF LAW (see DrawItem.strat): shelf first, raw row within.
     items.sort(DRAW_ORDER);
     this.perfMark('sort');
@@ -17722,6 +17740,11 @@ export class Renderer {
   private perfLast = 0;
   private readonly phaseMs = new Map<string, number>();
 
+  /** Raw last-frame phase ms (no EMA) — read by the G-PERF A/B harness,
+   *  which takes a MEDIAN over a sample window so a config-switch spike never
+   *  poisons the number the way the EMA does. Populated only under ?perf. */
+  readonly phaseRawMs = new Map<string, number>();
+
   private perfMark(name: string): void {
     if (!this.perfHud) return;
     const now = performance.now();
@@ -17729,6 +17752,7 @@ export class Renderer {
     this.perfLast = now;
     const prev = this.phaseMs.get(name) ?? dt;
     this.phaseMs.set(name, prev + (dt - prev) * 0.05);
+    this.phaseRawMs.set(name, dt);
   }
 
   perfSummary(): string {
@@ -17763,7 +17787,10 @@ export class Renderer {
     // live) — a steady non-zero `over` means the view outgrew the
     // sprite budget.
     const gs = this.grass.rowStats;
-    parts.push(`grass blit ${gs.blit} live ${gs.live} bake ${gs.bake} over ${gs.over}`);
+    parts.push(
+      `grass blit ${gs.blit} live ${gs.live} bake ${gs.bake} over ${gs.over}` +
+        ` tallbands ${this.grassBandCoalesced}/${this.grassBandFine}`,
+    );
     // The stage confesses (phase A1): per-frame upload volume, the
     // exact resident texture ledger, draw calls, and the two fallback
     // tails. A steady non-zero `live` means the upload budget is
@@ -22237,7 +22264,27 @@ export class Renderer {
     this.grassTallBlits = [];
     this.grassTallCanvas = null;
     if (this.grassTall.length > 0) {
-      const bands = partitionTallBands(this.grassTall, Renderer.TALL_BAND_PITCH);
+      const fine = partitionTallBands(this.grassTall, Renderer.TALL_BAND_PITCH);
+      // G-PERF — COALESCE: the fine per-row bands earn their many sub-draws
+      // only where a body's foot slots between rows. Merge every run of
+      // adjacent bands with no body sorting inside it into one blit (open
+      // field ⇒ ~one band); keep the fine split only at the rows bodies
+      // occupy. FAR-FIELD LOD: bodies far up-screen (north of the near
+      // window) compress to a few pixels, so their split rows are dropped and
+      // the distance coalesces freely. splitRows = this frame's disturbers
+      // (players + NPCs, moving or still) — the exact bodies the tall
+      // interleave exists to serve.
+      const rows: number[] = [];
+      for (let i = 0; i < this.frameDisturbers.length; i++) rows.push(this.frameDisturbers[i]!.y);
+      const nearMinBy = cam.y - Renderer.TALL_LOD_NEAR_ROWS;
+      const coalesced = coalesceTallBands(fine, rows, nearMinBy, Renderer.TALL_BAND_MAX_SPAN);
+      // Bisect lever for the promote-to-default gate (the probe FLAG law): a
+      // fresh page may set window.__grassNoCoalesce to render the raw fine
+      // bands and A/B the coalescing. Unset in normal play ⇒ always coalesced.
+      const bands =
+        (globalThis as { __grassNoCoalesce?: boolean }).__grassNoCoalesce === true ? fine : coalesced;
+      this.grassBandFine = fine.length;
+      this.grassBandCoalesced = bands.length;
       const blits = layer.renderTall(this.grassTall, bands, frame);
       if (blits.length > 0) {
         this.grassTallBlits = blits;
@@ -22251,6 +22298,21 @@ export class Renderer {
    *  body/thicket interleave (error ≤ pitch/2) at more sub-draws; 1/3 tile
    *  keeps the transition continuous with no perceptible two-band pop. */
   private static readonly TALL_BAND_PITCH = 1 / 3;
+
+  /** G-PERF far-field LOD window, in world rows north of the camera. A body's
+   *  foot row FURTHER north than this drops out of the tall-band split set,
+   *  so the far distance coalesces into few bands (a body up there is a few
+   *  pixels tall — its per-row interleave is imperceptible). South of the
+   *  camera and within the window, every body keeps its precise fine split. */
+  private static readonly TALL_LOD_NEAR_ROWS = 14;
+
+  /** G-PERF coalesced-band world-y span cap. A merged band renders into an
+   *  atlas slot as tall as its span + a blade height, so an unbounded merge
+   *  balloons the atlas (a tall run under a lean can span the screen). This
+   *  keeps every slot atlas-thin while the band COUNT still falls ~this:pitch
+   *  to one in a body-free stretch — the sub-draw/blit reduction without the
+   *  atlas blow-up. Tuned against dense-meadow ground cost (see plan). */
+  private static readonly TALL_BAND_MAX_SPAN = 1.0;
 
   /** G1 — emit this frame's tall-band atlas blits as y-sorted DrawItems.
    *  Each band slots into the world sort at its own row, so a body between
