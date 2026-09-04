@@ -1,12 +1,12 @@
 /**
- * THE SECOND DOOR'S ENGINE (play3d S1) — renderer factory, scene,
- * camera rig, resize/DPR, context loss, and the frame loop.
+ * THE SECOND DOOR'S ENGINE (play3d S1; S3 review fixes) — scene, camera
+ * rig, resize/DPR, context loss, and the frame loop over a Backend.
  *
  * Laws:
- *  - ONE factory constructs the renderer (`createRenderer`). WebGL2
- *    today; the `webgpu` kind is the named seam for WebGPURenderer
- *    (three/webgpu) — it is not wired because the headless rig has no
- *    navigator.gpu to prove it on, and it must never be an accident.
+ *  - The engine never names a GPU API. It drives a `StageRenderer`
+ *    (stageBackend.ts) handed to it by THE ONE FACTORY
+ *    (backend/createBackend.ts); context loss reaches it through
+ *    `Backend.watchContext`.
  *  - Real projection, real depth: PerspectiveCamera, depth buffer on
  *    everything. There is no y-sort anywhere in this client.
  *  - The ORBIT rig (orbit.ts) owns the camera: input lands on a target
@@ -14,37 +14,41 @@
  *    around the player's head.
  *  - DPR is CAPPED (2, and 1.5 past 3.5M CSS px — the 2D client's
  *    render-scale lesson: fill rate is the cost on a Retina window).
- *  - Fixed-step SIM (30 Hz accumulator, clamped catch-up) vs per-frame
- *    RENDER with an interpolation alpha, so gameplay stepping never
- *    depends on the display rate.
- *  - Context loss is handled: lost → loop stops, restored → resumes;
- *    Three re-uploads retained resources on its own.
+ *  - Resize is OBSERVED, not assumed: a ResizeObserver on the canvas
+ *    catches CSS-driven size changes with no window event, a
+ *    `(resolution: Ndppx)` media listener catches a monitor hop at the
+ *    same CSS size, and the window listener stays as the fallback.
+ *  - THE FRAME ORDER: `frame` (input, the game step, where the orbit
+ *    target goes) → the camera is placed and its matrices refreshed →
+ *    `late` (everything that reads the camera: frustum culling, body
+ *    repaints, the cursor pick, the chrome's pins) → `draw`. Nothing
+ *    reads a stale camera; `renderOnce` keeps the same order.
+ *  - Simulation stepping is NOT this engine's: ClientGame runs its own
+ *    fixed-step tick inside `update()` (the 2D client's law, one law
+ *    for both doors). The engine hands `frame` the wall dt only.
+ *  - Context loss is handled: lost → loop stops, restored → resumes and
+ *    the owner is told (it re-bakes what it chose not to retain).
  *  - `dispose()` releases everything it made; the owner disposes what
  *    it added to the scene.
  */
 import * as THREE from 'three';
 import { type OrbitPose } from './orbit.js';
-export type BackendKind = 'webgl' | 'webgpu';
-export interface RendererOpts {
-    kind?: BackendKind;
-    antialias?: boolean;
-}
-/** THE ONE FACTORY. */
-export declare function createRenderer(canvas: HTMLCanvasElement, opts?: RendererOpts): THREE.WebGLRenderer;
+import type { Backend, StageRenderer } from './stageBackend.js';
 /** The 2D client's render-scale law: cap effective DPR by CSS area. */
 export declare function capDpr(devicePixelRatio: number, cssW: number, cssH: number): number;
 export interface EngineHooks {
-    /** Fixed-step simulation. */
-    sim: (dt: number, nowMs: number) => void;
-    /** Per-frame update before render; alpha = sim interpolation. */
-    frame: (dt: number, alpha: number, nowMs: number) => void;
+    /** Input, the game step, the orbit target. Runs BEFORE the camera is placed. */
+    frame: (dt: number, nowMs: number) => void;
+    /** Everything that reads the camera. Runs AFTER it is placed. */
+    late: (dt: number, nowMs: number) => void;
     /** The draw (post stack or plain render). */
     draw: () => void;
 }
 export declare class Engine {
     readonly canvas: HTMLCanvasElement;
+    readonly backend: Backend;
     private readonly hooks;
-    readonly renderer: THREE.WebGLRenderer;
+    readonly renderer: StageRenderer;
     readonly scene: THREE.Scene<THREE.Object3DEventMap>;
     readonly camera: THREE.PerspectiveCamera;
     /** Where the orbit looks (the player's chest), world units. */
@@ -56,9 +60,11 @@ export declare class Engine {
     private readonly offset;
     private raf;
     private lastMs;
-    private acc;
     private running;
     private lost;
+    private readonly unwatchContext;
+    private readonly observer;
+    private dprMedia;
     cssW: number;
     cssH: number;
     dpr: number;
@@ -68,21 +74,25 @@ export declare class Engine {
     onContext: ((lost: boolean) => void) | null;
     private readonly onLost;
     private readonly onRestored;
-    private readonly onWindowResize;
-    constructor(canvas: HTMLCanvasElement, hooks: EngineHooks, opts?: RendererOpts);
+    private readonly onAnyResize;
+    constructor(canvas: HTMLCanvasElement, backend: Backend, hooks: EngineHooks);
     resize(): void;
+    /** Re-arm the monitor-hop listener for the ratio we just laid out at. */
+    private armDprWatch;
     /** Orbit input: drag pixels + wheel notches this frame. */
     orbitInput(dragX: number, dragY: number, wheel: number): void;
     /** Jump both poses (probe/teleport). */
     setOrbit(yaw: number, pitch: number, dist: number): void;
-    /** Ease the live pose and place the camera on the orbit. */
+    /** Ease the live pose, place the camera on the orbit, refresh its matrices. */
     private placeCamera;
     get yaw(): number;
     start(): void;
     stop(): void;
     private schedule;
+    /** One frame in the law's order (`poseDt` lets a probe snap the orbit). */
+    private step;
     private readonly tick;
-    /** Render one frame synchronously (probe use). */
+    /** Render one frame synchronously (probe use); the pose snaps. */
     renderOnce(nowMs?: number): void;
     dispose(): void;
 }

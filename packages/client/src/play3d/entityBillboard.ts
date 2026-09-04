@@ -34,18 +34,19 @@ import { LegRig, type LegPose } from '../render/legs.js';
 import { CapeSim, capeStyle, drawCape } from '../render/cape.js';
 import { windAtInto, type WindSample } from '../render/grass.js';
 import { outlineRing } from './outline.js';
-import {
-  BillboardBuffer,
-  billboardDepthMaterial,
-  billboardMaterial,
-  type BillboardClock,
-} from './billboardMaterial.js';
+import { BillboardBuffer, type BillboardClock, type BillboardFactory } from './billboard.js';
 
 const ENTITY_PX = 56;
 /** The 2.5D ground squash the painters were tuned under. */
 const Y_SQUASH = 0.6;
-/** Idle bodies still breathe: repaint at least this often when visible. */
-const IDLE_REPAINT_MS = 180;
+/**
+ * Idle bodies still breathe: repaint at least this often when visible.
+ * 400 ms, STAGGERED by seed (up to +140 ms) so a crowd of idle
+ * townsfolk never uploads in lock-step. A vertex-stage bob would make
+ * this zero; that is the crowd round's lever, not this one's.
+ */
+const IDLE_REPAINT_MS = 400;
+const IDLE_STAGGER_MS = 140;
 /** Pose-turn ease (the 2D anim clock's 300 ms). */
 const POSE_EASE_MS = 300;
 
@@ -122,8 +123,8 @@ export class EntityBillboard {
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
   private readonly tex: THREE.CanvasTexture;
-  private readonly mat: THREE.ShaderMaterial;
-  private readonly depthMat: THREE.ShaderMaterial;
+  private readonly mat: THREE.Material;
+  private readonly depthMat: THREE.Material;
   private kind: BodyKind;
   private key: string;
   private card = { w: 1, h: 1, ax: 0, ay: 0, headUp: 0 };
@@ -133,6 +134,9 @@ export class EntityBillboard {
   private readonly kneeMemory: number[] = [0, 0];
   private readonly depthMemory = { mainBehind: false };
   private readonly feet: Array<{ x: number; y: number; lift: number }> = [];
+  /** Cape node screen points, reused across paints (never minted per paint). */
+  private readonly capePts: Array<{ x: number; y: number }> = [];
+  private readonly idleEveryMs: number;
   /** The rotated pose handed to the painters (reused, never allocated per frame). */
   private readonly relPose: LegPose = {
     feet: this.feet,
@@ -162,10 +166,12 @@ export class EntityBillboard {
   constructor(
     kind: BodyKind,
     private readonly clock: BillboardClock,
+    billboards: BillboardFactory,
     private readonly seed = 7,
   ) {
     this.kind = kind;
     this.key = kindKey(kind);
+    this.idleEveryMs = IDLE_REPAINT_MS + (Math.abs(seed) % 8) * (IDLE_STAGGER_MS / 7);
     this.canvas = document.createElement('canvas');
     this.ctx = this.canvas.getContext('2d')!;
     this.tex = new THREE.CanvasTexture(this.canvas);
@@ -177,8 +183,8 @@ export class EntityBillboard {
     this.legs = this.makeLegs(kind);
     this.fitCard();
     this.buf.commit();
-    this.mat = billboardMaterial(this.tex, clock, { alphaTest: 0.35, sway: false });
-    this.depthMat = billboardDepthMaterial(this.tex, clock, { alphaTest: 0.35, sway: false });
+    this.mat = billboards.material(this.tex, clock, { alphaTest: 0.35, sway: false });
+    this.depthMat = billboards.depthMaterial(this.tex, clock, { alphaTest: 0.35, sway: false });
     this.mesh = new THREE.Mesh(this.buf.geometry, this.mat);
     this.mesh.customDepthMaterial = this.depthMat;
     this.mesh.castShadow = true;
@@ -264,7 +270,7 @@ export class EntityBillboard {
     this.buf.geometry.boundingSphere!.center.set(wx, st.groundY + 1, wy);
     const settling = nowMs - this.restfulSince < 1400;
     const poseEasing = nowMs - this.poseSince < POSE_EASE_MS + 50;
-    const due = nowMs - this.lastPaintMs >= IDLE_REPAINT_MS;
+    const due = nowMs - this.lastPaintMs >= this.idleEveryMs;
     if (!visible || !(this.dirty || moved > 0.001 || settling || poseEasing || due)) return false;
     this.lastPaintMs = nowMs;
     this.dirty = false;
@@ -341,15 +347,19 @@ export class EntityBillboard {
         capeFront = this.cape.front(Math.sin(relDir));
         const sim = this.cape;
         const capeId = k.capeId!;
+        const pts = this.capePts;
         paintCape = () => {
-          const pts = sim.nodes.map((nd) => {
+          const nodes = sim.nodes;
+          pts.length = nodes.length;
+          for (let i = 0; i < nodes.length; i++) {
+            const nd = nodes[i]!;
             const dx = nd.x - wx;
             const dz = nd.y - wy;
-            return {
-              x: AX + (dx * cy - dz * sy) * S,
-              y: AY + (dx * sy + dz * cy) * S * Y_SQUASH - nd.z * S,
-            };
-          });
+            let o = pts[i];
+            if (!o) pts[i] = o = { x: 0, y: 0 };
+            o.x = AX + (dx * cy - dz * sy) * S;
+            o.y = AY + (dx * sy + dz * cy) * S * Y_SQUASH - nd.z * S;
+          }
           const breadthK = Math.hypot(Math.sin(relDir), Math.cos(relDir) * 0.45);
           drawCape(ctx, pts, capeStyle(capeId), S * capeK, {
             hurt: st.hurt,

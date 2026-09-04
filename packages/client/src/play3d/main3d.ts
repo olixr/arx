@@ -1,21 +1,31 @@
 /**
- * PLAY3D — THE LIVING WORLD (S2 entry). The Three.js door onto the
- * REAL game: the production net + world model (ClientGame over /ws),
- * the S1 engine underneath it. Composition only — every law lives in
- * the module it names:
+ * PLAY3D — THE LIVING WORLD (S2 entry; S3 review fixes). The Three.js
+ * door onto the REAL game: the production net + world model
+ * (ClientGame over /ws), the S1 engine underneath it. Composition only
+ * — every law lives in the module it names:
  *
  *   ClientGame  ── chunks ──▶ LiveWorld ──▶ GroundStreamer (ground.ts)
  *               ── entities ▶ EntityStage (bodies.ts) ▶ EntityBillboard
  *               ◀─ input ──── LiveInput (input.ts: keys follow the camera)
  *   Shell (shell.ts) mounts the DOM chrome over the ViewAdapter
  *   (view.ts) exactly as main.ts mounts it over the 2D Renderer.
+ *   Backend (backend/createBackend.ts) is the one GPU-API decision.
  *
- * Frame order: pointer → orbit; aim from the cursor pick; game.update
+ * Frame order (engine.ts): `frame` = pointer → orbit; game.update
  * (prediction + interp, the same call main.ts makes); world refresh
  * when ClientGame.worldVersion moved; ground streaming around the
  * predicted body under a 6 ms bake budget; the sky follows the body
- * and the server clock; bodies advance + repaint what the frustum
- * sees; the chrome pins itself; the post stack draws.
+ * and the server clock; the orbit target. Then the camera is placed.
+ * Then `late` = everything that reads the camera: the cursor pick +
+ * aim, the frustum, bodies advance + repaint what the frustum sees,
+ * the chrome pins itself. Then the post stack draws.
+ *
+ * THE AIM: the ground point under the cursor is picked only when the
+ * mouse moved (the pick marches the heightfield), but `game.aim` is
+ * recomputed EVERY frame from the body's render position toward that
+ * cached point — a still cursor over a walking body still aims true
+ * (main.ts recomputes it every frame too). A click-strike holds its
+ * foe aim for the pulse.
  *
  * Probe surface (Playwright): window.__play3d and window.dcGame.
  */
@@ -23,12 +33,13 @@ import * as THREE from 'three';
 import { CHUNK_SIZE, EntityKind } from '@arx/shared';
 import { ClientGame } from '../game/clientGame.js';
 import { Engine } from './engine.js';
+import { createBackend } from './backend/createBackend.js';
+import type { PostStage } from './stageBackend.js';
 import { LiveWorld } from './liveWorld.js';
 import { GroundStreamer } from './ground.js';
 import { SpriteAtlas } from './sprites.js';
-import { makeBillboardClock } from './billboardMaterial.js';
+import { makeBillboardClock } from './billboard.js';
 import { SkyRig } from './lights.js';
-import { PostStack } from './post.js';
 import { Confession, fmtBytes } from './hud.js';
 import { LiveInput, PointerRig } from './input.js';
 import { EntityStage } from './bodies.js';
@@ -47,17 +58,17 @@ const ATTACK_PULSE_MS = 160;
 const input = new LiveInput(sink);
 const pointer = new PointerRig(canvas);
 const clock = makeBillboardClock();
-const atlas = new SpriteAtlas();
 const io = { dragX: 0, dragY: 0, wheel: 0 };
 const frustum = new THREE.Frustum();
 const projView = new THREE.Matrix4();
 
 let ground: GroundStreamer;
 let sky: SkyRig;
-let post: PostStack;
+let post: PostStage;
 let hud: Confession;
 let stage: EntityStage;
 let view: Play3DView;
+let atlas: SpriteAtlas;
 let hudOn = true;
 let inkOn = true;
 let tiltOn = true;
@@ -67,7 +78,12 @@ let dayOverride: number | null = null;
 let seenWorldVersion = -1;
 let aimMouseX = -1;
 let aimMouseY = -1;
+/** The cached ground point under the cursor (world tiles). */
+let aimWx = 0;
+let aimWy = 0;
+let aimValid = false;
 let attackPulseUntil = 0;
+let orbitSaveTimer = 0;
 
 const shell = new Shell(input, {
   onLocal: (cmd) => {
@@ -92,68 +108,76 @@ const shell = new Shell(input, {
 const game = new ClientGame(input, shell.events());
 const world = new LiveWorld(game);
 
-const engine = new Engine(canvas, {
-  sim: () => {
-    /* ClientGame runs its own fixed-step tick inside update(). */
-  },
-  frame: (dt, _alpha, nowMs) => {
+/** Is the ground under the body stood up yet (the crossing veil's question)? */
+const groundIn = (): boolean => {
+  const pos = game.predictor.pos;
+  return game.world.get(Math.floor(pos.x / CHUNK_SIZE), Math.floor(pos.y / CHUNK_SIZE)) !== undefined;
+};
+
+const engine = new Engine(canvas, createBackend(canvas), {
+  frame: (_dt, nowMs) => {
     pointer.consume(io);
     engine.orbitInput(io.dragX, io.dragY, io.wheel);
     input.cameraYaw = engine.yaw;
     input.pollGamepad();
     input.attackHeld = nowMs < attackPulseUntil;
-    const inGame = game.ownEid !== null;
-    // Aim: the ground point under the cursor, re-picked only when the
-    // mouse moved (the pick marches the heightfield).
-    if (inGame && !shell.screenOpen && (input.mouseX !== aimMouseX || input.mouseY !== aimMouseY)) {
-      aimMouseX = input.mouseX;
-      aimMouseY = input.mouseY;
-      const own = game.predictor.renderPos();
-      const c = view.pickWorld(aimMouseX, aimMouseY);
-      game.aim = Math.atan2(c.y - own.y, c.x - own.x);
-    }
     game.update(nowMs);
     if (game.worldVersion !== seenWorldVersion) {
       seenWorldVersion = game.worldVersion;
       ground.refresh();
     }
-    if (inGame) {
+    if (game.ownEid !== null) {
       const own = game.predictor.renderPos();
       ground.update(own.x, own.y, 6);
       atlas.flush();
       const gy = ground.heightAt(own.x, own.y);
       engine.target.set(own.x, gy + 0.9, own.y);
-      sky.follow(own.x, gy, own.y, nowMs);
+      sky.follow(own.x, gy, own.y, engine.pose.dist, nowMs);
       setDay(dayOverride ?? dayFromHours(game.clockHoursNow()));
     }
     clock.uYaw.value = engine.yaw;
     clock.uTime.value = nowMs / 1000;
     clock.uSway.value = 0.05;
+  },
+  late: (dt, nowMs) => {
+    if (game.ownEid !== null && !shell.screenOpen && !shell.cinemaOpen) {
+      // The pick only when the mouse moved; the aim every frame.
+      if (input.mouseX !== aimMouseX || input.mouseY !== aimMouseY) {
+        aimMouseX = input.mouseX;
+        aimMouseY = input.mouseY;
+        const c = view.pickWorld(aimMouseX, aimMouseY);
+        aimWx = c.x;
+        aimWy = c.y;
+        aimValid = true;
+      }
+      if (aimValid && nowMs >= attackPulseUntil) {
+        const own = game.predictor.renderPos();
+        game.aim = Math.atan2(aimWy - own.y, aimWx - own.x);
+      }
+    }
     projView.multiplyMatrices(engine.camera.projectionMatrix, engine.camera.matrixWorldInverse);
     frustum.setFromProjectionMatrix(projView);
     stage.update(game, dt, nowMs, engine.yaw, frustum);
-    shell.frame(nowMs, () => {
-      const pos = game.predictor.pos;
-      return game.world.get(Math.floor(pos.x / CHUNK_SIZE), Math.floor(pos.y / CHUNK_SIZE)) !== undefined;
-    });
+    shell.frame(nowMs, groundIn);
     hud.frame(engine.frameMs, nowMs);
   },
   draw: () => {
     post.render();
-    if (hudOn) {
-      const own = game.predictor.pos;
-      hud.update(performance.now(), engine.renderer.info, {
-        world: `${world.label} · ${game.connStatus} · plane ${game.plane.id} · chunks in store ${game.world.size}`,
-        'chunks (painted/loaded)': `${ground.stats.painted}/${ground.stats.chunks} · baking ${ground.stats.baking} · bake ${ground.stats.bakeMsLast.toFixed(1)}ms`,
-        'cliff faces': ground.stats.faces,
-        'standing instances': `${ground.stats.statics} in ${ground.stats.staticDraws} draws · atlas ${atlas.sprites} sprites / ${atlas.pages.length} pages (${atlas.uploads} uploads)`,
-        'texture bytes': `ground ${fmtBytes(ground.stats.textureBytes)} · atlas ${fmtBytes(atlas.textureBytes)}`,
-        bodies: `${stage.bodies} (${game.entities.size} entities) · repaints ${stage.paints}`,
-        camera: `yaw ${engine.pose.yaw.toFixed(2)} pitch ${engine.pose.pitch.toFixed(2)} dist ${engine.pose.dist.toFixed(1)} dpr ${engine.dpr}`,
-        player: `${own.x.toFixed(1)}, ${own.y.toFixed(1)} · ${game.ownName}`,
-        post: `${post.enabled ? 'on' : 'off'} · ink ${inkOn ? 'on' : 'off'} · tilt ${tiltOn ? 'on' : 'off'} · day ${day.toFixed(2)}${dayOverride !== null ? ' (forced)' : ''}`,
-      });
-    }
+    if (!hudOn) return;
+    const now = performance.now();
+    if (!hud.due(now)) return;
+    const own = game.predictor.pos;
+    hud.update(now, engine.renderer.info, {
+      world: `${world.label} · ${game.connStatus} · plane ${game.plane.id} · chunks in store ${game.world.size}`,
+      'chunks (painted/loaded)': `${ground.stats.painted}/${ground.stats.chunks} · baking ${ground.stats.baking} · bake ${ground.stats.bakeMsLast.toFixed(1)}ms`,
+      'cliff faces': ground.stats.faces,
+      'standing instances': `${ground.stats.statics} in ${ground.stats.staticDraws} draws · atlas ${atlas.sprites} sprites / ${atlas.pages.length} pages (${atlas.uploads} page uploads, ${atlas.blits} blits)`,
+      'texture bytes': `ground ${fmtBytes(ground.stats.textureBytes)} (cpu canvases ${fmtBytes(ground.stats.canvasBytes)}) · atlas ${fmtBytes(atlas.textureBytes)}`,
+      bodies: `${stage.bodies} (${game.entities.size} entities) · repaints ${stage.paints}`,
+      camera: `yaw ${engine.pose.yaw.toFixed(2)} pitch ${engine.pose.pitch.toFixed(2)} dist ${engine.pose.dist.toFixed(1)} dpr ${engine.dpr}`,
+      player: `${own.x.toFixed(1)}, ${own.y.toFixed(1)} · ${game.ownName}`,
+      post: `${post.enabled ? 'on' : 'off'} · ink ${inkOn ? 'on' : 'off'} · tilt ${tiltOn ? 'on' : 'off'} · day ${day.toFixed(2)}${dayOverride !== null ? ' (forced)' : ''}`,
+    });
   },
 });
 
@@ -190,9 +214,12 @@ function foeAt(wx: number, wy: number): { eid: number; x: number; y: number } | 
   return best;
 }
 
+/** Targets whose Classic door is a screen this door has not mounted. */
+const BENCH_KINDS: ReadonlySet<string> = new Set(['station', 'bank', 'shop', 'stable', 'plot', 'trough', 'bin', 'work', 'sign']);
+
 /** THE CLICK: use what is in reach, strike a foe, else walk there. */
 function onWorldClick(sx: number, sy: number): void {
-  if (game.ownEid === null) return;
+  if (game.ownEid === null || shell.cinemaOpen) return;
   const w = view.pickWorld(sx, sy);
   const tx = Math.floor(w.x);
   const ty = Math.floor(w.y);
@@ -208,11 +235,18 @@ function onWorldClick(sx: number, sy: number): void {
   if (target && near) {
     const petHit = game.petAtTile(tx, ty) ?? game.companionAtTile(tx, ty);
     if (petHit !== null) game.interactNpc(petHit);
-    else if (target.kind === 'npc') game.interactNpc(target.eid);
+    else if (target.kind === 'npc') game.interactNpc(target.eid); // talk opens the cinema (shell.ts)
     else if (target.kind === 'loot') game.pickupWalk(target.eid);
-    else if (target.kind === 'station' || target.kind === 'bank' || target.kind === 'shop' || target.kind === 'stable') {
-      shell.system('That bench is not mounted on this door yet.');
-    } else game.interact(tx, ty);
+    else if (BENCH_KINDS.has(target.kind)) shell.system('That bench is not mounted on this door yet.');
+    else if (target.kind === 'crop') {
+      // THE TENDING HAND (main.ts activateTarget): aim the verb the
+      // prompt would show; water and harvest ride the plain interact.
+      const verb = game.cropVerb(tx, ty);
+      if (verb === 'Fertilize') game.fertilize(tx, ty);
+      else if (verb === 'Mulch') game.mulch(tx, ty);
+      else if (verb === 'Prune') game.prune(tx, ty);
+      else game.interact(tx, ty);
+    } else game.interact(tx, ty); // node/portal/apiary/chest/door/candle/seat/bed: the server decides
     return;
   }
   if (target?.kind === 'loot') {
@@ -226,18 +260,27 @@ function onWorldClick(sx: number, sy: number): void {
   if (!game.walkTo(tx, ty)) shell.system('No path there.');
 }
 
+const onHudKey = (e: KeyboardEvent): void => {
+  if (e.code === 'F2') hudHost.hidden = !(hudOn = !hudOn);
+};
+
 function boot(): void {
+  const backend = engine.backend;
+  atlas = new SpriteAtlas(backend);
   sky = new SkyRig(engine.scene, clock);
-  ground = new GroundStreamer(engine.scene, world, atlas, clock);
+  ground = new GroundStreamer(engine.scene, world, atlas, clock, backend.billboards);
   ground.onLampsChanged = (lamps) => sky.setLamps(lamps);
-  stage = new EntityStage(engine.scene, clock, (wx, wy) => ground.heightAt(wx, wy));
-  post = new PostStack(engine.renderer, engine.scene, engine.camera);
+  stage = new EntityStage(engine.scene, clock, backend.billboards, ground.heightAtFn);
+  post = backend.createPost(engine.scene, engine.camera);
   hud = new Confession(hudHost);
-  view = new Play3DView(engine, (wx, wy) => ground.heightAt(wx, wy));
+  view = new Play3DView(engine, ground.heightAtFn);
   shell.attach(game, view);
   engine.onResize = (w, h, dpr) => post.resize(w, h, dpr);
   engine.onContext = (lost) => {
     hudHost.dataset.context = lost ? 'lost' : 'restored';
+    // THE CANVAS PAID ONCE: chunk bitmaps were released after upload,
+    // so a restored context re-bakes the ring instead of re-uploading.
+    if (!lost) ground.reset();
   };
   engine.resize();
   pointer.onClick = onWorldClick;
@@ -250,12 +293,10 @@ function boot(): void {
   } catch {
     /* a bad card is no card */
   }
-  window.setInterval(() => {
+  orbitSaveTimer = window.setInterval(() => {
     localStorage.setItem('arx.orbit3d', JSON.stringify(engine.want));
   }, 4000);
-  window.addEventListener('keydown', (e) => {
-    if (e.code === 'F2') hudHost.hidden = !(hudOn = !hudOn);
-  });
+  window.addEventListener('keydown', onHudKey);
   engine.start();
   game.connect(localStorage.getItem('arx.token'));
 }
@@ -284,7 +325,7 @@ const probe = {
   stats: (): Record<string, unknown> => ({
     hud: hud.lines,
     ground: { ...ground.stats },
-    atlas: { sprites: atlas.sprites, pages: atlas.pages.length, uploads: atlas.uploads, bytes: atlas.textureBytes },
+    atlas: { sprites: atlas.sprites, pages: atlas.pages.length, uploads: atlas.uploads, blits: atlas.blits, bytes: atlas.textureBytes },
     bodies: { count: stage.bodies, paints: stage.paints, entities: game.entities.size },
     info: {
       calls: engine.renderer.info.render.calls,
@@ -297,9 +338,12 @@ const probe = {
     world: { label: world.label, store: game.world.size, version: game.worldVersion, plane: game.plane.id },
     player: { x: game.predictor.pos.x, y: game.predictor.pos.y, name: game.ownName, status: game.connStatus },
     camera: { ...engine.pose },
+    cinema: shell.cinemaOpen,
   }),
   dispose: (): void => {
     engine.stop();
+    window.clearInterval(orbitSaveTimer);
+    window.removeEventListener('keydown', onHudKey);
     stage.dispose();
     ground.dispose();
     atlas.dispose();

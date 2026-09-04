@@ -4,12 +4,15 @@
  * The ground is a function `heightAt(x, z)` (bilinear over tile
  * levels, ramps sloped — heightfield.ts), not a mesh to intersect, so
  * the pick MARCHES: step the ray from the near plane until it dips
- * under the surface, then bisect the last interval. Cheap (≤ ~200
- * samples at 0.25 tiles), exact enough for a tile pick, and it never
- * allocates: the caller passes the ray, the result is written into
- * `out`. Cliff faces are vertical, so a ray that enters a plateau's
- * face registers on the first sample under the top — the tile the
- * player would read as "that cliff".
+ * under the surface, then bisect the last interval. The step is
+ * ADAPTIVE — a quarter tile near the surface, up to a tile and a half
+ * while the ray is still high above it — so a pick costs tens of
+ * samples, not hundreds; a ray that points level or up from above the
+ * ground can never land and returns at once. Exact enough for a tile
+ * pick, and it never allocates: the caller passes the ray, the result
+ * is written into `out`. Cliff faces are vertical, so a ray that
+ * enters a plateau's face registers on the first sample under the top
+ * — the tile the player would read as "that cliff".
  */
 export interface PickRay {
     ox: number;

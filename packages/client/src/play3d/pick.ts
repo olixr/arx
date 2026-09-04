@@ -4,12 +4,15 @@
  * The ground is a function `heightAt(x, z)` (bilinear over tile
  * levels, ramps sloped — heightfield.ts), not a mesh to intersect, so
  * the pick MARCHES: step the ray from the near plane until it dips
- * under the surface, then bisect the last interval. Cheap (≤ ~200
- * samples at 0.25 tiles), exact enough for a tile pick, and it never
- * allocates: the caller passes the ray, the result is written into
- * `out`. Cliff faces are vertical, so a ray that enters a plateau's
- * face registers on the first sample under the top — the tile the
- * player would read as "that cliff".
+ * under the surface, then bisect the last interval. The step is
+ * ADAPTIVE — a quarter tile near the surface, up to a tile and a half
+ * while the ray is still high above it — so a pick costs tens of
+ * samples, not hundreds; a ray that points level or up from above the
+ * ground can never land and returns at once. Exact enough for a tile
+ * pick, and it never allocates: the caller passes the ray, the result
+ * is written into `out`. Cliff faces are vertical, so a ray that
+ * enters a plateau's face registers on the first sample under the top
+ * — the tile the player would read as "that cliff".
  */
 
 export interface PickRay {
@@ -29,7 +32,8 @@ export interface PickHit {
   t: number;
 }
 
-const STEP = 0.25;
+const STEP_MIN = 0.25;
+const STEP_MAX = 1.5;
 const BISECT = 6;
 
 export function pickGround(
@@ -48,7 +52,12 @@ export function pickGround(
     out.t = 0;
     return true;
   }
-  for (let t = STEP; t <= maxDist; t += STEP) {
+  if (ray.dy >= 0) {
+    // Level or climbing from above the ground: a sky ray, at once.
+    out.t = -1;
+    return false;
+  }
+  for (let t = STEP_MIN; t <= maxDist; ) {
     const x = ray.ox + ray.dx * t;
     const y = ray.oy + ray.dy * t;
     const z = ray.oz + ray.dz * t;
@@ -71,6 +80,9 @@ export function pickGround(
     }
     tPrev = t;
     above = d;
+    // Stride by how high the ray still is (it drops |dy| per unit t).
+    const step = Math.max(STEP_MIN, Math.min(STEP_MAX, (above * 0.5) / -ray.dy));
+    t += step;
   }
   out.t = -1;
   return false;

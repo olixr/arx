@@ -9,9 +9,21 @@
  * and the crossing veil. main.ts owns ~4000 lines of this wiring; the
  * shell forks only what S2 needs and names what it does not mount.
  *
+ * S3: THE DIALOGUE CINEMA is mounted (a talk NPC in reach opens a
+ * server-side conversation the player must be able to read, answer
+ * and close — an unmounted cinema left the body held in an invisible
+ * talk). It reads only ClientGame and its own DOM; its cues play
+ * through a real Sfx over a lazy AudioEngine (no context until a
+ * gesture). The rest of audio (music, ambience, voice, world sfx) is
+ * not mounted; voiced lines fall back to the paced typewriter.
+ *
+ * The Display bench mounts WITHOUT the canvas2d lane rows (stage /
+ * lean / resolution / water): those switches govern nothing on this
+ * door and would write the keys Classic reads on its next load.
+ *
  * Not mounted (S2 ledger): station/bank/shop/build screens, the pad UI
- * ring (UiNav), touch controls, audio, banners and ceremonies, loot
- * panel, dialogue cinema, map, quest journal, social, arena, keys.
+ * ring (UiNav), touch controls, audio beyond the cinema's cues, banners
+ * and ceremonies, loot panel, map, quest journal, social, arena, keys.
  *
  * Local chat commands (never reach the wire): `/3d night|day`,
  * `/3d post`, `/3d ink`, `/3d tilt`, `/3d hud`.
@@ -27,6 +39,7 @@ import { SpeechBubbles } from '../ui/speechBubbles.js';
 import { WaypointHud } from '../ui/waypointHud.js';
 import { PartyHud } from '../ui/partyHud.js';
 import { LookCreator } from '../ui/lookCreator.js';
+import { DialogueCinema } from '../ui/dialogueCinema.js';
 import type { ViewAdapter } from '../ui/viewAdapter.js';
 import { Vitals } from './vitals.js';
 export interface ShellHooks {
@@ -36,11 +49,13 @@ export interface ShellHooks {
     onPlane: () => void;
 }
 export declare class Shell {
+    private readonly input;
     private readonly hooks;
     readonly chat: ChatUI;
     readonly hotbar: Hotbar;
     readonly panels: Panels;
     readonly looks: LookCreator;
+    readonly cinema: DialogueCinema;
     readonly waypointHud: WaypointHud;
     readonly partyHud: PartyHud;
     readonly vitals: Vitals;
@@ -67,6 +82,8 @@ export declare class Shell {
     toggleScreen(which: 'inv' | 'skills' | 'settings'): void;
     closeScreens(): void;
     get screenOpen(): boolean;
+    /** A conversation holds the stage: no world clicks, no aim, no screens. */
+    get cinemaOpen(): boolean;
     private setNetPill;
     private showLoginError;
     /** The GameEvents ClientGame is built with. */

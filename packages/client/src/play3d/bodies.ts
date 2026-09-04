@@ -20,42 +20,29 @@ import { CLOTH_COLORS, EntityKind, PoseState, type EntityId, type EntityMeta } f
 import { npcDef } from '@arx/content';
 import type { ClientGame, RemoteEntity } from '../game/clientGame.js';
 import { playerColor } from '../render/playerColors.js';
-import type { BillboardClock } from './billboardMaterial.js';
+import { humanoidMonsterSize, isHumanoidMonster } from '../render/npcRoster.js';
+import type { BillboardClock, BillboardFactory } from './billboard.js';
 import { EntityBillboard, type BodyKind, type BodyState, type HumanoidKind } from './entityBillboard.js';
-
-/** The 2D client's humanoid-monster roster (renderer.ts npcItem). */
-function humanoidMonster(defId: string): boolean {
-  return (
-    defId.startsWith('goblin') ||
-    defId.startsWith('skeleton') ||
-    defId.startsWith('kobold') ||
-    defId.startsWith('brigand') ||
-    defId.startsWith('gnoll') ||
-    defId.endsWith('_golem') ||
-    defId.startsWith('ogre') ||
-    defId.startsWith('skral') ||
-    defId.startsWith('hobgoblin') ||
-    defId === 'troll'
-  );
-}
-
-/** Rough stature per family until the dialect looks are ported. */
-function monsterSize(defId: string): number {
-  if (defId === 'troll') return 1.4;
-  if (defId.startsWith('ogre')) return 1.35;
-  if (defId.endsWith('_golem')) return 1.2;
-  if (defId.startsWith('hobgoblin') || defId.startsWith('brigand')) return 1;
-  return 0.85;
-}
 
 interface BodyRec {
   sprite: EntityBillboard;
   state: BodyState;
   kind: BodyKind;
   seen: number;
+  /**
+   * THE KIT IS DERIVED ONCE PER META: ClientGame replaces `meta`
+   * wholesale on every update, so the meta object's identity (plus the
+   * two collar facts that ride it) is the kind's cache key — no
+   * per-frame kind objects, no per-frame kindKey strings.
+   */
+  metaRef: EntityMeta;
+  stock: boolean;
+  owned: boolean;
 }
 
 const DEAD = new Set<number>([PoseState.Dead, PoseState.Lie]);
+/** The own body has no remote meta; its kit is cached in ownKindFor. */
+const OWN_META: EntityMeta = { eid: 0, kind: EntityKind.Player, x: 0, y: 0 };
 
 export class EntityStage {
   private readonly recs = new Map<EntityId, BodyRec>();
@@ -70,6 +57,7 @@ export class EntityStage {
   constructor(
     private readonly scene: THREE.Scene,
     private readonly clock: BillboardClock,
+    private readonly billboards: BillboardFactory,
     private readonly groundY: (wx: number, wy: number) => number,
   ) {}
 
@@ -104,8 +92,8 @@ export class EntityStage {
     if (meta.appearance) return this.humanoidFromAppearance(meta, eid);
     const defId = meta.defId ?? '';
     const def = npcDef(defId);
-    if (humanoidMonster(defId)) {
-      return { body: 'humanoid', isOwn: false, bodyColor: def?.color ?? '#999', size: monsterSize(defId) };
+    if (isHumanoidMonster(defId)) {
+      return { body: 'humanoid', isOwn: false, bodyColor: def?.color ?? '#999', size: humanoidMonsterSize(defId) };
     }
     return {
       body: 'beast',
@@ -118,8 +106,17 @@ export class EntityStage {
   }
 
   private ownKindFor(game: ClientGame): HumanoidKind {
-    if (this.ownKind && this.ownEquipSrc === game.equipment && this.ownKind.look === (game.ownLook ?? undefined)) {
-      return this.ownKind;
+    // Equipment is replaced wholesale on the wire; the look and the two
+    // grip styles mutate in place (setCarryStyle), so they are compared.
+    const k = this.ownKind;
+    if (
+      k &&
+      this.ownEquipSrc === game.equipment &&
+      k.look === (game.ownLook ?? undefined) &&
+      k.carryStyle === game.carryStyle &&
+      k.carryOff === game.carryOff
+    ) {
+      return k;
     }
     const eq = game.equipment;
     const id = (slot: string): string | undefined => eq[slot]?.id;
@@ -143,15 +140,22 @@ export class EntityStage {
     return this.ownKind;
   }
 
-  private make(kind: BodyKind, seed: number): BodyRec {
-    const sprite = new EntityBillboard(kind, this.clock, seed);
+  private make(kind: BodyKind, seed: number, meta: EntityMeta): BodyRec {
+    const sprite = new EntityBillboard(kind, this.clock, this.billboards, seed);
     this.scene.add(sprite.mesh);
     return {
       sprite,
       kind,
       seen: 0,
       state: { x: 0, y: 0, groundY: 0, dir: 0, pose: 0, hurt: false },
+      metaRef: meta,
+      stock: meta.stock === true,
+      owned: meta.ownerEid !== undefined,
     };
+  }
+
+  private static kitMoved(rec: BodyRec, meta: EntityMeta): boolean {
+    return rec.metaRef !== meta || rec.stock !== (meta.stock === true) || rec.owned !== (meta.ownerEid !== undefined);
   }
 
   private drop(rec: BodyRec): void {
@@ -165,13 +169,20 @@ export class EntityStage {
     // Remote bodies.
     for (const [eid, remote] of game.entities) {
       if (eid === game.ownEid) continue;
-      const kind = this.kindFor(remote, eid);
-      if (kind === null) continue;
+      const meta = remote.meta;
       let rec = this.recs.get(eid);
       if (!rec) {
-        rec = this.make(kind, eid);
+        const kind = this.kindFor(remote, eid);
+        if (kind === null) continue;
+        rec = this.make(kind, eid, meta);
         this.recs.set(eid, rec);
-      } else {
+      } else if (EntityStage.kitMoved(rec, meta)) {
+        const kind = this.kindFor(remote, eid);
+        if (kind === null) continue; // it stopped being a body; dropped below
+        rec.metaRef = meta;
+        rec.stock = meta.stock === true;
+        rec.owned = meta.ownerEid !== undefined;
+        rec.kind = kind;
         rec.sprite.setKind(kind);
       }
       rec.seen = nowMs;
@@ -203,8 +214,11 @@ export class EntityStage {
     // The own body.
     if (game.ownEid !== null) {
       const kind = this.ownKindFor(game);
-      if (!this.own) this.own = this.make(kind, 7);
-      else this.own.sprite.setKind(kind);
+      if (!this.own) this.own = this.make(kind, 7, OWN_META);
+      else if (this.own.kind !== kind) {
+        this.own.kind = kind;
+        this.own.sprite.setKind(kind);
+      }
       const own = game.predictor.renderPos();
       const st = this.own.state;
       st.x = own.x;

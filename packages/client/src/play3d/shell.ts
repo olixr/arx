@@ -9,9 +9,21 @@
  * and the crossing veil. main.ts owns ~4000 lines of this wiring; the
  * shell forks only what S2 needs and names what it does not mount.
  *
+ * S3: THE DIALOGUE CINEMA is mounted (a talk NPC in reach opens a
+ * server-side conversation the player must be able to read, answer
+ * and close — an unmounted cinema left the body held in an invisible
+ * talk). It reads only ClientGame and its own DOM; its cues play
+ * through a real Sfx over a lazy AudioEngine (no context until a
+ * gesture). The rest of audio (music, ambience, voice, world sfx) is
+ * not mounted; voiced lines fall back to the paced typewriter.
+ *
+ * The Display bench mounts WITHOUT the canvas2d lane rows (stage /
+ * lean / resolution / water): those switches govern nothing on this
+ * door and would write the keys Classic reads on its next load.
+ *
  * Not mounted (S2 ledger): station/bank/shop/build screens, the pad UI
- * ring (UiNav), touch controls, audio, banners and ceremonies, loot
- * panel, dialogue cinema, map, quest journal, social, arena, keys.
+ * ring (UiNav), touch controls, audio beyond the cinema's cues, banners
+ * and ceremonies, loot panel, map, quest journal, social, arena, keys.
  *
  * Local chat commands (never reach the wire): `/3d night|day`,
  * `/3d post`, `/3d ink`, `/3d tilt`, `/3d hud`.
@@ -30,6 +42,9 @@ import { SpeechBubbles } from '../ui/speechBubbles.js';
 import { WaypointHud } from '../ui/waypointHud.js';
 import { PartyHud } from '../ui/partyHud.js';
 import { LookCreator } from '../ui/lookCreator.js';
+import { DialogueCinema } from '../ui/dialogueCinema.js';
+import { AudioEngine } from '../audio/engine.js';
+import { Sfx } from '../audio/sfx.js';
 import { installChrome } from '../ui/chrome.js';
 import { installTokens } from '../ui/kit/tokens.js';
 import { installScale } from '../ui/kit/scale.js';
@@ -54,6 +69,7 @@ export class Shell {
   readonly hotbar: Hotbar;
   readonly panels: Panels;
   readonly looks: LookCreator;
+  readonly cinema: DialogueCinema;
   readonly waypointHud = new WaypointHud();
   readonly partyHud = new PartyHud();
   readonly vitals: Vitals;
@@ -75,7 +91,7 @@ export class Shell {
   private walkoverBox: HTMLInputElement | null = null;
 
   constructor(
-    input: InputManager,
+    private readonly input: InputManager,
     private readonly hooks: ShellHooks,
   ) {
     installTokens();
@@ -95,7 +111,7 @@ export class Shell {
         }
         this.game?.sendChat(text);
       },
-      () => this.game?.ownEid !== null && !this.hud.classList.contains('hidden'),
+      () => this.game?.ownEid !== null && !this.hud.classList.contains('hidden') && !this.cinema.open,
     );
     this.hotbar = new Hotbar(input);
     this.vitals = new Vitals(this.hud);
@@ -104,6 +120,12 @@ export class Shell {
       if (!this.game) throw new Error('play3d shell: game not attached');
       return this.game;
     };
+    this.cinema = new DialogueCinema(new Sfx(new AudioEngine()), {
+      onAdvance: () => g().dialogueAdvance(),
+      onChoose: (idx) => g().dialogueChoose(idx),
+      onEnd: () => g().dialogueEnd(),
+      onGift: () => input.rumble(0.15, 0.35, 130),
+    });
     this.panels = new Panels(
       (slot) => g().useSlot(slot),
       (slot) => g().unequip(slot),
@@ -164,6 +186,12 @@ export class Shell {
     el('btn-audio').addEventListener('click', () => this.toggleScreen('settings'));
     window.addEventListener('keydown', (e) => {
       if (this.chat.isTyping || this.looks.open || this.game?.ownEid === null) return;
+      // A running cinematic owns the keyboard: advance, choose, or
+      // excuse yourself — no screen may open over a conversation.
+      if (this.cinema.open) {
+        this.cinema.handleKey(e.code, e.repeat);
+        return;
+      }
       if (bindings.kbMatches('screenPack', e.code)) this.toggleScreen('inv');
       else if (bindings.kbMatches('screenSkills', e.code)) this.toggleScreen('skills');
       else if (bindings.kbMatches('screenSettings', e.code)) this.toggleScreen('settings');
@@ -180,7 +208,8 @@ export class Shell {
     this.game = game;
     this.view = view;
     this.speech = new SpeechBubbles(game, view);
-    this.walkoverBox = initDisplaySettings(view, (on) => game.setLootPref(on));
+    // No canvas2d lanes on this door: the bench builds no lane rows.
+    this.walkoverBox = initDisplaySettings(null, (on) => game.setLootPref(on));
   }
 
   private get settingsPanel(): HTMLElement {
@@ -206,6 +235,11 @@ export class Shell {
 
   get screenOpen(): boolean {
     return this.panels.anyOpen || !this.settingsPanel.classList.contains('hidden');
+  }
+
+  /** A conversation holds the stage: no world clicks, no aim, no screens. */
+  get cinemaOpen(): boolean {
+    return this.cinema.open;
   }
 
   private setNetPill(text: string | null): void {
@@ -244,6 +278,21 @@ export class Shell {
       onHit: () => {},
       onDeath: () => {},
       onNeedLook: () => this.looks.show(),
+      onDialogueOpen: (o) => {
+        // A conversation takes the whole stage: every screen closes and
+        // the input goes quiet — Space turns pages now, it doesn't
+        // swing swords. (The orbit stays; the camera glide is W4.)
+        this.closeScreens();
+        this.cinema.show(o);
+        this.input.cinemaCapture = true;
+        document.body.classList.add('in-dialogue');
+      },
+      onDialogueNode: (n) => this.cinema.showNode(n),
+      onDialogueClose: () => {
+        this.cinema.close();
+        this.input.cinemaCapture = false;
+        document.body.classList.remove('in-dialogue');
+      },
       onPlane: (p) => {
         this.hooks.onPlane();
         this.speech?.clear();
@@ -278,7 +327,7 @@ export class Shell {
       }
       this.chat.addLine({
         channel: 'system',
-        text: 'Immersive door (3D, S2). Click to walk or use things; drag to orbit; wheel to dolly; WASD follows the camera. /3d night|day|post|ink|tilt|hud.',
+        text: 'Immersive door (3D, S3). Click to walk, talk or use things; drag to orbit; wheel to dolly; WASD follows the camera. /3d night|day|post|ink|tilt|hud.',
       });
     } else if (status === 'authRequired') {
       this.authReady = true;
@@ -306,7 +355,8 @@ export class Shell {
     const game = this.game;
     const view = this.view;
     if (!game || !view) return;
-    const hidden = this.screenOpen || this.looks.open;
+    const hidden = this.screenOpen || this.looks.open || this.cinema.open;
+    this.cinema.tickPad(this.input.padSnapshot(), now);
     this.hotbar.update(game);
     this.vitals.update(game);
     this.waypointHud.update(game, view, hidden);

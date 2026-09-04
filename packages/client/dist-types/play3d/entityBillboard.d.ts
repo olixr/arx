@@ -29,7 +29,7 @@
  */
 import * as THREE from 'three';
 import { type Look } from '@arx/shared';
-import { type BillboardClock } from './billboardMaterial.js';
+import { type BillboardClock, type BillboardFactory } from './billboard.js';
 export interface HumanoidKind {
     body: 'humanoid';
     bodyColor: string;
@@ -91,6 +91,9 @@ export declare class EntityBillboard {
     private readonly kneeMemory;
     private readonly depthMemory;
     private readonly feet;
+    /** Cape node screen points, reused across paints (never minted per paint). */
+    private readonly capePts;
+    private readonly idleEveryMs;
     /** The rotated pose handed to the painters (reused, never allocated per frame). */
     private readonly relPose;
     private restfulSince;
@@ -105,7 +108,7 @@ export declare class EntityBillboard {
     private dirty;
     /** Confession: repaints (each is one texture upload). */
     paints: number;
-    constructor(kind: BodyKind, clock: BillboardClock, seed?: number);
+    constructor(kind: BodyKind, clock: BillboardClock, billboards: BillboardFactory, seed?: number);
     private makeLegs;
     /** Size the canvas + quad for the current kind (a rare, gated event). */
     private fitCard;

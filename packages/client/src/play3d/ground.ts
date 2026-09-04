@@ -20,9 +20,15 @@
  *     texture holds every tile's own top. When the chain completes the
  *     canvas becomes a CanvasTexture uploaded ONCE (mipmapped,
  *     anisotropic, sRGB) and the placeholder material is swapped for
- *     the painted one. The bake's gutter is kept and the UVs inset past
- *     it — the gutter is real neighbour content and is exactly what a
- *     bilinear/mip sampler wants at chunk seams.
+ *     the painted one. THE CANVAS PAYS ONCE (the 2D client's B4
+ *     lesson): the moment the upload lands (`tex.onUpdate`) the 776²
+ *     bake canvas is shrunk to 1×1 — the GPU copy is the only copy, and
+ *     a ring of 49 chunks does not also hold ~118 MB of CPU bitmaps.
+ *     A context loss therefore cannot re-upload from the image: the
+ *     owner calls `reset()` on restore and the ring re-bakes. The bake's
+ *     gutter is kept and the UVs inset past it — the gutter is real
+ *     neighbour content and is exactly what a bilinear/mip sampler
+ *     wants at chunk seams.
  *  3. Eviction past ring+1: geometry, both materials and the texture
  *     are disposed, the chunk's standing statics with them, and the
  *     byte ledger is debited. No leaks; the HUD shows the ledger.
@@ -54,7 +60,7 @@ import { ELEV_H } from '../render/elevPick.js';
 import { buildHeightfield, heightAtPoint } from './heightfield.js';
 import { chunkOf, outsideRing, packChunk, ringAround, type RingEntry } from './chunkRing.js';
 import { buildChunkStatics, type ChunkStatics, type SpriteAtlas } from './sprites.js';
-import type { BillboardClock } from './billboardMaterial.js';
+import type { BillboardClock, BillboardFactory } from './billboard.js';
 import type { WorldSource3D } from './world.js';
 
 /** Bake density: px per tile. 24 keeps a 32-tile chunk at 776² (2.4MB). */
@@ -76,6 +82,8 @@ interface ChunkRec {
   placeholder: THREE.MeshLambertMaterial;
   painted: THREE.MeshLambertMaterial | null;
   tex: THREE.CanvasTexture | null;
+  /** GPU bytes the ledger was credited for this chunk's texture. */
+  texBytes: number;
   /** The bake in flight: the base job, then one elevated job per level. */
   job: ChunkBakeJob | null;
   /** The base canvas the level bakes composite onto (null until baked). */
@@ -120,7 +128,10 @@ export interface GroundStats {
   baking: number;
   bakesDone: number;
   bakeMsLast: number;
+  /** GPU bytes (mips counted). */
   textureBytes: number;
+  /** CPU bake canvases still held (in flight or awaiting their upload). */
+  canvasBytes: number;
   faces: number;
   statics: number;
   staticDraws: number;
@@ -140,6 +151,7 @@ export class GroundStreamer {
     bakesDone: 0,
     bakeMsLast: 0,
     textureBytes: 0,
+    canvasBytes: 0,
     faces: 0,
     statics: 0,
     staticDraws: 0,
@@ -152,6 +164,7 @@ export class GroundStreamer {
     private readonly world: WorldSource3D,
     private readonly atlas: SpriteAtlas,
     private readonly clock: BillboardClock,
+    private readonly billboards: BillboardFactory,
   ) {
     this.group.name = 'ground';
     scene.add(this.group);
@@ -161,6 +174,9 @@ export class GroundStreamer {
   heightAt(wx: number, wy: number): number {
     return heightAtPoint(wx, wy, this.levelAt, this.isRamp, ELEV_H, this.scratch);
   }
+
+  /** `heightAt` as one bound function (handed out, never re-minted). */
+  readonly heightAtFn = (wx: number, wy: number): number => this.heightAt(wx, wy);
 
   private readonly levelAt = (tx: number, ty: number): number => this.world.elevAt(tx, ty);
   private readonly isRamp = (tx: number, ty: number): boolean => this.world.isRamp(tx, ty);
@@ -248,6 +264,7 @@ export class GroundStreamer {
       placeholder,
       painted: null,
       tex: null,
+      texBytes: 0,
       job: null,
       base: null,
       levels: [],
@@ -263,7 +280,7 @@ export class GroundStreamer {
   }
 
   private standUp(rec: ChunkRec, chunk: ChunkData): void {
-    const statics = buildChunkStatics(chunk, this.atlas, this.clock, (wx, wy) => this.heightAt(wx, wy));
+    const statics = buildChunkStatics(chunk, this.atlas, this.clock, this.billboards, this.heightAtFn);
     for (const m of statics.meshes) this.group.add(m);
     rec.statics = statics;
     this.stats.statics += statics.instances;
@@ -304,6 +321,7 @@ export class GroundStreamer {
     const job = rec.job!;
     if (rec.base === null) {
       rec.base = job.canvas;
+      this.stats.canvasBytes += job.canvas.width * job.canvas.height * 4;
     } else {
       const ej = job as ElevatedBakeJob;
       // THE LIFTED LAYER PAYS FOR ITS ROWS (B2): the tight canvas
@@ -333,11 +351,21 @@ export class GroundStreamer {
     tex.generateMipmaps = true;
     tex.anisotropy = 8;
     tex.name = `chunk ${rec.cx},${rec.cy}`;
+    const gpuBytes = canvas.width * canvas.height * 4 * 1.34;
+    const cpuBytes = canvas.width * canvas.height * 4;
+    rec.texBytes = gpuBytes;
+    // THE CANVAS PAYS ONCE: the upload landed — release the bitmap.
+    tex.onUpdate = () => {
+      tex.onUpdate = null;
+      canvas.width = 1;
+      canvas.height = 1;
+      this.stats.canvasBytes -= cpuBytes;
+    };
     const painted = new THREE.MeshLambertMaterial({ map: tex });
     rec.tex = tex;
     rec.painted = painted;
     rec.mesh.material = painted;
-    this.stats.textureBytes += canvas.width * canvas.height * 4 * 1.34;
+    this.stats.textureBytes += gpuBytes;
     this.stats.painted++;
     this.stats.bakesDone++;
   }
@@ -351,9 +379,15 @@ export class GroundStreamer {
       this.stats.painted--;
     }
     if (rec.tex) {
+      if (rec.tex.onUpdate) {
+        // Evicted before its upload landed: the canvas is still whole.
+        rec.tex.onUpdate = null;
+        this.stats.canvasBytes -= rec.tex.image.width * rec.tex.image.height * 4;
+      }
       rec.tex.dispose();
-      this.stats.textureBytes -= rec.tex.image.width * rec.tex.image.height * 4 * 1.34;
+      this.stats.textureBytes -= rec.texBytes;
     }
+    if (rec.base) this.stats.canvasBytes -= rec.base.width * rec.base.height * 4;
     if (rec.statics) {
       for (const m of rec.statics.meshes) this.group.remove(m);
       rec.statics.dispose();

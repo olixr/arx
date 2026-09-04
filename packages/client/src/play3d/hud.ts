@@ -47,6 +47,11 @@ export class Confession {
     }
   }
 
+  /** True when the next `update` will repaint — build its lines only then. */
+  due(nowMs: number): boolean {
+    return nowMs - this.lastFlush >= 250;
+  }
+
   /** Repaint the overlay at most every 250 ms. */
   update(
     nowMs: number,

@@ -1,15 +1,23 @@
 /**
- * THE PAINTED WORLD STANDS UP (play3d S1) — the sprite systems.
+ * THE PAINTED WORLD STANDS UP (play3d S1; S3 review fixes) — the sprite
+ * systems.
  *
- * Two kinds of billboard, one shader (billboardMaterial.ts):
+ * Two kinds of billboard, one law (billboard.ts):
  *
- * STATICS — trees, saplings, wild flora (props/FX follow in S2 via the
- * same door). The production painters (trees.ts paintTree, crops.ts
+ * STATICS — trees, saplings, wild flora (props/FX follow via the same
+ * door). The production painters (trees.ts paintTree, crops.ts
  * paintPlant) are called ONCE per distinct model into a shelf-packed
- * ATLAS PAGE (2048², sRGB, mipmapped), ringed with the outline law, and
- * uploaded ONCE. Each chunk then owns one InstancedBufferGeometry per
- * atlas page it touches: one draw call per (chunk, page). Eviction
- * disposes the instance buffers; the atlas is shared and stays.
+ * ATLAS PAGE (2048², sRGB, mipmapped), ringed with the outline law.
+ * THE PAGE IS UPLOADED ONCE: it goes resident blank the moment it is
+ * minted (`Backend.prepareTexture`), and every sprite landed after
+ * that is a SUB-RECT upload of its own canvas (`Backend.blit`) — the
+ * page never re-uploads its 16 MB because one more tree variant walked
+ * into view. The page canvas is still painted as the CPU mirror the
+ * renderer re-uploads from after a context loss. The shelf pad is
+ * 8 px: with mips, a 2 px pad bleeds neighbours from level 2 on.
+ * Each chunk then owns one InstancedBufferGeometry per atlas page it
+ * touches: one draw call per (chunk, page). Eviction disposes the
+ * instance buffers; the atlas is shared and stays.
  *
  * ENTITIES live in entityBillboard.ts (S2 moved them out): a per-body
  * canvas painted by the production rigs and uploaded only on change.
@@ -22,15 +30,13 @@ import { paintTree, saplingModel, treeExtent, treeModel, treeVariantHash } from 
 import { paintPlant, plantModel } from '../render/crops.js';
 import { ShelfPacker } from './atlasPack.js';
 import { outlineRing } from './outline.js';
-import {
-  BillboardBuffer,
-  billboardDepthMaterial,
-  billboardMaterial,
-  type BillboardClock,
-} from './billboardMaterial.js';
+import { BillboardBuffer, type BillboardClock, type BillboardFactory } from './billboard.js';
+import type { Backend } from './stageBackend.js';
 
 export const STATIC_PX = 32;
 export const ATLAS_PAGE_PX = 2048;
+/** Shelf pad between sprites — wide enough that mip level 3 stays clean. */
+export const ATLAS_PAD_PX = 8;
 /** The 2.5D ground squash the painters were tuned under. */
 const Y_SQUASH = 0.6;
 
@@ -62,24 +68,33 @@ export interface PaintSpec {
   paint: (ctx: CanvasRenderingContext2D) => void;
 }
 
+/** A sprite painted on the page's CPU mirror, waiting for its sub-rect upload. */
+interface PendingRect {
+  canvas: HTMLCanvasElement;
+  x: number;
+  y: number;
+}
+
 interface AtlasPage {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   packer: ShelfPacker;
   tex: THREE.CanvasTexture;
-  dirty: boolean;
+  pending: PendingRect[];
 }
 
 export class SpriteAtlas {
   readonly pages: AtlasPage[] = [];
   private readonly refs = new Map<string, SpriteRef>();
-  private readonly scratch = document.createElement('canvas');
-  private readonly scratchCtx = this.scratch.getContext('2d')!;
-  /** Confession counters. */
+  /** Confession counters: sprites landed, page uploads (one per page), sub-rect blits. */
   sprites = 0;
   uploads = 0;
+  blits = 0;
 
-  constructor(private readonly ringPx = Math.ceil(Math.max(1.25, STATIC_PX * 0.04))) {}
+  constructor(
+    private readonly backend: Backend,
+    private readonly ringPx = Math.ceil(Math.max(1.25, STATIC_PX * 0.04)),
+  ) {}
 
   get textureBytes(): number {
     return this.pages.length * ATLAS_PAGE_PX * ATLAS_PAGE_PX * 4 * 1.34;
@@ -96,12 +111,16 @@ export class SpriteAtlas {
     tex.generateMipmaps = true;
     tex.anisotropy = 4;
     tex.name = `play3d-atlas-${this.pages.length}`;
+    // The one full upload: resident now, blank, so every sprite that
+    // follows is a sub-rect landing.
+    this.backend.prepareTexture(tex);
+    this.uploads++;
     const page: AtlasPage = {
       canvas,
       ctx: canvas.getContext('2d')!,
-      packer: new ShelfPacker(ATLAS_PAGE_PX, ATLAS_PAGE_PX, 2),
+      packer: new ShelfPacker(ATLAS_PAGE_PX, ATLAS_PAGE_PX, ATLAS_PAD_PX),
       tex,
-      dirty: false,
+      pending: [],
     };
     this.pages.push(page);
     return page;
@@ -114,12 +133,12 @@ export class SpriteAtlas {
     const s = spec();
     const cw = Math.max(1, Math.ceil(s.cw));
     const ch = Math.max(1, Math.ceil(s.ch));
-    // Paint into the scratch, ring it, then land it on a page.
-    if (this.scratch.width < cw) this.scratch.width = cw;
-    if (this.scratch.height < ch) this.scratch.height = ch;
-    const sc = this.scratchCtx;
-    sc.setTransform(1, 0, 0, 1, 0, 0);
-    sc.clearRect(0, 0, this.scratch.width, this.scratch.height);
+    // Paint into a canvas EXACTLY the sprite's size (the sub-rect upload
+    // reads the whole source), ring it, then land it on a page.
+    const sprite = document.createElement('canvas');
+    sprite.width = cw;
+    sprite.height = ch;
+    const sc = sprite.getContext('2d')!;
     s.paint(sc);
     outlineRing(sc, cw, ch, this.ringPx);
     let page = this.pages[this.pages.length - 1] ?? this.newPage();
@@ -129,8 +148,9 @@ export class SpriteAtlas {
       rect = page.packer.insert(cw, ch);
       if (!rect) throw new Error(`play3d atlas: sprite ${key} (${cw}x${ch}) exceeds a page`);
     }
-    page.ctx.drawImage(this.scratch, 0, 0, cw, ch, rect.x, rect.y, cw, ch);
-    page.dirty = true;
+    // The CPU mirror (context-restore source) + the pending GPU landing.
+    page.ctx.drawImage(sprite, rect.x, rect.y);
+    page.pending.push({ canvas: sprite, x: rect.x, y: rect.y });
     const W = ATLAS_PAGE_PX;
     const ref: SpriteRef = {
       page: this.pages.indexOf(page),
@@ -148,13 +168,17 @@ export class SpriteAtlas {
     return ref;
   }
 
-  /** Upload dirty pages (at most once per frame per page). */
+  /** Land the pending sprites: sub-rect blits, one mip regen per page per flush. */
   flush(): void {
     for (const p of this.pages) {
-      if (!p.dirty) continue;
-      p.tex.needsUpdate = true;
-      p.dirty = false;
-      this.uploads++;
+      const n = p.pending.length;
+      if (n === 0) continue;
+      for (let i = 0; i < n; i++) {
+        const r = p.pending[i]!;
+        this.backend.blit(r.canvas, p.tex, r.x, r.y, i === n - 1);
+        this.blits++;
+      }
+      p.pending.length = 0;
     }
   }
 
@@ -236,6 +260,7 @@ export function buildChunkStatics(
   chunk: ChunkData,
   atlas: SpriteAtlas,
   clock: BillboardClock,
+  billboards: BillboardFactory,
   groundY: (wx: number, wy: number) => number,
 ): ChunkStatics {
   // First pass: gather (ref, position) by page so buffers size exactly.
@@ -279,8 +304,8 @@ export function buildChunkStatics(
     buf.commit();
     buf.computeBounds();
     const tex = atlas.pages[page]!.tex;
-    const mat = billboardMaterial(tex, clock, { alphaTest: 0.45, sway: true });
-    const depth = billboardDepthMaterial(tex, clock, { alphaTest: 0.45, sway: true });
+    const mat = billboards.material(tex, clock, { alphaTest: 0.45, sway: true });
+    const depth = billboards.depthMaterial(tex, clock, { alphaTest: 0.45, sway: true });
     const mesh = new THREE.Mesh(buf.geometry, mat);
     mesh.customDepthMaterial = depth;
     mesh.castShadow = true;

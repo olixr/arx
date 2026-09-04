@@ -4,13 +4,18 @@
  * looting, and the interface-size chips. Moved verbatim from main.ts
  * (foundations F5.1); returns the walk-over box the frame loop keeps
  * honest to the server's pref.
+ *
+ * `lanes` is the canvas2d lane switch-board (the 2D Renderer). A door
+ * with no such lanes passes null and the stage / lean / resolution /
+ * water rows are NOT built — a bench must never show a switch that
+ * governs nothing here yet writes the keys another door reads.
  */
-import type { ViewAdapter } from './viewAdapter.js';
+import type { ViewDisplayFlags } from './viewAdapter.js';
 import { FOOTPRINT_TUNE } from '../render/footprints.js';
 import { UI_SIZES, setUiSize, uiSize } from './kit/scale.js';
 import type { StageResTier } from '../render/stage/renderScale.js';
 
-export function initDisplaySettings(renderer: ViewAdapter, setLootPref: (on: boolean) => void): HTMLInputElement | null {
+export function initDisplaySettings(lanes: ViewDisplayFlags | null, setLootPref: (on: boolean) => void): HTMLInputElement | null {
   let walkoverBox: HTMLInputElement | null = null;
     const rows = document.getElementById('display-rows')!;
     const toggle = (label: string, initial: boolean, apply: (on: boolean) => void): void => {
@@ -31,6 +36,39 @@ export function initDisplaySettings(renderer: ViewAdapter, setLootPref: (on: boo
       row.appendChild(box);
       rows.appendChild(row);
     };
+    if (lanes) laneRows(lanes, rows, toggle);
+
+    toggle('Footprints', FOOTPRINT_TUNE.enabled, (on) => {
+      FOOTPRINT_TUNE.enabled = on;
+      localStorage.setItem('arx.footprints', on ? 'on' : 'off');
+    });
+
+    toggle('Interface motion', localStorage.getItem('arx.uimotion') !== 'off', (on) => {
+      localStorage.setItem('arx.uimotion', on ? 'on' : 'off');
+      document.body.classList.toggle('no-ui-motion', !on);
+    });
+
+    // THE CHOSEN HAND: walk-over looting is a preference, not a fate.
+    // Server-persisted per character (the welcome carries the truth —
+    // the frame loop keeps this box honest to it); its twin chip lives
+    // in the loot tray's head, right where the itch is felt.
+    toggle('Walk-over looting', true, (on) => setLootPref(on));
+    walkoverBox = rows.lastElementChild!.querySelector('input');
+    if (walkoverBox) {
+      walkoverBox.dataset.tipsub =
+        'Off = running over loot picks up nothing; you choose every take from the ground list.';
+    }
+
+    sizeRowInto(rows);
+  return walkoverBox;
+}
+
+/** The canvas2d lane rows: stage, lean, render resolution, water. */
+function laneRows(
+  renderer: ViewDisplayFlags,
+  rows: HTMLElement,
+  toggle: (label: string, initial: boolean, apply: (on: boolean) => void) => void,
+): void {
     // THE DISPLAY TOGGLE: the whole painted-stage epic behind one
     // honest switch. Applies live — the parity drills toggle it
     // mid-frame hundreds of times a session.
@@ -131,28 +169,10 @@ export function initDisplaySettings(renderer: ViewAdapter, setLootPref: (on: boo
       renderer.waterFxFull = on;
       localStorage.setItem('arx.waterfx', on ? 'full' : 'basic');
     });
+}
 
-    toggle('Footprints', FOOTPRINT_TUNE.enabled, (on) => {
-      FOOTPRINT_TUNE.enabled = on;
-      localStorage.setItem('arx.footprints', on ? 'on' : 'off');
-    });
-
-    toggle('Interface motion', localStorage.getItem('arx.uimotion') !== 'off', (on) => {
-      localStorage.setItem('arx.uimotion', on ? 'on' : 'off');
-      document.body.classList.toggle('no-ui-motion', !on);
-    });
-
-    // THE CHOSEN HAND: walk-over looting is a preference, not a fate.
-    // Server-persisted per character (the welcome carries the truth —
-    // the frame loop keeps this box honest to it); its twin chip lives
-    // in the loot tray's head, right where the itch is felt.
-    toggle('Walk-over looting', true, (on) => setLootPref(on));
-    walkoverBox = rows.lastElementChild!.querySelector('input');
-    if (walkoverBox) {
-      walkoverBox.dataset.tipsub =
-        'Off = running over loot picks up nothing; you choose every take from the ground list.';
-    }
-
+/** The interface-size chips. */
+function sizeRowInto(rows: HTMLElement): void {
     // The player's hand on the one ruler: Snug / Standard / Grand
     // multiply the automatic fit. Applies live, no restart.
     const sizeRow = document.createElement('div');
@@ -190,5 +210,4 @@ export function initDisplaySettings(renderer: ViewAdapter, setLootPref: (on: boo
     sizeRow.append(sizeLab, chips);
     rows.appendChild(sizeRow);
     paint();
-  return walkoverBox;
 }

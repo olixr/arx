@@ -1,11 +1,12 @@
 /**
- * THE BILLBOARD LAW (play3d S1) — one shader pair for every painted
- * sprite in the 3D client: bodies, trees, flora, later props and FX.
+ * THE BILLBOARD LAW (play3d S1, split from the shaders in S3) — the
+ * backend-NEUTRAL half of every painted sprite in the 3D client:
+ * bodies, trees, flora, later props and FX.
  *
  * A billboard here is a feet-anchored quad that turns about the world
  * up-axis to face the camera (YAW-ONLY: bodies stay upright, they
  * never tip toward a high camera). The turn happens IN THE VERTEX
- * SHADER from one shared `uYaw` uniform, so a thousand instanced trees
+ * STAGE from one shared `uYaw` uniform, so a thousand instanced trees
  * cost one uniform write per frame, not a thousand matrix updates.
  *
  * Depth is real: the material is opaque, depth-tested AND depth-written,
@@ -13,22 +14,27 @@
  * per-pixel against terrain, walls and each other, and there is no
  * painter's sort anywhere in this client.
  *
- * THE SHADOW PROXY, folded into the shader: a camera-facing quad is
- * edge-on to the sun and casts a sliver. The depth variant used by the
- * shadow pass reads `uSunYaw` instead of `uYaw`, so in the light's eye
- * every billboard has turned to face the sun and casts its full
- * alpha-cut silhouette. Same buffers, same texture, no second mesh.
+ * THE SHADOW PROXY: a camera-facing quad is edge-on to the sun and casts
+ * a sliver. The depth variant used by the shadow pass reads `uSunYaw`
+ * instead of `uYaw`, so in the light's eye every billboard has turned to
+ * face the sun and casts its full alpha-cut silhouette. Same buffers,
+ * same texture, no second mesh.
  *
  * Billboards are UNLIT: the painters bake their own shading (lambert on
  * a camera-facing plane goes black when the sun is behind it). The
- * scene mood reaches them through `uTint`, set by the sky rig. Fog is
- * the scene's, by depth, through the standard chunks.
+ * scene mood reaches them through `uTint`, set by the sky rig.
+ *
+ * What lives HERE: the clock (the shared uniforms), the instance buffer
+ * (the per-instance record), and the `BillboardFactory` seam the lanes
+ * ask for materials through. What lives in backend/webglBillboard.ts:
+ * the GLSL that realises the law on WebGL. A WebGPU backend realises
+ * the same law in TSL behind the same factory (stageBackend.ts).
  *
  * Per-instance record (InstancedBufferGeometry): origin (feet, world),
  * size (w, h in world tiles), uv rect (u0 v0 at the foot-left corner,
  * u1 v1 at the top-right), anchor (x fraction of the width the feet sit
  * under; y fraction of the height BELOW the feet — root flare), and a
- * wind phase for the shader sway.
+ * wind phase for the sway.
  */
 import * as THREE from 'three';
 
@@ -51,122 +57,22 @@ export function makeBillboardClock(): BillboardClock {
   };
 }
 
-const VERT = /* glsl */ `
-attribute vec3 iOrigin;
-attribute vec2 iSize;
-attribute vec4 iUv;
-attribute vec2 iAnchor;
-attribute float iPhase;
-uniform float uYaw;
-uniform float uTime;
-uniform float uSway;
-uniform float uSwayOn;
-varying vec2 vUv;
-#include <common>
-#include <fog_pars_vertex>
-void main() {
-  vec2 q = position.xy;
-  float c = cos(uYaw);
-  float s = sin(uYaw);
-  vec3 right = vec3(c, 0.0, -s);
-  float lift = (q.y - iAnchor.y) * iSize.y;
-  vec3 wpos = iOrigin + right * ((q.x - iAnchor.x) * iSize.x) + vec3(0.0, lift, 0.0);
-  // Crown sway: grows with the square of height above the feet so the
-  // trunk base stays planted (a tree, not a metronome).
-  float hf = max(0.0, q.y - iAnchor.y);
-  float sw = sin(uTime * 1.15 + iPhase) * uSway * uSwayOn * hf * hf * iSize.y;
-  wpos += right * sw;
-  vUv = mix(iUv.xy, iUv.zw, q);
-  vec4 mvPosition = viewMatrix * vec4(wpos, 1.0);
-  gl_Position = projectionMatrix * mvPosition;
-  #include <fog_vertex>
-}
-`;
-
-const FRAG = /* glsl */ `
-uniform sampler2D map;
-uniform vec3 uTint;
-uniform float uAlphaCut;
-varying vec2 vUv;
-#include <common>
-#include <fog_pars_fragment>
-void main() {
-  vec4 c = texture2D(map, vUv);
-  if (c.a < uAlphaCut) discard;
-  gl_FragColor = vec4(c.rgb * uTint, 1.0);
-  #include <tonemapping_fragment>
-  #include <colorspace_fragment>
-  #include <fog_fragment>
-}
-`;
-
-const DEPTH_FRAG = /* glsl */ `
-uniform sampler2D map;
-uniform float uAlphaCut;
-varying vec2 vUv;
-void main() {
-  if (texture2D(map, vUv).a < uAlphaCut) discard;
-  gl_FragColor = vec4(1.0);
-}
-`;
-
 export interface BillboardMaterialOpts {
   alphaTest?: number;
   /** Trees sway; bodies do not. */
   sway?: boolean;
 }
 
-/** The colour pass material. Shares the clock's uniform objects. */
-export function billboardMaterial(
-  map: THREE.Texture,
-  clock: BillboardClock,
-  opts: BillboardMaterialOpts = {},
-): THREE.ShaderMaterial {
-  return new THREE.ShaderMaterial({
-    name: 'play3d-billboard',
-    vertexShader: VERT,
-    fragmentShader: FRAG,
-    uniforms: {
-      ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog),
-      map: { value: map },
-      uAlphaCut: { value: opts.alphaTest ?? 0.4 },
-      uSwayOn: { value: opts.sway ? 1 : 0 },
-      uYaw: clock.uYaw,
-      uTime: clock.uTime,
-      uSway: clock.uSway,
-      uTint: clock.uTint,
-    },
-    fog: true,
-    transparent: false,
-    depthTest: true,
-    depthWrite: true,
-    side: THREE.DoubleSide,
-  });
-}
-
-/** The shadow-pass depth material: same quad, turned to face the sun. */
-export function billboardDepthMaterial(
-  map: THREE.Texture,
-  clock: BillboardClock,
-  opts: BillboardMaterialOpts = {},
-): THREE.ShaderMaterial {
-  return new THREE.ShaderMaterial({
-    name: 'play3d-billboard-depth',
-    vertexShader: VERT,
-    fragmentShader: DEPTH_FRAG,
-    uniforms: {
-      ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog),
-      map: { value: map },
-      uAlphaCut: { value: opts.alphaTest ?? 0.4 },
-      uSwayOn: { value: opts.sway ? 1 : 0 },
-      uYaw: clock.uSunYaw,
-      uTime: clock.uTime,
-      uSway: clock.uSway,
-      uTint: clock.uTint,
-    },
-    fog: false,
-    side: THREE.DoubleSide,
-  });
+/**
+ * THE MATERIAL SEAM: the lanes (sprites, bodies) never name a shader
+ * language; they ask the backend for the colour pass and the shadow
+ * pass of the billboard law.
+ */
+export interface BillboardFactory {
+  /** The colour pass material. Shares the clock's uniform objects. */
+  material(map: THREE.Texture, clock: BillboardClock, opts?: BillboardMaterialOpts): THREE.Material;
+  /** The shadow-pass depth material: same quad, turned to face the sun. */
+  depthMaterial(map: THREE.Texture, clock: BillboardClock, opts?: BillboardMaterialOpts): THREE.Material;
 }
 
 /** Floats per instance, by attribute. */

@@ -228,3 +228,63 @@ test('elevLevels: the 2D level list — min..max, level 0 only when pits exist',
   assert.deepEqual(elevLevels(new Int8Array([-1, 0, 1])), [-1, 0, 1]);
   assert.deepEqual(elevLevels(new Int8Array([0, 0])), []);
 });
+
+// ------------------------------------------------------- S3: review fixes
+
+import { shadowSpanFor, snapToLightTexel } from './lights.js';
+
+test('pickGround: a level or climbing ray from above the ground misses at once', () => {
+  const out: PickHit = { x: 0, y: 0, z: 0, t: -1 };
+  let samples = 0;
+  const h = (): number => {
+    samples++;
+    return 0;
+  };
+  assert.equal(pickGround({ ox: 0, oy: 5, oz: 0, dx: 1, dy: 0, dz: 0 }, h, 500, out), false);
+  assert.equal(samples, 1, 'one look at the ground under the eye, then out');
+});
+
+test('pickGround: the adaptive stride still lands on a distant plane within a tile', () => {
+  const out: PickHit = { x: 0, y: 0, z: 0, t: -1 };
+  let samples = 0;
+  const h = (): number => {
+    samples++;
+    return 0;
+  };
+  // From 40 up, a shallow ray: crosses y=0 at x = 40 / tan(20°) ≈ 109.9.
+  const a = (20 * Math.PI) / 180;
+  const hit = pickGround({ ox: 0, oy: 40, oz: 0, dx: Math.cos(a), dy: -Math.sin(a), dz: 0 }, h, 260, out);
+  assert.equal(hit, true);
+  assert.ok(Math.abs(out.x - 40 / Math.tan(a)) < 0.05, `x ${out.x}`);
+  assert.ok(samples < 120, `${samples} samples (was ~470 at a fixed quarter-tile stride)`);
+});
+
+test('shadowSpanFor: grows with the orbit in coarse steps, clamped', () => {
+  assert.equal(shadowSpanFor(7), 24);
+  assert.equal(shadowSpanFor(16), 32);
+  assert.equal(shadowSpanFor(44), 56);
+  assert.equal(shadowSpanFor(200), 56);
+  // Quantised: a 1-tile dolly does not breathe the texel size.
+  assert.equal(shadowSpanFor(15.5), shadowSpanFor(15));
+});
+
+test('snapToLightTexel: moves only along the light axes, onto the texel grid', () => {
+  const right = { x: 1, y: 0, z: 0 };
+  const up = { x: 0, y: 0, z: 1 };
+  const out = { x: 0, y: 0, z: 0 };
+  snapToLightTexel(1.3, 7, 2.6, right, up, 0.5, out);
+  assert.deepEqual(out, { x: 1.5, y: 7, z: 2.5 });
+  // A tilted basis: the snapped point differs from the input only in the plane spanned by right/up.
+  const r = { x: Math.SQRT1_2, y: 0, z: -Math.SQRT1_2 };
+  const u = { x: 0, y: 1, z: 0 };
+  snapToLightTexel(0.3, 0.3, 0.3, r, u, 1, out);
+  const dx = out.x - 0.3;
+  const dy = out.y - 0.3;
+  const dz = out.z - 0.3;
+  // Orthogonal to the light direction (r × u).
+  const dirX = r.y * u.z - r.z * u.y;
+  const dirY = r.z * u.x - r.x * u.z;
+  const dirZ = r.x * u.y - r.y * u.x;
+  assert.ok(Math.abs(dx * dirX + dy * dirY + dz * dirZ) < 1e-9);
+  assert.ok(Math.abs((out.x * r.x + out.y * r.y + out.z * r.z) % 1) < 1e-9 || Math.abs(((out.x * r.x + out.y * r.y + out.z * r.z) % 1) - 1) < 1e-9);
+});

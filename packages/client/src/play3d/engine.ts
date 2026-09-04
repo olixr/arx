@@ -1,12 +1,12 @@
 /**
- * THE SECOND DOOR'S ENGINE (play3d S1) — renderer factory, scene,
- * camera rig, resize/DPR, context loss, and the frame loop.
+ * THE SECOND DOOR'S ENGINE (play3d S1; S3 review fixes) — scene, camera
+ * rig, resize/DPR, context loss, and the frame loop over a Backend.
  *
  * Laws:
- *  - ONE factory constructs the renderer (`createRenderer`). WebGL2
- *    today; the `webgpu` kind is the named seam for WebGPURenderer
- *    (three/webgpu) — it is not wired because the headless rig has no
- *    navigator.gpu to prove it on, and it must never be an accident.
+ *  - The engine never names a GPU API. It drives a `StageRenderer`
+ *    (stageBackend.ts) handed to it by THE ONE FACTORY
+ *    (backend/createBackend.ts); context loss reaches it through
+ *    `Backend.watchContext`.
  *  - Real projection, real depth: PerspectiveCamera, depth buffer on
  *    everything. There is no y-sort anywhere in this client.
  *  - The ORBIT rig (orbit.ts) owns the camera: input lands on a target
@@ -14,51 +14,26 @@
  *    around the player's head.
  *  - DPR is CAPPED (2, and 1.5 past 3.5M CSS px — the 2D client's
  *    render-scale lesson: fill rate is the cost on a Retina window).
- *  - Fixed-step SIM (30 Hz accumulator, clamped catch-up) vs per-frame
- *    RENDER with an interpolation alpha, so gameplay stepping never
- *    depends on the display rate.
- *  - Context loss is handled: lost → loop stops, restored → resumes;
- *    Three re-uploads retained resources on its own.
+ *  - Resize is OBSERVED, not assumed: a ResizeObserver on the canvas
+ *    catches CSS-driven size changes with no window event, a
+ *    `(resolution: Ndppx)` media listener catches a monitor hop at the
+ *    same CSS size, and the window listener stays as the fallback.
+ *  - THE FRAME ORDER: `frame` (input, the game step, where the orbit
+ *    target goes) → the camera is placed and its matrices refreshed →
+ *    `late` (everything that reads the camera: frustum culling, body
+ *    repaints, the cursor pick, the chrome's pins) → `draw`. Nothing
+ *    reads a stale camera; `renderOnce` keeps the same order.
+ *  - Simulation stepping is NOT this engine's: ClientGame runs its own
+ *    fixed-step tick inside `update()` (the 2D client's law, one law
+ *    for both doors). The engine hands `frame` the wall dt only.
+ *  - Context loss is handled: lost → loop stops, restored → resumes and
+ *    the owner is told (it re-bakes what it chose not to retain).
  *  - `dispose()` releases everything it made; the owner disposes what
  *    it added to the scene.
  */
 import * as THREE from 'three';
 import { ORBIT_LIMITS, clampOrbit, dollyBy, easeAngle, easeTowards, orbitOffset, type OrbitPose } from './orbit.js';
-
-export type BackendKind = 'webgl' | 'webgpu';
-
-export interface RendererOpts {
-  kind?: BackendKind;
-  antialias?: boolean;
-}
-
-/** THE ONE FACTORY. */
-export function createRenderer(canvas: HTMLCanvasElement, opts: RendererOpts = {}): THREE.WebGLRenderer {
-  const kind = opts.kind ?? 'webgl';
-  if (kind === 'webgpu') {
-    // The seam: `import('three/webgpu')` → WebGPURenderer with the same
-    // public surface this engine drives (setSize/setPixelRatio/render/
-    // info/shadowMap/outputColorSpace). Unverifiable in the headless
-    // rig (no navigator.gpu), so it stays a named refusal, not a guess.
-    throw new Error('play3d: webgpu backend is not wired yet (see docs/play3d-plan.md)');
-  }
-  const renderer = new THREE.WebGLRenderer({
-    canvas,
-    antialias: opts.antialias ?? true,
-    powerPreference: 'high-performance',
-    stencil: false,
-  });
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.NoToneMapping;
-  renderer.shadowMap.enabled = true;
-  // PCFSoftShadowMap is deprecated in r185 (collapses to PCF); PCF +
-  // shadow.radius is the soft edge now.
-  renderer.shadowMap.type = THREE.PCFShadowMap;
-  // We reset the ledger ourselves at frame start so a multi-pass frame
-  // (shadow map + scene + post) confesses its whole cost, not the last pass.
-  renderer.info.autoReset = false;
-  return renderer;
-}
+import type { Backend, StageRenderer } from './stageBackend.js';
 
 /** The 2D client's render-scale law: cap effective DPR by CSS area. */
 export function capDpr(devicePixelRatio: number, cssW: number, cssH: number): number {
@@ -68,19 +43,16 @@ export function capDpr(devicePixelRatio: number, cssW: number, cssH: number): nu
 }
 
 export interface EngineHooks {
-  /** Fixed-step simulation. */
-  sim: (dt: number, nowMs: number) => void;
-  /** Per-frame update before render; alpha = sim interpolation. */
-  frame: (dt: number, alpha: number, nowMs: number) => void;
+  /** Input, the game step, the orbit target. Runs BEFORE the camera is placed. */
+  frame: (dt: number, nowMs: number) => void;
+  /** Everything that reads the camera. Runs AFTER it is placed. */
+  late: (dt: number, nowMs: number) => void;
   /** The draw (post stack or plain render). */
   draw: () => void;
 }
 
-const SIM_DT = 1 / 30;
-const MAX_CATCHUP = 5;
-
 export class Engine {
-  readonly renderer: THREE.WebGLRenderer;
+  readonly renderer: StageRenderer;
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
   /** Where the orbit looks (the player's chest), world units. */
@@ -92,9 +64,11 @@ export class Engine {
   private readonly offset = new THREE.Vector3();
   private raf = 0;
   private lastMs = 0;
-  private acc = 0;
   private running = false;
   private lost = false;
+  private readonly unwatchContext: () => void;
+  private readonly observer: ResizeObserver | null;
+  private dprMedia: MediaQueryList | null = null;
   cssW = 1;
   cssH = 1;
   dpr = 1;
@@ -103,8 +77,7 @@ export class Engine {
   onResize: ((cssW: number, cssH: number, dpr: number) => void) | null = null;
   onContext: ((lost: boolean) => void) | null = null;
 
-  private readonly onLost = (e: Event): void => {
-    e.preventDefault();
+  private readonly onLost = (): void => {
     this.lost = true;
     cancelAnimationFrame(this.raf);
     this.onContext?.(true);
@@ -114,33 +87,44 @@ export class Engine {
     this.onContext?.(false);
     if (this.running) this.schedule();
   };
-  private readonly onWindowResize = (): void => this.resize();
+  private readonly onAnyResize = (): void => this.resize();
 
   constructor(
     readonly canvas: HTMLCanvasElement,
+    readonly backend: Backend,
     private readonly hooks: EngineHooks,
-    opts: RendererOpts = {},
   ) {
-    this.renderer = createRenderer(canvas, opts);
+    this.renderer = backend.renderer;
     this.camera = new THREE.PerspectiveCamera(40, 1, 0.5, 260);
     this.scene.add(this.camera);
-    canvas.addEventListener('webglcontextlost', this.onLost);
-    canvas.addEventListener('webglcontextrestored', this.onRestored);
-    window.addEventListener('resize', this.onWindowResize);
+    this.unwatchContext = backend.watchContext(this.onLost, this.onRestored);
+    window.addEventListener('resize', this.onAnyResize);
+    this.observer = typeof ResizeObserver === 'function' ? new ResizeObserver(this.onAnyResize) : null;
+    this.observer?.observe(canvas);
     this.resize();
   }
 
   resize(): void {
     const w = Math.max(1, this.canvas.clientWidth || window.innerWidth);
     const h = Math.max(1, this.canvas.clientHeight || window.innerHeight);
+    const devicePr = window.devicePixelRatio || 1;
     this.cssW = w;
     this.cssH = h;
-    this.dpr = capDpr(window.devicePixelRatio || 1, w, h);
+    this.dpr = capDpr(devicePr, w, h);
     this.renderer.setPixelRatio(this.dpr);
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    this.armDprWatch(devicePr);
     this.onResize?.(w, h, this.dpr);
+  }
+
+  /** Re-arm the monitor-hop listener for the ratio we just laid out at. */
+  private armDprWatch(devicePr: number): void {
+    if (typeof window.matchMedia !== 'function') return;
+    this.dprMedia?.removeEventListener('change', this.onAnyResize);
+    this.dprMedia = window.matchMedia(`(resolution: ${devicePr}dppx)`);
+    this.dprMedia.addEventListener('change', this.onAnyResize);
   }
 
   /** Orbit input: drag pixels + wheel notches this frame. */
@@ -162,7 +146,7 @@ export class Engine {
     this.pose.dist = this.want.dist;
   }
 
-  /** Ease the live pose and place the camera on the orbit. */
+  /** Ease the live pose, place the camera on the orbit, refresh its matrices. */
   private placeCamera(dt: number): void {
     this.pose.yaw = easeAngle(this.pose.yaw, this.want.yaw, 10, dt);
     this.pose.pitch = easeTowards(this.pose.pitch, this.want.pitch, 10, dt);
@@ -175,6 +159,9 @@ export class Engine {
     this.camera.near = Math.max(0.3, this.pose.dist * 0.04);
     this.camera.far = Math.max(200, this.pose.dist * 8 + ORBIT_LIMITS.distMax);
     this.camera.updateProjectionMatrix();
+    // The `late` hook reads matrixWorldInverse (frustum, pick, anchors)
+    // before render() would otherwise refresh it.
+    this.camera.updateMatrixWorld();
   }
 
   get yaw(): number {
@@ -197,43 +184,37 @@ export class Engine {
     this.raf = requestAnimationFrame(this.tick);
   }
 
+  /** One frame in the law's order (`poseDt` lets a probe snap the orbit). */
+  private step(dt: number, poseDt: number, nowMs: number): void {
+    this.hooks.frame(dt, nowMs);
+    this.placeCamera(poseDt);
+    this.hooks.late(dt, nowMs);
+    this.renderer.info.reset();
+    this.hooks.draw();
+  }
+
   private readonly tick = (nowMs: number): void => {
     if (!this.running || this.lost) return;
     this.schedule();
     const raw = nowMs - this.lastMs;
     this.lastMs = nowMs;
     this.frameMs = raw;
+    // A tab back from the background does not replay its whole absence.
     const dt = Math.min(0.1, raw / 1000);
-    // Fixed-step sim with bounded catch-up (a tab coming back from
-    // the background does not simulate its whole absence).
-    this.acc += dt;
-    let steps = 0;
-    while (this.acc >= SIM_DT && steps < MAX_CATCHUP) {
-      this.hooks.sim(SIM_DT, nowMs);
-      this.acc -= SIM_DT;
-      steps++;
-    }
-    if (steps === MAX_CATCHUP) this.acc = 0;
-    const alpha = this.acc / SIM_DT;
-    this.hooks.frame(dt, alpha, nowMs);
-    this.placeCamera(dt);
-    this.renderer.info.reset();
-    this.hooks.draw();
+    this.step(dt, dt, nowMs);
   };
 
-  /** Render one frame synchronously (probe use). */
+  /** Render one frame synchronously (probe use); the pose snaps. */
   renderOnce(nowMs = performance.now()): void {
-    this.hooks.frame(0.016, 1, nowMs);
-    this.placeCamera(1);
-    this.renderer.info.reset();
-    this.hooks.draw();
+    this.step(0.016, 1, nowMs);
   }
 
   dispose(): void {
     this.stop();
-    this.canvas.removeEventListener('webglcontextlost', this.onLost);
-    this.canvas.removeEventListener('webglcontextrestored', this.onRestored);
-    window.removeEventListener('resize', this.onWindowResize);
-    this.renderer.dispose();
+    this.unwatchContext();
+    window.removeEventListener('resize', this.onAnyResize);
+    this.observer?.disconnect();
+    this.dprMedia?.removeEventListener('change', this.onAnyResize);
+    this.backend.dispose();
   }
 }

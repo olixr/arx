@@ -1,5 +1,7 @@
 /**
- * THE POST STACK (play3d S1) — the HD-2D unifier, on EffectComposer.
+ * THE POST STACK ON WEBGL (play3d S1; backend/ since S3) — the HD-2D
+ * unifier, on EffectComposer. Reached only through
+ * `Backend.createPost` (stageBackend.ts).
  *
  *   RenderPass (scene → linear half-float target with a DEPTH texture)
  *   → InkPass (ONE fullscreen pass: depth-edge INK ring, tilt-shift,
@@ -16,6 +18,14 @@
  * cliff lips, billboards against sky, bodies against ground — without
  * a normal buffer or a second geometry pass.
  *
+ * The composer target is MULTISAMPLED (4×): the canvas itself carries
+ * no MSAA (backend/webgl.ts), so the scene's edges — cliff lips,
+ * terrain silhouettes — resolve here, and the depth texture the ink
+ * pass reads is the resolved one. The target is built at the
+ * renderer's DRAWING-BUFFER size and the composer is never told a
+ * pixel ratio twice (EffectComposer multiplies a passed target's size
+ * by the ratio again on setPixelRatio — the dpr² allocation).
+ *
  * Toggleable: `enabled = false` renders the scene straight to the
  * canvas. Each stage has its own strength uniform for A/B.
  */
@@ -24,6 +34,10 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js';
+import type { PostStage } from '../stageBackend.js';
+
+/** The composer target's MSAA sample count. */
+const SAMPLES = 4;
 
 const INK_VERT = /* glsl */ `
 varying vec2 vUv;
@@ -164,11 +178,13 @@ class InkPass extends Pass {
   }
 }
 
-export class PostStack {
+export class PostStack implements PostStage {
   enabled = true;
   private readonly composer: EffectComposer;
   private readonly target: THREE.WebGLRenderTarget;
+  private readonly scenePass: RenderPass;
   private readonly ink: InkPass;
+  private readonly output: OutputPass;
 
   constructor(
     private readonly renderer: THREE.WebGLRenderer,
@@ -180,14 +196,17 @@ export class PostStack {
     this.target = new THREE.WebGLRenderTarget(size.x, size.y, {
       type: THREE.HalfFloatType,
       depthTexture: depth,
-      samples: 0,
+      samples: SAMPLES,
     });
+    // The composer reads the renderer's pixel ratio itself; `resize`
+    // below is the only sizing path after construction.
     this.composer = new EffectComposer(renderer, this.target);
-    this.composer.addPass(new RenderPass(scene, camera));
+    this.scenePass = new RenderPass(scene, camera);
+    this.composer.addPass(this.scenePass);
     this.ink = new InkPass(camera);
     this.composer.addPass(this.ink);
-    this.composer.addPass(new OutputPass());
-    this.composer.setPixelRatio(renderer.getPixelRatio());
+    this.output = new OutputPass();
+    this.composer.addPass(this.output);
   }
 
   /** Strengths 0..1 for A/B: ink ring, tilt-shift, grade. */
@@ -211,8 +230,12 @@ export class PostStack {
   }
 
   dispose(): void {
+    // EffectComposer.dispose releases its two targets and the copy pass
+    // only; the passes we added own materials and quads of their own.
     this.composer.dispose();
+    this.scenePass.dispose();
     this.ink.dispose();
+    this.output.dispose();
     this.target.dispose();
   }
 }

@@ -20,9 +20,15 @@
  *     texture holds every tile's own top. When the chain completes the
  *     canvas becomes a CanvasTexture uploaded ONCE (mipmapped,
  *     anisotropic, sRGB) and the placeholder material is swapped for
- *     the painted one. The bake's gutter is kept and the UVs inset past
- *     it — the gutter is real neighbour content and is exactly what a
- *     bilinear/mip sampler wants at chunk seams.
+ *     the painted one. THE CANVAS PAYS ONCE (the 2D client's B4
+ *     lesson): the moment the upload lands (`tex.onUpdate`) the 776²
+ *     bake canvas is shrunk to 1×1 — the GPU copy is the only copy, and
+ *     a ring of 49 chunks does not also hold ~118 MB of CPU bitmaps.
+ *     A context loss therefore cannot re-upload from the image: the
+ *     owner calls `reset()` on restore and the ring re-bakes. The bake's
+ *     gutter is kept and the UVs inset past it — the gutter is real
+ *     neighbour content and is exactly what a bilinear/mip sampler
+ *     wants at chunk seams.
  *  3. Eviction past ring+1: geometry, both materials and the texture
  *     are disposed, the chunk's standing statics with them, and the
  *     byte ledger is debited. No leaks; the HUD shows the ledger.
@@ -42,7 +48,7 @@
  */
 import * as THREE from 'three';
 import { type SpriteAtlas } from './sprites.js';
-import type { BillboardClock } from './billboardMaterial.js';
+import type { BillboardClock, BillboardFactory } from './billboard.js';
 import type { WorldSource3D } from './world.js';
 /** Bake density: px per tile. 24 keeps a 32-tile chunk at 776² (2.4MB). */
 export declare const BAKE_PX = 24;
@@ -65,7 +71,10 @@ export interface GroundStats {
     baking: number;
     bakesDone: number;
     bakeMsLast: number;
+    /** GPU bytes (mips counted). */
     textureBytes: number;
+    /** CPU bake canvases still held (in flight or awaiting their upload). */
+    canvasBytes: number;
     faces: number;
     statics: number;
     staticDraws: number;
@@ -74,6 +83,7 @@ export declare class GroundStreamer {
     private readonly world;
     private readonly atlas;
     private readonly clock;
+    private readonly billboards;
     readonly group: THREE.Group<THREE.Object3DEventMap>;
     private readonly recs;
     private readonly ring;
@@ -83,9 +93,11 @@ export declare class GroundStreamer {
     readonly stats: GroundStats;
     /** Fires whenever the lamp roster changes (chunk load/evict). */
     onLampsChanged: ((lamps: LampSpot[]) => void) | null;
-    constructor(scene: THREE.Scene, world: WorldSource3D, atlas: SpriteAtlas, clock: BillboardClock);
+    constructor(scene: THREE.Scene, world: WorldSource3D, atlas: SpriteAtlas, clock: BillboardClock, billboards: BillboardFactory);
     /** World-unit height of the ground under a world point. */
     heightAt(wx: number, wy: number): number;
+    /** `heightAt` as one bound function (handed out, never re-minted). */
+    readonly heightAtFn: (wx: number, wy: number) => number;
     private readonly levelAt;
     private readonly isRamp;
     private readonly groundSampler;

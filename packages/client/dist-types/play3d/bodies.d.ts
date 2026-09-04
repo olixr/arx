@@ -17,10 +17,11 @@
  */
 import * as THREE from 'three';
 import type { ClientGame } from '../game/clientGame.js';
-import type { BillboardClock } from './billboardMaterial.js';
+import type { BillboardClock, BillboardFactory } from './billboard.js';
 export declare class EntityStage {
     private readonly scene;
     private readonly clock;
+    private readonly billboards;
     private readonly groundY;
     private readonly recs;
     private own;
@@ -30,11 +31,12 @@ export declare class EntityStage {
     /** Confession. */
     bodies: number;
     paints: number;
-    constructor(scene: THREE.Scene, clock: BillboardClock, groundY: (wx: number, wy: number) => number);
+    constructor(scene: THREE.Scene, clock: BillboardClock, billboards: BillboardFactory, groundY: (wx: number, wy: number) => number);
     private humanoidFromAppearance;
     private kindFor;
     private ownKindFor;
     private make;
+    private static kitMoved;
     private drop;
     /** One frame: sync the set to the game, advance and paint what is visible. */
     update(game: ClientGame, dt: number, nowMs: number, camYaw: number, frustum: THREE.Frustum): void;

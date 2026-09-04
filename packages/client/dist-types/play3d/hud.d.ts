@@ -26,6 +26,8 @@ export declare class Confession {
     constructor(parent: HTMLElement);
     /** Feed one frame's wall interval (ms). */
     frame(ms: number, nowMs: number): void;
+    /** True when the next `update` will repaint — build its lines only then. */
+    due(nowMs: number): boolean;
     /** Repaint the overlay at most every 250 ms. */
     update(nowMs: number, info: {
         render: {
