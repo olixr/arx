@@ -17,8 +17,10 @@
  *    cliff wall wears the cliff tile's baked art, chunk borders never
  *    double-emit, and the low side never paints a grass wall.
  *  - Faces stretch the tile rect vertically (a 3-level drop is one
- *    stretched rect). Honest placeholder — S2 gives cliffs their own
- *    face painter (cliffArt tones) in an atlas.
+ *    stretched rect). Honest placeholder — W2's terrain-forms lane
+ *    lays real cliff art over these faces from a face atlas
+ *    (structures/cliffFaces.ts), reading the SAME faces through
+ *    `collectStepFaces` below (per-face metadata, no geometry change).
  *  - UVs address the baked chunk canvas INSIDE its gutter, so the
  *    gutter's real neighbour content feeds the sampler at chunk edges
  *    (the same reason the 2D blit insets) and nothing is cropped.
@@ -295,4 +297,103 @@ export function buildHeightfield(inp: HeightfieldInput): HeightfieldMesh {
     maxY: sink.maxY,
     minY: sink.minY,
   };
+}
+
+// ------------------------------------------------- per-face metadata (W2)
+
+/** Which tile edge a step face stands on (the HIGH tile's edge). */
+export type StepSide = 'N' | 'E' | 'S' | 'W';
+
+/**
+ * One vertical step face of the heightfield, as the TERRAIN-FORMS lane
+ * reads it: the owning (high) tile, the edge, the run a→b (west→east
+ * for N/S faces, north→south for E/W faces), the four corner heights
+ * in world units and the outward normal. `levels` is the drop in
+ * whole elevation levels (the tallest corner over the lowest — a
+ * ramp's sloped skirt rounds up).
+ */
+export interface StepFace {
+  tx: number;
+  ty: number;
+  side: StepSide;
+  ax: number;
+  az: number;
+  bx: number;
+  bz: number;
+  yTopA: number;
+  yTopB: number;
+  yBotA: number;
+  yBotB: number;
+  nx: number;
+  nz: number;
+  levels: number;
+}
+
+/**
+ * THE SAME FACES, LISTED: every vertical face `buildHeightfield` emits
+ * for the chunk, with its metadata, under the identical law (THE HIGH
+ * TILE OWNS THE FACE; average-of-corners strictly higher; ramps slope).
+ * Pure; a test holds its count equal to `buildHeightfield`'s
+ * `faceCount`. The W2 terrain-forms lane re-textures these faces from
+ * a cliff atlas; nothing here changes the geometry the ground wears.
+ */
+export function collectStepFaces(
+  inp: Pick<HeightfieldInput, 'cx' | 'cy' | 'size' | 'levelAt' | 'isRamp' | 'levelH'>,
+  out: StepFace[] = [],
+): StepFace[] {
+  const { cx, cy, size, levelAt, isRamp, levelH } = inp;
+  const x0 = cx * size;
+  const y0 = cy * size;
+  const c = new Float64Array(4);
+  const nb = new Float64Array(4);
+  const push = (
+    tx: number,
+    ty: number,
+    side: StepSide,
+    ax: number,
+    az: number,
+    bx: number,
+    bz: number,
+    tA: number,
+    tB: number,
+    bA: number,
+    bB: number,
+    nx: number,
+    nz: number,
+  ): void => {
+    const yTopA = tA * levelH;
+    const yTopB = tB * levelH;
+    const yBotA = bA * levelH;
+    const yBotB = bB * levelH;
+    const levels = Math.max(1, Math.ceil(Math.max(tA, tB) - Math.min(bA, bB) - EPS));
+    out.push({ tx, ty, side, ax, az, bx, bz, yTopA, yTopB, yBotA, yBotB, nx, nz, levels });
+  };
+  for (let ly = 0; ly < size; ly++) {
+    for (let lx = 0; lx < size; lx++) {
+      const tx = x0 + lx;
+      const ty = y0 + ly;
+      cornerLevels(tx, ty, levelAt, isRamp, c);
+      // East edge: own ne/se vs neighbour nw/sw (a = north end).
+      cornerLevels(tx + 1, ty, levelAt, isRamp, nb);
+      if (c[1]! + c[2]! > nb[0]! + nb[3]! + EPS) {
+        push(tx, ty, 'E', tx + 1, ty, tx + 1, ty + 1, c[1]!, c[2]!, nb[0]!, nb[3]!, 1, 0);
+      }
+      // West edge: own nw/sw vs neighbour ne/se (a = north end).
+      cornerLevels(tx - 1, ty, levelAt, isRamp, nb);
+      if (c[0]! + c[3]! > nb[1]! + nb[2]! + EPS) {
+        push(tx, ty, 'W', tx, ty, tx, ty + 1, c[0]!, c[3]!, nb[1]!, nb[2]!, -1, 0);
+      }
+      // South edge: own sw/se vs neighbour nw/ne (a = west end).
+      cornerLevels(tx, ty + 1, levelAt, isRamp, nb);
+      if (c[3]! + c[2]! > nb[0]! + nb[1]! + EPS) {
+        push(tx, ty, 'S', tx, ty + 1, tx + 1, ty + 1, c[3]!, c[2]!, nb[0]!, nb[1]!, 0, 1);
+      }
+      // North edge: own nw/ne vs neighbour sw/se (a = west end).
+      cornerLevels(tx, ty - 1, levelAt, isRamp, nb);
+      if (c[0]! + c[1]! > nb[3]! + nb[2]! + EPS) {
+        push(tx, ty, 'N', tx, ty, tx + 1, ty, c[0]!, c[1]!, nb[3]!, nb[2]!, 0, -1);
+      }
+    }
+  }
+  return out;
 }

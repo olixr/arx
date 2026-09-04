@@ -58,6 +58,7 @@ import {
 } from '../render/terrain.js';
 import { ELEV_H } from '../render/elevPick.js';
 import { buildHeightfield, heightAtPoint } from './heightfield.js';
+import { deckLiftAt } from './structures/deckFaces.js';
 import { chunkOf, outsideRing, packChunk, ringAround, type RingEntry } from './chunkRing.js';
 import { buildChunkStatics, type ChunkStatics, type SpriteAtlas } from './sprites.js';
 import type { BillboardClock, BillboardFactory } from './billboard.js';
@@ -178,9 +179,13 @@ export class GroundStreamer {
     scene.add(this.group);
   }
 
-  /** World-unit height of the ground under a world point. */
+  /**
+   * World-unit height of the ground under a world point — the
+   * heightfield's answer plus the deck lift (W2 terrain-forms: feet and
+   * boards agree by construction; `deckLiftAt` is pure and 0 off a deck).
+   */
   heightAt(wx: number, wy: number): number {
-    return heightAtPoint(wx, wy, this.levelAt, this.isRamp, ELEV_H, this.scratch);
+    return heightAtPoint(wx, wy, this.levelAt, this.isRamp, ELEV_H, this.scratch) + deckLiftAt(this.groundSampler, wx, wy);
   }
 
   /** `heightAt` as one bound function (handed out, never re-minted). */

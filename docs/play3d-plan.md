@@ -501,3 +501,62 @@ the 25-chunk interiors ring, 136 cumulative by the sixth scene).
   W4's camera concern, with `WALL_STUB` as the cut height.
 - **Static-cache / LOD:** none yet — one geometry per (chunk, material)
   rebuilt whole on a rev bump, like the ground.
+
+### W2 TERRAIN-FORMS — as built (2026-09-04)
+
+Decks and cliffs are geometry with painted faces. Modules under
+`packages/client/src/play3d/structures/` (headers state the laws):
+
+| file | what | real / placeholder |
+| --- | --- | --- |
+| `heightfield.ts` (+`collectStepFaces`) | THE SAME FACES, LISTED: per-face metadata for every vertical step the heightfield emits (owner tile, side, a→b run, four corner heights, normal, levels) under the identical law; geometry untouched. A test holds its count equal to `buildHeightfield().faceCount` over pseudo-random fields with ramps | real |
+| `cliffFaces.ts` | cliff strips: `mergeStepFaces` (straight runs per edge line, split on levels/brow/strip, sloped skirts alone, `contA/contB` continuity), `browOf` (the owner tile's ground, stepping inward past two Cliff rim tiles: Grass/GrassTall = turf), periodic strip maths (`stripU` wraps negatives), `cliffVariant`; `paintCliffStrip` = cliffArt `cliffFaceItem` :466-880 RE-EMITTED (drawCliffRun/bakeCliffRun are welded to the Renderer's sprite lanes) with a 4-tile PERIODIC lattice: rock gradient, macro drift, three breathing bed seams (variant-independent, dashed), block jointing whose widths divide the period, leaning fractures, jogged cracks, shouldering noses, per-course dark undercut, turf spill + tufts on the top course, foot AO, scree at the lowest; tones lifted (`litTone`) | real |
+| `deckFaces.ts` | `planDeckTile` over the portable terrain.ts predicates (isDeckTile whole-structure lift, fillCoversEdge exposure, deckWalkIsVertical, bridgeApronAt, deckArmVertical, isPorchSurface incl. carried tiles, porchArm re-emitted); `apronLift` + `deckLiftAt` = THE FOOT-HEIGHT ANSWER (0 off a deck, DOCK_LIFT on one, sloped across an apron, inside a notch fill, on a porch; world-keyed 5 s axis memo for per-frame callers); board strips (`paintDeckTopStrip` = paintDeckBoards re-emitted flat, 4 tiles, variant by world row), rim (`paintDeckRim` = the bridge south-face rim block: weathered board, lip, foot shadow, support ticks, rim joint; porch adds footing blocks), pile cards through terrain.ts `paintDeckPile` (collar on the water-plane row), flat tone tiles | real |
+| `terrainForms.ts` | `buildTerrainFormStructures`: cliffs from the bordered snapshot → runs → one quad each, THE CURTAIN HANGS A HAIR PROUD (crown +0.006, foot +0.03 along the normal; exposed ends extend 0.03 so convex corners close, continuing ends never extend); decks from the LIVE world (the bake's own sampler + memo → slab and boards agree): top quad (apron-sloped corners), rim on exposed edges — a JOIST_H (0.12) joist over water, seated to the ground where the edge meets land at grade / on every porch edge / along an apron's sloping sides — THE JETTY IS HOLLOW; pile prisms on water-facing south spans (pairs at 0.18/0.82, driven PILE_DRIVE 0.3 below the plane) and dock side legs (hash-gated, world-keyed); bridge kerb stringers along the walk's sides and stone thresholds at land ends that do not ramp; the porch tread step; 45° notch fills (top tri + hypotenuse rim, seated on a bank notch). All 'opaque' → one draw per chunk per page | real |
+| `ground.ts` (2 lines) | `heightAt` = heightfield + `deckLiftAt` — bodies, props and lamps stand ON the boards (the brief's feet-on-deck law). Slab bases read the sampler's own elev so they never double-lift | real |
+| `dev/play3dTerrainForms.mjs` | the lane's driver (harness law verbatim): `terraces` (48,−78), `terraces-south`, `weir-dock` (−3,−15: map 154..159×45..47 + origin −160,−64), `lane-bridge` (0,52: brook bridge 157..163×110..114), `porch` (−67,48: map 90..96,109), `amberford-bridge` (534,80) × low/high pitch | real |
+
+**Gates:** `npm run typecheck` green; `terrainForms.test.ts` 11 tests
+(faces == heightfield faceCount over random fields, plateau owner
+faces, strip maths, run merging + continuity, brow, jetty lift vs dry
+road, bridge aprons + lift interpolation, porch carried tiles/tread/
+wall skip, strip variants, pile plane row); full client suite green
+for this lane's files (1062/1063 — the one failure is the WALLS lane's
+uncommitted `doors.test.ts`); `check:cycles` 3/0/0/1; live proof on
+rig-36 as `perf12_probe` with a clean console —
+`dev/play3d-shots/w2-terrain-{terraces,terraces-south,weir-dock,lane-bridge,porch,amberford-bridge}-{low,high}.png`
+(terraces: 68 quads / 1 page; amberford: 53 deck quads, notch fills
+at the dock junction; structures stay 1 opaque draw per chunk for
+this lane).
+
+**Judged (two rounds):** round 1 — cliffs wore the art but read as
+ashlar (regular beds + block grid), bodies stood 0.22 below deck tops;
+round 2 — beds sway more (amplitude 0.24, 3 cells), fewer tinted
+blocks/fractures, stronger masses; `heightAt` carries the lift, feet on
+the boards at the porch, the dock and the bridge. No z-fighting, no
+sliver at the brink from the high pitch, corners closed, piles reach the
+water plane, aprons pour onto the banks, kerbs run the bridge sides.
+
+**Gaps / decisions:**
+
+- **The placeholder faces still exist under the curtains** (the ground
+  mesh keeps one material). INTEGRATE may pass a `skipFaces` to
+  `buildHeightfield` (or a geometry group + second material) once the
+  curtains are trusted; then `CLIFF_EPS_*` can go to 0.
+- **The bake's up-shifted boards** (DOCK_LIFT/FLAT rows north of each
+  deck tile) still sit in the ground texture: hidden under the slab,
+  visible only through the hollow jetty's gap at a very low pitch and as
+  a thin plank strip on the bank at a dock root. The honest fix is a
+  bake flag that paints lifted decks flat for the 3D client
+  (terrain.ts, not this lane's file).
+- **Bridge rails** are live renderer items in the 2D (not baked) and
+  have no lane; kerbs stand in. **Bridge cross-bracing** between pile
+  pairs is not emitted.
+- **Cliffs are axis-aligned** (the heightfield's law); the 2D bevels
+  diagonal dual cells (FACE_SEGS). A contour rim would be new geometry.
+- **The lift memo** (terrain.ts 5 s world-keyed) can hold a verdict
+  computed while a neighbour chunk was unloaded until it flushes; the
+  bake shares the same memo, so slab and boards stay in agreement.
+- `paintDeckSideFascia` is the 2D's EDGE-ON rim sliver (px·0.06 wide,
+  for the top-down frame) — not a face texture; the rim band re-emits
+  the south-face block it stands for.
