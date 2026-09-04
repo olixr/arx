@@ -268,9 +268,9 @@ export interface DrawItem {
      * ROW of the volume's SOUTH/NEAR ground edge — the face you walk
      * BEHIND — so a billboard whose foot is south of (nearer than) this
      * row sorts AFTER the volume (drawn in front) and one north of it
-     * sorts before (behind). A row comparison ⇒ zoom-invariant. At q=0
-     * this equals the volume's raw south-edge sortY (walls already sort
-     * at `y1+1`), so the flat order is preserved (golden gate).
+     * sorts before (behind). A row comparison ⇒ zoom-invariant. This
+     * equals the volume's raw south-edge sortY (walls already sort at
+     * `y1+1`), so the flat order is preserved (golden gate).
      *
      * DRAW_ORDER prefers `nearRow` over `sortY` as the depth term, and on
      * an exact depth TIE a volume (nearRow set) draws BEFORE a billboard
@@ -3429,7 +3429,7 @@ export declare class Renderer {
     private static readonly TALL_LOD_NEAR_ROWS;
     /** G-PERF coalesced-band world-y span cap. A merged band renders into an
      *  atlas slot as tall as its span + a blade height, so an unbounded merge
-     *  balloons the atlas (a tall run under a lean can span the screen). This
+     *  balloons the atlas (a tall run can span the screen). This
      *  keeps every slot atlas-thin while the band COUNT still falls ~this:pitch
      *  to one in a body-free stretch — the sub-draw/blit reduction without the
      *  atlas blow-up. Tuned against dense-meadow ground cost (see plan). */

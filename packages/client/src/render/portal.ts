@@ -20,7 +20,7 @@
  * Style laws honored here: hard-edged square masses only (no chamfer,
  * no blur), lift-only stone shading, foreshortened top planes on the
  * capitals and keystone (2.5D top-plane law), axis-aligned pier faces
- * (PERSP_LEAN=0 law), and every animated phase is hash-desynced per
+ * (no skew), and every animated phase is hash-desynced per
  * portal so two gates never pulse in lockstep.
  */
 

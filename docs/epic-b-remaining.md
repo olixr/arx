@@ -1,3 +1,5 @@
+> **HISTORICAL — the lean was removed from the 2D client on 2026-09-04 (see docs/perspective-review-and-3d-client-plan.md); the perspective effort continues in the separate 3D client.**
+
 # Epic B — remaining line items (handoff)
 
 **As of 2026-09-02.** Epic B (THE CAMERA LEARNS TO LEAN) shipped to prod as an

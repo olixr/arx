@@ -264,9 +264,9 @@ export class GrassGpuLayer {
       return this.canvas; // a clean transparent frame
     }
 
-    // ONE PROJECTION: the whole meadow projects through projectWorld's
-    // homography (grassProjectGlsl), so blades and blooms parallax with the
-    // world at exactly the player's rate under any lean.
+    // ONE PROJECTION: the whole meadow projects through the camera affine
+    // (grassProjectGlsl), so blades and blooms parallax with the world at
+    // exactly the player's rate.
     const proj: GrassProj = {
       scale: f.scale,
       yScale: f.yScale,
@@ -303,7 +303,7 @@ export class GrassGpuLayer {
    * alpha. Because every cast is thrown by the SAME per-vertex wind term
    * the blades use, the whole field's shade sways uniformly — no baked
    * monolith, no player-centred radius. Both quad ends are ground points
-   * run through projectWorld, so it is perspective-correct at q>0.
+   * run through the camera projection.
    *
    * `shade` is the cast colour in 0..1; `sx,sy` is the world-ground throw
    * per unit world-height (grassShadowOffset). Returns null when the cast

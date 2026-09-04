@@ -105,7 +105,7 @@ export declare class GrassGpuLayer {
      * alpha. Because every cast is thrown by the SAME per-vertex wind term
      * the blades use, the whole field's shade sways uniformly — no baked
      * monolith, no player-centred radius. Both quad ends are ground points
-     * run through projectWorld, so it is perspective-correct at q>0.
+     * run through the camera projection.
      *
      * `shade` is the cast colour in 0..1; `sx,sy` is the world-ground throw
      * per unit world-height (grassShadowOffset). Returns null when the cast

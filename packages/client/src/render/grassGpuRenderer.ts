@@ -13,7 +13,7 @@
  * texture atlas: the blades are flat graded facets, not textured detail.
  *
  * This is the renderer in isolation (fed instances, a view matrix, and
- * time). Scene integration — the camera homography, depth-LOD, the
+ * time). Scene integration — the camera projection, the
  * y-sort slot, the ?grass=gpu flag — rides on top (proposal §A / G-2).
  */
 import { grassWindGlsl, grassProjectGlsl, GRASS_INSTANCE_FLOATS, type GrassProj } from './grassGpu.js';
@@ -98,11 +98,10 @@ void main() {
   world.y -= up * height * (1.0 - press);          // grow up; flattened when pressed
   world.y += up * push.y * height;                 // trampled lay-over (y)
   world.y += wind.y * up * uWindGain.x * 0.15;     // slight sway
-  // ONE PROJECTION: the full projectWorld homography (perspective divide in
-  // the shader), so the whole blade — root through leaned/trampled tip —
-  // recedes with the world at exactly the player's parallax rate.
-  // ONE PROJECTION then the atlas remap: a pure NDC→NDC affine applied
-  // AFTER the perspective divide, so it is correct at q=0 and q>0 alike.
+  // ONE PROJECTION: the camera affine (grassProjectGlsl), so the whole
+  // blade — root through leaned/trampled tip — moves with the world at
+  // exactly the player's parallax rate; then the atlas remap, a pure
+  // NDC→NDC affine applied after the projection.
   vec4 c = grassProject(world);
   gl_Position = vec4(c.xy * uNdcRemap.xy + uNdcRemap.zw, 0.0, 1.0);
   vUp = up;
@@ -292,7 +291,7 @@ export class GrassGpuRenderer {
   }
 
   /**
-   * Draw the field. `proj` carries the frame's projectWorld homography
+   * Draw the field. `proj` carries the frame's camera projection
    * inputs (the whole meadow rides one projection). Options:
    *   · windGain — scales the whole-blade wind shear (default 0.12).
    *   · disturb  — walkers pressing the grass, packed 4 floats each

@@ -17,7 +17,7 @@ import { WX, WY } from './grass.js';
 import type { Blade } from './grass.js';
 
 /** The frame's projection uniforms for the grass shaders — the exact
- *  `projectWorld` inputs (the q=0 affine). Shared by the blade and
+ *  Camera.worldToScreen affine inputs. Shared by the blade and
  *  ornament programs so the whole meadow rides one projection. */
 export interface GrassProj {
   scale: number;
@@ -208,13 +208,13 @@ export function coalesceTallBands(
  * cross-band contamination, so a band's blit carries only its own blades)
  * into a distinct slot of ONE offscreen atlas — a single GL pass, then
  * cheap 2d blits at the interleaved y-sort slots. The blade shader still
- * projects through the full `projectWorld` homography (grassProjectGlsl),
+ * projects through the camera affine (grassProjectGlsl),
  * emitting NDC for the REAL screen (viewport `SW×SH` device px). This
  * returns the affine `gl_Position.xy = ndc·scale + bias` that RETARGETS
  * that real-screen NDC into the band's atlas slot: the screen device rect
  * at (bandSx,bandSy) maps to the atlas device rect at (ax,ay), same size.
- * Because it is a pure NDC→NDC affine applied AFTER the perspective
- * divide, it is correct for q=0 AND q>0. Pure + tested (corner mapping).
+ * It is a pure NDC→NDC affine applied after the projection. Pure + tested
+ * (corner mapping).
  *
  *   SW,SH = full-screen backbuffer size in DEVICE px (viewCss·dpr)
  *   AW,AH = atlas size in DEVICE px
@@ -242,9 +242,9 @@ export function bandNdcRemap(
 }
 
 /**
- * Build the world→clip `mat3` (column-major, 9 floats) the grass vertex
- * shader consumes as `uView` — for the ORTHO camera (q=0, the shipping
- * default). It composes the renderer's affine world→screen projection
+ * Build the world→clip `mat3` (column-major, 9 floats) a grass vertex
+ * shader could consume as `uView`. It composes the renderer's affine
+ * world→screen projection
  * (`screenX = wx·scale + ox`, `screenY = wy·scale·yScale + oy`, matching
  * Camera.worldToScreen; reference math in render/cameraProject.ts) with
  * the GL screen→NDC map, folding in
@@ -253,11 +253,10 @@ export function bandNdcRemap(
  * meadow paints it. `ox`/`oy` are the snapped screen origins (Camera.originX/Y);
  * `w`/`h` are the frame's CSS pixel dimensions. Alloc-free with `out`.
  *
- * RETIRED from the live path (Epic "THE ONE RENDER", B2): a lean is a true
- * projective map needing a per-vertex divide, not expressible in this affine
- * mat3. The grass shaders now project every vertex through `grassProjectGlsl`
- * (the full `projectWorld` homography) instead of this matrix. Kept only as a
- * pinned reference of the q=0 affine map (grassGpu.test.ts); no live caller.
+ * RETIRED from the live path (Epic "THE ONE RENDER", B2): the grass shaders
+ * project every vertex through `grassProjectGlsl` (the per-vertex form of the
+ * same affine) instead of this matrix. Kept only as a pinned reference of the
+ * affine map (grassGpu.test.ts); no live caller.
  */
 export function grassViewMatrix(
   scale: number,
@@ -280,9 +279,9 @@ export function grassViewMatrix(
  * THE ONE PROJECTION in GLSL (Epic "THE ONE RENDER", phase B2). The grass
  * vertex shaders map every blade/bloom world point to `gl_Position` through
  * THIS function — the exact Camera.worldToScreen affine (render/renderer.ts;
- * reference math `projectWorld` in render/cameraProject.ts,
- * the q=0 path), not a private ortho matrix, so the meadow parallaxes at
- * exactly the player's rate and never edge-crawls against bodies.
+ * reference math `projectWorld` in render/cameraProject.ts), not a private
+ * view matrix, so the meadow parallaxes at exactly the player's rate and
+ * never edge-crawls against bodies.
  *
  * The camera uniforms `(uScale, uYScale, uOrigin, uViewport)` carry the
  * frame's projection; `uOrigin` is the screen origin the feed computes with

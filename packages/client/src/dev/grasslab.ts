@@ -67,7 +67,7 @@ renderer.upload(instances, blades.length);
   `${blades.length.toLocaleString()} blades · 1 instanced draw`;
 
 // World→screen: fit the NX×NY field with margin, in the projectWorld terms
-// the shader now consumes (GrassProj). Ortho (q=0). The lab has separate
+// the shader now consumes (GrassProj). The lab has separate
 // x/y fits, folded into scale (x px/world) + yScale (y/x ratio). The centre
 // (NX/2, NY/2+2 — a bias so blades, which grow up, sit lower) lands mid-view.
 function viewProj(): GrassProj {

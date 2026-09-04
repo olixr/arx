@@ -78,7 +78,7 @@ test('a body BESIDE a wall (its foot row < the wall south edge) still sorts behi
   assert.deepEqual(order([beside, wall]), [beside, wall]);
 });
 
-// ── q=0 reduction: with occlusion OFF no item carries nearRow ──────────────
+// ── The flat reduction: with occlusion OFF no item carries nearRow ─────────
 
 test('with occlusion OFF (no nearRow) the comparator is the exact old sortY key', () => {
   // Reproduces the pre-A5 behaviour: sort purely by (shelf, sortY), stable.
@@ -95,7 +95,7 @@ test('with occlusion OFF (no nearRow) the comparator is the exact old sortY key'
 });
 
 test('a volume with nearRow === sortY sorts identically to the old key against other volumes', () => {
-  // At q=0 nearRow === the volume south-edge sortY, so volume-vs-volume
+  // nearRow === the volume south-edge sortY, so volume-vs-volume
   // ordering is unchanged from the raw-row era.
   const w1 = vol(4);
   const w2 = vol(6);

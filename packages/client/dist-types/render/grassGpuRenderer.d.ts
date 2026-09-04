@@ -13,7 +13,7 @@
  * texture atlas: the blades are flat graded facets, not textured detail.
  *
  * This is the renderer in isolation (fed instances, a view matrix, and
- * time). Scene integration — the camera homography, depth-LOD, the
+ * time). Scene integration — the camera projection, the
  * y-sort slot, the ?grass=gpu flag — rides on top (proposal §A / G-2).
  */
 import { type GrassProj } from './grassGpu.js';
@@ -49,7 +49,7 @@ export declare class GrassGpuRenderer {
     /** Upload the packed instance buffer for this frame's blades. */
     upload(instances: Float32Array, count: number): void;
     /**
-     * Draw the field. `proj` carries the frame's projectWorld homography
+     * Draw the field. `proj` carries the frame's camera projection
      * inputs (the whole meadow rides one projection). Options:
      *   · windGain — scales the whole-blade wind shear (default 0.12).
      *   · disturb  — walkers pressing the grass, packed 4 floats each

@@ -1,3 +1,5 @@
+> **HISTORICAL — the q-parameterized (lean-capable) pipeline this epic built was removed from the 2D client on 2026-09-04 (see docs/perspective-review-and-3d-client-plan.md); its flat-look gate (docs/the-one-render-verify.md), draw-order law and GPU grass live on. The perspective effort continues in the separate 3D client.**
+
 # Epic: THE ONE RENDER — a single perspective-native 2.5D foundation
 
 ## Context

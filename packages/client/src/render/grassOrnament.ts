@@ -149,7 +149,7 @@ void main() {
     vec2 corner = vec2(aVert.y * 2.0 - 1.0, aVert.z * 2.0 - 1.0);
     pos = center + corner * hf;
   }
-  gl_Position = grassProject(pos);   // ONE PROJECTION (projectWorld homography)
+  gl_Position = grassProject(pos);   // ONE PROJECTION (the camera affine)
   vPart = part;
   vPal = pal;
 }`;
@@ -292,7 +292,7 @@ export class GrassOrnamentRenderer {
     this.instanceCount = count;
   }
 
-  /** Draw every ornament. `proj` is the same projectWorld homography the
+  /** Draw every ornament. `proj` is the same camera projection the
    *  blades use; `bobGain` scales the wind nod (1 = the baked meadow's sway). */
   draw(proj: GrassProj, timeSec: number, bobGain = 1): void {
     const gl = this.gl;

@@ -270,14 +270,14 @@ test('grassProjectMirror is the plain affine (interleave bbox uses it)', () => {
 
 /**
  * G2 — THE MEADOW CASTS ITS OWN SHADE. The cast shader must be thrown by
- * the SAME wind and projected through the SAME homography as the blades
- * (uniform, radius-free, perspective-correct), and its ground throw must
+ * the SAME wind and projected through the SAME projection as the blades
+ * (uniform, radius-free), and its ground throw must
  * fold the sky shear to world units so it lands where the CPU shade did.
  */
 test('the grass cast shader embeds the shared wind and projection', () => {
   const src = grassShadowVertSrc();
   assert.match(src, /grassWind\(iRoot/); // thrown by the one wind
-  assert.match(src, /grassProject\(world\)/); // through the one homography
+  assert.match(src, /grassProject\(world\)/); // through the one projection
   assert.match(src, /uShadow \* H/); // ground throw scales with world height
 });
 

@@ -566,8 +566,8 @@ const CONTACT_MAX = 0.3;
 /**
  * The 2.5D depth pass. The ground stays a flat top-down plane (so all
  * collision, aim, and netcode math is untouched), but everything with
- * height EXTRUDES upward on screen and leans away from the screen
- * center — a fake tilted camera. Paired with the per-item y-sort this
+ * height EXTRUDES upward on screen — a fake tilted camera. Paired with
+ * the per-item y-sort this
  * buys true walk-behind occlusion: a wall or canopy south of you draws
  * over you, one north of you slides behind.
  */
@@ -1315,9 +1315,9 @@ export interface DrawItem {
    * ROW of the volume's SOUTH/NEAR ground edge — the face you walk
    * BEHIND — so a billboard whose foot is south of (nearer than) this
    * row sorts AFTER the volume (drawn in front) and one north of it
-   * sorts before (behind). A row comparison ⇒ zoom-invariant. At q=0
-   * this equals the volume's raw south-edge sortY (walls already sort
-   * at `y1+1`), so the flat order is preserved (golden gate).
+   * sorts before (behind). A row comparison ⇒ zoom-invariant. This
+   * equals the volume's raw south-edge sortY (walls already sort at
+   * `y1+1`), so the flat order is preserved (golden gate).
    *
    * DRAW_ORDER prefers `nearRow` over `sortY` as the depth term, and on
    * an exact depth TIE a volume (nearRow set) draws BEFORE a billboard
@@ -4142,12 +4142,9 @@ export class Renderer {
     entry: { cv: HTMLCanvasElement; au: number; av: number },
     px: number,
     baseY: number,
-    // B-1c depth thread: the mask bakes at the canonical MASK_S; the caller
-    // passes the depth-scaled screen scale so a distant caster's cast
-    // shrinks with its body. Defaults to camera.scale → identical at q=0.
-    sc: number = this.camera.scale,
   ): void {
-    const q = sc / Renderer.MASK_S;
+    // The mask bakes at the canonical MASK_S; scale it to the screen.
+    const q = this.camera.scale / Renderer.MASK_S;
     const ys = this.camera.yScale;
     const c = this.sdw;
     // On the shadow layer the base transform is a bare dpr scale, so
@@ -4225,15 +4222,15 @@ export class Renderer {
     tile: Tile,
     h: number,
     crowded: boolean,
-    sc: number = this.camera.scale, // B-1c depth thread (foreshortened cast)
   ): void {
     if (this.sky.shadowAlpha < 0.02 && this.frameLights.length === 0) return;
+    const sc = this.camera.scale;
     const B = Renderer.MASK_S;
     const hv = (((h % 8) + 8) % 8) * 2654435761;
     const entry = this.shadowMask(`r${tile}.${hv}.${crowded ? 1 : 0}`, 2.7, 2.0, 0.4, (_m, au, av) => {
       rockArt.drawRockFormation(this, au, av - B * 0.28, B, hv, tile, 0, crowded);
     });
-    if (entry) this.castMask(entry, px, py + sc * 0.28, sc);
+    if (entry) this.castMask(entry, px, py + sc * 0.28);
   }
 
   /**
@@ -4264,7 +4261,7 @@ export class Renderer {
         });
       },
     );
-    if (entry) this.castMask(entry, px, baseY, this.camera.scale);
+    if (entry) this.castMask(entry, px, baseY);
   }
 
   /**
@@ -5875,8 +5872,8 @@ export class Renderer {
     // the scene's darkness, THEN emissive bloom pops over it, then the
     // tilted-camera tilt-shift bands and the grade. HUD stays crisp.
     // The lightmap is built at the camera origin (worldToScreen(0,0)).
-    const orthoOx = this.camera.originX(this.w);
-    const orthoOy = this.camera.originY(this.h);
+    const camOx = this.camera.originX(this.w);
+    const camOy = this.camera.originY(this.h);
     // Lit-face heights in world-y units: faces rise N tiles of SCREEN
     // height, so divide the camera squash back out.
     const ys = this.camera.yScale;
@@ -5894,7 +5891,7 @@ export class Renderer {
     try {
       this.lighting.draw(
         this.ctx,
-        { w: this.w, h: this.h, scale: this.camera.scale, yScale: ys, ox: orthoOx, oy: orthoOy },
+        { w: this.w, h: this.h, scale: this.camera.scale, yScale: ys, ox: camOx, oy: camOy },
         this.sky,
         this.lights,
         this.blocksAt,
@@ -10472,8 +10469,7 @@ export class Renderer {
     const x1 = e ? (bleedE ? p.x + s + this.bakeBleedPx : this.camera.snapPx(p.x + s)) : p.x + s + 0.25;
     const y0 = n || nDoor ? this.camera.snapPx(p.y) : p.y - 0.25;
     const y1 = sw ? this.camera.snapPx(southBaseY) : southBaseY + 0.25;
-    const sideCol = shade(mat === Tile.WallWood ? skin.log : mat === Tile.WallStone ? '#6f697c' : '#2b2536', -6);
-    // Shared timber course geometry — face, flanks, and corner ends
+    // Shared timber course geometry — face and corner ends
     // must agree on where every log beds. The stack reads bottom-up:
     // stone plinth, squared sill beam, whole chinked log courses at
     // ~0.42-tile pitch (absolute — taller walls stack MORE logs),
@@ -10483,9 +10479,9 @@ export class Renderer {
     const plateH = s * 0.13;
     const spanPx = hs - plateH - plinthH - sillH;
     // Divide this tile's own spanPx into an integer log count that fills
-    // it exactly. All three timber emitters below — the south face (li
-    // loop), the flank chink lines, and the side-face chink lines — read
-    // nLogs/logH/chinkG, so keying them here keeps them in lockstep.
+    // it exactly. Both timber emitters below — the south face (li loop)
+    // and the side-face chink lines — read nLogs/logH/chinkG, so keying
+    // them here keeps them in lockstep.
     const nLogs = Math.max(1, Math.round(spanPx / (s * 0.42)));
     const chinkG = Math.min(s * 0.055, spanPx * 0.05);
     const logH = (spanPx - chinkG * (nLogs - 1)) / nLogs;
@@ -10506,65 +10502,6 @@ export class Renderer {
       draw: () => {
         const yBase = southBaseY; // south edge at ground level
         const yTop = yBase - hs; // south edge, lifted to the crown
-        // The face's top-edge x (== x0/x1).
-        const tx0 = x0;
-        const tx1 = x1;
-        // Flank revealed by the lean: a prism right of the screen
-        // center leans right, showing its WEST side (and vice versa).
-        // Skipped inside joined runs. Timber flanks carry the course
-        // seams and stone plinth around the corner so the same logs
-        // wrap the building — a face is never a different material
-        // than its own side.
-        const flankDetail = (xa: number, txa: number): void => {
-          if (mat !== Tile.WallWood) return;
-          const lerp = (f: number): number => xa + (txa - xa) * f;
-          const band = (f0: number, f1: number, col: string): void => {
-            const xq0 = lerp(f0);
-            const xq1 = lerp(f1);
-            ctx.fillStyle = col;
-            ctx.beginPath();
-            ctx.moveTo(xq0, p.y - hs * f0);
-            ctx.lineTo(xq0, p.y + syT - hs * f0);
-            ctx.lineTo(xq1, p.y + syT - hs * f1);
-            ctx.lineTo(xq1, p.y - hs * f1);
-            ctx.closePath();
-            ctx.fill();
-          };
-          // Foundation, sill beam, and wall plate wrap the corner —
-          // a face is never a different construction than its side.
-          band(0, plinthH / hs, shade(Renderer.PLINTH_COL, -12));
-          if (sillH > 0) band(plinthH / hs, (plinthH + sillH) / hs, shade(skin.plate, -16));
-          band(1 - plateH / hs, 1, shade(skin.plate, -8));
-          // Chinking lines between courses carry the stacked logs
-          // around the building's edge at the exact face pitch.
-          for (let i = 1; i < nLogs; i++) {
-            const f = (plinthH + sillH + i * logH + (i - 0.5) * chinkG) / hs;
-            const xf = lerp(f);
-            ctx.fillStyle = shade(skin.chink, -22);
-            ctx.fillRect(xf - s * 0.02, p.y - hs * f, Math.max(1, s * 0.04), syT);
-          }
-        };
-        if (tx0 > x0 + 0.5 && !w) {
-          ctx.fillStyle = sideCol;
-          ctx.beginPath();
-          ctx.moveTo(x0, p.y);
-          ctx.lineTo(x0, yBase);
-          ctx.lineTo(tx0, yTop);
-          ctx.lineTo(tx0, p.y - hs);
-          ctx.closePath();
-          ctx.fill();
-          flankDetail(x0, tx0);
-        } else if (tx1 < x1 - 0.5 && !e) {
-          ctx.fillStyle = sideCol;
-          ctx.beginPath();
-          ctx.moveTo(x1, p.y);
-          ctx.lineTo(x1, yBase);
-          ctx.lineTo(tx1, yTop);
-          ctx.lineTo(tx1, p.y - hs);
-          ctx.closePath();
-          ctx.fill();
-          flankDetail(x1, tx1);
-        }
         // South face: base edge on the ground — the vertical surface you
         // walk behind.
         if (!sw) {
@@ -10622,13 +10559,13 @@ export class Renderer {
           const facePath = new Path2D();
           facePath.moveTo(x0, yBase + 0.5);
           facePath.lineTo(x1, yBase + 0.5);
-          facePath.lineTo(tx1, yTop);
-          facePath.lineTo(tx0, yTop);
+          facePath.lineTo(x1, yTop);
+          facePath.lineTo(x0, yTop);
           facePath.closePath();
           if (hole) facePath.addPath(hole, frame);
           ctx.fill(facePath, 'evenodd');
           // Material detail inside the face's own frame, so courses and
-          // plank seams sit level with the leaned face top.
+          // plank seams sit level with the face top.
           ctx.save();
           ctx.translate(0, yBase);
           if (hole) {
@@ -11216,7 +11153,7 @@ export class Renderer {
       sortY: front ? ty + 0.001 : ty + 1,
       // A5 pitch-aware depth: a 45° face sorts at its NEAR row (the
       // pocket behind the line is solid wall) — bodies sharing its rows
-      // are in front. Match sortY so q=0 is unchanged.
+      // are in front. Matches sortY, so the flat order is unchanged.
       nearRow: this.occlusionOn ? (front ? ty + 0.001 : ty + 1) : undefined,
       drawShadow: front
         ? () => this.castEdgeQuad(hypW[0], hypW[1], hypE[0], hypE[1], whT)
@@ -15060,9 +14997,9 @@ export class Renderer {
     cx: number;
     cy: number;
     data: ChunkData;
-    /** WARP-DOWN (B5a): the near-worst px this chunk should re-bake at
-     *  (chosen once in the visible scan, carried to the paced start so
-     *  the tier decision and the bake agree). */
+    /** The px this chunk should re-bake at (chosen once in the visible
+     *  scan, carried to the paced start so the tier decision and the
+     *  bake agree). */
     px: number;
   }> = [];
 
@@ -18672,7 +18609,7 @@ export class Renderer {
           body: depleted
             ? undefined
             : { x: p.x - rs * 1.2, y: p.y - rs * 1.5, w: rs * 2.4, h: rs * 2.1 },
-          drawShadow: () => this.castRockShadow(p.x, p.y, tile, h, crowded, rs),
+          drawShadow: () => this.castRockShadow(p.x, p.y, tile, h, crowded),
           // Struck stone barely gives — a tighter, smaller ring than
           // the tree's whip: mass answers, it doesn't sway.
           draw: () =>
@@ -19300,8 +19237,7 @@ export class Renderer {
     // frame rate — no baked monolith, and (crucially) NO player-centred
     // radius box (the CPU path's #2 artifact). Blitted UNDER the coat at the
     // frame's shade alpha, one density with the world's shade: THE CAST LIES
-    // UNDER THE COAT. Perspective-correct at q>0 (both quad ends are ground
-    // points through worldToScreen). Skipped when the sun casts no shade.
+    // UNDER THE COAT. Skipped when the sun casts no shade.
     if (this.sky.shadowAlpha >= 0.02) {
       const off = grassShadowOffset(this.sky.shadowX, this.sky.shadowY, this.sky.shadowLen);
       const shade = this.sky.moonlit ? SHADOW_MOON_RGB : SHADOW_SUN_RGB;
@@ -19375,7 +19311,7 @@ export class Renderer {
 
   /** G-PERF coalesced-band world-y span cap. A merged band renders into an
    *  atlas slot as tall as its span + a blade height, so an unbounded merge
-   *  balloons the atlas (a tall run under a lean can span the screen). This
+   *  balloons the atlas (a tall run can span the screen). This
    *  keeps every slot atlas-thin while the band COUNT still falls ~this:pitch
    *  to one in a body-free stretch — the sub-draw/blit reduction without the
    *  atlas blow-up. Tuned against dense-meadow ground cost (see plan). */
@@ -24678,7 +24614,6 @@ export class Renderer {
 
   private projectileItem(eid: number, style: string, s: { x: number; y: number; dir: number }): DrawItem {
     const ctx = this.ctx;
-    // B-1c depth thread: the shot foreshortens by its ground anchor's depth.
     const scale = this.camera.scale;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= this.renderLift(s.x, s.y) * scale;

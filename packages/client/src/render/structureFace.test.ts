@@ -81,7 +81,7 @@ test('emit hands projectFace geometry to the paint callback', () => {
 
 test('faceUV over an axis-aligned rect reduces to rect placement', () => {
   // Base row y=0, top row y=-100 (frame-local, as the wall face feeds it);
-  // west x=10, east x=50 on BOTH rows ⇒ q=0 face.
+  // west x=10, east x=50 on BOTH rows ⇒ an axis-aligned face.
   const S = faceUV(10, 0, 50, 0, 10, -100, 50, -100);
   // Corners land on the corners.
   assert.deepEqual(S(0, 0), { x: 10, y: 0 });
@@ -93,8 +93,8 @@ test('faceUV over an axis-aligned rect reduces to rect placement', () => {
   assert.deepEqual(S(0.72, 0.9), { x: 10 + 40 * 0.72, y: -90 });
 });
 
-test('faceUV bilerps a receding trapezoid (q>0)', () => {
-  // A leaned face: base wider (0..100) than the top (20..80), top lifted
+test('faceUV bilerps a general trapezoid', () => {
+  // A skewed face: base wider (0..100) than the top (20..80), top lifted
   // and the far/near rows at different y — a true trapezoid.
   const S = faceUV(0, 0, 100, 0, 20, -60, 80, -80);
   // Corners exact.

@@ -10,8 +10,8 @@
  * blade's crown along the light ray, and bent by the SAME per-vertex wind
  * term the blades use (grassWindGlsl). So the whole field's shade sways
  * uniformly at frame rate — no baked monolith, no player-centred region,
- * no radius edge — and it is perspective-correct for free (both quad ends
- * are ground points run through the full projectWorld homography).
+ * no radius edge — and both quad ends are ground points run through the
+ * same camera projection as the blades.
  *
  * The casts render OPAQUE (a flat shade colour) into a private offscreen
  * canvas as UNION coverage — overlapping quads overwrite, they do not
@@ -82,8 +82,7 @@ void main() {
 
   // The cast on the GROUND PLANE: base rooted at the blade, tip thrown from
   // the (wind-bent, trampled) crown along the light ray. Both ends are
-  // ground points → the full homography makes the shade recede correctly
-  // at q>0 with no extra work.
+  // ground points through the one projection.
   vec2 baseC = iRoot;
   vec2 tipC = iRoot + vec2(lean + push.x * H, push.y * H) + uShadow * H;
   // The GPU casts EVERY blade (the CPU cast only half, by bin parity, drawn
@@ -273,11 +272,10 @@ export function shadeRgb01(hex: string): [number, number, number] {
  * SAME inputs the CPU `setShadow` uses). The CPU cast throws its tip a
  * screen offset of `dir·shadowLen·hpx` (hpx = the blade's screen height =
  * H·scale); our quad's tip is a WORLD ground point run through the SAME
- * projectWorld homography as the blades, which applies scale (and scale·
+ * camera projection as the blades, which applies scale (and scale·
  * yScale on y). Equating the two screen offsets, the scale (and yScale)
  * factors cancel, leaving this pure world vector — so the GPU cast lands
- * exactly where the CPU shade did, at q=0 and (perspective-correct) q>0.
- * Pure + tested.
+ * exactly where the CPU shade did. Pure + tested.
  */
 export function grassShadowOffset(
   shadowX: number,

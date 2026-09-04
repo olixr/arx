@@ -1,14 +1,14 @@
 /**
- * THE ONE RENDER — F0 foundation gate: the q=0 GOLDEN-FRAME harness.
+ * THE ONE RENDER — the GOLDEN-FRAME harness (the flat-look gate).
  *
- * The epic collapses the renderer's `q === 0 ? ortho : perspective` forks
- * into ONE q-parameterized pipeline. q=0 (the flat game live players use)
- * need NOT stay byte-identical, but the FLAT LOOK MUST HOLD. This harness
- * is the automated gate for that: it captures a fixed set of canonical
- * q=0 scenes as PNG goldens (the committed baseline), then re-captures a
- * candidate build and reports per-scene pixel-diff stats. Every later
- * phase runs `compare` after its changes; the flat look holding within
- * tolerance is the go/no-go.
+ * THE FLAT LOOK MUST HOLD: this harness is the automated gate for that.
+ * It captures a fixed set of canonical scenes as PNG goldens (the
+ * committed baseline), then re-captures a candidate build and reports
+ * per-scene pixel-diff stats. Every render change runs `compare` on BOTH
+ * backends; the flat look holding within tolerance is the go/no-go.
+ * (The 2D client has one camera — the pitched-orthographic affine; the
+ * perspective lean it once gated at q=0 was removed on 2026-09-04, see
+ * docs/perspective-review-and-3d-client-plan.md.)
  *
  * USAGE (rig on :5241 — see vite.config.f0.ts; backend :8814):
  *   # 1. start the rig (from packages/client):
@@ -83,13 +83,13 @@ const CROP = {
   y1: (VIEW.height - 210) * VIEW.dpr,
 };
 
-// THE CANONICAL q=0 SCENES. Coords are exact /tp targets, reused verbatim
+// THE CANONICAL SCENES. Coords are exact /tp targets, reused verbatim
 // by every later phase. Chosen to cover the epic's surface classes:
 // world-geometry volumes (wall runs, curtain walls, fences, building
 // exteriors + interiors), ground, billboards (trees), and props.
 //
 // `tol` is the per-scene differing-pixel budget (fraction), CALIBRATED to
-// the scene's inherent animation floor so a clean q=0 recapture always
+// the scene's inherent animation floor so a clean recapture always
 // passes (no false alarms for the gate later phases depend on). The floor
 // is grass wind, ambient pollen particles, patrolling NPCs, flames and
 // water — measured with `FRAMES=10 compare` against fresh goldens, then
@@ -126,17 +126,17 @@ const SCENES = ALL_SCENES.filter((s) => !only || only.includes(s.name));
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 
 // Open a fresh context on a rig, log the probe in, land it in the
-// overworld at zoom 1 on the requested backend, and assert q=0. One
+// overworld at zoom 1 on the requested backend. One
 // account = one live session, so rigs are visited one at a time.
 const openRig = async (origin) => {
   const context = await browser.newContext({ viewport: { width: VIEW.width, height: VIEW.height }, deviceScaleFactor: VIEW.dpr });
   const page = await context.newPage();
   page.on('pageerror', (e) => console.log('[pageerror]', e.message.slice(0, 200)));
 
-  // q=0 is the shipped default. BACKEND=stage: ?stage=world runs the WebGL
-  // backend; BACKEND=canvas: the plain URL with the stored stage pref cleared
-  // runs the standard canvas2d display (a fresh context has no localStorage,
-  // the clear is belt-and-braces). We deliberately never turn the lean on.
+  // BACKEND=stage: ?stage=world runs the WebGL backend; BACKEND=canvas: the
+  // plain URL with the stored stage pref cleared runs the standard canvas2d
+  // display (a fresh context has no localStorage, the clear is belt-and-
+  // braces; arx.lean is a retired key older builds may have left behind).
   if (BACKEND === 'canvas') {
     await page.goto(`${origin}/`);
     await page.evaluate(() => {
@@ -159,11 +159,11 @@ const openRig = async (origin) => {
     await page.waitForTimeout(2500);
   }
   await page.evaluate(() => window.dcRenderer.camera.setZoom(1));
-  // The lean is on its way OUT (epic/lean-out): a missing camera.q is the
-  // flat game too, so undefined counts as 0 here.
-  const q = await page.evaluate(() => window.dcRenderer.camera.q ?? 0);
-  if (q !== 0) {
-    console.error(`ABORT: camera.q is ${q}, expected 0 (this is the q=0 flat-look gate)`);
+  // THE ONE CAMERA: the lean left the 2D client, so no build under test may
+  // carry a camera.q at all (a stale bundle from before the removal would).
+  const q = await page.evaluate(() => window.dcRenderer.camera.q);
+  if (q !== undefined) {
+    console.error(`ABORT: camera.q is ${q} — the lean is gone; this is the flat-look gate on a stale build?`);
     await browser.close();
     process.exit(2);
   }
@@ -276,7 +276,7 @@ const manifest = {
   tolerance: { defaultDiffFrac: TOL, pixelThresh: THRESH, framesPerScene: FRAMES, perScene: true },
   login: 'perf12_probe',
   backend: BACKEND,
-  note: 'q=0 flat-look baseline for THE ONE RENDER. See docs/the-one-render-verify.md.',
+  note: 'Flat-look baseline for THE ONE RENDER. See docs/the-one-render-verify.md.',
   scenes: [],
 };
 

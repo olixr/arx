@@ -13,7 +13,7 @@
  *      later.
  *
  *   2. A5 PITCH-AWARE DEPTH (secondary). Within a shelf the depth term is
- *      a world ROW — zoom- and q-invariant. A world-geometry VOLUME
+ *      a world ROW — zoom-invariant. A world-geometry VOLUME
  *      (wall / garrison / diagonal crown run, hedge run) contributes its
  *      NEAR (south) ground-edge row via `nearRow`; every billboard
  *      contributes its foot row via `sortY`. For a wall these are the

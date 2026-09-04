@@ -48,7 +48,7 @@ export declare class GrassOrnamentRenderer {
     /** `palette` is ORNAMENT_FILLS ([petal0..3, core, gold, stem]). */
     constructor(gl: WebGL2RenderingContext, palette: readonly string[]);
     upload(instances: Float32Array, count: number): void;
-    /** Draw every ornament. `proj` is the same projectWorld homography the
+    /** Draw every ornament. `proj` is the same camera projection the
      *  blades use; `bobGain` scales the wind nod (1 = the baked meadow's sway). */
     draw(proj: GrassProj, timeSec: number, bobGain?: number): void;
     /** Free every GL object. Idempotent. */
