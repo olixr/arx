@@ -103,7 +103,7 @@ test('grassViewMatrix reuses a big-enough out buffer (alloc-free per frame)', ()
 
 // ---------------------------------------------------------------- G1
 
-import { partitionTallBands, bandNdcRemap, grassProjectMirror } from './grassGpu.js';
+import { partitionTallBands, bandNdcRemap, grassProjectMirror, coalesceTallBands } from './grassGpu.js';
 
 test('partitionTallBands buckets a by-sorted array into contiguous row bands', () => {
   // by-sorted blades straddling three 1/3-tile buckets around row 10.
@@ -140,6 +140,94 @@ test('partitionTallBands sortY is monotonic so bands paint back-to-front', () =>
 
 test('partitionTallBands handles the empty field', () => {
   assert.deepEqual(partitionTallBands([], 1 / 3), []);
+});
+
+// ------------------------------------------------ G-PERF: band coalescing
+
+/** Build fine bands from a by-sorted blade array, the live pipeline's step 1. */
+const fineBands = (bys: number[], pitch = 1 / 3) =>
+  partitionTallBands(bys.map((by) => ({ by })), pitch);
+
+test('coalesceTallBands merges a body-free field into ONE band (open meadow)', () => {
+  // Ten fine bands across ten rows, no body anywhere → one blit.
+  const fine = fineBands([1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5]);
+  assert.ok(fine.length > 1, 'precondition: several fine bands');
+  const merged = coalesceTallBands(fine, []);
+  assert.equal(merged.length, 1, 'no body ⇒ everything coalesces');
+  const m = merged[0]!;
+  // The one band covers every blade exactly once, contiguously.
+  assert.equal(m.i0, 0);
+  assert.equal(
+    m.count,
+    fine.reduce((s, b) => s + b.count, 0),
+    'merged count = all blades',
+  );
+  assert.ok(m.minBy <= 1 && m.maxBy >= 5.5, 'span covers the whole field');
+});
+
+test('coalesceTallBands SPLITS where a body foot falls between rows', () => {
+  // Bodies at row 2.4 and 4.1 must each keep a boundary so they interleave.
+  const bys = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5];
+  const fine = fineBands(bys);
+  const merged = coalesceTallBands(fine, [2.4, 4.1]);
+  // Three runs: [<2.4], [2.4..4.1], [>4.1].
+  assert.equal(merged.length, 3, 'two bodies cut the field into three runs');
+  // No run straddles a body row (a run's open span excludes both).
+  for (const r of merged) {
+    for (const e of [2.4, 4.1]) {
+      assert.ok(!(r.minBy < e && e < r.maxBy), `run ${r.minBy}..${r.maxBy} straddles ${e}`);
+    }
+  }
+  // Runs stay contiguous and cover every blade once.
+  let i0 = 0;
+  let total = 0;
+  for (const r of merged) {
+    assert.equal(r.i0, i0, 'contiguous');
+    i0 += r.count;
+    total += r.count;
+  }
+  assert.equal(total, bys.length, 'every blade once');
+  // sortY ascending so runs still paint back-to-front.
+  for (let i = 1; i < merged.length; i++) assert.ok(merged[i]!.sortY > merged[i - 1]!.sortY);
+});
+
+test('coalesceTallBands FAR-FIELD LOD drops split rows north of the near window', () => {
+  const bys = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5];
+  const fine = fineBands(bys);
+  // A body far up-screen at row 2.4 — with nearMinBy=4 it is dropped, so the
+  // whole field coalesces despite the body.
+  const merged = coalesceTallBands(fine, [2.4], 4);
+  assert.equal(merged.length, 1, 'far body ignored ⇒ one band');
+  // But a body inside the near window (row 4.6 ≥ 4) still splits.
+  const merged2 = coalesceTallBands(fine, [4.6], 4);
+  assert.equal(merged2.length, 2, 'near body honored ⇒ two runs');
+});
+
+test('coalesceTallBands never merges across a body ⇒ no interleave regression', () => {
+  // A body strictly BETWEEN every pair of adjacent bands returns the fine
+  // bands unchanged (each keeps its own sortY) — the worst case, proving
+  // coalescing is never coarser than the fine cut where bodies stand.
+  const bys = [1.1, 1.4, 1.8, 2.2, 2.6, 3.0];
+  const fine = fineBands(bys);
+  // A split row strictly inside each adjacent gap.
+  const rows: number[] = [];
+  for (let i = 1; i < fine.length; i++) rows.push((fine[i - 1]!.maxBy + fine[i]!.minBy) / 2);
+  const merged = coalesceTallBands(fine, rows);
+  assert.equal(merged.length, fine.length, 'no coalescing when a body sits between every band');
+  for (let i = 0; i < fine.length; i++) {
+    assert.equal(merged[i]!.sortY, fine[i]!.sortY, 'lone bands keep their exact sortY');
+    assert.equal(merged[i]!.i0, fine[i]!.i0);
+    assert.equal(merged[i]!.count, fine[i]!.count);
+  }
+});
+
+test('coalesceTallBands handles the empty and single-band inputs', () => {
+  assert.deepEqual(coalesceTallBands([], [1, 2]), []);
+  const one = fineBands([5, 5.1]);
+  assert.equal(one.length, 1);
+  const merged = coalesceTallBands(one, [99]);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0]!.sortY, one[0]!.sortY, 'a lone band is passed through unchanged');
 });
 
 test('bandNdcRemap maps a band screen rect onto its atlas slot (both corners)', () => {

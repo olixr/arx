@@ -111,6 +111,101 @@ export function partitionTallBands(
 }
 
 /**
+ * G-PERF — COALESCE THE BANDS. partitionTallBands cuts one fine band per
+ * occupied pitch bucket so a body can slot between ANY two world rows; but
+ * that fine cut only earns its cost where a body actually stands. In open
+ * field most adjacent bands have NOTHING sorting between them, so they can
+ * merge into ONE blit — far fewer GL sub-draws, atlas slots and 2d copies,
+ * the exact same pixels — and only the rows a body's foot occupies keep
+ * their fine split (so the body still interleaves precisely).
+ *
+ * The rule: walk the ascending fine bands, greedily extending a run; refuse
+ * to extend across a `splitRow` — an entity foot world-row — that would fall
+ * STRICTLY INSIDE the run's blade-y span (`runMinBy < row < candidateMaxBy`),
+ * because one blit at one sortY cannot draw both north-of and south-of a body
+ * correctly. A run that never straddles a split row keeps the SAME
+ * interleave the fine bands gave (it is only ever merged across body-free
+ * rows); a run that would straddle one is cut there, exactly reproducing the
+ * fine band at that row. So this is a strict cost reduction with no
+ * interleave regression for any body whose row is honored.
+ *
+ * FAR-FIELD LOD: `nearMinBy` drops split rows north of it (up-screen, far
+ * from the camera), letting the distance coalesce freely — a body out there
+ * compresses to a few pixels and its fine interleave is imperceptible, so
+ * paying per-row sub-draws for it is waste. Pass -Infinity to honor every
+ * row (no LOD). `splitRows` need not be sorted; it is copied+filtered+sorted
+ * here. A merged run's `sortY` is its span midpoint (any value in the
+ * body-free span is correct); a lone band keeps its original `sortY`, so a
+ * field with a body on every row returns the input unchanged.
+ *
+ * SPAN CAP: `maxSpan` bounds a merged run's world-y extent. The tall path
+ * renders each band in ISOLATION into an atlas slot sized to its SCREEN
+ * bbox — a slot as tall as the run's span PLUS a blade height — so an
+ * unbounded merge produces a giant slot (a tall run under a lean can span
+ * the whole screen), and the atlas balloons past the win. Capping the span
+ * keeps every slot atlas-thin: the count still falls (a dense field merges
+ * ~pitch:maxSpan-to-one) but no single band's bbox blows up. Pass Infinity
+ * for no cap (the pure-geometry tests). Pure + tested.
+ */
+export function coalesceTallBands(
+  bands: readonly TallBand[],
+  splitRows: readonly number[],
+  nearMinBy = -Infinity,
+  maxSpan = Infinity,
+): TallBand[] {
+  const out: TallBand[] = [];
+  if (bands.length === 0) return out;
+  // Near-field split rows only, ascending — the merge test binary-searches it.
+  const rows: number[] = [];
+  for (const r of splitRows) if (r >= nearMinBy) rows.push(r);
+  rows.sort((a, b) => a - b);
+  // Any split row strictly inside (lo, hi)? First row > lo, is it < hi?
+  const straddles = (lo: number, hi: number): boolean => {
+    let a = 0;
+    let b = rows.length;
+    while (a < b) {
+      const m = (a + b) >> 1;
+      if (rows[m]! <= lo) a = m + 1;
+      else b = m;
+    }
+    return a < rows.length && rows[a]! < hi;
+  };
+
+  let i0 = bands[0]!.i0;
+  let count = bands[0]!.count;
+  let minBy = bands[0]!.minBy;
+  let maxBy = bands[0]!.maxBy;
+  let sortY = bands[0]!.sortY;
+  let n = 1; // fine bands in the running run
+  const flush = (): void => {
+    out.push({ i0, count, sortY: n === 1 ? sortY : (minBy + maxBy) / 2, minBy, maxBy });
+  };
+  for (let k = 1; k < bands.length; k++) {
+    const b = bands[k]!;
+    const newMax = b.maxBy > maxBy ? b.maxBy : maxBy;
+    const newMin = b.minBy < minBy ? b.minBy : minBy;
+    if (newMax - newMin > maxSpan || straddles(minBy, newMax)) {
+      flush();
+      i0 = b.i0;
+      count = b.count;
+      minBy = b.minBy;
+      maxBy = b.maxBy;
+      sortY = b.sortY;
+      n = 1;
+    } else {
+      // Fine bands are contiguous slices of the by-sorted array, so a run's
+      // blade count is just the sum and its i0 stays the first band's.
+      count += b.count;
+      maxBy = newMax;
+      if (b.minBy < minBy) minBy = b.minBy;
+      n++;
+    }
+  }
+  flush();
+  return out;
+}
+
+/**
  * G1 — THE ATLAS REMAP. The tall bands each render in ISOLATION (no
  * cross-band contamination, so a band's blit carries only its own blades)
  * into a distinct slot of ONE offscreen atlas — a single GL pass, then
