@@ -205,9 +205,10 @@ import * as rockArt from './rockArt.js';
 import { FENCE_POST, FENCE_RAIL, PANEL_DOOR_TILES } from './paintVocab.js';
 import { radialGlowSprite } from './glowSprite.js';
 import { Birds, type Bird, type BirdEnv } from './birds.js';
-import { GrassSystem, windAtInto, windScalarAt, BLADE_FILLS, ORNAMENT_FILLS, type Disturber, type WindSample, type Blade, type GrassBounds, type Flower, type SeedHead } from './grass.js';
+import { GrassSystem, windAtInto, windScalarAt, generateSkirtBlades, BLADE_FILLS, ORNAMENT_FILLS, type Disturber, type WindSample, type Blade, type GrassBounds, type Flower, type SeedHead } from './grass.js';
 import { GrassGpuLayer, type GrassFrame, type BandBlit } from './grassGpuLayer.js';
-import { partitionTallBands } from './grassGpu.js';
+import { partitionTallBands, type TallBand } from './grassGpu.js';
+import { grassRootedSkirtAt } from './grassSkirt.js';
 import { MAX_DISTURB } from './grassGpuRenderer.js';
 import { grassShadowOffset, shadeRgb01 } from './grassGpuShadow.js';
 import { paintTree, saplingModel, treeExtent,
@@ -1590,6 +1591,11 @@ export class Renderer {
    *  field renders instanced on the GPU (blitted at the grass slot) instead
    *  of the canvas2d baked meadow. Off = byte-identical baked path. */
   grassGpu = false;
+  /** G4 — THE OVER-FOOT SKIRT (behind ?grass=gpu). When true, grass-rooted
+   *  objects (tree/bush/rock/prop in the meadow) get a skirt of GPU blades
+   *  nestled around their foot so they read as embedded. Dev A/B toggle
+   *  (?skirt=off); on by default whenever the GPU meadow is active. */
+  grassSkirtOn = true;
   private grassGpuLayer: GrassGpuLayer | null = null;
   /** THE CAMERA LEARNS TO LEAN (Epic B, B-2): the lean is a DIAL. This is
    *  the target lean `q`, set opt-in (?lean / arx.lean). 0 = OFF = the
@@ -1625,6 +1631,23 @@ export class Renderer {
    *  so the tall mass interleaves with bodies. Empty ⇒ CPU tall fallback. */
   private grassTallBlits: readonly BandBlit[] = [];
   private grassTallCanvas: HTMLCanvasElement | null = null;
+  /** G4 — THE OVER-FOOT SKIRT. This frame's grass-rooted objects (tree,
+   *  bush, rock, prop on a grass tile), gathered as objectItems are emitted
+   *  so each carries its true foot sort row. After the world collect, each
+   *  becomes one skirt band (generateSkirtBlades) drawn OVER its own base. */
+  private readonly grassSkirtSites: { tx: number; ty: number; footY: number }[] = [];
+  /** Pooled skirt-blade array (all sites concatenated) + per-site bands. */
+  private readonly grassSkirt: Blade[] = [];
+  private readonly grassSkirtBands: TallBand[] = [];
+  /** Per-tile skirt-blade cache (a still object mints its skirt once). Keyed
+   *  by tile; footY is stored so a tile whose object changed (tree→stump,
+   *  a different foot row) re-mints instead of reusing the stale skirt. */
+  private readonly grassSkirtCache = new Map<number, { footY: number; blades: Blade[] }>();
+  private grassSkirtBlits: readonly BandBlit[] = [];
+  private grassSkirtCanvas: HTMLCanvasElement | null = null;
+  /** This frame's GrassFrame (camera/wind), stashed by drawGrassGpu so the
+   *  later skirt pass renders under the exact same projection + wind. */
+  private grassFrameSaved: GrassFrame | null = null;
   private readonly lighting = new LightingSystem();
   /** Derived building-interior regions (cutaway, facades, windows). */
   readonly interiors = new InteriorMap();
@@ -6087,6 +6110,11 @@ export class Renderer {
     this.collectElevatedGround(game, items);
     cliffArt.collectCliffFaces(this, game, items);
     this.collectRaisedTiles(game, items);
+    // G4 — THE OVER-FOOT SKIRT: now that the world collect has recorded this
+    // frame's grass-rooted objects (grassSkirtSites), nestle a GPU grass
+    // skirt around each object's foot, emitted as y-sorted DrawItems that
+    // draw over each object's lower base edge.
+    this.collectGpuSkirts(items);
     this.collectInteriorRegions(game);
     this.collectBreakingRocks(game, items);
     this.collectFallingTrees(items);
@@ -10198,6 +10226,14 @@ export class Renderer {
         )
           return;
         const item = this.objectItem(tile, tx, ty, game);
+        // G4 — THE OVER-FOOT SKIRT: a grass-rooted object (tree, bush, rock,
+        // or natural prop standing in the meadow) records its foot row so
+        // the GPU grass pass can nestle a skirt of blades up around its base
+        // (collectGpuSkirts). item.sortY is the object's true foot sort row —
+        // the skirt slots a hair past it, drawing OVER the lower base edge.
+        if (this.grassGpuActive && this.grassRootedSkirt(game, tx, ty, tile)) {
+          this.grassSkirtSites.push({ tx, ty, footY: item.sortY });
+        }
         // THE SHELF LAW: a standing object sorts on the shelf of its
         // own tile, at its raw row. Awnings need no exemption — their
         // host wall shares the tile's shelf, so the Lantern Row order
@@ -22116,6 +22152,12 @@ export class Renderer {
     if (!this.grassGpuLayer) this.grassGpuLayer = new GrassGpuLayer(BLADE_FILLS, ORNAMENT_FILLS);
     const layer = this.grassGpuLayer;
     if (!layer.ok) return false;
+    // G4 — arm the over-foot skirt for this frame: objectItem records its
+    // grass-rooted objects into grassSkirtSites as the world collect runs
+    // (after this pass); collectGpuSkirts then renders + emits them.
+    this.grassSkirtSites.length = 0;
+    this.grassSkirtBlits = [];
+    this.grassSkirtCanvas = null;
     // B3 — TALL INTERLEAVE: the GPU flat field carries only the short
     // `under` coat; the tall standing mass rides the CPU collectTall
     // y-sort (below) so bodies walk THROUGH thickets.
@@ -22150,6 +22192,10 @@ export class Renderer {
       windGain: 0.12,
       disturb: dn > 0 ? dz.subarray(0, dn * 4) : undefined,
     };
+    // Stash the frame so the later skirt pass (collectGpuSkirts, run after
+    // the world collect gathers grass-rooted objects) renders its blades
+    // under the exact same projection + wind + disturbers.
+    this.grassFrameSaved = frame;
     // Gather the tall standing mass first — its casts join the short coat's
     // in one uniform GPU shade layer (below), laid UNDER the whole meadow.
     this.grass.collectGpuTall(ground, detail, bounds, this.grassTall);
@@ -22229,6 +22275,108 @@ export class Renderer {
               b.dstH,
               () => this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH),
               'grass-tall',
+            );
+          } else {
+            this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH);
+          }
+        },
+      } as DrawItem);
+    }
+  }
+
+  /** G4 — is a grass-rooted object here (skirt-eligible + meadow neighbours)?
+   *  The bound sampler reads this.game (always the current world) so it stays
+   *  correct across plane/world swaps, and avoids a per-call closure. */
+  private grassRootedSkirt(_game: ClientGame, tx: number, ty: number, tile: Tile): boolean {
+    return grassRootedSkirtAt(
+      (this.skirtGroundSampler ??= (x, y) => this.game?.world.groundAt(x, y)),
+      tx,
+      ty,
+      tile,
+    );
+  }
+  private skirtGroundSampler: ((tx: number, ty: number) => number | undefined) | null = null;
+
+  /**
+   * G4 — THE OVER-FOOT SKIRT. After the world collect has gathered this
+   * frame's grass-rooted objects (grassSkirtSites), synthesise a small
+   * cluster of grass blades around each object's foot (generateSkirtBlades,
+   * cached per tile), render them through the GPU band atlas as ONE band per
+   * object — each at sortY = the object's foot row + a hair — and emit each
+   * as a y-sorted DrawItem. The band slots JUST past its object, so its
+   * blades draw OVER the object's lower base edge (breaking the hard pasted
+   * line) while the object's mass above still occludes. Reuses the instanced
+   * pipeline (no per-frame bakes); only object-adjacent tiles pay. No-op
+   * when the GPU meadow is inactive, nothing is rooted, or the skirt atlas
+   * is unavailable (the object simply keeps its hard base that frame).
+   */
+  private collectGpuSkirts(items: DrawItem[]): void {
+    if (!this.grassGpuActive || !this.grassSkirtOn) return;
+    const layer = this.grassGpuLayer;
+    const frame = this.grassFrameSaved;
+    const sites = this.grassSkirtSites;
+    if (!layer || !frame || sites.length === 0) return;
+
+    // Build the combined skirt-blade array + one band per object. Blades are
+    // pulled from the per-tile cache (a still object mints its skirt once).
+    const blades = this.grassSkirt;
+    const bands = this.grassSkirtBands;
+    blades.length = 0;
+    bands.length = 0;
+    // Bound the per-tile skirt cache as the player roams (skirt geometry is
+    // static per tile, so a coarse cap + full clear is enough — it refills
+    // from the visible sites in a frame).
+    if (this.grassSkirtCache.size > 8192) this.grassSkirtCache.clear();
+    for (const site of sites) {
+      const key = packTile(site.tx, site.ty);
+      const cached = this.grassSkirtCache.get(key);
+      let skirt: Blade[];
+      if (cached && cached.footY === site.footY) {
+        skirt = cached.blades;
+      } else {
+        skirt = generateSkirtBlades(site.tx, site.ty, site.footY);
+        this.grassSkirtCache.set(key, { footY: site.footY, blades: skirt });
+      }
+      if (skirt.length === 0) continue;
+      const i0 = blades.length;
+      let minBy = Infinity;
+      let maxBy = -Infinity;
+      for (const b of skirt) {
+        blades.push(b);
+        if (b.by < minBy) minBy = b.by;
+        if (b.by > maxBy) maxBy = b.by;
+      }
+      bands.push({
+        i0,
+        count: skirt.length,
+        // A hair past the object's foot: the skirt draws right after (over)
+        // its own object, and before any object rooted further south.
+        sortY: site.footY + 0.02,
+        minBy,
+        maxBy,
+      });
+    }
+    if (bands.length === 0) return;
+
+    const blits = layer.renderSkirt(blades, bands, frame);
+    if (blits.length === 0) return;
+    this.grassSkirtBlits = blits;
+    this.grassSkirtCanvas = layer.skirtCanvas;
+    const canvas = layer.skirtCanvas;
+    for (const bl of this.grassSkirtBlits) {
+      const b = bl;
+      items.push({
+        sortY: b.sortY,
+        stageSafe: true,
+        draw: () => {
+          if (this.stageAssembling) {
+            this.stagePushPaintRaw(
+              b.dstX,
+              b.dstY,
+              b.dstW,
+              b.dstH,
+              () => this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH),
+              'grass-skirt',
             );
           } else {
             this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH);

@@ -105,6 +105,21 @@ export class GrassGpuLayer {
   private shadowInstances: Float32Array = new Float32Array(0);
   private shadowTallInstances: Float32Array = new Float32Array(0);
 
+  /** G4 SKIRT path — its own offscreen atlas canvas + GL context +
+   *  renderer. The over-foot skirt (grass nestling around an object's base)
+   *  renders through the SAME per-band atlas machinery the tall blades use,
+   *  but each grass-rooted object is ONE band at its own foot slot — so its
+   *  atlas cannot share the tall atlas (that canvas is re-blitted at the
+   *  tall bands' own sort rows this same frame). A separate context keeps
+   *  the two atlases independent (and a lost skirt context simply drops the
+   *  skirts that frame — the object falls back to its hard pasted base). */
+  readonly skirtCanvas: HTMLCanvasElement;
+  private skirtGl: WebGL2RenderingContext | null = null;
+  private skirtRenderer: GrassGpuRenderer | null = null;
+  private skirtLost = false;
+  private skirtInstances: Float32Array = new Float32Array(0);
+  private readonly skirtBlits: BandBlit[] = [];
+
   constructor(palette: readonly string[], ornamentPalette: readonly string[]) {
     this.palette = palette;
     this.ornPalette = ornamentPalette;
@@ -160,6 +175,21 @@ export class GrassGpuLayer {
       this.buildRenderer();
     });
     this.shadowGl = this.shadowCanvas.getContext('webgl2', ctxOpts);
+
+    // G4 skirt atlas — a fourth WebGL2 canvas/context (see field docs). It
+    // degrades independently: a lost skirt context makes renderSkirt return
+    // an empty band list and objects keep their hard base that frame.
+    this.skirtCanvas = document.createElement('canvas');
+    this.skirtCanvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      this.skirtLost = true;
+      this.skirtRenderer = null;
+    });
+    this.skirtCanvas.addEventListener('webglcontextrestored', () => {
+      this.skirtLost = false;
+      this.buildRenderer();
+    });
+    this.skirtGl = this.skirtCanvas.getContext('webgl2', ctxOpts);
     this.buildRenderer();
   }
 
@@ -193,6 +223,15 @@ export class GrassGpuLayer {
         this.shadowRenderer?.dispose();
         this.shadowRenderer = null;
         this.shadowGl = null;
+      }
+    }
+    if (this.skirtGl && !this.skirtLost && !this.skirtRenderer) {
+      try {
+        this.skirtRenderer = new GrassGpuRenderer(this.skirtGl, this.palette);
+      } catch {
+        this.skirtRenderer?.dispose();
+        this.skirtRenderer = null;
+        this.skirtGl = null;
       }
     }
   }
@@ -341,11 +380,52 @@ export class GrassGpuLayer {
     bands: readonly TallBand[],
     f: GrassFrame,
   ): BandBlit[] {
-    const out = this.bandBlits;
+    return this.renderBands('tall', tallBlades, bands, f);
+  }
+
+  /** True when the skirt atlas path can render this frame. */
+  get skirtOk(): boolean {
+    return this.skirtGl !== null && this.skirtRenderer !== null && !this.skirtLost;
+  }
+
+  /**
+   * G4 — THE OVER-FOOT SKIRT. Identical atlas machinery to renderTall, but
+   * fed the per-object skirt blades (generateSkirtBlades) and one band PER
+   * OBJECT — each band's `sortY` is the object's foot row plus a hair, so
+   * the renderer emits it as a y-sorted DrawItem that draws OVER the
+   * object's lower base. A separate GL context/atlas from the tall path
+   * (both blit this same frame), degrading independently. Returns [] when
+   * the skirt context is unavailable or nothing is in view.
+   */
+  renderSkirt(
+    skirtBlades: readonly Blade[],
+    bands: readonly TallBand[],
+    f: GrassFrame,
+  ): BandBlit[] {
+    return this.renderBands('skirt', skirtBlades, bands, f);
+  }
+
+  /** Shared atlas render for the tall + skirt band paths: each band renders
+   *  in ISOLATION into its own slot of one offscreen atlas (a single GL
+   *  pass), returning each slot's atlas src-rect + screen dst-rect for the
+   *  renderer to y-sort. `which` selects the private context/canvas/renderer
+   *  + instance buffer so the two atlases never clobber one another. */
+  private renderBands(
+    which: 'tall' | 'skirt',
+    srcBlades: readonly Blade[],
+    bands: readonly TallBand[],
+    f: GrassFrame,
+  ): BandBlit[] {
+    const isSkirt = which === 'skirt';
+    const out = isSkirt ? this.skirtBlits : this.bandBlits;
     out.length = 0;
-    if (!this.tallOk || !this.tallGl || !this.tallRenderer) return out;
+    const gl = isSkirt ? this.skirtGl : this.tallGl;
+    const renderer = isSkirt ? this.skirtRenderer : this.tallRenderer;
+    const canvas = isSkirt ? this.skirtCanvas : this.tallCanvas;
+    const okFlag = isSkirt ? this.skirtOk : this.tallOk;
+    if (!okFlag || !gl || !renderer) return out;
+    const tallBlades = srcBlades;
     if (tallBlades.length === 0 || bands.length === 0) return out;
-    const gl = this.tallGl;
     const dpr = f.dpr;
 
     // Blade world extent mirrors the vertex shader (grassGpuRenderer):
@@ -430,8 +510,8 @@ export class GrassGpuLayer {
     }
     if (atlasH === 0) return out;
 
-    if (this.tallCanvas.width !== atlasW) this.tallCanvas.width = atlasW;
-    if (this.tallCanvas.height !== atlasH) this.tallCanvas.height = atlasH;
+    if (canvas.width !== atlasW) canvas.width = atlasW;
+    if (canvas.height !== atlasH) canvas.height = atlasH;
     gl.viewport(0, 0, atlasW, atlasH);
     gl.disable(gl.SCISSOR_TEST);
     gl.clearColor(0, 0, 0, 0);
@@ -446,8 +526,10 @@ export class GrassGpuLayer {
       wCss: f.wCss,
       hCss: f.hCss,
     };
-    this.tallInstances = packBladeInstances(tallBlades, this.tallInstances);
-    this.tallRenderer.beginBands(this.tallInstances, tallBlades.length, proj3, f.timeSec, {
+    const packed = packBladeInstances(tallBlades, isSkirt ? this.skirtInstances : this.tallInstances);
+    if (isSkirt) this.skirtInstances = packed;
+    else this.tallInstances = packed;
+    renderer.beginBands(packed, tallBlades.length, proj3, f.timeSec, {
       windGain: f.windGain,
       disturb: f.disturb,
     });
@@ -463,7 +545,7 @@ export class GrassGpuLayer {
       // Scissor the slot (GL framebuffer origin is bottom-left → flip y).
       gl.scissor(slot.ax, atlasH - (slot.ay + slot.hDev), slot.wDev, slot.hDev);
       const remap = bandNdcRemap(SW, SH, atlasW, atlasH, bandSx, bandSy, slot.ax, slot.ay);
-      this.tallRenderer.drawBand(bands[k]!.i0, bands[k]!.count, remap);
+      renderer.drawBand(bands[k]!.i0, bands[k]!.count, remap);
       out.push({
         srcX: slot.ax,
         srcY: slot.ay,
@@ -476,7 +558,7 @@ export class GrassGpuLayer {
         sortY: bands[k]!.sortY,
       });
     }
-    this.tallRenderer.drawBandEnd();
+    renderer.drawBandEnd();
     gl.disable(gl.SCISSOR_TEST);
     return out;
   }
@@ -487,19 +569,24 @@ export class GrassGpuLayer {
     this.ornaments?.dispose();
     this.tallRenderer?.dispose();
     this.shadowRenderer?.dispose();
+    this.skirtRenderer?.dispose();
     this.renderer = null;
     this.ornaments = null;
     this.tallRenderer = null;
     this.shadowRenderer = null;
+    this.skirtRenderer = null;
     this.gl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.tallGl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.shadowGl?.getExtension('WEBGL_lose_context')?.loseContext();
+    this.skirtGl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.gl = null;
     this.tallGl = null;
     this.shadowGl = null;
+    this.skirtGl = null;
     this.lost = true;
     this.tallLost = true;
     this.shadowLost = true;
+    this.skirtLost = true;
   }
 }
 
