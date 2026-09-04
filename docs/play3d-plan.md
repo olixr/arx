@@ -560,3 +560,75 @@ water plane, aprons pour onto the banks, kerbs run the bridge sides.
 - `paintDeckSideFascia` is the 2D's EDGE-ON rim sliver (px·0.06 wide,
   for the top-down frame) — not a face texture; the rim band re-emits
   the south-face block it stands for.
+
+### W2 BARRIERS — as built (2026-09-04)
+
+Fences, palisades, the iron rest, hedges and the garrison as geometry
+with painted faces. Modules under `packages/client/src/play3d/structures/`
+(headers state the laws):
+
+| file | what | real / placeholder |
+| --- | --- | --- |
+| `barrierGeom.ts` | PURE. THE NODE GRAPH: nodes at tile centres, a gate's run arrives at its BOUNDARY, 45° tiles stride corner to corner through their centre; `barrierJoins` (cardinal: at least one plain run tile; diagonal: BOTH ends want it — "/" wants NE/SW, a straight tile wants a corner iff the tile there is the matching diagonal) is symmetric by construction; `barrierNode` = incident mask / degree / through / isolated / anchor + the edges the tile OWNS (E, S, SE, SW, plus any cardinal half-edge into a gate — THE SHARED-EDGE LAW for lines: every edge emitted exactly once, across chunk seams by the lexicographic-min end); `hedgeExposure` (faces where the neighbour is not a straight hedge); `emitBox` (axis box, exposed sides only, u reads W→E from OUTSIDE each face), `emitRunBox` (a box along any bearing with sloping base), `emitCard`, `emitCross` (THE TURNED CROSS — two cards 22.5° off the axes so no post card is coplanar with a rail through it), `swingLeafEnd`/`leafSwing` (open = 96°), `garrisonGateRuns` (E–W merge from the west anchor; side gates single; only the chunk holding the anchor emits), merlon constants | real (14 tests) |
+| `barrierFaces.ts` | `BarrierFaces` over the FaceAtlas: cards at CARD_PX 96 (bleed off), prisms at FACE_PX 48 / HEDGE_PX 64 (bleed on), every tile lifted a stop by `liftPainted` (source-atop white = litTone over whatever the painter laid). 2D primitives called under the stub host: `drawFencePost`, `giantLog` + `palisadeRope` (one tile of the E–W course, 4 giants hash-split), `drawPalisadePost` (collar + skull), `ironBar`/`ironRail`/`ironOrnament` (the panel: 8 bars at the 0.125 pitch — the u=1 seam bar is the neighbour's u=0 — three rails, ornament per half tile), `drawGravePier` (one elevation; the pier boxes sample its plinth/shaft/cap bands, the finial rides as a cross), `paintGarrisonMasonry` (WORLD-ANCHORED: key = worldX mod 17 since the 0.68 bond repeats every 17 tiles; faces along z key on world y). Re-emitted with source lines: fence rails (railEW), the five-bar leaf, the lashed palisade leaf, the lintel + spikes, the iron standard, curb faces, the iron leaf + overthrow, the hedge face kit (shade band, roots, clusters, tufts), the hedge crown life (sheen/clump/flecks/one-in-six blooms/partings), the LOBE card, the living arch, the merlon face/cap, the gatehouse elevation (voussoir ring, keystone, imposts, machicolations, quoined piers), soffit, portcullis, the iron-bound leaf. Restated palettes: barrierArt iron/hedge, garrisonArt ashlar (module-private in their homes) | real |
+| `barriers.ts` | `buildBarrierStructures`: FENCE = post cross at every node (0.92, gate posts 0.98 on the boundary), a rail card per edge (u scaled by length ≤ 1), leaf swings on the tile's state; PALISADE = two flank cards (PALI_W 0.24 apart) of the carved course + a bark top strip at 1.22 (girth from above, points from the side), a fat junction giant at anchors, THE GREAT GATE (posts 0.06 in from the boundary, lintel box 1.72+0.12 with its spike card, double leaves each folding toward its own post); IRON = curb run-box (0.17 × 0.15) under every edge, panel card over it, standards at every second E–W seam (tx parity) and at through N–S nodes, piers (plinth/shaft/cap boxes + finial cross) at every anchor, the gate = orb piers + overthrow card + two barred leaves; HEDGE = straight mass: crown top per tile, faces + lobe cards on exposed sides (each side its own world-keyed variant), 45° = rotated slab 0.7 wide at HED_H−0.02 (caps only at free ends), gate = two pillars (HED_H+0.22) under the arch card, always open | real |
+| `garrison.ts` | `buildGarrisonStructures`: straight tiles = box with faces on exposed sides (`runN/E/S/W` over `garrisonish`), wall-walk top (4 variants), MERLON_H teeth at the 2D's 0.25/0.75 world phase on every exposed crown edge (0.34 × 0.34 boxes); diagonals = hypotenuse face + exposed leg faces + the wall-walk triangle (`sink.tri`) + two teeth on the hypotenuse; GATE RUNS (read from the LIVE world — a 3-wide gatehouse anchored at the chunk edge reaches past the 1-tile snapshot) = two pier boxes (outer end face only where the curtain does not continue), a lintel box from `GAR_SPRING_H + 0.6·rise` to the crown with a dark soffit, teeth on both crown edges + taller pier caps south, the portcullis card under the lintel, two iron-bound leaves (ow/2 wide, 1.75 tall) on the tile's state; side gates = one 0.8 × 1.9 leaf in the notch, thrown east when open | real |
+| `dev/play3dBarriers.mjs` | the lane's driver (harness law verbatim + `find`: scan the streamed chunks for tile ids and re-teleport to the nearest big cluster — the live world's own coordinates): `curtain-fence` (−460,−240), `curtain-close` (find 139), `graveyard` (−512,−212), `graveyard-close` (find 496 → −512,−198), `hedge` (find 342 → Dawnmead −460,−167), `fence-close` (find 15), `palisade` (find 292 → Amberford 579,45), `palisade-gate` (295/296 → 582,38), `fence-gate` (134/135 → 582,2), `hedge-gate` (345/346 → 519,18), each × low 0.3–0.36 / high 0.8–0.85 pitch | real |
+
+**Gates:** `npm run typecheck` green (this lane's files); `barriers.test.ts`
+14 tests (kinds, the pen: through/anchor/gate boundary half-edges from
+both sides, every edge emitted once (owned·2 = joins), the "/" turn
+symmetric + owned by the diagonal, "\" beside "/" never joins, isolated
+panel/stride, vertical gate endpoints, hedge exposure, iron anchors,
+garrison gate runs + anchor-chunk ownership, emitBox/emitRunBox/
+emitCard/emitCross geometry, the leaf swing); full client suite
+**1063/1063**; `check:cycles` 3/0/0/1; live proof on rig-36 as
+`perf12_probe` with a clean console —
+`dev/play3d-shots/w2-barriers-{curtain-fence,curtain-close,graveyard,graveyard-close,hedge,fence-close,palisade,palisade-gate,fence-gate,hedge-gate}-{low,high}.png`
+(graveyard chunk: 861 barrier quads; Dawnmead hedge chunk: 766;
+structures 50–72 draws over 25–33 chunks = 2–3 per chunk; geometry
+≤ 2.6 MB; build ≤ 2.7 ms; atlas 1–2 pages shared with the other lanes).
+
+**Judged (two rounds):** round 1 — posts stand at every node and the
+rails meet AT them (no coplanar fight: the turned cross), corners and
+gates close; the palisade has girth and a crown of points; the curtain
+reads castellated with arrow loops and the string course unbroken across
+tiles; the gatehouse's piers, lintel, machicolations, portcullis and
+swung leaves stand; the iron rest's bars, rails, ornaments, standards,
+piers and orb gate under its overthrow read; the hedge is one mass with
+lobed crown edges — but its crown's dome sheen printed polka dots.
+Round 2 — sheen calmed (α 0.09, larger, with a soft dark seat); the
+palisade gate's skull posts / lintel / spikes / open leaves, the fence
+gate's boundary posts and open five-bar leaf, and the hedge arch over its
+pillars judged from 7–8 tiles. No z-fighting, no floating, no seams at
+diagonals seen in any shot.
+
+**Gaps / decisions:**
+
+- **Garrison ownership resolved by the WALLS lane's switch**: walls.ts
+  ships `WALLS_OWN_GARRISON = false`; this lane's `garrison.ts` builds the
+  curtain (called from `buildBarrierStructures`). INTEGRATE keeps one.
+- **`FENCE_POST_H` (structKinds.ts, 1.72) is the PALISADE GATE post**
+  (barrierArt.ts:905); the wood fence post is 0.92 (drawFencePost
+  s·0.92, rails at 0.45/0.75) and that is what stands here. The constant
+  is left as the scaffold wrote it; barrierFaces.ts carries the honest
+  heights.
+- **Door state is the tile** — a toggle rebuilds the chunk through the
+  ground streamer's `refresh`; there is no swing easing (the 2D's
+  `doorOpenness` lives on the Renderer). Open = 96° for every family.
+- **The 2D `fenceish` reach toward house walls is not taken** — a fence
+  beside a wall ends at its own post (the separate-masonry law).
+- **Fences on porch decks** do not add DOCK_LIFT (the 2D's carried-deck
+  rule, barrierArt.ts:143); they stand on `heightAt`, which the
+  TERRAIN-FORMS lane now lifts on decks, so this may already be right.
+- **Hedge 45° tiles** are rotated slabs (0.7 wide, a hair lower than the
+  mass); the 2D's fused blob loop is not reproduced. Hedge gates are
+  always the open arch (no shut wicket).
+- **Iron N–S runs** show the full panel card (the 2D condenses them to a
+  band edge-on — a 2.5D fix, not needed with a real camera).
+- **Diagonal garrison teeth** are axis-aligned boxes centred on the
+  hypotenuse; the 2D's sheared teeth would need a rotated box emitter.
+- **Gate-run merlons** march both crown edges; the 2D's archK melt
+  (teeth over the passage fading with the veil) has no 3D meaning.
+- The wide `graveyard` scene at the brief's coordinates faces the
+  meadow (the iron rest is at −512,−198 — `graveyard-close`).
