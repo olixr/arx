@@ -9,7 +9,6 @@ import { ELEV_H } from './elevPick.js';
 import { packTile } from './interiors.js';
 import { GARRISON_H, GAR_LEAF, MERLON_H, WALL_STUB, stone01 } from './paintVocab.js';
 import { shade } from './rig.js';
-import { faceBand, faceFill, faceSeam } from './structureFace.js';
 import { Tile, diagWallInfo, doorInfo, hashCoords } from '@arx/shared';
 import type { DrawItem } from './renderer.js';
 import { wallHangings } from './wallHungArt.js';
@@ -194,7 +193,7 @@ export function garrisonWallItem(rend: PaintHost,
   whT: number,
 ): DrawItem {
   const ctx = rend.ctx;
-  const s = rend.camera.scale * rend.camera.depthScale(ty); // B-3 depth thread
+  const s = rend.camera.scale;
   const p = rend.camera.worldToScreen(tx, ty, rend.w, rend.h);
   const elevLift = game.world.elevAt(tx, ty) * ELEV_H * s;
   p.y -= elevLift;
@@ -203,37 +202,8 @@ export function garrisonWallItem(rend: PaintHost,
   const sw = rend.garrisonish(game, tx, ty + 1);
   const w = rend.garrisonish(game, tx - 1, ty);
   const syT = s * rend.camera.yScale;
-  // B-FW WALL TRAPEZOID (mirrors renderer.wallItem / cliffArt): a curtain
-  // tile is a real box, not a single-depth billboard. Its NORTH (far)
-  // edge rides row `ty`; its SOUTH (near/face) edge — the face you walk
-  // behind — rides row `ty+1`, which under the lean projects to a
-  // DIFFERENT screen y (row spacing is nonlinear in depth) and a WIDER
-  // screen x (near rows spread from the vanishing centre). Project that
-  // south row for real so tile(ty)'s south edge lands exactly where
-  // tile(ty+1)'s north edge does (same world corner ⇒ same projection ⇒
-  // no gap). The far edge lifts by ITS OWN depthScale (whT·s = hsN), the
-  // near edge by the south row's (whT·sS = hs), so the crown seats on the
-  // leaned face top. At q=0 worldToScreen is exact-affine, sS === s, the
-  // south row projects to p.x / p.y+syT, and every value below collapses
-  // to today's single-depthScale rect — byte-identical (pinned on the
-  // q===0 branch, no reassociated arithmetic).
-  const q = rend.camera.q;
-  const sS = q === 0 ? s : rend.camera.scale * rend.camera.depthScale(ty + 1);
-  const hsN = whT * s; // NORTH (far) edge lift — today's `hs`
-  const hs = whT * sS; // SOUTH (near/face) edge lift
-  let swx: number;
-  let sex: number;
-  let southBaseY: number;
-  if (q === 0) {
-    swx = p.x;
-    sex = p.x + s;
-    southBaseY = p.y + syT;
-  } else {
-    const pS = rend.camera.worldToScreen(tx, ty + 1, rend.w, rend.h);
-    swx = pS.x; // world x = tx  at row ty+1
-    sex = pS.x + sS; // world x = tx+1 at row ty+1
-    southBaseY = pS.y - elevLift; // same elevation basis as p.y
-  }
+  const hs = whT * s; // crown / face lift
+  const southBaseY = p.y + syT;
   // THE SHARED-EDGE LAW: run-mates meet on one pixel-snapped edge
   // (the wallItem seam lesson — a bleed on a joined side prints a
   // pale AA column up the face at every joint). Snapped on THE
@@ -243,14 +213,8 @@ export function garrisonWallItem(rend: PaintHost,
   const gKey = packTile(tx, ty);
   const gBleedW = rend.bakeBleedW === gKey;
   const gBleedE = rend.bakeBleedE === gKey;
-  // NORTH footprint edges (crown far side) — the old x0/x1/y0 basis.
-  const xN0 = w ? (gBleedW ? p.x - rend.bakeBleedPx : rend.camera.snapPx(p.x)) : p.x - 0.25;
-  const xN1 = e ? (gBleedE ? p.x + s + rend.bakeBleedPx : rend.camera.snapPx(p.x + s)) : p.x + s + 0.25;
-  // SOUTH footprint edges (crown near side / face foot). A south corner
-  // here is the SAME projected world corner the tile one row south uses
-  // for its north corner ⇒ the snapped edges coincide.
-  const x0 = w ? (gBleedW ? swx - rend.bakeBleedPx : rend.camera.snapPx(swx)) : swx - 0.25;
-  const x1 = e ? (gBleedE ? sex + rend.bakeBleedPx : rend.camera.snapPx(sex)) : sex + 0.25;
+  const x0 = w ? (gBleedW ? p.x - rend.bakeBleedPx : rend.camera.snapPx(p.x)) : p.x - 0.25;
+  const x1 = e ? (gBleedE ? p.x + s + rend.bakeBleedPx : rend.camera.snapPx(p.x + s)) : p.x + s + 0.25;
   const y0 = n ? rend.camera.snapPx(p.y) : p.y - 0.25;
   const y1 = sw ? rend.camera.snapPx(southBaseY) : southBaseY + 0.25;
   const nH = n ? rend.garrisonHeightAt(game, tx, ty - 1) : whT;
@@ -261,13 +225,9 @@ export function garrisonWallItem(rend: PaintHost,
   const md = syT * 0.34;
   const mw = s * 0.34;
   const cs = [0.25, 0.75]; // world-phase tooth centers, 2 per tile
-  // Crown top edges: north lifts by hsN, south by hs (== the face top).
-  const cNy = y0 - hsN;
+  // Crown top edges (north / south), lifted by the face height.
+  const cNy = y0 - hs;
   const cSy = y1 - hs;
-  // Lift of the crown plane at depth fraction v (0 = north .. 1 = south);
-  // used to seat the flank teeth and their ink on the leaned plane. At
-  // q=0 hs === hsN so liftAt(v) === whT·s for every v (byte-identical).
-  const liftAt = (v: number): number => hsN + (hs - hsN) * v;
 
   return {
     sortY: ty + 1,
@@ -275,8 +235,8 @@ export function garrisonWallItem(rend: PaintHost,
       ? undefined
       : () => rend.castEdgeQuad(x0, southBaseY, x1, southBaseY, whT),
     draw: () => {
-      // South face: the great ashlar curtain, on the projected south
-      // plane (x0..x1 at southBaseY, rising by the near lift hs).
+      // South face: the great ashlar curtain, on the south plane
+      // (x0..x1 at southBaseY, rising by hs).
       if (!sw) {
         ctx.save();
         ctx.translate(0, southBaseY);
@@ -284,7 +244,7 @@ export function garrisonWallItem(rend: PaintHost,
           x0,
           x1 - x0,
           hs,
-          sS,
+          s,
           tx + (x0 - p.x) / s,
           (x1 - x0) / s,
           tx,
@@ -299,110 +259,45 @@ export function garrisonWallItem(rend: PaintHost,
       // REAR RISER: the interior back face exposed when the curtain
       // ahead sinks lower — rides the crown's FAR (north) edge.
       if (n && nH < whT - 0.04) {
-        const yRTop = p.y - hsN;
+        const yRTop = p.y - hs;
         const yRBot = p.y - syT - nH * s;
         if (yRBot > yRTop + 0.5) {
           ctx.fillStyle = shade(GAR_FACE, -14);
-          ctx.fillRect(xN0, yRTop, xN1 - xN0, yRBot - yRTop);
+          ctx.fillRect(x0, yRTop, x1 - x0, yRBot - yRTop);
         }
       }
-      // TRUE SIDE FACES (B-FW side walls): a receding vertical face on
-      // every EXPOSED footprint edge with no south face — the deck model
-      // (deckStandFace). A N–S curtain run is a column of tiles each with
-      // a wall to its south, so the south-face block above never runs and,
-      // at q>0, the wall-walk crown caps foreshorten and lift up-screen,
-      // leaving a SEE-THROUGH band under each crown where the side of the
-      // rampart should be. Fill it with a real trapezoid down each exposed
-      // edge, from the crown's matching slanted edge to the ground, so the
-      // curtain reads solid. Spans the crown's own snapped corners (xN*/x*
-      // at hsN/hs) ⇒ consecutive tiles' faces meet seam-free and seat under
-      // the crown. Height honours the live whT (the veil sink). GUARDED
-      // behind q>0: at q=0 the crowns tile the column and cover it, so
-      // nothing new is emitted — byte-identical to today.
-      if (q > 0) {
-        const cp = s * 0.5; // ashlar course pitch (matches paintGarrisonMasonry)
-        const jw = Math.max(1, s * 0.03);
-        const jointCol = 'rgba(20, 14, 28, 0.4)';
-        const sideFace = (
-          ax: number,
-          ay: number,
-          aLift: number,
-          bx: number,
-          by: number,
-          bLift: number,
-          litD: number,
-        ): void => {
-          // THE STRUCTURE FACE (screen-space shape): corners are already
-          // projected + snapped and the lifts pre-foreshortened, so the
-          // shared trapezoid/band/seam helpers draw them verbatim.
-          faceFill(ctx, ax, ay, aLift, bx, by, bLift, shade(GAR_FACE, litD));
-          const band = (f0: number, f1: number, col: string): void =>
-            faceBand(ctx, ax, ay, aLift, bx, by, bLift, f0, f1, col);
-          const hline = (f: number, wpx: number, col: string): void =>
-            faceSeam(ctx, ax, ay, aLift, bx, by, bLift, f, wpx, col);
-          // The battered talus footing wraps the corner.
-          const plinthH = Math.min(s * 0.55, hs * 0.42);
-          band(0, plinthH / hs, shade(GAR_PLINTH, litD));
-          // Great ashlar bed joints at absolute stone pitch above the talus.
-          for (let ci = 1; ; ci++) {
-            const lift = plinthH + ci * cp;
-            if (lift >= hs * 0.99) break;
-            hline(lift / hs, jw, jointCol);
-          }
-          // The string course band, only on a full-standing face.
-          if (hs > s * 2.5) band((hs - s * 2.2) / hs, (hs - s * 2.07) / hs, shade(GAR_FACE, litD + 20));
-        };
-        // West edge — SW→NW, exposed with no wall west. Sunlit.
-        if (!w) sideFace(xN0, y0, hsN, x0, y1, hs, 6);
-        // East edge — SE→NE, exposed with no wall east. Shaded.
-        if (!e) sideFace(xN1, y0, hsN, x1, y1, hs, -12);
-        // North back face — the curtain's outward back (flat rectangle,
-        // both corners on row ty). Mostly hidden by the crown under lean;
-        // skipped where the REAR RISER already anchors a sunk neighbour.
-        if (!n) sideFace(xN0, y0, hsN, xN1, y0, hsN, -6);
-      }
-      // CROWN: the wall-walk as a TRUE trapezoid drawn in absolute screen
-      // coords — its NORTH edge (xN0..xN1 at cNy, lifted by the far
-      // depthScale) joins its SOUTH edge (x0..x1 at cSy, the near
-      // depthScale == the face top). Because each edge is the projected
-      // shared world corner, tile(ty)'s south crown edge coincides with
-      // tile(ty+1)'s north edge (and E–W via the snapped footprint), so
-      // no gap is representable. At q=0 hsN===hs, the rows project to the
-      // same width, and the trapezoid collapses to today's lifted rect
-      // vertex-for-vertex (byte-identical).
+      // CROWN: the wall-walk slab — its NORTH edge (x0..x1 at cNy) joins
+      // its SOUTH edge (x0..x1 at cSy, the face top); each edge is the
+      // shared world corner, so tile(ty)'s south crown edge coincides
+      // with tile(ty+1)'s north edge and no gap is representable.
       ctx.fillStyle = GAR_TOP;
       ctx.beginPath();
-      ctx.moveTo(xN0, cNy);
-      ctx.lineTo(xN1, cNy);
+      ctx.moveTo(x0, cNy);
+      ctx.lineTo(x1, cNy);
       ctx.lineTo(x1, cSy);
       ctx.lineTo(x0, cSy);
       ctx.closePath();
       ctx.fill();
-      // Sparse walk flags — world-hashed so the paving never grids. Each
-      // rides the crown plane: a seam leans N→S (a thin quad between the
-      // projected edges), a bed line spans the width at its own depth.
-      // At q=0 both collapse to today's lifted fillRects.
+      // Sparse walk flags — world-hashed so the paving never grids: a
+      // seam runs N→S, a bed line spans the width at its own depth.
       const hf = hashCoords(457, tx, ty);
       ctx.fillStyle = 'rgba(20, 14, 28, 0.16)';
       if ((hf & 3) !== 0) {
         const fx = 0.2 + (hf % 60) / 100;
         const fw = Math.max(1, s * 0.03);
         const nx = p.x + s * fx;
-        const sx = swx + sS * fx;
         ctx.beginPath();
-        ctx.moveTo(nx, y0 - hsN);
-        ctx.lineTo(nx + fw, y0 - hsN);
-        ctx.lineTo(sx + fw, y1 - hs);
-        ctx.lineTo(sx, y1 - hs);
+        ctx.moveTo(nx, y0 - hs);
+        ctx.lineTo(nx + fw, y0 - hs);
+        ctx.lineTo(nx + fw, y1 - hs);
+        ctx.lineTo(nx, y1 - hs);
         ctx.closePath();
         ctx.fill();
       }
       if ((hf & 4) === 0) {
         const fy = 0.3 + ((hf >>> 6) % 40) / 100;
-        const ly = p.y + syT * fy - liftAt(fy);
-        const lxW = xN0 + (x0 - xN0) * fy;
-        const lxE = xN1 + (x1 - xN1) * fy;
-        ctx.fillRect(lxW, ly, lxE - lxW, Math.max(1, s * 0.028));
+        const ly = p.y + syT * fy - hs;
+        ctx.fillRect(x0, ly, x1 - x0, Math.max(1, s * 0.028));
       }
       // Sun-lit south lip: the embrasure sill between the teeth, on the
       // near crown edge.
@@ -412,49 +307,26 @@ export function garrisonWallItem(rend: PaintHost,
       }
       // Parapet teeth on every EXPOSED crown edge, up-screen edges first
       // so southern teeth overdraw honestly. North teeth ride the far
-      // edge (cNy, x from p.x+s·c); south teeth ride the near edge (y1−hs,
-      // x spread to the south row swx+sS·c); flank teeth march the depth,
-      // each seated on the crown plane at its own depth (lift interpolated
-      // N→S). All collapse to today's lifted positions at q=0.
+      // edge (cNy), south teeth the near edge (y1−hs); flank teeth march
+      // the depth on the crown plane.
       if (mh > s * 0.05) {
         if (!n)
           for (const c of cs)
-            merlonBox(rend, p.x + s * c - mw / 2, y0 - hsN, mw, md, mh, shade(GAR_FACE, -16));
+            merlonBox(rend, p.x + s * c - mw / 2, y0 - hs, mw, md, mh, shade(GAR_FACE, -16));
         if (!w)
           for (const c of cs)
-            merlonBox(rend,
-              xN0 + (x0 - xN0) * c,
-              p.y + syT * c - md / 2 - liftAt(c),
-              mw,
-              md,
-              mh,
-              shade(GAR_FACE, 2),
-            );
+            merlonBox(rend, x0, p.y + syT * c - md / 2 - hs, mw, md, mh, shade(GAR_FACE, 2));
         if (!e)
           for (const c of cs)
-            merlonBox(rend,
-              xN1 + (x1 - xN1) * c - mw,
-              p.y + syT * c - md / 2 - liftAt(c),
-              mw,
-              md,
-              mh,
-              shade(GAR_FACE, -8),
-            );
+            merlonBox(rend, x1 - mw, p.y + syT * c - md / 2 - hs, mw, md, mh, shade(GAR_FACE, -8));
         if (!sw)
           for (const c of cs)
-            merlonBox(rend,
-              swx + sS * c - mw / 2,
-              y1 - md - hs,
-              mw,
-              md,
-              mh,
-              shade(GAR_FACE, 8),
-            );
+            merlonBox(rend, p.x + s * c - mw / 2, y1 - md - hs, mw, md, mh, shade(GAR_FACE, 8));
       }
       // THE CASTELLATED OUTLINE: exposed perimeter only (the run
       // reads as one mass), with the crown lines STEPPING over each
       // parapet tooth — the silhouette is the signature. Traced along
-      // the trapezoid edges so the ink meets neighbours seamlessly.
+      // the crown edges so the ink meets neighbours seamlessly.
       if (rend.outlineOn) {
         const sideBot = sw ? cSy : southBaseY;
         const o = new Path2D();
@@ -469,24 +341,23 @@ export function garrisonWallItem(rend: PaintHost,
           }
           o.lineTo(xb, y);
         };
-        if (!n) crenel(xN0, xN1, cNy, cs.map((c) => p.x + s * c), mh);
-        if (!sw) crenel(x0, x1, cSy, cs.map((c) => swx + sS * c), mh + md);
+        if (!n) crenel(x0, x1, cNy, cs.map((c) => p.x + s * c), mh);
+        if (!sw) crenel(x0, x1, cSy, cs.map((c) => p.x + s * c), mh + md);
         if (!w) {
-          o.moveTo(xN0, cNy);
+          o.moveTo(x0, cNy);
           o.lineTo(x0, sideBot);
-          // Flank teeth ring their own boxes AT CROWN HEIGHT, each on the
-          // leaned plane (an unlifted ring prints phantom rectangles down
-          // the face).
+          // Flank teeth ring their own boxes AT CROWN HEIGHT (an unlifted
+          // ring prints phantom rectangles down the face).
           if (mh > s * 0.05)
             for (const c of cs)
-              o.rect(xN0 + (x0 - xN0) * c, p.y + syT * c - md / 2 - liftAt(c) - mh, mw, md + mh);
+              o.rect(x0, p.y + syT * c - md / 2 - hs - mh, mw, md + mh);
         }
         if (!e) {
-          o.moveTo(xN1, cNy);
+          o.moveTo(x1, cNy);
           o.lineTo(x1, sideBot);
           if (mh > s * 0.05)
             for (const c of cs)
-              o.rect(xN1 + (x1 - xN1) * c - mw, p.y + syT * c - md / 2 - liftAt(c) - mh, mw, md + mh);
+              o.rect(x1 - mw, p.y + syT * c - md / 2 - hs - mh, mw, md + mh);
         }
         if (!sw) {
           o.moveTo(x0, southBaseY);
@@ -515,46 +386,23 @@ export function garrisonDiagItem(rend: PaintHost,
 ): DrawItem {
   const info = diagWallInfo(tile)!;
   const ctx = rend.ctx;
-  const s = rend.camera.scale * rend.camera.depthScale(ty); // B-3 depth thread
+  const s = rend.camera.scale;
   const syT = s * rend.camera.yScale;
   const p = rend.camera.worldToScreen(tx, ty, rend.w, rend.h);
   const elevLift = game.world.elevAt(tx, ty) * ELEV_H * s;
   p.y -= elevLift;
-  const hs = whT * s; // face-height lift (north depthScale); used by the masonry
+  const hs = whT * s; // face-height lift; used by the masonry
   const nE = rend.garrisonish(game, tx + 1, ty);
   const nS = rend.garrisonish(game, tx, ty + 1);
   const nW = rend.garrisonish(game, tx - 1, ty);
-  // B-FW: project the SOUTH row so a diagonal turn's corners land on the
-  // same projected world corners the straight runs it joins now use — the
-  // hyp meets its neighbours seam-true. Each corner carries its OWN crown
-  // lift (north edge whT·s, south edge whT·sS) so the wall-walk seats on
-  // the leaned face top. At q=0 sS===s, the south row projects to
-  // p.x/p.y+syT, and every corner collapses to today's values (byte-
-  // identical — pinned on the q===0 branch).
-  const q = rend.camera.q;
-  const sS = q === 0 ? s : rend.camera.scale * rend.camera.depthScale(ty + 1);
-  const hsS = whT * sS; // south-corner crown lift
-  let swx: number;
-  let sex: number;
-  let southY: number;
-  if (q === 0) {
-    swx = p.x;
-    sex = p.x + s;
-    southY = p.y + syT;
-  } else {
-    const pS = rend.camera.worldToScreen(tx, ty + 1, rend.w, rend.h);
-    swx = pS.x;
-    sex = pS.x + sS;
-    southY = pS.y - elevLift;
-  }
   const yN = p.y;
-  const yS = southY;
+  const yS = p.y + syT;
   // Corner = [screen x, GROUND screen y, crown lift]. North corners ride
-  // row ty at the north x; south corners row ty+1 at the projected south x.
+  // row ty, south corners row ty+1.
   const NWc: [number, number, number] = [p.x - 0.25, yN, hs];
   const NEc: [number, number, number] = [p.x + s + 0.25, yN, hs];
-  const SWc: [number, number, number] = [swx - 0.25, yS, hsS];
-  const SEc: [number, number, number] = [sex + 0.25, yS, hsS];
+  const SWc: [number, number, number] = [p.x - 0.25, yS, hs];
+  const SEc: [number, number, number] = [p.x + s + 0.25, yS, hs];
   const mass = info.mass;
   const hypW: [number, number, number] = mass === 'NE' || mass === 'SW' ? NWc : SWc;
   const hypE: [number, number, number] = mass === 'NE' || mass === 'SW' ? SEc : NEc;
@@ -583,8 +431,7 @@ export function garrisonDiagItem(rend: PaintHost,
         : () => rend.castEdgeQuad(SWc[0], yS, SEc[0], yS, whT),
     draw: () => {
       // The visible face: sheared masonry along the hyp for front
-      // corners, the straight south edge for exposed back corners. Both
-      // now ride the PROJECTED corners so the turn meets its runs.
+      // corners, the straight south edge for exposed back corners.
       if (front) {
         const w2 = hypE[0] - hypW[0];
         const k = (hypE[1] - hypW[1]) / w2;
@@ -600,10 +447,8 @@ export function garrisonDiagItem(rend: PaintHost,
         ctx.restore();
       }
       // Crown: the mass triangle as wall-walk, drawn in ABSOLUTE coords
-      // with each corner lifted by ITS OWN depthScale so the wall-walk
-      // seats on the leaned face top and the turn's crown edges meet the
-      // straight runs' trapezoids. At q=0 every lift === whT·s, so this
-      // is the old uniform-lift triangle vertex-for-vertex.
+      // with each corner lifted by the wall height so the turn's crown
+      // edges meet the straight runs'.
       const triPath = new Path2D();
       triPath.moveTo(tri[0]![0], cyOf(tri[0]!));
       triPath.lineTo(tri[1]![0], cyOf(tri[1]!));
@@ -621,13 +466,13 @@ export function garrisonDiagItem(rend: PaintHost,
         ctx.moveTo(hypW[0], cyOf(hypW));
         ctx.lineTo(hypE[0], cyOf(hypE));
       } else {
-        ctx.moveTo(SWc[0], yS - hsS);
-        ctx.lineTo(SEc[0], yS - hsS);
+        ctx.moveTo(SWc[0], yS - hs);
+        ctx.lineTo(SEc[0], yS - hs);
       }
       ctx.stroke();
       ctx.restore();
       // Parapet teeth stepping the diagonal — interpolated along the hyp
-      // (position AND lift) so they seat on the leaned arris.
+      // (position AND lift) so they seat on the arris.
       if (mh > s * 0.05) {
         for (const u of [0.25, 0.75]) {
           const cx = hypW[0] + (hypE[0] - hypW[0]) * u;
@@ -693,11 +538,11 @@ export function garrisonDiagItem(rend: PaintHost,
           o.lineTo(SEc[0], yS);
           if (!nW) {
             o.moveTo(SWc[0], yS);
-            o.lineTo(SWc[0], yS - hsS);
+            o.lineTo(SWc[0], yS - hs);
           }
           if (!nE) {
             o.moveTo(SEc[0], yS);
-            o.lineTo(SEc[0], yS - hsS);
+            o.lineTo(SEc[0], yS - hs);
           }
         }
         rend.beginStructOutline();
@@ -729,7 +574,7 @@ export function garrisonGateItem(rend: PaintHost,
   runLen: number,
 ): DrawItem {
   const ctx = rend.ctx;
-  const s = rend.camera.scale * rend.camera.depthScale(ty); // B-3 depth thread
+  const s = rend.camera.scale;
   const p = rend.camera.worldToScreen(tx, ty, rend.w, rend.h);
   p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
   const syT = s * rend.camera.yScale;
@@ -999,12 +844,8 @@ export function garrisonGateItem(rend: PaintHost,
       // to carry it — it narrows away northward on the same archK
       // that fades the dressing. At the stub the crown is two pier
       // tops with open sky between them: the gap IS the gate.
-      // Epic B (FW): lift the crown by the DEPTH-SCALED wall height so the
-      // wall-walk and teeth seat on the face top instead of floating above
-      // it — beginHeightLayer lifts by raw camera.scale, which detaches the
-      // crown from the depth-scaled face (hs = whT*s) under lean. At q=0
-      // s === camera.scale and there is no horizontal lean (PERSP_LEAN=0),
-      // so this is byte-identical to beginHeightLayer(whT).
+      // Lift the crown by the wall height so the wall-walk and teeth
+      // seat on the face top (hs = whT*s).
       ctx.save();
       ctx.translate(0, -whT * s);
       const cd = y1 - y0;
@@ -1136,7 +977,7 @@ export function garrisonSideGateItems(rend: PaintHost,
   runLen: number,
   items: DrawItem[],
 ): void {
-  const s = rend.camera.scale * rend.camera.depthScale(ty); // B-3 depth thread
+  const s = rend.camera.scale;
   const p = rend.camera.worldToScreen(tx, ty, rend.w, rend.h);
   p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
   const elevated = game.world.elevAt(tx, ty) !== 0;

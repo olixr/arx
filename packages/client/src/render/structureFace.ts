@@ -1,27 +1,18 @@
 /**
  * THE STRUCTURE FACE — one law for every world-geometry vertical face.
  *
- * The renderer draws several vertical faces (deck fascia, wall side
- * faces, cliff curtains, garrison curtain sides) as a screen-space
- * rectangle between two world-ground corners A and B, lifted by a
- * screen-space height, with the two shared corners rounded to the same
- * device pixel so run-mates meet seam-free — the cliffArt / deck law.
- *
- * Four near-identical implementations existed. This module holds the ONE
- * shared primitive. It comes in two shapes because the call sites feed it
- * two ways, and folding them into one function would change the
- * arithmetic (and so the pixels):
+ * The renderer draws vertical faces (cliff curtains, and the wall /
+ * doorway features that ride a face) as a screen-space rectangle between
+ * two world-ground corners A and B, lifted by a screen-space height, with
+ * the two shared corners rounded to the same device pixel so run-mates
+ * meet seam-free — the cliffArt / deck law.
  *
  *  - WORLD-CORNER faces (cliffFaceItem) hand this module two WORLD
  *    corners; it projects, rounds and builds the four corners —
  *    `projectFace` (and its callback wrapper `emit`).
  *
- *  - SCREEN-CORNER faces (the wall/garrison side faces) have ALREADY
- *    projected + custom-snapped their corners (snapPx + shared-edge bleed),
- *    so they only need the fill + course-band + seam helpers, in screen
- *    space — `faceFill`, `faceBand`, `faceSeam`. Re-projecting them here
- *    (Math.round vs their snapPx/bleed) would move the pixels, so this
- *    shape keeps their corners and lifts verbatim.
+ *  - FEATURE-ON-FACE placement (windows, doors, wall-hangings) maps a
+ *    face-local (u,v) onto the face's own plane — `faceUV`.
  *
  * Pure and alloc-lean like the hot-path code it replaces: the world-corner
  * path allocates exactly the two Vec2s the old inline code did, plus one
@@ -160,90 +151,4 @@ export function faceUV(
     }
     return { x, y };
   };
-}
-
-/** A minimal 2D canvas surface — the drawing subset the side faces use. */
-export interface FaceCtx {
-  fillStyle: string | CanvasGradient | CanvasPattern;
-  beginPath(): void;
-  moveTo(x: number, y: number): void;
-  lineTo(x: number, y: number): void;
-  closePath(): void;
-  fill(): void;
-}
-
-/**
- * SCREEN-SPACE side-face quad. `ax/ay`–`bx/by` are the projected +
- * snapped GROUND corners; the top edge lifts by each corner's own screen
- * lift (`aLift` / `bLift`). The lifts arrive already scaled so nothing is
- * reassociated here.
- */
-export function faceFill(
-  ctx: FaceCtx,
-  ax: number,
-  ay: number,
-  aLift: number,
-  bx: number,
-  by: number,
-  bLift: number,
-  col: string,
-): void {
-  ctx.fillStyle = col;
-  ctx.beginPath();
-  ctx.moveTo(ax, ay);
-  ctx.lineTo(ax, ay - aLift);
-  ctx.lineTo(bx, by - bLift);
-  ctx.lineTo(bx, by);
-  ctx.closePath();
-  ctx.fill();
-}
-
-/** A course band between wall-height fractions f0..f1 of a side face. */
-export function faceBand(
-  ctx: FaceCtx,
-  ax: number,
-  ay: number,
-  aLift: number,
-  bx: number,
-  by: number,
-  bLift: number,
-  f0: number,
-  f1: number,
-  col: string,
-): void {
-  ctx.fillStyle = col;
-  ctx.beginPath();
-  ctx.moveTo(ax, ay - aLift * f0);
-  ctx.lineTo(ax, ay - aLift * f1);
-  ctx.lineTo(bx, by - bLift * f1);
-  ctx.lineTo(bx, by - bLift * f0);
-  ctx.closePath();
-  ctx.fill();
-}
-
-/**
- * A thin seam line across a side face at wall-height fraction f, constant
- * device thickness (min 1px) — a chinking line or mortar bed.
- */
-export function faceSeam(
-  ctx: FaceCtx,
-  ax: number,
-  ay: number,
-  aLift: number,
-  bx: number,
-  by: number,
-  bLift: number,
-  f: number,
-  wpx: number,
-  col: string,
-): void {
-  const wa = Math.max(1, wpx);
-  ctx.fillStyle = col;
-  ctx.beginPath();
-  ctx.moveTo(ax, ay - aLift * f);
-  ctx.lineTo(bx, by - bLift * f);
-  ctx.lineTo(bx, by - bLift * f + wa);
-  ctx.lineTo(ax, ay - aLift * f + wa);
-  ctx.closePath();
-  ctx.fill();
 }

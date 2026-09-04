@@ -1,15 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  emit,
-  faceBand,
-  faceFill,
-  faceSeam,
-  faceUV,
-  projectFace,
-  type FaceCamera,
-  type FaceCtx,
-} from './structureFace.js';
+import { emit, faceUV, projectFace, type FaceCamera } from './structureFace.js';
 import { projectWorld, type XY } from './cameraProject.js';
 
 /**
@@ -88,56 +79,6 @@ test('emit hands projectFace geometry to the paint callback', () => {
   assert.deepEqual(seen, direct);
 });
 
-/** A canvas stub that records the path it is told to draw. */
-function recCtx(): FaceCtx & { ops: string[] } {
-  const ops: string[] = [];
-  return {
-    ops,
-    fillStyle: '',
-    beginPath() {
-      ops.push('begin');
-    },
-    moveTo(x, y) {
-      ops.push(`M ${x} ${y}`);
-    },
-    lineTo(x, y) {
-      ops.push(`L ${x} ${y}`);
-    },
-    closePath() {
-      ops.push('close');
-    },
-    fill() {
-      ops.push(`fill ${this.fillStyle}`);
-    },
-  };
-}
-
-test('faceFill draws the base→lifted trapezoid verbatim', () => {
-  const ctx = recCtx();
-  faceFill(ctx, 10, 100, 30, 50, 90, 20, '#abc');
-  assert.deepEqual(ctx.ops, ['begin', 'M 10 100', 'L 10 70', 'L 50 70', 'L 50 90', 'close', 'fill #abc']);
-});
-
-test('faceBand spans wall-height fractions on both corners', () => {
-  const ctx = recCtx();
-  faceBand(ctx, 10, 100, 40, 50, 90, 20, 0.25, 0.75, '#111');
-  assert.deepEqual(ctx.ops, [
-    'begin',
-    `M 10 ${100 - 40 * 0.25}`,
-    `L 10 ${100 - 40 * 0.75}`,
-    `L 50 ${90 - 20 * 0.75}`,
-    `L 50 ${90 - 20 * 0.25}`,
-    'close',
-    'fill #111',
-  ]);
-});
-
-/**
- * FEATURE-ON-FACE UV — the bilinear that pins windows / doors / hangings
- * to the face's own projected plane. At q=0 the four corners are an
- * axis-aligned rect, so the map must reduce to plain rect placement; at
- * q>0 (a receding trapezoid) it must bilerp the four corners.
- */
 test('faceUV over an axis-aligned rect reduces to rect placement', () => {
   // Base row y=0, top row y=-100 (frame-local, as the wall face feeds it);
   // west x=10, east x=50 on BOTH rows ⇒ q=0 face.
@@ -180,21 +121,6 @@ test('faceUV writes into a reused out point when given one', () => {
   const r = S(0.5, 0.5, out);
   assert.equal(r, out); // same object, no allocation
   assert.deepEqual(out, { x: 5, y: -5 });
-});
-
-test('faceSeam draws a min-1px seam at a fraction', () => {
-  const ctx = recCtx();
-  faceSeam(ctx, 10, 100, 40, 50, 90, 20, 0.5, 0.2, '#222');
-  const wa = Math.max(1, 0.2);
-  assert.deepEqual(ctx.ops, [
-    'begin',
-    `M 10 ${100 - 40 * 0.5}`,
-    `L 50 ${90 - 20 * 0.5}`,
-    `L 50 ${90 - 20 * 0.5 + wa}`,
-    `L 10 ${100 - 40 * 0.5 + wa}`,
-    'close',
-    'fill #222',
-  ]);
 });
 
 /**

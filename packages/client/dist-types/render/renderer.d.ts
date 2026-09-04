@@ -2348,33 +2348,6 @@ export declare class Renderer {
      */
     private woodCrownPlate;
     /**
-     * THE CONTINUOUS CROWN (Epic B, q>0) — the wall-plate beam read as ONE
-     * coherent top along the whole run, not a row of per-tile hashed caps.
-     *
-     * woodCrownPlate paints the beam in ORTHO rect coords (fillRect on
-     * p.x / p.y / syT), so under the lean every tile's cap ignores the pitch
-     * and a straight run reads stepped / segmented. This paints the SAME
-     * carpentry — hard arris shadows down the beam's two long edges, a
-     * sun-lit spine, a long grain streak, a pegged butt joint — in the
-     * leaned crown trapezoid's own UV: `u` ALONG the run, `v` ACROSS the beam
-     * thickness, bilerped over the four projected crown corners (NW/NE on the
-     * far row, SW/SE on the near row). Because consecutive tiles share a
-     * crown edge (the SAME projected world corner ⇒ the same device pixel)
-     * and every feature is keyed to a `u`/`v` FRACTION, the spine, arris and
-     * grain lines run head-on across the joint — the whole run reads as one
-     * continuous plate. Per-tile whT (the reveal veil) and per-tile sort are
-     * untouched: only the DETAIL moves into crown-plane space, so a sunk
-     * neighbour still steps its own height while the level run stays coherent.
-     *
-     * The feature hash stays `hashCoords(177, tx, ty)` — this tile's own unit
-     * of the run — so the beam's varied dressing matches woodCrownPlate's
-     * statistics unit-for-unit; the continuity comes purely from drawing in
-     * the leaned UV rather than from re-seeding. Guarded to q>0 by the caller;
-     * q=0 keeps woodCrownPlate verbatim (byte-identical). Call with the crown
-     * fill path still current — it clips the dressing to the chamfered top.
-     */
-    private woodCrownRun;
-    /**
      * A 45° wall corner tile. The mass fills one triangle (named by the
      * tile); the open triangle faces the exterior. NE/NW-mass variants
      * cut a building's camera-side corners and show their SLOPED
@@ -2514,9 +2487,8 @@ export declare class Renderer {
      */
     private portalItem;
     /**
-     * A freestanding column: faceted plinth, tapered shaft that leans
-     * with the camera, chamfered capital. Solid, walk-around, y-sorted
-     * like a prop.
+     * A freestanding column: faceted plinth, tapered shaft, chamfered
+     * capital. Solid, walk-around, y-sorted like a prop.
      */
     private pillarItem;
     /**

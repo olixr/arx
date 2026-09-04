@@ -1233,12 +1233,8 @@ export function cliffSideItem(rend: PaintHost,
       const sx = Math.round(A.x);
       const w2 = Math.max(3, s * 0.13);
       const x0 = nx >= 0 ? sx : sx - w2;
-      // B-3 spanning warp: the side run's top/bottom foreshorten by their
-      // own corner depth (s0 north, s1 south), matching the face it joins.
-      const dsA = rend.camera.depthScale(s0);
-      const dsB = rend.camera.depthScale(s1);
-      const yTop = Math.round(A.y - topLift * dsA) - (isTop ? 1.5 : 0);
-      const yBot = isBottom ? B.y - baseLift * dsB : Math.round(B.y - topLift * dsB);
+      const yTop = Math.round(A.y - topLift) - (isTop ? 1.5 : 0);
+      const yBot = isBottom ? B.y - baseLift : Math.round(B.y - topLift);
       // Body: the face palette's own mid-tones, pushed into shade —
       // kin to the walls it joins, not a black bar fighting them.
       ctx.fillStyle = nx >= 0 ? '#494259' : '#544d64';
@@ -1248,7 +1244,7 @@ export function cliffSideItem(rend: PaintHost,
       ctx.fillStyle = 'rgba(29, 23, 40, 0.3)';
       const tickH = Math.max(1.5, s * 0.035);
       for (let wy = Math.ceil((s0 - 1) * 2) / 2; wy <= s1 + 1; wy += 0.5) {
-        const py = rend.camera.worldToScreen(x, wy, rend.w, rend.h).y - topLift * rend.camera.depthScale(wy) + s * 0.4;
+        const py = rend.camera.worldToScreen(x, wy, rend.w, rend.h).y - topLift + s * 0.4;
         if (py >= yTop + tickH && py < yBot - tickH) ctx.fillRect(x0, py, w2, tickH);
       }
       // Arris on the outward silhouette edge.

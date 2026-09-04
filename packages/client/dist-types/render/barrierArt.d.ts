@@ -9,24 +9,16 @@ import { Tile } from '@arx/shared';
 import type { DrawItem } from './renderer.js';
 import type { PaintHost } from './paintHost.js';
 /**
- * Epic B (FW) BARRIER SPAN — project a point at tile fractions (fx east,
- * fy south of the tile-centre BASE row) to leaned screen space, so the
- * members that SPAN a tile's depth (N-S rails, hedge mass, palisade /
- * iron marching courses, diagonal strides) meet their run-mates on the
- * SAME projected world corner, seam-true under the lean — the two-corner
- * trapezoid law of wallItem / cliffArt, spoken for billboards.
- *
- * A barrier tile anchors at world (tx+0.5, ty+0.5) but its members hang
- * off `baseY = p.y + syT·0.14` (world row ty+0.64), so a member at screen
- * `baseY + fy·syT`, `p.x + fx·s` is world (tx+0.5+fx, ty+0.64+fy). `lift`
- * is the elevation + porch lift already subtracted from `p.y`.
- *
- * THE INVARIANT: at q=0 this returns the exact billboard arithmetic
- * (`p.x + fx·s`, `baseY + fy·syT`) — no worldToScreen round-trip, no
- * reassociation — so every caller stays byte-identical until the lean is
- * on. Fills `out` alloc-free.
+ * BARRIER SPAN — a point at tile fractions (fx east, fy south of the
+ * tile-centre BASE row) in screen space: the members that SPAN a tile's
+ * depth (N-S rails, hedge mass, palisade / iron marching courses,
+ * diagonal strides) share one datum so run-mates meet on the same
+ * corner. A barrier tile anchors at world (tx+0.5, ty+0.5) but its
+ * members hang off `baseY = p.y + syT·0.14`, so a member at screen
+ * `baseY + fy·syT`, `p.x + fx·s` is world (tx+0.5+fx, ty+0.64+fy).
+ * Fills `out` alloc-free.
  */
-export declare function barrierPt(rend: PaintHost, tx: number, ty: number, px: number, s: number, baseY: number, syT: number, lift: number, fx: number, fy: number, out: {
+export declare function barrierPt(px: number, s: number, baseY: number, syT: number, fx: number, fy: number, out: {
     x: number;
     y: number;
 }): {
@@ -42,7 +34,7 @@ export declare function fenceish(rend: PaintHost, game: ClientGame, x: number, y
  * outline; call it AFTER the rails so the post face covers their
  * run-through seams and every joint reads carpentered.
  */
-export declare function drawFencePost(rend: PaintHost, x: number, baseY: number, w: number, hTot: number, ds?: number): void;
+export declare function drawFencePost(rend: PaintHost, x: number, baseY: number, w: number, hTot: number): void;
 /**
  * THE FENCE REBUILD — post-and-rail stock fencing in the game's
  * 2.5D dialect. One capped post per tile; two rails with REAL board
@@ -84,7 +76,7 @@ export declare function fenceGateItem(rend: PaintHost, tile: Tile, tx: number, t
  * not a fence panel — and overlapping logs occlude each other's ink
  * honestly because fill and ink land together, log by log.
  */
-export declare function giantLog(rend: PaintHost, x: number, baseY: number, w: number, shoulder: number, seed: number, ink: boolean, ds?: number): void;
+export declare function giantLog(rend: PaintHost, x: number, baseY: number, w: number, shoulder: number, seed: number, ink: boolean): void;
 /** Shoulder height for log k of a tile — big and uneven (1.3 to
  *  1.62 tiles over the 1.15-tile body: the wall MEANS it). */
 export declare function logShoulder(rend: PaintHost, tx: number, ty: number, k: number): number;
@@ -94,13 +86,13 @@ export declare function logShoulder(rend: PaintHost, tx: number, ty: number, k: 
  * rounds each log seam, and a knot with a dangling end at one
  * hash-picked log. Fill-only value work (the logs own the ink).
  */
-export declare function palisadeRope(rend: PaintHost, xw: number, xe: number, y: number, seams: readonly number[], knotSeed: number, ds?: number): void;
+export declare function palisadeRope(rend: PaintHost, xw: number, xe: number, y: number, seams: readonly number[], knotSeed: number): void;
 /**
  * A GATE POST: the fattest log in the wall, with a rope hinge
  * collar and — on one side of every gate — the camp's skull staring
  * down the road.
  */
-export declare function drawPalisadePost(rend: PaintHost, x: number, baseY: number, w: number, hTot: number, skull: boolean, ds?: number): void;
+export declare function drawPalisadePost(rend: PaintHost, x: number, baseY: number, w: number, hTot: number, skull: boolean): void;
 /**
  * THE SPIKED WALL, rebuilt — GIANT CARVED LOGS, not a fence. Four
  * whole trunks to the tile (each its own monument: rolled value
@@ -140,7 +132,7 @@ export declare function palisadeGateItem(rend: PaintHost, tile: Tile, tx: number
  * gaps are the POINT — a graveyard rail is drawn so the eye passes
  * between the bars and finds the stones it keeps.
  */
-export declare function ironBar(rend: PaintHost, x: number, footY: number, tipY: number, seed: number, dim: number, ds?: number): void;
+export declare function ironBar(rend: PaintHost, x: number, footY: number, tipY: number, seed: number, dim: number): void;
 /**
  * THE CURB — the granite course the railing is leaded into. A low
  * coursed-stone footing with a TRUE foreshortened top plane (the
@@ -156,7 +148,7 @@ export declare function ironCurbEW(rend: PaintHost, xw: number, xe: number, base
  * finial standing on it: an urn on the piers that keep the yard,
  * an orb-and-spike on the piers that carry the gate.
  */
-export declare function drawGravePier(rend: PaintHost, x: number, baseY: number, w: number, hTot: number, finial: 'urn' | 'orb', ds?: number): void;
+export declare function drawGravePier(rend: PaintHost, x: number, baseY: number, w: number, hTot: number, finial: 'urn' | 'orb'): void;
 /** A rail band: dark iron with one lit top thread, drawn OVER the
  *  bars so every bar reads as pierced through, never glued on. */
 export declare function ironRail(rend: PaintHost, x0: number, x1: number, y: number, t: number, dim: number): void;
@@ -167,7 +159,7 @@ export declare function ironRail(rend: PaintHost, x0: number, x1: number, y: num
  * panels down a long run repeat, and the whole run still reads as
  * one commission.
  */
-export declare function ironOrnament(rend: PaintHost, cx: number, yTop: number, yBot: number, seed: number, dim: number, ds?: number): void;
+export declare function ironOrnament(rend: PaintHost, cx: number, yTop: number, yBot: number, seed: number, dim: number): void;
 /**
  * THE IRON REST — the graveyard's wall. Wrought spear-topped bars
  * leaded into a granite curb, three rails, an ornament band, and a
