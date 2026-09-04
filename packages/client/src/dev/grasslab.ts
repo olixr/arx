@@ -35,7 +35,7 @@ for (let ty = 0; ty < NY; ty++) {
   for (let tx = 0; tx < NX; tx++) {
     const tileId = TALL_FIELD ? 2 : 1; // 2 = GrassTall standing mass
     const detailId = (tx * 7 + ty * 3) % 11 === 0 ? 3 : 0; // scatter tufts
-    const g = generateGrassTile(tx, ty, tileId, detailId);
+    const g = generateGrassTile(tx, ty, tileId, detailId, 0, true);
     for (const b of g.under) blades.push(b);
     for (const b of g.north) blades.push(b);
     for (const b of g.south) blades.push(b);

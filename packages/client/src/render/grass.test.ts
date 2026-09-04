@@ -48,6 +48,59 @@ test('grass generation is deterministic — same tile, same meadow, every sessio
   assert.deepEqual(generateGrassTile(12, 34, Tile.Grass, 0), generateGrassTile(12, 34, Tile.Grass, 0));
 });
 
+// ------------------------------------------ GPU meadow: standing grass scatter
+
+test('gpu=false leaves normal grass with NO standing mass (canvas default unchanged)', () => {
+  // The default (canvas) path must be byte-identical to before: a normal Grass
+  // tile carries only the under coat, never north/south standing blades.
+  for (let i = 0; i < 200; i++) {
+    const g = generateGrassTile(i * 5, (i * 13) % 400, Tile.Grass, 0);
+    assert.equal(g.north.length + g.south.length, 0, `tile ${i} grew standing grass in canvas mode`);
+  }
+  // And passing gpu=false explicitly is identical to omitting it.
+  assert.deepEqual(
+    generateGrassTile(21, 42, Tile.Grass, 0, 0, false),
+    generateGrassTile(21, 42, Tile.Grass, 0),
+  );
+});
+
+test('gpu=true scatters standing grass through a CLUMPY FRACTION of normal tiles', () => {
+  let withStanding = 0;
+  const total = 900;
+  for (let i = 0; i < total; i++) {
+    const tx = i % 30;
+    const ty = Math.floor(i / 30);
+    const g = generateGrassTile(tx, ty, Tile.Grass, 0, 0, true);
+    if (g.north.length + g.south.length > 0) withStanding++;
+  }
+  const frac = withStanding / total;
+  // A real fraction of the field carries standing grass — but nowhere near all
+  // of it (clumpy drifts with gaps, never a uniform carpet or a barren field).
+  assert.ok(frac > 0.1, `too little standing grass (${(frac * 100).toFixed(0)}%)`);
+  assert.ok(frac < 0.75, `standing grass everywhere — not clumpy (${(frac * 100).toFixed(0)}%)`);
+});
+
+test('gpu standing scatter is deterministic and gpu-gated', () => {
+  const a = generateGrassTile(7, 11, Tile.Grass, 0, 0, true);
+  const b = generateGrassTile(7, 11, Tile.Grass, 0, 0, true);
+  assert.deepEqual(JSON.stringify(a), JSON.stringify(b));
+});
+
+test('true GrassTall thickets stay the DENSEST standing grass', () => {
+  // A dedicated thicket must out-mass any scattered tuft in a normal tile.
+  let tallMin = Infinity;
+  for (let i = 0; i < 40; i++) {
+    const g = generateGrassTile(i * 3, (i * 7) % 200, Tile.GrassTall, 0, 0, true);
+    tallMin = Math.min(tallMin, g.north.length + g.south.length);
+  }
+  let scatterMax = 0;
+  for (let i = 0; i < 900; i++) {
+    const g = generateGrassTile(i % 30, Math.floor(i / 30), Tile.Grass, 0, 0, true);
+    scatterMax = Math.max(scatterMax, g.north.length + g.south.length);
+  }
+  assert.ok(tallMin > scatterMax, `thicket floor ${tallMin} must exceed scatter peak ${scatterMax}`);
+});
+
 // ------------------------------------------------------- lean cell scale
 
 test('rowLeanScale: identical bake/blit frames leave the sprite untouched (ds=1)', () => {
