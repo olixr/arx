@@ -80,6 +80,27 @@ function fmt(v: number): string {
   return v.toFixed(2);
 }
 
+/** W2: the structures line — draws / tris / atlas pages for the standing geometry. */
+export function fmtStructStats(s: {
+  chunks: number;
+  draws: number;
+  tris: number;
+  quads: number;
+  geometryBytes: number;
+  atlasPages: number;
+  atlasTiles: number;
+  atlasBytes: number;
+  buildMsLast: number;
+  dirty: number;
+  rebuilds: number;
+}): string {
+  return (
+    `${s.draws} draws · ${(s.tris / 1000).toFixed(1)}k tris (${s.quads} quads) over ${s.chunks} chunks · ` +
+    `geometry ${fmtBytes(s.geometryBytes)} · faces ${s.atlasTiles} tiles / ${s.atlasPages} pages (${fmtBytes(s.atlasBytes)}) · ` +
+    `build ${s.buildMsLast.toFixed(1)}ms · dirty ${s.dirty} · rebuilds ${s.rebuilds}`
+  );
+}
+
 export function fmtBytes(b: number): string {
   if (b > 1e9) return `${(b / 1e9).toFixed(2)} GB`;
   if (b > 1e6) return `${(b / 1e6).toFixed(1)} MB`;

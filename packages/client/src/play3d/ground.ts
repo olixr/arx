@@ -62,6 +62,7 @@ import { chunkOf, outsideRing, packChunk, ringAround, type RingEntry } from './c
 import { buildChunkStatics, type ChunkStatics, type SpriteAtlas } from './sprites.js';
 import type { BillboardClock, BillboardFactory } from './billboard.js';
 import type { WorldSource3D } from './world.js';
+import type { ChunkStructures } from './structures/structures.js';
 
 /** Bake density: px per tile. 24 keeps a 32-tile chunk at 776² (2.4MB). */
 export const BAKE_PX = 24;
@@ -158,6 +159,13 @@ export class GroundStreamer {
   };
   /** Fires whenever the lamp roster changes (chunk load/evict). */
   onLampsChanged: ((lamps: LampSpot[]) => void) | null = null;
+  /**
+   * W2: the structures aggregator rides the chunk lifecycle — built
+   * when a chunk stands up, evicted with it, rebuilt on a rev bump
+   * (the same evict + re-admit). Set by the composition after both
+   * exist (it needs `heightAtFn`); null = no structures (labs).
+   */
+  structures: ChunkStructures | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -226,6 +234,8 @@ export class GroundStreamer {
     this.stats.baking = baking;
     this.stats.bakeMsLast = performance.now() - t0;
     this.stats.chunks = this.recs.size;
+    // W2: neighbour-woken structure rebuilds share the frame budget.
+    this.structures?.update(t0, budgetMs);
   }
 
   private admit(key: number, cx: number, cy: number): void {
@@ -277,6 +287,7 @@ export class GroundStreamer {
     this.stats.faces += hf.faceCount;
     this.standUp(rec, chunk);
     this.scanLamps(rec, chunk);
+    this.structures?.build(cx, cy);
   }
 
   private standUp(rec: ChunkRec, chunk: ChunkData): void {
@@ -396,6 +407,7 @@ export class GroundStreamer {
     }
     this.stats.faces -= rec.faces;
     if (this.lamps.delete(rec.key)) this.emitLamps();
+    this.structures?.evict(rec.cx, rec.cy);
     this.recs.delete(rec.key);
   }
 
@@ -406,6 +418,7 @@ export class GroundStreamer {
    */
   refresh(): number {
     let n = 0;
+    this.structures?.invalidate();
     for (const rec of [...this.recs.values()]) {
       const cur = this.world.peek(rec.cx, rec.cy);
       if (cur === rec.chunk && (cur.rev ?? 0) === rec.rev) continue;

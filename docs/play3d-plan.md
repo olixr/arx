@@ -391,3 +391,113 @@ door itself (the Classic/Immersive switch and one login shelf).
 Unchanged from S2's workstreams, with three S3 hand-offs: W5 begins
 with the chrome dedupe (#20); the crowd round takes the vertex-stage
 idle breath (#11); CSM (#9's remainder) stays in W3.
+
+---
+
+## W2 — STRUCTURES AS GEOMETRY WITH PAINTED FACES
+
+Walls, doors, windows, diagonals, awnings, the garrison, fences,
+palisades, hedges, iron fences, docks/bridges/porches and cliff faces
+become REAL MESHES textured by the existing procedural painters, so
+the 3D client stops showing floors without walls. The data contract
+(the structure grammar + painter map, with file:line anchors) is
+`docs/play3d-w2-map.md`. Four lanes: SCAFFOLD (this section, ran
+alone), then WALLS / BARRIERS / TERRAIN-FORMS in parallel from the
+scaffold commit, then INTEGRATE.
+
+### W2 SCAFFOLD — as built (2026-09-04)
+
+**What stands** (`packages/client/src/play3d/structures/`; every
+module header states its laws):
+
+| file | what | real / placeholder |
+| --- | --- | --- |
+| `structKinds.ts` | PURE per-tile classification over `{groundAt, detailAt, elevAt}`: `family` ('wall'/'garrison'/'fence'/'palisade'/'hedge'/'iron'/'deck'/'cliff'/'none'), wall `material` ('stone'/'wood'/'cave', doorways by door material), `isWindow`, `diag` (diagWallInfo), `barrierDiag` ("/" NE or "\" NW), `door` (doorInfo), `sideDoorway`, `awning`, `wallHung`, `deckKind`, `elev`/`lift`; RUN CONTINUITY `runN/E/S/W` by the 2D rules — `wallish` (WALL_RUN_TILES minus side doorways, renderer.ts:8718 + isSideDoorway ported verbatim), `garrisonish` (GARRISON_TILES minus side gates, renderer.ts:11514), the separate-masonry law for the four barrier families (same-set only), bridge+dock one class / porch its own, cliff rim; `corner*` diagonal-neighbour flags for barrier turns; `scanChunkStructs` (tiles by family, scan order); `snapshotWithBorder` (THE BORDER IS READ ONCE: chunk + 1-tile ring copied out of the world); `gridSampler` for tests/labs; the 2D heights restated with sources (WALL_H 2.05, WALL_STUB 0.62, GARRISON_H 3.4, MERLON_H 0.5, HED_H 0.95, FENCE_POST_H 1.72, PALISADE_H 1.66, ELEV_H 1.35, DOCK_LIFT 0.22) | real (13 tests: 5×5 house with side + south doorway, windowed run, diagonal corner, fence pen with gate + "/" corners, cross-family adjacency fence/wall + garrison/wall + hedge/iron, garrison side gate, decks/cliffs/lift, awnings, chunk scan through the border, sink winding, tones, constants vs their 2D homes) |
+| `structSink.ts` | PURE quad sink bucketed by (material kind, atlas page); winding corrected against the declared normal; `face(...)` (vertical face a→b, y0→y1, atlas rect u W→E / v base→crown) and `top(...)` (horizontal quad) helpers; `drain()` → typed arrays per bucket | real (tested) |
+| `faceTone.ts` | PURE `litTone(hex, k=0.18)` (LAMBERT EATS A STOP — lift 2D palette tones for lit faces) and `shadedTone` (the REAR RISER's back-face shade) | real (tested) |
+| `faceAtlas.ts` | `FaceAtlas` over ShelfPacker: 2048² sRGB CanvasTexture pages, pad 8, `get(key, () => {w, h, paint(ctx,w,h), bleed?})` → `FaceRef {page,u0,v0,u1,v1,w,h}` (v0 = ground base, v1 = crown), resident blank on mint + sub-rect `Backend.blit` per tile on `flush()`; THE PAD WEARS THE EDGE (opaque tiles replicate their border into the pad so mips never blend with transparent black; cards pass `bleed:false`); `FACE_PX = 48` px/tile | real (no tile minted yet) |
+| `stubHost.ts` | `makeStubHost(ctx, scale)` → `StubHost {ctx, camera{scale, yScale 0.6, snapPx, worldToScreen(Into)}, w, h, outlineOn:false, frameDt 0, frameNo 0, game:null, breezeAt→still air, beginStructOutline}` — the eight members the amber painters read (verified by grepping each body: paintGarrisonMasonry/merlonBox → ctx; drawFencePost/giantLog/ironBar/hedgeMassPaint/drawPalisadePost/ironCurbEW/drawGravePier/ironRail → ctx + camera.scale/yScale + outlineOn/beginStructOutline; 13 of 14 wallHungArt *OnFace → ctx + breezeAt + beginStructOutline; NONE reach particles/queueGlow/castEdgeQuad); `asPaintHost` is THE ONE CAST; `aimStubHost` retargets; `faceFrame` = the 2D face-local frame (y rising negative from the base) | real |
+| `structMaterials.ts` | `StructMaterials(atlas).get(kind, page)` → shared `MeshLambertMaterial` per page: 'opaque' (FrontSide) / 'cutout' (alphaTest 0.5, DoubleSide, + `MeshDepthMaterial` with the same alpha test so the sun cuts through cards); cast + receive shadow | real |
+| `structures.ts` | `ChunkStructures`: per chunk `build` = snapshot → scan → the three lane builders over ONE `StructBuildCtx` → sink drains to one BufferGeometry per (kind, page) → meshes in the scene (bounding sphere, frustum culled, shadow flags, custom depth for cutouts); `evict` disposes geometry + debits the ledger; THE BORDER WAKES THE NEIGHBOUR (a built chunk marks its 8 neighbours dirty; `update(t0, budget)` rebuilds them under the ground streamer's frame budget, rebuilds never wake — no ping-pong); `invalidate()` on world moves gates the InteriorMap version; `stats` (chunks/draws/tris/quads/geometryBytes/atlas pages+tiles+bytes/buildMs/builds/rebuilds/dirty/per-lane quads); `builders` overridable for labs | real (0 quads until the lanes land) |
+| `walls.ts` / `barriers.ts` / `terrainForms.ts` | lane STUBS: `buildWallStructures(ctx)` / `buildBarrierStructures(ctx)` / `buildTerrainFormStructures(ctx)` return `{quads: 0}`; each header names its owner and contract | placeholder — the lanes' files |
+| `ground.ts` (edited minimally) | `structures: ChunkStructures \| null` field; admit → `structures.build`, evict → `structures.evict`, refresh → `structures.invalidate`, update → `structures.update` under the same budget | real |
+| `main3d.ts` / `hud.ts` | composition (`FaceAtlas` → `StructMaterials` → `ChunkStructures(scene, world, faces, mats, ground.heightAtFn)`, `ground.structures = …`), `faces.flush()` after the sprite atlas each frame + in `settle` (settle also waits for `dirty === 0`), the `structures` HUD line (`fmtStructStats`), `stats().structures` in the probe, dispose | real |
+| `render/terrain.ts` | `paintDeckSideFascia`, `paintDeckPile`, `paintDeckWallSkirt` gain `export` (no behaviour change) for the terrain-forms lane | real |
+| `dev/play3dW2.mjs` | the W2 proof harness: login + PLANE CHECK + THE VERIFIED TELEPORT (asserts the predictor moved) + settle; six scenes × (low 0.36, high 0.85 pitch): `interiors` (−430,−290), `wall-market` (−420,−240), `curtain-fence` (−460,−240), `graveyard` (−512,−212), `terraces` (48,−78), `amberford-bridge` (534,62 — maps/amberford.ts:1138 + zone origin 448,−56); `SCENES=` picks a subset, `TAG=` prefixes; logs the structures ledger per shot | real (owned by INTEGRATE; lanes add scenes) |
+
+**The lane APIs (what each lane implements):**
+
+```ts
+// structures.ts — every lane receives this and returns { quads, note? }
+interface StructBuildCtx {
+  world: WorldSource3D;                 // the seam; use isRamp/peek here
+  cx, cy, size, x0, y0: number;         // chunk + its world tile origin
+  sampler: StructSampler;               // chunk + 1-tile border snapshot (undefined past the ring)
+  scan: ChunkStructScan;                // .byFamily.get('wall'|'garrison'|'fence'|'palisade'|'hedge'|'iron'|'deck'|'cliff') → TileStruct[]
+  atlas: FaceAtlas;                     // atlas.get(key, () => ({ w, h, paint, bleed? })) → FaceRef
+  host: StubHost;                       // aimStubHost(host, tileCtx[, scale]) then asPaintHost(host) for amber painters
+  elevH: number;                        // 1.35
+  heightAt(wx, wy): number;             // ground height under a world point (the heightfield's own)
+  interiors: InteriorMap;
+  regionAt(tx, ty): InteriorRegion | null;
+  woodSkinFor(region): WoodSkin;        // dealWoodSkin — one skin per building
+  sink: StructSink;                     // sink.face(kind, page, ax, az, bx, bz, y0, y1, u0, v0, u1, v1, nx, nz) / sink.top(...) / sink.quad(...) / sink.tri(...)
+}
+buildWallStructures(ctx)        // walls.ts       — 'wall' + 'garrison' families, awnings, wall-hung
+buildBarrierStructures(ctx)     // barriers.ts    — 'fence' | 'palisade' | 'hedge' | 'iron'
+buildTerrainFormStructures(ctx) // terrainForms.ts — 'deck' (dock/bridge/porch) + 'cliff'
+```
+
+Coordinates are WORLD (x = tile x, y = height in tiles, z = tile y),
+like the heightfield and the statics — a lane never subtracts the
+chunk origin. Ground base of a structure = `ctx.heightAt(wx, wy)`
+(which already includes the elev lift for the tile it stands on;
+`tile.lift` is the same number for a flat tile, exposed for reasoning
+about neighbours). Face UVs: `u` W→E along the run, `v` 0 at the
+ground base → 1 at the crown (`FaceRef.v0` is the base). Material
+kind: `'opaque'` for prisms, `'cutout'` for cards. Keep a chunk under
+6 draws: opaque×pages + cutout×pages — one atlas page holds ~400 wall
+faces at 48×98, so this is one or two pages for the whole town.
+
+**Gates (scaffold commit):** `npm run typecheck` green; `npm run test
+-w @arx/client` **1008 pass** (+13); `check:cycles` at baseline
+(3/0/0/1); `dev/play3dW2.mjs` runs all six scenes against rig-36 as
+`perf12_probe` with a clean console — shots
+`dev/play3d-shots/w2-scaffold-{interiors,wall-market,curtain-fence,graveyard,terraces,amberford-bridge}-{low,high}.png`
+(nothing visible changes: structures 0 draws / 0 quads; the HUD's
+`structures` line and `stats().structures` confess the plumbing —
+builds fire per admitted chunk, neighbour-wake rebuilds run: 42 for
+the 25-chunk interiors ring, 136 cumulative by the sixth scene).
+
+**Gaps / decisions the lanes inherit:**
+
+- **Neighbour-wake rebuilds are unconditional.** Every admitted chunk
+  dirties its 8 built neighbours; with empty lanes a rebuild is ~0.2
+  ms, but once art lands, INTEGRATE should skip a rebuild when the
+  facing border row/column holds no standing tile (or hash the
+  border) — the hook is `ChunkStructures.build(…, wake)`.
+- **Interiors can go stale across chunks.** A patch in chunk B that
+  closes/opens a room whose walls sit in chunk A does not bump A's rev;
+  A keeps its old wood skin until it is evicted. The 2D recomputes
+  regions every frame; here `invalidate()` clears the InteriorMap on
+  any world move but only rebuilt chunks re-read it. Acceptable for
+  W2; INTEGRATE may dirty the 8 neighbours of a patched chunk.
+- **`fenceish` reach.** The 2D fence reaches rails toward house walls
+  (barrierArt.ts:64). Run continuity here is same-set only (the test
+  "fence next to wall = both exposed"); the BARRIERS lane decides
+  whether a rail reaches a wall as a rail-length choice.
+- **Deck lift is not classified.** `deckKind` names the painter;
+  whether a dock/bridge lifts is `terrain.ts isDockTile/isBridgeTile`
+  (whole-structure flood, 5 s memo) — TERRAIN-FORMS calls those.
+- **Cliffs are listed, not shaped.** `family: 'cliff'` lists the rim
+  tiles; the faces themselves are the heightfield's (THE HIGH TILE
+  OWNS THE FACE). TERRAIN-FORMS either re-textures those faces or adds
+  the contour rim.
+- **`tapestryOnFace` is red** (reads `rend.wallish/garrisonish` over a
+  ClientGame): the WALLS lane re-emits it or extends StubHost with a
+  world-backed `wallish`.
+- **No reveal / cutaway.** Walls stand at full WALL_H; the 2D veil law
+  is a 2.5D occlusion fix (w2-map §4.3). If a cutaway is wanted it is
+  W4's camera concern, with `WALL_STUB` as the cut height.
+- **Static-cache / LOD:** none yet — one geometry per (chunk, material)
+  rebuilt whole on a rev bump, like the ground.

@@ -40,7 +40,10 @@ import { GroundStreamer } from './ground.js';
 import { SpriteAtlas } from './sprites.js';
 import { makeBillboardClock } from './billboard.js';
 import { SkyRig } from './lights.js';
-import { Confession, fmtBytes } from './hud.js';
+import { Confession, fmtBytes, fmtStructStats } from './hud.js';
+import { FaceAtlas } from './structures/faceAtlas.js';
+import { StructMaterials } from './structures/structMaterials.js';
+import { ChunkStructures } from './structures/structures.js';
 import { LiveInput, PointerRig } from './input.js';
 import { EntityStage } from './bodies.js';
 import { Play3DView } from './view.js';
@@ -69,6 +72,9 @@ let hud: Confession;
 let stage: EntityStage;
 let view: Play3DView;
 let atlas: SpriteAtlas;
+let faces: FaceAtlas;
+let structMats: StructMaterials;
+let structures: ChunkStructures;
 let hudOn = true;
 let inkOn = true;
 let tiltOn = true;
@@ -130,6 +136,7 @@ const engine = new Engine(canvas, createBackend(canvas), {
       const own = game.predictor.renderPos();
       ground.update(own.x, own.y, 6);
       atlas.flush();
+      faces.flush();
       const gy = ground.heightAt(own.x, own.y);
       engine.target.set(own.x, gy + 0.9, own.y);
       sky.follow(own.x, gy, own.y, engine.pose.dist, nowMs);
@@ -173,6 +180,7 @@ const engine = new Engine(canvas, createBackend(canvas), {
       'cliff faces': ground.stats.faces,
       'standing instances': `${ground.stats.statics} in ${ground.stats.staticDraws} draws · atlas ${atlas.sprites} sprites / ${atlas.pages.length} pages (${atlas.uploads} page uploads, ${atlas.blits} blits)`,
       'texture bytes': `ground ${fmtBytes(ground.stats.textureBytes)} (cpu canvases ${fmtBytes(ground.stats.canvasBytes)}) · atlas ${fmtBytes(atlas.textureBytes)}`,
+      structures: fmtStructStats(structures.stats),
       bodies: `${stage.bodies} (${game.entities.size} entities) · repaints ${stage.paints}`,
       camera: `yaw ${engine.pose.yaw.toFixed(2)} pitch ${engine.pose.pitch.toFixed(2)} dist ${engine.pose.dist.toFixed(1)} dpr ${engine.dpr}`,
       player: `${own.x.toFixed(1)}, ${own.y.toFixed(1)} · ${game.ownName}`,
@@ -270,6 +278,11 @@ function boot(): void {
   sky = new SkyRig(engine.scene, clock);
   ground = new GroundStreamer(engine.scene, world, atlas, clock, backend.billboards);
   ground.onLampsChanged = (lamps) => sky.setLamps(lamps);
+  // W2: structures ride the chunk lifecycle; they need the heightfield's answer.
+  faces = new FaceAtlas(backend);
+  structMats = new StructMaterials(faces);
+  structures = new ChunkStructures(engine.scene, world, faces, structMats, ground.heightAtFn);
+  ground.structures = structures;
   stage = new EntityStage(engine.scene, clock, backend.billboards, ground.heightAtFn);
   post = backend.createPost(engine.scene, engine.camera);
   hud = new Confession(hudHost);
@@ -320,12 +333,14 @@ const probe = {
     ground.refresh();
     ground.update(own.x, own.y, 50);
     atlas.flush();
-    return ground.stats.chunks > 0 && ground.stats.baking === 0 && ground.stats.painted === ground.stats.chunks;
+    faces.flush();
+    return ground.stats.chunks > 0 && ground.stats.baking === 0 && ground.stats.painted === ground.stats.chunks && structures.stats.dirty === 0;
   },
   stats: (): Record<string, unknown> => ({
     hud: hud.lines,
     ground: { ...ground.stats },
     atlas: { sprites: atlas.sprites, pages: atlas.pages.length, uploads: atlas.uploads, blits: atlas.blits, bytes: atlas.textureBytes },
+    structures: { ...structures.stats, lanes: { ...structures.stats.lanes }, faceUploads: faces.uploads, faceBlits: faces.blits },
     bodies: { count: stage.bodies, paints: stage.paints, entities: game.entities.size },
     info: {
       calls: engine.renderer.info.render.calls,
@@ -346,6 +361,9 @@ const probe = {
     window.removeEventListener('keydown', onHudKey);
     stage.dispose();
     ground.dispose();
+    structures.dispose();
+    structMats.dispose();
+    faces.dispose();
     atlas.dispose();
     post.dispose();
     sky.dispose();

@@ -1746,7 +1746,7 @@ function paintLedgerSeam(
  * the sliver runs on down the fascia band and the corner reads as
  * the structure's corner leg.
  */
-function paintDeckSideFascia(
+export function paintDeckSideFascia(
   ctx: CanvasRenderingContext2D,
   gx: number,
   gy: number,
@@ -1782,7 +1782,7 @@ function paintDeckSideFascia(
  * courses fuse into one continuous brown field and the floor loses
  * its plane (the porch-against-siding read the studio rejected).
  */
-function paintDeckWallSkirt(
+export function paintDeckWallSkirt(
   ctx: CanvasRenderingContext2D,
   gx: number,
   dy0: number,
@@ -1803,7 +1803,7 @@ function paintDeckWallSkirt(
  * the deck overhang hid the stub and a row of floating white washers
  * marched across the water.
  */
-function paintDeckPile(
+export function paintDeckPile(
   ctx: CanvasRenderingContext2D,
   cx: number,
   top: number,
