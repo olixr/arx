@@ -25,6 +25,12 @@
  *   THRESH  per-pixel max-channel delta that counts as "differs" (default 24)
  *   FRAMES  candidate frames sampled per scene in compare (default 5; the
  *           MIN diff wins so transient animation phase can't fail the gate)
+ *   BACKEND stage (default) = the WebGL accelerated display (?stage=world);
+ *           canvas = the standard canvas2d display (plain '/', arx.stage
+ *           cleared). THE LEAN COMES OUT: the flat game must hold on BOTH.
+ *   GOLDEN_DIR  golden directory, relative to packages/client (default
+ *           dev/golden = the stage baseline; dev/golden-canvas = the
+ *           canvas2d baseline captured from the untouched b4c00f2e code)
  *
  * The scenes, coords, crop and tolerance are documented in
  * docs/the-one-render-verify.md and echoed in golden/manifest.json so
@@ -33,10 +39,12 @@
 import { chromium } from '/Users/aeriek/.npm/_npx/705bc6b22212b352/node_modules/playwright/index.mjs';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { dirname, relative, resolve } from 'node:path';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const GOLDEN_DIR = resolve(HERE, 'golden');
+const BACKEND = process.env.BACKEND === 'canvas' ? 'canvas' : 'stage';
+const GOLDEN_DIR = process.env.GOLDEN_DIR ? resolve(HERE, '..', process.env.GOLDEN_DIR) : resolve(HERE, 'golden');
+const GOLDEN_REL = relative(HERE, GOLDEN_DIR); // 'golden' | 'golden-canvas', as the manifest names it
 const ORIGIN = process.env.ORIGIN ?? 'http://localhost:5241';
 const TOL = Number(process.env.TOL ?? 0.02);
 const THRESH = Number(process.env.THRESH ?? 24);
@@ -105,9 +113,20 @@ const page = await (
 ).newPage();
 page.on('pageerror', (e) => console.log('[pageerror]', e.message.slice(0, 200)));
 
-// q=0 is the shipped default; ?stage=world runs the WebGL backend the epic
-// develops on. We deliberately do NOT set leanTarget — camera.q stays 0.
-await page.goto(`${ORIGIN}/?stage=world`);
+// q=0 is the shipped default. BACKEND=stage: ?stage=world runs the WebGL
+// backend; BACKEND=canvas: the plain URL with the stored stage pref cleared
+// runs the standard canvas2d display (a fresh context has no localStorage,
+// the clear is belt-and-braces). We deliberately never turn the lean on.
+if (BACKEND === 'canvas') {
+  await page.goto(`${ORIGIN}/`);
+  await page.evaluate(() => {
+    localStorage.removeItem('arx.stage');
+    localStorage.removeItem('arx.lean');
+  });
+  await page.reload();
+} else {
+  await page.goto(`${ORIGIN}/?stage=world`);
+}
 await page.fill('#login-user', 'perf12_probe');
 await page.fill('#login-pass', 'probe-owl-9127');
 await page.click('#login-submit');
@@ -120,12 +139,22 @@ if (await page.evaluate(() => window.dcGame.plane?.id === 'museum')) {
   await page.waitForTimeout(2500);
 }
 await page.evaluate(() => window.dcRenderer.camera.setZoom(1));
-const q = await page.evaluate(() => window.dcRenderer.camera.q);
+// The lean is on its way OUT (epic/lean-out): a missing camera.q is the
+// flat game too, so undefined counts as 0 here.
+const q = await page.evaluate(() => window.dcRenderer.camera.q ?? 0);
 if (q !== 0) {
   console.error(`ABORT: camera.q is ${q}, expected 0 (this is the q=0 flat-look gate)`);
   await browser.close();
   process.exit(2);
 }
+// THE BACKEND CHECK: the gate must run on the backend it claims to.
+const stageLive = await page.evaluate(() => !!window.dcRenderer.stageWorld);
+if (stageLive !== (BACKEND === 'stage')) {
+  console.error(`ABORT: BACKEND=${BACKEND} but renderer.stageWorld is ${stageLive}`);
+  await browser.close();
+  process.exit(2);
+}
+console.log(`backend ${BACKEND}, goldens ${GOLDEN_REL}, origin ${ORIGIN}`);
 
 // THE VERIFIED TELEPORT: the chat rate limiter silently eats commands —
 // send, verify the renderer's own position landed, retry until it does.
@@ -202,6 +231,7 @@ const manifest = {
   crop: CROP,
   tolerance: { defaultDiffFrac: TOL, pixelThresh: THRESH, framesPerScene: FRAMES, perScene: true },
   login: 'perf12_probe',
+  backend: BACKEND,
   note: 'q=0 flat-look baseline for THE ONE RENDER. See docs/the-one-render-verify.md.',
   scenes: [],
 };
@@ -214,7 +244,7 @@ for (const scene of SCENES) {
     const png = await grabPng();
     const file = resolve(GOLDEN_DIR, `${scene.name}.png`);
     writeFileSync(file, Buffer.from(png.split(',')[1], 'base64'));
-    manifest.scenes.push({ name: scene.name, tp: scene.tp, tol: scene.tol ?? TOL, file: `golden/${scene.name}.png` });
+    manifest.scenes.push({ name: scene.name, tp: scene.tp, tol: scene.tol ?? TOL, file: `${GOLDEN_REL}/${scene.name}.png` });
     console.log(`captured ${scene.name} (${scene.tp}) -> ${file}`);
   } else {
     const goldenFile = resolve(GOLDEN_DIR, `${scene.name}.png`);
@@ -245,7 +275,17 @@ for (const scene of SCENES) {
 }
 
 if (MODE === 'capture') {
-  writeFileSync(resolve(GOLDEN_DIR, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+  // A SUBSET capture (SCENES=...) re-shoots only those goldens: merge them
+  // into the standing manifest in canonical order so the untouched scenes
+  // keep their entries instead of vanishing from the gate.
+  const manifestFile = resolve(GOLDEN_DIR, 'manifest.json');
+  if (only && existsSync(manifestFile)) {
+    const prev = JSON.parse(readFileSync(manifestFile, 'utf8'));
+    const byName = new Map((prev.scenes ?? []).map((sc) => [sc.name, sc]));
+    for (const sc of manifest.scenes) byName.set(sc.name, sc);
+    manifest.scenes = ALL_SCENES.map((sc) => byName.get(sc.name)).filter(Boolean);
+  }
+  writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + '\n');
   console.log(`\nwrote ${manifest.scenes.length} goldens + manifest to ${GOLDEN_DIR}`);
 } else {
   console.log(allOk ? '\nGOLDEN GATE PASS — the flat look holds' : '\nGOLDEN GATE FAIL — the flat look drifted');
