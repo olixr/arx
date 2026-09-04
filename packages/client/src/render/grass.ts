@@ -435,6 +435,78 @@ export function generateGrassTile(
   return geom;
 }
 
+/**
+ * G4 — THE OVER-FOOT SKIRT. A small deterministic cluster of grass blades
+ * that nestle UP AROUND the base of a grass-rooted object (a tree trunk, a
+ * rock, a bush) so it reads as GROWING OUT of the meadow instead of pasted
+ * on top. The renderer emits these through the SAME GPU instanced band path
+ * the tall grass rides, at a y-sort slot JUST GREATER than the object's foot
+ * — so the blades draw OVER the object's lower base edge (breaking the hard
+ * sticker line) while the object's mass above still occludes correctly.
+ *
+ * The art: a few taller tufts rise a little up the trunk at the very centre,
+ * thinning to short chips at the rim — dense at the foot, sparse outward —
+ * so the collar never reads as a uniform ring. Blades wear the meadow's own
+ * tone patch (matching the surrounding coat) and, drawn through the blade
+ * shader, sway with THE ONE WIND like every other blade. `footY` is the
+ * object's ground-contact world row (its sort row); blades scatter in a
+ * squashed ground ellipse around (tx+0.5, footY). Pure + deterministic
+ * (same tile → same skirt), sorted back-to-front by world-y. Alloc: one
+ * array per call — the renderer caches it per tile so a still object mints
+ * its skirt once.
+ */
+export function generateSkirtBlades(tx: number, ty: number, footY: number): Blade[] {
+  // The meadow's tone patch at this tile — the skirt wears the SAME green
+  // as the coat around it, so it is the meadow climbing the trunk, not a
+  // ring of a different grass.
+  const tileTone = Math.min(4, Math.floor(valueNoise(905, tx * 0.05, ty * 0.05) * 5));
+  const out: Blade[] = [];
+  const cx = tx + 0.5;
+  const h0 = hashCoords(521, tx, ty);
+  // A LUSH tuft — enough blades to wrap the foot and thin outward, still a
+  // tuft not a hedge. Curation pass 2: denser + a few climbers up the bark.
+  const count = 20 + (h0 % 8); // 20..27
+  for (let i = 0; i < count; i++) {
+    const hh = hashCoords(523 + i * 37, tx, ty);
+    // Radial scatter biased hard INWARD (u^1.7): most blades hug the trunk,
+    // a thinning few reach the rim — the density falls off outward, never a
+    // uniform collar. maxR 0.5 wraps a full tile diameter around the foot.
+    const u = rand01(hh, 2);
+    const rad = 0.5 * Math.pow(u, 1.7);
+    const ang = rand01(hh, 12) * 6.2831853;
+    const bx = cx + Math.cos(ang) * rad;
+    // Squash the ellipse (×0.5) so the skirt lies in the ground plane and
+    // WRAPS the trunk sides more than it spills forward; a hair forward
+    // (south) so it favours the visible near face without hiding the foot.
+    const by = footY + Math.sin(ang) * rad * 0.5 + 0.03;
+    // rise = 1 at the trunk, 0 at the rim: centre blades stand tall and
+    // climb the bark, outer chips stay squat. A handful of the very inner
+    // blades are CLIMBERS — a touch taller still — for the few tufts that
+    // rise up the trunk. Capped so the skirt never swallows the mass.
+    const rise = 1 - u;
+    const climber = u < 0.22 ? rand01(hh, 24) * 0.1 : 0;
+    const height = 0.14 + rise * 0.27 + climber + rand01(hh, 5) * 0.06; // ≤ ~0.57
+    const phase = rand01(hh, 18);
+    out.push({
+      bx,
+      by,
+      h: height,
+      // A touch narrower than a meadow accent — trunk-side blades read as
+      // fine strands, not slabs; inner blades a hair wider so they read.
+      w: 0.03 + rand01(hh, 8) * 0.02 + rise * 0.008,
+      lean: (rand01(hh, 15) - 0.42) * 0.1,
+      phase,
+      bin: Math.min(31, Math.floor(phase * 32)),
+      lumJit: (rand01(hh, 21) - 0.5) * 0.18,
+      tone: Math.max(0, Math.min(4, tileTone + (hh % 3) - 1)),
+      seg2: height > 0.4,
+    });
+  }
+  // Back-to-front within the skirt: the GPU draws opaque, order is depth.
+  out.sort((a, b) => a.by - b.by);
+  return out;
+}
+
 // ------------------------------------------------------------- palette
 
 /**

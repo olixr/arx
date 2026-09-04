@@ -283,6 +283,9 @@ FOOTPRINT_TUNE.enabled = localStorage.getItem('arx.footprints') !== 'off';
   // falls back on its own. Mirrors the accelerated-display toggle idiom.
   const grassParam = new URLSearchParams(location.search).get('grass');
   renderer.grassGpu = grassParam === 'gpu' || localStorage.getItem('arx.grass') === 'gpu';
+  // G4 — THE OVER-FOOT SKIRT: on by default with the GPU meadow; ?skirt=off
+  // is the dev A/B (a tree with its hard pasted base vs nestled in grass).
+  renderer.grassSkirtOn = new URLSearchParams(location.search).get('skirt') !== 'off';
   // THE CAMERA LEARNS TO LEAN (Epic B, B-2 preview): ?lean turns the
   // perspective lean ON opt-in — `?lean` (default moderate) or `?lean=<q>`
   // for a specific dial, or the stored pref. Default OFF = the ortho frame,
