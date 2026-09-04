@@ -206,7 +206,8 @@ import { FENCE_POST, FENCE_RAIL, PANEL_DOOR_TILES } from './paintVocab.js';
 import { radialGlowSprite } from './glowSprite.js';
 import { Birds, type Bird, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, BLADE_FILLS, ORNAMENT_FILLS, type Disturber, type WindSample, type Blade, type GrassBounds, type Flower, type SeedHead } from './grass.js';
-import { GrassGpuLayer, type GrassFrame } from './grassGpuLayer.js';
+import { GrassGpuLayer, type GrassFrame, type BandBlit } from './grassGpuLayer.js';
+import { partitionTallBands } from './grassGpu.js';
 import { MAX_DISTURB } from './grassGpuRenderer.js';
 import { paintTree, saplingModel, treeExtent,
   treeModel, TREE_VARIANT_COUNT, treeVariantHash, type TreeModel } from './trees.js';
@@ -1612,6 +1613,14 @@ export class Renderer {
   private readonly grassFlowers: Flower[] = [];
   private readonly grassSeeds: SeedHead[] = [];
   private readonly grassDisturb = new Float32Array(MAX_DISTURB * 4);
+  /** G1 — the visible tall standing mass (GrassTall north/south), gathered
+   *  by-sorted for the GPU interleave path; pooled. */
+  private readonly grassTall: Blade[] = [];
+  /** This frame's tall-band atlas blits (from GrassGpuLayer.renderTall) and
+   *  the atlas canvas they read — emitted as y-sorted DrawItems in collect
+   *  so the tall mass interleaves with bodies. Empty ⇒ CPU tall fallback. */
+  private grassTallBlits: readonly BandBlit[] = [];
+  private grassTallCanvas: HTMLCanvasElement | null = null;
   private readonly lighting = new LightingSystem();
   /** Derived building-interior regions (cutaway, facades, windows). */
   readonly interiors = new InteriorMap();
@@ -6059,14 +6068,18 @@ export class Renderer {
     const items = this.drawItems;
     items.length = 0;
     this.bulkItemUsed = 0;
-    // Tall thickets y-sort with the world: you walk THROUGH them. This
-    // runs on BOTH paths (B3 — THE TALL BLADE INTERLEAVES): under the GPU
-    // meadow the flat field carries only the short `under` coat (below all
-    // entities, which is correct), while the tall standing mass draws here
-    // at its y-sort slot so a body inside a thicket is wrapped — blades in
-    // front (nearer/south) occlude its lower body, blades behind do not.
-    // See drawGrassGpu / collectGpuBlades(tallInterleave).
-    this.grass.collectTall(items, this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
+    // Tall thickets y-sort with the world: you walk THROUGH them. Blades in
+    // front (nearer/south) occlude the lower body, blades behind do not.
+    // G1 — THE TALL BLADE INTERLEAVES: when the GPU meadow drew this frame,
+    // the tall standing mass rides the GPU band atlas (collectGpuTallBands
+    // — fine per-row bands with real per-blade depth, no bakes, no two-band
+    // pop/flicker). Otherwise (GPU off, or the tall atlas fell back) the CPU
+    // collectTall two-band pass runs UNCHANGED.
+    if (this.grassGpuActive && this.grassTallCanvas) {
+      this.collectGpuTallBands(items);
+    } else {
+      this.grass.collectTall(items, this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
+    }
     this.collectElevatedGround(game, items);
     cliffArt.collectCliffFaces(this, game, items);
     this.collectRaisedTiles(game, items);
@@ -22136,7 +22149,63 @@ export class Renderer {
     const canvas = layer.render(this.grassBlades, this.grassFlowers, this.grassSeeds, frame);
     if (!canvas) return false;
     this.ctx.drawImage(canvas, 0, 0, this.w, this.h);
+
+    // G1 — THE TALL BLADE INTERLEAVES. Gather the tall standing mass,
+    // partition it into fine world-row bands, and render each band in
+    // isolation into the layer's tall atlas. The band blits are emitted as
+    // y-sorted DrawItems in collect (collectGpuTallBands) so a body walks
+    // THROUGH the thicket — no CPU collectTall, no bakes, no two-band pop.
+    // If the tall atlas is unavailable, blits stay empty and collect falls
+    // back to the CPU collectTall pass for this frame.
+    this.grassTallBlits = [];
+    this.grassTallCanvas = null;
+    this.grass.collectGpuTall(ground, detail, bounds, this.grassTall);
+    if (this.grassTall.length > 0) {
+      const bands = partitionTallBands(this.grassTall, Renderer.TALL_BAND_PITCH);
+      const blits = layer.renderTall(this.grassTall, bands, frame);
+      if (blits.length > 0) {
+        this.grassTallBlits = blits;
+        this.grassTallCanvas = layer.tallCanvas;
+      }
+    }
     return true;
+  }
+
+  /** G1 — tall-grass interleave band pitch, in world rows. Finer = smoother
+   *  body/thicket interleave (error ≤ pitch/2) at more sub-draws; 1/3 tile
+   *  keeps the transition continuous with no perceptible two-band pop. */
+  private static readonly TALL_BAND_PITCH = 1 / 3;
+
+  /** G1 — emit this frame's tall-band atlas blits as y-sorted DrawItems.
+   *  Each band slots into the world sort at its own row, so a body between
+   *  bands is wrapped: blades rooted south (in front) occlude its lower
+   *  body, blades rooted north do not. Under the stage each blit rides the
+   *  scratch lane (stagePushPaintRaw) exactly like the meadow's shade, so
+   *  it composites in order without splitting the batch. */
+  private collectGpuTallBands(items: DrawItem[]): void {
+    const canvas = this.grassTallCanvas;
+    if (!canvas) return;
+    for (const bl of this.grassTallBlits) {
+      const b = bl;
+      items.push({
+        sortY: b.sortY,
+        stageSafe: true,
+        draw: () => {
+          if (this.stageAssembling) {
+            this.stagePushPaintRaw(
+              b.dstX,
+              b.dstY,
+              b.dstW,
+              b.dstH,
+              () => this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH),
+              'grass-tall',
+            );
+          } else {
+            this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH);
+          }
+        },
+      } as DrawItem);
+    }
   }
 
   /** This frame's moving bodies (players + NPCs), pooled records.

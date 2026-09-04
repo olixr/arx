@@ -2032,6 +2032,37 @@ export class GrassSystem {
   }
 
   /**
+   * G1 — THE TALL BLADE GOES TO THE GPU. Gather ONLY the tall standing
+   * mass (GrassTall north+south blades) for the visible field, from the
+   * SAME immutable tile cache collectGpuBlades reads (no separate
+   * generation). The short `under` coat is NOT included here — it rides
+   * the flat GPU field (collectGpuBlades with tallInterleave). The blades
+   * land SORTED back-to-front by world-y (`by` ascending): the GPU draws
+   * them opaque with no depth buffer, so within any one row-band the paint
+   * order IS the depth. The renderer then partitions this sorted array
+   * into fine world-row bands (partitionTallBands) and emits each band as
+   * a y-sorted DrawItem, so a body walks THROUGH the thicket — blades
+   * rooted south of it (in front) occlude its lower body, blades rooted
+   * north do not, CONTINUOUSLY (no two-band pop). `out` is caller-owned
+   * and pooled (truncated here); cached Blade records are pushed by
+   * reference. Returns the number of tall blades written.
+   */
+  collectGpuTall(ground: Sampler, detail: DetailFn, bounds: GrassBounds, out: Blade[]): number {
+    out.length = 0;
+    for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
+      for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
+        if (ground(tx, ty) !== Tile.GrassTall) continue;
+        const geom = this.tile(tx, ty, Tile.GrassTall, detail(tx, ty), ground).geom;
+        for (const b of geom.north) out.push(b);
+        for (const b of geom.south) out.push(b);
+      }
+    }
+    // Back-to-front: opaque GPU draw with no depth buffer — order is depth.
+    out.sort((a, b) => a.by - b.by);
+    return out.length;
+  }
+
+  /**
    * The GPU path's ORNAMENT gatherer (proposal G-2) — flowers and
    * seed-heads for the visible field, from the SAME tile cache
    * collectGpuBlades walks. The ornament pass draws OVER the blades, so
