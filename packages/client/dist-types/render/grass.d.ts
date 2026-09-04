@@ -126,26 +126,14 @@ export interface GrassTileGeom {
  */
 export declare function generateGrassTile(tx: number, ty: number, tileId: number, detailId: number, snowMask?: number): GrassTileGeom;
 /**
- * G4 — THE OVER-FOOT SKIRT. A small deterministic cluster of grass blades
- * that nestle UP AROUND the base of a grass-rooted object (a tree trunk, a
- * rock, a bush) so it reads as GROWING OUT of the meadow instead of pasted
- * on top. The renderer emits these through the SAME GPU instanced band path
- * the tall grass rides, at a y-sort slot JUST GREATER than the object's foot
- * — so the blades draw OVER the object's lower base edge (breaking the hard
- * sticker line) while the object's mass above still occludes correctly.
- *
- * The art: a few taller tufts rise a little up the trunk at the very centre,
- * thinning to short chips at the rim — dense at the foot, sparse outward —
- * so the collar never reads as a uniform ring. Blades wear the meadow's own
- * tone patch (matching the surrounding coat) and, drawn through the blade
- * shader, sway with THE ONE WIND like every other blade. `footY` is the
- * object's ground-contact world row (its sort row); blades scatter in a
- * squashed ground ellipse around (tx+0.5, footY). Pure + deterministic
- * (same tile → same skirt), sorted back-to-front by world-y. Alloc: one
- * array per call — the renderer caches it per tile so a still object mints
- * its skirt once.
+ * `strength` (0..1) stands in for the object's HEIGHT: a tall tree carries a
+ * full climbing collar (1); a low rock gets a bare few short wisps (~0.22) so
+ * it is never swallowed; a wall foot a subtle low nestle (~0.5). It scales
+ * blade count, height, radius and whether inner climbers appear. `sides` is a
+ * grass-edge bitmask (SKIRT_SIDE_*): the full ring (default) scatters freely,
+ * a partial mask (a wall) keeps every blade on a grass-facing edge only.
  */
-export declare function generateSkirtBlades(tx: number, ty: number, footY: number): Blade[];
+export declare function generateSkirtBlades(tx: number, ty: number, footY: number, strength?: number, sides?: number): Blade[];
 /** Exported as the GPU grass's palette source (grassGpuRenderer.ts) —
  *  the exact shade→base→lit ramp, so the instanced blades wear the same
  *  colours as the baked meadow. Tone-major: [tone·LIGHTS + light]. */

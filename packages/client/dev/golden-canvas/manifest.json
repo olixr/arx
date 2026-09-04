@@ -1,6 +1,6 @@
 {
-  "generated": "2026-09-04T19:35:39.309Z",
-  "origin": "http://localhost:5241",
+  "generated": "2026-09-04T21:32:33.974Z",
+  "origin": "http://localhost:5244",
   "viewport": {
     "width": 1500,
     "height": 900,
@@ -20,7 +20,7 @@
   },
   "login": "perf12_probe",
   "backend": "canvas",
-  "note": "q=0 flat-look baseline for THE ONE RENDER. See docs/the-one-render-verify.md.",
+  "note": "Flat-look baseline for THE ONE RENDER. See docs/the-one-render-verify.md.",
   "scenes": [
     {
       "name": "wall-market",

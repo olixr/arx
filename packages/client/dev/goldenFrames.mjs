@@ -159,14 +159,18 @@ const openRig = async (origin) => {
     await page.waitForTimeout(2500);
   }
   await page.evaluate(() => window.dcRenderer.camera.setZoom(1));
-  // THE ONE CAMERA: the lean left the 2D client, so no build under test may
-  // carry a camera.q at all (a stale bundle from before the removal would).
+  // THE ONE CAMERA: the lean left the 2D client, so a build under test
+  // normally carries no camera.q at all. A pre-removal build (a main-tip
+  // BASELINE rig serving the goldens, or a stale bundle) still has the dial:
+  // at q=0 it IS the flat look and may serve, at q>0 it is leaning and the
+  // gate means nothing — abort.
   const q = await page.evaluate(() => window.dcRenderer.camera.q);
-  if (q !== undefined) {
-    console.error(`ABORT: camera.q is ${q} — the lean is gone; this is the flat-look gate on a stale build?`);
+  if (q !== undefined && q !== 0) {
+    console.error(`ABORT: camera.q is ${q} — a leaning build; the flat-look gate needs q=0`);
     await browser.close();
     process.exit(2);
   }
+  if (q === 0) console.log(`note: ${origin} still carries camera.q (=0) — a pre-removal build at the flat look`);
   // THE BACKEND CHECK: the gate must run on the backend it claims to.
   const stageLive = await page.evaluate(() => !!window.dcRenderer.stageWorld);
   if (stageLive !== (BACKEND === 'stage')) {

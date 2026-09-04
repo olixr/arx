@@ -172,4 +172,33 @@ export declare function occluderCover(sx0: number, sx1: number, sTop: number, sB
  * alpha = 1 − strength·(1 − FADE_ALPHA).
  */
 export declare function fadeStrength(cover: number): number;
+/**
+ * THE SHELTER GATE (inside-building rule). The interior wall reveal —
+ * sinking a building's walls so the player is visible past obstructing
+ * geometry — arms ONLY where the player is genuinely sheltered:
+ *
+ *   - underground (cave floor is the only floor there is), or
+ *   - inside a defined building region (localRegion set), or
+ *   - holding a doorway threshold: standing in a passage wall-line
+ *     (THE BREACH LAW) or on a panel-door tile — the entrance to a
+ *     building, which the room-truth ease treats as "still inside".
+ *
+ * Standing on an outdoor man-made floor tile (boardwalk, path-side
+ * wood/stone floor) NO LONGER arms it. The floor alone is not a room:
+ * previously any REVEAL_FLOORS tile armed the veil even out in the open,
+ * so a player standing outside on a plank strip could peep into the
+ * building next door and pay the reveal's cost for nothing. Owner ruling
+ * 2026-09: "you have to be inside the building for the veil to happen, or
+ * if you're behind certain walls" — the behind-walls case is the
+ * anti-occlusion bowl in wallHeightAt, which itself only runs once this
+ * gate has armed cutCtx. A structure the player cannot be "inside" (an
+ * open-front stall with no region) simply does not reveal — acceptable
+ * per the directive, and cheaper.
+ */
+export declare function shelterArmed(a: {
+    underground: boolean;
+    insideRegion: boolean;
+    onPassage: boolean;
+    onPanelDoor: boolean;
+}): boolean;
 //# sourceMappingURL=reveal.d.ts.map

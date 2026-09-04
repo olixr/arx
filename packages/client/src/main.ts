@@ -270,6 +270,7 @@ FOOTPRINT_TUNE.enabled = localStorage.getItem('arx.footprints') !== 'off';
 // on its own the same frame (THE TOGGLE IS THE PRODUCT'S SAFETY).
 {
   const stageParam = new URLSearchParams(location.search).get('stage');
+  localStorage.removeItem('arx.lean'); // retired 2026-09-04 with the camera lean; sweep the orphan
   const stored = localStorage.getItem('arx.stage') === 'on';
   renderer.stageGround = stageParam !== null || stored;
   renderer.stageWorld = stageParam === 'world' || (stageParam === null && stored);

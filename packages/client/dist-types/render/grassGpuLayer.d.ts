@@ -35,6 +35,9 @@ export interface GrassFrame {
     windGain?: number;
     /** Disturbers packed [worldX, worldY, radius, strength]×n (≤ MAX_DISTURB). */
     disturb?: Float32Array;
+    /** G-INTERACT — the parallel travel lay-vector [vx, vy]×n (world u/s,
+     *  clamped) so blades comb down in each body's direction of motion. */
+    disturbVel?: Float32Array;
 }
 export declare class GrassGpuLayer {
     /** The offscreen canvas the renderer blits. */

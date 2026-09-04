@@ -337,6 +337,12 @@ export declare class Renderer {
     private readonly grassFlowers;
     private readonly grassSeeds;
     private readonly grassDisturb;
+    /** G-INTERACT — the parallel travel lay-vector [vx,vy]×n the shaders comb
+     *  the blades down by; and the per-id last position the velocity derives
+     *  from (world units/sec), pruned to who is present this frame. */
+    private readonly grassDisturbVel;
+    private readonly grassDisturbEntries;
+    private readonly grassDisturbLast;
     /** G1 — the visible tall standing mass (GrassTall north/south), gathered
      *  by-sorted for the GPU interleave path; pooled. */
     private readonly grassTall;
@@ -359,8 +365,9 @@ export declare class Renderer {
     private readonly grassSkirt;
     private readonly grassSkirtBands;
     /** Per-tile skirt-blade cache (a still object mints its skirt once). Keyed
-     *  by tile; footY is stored so a tile whose object changed (tree→stump,
-     *  a different foot row) re-mints instead of reusing the stale skirt. */
+     *  by tile; footY/strength/sides are stored so a tile whose object changed
+     *  (tree→stump, a different foot row, a re-tuned strength) re-mints instead
+     *  of reusing the stale skirt. */
     private readonly grassSkirtCache;
     private grassSkirtBlits;
     private grassSkirtCanvas;
@@ -2102,9 +2109,8 @@ export declare class Renderer {
      */
     private memberBandable;
     /** The layer stands down where its premises fail: the editor pins
-     *  the camera and patches tiles at brush rate, and a bake would freeze
-     *  the perspective about the stretch's own canvas center rather than the
-     *  LIVE screen center (THE STRAIGHT-WORLD PREREQUISITE). */
+     *  the camera and patches tiles at brush rate, so a bake would go stale
+     *  under the brush. */
     staticLayerOn(): boolean;
     /** Device pixels per tile for band bakes (THE CRISP GRID LAW):
      *  targetZoom (one flip per zoom, never mid-glide) × the adaptive
@@ -2381,7 +2387,7 @@ export declare class Renderer {
     doorVeil(_game: ClientGame, cx: number, cy: number): number;
     /**
      * One paneled timber door leaf on a south face, drawn in the current
-     * (leaned) frame. `hx` is the hinge edge, `dir` which way the leaf
+     * frame. `hx` is the hinge edge, `dir` which way the leaf
      * extends (+1 east, -1 west), `w` its current on-screen width — the
      * swing compresses width toward the hinge, so `oc` (0 shut → 1 open)
      * only drives the edge-on shading and detail fade. The grammar is

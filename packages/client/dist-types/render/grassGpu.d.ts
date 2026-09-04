@@ -80,8 +80,9 @@ export declare function partitionTallBands(blades: readonly {
  * SPAN CAP: `maxSpan` bounds a merged run's world-y extent. The tall path
  * renders each band in ISOLATION into an atlas slot sized to its SCREEN
  * bbox — a slot as tall as the run's span PLUS a blade height — so an
- * unbounded merge produces a giant slot (a tall run under a lean can span
- * the whole screen), and the atlas balloons past the win. Capping the span
+ * unbounded merge produces a giant slot (a tall run at high zoom or in a
+ * tall viewport can span the whole screen), and the atlas balloons past the
+ * win. Capping the span
  * keeps every slot atlas-thin: the count still falls (a dense field merges
  * ~pitch:maxSpan-to-one) but no single band's bbox blows up. Pass Infinity
  * for no cap (the pure-geometry tests). Pure + tested.
@@ -164,6 +165,86 @@ export declare function grassProjectMirror(scale: number, yScale: number, ox: nu
     x: number;
     y: number;
 };
+/**
+ * GRASS G-INTERACT — THE MEADOW REACTS TO THE BODY. The number of nearby
+ * disturbers (players + NPCs) the trample uniform holds. Shared by the
+ * blade, cast and (feed) renderer paths so they cannot drift.
+ */
+export declare const MAX_DISTURB = 8;
+/** Floats per packed disturber POSITION record — [worldX, worldY, radius,
+ *  strength]. The velocity lay-vector rides a parallel vec2 array. */
+export declare const DISTURB_STRIDE = 4;
+/**
+ * G-INTERACT tuning — the one place the parting FEEL lives, so the blade
+ * shader, the cast shader and the parity test all read the SAME numbers.
+ *
+ *  · bendRadial — how far a blade lays over AWAY from the body, as a
+ *    fraction of its own height, at the foot (falls smoothly to 0 at the
+ *    disturb radius). The PART: blades peel outward so a pocket opens.
+ *  · bendWake   — extra lay-over in the body's DIRECTION OF TRAVEL, per
+ *    world-unit/sec of the passed lay-vector. The blades comb down in the
+ *    wake as the body moves, and spring back radial once it stops.
+ *  · pocketFrac — the CLEAR pocket is the inner this-fraction of the
+ *    radius; inside it blades flatten so the feet read on top of the
+ *    ground, not buried. Small on purpose (a foot pocket, not a bald ring).
+ *  · pocketMax  — the most a pocket blade flattens (1 = flat); kept below 1
+ *    so a trodden tuft still shows, never a bare hole.
+ */
+export interface DisturbTune {
+    bendRadial: number;
+    bendWake: number;
+    pocketFrac: number;
+    pocketMax: number;
+}
+export declare const DISTURB_TUNE: DisturbTune;
+/**
+ * THE PARTING, in GLSL — the shared displacement every disturbed blade (and
+ * its cast) obeys, so the coat, the tall bands and the shade all part
+ * around a body identically. Emits `grassDisturb(root, jitter, out push,
+ * out flat)`:
+ *   · push — the lay-over vector in WORLD units per unit blade-height
+ *     (radial-away + travel-wake), added at the tip (× up × height).
+ *   · flat — the foot-pocket flatten in 0..pocketMax; the caller shortens
+ *     the blade by (1 − flat) so the feet sit in a cleared pocket.
+ * Summed over the nearby disturbers with a smoothstep falloff (no hard
+ * rim). `jitter` rotates each blade's radial push a little off pure-radial
+ * so a trodden patch combs over naturally instead of skewering into a
+ * starburst. Pinned to `grassDisturbMirror` below by the parity test.
+ */
+export declare function grassDisturbGlsl(t?: DisturbTune): string;
+/**
+ * A JS transcription of grassDisturbGlsl — FOR THE PARITY TEST ONLY. Given
+ * a blade root, its per-blade jitter, and the nearby disturbers (packed as
+ * the shader reads them: `pos` = [x,y,r,strength]×n, `vel` = [vx,vy]×n),
+ * it returns the exact `{push, flat}` the shader computes. Keep it in
+ * lockstep with grassDisturbGlsl (the test fails if they drift).
+ */
+export declare function grassDisturbMirror(rootX: number, rootY: number, jitter: number, pos: ArrayLike<number>, vel: ArrayLike<number>, n: number, t?: DisturbTune): {
+    px: number;
+    py: number;
+    flat: number;
+};
+/**
+ * Pack the frame's disturbers into the two uniform arrays the shaders read
+ * — POSITION `[x, y, radius, strength]×n` and VELOCITY lay-vector
+ * `[vx, vy]×n` (world units/sec, clamped so a sprinting body cannot fling a
+ * blade off-screen). Pure and alloc-reusing: it fills the caller's pooled
+ * buffers and returns the count actually written (≤ MAX_DISTURB). The
+ * `radiusScale` widens the body footprint into the parted spread, and
+ * `velClamp` bounds the wake. Tested (grassGpu.test.ts).
+ */
+export declare function packDisturbers(entries: ArrayLike<{
+    x: number;
+    y: number;
+    r: number;
+    vx: number;
+    vy: number;
+}>, posOut: Float32Array, velOut: Float32Array, opts?: {
+    radiusScale?: number;
+    minRadius?: number;
+    strength?: number;
+    velClamp?: number;
+}): number;
 /**
  * THE ONE WIND in GLSL. Returns `vec4(bendX, bendY, strength, lum)` —
  * the same four fields as WindSample — for a world point `w` at time

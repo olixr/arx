@@ -65,10 +65,10 @@ void main() {
   outColor = texture(uTex, vUV) * vCol;
 }`;
 
-/** Bytes per vertex: pos 2f (8) + uv 2f (8) + color 4×u8 (4). */
-// pos(2f) + uv(2f) + color(4×u8, one float slot) + w(1f) = 6 floats.
-// The `w` is 1 for every quad — byte-identical to the pre-B1b 20-byte
-// format on screen output.
+/** Bytes per vertex: pos 2f (8) + uv 2f (8) + color 4×u8 (4) + w 1f (4)
+ *  = 6 float slots. Every emit writes w=1 (the affine map), so the
+ *  attribute is inert on screen output; it is kept as the harmless hook
+ *  a non-affine effect could hand per-corner weights through. */
 const VERTEX_BYTES = 24;
 const VERTS_PER_QUAD = 6;
 

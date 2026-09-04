@@ -195,7 +195,7 @@ import * as hudOverlay from './hudOverlay.js';
 import * as wornAura from './wornAura.js';
 import * as cliffArt from './cliffArt.js';
 import { faceUV } from './structureFace.js';
-import { WALL_STUB, GARRISON_H, MERLON_H } from './paintVocab.js';
+import { WALL_STUB, GARRISON_H } from './paintVocab.js';
 import * as wallHungArt from './wallHungArt.js';
 import * as barrierArt from './barrierArt.js';
 import * as chestArt from './chestArt.js';
@@ -317,11 +317,6 @@ import {
   DOCK_LIFT,
   drawLiveGround,
   fillContains,
-  fillCoversEdge,
-  isBridgeTile,
-  isDeckGround,
-  isDockTile,
-  isPorchSurface,
   type BridgeApron,
   isWaterTile,
   FRINGE_TILES,
@@ -9554,9 +9549,8 @@ export class Renderer {
   }
 
   /** The layer stands down where its premises fail: the editor pins
-   *  the camera and patches tiles at brush rate, and a bake would freeze
-   *  the perspective about the stretch's own canvas center rather than the
-   *  LIVE screen center (THE STRAIGHT-WORLD PREREQUISITE). */
+   *  the camera and patches tiles at brush rate, so a bake would go stale
+   *  under the brush. */
   staticLayerOn(): boolean {
     return this.cameraOverride === null;
   }
@@ -11639,7 +11633,7 @@ export class Renderer {
 
   /**
    * One paneled timber door leaf on a south face, drawn in the current
-   * (leaned) frame. `hx` is the hinge edge, `dir` which way the leaf
+   * frame. `hx` is the hinge edge, `dir` which way the leaf
    * extends (+1 east, -1 west), `w` its current on-screen width — the
    * swing compresses width toward the hinge, so `oc` (0 shut → 1 open)
    * only drives the edge-on shading and detail fade. The grammar is
@@ -17882,7 +17876,6 @@ export class Renderer {
     h: number,
     px: number,
     py: number,
-    wy: number,
   ): { x: number; y: number; w: number; h: number } {
     const m = this.treeOrSaplingModel(tile, h);
     // THE TREE BODY BOX: a growing tree/sapling paints LIVE through the
@@ -18608,7 +18601,7 @@ export class Renderer {
           // Mature trees carry the ring baked into their cached sprite
           // (bakeOutlineRing) — only the live-painted regrowth ease
           // goes through the per-frame outline pass.
-          body: grow < 1 ? this.treeBody(tile, h, p.x, p.y, ty + 0.5) : undefined,
+          body: grow < 1 ? this.treeBody(tile, h, p.x, p.y) : undefined,
           drawShadow: () => this.drawTreeShadow(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, grow),
           // A struck trunk answers the axe: a damped screen-x ring on
           // the whole sprite for a quarter second after each bite.
@@ -18644,7 +18637,7 @@ export class Renderer {
           // sprite exactly like mature trees — a body here would send
           // the already-ringed blit through paintOutlined and dilate
           // the ring a second time (a doubled, twice-thick stroke).
-          body: grow < 1 ? this.treeBody(tile, h, p.x, p.y, ty + 0.5) : undefined,
+          body: grow < 1 ? this.treeBody(tile, h, p.x, p.y) : undefined,
           drawShadow: () => this.drawTreeShadow(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, grow),
           draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, undefined, grow),
         };

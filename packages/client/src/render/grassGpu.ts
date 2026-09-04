@@ -139,8 +139,9 @@ export function partitionTallBands(
  * SPAN CAP: `maxSpan` bounds a merged run's world-y extent. The tall path
  * renders each band in ISOLATION into an atlas slot sized to its SCREEN
  * bbox — a slot as tall as the run's span PLUS a blade height — so an
- * unbounded merge produces a giant slot (a tall run under a lean can span
- * the whole screen), and the atlas balloons past the win. Capping the span
+ * unbounded merge produces a giant slot (a tall run at high zoom or in a
+ * tall viewport can span the whole screen), and the atlas balloons past the
+ * win. Capping the span
  * keeps every slot atlas-thin: the count still falls (a dense field merges
  * ~pitch:maxSpan-to-one) but no single band's bbox blows up. Pass Infinity
  * for no cap (the pure-geometry tests). Pure + tested.

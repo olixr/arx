@@ -5,9 +5,10 @@ import { packTile } from './interiors.js';
  * THE ONE RENDER — A0: the shared world-geometry flood.
  *
  * `collectVolume` generalizes the run-ring BFS that `tryRunRingItem`
- * used to keep to itself into ONE component-flood primitive that the
- * run-ring path (furniture), and later the wall/hedge paths (A2/A4),
- * all call. A "volume" is the 4-connected same-class component of tiles
+ * used to keep to itself into ONE component-flood primitive. Its one
+ * surviving caller is the run-ring path (furniture); the wall/hedge
+ * volume paths that also called it (A2/A4) left with the camera lean on
+ * 2026-09-04 (docs/perspective-review-and-3d-client-plan.md). A "volume" is the 4-connected same-class component of tiles
  * containing a seed cell, described as:
  *
  *   - the member tile list (flat `[x0,y0,x1,y1,…]`),
@@ -18,18 +19,16 @@ import { packTile } from './interiors.js';
  *
  * The perimeter is why runs render seamlessly downstream (invariants
  * #2/#3 of the epic): the shared-edge test is computed ONCE for the
- * whole component, so a wall/hedge run projects each world corner once
- * (`faceStrip`/`topPlane` in A1) instead of per tile — no double-rounded
- * seams. The loop doubles as the top-plane outline (walk it at
- * `heightAt(tx,ty)`) and as the silhouette to ring (A3).
+ * whole component, so a run projects each world corner once instead of
+ * per tile — no double-rounded seams. The loop doubles as the outline to
+ * walk and as the silhouette to ring (A3).
  *
  * Membership is decided by CLASS EQUALITY: `classOf(tile,tx,ty)` maps a
  * sampled tile to a class key (any number) or `null` for "not a member".
  * Two cells join iff both classes are non-null AND equal to the SEED's
  * class. So the run-ring path passes a `classOf` that returns the tile
- * itself (exact-tile runs never merge across kinds), while the wall path
- * (A2) will map every wall tile to one class (a wall run coalesces
- * regardless of the specific wall tile).
+ * itself (exact-tile runs never merge across kinds); a caller that wants
+ * kinds to coalesce maps them all to one class.
  */
 
 /** Reads the ground tile at a world cell (`undefined` off-map). */

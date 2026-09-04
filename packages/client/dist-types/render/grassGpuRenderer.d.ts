@@ -16,9 +16,8 @@
  * time). Scene integration — the camera projection, the
  * y-sort slot, the ?grass=gpu flag — rides on top (proposal §A / G-2).
  */
-import { type GrassProj } from './grassGpu.js';
-/** Max simultaneous disturbers (walkers/entities pressing the grass). */
-export declare const MAX_DISTURB = 8;
+import { MAX_DISTURB, type GrassProj } from './grassGpu.js';
+export { MAX_DISTURB };
 export declare class GrassGpuRenderer {
     private readonly gl;
     private readonly program;
@@ -33,6 +32,7 @@ export declare class GrassGpuRenderer {
     private readonly uTime;
     private readonly uWindGain;
     private readonly uDisturb;
+    private readonly uDisturbVel;
     private readonly uDisturbN;
     private readonly uNdcRemap;
     private instanceCount;
@@ -41,6 +41,10 @@ export declare class GrassGpuRenderer {
      *  major) — passed in so the renderer shares the meadow's exact ramp
      *  without importing the whole grass module's generation side. */
     constructor(gl: WebGL2RenderingContext, paletteFills: readonly string[]);
+    /** Set the trample uniforms from a frame's packed disturbers: POSITION
+     *  `[x,y,r,strength]×n` and the parallel VELOCITY lay-vector `[vx,vy]×n`.
+     *  A missing velocity array leaves the wake at zero (pure radial part). */
+    private setDisturb;
     /** (Re)point the interleaved instance attributes so instance 0 reads
      *  from blade `baseFloats/GRASS_INSTANCE_FLOATS` — used to draw a
      *  contiguous band slice (WebGL2 has no baseInstance). Assumes the VAO
@@ -59,6 +63,7 @@ export declare class GrassGpuRenderer {
     draw(proj: GrassProj, timeSec: number, opts?: {
         windGain?: number;
         disturb?: Float32Array;
+        disturbVel?: Float32Array;
     }): void;
     /**
      * G1 — THE TALL BLADE INTERLEAVES. Set the shared per-frame uniforms
@@ -70,6 +75,7 @@ export declare class GrassGpuRenderer {
     beginBands(instances: Float32Array, count: number, proj: GrassProj, timeSec: number, opts?: {
         windGain?: number;
         disturb?: Float32Array;
+        disturbVel?: Float32Array;
     }): void;
     /** Draw one band slice [i0, i0+count) with its atlas NDC remap. The
      *  caller has set the atlas viewport/scissor for this band's slot. */

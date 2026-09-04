@@ -45,6 +45,7 @@ export declare class GrassShadowRenderer {
     private readonly uOrigin;
     private readonly uViewport;
     private readonly uDisturb;
+    private readonly uDisturbVel;
     private readonly uDisturbN;
     private disposed;
     constructor(gl: WebGL2RenderingContext);
@@ -61,6 +62,7 @@ export declare class GrassShadowRenderer {
     draw(proj: GrassProj, timeSec: number, count: number, shade: readonly [number, number, number], shadowX: number, shadowY: number, opts?: {
         windGain?: number;
         disturb?: Float32Array;
+        disturbVel?: Float32Array;
     }): void;
     dispose(): void;
 }
