@@ -56,20 +56,6 @@ export declare class GlStage implements GpuStageBackend {
      * it; the frame's own working set (~15-20 distinct classes) is far
      * under the cap, so nothing thrashes. */
     private static readonly SCRATCH_BUDGET;
-    /**
-     * THE ONE RENDER — B9: FACE / SCRATCH CELL CAP (device px per dimension).
-     * The stage-wide ceiling on any paint cell's bake resolution — the renderer
-     * sets it under lean (q>0) and to 0 (off) at q=0, so the flat golden gate is
-     * untouched. Under lean the perspective projection can size a per-run scratch
-     * cell by a huge PROJECTED screen extent — a structure-face run, a grass row,
-     * or a particle run with one grain near the horizon — minting multi-GB cells
-     * (measured ~16GB at zoom 2, a GPU-crash risk). Capping the cell to this many
-     * device px per dimension and letting the GL quad SCALE the capped texture up
-     * to the full projected extent bounds the resident scratch: any on-screen-
-     * sized cell (≤ this) is byte-identical (k=1, sharp — faces stay sharp at
-     * normal zoom); only a cell larger than the ceiling softens gracefully. A
-     * per-item `capDim` overrides it. 0 = no cap. */
-    cellCapPx: number;
     /** THE SCRATCH LEDGER: keyed paints keep their own exact-size
      *  canvas+texture and repaint/re-upload ONLY on a rev change — the
      *  wall-run lane's cure (~48MB/frame of identical wall strips
@@ -248,10 +234,6 @@ export declare class GlStage implements GpuStageBackend {
      * by the very next paint item — GL snapshots texture content at the
      * draw call, so sequential reuse is sound by spec.
      */
-    /** B9: the effective cell cap for one paint — its own `capDim` if set, else
-     *  the stage-wide `cellCapPx` (0 → no cap). One place so the sheet pre-pass,
-     *  the vertex UV and the paint all agree by arithmetic. */
-    private capFor;
     private paintScratch;
     /**
      * THE SCRATCH LEDGER's draw: a keyed paint owns an exact-size

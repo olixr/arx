@@ -10,7 +10,6 @@ import { packTile } from './interiors.js';
 import { GARRISON_H, GAR_LEAF, MERLON_H, WALL_STUB, stone01 } from './paintVocab.js';
 import { shade } from './rig.js';
 import { faceBand, faceFill, faceSeam } from './structureFace.js';
-import type { Silhouette } from './structureFace.js';
 import { Tile, diagWallInfo, doorInfo, hashCoords } from '@arx/shared';
 import type { DrawItem } from './renderer.js';
 import { wallHangings } from './wallHungArt.js';
@@ -193,15 +192,6 @@ export function garrisonWallItem(rend: PaintHost,
   ty: number,
   game: ClientGame,
   whT: number,
-  // THE ONE RENDER A2c: when this tile is a member of a COALESCED curtain
-  // run (floodGarrisonCrown), the run draws its crenellated wall-walk crown
-  // + castellated outline ONCE for the whole run (crownSpanItem, kind
-  // 'garrison') — the wedge/segmentation sources under lean. So this per-tile
-  // draw paints only the ashlar SOUTH face, the rear riser, and the receding
-  // side faces (which already abut seam-free on their shared snapped corners),
-  // and suppresses its own crown slab, parapet teeth and castellated outline.
-  // q=0 never sets this (it keeps the proven per-tile / band-baked path).
-  suppressTop = false,
 ): DrawItem {
   const ctx = rend.ctx;
   const s = rend.camera.scale * rend.camera.depthScale(ty); // B-3 depth thread
@@ -371,10 +361,6 @@ export function garrisonWallItem(rend: PaintHost,
         // skipped where the REAR RISER already anchors a sunk neighbour.
         if (!n) sideFace(xN0, y0, hsN, xN1, y0, hsN, -6);
       }
-      // A coalesced-run member paints only its FACE (above): the run's
-      // crenellated crown + castellated outline are drawn once by the
-      // coalesced span path (crownSpanItem, kind 'garrison').
-      if (suppressTop) return;
       // CROWN: the wall-walk as a TRUE trapezoid drawn in absolute screen
       // coords — its NORTH edge (xN0..xN1 at cNy, lifted by the far
       // depthScale) joins its SOUTH edge (x0..x1 at cSy, the near
@@ -511,154 +497,6 @@ export function garrisonWallItem(rend: PaintHost,
       }
     },
   };
-}
-
-/**
- * THE ONE RENDER — A2c: paint ONE straight span of a coalesced curtain
- * run's crenellated crown, in ABSOLUTE screen coords projected off the
- * span's WORLD corners so adjacent spans (and neighbouring runs) meet
- * seam-free. This is the garrison twin of `Renderer.paintWallCrown` + the
- * wall crown span's outline, drawn by `crownSpanItem` when the volume's
- * kind is 'garrison':
- *
- *   1. the wall-walk (great-ashlar GAR_TOP plane over the span rect);
- *   2. the CRENELLATION — parapet teeth (merlons) on every EXPOSED crown
- *      edge, at world-phase centres (0.25, 0.75 per tile), so the toothed
- *      top runs UNBROKEN across the whole run and the teeth never double
- *      up or gap at a span join (they key off the world grid);
- *   3. the CASTELLATED OUTLINE — the crown edge STEPPING over each tooth
- *      (the silhouette that reads "castle"), stroked only on exposed edges
- *      (tested against the run member set) so internal seams never ink.
- *
- * `members` is the run's packed member set; `crownH`/`footH` are WORLD
- * heights (tiles, elevation folded in). Every point is projected through
- * the SAME rounded-corner + `height·scale·depthScale` law the wall crown
- * uses, so garrison and wall crowns seat on identical device pixels.
- */
-export function garrisonCrownSpan(
-  rend: PaintHost,
-  span: { x0: number; y0: number; x1: number; y1: number },
-  crownH: number,
-  footH: number,
-  whT: number,
-  members: ReadonlySet<number>,
-  // THE ONE RENDER — A3: when given, the crenellated crown SILHOUETTE (the
-  // wall-walk rect + each parapet tooth's outward face) is accumulated here as
-  // projected rings for the per-run alpha-DILATE ring, replacing the interim
-  // castellated vector stroke this function used to draw itself. The caller
-  // adds the tall side faces + blits the ring.
-  sil?: Silhouette,
-): void {
-  const ctx = rend.ctx;
-  const cam = rend.camera;
-  // Project a world corner (rounded) then lift it `hW` world tiles — the
-  // exact `liftedCorner`/`liftedCornerPt` arithmetic the wall crown shares.
-  const P = (wx: number, wy: number, hW: number): { x: number; y: number } => {
-    const p = cam.worldToScreen(wx, wy, rend.w, rend.h);
-    return { x: Math.round(p.x), y: Math.round(p.y) - hW * cam.scale * cam.depthScale(wy) };
-  };
-  // Parapet-tooth world dims: teeth melt with the veil (full at standing
-  // height, gone at the WALL_STUB cut) on the same key as the per-tile path.
-  const mkK = Math.max(0, Math.min(1, (whT - WALL_STUB) / (GARRISON_H - WALL_STUB)));
-  const mhW = MERLON_H * mkK; // tooth height above the walk, world tiles
-  const capH = crownH + mhW;
-  const tw = 0.34; // tooth width along the edge, world tiles
-  const td = 0.34; // tooth depth into the wall, world tiles
-  const CS = [0.25, 0.75]; // world-phase tooth centres, 2 per tile
-
-  // 1. THE WALL-WALK: the span rect at the crown height (GAR_TOP), plus a
-  //    sun-lit south lip when the near edge is exposed.
-  const nw = P(span.x0, span.y0, crownH);
-  const ne = P(span.x1 + 1, span.y0, crownH);
-  const se = P(span.x1 + 1, span.y1 + 1, crownH);
-  const sw = P(span.x0, span.y1 + 1, crownH);
-  ctx.fillStyle = GAR_TOP;
-  ctx.beginPath();
-  ctx.moveTo(nw.x, nw.y);
-  ctx.lineTo(ne.x, ne.y);
-  ctx.lineTo(se.x, se.y);
-  ctx.lineTo(sw.x, sw.y);
-  ctx.closePath();
-  ctx.fill();
-  // A3 silhouette: the wall-walk rect is the crown base of the ring.
-  sil?.add([nw, ne, se, sw]);
-
-  // A tooth (merlon) footprint corners: [outerL, outerR, innerR, innerL],
-  // the outward edge = corners 0,1. Draw the outward face (crownH→capH) and
-  // the lit cap plane (capH).
-  const tooth = (
-    olx: number, oly: number,
-    orx: number, ory: number,
-    irx: number, iry: number,
-    ilx: number, ily: number,
-    faceD: number,
-  ): void => {
-    if (mhW <= 0.002) return;
-    // Cap plane (lit — the sun-caught merlon top).
-    const c0 = P(olx, oly, capH);
-    const c1 = P(orx, ory, capH);
-    const c2 = P(irx, iry, capH);
-    const c3 = P(ilx, ily, capH);
-    ctx.fillStyle = GAR_MERLON_TOP;
-    ctx.beginPath();
-    ctx.moveTo(c0.x, c0.y);
-    ctx.lineTo(c1.x, c1.y);
-    ctx.lineTo(c2.x, c2.y);
-    ctx.lineTo(c3.x, c3.y);
-    ctx.closePath();
-    ctx.fill();
-    // Outward face — the tooth's height read.
-    const a0 = P(olx, oly, crownH);
-    const b0 = P(orx, ory, crownH);
-    ctx.fillStyle = shade(GAR_FACE, faceD);
-    ctx.beginPath();
-    ctx.moveTo(a0.x, a0.y);
-    ctx.lineTo(c0.x, c0.y);
-    ctx.lineTo(c1.x, c1.y);
-    ctx.lineTo(b0.x, b0.y);
-    ctx.closePath();
-    ctx.fill();
-    // A3 silhouette: the tooth rising above the walk (outward face + cap),
-    // so the dilated ring steps over every merlon — the castellated read.
-    sil?.add([a0, c0, c1, b0]);
-  };
-
-  // 2. Teeth on every exposed crown edge, per member tile. Up-screen (north)
-  //    edges first so southern teeth overdraw honestly.
-  for (let ty = span.y0; ty <= span.y1; ty++) {
-    for (let tx = span.x0; tx <= span.x1; tx++) {
-      const n = members.has(packTile(tx, ty - 1));
-      const so = members.has(packTile(tx, ty + 1));
-      const we = members.has(packTile(tx - 1, ty));
-      const ea = members.has(packTile(tx + 1, ty));
-      if (!n)
-        for (const c of CS) {
-          const cx = tx + c;
-          tooth(cx - tw / 2, ty, cx + tw / 2, ty, cx + tw / 2, ty + td, cx - tw / 2, ty + td, -16);
-        }
-      if (!we)
-        for (const c of CS) {
-          const cy = ty + c;
-          tooth(tx, cy - tw / 2, tx, cy + tw / 2, tx + td, cy + tw / 2, tx + td, cy - tw / 2, 2);
-        }
-      if (!ea)
-        for (const c of CS) {
-          const cy = ty + c;
-          tooth(tx + 1, cy - tw / 2, tx + 1, cy + tw / 2, tx + 1 - td, cy + tw / 2, tx + 1 - td, cy - tw / 2, -8);
-        }
-      if (!so)
-        for (const c of CS) {
-          const cx = tx + c;
-          tooth(cx - tw / 2, ty + 1, cx + tw / 2, ty + 1, cx + tw / 2, ty + 1 - td, cx - tw / 2, ty + 1 - td, 8);
-        }
-    }
-  }
-
-  // 3. THE CASTELLATED OUTLINE is now the per-run alpha-DILATE ring (A3): the
-  //    crenellated silhouette (wall-walk rect + each parapet tooth, above) was
-  //    accumulated into `sil`; the caller adds the tall side faces and blits
-  //    the dilated ring, so the run rings continuously with no internal seams
-  //    and steps over every merlon — the same weight/tint bodies wear.
 }
 
 /**

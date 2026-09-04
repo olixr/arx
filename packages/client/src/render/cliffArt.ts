@@ -560,18 +560,12 @@ export function cliffFaceItem(rend: PaintHost,
     draw: () => {
       // THE STRUCTURE FACE (cliffArt/deck law): project the two world
       // corners, round shared endpoints to whole pixels so adjacent
-      // curtains meet without hairlines, and foreshorten each corner by
-      // ITS OWN depthScale — the curtain recedes as a true trapezoid (the
-      // far corner shorter), not a parallel-shifted band. topLift/baseLift
-      // are already scaled by `s`, so they pass as the screen-space lifts.
-      // B-3 SPANNING WARP (Epic B): every detail below rides yTop*/yBase*
-      // via the interpolators, so warping these four warps the whole face.
-      // At q=0 depthScale is exactly 1 → byte-identical.
+      // curtains meet without hairlines. topLift/baseLift are already
+      // scaled by `s`, so they pass as the screen-space lifts. Every
+      // detail below rides yTop*/yBase* via the interpolators.
       const g = projectFace(rend.camera, rend.w, rend.h, ax, ay, bx, by, topLift, baseLift);
       const A = { x: g.ax, y: g.ay };
       const B = { x: g.bx, y: g.by };
-      const dsA = g.dsA;
-      const dsB = g.dsB;
       const yTopA = g.yTopA - 1.5; // tucked under the crown band
       const yTopB = g.yTopB - 1.5;
       const yBaseA = g.yBotA;

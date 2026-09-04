@@ -178,15 +178,6 @@ export interface StagePaint {
      *  Omitted = the classic live lane: repaint + upload every frame. */
     key?: number;
     rev?: number;
-    /** THE ONE RENDER — B9: FACE SCRATCH CAP. Max device px per scratch-cell
-     *  dimension. When set (structure faces under lean; see faceCap.ts), the
-     *  backend bakes this paint at a bounded resolution and lets the quad SCALE
-     *  the capped texture up to the full projected `pw × ph` extent — so a face
-     *  projecting huge at zoom 2 can never mint a giant cell. Omitted (and always
-     *  at q=0) = no cap, byte-identical to today. The QUAD geometry stays the
-     *  full screen extent; only the texture RESOLUTION is capped, so seams (the
-     *  shared projected corners) never reopen. */
-    capDim?: number;
 }
 export type StageItem = StageQuad | StageFill | StagePaint;
 /**
@@ -257,13 +248,6 @@ export interface GpuStageBackend extends StageBackend, VramStage {
     /** Live once the context/device is lost; the renderer falls back to
      *  its own 2d path while set. */
     contextLost: boolean;
-    /** THE ONE RENDER — B9: FACE / SCRATCH CELL CAP (device px per dimension).
-     *  The renderer sets this each frame — the ceiling on any paint cell's bake
-     *  resolution under lean (q>0), 0 (off) at q=0 so the flat look is untouched.
-     *  A cell that would project larger bakes at the cap and the backend scales
-     *  it up to the full projected extent, bounding the resident scratch against
-     *  the perspective giant-cell blowup. A per-item `capDim` overrides it. */
-    cellCapPx: number;
     /** Optional loss hook (used by the dev lab's recovery drill). */
     onContextLost: (() => void) | null;
     /** Advance the per-real-frame clock: aging, cold-texture sweeps, and

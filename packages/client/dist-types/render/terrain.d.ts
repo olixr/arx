@@ -123,7 +123,7 @@ export declare const FRINGE_TILES = 4;
  * W/E strips take only the rows between them.
  */
 export declare function fringeStrips(mask: number, px: number, G: number): Array<[number, number, number, number]>;
-export declare function startChunkBake(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, woodSkin?: WoodSkinSampler, live?: boolean, reuse?: HTMLCanvasElement | null, fringe?: FringeSpec, standingPass?: boolean): ChunkBakeJob;
+export declare function startChunkBake(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, woodSkin?: WoodSkinSampler, live?: boolean, reuse?: HTMLCanvasElement | null, fringe?: FringeSpec): ChunkBakeJob;
 export declare function bakeChunk(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, woodSkin?: WoodSkinSampler): HTMLCanvasElement;
 /** The world's outline ink — MUST equal Renderer.STRUCT_OUTLINE. The
  *  decks wear the same bold dark edge as walls, props and entities
@@ -190,7 +190,7 @@ export declare function liftedRowSpan(rows: readonly boolean[], chunkSize?: numb
     rowOrigin: number;
     rowCount: number;
 };
-export declare function startElevatedBake(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, level: number, takeCanvas?: (rows: number) => HTMLCanvasElement | null | undefined, standingPass?: boolean): ElevatedBakeJob | null;
+export declare function startElevatedBake(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, level: number, takeCanvas?: (rows: number) => HTMLCanvasElement | null | undefined): ElevatedBakeJob | null;
 /** The one-shot elevated bake: start + run every step. Output is
  *  identical to the sliced path — this IS the sliced path, run whole. */
 export declare function bakeElevated(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, level: number): ElevatedBake | null;
