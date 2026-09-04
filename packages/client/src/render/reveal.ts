@@ -94,6 +94,30 @@ export const FRONT_EPS = 0.1;
  * FRONT_EPS (their bounds ARE their base; no overhead crown). */
 export const FADE_TALL_FRONT = 0.6;
 
+/**
+ * THE FADE HAS A SOUTHERN HORIZON (field fix). A tall sprite's screen
+ * rect spans its whole height, so an occluder far to the SOUTH — its
+ * base well below the body, but the rect's TOP still reaching up into
+ * the body's row — registered as an overlap and faded, fanning a
+ * translucent wedge of trees/buildings south of the player though none
+ * of them stands between the player and the near-top-down camera. An
+ * occluder whose base row sits more than this many tiles SOUTH of the
+ * player can never occlude the body in this view — return no-fade in
+ * O(1) before any screen math. (fronts already rejects the north side;
+ * this caps the south side.) */
+export const MAX_FADE_SOUTH = 3.5;
+
+/**
+ * COVER-FRACTION GATE — OCCLUSION, NOT PROXIMITY. The fade arms on how
+ * much of the body's screen box the occluder's inset silhouette
+ * genuinely covers, not on a binary rect clip: below FADE_COVER_MIN
+ * (~a grazing crown-tip) nothing fades; the fade then smoothsteps up
+ * over FADE_COVER_SPAN so a tree you stand squarely behind reaches the
+ * presence floor and the boundary eases in/out (mirrors wallCover's
+ * "arms past ~45% hidden"). */
+export const FADE_COVER_MIN = 0.4;
+export const FADE_COVER_SPAN = 0.45;
+
 /** Character rig height in tiles (the scale-anchor law: the body IS
  *  the unit of measure — wall cover is judged against it). */
 export const BODY_H = 1.15;
@@ -159,4 +183,46 @@ export function wallCover(whT: number, dyWorld: number, adx: number, yScale: num
  */
 export function emberEase(ghostK: number): number {
   return smoothstep01(ghostK * 1.45);
+}
+
+/**
+ * The fraction of the body's screen box that an occluder's inset
+ * silhouette covers, 0..1 — the fade's coverage measure (screen-space
+ * sibling of wallCover). Product of the horizontal and vertical
+ * overlap fractions, so a canopy centered over the body but only
+ * grazing its top reads low, while one squarely between body and
+ * camera reads high. Pure rect math, alloc-free.
+ *
+ * sx0..sBot — the occluder's inset silhouette screen rect.
+ * bx0..bBot — the body box screen rect.
+ */
+export function occluderCover(
+  sx0: number,
+  sx1: number,
+  sTop: number,
+  sBot: number,
+  bx0: number,
+  bx1: number,
+  bTop: number,
+  bBot: number,
+): number {
+  const ow = Math.min(sx1, bx1) - Math.max(sx0, bx0);
+  const oh = Math.min(sBot, bBot) - Math.max(sTop, bTop);
+  if (ow <= 0 || oh <= 0) return 0;
+  const bw = bx1 - bx0;
+  const bh = bBot - bTop;
+  if (bw <= 0 || bh <= 0) return 0;
+  const fx = Math.min(1, ow / bw);
+  const fy = Math.min(1, oh / bh);
+  return fx * fy;
+}
+
+/**
+ * Map a raw cover fraction to the fade's target occlusion strength
+ * (0..1) — nothing below FADE_COVER_MIN, smoothstepped to full over
+ * FADE_COVER_SPAN. The renderer temporally eases toward this and blits
+ * alpha = 1 − strength·(1 − FADE_ALPHA).
+ */
+export function fadeStrength(cover: number): number {
+  return smoothstep01((cover - FADE_COVER_MIN) / FADE_COVER_SPAN);
 }

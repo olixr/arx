@@ -4,8 +4,13 @@ import {
   BAYER4,
   BODY_H,
   FADE_ALPHA,
+  FADE_COVER_MIN,
+  MAX_FADE_SOUTH,
+  FADE_TALL_FRONT,
   bayerAlpha,
   emberEase,
+  fadeStrength,
+  occluderCover,
   smoothstep01,
   stackCover,
   wallCover,
@@ -101,6 +106,56 @@ test('cover is judged against the body, not the wall: taller walls hide sooner',
   const story = wallCover(WALL_H, 2.4, 0, YS);
   const tall = wallCover(WALL_H + 0.8, 2.4, 0, YS);
   assert.ok(tall > story, `${tall} > ${story}`);
+});
+
+// ------------------------------------------------------ step-aside cover gate
+
+// A body box roughly 40 css px wide, 100 tall, centered near (0,0).
+const BX0 = -20,
+  BX1 = 20,
+  BTOP = -80,
+  BBOT = 20;
+
+test('a canopy squarely over the body covers most of it (fade arms)', () => {
+  // Wide silhouette overlapping the whole body box vertically.
+  const c = occluderCover(-60, 60, -120, 30, BX0, BX1, BTOP, BBOT);
+  assert.ok(c > 0.95, `expected near-full cover, got ${c}`);
+  assert.ok(fadeStrength(c) > 0.9, `strength ${fadeStrength(c)}`);
+});
+
+test('a grazing crown-tip covers little of the body (no fade)', () => {
+  // Silhouette bottom only dips 8px into the 100px-tall body top.
+  const c = occluderCover(-60, 60, -200, BTOP + 8, BX0, BX1, BTOP, BBOT);
+  assert.ok(c < FADE_COVER_MIN, `expected below arm threshold, got ${c}`);
+  assert.equal(fadeStrength(c), 0, `strength ${fadeStrength(c)}`);
+});
+
+test('a silhouette wholly beside/below the body gives zero cover', () => {
+  assert.equal(occluderCover(60, 120, -120, 30, BX0, BX1, BTOP, BBOT), 0);
+  assert.equal(occluderCover(-60, 60, 40, 200, BX0, BX1, BTOP, BBOT), 0);
+});
+
+test('cover eases up as the occluder slides over the body — smooth fade-in', () => {
+  // Progressively lower silhouette bottom = more of the body covered.
+  const c0 = occluderCover(-60, 60, -200, BTOP + 30, BX0, BX1, BTOP, BBOT);
+  const c1 = occluderCover(-60, 60, -200, BTOP + 60, BX0, BX1, BTOP, BBOT);
+  const c2 = occluderCover(-60, 60, -200, BTOP + 90, BX0, BX1, BTOP, BBOT);
+  assert.ok(c0 < c1 && c1 < c2, `${c0} < ${c1} < ${c2}`);
+  assert.ok(fadeStrength(c0) <= fadeStrength(c1) && fadeStrength(c1) <= fadeStrength(c2));
+});
+
+test('fadeStrength: nothing below the arm threshold, smoothsteps to full', () => {
+  assert.equal(fadeStrength(0), 0);
+  assert.equal(fadeStrength(FADE_COVER_MIN - 0.01), 0);
+  assert.equal(fadeStrength(1), 1);
+  assert.ok(fadeStrength(FADE_COVER_MIN + 0.2) > 0);
+});
+
+test('the southern horizon sits south of the front line but within reach', () => {
+  // Beyond FADE_TALL_FRONT (the north cap) yet a few tiles, so a tree
+  // you stand behind still fades while the far-south wedge cannot.
+  assert.ok(MAX_FADE_SOUTH > FADE_TALL_FRONT, `${MAX_FADE_SOUTH} > ${FADE_TALL_FRONT}`);
+  assert.ok(MAX_FADE_SOUTH >= 3 && MAX_FADE_SOUTH <= 5, `${MAX_FADE_SOUTH}`);
 });
 
 // ---------------------------------------------------------------- ember
