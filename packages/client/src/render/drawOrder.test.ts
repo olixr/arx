@@ -149,3 +149,61 @@ test('a body walking a hedge line: in front when south of it, behind when north'
   assert.deepEqual(order([hedge, south]), [hedge, south]); // hedge, then body
   assert.deepEqual(order([hedge, north]), [north, hedge]); // body, then hedge
 });
+
+// ── CAUSE 1: a BAKED wall keeps its volume rank (nearRow carried) ──────────
+
+test('CAUSE 1: a baked wall carrying nearRow ties as a VOLUME vs a front hedge, and the hedge (south) draws in front', () => {
+  // A COLD/BAKED wall now carries nearRow (== its sortY) just like a live
+  // wall, so DRAW_ORDER treats it as a volume, not a billboard. A hedge
+  // abutting its south face on the SAME row must draw in front of it.
+  const bakedWall = vol(10); // baked wall, near/south edge at row 10, strat 0
+  const frontHedge = vol(11); // hedge one row south (its own south edge row 11)
+  assert.deepEqual(order([bakedWall, frontHedge]), [bakedWall, frontHedge]);
+  assert.deepEqual(order([frontHedge, bakedWall]), [bakedWall, frontHedge]);
+});
+
+test('CAUSE 1 regression it guards: a baked wall MISSING nearRow (billboard) loses the same-row tie to a front hedge', () => {
+  // This is the pre-fix bug shape: the baked wall was emitted WITHOUT nearRow,
+  // so on an exact same-row tie DRAW_ORDER's rank rule drew the volume (hedge)
+  // FIRST and the billboard (baked wall) AFTER ⇒ wall over hedge. Documented
+  // here so a future regression that drops the baked nearRow is caught.
+  const bakedWallNoNear: DrawOrderItem = { sortY: 10 }; // billboard-class (bug)
+  const hedge = vol(10); // volume on the exact same row
+  // The volume (hedge) draws FIRST, the billboard (wall) LAST ⇒ wall over hedge.
+  assert.deepEqual(order([bakedWallNoNear, hedge]), [hedge, bakedWallNoNear]);
+});
+
+// ── CAUSE 2: a raised building base does NOT dominate a ground hedge in front ─
+
+test('CAUSE 2: a ground hedge in front (south) of a raised building base occludes the base, not dominated by SHELF', () => {
+  // Terraced town: the building base wall is a VOLUME on shelf 1, the hedge a
+  // VOLUME on shelf 0 planted one row SOUTH (in front). Before the fix SHELF
+  // put the raised base over the hedge at every row; now the front-base
+  // exception resolves by near row ⇒ the hedge draws last (in front).
+  const raisedBase = vol(10, 1); // building base wall, shelf 1, south edge row 10
+  const groundHedge = vol(11, 0); // hedge one row south, ground shelf 0
+  assert.deepEqual(order([raisedBase, groundHedge]), [raisedBase, groundHedge]);
+  assert.deepEqual(order([groundHedge, raisedBase]), [raisedBase, groundHedge]);
+});
+
+test('CAUSE 2 stays NARROW: a raised volume NOT in front of the ground volume keeps SHELF and draws over it', () => {
+  // Genuine elevation layering must be untouched. The exception fires ONLY when
+  // the LOWER shelf is STRICTLY south of (in front of) the higher one; anything
+  // else keeps SHELF so raised content draws over lower foreground.
+  const groundHedge = vol(10, 0);
+  // (1) Raised volume SOUTH of / in front of the hedge (larger near row): the
+  //     raised thing is genuinely in front and up ⇒ SHELF wins, raised on top.
+  const raisedInFront = vol(11, 1);
+  assert.deepEqual(order([raisedInFront, groundHedge]), [groundHedge, raisedInFront]);
+  // (2) Exact same near row keeps SHELF (conservative: raised stays on top).
+  const raisedSameRow = vol(10, 1);
+  assert.deepEqual(order([raisedSameRow, groundHedge]), [groundHedge, raisedSameRow]);
+});
+
+test('CAUSE 2 exception never fires for billboards: a raised BODY over a ground hedge keeps SHELF (wall/entity sort unchanged)', () => {
+  // Only volume-vs-volume enters the exception. A raised entity (billboard, no
+  // nearRow) over a ground hedge keeps pure SHELF — elevation over foreground.
+  const raisedBody = body(11, 1); // a body on the terrace, south of the hedge
+  const groundHedge = vol(10, 0);
+  assert.deepEqual(order([raisedBody, groundHedge]), [groundHedge, raisedBody]);
+});

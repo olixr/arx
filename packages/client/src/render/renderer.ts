@@ -10731,6 +10731,12 @@ export class Renderer {
           items.push({
             sortY: bk.sortY,
             strat: bk.strat,
+            // A5 depth rank: carry the bucket's captured near-row so a
+            // COLD/BAKED wall keeps the same VOLUME rank a LIVE wall does —
+            // else DRAW_ORDER ranks the baked blit as a billboard and a
+            // same-row front hedge (a volume) draws UNDER it. Absent for
+            // flat baked layers (and byte-identical when occlusionOn is off).
+            nearRow: bk.nearRow,
             band: { sb: bake, bk },
             elevated: bk.elevated ? true : undefined,
             drawShadow:
@@ -11134,6 +11140,13 @@ export class Renderer {
         let sortY = 0;
         let strat: number | undefined;
         let elevated = false;
+        // A5 depth rank: a BAKED wall/hedge must keep the same VOLUME rank a
+        // LIVE one carries, or DRAW_ORDER treats it as a billboard and a
+        // same-row front hedge (a volume) loses the tie and paints UNDER it.
+        // Capture the bucket's near-row from its first probe item — a wall's
+        // nearRow === sortY, and a flat baked layer's is undefined (byte-
+        // identical there and whenever occlusionOn is off).
+        let nearRow: number | undefined;
         let first = true;
         for (const it of s2) {
           if (keyOf(it) !== bkKey) continue;
@@ -11141,11 +11154,12 @@ export class Renderer {
             sortY = it.sortY;
             strat = it.strat;
             elevated = !!it.elevated;
+            nearRow = it.nearRow;
             first = false;
           }
           it.draw?.();
         }
-        buckets.push({ canvas, sortY, strat, elevated, padL: anchor.x, padT: anchor.y });
+        buckets.push({ canvas, sortY, strat, elevated, nearRow, padL: anchor.x, padT: anchor.y });
       }
     } finally {
       cam.x = savedX;
