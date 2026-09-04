@@ -192,6 +192,7 @@ import {
 import { buildableIconUrl, itemIconUrl } from './icons.js';
 import { AWNING_CLOTHS, GAR_LEAF, GY_MOSS, GY_STONE, GY_STONE_LIT, HRB_MOON, HRB_MOON_DEEP, HRB_SAGE, HRB_SAGE_DEEP, HRB_SOIL_WET, PALI_BONE, PALI_LOG, PALI_ROPE, PALI_ROPE_DARK, ROCK_TILES, STALL_BANNERS, STRUCT_OUTLINE, TRD_CRUST, TRD_CRUST_LIT, TRD_HERB, TRD_HERB_DRY, TRD_LEATHER_LIT, TRD_STEEL, TRD_STEEL_LIT, TWN_BRONZE, TWN_BRONZE_LIT, TWN_IRON, TWN_OAK, TWN_OAK_DARK, TWN_OAK_LIT, TWN_ROPE, WALL_TILES, WIND_TMP, stone01, treeKey, twinkle } from './paintVocab.js';
 import { PROP_PAINTERS } from './props/index.js';
+import { fenceBrokenItem, hedgeDeadItem, ruinWallItem } from './props/scarred/index.js';
 import { SpriteAtlas } from './stage/spriteAtlas.js';
 import * as waterfalls from './waterfalls.js';
 import * as garrisonArt from './garrisonArt.js';
@@ -248,6 +249,7 @@ import {
   FADE_INSET_X,
   FADE_TALL_TILES,
   FADE_TALL_FRONT,
+  FADE_TALL_PROPS,
   MAX_FADE_SOUTH,
   FRONT_EPS,
   GHOST_ALPHA,
@@ -15983,6 +15985,53 @@ export class Renderer {
     Tile.PlunderCart,
     Tile.BossEffigy,
     Tile.GnawTrough,
+    // THE SCARRED LAND: every discrete piece of the kit rides the
+    // cached eight-tap ring (THE ONE RING). NOT here by law: the two
+    // ruin walls, the broken fence, and the dead hedge stroke their
+    // exposed silhouette live with their run families; the dead tree
+    // is a tree (its ring bakes into the species sheet); the blighted
+    // crop rides drawFlora's own baked ring. The clocked pieces (the
+    // fallen banner's corner, the pool's scum drift, the bone tree's
+    // hangings, the thread, the rag, the lean-to's hem, the strung
+    // gate's cord) all sample under 4Hz; the still pieces idle in
+    // STATIC_RING_TILES below. Light rows (ember bed, gloom stone,
+    // pool, lamp cairn, pit lamp) are collect-time — the painters
+    // never queueGlow, so cadence can never strobe them.
+    Tile.CharredBeam,
+    Tile.CollapsedRoof,
+    Tile.AshHeap,
+    Tile.EmberBed,
+    Tile.ChimneyStack,
+    Tile.BrokenCart,
+    Tile.FieldLitter,
+    Tile.ArrowPost,
+    Tile.FallenBanner,
+    Tile.FieldCairn,
+    Tile.CairnFallen,
+    Tile.BeastBones,
+    Tile.CharredStump,
+    Tile.SpoilHeap,
+    Tile.GloomStone,
+    Tile.CreepRoot,
+    Tile.FoulPool,
+    Tile.CharterPost,
+    Tile.LampCairn,
+    Tile.LegionStandard,
+    Tile.BoneTree,
+    Tile.TallyStone,
+    Tile.WardThread,
+    Tile.RedRagStake,
+    Tile.PitLamp,
+    Tile.PitLampDark,
+    Tile.LeanTo,
+    Tile.Bedroll,
+    Tile.BelongingsCart,
+    Tile.FieldCot,
+    Tile.SignpostBurnt,
+    Tile.WellFouled,
+    Tile.LampPostDark,
+    Tile.SluiceGate,
+    Tile.SluiceGateStrung,
   ]);
 
   /**
@@ -16177,6 +16226,35 @@ export class Renderer {
     Tile.WarTable,
     Tile.PlunderCart,
     Tile.GnawTrough,
+    // THE SCARRED LAND statics: char, ash, stone, bone, dead iron,
+    // dead wood, parked carts, a bed nobody is in. The ember bed
+    // (its lit top keeps company with a light row), the fallen
+    // banner, the gloom pair, the lamp cairn, the bone tree, the
+    // thread, the rag, the lit pit lamp, the lean-to, the fouled
+    // well (its living painter reads the clock), and the strung gate
+    // stay on the fast cadence.
+    Tile.CharredBeam,
+    Tile.CollapsedRoof,
+    Tile.AshHeap,
+    Tile.ChimneyStack,
+    Tile.BrokenCart,
+    Tile.FieldLitter,
+    Tile.ArrowPost,
+    Tile.FieldCairn,
+    Tile.CairnFallen,
+    Tile.BeastBones,
+    Tile.CharredStump,
+    Tile.SpoilHeap,
+    Tile.CreepRoot,
+    Tile.CharterPost,
+    Tile.TallyStone,
+    Tile.PitLampDark,
+    Tile.Bedroll,
+    Tile.BelongingsCart,
+    Tile.FieldCot,
+    Tile.SignpostBurnt,
+    Tile.LampPostDark,
+    Tile.SluiceGate,
   ]);
 
   /**
@@ -16452,7 +16530,10 @@ export class Renderer {
       // bakes run with the veil live, so bakingMask carries the duty).
       this.bakeVeilFull ||
       this.bakingMask ||
-      dh < FADE_TALL_TILES * this.camera.scale ||
+      // A prop declared tall by its tile (FADE_TALL_PROPS) fades on
+      // its silhouette whatever its drawn box says; every other prop
+      // must measure up.
+      (dh < FADE_TALL_TILES * this.camera.scale && !FADE_TALL_PROPS.has(tile)) ||
       Renderer.NEVER_FADE_TILES.has(tile) ||
       this.ownSeatTiles?.has((tx + 0x8000) * 0x10000 + (ty + 0x8000)) === true
     )
@@ -17100,6 +17181,8 @@ export class Renderer {
   private treeOrSaplingModel(tile: Tile, h: number) {
     const hq = treeVariantHash(tile, h);
     const adult = treeOfSapling(tile);
+    // THE SCARRED LAND's dead tree has no sapling: treeModel grows the
+    // snag directly (species by hash, dead bark, foliage 0).
     return adult !== null ? saplingModel(adult, hq) : treeModel(tile, hq);
   }
 
@@ -18714,7 +18797,12 @@ export class Renderer {
       case Tile.TreeOak:
       case Tile.TreeWillow:
       case Tile.TreeYew:
-      case Tile.TreePine: {
+      case Tile.TreePine:
+      // THE SCARRED LAND: the dead tree is a tree — trees.ts grows a
+      // snag (species by hash, foliage 0, dead bark) and every tree
+      // lane (species sheet, shear sway, occlusion box, shadow) serves
+      // it unchanged. K4 THE STRIPPED LAND gives it the timber law.
+      case Tile.DeadTree: {
         // A tree that just stood up from its sapling eases from
         // sapling scale to full height instead of popping in.
         const grow = this.growthOf(tx, ty, 0.45, 1, 2600);
@@ -18867,7 +18955,10 @@ export class Renderer {
           },
         };
 
-      case Tile.LampPost: {
+      case Tile.LampPost:
+      // THE SCARRED LAND: the dark lamp post is the same fixture with
+      // its flame held at zero — no light row, no glow, on purpose.
+      case Tile.LampPostDark: {
         // An iron lantern on a post: cold black metal by day, a warm
         // caged flame after dark (the light itself lives in the
         // lightmap + glow passes — this is just the fixture).
@@ -18884,7 +18975,7 @@ export class Renderer {
             // to its scratch — the build-time capture would paint past it.
             const ctx = this.ctx;
             const baseY = p.y + syT * 0.12;
-            const lit = this.sky.flame;
+            const lit = tile === Tile.LampPostDark ? 0 : this.sky.flame;
             // Stone foot.
             ctx.fillStyle = '#5b5566';
             ctx.beginPath();
@@ -18961,6 +19052,20 @@ export class Renderer {
       case Tile.IronGate:
       case Tile.IronGateShut:
         return barrierArt.ironGateItem(this, tile, tx, ty, game);
+
+      // THE SCARRED LAND's run families: the two ruin walls merge
+      // with their own kind (props/scarred/ruinWalls.ts); the broken
+      // fence rides the Fence run painter under FENCE_TILES and the
+      // dead hedge the hedge class under HEDGE_TILES.
+      case Tile.RuinWallStone:
+      case Tile.RuinWallWood:
+        return ruinWallItem(this, tile, tx, ty, game);
+
+      case Tile.FenceBroken:
+        return fenceBrokenItem(this, tx, ty, game);
+
+      case Tile.HedgeDead:
+        return hedgeDeadItem(this, tx, ty, game);
 
       default:
         return { sortY: ty, draw: () => {} };

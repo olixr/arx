@@ -48,6 +48,8 @@
  * (not more transparency) is what keeps the body findable when
  * several canopies genuinely shade it.
  */
+import { Tile } from '@arx/shared';
+
 export const FADE_ALPHA = 0.32;
 
 /**
@@ -93,6 +95,22 @@ export const FRONT_EPS = 0.1;
  * counts as between you and the camera. Props keep the tight
  * FRONT_EPS (their bounds ARE their base; no overhead crown). */
 export const FADE_TALL_FRONT = 0.6;
+
+/**
+ * Props declared TALL by their tile: they join the step-aside fade on
+ * their silhouette whatever their drawn box measures (a column, a
+ * snag, a standard, a lamp on its post all stand over the rig and
+ * hide a body behind them). THE SCARRED LAND's five: the chimney, the
+ * dead tree (a tree — its own lane fades it, listed for the census),
+ * the Legion standard, the dark lamp post, the lit pit lamp.
+ */
+export const FADE_TALL_PROPS: ReadonlySet<Tile> = new Set([
+  Tile.ChimneyStack,
+  Tile.DeadTree,
+  Tile.LegionStandard,
+  Tile.LampPostDark,
+  Tile.PitLamp,
+]);
 
 /**
  * THE FADE HAS A SOUTHERN HORIZON (field fix). A tall sprite's screen

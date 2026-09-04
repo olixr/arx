@@ -1015,6 +1015,101 @@ export enum Tile {
   GraveMound = 503,
   /** A weathered stone mourner, hooded and bowed over folded hands. Rain has worn tracks down the cowl. */
   MournerStatue = 504,
+  // THE SCARRED LAND — the contested-lands prop kit (ids 505..545,
+  // contiguous, family order; docs/contested-lands-plan.md §6.1).
+  // The fifth shelf voice, LEFT BURNING: every piece is a thing a
+  // smith, mason, carpenter, or a fire made and then left. TILE IS
+  // THE STATE — every posture is its own id; nothing rides metadata.
+  // Never renumber; a retired id stays retired.
+  // THE SCARRED LAND — A. the cold hearth (what a burning leaves standing)
+  /** Tumbled masonry, waist-high and lower — the SIXTH run-merging family (own kind only; never a roof). */
+  RuinWallStone = 505,
+  /** Charred studs and a fallen plate — the burnt frame's run-merging kin. */
+  RuinWallWood = 506,
+  /** A fallen timber lying diagonal, ember checks painted cold. */
+  CharredBeam = 507,
+  /** Rafters through a burnt thatch dome — the roof that came down. */
+  CollapsedRoof = 508,
+  /** A walkable heap of cold ash. */
+  AshHeap = 509,
+  /** A dead fire that still glows: the night tell of a fresh burning. */
+  EmberBed = 510,
+  /** The chimney a burning could not take — the tallest piece; stands north of a shell. */
+  ChimneyStack = 511,
+  // THE SCARRED LAND — B. the field after (what a fight leaves)
+  /** An overturned cart, one wheel gone. */
+  BrokenCart = 512,
+  /** Battle litter — shield half, snapped spear, helm, arrows; walkable. */
+  FieldLitter = 513,
+  /** A post stuck with arrows, fletch colour hashed. */
+  ArrowPost = 514,
+  /** A banner down in the dirt, its field dye hashed from the four-colour set. */
+  FallenBanner = 515,
+  /** Knee-high field stones with a flat marker: the country's plainest grave. */
+  FieldCairn = 516,
+  /** The cairn tumbled — the two-state tell beside FieldCairn; walkable. */
+  CairnFallen = 517,
+  /** A ribcage on its side: the wreck that stands in for the dead horse. */
+  BeastBones = 518,
+  // THE SCARRED LAND — C. the stripped land (what the axe and the fire left)
+  /** A stump burnt black; worldgen SCORCH's honest stump. Walkable. */
+  CharredStump = 519,
+  /** A standing dead tree — bare limbs through the engine tree switch, foliage 0. */
+  DeadTree = 520,
+  /** A spoil heap, quarry-brown or starfall-black by hash. */
+  SpoilHeap = 521,
+  // THE SCARRED LAND — D. the gloom (what was here first)
+  /** A stone that glows cold — the Riftgate apron's palette above ground. */
+  GloomStone = 522,
+  /** A creeping root that comes back when cut. */
+  CreepRoot = 523,
+  /** Sick water with a scum ring; walkable and unwelcome. */
+  FoulPool = 524,
+  /** A crop row gone black — harvest refused. Walkable. */
+  CropBlighted = 525,
+  // THE SCARRED LAND — E. the marks (five peoples finally get a glyph)
+  /** The fordgate's charter post — the towns' claim, brass-plated. */
+  CharterPost = 526,
+  /** A waykeeper's lamp cairn: warm, roadside, never occluding. */
+  LampCairn = 527,
+  /** The Legion's standard: one crimson square with one bar. */
+  LegionStandard = 528,
+  /** The wolfkin's bone tree — hung bone that answers the breeze. */
+  BoneTree = 529,
+  /** The kobolds' tally stone: it counts small. */
+  TallyStone = 530,
+  /** The evencourt's ward thread strung at knee height; walkable, cuttable. */
+  WardThread = 531,
+  /** The reavers' red-rag stake. */
+  RedRagStake = 532,
+  /** The Returners' pit lamp, burning: their word against the LampPost. */
+  PitLamp = 533,
+  /** The pit lamp gone dark — the shame in a tile. */
+  PitLampDark = 534,
+  // THE SCARRED LAND — F. the displaced (what people carry when they run)
+  /** A freestanding lean-to, open face south. */
+  LeanTo = 535,
+  /** A bedroll on bare ground; walkable. */
+  Bedroll = 536,
+  /** A household on two wheels. */
+  BelongingsCart = 537,
+  /** A field cot. */
+  FieldCot = 538,
+  // THE SCARRED LAND — G. the states (living props in their broken posture)
+  /** A fence with its rails down — Fence-kin in the run mask; passable by state. */
+  FenceBroken = 539,
+  /** A signpost scorched past reading. */
+  SignpostBurnt = 540,
+  /** A well somebody fouled — draw-water refused; the rag colour keeps its secret. */
+  WellFouled = 541,
+  /** A hedge gone to brown sticks — joins the hedge coalesce class. */
+  HedgeDead = 542,
+  /** The town lamp unlit, on purpose. */
+  LampPostDark = 543,
+  /** A board gate on two posts across a dike. */
+  SluiceGate = 544,
+  /** The sluice gate strung with kelp-cord — the paid variant. */
+  SluiceGateStrung = 545,
 }
 
 export enum Detail {
@@ -1086,6 +1181,21 @@ export enum Detail {
   GreatBanner = 144,
   /** Floor-length gathered drape falling the full face: +dye (160..175 reserved). */
   DrapeFall = 160,
+  // THE SCARRED LAND — the six floor Details (176..181), baked beside
+  // Sawdust/Straw in the ground pass. Ground marks that must last are
+  // baked Details, never the decal pool (plan §1 law 8).
+  /** Cold ash pan with clinker squares. */
+  Ash = 176,
+  /** Old bone slivers and a jaw — den edges, squats, old fields. */
+  Bones = 177,
+  /** Two dark drag bands — felled rows, cart tracks, spoil paths. */
+  DragFurrow = 178,
+  /** Dark veins in the ground around GloomStone and CreepRoot. */
+  BlightVeins = 179,
+  /** A near-black stain with a lit dry rim — blood-dark by value, never red. */
+  DarkSpill = 180,
+  /** Dried plate seams — the drained pond. */
+  Mudcrack = 181,
 }
 
 /** THE DYE LAW's count — ten cloths, index-married everywhere. */

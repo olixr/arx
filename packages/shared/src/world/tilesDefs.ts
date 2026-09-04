@@ -515,6 +515,58 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.GravestoneTall]: { name: 'grave monument', solid: true, color: '#625d70', raised: true, topColor: '#8f8a9e' },
   [Tile.GraveMound]: { name: 'grave mound', solid: true, color: '#4a3a2c', raised: true, topColor: '#5e4a36' },
   [Tile.MournerStatue]: { name: 'mourner statue', solid: true, color: '#726d80', raised: true, topColor: '#a29db2' },
+  // THE SCARRED LAND (505..545): every piece is raised (the prop hall
+  // paints it, walkable or not — a walkable prop is a low prop, never
+  // a ground material) and the name IS the museum plaque. Inks: char,
+  // ash, ember, gloom, rag red, Legion crimson, charter brass.
+  // A. the cold hearth
+  [Tile.RuinWallStone]: { name: 'ruined stone wall', solid: true, color: '#5b5566', raised: true, topColor: '#7d7789' },
+  [Tile.RuinWallWood]: { name: 'ruined timber wall', solid: true, color: '#2f2a30', raised: true, topColor: '#4a4348' },
+  [Tile.CharredBeam]: { name: 'charred beam', solid: true, color: '#2a2529', raised: true, topColor: '#45403f' },
+  [Tile.CollapsedRoof]: { name: 'collapsed roof', solid: true, color: '#4a3f33', raised: true, topColor: '#6a5c48' },
+  [Tile.AshHeap]: { name: 'ash heap', solid: false, color: '#6d6a70', raised: true, topColor: '#8d8a90' },
+  [Tile.EmberBed]: { name: 'ember bed', solid: true, color: '#3a2f2e', raised: true, topColor: '#c8552a' },
+  [Tile.ChimneyStack]: { name: 'chimney stack', solid: true, color: '#524c5c', raised: true, topColor: '#736d80' },
+  // B. the field after
+  [Tile.BrokenCart]: { name: 'broken cart', solid: true, color: '#5e4630', raised: true, topColor: '#7d6040' },
+  [Tile.FieldLitter]: { name: 'field litter', solid: false, color: '#5c5a5f', raised: true, topColor: '#8a8890' },
+  [Tile.ArrowPost]: { name: 'arrow post', solid: true, color: '#5a4226', raised: true, topColor: '#7a5c36' },
+  [Tile.FallenBanner]: { name: 'fallen banner', solid: true, color: '#5a3a3e', raised: true, topColor: '#8a3d48' },
+  [Tile.FieldCairn]: { name: 'field cairn', solid: true, color: '#7c7889', raised: true, topColor: '#a29db2' },
+  [Tile.CairnFallen]: { name: 'fallen cairn', solid: false, color: '#7c7889', raised: true, topColor: '#a29db2' },
+  [Tile.BeastBones]: { name: 'beast bones', solid: true, color: '#b5ac91', raised: true, topColor: '#cfc7ae' },
+  // C. the stripped land
+  [Tile.CharredStump]: { name: 'charred stump', solid: false, color: '#2a2529', raised: true, topColor: '#4a4448' },
+  [Tile.DeadTree]: { name: 'dead tree', solid: true, color: '#4a4046', raised: true, topColor: '#6a6068' },
+  [Tile.SpoilHeap]: { name: 'spoil heap', solid: true, color: '#5c4a38', raised: true, topColor: '#7a6650' },
+  // D. the gloom
+  [Tile.GloomStone]: { name: 'gloom stone', solid: true, color: '#3c3a52', raised: true, topColor: '#7f8cc4' },
+  [Tile.CreepRoot]: { name: 'creep root', solid: true, color: '#3a3038', raised: true, topColor: '#57484f' },
+  [Tile.FoulPool]: { name: 'foul pool', solid: false, color: '#2f3d38', raised: true, topColor: '#4c6a58' },
+  [Tile.CropBlighted]: { name: 'blighted crop', solid: false, color: '#3a3430', raised: true, topColor: '#5a5044' },
+  // E. the marks
+  [Tile.CharterPost]: { name: 'charter post', solid: true, color: '#5a4226', raised: true, topColor: '#c9a14a' },
+  [Tile.LampCairn]: { name: 'lamp cairn', solid: true, color: '#7c7889', raised: true, topColor: '#e8c06a' },
+  [Tile.LegionStandard]: { name: 'legion standard', solid: true, color: '#3a3444', raised: true, topColor: '#8a1f2a' },
+  [Tile.BoneTree]: { name: 'bone tree', solid: true, color: '#4a4046', raised: true, topColor: '#cfc7ae' },
+  [Tile.TallyStone]: { name: 'tally stone', solid: true, color: '#6b6678', raised: true, topColor: '#8f8a9e' },
+  [Tile.WardThread]: { name: 'ward thread', solid: false, color: '#5a4226', raised: true, topColor: '#d8cba8' },
+  [Tile.RedRagStake]: { name: 'red rag stake', solid: true, color: '#5a4226', raised: true, topColor: '#a8323a' },
+  [Tile.PitLamp]: { name: 'pit lamp', solid: true, color: '#3a3444', raised: true, topColor: '#e8933c' },
+  [Tile.PitLampDark]: { name: 'dark pit lamp', solid: true, color: '#3a3444', raised: true, topColor: '#5d5670' },
+  // F. the displaced
+  [Tile.LeanTo]: { name: 'lean-to', solid: true, color: '#6a5a44', raised: true, topColor: '#8d7c66' },
+  [Tile.Bedroll]: { name: 'bedroll', solid: false, color: '#5d4f42', raised: true, topColor: '#7a6a58' },
+  [Tile.BelongingsCart]: { name: 'belongings cart', solid: true, color: '#6e4a33', raised: true, topColor: '#9c8a62' },
+  [Tile.FieldCot]: { name: 'field cot', solid: true, color: '#6a5a44', raised: true, topColor: '#8d7c66' },
+  // G. the states
+  [Tile.FenceBroken]: { name: 'broken fence', solid: false, color: '#7d5a2e', raised: true, topColor: '#8a6534' },
+  [Tile.SignpostBurnt]: { name: 'burnt signpost', solid: true, color: '#2a2529', raised: true, topColor: '#4a4448' },
+  [Tile.WellFouled]: { name: 'fouled well', solid: true, color: '#6e6a75', raised: true, topColor: '#4c6a58' },
+  [Tile.HedgeDead]: { name: 'dead hedge', solid: true, color: '#4a4030', raised: true, topColor: '#6a5c44' },
+  [Tile.LampPostDark]: { name: 'dark lamp post', solid: true, color: '#3a3444', raised: true, topColor: '#5d5670' },
+  [Tile.SluiceGate]: { name: 'sluice gate', solid: true, color: '#5a4226', raised: true, topColor: '#7a5c36' },
+  [Tile.SluiceGateStrung]: { name: 'strung sluice gate', solid: true, color: '#5a4226', raised: true, topColor: '#4c6a58' },
 };
 
 // THE KNIGHT'S KEEPING: the standing banner's dye band — defs for

@@ -457,6 +457,13 @@ export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
   // span over a 0.5-tile hedge read wildly out of scale) — a shut
   // waist-high timber wicket no more stops lamplight than the
   // hedgerow beside it.
+  // THE SCARRED LAND: the chimney is the ONE piece of the kit tall
+  // and massed enough to stop lamplight — a masonry column a head
+  // and a half over the rig. The ruin walls are waist-high tumbles
+  // (lamplight clears them like a fence), the dead tree is a
+  // trunk-mass ('cover', by collider radius), and nothing else in
+  // the kit is architecture.
+  Tile.ChimneyStack,
 ];
 
 /**
@@ -616,6 +623,11 @@ export const FENCE_TILES: ReadonlySet<Tile> = new Set([
   Tile.FenceDiagNW,
   Tile.FenceGate,
   Tile.FenceGateShut,
+  // THE SCARRED LAND: the broken fence is Fence-kin in the run mask
+  // — its neighbours' rails still reach for its posts, so a gap in a
+  // pen reads as a BREAK in one built line, never two fences ending.
+  // Passability is the state (solid: false), not a door.
+  Tile.FenceBroken,
 ]);
 
 /**
@@ -679,6 +691,10 @@ export const HEDGE_TILES: ReadonlySet<Tile> = new Set([
   Tile.HedgeDiagNW,
   Tile.HedgeGate,
   Tile.HedgeGateShut,
+  // THE SCARRED LAND: the dead hedge joins the coalesce class — a
+  // brown stretch in a living hedgerow is ONE hedge with a dead
+  // length, and the living green beside it still sways.
+  Tile.HedgeDead,
 ]);
 
 /**
@@ -696,6 +712,26 @@ export const IRON_FENCE_TILES: ReadonlySet<Tile> = new Set([
   Tile.IronGate,
   Tile.IronGateShut,
 ]);
+
+/**
+ * THE SCARRED LAND — the ruin walls: tumbled masonry and the burnt
+ * frame, the SIXTH run-merging family (the separate-masonry law): a
+ * ruin merges with its OWN kind only — stone with stone, char with
+ * char — never with a living WALL_RUN (a standing house never dies
+ * into a ruin mid-wall), never a fence, never the garrison. They
+ * never bound an interior and never grow a roof: the roofer keys on
+ * WALL_RUN_TILES, and these ids are not in it.
+ */
+export const RUIN_WALL_TILES: ReadonlySet<Tile> = new Set([
+  Tile.RuinWallStone,
+  Tile.RuinWallWood,
+]);
+
+/** The kit's contiguous id band, anchored on LIVING endpoints (never
+ *  a literal) — the terrain underlay and the museum wing read it. */
+export function isScarredTile(id: number): boolean {
+  return id >= Tile.RuinWallStone && id <= Tile.SluiceGateStrung;
+}
 
 /** The fence family's auto-orient law, spoken in wrought iron. */
 export function orientDiagIronFence(
@@ -1037,6 +1073,23 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.PillarCandleOut, 0.2],
   [Tile.TripleCandles, 0.24],
   [Tile.TripleCandlesOut, 0.24],
+  // THE SCARRED LAND: centered masses you brush past. The fallen
+  // beam and the ribcage are long low things (r .4 — you step over
+  // the ends); the cairn is a knee-high pile (.34, and 'cover' for
+  // the sight law — a body lies flat behind it); the posts, the
+  // stake, and the bone tree are driven sticks (.15–.25); the spoil
+  // heap is a mound (.4); the root and the tally stone are
+  // stone-and-knot you skirt (.3).
+  [Tile.CharredBeam, 0.4],
+  [Tile.ArrowPost, 0.2],
+  [Tile.FieldCairn, 0.34],
+  [Tile.BeastBones, 0.4],
+  [Tile.SpoilHeap, 0.4],
+  [Tile.CreepRoot, 0.3],
+  [Tile.CharterPost, 0.2],
+  [Tile.BoneTree, 0.25],
+  [Tile.TallyStone, 0.3],
+  [Tile.RedRagStake, 0.15],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -1370,7 +1423,23 @@ export type DestructibleKind =
   // at the staff and the cloth flies as one great flap.
   | 'armorstand'
   | 'armorstandfull'
-  | 'bannerstand';
+  | 'bannerstand'
+  // THE SCARRED LAND: what a ruin gives up when struck — charcoal
+  // and char-checked timber, a burnt roof folding into rubble, a
+  // root that bleeds sap and COMES BACK, a thread that parts, a cot's
+  // canvas and poles — and the plain kinds the field shares: a cart
+  // (broken or belongings), a driven post, old bone, a marked stone,
+  // spoil rubble.
+  | 'charbeam'
+  | 'roofheap'
+  | 'root'
+  | 'thread'
+  | 'cot'
+  | 'cart'
+  | 'post'
+  | 'bones'
+  | 'stone'
+  | 'rubble';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -1623,6 +1692,40 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
         DestructibleInfo,
       ],
   ),
+  // THE SCARRED LAND. The load-bearing law holds for everything NOT
+  // here (see tiles.test.ts, each refusal argued): the stone ruin
+  // wall, the ember bed, the chimney, the cairns, the gloom stone,
+  // the lamp cairn, the fouled well, the pit lamps, the pool, the ash,
+  // the litter, the bedroll. What breaks: the burnt frame (its studs
+  // hold three like a wall), fallen timber, the collapsed roof (three
+  // — it is a whole roof), the carts (three, the plunder cart's kin),
+  // the driven posts (two), the fallen cloth (two), old bone (two),
+  // spoil (two), the stones that count (three), and the creep root —
+  // three blows, and it comes back on the hour: it says the spine
+  // without a word. The ward thread parts at one blow and is the one
+  // walkable smashable in the world (a thread you can walk through
+  // can also be cut; the patch lays floor under a floor-height tile —
+  // no feet are displaced).
+  [Tile.RuinWallWood, { kind: 'charbeam', respawnSec: 600, hits: 3 }],
+  [Tile.CharredBeam, { kind: 'charbeam', respawnSec: 600, hits: 2 }],
+  [Tile.CollapsedRoof, { kind: 'roofheap', respawnSec: 600, hits: 3 }],
+  [Tile.BrokenCart, { kind: 'cart', respawnSec: 600, hits: 3 }],
+  [Tile.ArrowPost, { kind: 'post', respawnSec: 420, hits: 2 }],
+  [Tile.FallenBanner, { kind: 'banner', respawnSec: 420, hits: 2 }],
+  [Tile.BeastBones, { kind: 'bones', respawnSec: 600, hits: 2 }],
+  [Tile.SpoilHeap, { kind: 'rubble', respawnSec: 600, hits: 2 }],
+  [Tile.CreepRoot, { kind: 'root', respawnSec: 3600, hits: 3 }],
+  [Tile.LegionStandard, { kind: 'banner', respawnSec: 600, hits: 3 }],
+  [Tile.BoneTree, { kind: 'bones', respawnSec: 600, hits: 2 }],
+  [Tile.TallyStone, { kind: 'stone', respawnSec: 600, hits: 3 }],
+  [Tile.WardThread, { kind: 'thread', respawnSec: 600, hits: 1 }],
+  [Tile.RedRagStake, { kind: 'stakes', respawnSec: 420, hits: 1 }],
+  [Tile.LeanTo, { kind: 'tent', respawnSec: 420, hits: 2 }],
+  [Tile.BelongingsCart, { kind: 'cart', respawnSec: 600, hits: 3 }],
+  [Tile.FieldCot, { kind: 'cot', respawnSec: 420, hits: 2 }],
+  [Tile.SignpostBurnt, { kind: 'post', respawnSec: 420, hits: 2 }],
+  [Tile.SluiceGate, { kind: 'post', respawnSec: 420, hits: 2 }],
+  [Tile.SluiceGateStrung, { kind: 'post', respawnSec: 420, hits: 2 }],
 ]);
 
 /** Every smashable prop tile. */

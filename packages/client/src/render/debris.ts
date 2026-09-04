@@ -232,7 +232,23 @@ export type SmashKind =
   | 'armorstandfull'
   | 'bannerstand'
   // THE BOLD WICK: the lone column falls as ONE heavy piece.
-  | 'pillarcandle';
+  | 'pillarcandle'
+  // THE SCARRED LAND: char comes apart as CHARCOAL (short black
+  // pieces, a few ember-orange checks), the roof folds into rafter
+  // ends and thatch, the root bleeds pale sap-wood, the thread is a
+  // single line and two pegs, the cot is canvas and poles — and the
+  // plain kinds the field shares: a cart's boards and wheel, a driven
+  // post, old bone, a marked stone, spoil rubble.
+  | 'charbeam'
+  | 'roofheap'
+  | 'root'
+  | 'thread'
+  | 'cot'
+  | 'cart'
+  | 'post'
+  | 'bones'
+  | 'stone'
+  | 'rubble';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -826,6 +842,18 @@ const CHIP_TONE: Record<SmashKind, string> = {
   armorstand: '#5e3f1e',
   armorstandfull: '#8b93a4',
   bannerstand: '#454052',
+  // THE SCARRED LAND: char chips fly black; the field's kinds in
+  // their own materials.
+  charbeam: '#2a2529',
+  roofheap: '#2f2a30',
+  root: '#3a3038',
+  thread: '#5a4226',
+  cot: '#5a4226',
+  cart: '#5e4630',
+  post: '#5a4226',
+  bones: '#b5ac91',
+  stone: '#6b6678',
+  rubble: '#5c4a38',
 };
 
 const pick = <T>(rand: () => number, arr: readonly T[]): T =>
@@ -2937,6 +2965,106 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       out.push({ len: 0.12, wid: 0.06, color: '#c9962e', stripe: '#e0c88a', pace: 1.3 });
       out.push({ len: 0.4 + rand() * 0.1, wid: 0.3, color: '#7a2430', stripe: '#c9962e', round: true, pace: 1.5 });
       out.push({ len: 0.16, wid: 0.1, color: shade('#7a2430', -10), round: true, pace: 1.4 });
+      break;
+    }
+    // THE SCARRED LAND (K0 minimal kits; each family's phase deepens).
+    case 'charbeam': {
+      // Charcoal: short black lengths that break on their checks, a
+      // spray of soot crumbs, and two ember-orange faces still warm.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.2 + rand() * 0.14, wid: 0.07, color: pick(rand, ['#2a2529', '#3a3438']), stripe: '#4a4448', pace: 0.7 });
+      }
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.05, wid: 0.04, color: '#1c181e', round: true, pace: 1.2 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.07, wid: 0.05, color: '#e0622a', stripe: '#f0a060', round: true, pace: 1.0 });
+      }
+      break;
+    }
+    case 'roofheap': {
+      // The roof lets go: rafter ends heavy and low, burnt thatch in
+      // a dark shower, the ridge board last and longest.
+      out.push({ len: 0.5 + rand() * 0.1, wid: 0.07, color: '#2a2529', stripe: '#45403f', pace: 0.55 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.26, wid: 0.06, color: pick(rand, ['#4a3f33', '#2f2a30']), stripe: '#6a5c48', pace: 0.65 });
+      }
+      for (let i = 0; i < 7; i++) {
+        out.push({ len: 0.06, wid: 0.04, color: pick(rand, ['#3a3028', '#5a4a36']), round: true, pace: 1.1 });
+      }
+      break;
+    }
+    case 'root': {
+      // The root parts: dark knotted lengths and pale sap-wood where
+      // the cut went through — and it will be back on the hour.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.22 + rand() * 0.1, wid: 0.06, color: '#3a3038', stripe: '#57484f', pace: 0.6 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.06, wid: 0.05, color: '#c8b8a8', round: true, pace: 1.0 });
+      }
+      break;
+    }
+    case 'thread': {
+      // The thread parts: one pale line and its two pegs.
+      out.push({ len: 0.34, wid: 0.02, color: '#d8cba8', pace: 1.3 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.1, wid: 0.035, color: '#5a4226', pace: 0.8 });
+      }
+      break;
+    }
+    case 'cot': {
+      // Canvas folds, the poles clap out, the pegs scatter.
+      out.push({ len: 0.36, wid: 0.22, color: '#6a5a44', stripe: '#8d7c66', round: true, pace: 1.3 });
+      wood('#5a4226', 3, 0.22, 0.34, 0.05);
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.06, wid: 0.03, color: '#4a3a28', pace: 1.0 });
+      }
+      break;
+    }
+    case 'cart': {
+      // Boards, the axle, and the one wheel that was left, rolling.
+      wood('#5e4630', 5, 0.22, 0.4, 0.07);
+      out.push({ len: 0.34, wid: 0.05, color: '#3a3444', pace: 0.6 });
+      out.push({ len: 0.22, wid: 0.22, color: '#7d6040', stripe: '#3a3444', round: true, pace: 0.5 });
+      break;
+    }
+    case 'post': {
+      // A driven post snaps at the ground line: the long top piece
+      // and the stub, splinters between.
+      out.push({ len: 0.5 + rand() * 0.1, wid: 0.07, color: '#5a4226', stripe: '#7a5c36', pace: 0.65 });
+      out.push({ len: 0.16, wid: 0.07, color: '#4a3620', pace: 0.5 });
+      wood('#5a4226', 3, 0.08, 0.14, 0.03);
+      break;
+    }
+    case 'bones': {
+      // Old bone: a few long ones, a handful of short, dry and pale.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.24 + rand() * 0.1, wid: 0.05, color: '#b5ac91', stripe: '#cfc7ae', pace: 0.8 });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.07, wid: 0.05, color: '#cfc7ae', round: true, pace: 1.1 });
+      }
+      break;
+    }
+    case 'stone': {
+      // A marked stone cracks in slabs and grit — it lands heavy.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.2 + rand() * 0.08, wid: 0.1, color: '#6b6678', stripe: '#8f8a9e', pace: 0.45 });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.05, wid: 0.045, color: '#57525f', round: true, pace: 0.9 });
+      }
+      break;
+    }
+    case 'rubble': {
+      // Spoil goes back to what it was: a slide of rock and grit.
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.1 + rand() * 0.08, wid: 0.08, color: pick(rand, ['#5c4a38', '#7a6650', '#3a3438']), round: true, pace: 0.6 });
+      }
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.045, wid: 0.04, color: '#4a3e30', round: true, pace: 1.0 });
+      }
       break;
     }
   }

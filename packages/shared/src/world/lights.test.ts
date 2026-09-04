@@ -49,6 +49,9 @@ const ROSTER: readonly Tile[] = [
   Tile.LurePole, Tile.TideAltar, Tile.ArcaneBeacon, Tile.Runestone,
   Tile.CrystalCluster, Tile.WardArch, Tile.ArcaneTome, Tile.RunePillar,
   Tile.Everflame, Tile.Moonwell, Tile.ElvenWaystone, Tile.LampPost,
+  // THE SCARRED LAND: the ember bed, the gloom pair, the lamp cairn,
+  // the pit lamp. The dark postures and the thread have no row.
+  Tile.EmberBed, Tile.GloomStone, Tile.FoulPool, Tile.LampCairn, Tile.PitLamp,
 ];
 
 test('the emitter census: exactly the transcribed roster, each row reachable', () => {
@@ -58,6 +61,11 @@ test('the emitter census: exactly the transcribed roster, each row reachable', (
   for (const tile of ROSTER) assert.ok(tileEmitter(tile), `no spec for tile ${Tile[tile]}`);
   // Non-emitters answer undefined — including the wall the chain never lit.
   assert.equal(tileEmitter(Tile.WallStone), undefined);
+  // THE SCARRED LAND's dark postures are the tell: zero light entries
+  // for the dark pit lamp, the dark lamp post, and the ward thread.
+  assert.equal(tileEmitter(Tile.PitLampDark), undefined);
+  assert.equal(tileEmitter(Tile.LampPostDark), undefined);
+  assert.equal(tileEmitter(Tile.WardThread), undefined);
   assert.equal(tileEmitter(Tile.Grass), undefined);
 });
 

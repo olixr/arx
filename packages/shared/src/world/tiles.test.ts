@@ -17,6 +17,7 @@ import {
   INTERIOR_BOUNDARY_TILES,
   LIGHT_BLOCKING_TILES,
   PALISADE_TILES,
+  RUIN_WALL_TILES,
   SIGN_MOTIF_COUNT,
   SILL_MIX_COUNT,
   BUNDLE_MIX_COUNT,
@@ -63,6 +64,7 @@ import {
   orientDiagWall,
   shutDoorTile,
   tileDef,
+  isScarredTile,
   type ChestKind,
 } from './tiles.js';
 
@@ -337,8 +339,13 @@ test('fence family: gates round-trip and diagonals stay solid', () => {
   assert.equal(openDoorTile(Tile.FenceGateShut), Tile.FenceGate);
   for (const tile of FENCE_TILES) {
     assert.ok(tileDef(tile).raised, `${tileDef(tile).name} renders raised`);
-    // Only the open gate lets a body through.
-    assert.equal(tileDef(tile).solid, tile !== Tile.FenceGate, `${tileDef(tile).name} solidity`);
+    // Only the open gate lets a body through — and the broken fence,
+    // whose passability IS its state (THE SCARRED LAND).
+    assert.equal(
+      tileDef(tile).solid,
+      tile !== Tile.FenceGate && tile !== Tile.FenceBroken,
+      `${tileDef(tile).name} solidity`,
+    );
   }
   // The 45° turn joins whichever diagonal already carries fencing.
   assert.equal(orientDiagFence(true, false, false, false), Tile.FenceDiagNE);
@@ -594,6 +601,32 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
       { length: DYE_COUNT },
       (_, d) => [Tile.BannerStand + d, 'bannerstand', 2] as [Tile, string, number],
     ),
+    // THE SCARRED LAND: the burnt frame holds like a wall (three),
+    // fallen timber two, the roof three (it is a whole roof), carts
+    // three (the plunder cart's kin), driven posts two, fallen cloth
+    // two (the Legion's three — a staff with a crossbar), old bone
+    // two, spoil two, the tally three, the thread ONE, the stake one,
+    // the lean-to two, the cot two — and the root three, on the hour.
+    [Tile.RuinWallWood, 'charbeam', 3],
+    [Tile.CharredBeam, 'charbeam', 2],
+    [Tile.CollapsedRoof, 'roofheap', 3],
+    [Tile.BrokenCart, 'cart', 3],
+    [Tile.ArrowPost, 'post', 2],
+    [Tile.FallenBanner, 'banner', 2],
+    [Tile.BeastBones, 'bones', 2],
+    [Tile.SpoilHeap, 'rubble', 2],
+    [Tile.CreepRoot, 'root', 3],
+    [Tile.LegionStandard, 'banner', 3],
+    [Tile.BoneTree, 'bones', 2],
+    [Tile.TallyStone, 'stone', 3],
+    [Tile.WardThread, 'thread', 1],
+    [Tile.RedRagStake, 'stakes', 1],
+    [Tile.LeanTo, 'tent', 2],
+    [Tile.BelongingsCart, 'cart', 3],
+    [Tile.FieldCot, 'cot', 2],
+    [Tile.SignpostBurnt, 'post', 2],
+    [Tile.SluiceGate, 'post', 2],
+    [Tile.SluiceGateStrung, 'post', 2],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {
@@ -607,11 +640,22 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     // cracked wall runs long on purpose: a found passage stays found
     // for the whole run (instances die before it restands). A breached
     // palisade ring stays breached for the whole assault.
-    const cap = kind === 'crackedwall' ? 3600 : kind === 'palisade' ? 900 : 600;
+    // The creep root runs long too: it comes back ON THE HOUR — long
+    // enough that a cleared patch stays cleared for a visit, never
+    // gone for good (it says the spine without a word).
+    const cap = kind === 'crackedwall' || kind === 'root' ? 3600 : kind === 'palisade' ? 900 : 600;
     assert.ok(info!.respawnSec >= 120 && info!.respawnSec <= cap);
     // Only SOLID clutter is smashable — bursting a walkable tile
-    // would patch the floor out from under someone's feet.
-    assert.ok(tileDef(tile).solid, `${tileDef(tile).name} is solid`);
+    // would patch the floor out from under someone's feet. THE ONE
+    // EXCEPTION, argued: the ward thread is knee-high cord across a
+    // path — a body walks through it AND can cut it. Its patch lays
+    // floor under a floor-height tile; no feet are displaced, and the
+    // evencourt's deed hook needs the cut to be a real blow.
+    if (tile !== Tile.WardThread) {
+      assert.ok(tileDef(tile).solid, `${tileDef(tile).name} is solid`);
+    } else {
+      assert.equal(tileDef(tile).solid, false, 'the ward thread is walked through');
+    }
   }
   // Bulk reads as bulk: the big joined table outlasts light clutter.
   assert.ok(destructibleInfo(Tile.Table)!.hits > destructibleInfo(Tile.Barrel)!.hits);
@@ -656,8 +700,96 @@ test('load-bearing scenery is not smashable', () => {
     // bonfire law reaching the water. The sea placed it; the sea
     // keeps it.
     Tile.TideAltar,
+    // THE SCARRED LAND, each refusal argued:
+    // The stone ruin wall is the load-bearing law itself — tumbled
+    // masonry is what a wall becomes when it HAS broken; smashing it
+    // further would patch a shell's plan out of the world.
+    Tile.RuinWallStone,
+    // The ember bed is the bonfire law: a fire is doused, not smashed.
+    Tile.EmberBed,
+    // The chimney holds the sky up over a shell (the grand pillar's
+    // law in brick) — and it is the kit's one lamplight blocker.
+    Tile.ChimneyStack,
+    // The cairns are the graves law: a grave is never a prop to kick
+    // over (the fallen cairn is the SAME law — its tumble is a
+    // posture, authored, never a smash result).
+    Tile.FieldCairn,
+    Tile.CairnFallen,
+    // The gloom stone was here first; nothing a smith made breaks it.
+    Tile.GloomStone,
+    // The lamp cairn and the pit lamps are the road-faith law: a
+    // waykeeper's mark is not loot, and the Returners' shame (the
+    // dark lamp) is a STATE, swapped by the world, never by a club.
+    Tile.LampCairn,
+    Tile.PitLamp,
+    Tile.PitLampDark,
+    // The fouled well is a well: the draw is refused, the masonry
+    // stands (interact hook, not a smash).
+    Tile.WellFouled,
+    // Walkable ground-height litter never breaks — a tile a body
+    // stands ON is never patched under it: the pool, the ash, the
+    // field litter, the bedroll.
+    Tile.FoulPool,
+    Tile.AshHeap,
+    Tile.FieldLitter,
+    Tile.Bedroll,
   ]) {
     assert.equal(destructibleInfo(t), null);
+  }
+  // …and the ward thread IS smashable: the one walkable exception,
+  // argued in the smashable test above.
+  assert.equal(destructibleInfo(Tile.WardThread)?.kind, 'thread');
+});
+
+test('THE SCARRED LAND: the id band, the ruin walls, and the two state-kin', () => {
+  // The band is contiguous on living endpoints and every id has a def
+  // with a plaque name; nothing inside the band is a ground material.
+  assert.equal(Tile.RuinWallStone, 505);
+  assert.equal(Tile.SluiceGateStrung, 545);
+  for (let id = Tile.RuinWallStone as number; id <= Tile.SluiceGateStrung; id++) {
+    assert.ok(isScarredTile(id), `${id} inside the band`);
+    const def = tileDef(id);
+    assert.ok(def.name.length > 0, `${id} has a plaque name`);
+    assert.ok(def.raised, `${def.name} is a prop (raised), never ground`);
+  }
+  assert.ok(!isScarredTile(Tile.MournerStatue));
+  assert.ok(!isScarredTile(Tile.SluiceGateStrung + 1));
+  // The six floor Details land right after the drape band.
+  assert.equal(Detail.Ash, 176);
+  assert.equal(Detail.Mudcrack, 181);
+  for (const d of [Detail.Ash, Detail.Bones, Detail.DragFurrow, Detail.BlightVeins, Detail.DarkSpill, Detail.Mudcrack]) {
+    assert.equal(wallHungInfo(d), null, `floor detail ${d} is no hanging`);
+  }
+  // THE SEPARATE-MASONRY LAW, sixth family: the ruin walls merge with
+  // their own kind only — never a living wall run (so the roofer,
+  // which keys on WALL_RUN_TILES, can never grow a roof over a ruin),
+  // never an interior boundary, never a fence, garrison, palisade,
+  // hedge, or iron. Waist-high tumbles clear lamplight.
+  for (const tile of RUIN_WALL_TILES) {
+    assert.ok(tileDef(tile).solid && tileDef(tile).raised, `${tileDef(tile).name} is cover`);
+    assert.ok(!WALL_RUN_TILES.includes(tile), `${tileDef(tile).name} out of wall runs`);
+    assert.ok(!INTERIOR_BOUNDARY_TILES.includes(tile), `${tileDef(tile).name} never encloses a room`);
+    assert.ok(!FENCE_TILES.has(tile) && !GARRISON_TILES.has(tile) && !PALISADE_TILES.has(tile));
+    assert.ok(!HEDGE_TILES.has(tile) && !IRON_FENCE_TILES.has(tile));
+    assert.ok(!LIGHT_BLOCKING_TILES.includes(tile), `${tileDef(tile).name} clears lamplight`);
+  }
+  // The chimney is the kit's one lamplight mass; nothing else in the
+  // band stops light.
+  for (let id = Tile.RuinWallStone as number; id <= Tile.SluiceGateStrung; id++) {
+    assert.equal(LIGHT_BLOCKING_TILES.includes(id as Tile), id === Tile.ChimneyStack, `${tileDef(id).name} light mass`);
+  }
+  // The broken fence is Fence-kin (rails reach for it) and walkable
+  // by STATE; the dead hedge joins the hedge class and stays solid.
+  assert.ok(FENCE_TILES.has(Tile.FenceBroken));
+  assert.equal(tileDef(Tile.FenceBroken).solid, false);
+  assert.equal(doorInfo(Tile.FenceBroken), null, 'passability is the state, not a door');
+  assert.ok(HEDGE_TILES.has(Tile.HedgeDead));
+  assert.equal(tileDef(Tile.HedgeDead).solid, true);
+  // Colliders: the centered masses the kit declares stay under the
+  // half-tile so a body brushes the wood it sees.
+  for (const t of [Tile.CharredBeam, Tile.ArrowPost, Tile.FieldCairn, Tile.BeastBones, Tile.SpoilHeap, Tile.CreepRoot, Tile.CharterPost, Tile.BoneTree, Tile.TallyStone, Tile.RedRagStake]) {
+    const r = tileColliderRadius(t);
+    assert.ok(r !== null && r > 0 && r <= 0.45, `${tileDef(t).name} collider ${r}`);
   }
 });
 

@@ -225,6 +225,37 @@ function buildWings(): Wing[] {
       ],
     },
     {
+      // THE SCARRED LAND (docs/contested-lands-plan.md §6): every id
+      // 505..545 in family order, the run families shown as runs (the
+      // broken fence and the dead hedge inside their living lines),
+      // then the six floor Details. The strays gallery stays quiet.
+      label: 'The Scarred Land',
+      exhibits: [
+        run(Tile.RuinWallStone), run(Tile.RuinWallWood),
+        ...[
+          Tile.CharredBeam, Tile.CollapsedRoof, Tile.AshHeap, Tile.EmberBed, Tile.ChimneyStack,
+          Tile.BrokenCart, Tile.FieldLitter, Tile.ArrowPost, Tile.FallenBanner,
+          Tile.FieldCairn, Tile.CairnFallen, Tile.BeastBones,
+          Tile.CharredStump, Tile.DeadTree, Tile.SpoilHeap,
+          Tile.GloomStone, Tile.CreepRoot, Tile.FoulPool, Tile.CropBlighted,
+          Tile.CharterPost, Tile.LampCairn, Tile.LegionStandard, Tile.BoneTree,
+          Tile.TallyStone, Tile.WardThread, Tile.RedRagStake, Tile.PitLamp, Tile.PitLampDark,
+          Tile.LeanTo, Tile.Bedroll, Tile.BelongingsCart, Tile.FieldCot,
+        ].map(single),
+        run(Tile.FenceBroken, Tile.Fence),
+        single(Tile.SignpostBurnt), single(Tile.WellFouled),
+        run(Tile.HedgeDead, Tile.Hedge),
+        single(Tile.LampPostDark), single(Tile.SluiceGate), single(Tile.SluiceGateStrung),
+        { kind: 'floordetail' as const, detail: Detail.Ash, host: Tile.Dirt, label: 'ash' },
+        { kind: 'floordetail' as const, detail: Detail.Bones, host: Tile.Dirt, label: 'bones' },
+        { kind: 'floordetail' as const, detail: Detail.DragFurrow, host: Tile.Dirt, label: 'drag furrow' },
+        { kind: 'floordetail' as const, detail: Detail.BlightVeins, host: Tile.Grass, label: 'blight veins' },
+        { kind: 'floordetail' as const, detail: Detail.DarkSpill, host: Tile.StoneFloor, label: 'dark spill' },
+        { kind: 'floordetail' as const, detail: Detail.Mudcrack, host: Tile.Dirt, label: 'mudcrack' },
+      ],
+      pitchY: 7,
+    },
+    {
       label: 'Chests',
       exhibits: [
         Tile.ChestWood, Tile.ChestWoodOpen, Tile.ChestMossy, Tile.ChestMossyOpen,

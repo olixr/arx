@@ -140,8 +140,10 @@ const cache = new Map<number, PlantModel>();
  */
 export function plantModel(tile: Tile, h: number): PlantModel {
   // Membership is content's call (Phase 2 grew the roster far past
-  // the founding 41..53 range) — anything else is wild flora.
-  if (!isCropTile(tile)) return floraModel(tile, h);
+  // the founding 41..53 range) — anything else is wild flora. THE
+  // SCARRED LAND's blighted row is a crop to the painter alone: the
+  // server never plants, waters, or harvests it (harvest is refused).
+  if (!isCropTile(tile) && tile !== Tile.CropBlighted) return floraModel(tile, h);
   // Tile ids passed 255 with the crop wave — the key must never mask.
   const key = tile * 0x10000 + (h & 0xffff);
   const hit = cache.get(key);
@@ -172,7 +174,51 @@ export function paintPlant(ctx: CanvasRenderingContext2D, m: PlantModel, f: Flor
   else if (m.crop <= 17) paintHerbRow(ctx, m, f, wind);
   else if (m.crop <= 20) paintOrchard(ctx, m, f, wind);
   else if (m.crop === 21) paintBramble(ctx, m, f, wind);
+  else if (m.crop === BLIGHT_CROP) paintBlighted(ctx, m, f, wind);
   else paintLogBed(ctx, m, f, wind);
+}
+
+// ---- THE SCARRED LAND: the blighted row ---------------------------------
+
+/** The crop index the blight paints under (past every living crop). */
+const BLIGHT_CROP = 40;
+/** The blight palette: char-violet stalks, ash-grey heads gone soft,
+ *  a dark vein at the root. Never a living green, never a warm brown. */
+const BLIGHT_STALK = ['#3a3430', '#4a4340', '#5a5044'] as const;
+const BLIGHT_HEAD = ['#5c5860', '#6e6a70'] as const;
+const BLIGHT_ROOT = '#241f26';
+
+/** A wheat-height row grown from the living wheat's grammar (same
+ *  hash → same stand), flagged for the blight painter. K4 THE GLOOM
+ *  recuts the art; the path and the palette are laid here. */
+function growBlighted(variant: number, h: number, rnd: () => number): CropModel {
+  const m = growWheat(1, variant, h, rnd);
+  return { ...m, crop: BLIGHT_CROP, height: m.height * 0.8 };
+}
+
+/** K0 stub: bowed dark stalks with soft grey heads — every stalk a
+ *  squared filled blade (no strokes), the whole row bending on the
+ *  one wind field at 0.4 of the living crop's give. */
+function paintBlighted(ctx: CanvasRenderingContext2D, m: CropModel, f: FloraFrame, wind: number): void {
+  const s = f.s;
+  const X = (x: number): number => f.bx + x * s;
+  const Y = (y: number): number => f.groundY - y * s;
+  const bend = wind * 0.4;
+  // The dark vein at the root — the row's tell from the path.
+  ctx.fillStyle = BLIGHT_ROOT;
+  ctx.fillRect(X(-0.36), Y(0.02), s * 0.72, s * 0.04);
+  for (const st of m.heads) {
+    const lean = st.lean + bend * 0.3;
+    const hgt = st.len * 0.8;
+    const w = Math.max(1, s * 0.035);
+    ctx.fillStyle = BLIGHT_STALK[st.tone === 0 ? 0 : 2]!;
+    // A bowed stalk: two squared segments, the upper one leaning.
+    ctx.fillRect(X(st.x0) - w / 2, Y(hgt * 0.5), w, hgt * 0.5 * s);
+    ctx.fillRect(X(st.x0 + lean * 0.5) - w / 2, Y(hgt), w, hgt * 0.5 * s);
+    // The head gone soft: a small grey block hung off the tip.
+    ctx.fillStyle = BLIGHT_HEAD[st.tone === 0 ? 0 : 1]!;
+    ctx.fillRect(X(st.x0 + lean * 0.5) - s * 0.03, Y(hgt) - s * 0.02, s * 0.06, s * 0.05);
+  }
 }
 
 // ---- growth -----------------------------------------------------------
@@ -224,6 +270,9 @@ function growCrop(tile: Tile, h: number): PlantModel {
       return growFieldMoonbellMid(variant, h, rnd);
     case Tile.MoonbellRipe:
       return growFieldMoonbellRipe(variant, h, rnd);
+    // THE SCARRED LAND: the blighted row.
+    case Tile.CropBlighted:
+      return growBlighted(variant, h, rnd);
     // THE FULL FIELD (Phase 2): lean models — the painters lay their
     // detail from the seed (see the Phase 2 section at file's end).
     case Tile.PotatoMid: return growPhase2(6, 1, h);

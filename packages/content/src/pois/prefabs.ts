@@ -289,6 +289,61 @@ const campLife: Record<string, number> = {
   u: Tile.GnawTrough,
 };
 
+// THE SCARRED LAND SPEAKS LOCAL (docs/contested-lands-plan.md §6.3):
+// the contested-lands kit's per-sketch legend, shadowing globals the
+// way the camps' does, laid down in K0 so the K1–K3 sketches
+// (`poi_burnt_steading`, `poi_field_after`, `poi_muster_ground`, the
+// re-dressed `poi_watchtower_husk`) fly one dialect. Mnemonic on
+// purpose: the ruin walls shadow the living walls ('#' stone, 'T'
+// timber), the ash heap the barrel ('a'), the ember bed the fire
+// ('f'), the chimney the pillar ('I'), the carts the wood wall ('w')
+// and the plunder cart ('W'), the dead tree the tree ('t'), the
+// broken fence the fence ('F'), the dark lamp the lamp ('d'). No
+// sketch flies it yet (K0 ships no sketches).
+export const scarredLand: Record<string, number> = {
+  '#': Tile.RuinWallStone,
+  T: Tile.RuinWallWood,
+  v: Tile.CharredBeam,
+  A: Tile.CollapsedRoof,
+  a: Tile.AshHeap,
+  f: Tile.EmberBed,
+  I: Tile.ChimneyStack,
+  w: Tile.BrokenCart,
+  l: Tile.FieldLitter,
+  i: Tile.ArrowPost,
+  n: Tile.FallenBanner,
+  c: Tile.FieldCairn,
+  C: Tile.CairnFallen,
+  o: Tile.BeastBones,
+  u: Tile.CharredStump,
+  t: Tile.DeadTree,
+  h: Tile.SpoilHeap,
+  g: Tile.GloomStone,
+  r: Tile.CreepRoot,
+  p: Tile.FoulPool,
+  x: Tile.CropBlighted,
+  P: Tile.CharterPost,
+  L: Tile.LampCairn,
+  N: Tile.LegionStandard,
+  Y: Tile.BoneTree,
+  y: Tile.TallyStone,
+  '~': Tile.WardThread,
+  '!': Tile.RedRagStake,
+  m: Tile.PitLamp,
+  M: Tile.PitLampDark,
+  '^': Tile.LeanTo,
+  E: Tile.Bedroll,
+  W: Tile.BelongingsCart,
+  K: Tile.FieldCot,
+  F: Tile.FenceBroken,
+  s: Tile.SignpostBurnt,
+  q: Tile.WellFouled,
+  H: Tile.HedgeDead,
+  d: Tile.LampPostDark,
+  '=': Tile.SluiceGate,
+  '%': Tile.SluiceGateStrung,
+};
+
 /** A palisaded goblin ring-camp: fire at the heart, loot behind it —
  *  and the warren's life around it: a bed-nest by the tent, grog at
  *  the fire, last week's dinners heaped by the skull count. */

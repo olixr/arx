@@ -171,6 +171,15 @@ export interface TreeModel {
    * where cadence re-baking a dense taiga cost whole frames.
    */
   rigid?: boolean;
+  /**
+   * THE SCARRED LAND's snag: a standing dead tree (Tile.DeadTree).
+   * Grown by the living grammar (species by hash — the bones of a
+   * real oak or birch) and painted with foliage 0 for good: the crown
+   * never paints, the wood stands in dead-bark greys. Every tree lane
+   * (species sheet, shear sway at 0.35 wind, occlusion, shadow) serves
+   * it unchanged; the limbs sway because dead wood still does.
+   */
+  dead?: boolean;
   /** Ground → crown top, tiles. */
   height: number;
   /** Max |x| + r across the crown — shadow and culling. */
@@ -385,8 +394,16 @@ export function speciesOf(tile: Tile, h: number): number {
     : tile === Tile.TreeWillow ? 6
     : tile === Tile.TreeYew ? 7
     : tile === Tile.TreePine ? 8
+    : tile === Tile.DeadTree ? DEAD_SNAG_SPECIES[(h >>> 3) % DEAD_SNAG_SPECIES.length]!
     : h % 5;
 }
+
+/** THE SCARRED LAND: the snag species by hash — the broadleaf bones
+ *  and the yew's column. Never the willow (its curtains ARE foliage)
+ *  and never the pine (a dead pine is its plates, a K4 question). */
+const DEAD_SNAG_SPECIES: readonly number[] = [0, 1, 2, 3, 4, 5, 7];
+/** Dead bark: the kit's char-violet greys, never a living brown. */
+const DEAD_BARK = '#4a4046';
 
 /**
  * The widest flared trunk base any variant can grow, per tree tile —
@@ -1128,14 +1145,17 @@ export function treeModel(tile: Tile, h: number): TreeModel {
     for (const p of cu.pts) spread = Math.max(spread, Math.abs(p[0]) + 0.06);
   }
 
+  const dead = tile === Tile.DeadTree;
+  const bark = dead ? DEAD_BARK : g.bark;
   const model: TreeModel = {
     species, variant,
     rigid: g.tiers > 0 || undefined,
+    dead: dead || undefined,
     height: Math.max(H, top),
     spread,
-    bark: g.bark,
-    barkLit: shade(g.bark, g.bark === '#d7d2c4' ? 10 : 16),
-    barkDark: shade(g.bark, -18),
+    bark,
+    barkLit: shade(bark, bark === '#d7d2c4' ? 10 : 16),
+    barkDark: shade(bark, -18),
     leaves: g.leaves,
     sides: g.sides,
     branches,
@@ -1679,7 +1699,9 @@ function clusterSway(
 export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFrame): number {
   const s = f.s;
   const g = f.grow ?? 1;
-  const fol = Math.max(0, Math.min(1, f.foliage ?? 1));
+  // A snag never leafs: the dead flag holds foliage at 0 on every
+  // path (live paint, the species-sheet bake, the shadow mask).
+  const fol = m.dead ? 0 : Math.max(0, Math.min(1, f.foliage ?? 1));
   // Young trees are thin as well as short.
   const wMul = 0.45 + 0.55 * g;
   const rMul = 0.5 + 0.5 * g;

@@ -741,6 +741,22 @@ refusal, FenceBroken passable by solid:false).
 - **K0 THE SHEET** (half day): ids, TILE_DEFS, inks, museum wing stubs, palette
   category, test pins. Every id exists and the strays gallery is quiet before
   any brush.
+  *As built (2026-09-04):* ids 505–545 and Details 176–181 landed exactly as
+  the ledger; every registration site in §6.3 that K0 owns is paid (defs,
+  colliders, 20 DESTRUCTIBLE rows + ten SmashKinds with minimal kits, the
+  chimney as the kit's one light blocker, FenceBroken in FENCE_TILES,
+  HedgeDead in HEDGE_TILES, RUIN_WALL_TILES + isScarredTile on living
+  endpoints, five lights rows with census + parity goldens, FADE_TALL_PROPS,
+  the terrain underlay branch with per-family fronting, six first-pass
+  Detail bakes, the museum wing, the editor category, the `scarredLand`
+  local legend). Painters are squared-block stubs in the family inks
+  (props/scarred/stub.ts) that already obey the block, top-plane, ring and
+  draw-time-ctx laws; the DeadTree grows a real snag through trees.ts
+  (species by hash, foliage 0, dead bark); CropBlighted rides the crop
+  painter path with a blight palette; the state ids wrap the living
+  Signpost/Well/Fence/Hedge/LampPost painters. Registry pin 282 → 317.
+  Deferred to their phases: smoke grain, PRINT_INK 'ash', influence litter
+  vocab, cues, dungeon stories, server interact hooks, the sketches.
 - **K1 THE COLD HEARTH**: family A + Detail.Ash/Bones + EmberBed row + smoke
   grain + the 'smolder' proximity voice (granular crackle one-shots on the
   falling-water pattern; never a noise bed). `poi_burnt_steading`; the

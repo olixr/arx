@@ -9,6 +9,7 @@ import {
   HEDGE_TILES,
   IRON_FENCE_TILES,
   PALISADE_TILES,
+  RUIN_WALL_TILES,
   Tile,
   WALL_RUN_TILES,
   awningInfo,
@@ -18,6 +19,7 @@ import {
   isFishingTile,
   nearestFloorTile,
   tileDef,
+  isScarredTile,
   valueNoise,
 } from '@arx/shared';
 import { chamferRect, facetCircle } from './shapes.js';
@@ -680,6 +682,54 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     // The graveyard's stones stand on the yard's own ground — turf,
     // path, or bare earth; carved granite never paves its plot.
     if (t >= Tile.Gravestone && t <= Tile.MournerStatue) return nearestFloor(ground, tx, ty);
+    // THE SCARRED LAND (the band anchored on living endpoints,
+    // Tile.RuinWallStone..Tile.SluiceGateStrung; the dead hedge left
+    // through the hedge branch above). Per-family fronting:
+    if (isScarredTile(t)) {
+      const front = (fallback: Tile): Tile => {
+        // Whatever walkable ground fronts the piece continues beneath
+        // it (south first — that side's base sliver shows); a family
+        // member never lends its own skin; ramps never pave.
+        const pick = (tt: Tile | undefined): Tile | null =>
+          tt !== undefined && !tileDef(tt).solid && !isScarredTile(tt) && tt !== Tile.Ramp
+            ? tt
+            : null;
+        return (
+          pick(ground(tx, ty + 1)) ??
+          pick(ground(tx, ty - 1)) ??
+          pick(ground(tx + 1, ty)) ??
+          pick(ground(tx - 1, ty)) ??
+          fallback
+        );
+      };
+      // A. the cold hearth: a shell keeps its floor — the ruin walls
+      // and what fell inside them stand on the boards or flags the
+      // house laid (nearestFloor), and a shell with no floor left
+      // stands on the open ground.
+      if (RUIN_WALL_TILES.has(t) || (t >= Tile.CharredBeam && t <= Tile.ChimneyStack)) {
+        return nearestFloor(ground, tx, ty);
+      }
+      // B. the field after: trampled ground — the field's own skin
+      // continues; open-country fallback is DIRT (a fight tramples).
+      if (t >= Tile.BrokenCart && t <= Tile.BeastBones) return front(Tile.Dirt);
+      // C. the stripped land: the stump, the snag and the spoil stand
+      // in the country that was cut — grass continues beneath.
+      if (t >= Tile.CharredStump && t <= Tile.SpoilHeap) return front(Tile.Grass);
+      // D. the gloom: the ground under it is DIRT by default — blight
+      // kills the green; the pool and the row sit in it.
+      if (t >= Tile.GloomStone && t <= Tile.CropBlighted) return front(Tile.Dirt);
+      // E. the marks stand on the road or the verge they claim.
+      if (t >= Tile.CharterPost && t <= Tile.PitLampDark) return nearestFloor(ground, tx, ty);
+      // F. the displaced camp on whatever they found — a camp
+      // tramples, so the fallback is dirt.
+      if (t >= Tile.LeanTo && t <= Tile.FieldCot) return front(Tile.Dirt);
+      // G. the states keep the living prop's ground: the broken fence
+      // fronts like a fence (grass fallback — a pen is a field), the
+      // burnt post, the fouled well, the dark lamp and the gates stand
+      // on the yard the living prop stood on.
+      if (t === Tile.FenceBroken) return front(Tile.Grass);
+      return nearestFloor(ground, tx, ty);
+    }
     // Dungeon props stand on whichever floor the corridor carries
     // (nearestFloor knows DungeonFloor/CaveRubble/CaveFloor).
     if (
@@ -3740,6 +3790,115 @@ function drawTileDetail(
           ctx.rotate((((hh >> 4) % 100) / 100 - 0.5) * 1.6);
           ctx.fillRect(-px * 0.09, -px * 0.015, px * 0.18, px * 0.03);
           ctx.restore();
+        }
+      // THE SCARRED LAND's six floor Details — first passes (K0 THE
+      // SHEET); each family's phase recuts its own. All squared fills
+      // in value steps (FLAT FORGE), hash-dealt by h >>> k, no strokes,
+      // no transforms — a ground bake is a quad's texture and must
+      // read the same off the canvas oracle and the GL stage.
+      } else if (d === Detail.Ash) {
+        // A cold ash pan: pale grey over the ground with clinker
+        // squares — the black that did not burn — dealt across it.
+        const hh = hashCoords(231, tx, ty);
+        ctx.fillStyle = 'rgba(141, 138, 144, 0.55)';
+        ctx.fillRect(gx + px * 0.1, gy + px * 0.14, px * 0.8, px * 0.7);
+        ctx.fillStyle = 'rgba(180, 178, 184, 0.35)';
+        ctx.fillRect(gx + px * 0.2, gy + px * 0.22, px * 0.5, px * 0.4);
+        for (let k = 0; k < 5; k++) {
+          const hk = hashCoords(233 + k, tx, ty);
+          ctx.fillStyle = (hk & 1) === 0 ? '#2a2529' : '#3a3438';
+          const cw = px * (0.05 + ((hk >>> 3) % 3) * 0.02);
+          ctx.fillRect(
+            gx + (0.16 + ((hh >>> (k * 4)) % 60) / 100) * px,
+            gy + (0.2 + ((hk >>> 7) % 55) / 100) * px,
+            cw,
+            cw * 0.8,
+          );
+        }
+      } else if (d === Detail.Bones) {
+        // Old bone: three or four slivers and a jaw — the pale bone
+        // ink over a dimmer seat, dealt on the tile's hash.
+        const hh = hashCoords(239, tx, ty);
+        const n = 3 + (hh & 1);
+        for (let k = 0; k < n; k++) {
+          const hk = hashCoords(241 + k, tx, ty);
+          const sx = gx + (0.12 + (hk % 60) / 100) * px;
+          const sy = gy + (0.18 + ((hk >>> 6) % 60) / 100) * px;
+          const long = ((hk >>> 12) & 1) === 0;
+          ctx.fillStyle = '#b5ac91';
+          ctx.fillRect(sx, sy, long ? px * 0.22 : px * 0.05, long ? px * 0.045 : px * 0.18);
+          ctx.fillStyle = '#cfc7ae';
+          ctx.fillRect(sx, sy, long ? px * 0.22 : px * 0.05, px * 0.02);
+        }
+        // The jaw: a short bar with two squared teeth under it.
+        const jx = gx + (0.3 + ((hh >>> 4) % 30) / 100) * px;
+        const jy = gy + (0.55 + ((hh >>> 9) % 20) / 100) * px;
+        ctx.fillStyle = '#cfc7ae';
+        ctx.fillRect(jx, jy, px * 0.2, px * 0.05);
+        ctx.fillStyle = '#e4dcc4';
+        ctx.fillRect(jx + px * 0.04, jy + px * 0.05, px * 0.035, px * 0.035);
+        ctx.fillRect(jx + px * 0.12, jy + px * 0.05, px * 0.035, px * 0.035);
+      } else if (d === Detail.DragFurrow) {
+        // Two dark drag bands running north-south (a felled trunk, a
+        // cart, a spoil sled) with a lit ridge between them.
+        const hh = hashCoords(243, tx, ty);
+        const off = ((hh % 7) - 3) * px * 0.02;
+        const dark = 'rgba(28, 20, 30, 0.42)';
+        ctx.fillStyle = dark;
+        ctx.fillRect(gx + px * 0.28 + off, gy, px * 0.12, px);
+        ctx.fillRect(gx + px * 0.6 + off, gy, px * 0.12, px);
+        ctx.fillStyle = 'rgba(214, 200, 176, 0.14)';
+        ctx.fillRect(gx + px * 0.44 + off, gy, px * 0.12, px);
+      } else if (d === Detail.BlightVeins) {
+        // Three or four dark veins radiating off the tile's centre —
+        // the ground the gloom stone and the creep root sicken.
+        const hh = hashCoords(247, tx, ty);
+        const n = 3 + (hh & 1);
+        ctx.fillStyle = 'rgba(26, 18, 34, 0.5)';
+        for (let k = 0; k < n; k++) {
+          const hk = hashCoords(251 + k, tx, ty);
+          const vx = gx + (0.14 + (hk % 60) / 100) * px;
+          const vy = gy + (0.14 + ((hk >>> 6) % 60) / 100) * px;
+          // A vein is a run of three stepped squares, each a value
+          // step darker toward the root.
+          for (let j = 0; j < 3; j++) {
+            const dxv = (((hk >>> (10 + j * 2)) & 3) - 1.5) * px * 0.08;
+            const dyv = (((hk >>> (16 + j * 2)) & 3) - 1.5) * px * 0.08;
+            ctx.fillRect(vx + dxv * j, vy + dyv * j, px * 0.07, px * 0.05);
+          }
+        }
+        ctx.fillStyle = 'rgba(60, 44, 72, 0.4)';
+        ctx.fillRect(gx + px * 0.42, gy + px * 0.42, px * 0.16, px * 0.14);
+      } else if (d === Detail.DarkSpill) {
+        // A near-black stain with a lit dry rim: blood-dark by VALUE,
+        // never red (the content boundary is a palette law too).
+        const hh = hashCoords(257, tx, ty);
+        const sx = gx + (0.14 + (hh % 20) / 100) * px;
+        const sy = gy + (0.18 + ((hh >>> 5) % 20) / 100) * px;
+        const sw = px * (0.5 + ((hh >>> 9) % 20) / 100);
+        const sh = px * (0.42 + ((hh >>> 13) % 20) / 100);
+        ctx.fillStyle = 'rgba(150, 132, 112, 0.28)';
+        ctx.fillRect(sx - px * 0.03, sy - px * 0.03, sw + px * 0.06, sh + px * 0.06);
+        ctx.fillStyle = 'rgba(16, 10, 18, 0.72)';
+        ctx.fillRect(sx, sy, sw, sh);
+        ctx.fillStyle = 'rgba(16, 10, 18, 0.5)';
+        ctx.fillRect(sx + sw * 0.7, sy + sh * 0.6, px * 0.12, px * 0.1);
+      } else if (d === Detail.Mudcrack) {
+        // The drained pond: dry plate seams — a grid of squared plates
+        // with dark seams between, the near plates a step lighter.
+        const hh = hashCoords(263, tx, ty);
+        ctx.fillStyle = 'rgba(40, 32, 30, 0.55)';
+        ctx.fillRect(gx + px * 0.06, gy + px * 0.06, px * 0.88, px * 0.88);
+        const cols = 2 + (hh & 1);
+        const rows = 2 + ((hh >>> 1) & 1);
+        const pw = (px * 0.88) / cols;
+        const ph = (px * 0.88) / rows;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const hk = hashCoords(269 + r * 3 + c, tx, ty);
+            ctx.fillStyle = (hk & 1) === 0 ? '#8a7a66' : '#7a6c5a';
+            ctx.fillRect(gx + px * 0.06 + c * pw + px * 0.025, gy + px * 0.06 + r * ph + px * 0.025, pw - px * 0.05, ph - px * 0.05);
+          }
         }
       }
 }

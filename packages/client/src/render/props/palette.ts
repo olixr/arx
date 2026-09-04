@@ -40,3 +40,19 @@ export const TRD_WAX_LIT = '#f6ecd2';
 // the candle painters speak it too).
 export const CMN_FLAME = '#e8a13c';
 export const CMN_FLAME_CORE = '#f8e8b0';
+// THE SCARRED LAND — the contested-lands kit's shared inks (plan
+// §6.2). LEFT BURNING is the shelf voice: char is a cold violet-black
+// (never warm brown — burnt wood drinks the light), ash the pale
+// grey that sits ON char, ember the one hot note (night-only by the
+// flame gate), gloom the Riftgate apron's bruised blue-violet (cold,
+// never green — the shroom already owns green), rag red the reavers'
+// dye gone dull in weather, Legion crimson a half step deeper and
+// bluer than any dye band (never a DYE — a faction's cloth is its
+// own ink), and charter brass the fordgate's plate.
+export const SCAR_CHAR = '#2a2529';
+export const SCAR_ASH = '#8d8a90';
+export const SCAR_EMBER = '#e0622a';
+export const SCAR_GLOOM = '#7f8cc4';
+export const SCAR_RAG_RED = '#a8323a';
+export const LEGION_CRIMSON = '#8a1f2a';
+export const CHARTER_BRASS = '#c9a14a';

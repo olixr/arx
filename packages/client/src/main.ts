@@ -2153,7 +2153,11 @@ game.onFx = (fx) => {
           kind === 'grindstone' || kind === 'wallfountain' ||
           // The commons' wayside stone: the guardian hound and the
           // shrine's rubble are the street's masonry — they land like it.
-          kind === 'guardian' || kind === 'wayshrine'
+          kind === 'guardian' || kind === 'wayshrine' ||
+          // THE SCARRED LAND: a whole roof coming down, a marked
+          // stone, and a spoil slide land with masonry's weight.
+          // Nothing in the kit BOOMS — a ruin has no hollow left.
+          kind === 'roofheap' || kind === 'stone' || kind === 'rubble'
           ? 3.2
           : 2.2,
       );

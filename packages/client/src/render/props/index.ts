@@ -14,11 +14,12 @@ import { STREET_PROPS } from './street.js';
 import { HOUSE_PROPS } from './house.js';
 import { FARM_PROPS } from './farm.js';
 import { STATIONS_PROPS } from './stations.js';
+import { SCARRED_PROPS } from './scarred/index.js';
 import type { PropPainter } from './types.js';
 
 export const PROP_PAINTERS: ReadonlyMap<Tile, PropPainter> = (() => {
   const m = new Map<Tile, PropPainter>();
-  for (const roster of [WAR_CAMP_PROPS, ELVEN_PROPS, DUNGEON_PROPS, GRAVEYARD_PROPS, SKRAL_PROPS, TOWN_PROPS, STREET_PROPS, HOUSE_PROPS, FARM_PROPS, STATIONS_PROPS]) {
+  for (const roster of [WAR_CAMP_PROPS, ELVEN_PROPS, DUNGEON_PROPS, GRAVEYARD_PROPS, SKRAL_PROPS, TOWN_PROPS, STREET_PROPS, HOUSE_PROPS, FARM_PROPS, STATIONS_PROPS, SCARRED_PROPS]) {
     for (const [tiles, painter] of roster) {
       for (const t of tiles) {
         if (m.has(t)) throw new Error(`prop painter registered twice for tile ${t}`);

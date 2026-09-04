@@ -156,6 +156,28 @@ export const TILE_CATEGORIES: TileCategory[] = [
     ],
   },
   {
+    // THE SCARRED LAND: the contested-lands dresser's shelf — the
+    // cold hearth first (the shell sets a scene's bones), then the
+    // field after, the stripped land, the gloom, the five peoples'
+    // marks, the displaced, and the living props in their broken
+    // states. The six floor Details ride the Details tab.
+    id: 'scarred',
+    label: 'Scarred land',
+    tiles: [
+      Tile.RuinWallStone, Tile.RuinWallWood, Tile.CharredBeam, Tile.CollapsedRoof,
+      Tile.AshHeap, Tile.EmberBed, Tile.ChimneyStack,
+      Tile.BrokenCart, Tile.FieldLitter, Tile.ArrowPost, Tile.FallenBanner,
+      Tile.FieldCairn, Tile.CairnFallen, Tile.BeastBones,
+      Tile.CharredStump, Tile.DeadTree, Tile.SpoilHeap,
+      Tile.GloomStone, Tile.CreepRoot, Tile.FoulPool, Tile.CropBlighted,
+      Tile.CharterPost, Tile.LampCairn, Tile.LegionStandard, Tile.BoneTree,
+      Tile.TallyStone, Tile.WardThread, Tile.RedRagStake, Tile.PitLamp, Tile.PitLampDark,
+      Tile.LeanTo, Tile.Bedroll, Tile.BelongingsCart, Tile.FieldCot,
+      Tile.FenceBroken, Tile.SignpostBurnt, Tile.WellFouled, Tile.HedgeDead,
+      Tile.LampPostDark, Tile.SluiceGate, Tile.SluiceGateStrung,
+    ],
+  },
+  {
     // THE LONG DARK FURNISHED: the dungeon dresser's shelf — the
     // architecture first (pillars set a room's bones), then the wall
     // iron, then the dead and their goods.
@@ -318,6 +340,13 @@ export const DETAILS: Array<{ d: Detail; label: string }> = [
   { d: Detail.Doormat, label: 'doormat' },
   { d: Detail.Sawdust, label: 'sawdust' },
   { d: Detail.Straw, label: 'straw' },
+  // THE SCARRED LAND's floor marks.
+  { d: Detail.Ash, label: 'ash' },
+  { d: Detail.Bones, label: 'bones' },
+  { d: Detail.DragFurrow, label: 'drag furrow' },
+  { d: Detail.BlightVeins, label: 'blight veins' },
+  { d: Detail.DarkSpill, label: 'dark spill' },
+  { d: Detail.Mudcrack, label: 'mudcrack' },
   // THE WALL TAKES A HANGING — the player families, authorable too.
   // Dealt from the band math so the shelf can never drift.
   ...DYES.map((dye, i) => ({

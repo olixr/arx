@@ -374,6 +374,54 @@ const SPECS: ReadonlyArray<readonly [Tile, EmitterSpec]> = [
     glows: [{ dx: 0.5, dy: 0.62, air: 1.4, r: 1.3, rRide: true, rgb: '255, 205, 130', a: 0.28, gate: 'flame' }],
     lights: [{ dx: 0.5, dy: 0.5, r: 5, rRide: true, rgb: [255, 205, 135], intensity: 0.9, flameGated: true, occlude: true, z: 1.4 }],
   }],
+  // THE SCARRED LAND (docs/contested-lands-plan.md §6.1). Five rows,
+  // and NO rows on purpose for PitLampDark, LampPostDark, and
+  // WardThread — the dark postures are the tell, and the thread is a
+  // mark with zero light entries.
+  // The ember bed: COALS-class, flame-gated — the night tell of a
+  // fresh burning. A slower, deeper breath than cooking coals (a bed
+  // banked under ash, not a fire being worked), man-made fire so it
+  // stands down by day and occludes like every flame (THE FLAME LAW).
+  [Tile.EmberBed, {
+    curve: { base: 0.82, terms: [{ hz: 2.6, amp: 0.14, px: 1.9, py: 0.7 }] },
+    glows: [{ dx: 0.5, dy: 0.55, r: 0.85, rRide: true, rgb: '232, 96, 38', a: 0.2 }],
+    lights: [{ dx: 0.5, dy: 0.55, r: 2.0, rgb: [255, 150, 84], intensity: 0.42, flameGated: true, occlude: true }],
+  }],
+  // The gloom stone: GlowShroom-class — a cold swell, never a
+  // flicker, no flame gate, non-occluding (it was here first and it
+  // does not keep a clock). The Riftgate apron's palette above
+  // ground: a bruised blue-violet, dimmer than the shroom.
+  [Tile.GloomStone, {
+    curve: { base: 0.8, terms: [{ hz: 1.1, amp: 0.2, px: 0.7, py: 1.3 }] },
+    glows: [{ dx: 0.5, dy: 0.42, r: 0.9, rRide: true, rgb: '128, 140, 196', a: 0.12 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 2.6, rgb: [128, 140, 196], intensity: 0.38 }],
+  }],
+  // The foul pool: sick water's own cool swell — slower and dimmer
+  // than the stone, a scum-green haze low on the ground. No gate,
+  // never occludes.
+  [Tile.FoulPool, {
+    curve: { base: 0.78, terms: [{ hz: 0.9, amp: 0.22, px: 1.3, py: 0.6 }] },
+    glows: [{ dx: 0.5, dy: 0.5, r: 0.8, rRide: true, rgb: '110, 160, 130', a: 0.1 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 2.0, rgb: [110, 160, 130], intensity: 0.28 }],
+  }],
+  // The lamp cairn: LampPost-tier warmth in a waykeeper's stone —
+  // but NON-occluding (a pile of stones is not architecture) and
+  // ungated (the road's faith burns by day too; the night boost does
+  // the rest). Its steadiness is the point: barely a breath.
+  [Tile.LampCairn, {
+    curve: { base: 0.92, terms: [{ hz: 0.7, amp: 0.06, px: 1.1, py: 0.4 }] },
+    glows: [{ dx: 0.5, dy: 0.4, r: 1.1, rRide: true, rgb: '255, 205, 130', a: 0.24 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 4.5, rRide: true, rgb: [255, 205, 135], intensity: 0.8 }],
+  }],
+  // The pit lamp: COALS-class warm — the Returners' word against the
+  // LampPost. No flame gate (a miner's lamp burns in any light), the
+  // cooking coals' quick working flicker, occluding like the lamp it
+  // answers. Its dark posture (PitLampDark) has no row at all.
+  [Tile.PitLamp, {
+    curve: { base: 0.85, terms: [{ hz: 4.2, amp: 0.12, px: 1.7 }] },
+    glows: [{ dx: 0.5, dy: 0.5, r: 0.8, rRide: true, rgb: '240, 120, 45', a: 0.2 }],
+    lights: [{ dx: 0.5, dy: 0.6, r: 2.6, rgb: [255, 160, 90], intensity: 0.45, occlude: true }],
+  }],
 ];
 
 /** Dense lookup: tile id → spec. Tile ids are small u16s. */
