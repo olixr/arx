@@ -1,7 +1,7 @@
 import { EntityKind, type EntityId } from '@arx/shared';
 import { npcDef } from '@arx/content';
 import type { ClientGame } from '../game/clientGame.js';
-import type { Renderer } from '../render/renderer.js';
+import type { ViewAdapter } from './viewAdapter.js';
 
 /**
  * THE SPOKEN AIR — words standing over the head that said them.
@@ -127,7 +127,7 @@ export class SpeechBubbles {
 
   constructor(
     private readonly game: ClientGame,
-    private readonly renderer: Renderer,
+    private readonly renderer: ViewAdapter,
   ) {
     this.layer.id = 'speech-layer';
     document.body.appendChild(this.layer);

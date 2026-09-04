@@ -1,5 +1,5 @@
 import type { ClientGame } from '../game/clientGame.js';
-import type { Renderer } from '../render/renderer.js';
+import type { ViewAdapter } from './viewAdapter.js';
 import { INK } from './kit/tokens.js';
 import { WAYPOINT_INK } from './map/markers.js';
 
@@ -63,7 +63,7 @@ export class WaypointHud {
   }
 
   /** Per-frame from the main loop. Pass hidden=true to suppress (screens, cinema, build). */
-  update(game: ClientGame, renderer: Renderer, hidden: boolean): void {
+  update(game: ClientGame, renderer: ViewAdapter, hidden: boolean): void {
     const wp = game.waypoint;
     const pos = game.predictor.pos;
     // THE WORLDS APART: a compass only points within its own plane —

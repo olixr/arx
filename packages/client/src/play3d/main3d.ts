@@ -1,195 +1,291 @@
 /**
- * PLAY3D — THE SECOND DOOR (S1 entry). Composes the engine, the
- * standalone world, the ground streamer, the standing world, the sky
- * rig, the post stack, the confession HUD and a handful of walking
- * dummies on the real humanoid rig. No server in S1; S2 swaps
- * StandaloneWorld for a LiveWorld over ClientGame and the dummies for
- * entities — everything below the world seam is untouched by that.
+ * PLAY3D — THE LIVING WORLD (S2 entry). The Three.js door onto the
+ * REAL game: the production net + world model (ClientGame over /ws),
+ * the S1 engine underneath it. Composition only — every law lives in
+ * the module it names:
  *
- * Controls: drag = orbit, wheel = dolly, WASD = walk the player dummy,
- * N = day/night, P = post on/off, I = ink ring, T = tilt-shift, H = HUD.
+ *   ClientGame  ── chunks ──▶ LiveWorld ──▶ GroundStreamer (ground.ts)
+ *               ── entities ▶ EntityStage (bodies.ts) ▶ EntityBillboard
+ *               ◀─ input ──── LiveInput (input.ts: keys follow the camera)
+ *   Shell (shell.ts) mounts the DOM chrome over the ViewAdapter
+ *   (view.ts) exactly as main.ts mounts it over the 2D Renderer.
  *
- * Probe surface (Playwright): window.__play3d — see `probe` below.
+ * Frame order: pointer → orbit; aim from the cursor pick; game.update
+ * (prediction + interp, the same call main.ts makes); world refresh
+ * when ClientGame.worldVersion moved; ground streaming around the
+ * predicted body under a 6 ms bake budget; the sky follows the body
+ * and the server clock; bodies advance + repaint what the frustum
+ * sees; the chrome pins itself; the post stack draws.
+ *
+ * Probe surface (Playwright): window.__play3d and window.dcGame.
  */
 import * as THREE from 'three';
-import { randomLook } from '@arx/shared';
+import { CHUNK_SIZE, EntityKind } from '@arx/shared';
+import { ClientGame } from '../game/clientGame.js';
 import { Engine } from './engine.js';
-import { StandaloneWorld } from './world.js';
+import { LiveWorld } from './liveWorld.js';
 import { GroundStreamer } from './ground.js';
-import { EntityBillboard, SpriteAtlas } from './sprites.js';
+import { SpriteAtlas } from './sprites.js';
 import { makeBillboardClock } from './billboardMaterial.js';
 import { SkyRig } from './lights.js';
 import { PostStack } from './post.js';
 import { Confession, fmtBytes } from './hud.js';
-import { Input3D } from './input.js';
-import { Walker } from './dummies.js';
-import { moveOnGround } from './orbit.js';
+import { LiveInput, PointerRig } from './input.js';
+import { EntityStage } from './bodies.js';
+import { Play3DView } from './view.js';
+import { Shell } from './shell.js';
 
-const canvas = document.getElementById('stage') as HTMLCanvasElement;
-const hudHost = document.getElementById('hud') as HTMLElement;
+const canvas = document.getElementById('game') as HTMLCanvasElement;
+const hudHost = document.getElementById('hud3d') as HTMLElement;
+const sink = document.getElementById('focus-sink') as HTMLElement;
 
-const world = new StandaloneWorld();
+/** In reach of the hand (main.ts's click law). */
+const REACH = 2.2;
+/** A click-attack holds the swing this long (one or two ticks). */
+const ATTACK_PULSE_MS = 160;
+
+const input = new LiveInput(sink);
+const pointer = new PointerRig(canvas);
 const clock = makeBillboardClock();
 const atlas = new SpriteAtlas();
-const input = new Input3D(canvas);
 const io = { dragX: 0, dragY: 0, wheel: 0 };
-const axes = { strafe: 0, advance: 0 };
-const move = { x: 0, z: 0 };
 const frustum = new THREE.Frustum();
 const projView = new THREE.Matrix4();
-const seededRand = (seed: number) => (): number => {
-  seed = (Math.imul(seed, 1274126177) + 0x5bf03635) >>> 0;
-  return seed / 4294967296;
-};
 
 let ground: GroundStreamer;
 let sky: SkyRig;
 let post: PostStack;
 let hud: Confession;
-let walkers: Walker[] = [];
-let player: Walker;
+let stage: EntityStage;
+let view: Play3DView;
 let hudOn = true;
 let inkOn = true;
 let tiltOn = true;
 let day = 1;
+/** null = follow the server clock; a number = forced by /3d night|day. */
+let dayOverride: number | null = null;
+let seenWorldVersion = -1;
+let aimMouseX = -1;
+let aimMouseY = -1;
+let attackPulseUntil = 0;
+
+const shell = new Shell(input, {
+  onLocal: (cmd) => {
+    if (cmd === 'night') dayOverride = 0.08;
+    else if (cmd === 'day') dayOverride = 1;
+    else if (cmd === 'clock') dayOverride = null;
+    else if (cmd === 'post') post.enabled = !post.enabled;
+    else if (cmd === 'ink') post.set({ ink: (inkOn = !inkOn) ? 1 : 0 });
+    else if (cmd === 'tilt') post.set({ tilt: (tiltOn = !tiltOn) ? 1 : 0 });
+    else if (cmd === 'hud') hudHost.hidden = !(hudOn = !hudOn);
+    else shell.system('/3d night | day | clock | post | ink | tilt | hud');
+  },
+  onPlane: () => {
+    // THE CROSSING: ClientGame dropped its store; drop everything that
+    // was keyed on it. The ring refills as the new plane streams.
+    ground.reset();
+    stage.reset();
+    sky.setLamps([]);
+    seenWorldVersion = -1;
+  },
+});
+const game = new ClientGame(input, shell.events());
+const world = new LiveWorld(game);
 
 const engine = new Engine(canvas, {
-  sim: (dt, nowMs) => {
-    input.axes(axes);
-    moveOnGround(engine.yaw, axes.strafe, axes.advance, move);
-    for (const w of walkers) {
-      if (w === player) w.step(dt, world, nowMs, move.x, move.z);
-      else w.step(dt, world, nowMs, 0, 0, wanderRand);
-    }
+  sim: () => {
+    /* ClientGame runs its own fixed-step tick inside update(). */
   },
-  frame: (dt, alpha, nowMs) => {
-    input.consume(io);
+  frame: (dt, _alpha, nowMs) => {
+    pointer.consume(io);
     engine.orbitInput(io.dragX, io.dragY, io.wheel);
-    // Stream the ground around the player, bake under a 6 ms budget.
-    const px = player.lerpX(alpha);
-    const py = player.lerpY(alpha);
-    ground.update(px, py, 6);
-    atlas.flush();
-    const gy = ground.heightAt(px, py);
-    engine.target.set(px, gy + 0.9, py);
-    sky.follow(px, gy, py, nowMs);
+    input.cameraYaw = engine.yaw;
+    input.pollGamepad();
+    input.attackHeld = nowMs < attackPulseUntil;
+    const inGame = game.ownEid !== null;
+    // Aim: the ground point under the cursor, re-picked only when the
+    // mouse moved (the pick marches the heightfield).
+    if (inGame && !shell.screenOpen && (input.mouseX !== aimMouseX || input.mouseY !== aimMouseY)) {
+      aimMouseX = input.mouseX;
+      aimMouseY = input.mouseY;
+      const own = game.predictor.renderPos();
+      const c = view.pickWorld(aimMouseX, aimMouseY);
+      game.aim = Math.atan2(c.y - own.y, c.x - own.x);
+    }
+    game.update(nowMs);
+    if (game.worldVersion !== seenWorldVersion) {
+      seenWorldVersion = game.worldVersion;
+      ground.refresh();
+    }
+    if (inGame) {
+      const own = game.predictor.renderPos();
+      ground.update(own.x, own.y, 6);
+      atlas.flush();
+      const gy = ground.heightAt(own.x, own.y);
+      engine.target.set(own.x, gy + 0.9, own.y);
+      sky.follow(own.x, gy, own.y, nowMs);
+      setDay(dayOverride ?? dayFromHours(game.clockHoursNow()));
+    }
     clock.uYaw.value = engine.yaw;
     clock.uTime.value = nowMs / 1000;
     clock.uSway.value = 0.05;
-    // Bodies: advance every rig, repaint only the visible ones that moved.
     projView.multiplyMatrices(engine.camera.projectionMatrix, engine.camera.matrixWorldInverse);
     frustum.setFromProjectionMatrix(projView);
-    for (const w of walkers) {
-      const wx = w.lerpX(alpha);
-      const wy = w.lerpY(alpha);
-      const sphere = w.sprite.mesh.geometry.boundingSphere!;
-      const visible = frustum.intersectsSphere(sphere);
-      w.sprite.update(wx, wy, ground.heightAt(wx, wy), w.dir, dt, nowMs, engine.yaw, visible);
-    }
+    stage.update(game, dt, nowMs, engine.yaw, frustum);
+    shell.frame(nowMs, () => {
+      const pos = game.predictor.pos;
+      return game.world.get(Math.floor(pos.x / CHUNK_SIZE), Math.floor(pos.y / CHUNK_SIZE)) !== undefined;
+    });
     hud.frame(engine.frameMs, nowMs);
   },
   draw: () => {
     post.render();
     if (hudOn) {
-      const info = engine.renderer.info;
-      let paints = 0;
-      for (const w of walkers) paints += w.sprite.paints;
-      hud.update(performance.now(), info, {
-        world: world.label,
+      const own = game.predictor.pos;
+      hud.update(performance.now(), engine.renderer.info, {
+        world: `${world.label} · ${game.connStatus} · plane ${game.plane.id} · chunks in store ${game.world.size}`,
         'chunks (painted/loaded)': `${ground.stats.painted}/${ground.stats.chunks} · baking ${ground.stats.baking} · bake ${ground.stats.bakeMsLast.toFixed(1)}ms`,
         'cliff faces': ground.stats.faces,
         'standing instances': `${ground.stats.statics} in ${ground.stats.staticDraws} draws · atlas ${atlas.sprites} sprites / ${atlas.pages.length} pages (${atlas.uploads} uploads)`,
         'texture bytes': `ground ${fmtBytes(ground.stats.textureBytes)} · atlas ${fmtBytes(atlas.textureBytes)}`,
-        'body repaints': paints,
+        bodies: `${stage.bodies} (${game.entities.size} entities) · repaints ${stage.paints}`,
         camera: `yaw ${engine.pose.yaw.toFixed(2)} pitch ${engine.pose.pitch.toFixed(2)} dist ${engine.pose.dist.toFixed(1)} dpr ${engine.dpr}`,
-        player: `${player.x.toFixed(1)}, ${player.y.toFixed(1)}`,
-        post: `${post.enabled ? 'on' : 'off'} · ink ${inkOn ? 'on' : 'off'} · tilt ${tiltOn ? 'on' : 'off'} · day ${day.toFixed(2)}`,
+        player: `${own.x.toFixed(1)}, ${own.y.toFixed(1)} · ${game.ownName}`,
+        post: `${post.enabled ? 'on' : 'off'} · ink ${inkOn ? 'on' : 'off'} · tilt ${tiltOn ? 'on' : 'off'} · day ${day.toFixed(2)}${dayOverride !== null ? ' (forced)' : ''}`,
       });
     }
   },
 });
 
-const wanderRand = seededRand(99);
-
-function boot(): void {
-  sky = new SkyRig(engine.scene, clock);
-  ground = new GroundStreamer(engine.scene, world, atlas, clock);
-  ground.onLampsChanged = (lamps) => sky.setLamps(lamps);
-  post = new PostStack(engine.renderer, engine.scene, engine.camera);
-  hud = new Confession(hudHost);
-  engine.onResize = (w, h, dpr) => post.resize(w, h, dpr);
-  engine.onContext = (lost) => {
-    hudHost.dataset.context = lost ? 'lost' : 'restored';
-  };
-  engine.resize();
-
-  // The player: a caped waker. Four villagers wander the green.
-  const spawn = world.spawn;
-  const tints = ['#a03030', '#3a6ea5', '#3f7d3a', '#8a6534', '#6e4a8a'];
-  const capes: Array<string | undefined> = ['wolf_pelt_cloak', undefined, undefined, undefined, undefined];
-  for (let i = 0; i < 5; i++) {
-    const sprite = new EntityBillboard(
-      { bodyColor: tints[i]!, look: randomLook(seededRand(41 + i)), capeId: capes[i] },
-      clock,
-      41 + i,
-    );
-    engine.scene.add(sprite.mesh);
-    const x = spawn.x + (i === 0 ? 0 : 2 + (i % 2) * 2.5);
-    const y = spawn.y + (i === 0 ? 0 : -1.5 + Math.floor(i / 2) * 2.2);
-    const w = new Walker(sprite, x, y, i === 0 ? 5.2 : 1.6, i === 0 ? null : { x, y, r: 5 });
-    walkers.push(w);
-  }
-  player = walkers[0]!;
-  engine.target.set(player.x, 0.9, player.y);
-
-  input.onKey = (code) => {
-    if (code === 'KeyN') setDay(day > 0.5 ? 0.08 : 1);
-    if (code === 'KeyP') post.enabled = !post.enabled;
-    if (code === 'KeyI') {
-      inkOn = !inkOn;
-      post.set({ ink: inkOn ? 1 : 0 });
-    }
-    if (code === 'KeyT') {
-      tiltOn = !tiltOn;
-      post.set({ tilt: tiltOn ? 1 : 0 });
-    }
-    if (code === 'KeyH') {
-      hudOn = !hudOn;
-      hudHost.hidden = !hudOn;
-    }
-  };
-  engine.start();
+/** Sun elevation from the server clock → the sky rig's day factor. */
+function dayFromHours(h: number): number {
+  const e = Math.cos(((h - 12) / 24) * Math.PI * 2);
+  return 0.08 + 0.92 * Math.min(1, Math.max(0, (e + 0.25) / 1.25));
 }
 
 function setDay(k: number): void {
+  if (Math.abs(k - day) < 0.004) return;
   day = k;
   sky.setDay(k);
   post.set({ night: 1 - k });
 }
 
+/** A fightable body standing at a world point (the click-attack). */
+function foeAt(wx: number, wy: number): { eid: number; x: number; y: number } | null {
+  const t = game.renderTime();
+  let best: { eid: number; x: number; y: number } | null = null;
+  let bestD = 0.75;
+  for (const [eid, remote] of game.entities) {
+    const m = remote.meta;
+    if (m.kind !== EntityKind.Npc || m.friendly || m.talk || m.stock || m.ownerEid !== undefined) continue;
+    const s = remote.buffer.sampleSmoothed(t);
+    const x = s?.x ?? m.x;
+    const y = s?.y ?? m.y;
+    const d = Math.hypot(x - wx, y - wy);
+    if (d < bestD) {
+      bestD = d;
+      best = { eid, x, y };
+    }
+  }
+  return best;
+}
+
+/** THE CLICK: use what is in reach, strike a foe, else walk there. */
+function onWorldClick(sx: number, sy: number): void {
+  if (game.ownEid === null) return;
+  const w = view.pickWorld(sx, sy);
+  const tx = Math.floor(w.x);
+  const ty = Math.floor(w.y);
+  const pos = game.predictor.pos;
+  const foe = foeAt(w.x, w.y);
+  if (foe && Math.hypot(foe.x - pos.x, foe.y - pos.y) <= REACH + 0.6) {
+    game.aim = Math.atan2(foe.y - pos.y, foe.x - pos.x);
+    attackPulseUntil = performance.now() + ATTACK_PULSE_MS;
+    return;
+  }
+  const target = game.targetAt(tx, ty);
+  const near = Math.hypot(tx + 0.5 - pos.x, ty + 0.5 - pos.y) <= REACH;
+  if (target && near) {
+    const petHit = game.petAtTile(tx, ty) ?? game.companionAtTile(tx, ty);
+    if (petHit !== null) game.interactNpc(petHit);
+    else if (target.kind === 'npc') game.interactNpc(target.eid);
+    else if (target.kind === 'loot') game.pickupWalk(target.eid);
+    else if (target.kind === 'station' || target.kind === 'bank' || target.kind === 'shop' || target.kind === 'stable') {
+      shell.system('That bench is not mounted on this door yet.');
+    } else game.interact(tx, ty);
+    return;
+  }
+  if (target?.kind === 'loot') {
+    game.pickupWalk(target.eid);
+    return;
+  }
+  if (foe) {
+    if (!game.walkTo(Math.floor(foe.x), Math.floor(foe.y))) shell.system('No path there.');
+    return;
+  }
+  if (!game.walkTo(tx, ty)) shell.system('No path there.');
+}
+
+function boot(): void {
+  sky = new SkyRig(engine.scene, clock);
+  ground = new GroundStreamer(engine.scene, world, atlas, clock);
+  ground.onLampsChanged = (lamps) => sky.setLamps(lamps);
+  stage = new EntityStage(engine.scene, clock, (wx, wy) => ground.heightAt(wx, wy));
+  post = new PostStack(engine.renderer, engine.scene, engine.camera);
+  hud = new Confession(hudHost);
+  view = new Play3DView(engine, (wx, wy) => ground.heightAt(wx, wy));
+  shell.attach(game, view);
+  engine.onResize = (w, h, dpr) => post.resize(w, h, dpr);
+  engine.onContext = (lost) => {
+    hudHost.dataset.context = lost ? 'lost' : 'restored';
+  };
+  engine.resize();
+  pointer.onClick = onWorldClick;
+  // The orbit remembers itself like the 2D zoom does.
+  try {
+    const saved = JSON.parse(localStorage.getItem('arx.orbit3d') ?? 'null') as { yaw: number; pitch: number; dist: number } | null;
+    if (saved && Number.isFinite(saved.yaw) && Number.isFinite(saved.pitch) && Number.isFinite(saved.dist)) {
+      engine.setOrbit(saved.yaw, saved.pitch, saved.dist);
+    }
+  } catch {
+    /* a bad card is no card */
+  }
+  window.setInterval(() => {
+    localStorage.setItem('arx.orbit3d', JSON.stringify(engine.want));
+  }, 4000);
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'F2') hudHost.hidden = !(hudOn = !hudOn);
+  });
+  engine.start();
+  game.connect(localStorage.getItem('arx.token'));
+}
+
 /** Playwright's hands on the page. */
 const probe = {
   setCamera: (yaw: number, pitch: number, dist: number): void => engine.setOrbit(yaw, pitch, dist),
-  tp: (x: number, y: number): void => {
-    player.x = player.prevX = player.tx = x;
-    player.y = player.prevY = player.ty = y;
+  day: (k: number | null): void => {
+    dayOverride = k;
   },
-  day: setDay,
   post: (on: boolean): void => {
     post.enabled = on;
   },
   ink: (k: number): void => post.set({ ink: k }),
   tilt: (k: number): void => post.set({ tilt: k }),
-  /** Step the streamer to completion (all ring chunks painted). */
+  click: onWorldClick,
+  /** Step the streamer to completion around the body (all ring chunks painted). */
   settle: (): boolean => {
-    ground.update(player.x, player.y, 50);
+    if (game.ownEid === null) return false;
+    const own = game.predictor.pos;
+    ground.refresh();
+    ground.update(own.x, own.y, 50);
     atlas.flush();
-    return ground.stats.baking === 0 && ground.stats.painted === ground.stats.chunks;
+    return ground.stats.chunks > 0 && ground.stats.baking === 0 && ground.stats.painted === ground.stats.chunks;
   },
   stats: (): Record<string, unknown> => ({
     hud: hud.lines,
     ground: { ...ground.stats },
     atlas: { sprites: atlas.sprites, pages: atlas.pages.length, uploads: atlas.uploads, bytes: atlas.textureBytes },
+    bodies: { count: stage.bodies, paints: stage.paints, entities: game.entities.size },
     info: {
       calls: engine.renderer.info.render.calls,
       triangles: engine.renderer.info.render.triangles,
@@ -198,27 +294,23 @@ const probe = {
       programs: engine.renderer.info.programs?.length ?? 0,
     },
     frameMs: engine.frameMs,
-    world: { generated: world.generated, label: world.label },
-    player: { x: player.x, y: player.y },
+    world: { label: world.label, store: game.world.size, version: game.worldVersion, plane: game.plane.id },
+    player: { x: game.predictor.pos.x, y: game.predictor.pos.y, name: game.ownName, status: game.connStatus },
     camera: { ...engine.pose },
   }),
-  walkers: () => walkers.map((w) => ({ x: w.x, y: w.y, dir: w.dir, paints: w.sprite.paints })),
   dispose: (): void => {
     engine.stop();
-    for (const w of walkers) {
-      engine.scene.remove(w.sprite.mesh);
-      w.sprite.dispose();
-    }
-    walkers = [];
+    stage.dispose();
     ground.dispose();
     atlas.dispose();
     post.dispose();
     sky.dispose();
     hud.dispose();
-    input.dispose();
+    pointer.dispose();
     engine.dispose();
   },
 };
-(window as unknown as { __play3d: typeof probe }).__play3d = probe;
+(window as unknown as { __play3d: typeof probe; dcGame: ClientGame }).__play3d = probe;
+(window as unknown as { dcGame: ClientGame }).dcGame = game;
 
 boot();

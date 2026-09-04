@@ -175,3 +175,56 @@ test('WASD is camera-relative: forward at yaw 0 is north (-z)', () => {
   moveOnGround(0, 0, 0, o);
   assert.deepEqual(o, { x: 0, z: 0 });
 });
+
+// ------------------------------------------------------- S2: the pick
+
+import { pickGround, type PickHit } from './pick.js';
+import { kindKey, type BodyKind } from './entityBillboard.js';
+import { elevLevels } from './ground.js';
+import type { ViewAdapter } from '../ui/viewAdapter.js';
+import type { Renderer } from '../render/renderer.js';
+
+/** THE ONE SEAM: the 2D Renderer must satisfy the ViewAdapter structurally. */
+const _rendererIsAView: (r: Renderer) => ViewAdapter = (r) => r;
+void _rendererIsAView;
+
+test('pickGround: a ray down onto a flat plane lands where the ray crosses y=0', () => {
+  const out: PickHit = { x: 0, y: 0, z: 0, t: -1 };
+  // From (0, 10, 0) toward +x and down at 45°: crosses y=0 at x=10, z=0.
+  const k = Math.SQRT1_2;
+  const hit = pickGround({ ox: 0, oy: 10, oz: 0, dx: k, dy: -k, dz: 0 }, () => 0, 100, out);
+  assert.equal(hit, true);
+  assert.ok(Math.abs(out.x - 10) < 0.02, `x ${out.x}`);
+  assert.ok(Math.abs(out.y) < 0.02, `y ${out.y}`);
+  assert.ok(Math.abs(out.t - 10 * Math.SQRT2) < 0.03);
+});
+
+test('pickGround: a plateau is hit on its top, and a sky ray misses', () => {
+  const out: PickHit = { x: 0, y: 0, z: 0, t: -1 };
+  // Ground rises to 2 for x >= 5.
+  const h = (x: number): number => (x >= 5 ? 2 : 0);
+  const k = Math.SQRT1_2;
+  assert.equal(pickGround({ ox: 0, oy: 6, oz: 0, dx: k, dy: -k, dz: 0 }, h, 100, out), true);
+  // Crosses y=2 at x=4 (still low ground) so continues to the face at x=5, y=1 → lands at x≈5.
+  assert.ok(out.x >= 4.9 && out.x <= 5.3, `x ${out.x}`);
+  assert.equal(pickGround({ ox: 0, oy: 6, oz: 0, dx: k, dy: k, dz: 0 }, h, 50, out), false);
+  assert.equal(out.t, -1);
+});
+
+test('kindKey: the same kit is the same key; a weapon or cape change is a new one', () => {
+  const a: BodyKind = { body: 'humanoid', isOwn: false, bodyColor: '#a03030', weaponItem: 'iron_sword' };
+  const b: BodyKind = { body: 'humanoid', isOwn: false, bodyColor: '#a03030', weaponItem: 'iron_sword' };
+  const c: BodyKind = { ...a, weaponItem: 'oak_bow' };
+  const d: BodyKind = { ...a, capeId: 'wolf_pelt_cloak' };
+  const e: BodyKind = { body: 'beast', defId: 'wolf', radius: 0.35, color: '#777', speed: 3 };
+  assert.equal(kindKey(a), kindKey(b));
+  assert.notEqual(kindKey(a), kindKey(c));
+  assert.notEqual(kindKey(a), kindKey(d));
+  assert.notEqual(kindKey(a), kindKey(e));
+});
+
+test('elevLevels: the 2D level list — min..max, level 0 only when pits exist', () => {
+  assert.deepEqual(elevLevels(new Int8Array([0, 0, 1, 2])), [1, 2]);
+  assert.deepEqual(elevLevels(new Int8Array([-1, 0, 1])), [-1, 0, 1]);
+  assert.deepEqual(elevLevels(new Int8Array([0, 0])), []);
+});

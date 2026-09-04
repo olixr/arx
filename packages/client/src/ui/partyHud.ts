@@ -1,5 +1,5 @@
 import type { ClientGame } from '../game/clientGame.js';
-import type { Renderer } from '../render/renderer.js';
+import type { ViewAdapter } from './viewAdapter.js';
 import { partyColor } from './map/markers.js';
 
 /**
@@ -20,7 +20,7 @@ export class PartyHud {
   >();
 
   /** Per-frame from the main loop. Pass hidden=true to suppress. */
-  update(game: ClientGame, renderer: Renderer, hidden: boolean): void {
+  update(game: ClientGame, renderer: ViewAdapter, hidden: boolean): void {
     const pos = game.predictor.pos;
     const fellows = hidden || game.ownEid === null ? [] : game.partyFellowsPlaced();
     const seen = new Set<string>();

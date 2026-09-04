@@ -1,5 +1,5 @@
 import type { ClientGame } from '../game/clientGame.js';
-import type { Renderer } from '../render/renderer.js';
+import type { ViewAdapter } from './viewAdapter.js';
 /**
  * THE WAYFINDER — the one waypoint's live compass on the HUD.
  *
@@ -16,6 +16,6 @@ export declare class WaypointHud {
     private readonly dist;
     constructor();
     /** Per-frame from the main loop. Pass hidden=true to suppress (screens, cinema, build). */
-    update(game: ClientGame, renderer: Renderer, hidden: boolean): void;
+    update(game: ClientGame, renderer: ViewAdapter, hidden: boolean): void;
 }
 //# sourceMappingURL=waypointHud.d.ts.map

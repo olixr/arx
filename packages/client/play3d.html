@@ -3,28 +3,413 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>Arx — Immersive (3D, S1 skeleton)</title>
+    <title>Arx — Immersive (3D)</title>
+    <link rel="stylesheet" href="/src/style.css" />
     <style>
-      html, body { margin: 0; height: 100%; overflow: hidden; background: #141a30; }
-      #stage { display: block; width: 100vw; height: 100vh; touch-action: none; }
-      #hud {
-        position: fixed; left: 12px; top: 12px; color: #e8ddc2;
-        font: 12px/1.45 ui-monospace, Menlo, monospace; background: rgba(20, 16, 32, 0.72);
-        padding: 8px 12px; border-radius: 6px; pointer-events: none;
-        text-shadow: 1px 1px 0 #000; max-width: 46vw;
+      /* PLAY3D — THE LIVING WORLD: the confession overlay + the vitals strip.
+         Everything else is index.html's own chrome, unchanged. */
+      #hud3d {
+        position: fixed; left: 12px; top: 12px; z-index: 30; color: #e8ddc2;
+        font: 11px/1.4 ui-monospace, Menlo, monospace; background: rgba(20, 16, 32, 0.72);
+        padding: 6px 10px; border-radius: 6px; pointer-events: none;
+        text-shadow: 1px 1px 0 #000; max-width: 40vw;
       }
-      #hud b { color: #ffd27a; }
-      #hud pre { margin: 6px 0 0; white-space: pre-wrap; font: inherit; }
-      #hud[data-context="lost"]::after { content: 'WEBGL CONTEXT LOST'; color: #ff8a6a; display: block; }
+      #hud3d b { color: #ffd27a; }
+      #hud3d pre { margin: 4px 0 0; white-space: pre-wrap; font: inherit; }
+      #hud3d[data-context="lost"]::after { content: 'WEBGL CONTEXT LOST'; color: #ff8a6a; display: block; }
+      #focus-sink { position: fixed; width: 0; height: 0; outline: none; }
+      #vitals3d {
+        position: fixed; left: 50%; bottom: 7.5rem; transform: translateX(-50%);
+        display: flex; align-items: center; gap: 0.5rem; z-index: 5; pointer-events: none;
+        font: 600 0.8rem/1 system-ui, sans-serif; color: #efe6cf; text-shadow: 1px 1px 0 #000;
+      }
+      #vitals3d .vitals-level { padding: 0.2rem 0.5rem; background: rgba(20, 16, 32, 0.72); border-radius: 0.3rem; }
+      #vitals3d .vitals-bar {
+        position: relative; width: 14rem; height: 0.9rem; background: rgba(20, 16, 32, 0.72);
+        border-radius: 0.3rem; overflow: hidden; text-align: center; line-height: 0.9rem;
+      }
+      #vitals3d .vitals-fill { position: absolute; inset: 0; width: 100%; background: #6f9e4a; transition: width 160ms; }
+      #vitals3d.low .vitals-fill { background: #b7433a; }
+      #vitals3d .vitals-bar span { position: relative; font-size: 0.7rem; }
     </style>
   </head>
   <body>
-    <canvas id="stage"></canvas>
-    <div id="hud">
-      <b>Arx Immersive</b> — S1 skeleton (Three.js, real Dawnmead ground, real rigs)<br />
-      <b>drag</b> orbit &nbsp; <b>wheel</b> dolly &nbsp; <b>WASD</b> walk &nbsp; <b>N</b> night &nbsp;
-      <b>P</b> post &nbsp; <b>I</b> ink &nbsp; <b>T</b> tilt &nbsp; <b>H</b> hud
+    <canvas id="game"></canvas>
+    <div id="focus-sink" tabindex="-1"></div>
+
+    <div id="login" class="overlay">
+      <div class="panel login-panel">
+        <h1>Arx</h1>
+        <p class="tagline">an open world, forged by hand</p>
+        <div id="login-roster" class="hidden"></div>
+        <form id="login-form">
+          <div id="login-chosen" class="hidden"></div>
+          <input
+            id="login-user"
+            type="text"
+            maxlength="20"
+            minlength="3"
+            placeholder="Username"
+            autocomplete="username"
+            required
+          />
+          <input
+            id="login-pass"
+            type="password"
+            maxlength="100"
+            minlength="6"
+            placeholder="Password"
+            autocomplete="current-password"
+            required
+          />
+          <input
+            id="login-charname"
+            class="hidden"
+            type="text"
+            maxlength="16"
+            minlength="2"
+            placeholder="Adventurer name"
+            autocomplete="off"
+          />
+          <input
+            id="login-invite"
+            class="hidden"
+            type="text"
+            maxlength="64"
+            placeholder="Invite code"
+            autocomplete="off"
+          />
+          <button type="submit" id="login-submit">Enter World</button>
+          <button type="button" id="login-other" class="link-button hidden">
+            Sign in with a username
+          </button>
+          <button type="button" id="login-toggle" class="link-button">
+            New here? Create an account
+          </button>
+          <a id="login-front" class="link-button" href="/">What is Arx? &mdash; the front page</a>
+        </form>
+        <p id="login-error" class="error hidden"></p>
+        <p id="login-status" class="status hidden">Connecting…</p>
+      </div>
     </div>
+
+
+    <div id="hud" class="hidden">
+      <div id="chat">
+        <div id="chat-log"></div>
+        <input id="chat-input" type="text" maxlength="200" placeholder="Press Enter to chat" />
+      </div>
+      <div id="debug"></div>
+
+      <div id="hotbar" aria-label="Abilities"></div>
+      <div id="passive-tray" aria-label="Passives"></div>
+      <div id="buff-tray" aria-label="Active buffs"></div>
+
+      <div id="touch-controls" class="hidden">
+        <button id="touch-attack" aria-label="Attack"></button>
+      </div>
+
+      <div id="panel-buttons" data-region>
+        <button id="btn-inventory" title="Character (I)"></button>
+        <button id="btn-skills" title="Skills (K)"></button>
+        <button id="btn-arts" title="Techniques (V)"></button>
+        <button id="btn-beasts" title="Beasts (')"></button>
+        <button id="btn-companions" title="Companions ([)"></button>
+        <button id="btn-craft" title="Handiwork (C)"></button>
+        <button id="btn-build" title="Build (B)"></button>
+        <button id="btn-social" title="Social (U)"></button>
+        <button id="btn-quests" title="Journal (J)"></button>
+        <button id="btn-rep" title="Standing (L)"></button>
+        <button id="btn-keys" title="Key Ring (;)"></button>
+        <button id="btn-map" title="Map (M)"></button>
+        <button id="btn-audio" title="Settings (O)"></button>
+      </div>
+
+      <!-- CHARACTER — the expedition case docked to the right edge:
+           worn gear hung on an armor stand, the kit's sum as a ledger
+           beside it, the backpack below. The case deliberately leaves
+           the left of the screen open — the camera slides the world
+           over so your LIVE character stands there, wearing every
+           change the moment you make it. No duplicate figure. -->
+      <!-- THE OPEN CASE (rebuilt from the ground up): the room is TWO
+           TRAYS of identical anatomy — head band / body / foot band —
+           cut from one stock on one chamfer ladder, feet sharing one
+           baseline. Left tray: the armor stand, named by its owner,
+           its sum told at its feet. Right tray: the backpack, filters
+           in the head band, capacity gauge and purse in the foot. -->
+      <div id="inventory-panel" class="ui-screen screen-character hidden">
+        <h3>Character</h3>
+        <div class="char-body">
+          <!-- THE HERO'S ALCOVE: the stand is built around the hero it
+               once left out. The live rig stands in an arched niche
+               between the socket columns — painted by the same hand
+               that draws the world, wearing every worn piece the
+               moment it lands. Armor spine down the left flank,
+               trappings down the right, held steel on the plinth
+               shelf, the ready rack beneath. The foot band tells the
+               kit's sum as instruments, never a wall of words. -->
+          <section class="char-tray worn-kit" data-region>
+            <header class="tray-head">
+              <span id="char-name" class="ident-name"></span>
+              <span id="char-deed" class="level-seal"></span>
+            </header>
+            <div class="tray-body stand-body">
+              <div id="equip-anatomy"></div>
+            </div>
+            <footer class="tray-foot stand-foot">
+              <div id="gear-strip" class="hidden"></div>
+              <div class="worn-sum-empty">Nothing worn adds to the sum yet &mdash; armor and trinkets will.</div>
+            </footer>
+          </section>
+          <!-- THE BENCH: the middle tray is a standing inspector —
+               rest your eye on any item (hover or pad focus) and it
+               lays out here at full size with its verbs under it. No
+               floating card, no travel: see, compare, act. -->
+          <section class="char-tray char-bench" data-region>
+            <header class="tray-head">
+              <span class="tray-title">The bench</span>
+            </header>
+            <div class="tray-body bench-body">
+              <div id="bench-card" class="bench-card"></div>
+              <div id="bench-empty" class="bench-empty">Rest your eye on any item and it lays out here.</div>
+              <div id="bench-acts" class="bench-acts"></div>
+            </div>
+          </section>
+          <section class="char-tray char-pack-col" data-region>
+            <header class="tray-head">
+              <span class="tray-title">Backpack</span>
+              <div id="pack-filters"></div>
+            </header>
+            <div class="tray-body pack-case">
+              <div id="inventory-grid"></div>
+            </div>
+            <footer class="tray-foot pack-foot">
+              <span id="pack-fill" class="pack-fill"></span>
+              <span id="pack-tidy" class="pack-tidy"></span>
+              <span class="purse-label">Purse</span>
+              <span id="coin-readout" data-tipname="Coins" title="Coins"></span>
+            </footer>
+          </section>
+          <!-- THE OPEN GROUND (looting v2): a fourth tray that stands
+               only while loot lies within reach — the same ground
+               ledger as the quick tray. Drag a row into the pack to
+               take it; drag a pack slot onto this tray to lay it
+               down at your feet. The banking two-pane grammar,
+               reimagined for the dirt. -->
+          <section class="char-tray char-ground hidden" data-region>
+            <header class="tray-head">
+              <span class="tray-title">On the ground</span>
+            </header>
+            <div class="tray-body ground-body">
+              <div id="ground-pane" class="row-list"></div>
+            </div>
+            <footer class="tray-foot ground-foot">
+              <span class="ground-hint">Within arm's reach &mdash; drag either way.</span>
+            </footer>
+          </section>
+        </div>
+      </div>
+
+      <!-- SETTINGS — sound, display, and controls, dialed from the couch. -->
+      <!-- SETTINGS (Grand Refit Ph6): three benches on a tab rail —
+           Sound, Display (with the ruler's hand), Controls. -->
+      <div id="audio-panel" class="ui-screen screen-settings hidden">
+        <h3>Settings</h3>
+        <div id="settings-tabs" data-region></div>
+        <div class="settings-scroll" data-region>
+          <div id="settings-sec-sound">
+            <div id="audio-rows"></div>
+            <p id="audio-nowplaying" class="audio-now"></p>
+          </div>
+          <div id="settings-sec-display" class="hidden">
+            <div id="display-rows"></div>
+          </div>
+          <div id="settings-sec-controls" class="hidden">
+            <div id="controls-rows"></div>
+          </div>
+        </div>
+        <!-- THE DOOR SWINGS BOTH WAYS: the sign-out stands under every
+             bench, above the fold, one pad stop from anywhere. -->
+        <div id="settings-foot" class="settings-foot" data-region></div>
+      </div>
+
+      <!-- SKILLS — the hall of deeds: disciplines grouped into wings.
+           Techniques moved out to their own codex screen. -->
+      <!-- SKILLS — the hall of deeds (Grand Refit Ph4): every
+           discipline an emblem ringed by its climb, the chosen one
+           told whole on the hero pane. -->
+      <div id="skills-panel" class="ui-screen screen-skills hidden">
+        <h3>Skills</h3>
+        <div class="skills-main">
+          <div id="skills-wall" data-region></div>
+          <div id="skills-hero" data-region></div>
+        </div>
+      </div>
+
+      <!-- TECHNIQUES — the codex of combat arts (Grand Refit Ph4):
+           THE PROVING HALL: crest rail across the head, THE PATH
+           ribbon on the stage, THE READING's instruments beside THE
+           PROVING GROUND diagram, THE HAND at the foot. -->
+      <div id="arts-panel" class="ui-screen screen-arts hidden">
+        <h3>Techniques</h3>
+        <div id="arts-rail" data-region></div>
+        <div class="arts-main">
+          <div id="arts-schools" data-region></div>
+          <div id="arts-detail" data-region></div>
+          <div id="arts-ground"></div>
+        </div>
+        <div id="arts-loadout" data-region></div>
+      </div>
+
+      <!-- THE COMPANION'S HALL (docs/pet-arts-plan.md LAW 8) — the
+           friend told whole: THE STALL RAIL across the head, THE
+           STANDING down the left (the rope, the instruments, the
+           journey), THE REPERTOIRE ribbon over THE READING and its
+           proving ground, THE THREE COLLARS at the foot. -->
+      <div id="beast-panel" class="ui-screen screen-hall hidden">
+        <h3>Beasts</h3>
+        <div id="hall-rail" data-region></div>
+        <div class="hall-main">
+          <div id="hall-standing" data-region></div>
+          <div id="hall-shelf" data-region></div>
+          <div id="hall-reading" data-region></div>
+          <div id="hall-ground"></div>
+        </div>
+        <div id="hall-collars" data-region></div>
+      </div>
+
+      <!-- THE COMPANY YOU KEEP (docs/companions-plan.md): the
+           companion roster — befriended friends, a system wholly
+           apart from the Beasts hall above. One rail of kept
+           friends, one standing for the friend under regard. -->
+      <div id="companions-panel" class="ui-screen screen-company hidden">
+        <h3>Companions</h3>
+        <div id="company-rail" data-region></div>
+        <div id="company-standing" data-region></div>
+      </div>
+
+      <!-- THE STAKES BOARD (docs/arena-plan.md) — the ringmaster's
+           counter: the venue's cards as plates, the buyer's own
+           ladder standing at the foot. Server-opened (the shopopen
+           law); no dock button ever. -->
+      <div id="arena-board" class="ui-screen screen-arena hidden">
+        <h3 id="arena-board-title">The Ring</h3>
+        <div id="arena-board-cards" data-region></div>
+        <div id="arena-board-ladder"></div>
+      </div>
+
+      <!-- WORKSHOP — every station's recipes as a ledger on the left,
+           the chosen work laid out large on the right. -->
+      <div id="craft-panel" class="ui-screen screen-craft hidden">
+        <h3 id="craft-title">Crafting</h3>
+        <div class="craft-body">
+          <div class="craft-left" data-region>
+            <div id="craft-tools"></div>
+            <div id="craft-list" class="craft-ledger"></div>
+          </div>
+          <div id="craft-detail" data-region></div>
+        </div>
+      </div>
+
+      <!-- VAULT — stored goods as a wall of sockets; rolled gear kept
+           apart in the armory rack. -->
+      <div id="bank-panel" class="ui-screen screen-bank hidden">
+        <h3>Vault</h3>
+        <div class="bank-body">
+          <div id="bank-armory" class="hidden" data-region></div>
+          <div id="bank-tools" data-region></div>
+          <div id="bank-list" data-region></div>
+          <div id="bank-detail" class="hidden" data-region></div>
+        </div>
+      </div>
+
+      <!-- THE STALLS — the keeper's household: three stall cards, the
+           rotation decided here and nowhere else (beastcraft v2). -->
+      <div id="stable-panel" class="ui-screen screen-stable hidden">
+        <h3>The Stalls</h3>
+        <div id="stable-list" data-region></div>
+      </div>
+
+      <!-- STORE — the counter: goods shelved with honest price tags. -->
+      <div id="shop-panel" class="ui-screen screen-shop hidden">
+        <h3>General Store</h3>
+        <div id="shop-list" data-region></div>
+      </div>
+
+      <!-- BUILDER'S TABLE — the Workshop anatomy: ledger left (the
+           blueprints, shelved by category), work right (the chosen
+           piece, its whole story, and the Place button). -->
+      <div id="build-panel" class="ui-screen screen-build hidden">
+        <h3>Build</h3>
+        <div class="craft-body">
+          <div class="craft-left" data-region>
+            <div id="build-tools"></div>
+            <div id="build-list" class="craft-ledger"></div>
+          </div>
+          <div id="build-detail" data-region></div>
+        </div>
+      </div>
+
+      <!-- BUILDER'S TRAY — the in-mode face: what you're placing, what
+           it costs against the pack, the dial, and the recent pieces. -->
+      <div id="build-tray" class="hidden"></div>
+
+      <!-- SOCIAL — the fellowship ledger: who stands near, who walks
+           with you, who is asking to. The body is built by
+           ui/socialPanel.ts; only the banner lives here. -->
+      <div id="social-panel" class="ui-screen screen-social hidden">
+        <h3>Social</h3>
+      </div>
+
+      <!-- THE CHART TABLE — the fullscreen map (M). -->
+      <div id="map-panel" class="ui-screen screen-map hidden">
+        <h3>The Chart</h3>
+      </div>
+
+      <!-- THE JOURNAL — the quest log (J). List left, the open page
+           right; the body is built by ui/questLog.ts. -->
+      <div id="quest-panel" class="ui-screen screen-quests hidden">
+        <h3>Journal</h3>
+      </div>
+
+      <!-- STANDING — the name you carry (L). One banded row per
+           faction; the body is built by ui/repScreen.ts. -->
+      <div id="rep-panel" class="ui-screen screen-rep hidden">
+        <h3>Standing</h3>
+      </div>
+
+      <!-- THE RIFTGATE — the gate's question: which key turns? Each
+           row is one dungeon, read pure from a key's roll. -->
+      <div id="riftgate-panel" class="ui-screen screen-riftgate hidden">
+        <h3>The Riftgate</h3>
+        <div id="riftgate-list" data-region></div>
+      </div>
+
+      <!-- THE KEY RING — every dungeon key on its own ring (K).
+           Shelf left, bench right; the body is built by ui/keyRing.ts. -->
+      <div id="keyring-panel" class="ui-screen screen-keyring hidden">
+        <h3>Key Ring</h3>
+      </div>
+
+      <!-- THE BOARD — the deliberate read of a sign, and the pen for
+           your own. The approach plaque is built in code and floats
+           over the world; this is what pressing Interact opens. -->
+      <div id="sign-panel" class="ui-tray hidden">
+        <h3>The Board</h3>
+        <div id="sign-body"></div>
+      </div>
+
+      <!-- ON THE GROUND — a quick tray beside the action, never a
+           screen: grab and get back to the fight. -->
+      <div id="loot-panel" class="ui-tray hidden">
+        <h3>On the Ground</h3>
+        <div id="loot-list" class="row-list" data-region></div>
+      </div>
+    </div>
+
+
+    <div id="hud3d"><b>Arx Immersive</b> — S2 living world (Three.js over the live game)<br />
+      <b>click</b> walk / use &nbsp; <b>drag</b> orbit &nbsp; <b>wheel</b> dolly &nbsp; <b>WASD</b> walk &nbsp; <b>Space</b> attack &nbsp; <b>I/K/O</b> screens &nbsp; <b>F2</b> this overlay</div>
     <script type="module" src="/src/play3d/main3d.ts"></script>
   </body>
 </html>

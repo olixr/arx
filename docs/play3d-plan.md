@@ -3,7 +3,8 @@
 The separate 3D client ("Immersive") beside Classic, approved in
 `docs/perspective-review-and-3d-client-plan.md` §5–§8. This document is
 the as-built record: what stands, what law it stands on, how to run it,
-and what is placeholder. It is updated per phase; S1 is the first.
+and what is placeholder. It is updated per phase; S1 stood the engine
+up standalone, S2 wired it to the live game.
 
 Branch: `epic/play3d` (cut from main `b4c00f2e`). Nothing under
 `src/render/` is edited by this program — the 3D client only ADDS files
@@ -38,8 +39,8 @@ world seam.
 | `lights.ts` | sun DirectionalLight + PCF shadow map (2048, ±30-tile ortho, texel-snapped follow), HemisphereLight fill, opposing fill, depth fog, fixed pool of 8 PointLights dealt to the nearest lamp posts / campfires, `setDay(k)` drives sun/fog/tint | real; CSM is S3 |
 | `post.ts` | EffectComposer: RenderPass (linear half-float + DepthTexture) → `InkPass` (depth-edge ink ring, tilt-shift, grade, vignette in one pass, reads `readBuffer.depthTexture`) → OutputPass (owns the sRGB encode — the spike's `pow(1/2.2)` gotcha dissolved) | real; `P/I/T` toggles |
 | `hud.ts` | the confession overlay: rAF ms EMA/worst, renderer.info, chunk/bake/atlas/byte ledgers, 4 Hz | real |
-| `input.ts` | drag orbit, wheel dolly, WASD, single-press toggles; deltas consumed once per frame | dev-page input (S2: InputManager adapter) |
-| `dummies.ts` | `Walker`: fixed-step wander/player movement with the world's axis-separated slide, interpolated for render | placeholder (S2: entities) |
+| `input.ts` | S1: drag orbit, wheel dolly, WASD | REWRITTEN in S2 (PointerRig + LiveInput) |
+| `dummies.ts` | `Walker` dummies | REMOVED in S2 (entities are live) |
 | `main3d.ts` | composition + `window.__play3d` probe | — |
 | `chunkRing.ts`, `atlasPack.ts` | pure: integer chunk keys, nearest-first ring, shelf packer | real (tested) |
 
@@ -74,7 +75,7 @@ world seam.
 ```
 cd packages/client && node_modules/.bin/vite --config vite.config.play3d.ts --force
 # → http://localhost:5243/play3d.html
-node dev/play3dShots.mjs          # the LOOK gate: dev/play3d-shots/*.png
+node dev/play3dShots.mjs          # S1's standalone LOOK gate — REMOVED in S2 (the page is live now; see play3dLive.mjs)
 ```
 
 `node_modules` note: this worktree's root `node_modules` is a real
@@ -132,7 +133,7 @@ headless shell is not downloaded on this rig.
 - **Input** is the dev page's; S2 adapts `InputManager`/`touch.ts`
   through a raycast pick.
 
-### Next (S2 — THE GROUND AND THE STANDING WORLD, live)
+### Next as written at S1 (superseded by S2 below)
 
 1. `LiveWorld` over `ClientGame` chunks (the seam is `WorldSource3D`);
    entities → `EntityBillboard` (humanoid + beast), interpolation from
@@ -143,3 +144,140 @@ headless shell is not downloaded on this rig.
    meshes with painter face atlases.
 3. Contour plateau geometry + cliff face atlas; water shader plane.
 4. Real-hardware fps probe on the M4 in Dawnmead as the standing gate.
+
+---
+
+## S2 — THE LIVING WORLD (wired to the real game) — SHIPPED
+
+**What it is:** `play3d.html` now signs in through the production
+`ClientGame` over `/ws` (the shared rig-36 backend through the vite
+proxy), streams the server's chunks into the S1 ground streamer, stands
+every Player/Npc entity up as a billboard on the production rigs at the
+2D client's own interpolation timeline, predicts the own body exactly
+as main.ts does (the same `game.update(now)` call), takes click-to-move
+/ click-to-use / click-to-strike through a heightfield pick, mounts the
+DOM chrome index.html carries (login, chat, hotbar, the Character case,
+the dock, the Display bench, vitals, speech bubbles, waypoint/party
+pointers, the net pill, the crossing veil), and survives a plane
+crossing by dropping and refilling the world under the body.
+
+### Modules added / changed
+
+| file | what | real / placeholder |
+| --- | --- | --- |
+| `src/ui/viewAdapter.ts` (**shared**, type-only) | `ViewAdapter`: `screenAnchor`, `pickWorld`, `camera {scale, zoom, targetZoom, setZoom, stepZoom}`, the Display-bench flags. `waypointHud`, `partyHud`, `speechBubbles`, `displaySettings` take it instead of `Renderer`; the 2D `Renderer` satisfies it structurally (main.ts unchanged; a compile-time assertion in `play3dPure.test.ts` proves it) | real |
+| `liveWorld.ts` | `WorldSource3D` over `ClientGame.world`; `ready()` false until the wire delivered the chunk; absent-chunk answers = the 2D client's (elev 0, ground undefined = solid) | real |
+| `ground.ts` | + `ready` gate (no empty stand-ins), `refresh()` (evicts records whose chunk object or `rev` moved — patches AND neighbour fringe bumps — for re-admit + re-bake), `reset()` (plane crossing) | real; re-bake grain is the whole chunk (the 2D strip re-bake is finer) |
+| `entityBillboard.ts` | the body card, generalised: `BodyKind = humanoid \| beast`; `drawHumanoid`+`LegSolver` or `drawBeast`+`LegRig` (`beastSpec`); feet/pole/facing rotated by camera yaw; paint gated on moved/settling/pose-turn/kit-change/idle cadence; `setKind` swaps the kit without a new mesh; nameplate painted on the card in the 2D inks | real; dialect looks, legless painters, owls, mounts, ragdolls not ported |
+| `bodies.ts` | `EntityStage`: walks `game.entities`, samples `buffer.sampleSmoothed(game.renderTime())`, derives the kind from meta (appearance → humanoid; humanoid-monster roster → humanoid in def colour; else beast from `npcDef`), disposes bodies the frame they vanish; own body = `predictor.renderPos()` + `game.aim` + `effectiveOwnPose` + `game.equipment` | real; ItemDrop/ResourceNode/Prop/Projectile/BuildSite not stood up; dead bodies hidden |
+| `pick.ts` | pure ray-march + bisect against `heightAt` (tested) | real |
+| `input.ts` | `PointerRig`: either-button drag orbits, wheel dollies, a left press under 5 px is a click on release, no context menu. `LiveInput extends InputManager`: THE KEYS FOLLOW THE CAMERA (`moveAxes` rotated by orbit yaw — pad stick and touch ride the same turn), focus/attack target is a hidden sink so a click never swings, `attackHeld` adds the Attack bit for the click-strike pulse | real |
+| `view.ts` | `Play3DView implements ViewAdapter` over the Three camera (project with terrain height; behind-lens points pushed off-screen for the pointers; `scale` = px/tile at the orbit depth; zoom ⇄ dolly; `pickWorld` = pick.ts) | real |
+| `vitals.ts` | HP bar + combat level as DOM (the 2D client paints its vitals on canvas) | real |
+| `shell.ts` | the chrome: loginFlow, ChatUI (with local `/3d …` commands), Hotbar, Panels (pack/worn kit/skills; explicit verbs), dock rail (Pack / Skills / Settings only), Display bench via the adapter, LookCreator, SpeechBubbles, Waypoint/Party HUDs, net pill, crossing veil, `GameEvents` | real; the other screens are named-unmounted |
+| `main3d.ts` | composition: frame order = pointer → orbit; aim from the cursor pick (re-picked only when the mouse moved); `game.update`; `ground.refresh` when `worldVersion` moved; stream around the predicted body under 6 ms; sky follows body + server clock (`clockHoursNow` → sun elevation → `setDay`); bodies; chrome; post. THE CLICK: foe in reach → aim + Attack pulse; target in reach → interactNpc / pickupWalk / interact; loot → pickupWalk; foe out of reach → walk to it; else `walkTo` (pathfinder) or "No path there." | real |
+| `play3d.html` | index.html's `#login` and `#hud` scaffolding copied verbatim (+ `#focus-sink`, `#hud3d`, `#vitals3d` styles) | real |
+| `dev/play3dLive.mjs` | the LOOK gate: sign in as the probe, `/museum` plane check, THE VERIFIED TELEPORT (re-send until the predictor lands), settle, click-walk through the page's own click law, crossing proof | real |
+
+### Laws that hold (S2 additions)
+
+- **One timeline, both doors.** Remote bodies render at
+  `game.renderTime()` through `sampleSmoothed`; the own body at
+  `predictor.renderPos()`. Nothing in `src/play3d` re-derives
+  interpolation or prediction.
+- **The wire is the ground.** A chunk stands up only after the server
+  dealt it; a chunk whose `rev` moved (patch or neighbour fringe) is
+  torn down and re-admitted; a plane crossing resets the ring. There
+  is no second world model.
+- **The keys follow the camera.** W walks where the camera looks; the
+  server sees an ordinary move vector.
+- **A click never swings by accident.** The InputManager's mouse target
+  is a hidden sink; the Attack bit comes from the keymap, the pad, or a
+  deliberate click on a foe in reach.
+- **The chrome reads a seam.** Every DOM piece that pins to the world
+  reads `ViewAdapter`; the 2D Renderer is one implementation, the 3D
+  view another. That seam is the ONLY shared-file change of this
+  program (type-only).
+
+### How to run (S2)
+
+```
+cd packages/client && ../../node_modules/.bin/vite --config vite.config.play3d.ts --force
+# → http://localhost:5243/play3d.html  (proxies /ws,/dev,/voice → :8814)
+node dev/play3dLive.mjs               # the LOOK gate: dev/play3d-shots/s2-*.png
+```
+
+(`packages/client/node_modules` is a dangling symlink in this worktree;
+use the root `node_modules/.bin/vite`.)
+
+Controls: click = walk / use / strike · drag = orbit · wheel = dolly ·
+WASD (camera-relative) · Space attack · I / K / O screens · Esc close ·
+F2 the confession · chat `/3d night|day|clock|post|ink|tilt|hud`.
+Probe: `window.__play3d.{setCamera, day, post, ink, tilt, click,
+settle, stats, dispose}`, `window.dcGame`.
+
+### Gates (S2 commit)
+
+- `npm run typecheck` green (all packages — the 2D client compiles
+  against the adapter unchanged); `npm run test -w @arx/client` 1050
+  pass (4 new: pick, kindKey, elevLevels, + the Renderer-satisfies-
+  ViewAdapter assertion); `check:cycles` at baseline.
+- Shots (1440×900, dpr 1, headless Chrome — LOOK only), live against
+  rig-36 as `perf12_probe`: `s2-interiors` (/tp −430 −290, click-walked
+  2.75 tiles), `s2-interiors-low`, `s2-meadow` (/tp 42 20, click-walked
+  1.94 tiles), `s2-meadow-close`, `s2-meadow-night`, `s2-museum-plane`
+  (the `/museum` crossing: store 25 → ring 25/25 on plane `museum`,
+  0 entities, 0 faces).
+- Headless indications at the interiors scene: ~105 draws, ~64k tris,
+  9 programs, 30/30 chunks painted, 1742 faces, 452 standing instances
+  in 41 draws, 73 bodies over 72 entities, ground textures 92 MB.
+  Meadow: ~64 draws, 1883 instances in 24 draws, 22 bodies. Frame ms
+  sits at the headless rAF cap; not an fps claim.
+
+### Known gaps (S2 ledger — what is NOT there yet)
+
+- **Structures / props.** Walls, doors, fences, hedges, docks, awnings,
+  signs, stations, chests, lamps as bodies, the Waking Ring, gravestones
+  — only what the flat bake paints (floors, paths, rugs) plus
+  trees/saplings/wild flora stand up. The interiors scene reads as
+  floors without walls. → W2.
+- **Entities not stood up:** ItemDrop (loot bags), ResourceNode bodies
+  beyond tile art, Prop, Projectile (tracers), BuildSite. Dead bodies
+  hide instead of ragdolling; corpses/loot piles absent.
+- **Body dialects not ported:** goblin/skeleton/kobold/gnoll/golem/
+  ogre/skral/hobgoblin looks (they paint as plain humanoids in the
+  def colour at a rough stature), oozes/bats/adders (legless
+  painters), owls, mounts, worn-light auras, status FX, hit flashes
+  beyond `hurt`, sheathed carry, draw charge.
+- **FX / water / grass:** no particles, no status ambience, no water
+  shader (water is the bake's flat colour), no GPU grass (the
+  `grassGpu*` lane is unwired), no footprints, no weather.
+- **Lighting:** billboards are unlit and receive no shadows; sun/fill
+  are the S1 rig; interiors are not darkened; the day curve is a
+  cosine of the server clock, not the 2D sky's palette. → W3.
+- **Camera:** orbit only; no collision with cliffs/walls, no auto-yaw
+  on walk, no zoom-to-interior. → W4.
+- **Chrome not mounted:** station/bank/shop/build/stable screens,
+  loot panel/ground list, quest journal, map, social, arena, keys,
+  companions, beast hall, dialogue cinema, banners/ceremonies, audio,
+  pad UI ring (UiNav), touch controls, build mode. Clicking a bench in
+  reach says so in chat.
+- **Re-bake grain:** a tile patch re-bakes the whole chunk (geometry,
+  statics, texture); the 2D client's strip re-bake is finer.
+- **Interiors** are not resolved as rooms (no roof fade / region veil).
+
+### Next — the workstreams (from docs/perspective-review-and-3d-client-plan.md)
+
+1. **W2 — structures as geometry.** `PropKind` registry: flat
+   billboard / proxy mesh with painted faces (walls, fences, hedges,
+   docks as extruded runs textured by the painter face atlas) /
+   ground decal / animated sprite; loot bags, projectiles, corpses.
+2. **W3 — lighting.** Shadow-receiving billboards (sample the shadow
+   map in the billboard fragment), CSM, the 2D sky palette driving
+   sun/fog/tint, interior darkening + lamp warmth, water plane.
+3. **W4 — camera.** Collision-aware orbit (cliffs/walls push the
+   dolly in), soft auto-yaw on long walks, interior framing, the
+   pitch ceiling revisited once bodies can foreshorten honestly.
+4. **W5 — the door.** The Classic/Immersive switch on the front door
+   and in Settings, one login shelf, shared token; a real-hardware
+   fps probe on the M4 in Dawnmead as the standing gate.

@@ -5,6 +5,6 @@
  * (foundations F5.1); returns the walk-over box the frame loop keeps
  * honest to the server's pref.
  */
-import type { Renderer } from '../render/renderer.js';
-export declare function initDisplaySettings(renderer: Renderer, setLootPref: (on: boolean) => void): HTMLInputElement | null;
+import type { ViewAdapter } from './viewAdapter.js';
+export declare function initDisplaySettings(renderer: ViewAdapter, setLootPref: (on: boolean) => void): HTMLInputElement | null;
 //# sourceMappingURL=displaySettings.d.ts.map

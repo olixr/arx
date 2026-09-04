@@ -11,21 +11,13 @@
  * atlas page it touches: one draw call per (chunk, page). Eviction
  * disposes the instance buffers; the atlas is shared and stays.
  *
- * ENTITIES — an EntityBillboard is a per-body canvas painted by the
- * production humanoid rig (rig.ts drawHumanoid on a LegSolver gait,
- * optional CapeSim cloth on the one wind field) and uploaded as a
- * CanvasTexture ONLY when the body is visible and its pose moved
- * (walking, settling, or the slow idle breath cadence). The ~20 lines
- * of projection glue are the July spike's, with one addition: the
- * facing and the solved feet are rotated by the camera yaw before they
- * are painted, so an orbiting camera sees the body's true relative
- * facing (yaw 0 = the 2D game's frame, so `relDir = dir + yaw`).
+ * ENTITIES live in entityBillboard.ts (S2 moved them out): a per-body
+ * canvas painted by the production rigs and uploaded only on change.
  *
- * Pixel densities: statics at 32 px/tile (the 2D game's TILE_PX),
- * bodies at 56 px/tile (the spike's readable close-up density).
+ * Pixel density: statics at 32 px/tile (the 2D game's TILE_PX).
  */
 import * as THREE from 'three';
-import { Tile, type ChunkData, type Look } from '@arx/shared';
+import { Tile, type ChunkData } from '@arx/shared';
 import { ShelfPacker } from './atlasPack.js';
 import { type BillboardClock } from './billboardMaterial.js';
 export declare const STATIC_PX = 32;
@@ -91,44 +83,5 @@ export interface ChunkStatics {
  * feet height (tile centre). Returns one mesh per atlas page touched.
  */
 export declare function buildChunkStatics(chunk: ChunkData, atlas: SpriteAtlas, clock: BillboardClock, groundY: (wx: number, wy: number) => number): ChunkStatics;
-export interface HumanoidKind {
-    bodyColor: string;
-    look?: Look;
-    capeId?: string;
-    size?: number;
-    weaponItem?: string;
-    headItem?: string;
-    bodyItem?: string;
-}
-export declare class EntityBillboard {
-    readonly kind: HumanoidKind;
-    private readonly clock;
-    readonly mesh: THREE.Mesh;
-    private readonly buf;
-    private readonly canvas;
-    private readonly ctx;
-    private readonly tex;
-    private readonly mat;
-    private readonly depthMat;
-    private readonly legs;
-    private readonly cape;
-    private readonly kneeMemory;
-    private readonly depthMemory;
-    private readonly feet;
-    private restfulSince;
-    private lastPaintMs;
-    private lastX;
-    private lastY;
-    /** Confession: repaints (each is one texture upload). */
-    paints: number;
-    constructor(kind: HumanoidKind, clock: BillboardClock, seed?: number);
-    get textureBytes(): number;
-    /**
-     * Advance the rig (movement IS the animation driver) and repaint if
-     * the body is visible and something moved. Returns true on repaint.
-     */
-    update(wx: number, wy: number, groundY: number, dir: number, dt: number, nowMs: number, camYaw: number, visible: boolean): boolean;
-    dispose(): void;
-}
 export {};
 //# sourceMappingURL=sprites.d.ts.map

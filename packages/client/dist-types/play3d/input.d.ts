@@ -1,32 +1,26 @@
-/**
- * THE HAND ON THE CAMERA (play3d S1) — keyboard + pointer for the
- * skeleton. Drag orbits (yaw/pitch), wheel dollies, WASD walks the
- * target body camera-relative. Deltas ACCUMULATE between frames and
- * are consumed once per frame by the engine, so input never touches
- * the camera outside the frame loop (no mid-frame tearing of the
- * orbit pose) and a burst of wheel events lands as one dolly.
- *
- * S2 mounts the real InputManager / touch.ts adapter; this stays the
- * dev-page fallback.
- */
-export declare class Input3D {
+import { InputManager } from '../input/inputManager.js';
+export declare class PointerRig {
     private readonly canvas;
-    readonly keys: Set<string>;
     private dragX;
     private dragY;
     private wheel;
-    private dragging;
+    private down;
+    private pointerId;
+    private startX;
+    private startY;
     private lastX;
     private lastY;
-    private readonly onKeyDown;
-    private readonly onKeyUp;
+    private travelled;
+    /** A left click landed (screen CSS px). */
+    onClick: ((sx: number, sy: number) => void) | null;
+    /** The left button rose (after a click or a drag). */
+    onRelease: (() => void) | null;
     private readonly onPointerDown;
     private readonly onPointerMove;
     private readonly onPointerUp;
     private readonly onWheel;
+    private readonly onContext;
     private readonly onBlur;
-    /** Single-press hook (toggles). */
-    onKey: ((code: string) => void) | null;
     constructor(canvas: HTMLCanvasElement);
     /** Read-and-zero the accumulated drag/wheel into `out`. */
     consume(out: {
@@ -34,11 +28,18 @@ export declare class Input3D {
         dragY: number;
         wheel: number;
     }): void;
-    /** WASD/arrows → (strafe, advance) in -1..1. */
-    axes(out: {
-        strafe: number;
-        advance: number;
-    }): void;
     dispose(): void;
+}
+export declare class LiveInput extends InputManager {
+    /** The orbit yaw the keys follow (set by the frame loop). */
+    cameraYaw: number;
+    /** A left press on a foe, held until release (the click-attack). */
+    attackHeld: boolean;
+    private readonly turned;
+    moveAxes(): {
+        mx: number;
+        my: number;
+    };
+    buttons(): number;
 }
 //# sourceMappingURL=input.d.ts.map

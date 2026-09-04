@@ -1,5 +1,5 @@
 import type { ClientGame } from '../game/clientGame.js';
-import type { Renderer } from '../render/renderer.js';
+import type { ViewAdapter } from './viewAdapter.js';
 /**
  * THE PARTY WAYFINDER — edge pills for fellows beyond the screen.
  *
@@ -14,7 +14,7 @@ import type { Renderer } from '../render/renderer.js';
 export declare class PartyHud {
     private readonly pills;
     /** Per-frame from the main loop. Pass hidden=true to suppress. */
-    update(game: ClientGame, renderer: Renderer, hidden: boolean): void;
+    update(game: ClientGame, renderer: ViewAdapter, hidden: boolean): void;
     /** Get or build the pill for a member — built once, repositioned forever. */
     private pill;
 }

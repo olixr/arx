@@ -1,6 +1,6 @@
 import { EntityKind, type EntityId } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
-import type { Renderer } from '../render/renderer.js';
+import type { ViewAdapter } from './viewAdapter.js';
 /**
  * THE SPOKEN AIR — words standing over the head that said them.
  *
@@ -72,7 +72,7 @@ export declare class SpeechBubbles {
     private readonly layer;
     private readonly bubbles;
     private veiled;
-    constructor(game: ClientGame, renderer: Renderer);
+    constructor(game: ClientGame, renderer: ViewAdapter);
     /**
      * Stand words over a speaker's head. The one door: chat routes
      * eid-carrying lines here, and any future system (a boss taunt, a

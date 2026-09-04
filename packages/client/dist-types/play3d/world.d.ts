@@ -8,8 +8,9 @@
  * WorldSource applies (TILE_SKIP transparent, a flat zone levels the
  * ground under it, a zone with an elev layer stamps it verbatim). So
  * the skeleton renders the very tiles a player at spawn is served — no
- * server needed. S2 adds LiveWorld over ClientGame's streamed chunks;
- * everything above this seam is untouched by that swap.
+ * server needed. S2's LiveWorld (liveWorld.ts) is the second
+ * implementation, over ClientGame's streamed chunks; everything above
+ * this seam is untouched by the swap.
  *
  * Edge-harmony: the zone's border profile is published to the worldgen
  * fields exactly as the server does at boot, so the meadow around the
@@ -25,6 +26,12 @@ export interface WorldSource3D {
     ensure(cx: number, cy: number): ChunkData;
     /** The chunk if already present (no generation side-effect). */
     peek(cx: number, cy: number): ChunkData | undefined;
+    /**
+     * True when `ensure` can answer NOW. A generated world always can; a
+     * streamed world (LiveWorld) only once the server has sent the chunk
+     * — the streamer waits rather than standing up an empty tile field.
+     */
+    ready(cx: number, cy: number): boolean;
     groundAt(tx: number, ty: number): number | undefined;
     detailAt(tx: number, ty: number): number;
     elevAt(tx: number, ty: number): number;
@@ -46,6 +53,7 @@ export declare class StandaloneWorld extends ChunkStore implements WorldSource3D
     constructor(seed?: number, zones?: ZoneDef[]);
     ensure(cx: number, cy: number): ChunkData;
     peek(cx: number, cy: number): ChunkData | undefined;
+    ready(): boolean;
     groundAt(tx: number, ty: number): number | undefined;
     detailAt(tx: number, ty: number): number;
     elevAt(tx: number, ty: number): number;

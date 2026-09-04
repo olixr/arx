@@ -29,6 +29,16 @@
  *
  * Lamps found while scanning a chunk are reported to the sky rig so
  * point lights can find them (lights.ts).
+ *
+ * S2 — THE LIVE GROUND: a streamed world answers `ready` false until
+ * the server has dealt a chunk, and the streamer waits for it (no empty
+ * stand-in). Every record remembers the chunk OBJECT and its `rev`;
+ * `refresh()` (called when ClientGame.worldVersion moves) evicts any
+ * record whose chunk was replaced, patched (rev bump) or fringe-bumped
+ * by a neighbour's change, and the ring re-admits it next update with
+ * fresh geometry, statics and a fresh bake — the 2D client's own
+ * re-bake law, at chunk grain. `reset()` drops everything (a plane
+ * crossing: the store under us was emptied).
  */
 import * as THREE from 'three';
 import { CHUNK_SIZE, Tile, type ChunkData } from '@arx/shared';
@@ -74,6 +84,9 @@ interface ChunkRec {
   levels: number[];
   statics: ChunkStatics | null;
   faces: number;
+  /** The chunk object stood up, and its rev at that moment. */
+  chunk: ChunkData;
+  rev: number;
 }
 
 /** The 2D client's level list: min..max, level 0 only when pits exist. */
@@ -164,7 +177,7 @@ export class GroundStreamer {
     ringAround(ccx, ccy, LOAD_RING, this.ring);
     for (const e of this.ring) {
       const key = packChunk(e.cx, e.cy);
-      if (!this.recs.has(key)) this.admit(key, e.cx, e.cy);
+      if (!this.recs.has(key) && this.world.ready(e.cx, e.cy)) this.admit(key, e.cx, e.cy);
     }
     // Evict beyond the wider ring.
     for (const rec of this.recs.values()) {
@@ -240,6 +253,8 @@ export class GroundStreamer {
       levels: [],
       statics: null,
       faces: hf.faceCount,
+      chunk,
+      rev: chunk.rev ?? 0,
     };
     this.recs.set(key, rec);
     this.stats.faces += hf.faceCount;
@@ -350,8 +365,29 @@ export class GroundStreamer {
     this.recs.delete(rec.key);
   }
 
-  dispose(): void {
+  /**
+   * The world moved under us: evict every record whose chunk was
+   * replaced, patched or fringe-bumped. Returns the number evicted;
+   * the next update() re-admits them nearest first.
+   */
+  refresh(): number {
+    let n = 0;
+    for (const rec of [...this.recs.values()]) {
+      const cur = this.world.peek(rec.cx, rec.cy);
+      if (cur === rec.chunk && (cur.rev ?? 0) === rec.rev) continue;
+      this.evict(rec);
+      n++;
+    }
+    return n;
+  }
+
+  /** Drop every chunk (plane crossing) — the ring refills from the new store. */
+  reset(): void {
     for (const rec of [...this.recs.values()]) this.evict(rec);
+  }
+
+  dispose(): void {
+    this.reset();
     this.group.removeFromParent();
   }
 }

@@ -5,12 +5,12 @@
  * (foundations F5.1); returns the walk-over box the frame loop keeps
  * honest to the server's pref.
  */
-import type { Renderer } from '../render/renderer.js';
+import type { ViewAdapter } from './viewAdapter.js';
 import { FOOTPRINT_TUNE } from '../render/footprints.js';
 import { UI_SIZES, setUiSize, uiSize } from './kit/scale.js';
 import type { StageResTier } from '../render/stage/renderScale.js';
 
-export function initDisplaySettings(renderer: Renderer, setLootPref: (on: boolean) => void): HTMLInputElement | null {
+export function initDisplaySettings(renderer: ViewAdapter, setLootPref: (on: boolean) => void): HTMLInputElement | null {
   let walkoverBox: HTMLInputElement | null = null;
     const rows = document.getElementById('display-rows')!;
     const toggle = (label: string, initial: boolean, apply: (on: boolean) => void): void => {

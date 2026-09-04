@@ -29,6 +29,16 @@
  *
  * Lamps found while scanning a chunk are reported to the sky rig so
  * point lights can find them (lights.ts).
+ *
+ * S2 — THE LIVE GROUND: a streamed world answers `ready` false until
+ * the server has dealt a chunk, and the streamer waits for it (no empty
+ * stand-in). Every record remembers the chunk OBJECT and its `rev`;
+ * `refresh()` (called when ClientGame.worldVersion moves) evicts any
+ * record whose chunk was replaced, patched (rev bump) or fringe-bumped
+ * by a neighbour's change, and the ring re-admits it next update with
+ * fresh geometry, statics and a fresh bake — the 2D client's own
+ * re-bake law, at chunk grain. `reset()` drops everything (a plane
+ * crossing: the store under us was emptied).
  */
 import * as THREE from 'three';
 import { type SpriteAtlas } from './sprites.js';
@@ -97,6 +107,14 @@ export declare class GroundStreamer {
     private advanceBake;
     private finishBake;
     private evict;
+    /**
+     * The world moved under us: evict every record whose chunk was
+     * replaced, patched or fringe-bumped. Returns the number evicted;
+     * the next update() re-admits them nearest first.
+     */
+    refresh(): number;
+    /** Drop every chunk (plane crossing) — the ring refills from the new store. */
+    reset(): void;
     dispose(): void;
 }
 //# sourceMappingURL=ground.d.ts.map

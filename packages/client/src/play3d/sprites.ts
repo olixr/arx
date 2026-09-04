@@ -11,25 +11,13 @@
  * atlas page it touches: one draw call per (chunk, page). Eviction
  * disposes the instance buffers; the atlas is shared and stays.
  *
- * ENTITIES — an EntityBillboard is a per-body canvas painted by the
- * production humanoid rig (rig.ts drawHumanoid on a LegSolver gait,
- * optional CapeSim cloth on the one wind field) and uploaded as a
- * CanvasTexture ONLY when the body is visible and its pose moved
- * (walking, settling, or the slow idle breath cadence). The ~20 lines
- * of projection glue are the July spike's, with one addition: the
- * facing and the solved feet are rotated by the camera yaw before they
- * are painted, so an orbiting camera sees the body's true relative
- * facing (yaw 0 = the 2D game's frame, so `relDir = dir + yaw`).
+ * ENTITIES live in entityBillboard.ts (S2 moved them out): a per-body
+ * canvas painted by the production rigs and uploaded only on change.
  *
- * Pixel densities: statics at 32 px/tile (the 2D game's TILE_PX),
- * bodies at 56 px/tile (the spike's readable close-up density).
+ * Pixel density: statics at 32 px/tile (the 2D game's TILE_PX).
  */
 import * as THREE from 'three';
-import { DEFAULT_LOOK, PoseState, Tile, hashCoords, treeOfSapling, type ChunkData, type Look, CHUNK_SIZE } from '@arx/shared';
-import { LegSolver, drawHumanoid } from '../render/rig.js';
-import { CapeSim, capeStyle, drawCape } from '../render/cape.js';
-import { windAtInto, type WindSample } from '../render/grass.js';
-import { TREE_TILES } from '@arx/shared';
+import { Tile, hashCoords, treeOfSapling, type ChunkData, CHUNK_SIZE, TREE_TILES } from '@arx/shared';
 import { paintTree, saplingModel, treeExtent, treeModel, treeVariantHash } from '../render/trees.js';
 import { paintPlant, plantModel } from '../render/crops.js';
 import { ShelfPacker } from './atlasPack.js';
@@ -43,7 +31,6 @@ import {
 
 export const STATIC_PX = 32;
 export const ATLAS_PAGE_PX = 2048;
-const ENTITY_PX = 56;
 /** The 2.5D ground squash the painters were tuned under. */
 const Y_SQUASH = 0.6;
 
@@ -312,216 +299,4 @@ export function buildChunkStatics(
       for (const m of mats) m.dispose();
     },
   };
-}
-
-// ---------------------------------------------------------- entities
-
-export interface HumanoidKind {
-  bodyColor: string;
-  look?: Look;
-  capeId?: string;
-  size?: number;
-  weaponItem?: string;
-  headItem?: string;
-  bodyItem?: string;
-}
-
-const CANVAS_W = 224;
-const CANVAS_H = 192;
-const ANCHOR_X = 112;
-const ANCHOR_Y = 164;
-/** Idle bodies still breathe: repaint at least this often when visible. */
-const IDLE_REPAINT_MS = 180;
-
-const wind: WindSample = { bx: 0, by: 0, s: 0, l: 0 };
-
-export class EntityBillboard {
-  readonly mesh: THREE.Mesh;
-  private readonly buf: BillboardBuffer;
-  private readonly canvas: HTMLCanvasElement;
-  private readonly ctx: CanvasRenderingContext2D;
-  private readonly tex: THREE.CanvasTexture;
-  private readonly mat: THREE.ShaderMaterial;
-  private readonly depthMat: THREE.ShaderMaterial;
-  private readonly legs: LegSolver;
-  private readonly cape: CapeSim | null;
-  private readonly kneeMemory: number[] = [0, 0];
-  private readonly depthMemory = { mainBehind: false };
-  private readonly feet: Array<{ x: number; y: number; lift: number }> = [];
-  private restfulSince = 0;
-  private lastPaintMs = -1e9;
-  private lastX = NaN;
-  private lastY = NaN;
-  /** Confession: repaints (each is one texture upload). */
-  paints = 0;
-
-  constructor(
-    readonly kind: HumanoidKind,
-    private readonly clock: BillboardClock,
-    seed = 7,
-  ) {
-    this.legs = new LegSolver(kind.size ?? 1);
-    this.cape = kind.capeId ? new CapeSim(capeStyle(kind.capeId), seed) : null;
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = CANVAS_W;
-    this.canvas.height = CANVAS_H;
-    this.ctx = this.canvas.getContext('2d')!;
-    this.tex = new THREE.CanvasTexture(this.canvas);
-    this.tex.colorSpace = THREE.SRGBColorSpace;
-    this.tex.magFilter = THREE.LinearFilter;
-    this.tex.minFilter = THREE.LinearFilter;
-    this.tex.generateMipmaps = false;
-    this.buf = new BillboardBuffer(1);
-    const w = CANVAS_W / ENTITY_PX;
-    const h = CANVAS_H / ENTITY_PX;
-    this.buf.set(0, 0, 0, 0, w, h, 0, 0, 1, 1, ANCHOR_X / CANVAS_W, (CANVAS_H - ANCHOR_Y) / CANVAS_H, 0);
-    this.buf.commit();
-    this.buf.geometry.boundingSphere!.radius = Math.max(w, h);
-    this.mat = billboardMaterial(this.tex, clock, { alphaTest: 0.35, sway: false });
-    this.depthMat = billboardDepthMaterial(this.tex, clock, { alphaTest: 0.35, sway: false });
-    this.mesh = new THREE.Mesh(this.buf.geometry, this.mat);
-    this.mesh.customDepthMaterial = this.depthMat;
-    this.mesh.castShadow = true;
-    this.mesh.frustumCulled = true;
-    this.mesh.name = 'entity';
-  }
-
-  get textureBytes(): number {
-    return CANVAS_W * CANVAS_H * 4;
-  }
-
-  /**
-   * Advance the rig (movement IS the animation driver) and repaint if
-   * the body is visible and something moved. Returns true on repaint.
-   */
-  update(
-    wx: number,
-    wy: number,
-    groundY: number,
-    dir: number,
-    dt: number,
-    nowMs: number,
-    camYaw: number,
-    visible: boolean,
-  ): boolean {
-    const moved = Number.isNaN(this.lastX) ? 0 : Math.hypot(wx - this.lastX, wy - this.lastY);
-    if (moved > 0.001) this.restfulSince = nowMs;
-    this.lastX = wx;
-    this.lastY = wy;
-    // The rig always advances (its gait state is continuous) — only
-    // the PAINT is gated. Feet land where the body walks.
-    const pose = this.legs.update(wx, wy, dir, dt);
-    this.buf.setOrigin(0, wx, groundY, wy);
-    this.buf.geometry.boundingSphere!.center.set(wx, groundY + 1, wy);
-    const settling = nowMs - this.restfulSince < 1400;
-    const due = nowMs - this.lastPaintMs >= IDLE_REPAINT_MS;
-    if (!visible || !(moved > 0.001 || settling || due)) return false;
-    this.lastPaintMs = nowMs;
-
-    // Camera-relative frame: rotate world offsets by the camera yaw so
-    // the painted facing band is the one the orbiting camera sees.
-    const cy = Math.cos(camYaw);
-    const sy = Math.sin(camYaw);
-    const relDir = pose.dir + camYaw;
-    const S = ENTITY_PX;
-    const feet = this.feet;
-    feet.length = pose.feet.length;
-    for (let i = 0; i < pose.feet.length; i++) {
-      const f = pose.feet[i]!;
-      const dx = f.x - wx;
-      const dz = f.y - wy;
-      const rx = dx * cy - dz * sy;
-      const rz = dx * sy + dz * cy;
-      let o = feet[i];
-      if (!o) feet[i] = o = { x: 0, y: 0, lift: 0 };
-      o.x = ANCHOR_X + rx * S;
-      o.y = ANCHOR_Y + rz * S * Y_SQUASH;
-      o.lift = f.lift;
-    }
-
-    const ctx = this.ctx;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-    const k = this.kind;
-    const moving = moved > 0.001;
-    const restT = Math.min(1, Math.max(0, (nowMs - this.restfulSince - 350) / 900));
-    const tSec = nowMs / 1000;
-
-    let paintCape: (() => void) | null = null;
-    let capeFront = false;
-    if (this.cape) {
-      const capeK = k.size ?? 1;
-      const hSc = 1 + (1 - pose.wScale) * 0.55;
-      const az = (pose.rise + pose.bob * 0.45 + 0.44 * hSc) * capeK;
-      windAtInto(wind, wx, wy, tSec);
-      this.cape.update(wx, wy, az, dir, dt, wind, tSec, capeK);
-      capeFront = this.cape.front(Math.sin(relDir));
-      const sim = this.cape;
-      const capeId = k.capeId!;
-      paintCape = () => {
-        const pts = sim.nodes.map((nd) => {
-          const dx = nd.x - wx;
-          const dz = nd.y - wy;
-          return {
-            x: ANCHOR_X + (dx * cy - dz * sy) * S,
-            y: ANCHOR_Y + (dx * sy + dz * cy) * S * Y_SQUASH - nd.z * S,
-          };
-        });
-        const breadthK = Math.hypot(Math.sin(relDir), Math.cos(relDir) * 0.45);
-        drawCape(ctx, pts, capeStyle(capeId), S * capeK, {
-          hurt: false,
-          breadthK,
-          hemGlow: Math.min(1, sim.hemSpd / 4.5),
-          tSec,
-          phase: sim.phase,
-        });
-      };
-    }
-
-    if (paintCape && !capeFront) paintCape();
-    drawHumanoid(ctx, {
-      x: ANCHOR_X,
-      y: ANCHOR_Y,
-      scale: S,
-      dir: relDir,
-      pose: moving ? PoseState.Walk : PoseState.Idle,
-      poseT: 1,
-      drawT: 0,
-      restT,
-      nowMs,
-      feet,
-      bob: pose.bob,
-      rise: pose.rise,
-      wScale: pose.wScale,
-      poleX: pose.poleX * cy - pose.poleY * sy,
-      poleY: pose.poleX * sy + pose.poleY * cy,
-      poleStrength: pose.poleStrength,
-      runF: pose.runF,
-      align: pose.align,
-      kneeMemory: this.kneeMemory,
-      depthMemory: this.depthMemory,
-      bodyColor: k.bodyColor,
-      hurt: false,
-      isOwn: false,
-      weaponItem: k.weaponItem,
-      bodyItem: k.bodyItem,
-      headItem: k.headItem,
-      hasCape: this.cape !== null,
-      look: k.look ?? DEFAULT_LOOK,
-      size: k.size,
-      gatherPhase: tSec,
-    });
-    if (paintCape && capeFront) paintCape();
-    outlineRing(ctx, CANVAS_W, CANVAS_H, Math.max(1.25, S * 0.04));
-    this.tex.needsUpdate = true;
-    this.paints++;
-    return true;
-  }
-
-  dispose(): void {
-    this.buf.dispose();
-    this.mat.dispose();
-    this.depthMat.dispose();
-    this.tex.dispose();
-  }
 }
