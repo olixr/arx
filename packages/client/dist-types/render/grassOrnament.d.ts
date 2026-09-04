@@ -40,7 +40,6 @@ export declare class GrassOrnamentRenderer {
     private readonly uScale;
     private readonly uYScale;
     private readonly uOrigin;
-    private readonly uQ;
     private readonly uViewport;
     private readonly uTime;
     private readonly uBobGain;

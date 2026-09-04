@@ -197,7 +197,6 @@ export class GrassOrnamentRenderer {
   private readonly uScale: WebGLUniformLocation;
   private readonly uYScale: WebGLUniformLocation;
   private readonly uOrigin: WebGLUniformLocation;
-  private readonly uQ: WebGLUniformLocation;
   private readonly uViewport: WebGLUniformLocation;
   private readonly uTime: WebGLUniformLocation;
   private readonly uBobGain: WebGLUniformLocation;
@@ -228,7 +227,6 @@ export class GrassOrnamentRenderer {
     this.uScale = gl.getUniformLocation(program, 'uScale')!;
     this.uYScale = gl.getUniformLocation(program, 'uYScale')!;
     this.uOrigin = gl.getUniformLocation(program, 'uOrigin')!;
-    this.uQ = gl.getUniformLocation(program, 'uQ')!;
     this.uViewport = gl.getUniformLocation(program, 'uViewport')!;
     this.uTime = gl.getUniformLocation(program, 'uTime')!;
     this.uBobGain = gl.getUniformLocation(program, 'uBobGain')!;
@@ -303,7 +301,6 @@ export class GrassOrnamentRenderer {
     gl.uniform1f(this.uScale, proj.scale);
     gl.uniform1f(this.uYScale, proj.yScale);
     gl.uniform2f(this.uOrigin, proj.ox, proj.oy);
-    gl.uniform1f(this.uQ, proj.q);
     gl.uniform2f(this.uViewport, proj.wCss, proj.hCss);
     gl.uniform1f(this.uTime, timeSec);
     gl.uniform1f(this.uBobGain, bobGain);

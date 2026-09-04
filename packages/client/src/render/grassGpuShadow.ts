@@ -145,7 +145,6 @@ export class GrassShadowRenderer {
   private readonly uScale: WebGLUniformLocation;
   private readonly uYScale: WebGLUniformLocation;
   private readonly uOrigin: WebGLUniformLocation;
-  private readonly uQ: WebGLUniformLocation;
   private readonly uViewport: WebGLUniformLocation;
   private readonly uDisturb: WebGLUniformLocation;
   private readonly uDisturbN: WebGLUniformLocation;
@@ -175,7 +174,6 @@ export class GrassShadowRenderer {
     this.uScale = gl.getUniformLocation(program, 'uScale')!;
     this.uYScale = gl.getUniformLocation(program, 'uYScale')!;
     this.uOrigin = gl.getUniformLocation(program, 'uOrigin')!;
-    this.uQ = gl.getUniformLocation(program, 'uQ')!;
     this.uViewport = gl.getUniformLocation(program, 'uViewport')!;
     this.uDisturb = gl.getUniformLocation(program, 'uDisturb')!;
     this.uDisturbN = gl.getUniformLocation(program, 'uDisturbN')!;
@@ -237,7 +235,6 @@ export class GrassShadowRenderer {
     gl.uniform1f(this.uScale, proj.scale);
     gl.uniform1f(this.uYScale, proj.yScale);
     gl.uniform2f(this.uOrigin, proj.ox, proj.oy);
-    gl.uniform1f(this.uQ, proj.q);
     gl.uniform2f(this.uViewport, proj.wCss, proj.hCss);
     gl.uniform1f(this.uTime, timeSec);
     gl.uniform1f(this.uWindGain, opts.windGain ?? 0.12);

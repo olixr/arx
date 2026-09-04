@@ -43,7 +43,6 @@ export declare class GrassShadowRenderer {
     private readonly uScale;
     private readonly uYScale;
     private readonly uOrigin;
-    private readonly uQ;
     private readonly uViewport;
     private readonly uDisturb;
     private readonly uDisturbN;

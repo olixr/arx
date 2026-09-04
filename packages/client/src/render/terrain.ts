@@ -4431,18 +4431,7 @@ function organicCellPath(
   bnds: Bnd[],
   toX: (wx: number) => number,
   toY: (wy: number) => number,
-  // THE LEANED CLIP (Epic B / FR): a single 2-arg projector that maps a
-  // world point straight to screen. Perspective is NOT separable (screen-x
-  // depends on world-y through the divide) so it cannot ride the toX/toY
-  // 1-arg maps — when present, the whole cell is traced in SCREEN space
-  // (every corner AND every quadratic control point projected). Absent,
-  // the exact toX/toY id path below runs unchanged (byte-identical q=0).
-  project?: (wx: number, wy: number) => { x: number; y: number },
 ): void {
-  if (project) {
-    organicCellPathProjected(path, li, wob, I, J, mask, bnds, project);
-    return;
-  }
   const x0 = toX(I - 0.5);
   const y0 = toY(J - 0.5);
   const x1 = toX(I + 0.5);
@@ -4479,77 +4468,6 @@ function organicCellPath(
     case 14: M(cT); Lc(x1, y0); Lc(x1, y1); Lc(x0, y1); L(cL); Q(0, cT); break;
     case 5: M(cT); Q(0, cR); Lc(x1, y1); L(cB); Q(1, cL); Lc(x0, y0); break;
     default: M(cR); Q(0, cB); Lc(x0, y1); L(cL); Q(1, cT); Lc(x1, y0); break; // 10
-  }
-  path.closePath();
-}
-
-/**
- * organicCellPath's screen-space twin (Epic B / FR water reflections under
- * the lean). Identical marching-squares topology, but every vertex and
- * every quadratic control point is run through `project` (world→screen), so
- * the traced curve carries the lean's perspective divide that a canvas
- * affine matrix cannot. Curves stay smooth because the projection is
- * continuous — the control point is PROJECTED, never interpolated. Only
- * reached when a projector is supplied (never at q=0).
- */
-function organicCellPathProjected(
-  path: Path2D,
-  li: number,
-  wob: number,
-  I: number,
-  J: number,
-  mask: number,
-  bnds: Bnd[],
-  project: (wx: number, wy: number) => { x: number; y: number },
-): void {
-  // The cell's four corners, each projected as a combined (x,y) point.
-  const TL = project(I - 0.5, J - 0.5);
-  const TR = project(I + 0.5, J - 0.5);
-  const BR = project(I + 0.5, J + 0.5);
-  const BL = project(I - 0.5, J + 0.5);
-  if (mask === 15) {
-    // A full cell is a projected quad, not an axis-aligned rect.
-    path.moveTo(TL.x, TL.y);
-    path.lineTo(TR.x, TR.y);
-    path.lineTo(BR.x, BR.y);
-    path.lineTo(BL.x, BL.y);
-    path.closePath();
-    return;
-  }
-  const cT = edgeCross(li, wob, I, J, 0);
-  const cR = edgeCross(li, wob, I, J, 1);
-  const cB = edgeCross(li, wob, I, J, 2);
-  const cL = edgeCross(li, wob, I, J, 3);
-  const M = (p: Pt): void => {
-    const q = project(p[0], p[1]);
-    path.moveTo(q.x, q.y);
-  };
-  const L = (p: Pt): void => {
-    const q = project(p[0], p[1]);
-    path.lineTo(q.x, q.y);
-  };
-  const Lp = (c: { x: number; y: number }): void => path.lineTo(c.x, c.y);
-  const Q = (k: number, end: Pt): void => {
-    const bd = bnds[k]!;
-    const c = project(bd.cx, bd.cy);
-    const e = project(end[0], end[1]);
-    path.quadraticCurveTo(c.x, c.y, e.x, e.y);
-  };
-  switch (mask) {
-    case 1: M(cT); Q(0, cL); Lp(TL); break;
-    case 2: M(cT); Lp(TR); L(cR); Q(0, cT); break;
-    case 4: M(cR); Lp(BR); L(cB); Q(0, cR); break;
-    case 8: M(cL); Lp(BL); L(cB); Q(0, cL); break;
-    case 3: M(cL); Lp(TL); Lp(TR); L(cR); Q(0, cL); break;
-    case 12: M(cL); Q(0, cR); Lp(BR); Lp(BL); break;
-    case 9: M(cT); Q(0, cB); Lp(BL); Lp(TL); break;
-    case 6: M(cT); Lp(TR); Lp(BR); L(cB); Q(0, cT); break;
-    case 7: M(cL); Lp(TL); Lp(TR); Lp(BR); L(cB); Q(0, cL); break;
-    case 11: M(cR); Q(0, cB); Lp(BL); Lp(TL); Lp(TR); L(cR); break;
-    case 13: M(cT); Q(0, cR); Lp(BR); Lp(BL); Lp(TL); L(cT); break;
-    case 14: M(cT); Lp(TR); Lp(BR); Lp(BL); L(cL); Q(0, cT); break;
-    case 5: M(cT); Q(0, cR); Lp(BR); L(cB); Q(1, cL); Lp(TL); break;
-    default: M(cR); Q(0, cB); Lp(BL); L(cL); Q(1, cT); Lp(TR); break; // 10
   }
   path.closePath();
 }
@@ -6600,10 +6518,6 @@ export function waterRegionPath(
   ground: GroundSampler,
   bounds: { minTx: number; maxTx: number; minTy: number; maxTy: number },
   cells?: number[],
-  // When supplied (the lean, q>0), the region is traced in SCREEN space so
-  // the clip carries the perspective divide; absent, the exact world-coord
-  // id path runs unchanged (byte-identical q=0). See organicCellPath.
-  project?: (wx: number, wy: number) => { x: number; y: number },
 ): Path2D | null {
   const wob = BLOB_LAYERS[WATER_LI]!.wobble;
   const id = (v: number): number => v;
@@ -6641,7 +6555,7 @@ export function waterRegionPath(
       if (mask === 0) continue;
       path ??= new Path2D();
       const bnds = mask === 15 ? [] : boundaryCurvesFor(WATER_LI, wob, i, j, mask);
-      organicCellPath(path, WATER_LI, wob, i, j, mask, bnds, id, id, project);
+      organicCellPath(path, WATER_LI, wob, i, j, mask, bnds, id, id);
     }
   }
   return path;

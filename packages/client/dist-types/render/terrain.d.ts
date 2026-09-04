@@ -408,10 +408,7 @@ export declare function waterRegionPath(ground: GroundSampler, bounds: {
     maxTx: number;
     minTy: number;
     maxTy: number;
-}, cells?: number[], project?: (wx: number, wy: number) => {
-    x: number;
-    y: number;
-}): Path2D | null;
+}, cells?: number[]): Path2D | null;
 /** Water tiles that share a shoreline (no foam between each other). */
 export declare function isWaterTile(t: number | undefined): boolean;
 //# sourceMappingURL=terrain.d.ts.map

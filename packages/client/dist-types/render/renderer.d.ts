@@ -90,11 +90,6 @@ export declare class Camera {
      *  camera's look-at row, <1 farther, >1 nearer; exactly 1 at q=0. The
      *  one factor billboard scale / elevation lift / shadow radius ride. */
     depthScale(wy: number): number;
-    /** depthScale (see above) at a leaned SCREEN row, for a point known
-     *  only by its already-projected screen-y — ground cast-shadows extrude
-     *  by this so they foreshorten with the receding ground instead of
-     *  standing at ortho length and floating off the caster. 1 at q=0. */
-    depthScaleAtScreenY(sy: number, h: number): number;
     /**
      * THE DEVICE GRID: the real pixel lattice belongs to the BACKING
      * STORE, not CSS space. The context is scaled by the (possibly
@@ -1230,7 +1225,7 @@ export declare class Renderer {
      */
     private projAirWorldY;
     /** Screen-px offset of a shadow cast from `hTiles` above the ground. */
-    castOffset(hTiles: number, depthMul?: number): Vec2;
+    castOffset(hTiles: number): Vec2;
     /**
      * Gather the frame's shadow-casting lights: strong scene lights plus
      * last frame's dynamic ones, gated by darkness (point-light shadows

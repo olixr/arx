@@ -77,19 +77,10 @@ export interface LightView {
     h: number;
     scale: number;
     yScale: number;
-    /**
-     * Screen-space ORTHO origin (the q=0 worldToScreen(0,0)). The map is
-     * built at the ortho origin so the final composite can apply the FULL
-     * perspective homography exactly once (THE SHADE LEARNS TO LEAN) — a
-     * leaned origin here would double-lean. At q=0 the ortho origin equals
-     * the leaned origin, so the map build is byte-identical.
-     */
+    /** Screen-space origin (worldToScreen(0,0)); the map is built at it
+     *  and composited as one full-screen stretch. */
     ox: number;
     oy: number;
-    /** THE CAMERA LEARNS TO LEAN (Epic B): the perspective lean. 0 = the
-     *  pitched-ortho camera — the composite short-circuits to the exact
-     *  single full-screen stretch shipped so far. */
-    q: number;
 }
 declare function poolStopsFor(zOverR: number): ReadonlyArray<readonly [number, number]>;
 /** Test seam for THE PROFILE IS TOTAL (lightAdmission.test.ts) — the
@@ -152,8 +143,6 @@ export declare class LightingSystem {
     private readonly patches;
     private frame;
     private offScaleRebuilds;
-    /** Scratch for the leaned composite's strip blit — one per frame. */
-    private readonly strip;
     /** THE CROSSING: lamp patches are position-keyed on the current
      *  plane — drop them whole when the world changes under the lights. */
     dropWorld(): void;

@@ -45,13 +45,10 @@ uniform vec2 uRes;
 out vec2 vUV;
 out vec4 vCol;
 void main() {
-  // THE CAMERA LEARNS TO LEAN (Epic B, B-1b): per-vertex homogeneous w.
-  // A screen-space quad passes aW=1 and this is exactly the old
-  // orthographic map (byte-identical). A perspective GROUND quad passes
-  // each corner's weight w = 1/depthScale; placing the vertex at
-  // clip·w with gl_Position.w = w makes the hardware interpolate the
-  // texture PERSPECTIVE-CORRECT across the trapezoid — 4 corners
-  // suffice for a planar tile, no subdivision.
+  // Per-vertex homogeneous w (kept from Epic B, harmless): every quad
+  // passes aW=1, so this is exactly the orthographic map. A non-affine
+  // effect could hand each corner its own weight and the hardware would
+  // interpolate perspective-correct across the quad.
   vec2 c = (aPos / uRes) * 2.0 - 1.0;
   gl_Position = vec4(c.x * aW, -c.y * aW, 0.0, aW);
   vUV = aUV;
@@ -70,8 +67,8 @@ void main() {
 
 /** Bytes per vertex: pos 2f (8) + uv 2f (8) + color 4×u8 (4). */
 // pos(2f) + uv(2f) + color(4×u8, one float slot) + w(1f) = 6 floats.
-// The `w` (B-1b) is 1 for every screen-space quad — byte-identical to
-// the pre-B1b 20-byte format on screen output; ground quads vary it.
+// The `w` is 1 for every quad — byte-identical to the pre-B1b 20-byte
+// format on screen output.
 const VERTEX_BYTES = 24;
 const VERTS_PER_QUAD = 6;
 
@@ -1037,39 +1034,14 @@ export class GlStage implements GpuStageBackend {
         const x1 = it.dw;
         const y1 = it.dh;
         // Corners: (0,0) (dw,0) (0,dh) (dw,dh) through the matrix.
-        let p0x = e;
-        let p0y = f;
-        let p1x = a * x1 + e;
-        let p1y = b * x1 + f;
-        let p2x = cM * y1 + e;
-        let p2y = d * y1 + f;
-        let p3x = a * x1 + cM * y1 + e;
-        let p3y = b * x1 + d * y1 + f;
-        // Per-corner homogeneous weight — 1 for a screen quad (byte-
-        // identical), the projected weight for a perspective GROUND quad.
-        let w0 = 1;
-        let w1 = 1;
-        let w2 = 1;
-        let w3 = 1;
-        if (it.kind === 'quad' && it.ground) {
-          // THE CAMERA LEARNS TO LEAN (B-1b): four explicit projected
-          // corners (device px = dpr·CSS) override the affine rect, and
-          // gl_Position.w carries the perspective (see the vertex shader).
-          const gc = it.ground.c;
-          const gw = it.ground.w;
-          p0x = dpr * gc[0]; // TL
-          p0y = dpr * gc[1];
-          p1x = dpr * gc[2]; // TR
-          p1y = dpr * gc[3];
-          p2x = dpr * gc[4]; // BL
-          p2y = dpr * gc[5];
-          p3x = dpr * gc[6]; // BR
-          p3y = dpr * gc[7];
-          w0 = gw[0];
-          w1 = gw[1];
-          w2 = gw[2];
-          w3 = gw[3];
-        }
+        const p0x = e;
+        const p0y = f;
+        const p1x = a * x1 + e;
+        const p1y = b * x1 + f;
+        const p2x = cM * y1 + e;
+        const p2y = d * y1 + f;
+        const p3x = a * x1 + cM * y1 + e;
+        const p3y = b * x1 + d * y1 + f;
         let u0 = 0;
         let v0 = 0;
         let u1 = 1;
@@ -1093,13 +1065,13 @@ export class GlStage implements GpuStageBackend {
         const pg = Math.round(cg * al);
         const pb = Math.round(cb * al);
         const pa = Math.round(255 * al);
-        const emit = (px: number, py: number, uu: number, vv: number, pw = 1): void => {
+        const emit = (px: number, py: number, uu: number, vv: number): void => {
           const fo = v * 6; // 6 floats: pos.xy, uv.xy, color(float 4, u8-aliased), w
           f32[fo] = px;
           f32[fo + 1] = py;
           f32[fo + 2] = uu;
           f32[fo + 3] = vv;
-          f32[fo + 5] = pw; // aW (B-1b): 1 for screen quads, corner weight for ground
+          f32[fo + 5] = 1; // aW: the per-vertex homogeneous weight, always 1 (screen quads)
           const bo = v * VERTEX_BYTES + 16;
           u8[bo] = pr;
           u8[bo + 1] = pg;
@@ -1107,12 +1079,12 @@ export class GlStage implements GpuStageBackend {
           u8[bo + 3] = pa;
           v++;
         };
-        emit(p0x, p0y, u0, v0, w0);
-        emit(p1x, p1y, u1, v0, w1);
-        emit(p2x, p2y, u0, v1, w2);
-        emit(p2x, p2y, u0, v1, w2);
-        emit(p1x, p1y, u1, v0, w1);
-        emit(p3x, p3y, u1, v1, w3);
+        emit(p0x, p0y, u0, v0);
+        emit(p1x, p1y, u1, v0);
+        emit(p2x, p2y, u0, v1);
+        emit(p2x, p2y, u0, v1);
+        emit(p1x, p1y, u1, v0);
+        emit(p3x, p3y, u1, v1);
       }
     }
     // One upload, then one draw per run.

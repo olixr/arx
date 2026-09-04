@@ -1,15 +1,13 @@
 import type { Blade } from './grass.js';
 /** The frame's projection uniforms for the grass shaders — the exact
- *  `projectWorld` inputs (unsnapped origin under a lean). Shared by the
- *  blade and ornament programs so the whole meadow rides one homography. */
+ *  `projectWorld` inputs (the q=0 affine). Shared by the blade and
+ *  ornament programs so the whole meadow rides one projection. */
 export interface GrassProj {
     scale: number;
     yScale: number;
-    /** Screen origin in CSS px (camOriginX/Y, unsnapped under lean). */
+    /** Screen origin in CSS px (camOriginX/Y). */
     ox: number;
     oy: number;
-    /** Lean parameter. */
-    q: number;
     /** Viewport in CSS px. */
     wCss: number;
     hCss: number;
@@ -131,47 +129,39 @@ export declare function bandNdcRemap(SW: number, SH: number, AW: number, AH: num
  * pinned reference of the q=0 affine map (grassGpu.test.ts); no live caller.
  */
 export declare function grassViewMatrix(scale: number, yScale: number, ox: number, oy: number, w: number, h: number, out?: Float32Array): Float32Array;
-/** The perspective-divisor floor — mirrors cameraProject's MIN_W. Kept in
- *  lockstep by grassProjectParity.test.ts (a divergence surfaces the moment
- *  a sample lands in the clamped near field). */
-export declare const GRASS_MIN_W = 0.04;
 /**
  * THE ONE PROJECTION in GLSL (Epic "THE ONE RENDER", phase B2). The grass
  * vertex shaders map every blade/bloom world point to `gl_Position` through
- * THIS function — the exact `projectWorld` homography (render/
- * cameraProject.ts), not a private ortho matrix. It replaces the affine
- * `grassViewMatrix` + `gl_Position.w = 1` approximation that made the meadow
- * parallax faster than the world under a lean and edge-crawl against bodies.
+ * THIS function — the exact `projectWorld` affine (render/cameraProject.ts,
+ * the q=0 path), not a private ortho matrix, so the meadow parallaxes at
+ * exactly the player's rate and never edge-crawls against bodies.
  *
- * The camera uniforms `(uScale, uYScale, uOrigin, uQ, uViewport)` carry the
+ * The camera uniforms `(uScale, uYScale, uOrigin, uViewport)` carry the
  * frame's projection; `uOrigin` is the screen origin the feed computes with
- * `camOriginX/Y(..., q)` — the UNSNAPPED origin under a lean, so there is no
- * pre-divide sawtooth to amplify (the jitter fix). Per vertex we form the
- * ortho screen point, apply the perspective divide about the viewport centre
- * (the same `wdiv = max(MIN_W, 1 − q·(sy0−cy))`), then map to NDC with the
- * stage's Y-flip. Because the divide is done HERE, `gl_Position.w = 1` is
- * now exactly right (the pre-divided screen point, not an affine guess).
+ * `camOriginX/Y`. Per vertex we form the screen point, then map to NDC with
+ * the stage's Y-flip (`gl_Position.w = 1`).
  *
- * At q=0 the divide vanishes through the branch (byte-identical affine feed),
- * so short and tall grass ride one law: a blade tip recedes with its root
+ * Short and tall grass ride one law: a blade tip moves with its root
  * because wind/trample move the point in WORLD space BEFORE this projection.
  * Pinned equal to `projectWorld` by grassProjectParity.test.ts via the JS
  * mirror `grassProjectMirror` below (the `grassWindMirror` pattern).
  */
 export declare function grassProjectGlsl(): string;
 /**
- * A JS transcription of grassProjectGlsl's screen-space math — FOR THE
- * PARITY TEST ONLY. Given the camera uniforms and a world point it returns
- * the final SCREEN position (post-divide, pre-NDC) and the divisor `wDiv`
- * the homography applied (`depthScale = 1/wDiv`). Asserting it equals
- * `projectWorld` proves the shader parallaxes the meadow at exactly the
- * player's rate. Keep it in lockstep with grassProjectGlsl (the test fails
- * if they drift). `uOrigin` is passed in already resolved (camOriginX/Y).
+ * A JS transcription of grassProjectGlsl's screen-space math — for the
+ * parity test and the tall-band bbox sweep. Given the camera uniforms and
+ * a world point it returns the SCREEN position (pre-NDC). Asserting it
+ * equals `projectWorld` proves the shader parallaxes the meadow at exactly
+ * the player's rate. Keep it in lockstep with grassProjectGlsl (the test
+ * fails if they drift). `uOrigin` is passed in already resolved
+ * (camOriginX/Y). Alloc-free when `out` is given.
  */
-export declare function grassProjectMirror(scale: number, yScale: number, ox: number, oy: number, q: number, wx: number, wy: number, w: number, h: number): {
+export declare function grassProjectMirror(scale: number, yScale: number, ox: number, oy: number, wx: number, wy: number, out?: {
     x: number;
     y: number;
-    wDiv: number;
+}): {
+    x: number;
+    y: number;
 };
 /**
  * THE ONE WIND in GLSL. Returns `vec4(bendX, bendY, strength, lum)` —

@@ -49,13 +49,10 @@ export interface GrassFrame {
   /** World→screen zoom (Camera.scale) and vertical squash (yScale). */
   scale: number;
   yScale: number;
-  /** Screen origins in CSS px (camOriginX / camOriginY). Snapped at q=0;
-   *  UNSNAPPED under a lean (q≠0), matching cameraProject / the world feed —
-   *  the pre-divide snap would sawtooth-jitter through the perspective divide. */
+  /** Screen origins in CSS px (camOriginX / camOriginY), matching the
+   *  world feed. */
   ox: number;
   oy: number;
-  /** Lean parameter (Camera.q). 0 = flat/ortho, >0 = pitched perspective. */
-  q: number;
   /** Frame size in CSS px. */
   wCss: number;
   hCss: number;
@@ -275,7 +272,6 @@ export class GrassGpuLayer {
       yScale: f.yScale,
       ox: f.ox,
       oy: f.oy,
-      q: f.q,
       wCss: f.wCss,
       hCss: f.hCss,
     };
@@ -338,7 +334,6 @@ export class GrassGpuLayer {
       yScale: f.yScale,
       ox: f.ox,
       oy: f.oy,
-      q: f.q,
       wCss: f.wCss,
       hCss: f.hCss,
     };
@@ -445,8 +440,8 @@ export class GrassGpuLayer {
     // the wind/trample margins folded in.
     type Box = { x0: number; y0: number; x1: number; y1: number };
     const boxes: (Box | null)[] = [];
-    const proj = (wx: number, wy: number): { x: number; y: number; wDiv: number } =>
-      grassProjectMirror(f.scale, f.yScale, f.ox, f.oy, f.q, wx, wy, f.wCss, f.hCss);
+    const proj = (wx: number, wy: number): { x: number; y: number } =>
+      grassProjectMirror(f.scale, f.yScale, f.ox, f.oy, wx, wy);
     for (const band of bands) {
       let minBx = Infinity;
       let maxBx = -Infinity;
@@ -522,7 +517,6 @@ export class GrassGpuLayer {
       yScale: f.yScale,
       ox: f.ox,
       oy: f.oy,
-      q: f.q,
       wCss: f.wCss,
       hCss: f.hCss,
     };

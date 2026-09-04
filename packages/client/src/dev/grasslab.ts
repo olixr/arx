@@ -84,7 +84,6 @@ function viewProj(): GrassProj {
     yScale,
     ox: vw / 2 - cx * scale,
     oy: vh / 2 - cy * scale * yScale,
-    q: 0,
     wCss: vw,
     hCss: vh,
   };

@@ -186,59 +186,6 @@ export interface GrassBounds {
  * grass.test.ts pins it.
  */
 export declare function laneUses(lane: number, t: Tile | null | undefined): boolean;
-/**
- * THE MEADOW RIDES THE LEAN (Epic B, FG). A row cell is baked once (its
- * tile frame frozen into the sprite pixels) but blitted for many frames
- * as the camera pans and leans. A cell is ONE tile deep (a single `ty`),
- * so under a pitch-only lean the whole cell sits at ONE depth — the
- * ground beneath it compresses UNIFORMLY, no across-cell trapezoid. So
- * the blit only has to re-derive the row's CURRENT tile frame and scale
- * the cached sprite by the ratio to its baked frame: `dsx = fcSx/spSx`
- * (footprint width) and `dsy = fcSy/spSy` (row depth + height). Applied
- * about the sprite's (already perspective-projected) anchor, this lands
- * every tile exactly where the leaned ground puts it — no spill, no
- * stair-step at the grass/lane seam — while the blades keep standing.
- *
- * At the bake instant fc === the baked frame, so ds = 1 and the blit
- * reproduces the live path byte-for-byte. At q=0 every tile frame is the
- * camera-position-independent ortho constant (sx=scale, sy=scale·yScale),
- * so ds would be 1 too — but float subtraction of large coordinates is
- * not exactly 1, so callers MUST gate this on an explicit `q !== 0` and
- * leave the q=0 path untouched (byte-identity by construction).
- */
-export declare function rowLeanScale(fcSx: number, fcSy: number, spSx: number, spSy: number): {
-    dsx: number;
-    dsy: number;
-};
-/**
- * THE MEADOW RIDES THE GROUND QUAD (Epic B, clause 3). A baked row-cell
- * sprite is a rectangle in the FROZEN bake frame: the west tile's NW
- * ground corner sits at bake-CSS (0,0), one tile is `spSx`×`spSy` CSS px,
- * and the raster overhangs it by the bake margins (`mx` left, `my` above)
- * — the blade tips live in the `my` band above the ground line. So the
- * raster's four corners map to FIXED WORLD points (camera-independent):
- * left/right of the cell by `mx/spSx` tiles, and above/below by
- * `my/spSy` / `(hCss−my)/spSy` tile-rows. Projecting these four world
- * corners each frame (the exact ground-chunk construction) and drawing
- * the cached raster across the resulting trapezoid locks grass to the
- * ground and foreshortens it identically — no swim. Pure so grass.test
- * pins it; the caller projects the corners and weights them 1/depthScale.
- *
- *   (westX,northY) ── (eastX,northY)      raster TL/TR (blade tips)
- *        │                 │
- *   (westX,southY) ── (eastX,southY)      raster BL/BR (just past south)
- *
- * By construction `(eastX−westX)·spSx === wCss` and
- * `(southY−northY)·spSy === hCss` (the raster's CSS extent), and with
- * zero margins the corners collapse onto the cell's tile footprint
- * [cellTx‥cellTx+wCss/spSx] × [ty‥ty+hCss/spSy].
- */
-export declare function grassCellWorldCorners(cellTx: number, ty: number, spSx: number, spSy: number, mx: number, my: number, wCss: number, hCss: number): {
-    westX: number;
-    eastX: number;
-    northY: number;
-    southY: number;
-};
 export declare class GrassSystem {
     private readonly tiles;
     /** Position → live state, for waking tiles bodies move through. */
@@ -298,9 +245,6 @@ export declare class GrassSystem {
     /** This frame's cached-fill translation (drawUnder → flushShadows). */
     private cacheDx;
     private cacheDy;
-    /** THE SHADE BAKES ONCE (Epic1 B4): the strip the per-frame warp writes
-     *  into (q>0-only — untouched at q=0, byte-identical). */
-    private readonly underStrip;
     /**
      * THE MEADOW RIDES THE SHEAR: cadence-baked sprites for the two
      * lanes that could never join the calm canvas because they y-sort
@@ -351,24 +295,6 @@ export declare class GrassSystem {
      * stageDrainLive). Null = the classic canvas path, untouched.
      */
     stagePush: ((item: StageItem) => void) | null;
-    /**
-     * THE MEADOW RIDES THE LEAN (Epic B, FG): the frame's camera lean
-     * parameter `q`, set by the renderer each frame. When non-zero the
-     * cell blits re-scale their cached sprite to the row's current depth
-     * (see rowLeanScale); at 0 (the default, and legacy canvas mode) every
-     * blit runs the exact pre-lean path — byte-identical.
-     */
-    leanQ: number;
-    /**
-     * THE MEADOW RIDES THE GROUND QUAD (Epic B, clause 3): the frame's
-     * camera depth-scale, `wy → depthScale(wy)`, set by the renderer
-     * beside `leanQ`. Under a lean each row-cell blit re-projects its four
-     * frozen world corners and carries per-corner weights `1/depthScale`,
-     * so the cached raster is drawn as a perspective TRAPEZOID locked to
-     * the ground (the ground-chunk construction) instead of stretched by a
-     * single-depth affine — killing the swim. Null at q=0 (the affine path
-     * runs untouched, byte-identical). */
-    leanDepthScale: ((wy: number) => number) | null;
     private readonly stageLive;
     private readonly stageTexMap;
     private stageRevSeq;

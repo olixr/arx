@@ -262,11 +262,10 @@ test('bandNdcRemap identity-slot reproduces the plain screen NDC', () => {
   assert.ok(Math.abs(r.bx) < 1e-12 && Math.abs(r.by) < 1e-12);
 });
 
-test('grassProjectMirror q=0 is the plain affine (interleave bbox uses it)', () => {
-  const p = grassProjectMirror(48, 0.86, 500, 300, 0, 3, -2, 1000, 720);
+test('grassProjectMirror is the plain affine (interleave bbox uses it)', () => {
+  const p = grassProjectMirror(48, 0.86, 500, 300, 3, -2);
   assert.ok(Math.abs(p.x - (3 * 48 + 500)) < 1e-9);
   assert.ok(Math.abs(p.y - (-2 * 48 * 0.86 + 300)) < 1e-9);
-  assert.equal(p.wDiv, 1);
 });
 
 /**
