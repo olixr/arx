@@ -196,8 +196,7 @@ interface RunFrame {
 }
 
 function runFrame(rend: PaintHost, tile: Tile, tx: number, ty: number, game: ClientGame): RunFrame {
-  const ds = rend.camera.depthScale(ty + 0.5); // Epic B (FW): ds=1 at q=0 → byte-identical
-  const s = rend.camera.scale * ds;
+  const s = rend.camera.scale; // the lean is gone (epic/lean-out): one flat scale, no depth term
   const syT = s * rend.camera.yScale;
   const p = rend.camera.worldToScreen(tx + 0.5, ty + 0.5, rend.w, rend.h);
   let lift = game.world.elevAt(tx, ty) * ELEV_H * s;
@@ -358,10 +357,10 @@ function stoneItem(rend: PaintHost, f: RunFrame): DrawItem {
           const fyS = fyN + 0.25;
           const nC = segCourses(k);
           const H = nC * c;
-          const a = barrierPt(rend, tx, ty, px, s, baseY, syT, lift, 0, fyN, bp0);
+          const a = barrierPt(px, s, baseY, syT, 0, fyN, bp0);
           const ax = a.x;
           const ay = a.y;
-          const b = barrierPt(rend, tx, ty, px, s, baseY, syT, lift, 0, fyS, bp1);
+          const b = barrierPt(px, s, baseY, syT, 0, fyS, bp1);
           const bx = b.x;
           const by = b.y;
           const hw = BAND_HW * s;
@@ -817,10 +816,10 @@ function woodItem(rend: PaintHost, f: RunFrame): DrawItem {
       const bandHalf = (half: 'n' | 's') => {
         const fy0 = half === 'n' ? -0.5 : 0;
         const fy1 = fy0 + 0.5;
-        const a = barrierPt(rend, tx, ty, px, s, baseY, syT, lift, 0, fy0, bp0);
+        const a = barrierPt(px, s, baseY, syT, 0, fy0, bp0);
         const ax = a.x;
         const ay = a.y;
-        const b = barrierPt(rend, tx, ty, px, s, baseY, syT, lift, 0, fy1, bp1);
+        const b = barrierPt(px, s, baseY, syT, 0, fy1, bp1);
         const bx = b.x;
         const by = b.y;
         const hw = s * 0.05;
@@ -856,7 +855,7 @@ function woodItem(rend: PaintHost, f: RunFrame): DrawItem {
         ctx.fillStyle = NAIL;
         for (let i = 0; i < 4; i++) {
           const nfy = fy0 + i * 0.125;
-          const np = barrierPt(rend, tx, ty, px, s, baseY, syT, lift, 0, nfy, bp0);
+          const np = barrierPt(px, s, baseY, syT, 0, nfy, bp0);
           ctx.fillRect(np.x - s * 0.015, np.y - sillH - s * 0.015, s * 0.03, s * 0.03);
         }
         if (rend.outlineOn) {
@@ -886,7 +885,7 @@ function woodItem(rend: PaintHost, f: RunFrame): DrawItem {
         const fys = half === 'n' ? STUD_FY_N : STUD_FY_S;
         for (let i = 0; i < fys.length; i++) {
           const k = (half === 'n' ? 4 : 6) + i;
-          const foot = barrierPt(rend, tx, ty, px, s, baseY, syT, lift, k % 2 === 0 ? -0.065 : 0.065, fys[i]!, bp0);
+          const foot = barrierPt(px, s, baseY, syT, k % 2 === 0 ? -0.065 : 0.065, fys[i]!, bp0);
           const w = widthAt(k);
           stud(foot.x - w * 0.5, foot.y - sillH, w, bodyAt(k), true);
         }

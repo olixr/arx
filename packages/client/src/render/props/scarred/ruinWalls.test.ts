@@ -98,7 +98,6 @@ function rig(cells: Cell[], outlineOn = true): Rig {
       q: 0,
       scale: S,
       yScale: YS,
-      depthScale: () => 1,
       worldToScreen: (wx: number, wy: number) => ({ x: wx * S, y: wy * SYT }),
     },
     porchAt: () => false,
