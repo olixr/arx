@@ -5,6 +5,9 @@ import { DRAW_ORDER, SHELF, type DrawOrderItem } from './drawOrder.js';
 // ── helpers ──────────────────────────────────────────────────────────────
 const vol = (nearRow: number, strat?: number): DrawOrderItem => ({ sortY: nearRow, nearRow, strat });
 const body = (foot: number, strat?: number): DrawOrderItem => ({ sortY: foot, strat });
+/** A mature tree: a ground-rooted VOLUME whose near edge is its foot row
+ *  (renderer objectItem sets nearRow === sortY === ty+0.9). */
+const tree = (foot: number, strat?: number): DrawOrderItem => ({ sortY: foot, nearRow: foot, strat });
 
 /** Sort a bag and return an index array so ties are observable. */
 const order = (items: DrawOrderItem[]): DrawOrderItem[] => items.slice().sort(DRAW_ORDER);
@@ -206,4 +209,64 @@ test('CAUSE 2 exception never fires for billboards: a raised BODY over a ground 
   const raisedBody = body(11, 1); // a body on the terrace, south of the hedge
   const groundHedge = vol(10, 0);
   assert.deepEqual(order([raisedBody, groundHedge]), [groundHedge, raisedBody]);
+});
+
+// ── TREE vs HEDGE: a tree is a VOLUME, so it sorts by TRUE ground depth ─────
+
+test('FLAT tree-vs-hedge: a tree NORTH of a hedge draws BEHIND it, a tree SOUTH draws IN FRONT', () => {
+  // Same shelf (flat q=0). The tree's near edge is its foot row (ty+0.9); the
+  // hedge run's is its south edge (ty+1). North of the hedge ⇒ smaller row ⇒
+  // painted first ⇒ behind; south ⇒ larger row ⇒ painted last ⇒ in front.
+  const hedge = vol(20); // hedge tile row 19, south edge row 20
+  const north = tree(18.9); // tree tile row 18 ⇒ foot 18.9 (north of the hedge)
+  const south = tree(20.9); // tree tile row 20 ⇒ foot 20.9 (south of the hedge)
+  assert.deepEqual(order([hedge, north]), [north, hedge]); // tree then hedge ⇒ behind
+  assert.deepEqual(order([hedge, south]), [hedge, south]); // hedge then tree ⇒ in front
+});
+
+test('CROSS-SHELF (the bug): a ground tree in FRONT (south) of a RAISED hedge draws OVER it', () => {
+  // The reported defect: a hedge on a higher terrace (shelf 1) and a tree at
+  // ground (shelf 0) planted SOUTH of it. Before trees carried a near row the
+  // tree was a billboard, so SHELF dominated and the raised hedge drew over the
+  // tree even though the tree is physically in front. As a VOLUME the tree now
+  // flows through the front-base exception and its true (souther) ground row
+  // wins ⇒ the tree draws last, over the hedge.
+  const raisedHedge = vol(35, 1); // hedge on the terrace, south edge row 35
+  const groundTree = tree(36.9, 0); // tree at ground, foot two rows south / in front
+  assert.deepEqual(order([raisedHedge, groundTree]), [raisedHedge, groundTree]);
+  assert.deepEqual(order([groundTree, raisedHedge]), [raisedHedge, groundTree]);
+});
+
+test('CROSS-SHELF: a RAISED tree over a ground hedge that is SOUTH of it (in front) is occluded by the hedge', () => {
+  // The mirror case: a tree up on the terrace (shelf 1) and a hedge at ground
+  // (shelf 0) planted in FRONT (south). The ground hedge is genuinely nearer,
+  // so it draws last (over the raised tree's base) — no tree-over-hedge.
+  const raisedTree = tree(9.9, 1); // tree on the terrace (north/up)
+  const groundHedge = vol(11, 0); // hedge at ground, south / in front
+  assert.deepEqual(order([raisedTree, groundHedge]), [raisedTree, groundHedge]);
+  assert.deepEqual(order([groundHedge, raisedTree]), [raisedTree, groundHedge]);
+});
+
+test('CROSS-SHELF stays narrow: a raised tree genuinely IN FRONT of a ground hedge keeps SHELF and draws over it', () => {
+  // The front-base exception fires ONLY when the LOWER shelf is strictly south
+  // of the higher one. A raised tree whose foot is SOUTH of (in front of) a
+  // ground hedge is genuinely in front AND up ⇒ SHELF wins, raised tree on top.
+  const groundHedge = vol(10, 0); // hedge at ground, south edge row 10
+  const raisedTreeInFront = tree(11, 1); // tree up on the terrace, south of it
+  assert.deepEqual(order([raisedTreeInFront, groundHedge]), [groundHedge, raisedTreeInFront]);
+  // Exact same near row keeps SHELF too (conservative: raised stays on top).
+  const raisedTreeSameRow = tree(10, 1);
+  assert.deepEqual(order([raisedTreeSameRow, groundHedge]), [groundHedge, raisedTreeSameRow]);
+});
+
+test('REGRESSION GUARD: the tree fix does NOT touch player-vs-hedge — a raised BODY over a ground hedge still keeps SHELF', () => {
+  // A player/NPC/beast is a billboard (no nearRow); only trees became volumes.
+  // A raised body in front of a ground hedge still keeps SHELF exactly as
+  // before, so wall/hedge-vs-entity sort is unchanged.
+  const raisedBody = body(21, 1); // a player on the terrace, south of the hedge
+  const groundHedge = vol(20, 0);
+  assert.deepEqual(order([raisedBody, groundHedge]), [groundHedge, raisedBody]);
+  // …and a raised body over a ground hedge stays on top regardless of row.
+  const raisedBodyNorth = body(18, 1);
+  assert.deepEqual(order([groundHedge, raisedBodyNorth]), [groundHedge, raisedBodyNorth]);
 });
