@@ -1575,6 +1575,18 @@ export class Renderer {
    *  camera.q is clamped from this so the horizon stays above the viewport
    *  (and forced to 0 under the editor/shot camera). */
   leanTarget = 0;
+  /** THE ONE RENDER — B9: FACE / SCRATCH CELL CAP. Max DEVICE px per scratch
+   *  cell dimension under lean; a cell that projects larger bakes at this
+   *  ceiling and the GL quad upscales it to the full projected extent (see
+   *  faceCap.ts / GlStage.cellCapPx). Applies ONLY at q>0 (faceCapDim returns
+   *  undefined at q=0) so the flat look / golden gate is byte-identical.
+   *  0 = AUTO = the viewport's larger device dimension: any cell that fits the
+   *  screen is uncapped (sharp — structure faces, viewport-clipped, always
+   *  stay sharp), and only a cell geometrically LARGER than the screen (a run
+   *  or grass/particle row projecting past the horizon under lean) softens
+   *  gracefully. A positive value forces that device-px cap. Runtime-tunable
+   *  via `window.dcRenderer.faceCapPx`. */
+  faceCapPx = 0;
   /** Whether the GPU path actually drew this frame (→ skip the canvas2d
    *  coat and the tall y-sort pass; false → the baked meadow ran). */
   private grassGpuActive = false;
@@ -16870,6 +16882,11 @@ export class Renderer {
     const gl = this.stageWorldGl!;
     const list = this.stageWorldItems;
     if (list.length === 0 && !this.stageShadowPending) return;
+    // B9: the scratch-cell resolution ceiling for THIS flush — bounded under
+    // lean, 0 (off) at q=0 so flat cells are byte-identical. Covers both the
+    // shadow-layer draw and the world draw below; the quad upscales a capped
+    // cell to its full projected extent (see GlStage.cellCapPx / faceCap.ts).
+    gl.cellCapPx = this.faceCapDim() ?? 0;
     gl.begin(this.w, this.h, this.dpr(), null, this.stageScale());
     if (this.stageShadowPending) {
       // The prepass shadows: layer-rendered, composited once at the
@@ -16968,6 +16985,24 @@ export class Renderer {
       },
     });
     this.stageWorldStats.paints++;
+  }
+
+  /** THE ONE RENDER — B9: the scratch-cell resolution ceiling in effect THIS
+   *  frame (device px) — `undefined` at q=0 so a flat frame's cells are
+   *  byte-identical (the golden gate). Under lean: the tunable `faceCapPx`, or
+   *  AUTO (0) = the viewport's larger device dimension — a cell that fits the
+   *  screen is never capped (faces stay sharp), only one projecting larger than
+   *  the screen softens. Set on the world GL stage each frame and threaded into
+   *  the wall/structure-face pushes so a face/run/row projecting huge at zoom 2
+   *  bakes bounded and the quad upscales it, instead of minting a giant cell. */
+  private faceCapDim(): number | undefined {
+    // q=0 (the flat golden gate) and an explicit disable (`faceCapPx < 0`,
+    // the dev escape hatch) take no cap; a positive value forces that device-px
+    // ceiling; 0 (the default) is AUTO = the viewport's larger device dimension.
+    if (this.camera.q === 0 || this.faceCapPx < 0) return undefined;
+    return this.faceCapPx > 0
+      ? this.faceCapPx
+      : Math.ceil(Math.max(this.w, this.h) * this.dpr());
   }
 
   /**
