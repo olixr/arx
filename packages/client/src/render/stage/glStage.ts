@@ -25,6 +25,7 @@
 import { computeRuns } from './stageBatch.js';
 import { BLEND_GL_FUNC, blendNeedsAlphaTarget, blendNeedsOpaqueTarget } from './stageBlend.js';
 import { GPU_COST_SEED_MS_PER_MB, GPU_URGENT_MS, admitUpload, nextUploadCost, uploadEstMs } from './gpuBudget.js';
+import { faceCellDims } from '../faceCap.js';
 import type { GpuStageBackend, GpuStageOpts, StageItem, StagePaint, StageTexture } from './stageTypes.js';
 import { StageVram } from './stageVram.js';
 import type { EvictCandidate, VramLanes } from './stageVram.js';
@@ -167,6 +168,20 @@ export class GlStage implements GpuStageBackend {
    * it; the frame's own working set (~15-20 distinct classes) is far
    * under the cap, so nothing thrashes. */
   private static readonly SCRATCH_BUDGET = 320 * 1024 * 1024;
+  /**
+   * THE ONE RENDER — B9: FACE / SCRATCH CELL CAP (device px per dimension).
+   * The stage-wide ceiling on any paint cell's bake resolution — the renderer
+   * sets it under lean (q>0) and to 0 (off) at q=0, so the flat golden gate is
+   * untouched. Under lean the perspective projection can size a per-run scratch
+   * cell by a huge PROJECTED screen extent — a structure-face run, a grass row,
+   * or a particle run with one grain near the horizon — minting multi-GB cells
+   * (measured ~16GB at zoom 2, a GPU-crash risk). Capping the cell to this many
+   * device px per dimension and letting the GL quad SCALE the capped texture up
+   * to the full projected extent bounds the resident scratch: any on-screen-
+   * sized cell (≤ this) is byte-identical (k=1, sharp — faces stay sharp at
+   * normal zoom); only a cell larger than the ceiling softens gracefully. A
+   * per-item `capDim` overrides it. 0 = no cap. */
+  cellCapPx = 0;
   /** THE SCRATCH LEDGER: keyed paints keep their own exact-size
    *  canvas+texture and repaint/re-upload ONLY on a rev change — the
    *  wall-run lane's cure (~48MB/frame of identical wall strips
@@ -866,8 +881,13 @@ export class GlStage implements GpuStageBackend {
           cells[ri] = null;
           continue;
         }
-        const pwDev = Math.ceil(it.pw * dpr);
-        const phDev = Math.ceil(it.ph * dpr);
+        // B9: a face cell packs at its CAPPED resolution (`ep* ≤ capDim`); the
+        // quad upscales it. k=1 (no cap) is the old exact packing.
+        const { cw: pwDev, ch: phDev, k } = faceCellDims(
+          Math.ceil(it.pw * dpr),
+          Math.ceil(it.ph * dpr),
+          this.capFor(it),
+        );
         if (pwDev > GlStage.SHEET_CELL_W || phDev > GlStage.SHEET_CELL_H) {
           cells[ri] = null;
           continue;
@@ -904,7 +924,7 @@ export class GlStage implements GpuStageBackend {
         // never showed past [pw, ph] because the sentinel's UVs stop
         // there — the cell clip reproduces exactly that boundary.
         ctx.clip();
-        ctx.setTransform(dpr, 0, 0, dpr, sx - it.px * dpr, sy - it.py * dpr);
+        ctx.setTransform(dpr * k, 0, 0, dpr * k, sx - it.px * dpr * k, sy - it.py * dpr * k);
         it.paint(ctx);
         ctx.restore();
         sh.dirty = true;
@@ -971,10 +991,13 @@ export class GlStage implements GpuStageBackend {
         let u1 = 0;
         let v1 = 0;
         if (cell) {
+          // B9: the packed cell holds the CAPPED dims; the full-size quad
+          // (x0..x1) samples that capped region and GL upscales it.
+          const { cw: epw, ch: eph } = faceCellDims(pwDev, phDev, this.capFor(it));
           u0 = cell.gx / GlStage.SHEET_W;
           v0 = cell.gy / GlStage.SHEET_H;
-          u1 = (cell.gx + pwDev) / GlStage.SHEET_W;
-          v1 = (cell.gy + phDev) / GlStage.SHEET_H;
+          u1 = (cell.gx + epw) / GlStage.SHEET_W;
+          v1 = (cell.gy + eph) / GlStage.SHEET_H;
         } else if (
           it.key !== undefined &&
           it.rev !== undefined &&
@@ -986,10 +1009,15 @@ export class GlStage implements GpuStageBackend {
           u1 = 1;
           v1 = 1;
         } else {
-          const cw = Math.ceil(pwDev / 64) * 64;
-          const ch = Math.ceil(phDev / 64) * 64;
-          u1 = pwDev / cw;
-          v1 = phDev / ch;
+          // B9: the class-rounded scratch pair holds the CAPPED cell
+          // (`ep* ≤ capDim`); the quad geometry above stays full-size, so the
+          // UV span addresses the capped region and GL upscales it. k=1 (no
+          // cap) reduces to the old `pwDev/cw` mapping exactly.
+          const { cw: epw, ch: eph } = faceCellDims(pwDev, phDev, this.capFor(it));
+          const cw = Math.ceil(epw / 64) * 64;
+          const ch = Math.ceil(eph / 64) * 64;
+          u1 = epw / cw;
+          v1 = eph / ch;
         }
         const emitP = (px: number, py: number, uu: number, vv: number): void => {
           const fo = v * 6;
@@ -1202,13 +1230,24 @@ export class GlStage implements GpuStageBackend {
    * by the very next paint item — GL snapshots texture content at the
    * draw call, so sequential reuse is sound by spec.
    */
-  private paintScratch(it: { px: number; py: number; pw: number; ph: number; paint: (ctx: CanvasRenderingContext2D) => void }, firstVert: number): void {
+  /** B9: the effective cell cap for one paint — its own `capDim` if set, else
+   *  the stage-wide `cellCapPx` (0 → no cap). One place so the sheet pre-pass,
+   *  the vertex UV and the paint all agree by arithmetic. */
+  private capFor(it: { capDim?: number }): number | undefined {
+    return it.capDim ?? (this.cellCapPx > 0 ? this.cellCapPx : undefined);
+  }
+
+  private paintScratch(it: { px: number; py: number; pw: number; ph: number; capDim?: number; paint: (ctx: CanvasRenderingContext2D) => void }, firstVert: number): void {
     const gl = this.gl;
     const dpr = this.dpr;
     const pwDev = Math.ceil(it.pw * dpr);
     const phDev = Math.ceil(it.ph * dpr);
-    const cw = Math.ceil(pwDev / 64) * 64;
-    const ch = Math.ceil(phDev / 64) * 64;
+    // B9: bake at the CAPPED resolution (`ep* ≤ capDim`), never the full
+    // projected extent — the quad (full-size, sampling [0, ep*/c*]) upscales
+    // it. k=1 (no cap / q=0 / under the ceiling) is the old exact path.
+    const { cw: epw, ch: eph, k } = faceCellDims(pwDev, phDev, this.capFor(it));
+    const cw = Math.ceil(epw / 64) * 64;
+    const ch = Math.ceil(eph / 64) * 64;
     const cls = (cw / 64) * 4096 + ch / 64;
     let sc = this.scratch.get(cls);
     if (!sc) {
@@ -1244,7 +1283,9 @@ export class GlStage implements GpuStageBackend {
     const ctx = sc.ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, cw, ch);
-    ctx.setTransform(dpr, 0, 0, dpr, -it.px * dpr, -it.py * dpr);
+    // The paint draws in screen space; fold the cap scale `k` into the device
+    // transform so its content lands inside the capped `epw × eph` region.
+    ctx.setTransform(dpr * k, 0, 0, dpr * k, -it.px * dpr * k, -it.py * dpr * k);
     it.paint(ctx);
     gl.bindTexture(gl.TEXTURE_2D, sc.glTex);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
@@ -1280,8 +1321,13 @@ export class GlStage implements GpuStageBackend {
   private ensureKeyedEntry(it: StagePaint & { key: number; rev: number }): KeyedEntry | null {
     const gl = this.gl;
     const dpr = this.dpr;
-    const pwDev = Math.ceil(it.pw * dpr);
-    const phDev = Math.ceil(it.ph * dpr);
+    // B9: a keyed FACE cell is minted at the CAPPED resolution too (exact-size
+    // = the capped dims, so its UV span stays [0,1]); the quad upscales it.
+    const { cw: pwDev, ch: phDev } = faceCellDims(
+      Math.ceil(it.pw * dpr),
+      Math.ceil(it.ph * dpr),
+      this.capFor(it),
+    );
     let e = this.keyed.get(it.key);
     if (e && (e.w !== pwDev || e.h !== phDev)) {
       gl.deleteTexture(e.glTex);
@@ -1348,7 +1394,10 @@ export class GlStage implements GpuStageBackend {
       const ctx = e.ctx;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, e.w, e.h);
-      ctx.setTransform(dpr, 0, 0, dpr, -it.px * dpr, -it.py * dpr);
+      // B9: fold the cap scale into the transform so the screen-space paint
+      // lands inside the capped cell (e.w/e.h are already the capped dims).
+      const { k } = faceCellDims(Math.ceil(it.pw * dpr), Math.ceil(it.ph * dpr), this.capFor(it));
+      ctx.setTransform(dpr * k, 0, 0, dpr * k, -it.px * dpr * k, -it.py * dpr * k);
       it.paint(ctx);
       gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, e.cv);
