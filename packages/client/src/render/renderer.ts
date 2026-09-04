@@ -195,6 +195,7 @@ import * as hudOverlay from './hudOverlay.js';
 import * as wornAura from './wornAura.js';
 import * as cliffArt from './cliffArt.js';
 import { emit as emitStructureFace, faceBand as sfBand, faceFill as sfFill, faceSeam as sfSeam, faceUV, faceStrip, topPlane, beginSilhouette, silhouetteBounds } from './structureFace.js';
+import { crownUvSig, crownUvSize, crownScaleBucket } from './structWarp.js';
 import type { FaceGeom, FacePt, Silhouette, TopPlaneGeom, WorldCorner } from './structureFace.js';
 import { WALL_STUB, GARRISON_H, MERLON_H } from './paintVocab.js';
 import * as wallHungArt from './wallHungArt.js';
@@ -1824,6 +1825,26 @@ export class Renderer {
   private readonly volRingCache = new Map<
     number,
     { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; sig: number; used: number; w: number; h: number }
+  >();
+  /**
+   * THE ONE RENDER — B8: crown top-plane UV textures (warp-don't-repaint).
+   *
+   * A wall/stone/dark crown SPAN's ART (fill + the arris/spine/lip beam
+   * read) is CAMERA-INDEPENDENT in the crown's own UV plane — only the four
+   * projected corners change as the camera leans/zooms/pans. So the texture
+   * is baked ONCE into an axis-aligned UV canvas keyed by its CONTENT
+   * signature (run identity + material + UV size in texels + dpr), NOT the
+   * camera, uploaded once, and each frame the crown is a perspective-correct
+   * `StageQuad.ground` over that cached texture (the same mechanism the
+   * ground chunks lean through). No per-frame re-paint, no per-frame
+   * re-upload while the run is unchanged — the wall-run scratch churn the
+   * static keyed cache could not hold under lean (it warps with the camera).
+   * q>0 ONLY: at q=0 the crown keeps its proven live path (golden gate).
+   * Evicted like volRingCache when a run scrolls away or its size changes.
+   */
+  private readonly structCrownCache = new Map<
+    number,
+    { tex: StageTexture; uvW: number; uvH: number; sig: number; used: number }
   >();
   /** Cached outlined composites (ring + art) per body — see the olKey
    *  fields on DrawItem. Canvases ride the shared sprite pool. */
@@ -11530,6 +11551,95 @@ export class Renderer {
   }
 
   /**
+   * B8: emit a rectangular wall/stone/dark crown SPAN as a perspective-
+   * correct warp quad over a content-keyed UV texture. The texture is baked
+   * ONCE (fill + arris/spine/lip beam read, exactly `paintWallCrown`'s
+   * rectangular dressing, but in UV space) and reused every frame; only the
+   * four projected corners change. The corners are the SAME shared world
+   * corners `topPlane` projects (via `liftedCornerPt`), so adjacent spans
+   * meet on identical device pixels — the crown reads continuous, seam-free.
+   * q>0 ONLY (the caller gates it); at q=0 the live `paintWallCrown` path is
+   * kept for the golden gate.
+   */
+  private emitCrownWarpQuad(cv: CrownVolume, span: CrownSpan, top: string, key: number): void {
+    const x0 = span.x0;
+    const y0 = span.y0;
+    const x1e = span.x1 + 1;
+    const y1e = span.y1 + 1;
+    const crownH = cv.whT + cv.elevLift;
+    const dpr = this.dpr();
+    // Texels per world tile ≈ on-screen density, bucketed so a zoom-glide
+    // does not re-bake every frame (the volRingCache/warp-down pattern).
+    const { uvW, uvH } = crownUvSize(x1e - x0, y1e - y0, this.camera.scale, dpr);
+    const scaleBucket = crownScaleBucket(this.camera.scale);
+    const dprBits = Math.round(dpr * 8) & 0x3f;
+    const sig = crownUvSig(key, scaleBucket, dprBits, cv.matClass, uvW, uvH);
+    let e = this.structCrownCache.get(key);
+    if (!e || e.sig !== sig || e.uvW !== uvW || e.uvH !== uvH) {
+      // (Re)bake the crown ART into an axis-aligned UV canvas — ONCE per
+      // content change. This is the whole per-frame paint the warp retires.
+      const canvas = e ? e.tex.canvas : document.createElement('canvas');
+      if (canvas.width !== uvW || canvas.height !== uvH) {
+        canvas.width = uvW;
+        canvas.height = uvH;
+      }
+      const ctx = canvas.getContext('2d')!;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, uvW, uvH);
+      // Fill + the run-continuous beam read (arris shadow / lit spine / lit
+      // south lip). v runs north(0)→south(1) = texture y; these are the exact
+      // bands `paintWallCrown` lays via plane.uv, now plain UV fillRects.
+      ctx.fillStyle = top;
+      ctx.fillRect(0, 0, uvW, uvH);
+      ctx.fillStyle = 'rgba(30, 18, 8, 0.22)';
+      ctx.fillRect(0, 0, uvW, Math.max(1, uvH * 0.09));
+      if (cv.matClass === 0) {
+        ctx.fillStyle = 'rgba(255, 226, 175, 0.14)';
+        ctx.fillRect(0, uvH * 0.34, uvW, Math.max(1, uvH * 0.3));
+      }
+      ctx.fillStyle = shade(top, 16);
+      ctx.fillRect(0, uvH * 0.9, uvW, Math.max(1, uvH * 0.1));
+      const tex: StageTexture = e ? e.tex : { canvas, rev: 0, filter: 'linear' };
+      tex.canvas = canvas;
+      tex.rev++; // content changed → the stage re-uploads on the next draw
+      e = { tex, uvW, uvH, sig, used: this.frameNo };
+      this.structCrownCache.set(key, e);
+    }
+    e.used = this.frameNo;
+    // Project the four world corners (shared with the adjacent spans' own
+    // liftedCornerPt → seam-free). Order TL,TR,BL,BR = NW,NE,SW,SE.
+    const TL = this.liftedCornerPt(x0, y0, crownH);
+    const TR = this.liftedCornerPt(x1e, y0, crownH);
+    const BL = this.liftedCornerPt(x0, y1e, crownH);
+    const BR = this.liftedCornerPt(x1e, y1e, crownH);
+    // Perspective weights = 1/depthScale at each corner's world row (the
+    // ground-chunk law): the crown is a horizontal plane, foreshortened by
+    // its depth exactly as the ground is.
+    const wTop = 1 / this.camera.depthScale(y0);
+    const wBot = 1 / this.camera.depthScale(y1e);
+    let bx0 = Math.min(TL.x, TR.x, BL.x, BR.x);
+    let by0 = Math.min(TL.y, TR.y, BL.y, BR.y);
+    this.stageWorldItems.push({
+      kind: 'quad',
+      tex: e.tex,
+      sx: 0,
+      sy: 0,
+      sw: e.uvW,
+      sh: e.uvH,
+      dw: Math.max(1, Math.max(TL.x, TR.x, BL.x, BR.x) - bx0),
+      dh: Math.max(1, Math.max(TL.y, TR.y, BL.y, BR.y) - by0),
+      m: [1, 0, 0, 1, bx0, by0],
+      alpha: this.stageItemAlpha,
+      blend: StageBlend.SourceOver,
+      ground: {
+        c: [TL.x, TL.y, TR.x, TR.y, BL.x, BL.y, BR.x, BR.y],
+        w: [wTop, wTop, wBot, wBot],
+      },
+    });
+    this.stageWorldStats.quads++;
+  }
+
+  /**
    * ONE self-bounded crown piece for a single straight SPAN (A2b): its FILL
    * (a `topPlane` over the span's four world corners, lifted to the crown) +
    * its OUTLINE, stroked over only the span's EXPOSED unit edges (the crown
@@ -11607,6 +11717,9 @@ export class Renderer {
         }
       }
     };
+    // B8: only a PLAIN wall crown under lean rides the warp-quad path (diag /
+    // hedge / garrison keep their own painters; q=0 keeps the live crown).
+    const warpCrown = this.camera.q > 0 && cv.kind === 'wall';
     const draw = (): void => {
       if (cv.kind === 'diag') {
         this.paintDiagCrownSpan(cv, span, top, pbKey);
@@ -11669,9 +11782,19 @@ export class Renderer {
         }
         return;
       }
-      topPlane(this.camera, this.w, this.h, loop, crownH, (plane: TopPlaneGeom) =>
-        this.paintWallCrown(plane, top, cv.matClass),
-      );
+      // B8 WARP-DON'T-REPAINT: under lean the crown ART is baked ONCE into a
+      // UV texture and drawn as a perspective-correct quad (no per-frame
+      // re-paint/re-upload of the projected trapezoid into the scratch lane).
+      // q=0 keeps the proven live `paintWallCrown` (the golden gate). The
+      // item is `stageSafe` for the warp case so its draw runs under assembly
+      // and pushes the quad; at q=0 it stays the wall-lane scratch item.
+      if (warpCrown) {
+        this.emitCrownWarpQuad(cv, span, top, pbKey);
+      } else {
+        topPlane(this.camera, this.w, this.h, loop, crownH, (plane: TopPlaneGeom) =>
+          this.paintWallCrown(plane, top, cv.matClass),
+        );
+      }
       if (this.outlineOn) {
         // ONE alpha-dilate ring around the whole run silhouette (crown loop +
         // exposed side faces) — the SAME ring bodies/props wear. Retires the
@@ -11694,6 +11817,10 @@ export class Renderer {
       pb: { x: bx0 - pad, y: by0 - pad, w: bx1 - bx0 + pad * 2, h: by1 - by0 + pad * 2 },
       pbKey,
       pbDyn: 0,
+      // B8: the warp crown pushes QUADS (crown) + a bounded ring paint, so it
+      // rides the stage-safe assembly lane and LEAVES the wall scratch lane.
+      // stageRebuild/pb stay as a graceful fallback if assembly ever declines.
+      stageSafe: warpCrown ? true : undefined,
       stageRebuild: draw,
       draw,
     };
@@ -19253,18 +19380,53 @@ export class Renderer {
     }
     entry.used = this.frameNo;
     // Blit the cached annulus at the current bbox origin (hollow ⇒ order-free).
-    this.ctx.drawImage(entry.canvas, 0, 0, w, h, ox, oy, wCss, hCss);
+    // B8: when a warp crown (stage-safe assembly) rings itself, this.ctx is the
+    // real frame — the annulus must ride the STAGE, not paint under the GL
+    // world layer. Push it as a small bounded KEYED paint (the annulus bbox,
+    // clamped to the viewport — far smaller than the old crown+face union
+    // scratch cell) so it composites in stream order and caches by its bake
+    // sig. Otherwise (wall-lane scratch paint, or the non-stage path) blit
+    // straight to the swapped/real ctx exactly as before.
+    const cap = entry.canvas;
+    if (this.stageAssembling) {
+      this.stagePushPaintRaw(
+        ox,
+        oy,
+        wCss,
+        hCss,
+        () => {
+          this.ctx.drawImage(cap, 0, 0, w, h, ox, oy, wCss, hCss);
+        },
+        'vol-ring',
+        (key ^ 0x5170_b8b8) | 0,
+        sig,
+      );
+    } else {
+      this.ctx.drawImage(cap, 0, 0, w, h, ox, oy, wCss, hCss);
+    }
   }
 
   /** Drop volume outline-ring annuli scrolled away for ~4s; pool their
    *  canvases. Called each frame beside the other camera-riding caches. */
   private evictVolRings(): void {
-    if (this.volRingCache.size === 0) return;
     const cutoff = this.frameNo - 240;
-    for (const [key, e] of this.volRingCache) {
-      if (e.used < cutoff) {
-        this.volRingCache.delete(key);
-        this.poolCanvas(e.canvas);
+    if (this.volRingCache.size > 0) {
+      for (const [key, e] of this.volRingCache) {
+        if (e.used < cutoff) {
+          this.volRingCache.delete(key);
+          this.poolCanvas(e.canvas);
+        }
+      }
+    }
+    // B8: drop crown UV textures for spans scrolled away for ~4s and RELEASE
+    // their GPU record (the canvases are per-crown, not pooled). A returning
+    // span re-bakes + re-uploads once — the arrival cost, not a per-frame one.
+    if (this.structCrownCache.size > 0) {
+      for (const [key, e] of this.structCrownCache) {
+        if (e.used < cutoff) {
+          this.structCrownCache.delete(key);
+          this.stageWorldGl?.release(e.tex);
+        }
       }
     }
   }
