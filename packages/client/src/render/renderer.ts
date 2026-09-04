@@ -1417,18 +1417,22 @@ export class Renderer {
     threatCount: 0,
   };
   private readonly grass = new GrassSystem();
-  /** GPU grass (proposal G-2, behind ?grass=gpu). When true, the visible
-   *  field renders instanced on the GPU (blitted at the grass slot) instead
-   *  of the canvas2d baked meadow. Off = byte-identical baked path. */
-  grassGpu = false;
-  /** G4 — THE OVER-FOOT SKIRT (behind ?grass=gpu). When true, grass-rooted
-   *  objects (tree/bush/rock/prop in the meadow) get a skirt of GPU blades
-   *  nestled around their foot so they read as embedded. Dev A/B toggle
-   *  (?skirt=off); on by default whenever the GPU meadow is active. */
+  /** GPU grass (proposal G-2). The visible field renders instanced on the
+   *  GPU (blitted at the grass slot) — the ONLY grass path (the canvas2d
+   *  baked meadow + its fallback were removed 2026-09-04). Default true;
+   *  set false only by the `?grass=off` debug escape, which renders bare
+   *  ground. If WebGL2/the layer is unavailable the field simply shows no
+   *  grass (grassGpuActive stays false) — never a crash. */
+  grassGpu = true;
+  /** G4 — THE OVER-FOOT SKIRT. When true, grass-rooted objects (tree/bush/
+   *  rock/prop in the meadow) get a skirt of GPU blades nestled around their
+   *  foot so they read as embedded. Dev A/B toggle (?skirt=off); on by
+   *  default whenever the GPU meadow is active. */
   grassSkirtOn = true;
   private grassGpuLayer: GrassGpuLayer | null = null;
-  /** Whether the GPU path actually drew this frame (→ skip the canvas2d
-   *  coat and the tall y-sort pass; false → the baked meadow ran). */
+  /** Whether the GPU meadow actually drew this frame (→ run the tall y-sort
+   *  and skirt/elevated passes; false → no grass this frame, e.g. no WebGL2
+   *  or `?grass=off`). */
   private grassGpuActive = false;
   /** Pooled scratch for the GPU path — never reallocated per frame. */
   private readonly grassBlades: Blade[] = [];
@@ -4453,26 +4457,10 @@ export class Renderer {
                       this.waterFx(),
                     );
                   }
-                  // G-ELEVATED: under ?grass=gpu the raised coat rides the GPU
-                  // (collectGpuElevated), so skip the CPU row draw here to
-                  // avoid double grass. The GPU field having drawn is the gate
-                  // (grassGpuActive); the baked/CPU fallback keeps this path.
-                  // __grassNoElev (probe FLAG law) forces the CPU coat back on
-                  // for the A/B against the GPU one.
-                  if (
-                    !this.grassGpuActive ||
-                    (globalThis as { __grassNoElev?: boolean }).__grassNoElev === true
-                  ) {
-                    this.grass.drawRow(
-                      this.ctx,
-                      rowGround,
-                      (tx, ty) => this.fgDetailAt(tx, ty),
-                      rowBounds,
-                      this.liftedWTS,
-                      s,
-                      level,
-                    );
-                  }
+                  // G-ELEVATED: the raised coat rides the GPU
+                  // (collectGpuElevated), so nothing draws here — the CPU row
+                  // draw was removed with the baked meadow (2026-09-04). When
+                  // the GPU meadow is unavailable the shelf shows bare ground.
                 },
               });
             }
@@ -5502,27 +5490,13 @@ export class Renderer {
       minTy: bounds.minTy + 3,
       maxTy: bounds.maxTy - 1,
     };
-    // Arm the meadow's cast BEFORE the under pass builds blades: each
-    // blade appends its sheared ground quad as it is built, and the
-    // meadow composites its own shade UNDER its blades (THE CAST LIES
-    // UNDER THE COAT — a blade's shadow is ground-plane paint that
-    // standing blades occlude). The alpha matches what the shared
-    // prepass layer produces for thin casters, so grass shade reads
-    // one density with the world's.
-    this.grass.setShadow(
-      this.sky.shadowX * this.sky.shadowLen,
-      this.sky.shadowY * this.sky.shadowLen * this.camera.yScale,
-      this.sky.shadowAlpha >= 0.02,
-      this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN,
-      Math.min(1, this.sky.shadowAlpha * 0.85),
-    );
-    // THE GPU MEADOW (proposal G-2, ?grass=gpu): the whole visible field
-    // renders instanced on the GPU and blits here — below entities, before
-    // the world lightmap (so it's world-lit for free, like the baked
-    // meadow). On success the canvas2d coat is skipped (the GPU field
-    // carries the short `under` coat as one flat layer); the tall y-sort
-    // pass still runs (B3 — tall thickets interleave with bodies). Any
-    // failure (no context, lost) falls back to the byte-identical baked path.
+    // THE GPU MEADOW (proposal G-2): the whole visible field renders
+    // instanced on the GPU and blits here — below entities, before the world
+    // lightmap (so it's world-lit for free). The GPU field carries the short
+    // `under` coat as one flat layer AND casts its own shade on the GPU (see
+    // drawGrassGpu); the tall y-sort pass still runs (B3 — tall thickets
+    // interleave with bodies). If the layer can't draw (no WebGL2, lost
+    // context, or `?grass=off`) the world renders with bare ground.
     // GPU-meadow geometry: scatter the taller standing grass through normal
     // tiles only when the GPU field is in play (grass-elevate pass). The setter
     // clears the tile cache on a mode flip, so the canvas fallback never draws
@@ -5531,12 +5505,14 @@ export class Renderer {
     if (this.grassGpu && this.drawGrassGpu(groundLvl0, detail, grassBounds)) {
       this.grassGpuActive = true;
     } else {
+      // NO CPU FALLBACK (removed 2026-09-04): when the GPU meadow can't draw
+      // (no WebGL2, a lost context, or `?grass=off`) the world simply renders
+      // with bare ground — never the old baked canvas2d coat.
       this.grassGpuActive = false;
       if (this.grassGpuLayer && !this.grassGpu) {
         this.grassGpuLayer.dispose();
         this.grassGpuLayer = null;
       }
-      this.grass.drawUnder(this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
     }
 
     // The Riftgates' blighted ground: painted OVER the meadow (like a
@@ -5597,15 +5573,12 @@ export class Renderer {
     this.bulkItemUsed = 0;
     // Tall thickets y-sort with the world: you walk THROUGH them. Blades in
     // front (nearer/south) occlude the lower body, blades behind do not.
-    // G1 — THE TALL BLADE INTERLEAVES: when the GPU meadow drew this frame,
-    // the tall standing mass rides the GPU band atlas (collectGpuTallBands
-    // — fine per-row bands with real per-blade depth, no bakes, no two-band
-    // pop/flicker). Otherwise (GPU off, or the tall atlas fell back) the CPU
-    // collectTall two-band pass runs UNCHANGED.
+    // G1 — THE TALL BLADE INTERLEAVES: the tall standing mass rides the GPU
+    // band atlas (collectGpuTallBands — fine per-row bands with real per-blade
+    // depth, no bakes, no two-band pop/flicker). If the GPU meadow didn't draw
+    // (no WebGL2/lost/`?grass=off`) there is no tall grass this frame.
     if (this.grassGpuActive && this.grassTallCanvas) {
       this.collectGpuTallBands(items);
-    } else {
-      this.grass.collectTall(items, this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
     }
     this.collectElevatedGround(game, items);
     // G-ELEVATED — THE COAT RIDES THE SHELF: when the GPU meadow drew this
@@ -5674,20 +5647,8 @@ export class Renderer {
         for (const item of items) {
           if (!item.elevated) item.drawShadow?.();
         }
-        if (this.grass.hasShadows()) {
-          // The meadow's shade: one bounded paint; the closure runs
-          // the same flush against the scratch ctx at flush time.
-          const gcol = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
-          const ga = Math.min(1, (this.sky.shadowAlpha * 0.85) / this.sdwLayerAlpha);
-          this.stagePushPaintRaw(
-            0,
-            0,
-            this.w,
-            this.h,
-            () => this.grass.flushShadows(this.ctx, gcol, ga),
-            'grass-shade',
-          );
-        }
+        // The meadow's own shade is cast on the GPU (drawGrassGpu), not
+        // through this CPU shadow layer (removed with the baked meadow).
         // SHELTERED ROOMS RECEIVE NO SKY: the interior punch is a
         // DestinationOut fill — the blend the layer target legalizes
         // (the A0 refusal symmetry anticipated exactly this).
@@ -5730,14 +5691,8 @@ export class Renderer {
     for (const item of items) {
       if (!item.elevated) item.drawShadow?.();
     }
-    // The meadow's cast, gathered during the under pass: every blade
-    // and flower shadow lands here in one fill, slightly lighter than
-    // solid props — thin things throw thin shade.
-    this.grass.flushShadows(
-      sc,
-      this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN,
-      Math.min(1, (this.sky.shadowAlpha * 0.85) / this.sdwLayerAlpha),
-    );
+    // The meadow's own shade is cast on the GPU (drawGrassGpu), not through
+    // this CPU shadow layer (removed with the baked meadow, 2026-09-04).
     // SHELTERED ROOMS RECEIVE NO SKY: punch every visible interior out
     // of the shadow layer before it composites. A wall must not cast
     // into its own room — the dark wedge on an inn floor was the north
@@ -14683,12 +14638,6 @@ export class Renderer {
     st.splits = 0;
     const sc = this.camera.scale;
     const n = items.length;
-    this.grass.stagePush = (q) => {
-      this.stageWorldItems.push(q);
-      if (q.kind === 'quad') st.quads++;
-      else st.paints++;
-    };
-    try {
     for (let i = 0; i < n; i++) {
       const item = items[i]!;
       // A particle RUN coalesces into one scanned-bounds paint: the
@@ -14987,9 +14936,6 @@ export class Renderer {
       this.dispatchWorldItem(item);
     }
     this.stageWorldFlush();
-    } finally {
-      this.grass.stagePush = null;
-    }
   }
 
   /** Assembly-time alpha for quad-emitting painters (band fades). */
@@ -15154,15 +15100,8 @@ export class Renderer {
     parts.push(
       `trees offscreen ${ls.offscreen}`,
     );
-    // THE MEADOW RIDES THE SHEAR: calm row cells blit; `live` is the
-    // disturbed-tile tail, `over` is cells the gate declined (drawing
-    // live) — a steady non-zero `over` means the view outgrew the
-    // sprite budget.
-    const gs = this.grass.rowStats;
-    parts.push(
-      `grass blit ${gs.blit} live ${gs.live} bake ${gs.bake} over ${gs.over}` +
-        ` tallbands ${this.grassBandCoalesced}/${this.grassBandFine}`,
-    );
+    // G1 tall-interleave bands: coalesced/fine count for this frame.
+    parts.push(`grass tallbands ${this.grassBandCoalesced}/${this.grassBandFine}`);
     // The stage confesses (phase A1): per-frame upload volume, the
     // exact resident texture ledger, draw calls, and the two fallback
     // tails. A steady non-zero `live` means the upload budget is
@@ -19280,14 +19219,15 @@ export class Renderer {
    * last positions per id), so this is just who-is-where.
    */
   /**
-   * THE GPU MEADOW (proposal G-2, ?grass=gpu). Gather the visible field's
-   * blades (cache-reusing), render them instanced into the layer's private
+   * THE GPU MEADOW (proposal G-2). Gather the visible field's blades
+   * (cache-reusing), render them instanced into the layer's private
    * offscreen canvas under the ortho camera + this frame's disturbers, and
    * blit it into the 2d frame at the grass slot. Returns true if it drew
-   * (caller skips the baked coat; the tall standing mass still interleaves
-   * via collectTall — B3), false to fall back to the baked meadow this
-   * frame. The lightmap multiply runs after this slot, so the blitted field
-   * is world-lit exactly like the baked meadow.
+   * (the tall standing mass then interleaves via collectGpuTallBands — B3),
+   * false if the layer is unavailable (no WebGL2 / lost context) — the
+   * caller then renders bare ground (no grass; the canvas2d fallback was
+   * removed 2026-09-04). The lightmap multiply runs after this slot, so the
+   * blitted field is world-lit for free.
    */
   private drawGrassGpu(
     ground: (tx: number, ty: number) => number | undefined,
@@ -19304,8 +19244,8 @@ export class Renderer {
     this.grassSkirtBlits = [];
     this.grassSkirtCanvas = null;
     // B3 — TALL INTERLEAVE: the GPU flat field carries only the short
-    // `under` coat; the tall standing mass rides the CPU collectTall
-    // y-sort (below) so bodies walk THROUGH thickets.
+    // `under` coat; the tall standing mass rides the GPU tall-band y-sort
+    // (collectGpuTallBands, below) so bodies walk THROUGH thickets.
     this.grass.collectGpuBlades(ground, detail, bounds, this.grassBlades, true);
     this.grass.collectGpuOrnaments(ground, detail, bounds, this.grassFlowers, this.grassSeeds);
     // G-INTERACT — this frame's disturbers → the parting uniforms. Each
@@ -19409,9 +19349,9 @@ export class Renderer {
     // (gathered above) into fine world-row bands, and render each band in
     // isolation into the layer's tall atlas. The band blits are emitted as
     // y-sorted DrawItems in collect (collectGpuTallBands) so a body walks
-    // THROUGH the thicket — no CPU collectTall, no bakes, no two-band pop.
-    // If the tall atlas is unavailable, blits stay empty and collect falls
-    // back to the CPU collectTall pass for this frame.
+    // THROUGH the thicket — no bakes, no two-band pop. If the tall atlas is
+    // unavailable, blits stay empty and there is simply no tall grass this
+    // frame (the CPU collectTall fallback was removed 2026-09-04).
     this.grassTallBlits = [];
     this.grassTallCanvas = null;
     if (this.grassTall.length > 0) {
@@ -19502,20 +19442,15 @@ export class Renderer {
    * (collectGpuElevated on the Grass system — one band per row/level, each
    * carrying its shelf lift), render the bands through the GPU elevated atlas,
    * and emit each as a y-sorted DrawItem at its row so the raised coat draws
-   * OVER its plateau ground quad and UNDER the bodies standing on it — the
-   * same z-order the CPU drawRow had inside collectElevatedGround. No-op when
-   * the GPU meadow is inactive, nothing is raised in view, or the elevated
-   * atlas is unavailable (the plateau simply shows its baked ground that
-   * frame). Blades project through the SAME frame projection + wind as the
-   * flat field, LIFTED onto their shelf by the shader (band.elev).
+   * OVER its plateau ground quad and UNDER the bodies standing on it. No-op
+   * when the GPU meadow is inactive, nothing is raised in view, or the
+   * elevated atlas is unavailable (the plateau simply shows bare ground that
+   * frame — the CPU drawRow coat was removed 2026-09-04). Blades project
+   * through the SAME frame projection + wind as the flat field, LIFTED onto
+   * their shelf by the shader (band.elev).
    */
   private collectGpuElevated(items: DrawItem[], bounds: GrassBounds): void {
     if (!this.grassGpuActive) return;
-    // Bisect lever for the promote-to-default gate (the probe FLAG law): a
-    // fresh page may set window.__grassNoElev to force the raised terrain back
-    // onto the CPU drawRow (collectElevatedGround) so the OLD baked/CPU coat
-    // on plateau tops can be A/B'd against this GPU one. Unset in normal play.
-    if ((globalThis as { __grassNoElev?: boolean }).__grassNoElev === true) return;
     const layer = this.grassGpuLayer;
     const frame = this.grassFrameSaved;
     if (!layer || !frame) return;
