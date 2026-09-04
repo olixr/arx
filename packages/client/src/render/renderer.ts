@@ -257,6 +257,7 @@ import {
   wallCover,
   occluderCover,
   fadeStrength,
+  shelterArmed,
 } from './reveal.js';
 import { ARRIVAL_MIN_COUNT, admitBake, BakeLane, type BakeBudgets } from './bakeAdmission.js';
 import { leanBudgetMult } from './leanBudget.js';
@@ -5792,13 +5793,18 @@ export class Renderer {
       this.ownPX = own.x;
       this.ownPY = own.y;
       this.ugCutOn = game.plane.underground;
-      // THE SHELTER GATE: the reveal only arms while you are INSIDE
-      // somewhere — underground, in any enclosed region, or standing
-      // on man-made floor / a threshold (the floor IS the room: a
-      // broken-open ruin with no enclosure still counts the moment
-      // your feet find its boards). Eased over ~0.35s so entering a
-      // building bows its walls down and leaving raises them, instead
-      // of the old binary region snap.
+      // THE SHELTER GATE: the reveal only arms while you are genuinely
+      // INSIDE a building — underground, inside a defined region, or
+      // holding a doorway threshold (a passage wall-line or a panel
+      // door). Standing on an outdoor man-made floor tile (boardwalk,
+      // path-side plank/stone) NO LONGER arms it: the floor alone is not
+      // a room, and the old "the floor IS the room" rule let a player
+      // out on the open boards peep into the building next door and pay
+      // the reveal's cost for nothing (owner ruling 2026-09). The
+      // behind-walls case survives as the anti-occlusion bowl in
+      // wallHeightAt, which only runs once this gate has armed cutCtx.
+      // Eased over ~0.35s so entering a building bows its walls down and
+      // leaving raises them, instead of a binary region snap.
       const ownT = game.world.groundAt(Math.floor(own.x), Math.floor(own.y));
       // A breach/corridor tile is wall-line by THE BREACH LAW —
       // standing in it is standing in a doorway, so it shelters and
@@ -5810,12 +5816,12 @@ export class Renderer {
         Math.floor(own.x),
         Math.floor(own.y),
       );
-      const sheltered =
-        this.ugCutOn ||
-        this.localRegion !== null ||
-        onPassage ||
-        (ownT !== undefined &&
-          (Renderer.REVEAL_FLOORS.has(ownT) || PANEL_DOOR_TILES.has(ownT)));
+      const sheltered = shelterArmed({
+        underground: this.ugCutOn,
+        insideRegion: this.localRegion !== null,
+        onPassage,
+        onPanelDoor: ownT !== undefined && PANEL_DOOR_TILES.has(ownT),
+      });
       const step = frameDt / 0.35;
       this.shelterK += Math.max(-step, Math.min(step, (sheltered ? 1 : 0) - this.shelterK));
       const shel = this.shelterK * this.shelterK * (3 - 2 * this.shelterK);
