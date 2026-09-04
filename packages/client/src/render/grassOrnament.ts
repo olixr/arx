@@ -149,7 +149,7 @@ void main() {
     vec2 corner = vec2(aVert.y * 2.0 - 1.0, aVert.z * 2.0 - 1.0);
     pos = center + corner * hf;
   }
-  gl_Position = grassProject(pos);   // ONE PROJECTION (the camera affine)
+  gl_Position = grassProject(pos, root);   // ONE PROJECTION (the camera affine)
   vPart = part;
   vPal = pal;
 }`;

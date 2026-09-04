@@ -95,7 +95,7 @@ void main() {
   // blade — root through leaned/trampled tip — moves with the world at
   // exactly the player's parallax rate; then the atlas remap, a pure
   // NDC→NDC affine applied after the projection.
-  vec4 c = grassProject(world);
+  vec4 c = grassProject(world, root);
   gl_Position = vec4(c.xy * uNdcRemap.xy + uNdcRemap.zw, 0.0, 1.0);
   vUp = up;
   vTone = iTone.x;
@@ -164,6 +164,7 @@ export class GrassGpuRenderer {
   private readonly uDisturbVel: WebGLUniformLocation;
   private readonly uDisturbN: WebGLUniformLocation;
   private readonly uNdcRemap: WebGLUniformLocation;
+  private readonly uElev: WebGLUniformLocation;
   private instanceCount = 0;
   private disposed = false;
 
@@ -206,6 +207,7 @@ export class GrassGpuRenderer {
     this.uDisturbVel = gl.getUniformLocation(program, 'uDisturbVel')!;
     this.uDisturbN = gl.getUniformLocation(program, 'uDisturbN')!;
     this.uNdcRemap = gl.getUniformLocation(program, 'uNdcRemap')!;
+    this.uElev = gl.getUniformLocation(program, 'uElev')!;
     gl.useProgram(program);
     gl.uniform1i(gl.getUniformLocation(program, 'uPalette'), 0);
 
@@ -326,6 +328,8 @@ export class GrassGpuRenderer {
     this.setDisturb(opts);
     // Identity remap: the short coat / whole field targets the real screen.
     gl.uniform4f(this.uNdcRemap, 1, 1, 0, 0);
+    // Flat ground: no terrace lift (the elevated bands set this per band).
+    gl.uniform1f(this.uElev, 0);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.palTex);
     gl.enable(gl.BLEND);
@@ -361,6 +365,8 @@ export class GrassGpuRenderer {
     gl.uniform1f(this.uTime, timeSec);
     gl.uniform2f(this.uWindGain, opts.windGain ?? 0.12, 0);
     this.setDisturb(opts);
+    // Bands default to flat; the elevated-coat bands raise it per drawBand.
+    gl.uniform1f(this.uElev, 0);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.palTex);
     gl.enable(gl.BLEND);
@@ -369,11 +375,19 @@ export class GrassGpuRenderer {
   }
 
   /** Draw one band slice [i0, i0+count) with its atlas NDC remap. The
-   *  caller has set the atlas viewport/scissor for this band's slot. */
-  drawBand(i0: number, count: number, remap: { sx: number; sy: number; bx: number; by: number }): void {
+   *  caller has set the atlas viewport/scissor for this band's slot. `elev`
+   *  (WORLD height, level·ELEV_H) lifts the whole band onto its terrace
+   *  shelf (G-ELEVATED); 0 = flat (tall + skirt bands). */
+  drawBand(
+    i0: number,
+    count: number,
+    remap: { sx: number; sy: number; bx: number; by: number },
+    elev = 0,
+  ): void {
     if (this.disposed || count <= 0) return;
     const gl = this.gl;
     gl.uniform4f(this.uNdcRemap, remap.sx, remap.sy, remap.bx, remap.by);
+    gl.uniform1f(this.uElev, elev);
     this.bindInstanceAttribs(i0 * GRASS_INSTANCE_FLOATS);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, BLADE_VERTS, count);
   }

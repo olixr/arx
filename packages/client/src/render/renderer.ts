@@ -1482,6 +1482,14 @@ export class Renderer {
   >();
   private grassSkirtBlits: readonly BandBlit[] = [];
   private grassSkirtCanvas: HTMLCanvasElement | null = null;
+  /** G-ELEVATED — the raised-terrain coat's per-frame gather: blades + one
+   *  band per (row, level), the rendered atlas blits, and its canvas. Emitted
+   *  as y-sorted DrawItems (collectGpuElevated) so the raised grass draws over
+   *  its plateau ground and under the bodies on it. */
+  private readonly grassElev: Blade[] = [];
+  private readonly grassElevBands: TallBand[] = [];
+  private grassElevBlits: readonly BandBlit[] = [];
+  private grassElevCanvas: HTMLCanvasElement | null = null;
   /** This frame's GrassFrame (camera/wind), stashed by drawGrassGpu so the
    *  later skirt pass renders under the exact same projection + wind. */
   private grassFrameSaved: GrassFrame | null = null;
@@ -4445,15 +4453,26 @@ export class Renderer {
                       this.waterFx(),
                     );
                   }
-                  this.grass.drawRow(
-                    this.ctx,
-                    rowGround,
-                    (tx, ty) => this.fgDetailAt(tx, ty),
-                    rowBounds,
-                    this.liftedWTS,
-                    s,
-                    level,
-                  );
+                  // G-ELEVATED: under ?grass=gpu the raised coat rides the GPU
+                  // (collectGpuElevated), so skip the CPU row draw here to
+                  // avoid double grass. The GPU field having drawn is the gate
+                  // (grassGpuActive); the baked/CPU fallback keeps this path.
+                  // __grassNoElev (probe FLAG law) forces the CPU coat back on
+                  // for the A/B against the GPU one.
+                  if (
+                    !this.grassGpuActive ||
+                    (globalThis as { __grassNoElev?: boolean }).__grassNoElev === true
+                  ) {
+                    this.grass.drawRow(
+                      this.ctx,
+                      rowGround,
+                      (tx, ty) => this.fgDetailAt(tx, ty),
+                      rowBounds,
+                      this.liftedWTS,
+                      s,
+                      level,
+                    );
+                  }
                 },
               });
             }
@@ -5584,6 +5603,12 @@ export class Renderer {
       this.grass.collectTall(items, this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
     }
     this.collectElevatedGround(game, items);
+    // G-ELEVATED — THE COAT RIDES THE SHELF: when the GPU meadow drew this
+    // frame, the raised terrain's grass rides the GPU too (one band per row/
+    // level, lifted onto its shelf), emitted here as y-sorted DrawItems that
+    // draw over each elevated ground row. The CPU drawRow inside
+    // collectElevatedGround is skipped in that case (no double grass).
+    this.collectGpuElevated(items, grassBounds);
     cliffArt.collectCliffFaces(this, game, items);
     this.collectRaisedTiles(game, items);
     // G4 — THE OVER-FOOT SKIRT: now that the world collect has recorded this
@@ -18593,6 +18618,18 @@ export class Renderer {
         // by treeExtent.test.ts. No side-channel pads here.
         return {
           sortY: ty + 0.9,
+          // A5 pitch-aware depth (tree-vs-volume sort): a mature tree is a
+          // tall, ground-rooted OCCLUDER — like a wall or hedge, not a mobile
+          // billboard. Carrying its foot row as `nearRow` (=== sortY, so the
+          // depth term and q=0 flat order are byte-identical) makes it a
+          // VOLUME for DRAW_ORDER, so the front-base cross-shelf exception
+          // resolves tree-vs-hedge (and tree-vs-wall/building) by TRUE ground
+          // depth: a tree planted in FRONT (south) of a raised hedge draws
+          // OVER it instead of being dominated by the hedge's higher shelf,
+          // and a tree behind it is still occluded. Mobile entities (players,
+          // NPCs, beasts) stay billboards (no nearRow), so wall/hedge-vs-entity
+          // sort is unchanged.
+          nearRow: this.occlusionOn ? ty + 0.9 : undefined,
           occKey: occ ? treeKey(tx + 0.5, ty + 0.5, tile) : undefined,
           occX0: occ ? p.x + shiver + occ.x0 * s : undefined,
           occX1: occ ? p.x + shiver + occ.x1 * s : undefined,
@@ -19455,6 +19492,81 @@ export class Renderer {
     }
   }
 
+  /**
+   * G-ELEVATED — THE COAT RIDES THE SHELF. Gather the raised terrain's grass
+   * (collectGpuElevated on the Grass system — one band per row/level, each
+   * carrying its shelf lift), render the bands through the GPU elevated atlas,
+   * and emit each as a y-sorted DrawItem at its row so the raised coat draws
+   * OVER its plateau ground quad and UNDER the bodies standing on it — the
+   * same z-order the CPU drawRow had inside collectElevatedGround. No-op when
+   * the GPU meadow is inactive, nothing is raised in view, or the elevated
+   * atlas is unavailable (the plateau simply shows its baked ground that
+   * frame). Blades project through the SAME frame projection + wind as the
+   * flat field, LIFTED onto their shelf by the shader (band.elev).
+   */
+  private collectGpuElevated(items: DrawItem[], bounds: GrassBounds): void {
+    if (!this.grassGpuActive) return;
+    // Bisect lever for the promote-to-default gate (the probe FLAG law): a
+    // fresh page may set window.__grassNoElev to force the raised terrain back
+    // onto the CPU drawRow (collectElevatedGround) so the OLD baked/CPU coat
+    // on plateau tops can be A/B'd against this GPU one. Unset in normal play.
+    if ((globalThis as { __grassNoElev?: boolean }).__grassNoElev === true) return;
+    const layer = this.grassGpuLayer;
+    const frame = this.grassFrameSaved;
+    if (!layer || !frame) return;
+    const blades = this.grassElev;
+    const bands = this.grassElevBands;
+    // A plateau row south of the bottom edge lifts up-screen into view (like
+    // collectElevatedGround's elevPadS), so reach past maxTy; the flat field's
+    // grassBounds is capped to the meadow's near window and would miss those
+    // shelves (their coat would go bare, since the CPU drawRow is skipped).
+    const elevPadS = Math.ceil((ELEV_H * 3) / this.camera.yScale);
+    const eb: GrassBounds = {
+      minTx: bounds.minTx,
+      maxTx: bounds.maxTx,
+      minTy: bounds.minTy - 3,
+      maxTy: bounds.maxTy + 1 + elevPadS,
+    };
+    this.grass.collectGpuElevated(
+      (tx, ty) => this.fgGroundAt(tx, ty),
+      (tx, ty) => this.fgDetailAt(tx, ty),
+      (tx, ty) => this.fgElevAt(tx, ty),
+      eb,
+      ELEV_H,
+      blades,
+      bands,
+    );
+    this.grassElevBlits = [];
+    this.grassElevCanvas = null;
+    if (bands.length === 0) return;
+    const blits = layer.renderElev(blades, bands, frame);
+    if (blits.length === 0) return;
+    this.grassElevBlits = blits;
+    this.grassElevCanvas = layer.elevCanvas;
+    const canvas = layer.elevCanvas;
+    for (const bl of this.grassElevBlits) {
+      const b = bl;
+      items.push({
+        sortY: b.sortY,
+        stageSafe: true,
+        draw: () => {
+          if (this.stageAssembling) {
+            this.stagePushPaintRaw(
+              b.dstX,
+              b.dstY,
+              b.dstW,
+              b.dstH,
+              () => this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH),
+              'grass-elev',
+            );
+          } else {
+            this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH);
+          }
+        },
+      } as DrawItem);
+    }
+  }
+
   /** G4 — is a grass-rooted object here (skirt-eligible + meadow neighbours)?
    *  The bound sampler reads this.game (always the current world) so it stays
    *  correct across plane/world swaps, and avoids a per-call closure. */
@@ -19535,6 +19647,9 @@ export class Renderer {
         sortY: site.footY + 0.02,
         minBy,
         maxBy,
+        // G-ELEVATED: a skirt around an object rooted on raised terrain rides
+        // its shelf too, so the tuft nestles the LIFTED base, not a sunk one.
+        elev: this.fgElevAt(site.tx, site.ty) * ELEV_H,
       });
     }
     if (bands.length === 0) return;

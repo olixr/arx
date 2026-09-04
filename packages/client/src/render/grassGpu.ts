@@ -72,6 +72,10 @@ export interface TallBand {
   /** Band world-y extent (min/max blade root), for screen-bbox bounding. */
   minBy: number;
   maxBy: number;
+  /** G-ELEVATED — the terrace lift (WORLD height, level·ELEV_H) every blade
+   *  in this band rides. Absent/0 = flat ground (tall + skirt bands). Set
+   *  only on the elevated-coat bands so a whole row lifts onto its shelf. */
+  elev?: number;
 }
 
 /**
@@ -300,9 +304,22 @@ uniform float uScale;
 uniform float uYScale;
 uniform vec2 uOrigin;    // screen origin (ox, oy)
 uniform vec2 uViewport;  // frame size in CSS px (w, h)
-vec4 grassProject(vec2 world) {
+// GRASS RIDES ITS SHELF (G-ELEVATED): the terrace lift, in WORLD height, of
+// the tile the blade is rooted on (level·ELEV_H). 0 = flat ground = the whole
+// shipped meadow, byte-identical (the lift branch is skipped). >0 raises the
+// blade onto the plateau top; <0 sinks it into a pit.
+uniform float uElev;
+vec4 grassProject(vec2 world, vec2 root) {
   float sx = world.x * uScale + uOrigin.x;
   float sy = world.y * uScale * uYScale + uOrigin.y;
+  if (uElev != 0.0) {
+    // A RIGID screen rise equal to the terrace lift under the blade's ROOT
+    // row — level·ELEV_H · scale — exactly the shift the elevated ground
+    // quad applies (renderer collectElevatedGround), so the whole blade sits
+    // ON the raised top. (root is the rooted tile; the camera is the plain
+    // affine, so the rise is uniform across the row.)
+    sy -= uElev * uScale;
+  }
   float ndcX = 2.0 * sx / uViewport.x - 1.0;
   float ndcY = 1.0 - 2.0 * sy / uViewport.y;   // stage Y-flip
   return vec4(ndcX, ndcY, 0.0, 1.0);
