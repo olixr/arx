@@ -44,6 +44,8 @@ import { Confession, fmtBytes, fmtStructStats } from './hud.js';
 import { FaceAtlas } from './structures/faceAtlas.js';
 import { StructMaterials } from './structures/structMaterials.js';
 import { ChunkStructures } from './structures/structures.js';
+import { DoorLeafLayer } from './structures/doors.js';
+import { unpackCx, unpackCy } from './chunkRing.js';
 import { LiveInput, PointerRig } from './input.js';
 import { EntityStage } from './bodies.js';
 import { Play3DView } from './view.js';
@@ -75,6 +77,7 @@ let atlas: SpriteAtlas;
 let faces: FaceAtlas;
 let structMats: StructMaterials;
 let structures: ChunkStructures;
+let doorLayer: DoorLeafLayer;
 let hudOn = true;
 let inkOn = true;
 let tiltOn = true;
@@ -137,6 +140,8 @@ const engine = new Engine(canvas, createBackend(canvas), {
       ground.update(own.x, own.y, 6);
       atlas.flush();
       faces.flush();
+      // W2 walls: the hinged leaves swing on their own clock, pruned to the built chunks.
+      doorLayer.update(nowMs, (key) => structures.has(unpackCx(key), unpackCy(key)));
       const gy = ground.heightAt(own.x, own.y);
       engine.target.set(own.x, gy + 0.9, own.y);
       sky.follow(own.x, gy, own.y, engine.pose.dist, nowMs);
@@ -283,6 +288,7 @@ function boot(): void {
   structMats = new StructMaterials(faces);
   structures = new ChunkStructures(engine.scene, world, faces, structMats, ground.heightAtFn);
   ground.structures = structures;
+  doorLayer = new DoorLeafLayer(engine.scene, faces);
   stage = new EntityStage(engine.scene, clock, backend.billboards, ground.heightAtFn);
   post = backend.createPost(engine.scene, engine.camera);
   hud = new Confession(hudHost);
@@ -340,7 +346,7 @@ const probe = {
     hud: hud.lines,
     ground: { ...ground.stats },
     atlas: { sprites: atlas.sprites, pages: atlas.pages.length, uploads: atlas.uploads, blits: atlas.blits, bytes: atlas.textureBytes },
-    structures: { ...structures.stats, lanes: { ...structures.stats.lanes }, faceUploads: faces.uploads, faceBlits: faces.blits },
+    structures: { ...structures.stats, lanes: { ...structures.stats.lanes }, faceUploads: faces.uploads, faceBlits: faces.blits, doorLeaves: doorLayer.leaves },
     bodies: { count: stage.bodies, paints: stage.paints, entities: game.entities.size },
     info: {
       calls: engine.renderer.info.render.calls,
@@ -361,6 +367,7 @@ const probe = {
     window.removeEventListener('keydown', onHudKey);
     stage.dispose();
     ground.dispose();
+    doorLayer.dispose();
     structures.dispose();
     structMats.dispose();
     faces.dispose();

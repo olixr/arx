@@ -632,3 +632,80 @@ diagonals seen in any shot.
   (teeth over the passage fading with the veil) has no 3D meaning.
 - The wide `graveyard` scene at the brief's coordinates faces the
   meadow (the iron rest is at −512,−198 — `graveyard-close`).
+
+### W2 WALLS — as built (2026-09-04)
+
+Buildings as geometry with painted faces: `packages/client/src/play3d/
+structures/{walls.ts, wallFaces.ts, doors.ts}` (+ `walls.test.ts`,
+`doors.test.ts`), the lane driver `dev/play3dWalls.mjs`, a 4-line
+mount in `main3d.ts`. Every module header states its laws.
+
+| file | what | real / placeholder |
+| --- | --- | --- |
+| `walls.ts` | `buildWallStructures`: per `'wall'` tile a PRISM — crown at ground + WALL_H, faces on EXPOSED sides only (THE SHARED-EDGE LAW over structKinds `runN/E/S/W` = the 2D `wallish`), corner heights from `ctx.heightAt` sampled a hair inside the tile (a lifted building lifts, a sloped one follows). FACE UV = the 2D face frame (u left→right seen from outside, v base→crown) so every 2D measure carries 1:1. South face `'lit'`, N/E/W `'shaded'` (the REAR RISER's shade −14). WINDOWS ARE HOLES: the face splits into sill strip / head strip / two pillars around the opening (head 1.62, band 0.7, u 0.28..0.72; THE WIDE LIGHT butts consecutive window tiles and drops the inner pillars), four reveal faces inside, a mullion CARD (alpha-cut) mid-wall; the hole runs along the axis whose two faces are exposed (a window in a N-S run looks E-W). DOORWAYS ARE TUNNELS: header strip above a fixed 1.56 clear, 0.15 jambs where the frame truly ends (wide doorways merge E-W, side doorways stand edge-on with jambs on E/W and merge N-S — both by the 2D staticRegister rule: wide only), header underside + jamb reveals, crown over. DIAGONALS: triangular prism — leg faces where exposed, always the hypotenuse (a √2-wide face tile so courses keep pitch), `sink.tri` crown. AWNINGS (chunk sweep; host north in AWNING_HOST_TILES): slab top + underside (root 1.76, rail 1.70 at 0.85 out, hem flared 0.16 at free ends) + alpha-cut skirt. WALL-HUNG art: the S face mints a per-detail variant (`wh/…`), pennants/tapestries keyed by (index, length) in their run. Face tiles are SEEDED: `VARIANTS = 6` per (material, skin, tone), the world tile picks by hash — the whole town lives in ~400 atlas tiles | real (24 tests) |
+| `wallFaces.ts` | The 2D wall painters re-emitted as atlas-tile painters in the face-local frame: `paintTimberFace` (plinth 0.22 / sill 0.11 / round(span/0.42) chinked logs / plate 0.13, knots-checks-pegs by hash), `paintMasonryFace` (0.39 courses, running bond, stone01 block whisper, the cracked cave wall's SECRET SEAM), `paintWindowDressing` (reveal ring, shutters / stone lintel + sill, knee braces, end furniture only at true ends), `paintMullionCard`, `paintCrownTile` (woodCrownPlate's cap-beam read, stone flag seam), `paintDoorFace` (header: stone haunches + keystone / timber lintel + pegs; jambs with lit inner edge + plinth block), `paintLeafTile` (paintDoorLeaf at rest), awning top/under/skirt per shape, the garrison ashlar via `paintGarrisonMasonry` under the stub host + `lambertWash` (the stop given back as a white wash), merlon face/cap, gate face, `paintHungDetail` (the wallHangings dispatch to 13 `*OnFace` painters; the tapestry's `rend.wallish/garrisonish` + `game.world` answered by a run shim; the royal swallowtail re-emitted at rest), `paintHungSill`. Tones: `toned(hex, 'lit'|'shaded')` = litTone(shade −14 for shaded); `CROWN_LIFT 0.05` (a crown faces the sun square-on) | real |
+| `doors.ts` | THE DOOR IS A HINGED LEAF. PURE: `growEase` + `DoorEases` (open 520 / close 380 / shake 460 ms, ported from renderer.ts:14219-14290; `now` passed in), `leafDir`/`leafCorners` (the quarter-turn sweep from the shut direction to the open one; overshoot keeps rotating). `DoorLeafRegistry` (`doorLeaves` module singleton — the lane API hands builders no scene): `setChunk` replaces a chunk's leaves and kicks an ease ONLY for a door whose `open` flipped since its last registration (a rebuild never twitches a door), `prune` against the structures' chunk set. `DoorLeafLayer` (Three): ONE dynamic mesh per atlas page (4 verts/leaf, capacity doubled on overflow, never per frame), rewrites only leaves whose openness moved, DoubleSide Lambert on the face page, casts + receives. Leaves stand in the OUTDOOR face plane (`interiors.regionAt` on both sides decides; no room / two rooms = south / west) hinged on the end jambs and are THROWN OPEN OUTWARD like the 2D side door — an open doorway visibly HAS a door (the first pass swung them into the tunnel and they vanished) | real (7 tests) |
+| `main3d.ts` | `doorLayer = new DoorLeafLayer(scene, faces)`; per frame after `faces.flush()`: `doorLayer.update(nowMs, key => structures.has(...))`; `stats().structures.doorLeaves`; dispose | real (4 lines — INTEGRATE may move them) |
+| `dev/play3dWalls.mjs` | the W2 harness law with scenes framed on the buildings: `house-street`, `house-door` (the open DoorwayWood at −426,−285 from the alley), `house-side-door` (the two side doors at −429,−273/−272 from the SW), `house-north`, `house-inside` (actually the south facade close, yaw −0.6), `graveyard-wall`, `market-houses`; logs `leaves` | real |
+
+**Gates:** `npm run typecheck` green; `npm run test -w @arx/client`
+**1063 pass / 0 fail** (+31: sideFace orientation, THE WIDE LIGHT
+spans, diagShape solid triangles, gateMeasures, the absolute course
+law, isolated prism = 5 quads, shared-edge law = 8 for a pair, the 5×5
+house = 48 quads with every vertex at 0 or 2.05, lit/shaded keys, a
+sloped heightfield lifts corners + crown, a window = 16 quads with no
+opaque vertex in the hole + 1 card, merged windows drop inner reveals
+and carry the seam post, a N-S window looks E-W, doorway = 10 quads +
+one west-hinged leaf hung south and thrown open south, room-south puts
+the leaf north, a wide pair shares one key at (2−0.3)/2−0.01, a side
+doorway hangs on the north jamb, diagonals 4 quads / joined leg
+dropped, awning = 3 quads at z + 0.85 / none without a host, hung-art
+key, garrison off; the ease clock, sweep, leafDir/leafCorners, registry
+posture memory / prune / clear); `check:cycles` 3/0/0/1; my :5245 rig
+against rig-36 as `perf12_probe`, console clean on every run. Shots
+(`dev/play3d-shots/w2-walls-*.png`, low + high): `interiors` (the
+harness scene), `house-street`, `house-door`, `house-side-door`,
+`house-north`, `house-inside`, `graveyard-wall`, `market-houses`.
+Ledger at the interiors ring: walls 133 quads of 13.2k, atlas 352
+tiles / 2 pages (the barriers lane's cards fill page 2), build 1.5 ms,
+leaves 42; the market street 374 wall quads.
+
+**Judged (two passes):** corners join without seams, no z-fighting on
+any run, the crown plate reads from above, the plinth grounds every
+timber face, windows read as holes with the room behind (mullion
+cross, shutters, sill + lintel), pennants and the tapestry sit on the
+lit faces. Pass 1 faults fixed in pass 2: open leaves hidden in the
+tunnel → thrown outward; crowns a stop too bright (they take the sun
+square-on) → `CROWN_LIFT 0.05` instead of the face stop.
+
+**Gaps / decisions:**
+
+- **Garrison is OFF here** (`WALLS_OWN_GARRISON = false`): the curtain
+  prism / merlons / gates through the shared doorway law are complete
+  but the BARRIERS lane's `garrison.ts` builds the live one. INTEGRATE
+  keeps one; deleting this lane's garrison code is a 60-line cut.
+- **The wall is a tile thick** (the data has no thinner wall): a window
+  is a deep embrasure, a doorway a short tunnel. Faithful to the tiles.
+- **No glass tint / glint / hearth glow** on the window (the 2D's sheer
+  pane needs a translucent pass; the mullion card carries the glint).
+- **No door veil / "the door opens onto a room, not the map"** — the
+  tunnel shows what is behind; a real camera makes the 2D scrim moot.
+- **Door shake** (`'shake'` ease) is ported but nothing fires it (the
+  2D's locked-refusal fx); open/close arrive as tile patches → chunk
+  rebuild → registry ease. The whole chunk rebuilds (ground bake too)
+  on a door toggle — the ground streamer's existing law, not this
+  lane's; INTEGRATE may want a structures-only rebuild path.
+- **Awnings have no posts, braces or wind**; the skirt's scallops are
+  an alpha-cut card (a hair rough at the hem in mips).
+- **Hung art is baked still** (no breeze; the atlas has no clock) and
+  a tapestry/pennant run wider than the 1-tile snapshot border counts
+  its neighbours up to 8 from the sampler (a run crossing a chunk seam
+  beyond the ring keys as an end).
+- **Side doorways put hidden wall-end faces into the notch** (the 2D
+  `wallish` law ends the run at a side doorway): two invisible quads
+  per side door inside the jamb/header mass. Harmless; noted.
+- **Interior faces are the shaded tone** even where the sun reaches
+  them through the open top; the S face of a north wall (seen from
+  inside) is `'lit'` as in the 2D.
+- **Cave walls** use the stone masonry courses (as the 2D does) — no
+  dedicated rock painter.
