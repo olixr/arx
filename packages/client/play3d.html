@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Arx — Immersive (3D, S1 skeleton)</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #141a30; }
+      #stage { display: block; width: 100vw; height: 100vh; touch-action: none; }
+      #hud {
+        position: fixed; left: 12px; top: 12px; color: #e8ddc2;
+        font: 12px/1.45 ui-monospace, Menlo, monospace; background: rgba(20, 16, 32, 0.72);
+        padding: 8px 12px; border-radius: 6px; pointer-events: none;
+        text-shadow: 1px 1px 0 #000; max-width: 46vw;
+      }
+      #hud b { color: #ffd27a; }
+      #hud pre { margin: 6px 0 0; white-space: pre-wrap; font: inherit; }
+      #hud[data-context="lost"]::after { content: 'WEBGL CONTEXT LOST'; color: #ff8a6a; display: block; }
+    </style>
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+    <div id="hud">
+      <b>Arx Immersive</b> — S1 skeleton (Three.js, real Dawnmead ground, real rigs)<br />
+      <b>drag</b> orbit &nbsp; <b>wheel</b> dolly &nbsp; <b>WASD</b> walk &nbsp; <b>N</b> night &nbsp;
+      <b>P</b> post &nbsp; <b>I</b> ink &nbsp; <b>T</b> tilt &nbsp; <b>H</b> hud
+    </div>
+    <script type="module" src="/src/play3d/main3d.ts"></script>
+  </body>
+</html>

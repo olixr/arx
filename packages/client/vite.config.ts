@@ -58,6 +58,9 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
         landing: resolve(import.meta.dirname, 'landing.html'),
+        // THE SECOND DOOR: the 3D client is its own entry so Classic
+        // never pays for three.js (docs/play3d-plan.md).
+        play3d: resolve(import.meta.dirname, 'play3d.html'),
         ...(withStudios
           ? {
               editor: resolve(import.meta.dirname, 'editor.html'),
