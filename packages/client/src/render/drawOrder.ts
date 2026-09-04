@@ -62,7 +62,31 @@ export const SHELF = (v: number | undefined): number => {
 
 export const DRAW_ORDER = (a: DrawOrderItem, b: DrawOrderItem): number => {
   const shelf = SHELF(a.strat) - SHELF(b.strat);
-  if (shelf !== 0) return shelf;
+  if (shelf !== 0) {
+    // THE FRONT-BASE EXCEPTION (hedge-vs-raised-building-base). SHELF is the
+    // primary term so raised content beats the crown rows beneath it — but it
+    // is TOO strong for one case: a ground-level VOLUME (a hedge/wall, strat 0)
+    // that stands physically IN FRONT of a raised building's base must OCCLUDE
+    // that base, not be dominated by its shelf. Most towns are terraced, so a
+    // hedge planted south of a raised building otherwise draws under it at every
+    // row.
+    //
+    // The rule is scoped narrowly so genuine elevation layering is untouched:
+    //   • BOTH items must be VOLUMES (nearRow set) — billboards (entities) and
+    //     flat baked layers keep pure SHELF, so wall-vs-entity sort is unchanged.
+    //   • The LOWER shelf's near (south) edge must be STRICTLY south of the
+    //     HIGHER shelf's near edge — i.e. the ground volume is physically in
+    //     front of the raised base. Only then do we resolve by near row.
+    // Anything raised that is at or behind (north of) the lower volume's near
+    // edge keeps SHELF and draws over it exactly as before. Equal near rows keep
+    // SHELF too (conservative: the raised item stays on top on an exact tie).
+    if (a.nearRow !== undefined && b.nearRow !== undefined) {
+      const loNear = shelf < 0 ? a.nearRow : b.nearRow; // the LOWER shelf's near edge
+      const hiNear = shelf < 0 ? b.nearRow : a.nearRow; // the HIGHER shelf's near edge
+      if (loNear > hiNear) return a.nearRow - b.nearRow;
+    }
+    return shelf;
+  }
   const ad = a.nearRow ?? a.sortY;
   const bd = b.nearRow ?? b.sortY;
   if (ad !== bd) return ad - bd;

@@ -206,8 +206,9 @@ import { Birds, type Bird, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, generateSkirtBlades, BLADE_FILLS, ORNAMENT_FILLS, type Disturber, type WindSample, type Blade, type GrassBounds, type Flower, type SeedHead } from './grass.js';
 import { GrassGpuLayer, type GrassFrame, type BandBlit } from './grassGpuLayer.js';
 import { partitionTallBands, coalesceTallBands, type TallBand } from './grassGpu.js';
-import { grassRootedSkirtAt } from './grassSkirt.js';
+import { grassRootedSkirtAt, skirtStrengthForTile, wallSkirtSidesAt, SIDE_ALL } from './grassSkirt.js';
 import { MAX_DISTURB } from './grassGpuRenderer.js';
+import { packDisturbers } from './grassGpu.js';
 import { grassShadowOffset, shadeRgb01 } from './grassGpuShadow.js';
 import { paintTree, saplingModel, treeExtent,
   treeModel, TREE_VARIANT_COUNT, treeVariantHash, type TreeModel } from './trees.js';
@@ -255,6 +256,7 @@ import {
   wallCover,
   occluderCover,
   fadeStrength,
+  shelterArmed,
 } from './reveal.js';
 import { ARRIVAL_MIN_COUNT, admitBake, BakeLane, type BakeBudgets } from './bakeAdmission.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
@@ -1438,6 +1440,12 @@ export class Renderer {
   private readonly grassFlowers: Flower[] = [];
   private readonly grassSeeds: SeedHead[] = [];
   private readonly grassDisturb = new Float32Array(MAX_DISTURB * 4);
+  /** G-INTERACT — the parallel travel lay-vector [vx,vy]×n the shaders comb
+   *  the blades down by; and the per-id last position the velocity derives
+   *  from (world units/sec), pruned to who is present this frame. */
+  private readonly grassDisturbVel = new Float32Array(MAX_DISTURB * 2);
+  private readonly grassDisturbEntries: { x: number; y: number; r: number; vx: number; vy: number }[] = [];
+  private readonly grassDisturbLast = new Map<number | 'own', { x: number; y: number }>();
   /** G1 — the visible tall standing mass (GrassTall north/south), gathered
    *  by-sorted for the GPU interleave path; pooled. */
   private readonly grassTall: Blade[] = [];
@@ -1455,14 +1463,28 @@ export class Renderer {
    *  bush, rock, prop on a grass tile), gathered as objectItems are emitted
    *  so each carries its true foot sort row. After the world collect, each
    *  becomes one skirt band (generateSkirtBlades) drawn OVER its own base. */
-  private readonly grassSkirtSites: { tx: number; ty: number; footY: number }[] = [];
+  private readonly grassSkirtSites: {
+    tx: number;
+    ty: number;
+    footY: number;
+    /** Per-type strength (0..1), scaling count/height/radius — rocks low,
+     *  trees full, walls subtle. See skirtStrengthForTile. */
+    strength: number;
+    /** Grass-edge bitmask (SIDE_*): SIDE_ALL for a free-standing wild's ring,
+     *  a partial mask for a wall foot (grass-facing edges only). */
+    sides: number;
+  }[] = [];
   /** Pooled skirt-blade array (all sites concatenated) + per-site bands. */
   private readonly grassSkirt: Blade[] = [];
   private readonly grassSkirtBands: TallBand[] = [];
   /** Per-tile skirt-blade cache (a still object mints its skirt once). Keyed
-   *  by tile; footY is stored so a tile whose object changed (tree→stump,
-   *  a different foot row) re-mints instead of reusing the stale skirt. */
-  private readonly grassSkirtCache = new Map<number, { footY: number; blades: Blade[] }>();
+   *  by tile; footY/strength/sides are stored so a tile whose object changed
+   *  (tree→stump, a different foot row, a re-tuned strength) re-mints instead
+   *  of reusing the stale skirt. */
+  private readonly grassSkirtCache = new Map<
+    number,
+    { footY: number; strength: number; sides: number; blades: Blade[] }
+  >();
   private grassSkirtBlits: readonly BandBlit[] = [];
   private grassSkirtCanvas: HTMLCanvasElement | null = null;
   /** This frame's GrassFrame (camera/wind), stashed by drawGrassGpu so the
@@ -5254,13 +5276,18 @@ export class Renderer {
       this.ownPX = own.x;
       this.ownPY = own.y;
       this.ugCutOn = game.plane.underground;
-      // THE SHELTER GATE: the reveal only arms while you are INSIDE
-      // somewhere — underground, in any enclosed region, or standing
-      // on man-made floor / a threshold (the floor IS the room: a
-      // broken-open ruin with no enclosure still counts the moment
-      // your feet find its boards). Eased over ~0.35s so entering a
-      // building bows its walls down and leaving raises them, instead
-      // of the old binary region snap.
+      // THE SHELTER GATE: the reveal only arms while you are genuinely
+      // INSIDE a building — underground, inside a defined region, or
+      // holding a doorway threshold (a passage wall-line or a panel
+      // door). Standing on an outdoor man-made floor tile (boardwalk,
+      // path-side plank/stone) NO LONGER arms it: the floor alone is not
+      // a room, and the old "the floor IS the room" rule let a player
+      // out on the open boards peep into the building next door and pay
+      // the reveal's cost for nothing (owner ruling 2026-09). The
+      // behind-walls case survives as the anti-occlusion bowl in
+      // wallHeightAt, which only runs once this gate has armed cutCtx.
+      // Eased over ~0.35s so entering a building bows its walls down and
+      // leaving raises them, instead of a binary region snap.
       const ownT = game.world.groundAt(Math.floor(own.x), Math.floor(own.y));
       // A breach/corridor tile is wall-line by THE BREACH LAW —
       // standing in it is standing in a doorway, so it shelters and
@@ -5272,12 +5299,12 @@ export class Renderer {
         Math.floor(own.x),
         Math.floor(own.y),
       );
-      const sheltered =
-        this.ugCutOn ||
-        this.localRegion !== null ||
-        onPassage ||
-        (ownT !== undefined &&
-          (Renderer.REVEAL_FLOORS.has(ownT) || PANEL_DOOR_TILES.has(ownT)));
+      const sheltered = shelterArmed({
+        underground: this.ugCutOn,
+        insideRegion: this.localRegion !== null,
+        onPassage,
+        onPanelDoor: ownT !== undefined && PANEL_DOOR_TILES.has(ownT),
+      });
       const step = frameDt / 0.35;
       this.shelterK += Math.max(-step, Math.min(step, (sheltered ? 1 : 0) - this.shelterK));
       const shel = this.shelterK * this.shelterK * (3 - 2 * this.shelterK);
@@ -9285,6 +9312,31 @@ export class Renderer {
         }
         if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
         item.strat = this.stratAt(tx, ty);
+        // G4b — THE BUILDING FOOT NESTLES: a wall foot that meets grass gets a
+        // subtle, low, grass-side-only skirt so the building reads as sitting
+        // IN the meadow, not pasted on. Grass-adjacent edges only (never the
+        // stone/path/interior side); skipped for a walls-only run with no
+        // grass neighbour. Elevated feet keep their hard base (the skirt sits
+        // on the ground plane, not up a terrace).
+        if (this.grassGpuActive && this.grassSkirtOn && !item.elevated) {
+          const sides = wallSkirtSidesAt(
+            (this.skirtGroundSampler ??= (x, y) => this.game?.world.groundAt(x, y)),
+            tx,
+            ty,
+            tile,
+          );
+          if (sides !== 0) {
+            // The wall's ground contact is its SOUTH foot (ty+1) — the row the
+            // near face stands on — so the fringe rises exactly there.
+            this.grassSkirtSites.push({
+              tx,
+              ty,
+              footY: ty + 1,
+              strength: skirtStrengthForTile(tile),
+              sides,
+            });
+          }
+        }
         items.push(item);
         return;
       }
@@ -9303,7 +9355,16 @@ export class Renderer {
         // (collectGpuSkirts). item.sortY is the object's true foot sort row —
         // the skirt slots a hair past it, drawing OVER the lower base edge.
         if (this.grassGpuActive && this.grassRootedSkirt(game, tx, ty, tile)) {
-          this.grassSkirtSites.push({ tx, ty, footY: item.sortY });
+          // A free-standing wild replaces its own tile and is ringed by
+          // meadow, so it scatters a FULL ring (SIDE_ALL); its strength is
+          // read off its kind (rock → a few short wisps, tree → full collar).
+          this.grassSkirtSites.push({
+            tx,
+            ty,
+            footY: item.sortY,
+            strength: skirtStrengthForTile(tile),
+            sides: SIDE_ALL,
+          });
         }
         // THE SHELF LAW: a standing object sorts on the shelf of its
         // own tile, at its raw row. Awnings need no exemption — their
@@ -9778,6 +9839,12 @@ export class Renderer {
           items.push({
             sortY: bk.sortY,
             strat: bk.strat,
+            // A5 depth rank: carry the bucket's captured near-row so a
+            // COLD/BAKED wall keeps the same VOLUME rank a LIVE wall does —
+            // else DRAW_ORDER ranks the baked blit as a billboard and a
+            // same-row front hedge (a volume) draws UNDER it. Absent for
+            // flat baked layers (and byte-identical when occlusionOn is off).
+            nearRow: bk.nearRow,
             band: { sb: bake, bk },
             elevated: bk.elevated ? true : undefined,
             drawShadow:
@@ -10122,6 +10189,13 @@ export class Renderer {
         let sortY = 0;
         let strat: number | undefined;
         let elevated = false;
+        // A5 depth rank: a BAKED wall/hedge must keep the same VOLUME rank a
+        // LIVE one carries, or DRAW_ORDER treats it as a billboard and a
+        // same-row front hedge (a volume) loses the tie and paints UNDER it.
+        // Capture the bucket's near-row from its first probe item — a wall's
+        // nearRow === sortY, and a flat baked layer's is undefined (byte-
+        // identical there and whenever occlusionOn is off).
+        let nearRow: number | undefined;
         let first = true;
         for (const it of s2) {
           if (keyOf(it) !== bkKey) continue;
@@ -10129,11 +10203,12 @@ export class Renderer {
             sortY = it.sortY;
             strat = it.strat;
             elevated = !!it.elevated;
+            nearRow = it.nearRow;
             first = false;
           }
           it.draw?.();
         }
-        buckets.push({ canvas, sortY, strat, elevated, padL: anchor.x, padT: anchor.y });
+        buckets.push({ canvas, sortY, strat, elevated, nearRow, padL: anchor.x, padT: anchor.y });
       }
     } finally {
       cam.x = savedX;
@@ -19198,18 +19273,55 @@ export class Renderer {
     // y-sort (below) so bodies walk THROUGH thickets.
     this.grass.collectGpuBlades(ground, detail, bounds, this.grassBlades, true);
     this.grass.collectGpuOrnaments(ground, detail, bounds, this.grassFlowers, this.grassSeeds);
-    // This frame's disturbers → the trample uniform. Body radius (~0.3t) is
-    // the footprint CENTRE; the parted patch spreads wider, so scale it.
+    // G-INTERACT — this frame's disturbers → the parting uniforms. Each
+    // body's radius (~0.3t) is the footprint CENTRE; the parted patch spreads
+    // wider, so packDisturbers scales it. The travel VELOCITY (world u/s,
+    // derived from each id's last position) becomes the wake lay-vector so
+    // blades comb down in the direction of motion and spring back when still.
+    // `?__grassNoDisturb` (a fresh-page bisect flag, the probe FLAG law) feeds
+    // zero disturbers for a clean A/B against the static-through-body look.
+    const noDisturb = (globalThis as { __grassNoDisturb?: boolean }).__grassNoDisturb === true;
     const src = this.frameDisturbers;
-    const dz = this.grassDisturb;
-    const dn = Math.min(MAX_DISTURB, src.length);
-    for (let i = 0; i < dn; i++) {
+    const dtSec = this.frameDt > 1e-4 ? this.frameDt : 1 / 60;
+    const last = this.grassDisturbLast;
+    const seen = new Set<number | 'own'>();
+    const entries = this.grassDisturbEntries;
+    entries.length = 0;
+    for (let i = 0; i < src.length; i++) {
       const d = src[i]!;
-      dz[i * 4] = d.x;
-      dz[i * 4 + 1] = d.y;
-      dz[i * 4 + 2] = Math.max(0.9, d.r * 3.2); // parted spread, not body radius
-      dz[i * 4 + 3] = 1;
+      const prev = last.get(d.id);
+      // Clamp the per-frame delta before dividing by dt so a teleport or a
+      // fresh id cannot fling a one-frame velocity spike into the wake.
+      let vx = 0;
+      let vy = 0;
+      if (prev) {
+        vx = Math.max(-0.6, Math.min(0.6, d.x - prev.x)) / dtSec;
+        vy = Math.max(-0.6, Math.min(0.6, d.y - prev.y)) / dtSec;
+      }
+      if (prev) {
+        prev.x = d.x;
+        prev.y = d.y;
+      } else {
+        last.set(d.id, { x: d.x, y: d.y });
+      }
+      seen.add(d.id);
+      entries.push({ x: d.x, y: d.y, r: d.r, vx, vy });
     }
+    // Drop bodies that left view so the last-position map cannot grow forever.
+    if (last.size > seen.size) for (const id of last.keys()) if (!seen.has(id)) last.delete(id);
+    // MANY BODIES, EIGHT SLOTS: a crowded town can field far more disturbers
+    // than the uniform holds, and the own player is gathered LAST — so pack
+    // the ones NEAREST the camera look-at (the bodies actually in the meadow
+    // on screen), never the arbitrary first eight. O(n log n) on ≤ a few
+    // dozen, no per-blade cost.
+    const camX = this.camera.x;
+    const camY = this.camera.y;
+    entries.sort(
+      (a, b) => (a.x - camX) ** 2 + (a.y - camY) ** 2 - ((b.x - camX) ** 2 + (b.y - camY) ** 2),
+    );
+    const dz = this.grassDisturb;
+    const dv = this.grassDisturbVel;
+    const dn = noDisturb ? 0 : packDisturbers(entries, dz, dv);
     const cam = this.camera;
     const frame: GrassFrame = {
       scale: cam.scale,
@@ -19222,6 +19334,7 @@ export class Renderer {
       timeSec: performance.now() / 1000,
       windGain: 0.12,
       disturb: dn > 0 ? dz.subarray(0, dn * 4) : undefined,
+      disturbVel: dn > 0 ? dv.subarray(0, dn * 2) : undefined,
     };
     // Stash the frame so the later skirt pass (collectGpuSkirts, run after
     // the world collect gathers grass-rooted objects) renders its blades
@@ -19396,11 +19509,21 @@ export class Renderer {
       const key = packTile(site.tx, site.ty);
       const cached = this.grassSkirtCache.get(key);
       let skirt: Blade[];
-      if (cached && cached.footY === site.footY) {
+      if (
+        cached &&
+        cached.footY === site.footY &&
+        cached.strength === site.strength &&
+        cached.sides === site.sides
+      ) {
         skirt = cached.blades;
       } else {
-        skirt = generateSkirtBlades(site.tx, site.ty, site.footY);
-        this.grassSkirtCache.set(key, { footY: site.footY, blades: skirt });
+        skirt = generateSkirtBlades(site.tx, site.ty, site.footY, site.strength, site.sides);
+        this.grassSkirtCache.set(key, {
+          footY: site.footY,
+          strength: site.strength,
+          sides: site.sides,
+          blades: skirt,
+        });
       }
       if (skirt.length === 0) continue;
       const i0 = blades.length;

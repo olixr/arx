@@ -11,6 +11,7 @@ import {
   emberEase,
   fadeStrength,
   occluderCover,
+  shelterArmed,
   smoothstep01,
   stackCover,
   wallCover,
@@ -178,4 +179,33 @@ test('smoothstep01 clamps and eases', () => {
 
 test('sanity: the body stays the unit of measure', () => {
   assert.ok(BODY_H > 1 && BODY_H < 1.3);
+});
+
+// ---------------------------------------------------- the shelter gate
+
+const NOWHERE = {
+  underground: false,
+  insideRegion: false,
+  onPassage: false,
+  onPanelDoor: false,
+};
+
+test('the shelter gate does NOT arm on an outdoor floor alone (no peeping)', () => {
+  // Standing out in the open on a man-made floor tile — a boardwalk or
+  // path-side plank — no longer arms the interior reveal. The predicate
+  // takes no floor-tile input at all: the floor cannot arm it.
+  assert.equal(shelterArmed(NOWHERE), false);
+});
+
+test('the shelter gate arms when genuinely inside a building region', () => {
+  assert.equal(shelterArmed({ ...NOWHERE, insideRegion: true }), true);
+});
+
+test('the shelter gate arms underground and at doorway thresholds', () => {
+  assert.equal(shelterArmed({ ...NOWHERE, underground: true }), true);
+  // A passage wall-line (THE BREACH LAW) and a panel-door tile are the
+  // entrance to a building — held so walking through a door never flaps
+  // the veil.
+  assert.equal(shelterArmed({ ...NOWHERE, onPassage: true }), true);
+  assert.equal(shelterArmed({ ...NOWHERE, onPanelDoor: true }), true);
 });
