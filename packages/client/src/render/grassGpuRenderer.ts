@@ -63,11 +63,11 @@ void main() {
   // A BLOCKY COLUMN: a tall, narrow, straight-sided rectangular prism with
   // a FLAT top and no taper — the vertical-slab grass of our low-poly
   // brand, not a leaf.
-  float wj = 0.82 + 0.26 * fract(iShape.w * 7.31);
+  float wj = 0.68 + 0.48 * fract(iShape.w * 7.31);
   vec4 wind = grassWind(iRoot, uTime + iShape.w * 6.2831853);
   vec2 root = iRoot;
-  float height = iShape.x * 1.55;       // TALL
-  float hw = iShape.y * 1.42 * wj;      // chunky bars, not hairlines
+  float height = iShape.x * 1.42;       // ankle-to-shin coat, waist-high thickets
+  float hw = iShape.y * 0.76 * wj;      // fine flush blades, not chunky bars
 
   // WIND — a whole-blade SHEAR, linear in height: the blade leans as a
   // clean parallelogram with straight edges and a flat top. No per-vertex
