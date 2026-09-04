@@ -16,6 +16,22 @@
 import { WX, WY } from './grass.js';
 import type { Blade } from './grass.js';
 
+/** The frame's projection uniforms for the grass shaders — the exact
+ *  `projectWorld` inputs (unsnapped origin under a lean). Shared by the
+ *  blade and ornament programs so the whole meadow rides one homography. */
+export interface GrassProj {
+  scale: number;
+  yScale: number;
+  /** Screen origin in CSS px (camOriginX/Y, unsnapped under lean). */
+  ox: number;
+  oy: number;
+  /** Lean parameter. */
+  q: number;
+  /** Viewport in CSS px. */
+  wCss: number;
+  hCss: number;
+}
+
 /** Floats per grass instance in the packed buffer. Layout:
  *  [rootX, rootY, height, halfWidth, lean, phase, tone, seg2]. */
 export const GRASS_INSTANCE_FLOATS = 8;
@@ -52,10 +68,11 @@ export function packBladeInstances(blades: readonly Blade[], out?: Float32Array)
  * meadow paints it. `ox`/`oy` are the snapped screen origins (camOriginX/Y);
  * `w`/`h` are the frame's CSS pixel dimensions. Alloc-free with `out`.
  *
- * NOTE q>0 (camera lean): a lean is a true projective map needing a
- * per-vertex w — not expressible in this affine mat3, and the shader
- * currently forces gl_Position.w = 1. The live camera ships q=0, so this
- * is exact today; the lean is a later sub-phase (proposal G-2, the lean).
+ * RETIRED from the live path (Epic "THE ONE RENDER", B2): a lean is a true
+ * projective map needing a per-vertex divide, not expressible in this affine
+ * mat3. The grass shaders now project every vertex through `grassProjectGlsl`
+ * (the full `projectWorld` homography) instead of this matrix. Kept only as a
+ * pinned reference of the q=0 affine map (grassGpu.test.ts); no live caller.
  */
 export function grassViewMatrix(
   scale: number,
@@ -72,6 +89,89 @@ export function grassViewMatrix(
   m[3] = 0;                 m[4] = (-2 * scale * yScale) / h; m[5] = 0;
   m[6] = (2 * ox) / w - 1;  m[7] = 1 - (2 * oy) / h;         m[8] = 1;
   return m;
+}
+
+/** The perspective-divisor floor — mirrors cameraProject's MIN_W. Kept in
+ *  lockstep by grassProjectParity.test.ts (a divergence surfaces the moment
+ *  a sample lands in the clamped near field). */
+export const GRASS_MIN_W = 0.04;
+
+/**
+ * THE ONE PROJECTION in GLSL (Epic "THE ONE RENDER", phase B2). The grass
+ * vertex shaders map every blade/bloom world point to `gl_Position` through
+ * THIS function — the exact `projectWorld` homography (render/
+ * cameraProject.ts), not a private ortho matrix. It replaces the affine
+ * `grassViewMatrix` + `gl_Position.w = 1` approximation that made the meadow
+ * parallax faster than the world under a lean and edge-crawl against bodies.
+ *
+ * The camera uniforms `(uScale, uYScale, uOrigin, uQ, uViewport)` carry the
+ * frame's projection; `uOrigin` is the screen origin the feed computes with
+ * `camOriginX/Y(..., q)` — the UNSNAPPED origin under a lean, so there is no
+ * pre-divide sawtooth to amplify (the jitter fix). Per vertex we form the
+ * ortho screen point, apply the perspective divide about the viewport centre
+ * (the same `wdiv = max(MIN_W, 1 − q·(sy0−cy))`), then map to NDC with the
+ * stage's Y-flip. Because the divide is done HERE, `gl_Position.w = 1` is
+ * now exactly right (the pre-divided screen point, not an affine guess).
+ *
+ * At q=0 the divide vanishes through the branch (byte-identical affine feed),
+ * so short and tall grass ride one law: a blade tip recedes with its root
+ * because wind/trample move the point in WORLD space BEFORE this projection.
+ * Pinned equal to `projectWorld` by grassProjectParity.test.ts via the JS
+ * mirror `grassProjectMirror` below (the `grassWindMirror` pattern).
+ */
+export function grassProjectGlsl(): string {
+  return `
+uniform float uScale;
+uniform float uYScale;
+uniform vec2 uOrigin;    // screen origin (ox, oy); unsnapped under lean
+uniform float uQ;        // lean parameter
+uniform vec2 uViewport;  // frame size in CSS px (w, h)
+const float GRASS_MIN_W = ${GRASS_MIN_W};
+vec4 grassProject(vec2 world) {
+  float sx0 = world.x * uScale + uOrigin.x;
+  float sy0 = world.y * uScale * uYScale + uOrigin.y;
+  float sx = sx0;
+  float sy = sy0;
+  if (uQ != 0.0) {
+    float cx = uViewport.x * 0.5;
+    float cy = uViewport.y * 0.5;
+    float wdiv = max(GRASS_MIN_W, 1.0 - uQ * (sy0 - cy));
+    sx = cx + (sx0 - cx) / wdiv;
+    sy = cy + (sy0 - cy) / wdiv;
+  }
+  float ndcX = 2.0 * sx / uViewport.x - 1.0;
+  float ndcY = 1.0 - 2.0 * sy / uViewport.y;   // stage Y-flip
+  return vec4(ndcX, ndcY, 0.0, 1.0);
+}`;
+}
+
+/**
+ * A JS transcription of grassProjectGlsl's screen-space math — FOR THE
+ * PARITY TEST ONLY. Given the camera uniforms and a world point it returns
+ * the final SCREEN position (post-divide, pre-NDC) and the divisor `wDiv`
+ * the homography applied (`depthScale = 1/wDiv`). Asserting it equals
+ * `projectWorld` proves the shader parallaxes the meadow at exactly the
+ * player's rate. Keep it in lockstep with grassProjectGlsl (the test fails
+ * if they drift). `uOrigin` is passed in already resolved (camOriginX/Y).
+ */
+export function grassProjectMirror(
+  scale: number,
+  yScale: number,
+  ox: number,
+  oy: number,
+  q: number,
+  wx: number,
+  wy: number,
+  w: number,
+  h: number,
+): { x: number; y: number; wDiv: number } {
+  const sx0 = wx * scale + ox;
+  const sy0 = wy * scale * yScale + oy;
+  if (q === 0) return { x: sx0, y: sy0, wDiv: 1 };
+  const cx = w / 2;
+  const cy = h / 2;
+  const wDiv = Math.max(GRASS_MIN_W, 1 - q * (sy0 - cy));
+  return { x: cx + (sx0 - cx) / wDiv, y: cy + (sy0 - cy) / wDiv, wDiv };
 }
 
 /**

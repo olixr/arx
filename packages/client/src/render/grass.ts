@@ -1,5 +1,6 @@
 import { Tile, hashCoords, valueNoise } from '@arx/shared';
 import { StageBlend, type StageItem, type StageTexture } from './stage/stageTypes.js';
+import { type LightStrip, screenOrthoFromLean, shadeStrip } from './cameraProject.js';
 import {
   GRASS_BAKE_MS_BUDGET,
   GRASS_CELL_SPAN,
@@ -877,6 +878,9 @@ export class GrassSystem {
   /** This frame's cached-fill translation (drawUnder → flushShadows). */
   private cacheDx = 0;
   private cacheDy = 0;
+  /** THE SHADE BAKES ONCE (Epic1 B4): the strip the per-frame warp writes
+   *  into (q>0-only — untouched at q=0, byte-identical). */
+  private readonly underStrip: LightStrip = { sy: 0, sh: 0, dx: 0, dy: 0, dw: 0, dh: 0 };
 
   /**
    * THE MEADOW RIDES THE SHEAR: cadence-baked sprites for the two
@@ -1625,7 +1629,7 @@ export class GrassSystem {
     ground: Sampler,
     detail: DetailFn,
     bounds: GrassBounds,
-    wts: WTS,
+    bwts: WTS,
     s: number,
     ox: number,
     oy: number,
@@ -1680,7 +1684,7 @@ export class GrassSystem {
         }
         if (live.has(key)) continue;
         const wind = windAtInto(WIND_SCRATCH, tx + 0.5, ty + 0.5, this.tSec);
-        const f = this.tileFrame(tx, ty, wts);
+        const f = this.tileFrame(tx, ty, bwts);
         this.gatherNear(tx, ty);
         // Pre-gate on the builders' own cast conditions (hpx floor,
         // bin parity) using h*s — an upper bound on hpx, so a skip is
@@ -1711,28 +1715,28 @@ export class GrassSystem {
       }
     }
 
-    // THE SHADE LEARNS TO LEAN (Epic B): a single baked monolith is one
-    // flat drawImage — it cannot per-row depth-warp, so under a lean it
-    // seats the whole calm meadow's cast at ortho and floats a hard,
-    // axis-aligned rectangular band over the receded ground (the reported
-    // defect, world-stage-only because the lean rides the GL compositor).
-    // When leaning, KEEP the freshly-built casts live in shadowPath (they
-    // were built THIS frame at leaned tile frames) and skip the monolith
-    // entirely — drawUnder fills them with the live tiles' casts, all at
-    // one depth-warped position. q=0 keeps the cached monolith verbatim.
+    // THE SHADE BAKES ONCE (Epic1 B4): the calm cast monolith bakes into
+    // the canvas in BAKE space — at q=0 that is ortho screen space (the
+    // path shipped so far, byte-identical); under a lean `bwts` has
+    // already un-leaned every tile frame to ORTHO screen (screenOrthoFrom-
+    // Lean), so the monolith is a camera-independent ORTHO bake either
+    // way. drawUnder blits it flat at q=0 and WARPS it through the lean
+    // homography each frame at q>0 (shadeStrip) so it recedes with the
+    // ground — no per-frame rebake (the old lean path forced one), no
+    // hard rectangular band floating over the receded ground.
     const leaning = this.leanQ !== 0;
     // Rasterize the merged casts, anchored at the padded bounds'
     // top-left in the bake frame's screen space (CSS px onto a
     // dpr-resolution backing). Margin covers cast throw past a tile.
-    const pTL = wts(minTx, minTy);
-    const pBR = wts(maxTx + 1, maxTy + 1);
+    const pTL = bwts(minTx, minTy);
+    const pBR = bwts(maxTx + 1, maxTy + 1);
     const margin = 1.5 * s;
     const canvasX0 = Math.floor(Math.min(pTL.x, pBR.x) - margin);
     const canvasY0 = Math.floor(Math.min(pTL.y, pBR.y) - margin);
     const cw = Math.ceil(Math.abs(pBR.x - pTL.x) + margin * 2);
     const chh = Math.ceil(Math.abs(pBR.y - pTL.y) + margin * 2);
     const hasShadow = this.shadowPath !== null;
-    if (!leaning) {
+    {
       const bw = Math.ceil(cw * dpr);
       const bh = Math.ceil(chh * dpr);
       if (!this.shadowCanvas) {
@@ -1774,16 +1778,18 @@ export class GrassSystem {
       shKy: this.shKy,
       shOn: this.shOn,
       shFill: this.shFill,
-      // Under lean the calm casts ride shadowPath, not the monolith — so
-      // the cache holds no blit-able canvas content (hasShadow=false) and
-      // is marked a lean bake (a mode flip forces the next rebake).
-      hasShadow: leaning ? false : hasShadow,
+      // The bake always rasterizes the calm monolith (ortho at q=0, un-
+      // leaned ortho at q>0) — one canvas the flat blit and the warp both
+      // ride, so a lean↔ortho flip needs no fresh content.
+      hasShadow,
+      // leanBake records only whether this bake un-leaned to ortho, so a
+      // mode FLIP re-snaps the origin (q=0 snapped vs q>0 unsnapped) — NOT
+      // a per-frame force.
       leanBake: leaning,
     };
-    // Ortho: restore the caller's live path (the monolith owns the calm
-    // casts). Lean: KEEP the built calm casts in shadowPath so drawUnder
-    // paints them, depth-warped, with the live tiles' casts.
-    if (!leaning) this.shadowPath = prevShadow;
+    // The monolith owns the calm casts; restore the caller's live path so
+    // drawUnder's live tiles append their (leaned) casts to shadowPath.
+    this.shadowPath = prevShadow;
   }
 
   /**
@@ -1807,22 +1813,41 @@ export class GrassSystem {
     wts: WTS,
     s: number,
   ): void {
-    const o = wts(0, 0);
     // The ctx's device-pixel ratio, read off its transform (a pure
     // dpr scale in both the renderer and the landing scene) — the calm
     // canvas bakes at this resolution so the blit is 1:1 device px.
     const m = this.frameTransform(ctx);
     const dpr = m.a || 1;
+    // THE SHADE BAKES ONCE (Epic1 B4): the lean homography is anchored at
+    // the viewport centre (cameraProject `cx = w/2, cy = h/2`); the CSS
+    // viewport is the backing store over dpr. Used q>0-only, to un-lean
+    // the bake to ortho and to warp it back each frame.
+    const leaning = this.leanQ !== 0;
+    const cx = ctx.canvas.width / dpr / 2;
+    const cy = ctx.canvas.height / dpr / 2;
+    // Bake space: at q=0 the leaned `wts` IS ortho (byte-identical). Under
+    // a lean, un-lean each projected point to the ORTHO screen it came
+    // from, so the calm monolith bakes ONCE in camera-independent ortho
+    // space — pan is a translate, `q` cancels — and `shadeStrip` warps it
+    // to the receded ground each frame. `screenOrthoFromLean` writes back
+    // into the fresh object `wts` returned (safe for tileFrame's two calls).
+    const bwts: WTS = leaning
+      ? (wx, wy) => {
+          const p = wts(wx, wy);
+          return screenOrthoFromLean(this.leanQ, cx, cy, p.x, p.y, p);
+        }
+      : wts;
+    const o = bwts(0, 0);
     let c = this.underCache;
-    // THE SHADE LEARNS TO LEAN (Epic B): under a lean the calm casts are
-    // rebuilt LIVE each frame at the current leaned tile frames (a flat
-    // monolith blit floats a rectangular band over the receded ground),
-    // so force a rebake every frame; and force one on a lean↔ortho flip so
-    // the cache never carries the wrong kind. q=0 with an ortho cache in
-    // hand leaves both conditions false — byte-identical to today.
+    // THE SHADE BAKES ONCE (Epic1 B4): the calm monolith bakes in ortho and
+    // is REUSED across frames under lean too (drawUnder warps it), so the
+    // old per-frame `leanQ !== 0` rebake force is gone — restoring round-6's
+    // bake-once/blit-many cadence. Only a genuine lean↔ortho FLIP forces a
+    // rebake (the origin snaps differently, q=0 snapped vs q>0 unsnapped).
+    // q=0 with an ortho cache in hand leaves every condition false —
+    // byte-identical to today.
     let needBake =
-      this.leanQ !== 0 ||
-      c?.leanBake === true ||
+      (c ? c.leanBake !== leaning : false) ||
       !c ||
       c.scale !== s ||
       c.dpr !== dpr ||
@@ -1866,7 +1891,7 @@ export class GrassSystem {
       }
     }
     if (needBake) {
-      this.bakeShade(ground, detail, bounds, wts, s, o.x, o.y, dpr);
+      this.bakeShade(ground, detail, bounds, bwts, s, o.x, o.y, dpr);
       c = this.underCache;
     }
     const cache = c!;
@@ -1900,7 +1925,8 @@ export class GrassSystem {
     const cached = cache.hasShadow ? this.shadowCanvas : null;
     if (cached || this.shadowPath) {
       ctx.globalAlpha = this.shAlpha;
-      if (cached) {
+      if (cached && !leaning) {
+        // q=0: the flat monolith blit, 1:1 device px — byte-identical.
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.drawImage(
@@ -1909,6 +1935,28 @@ export class GrassSystem {
           Math.round(m.d * (cache.canvasY0 + this.cacheDy) + m.f),
         );
         ctx.restore();
+      } else if (cached) {
+        // THE SHADE LEARNS TO LEAN (Epic1 B4): warp the ORTHO-baked calm
+        // monolith to the receded ground each frame in horizontal strips
+        // (shadeStrip) — the same bake-ortho-once/warp-each-frame trick the
+        // lightmap uses, so the cast recedes WITH the ground it lies on
+        // instead of being rebaked every frame. Bilinear smoothing blends
+        // the per-strip horizontal-scale step (the tilt-shift law).
+        const bw = cached.width;
+        const bh = cached.height;
+        const rectX = cache.canvasX0 + this.cacheDx;
+        const rectY = cache.canvasY0 + this.cacheDy;
+        const rectW = bw / cache.dpr;
+        const rectH = bh / cache.dpr;
+        const N = Math.min(48, Math.max(6, Math.ceil(rectH / 16)));
+        const smooth = ctx.imageSmoothingEnabled;
+        ctx.imageSmoothingEnabled = true;
+        for (let i = 0; i < N; i++) {
+          const st = shadeStrip(this.leanQ, cx, cy, rectX, rectY, rectW, rectH, bh, N, i, this.underStrip);
+          if (st.sh <= 0 || st.dh <= 0 || st.dw <= 0) continue;
+          ctx.drawImage(cached, 0, st.sy, bw, st.sh, st.dx, st.dy, st.dw, st.dh);
+        }
+        ctx.imageSmoothingEnabled = smooth;
       }
       if (this.shadowPath) {
         ctx.fillStyle = this.shFill;
@@ -1934,16 +1982,32 @@ export class GrassSystem {
    * instanced GPU renderer. Reuses the identical this.tile() cache
    * drawUnder reads (no separate generation path — cache misses mint
    * exactly the geometry drawUnder would). Gathers the `under` coat
-   * (both grass tiles wear it — THE COAT LAW) plus the tall `north`
-   * and `south` blades (GrassTall only) — Blade geometry ONLY; flowers,
+   * (both grass tiles wear it — THE COAT LAW), and — unless the tall
+   * standing mass is being routed to the y-sorted interleave — the tall
+   * `north`/`south` blades (GrassTall only). Blade geometry ONLY; flowers,
    * seeds and roots are separate instance types handled later. The
    * blades land SORTED back-to-front by world-y (`by` ascending): the
    * GPU draws them opaque with no depth buffer, so paint order IS the
    * depth. The immutable cached Blade objects are pushed by reference
    * (no copy). `out` is caller-owned and pooled — it is truncated here.
    * Returns the number of blades written.
+   *
+   * B3 — THE TALL BLADE INTERLEAVES: with `tallInterleave` set, the GPU
+   * flat field carries ONLY the short `under` coat (both grass tiles),
+   * and the tall standing mass (GrassTall north/south bands) is skipped
+   * here so the renderer can route it through the CPU `collectTall`
+   * y-sort — a body then walks THROUGH a thicket, blades in front of it
+   * occluding the lower body. The `under` coat is short and correctly
+   * stays flat below every entity, so the partition is exactly the two
+   * depth classes: coat (flat, GPU) vs standing mass (interleaved, CPU).
    */
-  collectGpuBlades(ground: Sampler, detail: DetailFn, bounds: GrassBounds, out: Blade[]): number {
+  collectGpuBlades(
+    ground: Sampler,
+    detail: DetailFn,
+    bounds: GrassBounds,
+    out: Blade[],
+    tallInterleave = false,
+  ): number {
     out.length = 0;
     for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
       for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
@@ -1953,7 +2017,10 @@ export class GrassSystem {
         if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
         const geom = this.tile(tx, ty, t, detail(tx, ty), ground).geom;
         for (const b of geom.under) out.push(b);
-        if (t === Tile.GrassTall) {
+        // Tall standing mass: kept in the flat GPU field only when it is
+        // NOT being interleaved. Under interleave the CPU collectTall pass
+        // draws these bands at their y-sort slots instead (see renderer).
+        if (t === Tile.GrassTall && !tallInterleave) {
           for (const b of geom.north) out.push(b);
           for (const b of geom.south) out.push(b);
         }

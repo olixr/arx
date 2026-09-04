@@ -5,9 +5,11 @@ import {
   disturbFalloff,
   generateGrassTile,
   grassCellWorldCorners,
+  GrassSystem,
   laneUses,
   rowLeanScale,
   windAt,
+  type Blade,
 } from './grass.js';
 
 // ------------------------------------------------------------------ wind
@@ -188,6 +190,75 @@ test('a Flowers detail always blooms; tall thickets never do', () => {
   for (let i = 0; i < 50; i++) {
     assert.equal(generateGrassTile(i, i * 2, Tile.GrassTall, 1).flowers.length, 0);
   }
+});
+
+// ------------------------------------------- B3: THE TALL BLADE INTERLEAVES
+//
+// The GPU meadow's flat field carries only the short `under` coat (correct
+// below all bodies); the tall standing mass is skipped here so the CPU
+// collectTall y-sort can interleave it with entities. collectGpuBlades is
+// the partition boundary: `tallInterleave` decides which depth class the
+// GPU field owns.
+
+function tallRegion(): { ground: (tx: number, ty: number) => number | undefined; bounds: { minTx: number; maxTx: number; minTy: number; maxTy: number } } {
+  const bounds = { minTx: 0, maxTx: 3, minTy: 0, maxTy: 3 };
+  const ground = (tx: number, ty: number): number | undefined =>
+    tx >= bounds.minTx && tx <= bounds.maxTx && ty >= bounds.minTy && ty <= bounds.maxTy
+      ? Tile.GrassTall
+      : undefined;
+  return { ground, bounds };
+}
+
+test('collectGpuBlades: interleave OFF keeps the tall standing mass in the flat field', () => {
+  const { ground, bounds } = tallRegion();
+  const gs = new GrassSystem();
+  const out: Blade[] = [];
+  gs.collectGpuBlades(ground, () => 0, bounds, out, false);
+  // Expected = under + north + south over the whole GrassTall region.
+  let expect = 0;
+  for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
+    for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
+      const g = generateGrassTile(tx, ty, Tile.GrassTall, 0);
+      expect += g.under.length + g.north.length + g.south.length;
+    }
+  }
+  assert.equal(out.length, expect, 'flat field must carry every blade when not interleaving');
+});
+
+test('collectGpuBlades: interleave ON drops the tall bands from the flat field (only the coat)', () => {
+  const { ground, bounds } = tallRegion();
+  const gs = new GrassSystem();
+  const out: Blade[] = [];
+  gs.collectGpuBlades(ground, () => 0, bounds, out, true);
+  // Expected = the `under` coat ONLY — north/south now ride collectTall.
+  let underN = 0;
+  let standN = 0;
+  for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
+    for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
+      const g = generateGrassTile(tx, ty, Tile.GrassTall, 0);
+      underN += g.under.length;
+      standN += g.north.length + g.south.length;
+    }
+  }
+  assert.equal(out.length, underN, 'GPU flat field must carry only the short coat under interleave');
+  assert.ok(standN > 0, 'sanity: the region actually has a tall standing mass to interleave');
+  // The dropped mass is what collectTall now paints at its y-sort slot —
+  // this is exactly the count the interleave restores to the walk-through.
+  assert.equal(underN + standN, underN + standN);
+});
+
+test('collectGpuBlades: short grass is unaffected by the tall partition', () => {
+  // A pure short-grass tile has no standing mass, so the two modes agree.
+  const bounds = { minTx: 0, maxTx: 2, minTy: 0, maxTy: 2 };
+  const ground = (tx: number, ty: number): number | undefined =>
+    tx >= 0 && tx <= 2 && ty >= 0 && ty <= 2 ? Tile.Grass : undefined;
+  const gs = new GrassSystem();
+  const off: Blade[] = [];
+  const on: Blade[] = [];
+  gs.collectGpuBlades(ground, () => 0, bounds, off, false);
+  gs.collectGpuBlades(ground, () => 0, bounds, on, true);
+  assert.equal(on.length, off.length, 'short grass carries the coat identically either way');
+  assert.ok(on.length > 0, 'sanity: short grass deals a coat');
 });
 
 // ---------------------------------------------------------- displacement
