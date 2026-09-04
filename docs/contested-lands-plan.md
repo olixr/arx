@@ -680,7 +680,7 @@ posture is its own id.
 | 181 | Detail.Mudcrack | floor | — | — | — | the drained pond |
 
 **AshGround (546)** and **GrassBlighted (547)** are true tiles under THE LIVING
-GROUND (§12.5; owner ruling 5) and land in LG-6; the Tholl's four tiles
+GROUND (§12.5; owner ruling 5) and land in LG-6; the Dolmen's four tiles
 (548-551) and Detail 182 follow in §11.3. **QuarryFace** and **BoardedAdit**
 are deferred (no v1 scene needs them). The Doorless knucklebone and the skral kelp-string on a
 fence rail are hashed Detail postures, not tiles.
@@ -1046,14 +1046,14 @@ the decisions list below where they differ:
 
 ---
 
-## 11. THE FOURTH PEOPLE — THE THOLL, THE STANDING COURSE
+## 11. THE FOURTH PEOPLE — THE DOLMEN, THE STANDING COURSE
 
 Chosen from three competing designs (a horned herding people from over the
 Spinewall; the living kerb-folk of the barrows; a dry-stone people the deep
 pushed up). The horned people were refused for the demo: horns read as the
 one thing the content boundary forbids, however the curl is drawn. The
 kerb-folk build nothing above the knee and so cannot show an encampment
-built into the land. The Tholl show it in stone.
+built into the land. The Dolmen show it in stone.
 
 **One line.** A dry-stone people the deep pushed up before the kobolds:
 they do not dig and they do not tamp, they SET, and what they set holds,
@@ -1062,26 +1062,26 @@ which is the whole of their virtue and the whole of their fault.
 **Origin (author-facing; no throat says it).** Eleven winters back the
 floor of the Sett, a quarry bowl south-east of the fen that nobody's road
 names, grew a dry-set plug of stone that was not the bowl's own stone, over
-three nights, and the Tholl came up through it by stratum. They plugged the
+three nights, and the Dolmen came up through it by stratum. They plugged the
 hole behind them with a corbelled dome, built over it, and have never stood
 on it since. Asked why they came up they say "We set here." and nothing
 else, forever. What they give if pressed by count is arithmetic: the weight
 on their old courses "changed"; stones that had held longer than any count
 "moved." Ammat keeps a count of stones moved topside each year (nine, then
 fourteen, then thirty-three) and files it under wet and wains and bad
-setting, never a pattern. The deepest stratum, the Whin, did not come up.
+setting, never a pattern. The deepest stratum, the Gabbro, did not come up.
 
 ### 11.1 The sub-peoples (races within the race)
 
 | Stratum | Look | Temper | Where |
 |---|---|---|---|
-| **The Marl** (shallow chalk-clay) | Warm bone-white hide with grey mottle (limestone, never moonpale), the lowest rounded yoke, pale tick eyes, the smallest hands, a chalk-white plumb bob. Stature 1.02. | The dealers and the bridge throats; patient, literal, crofter-cadenced; they learned the tongue first. They finish what they promise whatever stands in the way. They disown Vorl's stile out loud and let it stand. | The rim-set on the Sett's north lip, the Course, the dry end at the Drowned Meadow. Bodies `tholl` (L6). Throats Ammat (coursemother, fineActor) and Oskel (the first one a player meets). |
-| **The Sinter** (dripstone) | Blue-white hide with a calcite crust on the yoke and short dripstone ticks along its rim (ticks, never plates), wet dark eyes, the tallest hooded yoke, a clear-blue bob. Stature 1.10, the slowest walk in the game. | Speak only as "we", a few sentences each, and hum one note in the idle (a proximity voice, never a bed). They will not go nearer water than the last dry course and will not say why. | The Sett's wet floor, a corbel cell half in shallow water. Body `tholl_sinter` (L8). Throat Kesk. |
-| **The Culm** (the coal seam) | Ash-dark grey to near-black hide, a squared yoke with a soot-cut notch, the only warm eyes of the four (ember), a red-dust line along the mouth seam, black bob. Stature 1.04, the quickest. | Hot and quick, the fighters and the fire-keepers: the only people in the valley burning stone, not wood. Their one oath is "cold on you." They would sell black stone to Ottery's forge if anyone had asked. | The hearth-cells on the Sett's east shelf, the set's only lights (EmberBed-class rows, flame-gated). Body `tholl_culm` (L9, the hurled hot stone `black_seam`). Throat Durrow. |
-| **The Gossan** (the iron hat) | Rust-ochre hide streaked like weathered iron, the deepest keel and a ridged yoke with three dull iron beads (never gold), the biggest hands. Stature 1.16; the champion 1.30. | The grudge-keepers. They keep THE WEIGHT: the count of every stone taken from the Course (forty to the Charter's causeway, one cart, twelve stakes) and want it back stone for stone; they unpick Charter posts and Returner lamp-stakes by night and lay them in a row in the weight-yard. Vorl's stile law (set one stone to pass) is theirs. They would fight. | The weight-yard on the Sett's west shelf. Bodies `tholl_gossan` (L11), `tholl_champion` Vorl Fullweight (L14, crowned via names[]). |
-| **The Whin** (whinstone, deepest) | NOT BUILT. A ring of empty set-niches inside the Plug and a run of names in the Gossan's weight. | The Gossan count them "not yet up"; the Marl count them "set where they are"; the two counts disagree and stay standing. | Nowhere topside. Reserved: if a Whin ever comes up it comes up as bad luck to the people who find it, never as an answer. |
+| **The Marl** (shallow chalk-clay) | Warm bone-white hide with grey mottle (limestone, never moonpale), the lowest rounded yoke, pale tick eyes, the smallest hands, a chalk-white plumb bob. Stature 1.02. | The dealers and the bridge throats; patient, literal, crofter-cadenced; they learned the tongue first. They finish what they promise whatever stands in the way. They disown Vorl's stile out loud and let it stand. | The rim-set on the Sett's north lip, the Course, the dry end at the Drowned Meadow. Bodies `dolmen` (L6). Throats Ammat (coursemother, fineActor) and Sarsen (the first one a player meets). |
+| **The Sinter** (dripstone) | Blue-white hide drip-scarred and stooped, a milky calcite crust on the yoke with short dripstone ticks along its rim (ticks, never plates), wet dark eyes, the tallest hooded yoke, a milky calcite bob. Stature 1.10, the slowest walk in the game. | Speak only as "we", a few sentences each, and grind in the idle (stone on stone, a proximity voice, never a bed, never a note). Their water refusal is a count, stated flat: "the last dry course is the ninth; we stop at the ninth." | The Sett's wet floor, a corbel cell half in shallow water. Body `dolmen_sinter` (L8). Throat Drusa. |
+| **The Culm** (the coal seam) | Ash-dark grey to near-black hide, a squared yoke with a soot-cut notch, the only warm eyes of the four (ember), a red-dust line along the mouth seam, black bob. Stature 1.04, the quickest. | Hot and quick, the fighters and the fire-keepers: the only people in the valley burning stone, not wood. Their one oath is "cold on you." They would sell black stone to Ottery's forge if anyone had asked. | The hearth-cells on the Sett's east shelf, the set's only lights (EmberBed-class rows, flame-gated). Body `dolmen_culm` (L9, the hurled hot stone `black_seam`). Throat Durrow. |
+| **The Gossan** (the iron hat) | Rust-ochre hide streaked like weathered iron, the deepest keel and a ridged yoke with three dull iron beads (never gold), the biggest hands. Stature 1.16; the champion 1.30. | The weight-keepers. They keep THE WEIGHT: the count of every stone taken from the Course (forty to the Charter's causeway, one cart, twelve stakes), kept without wanting, because a people that never asks cannot demand. They re-set anything they judge set wrong, graves included, and they unpick Charter posts and Returner lamp-stakes by night and lay them in a row in the weight-yard. Vorl's stile law (set one stone to pass) is theirs. They would fight. | The weight-yard on the Sett's west shelf. Bodies `dolmen_gossan` (L11), `dolmen_champion` Vorl Fullweight (L14, crowned via names[]). |
+| **The Gabbro** (the deep-set stone, deepest) | NOT BUILT. A ring of empty set-niches inside the Plug and a run of names in the Gossan's weight. | The Gossan count them "not yet up"; the Marl count them "set where they are"; the two counts disagree and stay standing. | Nowhere topside. Reserved: if a Gabbro ever comes up it comes up as bad luck to the people who find it, never as an answer. |
 
-### 11.2 The silhouette (why they read as Tholl at gameplay zoom)
+### 11.2 The silhouette (why they read as Dolmen at gameplay zoom)
 
 Four reads owned by no other body, delivered through widths, head and
 carriage only (the dialect law: no limb-length change).
@@ -1113,9 +1113,11 @@ defaulting to today's bob for every other body and pinned byte-identical).
 NOT elf (no ears, no hair, no grace, bone not moonpale). NOT goblin (still
 face, small head, tall). NOT human (no neck, headless from behind). NOT
 kobold (no snout, tail, dish ears). NOT golem (flesh hide, a swinging
-plumb, speech). NOT dwarf (no beard, no axe, no gold, no ale, no helm, no
-boots; screenshot-judged beside the Stoneborn heritage bust before any
-content lands).
+plumb, speech). NOT dwarf, in props (no beard, no axe, no gold, no ale, no helm, no
+boots) AND in culture (no ledger of wrongs, no smith, no hall, no
+ale-hall, no clan, no oath but the Culm's; THE WEIGHT is a count kept
+without wanting); screenshot-judged beside the Stoneborn heritage bust
+before any content lands.
 
 ### 11.3 Culture, architecture, marks
 
@@ -1138,9 +1140,11 @@ Marl on the north lip, the Culm on the east shelf (the only lights), the
 Gossan on the west shelf (the weight-yard: a Charter BrokenCart built INTO
 a wall, a row of taken CharterPost stubs and PitLampDark stakes laid like
 the dead), the Sinter at the wet floor. THE COURSE: a dry-stone run leaving
-the north lip north-north-west along the stream's east bank about sixty
-tiles, a stile every twelve, the last courses standing dry in the Drowned
-Meadow's sheet with crofter sheep on them.
+the north lip along the stream's east bank and bending west along the
+brook about a hundred and thirty tiles to the Drowned Meadow's south-east
+corner, a stile every twelve and a PlumbStone every forty (the lateral
+silhouette law of §13.1), the last courses standing dry in the meadow's
+sheet with crofter sheep on them.
 
 Kit additions (ids follow the Living Ground's two, §12): **548 CourseWall**
 (run tile, own kind only, cover, stone ×3 so the fork can breach it),
@@ -1157,20 +1161,21 @@ TH_GOSSAN.
 **Wants.** The Course finished to the stream's bend "so what is set is not
 moved again"; the forty kerb stones the Charter carted put back, or forty
 like them; no stone driven through a course; to be paid in stone, never
-coin; to be left the Sett, which was nobody's; and, from the Whin's empty
+coin; to be left the Sett, which was nobody's; and, from the Gabbro's empty
 niches, a thing they do not name and would not know how to ask for.
 
 **Fault.** They finish what they set. The Course crosses the brook's fall
-to the fen, and "the Tholl walled the meadow" is the THIRD reading of why
+to the fen, and "the Dolmen walled the meadow" is the THIRD reading of why
 the Drowned Meadow drowned (Ingram blames the Company's sluice, Njal the
-skral, the Marl say the water came up under the wall, which nobody can
+skral, the Marl say the ground went soft under the wall, which nobody can
 check). They unpick any set stone they judge wrong and re-set it where the
 ground "wants" it, never where a road wants it: two Returner stakes pulled
 from the Course (Eskil enters them as "buried by kobolds"), a Charter post
 line unpicked, a re-set kerb across the stone-track that broke a wain's
 axle. They took the whole stone-cart and built it into a wall. Vorl's stile
-charges a stone for a step, which is a toll wearing a mason's apron and
-Brede says so. They will not fight the kobolds tamping toward them, will
+charges a stone for a step, which is a price wearing a mason's apron, and
+Brede calls it a stile-price and laughs (the word "toll" never stands
+within a Dolmen line). They will not fight the kobolds tamping toward them, will
 not stand on the Plug, and count the barrow's dead and the Road Row's
 graves as "unset" and would re-set them properly if let. And they are
 wrong about the wet: Ammat's thirty-three moved stones are the truest
@@ -1190,18 +1195,20 @@ south-east.
 
 **At odds with:** the Charter (Ingram's causeway is built from the Course's
 own kerb, carted up the stream by a stone-track with a carter-boss,
-**Hesket**, a fordgate actor; Fenna's tally carries the Tholl in the same
+**Garrow**, a fordgate actor; Fenna's tally carries the Dolmen in the same
 column as stumps), the Returners (stakes through a course), the Fenside
 crofters at the Drowned Meadow (the wall drowned us, and our sheep stand on
-it: a quarrel that is also a dependence; Njal alone knows them as "the wall
-folk" and keeps it to himself), the Gloamwood's wild at the Sett's south
-rim. **Misaligned, never allied** (neutral rows with range): `tholl|kobold`
-(two thorough peoples; the spoil crew and the wall crew pass within six
-tiles and neither stops), `tholl|reavers` (two tollers; Brede laughs at a
-toll paid in rocks and honours it), `tholl|skral` (never meet; the Sinter
+it: a quarrel that is also a dependence; the crofter pool knows them openly
+as "the wall folk" and says so in a bark; Njal's one private thing is that
+the Dolmen counted his sheep onto the Course and let them stand), the Gloamwood's wild at the Sett's south
+rim. **Misaligned, never allied** (neutral rows with range): `dolmen|kobold`
+(two thorough peoples; the digs' spoil track runs north along the brook to
+the meadow, and under the sheet the spoil crew and the wall crew work the
+same cairn and neither stops), `dolmen|reavers` (two tollers; Brede laughs at a
+toll paid in rocks and honours it), `dolmen|skral` (never meet; the Sinter
 and the shoal both moved for water that came up under them). Rurik's
 level-driven stakes are the only stakes the Gossan never unpick. The Even
-Court keeps living wood, the Tholl keep dead stone; the sentinels' waystone
+Court keeps living wood, the Dolmen keep dead stone; the sentinels' waystone
 is the one thing outside the Sett Ammat calls "set right, by someone."
 
 ### 11.5 Speech (a VOICE.md card)
@@ -1223,57 +1230,74 @@ it will hold when you have gone. Sit on it if you like. It does not mind
 weight, it minds wrong weight." / "The stake man took forty stones from
 the north end and carried them to his wet road. We counted them going. We
 will have forty back, or forty like them. That is not a threat. It is a
-count." Oskel, at the drowned cairn: "The small diggers stack this every
+count." Sarsen, at the drowned cairn: "The small diggers stack this every
 night with one stone wrong. I set it right every morning. Neither of us has
-said anything about it. It is a good arrangement." Kesk: "The water came
-up under the stones. Not over. Under. Tell the sheep man that, since he
-asks us nothing." Durrow: "Cold on you, then. Go and be cold." Vorl: "One
+said anything about it. It is a good arrangement." Drusa: "Four courses wet from
+the bottom row. The top row last. Tell the sheep man that, since he asks
+us nothing." Durrow: "Cold on you, then. Go and be cold." Vorl: "One
 cart. Twelve wheels of stone. A rope. A row of sticks with glass on them.
 That is the weight and I keep it."
 
 ### 11.6 Where, and how they enter the war
 
-THE SETT: the worldgen quarry bowl (level −1) at x 156..188, y 276..324,
-cell [1,2], the empty south-east quadrant that §13 keeps empty of every
-other core. Its cell centre is 373 tiles from the anchor (tier 3 by the
-cell-centre law), the Sett's own ground 314; the Course crosses the tier-2
-line on the walk south, which is the threshold the spacing audit asks for.
-The site scan refuses a pit by construction, so the Sett is an AUTHORED
-ZONE (a Studio sketch with its own −1 floor and rim, the count-knoll's
-hasElev precedent) plus a weight-0 pinned def `tholl_sett` for the
-garrison (10-12 mostly holdfast, one loop; guard temperament: never
-initiates, the set answers). Family `golem` under the ONE ATLAS LAW (the
-stone family's lattice and litter are the least wrong fit; an honest
-`tholl` family is an owner call that widens the epoch horizons). One
-dressing patch, no core, at the Drowned Meadow's south-east corner: Oskel,
-a PlumbStone, the re-set cairn, sheep on the last dry course.
+THE SETT: the worldgen quarry bowl at x 156..188, y 276..324 (probed at
+seed 24601: a −1 ring of ~1,100 tiles with a −2 core of ~325 around
+x 161..187, y 286..302; the bowl reaches y≈330 and x≈194), cell [1,2].
+Its cell centre is 373 tiles from the anchor (tier 3 by the cell-centre
+law); the Course crosses the tier-3 line on the walk south, which is the
+threshold the spacing audit asks for (marked with a PlumbStone). The site
+scan refuses a pit and `findAuthoredAnchor` refuses a pin inside an
+authored zone, so the Sett is an AUTHORED ZONE whose sketch covers the
+whole bowl (≈x 154..194, y 270..330, so the rim cliffs match at its
+edge) with its own −1 and −2 levels (the shipped precedents: `hasElev`
+on authored maps in maps/builder.ts and the terraced-prefab elev layer
+pinned in pois.test), and **the garrison is the zone's own spawn rows and
+actor pool** (the Dawnmead pattern), 10-12 bodies mostly holdfast, one
+loop, guard temperament (never initiates; the set answers). The Plug and
+the Sinter's wet floor sit on the −2 core. An honest `dolmen` POI family
+(the roster test passes as long as no find or wild entry leans on an
+absent family) with litter vocab `course` (CaveRubble, Rock, PlumbStone);
+`golem` was refused because a family drives the territory lean, not the
+litter, and a golem lean is the strongest possible "reads as golem"
+failure. The cell-forced `amberfen_shoal` stands in [1,1] directly north:
+the two settlements are acknowledged neighbours who do not meet (the
+Sinter stop at the ninth course; the shoal keeps to the fen), on a
+`neutral` row. One dressing patch, no core, at the Drowned Meadow's
+south-east corner: Sarsen, a PlumbStone, the re-set cairn, sheep on the
+last dry course. Walk from the crofts to the north lip: 48-52 seconds.
 
-**No sixth fork.** The Tholl are the THIRD CORNER of THE CAUSEWAY OR THE
+**No sixth fork.** The Dolmen are the THIRD CORNER of THE CAUSEWAY OR THE
 SLUICE (§3.1): Ingram's stakes are the Course's own stone, and on (A) the
 character who plants them enters Ammat's count ("forty and twelve; the
-twelve are yours"), Hesket's stone-yard opens, Durrow's shelf closes; on
-(B) the kelp-string carried back past the Course earns Oskel's one extra
+twelve are yours"), Garrow's stone-yard opens, Durrow's shelf closes; on
+(B) the kelp-string carried back past the Course earns Sarsen's one extra
 line and the plumb_bob token. THE ERRAND, *Forty Stones* (Ammat,
 repeatable, requires the capstone, forbids `course_broken`): carry a load
-of the Charter's carted stone from Hesket's yard back to the Course's north
-gap (stealth, fight with the yard's enforcer rows, or Hesket's third offer
-to sell it back for coin the Tholl will not pay) and set it (CourseStile to
+of the Charter's carted stone from Garrow's yard back to the Course's north
+gap (stealth, fight with the yard's enforcer rows, or Garrow's third offer
+to sell it back for coin the Dolmen will not pay) and set it (CourseStile to
 CourseWall, the candle grammar). The full fork THE WEIGHT OR THE ROAD is
-the v2 seed. Roster: faction `tholl` (members ammat, kesk, durrow, oskel +
-pooled `tholl_setter`; fineActor ammat; oppose fordgate .25 as a standing
+the v2 seed. Roster: faction `dolmen` (members ammat, kesk, durrow, oskel +
+pooled `dolmen_setter`; fineActor ammat; oppose fordgate .25 as a standing
 feud, never blade); reputation is for speaking parties and this one speaks.
 
 ### 11.7 Engine cost and risks
 
-The NINTH head-swap dialect, THE COURSE DIALECT, `render/tholl.ts` on the
-skral/hobgoblin template: ThollLook by stratum (THE CLUSTER IS THE
+The NINTH head-swap dialect, THE COURSE DIALECT, `render/dolmen.ts` on the
+skral/hobgoblin template: DolmenLook by stratum (THE CLUSTER IS THE
 STRATUM), DESIGNS keyed by defId for the five named so a creature-bodied
-actor never re-rolls its face, paintThollHead on the KoboldHeadFrame
-contract through an exported `thollHeadHull` (keel wedge over shelf), the
+actor never re-rolls its face, paintDolmenHead on a DolmenHeadFrame on the shared frame shape (the
+skral and hob frames are field-for-field copies of the kobold one; gape
+accepted and ignored, test-pinned) through an exported `dolmenHeadHull`
+(keel wedge over shelf), the
 yoke in the torso behind pass, setting-hand and flat-foot branches, the
-plumb PendantSim, the walk-bob dial, THE STONE FACE, ~50-70 rig seams, ~30
-renderer touches (THOLL_SIZE synced to MOB_SIZE, no head slot ever, olSig
-`T<stratum><seed>`), ragdoll corpse look, a thollab sheet and tholl.test.ts
+plumb PendantSim (the corpse plumb is PAINTED static: the ragdoll path
+carries no pendant), the walk-bob dial at BOTH hip sites (hipYStand and
+hipY; pinned byte-identical for every other body at both), THE STONE FACE,
+~50-70 rig seams, ~30 renderer touches (DOLMEN_SIZE synced to MOB_SIZE,
+the three prefix gates that decide a body is a humanoid mob at all
+(gameRender isHumanoidMob and the two renderer startsWith gates), no head
+slot ever, olSig `T<stratum><seed>`), ragdoll corpse look, a dolmenab sheet and dolmen.test.ts
 law pins. **The first creature-bodied speaking actors in the game** (four
 actor defs with model.kind 'creature', a live but unexercised render path):
 budget a proof band before any tree is written. Arts: `black_seam`,
@@ -1288,13 +1312,18 @@ beads as three studs, a golem on the ruler row); headless-from-behind reads
 as a bug (the keel overhang pin); the stone face loses the strike tell
 (the overhead set must read at 32px); the stile reads as the Company again
 (survives only because the Marl disown it aloud and Brede names it); spine
-leakage ("the wet came up under", the Whin's niches: counts never patterns,
+leakage ("the wet came up under", the Gabbro's niches: counts never patterns,
 Ammat never says anything is moving); the Fenside thread (Njal knows the
-wall folk) is a new bible T-row. Every name (Tholl, Marl, Sinter, Culm,
-Gossan, Whin, Ammat, Kesk, Durrow, Vorl Fullweight, Oskel, Hesket, the
+wall folk) is a new bible T-row. Every name (Dolmen, Marl, Sinter, Culm,
+Gossan, Gabbro, Ammat, Drusa, Durrow, Vorl Fullweight, Sarsen, Garrow, the
 Sett, the Standing Course, the Plug) was grep-verified clean on 2026-09-04
-and must pass the names gate again at authoring (Halfweight was rejected:
-road_toll names "Halfweight Hob").
+AFTER the critique retired the first draft's names (Tholl = a homophone of
+"toll" in an epic about tolls; Hesket = the bible's Hesk in Northguard;
+the Whin = a homophone of the live actor Wyn; Kesk one letter from Hesk;
+Oskel beside Eskil). THE NAMES GATE is amended: land `names.mjs` on main in
+Band 0, extend it to read the whole dialogue bible and to run a one-edit
+and homophone pass over the actor roster, and run it as part of the
+Dolmen band's gate.
 
 ---
 
@@ -1357,9 +1386,14 @@ ash is a material the fire made, not a state of grass.
   soft (fraction of r that is falloff), grain (hem raggedness), mode:
   'max'|'add', bones?: boolean, grow?: {r0,r1,t0,t1} }`, 80-120 bytes of
   JSON. Authored strokes live in `GeographyDef.spectrum` (the closed-shape
-  validator admits the key; optional, so every existing doc validates);
-  they ride the welcome `geo` push and the live reload door that already
-  restreams. `bones: true` means worldgen reads it (canopy death, stumps,
+  validator, which REFUSES unknown keys, admits the key; optional, so
+  every existing doc validates); they ride the welcome `geo` push.
+  **Live transport is new work:** the reload door restreams chunks but
+  never re-sends `geo`, and the client applies it only at welcome, so
+  LG-0 adds an additive S2C `spectrum` record pushed on reload and on a
+  new skin-only server door that swaps the stroke registry without
+  dropAll or a sweep; the client applies it, the sigs change, the
+  affected chunks re-bake. `bones: true` means worldgen reads it (canopy death, stumps,
   the AshGround floor) and a save regenerates; the default is skin only.
 - **The field function** (pure, `packages/content/src/spectrum.ts` beside
   scorchAt/fenAt): plateau then a smoothstep hem; one grain noise field per
@@ -1372,7 +1406,8 @@ ash is a material the fire made, not a state of grass.
   `spectrumSig(cx,cy)` hashes every stroke whose reach box touches the
   chunk's halo; sig 0 is the fast path and means "no stroke in reach".
 - **Live cores** are not a new table: `PoiDef.boldness.spectrum { axis,
-  r0, rStage, soft, growMs }` in the frontier doc, and tickFrontier derives
+  r0, rStage, soft, growMs }` on the PoiDef (vetted by the PoiDef
+  validator's closed shape; the clock dials live in the frontier doc), and tickFrontier derives
   the core list from poiLedger rows it already keeps (stage, stageAt,
   clearedAt, emberUntil, fallowUntil): r1 = r0 + rStage·stage; a cleared
   row plays recovery (amp ramps to 0 across ember→fallow and a −season
@@ -1387,21 +1422,36 @@ ash is a material the fire made, not a state of grass.
   (THE TUTORIAL IS SACRED); towns default to a low gain so a village never
   turns fully.
 - **Cache keys.** BakedChunk gains `spectrumSig`, compared beside rev, px
-  and lean; a mismatch is a full bake, never a fringe strip. The grass tile
-  cache key packs the bands; the tree archetype key ORs them, so an autumn
-  oak and a summer oak are two archetype bakes.
+  and lean; a mismatch is a full bake, never a fringe strip. The sig is
+  FIELD-AWARE per chunk (it hashes the quantised halo samples, so a core
+  step that cannot move any sample in a chunk's halo does not re-bake it).
+  The grass tile cache key packs the bands (after LG-3 rebuilds it); the
+  tree archetype key ORs them ABOVE bit 16 (the tile occupies bits 6-15;
+  the treeModel memo key already reaches bit 25 and must not carry them),
+  so an autumn oak and a summer oak are two archetype bakes; trees fold by
+  ONE precedence axis at two bands (≤3× the sheet at the worst hem), and
+  thinning drops clusters in the archetype bake, never the `foliage`
+  alpha, which exists for the felling handoff and reads as ghosting.
 
 ### 12.3 Both render paths
 
 **Canvas (the one painter).** Inside startChunkBake and startElevatedBake,
 every branch guarded by `halo === null` → today's code. 0 THE HALO built
-beside computeLayerIdx; dark-band chunks never build one. 1 THE SUBSTRATE:
+beside computeLayerIdx; underground-plane chunks never build one (gated on
+the plane, not on the stale `baseY >= 512` dark-band constant, which is
+filed as a latent planes bug). 1 THE SUBSTRATE:
 meadowTone keeps its noise and its four-way tone index; with a halo the
-four-tone table is chosen per dual cell from SUBSTRATE_FOLD[axis][band]
-(the noise picks which of the four, the fold picks the four); the coarse
-placeholder folds too. 2 THE WASH: one sliced step per (axis, band)
-present: membership at a corner = band ≥ b, contoured with the
-paintAltPatches machinery on its own lane, filled with the band's base key
+four-tone table is chosen from the band of the bilinearly interpolated
+field at each paint cell's centre (so the step lands on the isoline, never
+on the dual grid), from SUBSTRATE_FOLD[axis][band] (the noise picks which
+of the four, the fold picks the four); the coarse
+placeholder folds too. 2 THE WASH: only the precedence-winning axis is painted per chunk, at two
+bands plus marks (the ONION kill applied up front): one sliced step per
+band present, membership at a corner = band ≥ b, contoured by a NEW
+`bndCurveWeighted` (the existing crossings are hash-wobbled fixed points;
+the interpolated crossing is new seam-sensitive machinery) on the
+paintAltPatches lane law, run WHOLE (never strip-narrowed) and gated on the
+fringe-seam probe's structural rail, filled with the band's base key
 and hairline-stroked, then one alt sub-patch per band (the two-tone wash);
 bands paint lowest first; burn over blight over season. 3 THE SKINS: the
 BlobLayer region fill reads its folded key per dual cell (the
@@ -1434,9 +1484,9 @@ workstream C).
 | Axis | Substrate bands | Blades | Trees | Ground layers | Promotion at full |
 |---|---|---|---|---|---|
 | **Autumn** (+season) | olive → straw → ochre | gold-green / straw / dry straw rows; seed-heads up, flowers thin | birch gold, oak russet, willow yellow-green; pine and yew hold | Path/Dirt darken a step; leaf-litter chips | none (a look, not a state) |
-| **Winter** (season past autumn) | frost-sage → pale → the cold | shorter, frost rows, nap halved, no flowers | leaves held but drunk of colour; foliage 1 → 0.6 → 0.25 | Dirt frozen ruts, StoneFloor rime, Sand grey, banks icy pale; INK_FROST prints | Grass/GrassTall/Dirt → Snow (the laden edge does the rest) |
+| **Winter** (season past autumn) | frost-sage → pale → the cold | shorter, frost rows, nap halved, no flowers | leaves held but drunk of colour; clusters thinned by hash-vs-weight | Dirt frozen ruts, StoneFloor rime, Sand grey, banks icy pale; INK_FROST prints | Grass/GrassTall/Dirt → Snow (the laden edge does the rest) |
 | **Spring** (−season) | a half-step lighter and greener | flowers thick, nap up | blossom keys on berry/fibre flora | crops sprout-tone | none; this is what a cleared core's recovery plays |
-| **Blight** (gloom) | grey-green → bruise-grey → grey-violet, never black | grey-green / grey / grey-violet rows, thinned, no flowers or seed-heads | leaves bruise-violet, foliage 1 → 0.7 → 0.4 (a stand dying from the roots) | Dirt/Tilled dark spill lobes, StoneFloor cool violet, shallows scum at taken+ | Grass → GrassBlighted, Tree → DeadTree, crops → CropBlighted |
+| **Blight** (gloom) | grey-green → bruise-grey → grey-violet, never black | grey-green / grey / grey-violet rows, thinned, no flowers or seed-heads | leaves bruise-violet, clusters thinned by hash-vs-weight (a stand dying from the roots) | Dirt/Tilled dark spill lobes, StoneFloor cool violet, shallows scum at taken+ | Grass → GrassBlighted, Tree → DeadTree, crops → CropBlighted |
 | **Burn** | scorched straw → dust → ash-grey | sparse, soot rows | no fold (a burnt tree is a tile) | Dirt/Path char keys; INK_ASH on any ground at taken+ | Grass/GrassTall/Dirt → AshGround, Tree → CharredStump |
 | **Wear** (v2) | a half-step toward Dirt | thinned, no flowers | none | DragFurrow-class marks along roads and camp aprons | none |
 
@@ -1450,21 +1500,32 @@ nothing beyond ~70 tiles. Two sources disagreeing at a hem is a real hem.
 ### 12.5 The true tiles
 
 **546 AshGround**: a BlobLayer inserted after Dirt and before Tilled (ash
-underlaps worked earth, is covered by snow and water), wobble .22, a dark
+underlaps worked earth, is covered by snow and water) **only after a prep
+step gives every BlobLayer an explicit stable `seed`** (set to today's
+array index for all fourteen layers and test-pinned op-stream-identical),
+because `layerIndexOf` returns the array position and that index seeds
+every contour hash (crossings, swell, alt patches): inserting a layer
+without it re-rolls every shipped road and shore (the critique's blocker).
+AshGround then takes a fresh seed, and LG-6's proof includes "parity 7/7
+with AshGround registered but absent from the map", wobble .22, a dark
 band, no lip (ash catches no sun), grey tufts on the fringe, sparse pale
 drifts as its interior; the floor set and effectiveGround admit it;
 `INK_ASH` prints; the grass lane refuses blades (AshHeap is the prop,
 AshGround the floor); worldgen SCORCH emits it at burn ≥ 0.6 on grass.
-**547 GrassBlighted**: a GRASS_LIKE substrate with its own meadow tones;
-blades allowed but gloom rows only; clears to Dirt (blight does not give
-grass back). Both join the museum wing and the 'scarred' palette. K4's
+**547 GrassBlighted**: a BlobLayer with `fringe: true` on the Swamp pattern
+reading the gloom keys (not a GRASS_LIKE alias: effectiveGround maps every
+GRASS_LIKE tile to Grass and the meadow reads no tile); blades allowed but
+gloom rows only; clears to Dirt (blight does not give grass back).
+Promotion happens at a BAND EDGE through the shared `band()` (taken or
+held), and worldgen reads the same function, so the bones and the skin
+agree on every machine. Both join the museum wing and the 'scarred' palette. K4's
 worldgen promotion is the ONE worldgen touch and ships only with the owner's
 sign-off, parity and render-perf, with a before/after of every burn country.
 
 ### 12.6 Authoring: the Studio holds the brush
 
-The World view draws routes, sites, rects and anchors today and nothing for
-massifs, veils, fens or scorches (they are JSON only). The Spectrum tool is
+The World view draws routes, sites, zone art and anchors today and nothing
+for massifs, veils, fens or scorches (they are JSON only). The Spectrum tool is
 therefore the first landform brush and is built as the general one: an
 axis picker with a signed amp slider for season; circle, capsule and rect
 nibs; an inspector (amp, soft, grain, mode, bones, id); the three isoband
@@ -1486,19 +1547,22 @@ Zero-field cost is zero: one bbox test per chunk against a few dozen
 strokes, cached per registry epoch; sig 0 builds nothing. A folded chunk:
 the halo ~0.1-0.3 ms, one contour pass per (axis, band) present (the alt2
 pass's class, ~0.3-1 ms each, its own sliced step under the 3 ms slice),
-+~10% in the detail loop. Gate: a folded chunk bakes ≤ 1.25× an unfolded
-one at px64, and the 20× CPU-throttle probe in a folded forest holds parity
-fps. Memory: +0 B on the wire, in ChunkData, in the chunk canvas, in GL
-ground textures; BLADE_FILLS grows 56 → ~140 strings; tree sheets gain
-archetypes only for bands on screen. Churn: a core step re-bakes only the
-chunks whose halo meets the annulus (2-6 per step at CORE_STEP 2), paced by
-the replace queue; the static band register reads tiles, not ground colour,
++~10% in the detail loop. Gate: MEASURE the alt2-class pass on the 20× throttle before writing a
+number; then a one-axis folded chunk bakes ≤ 1.25× an unfolded one at px64,
+a hem chunk ≤ 2× as a separate rail, and the 20× CPU-throttle probe in a
+folded forest holds parity fps. Memory: +0 B PER CHUNK (ChunkData, encodeChunk, the chunk canvas and the
+GL ground texture are untouched); the geography doc grows ~80-120 B per
+stroke and `groundcores` ~60 B per core; BLADE_FILLS grows 56 → ~140 strings; tree sheets gain
+archetypes only for bands on screen. Churn: a core step re-bakes the chunks whose halo samples actually move
+(≈ perimeter/32 plus corners: ~8 chunks at r 40, ~14 at r 70), paced by
+the replace queue as a rail, never claimed as a count; the static band register reads tiles, not ground colour,
 so wall bands never re-bake on a fold.
 
 Migration: default is today (parity v8 7/7 at zero strokes is gate 1); the
 doc key is optional and the validator ships with the server in the same
-band (the closed-shape validator erases unknown keys on save, so the
-client refuses to save spectrum when the server's welcome geo lacks it);
+band (the closed-shape validator REFUSES unknown keys, so an old server
+rejects a spectrum-bearing save loudly; the client hides the Spectrum
+tool when the server's welcome geo lacks the key);
 BakedChunk.spectrumSig is a parallel key; LIVING_GROUND_OFF is the bisect
 flag; strokes ship to prod through the existing geography import; AshGround
 and the bones ship as their own regen deploy; frontier cores last,
@@ -1511,7 +1575,7 @@ dial-gated.
 | **LG-0 THE FIELD** | spectrum.ts (types, field, halo, sig, registry), GeographyDef.spectrum + validator + snapshot/replace | zero strokes → zero field everywhere; shared-corner determinism; reach ≤ sig bbox; no client change |
 | **LG-1 THE SUBSTRATE FOLDS** | halo step, folded meadow + placeholder, the wash (isobands + alt), folded fringe and weeds, folded stubble + four field marks, spectrumSig keys, the flag | parity 7/7 at zero strokes; terrainlab "one meadow, four axes, three bands" with the body ruler at noon and midnight; fringe-seam probe with a stroke across a chunk border; ≤ 1.25× per folded chunk; THE ONION AUDIT (bands must not read as contour rings; kill to two bands + marks if they do) |
 | **LG-2 THE MATERIALS FOLD** | BlobLayer.fold keys for every layer, folded run strokes, in-region isobands; museum wing "The Living Ground" | parity 7/7 INSIDE a folded scene (gate 2); the phantom-boundary test; 20× probe in a folded forest |
-| **LG-3 THE BLADES FOLD** | grass tone-row blocks, generateGrassTile(fold), key packing, GPU palette sized from BLADE_FILLS, INK_ASH/INK_FROST | grass floor-law test per band; grasslab column per band; GPU vs CPU meadow screenshot in a folded reach |
+| **LG-3 THE BLADES FOLD** | grass tone-row blocks, generateGrassTile(fold), the tile cache key REBUILT with explicit multipliers and a collision test (today's key gives the detail id a 3-bit slot and already collides), GPU palette sized from BLADE_FILLS, `printInkFor(tile, tx, ty)` with INK_ASH/INK_FROST | grass floor-law test per band; grasslab column per band; GPU vs CPU meadow screenshot in a folded reach |
 | **LG-4 THE CANOPY FOLDS** | trees foldLeaves per species, foliage steps, archetype key bits, saplings follow; crops/flora keys at draw | species-sheet telemetry bounded; a forest hem day/night; felling and occlusion unchanged |
 | **LG-5 THE STUDIO HOLDS THE BRUSH** | the Spectrum tool, rect season dial, import/export, the skin-only save path | the Studio smoke tour: draw a blight capsule → true render folds → save → a live client folds without regen; undo of a stroke drag |
 | **LG-6 THE TRUE TILES AND THE BONES** (K4, owner-gated) | AshGround 546, GrassBlighted 547, worldgen promotion, burn = max(scorchAt, strokes) | owner sign-off, parity + render-perf, before/after of every burn country, regen deploy |
@@ -1521,8 +1585,9 @@ Risks carried: the onion (kill criterion above); band steps printing at the
 tile grid (tone table chosen per dual cell); palette-law breaks (luminance
 tests per band); archetype explosion at mixed hems (pines hold on season;
 fold trees at two bands if it bites); live-core determinism (server t0/t1,
-quantised radius, never a local clock in the painter; terrain.ts lint-tested
-against Date/performance); re-bake storms (CORE_STEP ≥ 2, a regional core
+quantised radius, never a local clock in the painter; the wash and halo steps and spectrum.ts lint-tested against
+Date/performance; the determinism law reads "no clock reaches a painted
+value", since terrain.ts already keeps a performance.now memo flush); re-bake storms (CORE_STEP ≥ 2, a regional core
 cap, the Studio scrub applies at drag end); vocabulary on the palette only;
 scope creep into props (v1 folds ground, blades, canopy, crops and inks;
 props go through the museum lane later).
@@ -1545,9 +1610,11 @@ game."
 
 ### 13.1 THE BREATHING ROOM LAW
 
-1. **One authored core per macro-cell**, and no more than three of the six
-   tier-1 cells and six of the fourteen tier-2 cells around Dawnmead carry
-   a core. The rest carry the finds layer, the belts, and the fold.
+1. **One authored core per macro-cell** (a core is any authored site with
+   a POI def, haven or hostile; dressing, wilds rows and a zone's own actors
+   are not cores), and no more than three of the six tier-1 cells and nine
+   of the fourteen tier-2 cells around Dawnmead carry one (three of the
+   nine are shipped sites that predate the epic). The rest carry the finds layer, the belts, and the fold.
 2. **Cores on the same way stand ≥128 tiles apart along the way** (≥26
    seconds), and two cores never share one screen (≥70 tiles) unless they
    are staged as one scene.
@@ -1569,44 +1636,53 @@ game."
 
 ### 13.2 The re-celled map
 
-| Site | §3 placement | Re-celled | Cell | Tier by centre | Walk from gate | Change |
-|---|---|---|---|---|---|---|
-| The Ashlamp (scar, dressing patch, no core) | (72,64) | (72,64) | [0,0] | 1 | 12 s east | stays: the threshold scar, not a camp |
-| The Causeway Head (Ingram; a small fordgate haven) | (72,64) | folded INTO the crofts site | [1,0] | 2 | 34 s | one site, not two |
-| The First Lamp (Hale) | (162,38) | folded INTO the crofts site: `fenside_crofts` re-defined as a variant whose actor pool seats Hale on watch, Leif, Njal, Ingram and the crofter pool; the lamp stands at the hamlet's road gate | [1,0] | 2 | 34 s | Hale lives among the drowned, which is the drama; cell [1,0] holds one site |
-| The skral weir | (44,92), 12 tiles past the hem | no core: skral wilds shore rows in the fen waist + the sluice/weir as dressing at the crofts' reach | [0,1] rows | — | — | the first hostile thing on the First Road stays Brede's bar at 28 s |
-| Brede's bar | pinned (122,112) | unchanged (existing pin) | [0,0] | 1 | 28 s | — |
-| Torsten's picket | (-104,-86) on the wolf pairs | (-118,-110), past the wolves as the text says | [-1,-1] | 1 | 9 s up the trail from its head | slid north 24 tiles |
-| The Husk | (-96,-168) | unchanged | [-1,-2] | 2 | 19 s + 8 off | standalone ✓ |
-| The Felling (the Drum) | pinned (-140,-140) in fork_rest's cell | NOT PINNED: the rolled goblin_warcamp core the frontier deals (tier 1-3, weight 3, the likeliest roll); its burnt stand, clamps, snag ring and Bodil's licensed cut become the ASHEN HEM dressing patch in [0,-1] with a blight/burn stroke | rolled | — | — | Band 5 verifies a Drum stands inside the ring at demo time (/poi reroll if needed) |
-| The Ward Line (waystone glade) | (-176,-190) in fork_rest's cell | seated AT fork_rest: the fork rest keeps a waystone (canon: the Waykeepers' lamps stop at the fork; waystones take over); two sentinel actors join its pool; the ward thread runs from the fork toward the Ashen Hem | [-2,-2] | 2 | 24 s to the fork | no new site; the glade def is retired from this epic |
-| The Legion core | (-232,-232), 44 from last_lamp | candidate (-64,-320) or the next honest tier-3 cell north; never nearer than one full cell to a haven | [-1,-3] | 3 | off every way | its reach comes down the trail as the pressed satellite |
-| The veil den | pinned cell [-2,-1] | unchanged | [-2,-1] | 1 | — | — |
-| The digs (kobolds) | (-108,204) | (-100,290): true tier 2 | [-1,2] | 2 | 26 s + 10 off down the Old Road | one cell further south; the Third Stone's cell breathes |
-| Aske's toll stone | (-140,182) beside the Third Stone | no site: Aske's crew are rows AT the Third Stone (already the design) | [-2,1] | 2 | 23 s | — |
-| The Third Stone | pinned (-164,192) | unchanged, re-defined `third_stone_rest` | [-2,1] | 2 | 23 s | — |
-| The broken barrow + the grub farm | (-256,64) with Steinar | ONE site, one prefab, two peoples, at (-340,64) | [-3,0] | 2 | 36 s west of the hem, no way | 180 tiles past the hem, true tier 2 |
-| Steinar's chain | (-215,28) | a weight-0 fordgate haven `charter_chain` safeR 6 at (-250,40), ≥60 tiles east of the barrow | [-2,0] | 1 | 18 s west of the hem | a small haven, not a camp; one of the three tier-1 cores |
-| The Sett (the Tholl) | new | authored zone + `tholl_sett` at (172,300) | [1,2] | 3 | 40 s south of the crofts along the stream | the one core in the whole south-east |
-| The Drowned Meadow (belt) | (30,165) | unchanged, plus Oskel's dressing patch at its south-east corner | [0,1] | — | — | belt cell, no core |
-| The Ashen Hem (belt) | (0,-110) | unchanged, now carrying the Felling's stand | [0,-1] | — | — | belt cell, no core |
-| The Spoil Reach (belt) | (-190,150) in the Third Stone's cell | moved to [-2,2] between the Third Stone and the digs | [-2,2] | — | — | belt cell, no core |
+A "core" is any authored site with a POI def (haven or hostile); dressing
+patches, wilds rows and a zone's own actors are not cores. Every shipped
+site inside the ring is counted. Walks are measured from the gate along
+the route points; cell tiers by cell centre.
 
-Census after re-celling: tier-1 cells with a core = 3 of 6 (veil den,
-Brede's bar, Steinar's chain; the picket is a haven and counts); tier-2
-cells with a core = 6 of 14 (the husk, the crofts+lamp, the Third Stone,
-the digs, the barrow+farm, fork_rest with its waystone). **Empty on
-purpose:** (-3,-1) and (-3,0)'s neighbours to the north-west, (0,2),
-(-1,2)'s neighbours, (1,-1) north-east, (-1,-3)'s neighbours far north, the
-whole First Road past the crofts for ~290 tiles to the tollhouse (already
-right), and the Old Road's 116-tile run from the Third Stone to
-returners_camp (already right).
+| Site | Re-celled | Cell | Tier | Walk | Note |
+|---|---|---|---|---|---|
+| The Ashlamp (scar, dressing, no core) | (72,64) | [0,0] | 1 | 9 s east | the threshold scar, not a camp |
+| Brede's bar **+ the drowned crofts + the First Lamp: ONE STAGED SCENE** | the existing pins (122,112) and (148,98), 30 tiles apart, declared one scene: the toll stands at the crofts' gate and Hale's lamp stands at the hamlet | [0,0] + [1,0] | 1 + 2 | 28-34 s | `fenside_crofts` becomes the weight-0 def `fenside_lamp` (Hale on watch, Leif, Njal, Ingram, a new `fenside_crofter` pool); one name reads one ledger |
+| The skral | wilds shore rows in the fen waist + the sluice and weir as dressing at the crofts' reach | rows | — | — | no core; the first hostile thing on the road stays the bar |
+| Torsten's picket | trail DRESSING (slate, bell, the four grave mounds) at (-120,-124), 40 tiles from the dire wolf | [-1,-1] | — | 12 s up the trail | no core; Torsten himself is posted at the fork rest |
+| The fork rest **+ the waystone + Torsten** | fork_rest's defId changes to a weight-0 `fork_waystation` (a prefab with an ElvenWaystone and extra posts; two new pooled unnamed sentinel actors under evencourt; Sergeant Torsten under waykeepers) | [-2,-2] | 2 | 24 s to the fork | canon: the lamps stop at the fork; waystones take over |
+| The Husk | moved OFF the High Road to (-64,-240): 109 from the fork, 128 from longmeadow_rest | [-1,-2] | 2 | 28 s + 24 off | `husk_of_the_line`, family dead, tiers [2,4] |
+| The Felling (the Drum) | cell-forced weight-0 `felling_drum` (a goblin_warcamp variant, tiers [1,3], garrison 8) at ~(40,-120) beside its burnt stand; the rolled dice run in the neighbour cells | [0,-1] | 1 | 34 s | a rolled Drum stood in the ring with ~11% probability, which is not a demo |
+| The Legion core | pinned `hobgoblin_legion` (weight-0, tiers [3,6]) at (-64,-320); its reach is an AUTHORED patrol loop and straggler rows down the trail, never a satellite (authored cells cannot deal one); the pressed-goblin satellite is dealt by the ROLLED neighbour Drum's `rivalDef` | [-1,-3] | 3 | off every way | ≥128 tiles from fork_rest, longmeadow_rest and coldwater_shoal |
+| The veil den | unchanged | [-2,-1] | 1 | — | existing pin |
+| The digs (kobolds) | (40,290), off every way, south of the Drowned Meadow across the Gloamwood; its spoil track runs north along the brook to the meadow | [0,2] | 2 | 26 s south of the hem | the Old Road never enters [-1,2]; the road-creep beat is dropped |
+| The Third Stone + Aske's crew | unchanged, re-defined `third_stone_rest` | [-2,1] | 2 | 23 s | — |
+| The broken barrow + the grub farm | ONE site: `broken_barrow` (weight-0, family dead, tiers [2,4], rows tribe dead + goblin_doorless, one merged prefab) at (-340,64) | [-3,0] | 2 | 36 s west of the hem | 104 from the Spinewall's heart |
+| Steinar's chain | a DRESSING patch (stakes, canvas, Lectern, tally board) at (-250,40); **Steinar himself is a Dawnmead throat** (the Charter's survey lead, billeted at the inn, quest giver there) | [-2,0] | — | 18 s west of the hem | no core |
+| The Sett (the Dolmen) | authored zone with its own actors and spawn rows at (172,300) | [1,2] | 3 | 48-52 s south of the crofts | `amberfen_shoal` [1,1] is its acknowledged neighbour |
+| longmeadow_rest / amberfen_shoal / returners_camp | unchanged (shipped) | [0,-2] / [1,1] / [-3,1] | 2 | — | counted honestly |
+| The Drowned Meadow / the Ashen Hem / the Spoil Reach | belts: [0,1] / [0,-1] (the Felling's stand) / [-2,2] | — | — | — | no cores except the Felling in [0,-1] |
 
-Density after re-celling, per 100 tiles of way: First Road 1.6 (Ashlamp 12
-s, the bar 28 s, the crofts and the lamp 34 s, then nothing); Hunters'
-Trail 1.7 (the picket 9 s, the wolves, the husk 19 s off to the east, the
-fork and its waystone 24 s); Old Road 1.3 (the Gloamwood's own teeth, the
-Third Stone 23 s, the digs 26 s off to the east, then the empty run).
+Census after re-celling: tier-1 cells with a core = 3 of 6 (the veil den,
+Brede's bar, the Felling). Tier-2 cells with a core = 9 of 14: six of this
+epic (the fork waystation, the husk, the crofts and lamp, the Third Stone,
+the digs, the barrow and farm) plus three shipped havens and shoals that
+predate it (longmeadow_rest, amberfen_shoal, returners_camp). No new core
+is allowed in a tier-2 cell for the life of the epic. **Empty on
+purpose:** [-3,-1], [1,-1], [-1,2], [-2,2] beyond the belt, the far
+north beyond the Legion, the whole First Road past the crofts for ~290
+tiles to the tollhouse, and the Old Road's run from the Third Stone to
+returners_camp.
+
+Density, with each way's denominator from the route points: First Road
+gate to the crofts, 163 tiles, three things in two scenes (the Ashlamp at
+9 s, the bar-and-crofts scene at 28-34 s) = 1.2 scenes per 100 tiles;
+Hunters' Trail, 119 tiles, the wolves and the fork waystation = 1.7 per
+100 (the husk stands 24 tiles off the road's end, out of the trail's
+eyeline); Old Road hem to returners_camp, 243 tiles, the Third Stone alone
+= 0.4 per 100, with the Gloamwood's own teeth between.
+
+Validator work for Band 0: a pairwise ≥70-tile pin-spacing check in
+validateGeographyDef, and a boot-log warning in the seeder when a forced
+def's tiers exclude the cell-centre tier. The laws above are otherwise
+convention, and the plan says so.
 
 ### 13.3 The cadence between things
 
@@ -1633,7 +1709,7 @@ posts, the tier-2 cairn. Minute 6-7 Brede's bar: the first camp, a toll you
 can pay or not. Minute 7-8 the drowned crofts: fields under water, the
 scarecrow to its waist, Hale's lamp lit at the hamlet gate, the kelp-string
 on the sluice post. Minute 8-9 the stream south: the last dry stones of the
-Course with sheep on them, a PlumbStone, Oskel setting a cairn right.
+Course with sheep on them, a PlumbStone, Sarsen setting a cairn right.
 Minute 9-10 the view south from the Course: the Sett's dome on the skyline,
 smoke from the Culm's hearths, and past it the tier-3 line and nothing
 authored for a hundred tiles. Every minute has a pause in it.
@@ -1642,27 +1718,29 @@ authored for a hundred tiles. Every minute has a pause in it.
 
 ## 14. Bands, amended for the rulings
 
-The §9 bands stand, with these insertions and changes:
+The §9 bands stand, re-ordered so no band depends on a later one (the
+Dawnmead rebuild needs every kit family's ART, not stubs; the Dolmen's
+third corner ships with the Dolmen). K4's tile art is split from its
+owner-gated worldgen touch.
 
 | Band | Name | Ships |
 |---|---|---|
-| 0 | THE LEDGER OPENS | as §9 **plus** the re-celled defs and geography of §13.2 (the crofts+lamp variant, `charter_chain`, the Felling un-pinned, the waystone seated at fork_rest, the digs moved, the barrow+farm merged), the Tholl roster entry and bible entries, T-rows for the Fenside↔Tholl thread |
+| 0 | THE LEDGER OPENS | canon (§8) **plus** every new def id of §13.2 (`fenside_lamp`, `fork_waystation`, `third_stone_rest`, `husk_of_the_line`, `felling_drum`, `hobgoblin_legion`, `broken_barrow`, the Sett zone), their prefabs, the re-celled geography, the two validator additions, the Dolmen roster entry and bible entries, T-rows (next free T44), `names.mjs` on main reading the bible |
 | 1 | THE SHEET AND THE COLD HEARTH | K0 as built (bc02b481) + K1 |
-| 1b | THE FIELD | LG-0 (content only) |
-| 2 | THE DAWN UNDER SIEGE | as §9 |
-| 3 | THE MARKS | K2 |
-| 3b | THE SUBSTRATE AND THE MATERIALS FOLD | LG-1 + LG-2 (the demo's countries need the fold before the zones dress) |
-| 4 | THE FEN LAMP AND THE BAR | as §9 with the crofts+lamp one-site design and the Tholl's third corner |
-| 4b | THE STANDING COURSE | the Tholl: rig proof band (the first creature-bodied actor) → the head on the turn strip (3-5 rounds) → bodies and the sheet → the four props + Chalkline → the Sett zone sketch + def → Ammat's errand |
-| 5 | THE HUSK AND THE WARD LINE | as §9 with the waystone at fork_rest and the Ashen Hem carrying the Felling's stand under a blight/burn stroke |
-| 5b | THE BLADES AND THE CANOPY FOLD | LG-3 + LG-4 |
-| 6 | THE THIRD STONE | as §9 |
-| 7 | THE SPOIL WOLD | as §9 with the merged barrow+farm and `charter_chain` |
-| 8 | THE LAND BETWEEN | as §9 + K3 + the small finds of §13.3 |
-| 8b | THE STUDIO HOLDS THE BRUSH | LG-5 |
-| 9 | THE GLOOM CREEPS AND THE TRUE TILES | K4 + LG-6 (one owner-gated worldgen deploy) |
-| 9b | THE CORE GROWS | LG-7 |
-| 10 | THE OVERRUN | Epic 2 |
+| 2 | THE FIELD | LG-0 (content + the S2C spectrum record and the skin-only door) |
+| 3 | THE MARKS AND STATES | K2 |
+| 4 | THE FIELD AFTER, THE DISPLACED, THE STRIPPED LAND AND THE GLOOM (art only) | K3 + K4's tile art (CharredStump, DeadTree, SpoilHeap, GloomStone, CreepRoot, FoulPool, CropBlighted); the worldgen touch stays in band 13 |
+| 5 | THE SUBSTRATE AND THE MATERIALS FOLD | the BlobLayer seed prep + LG-1 + LG-2 |
+| 6 | THE DAWN UNDER SIEGE | the ground-up rebuild (§7) on the full kit and the fold |
+| 7 | THE FEN LAMP AND THE BAR | §3.1 with the one-scene design; the Dolmen's third corner is deferred to band 9 |
+| 8 | THE HUSK AND THE WARD LINE | §3.2 + §3.3 at the fork waystation; the Felling at [0,-1] |
+| 9 | THE STANDING COURSE | the Dolmen: the creature-actor proof band → the head on the turn strip (3-5 rounds) → bodies and the sheet → the four props + Chalkline → the Sett zone → the Course → Ammat's errand and the east fork's third corner |
+| 10 | THE THIRD STONE, THE SPOIL WOLD, THE LAND BETWEEN | §3.4, §3.5, §3.6, §3.7 and the small finds of §13.3 |
+| 11 | THE BLADES AND THE CANOPY FOLD | LG-3 + LG-4 |
+| 12 | THE STUDIO HOLDS THE BRUSH | LG-5 |
+| 13 | THE TRUE TILES AND THE BONES | LG-6 + K4's worldgen touch (one owner-gated regen deploy) |
+| 14 | THE CORE GROWS | LG-7 |
+| 15 | THE OVERRUN | Epic 2 |
 
 Every band closes with the gates its section names and a commit; the demo
-walk of §13.4 is re-shot at the close of bands 2, 4, 4b and 9.
+walk of §13.4 is re-shot at the close of bands 6, 7, 9 and 13.
