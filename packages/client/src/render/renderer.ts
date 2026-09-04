@@ -2065,10 +2065,22 @@ export class Renderer {
    * here. Version-gated memos (lift/dock/bridge/fall) self-heal off
    * the worldVersion bump; this clears everything that does not.
    */
-  onPlaneSwitch(): void {
+  /**
+   * THE BAKE LEDGER DROPS WHOLE: every position-keyed RENDER/BAKE cache
+   * and the GL residency it owns. Shared by onPlaneSwitch (a new world)
+   * and onBackendSwitch (the SAME world, a different backend) — both need
+   * the bakes re-minted from scratch, and neither can keep a texture that
+   * was minted for the other case. Deliberately does NOT touch ephemeral
+   * world matter (corpses, arrows, footprints, particles) or the
+   * animation eases (chest/door/tree-growth): those survive a backend
+   * swap unchanged, and are the plane crossing's OWN concern (below).
+   */
+  private dropBakeCaches(): void {
     // THE LEDGER HAS ONE DOOR, applied to the ground cache too: a bare
     // clear() here dropped ~80 chunk canvases (341MB on flat ground)
-    // straight to GC every crossing and left the byte ledger lying.
+    // straight to GC every crossing and left the byte ledger lying. Each
+    // recycle also releases the entry's stageTex (the ground stage's GL
+    // residency), so a backend swap frees what the other backend held.
     for (const entry of this.baked.values()) this.recycleBakedEntry(entry);
     this.baked.clear();
     this.registers.clear();
@@ -2081,29 +2093,49 @@ export class Renderer {
     this.bandNonce.clear();
     this.bandEmitted.clear();
     this.shadowMasks.clear();
-    this.growingTrees.clear();
-    this.chestEases.clear();
-    this.doorEases.clear();
-    this.propShakes.clear();
     this.treeSprites.clear();
     this.treeShadows.clear();
     this.treeVariantSprites.clear();
     this.treeVariantShadows.clear();
-    this.arrivalJump = true; // a plane hop is a jump whatever the coords say
     // The atlas serves whichever canvases place() sees, so the old
-    // plane's population would age out on its own — but a crossing
-    // replaces the ENTIRE working set at once, and lazily re-placed
+    // population would age out on its own — but a crossing (or a backend
+    // swap) replaces the ENTIRE working set at once, and lazily re-placed
     // survivors would pack around a page of corpses for ~10s. Wipe
-    // whole; the new plane's sprites re-place on their mint frames.
+    // whole; the fresh sprites re-place on their mint frames.
     this.spriteAtlas.clear();
     // Cliff curtains go back through the pool — a bare clear() is how
     // a plane crossing leaks a working set (round 10's phantom).
     for (const sp of this.cliffSprites.values()) this.poolCanvas(sp.canvas);
     this.cliffSprites.clear();
-    this.phaseMs.clear();
-    this.bedFlips.clear();
     this.lighting.dropWorld();
     this.grass.dropWorld();
+  }
+
+  /**
+   * THE BACKEND SWAPS UNDER A LIVE WORLD (displaySettings): the
+   * Accelerated-display toggle just flipped stageGround/stageWorld, but
+   * the bakes on hand were minted for the OTHER backend (canvas gutters
+   * vs GL atlas residency). Left alone they paint cropped/broken until a
+   * teleport or reload clears them — the caches drop only in
+   * onPlaneSwitch. This performs the SAME bake wipe as a plane crossing
+   * MINUS the plane's own concerns: the world, its coordinates, its
+   * ephemeral matter and its eases are all unchanged and stay put, so
+   * only the bake ledger and GL residency drop and both backends re-bake
+   * cleanly from scratch on the very next frame.
+   */
+  onBackendSwitch(): void {
+    this.dropBakeCaches();
+  }
+
+  onPlaneSwitch(): void {
+    this.dropBakeCaches();
+    this.growingTrees.clear();
+    this.chestEases.clear();
+    this.doorEases.clear();
+    this.propShakes.clear();
+    this.arrivalJump = true; // a plane hop is a jump whatever the coords say
+    this.phaseMs.clear();
+    this.bedFlips.clear();
     // POST-SHIP AUDIT: ephemeral matter is world matter too. A corpse,
     // a stuck arrow, a footprint, or a live spark holds old-plane
     // coordinates — left alone it would haunt the identical address in

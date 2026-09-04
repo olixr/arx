@@ -38,6 +38,12 @@ export function initDisplaySettings(renderer: Renderer, setLootPref: (on: boolea
       renderer.stageGround = on;
       renderer.stageWorld = on;
       localStorage.setItem('arx.stage', on ? 'on' : 'off');
+      // THE BACKEND SWAPS UNDER A LIVE WORLD: the bakes on hand were
+      // minted for the backend we just left (canvas gutters vs GL atlas
+      // residency). Drop the render/bake caches — for BOTH directions —
+      // so the new backend re-bakes cleanly from scratch; otherwise props
+      // stay cropped/broken until a teleport or reload clears them.
+      renderer.onBackendSwitch();
     });
     {
       const box = rows.lastElementChild!.querySelector('input');
@@ -62,6 +68,9 @@ export function initDisplaySettings(renderer: Renderer, setLootPref: (on: boolea
         localStorage.setItem('arx.stage', 'on');
         const accel = rows.querySelector<HTMLInputElement>('input[data-navkey="display:Accelerated display (beta)"]');
         if (accel) accel.checked = true;
+        // Same backend swap as the Accelerated-display row: drop the
+        // stale bakes so the GL backend re-bakes cleanly from scratch.
+        renderer.onBackendSwitch();
       }
     });
     {
