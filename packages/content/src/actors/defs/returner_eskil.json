@@ -1,0 +1,57 @@
+{
+  "id": "returner_eskil",
+  "name": "Eskil",
+  "title": "Keeper of the Third Stone",
+  "examine": "Eighteen years on the Old Road and eleven walks of it. A pit lamp on a driven stake out front, never a post, and a slate in chalk because the number changes down.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 4,
+      "hairColor": 2,
+      "beard": 2,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 8,
+      "pants": 6
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "legs": "leather_chaps",
+    "boots": "leather_boots",
+    "weapon": "iron_sword"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 10
+    },
+    {
+      "item": "lantern",
+      "qty": 1
+    },
+    {
+      "item": "cooking_oil",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "Kingsdelf, forty-one stones, nine lit. The slate is chalk because the number changes. It changes down more than up. I keep writing it.",
+    "A road that is not there cannot be lit. There are holes under the eleventh stone. Fill them. I do not care with what.",
+    "I have carried more new feet back up this road than the order has, and I will say that once, and now I have said it."
+  ],
+  "combat": {
+    "level": 22,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 80,
+      "damage": 5,
+      "speed": 3.4,
+      "leashRange": 12
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "id": "charter_bodil",
+  "name": "Bodil",
+  "title": "Charter Feller-boss",
+  "examine": "A Pinewatch sawyer's daughter running six fellers on a licence with a lot number. Cuts up to the thread and has started past it. Somebody leaves knucklebones on her rope.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 2,
+      "hairColor": 3,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 6,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "legs": "leather_chaps",
+    "boots": "leather_boots",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 10
+    },
+    {
+      "item": "log",
+      "qty": 2
+    },
+    {
+      "item": "pine_resin",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "Up to the thread is the licence. Past the thread is dying anyway. I cut what will burn and I do not charge the wood for its opinions.",
+    "They had words. They used the other ones. He was thirty feet in and he did not know he was being warned. That is all I have to say about the old folk.",
+    "Somebody leaves a knucklebone on my rope for every snag they take. It is a tidy thief, at least. I have never had a tidy thief before."
+  ]
+}

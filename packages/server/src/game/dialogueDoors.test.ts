@@ -44,3 +44,36 @@ test('an unrationed quip draws from the bank and writes its memory', () => {
   const silent = (proto.drawQuip as Fn).call(slate, 'npc:stranger' as never, 'greet' as never, false as never);
   assert.equal(silent, undefined);
 });
+
+// ---- THE CONTESTED LANDS (docs/contested-lands-plan.md §5 beat 10):
+// world:war_near — two standing cores in the watch whose garrisons the
+// stances matrix calls hostile to each other.
+test('world:war_near reads two hostile garrisons inside the watch, and nothing less', () => {
+  const site = (defId: string, x: number, over: Record<string, unknown> = {}) => ({
+    site: { defId, anchorX: x, anchorY: 0 },
+    clearedAt: null,
+    emberUntil: null,
+    stage: 0,
+    ...over,
+  });
+  const ask = (rows: Array<[string, unknown]>, sx = 0) => {
+    const slate = { poiLedger: new Map(rows), poiThreatens: proto.poiThreatens };
+    return (proto.worldFlagAnswer as Fn).call(slate, 'world:war_near' as never, {} as never, sx as never, 0 as never);
+  };
+  // The Company's bar against a goblin camp: the watch charges the
+  // menace and the menace knows an enemy — war, both ways.
+  assert.equal(ask([['a', site('bandit_camp', 10)], ['b', site('goblin_warcamp', 40)]]), true);
+  // Two goblin camps are kin. One camp is a camp, not a war.
+  assert.equal(ask([['a', site('goblin_warcamp', 10)], ['b', site('goblin_warcamp', 40)]]), false);
+  assert.equal(ask([['a', site('bandit_camp', 10)]]), false);
+  // Past the watch there is no news.
+  assert.equal(ask([['a', site('bandit_camp', 10)], ['b', site('goblin_warcamp', 400)]]), false);
+  // A cleared trophy or a scattering ember is over.
+  assert.equal(ask([['a', site('bandit_camp', 10, { clearedAt: 1 })], ['b', site('goblin_warcamp', 40)]]), false);
+  assert.equal(ask([['a', site('bandit_camp', 10)], ['b', site('goblin_warcamp', 40, { emberUntil: 1 })]]), false);
+  // A haven has no garrison and menaces nobody.
+  assert.equal(ask([['a', site('last_lamp', 10)], ['b', site('goblin_warcamp', 40)]]), false);
+  // The husk's changeover (gnoll by day, dead by night) is NOT a war
+  // until band 8 lands the 'dead|gnoll' row — Band 0 ships no hostile row.
+  assert.equal(ask([['a', site('gnoll_squat', 10)], ['b', site('fell_barrow', 40)]]), false);
+});

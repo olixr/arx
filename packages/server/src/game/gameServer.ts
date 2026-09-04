@@ -9926,6 +9926,21 @@ export class GameServer {
       }
       const cellX = want.cell ? want.cell[0] : poiCellOf(want.x!);
       const cellY = want.cell ? want.cell[1] : poiCellOf(want.y!);
+      // THE BREATHING ROOM LAW (docs/contested-lands-plan.md §13.1 law
+      // 6, §13.2): the cell CENTRE decides what tier a forced site
+      // actually rolls — a def whose tiers exclude it stands at a tier
+      // it was never authored for (or, cell-forced, not at all). A
+      // boot-log warning, never a refusal: the plan's table is measured
+      // twice and this is the second measure, printed.
+      const centreTier = dangerAt(
+        config.worldSeed, cellX * POI_CELL + POI_CELL / 2, cellY * POI_CELL + POI_CELL / 2, SETTLED_ANCHORS,
+      );
+      if (centreTier < def.tiers[0] || centreTier > def.tiers[1]) {
+        console.warn(
+          `[poi] authored site '${want.id}': cell [${cellX},${cellY}] centre rolls tier ${centreTier}, ` +
+            `outside '${def.id}' tiers ${def.tiers[0]}..${def.tiers[1]} — the site stands at a tier it was not authored for`,
+        );
+      }
       // The context is per-want: the capital mask derives from the
       // seat's own ground (the one-context law with its query point).
       // And the SEEDER IS GEOLOGIC (core-audit debt 13): authored
@@ -10969,8 +10984,11 @@ export class GameServer {
         const epoch = (nrow?.epoch ?? 0) + 1;
         // THE WAR-GROUND's reach (Phase 4): a hold seeds its
         // satelliteDef — ordinary camps townward, never sibling holds
-        // (the region law would refuse them anyway).
-        const satDefId = def.boldness?.satelliteDef ?? def.id;
+        // (the region law would refuse them anyway). THE PRESSED
+        // SATELLITE (contested lands §5 beat 8): a rivalDef outranks
+        // both — the Drum at stage 2 deals the Legion's pressed camp
+        // townward, so the Legion's march is made of goblins.
+        const satDefId = def.boldness?.rivalDef ?? def.boldness?.satelliteDef ?? def.id;
         const site = poiForCell(config.worldSeed, cand.ncx, cand.ncy, epoch, ctx, satDefId);
         if (!site) { this.satTrace.push(`${nkey}:noground`); continue; }
         if (this.playerWithin(SURFACE_PLANE_ID, site.anchorX, site.anchorY, FRONTIER.dignityTiles)) { this.satTrace.push(`${nkey}:dignity`); continue; }

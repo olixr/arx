@@ -1,0 +1,41 @@
+{
+  "id": "broken_barrow",
+  "name": "The broken barrow",
+  "description": "A kerbed mound of the country before the roads, cut open from below where the Doorless warren door coughed them up, and the grub farm they made on its east lip. The kerb re-set badly, crooked furrows, a skull totem facing west and not the village, a small fire and never a bonfire, the warren mouth ringed in spoil, Brammel's seed-corn and Sorrel's ram at a stake. By day the Doorless farm it, mostly at home; from half past eight the barrow's own walk the kerb.",
+  "family": "dead",
+  "tiers": [2, 4],
+  "weight": 0,
+  "prefabs": ["poi_broken_barrow"],
+  "garrison": [
+    { "npc": "goblin", "count": [6, 6], "role": "holdfast", "tribe": "goblin_doorless" },
+    { "npc": "goblin", "count": [1, 1], "role": "sentry", "tribe": "goblin_doorless" },
+    { "npc": "goblin", "count": [1, 1], "role": "sentry", "patrol": true, "tribe": "goblin_doorless" },
+    { "npc": "goblin_thrower", "count": [1, 1], "role": "holdfast", "tribe": "goblin_doorless" },
+    {
+      "npc": "goblin_champion",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 3,
+      "names": ["Grubb Turnsoil"],
+      "crowned": true,
+      "tribe": "goblin_doorless"
+    },
+    { "npc": "skeleton_guard", "count": [2, 2], "role": "holdfast", "tribe": "dead", "hours": { "from": 20.5, "to": 5.5 } },
+    { "npc": "skeleton", "count": [2, 2], "role": "holdfast", "tribe": "dead", "hours": { "from": 20.5, "to": 5.5 } },
+    { "npc": "skeleton_archer", "count": [1, 1], "role": "sentry", "tribe": "dead", "hours": { "from": 20.5, "to": 5.5 } }
+  ],
+  "chestTierBonus": 0,
+  "clearedFlag": "poi_broken_barrow_broken",
+  "cues": {
+    "clearing": 3,
+    "scatter": [
+      { "tile": "Rock", "count": 3 },
+      { "tile": "BonePile", "count": 2 },
+      { "tile": "SpoilHeap", "count": 2 }
+    ]
+  },
+  "signs": [
+    { "title": "GRUB", "lines": ["ours grows", "yours taken", "a knucklebone on the rail for it"] },
+    { "title": "OLD STONE", "lines": ["the kerb re-set, one stone wrong", "the letters are worn past reading"] }
+  ]
+}

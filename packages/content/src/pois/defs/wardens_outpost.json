@@ -1,7 +1,7 @@
 {
   "id": "wardens_outpost",
   "name": "Waykeepers' outpost",
-  "description": "A fortified watch on the wild marches \u2014 the sergeant keeps the fire, the watch keeps the road, and the pen out front keeps whatever they caught this week.",
+  "description": "A fortified watch on the wild marches — the sergeant keeps the fire, the watch keeps the road, and the pen out front keeps whatever they caught this week.",
   "tiers": [
     2,
     4
@@ -15,7 +15,7 @@
   "actors": [
     {
       "pool": [
-        "waykeeper_hale",
+        "waykeeper_sergeant",
         "waykeeper_odessa",
         "waykeeper_brant"
       ],

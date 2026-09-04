@@ -3,7 +3,7 @@ import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
-import { TILE_SKIP, Tile, chestInfo } from '@arx/shared';
+import { Detail, TILE_SKIP, Tile, chestInfo } from '@arx/shared';
 import { DANGER_LAWS } from '../danger.js';
 import { NPCS } from '../npcs.js';
 import type { PrefabDef } from '../maps/prefab.js';
@@ -555,4 +555,331 @@ test('THE DECLARED TERRITORY: influence rides the definition, and the heart keep
   // Exempt courts and landmarks never grew past their authored dims.
   const court = POI_PREFABS.get('poi_warhold_court')!;
   assert.equal(Math.max(court.width, court.height), 16, 'the warhold court expanded — exemption lost');
+});
+
+// ---- THE PRESSED SATELLITE (docs/contested-lands-plan.md §5 beat 8):
+// boldness.rivalDef — dealt as the reach at satelliteStage, never rolled.
+test('CONTESTED LANDS: boldness.rivalDef validates its shape and the registry holds its law', async () => {
+  const { rivalDefErrors } = await import('./defs.js');
+  const base = {
+    id: 'test_drum',
+    name: 'Test drum',
+    tiers: [1, 3] as [number, number],
+    weight: 2,
+    prefabs: ['poi_goblin_camp_ring'],
+    garrison: [{ npc: 'goblin', count: [1, 2], role: 'holdfast' }],
+  };
+  const rung = { stages: [{ scatter: [{ tile: 'BonePile', count: 1 }] }] };
+  const good = validatePoiDef({ ...base, boldness: { ...rung, satellites: true, rivalDef: 'test_legion' } });
+  assert.ok(good.ok, JSON.stringify(good));
+  if (good.ok) assert.equal(good.def.boldness?.rivalDef, 'test_legion');
+  for (const [why, boldness] of [
+    ['no satellites', { ...rung, rivalDef: 'test_legion' }],
+    ['names itself', { ...rung, satellites: true, rivalDef: 'test_drum' }],
+    ['empty id', { ...rung, satellites: true, rivalDef: '' }],
+  ] as const) {
+    const res = validatePoiDef({ ...base, boldness });
+    assert.ok(!res.ok, `refused: ${why}`);
+  }
+  // The registry cross-law: the rival must exist and be weight 0.
+  const drum = good.ok ? good.def : undefined;
+  assert.ok(drum);
+  const rival = (weight: number) =>
+    validatePoiDef({ ...base, id: 'test_legion', name: 'Test legion', weight, boldness: undefined });
+  const w0 = rival(0);
+  const w2 = rival(2);
+  assert.ok(w0.ok && w2.ok);
+  if (!w0.ok || !w2.ok) return;
+  assert.deepEqual(rivalDefErrors(new Map([[drum!.id, drum!], ['test_legion', w0.def]])), []);
+  assert.equal(rivalDefErrors(new Map([[drum!.id, drum!]])).length, 1, 'a missing rival is named');
+  assert.match(rivalDefErrors(new Map([[drum!.id, drum!], ['test_legion', w2.def]]))[0]!, /weight 0/);
+  // The shipped roster passes its own law (buildRegistry already threw otherwise).
+  assert.deepEqual(rivalDefErrors(POI_DEFS), []);
+});
+
+// --------------------------------------------------------------------
+// THE CONTESTED LANDS (docs/contested-lands-plan.md §3, §13.2, band 0):
+// the ring's weight-0 variants, the tribe field the validator used to
+// eat, and the rival's reach.
+// --------------------------------------------------------------------
+
+const CONTESTED_DEFS = [
+  'fenside_lamp', 'ashlamp', 'fork_waystation', 'third_stone_rest',
+  'husk_of_the_line', 'felling_drum', 'legion_pressed', 'hobgoblin_legion', 'broken_barrow',
+] as const;
+
+test('THE CONTESTED LANDS: weight-0 variants on existing families only (ONE ATLAS LAW)', () => {
+  const atlas = new Set<string>();
+  for (const d of POI_DEFS.values()) {
+    if ((CONTESTED_DEFS as readonly string[]).includes(d.id)) continue;
+    if (d.family) atlas.add(d.family);
+  }
+  for (const id of CONTESTED_DEFS) {
+    const def = POI_DEFS.get(id);
+    assert.ok(def, `${id} missing from the registry`);
+    assert.equal(def!.weight, 0, `${id} must never roll on its own`);
+    if (def!.family !== undefined) {
+      assert.ok(atlas.has(def!.family), `${id}: family '${def!.family}' is NEW — the atlas is closed`);
+    }
+    for (const g of def!.garrison) {
+      assert.ok(NPCS.has(g.npc), `${id}: unknown npc ${g.npc}`);
+    }
+  }
+  // The frequency law: heavy families never stand inside tier 2 as
+  // themselves — the variants carry honest smaller tiers.
+  assert.deepEqual(POI_DEFS.get('husk_of_the_line')!.tiers, [2, 4]);
+  assert.deepEqual(POI_DEFS.get('broken_barrow')!.tiers, [2, 4]);
+  assert.deepEqual(POI_DEFS.get('hobgoblin_legion')!.tiers, [3, 6]);
+  assert.deepEqual(POI_DEFS.get('felling_drum')!.tiers, [1, 3]);
+  assert.deepEqual(POI_DEFS.get('legion_pressed')!.tiers, [1, 3]);
+  // The scar is no core: no garrison, no haven, no actors.
+  const scar = POI_DEFS.get('ashlamp')!;
+  assert.equal(scar.garrison.length, 0);
+  assert.equal(scar.haven, undefined);
+  assert.equal(scar.actors, undefined);
+  assert.equal(scar.family, undefined);
+  // Hale stands at the First Lamp and nowhere a rolled outpost could
+  // mint him twice.
+  const outpost = POI_DEFS.get('wardens_outpost')!;
+  assert.ok(!outpost.actors!.some((a) => a.pool.includes('waykeeper_hale')), 'Hale is still in the outpost pool');
+  assert.ok(outpost.actors!.some((a) => a.pool.includes('waykeeper_sergeant')), 'the name-free sergeant is missing');
+  assert.ok(POI_DEFS.get('fenside_lamp')!.actors!.some((a) => a.pool.includes('waykeeper_hale') && a.post === 'watch'));
+  // Torsten and the sentinels stand at the fork; the Returners and
+  // Aske keep the Third Stone (no Wayward Watch there).
+  const fork = POI_DEFS.get('fork_waystation')!;
+  assert.ok(fork.actors!.some((a) => a.pool.includes('waykeeper_torsten')));
+  assert.equal(fork.actors!.filter((a) => a.pool.includes('even_sentinel')).length, 2);
+  const third = POI_DEFS.get('third_stone_rest')!;
+  assert.ok(!third.actors!.some((a) => a.pool.includes('wayward_watch')));
+  assert.ok(third.actors!.some((a) => a.pool.includes('returner_eskil')));
+  assert.equal(third.actors!.filter((a) => a.pool.includes('returner_pool')).length, 2);
+});
+
+test('THE WILD TAKES SIDES: the validator carries tribe (it used to eat it)', () => {
+  const ok = validatePoiDef({
+    id: 'test_tribe',
+    name: 'Test tribe',
+    tiers: [2, 4],
+    weight: 0,
+    prefabs: ['poi_watchtower_husk'],
+    garrison: [
+      { npc: 'gnoll', count: [2, 2], role: 'holdfast', tribe: 'gnoll', hours: { from: 5.5, to: 20.5 } },
+      { npc: 'skeleton', count: [2, 2], role: 'holdfast', tribe: 'dead', hours: { from: 20.5, to: 5.5 } },
+    ],
+  });
+  assert.ok(ok.ok, JSON.stringify(ok));
+  if (ok.ok) {
+    assert.equal(ok.def.garrison[0]!.tribe, 'gnoll');
+    assert.equal(ok.def.garrison[1]!.tribe, 'dead');
+  }
+  const bad = validatePoiDef({
+    id: 'test_tribe',
+    name: 'Test tribe',
+    tiers: [2, 4],
+    weight: 0,
+    prefabs: ['poi_watchtower_husk'],
+    garrison: [{ npc: 'gnoll', count: [1, 1], role: 'holdfast', tribe: 'Not A Slug' }],
+  });
+  assert.ok(!bad.ok);
+  if (!bad.ok) assert.ok(bad.errors.some((e) => e.includes('tribe must be a lowercase slug')));
+  // The shipped rows keep theirs through the registry.
+  const husk = POI_DEFS.get('husk_of_the_line')!;
+  const gnolls = husk.garrison.filter((g) => g.tribe === 'gnoll');
+  const dead = husk.garrison.filter((g) => g.tribe === 'dead');
+  assert.ok(gnolls.length >= 3 && dead.length >= 3, 'the husk lost a people');
+  assert.equal(husk.garrison.length, gnolls.length + dead.length, 'every husk row wears a tribe');
+  // Day and night: the windows are complementary — the gnolls hold
+  // 05:30-20:30, the line 20:30-05:30, and the changeover is the
+  // fight (plan §3.2).
+  for (const g of gnolls) assert.deepEqual(g.hours, { from: 5.5, to: 20.5 }, `${g.npc}: gnoll hours`);
+  for (const g of dead) assert.deepEqual(g.hours, { from: 20.5, to: 5.5 }, `${g.npc}: dead hours`);
+  // Both crowns wear the plan's names.
+  assert.ok(gnolls.some((g) => g.crowned && g.names?.[0] === 'Old Cackle'));
+  assert.ok(dead.some((g) => g.crowned && g.names?.[0] === 'the Struck Sergeant'));
+  // The Doorless: a tribe on the goblin family, never a family.
+  const barrow = POI_DEFS.get('broken_barrow')!;
+  assert.ok(barrow.garrison.some((g) => g.tribe === 'goblin_doorless' && g.crowned && g.names?.[0] === 'Grubb Turnsoil'));
+  assert.ok(barrow.garrison.filter((g) => g.tribe === 'dead').every((g) => g.hours?.from === 20.5));
+  assert.equal(barrow.family, 'dead');
+  // Aske's crew: neutral Company bodies on the watch ring, never a
+  // hostile garrison at a haven (a haven does not gate a garrison's
+  // aggro, and a garrison would make the Third Stone poiThreatens).
+  const third = POI_DEFS.get('third_stone_rest')!;
+  assert.deepEqual(third.garrison, []);
+  assert.equal(third.actors!.filter((a) => a.pool.includes('company_blade') && a.post === 'watch').length, 3);
+  assert.ok(third.actors!.some((a) => a.pool.includes('company_aske')));
+  // Harguk stands crowned at the Legion.
+  assert.ok(POI_DEFS.get('hobgoblin_legion')!.garrison.some((g) => g.crowned && g.names?.[0] === 'Harguk Fiveblows' && g.tribe === 'legion'));
+  // The Felling: worgs wear tribe goblin (so the veil's wolves fight
+  // them), a firecaller stands, and the Doorless cut snags at night.
+  const drum = POI_DEFS.get('felling_drum')!;
+  assert.ok(drum.garrison.filter((g) => g.npc === 'worg').every((g) => g.tribe === 'goblin'));
+  assert.ok(drum.garrison.some((g) => g.npc === 'goblin_firecaller'));
+  assert.ok(drum.garrison.some((g) => g.tribe === 'goblin_doorless' && g.hours?.from === 20 && g.hours?.to === 6 && g.count[1] === 2));
+  const day = drum.garrison.filter((g) => !g.hours).reduce((n, g) => n + g.count[1], 0);
+  assert.equal(day, 8, 'the Drum musters eight by day (the perf budget)');
+});
+
+test("THE RIVAL'S REACH: legion_pressed is registered and dealt by nobody in band 0", () => {
+  const drum = POI_DEFS.get('felling_drum')!;
+  assert.equal(drum.boldness?.satellites, true);
+  // A cell-forced site is in authoredCells: it never stages up and
+  // never deals a satellite (§1 law 2), so a rivalDef on it is dead.
+  // §13.2 deals the pressed camp from the ROLLED Drum (goblin_warcamp)
+  // — a world-wide change that waits on the owner's word (band 8).
+  assert.equal(drum.boldness?.rivalDef, undefined, 'no dead rivalDef on an authored cell');
+  assert.equal(POI_DEFS.get('goblin_warcamp')!.boldness?.rivalDef, undefined, 'the rolled Drum is unwired until the owner rules');
+  assert.equal(drum.boldness?.stages.length, 3, 'the Drum keeps the warcamp ladder');
+  const pressed = POI_DEFS.get('legion_pressed')!;
+  assert.equal(pressed.weight, 0);
+  assert.equal(pressed.family, 'goblin');
+  assert.ok(pressed.garrison.every((g) => g.tribe === 'legion'));
+  assert.ok(pressed.cues?.scatter?.some((s) => s.tile === 'LegionStandard'));
+  // The Legion core carries no ladder: authored cells deal no
+  // satellites and its reach is an authored loop.
+  assert.equal(POI_DEFS.get('hobgoblin_legion')!.boldness, undefined);
+  // A rival with no arm is refused.
+  const noArm = validatePoiDef({
+    id: 'test_rival',
+    name: 'Test rival',
+    tiers: [1, 3],
+    weight: 0,
+    prefabs: ['poi_goblin_camp_ring'],
+    garrison: [{ npc: 'goblin', count: [1, 2], role: 'holdfast' }],
+    boldness: { stages: [{ garrison: [{ npc: 'goblin', count: [1, 1], role: 'holdfast' }] }], rivalDef: 'legion_pressed' },
+  });
+  assert.ok(!noArm.ok);
+  if (!noArm.ok) assert.ok(noArm.errors.some((e) => e.includes('rivalDef')));
+});
+
+test('THE CONTESTED SKETCHES: the staged sites read as the plan drew them', () => {
+  const count = (p: PrefabDef, t: Tile): number => {
+    let n = 0;
+    for (const g of p.ground) if (g === t) n++;
+    return n;
+  };
+  // The Fenside Lamp: rows under water with the scarecrow and the
+  // channel standing in them, the sluice on two posts (one strung),
+  // pallets on stilts, a dugout, ONE lamp at the road gate.
+  const fen = POI_PREFABS.get('poi_fenside_lamp')!;
+  assert.ok(fen, 'poi_fenside_lamp missing');
+  assert.ok(count(fen, Tile.WaterShallow) >= 20, 'the rows are not drowned');
+  assert.equal(count(fen, Tile.Scarecrow), 1);
+  assert.equal(count(fen, Tile.IrrigationChannel), 1);
+  assert.equal(count(fen, Tile.SluiceGate), 1);
+  assert.equal(count(fen, Tile.SluiceGateStrung), 1);
+  assert.equal(count(fen, Tile.TimberPost), 2, 'the sluice hangs on two posts');
+  assert.ok(count(fen, Tile.PorchDeck) >= 4);
+  assert.equal(count(fen, Tile.Dugout), 1);
+  assert.equal(count(fen, Tile.LampPost), 1, "Hale's lamp, and only his");
+  assert.equal(count(fen, Tile.Tilled), 0, 'no dry rows — the field is the water');
+  assert.ok(fen.spawns.every((s) => s.npc === 'chicken'), 'hens only');
+  // The Ashlamp: a scar — breached ruin walls, one cold lamp, one
+  // ember bed over an ash pan, the wain, a plain post; exempt from the
+  // influence law (its footprint is its own).
+  const ash = POI_PREFABS.get('poi_ashlamp')!;
+  assert.ok(ash, 'poi_ashlamp missing');
+  assert.equal(Math.max(ash.width, ash.height), 17, 'a scar breeds no verge');
+  assert.ok(count(ash, Tile.RuinWallStone) >= 10);
+  assert.equal(count(ash, Tile.LampPostDark), 1);
+  assert.equal(count(ash, Tile.EmberBed), 1);
+  assert.ok(count(ash, Tile.AshHeap) >= 2);
+  assert.ok(count(ash, Tile.CharredBeam) >= 2);
+  assert.equal(count(ash, Tile.BelongingsCart), 1);
+  assert.equal(count(ash, Tile.CrateGoods), 1);
+  assert.equal(count(ash, Tile.Signpost), 1);
+  assert.equal(count(ash, Tile.LampPost), 0, 'the lamp is cold');
+  let ashPan = 0;
+  for (const d of ash.detail) if (d === Detail.Ash) ashPan++;
+  assert.ok(ashPan >= 8, 'the ember bed sits over its ash pan (a baked detail, never a decal)');
+  assert.equal(ash.spawns.length, 0);
+  for (const g of ash.ground) assert.equal(chestInfo(g), null, 'a scar keeps no strongbox');
+  // The fork rest: one waystone, a thread of three, one grey stone.
+  const fork = POI_PREFABS.get('poi_fork_waystation')!;
+  assert.ok(fork, 'poi_fork_waystation missing');
+  assert.equal(count(fork, Tile.ElvenWaystone), 1);
+  assert.equal(count(fork, Tile.WardThread), 3);
+  assert.equal(count(fork, Tile.GloomStone), 1);
+  assert.equal(count(fork, Tile.WaterShallow), 0, "'~' is the thread here");
+  // The Third Stone: a pit lamp on a stake and NEVER a lamp post, two
+  // dark lamps on the approach, the cart, the ladder, the chest, the
+  // shrine, two boards.
+  const third = POI_PREFABS.get('poi_third_stone')!;
+  assert.ok(third, 'poi_third_stone missing');
+  assert.equal(count(third, Tile.LampPost), 0, 'the Returners light stakes, never posts');
+  assert.equal(count(third, Tile.PitLamp), 1);
+  assert.equal(count(third, Tile.PitLampDark), 2);
+  assert.equal(count(third, Tile.TimberPost), 1);
+  assert.equal(count(third, Tile.MineCart), 1);
+  assert.equal(count(third, Tile.LeanLadder), 1);
+  assert.equal(count(third, Tile.ChestWood), 1);
+  assert.equal(count(third, Tile.WayShrine), 1);
+  assert.equal(count(third, Tile.HangingSign), 2, 'the board and the board nailed over it');
+  // The broken barrow: kerb, mounds, the cist's one cache, cairns
+  // re-set wrong, crooked rows, the trough, the cage, three tents,
+  // one campfire and no bonfire, the totem, the spoil ring, the flat
+  // door (arch + posts, no lintel), sacks, the stake, hurdles — and
+  // no palisade, no banner.
+  const barrow = POI_PREFABS.get('poi_broken_barrow')!;
+  assert.ok(barrow, 'poi_broken_barrow missing');
+  assert.ok(count(barrow, Tile.Rock) >= 30, 'the kerb');
+  assert.ok(count(barrow, Tile.GraveMound) >= 20, 'the mound');
+  assert.equal(count(barrow, Tile.ChestIron), 1);
+  assert.equal(count(barrow, Tile.FieldCairn), 2);
+  assert.ok(count(barrow, Tile.Tilled) >= 20, 'the furrows');
+  assert.equal(count(barrow, Tile.GnawTrough), 1);
+  assert.equal(count(barrow, Tile.CritterCage), 1);
+  assert.equal(count(barrow, Tile.TentHide), 3);
+  assert.equal(count(barrow, Tile.Campfire), 1);
+  assert.equal(count(barrow, Tile.Bonfire), 0, 'never a bonfire');
+  assert.equal(count(barrow, Tile.SkullTotem), 1);
+  assert.ok(count(barrow, Tile.SpoilHeap) >= 8, 'the spoil ring');
+  assert.equal(count(barrow, Tile.ArchStone), 2);
+  assert.equal(count(barrow, Tile.TimberPost), 2);
+  assert.equal(count(barrow, Tile.GrainSacks), 3);
+  assert.equal(count(barrow, Tile.BeastStake), 1);
+  assert.ok(count(barrow, Tile.Fence) >= 5, 'salvaged hurdles');
+  assert.equal(count(barrow, Tile.Palisade), 0);
+  assert.equal(count(barrow, Tile.WarBanner), 0);
+  assert.equal(count(barrow, Tile.BannerPole), 0);
+  assert.equal(count(barrow, Tile.HangingSign), 1);
+  // THE CHARTER'S CHAIN is part of the barrow (band 0, owner's
+  // ruling): eight survey stakes in ONE ruled line, the lectern and
+  // the tally board under canvas at the line's east end.
+  assert.equal(count(barrow, Tile.CharterPost), 8, 'the survey stakes');
+  assert.equal(count(barrow, Tile.Lectern), 1, 'the chart-table');
+  assert.equal(count(barrow, Tile.NoticeBoard), 1, 'the tally board');
+  assert.ok(count(barrow, Tile.AwningShed) >= 3, 'the canvas over the east end');
+  const stakeRows = new Set<number>();
+  let stakeMaxX = -1;
+  let lecternX = -1;
+  let boardX = -1;
+  for (let i = 0; i < barrow.ground.length; i++) {
+    const x = i % barrow.width;
+    const y = Math.floor(i / barrow.width);
+    if (barrow.ground[i] === Tile.CharterPost) { stakeRows.add(y); stakeMaxX = Math.max(stakeMaxX, x); }
+    if (barrow.ground[i] === Tile.Lectern) lecternX = x;
+    if (barrow.ground[i] === Tile.NoticeBoard) boardX = x;
+  }
+  assert.equal(stakeRows.size, 1, 'the stakes are ruled in one straight line');
+  assert.ok(lecternX > stakeMaxX - 5 && boardX > stakeMaxX - 5, 'the table and the board stand at the line\'s east end');
+  // The totem stands on the farm's WEST edge (x < the first furrow),
+  // facing away from the village.
+  let totemX = -1;
+  let furrowMinX = Infinity;
+  for (let i = 0; i < barrow.ground.length; i++) {
+    const x = i % barrow.width;
+    if (barrow.ground[i] === Tile.SkullTotem) totemX = x;
+    if (barrow.ground[i] === Tile.Tilled) furrowMinX = Math.min(furrowMinX, x);
+  }
+  assert.ok(totemX >= 0 && totemX < furrowMinX, `the totem (x=${totemX}) faces west of the rows (x=${furrowMinX})`);
+});
+
+test('THE CONTENT BOUNDARY: the contested defs keep the palette', () => {
+  const banned = /\b(witch|witches|witchcraft|hex|hexes|coven|warlock|demon|demons|devil|devils|infernal|occult|hell)\b/i;
+  for (const id of CONTESTED_DEFS) {
+    const text = JSON.stringify(POI_DEFS.get(id));
+    const hit = text.match(banned);
+    assert.equal(hit, null, `${id}: '${hit?.[0]}' is outside the content boundary`);
+  }
 });

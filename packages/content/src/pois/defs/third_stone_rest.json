@@ -1,0 +1,24 @@
+{
+  "id": "third_stone_rest",
+  "name": "The Third Stone",
+  "description": "The one hearth on the dark road, kept by Returners and not by the order. A walled rest with a pit lamp on a driven stake out front and never a lamp post, a mine cart and a lean ladder in the yard, a chest of oil jars, a wayshrine the order did not bless, and two dark pit lamps on the approach. Eskil keeps it; Aske's Red Company crew keeps the yard and walks the dark miles, paid for.",
+  "tiers": [2, 8],
+  "weight": 0,
+  "prefabs": ["poi_third_stone"],
+  "garrison": [],
+  "actors": [
+    { "pool": ["returner_eskil"], "post": "hearth", "routine": "waystation_keeper" },
+    { "pool": ["returner_pool"], "post": "hearth" },
+    { "pool": ["returner_pool"], "post": "hearth" },
+    { "pool": ["company_aske"], "post": "hearth" },
+    { "pool": ["company_blade"], "post": "watch" },
+    { "pool": ["company_blade"], "post": "watch" },
+    { "pool": ["company_blade"], "post": "watch" }
+  ],
+  "haven": { "safeR": 18 },
+  "cues": { "clearing": 3, "approachPath": true },
+  "signs": [
+    { "title": "THE THIRD STONE", "lines": ["Anyone. Any hour."] },
+    { "title": "THIS LAMP IS NOT ON THE ROLLS.", "lines": ["by order of the Watch"] }
+  ]
+}

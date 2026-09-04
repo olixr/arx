@@ -1,0 +1,40 @@
+{
+  "id": "charter_steinar",
+  "name": "Steinar",
+  "title": "Charter Survey Lead",
+  "examine": "Thirty years a surveyor, twelve for the Charter. The inn's best bed and a table for the chart. His stakes run in a ruled line across a kerb he has not walked out to see.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 3,
+      "hairColor": 9,
+      "beard": 2,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 4,
+      "shirt": 10,
+      "pants": 11
+    }
+  },
+  "equipment": {
+    "body": "wayfarer_jerkin",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 25
+    },
+    {
+      "item": "twine",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "The seam is there. The chain says so and the chain does not have opinions. Everything between here and it is the cost of getting there.",
+    "A kerb is stones. A concession is paper with a seal on it. I have never seen stones win that argument, and I have surveyed for thirty years.",
+    "Goblins. Lot nineteen. Yes, I know what they are doing on it. I am telling you what it is called."
+  ]
+}

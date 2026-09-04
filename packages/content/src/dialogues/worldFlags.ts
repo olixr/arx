@@ -36,6 +36,15 @@ export const WORLD_FLAGS: ReadonlySet<string> = new Set([
    * of a bad camp.
    */
   'world:peddler_near',
+  /**
+   * THE CONTESTED LANDS (docs/contested-lands-plan.md §1 law 6, §5
+   * beat 10): two mutually hostile cores stand within the speaker's
+   * watch — hostility read live from the stances matrix over the
+   * tribes the two garrisons wear. The bickering-on-the-green gate
+   * and the Bone Meadow scoreboard's beat key. The epic's ONE
+   * addition to this roster; the roster stays closed.
+   */
+  'world:war_near',
 ]);
 
 /** The reserved prefix — one place, so no seam spells it by hand. */

@@ -144,6 +144,80 @@ export const STANCES: StancesDef = {
       npcPrefixes: ['stag', 'hind', 'boar', 'dire_boar', 'ram', 'sheep'],
       actors: [],
     },
+    // ---- THE CONTESTED LANDS (docs/contested-lands-plan.md §2, §8):
+    // the non-speaking peoples of the country around Dawnmead,
+    // declared as tribes so camps can feud through the matrix.
+    // Reputation is for speaking parties only — none of these is a
+    // faction. Every bestiary claim below keeps menace: true so the
+    // watch still charges a gnoll at the gate exactly as it did when
+    // the body read 'menace' implicitly (behavior-preserving; the
+    // only change is that the peoples stop being one another's kin).
+    {
+      id: 'gnoll',
+      name: 'The Husk Warband',
+      npcPrefixes: ['gnoll'],
+      actors: [],
+      menace: true,
+    },
+    {
+      id: 'dead',
+      name: 'The Struck Line',
+      npcPrefixes: ['skeleton'],
+      actors: [],
+      menace: true,
+    },
+    {
+      id: 'kobold',
+      name: 'The Digmasters',
+      npcPrefixes: ['kobold'],
+      actors: [],
+      menace: true,
+    },
+    {
+      id: 'skral',
+      name: 'The Upstream Shoal',
+      npcPrefixes: ['skral'],
+      actors: [],
+      menace: true,
+    },
+    {
+      id: 'legion',
+      name: 'The Legion',
+      npcPrefixes: ['hobgoblin'],
+      actors: [],
+      menace: true,
+    },
+    // The Drum (the goblins of the Felling): no bestiary claim either —
+    // the bestiary goblin stays implicit menace everywhere (the Silver
+    // Line's gate still charges one), and only the Felling's rows wear
+    // this banner per spawn, so 'crown|goblin' below can be a truce
+    // for Rurik's walk without touching any other watch. Menace: the
+    // First Lamp's ring and Brede's crew still charge the Drum's reach.
+    {
+      id: 'goblin',
+      name: 'The Drum',
+      npcPrefixes: [],
+      actors: [],
+      menace: true,
+    },
+    // The goblins who left the door: no bestiary claim — the grubfarm
+    // variant's rows wear this banner per spawn (the spawn-minted
+    // tribe door). Not menace: a farming people the watch does not
+    // charge on sight; their pickets shout before they loose.
+    {
+      id: 'goblin_doorless',
+      name: 'The Doorless',
+      npcPrefixes: [],
+      actors: [],
+    },
+    // The fourth people (plan §11): declared now, bodies in band 9 —
+    // the Sett's own rows will wear it. A set that never initiates.
+    {
+      id: 'dolmen',
+      name: 'The Standing Course',
+      npcPrefixes: [],
+      actors: [],
+    },
   ],
   matrix: {
     // The hunt: wolves take the WILD sheep — the yard sheep is
@@ -152,6 +226,40 @@ export const STANCES: StancesDef = {
     // hunt — a stag never charges a wolf on sight; a struck boar
     // still turns and fights through forced retaliation.
     'grazers|predators': { stance: 'hostile', range: 6, initiator: 'predators' },
+    // ---- THE CONTESTED LANDS: the misaligned-but-not-opposed pairs
+    // (plan §2, §5 beat 7) — authored truces so two peoples visibly
+    // coexist. Neutral rows cannot cascade, so they ship together.
+    // Two peoples who came up the same dark and pass each other.
+    'goblin_doorless|kobold': { stance: 'neutral' },
+    // The Company waves at the shoal at the crossing; the shoal waves back.
+    'reavers|skral': { stance: 'neutral' },
+    // The pack walks the ward line unbothered; nothing else does.
+    'evencourt|predators': { stance: 'neutral' },
+    // Rurik walks through the grub farm measuring; the pickets watch.
+    // ('goblin' is the Drum's spawn-minted banner, declared above.)
+    'crown|goblin': { stance: 'neutral' },
+    // The Dolmen's three: two thorough peoples under the meadow's
+    // sheet, two tollers (Brede laughs at a toll paid in rocks and
+    // honours it), two peoples who moved for water and never meet.
+    'dolmen|kobold': { stance: 'neutral' },
+    'dolmen|reavers': { stance: 'neutral' },
+    'dolmen|skral': { stance: 'neutral' },
+    // The standing feuds that are NEVER blade (plan §8): the roster
+    // carries oppose weights for these pairs, and without a truce
+    // row opposeHostile would draw steel between Eskil's watch and
+    // Hale's, or between Halvor's people and Ingram's dike crew.
+    'returners|waykeepers': { stance: 'neutral' },
+    'fenside|fordgate': { stance: 'neutral' },
+    // ---- THE HOSTILE ROWS LAND ONE ZONE AT A TIME, behind the
+    // FRONTIER doc (plan §8: watch regionBoldMax and calm before the
+    // next). None ships in Band 0. The ledger each zone band adds:
+    //   band 8 (THE HUSK AND THE WARD LINE, plan §5 beats 1-3):
+    //     'dead|gnoll':            { stance: 'hostile', range: 10, initiator: 'dead' }
+    //     'goblin|predators':      { stance: 'hostile', range: 8 }
+    //     'goblin|goblin_doorless':{ stance: 'hostile', range: 10, initiator: 'goblin' }
+    //   band 10 (THE SPOIL WOLD, plan §5 beat 4 + the pressed satellite):
+    //     'dead|goblin_doorless':  { stance: 'hostile', range: 8, initiator: 'dead' }
+    //     'goblin_doorless|legion':{ stance: 'hostile', range: 10, initiator: 'legion' }
   },
   watchVsMenace: true,
   opposeHostile: true,

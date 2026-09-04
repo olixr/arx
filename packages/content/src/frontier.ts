@@ -111,7 +111,15 @@ export const FRONTIER: FrontierDef = {
   stageMs: [1.75 * 86_400_000, 2.25 * 86_400_000],
   /** The ladder's top — bounded escalation by construction. */
   stageMax: 3,
-  /** Boldness rung at which a core may seed satellite camps. */
+  /**
+   * Boldness rung at which a core may seed satellite camps. THE
+   * PRESSED SATELLITE (docs/contested-lands-plan.md §5 beat 8) rides
+   * this same rung: a def whose boldness carries a `rivalDef` deals
+   * THAT archetype townward at this stage instead of its own reach
+   * (pois/types.ts PoiBoldness.rivalDef; the registry holds the
+   * exists-and-weight-0 law). Per-def, not a table dial — the Drum
+   * presses goblins, nobody else does.
+   */
   satelliteStage: 2,
   /** Live satellites a core may keep at once. */
   satelliteMax: 2,

@@ -2633,6 +2633,253 @@ const heartwoodDoor = sketch('poi_heartwood_door', 'The Heartwood door', [
   '______,,,,,______',
 ]);
 
+// ===================================================================
+// THE CONTESTED LANDS — the re-celled map's staged sites (docs/
+// contested-lands-plan.md §3, §13.2, band 0). Every sketch below is a
+// dressing of an existing shape (the hamlet pair, the roadside rest,
+// the walled rest, the opened barrow) in the Scarred Land's kit; the
+// local legends shadow globals the way the camps' and the shoals' do.
+// Who did what to whom is never drawn (plan §1 law 3): a broken
+// sluice is a broken sluice.
+// ===================================================================
+
+// THE FENSIDE speaks local: the field marks. '~' is the global
+// shallows (the rows are UNDER WATER — that is the whole picture),
+// 'x' the scarecrow in to its waist, 'I' the channel that fed the
+// rows and now drains the road, '=' and '%' the old sluice's two
+// panels on their posts ('T'), one strung with kelp, 'P' the stilted
+// pallets, 'D' the crofter's dugout. The rails ('l') pen on stilts.
+const fenside: Record<string, number> = {
+  x: Tile.Scarecrow,
+  I: Tile.IrrigationChannel,
+  '=': Tile.SluiceGate,
+  '%': Tile.SluiceGateStrung,
+  T: Tile.TimberPost,
+  P: Tile.PorchDeck,
+  D: Tile.Dugout,
+};
+
+/**
+ * THE FENSIDE LAMP (plan §3.1, §13.2): the drowned crofts and the
+ * First Lamp as one scene. The hamlet pair stands as it did; its
+ * grain plot is authored as shallows with the scarecrow, the channel
+ * and the fence standing in it (no flood system — the water simply
+ * IS there); the corn is cut green onto pallets by the reach; the
+ * old sluice hangs on two posts where the field meets the water, one
+ * post kelp-strung; the pens stand on stilts; and Hale's lamp burns
+ * at the road gate on the townward (west) side. Two boards: the
+ * shingle at the crofts and the post by the lamp.
+ */
+const fensideLamp = declareInfluence(sketch(
+  'poi_fenside_lamp',
+  'The Fenside Lamp',
+  [
+    '__________,,,,,_________',
+    '__,,...........,,,~~~,__',
+    '_,.wwgww..wwgww...,~~~,_',
+    '_,.wpppw..wpppw.FFFF~~,_',
+    '_,.wEppv..vppEw.F~~F~~,_',
+    '_,.wkqHw..wqkHw.I~x~~~,_',
+    '_,.wwgww..wwgww.F~~F~~,_',
+    '_,....:....:....FFFF~~,_',
+    '_,Li..:.f..:...:..T=%T,_',
+    '_,.llll....i...:..~~~~,_',
+    '_,.lPPl.8......:.PP~~~,_',
+    '_,.llll........:.PPD~~,_',
+    '__,,...8.......:...~~,,_',
+    '____,,,,,,,,,,,,,,,,,,__',
+  ],
+  hamletMarks,
+  undefined,
+  fenside,
+), { cap: QUIET_WAYSIDE_CAP });
+
+/**
+ * THE ASHLAMP (plan §3.1, §13.2): a scar, not a camp — the burnt
+ * shell of a Waykeeper waystation at the causeway head. Ruin walls
+ * breached north, west and east, the order's own lamp post cold in
+ * its socket inside, one ember bed that still smokes over its ash
+ * pan, the ash heap shovelled out the west breach, charred beams
+ * where the roof went, a stalled Charter wain with its crates under
+ * tarp in the lane, and one post that says only what it says. No
+ * garrison, no strongbox, no territory: EXEMPT from the influence
+ * law — a scar does not breed a verge. Flies the Scarred Land legend
+ * with a plain signpost for the board.
+ */
+const ashlamp = declareInfluence(sketch(
+  'poi_ashlamp',
+  'The Ashlamp',
+  [
+    '_____,,,,,,,_____',
+    '__,,...:::...,,__',
+    '_,..#S#.#S#...,__',
+    '_,..#SSSSS#.v.,__',
+    '_,.a.SSdSS#.v.,__',
+    '_,..#SfSS...W.,__',
+    '_,..#S#.#S#.G.,__',
+    '_,.:..a:::..:.,__',
+    '_,,..:i::::..,,__',
+    '__,,,,,:::,,,,,__',
+  ],
+  {},
+  undefined,
+  { ...scarredLand, i: Tile.Signpost },
+  [
+    '_________________',
+    '_________________',
+    '_________________',
+    '_________________',
+    '_____aaa_________',
+    '_____aaaa________',
+    '_____aaa_________',
+    '______a__________',
+    '_________________',
+    '_________________',
+  ],
+), { exempt: true });
+
+// THE WARD LINE speaks local: '~' is the thread (never water here),
+// 'g' the grey stone at its end. The waystone rides the global '8'.
+const wardLine: Record<string, number> = {
+  '~': Tile.WardThread,
+  g: Tile.GloomStone,
+};
+
+/**
+ * THE FORK REST (plan §3.2, §3.3, §13.2): the roadside rest with an
+ * Even Court waystone at its fork side (east), a ward thread of three
+ * tiles leaving the stone toward the north-east — the dying stand —
+ * and a gloom stone at the run's far end that nobody explains. The
+ * lamps stop here; the stone keeps the mile past it. Extra watch
+ * posts (Torsten, the sentinels) are semantic and land at compose.
+ */
+const forkWaystation = declareInfluence(sketch(
+  'poi_fork_waystation',
+  'The fork rest',
+  [
+    '_____________________',
+    '__,::::::::,......g.,',
+    '_,:.l.l.l..:,....~..,',
+    '_,:.e..f..e:,...~...,',
+    '_,:.M....a.:,..~....,',
+    '_,:.L..c...:.8.....,_',
+    '__,::::::::,.i....,,_',
+    '______,,_,,,,,,,,,,__',
+  ],
+  {},
+  undefined,
+  wardLine,
+), { cap: 22 });
+
+// THE OLD ROAD speaks local: the Returners' lamps are stakes, never
+// posts — 'm' lit, 'n' dark (shadowing the banner pole); 'T' the
+// driven timber, 'K' the mine cart (shadowing the weapon rack), 'j'
+// the lean ladder (shadowing the pine), 'y' the wayshrine the order
+// did not bless (shadowing the stone doorway).
+const oldRoad: Record<string, number> = {
+  m: Tile.PitLamp,
+  n: Tile.PitLampDark,
+  T: Tile.TimberPost,
+  K: Tile.MineCart,
+  j: Tile.LeanLadder,
+  y: Tile.WayShrine,
+};
+
+/**
+ * THE THIRD STONE (plan §3.4, §13.2): the walled rest with its two
+ * lamp posts struck and a pit lamp on a driven timber out front
+ * instead (never a LampPost — the Returners light stakes), a mine
+ * cart and a lean ladder in the yard, a chest of oil jars, a
+ * wayshrine, two boards at the gate (the Returners' and the one
+ * nailed over it), and two dark pit lamps on the approach where the
+ * oil ran out.
+ */
+const thirdStone = declareInfluence(sketch(
+  'poi_third_stone',
+  'The Third Stone',
+  [
+    '_______,,,_________',
+    '__,,::::::::,,,,,__',
+    '_,:##..M.a.:.W.,,__',
+    '_,:#.e.f...:.K..,__',
+    '_,:...e..c.:..j.,__',
+    '_,:.y....##:....,__',
+    '_,:l.l....#:....,__',
+    '__,::::::::,,,..,__',
+    '_,..:i.Tm..i..,,,,_',
+    '_,.n..:::....n...,_',
+    '__,,,,,:::,,,,,,,__',
+  ],
+  {},
+  undefined,
+  oldRoad,
+), { cap: 24 });
+
+// THE SPOIL WOLD speaks local: 'm' the turf mound, 'C' the kerb
+// stones re-set (badly), 'u' the gnaw trough, 'c' the grub cage, 'h'
+// the spoil, 'T' the door post set flat beside the global arch, 'G'
+// the seed-corn sacks with somebody else's mark, 'J' the ram's stake.
+// THE CHARTER'S CHAIN (band 0, owner's ruling: Steinar's survey is
+// folded INTO the barrow, never a site of its own): 'P' the ochre
+// survey stake, 'L' the lectern chart-table, 'N' the tally board,
+// 'A' the canvas over them at the line's east end.
+const spoilWold: Record<string, number> = {
+  m: Tile.GraveMound,
+  C: Tile.FieldCairn,
+  u: Tile.GnawTrough,
+  c: Tile.CritterCage,
+  h: Tile.SpoilHeap,
+  T: Tile.TimberPost,
+  G: Tile.GrainSacks,
+  J: Tile.BeastStake,
+  P: Tile.CharterPost,
+  L: Tile.Lectern,
+  N: Tile.NoticeBoard,
+  A: Tile.AwningShed,
+};
+
+/**
+ * THE BROKEN BARROW (plan §3.5, §13.2): one merged ground. West, the
+ * kerbed mound over its cist, the kerb cut open on the EAST lip where
+ * the door coughed the Doorless up (rock kerb, turf mounds, bones, and
+ * two field cairns where the moved stones were re-set wrong). East on
+ * the lip, the grub farm: crooked furrows, the trough, the grub cage,
+ * three hide tents round one small fire (never a bonfire), the skull
+ * totem on the farm's WEST edge facing away from the village, the
+ * warren mouth ringed in spoil — an arch stone and a timber post pair
+ * set flat, no lintel — the seed-corn sacks, the ram's stake, and
+ * salvaged fence hurdles. No palisade, no banner. One iron cache in
+ * the cist (the strongbox law); one shingle on the hurdles. Across
+ * the whole of it, THE CHARTER'S CHAIN: eight survey stakes in one
+ * ruled line straight over the kerb, the mound and the furrows (the
+ * seam does not stop for a barrow), and at the line's east end the
+ * chart-table lectern and the tally board under a shed of canvas.
+ */
+const brokenBarrow = declareInfluence(sketch(
+  'poi_broken_barrow',
+  'The broken barrow',
+  [
+    '______,,,,,,,,____,,,,,,,,,,______',
+    '___,,..rrrrr..,,,..........,,,____',
+    '__,..rr,,,,,rr..,..%%%%%.....,,,__',
+    '_,..r,,mmm,,r..,.?..%%%%%%.....,,_',
+    '_,.rr,mmmmm,rr.,....%%%%%%%AAA.,,_',
+    ',.Pr,PmSSSPm,P..:.P%%%P%%.PL.NP,,_',
+    ',.r,,mmSXSmm,rC.:..u..c..^.....,,_',
+    ',.rr,mmSSSmm,,.:::......^..^...,,_',
+    ',..r,,mmmmm,,h:hh......f.......,,_',
+    '_,.rr,,mmm,,rhQTh.....G.G......,,_',
+    '_,..rr,,,,,rr.hTQh.....G.......,,_',
+    '_,...rrrrrrr..:hh:......J..FF..,,_',
+    '__,,..o.......C..:....FFi.F.F..,__',
+    '___,,,,,,o...,,,,:::,,,..F..,,,,__',
+    '_______,,,,,,,,,,,:,,,,,,,,,,,____',
+  ],
+  {},
+  undefined,
+  spoilWold,
+), { cap: 40, vocab: 'oldstone' });
+
 export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
   [
     goblinCampRing,
@@ -2729,6 +2976,14 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     fellersCamp,
     fellersBoom,
     heartwoodDoor,
+    // THE CONTESTED LANDS (docs/contested-lands-plan.md §13.2): the
+    // ring's staged sites — the Fenside Lamp, the Ashlamp scar, the
+    // fork rest, the Third Stone, the broken barrow.
+    fensideLamp,
+    ashlamp,
+    forkWaystation,
+    thirdStone,
+    brokenBarrow,
     // THE LANDMARKS (the hybrid charter): expansive authored grounds,
     // 3-5x the camp shelf — built in landmarks.ts the Foundry way.
     ...LANDMARK_PREFABS,

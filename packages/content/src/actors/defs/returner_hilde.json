@@ -1,0 +1,43 @@
+{
+  "id": "returner_hilde",
+  "name": "Hilde",
+  "title": "Returner widow",
+  "examine": "Came out of the stones twenty-two years ago. Keeps the oil slate and reads it aloud at noon, and keeps a dark lamp by her door that she has not lit in six years.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 4,
+      "hairColor": 8,
+      "beard": 0,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 9,
+      "pants": 3
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 3
+    },
+    {
+      "item": "egg",
+      "qty": 2
+    },
+    {
+      "item": "cloth",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "I read the names at noon so nobody has to say them quietly. If your name is on it, it is on it out loud, and that is the whole of the shame.",
+    "A lamp is a decision. Weather is what happens to it after. The boy has those the wrong way round and I have not managed to turn him.",
+    "It went out at the twentieth stone. That is the number. I have no more to say about the number."
+  ]
+}

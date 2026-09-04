@@ -1,0 +1,40 @@
+{
+  "id": "even_sentinel",
+  "name": "Sentinel",
+  "title": "Even Court sentinel",
+  "examine": "Old blood, keeping a waystone where the lamps stop. The thread across the dying stand is theirs, their light draws nothing, and the old tongue is not going to be explained.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 12,
+      "hair": 6,
+      "hairColor": 7,
+      "beard": 0,
+      "eyes": 0,
+      "ears": 2,
+      "feature": 0,
+      "shirt": 5,
+      "pants": 11
+    }
+  },
+  "equipment": {
+    "weapon": "mithril_sword"
+  },
+  "lines": [
+    "The thread is cut in four places. The fourth is new.",
+    "Step over it. Cutting it is the thing you should not do, and you already know that, or you would not have asked.",
+    "The wolves walk it. Nothing else does. That is the count."
+  ],
+  "combat": {
+    "level": 40,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 220,
+      "damage": 9,
+      "speed": 3.6,
+      "leashRange": 12
+    }
+  }
+}

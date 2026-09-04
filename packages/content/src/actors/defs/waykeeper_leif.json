@@ -1,0 +1,43 @@
+{
+  "id": "waykeeper_leif",
+  "name": "Leif",
+  "title": "Lamp-boy of the First Lamp",
+  "examine": "Twelve or near enough, chalk on both hands and oil on one sleeve. Counts everything he passes, out loud, and a barrow counts as a cart because it had a wheel.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 2,
+      "hairColor": 3,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 4,
+      "pants": 1
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 2
+    },
+    {
+      "item": "bread",
+      "qty": 1
+    },
+    {
+      "item": "twine",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "Three carts and a barrow. The barrow counts. It had a wheel and it had corn in it and it went in the ditch, so it counts.",
+    "Lamps out past the gate: two. I chalk it, she reads it, we disagree about the barrow, and then I walk back. That is the whole of my post.",
+    "The lamp stays lit. Hale says it and then he goes and does it, which is the part people leave out."
+  ]
+}

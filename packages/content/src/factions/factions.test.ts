@@ -263,3 +263,36 @@ test('quest validator: rewards.standing capped, faction: requires legal', () => 
   const badGate = validateQuest(quest({ requires: { flags: ['faction:fordgate:sometimes'] } }));
   assert.ok(!badGate.ok);
 });
+
+// ---- THE CONTESTED LANDS (docs/contested-lands-plan.md §2, §8): the
+// two new speaking parties and the standing feuds that are never blade.
+test('CONTESTED LANDS: returners and fenside stand in the roster with real bodies', () => {
+  const returners = AUTHORED_FACTIONS.roster.find((f) => f.id === 'returners');
+  const fenside = AUTHORED_FACTIONS.roster.find((f) => f.id === 'fenside');
+  assert.ok(returners && fenside, 'both parties are rostered');
+  assert.deepEqual(returners!.members, ['returner_eskil', 'returner_hilde', 'returner_pool']);
+  assert.equal(returners!.fineActor, 'returner_eskil');
+  assert.deepEqual(fenside!.members, ['fenside_halvor', 'fenside_crofter']);
+  assert.equal(fenside!.fineActor, 'fenside_halvor');
+  for (const m of [...returners!.members, ...fenside!.members]) assert.ok(NPC_ACTORS.has(m), m);
+  // Road parties: no anchors, so Dawnmead's nearest-anchor deeds stay the Charter's.
+  assert.deepEqual(returners!.anchors, []);
+  assert.deepEqual(fenside!.anchors, []);
+  // The standing feuds, weighted as the plan says.
+  assert.equal(AUTHORED_FACTIONS.oppose['returners|waykeepers'], 0.25);
+  assert.equal(AUTHORED_FACTIONS.oppose['fenside|fordgate'], 0.25);
+  // The new throats read their own ledgers.
+  assert.equal(factionOfActor('waykeeper_leif'), 'waykeepers');
+  assert.equal(factionOfActor('waykeeper_torsten'), 'waykeepers');
+  assert.equal(factionOfActor('waykeeper_sergeant'), 'waykeepers');
+  assert.equal(factionOfActor('even_sentinel'), 'evencourt');
+  assert.equal(factionOfActor('company_aske'), 'reavers');
+  for (const c of ['charter_margit', 'charter_ingram', 'charter_steinar', 'charter_bodil']) {
+    assert.equal(factionOfActor(c), 'fordgate', c);
+  }
+  assert.equal(factionOfActor('crown_rurik'), 'crown');
+  assert.equal(factionOfActor('returner_hilde'), 'returners');
+  assert.equal(factionOfActor('fenside_crofter'), 'fenside');
+  // Roster cap 12: eight used, room for the Dolmen (band 9).
+  assert.ok(AUTHORED_FACTIONS.roster.length <= 12);
+});

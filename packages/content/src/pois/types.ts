@@ -149,6 +149,17 @@ export interface PoiBoldness {
    * same-archetype satellites, exactly as before.
    */
   satelliteDef?: string;
+  /**
+   * THE PRESSED SATELLITE (docs/contested-lands-plan.md §3.5, §5
+   * beat 8): the RIVAL archetype this core deals townward instead of
+   * its own reach once it stands at satelliteStage — the Drum's
+   * stage-2 rung deals the Legion's pressed-goblin camp, so the
+   * Legion's march toward Dawnmead is made of goblins. Outranks
+   * satelliteDef when both are set. The registry holds the law: the
+   * id must name a def in the roster and that def must be weight 0
+   * (a rival is dealt, never rolled).
+   */
+  rivalDef?: string;
 }
 
 /**

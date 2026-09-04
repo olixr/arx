@@ -942,3 +942,24 @@ test('worldSnapshot carries the living state: credits, calm, claimed yards', () 
   assert.equal(snap.claimRings[0]!.x, 100);
   assert.equal(snap.cells[0]!.stage, 2);
 });
+
+test('THE PRESSED SATELLITE: a rivalDef core deals the rival townward, not its own reach', () => {
+  const now = Date.now();
+  const st = site({ tier: 3 });
+  const s = slate([[KEY, row({ site: st, stage: 2, stageAt: now })]]);
+  // Dress the live def with a rival for the length of this test (the
+  // live-registry law: seedOneSatellite reads POI_DEFS at call time).
+  const def = POI_DEFS.get('goblin_warcamp')!;
+  const saved = def.boldness;
+  assert.ok(saved?.satellites, 'the warcamp seeds satellites (precondition)');
+  (def as { boldness?: unknown }).boldness = { ...saved, rivalDef: 'company_tollhouse' };
+  try {
+    assert.equal(proto.seedOneSatellite.call(s, now), true, 'the stage-2 core must deal');
+    const sat = [...s.poiLedger.entries()].find(([k, r]) => k !== KEY && r.site !== null);
+    assert.ok(sat, 'a satellite row must exist');
+    assert.equal(sat![1].site!.defId, 'company_tollhouse', 'the RIVAL stands, not the family');
+    assert.equal(sat![1].originCell, KEY, 'and it dies with the core like any satellite');
+  } finally {
+    (def as { boldness?: unknown }).boldness = saved;
+  }
+});

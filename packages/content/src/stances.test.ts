@@ -223,3 +223,67 @@ test('WILD SIDES: replaceStances deep-copies — the caller doc is never aliased
     assert.equal(STANCES.matrix['grazers|predators']!.range, 6);
   });
 });
+
+// ---- THE CONTESTED LANDS (docs/contested-lands-plan.md §2, §5 beat 7,
+// §8): the declared peoples and the neutral rows that ship together.
+test('CONTESTED LANDS: the seven tribes are declared and the bestiary reads them', () => {
+  for (const id of ['gnoll', 'dead', 'kobold', 'skral', 'legion', 'goblin', 'goblin_doorless', 'dolmen']) {
+    assert.ok(AUTHORED_STANCES.tribes.some((t) => t.id === id), `tribe ${id} declared`);
+  }
+  assert.equal(tribeOfNpcId('gnoll_champion', true), 'gnoll');
+  assert.equal(tribeOfNpcId('skeleton_archer', true), 'dead');
+  assert.equal(tribeOfNpcId('kobold_digmaster', true), 'kobold');
+  assert.equal(tribeOfNpcId('skral_tidelord', true), 'skral');
+  assert.equal(tribeOfNpcId('hobgoblin_juggernaut', true), 'legion');
+  // Spawn-minted banners: no bestiary claim, so a goblin stays a goblin
+  // until a row dresses it (the grubfarm variant, the Sett's own rows).
+  assert.equal(tribeOfNpcId('goblin', true), 'menace');
+  // Behavior-preserving: the watch still charges every claimed menace.
+  for (const t of ['gnoll', 'dead', 'kobold', 'skral', 'legion']) {
+    const a = stanceBetween('fordgate', t);
+    assert.equal(a.stance, 'hostile', `the watch answers ${t}`);
+    assert.equal(a.initiates, true);
+  }
+  // The Doorless are a farming people the watch does not charge on sight.
+  assert.equal(stanceBetween('fordgate', 'goblin_doorless').stance, 'neutral');
+});
+
+test('CONTESTED LANDS: the neutral rows coexist, and no hostile row lands in Band 0', () => {
+  const neutral = [
+    ['goblin_doorless', 'kobold'],
+    ['skral', 'reavers'],
+    ['predators', 'evencourt'],
+    ['crown', 'goblin'],
+    ['dolmen', 'kobold'],
+    ['dolmen', 'reavers'],
+    ['dolmen', 'skral'],
+    // The standing feuds that are NEVER blade: opposeHostile would draw
+    // steel on these pairs without the truce row.
+    ['returners', 'waykeepers'],
+    ['fenside', 'fordgate'],
+  ] as const;
+  for (const [a, b] of neutral) {
+    assert.equal(AUTHORED_STANCES.matrix[stancePairKey(a, b)]?.stance, 'neutral', `${a}|${b}`);
+    assert.equal(stanceBetween(a, b).stance, 'neutral', `${a} regards ${b}`);
+    assert.equal(stanceBetween(b, a).stance, 'neutral', `${b} regards ${a}`);
+  }
+  // Proof the truce is load-bearing: strip it and the oppose weight bites.
+  const doc = docCopy();
+  delete doc.matrix['returners|waykeepers'];
+  withDoc(doc, () => {
+    assert.equal(stanceBetween('returners', 'waykeepers').stance, 'hostile');
+  });
+  // Band 0 ships no hostile row beyond the hunt: the zone bands land
+  // theirs one at a time behind the FRONTIER doc (plan §8).
+  const hostile = Object.entries(AUTHORED_STANCES.matrix).filter(([, e]) => e.stance === 'hostile');
+  assert.deepEqual(hostile.map(([k]) => k), ['grazers|predators']);
+  // The husk's changeover is neutral until band 8 lands 'dead|gnoll'.
+  assert.equal(stanceBetween('dead', 'gnoll').stance, 'neutral');
+  // The shipped seed still round-trips its validator with no warnings.
+  const res = validateStances(JSON.parse(JSON.stringify(AUTHORED_STANCES)));
+  assert.ok(res.ok);
+  if (res.ok) assert.deepEqual(res.warnings, []);
+  // The Drum's banner is spawn-minted: a goblin body is still a goblin.
+  assert.equal(stanceBetween('crown', 'goblin').stance, 'neutral');
+  assert.equal(stanceBetween('crown', 'menace').stance, 'hostile');
+});

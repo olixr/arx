@@ -1,0 +1,45 @@
+{
+  "id": "crown_rurik",
+  "name": "Rurik",
+  "title": "Crown Chainman",
+  "examine": "Eleven years on the chain, four of them under Hedda in the burn country. Carries no weapon and walks at exactly the pace he walks. Files what he measures and walks on.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 5,
+      "hairColor": 1,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 2,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "wayfarer_jerkin",
+    "legs": "wayfarer_chaps",
+    "boots": "wayfarer_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 6
+    },
+    {
+      "item": "twine",
+      "qty": 2
+    },
+    {
+      "item": "bread",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "Hostile encampment, forty-one paces. Workings, sixty. Concession overrun, thirty-eight. Those are the entries and I do not have another word for any of them.",
+    "The chain does not have an opinion about the kerb. It went across it. I have written down that it went across it. The rest is the Charter's.",
+    "I have entered you as a witness. It is not a compliment. It is a column."
+  ]
+}

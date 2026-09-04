@@ -1,0 +1,59 @@
+{
+  "id": "waykeeper_torsten",
+  "name": "Sergeant Torsten",
+  "title": "Waykeeper Sergeant",
+  "examine": "Twenty-two years in the order and a slate in his own chalk: gnolls eleven, wolves seven, ours three with a line through the three. Stands the way a lamp post stands.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 3,
+      "hairColor": 6,
+      "beard": 4,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "head": "iron_helm",
+    "body": "iron_platebody",
+    "legs": "iron_greaves",
+    "boots": "iron_sabatons",
+    "weapon": "iron_sword",
+    "offhand": "oak_kiteshield"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 8
+    },
+    {
+      "item": "lantern",
+      "qty": 1
+    },
+    {
+      "item": "mending_salve",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "Gnolls eleven. Wolves seven. Ours three, and the line through the three is mine. That is the slate and it is the truest thing on this trail.",
+    "A lamp we cannot tend is a lie told in glass. An envoy at the delf wrote that and I wrote it under her, nine times, and I would write it again.",
+    "I told them the count. Roald said the Company was paid for the road. I said the road did not know that. He walked. I have nothing else about it."
+  ],
+  "combat": {
+    "level": 28,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 100,
+      "damage": 5,
+      "speed": 3.4,
+      "leashRange": 12
+    }
+  }
+}

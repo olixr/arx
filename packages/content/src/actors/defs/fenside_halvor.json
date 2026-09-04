@@ -1,0 +1,43 @@
+{
+  "id": "fenside_halvor",
+  "name": "Halvor",
+  "title": "Fenside Headman",
+  "examine": "Third generation on ground that was never good and was his. Walked to the sluice every morning for thirty years and looked at it. Loud about the shoal. Stops dead near the boy.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 3,
+      "hairColor": 6,
+      "beard": 5,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 3,
+      "shirt": 6,
+      "pants": 2
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 3
+    },
+    {
+      "item": "wheat",
+      "qty": 2
+    },
+    {
+      "item": "board",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "The shoal moved their weir and the post went. That is what happened. I do not need a Charter man with a level to tell me what happened to my own gate.",
+    "I will not pay for a dike that drowns me. I want the gate open. I know what those two things sound like together. Say them to the water.",
+    "They counted the sheep onto the wall. Six and the lamb. I have not been across to say anything. I do not know what you say to a number."
+  ]
+}

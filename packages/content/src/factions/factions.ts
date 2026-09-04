@@ -70,6 +70,14 @@ export const FACTIONS: FactionsDef = {
         'drover_sorrel',
         'twin_tansy',
         'twin_wick',
+        // THE CONTESTED LANDS (docs/contested-lands-plan.md §2): the
+        // Charter's works around Dawnmead — the tally stall on the
+        // green, the causeway head, the survey lead at the inn, the
+        // licensed cut on the trail side.
+        'charter_margit',
+        'charter_ingram',
+        'charter_steinar',
+        'charter_bodil',
         // Kingsdelf — the Charter's far venture: the Returning banked
         // on Charter coin, and the watch wears the Charter's coat.
         'delfmaster_ruen',
@@ -167,6 +175,9 @@ export const FACTIONS: FactionsDef = {
         'nurseryman_odd',
         'old_torvi',
         'fisher_ylva',
+        // THE CONTESTED LANDS: the Crown's chain across the wold — he
+        // files, he does not fight (no combat block, never an enforcer).
+        'crown_rurik',
       ],
       enforcers: ['castle_guard', 'silverfall_watch', 'pinewatch_watch', 'hoargate_watch', 'pinewatch_northguard'],
       npcPrefixes: [],
@@ -224,6 +235,13 @@ export const FACTIONS: FactionsDef = {
         // the peace at the last gate is the Waykeepers' peace.
         'waykeeper_signe',
         'hartfell_watch',
+        // THE CONTESTED LANDS: the First Lamp's boy, the fork
+        // waystation's sergeant, and the name-free pooled sergeant that
+        // replaces Hale in the rolled outpost pool (no rolled outpost
+        // mints a second Hale).
+        'waykeeper_leif',
+        'waykeeper_torsten',
+        'waykeeper_sergeant',
       ],
       enforcers: [
         'marshal_kestrel',
@@ -235,6 +253,8 @@ export const FACTIONS: FactionsDef = {
         'wayward_watch',
         'saltmere_watch',
         'hartfell_watch',
+        'waykeeper_torsten',
+        'waykeeper_sergeant',
       ],
       npcPrefixes: [],
       anchors: [],
@@ -281,6 +301,9 @@ export const FACTIONS: FactionsDef = {
         'sentinel_veran',
         'sentinel_lisse',
         'sentinel_thal',
+        // THE CONTESTED LANDS: the pooled, unnamed sentinels keeping the
+        // waystone at the Thornveil fork where the lamps stop.
+        'even_sentinel',
       ],
       enforcers: ['evenguard_watch'],
       npcPrefixes: [],
@@ -306,8 +329,10 @@ export const FACTIONS: FactionsDef = {
         'quartermaster_yeva',
         'company_blade',
         'company_runner',
-      
         'broker_slate', // the sixth counter (fence-by-construction)
+        // THE CONTESTED LANDS: the Company's other hand in the valley —
+        // the escort-man paid to keep the Old Road's dark miles.
+        'company_aske',
       ],
       enforcers: ['company_blade'],
       npcPrefixes: ['brigand'],
@@ -315,6 +340,45 @@ export const FACTIONS: FactionsDef = {
       refusals: ["You've spilled Company blood. Run.", 'Steel first. Talk never.'],
       // The blood-price: Ferrick will sell an enemy back their name.
       fineActor: 'company_broker',
+    },
+    // ---- THE CONTESTED LANDS (docs/contested-lands-plan.md §2, §8):
+    // two new speaking parties around Dawnmead. Reputation is for
+    // speaking parties only — the gnolls, the dead, the kobolds, the
+    // shoal and the Doorless are TRIBES (stances.ts), never rosters.
+    {
+      id: 'returners',
+      name: 'The Returners',
+      sigil: 'stake',
+      blurb: "The Old Road lit stone by stone by anybody's oil. The Third Stone keeps the count, and the count changes down.",
+      // Eskil keeps the stone, Hilde keeps the slate, and the pool is
+      // the third_stone_rest def's own staff.
+      members: ['returner_eskil', 'returner_hilde', 'returner_pool'],
+      enforcers: [],
+      npcPrefixes: [],
+      // No anchors: a road party. An anchor at the Third Stone would
+      // steal Dawnmead's nearest-anchor deeds from the Charter.
+      anchors: [],
+      refusals: [
+        'The beds are not yours. The road is. Walk it.',
+        'Your name is on the slate. It was read out. That is all the door you get.',
+      ],
+      // The beds are the closed throat; Eskil sells them back.
+      fineActor: 'returner_eskil',
+    },
+    {
+      id: 'fenside',
+      name: 'The Fenside Crofters',
+      sigil: 'sluice',
+      blurb: 'The drowned crofts on the First Road: the old gate, the free crossing, and green corn on boards waiting for legs.',
+      members: ['fenside_halvor', 'fenside_crofter'],
+      enforcers: [],
+      npcPrefixes: [],
+      anchors: [],
+      refusals: [
+        'Say it to the water. I am not hearing it.',
+        'You dried a field of mine. There is nothing here for you.',
+      ],
+      fineActor: 'fenside_halvor',
     },
   ],
   /**
@@ -350,6 +414,12 @@ export const FACTIONS: FactionsDef = {
     // The fellers' camps on the Everwood hem: the Company probes,
     // the wood dismantles, everyone is very polite about it.
     'evencourt|reavers': 0.5,
+    // THE CONTESTED LANDS: two standing feuds, NEVER blade — the
+    // stances doc carries a neutral row for each pair so opposeHostile
+    // cannot draw steel between Eskil's watch and Hale's, or between
+    // Halvor's crofters and Ingram's dike crew (docs/contested-lands-plan.md §8).
+    'returners|waykeepers': 0.25,
+    'fenside|fordgate': 0.25,
   },
   /** Band price multipliers (Phase 3); outlaw and below are refused. */
   prices: { champion: 0.88, trusted: 0.94, known: 0.97, neutral: 1, suspect: 1.12 },

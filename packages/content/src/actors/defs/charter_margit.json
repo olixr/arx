@@ -1,0 +1,39 @@
+{
+  "id": "charter_margit",
+  "name": "Margit",
+  "title": "Charter Tally-clerk",
+  "examine": "Ford-born, nine years a Charter clerk, one stall and a lectern on the green. Posts the number so anyone can argue with it, and says posted the way other people say true.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 4,
+      "hairColor": 5,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 11,
+      "pants": 8
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 12
+    },
+    {
+      "item": "cloth",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "Carts turned at the fen waist this week: four. Lamps out past the gate: two. That is the Charter's count and it is posted so you can argue with it.",
+    "The boy says three and a barrow. I have never once seen him count a barrow as a barrow. It is a cart to him if it has a wheel.",
+    "It is not my column. That is the whole of why I have not said it, and it is not a good enough reason, and I know that."
+  ]
+}

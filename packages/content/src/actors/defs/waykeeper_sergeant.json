@@ -1,0 +1,55 @@
+{
+  "id": "waykeeper_sergeant",
+  "name": "Waykeeper Sergeant",
+  "title": "Sergeant of the Outpost",
+  "examine": "The order's coat and the order's count. Keeps the fire, keeps the pen, keeps the road, and answers to the lamp before anyone standing in its light.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 3,
+      "hairColor": 1,
+      "beard": 3,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "head": "iron_helm",
+    "body": "iron_platebody",
+    "legs": "iron_greaves",
+    "boots": "iron_sabatons",
+    "weapon": "iron_sword",
+    "offhand": "oak_kiteshield"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 6
+    },
+    {
+      "item": "lantern",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "This post holds its miles by one lamp and the rota. Both are kept.",
+    "The pen is not for sleeping. The fire is free. The road is walked at dusk and at dawn and that is the whole of it.",
+    "Report what you saw. A count, not a story. The order writes down counts."
+  ],
+  "combat": {
+    "level": 26,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 90,
+      "damage": 5,
+      "speed": 3.4,
+      "leashRange": 12
+    }
+  }
+}

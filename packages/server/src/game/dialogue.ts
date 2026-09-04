@@ -7,7 +7,7 @@ import { pickQuipClip, quipIsRationed, quipSlotForBeat, quipWire, voiceWireForNo
 import { PoiSite } from '../world/pois.js';
 import { addItem } from './inventory.js';
 import { answerQuestFlag } from './quests.js';
-import { DialogueHook, DialogueNode, FRONTIER, POI_DEFS, STRONGHOLD_DEFS, VOICE, VoiceSlot, bountyFlag, dialogueDoneFlag, isFactionFlag, isQuestFlag, isWorldFlag, itemDef, parseQuestFlag } from '@arx/content';
+import { DialogueHook, DialogueNode, FRONTIER, NPCS, POI_DEFS, STRONGHOLD_DEFS, VOICE, VoiceSlot, bountyFlag, dialogueDoneFlag, isFactionFlag, isQuestFlag, isWorldFlag, itemDef, parseQuestFlag, stanceBetween, tribeOfNpcId } from '@arx/content';
 import { EntityId, VoiceWire } from '@arx/shared';
 import { compass8 } from './formulas.js';
 import type { ActiveDialogue, GameServer, PlayerComp } from './gameServer.js';
@@ -63,6 +63,11 @@ export function worldFlagAnswer(srv: GameServer, flag: string, player: PlayerCom
     }
     return false;
   }
+  if (flag === 'world:war_near') {
+    // Two hostile garrisons in the watch — its own survey (authored
+    // cells count; see warSurvey), so it never pays for watchSurvey.
+    return warSurvey(srv, sx, sy);
+  }
   const watch = srv.watchSurvey(sx, sy);
   switch (flag) {
     case 'world:threat_near':
@@ -115,6 +120,68 @@ export function watchSurvey(srv: GameServer, sx: number, sy: number): { near: bo
     if (row.stage >= 1) out.bold = true;
   }
   return out;
+}
+
+/**
+ * THE CONTESTED LANDS (docs/contested-lands-plan.md §5 beat 10): the
+ * tribes a standing site's garrison wears — the base muster plus every
+ * boldness rung the row has climbed, each row's placement banner first
+ * (the sub-faction door) and the bestiary's own tribe otherwise,
+ * resolved at CALL TIME from the live stances doc (npcTribeOf's law).
+ */
+export function poiGarrisonTribes(defId: string, stage: number): Set<string> {
+  const out = new Set<string>();
+  const def = POI_DEFS.get(defId);
+  if (!def) return out;
+  const rows = [...def.garrison];
+  for (const rung of (def.boldness?.stages ?? []).slice(0, Math.max(0, stage))) {
+    for (const g of rung.garrison ?? []) rows.push(g);
+  }
+  for (const g of rows) {
+    if (g.tribe !== undefined) {
+      out.add(g.tribe);
+      continue;
+    }
+    const npc = NPCS.get(g.npc);
+    out.add(tribeOfNpcId(g.npc, (npc?.aggroRange ?? 0) > 0));
+  }
+  return out;
+}
+
+/**
+ * THE WAR IS NEAR: do two STANDING cores inside the speaker's watch
+ * wear tribes the stances matrix calls hostile to each other (both
+ * ways — a one-way feud still reads hostile from both sides; only the
+ * right to OPEN it is one-sided)? Authored cells COUNT here, unlike
+ * watchSurvey: the pinned camps are this epic's stage and the war
+ * between them is the news (the husk against the den, the Drum
+ * against the Doorless). Staffed sites only — cleared trophies and
+ * scattered embers are over.
+ */
+export function warSurvey(srv: GameServer, sx: number, sy: number): boolean {
+  const watch = FRONTIER.watchTiles;
+  const camps: Set<string>[] = [];
+  for (const row of srv.poiLedger.values()) {
+    if (row.site === null || row.clearedAt !== null || row.emberUntil !== null) continue;
+    if (!srv.poiThreatens(row.site.defId)) continue;
+    const dx = row.site.anchorX - sx;
+    const dy = row.site.anchorY - sy;
+    if (dx * dx + dy * dy > watch * watch) continue;
+    const tribes = poiGarrisonTribes(row.site.defId, row.stage);
+    if (tribes.size > 0) camps.push(tribes);
+  }
+  for (let i = 0; i < camps.length; i++) {
+    for (let j = i + 1; j < camps.length; j++) {
+      for (const a of camps[i]!) {
+        for (const b of camps[j]!) {
+          if (stanceBetween(a, b).stance === 'hostile' && stanceBetween(b, a).stance === 'hostile') {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
 }
 
 /**

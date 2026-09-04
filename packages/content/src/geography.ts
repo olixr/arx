@@ -722,7 +722,10 @@ const AUTHORED_PLAN: GeographyDef = {
     // standing beside the carve where a traveler can actually see it.
     { id: 'fernway_rest', defId: 'waystation', x: 330, y: -116 },
     { id: 'longmeadow_rest', defId: 'waystation', x: 24, y: -148 },
-    { id: 'fork_rest', defId: 'waystation', x: -146, y: -168 },
+    // THE CONTESTED LANDS (docs/contested-lands-plan.md §13.2): the
+    // fork rest is the last lamp on the trail and the first stone of
+    // the old folk's — Torsten and two sentinels stand at it.
+    { id: 'fork_rest', defId: 'fork_waystation', x: -146, y: -168 },
     // THE LAST LAMP: the final haven before Silverfall's gate country.
     { id: 'last_lamp', defId: 'last_lamp', x: -264, y: -202 },
     // The named dens of the wild — the veil and the spine have ALWAYS
@@ -748,7 +751,11 @@ const AUTHORED_PLAN: GeographyDef = {
     // THE FENSIDE CROFTS — the mid-journey haven on the Amberfen's
     // waist: a lamp and a larder at the halfway mark so the long walk
     // east has a place to breathe.
-    { id: 'fenside_crofts', defId: 'roadside_hamlet', x: 148, y: 98 },
+    // THE CONTESTED LANDS (plan §3.1, §13.2): the crofts are drowned
+    // and Hale's First Lamp stands at their gate — ONE staged scene
+    // with Brede's bar 30 tiles west (the declared one-scene pair in
+    // the validator's spacing law). Same pin; the def changed.
+    { id: 'fenside_crofts', defId: 'fenside_lamp', x: 148, y: 98 },
     // THE GULLMOOR REST — the Salt Road's halfway lamp, the last roof
     // before the tier-3 league.
     { id: 'gullmoor_rest', defId: 'waystation', x: 556, y: 140 },
@@ -794,10 +801,86 @@ const AUTHORED_PLAN: GeographyDef = {
     // THE OLD ROAD'S ONE ROOF — the Third Stone, kept by returners,
     // not Waykeepers: the one hearth on the dark road, the town's
     // standing argument with the order, built in stone and firewood.
-    { id: 'third_stone', defId: 'waystation', x: -164, y: 192 },
+    // (THE CONTESTED LANDS, plan §3.4, §13.2: the comment above is
+    // true on the ground now — the def's pool is Eskil and the
+    // Returners, and Aske's crew keeps the dark miles.)
+    // MOVED (band 0, owner's ruling): the wolfkin bonering capital's
+    // clearance covered the old pin at (-164,192), so the Third Stone
+    // never actually stood. It stands now up a track 39 tiles off the
+    // Old Road, in the same cell [-2,1]; the spur trail that walks a
+    // traveler up to it is owed to band 10. Off-road on purpose until
+    // then (the test's off-road roster knows).
+    { id: 'third_stone', defId: 'third_stone_rest', x: -178, y: 148 },
     // THE RETURNERS' CROFTS — the last friendly smoke before the gate
     // country.
     { id: 'returners_camp', defId: 'roadside_hamlet', x: -272, y: 232 },
+    // ---------------------------------------------------------------
+    // THE CONTESTED LANDS — BREATHING ROOM (docs/contested-lands-
+    // plan.md §13.2, band 0). The re-celled ring around Dawnmead: one
+    // authored core per macro-cell, cores ≥70 tiles apart unless
+    // staged as one scene, the first camp past any gate ≥100 out.
+    // Cells by centre: tier-1 cores = the veil den [-2,-1], Brede's
+    // bar [0,0], the Felling [0,-1]; tier-2 cores = the fork rest
+    // [-2,-2], the husk [-1,-2], the crofts-and-lamp [1,0], the Third
+    // Stone [-2,1], the barrow [-2,0], plus the shipped
+    // longmeadow_rest [0,-2], amberfen_shoal [1,1], returners_camp
+    // [-3,1]. EMPTY ON PURPOSE (never author a core here for the life
+    // of the epic): [-3,-1], [-3,0], [1,-1], [-1,2], [-2,2] past the
+    // belt ([-3,0] emptied when the barrow came east, below), the
+    // far north past the Legion, the First Road past the crofts to
+    // the tollhouse, the Old Road from the Third Stone to
+    // returners_camp. The Sett is reserved (below).
+    // ---------------------------------------------------------------
+    // THE HUSK OF THE LINE — moved OFF the trail's end into the dark
+    // between the fork and the longmeadow (109 from the fork, 128
+    // from longmeadow_rest): gnolls by day, the struck line by night.
+    // Off every road on purpose (the test's off-road roster knows).
+    { id: 'husk_of_the_line', defId: 'husk_of_the_line', x: -64, y: -240 },
+    // THE FELLING — the Drum's warcamp on its burnt stand north-east
+    // of the gate, PINNED so it stands on the first visit (a rolled
+    // Drum stood in the ring ~11% of the time, which is not a demo;
+    // the cell pin found no ground on the ridge, so the x/y pin stands
+    // with nudge 0 in cell [0,-1]); its rolled neighbours carry the
+    // frontier beats. Being authored it never stages up and never
+    // deals a satellite (§1 law 2) — the pressed-goblin camp
+    // (legion_pressed) is unwired in band 0 and waits on the owner's
+    // word for the rolled Drum's rivalDef. Off every way on purpose
+    // (the test's off-road roster knows).
+    { id: 'felling_drum', defId: 'felling_drum', x: 80, y: -42 },
+    // THE LEGION — the hobgoblin core at tier 3 by canon, off every
+    // way, ≥128 from fork_rest, longmeadow_rest and coldwater_shoal;
+    // its reach is an authored loop down the trail, never a satellite.
+    { id: 'hobgoblin_legion', defId: 'hobgoblin_legion', x: -64, y: -320 },
+    // THE BROKEN BARROW — the kerbed mound and the Doorless grub farm
+    // on its east lip as ONE site on the Spoil Wold, in cell [-2,0].
+    // MOVED (band 0, owner's ruling): [-3,0]'s centre reads tier 4
+    // under the Spinewall's word, which would over-level a farming
+    // clan; tier 1 here is honest for the Doorless and the dead. The
+    // ruled pin (-236,72) found no honest ground within the nudge
+    // (the cell's standable wold is a strip near x -208..-188 and a
+    // band near y 108..116); this is the nearest tier-1 ground in the
+    // ruled cell that keeps the 70-tile law from the Third Stone.
+    // Steinar's chain is folded INTO this site: the Charter survey
+    // line (the CharterPost stakes ruled straight across the kerb and
+    // the furrows, the Lectern chart-table and the tally board under
+    // canvas at its east end) is part of the prefab, not a site of
+    // its own. Off every way.
+    { id: 'broken_barrow', defId: 'broken_barrow', x: -208, y: 48 },
+    // THE ASHLAMP — the threshold scar at the causeway head (72,64),
+    // def `ashlamp` (no core: no garrison, no haven). NOT PINNED HERE
+    // YET: (72,64) shares macro-cell [0,0] with first_road_toll, and
+    // the server's POI ledger holds ONE row per cell (seedAuthoredSites
+    // would retire the bar to seed the scar and the scar to re-seed
+    // the bar, every boot), and the pin stands 35 tiles off the road
+    // carve. Plan §3.1 always called it a dressing patch stamped by a
+    // zone-less sketch, not a site: it needs that stamp path (or a
+    // second-row ledger) before this line is uncommented.
+    // { id: 'ashlamp', defId: 'ashlamp', x: 72, y: 64 },
+    // TODO(band 9, THE STANDING COURSE): cell [1,2] is RESERVED for
+    // the Sett — the Dolmen's quarry bowl at (172,300), an AUTHORED
+    // ZONE with its own actors and spawn rows (plan §11.6), never a
+    // def or a site row here. Do not author a core in [1,2].
+    // amberfen_shoal in [1,1] is its acknowledged neighbour.
     // THE OLDCROWN DOOR — the buried capital's east gatehouse, pinned
     // east of the reserve with room for the prefab's INFLUENCE apron.
     // Weight-0: this door exists exactly once.
@@ -973,6 +1056,32 @@ const GEO_ID_RE = /^[a-z][a-z0-9_-]{0,63}$/;
 /** POI macro-cell width — mirrored from the scaffold (POI_CELL). */
 export const GEO_POI_CELL = POI_MACRO_CELL;
 
+/**
+ * THE BREATHING ROOM LAW (docs/contested-lands-plan.md §13.1): two
+ * pinned sites never share one screen — a walker sees ~30 tiles
+ * ahead east-west, so 70 is two screens and a pause between them.
+ */
+export const GEO_PIN_SPACING = 70;
+
+/**
+ * Pinned pairs exempt from the spacing law (order-free). Brede's bar
+ * stands at the drowned crofts' gate and Hale's lamp at the hamlet —
+ * the ONE pair the plan DECLARES as one staged scene (§13.2). The
+ * second pair is NOT in the plan: fernway_rest (330,-116) and
+ * first_climb_tower (368,-136) shipped 43 tiles apart before the law
+ * was written, and the exemption exists only so the validator passes
+ * on shipped ground. Owner to rule: list the pair in §13.2 or move a
+ * pin; nothing here claims they read as one scene.
+ */
+export const GEO_ONE_SCENE_PAIRS: ReadonlyArray<readonly [string, string]> = [
+  ['first_road_toll', 'fenside_crofts'],
+  ['fernway_rest', 'first_climb_tower'],
+];
+
+function isOneScene(a: string, b: string): boolean {
+  return GEO_ONE_SCENE_PAIRS.some(([p, q]) => (p === a && q === b) || (p === b && q === a));
+}
+
 export type GeographyValidation =
   | { ok: true; def: GeographyDef }
   | { ok: false; errors: string[] };
@@ -1109,6 +1218,24 @@ export function validateGeographyDef(
         );
       } else {
         seenCells.set(key, s.id);
+      }
+    }
+    // THE BREATHING ROOM LAW (docs/contested-lands-plan.md §13.1 law
+    // 2): two pinned sites never share one screen — ≥GEO_PIN_SPACING
+    // tiles apart — unless the plan DECLARES them one staged scene.
+    // Cell-forced sites are spaced by the cell law above; only x/y
+    // pins can crowd.
+    const pinned = sites.filter((s) => s.x !== undefined && s.y !== undefined);
+    for (let i = 0; i < pinned.length; i++) {
+      for (let j = i + 1; j < pinned.length; j++) {
+        const a = pinned[i]!;
+        const b = pinned[j]!;
+        const d = Math.hypot(a.x! - b.x!, a.y! - b.y!);
+        if (d >= GEO_PIN_SPACING || isOneScene(a.id, b.id)) continue;
+        errors.push(
+          `sites '${a.id}' and '${b.id}' stand ${d.toFixed(0)} tiles apart — pinned sites keep ` +
+            `≥${GEO_PIN_SPACING} (the breathing-room law) unless declared one scene in GEO_ONE_SCENE_PAIRS`,
+        );
       }
     }
   }

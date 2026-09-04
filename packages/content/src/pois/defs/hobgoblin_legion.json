@@ -1,0 +1,37 @@
+{
+  "id": "hobgoblin_legion",
+  "name": "The Legion",
+  "description": "The hobgoblin Legion's core north of the trail. A palisade with true corners, its gate facing the road because the road is next, and Harguk Fiveblows in the seat.",
+  "family": "hobgoblin",
+  "tiers": [3, 6],
+  "weight": 0,
+  "prefabs": ["poi_hob_muster", "poi_hob_watch", "poi_hob_forgecamp"],
+  "garrison": [
+    { "npc": "hobgoblin", "count": [2, 3], "role": "holdfast", "tribe": "legion" },
+    { "npc": "hobgoblin_archer", "count": [1, 2], "role": "sentry", "patrol": true, "tribe": "legion" },
+    { "npc": "hobgoblin", "count": [1, 2], "role": "sentry", "patrol": true, "tribe": "legion" },
+    { "npc": "hobgoblin_warcaster", "count": [1, 1], "role": "holdfast", "minTier": 4, "tribe": "legion" },
+    {
+      "npc": "hobgoblin_champion",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 2,
+      "names": ["Harguk Fiveblows"],
+      "crowned": true,
+      "tribe": "legion"
+    },
+    { "npc": "hobgoblin_juggernaut", "count": [1, 1], "role": "holdfast", "minTier": 6, "tribe": "legion" }
+  ],
+  "chestLoot": "chest_legion_issue",
+  "chestTierBonus": 1,
+  "clearedFlag": "poi_hobgoblin_legion_broken",
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [
+      { "tile": "LegionStandard", "count": 1 },
+      { "tile": "PrisonCage", "count": 1 },
+      { "tile": "SpikeBarrier", "count": 2 }
+    ]
+  }
+}

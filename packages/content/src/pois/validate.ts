@@ -231,6 +231,19 @@ export function validatePoiDef(
           errors.push(`${at}: a crowned row musters one body — count must be [1, 1]`);
         }
       }
+      // THE WILD TAKES SIDES: the per-row tribe override. Typed on
+      // PoiGarrisonEntry and read by the composer since the hostility
+      // epic — and, like `crowned` before it, silently EATEN here: a
+      // def could wear `tribe: 'gnoll'` and every body mustered in the
+      // bestiary's own colours. The contested lands stand on this
+      // field (gnoll days / dead nights, the Doorless, the pressed
+      // Legion, Aske's crew), so it is carried now.
+      const tribe =
+        g.tribe === undefined
+          ? undefined
+          : typeof g.tribe === 'string' && /^[a-z][a-z0-9_]*$/.test(g.tribe)
+            ? g.tribe
+            : (errors.push(`${at}: tribe must be a lowercase slug`), undefined);
       if (role) {
         out.push({
           npc,
@@ -243,6 +256,7 @@ export function validatePoiDef(
           ...(hours !== undefined ? { hours } : {}),
           ...(names !== undefined ? { names } : {}),
           ...(crowned !== undefined ? { crowned } : {}),
+          ...(tribe !== undefined ? { tribe } : {}),
         });
       }
     }
@@ -375,6 +389,18 @@ export function validatePoiDef(
           satelliteDef = b.satelliteDef;
         }
       }
+      let rivalDef: string | undefined;
+      if (b.rivalDef !== undefined) {
+        if (typeof b.rivalDef !== 'string' || b.rivalDef.length === 0) {
+          errors.push('boldness.rivalDef must be a def id');
+        } else if (satellites !== true) {
+          errors.push('boldness.rivalDef needs satellites: true (a rival is dealt as the reach)');
+        } else if (b.rivalDef === id) {
+          errors.push('boldness.rivalDef must not name the def itself (that is the default reach)');
+        } else {
+          rivalDef = b.rivalDef;
+        }
+      }
       if (garrison.length === 0) {
         errors.push('boldness needs a garrison — a site with no muster has nothing to embolden');
       }
@@ -383,6 +409,7 @@ export function validatePoiDef(
           stages,
           ...(satellites !== undefined ? { satellites } : {}),
           ...(satelliteDef !== undefined ? { satelliteDef } : {}),
+          ...(rivalDef !== undefined ? { rivalDef } : {}),
         };
       }
     }

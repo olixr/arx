@@ -1,0 +1,53 @@
+{
+  "id": "company_aske",
+  "name": "Aske",
+  "title": "Company Escort-man",
+  "examine": "Low Hall born, red sash, a crew of four and a banner flying under a lamp that is not theirs. Paid for the road. Not for under it.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 2,
+      "hairColor": 0,
+      "beard": 1,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 1,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "legs": "leather_chaps",
+    "boots": "leather_boots",
+    "weapon": "iron_sword"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 20
+    },
+    {
+      "item": "hard_cheese",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "We are paid for the road. Not for under it. The hole is the road's problem and the road can take it up with the diggers.",
+    "Four of us and a lamp that is not ours. When something comes out of the wood at night it finds us first. That is the contract and it is not a complaint.",
+    "Roald walked past a lamp at dusk and the lamp said nothing that counted. I will pay for eleven gnolls. I do not need to know their names."
+  ],
+  "combat": {
+    "level": 30,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 150,
+      "damage": 10,
+      "speed": 3.6,
+      "leashRange": 12
+    }
+  }
+}

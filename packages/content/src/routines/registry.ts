@@ -165,6 +165,12 @@ import saltFisherPiers from './defs/salt_fisher_piers.json';
 import saltFisherYard from './defs/salt_fisher_yard.json';
 import saltFisherEast from './defs/salt_fisher_east.json';
 import waystationKeeper from './defs/waystation_keeper.json';
+// THE CONTESTED LANDS (docs/contested-lands-plan.md §3.1): the First
+// Lamp's hours — Hale trims the lamp at dawn and dusk, Leif walks the
+// road's edge and back (a within-site loop: the green is past the
+// ±128 offset a routine may reach).
+import haleLamp from './defs/hale_lamp.json';
+import leifWalk from './defs/leif_walk.json';
 
 /**
  * Every authored routine JSON, registered here. A def that isn't
@@ -440,6 +446,8 @@ const SOURCES: readonly unknown[] = [
   saltFisherYard,
   saltFisherEast,
   waystationKeeper,
+  haleLamp,
+  leifWalk,
   hartSpeaker,
   kdDelfmaster,
   kdFactor,

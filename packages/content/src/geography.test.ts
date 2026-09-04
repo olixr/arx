@@ -27,6 +27,8 @@ import {
   TRAIL_SPAN_MAX,
   thornveilAt,
   validateGeographyDef,
+  GEO_ONE_SCENE_PAIRS,
+  GEO_PIN_SPACING,
 } from './geography.js';
 import { SETTLED_ANCHORS } from './danger.js';
 import { buildDawnmead } from './maps/dawnmead.js';
@@ -135,7 +137,41 @@ test('distToRect is zero inside, exact outside', () => {
 // THE AUTHORED WILD SITES — Epic 3's fixed points. One site per
 // macro-cell is the scaffold's law; the mileposts must sit beside
 // their road (never ON it), and nothing may claim settled ground.
+//
+// THE CONTESTED LANDS — BREATHING ROOM (docs/contested-lands-plan.md
+// §13.1, §13.2, band 0). ONE SITE PER CELL, the ring as re-celled:
+//   tier-1 cores (3 of 6): veil_den [-2,-1], first_road_toll [0,0],
+//     felling_drum [0,-1];
+//   tier-2 cores (9 of 14): fork_rest [-2,-2], husk_of_the_line
+//     [-1,-2], fenside_crofts [1,0] (the crofts AND the lamp: one
+//     scene with the bar), third_stone [-2,1], broken_barrow [-2,0],
+//     plus the shipped longmeadow_rest [0,-2], amberfen_shoal [1,1],
+//     returners_camp [-3,1];
+//   tier-3: hobgoblin_legion [-1,-3].
+// EMPTY ON PURPOSE — a listed asset, not a gap; never author a core
+// here for the life of the epic: [-3,-1], [-3,0] (emptied when the
+// barrow came east: its centre read tier 4 under the Spinewall's
+// word), [1,-1], [-1,2], [-2,2] beyond the belt, the far north
+// beyond the Legion, the First Road
+// past the crofts for ~290 tiles to the tollhouse, and the Old Road
+// from the Third Stone to returners_camp. [1,2] is RESERVED for the
+// Sett (an authored zone, band 9), not for a site. The Ashlamp scar
+// (72,64) is NOT a site: it shares [0,0] with the bar and the ledger
+// is one row per cell (see the parked line in geography.ts).
 // ------------------------------------------------------------------
+
+/**
+ * THE CONTESTED LANDS (plan §13.2): pinned sites that stand OFF every
+ * way on purpose — the husk is 24 tiles past the trail's end and out
+ * of its eyeline, the Legion is "off every way", the barrow stands on
+ * open wold west of the Old Road, the Felling is the Drum's stand on
+ * the ridge north-east of the gate (the cell pin found no ground
+ * there, so it is an x/y pin now), and the Third Stone stands up a
+ * track 39 tiles off the Old Road until band 10 lays its spur trail.
+ * A milepost must hug its road; a camp the road never reaches must
+ * not.
+ */
+const OFF_ROAD_PINS = new Set(['husk_of_the_line', 'hobgoblin_legion', 'broken_barrow', 'felling_drum', 'third_stone']);
 
 test('authored wild sites claim distinct macro-cells', () => {
   const cells = new Set<string>();
@@ -153,6 +189,10 @@ test('pinned mileposts stand beside the road, never on it', () => {
     if (s.x === undefined || s.y === undefined) continue;
     const d = roadDistanceAt(SEED, s.x, s.y);
     assert.ok(d > 4.5, `${s.id} anchor sits inside the road shoulder (${d.toFixed(1)})`);
+    if (OFF_ROAD_PINS.has(s.id)) {
+      assert.ok(d > 40, `${s.id} is declared off-road but stands ${d.toFixed(1)} from a carve`);
+      continue;
+    }
     assert.ok(d < 26, `${s.id} anchor wandered off the road (${d.toFixed(1)})`);
     // The plan never pins a landmark inside its own future streets.
     for (const rect of PLANNED_ZONE_RECTS) {
@@ -194,10 +234,17 @@ test('the authored plan passes its own validator, byte-honest', () => {
 });
 
 test('the authored plan earns no warnings from its own counsel', () => {
-  assert.deepEqual(
-    geographyWarnings(AUTHORED_GEOGRAPHY, SEED, (x, y) => elevationAt(SEED, x, y)),
-    [],
+  // THE CONTESTED LANDS: the counsel still says an off-road pin may
+  // never be found — true, and the Studio should keep saying it — but
+  // the husk, the Legion and the barrow are OFF the ways by design
+  // (plan §13.2), so exactly those five "far from any road" lines are
+  // expected and nothing else is.
+  const warnings = geographyWarnings(AUTHORED_GEOGRAPHY, SEED, (x, y) => elevationAt(SEED, x, y));
+  const declared = warnings.filter((w) =>
+    [...OFF_ROAD_PINS].some((id) => w.startsWith(`site '${id}' stands`) && w.includes('from any road')),
   );
+  assert.equal(declared.length, OFF_ROAD_PINS.size, `every declared off-road pin is far from a road:\n${warnings.join('\n')}`);
+  assert.deepEqual(warnings.filter((w) => !declared.includes(w)), []);
 });
 
 // ------------------------------------------------------------------
@@ -423,4 +470,83 @@ test("Kingsdelf's bowl is calm, and the Brand's heart is the hottest shipped gro
   // meadow.
   const lastLeague = dangerAt(SEED, -398, 302, anchors);
   assert.ok(lastLeague >= 3 && lastLeague <= 5, `the last league should read 3-5, got ${lastLeague}`);
+});
+
+// ------------------------------------------------------------------
+// THE CONTESTED LANDS — the re-celled ring (plan §13.2, band 0).
+// ------------------------------------------------------------------
+
+test('THE RE-CELLED MAP: every §13.2 site stands in its table cell on its def', () => {
+  const byId = new Map(AUTHORED_WILD_SITES.map((s) => [s.id, s]));
+  const cellOf = (s: { x?: number; y?: number; cell?: readonly [number, number] }): string =>
+    s.cell ? `${s.cell[0]},${s.cell[1]}` : `${Math.floor(s.x! / 128)},${Math.floor(s.y! / 128)}`;
+  const TABLE: Array<[string, string, string]> = [
+    // site id, def id, cell
+    ['first_road_toll', 'bandit_camp', '0,0'],
+    ['fenside_crofts', 'fenside_lamp', '1,0'],
+    ['fork_rest', 'fork_waystation', '-2,-2'],
+    ['husk_of_the_line', 'husk_of_the_line', '-1,-2'],
+    ['felling_drum', 'felling_drum', '0,-1'],
+    ['hobgoblin_legion', 'hobgoblin_legion', '-1,-3'],
+    ['veil_den', 'wolfkin_den', '-2,-1'],
+    ['third_stone', 'third_stone_rest', '-2,1'],
+    ['broken_barrow', 'broken_barrow', '-2,0'],
+    ['longmeadow_rest', 'waystation', '0,-2'],
+    ['amberfen_shoal', 'skral_village', '1,1'],
+    ['returners_camp', 'roadside_hamlet', '-3,1'],
+  ];
+  for (const [id, defId, cell] of TABLE) {
+    const s = byId.get(id);
+    assert.ok(s, `${id} missing from the plan`);
+    assert.equal(s!.defId, defId, `${id} stands on the wrong def`);
+    assert.equal(cellOf(s!), cell, `${id} stands in the wrong cell`);
+    const def = POI_DEFS.get(defId);
+    assert.ok(def, `${id}: def '${defId}' not in the registry`);
+  }
+  // Every contested def is weight 0 — placed by hand, never rolled.
+  for (const defId of ['fenside_lamp', 'ashlamp', 'fork_waystation', 'third_stone_rest',
+    'husk_of_the_line', 'felling_drum', 'legion_pressed', 'hobgoblin_legion', 'broken_barrow']) {
+    assert.equal(POI_DEFS.get(defId)!.weight, 0, `${defId} must be weight 0`);
+  }
+  // The pressed camp is dealt, never placed: no site row names it.
+  assert.ok(!AUTHORED_WILD_SITES.some((s) => s.defId === 'legion_pressed'));
+  // EMPTY ON PURPOSE — and RESERVED: nothing authored stands here.
+  const taken = new Set(AUTHORED_WILD_SITES.map(cellOf));
+  for (const cell of ['-3,-1', '-3,0', '1,-1', '-1,2', '-2,2', '1,2']) {
+    assert.ok(!taken.has(cell), `cell ${cell} is empty on purpose (plan §13.2) — something stands in it`);
+  }
+});
+
+test('THE BREATHING ROOM LAW: pinned sites keep 70 tiles unless declared one scene', () => {
+  // The shipped plan passes with exactly its declared pairs.
+  const shipped = validateGeographyDef(AUTHORED_GEOGRAPHY, { poiDefIds: new Set(POI_DEFS.keys()) });
+  assert.ok(shipped.ok, shipped.ok ? '' : shipped.errors.join('\n'));
+  assert.ok(GEO_PIN_SPACING === 70);
+  assert.ok(GEO_ONE_SCENE_PAIRS.some(([a, b]) => a === 'first_road_toll' && b === 'fenside_crofts'));
+  // Two undeclared pins one screen apart are refused, and the error
+  // names both.
+  const draft = geographySnapshot();
+  draft.sites.push({ id: 'crowd_a', defId: 'waystation', x: 3000, y: 3000 });
+  draft.sites.push({ id: 'crowd_b', defId: 'waystation', x: 3040, y: 3030 });
+  const v = validateGeographyDef(draft);
+  assert.ok(!v.ok);
+  if (!v.ok) {
+    assert.ok(v.errors.some((e) => e.includes("'crowd_a'") && e.includes("'crowd_b'") && e.includes('50 tiles')), v.errors.join('\n'));
+  }
+  // Cell-forced sites are spaced by the cell law alone.
+  const cells = geographySnapshot();
+  cells.sites.push({ id: 'forced_a', defId: 'waystation', cell: [40, 40] });
+  cells.sites.push({ id: 'pin_b', defId: 'waystation', x: 40 * 128 + 5, y: 40 * 128 + 5 });
+  const c = validateGeographyDef(cells);
+  assert.ok(!c.ok, 'a pin inside a forced cell shares its cell');
+  if (!c.ok) assert.ok(c.errors.every((e) => !e.includes('tiles apart')), 'the cell law spoke, not the spacing law');
+  // Exactly 70 apart is legal.
+  const edge = geographySnapshot();
+  edge.sites.push({ id: 'edge_a', defId: 'waystation', x: 3000, y: 3000 });
+  edge.sites.push({ id: 'edge_b', defId: 'waystation', x: 3070, y: 3000 });
+  // (3000,3000) and (3070,3000) sit in different cells (23 vs 23 — same
+  // cell!): shift the second across the border so only spacing speaks.
+  edge.sites[edge.sites.length - 1] = { id: 'edge_b', defId: 'waystation', x: 3072, y: 3000 };
+  const e = validateGeographyDef(edge);
+  assert.ok(e.ok, e.ok ? '' : e.errors.join('\n'));
 });

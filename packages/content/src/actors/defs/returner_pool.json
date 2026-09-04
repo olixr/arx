@@ -1,0 +1,53 @@
+{
+  "id": "returner_pool",
+  "name": "Returner",
+  "title": "Of the Third Stone",
+  "examine": "Came up the Old Road once and means to walk it lit. Oil on the hands, a stake in the pack, and a count of stones nobody asked for.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 2,
+      "hairColor": 4,
+      "beard": 1,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 7,
+      "pants": 6
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "legs": "leather_chaps",
+    "boots": "leather_boots",
+    "weapon": "bronze_sword"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 4
+    },
+    {
+      "item": "bread",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "Forty-one stones to the delf. I have walked them. Nine are lit tonight and I will tell you which in the morning.",
+    "The diggers are thorough. That is all I have about the diggers.",
+    "The order will not say the word south. We say it. Somebody has to carry the oil."
+  ],
+  "combat": {
+    "level": 20,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 70,
+      "damage": 5,
+      "speed": 3.4,
+      "leashRange": 12
+    }
+  }
+}

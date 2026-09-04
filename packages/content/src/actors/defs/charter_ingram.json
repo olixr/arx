@@ -1,0 +1,45 @@
+{
+  "id": "charter_ingram",
+  "name": "Ingram",
+  "title": "Charter Dike-master",
+  "examine": "Born on the Amber where the river is a working thing. Under canvas at the drowned crofts with a level, a levy book and an ochre pennant, on the dike bank at first light.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 3,
+      "hairColor": 1,
+      "beard": 6,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 8,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 15
+    },
+    {
+      "item": "board",
+      "qty": 3
+    },
+    {
+      "item": "twine",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "Water goes where it is let. I am not letting it go across the road any more. Where it goes instead is a fair question with a fair answer: not across the road.",
+    "The Company broke the sluice. A wet road is a paying road and a dry one is not. You do not need a level to read that.",
+    "The crofts pay because the ford voted that the crofts pay. I wrote twice. I build what is voted. Ask the moot who should have paid; they will say the crofts."
+  ]
+}

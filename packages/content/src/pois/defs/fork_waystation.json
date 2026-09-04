@@ -1,0 +1,23 @@
+{
+  "id": "fork_waystation",
+  "name": "The fork rest",
+  "description": "The last lamp on the hunters' trail, where the Waykeepers' road stops and the old folk's stones take over. A roadside rest with an Even Court waystone at the fork side, a ward thread leaving it toward the dying stand, and a grey stone at the thread's end that nobody explains. Sergeant Torsten keeps the watch here beside the Wayward Watch; two sentinels keep the stone and say one line each.",
+  "tiers": [2, 8],
+  "weight": 0,
+  "prefabs": ["poi_fork_waystation"],
+  "garrison": [],
+  "actors": [
+    { "pool": ["wayfarer_senna", "wayfarer_dray", "wayfarer_petch"], "post": "hearth", "routine": "waystation_keeper" },
+    { "pool": ["wayward_watch"], "post": "watch" },
+    { "pool": ["wayward_watch"], "post": "watch" },
+    { "pool": ["waykeeper_torsten"], "post": "watch" },
+    { "pool": ["even_sentinel"], "post": "watch" },
+    { "pool": ["even_sentinel"], "post": "watch" }
+  ],
+  "haven": { "safeR": 18 },
+  "cues": { "clearing": 3, "approachPath": true },
+  "signs": [
+    { "title": "THE FORK REST", "lines": ["the lamps stop here", "the stone keeps the mile past it"] },
+    { "title": "THE TALLY", "lines": ["gnolls eleven. wolves seven", "ours three", "the three has a line through it"] }
+  ]
+}
