@@ -21589,6 +21589,18 @@ export class Renderer {
         // by treeExtent.test.ts. No side-channel pads here.
         return {
           sortY: ty + 0.9,
+          // A5 pitch-aware depth (tree-vs-volume sort): a mature tree is a
+          // tall, ground-rooted OCCLUDER — like a wall or hedge, not a mobile
+          // billboard. Carrying its foot row as `nearRow` (=== sortY, so the
+          // depth term and q=0 flat order are byte-identical) makes it a
+          // VOLUME for DRAW_ORDER, so the front-base cross-shelf exception
+          // resolves tree-vs-hedge (and tree-vs-wall/building) by TRUE ground
+          // depth: a tree planted in FRONT (south) of a raised hedge draws
+          // OVER it instead of being dominated by the hedge's higher shelf,
+          // and a tree behind it is still occluded. Mobile entities (players,
+          // NPCs, beasts) stay billboards (no nearRow), so wall/hedge-vs-entity
+          // sort is unchanged.
+          nearRow: this.occlusionOn ? ty + 0.9 : undefined,
           occKey: occ ? treeKey(tx + 0.5, ty + 0.5, tile) : undefined,
           occX0: occ ? p.x + shiver + occ.x0 * s : undefined,
           occX1: occ ? p.x + shiver + occ.x1 * s : undefined,
