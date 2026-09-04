@@ -455,25 +455,82 @@ export function generateGrassTile(
  * array per call — the renderer caches it per tile so a still object mints
  * its skirt once.
  */
-export function generateSkirtBlades(tx: number, ty: number, footY: number): Blade[] {
+// Side bits for edge-biased (wall/building) skirts — mirror grassSkirt.ts.
+const SKIRT_SIDE_N = 1;
+const SKIRT_SIDE_S = 2;
+const SKIRT_SIDE_W = 4;
+const SKIRT_SIDE_E = 8;
+const SKIRT_SIDE_ALL = SKIRT_SIDE_N | SKIRT_SIDE_S | SKIRT_SIDE_W | SKIRT_SIDE_E;
+
+/**
+ * Snap an angle onto its nearest grass-facing cardinal sector when the skirt
+ * is edge-biased (a wall foot: `sides` names which orthogonal edges are
+ * grass). Returns the angle unchanged for a full ring (natural wilds). Screen
+ * convention: cos>0 → east, cos<0 → west; sin>0 → south, sin<0 → north (by
+ * grows southward). A blade whose free angle points at a NON-grass edge is
+ * pulled into one of the grass sectors so the whole tuft lands on grass — a
+ * wall never sprouts grass out of its stone/path/interior side.
+ */
+function biasAngleToGrassSides(ang: number, sides: number, pick: number): number {
+  if (sides === SKIRT_SIDE_ALL || sides === 0) return ang;
+  const c = Math.cos(ang);
+  const s = Math.sin(ang);
+  // Which cardinal does this free angle favour?
+  const wantsWE = Math.abs(c) > Math.abs(s);
+  const side = wantsWE ? (c > 0 ? SKIRT_SIDE_E : SKIRT_SIDE_W) : s > 0 ? SKIRT_SIDE_S : SKIRT_SIDE_N;
+  if ((sides & side) !== 0) return ang; // already lands on a grass edge
+  // Rotate onto one of the allowed sectors (centres: E=0, S=π/2, W=π, N=3π/2),
+  // keeping a ±40° spread so the edge reads as a soft fringe, not a picket.
+  const allowed: number[] = [];
+  if (sides & SKIRT_SIDE_E) allowed.push(0);
+  if (sides & SKIRT_SIDE_S) allowed.push(Math.PI * 0.5);
+  if (sides & SKIRT_SIDE_W) allowed.push(Math.PI);
+  if (sides & SKIRT_SIDE_N) allowed.push(Math.PI * 1.5);
+  if (allowed.length === 0) return ang;
+  const centre = allowed[Math.floor(pick * allowed.length) % allowed.length]!;
+  return centre + (pick - 0.5) * (Math.PI * 4 / 9); // ±40°
+}
+
+/**
+ * `strength` (0..1) stands in for the object's HEIGHT: a tall tree carries a
+ * full climbing collar (1); a low rock gets a bare few short wisps (~0.22) so
+ * it is never swallowed; a wall foot a subtle low nestle (~0.5). It scales
+ * blade count, height, radius and whether inner climbers appear. `sides` is a
+ * grass-edge bitmask (SKIRT_SIDE_*): the full ring (default) scatters freely,
+ * a partial mask (a wall) keeps every blade on a grass-facing edge only.
+ */
+export function generateSkirtBlades(
+  tx: number,
+  ty: number,
+  footY: number,
+  strength = 1,
+  sides = SKIRT_SIDE_ALL,
+): Blade[] {
+  const out: Blade[] = [];
+  if (strength <= 0) return out;
   // The meadow's tone patch at this tile — the skirt wears the SAME green
   // as the coat around it, so it is the meadow climbing the trunk, not a
   // ring of a different grass.
   const tileTone = Math.min(4, Math.floor(valueNoise(905, tx * 0.05, ty * 0.05) * 5));
-  const out: Blade[] = [];
   const cx = tx + 0.5;
   const h0 = hashCoords(521, tx, ty);
-  // A LUSH tuft — enough blades to wrap the foot and thin outward, still a
-  // tuft not a hedge. Curation pass 2: denser + a few climbers up the bark.
-  const count = 20 + (h0 % 8); // 20..27
+  // A LUSH tuft at full strength — enough blades to wrap the foot and thin
+  // outward, still a tuft not a hedge. Scaled DOWN by strength so a rock
+  // carries only a handful (≈5) and a wall foot a modest fringe (≈12).
+  const full = 20 + (h0 % 8); // 20..27
+  const count = Math.max(3, Math.round(full * strength));
+  // Shorter + tighter for weaker skirts: a rock's wisps must not climb it.
+  const heightScale = 0.4 + 0.6 * strength; // rock 0.53 · wall 0.7 · tree 1.0
+  const radiusScale = 0.6 + 0.4 * strength; // rock hugs the base tighter
+  const climbers = strength >= 0.85; // only tall wilds send blades up the bark
   for (let i = 0; i < count; i++) {
     const hh = hashCoords(523 + i * 37, tx, ty);
     // Radial scatter biased hard INWARD (u^1.7): most blades hug the trunk,
     // a thinning few reach the rim — the density falls off outward, never a
     // uniform collar. maxR 0.5 wraps a full tile diameter around the foot.
     const u = rand01(hh, 2);
-    const rad = 0.5 * Math.pow(u, 1.7);
-    const ang = rand01(hh, 12) * 6.2831853;
+    const rad = 0.5 * radiusScale * Math.pow(u, 1.7);
+    const ang = biasAngleToGrassSides(rand01(hh, 12) * 6.2831853, sides, rand01(hh, 27));
     const bx = cx + Math.cos(ang) * rad;
     // Squash the ellipse (×0.5) so the skirt lies in the ground plane and
     // WRAPS the trunk sides more than it spills forward; a hair forward
@@ -484,8 +541,8 @@ export function generateSkirtBlades(tx: number, ty: number, footY: number): Blad
     // blades are CLIMBERS — a touch taller still — for the few tufts that
     // rise up the trunk. Capped so the skirt never swallows the mass.
     const rise = 1 - u;
-    const climber = u < 0.22 ? rand01(hh, 24) * 0.1 : 0;
-    const height = 0.14 + rise * 0.27 + climber + rand01(hh, 5) * 0.06; // ≤ ~0.57
+    const climber = climbers && u < 0.22 ? rand01(hh, 24) * 0.1 : 0;
+    const height = (0.14 + rise * 0.27 + climber + rand01(hh, 5) * 0.06) * heightScale; // ≤ ~0.57
     const phase = rand01(hh, 18);
     out.push({
       bx,

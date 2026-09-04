@@ -208,7 +208,7 @@ import { Birds, type Bird, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, generateSkirtBlades, BLADE_FILLS, ORNAMENT_FILLS, type Disturber, type WindSample, type Blade, type GrassBounds, type Flower, type SeedHead } from './grass.js';
 import { GrassGpuLayer, type GrassFrame, type BandBlit } from './grassGpuLayer.js';
 import { partitionTallBands, coalesceTallBands, type TallBand } from './grassGpu.js';
-import { grassRootedSkirtAt } from './grassSkirt.js';
+import { grassRootedSkirtAt, skirtStrengthForTile, wallSkirtSidesAt, SIDE_ALL } from './grassSkirt.js';
 import { MAX_DISTURB } from './grassGpuRenderer.js';
 import { packDisturbers } from './grassGpu.js';
 import { grassShadowOffset, shadeRgb01 } from './grassGpuShadow.js';
@@ -1653,14 +1653,28 @@ export class Renderer {
    *  bush, rock, prop on a grass tile), gathered as objectItems are emitted
    *  so each carries its true foot sort row. After the world collect, each
    *  becomes one skirt band (generateSkirtBlades) drawn OVER its own base. */
-  private readonly grassSkirtSites: { tx: number; ty: number; footY: number }[] = [];
+  private readonly grassSkirtSites: {
+    tx: number;
+    ty: number;
+    footY: number;
+    /** Per-type strength (0..1), scaling count/height/radius — rocks low,
+     *  trees full, walls subtle. See skirtStrengthForTile. */
+    strength: number;
+    /** Grass-edge bitmask (SIDE_*): SIDE_ALL for a free-standing wild's ring,
+     *  a partial mask for a wall foot (grass-facing edges only). */
+    sides: number;
+  }[] = [];
   /** Pooled skirt-blade array (all sites concatenated) + per-site bands. */
   private readonly grassSkirt: Blade[] = [];
   private readonly grassSkirtBands: TallBand[] = [];
   /** Per-tile skirt-blade cache (a still object mints its skirt once). Keyed
-   *  by tile; footY is stored so a tile whose object changed (tree→stump,
-   *  a different foot row) re-mints instead of reusing the stale skirt. */
-  private readonly grassSkirtCache = new Map<number, { footY: number; blades: Blade[] }>();
+   *  by tile; footY/strength/sides are stored so a tile whose object changed
+   *  (tree→stump, a different foot row, a re-tuned strength) re-mints instead
+   *  of reusing the stale skirt. */
+  private readonly grassSkirtCache = new Map<
+    number,
+    { footY: number; strength: number; sides: number; blades: Blade[] }
+  >();
   private grassSkirtBlits: readonly BandBlit[] = [];
   private grassSkirtCanvas: HTMLCanvasElement | null = null;
   /** This frame's GrassFrame (camera/wind), stashed by drawGrassGpu so the
@@ -10223,6 +10237,31 @@ export class Renderer {
         }
         if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
         item.strat = this.stratAt(tx, ty);
+        // G4b — THE BUILDING FOOT NESTLES: a wall foot that meets grass gets a
+        // subtle, low, grass-side-only skirt so the building reads as sitting
+        // IN the meadow, not pasted on. Grass-adjacent edges only (never the
+        // stone/path/interior side); skipped for a walls-only run with no
+        // grass neighbour. Elevated feet keep their hard base (the skirt sits
+        // on the ground plane, not up a terrace).
+        if (this.grassGpuActive && this.grassSkirtOn && !item.elevated) {
+          const sides = wallSkirtSidesAt(
+            (this.skirtGroundSampler ??= (x, y) => this.game?.world.groundAt(x, y)),
+            tx,
+            ty,
+            tile,
+          );
+          if (sides !== 0) {
+            // The wall's ground contact is its SOUTH foot (ty+1) — the row the
+            // near face stands on — so the fringe rises exactly there.
+            this.grassSkirtSites.push({
+              tx,
+              ty,
+              footY: ty + 1,
+              strength: skirtStrengthForTile(tile),
+              sides,
+            });
+          }
+        }
         items.push(item);
         return;
       }
@@ -10263,7 +10302,16 @@ export class Renderer {
         // (collectGpuSkirts). item.sortY is the object's true foot sort row —
         // the skirt slots a hair past it, drawing OVER the lower base edge.
         if (this.grassGpuActive && this.grassRootedSkirt(game, tx, ty, tile)) {
-          this.grassSkirtSites.push({ tx, ty, footY: item.sortY });
+          // A free-standing wild replaces its own tile and is ringed by
+          // meadow, so it scatters a FULL ring (SIDE_ALL); its strength is
+          // read off its kind (rock → a few short wisps, tree → full collar).
+          this.grassSkirtSites.push({
+            tx,
+            ty,
+            footY: item.sortY,
+            strength: skirtStrengthForTile(tile),
+            sides: SIDE_ALL,
+          });
         }
         // THE SHELF LAW: a standing object sorts on the shelf of its
         // own tile, at its raw row. Awnings need no exemption — their
@@ -22458,11 +22506,21 @@ export class Renderer {
       const key = packTile(site.tx, site.ty);
       const cached = this.grassSkirtCache.get(key);
       let skirt: Blade[];
-      if (cached && cached.footY === site.footY) {
+      if (
+        cached &&
+        cached.footY === site.footY &&
+        cached.strength === site.strength &&
+        cached.sides === site.sides
+      ) {
         skirt = cached.blades;
       } else {
-        skirt = generateSkirtBlades(site.tx, site.ty, site.footY);
-        this.grassSkirtCache.set(key, { footY: site.footY, blades: skirt });
+        skirt = generateSkirtBlades(site.tx, site.ty, site.footY, site.strength, site.sides);
+        this.grassSkirtCache.set(key, {
+          footY: site.footY,
+          strength: site.strength,
+          sides: site.sides,
+          blades: skirt,
+        });
       }
       if (skirt.length === 0) continue;
       const i0 = blades.length;
