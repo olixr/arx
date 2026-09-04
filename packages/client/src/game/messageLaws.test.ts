@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ClientGame } from './clientGame.js';
+import { resetSpectrum, spectrumEpoch, spectrumSig } from '../render/fold.js';
 
 // THE WIRE'S CHARACTER (foundations F5.2). The 72-arm message switch is
 // becoming a total handler table; these pins were written against the
@@ -48,4 +49,18 @@ test('ownbuilt replaces the set wholesale and speaks the optional door', () => {
   call(slate, { t: 'ownbuilt', keys: ['1,2', '3,4'] });
   assert.deepEqual([...slate.ownBuilt], ['1,2', '3,4']);
   assert.equal(seen[0], slate.ownBuilt);
+});
+
+test("spectrum replaces the painter's registry whole and reads nothing off the game", () => {
+  resetSpectrum();
+  const e0 = spectrumEpoch();
+  const stroke = { id: 'wold_gloom', axis: 'blight', shape: { kind: 'circle', x: 1000, y: 1000, r: 30 }, amp: 1, soft: 0.5, grain: 0.5, mode: 'max' };
+  // An empty slate: the arm touches no field of the game — the fold is its own registry.
+  call({}, { t: 'spectrum', strokes: [stroke], cores: [] });
+  assert.equal(spectrumEpoch(), e0 + 1);
+  assert.notEqual(spectrumSig(31, 31), 0); // chunk 31 spans 992..1023
+  assert.equal(spectrumSig(0, 0), 0);
+  call({}, { t: 'spectrum', strokes: [], cores: [] });
+  assert.equal(spectrumSig(31, 31), 0);
+  assert.equal(spectrumEpoch(), e0 + 2);
 });

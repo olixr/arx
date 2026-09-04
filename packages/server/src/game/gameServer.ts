@@ -724,7 +724,17 @@ import {
   type RepStandingWire,
   type Vec2,
 } from '@arx/shared';
-import { AUTHORED_LOCKS, crownPoolFor, forgeCrown, geographySnapshot, scaleNpcDef } from '@arx/content';
+import {
+  AUTHORED_LOCKS,
+  crownPoolFor,
+  forgeCrown,
+  geographySnapshot,
+  replaceSpectrum,
+  scaleNpcDef,
+  spectrumSnapshot,
+  type SpectrumStroke,
+} from '@arx/content';
+import type { S2CSpectrum, SpectrumCoreWire } from '@arx/shared';
 import {
   ARENAS,
   arenaMatchDef,
@@ -10158,6 +10168,10 @@ export class GameServer {
     for (const s of this.sessions) {
       if (s.playerEid !== null) s.sendJson(wire);
     }
+    // THE LIVING GROUND: the reload restreams chunks but never re-sends
+    // `geo`, and the client applies geo only at welcome — so the strokes
+    // ride their own record here (they swapped inside replaceGeography).
+    this.pushSpectrum();
     const swept = this.geographySweep();
     this.seedAuthoredSites();
     this.rebuildHavens();
@@ -10167,6 +10181,51 @@ export class GameServer {
         `${swept.orphaned} orphaned landmark(s) dissolved`,
     );
     return swept;
+  }
+
+  /**
+   * THE LIVING GROUND's wire record: the authored strokes as the live
+   * registry holds them, plus every live core. Whole-list replace (the
+   * havens dialect).
+   */
+  spectrumWire(): S2CSpectrum {
+    return { t: 'spectrum', strokes: spectrumSnapshot(), cores: this.spectrumCores() };
+  }
+
+  /**
+   * The live cores — LG-7 derives them from poiLedger rows
+   * (stage, stageAt, clearedAt, emberUntil, fallowUntil) through
+   * PoiDef.boldness.spectrum. Until that band lands the list is empty
+   * by law, and the record still carries the key so a client never
+   * has to guess whether cores are a thing.
+   */
+  spectrumCores(): SpectrumCoreWire[] {
+    return [];
+  }
+
+  /** Every standing player learns the registry as it is now. */
+  private pushSpectrum(): void {
+    const wire = this.spectrumWire();
+    for (const s of this.sessions) {
+      if (s.playerEid !== null) s.sendJson(wire);
+    }
+  }
+
+  /**
+   * THE SKIN-ONLY DOOR (plan §12.2): swap the stroke registry and tell
+   * every client, and NOTHING else — no dropAll, no restream, no
+   * ledger sweep, no seat cache. The field is geography the PAINTER
+   * reads: a chunk's ground bytes are unchanged on the wire, only its
+   * spectrum sig moves, so the affected chunks re-bake on the client
+   * and a country folds within seconds. A stroke that says `bones`
+   * wants worldgen too — that is the full reloadGeography road, and
+   * the dev route chooses between them.
+   */
+  replaceSpectrum(strokes: readonly SpectrumStroke[]): { strokes: number } {
+    replaceSpectrum(strokes);
+    this.pushSpectrum();
+    console.log(`[geo] spectrum swapped skin-only — ${strokes.length} stroke(s), no regeneration`);
+    return { strokes: strokes.length };
   }
 
   /**

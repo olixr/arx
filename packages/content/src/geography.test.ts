@@ -18,6 +18,8 @@ import {
   massifAt,
   scorchAt,
   nearRoads,
+  spectrumAt,
+  type SpectrumStroke,
   replaceGeography,
   roadBearingAt,
   roadDistanceAt,
@@ -549,4 +551,119 @@ test('THE BREATHING ROOM LAW: pinned sites keep 70 tiles unless declared one sce
   edge.sites[edge.sites.length - 1] = { id: 'edge_b', defId: 'waystation', x: 3072, y: 3000 };
   const e = validateGeographyDef(edge);
   assert.ok(e.ok, e.ok ? '' : e.errors.join('\n'));
+});
+
+// ------------------------------------------------------------------
+// THE LIVING GROUND (docs/contested-lands-plan.md §12.2, LG-0): the
+// spectrum is one optional key of the geography doc, vetted by its own
+// module under this file's id law and the tutorial's rect.
+
+const WOLD_GLOOM: SpectrumStroke = {
+  id: 'wold_gloom',
+  axis: 'blight',
+  shape: { kind: 'circle', x: 1200, y: 1200, r: 40 },
+  amp: 1,
+  soft: 0.5,
+  grain: 0.7,
+  mode: 'max',
+};
+
+test('THE LIVING GROUND: the doc admits `spectrum`, round-trips without the word when absent, refuses the rest', () => {
+  const snap = geographySnapshot();
+  assert.ok('spectrum' in snap, 'the snapshot always writes the key — the welcome geo says the server folds');
+  assert.deepEqual(snap.spectrum, []);
+  // A doc saved before the field validates and comes back WITHOUT the key.
+  const { spectrum: _absent, ...bare } = snap;
+  const old = validateGeographyDef(bare);
+  assert.ok(old.ok, old.ok ? '' : old.errors.join('\n'));
+  if (old.ok) assert.equal('spectrum' in old.def, false);
+  // A stroke rides through whole.
+  const withStroke = validateGeographyDef({ ...snap, spectrum: [WOLD_GLOOM] });
+  assert.ok(withStroke.ok, withStroke.ok ? '' : withStroke.errors.join('\n'));
+  if (withStroke.ok) assert.deepEqual(withStroke.def.spectrum, [WOLD_GLOOM]);
+  // The closed shape still holds around it.
+  const stray = validateGeographyDef({ ...snap, spectra: [] } as unknown as GeographyDefLike);
+  assert.ok(!stray.ok && stray.errors.some((e) => e.includes("unknown field 'spectra'")));
+  // A broken stroke is refused under THIS file's id law, by subject.
+  const badId = validateGeographyDef({ ...snap, spectrum: [{ ...WOLD_GLOOM, id: 'Wold Gloom' }] });
+  assert.ok(!badId.ok && badId.errors.some((e) => e.startsWith('spectrum[0].id must match')));
+  const badAmp = validateGeographyDef({ ...snap, spectrum: [{ ...WOLD_GLOOM, amp: -0.4 }] });
+  assert.ok(!badAmp.ok && badAmp.errors.some((e) => e.includes("spectrum 'wold_gloom'.amp") && e.includes('only season carries a sign')));
+  const notList = validateGeographyDef({ ...snap, spectrum: {} } as unknown as GeographyDefLike);
+  assert.ok(!notList.ok && notList.errors.includes('spectrum must be an array'));
+});
+type GeographyDefLike = Parameters<typeof validateGeographyDef>[0];
+
+test('THE LIVING GROUND: replaceGeography swaps the field with the plan, and an absent key zeroes it', () => {
+  const snap = geographySnapshot();
+  try {
+    assert.equal(spectrumAt('blight', 1200.5, 1200.5), 0);
+    replaceGeography({ ...snap, spectrum: [WOLD_GLOOM] });
+    assert.equal(spectrumAt('blight', 1200.5, 1200.5), 1);
+    assert.equal(spectrumAt('burn', 1200.5, 1200.5), 0);
+    // The snapshot carries the live strokes and never aliases them.
+    const live = geographySnapshot();
+    assert.deepEqual(live.spectrum, [WOLD_GLOOM]);
+    live.spectrum![0]!.amp = 0;
+    assert.equal(spectrumAt('blight', 1200.5, 1200.5), 1);
+    // An older doc (no key) is a plan with no strokes.
+    const { spectrum: _none, ...bare } = snap;
+    replaceGeography(bare as typeof snap);
+    assert.equal(spectrumAt('blight', 1200.5, 1200.5), 0);
+  } finally {
+    replaceGeography(snap);
+  }
+  assert.equal(spectrumAt('blight', 1200.5, 1200.5), 0);
+});
+
+test('THE TUTORIAL IS SACRED: the geography validator refuses a stroke over Dawnmead by name', () => {
+  const snap = geographySnapshot();
+  const inside = validateGeographyDef({
+    ...snap,
+    spectrum: [{ ...WOLD_GLOOM, shape: { kind: 'circle', x: DAWNMEAD_RECT.x + 40, y: DAWNMEAD_RECT.y + 40, r: 20 } }],
+  });
+  assert.ok(!inside.ok);
+  if (!inside.ok) {
+    assert.equal(inside.errors.length, 1);
+    assert.match(inside.errors[0]!, /spectrum 'wold_gloom' overlaps the Dawnmead rect/);
+    assert.match(inside.errors[0]!, /THE TUTORIAL IS SACRED/);
+  }
+  // Parked at amp 0 it stands (a draft, a zone gain).
+  const parked = validateGeographyDef({
+    ...snap,
+    spectrum: [{ ...WOLD_GLOOM, amp: 0, shape: { kind: 'circle', x: DAWNMEAD_RECT.x + 40, y: DAWNMEAD_RECT.y + 40, r: 20 } }],
+  });
+  assert.ok(parked.ok, parked.ok ? '' : parked.errors.join('\n'));
+  // The ragged hem is measured: a heart 50 east of the rect with r 40
+  // grain 1 reaches 54 tiles back and is refused; grain 0 clears it.
+  const east = DAWNMEAD_RECT.x + DAWNMEAD_RECT.w;
+  const hem = validateGeographyDef({
+    ...snap,
+    spectrum: [{ ...WOLD_GLOOM, grain: 1, shape: { kind: 'circle', x: east + 50, y: 40, r: 40 } }],
+  });
+  assert.ok(!hem.ok && hem.errors[0]!.includes('Dawnmead'));
+  const flat = validateGeographyDef({
+    ...snap,
+    spectrum: [{ ...WOLD_GLOOM, grain: 0, shape: { kind: 'circle', x: east + 50, y: 40, r: 40 } }],
+  });
+  assert.ok(flat.ok, flat.ok ? '' : flat.errors.join('\n'));
+});
+
+test('THE SHIPPED PLAN folds nothing over the tutorial: every axis is 0 across the Dawnmead rect', () => {
+  const shipped = validateGeographyDef(AUTHORED_GEOGRAPHY, { poiDefIds: new Set(POI_DEFS.keys()) });
+  assert.ok(shipped.ok, shipped.ok ? '' : shipped.errors.join('\n'));
+  const snap = geographySnapshot();
+  try {
+    replaceGeography(AUTHORED_GEOGRAPHY);
+    const r = DAWNMEAD_RECT;
+    for (let y = r.y; y < r.y + r.h; y += 16) {
+      for (let x = r.x; x < r.x + r.w; x += 16) {
+        for (const axis of ['season', 'blight', 'burn', 'wear'] as const) {
+          assert.equal(spectrumAt(axis, x + 0.5, y + 0.5), 0, `${axis} at ${x},${y}`);
+        }
+      }
+    }
+  } finally {
+    replaceGeography(snap);
+  }
 });

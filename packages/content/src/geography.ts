@@ -1,5 +1,19 @@
 import { DANGER_MAX, POI_MACRO_CELL, fbm, type Vec2, type DangerAnchor } from '@arx/shared';
 import { AUTHORED_ANCHOR_WORDS, SETTLED_ANCHORS, replaceSettledAnchors } from './danger.js';
+import {
+  replaceSpectrum,
+  spectrumSnapshot,
+  validateSpectrumStrokes,
+  type SpectrumStroke,
+} from './spectrum.js';
+
+/**
+ * THE LIVING GROUND's field lives beside scorchAt/fenAt: the spectrum
+ * module is part of the geography's public surface (its strokes are a
+ * key of the geography doc), re-exported here so every reader of the
+ * plan finds the field through the same door.
+ */
+export * from './spectrum.js';
 
 /**
  * THE GEOGRAPHY — the master plan's fixed points, in one place.
@@ -455,6 +469,16 @@ export interface GeographyDef {
    */
   scorches: Landform[];
   planned: PlannedRect[];
+  /**
+   * THE LIVING GROUND (docs/contested-lands-plan.md §12.2): the
+   * authored strokes of the spectrum field — season, blight, burn,
+   * wear — the only serialised thing the fold has. Optional so every
+   * doc saved before the field validates; the snapshot ALWAYS writes
+   * the key (its presence is how a client knows the server folds).
+   * Skin only unless a stroke says `bones` (then worldgen reads it and
+   * a save regenerates).
+   */
+  spectrum?: SpectrumStroke[];
 }
 
 // --------------------------------------------------------------------
@@ -1009,6 +1033,7 @@ export function geographySnapshot(): GeographyDef {
     pinelands: PINELANDS.map((p) => ({ ...p })),
     scorches: SCORCHES.map((s) => ({ ...s })),
     planned: PLANNED_ZONE_RECTS.map((p) => ({ ...p })),
+    spectrum: spectrumSnapshot(),
   };
 }
 
@@ -1029,6 +1054,9 @@ export function replaceGeography(def: GeographyDef): void {
   refill(PINELANDS, (def.pinelands ?? []).map((p) => ({ ...p })));
   refill(SCORCHES, (def.scorches ?? []).map((s) => ({ ...s })));
   replaceSettledAnchors(def.anchors);
+  // The spectrum registry swaps with the plan (an absent key is an
+  // older doc with no strokes — the field is zero everywhere).
+  replaceSpectrum(def.spectrum ?? []);
   ROAD_BOUNDS = ROAD_ROUTES.map((route) => {
     let x0 = Infinity;
     let y0 = Infinity;
@@ -1108,7 +1136,11 @@ export function validateGeographyDef(
       if (!known.includes(key)) errors.push(`${at} has unknown field '${key}'`);
     }
   };
-  vetKeys(r, ['routes', 'sites', 'anchors', 'massifs', 'veils', 'fens', 'meres', 'pinelands', 'scorches', 'planned'], 'geography');
+  vetKeys(
+    r,
+    ['routes', 'sites', 'anchors', 'massifs', 'veils', 'fens', 'meres', 'pinelands', 'scorches', 'planned', 'spectrum'],
+    'geography',
+  );
 
   const routes: RoadRoute[] = [];
   const seenRoutes = new Set<string>();
@@ -1374,10 +1406,33 @@ export function validateGeographyDef(
     }
   }
 
+  // THE LIVING GROUND: the strokes are vetted by their own module (the
+  // id law is this file's; the sacred rect is the tutorial's). The key
+  // is rebuilt only when the doc carried it, so a doc that never spoke
+  // of the field round-trips without the word — an older server can
+  // still load it after a rollback.
+  const spectrumRes = validateSpectrumStrokes(r.spectrum, {
+    idRe: GEO_ID_RE,
+    sacred: [{ name: 'Dawnmead', rect: DAWNMEAD_RECT }],
+  });
+  errors.push(...spectrumRes.errors);
+
   if (errors.length > 0) return { ok: false, errors };
   return {
     ok: true,
-    def: { routes, sites, anchors, massifs, veils, fens, meres, pinelands, scorches, planned },
+    def: {
+      routes,
+      sites,
+      anchors,
+      massifs,
+      veils,
+      fens,
+      meres,
+      pinelands,
+      scorches,
+      planned,
+      ...(r.spectrum !== undefined ? { spectrum: spectrumRes.strokes } : {}),
+    },
   };
 }
 

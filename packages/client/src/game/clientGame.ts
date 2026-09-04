@@ -88,7 +88,7 @@ import { CROP_TILES, LIVESTOCK, MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SO
 import { clearFarmMirror, farmApiaries, farmBins, farmJobs, farmKey, farmPlots, farmTroughs, larderFills, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
 import { COMPANION_CAP, EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsShot, shutDoorTile, swingCooldown, moveFactorOfBits } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, CompanionInfo, DangerAnchor, Look, PlaneWire } from '@arx/shared';
-import type { S2CArenaBoard, S2CArenaState } from '@arx/shared';
+import type { S2CArenaBoard, S2CArenaState, SpectrumStrokeWire } from '@arx/shared';
 
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
@@ -144,6 +144,7 @@ export type InteractTarget =
   | { kind: 'bed'; tx: number; ty: number }
   | { kind: 'sign'; tx: number; ty: number; mine: boolean; blank: boolean };
 import { STATUS_INK } from '../render/statusFx.js';
+import { setSpectrum } from '../render/fold.js';
 import { WORD_LIFE_MS } from './wordLife.js';
 import { Connection } from '../net/connection.js';
 import { InterpBuffer, shortestAngle } from '../net/interpolation.js';
@@ -1656,13 +1657,19 @@ export class ClientGame {
       g.setHavens(msg.havens ?? [], msg.anchors);
       // The plan is editable data server-side — the map must chart
       // the live truth, never the bundled copy.
+      let strokes: SpectrumStrokeWire[] = [];
       if (msg.geo) {
         try {
           replaceGeography(msg.geo as GeographyDef);
+          strokes = (msg.geo as GeographyDef).spectrum ?? [];
         } catch (err) {
           console.warn('[map] welcome geo rejected:', err);
         }
       }
+      // THE LIVING GROUND: the authored strokes ride the geo; the live
+      // cores arrive by their own record (LG-7). Always applied, so a
+      // reconnect to a pre-spectrum server folds nothing stale.
+      setSpectrum(strokes, []);
       g.waypoint = msg.waypoint ?? null;
       // THE CHOSEN HAND: the persisted walk-over preference (an
       // older server sends nothing — the founding behavior).
@@ -2412,6 +2419,12 @@ export class ClientGame {
       // itself changed. The danger field shifts under our feet,
       // and the music with it.
       g.setHavens(msg.list, msg.settled);
+    },
+    spectrum: (_g, msg) => {
+      // THE LIVING GROUND's registry changed (a skin-only save, a
+      // geography reload, a core step): whole-list replace into the
+      // painter's registry. The sigs move; the chunks re-bake.
+      setSpectrum(msg.strokes, msg.cores);
     },
     explored: (g, msg) => {
       const mask = g.exploredFor(msg.plane ?? 'surface');

@@ -950,6 +950,81 @@ export interface S2CHavens {
   settled?: number[][];
 }
 
+/**
+ * THE LIVING GROUND (docs/contested-lands-plan.md §12.2) — the one
+ * serialised thing: an authored stroke of the spectrum field. The
+ * field is geography, not tile state; a stroke rides the welcome
+ * `geo` inside `GeographyDef.spectrum` and is re-sent whole by the
+ * `spectrum` record below. The math over it lives in
+ * content/spectrum.ts; this is only its shape on the wire.
+ */
+export type SpectrumAxisWire = 'season' | 'blight' | 'burn' | 'wear';
+export type SpectrumShapeWire =
+  /** Plateau within r·(1−soft) of the heart, hem out to r. */
+  | { kind: 'circle'; x: number; y: number; r: number }
+  /** The same law measured from the spine (x0,y0)→(x1,y1). */
+  | { kind: 'capsule'; x0: number; y0: number; x1: number; y1: number; r: number }
+  /** The rect is the plateau; the hem runs `pad` tiles past its edge. */
+  | { kind: 'rect'; x: number; y: number; w: number; h: number; pad: number };
+export interface SpectrumStrokeWire {
+  id: string;
+  axis: SpectrumAxisWire;
+  shape: SpectrumShapeWire;
+  /** Signed on season (+autumn→winter, −spring), 0..1 elsewhere. */
+  amp: number;
+  /** Fraction of the reach that is falloff (0 = a hard edge). */
+  soft: number;
+  /** Hem raggedness 0..1 — how far the grain noise rags the reach. */
+  grain: number;
+  /** 'max' wins by magnitude among its kind; 'add' strokes sum, clamped. */
+  mode: 'max' | 'add';
+  /** Worldgen reads it (a save regenerates); default is skin only. */
+  bones?: boolean;
+}
+/**
+ * A live frontier core: a circle whose radius is a SERVER-CLOCKED ramp
+ * r0→r1 across t0→t1 (ms since epoch) — the client projects it against
+ * its server-clock offset and quantises the radius (CORE_STEP), so two
+ * clients bake the same ring on the same tick and no local clock ever
+ * reaches a painted value. Reserved by LG-0; LG-7 derives them.
+ */
+export interface SpectrumCoreWire {
+  id: string;
+  axis: SpectrumAxisWire;
+  x: number;
+  y: number;
+  r0: number;
+  r1: number;
+  t0: number;
+  t1: number;
+  soft: number;
+  /** Signed on season; absent reads 1. */
+  amp?: number;
+  /** Hem raggedness; absent reads 0. */
+  grain?: number;
+}
+
+/**
+ * THE LIVING GROUND's registry changed: the authored strokes were
+ * re-saved (the geography reload, or the skin-only spectrum door) or
+ * a live core stepped. Replaces both lists whole (the havens dialect —
+ * a plan holds a few dozen strokes, never thousands). Additive JSON —
+ * still v35, recorded on purpose (the v26/v32 judgment applied): the
+ * authored strokes already ride the welcome `geo` as one optional key
+ * an older client's replaceGeography never reads, and this record
+ * reaches a v35 client with no arm for it only through the dev doors
+ * (a geography reload, the skin-only save), where its handler table
+ * throws once inside that one onmessage and the socket stands. Either
+ * way the old client keeps painting today's constants, which is
+ * exactly what it painted before: a missing fold is a missing nicety,
+ * not a wrong world, and nothing it can do is refused or misread.
+ */
+export interface S2CSpectrum {
+  t: 'spectrum';
+  strokes: SpectrumStrokeWire[];
+  cores: SpectrumCoreWire[];
+}
+
 export interface S2CReject {
   t: 'reject';
   reason: string;
@@ -2424,6 +2499,7 @@ export type S2CMessage =
   | S2CDialogueClose
   | S2CVoiceQuip
   | S2CHavens
+  | S2CSpectrum
   | S2CSocial
   | S2CFriendSearch
   | S2CFriendEvent

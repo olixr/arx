@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseC2S } from './messages.js';
+import { parseC2S, type S2CSpectrum } from './messages.js';
 
 test('bank message accepts and validates instance-addressing fields', () => {
   const ok = parseC2S(
@@ -345,4 +345,21 @@ test('EVERY DOOR ANSWERS: a canonical sample of each C2S message parses', () => 
   for (const [name, sample] of Object.entries(samples)) {
     assert.notEqual(parseC2S(JSON.stringify(sample)), null, `the '${name}' door never opened`);
   }
+});
+
+test("THE LIVING GROUND record is additive JSON: a canonical sample survives the wire whole", () => {
+  const wire: S2CSpectrum = {
+    t: 'spectrum',
+    strokes: [
+      { id: 'wold_gloom', axis: 'blight', shape: { kind: 'circle', x: 1200, y: 1200, r: 40 }, amp: 1, soft: 0.5, grain: 0.7, mode: 'max' },
+      { id: 'the_dying_stand', axis: 'blight', shape: { kind: 'capsule', x0: 0, y0: 0, x1: 60, y1: 40, r: 24 }, amp: 0.8, soft: 0.6, grain: 1, mode: 'max', bones: true },
+      { id: 'first_frost', axis: 'season', shape: { kind: 'rect', x: 900, y: -900, w: 80, h: 40, pad: 30 }, amp: -1, soft: 1, grain: 0, mode: 'add' },
+    ],
+    cores: [{ id: 'den', axis: 'blight', x: 300, y: -40, r0: 10, r1: 50, t0: 1_000, t1: 5_000, soft: 0.6, amp: 1 }],
+  };
+  const back = JSON.parse(JSON.stringify(wire)) as S2CSpectrum;
+  assert.deepEqual(back, wire);
+  assert.equal(back.t, 'spectrum');
+  // Both lists are always present, so a client never guesses whether cores exist.
+  assert.deepEqual(Object.keys(back).sort(), ['cores', 'strokes', 't']);
 });

@@ -9,6 +9,7 @@ import {
   AUTHORED_STANCES,
   AUTHORED_GROWTH,
   AUTHORED_GEOGRAPHY,
+  copyStroke,
   AUTHORED_LOOT_TABLES,
   AUTHORED_MINOR_DEFS,
   AUTHORED_NODES,
@@ -37,6 +38,7 @@ import {
   ZONE_EDGE_PROFILES,
   elevationAt,
   geographySnapshot,
+  spectrumSaveRegenerates,
   replaceFactions,
   replaceFrontier,
   replaceGrowth,
@@ -140,6 +142,10 @@ import type { GameServer } from '../game/gameServer.js';
  *   PUT    /dev/content/voice/banks/<kind>/<id>   replace an owner's whole bank card
  *   DELETE /dev/content/voice/banks/<kind>/<id>   clear it
  *   GET/PUT/DELETE /dev/content/voice/dials       the 'voice' singleton (frontier skeleton)
+ *   GET/PUT/DELETE /dev/content/geography         the whole plan (a PUT regenerates the world)
+ *   GET/PUT /dev/content/geography/spectrum       THE LIVING GROUND's strokes alone — a PUT
+ *                                                 saves the doc and swaps the registry SKIN-ONLY
+ *                                                 (no regeneration) unless a stroke says `bones`
  *
  * Gated on config.devCommands — the same switch as the chat dev
  * commands — and open CORS, so the Vite-served editor can reach a
@@ -364,9 +370,62 @@ export function createMapsApi(
             pinelands: AUTHORED_GEOGRAPHY.pinelands.map((p) => ({ ...p })),
             scorches: AUTHORED_GEOGRAPHY.scorches.map((s) => ({ ...s })),
             planned: AUTHORED_GEOGRAPHY.planned.map((p) => ({ ...p })),
+            spectrum: (AUTHORED_GEOGRAPHY.spectrum ?? []).map((s) => copyStroke(s)),
           });
           console.log(`[content] geography ${outcome} — shipped plan stands`);
           sendJson(res, 200, { ok: true, outcome, swept });
+          return true;
+        }
+      }
+
+      // ------------------------------------------------ spectrum
+      // THE LIVING GROUND's skin-only door (plan §12.2/§12.6): the
+      // strokes are one key of the geography doc, so the save is the
+      // same doc under the same validator (every rule applies — the
+      // id law, the sacred rect, the cap), persisted the same way. The
+      // difference is the aftermath: the registry swaps and the record
+      // rides to every client, and the world is NOT regenerated — a
+      // country folds live within seconds. A stroke marked `bones`
+      // asks worldgen to read it, so that save walks the full reload.
+      if (url.pathname === '/dev/content/geography/spectrum') {
+        if (req.method === 'GET') {
+          sendJson(res, 200, { strokes: geographySnapshot().spectrum ?? [] });
+          return true;
+        }
+        if (req.method === 'PUT') {
+          let raw: unknown;
+          try {
+            raw = JSON.parse(await readBody(req));
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          const strokes = Array.isArray(raw) ? raw : (raw as { strokes?: unknown } | null)?.strokes;
+          if (!Array.isArray(strokes)) {
+            sendJson(res, 400, { error: 'body must be { strokes: [...] } (or a bare array of strokes)' });
+            return true;
+          }
+          const prior = geographySnapshot();
+          const draft = { ...prior, spectrum: strokes };
+          const result = validateGeographyDef(draft, { poiDefIds: new Set(POI_DEFS.keys()) });
+          if (!result.ok) {
+            sendJson(res, 400, { error: result.errors.join('; ') });
+            return true;
+          }
+          await importContentDoc(db, 'geography', 'world', result.def);
+          const next = result.def.spectrum ?? [];
+          // A bones stroke ARRIVING or LEAVING regenerates: a stroke that
+          // is deleted or flipped to skin-only takes its bones with it.
+          const bones = spectrumSaveRegenerates(prior.spectrum, next);
+          if (bones) {
+            const swept = game.reloadGeography(result.def);
+            console.log(`[content] spectrum saved + live (a bones stroke arrived or left — world regenerating)`);
+            sendJson(res, 200, { ok: true, strokes: next.length, bones: true, swept });
+            return true;
+          }
+          const swapped = game.replaceSpectrum(next);
+          console.log(`[content] spectrum saved + live (skin only — no regeneration)`);
+          sendJson(res, 200, { ok: true, ...swapped, bones: false });
           return true;
         }
       }
