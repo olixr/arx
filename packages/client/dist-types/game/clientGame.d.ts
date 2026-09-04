@@ -1165,6 +1165,29 @@ export declare class ClientGame {
     private touchChunk;
     /** Bump neighboring chunks' revs so organic borders re-bake. */
     private touchNeighbors;
+    /** THE FRINGE RE-BAKE's bump: a NEIGHBOR-driven rev bump also
+     *  advances fringeRev and records which edge the change reaches in
+     *  from — own-content bumps (touchChunk, patches) advance rev
+     *  alone, which is exactly how the renderer tells a strip re-bake
+     *  from a full one. */
+    private static bumpFringe;
+    /** Edge bits for a neighbor at offset (dx, dy) FROM the source: the
+     *  source lies at (−dx, −dy) from the neighbor, so dx>0 means the
+     *  change reaches in from the neighbor's WEST side. Corner offsets
+     *  set both adjacent bits (the N/S strips span the full width, so
+     *  the corner block is covered either way). */
+    private static fringeBits;
+    /** THE BUMP IS EARNED, replace half: compare the border strips of
+     *  old vs new payload per edge, and bump only neighbors
+     *  facing a changed strip (corner neighbors ride either adjacent
+     *  edge — their halo samples the corner block, which lies inside
+     *  both strips). An interior-only edit bumps nobody. */
+    private touchChangedEdges;
+    /** THE BUMP IS EARNED, patch half: a single-tile edit reaches a
+     *  neighbor's bake only when it sits within the border fringe —
+     *  bump just the neighbors its 2-tile reach actually touches (an
+     *  interior door toggle used to re-bake all 8 neighbors whole). */
+    private touchNeighborsNear;
     /**
      * The tile of the last interact we sent. The server never names the
      * tile a gather action works, so the renderer squares the OWN rig up

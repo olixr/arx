@@ -335,7 +335,9 @@ export declare class Particles {
     draw(ctx: CanvasRenderingContext2D, worldToScreen: (wx: number, wy: number) => {
         x: number;
         y: number;
-    }, scale: number): void;
+    }, scale: number, 
+    /** B-1c depth thread: per-item depth factor (ds=1 at q=0). */
+    depthAt?: (wy: number) => number): void;
     /**
      * The renderer's world pass marks a RUN of consecutive particle
      * items (nothing else touches fillStyle inside a run), so setFill
@@ -347,7 +349,9 @@ export declare class Particles {
     drawOne(ctx: CanvasRenderingContext2D, p: Particle, worldToScreen: (wx: number, wy: number) => {
         x: number;
         y: number;
-    }, scale: number): void;
+    }, scale: number, 
+    /** B-1c depth thread: per-item depth factor (ds=1 at q=0). */
+    depthAt?: (wy: number) => number): void;
     /**
      * THE ARC LAW: a jagged polyline from (x,y,z) to (x2,y2,z2), deep
      * halo under a hot core, two branch stubs. Geometry re-seeds on the

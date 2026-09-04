@@ -18,9 +18,14 @@
  *   rect onto the page's StageTexture — the GL backend consumes rects
  *   with texSubImage2D and only falls back to a full upload when the
  *   dirt covers most of the page.
- * - THE PAGE FORGETS THE COLD. A page more than half-stale (slots
- *   untouched ~30s) is wiped whole and refills lazily — allocation
- *   stays a bump pointer, never a free-list.
+ * - THE PAGE FORGETS THE COLD. A page whose reclaimable area (stale
+ *   slots + dead cells) outweighs its live area is wiped whole and
+ *   refills lazily — allocation stays a bump pointer, never a
+ *   free-list. Dead cells are FIRST-CLASS: a slot abandoned by a
+ *   size change (and a GC'd sprite canvas) leaves area the bump
+ *   pointer can never reuse; the sweep tallies it by AREA via the
+ *   ledger's slot handles, so a fragmented page reclaims instead of
+ *   silently exhausting the atlas into the solo-texture regime.
  * - TOO BIG RIDES ALONE. Anything over MAX_SIDE keeps its solo
  *   texture; bands, layers and chunk bakes were never atlas material.
  */
@@ -51,6 +56,9 @@ export interface AtlasPage {
     top: number;
     slots: number;
     stale: number;
+    /** Area (px²) of cells no live canvas maps to — unreachable until a
+     *  wipe. Accrued by the sweep as it compacts the ledger. */
+    deadPx: number;
 }
 export interface AtlasPlacement {
     tex: StageTexture;
@@ -61,16 +69,32 @@ export declare class SpriteAtlas {
     private readonly mkCanvas;
     private readonly pages;
     private readonly slots;
-    /** Live slot list per page for the sweep (WeakRef so a dead sprite
-     *  canvas never pins its slot). */
+    /** Per-page slot list for the sweep (WeakRef so a dead sprite canvas
+     *  never pins its slot). Each entry carries ITS slot so a GC'd or
+     *  superseded (re-sized) placement still confesses its area as dead
+     *  space — and the sweep compacts stale entries instead of letting
+     *  the list grow one duplicate per re-size forever. */
     private readonly ledger;
     private revSeq;
     private frameNo;
     constructor(mkCanvas?: (w: number, h: number) => HTMLCanvasElement);
-    /** Advance the atlas clock; sweep cold pages on cadence. */
+    /** Advance the atlas clock; sweep cold pages on cadence.
+     *
+     *  The sweep judges by AREA, not entry count: an entry whose canvas
+     *  is gone or whose slot was superseded by a re-size is dead space
+     *  (compacted out of the ledger, its area banked in page.deadPx);
+     *  the rest split stale/live on the ~30s touch clock. A page is
+     *  wiped when the cold outweighs the warm — stale area past live
+     *  area, or a substantially-allocated page more than half
+     *  reclaimable — so fragmentation can never permanently exhaust
+     *  the atlas. */
     frame(): void;
-    /** Place (or refresh) a sprite canvas; null = rides alone. */
-    place(canvas: HTMLCanvasElement, rev: number, owner: object): AtlasPlacement | null;
+    /** Place (or refresh) a sprite canvas; null = rides alone.
+     *  THE USED REGION: `uw`/`uh` name the sprite's actual ink rect in
+     *  device px — pooled canvases are size-class rounded (and a pool
+     *  hit can be oversized), so fitness and packing judge the ink,
+     *  never the backing store. Omitted = the whole canvas. */
+    place(canvas: HTMLCanvasElement, rev: number, owner: object, uw?: number, uh?: number): AtlasPlacement | null;
     /** Paint the sprite into its cell with edge-replicated gutters and
      *  hand the backend the dirty rect. */
     private paint;
@@ -78,10 +102,14 @@ export declare class SpriteAtlas {
     private allocIn;
     /** Forget everything on a mostly-cold page; residents re-place lazily. */
     private wipe;
+    /** Forget every page — the plane-cross broom (consumers re-place
+     *  lazily, exactly like a page wipe). */
+    clear(): void;
     /** Confession counters. */
     stats(): {
         pages: number;
         slots: number;
+        deadPx: number;
     };
 }
 //# sourceMappingURL=spriteAtlas.d.ts.map

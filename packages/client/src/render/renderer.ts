@@ -259,7 +259,6 @@ import {
   fadeStrength,
 } from './reveal.js';
 import { ARRIVAL_MIN_COUNT, admitBake, BakeLane, type BakeBudgets } from './bakeAdmission.js';
-import { leanBudgetMult } from './leanBudget.js';
 import { rowProject, rowProjectX, type RowProj } from './rowProject.js';
 import {
   chunkBakePxWarp,
@@ -564,22 +563,6 @@ const CHUNK_POOL_BUDGET = 256 * 1048576;
  *  not a fixed multiple that clips it. */
 const FRUSTUM_FAR_MULT = 5;
 
-/** THE ONE RENDER (B6): the per-frame BAKE ADMISSION multiplier under a
- *  lean — how much the sprite/chunk arrival budgets grow to keep first-
- *  sight fill in step with the frustum's extra reach on a pan. This is a
- *  SEPARATE, SMALLER knob than FRUSTUM_FAR_MULT (which is a grazing-lean
- *  cull CEILING that never binds at the shipping lean — the natural
- *  trapezoid reaches only ~2.77× ortho at q=0.0013, ~1.6× at 0.0034,
- *  MEASURED). Sizing the arrival ramp to FRUSTUM_FAR_MULT=5 over-provisioned
- *  the mint budget ~4.25× at the shipping lean against a 2.77× real reach —
- *  spending extra bake/upload work every leaning frame for arrivals that
- *  are not there. B5 retired the depth-driven re-bakes that used to consume
- *  that surplus, so the ramp now shrinks toward the honest reach: ~2.6× at
- *  q=0.0013 (≈ the 2.77× frustum), enough that a fast pan still fills, with
- *  no standing over-mint. Ramps 1→this over q∈[0,PERSP_LEAN_REF]; 1 at q=0
- *  (byte-identical — callers still gate on q≠0). */
-const LEAN_ARRIVAL_MULT = 3.5;
-
 /** THE CAMERA LEARNS TO LEAN (Epic B): how far below the horizon (as a
  *  fraction of viewport height) the far cull row sits when the horizon has
  *  risen into view. Two jobs: (1) keep the unproject divisor away from the
@@ -590,10 +573,6 @@ const LEAN_ARRIVAL_MULT = 3.5;
  *  top edge is already well below the horizon and the far corners are read
  *  there. q=0 has no horizon, so this is never consulted. */
 const FRUSTUM_HORIZON_MARGIN_FRAC = 0.15;
-
-/** The moderate reference lean q the fog/LOD ramps are tuned against (the
- *  B-2 milestone lean). Fog and far-fade reach full strength here. */
-const PERSP_LEAN_REF = 0.0016;
 
 /**
  * Byte ceiling on the baked-ground cache. The old cap counted SLOTS
@@ -1086,15 +1065,14 @@ export class Camera {
   readonly yScale = 0.6;
 
   /**
-   * THE CAMERA LEARNS TO LEAN (Epic B, B-1): the perspective lean
-   * strength. 0 = the pitched-orthographic camera above (byte-identical
-   * to every frame shipped so far — the projection short-circuits to the
-   * old affine math). q > 0 recedes the ground plane toward a horizon at
-   * screen row `h/2 − 1/q`, with `depthScale = 1/(1 − q·(wy−camY)·scale·
-   * yScale)` scaling every billboard, lift and shadow by depth. Held at
-   * 0 until the lean is deliberately turned on (band B-2); see
-   * docs/epic-b-camera-lean-plan.md and cameraProject.ts. */
-  q = 0;
+   * THE LEAN COMES OUT (epic/lean-out): the perspective lean strength,
+   * once a dial (Epic B). The dial is gone — q is a CONSTANT 0, never
+   * assigned, so every projection short-circuits to the plain affine
+   * (the pitched-orthographic camera above, byte-identical to every frame
+   * shipped). The field lives on only until the last `q` fork is retired
+   * and it is deleted with depthScale; the homography it parameterized
+   * stays as reference math in cameraProject.ts for the 3D client. */
+  readonly q: number = 0;
 
   /** The local size multiplier at world-depth `wy` (Epic B): 1 at the
    *  camera's look-at row, <1 farther, >1 nearer; exactly 1 at q=0. The
@@ -1602,12 +1580,6 @@ export class Renderer {
    *  (?skirt=off); on by default whenever the GPU meadow is active. */
   grassSkirtOn = true;
   private grassGpuLayer: GrassGpuLayer | null = null;
-  /** THE CAMERA LEARNS TO LEAN (Epic B, B-2): the lean is a DIAL. This is
-   *  the target lean `q`, set opt-in (?lean / arx.lean). 0 = OFF = the
-   *  orthographic frame, byte-identical to everything shipped. Each frame
-   *  camera.q is clamped from this so the horizon stays above the viewport
-   *  (and forced to 0 under the editor/shot camera). */
-  leanTarget = 0;
   /** THE ONE RENDER — B9: FACE / SCRATCH CELL CAP. Max DEVICE px per scratch
    *  cell dimension under lean; a cell that projects larger bakes at this
    *  ceiling and the GL quad upscales it to the full projected extent (see
@@ -5381,22 +5353,6 @@ export class Renderer {
     return this.camera.scale * this.camera.depthScale(footY);
   }
 
-  /** THE ARRIVAL FOLLOWS THE FRUSTUM (Epic B, shared-root fix): the
-   *  multiplier the sprite-bake arrival budgets scale by under a lean,
-   *  tracking how much deeper the perspective frustum reaches than the
-   *  ortho view. Ramps with the lean q (0 at q=0 → 1×; full at the B-2
-   *  reference lean) and is HARD-capped at FRUSTUM_FAR_MULT so a
-   *  near-singular grazing lean can never blow the per-frame mint count.
-   *  Returns 1 at q=0, so callers gate on camera.q≠0 and stay
-   *  byte-identical. */
-  private leanFrustumBudgetMult(): number {
-    // B6: keyed to LEAN_ARRIVAL_MULT (3), NOT FRUSTUM_FAR_MULT (5) — the
-    // arrival ramp tracks the frustum's HONEST reach (~2.77× at the shipping
-    // lean), not the grazing-lean cull ceiling. B5 removed the depth re-bakes
-    // the old 5× surplus fed, so that over-mint is standing waste now.
-    return leanBudgetMult(this.camera.q, PERSP_LEAN_REF, LEAN_ARRIVAL_MULT);
-  }
-
   /** Per-item depth factor for the FX modules (particles/debris/birds) —
    *  each billboard foreshortens at its OWN world-y, so those modules take
    *  this callback instead of a single scalar. A stable bound field (no
@@ -5569,42 +5525,6 @@ export class Renderer {
       Math.max(TREE_REBAKE_FRAMES, Math.ceil(this.treesVisible / TREE_BAKES_PER_FRAME)),
     );
     this.treesVisible = 0;
-    // B-2: apply the lean dial. Clamp q so the horizon (h/2 − 1/q) stays
-    // safely above the viewport — the moderate-lean invariant (no sky/void
-    // yet). The editor/shot camera stays orthographic (leans would fight a
-    // pinned frame; staticLayerOn also requires q=0 there). leanTarget=0 →
-    // camera.q=0 → byte-identical to every ortho frame.
-    // Clamp q so the horizon stays in the upper band, never past ~h·0.12
-    // down (2.6/h ⇒ hY = h/2 − h/2.6 ≈ 0.115h): a comfortable moderate lean
-    // keeps it off-screen; a CINEMATIC lean (B-5) rises it into view where
-    // the sky fills above (drawGrade). Editor/shot camera stays ortho.
-    // B-2 F0 (THE WORLD COMMITS TO THE LEAN): the lean is only geometrically
-    // sound on the GL stage — the canvas2d ground blit is an axis-aligned
-    // affine that cannot form the perspective trapezoid, so neighbours seam.
-    // WebGL is the one architecture forward; canvas2d is a legacy fallback and
-    // never leans. So q holds at 0 unless the GL ground stage is live (and it
-    // auto-drops to flat on a context loss, the toggle's safety). q=0 stays
-    // byte-identical to every ortho frame.
-    this.camera.q =
-      this.leanTarget > 0 && this.cameraOverride === null && this.stageActive()
-        ? Math.min(this.leanTarget, 2.6 / this.h)
-        : 0;
-    // THE ARRIVAL FOLLOWS THE FRUSTUM (Epic B, the shared-root fix):
-    // the sprite-bake admission ceilings (arrival count + ms) were
-    // tuned for the ORTHO frustum, but the lean frustum reaches
-    // ~FRUSTUM_FAR_MULT× deeper — so a pan under q>0 sweeps in that
-    // many more first-sight prop/flora sprites than the budget admits,
-    // and the surplus SKIPS (props draw as split coalesced runs, the
-    // near ground arrives at a stale tier). Scale both arrival lanes by
-    // the frustum's extra depth so admission keeps pace with reach.
-    // Bounded by the far-reach multiple; count grows with it, ms grows
-    // more gently (it also bounds frame time). q=0 leaves both exactly
-    // at their ortho values set above — byte-identical.
-    if (this.camera.q !== 0) {
-      const mult = this.leanFrustumBudgetMult();
-      this.visArrivalCount = Math.round(this.visArrivalCount * mult);
-      this.visSpriteMsLeft = Math.min(VIS_SPRITE_BAKE_MS, this.visSpriteMsLeft * Math.min(mult, 2));
-    }
     // The sky rules the frame: shadows, exposure, grade all read it.
     this.sky = daylightAt(game.clockHoursNow());
     // UNDERGROUND LAW: the dark band never sees the surface sky. Below
@@ -5693,33 +5613,6 @@ export class Renderer {
 
     this.ctx.fillStyle = '#141020';
     this.ctx.fillRect(0, 0, this.w, this.h);
-
-    // THE LEAN'S SKY BACKDROP (Epic B, fog-edges): under a lean the ground
-    // plane narrows toward the horizon (far rows compress toward centre,
-    // see projectWorld), so the far LEFT/RIGHT corners of the frame expose
-    // the bare #141020 clear behind the ground's diagonal edge — a HARD
-    // seam on the SIDES that the horizon haze (painted translucent in
-    // drawGrade, AFTER the ground) cannot bury. Paint the hour's sky BEHIND
-    // the ground across the upper frame: solid to just under the horizon,
-    // then a long feather that dies out where the ground has re-widened to
-    // the full frame. The ground overpaints the centre, the exposed side
-    // wedges read as sky (not void), and drawGrade's haze then feathers the
-    // far ground into this SAME sky — no hard edge on any side. q=0 →
-    // skipped entirely, so every ortho frame stays byte-identical.
-    if (this.camera.q > 0) {
-      const fogAmt = Math.min(1, this.camera.q / PERSP_LEAN_REF);
-      const hY = this.h / 2 - 1 / this.camera.q;
-      const [sr, sg, sb] = this.sky.sky;
-      const solidBot = Math.max(0, hY) + this.h * 0.03;
-      const fadeBot = solidBot + this.h * (0.24 + 0.2 * fogAmt);
-      const col = (a: number) => `rgba(${sr | 0}, ${sg | 0}, ${sb | 0}, ${a})`;
-      const back = this.ctx.createLinearGradient(0, 0, 0, fadeBot);
-      back.addColorStop(0, col(1));
-      back.addColorStop(Math.min(0.999, solidBot / fadeBot), col(1));
-      back.addColorStop(1, col(0));
-      this.ctx.fillStyle = back;
-      this.ctx.fillRect(0, 0, this.w, Math.ceil(fadeBot));
-    }
 
     // Kill zoom-pulse: a screen-space scale kick easing back out. The
     // dialogue cinematic adds its slow breath here too — a 0..1.4%
@@ -7149,47 +7042,6 @@ export class Renderer {
     sky.addColorStop(1, `rgba(${hr | 0}, ${hg | 0}, ${hb | 0}, 0)`);
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, this.w, this.h * 0.34);
-    // THE HORIZON FOG (Epic B, B-6): under a lean the far ground compresses
-    // to the horizon and the frustum is capped there — atmospheric haze
-    // washes that far band into the hour's sky, giving the vista real depth
-    // AND burying the far cut so the cap can pull in (levers 1-2 pay for
-    // each other). It rides the SAME sky colour as the haze above, only
-    // deeper and anchored to the lean. Eases in with q; OFF at q=0 (no
-    // horizon) → the frame is byte-identical to every ortho frame shipped.
-    if (this.camera.q > 0) {
-      const fogAmt = Math.min(1, this.camera.q / PERSP_LEAN_REF);
-      const c = (a: number) => `rgba(${hr | 0}, ${hg | 0}, ${hb | 0}, ${a})`;
-      // The horizon screen row (h/2 − 1/q). Below the viewport top (< 0) at
-      // a moderate lean — then the fog rides from the top exactly as before
-      // (byte-compatible). At a CINEMATIC lean it rises INTO view.
-      const hY = this.h / 2 - 1 / this.camera.q;
-      // THE SKYLINE (Epic B, B-5): where the horizon is in view there is no
-      // ground above it — a real SKY fills the void, DEEPER up high (cooler,
-      // and it sinks with the hour) and meeting the horizon haze exactly at
-      // the line, so sky → haze → receding ground read as one atmosphere.
-      if (hY > 0.5) {
-        const deep = (v: number, k: number) => Math.max(0, Math.round(v * (1 - k)));
-        const skyG = ctx.createLinearGradient(0, 0, 0, hY);
-        skyG.addColorStop(0, `rgb(${deep(hr, 0.14)}, ${deep(hg, 0.09)}, ${deep(hb, 0.02)})`);
-        skyG.addColorStop(1, `rgb(${hr | 0}, ${hg | 0}, ${hb | 0})`);
-        ctx.fillStyle = skyG;
-        ctx.fillRect(0, 0, this.w, Math.ceil(hY) + 1);
-      }
-      // THE HORIZON FOG (B-6): the far ground compresses to the horizon and
-      // the frustum is capped there; atmospheric haze washes that far band
-      // into the hour's sky — anchored AT the horizon (or the top, when the
-      // horizon is off-screen) and fading DOWN into the near ground. Buries
-      // the far cut so the cap can pull in. Eases in with q.
-      const fogTop = Math.max(0, hY);
-      const bandH = this.h * (0.26 + 0.22 * fogAmt);
-      const peak = Math.min(1, (ha + 0.28) * (0.45 + 0.55 * fogAmt));
-      const fog = ctx.createLinearGradient(0, fogTop, 0, fogTop + bandH);
-      fog.addColorStop(0, c(peak));
-      fog.addColorStop(0.55, c(peak * 0.42));
-      fog.addColorStop(1, c(0));
-      ctx.fillStyle = fog;
-      ctx.fillRect(0, fogTop, this.w, bandH);
-    }
     ctx.save();
     ctx.globalCompositeOperation = 'soft-light';
     // Underground the grade stands down: the cool bottom-wash and the
@@ -8292,18 +8144,7 @@ export class Renderer {
         (a, b) =>
           (a.cx - ccx) ** 2 + (a.cy - ccy) ** 2 - ((b.cx - ccx) ** 2 + (b.cy - ccy) ** 2),
       );
-      // THE GROUND KEEPS PACE WITH THE FRUSTUM (Epic B): under a lean
-      // the near field wants the 64px tier but a fresh chunk streams in
-      // at the base/stale tier and upgrades only CHUNK_REPLACE_STARTS at
-      // a time — soft, seamy ground while walking. The deeper frustum
-      // also queues more tier flips per pan. Start more replacements per
-      // frame under lean (still bounded, still center-first, still
-      // behind CHUNK_POOL_BUDGET) so the near tier lands promptly. q=0
-      // keeps the exact ortho pacing — byte-identical.
-      const starts =
-        this.camera.q !== 0
-          ? Math.round(CHUNK_REPLACE_STARTS * this.leanFrustumBudgetMult())
-          : CHUNK_REPLACE_STARTS;
+      const starts = CHUNK_REPLACE_STARTS;
       const n = Math.min(starts, this.replaceQueue.length);
       for (let i = 0; i < n; i++) {
         const r = this.replaceQueue[i]!;

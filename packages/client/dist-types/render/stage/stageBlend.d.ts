@@ -50,8 +50,9 @@ export declare function blendNeedsOpaqueTarget(b: StageBlend): boolean;
 /**
  * The blends that only mean anything on an ALPHA target.
  * destination-out ERASES destination alpha — on the main frame, which
- * is opaque by contract (and whose GL backbuffer is alpha:false so
- * the page can never bleed through), erasure is undefined-by-design
+ * is opaque by contract (and whose backbuffer is opaque — GL
+ * `alpha:false`, WebGPU `alphaMode:'opaque'` — so the page can never
+ * bleed through), erasure is undefined-by-design
  * and the two backends would diverge silently. In the real frame it
  * never happens there: the interior punch lives on the shadow LAYER,
  * which phase A3 gives the stage as an alpha FBO target. Until then —

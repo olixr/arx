@@ -5,6 +5,7 @@
  * painters reach the engine through the shared PaintHost slice.
  */
 import { ClientGame } from '../game/clientGame.js';
+import type { Silhouette } from './structureFace.js';
 import { Tile } from '@arx/shared';
 import type { DrawItem } from './renderer.js';
 import type { PaintHost } from './paintHost.js';
@@ -33,7 +34,35 @@ export declare function merlonBox(rend: PaintHost, mx0: number, my0: number, mw:
  * outline: the crown silhouette steps over every parapet tooth, so
  * even at far zoom the black edge itself reads castellated.
  */
-export declare function garrisonWallItem(rend: PaintHost, tile: Tile, tx: number, ty: number, game: ClientGame, whT: number): DrawItem;
+export declare function garrisonWallItem(rend: PaintHost, tile: Tile, tx: number, ty: number, game: ClientGame, whT: number, suppressTop?: boolean): DrawItem;
+/**
+ * THE ONE RENDER — A2c: paint ONE straight span of a coalesced curtain
+ * run's crenellated crown, in ABSOLUTE screen coords projected off the
+ * span's WORLD corners so adjacent spans (and neighbouring runs) meet
+ * seam-free. This is the garrison twin of `Renderer.paintWallCrown` + the
+ * wall crown span's outline, drawn by `crownSpanItem` when the volume's
+ * kind is 'garrison':
+ *
+ *   1. the wall-walk (great-ashlar GAR_TOP plane over the span rect);
+ *   2. the CRENELLATION — parapet teeth (merlons) on every EXPOSED crown
+ *      edge, at world-phase centres (0.25, 0.75 per tile), so the toothed
+ *      top runs UNBROKEN across the whole run and the teeth never double
+ *      up or gap at a span join (they key off the world grid);
+ *   3. the CASTELLATED OUTLINE — the crown edge STEPPING over each tooth
+ *      (the silhouette that reads "castle"), stroked only on exposed edges
+ *      (tested against the run member set) so internal seams never ink.
+ *
+ * `members` is the run's packed member set; `crownH`/`footH` are WORLD
+ * heights (tiles, elevation folded in). Every point is projected through
+ * the SAME rounded-corner + `height·scale·depthScale` law the wall crown
+ * uses, so garrison and wall crowns seat on identical device pixels.
+ */
+export declare function garrisonCrownSpan(rend: PaintHost, span: {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+}, crownH: number, footH: number, whT: number, members: ReadonlySet<number>, sil?: Silhouette): void;
 /**
  * A 45° curtain turn. Same geometry laws as diagWallItem (near-row
  * sort for camera-facing masses, sheared face frame so courses land

@@ -70,7 +70,18 @@
  *  latched shut, and 16-27 stretches of the capital repainted live
  *  as vector art EVERY frame, forever. The ledger is exact and the
  *  gate prices the whole of it, so raising this buys coverage at a
- *  known byte cost and nothing else. */
+ *  known byte cost and nothing else.
+ *
+ *  128 -> 192 (field round, measured AGAIN): Silverfall's INTERIOR
+ *  at zoom 1 wants ~67 baked + 12 live bands — the 128MB ceiling
+ *  latched and those 12 masonry stretches drew live vector art
+ *  every frame, and as the player moved Y they flickered between the
+ *  baked lattice and the live path at the budget boundary (the
+ *  reported "tiling cuts off / pulls off details on Y movement").
+ *  192MB fits the measured interior working set (~150-170MB) with
+ *  the same relief ratio; the ground cache at a terraced capital is
+ *  ~1GB, so this 64MB is noise beside the real memory story and
+ *  buys a seam-free capital. */
 export declare const BAND_BUDGET_BYTES: number;
 /** What the sweep aims for, leaving the gate its headroom (law 4). */
 export declare const BAND_RELIEF_BYTES: number;

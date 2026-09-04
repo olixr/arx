@@ -1,0 +1,166 @@
+import { Tile } from '@arx/shared';
+/**
+ * THE ONE RENDER — A0: the shared world-geometry flood.
+ *
+ * `collectVolume` generalizes the run-ring BFS that `tryRunRingItem`
+ * used to keep to itself into ONE component-flood primitive that the
+ * run-ring path (furniture), and later the wall/hedge paths (A2/A4),
+ * all call. A "volume" is the 4-connected same-class component of tiles
+ * containing a seed cell, described as:
+ *
+ *   - the member tile list (flat `[x0,y0,x1,y1,…]`),
+ *   - the LEXICOGRAPHIC-MIN anchor + inclusive tile bbox,
+ *   - the EXPOSED-PERIMETER edge loop(s) in WORLD (tile-corner) coords —
+ *     the outer boundary with interior shared edges dropped, and
+ *   - a per-member height sampler hook the caller supplies.
+ *
+ * The perimeter is why runs render seamlessly downstream (invariants
+ * #2/#3 of the epic): the shared-edge test is computed ONCE for the
+ * whole component, so a wall/hedge run projects each world corner once
+ * (`faceStrip`/`topPlane` in A1) instead of per tile — no double-rounded
+ * seams. The loop doubles as the top-plane outline (walk it at
+ * `heightAt(tx,ty)`) and as the silhouette to ring (A3).
+ *
+ * Membership is decided by CLASS EQUALITY: `classOf(tile,tx,ty)` maps a
+ * sampled tile to a class key (any number) or `null` for "not a member".
+ * Two cells join iff both classes are non-null AND equal to the SEED's
+ * class. So the run-ring path passes a `classOf` that returns the tile
+ * itself (exact-tile runs never merge across kinds), while the wall path
+ * (A2) will map every wall tile to one class (a wall run coalesces
+ * regardless of the specific wall tile).
+ */
+/** Reads the ground tile at a world cell (`undefined` off-map). */
+export type TileSampler = (tx: number, ty: number) => Tile | undefined;
+/**
+ * Maps a sampled tile (and its cell) to a class key, or `null` for
+ * "not a member". Membership in a volume = same non-null class as seed.
+ */
+export type ClassOf = (tile: Tile, tx: number, ty: number) => number | null;
+/** A world-space corner point (tile-corner integer coordinates). */
+export interface VolPoint {
+    x: number;
+    y: number;
+}
+/** Pooled scratch so the hot flood allocates nothing per call. */
+export interface VolumeScratch {
+    members: number[];
+    seen: Set<number>;
+    queue: number[];
+}
+export interface CollectVolumeOpts {
+    /**
+     * Max member-tile count. If the component grows beyond this the flood
+     * bails and `collectVolume` returns `null` (caller treats as "too big
+     * — render plainly"), matching the run-ring `cap*2` guard.
+     */
+    cap?: number;
+    /**
+     * Per-member height sampler, echoed back on the volume so callers pass
+     * `wallHeightAt` / the hedge height and A1/A2 lift the perimeter to it.
+     * Defaults to a flat `() => 0`.
+     */
+    heightAt?: (tx: number, ty: number) => number;
+    /**
+     * Compute the exposed-perimeter loop(s). Defaults to `true`. The
+     * run-ring hot path passes `false` (it needs only members + bbox), so
+     * sharing the flood adds no per-frame edge work / garbage there.
+     */
+    perimeter?: boolean;
+    /**
+     * Pooled scratch to flood into. Reused across calls to stay alloc-free
+     * in hot loops. When omitted, fresh arrays/set are allocated. NOTE: the
+     * returned `members` aliases `scratch.members` — copy it if retained
+     * past the next `collectVolume` call.
+     */
+    scratch?: VolumeScratch;
+}
+export interface Volume {
+    /**
+     * Member tiles as a flat `[x0,y0,x1,y1,…]`. Traversal order matches
+     * the original run-ring DFS (stack pop, neighbour order E,W,S,N) so
+     * dependent draw order is preserved. Aliases `scratch.members` when a
+     * scratch was supplied — copy if retained.
+     */
+    members: number[];
+    /** Member-tile count (`members.length / 2`). */
+    count: number;
+    /** Lexicographic-min anchor: min ty, then min tx. Stable per component. */
+    ax: number;
+    ay: number;
+    /** Inclusive tile bbox. */
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+    /**
+     * Exposed-perimeter loop(s) in WORLD corner coords. One entry per
+     * closed boundary (outer boundary + any holes). Each loop is a list of
+     * corner points with collinear midpoints merged (a straight E–W run →
+     * a 4-corner rectangle), canonicalized to start at the loop's
+     * lexicographic-min corner, wound clockwise in screen (y-down) space so
+     * the filled interior is on the right. Empty when `perimeter:false`.
+     */
+    perimeter: VolPoint[][];
+    /** Per-member height sampler (the caller's hook, else `() => 0`). */
+    heightAt: (tx: number, ty: number) => number;
+}
+/**
+ * Flood the 4-connected same-class component containing (tx,ty).
+ * Returns `null` if the seed isn't a member, or the component exceeds
+ * `cap`. See the module doc for the full contract.
+ */
+export declare function collectVolume(sample: TileSampler, tx: number, ty: number, classOf: ClassOf, opts?: CollectVolumeOpts): Volume | null;
+/**
+ * THE ONE RENDER — A2b: partition a volume's MEMBER tiles into maximal
+ * straight CROWN SPANS, each a small 4-corner rectangle loop covering that
+ * span's tiles at their footprint (before lift). Every member tile is
+ * covered by EXACTLY ONE span, so the union of the spans is the wall's
+ * top footprint — the crown area — NOT the enclosed interior a `perimeter`
+ * outer loop would fill (a building ring's perimeter fills its floor).
+ *
+ * Why per-span, not one crown poly: a whole-footprint crown DrawItem
+ * rasterizes to ONE scratch texture the size of the footprint bbox — a
+ * town of buildings blows the scratch/VRAM budget (the constraint that
+ * scoped A2 to thin runs). Each span's bbox is a thin strip (≤ the run
+ * length in one axis, 1 tile in the other), so its scratch stays small,
+ * while adjacent spans SHARE world corners (same integer coords → the same
+ * rounded device pixel when projected) so the crown stays seam-free across
+ * the whole loop — the seamlessness invariant, kept.
+ *
+ * Partition rule (covers each tile once, prefers long spans in BOTH axes):
+ *   1. maximal HORIZONTAL runs of length ≥ 2 (contiguous same-row members);
+ *   2. the leftover single-in-their-row tiles → maximal VERTICAL runs.
+ * A building ring yields its top row + bottom row (horizontal) and its two
+ * side columns' middles (vertical) = the four perimeter edges, robustly.
+ * A thin E–W run is one horizontal span; a thin N–S run one vertical span;
+ * an isolated tile a 1×1 span.
+ *
+ * Corners wind clockwise in screen (y-down) space, interior on the right,
+ * matching `exposedPerimeter` — winding is immaterial to a filled crown but
+ * kept consistent for callers that ring a span.
+ */
+/** An inclusive tile-rect crown span (a thin strip: one axis is a single tile). */
+export interface CrownSpan {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+}
+export declare function crownSpans(members: number[]): CrownSpan[];
+/**
+ * THE ONE RENDER — A2c: partition a DIAGONAL wall run's members into
+ * per-column crown SPANS. A 45° wall is a STAIRCASE of triangular tiles
+ * (each classified `len:1`), diagonally — not 4-  — connected: consecutive
+ * members share exactly ONE projected hypotenuse corner. There is no
+ * multi-tile straight span to coalesce (each tile is its own triangle), so
+ * the partition yields ONE 1×1 span per member — mirroring how `crownSpans`
+ * yields a single span for an isolated tile. The seamlessness comes not from
+ * merging bboxes (each stays a single tile = tiny scratch, no blowup) but
+ * from the DRAW projecting each member's crown off shared WORLD corners, so
+ * adjacent members' hypotenuse arrises meet on the same device pixel, and
+ * from the outline testing the run member set so the shared corner never
+ * inks an internal seam — exactly the garrison/wall span law, applied along
+ * the 45° run. Union of the spans === the run; every member covered once.
+ */
+export declare function diagSpans(members: number[]): CrownSpan[];
+//# sourceMappingURL=collectVolume.d.ts.map

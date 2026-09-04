@@ -8,6 +8,31 @@ import { ClientGame } from '../game/clientGame.js';
 import { Tile } from '@arx/shared';
 import type { DrawItem } from './renderer.js';
 import type { PaintHost } from './paintHost.js';
+/**
+ * Epic B (FW) BARRIER SPAN — project a point at tile fractions (fx east,
+ * fy south of the tile-centre BASE row) to leaned screen space, so the
+ * members that SPAN a tile's depth (N-S rails, hedge mass, palisade /
+ * iron marching courses, diagonal strides) meet their run-mates on the
+ * SAME projected world corner, seam-true under the lean — the two-corner
+ * trapezoid law of wallItem / cliffArt, spoken for billboards.
+ *
+ * A barrier tile anchors at world (tx+0.5, ty+0.5) but its members hang
+ * off `baseY = p.y + syT·0.14` (world row ty+0.64), so a member at screen
+ * `baseY + fy·syT`, `p.x + fx·s` is world (tx+0.5+fx, ty+0.64+fy). `lift`
+ * is the elevation + porch lift already subtracted from `p.y`.
+ *
+ * THE INVARIANT: at q=0 this returns the exact billboard arithmetic
+ * (`p.x + fx·s`, `baseY + fy·syT`) — no worldToScreen round-trip, no
+ * reassociation — so every caller stays byte-identical until the lean is
+ * on. Fills `out` alloc-free.
+ */
+export declare function barrierPt(rend: PaintHost, tx: number, ty: number, px: number, s: number, baseY: number, syT: number, lift: number, fx: number, fy: number, out: {
+    x: number;
+    y: number;
+}): {
+    x: number;
+    y: number;
+};
 /** Fence-family connectivity: rails reach toward these neighbours. */
 export declare function fenceish(rend: PaintHost, game: ClientGame, x: number, y: number): boolean;
 /**
@@ -17,7 +42,7 @@ export declare function fenceish(rend: PaintHost, game: ClientGame, x: number, y
  * outline; call it AFTER the rails so the post face covers their
  * run-through seams and every joint reads carpentered.
  */
-export declare function drawFencePost(rend: PaintHost, x: number, baseY: number, w: number, hTot: number): void;
+export declare function drawFencePost(rend: PaintHost, x: number, baseY: number, w: number, hTot: number, ds?: number): void;
 /**
  * THE FENCE REBUILD — post-and-rail stock fencing in the game's
  * 2.5D dialect. One capped post per tile; two rails with REAL board
@@ -59,7 +84,7 @@ export declare function fenceGateItem(rend: PaintHost, tile: Tile, tx: number, t
  * not a fence panel — and overlapping logs occlude each other's ink
  * honestly because fill and ink land together, log by log.
  */
-export declare function giantLog(rend: PaintHost, x: number, baseY: number, w: number, shoulder: number, seed: number, ink: boolean): void;
+export declare function giantLog(rend: PaintHost, x: number, baseY: number, w: number, shoulder: number, seed: number, ink: boolean, ds?: number): void;
 /** Shoulder height for log k of a tile — big and uneven (1.3 to
  *  1.62 tiles over the 1.15-tile body: the wall MEANS it). */
 export declare function logShoulder(rend: PaintHost, tx: number, ty: number, k: number): number;
@@ -69,13 +94,13 @@ export declare function logShoulder(rend: PaintHost, tx: number, ty: number, k: 
  * rounds each log seam, and a knot with a dangling end at one
  * hash-picked log. Fill-only value work (the logs own the ink).
  */
-export declare function palisadeRope(rend: PaintHost, xw: number, xe: number, y: number, seams: readonly number[], knotSeed: number): void;
+export declare function palisadeRope(rend: PaintHost, xw: number, xe: number, y: number, seams: readonly number[], knotSeed: number, ds?: number): void;
 /**
  * A GATE POST: the fattest log in the wall, with a rope hinge
  * collar and — on one side of every gate — the camp's skull staring
  * down the road.
  */
-export declare function drawPalisadePost(rend: PaintHost, x: number, baseY: number, w: number, hTot: number, skull: boolean): void;
+export declare function drawPalisadePost(rend: PaintHost, x: number, baseY: number, w: number, hTot: number, skull: boolean, ds?: number): void;
 /**
  * THE SPIKED WALL, rebuilt — GIANT CARVED LOGS, not a fence. Four
  * whole trunks to the tile (each its own monument: rolled value
@@ -115,7 +140,7 @@ export declare function palisadeGateItem(rend: PaintHost, tile: Tile, tx: number
  * gaps are the POINT — a graveyard rail is drawn so the eye passes
  * between the bars and finds the stones it keeps.
  */
-export declare function ironBar(rend: PaintHost, x: number, footY: number, tipY: number, seed: number, dim: number): void;
+export declare function ironBar(rend: PaintHost, x: number, footY: number, tipY: number, seed: number, dim: number, ds?: number): void;
 /**
  * THE CURB — the granite course the railing is leaded into. A low
  * coursed-stone footing with a TRUE foreshortened top plane (the
@@ -131,7 +156,7 @@ export declare function ironCurbEW(rend: PaintHost, xw: number, xe: number, base
  * finial standing on it: an urn on the piers that keep the yard,
  * an orb-and-spike on the piers that carry the gate.
  */
-export declare function drawGravePier(rend: PaintHost, x: number, baseY: number, w: number, hTot: number, finial: 'urn' | 'orb'): void;
+export declare function drawGravePier(rend: PaintHost, x: number, baseY: number, w: number, hTot: number, finial: 'urn' | 'orb', ds?: number): void;
 /** A rail band: dark iron with one lit top thread, drawn OVER the
  *  bars so every bar reads as pierced through, never glued on. */
 export declare function ironRail(rend: PaintHost, x0: number, x1: number, y: number, t: number, dim: number): void;
@@ -142,7 +167,7 @@ export declare function ironRail(rend: PaintHost, x0: number, x1: number, y: num
  * panels down a long run repeat, and the whole run still reads as
  * one commission.
  */
-export declare function ironOrnament(rend: PaintHost, cx: number, yTop: number, yBot: number, seed: number, dim: number): void;
+export declare function ironOrnament(rend: PaintHost, cx: number, yTop: number, yBot: number, seed: number, dim: number, ds?: number): void;
 /**
  * THE IRON REST — the graveyard's wall. Wrought spear-topped bars
  * leaded into a granite curb, three rails, an ornament band, and a
@@ -285,4 +310,69 @@ export declare function ironish(rend: PaintHost, game: ClientGame, x: number, y:
  * builder's work, and a gardener is not a carpenter.
  */
 export declare function hedgeish(rend: PaintHost, game: ClientGame, x: number, y: number): boolean;
+/**
+ * THE ONE RENDER — A4: the hedge as an UPRIGHT, SEAMLESS hedge-wall
+ * VOLUME (invariants #2/#3). A hedge run is a thin world-geometry
+ * volume like A2's thin wall runs: `collectVolume` yields its exposed
+ * perimeter once, `faceStrip` hangs its receding side faces and
+ * `topPlane` lays its whole-run crown — every world corner projected
+ * exactly once, so a run/corner/tee reads as ONE clipped body with no
+ * per-tile seam or double-ink. Retires `hedgeMassPaint`'s per-tile
+ * affine stand-up hack (with its SE-corner approximation) on this
+ * path: the height is a pure screen-space lift (`height·scale·
+ * depthScale`) folded into the primitives, not a sheared ground affine.
+ *
+ * These two painters carry only the hedge's MATERIAL DRESSING (the
+ * clipped-green tones, pillow bed, partings, occasional bloom) in the
+ * face/crown UV space the primitives hand them — the renderer owns the
+ * projection. Colours stay in this module (the barrier palette).
+ */
+/** The hedge volume's WORLD height (tiles) — a hip-high garden hedge,
+ *  far shorter than a wall's 2.8. At q=0 the volume path is never taken
+ *  (the golden gate keeps the flat pillow-bed look), so this height only
+ *  ever expresses under lean. */
+export declare const HEDGE_VOL_H = 0.62;
+/** One receding SIDE FACE of a hedge run (a `faceStrip` trapezoid
+ *  segment). Green body, a slightly darker rooted skirt band and a lit
+ *  upper lip — the clipped-green face standing plumb from turf to crown. */
+export declare function paintHedgeFace(rend: PaintHost, seg: FaceGeomLike): void;
+/**
+ * The whole-run CROWN (a `topPlane`). Fills the projected crown loop,
+ * then — for a rectangular run (a straight run or a thin corner arm) —
+ * lays the bed of clipped pillows in the plane's own UV so it tiles
+ * continuously across the run instead of per tile: half-tile pillow
+ * quarters rolled through the three clipped-green tones and keyed to the
+ * ABSOLUTE world half-tile grid (so run-mates and neighbours agree at
+ * every seam), pillow partings, and a sparse madder bloom. An L/tee/ring
+ * loop keeps the plain crown fill (its bbox UV would overspill — the same
+ * restraint A2's crown uses), still upright and seamless.
+ *
+ * `wx0,wy0`–`wx1,wy1` are the run's WORLD corner extents (the loop bbox),
+ * so the cell grid keys to world coords rather than to the plane.
+ */
+export declare function paintHedgeCrown(rend: PaintHost, plane: TopPlaneGeomLike, wx0: number, wy0: number, wx1: number, wy1: number): void;
+/** The `structureFace` geom slices the two hedge painters read — kept
+ *  as local structural types so this module need not import the whole
+ *  face API surface. */
+export interface FaceGeomLike {
+    ax: number;
+    ay: number;
+    bx: number;
+    by: number;
+    yTopA: number;
+    yTopB: number;
+}
+export interface TopPlaneGeomLike {
+    poly: ReadonlyArray<{
+        x: number;
+        y: number;
+    }>;
+    uv: (u: number, v: number, out?: {
+        x: number;
+        y: number;
+    }) => {
+        x: number;
+        y: number;
+    };
+}
 //# sourceMappingURL=barrierArt.d.ts.map

@@ -20,8 +20,5 @@
  * grazing lean (q past the reference) can never blow the per-frame mint
  * count unbounded.
  */
-export function leanBudgetMult(q: number, refLean: number, farMult: number): number {
-  if (q <= 0 || refLean <= 0) return 1;
-  const ramp = Math.min(1, q / refLean);
-  return Math.min(farMult, 1 + (farMult - 1) * ramp);
-}
+export declare function leanBudgetMult(q: number, refLean: number, farMult: number): number;
+//# sourceMappingURL=leanBudget.d.ts.map
