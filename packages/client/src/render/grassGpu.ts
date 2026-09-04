@@ -74,6 +74,10 @@ export interface TallBand {
   /** Band world-y extent (min/max blade root), for screen-bbox bounding. */
   minBy: number;
   maxBy: number;
+  /** G-ELEVATED — the terrace lift (WORLD height, level·ELEV_H) every blade
+   *  in this band rides. Absent/0 = flat ground (tall + skirt bands). Set
+   *  only on the elevated-coat bands so a whole row lifts onto its shelf. */
+  elev?: number;
 }
 
 /**
@@ -312,18 +316,33 @@ uniform float uYScale;
 uniform vec2 uOrigin;    // screen origin (ox, oy); unsnapped under lean
 uniform float uQ;        // lean parameter
 uniform vec2 uViewport;  // frame size in CSS px (w, h)
+// GRASS RIDES ITS SHELF (G-ELEVATED): the terrace lift, in WORLD height, of
+// the tile the blade is rooted on (level·ELEV_H). 0 = flat ground = the whole
+// shipped meadow, byte-identical (the lift branch is skipped). >0 raises the
+// blade onto the plateau top; <0 sinks it into a pit.
+uniform float uElev;
 const float GRASS_MIN_W = ${GRASS_MIN_W};
-vec4 grassProject(vec2 world) {
+vec4 grassProject(vec2 world, vec2 root) {
+  float cx = uViewport.x * 0.5;
+  float cy = uViewport.y * 0.5;
   float sx0 = world.x * uScale + uOrigin.x;
   float sy0 = world.y * uScale * uYScale + uOrigin.y;
   float sx = sx0;
   float sy = sy0;
   if (uQ != 0.0) {
-    float cx = uViewport.x * 0.5;
-    float cy = uViewport.y * 0.5;
     float wdiv = max(GRASS_MIN_W, 1.0 - uQ * (sy0 - cy));
     sx = cx + (sx0 - cx) / wdiv;
     sy = cy + (sy0 - cy) / wdiv;
+  }
+  if (uElev != 0.0) {
+    // A RIGID screen rise equal to the terrace lift under the blade's ROOT
+    // row — level·ELEV_H · scale · depthScale(root) — exactly the shift the
+    // elevated ground quad applies (renderer collectElevatedGround), so the
+    // whole blade sits ON the raised top. q=0 → depthScale 1 → uniform rise;
+    // q>0 → foreshortened by the root row's own divisor, like the ground.
+    float rootSy0 = root.y * uScale * uYScale + uOrigin.y;
+    float rootWdiv = uQ != 0.0 ? max(GRASS_MIN_W, 1.0 - uQ * (rootSy0 - cy)) : 1.0;
+    sy -= uElev * uScale / rootWdiv;
   }
   float ndcX = 2.0 * sx / uViewport.x - 1.0;
   float ndcY = 1.0 - 2.0 * sy / uViewport.y;   // stage Y-flip
