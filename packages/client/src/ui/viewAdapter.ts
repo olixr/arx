@@ -9,7 +9,7 @@
  * unchanged); the 3D client (src/play3d) hands over its own view.
  *
  * `ViewDisplayFlags` is the Display bench's SEPARATE contract: the
- * canvas2d lanes it switches (stage/lean/res/water). The 2D Renderer
+ * canvas2d lanes it switches (stage/res/water). The 2D Renderer
  * carries them; a view that has no such lanes hands the bench null and
  * those rows are not built. Type-only: no runtime lives here.
  */
