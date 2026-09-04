@@ -67,6 +67,9 @@ export interface GrassFrame {
   windGain?: number;
   /** Disturbers packed [worldX, worldY, radius, strength]×n (≤ MAX_DISTURB). */
   disturb?: Float32Array;
+  /** G-INTERACT — the parallel travel lay-vector [vx, vy]×n (world u/s,
+   *  clamped) so blades comb down in each body's direction of motion. */
+  disturbVel?: Float32Array;
 }
 
 export class GrassGpuLayer {
@@ -198,8 +201,11 @@ export class GrassGpuLayer {
       try {
         this.renderer = new GrassGpuRenderer(this.gl, this.palette);
         this.ornaments = new GrassOrnamentRenderer(this.gl, this.ornPalette);
-      } catch {
-        // A driver that can't compile a program → stay inert (baked meadow).
+      } catch (e) {
+        // A driver that can't compile the program stays inert (baked meadow).
+        // Surface WHY — a silent shader miscompile otherwise drops the whole
+        // GPU path with no clue (a reserved-keyword slip did exactly that).
+        console.warn('[grass-gpu] blade program build failed; falling back to baked meadow:', e);
         this.renderer?.dispose();
         this.ornaments?.dispose();
         this.renderer = null;
@@ -283,7 +289,11 @@ export class GrassGpuLayer {
     if (blades.length > 0) {
       this.instances = packBladeInstances(blades, this.instances);
       this.renderer.upload(this.instances, blades.length);
-      this.renderer.draw(proj, f.timeSec, { windGain: f.windGain, disturb: f.disturb });
+      this.renderer.draw(proj, f.timeSec, {
+        windGain: f.windGain,
+        disturb: f.disturb,
+        disturbVel: f.disturbVel,
+      });
     }
     const ornN = flowers.length + seeds.length;
     if (ornN > 0) {
@@ -342,7 +352,7 @@ export class GrassGpuLayer {
       wCss: f.wCss,
       hCss: f.hCss,
     };
-    const opts = { windGain: f.windGain, disturb: f.disturb };
+    const opts = { windGain: f.windGain, disturb: f.disturb, disturbVel: f.disturbVel };
     if (blades.length > 0) {
       this.shadowInstances = packBladeInstances(blades, this.shadowInstances);
       this.shadowRenderer.upload(this.shadowInstances, blades.length);
@@ -434,7 +444,7 @@ export class GrassGpuLayer {
     // leaning/trampled blade is never clipped at its slot edge.
     const H_FACTOR = 1.55;
     const HW_FACTOR = 1.42 * 1.08;
-    const X_MARGIN = 1.1; // world tiles: wind lean + trample splay
+    const X_MARGIN = 1.5; // world tiles: wind lean + parted lay-over splay
     const PX_PAD = 3; // device-agnostic css pad at the slot rim
 
     // Pass 1: each band's screen bbox (CSS px), clamped to the viewport.
@@ -532,6 +542,7 @@ export class GrassGpuLayer {
     renderer.beginBands(packed, tallBlades.length, proj3, f.timeSec, {
       windGain: f.windGain,
       disturb: f.disturb,
+      disturbVel: f.disturbVel,
     });
     gl.enable(gl.SCISSOR_TEST);
     const SW = f.wCss * dpr;

@@ -210,6 +210,7 @@ import { GrassGpuLayer, type GrassFrame, type BandBlit } from './grassGpuLayer.j
 import { partitionTallBands, coalesceTallBands, type TallBand } from './grassGpu.js';
 import { grassRootedSkirtAt } from './grassSkirt.js';
 import { MAX_DISTURB } from './grassGpuRenderer.js';
+import { packDisturbers } from './grassGpu.js';
 import { grassShadowOffset, shadeRgb01 } from './grassGpuShadow.js';
 import { paintTree, saplingModel, treeExtent,
   treeModel, TREE_VARIANT_COUNT, treeVariantHash, type TreeModel } from './trees.js';
@@ -1629,6 +1630,12 @@ export class Renderer {
   private readonly grassFlowers: Flower[] = [];
   private readonly grassSeeds: SeedHead[] = [];
   private readonly grassDisturb = new Float32Array(MAX_DISTURB * 4);
+  /** G-INTERACT — the parallel travel lay-vector [vx,vy]×n the shaders comb
+   *  the blades down by; and the per-id last position the velocity derives
+   *  from (world units/sec), pruned to who is present this frame. */
+  private readonly grassDisturbVel = new Float32Array(MAX_DISTURB * 2);
+  private readonly grassDisturbEntries: { x: number; y: number; r: number; vx: number; vy: number }[] = [];
+  private readonly grassDisturbLast = new Map<number | 'own', { x: number; y: number }>();
   /** G1 — the visible tall standing mass (GrassTall north/south), gathered
    *  by-sorted for the GPU interleave path; pooled. */
   private readonly grassTall: Blade[] = [];
@@ -22210,18 +22217,55 @@ export class Renderer {
     // y-sort (below) so bodies walk THROUGH thickets.
     this.grass.collectGpuBlades(ground, detail, bounds, this.grassBlades, true);
     this.grass.collectGpuOrnaments(ground, detail, bounds, this.grassFlowers, this.grassSeeds);
-    // This frame's disturbers → the trample uniform. Body radius (~0.3t) is
-    // the footprint CENTRE; the parted patch spreads wider, so scale it.
+    // G-INTERACT — this frame's disturbers → the parting uniforms. Each
+    // body's radius (~0.3t) is the footprint CENTRE; the parted patch spreads
+    // wider, so packDisturbers scales it. The travel VELOCITY (world u/s,
+    // derived from each id's last position) becomes the wake lay-vector so
+    // blades comb down in the direction of motion and spring back when still.
+    // `?__grassNoDisturb` (a fresh-page bisect flag, the probe FLAG law) feeds
+    // zero disturbers for a clean A/B against the static-through-body look.
+    const noDisturb = (globalThis as { __grassNoDisturb?: boolean }).__grassNoDisturb === true;
     const src = this.frameDisturbers;
-    const dz = this.grassDisturb;
-    const dn = Math.min(MAX_DISTURB, src.length);
-    for (let i = 0; i < dn; i++) {
+    const dtSec = this.frameDt > 1e-4 ? this.frameDt : 1 / 60;
+    const last = this.grassDisturbLast;
+    const seen = new Set<number | 'own'>();
+    const entries = this.grassDisturbEntries;
+    entries.length = 0;
+    for (let i = 0; i < src.length; i++) {
       const d = src[i]!;
-      dz[i * 4] = d.x;
-      dz[i * 4 + 1] = d.y;
-      dz[i * 4 + 2] = Math.max(0.9, d.r * 3.2); // parted spread, not body radius
-      dz[i * 4 + 3] = 1;
+      const prev = last.get(d.id);
+      // Clamp the per-frame delta before dividing by dt so a teleport or a
+      // fresh id cannot fling a one-frame velocity spike into the wake.
+      let vx = 0;
+      let vy = 0;
+      if (prev) {
+        vx = Math.max(-0.6, Math.min(0.6, d.x - prev.x)) / dtSec;
+        vy = Math.max(-0.6, Math.min(0.6, d.y - prev.y)) / dtSec;
+      }
+      if (prev) {
+        prev.x = d.x;
+        prev.y = d.y;
+      } else {
+        last.set(d.id, { x: d.x, y: d.y });
+      }
+      seen.add(d.id);
+      entries.push({ x: d.x, y: d.y, r: d.r, vx, vy });
     }
+    // Drop bodies that left view so the last-position map cannot grow forever.
+    if (last.size > seen.size) for (const id of last.keys()) if (!seen.has(id)) last.delete(id);
+    // MANY BODIES, EIGHT SLOTS: a crowded town can field far more disturbers
+    // than the uniform holds, and the own player is gathered LAST — so pack
+    // the ones NEAREST the camera look-at (the bodies actually in the meadow
+    // on screen), never the arbitrary first eight. O(n log n) on ≤ a few
+    // dozen, no per-blade cost.
+    const camX = this.camera.x;
+    const camY = this.camera.y;
+    entries.sort(
+      (a, b) => (a.x - camX) ** 2 + (a.y - camY) ** 2 - ((b.x - camX) ** 2 + (b.y - camY) ** 2),
+    );
+    const dz = this.grassDisturb;
+    const dv = this.grassDisturbVel;
+    const dn = noDisturb ? 0 : packDisturbers(entries, dz, dv);
     const cam = this.camera;
     const frame: GrassFrame = {
       scale: cam.scale,
@@ -22238,6 +22282,7 @@ export class Renderer {
       timeSec: performance.now() / 1000,
       windGain: 0.12,
       disturb: dn > 0 ? dz.subarray(0, dn * 4) : undefined,
+      disturbVel: dn > 0 ? dv.subarray(0, dn * 2) : undefined,
     };
     // Stash the frame so the later skirt pass (collectGpuSkirts, run after
     // the world collect gathers grass-rooted objects) renders its blades
