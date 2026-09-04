@@ -368,6 +368,15 @@ export interface BandBucket {
   sortY: number;
   strat: number | undefined;
   elevated: boolean;
+  /** A5 pitch-aware depth: the near (south) ground-edge row a world-
+   *  geometry VOLUME (wall/garrison/hedge run) contributes, captured
+   *  from the bucket's first probe item so a COLD/BAKED wall keeps the
+   *  same volume rank a LIVE wall carries (DRAW_ORDER's tie rule draws a
+   *  volume before a same-row billboard). Set only when the probe item
+   *  carried `nearRow` (occlusionOn on + a volume bucket); absent ⇒ a
+   *  genuinely flat baked layer (or the A5 kill-switch off) ⇒ the blit
+   *  DrawItem stays a billboard, byte-identical to the pre-A5 frame. */
+  nearRow?: number;
   /** Canvas-space coords where world (wx0, rowY) landed at bake. */
   padL: number;
   padT: number;
