@@ -253,6 +253,7 @@ import {
 } from './reveal.js';
 import { ARRIVAL_MIN_COUNT, admitBake, BakeLane, type BakeBudgets } from './bakeAdmission.js';
 import { leanBudgetMult } from './leanBudget.js';
+import { rowProject, rowProjectX, type RowProj } from './rowProject.js';
 import {
   chunkBakePxWarp,
   chunkResDeficit,
@@ -552,6 +553,22 @@ const CHUNK_POOL_BUDGET = 256 * 1048576;
  *  the far third of the screen. The far row must follow the real frustum,
  *  not a fixed multiple that clips it. */
 const FRUSTUM_FAR_MULT = 5;
+
+/** THE ONE RENDER (B6): the per-frame BAKE ADMISSION multiplier under a
+ *  lean — how much the sprite/chunk arrival budgets grow to keep first-
+ *  sight fill in step with the frustum's extra reach on a pan. This is a
+ *  SEPARATE, SMALLER knob than FRUSTUM_FAR_MULT (which is a grazing-lean
+ *  cull CEILING that never binds at the shipping lean — the natural
+ *  trapezoid reaches only ~2.77× ortho at q=0.0013, ~1.6× at 0.0034,
+ *  MEASURED). Sizing the arrival ramp to FRUSTUM_FAR_MULT=5 over-provisioned
+ *  the mint budget ~4.25× at the shipping lean against a 2.77× real reach —
+ *  spending extra bake/upload work every leaning frame for arrivals that
+ *  are not there. B5 retired the depth-driven re-bakes that used to consume
+ *  that surplus, so the ramp now shrinks toward the honest reach: ~2.6× at
+ *  q=0.0013 (≈ the 2.77× frustum), enough that a fast pan still fills, with
+ *  no standing over-mint. Ramps 1→this over q∈[0,PERSP_LEAN_REF]; 1 at q=0
+ *  (byte-identical — callers still gate on q≠0). */
+const LEAN_ARRIVAL_MULT = 3.5;
 
 /** THE CAMERA LEARNS TO LEAN (Epic B): how far below the horizon (as a
  *  fraction of viewport height) the far cull row sits when the horizon has
@@ -5245,7 +5262,11 @@ export class Renderer {
    *  Returns 1 at q=0, so callers gate on camera.q≠0 and stay
    *  byte-identical. */
   private leanFrustumBudgetMult(): number {
-    return leanBudgetMult(this.camera.q, PERSP_LEAN_REF, FRUSTUM_FAR_MULT);
+    // B6: keyed to LEAN_ARRIVAL_MULT (3), NOT FRUSTUM_FAR_MULT (5) — the
+    // arrival ramp tracks the frustum's HONEST reach (~2.77× at the shipping
+    // lean), not the grazing-lean cull ceiling. B5 removed the depth re-bakes
+    // the old 5× surplus fed, so that over-mint is standing waste now.
+    return leanBudgetMult(this.camera.q, PERSP_LEAN_REF, LEAN_ARRIVAL_MULT);
   }
 
   /** Per-item depth factor for the FX modules (particles/debris/birds) —
@@ -7699,7 +7720,56 @@ export class Renderer {
     return this.fgWorld && this.game ? this.detailAt(this.game, tx, ty) : 0;
   }
 
+  // B6: visibleTileBounds is queried ~13× per frame (every per-tile scan
+  // and every collect pass reads it), and each q>0 query unprojects four
+  // screen corners. The camera is settled for the whole frame before the
+  // first query, so the bounds are constant across the frame — memoize on
+  // the exact camera signature and skip the repeat unprojects. Result-
+  // identical (the same math, gated on an exact field-equality check), so
+  // q=0 stays byte-identical. Returns a shared object read immediately by
+  // every caller (all `const b = this.visibleTileBounds()` locals).
+  private readonly _vtb = { minTx: 0, maxTx: 0, minTy: 0, maxTy: 0 };
+  // B6: reused per-row projection captures for drawGroundChunks' chunk-corner
+  // loop (every chunk in a cy row shares two world rows).
+  private readonly _rpTop: RowProj = { y: 0, xa: 0, xb: 0 };
+  private readonly _rpBot: RowProj = { y: 0, xa: 0, xb: 0 };
+  private _vtbX = NaN;
+  private _vtbY = NaN;
+  private _vtbS = NaN;
+  private _vtbQ = NaN;
+  private _vtbYS = NaN;
+  private _vtbW = -1;
+  private _vtbH = -1;
+
   visibleTileBounds(): { minTx: number; maxTx: number; minTy: number; maxTy: number } {
+    const c = this.camera;
+    if (
+      c.x === this._vtbX &&
+      c.y === this._vtbY &&
+      c.scale === this._vtbS &&
+      c.q === this._vtbQ &&
+      c.yScale === this._vtbYS &&
+      this.w === this._vtbW &&
+      this.h === this._vtbH
+    ) {
+      return this._vtb;
+    }
+    const r = this.computeVisibleTileBounds();
+    this._vtb.minTx = r.minTx;
+    this._vtb.maxTx = r.maxTx;
+    this._vtb.minTy = r.minTy;
+    this._vtb.maxTy = r.maxTy;
+    this._vtbX = c.x;
+    this._vtbY = c.y;
+    this._vtbS = c.scale;
+    this._vtbQ = c.q;
+    this._vtbYS = c.yScale;
+    this._vtbW = this.w;
+    this._vtbH = this.h;
+    return this._vtb;
+  }
+
+  private computeVisibleTileBounds(): { minTx: number; maxTx: number; minTy: number; maxTy: number } {
     const s = this.camera.scale;
     // These are the GROUND bounds: modest pads for flat content. Tall
     // content adds its own class pad on top (TREE_PAD_S/X, PROP_PAD_S,
@@ -7891,7 +7961,18 @@ export class Renderer {
     // there is on screen to hole.
     let newStarts = 0;
 
+    const cam = this.camera;
     for (let cy = minCy; cy <= maxCy; cy++) {
+      // B6: every chunk in this cy row shares two world rows — the chunk-top
+      // row (cy*CHUNK_SIZE) and the chunk-bottom row ((cy+1)*CHUNK_SIZE).
+      // Capture each row's affine x-map ONCE here (rowProject samples the
+      // real projectWorld, so the memo is identical to worldToScreen by
+      // construction, at q=0 and q>0), then read every corner below as a
+      // multiply-add instead of a full per-corner homography.
+      rowProject(cam.scale, cam.yScale, cam.x, cam.y, cam.q, cam.snapDpr, cy * CHUNK_SIZE, this.w, this.h, this._rpTop);
+      rowProject(cam.scale, cam.yScale, cam.x, cam.y, cam.q, cam.snapDpr, (cy + 1) * CHUNK_SIZE, this.w, this.h, this._rpBot);
+      const rpTop = this._rpTop;
+      const rpBot = this._rpBot;
       for (let cx = minCx; cx <= maxCx; cx++) {
         const data = game.world.get(cx, cy);
         if (!data) continue;
@@ -7980,10 +8061,12 @@ export class Renderer {
         // half-covered darkened edge pixels. Rounding happens on THE
         // DEVICE GRID: a CSS-integer corner under a fractional dpr
         // still splits a device pixel, and both blits half-cover it.
-        const p0 = this.camera.worldToScreen(cx * CHUNK_SIZE, cy * CHUNK_SIZE, this.w, this.h);
-        const p1 = this.camera.worldToScreen((cx + 1) * CHUNK_SIZE, (cy + 1) * CHUNK_SIZE, this.w, this.h);
-        const x0 = this.camera.snapPx(p0.x);
-        const y0 = this.camera.snapPx(p0.y);
+        const p0x = rowProjectX(rpTop, cx * CHUNK_SIZE);
+        const p0y = rpTop.y;
+        const p1x = rowProjectX(rpBot, (cx + 1) * CHUNK_SIZE);
+        const p1y = rpBot.y;
+        const x0 = this.camera.snapPx(p0x);
+        const y0 = this.camera.snapPx(p0y);
         this.ctx.imageSmoothingEnabled = true;
         // Chunks are baked square and drawn uniformly foreshortened —
         // the ground compresses evenly while heights stay full. The
@@ -7992,8 +8075,8 @@ export class Renderer {
         // edge (the old hairline-seam bug).
         const gut = bakeGutter(baked.px);
         const srcSz = CHUNK_SIZE * baked.px;
-        const dw = this.camera.snapPx(p1.x) - x0;
-        const dh = this.camera.snapPx(p1.y) - y0;
+        const dw = this.camera.snapPx(p1x) - x0;
+        const dh = this.camera.snapPx(p1y) - y0;
         // THE CAMERA LEARNS TO LEAN (B-1b): under a lean the chunk is a
         // TRAPEZOID, not an axis-aligned rect — project all four world
         // corners (unsnapped: shared world corners project identically
@@ -8003,16 +8086,18 @@ export class Renderer {
         let ground: StageQuad['ground'];
         if (this.camera.q !== 0) {
           const cs = CHUNK_SIZE;
-          const W = this.w;
-          const H = this.h;
-          const tl = this.camera.worldToScreen(cx * cs, cy * cs, W, H);
-          const tr = this.camera.worldToScreen((cx + 1) * cs, cy * cs, W, H);
-          const bl = this.camera.worldToScreen(cx * cs, (cy + 1) * cs, W, H);
-          const br = this.camera.worldToScreen((cx + 1) * cs, (cy + 1) * cs, W, H);
+          // B6: same row memo — the four corners lie on the two captured
+          // rows (top rpTop, bottom rpBot), identical to projecting each.
+          const tlx = rowProjectX(rpTop, cx * cs);
+          const trx = rowProjectX(rpTop, (cx + 1) * cs);
+          const blx = rowProjectX(rpBot, cx * cs);
+          const brx = rowProjectX(rpBot, (cx + 1) * cs);
+          const ty = rpTop.y;
+          const by = rpBot.y;
           const wTop = 1 / this.camera.depthScale(cy * cs);
           const wBot = 1 / this.camera.depthScale((cy + 1) * cs);
           ground = {
-            c: [tl.x, tl.y, tr.x, tr.y, bl.x, bl.y, br.x, br.y],
+            c: [tlx, ty, trx, ty, blx, by, brx, by],
             w: [wTop, wTop, wBot, wBot],
           };
         }
