@@ -459,10 +459,14 @@ export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
   // hedgerow beside it.
   // THE SCARRED LAND: the chimney is the ONE piece of the kit tall
   // and massed enough to stop lamplight — a masonry column a head
-  // and a half over the rig. The ruin walls are waist-high tumbles
-  // (lamplight clears them like a fence), the dead tree is a
-  // trunk-mass ('cover', by collider radius), and nothing else in
-  // the kit is architecture.
+  // and a half over the rig. The stone ruin wall is a waist- to
+  // chest-high tumble (lamplight clears it like a fence); the timber
+  // ruin wall is an OPEN frame — rig-tall charred studs on a sill
+  // with the wall between them burnt away, so lamplight passes
+  // between the studs the way it passes a fence's pales (the
+  // palisade's opposite: that is a closed line of logs); the dead
+  // tree is a trunk-mass ('cover', by collider radius), and nothing
+  // else in the kit is architecture.
   Tile.ChimneyStack,
 ];
 

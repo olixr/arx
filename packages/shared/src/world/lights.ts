@@ -378,14 +378,27 @@ const SPECS: ReadonlyArray<readonly [Tile, EmitterSpec]> = [
   // and NO rows on purpose for PitLampDark, LampPostDark, and
   // WardThread — the dark postures are the tell, and the thread is a
   // mark with zero light entries.
-  // The ember bed: COALS-class, flame-gated — the night tell of a
-  // fresh burning. A slower, deeper breath than cooking coals (a bed
-  // banked under ash, not a fire being worked), man-made fire so it
-  // stands down by day and occludes like every flame (THE FLAME LAW).
+  // THE SCARRED LAND (K1): the ember bed — COALS-class, the night
+  // tell of a fresh burning. A bed banked under ash is not a fire
+  // being worked: the curve sits under the cooking coals (base 0.6
+  // against the pit lamp's 0.85 — the first cut's 0.35 × 0.45 came
+  // to a 0.16 pool that no screenshot could find at midnight; a tell
+  // that cannot be seen is not a tell) and breathes on a slow sub-Hz
+  // swell with a faint 5 Hz shiver where a coal splits. Both channels ride the flame
+  // clock (bloom `gate: 'flame'`, punch `flameGated`) so the bed reads
+  // at dusk and stands down by day — by day the painter's cold coals
+  // are all there is. NON-occluding on purpose: a knee-high ring of
+  // stones is not architecture (THE FLAME LAW's occlude rule is about
+  // walls biting their own light — the bed has no wall), and a burnt
+  // steading may seat several; the lightmap's shadow-cast pass is
+  // not owed to a ground pool. The licence is argued in lights.test.
   [Tile.EmberBed, {
-    curve: { base: 0.82, terms: [{ hz: 2.6, amp: 0.14, px: 1.9, py: 0.7 }] },
-    glows: [{ dx: 0.5, dy: 0.55, r: 0.85, rRide: true, rgb: '232, 96, 38', a: 0.2 }],
-    lights: [{ dx: 0.5, dy: 0.55, r: 2.0, rgb: [255, 150, 84], intensity: 0.42, flameGated: true, occlude: true }],
+    curve: { base: 0.6, terms: [{ hz: 0.7, amp: 0.12, px: 1.9, py: 0.7 }, { hz: 5, amp: 0.04, px: 0.6 }] },
+    // Bloom 0.40 (K1 polish; was 0.32 — the coal core read as a
+    // faint smudge at zoom 1.3): the pool row (r/intensity) and the
+    // curve are untouched, so the licence in lights.test still holds.
+    glows: [{ dx: 0.5, dy: 0.55, r: 0.9, rRide: true, rgb: '255, 122, 42', a: 0.4, gate: 'flame' }],
+    lights: [{ dx: 0.5, dy: 0.55, r: 2.6, rgb: [255, 122, 42], intensity: 0.45, flameGated: true }],
   }],
   // The gloom stone: GlowShroom-class — a cold swell, never a
   // flicker, no flame gate, non-occluding (it was here first and it

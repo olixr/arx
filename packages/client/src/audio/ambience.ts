@@ -54,6 +54,18 @@
  *    renderer draws no fall. Never a wash: the loop's roil grains
  *    tumble inside it, and the earshot gate keeps it a soft far hush
  *    that only finds its voice at the plunge pool.
+ *  - SMOLDER (near an ember bed — THE SCARRED LAND K1): the sound of
+ *    a fire that is over but not out. Granular one-shots ONLY, on the
+ *    fall's earshot pattern: main.ts scans for the nearest EmberBed
+ *    tiles on the Riftgate cadence and feeds a SmolderEar; inside
+ *    earshot the bed deals tick clusters (2-20ms noise grains through
+ *    a bandpass — a coal's skin splitting), the occasional settle (a
+ *    low soft thump as the ash shifts) and the rare pop (one grain
+ *    with a sine pip — a check letting go). Closer is busier and
+ *    brighter; at the edge of earshot it is one dark tick a few
+ *    seconds apart. THE BAN holds in full: there is no bed under the
+ *    grains, no gain envelope on noise, nothing continuous — silence
+ *    between ticks is the voice.
  *  - RIFTGATE (near a portal): a low beating drone — detuned sine
  *    pairs, a slow-wobbling harmonic, a hollow whistle riding on top
  *    — that swells as the listener approaches (closeness², so it
@@ -71,6 +83,59 @@ import type { AudioEngine } from './engine.js';
 import { windScalarAt } from '../render/grass.js';
 import { birdsK, cricketsK, type ZoneWeights } from './zones.js';
 import { SILENT_EAR, type FallEar } from './falls.js';
+import { Tile } from '@arx/shared';
+
+/**
+ * SMOLDER EARSHOT — where a dead fire's ticking reaches the ear, pure
+ * and testable (the falls.ts pattern). `near` is the closeness gate,
+ * `pan` the stereo seat of the beds' acoustic center.
+ */
+export interface SmolderEar {
+  /** 0..1 gate for the smolder voice — 0 is out of earshot. */
+  near: number;
+  /** Stereo seat, -1..1. */
+  pan: number;
+}
+
+/** The silence every quiet scan returns (treat as frozen). */
+export const SILENT_SMOLDER: SmolderEar = { near: 0, pan: 0 };
+
+/** Tiles at which a bed's ticking fades to nothing — also the scan
+ *  radius, so closeness reaches exactly 0 at the edge and never pops. */
+export const SMOLDER_EARSHOT = 9;
+
+/**
+ * Walk the square around the ear; every ember bed contributes
+ * closeness²-weighted presence and seats the voice by its offset. One
+ * bed underfoot is full voice; a steading of them is no louder than
+ * one, only wider (the soft knee) — this is a whisper, not a chorus.
+ */
+export function scanSmolderEar(
+  ground: (tx: number, ty: number) => number | undefined,
+  px: number,
+  py: number,
+): SmolderEar {
+  const cx = Math.floor(px);
+  const cy = Math.floor(py);
+  let loud = 0;
+  let panAcc = 0;
+  for (let ty = cy - SMOLDER_EARSHOT; ty <= cy + SMOLDER_EARSHOT; ty++) {
+    for (let tx = cx - SMOLDER_EARSHOT; tx <= cx + SMOLDER_EARSHOT; tx++) {
+      if (ground(tx, ty) !== Tile.EmberBed) continue;
+      const mx = tx + 0.5;
+      const my = ty + 0.5;
+      const c = 1 - Math.hypot(mx - px, my - py) / SMOLDER_EARSHOT;
+      if (c <= 0) continue;
+      const w = c * c;
+      loud += w;
+      panAcc += (mx - px) * w;
+    }
+  }
+  if (loud <= 0) return SILENT_SMOLDER;
+  const near = Math.min(1, Math.sqrt(loud));
+  const pan = Math.max(-0.65, Math.min(0.65, panAcc / loud / 6));
+  return { near, pan };
+}
 
 export class AmbienceSystem {
   private built = false;
@@ -93,6 +158,11 @@ export class AmbienceSystem {
   private fallRumble: GainNode | null = null;
   private fallLp: BiquadFilterNode | null = null;
   private fallPan: StereoPannerNode | null = null;
+  /** The smolder voice's grain bank: eight sin²-windowed noise grains,
+   *  4-22ms, pre-rendered once — a tick is one of these at a random
+   *  rate through a bandpass, never a synthesized bed. */
+  private crackleGrains: AudioBuffer[] = [];
+  private nextSmolderAt = 0;
   /** The synth rustle standing in until the recorded loop decodes. */
   private rustleSynth: AudioBufferSourceNode | null = null;
   /**
@@ -105,7 +175,7 @@ export class AmbienceSystem {
   /** Last owl voice dealt (index; owlCalls.length = the synth call). */
   private owlLastPick = -1;
   /** Debug mirrors for live verification. */
-  gates = { wind: 0, birds: 0, crickets: 0, cave: 0, portal: 0, fall: 0 };
+  gates = { wind: 0, birds: 0, crickets: 0, cave: 0, portal: 0, fall: 0, smolder: 0 };
   /**
    * Dev lever (soundlab.html): when set, stands in for the wind
    * field's gust scalar (0..1) so the rustle texture can be
@@ -121,6 +191,8 @@ export class AmbienceSystem {
    * hearing range) — main.ts scans for it on a throttle and feeds it
    * through here. `fall` is the fall-earshot scan's verdict on the
    * falling water around the listener (audio/falls.ts), same cadence.
+   * `smolder` is the ember-bed earshot scan (scanSmolderEar above),
+   * fed on the Riftgate cadence too.
    */
   update(
     x: number,
@@ -130,6 +202,7 @@ export class AmbienceSystem {
     tSec: number,
     portalNear = 0,
     fall: FallEar = SILENT_EAR,
+    smolder: SmolderEar = SILENT_SMOLDER,
   ): void {
     const ctx = this.engine.ctx;
     const bus = this.engine.ambience;
@@ -181,6 +254,7 @@ export class AmbienceSystem {
         cave: w.cave,
         portal: pg,
         fall: fBody + fRumble,
+        smolder: smolder.near,
       };
     }
 
@@ -223,12 +297,34 @@ export class AmbienceSystem {
       if (portalNear > 0.2) this.portalMood(ctx, bus, t, portalNear);
       this.nextPortalMoodAt = t + 2.8 + Math.random() * 5;
     }
+    if (t >= this.nextSmolderAt) {
+      const sn = smolder.near;
+      if (sn > 0.04) this.smolderTick(ctx, bus, t, sn, smolder.pan);
+      // Closer is busier: a bed at your feet ticks every ~0.3-0.9s;
+      // at the edge of earshot one dark tick every few seconds. The
+      // gap is rolled even when silent so arrival never bunches.
+      this.nextSmolderAt = t + 0.25 + Math.random() * (0.6 + 2.6 * (1 - sn));
+    }
   }
 
   // ---- persistent graph ------------------------------------------------
 
   private build(ctx: AudioContext, bus: GainNode): void {
     this.built = true;
+    // The smolder grain bank (see smolderTick): eight short windowed
+    // noise grains. Rendered once; a tick plays one at a random rate.
+    this.crackleGrains = [];
+    for (let g = 0; g < 8; g++) {
+      const ms = 4 + g * 2.5; // 4..21.5 ms
+      const n = Math.max(16, Math.floor((ctx.sampleRate * ms) / 1000));
+      const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) {
+        const win = Math.sin((Math.PI * i) / n);
+        d[i] = (Math.random() * 2 - 1) * win * win;
+      }
+      this.crackleGrains.push(buf);
+    }
     const loopNoise = (): AudioBufferSourceNode => {
       const buf = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate);
       const d = buf.getChannelData(0);
@@ -677,6 +773,92 @@ export class AmbienceSystem {
       g.connect(carrier);
       o.start(at);
       o.stop(at + 0.03);
+    }
+  }
+
+  /**
+   * SMOLDER: one moment of a dead fire. Three grammars, dealt by
+   * chance —
+   *  - the TICK CLUSTER (most of them): 1-4 grains from the bank at a
+   *    random rate, a few tens of ms apart, through a bandpass seated
+   *    where a coal's skin splits (2.4-5 kHz); distance darkens it
+   *    through the lowpass before it quiets it (the fall's law);
+   *  - the SETTLE: the ash shifting — a low soft sine thump (110→58
+   *    Hz, 90 ms) and one dull grain after it;
+   *  - the POP (rare): a check letting go — the loudest grain plus a
+   *    short sine pip riding on it.
+   * Every voice here is a one-shot under 120 ms; nothing loops,
+   * nothing holds a gain on noise (THE BAN).
+   */
+  private smolderTick(ctx: AudioContext, bus: GainNode, t: number, near: number, seat: number): void {
+    if (this.crackleGrains.length === 0) return;
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = seat + (Math.random() * 2 - 1) * 0.12;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1400 + 4200 * near;
+    lp.Q.value = 0.4;
+    lp.connect(pan);
+    pan.connect(bus);
+    const loud = Math.pow(near, 1.5);
+    const grain = (at: number, vol: number, rate: number, bp: number): void => {
+      const src = ctx.createBufferSource();
+      src.buffer = this.crackleGrains[Math.floor(Math.random() * this.crackleGrains.length)]!;
+      src.playbackRate.value = rate;
+      const f = ctx.createBiquadFilter();
+      f.type = 'bandpass';
+      f.frequency.value = bp;
+      f.Q.value = 1.4;
+      const g = ctx.createGain();
+      g.gain.value = vol;
+      src.connect(f);
+      f.connect(g);
+      g.connect(lp);
+      src.start(at);
+      src.stop(at + 0.06);
+    };
+    const roll = Math.random();
+    if (roll < 0.14) {
+      // The pop.
+      grain(t, 0.16 * loud, 0.9 + Math.random() * 0.4, 3200 + Math.random() * 1400);
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      const f0 = 1900 + Math.random() * 900;
+      o.frequency.setValueAtTime(f0, t);
+      o.frequency.exponentialRampToValueAtTime(f0 * 0.6, t + 0.03);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.05 * loud, t + 0.003);
+      g.gain.exponentialRampToValueAtTime(0.0005, t + 0.04);
+      o.connect(g);
+      g.connect(lp);
+      o.start(t);
+      o.stop(t + 0.05);
+      return;
+    }
+    if (roll < 0.36) {
+      // The settle.
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(110, t);
+      o.frequency.exponentialRampToValueAtTime(58, t + 0.09);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.045 * loud, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0005, t + 0.1);
+      o.connect(g);
+      g.connect(lp);
+      o.start(t);
+      o.stop(t + 0.11);
+      grain(t + 0.05 + Math.random() * 0.04, 0.05 * loud, 0.55 + Math.random() * 0.3, 1600);
+      return;
+    }
+    // The tick cluster.
+    const n = 1 + Math.floor(Math.random() * 4);
+    let at = t;
+    for (let i = 0; i < n; i++) {
+      grain(at, (0.04 + Math.random() * 0.07) * loud, 0.7 + Math.random() * 1.0, 2400 + Math.random() * 2600);
+      at += 0.018 + Math.random() * 0.07;
     }
   }
 

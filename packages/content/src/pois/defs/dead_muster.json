@@ -25,7 +25,9 @@
     "approachPath": true,
     "scatter": [
       { "tile": "BonePile", "count": 4 },
-      { "tile": "CaveRubble", "count": 2 }
+      { "tile": "CaveRubble", "count": 2 },
+      { "tile": "AshHeap", "count": 1 },
+      { "tile": "CharredBeam", "count": 2 }
     ]
   },
   "signs": [

@@ -42,6 +42,9 @@ import { Tile } from '@arx/shared';
  *   ^  mine brace      )  wall fossil     *  wall web
  *   d  drip pool       Q  cold camp       X  looted chest
  *   y  grave candles   +  iron grate
+ *   -- THE SCARRED LAND shelf (tiles 505–511, K1 THE COLD HEARTH) --
+ *   "  ruin wall (stone crest)   /  charred beam   <  collapsed roof
+ *   %  ash heap                  @  ember bed
  *   (the wall-hung five — & i j ^ ) * — only read walled with rock
  *   due north; stamp them under a '#' row or accept their
  *   freestanding fallback form)
@@ -131,6 +134,14 @@ export const PREFAB_TILES: Record<string, Tile> = {
   X: Tile.LootedChest,
   y: Tile.CandleShrine,
   '+': Tile.IronGrate,
+  // THE SCARRED LAND (the contested lands, K1): the cold hearth's
+  // family joins the legend so a set-piece can burn — the crest is
+  // the snapped wall's two stubs, the slash the timber that fell.
+  '"': Tile.RuinWallStone,
+  '/': Tile.CharredBeam,
+  '<': Tile.CollapsedRoof,
+  '%': Tile.AshHeap,
+  '@': Tile.EmberBed,
 };
 
 /** Horizontal mirror — the cheap doubling of every authored variant. */

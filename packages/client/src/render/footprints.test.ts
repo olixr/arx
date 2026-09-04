@@ -8,7 +8,7 @@ import {
   printInkFor,
   type FootWord,
 } from './footprints.js';
-import { Tile } from '@arx/shared';
+import { Detail, Tile } from '@arx/shared';
 
 const DT = 1 / 60;
 
@@ -104,6 +104,28 @@ test('print ink: dirt/sand/snow/soil take prints; the rest swallow them', () => 
   // Snow holds a track longest; wind takes sand soonest.
   assert.ok(printInkFor(Tile.Snow)!.lifeMult > printInkFor(Tile.Dirt)!.lifeMult);
   assert.ok(printInkFor(Tile.Sand)!.lifeMult < 1);
+});
+
+/** THE SCARRED LAND: ash takes a pale print in dark ground — the
+ *  reverse of snow — off the heap tile and off the baked ash pan, and
+ *  the pan decides before the ground under it does. */
+test('print ink: ash is the reverse of snow, and the ash pan overrides its ground', () => {
+  const ash = printInkFor(Tile.AshHeap);
+  assert.ok(ash, 'the ash heap takes a print');
+  const snow = printInkFor(Tile.Snow)!;
+  const earth = printInkFor(Tile.Dirt)!;
+  // Pale press, dark rim: the RGB sum of the press outranks the rim.
+  const lum = (hex: string): number => parseInt(hex.slice(1, 3), 16) + parseInt(hex.slice(3, 5), 16) + parseInt(hex.slice(5, 7), 16);
+  assert.ok(lum(ash!.press) > lum(ash!.rim!), 'ash presses pale and rims dark');
+  assert.ok(lum(snow.press) < lum(snow.rim!), 'snow presses dark and rims pale');
+  assert.ok(lum(ash!.press) > lum(earth.press), 'the ash press is paler than earth');
+  assert.ok(ash!.lifeMult > 1 && ash!.lifeMult < snow.lifeMult, 'ash holds a track, snow longest');
+  // The Detail decides before the ground: ash over stone prints; ash
+  // over dirt prints ASH, not earth; no detail leaves the ground its say.
+  assert.equal(printInkFor(Tile.StoneFloor, Detail.Ash), ash);
+  assert.equal(printInkFor(Tile.Dirt, Detail.Ash), ash);
+  assert.equal(printInkFor(Tile.Dirt, Detail.None), earth);
+  assert.equal(printInkFor(Tile.StoneFloor, Detail.Bones), null, 'bones are not ash');
 });
 
 /** THE PRINT IS THE FOOT: every word has a to-scale, finite shape. */

@@ -183,11 +183,16 @@ function golden(
       lights.push({ x: tx + 0.5, y: ty + 0.5, r: 5 * flick, rgb: [255, 205, 135], intensity: 0.9 * flame * flick, occlude: true, z: 1.4 });
     }
   } else if (tile === Tile.EmberBed) {
-    // THE SCARRED LAND (2026-09-04): the ember bed's banked breath —
-    // flame-gated coals, occluding.
-    const breath = 0.82 + Math.sin(t * 2.6 + tx * 1.9 + ty * 0.7) * 0.14;
-    glows.push({ x: tx + 0.5, y: ty + 0.55, gy: ty + 0.55, z: 0, r: 0.85 * breath, rgb: '232, 96, 38', a: 0.2 * breath * boost });
-    lights.push({ x: tx + 0.5, y: ty + 0.55, r: 2.0, rgb: [255, 150, 84], intensity: 0.42 * flame * breath, occlude: true });
+    // THE SCARRED LAND K1 (2026-09-04): the ember bed's banked breath
+    // — a low slow swell with a coal-split shiver, both channels on
+    // the flame clock (the bloom too: nothing shows by day), the pool
+    // NON-occluding under the ground-pool licence (lights.test).
+    const breath = 0.6 + Math.sin(t * 0.7 + tx * 1.9 + ty * 0.7) * 0.12 + Math.sin(t * 5 + tx * 0.6) * 0.04;
+    // Golden moved 0.32 → 0.40 with the row (K1 polish, 2026-09-04):
+    // the bloom alone brightens so the coal core reads at zoom 1.3;
+    // the pool (r 2.6, i 0.45) and the breath curve are unchanged.
+    glows.push({ x: tx + 0.5, y: ty + 0.55, gy: ty + 0.55, z: 0, r: 0.9 * breath, rgb: '255, 122, 42', a: 0.4 * flame * breath });
+    lights.push({ x: tx + 0.5, y: ty + 0.55, r: 2.6, rgb: [255, 122, 42], intensity: 0.45 * flame * breath });
   } else if (tile === Tile.GloomStone) {
     const swell = 0.8 + Math.sin(t * 1.1 + tx * 0.7 + ty * 1.3) * 0.2;
     glows.push({ x: tx + 0.5, y: ty + 0.42, gy: ty + 0.42, z: 0, r: 0.9 * swell, rgb: '128, 140, 196', a: 0.12 * swell * boost });

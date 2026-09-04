@@ -997,3 +997,50 @@ test('banner pole band: dyed poles round-trip, defs stand, hash pole untouched',
   assert.equal(bannerPoleInfo(Tile.BannerPoleDyed + DYE_COUNT), null);
   assert.throws(() => bannerPoleTile(DYE_COUNT));
 });
+
+test('scarred-land run families: the two ruin walls stand apart and merge with their own kind only', () => {
+  // The roster is exactly the two ruin walls — the sixth (stone) and
+  // seventh (char) run-merging families. No diagonal posture, no gate:
+  // a ruin turns on a quoin at the tile heart, and nothing passes it.
+  assert.deepEqual([...RUIN_WALL_TILES].sort((a, b) => a - b), [Tile.RuinWallStone, Tile.RuinWallWood]);
+  assert.equal((Tile as Record<string, number | string>)['RuinWallDiagNE'], undefined, 'no diagonal ruin');
+  assert.equal((Tile as Record<string, number | string>)['RuinWallGate'], undefined, 'no ruin gate');
+  for (const tile of RUIN_WALL_TILES) {
+    const def = tileDef(tile);
+    assert.ok(def.raised, `${def.name} renders raised`);
+    assert.ok(def.solid, `${def.name} is cover — a body cannot walk a wall`);
+    assert.ok(def.topColor !== undefined, `${def.name} declares its lit top for the bird's eye`);
+    assert.equal(doorInfo(tile), null, `${def.name} is no door`);
+    assert.ok(isScarredTile(tile), `${def.name} inside the kit's band`);
+    // THE SEPARATE-MASONRY LAW, sixth and seventh families: never a
+    // building wall (so the roofer, keyed on WALL_RUN_TILES, can never
+    // grow a roof over a ruin), never a fence, never garrison masonry,
+    // never the camp's logs, never the garden's green, never the iron,
+    // never an interior boundary. The fire stopped HERE.
+    assert.ok(!WALL_RUN_TILES.includes(tile), `${def.name} out of wall runs`);
+    assert.ok(!FENCE_TILES.has(tile), `${def.name} out of the fence family`);
+    assert.ok(!GARRISON_TILES.has(tile), `${def.name} out of the garrison family`);
+    assert.ok(!PALISADE_TILES.has(tile), `${def.name} out of the palisade family`);
+    assert.ok(!HEDGE_TILES.has(tile), `${def.name} out of the hedge family`);
+    assert.ok(!IRON_FENCE_TILES.has(tile), `${def.name} out of the iron family`);
+    assert.ok(!INTERIOR_BOUNDARY_TILES.includes(tile), `${def.name} never encloses a room`);
+    // THE WAIST LAW, as the palisade's opposite: a tumbled stone wall
+    // is waist- to chest-high, and the timber wall is an open frame
+    // (rig-tall studs with nothing between them) — lamplight clears
+    // the one and passes between the other's studs.
+    assert.ok(!LIGHT_BLOCKING_TILES.includes(tile), `${def.name} clears lamplight`);
+    // A run family fills its tile in plan (no centred collider radius):
+    // a body brushes the course it sees.
+    assert.equal(tileColliderRadius(tile), null, `${def.name} is a full-tile mass`);
+  }
+  // And the living walls never reach for a ruin either: the ruin ids
+  // sit outside every living wall mask the wall painters and hangers
+  // read (nothing hangs on a ruin; no diagonal wall turns into one).
+  for (const tile of RUIN_WALL_TILES) {
+    assert.ok(!DIAG_WALL_TILES.has(tile) && !HANGABLE_WALL_TILES.has(tile), `${tileDef(tile).name} outside the living wall masks`);
+  }
+  // The load-bearing law splits the pair: stone stands (no blow brings
+  // down a course), char comes down in three (charbeam).
+  assert.equal(destructibleInfo(Tile.RuinWallStone), null, 'stone is load-bearing');
+  assert.deepEqual(destructibleInfo(Tile.RuinWallWood), { kind: 'charbeam', respawnSec: 600, hits: 3 });
+});

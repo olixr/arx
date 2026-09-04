@@ -16,7 +16,11 @@
  *   crest offset AWAY from the world's one sun (a depression's lit
  *   wall faces the sun; the terrain sun-law's mirror). Grass, stone,
  *   wood, and wet ground swallow the mark — extend PRINT_INKS to
- *   teach a new material, nothing else.
+ *   teach a new material, nothing else. THE SCARRED LAND adds the
+ *   one reversed ink: ash (the AshHeap tile and the baked Detail.Ash
+ *   pan) takes a PALE print in DARK ground — the boot scrapes the
+ *   grey off the black — the mirror of snow, and the Detail decides
+ *   before the ground does (ash lies on top of whatever it fell on).
  * - THE PRINT SPEAKS THE STYLE. People leave ABSTRACT marks — a
  *   single chamfered scuff chip per step (boot a faceted tread chip,
  *   bare a softer smaller chip): the alternating rhythm of the trail
@@ -40,7 +44,7 @@
  *   (FOOTPRINT_TUNE.enabled) empties the field instantly.
  */
 
-import { ART_SUN_X, ART_SUN_Y, Tile } from '@arx/shared';
+import { ART_SUN_X, ART_SUN_Y, Detail, Tile } from '@arx/shared';
 import { SOIL_TILES } from './terrain.js';
 
 /** All the feet the world walks on: the beast rig's foot words plus
@@ -94,14 +98,23 @@ const INK_EARTH: PrintInk = { press: '#3a2c1d', rim: '#c3b291', a: 0.38, rimA: 0
 const INK_PATH: PrintInk = { press: '#3a2c1d', rim: null, a: 0.26, rimA: 0, lifeMult: 0.8 };
 const INK_SAND: PrintInk = { press: '#7c6a44', rim: '#efe3bd', a: 0.46, rimA: 0.46, lifeMult: 0.85 };
 const INK_SNOW: PrintInk = { press: '#7c90bc', rim: '#f7fafe', a: 0.62, rimA: 0.8, lifeMult: 1.25 };
+/** Ash: the reverse of snow — the press is the PALE grey the boot
+ *  packs, the crest the dark clinker it turns up; ash holds a track
+ *  almost as long as snow (nothing grows back through it). */
+const INK_ASH: PrintInk = { press: '#b9b6bd', rim: '#2a2529', a: 0.5, rimA: 0.42, lifeMult: 1.15 };
 
 /**
  * What a lifted foot leaves on each ground. Null = the material takes
  * no print (turf springs back, stone doesn't yield, water closes).
  * New materials join here and nowhere else.
  */
-export function printInkFor(tile: number | undefined): PrintInk | null {
+export function printInkFor(tile: number | undefined, detail = 0): PrintInk | null {
+  // The baked ash pan lies OVER the ground: it takes the print before
+  // the material under it gets a say (a stone floor under ash prints).
+  if (detail === Detail.Ash) return INK_ASH;
   switch (tile) {
+    case Tile.AshHeap:
+      return INK_ASH;
     case Tile.Dirt:
       return INK_EARTH;
     case Tile.Path:

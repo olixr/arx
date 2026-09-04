@@ -155,7 +155,7 @@ import {
   rarTierOf,
   type GroundDropEnv,
 } from './groundItems.js';
-import { LAYER_GROUND, LAYER_WORLD, Particles, type Landing, type Particle } from './particles.js';
+import { LAYER_GROUND, LAYER_WORLD, PARTICLE_CAP, Particles, type Landing, type Particle } from './particles.js';
 import { GroundMarks } from './fx/groundMarks.js';
 import { EffectSystem, type CastParams, type EffectHandle } from './fx/effects.js';
 import { EFFECTS } from './fx/library/index.js';
@@ -219,6 +219,7 @@ import { paintTree, saplingModel, treeExtent,
   treeModel, TREE_VARIANT_COUNT, treeVariantHash, type TreeModel } from './trees.js';
 import { dust } from './matter/dust.js';
 import { fire } from './matter/fire.js';
+import { smoke } from './matter/smoke.js';
 import { frost } from './matter/frost.js';
 import { storm } from './matter/storm.js';
 import { radiance } from './matter/radiance.js';
@@ -6221,6 +6222,59 @@ export class Renderer {
   /** Visible Riftgates this frame — filled by the static-light scan,
    * consumed by the blight-apron pass after the grass under-pass. */
   private readonly portalsInView: Array<{ tx: number; ty: number; up: boolean }> = [];
+  /**
+   * THE SCARRED LAND's smoke grain: one live exhale per ember bed,
+   * keyed by tile, holding the clock time its plume runs until. The
+   * scan below re-arms a bed only after its last exhale has died, so
+   * a dt spike can never stack plumes on one pan, and a bed that
+   * scrolls out of view simply lets its ≤12s emitter run down.
+   */
+  private readonly emberExhales = new Map<number, number>();
+
+  /**
+   * THE SMOKE GRAIN (THE SCARRED LAND K1): a dead fire under ash does
+   * not chimney — it EXHALES. Each visible ember bed within earshot of
+   * the camera (~20 tiles) rolls a dt-gated die for one thin MATTER
+   * smoke plume (scale 0.2, a short 1.0s emitter — the particle cap's
+   * 12s ceiling holds regardless) from a spot in its ash pan. The die
+   * rides the FLAME CLOCK like every other channel of the bed (a bed
+   * that breathes grey at noon reads as a live fire; the first cut's
+   * un-gated 0.5/s roll stood a 1.2-tile column over cold ash at
+   * midday) and lands a mean one exhale per ~17s at full dark (the
+   * 0.06/s die; then the bed holds its breath four seconds past the
+   * plume's death before it may roll again) — a smoulder is a RARE
+   * breath, not a chimney (the first cut's 0.15/s + 0.8s re-arm
+   * puffed every ~7s, which read as a fire still going). One live
+   * exhale per bed (the emberExhales ledger), nothing past 70% of
+   * PARTICLE_CAP — a burnt steading of beds stays a whisper under a
+   * fight's matter, never over it.
+   * Living-matter law: the plume is the smoke material's own mastered
+   * voice; nothing here hand-rolls a puff.
+   */
+  private emberBedExhale(tx: number, ty: number, t: number, flame: number): void {
+    if (flame < 0.05) return;
+    const dx = tx + 0.5 - this.camera.x;
+    const dy = ty + 0.5 - this.camera.y;
+    if (dx * dx + dy * dy > 20 * 20) return;
+    const key = ty * 65536 + tx;
+    const until = this.emberExhales.get(key);
+    if (until !== undefined && t < until) return;
+    if (this.particles.count() > PARTICLE_CAP * 0.7) return;
+    if (Math.random() >= this.frameDt * 0.06 * flame) return;
+    const dur = 1.0;
+    smoke.deployments.plume!(
+      { particles: this.particles },
+      tx + 0.5 + (Math.random() - 0.5) * 0.28,
+      ty + 0.57 + (Math.random() - 0.5) * 0.12,
+      { scale: 0.2, dur },
+    );
+    this.emberExhales.set(key, t + dur + 4);
+    // The ledger forgets beds that have stopped exhaling — a long
+    // walk through a burnt country must not grow it without bound.
+    if (this.emberExhales.size > 64) {
+      for (const [k, v] of this.emberExhales) if (v < t) this.emberExhales.delete(k);
+    }
+  }
 
   private collectStaticLights(
     game: ClientGame,
@@ -6255,6 +6309,10 @@ export class Renderer {
           // as pool + corona, cores glinting post) — never the flat
           // post-pass disc the coded emitters below still use.
           collectEmitter(spec, tx, ty, t, flame, boost, this.camera.yScale, deckLift, this.seatedGlows, this.lights);
+          // THE SCARRED LAND: the ember bed exhales from HERE — the one
+          // per-frame scan that knows every visible bed (the Riftgate
+          // precedent below). Painters never draw smoke.
+          if (tile === Tile.EmberBed) this.emberBedExhale(tx, ty, t, flame);
         } else if (tile === Tile.PortalDown || tile === Tile.PortalUp) {
           // The Riftgate: bloom rides the vortex heart (raised off the
           // ground — divide the squash back out, the projAir law), a
@@ -20565,7 +20623,12 @@ export class Renderer {
     const n = Math.min(lifts - last, LIFT_RING);
     for (let k = lifts - n; k < lifts; k++) {
       const ev = legs.liftRing[k & (LIFT_RING - 1)]!;
-      const ink = printInkFor(this.fgGroundAt(Math.floor(ev.x), Math.floor(ev.y)));
+      // The baked ash pan (Detail.Ash) takes the print before the
+      // floor under it gets a say — the detail rides along.
+      const ink = printInkFor(
+        this.fgGroundAt(Math.floor(ev.x), Math.floor(ev.y)),
+        this.fgDetailAt(Math.floor(ev.x), Math.floor(ev.y)),
+      );
       if (!ink) continue;
       this.footprints.stamp(ev.x, ev.y, ev.dir, ev.side, ev.speed, word, sizeK, ink, now, faint);
     }

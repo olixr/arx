@@ -328,6 +328,19 @@ const STORY_TABLES: Record<DungeonTheme, Vignette[]> = {
       id: 'old_kingdom', weight: 1.5, anchor: Tile.GrandPillar, styles: ['hall'],
       pieces: [{ tile: Tile.GrandPillar, role: 'near', opt: true }],
     },
+    {
+      // THE SCARRED LAND (K1): the hall that burned with its people
+      // in it — the roof came down, the fire it fed is banked to
+      // embers, and what was in the strongbox went out the door
+      // before the smoke cleared. Ash pans the floor around the bed.
+      id: 'burnt_steading', weight: 2, anchor: Tile.CollapsedRoof, styles: ['hall'],
+      pieces: [
+        { tile: Tile.EmberBed, role: 'near' },
+        { tile: Tile.LootedChest, role: 'near' },
+        { tile: Tile.AshHeap, role: 'near', opt: true },
+        { tile: Tile.CharredBeam, role: 'near', opt: true },
+      ],
+    },
   ],
   warren: [
     {
@@ -423,6 +436,10 @@ const PROP_CAPS: ReadonlyMap<Tile, number> = new Map([
   [Tile.IronGrate, 4],
   [Tile.ChainedSkeleton, 5],
   [Tile.BrokenPillar, 5],
+  // THE SCARRED LAND: one burning per dungeon reads as a story; three
+  // read as a theme the halls never earned.
+  [Tile.CollapsedRoof, 2],
+  [Tile.EmberBed, 2],
 ]);
 
 /**
@@ -469,6 +486,11 @@ const PLACED_PROP_TILES: ReadonlySet<Tile> = new Set([
   Tile.LootedChest,
   Tile.CandleShrine,
   Tile.IronGrate,
+  // THE SCARRED LAND (K1 THE COLD HEARTH)
+  Tile.CollapsedRoof,
+  Tile.EmberBed,
+  Tile.AshHeap,
+  Tile.CharredBeam,
 ]);
 
 const FLOORISH: ReadonlySet<Tile> = new Set([Tile.CaveFloor, Tile.DungeonFloor, Tile.CaveRubble]);
@@ -481,7 +503,15 @@ const ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
  * inside its own spread, and a camp on a shoal reads as a mistake,
  * not a story.
  */
-const DRY_FEET: ReadonlySet<Tile> = new Set([Tile.ColdCamp, Tile.CandleShrine, Tile.LootedChest]);
+const DRY_FEET: ReadonlySet<Tile> = new Set([
+  Tile.ColdCamp,
+  Tile.CandleShrine,
+  Tile.LootedChest,
+  // THE SCARRED LAND: a fire that still keeps embers, and the ash it
+  // left, never stand at the water's lip — wet ash is mud.
+  Tile.EmberBed,
+  Tile.AshHeap,
+]);
 
 export function dressAll(b: DungeonBuild): void {
   const { c, rDress } = b;

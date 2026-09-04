@@ -62,6 +62,7 @@ import { VoicePlayer } from './audio/voice.js';
 import { AudioMenu } from './ui/audioMenu.js';
 import { skySeam, zoneWeights } from './audio/zones.js';
 import { scanFallEar, SILENT_EAR, type FallEar } from './audio/falls.js';
+import { scanSmolderEar, SILENT_SMOLDER, type SmolderEar } from './audio/ambience.js';
 import { setupTouch } from './input/touch.js';
 import { DYE_SWATCHES, arenaEmblemUrl, buildableIconUrl, dockGlyphUrl, itemIconUrl, uiIconUrl } from './render/icons.js';
 import { abilityIconUrl } from './render/abilityIcons.js';
@@ -2154,9 +2155,12 @@ game.onFx = (fx) => {
           // The commons' wayside stone: the guardian hound and the
           // shrine's rubble are the street's masonry — they land like it.
           kind === 'guardian' || kind === 'wayshrine' ||
-          // THE SCARRED LAND: a whole roof coming down, a marked
-          // stone, and a spoil slide land with masonry's weight.
-          // Nothing in the kit BOOMS — a ruin has no hollow left.
+          // THE SCARRED LAND: a whole roof coming down (rafters,
+          // ridge board, the thatch dome), a marked stone, and a
+          // spoil slide land with masonry's weight. A charred beam
+          // (charbeam) is brittle char and nails — it breaks at the
+          // joinery weight below, and nothing in the kit BOOMS: a
+          // ruin has no hollow left.
           kind === 'roofheap' || kind === 'stone' || kind === 'rubble'
           ? 3.2
           : 2.2,
@@ -3088,6 +3092,7 @@ function anyUiOpen(now: number): boolean {
 }
 let portalNear = 0;
 let fallEar: FallEar = SILENT_EAR;
+let smolderEar: SmolderEar = SILENT_SMOLDER;
 
 let lastOwnPose = 0;
 let padInteractWasDown = false;
@@ -4077,6 +4082,10 @@ function frame(now: number): void {
         }
       }
       portalNear = best === Infinity ? 0 : Math.max(0, Math.min(1, 1 - best / 9.5));
+      // THE SCARRED LAND: the ember beds' ticking rides the same
+      // cadence (a 19×19 walk, ~360 reads) — the smolder voice can
+      // only sound where a bed tile stands (audio/ambience.ts).
+      smolderEar = scanSmolderEar((tx, ty) => game.world.groundAt(tx, ty), own.x, own.y);
       // The fall scan runs on the SAME cadence but a HALF-PHASE later:
       // both scans landing in one frame stacked into a periodic spike
       // (one visibly slow frame every 400ms on throttled machines).
@@ -4094,7 +4103,7 @@ function frame(now: number): void {
         own.y,
       );
     }
-    ambience.update(own.x, own.y, w, hours, now / 1000, portalNear, fallEar);
+    ambience.update(own.x, own.y, w, hours, now / 1000, portalNear, fallEar, smolderEar);
   } else {
     // Logged out: no ground underfoot, nothing to gauge.
     dangerGauge.update(null);

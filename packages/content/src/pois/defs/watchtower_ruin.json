@@ -58,6 +58,14 @@
       {
         "tile": "BonePile",
         "count": 2
+      },
+      {
+        "tile": "AshHeap",
+        "count": 2
+      },
+      {
+        "tile": "CharredBeam",
+        "count": 1
       }
     ]
   },

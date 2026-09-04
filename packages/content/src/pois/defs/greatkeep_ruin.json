@@ -25,7 +25,9 @@
     "approachPath": true,
     "scatter": [
       { "tile": "CaveRubble", "count": 4 },
-      { "tile": "Rock", "count": 2 }
+      { "tile": "Rock", "count": 2 },
+      { "tile": "AshHeap", "count": 2 },
+      { "tile": "CharredBeam", "count": 2 }
     ]
   },
   "signs": [

@@ -1,4 +1,4 @@
-import { TILE_SKIP, Tile } from '@arx/shared';
+import { Detail, TILE_SKIP, Tile } from '@arx/shared';
 import type { PrefabDef, PrefabSpawn } from '../maps/prefab.js';
 import { LANDMARK_PREFABS } from './landmarks.js';
 import { QUIET_WAYSIDE_CAP, WING_POOL_CAP, declareInfluence, expandInfluence } from './influence.js';
@@ -180,6 +180,18 @@ export interface Marker {
 // shelf law: the Cliff/Ramp fence ring is the whole collision
 // story), so a sketch that raises ground must also draw its fence —
 // the stronghold validator holds that law for layouts.
+/**
+ * The detail plane's dialect (sketch()'s optional seventh argument):
+ * one letter per baked floor mark the kit lays under a sketch. Kept
+ * tiny on purpose — a sketch carries a floor mark only where the mark
+ * must outlive every decal.
+ *   _ leave alone   a ash pan (Detail.Ash)   b bone litter (Detail.Bones)
+ */
+const DETAIL_LEGEND: Record<string, number> = {
+  a: Detail.Ash,
+  b: Detail.Bones,
+};
+
 export function sketch(
   id: string,
   name: string,
@@ -193,11 +205,32 @@ export function sketch(
   // only — the skral camps fly ')' as a drying rack while the war
   // camps keep it as a meat rack.
   legendExt?: Record<string, number>,
+  // THE FLOOR REMEMBERS (THE SCARRED LAND, K1): an optional detail
+  // plane in the DETAIL_LEGEND dialect — baked floor marks (the ash
+  // pan inside a burnt shell) that must LAST ride the prefab's detail
+  // layer, never the decal pool (plan §1 law 8). Same dims as the
+  // ground rows; '_' leaves the cell's detail alone.
+  detailRows?: string[],
 ): PrefabDef {
   const width = rows[0]!.length;
   const height = rows.length;
   const ground = new Uint16Array(width * height);
   const elev = new Int8Array(width * height);
+  const detail = new Uint16Array(width * height);
+  if (detailRows) {
+    if (detailRows.length !== height) throw new Error(`${id}: detail plane has ${detailRows.length} rows, ground has ${height}`);
+    for (let y = 0; y < height; y++) {
+      const row = detailRows[y]!;
+      if (row.length !== width) throw new Error(`${id}: ragged detail row ${y}: "${row}"`);
+      for (let x = 0; x < width; x++) {
+        const ch = row[x]!;
+        if (ch === '_') continue;
+        const dt = DETAIL_LEGEND[ch];
+        if (dt === undefined) throw new Error(`${id}: unknown detail char '${ch}'`);
+        detail[y * width + x] = dt;
+      }
+    }
+  }
   if (elevRows) {
     if (elevRows.length !== height) throw new Error(`${id}: elev plane has ${elevRows.length} rows, ground has ${height}`);
     for (let y = 0; y < height; y++) {
@@ -249,7 +282,7 @@ export function sketch(
     width,
     height,
     ground,
-    detail: new Uint16Array(width * height),
+    detail,
     elev,
     portals,
     spawns,
@@ -342,6 +375,29 @@ export const scarredLand: Record<string, number> = {
   d: Tile.LampPostDark,
   '=': Tile.SluiceGate,
   '%': Tile.SluiceGateStrung,
+};
+
+// THE COLD HEARTH SPEAKS IN PUNCTUATION (K1, family A). Letters are
+// exhausted and the letter legend above shadows the living '#'
+// (WallStone) — but the re-crested watchtower husk needs its living
+// walls AND ruin crests in one sketch. So the family-A sketches fly a
+// punctuation dialect that shadows the war camp's marks, each a
+// mnemonic for what it became: the war drum's '"' is the broken
+// crest (two stubs where the wall snapped), the palisade's '|' the
+// line of charred studs, the standing torch's '!' the one tall cold
+// thing left (the chimney), the hide tent's '^' the fallen dome of
+// burnt thatch, the bonfire's '@' the fire that was, the skull pile's
+// '0' the low grey heap, the palisade turn's '/' the timber that fell
+// across the door, and the plunder's '$' the household's own cart.
+const coldHearth: Record<string, number> = {
+  '"': Tile.RuinWallStone,
+  '|': Tile.RuinWallWood,
+  '!': Tile.ChimneyStack,
+  '^': Tile.CollapsedRoof,
+  '@': Tile.EmberBed,
+  '0': Tile.AshHeap,
+  '/': Tile.CharredBeam,
+  $: Tile.HandCart,
 };
 
 /** A palisaded goblin ring-camp: fire at the heart, loot behind it —
@@ -1457,18 +1513,97 @@ const roostPinehollow = sketch(
 const watchtowerHusk = sketch(
   'poi_watchtower_husk',
   'Broken watchtower',
+  // Re-crested (THE SCARRED LAND, K1): the breaches wear ruin-wall
+  // crests where the courses snapped (north gap, east gap, south
+  // gap), somebody's ember bed sits cold-by-day in the south-west
+  // corner over its own ash, and the ash heap outside the south gap
+  // is where the tower's burnt floor was shovelled out. FILE-WINS
+  // LAW (loadPoiPrefabs): a data/prefabs/poi_watchtower_husk.json
+  // that EXISTS on a data dir shadows this builtin — the tracked one
+  // is the 36×28 influence-expanded seed of the OLD husk, so it must
+  // be deleted (repo AND every deployed data dir) so the re-dressed
+  // husk reseeds through its influence apron (the war-camp
+  // precedent, docs/war-camp-decor-plan.md As-built).
   [
     '____,,,_______',
     '__,.......,___',
-    '_,..##S##..,__',
+    '_,..#"S"#..,__',
     '_,.#SSSSS#.,__',
-    '_,.#SXSbS..,__',
-    '_,.#SSSSSR.,__',
-    '_,..#SS#R..,__',
-    '_,...o.R...,__',
+    '_,.#SXSbS".,__',
+    '_,.#@SSSSR.,__',
+    '_,.."SS"R..,__',
+    '_,...o0R...,__',
     '_,..o...,,.,__',
     '__,.......,___',
     '____,,,_______',
+  ],
+  {},
+  undefined,
+  coldHearth,
+  [
+    '______________',
+    '______________',
+    '______________',
+    '______________',
+    '____a_________',
+    '____aa________',
+    '_____a________',
+    '______________',
+    '______________',
+    '______________',
+    '______________',
+  ],
+);
+
+/**
+ * THE COLD HEARTH's stage piece (THE SCARRED LAND, K1): a burnt
+ * steading — a stone croft and a timber byre with their south walls
+ * gone, the chimney standing over a hearth that still keeps embers,
+ * the roof down inside the byre, weeds through the floors, the ash
+ * shovelled out the door, and the household's hand cart left in the
+ * lane where the road ran out. Who burned it is never said (plan §1
+ * law 3). No garrison, no strongbox: the shell is the stage — a zone
+ * def pins what haunts it. SORT LAW inside the croft: the fallen dome
+ * (sortY +0.7, a body tall) never stands directly SOUTH of the ember
+ * bed (sortY +0.6, shin-high) — it drew over the ring every frame
+ * and the light row fired from under a roof; the rubble goes between
+ * them and the dome lies two rows down.
+ */
+const burntSteading = sketch(
+  'poi_burnt_steading',
+  'Burnt steading',
+  [
+    '_______,,,,,,______',
+    '____,,.........,,,_',
+    '__,..""!"".....,,,_',
+    '_,..":@:"..,|||||,_',
+    '_,..":R:"..:|:0:|,_',
+    '_,..".^:"..:|,:^|,_',
+    '_,..":,R"..:|R::|,_',
+    '_,..":/.....|:,:|,_',
+    '_,...0:.....|.:./,_',
+    '_,,..:::::::::::.,_',
+    '__,..::$:::::::,,,_',
+    '__,,...,,.....,,,__',
+    '____,,,,,,,,,,,____',
+  ],
+  {},
+  undefined,
+  coldHearth,
+  [
+    '___________________',
+    '___________________',
+    '___________________',
+    '_____aaa___________',
+    '______aa_____a_____',
+    '______aa_____aa____',
+    '_____aa______aaa___',
+    '_____a_________a___',
+    '______a____________',
+    '___________________',
+    '___________________',
+    '___________________',
+    '___________________',
   ],
 );
 
@@ -2523,6 +2658,8 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     denHollow,
     watchtowerHusk,
     watchtowerShelter,
+    // THE SCARRED LAND (the contested lands, K1 THE COLD HEARTH):
+    burntSteading,
     wayshrineStones,
     wayshrinePool,
     goblinStockade,

@@ -94,14 +94,49 @@ test('every row is well-formed: sane reaches, intensities, colors, and at least 
   });
 });
 
-test('THE FLAME LAW: flame-gated light is architecture (occludes) — except the licensed candle tier', () => {
+/**
+ * THE GROUND-POOL LICENCE (THE SCARRED LAND K1, 2026-09-04): a
+ * flame-gated fixture that is NOT architecture. The ember bed is a
+ * knee-high ring of stones around a pan of ash — nothing about it can
+ * bite its own light, and a burnt steading seats several, so the
+ * lightmap's shadow-cast pass is not owed to it. Like the candle tier
+ * it is a licence, not a loophole: one modest non-occluding pool
+ * (r ≤ 2.6, intensity ≤ 0.45), still flame-voiced so it stands down
+ * by day. A brighter or wider ground fire is a new owner decision.
+ */
+const GROUND_POOL_LICENCE: ReadonlySet<Tile> = new Set([Tile.EmberBed]);
+
+test('THE FLAME LAW: flame-gated light is architecture (occludes) — except the licensed candle tier and ground pools', () => {
   eachSpec((tile, spec) => {
     for (const l of spec.lights) {
-      if (l.flameGated && !candleInfo(tile)?.lit) {
+      if (l.flameGated && !candleInfo(tile)?.lit && !GROUND_POOL_LICENCE.has(tile)) {
         assert.ok(l.occlude, `${Tile[tile]}: flame-gated light must occlude`);
       }
     }
   });
+});
+
+test('THE GROUND-POOL LICENCE: the ember bed is one modest flame-voiced pool that never occludes', () => {
+  for (const tile of GROUND_POOL_LICENCE) {
+    const spec = tileEmitter(tile)!;
+    assert.ok(spec, `${Tile[tile]}: licensed but has no row`);
+    assert.equal(spec.lights.length, 1, `${Tile[tile]}: ONE pool`);
+    const pool = spec.lights[0]!;
+    assert.ok(!pool.occlude, `${Tile[tile]}: a ground pool never occludes`);
+    assert.ok(pool.flameGated, `${Tile[tile]}: a burning is a man-made flame`);
+    assert.ok(pool.r <= 2.6, `${Tile[tile]}: yard-reach only (r ${pool.r})`);
+    assert.ok(pool.intensity <= 0.45, `${Tile[tile]}: banked, not blazing (i ${pool.intensity})`);
+    // The bloom rides the same clock: nothing of the bed shows by day.
+    for (const g of spec.glows) assert.equal(g.gate, 'flame', `${Tile[tile]}: bloom must ride the flame clock`);
+    // Banked under ash: the curve's base sits under the pit lamp's
+    // 0.85 and the EFFECTIVE pool (base × intensity) under 0.3 — the
+    // licence was first pinned at base ≤ 0.4, which with i 0.45 made
+    // a 0.16 pool no midnight screenshot could find; the K1 gate is
+    // "embers visible only at night", and invisible-at-night fails
+    // it as surely as visible-by-day. The ceiling moved, argued here.
+    assert.ok(spec.curve.base <= 0.65, `${Tile[tile]}: a banked bed breathes low (base ${spec.curve.base})`);
+    assert.ok(spec.curve.base * pool.intensity <= 0.3, `${Tile[tile]}: effective pool ${(spec.curve.base * pool.intensity).toFixed(2)} over 0.3`);
+  }
 });
 
 test('THE TOWN LAW, TIERED (§7.1): candles carry one tiny non-occluding pool; LampPost owns the night', () => {

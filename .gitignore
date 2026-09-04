@@ -25,3 +25,6 @@ data/voice/
 # ships through git; the ledger (db + data/voice) is the system of record
 /voicework/recorded/*
 /voicework/generated/*
+
+# K-phase proof screenshots (never ship)
+.proof/

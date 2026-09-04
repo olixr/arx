@@ -2969,28 +2969,52 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
     }
     // THE SCARRED LAND (K0 minimal kits; each family's phase deepens).
     case 'charbeam': {
-      // Charcoal: short black lengths that break on their checks, a
-      // spray of soot crumbs, and two ember-orange faces still warm.
+      // THE SCARRED LAND K1 — charcoal and nails. Burnt timber
+      // breaks on its checks: short black lengths with the pale
+      // char-check stripe, a longer piece that kept its shape, a
+      // spray of soot crumbs, two ember faces still warm inside the
+      // break (the coals' cold ink, never the flame's) — and the
+      // nails that held it: thin dark iron slivers that fly farthest
+      // and ring on the ground. The kit's one iron is what a fire
+      // leaves of a house.
+      out.push({ len: 0.34 + rand() * 0.12, wid: 0.075, color: '#2a2529', stripe: '#4a4448', pace: 0.6 });
       for (let i = 0; i < 4; i++) {
-        out.push({ len: 0.2 + rand() * 0.14, wid: 0.07, color: pick(rand, ['#2a2529', '#3a3438']), stripe: '#4a4448', pace: 0.7 });
+        out.push({ len: 0.16 + rand() * 0.12, wid: 0.06, color: pick(rand, ['#2a2529', '#3a3438', '#1f1b22']), stripe: rand() < 0.7 ? '#4a4448' : null, pace: 0.75 });
       }
-      for (let i = 0; i < 5; i++) {
-        out.push({ len: 0.05, wid: 0.04, color: '#1c181e', round: true, pace: 1.2 });
+      for (let i = 0; i < 6; i++) {
+        out.push({ len: 0.05, wid: 0.04, color: pick(rand, ['#1c181e', '#2a2529']), round: true, pace: 1.2 });
       }
       for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.07, wid: 0.05, color: '#e0622a', stripe: '#f0a060', round: true, pace: 1.0 });
+        out.push({ len: 0.07, wid: 0.05, color: '#8e3a1c', stripe: '#c2532a', round: true, pace: 1.0 });
+      }
+      for (let i = 0, n = 2 + Math.floor(rand() * 2); i < n; i++) {
+        out.push({ len: 0.09 + rand() * 0.03, wid: 0.02, color: '#3a3444', stripe: '#565064', pace: 1.35 });
       }
       break;
     }
     case 'roofheap': {
-      // The roof lets go: rafter ends heavy and low, burnt thatch in
-      // a dark shower, the ridge board last and longest.
-      out.push({ len: 0.5 + rand() * 0.1, wid: 0.07, color: '#2a2529', stripe: '#45403f', pace: 0.55 });
+      // THE SCARRED LAND K1 — rafters and thatch. The roof lets go
+      // all at once: the ridge board longest and slowest, rafter ends
+      // heavy and low (char on one face, sound wood on the other
+      // where the fire never reached), a purlin or two, the burnt
+      // thatch in a dark shower of short straw that flies light and
+      // settles wide, three clods of the sod cap, and the roof nails
+      // shaken out of the lot.
+      out.push({ len: 0.5 + rand() * 0.12, wid: 0.075, color: '#2a2529', stripe: '#45403f', pace: 0.5 });
       for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.26, wid: 0.06, color: pick(rand, ['#4a3f33', '#2f2a30']), stripe: '#6a5c48', pace: 0.65 });
+        out.push({ len: 0.26 + rand() * 0.1, wid: 0.065, color: pick(rand, ['#4a3f33', '#2f2a30', '#3a3438']), stripe: rand() < 0.5 ? '#6a5c48' : '#4a4448', pace: 0.65 });
       }
-      for (let i = 0; i < 7; i++) {
-        out.push({ len: 0.06, wid: 0.04, color: pick(rand, ['#3a3028', '#5a4a36']), round: true, pace: 1.1 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.18 + rand() * 0.08, wid: 0.05, color: '#3d3329', stripe: '#5e5040', pace: 0.8 });
+      }
+      for (let i = 0, n = 8 + Math.floor(rand() * 4); i < n; i++) {
+        out.push({ len: 0.08 + rand() * 0.05, wid: 0.02, color: pick(rand, ['#5a4a36', '#3a3028', '#6e5c42', '#2a2529']), pace: 1.15 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.07, wid: 0.05, color: pick(rand, ['#3a3028', '#2f2a30']), round: true, pace: 1.0 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.09 + rand() * 0.03, wid: 0.02, color: '#3a3444', stripe: '#565064', pace: 1.35 });
       }
       break;
     }

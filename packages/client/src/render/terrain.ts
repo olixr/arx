@@ -706,7 +706,24 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
       // and what fell inside them stand on the boards or flags the
       // house laid (nearestFloor), and a shell with no floor left
       // stands on the open ground.
-      if (RUIN_WALL_TILES.has(t) || (t >= Tile.CharredBeam && t <= Tile.ChimneyStack)) {
+      // THE FOOT STANDS ON WHAT FRONTS IT (K1 polish): a ruin wall
+      // shows the ground south of its foot — the tile's south sliver
+      // under an E-W course, the whole open square around a N-S
+      // band's free south end. nearestFloor alone painted that
+      // square in the HOUSE's boards (the floor lay east of the
+      // band), a darker brown plate past the post foot against the
+      // lane — so whatever walkable open ground fronts the wall to
+      // the SOUTH continues beneath it first, and the house floor
+      // only where nothing walkable fronts it (an interior run, a
+      // run-mate south). Same seam law as every fence and hedge.
+      if (RUIN_WALL_TILES.has(t)) {
+        const south = ground(tx, ty + 1);
+        if (south !== undefined && !tileDef(south).solid && !isScarredTile(south) && south !== Tile.Ramp) {
+          return south;
+        }
+        return nearestFloor(ground, tx, ty);
+      }
+      if (t >= Tile.CharredBeam && t <= Tile.ChimneyStack) {
         return nearestFloor(ground, tx, ty);
       }
       // B. the field after: trampled ground — the field's own skin
@@ -724,10 +741,13 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
       // tramples, so the fallback is dirt.
       if (t >= Tile.LeanTo && t <= Tile.FieldCot) return front(Tile.Dirt);
       // G. the states keep the living prop's ground: the broken fence
-      // fronts like a fence (grass fallback — a pen is a field), the
-      // burnt post, the fouled well, the dark lamp and the gates stand
-      // on the yard the living prop stood on.
-      if (t === Tile.FenceBroken) return front(Tile.Grass);
+      // takes EXACTLY the living fence's underlay (GRASS_LIKE gives
+      // every Fence tile Grass unconditionally — fronting from a
+      // walkable neighbour put a dirt cell between two grass cells at
+      // the one tile the eye is drawn to); the burnt post, the fouled
+      // well, the dark lamp and the gates stand on the yard the living
+      // prop stood on.
+      if (t === Tile.FenceBroken) return Tile.Grass;
       return nearestFloor(ground, tx, ty);
     }
     // Dungeon props stand on whichever floor the corridor carries
@@ -3797,47 +3817,212 @@ function drawTileDetail(
       // no transforms — a ground bake is a quad's texture and must
       // read the same off the canvas oracle and the GL stage.
       } else if (d === Detail.Ash) {
-        // A cold ash pan: pale grey over the ground with clinker
-        // squares — the black that did not burn — dealt across it.
+        // THE COLD HEARTH's ash pan (K1). A pan, not a stamp: the grey
+        // runs to the tile edge on every side that meets more ash
+        // (dAt), so a floor of it reads as ONE spill, and on a free
+        // side the rim is a ragged union of squared lobes dealt from
+        // the world hash — no two tiles cut the same shape, and a
+        // lone tile is a blot, never a badge. Value planes only: a
+        // packed-wet seat one step down under the free rim, the pan,
+        // two dealt plates of dry pale ash (lit toward the west sun,
+        // TWO SUNS), the clinker — the black that did not burn — as
+        // squared blocks with one lit facet, and a feather fringe of
+        // blown flakes thinning outward in alpha steps. Min feature
+        // 0.03s, no strokes, no transforms (parity: a ground bake is
+        // a quad's texture).
         const hh = hashCoords(231, tx, ty);
-        ctx.fillStyle = 'rgba(141, 138, 144, 0.55)';
-        ctx.fillRect(gx + px * 0.1, gy + px * 0.14, px * 0.8, px * 0.7);
-        ctx.fillStyle = 'rgba(180, 178, 184, 0.35)';
-        ctx.fillRect(gx + px * 0.2, gy + px * 0.22, px * 0.5, px * 0.4);
-        for (let k = 0; k < 5; k++) {
-          const hk = hashCoords(233 + k, tx, ty);
-          ctx.fillStyle = (hk & 1) === 0 ? '#2a2529' : '#3a3438';
-          const cw = px * (0.05 + ((hk >>> 3) % 3) * 0.02);
+        const ashAt = (ox: number, oy: number): boolean => dAt !== undefined && dAt(tx + ox, ty + oy) === Detail.Ash;
+        const jW = ashAt(-1, 0);
+        const jE = ashAt(1, 0);
+        const jN = ashAt(0, -1);
+        const jS = ashAt(0, 1);
+        // The world-keyed swell: slow noise decides how full this
+        // tile's pan is (deep mid-spill, thin at the fringe) and where
+        // the dry pale ash lies.
+        const swell = valueNoise(0x0a5, tx * 0.23, ty * 0.23);
+        const dry = valueNoise(0x0a7, tx * 0.31 + 7.3, ty * 0.31 + 2.1);
+        // The core: inset on free sides by hash + (1-swell), flush
+        // (with a hair of overlap) on joined sides.
+        const inset = (side: number, joined: boolean): number =>
+          joined ? -0.02 : 0.12 + ((hh >>> (side * 5)) % 6) * 0.018 + (1 - swell) * 0.08;
+        const iw = inset(0, jW);
+        const ie = inset(1, jE);
+        const inn = inset(2, jN);
+        const is = inset(3, jS);
+        const x0 = gx + px * iw;
+        const y0 = gy + px * inn;
+        const pw = px * (1 - iw - ie);
+        const ph = px * (1 - inn - is);
+        // The lobes: on each free side two squared lobes push from
+        // the core toward the edge by a hashed reach; their union with
+        // the core is the pan's ragged silhouette. `pad` grows every
+        // rect by a step (the seat under the rim).
+        const lobes: Array<[number, number, number, number]> = [];
+        for (let side = 0; side < 4; side++) {
+          if (side === 0 && jW) continue;
+          if (side === 1 && jE) continue;
+          if (side === 2 && jN) continue;
+          if (side === 3 && jS) continue;
+          for (let k = 0; k < 2; k++) {
+            const hk = hashCoords(291 + side * 2 + k, tx, ty);
+            const span = 0.16 + ((hk >>> 3) % 5) * 0.04;
+            const reach = 0.04 + ((hk >>> 7) % 4) * 0.03;
+            const along = ((hk >>> 11) % 61) / 60;
+            if (side === 0) lobes.push([x0 - px * reach, y0 + (ph - px * span) * along, px * reach + px * 0.02, px * span]);
+            else if (side === 1) lobes.push([x0 + pw - px * 0.02, y0 + (ph - px * span) * along, px * reach + px * 0.02, px * span]);
+            else if (side === 2) lobes.push([x0 + (pw - px * span) * along, y0 - px * reach, px * span, px * reach + px * 0.02]);
+            else lobes.push([x0 + (pw - px * span) * along, y0 + ph - px * 0.02, px * span, px * reach + px * 0.02]);
+          }
+        }
+        const pan = (pad: number): void => {
           ctx.fillRect(
-            gx + (0.16 + ((hh >>> (k * 4)) % 60) / 100) * px,
-            gy + (0.2 + ((hk >>> 7) % 55) / 100) * px,
-            cw,
-            cw * 0.8,
+            x0 - (jW ? 0 : pad),
+            y0 - (jN ? 0 : pad),
+            pw + (jW ? 0 : pad) + (jE ? 0 : pad),
+            ph + (jN ? 0 : pad) + (jS ? 0 : pad),
           );
+          for (const [lx0, ly0, lw0, lh0] of lobes) ctx.fillRect(lx0 - pad, ly0 - pad, lw0 + pad * 2, lh0 + pad * 2);
+        };
+        // The seat (one value step down, under the free rim only).
+        ctx.fillStyle = 'rgba(72, 68, 76, 0.36)';
+        pan(px * 0.03);
+        // The pan.
+        ctx.fillStyle = 'rgba(141, 138, 144, 0.64)';
+        pan(0);
+        // The dry pale ash: two dealt plates (a third where the noise
+        // says the spill dried), each a step up, their lit corner a
+        // step up again toward the west sun. Sizes ride the hash so
+        // no two tiles share a plate.
+        const plates = 2 + (dry > 0.62 ? 1 : 0);
+        for (let k = 0; k < plates; k++) {
+          const hk = hashCoords(301 + k, tx, ty);
+          const plw = pw * (0.18 + ((hk >>> 2) % 5) * 0.05);
+          const plh = ph * (0.14 + ((hk >>> 6) % 5) * 0.05);
+          const plx = x0 + (pw - plw) * (((hk >>> 10) % 71) / 70);
+          const ply = y0 + (ph - plh) * (((hk >>> 17) % 67) / 66);
+          ctx.fillStyle = `rgba(186, 184, 190, ${(0.3 + dry * 0.2).toFixed(3)})`;
+          ctx.fillRect(plx, ply, plw, plh);
+          ctx.fillStyle = 'rgba(214, 212, 216, 0.28)';
+          ctx.fillRect(plx, ply, Math.max(px * 0.03, plw * 0.5), Math.max(px * 0.03, plh * 0.45));
+        }
+        // The clinker: 3–6 squared black blocks, one lit facet each
+        // (a thin lighter cap on the top and west edges — depth as a
+        // value step). Sizes 0.06–0.12 so the 0.03s cap stays a cap,
+        // kept inside the core.
+        const nClink = 3 + ((hh >>> 14) % 4);
+        for (let k = 0; k < nClink; k++) {
+          const hk = hashCoords(233 + k, tx, ty);
+          const cw = px * (0.06 + ((hk >>> 3) % 4) * 0.02);
+          const chh = cw * (0.7 + ((hk >>> 9) % 3) * 0.15);
+          const cx = x0 + px * 0.02 + (pw - cw - px * 0.04) * (((hk >>> 12) % 97) / 96);
+          const cy = y0 + px * 0.02 + (ph - chh - px * 0.04) * (((hk >>> 19) % 89) / 88);
+          ctx.fillStyle = (hk & 1) === 0 ? '#2a2529' : '#37313a';
+          ctx.fillRect(cx, cy, cw, chh);
+          ctx.fillStyle = (hk & 1) === 0 ? '#4a444c' : '#57505c';
+          ctx.fillRect(cx, cy, cw, Math.max(1, px * 0.03));
+          ctx.fillRect(cx, cy, Math.max(1, px * 0.03), chh);
+          // The odd clinker still carries a dead ember — a warm-grey
+          // fleck, never a light (the EmberBed owns the glow).
+          if (((hk >>> 26) & 7) === 0) {
+            ctx.fillStyle = '#6b4a3c';
+            ctx.fillRect(cx + cw * 0.3, cy + chh * 0.35, Math.max(1, px * 0.03), Math.max(1, px * 0.03));
+          }
+        }
+        // The feather fringe: pale flakes blown past the rim, dealt
+        // per free side, two alpha steps thinning outward. A joined
+        // side gets none — the pan continues into the neighbour.
+        const flake = (fx: number, fy: number, a: number): void => {
+          ctx.fillStyle = `rgba(200, 198, 204, ${a})`;
+          ctx.fillRect(fx, fy, px * 0.05, px * 0.04);
+        };
+        for (let k = 0; k < 10; k++) {
+          const hk = hashCoords(281 + k, tx, ty);
+          const side = (hk >>> 2) & 3;
+          if (side === 0 && jW) continue;
+          if (side === 1 && jE) continue;
+          if (side === 2 && jN) continue;
+          if (side === 3 && jS) continue;
+          const along = ((hk >>> 6) % 83) / 82;
+          const out = 0.05 + ((hk >>> 13) % 4) * 0.03;
+          const a = out > 0.1 ? 0.18 : 0.34;
+          if (side === 0) flake(x0 - px * (out + 0.05), y0 + ph * along, a);
+          else if (side === 1) flake(x0 + pw + px * out, y0 + ph * along, a);
+          else if (side === 2) flake(x0 + pw * along, y0 - px * (out + 0.04), a);
+          else flake(x0 + pw * along, y0 + ph + px * out, a);
         }
       } else if (d === Detail.Bones) {
-        // Old bone: three or four slivers and a jaw — the pale bone
-        // ink over a dimmer seat, dealt on the tile's hash.
+        // THE COLD HEARTH's bone litter (K1): three to five slivers of
+        // old bone in the dungeon bone inks and one jaw, hash-dealt
+        // so no two tiles lay the same bones. A sliver is a squared
+        // bar with a knob at one end (the joint), a lit top face one
+        // value step up (west sun) and a pressed shadow step under
+        // its east/south edge — depth as value, never a stroke. The
+        // jaw is a squared block with two tooth squares under its
+        // lit face. Bone is pale on purpose (the MournerStatue law:
+        // pale reads as bone, dark reads as a ghost). Min feature
+        // 0.03s; fills only.
+        // BODY-RULER: a long bone is a shin (0.28..0.44 tiles — a
+        // quarter to a third of the rig), the jaw a hand's span; the
+        // first cut's 0.16..0.28 slivers read as crumbs at one tile.
         const hh = hashCoords(239, tx, ty);
-        const n = 3 + (hh & 1);
+        const n = 3 + ((hh >>> 1) % 3);
+        const lit = '#e4dcc4';
+        const bone = '#cfc7ae';
+        const dim = '#b5ac91';
+        const press = 'rgba(30, 24, 26, 0.22)';
         for (let k = 0; k < n; k++) {
           const hk = hashCoords(241 + k, tx, ty);
-          const sx = gx + (0.12 + (hk % 60) / 100) * px;
-          const sy = gy + (0.18 + ((hk >>> 6) % 60) / 100) * px;
           const long = ((hk >>> 12) & 1) === 0;
-          ctx.fillStyle = '#b5ac91';
-          ctx.fillRect(sx, sy, long ? px * 0.22 : px * 0.05, long ? px * 0.045 : px * 0.18);
-          ctx.fillStyle = '#cfc7ae';
-          ctx.fillRect(sx, sy, long ? px * 0.22 : px * 0.05, px * 0.02);
+          const len = px * (0.28 + ((hk >>> 14) % 5) * 0.04);
+          const thick = px * (0.08 + ((hk >>> 17) & 1) * 0.02);
+          const bw = long ? len : thick;
+          const bh = long ? thick : len;
+          const sx = gx + px * 0.08 + (px * 0.84 - bw) * (((hk >>> 4) % 89) / 88);
+          const sy = gy + px * 0.1 + (px * 0.8 - bh) * (((hk >>> 19) % 83) / 82);
+          // Pressed seat, one step SE (away from the west sun).
+          ctx.fillStyle = press;
+          ctx.fillRect(sx + px * 0.02, sy + px * 0.025, bw, bh);
+          // The shaft: dim body, lit top face.
+          ctx.fillStyle = dim;
+          ctx.fillRect(sx, sy, bw, bh);
+          ctx.fillStyle = bone;
+          if (long) ctx.fillRect(sx, sy, bw, Math.max(1, bh * 0.5));
+          else ctx.fillRect(sx, sy, Math.max(1, bw * 0.5), bh);
+          // The knob — the joint end, a square a step wider than
+          // the shaft, hashed to either end; its own lit face.
+          const knob = thick * 1.7;
+          const atEnd = ((hk >>> 24) & 1) === 1;
+          const kx = long ? (atEnd ? sx + bw - knob : sx) : sx - (knob - bw) * 0.5;
+          const ky = long ? sy - (knob - bh) * 0.5 : atEnd ? sy + bh - knob : sy;
+          ctx.fillStyle = dim;
+          ctx.fillRect(kx, ky, knob, knob);
+          ctx.fillStyle = bone;
+          ctx.fillRect(kx, ky, knob, Math.max(1, knob * 0.5));
+          ctx.fillStyle = lit;
+          ctx.fillRect(kx, ky, Math.max(1, knob * 0.45), Math.max(1, knob * 0.3));
         }
-        // The jaw: a short bar with two squared teeth under it.
-        const jx = gx + (0.3 + ((hh >>> 4) % 30) / 100) * px;
-        const jy = gy + (0.55 + ((hh >>> 9) % 20) / 100) * px;
-        ctx.fillStyle = '#cfc7ae';
-        ctx.fillRect(jx, jy, px * 0.2, px * 0.05);
-        ctx.fillStyle = '#e4dcc4';
-        ctx.fillRect(jx + px * 0.04, jy + px * 0.05, px * 0.035, px * 0.035);
-        ctx.fillRect(jx + px * 0.12, jy + px * 0.05, px * 0.035, px * 0.035);
+        // The jaw: one squared block, its lit face on top, two tooth
+        // squares hanging under the face; dealt to the south half so
+        // it sits in front of the slivers.
+        const jw = px * (0.3 + ((hh >>> 6) % 3) * 0.03);
+        const jh = px * 0.14;
+        const jx = gx + px * 0.1 + (px * 0.8 - jw) * (((hh >>> 9) % 71) / 70);
+        const jy = gy + px * (0.5 + ((hh >>> 16) % 5) * 0.06);
+        ctx.fillStyle = press;
+        ctx.fillRect(jx + px * 0.02, jy + px * 0.03, jw, jh + px * 0.04);
+        ctx.fillStyle = dim;
+        ctx.fillRect(jx, jy, jw, jh);
+        ctx.fillStyle = bone;
+        ctx.fillRect(jx, jy, jw, jh * 0.5);
+        ctx.fillStyle = lit;
+        ctx.fillRect(jx, jy, jw * 0.4, jh * 0.3);
+        // The teeth: two squares (a third on a hashed jaw), a step
+        // paler than the bone so they read as the jaw's own edge.
+        ctx.fillStyle = lit;
+        const tooth = Math.max(1, px * 0.045);
+        ctx.fillRect(jx + jw * 0.18, jy + jh, tooth, tooth);
+        ctx.fillRect(jx + jw * 0.62, jy + jh, tooth, tooth);
+        if (((hh >>> 22) & 1) === 0) ctx.fillRect(jx + jw * 0.4, jy + jh, tooth, tooth);
       } else if (d === Detail.DragFurrow) {
         // Two dark drag bands running north-south (a felled trunk, a
         // cart, a spoil sled) with a lit ridge between them.
