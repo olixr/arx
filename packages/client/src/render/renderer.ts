@@ -12872,20 +12872,39 @@ export class Renderer {
         const cCap = Math.min(xN1 - xN0, y1 - y0) / 2;
         const rTL = Math.min(radii[0], cCap);
         const rTR = Math.min(radii[1], cCap);
+        // THE CROWN CLOSES ITS INTERNAL JOINS. The face relies on a bare
+        // snapPx edge on a joined side (SHARED-EDGE LAW above) and on a
+        // single target that abuts cleanly; but the flat crown top also
+        // bakes into pooled per-stretch band canvases (THE CRISP GRID
+        // LAW) that blit under a ratio map, and the stretch-end underlap
+        // (bakeBleedW/E) covers only the run's OUTER ends — an INTERNAL
+        // crown join between two abutting slabs still meets on a bare
+        // snapPx edge, so a stale-ratio resample can open a pale hairline
+        // across the top. Extend the SAME underlap the face uses at its
+        // ends (bakeBleedPx) to the crown's internal N/E joins so exactly
+        // ONE slab of each pair covers the joint (no double-blend): the
+        // south/west neighbour owns the seam via its own east/north
+        // bleed. bakeBleedPx is 0 outside a band bake ⇒ the live path
+        // keeps the exact snapPx edge (byte-identical); it is 3/dpr only
+        // while baking ⇒ the underlap that survives the resample. EXPOSED
+        // edges (n/e/w false) are untouched ⇒ outer silhouette unchanged.
+        const cxN1 = e ? xN1 + (bleedE ? 0 : this.bakeBleedPx) : xN1;
+        const cx1 = e ? x1 + (bleedE ? 0 : this.bakeBleedPx) : x1;
+        const cNyB = n ? cNy - this.bakeBleedPx : cNy;
         ctx.save();
         ctx.fillStyle = top;
         ctx.beginPath();
-        ctx.moveTo(xN0 + rTL, cNy);
-        ctx.lineTo(xN1 - rTR, cNy);
-        if (rTR > 0) ctx.lineTo(xN1, cNy + rTR);
-        else ctx.lineTo(xN1, cNy);
-        ctx.lineTo(x1, cSy);
+        ctx.moveTo(xN0 + rTL, cNyB);
+        ctx.lineTo(cxN1 - rTR, cNyB);
+        if (rTR > 0) ctx.lineTo(cxN1, cNyB + rTR);
+        else ctx.lineTo(cxN1, cNyB);
+        ctx.lineTo(cx1, cSy);
         ctx.lineTo(x0, cSy);
         if (rTL > 0) {
-          ctx.lineTo(xN0, cNy + rTL);
-          ctx.lineTo(xN0 + rTL, cNy);
+          ctx.lineTo(xN0, cNyB + rTL);
+          ctx.lineTo(xN0 + rTL, cNyB);
         } else {
-          ctx.lineTo(xN0, cNy);
+          ctx.lineTo(xN0, cNyB);
         }
         ctx.closePath();
         ctx.fill();
