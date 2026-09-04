@@ -764,6 +764,49 @@ screenshot audit, parity 7/7 at q=0, and a commit.
 
 ## 7. THE DAWN UNDER SIEGE — the village redesign
 
+> **OWNER RULING 2026-09-04 (supersedes the re-dress framing below):
+> Dawnmead is REBUILT from the ground up, not re-dressed.** The shipped
+> `maps/dawnmead.ts` was littered during prop development with placeholder
+> props sprayed without semantics, scene or care; the owner's verdict is
+> "mushed, scattered, haphazard." Band 2 therefore writes a NEW zone file
+> on a blank rect. Only the sacred pins of §7.1 carry over (the rect and
+> anchor, the spawn, the seven stones and the Ring pad, the three route
+> heads and lane rows, the sixteen cast slugs and their posts, the
+> singleton stations, the tutorial ladder's open ground, the corridor
+> law). Everything else in §7.3 is a DESIGN BRIEF for the new file, not a
+> diff against the old one. The old file is kept in git history only.
+>
+> **THE CURATION LAW for the rebuild** (binding on every district):
+> 1. **Every prop has a sentence.** Before a tile is placed the author can
+>    say who put it there, when, and why it is exactly here and not one
+>    tile over. A prop without a sentence is not placed.
+> 2. **Scenes, not scatter.** The unit of authoring is a scene (a working
+>    yard, a hearth, a gate, a grave row, a kitchen garden), composed with
+>    a primary mass, secondary support and tertiary life, on its own
+>    worn ground. No prop stands alone on lawn; no two scenes touch.
+> 3. **The ground is authored first.** Desire lines, aprons, yards, worn
+>    thresholds and the fold field (§12) are laid before a single prop, so
+>    props sit on ground that already explains them.
+> 4. **Breathing room inside the rect** as outside it: open meadow between
+>    districts is composed, not left over; the eye rests between scenes;
+>    ≥3-4 open tiles between free-standing structures; one sign per
+>    eyeful; the middle of every yard has a reason.
+> 5. **Nothing is a placeholder.** No tile ships that the museum has not
+>    judged; no decorative kit is used outside its voice (KEPT for the
+>    village, LEFT BURNING only at the scars, never STOLEN inside the hem).
+> 6. **Three passes minimum**: block-out (ground + masses, walked and
+>    screenshot at gameplay zoom), dressing (secondary + tertiary, judged
+>    scene by scene day and night), and the live audit (routines, sight
+>    lines, occlusion law, pockets, sign law), with the sealed-pocket and
+>    reachability floods and the full quest ladder walked on a fresh
+>    character before the band closes.
+> 7. **The mandate of §7 stands as the brief**: a hearth-country with a
+>    burnt roof on its skyline, a grave row on the road out, families under
+>    sacking at the gate, a muster that musters, and three outside voices
+>    arguing on the green. Explorable, flush with detail, semantically
+>    whole, nothing sprayed.
+
+
 Dawnmead stays the village that raises wakers, but the year has been bad and
 the village is the first place a waker learns that. Not sacked, not a
 warzone: a hearth-country with a burnt roof on its skyline, a row of graves
