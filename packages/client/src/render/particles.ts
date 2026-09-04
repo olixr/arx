@@ -928,8 +928,6 @@ export class Particles {
     ctx: CanvasRenderingContext2D,
     worldToScreen: (wx: number, wy: number) => { x: number; y: number },
     scale: number,
-    /** B-1c depth thread: per-item depth factor (ds=1 at q=0). */
-    depthAt: (wy: number) => number = () => 1,
   ): void {
     const order = this.drawOrder;
     order.length = 0;
@@ -943,7 +941,7 @@ export class Particles {
     this.batching = true;
     this.lastFill = '';
     for (let k = 0; k < order.length; k++) {
-      this.drawOne(ctx, pool[order[k]! & 4095]!, worldToScreen, scale, depthAt);
+      this.drawOne(ctx, pool[order[k]! & 4095]!, worldToScreen, scale);
     }
     this.batching = false;
   }
@@ -974,12 +972,8 @@ export class Particles {
     p: Particle,
     worldToScreen: (wx: number, wy: number) => { x: number; y: number },
     scale: number,
-    /** B-1c depth thread: per-item depth factor (ds=1 at q=0). */
-    depthAt: (wy: number) => number = () => 1,
   ): void {
     const t = p.life / p.maxLife;
-    // B-1c depth thread: foreshorten this billboard by its own depth (ds=1 at q=0)
-    const ds = depthAt(p.y);
     // The worldToScreen callback may return a REUSED scratch (the
     // renderer's zero-alloc projection) — copy the fields out before
     // any second projection call (streak tails, bolt endpoints).
@@ -988,16 +982,16 @@ export class Particles {
     const sy0 = s.y;
     // HEIGHT IS REAL: altitude lifts in FULL screen pixels — heights
     // are never squashed by the camera pitch.
-    const sy = sy0 - p.z * scale * ds;
+    const sy = sy0 - p.z * scale;
     let size: number;
     let alpha = 1;
     if (p.grow > 0) {
       // Growing blocks (dust) hold size and fade via alpha; shrinking
       // blocks (default) taper to nothing. Both keep hard edges.
-      size = Math.max(2, p.size * scale * ds);
+      size = Math.max(2, p.size * scale);
       alpha = t < 0.25 ? t / 0.25 : 1 - (t - 0.25) / 0.75;
     } else {
-      size = Math.max(2, p.size * scale * (1 - t) * ds);
+      size = Math.max(2, p.size * scale * (1 - t));
     }
     if (p.flicker > 0) {
       // Embers strobe on their own clock — never in sync with siblings.
@@ -1023,8 +1017,7 @@ export class Particles {
       // Streak: a sliver stretched along the flight line — projected
       // through the camera so diagonals lie on the true screen path.
       const tail = worldToScreen(p.x - p.vx * 0.045, p.y - p.vy * 0.045);
-      // B-1c depth thread: foreshorten this billboard by its own depth (ds=1 at q=0)
-      const taily = tail.y - (p.z - p.vz * 0.045) * scale * ds;
+      const taily = tail.y - (p.z - p.vz * 0.045) * scale;
       const dx = sx - tail.x;
       const dy = sy - taily;
       const len = Math.max(size * 1.6, Math.hypot(dx, dy));
@@ -1120,7 +1113,7 @@ export class Particles {
       ctx.fill();
       ctx.restore();
     } else if (p.shape === 8) {
-      this.drawBolt(ctx, p, worldToScreen, scale, size, alpha, ds);
+      this.drawBolt(ctx, p, worldToScreen, scale, size, alpha);
     } else {
       ctx.fillRect(sx - size / 2, sy - size / 2, size, size);
     }
@@ -1142,18 +1135,15 @@ export class Particles {
     scale: number,
     size: number,
     alpha: number,
-    /** B-1c depth thread: per-item depth factor (ds=1 at q=0). */
-    ds = 1,
   ): void {
     // Copy each projection out before the next call — the callback
     // may hand back one reused scratch object.
-    // B-1c depth thread: foreshorten this billboard by its own depth (ds=1 at q=0)
     const a = worldToScreen(p.x, p.y);
     const ax = a.x;
-    const ay = a.y - p.z * scale * ds;
+    const ay = a.y - p.z * scale;
     const b = worldToScreen(p.x2, p.y2);
     const bx = b.x;
-    const by = b.y - p.z2 * scale * ds;
+    const by = b.y - p.z2 * scale;
     const dx = bx - ax;
     const dy = by - ay;
     const span = Math.hypot(dx, dy);

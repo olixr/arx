@@ -116,10 +116,11 @@ export declare function bandNdcRemap(SW: number, SH: number, AW: number, AH: num
  * shader consumes as `uView` — for the ORTHO camera (q=0, the shipping
  * default). It composes the renderer's affine world→screen projection
  * (`screenX = wx·scale + ox`, `screenY = wy·scale·yScale + oy`, matching
- * cameraProject's q=0 fast path) with the GL screen→NDC map, folding in
+ * Camera.worldToScreen; reference math in render/cameraProject.ts) with
+ * the GL screen→NDC map, folding in
  * the Y-FLIP the stage shader applies (`ndcY = 1 − 2·screenY/h`), so
  * `uView · vec3(world,1)` lands each blade root exactly where the canvas2d
- * meadow paints it. `ox`/`oy` are the snapped screen origins (camOriginX/Y);
+ * meadow paints it. `ox`/`oy` are the snapped screen origins (Camera.originX/Y);
  * `w`/`h` are the frame's CSS pixel dimensions. Alloc-free with `out`.
  *
  * RETIRED from the live path (Epic "THE ONE RENDER", B2): a lean is a true
@@ -132,13 +133,14 @@ export declare function grassViewMatrix(scale: number, yScale: number, ox: numbe
 /**
  * THE ONE PROJECTION in GLSL (Epic "THE ONE RENDER", phase B2). The grass
  * vertex shaders map every blade/bloom world point to `gl_Position` through
- * THIS function — the exact `projectWorld` affine (render/cameraProject.ts,
+ * THIS function — the exact Camera.worldToScreen affine (render/renderer.ts;
+ * reference math `projectWorld` in render/cameraProject.ts,
  * the q=0 path), not a private ortho matrix, so the meadow parallaxes at
  * exactly the player's rate and never edge-crawls against bodies.
  *
  * The camera uniforms `(uScale, uYScale, uOrigin, uViewport)` carry the
  * frame's projection; `uOrigin` is the screen origin the feed computes with
- * `camOriginX/Y`. Per vertex we form the screen point, then map to NDC with
+ * `Camera.originX/Y`. Per vertex we form the screen point, then map to NDC with
  * the stage's Y-flip (`gl_Position.w = 1`).
  *
  * Short and tall grass ride one law: a blade tip moves with its root

@@ -6,15 +6,13 @@ import assert from 'node:assert/strict';
  * cached-prop blit pivot in drawPropOutlined (renderer.ts).
  *
  * A cached prop sprite is baked at `bakeScale` and blitted at the live
- * `spriteScale`, compensated by `k = spriteScale / bakeScale`. `k` carries
- * TWO independent factors:
- *   - depth-k: under lean the blit foreshortens by the foot row's depthScale;
- *   - staleness-k: during a zoom glide the live scale runs ahead of the last
- *     bake until the sprite re-bakes (on a machine that can keep up, k→1).
+ * `camera.scale`, compensated by `k = scale / bakeScale`. `k` carries the
+ * staleness of a zoom glide: the live scale runs ahead of the last bake
+ * until the sprite re-bakes (on a machine that can keep up, k→1).
  *
  * The blit must land the sprite's BAKED foot on the LIVE world foot for any
  * `k`, and be byte-identical to the box-corner blit at rest (k=1) so the
- * settled frame and the q>0 parity oracle never move.
+ * settled frame never moves.
  *
  * These are pure-math contract tests mirroring the exact expressions the
  * renderer uses; they lock the invariant the runtime probe verified in situ.

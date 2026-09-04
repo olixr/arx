@@ -78,19 +78,6 @@ export declare class Camera {
      */
     readonly yScale = 0.6;
     /**
-     * THE LEAN COMES OUT (epic/lean-out): the perspective lean strength,
-     * once a dial (Epic B). The dial is gone — q is a CONSTANT 0, never
-     * assigned, so every projection short-circuits to the plain affine
-     * (the pitched-orthographic camera above, byte-identical to every frame
-     * shipped). The field lives on only until the last `q` fork is retired
-     * and it is deleted with depthScale; the homography it parameterized
-     * stays as reference math in cameraProject.ts for the 3D client. */
-    readonly q: number;
-    /** The local size multiplier at world-depth `wy` (Epic B): 1 at the
-     *  camera's look-at row, <1 farther, >1 nearer; exactly 1 at q=0. The
-     *  one factor billboard scale / elevation lift / shadow radius ride. */
-    depthScale(wy: number): number;
-    /**
      * THE DEVICE GRID: the real pixel lattice belongs to the BACKING
      * STORE, not CSS space. The context is scaled by the (possibly
      * FRACTIONAL) devicePixelRatio — a browser zoom mints 1.25/1.75, and
@@ -105,9 +92,21 @@ export declare class Camera {
     snapDpr: number;
     /** Round a CSS-space coordinate onto the device pixel lattice. */
     snapPx(v: number): number;
+    /** Screen x of world x=0 for a `w`-wide viewport (device-snapped). */
+    originX(w: number): number;
+    /** Screen y of world y=0 for an `h`-tall viewport (device-snapped). */
+    originY(h: number): number;
+    /**
+     * World → screen: the pitched-orthographic affine, `x = wx·scale + ox`,
+     * `y = wy·scale·yScale + oy`. (The perspective lean that once wrapped
+     * this in a homography left the 2D client — see
+     * docs/perspective-review-and-3d-client-plan.md; the reference math
+     * stays in cameraProject.ts for the 3D client.)
+     */
     worldToScreen(wx: number, wy: number, w: number, h: number): Vec2;
     /** Allocation-free worldToScreen for per-particle hot paths. */
     worldToScreenInto(wx: number, wy: number, w: number, h: number, out: Vec2): Vec2;
+    /** The exact inverse of worldToScreen (division by the same factors). */
     screenToWorld(sx: number, sy: number, w: number, h: number): Vec2;
 }
 declare const enum BulkKind {
@@ -1214,14 +1213,6 @@ export declare class Renderer {
      * with a screen-lifted sprite (projectile trails, muzzle/impact
      * bursts, glows) divides the squash back out — a raw `y - PROJ_AIR`
      * rides ~40% low and the trail visibly detaches from the shot.
-     *
-     * THE AIR RIDES ITS ROW (Epic1 B1): the sprite it aligns with lifts by
-     * `PROJ_AIR * spriteScale(y)` (screen px, depthScale-aware via B-1c),
-     * but a fixed world-y offset projects with depthScale² through the
-     * homography — so the glow sinks below the shot as depth grows. Divide
-     * the world offset by depthScale(y) so the projected air height tracks
-     * the sprite's `*depthScale` lift. depthScale === 1 at q=0 → the old
-     * `PROJ_AIR / yScale`, byte-identical.
      */
     private projAirWorldY;
     /** Screen-px offset of a shadow cast from `hTiles` above the ground. */
@@ -1445,37 +1436,6 @@ export declare class Renderer {
      * override or a browser zoom moves every surface together.
      */
     effectiveDpr(): number;
-    /** THE CAMERA LEARNS TO LEAN (Epic B, B-1c): a billboard's size scalar
-     *  — `camera.scale` foreshortened by depth at the sprite's foot. 1×
-     *  depthScale at q=0, so byte-identical until the lean turns on. Every
-     *  point-anchored creature/body/mount draw scales its whole rig by
-     *  this (its screen POSITION already leans through worldToScreen);
-     *  surfaces (walls/cliffs/ground) do NOT use it — they warp per B-1b. */
-    private spriteScale;
-    /** Per-item depth factor for the FX modules (particles/debris/birds) —
-     *  each billboard foreshortens at its OWN world-y, so those modules take
-     *  this callback instead of a single scalar. A stable bound field (no
-     *  per-frame closure). Exactly 1 at q=0 → byte-identical. */
-    private readonly camDepthAt;
-    /** THE DEPTH LOD LAW (see LOD_TIER_MIN): the coarse √2 density tier a
-     *  cached sprite whose foot sits at world-row `footY` should bake at,
-     *  so its baked pixels match its EFFECTIVE (depth-scaled) on-screen
-     *  size instead of the flat zoom. 0 at q=0 (depthScale 1) → the flat
-     *  tier → byte-identical. Pass `curTier` (the tier a live sprite was
-     *  last baked at) to apply the hysteresis dead-band so a per-instance
-     *  sprite near a boundary does not re-tier every frame. */
-    private lodTier;
-    /** The bake dpr for a depth LOD tier (see lodTier): the frame's dpr
-     *  scaled by the tier's √2 density multiplier. Tier 0 → dpr() exactly
-     *  → byte-identical. Blits read sp.dpr for their source rect, so a
-     *  denser/sparser sheet needs no blit change. */
-    private lodDpr;
-    /** Recover the tier a cached sprite was baked at, from its stored dpr
-     *  (density) relative to the current base dpr — the anchor lodTier's
-     *  hysteresis reads. A base-dpr change (browser zoom) yields a
-     *  fractional result that resnaps, forcing the re-bake that a moved
-     *  device grid needs. */
-    private lodTierOfDpr;
     /** THE RENDER SCALE (A2): the factor (0 < s ≤ 1) the WebGL stage
      *  rasterizes its backbuffer at, from the live window size, dpr, and
      *  the resolution tier. 1 = native dpr (byte-identical to pre-A2 and
@@ -1718,7 +1678,6 @@ export declare class Renderer {
     private _vtbX;
     private _vtbY;
     private _vtbS;
-    private _vtbQ;
     private _vtbYS;
     private _vtbW;
     private _vtbH;
@@ -3297,17 +3256,6 @@ export declare class Renderer {
     /** The shared-bake key: (tile, variant) — one sprite per archetype,
      *  every instance of it a quad. */
     private treeVariantKey;
-    /** THE DEPTH LOD LAW meets THE SPECIES SHEET: the shared archetype
-     *  sheet is split by depth tier, so near trees share a dense sheet
-     *  and far trees a sparse one instead of one flat sheet fought over
-     *  by every depth (which would thrash the shared bake every frame
-     *  under the lean). Each depth band picks an EXISTING neighbour's
-     *  sheet as a tree crosses a boundary — a cheap key swap, not a
-     *  re-bake. At q=0 there is only tier 0, so a variant occupies one
-     *  sheet exactly as before; the pixel-affecting flutter phase and
-     *  cadence still key off the UN-tiered vkey (see drawTree), so q=0
-     *  output is byte-identical. */
-    private treeVariantKeyLod;
     /** THE STANDING LEAN: a constant hash-dealt shear bias (±0.028) so
      *  shared-variant neighbors hold different postures — silhouette
      *  diversity paid at the quad, not the bake. */

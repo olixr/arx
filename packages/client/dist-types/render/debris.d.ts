@@ -119,8 +119,6 @@ export declare class Debris {
     drawOne(ctx: CanvasRenderingContext2D, c: DebrisChunk, worldToScreen: (wx: number, wy: number) => {
         x: number;
         y: number;
-    }, scale: number, outlined?: boolean, 
-    /** B-1c depth thread: per-item depth factor (ds=1 at q=0). */
-    depthAt?: (wy: number) => number): void;
+    }, scale: number, outlined?: boolean): void;
 }
 //# sourceMappingURL=debris.d.ts.map

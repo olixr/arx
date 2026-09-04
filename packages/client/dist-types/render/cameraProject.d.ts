@@ -1,4 +1,17 @@
 /**
+ * REFERENCE MATH — NO RUNTIME CALLERS.
+ *
+ * The perspective camera lean (Epic B) was removed from the 2D client
+ * (epic/lean-out; see docs/perspective-review-and-3d-client-plan.md).
+ * This module is kept as the pinned reference for the 3D client being
+ * built elsewhere: the pitched-ortho → perspective homography, its exact
+ * closed-form inverse, the depth-scale factor, the horizon row, and the
+ * lightmap / shade strip warps. Nothing in packages/client imports it at
+ * runtime — the live Camera (render/renderer.ts) is the plain affine that
+ * `projectWorld` reduces to at q=0. Only tests read it: its own
+ * cameraProject.test.ts, and the q=0 oracle uses in structureFace.test.ts
+ * / grassProjectParity.test.ts / grassProjectShaderMirror.test.ts.
+ *
  * THE CAMERA LEARNS TO LEAN (Epic B, band B-1) — the ground-plane
  * projection, as pure arithmetic.
  *

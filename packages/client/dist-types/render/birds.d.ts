@@ -136,9 +136,7 @@ export declare class Birds {
     drawOne(ctx: CanvasRenderingContext2D, b: Bird, worldToScreen: (wx: number, wy: number) => {
         x: number;
         y: number;
-    }, scale: number, outlined: boolean, tSec: number, 
-    /** B-1c depth thread: per-item depth factor (ds=1 at q=0). */
-    depthAt?: (wy: number) => number): void;
+    }, scale: number, outlined: boolean, tSec: number): void;
     /**
      * The grounded bird: one faceted silhouette (body+head+tail+beak),
      * the brand ring under it, then flat tone facets on top. Pecking
