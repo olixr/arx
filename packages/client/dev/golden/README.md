@@ -10,3 +10,13 @@ them to prove the flat look still holds.
   `docs/the-one-render-verify.md`.
 - Do NOT hand-edit. Only re-`capture` (which also rewrites `manifest.json`),
   and only in a commit that owner-justifies any intended q=0 visual change.
+
+## Meadow needs re-capture (grass-default-cleanup, 2026-09-04)
+
+The GPU meadow is now the DEFAULT grass and the canvas2d baked meadow (plus
+its fallback) was removed. The committed `meadow.png` in BOTH baselines
+(`golden/` and `golden-canvas/`) still shows the RETIRED CPU coat, so the
+`meadow` scene is flagged `needsRecapture` in `manifest.json` and its diff
+will FAIL by design until refreshed. Owner: re-run `capture` on the
+sanctioned rig (perf12_probe, :5241 f0) to refresh the whole set under the
+GPU-default meadow. All non-meadow scenes are unaffected by this change.

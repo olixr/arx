@@ -50,7 +50,9 @@
       "name": "meadow",
       "tp": "/tp 42 20",
       "tol": 0.22,
-      "file": "golden-canvas/meadow.png"
+      "file": "golden-canvas/meadow.png",
+      "needsRecapture": true,
+      "note": "STALE — this PNG is the RETIRED canvas2d baked meadow. Default grass is now the GPU meadow (CPU baked path removed 2026-09-04, grass-default-cleanup); the GPU grass layer is its own WebGL2 context, so it draws under the canvas2d display too. Re-`capture` on the sanctioned rig (perf12_probe, :5241 f0) to refresh the whole set; until then the meadow diff will FAIL against the old CPU coat by design."
     }
   ]
 }

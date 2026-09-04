@@ -278,12 +278,14 @@ FOOTPRINT_TUNE.enabled = localStorage.getItem('arx.footprints') !== 'off';
   // 'auto' caps only huge Retina windows, the player owns the trade.
   const res = localStorage.getItem('arx.stageres');
   if (isStageResTier(res)) renderer.stageResTier = res;
-  // THE GPU MEADOW (proposal G-2, dev preview): ?grass=gpu (or the stored
-  // pref) renders the visible field instanced on the GPU instead of the
-  // canvas2d baked meadow. Off = byte-identical baked path; a lost context
-  // falls back on its own. Mirrors the accelerated-display toggle idiom.
+  // THE GPU MEADOW (proposal G-2): the visible field renders instanced on
+  // the GPU — the ONLY grass path now (the canvas2d baked meadow + its
+  // fallback were removed 2026-09-04). On by default whenever WebGL2 is
+  // available; if the GPU grass layer can't init the game simply renders
+  // with bare ground (no grass), never a crash. `?grass=off` is a debug
+  // escape that disables grass entirely.
   const grassParam = new URLSearchParams(location.search).get('grass');
-  renderer.grassGpu = grassParam === 'gpu' || localStorage.getItem('arx.grass') === 'gpu';
+  renderer.grassGpu = grassParam !== 'off';
   // G4 — THE OVER-FOOT SKIRT: on by default with the GPU meadow; ?skirt=off
   // is the dev A/B (a tree with its hard pasted base vs nestled in grass).
   renderer.grassSkirtOn = new URLSearchParams(location.search).get('skirt') !== 'off';
