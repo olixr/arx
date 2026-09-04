@@ -1515,8 +1515,22 @@ interface WorldSprite {
   ctx: CanvasRenderingContext2D;
   cw: number; // used css-px region
   ch: number;
-  ax: number; // trunk-base anchor within the sprite (css px)
+  ax: number; // bake margin: the box top-left within the sprite (css px)
   ay: number;
+  /**
+   * THE PROP KEEPS ITS FOOT UNDER A STALE SCALE: the GROUND FOOT's offset
+   * from the sprite canvas origin, in bake css px, captured at bake time.
+   * The blit pivots the cached sprite about THIS fixed offset (scaled by k)
+   * so the foot lands on the live world foot for BOTH depth-k (lean) and
+   * staleness-k (a zoom glide where the live scale has run ahead of the
+   * bake). The old blit pivoted about the LIVE (footX − b.x) offset, which
+   * only matches the bake when the sprite is fresh — under a zoom-glide
+   * cache reuse (k≠1 from bake staleness) it slid the foot by ~(foot−b)·(1−k),
+   * the "props drift then snap back" defect on machines whose bake budget
+   * can't re-bake every glide frame. Undefined only until the first bake.
+   */
+  footAx?: number;
+  footAy?: number;
   scale: number; // camera scale at bake
   dpr: number; // effective dpr at bake — sizes the blit's source rect
   frame: number; // last bake frame
@@ -19010,8 +19024,35 @@ export class Renderer {
     const foot = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
     const footX = foot.x;
     const footY = foot.y - this.renderLift(tx + 0.5, ty + 0.5) * s;
-    const dx0 = footX - (footX - b.x + sp.ax) * k;
-    const dy0 = footY - (footY - b.y + sp.ay) * k;
+    // THE PROP KEEPS ITS FOOT UNDER A STALE SCALE: pivot the blit about the
+    // foot's BAKED offset within the sprite (fixed at bake), not the LIVE
+    // (footX − b.x + ax) offset. When the sprite was baked THIS frame the two
+    // are identical (footAx is captured as exactly that live offset), so a
+    // fresh/rest blit — and the q>0 parity oracle, which settles before it
+    // samples — is byte-identical. They diverge only when the sprite is
+    // reused at a scale it was NOT baked at: k = spriteScale/bakeScale carries
+    // depth-k (lean, always) AND staleness-k (a zoom glide the bake budget
+    // couldn't keep up with). The live-offset form multiplied a *live-scale*
+    // (footX − b.x) by that k and slid the foot by ~(foot − b)·(1 − k) — the
+    // reported "props scale with the screen and drift, then snap back on the
+    // settle re-bake." The baked offset scaled by k lands the baked foot on
+    // the live foot in every case.
+    if (sp.frame === this.frameNo) {
+      sp.footAx = footX - b.x + sp.ax;
+      sp.footAy = footY - b.y + sp.ay;
+    }
+    let dx0: number;
+    let dy0: number;
+    if (sp.footAx !== undefined && sp.footAy !== undefined) {
+      dx0 = footX - sp.footAx * k;
+      dy0 = footY - sp.footAy * k;
+    } else {
+      // A sprite baked before this record carried a foot offset: hold the
+      // pre-existing behaviour for the one cadence until its next re-bake
+      // captures footAx (self-heals within STATIC_RING_TILES/treeCadence).
+      dx0 = footX - (footX - b.x + sp.ax) * k;
+      dy0 = footY - (footY - b.y + sp.ay) * k;
+    }
     const dw = sp.cw * k;
     const dh = sp.ch * k;
     // THE STEP-ASIDE FADE reaches man-height props: a bookshelf or
