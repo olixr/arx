@@ -2747,12 +2747,31 @@ export function hedgeItem(rend: PaintHost, tile: Tile, tx: number, ty: number, g
   // draw closure) while the mass grows taller (HED_H rises). leanF is 0
   // at q=0 — byte-identical today — and rises with the lean, bounded to
   // 1; hMul scales the lone-cushion heights by the same growth.
+  // FLAT GAME (q=0) — THE HEDGE STANDS UP. The bird's-eye camera used to
+  // read the deep 0.72-tile crown as a flat pillow BED: it lay UNDER the
+  // buildings it dressed, the player could stand ON it, and nothing sorted
+  // BEHIND it. It now stands as an upright clipped-green hedge-LINE — a tall
+  // south FACE under a modest rounded crown — the same body the q>0 volume
+  // (floodHedgeCrown) coalesces to, at rest. The q>0 lean rebalance is
+  // untouched (that path draws straight runs through the coalesced volume;
+  // only gates / diagonals / elevated tiles still reach hedgeItem there).
   const leanF = rend.camera.q > 0 ? Math.min(1, rend.camera.q * 520) : 0;
-  const HED_H = 0.5 + leanF * 0.3; // 0.5 top-down → 0.8 fully leaned
-  const hMul = HED_H / 0.5; // 1 at q=0 → exact
-  const DEEP = 0.72 * syT;
+  const flat = rend.camera.q === 0;
+  const HED_H = flat ? 0.95 : 0.5 + leanF * 0.3; // upright at rest; 0.5→0.8 leaned
+  const hMul = HED_H / 0.5; // cushion heights scale with the mass (1 was q=0 flat)
+  // The crown's plan depth is the span from its north edge VN to the south
+  // skirt VS. SHALLOW at rest (VN pulled south) so the bird's eye reads a
+  // modest rounded top riding a clear upright face — not a deep flat bed;
+  // the retired 0.72-deep pillow bed survives only in the q>0 rebalance.
+  const VN = flat ? -0.16 : -0.32 * (1 - leanF * 0.5);
+  const VS = 0.4;
+  const DEEP = (VS - VN) * syT;
   return {
-    sortY: ty + 0.8,
+    sortY: ty + 1,
+    // Foot-anchored volume depth — the wall law (renderer wallItem): a body
+    // NORTH of the hedge sorts BEHIND it, a body at its south base wins the
+    // tie, and abutting buildings no longer draw over it.
+    nearRow: rend.occlusionOn ? ty + 1 : undefined,
     drawShadow: () => {
       if (ewAny) rend.castEdgeQuad(xw, baseY, xe, baseY, 0.5);
       if (cn || nsEnd) rend.castEdgeQuad(p.x, baseY - syT * 0.5, p.x, baseY, 0.5);
@@ -2782,11 +2801,8 @@ export function hedgeItem(rend: PaintHost, tile: Tile, tx: number, ty: number, g
       // boundary index, so both tiles narrow to the identical
       // waist and the run reads as one body through every tile.
       const CU = 0.44;
-      // The crown's north (back) edge pulls south as the lean grows so
-      // the top plane foreshortens; the south skirt VS holds (the face
-      // roots there). VN = -0.32 exactly at q=0.
-      const VN = -0.32 * (1 - leanF * 0.5);
-      const VS = 0.4;
+      // VN (crown north edge) / VS (south skirt) are hoisted to the item
+      // scope so DEEP tracks the crown depth; see there.
       const KCUT = 0;
       const KCROWN = 1;
       const KSKIRT = 2;
@@ -2970,7 +2986,11 @@ export function hedgeGateItem(rend: PaintHost, tile: Tile, tx: number, ty: numbe
     (hedgeish(rend, game, tx, ty - 1) || hedgeish(rend, game, tx, ty + 1)) &&
     !(hedgeish(rend, game, tx + 1, ty) || hedgeish(rend, game, tx - 1, ty));
   return {
-    sortY: ty + (vertical ? 0.75 : 0.8),
+    sortY: ty + 1,
+    // Foot-anchored volume depth — the wall law (see hedgeItem): the gate
+    // is the hedge thickened at the gap, so it sorts as the same upright
+    // volume its run-mates do.
+    nearRow: rend.occlusionOn ? ty + 1 : undefined,
     drawShadow: () => {
       if (vertical) rend.castEdgeQuad(p.x, baseY - syT * 0.5, p.x, baseY + syT * 0.5, 0.6);
       else rend.castEdgeQuad(p.x - s * 0.5, baseY, p.x + s * 0.5, baseY, 0.6);
@@ -2997,10 +3017,13 @@ export function hedgeGateItem(rend: PaintHost, tile: Tile, tx: number, ty: numbe
       // Epic B (FW) — the gateposts follow the run's own lean rebalance
       // (see hedgeItem): crown foreshortens (VN south), hip rises. All
       // collapse to today's exact values at q=0.
+      // FLAT GAME (q=0): the gateposts stand upright with the run they
+      // thicken (see hedgeItem) — taller HIP, shallower crown (VN south).
       const leanF = rend.camera.q > 0 ? Math.min(1, rend.camera.q * 520) : 0;
-      const VN = -0.32 * (1 - leanF * 0.5);
+      const flat = rend.camera.q === 0;
+      const VN = flat ? -0.16 : -0.32 * (1 - leanF * 0.5);
       const VS = 0.4;
-      const HIP = 0.5 + leanF * 0.3;
+      const HIP = flat ? 0.95 : 0.5 + leanF * 0.3;
       const pillar = (
         u0: number,
         v0: number,

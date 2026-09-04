@@ -49,6 +49,7 @@ export type PaintHost = Pick<
   'h' |
   'liftedWTS' |
   'liveStats' |
+  'occlusionOn' |
   'outlineOn' |
   'ownBuiltTiles' |
   'paintGarrisonLeaf' |
