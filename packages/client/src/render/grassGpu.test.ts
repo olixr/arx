@@ -99,3 +99,83 @@ test('grassViewMatrix reuses a big-enough out buffer (alloc-free per frame)', ()
   const m = grassViewMatrix(1, 1, 0, 0, 2, 2, out);
   assert.equal(m, out);
 });
+
+// ---------------------------------------------------------------- G1
+
+import { partitionTallBands, bandNdcRemap, grassProjectMirror } from './grassGpu.js';
+
+test('partitionTallBands buckets a by-sorted array into contiguous row bands', () => {
+  // by-sorted blades straddling three 1/3-tile buckets around row 10.
+  const pitch = 1 / 3;
+  const blades = [
+    { by: 10.02 }, { by: 10.10 }, // bucket 30
+    { by: 10.34 }, { by: 10.40 }, { by: 10.66 - 0.001 }, // bucket 31
+    { by: 10.70 }, // bucket 32
+  ];
+  const bands = partitionTallBands(blades, pitch);
+  assert.equal(bands.length, 3, 'three occupied buckets → three bands');
+  // Contiguous, covering the whole array with no gaps/overlaps.
+  let expectI0 = 0;
+  for (const b of bands) {
+    assert.equal(b.i0, expectI0, 'bands are contiguous slices');
+    expectI0 += b.count;
+  }
+  assert.equal(expectI0, blades.length, 'bands cover every blade exactly once');
+  // sortY is the bucket CENTRE (interleave error ≤ pitch/2).
+  assert.ok(Math.abs(bands[0]!.sortY - (30.5 * pitch)) < 1e-9);
+  assert.ok(Math.abs(bands[1]!.sortY - (31.5 * pitch)) < 1e-9);
+  // Band extents track the blades they hold.
+  assert.ok(bands[0]!.minBy <= 10.02 && bands[0]!.maxBy >= 10.10);
+});
+
+test('partitionTallBands sortY is monotonic so bands paint back-to-front', () => {
+  const blades = Array.from({ length: 40 }, (_, i) => ({ by: i * 0.05 }));
+  const bands = partitionTallBands(blades, 1 / 3);
+  for (let i = 1; i < bands.length; i++) {
+    assert.ok(bands[i]!.sortY > bands[i - 1]!.sortY, 'sortY strictly increases');
+    assert.ok(bands[i]!.i0 === bands[i - 1]!.i0 + bands[i - 1]!.count);
+  }
+});
+
+test('partitionTallBands handles the empty field', () => {
+  assert.deepEqual(partitionTallBands([], 1 / 3), []);
+});
+
+test('bandNdcRemap maps a band screen rect onto its atlas slot (both corners)', () => {
+  // Full screen 1000×720 css at dpr 2 → device 2000×1440. Atlas 900×3000.
+  const SW = 2000, SH = 1440, AW = 900, AH = 3000;
+  const bandSx = 300, bandSy = 500; // device px, band screen bbox origin
+  const ax = 0, ay = 1200; // device px, atlas slot origin
+  const r = bandNdcRemap(SW, SH, AW, AH, bandSx, bandSy, ax, ay);
+  // A real-screen device point maps to a real-screen NDC, then the remap
+  // must land it at the atlas-NDC of the corresponding atlas device point.
+  const check = (dx: number, dy: number, adx: number, ady: number) => {
+    const ndcX = (2 * dx) / SW - 1;
+    const ndcY = 1 - (2 * dy) / SH;
+    const outX = ndcX * r.sx + r.bx;
+    const outY = ndcY * r.sy + r.by;
+    const wantX = (2 * adx) / AW - 1;
+    const wantY = 1 - (2 * ady) / AH;
+    assert.ok(Math.abs(outX - wantX) < 1e-9, `x @ ${dx},${dy}`);
+    assert.ok(Math.abs(outY - wantY) < 1e-9, `y @ ${dx},${dy}`);
+  };
+  // Origin corner → slot origin; opposite corner → slot + same size.
+  check(bandSx, bandSy, ax, ay);
+  check(bandSx + 400, bandSy + 250, ax + 400, ay + 250);
+});
+
+test('bandNdcRemap identity-slot reproduces the plain screen NDC', () => {
+  // Slot == whole screen at the same size → the remap is a no-op (sx=sy=1,
+  // bias=0), i.e. byte-identical to the un-retargeted short-coat path.
+  const S = 1600, H = 900;
+  const r = bandNdcRemap(S, H, S, H, 0, 0, 0, 0);
+  assert.ok(Math.abs(r.sx - 1) < 1e-12 && Math.abs(r.sy - 1) < 1e-12);
+  assert.ok(Math.abs(r.bx) < 1e-12 && Math.abs(r.by) < 1e-12);
+});
+
+test('grassProjectMirror q=0 is the plain affine (interleave bbox uses it)', () => {
+  const p = grassProjectMirror(48, 0.86, 500, 300, 0, 3, -2, 1000, 720);
+  assert.ok(Math.abs(p.x - (3 * 48 + 500)) < 1e-9);
+  assert.ok(Math.abs(p.y - (-2 * 48 * 0.86 + 300)) < 1e-9);
+  assert.equal(p.wDiv, 1);
+});

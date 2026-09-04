@@ -39,6 +39,10 @@ uniform float uTime;
 uniform vec2 uWindGain; // x = wind shear gain, y = reserved
 uniform vec4 uDisturb[${MAX_DISTURB}]; // xy = world pos, z = radius, w = strength
 uniform int uDisturbN;
+// G1 ATLAS REMAP: retarget the real-screen NDC into a band's atlas slot
+// (xy = scale, zw = bias). (1,1,0,0) = identity = the whole real screen
+// (the short-coat / ornament path, byte-identical to before).
+uniform vec4 uNdcRemap;
 out float vUp;
 out float vTone;
 out float vShimmer;
@@ -97,7 +101,10 @@ void main() {
   // ONE PROJECTION: the full projectWorld homography (perspective divide in
   // the shader), so the whole blade — root through leaned/trampled tip —
   // recedes with the world at exactly the player's parallax rate.
-  gl_Position = grassProject(world);
+  // ONE PROJECTION then the atlas remap: a pure NDC→NDC affine applied
+  // AFTER the perspective divide, so it is correct at q=0 and q>0 alike.
+  vec4 c = grassProject(world);
+  gl_Position = vec4(c.xy * uNdcRemap.xy + uNdcRemap.zw, 0.0, 1.0);
   vUp = up;
   vTone = iTone.x;
   vShimmer = wind.w;
@@ -164,6 +171,7 @@ export class GrassGpuRenderer {
   private readonly uWindGain: WebGLUniformLocation;
   private readonly uDisturb: WebGLUniformLocation;
   private readonly uDisturbN: WebGLUniformLocation;
+  private readonly uNdcRemap: WebGLUniformLocation;
   private instanceCount = 0;
   private disposed = false;
 
@@ -205,6 +213,7 @@ export class GrassGpuRenderer {
     this.uWindGain = gl.getUniformLocation(program, 'uWindGain')!;
     this.uDisturb = gl.getUniformLocation(program, 'uDisturb')!;
     this.uDisturbN = gl.getUniformLocation(program, 'uDisturbN')!;
+    this.uNdcRemap = gl.getUniformLocation(program, 'uNdcRemap')!;
     gl.useProgram(program);
     gl.uniform1i(gl.getUniformLocation(program, 'uPalette'), 0);
 
@@ -229,16 +238,13 @@ export class GrassGpuRenderer {
 
     this.instanceBuf = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuf);
-    const stride = GRASS_INSTANCE_FLOATS * 4;
     gl.enableVertexAttribArray(1);
-    gl.vertexAttribPointer(1, 2, gl.FLOAT, false, stride, 0); // root
     gl.vertexAttribDivisor(1, 1);
     gl.enableVertexAttribArray(2);
-    gl.vertexAttribPointer(2, 4, gl.FLOAT, false, stride, 8); // height,hw,lean,phase
     gl.vertexAttribDivisor(2, 1);
     gl.enableVertexAttribArray(3);
-    gl.vertexAttribPointer(3, 2, gl.FLOAT, false, stride, 24); // tone, seg2
     gl.vertexAttribDivisor(3, 1);
+    this.bindInstanceAttribs(0);
     gl.bindVertexArray(null);
 
     // Palette texture: PAL_LIGHTS × PAL_TONES from the shimmer ramp.
@@ -263,6 +269,19 @@ export class GrassGpuRenderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  }
+
+  /** (Re)point the interleaved instance attributes so instance 0 reads
+   *  from blade `baseFloats/GRASS_INSTANCE_FLOATS` — used to draw a
+   *  contiguous band slice (WebGL2 has no baseInstance). Assumes the VAO
+   *  and instance buffer are bound. */
+  private bindInstanceAttribs(baseFloats: number): void {
+    const gl = this.gl;
+    const stride = GRASS_INSTANCE_FLOATS * 4;
+    const base = baseFloats * 4;
+    gl.vertexAttribPointer(1, 2, gl.FLOAT, false, stride, base + 0); // root
+    gl.vertexAttribPointer(2, 4, gl.FLOAT, false, stride, base + 8); // height,hw,lean,phase
+    gl.vertexAttribPointer(3, 2, gl.FLOAT, false, stride, base + 24); // tone, seg2
   }
 
   /** Upload the packed instance buffer for this frame's blades. */
@@ -301,12 +320,70 @@ export class GrassGpuRenderer {
     const n = disturb ? Math.min(MAX_DISTURB, Math.floor(disturb.length / 4)) : 0;
     gl.uniform1i(this.uDisturbN, n);
     if (n > 0) gl.uniform4fv(this.uDisturb, disturb!.subarray(0, n * 4));
+    // Identity remap: the short coat / whole field targets the real screen.
+    gl.uniform4f(this.uNdcRemap, 1, 1, 0, 0);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.palTex);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.bindVertexArray(this.vao);
+    this.bindInstanceAttribs(0);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, BLADE_VERTS, this.instanceCount);
+    gl.bindVertexArray(null);
+  }
+
+  /**
+   * G1 — THE TALL BLADE INTERLEAVES. Set the shared per-frame uniforms
+   * (projection, wind, time, disturbers) ONCE for a run of band sub-draws.
+   * `count` blades are uploaded (the whole by-sorted tall array); each
+   * band is then a `drawBand` slice into its own atlas slot. Call before
+   * a sequence of drawBand, then drawBandEnd.
+   */
+  beginBands(
+    instances: Float32Array,
+    count: number,
+    proj: GrassProj,
+    timeSec: number,
+    opts: { windGain?: number; disturb?: Float32Array } = {},
+  ): void {
+    if (this.disposed) return;
+    const gl = this.gl;
+    this.upload(instances, count);
+    gl.useProgram(this.program);
+    gl.uniform1f(this.uScale, proj.scale);
+    gl.uniform1f(this.uYScale, proj.yScale);
+    gl.uniform2f(this.uOrigin, proj.ox, proj.oy);
+    gl.uniform1f(this.uQ, proj.q);
+    gl.uniform2f(this.uViewport, proj.wCss, proj.hCss);
+    gl.uniform1f(this.uTime, timeSec);
+    gl.uniform2f(this.uWindGain, opts.windGain ?? 0.12, 0);
+    const disturb = opts.disturb;
+    const n = disturb ? Math.min(MAX_DISTURB, Math.floor(disturb.length / 4)) : 0;
+    gl.uniform1i(this.uDisturbN, n);
+    if (n > 0) gl.uniform4fv(this.uDisturb, disturb!.subarray(0, n * 4));
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.palTex);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.bindVertexArray(this.vao);
+  }
+
+  /** Draw one band slice [i0, i0+count) with its atlas NDC remap. The
+   *  caller has set the atlas viewport/scissor for this band's slot. */
+  drawBand(i0: number, count: number, remap: { sx: number; sy: number; bx: number; by: number }): void {
+    if (this.disposed || count <= 0) return;
+    const gl = this.gl;
+    gl.uniform4f(this.uNdcRemap, remap.sx, remap.sy, remap.bx, remap.by);
+    this.bindInstanceAttribs(i0 * GRASS_INSTANCE_FLOATS);
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, BLADE_VERTS, count);
+  }
+
+  /** End a band run: unbind the VAO and restore the base attrib offset so
+   *  a subsequent whole-field `draw` starts at instance 0. */
+  drawBandEnd(): void {
+    if (this.disposed) return;
+    const gl = this.gl;
+    this.bindInstanceAttribs(0);
     gl.bindVertexArray(null);
   }
 

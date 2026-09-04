@@ -58,6 +58,97 @@ export function packBladeInstances(blades: readonly Blade[], out?: Float32Array)
 }
 
 /**
+ * G1 — THE TALL BLADE INTERLEAVES. A contiguous slice of the by-sorted
+ * tall-blade instance buffer that shares one interleave depth (`sortY`).
+ * Each band becomes one y-sorted DrawItem + one instanced GPU sub-draw
+ * (drawn in isolation into its own atlas slot), so a body slots BETWEEN
+ * bands at its true foot row.
+ */
+export interface TallBand {
+  /** First blade index in the by-sorted array. */
+  i0: number;
+  /** Blade count in this band. */
+  count: number;
+  /** The band's interleave depth — the world row it y-sorts at. */
+  sortY: number;
+  /** Band world-y extent (min/max blade root), for screen-bbox bounding. */
+  minBy: number;
+  maxBy: number;
+}
+
+/**
+ * Partition a BACK-TO-FRONT (by ascending) tall-blade array into fine
+ * world-row bands of height `pitch` (world units). Blades are bucketed by
+ * `floor(by / pitch)`; each occupied bucket becomes one band whose
+ * `sortY` is the bucket CENTRE — so a body's foot at row fY slots between
+ * the band centres, its interleave error bounded by pitch/2 (vs the old
+ * two-fixed-lanes-per-tile hack whose midlines popped). Because the input
+ * is sorted, every band is a contiguous slice (i0, count). Pure + tested.
+ */
+export function partitionTallBands(
+  blades: readonly { by: number }[],
+  pitch: number,
+): TallBand[] {
+  const bands: TallBand[] = [];
+  const p = pitch > 0 ? pitch : 1;
+  let i = 0;
+  const n = blades.length;
+  while (i < n) {
+    const bucket = Math.floor(blades[i]!.by / p);
+    let j = i;
+    let minBy = blades[i]!.by;
+    let maxBy = blades[i]!.by;
+    while (j < n && Math.floor(blades[j]!.by / p) === bucket) {
+      const by = blades[j]!.by;
+      if (by < minBy) minBy = by;
+      if (by > maxBy) maxBy = by;
+      j++;
+    }
+    bands.push({ i0: i, count: j - i, sortY: (bucket + 0.5) * p, minBy, maxBy });
+    i = j;
+  }
+  return bands;
+}
+
+/**
+ * G1 — THE ATLAS REMAP. The tall bands each render in ISOLATION (no
+ * cross-band contamination, so a band's blit carries only its own blades)
+ * into a distinct slot of ONE offscreen atlas — a single GL pass, then
+ * cheap 2d blits at the interleaved y-sort slots. The blade shader still
+ * projects through the full `projectWorld` homography (grassProjectGlsl),
+ * emitting NDC for the REAL screen (viewport `SW×SH` device px). This
+ * returns the affine `gl_Position.xy = ndc·scale + bias` that RETARGETS
+ * that real-screen NDC into the band's atlas slot: the screen device rect
+ * at (bandSx,bandSy) maps to the atlas device rect at (ax,ay), same size.
+ * Because it is a pure NDC→NDC affine applied AFTER the perspective
+ * divide, it is correct for q=0 AND q>0. Pure + tested (corner mapping).
+ *
+ *   SW,SH = full-screen backbuffer size in DEVICE px (viewCss·dpr)
+ *   AW,AH = atlas size in DEVICE px
+ *   bandSx,bandSy = band screen bbox origin in DEVICE px
+ *   ax,ay = band atlas-slot origin in DEVICE px
+ */
+export function bandNdcRemap(
+  SW: number,
+  SH: number,
+  AW: number,
+  AH: number,
+  bandSx: number,
+  bandSy: number,
+  ax: number,
+  ay: number,
+): { sx: number; sy: number; bx: number; by: number } {
+  const sx = SW / AW;
+  const sy = SH / AH;
+  return {
+    sx,
+    sy,
+    bx: sx - 1 + (2 * (ax - bandSx)) / AW,
+    by: 1 - sy + (2 * (bandSy - ay)) / AH,
+  };
+}
+
+/**
  * Build the world→clip `mat3` (column-major, 9 floats) the grass vertex
  * shader consumes as `uView` — for the ORTHO camera (q=0, the shipping
  * default). It composes the renderer's affine world→screen projection
