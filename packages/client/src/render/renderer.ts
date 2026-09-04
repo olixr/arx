@@ -5523,6 +5523,11 @@ export class Renderer {
     // carries the short `under` coat as one flat layer); the tall y-sort
     // pass still runs (B3 — tall thickets interleave with bodies). Any
     // failure (no context, lost) falls back to the byte-identical baked path.
+    // GPU-meadow geometry: scatter the taller standing grass through normal
+    // tiles only when the GPU field is in play (grass-elevate pass). The setter
+    // clears the tile cache on a mode flip, so the canvas fallback never draws
+    // the gpu-only tufts.
+    this.grass.setGpuGeom(this.grassGpu);
     if (this.grassGpu && this.drawGrassGpu(groundLvl0, detail, grassBounds)) {
       this.grassGpuActive = true;
     } else {

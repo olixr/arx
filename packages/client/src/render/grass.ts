@@ -260,12 +260,30 @@ function makeBlade(
  * natural drifts, and a prairie field raises seed-head stalks in
  * golden reaches.
  */
+/**
+ * GPU MEADOW — STANDING GRASS THROUGHOUT (grass-elevate pass). The threshold
+ * of the slow `stand` noise field (941) above which a NORMAL grass tile may
+ * raise a scattered standing tuft. Lower = more of the field carries upright
+ * grass; the drift stays clumpy (gaps between reaches) so nothing lattices.
+ * Only consulted in `gpu` mode — the canvas default never grows these, so its
+ * geometry is byte-identical to before.
+ */
+export const GPU_STAND_THRESHOLD = 0.42;
+
 export function generateGrassTile(
   tx: number,
   ty: number,
   tileId: number,
   detailId: number,
   snowMask = 0,
+  /**
+   * GPU-meadow geometry (grass-elevate pass): when true, normal grass tiles
+   * ALSO scatter taller standing blades (north/south, so they interleave with
+   * bodies) on the organic `stand` field — upright grass present throughout
+   * the meadow, densest on true GrassTall. Default false = the exact canvas
+   * meadow the baked/CPU path draws (byte-identical), gated behind ?grass=gpu.
+   */
+  gpu = false,
 ): GrassTileGeom {
   const geom: GrassTileGeom = {
     under: [],
@@ -368,6 +386,42 @@ export function generateGrassTile(
     // A satellite strand beside the clump.
     const sat = makeBlade(tx, ty, 191, 0, false, null, tileTone);
     if (!buried?.(sat.bx, sat.by)) geom.under.push(sat);
+  }
+
+  // STANDING GRASS THROUGHOUT (GPU meadow, grass-elevate pass). The tall
+  // standing mass used to live ONLY on dedicated GrassTall tiles (a minority),
+  // so upright grass was sparse. Here a slow, clumpy `stand` field raises a few
+  // taller standing blades on a tunable fraction of NORMAL grass tiles too, so
+  // standing grass reads across the whole meadow — while true GrassTall tiles
+  // (handled above, 13-17 stems) stay by far the densest thickets. The tufts
+  // fan from a shared seed point (organic, not one-per-cell), split at the
+  // tile midline into north/south so the G1 band machinery interleaves them
+  // with entities. GPU-only: the canvas default never grows these.
+  if (gpu && !tall) {
+    const stand =
+      valueNoise(941, tx * 0.05, ty * 0.05) * 0.62 + valueNoise(942, tx * 0.11, ty * 0.11) * 0.38;
+    if (stand > GPU_STAND_THRESHOLD) {
+      const hs = hashCoords(947, tx, ty);
+      // Denser inside the heart of a drift, thinning to its edge — a soft,
+      // clumpy presence, never every tile.
+      const drift = (stand - GPU_STAND_THRESHOLD) / (1 - GPU_STAND_THRESHOLD);
+      const gate = 34 + Math.floor(drift * 52); // 34..86% of drift tiles
+      if (hs % 100 < gate) {
+        const n = 1 + (hs % 3) + (drift > 0.62 ? 1 : 0); // 1..4 stems
+        const scx = tx + rand01(hs, 3);
+        const scy = ty + rand01(hs, 13);
+        for (let i = 0; i < n; i++) {
+          const b = makeBlade(tx, ty, 953 + i * 31, i, true, { x: scx, y: scy }, tileTone);
+          // Waist-ish standing grass — clearly taller than the coat, clearly
+          // shorter than a true thicket stem, so the thickets still read densest
+          // AND tallest.
+          b.h *= 0.85;
+          b.seg2 = b.h > 0.42;
+          if (buried?.(b.bx, b.by)) continue;
+          (b.by < ty + 0.5 ? geom.north : geom.south).push(b);
+        }
+      }
+    }
   }
 
   // THE GOLDEN REACH: wild grain stalks gather in prairie drifts on
@@ -514,35 +568,51 @@ export function generateSkirtBlades(
   const tileTone = Math.min(4, Math.floor(valueNoise(905, tx * 0.05, ty * 0.05) * 5));
   const cx = tx + 0.5;
   const h0 = hashCoords(521, tx, ty);
-  // A LUSH tuft at full strength — enough blades to wrap the foot and thin
-  // outward, still a tuft not a hedge. Scaled DOWN by strength so a rock
-  // carries only a handful (≈5) and a wall foot a modest fringe (≈12).
-  const full = 20 + (h0 % 8); // 20..27
-  const count = Math.max(3, Math.round(full * strength));
+  // ORGANIC, DISPERSED SKIRT (grass-elevate pass). The old skirt packed a
+  // tight, regular ellipse hard against the foot (u^1.7 inward) — it read as a
+  // placed collar. This scatters MORE blades over a WIDER, IRREGULAR patch:
+  // each blade's reach is modulated by a per-direction lobe noise so the
+  // outline is lumpy (fingers of grass reaching out, gaps between), the radial
+  // fill is only gently inward-biased so blades genuinely disperse instead of
+  // clustering, and a sparse outer rim is thinned by hand — so the object
+  // looks like the meadow GREW around it, not like a ring was set down.
+  // A fuller-than-before tuft, but the natural read comes from the WIDER,
+  // IRREGULAR spread (the lobe + gap logic below), not raw blade count — so
+  // the count stays close to the old collar while the area it covers grows.
+  const full = 22 + (h0 % 9); // 22..30
+  const count = Math.max(4, Math.round(full * strength));
   // Shorter + tighter for weaker skirts: a rock's wisps must not climb it.
   const heightScale = 0.4 + 0.6 * strength; // rock 0.53 · wall 0.7 · tree 1.0
-  const radiusScale = 0.6 + 0.4 * strength; // rock hugs the base tighter
+  // WIDER spread than before (was 0.5·(0.6..1.0)): the patch reaches ~0.75t
+  // for a rock, ~1.0t for a tree, so grass genuinely surrounds the foot.
+  const maxR = 0.62 + 0.42 * strength; // rock ~0.71 · wall ~0.83 · tree ~1.04
   const climbers = strength >= 0.85; // only tall wilds send blades up the bark
   for (let i = 0; i < count; i++) {
     const hh = hashCoords(523 + i * 37, tx, ty);
-    // Radial scatter biased hard INWARD (u^1.7): most blades hug the trunk,
-    // a thinning few reach the rim — the density falls off outward, never a
-    // uniform collar. maxR 0.5 wraps a full tile diameter around the foot.
-    const u = rand01(hh, 2);
-    const rad = 0.5 * radiusScale * Math.pow(u, 1.7);
     const ang = biasAngleToGrassSides(rand01(hh, 12) * 6.2831853, sides, rand01(hh, 27));
+    // Per-direction reach: a low-frequency noise around the ring makes the
+    // patch outline irregular — some directions push grass out to the rim,
+    // others stay short — so the skirt has natural fingers and gaps, never a
+    // clean disc. Sampled on the object's own tile so it is stable per object.
+    const lobe = 0.5 + 0.5 * valueNoise(963, Math.cos(ang) * 2.1 + tx * 0.37, Math.sin(ang) * 2.1 + ty * 0.37);
+    // Gently inward-biased radial fill (sqrt, not u^1.7): the foot is denser
+    // but blades really do spread out to the lobe's reach.
+    const u = rand01(hh, 2);
+    const rad = maxR * lobe * (0.22 + 0.78 * Math.sqrt(u));
+    // NATURAL GAPS: thin the sparse outer reaches so the rim breaks up into
+    // scattered strands instead of a filled edge.
+    if (rad > maxR * 0.66 && rand01(hh, 29) > 0.62) continue;
     const bx = cx + Math.cos(ang) * rad;
-    // Squash the ellipse (×0.5) so the skirt lies in the ground plane and
-    // WRAPS the trunk sides more than it spills forward; a hair forward
-    // (south) so it favours the visible near face without hiding the foot.
+    // Squash the ellipse (×0.5) so the skirt lies in the ground plane; a hair
+    // forward (south) so it favours the visible near face without hiding the foot.
     const by = footY + Math.sin(ang) * rad * 0.5 + 0.03;
-    // rise = 1 at the trunk, 0 at the rim: centre blades stand tall and
-    // climb the bark, outer chips stay squat. A handful of the very inner
-    // blades are CLIMBERS — a touch taller still — for the few tufts that
-    // rise up the trunk. Capped so the skirt never swallows the mass.
-    const rise = 1 - u;
-    const climber = climbers && u < 0.22 ? rand01(hh, 24) * 0.1 : 0;
-    const height = (0.14 + rise * 0.27 + climber + rand01(hh, 5) * 0.06) * heightScale; // ≤ ~0.57
+    // rise ≈ 1 at the trunk, 0 at the rim: centre blades stand tall and climb
+    // the bark, outer strands stay squat — a lush foot thinning to wisps.
+    const rise = 1 - Math.min(1, rad / Math.max(0.001, maxR));
+    const climber = climbers && rise > 0.78 ? rand01(hh, 24) * 0.1 : 0;
+    // More per-blade height variation than the old collar so the tuft reads
+    // hand-grown, not stamped.
+    const height = (0.13 + rise * 0.3 + climber + rand01(hh, 5) * 0.12) * heightScale;
     const phase = rand01(hh, 18);
     out.push({
       bx,
@@ -551,7 +621,7 @@ export function generateSkirtBlades(
       // A touch narrower than a meadow accent — trunk-side blades read as
       // fine strands, not slabs; inner blades a hair wider so they read.
       w: 0.03 + rand01(hh, 8) * 0.02 + rise * 0.008,
-      lean: (rand01(hh, 15) - 0.42) * 0.1,
+      lean: (rand01(hh, 15) - 0.42) * 0.12,
       phase,
       bin: Math.min(31, Math.floor(phase * 32)),
       lumJit: (rand01(hh, 21) - 0.5) * 0.18,
@@ -943,6 +1013,22 @@ export class GrassSystem {
   /** Dev/proof lever (the staticLayerOn pattern): false = every cell
    *  builds live through the exact pre-sprite path. */
   rowSpritesOn = true;
+  /**
+   * GPU-meadow geometry mode (grass-elevate pass): when true, generateGrassTile
+   * scatters taller standing blades through NORMAL grass tiles (see that fn),
+   * so upright grass reads across the whole field under ?grass=gpu. The renderer
+   * sets it before the GPU field is gathered; the canvas default leaves it false
+   * (byte-identical geometry). Changing it clears the tile cache so no stale
+   * (wrong-mode) geometry survives the flip.
+   */
+  private gpuGeom = false;
+  setGpuGeom(on: boolean): void {
+    if (on === this.gpuGeom) return;
+    this.gpuGeom = on;
+    // Geometry differs by mode — drop the cache so tiles re-mint in the new mode.
+    this.tiles.clear();
+    this.posIndex.clear();
+  }
   /** THE CADENCE PAYS A BUDGET: live beat, self-tuned per frame. */
   private rowCadenceMs = GRASS_ROW_CADENCE_MS;
   /** Cell-scan scratch (span-sized; no per-frame allocation). */
@@ -1290,7 +1376,12 @@ export class GrassSystem {
           (ground(tx, ty + 1) === Tile.Snow ? 4 : 0) |
           (ground(tx - 1, ty) === Tile.Snow ? 8 : 0)
         : 0;
-      st = { geom: generateGrassTile(tx, ty, tileId, detailId, snowMask), wakeAt: 0, tx, ty };
+      st = {
+        geom: generateGrassTile(tx, ty, tileId, detailId, snowMask, this.gpuGeom),
+        wakeAt: 0,
+        tx,
+        ty,
+      };
       this.tiles.set(key, st);
       this.posIndex.set((ty + 8192) * 16384 + (tx + 8192), st);
     }
@@ -1995,8 +2086,15 @@ export class GrassSystem {
     out.length = 0;
     for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
       for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
-        if (ground(tx, ty) !== Tile.GrassTall) continue;
-        const geom = this.tile(tx, ty, Tile.GrassTall, detail(tx, ty), ground).geom;
+        // BOTH grass tiles now carry a standing mass under ?grass=gpu: true
+        // GrassTall thickets AND the taller tufts scattered through normal
+        // Grass (generateGrassTile in gpu mode). Normal tiles have empty
+        // north/south in canvas mode, so this is a no-op there. The flat GPU
+        // field (collectGpuBlades, tallInterleave) skips ALL north/south, so
+        // these interleave here with no double-draw.
+        const t = ground(tx, ty);
+        if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
+        const geom = this.tile(tx, ty, t, detail(tx, ty), ground).geom;
         for (const b of geom.north) out.push(b);
         for (const b of geom.south) out.push(b);
       }

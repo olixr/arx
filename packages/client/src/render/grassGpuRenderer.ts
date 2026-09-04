@@ -66,8 +66,18 @@ void main() {
   float wj = 0.68 + 0.48 * fract(iShape.w * 7.31);
   vec4 wind = grassWind(iRoot, uTime + iShape.w * 6.2831853);
   vec2 root = iRoot;
-  float height = iShape.x * 1.42;       // ankle-to-shin coat, waist-high thickets
-  float hw = iShape.y * 0.76 * wj;      // fine flush blades, not chunky bars
+  // A LAYERED MEADOW, NOT ONE HEIGHT (grass-elevate pass): a stable per-blade
+  // height multiplier keyed on the root position gives every blade its own
+  // stature, so the field reads as a natural mix of short ground blades,
+  // medium stands and taller tufts — ankle-to-knee coat, thickets to the
+  // waist — instead of a single mown level. The blades were left too SHORT by
+  // the width-halving pass; this lifts the whole register and spreads it.
+  float hvar = 0.86 + 0.34 * fract(sin(dot(iRoot, vec2(12.9898, 78.233))) * 43758.5453);
+  float height = iShape.x * 1.66 * hvar;  // ankle→knee coat, waist-high thickets
+  float hw = iShape.y * 0.78 * wj;        // keep the fine width from last pass
+  // Taller blades read a hair fuller at the base so a knee-high stand does not
+  // vanish to a thread — the fine width stays, the tallest just aren't wisps.
+  hw *= 0.94 + 0.12 * clamp(height * 0.9, 0.0, 1.0);
 
   // WIND — a whole-blade SHEAR, linear in height: the blade leans as a
   // clean parallelogram with straight edges and a flat top. No per-vertex

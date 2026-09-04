@@ -101,23 +101,47 @@ test('grassRootedSkirtAt: a crop in grass gets no skirt (ineligible kind)', () =
   assert.equal(grassRootedSkirtAt(s, 0, 0, Tile.CropSprout), false);
 });
 
-test('generateSkirtBlades: deterministic, tuft-sized, hugs the foot', () => {
+test('generateSkirtBlades: deterministic, tuft-sized, nestles the foot', () => {
   const a = generateSkirtBlades(3, 7, 7.9);
   const b = generateSkirtBlades(3, 7, 7.9);
   // Deterministic per tile.
   assert.deepEqual(JSON.stringify(a), JSON.stringify(b));
-  // A tuft, not a hedge.
-  assert.ok(a.length >= 20 && a.length <= 27, `count ${a.length}`);
+  // A dispersed tuft, not a hedge — the grass-elevate pass widened it (a
+  // few blades are thinned from the outer rim, so the count sits under `full`).
+  assert.ok(a.length >= 16 && a.length <= 31, `count ${a.length}`);
   // Sorted back-to-front by world-y (the GPU draws opaque, order is depth).
   for (let i = 1; i < a.length; i++) assert.ok(a[i]!.by >= a[i - 1]!.by);
-  // Blades cluster around (tx+0.5, footY) within a ~half-tile ellipse, and
-  // stay short (a small rise, never swallowing the object).
+  // Blades scatter around (tx+0.5, footY) over a WIDER, ground-squashed ellipse
+  // (a full tile of reach, half that in y), staying short enough never to
+  // swallow the object.
   for (const bl of a) {
-    assert.ok(Math.abs(bl.bx - 3.5) <= 0.5, `bx ${bl.bx}`);
-    assert.ok(Math.abs(bl.by - 7.9) <= 0.35, `by ${bl.by}`);
-    assert.ok(bl.h > 0 && bl.h <= 0.6, `h ${bl.h}`);
+    assert.ok(Math.abs(bl.bx - 3.5) <= 1.1, `bx ${bl.bx}`);
+    assert.ok(Math.abs(bl.by - 7.9) <= 0.6, `by ${bl.by}`);
+    assert.ok(bl.h > 0 && bl.h <= 0.7, `h ${bl.h}`);
     assert.ok(bl.tone >= 0 && bl.tone <= 4, `tone ${bl.tone}`);
   }
+});
+
+test('generateSkirtBlades: DISPERSED + organic — a wide, irregular patch, not a tight collar', () => {
+  // The grass-elevate pass makes the skirt read as grass that GREW around the
+  // foot: blades spread across a wide area with an irregular outline and gaps,
+  // instead of a dense ring hugging the trunk.
+  const tree = generateSkirtBlades(9, 4, 4.5, 1); // full-strength wild
+  const cx = 9.5;
+  const radii = tree.map((b) => Math.hypot(b.bx - cx, (b.by - 4.5) / 0.5));
+  const maxR = Math.max(...radii);
+  // Genuinely WIDE reach — the old collar clustered inside ~0.5t; now some
+  // blades reach out past 0.7t (per-direction lobe pushes fingers of grass out).
+  assert.ok(maxR > 0.7, `reach ${maxR} should exceed a tight collar`);
+  // DISPERSED, not clustered at the foot: a real fraction of the tuft sits in
+  // the outer half of the patch (a hard-inward u^1.7 collar would leave it bare).
+  const outer = radii.filter((r) => r > maxR * 0.5).length;
+  assert.ok(outer >= tree.length * 0.25, `only ${outer}/${tree.length} blades reach the outer half`);
+  // IRREGULAR outline: the reach varies a lot around the ring (a clean disc
+  // would have near-uniform max radius) — measured as spread across the radii.
+  const mean = radii.reduce((s, r) => s + r, 0) / radii.length;
+  const variance = radii.reduce((s, r) => s + (r - mean) ** 2, 0) / radii.length;
+  assert.ok(variance > 0.02, `patch too uniform (variance ${variance})`);
 });
 
 test('generateSkirtBlades: different tiles differ (not a stamped ring)', () => {
