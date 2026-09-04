@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { windAtInto, type Blade } from './grass.js';
 import { GRASS_INSTANCE_FLOATS, grassViewMatrix, grassWindGlsl, grassWindMirror, packBladeInstances } from './grassGpu.js';
+import { grassShadowOffset, grassShadowVertSrc, shadeRgb01 } from './grassGpuShadow.js';
 
 /**
  * THE LIVING MEADOW GOES TO THE GPU (G-1) — the substrate, pinned.
@@ -178,4 +179,36 @@ test('grassProjectMirror q=0 is the plain affine (interleave bbox uses it)', () 
   assert.ok(Math.abs(p.x - (3 * 48 + 500)) < 1e-9);
   assert.ok(Math.abs(p.y - (-2 * 48 * 0.86 + 300)) < 1e-9);
   assert.equal(p.wDiv, 1);
+});
+
+/**
+ * G2 — THE MEADOW CASTS ITS OWN SHADE. The cast shader must be thrown by
+ * the SAME wind and projected through the SAME homography as the blades
+ * (uniform, radius-free, perspective-correct), and its ground throw must
+ * fold the sky shear to world units so it lands where the CPU shade did.
+ */
+test('the grass cast shader embeds the shared wind and projection', () => {
+  const src = grassShadowVertSrc();
+  assert.match(src, /grassWind\(iRoot/); // thrown by the one wind
+  assert.match(src, /grassProject\(world\)/); // through the one homography
+  assert.match(src, /uShadow \* H/); // ground throw scales with world height
+});
+
+test('grassShadowOffset folds the sky shear to a world-ground vector', () => {
+  // The scale (and yScale) factors cancel between the CPU screen throw and
+  // our world quad's projection, so the world offset is just dir·len.
+  const o = grassShadowOffset(-0.6, 0.8, 1.5);
+  assert.ok(Math.abs(o.x - -0.6 * 1.5) < 1e-12, 'x');
+  assert.ok(Math.abs(o.y - 0.8 * 1.5) < 1e-12, 'y');
+  // A flat sun (no shade length) throws nothing.
+  const z = grassShadowOffset(-0.6, 0.8, 0);
+  assert.ok(z.x === 0, 'x zero');
+  assert.ok(z.y === 0, 'y zero');
+});
+
+test('shadeRgb01 parses the shade hex to 0..1 rgb', () => {
+  const [r, g, b] = shadeRgb01('#180e20');
+  assert.ok(Math.abs(r - 0x18 / 255) < 1e-9);
+  assert.ok(Math.abs(g - 0x0e / 255) < 1e-9);
+  assert.ok(Math.abs(b - 0x20 / 255) < 1e-9);
 });
