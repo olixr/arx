@@ -121,11 +121,11 @@ you are on.
 
 | Party | id / kind | Wants | Fault | Virtue | Mark |
 |---|---|---|---|---|---|
-| **The Amberford Charter** | `fordgate` (faction, existing) | The First Road dry and billed by a causeway; the north stand cut on licence; the west tin seam chained; the Old Road lit for wains. "Never caught poor again." | Bills the drowned for the dike that drowns them; cuts the skral's weir to lay one straight road; chains a seam across a broken barrow and does not stop; counts the Doorless in the same column as stumps. | They build and their wains come. Fenna's tally is the only honest number in the valley: she alone knows the Copse cannot heat Dawnmead and the Third Stone both. | CharterPost (ochre survey stake, brass plate) |
+| **The Amberford Charter** | `fordgate` (faction, existing) | The First Road dry and billed by a causeway; the north stand cut on licence; the west tin seam chained; the Old Road lit for wains. "Never caught poor again." | Bills the drowned for the dike that drowns them; cuts the skral's weir to lay one straight road; chains a seam across a broken barrow and does not stop; counts the Doorless in the same column as stumps. | They build and their wains come. Margit's tally is the only honest number in the valley: she alone knows the Copse cannot heat Dawnmead and the Third Stone both. | CharterPost (ochre survey stake, brass plate) |
 | **The Waykeepers** | `waykeepers` (faction, existing; roadFaction) | The First Road lamped and walked to the ford; the husk taken back and BURNT; the Old Road left dark because they cannot walk it; the Returners' lamps put out as lies in glass. | Doctrine over people. They will not light the south and will not let anyone else; Torsten would burn the order's own first tower; they refuse Charter oil because it comes with a ledger. | A Waykeeper lamp has never once lied. Hale's First Lamp is the one unambiguous safety on the road, and Torsten's count of gnolls and wolves is the most accurate map anyone holds. Torsten is **right about a specific death** (the Company crew that walked past his picket lamp at dusk). | LampCairn (cairn with a lit lamp in its crown) |
 | **The Red Company** | `reavers` (faction, existing) | The First Road slow enough to be worth a toll and the towns rich enough to be worth robbing; to be PAID to keep the dark road (cheaper than robbing it). "We do not forget", both ways. | Tolls the drowned at the one dry crossing; Aske's crew quietly tolls the Returners it is hired to protect; a croft that would not pay burned and the crew says nothing. | The nursery rule holds (no Dawnmead door, nobody under a first sword tolled). They pay their hires. Brede keeps a scratched water mark on his toll post and is wrong about what it means. | RedRagStake |
 | **The Returners** (the Third Stone) | `returners` (faction, NEW) | The Old Road lit stone by stone to Kingsdelf by anyone's oil; the digs under it collapsed; the Waykeepers to admit the south exists. | They light lamps they cannot keep lit (the order's charge is true: no Third Stone lamp has held a whole night). They pay the Company out of a subscription taken from Dawnmead's poorest. They want the digs collapsed with the kobolds in them and call it road repair. | They walk the road nobody else will. Eskil has carried more lost new feet back to Halla's lodge than the order has. The subscription is public and Hilde reads it aloud on the green so no name is shamed. | PitLamp / PitLampDark (a lamp on a driven stake, never a LampPost) |
-| **The Fenside Crofters** | `fenside` (faction, NEW) | The mere let down by the old sluice, not the causeway; the toll off the crossing; the skral off the sluice post; their corn carried by anyone at all. | They blame the skral for a sluice the water broke, and Njal's son put an axe through a skral keep-pool over it (the one thing the wave-treaty says ends everything). They will not pay the levy and will not stop asking for the dike. Their sheep are on Brammel's common without asking. | They are right that the causeway drains the mere into their own furrows and that the crossing should be free. Njal alone has noticed the kelp-string on the broken post: the skral **paid**. | SluiceGate (with the kelp-string variant) |
+| **The Fenside Crofters** | `fenside` (faction, NEW) | The mere let down by the old sluice, not the causeway; the toll off the crossing; the skral off the sluice post; their corn carried by anyone at all. | They blame the skral for a sluice the water broke, and Halvor's son put an axe through a skral keep-pool over it (the one thing the wave-treaty says ends everything). They will not pay the levy and will not stop asking for the dike. Their sheep are on Brammel's common without asking. | They are right that the causeway drains the mere into their own furrows and that the crossing should be free. Halvor alone has noticed the kelp-string on the broken post: the skral **paid**. | SluiceGate (with the kelp-string variant) |
 | **The Crown's chain** | `crown` (faction, existing; one party of three) | The west way and the Old Road entered in the Crown's book as Crown roads before the causeway makes them Charter roads. To file, not to fight. | Measures a road it will not lamp, garrison or pay for and calls the measuring ownership. Rurik notes the grub farm as "hostile encampment, 41 paces" and walks on. **Wants something someone has:** the Charter's concession chart, which he will lift from Steinar's table if he must. | His chain is honest. His miles are the only measurement of the west way that agrees with the ground, and when Steinar's stakes cross the kerb it is Rurik's stake that proves it. | ochre pennant on a pole (BannerStand, crown dye) |
 | **The Even Court** (the ward line) | `evencourt` (faction, existing) | The dying stand left standing until it has finished dying; no living wood felled; the fork's waystone kept. They will not say whether they know why the wood is dying. | They string a thread across a wood that heats a village and say nothing a villager can understand; they let a Charter feller walk into the veil pack rather than warn him in a tongue he speaks; Sylwen's court dismantled a Company crew "politely" and the crew's boy is in a GraveMound on the trail. | They do not fell living wood and never have. Their waystone is the only light on the Thornveil fork that draws nothing at night. They were here first and it is not a boast. | WardThread |
 | **The Drum** (goblins of the Felling) | family `goblin`, tribe `goblin` (existing) | Charcoal by the clamp, worg-meat off the herds, the muster fed and fired before the cold. They fell the dying stand because dying wood chars best. | They burn the wood past grey-root, take the croft's sheep and then the croft, hunt the Doorless as deserters, and the drum they answer is crimson and not theirs. | They are the only party keeping the cold off their own backs by fire, and their pickets shout before they loose, which is more than the Legion does. Their harvest is honest about what the wood is. | SkullTotem / TrophyStake (existing) |
@@ -134,7 +134,7 @@ you are on.
 | **The veil pack** (wolfkin) | tribe `predators` (existing) | Out of the veil, which they cannot say why; the sheep; the trail. | Took two sheep and a drover's dog; hunt the trail at dusk exactly when new feet walk it. | Wolves leaving a wood is a true thing (the spine's beast) and killing the pack clears the trail for what is behind it. They do not toll, dig or lie. | BoneTree |
 | **The husk warband** (gnolls) + **the struck line** (the dead) | tribe `gnoll` (NEW declared) / tribe `dead` (NEW declared) | Gnolls: the tower by day, the deer, the den once the wolves are gone. The dead: to keep the watch they were struck from; to light a lamp that is gone. | Gnolls eat the Company crew, the deer, the sheep, and moved in on a grave. The dead cut down anything on the trail after dark, gnoll or player or drover's dog. | The gnolls did not fell the tower and did not dig the graves: the order struck it from the rolls and left it. The dead keep the north better than the living; while they stand the gnolls do not. | BoneMidden / KnucklePit (existing) ; GraveMound (existing) |
 | **The digmasters** (kobolds under the Old Road) | tribe `kobold` (NEW declared) | Up and out, thoroughly. To tamp the seam behind them. Not to be talked to. | Undermine the Old Road's milestones so a wain wheel drops; bury a Returner lamp stake in spoil; bite. | Not wicked, thorough: every cairn they undermine they re-stack (one stone wrong), every hole they open they tamp, and the Gloamwood's bats are thinner where their spoil lies. What they are digging away from is never said. | TallyStone |
-| **The upstream shoal** (skral) | tribe `skral` (NEW declared) | A weir on water that does not drown it; the crofters' keep-pool put back; the wave returned. | Their weir broke the sluice when they moved it; they took the crofters' fish; when Njal's son axed their keep-pool they took his Dugout and left the axe on the bank, which is a sentence. | They pay. They wave. They moved because the fen rose under them, which is the truest reading of the water on the First Road, and they cannot say it. | TideTotem (existing) ; kelp-string (Detail) |
+| **The upstream shoal** (skral) | tribe `skral` (NEW declared) | A weir on water that does not drown it; the crofters' keep-pool put back; the wave returned. | Their weir broke the sluice when they moved it; they took the crofters' fish; when Halvor's son axed their keep-pool they took his Dugout and left the axe on the bank, which is a sentence. | They pay. They wave. They moved because the fen rose under them, which is the truest reading of the water on the First Road, and they cannot say it. | TideTotem (existing) ; kelp-string (Detail) |
 
 Alliances by zone (two or three against one, never a bloc):
 - **East:** Charter + Waykeepers on the First Road against the Company; Charter against Fenside on the levy; Fenside against skral on the sluice; the Company waves at the skral and the crofters hold it against Brede.
@@ -171,7 +171,7 @@ Places, in walking order from the gate at (32,48):
   fen's west rim, ~140 tiles): a burnt Waykeeper waystation. RuinWallStone
   shell with three breaches, a LampPostDark with a cold socket, CharredBeam
   heap, one EmberBed that still smokes, AshHeap, Detail.Ash ring, a stalled
-  Charter wain (BelongingsCart + CrateGoods under tarp) with Fenna's tally
+  Charter wain (BelongingsCart + CrateGoods under tarp) with Margit's tally
   board beside it. **Not a POI: an authored dressing patch** (site scan will
   refuse the marsh; the patch is a prefab stamped by an authored zone-less
   sketch at the causeway head, weight 0, no garrison, tier ignored).
@@ -210,18 +210,18 @@ Places, in walking order from the gate at (32,48):
 - **The drowned crofts** = the pinned `fenside_crofts` roadside_hamlet
   (148,98), re-dressed: Tilled rows authored as WaterShallow with Scarecrow,
   IrrigationChannel and Fence standing in it (no flood system; the "rising" is
-  carried by Weir's stake, Brede's post and Fenna's ledger in three units),
+  carried by Weir's stake, Brede's post and Margit's ledger in three units),
   drowned corn cut green on stilted PorchDeck pallets, Dugouts, RailWood pens
-  on stilts. Headman **Njal** (fenside actor) and the pooled crofter bodies.
+  on stilts. Headman **Halvor** (fenside actor) and the pooled crofter bodies.
 
 **The contention.** The water rose and nobody saw it rise. Ingram says the
 Company broke the sluice to keep the road slow ("a wet road is a paying
-road"). Njal says the skral broke it moving their weir, and his son answered
+road"). Halvor says the skral broke it moving their weir, and his son answered
 with an axe. Brede says nobody broke anything, the water came up "like a bill
 nobody sent." Hale says the road past his lamp is the Charter's problem and
 the fen past the road is nobody's (he is a sergeant, not a doctrinaire; the
 lie-in-glass doctrine is spoken locally only by Torsten, quoting Liv). The
-kelp-string on the post says the skral paid, and only Njal has noticed. All
+kelp-string on the post says the skral paid, and only Halvor has noticed. All
 four accounts are locally true.
 
 **The fork — THE CAUSEWAY OR THE SLUICE.** Both quests require
@@ -231,16 +231,16 @@ four accounts are locally true.
   line, hold the head against the shoal's sortie when the stakes cut its
   reach, post the levy on Dawnmead's green. Rewards: +fordgate, a Charter
   causeway-pass (Brede's crew honours Charter paper: the toll refuses to
-  charge the character), Fenna's ledger opens a repeatable corn-carry.
-  Costs: −fenside (Njal's closed throat at outlaw band; the crofter pool's
+  charge the character), Margit's ledger opens a repeatable corn-carry.
+  Costs: −fenside (Halvor's closed throat at outlaw band; the crofter pool's
   barks turn), Weir's shelf line "you dried a water I fish" (a shop line, not
   a refusal), flag `weir_cut` read by Weir and by the skral zone's sign.
-- (B) *The Old Gate* (Njal): repair the sluice with boards from Ottery's
+- (B) *The Old Gate* (Halvor): repair the sluice with boards from Ottery's
   shed, carry the kelp-string back to the weir and set it on the TideTotem
   (wordless), then carry the crofters' green corn past Brede's bar without
   paying (stealth, fight, or Brede's third offer: he carries it for a cut).
   Rewards: +fenside, a crofter's Dugout, the kelp-string as a held token.
-  Costs: −fordgate (Ingram bills "obstruction" and Fenna's ledger closes to
+  Costs: −fordgate (Ingram bills "obstruction" and Margit's ledger closes to
   the character), Hale posts the character's name on the lamp as a toll
   walked (a bark and the rota bill on the green).
 Neither side ends the toll; only the frontier's shared dice can
@@ -342,7 +342,7 @@ at the Thornveil fork (-140,-176) and the stand is dying from the roots:
   threads back to the waystone and re-string the line; stand at the glade one
   dusk while the Drum's pickets test it. Rewards: +evencourt, a moonglass
   chip (held token), Alder's bark changes to the one true reading ("the pack
-  went north; that is the one true thing this year"). Costs: −fordgate (Fenna
+  went north; that is the one true thing this year"). Costs: −fordgate (Margit
   bills the stopped licence), Bodil's shelf closes.
 - (B) *The Grey Root* (Alder, with Bodil's licence): fell the dying stand
   yourselves before frost, past the thread, and deliver the cordwood to the
@@ -459,7 +459,7 @@ overrun, 38 paces" and walks on, and his stake is the only proof Steinar's
 chain crossed the kerb. Brammel wants his corn; Sorrel wants his ram.
 
 **The fork — THE FARM OR THE STAKE.**
-- (A) *Stake the Seam* (Steinar, with Fenna's licence): drive the Doorless
+- (A) *Stake the Seam* (Steinar, with Margit's licence): drive the Doorless
   off the mouths (a player clear of the grubfarm variant's garrison; the
   authored site does not ember, its garrison respawns on the site's own
   clock, and the character's flag `grubfarm_burnt` turns every Doorless bark
@@ -475,7 +475,7 @@ chain crossed the kerb. Brammel wants his corn; Sorrel wants his ram.
   dead so the Doorless can re-set the stones. Rewards: +crown (Rurik files
   the character as "a witness"), the Doorless token (flag `grubfarm_spared`:
   their pickets' warning shout extends to the character, a bark gate), the
-  Copse's west shelf. Costs: −fordgate (Steinar's shelf closes; Fenna bills
+  Copse's west shelf. Costs: −fordgate (Steinar's shelf closes; Margit bills
   "a concession stopped"), Sorrel's bark sours.
 
 ### 3.6 The belts — the land between the camps
@@ -527,7 +527,7 @@ player's own map of the thing nobody names.
 
 | Zone | Pair | Giver A / Giver B | Pays A | Pays B | Shared flag |
 |---|---|---|---|---|---|
-| East | THE CAUSEWAY OR THE SLUICE | Ingram / Njal | +fordgate, causeway-pass, corn-carry | +fenside, Dugout, kelp-string token | `fen_side_taken` |
+| East | THE CAUSEWAY OR THE SLUICE | Ingram / Halvor | +fordgate, causeway-pass, corn-carry | +fenside, Dugout, kelp-string token | `fen_side_taken` |
 | North | THE PACK OR THE SQUAT | Sorrel / Torsten | +fordgate, fleece cloak, cheaper beasts | +waykeepers, grey wool, Aske's coin | `first_line_burnt` or `first_line_kept` |
 | North-west | THE THREAD OR THE AXE | a sentinel / Alder+Bodil | +evencourt, moonglass chip | +fordgate, bow-wood shelf | `ward_line_taken` |
 | South | THE LAMP OR THE LAW | Eskil / Torsten via Hale | +returners, PitLamp, Kingsdelf shelf | +waykeepers, lamp glass, the bell | `south_road_taken` |
@@ -538,7 +538,7 @@ offer trees carry `forbids` on the other's `quest:<id>:active` and
 `quest:<id>:done`; opposition costs are AUTHORED in `rewards.standing` and
 stated in the offer text (never auto-cross); all standing deltas sit inside
 the LADDER CONTRACT caps. New faction ids `returners` and `fenside` are
-roster entries (members = real actor slugs; fineActor = Eskil / Njal) before
+roster entries (members = real actor slugs; fineActor = Eskil / Halvor) before
 any delta compiles. No delta targets goblin, kobold, dead, gnoll, skral,
 wolfkin (reputation is for speaking parties only); their side of every fork
 is a character flag, a token, a bark gate.
@@ -585,7 +585,7 @@ after the capstone).
     flags Halla already reads, plus the one new rostered flag `war_near`
     (predicate: two mutually hostile cores inside watchTiles 96). Leif walks
     in daily to chalk the tithe on the green's LampPost and bickers with
-    Fenna on `toll_near`.
+    Margit on `toll_near`.
 11. **Bodies where the fight was.** GraveComp-pattern spawner: an NPC-vs-NPC
     kill inside a POI zone raises FieldLitter on the nearest free tile for
     the spill's quarter hour, capped six per zone, dignity 48, never inside a
@@ -853,8 +853,8 @@ awning host pairs, the KEEP_OUT rects (new ones added, none shrunk).
 |---|---|
 | **The Ring and the west meadow** | Identical inside eight tiles. Beyond: a worn Dirt desire line curving north-east toward the burnt cottage (feet went to look), three CharterPosts in a ruled line at the west meadow (one fallen: CairnFallen posture is wrong for a post; use a Rock + Pebbles), one DeadTree at the hem. The first eyeful after waking: seven pillars, one thin smoke, and a lane of lamps going the other way. |
 | **Keeper's Way** | Untouched as a home. TiedParcels on the porch step (letters going out with whoever walks east). Wren's hub gains one `threat_near` line: "Halla is counting again. I knit; it comes to the same." Wren offers **no** theory about the cottage (her refusal is her position). |
-| **The Green** | Still grass, but argued on. Dirt desire lines lane→inn and well→bell. THE TALLY STALL: one MarketStall kept, its twin replaced by Table + Lectern, a fordgate bannerStand, road-tally crates; **Fenna** (Charter tally-clerk, fordgate member) by day. A Bench by the bell where **Hilde** (Returner widow) sits at noon. **Leif** the lamp-boy's midday stop in front of the stall. The NoticeBoard gets authored words if the tile is a sign, else the DAWNMEAD post's second line: "Carts turned at the fen waist: four. Lamps out past the gate: two. Signed for the Charter." Two banner poles, one planter. |
-| **The Five Stones inn** | Fuller than it was: crates and baskets in the wing aisle (aisle stays one wide), two crofter children's things on the common-room floor, the pennant down. Gilly: "Four beds, and I am making up floors. Do not tell Berrit I am winning." **New throats get their own beds** (Fenna in the worn cottage, Hilde in the green cottage, the crofters on the crowded roof); the four claimable guest beds stay the waker's. |
+| **The Green** | Still grass, but argued on. Dirt desire lines lane→inn and well→bell. THE TALLY STALL: one MarketStall kept, its twin replaced by Table + Lectern, a fordgate bannerStand, road-tally crates; **Margit** (Charter tally-clerk, fordgate member) by day. A Bench by the bell where **Hilde** (Returner widow) sits at noon. **Leif** the lamp-boy's midday stop in front of the stall. The NoticeBoard gets authored words if the tile is a sign, else the DAWNMEAD post's second line: "Carts turned at the fen waist: four. Lamps out past the gate: two. Signed for the Charter." Two banner poles, one planter. |
+| **The Five Stones inn** | Fuller than it was: crates and baskets in the wing aisle (aisle stays one wide), two crofter children's things on the common-room floor, the pennant down. Gilly: "Four beds, and I am making up floors. Do not tell Berrit I am winning." **New throats get their own beds** (Margit in the worn cottage, Hilde in the green cottage, the crofters on the crowded roof); the four claimable guest beds stay the waker's. |
 | **Cottage Row** | WEST: THE BURNT COTTAGE. RuinWallWood outline with the south wall gone, RuinWallStone at two corners, CollapsedRoof where the roof came down, ChimneyStack standing alone at the north wall, EmberBed at the hearth breathing a thin smoke by day and a coal-glow at night (the column the Ring sees), AshHeap, Detail.Ash, GrassTall through the ash, CaveRubble as walkable debris, a BelongingsCart of salvage in the lane. One board: "HOBB'S COUSIN'S ROOF. Went up in the spring. Nobody agrees how." Three mouths and none corrected: Halla (a dusk fire jumped the hedge, hers to own), Brammel (thatch rotten a year, he said so), Wick (the sixth stone). MIDDLE: THE RETURNER'S HOUSE (Hilde): kept, hedge unclipped, a PitLampDark by the door she has not lit. EAST: THE CROWDED ROOF: two crofter families in one house, extra Bed pair, crates, BelongingsCart in the yard, WaterTrough, two sheep in a RailWood pen with the gate open, DryingRack. |
 | **The farmstead** | Robbed by weather and rats, not raiders: two crop rows to bare Tilled, pumpkins short two, a second CritterCage at the coop, a CharterPost at the barn's wain door. Sign: "Six beds, three crops, one man who wants rain." (No tutorial quest collects carrots, onions or bittercress; verified.) |
 | **The Common** | Contested grass: the crofters' sheep on it, Brammel's hay moved to the far rail, two CharterPosts inside the west gate, one rail down at the south-east corner as FenceBroken (the crofters' way in). Brammel vs the crofter at the west gate at midday: "His common is grass. Ours is ash." |
@@ -880,7 +880,7 @@ awning host pairs, the KEEP_OUT rects (new ones added, none shrunk).
 
 | Slug | Who | Faction | Post | Bed |
 |---|---|---|---|---|
-| `charter_fenna` | Fenna, tally-clerk | fordgate member | the tally stall by day | the worn cottage |
+| `charter_margit` | Margit, tally-clerk | fordgate member | the tally stall by day | the worn cottage |
 | `returner_hilde` | Hilde, Returner widow with the oil-subscription slate | returners member (never a fineActor) | the bell bench at noon | the green cottage |
 | `fenside_crofter` ×3 (pooled, titled, no names) | the drowned-out | none | the sacking row, the crowded roof's pen, the Common's west gate | the crowded roof |
 | `waykeeper_leif` | Leif, Hale's lamp-boy | waykeepers | the green at midday; walks in from the First Lamp | the First Lamp (outside the rect) |
@@ -909,10 +909,10 @@ year. Ask the stand."), Weir vs Brammel (the water is up / water goes up).
 New pairs: **Halla vs Hale** is an old comrade's quarrel, not a rival
 order's: Halla was Wayward Watch, which is the Waykeepers' own roadwardens
 under Hale's rota; "Your lamps stop at the fen waist." / "Our lamps stop
-where the road stops being walked." Both right, neither says so. **Fenna vs
+where the road stops being walked." Both right, neither says so. **Margit vs
 Leif** on the green (who pays for lamps and who walks them; four carts vs
 three carts and a barrow, contradiction canon). **Hilde vs Leif** (the lamps
-are a decision, not a weather). **Fenna vs Gilly** (a Charter chit for a bed
+are a decision, not a weather). **Margit vs Gilly** (a Charter chit for a bed
 she wants coin for). **Brammel vs the crofters** (his common, their ash).
 **Rill vs nobody**: three families have walked in off roads and still nobody
 asks the one person who did it as a child what that is like.
@@ -1166,7 +1166,7 @@ niches, a thing they do not name and would not know how to ask for.
 
 **Fault.** They finish what they set. The Course crosses the brook's fall
 to the fen, and "the Dolmen walled the meadow" is the THIRD reading of why
-the Drowned Meadow drowned (Ingram blames the Company's sluice, Njal the
+the Drowned Meadow drowned (Ingram blames the Company's sluice, Halvor the
 skral, the Marl say the ground went soft under the wall, which nobody can
 check). They unpick any set stone they judge wrong and re-set it where the
 ground "wants" it, never where a road wants it: two Returner stakes pulled
@@ -1195,11 +1195,11 @@ south-east.
 
 **At odds with:** the Charter (Ingram's causeway is built from the Course's
 own kerb, carted up the stream by a stone-track with a carter-boss,
-**Garrow**, a fordgate actor; Fenna's tally carries the Dolmen in the same
+**Garrow**, a fordgate actor; Margit's tally carries the Dolmen in the same
 column as stumps), the Returners (stakes through a course), the Fenside
 crofters at the Drowned Meadow (the wall drowned us, and our sheep stand on
 it: a quarrel that is also a dependence; the crofter pool knows them openly
-as "the wall folk" and says so in a bark; Njal's one private thing is that
+as "the wall folk" and says so in a bark; Halvor's one private thing is that
 the Dolmen counted his sheep onto the Course and let them stand), the Gloamwood's wild at the Sett's south
 rim. **Misaligned, never allied** (neutral rows with range): `dolmen|kobold`
 (two thorough peoples; the digs' spoil track runs north along the brook to
@@ -1313,14 +1313,15 @@ as a bug (the keel overhang pin); the stone face loses the strike tell
 (the overhead set must read at 32px); the stile reads as the Company again
 (survives only because the Marl disown it aloud and Brede names it); spine
 leakage ("the wet came up under", the Gabbro's niches: counts never patterns,
-Ammat never says anything is moving); the Fenside thread (Njal knows the
+Ammat never says anything is moving); the Fenside thread (Halvor knows the
 wall folk) is a new bible T-row. Every name (Dolmen, Marl, Sinter, Culm,
 Gossan, Gabbro, Ammat, Drusa, Durrow, Vorl Fullweight, Sarsen, Garrow, the
 Sett, the Standing Course, the Plug) was grep-verified clean on 2026-09-04
 AFTER the critique retired the first draft's names (Tholl = a homophone of
 "toll" in an epic about tolls; Hesket = the bible's Hesk in Northguard;
 the Whin = a homophone of the live actor Wyn; Kesk one letter from Hesk;
-Oskel beside Eskil). THE NAMES GATE is amended: land `names.mjs` on main in
+Oskel beside Eskil; and the gate's one-edit pass then retired Fenna (Denna,
+Senna) and Njal (Nial) → Margit and Halvor). THE NAMES GATE is amended: land `names.mjs` on main in
 Band 0, extend it to read the whole dialogue bible and to run a one-edit
 and homophone pass over the actor roster, and run it as part of the
 Dolmen band's gate.
@@ -1643,25 +1644,26 @@ the route points; cell tiers by cell centre.
 
 | Site | Re-celled | Cell | Tier | Walk | Note |
 |---|---|---|---|---|---|
-| The Ashlamp (scar, dressing, no core) | (72,64) | [0,0] | 1 | 9 s east | the threshold scar, not a camp |
-| Brede's bar **+ the drowned crofts + the First Lamp: ONE STAGED SCENE** | the existing pins (122,112) and (148,98), 30 tiles apart, declared one scene: the toll stands at the crofts' gate and Hale's lamp stands at the hamlet | [0,0] + [1,0] | 1 + 2 | 28-34 s | `fenside_crofts` becomes the weight-0 def `fenside_lamp` (Hale on watch, Leif, Njal, Ingram, a new `fenside_crofter` pool); one name reads one ledger |
+| The Ashlamp (scar, dressing, no core) | (72,64) | [0,0] | 1 | 9 s east | the threshold scar, not a camp; Band 0 authored its def and prefab but PARKED the pin: one ledger row per cell and no zone-less stamp path exist; band 7 lands it as a small authored zone patch |
+| Brede's bar **+ the drowned crofts + the First Lamp: ONE STAGED SCENE** | the existing pins (122,112) and (148,98), 30 tiles apart, declared one scene: the toll stands at the crofts' gate and Hale's lamp stands at the hamlet | [0,0] + [1,0] | 1 + 2 | 28-34 s | `fenside_crofts` becomes the weight-0 def `fenside_lamp` (Hale on watch, Leif, Halvor, Ingram, a new `fenside_crofter` pool); one name reads one ledger |
 | The skral | wilds shore rows in the fen waist + the sluice and weir as dressing at the crofts' reach | rows | — | — | no core; the first hostile thing on the road stays the bar |
 | Torsten's picket | trail DRESSING (slate, bell, the four grave mounds) at (-120,-124), 40 tiles from the dire wolf | [-1,-1] | — | 12 s up the trail | no core; Torsten himself is posted at the fork rest |
 | The fork rest **+ the waystone + Torsten** | fork_rest's defId changes to a weight-0 `fork_waystation` (a prefab with an ElvenWaystone and extra posts; two new pooled unnamed sentinel actors under evencourt; Sergeant Torsten under waykeepers) | [-2,-2] | 2 | 24 s to the fork | canon: the lamps stop at the fork; waystones take over |
 | The Husk | moved OFF the High Road to (-64,-240): 109 from the fork, 128 from longmeadow_rest | [-1,-2] | 2 | 28 s + 24 off | `husk_of_the_line`, family dead, tiers [2,4] |
-| The Felling (the Drum) | cell-forced weight-0 `felling_drum` (a goblin_warcamp variant, tiers [1,3], garrison 8) at ~(40,-120) beside its burnt stand; the rolled dice run in the neighbour cells | [0,-1] | 1 | 34 s | a rolled Drum stood in the ring with ~11% probability, which is not a demo |
+| The Felling (the Drum) | weight-0 `felling_drum` (a goblin_warcamp variant, tiers [1,3], garrison 8) PINNED at (80,-42) (the cell pin found no ground on the ridge; this stands with no nudge), beside its burnt stand; the rolled dice run in the neighbour cells; its `rivalDef` is NOT on this authored def (authored cells never stage): the pressed-goblin satellite will ride the ROLLED goblin_warcamp def gated to the marches of an authored `hobgoblin_legion`, band 8 | [0,-1] | 1 | 20 s | a rolled Drum stood in the ring with ~11% probability, which is not a demo |
 | The Legion core | pinned `hobgoblin_legion` (weight-0, tiers [3,6]) at (-64,-320); its reach is an AUTHORED patrol loop and straggler rows down the trail, never a satellite (authored cells cannot deal one); the pressed-goblin satellite is dealt by the ROLLED neighbour Drum's `rivalDef` | [-1,-3] | 3 | off every way | ≥128 tiles from fork_rest, longmeadow_rest and coldwater_shoal |
 | The veil den | unchanged | [-2,-1] | 1 | — | existing pin |
 | The digs (kobolds) | (40,290), off every way, south of the Drowned Meadow across the Gloamwood; its spoil track runs north along the brook to the meadow | [0,2] | 2 | 26 s south of the hem | the Old Road never enters [-1,2]; the road-creep beat is dropped |
-| The Third Stone + Aske's crew | unchanged, re-defined `third_stone_rest` | [-2,1] | 2 | 23 s | — |
-| The broken barrow + the grub farm | ONE site: `broken_barrow` (weight-0, family dead, tiers [2,4], rows tribe dead + goblin_doorless, one merged prefab) at (-340,64) | [-3,0] | 2 | 36 s west of the hem | 104 from the Spinewall's heart |
-| Steinar's chain | a DRESSING patch (stakes, canvas, Lectern, tally board) at (-250,40); **Steinar himself is a Dawnmead throat** (the Charter's survey lead, billeted at the inn, quest giver there) | [-2,0] | — | 18 s west of the hem | no core |
+| The Third Stone + Aske's crew | re-defined `third_stone_rest` and MOVED to (-178,148): Band 0 found the shipped pin had never stood (a wolfkin bonering capital's clearance covers it); it now stands up a track 39 tiles off the Old Road, tier 3 by centre (moot for a haven); the spur trail is owed to band 10; Aske's crew are `company_blade` actor rows on watch (a haven cannot carry a hostile garrison) and their six-to-six road walk is owed | [-2,1] | 3 | 25 s + track | — |
+| The broken barrow + the grub farm + Steinar's chain | ONE site: `broken_barrow` (weight-0, family dead, tiers [2,4], rows tribe dead + goblin_doorless, one merged prefab that carries the Charter survey line across the kerb) at (-236,72): [-3,0]'s centre reads tier 4 under the Spinewall's word, which would over-level a farming clan; tier 1 here is honest | [-2,0] | 1 | 15 s west of the hem | [-3,0] becomes empty on purpose |
+| Steinar | **a Dawnmead throat** (the Charter's survey lead, billeted at the inn, quest giver there); his chain is part of the barrow site above | — | — | — | — |
 | The Sett (the Dolmen) | authored zone with its own actors and spawn rows at (172,300) | [1,2] | 3 | 48-52 s south of the crofts | `amberfen_shoal` [1,1] is its acknowledged neighbour |
 | longmeadow_rest / amberfen_shoal / returners_camp | unchanged (shipped) | [0,-2] / [1,1] / [-3,1] | 2 | — | counted honestly |
 | The Drowned Meadow / the Ashen Hem / the Spoil Reach | belts: [0,1] / [0,-1] (the Felling's stand) / [-2,2] | — | — | — | no cores except the Felling in [0,-1] |
 
-Census after re-celling: tier-1 cells with a core = 3 of 6 (the veil den,
-Brede's bar, the Felling). Tier-2 cells with a core = 9 of 14: six of this
+Census after re-celling: tier-1 cells with a core = 4 of 6 (the veil den,
+Brede's bar, the Felling, the barrow and farm; the west has no gate and
+the barrow is its one core, so the cap is restated as 4 of 6). Tier-2 cells with a core = 9 of 14: six of this
 epic (the fork waystation, the husk, the crofts and lamp, the Third Stone,
 the digs, the barrow and farm) plus three shipped havens and shoals that
 predate it (longmeadow_rest, amberfen_shoal, returners_camp). No new core

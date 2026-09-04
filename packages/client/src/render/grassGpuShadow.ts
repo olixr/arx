@@ -10,8 +10,8 @@
  * blade's crown along the light ray, and bent by the SAME per-vertex wind
  * term the blades use (grassWindGlsl). So the whole field's shade sways
  * uniformly at frame rate — no baked monolith, no player-centred region,
- * no radius edge — and it is perspective-correct for free (both quad ends
- * are ground points run through the full projectWorld homography).
+ * no radius edge — and both quad ends are ground points run through the
+ * same camera projection as the blades.
  *
  * The casts render OPAQUE (a flat shade colour) into a private offscreen
  * canvas as UNION coverage — overlapping quads overwrite, they do not
@@ -20,8 +20,14 @@
  * then blits that canvas UNDER the blade coat at the frame's shade alpha:
  * THE CAST LIES UNDER THE COAT, one density with the world's shade.
  */
-import { grassWindGlsl, grassProjectGlsl, GRASS_INSTANCE_FLOATS, type GrassProj } from './grassGpu.js';
-import { MAX_DISTURB } from './grassGpuRenderer.js';
+import {
+  grassWindGlsl,
+  grassProjectGlsl,
+  grassDisturbGlsl,
+  GRASS_INSTANCE_FLOATS,
+  MAX_DISTURB,
+  type GrassProj,
+} from './grassGpu.js';
 
 /** A cast quad is a 4-vertex strip: base pair (t=0) → tip pair (t=1). The
  *  vertex shader gives it its width and throw from the instance record. */
@@ -43,10 +49,9 @@ uniform float uWindGain;
 // ground projection, folded with the camera's vertical squash so the cast
 // lands where the CPU shade did. Tuned in the renderer from the sky.
 uniform vec2 uShadow;
-uniform vec4 uDisturb[${MAX_DISTURB}]; // xy = world pos, z = radius, w = strength
-uniform int uDisturbN;
 ${grassProjectGlsl()}
 ${grassWindGlsl()}
+${grassDisturbGlsl()}
 void main() {
   float t = aTmpl.y;
   float side = aTmpl.x;
@@ -57,33 +62,19 @@ void main() {
   vec4 wind = grassWind(iRoot, uTime + iShape.w * 6.2831853);
   float lean = wind.x * uWindGain;
 
-  // TRAMPLING — a body pressing through lays the blades over and shortens
-  // their shade; summed over nearby disturbers with a smoothstep falloff,
-  // the SAME field the blades use, so the shadow follows the trampled coat
-  // (a smooth, per-body dimple — never the old hard swept box).
+  // G-INTERACT — the cast follows the parted coat: the SAME shared law the
+  // blades use (grassDisturb) peels the shade over and shortens it in the
+  // foot pocket, so the shade tracks the trampled blades exactly (a smooth,
+  // per-body dimple — never the old hard swept box).
   float jit = (fract(iShape.w * 17.13) - 0.5) * 0.8;
-  float cj = cos(jit), sj = sin(jit);
-  vec2 push = vec2(0.0);
-  float press = 0.0;
-  for (int i = 0; i < ${MAX_DISTURB}; i++) {
-    if (i >= uDisturbN) break;
-    vec2 d = iRoot - uDisturb[i].xy;
-    float r = max(uDisturb[i].z, 1e-3);
-    float f = 1.0 - clamp(length(d) / r, 0.0, 1.0);
-    f = f * f * (3.0 - 2.0 * f);
-    float s = f * uDisturb[i].w;
-    vec2 dir = length(d) > 1e-4 ? normalize(d) : vec2(0.0, 1.0);
-    dir = vec2(dir.x * cj - dir.y * sj, dir.x * sj + dir.y * cj);
-    push += dir * s;
-    press = max(press, s);
-  }
-  press = clamp(press, 0.0, 0.8);
-  H *= (1.0 - press);                    // pressed blades cast a shorter shade
+  vec2 push;
+  float press;
+  grassDisturb(iRoot, jit, push, press);
+  H *= (1.0 - press);                    // pocket blades cast a shorter shade
 
   // The cast on the GROUND PLANE: base rooted at the blade, tip thrown from
   // the (wind-bent, trampled) crown along the light ray. Both ends are
-  // ground points → the full homography makes the shade recede correctly
-  // at q>0 with no extra work.
+  // ground points through the one projection.
   vec2 baseC = iRoot;
   vec2 tipC = iRoot + vec2(lean + push.x * H, push.y * H) + uShadow * H;
   // The GPU casts EVERY blade (the CPU cast only half, by bin parity, drawn
@@ -94,7 +85,9 @@ void main() {
   vec2 c = mix(baseC, tipC, t);
   float hw = mix(baseHW, tipHW, t);
   vec2 world = c + vec2(side * hw, 0.0);
-  gl_Position = grassProject(world);
+  // Casts stay on flat ground for now (uElev defaults 0); the elevated coat
+  // rides its shelf via the blade renderer. Root passed for the shared sig.
+  gl_Position = grassProject(world, iRoot);
 }`;
 
 const FRAG_SRC = `#version 300 es
@@ -145,9 +138,9 @@ export class GrassShadowRenderer {
   private readonly uScale: WebGLUniformLocation;
   private readonly uYScale: WebGLUniformLocation;
   private readonly uOrigin: WebGLUniformLocation;
-  private readonly uQ: WebGLUniformLocation;
   private readonly uViewport: WebGLUniformLocation;
   private readonly uDisturb: WebGLUniformLocation;
+  private readonly uDisturbVel: WebGLUniformLocation;
   private readonly uDisturbN: WebGLUniformLocation;
   private disposed = false;
 
@@ -175,9 +168,9 @@ export class GrassShadowRenderer {
     this.uScale = gl.getUniformLocation(program, 'uScale')!;
     this.uYScale = gl.getUniformLocation(program, 'uYScale')!;
     this.uOrigin = gl.getUniformLocation(program, 'uOrigin')!;
-    this.uQ = gl.getUniformLocation(program, 'uQ')!;
     this.uViewport = gl.getUniformLocation(program, 'uViewport')!;
     this.uDisturb = gl.getUniformLocation(program, 'uDisturb')!;
+    this.uDisturbVel = gl.getUniformLocation(program, 'uDisturbVel')!;
     this.uDisturbN = gl.getUniformLocation(program, 'uDisturbN')!;
 
     // The cast template: base pair (t=0) → tip pair (t=1), a 4-vertex strip.
@@ -229,7 +222,7 @@ export class GrassShadowRenderer {
     shade: readonly [number, number, number],
     shadowX: number,
     shadowY: number,
-    opts: { windGain?: number; disturb?: Float32Array } = {},
+    opts: { windGain?: number; disturb?: Float32Array; disturbVel?: Float32Array } = {},
   ): void {
     if (this.disposed || count === 0) return;
     const gl = this.gl;
@@ -237,7 +230,6 @@ export class GrassShadowRenderer {
     gl.uniform1f(this.uScale, proj.scale);
     gl.uniform1f(this.uYScale, proj.yScale);
     gl.uniform2f(this.uOrigin, proj.ox, proj.oy);
-    gl.uniform1f(this.uQ, proj.q);
     gl.uniform2f(this.uViewport, proj.wCss, proj.hCss);
     gl.uniform1f(this.uTime, timeSec);
     gl.uniform1f(this.uWindGain, opts.windGain ?? 0.12);
@@ -246,7 +238,12 @@ export class GrassShadowRenderer {
     const disturb = opts.disturb;
     const n = disturb ? Math.min(MAX_DISTURB, Math.floor(disturb.length / 4)) : 0;
     gl.uniform1i(this.uDisturbN, n);
-    if (n > 0) gl.uniform4fv(this.uDisturb, disturb!.subarray(0, n * 4));
+    if (n > 0) {
+      gl.uniform4fv(this.uDisturb, disturb!.subarray(0, n * 4));
+      const vel = opts.disturbVel;
+      if (vel && vel.length >= n * 2) gl.uniform2fv(this.uDisturbVel, vel.subarray(0, n * 2));
+      else gl.uniform2fv(this.uDisturbVel, new Float32Array(n * 2));
+    }
     gl.disable(gl.BLEND);
     gl.bindVertexArray(this.vao);
     this.bindInstanceAttribs();
@@ -276,11 +273,10 @@ export function shadeRgb01(hex: string): [number, number, number] {
  * SAME inputs the CPU `setShadow` uses). The CPU cast throws its tip a
  * screen offset of `dir·shadowLen·hpx` (hpx = the blade's screen height =
  * H·scale); our quad's tip is a WORLD ground point run through the SAME
- * projectWorld homography as the blades, which applies scale (and scale·
+ * camera projection as the blades, which applies scale (and scale·
  * yScale on y). Equating the two screen offsets, the scale (and yScale)
  * factors cancel, leaving this pure world vector — so the GPU cast lands
- * exactly where the CPU shade did, at q=0 and (perspective-correct) q>0.
- * Pure + tested.
+ * exactly where the CPU shade did. Pure + tested.
  */
 export function grassShadowOffset(
   shadowX: number,

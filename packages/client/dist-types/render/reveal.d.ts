@@ -76,6 +76,40 @@ export declare const FADE_TALL_TILES = 1.45;
 /** A sprite fronts the body when its base row sits at or south of
  *  the body's continuous y (the y-sort then draws it over you). */
 export declare const FRONT_EPS = 0.1;
+/**
+ * THE CANOPY REACHES NORTH, THE FADE DOES NOT (field fix). A tree
+ * hands occluderFade its trunk-BASE row (wy = ty+0.5), but a tree's
+ * canopy arcs a full crown-height NORTH of that base — so a tree
+ * whose base sits up to FRONT_EPS/… north of you still overlapped
+ * the body box from ABOVE and faded its whole canopy, though you
+ * stand in front of it (the base draws before you). The reported
+ * over-aggression. A TALL occluder must be genuinely SOUTH — its
+ * base at least this far past the body's row — before its canopy
+ * counts as between you and the camera. Props keep the tight
+ * FRONT_EPS (their bounds ARE their base; no overhead crown). */
+export declare const FADE_TALL_FRONT = 0.6;
+/**
+ * THE FADE HAS A SOUTHERN HORIZON (field fix). A tall sprite's screen
+ * rect spans its whole height, so an occluder far to the SOUTH — its
+ * base well below the body, but the rect's TOP still reaching up into
+ * the body's row — registered as an overlap and faded, fanning a
+ * translucent wedge of trees/buildings south of the player though none
+ * of them stands between the player and the near-top-down camera. An
+ * occluder whose base row sits more than this many tiles SOUTH of the
+ * player can never occlude the body in this view — return no-fade in
+ * O(1) before any screen math. (fronts already rejects the north side;
+ * this caps the south side.) */
+export declare const MAX_FADE_SOUTH = 3.5;
+/**
+ * COVER-FRACTION GATE — OCCLUSION, NOT PROXIMITY. The fade arms on how
+ * much of the body's screen box the occluder's inset silhouette
+ * genuinely covers, not on a binary rect clip: below FADE_COVER_MIN
+ * (~a grazing crown-tip) nothing fades; the fade then smoothsteps up
+ * over FADE_COVER_SPAN so a tree you stand squarely behind reaches the
+ * presence floor and the boundary eases in/out (mirrors wallCover's
+ * "arms past ~45% hidden"). */
+export declare const FADE_COVER_MIN = 0.4;
+export declare const FADE_COVER_SPAN = 0.45;
 /** Character rig height in tiles (the scale-anchor law: the body IS
  *  the unit of measure — wall cover is judged against it). */
 export declare const BODY_H = 1.15;
@@ -119,4 +153,52 @@ export declare function wallCover(whT: number, dyWorld: number, adx: number, ySc
  * clearly lit while full cover still tops out at exactly 1.
  */
 export declare function emberEase(ghostK: number): number;
+/**
+ * The fraction of the body's screen box that an occluder's inset
+ * silhouette covers, 0..1 — the fade's coverage measure (screen-space
+ * sibling of wallCover). Product of the horizontal and vertical
+ * overlap fractions, so a canopy centered over the body but only
+ * grazing its top reads low, while one squarely between body and
+ * camera reads high. Pure rect math, alloc-free.
+ *
+ * sx0..sBot — the occluder's inset silhouette screen rect.
+ * bx0..bBot — the body box screen rect.
+ */
+export declare function occluderCover(sx0: number, sx1: number, sTop: number, sBot: number, bx0: number, bx1: number, bTop: number, bBot: number): number;
+/**
+ * Map a raw cover fraction to the fade's target occlusion strength
+ * (0..1) — nothing below FADE_COVER_MIN, smoothstepped to full over
+ * FADE_COVER_SPAN. The renderer temporally eases toward this and blits
+ * alpha = 1 − strength·(1 − FADE_ALPHA).
+ */
+export declare function fadeStrength(cover: number): number;
+/**
+ * THE SHELTER GATE (inside-building rule). The interior wall reveal —
+ * sinking a building's walls so the player is visible past obstructing
+ * geometry — arms ONLY where the player is genuinely sheltered:
+ *
+ *   - underground (cave floor is the only floor there is), or
+ *   - inside a defined building region (localRegion set), or
+ *   - holding a doorway threshold: standing in a passage wall-line
+ *     (THE BREACH LAW) or on a panel-door tile — the entrance to a
+ *     building, which the room-truth ease treats as "still inside".
+ *
+ * Standing on an outdoor man-made floor tile (boardwalk, path-side
+ * wood/stone floor) NO LONGER arms it. The floor alone is not a room:
+ * previously any REVEAL_FLOORS tile armed the veil even out in the open,
+ * so a player standing outside on a plank strip could peep into the
+ * building next door and pay the reveal's cost for nothing. Owner ruling
+ * 2026-09: "you have to be inside the building for the veil to happen, or
+ * if you're behind certain walls" — the behind-walls case is the
+ * anti-occlusion bowl in wallHeightAt, which itself only runs once this
+ * gate has armed cutCtx. A structure the player cannot be "inside" (an
+ * open-front stall with no region) simply does not reveal — acceptable
+ * per the directive, and cheaper.
+ */
+export declare function shelterArmed(a: {
+    underground: boolean;
+    insideRegion: boolean;
+    onPassage: boolean;
+    onPanelDoor: boolean;
+}): boolean;
 //# sourceMappingURL=reveal.d.ts.map

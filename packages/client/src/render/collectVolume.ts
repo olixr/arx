@@ -5,9 +5,10 @@ import { packTile } from './interiors.js';
  * THE ONE RENDER — A0: the shared world-geometry flood.
  *
  * `collectVolume` generalizes the run-ring BFS that `tryRunRingItem`
- * used to keep to itself into ONE component-flood primitive that the
- * run-ring path (furniture), and later the wall/hedge paths (A2/A4),
- * all call. A "volume" is the 4-connected same-class component of tiles
+ * used to keep to itself into ONE component-flood primitive. Its one
+ * surviving caller is the run-ring path (furniture); the wall/hedge
+ * volume paths that also called it (A2/A4) left with the camera lean on
+ * 2026-09-04 (docs/perspective-review-and-3d-client-plan.md). A "volume" is the 4-connected same-class component of tiles
  * containing a seed cell, described as:
  *
  *   - the member tile list (flat `[x0,y0,x1,y1,…]`),
@@ -18,18 +19,16 @@ import { packTile } from './interiors.js';
  *
  * The perimeter is why runs render seamlessly downstream (invariants
  * #2/#3 of the epic): the shared-edge test is computed ONCE for the
- * whole component, so a wall/hedge run projects each world corner once
- * (`faceStrip`/`topPlane` in A1) instead of per tile — no double-rounded
- * seams. The loop doubles as the top-plane outline (walk it at
- * `heightAt(tx,ty)`) and as the silhouette to ring (A3).
+ * whole component, so a run projects each world corner once instead of
+ * per tile — no double-rounded seams. The loop doubles as the outline to
+ * walk and as the silhouette to ring (A3).
  *
  * Membership is decided by CLASS EQUALITY: `classOf(tile,tx,ty)` maps a
  * sampled tile to a class key (any number) or `null` for "not a member".
  * Two cells join iff both classes are non-null AND equal to the SEED's
  * class. So the run-ring path passes a `classOf` that returns the tile
- * itself (exact-tile runs never merge across kinds), while the wall path
- * (A2) will map every wall tile to one class (a wall run coalesces
- * regardless of the specific wall tile).
+ * itself (exact-tile runs never merge across kinds); a caller that wants
+ * kinds to coalesce maps them all to one class.
  */
 
 /** Reads the ground tile at a world cell (`undefined` off-map). */
@@ -267,109 +266,6 @@ function exposedPerimeter(members: number[], seen: Set<number>): VolPoint[][] {
     loops.push(canonicalizeLoop(mergeCollinear(loop)));
   }
   return loops;
-}
-
-/**
- * THE ONE RENDER — A2b: partition a volume's MEMBER tiles into maximal
- * straight CROWN SPANS, each a small 4-corner rectangle loop covering that
- * span's tiles at their footprint (before lift). Every member tile is
- * covered by EXACTLY ONE span, so the union of the spans is the wall's
- * top footprint — the crown area — NOT the enclosed interior a `perimeter`
- * outer loop would fill (a building ring's perimeter fills its floor).
- *
- * Why per-span, not one crown poly: a whole-footprint crown DrawItem
- * rasterizes to ONE scratch texture the size of the footprint bbox — a
- * town of buildings blows the scratch/VRAM budget (the constraint that
- * scoped A2 to thin runs). Each span's bbox is a thin strip (≤ the run
- * length in one axis, 1 tile in the other), so its scratch stays small,
- * while adjacent spans SHARE world corners (same integer coords → the same
- * rounded device pixel when projected) so the crown stays seam-free across
- * the whole loop — the seamlessness invariant, kept.
- *
- * Partition rule (covers each tile once, prefers long spans in BOTH axes):
- *   1. maximal HORIZONTAL runs of length ≥ 2 (contiguous same-row members);
- *   2. the leftover single-in-their-row tiles → maximal VERTICAL runs.
- * A building ring yields its top row + bottom row (horizontal) and its two
- * side columns' middles (vertical) = the four perimeter edges, robustly.
- * A thin E–W run is one horizontal span; a thin N–S run one vertical span;
- * an isolated tile a 1×1 span.
- *
- * Corners wind clockwise in screen (y-down) space, interior on the right,
- * matching `exposedPerimeter` — winding is immaterial to a filled crown but
- * kept consistent for callers that ring a span.
- */
-/** An inclusive tile-rect crown span (a thin strip: one axis is a single tile). */
-export interface CrownSpan {
-  x0: number;
-  y0: number;
-  x1: number;
-  y1: number;
-}
-
-export function crownSpans(members: number[]): CrownSpan[] {
-  const n = members.length;
-  if (n === 0) return [];
-  const isMem = new Set<number>();
-  for (let i = 0; i < n; i += 2) isMem.add(packTile(members[i]!, members[i + 1]!));
-  const spans: CrownSpan[] = [];
-  const covered = new Set<number>();
-  // 1. Horizontal runs of length ≥ 2. A tile joins a horizontal run iff its
-  //    east neighbour is also a member — scan each member, start a run at a
-  //    tile whose WEST neighbour is not a member, extend east.
-  for (let i = 0; i < n; i += 2) {
-    const x = members[i]!;
-    const y = members[i + 1]!;
-    if (isMem.has(packTile(x - 1, y))) continue; // not a run start
-    if (!isMem.has(packTile(x + 1, y))) continue; // length 1 — defer to vertical
-    let xb = x;
-    while (isMem.has(packTile(xb + 1, y))) xb++;
-    for (let cx = x; cx <= xb; cx++) covered.add(packTile(cx, y));
-    spans.push({ x0: x, y0: y, x1: xb, y1: y });
-  }
-  // 2. Vertical runs over the leftover (single-in-row) tiles. Start at a
-  //    tile whose NORTH neighbour is not a leftover, extend south.
-  const isLeft = (cx: number, cy: number): boolean =>
-    isMem.has(packTile(cx, cy)) && !covered.has(packTile(cx, cy));
-  for (let i = 0; i < n; i += 2) {
-    const x = members[i]!;
-    const y = members[i + 1]!;
-    if (!isLeft(x, y)) continue;
-    if (isLeft(x, y - 1)) continue; // not a column start
-    let yb = y;
-    while (isLeft(x, yb + 1)) yb++;
-    for (let cy = y; cy <= yb; cy++) covered.add(packTile(x, cy));
-    spans.push({ x0: x, y0: y, x1: x, y1: yb });
-  }
-  return spans;
-}
-
-/**
- * THE ONE RENDER — A2c: partition a DIAGONAL wall run's members into
- * per-column crown SPANS. A 45° wall is a STAIRCASE of triangular tiles
- * (each classified `len:1`), diagonally — not 4-  — connected: consecutive
- * members share exactly ONE projected hypotenuse corner. There is no
- * multi-tile straight span to coalesce (each tile is its own triangle), so
- * the partition yields ONE 1×1 span per member — mirroring how `crownSpans`
- * yields a single span for an isolated tile. The seamlessness comes not from
- * merging bboxes (each stays a single tile = tiny scratch, no blowup) but
- * from the DRAW projecting each member's crown off shared WORLD corners, so
- * adjacent members' hypotenuse arrises meet on the same device pixel, and
- * from the outline testing the run member set so the shared corner never
- * inks an internal seam — exactly the garrison/wall span law, applied along
- * the 45° run. Union of the spans === the run; every member covered once.
- */
-export function diagSpans(members: number[]): CrownSpan[] {
-  const spans: CrownSpan[] = [];
-  const seen = new Set<number>();
-  for (let i = 0; i < members.length; i += 2) {
-    const x = members[i]!;
-    const y = members[i + 1]!;
-    const k = packTile(x, y);
-    if (seen.has(k)) continue; // a member listed once covers itself once
-    seen.add(k);
-    spans.push({ x0: x, y0: y, x1: x, y1: y });
-  }
-  return spans;
 }
 
 /** Drop points that sit on a straight (axis-aligned) run between neighbours. */

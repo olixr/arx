@@ -1,6 +1,5 @@
 import { Tile, hashCoords, valueNoise } from '@arx/shared';
 import { StageBlend, type StageItem, type StageTexture } from './stage/stageTypes.js';
-import { type LightStrip, screenOrthoFromLean, shadeStrip } from './cameraProject.js';
 import {
   GRASS_BAKE_MS_BUDGET,
   GRASS_CELL_SPAN,
@@ -19,6 +18,7 @@ import {
   scaleFresh,
   windTerm,
 } from './grassSpriteBudget.js';
+import type { TallBand } from './grassGpu.js';
 
 /**
  * The bespoke grass system. The ground IS the game's biggest canvas, and
@@ -455,25 +455,82 @@ export function generateGrassTile(
  * array per call — the renderer caches it per tile so a still object mints
  * its skirt once.
  */
-export function generateSkirtBlades(tx: number, ty: number, footY: number): Blade[] {
+// Side bits for edge-biased (wall/building) skirts — mirror grassSkirt.ts.
+const SKIRT_SIDE_N = 1;
+const SKIRT_SIDE_S = 2;
+const SKIRT_SIDE_W = 4;
+const SKIRT_SIDE_E = 8;
+const SKIRT_SIDE_ALL = SKIRT_SIDE_N | SKIRT_SIDE_S | SKIRT_SIDE_W | SKIRT_SIDE_E;
+
+/**
+ * Snap an angle onto its nearest grass-facing cardinal sector when the skirt
+ * is edge-biased (a wall foot: `sides` names which orthogonal edges are
+ * grass). Returns the angle unchanged for a full ring (natural wilds). Screen
+ * convention: cos>0 → east, cos<0 → west; sin>0 → south, sin<0 → north (by
+ * grows southward). A blade whose free angle points at a NON-grass edge is
+ * pulled into one of the grass sectors so the whole tuft lands on grass — a
+ * wall never sprouts grass out of its stone/path/interior side.
+ */
+function biasAngleToGrassSides(ang: number, sides: number, pick: number): number {
+  if (sides === SKIRT_SIDE_ALL || sides === 0) return ang;
+  const c = Math.cos(ang);
+  const s = Math.sin(ang);
+  // Which cardinal does this free angle favour?
+  const wantsWE = Math.abs(c) > Math.abs(s);
+  const side = wantsWE ? (c > 0 ? SKIRT_SIDE_E : SKIRT_SIDE_W) : s > 0 ? SKIRT_SIDE_S : SKIRT_SIDE_N;
+  if ((sides & side) !== 0) return ang; // already lands on a grass edge
+  // Rotate onto one of the allowed sectors (centres: E=0, S=π/2, W=π, N=3π/2),
+  // keeping a ±40° spread so the edge reads as a soft fringe, not a picket.
+  const allowed: number[] = [];
+  if (sides & SKIRT_SIDE_E) allowed.push(0);
+  if (sides & SKIRT_SIDE_S) allowed.push(Math.PI * 0.5);
+  if (sides & SKIRT_SIDE_W) allowed.push(Math.PI);
+  if (sides & SKIRT_SIDE_N) allowed.push(Math.PI * 1.5);
+  if (allowed.length === 0) return ang;
+  const centre = allowed[Math.floor(pick * allowed.length) % allowed.length]!;
+  return centre + (pick - 0.5) * (Math.PI * 4 / 9); // ±40°
+}
+
+/**
+ * `strength` (0..1) stands in for the object's HEIGHT: a tall tree carries a
+ * full climbing collar (1); a low rock gets a bare few short wisps (~0.22) so
+ * it is never swallowed; a wall foot a subtle low nestle (~0.5). It scales
+ * blade count, height, radius and whether inner climbers appear. `sides` is a
+ * grass-edge bitmask (SKIRT_SIDE_*): the full ring (default) scatters freely,
+ * a partial mask (a wall) keeps every blade on a grass-facing edge only.
+ */
+export function generateSkirtBlades(
+  tx: number,
+  ty: number,
+  footY: number,
+  strength = 1,
+  sides = SKIRT_SIDE_ALL,
+): Blade[] {
+  const out: Blade[] = [];
+  if (strength <= 0) return out;
   // The meadow's tone patch at this tile — the skirt wears the SAME green
   // as the coat around it, so it is the meadow climbing the trunk, not a
   // ring of a different grass.
   const tileTone = Math.min(4, Math.floor(valueNoise(905, tx * 0.05, ty * 0.05) * 5));
-  const out: Blade[] = [];
   const cx = tx + 0.5;
   const h0 = hashCoords(521, tx, ty);
-  // A LUSH tuft — enough blades to wrap the foot and thin outward, still a
-  // tuft not a hedge. Curation pass 2: denser + a few climbers up the bark.
-  const count = 20 + (h0 % 8); // 20..27
+  // A LUSH tuft at full strength — enough blades to wrap the foot and thin
+  // outward, still a tuft not a hedge. Scaled DOWN by strength so a rock
+  // carries only a handful (≈5) and a wall foot a modest fringe (≈12).
+  const full = 20 + (h0 % 8); // 20..27
+  const count = Math.max(3, Math.round(full * strength));
+  // Shorter + tighter for weaker skirts: a rock's wisps must not climb it.
+  const heightScale = 0.4 + 0.6 * strength; // rock 0.53 · wall 0.7 · tree 1.0
+  const radiusScale = 0.6 + 0.4 * strength; // rock hugs the base tighter
+  const climbers = strength >= 0.85; // only tall wilds send blades up the bark
   for (let i = 0; i < count; i++) {
     const hh = hashCoords(523 + i * 37, tx, ty);
     // Radial scatter biased hard INWARD (u^1.7): most blades hug the trunk,
     // a thinning few reach the rim — the density falls off outward, never a
     // uniform collar. maxR 0.5 wraps a full tile diameter around the foot.
     const u = rand01(hh, 2);
-    const rad = 0.5 * Math.pow(u, 1.7);
-    const ang = rand01(hh, 12) * 6.2831853;
+    const rad = 0.5 * radiusScale * Math.pow(u, 1.7);
+    const ang = biasAngleToGrassSides(rand01(hh, 12) * 6.2831853, sides, rand01(hh, 27));
     const bx = cx + Math.cos(ang) * rad;
     // Squash the ellipse (×0.5) so the skirt lies in the ground plane and
     // WRAPS the trunk sides more than it spills forward; a hair forward
@@ -484,8 +541,8 @@ export function generateSkirtBlades(tx: number, ty: number, footY: number): Blad
     // blades are CLIMBERS — a touch taller still — for the few tufts that
     // rise up the trunk. Capped so the skirt never swallows the mass.
     const rise = 1 - u;
-    const climber = u < 0.22 ? rand01(hh, 24) * 0.1 : 0;
-    const height = 0.14 + rise * 0.27 + climber + rand01(hh, 5) * 0.06; // ≤ ~0.57
+    const climber = climbers && u < 0.22 ? rand01(hh, 24) * 0.1 : 0;
+    const height = (0.14 + rise * 0.27 + climber + rand01(hh, 5) * 0.06) * heightScale; // ≤ ~0.57
     const phase = rand01(hh, 18);
     out.push({
       bx,
@@ -700,81 +757,6 @@ export function laneUses(lane: number, t: Tile | null | undefined): boolean {
   return true;
 }
 
-/**
- * THE MEADOW RIDES THE LEAN (Epic B, FG). A row cell is baked once (its
- * tile frame frozen into the sprite pixels) but blitted for many frames
- * as the camera pans and leans. A cell is ONE tile deep (a single `ty`),
- * so under a pitch-only lean the whole cell sits at ONE depth — the
- * ground beneath it compresses UNIFORMLY, no across-cell trapezoid. So
- * the blit only has to re-derive the row's CURRENT tile frame and scale
- * the cached sprite by the ratio to its baked frame: `dsx = fcSx/spSx`
- * (footprint width) and `dsy = fcSy/spSy` (row depth + height). Applied
- * about the sprite's (already perspective-projected) anchor, this lands
- * every tile exactly where the leaned ground puts it — no spill, no
- * stair-step at the grass/lane seam — while the blades keep standing.
- *
- * At the bake instant fc === the baked frame, so ds = 1 and the blit
- * reproduces the live path byte-for-byte. At q=0 every tile frame is the
- * camera-position-independent ortho constant (sx=scale, sy=scale·yScale),
- * so ds would be 1 too — but float subtraction of large coordinates is
- * not exactly 1, so callers MUST gate this on an explicit `q !== 0` and
- * leave the q=0 path untouched (byte-identity by construction).
- */
-export function rowLeanScale(
-  fcSx: number,
-  fcSy: number,
-  spSx: number,
-  spSy: number,
-): { dsx: number; dsy: number } {
-  return {
-    dsx: spSx !== 0 ? fcSx / spSx : 1,
-    dsy: spSy !== 0 ? fcSy / spSy : 1,
-  };
-}
-
-/**
- * THE MEADOW RIDES THE GROUND QUAD (Epic B, clause 3). A baked row-cell
- * sprite is a rectangle in the FROZEN bake frame: the west tile's NW
- * ground corner sits at bake-CSS (0,0), one tile is `spSx`×`spSy` CSS px,
- * and the raster overhangs it by the bake margins (`mx` left, `my` above)
- * — the blade tips live in the `my` band above the ground line. So the
- * raster's four corners map to FIXED WORLD points (camera-independent):
- * left/right of the cell by `mx/spSx` tiles, and above/below by
- * `my/spSy` / `(hCss−my)/spSy` tile-rows. Projecting these four world
- * corners each frame (the exact ground-chunk construction) and drawing
- * the cached raster across the resulting trapezoid locks grass to the
- * ground and foreshortens it identically — no swim. Pure so grass.test
- * pins it; the caller projects the corners and weights them 1/depthScale.
- *
- *   (westX,northY) ── (eastX,northY)      raster TL/TR (blade tips)
- *        │                 │
- *   (westX,southY) ── (eastX,southY)      raster BL/BR (just past south)
- *
- * By construction `(eastX−westX)·spSx === wCss` and
- * `(southY−northY)·spSy === hCss` (the raster's CSS extent), and with
- * zero margins the corners collapse onto the cell's tile footprint
- * [cellTx‥cellTx+wCss/spSx] × [ty‥ty+hCss/spSy].
- */
-export function grassCellWorldCorners(
-  cellTx: number,
-  ty: number,
-  spSx: number,
-  spSy: number,
-  mx: number,
-  my: number,
-  wCss: number,
-  hCss: number,
-): { westX: number; eastX: number; northY: number; southY: number } {
-  const invSx = spSx !== 0 ? 1 / spSx : 0;
-  const invSy = spSy !== 0 ? 1 / spSy : 0;
-  return {
-    westX: cellTx - mx * invSx,
-    eastX: cellTx + (wCss - mx) * invSx,
-    northY: ty - my * invSy,
-    southY: ty + (hCss - my) * invSy,
-  };
-}
-
 /** A tile stays live this long after its last wake (spring-back runs
  *  at frame rate — the same window bakeUnder honors). */
 const WAKE_LIVE_MS = 800;
@@ -783,20 +765,6 @@ const WAKE_LIVE_MS = 800;
  *  now (THE ARRIVAL PAYS ONCE — deferring repaints live at the same
  *  order of cost and converges never); this is only the runaway guard. */
 const GRASS_URGENT_MS = 12;
-
-/** COARSE-LIVE stride (THE MEADOW NEVER PAINTS FLAT, Epic B): a
- *  not-yet-baked cell under lean paints every N-th blade live so the
- *  frustum's deep first-sight sweep never shows bare green — the sprite
- *  mint corrects it within a few frames. LEAN-ONLY; q=0 never draws
- *  coarse, so byte-identical. */
-const GRASS_COARSE_STRIDE = 3;
-
-/** FRUSTUM-DEPTH bake-floor multiplier under lean: the deep perspective
- *  frustum sweeps in more first-sight cells per frame than the ortho
- *  count floor admits, so the sprite cache converges too slowly and the
- *  coarse-live pass lingers. 3× tracks the reach without an ms blowup
- *  (the ms ceilings still bound frame time). q=0 never applies it. */
-const GRASS_LEAN_FLOOR_MULT = 3;
 
 /**
  * One baked row-cell sprite. `liveMask` records which of the cell's
@@ -933,12 +901,6 @@ export class GrassSystem {
     shFill: string;
     /** Whether the shadow canvas holds any content this bake. */
     hasShadow: boolean;
-    /** THE SHADE LEARNS TO LEAN (Epic B): true when this bake ran under a
-     *  lean — the calm casts were kept LIVE in shadowPath (no monolith
-     *  canvas), so a flat drawImage would seat them at ortho and float a
-     *  hard rectangular band over the receded ground. A mode flip (lean↔
-     *  ortho) forces a rebake so the cache never carries the wrong kind. */
-    leanBake: boolean;
   } | null = null;
   /** The meadow's merged cast canvas, reused across bakes. */
   private shadowCanvas: HTMLCanvasElement | null = null;
@@ -950,9 +912,6 @@ export class GrassSystem {
   /** This frame's cached-fill translation (drawUnder → flushShadows). */
   private cacheDx = 0;
   private cacheDy = 0;
-  /** THE SHADE BAKES ONCE (Epic1 B4): the strip the per-frame warp writes
-   *  into (q>0-only — untouched at q=0, byte-identical). */
-  private readonly underStrip: LightStrip = { sy: 0, sh: 0, dx: 0, dy: 0, dw: 0, dh: 0 };
 
   /**
    * THE MEADOW RIDES THE SHEAR: cadence-baked sprites for the two
@@ -1000,25 +959,7 @@ export class GrassSystem {
    * stageDrainLive). Null = the classic canvas path, untouched.
    */
   stagePush: ((item: StageItem) => void) | null = null;
-  /**
-   * THE MEADOW RIDES THE LEAN (Epic B, FG): the frame's camera lean
-   * parameter `q`, set by the renderer each frame. When non-zero the
-   * cell blits re-scale their cached sprite to the row's current depth
-   * (see rowLeanScale); at 0 (the default, and legacy canvas mode) every
-   * blit runs the exact pre-lean path — byte-identical.
-   */
-  leanQ = 0;
-  /**
-   * THE MEADOW RIDES THE GROUND QUAD (Epic B, clause 3): the frame's
-   * camera depth-scale, `wy → depthScale(wy)`, set by the renderer
-   * beside `leanQ`. Under a lean each row-cell blit re-projects its four
-   * frozen world corners and carries per-corner weights `1/depthScale`,
-   * so the cached raster is drawn as a perspective TRAPEZOID locked to
-   * the ground (the ground-chunk construction) instead of stretched by a
-   * single-depth affine — killing the swim. Null at q=0 (the affine path
-   * runs untouched, byte-identical). */
-  leanDepthScale: ((wy: number) => number) | null = null;
-  private readonly stageLive: Array<{ lane: number; tx: number; ty: number; coarse?: boolean }> = [];
+  private readonly stageLive: Array<{ lane: number; tx: number; ty: number }> = [];
   private readonly stageTexMap = new WeakMap<
     HTMLCanvasElement,
     { tex: StageTexture; owner: object; frameRev: number }
@@ -1086,7 +1027,7 @@ export class GrassSystem {
           const wind = windAtInto(WIND_SCRATCH, d.tx + 0.5, d.ty + 0.5, this.tSec);
           const f = this.tileFrame(d.tx, d.ty, wts);
           this.gatherNear(d.tx, d.ty);
-          this.buildLaneTile(d.lane, st, t!, wind, f, s, d.lane === LANE_UNDER, d.coarse ?? false);
+          this.buildLaneTile(d.lane, st, t!, wind, f, s, d.lane === LANE_UNDER);
           this.rowStats.live++;
         }
         this.flush(ctx);
@@ -1157,15 +1098,7 @@ export class GrassSystem {
     this.rowStats.over = 0;
     this.bakeMsLeft = GRASS_BAKE_MS_BUDGET;
     this.urgentMsLeft = GRASS_URGENT_MS;
-    // FRUSTUM-DEPTH SCALING (Epic B): under a lean the frustum reaches
-    // ~5× deeper, so a pan sweeps in many more first-sight cells than
-    // the ortho-tuned floor admits. Scale the first-sight COUNT floor
-    // (not the ms ceilings — those bound frame time) so the sprite
-    // cache converges in step with the deeper reach, shortening the
-    // window the coarse-live pass has to cover. `leanQ` lags one frame
-    // (set after beginFrame) — immaterial for a count floor. q=0 keeps
-    // the exact ortho floor, byte-identical.
-    this.firstCellsLeft = this.leanQ !== 0 ? 8 * GRASS_LEAN_FLOOR_MULT : 8;
+    this.firstCellsLeft = 8;
     this.bakeFloorLeft = 1;
     // Sweep the row-sprite ledger toward relief — coldest first, never
     // a sprite this frame drew with. Runs before any draw so the gate
@@ -1701,7 +1634,7 @@ export class GrassSystem {
     ground: Sampler,
     detail: DetailFn,
     bounds: GrassBounds,
-    bwts: WTS,
+    wts: WTS,
     s: number,
     ox: number,
     oy: number,
@@ -1756,7 +1689,7 @@ export class GrassSystem {
         }
         if (live.has(key)) continue;
         const wind = windAtInto(WIND_SCRATCH, tx + 0.5, ty + 0.5, this.tSec);
-        const f = this.tileFrame(tx, ty, bwts);
+        const f = this.tileFrame(tx, ty, wts);
         this.gatherNear(tx, ty);
         // Pre-gate on the builders' own cast conditions (hpx floor,
         // bin parity) using h*s — an upper bound on hpx, so a skip is
@@ -1788,20 +1721,13 @@ export class GrassSystem {
     }
 
     // THE SHADE BAKES ONCE (Epic1 B4): the calm cast monolith bakes into
-    // the canvas in BAKE space — at q=0 that is ortho screen space (the
-    // path shipped so far, byte-identical); under a lean `bwts` has
-    // already un-leaned every tile frame to ORTHO screen (screenOrthoFrom-
-    // Lean), so the monolith is a camera-independent ORTHO bake either
-    // way. drawUnder blits it flat at q=0 and WARPS it through the lean
-    // homography each frame at q>0 (shadeStrip) so it recedes with the
-    // ground — no per-frame rebake (the old lean path forced one), no
-    // hard rectangular band floating over the receded ground.
-    const leaning = this.leanQ !== 0;
+    // the canvas in screen space, once per bake beat; drawUnder blits it
+    // flat each frame — no per-frame rebake.
     // Rasterize the merged casts, anchored at the padded bounds'
     // top-left in the bake frame's screen space (CSS px onto a
     // dpr-resolution backing). Margin covers cast throw past a tile.
-    const pTL = bwts(minTx, minTy);
-    const pBR = bwts(maxTx + 1, maxTy + 1);
+    const pTL = wts(minTx, minTy);
+    const pBR = wts(maxTx + 1, maxTy + 1);
     const margin = 1.5 * s;
     const canvasX0 = Math.floor(Math.min(pTL.x, pBR.x) - margin);
     const canvasY0 = Math.floor(Math.min(pTL.y, pBR.y) - margin);
@@ -1850,17 +1776,10 @@ export class GrassSystem {
       shKy: this.shKy,
       shOn: this.shOn,
       shFill: this.shFill,
-      // The bake always rasterizes the calm monolith (ortho at q=0, un-
-      // leaned ortho at q>0) — one canvas the flat blit and the warp both
-      // ride, so a lean↔ortho flip needs no fresh content.
       hasShadow,
-      // leanBake records only whether this bake un-leaned to ortho, so a
-      // mode FLIP re-snaps the origin (q=0 snapped vs q>0 unsnapped) — NOT
-      // a per-frame force.
-      leanBake: leaning,
     };
     // The monolith owns the calm casts; restore the caller's live path so
-    // drawUnder's live tiles append their (leaned) casts to shadowPath.
+    // drawUnder's live tiles append their casts to shadowPath.
     this.shadowPath = prevShadow;
   }
 
@@ -1890,36 +1809,11 @@ export class GrassSystem {
     // canvas bakes at this resolution so the blit is 1:1 device px.
     const m = this.frameTransform(ctx);
     const dpr = m.a || 1;
-    // THE SHADE BAKES ONCE (Epic1 B4): the lean homography is anchored at
-    // the viewport centre (cameraProject `cx = w/2, cy = h/2`); the CSS
-    // viewport is the backing store over dpr. Used q>0-only, to un-lean
-    // the bake to ortho and to warp it back each frame.
-    const leaning = this.leanQ !== 0;
-    const cx = ctx.canvas.width / dpr / 2;
-    const cy = ctx.canvas.height / dpr / 2;
-    // Bake space: at q=0 the leaned `wts` IS ortho (byte-identical). Under
-    // a lean, un-lean each projected point to the ORTHO screen it came
-    // from, so the calm monolith bakes ONCE in camera-independent ortho
-    // space — pan is a translate, `q` cancels — and `shadeStrip` warps it
-    // to the receded ground each frame. `screenOrthoFromLean` writes back
-    // into the fresh object `wts` returned (safe for tileFrame's two calls).
-    const bwts: WTS = leaning
-      ? (wx, wy) => {
-          const p = wts(wx, wy);
-          return screenOrthoFromLean(this.leanQ, cx, cy, p.x, p.y, p);
-        }
-      : wts;
-    const o = bwts(0, 0);
+    const o = wts(0, 0);
     let c = this.underCache;
-    // THE SHADE BAKES ONCE (Epic1 B4): the calm monolith bakes in ortho and
-    // is REUSED across frames under lean too (drawUnder warps it), so the
-    // old per-frame `leanQ !== 0` rebake force is gone — restoring round-6's
-    // bake-once/blit-many cadence. Only a genuine lean↔ortho FLIP forces a
-    // rebake (the origin snaps differently, q=0 snapped vs q>0 unsnapped).
-    // q=0 with an ortho cache in hand leaves every condition false —
-    // byte-identical to today.
+    // THE SHADE BAKES ONCE (Epic1 B4): the calm monolith bakes once per
+    // beat and is REUSED across frames (bake-once/blit-many cadence).
     let needBake =
-      (c ? c.leanBake !== leaning : false) ||
       !c ||
       c.scale !== s ||
       c.dpr !== dpr ||
@@ -1963,7 +1857,7 @@ export class GrassSystem {
       }
     }
     if (needBake) {
-      this.bakeShade(ground, detail, bounds, bwts, s, o.x, o.y, dpr);
+      this.bakeShade(ground, detail, bounds, wts, s, o.x, o.y, dpr);
       c = this.underCache;
     }
     const cache = c!;
@@ -1997,8 +1891,8 @@ export class GrassSystem {
     const cached = cache.hasShadow ? this.shadowCanvas : null;
     if (cached || this.shadowPath) {
       ctx.globalAlpha = this.shAlpha;
-      if (cached && !leaning) {
-        // q=0: the flat monolith blit, 1:1 device px — byte-identical.
+      if (cached) {
+        // The flat monolith blit, 1:1 device px.
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.drawImage(
@@ -2007,28 +1901,6 @@ export class GrassSystem {
           Math.round(m.d * (cache.canvasY0 + this.cacheDy) + m.f),
         );
         ctx.restore();
-      } else if (cached) {
-        // THE SHADE LEARNS TO LEAN (Epic1 B4): warp the ORTHO-baked calm
-        // monolith to the receded ground each frame in horizontal strips
-        // (shadeStrip) — the same bake-ortho-once/warp-each-frame trick the
-        // lightmap uses, so the cast recedes WITH the ground it lies on
-        // instead of being rebaked every frame. Bilinear smoothing blends
-        // the per-strip horizontal-scale step (the tilt-shift law).
-        const bw = cached.width;
-        const bh = cached.height;
-        const rectX = cache.canvasX0 + this.cacheDx;
-        const rectY = cache.canvasY0 + this.cacheDy;
-        const rectW = bw / cache.dpr;
-        const rectH = bh / cache.dpr;
-        const N = Math.min(48, Math.max(6, Math.ceil(rectH / 16)));
-        const smooth = ctx.imageSmoothingEnabled;
-        ctx.imageSmoothingEnabled = true;
-        for (let i = 0; i < N; i++) {
-          const st = shadeStrip(this.leanQ, cx, cy, rectX, rectY, rectW, rectH, bh, N, i, this.underStrip);
-          if (st.sh <= 0 || st.dh <= 0 || st.dw <= 0) continue;
-          ctx.drawImage(cached, 0, st.sy, bw, st.sh, st.dx, st.dy, st.dw, st.dh);
-        }
-        ctx.imageSmoothingEnabled = smooth;
       }
       if (this.shadowPath) {
         ctx.fillStyle = this.shFill;
@@ -2135,6 +2007,112 @@ export class GrassSystem {
   }
 
   /**
+   * G-ELEVATED — THE COAT RIDES THE SHELF. Gather the RAISED-terrain grass
+   * (tiles whose `elevAt` level ≠ 0) for the visible field, grouped into ONE
+   * band per (row, level) so each band can be lifted onto its shelf and
+   * y-sorted at its own row (drawn over the elevated ground quad, under the
+   * bodies standing on it). Reads the SAME immutable tile cache as
+   * collectGpuBlades — no separate generation. Each band gathers a tile's
+   * `under` coat AND its `north`/`south` tall standing mass (elevated tall is
+   * NOT per-body interleaved — a small, rare field where the flat meadow's
+   * fine tall interleave does not apply); the slice is sorted back-to-front
+   * by world-y so the opaque no-depth GPU draw paints correctly within the
+   * band. `elevH` is one level's world height (ELEV_H); `band.elev` is
+   * `level·elevH`, the exact lift the elevated ground quad rides. `out` and
+   * `bands` are caller-owned pooled arrays (truncated here); cached Blade
+   * records are pushed by reference. Flat (level-0) tiles are ignored — they
+   * ride the flat GPU field (collectGpuBlades).
+   */
+  collectGpuElevated(
+    ground: Sampler,
+    detail: DetailFn,
+    elevAt: (tx: number, ty: number) => number,
+    bounds: GrassBounds,
+    elevH: number,
+    out: Blade[],
+    bands: TallBand[],
+  ): void {
+    out.length = 0;
+    bands.length = 0;
+    const levels = this.elevLevelScratch;
+    for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
+      // Which elevation levels does this row carry? (usually one — a terrace
+      // top — so this scan is short and levels stays tiny.)
+      levels.length = 0;
+      for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
+        const t = ground(tx, ty);
+        if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
+        const lvl = elevAt(tx, ty);
+        if (lvl === 0) continue;
+        if (!levels.includes(lvl)) levels.push(lvl);
+      }
+      for (const lvl of levels) {
+        const i0 = out.length;
+        let minBy = Infinity;
+        let maxBy = -Infinity;
+        for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
+          const t = ground(tx, ty);
+          if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
+          if (elevAt(tx, ty) !== lvl) continue;
+          const geom = this.tile(tx, ty, t, detail(tx, ty), ground).geom;
+          for (const b of geom.under) {
+            out.push(b);
+            if (b.by < minBy) minBy = b.by;
+            if (b.by > maxBy) maxBy = b.by;
+          }
+          if (t === Tile.GrassTall) {
+            for (const b of geom.north) {
+              out.push(b);
+              if (b.by < minBy) minBy = b.by;
+              if (b.by > maxBy) maxBy = b.by;
+            }
+            for (const b of geom.south) {
+              out.push(b);
+              if (b.by < minBy) minBy = b.by;
+              if (b.by > maxBy) maxBy = b.by;
+            }
+          }
+        }
+        const count = out.length - i0;
+        if (count === 0) continue;
+        // Back-to-front within the band (opaque, no depth buffer).
+        this.sortBladeSlice(out, i0, count);
+        bands.push({
+          i0,
+          count,
+          // Draw just past the row's foot so the coat lands OVER the elevated
+          // ground quad (sorted at worldTy − 0.01) yet under a body on the row.
+          sortY: ty + 0.001,
+          minBy,
+          maxBy,
+          elev: lvl * elevH,
+        });
+      }
+    }
+  }
+
+  /** In-place back-to-front (by ascending) sort of a slice of a blade array
+   *  — used by collectGpuElevated to order each band's own blades without
+   *  disturbing (or reallocating) the shared output buffer. */
+  private sortBladeSlice(a: Blade[], i0: number, count: number): void {
+    // Small per-band slices — an insertion sort avoids allocating a subarray
+    // and is faster than Array.sort for the tens of blades a row holds.
+    for (let i = i0 + 1; i < i0 + count; i++) {
+      const v = a[i]!;
+      let j = i - 1;
+      while (j >= i0 && a[j]!.by > v.by) {
+        a[j + 1] = a[j]!;
+        j--;
+      }
+      a[j + 1] = v;
+    }
+  }
+
+  /** Reused scratch for collectGpuElevated's per-row level set (no per-frame
+   *  alloc); a row rarely carries more than one or two elevation levels. */
+  private readonly elevLevelScratch: number[] = [];
+
+  /**
    * The GPU path's ORNAMENT gatherer (proposal G-2) — flowers and
    * seed-heads for the visible field, from the SAME tile cache
    * collectGpuBlades walks. The ornament pass draws OVER the blades, so
@@ -2207,31 +2185,18 @@ export class GrassSystem {
     f: TileFrame,
     s: number,
     cast: boolean,
-    // COARSE-LIVE (Epic B, THE MEADOW NEVER PAINTS FLAT): a cheap live
-    // pass for a not-yet-baked cell under lean — a strided subset of
-    // blades gives the upright silhouette so the cell is never bladeless
-    // while its sprite mints. `false` = the full live/bake brush,
-    // verbatim — q=0 never takes the coarse path, so byte-identical.
-    coarse = false,
   ): void {
-    // COARSE stride: paint every N-th blade. Roots stay (cheap ground
-    // coverage); flowers/seeds (sparse accents) are dropped — the pass
-    // exists only to break the flat-green read, not to be faithful.
-    const stride = coarse ? GRASS_COARSE_STRIDE : 1;
     if (lane === LANE_TALL_N) {
-      const a = st.geom.north;
-      for (let i = 0; i < a.length; i += stride) this.buildBlade(a[i]!, st, wind, f, s);
+      for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s);
       return;
     }
     if (lane === LANE_TALL_S) {
-      const a = st.geom.south;
-      for (let i = 0; i < a.length; i += stride) this.buildBlade(a[i]!, st, wind, f, s);
+      for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s);
       return;
     }
     if (lane === LANE_UNDER) {
       this.buildRoots(st, f, s);
-      const u = st.geom.under;
-      for (let i = 0; i < u.length; i += stride) this.buildBlade(u[i]!, st, wind, f, s, cast);
+      for (const b of st.geom.under) this.buildBlade(b, st, wind, f, s, cast);
       // Tall thickets y-sort their standing mass via collectTall —
       // the under pass owes only their casts (live tiles; baked casts
       // ride the shade canvas).
@@ -2239,23 +2204,16 @@ export class GrassSystem {
         for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s, true, false);
         for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s, true, false);
       }
-      if (!coarse) {
-        for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s, cast);
-        for (const sd of st.geom.seeds) this.buildSeed(sd, st, wind, f, s, cast);
-      }
+      for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s, cast);
+      for (const sd of st.geom.seeds) this.buildSeed(sd, st, wind, f, s, cast);
       return;
     }
     this.buildRoots(st, f, s);
-    const u = st.geom.under;
-    for (let i = 0; i < u.length; i += stride) this.buildBlade(u[i]!, st, wind, f, s);
-    const n = st.geom.north;
-    for (let i = 0; i < n.length; i += stride) this.buildBlade(n[i]!, st, wind, f, s);
-    const so = st.geom.south;
-    for (let i = 0; i < so.length; i += stride) this.buildBlade(so[i]!, st, wind, f, s);
-    if (!coarse) {
-      for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s);
-      for (const sd of st.geom.seeds) this.buildSeed(sd, st, wind, f, s);
-    }
+    for (const b of st.geom.under) this.buildBlade(b, st, wind, f, s);
+    for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s);
+    for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s);
+    for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s);
+    for (const sd of st.geom.seeds) this.buildSeed(sd, st, wind, f, s);
   }
 
   /**
@@ -2443,44 +2401,15 @@ export class GrassSystem {
     const p = wts(c0 + sp.txOff, ty);
     const wNow = windAtInto(WIND_SCRATCH, sp.center, ty + 0.5, this.tSec);
     const shx = rowShear(windTerm(wNow.bx, wNow.by), sp.bakedTerm);
-    // THE MEADOW RIDES THE LEAN (Epic B, FG): under a lean re-derive the
-    // row's CURRENT tile frame and scale the cached sprite by its ratio
-    // to the baked frame, so the footprint tracks the compressed ground
-    // (one depth per cell → uniform ds, no across-cell trapezoid). At
-    // q=0 this branch is skipped entirely — the blit below is the exact
-    // pre-lean path, byte-identical.
-    let dsx = 1;
-    let dsy = 1;
-    if (this.leanQ !== 0) {
-      const fc = this.tileFrame(c0 + sp.txOff, ty, wts);
-      const ds = rowLeanScale(fc.sx, fc.sy, sp.sx, sp.sy);
-      dsx = ds.dsx;
-      dsy = ds.dsy;
-    }
     if (this.stagePush) {
       // THE WORLD ON STAGE: the same shear, as a quad. Dest-local is
       // the sprite's own device px; a = r/dpr maps them to CSS at the
       // rescale ratio, exactly the setTransform below divided by the
-      // live device ratio (the backend multiplies it back).
+      // live device ratio (the backend multiplies it back). The affine
+      // `m` pins the raster's ground line (roots, raster CSS (mx,my)) to
+      // `p` = wts(westTile, ty) and stands the blades UP by `r·my`.
       const r = s / sp.scale;
-      const rx = r * dsx;
-      const ry = r * dsy;
       const refY = sp.sy * 0.5;
-      // THE MEADOW STANDS ON ITS OWN TILE (Epic B, bleed fix): under a
-      // lean the row cell is a BILLBOARD, not a flat ground quad. The
-      // affine `m` below already pins the raster's ground line (roots,
-      // raster CSS (mx,my)) to `p` = wts(westTile, ty) — roots ON the
-      // ground — and stands the blades UP by `ry·my` screen px, both
-      // foreshortened by the cell's single-depth ratio `ds` (rowLeanScale,
-      // exact for a one-`ty` cell). A prior pass wrapped the whole raster
-      // — INCLUDING the `my` blade-HEIGHT band above the tile — in a
-      // ground-plane trapezoid (corners at `ty − my/sy`), which projected
-      // the standing tips FLAT onto the tile(s) NORTH of the grass: dirt
-      // and paths there wore grass under lean (user-confirmed). Treating
-      // the height band as ground was the bug; the billboard keeps tips
-      // standing over their own tile, so nothing lands on the neighbor.
-      // At q=0 `ds` is the ortho constant (dsx=dsy=1) so this is the exact
-      // pre-lean affine, byte-identical.
       this.stagePush({
         kind: 'quad',
         tex: this.stageTexFor(sp),
@@ -2491,12 +2420,12 @@ export class GrassSystem {
         dw: sp.w,
         dh: sp.h,
         m: [
-          rx / sp.dpr,
+          r / sp.dpr,
           0,
-          (-rx * shx) / sp.dpr,
-          ry / sp.dpr,
-          p.x - rx * sp.mx + rx * shx * (refY + sp.my),
-          p.y - ry * sp.my,
+          (-r * shx) / sp.dpr,
+          r / sp.dpr,
+          p.x - r * sp.mx + r * shx * (refY + sp.my),
+          p.y - r * sp.my,
         ],
         alpha: 1,
         blend: StageBlend.SourceOver,
@@ -2505,18 +2434,16 @@ export class GrassSystem {
       return;
     }
     const K = m.a * (s / sp.scale);
-    const Kx = K * dsx;
-    const Ky = K * dsy;
     const bx = m.a * p.x + m.e;
     const by = m.d * p.y + m.f;
     const refY = sp.sy * 0.5;
     ctx.setTransform(
-      Kx / sp.dpr,
+      K / sp.dpr,
       0,
-      (-Kx * shx) / sp.dpr,
-      Ky / sp.dpr,
-      bx - Kx * sp.mx + Kx * shx * (refY + sp.my),
-      by - Ky * sp.my,
+      (-K * shx) / sp.dpr,
+      K / sp.dpr,
+      bx - K * sp.mx + K * shx * (refY + sp.my),
+      by - K * sp.my,
     );
     ctx.drawImage(sp.canvas!, 0, 0, sp.w, sp.h, 0, 0, sp.w, sp.h);
     ctx.setTransform(m);
@@ -2633,10 +2560,6 @@ export class GrassSystem {
       scaleFresh(s, sp.scale) &&
       (liveNowMask & ~sp.liveMask) === 0;
     let liveMask: number;
-    // COARSE-LIVE (THE MEADOW NEVER PAINTS FLAT): true only for the
-    // lean decline below — the cheap strided live pass. Full-live
-    // (stale pixels) and q=0 always paint the full brush.
-    let coarse = false;
     if (usable) {
       const spr = sp!;
       spr.used = this.frameNo;
@@ -2645,21 +2568,9 @@ export class GrassSystem {
       liveMask = (spr.liveMask | liveNowMask) & usedMask;
     } else if (sp === undefined || sp.canvas === null) {
       // LAW 2's decline: nothing usable in hand and no mint this
-      // frame. At ortho (q=0) the cell SKIPS (blades pop in when its
-      // mint lands) — byte-identical to today. But under LEAN the
-      // frustum reaches ~5× deeper, so a sideways pan sweeps in far
-      // more first-sight cells than the bake budget admits, and a
-      // skip paints BARE GREEN (the base ground chunk) that only
-      // corrects on settle — the most-cited defect. So under lean we
-      // draw a CHEAP COARSE live pass instead: never a bladeless
-      // frame, and the mint still replaces it within a few frames.
+      // frame — the cell SKIPS (blades pop in when its mint lands).
       this.rowStats.over++;
-      if (this.leanQ !== 0) {
-        liveMask = usedMask;
-        coarse = true;
-      } else {
-        liveMask = 0;
-      }
+      liveMask = 0;
     } else {
       this.rowStats.over++;
       liveMask = usedMask;
@@ -2671,13 +2582,13 @@ export class GrassSystem {
         if (!st) continue;
         const tx = c0 + i;
         if (this.stagePush) {
-          this.stageLive.push({ lane, tx, ty, coarse });
+          this.stageLive.push({ lane, tx, ty });
           continue;
         }
         const wind = windAtInto(WIND_SCRATCH, tx + 0.5, ty + 0.5, this.tSec);
         const f = this.tileFrame(tx, ty, wts);
         this.gatherNear(tx, ty);
-        this.buildLaneTile(lane, st, this.cellT[i]!, wind, f, s, lane === LANE_UNDER, coarse);
+        this.buildLaneTile(lane, st, this.cellT[i]!, wind, f, s, lane === LANE_UNDER);
         this.rowStats.live++;
       }
     }

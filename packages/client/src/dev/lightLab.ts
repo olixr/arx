@@ -160,7 +160,7 @@ function drawCell(
   // THE EXPOSURE MAP — the real class, the real order.
   lighting.draw(
     ctx,
-    { w: CELL_W, h: CELL_H, scale: S, yScale: YS, ox: 0, oy: 0, q: 0 },
+    { w: CELL_W, h: CELL_H, scale: S, yScale: YS, ox: 0, oy: 0 },
     sky,
     lights,
     wallBlocks,

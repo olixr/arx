@@ -1,5 +1,8 @@
 # THE GPU FOUNDATION — textures, the ground cache, and the road to WebGPU
 
+> **HISTORICAL — the camera lean was removed from the 2D client on 2026-09-04 (see docs/perspective-review-and-3d-client-plan.md); the perspective effort continues in the separate 3D client. The lean-specific material below is kept as the record of what was tried.**
+
+
 *Pre-Epic-B foundation plan. Branch `epic/foundations` (worktree
 `../devcraft-stage`). Companion to `docs/painted-stage-plan.md`; this
 document owns the memory and backend story that Epic B (the camera lean)

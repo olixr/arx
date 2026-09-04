@@ -24,11 +24,10 @@ export interface ViewCamera {
 export interface ViewDisplayFlags {
     stageGround: boolean;
     stageWorld: boolean;
-    leanTarget: number;
     stageResTier: StageResTier;
     reflectionsOn: boolean;
     waterFxFull: boolean;
-    /** Drop backend-specific caches after a stage/lean switch. */
+    /** Drop backend-specific caches after a stage switch. */
     onBackendSwitch(): void;
 }
 export interface ViewAdapter {

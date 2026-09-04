@@ -1,4 +1,48 @@
+import { Tile } from '@arx/shared';
 import { type StageItem } from './stage/stageTypes.js';
+import type { TallBand } from './grassGpu.js';
+/**
+ * The bespoke grass system. The ground IS the game's biggest canvas, and
+ * this module is what makes it read as a living meadow instead of blocks
+ * of color. Design laws:
+ *
+ * - BLOCKY: blades are tapered flat-top slabs (chisel-cut quads), never
+ *   soft strokes — the same brutalist language as shapes.ts. Tall blades
+ *   bend as two rigid segments, like a slab cracking at a knuckle.
+ * - THE COAT: the meadow is a CARPET, not a scatter. Two registers do
+ *   the work — a dense low NAP of squat near-turf chips that coats the
+ *   ground continuously (density riding the SAME lush field 907 the
+ *   baked turf stubble uses, so live and baked thicken in the same
+ *   reaches — one landform), and sparser accent STANDS above it that
+ *   read as individual grass. No grass tile is ever bald; variation is
+ *   density waves, never holes of flat paint.
+ * - VARIED: a coverage noise field deals each tile a hand — thin nap,
+ *   lone strands, medium stands, or dense clumps rooted in a shared
+ *   crown chip. Meadows breathe; nothing tiles. Seed-head stalks gather
+ *   in prairie drifts on their own slow field.
+ * - ONE WIND: every blade, flower, and tree samples the same vector
+ *   wind field. Gust fronts are CURVED (the front's phase is bent by a
+ *   slow cross-wave) and a perpendicular meander makes swaths snake
+ *   across the field — fluid motion without a fluid sim.
+ * - SHIMMER: a long-wavelength luminance swell relights blades from a
+ *   graded ramp — broad swaths of light rolling through the meadow.
+ *   THE FLOOR LAW (coat amendment): ACCENT blades never render darker
+ *   than the turf beneath them — a lone dark tick reads as a hole. The
+ *   nap's deepest row may sit a hair under the turf, but ONLY inside a
+ *   dense coat where it reads as carpet weave, never as a lone mark.
+ * - INHABITED: tall grass y-sorts around entities (you walk THROUGH
+ *   it), bodies part and flatten nearby blades, and a passage leaves a
+ *   springy rustle wobble + leaf specks behind.
+ * - CHEAP: per-tile blade geometry is generated once and cached, and
+ *   THE CALM CANVAS bakes every undisturbed tile into an offscreen
+ *   canvas at wind cadence — a whole meadow of quads costs ONE
+ *   drawImage per frame, so the coat's density is effectively free.
+ *   Only tiles a body can reach rebuild live at frame rate.
+ */
+/** Wind direction — matches the treeline so the whole scene agrees.
+ *  Exported as the single source the GPU grass shares (grassGpu.ts). */
+export declare const WX = 0.94;
+export declare const WY = 0.34;
 export interface WindSample {
     /** Bend vector in world tiles (unit cantilever at reference height). */
     bx: number;
@@ -82,6 +126,23 @@ export interface GrassTileGeom {
  * golden reaches.
  */
 export declare function generateGrassTile(tx: number, ty: number, tileId: number, detailId: number, snowMask?: number): GrassTileGeom;
+/**
+ * `strength` (0..1) stands in for the object's HEIGHT: a tall tree carries a
+ * full climbing collar (1); a low rock gets a bare few short wisps (~0.22) so
+ * it is never swallowed; a wall foot a subtle low nestle (~0.5). It scales
+ * blade count, height, radius and whether inner climbers appear. `sides` is a
+ * grass-edge bitmask (SKIRT_SIDE_*): the full ring (default) scatters freely,
+ * a partial mask (a wall) keeps every blade on a grass-facing edge only.
+ */
+export declare function generateSkirtBlades(tx: number, ty: number, footY: number, strength?: number, sides?: number): Blade[];
+/** Exported as the GPU grass's palette source (grassGpuRenderer.ts) —
+ *  the exact shade→base→lit ramp, so the instanced blades wear the same
+ *  colours as the baked meadow. Tone-major: [tone·LIGHTS + light]. */
+export declare const BLADE_FILLS: string[];
+/** GPU ornament palette (grassOrnament.ts) — the EXACT flower/seed colours
+ *  the baked meadow uses, so the instanced blooms match. Fixed order:
+ *  [petal0..3, core, gold, stem]. */
+export declare const ORNAMENT_FILLS: readonly string[];
 /** Radial falloff of a body pushing into grass: 1 at center, 0 at R. */
 export declare function disturbFalloff(dist: number, radius: number): number;
 export interface Disturber {
@@ -102,6 +163,18 @@ export interface GrassBounds {
     minTy: number;
     maxTy: number;
 }
+/**
+ * Which tiles a cell lane owns. THE COAT LAW anchors the under lane:
+ * every short-grass tile wears the nap (plus roots, flowers and
+ * seed-heads — all under-lane residents), so the UNDER lane takes
+ * BOTH grass tiles; only the tall standing-mass lanes are thickets-
+ * only. The original cell gate lumped UNDER into the "not ROW"
+ * branch and silently balded the entire open meadow — casts kept
+ * drawing (the shade pass reads geometry directly), so the field
+ * report was "shadows of the grass with no grass". Exported pure so
+ * grass.test.ts pins it.
+ */
+export declare function laneUses(lane: number, t: Tile | null | undefined): boolean;
 export declare class GrassSystem {
     private readonly tiles;
     /** Position → live state, for waking tiles bodies move through. */
@@ -331,6 +404,84 @@ export declare class GrassSystem {
      * because casts must merge on one canvas so overlaps never stack.
      */
     drawUnder(ctx: CanvasRenderingContext2D, ground: Sampler, detail: DetailFn, bounds: GrassBounds, wts: WTS, s: number): void;
+    /**
+     * THE GPU PATH'S BLADE GATHERER (proposal G-2). Walk the SAME
+     * level-0 visible tiles drawUnder walks and, instead of drawing,
+     * collect each tile's CACHED blade geometry into `out` for the
+     * instanced GPU renderer. Reuses the identical this.tile() cache
+     * drawUnder reads (no separate generation path — cache misses mint
+     * exactly the geometry drawUnder would). Gathers the `under` coat
+     * (both grass tiles wear it — THE COAT LAW), and — unless the tall
+     * standing mass is being routed to the y-sorted interleave — the tall
+     * `north`/`south` blades (GrassTall only). Blade geometry ONLY; flowers,
+     * seeds and roots are separate instance types handled later. The
+     * blades land SORTED back-to-front by world-y (`by` ascending): the
+     * GPU draws them opaque with no depth buffer, so paint order IS the
+     * depth. The immutable cached Blade objects are pushed by reference
+     * (no copy). `out` is caller-owned and pooled — it is truncated here.
+     * Returns the number of blades written.
+     *
+     * B3 — THE TALL BLADE INTERLEAVES: with `tallInterleave` set, the GPU
+     * flat field carries ONLY the short `under` coat (both grass tiles),
+     * and the tall standing mass (GrassTall north/south bands) is skipped
+     * here so the renderer can route it through the CPU `collectTall`
+     * y-sort — a body then walks THROUGH a thicket, blades in front of it
+     * occluding the lower body. The `under` coat is short and correctly
+     * stays flat below every entity, so the partition is exactly the two
+     * depth classes: coat (flat, GPU) vs standing mass (interleaved, CPU).
+     */
+    collectGpuBlades(ground: Sampler, detail: DetailFn, bounds: GrassBounds, out: Blade[], tallInterleave?: boolean): number;
+    /**
+     * G1 — THE TALL BLADE GOES TO THE GPU. Gather ONLY the tall standing
+     * mass (GrassTall north+south blades) for the visible field, from the
+     * SAME immutable tile cache collectGpuBlades reads (no separate
+     * generation). The short `under` coat is NOT included here — it rides
+     * the flat GPU field (collectGpuBlades with tallInterleave). The blades
+     * land SORTED back-to-front by world-y (`by` ascending): the GPU draws
+     * them opaque with no depth buffer, so within any one row-band the paint
+     * order IS the depth. The renderer then partitions this sorted array
+     * into fine world-row bands (partitionTallBands) and emits each band as
+     * a y-sorted DrawItem, so a body walks THROUGH the thicket — blades
+     * rooted south of it (in front) occlude its lower body, blades rooted
+     * north do not, CONTINUOUSLY (no two-band pop). `out` is caller-owned
+     * and pooled (truncated here); cached Blade records are pushed by
+     * reference. Returns the number of tall blades written.
+     */
+    collectGpuTall(ground: Sampler, detail: DetailFn, bounds: GrassBounds, out: Blade[]): number;
+    /**
+     * G-ELEVATED — THE COAT RIDES THE SHELF. Gather the RAISED-terrain grass
+     * (tiles whose `elevAt` level ≠ 0) for the visible field, grouped into ONE
+     * band per (row, level) so each band can be lifted onto its shelf and
+     * y-sorted at its own row (drawn over the elevated ground quad, under the
+     * bodies standing on it). Reads the SAME immutable tile cache as
+     * collectGpuBlades — no separate generation. Each band gathers a tile's
+     * `under` coat AND its `north`/`south` tall standing mass (elevated tall is
+     * NOT per-body interleaved — a small, rare field where the flat meadow's
+     * fine tall interleave does not apply); the slice is sorted back-to-front
+     * by world-y so the opaque no-depth GPU draw paints correctly within the
+     * band. `elevH` is one level's world height (ELEV_H); `band.elev` is
+     * `level·elevH`, the exact lift the elevated ground quad rides. `out` and
+     * `bands` are caller-owned pooled arrays (truncated here); cached Blade
+     * records are pushed by reference. Flat (level-0) tiles are ignored — they
+     * ride the flat GPU field (collectGpuBlades).
+     */
+    collectGpuElevated(ground: Sampler, detail: DetailFn, elevAt: (tx: number, ty: number) => number, bounds: GrassBounds, elevH: number, out: Blade[], bands: TallBand[]): void;
+    /** In-place back-to-front (by ascending) sort of a slice of a blade array
+     *  — used by collectGpuElevated to order each band's own blades without
+     *  disturbing (or reallocating) the shared output buffer. */
+    private sortBladeSlice;
+    /** Reused scratch for collectGpuElevated's per-row level set (no per-frame
+     *  alloc); a row rarely carries more than one or two elevation levels. */
+    private readonly elevLevelScratch;
+    /**
+     * The GPU path's ORNAMENT gatherer (proposal G-2) — flowers and
+     * seed-heads for the visible field, from the SAME tile cache
+     * collectGpuBlades walks. The ornament pass draws OVER the blades, so
+     * these need no depth sort among themselves. Both output arrays are
+     * caller-owned and pooled (truncated here); the immutable cached
+     * records are pushed by reference. Returns the total written.
+     */
+    collectGpuOrnaments(ground: Sampler, detail: DetailFn, bounds: GrassBounds, flowersOut: Flower[], seedsOut: SeedHead[]): number;
     /** World-stable cell identity: lane, elevation level, row, cell. */
     private static rowKey;
     /**

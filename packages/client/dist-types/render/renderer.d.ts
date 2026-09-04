@@ -45,6 +45,7 @@ export interface FallTones {
     churnDeep: string;
 }
 import { type FxStyle } from './abilityFx.js';
+import { type StageResTier } from './stage/renderScale.js';
 import { type StageItem, type StageTexture } from './stage/stageTypes.js';
 /** Player zoom bounds: 1 = the classic framing (also the default). */
 export declare const ZOOM_MIN = 0.85;
@@ -91,21 +92,21 @@ export declare class Camera {
     snapDpr: number;
     /** Round a CSS-space coordinate onto the device pixel lattice. */
     snapPx(v: number): number;
+    /** Screen x of world x=0 for a `w`-wide viewport (device-snapped). */
+    originX(w: number): number;
+    /** Screen y of world y=0 for an `h`-tall viewport (device-snapped). */
+    originY(h: number): number;
     /**
-     * The camera's screen-space origin, SNAPPED to whole DEVICE pixels.
-     * Every layer then translates by the same device-pixel step each
-     * frame — terrain blits, wall geometry and sprites move in lockstep.
-     * With a subpixel origin, anything that pixel-rounds its own
-     * coordinates (walls, stair seams) crosses pixel boundaries on
-     * different frames than the smoothly-resampled ground and appears
-     * to oscillate on its own layer. Standard pixel-camera discipline:
-     * snap once, at the source, on the true lattice.
+     * World → screen: the pitched-orthographic affine, `x = wx·scale + ox`,
+     * `y = wy·scale·yScale + oy`. (The perspective lean that once wrapped
+     * this in a homography left the 2D client — see
+     * docs/perspective-review-and-3d-client-plan.md; the reference math
+     * stays in cameraProject.ts for the 3D client.)
      */
-    private originX;
-    private originY;
     worldToScreen(wx: number, wy: number, w: number, h: number): Vec2;
     /** Allocation-free worldToScreen for per-particle hot paths. */
     worldToScreenInto(wx: number, wy: number, w: number, h: number, out: Vec2): Vec2;
+    /** The exact inverse of worldToScreen (division by the same factors). */
     screenToWorld(sx: number, sy: number, w: number, h: number): Vec2;
 }
 declare const enum BulkKind {
@@ -145,6 +146,11 @@ export interface DrawItem {
      * spaces let plateau rows slice standing trees and ore.
      */
     strat?: number;
+    /** THE STABLE TIEBREAK (grass G-PERF): the collect-order index, stamped on
+     *  every item just before the world sort so exact depth ties resolve
+     *  deterministically (see DrawOrderItem.seq). Assigned per frame; not read
+     *  by any painter. */
+    seq?: number;
     draw?: () => void;
     /**
      * CLOSURE-FREE BULK LANE (particles, debris, grounded birds): the
@@ -179,6 +185,19 @@ export interface DrawItem {
         w: number;
         h: number;
     };
+    /** THE SCRATCH LEDGER: this wall-lane member's identity hash (world
+     *  anchor + kind + emission index + its chunk's data rev), chained
+     *  into the run key so the GL backend can cache the run's texture.
+     *  A chunk edit changes the rev, the key, and thus the pixels. */
+    pbKey?: number;
+    /** THE REV TELLS THE WHOLE TRUTH: the member's quantized dynamic-
+     *  paint signature (memberCutSig — reveal heights, door veil,
+     *  hearth glass), chained into the run REV so a cached run repaints
+     *  when the inputs its painter reads actually move. 0 = at rest. */
+    pbDyn?: number;
+    /** The member's paint is animation-bound (hung walls breathe): its
+     *  run re-revs on a short cadence instead of caching flat. */
+    pbLive?: boolean;
     /** Stage-safe (phase A2p2): this item's draw touches this.ctx ONLY
      *  through stage-aware painters (their blit sites emit quads, their
      *  live fallbacks push bounded paints). Set at the push site — an
@@ -243,6 +262,25 @@ export interface DrawItem {
      *  base-exposure relight pass (see relightBody). */
     baseX?: number;
     baseY?: number;
+    /**
+     * THE ONE RENDER — A5: pitch-aware depth key for a WORLD-GEOMETRY
+     * VOLUME (wall/garrison/diag crown run, hedge run). It is the world
+     * ROW of the volume's SOUTH/NEAR ground edge — the face you walk
+     * BEHIND — so a billboard whose foot is south of (nearer than) this
+     * row sorts AFTER the volume (drawn in front) and one north of it
+     * sorts before (behind). A row comparison ⇒ zoom-invariant. This
+     * equals the volume's raw south-edge sortY (walls already sort at
+     * `y1+1`), so the flat order is preserved (golden gate).
+     *
+     * DRAW_ORDER prefers `nearRow` over `sortY` as the depth term, and on
+     * an exact depth TIE a volume (nearRow set) draws BEFORE a billboard
+     * (nearRow unset) — the tie rule "billboard foot ≥ volume near-row ⇒
+     * in front" (a body at the base of a wall must win; billboards paint
+     * no pixels below their feet). Set ONLY while `occlusionOn` is true —
+     * the A5 kill-switch — so with occlusion off DRAW_ORDER reduces to the
+     * exact old `sortY` comparator.
+     */
+    nearRow?: number;
 }
 /**
  * One cached world sprite — a tree, a forage plant, a discrete prop.
@@ -281,6 +319,69 @@ export declare class Renderer {
     /** Reused frame env for the bird sim (scratch-pool law: one object, ever). */
     private readonly birdEnv;
     private readonly grass;
+    /** GPU grass (proposal G-2, behind ?grass=gpu). When true, the visible
+     *  field renders instanced on the GPU (blitted at the grass slot) instead
+     *  of the canvas2d baked meadow. Off = byte-identical baked path. */
+    grassGpu: boolean;
+    /** G4 — THE OVER-FOOT SKIRT (behind ?grass=gpu). When true, grass-rooted
+     *  objects (tree/bush/rock/prop in the meadow) get a skirt of GPU blades
+     *  nestled around their foot so they read as embedded. Dev A/B toggle
+     *  (?skirt=off); on by default whenever the GPU meadow is active. */
+    grassSkirtOn: boolean;
+    private grassGpuLayer;
+    /** Whether the GPU path actually drew this frame (→ skip the canvas2d
+     *  coat and the tall y-sort pass; false → the baked meadow ran). */
+    private grassGpuActive;
+    /** Pooled scratch for the GPU path — never reallocated per frame. */
+    private readonly grassBlades;
+    private readonly grassFlowers;
+    private readonly grassSeeds;
+    private readonly grassDisturb;
+    /** G-INTERACT — the parallel travel lay-vector [vx,vy]×n the shaders comb
+     *  the blades down by; and the per-id last position the velocity derives
+     *  from (world units/sec), pruned to who is present this frame. */
+    private readonly grassDisturbVel;
+    private readonly grassDisturbEntries;
+    private readonly grassDisturbLast;
+    /** G1 — the visible tall standing mass (GrassTall north/south), gathered
+     *  by-sorted for the GPU interleave path; pooled. */
+    private readonly grassTall;
+    /** This frame's tall-band atlas blits (from GrassGpuLayer.renderTall) and
+     *  the atlas canvas they read — emitted as y-sorted DrawItems in collect
+     *  so the tall mass interleaves with bodies. Empty ⇒ CPU tall fallback. */
+    private grassTallBlits;
+    private grassTallCanvas;
+    /** G-PERF diagnostics (?perf): fine band count before coalescing vs the
+     *  coalesced sub-draw count actually rendered — the sub-draw reduction the
+     *  optimization buys, confessed on the grass line. */
+    private grassBandFine;
+    private grassBandCoalesced;
+    /** G4 — THE OVER-FOOT SKIRT. This frame's grass-rooted objects (tree,
+     *  bush, rock, prop on a grass tile), gathered as objectItems are emitted
+     *  so each carries its true foot sort row. After the world collect, each
+     *  becomes one skirt band (generateSkirtBlades) drawn OVER its own base. */
+    private readonly grassSkirtSites;
+    /** Pooled skirt-blade array (all sites concatenated) + per-site bands. */
+    private readonly grassSkirt;
+    private readonly grassSkirtBands;
+    /** Per-tile skirt-blade cache (a still object mints its skirt once). Keyed
+     *  by tile; footY/strength/sides are stored so a tile whose object changed
+     *  (tree→stump, a different foot row, a re-tuned strength) re-mints instead
+     *  of reusing the stale skirt. */
+    private readonly grassSkirtCache;
+    private grassSkirtBlits;
+    private grassSkirtCanvas;
+    /** G-ELEVATED — the raised-terrain coat's per-frame gather: blades + one
+     *  band per (row, level), the rendered atlas blits, and its canvas. Emitted
+     *  as y-sorted DrawItems (collectGpuElevated) so the raised grass draws over
+     *  its plateau ground and under the bodies on it. */
+    private readonly grassElev;
+    private readonly grassElevBands;
+    private grassElevBlits;
+    private grassElevCanvas;
+    /** This frame's GrassFrame (camera/wind), stashed by drawGrassGpu so the
+     *  later skirt pass renders under the exact same projection + wind. */
+    private grassFrameSaved;
     private readonly lighting;
     /** Derived building-interior regions (cutaway, facades, windows). */
     readonly interiors: InteriorMap;
@@ -534,7 +635,25 @@ export declare class Renderer {
      * them would consume the entire 32MB sprite budget and starve the
      * lane that turns over thousands of small sprites a scene.
      */
+    /** THE CHUNK POOL IS KEYED BY SHAPE (B2): base squares and the
+     *  row-tight lifted canvases are different shapes, and a flat free
+     *  list fragments — a take for one shape finds only others (measured
+     *  ~30% hit-rate at px64). One free list per (w,h), like the sprite
+     *  pool, restores per-shape reuse; a global FIFO orders cross-shape
+     *  eviction under the byte budget. */
     private readonly chunkCanvasPool;
+    /** Global insertion order across all shape buckets — the eviction
+     *  queue when a push would overflow CHUNK_POOL_BUDGET. */
+    private readonly chunkPoolFifo;
+    /** Backing-store bytes the chunk canvas pool currently holds (B2's
+     *  byte bound — see CHUNK_POOL_BUDGET). */
+    private chunkPoolBytes;
+    /** Pool effectiveness telemetry (B2): a take served from the pool
+     *  (hit) versus a fresh allocation (miss). A rising miss rate during
+     *  a pan at the px64 tier is the churn signal the byte budget must be
+     *  large enough to avoid. Cumulative; read off the `?perf` ground line. */
+    private chunkPoolHits;
+    private chunkPoolMisses;
     /** Live bytes held by `baked` (base canvases + every lifted layer). */
     private bakedBytes;
     /** Take a canvas of exactly this shape from the pool, if one waits. */
@@ -546,15 +665,21 @@ export declare class Renderer {
     /** Bytes a canvas's backing store occupies. */
     private static canvasBytes;
     /**
-     * Retire a chunk canvas: off the ledger, then into the free list if
-     * it still has room. The pool is capped by COUNT here and that is
-     * honest — unlike the sprite lane, every canvas in it is one of two
-     * known sizes, so a count IS a byte bound.
+     * Retire a chunk canvas: off the live ledger, then into the free
+     * list. Bounded by BYTES, not a count. A count cap was honest only
+     * while every chunk canvas was one of two square sizes — but it was
+     * already tier-blind (16 canvases = 68MB at px32, 272MB at px64), and
+     * B2's tight lifted layers (row-span heights) end the one-size
+     * invariant outright, so a count would price a byte-varied pool
+     * dishonestly. Oldest-out when a push would overflow the budget.
      */
     private recycleChunkCanvas;
     /** Every canvas a baked entry owns — its base and its lifted layers. */
     private recycleBakedEntry;
-    /** A free chunk canvas of the requested tier, or undefined. */
+    /** A free chunk canvas of the requested tier and row span, or
+     *  undefined. `rows` (B2) defaults to a full-height base canvas; a
+     *  lifted layer asks for its bucketed row-span height. Exact (w,h)
+     *  fit-search — the byte-bounded pool holds mixed shapes now. */
     private takeChunkCanvas;
     /**
      * THE CROSSING (docs/planes-plan.md §2.4): the world under the
@@ -564,6 +689,30 @@ export declare class Renderer {
      * here. Version-gated memos (lift/dock/bridge/fall) self-heal off
      * the worldVersion bump; this clears everything that does not.
      */
+    /**
+     * THE BAKE LEDGER DROPS WHOLE: every position-keyed RENDER/BAKE cache
+     * and the GL residency it owns. Shared by onPlaneSwitch (a new world)
+     * and onBackendSwitch (the SAME world, a different backend) — both need
+     * the bakes re-minted from scratch, and neither can keep a texture that
+     * was minted for the other case. Deliberately does NOT touch ephemeral
+     * world matter (corpses, arrows, footprints, particles) or the
+     * animation eases (chest/door/tree-growth): those survive a backend
+     * swap unchanged, and are the plane crossing's OWN concern (below).
+     */
+    private dropBakeCaches;
+    /**
+     * THE BACKEND SWAPS UNDER A LIVE WORLD (displaySettings): the
+     * Accelerated-display toggle just flipped stageGround/stageWorld, but
+     * the bakes on hand were minted for the OTHER backend (canvas gutters
+     * vs GL atlas residency). Left alone they paint cropped/broken until a
+     * teleport or reload clears them — the caches drop only in
+     * onPlaneSwitch. This performs the SAME bake wipe as a plane crossing
+     * MINUS the plane's own concerns: the world, its coordinates, its
+     * ephemeral matter and its eases are all unchanged and stay put, so
+     * only the bake ledger and GL residency drop and both backends re-bake
+     * cleanly from scratch on the very next frame.
+     */
+    onBackendSwitch(): void;
     onPlaneSwitch(): void;
     /** Per-frame queue of chunks with pending sliced bakes (scan order:
      *  visible chunks first, then the pre-bake ring). Scratch, rebuilt
@@ -876,21 +1025,6 @@ export declare class Renderer {
     private readonly npcArrows;
     /** Projectiles already given their muzzle flash. */
     private readonly projSeen;
-    /**
-     * Perspective lean, applied PER VERTEX: a point `heightTiles` above
-     * the ground at screen column `x` lands at `leanX(x, h)` — an affine
-     * horizontal scale of that height-layer about the screen center.
-     * Because it's affine, two structures sharing an edge share exactly
-     * the same leaned edge: runs of walls, trunks meeting canopies, and
-     * abutting crowns can never crack, at any lean strength.
-     */
-    private leanX;
-    /**
-     * Enter the leaned frame for a whole layer at a given height: after
-     * this transform, drawing FOOTPRINT coordinates paints them lifted by
-     * `heightTiles` and leaned coherently. Pair with ctx.restore().
-     */
-    beginHeightLayer(heightTiles: number): void;
     /**
      * Arm the context to stroke an architecture silhouette: the same
      * bold dark edge the entity ring gives props and characters, drawn
@@ -1317,6 +1451,11 @@ export declare class Renderer {
      * override or a browser zoom moves every surface together.
      */
     effectiveDpr(): number;
+    /** THE RENDER SCALE (A2): the factor (0 < s ≤ 1) the WebGL stage
+     *  rasterizes its backbuffer at, from the live window size, dpr, and
+     *  the resolution tier. 1 = native dpr (byte-identical to pre-A2 and
+     *  what small/medium windows and the parity rig always get). */
+    stageScale(): number;
     private resize;
     render(game: ClientGame, frameDt: number): void;
     /** Deep-cave ambient the underground blend rides to: cool, slightly
@@ -1550,17 +1689,22 @@ export declare class Renderer {
     fgGroundAt(tx: number, ty: number): number | undefined;
     /** Detail id through the frame grid; ChunkStore fallback off-window. */
     private fgDetailAt;
+    private readonly _vtb;
+    private _vtbX;
+    private _vtbY;
+    private _vtbS;
+    private _vtbYS;
+    private _vtbW;
+    private _vtbH;
     visibleTileBounds(): {
         minTx: number;
         maxTx: number;
         minTy: number;
         maxTy: number;
     };
-    /**
-     * Bake resolution follows the zoom tier: past ~1.05× the 32px bakes
-     * would upscale into mush, so chunks re-bake at 64px/tile. Keyed off
-     * targetZoom (not the gliding zoom) so a zoom flips the tier once.
-     */
+    private computeVisibleTileBounds;
+    /** Bake pixels per tile: the zoom tier (64px past 1.05× so the
+     *  material-edge AA has texels to spare, 32px otherwise). */
     private bakePx;
     private drawGroundChunks;
     /**
@@ -1594,6 +1738,121 @@ export declare class Renderer {
      * finished job swaps in atomically at completion.
      */
     private startChunkReplace;
+    /** Cumulative re-bake census for probes (never reset): how many
+     *  replacements rode the strip lane vs repainted whole. */
+    readonly fringeStats: {
+        fringe: number;
+        full: number;
+    };
+    /** THE FRINGE RE-BAKE's kill switch (the staticLayerOn pattern) —
+     *  the A/B door for rig proofs and the one-flip refuge if a seam
+     *  ever shows in the field. FRINGE_OFF at boot (the parity FLAG
+     *  lever) disables it for whole-battery A/Bs. */
+    fringeOn: boolean;
+    /**
+     * THE FRINGE RE-BAKE's gate. Strip-eligible only when the honest
+     * conditions all hold: no job in flight (a partial canvas cannot
+     * seed the copy), the chunk's own payload object unchanged, the
+     * same bake tier, EVERY rev bump since the last bake accounted for
+     * by fringe bumps, a nonzero mask, and no elevation inside the
+     * strips (lifted-layer contours could reach the changed border).
+     */
+    private fringeSpecFor;
+    /**
+     * DEV — THE SEAM PROOF (THE FRINGE RE-BAKE's harness). For this
+     * chunk, at the current tier: a fringe bake seeded from a full
+     * bake must match a fresh full bake STRUCTURALLY (see the fringe
+     * doc in terrain.ts — identical op streams are byte-exact, any
+     * stream change re-rolls scattered AA singles, a real defect is a
+     * contiguous cluster) — statically for every mask, and across
+     * real neighbor-border mutations at several depths. The
+     * self-validating wrong-mask CANARY must violate the cluster rail
+     * or the proof proves nothing. scripts/probes/fringe-seam.mjs
+     * drives this across biomes and owns the gate numbers.
+     */
+    /** Scratch: last diff's sampled positions [x, y, |delta|] in canvas
+     *  px (gutter included) — probe-read beside fringeProof. */
+    fringeProofSamples: Array<[number, number, number]>;
+    /** Last diff's per-32px-row-band counts + raw value pairs. */
+    fringeProofRows: Array<[number, number]>;
+    fringeProofPairs: Array<{
+        x: number;
+        y: number;
+        a: number[];
+        b: number[];
+    }>;
+    /** The worst-delta pixel of the last diff (position + values). */
+    fringeProofWorst: {
+        x: number;
+        y: number;
+        a: number[];
+        b: number[];
+    } | null;
+    /** The last static case's canvases — the visual harness reads them. */
+    fringeProofLastPair: {
+        base: HTMLCanvasElement;
+        fringe: HTMLCanvasElement;
+    } | null;
+    fringeProofByCase: Record<string, {
+        rows: Array<[number, number]>;
+        pairs: Array<{
+            x: number;
+            y: number;
+            a: number[];
+            b: number[];
+        }>;
+        worst?: {
+            x: number;
+            y: number;
+            a: number[];
+            b: number[];
+        } | null;
+    }>;
+    fringeProof(game: ClientGame, cx: number, cy: number): Array<{
+        name: string;
+        diff: number;
+        maxd: number;
+        cluster: number;
+    }>;
+    /**
+     * DEV — step-prefix bisect for the seam proof: for each prefix
+     * length k, run BOTH a full bake and a fringe bake truncated to
+     * their first k paint steps (the fringe's copy-back always runs),
+     * and report the first k where they diverge past the LSB class.
+     * Names the exact diverging step in one pass.
+     */
+    fringeProofSteps(game: ClientGame, cx: number, cy: number, mask: number): Array<{
+        k: number;
+        n: number;
+        maxd: number;
+    }>;
+    /** DEV — the state-leak probe: bake full twice, once with the
+     *  FRINGE_SCRAMBLE step armed (fillStyle/strokeStyle/lineWidth
+     *  scrambled between meadow and skins). ANY diff = a painter that
+     *  draws without setting its own style. */
+    fringeScrambleProbe(game: ClientGame, cx: number, cy: number): {
+        n: number;
+        maxd: number;
+        worst: {
+            x: number;
+            y: number;
+            a: number[];
+            b: number[];
+        } | null;
+    };
+    /** DEV — per-bake cost: median ms of full vs fringe (single edge +
+     *  ring) bakes for this chunk at the current tier. */
+    fringeCost(game: ClientGame, cx: number, cy: number): {
+        full: number;
+        fringeEdge: number;
+        fringeRing: number;
+        steps?: number[];
+    };
+    /** Any elevated tile inside a strip (+1 ring of paint bleed) sends
+     *  the re-bake down the full lane — ground strips repaint their own
+     *  elev masks fine, but reused lifted layers must be provably out
+     *  of the changed data's reach. */
+    private fringeStripHasElev;
     /** The shared job body: terrain steps + one step per elevation level. */
     private buildChunkPending;
     /** Run ONE slice of a pending chunk bake; finalize when done. */
@@ -1683,6 +1942,14 @@ export declare class Renderer {
      * run through the opening).
      */
     wallish(game: ClientGame, tx: number, ty: number): boolean;
+    /**
+     * THE ONE RENDER — A0 scaffolding: the hedge-run neighbour test, the
+     * `HEDGE_TILES` sibling of `wallish`. Defined now so A4 can dispatch
+     * hedges through the shared world-geometry volume path (collectVolume
+     * with `classOf = hedgish → one class`) instead of the flat prop hack;
+     * it is intentionally NOT wired into any dispatch yet (A4 owns that).
+     */
+    hedgish(game: ClientGame, tx: number, ty: number): boolean;
     /** What stops lamplight — shared law (tiles.ts). */
     private static readonly LIGHT_BLOCKERS;
     /** The stone plinth every timber wall stands on. */
@@ -1744,6 +2011,9 @@ export declare class Renderer {
      */
     private memberContextSig;
     private finishRegister;
+    /** Band keys ("cx,cy|stretch") grouped by chunk — maintained at the
+     *  cache's one set site and its ONE DOOR (dropBand/dropAllBands). */
+    private readonly bandKeysByChunk;
     /**
      * Replay one register row for one chunk segment, in the scan's own
      * encounter order. Admission mirrors the per-tile pads exactly:
@@ -1789,6 +2059,7 @@ export declare class Renderer {
         mask: number;
         offscreen: number;
         cliff: number;
+        fringe: number;
     };
     /**
      * THE BAND BUDGET IS A FUSE, NOT A BROOM — the whole doctrine, the
@@ -1846,10 +2117,8 @@ export declare class Renderer {
      */
     private memberBandable;
     /** The layer stands down where its premises fail: the editor pins
-     *  the camera and patches tiles at brush rate, and leanX bends
-     *  verticals about the LIVE screen center — a bake would freeze the
-     *  lean about the stretch's own canvas center (THE STRAIGHT-WORLD
-     *  PREREQUISITE; the fuse blows if the lean is ever revived). */
+     *  the camera and patches tiles at brush rate, so a bake would go stale
+     *  under the brush. */
     staticLayerOn(): boolean;
     /** Device pixels per tile for band bakes (THE CRISP GRID LAW):
      *  targetZoom (one flip per zoom, never mid-glide) × the adaptive
@@ -1879,6 +2148,23 @@ export declare class Renderer {
      *       (round 12's #1 open item, measured as the crown's `hot 20`).
      */
     private stretchCutSig;
+    /**
+     * One member's dynamic-paint signature — the per-member atom the
+     * stretch sig folds, and (since the foundation audit) the term the
+     * keyed wall-run rev folds too. ONE LAW, TWO CONSUMERS: any input a
+     * raised painter reads that can move between frames must appear
+     * here, or a cached run freezes mid-ease (the audit's confirmed
+     * failure: reveal cuts, door veils and hearth glass froze while the
+     * player moved through the far half of the reveal field).
+     *
+     *  -1 — animates continuously THIS frame (door swing, shake,
+     *       step-aside support): the stretch stays hot and the wall
+     *       run refuses its key;
+     *   0 — nothing dynamic touches this member;
+     *  >0 — quantized hash of every off-rest input (heights 1/48 tile,
+     *       veil 1/32, flame 1/24).
+     */
+    private memberCutSig;
     /** Per-stretch cut stability: sig last seen + how long it has held.
      *  Entries prune on a cadence (seen-stamped) — the map only ever
      *  holds stretches currently inside a reveal window. */
@@ -1899,6 +2185,8 @@ export declare class Renderer {
     /** Reusable throwaway set for rebuild-time re-emission (the ramp
      *  dedupe wants A set; the real runSeen already served collect). */
     private readonly stageRebuildSeen;
+    /** THE PROMISED FADE's ramp (see WorldSprite.mint). */
+    private mintAlpha;
     private stageMarkRaised;
     /** Blit one band bucket at its snapped anchor projection.
      *
@@ -2107,7 +2395,7 @@ export declare class Renderer {
     doorVeil(_game: ClientGame, cx: number, cy: number): number;
     /**
      * One paneled timber door leaf on a south face, drawn in the current
-     * (leaned) frame. `hx` is the hinge edge, `dir` which way the leaf
+     * frame. `hx` is the hinge edge, `dir` which way the leaf
      * extends (+1 east, -1 west), `w` its current on-screen width — the
      * swing compresses width toward the hinge, so `oc` (0 shut → 1 open)
      * only drives the edge-on shading and detail fade. The grammar is
@@ -2167,9 +2455,8 @@ export declare class Renderer {
      */
     private portalItem;
     /**
-     * A freestanding column: faceted plinth, tapered shaft that leans
-     * with the camera, chamfered capital. Solid, walk-around, y-sorted
-     * like a prop.
+     * A freestanding column: faceted plinth, tapered shaft, chamfered
+     * capital. Solid, walk-around, y-sorted like a prop.
      */
     private pillarItem;
     /**
@@ -2474,6 +2761,21 @@ export declare class Renderer {
      * (bendOverride) and regrowth (grow < 1) stay fully live.
      */
     private readonly treeSprites;
+    /** THE SPECIES SHEET: shared tree-body bakes, one per (tile,
+     *  variant) — see treeVariantKey. Bounded (~tiles × 16), so it
+     *  needs no eviction sweep; cleared with the per-instance caches
+     *  on plane cross. Trees no longer occupy treeSprites (flora and
+     *  outlined props still do). */
+    private readonly treeVariantSprites;
+    /** THE SCRATCH LEDGER's diagnostic: why each wall-run kept or lost
+     *  its key this session (probe-read, never printed). */
+    readonly wallRunWhy: {
+        nokey: number;
+        big: number;
+        player: number;
+        anim: number;
+        flat: number;
+    };
     /** Sun-shadow twin: the projected TRUE-FORM silhouette, RASTERIZED —
      *  built at origin on the sprite cadence and stamped with one
      *  drawImage per frame (the per-frame fill of the complex Path2D was
@@ -2481,6 +2783,9 @@ export declare class Renderer {
      *  same live shear delta the body blit wears; `tone` re-bakes on the
      *  sun/moon flip. */
     private readonly treeShadows;
+    /** THE SPECIES SHEET, shadow half: shared silhouette bakes keyed
+     *  like treeVariantSprites. Same bounded population, same clears. */
+    private readonly treeVariantShadows;
     treeBakeBudget: number;
     /** Running average sprite-bake cost (ms) — the admission estimate
      *  for the cost-aware budget gates. Admitting at "budget > 0" let a
@@ -2492,6 +2797,11 @@ export declare class Renderer {
      *  cadence re-bakes) — see SPRITE_BAKE_MS. */
     spriteBakeMsLeft: number;
     visSpriteMsLeft: number;
+    /** THE ARRIVAL TELLS JUMP FROM WALK: last frame's camera + the
+     *  plane-hop flag feed the arrival ceiling's classification. */
+    private arrivalPrevCamX;
+    private arrivalPrevCamY;
+    private arrivalJump;
     /** Law 2's count floor (bakeAdmission.ARRIVAL_MIN_COUNT a frame). */
     visArrivalCount: number;
     /** The frame's y-sorted draw list — persistent, cleared at reuse. */
@@ -2511,6 +2821,10 @@ export declare class Renderer {
      *  image lands (they would be covered otherwise). */
     private readonly stageLate;
     private stageUpMsLeft;
+    /** Camera position last frame — the steady prepay lane's velocity
+     *  read (THE STEADY LANE FINDS ITS CONSUMER). */
+    private stagePrevCamX;
+    private stagePrevCamY;
     private readonly stageStats;
     /** ?stage=world (phase A2): the whole y-sorted world pass renders
      *  on a second, ALPHA GL stage and composites over the 2d frame's
@@ -2519,6 +2833,12 @@ export declare class Renderer {
      *  honest bounds; the rare boundless item takes the split path
      *  (composite, paint on the frame, resume) and is counted. */
     stageWorld: boolean;
+    /** THE RENDER SCALE (A2): the accelerated display's resolution tier —
+     *  'auto' caps the effective dpr to 1.5 only on huge Retina windows,
+     *  'full' never caps, 'balanced' caps to 1.25 everywhere. Set from
+     *  localStorage 'arx.stageres' at boot (main.ts) and by the Display
+     *  settings row; applies live, next frame. */
+    stageResTier: StageResTier;
     private stageWorldGl;
     /** The frame's world stream. NOT readonly: the shadow prepass
      *  temporarily swaps the sink so the cast brushes' assembly
@@ -2556,7 +2876,7 @@ export declare class Renderer {
     private stagePaintCount;
     /** Push a raw closure through the scratch lane (SAME-BRUSH swap) —
      *  the painters' own door for live fallbacks with known rects. */
-    stagePushPaintRaw(px: number, py: number, pw: number, ph: number, paint: () => void, tag?: string): void;
+    stagePushPaintRaw(px: number, py: number, pw: number, ph: number, paint: () => void, tag?: string, key?: number, rev?: number): void;
     /**
      * Assembly-run one item: its stage-aware painters emit quads (and
      * push their own bounded fallbacks); the item's alpha folds into
@@ -2620,7 +2940,7 @@ export declare class Renderer {
      *  (few binds, dirty-rect uploads); anything oversized rides its
      *  solo texture exactly as before. Returns the texture and the
      *  source offset to add to a quad's sx/sy. */
-    stageAtlasTex(canvas: HTMLCanvasElement, rev: number, owner: object): {
+    stageAtlasTex(canvas: HTMLCanvasElement, rev: number, owner: object, uw?: number, uh?: number): {
         tex: StageTexture;
         ox: number;
         oy: number;
@@ -2641,6 +2961,10 @@ export declare class Renderer {
     perfHud: boolean;
     private perfLast;
     private readonly phaseMs;
+    /** Raw last-frame phase ms (no EMA) — read by the G-PERF A/B harness,
+     *  which takes a MEDIAN over a sample window so a config-switch spike never
+     *  poisons the number the way the EMA does. Populated only under ?perf. */
+    readonly phaseRawMs: Map<string, number>;
     private perfMark;
     perfSummary(): string;
     /**
@@ -2800,12 +3124,12 @@ export declare class Renderer {
      * era). `cap` bounds the BFS — a component past it (estate fencing)
      * goes ringless rather than paying a wall-sized bake.
      */
-    /** Pooled BFS scratch for tryRunRingItem (flat x,y interleaved). */
+    /** Pooled BFS scratch for tryRunRingItem's collectVolume flood
+     *  (flat x,y interleaved). The neighbour order now lives in
+     *  collectVolume, the shared flood primitive. */
     private static readonly runMembers;
     private static readonly runSeenScratch;
     private static readonly runQueue;
-    private static readonly RUN_NEIGH_X;
-    private static readonly RUN_NEIGH_Y;
     private static readonly RUN_RING_TILES;
     /** THE STANDING WORLD phase 4 — single-tile props whose painters
      *  are provably inert (STATIC_RING minus the run-merged furniture,
@@ -2936,8 +3260,20 @@ export declare class Renderer {
     private occluderFade;
     /** THE PROMISE LAW: a sapling tile draws its own bespoke young form
      *  (saplingModel) of the adult it will become; tree tiles draw the
-     *  grown wood. One door for every tree-model read in the renderer. */
+     *  grown wood. One door for every tree-model read in the renderer.
+     *  THE SPECIES SHEET rides this door: the instance hash quantizes
+     *  to its variant's dealt hash HERE, so the drawn shape, the
+     *  occlusion box, the felling animation, and the shared bake all
+     *  describe the same tree — a shape that morphed at grow=1 or at
+     *  the chop would be the door split in two. */
     private treeOrSaplingModel;
+    /** The shared-bake key: (tile, variant) — one sprite per archetype,
+     *  every instance of it a quad. */
+    private treeVariantKey;
+    /** THE STANDING LEAN: a constant hash-dealt shear bias (±0.028) so
+     *  shared-variant neighbors hold different postures — silhouette
+     *  diversity paid at the quad, not the bake. */
+    private treeLean;
     private drawTree;
     /**
      * TRUE-FORM tree shadow: the same skeleton paintTree draws — trunk
@@ -3084,6 +3420,73 @@ export declare class Renderer {
      * included. The grass system derives velocities itself (it remembers
      * last positions per id), so this is just who-is-where.
      */
+    /**
+     * THE GPU MEADOW (proposal G-2, ?grass=gpu). Gather the visible field's
+     * blades (cache-reusing), render them instanced into the layer's private
+     * offscreen canvas under the ortho camera + this frame's disturbers, and
+     * blit it into the 2d frame at the grass slot. Returns true if it drew
+     * (caller skips the baked coat; the tall standing mass still interleaves
+     * via collectTall — B3), false to fall back to the baked meadow this
+     * frame. The lightmap multiply runs after this slot, so the blitted field
+     * is world-lit exactly like the baked meadow.
+     */
+    private drawGrassGpu;
+    /** G1 — tall-grass interleave band pitch, in world rows. Finer = smoother
+     *  body/thicket interleave (error ≤ pitch/2) at more sub-draws; 1/3 tile
+     *  keeps the transition continuous with no perceptible two-band pop. */
+    private static readonly TALL_BAND_PITCH;
+    /** G-PERF far-field LOD window, in world rows north of the camera. A body's
+     *  foot row FURTHER north than this drops out of the tall-band split set,
+     *  so the far distance coalesces into few bands (a body up there is a few
+     *  pixels tall — its per-row interleave is imperceptible). South of the
+     *  camera and within the window, every body keeps its precise fine split. */
+    private static readonly TALL_LOD_NEAR_ROWS;
+    /** G-PERF coalesced-band world-y span cap. A merged band renders into an
+     *  atlas slot as tall as its span + a blade height, so an unbounded merge
+     *  balloons the atlas (a tall run can span the screen). This
+     *  keeps every slot atlas-thin while the band COUNT still falls ~this:pitch
+     *  to one in a body-free stretch — the sub-draw/blit reduction without the
+     *  atlas blow-up. Tuned against dense-meadow ground cost (see plan). */
+    private static readonly TALL_BAND_MAX_SPAN;
+    /** G1 — emit this frame's tall-band atlas blits as y-sorted DrawItems.
+     *  Each band slots into the world sort at its own row, so a body between
+     *  bands is wrapped: blades rooted south (in front) occlude its lower
+     *  body, blades rooted north do not. Under the stage each blit rides the
+     *  scratch lane (stagePushPaintRaw) exactly like the meadow's shade, so
+     *  it composites in order without splitting the batch. */
+    private collectGpuTallBands;
+    /**
+     * G-ELEVATED — THE COAT RIDES THE SHELF. Gather the raised terrain's grass
+     * (collectGpuElevated on the Grass system — one band per row/level, each
+     * carrying its shelf lift), render the bands through the GPU elevated atlas,
+     * and emit each as a y-sorted DrawItem at its row so the raised coat draws
+     * OVER its plateau ground quad and UNDER the bodies standing on it — the
+     * same z-order the CPU drawRow had inside collectElevatedGround. No-op when
+     * the GPU meadow is inactive, nothing is raised in view, or the elevated
+     * atlas is unavailable (the plateau simply shows its baked ground that
+     * frame). Blades project through the SAME frame projection + wind as the
+     * flat field, LIFTED onto their shelf by the shader (band.elev).
+     */
+    private collectGpuElevated;
+    /** G4 — is a grass-rooted object here (skirt-eligible + meadow neighbours)?
+     *  The bound sampler reads this.game (always the current world) so it stays
+     *  correct across plane/world swaps, and avoids a per-call closure. */
+    private grassRootedSkirt;
+    private skirtGroundSampler;
+    /**
+     * G4 — THE OVER-FOOT SKIRT. After the world collect has gathered this
+     * frame's grass-rooted objects (grassSkirtSites), synthesise a small
+     * cluster of grass blades around each object's foot (generateSkirtBlades,
+     * cached per tile), render them through the GPU band atlas as ONE band per
+     * object — each at sortY = the object's foot row + a hair — and emit each
+     * as a y-sorted DrawItem. The band slots JUST past its object, so its
+     * blades draw OVER the object's lower base edge (breaking the hard pasted
+     * line) while the object's mass above still occludes. Reuses the instanced
+     * pipeline (no per-frame bakes); only object-adjacent tiles pay. No-op
+     * when the GPU meadow is inactive, nothing is rooted, or the skirt atlas
+     * is unavailable (the object simply keeps its hard base that frame).
+     */
+    private collectGpuSkirts;
     /** This frame's moving bodies (players + NPCs), pooled records.
      *  Shared by the grass system AND the doorway veil — one gather. */
     private readonly frameDisturbers;

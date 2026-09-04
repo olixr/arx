@@ -1,3 +1,5 @@
+> **HISTORICAL — the lean was removed from the 2D client on 2026-09-04 (see docs/perspective-review-and-3d-client-plan.md); the perspective effort continues in the separate 3D client.**
+
 # THE CAMERA LEARNS TO LEAN — Epic B plan
 
 *Branch `epic/foundations` → its own `epic/camera-lean` when green-lit.

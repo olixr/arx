@@ -6,7 +6,7 @@
  * honest to the server's pref.
  *
  * `lanes` is the canvas2d lane switch-board (the 2D Renderer). A door
- * with no such lanes passes null and the stage / lean / resolution /
+ * with no such lanes passes null and the stage / resolution /
  * water rows are NOT built — a bench must never show a switch that
  * governs nothing here yet writes the keys another door reads.
  */

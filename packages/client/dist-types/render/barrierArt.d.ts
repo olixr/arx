@@ -8,6 +8,23 @@ import { ClientGame } from '../game/clientGame.js';
 import { Tile } from '@arx/shared';
 import type { DrawItem } from './renderer.js';
 import type { PaintHost } from './paintHost.js';
+/**
+ * BARRIER SPAN — a point at tile fractions (fx east, fy south of the
+ * tile-centre BASE row) in screen space: the members that SPAN a tile's
+ * depth (N-S rails, hedge mass, palisade / iron marching courses,
+ * diagonal strides) share one datum so run-mates meet on the same
+ * corner. A barrier tile anchors at world (tx+0.5, ty+0.5) but its
+ * members hang off `baseY = p.y + syT·0.14`, so a member at screen
+ * `baseY + fy·syT`, `p.x + fx·s` is world (tx+0.5+fx, ty+0.64+fy).
+ * Fills `out` alloc-free.
+ */
+export declare function barrierPt(px: number, s: number, baseY: number, syT: number, fx: number, fy: number, out: {
+    x: number;
+    y: number;
+}): {
+    x: number;
+    y: number;
+};
 /** Fence-family connectivity: rails reach toward these neighbours. */
 export declare function fenceish(rend: PaintHost, game: ClientGame, x: number, y: number): boolean;
 /**

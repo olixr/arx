@@ -1,0 +1,56 @@
+{
+  "generated": "2026-09-04T21:32:33.974Z",
+  "origin": "http://localhost:5244",
+  "viewport": {
+    "width": 1500,
+    "height": 900,
+    "dpr": 2
+  },
+  "crop": {
+    "x0": 0,
+    "y0": 88,
+    "x1": 1980,
+    "y1": 1380
+  },
+  "tolerance": {
+    "defaultDiffFrac": 0.02,
+    "pixelThresh": 24,
+    "framesPerScene": 5,
+    "perScene": true
+  },
+  "login": "perf12_probe",
+  "backend": "canvas",
+  "note": "Flat-look baseline for THE ONE RENDER. See docs/the-one-render-verify.md.",
+  "scenes": [
+    {
+      "name": "wall-market",
+      "tp": "/tp -420 -240",
+      "tol": 0.09,
+      "file": "golden-canvas/wall-market.png"
+    },
+    {
+      "name": "interiors",
+      "tp": "/tp -430 -290",
+      "tol": 0.02,
+      "file": "golden-canvas/interiors.png"
+    },
+    {
+      "name": "curtain-fence",
+      "tp": "/tp -460 -240",
+      "tol": 0.04,
+      "file": "golden-canvas/curtain-fence.png"
+    },
+    {
+      "name": "graveyard",
+      "tp": "/tp -512 -212",
+      "tol": 0.1,
+      "file": "golden-canvas/graveyard.png"
+    },
+    {
+      "name": "meadow",
+      "tp": "/tp 42 20",
+      "tol": 0.22,
+      "file": "golden-canvas/meadow.png"
+    }
+  ]
+}

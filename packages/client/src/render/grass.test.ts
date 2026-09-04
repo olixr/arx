@@ -4,10 +4,8 @@ import { Tile } from '@arx/shared';
 import {
   disturbFalloff,
   generateGrassTile,
-  grassCellWorldCorners,
   GrassSystem,
   laneUses,
-  rowLeanScale,
   windAt,
   type Blade,
 } from './grass.js';
@@ -46,77 +44,6 @@ test('wind actually travels: the field at a point changes over time', () => {
 
 test('grass generation is deterministic — same tile, same meadow, every session', () => {
   assert.deepEqual(generateGrassTile(12, 34, Tile.Grass, 0), generateGrassTile(12, 34, Tile.Grass, 0));
-});
-
-// ------------------------------------------------------- lean cell scale
-
-test('rowLeanScale: identical bake/blit frames leave the sprite untouched (ds=1)', () => {
-  // At the bake instant the current frame equals the baked frame, so the
-  // blit must reproduce the sprite 1:1 — the still-world bargain.
-  const { dsx, dsy } = rowLeanScale(48, 24, 48, 24);
-  assert.equal(dsx, 1);
-  assert.equal(dsy, 1);
-});
-
-test('rowLeanScale: a compressed row scales the cached sprite to match', () => {
-  // The camera leaned/panned since bake: the row now projects narrower
-  // and shorter. ds is exactly the compression ratio, so a sprite baked
-  // near the look-at row lands on the ground when re-blit far up-screen.
-  const spSx = 64;
-  const spSy = 32;
-  // Row now half as deep (depthScale 0.5) → tile frame halves.
-  const { dsx, dsy } = rowLeanScale(spSx * 0.5, spSy * 0.5, spSx, spSy);
-  assert.ok(Math.abs(dsx - 0.5) < 1e-12, `dsx ${dsx}`);
-  assert.ok(Math.abs(dsy - 0.5) < 1e-12, `dsy ${dsy}`);
-});
-
-test('rowLeanScale: a degenerate baked frame is inert, never NaN', () => {
-  const { dsx, dsy } = rowLeanScale(10, 10, 0, 0);
-  assert.equal(dsx, 1);
-  assert.equal(dsy, 1);
-});
-
-test('grassCellWorldCorners: the raster world extent maps back to its CSS size', () => {
-  // The four world corners must span EXACTLY the raster's CSS footprint:
-  // width·spSx === wCss and depth·spSy === hCss, so projecting them and
-  // drawing the cached raster across the trapezoid is lossless — the
-  // ground-quad invariant the GL stage relies on.
-  const spSx = 40; // CSS px per tile, x (bake frame)
-  const spSy = 20; // CSS px per tile, y (bake frame)
-  const mx = 12; // left margin, CSS px
-  const my = 18; // top (blade-height) margin, CSS px
-  const wCss = 200; // raster CSS width
-  const hCss = 60; // raster CSS height
-  const cellTx = 7;
-  const ty = 3;
-  const c = grassCellWorldCorners(cellTx, ty, spSx, spSy, mx, my, wCss, hCss);
-  assert.ok(Math.abs((c.eastX - c.westX) * spSx - wCss) < 1e-9, 'width');
-  assert.ok(Math.abs((c.southY - c.northY) * spSy - hCss) < 1e-9, 'depth');
-  // Margins sit OUTSIDE the tile footprint: west/north pushed back by the
-  // margin in tiles, so the tile's own NW ground corner is inside.
-  assert.ok(Math.abs(c.westX - (cellTx - mx / spSx)) < 1e-9, 'westX');
-  assert.ok(Math.abs(c.northY - (ty - my / spSy)) < 1e-9, 'northY');
-});
-
-test('grassCellWorldCorners: zero margins collapse onto the tile footprint', () => {
-  // No margins → the raster IS the cell's ground footprint, so the north
-  // edge is exactly ty and the west edge exactly the cell start.
-  const spSx = 32;
-  const spSy = 16;
-  const wCss = spSx * 4; // four tiles wide
-  const hCss = spSy * 1; // one tile deep
-  const c = grassCellWorldCorners(5, 9, spSx, spSy, 0, 0, wCss, hCss);
-  assert.equal(c.westX, 5);
-  assert.equal(c.eastX, 9); // 5 + 4 tiles
-  assert.equal(c.northY, 9);
-  assert.equal(c.southY, 10); // 9 + 1 tile
-});
-
-test('grassCellWorldCorners: a degenerate bake frame is inert, never NaN', () => {
-  const c = grassCellWorldCorners(2, 2, 0, 0, 8, 8, 100, 40);
-  assert.ok(Number.isFinite(c.westX) && Number.isFinite(c.northY));
-  assert.equal(c.westX, 2);
-  assert.equal(c.northY, 2);
 });
 
 test('every blade roots inside (or fanning just past) its tile, heights sane', () => {
@@ -259,6 +186,48 @@ test('collectGpuBlades: short grass is unaffected by the tall partition', () => 
   gs.collectGpuBlades(ground, () => 0, bounds, on, true);
   assert.equal(on.length, off.length, 'short grass carries the coat identically either way');
   assert.ok(on.length > 0, 'sanity: short grass deals a coat');
+});
+
+// ------------------------------------------------ G-ELEVATED (the shelf)
+
+test('collectGpuElevated: only raised grass, one band per (row, level), lifted', () => {
+  // A 3-wide region: row 0 flat grass (elev 0), rows 1..2 a level-1 grass
+  // plateau. Only the raised rows should be gathered, each row its own band.
+  const bounds = { minTx: 0, maxTx: 2, minTy: 0, maxTy: 2 };
+  const ground = (tx: number, ty: number): number | undefined =>
+    tx >= 0 && tx <= 2 && ty >= 0 && ty <= 2 ? Tile.Grass : undefined;
+  const elevAt = (_tx: number, ty: number): number => (ty >= 1 ? 1 : 0);
+  const gs = new GrassSystem();
+  const out: Blade[] = [];
+  const bands: Array<{ i0: number; count: number; sortY: number; minBy: number; maxBy: number; elev?: number }> = [];
+  gs.collectGpuElevated(ground, () => 0, elevAt, bounds, 24, out, bands as never);
+  // Two raised rows → two bands; the flat row 0 is ignored.
+  assert.equal(bands.length, 2, 'one band per raised row');
+  for (const b of bands) {
+    assert.equal(b.elev, 24, 'every raised band carries level·ELEV_H = 1·24');
+    assert.ok(b.count > 0, 'a raised band has blades');
+  }
+  // Contiguous slices covering the whole output, no overlap.
+  assert.equal(bands[0]!.i0, 0);
+  assert.equal(bands[0]!.i0 + bands[0]!.count, bands[1]!.i0);
+  assert.equal(bands[1]!.i0 + bands[1]!.count, out.length);
+  // Blades within a band are back-to-front (by ascending).
+  for (const b of bands) {
+    for (let i = b.i0 + 1; i < b.i0 + b.count; i++) {
+      assert.ok(out[i]!.by >= out[i - 1]!.by, 'band blades sorted by world-y');
+    }
+  }
+});
+
+test('collectGpuElevated: an all-flat field yields no raised bands', () => {
+  const bounds = { minTx: 0, maxTx: 2, minTy: 0, maxTy: 2 };
+  const ground = (): number | undefined => Tile.Grass;
+  const gs = new GrassSystem();
+  const out: Blade[] = [];
+  const bands: Array<{ i0: number; count: number; sortY: number; minBy: number; maxBy: number; elev?: number }> = [];
+  gs.collectGpuElevated(ground, () => 0, () => 0, bounds, 24, out, bands as never);
+  assert.equal(bands.length, 0, 'flat ground rides the flat field, not the shelf path');
+  assert.equal(out.length, 0);
 });
 
 // ---------------------------------------------------------- displacement

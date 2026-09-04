@@ -590,18 +590,14 @@ export class Debris {
     worldToScreen: (wx: number, wy: number) => { x: number; y: number },
     scale: number,
     outlined = true,
-    /** B-1c depth thread: per-item depth factor (ds=1 at q=0). */
-    depthAt: (wy: number) => number = () => 1,
   ): void {
     const t = c.life / c.maxLife;
-    // B-1c depth thread: foreshorten this billboard by its own depth (ds=1 at q=0)
-    const ds = depthAt(c.y);
     // Hold near-solid, then fade the last stretch — litter that lies,
     // then politely leaves.
     const alpha = t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
     const p = worldToScreen(c.x, c.y);
-    const lw = Math.max(2, c.len * scale * ds);
-    const wh = Math.max(1.5, c.wid * scale * ds);
+    const lw = Math.max(2, c.len * scale);
+    const wh = Math.max(1.5, c.wid * scale);
     if (c.z > 0.03) {
       // Airborne: a small contact shadow keeps the flight readable.
       ctx.globalAlpha = alpha * Math.max(0.08, 0.24 - c.z * 0.1);
@@ -612,8 +608,7 @@ export class Debris {
     }
     ctx.globalAlpha = alpha;
     ctx.save();
-    // B-1c depth thread: foreshorten this billboard by its own depth (ds=1 at q=0)
-    ctx.translate(p.x, p.y - c.z * scale * 0.92 * ds);
+    ctx.translate(p.x, p.y - c.z * scale * 0.92);
     ctx.rotate(c.rot);
     // ONE silhouette path serves both the brand ring and the fill.
     ctx.beginPath();

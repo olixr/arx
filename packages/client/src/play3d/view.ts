@@ -12,7 +12,7 @@
  *  - `pickWorld` shoots the camera ray through a pixel and marches it
  *    onto the heightfield (pick.ts), no farther than the camera's far
  *    plane.
- *  - The Display bench's canvas2d lanes (stage/lean/res/water) are NOT
+ *  - The Display bench's canvas2d lanes (stage/res/water) are NOT
  *    part of the adapter: the bench takes them separately, and this
  *    door hands it none (shell.ts).
  */

@@ -560,18 +560,12 @@ export function cliffFaceItem(rend: PaintHost,
     draw: () => {
       // THE STRUCTURE FACE (cliffArt/deck law): project the two world
       // corners, round shared endpoints to whole pixels so adjacent
-      // curtains meet without hairlines, and foreshorten each corner by
-      // ITS OWN depthScale — the curtain recedes as a true trapezoid (the
-      // far corner shorter), not a parallel-shifted band. topLift/baseLift
-      // are already scaled by `s`, so they pass as the screen-space lifts.
-      // B-3 SPANNING WARP (Epic B): every detail below rides yTop*/yBase*
-      // via the interpolators, so warping these four warps the whole face.
-      // At q=0 depthScale is exactly 1 → byte-identical.
+      // curtains meet without hairlines. topLift/baseLift are already
+      // scaled by `s`, so they pass as the screen-space lifts. Every
+      // detail below rides yTop*/yBase* via the interpolators.
       const g = projectFace(rend.camera, rend.w, rend.h, ax, ay, bx, by, topLift, baseLift);
       const A = { x: g.ax, y: g.ay };
       const B = { x: g.bx, y: g.by };
-      const dsA = g.dsA;
-      const dsB = g.dsB;
       const yTopA = g.yTopA - 1.5; // tucked under the crown band
       const yTopB = g.yTopB - 1.5;
       const yBaseA = g.yBotA;
@@ -1239,12 +1233,8 @@ export function cliffSideItem(rend: PaintHost,
       const sx = Math.round(A.x);
       const w2 = Math.max(3, s * 0.13);
       const x0 = nx >= 0 ? sx : sx - w2;
-      // B-3 spanning warp: the side run's top/bottom foreshorten by their
-      // own corner depth (s0 north, s1 south), matching the face it joins.
-      const dsA = rend.camera.depthScale(s0);
-      const dsB = rend.camera.depthScale(s1);
-      const yTop = Math.round(A.y - topLift * dsA) - (isTop ? 1.5 : 0);
-      const yBot = isBottom ? B.y - baseLift * dsB : Math.round(B.y - topLift * dsB);
+      const yTop = Math.round(A.y - topLift) - (isTop ? 1.5 : 0);
+      const yBot = isBottom ? B.y - baseLift : Math.round(B.y - topLift);
       // Body: the face palette's own mid-tones, pushed into shade —
       // kin to the walls it joins, not a black bar fighting them.
       ctx.fillStyle = nx >= 0 ? '#494259' : '#544d64';
@@ -1254,7 +1244,7 @@ export function cliffSideItem(rend: PaintHost,
       ctx.fillStyle = 'rgba(29, 23, 40, 0.3)';
       const tickH = Math.max(1.5, s * 0.035);
       for (let wy = Math.ceil((s0 - 1) * 2) / 2; wy <= s1 + 1; wy += 0.5) {
-        const py = rend.camera.worldToScreen(x, wy, rend.w, rend.h).y - topLift * rend.camera.depthScale(wy) + s * 0.4;
+        const py = rend.camera.worldToScreen(x, wy, rend.w, rend.h).y - topLift + s * 0.4;
         if (py >= yTop + tickH && py < yBot - tickH) ctx.fillRect(x0, py, w2, tickH);
       }
       // Arris on the outward silhouette edge.

@@ -28,9 +28,12 @@ const h2 = (a: number, b: number): number => {
   let n = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
   return n - Math.floor(n);
 };
+// `#tall` fills the field with GrassTall (the standing mass) so the parting
+// reads on the tall blades; default is the short-coat grass tile.
+const TALL_FIELD = location.hash.includes('tall');
 for (let ty = 0; ty < NY; ty++) {
   for (let tx = 0; tx < NX; tx++) {
-    const tileId = 1; // a grass ground tile
+    const tileId = TALL_FIELD ? 2 : 1; // 2 = GrassTall standing mass
     const detailId = (tx * 7 + ty * 3) % 11 === 0 ? 3 : 0; // scatter tufts
     const g = generateGrassTile(tx, ty, tileId, detailId);
     for (const b of g.under) blades.push(b);
@@ -67,7 +70,7 @@ renderer.upload(instances, blades.length);
   `${blades.length.toLocaleString()} blades · 1 instanced draw`;
 
 // World→screen: fit the NX×NY field with margin, in the projectWorld terms
-// the shader now consumes (GrassProj). Ortho (q=0). The lab has separate
+// the shader now consumes (GrassProj). The lab has separate
 // x/y fits, folded into scale (x px/world) + yScale (y/x ratio). The centre
 // (NX/2, NY/2+2 — a bias so blades, which grow up, sit lower) lands mid-view.
 function viewProj(): GrassProj {
@@ -84,7 +87,6 @@ function viewProj(): GrassProj {
     yScale,
     ox: vw / 2 - cx * scale,
     oy: vh / 2 - cy * scale * yScale,
-    q: 0,
     wCss: vw,
     hCss: vh,
   };
@@ -98,18 +100,32 @@ function resize(): void {
 resize();
 window.addEventListener('resize', resize);
 
-// `#still` parks the walker mid-field for a clean trampling screenshot.
+// `#still` parks the walker mid-field for a clean parting screenshot;
+// `#off` feeds NO disturbers (the before: blades static through the body).
 const STILL = location.hash.includes('still');
-// One walker crossing the field — proves trampling: blades splay outward
-// and press flat around it, springing back as it passes. The scene feeds
-// real player/entity positions into this same array.
+const OFF = location.hash.includes('off');
+// One walker crossing the field — proves the parting: blades peel outward,
+// comb down in the travel direction (the wake), and the foot pocket clears,
+// springing back as it passes. The scene feeds real player/entity positions
+// (and their velocities) into this same pair of arrays.
 const disturb = new Float32Array(4);
+const disturbVel = new Float32Array(2);
+let lastWx = NX * 0.5;
+let lastWy = NY * 0.5;
+let lastT = 0;
 
 const start = performance.now();
 function frame(): void {
   const t = (performance.now() - start) / 1000;
   const wx = STILL ? NX * 0.5 : NX * 0.5 + Math.cos(t * 0.5) * NX * 0.3;
   const wy = STILL ? NY * 0.52 : NY * 0.5 + Math.sin(t * 0.5) * NY * 0.28;
+  const dt = Math.max(1e-3, t - lastT);
+  // The travel lay-vector (world u/s), clamped like the scene feed does.
+  disturbVel[0] = Math.max(-5, Math.min(5, (wx - lastWx) / dt));
+  disturbVel[1] = Math.max(-5, Math.min(5, (wy - lastWy) / dt));
+  lastWx = wx;
+  lastWy = wy;
+  lastT = t;
   disturb[0] = wx;
   disturb[1] = wy;
   disturb[2] = 1.5; // radius (tiles) ≈ a character's footprint — the scene
@@ -117,7 +133,7 @@ function frame(): void {
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.clearColor(0.39, 0.53, 0.33, 1); // meadow ground green
   gl.clear(gl.COLOR_BUFFER_BIT);
-  renderer.draw(viewProj(), t, { windGain: 0.12, disturb });
+  renderer.draw(viewProj(), t, OFF ? { windGain: 0.12 } : { windGain: 0.12, disturb, disturbVel });
   requestAnimationFrame(frame);
 }
 frame();

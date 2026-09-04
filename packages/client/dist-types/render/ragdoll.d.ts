@@ -121,7 +121,7 @@ export interface RagCapeIdx {
  */
 export declare function buildHumanoidRagdoll(size: number, seed: number, cape?: boolean): Ragdoll;
 /** Upper-body / feet index groups for launch(). */
-export declare const HUMANOID_UPPER: (2 | 1 | 8 | 9 | 10 | 7)[];
+export declare const HUMANOID_UPPER: (10 | 1 | 2 | 7 | 9 | 8)[];
 export declare const HUMANOID_FEET: (4 | 6)[];
 /**
  * Beast skeleton: rear hip, front chest, head, then one two-segment

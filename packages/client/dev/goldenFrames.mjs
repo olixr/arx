@@ -1,14 +1,14 @@
 /**
- * THE ONE RENDER — F0 foundation gate: the q=0 GOLDEN-FRAME harness.
+ * THE ONE RENDER — the GOLDEN-FRAME harness (the flat-look gate).
  *
- * The epic collapses the renderer's `q === 0 ? ortho : perspective` forks
- * into ONE q-parameterized pipeline. q=0 (the flat game live players use)
- * need NOT stay byte-identical, but the FLAT LOOK MUST HOLD. This harness
- * is the automated gate for that: it captures a fixed set of canonical
- * q=0 scenes as PNG goldens (the committed baseline), then re-captures a
- * candidate build and reports per-scene pixel-diff stats. Every later
- * phase runs `compare` after its changes; the flat look holding within
- * tolerance is the go/no-go.
+ * THE FLAT LOOK MUST HOLD: this harness is the automated gate for that.
+ * It captures a fixed set of canonical scenes as PNG goldens (the
+ * committed baseline), then re-captures a candidate build and reports
+ * per-scene pixel-diff stats. Every render change runs `compare` on BOTH
+ * backends; the flat look holding within tolerance is the go/no-go.
+ * (The 2D client has one camera — the pitched-orthographic affine; the
+ * perspective lean it once gated at q=0 was removed on 2026-09-04, see
+ * docs/perspective-review-and-3d-client-plan.md.)
  *
  * USAGE (rig on :5241 — see vite.config.f0.ts; backend :8814):
  *   # 1. start the rig (from packages/client):
@@ -17,14 +17,30 @@
  *   node dev/goldenFrames.mjs capture
  *   # 3. after a phase's changes, prove the flat look still holds:
  *   node dev/goldenFrames.mjs compare
+ *   # 4. A/B against a live BASELINE rig (THE LEAN COMES OUT): per scene,
+ *   #    shoot the baseline rig, then the candidate seconds later, and diff
+ *   #    the two — immune to the shared world drifting between a committed
+ *   #    golden and a later compare (NPC routines, work cycles, restocks):
+ *   BASE_ORIGIN=http://localhost:5241 ORIGIN=http://localhost:5242 node dev/goldenFrames.mjs ab
  *
  * ENV:
  *   ORIGIN  rig origin (default http://localhost:5241)
+ *   BASE_ORIGIN  ab only: the baseline rig's origin (the untouched code)
  *   SCENES  comma-separated scene names to limit the run
  *   TOL     max differing-pixel fraction to PASS (default 0.02 = 2%)
  *   THRESH  per-pixel max-channel delta that counts as "differs" (default 24)
  *   FRAMES  candidate frames sampled per scene in compare (default 5; the
  *           MIN diff wins so transient animation phase can't fail the gate)
+ *   BACKEND stage (default) = the WebGL accelerated display (?stage=world);
+ *           canvas = the standard canvas2d display (plain '/', arx.stage
+ *           cleared). THE LEAN COMES OUT: the flat game must hold on BOTH.
+ *   DIFF_OUT  compare only: a directory (relative to packages/client) to
+ *           write <scene>.diff.png into — the crop with every differing
+ *           pixel painted red over the dimmed golden, so a FAIL can be
+ *           read by eye (a wandering NPC vs a structural drift).
+ *   GOLDEN_DIR  golden directory, relative to packages/client (default
+ *           dev/golden = the stage baseline; dev/golden-canvas = the
+ *           canvas2d baseline captured from the untouched b4c00f2e code)
  *
  * The scenes, coords, crop and tolerance are documented in
  * docs/the-one-render-verify.md and echoed in golden/manifest.json so
@@ -33,15 +49,23 @@
 import { chromium } from '/Users/aeriek/.npm/_npx/705bc6b22212b352/node_modules/playwright/index.mjs';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { dirname, relative, resolve } from 'node:path';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const GOLDEN_DIR = resolve(HERE, 'golden');
+const BACKEND = process.env.BACKEND === 'canvas' ? 'canvas' : 'stage';
+const GOLDEN_DIR = process.env.GOLDEN_DIR ? resolve(HERE, '..', process.env.GOLDEN_DIR) : resolve(HERE, 'golden');
+const GOLDEN_REL = relative(HERE, GOLDEN_DIR); // 'golden' | 'golden-canvas', as the manifest names it
+const DIFF_OUT = process.env.DIFF_OUT ? resolve(HERE, '..', process.env.DIFF_OUT) : null;
 const ORIGIN = process.env.ORIGIN ?? 'http://localhost:5241';
 const TOL = Number(process.env.TOL ?? 0.02);
 const THRESH = Number(process.env.THRESH ?? 24);
 const FRAMES = Number(process.env.FRAMES ?? 5);
-const MODE = process.argv[2] === 'compare' ? 'compare' : 'capture';
+const MODE = process.argv[2] === 'compare' ? 'compare' : process.argv[2] === 'ab' ? 'ab' : 'capture';
+const BASE_ORIGIN = process.env.BASE_ORIGIN ?? null;
+if (MODE === 'ab' && !BASE_ORIGIN) {
+  console.error('ab mode needs BASE_ORIGIN (the baseline rig)');
+  process.exit(2);
+}
 
 // Fixed viewport + dpr so goldens and recaptures share pixel dimensions.
 const VIEW = { width: 1500, height: 900, dpr: 2 };
@@ -59,13 +83,13 @@ const CROP = {
   y1: (VIEW.height - 210) * VIEW.dpr,
 };
 
-// THE CANONICAL q=0 SCENES. Coords are exact /tp targets, reused verbatim
+// THE CANONICAL SCENES. Coords are exact /tp targets, reused verbatim
 // by every later phase. Chosen to cover the epic's surface classes:
 // world-geometry volumes (wall runs, curtain walls, fences, building
 // exteriors + interiors), ground, billboards (trees), and props.
 //
 // `tol` is the per-scene differing-pixel budget (fraction), CALIBRATED to
-// the scene's inherent animation floor so a clean q=0 recapture always
+// the scene's inherent animation floor so a clean recapture always
 // passes (no false alarms for the gate later phases depend on). The floor
 // is grass wind, ambient pollen particles, patrolling NPCs, flames and
 // water — measured with `FRAMES=10 compare` against fresh goldens, then
@@ -100,32 +124,68 @@ const only = process.env.SCENES?.split(',');
 const SCENES = ALL_SCENES.filter((s) => !only || only.includes(s.name));
 
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
-const page = await (
-  await browser.newContext({ viewport: { width: VIEW.width, height: VIEW.height }, deviceScaleFactor: VIEW.dpr })
-).newPage();
-page.on('pageerror', (e) => console.log('[pageerror]', e.message.slice(0, 200)));
 
-// q=0 is the shipped default; ?stage=world runs the WebGL backend the epic
-// develops on. We deliberately do NOT set leanTarget — camera.q stays 0.
-await page.goto(`${ORIGIN}/?stage=world`);
-await page.fill('#login-user', 'perf12_probe');
-await page.fill('#login-pass', 'probe-owl-9127');
-await page.click('#login-submit');
-await page.waitForFunction(() => window.dcGame && window.dcGame.connStatus === 'ingame', null, { timeout: 30000 });
-await page.waitForTimeout(2000);
-// THE PLANE CHECK: /museum is a toggle and the probe account keeps its
-// plane across logins — teleports only mean anything in the overworld.
-if (await page.evaluate(() => window.dcGame.plane?.id === 'museum')) {
-  await page.evaluate(() => window.dcGame.sendChat('/museum'));
-  await page.waitForTimeout(2500);
-}
-await page.evaluate(() => window.dcRenderer.camera.setZoom(1));
-const q = await page.evaluate(() => window.dcRenderer.camera.q);
-if (q !== 0) {
-  console.error(`ABORT: camera.q is ${q}, expected 0 (this is the q=0 flat-look gate)`);
-  await browser.close();
-  process.exit(2);
-}
+// Open a fresh context on a rig, log the probe in, land it in the
+// overworld at zoom 1 on the requested backend. One
+// account = one live session, so rigs are visited one at a time.
+const openRig = async (origin) => {
+  const context = await browser.newContext({ viewport: { width: VIEW.width, height: VIEW.height }, deviceScaleFactor: VIEW.dpr });
+  const page = await context.newPage();
+  page.on('pageerror', (e) => console.log('[pageerror]', e.message.slice(0, 200)));
+
+  // BACKEND=stage: ?stage=world runs the WebGL backend; BACKEND=canvas: the
+  // plain URL with the stored stage pref cleared runs the standard canvas2d
+  // display (a fresh context has no localStorage, the clear is belt-and-
+  // braces; arx.lean is a retired key older builds may have left behind).
+  if (BACKEND === 'canvas') {
+    await page.goto(`${origin}/`);
+    await page.evaluate(() => {
+      localStorage.removeItem('arx.stage');
+      localStorage.removeItem('arx.lean');
+    });
+    await page.reload();
+  } else {
+    await page.goto(`${origin}/?stage=world`);
+  }
+  await page.fill('#login-user', 'perf12_probe');
+  await page.fill('#login-pass', 'probe-owl-9127');
+  await page.click('#login-submit');
+  await page.waitForFunction(() => window.dcGame && window.dcGame.connStatus === 'ingame', null, { timeout: 30000 });
+  await page.waitForTimeout(2000);
+  // THE PLANE CHECK: /museum is a toggle and the probe account keeps its
+  // plane across logins — teleports only mean anything in the overworld.
+  if (await page.evaluate(() => window.dcGame.plane?.id === 'museum')) {
+    await page.evaluate(() => window.dcGame.sendChat('/museum'));
+    await page.waitForTimeout(2500);
+  }
+  await page.evaluate(() => window.dcRenderer.camera.setZoom(1));
+  // THE ONE CAMERA: the lean left the 2D client, so a build under test
+  // normally carries no camera.q at all. A pre-removal build (a main-tip
+  // BASELINE rig serving the goldens, or a stale bundle) still has the dial:
+  // at q=0 it IS the flat look and may serve, at q>0 it is leaning and the
+  // gate means nothing — abort.
+  const q = await page.evaluate(() => window.dcRenderer.camera.q);
+  if (q !== undefined && q !== 0) {
+    console.error(`ABORT: camera.q is ${q} — a leaning build; the flat-look gate needs q=0`);
+    await browser.close();
+    process.exit(2);
+  }
+  if (q === 0) console.log(`note: ${origin} still carries camera.q (=0) — a pre-removal build at the flat look`);
+  // THE BACKEND CHECK: the gate must run on the backend it claims to.
+  const stageLive = await page.evaluate(() => !!window.dcRenderer.stageWorld);
+  if (stageLive !== (BACKEND === 'stage')) {
+    console.error(`ABORT: BACKEND=${BACKEND} but renderer.stageWorld is ${stageLive}`);
+    await browser.close();
+    process.exit(2);
+  }
+  return page;
+};
+// A session ends by closing its context (the socket drops → the server
+// frees the one probe seat for the next rig).
+const closeRig = async (page) => page.context().close();
+
+let page = MODE === 'ab' ? null : await openRig(ORIGIN);
+console.log(`mode ${MODE}, backend ${BACKEND}, goldens ${GOLDEN_REL}, origin ${ORIGIN}${BASE_ORIGIN ? `, base ${BASE_ORIGIN}` : ''}`);
 
 // THE VERIFIED TELEPORT: the chat rate limiter silently eats commands —
 // send, verify the renderer's own position landed, retry until it does.
@@ -160,7 +220,7 @@ const grabPng = () =>
 // Returns { diffFrac, maxDelta, w, h } over the crop rectangle.
 const diffAgainst = (goldenDataUrl, crop) =>
   page.evaluate(
-    async ({ url, crop, thresh }) => {
+    async ({ url, crop, thresh, wantMask }) => {
       const cv = document.getElementById('game');
       const live = cv.getContext('2d').getImageData(crop.x0, crop.y0, crop.x1 - crop.x0, crop.y1 - crop.y0).data;
       const img = new Image();
@@ -179,18 +239,35 @@ const diffAgainst = (goldenDataUrl, crop) =>
       let maxDelta = 0;
       const n = Math.min(live.length, gold.length);
       let px = 0;
+      // The optional diff mask: the golden dimmed, differing pixels red.
+      const mask = wantMask ? new Uint8ClampedArray(gold.length) : null;
       for (let i = 0; i < n; i += 4) {
         const dr = Math.abs(live[i] - gold[i]);
         const dg = Math.abs(live[i + 1] - gold[i + 1]);
         const db = Math.abs(live[i + 2] - gold[i + 2]);
         const d = Math.max(dr, dg, db);
         if (d > maxDelta) maxDelta = d;
-        if (d > thresh) differing++;
+        const diff = d > thresh;
+        if (diff) differing++;
         px++;
+        if (mask) {
+          mask[i] = diff ? 255 : gold[i] >> 2;
+          mask[i + 1] = diff ? 0 : gold[i + 1] >> 2;
+          mask[i + 2] = diff ? 0 : gold[i + 2] >> 2;
+          mask[i + 3] = 255;
+        }
       }
-      return { diffFrac: px ? differing / px : 0, maxDelta, w: crop.x1 - crop.x0, h: crop.y1 - crop.y0 };
+      let maskUrl = null;
+      if (mask) {
+        const mc = document.createElement('canvas');
+        mc.width = crop.x1 - crop.x0;
+        mc.height = crop.y1 - crop.y0;
+        mc.getContext('2d').putImageData(new ImageData(mask, mc.width, mc.height), 0, 0);
+        maskUrl = mc.toDataURL('image/png');
+      }
+      return { diffFrac: px ? differing / px : 0, maxDelta, w: crop.x1 - crop.x0, h: crop.y1 - crop.y0, maskUrl };
     },
-    { url: goldenDataUrl, crop, thresh: THRESH },
+    { url: goldenDataUrl, crop, thresh: THRESH, wantMask: DIFF_OUT !== null },
   );
 
 mkdirSync(GOLDEN_DIR, { recursive: true });
@@ -202,11 +279,51 @@ const manifest = {
   crop: CROP,
   tolerance: { defaultDiffFrac: TOL, pixelThresh: THRESH, framesPerScene: FRAMES, perScene: true },
   login: 'perf12_probe',
-  note: 'q=0 flat-look baseline for THE ONE RENDER. See docs/the-one-render-verify.md.',
+  backend: BACKEND,
+  note: 'Flat-look baseline for THE ONE RENDER. See docs/the-one-render-verify.md.',
   scenes: [],
 };
 
 for (const scene of SCENES) {
+  if (MODE === 'ab') {
+    // THE SAME MOMENT, BOTH CODES: shoot the baseline rig, drop its
+    // session, bring the candidate up on the same scene seconds later
+    // and diff the candidate's frames against that shot. The scene's
+    // per-scene tolerance still governs (the animation floor is the
+    // same); world drift between the two has seconds, not minutes.
+    page = await openRig(BASE_ORIGIN);
+    await tpTo(scene.tp);
+    await page.waitForTimeout(3500);
+    const basePng = await grabPng();
+    await closeRig(page);
+    page = await openRig(ORIGIN);
+    await tpTo(scene.tp);
+    await page.waitForTimeout(3500);
+    let best = { diffFrac: 1, maxDelta: 255 };
+    const fracs = [];
+    for (let f = 0; f < FRAMES; f++) {
+      await page.waitForTimeout(300);
+      const d = await diffAgainst(basePng, CROP);
+      fracs.push(d.diffFrac);
+      if (d.diffFrac < best.diffFrac) best = d;
+    }
+    await closeRig(page);
+    page = null;
+    const tol = process.env.TOL !== undefined ? TOL : scene.tol ?? TOL;
+    const ok = best.diffFrac <= tol;
+    allOk = allOk && ok;
+    if (DIFF_OUT && best.maskUrl) {
+      mkdirSync(DIFF_OUT, { recursive: true });
+      const f = resolve(DIFF_OUT, `${scene.name}.ab.diff.png`);
+      writeFileSync(f, Buffer.from(best.maskUrl.split(',')[1], 'base64'));
+      console.log(`  diff mask -> ${f}`);
+    }
+    console.log(
+      `${ok ? 'PASS' : 'FAIL'} ${scene.name} (A/B vs baseline): minDiff ${(best.diffFrac * 100).toFixed(3)}% ` +
+        `(maxΔ ${best.maxDelta}) tol ${(tol * 100).toFixed(1)}%  frames [${fracs.map((x) => (x * 100).toFixed(2)).join(', ')}]`,
+    );
+    continue;
+  }
   await tpTo(scene.tp);
   await page.waitForTimeout(3500); // settle: streaming, bakes, LOD
 
@@ -214,7 +331,7 @@ for (const scene of SCENES) {
     const png = await grabPng();
     const file = resolve(GOLDEN_DIR, `${scene.name}.png`);
     writeFileSync(file, Buffer.from(png.split(',')[1], 'base64'));
-    manifest.scenes.push({ name: scene.name, tp: scene.tp, tol: scene.tol ?? TOL, file: `golden/${scene.name}.png` });
+    manifest.scenes.push({ name: scene.name, tp: scene.tp, tol: scene.tol ?? TOL, file: `${GOLDEN_REL}/${scene.name}.png` });
     console.log(`captured ${scene.name} (${scene.tp}) -> ${file}`);
   } else {
     const goldenFile = resolve(GOLDEN_DIR, `${scene.name}.png`);
@@ -236,6 +353,12 @@ for (const scene of SCENES) {
     }
     const tol = process.env.TOL !== undefined ? TOL : scene.tol ?? TOL;
     const ok = best.diffFrac <= tol;
+    if (DIFF_OUT && best.maskUrl) {
+      mkdirSync(DIFF_OUT, { recursive: true });
+      const f = resolve(DIFF_OUT, `${scene.name}.diff.png`);
+      writeFileSync(f, Buffer.from(best.maskUrl.split(',')[1], 'base64'));
+      console.log(`  diff mask -> ${f}`);
+    }
     allOk = allOk && ok;
     console.log(
       `${ok ? 'PASS' : 'FAIL'} ${scene.name}: minDiff ${(best.diffFrac * 100).toFixed(3)}% ` +
@@ -245,10 +368,20 @@ for (const scene of SCENES) {
 }
 
 if (MODE === 'capture') {
-  writeFileSync(resolve(GOLDEN_DIR, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+  // A SUBSET capture (SCENES=...) re-shoots only those goldens: merge them
+  // into the standing manifest in canonical order so the untouched scenes
+  // keep their entries instead of vanishing from the gate.
+  const manifestFile = resolve(GOLDEN_DIR, 'manifest.json');
+  if (only && existsSync(manifestFile)) {
+    const prev = JSON.parse(readFileSync(manifestFile, 'utf8'));
+    const byName = new Map((prev.scenes ?? []).map((sc) => [sc.name, sc]));
+    for (const sc of manifest.scenes) byName.set(sc.name, sc);
+    manifest.scenes = ALL_SCENES.map((sc) => byName.get(sc.name)).filter(Boolean);
+  }
+  writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + '\n');
   console.log(`\nwrote ${manifest.scenes.length} goldens + manifest to ${GOLDEN_DIR}`);
 } else {
   console.log(allOk ? '\nGOLDEN GATE PASS — the flat look holds' : '\nGOLDEN GATE FAIL — the flat look drifted');
 }
 await browser.close();
-process.exit(MODE === 'compare' && !allOk ? 1 : 0);
+process.exit(MODE !== 'capture' && !allOk ? 1 : 0);

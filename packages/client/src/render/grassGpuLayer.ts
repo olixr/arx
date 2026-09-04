@@ -49,13 +49,10 @@ export interface GrassFrame {
   /** World→screen zoom (Camera.scale) and vertical squash (yScale). */
   scale: number;
   yScale: number;
-  /** Screen origins in CSS px (camOriginX / camOriginY). Snapped at q=0;
-   *  UNSNAPPED under a lean (q≠0), matching cameraProject / the world feed —
-   *  the pre-divide snap would sawtooth-jitter through the perspective divide. */
+  /** Screen origins in CSS px (camOriginX / camOriginY), matching the
+   *  world feed. */
   ox: number;
   oy: number;
-  /** Lean parameter (Camera.q). 0 = flat/ortho, >0 = pitched perspective. */
-  q: number;
   /** Frame size in CSS px. */
   wCss: number;
   hCss: number;
@@ -67,6 +64,9 @@ export interface GrassFrame {
   windGain?: number;
   /** Disturbers packed [worldX, worldY, radius, strength]×n (≤ MAX_DISTURB). */
   disturb?: Float32Array;
+  /** G-INTERACT — the parallel travel lay-vector [vx, vy]×n (world u/s,
+   *  clamped) so blades comb down in each body's direction of motion. */
+  disturbVel?: Float32Array;
 }
 
 export class GrassGpuLayer {
@@ -119,6 +119,21 @@ export class GrassGpuLayer {
   private skirtLost = false;
   private skirtInstances: Float32Array = new Float32Array(0);
   private readonly skirtBlits: BandBlit[] = [];
+
+  /** G-ELEVATED path — its own offscreen atlas canvas + GL context +
+   *  renderer. The raised-terrain coat (grass on plateau tops / terrace
+   *  edges) renders through the SAME per-band atlas machinery the tall + skirt
+   *  blades use, one band per elevated (level, row) each LIFTED onto its shelf
+   *  (band.elev). It cannot share the tall/skirt atlases — all three re-blit
+   *  this same frame at their own y-sort rows — so it keeps a fifth context.
+   *  A lost elevated context simply drops the raised coat that frame (the
+   *  baked meadow already painted the plateau ground beneath). */
+  readonly elevCanvas: HTMLCanvasElement;
+  private elevGl: WebGL2RenderingContext | null = null;
+  private elevRenderer: GrassGpuRenderer | null = null;
+  private elevLost = false;
+  private elevInstances: Float32Array = new Float32Array(0);
+  private readonly elevBlits: BandBlit[] = [];
 
   constructor(palette: readonly string[], ornamentPalette: readonly string[]) {
     this.palette = palette;
@@ -190,6 +205,21 @@ export class GrassGpuLayer {
       this.buildRenderer();
     });
     this.skirtGl = this.skirtCanvas.getContext('webgl2', ctxOpts);
+
+    // G-ELEVATED atlas — a fifth WebGL2 canvas/context (see field docs). It
+    // degrades independently: a lost elevated context makes renderElev return
+    // an empty band list and the raised coat is skipped that frame.
+    this.elevCanvas = document.createElement('canvas');
+    this.elevCanvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      this.elevLost = true;
+      this.elevRenderer = null;
+    });
+    this.elevCanvas.addEventListener('webglcontextrestored', () => {
+      this.elevLost = false;
+      this.buildRenderer();
+    });
+    this.elevGl = this.elevCanvas.getContext('webgl2', ctxOpts);
     this.buildRenderer();
   }
 
@@ -198,8 +228,11 @@ export class GrassGpuLayer {
       try {
         this.renderer = new GrassGpuRenderer(this.gl, this.palette);
         this.ornaments = new GrassOrnamentRenderer(this.gl, this.ornPalette);
-      } catch {
-        // A driver that can't compile a program → stay inert (baked meadow).
+      } catch (e) {
+        // A driver that can't compile the program stays inert (baked meadow).
+        // Surface WHY — a silent shader miscompile otherwise drops the whole
+        // GPU path with no clue (a reserved-keyword slip did exactly that).
+        console.warn('[grass-gpu] blade program build failed; falling back to baked meadow:', e);
         this.renderer?.dispose();
         this.ornaments?.dispose();
         this.renderer = null;
@@ -232,6 +265,15 @@ export class GrassGpuLayer {
         this.skirtRenderer?.dispose();
         this.skirtRenderer = null;
         this.skirtGl = null;
+      }
+    }
+    if (this.elevGl && !this.elevLost && !this.elevRenderer) {
+      try {
+        this.elevRenderer = new GrassGpuRenderer(this.elevGl, this.palette);
+      } catch {
+        this.elevRenderer?.dispose();
+        this.elevRenderer = null;
+        this.elevGl = null;
       }
     }
   }
@@ -267,15 +309,14 @@ export class GrassGpuLayer {
       return this.canvas; // a clean transparent frame
     }
 
-    // ONE PROJECTION: the whole meadow projects through projectWorld's
-    // homography (grassProjectGlsl), so blades and blooms parallax with the
-    // world at exactly the player's rate under any lean.
+    // ONE PROJECTION: the whole meadow projects through the camera affine
+    // (grassProjectGlsl), so blades and blooms parallax with the world at
+    // exactly the player's rate.
     const proj: GrassProj = {
       scale: f.scale,
       yScale: f.yScale,
       ox: f.ox,
       oy: f.oy,
-      q: f.q,
       wCss: f.wCss,
       hCss: f.hCss,
     };
@@ -283,7 +324,11 @@ export class GrassGpuLayer {
     if (blades.length > 0) {
       this.instances = packBladeInstances(blades, this.instances);
       this.renderer.upload(this.instances, blades.length);
-      this.renderer.draw(proj, f.timeSec, { windGain: f.windGain, disturb: f.disturb });
+      this.renderer.draw(proj, f.timeSec, {
+        windGain: f.windGain,
+        disturb: f.disturb,
+        disturbVel: f.disturbVel,
+      });
     }
     const ornN = flowers.length + seeds.length;
     if (ornN > 0) {
@@ -307,7 +352,7 @@ export class GrassGpuLayer {
    * alpha. Because every cast is thrown by the SAME per-vertex wind term
    * the blades use, the whole field's shade sways uniformly — no baked
    * monolith, no player-centred radius. Both quad ends are ground points
-   * run through projectWorld, so it is perspective-correct at q>0.
+   * run through the camera projection.
    *
    * `shade` is the cast colour in 0..1; `sx,sy` is the world-ground throw
    * per unit world-height (grassShadowOffset). Returns null when the cast
@@ -338,11 +383,10 @@ export class GrassGpuLayer {
       yScale: f.yScale,
       ox: f.ox,
       oy: f.oy,
-      q: f.q,
       wCss: f.wCss,
       hCss: f.hCss,
     };
-    const opts = { windGain: f.windGain, disturb: f.disturb };
+    const opts = { windGain: f.windGain, disturb: f.disturb, disturbVel: f.disturbVel };
     if (blades.length > 0) {
       this.shadowInstances = packBladeInstances(blades, this.shadowInstances);
       this.shadowRenderer.upload(this.shadowInstances, blades.length);
@@ -405,24 +449,49 @@ export class GrassGpuLayer {
     return this.renderBands('skirt', skirtBlades, bands, f);
   }
 
+  /** True when the elevated atlas path can render this frame. */
+  get elevOk(): boolean {
+    return this.elevGl !== null && this.elevRenderer !== null && !this.elevLost;
+  }
+
+  /**
+   * G-ELEVATED — THE COAT RIDES THE SHELF. The same atlas machinery as
+   * renderTall/renderSkirt, fed the raised-terrain grass with one band per
+   * elevated (level, row); each band carries `elev` (level·ELEV_H) so the
+   * shader lifts its blades onto the plateau top exactly as the elevated
+   * ground quad lifts. The renderer emits one y-sorted DrawItem per band
+   * (drawn OVER its ground row, under bodies standing on it). A separate GL
+   * context/atlas from tall + skirt (all three blit this same frame),
+   * degrading independently. Returns [] when the context is unavailable or
+   * nothing is in view.
+   */
+  renderElev(
+    elevBlades: readonly Blade[],
+    bands: readonly TallBand[],
+    f: GrassFrame,
+  ): BandBlit[] {
+    return this.renderBands('elev', elevBlades, bands, f);
+  }
+
   /** Shared atlas render for the tall + skirt band paths: each band renders
    *  in ISOLATION into its own slot of one offscreen atlas (a single GL
    *  pass), returning each slot's atlas src-rect + screen dst-rect for the
    *  renderer to y-sort. `which` selects the private context/canvas/renderer
    *  + instance buffer so the two atlases never clobber one another. */
   private renderBands(
-    which: 'tall' | 'skirt',
+    which: 'tall' | 'skirt' | 'elev',
     srcBlades: readonly Blade[],
     bands: readonly TallBand[],
     f: GrassFrame,
   ): BandBlit[] {
     const isSkirt = which === 'skirt';
-    const out = isSkirt ? this.skirtBlits : this.bandBlits;
+    const isElev = which === 'elev';
+    const out = isElev ? this.elevBlits : isSkirt ? this.skirtBlits : this.bandBlits;
     out.length = 0;
-    const gl = isSkirt ? this.skirtGl : this.tallGl;
-    const renderer = isSkirt ? this.skirtRenderer : this.tallRenderer;
-    const canvas = isSkirt ? this.skirtCanvas : this.tallCanvas;
-    const okFlag = isSkirt ? this.skirtOk : this.tallOk;
+    const gl = isElev ? this.elevGl : isSkirt ? this.skirtGl : this.tallGl;
+    const renderer = isElev ? this.elevRenderer : isSkirt ? this.skirtRenderer : this.tallRenderer;
+    const canvas = isElev ? this.elevCanvas : isSkirt ? this.skirtCanvas : this.tallCanvas;
+    const okFlag = isElev ? this.elevOk : isSkirt ? this.skirtOk : this.tallOk;
     if (!okFlag || !gl || !renderer) return out;
     const tallBlades = srcBlades;
     if (tallBlades.length === 0 || bands.length === 0) return out;
@@ -434,7 +503,7 @@ export class GrassGpuLayer {
     // leaning/trampled blade is never clipped at its slot edge.
     const H_FACTOR = 1.55;
     const HW_FACTOR = 1.42 * 1.08;
-    const X_MARGIN = 1.1; // world tiles: wind lean + trample splay
+    const X_MARGIN = 1.5; // world tiles: wind lean + parted lay-over splay
     const PX_PAD = 3; // device-agnostic css pad at the slot rim
 
     // Pass 1: each band's screen bbox (CSS px), clamped to the viewport.
@@ -445,8 +514,8 @@ export class GrassGpuLayer {
     // the wind/trample margins folded in.
     type Box = { x0: number; y0: number; x1: number; y1: number };
     const boxes: (Box | null)[] = [];
-    const proj = (wx: number, wy: number): { x: number; y: number; wDiv: number } =>
-      grassProjectMirror(f.scale, f.yScale, f.ox, f.oy, f.q, wx, wy, f.wCss, f.hCss);
+    const proj = (wx: number, wy: number): { x: number; y: number } =>
+      grassProjectMirror(f.scale, f.yScale, f.ox, f.oy, wx, wy);
     for (const band of bands) {
       let minBx = Infinity;
       let maxBx = -Infinity;
@@ -465,6 +534,11 @@ export class GrassGpuLayer {
       const halfW = maxW * HW_FACTOR + X_MARGIN + maxLean;
       const topY = band.minBy - maxH * H_FACTOR; // tip line (northmost)
       const botY = band.maxBy; // root line (southmost)
+      // G-ELEVATED: the whole band rides its terrace shelf. Mirror the shader's
+      // RIGID rise (uElev · scale) so the slot bbox tracks the lifted blades.
+      // 0 = flat.
+      const elev = band.elev ?? 0;
+      const liftPx = elev !== 0 ? elev * f.scale : 0;
       let x0 = Infinity;
       let y0 = Infinity;
       let x1 = -Infinity;
@@ -476,10 +550,11 @@ export class GrassGpuLayer {
         [maxBx + halfW, topY],
       ] as const) {
         const s = proj(wx, wy);
+        const sy = s.y - liftPx;
         if (s.x < x0) x0 = s.x;
         if (s.x > x1) x1 = s.x;
-        if (s.y < y0) y0 = s.y;
-        if (s.y > y1) y1 = s.y;
+        if (sy < y0) y0 = sy;
+        if (sy > y1) y1 = sy;
       }
       x0 = Math.max(0, Math.floor(x0 - PX_PAD));
       y0 = Math.max(0, Math.floor(y0 - PX_PAD));
@@ -522,16 +597,20 @@ export class GrassGpuLayer {
       yScale: f.yScale,
       ox: f.ox,
       oy: f.oy,
-      q: f.q,
       wCss: f.wCss,
       hCss: f.hCss,
     };
-    const packed = packBladeInstances(tallBlades, isSkirt ? this.skirtInstances : this.tallInstances);
-    if (isSkirt) this.skirtInstances = packed;
+    const packed = packBladeInstances(
+      tallBlades,
+      isElev ? this.elevInstances : isSkirt ? this.skirtInstances : this.tallInstances,
+    );
+    if (isElev) this.elevInstances = packed;
+    else if (isSkirt) this.skirtInstances = packed;
     else this.tallInstances = packed;
     renderer.beginBands(packed, tallBlades.length, proj3, f.timeSec, {
       windGain: f.windGain,
       disturb: f.disturb,
+      disturbVel: f.disturbVel,
     });
     gl.enable(gl.SCISSOR_TEST);
     const SW = f.wCss * dpr;
@@ -545,7 +624,7 @@ export class GrassGpuLayer {
       // Scissor the slot (GL framebuffer origin is bottom-left → flip y).
       gl.scissor(slot.ax, atlasH - (slot.ay + slot.hDev), slot.wDev, slot.hDev);
       const remap = bandNdcRemap(SW, SH, atlasW, atlasH, bandSx, bandSy, slot.ax, slot.ay);
-      renderer.drawBand(bands[k]!.i0, bands[k]!.count, remap);
+      renderer.drawBand(bands[k]!.i0, bands[k]!.count, remap, bands[k]!.elev ?? 0);
       out.push({
         srcX: slot.ax,
         srcY: slot.ay,
@@ -570,23 +649,28 @@ export class GrassGpuLayer {
     this.tallRenderer?.dispose();
     this.shadowRenderer?.dispose();
     this.skirtRenderer?.dispose();
+    this.elevRenderer?.dispose();
     this.renderer = null;
     this.ornaments = null;
     this.tallRenderer = null;
     this.shadowRenderer = null;
     this.skirtRenderer = null;
+    this.elevRenderer = null;
     this.gl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.tallGl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.shadowGl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.skirtGl?.getExtension('WEBGL_lose_context')?.loseContext();
+    this.elevGl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.gl = null;
     this.tallGl = null;
     this.shadowGl = null;
     this.skirtGl = null;
+    this.elevGl = null;
     this.lost = true;
     this.tallLost = true;
     this.shadowLost = true;
     this.skirtLost = true;
+    this.elevLost = true;
   }
 }
 

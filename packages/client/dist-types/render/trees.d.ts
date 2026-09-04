@@ -213,7 +213,36 @@ export interface TreeExtent {
     y0: number;
     y1: number;
 }
+/**
+ * THE SHEAR'S OWN CEILING (foundation audit). Since THE SPECIES SHEET
+ * the bake is the NEUTRAL pose and the blit shears it about the ground
+ * line by the FULL live wind (|wind| · 0.055) plus THE STANDING LEAN
+ * (treeLean: ±3.5 · 0.008 = ±0.028). That throw is LINEAR in height
+ * while the painter's own wind displacement follows hf^1.4 — so at mid
+ * heights the sheared neutral ink can poke past the wind-pose
+ * envelope, and the proof battery caught an archetype escaping the old
+ * box by 0.024 tiles. The extent below therefore contains BOTH poses:
+ * the wind-painted ink and the neutral ink under the worst blit shear.
+ * ONE FRAME CONTAINS EVERY POSE THE BLIT CAN DRAW — cull boxes and
+ * bake canvases stop needing side-channel pads.
+ */
+export declare const TREE_SHEAR_MAX: number;
 export declare function treeExtent(m: TreeModel): TreeExtent;
+/**
+ * THE SPECIES SHEET (painted-stage): the forest deals K archetypes
+ * per species instead of a model per tile hash. A per-instance model
+ * meant a per-instance ~400px bake — ~600 sprites in a padded forest,
+ * every one minted, re-minted on cadence, uploaded, and bound alone
+ * (the atlas census: 66 packed / 478 solo). With K archetypes the
+ * whole forest shares ~K bakes per species; the instance keeps its
+ * identity through the live wind shear (THE SHEAR CARRIES THE SWAY —
+ * per-quad), a hash-dealt standing lean, and placement itself. The
+ * variant hash is re-spread through hashCoords so K low bits still
+ * deal decorrelated heights, bows, and cluster layouts.
+ */
+export declare const TREE_VARIANT_COUNT = 16;
+/** The instance hash reduced to its variant's dealt 16-bit hash. */
+export declare function treeVariantHash(tile: Tile, h: number): number;
 /** Grow (or recall) the tree standing on a tile with world-hash `h`. */
 export declare function treeModel(tile: Tile, h: number): TreeModel;
 /**

@@ -15,7 +15,7 @@
 import { Tile } from '@arx/shared';
 import { isCropTile } from '@arx/content';
 import { TREE_TILES } from '@arx/shared';
-import { ROCK_TILES } from './paintVocab.js';
+import { ROCK_TILES, WALL_TILES } from './paintVocab.js';
 
 /** A grass tile the meadow coat grows on (short coat or tall thicket). */
 export function isGrassTile(t: number | undefined): boolean {
@@ -77,4 +77,80 @@ export function grassRootedSkirtAt(
   if (isGrassTile(sample(tx - 1, ty))) grassy++;
   if (isGrassTile(sample(tx + 1, ty))) grassy++;
   return grassy >= SKIRT_MIN_GRASS_NEIGHBORS;
+}
+
+// ------------------------------------------------------------- per-type strength
+
+/**
+ * SIDE BITS for a skirt's grass-adjacent edges (used to bias a wall/building
+ * skirt onto only its grass-facing feet). N/S/W/E are the four orthogonal
+ * neighbours; a full ring (0b1111) means "scatter freely all round" — the
+ * look natural wilds (trees/rocks) always want, since they replace their own
+ * tile and are ringed by meadow.
+ */
+export const SIDE_N = 1;
+export const SIDE_S = 2;
+export const SIDE_W = 4;
+export const SIDE_E = 8;
+export const SIDE_ALL = SIDE_N | SIDE_S | SIDE_W | SIDE_E;
+
+/**
+ * THE OVER-FOOT SKIRT, TUNED BY HEIGHT. Not every object should wear the same
+ * grass collar: a TALL tree can carry a full base skirt that climbs the bark,
+ * but a LOW rock is buried and obscured by the same tuft — the owner's note
+ * ("the skirts are covering up the rocks and looking weird"). So the skirt's
+ * strength is scaled per object kind, standing in for its height:
+ *
+ *   - rocks & spent formations → 0.22: a bare few short wisps at the very
+ *     base, never a collar that swallows the stone.
+ *   - buildings / wall feet    → 0.5 : a subtle, low nestle where a wall's
+ *     foot meets grass, softening the ground contact without climbing the
+ *     face or masking a doorway (also drawn edge-biased, grass-side only).
+ *   - trees / saplings / bushes / wild plants → 1.0: the full embedded look
+ *     G4 shipped — a lush tuft with a few climbers up the trunk.
+ *   - any other free-standing prop on grass → 0.7: a modest nestle.
+ *
+ * 0 means "no skirt at all". Strength scales blade count, height, radius and
+ * whether climbers appear (see generateSkirtBlades).
+ */
+export function skirtStrengthForTile(tile: number): number {
+  if (ROCK_TILES.has(tile)) return 0.22;
+  if (WALL_TILES.has(tile)) return 0.5;
+  if (isNaturalWild(tile)) return 1;
+  return 0.7;
+}
+
+/**
+ * The grass-adjacent side bitmask for an object at (tx,ty): which of its four
+ * orthogonal neighbours are grass. Buildings/walls use this to skirt ONLY the
+ * feet that meet meadow (never the stone/path/interior sides).
+ */
+export function grassSidesMask(
+  sample: (tx: number, ty: number) => number | undefined,
+  tx: number,
+  ty: number,
+): number {
+  let m = 0;
+  if (isGrassTile(sample(tx, ty - 1))) m |= SIDE_N;
+  if (isGrassTile(sample(tx, ty + 1))) m |= SIDE_S;
+  if (isGrassTile(sample(tx - 1, ty))) m |= SIDE_W;
+  if (isGrassTile(sample(tx + 1, ty))) m |= SIDE_E;
+  return m;
+}
+
+/**
+ * A wall/building foot gets a skirt when at least ONE of its orthogonal
+ * neighbours is grass — a single grass-facing edge is enough for the foot to
+ * nestle into the meadow (unlike a free-standing object, which wants a
+ * meadow ring). Returns the grass-side mask (0 = no grass-adjacent edge, so
+ * no skirt: a wall in a courtyard or between other walls gets nothing).
+ */
+export function wallSkirtSidesAt(
+  sample: (tx: number, ty: number) => number | undefined,
+  tx: number,
+  ty: number,
+  tile: number,
+): number {
+  if (!WALL_TILES.has(tile)) return 0;
+  return grassSidesMask(sample, tx, ty);
 }

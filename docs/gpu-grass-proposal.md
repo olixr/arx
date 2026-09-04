@@ -184,6 +184,8 @@ placement) when WebGPU is ready — no blocked critical path.
 
 ---
 
+> **HISTORICAL — the camera lean was removed from the 2D client on 2026-09-04 (see docs/perspective-review-and-3d-client-plan.md); the perspective effort continues in the separate 3D client. The lean-specific material below is kept as the record of what was tried.**
+
 ## §6. Synergy with the camera lean
 
 The lean and the grass shader are made for each other. The instanced

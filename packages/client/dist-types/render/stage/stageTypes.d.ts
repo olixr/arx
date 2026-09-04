@@ -19,7 +19,14 @@
  *    ratio. Call sites keep snapping on the DEVICE GRID exactly as
  *    they always have — the numbers inside `m` are already snapped
  *    when snapping matters, and the stage multiplies them exactly.
+ *
+ * Backends: the canvas2d oracle (canvasStage) implements the minimal
+ * StageBackend below; the accelerated compositors (glStage today, a
+ * WebGPU backend next) implement GpuStageBackend — the fuller contract
+ * the renderer actually drives (upload budget, resource release, VRAM
+ * governance, per-frame telemetry). See docs/webgpu-seam-conformance.md.
  */
+import type { VramStage } from './stageVram.js';
 /**
  * Composite-path blend modes. This is deliberately the SMALL set the
  * measured frame actually composites with (plan §2.3) — the exotic
@@ -48,7 +55,9 @@ export interface StageTexture {
      *  a successor canvas into an entry at bake completion (round 11's
      *  chunk pool), and the handle follows — retarget the field and
      *  bump `rev`, and the next ensure/draw uploads the new content
-     *  into the same GL texture (the ledger absorbs any size change). */
+     *  into the same backend texture (the ledger absorbs any size
+     *  change). Backend-neutral: the GL backend uploads via texImage2D,
+     *  a WebGPU backend via copyExternalImageToTexture. */
     canvas: HTMLCanvasElement;
     /** Content version. Bump after every repaint of `canvas`. */
     rev: number;
@@ -58,12 +67,30 @@ export interface StageTexture {
     /**
      * THE DIRT LIST (the atlas's economy): rects repainted since the
      * last upload, in canvas px. A backend that can subupload consumes
-     * them with texSubImage2D and clears the list; absent or oversized
-     * dirt falls back to the full upload. Producers PUSH, the GL
-     * backend CLEARS — the canvas backend reads pixels live and never
-     * touches it.
+     * them with a sub-region copy (GL `texSubImage2D`, WebGPU
+     * `copyExternalImageToTexture` with origin+size) and clears the list;
+     * absent or oversized dirt falls back to the full upload. Producers
+     * PUSH, an accelerated backend CLEARS — the canvas oracle reads
+     * pixels live and never touches it.
      */
     dirty?: Array<[number, number, number, number]>;
+    /**
+     * THE STALE BAKE STILL SERVES (foundation audit): an OLDER upload
+     * of this handle shows the SAME content, merely behind — so a
+     * draw-time refresh may defer under upload-budget pressure and
+     * bind the previous texels instead (chunk grounds, band bakes:
+     * successive revs are successive repaints of one world surface).
+     * Leave unset for handles whose cells REMAP between revs (atlas
+     * pages — a stale page shows the wrong sprite in a re-placed cell,
+     * which is corruption, not lag). A missing record always uploads:
+     * never a hole.
+     */
+    staleOk?: boolean;
+    /** Exempt from an accelerated backend's cold-texture orphan sweep
+     *  (atlas pages: long-lived shared targets whose ~16.8MB re-upload on
+     *  return is exactly the arrival cost the sweep must not manufacture).
+     *  Pinned handles die only by explicit release or context loss. */
+    pinned?: boolean;
 }
 /**
  * The dest-space convention, chosen to match how every existing blit
@@ -129,6 +156,14 @@ export interface StagePaint {
     pw: number;
     ph: number;
     paint: (ctx: CanvasRenderingContext2D) => void;
+    /** THE SCRATCH LEDGER: a paint that names its identity and content
+     *  version keeps a cached texture in the GL backend — the closure
+     *  runs (and the texture uploads) ONLY when `rev` changes. Content
+     *  must be box-anchored (the closure's output at a fixed offset
+     *  from px/py regardless of camera), or the cache would smear.
+     *  Omitted = the classic live lane: repaint + upload every frame. */
+    key?: number;
+    rev?: number;
 }
 export type StageItem = StageQuad | StageFill | StagePaint;
 /**
@@ -138,13 +173,17 @@ export type StageItem = StageQuad | StageFill | StagePaint;
  * blend mappings in stageBlend.ts depend on it and say so.
  */
 export interface StageBackend {
-    readonly kind: 'gl' | 'canvas';
+    readonly kind: 'gl' | 'canvas' | 'webgpu';
     /** Frame start: CSS viewport size, device pixel ratio, clear color.
      *  `null` clears TRANSPARENT — legal only on an alpha stage (the
      *  world layer composites over the 2d ground); an opaque stage
      *  refuses it, and an alpha stage refuses the opaque-only blends
      *  (multiply/screen) — the two halves of one symmetry. */
-    begin(w: number, h: number, dpr: number, clear: string | null): void;
+    /** `renderScale` (A2, default 1) is the fraction of native dpr the
+     *  backend rasterizes its backbuffer at — a GL memory/fill lever. A
+     *  backend that has no backbuffer to shrink (the canvas oracle) treats
+     *  it as 1 so it stays the full-resolution parity reference. */
+    begin(w: number, h: number, dpr: number, clear: string | null, renderScale?: number): void;
     /** Composite one sorted stream. Order is law. */
     draw(items: readonly StageItem[]): void;
     /**
@@ -160,5 +199,76 @@ export interface StageBackend {
     drawLayer(items: readonly StageItem[], alpha: number): void;
     /** Frame end: flush everything to the backend's canvas. */
     end(): void;
+}
+/** The verdict an upload gate returns: whether the handle's current
+ *  texels are on the GPU (`current`), an older-but-equivalent upload was
+ *  served under budget pressure (`stale`), or nothing is resident yet
+ *  (`absent`), plus the ms this call spent uploading. */
+export interface EnsureResult {
+    state: 'current' | 'stale' | 'absent';
+    spentMs: number;
+}
+/**
+ * THE ACCELERATED BACKEND CONTRACT (C1 seam audit).
+ *
+ * The canvas2d oracle needs only StageBackend. The GPU compositors —
+ * glStage today, a WebGPU backend next — carry a larger surface the
+ * renderer actually drives every frame, and it was, until this audit,
+ * implicit in the concrete GlStage type the renderer's fields held.
+ * Formalized here so a new backend is a drop-in the type checker
+ * verifies whole: to run under the renderer, a backend must satisfy
+ * THIS, plus VramStage (cross-stage VRAM governance — a backend that
+ * skips it drops out of the shared ceiling and the "sprites vanish"
+ * defect returns), and self-register with StageVram at construction.
+ * Every member maps cleanly to WebGPU — see docs/webgpu-seam-conformance.md.
+ */
+export interface GpuStageBackend extends StageBackend, VramStage {
+    /** The presented surface. The RENDERER owns it (constructs the
+     *  element and hands it in) and composites the finished frame with one
+     *  drawImage of it; the backend renders into it. */
+    readonly canvas: HTMLCanvasElement;
+    /** True for the world layer (composites over the 2d ground with a
+     *  transparent clear); false for an opaque stage. Governs which
+     *  blend/clear refusals apply. */
+    readonly isAlpha: boolean;
+    /** Live once the context/device is lost; the renderer falls back to
+     *  its own 2d path while set. */
+    contextLost: boolean;
+    /** Optional loss hook (used by the dev lab's recovery drill). */
+    onContextLost: (() => void) | null;
+    /** Advance the per-real-frame clock: aging, cold-texture sweeps, and
+     *  the frame's upload allowance. Once per rendered frame, before draws. */
+    frame(): void;
+    /** Zero the per-frame telemetry counters (call after frame()). */
+    statsReset(): void;
+    /** THE UPLOAD IS A BAKE: budgeted sync of one handle. `floor` forces
+     *  at least one admission (a visible tile must not stay a hole);
+     *  returns the residency state and ms spent so the caller can debit
+     *  its lane budget. */
+    ensure(tex: StageTexture, msLeft: number, floor?: boolean): EnsureResult;
+    /** Explicit texture free — the caches stay the owners (ONE LIFECYCLE). */
+    release(tex: StageTexture): void;
+    readonly textureBytes: number;
+    readonly textureCount: number;
+    readonly keyedResidentBytes: number;
+    readonly uploadedBytes: number;
+    readonly uploads: number;
+    readonly drawCalls: number;
+    readonly scratchUploadBytes: number;
+    readonly scratchPaints: number;
+    readonly scratchCachedHits: number;
+    readonly sheetUploads: number;
+    readonly drawDeferred: number;
+}
+/** Construction options every accelerated backend accepts (the renderer
+ *  builds `new Backend(canvasEl, opts)`). */
+export interface GpuStageOpts {
+    /** Alpha (world-layer) stage vs opaque main stage. */
+    alpha?: boolean;
+    /** The record-lane texture budget in bytes (the ground stage takes a
+     *  smaller store than the world stage). */
+    texBudgetBytes?: number;
+    /** This stage's name in the VRAM governor's ledger ('world'/'ground'). */
+    label?: string;
 }
 //# sourceMappingURL=stageTypes.d.ts.map

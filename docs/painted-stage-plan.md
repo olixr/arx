@@ -930,6 +930,8 @@ default-ON survives a week does Epic B start.
 
 ---
 
+> **HISTORICAL — the camera lean was removed from the 2D client on 2026-09-04 (see docs/perspective-review-and-3d-client-plan.md); the perspective effort continues in the separate 3D client. The lean-specific material below is kept as the record of what was tried.**
+
 ## 4. EPIC B — THE CAMERA LEARNS TO LEAN
 
 Goal: pitch and horizon become player-adjustable within an

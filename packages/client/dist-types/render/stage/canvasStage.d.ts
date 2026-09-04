@@ -15,7 +15,7 @@ export declare class CanvasStage implements StageBackend {
     constructor(canvas: HTMLCanvasElement, opts?: {
         alpha?: boolean;
     });
-    begin(w: number, h: number, dpr: number, clear: string | null): void;
+    begin(w: number, h: number, dpr: number, clear: string | null, _renderScale?: number): void;
     draw(items: readonly StageItem[]): void;
     drawLayer(items: readonly StageItem[], alpha: number): void;
     private drawInto;

@@ -149,7 +149,7 @@ void main() {
     vec2 corner = vec2(aVert.y * 2.0 - 1.0, aVert.z * 2.0 - 1.0);
     pos = center + corner * hf;
   }
-  gl_Position = grassProject(pos);   // ONE PROJECTION (projectWorld homography)
+  gl_Position = grassProject(pos, root);   // ONE PROJECTION (the camera affine)
   vPart = part;
   vPal = pal;
 }`;
@@ -197,7 +197,6 @@ export class GrassOrnamentRenderer {
   private readonly uScale: WebGLUniformLocation;
   private readonly uYScale: WebGLUniformLocation;
   private readonly uOrigin: WebGLUniformLocation;
-  private readonly uQ: WebGLUniformLocation;
   private readonly uViewport: WebGLUniformLocation;
   private readonly uTime: WebGLUniformLocation;
   private readonly uBobGain: WebGLUniformLocation;
@@ -228,7 +227,6 @@ export class GrassOrnamentRenderer {
     this.uScale = gl.getUniformLocation(program, 'uScale')!;
     this.uYScale = gl.getUniformLocation(program, 'uYScale')!;
     this.uOrigin = gl.getUniformLocation(program, 'uOrigin')!;
-    this.uQ = gl.getUniformLocation(program, 'uQ')!;
     this.uViewport = gl.getUniformLocation(program, 'uViewport')!;
     this.uTime = gl.getUniformLocation(program, 'uTime')!;
     this.uBobGain = gl.getUniformLocation(program, 'uBobGain')!;
@@ -294,7 +292,7 @@ export class GrassOrnamentRenderer {
     this.instanceCount = count;
   }
 
-  /** Draw every ornament. `proj` is the same projectWorld homography the
+  /** Draw every ornament. `proj` is the same camera projection the
    *  blades use; `bobGain` scales the wind nod (1 = the baked meadow's sway). */
   draw(proj: GrassProj, timeSec: number, bobGain = 1): void {
     const gl = this.gl;
@@ -303,7 +301,6 @@ export class GrassOrnamentRenderer {
     gl.uniform1f(this.uScale, proj.scale);
     gl.uniform1f(this.uYScale, proj.yScale);
     gl.uniform2f(this.uOrigin, proj.ox, proj.oy);
-    gl.uniform1f(this.uQ, proj.q);
     gl.uniform2f(this.uViewport, proj.wCss, proj.hCss);
     gl.uniform1f(this.uTime, timeSec);
     gl.uniform1f(this.uBobGain, bobGain);

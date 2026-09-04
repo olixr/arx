@@ -77,7 +77,8 @@ export interface LightView {
     h: number;
     scale: number;
     yScale: number;
-    /** Screen-space origin: worldToScreen(0,0). */
+    /** Screen-space origin (worldToScreen(0,0)); the map is built at it
+     *  and composited as one full-screen stretch. */
     ox: number;
     oy: number;
 }

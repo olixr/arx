@@ -194,10 +194,8 @@ import * as garrisonArt from './garrisonArt.js';
 import * as hudOverlay from './hudOverlay.js';
 import * as wornAura from './wornAura.js';
 import * as cliffArt from './cliffArt.js';
-import { emit as emitStructureFace, faceBand as sfBand, faceFill as sfFill, faceSeam as sfSeam, faceUV, faceStrip, topPlane, beginSilhouette, silhouetteBounds } from './structureFace.js';
-import { crownUvSig, crownUvSize, crownScaleBucket } from './structWarp.js';
-import type { FaceGeom, FacePt, Silhouette, TopPlaneGeom, WorldCorner } from './structureFace.js';
-import { WALL_STUB, GARRISON_H, MERLON_H } from './paintVocab.js';
+import { faceUV } from './structureFace.js';
+import { WALL_STUB, GARRISON_H } from './paintVocab.js';
 import * as wallHungArt from './wallHungArt.js';
 import * as barrierArt from './barrierArt.js';
 import * as chestArt from './chestArt.js';
@@ -208,8 +206,9 @@ import { Birds, type Bird, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, generateSkirtBlades, BLADE_FILLS, ORNAMENT_FILLS, type Disturber, type WindSample, type Blade, type GrassBounds, type Flower, type SeedHead } from './grass.js';
 import { GrassGpuLayer, type GrassFrame, type BandBlit } from './grassGpuLayer.js';
 import { partitionTallBands, coalesceTallBands, type TallBand } from './grassGpu.js';
-import { grassRootedSkirtAt } from './grassSkirt.js';
+import { grassRootedSkirtAt, skirtStrengthForTile, wallSkirtSidesAt, SIDE_ALL } from './grassSkirt.js';
 import { MAX_DISTURB } from './grassGpuRenderer.js';
+import { packDisturbers } from './grassGpu.js';
 import { grassShadowOffset, shadeRgb01 } from './grassGpuShadow.js';
 import { paintTree, saplingModel, treeExtent,
   treeModel, TREE_VARIANT_COUNT, treeVariantHash, type TreeModel } from './trees.js';
@@ -257,16 +256,9 @@ import {
   wallCover,
   occluderCover,
   fadeStrength,
+  shelterArmed,
 } from './reveal.js';
 import { ARRIVAL_MIN_COUNT, admitBake, BakeLane, type BakeBudgets } from './bakeAdmission.js';
-import { leanBudgetMult } from './leanBudget.js';
-import { rowProject, rowProjectX, type RowProj } from './rowProject.js';
-import {
-  chunkBakePxWarp,
-  chunkResDeficit,
-  inNearRing,
-  lodTierWarp,
-} from './bakeWarp.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { BobtailSim, CrocTailSim, TailSim, drawBobtail, drawFeyBrush, drawFoxBrush, drawHorseTail, drawHousecatTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
@@ -286,9 +278,8 @@ import {
 } from './lighting.js';
 import { collectEmitter, type EmitterGlowOut } from './emitters.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
-import { collectVolume, crownSpans, diagSpans } from './collectVolume.js';
+import { collectVolume } from './collectVolume.js';
 import { DRAW_ORDER } from './drawOrder.js';
-import type { CrownSpan } from './collectVolume.js';
 import {
   RaisedKind,
   buildRegisterRows,
@@ -326,11 +317,6 @@ import {
   DOCK_LIFT,
   drawLiveGround,
   fillContains,
-  fillCoversEdge,
-  isBridgeTile,
-  isDeckGround,
-  isDockTile,
-  isPorchSurface,
   type BridgeApron,
   isWaterTile,
   FRINGE_TILES,
@@ -395,15 +381,6 @@ import { SIGNATURES, type SigCtx } from './fxSignatures.js';
 import { GlStage } from './stage/glStage.js';
 import type { GpuStageBackend } from './stage/stageTypes.js';
 import { StageVram } from './stage/stageVram.js';
-import {
-  camOriginX,
-  camOriginY,
-  depthScaleAtScreen,
-  depthScaleWorld,
-  horizonScreenY,
-  projectWorld,
-  unprojectScreen,
-} from './cameraProject.js';
 import { stageRenderScale, type StageResTier } from './stage/renderScale.js';
 import { GPU_STEADY_MS, GPU_URGENT_MS } from './stage/gpuBudget.js';
 import {
@@ -466,37 +443,6 @@ const TREE_SHADOW_CADENCE_MUL = 3;
 /** Hard per-frame backstop (teleports/zoom flips force-bake herds). */
 const TREE_BAKE_BUDGET = 48;
 /**
- * THE DEPTH LOD LAW (Epic B, the lean). Under q≠0 a cached sprite's
- * on-screen SIZE is scale·depthScale(footRow): near the camera it is
- * MAGNIFIED (depthScale > 1), toward the horizon MINIFIED (< 1). A
- * sprite whose pixels were baked for the flat camera.scale is then
- * upscaled (blurry) when magnified and downscaled (wasted RAM, and it
- * POPS as depth changes) when minified — the reported "wrong LOD tier
- * under lean". The cure keys a sprite's bake DENSITY (its dpr) off the
- * EFFECTIVE depth-scaled size, not the flat zoom: bakeDpr = dpr ·
- * depthScale, so a near tree gets a denser sheet and a far one a
- * sparser sheet, each blitting ~1:1. Geometry (scale, extents, the
- * blit's k = spriteScale/scale) is UNTOUCHED, so the fix rides the
- * existing dpr lane and the blit math is unchanged.
- *
- * The density is QUANTIZED to coarse √2 tiers (tier = round(log₂
- * depthScale · 2), dpr multiplier 2^(tier/2)) so a MOVING camera
- * re-tiers rarely, not every frame — churn = re-bakes = the perf cost
- * this whole pass exists to avoid. Clamped to bound sprite VRAM: the
- * near cap keeps an extreme foreground tree from minting a 16×-area
- * sheet; the far floor stops at half density (its sprite is tiny on
- * screen anyway). q=0 → depthScale 1 → tier 0 → multiplier 1 →
- * bakeDpr === dpr() → byte-identical to every pre-lean bake.
- */
-const LOD_TIER_MIN = -2;
-const LOD_TIER_MAX = 4;
-/** Tier hysteresis dead-band (in continuous-tier units): a sprite
- *  keeps its current tier until the wanted density drifts a FULL step
- *  past that tier's center (±1.0), not merely across the ±0.5 rounding
- *  boundary — so a per-instance sprite (prop/flora) baked near a
- *  boundary does not re-bake every frame as the camera jitters. */
-const LOD_TIER_HYST = 1.0;
-/**
  * Per-frame time budget (ms) for sliced chunk-bake steps — ground
  * layers, detail row bands, elevation levels (see startChunkBake). A
  * full chunk bake is 10-40ms; slices keep every frame inside the
@@ -512,18 +458,6 @@ const CHUNK_BAKE_MS = 3;
  * Brand-new chunks (holes) are never gated.
  */
 const CHUNK_REPLACE_STARTS = 2;
-
-/**
- * THE ONE RENDER (B5b): the Chebyshev radius, in chunks from the camera's
- * chunk, of the STATIONARY near-field resolution-deficit lane. Radius 1 =
- * the 3×3 = 9 chunks beneath and around the player — the near field that
- * actually magnifies under a lean. A near chunk carried in at the sparse
- * tier (minted during the lean ramp / a glide) is topped up to the dense
- * tier through a priority lane bounded to this ring, so standing still
- * resolves the ground sharp within a frame or two without a step taken.
- * Bounded small so a whole leaned viewport's far chunks never flood it.
- */
-const NEAR_RING_RADIUS = 1;
 
 /**
  * Retired chunk canvases held for reuse. Sized to the working set a
@@ -544,56 +478,6 @@ const NEAR_RING_RADIUS = 1;
  *  either zoom tier (px32 base 4.3MB, px64 base 17MB, plus lifted
  *  spans) without hoarding idle backing store. */
 const CHUNK_POOL_BUDGET = 256 * 1048576;
-
-/** THE CAMERA LEARNS TO LEAN (Epic B): a HARD safety ceiling on the
- *  perspective frustum's far reach, as a multiple of the orthographic view
- *  depth. The true visible far row is now taken from the unprojected
- *  frustum itself (see visibleTileBounds — clamped to a margin below the
- *  horizon so the divisor stays well-conditioned); this multiple only
- *  bounds the pathological case (the top edge grazing the horizon, where
- *  the honest reach diverges). A moderate lean's honest reach peaks near
- *  ~4.5× just before the horizon rises into view, so 5 leaves headroom
- *  without letting a near-singular lean pull the whole map into the bake
- *  set. Used ONLY in the q>0 frustum branch, so q=0 is unaffected.
- *
- *  WAS 2 (B-6 lever 2), on the theory the horizon fog buried the cut. But
- *  the fog is a SEMI-transparent haze, not an opaque wall, so at the
- *  shipping lean — where the top edge honestly sees ~3.5× ortho depth —
- *  the 2× cut fell in clear view: ground, tables and props POPPED OUT in
- *  the far third of the screen. The far row must follow the real frustum,
- *  not a fixed multiple that clips it. */
-const FRUSTUM_FAR_MULT = 5;
-
-/** THE ONE RENDER (B6): the per-frame BAKE ADMISSION multiplier under a
- *  lean — how much the sprite/chunk arrival budgets grow to keep first-
- *  sight fill in step with the frustum's extra reach on a pan. This is a
- *  SEPARATE, SMALLER knob than FRUSTUM_FAR_MULT (which is a grazing-lean
- *  cull CEILING that never binds at the shipping lean — the natural
- *  trapezoid reaches only ~2.77× ortho at q=0.0013, ~1.6× at 0.0034,
- *  MEASURED). Sizing the arrival ramp to FRUSTUM_FAR_MULT=5 over-provisioned
- *  the mint budget ~4.25× at the shipping lean against a 2.77× real reach —
- *  spending extra bake/upload work every leaning frame for arrivals that
- *  are not there. B5 retired the depth-driven re-bakes that used to consume
- *  that surplus, so the ramp now shrinks toward the honest reach: ~2.6× at
- *  q=0.0013 (≈ the 2.77× frustum), enough that a fast pan still fills, with
- *  no standing over-mint. Ramps 1→this over q∈[0,PERSP_LEAN_REF]; 1 at q=0
- *  (byte-identical — callers still gate on q≠0). */
-const LEAN_ARRIVAL_MULT = 3.5;
-
-/** THE CAMERA LEARNS TO LEAN (Epic B): how far below the horizon (as a
- *  fraction of viewport height) the far cull row sits when the horizon has
- *  risen into view. Two jobs: (1) keep the unproject divisor away from the
- *  horizon singularity (a row AT the horizon recedes to infinite world-y),
- *  and (2) land the far cut inside the dense part of the horizon fog band
- *  so what little the cull still drops is already washed into the haze.
- *  When the horizon is off-screen (a moderate lean) this never bites — the
- *  top edge is already well below the horizon and the far corners are read
- *  there. q=0 has no horizon, so this is never consulted. */
-const FRUSTUM_HORIZON_MARGIN_FRAC = 0.15;
-
-/** The moderate reference lean q the fog/LOD ramps are tuned against (the
- *  B-2 milestone lean). Fog and far-fade reach full strength here. */
-const PERSP_LEAN_REF = 0.0016;
 
 /**
  * Byte ceiling on the baked-ground cache. The old cap counted SLOTS
@@ -679,8 +563,8 @@ const CONTACT_MAX = 0.3;
 /**
  * The 2.5D depth pass. The ground stays a flat top-down plane (so all
  * collision, aim, and netcode math is untouched), but everything with
- * height EXTRUDES upward on screen and leans away from the screen
- * center — a fake tilted camera. Paired with the per-item y-sort this
+ * height EXTRUDES upward on screen — a fake tilted camera. Paired with
+ * the per-item y-sort this
  * buys true walk-behind occlusion: a wall or canopy south of you draws
  * over you, one north of you slides behind.
  */
@@ -1086,32 +970,6 @@ export class Camera {
   readonly yScale = 0.6;
 
   /**
-   * THE CAMERA LEARNS TO LEAN (Epic B, B-1): the perspective lean
-   * strength. 0 = the pitched-orthographic camera above (byte-identical
-   * to every frame shipped so far — the projection short-circuits to the
-   * old affine math). q > 0 recedes the ground plane toward a horizon at
-   * screen row `h/2 − 1/q`, with `depthScale = 1/(1 − q·(wy−camY)·scale·
-   * yScale)` scaling every billboard, lift and shadow by depth. Held at
-   * 0 until the lean is deliberately turned on (band B-2); see
-   * docs/epic-b-camera-lean-plan.md and cameraProject.ts. */
-  q = 0;
-
-  /** The local size multiplier at world-depth `wy` (Epic B): 1 at the
-   *  camera's look-at row, <1 farther, >1 nearer; exactly 1 at q=0. The
-   *  one factor billboard scale / elevation lift / shadow radius ride. */
-  depthScale(wy: number): number {
-    return depthScaleWorld(this.scale, this.yScale, this.y, this.q, wy);
-  }
-
-  /** depthScale (see above) at a leaned SCREEN row, for a point known
-   *  only by its already-projected screen-y — ground cast-shadows extrude
-   *  by this so they foreshorten with the receding ground instead of
-   *  standing at ortho length and floating off the caster. 1 at q=0. */
-  depthScaleAtScreenY(sy: number, h: number): number {
-    return depthScaleAtScreen(this.q, h, sy);
-  }
-
-  /**
    * THE DEVICE GRID: the real pixel lattice belongs to the BACKING
    * STORE, not CSS space. The context is scaled by the (possibly
    * FRACTIONAL) devicePixelRatio — a browser zoom mints 1.25/1.75, and
@@ -1132,23 +990,44 @@ export class Camera {
 
   // The camera's screen-space origin — `w/2 − x·scale` snapped to whole
   // DEVICE pixels (so every layer translates in lockstep and nothing
-  // oscillates against the smoothly-resampled ground) — now lives in
-  // cameraProject.ts (camOriginX / camOriginY), the single source of
-  // truth the perspective projection and its inverse share.
+  // oscillates against the smoothly-resampled ground). The single
+  // source of truth the projection, its inverse, the lightmap origin
+  // and the GPU-grass feed share.
 
+  /** Screen x of world x=0 for a `w`-wide viewport (device-snapped). */
+  originX(w: number): number {
+    return this.snapPx(w / 2 - this.x * this.scale);
+  }
+
+  /** Screen y of world y=0 for an `h`-tall viewport (device-snapped). */
+  originY(h: number): number {
+    return this.snapPx(h / 2 - this.y * this.scale * this.yScale);
+  }
+
+  /**
+   * World → screen: the pitched-orthographic affine, `x = wx·scale + ox`,
+   * `y = wy·scale·yScale + oy`. (The perspective lean that once wrapped
+   * this in a homography left the 2D client — see
+   * docs/perspective-review-and-3d-client-plan.md; the reference math
+   * stays in cameraProject.ts for the 3D client.)
+   */
   worldToScreen(wx: number, wy: number, w: number, h: number): Vec2 {
-    const out = { x: 0, y: 0 };
-    return projectWorld(this.scale, this.yScale, this.x, this.y, this.q, this.snapDpr, wx, wy, w, h, out);
+    return this.worldToScreenInto(wx, wy, w, h, { x: 0, y: 0 });
   }
 
   /** Allocation-free worldToScreen for per-particle hot paths. */
   worldToScreenInto(wx: number, wy: number, w: number, h: number, out: Vec2): Vec2 {
-    return projectWorld(this.scale, this.yScale, this.x, this.y, this.q, this.snapDpr, wx, wy, w, h, out);
+    out.x = wx * this.scale + this.originX(w);
+    out.y = wy * this.scale * this.yScale + this.originY(h);
+    return out;
   }
 
+  /** The exact inverse of worldToScreen (division by the same factors). */
   screenToWorld(sx: number, sy: number, w: number, h: number): Vec2 {
-    const out = { x: 0, y: 0 };
-    return unprojectScreen(this.scale, this.yScale, this.x, this.y, this.q, this.snapDpr, sx, sy, w, h, out);
+    return {
+      x: (sx - this.originX(w)) / this.scale,
+      y: (sy - this.originY(h)) / (this.scale * this.yScale),
+    };
   }
 }
 
@@ -1170,12 +1049,6 @@ interface BakedChunk {
   stageTex?: StageTexture;
   /** Pixels per tile this bake was rendered at (zoom-tier dependent). */
   px: number;
-  /** FJ-2 THE DECK CARPENTRY STANDS UP: whether this bake omitted the
-   *  deck vertical carpentry (baked with standingPass = camera.q≠0). A
-   *  chunk baked flat (q=0) must not be reused under lean with its
-   *  fascia/pilings burned in, and vice-versa — a lean-state flip forces
-   *  a re-bake, exactly like a content or tier change. */
-  leanBaked?: boolean;
   /**
    * Lifted-terrain layers, one per elevation level present in the
    * chunk. Bands are contiguous row runs [startRow, endRow] (inclusive,
@@ -1215,9 +1088,6 @@ interface BakedChunk {
      *  exactly these — bits set mid-job survive for the restart). */
     fringeRev: number;
     fringeMask: number;
-    /** FJ-2: the lean state (camera.q≠0) this job was started under —
-     *  copied onto entry.leanBaked at completion. */
-    standingPass: boolean;
   };
   /** THE UPLOAD FOLLOWS THE PAINT (foundation audit): the base job's
    *  step counter at the last stage rev bump. A pending frame where
@@ -1303,51 +1173,6 @@ const GLOW_STOPS: ReadonlyArray<readonly [number, number]> = [
   [0.55, 0.38],
   [1, 0],
 ];
-
-/**
- * THE ONE RENDER — A2b: a coalesced wall-run crown, collected during the
- * raised-tile scan and flushed after it as ONE self-bounded DrawItem per
- * straight SPAN. Each span is a thin strip (≤ run length × 1 tile), so its
- * scratch cell stays small — never the footprint bbox that scoped A2 to thin
- * runs — while adjacent spans share world corners (projected+rounded once)
- * so the crown tiles seam-free. The outline is stroked per span over only its
- * EXPOSED unit edges (tested against `members`), so it rings the whole run
- * continuously with no per-tile wedges and no internal seams.
- */
-interface CrownVolume {
-  /** Which world-geometry family this run is — picks the crown ART in
-   *  `crownSpanItem`: 'wall' (wood/stone/dark beam + slab crown),
-   *  'garrison' (great-ashlar wall-walk + crenellated parapet teeth),
-   *  'diag' (a 45° corner/run: a lifted mass-triangle crown + sloped arris),
-   *  or 'hedge' (an upright clipped-green run: pillow-bed crown + leaf faces,
-   *  drawn PER SPAN so corners/tees/rings coalesce seam-free — A4b). */
-  kind: 'wall' | 'garrison' | 'diag' | 'hedge';
-  /** For kind 'diag': the run's (uniform) 45° tile — its material + mass. */
-  diagTile?: Tile;
-  /** Wall material class (0 wood, 1 stone, 2 dark) — picks the crown colour. */
-  matClass: number;
-  /** Uniform crown height (tiles) of the whole run. */
-  whT: number;
-  /** Foundation lift (world tiles) added to every crown/foot height. */
-  elevLift: number;
-  /** Seed region → wood skin for the crown dressing. */
-  region: InteriorRegion | null;
-  /** Per-straight-span crown rects (each a thin strip of member tiles). */
-  spans: CrownSpan[];
-  /** Packed member-tile set, for per-span exposed-edge outline tests. */
-  members: Set<number>;
-  /** Seed chunk data rev — chained into each span's cache key so an edit
-   *  re-mints; anchored to the run's lexicographic-min seed for stability. */
-  rev: number;
-  /** Stable per-run key seed (the anchor coords), so a span's cache key is
-   *  the same whichever member the scan met first. */
-  keyX: number;
-  keyY: number;
-  /** Sort row (the run's south-most row + 1). */
-  sortY: number;
-  /** Elevation shelf, if any. */
-  strat: number | undefined;
-}
 
 export interface DrawItem {
   sortY: number;
@@ -1487,9 +1312,9 @@ export interface DrawItem {
    * ROW of the volume's SOUTH/NEAR ground edge — the face you walk
    * BEHIND — so a billboard whose foot is south of (nearer than) this
    * row sorts AFTER the volume (drawn in front) and one north of it
-   * sorts before (behind). A row comparison ⇒ zoom-invariant. At q=0
-   * this equals the volume's raw south-edge sortY (walls already sort
-   * at `y1+1`), so the flat order is preserved (golden gate).
+   * sorts before (behind). A row comparison ⇒ zoom-invariant. This
+   * equals the volume's raw south-edge sortY (walls already sort at
+   * `y1+1`), so the flat order is preserved (golden gate).
    *
    * DRAW_ORDER prefers `nearRow` over `sortY` as the depth term, and on
    * an exact depth TIE a volume (nearRow set) draws BEFORE a billboard
@@ -1535,9 +1360,9 @@ interface WorldSprite {
    * THE PROP KEEPS ITS FOOT UNDER A STALE SCALE: the GROUND FOOT's offset
    * from the sprite canvas origin, in bake css px, captured at bake time.
    * The blit pivots the cached sprite about THIS fixed offset (scaled by k)
-   * so the foot lands on the live world foot for BOTH depth-k (lean) and
-   * staleness-k (a zoom glide where the live scale has run ahead of the
-   * bake). The old blit pivoted about the LIVE (footX − b.x) offset, which
+   * so the foot lands on the live world foot under staleness-k (a zoom
+   * glide where the live scale has run ahead of the bake). The old blit
+   * pivoted about the LIVE (footX − b.x) offset, which
    * only matches the bake when the sprite is fresh — under a zoom-glide
    * cache reuse (k≠1 from bake staleness) it slid the foot by ~(foot−b)·(1−k),
    * the "props drift then snap back" defect on machines whose bake budget
@@ -1602,24 +1427,6 @@ export class Renderer {
    *  (?skirt=off); on by default whenever the GPU meadow is active. */
   grassSkirtOn = true;
   private grassGpuLayer: GrassGpuLayer | null = null;
-  /** THE CAMERA LEARNS TO LEAN (Epic B, B-2): the lean is a DIAL. This is
-   *  the target lean `q`, set opt-in (?lean / arx.lean). 0 = OFF = the
-   *  orthographic frame, byte-identical to everything shipped. Each frame
-   *  camera.q is clamped from this so the horizon stays above the viewport
-   *  (and forced to 0 under the editor/shot camera). */
-  leanTarget = 0;
-  /** THE ONE RENDER — B9: FACE / SCRATCH CELL CAP. Max DEVICE px per scratch
-   *  cell dimension under lean; a cell that projects larger bakes at this
-   *  ceiling and the GL quad upscales it to the full projected extent (see
-   *  faceCap.ts / GlStage.cellCapPx). Applies ONLY at q>0 (faceCapDim returns
-   *  undefined at q=0) so the flat look / golden gate is byte-identical.
-   *  0 = AUTO = the viewport's larger device dimension: any cell that fits the
-   *  screen is uncapped (sharp — structure faces, viewport-clipped, always
-   *  stay sharp), and only a cell geometrically LARGER than the screen (a run
-   *  or grass/particle row projecting past the horizon under lean) softens
-   *  gracefully. A positive value forces that device-px cap. Runtime-tunable
-   *  via `window.dcRenderer.faceCapPx`. */
-  faceCapPx = 0;
   /** Whether the GPU path actually drew this frame (→ skip the canvas2d
    *  coat and the tall y-sort pass; false → the baked meadow ran). */
   private grassGpuActive = false;
@@ -1628,6 +1435,12 @@ export class Renderer {
   private readonly grassFlowers: Flower[] = [];
   private readonly grassSeeds: SeedHead[] = [];
   private readonly grassDisturb = new Float32Array(MAX_DISTURB * 4);
+  /** G-INTERACT — the parallel travel lay-vector [vx,vy]×n the shaders comb
+   *  the blades down by; and the per-id last position the velocity derives
+   *  from (world units/sec), pruned to who is present this frame. */
+  private readonly grassDisturbVel = new Float32Array(MAX_DISTURB * 2);
+  private readonly grassDisturbEntries: { x: number; y: number; r: number; vx: number; vy: number }[] = [];
+  private readonly grassDisturbLast = new Map<number | 'own', { x: number; y: number }>();
   /** G1 — the visible tall standing mass (GrassTall north/south), gathered
    *  by-sorted for the GPU interleave path; pooled. */
   private readonly grassTall: Blade[] = [];
@@ -1645,16 +1458,38 @@ export class Renderer {
    *  bush, rock, prop on a grass tile), gathered as objectItems are emitted
    *  so each carries its true foot sort row. After the world collect, each
    *  becomes one skirt band (generateSkirtBlades) drawn OVER its own base. */
-  private readonly grassSkirtSites: { tx: number; ty: number; footY: number }[] = [];
+  private readonly grassSkirtSites: {
+    tx: number;
+    ty: number;
+    footY: number;
+    /** Per-type strength (0..1), scaling count/height/radius — rocks low,
+     *  trees full, walls subtle. See skirtStrengthForTile. */
+    strength: number;
+    /** Grass-edge bitmask (SIDE_*): SIDE_ALL for a free-standing wild's ring,
+     *  a partial mask for a wall foot (grass-facing edges only). */
+    sides: number;
+  }[] = [];
   /** Pooled skirt-blade array (all sites concatenated) + per-site bands. */
   private readonly grassSkirt: Blade[] = [];
   private readonly grassSkirtBands: TallBand[] = [];
   /** Per-tile skirt-blade cache (a still object mints its skirt once). Keyed
-   *  by tile; footY is stored so a tile whose object changed (tree→stump,
-   *  a different foot row) re-mints instead of reusing the stale skirt. */
-  private readonly grassSkirtCache = new Map<number, { footY: number; blades: Blade[] }>();
+   *  by tile; footY/strength/sides are stored so a tile whose object changed
+   *  (tree→stump, a different foot row, a re-tuned strength) re-mints instead
+   *  of reusing the stale skirt. */
+  private readonly grassSkirtCache = new Map<
+    number,
+    { footY: number; strength: number; sides: number; blades: Blade[] }
+  >();
   private grassSkirtBlits: readonly BandBlit[] = [];
   private grassSkirtCanvas: HTMLCanvasElement | null = null;
+  /** G-ELEVATED — the raised-terrain coat's per-frame gather: blades + one
+   *  band per (row, level), the rendered atlas blits, and its canvas. Emitted
+   *  as y-sorted DrawItems (collectGpuElevated) so the raised grass draws over
+   *  its plateau ground and under the bodies on it. */
+  private readonly grassElev: Blade[] = [];
+  private readonly grassElevBands: TallBand[] = [];
+  private grassElevBlits: readonly BandBlit[] = [];
+  private grassElevCanvas: HTMLCanvasElement | null = null;
   /** This frame's GrassFrame (camera/wind), stashed by drawGrassGpu so the
    *  later skirt pass renders under the exact same projection + wind. */
   private grassFrameSaved: GrassFrame | null = null;
@@ -1886,41 +1721,6 @@ export class Renderer {
   private readonly outlineB = document.createElement('canvas');
   private readonly outlineACtx = this.outlineA.getContext('2d')!;
   private readonly outlineBCtx = this.outlineB.getContext('2d')!;
-  /** THE ONE RENDER — A3: dedicated scratches for the world-VOLUME outline
-   *  dilate, kept apart from the body scratches so a long wall run's mask can
-   *  never balloon the per-body outline canvases. `volMaskA` holds the solid
-   *  silhouette, `volMaskB` the dilated tinted annulus (see paintVolumeRing). */
-  private readonly volMaskA = document.createElement('canvas');
-  private readonly volMaskB = document.createElement('canvas');
-  private readonly volMaskACtx = this.volMaskA.getContext('2d')!;
-  private readonly volMaskBCtx = this.volMaskB.getContext('2d')!;
-  /** Baked per-run outline-ring annuli, keyed by run identity (see
-   *  paintVolumeRing). Canvases ride the shared sprite pool; evicted when a
-   *  run scrolls away or its baked shape (scale/dpr/q/size) changes. */
-  private readonly volRingCache = new Map<
-    number,
-    { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; sig: number; used: number; w: number; h: number }
-  >();
-  /**
-   * THE ONE RENDER — B8: crown top-plane UV textures (warp-don't-repaint).
-   *
-   * A wall/stone/dark crown SPAN's ART (fill + the arris/spine/lip beam
-   * read) is CAMERA-INDEPENDENT in the crown's own UV plane — only the four
-   * projected corners change as the camera leans/zooms/pans. So the texture
-   * is baked ONCE into an axis-aligned UV canvas keyed by its CONTENT
-   * signature (run identity + material + UV size in texels + dpr), NOT the
-   * camera, uploaded once, and each frame the crown is a perspective-correct
-   * `StageQuad.ground` over that cached texture (the same mechanism the
-   * ground chunks lean through). No per-frame re-paint, no per-frame
-   * re-upload while the run is unchanged — the wall-run scratch churn the
-   * static keyed cache could not hold under lean (it warps with the camera).
-   * q>0 ONLY: at q=0 the crown keeps its proven live path (golden gate).
-   * Evicted like volRingCache when a run scrolls away or its size changes.
-   */
-  private readonly structCrownCache = new Map<
-    number,
-    { tex: StageTexture; uvW: number; uvH: number; sig: number; used: number }
-  >();
   /** Cached outlined composites (ring + art) per body — see the olKey
    *  fields on DrawItem. Canvases ride the shared sprite pool. */
   private readonly bodySprites = new Map<
@@ -3391,14 +3191,7 @@ export class Renderer {
    */
   screenAnchor(wx: number, wy: number, w: number, h: number): { x: number; y: number } {
     const p = this.camera.worldToScreen(wx, wy, w, h);
-    // THE LIFT RIDES ITS ROW (Epic1 B1, float-on-zoom): the elevation
-    // lift is a world height that must foreshorten by depthScale at its
-    // own foot row — exactly as the elevated GROUND lifts by
-    // `ELEV_H*s*depthScale(worldTy)`. A bare `*scale` over-lifts by
-    // (1/depthScale − 1) up-screen, so the anchor detaches from its
-    // terrace and drifts as zoom changes. depthScale(wy) === 1 at q=0,
-    // so this is byte-identical to the flat frame.
-    p.y -= this.renderLift(wx, wy) * this.camera.scale * this.camera.depthScale(wy);
+    p.y -= this.renderLift(wx, wy) * this.camera.scale;
     return p;
   }
 
@@ -3603,10 +3396,7 @@ export class Renderer {
   /** worldToScreen that also rides the terrain lift under the point. */
   liftedWTS = (wx: number, wy: number): Vec2 => {
     const p = this.camera.worldToScreen(wx, wy, this.w, this.h);
-    // THE LIFT RIDES ITS ROW (Epic1 B1): foreshorten the elevation lift
-    // by depthScale(wy) to match the ground under it — see screenAnchor.
-    // Byte-identical at q=0 (depthScale === 1).
-    p.y -= this.renderLift(wx, wy) * this.camera.scale * this.camera.depthScale(wy);
+    p.y -= this.renderLift(wx, wy) * this.camera.scale;
     return p;
   };
 
@@ -3620,10 +3410,7 @@ export class Renderer {
   private readonly wtsScratch: Vec2 = { x: 0, y: 0 };
   private liftedWTSScratch = (wx: number, wy: number): Vec2 => {
     const p = this.camera.worldToScreenInto(wx, wy, this.w, this.h, this.wtsScratch);
-    // THE LIFT RIDES ITS ROW (Epic1 B1): the bulk lane (particles,
-    // debris, birds) foreshortens its elevation lift by depthScale(wy)
-    // too — see screenAnchor. Byte-identical at q=0.
-    p.y -= this.renderLift(wx, wy) * this.camera.scale * this.camera.depthScale(wy);
+    p.y -= this.renderLift(wx, wy) * this.camera.scale;
     return p;
   };
 
@@ -3634,32 +3421,18 @@ export class Renderer {
    * with a screen-lifted sprite (projectile trails, muzzle/impact
    * bursts, glows) divides the squash back out — a raw `y - PROJ_AIR`
    * rides ~40% low and the trail visibly detaches from the shot.
-   *
-   * THE AIR RIDES ITS ROW (Epic1 B1): the sprite it aligns with lifts by
-   * `PROJ_AIR * spriteScale(y)` (screen px, depthScale-aware via B-1c),
-   * but a fixed world-y offset projects with depthScale² through the
-   * homography — so the glow sinks below the shot as depth grows. Divide
-   * the world offset by depthScale(y) so the projected air height tracks
-   * the sprite's `*depthScale` lift. depthScale === 1 at q=0 → the old
-   * `PROJ_AIR / yScale`, byte-identical.
    */
   private projAirWorldY(y: number): number {
-    return y - PROJ_AIR / (this.camera.yScale * this.camera.depthScale(y));
+    return y - PROJ_AIR / this.camera.yScale;
   }
 
   // ------------------------------------------------------- shadows
 
   /** Screen-px offset of a shadow cast from `hTiles` above the ground. */
-  castOffset(hTiles: number, depthMul = 1): Vec2 {
-    // Epic B (FRV): a ground cast is a WORLD offset (shadowLen·hTiles
-    // tiles along the ground) extruded from an already-leaned base. Under
-    // q>0 the ground beneath the far tip has receded, so the offset must
-    // foreshorten by the ground's local scale THERE (depthMul, the base
-    // row's depthScale) — without it the cast overshoots at ortho length
-    // and lifts off the caster's foot as a floating dark band. depthMul
-    // is 1 at q=0 (and by default), so this is byte-identical to the
-    // ortho frame; callers pass camera.depthScaleAtScreenY(baseY,h).
-    const len = this.sky.shadowLen * hTiles * this.camera.scale * depthMul;
+  castOffset(hTiles: number): Vec2 {
+    // A ground cast is a WORLD offset (shadowLen·hTiles tiles along the
+    // ground) extruded from the caster's base.
+    const len = this.sky.shadowLen * hTiles * this.camera.scale;
     return {
       x: this.sky.shadowX * len,
       y: this.sky.shadowY * len * this.camera.yScale,
@@ -3817,13 +3590,9 @@ export class Renderer {
       this.stageCastBlob(bx, by, hTiles, r, seed, smearW);
       return;
     }
-    // Epic B (FRV): the ground offset foreshortens by the base row's
-    // depthScale (1 at q=0 → byte-identical). Shared by the sun cast and
-    // every light throw so they recede together under lean.
-    const d = this.camera.q !== 0 ? this.camera.depthScaleAtScreenY(by, this.h) : 1;
     const sunC = this.beginCastFill();
     if (sunC) {
-      const off = this.castOffset(hTiles, d);
+      const off = this.castOffset(hTiles);
       this.blobShadowPath(sunC, bx, by, off.x, off.y, r, seed, smearW);
       sunC.fill();
       sunC.globalAlpha = 1;
@@ -3831,7 +3600,7 @@ export class Renderer {
     const throws = this.lightThrows(bx, by, 0.6);
     if (throws.length > 0) {
       const c = this.sdw;
-      const s = this.camera.scale * d;
+      const s = this.camera.scale;
       const ys = this.camera.yScale;
       c.fillStyle = this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN;
       for (const th of throws) {
@@ -3853,11 +3622,7 @@ export class Renderer {
     }
     const c = this.beginCastFill();
     if (!c) return;
-    // Epic B (FRV): foreshorten the extrusion by the base edge's row
-    // depthScale so the far edge seats on the receded ground (1 at q=0).
-    const d =
-      this.camera.q !== 0 ? this.camera.depthScaleAtScreenY((y0 + y1) / 2, this.h) : 1;
-    const off = this.castOffset(hTiles, d);
+    const off = this.castOffset(hTiles);
     c.beginPath();
     c.moveTo(x0, y0);
     c.lineTo(x1, y1);
@@ -3896,14 +3661,11 @@ export class Renderer {
       c.ellipse(px + ox * 0.55, py + oy * 0.55, r * 0.5 + len * 0.5, r * 0.4, ang, 0, Math.PI * 2);
       c.fill();
     };
-    // Epic B (FRV): the sun/light lobes are ground offsets — foreshorten
-    // by the foot row's depthScale (1 at q=0 → byte-identical).
-    const d = this.camera.q !== 0 ? this.camera.depthScaleAtScreenY(py, this.h) : 1;
     if (this.sky.shadowAlpha >= 0.02) {
-      const off = this.castOffset(0.42, d);
+      const off = this.castOffset(0.42);
       lobe(off.x, off.y, this.sky.shadowAlpha * 0.75);
     }
-    const s = this.camera.scale * d;
+    const s = this.camera.scale;
     const ys = this.camera.yScale;
     for (const th of this.lightThrows(px, py, 0.15)) {
       lobe(th.ux * th.len * 0.42 * s, th.uy * th.len * 0.42 * s * ys, th.alpha);
@@ -4085,10 +3847,7 @@ export class Renderer {
    *  baked once, thrown as a quad. */
   private stageCastEdge(x0: number, y0: number, x1: number, y1: number, hTiles: number): void {
     if (this.sky.shadowAlpha < 0.02) return;
-    // Epic B (FRV): foreshorten the extrusion by the base edge's row (1 at q=0).
-    const d =
-      this.camera.q !== 0 ? this.camera.depthScaleAtScreenY((y0 + y1) / 2, this.h) : 1;
-    const off = this.castOffset(hTiles, d);
+    const off = this.castOffset(hTiles);
     if (this.zoomGliding) {
       const bx0 = Math.min(x0, x1) + Math.min(0, off.x);
       const by0 = Math.min(y0, y1) + Math.min(0, off.y);
@@ -4230,13 +3989,10 @@ export class Renderer {
    *  in-sort caller) keeps the honest scratch fallback. */
   private stageCastBlob(bx: number, by: number, hTiles: number, r: number, seed: number, smearW: number): void {
     const throws = this.lightThrows(bx, by, 0.6);
-    // Epic B (FRV): the ground offset foreshortens by the base row's
-    // depthScale, shared by the sun cast and every throw (1 at q=0).
-    const d = this.camera.q !== 0 ? this.camera.depthScaleAtScreenY(by, this.h) : 1;
     if (smearW > 0 || this.zoomGliding) {
-      const off = this.castOffset(hTiles, d);
+      const off = this.castOffset(hTiles);
       let reach = Math.max(Math.abs(off.x), Math.abs(off.y));
-      for (const th of throws) reach = Math.max(reach, th.len * hTiles * this.camera.scale * d * 1.2);
+      for (const th of throws) reach = Math.max(reach, th.len * hTiles * this.camera.scale * 1.2);
       const pad = r * 1.5 + smearW + reach + 2;
       this.stageCastScratch(bx - pad, by - pad, pad * 2, pad * 2, () =>
         this.castBlob(bx, by, hTiles, r, seed, smearW),
@@ -4268,11 +4024,11 @@ export class Renderer {
       this.stageCastQuadAt(en, cx, cy, alpha, m);
     };
     if (this.sky.shadowAlpha >= 0.02) {
-      const off = this.castOffset(hTiles, d);
+      const off = this.castOffset(hTiles);
       emitBlob(r, bx + off.x, by + off.y, Math.min(1, this.sky.shadowAlpha / this.sdwLayerAlpha));
     }
     if (throws.length > 0) {
-      const s = this.camera.scale * d;
+      const s = this.camera.scale;
       const ys = this.camera.yScale;
       for (const th of throws) {
         const ox = th.ux * th.len * hTiles * s;
@@ -4298,13 +4054,11 @@ export class Renderer {
         Math.min(1, alpha / this.sdwLayerAlpha),
       );
     };
-    // Epic B (FRV): foreshorten the ground lobes by the foot row (1 at q=0).
-    const d = this.camera.q !== 0 ? this.camera.depthScaleAtScreenY(py, this.h) : 1;
     if (this.sky.shadowAlpha >= 0.02) {
-      const off = this.castOffset(0.42, d);
+      const off = this.castOffset(0.42);
       lobe(off.x, off.y, this.sky.shadowAlpha * 0.75);
     }
-    const s = this.camera.scale * d;
+    const s = this.camera.scale;
     const ys = this.camera.yScale;
     for (const th of this.lightThrows(px, py, 0.15)) {
       lobe(th.ux * th.len * 0.42 * s, th.uy * th.len * 0.42 * s * ys, th.alpha);
@@ -4413,12 +4167,9 @@ export class Renderer {
     entry: { cv: HTMLCanvasElement; au: number; av: number },
     px: number,
     baseY: number,
-    // B-1c depth thread: the mask bakes at the canonical MASK_S; the caller
-    // passes the depth-scaled screen scale so a distant caster's cast
-    // shrinks with its body. Defaults to camera.scale → identical at q=0.
-    sc: number = this.camera.scale,
   ): void {
-    const q = sc / Renderer.MASK_S;
+    // The mask bakes at the canonical MASK_S; scale it to the screen.
+    const q = this.camera.scale / Renderer.MASK_S;
     const ys = this.camera.yScale;
     const c = this.sdw;
     // On the shadow layer the base transform is a bare dpr scale, so
@@ -4496,15 +4247,15 @@ export class Renderer {
     tile: Tile,
     h: number,
     crowded: boolean,
-    sc: number = this.camera.scale, // B-1c depth thread (foreshortened cast)
   ): void {
     if (this.sky.shadowAlpha < 0.02 && this.frameLights.length === 0) return;
+    const sc = this.camera.scale;
     const B = Renderer.MASK_S;
     const hv = (((h % 8) + 8) % 8) * 2654435761;
     const entry = this.shadowMask(`r${tile}.${hv}.${crowded ? 1 : 0}`, 2.7, 2.0, 0.4, (_m, au, av) => {
       rockArt.drawRockFormation(this, au, av - B * 0.28, B, hv, tile, 0, crowded);
     });
-    if (entry) this.castMask(entry, px, py + sc * 0.28, sc);
+    if (entry) this.castMask(entry, px, py + sc * 0.28);
   }
 
   /**
@@ -4535,18 +4286,7 @@ export class Renderer {
         });
       },
     );
-    // Epic B (FRV): thread the depth-scaled screen scale (like castRockShadow)
-    // so a distant plant's silhouette cast foreshortens instead of shearing
-    // at ortho length. camera.scale at q=0 → byte-identical.
-    if (entry)
-      this.castMask(
-        entry,
-        px,
-        baseY,
-        this.camera.q !== 0
-          ? this.camera.scale * this.camera.depthScaleAtScreenY(baseY, this.h)
-          : this.camera.scale,
-      );
+    if (entry) this.castMask(entry, px, baseY);
   }
 
   /**
@@ -4562,18 +4302,9 @@ export class Renderer {
   pickWorld(sx: number, sy: number): Vec2 {
     const flat = this.camera.screenToWorld(sx, sy, this.w, this.h);
     if (!this.game) return flat;
-    // Under lean a lifted surface at world-depth wy draws its lift
-    // foreshortened by depthScale(wy) (liftedWTS / the elevated draw), so
-    // the inversion must ride the SAME depth-scaled forward model or the
-    // edge of a lifted tile/stair mis-picks. q=0 → lean undefined → the
-    // solve short-circuits to the old affine form (byte-identical).
-    const lean =
-      this.camera.q !== 0
-        ? { q: this.camera.q, scale: this.camera.scale, camY: this.camera.y }
-        : undefined;
     return {
       x: flat.x,
-      y: solveLiftedY(flat.y, this.camera.yScale, (wy) => this.renderLift(flat.x, wy), lean),
+      y: solveLiftedY(flat.y, this.camera.yScale, (wy) => this.renderLift(flat.x, wy)),
     };
   }
 
@@ -4606,12 +4337,12 @@ export class Renderer {
               const level = layer.level;
               const pbA = this.camera.worldToScreen(cx * CHUNK_SIZE, worldTy, this.w, this.h);
               const pbB = this.camera.worldToScreen((cx + 1) * CHUNK_SIZE, worldTy + 1, this.w, this.h);
-              const pbLift = Math.round(level * ELEV_H * s * this.camera.depthScale(worldTy));
+              const pbLift = Math.round(level * ELEV_H * s);
               items.push({
                 sortY: worldTy - 0.01,
                 stageSafe: true,
                 // Stage bounds: the row slice at its lift, plus the
-                // grass layer's blade headroom above and lean slack.
+                // grass layer's blade headroom above and slack.
                 pb: {
                   x: pbA.x - s,
                   y: pbA.y - pbLift - 1.6 * s,
@@ -4631,52 +4362,11 @@ export class Renderer {
                   // every row of a plateau rides the same offset.
                   const pA = this.camera.worldToScreen(cx * CHUNK_SIZE, worldTy, this.w, this.h);
                   const pB = this.camera.worldToScreen((cx + 1) * CHUNK_SIZE, worldTy + 1, this.w, this.h);
-                  // THE LIFT RIDES ITS ROW (Epic B, clause 2): a world
-                  // height must foreshorten by depthScale at its own foot
-                  // row — a flat `camera.scale` lift over-lifts by
-                  // (1/depthScale − 1) up-screen, so distant terraces float
-                  // and settle as you approach. depthScale(worldTy) = 1 at
-                  // q=0 → this rounds to the old value, byte-identical.
-                  const lift = Math.round(level * ELEV_H * s * this.camera.depthScale(worldTy));
+                  const lift = Math.round(level * ELEV_H * s);
                   const x0 = Math.round(pA.x);
                   const y0 = Math.round(pA.y) - lift;
                   const px = baked.px;
                   const gut = bakeGutter(px);
-                  // THE CAMERA LEARNS TO LEAN (B-1b): under a lean the
-                  // lifted row is a TRAPEZOID like the ground chunks —
-                  // the old per-row affine rect mixed the top row's left-x
-                  // with the bottom row's right-x, so adjacent rows didn't
-                  // share edges and the plateau top waved/broke. Project
-                  // all four world corners (unsnapped: shared world
-                  // corners project identically for both neighbours, so
-                  // rows/columns of one level share edges) and shift each
-                  // by the level's single rounded lift. Absent at q=0 =
-                  // today's affine rect, byte-identical.
-                  let ground: StageQuad['ground'];
-                  if (this.camera.q !== 0) {
-                    const cs = CHUNK_SIZE;
-                    const W = this.w;
-                    const H = this.h;
-                    const tl = this.camera.worldToScreen(cx * cs, worldTy, W, H);
-                    const tr = this.camera.worldToScreen((cx + 1) * cs, worldTy, W, H);
-                    const bl = this.camera.worldToScreen(cx * cs, worldTy + 1, W, H);
-                    const br = this.camera.worldToScreen((cx + 1) * cs, worldTy + 1, W, H);
-                    const wTop = 1 / this.camera.depthScale(worldTy);
-                    const wBot = 1 / this.camera.depthScale(worldTy + 1);
-                    ground = {
-                      c: [
-                        tl.x,
-                        tl.y - lift,
-                        tr.x,
-                        tr.y - lift,
-                        bl.x,
-                        bl.y - lift,
-                        br.x,
-                        br.y - lift,
-                      ],
-                      w: [wTop, wTop, wBot, wBot],
-                    };
-                  }
                   if (this.stageAssembling) {
                     this.stageWorldItems.push({
                       kind: 'quad',
@@ -4691,7 +4381,6 @@ export class Renderer {
                       m: [1, 0, 0, 1, x0, y0],
                       alpha: this.stageItemAlpha,
                       blend: StageBlend.SourceOver,
-                      ground,
                     });
                     this.stageWorldStats.quads++;
                   } else {
@@ -4764,15 +4453,26 @@ export class Renderer {
                       this.waterFx(),
                     );
                   }
-                  this.grass.drawRow(
-                    this.ctx,
-                    rowGround,
-                    (tx, ty) => this.fgDetailAt(tx, ty),
-                    rowBounds,
-                    this.liftedWTS,
-                    s,
-                    level,
-                  );
+                  // G-ELEVATED: under ?grass=gpu the raised coat rides the GPU
+                  // (collectGpuElevated), so skip the CPU row draw here to
+                  // avoid double grass. The GPU field having drawn is the gate
+                  // (grassGpuActive); the baked/CPU fallback keeps this path.
+                  // __grassNoElev (probe FLAG law) forces the CPU coat back on
+                  // for the A/B against the GPU one.
+                  if (
+                    !this.grassGpuActive ||
+                    (globalThis as { __grassNoElev?: boolean }).__grassNoElev === true
+                  ) {
+                    this.grass.drawRow(
+                      this.ctx,
+                      rowGround,
+                      (tx, ty) => this.fgDetailAt(tx, ty),
+                      rowBounds,
+                      this.liftedWTS,
+                      s,
+                      level,
+                    );
+                  }
                 },
               });
             }
@@ -4800,12 +4500,8 @@ export class Renderer {
    */
   private drawReflections(game: ClientGame): void {
     const list = this.reflectables;
-    // FR: the mirror composite clips to the water region. At q=0 the clip is
-    // a world-coord Path2D applied through the AFFINE world→screen matrix
-    // (below); under a lean (q>0) that matrix can't carry the perspective
-    // divide, so waterClipFor traces the clip in SCREEN space instead and it
-    // is applied under the identity transform — matching the reflected
-    // sprites, which are already drawn at leaned positions via liftedWTS.
+    // The mirror composite clips to the water region: a world-coord Path2D
+    // applied through the affine world→screen matrix (below).
     if (!this.reflectionsOn) {
       list.length = 0;
       return;
@@ -4891,36 +4587,24 @@ export class Renderer {
     const prior = ctx.getTransform();
     ctx.save();
     const cover = this.waterClip?.cover;
-    if (this.camera.q === 0) {
-      // ORTHO: the clip path is world-coord — apply the affine world→screen
-      // matrix, clip, then restore the prior transform for the composite.
-      const o = this.camera.worldToScreen(0, 0, this.w, this.h);
-      ctx.transform(
-        this.camera.scale,
-        0,
-        0,
-        this.camera.scale * this.camera.yScale,
-        o.x,
-        o.y,
-      );
-      ctx.clip(path);
-      // Structure occlusion: punch the deck-covered cells out of the
-      // mirror (even-odd: outer frame minus disjoint cover rects) so a
-      // reflection dies at the boards and rim joists it would otherwise
-      // paint across.
-      if (cover) ctx.clip(cover, 'evenodd');
-      ctx.setTransform(prior);
-    } else {
-      // LEAN: the clip path is already in CSS SCREEN space (waterClipFor ran
-      // every vertex through camera.worldToScreen, which returns CSS-space
-      // coords). The composite below draws at CSS dest coords under `prior`
-      // (the dpr transform), so the clip must ride the SAME `prior` — the
-      // transform is already `prior` here (only ctx.save() ran), so clip
-      // directly. This lands the clip exactly where liftedWTS drew the
-      // leaned reflected sprites.
-      ctx.clip(path);
-      if (cover) ctx.clip(cover, 'evenodd');
-    }
+    // The clip path is world-coord — apply the affine world→screen
+    // matrix, clip, then restore the prior transform for the composite.
+    const o = this.camera.worldToScreen(0, 0, this.w, this.h);
+    ctx.transform(
+      this.camera.scale,
+      0,
+      0,
+      this.camera.scale * this.camera.yScale,
+      o.x,
+      o.y,
+    );
+    ctx.clip(path);
+    // Structure occlusion: punch the deck-covered cells out of the
+    // mirror (even-odd: outer frame minus disjoint cover rects) so a
+    // reflection dies at the boards and rim joists it would otherwise
+    // paint across.
+    if (cover) ctx.clip(cover, 'evenodd');
+    ctx.setTransform(prior);
     ctx.globalAlpha = 0.38;
     ctx.drawImage(
       this.reflLayer,
@@ -4943,33 +4627,15 @@ export class Renderer {
     game: ClientGame,
     bounds: { minTx: number; maxTx: number; minTy: number; maxTy: number },
   ): Path2D | null {
-    // THE LEANED CLIP (FR): under a lean (q>0) the region and its cover are
-    // traced in SCREEN space (the affine ctx.transform can't carry the
-    // perspective divide), so the cached path MUST NOT be shared between the
-    // ortho and leaned regimes — nor reused across camera motion under the
-    // lean, since a screen-space path moves with the camera even between
-    // tile crossings. The key folds a lean discriminator: '0' when q=0 (the
-    // path is world-space, only bounds+world matter), else the full camera
-    // projection state so any pan/zoom/lean change rebuilds.
-    const q = this.camera.q;
-    const lean =
-      q === 0
-        ? '0'
-        : `${q},${this.camera.x},${this.camera.y},${this.camera.scale},${this.w},${this.h}`;
-    const key = `${bounds.minTx},${bounds.minTy},${bounds.maxTx},${bounds.maxTy},${game.worldVersion},${lean}`;
+    // The path is world-space: only bounds + world matter to the key.
+    const key = `${bounds.minTx},${bounds.minTy},${bounds.maxTx},${bounds.maxTy},${game.worldVersion},0`;
     if (this.waterClip?.key !== key) {
       const ground = (tx: number, ty: number): number | undefined =>
         game.world.elevAt(tx, ty) !== 0 ? undefined : game.world.groundAt(tx, ty);
-      // Under the lean, project every path vertex to screen; at q=0 pass no
-      // projector so the builders take their exact world-coord id path.
-      const project =
-        q === 0
-          ? undefined
-          : (wx: number, wy: number) => this.camera.worldToScreen(wx, wy, this.w, this.h);
       // The wet-cell list stands for THIS frame's visible bounds — the
       // same bounds every rebuild here is keyed on (drawReflections
       // passes visibleTileBounds(), and the ledger builds before it).
-      const path = waterRegionPath(ground, bounds, this.wetLists.cells, project);
+      const path = waterRegionPath(ground, bounds, this.wetLists.cells);
       // THE MIRROR STOPS AT THE STRUCTURE (round 7): the raw water
       // region includes cells the lifted decks paint INTO — fill
       // triangles, fascia bands, the boards' reach into the cell
@@ -4989,30 +4655,10 @@ export class Renderer {
           const fy = bounds.minTy - 4;
           const fw = bounds.maxTx - bounds.minTx + 8;
           const fh = bounds.maxTy - bounds.minTy + 8;
-          if (project) {
-            // Under the lean the cover rides screen space too: the outer
-            // frame and every deck rect become PROJECTED quads (rects are
-            // disjoint in world, so their images stay disjoint on screen —
-            // the even-odd punch is preserved).
-            const quad = (x: number, y: number, w: number, h: number): void => {
-              const a = project(x, y);
-              const b = project(x + w, y);
-              const c = project(x + w, y + h);
-              const d = project(x, y + h);
-              cover!.moveTo(a.x, a.y);
-              cover!.lineTo(b.x, b.y);
-              cover!.lineTo(c.x, c.y);
-              cover!.lineTo(d.x, d.y);
-              cover!.closePath();
-            };
-            quad(fx, fy, fw, fh);
-            for (const r of rects) quad(r.x, r.y, r.w, r.h);
-          } else {
-            // The outer frame: everything KEPT by the even-odd clip…
-            cover.rect(fx, fy, fw, fh);
-            // …minus each deck-covered rect, punched out once.
-            for (const r of rects) cover.rect(r.x, r.y, r.w, r.h);
-          }
+          // The outer frame: everything KEPT by the even-odd clip…
+          cover.rect(fx, fy, fw, fh);
+          // …minus each deck-covered rect, punched out once.
+          for (const r of rects) cover.rect(r.x, r.y, r.w, r.h);
         }
       }
       this.waterClip = { key, path, cover };
@@ -5371,80 +5017,6 @@ export class Renderer {
     return this.dpr();
   }
 
-  /** THE CAMERA LEARNS TO LEAN (Epic B, B-1c): a billboard's size scalar
-   *  — `camera.scale` foreshortened by depth at the sprite's foot. 1×
-   *  depthScale at q=0, so byte-identical until the lean turns on. Every
-   *  point-anchored creature/body/mount draw scales its whole rig by
-   *  this (its screen POSITION already leans through worldToScreen);
-   *  surfaces (walls/cliffs/ground) do NOT use it — they warp per B-1b. */
-  private spriteScale(footY: number): number {
-    return this.camera.scale * this.camera.depthScale(footY);
-  }
-
-  /** THE ARRIVAL FOLLOWS THE FRUSTUM (Epic B, shared-root fix): the
-   *  multiplier the sprite-bake arrival budgets scale by under a lean,
-   *  tracking how much deeper the perspective frustum reaches than the
-   *  ortho view. Ramps with the lean q (0 at q=0 → 1×; full at the B-2
-   *  reference lean) and is HARD-capped at FRUSTUM_FAR_MULT so a
-   *  near-singular grazing lean can never blow the per-frame mint count.
-   *  Returns 1 at q=0, so callers gate on camera.q≠0 and stay
-   *  byte-identical. */
-  private leanFrustumBudgetMult(): number {
-    // B6: keyed to LEAN_ARRIVAL_MULT (3), NOT FRUSTUM_FAR_MULT (5) — the
-    // arrival ramp tracks the frustum's HONEST reach (~2.77× at the shipping
-    // lean), not the grazing-lean cull ceiling. B5 removed the depth re-bakes
-    // the old 5× surplus fed, so that over-mint is standing waste now.
-    return leanBudgetMult(this.camera.q, PERSP_LEAN_REF, LEAN_ARRIVAL_MULT);
-  }
-
-  /** Per-item depth factor for the FX modules (particles/debris/birds) —
-   *  each billboard foreshortens at its OWN world-y, so those modules take
-   *  this callback instead of a single scalar. A stable bound field (no
-   *  per-frame closure). Exactly 1 at q=0 → byte-identical. */
-  private readonly camDepthAt = (wy: number): number => this.camera.depthScale(wy);
-
-  /** THE DEPTH LOD LAW (see LOD_TIER_MIN): the coarse √2 density tier a
-   *  cached sprite whose foot sits at world-row `footY` should bake at,
-   *  so its baked pixels match its EFFECTIVE (depth-scaled) on-screen
-   *  size instead of the flat zoom. 0 at q=0 (depthScale 1) → the flat
-   *  tier → byte-identical. Pass `curTier` (the tier a live sprite was
-   *  last baked at) to apply the hysteresis dead-band so a per-instance
-   *  sprite near a boundary does not re-tier every frame. */
-  private lodTier(footY: number, curTier?: number): number {
-    if (this.camera.q === 0) return 0;
-    // WARP-DOWN (B5a): a per-instance sprite baked at a denser tier is
-    // DOWNSCALED by its blit as it recedes, so its tier RATCHETS — never
-    // re-baking DOWN (the LOD pop as the camera moved) and rising only
-    // when a nearer depth genuinely out-resolves the sheet by a full
-    // step. curTier is passed only by the per-instance callers
-    // (drawPropOutlined / the shrub path); the shared-sheet tree path
-    // passes none, so lodTierWarp reduces to the plain √2 tier there.
-    return lodTierWarp(
-      this.camera.depthScale(footY),
-      curTier,
-      LOD_TIER_HYST,
-      LOD_TIER_MIN,
-      LOD_TIER_MAX,
-    );
-  }
-
-  /** The bake dpr for a depth LOD tier (see lodTier): the frame's dpr
-   *  scaled by the tier's √2 density multiplier. Tier 0 → dpr() exactly
-   *  → byte-identical. Blits read sp.dpr for their source rect, so a
-   *  denser/sparser sheet needs no blit change. */
-  private lodDpr(tier: number): number {
-    return tier === 0 ? this.dpr() : this.dpr() * 2 ** (tier / 2);
-  }
-
-  /** Recover the tier a cached sprite was baked at, from its stored dpr
-   *  (density) relative to the current base dpr — the anchor lodTier's
-   *  hysteresis reads. A base-dpr change (browser zoom) yields a
-   *  fractional result that resnaps, forcing the re-bake that a moved
-   *  device grid needs. */
-  private lodTierOfDpr(spDpr: number): number {
-    return Math.round(Math.log2(spDpr / this.dpr()) * 2);
-  }
-
   /** THE RENDER SCALE (A2): the factor (0 < s ≤ 1) the WebGL stage
    *  rasterizes its backbuffer at, from the live window size, dpr, and
    *  the resolution tier. 1 = native dpr (byte-identical to pre-A2 and
@@ -5569,42 +5141,6 @@ export class Renderer {
       Math.max(TREE_REBAKE_FRAMES, Math.ceil(this.treesVisible / TREE_BAKES_PER_FRAME)),
     );
     this.treesVisible = 0;
-    // B-2: apply the lean dial. Clamp q so the horizon (h/2 − 1/q) stays
-    // safely above the viewport — the moderate-lean invariant (no sky/void
-    // yet). The editor/shot camera stays orthographic (leans would fight a
-    // pinned frame; staticLayerOn also requires q=0 there). leanTarget=0 →
-    // camera.q=0 → byte-identical to every ortho frame.
-    // Clamp q so the horizon stays in the upper band, never past ~h·0.12
-    // down (2.6/h ⇒ hY = h/2 − h/2.6 ≈ 0.115h): a comfortable moderate lean
-    // keeps it off-screen; a CINEMATIC lean (B-5) rises it into view where
-    // the sky fills above (drawGrade). Editor/shot camera stays ortho.
-    // B-2 F0 (THE WORLD COMMITS TO THE LEAN): the lean is only geometrically
-    // sound on the GL stage — the canvas2d ground blit is an axis-aligned
-    // affine that cannot form the perspective trapezoid, so neighbours seam.
-    // WebGL is the one architecture forward; canvas2d is a legacy fallback and
-    // never leans. So q holds at 0 unless the GL ground stage is live (and it
-    // auto-drops to flat on a context loss, the toggle's safety). q=0 stays
-    // byte-identical to every ortho frame.
-    this.camera.q =
-      this.leanTarget > 0 && this.cameraOverride === null && this.stageActive()
-        ? Math.min(this.leanTarget, 2.6 / this.h)
-        : 0;
-    // THE ARRIVAL FOLLOWS THE FRUSTUM (Epic B, the shared-root fix):
-    // the sprite-bake admission ceilings (arrival count + ms) were
-    // tuned for the ORTHO frustum, but the lean frustum reaches
-    // ~FRUSTUM_FAR_MULT× deeper — so a pan under q>0 sweeps in that
-    // many more first-sight prop/flora sprites than the budget admits,
-    // and the surplus SKIPS (props draw as split coalesced runs, the
-    // near ground arrives at a stale tier). Scale both arrival lanes by
-    // the frustum's extra depth so admission keeps pace with reach.
-    // Bounded by the far-reach multiple; count grows with it, ms grows
-    // more gently (it also bounds frame time). q=0 leaves both exactly
-    // at their ortho values set above — byte-identical.
-    if (this.camera.q !== 0) {
-      const mult = this.leanFrustumBudgetMult();
-      this.visArrivalCount = Math.round(this.visArrivalCount * mult);
-      this.visSpriteMsLeft = Math.min(VIS_SPRITE_BAKE_MS, this.visSpriteMsLeft * Math.min(mult, 2));
-    }
     // The sky rules the frame: shadows, exposure, grade all read it.
     this.sky = daylightAt(game.clockHoursNow());
     // UNDERGROUND LAW: the dark band never sees the surface sky. Below
@@ -5694,33 +5230,6 @@ export class Renderer {
     this.ctx.fillStyle = '#141020';
     this.ctx.fillRect(0, 0, this.w, this.h);
 
-    // THE LEAN'S SKY BACKDROP (Epic B, fog-edges): under a lean the ground
-    // plane narrows toward the horizon (far rows compress toward centre,
-    // see projectWorld), so the far LEFT/RIGHT corners of the frame expose
-    // the bare #141020 clear behind the ground's diagonal edge — a HARD
-    // seam on the SIDES that the horizon haze (painted translucent in
-    // drawGrade, AFTER the ground) cannot bury. Paint the hour's sky BEHIND
-    // the ground across the upper frame: solid to just under the horizon,
-    // then a long feather that dies out where the ground has re-widened to
-    // the full frame. The ground overpaints the centre, the exposed side
-    // wedges read as sky (not void), and drawGrade's haze then feathers the
-    // far ground into this SAME sky — no hard edge on any side. q=0 →
-    // skipped entirely, so every ortho frame stays byte-identical.
-    if (this.camera.q > 0) {
-      const fogAmt = Math.min(1, this.camera.q / PERSP_LEAN_REF);
-      const hY = this.h / 2 - 1 / this.camera.q;
-      const [sr, sg, sb] = this.sky.sky;
-      const solidBot = Math.max(0, hY) + this.h * 0.03;
-      const fadeBot = solidBot + this.h * (0.24 + 0.2 * fogAmt);
-      const col = (a: number) => `rgba(${sr | 0}, ${sg | 0}, ${sb | 0}, ${a})`;
-      const back = this.ctx.createLinearGradient(0, 0, 0, fadeBot);
-      back.addColorStop(0, col(1));
-      back.addColorStop(Math.min(0.999, solidBot / fadeBot), col(1));
-      back.addColorStop(1, col(0));
-      this.ctx.fillStyle = back;
-      this.ctx.fillRect(0, 0, this.w, Math.ceil(fadeBot));
-    }
-
     // Kill zoom-pulse: a screen-space scale kick easing back out. The
     // dialogue cinematic adds its slow breath here too — a 0..1.4%
     // swell (never below 1: shrinking would peel the canvas edge) that
@@ -5766,17 +5275,6 @@ export class Renderer {
       this.camera.x,
       this.camera.y,
     );
-    // THE MEADOW RIDES THE LEAN (Epic B, FG): hand grass the frame's
-    // lean so its cached cell blits track the compressed ground. q=0
-    // (the shippable invariant, and legacy canvas mode) leaves every
-    // grass blit byte-identical.
-    this.grass.leanQ = this.camera.q;
-    // THE MEADOW RIDES THE GROUND QUAD (clause 3): hand grass the frame's
-    // depth-scale so each row-cell blits as a perspective trapezoid locked
-    // to the ground (weights 1/depthScale). Null at q=0 = the affine path.
-    this.grass.leanDepthScale =
-      this.camera.q !== 0 ? (wy: number) => this.camera.depthScale(wy) : null;
-
     // The breeze layer: water glints, ripples, portal swirls.
     const bounds = this.visibleTileBounds();
     // Interior regions resolve before lights: the version gate clears
@@ -5792,13 +5290,18 @@ export class Renderer {
       this.ownPX = own.x;
       this.ownPY = own.y;
       this.ugCutOn = game.plane.underground;
-      // THE SHELTER GATE: the reveal only arms while you are INSIDE
-      // somewhere — underground, in any enclosed region, or standing
-      // on man-made floor / a threshold (the floor IS the room: a
-      // broken-open ruin with no enclosure still counts the moment
-      // your feet find its boards). Eased over ~0.35s so entering a
-      // building bows its walls down and leaving raises them, instead
-      // of the old binary region snap.
+      // THE SHELTER GATE: the reveal only arms while you are genuinely
+      // INSIDE a building — underground, inside a defined region, or
+      // holding a doorway threshold (a passage wall-line or a panel
+      // door). Standing on an outdoor man-made floor tile (boardwalk,
+      // path-side plank/stone) NO LONGER arms it: the floor alone is not
+      // a room, and the old "the floor IS the room" rule let a player
+      // out on the open boards peep into the building next door and pay
+      // the reveal's cost for nothing (owner ruling 2026-09). The
+      // behind-walls case survives as the anti-occlusion bowl in
+      // wallHeightAt, which only runs once this gate has armed cutCtx.
+      // Eased over ~0.35s so entering a building bows its walls down and
+      // leaving raises them, instead of a binary region snap.
       const ownT = game.world.groundAt(Math.floor(own.x), Math.floor(own.y));
       // A breach/corridor tile is wall-line by THE BREACH LAW —
       // standing in it is standing in a doorway, so it shelters and
@@ -5810,12 +5313,12 @@ export class Renderer {
         Math.floor(own.x),
         Math.floor(own.y),
       );
-      const sheltered =
-        this.ugCutOn ||
-        this.localRegion !== null ||
-        onPassage ||
-        (ownT !== undefined &&
-          (Renderer.REVEAL_FLOORS.has(ownT) || PANEL_DOOR_TILES.has(ownT)));
+      const sheltered = shelterArmed({
+        underground: this.ugCutOn,
+        insideRegion: this.localRegion !== null,
+        onPassage,
+        onPanelDoor: ownT !== undefined && PANEL_DOOR_TILES.has(ownT),
+      });
       const step = frameDt / 0.35;
       this.shelterK += Math.max(-step, Math.min(step, (sheltered ? 1 : 0) - this.shelterK));
       const shel = this.shelterK * this.shelterK * (3 - 2 * this.shelterK);
@@ -5879,10 +5382,7 @@ export class Renderer {
     this.ownItem = null; // collectEntities re-stashes each frame
     let cover = 0;
     if (this.revealArmed) {
-      // B-1c: the step-aside box is sized to the OWN body's on-screen
-      // extent, so it must foreshorten with the same depthScale the body
-      // does — or the reveal/veil would misalign under a lean.
-      const s = this.spriteScale(this.ownPY);
+      const s = this.camera.scale;
       const a = this.liftedWTS(this.ownPX, this.ownPY);
       // Horse and rider are one silhouette: the step-aside box grows
       // to the mounted envelope so a wall never crops the beast while
@@ -5996,25 +5496,10 @@ export class Renderer {
     // The meadow under everyone's feet: short blades, clumps, flowers.
     // Grass bounds are TIGHT — blades reach < 1 tile up, so the 5-row
     // canopy padding in visibleTileBounds would be ~150 wasted tiles.
-    //
-    // THE CAMERA LEARNS TO LEAN (Epic B, perf): under a lean the frustum
-    // reaches far up-screen to the horizon AND fans out east-west, but
-    // grass blades out there compress to sub-pixel and read as nothing —
-    // processing them (per-blade, the heaviest per-tile pass) is pure
-    // waste. Cap the grass field to the ORTHOGRAPHIC reach on BOTH axes;
-    // the ground and trees still fill the leaned distance, but the meadow
-    // stops where a blade would stop being visible. (B-6 measured: the
-    // north cap alone left the uncapped E-W fan spilling ~3× the columns
-    // into the live path — `grass over` spiked. This closes that.) At q=0
-    // the ortho reach === bounds on every edge, so the caps never bite —
-    // byte-identical to every frame shipped so far.
-    const orthoMinTy = Math.floor(this.camera.y - this.h / 2 / (this.camera.scale * this.camera.yScale)) - 5;
-    const orthoMinTx = Math.floor(this.camera.x - this.w / 2 / this.camera.scale) - 2;
-    const orthoMaxTx = Math.floor(this.camera.x + this.w / 2 / this.camera.scale) + 2;
     const grassBounds = {
-      minTx: Math.max(bounds.minTx, orthoMinTx) + 1,
-      maxTx: Math.min(bounds.maxTx, orthoMaxTx) - 1,
-      minTy: Math.max(bounds.minTy, orthoMinTy) + 3,
+      minTx: bounds.minTx + 1,
+      maxTx: bounds.maxTx - 1,
+      minTy: bounds.minTy + 3,
       maxTy: bounds.maxTy - 1,
     };
     // Arm the meadow's cast BEFORE the under pass builds blades: each
@@ -6118,6 +5603,12 @@ export class Renderer {
       this.grass.collectTall(items, this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
     }
     this.collectElevatedGround(game, items);
+    // G-ELEVATED — THE COAT RIDES THE SHELF: when the GPU meadow drew this
+    // frame, the raised terrain's grass rides the GPU too (one band per row/
+    // level, lifted onto its shelf), emitted here as y-sorted DrawItems that
+    // draw over each elevated ground row. The CPU drawRow inside
+    // collectElevatedGround is skipped in that case (no double grass).
+    this.collectGpuElevated(items, grassBounds);
     cliffArt.collectCliffFaces(this, game, items);
     this.collectRaisedTiles(game, items);
     // G4 — THE OVER-FOOT SKIRT: now that the world collect has recorded this
@@ -6198,13 +5689,9 @@ export class Renderer {
         if (this.visibleRegions.length > 0) {
           for (const region of this.visibleRegions) {
             for (let ty = region.y0; ty <= region.y1; ty++) {
-              // B-3 lift law: the punch must land on the SAME lifted floor
-              // the elevated-ground pass drew — that lift foreshortens by
-              // depthScale at its own row (spriteScale(ty)), so a flat
-              // camera.scale lift here would over-lift a distant raised
-              // room and re-open the sun wedge on its floor under lean.
-              // spriteScale === camera.scale at q=0 → byte-identical.
-              const lift = region.elevLevel * ELEV_H * this.spriteScale(ty);
+              // The punch must land on the SAME lifted floor the
+              // elevated-ground pass drew.
+              const lift = region.elevLevel * ELEV_H * this.camera.scale;
               let run = -1;
               for (let tx = region.x0; tx <= region.x1 + 1; tx++) {
                 const inside = tx <= region.x1 && region.tiles.has(packTile(tx, ty));
@@ -6255,10 +5742,9 @@ export class Renderer {
       sc.fillStyle = '#000';
       for (const region of this.visibleRegions) {
         for (let ty = region.y0; ty <= region.y1; ty++) {
-          // B-3 lift law (see the stage punch above): match the elevated
-          // floor's per-row depthScale lift so the shelter mask stays on
-          // the leaned floor. spriteScale === camera.scale at q=0.
-          const lift = region.elevLevel * ELEV_H * this.spriteScale(ty);
+          // Match the elevated floor's lift (see the stage punch above)
+          // so the shelter mask stays on the raised floor.
+          const lift = region.elevLevel * ELEV_H * this.camera.scale;
           let run = -1;
           for (let tx = region.x0; tx <= region.x1 + 1; tx++) {
             const inside = tx <= region.x1 && region.tiles.has(packTile(tx, ty));
@@ -6414,10 +5900,10 @@ export class Renderer {
     // Birds on the wing cross OVER the world, under the overlay FX —
     // altitude is a screen lift; the turf shadow stays at the ground point.
     for (const bd of this.birds.airborne()) {
-      this.birds.drawOne(this.ctx, bd, this.liftedWTSScratch, this.camera.scale, this.outlineOn, this.birdEnv.tSec, this.camDepthAt);
+      this.birds.drawOne(this.ctx, bd, this.liftedWTSScratch, this.camera.scale, this.outlineOn, this.birdEnv.tSec);
     }
 
-    this.particles.draw(this.ctx, this.liftedWTSScratch, this.camera.scale, this.camDepthAt);
+    this.particles.draw(this.ctx, this.liftedWTSScratch, this.camera.scale);
     // The aim guide rides OVER the world pass: elevated ground repaints
     // the whole plateau as y-sorted items, so drawing it early buried
     // the guide anywhere above level 0 (the drawAimGuide-under-items
@@ -6432,13 +5918,9 @@ export class Renderer {
     // Depth & atmosphere: the exposure pass (multiply lightmap) sets
     // the scene's darkness, THEN emissive bloom pops over it, then the
     // tilted-camera tilt-shift bands and the grade. HUD stays crisp.
-    // THE SHADE LEARNS TO LEAN: the lightmap is built at the ORTHO
-    // origin (the q=0 worldToScreen(0,0)) and the exposure composite
-    // applies the full perspective homography once. Passing the leaned
-    // origin here would double-lean; at q=0 the two origins coincide, so
-    // the map build stays byte-identical.
-    const orthoOx = camOriginX(this.camera.scale, this.camera.x, this.camera.snapDpr, this.w);
-    const orthoOy = camOriginY(this.camera.scale, this.camera.yScale, this.camera.y, this.camera.snapDpr, this.h);
+    // The lightmap is built at the camera origin (worldToScreen(0,0)).
+    const camOx = this.camera.originX(this.w);
+    const camOy = this.camera.originY(this.h);
     // Lit-face heights in world-y units: faces rise N tiles of SCREEN
     // height, so divide the camera squash back out.
     const ys = this.camera.yScale;
@@ -6456,7 +5938,7 @@ export class Renderer {
     try {
       this.lighting.draw(
         this.ctx,
-        { w: this.w, h: this.h, scale: this.camera.scale, yScale: ys, ox: orthoOx, oy: orthoOy, q: this.camera.q },
+        { w: this.w, h: this.h, scale: this.camera.scale, yScale: ys, ox: camOx, oy: camOy },
         this.sky,
         this.lights,
         this.blocksAt,
@@ -6586,7 +6068,6 @@ export class Renderer {
     this.evictEases();
     this.evictAnims();
     this.evictTreeSprites();
-    this.evictVolRings();
     this.perfMark('post');
   }
 
@@ -7149,47 +6630,6 @@ export class Renderer {
     sky.addColorStop(1, `rgba(${hr | 0}, ${hg | 0}, ${hb | 0}, 0)`);
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, this.w, this.h * 0.34);
-    // THE HORIZON FOG (Epic B, B-6): under a lean the far ground compresses
-    // to the horizon and the frustum is capped there — atmospheric haze
-    // washes that far band into the hour's sky, giving the vista real depth
-    // AND burying the far cut so the cap can pull in (levers 1-2 pay for
-    // each other). It rides the SAME sky colour as the haze above, only
-    // deeper and anchored to the lean. Eases in with q; OFF at q=0 (no
-    // horizon) → the frame is byte-identical to every ortho frame shipped.
-    if (this.camera.q > 0) {
-      const fogAmt = Math.min(1, this.camera.q / PERSP_LEAN_REF);
-      const c = (a: number) => `rgba(${hr | 0}, ${hg | 0}, ${hb | 0}, ${a})`;
-      // The horizon screen row (h/2 − 1/q). Below the viewport top (< 0) at
-      // a moderate lean — then the fog rides from the top exactly as before
-      // (byte-compatible). At a CINEMATIC lean it rises INTO view.
-      const hY = this.h / 2 - 1 / this.camera.q;
-      // THE SKYLINE (Epic B, B-5): where the horizon is in view there is no
-      // ground above it — a real SKY fills the void, DEEPER up high (cooler,
-      // and it sinks with the hour) and meeting the horizon haze exactly at
-      // the line, so sky → haze → receding ground read as one atmosphere.
-      if (hY > 0.5) {
-        const deep = (v: number, k: number) => Math.max(0, Math.round(v * (1 - k)));
-        const skyG = ctx.createLinearGradient(0, 0, 0, hY);
-        skyG.addColorStop(0, `rgb(${deep(hr, 0.14)}, ${deep(hg, 0.09)}, ${deep(hb, 0.02)})`);
-        skyG.addColorStop(1, `rgb(${hr | 0}, ${hg | 0}, ${hb | 0})`);
-        ctx.fillStyle = skyG;
-        ctx.fillRect(0, 0, this.w, Math.ceil(hY) + 1);
-      }
-      // THE HORIZON FOG (B-6): the far ground compresses to the horizon and
-      // the frustum is capped there; atmospheric haze washes that far band
-      // into the hour's sky — anchored AT the horizon (or the top, when the
-      // horizon is off-screen) and fading DOWN into the near ground. Buries
-      // the far cut so the cap can pull in. Eases in with q.
-      const fogTop = Math.max(0, hY);
-      const bandH = this.h * (0.26 + 0.22 * fogAmt);
-      const peak = Math.min(1, (ha + 0.28) * (0.45 + 0.55 * fogAmt));
-      const fog = ctx.createLinearGradient(0, fogTop, 0, fogTop + bandH);
-      fog.addColorStop(0, c(peak));
-      fog.addColorStop(0.55, c(peak * 0.42));
-      fog.addColorStop(1, c(0));
-      ctx.fillStyle = fog;
-      ctx.fillRect(0, fogTop, this.w, bandH);
-    }
     ctx.save();
     ctx.globalCompositeOperation = 'soft-light';
     // Underground the grade stands down: the cool bottom-wash and the
@@ -7865,23 +7305,17 @@ export class Renderer {
     return this.fgWorld && this.game ? this.detailAt(this.game, tx, ty) : 0;
   }
 
-  // B6: visibleTileBounds is queried ~13× per frame (every per-tile scan
-  // and every collect pass reads it), and each q>0 query unprojects four
-  // screen corners. The camera is settled for the whole frame before the
-  // first query, so the bounds are constant across the frame — memoize on
-  // the exact camera signature and skip the repeat unprojects. Result-
-  // identical (the same math, gated on an exact field-equality check), so
-  // q=0 stays byte-identical. Returns a shared object read immediately by
-  // every caller (all `const b = this.visibleTileBounds()` locals).
+  // visibleTileBounds is queried ~13× per frame (every per-tile scan and
+  // every collect pass reads it). The camera is settled for the whole
+  // frame before the first query, so the bounds are constant across the
+  // frame — memoize on the exact camera signature. Result-identical (the
+  // same math, gated on an exact field-equality check). Returns a shared
+  // object read immediately by every caller (all `const b =
+  // this.visibleTileBounds()` locals).
   private readonly _vtb = { minTx: 0, maxTx: 0, minTy: 0, maxTy: 0 };
-  // B6: reused per-row projection captures for drawGroundChunks' chunk-corner
-  // loop (every chunk in a cy row shares two world rows).
-  private readonly _rpTop: RowProj = { y: 0, xa: 0, xb: 0 };
-  private readonly _rpBot: RowProj = { y: 0, xa: 0, xb: 0 };
   private _vtbX = NaN;
   private _vtbY = NaN;
   private _vtbS = NaN;
-  private _vtbQ = NaN;
   private _vtbYS = NaN;
   private _vtbW = -1;
   private _vtbH = -1;
@@ -7892,7 +7326,6 @@ export class Renderer {
       c.x === this._vtbX &&
       c.y === this._vtbY &&
       c.scale === this._vtbS &&
-      c.q === this._vtbQ &&
       c.yScale === this._vtbYS &&
       this.w === this._vtbW &&
       this.h === this._vtbH
@@ -7907,7 +7340,6 @@ export class Renderer {
     this._vtbX = c.x;
     this._vtbY = c.y;
     this._vtbS = c.scale;
-    this._vtbQ = c.q;
     this._vtbYS = c.yScale;
     this._vtbW = this.w;
     this._vtbH = this.h;
@@ -7922,124 +7354,20 @@ export class Renderer {
     // shared pads for one tall class, every consumer pays for the extra
     // rows (the grass pass even shrinks them).
     const orthoRows = this.h / 2 / (s * this.camera.yScale);
-    if (this.camera.q === 0) {
-      // The pitched-orthographic frustum is an axis-aligned rect — the
-      // affine inverse, byte-identical to every frame shipped so far.
-      return {
-        minTx: Math.floor(this.camera.x - this.w / 2 / s) - 2,
-        maxTx: Math.floor(this.camera.x + this.w / 2 / s) + 2,
-        minTy: Math.floor(this.camera.y - orthoRows) - 5,
-        maxTy: Math.floor(this.camera.y + orthoRows) + 2,
-      };
-    }
-    // THE CAMERA LEARNS TO LEAN (Epic B): under a lean the visible
-    // region is a TRAPEZOID to the horizon — far (top) rows are wider
-    // and MUCH deeper, so an ortho rect (or a fixed far multiple that
-    // undershoots the real reach) leaves the far band UNCOLLECTED and
-    // ground/tables/props POP OUT there. Take the far edge from the real
-    // frustum: unproject the four screen corners, but read the FAR pair
-    // at a row held a margin below the horizon — never AT it, where the
-    // unproject divisor is singular and the reach diverges. When the
-    // horizon is off-screen (a moderate lean) that far row IS the top
-    // edge, so the honest deep+wide reach (~3.5× ortho at the shipping
-    // lean) is collected whole; when the horizon rises into view the far
-    // row rides down with it so the cut stays inside the horizon fog and
-    // we never over-collect the compressed near-horizon band. A hard
-    // FRUSTUM_FAR_MULT ceiling still bounds the pathological grazing lean.
-    const W = this.w;
-    const H = this.h;
-    // The deepest screen row still collected: below the horizon by the
-    // margin (so the divisor is well-conditioned), clamped to the top
-    // edge when the horizon is off-screen above it (max(0, …) → 0).
-    const hY = horizonScreenY(this.camera.q, H);
-    const farY = Math.max(0, hY + H * FRUSTUM_HORIZON_MARGIN_FRAC);
-    const f0 = this.camera.screenToWorld(0, farY, W, H);
-    const f1 = this.camera.screenToWorld(W, farY, W, H);
-    const n0 = this.camera.screenToWorld(0, H, W, H);
-    const n1 = this.camera.screenToWorld(W, H, W, H);
-    // Hard ceiling: even the margin cannot save a lean whose far row is
-    // driven near the singularity — clamp the WORLD far row so the bake
-    // set can never swallow the whole map.
-    const farMinTy = this.camera.y - orthoRows * FRUSTUM_FAR_MULT;
-    const minTy = Math.max(farMinTy, Math.min(f0.y, f1.y, n0.y, n1.y));
+    // The pitched-orthographic frustum is an axis-aligned rect — the
+    // affine inverse.
     return {
-      minTx: Math.floor(Math.min(f0.x, f1.x, n0.x, n1.x)) - 2,
-      maxTx: Math.ceil(Math.max(f0.x, f1.x, n0.x, n1.x)) + 2,
-      minTy: Math.floor(minTy) - 5,
-      maxTy: Math.ceil(Math.max(n0.y, n1.y)) + 2,
+      minTx: Math.floor(this.camera.x - this.w / 2 / s) - 2,
+      maxTx: Math.floor(this.camera.x + this.w / 2 / s) + 2,
+      minTy: Math.floor(this.camera.y - orthoRows) - 5,
+      maxTy: Math.floor(this.camera.y + orthoRows) + 2,
     };
   }
 
-  /**
-   * Bake resolution follows the zoom tier: past ~1.05× the 32px bakes
-   * would upscale into mush, so chunks re-bake at 64px/tile. Keyed off
-   * targetZoom (not the gliding zoom) so a zoom flips the tier once.
-   *
-   * THE CAMERA LEARNS TO LEAN (Epic B): under a lean the near-field
-   * ground is MAGNIFIED by the perspective quad (depthScale > 1 at the
-   * bottom of the screen — up to ~2.3× at the clamped max lean). A
-   * material boundary (a stone plaza meeting grass, a paved lane meeting
-   * a field) is contoured and anti-aliased INTO the chunk texture at
-   * bake resolution; that sub-texel AA reads clean when the chunk is
-   * drawn ~1.25× at q=0, but once the near rows are blown up ~2-3× the
-   * boundary's staircase risers (one per baked texel row) grow past a
-   * device pixel and the diagonal edge visibly STAIR-STEPS. The bake
-   * needs more pixels-per-tile to feed the enlarged near-field. We take
-   * the 64px tier whenever the camera is actually leaning so bilinear
-   * has twice the texels to smooth the boundary across. q === 0 is
-   * untouched → byte-identical to every ortho frame. (Uniform, not
-   * per-chunk, so it flips ONCE when the lean toggles rather than
-   * re-baking chunks as they cross a depth threshold on every pan — the
-   * depth-aware per-chunk refinement is deferred, see the plan.)
-   */
+  /** Bake pixels per tile: the zoom tier (64px past 1.05× so the
+   *  material-edge AA has texels to spare, 32px otherwise). */
   private bakePx(): number {
-    if (this.camera.q !== 0) return TILE_PX * 2;
     return this.camera.targetZoom > 1.05 ? TILE_PX * 2 : TILE_PX;
-  }
-
-  /**
-   * THE GROUND RESOLUTION WARPS DOWN (THE ONE RENDER, B5a): the bake
-   * resolution for ONE chunk under a lean. The uniform bakePx() above
-   * took 64px for EVERY visible chunk the moment the camera leaned — but
-   * only the NEAR field is magnified enough to need it; the far field is
-   * compressed toward the horizon and paid 4× memory + fill for texels it
-   * never shows. Here each chunk picks its tier from its NEAREST (south)
-   * edge `depthScale`: a chunk whose near edge is at or past the look-at
-   * (depthScale ≥ 1, magnified, bottom of the screen) bakes at 64px so the
-   * material-edge AA still reads clean under the near-field blow-up; a
-   * chunk whose near edge is still north of the look-at only ever minifies
-   * and bakes at 32px — the pre-lean value, oversampled when drawn <1×.
-   *
-   * WARP-DOWN, not re-bake: the 64px NEAR tier covers the whole near band
-   * up to the clamped max lean, and the GL stage warps a baked chunk
-   * perspective-correct (StageQuad.ground) — so a chunk baked at its near
-   * edge stays crisp at EVERY farther depth for free. This is a ONE-TIME
-   * mint decision: the caller never re-bakes a chunk because its depth
-   * later crossed the boundary (that churn is the "LOD flips as you move"
-   * defect, and its re-bakes were what left a near chunk carried in coarse
-   * BLURRY until you walked). A near chunk carried in at the sparse tier —
-   * minted during the lean ramp or a glide, before it entered the near
-   * band — is topped up by the STATIONARY deficit lane (B5b), not by a
-   * depth re-bake; see drawGroundChunks.
-   *
-   * q === 0 → returns exactly bakePx() (the zoom tier), so the flat game
-   * is byte-identical to every ortho frame ever shipped.
-   */
-  private chunkBakePx(cy: number): number {
-    if (this.camera.q === 0) return this.bakePx();
-    // WARP-DOWN (B5a): classify by the chunk's NEAREST (south) edge, not
-    // its center — a chunk magnifies most at its near edge, and a chunk
-    // straddling the look-at is half blown-up but was baked at the FAR
-    // tier under the old center rule (the "blurry until you walk" root:
-    // its center read <1, so it minted sparse and no depth re-bake ever
-    // fixed it while stationary). The near-worst NEAR tier covers the
-    // whole near band up to the clamped max lean; warp-down keeps it
-    // crisp at every farther depth, so this is a ONE-TIME mint decision —
-    // the caller never re-bakes a chunk because its depth later crossed
-    // the boundary. A chunk whose near edge is still north of the look-at
-    // only ever minifies, so the sparse FAR tier stays oversampled.
-    const nearEdgeDs = this.camera.depthScale((cy + 1) * CHUNK_SIZE);
-    return chunkBakePxWarp(TILE_PX * 2, TILE_PX, nearEdgeDs);
   }
 
   private drawGroundChunks(game: ClientGame): void {
@@ -8049,9 +7377,6 @@ export class Renderer {
     const maxCx = Math.floor(b.maxTx / CHUNK_SIZE);
     const minCy = Math.floor(b.minTy / CHUNK_SIZE);
     const maxCy = Math.floor(b.maxTy / CHUNK_SIZE);
-    // THE GROUND RESOLUTION LEANS: bake px is now chosen PER CHUNK from
-    // its depth (chunkBakePx) rather than one uniform bakePx() for the
-    // whole viewport — see each chunk's chunkPx below.
     // Stage lane, frame start: budgets and confession counters reset;
     // quads/late-blits were drained by last frame's flush.
     const stage = this.stageActive();
@@ -8084,9 +7409,6 @@ export class Renderer {
     // the ground under the player's feet re-bakes before the screen
     // corner does. An unstarted stale entry keeps its old blit.
     this.replaceQueue.length = 0;
-    // B5b: the stationary near-field resolution-deficit lane, refilled
-    // by the visible scan below.
-    this.deficitQueue.length = 0;
 
     // NO VISIBLE CHUNK GOES UNPAINTED (2026-08-18). Brand-new chunk
     // starts used to be PACED at 4 per frame: each live start pays a
@@ -8106,27 +7428,13 @@ export class Renderer {
     // there is on screen to hole.
     let newStarts = 0;
 
-    const cam = this.camera;
+    const chunkPx = this.bakePx();
     for (let cy = minCy; cy <= maxCy; cy++) {
-      // B6: every chunk in this cy row shares two world rows — the chunk-top
-      // row (cy*CHUNK_SIZE) and the chunk-bottom row ((cy+1)*CHUNK_SIZE).
-      // Capture each row's affine x-map ONCE here (rowProject samples the
-      // real projectWorld, so the memo is identical to worldToScreen by
-      // construction, at q=0 and q>0), then read every corner below as a
-      // multiply-add instead of a full per-corner homography.
-      rowProject(cam.scale, cam.yScale, cam.x, cam.y, cam.q, cam.snapDpr, cy * CHUNK_SIZE, this.w, this.h, this._rpTop);
-      rowProject(cam.scale, cam.yScale, cam.x, cam.y, cam.q, cam.snapDpr, (cy + 1) * CHUNK_SIZE, this.w, this.h, this._rpBot);
-      const rpTop = this._rpTop;
-      const rpBot = this._rpBot;
       for (let cx = minCx; cx <= maxCx; cx++) {
         const data = game.world.get(cx, cy);
         if (!data) continue;
         const key = `${cx},${cy}`;
         let baked = this.baked.get(key);
-        // WARP-DOWN (B5a): the resolution this chunk wants at its NEAREST
-        // edge — the near-worst tier it will ever need, warped down to
-        // whatever depth it currently sits at.
-        const chunkPx = this.chunkBakePx(cy);
         if (!baked) {
           // Brand-new VISIBLE chunk: start a live job unconditionally —
           // the placeholder blits this same frame, so streaming never
@@ -8146,55 +7454,25 @@ export class Renderer {
           // fringe 0 / full 13 on the very hardware the lever is
           // for. Own-content changes still restart unconditionally.
           const p = baked.pending;
-          // FJ-2: an in-flight bake started under the wrong lean state
-          // (its deck carpentry burned in or missing) must restart whole.
-          const leanFlip = p.standingPass !== (this.camera.q !== 0);
-          if (leanFlip || p.data !== data || p.rev !== (data.rev ?? 0)) {
+          if (p.data !== data || p.rev !== (data.rev ?? 0)) {
             const dRev = (data.rev ?? 0) - p.rev;
             const dFr = (data.fringeRev ?? 0) - p.fringeRev;
             const pureFringe =
-              !leanFlip && this.fringeOn && p.data === data && dRev > 0 && dRev === dFr;
+              this.fringeOn && p.data === data && dRev > 0 && dRev === dFr;
             if (!pureFringe) this.replaceQueue.push({ baked, cx, cy, data, px: chunkPx });
           }
         } else if (
           baked.data !== data ||
           baked.rev !== (data.rev ?? 0) ||
-          // FJ-2: lean-state flip — the flat bake's deck carpentry is
-          // now wrong (present at q=0, must be absent at q≠0, or v.v.).
-          (baked.leanBaked ?? false) !== (this.camera.q !== 0) ||
-          // ZOOM tier flip (q=0 only): bakePx steps 32↔64 as targetZoom
-          // crosses 1.05. This is a genuine RESOLUTION change of the flat
-          // ground, paced through the replace queue exactly as ever, and
-          // waits out the glide (a mid-glide re-bake would render for a
-          // scale the camera hasn't reached). Under a LEAN this branch is
-          // gone — a depth crossing no longer re-bakes (WARP-DOWN, B5a);
-          // the near-field deficit lane below tops up the sparse ones.
-          (this.camera.q === 0 && baked.px !== chunkPx && !this.zoomGliding)
+          // ZOOM tier flip: bakePx steps 32↔64 as targetZoom crosses
+          // 1.05. This is a genuine RESOLUTION change of the flat ground,
+          // paced through the replace queue exactly as ever, and waits
+          // out the glide (a mid-glide re-bake would render for a scale
+          // the camera hasn't reached).
+          (baked.px !== chunkPx && !this.zoomGliding)
         ) {
           // Content / zoom-tier re-bake behind the old blit.
           this.replaceQueue.push({ baked, cx, cy, data, px: chunkPx });
-        } else if (
-          // STATIONARY NEAR-FIELD RESOLUTION (B5b): a cached near chunk
-          // whose CURRENT depth out-resolves its baked texture — it is
-          // being warped UP from too few texels (blurry though the world
-          // is still). This is NOT a content re-bake and NOT paced by the
-          // glide/replace cap: bounded to the near ring under the player
-          // and started on a priority lane, so standing still resolves
-          // sharp within a frame or two, then goes quiet (deficit gone
-          // once the dense tier lands). Only while settled — a glide is
-          // changing depth, so the top-up waits for it to end.
-          this.camera.q !== 0 &&
-          !this.zoomGliding &&
-          chunkResDeficit(baked.px, chunkPx) &&
-          inNearRing(
-            cx,
-            cy,
-            Math.floor(this.camera.x / CHUNK_SIZE),
-            Math.floor(this.camera.y / CHUNK_SIZE),
-            NEAR_RING_RADIUS,
-          )
-        ) {
-          this.deficitQueue.push({ baked, cx, cy, data, px: chunkPx });
         }
         if (baked.pending) this.chunkJobQueue.push(baked);
         // SHARED-CORNER SNAP LAW: each chunk's destination rect comes
@@ -8206,12 +7484,10 @@ export class Renderer {
         // half-covered darkened edge pixels. Rounding happens on THE
         // DEVICE GRID: a CSS-integer corner under a fractional dpr
         // still splits a device pixel, and both blits half-cover it.
-        const p0x = rowProjectX(rpTop, cx * CHUNK_SIZE);
-        const p0y = rpTop.y;
-        const p1x = rowProjectX(rpBot, (cx + 1) * CHUNK_SIZE);
-        const p1y = rpBot.y;
-        const x0 = this.camera.snapPx(p0x);
-        const y0 = this.camera.snapPx(p0y);
+        const p0 = this.camera.worldToScreen(cx * CHUNK_SIZE, cy * CHUNK_SIZE, this.w, this.h);
+        const p1 = this.camera.worldToScreen((cx + 1) * CHUNK_SIZE, (cy + 1) * CHUNK_SIZE, this.w, this.h);
+        const x0 = this.camera.snapPx(p0.x);
+        const y0 = this.camera.snapPx(p0.y);
         this.ctx.imageSmoothingEnabled = true;
         // Chunks are baked square and drawn uniformly foreshortened —
         // the ground compresses evenly while heights stay full. The
@@ -8220,34 +7496,10 @@ export class Renderer {
         // edge (the old hairline-seam bug).
         const gut = bakeGutter(baked.px);
         const srcSz = CHUNK_SIZE * baked.px;
-        const dw = this.camera.snapPx(p1x) - x0;
-        const dh = this.camera.snapPx(p1y) - y0;
-        // THE CAMERA LEARNS TO LEAN (B-1b): under a lean the chunk is a
-        // TRAPEZOID, not an axis-aligned rect — project all four world
-        // corners (unsnapped: shared world corners project identically
-        // for both neighbours, so edges align without device snapping)
-        // and carry their perspective weights. Absent at q=0 = the old
-        // snapped 2-corner rect, byte-identical.
-        let ground: StageQuad['ground'];
-        if (this.camera.q !== 0) {
-          const cs = CHUNK_SIZE;
-          // B6: same row memo — the four corners lie on the two captured
-          // rows (top rpTop, bottom rpBot), identical to projecting each.
-          const tlx = rowProjectX(rpTop, cx * cs);
-          const trx = rowProjectX(rpTop, (cx + 1) * cs);
-          const blx = rowProjectX(rpBot, cx * cs);
-          const brx = rowProjectX(rpBot, (cx + 1) * cs);
-          const ty = rpTop.y;
-          const by = rpBot.y;
-          const wTop = 1 / this.camera.depthScale(cy * cs);
-          const wBot = 1 / this.camera.depthScale((cy + 1) * cs);
-          ground = {
-            c: [tlx, ty, trx, ty, blx, by, brx, by],
-            w: [wTop, wTop, wBot, wBot],
-          };
-        }
+        const dw = this.camera.snapPx(p1.x) - x0;
+        const dh = this.camera.snapPx(p1.y) - y0;
         if (stage) {
-          this.stageEmitChunk(baked, gut, srcSz, x0, y0, dw, dh, ground);
+          this.stageEmitChunk(baked, gut, srcSz, x0, y0, dw, dh);
         } else {
           this.ctx.drawImage(baked.canvas, gut, gut, srcSz, srcSz, x0, y0, dw, dh);
         }
@@ -8265,9 +7517,7 @@ export class Renderer {
         if (!data) continue;
         const key = `${cx},${cy}`;
         const baked = this.baked.get(key);
-        // Off-screen ring: bake at the near-worst tier for this row too
-        // (WARP-DOWN, B5a) so a pre-baked chunk arrives already crisp.
-        const rpx = this.chunkBakePx(cy);
+        const rpx = this.bakePx();
         if (!baked) {
           const entry = this.startChunkEntry(game, cx, cy, data, rpx, true);
           this.chunkJobQueue.push(entry);
@@ -8292,18 +7542,7 @@ export class Renderer {
         (a, b) =>
           (a.cx - ccx) ** 2 + (a.cy - ccy) ** 2 - ((b.cx - ccx) ** 2 + (b.cy - ccy) ** 2),
       );
-      // THE GROUND KEEPS PACE WITH THE FRUSTUM (Epic B): under a lean
-      // the near field wants the 64px tier but a fresh chunk streams in
-      // at the base/stale tier and upgrades only CHUNK_REPLACE_STARTS at
-      // a time — soft, seamy ground while walking. The deeper frustum
-      // also queues more tier flips per pan. Start more replacements per
-      // frame under lean (still bounded, still center-first, still
-      // behind CHUNK_POOL_BUDGET) so the near tier lands promptly. q=0
-      // keeps the exact ortho pacing — byte-identical.
-      const starts =
-        this.camera.q !== 0
-          ? Math.round(CHUNK_REPLACE_STARTS * this.leanFrustumBudgetMult())
-          : CHUNK_REPLACE_STARTS;
+      const starts = CHUNK_REPLACE_STARTS;
       const n = Math.min(starts, this.replaceQueue.length);
       for (let i = 0; i < n; i++) {
         const r = this.replaceQueue[i]!;
@@ -8311,23 +7550,6 @@ export class Renderer {
         if (!this.chunkJobQueue.includes(r.baked)) this.chunkJobQueue.push(r.baked);
       }
       this.replaceQueue.length = 0;
-    }
-
-    // STATIONARY NEAR-FIELD RESOLUTION LANE (B5b): top up near-ring
-    // chunks carried in at the sparse tier — UNCAPPED (not the paced
-    // CHUNK_REPLACE_STARTS the depth-crossing churn used to ride) but
-    // bounded by construction to NEAR_RING_RADIUS's 3×3, so at most a
-    // handful of starts. The bake itself is still time-sliced by the
-    // CHUNK_BAKE_MS budget below and swaps atomically behind the old
-    // blit, so a top-up costs uploads, never a hole or a hitch. Standing
-    // still, this fires once per deficient chunk and then goes quiet —
-    // the "blurry until you walk" report cured without a step taken.
-    if (this.deficitQueue.length > 0) {
-      for (const r of this.deficitQueue) {
-        this.startChunkReplace(r.baked, game, r.cx, r.cy, r.data, r.px);
-        if (!this.chunkJobQueue.includes(r.baked)) this.chunkJobQueue.push(r.baked);
-      }
-      this.deficitQueue.length = 0;
     }
 
     // THE BAKE BUDGET: advance queued jobs until the per-frame slice
@@ -8425,7 +7647,6 @@ export class Renderer {
     y0: number,
     dw: number,
     dh: number,
-    ground?: StageQuad['ground'],
   ): void {
     const gl = this.stageGl!;
     let tex = baked.stageTex;
@@ -8452,16 +7673,8 @@ export class Renderer {
     this.stageUpMsLeft -= r.spentMs;
     if (r.state === 'absent') {
       this.stageStats.absent++;
-      // THE CAMERA LEARNS TO LEAN (B-1b): the late lane is a 2d affine
-      // ctx.drawImage of the CPU canvas — correct only when the ground is
-      // an axis-aligned rect. Under a lean (ground present) an affine blit
-      // would seam against its neighbours' perspective trapezoids, so
-      // DEFER the chunk: skip it this frame and let the upload retry next
-      // frame, landing as a correct GL trapezoid rather than a warped
-      // rect. At q=0 (no ground) the affine fallback is byte-identical.
-      if (!ground) {
-        this.stageLate.push({ c: baked.canvas, sx: gut, sy: gut, ss: srcSz, x0, y0, dw, dh });
-      }
+      // The late lane: a 2d affine ctx.drawImage of the CPU canvas.
+      this.stageLate.push({ c: baked.canvas, sx: gut, sy: gut, ss: srcSz, x0, y0, dw, dh });
       return;
     }
     if (r.state === 'stale') this.stageStats.stale++;
@@ -8477,7 +7690,6 @@ export class Renderer {
       m: [1, 0, 0, 1, x0, y0],
       alpha: 1,
       blend: StageBlend.SourceOver,
-      ground,
     });
   }
 
@@ -9093,10 +8305,6 @@ export class Renderer {
       if (level === 0 && minLevel >= 0) continue;
       levels.push(level);
     }
-    // FJ-2: under a lean the deck vertical carpentry is omitted from
-    // the flat bake (the standing pass draws it projected). Captured at
-    // job start; a lean flip forces a full re-bake (see leanBaked).
-    const standingPass = this.camera.q !== 0;
     return {
       job: startChunkBake(
         ground,
@@ -9109,7 +8317,6 @@ export class Renderer {
         live,
         this.takeChunkCanvas(bakePx),
         fringe,
-        standingPass,
       ),
       levels,
       lifted: [],
@@ -9122,11 +8329,10 @@ export class Renderer {
         // bake's row scan, so hand it a pooled-canvas taker keyed on the
         // row count it computes, not a pre-sized square.
         startElevatedBake(ground, detail, elev, cx, cy, bakePx, level, (rows) =>
-          this.takeChunkCanvas(bakePx, rows), standingPass,
+          this.takeChunkCanvas(bakePx, rows),
         ),
       fringeRev: data.fringeRev ?? 0,
       fringeMask: fringe?.mask ?? data.fringeMask ?? 0,
-      standingPass,
     };
   }
 
@@ -9184,9 +8390,6 @@ export class Renderer {
     entry.data = p.data;
     entry.rev = p.rev;
     entry.px = p.px;
-    // FJ-2: record the lean state this bake settled under, so a later
-    // q flip re-bakes rather than reusing burned-in (or missing) fascia.
-    entry.leanBaked = p.standingPass;
     // THE FRINGE RE-BAKE's settlement: the baseline advances to the
     // build-time capture and the consumed mask bits clear — bits set
     // mid-job survive for the restart the rev mismatch forces.
@@ -9368,12 +8571,10 @@ export class Renderer {
         if (this.treeSprites.size <= 560) break;
       }
     }
-    // THE SPECIES SHEET, tiered: the shared bake used to be bounded
-    // (~species × 16 variants) and rode NO sweep. THE DEPTH LOD LAW
-    // splits it by depth tier, so a leaning walk leaves cold tier sheets
-    // behind (the tiers you were standing among). Drop sheets unseen for
-    // ~4s and, under a hard cap, the coldest — q=0 has only tier 0, so
-    // the population never leaves the old bound and this never fires.
+    // THE SPECIES SHEET: the shared bake is bounded (~species × 16
+    // variants). Drop sheets unseen for ~4s and, under a hard cap, the
+    // coldest — the population never leaves that bound in practice, so
+    // this is a backstop.
     for (const [key, sp] of this.treeVariantSprites) {
       if (sp.used < cutoff) {
         this.treeVariantSprites.delete(key);
@@ -9556,14 +8757,6 @@ export class Renderer {
     const b = this.visibleTileBounds();
     // Run-merged components already emitted this frame, by anchor.
     const runSeen = new Set<number>();
-    // THE ONE RENDER A2b: coalesced-crown bookkeeping for this collect pass.
-    // A wall/garrison/diag RUN is flooded once (crownRunSeen dedupes the
-    // component); its member tiles suppress their per-tile crown (crownSuppressed)
-    // and ONE continuous crown + silhouette outline is deferred to crownVolumes,
-    // flushed after the scan so it never rides a member's scratch box.
-    this.crownRunSeen.clear();
-    this.crownSuppressed.clear();
-    this.crownVolumes.length = 0;
     this.regGame = game;
     this.bandEmitted.clear();
     this.bandStats.blit = 0;
@@ -9601,36 +8794,6 @@ export class Renderer {
         if (reg) this.emitRegisterRow(game, items, reg, key, ly, ty, segX0, segX1, b, runSeen);
         else this.scanRaisedRange(game, items, ty, segX0, segX1, b, runSeen);
       }
-    }
-    // FJ-2 THE DECK CARPENTRY STANDS UP. Docks and porch decks bake
-    // their vertical faces (fascia, pilings) FLAT into the ground chunk
-    // and warp them as ground — under a lean each tile's baked face
-    // foreshortens as a ground band and consecutive tiles detach into
-    // floating stepped blocks. Under q≠0 the bake OMITS those faces
-    // (standingPass) and this sweep emits them as screen-space standing
-    // trapezoids anchored to the projected deck edge: adjacent tiles
-    // share the exact projected world corner, so the edge is continuous
-    // like a cliff face. At q=0 nothing runs and the flat bake is
-    // unchanged (byte-identical). The +1 pad admits a face whose base
-    // row sits just off the bottom edge.
-    if (this.camera.q !== 0) {
-      for (let ty = b.minTy; ty <= b.maxTy + 1; ty++) {
-        for (let tx = b.minTx - 1; tx <= b.maxTx + 1; tx++) {
-          this.deckCarpentryItems(game, tx, ty, items);
-          this.bridgeCarpentryItems(game, tx, ty, items);
-          this.deckFillCarpentryItems(game, tx, ty, items);
-        }
-      }
-    }
-    // THE ONE RENDER A2b: flush the coalesced crowns collected during the
-    // scan as ONE self-bounded DrawItem per straight span. Emitted here
-    // (after every member) so they never sit inside a per-member
-    // stageMarkRaised box; each carries its own small `pb` (thin span strip),
-    // so it rides the self-bounded scratch path — bounded scratch, no flush,
-    // no wall-lane union balloon — drawn in y-sort order like any item.
-    for (let i = 0; i < this.crownVolumes.length; i++) {
-      const cv = this.crownVolumes[i]!;
-      for (let s = 0; s < cv.spans.length; s++) items.push(this.crownSpanItem(cv, cv.spans[s]!));
     }
   }
 
@@ -10030,21 +9193,9 @@ export class Renderer {
       case RaisedKind.GarrisonWall: {
         const whT = this.garrisonHeightAt(game, tx, ty);
         const isDiag = diagWallInfo(tile) !== null;
-        // THE ONE RENDER A2c: under lean, coalesce a STRAIGHT curtain RUN
-        // into ONE crenellated crown drawn per straight span (continuous
-        // wall-walk + parapet teeth + castellated outline), instead of the
-        // per-tile caps/teeth/outline that wedge and segment under pitch —
-        // the garrison twin of the wall crown. The member tiles keep their
-        // per-tile ashlar FACE (already seam-free via shared corners); only
-        // the crown + outline move to the run. 45° turns keep their bespoke
-        // painter. q=0 keeps the proven per-tile / band-baked flat look.
-        if (!isDiag && this.wallVolumeOn && this.camera.q > 0 && !this.bakingMask) {
-          this.floodGarrisonCrown(game, tx, ty);
-        }
-        const gSuppress = !isDiag && this.crownSuppressed.has(packTile(tx, ty));
         const item = isDiag
           ? garrisonArt.garrisonDiagItem(this, tile, tx, ty, game, whT)
-          : garrisonArt.garrisonWallItem(this, tile, tx, ty, game, whT, gSuppress);
+          : garrisonArt.garrisonWallItem(this, tile, tx, ty, game, whT);
         if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
         item.strat = this.stratAt(tx, ty);
         items.push(item);
@@ -10143,16 +9294,6 @@ export class Renderer {
         // facade). They ride the SAME reveal height field as the
         // straight runs — the whole corner bows with its walls, so
         // a cut run never ends at a full-height stump.
-        // THE ONE RENDER A2c: under lean, coalesce a 45° RUN (staircase of
-        // same-tile members) into ONE continuous mass-triangle crown +
-        // outline drawn per member off shared world corners — retiring the
-        // per-tile crown cap + per-tile outline that wedge/segment under
-        // pitch. The member keeps its per-tile sloped FACE. q=0 keeps the
-        // proven per-tile path.
-        if (this.wallVolumeOn && this.camera.q > 0 && !this.bakingMask) {
-          this.floodDiagCrown(game, tile, tx, ty);
-        }
-        const dSuppress = this.crownSuppressed.has(packTile(tx, ty));
         const item = this.diagWallItem(
           tile,
           tx,
@@ -10160,7 +9301,6 @@ export class Renderer {
           game,
           this.wallHeightAt(game, tx, ty),
           this.wallRegion(game, tx, ty),
-          dSuppress,
         );
         if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
         item.strat = this.stratAt(tx, ty);
@@ -10169,29 +9309,11 @@ export class Renderer {
       }
       case RaisedKind.Wall: {
         const wregion = this.wallRegion(game, tx, ty);
-        // THE ONE RENDER A2/A2b: under lean (q>0), coalesce the wall RUN —
-        // straight run, building footprint, or L — into ONE world volume:
-        // a continuous crown drawn PER STRAIGHT SPAN (small scratch each,
-        // shared world corners → seam-free) + ONE silhouette outline, via
-        // the structureFace primitives — instead of the per-tile crown caps
-        // and per-tile outline strokes that wedge/segment under pitch. The
-        // flood runs once per component (crownRunSeen); its members suppress
-        // their per-tile crown (crownSuppressed) and the crown is deferred to
-        // crownVolumes (flushed after the scan, off the member scratch box).
-        // Live draw only (bakes are q=0 and per-stretch — A6 makes them
-        // lean-aware); q=0 keeps the proven per-tile / band-baked flat look
-        // the golden gate pins.
-        if (this.wallVolumeOn && this.camera.q > 0 && !this.bakingMask) {
-          this.floodWallCrown(game, tile, tx, ty, wregion);
-        }
         // ONE VEIL LAW: every wall tile between the player and the
         // camera reads its height off the one reveal field —
         // surface buildings, ruins, and dungeon corridors alike.
         const whT = this.wallHeightAt(game, tx, ty);
-        // A coalesced member paints only its south-face art; the run draws
-        // its crown + outline once (crownSuppressed set by floodWallCrown).
-        const suppress = this.crownSuppressed.has(packTile(tx, ty));
-        const item = this.wallItem(tile, tx, ty, game, whT, wregion?.hasHearth ?? false, wregion, suppress);
+        const item = this.wallItem(tile, tx, ty, game, whT, wregion?.hasHearth ?? false, wregion);
         // A destructible wall (the cracked cave seam) absorbing a
         // blow shudders like any durable prop — the knock translates
         // the whole drawn prism at draw time.
@@ -10210,32 +9332,35 @@ export class Renderer {
         }
         if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
         item.strat = this.stratAt(tx, ty);
+        // G4b — THE BUILDING FOOT NESTLES: a wall foot that meets grass gets a
+        // subtle, low, grass-side-only skirt so the building reads as sitting
+        // IN the meadow, not pasted on. Grass-adjacent edges only (never the
+        // stone/path/interior side); skipped for a walls-only run with no
+        // grass neighbour. Elevated feet keep their hard base (the skirt sits
+        // on the ground plane, not up a terrace).
+        if (this.grassGpuActive && this.grassSkirtOn && !item.elevated) {
+          const sides = wallSkirtSidesAt(
+            (this.skirtGroundSampler ??= (x, y) => this.game?.world.groundAt(x, y)),
+            tx,
+            ty,
+            tile,
+          );
+          if (sides !== 0) {
+            // The wall's ground contact is its SOUTH foot (ty+1) — the row the
+            // near face stands on — so the fringe rises exactly there.
+            this.grassSkirtSites.push({
+              tx,
+              ty,
+              footY: ty + 1,
+              strength: skirtStrengthForTile(tile),
+              sides,
+            });
+          }
+        }
         items.push(item);
         return;
       }
       case RaisedKind.Generic: {
-        // THE ONE RENDER A4/A4b: under lean (q>0), a HEDGE run coalesces into
-        // ONE upright hedge-wall volume through the SAME per-edge crown-span
-        // machinery walls/garrison/diag use (`floodHedgeCrown` →
-        // `floodCrown('hedge')`) — so straight runs, solid blocks, CORNERS,
-        // TEES and garden-border RINGS all stand up as a solid seamless
-        // hedge-LINE (each perimeter edge a thin coalesced span, seam-free)
-        // instead of the flat per-tile pillow bed lying under the building
-        // corner (the owner's bush complaint). The flood suppresses every
-        // coalesced member's per-tile draw (whole body drawn by the run's
-        // crown spans); a non-coalesced run (gate, diagonal, elevated/terraced,
-        // over-large) leaves the tile unsuppressed and falls through to the
-        // proven per-tile `hedgeItem` path. Live draw only (bakes are q=0);
-        // q=0 keeps the proven per-tile pillow-bed the golden gate pins.
-        if (this.hedgeVolumeOn && this.camera.q > 0 && !this.bakingMask && this.hedgish(game, tx, ty)) {
-          this.floodHedgeCrown(game, tx, ty);
-          // A coalesced hedge member draws NOTHING per-tile — its whole upright
-          // body (faces + pillow crown) is the run's crown spans, flushed after
-          // the scan. (Unlike a wall, whose per-tile face still paints; a hedge
-          // tile's per-tile art is the flat pillow bed, which the upright run
-          // replaces entirely.)
-          if (this.crownSuppressed.has(packTile(tx, ty))) return;
-        }
         // Run-merging furniture rings as one whole-component unit.
         if (
           this.outlineOn &&
@@ -10250,7 +9375,16 @@ export class Renderer {
         // (collectGpuSkirts). item.sortY is the object's true foot sort row —
         // the skirt slots a hair past it, drawing OVER the lower base edge.
         if (this.grassGpuActive && this.grassRootedSkirt(game, tx, ty, tile)) {
-          this.grassSkirtSites.push({ tx, ty, footY: item.sortY });
+          // A free-standing wild replaces its own tile and is ringed by
+          // meadow, so it scatters a FULL ring (SIDE_ALL); its strength is
+          // read off its kind (rock → a few short wisps, tree → full collar).
+          this.grassSkirtSites.push({
+            tx,
+            ty,
+            footY: item.sortY,
+            strength: skirtStrengthForTile(tile),
+            sides: SIDE_ALL,
+          });
         }
         // THE SHELF LAW: a standing object sorts on the shelf of its
         // own tile, at its raw row. Awnings need no exemption — their
@@ -10440,17 +9574,10 @@ export class Renderer {
   }
 
   /** The layer stands down where its premises fail: the editor pins
-   *  the camera and patches tiles at brush rate, and a bake would freeze
-   *  the perspective about the stretch's own canvas center rather than the
-   *  LIVE screen center (THE STRAIGHT-WORLD PREREQUISITE).
-   *
-   *  §5-B: the fuse reads the RUNTIME lean (`camera.q`) — when B-2 raises q
-   *  the flat static bake would render walls un-leaned about the wrong
-   *  center, so the layer must fuse OFF for any q≠0 (live-draw the static
-   *  world under perspective until the bake itself is made lean-aware, a
-   *  B-3 surface task). q=0 is unchanged. */
+   *  the camera and patches tiles at brush rate, so a bake would go stale
+   *  under the brush. */
   staticLayerOn(): boolean {
-    return this.cameraOverride === null && this.camera.q === 0;
+    return this.cameraOverride === null;
   }
 
   /** Device pixels per tile for band bakes (THE CRISP GRID LAW):
@@ -10731,6 +9858,12 @@ export class Renderer {
           items.push({
             sortY: bk.sortY,
             strat: bk.strat,
+            // A5 depth rank: carry the bucket's captured near-row so a
+            // COLD/BAKED wall keeps the same VOLUME rank a LIVE wall does —
+            // else DRAW_ORDER ranks the baked blit as a billboard and a
+            // same-row front hedge (a volume) draws UNDER it. Absent for
+            // flat baked layers (and byte-identical when occlusionOn is off).
+            nearRow: bk.nearRow,
             band: { sb: bake, bk },
             elevated: bk.elevated ? true : undefined,
             drawShadow:
@@ -10785,73 +9918,14 @@ export class Renderer {
     const spanS = rampish ? m.len : 1;
     const p0 = this.camera.worldToScreen(m.tx, m.ty, this.w, this.h);
     const p1 = this.camera.worldToScreen(m.endX + 1, m.ty + spanS, this.w, this.h);
-    // THE SCRATCH BOX RIDES THE LEAN (Epic B, FRv follow-on): the wall art
-    // foreshortens by spriteScale (= scale·depthScale, see wallItem), so
-    // under q>0 a NEAR wall draws TALLER/WIDER than a raw-scale pad — and
-    // the world stage's scratch cell HARD-CLIPS whatever overflows the box,
-    // printing an axis-aligned dark (masonry) band the 2d path (no cell
-    // clip) never shows. Size the pad by the nearer row's depthScale so the
-    // leaned art always fits its box. depthScale is 1 at q=0, so `s`/`sPad`
-    // are identical there → byte-identical to the ortho frame.
-    const sPad =
-      this.camera.q !== 0
-        ? s *
-          Math.max(1, this.camera.depthScale(m.ty), this.camera.depthScale(m.ty + spanS))
-        : s;
-    // THE BOX SPANS BOTH ROWS (lean corner-sliver fix): p0/p1 name only
-    // the NW (far/north row) and SE (near/south row) footprint corners.
-    // Under the lean the NEAR row spreads WIDER than the far row from the
-    // vanishing centre, so for a run off the screen centre the true
-    // horizontal extent is the SW/NE corners this two-corner box never
-    // sampled — the wall art then clips to an axis-aligned slab narrower
-    // than the leaned masonry and shears a thin sliver off the corner
-    // (the background/fog showed through). Bound x by ALL FOUR projected
-    // footprint corners. At q=0 worldToScreen x is a pure function of tx
-    // (rows share one scale), so SW.x===NW.x and NE.x===SE.x → xL/xR
-    // collapse to p0.x/p1.x, byte-identical to the ortho frame.
-    let xL = p0.x;
-    let xR = p1.x;
-    if (this.camera.q !== 0) {
-      const sw2 = this.camera.worldToScreen(m.tx, m.ty + spanS, this.w, this.h);
-      const ne2 = this.camera.worldToScreen(m.endX + 1, m.ty, this.w, this.h);
-      xL = Math.min(p0.x, p1.x, sw2.x, ne2.x);
-      xR = Math.max(p0.x, p1.x, sw2.x, ne2.x);
-    }
-    // THE BOX RIDES THE PROJECTED FACE (Epic B P3.5): the wall's draw
-    // closure lifts each crown corner by its OWN row depthScale — the far
-    // north edge by hsN (= whT·scale·depthScale(ty)), the near south edge
-    // by hs (= whT·scale·depthScale(ty+spanS)) — and the face/side/crown
-    // span between those projected corners, NOT the single billboard scalar.
-    // Size the box's vertical extent from the bounding box of the FOUR
-    // projected face corners: the two ground base rows (north p0.y / south
-    // p1.y) and the two crown tops (each base row lifted by the crown height
-    // at that row's own depthScale). This is the true envelope of the leaned
-    // face + slanted crown, so nothing the closure draws can escape it.
-    // The crown lift uses the box's own `northT` pad (>= the drawn whT) and
-    // `s`=camera.scale (the closure's spriteScale = s·depthScale is folded
-    // into the per-row depthScale here), so the corner box is >= the drawn
-    // art at every corner. Unioned with the legacy pad extent (padTop/padBot)
-    // so the bake bounds can only GROW — never clip less than today's proven
-    // bound. At q=0 every depthScale is 1, so both crown corners reduce to
-    // p0.y/p1.y − northT·s, the base rows to p0.y/p1.y, and the union equals
-    // today's `p0.y − northT·sPad` … `p1.y + southT·sPad` rect exactly —
-    // byte-identical to the ortho frame.
-    const dsN = this.camera.depthScale(m.ty);
-    const dsS = this.camera.depthScale(m.ty + spanS);
-    const crownN = p0.y - northT * s * dsN; // north crown top (far)
-    const crownS = p1.y - northT * s * dsS; // south crown top (near)
-    const faceTop = Math.min(crownN, crownS, p0.y, p1.y);
-    const faceBot = Math.max(p0.y, p1.y) + southT * s * dsS;
-    // Legacy pad bound (today's box) — the union floor: the box never
-    // shrinks below it, so it can only ever grow to contain the face.
-    const padTop = p0.y - northT * sPad;
-    const padBot = p1.y + southT * sPad;
-    const boxTop = Math.min(faceTop, padTop);
-    const boxBot = Math.max(faceBot, padBot);
+    // The box's vertical extent: the crown top (north row lifted by the
+    // pad height) down to the south row plus the south pad.
+    const boxTop = Math.min(p0.y - northT * s, p1.y - northT * s, p0.y, p1.y);
+    const boxBot = Math.max(p0.y, p1.y) + southT * s;
     const pb = {
-      x: xL - 1.2 * sPad,
+      x: p0.x - 1.2 * s,
       y: boxTop,
-      w: xR - xL + 2.4 * sPad,
+      w: p1.x - p0.x + 2.4 * s,
       h: boxBot - boxTop,
     };
     // THE SCRATCH LEDGER's identity: world anchor + kind + emission
@@ -11134,6 +10208,13 @@ export class Renderer {
         let sortY = 0;
         let strat: number | undefined;
         let elevated = false;
+        // A5 depth rank: a BAKED wall/hedge must keep the same VOLUME rank a
+        // LIVE one carries, or DRAW_ORDER treats it as a billboard and a
+        // same-row front hedge (a volume) loses the tie and paints UNDER it.
+        // Capture the bucket's near-row from its first probe item — a wall's
+        // nearRow === sortY, and a flat baked layer's is undefined (byte-
+        // identical there and whenever occlusionOn is off).
+        let nearRow: number | undefined;
         let first = true;
         for (const it of s2) {
           if (keyOf(it) !== bkKey) continue;
@@ -11141,11 +10222,12 @@ export class Renderer {
             sortY = it.sortY;
             strat = it.strat;
             elevated = !!it.elevated;
+            nearRow = it.nearRow;
             first = false;
           }
           it.draw?.();
         }
-        buckets.push({ canvas, sortY, strat, elevated, padL: anchor.x, padT: anchor.y });
+        buckets.push({ canvas, sortY, strat, elevated, nearRow, padL: anchor.x, padT: anchor.y });
       }
     } finally {
       cam.x = savedX;
@@ -11406,732 +10488,6 @@ export class Renderer {
     return WALL_H + (WALL_STUB - WALL_H) * cut;
   }
 
-  /**
-   * THE ONE RENDER — A2: coalesce a wall RUN into ONE world volume and
-   * draw its crown + silhouette outline ONCE through the structureFace
-   * primitives, instead of the per-tile crown caps and per-tile outline
-   * strokes that WEDGE and SEGMENT under lean (the owner's #1 wall
-   * complaint). Toggle at runtime via `window.dcRenderer.wallVolumeOn`.
-   */
-  wallVolumeOn = true;
-  private readonly wallVolScratch = {
-    members: [] as number[],
-    seen: new Set<number>(),
-    queue: [] as number[],
-  };
-
-  /** Wall material class (wood / stone / cave-dark) — the coalesce key, so
-   *  a run is always one material and its crown reads one colour. `null`
-   *  for a non-wall tile. Windowed variants fold to their base material. */
-  private static wallMatClass(t: Tile): number | null {
-    if (!WALL_TILES.has(t) || PANEL_DOOR_TILES.has(t)) return null;
-    const m = t === Tile.WallWoodWindow ? Tile.WallWood : t === Tile.WallStoneWindow ? Tile.WallStone : t;
-    if (m === Tile.WallWood) return 0;
-    if (m === Tile.WallStone) return 1;
-    return 2; // cave / cracked-cave / other dark masonry
-  }
-
-  /** Components already flooded this collect pass (dedupe the flood). */
-  private readonly crownRunSeen = new Set<number>();
-  /** Wall/garrison/diag tiles whose PER-TILE crown is drawn instead by a
-   *  coalesced run crown — their `wallItem`/garrison painter suppresses its
-   *  own crown cap + outline stroke. */
-  private readonly crownSuppressed = new Set<number>();
-  /** Coalesced crowns collected during the scan, flushed to `items` after it
-   *  (so none rides a member's scratch box). */
-  private readonly crownVolumes: CrownVolume[] = [];
-
-  /**
-   * THE ONE RENDER — A2b: flood the wall RUN seeded at (tx,ty) once, and if
-   * it coalesces, mark every member's per-tile crown suppressed and record
-   * ONE run crown (continuous crown + silhouette outline) for the whole
-   * component — straight run, building FOOTPRINT, or L alike.
-   *
-   * The crown draws PER STRAIGHT SPAN (`crownSpans`): each span's scratch is
-   * a thin strip, so a footprint never mints a bbox-sized texture (the
-   * measured blowup that scoped A2 to thin runs), while adjacent spans share
-   * world corners → the crown tiles seam-free across the loop.
-   *
-   * Falls back to the per-tile crown (no coalesce) when the run is too big
-   * (cap), sits on elevated ground, is NOT height-uniform (a sinking cutaway
-   * steps per column — a single-height crown cannot express that), or touches
-   * a doorway (the per-tile path owns the jamb square-corner law). The whole
-   * component is marked seen either way, so it floods exactly once. Members
-   * still paint their SOUTH-face art per tile via `wallItem(…, suppress)`;
-   * only the crown + outline move to the run. Called only at q>0 — q=0 keeps
-   * the band-baked flat look the golden gate pins.
-   */
-  private floodWallCrown(
-    game: ClientGame,
-    tile: Tile,
-    tx: number,
-    ty: number,
-    region: InteriorRegion | null,
-  ): void {
-    const seedClass = Renderer.wallMatClass(tile);
-    if (seedClass === null) return;
-    this.floodCrown(game, tx, ty, region, {
-      kind: 'wall',
-      matClass: seedClass,
-      classOf: (t) => Renderer.wallMatClass(t),
-      heightAt: (mx, my) => this.wallHeightAt(game, mx, my),
-    });
-  }
-
-  /**
-   * THE ONE RENDER — A2c: the garrison twin of `floodWallCrown`. A curtain
-   * run's crenellated wall-walk (great-ashlar top + parapet teeth) is the
-   * exact analogue of a wall's crown: under lean the per-tile parapet caps
-   * and the castellated per-tile outline WEDGE and SEGMENT, so the run's
-   * crown moves to ONE continuous coalesced span path (`crownSpanItem`,
-   * kind 'garrison') while the members keep their per-tile ashlar FACE. The
-   * flood keys off `garrisonHeightAt` (the taller curtain veil) and only
-   * STRAIGHT garrison mass tiles coalesce — gates and 45° turns keep their
-   * bespoke painters (the flood's `classOf` excludes them, so the perimeter
-   * routes around a gateway exactly as it routes around a doorway).
-   */
-  private floodGarrisonCrown(
-    game: ClientGame,
-    tx: number,
-    ty: number,
-  ): void {
-    this.floodCrown(game, tx, ty, null, {
-      kind: 'garrison',
-      matClass: 1,
-      classOf: (t) =>
-        Renderer.GARRISON_MASS.has(t) && diagWallInfo(t) === null && doorInfo(t) === null ? 0 : null,
-      heightAt: (mx, my) => this.garrisonHeightAt(game, mx, my),
-    });
-  }
-
-  /**
-   * The shared crown flood behind `floodWallCrown` / `floodGarrisonCrown`.
-   * Floods the same-class RUN seeded at (tx,ty) once; if it coalesces (one
-   * elevation, one uniform veil height across the whole run), marks every
-   * member's per-tile crown suppressed and records ONE `CrownVolume` (the
-   * continuous crown drawn PER STRAIGHT SPAN via `crownSpans`). Falls back
-   * to per-tile when the run is too big, terraced, or height-non-uniform.
-   * Only ever called at q>0 — q=0 keeps the band-baked flat look.
-   */
-  private floodCrown(
-    game: ClientGame,
-    tx: number,
-    ty: number,
-    region: InteriorRegion | null,
-    cfg: {
-      kind: 'wall' | 'garrison' | 'hedge';
-      matClass: number;
-      classOf: (t: Tile) => number | null;
-      heightAt: (mx: number, my: number) => number;
-      /** A4b: hedges keep the per-tile pillow-bed path when raised (the A2b
-       *  contract for elevated/terraced runs), so the flood bails on any
-       *  non-zero elevation instead of lifting the crown by the terrace. */
-      bailElevated?: boolean;
-      /** Max member-tile count before the flood bails to per-tile (default 256). */
-      cap?: number;
-    },
-  ): void {
-    if (this.crownRunSeen.has(packTile(tx, ty))) return;
-    const vol = collectVolume(
-      (mx, my) => game.world.groundAt(mx, my),
-      tx,
-      ty,
-      (t) => cfg.classOf(t),
-      { cap: cfg.cap ?? 256, perimeter: true, scratch: this.wallVolScratch, heightAt: (mx, my) => cfg.heightAt(mx, my) },
-    );
-    if (!vol) return;
-    // Copy members out of the aliased scratch before anything else floods it.
-    const mem = vol.members.slice();
-    // Flood ONCE per component: mark every member seen whatever we decide, so
-    // later-scanned members neither re-flood nor emit a second run crown.
-    for (let i = 0; i < mem.length; i += 2) this.crownRunSeen.add(packTile(mem[i]!, mem[i + 1]!));
-    if (vol.perimeter.length === 0) return;
-    const seedWhT = cfg.heightAt(tx, ty);
-    const seedElev = game.world.elevAt(tx, ty);
-    // A4b: a raised hedge keeps the proven per-tile pillow-bed path.
-    if (cfg.bailElevated && seedElev !== 0) return;
-    for (let i = 0; i < mem.length; i += 2) {
-      const mx = mem[i]!;
-      const my = mem[i + 1]!;
-      // The crown is ONE lifted plane, so it needs ONE height and ONE
-      // elevation across the run. A sinking (reveal-veil) column, or a
-      // terraced run stepping elevation, keeps the per-tile path — a single
-      // plane cannot express the step. A whole building foundation is at ONE
-      // elevation, so its walls DO coalesce (the crown lifts by that
-      // elevation, below). A doorway/gateway is NOT a member tile, so the
-      // flood already routes the perimeter around the opening and the crown
-      // spans stop at its jambs — no per-run bail needed for openings.
-      if (game.world.elevAt(mx, my) !== seedElev) return;
-      if (Math.abs(cfg.heightAt(mx, my) - seedWhT) > 1e-4) return;
-    }
-    // Coalesce: suppress every member's per-tile crown; defer the run crown.
-    const members = new Set<number>();
-    for (let i = 0; i < mem.length; i += 2) {
-      const k = packTile(mem[i]!, mem[i + 1]!);
-      this.crownSuppressed.add(k);
-      members.add(k);
-    }
-    this.crownVolumes.push({
-      kind: cfg.kind,
-      matClass: cfg.matClass,
-      whT: seedWhT,
-      // The run's foundation lift in WORLD tiles (elevation levels × ELEV_H),
-      // added to every crown/foot height so the plane seats on the lifted wall
-      // exactly as wallItem's `elevAt·ELEV_H·s` lifts the per-tile face.
-      elevLift: seedElev * ELEV_H,
-      region,
-      spans: crownSpans(mem),
-      members,
-      rev: game.world.get(Math.floor(vol.ax / CHUNK_SIZE), Math.floor(vol.ay / CHUNK_SIZE))?.rev ?? 0,
-      keyX: vol.ax,
-      keyY: vol.ay,
-      sortY: vol.y1 + 1,
-      strat: this.stratAt(tx, ty),
-    });
-  }
-
-  /** The two diagonal run-neighbour offsets for a 45° mass — the direction
-   *  its hypotenuse continues. NE/SW ride the NW–SE diagonal (±1,±1 same
-   *  sign); NW/SE ride the SW–NE diagonal (±1,∓1). Members sharing a mass
-   *  and one of these offsets are one continuous 45° run. */
-  private static diagRunDirs(mass: 'NE' | 'NW' | 'SE' | 'SW'): [number, number][] {
-    return mass === 'NE' || mass === 'SW'
-      ? [[1, 1], [-1, -1]]
-      : [[1, -1], [-1, 1]];
-  }
-
-  /**
-   * THE ONE RENDER — A2c: the diagonal twin of `floodWallCrown`. A 45° wall
-   * is a STAIRCASE of same-tile triangular members (classified `len:1`),
-   * diagonally — not 4- — connected, so it needs a bespoke flood along the
-   * mass's hypotenuse direction. A uniform-height run coalesces: every
-   * member's per-tile crown + outline is suppressed and ONE `CrownVolume`
-   * (kind 'diag') draws the run's crowns via `crownSpanItem`, each member a
-   * self-bounded item projected off shared world corners (the arrises meet
-   * seam-free) with only the RUN-END edge inked. Falls back per-tile for a
-   * terraced / veil-sinking run. q>0 only — q=0 keeps the proven per-tile
-   * diag path (the golden gate has no diag scene, so q=0 is left untouched).
-   */
-  private floodDiagCrown(game: ClientGame, tile: Tile, tx: number, ty: number): void {
-    if (this.crownRunSeen.has(packTile(tx, ty))) return;
-    const info = diagWallInfo(tile);
-    if (info === null) return;
-    const dirs = Renderer.diagRunDirs(info.mass);
-    // Bespoke diagonal flood: same tile id, along the two hyp directions.
-    const mem: number[] = [tx, ty];
-    const seen = new Set<number>([packTile(tx, ty)]);
-    const queue: number[] = [tx, ty];
-    while (queue.length > 0 && mem.length < 512) {
-      const cy = queue.pop()!;
-      const cx = queue.pop()!;
-      for (const [dx, dy] of dirs) {
-        const nx = cx + dx;
-        const ny = cy + dy;
-        const k = packTile(nx, ny);
-        if (seen.has(k)) continue;
-        if (game.world.groundAt(nx, ny) !== tile) continue;
-        seen.add(k);
-        mem.push(nx, ny);
-        queue.push(nx, ny);
-      }
-    }
-    for (let i = 0; i < mem.length; i += 2) this.crownRunSeen.add(packTile(mem[i]!, mem[i + 1]!));
-    // ONE crown = ONE height + ONE elevation across the run (per the wall law).
-    const seedWhT = this.wallHeightAt(game, tx, ty);
-    const seedElev = game.world.elevAt(tx, ty);
-    let ax = tx, ay = ty, y1 = ty;
-    for (let i = 0; i < mem.length; i += 2) {
-      const mx = mem[i]!;
-      const my = mem[i + 1]!;
-      if (game.world.elevAt(mx, my) !== seedElev) return;
-      if (Math.abs(this.wallHeightAt(game, mx, my) - seedWhT) > 1e-4) return;
-      if (my < ay || (my === ay && mx < ax)) { ax = mx; ay = my; }
-      if (my > y1) y1 = my;
-    }
-    const members = new Set<number>();
-    for (let i = 0; i < mem.length; i += 2) {
-      const k = packTile(mem[i]!, mem[i + 1]!);
-      this.crownSuppressed.add(k);
-      members.add(k);
-    }
-    this.crownVolumes.push({
-      kind: 'diag',
-      diagTile: tile,
-      matClass: info.material === 'stone' ? 1 : 0,
-      whT: seedWhT,
-      elevLift: seedElev * ELEV_H,
-      region: this.wallRegion(game, tx, ty),
-      spans: diagSpans(mem),
-      members,
-      rev: game.world.get(Math.floor(ax / CHUNK_SIZE), Math.floor(ay / CHUNK_SIZE))?.rev ?? 0,
-      keyX: ax,
-      keyY: ay,
-      sortY: y1 + 1,
-      strat: this.stratAt(tx, ty),
-    });
-  }
-
-  /** One world corner, projected+rounded then lifted `height` world tiles —
-   *  the exact `structureFace.liftedCorner` arithmetic, shared so a span crown
-   *  and its outline seat on the SAME device pixel as the side `faceStrip`. */
-  private liftedCornerPt(cx: number, cy: number, height: number): { x: number; y: number } {
-    const P = this.camera.worldToScreen(cx, cy, this.w, this.h);
-    return {
-      x: Math.round(P.x),
-      y: Math.round(P.y) - height * this.camera.scale * this.camera.depthScale(cy),
-    };
-  }
-
-  /**
-   * B8: emit a rectangular wall/stone/dark crown SPAN as a perspective-
-   * correct warp quad over a content-keyed UV texture. The texture is baked
-   * ONCE (fill + arris/spine/lip beam read, exactly `paintWallCrown`'s
-   * rectangular dressing, but in UV space) and reused every frame; only the
-   * four projected corners change. The corners are the SAME shared world
-   * corners `topPlane` projects (via `liftedCornerPt`), so adjacent spans
-   * meet on identical device pixels — the crown reads continuous, seam-free.
-   * q>0 ONLY (the caller gates it); at q=0 the live `paintWallCrown` path is
-   * kept for the golden gate.
-   */
-  private emitCrownWarpQuad(cv: CrownVolume, span: CrownSpan, top: string, key: number): void {
-    const x0 = span.x0;
-    const y0 = span.y0;
-    const x1e = span.x1 + 1;
-    const y1e = span.y1 + 1;
-    const crownH = cv.whT + cv.elevLift;
-    const dpr = this.dpr();
-    // Texels per world tile ≈ on-screen density, bucketed so a zoom-glide
-    // does not re-bake every frame (the volRingCache/warp-down pattern).
-    const { uvW, uvH } = crownUvSize(x1e - x0, y1e - y0, this.camera.scale, dpr);
-    const scaleBucket = crownScaleBucket(this.camera.scale);
-    const dprBits = Math.round(dpr * 8) & 0x3f;
-    const sig = crownUvSig(key, scaleBucket, dprBits, cv.matClass, uvW, uvH);
-    let e = this.structCrownCache.get(key);
-    if (!e || e.sig !== sig || e.uvW !== uvW || e.uvH !== uvH) {
-      // (Re)bake the crown ART into an axis-aligned UV canvas — ONCE per
-      // content change. This is the whole per-frame paint the warp retires.
-      const canvas = e ? e.tex.canvas : document.createElement('canvas');
-      if (canvas.width !== uvW || canvas.height !== uvH) {
-        canvas.width = uvW;
-        canvas.height = uvH;
-      }
-      const ctx = canvas.getContext('2d')!;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, uvW, uvH);
-      // Fill + the run-continuous beam read (arris shadow / lit spine / lit
-      // south lip). v runs north(0)→south(1) = texture y; these are the exact
-      // bands `paintWallCrown` lays via plane.uv, now plain UV fillRects.
-      ctx.fillStyle = top;
-      ctx.fillRect(0, 0, uvW, uvH);
-      ctx.fillStyle = 'rgba(30, 18, 8, 0.22)';
-      ctx.fillRect(0, 0, uvW, Math.max(1, uvH * 0.09));
-      if (cv.matClass === 0) {
-        ctx.fillStyle = 'rgba(255, 226, 175, 0.14)';
-        ctx.fillRect(0, uvH * 0.34, uvW, Math.max(1, uvH * 0.3));
-      }
-      ctx.fillStyle = shade(top, 16);
-      ctx.fillRect(0, uvH * 0.9, uvW, Math.max(1, uvH * 0.1));
-      const tex: StageTexture = e ? e.tex : { canvas, rev: 0, filter: 'linear' };
-      tex.canvas = canvas;
-      tex.rev++; // content changed → the stage re-uploads on the next draw
-      e = { tex, uvW, uvH, sig, used: this.frameNo };
-      this.structCrownCache.set(key, e);
-    }
-    e.used = this.frameNo;
-    // Project the four world corners (shared with the adjacent spans' own
-    // liftedCornerPt → seam-free). Order TL,TR,BL,BR = NW,NE,SW,SE.
-    const TL = this.liftedCornerPt(x0, y0, crownH);
-    const TR = this.liftedCornerPt(x1e, y0, crownH);
-    const BL = this.liftedCornerPt(x0, y1e, crownH);
-    const BR = this.liftedCornerPt(x1e, y1e, crownH);
-    // Perspective weights = 1/depthScale at each corner's world row (the
-    // ground-chunk law): the crown is a horizontal plane, foreshortened by
-    // its depth exactly as the ground is.
-    const wTop = 1 / this.camera.depthScale(y0);
-    const wBot = 1 / this.camera.depthScale(y1e);
-    let bx0 = Math.min(TL.x, TR.x, BL.x, BR.x);
-    let by0 = Math.min(TL.y, TR.y, BL.y, BR.y);
-    this.stageWorldItems.push({
-      kind: 'quad',
-      tex: e.tex,
-      sx: 0,
-      sy: 0,
-      sw: e.uvW,
-      sh: e.uvH,
-      dw: Math.max(1, Math.max(TL.x, TR.x, BL.x, BR.x) - bx0),
-      dh: Math.max(1, Math.max(TL.y, TR.y, BL.y, BR.y) - by0),
-      m: [1, 0, 0, 1, bx0, by0],
-      alpha: this.stageItemAlpha,
-      blend: StageBlend.SourceOver,
-      ground: {
-        c: [TL.x, TL.y, TR.x, TR.y, BL.x, BL.y, BR.x, BR.y],
-        w: [wTop, wTop, wBot, wBot],
-      },
-    });
-    this.stageWorldStats.quads++;
-  }
-
-  /**
-   * ONE self-bounded crown piece for a single straight SPAN (A2b): its FILL
-   * (a `topPlane` over the span's four world corners, lifted to the crown) +
-   * its OUTLINE, stroked over only the span's EXPOSED unit edges (the crown
-   * top edge + its foot drop), tested against the run's member set so shared
-   * span-to-span edges are never stroked (no internal seams) and the run rings
-   * continuously (adjacent spans meet on identical projected corners). Carries
-   * its own `pb` = the span's projected screen box, so it rides the
-   * self-bounded scratch path: a thin scratch cell, never the footprint bbox,
-   * no flush, no wall-lane union. A3 swaps the interim stroke for alpha-dilate.
-   */
-  private crownSpanItem(cv: CrownVolume, span: CrownSpan): DrawItem {
-    const garrison = cv.kind === 'garrison';
-    const skin = this.woodSkinFor(cv.region);
-    const top = cv.matClass === 0 ? skin.top : cv.matClass === 1 ? '#8c8798' : '#3a3444';
-    const crownH = cv.whT + cv.elevLift; // span top above elev-0 ground
-    const footH = cv.elevLift; // span foot (on the foundation)
-    // The span's four world corners (tile-corner coords), NW→NE→SE→SW.
-    const loop: WorldCorner[] = [
-      { x: span.x0, y: span.y0 },
-      { x: span.x1 + 1, y: span.y0 },
-      { x: span.x1 + 1, y: span.y1 + 1 },
-      { x: span.x0, y: span.y1 + 1 },
-    ];
-    // A garrison crown carries parapet teeth rising MERLON_H above the walk,
-    // so its screen box must reach the tooth CAP height, not just the crown.
-    const mkK = garrison ? Math.max(0, Math.min(1, (cv.whT - WALL_STUB) / (GARRISON_H - WALL_STUB))) : 0;
-    const capH = crownH + (garrison ? MERLON_H * mkK : 0);
-    // pb: the projected screen box of the span, from all four corners at the
-    // crown/foot (and tooth cap for garrison) lift (+ a pad for the stroke).
-    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
-    for (const c of loop) {
-      for (const H of garrison ? [capH, footH] : [crownH, footH]) {
-        const p = this.liftedCornerPt(c.x, c.y, H);
-        if (p.x < bx0) bx0 = p.x;
-        if (p.x > bx1) bx1 = p.x;
-        if (p.y < by0) by0 = p.y;
-        if (p.y > by1) by1 = p.y;
-      }
-    }
-    const pad = 4;
-    // THE SCRATCH LEDGER: cache the span's crown texture keyed by the run
-    // anchor + this span's extent + material + chunk rev, so a static crown
-    // uploads once and reblits (a coalesced run is height-uniform by the flood
-    // gate, so its paint is NOT animation-bound — pbDyn 0). stageRebuild
-    // repaints it under the swapped scratch ctx. An edit re-revs the key.
-    const pbKey =
-      (hashCoords(91, cv.keyX, cv.keyY) ^
-        (span.x0 << 3) ^
-        (span.y0 << 9) ^
-        ((span.x1 - span.x0 + 1) << 15) ^
-        ((span.y1 - span.y0 + 1) << 21) ^
-        (cv.matClass << 27) ^
-        (garrison ? 0x4000_0000 : 0) ^
-        Math.imul(cv.rev | 0, 0x85eb)) |
-      0;
-    // THE ONE RENDER — A3: the run's exposed side faces as silhouette rings —
-    // each exposed unit edge is a foot→crown quad (world corners projected +
-    // rounded ONCE via liftedCornerPt, so run-mates share device pixels). The
-    // crown loop + these faces are the whole run silhouette the alpha-dilate
-    // rings, replacing the interim per-edge vector stroke.
-    const addFaceQuads = (sil: Silhouette): void => {
-      const quad = (ax: number, ay: number, bx: number, by: number): void => {
-        const af = this.liftedCornerPt(ax, ay, footH);
-        const bf = this.liftedCornerPt(bx, by, footH);
-        const at = this.liftedCornerPt(ax, ay, crownH);
-        const bt = this.liftedCornerPt(bx, by, crownH);
-        sil.add([af as FacePt, bf as FacePt, bt as FacePt, at as FacePt]);
-      };
-      for (let ty = span.y0; ty <= span.y1; ty++) {
-        for (let tx = span.x0; tx <= span.x1; tx++) {
-          if (!cv.members.has(packTile(tx, ty - 1))) quad(tx, ty, tx + 1, ty); // north
-          if (!cv.members.has(packTile(tx, ty + 1))) quad(tx, ty + 1, tx + 1, ty + 1); // south
-          if (!cv.members.has(packTile(tx - 1, ty))) quad(tx, ty, tx, ty + 1); // west
-          if (!cv.members.has(packTile(tx + 1, ty))) quad(tx + 1, ty, tx + 1, ty + 1); // east
-        }
-      }
-    };
-    // B8: only a PLAIN wall crown under lean rides the warp-quad path (diag /
-    // hedge / garrison keep their own painters; q=0 keeps the live crown).
-    const warpCrown = this.camera.q > 0 && cv.kind === 'wall';
-    const draw = (): void => {
-      if (cv.kind === 'diag') {
-        this.paintDiagCrownSpan(cv, span, top, pbKey);
-        return;
-      }
-      if (cv.kind === 'hedge') {
-        // THE ONE RENDER — A4b: an upright hedge span. The clipped-green LEAF
-        // FACES stand plumb on every exposed unit edge of the span (turf→crown)
-        // and the whole-span pillow-bed CROWN lays on top, each world corner
-        // projected once (via liftedCornerPt / topPlane's shared arithmetic) so
-        // adjacent spans of a corner/tee/ring meet seam-free. Both feed ONE
-        // silhouette the same alpha-dilate ring bodies wear (A3), so the whole
-        // ring/corner rings continuously — no per-tile seam.
-        const sil = this.outlineOn ? beginSilhouette() : undefined;
-        const face = (ax: number, ay: number, bx: number, by: number): void => {
-          const af = this.liftedCornerPt(ax, ay, footH);
-          const bf = this.liftedCornerPt(bx, by, footH);
-          const at = this.liftedCornerPt(ax, ay, crownH);
-          const bt = this.liftedCornerPt(bx, by, crownH);
-          barrierArt.paintHedgeFace(this, {
-            ax: af.x,
-            ay: af.y,
-            bx: bf.x,
-            by: bf.y,
-            yTopA: at.y,
-            yTopB: bt.y,
-          });
-          sil?.add([af as FacePt, bf as FacePt, bt as FacePt, at as FacePt]);
-        };
-        for (let my = span.y0; my <= span.y1; my++) {
-          for (let mx = span.x0; mx <= span.x1; mx++) {
-            if (!cv.members.has(packTile(mx, my - 1))) face(mx, my, mx + 1, my); // north
-            if (!cv.members.has(packTile(mx, my + 1))) face(mx, my + 1, mx + 1, my + 1); // south
-            if (!cv.members.has(packTile(mx - 1, my))) face(mx, my, mx, my + 1); // west
-            if (!cv.members.has(packTile(mx + 1, my))) face(mx + 1, my, mx + 1, my + 1); // east
-          }
-        }
-        // The span's pillow-bed crown (a 4-corner rect → the tiled bed, no clip),
-        // keyed to the ABSOLUTE world half-tile grid so run-mates and neighbouring
-        // spans roll their pillows the same way at every join.
-        topPlane(
-          this.camera,
-          this.w,
-          this.h,
-          loop,
-          crownH,
-          (plane: TopPlaneGeom) =>
-            barrierArt.paintHedgeCrown(this, plane, span.x0, span.y0, span.x1 + 1, span.y1 + 1),
-          { silhouette: sil },
-        );
-        if (sil) this.paintVolumeRing(sil, pbKey);
-        return;
-      }
-      if (garrison) {
-        const sil = this.outlineOn ? beginSilhouette() : undefined;
-        garrisonArt.garrisonCrownSpan(this, span, crownH, footH, cv.whT, cv.members, sil);
-        if (sil) {
-          addFaceQuads(sil);
-          this.paintVolumeRing(sil, pbKey);
-        }
-        return;
-      }
-      // B8 WARP-DON'T-REPAINT: under lean the crown ART is baked ONCE into a
-      // UV texture and drawn as a perspective-correct quad (no per-frame
-      // re-paint/re-upload of the projected trapezoid into the scratch lane).
-      // q=0 keeps the proven live `paintWallCrown` (the golden gate). The
-      // item is `stageSafe` for the warp case so its draw runs under assembly
-      // and pushes the quad; at q=0 it stays the wall-lane scratch item.
-      if (warpCrown) {
-        this.emitCrownWarpQuad(cv, span, top, pbKey);
-      } else {
-        topPlane(this.camera, this.w, this.h, loop, crownH, (plane: TopPlaneGeom) =>
-          this.paintWallCrown(plane, top, cv.matClass),
-        );
-      }
-      if (this.outlineOn) {
-        // ONE alpha-dilate ring around the whole run silhouette (crown loop +
-        // exposed side faces) — the SAME ring bodies/props wear. Retires the
-        // per-edge vector stroke (mixed near/far corners → wedges + seams).
-        const sil = beginSilhouette();
-        sil.add(loop.map((c) => this.liftedCornerPt(c.x, c.y, crownH) as FacePt));
-        addFaceQuads(sil);
-        this.paintVolumeRing(sil, pbKey);
-      }
-    };
-    return {
-      sortY: cv.sortY,
-      // A5 pitch-aware depth: this crown SPAN's own near (south) ground
-      // edge — one row south of its south-most member — so a building's
-      // north-wall span sorts nearer-than a body just inside it, not by
-      // the whole run's south edge (`cv.sortY`). At q=0 spans still paint
-      // south-after-north by row, matching the flat look.
-      nearRow: this.occlusionOn ? span.y1 + 1 : undefined,
-      strat: cv.strat,
-      pb: { x: bx0 - pad, y: by0 - pad, w: bx1 - bx0 + pad * 2, h: by1 - by0 + pad * 2 },
-      pbKey,
-      pbDyn: 0,
-      // B8: the warp crown pushes QUADS (crown) + a bounded ring paint, so it
-      // rides the stage-safe assembly lane and LEAVES the wall scratch lane.
-      // stageRebuild/pb stay as a graceful fallback if assembly ever declines.
-      stageSafe: warpCrown ? true : undefined,
-      stageRebuild: draw,
-      draw,
-    };
-  }
-
-  /**
-   * THE ONE RENDER — A2c: paint ONE 45° member of a coalesced diagonal run's
-   * crown, in ABSOLUTE screen coords projected off the member's WORLD corners
-   * (each rounded + lifted the same way the wall/garrison crowns are), so
-   * consecutive members' hypotenuse arrises meet on the same device pixel —
-   * the run reads as ONE continuous 45° crown, not per-tile panels. Retires
-   * the per-tile diag crown cap + per-tile diag outline onto the coalesced
-   * path (the per-tile `diagWallItem` suppresses them for run members). The
-   * outline is the lifted outward arris + the visible face's ground contact +
-   * the RUN-END verticals only (a mid-run end sits on a shared corner with the
-   * next member, so it is not inked — no internal seam). A3: the outline is now
-   * the SAME per-silhouette alpha-dilate ring bodies wear (crown triangle +
-   * visible face), keyed+cached per run via `paintVolumeRing`.
-   */
-  private paintDiagCrownSpan(cv: CrownVolume, span: CrownSpan, top: string, key: number): void {
-    const info = diagWallInfo(cv.diagTile!);
-    if (info === null) return;
-    const ctx = this.ctx;
-    const tx = span.x0;
-    const ty = span.y0;
-    const crownH = cv.whT + cv.elevLift;
-    const footH = cv.elevLift;
-    const mass = info.mass;
-    // Crown (lifted) + ground (foot) corners, each projected + rounded once.
-    const NWc = this.liftedCornerPt(tx, ty, crownH);
-    const NEc = this.liftedCornerPt(tx + 1, ty, crownH);
-    const SWc = this.liftedCornerPt(tx, ty + 1, crownH);
-    const SEc = this.liftedCornerPt(tx + 1, ty + 1, crownH);
-    const NWg = this.liftedCornerPt(tx, ty, footH);
-    const NEg = this.liftedCornerPt(tx + 1, ty, footH);
-    const SWg = this.liftedCornerPt(tx, ty + 1, footH);
-    const SEg = this.liftedCornerPt(tx + 1, ty + 1, footH);
-    // The mass triangle at the crown (matches diagWallItem / garrisonDiagItem).
-    const tri =
-      mass === 'NE'
-        ? [NWc, NEc, SEc]
-        : mass === 'NW'
-          ? [NWc, NEc, SWc]
-          : mass === 'SE'
-            ? [NEc, SEc, SWc]
-            : [NWc, SEc, SWc];
-    const front = mass === 'NE' || mass === 'NW';
-    // The outward hypotenuse: NE/SW on the NW–SE diagonal, NW/SE on SW–NE.
-    const hypW = mass === 'NE' || mass === 'SW' ? NWc : SWc;
-    const hypE = mass === 'NE' || mass === 'SW' ? SEc : NEc;
-    const hypWg = mass === 'NE' || mass === 'SW' ? NWg : SWg;
-    const hypEg = mass === 'NE' || mass === 'SW' ? SEg : NEg;
-    // Fill the mass triangle.
-    ctx.fillStyle = top;
-    ctx.beginPath();
-    ctx.moveTo(tri[0]!.x, tri[0]!.y);
-    ctx.lineTo(tri[1]!.x, tri[1]!.y);
-    ctx.lineTo(tri[2]!.x, tri[2]!.y);
-    ctx.closePath();
-    ctx.fill();
-    // Sun-lit lip on the camera-side arris grounds the height read.
-    ctx.strokeStyle = shade(top, 16);
-    ctx.lineWidth = Math.max(1, this.camera.scale * 0.14);
-    ctx.beginPath();
-    ctx.moveTo(hypW.x, hypW.y);
-    ctx.lineTo(hypE.x, hypE.y);
-    ctx.stroke();
-    if (!this.outlineOn) return;
-    // A3: ring the member's silhouette (crown mass triangle + its visible
-    // face down to the foot) with the same alpha-dilate the bodies wear. The
-    // union of consecutive members' triangles + faces (each projected off
-    // shared world corners) rings the whole 45° run seam-free; a hollow
-    // annulus never covers the arris fill, so blit order is free.
-    const sil = beginSilhouette();
-    sil.add(tri.map((c) => ({ x: c.x, y: c.y }) as FacePt));
-    if (front) {
-      // The outward hyp face, crown arris down to its ground contact.
-      sil.add([hypW, hypE, hypEg, hypWg].map((c) => ({ x: c.x, y: c.y }) as FacePt));
-    } else {
-      // Back corner (SE/SW): the near read is the crown's south base edge
-      // (SW→SE) dropping to the foot.
-      sil.add([SWc, SEc, SEg, SWg].map((c) => ({ x: c.x, y: c.y }) as FacePt));
-    }
-    this.paintVolumeRing(sil, key);
-  }
-
-  /** Paint one crown top plane: fill + a run-continuous beam read (arris
-   *  shadow, lit spine, lit south lip) keyed to the plane's own UV so it
-   *  tiles across the whole run instead of per tile. At q=0 the UV collapses
-   *  to a plain rect (the flat woodCrownPlate look). */
-  private paintWallCrown(plane: TopPlaneGeom, top: string, matClass: number): void {
-    const ctx = this.ctx;
-    const poly = plane.poly;
-    if (poly.length < 3) return;
-    // Fill the ACTUAL crown loop (handles L-shaped building footprints).
-    const path = new Path2D();
-    path.moveTo(poly[0]!.x, poly[0]!.y);
-    for (let i = 1; i < poly.length; i++) path.lineTo(poly[i]!.x, poly[i]!.y);
-    path.closePath();
-    ctx.fillStyle = top;
-    ctx.fill(path);
-    // The run-continuous beam read (arris / spine / lit lip) keyed to the
-    // plane's own UV. The UV quads span the crown BBOX, so they land exactly
-    // inside a simple rectangular run — NO clip needed (a clip mints a mask
-    // texture on the WebGL stage, and a town of buildings has many runs =
-    // a scratch-VRAM blowup). A non-rectangular (L-shaped) loop's bbox would
-    // overspill, so dressing is drawn only for rectangular runs; the L-shape
-    // keeps its plain fill. v runs north(0)→south(1).
-    if (poly.length === 4) {
-      const quad = (u0: number, v0: number, u1: number, v1: number, col: string): void => {
-        const a = plane.uv(u0, v0);
-        const b = plane.uv(u1, v0);
-        const c = plane.uv(u1, v1);
-        const d = plane.uv(u0, v1);
-        ctx.fillStyle = col;
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        ctx.lineTo(c.x, c.y);
-        ctx.lineTo(d.x, d.y);
-        ctx.closePath();
-        ctx.fill();
-      };
-      quad(0, 0, 1, 0.09, 'rgba(30, 18, 8, 0.22)');
-      if (matClass === 0) quad(0, 0.34, 1, 0.64, 'rgba(255, 226, 175, 0.14)');
-      quad(0, 0.9, 1, 1, shade(top, 16));
-    }
-  }
-
-  /**
-   * THE ONE RENDER — A4/A4b: reclassify a HEDGE run as an upright, seamless
-   * hedge-wall VOLUME drawn through the SAME per-edge crown-span machinery
-   * walls/garrison/diag use (`floodCrown`). Under lean a hedge stands up as
-   * a solid clipped hedge-LINE — its exposed perimeter edges as coalesced
-   * spans, each a `topPlane` pillow-bed crown + `paintHedgeFace` leaf faces +
-   * one silhouette — instead of the flat per-tile pillow bed the old
-   * `hedgeMassPaint` affine hack laid on the ground.
-   *
-   * A4 coalesced ONLY straight runs / solid blocks (whose exposed perimeter
-   * is a clean 4-corner rect); A4b routes CORNERS, TEES and garden-border
-   * RINGS through the same path, because `crownSpans` partitions ANY member
-   * set (a hollow ring included) into maximal straight spans that share world
-   * corners → each edge coalesces seam-free with no per-tile seam. Toggle via
-   * `window.dcRenderer.hedgeVolumeOn`.
-   */
-  hedgeVolumeOn = true;
-
-  /** Hedge coalesce class: only the STRAIGHT hedge (`Tile.Hedge`) joins a
-   *  volume run. Diagonals (their cushions don't fit the thin-run model)
-   *  and gates (an animated wicket + finials + a mid-tile opening the
-   *  rectangular crown/face cannot express) map to `null` → they keep the
-   *  proven per-tile path, so a run splits cleanly at a gate exactly as
-   *  A2's wall volume bails beside a doorway. One class ⇒ any straight
-   *  hedge tile coalesces with its neighbours. */
-  private static hedgeMatClass(t: Tile): number | null {
-    return t === Tile.Hedge ? 0 : null;
-  }
-
-  /**
-   * THE ONE RENDER — A4b: the hedge twin of `floodWallCrown` /
-   * `floodGarrisonCrown`. Floods the straight-hedge RUN seeded at (tx,ty)
-   * and, when it coalesces (uniform ground elevation — the A2b contract keeps
-   * raised/terraced hedges on the per-tile path via `bailElevated`), suppresses
-   * every member's per-tile draw and records ONE `CrownVolume` (kind 'hedge').
-   * `crownSpans` splits the members into per-edge straight spans, so a CORNER,
-   * TEE or garden-border RING coalesces edge-by-edge, seam-free (shared world
-   * corners) — NOT one bbox-spanning item (the A2b perf lesson). Only ever
-   * called at q>0 — q=0 keeps the flat pillow-bed the golden gate pins.
-   */
-  private floodHedgeCrown(game: ClientGame, tx: number, ty: number): void {
-    this.floodCrown(game, tx, ty, null, {
-      kind: 'hedge',
-      matClass: 0,
-      classOf: (t) => Renderer.hedgeMatClass(t),
-      heightAt: () => barrierArt.HEDGE_VOL_H,
-      bailElevated: true,
-    });
-  }
-
   private wallItem(
     tile: Tile,
     tx: number,
@@ -12140,28 +10496,11 @@ export class Renderer {
     whT: number,
     hearth = false,
     region: InteriorRegion | null = null,
-    // THE ONE RENDER A2: when this member is a tile of a COALESCED wall
-    // run (emitWallVolume), the run draws its CROWN and its SILHOUETTE
-    // OUTLINE ONCE for the whole run through the structureFace primitives
-    // (topPlane + beginSilhouette) — the two wedge/segmentation sources
-    // under lean. So this per-tile draw paints only the south face art
-    // (logs / windows / hangings), the flanks and the receding side faces
-    // (which already abut seam-free on their shared snapped corners), and
-    // suppresses the per-tile crown slab + woodCrownPlate/woodCrownRun and
-    // the per-tile outline stroke. q=0 never sets this (it keeps the proven
-    // per-tile path), so the flat look is untouched.
-    suppressTop = false,
   ): DrawItem {
     const ctx = this.ctx;
-    // B-3 surface depth thread: a wall is drawn PER TILE (base on the leaned
-    // ground, rising by `s`), so — like a billboard — it foreshortens by the
-    // depthScale at its base (`ty`, matching the worldToScreen anchor). The
-    // ground under it already warps (B-1b); this shrinks the masonry's height
-    // with distance so a far wall doesn't loom. spriteScale === scale at q=0.
-    const s = this.spriteScale(ty);
+    const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
-    const elevLift = game.world.elevAt(tx, ty) * ELEV_H * s;
-    p.y -= elevLift;
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const n = this.wallish(game, tx, ty - 1);
     const e = this.wallish(game, tx + 1, ty);
     const sw = this.wallish(game, tx, ty + 1);
@@ -12200,38 +10539,8 @@ export class Renderer {
       0,
     ];
     const syT = s * this.camera.yScale; // foreshortened tile depth
-    // B-FW WALL TRAPEZOID: a wall tile is a real box, not a single-depth
-    // billboard. Its NORTH (far) edge rides row `ty`; its SOUTH (near)
-    // edge — the face you walk behind — rides row `ty+1`, which under the
-    // lean projects to a DIFFERENT screen position than `p.y + syT` (row
-    // spacing is nonlinear in depth) and a WIDER screen x (near rows
-    // spread from the vanishing centre). Project that south row for real
-    // so tile(ty)'s south edge lands exactly where tile(ty+1)'s north
-    // edge does (same world corner ⇒ same projection ⇒ no gap), the way
-    // cliffArt.ts spans a curtain between two projected corners. The far
-    // edge lifts by ITS OWN depthScale (whT·s), the near edge by the
-    // south row's (whT·sS), so the crown seats on the leaned face top.
-    // At q=0 the perspective divide is off: worldToScreen is exact-affine,
-    // sS === s, the south row projects to p.x / p.y + syT, and every
-    // value below collapses to today's single-depthScale rect — byte-
-    // identical (pinned on the q===0 branch, no reassociated arithmetic).
-    const q = this.camera.q;
-    const sS = q === 0 ? s : this.camera.scale * this.camera.depthScale(ty + 1);
-    const hsN = whT * s; // NORTH (far) edge lift — today's `hs`
-    const hs = whT * sS; // SOUTH (near/face) edge lift
-    let swx: number;
-    let sex: number;
-    let southBaseY: number;
-    if (q === 0) {
-      swx = p.x;
-      sex = p.x + s;
-      southBaseY = p.y + syT;
-    } else {
-      const pS = this.camera.worldToScreen(tx, ty + 1, this.w, this.h);
-      swx = pS.x; // world x = tx  at row ty+1
-      sex = pS.x + sS; // world x = tx+1 at row ty+1 (= worldToScreen(tx+1,ty+1).x)
-      southBaseY = pS.y - elevLift; // same elevation basis as p.y (as today)
-    }
+    const hs = whT * s; // crown / face lift
+    const southBaseY = p.y + syT; // the south (face-foot) row
     // THE SHARED-EDGE LAW: run-mates meet on ONE pixel-snapped edge.
     // A bleed on a joined side would overlap the neighbour by a
     // half-pixel, and whichever tile draws second re-blends its whole
@@ -12250,72 +10559,31 @@ export class Renderer {
     const keyHere = packTile(tx, ty);
     const bleedW = this.bakeBleedW === keyHere;
     const bleedE = this.bakeBleedE === keyHere;
-    // NORTH footprint edge (crown far side) — the old x0/x1/y0 basis.
-    const xN0 = w ? (bleedW ? p.x - this.bakeBleedPx : this.camera.snapPx(p.x)) : p.x - 0.25;
-    const xN1 = e ? (bleedE ? p.x + s + this.bakeBleedPx : this.camera.snapPx(p.x + s)) : p.x + s + 0.25;
+    const x0 = w ? (bleedW ? p.x - this.bakeBleedPx : this.camera.snapPx(p.x)) : p.x - 0.25;
+    const x1 = e ? (bleedE ? p.x + s + this.bakeBleedPx : this.camera.snapPx(p.x + s)) : p.x + s + 0.25;
     const y0 = n || nDoor ? this.camera.snapPx(p.y) : p.y - 0.25;
-    // SOUTH footprint / face-foot edge (crown near side, the face you walk
-    // behind). x0/x1/y1 carry the FACE geometry — the bulk of the detail
-    // below spans x0..x1 at yBase, so keying them to the projected south
-    // row leans the whole face without touching the material passes. A
-    // south corner here is the SAME projected world corner the tile one
-    // row south uses for its north corner ⇒ the snapped edges coincide.
-    const x0 = w ? (bleedW ? swx - this.bakeBleedPx : this.camera.snapPx(swx)) : swx - 0.25;
-    const x1 = e ? (bleedE ? sex + this.bakeBleedPx : this.camera.snapPx(sex)) : sex + 0.25;
     const y1 = sw ? this.camera.snapPx(southBaseY) : southBaseY + 0.25;
-    const sideCol = shade(mat === Tile.WallWood ? skin.log : mat === Tile.WallStone ? '#6f697c' : '#2b2536', -6);
-    // Shared timber course geometry — face, flanks, and corner ends
+    // Shared timber course geometry — face and corner ends
     // must agree on where every log beds. The stack reads bottom-up:
     // stone plinth, squared sill beam, whole chinked log courses at
     // ~0.42-tile pitch (absolute — taller walls stack MORE logs),
     // squared wall-plate beam under the crown. Stubs drop the sill.
-    // Course stack is drawn on the SOUTH face, so it scales by that row's
-    // depthScale (sS) and its lift (hs = whT·sS); at q=0 sS === s so this
-    // is byte-identical. E–W run-mates share row ty+1 ⇒ identical sS ⇒
-    // identical course heights ⇒ beds meet head-on across the joint.
-    const plinthH = sS * 0.22;
-    const sillH = whT >= 1 ? sS * 0.11 : 0;
-    const plateH = sS * 0.13;
+    const plinthH = s * 0.22;
+    const sillH = whT >= 1 ? s * 0.11 : 0;
+    const plateH = s * 0.13;
     const spanPx = hs - plateH - plinthH - sillH;
-    // THE ABSOLUTE COURSE PITCH. At q=0 the legacy round-and-redistribute
-    // path divides THIS tile's own spanPx into an integer log count that
-    // fills it exactly — kept verbatim, byte-identical (pinned on q===0).
-    // Under the lean (q>0) that per-tile rounding is the E–W run's enemy:
-    // every tile's reveal-veil-eased hs rounds to a DIFFERENT nLogs and a
-    // DIFFERENT logH, so a run's courses land at mismatched heights (the
-    // wallcourse bug). Instead bed the courses on an ABSOLUTE world pitch
-    // from a fixed foot (base + li·logPitch, all in sS units), which every
-    // E–W run-mate shares (same plinth/sill/pitch, they differ only in the
-    // veil-eased hs). Each tile's eased hs then merely CLIPS how many
-    // courses show (nLogs), never where a course beds — so beds meet
-    // head-on across the whole run, exactly as the masonry branch already
-    // does. The wall-plate cap (pinned at the eased crown, -hs) rides over
-    // and hides the partial top course. All three timber emitters below —
-    // the south face (li loop), the flank chink lines, and the side-face
-    // chink lines — read nLogs/logH/chinkG, so keying them here keeps the
-    // three in lockstep at both q=0 and q>0.
-    let nLogs: number;
-    let chinkG: number;
-    let logH: number;
-    if (q === 0) {
-      nLogs = Math.max(1, Math.round(spanPx / (sS * 0.42)));
-      chinkG = Math.min(sS * 0.055, spanPx * 0.05);
-      logH = (spanPx - chinkG * (nLogs - 1)) / nLogs;
-    } else {
-      const logPitch = sS * 0.42;
-      chinkG = sS * 0.055;
-      logH = logPitch - chinkG; // logH + chinkG === logPitch (the loop's stride)
-      // Count only courses whose TOP stays below the eased crown; taller
-      // tiles show more courses, but each bed sits at the same absolute
-      // height, so no course top ever overshoots -hs (the plate covers the
-      // partial remainder).
-      nLogs = Math.max(0, Math.ceil((hs - plinthH - sillH - logH) / logPitch));
-    }
+    // Divide this tile's own spanPx into an integer log count that fills
+    // it exactly. Both timber emitters below — the south face (li loop)
+    // and the side-face chink lines — read nLogs/logH/chinkG, so keying
+    // them here keeps them in lockstep.
+    const nLogs = Math.max(1, Math.round(spanPx / (s * 0.42)));
+    const chinkG = Math.min(s * 0.055, spanPx * 0.05);
+    const logH = (spanPx - chinkG * (nLogs - 1)) / nLogs;
 
     return {
       sortY: ty + 1,
       // A5 pitch-aware depth: this per-tile wall's near (south) ground
-      // edge; a body at its base draws in front under the lean.
+      // edge; a body at its base draws in front.
       nearRow: this.occlusionOn ? ty + 1 : undefined,
       drawShadow: sw
         ? undefined
@@ -12323,155 +10591,13 @@ export class Renderer {
             // A body this tall throws a real shadow across the ground,
             // cast from its south base edge along the sun. Shared-edge
             // spans keep run-mates' translucent shadows from doubling.
-            // The base is the PROJECTED south foot so the cast stays
-            // pinned to the leaned wall (byte-identical at q=0).
             this.castEdgeQuad(x0, southBaseY, x1, southBaseY, whT);
           },
       draw: () => {
-        const yBase = southBaseY; // projected south edge at ground level
+        const yBase = southBaseY; // south edge at ground level
         const yTop = yBase - hs; // south edge, lifted to the crown
-        // The legacy per-height `leanX` skew is retired (PERSP_LEAN=0 made
-        // it the identity); the crown/flank corners ride the projected x
-        // directly. tx0/tx1 kept as the face's top-edge x (== x0/x1).
-        const tx0 = x0;
-        const tx1 = x1;
-        // Flank revealed by the lean: a prism right of the screen
-        // center leans right, showing its WEST side (and vice versa).
-        // Skipped inside joined runs. Timber flanks carry the course
-        // seams and stone plinth around the corner so the same logs
-        // wrap the building — a face is never a different material
-        // than its own side.
-        const flankDetail = (xa: number, txa: number): void => {
-          if (mat !== Tile.WallWood) return;
-          const lerp = (f: number): number => xa + (txa - xa) * f;
-          const band = (f0: number, f1: number, col: string): void => {
-            const xq0 = lerp(f0);
-            const xq1 = lerp(f1);
-            ctx.fillStyle = col;
-            ctx.beginPath();
-            ctx.moveTo(xq0, p.y - hs * f0);
-            ctx.lineTo(xq0, p.y + syT - hs * f0);
-            ctx.lineTo(xq1, p.y + syT - hs * f1);
-            ctx.lineTo(xq1, p.y - hs * f1);
-            ctx.closePath();
-            ctx.fill();
-          };
-          // Foundation, sill beam, and wall plate wrap the corner —
-          // a face is never a different construction than its side.
-          band(0, plinthH / hs, shade(Renderer.PLINTH_COL, -12));
-          if (sillH > 0) band(plinthH / hs, (plinthH + sillH) / hs, shade(skin.plate, -16));
-          band(1 - plateH / hs, 1, shade(skin.plate, -8));
-          // Chinking lines between courses carry the stacked logs
-          // around the building's edge at the exact face pitch.
-          for (let i = 1; i < nLogs; i++) {
-            const f = (plinthH + sillH + i * logH + (i - 0.5) * chinkG) / hs;
-            const xf = lerp(f);
-            ctx.fillStyle = shade(skin.chink, -22);
-            ctx.fillRect(xf - s * 0.02, p.y - hs * f, Math.max(1, s * 0.04), syT);
-          }
-        };
-        if (tx0 > x0 + 0.5 && !w) {
-          ctx.fillStyle = sideCol;
-          ctx.beginPath();
-          ctx.moveTo(x0, p.y);
-          ctx.lineTo(x0, yBase);
-          ctx.lineTo(tx0, yTop);
-          ctx.lineTo(tx0, p.y - hs);
-          ctx.closePath();
-          ctx.fill();
-          flankDetail(x0, tx0);
-        } else if (tx1 < x1 - 0.5 && !e) {
-          ctx.fillStyle = sideCol;
-          ctx.beginPath();
-          ctx.moveTo(x1, p.y);
-          ctx.lineTo(x1, yBase);
-          ctx.lineTo(tx1, yTop);
-          ctx.lineTo(tx1, p.y - hs);
-          ctx.closePath();
-          ctx.fill();
-          flankDetail(x1, tx1);
-        }
-        // TRUE SIDE FACES (B-FW side walls): a receding vertical face on
-        // every EXPOSED footprint edge that has no south face — the deck
-        // model (deckStandFace / deckCarpentryItems). A N–S side wall is a
-        // column of tiles each of which HAS a wall to its south, so the
-        // south-face block below never runs for it and, at q>0, the crown
-        // caps foreshorten and lift up-screen leaving a SEE-THROUGH band
-        // between each crown's near edge and the ground — you see the
-        // interior floor or the exterior through where the side wall
-        // should be. Fill that band with a real trapezoid down each
-        // exposed edge, from the crown's matching slanted edge to the
-        // ground, so the run reads solid and encloses the room.
-        //
-        // Each face spans the crown's own snapped corners (xN* at the far
-        // row ty lifted by hsN, x* at the near row ty+1 lifted by hs), so
-        // its top edge seats exactly under the crown's E/W (or N) edge and
-        // consecutive tiles' faces meet on the same device pixel — the
-        // shared-edge law, no gap. Heights honour the live `whT` (the
-        // wall-sink veil), so a sunk near-wall's side shrinks with it and
-        // the camera still sees in. GUARDED behind q>0: at q=0 the crowns
-        // tile the column densely and cover it, so nothing new is emitted
-        // and the output stays byte-identical to today.
-        if (q > 0) {
-          // Draw the receding face between north corner (ax,ay lifted by
-          // aLift) and south/far corner (bx,by lifted by bLift), wearing
-          // the same course carpentry the south face carries. Course beds
-          // are fractions of the wall height, lifted at each corner by its
-          // OWN depthScale (aLift / bLift), so they slant to match the
-          // crown and stay level with the south face's own courses.
-          const sideStandFace = (
-            ax: number,
-            ay: number,
-            aLift: number,
-            bx: number,
-            by: number,
-            bLift: number,
-            litD: number,
-          ): void => {
-            // THE STRUCTURE FACE (screen-space shape): corners are already
-            // projected + snapped and the lifts pre-foreshortened, so the
-            // shared trapezoid/band/seam helpers draw them verbatim.
-            sfFill(ctx, ax, ay, aLift, bx, by, bLift, shade(sideCol, litD));
-            // A course band between wall-height fractions f0..f1.
-            const band = (f0: number, f1: number, col: string): void =>
-              sfBand(ctx, ax, ay, aLift, bx, by, bLift, f0, f1, col);
-            // A thin seam line at fraction f, constant device thickness.
-            const hline = (f: number, wpx: number, col: string): void =>
-              sfSeam(ctx, ax, ay, aLift, bx, by, bLift, f, wpx, col);
-            if (mat === Tile.WallWood) {
-              // Foundation, sill beam and wall-plate wrap the corner (the
-              // flankDetail law): the side is never a different build than
-              // its face. Fractions match flankDetail / the south stack.
-              band(0, plinthH / hs, shade(Renderer.PLINTH_COL, litD - 12));
-              if (sillH > 0) band(plinthH / hs, (plinthH + sillH) / hs, shade(skin.plate, litD - 16));
-              band(1 - plateH / hs, 1, shade(skin.plate, litD - 8));
-              // Chinking lines between courses at the face pitch.
-              for (let i = 1; i < nLogs; i++) {
-                const f = (plinthH + sillH + i * logH + (i - 0.5) * chinkG) / hs;
-                hline(f, s * 0.04, shade(skin.chink, litD - 22));
-              }
-            } else {
-              // Running-bond masonry: mortar beds at absolute stone pitch
-              // (0.39 tile), plus a darker foundation course at the base.
-              band(0, Math.min(0.1, s * 0.39 * 0.5 / hs), shade(sideCol, litD - 12));
-              for (let cf = s * 0.39; cf < hs * 0.96; cf += s * 0.39) {
-                hline(cf / hs, s * 0.03, 'rgba(20, 14, 28, 0.35)');
-              }
-            }
-          };
-          // West edge — SW→NW, exposed when no wall to the west. Sunlit.
-          if (!w) sideStandFace(xN0, y0, hsN, x0, y1, hs, 8);
-          // East edge — SE→NE, exposed when no wall to the east. Shaded.
-          if (!e) sideStandFace(xN1, y0, hsN, x1, y1, hs, -12);
-          // North back face — the outward face of a north wall, exposed
-          // when no wall to the north (mostly hidden by the crown under
-          // lean, drawn for completeness so the building's back reads
-          // solid). Both corners ride row ty, so it is a flat rectangle.
-          // Skipped when the REAR RISER already anchors a sunk neighbour.
-          if (!n && !nDoor) sideStandFace(xN0, y0, hsN, xN1, y0, hsN, -6);
-        }
-        // South face: base edge on the ground, top edge leaned — the
-        // vertical surface you walk behind.
+        // South face: base edge on the ground — the vertical surface you
+        // walk behind.
         if (!sw) {
           // TRUE GLASS: a window is a HOLE in the face, not a painted
           // pane. Whatever the frame already holds behind this wall —
@@ -12480,23 +10606,15 @@ export class Renderer {
           // of tint and a glint then say "glass". The hole is carved
           // with an evenodd fill and held open by an evenodd clip
           // through the whole detail pass.
-          // FEATURE-ON-FACE (Epic B P2): the window opening, its dressing,
-          // wall-hangings and sill pots ride the FACE'S OWN plane — mapped
-          // through its four projected corners in face UV (u along the wall
-          // W→E, v up the height base→crown) — NOT the north-row `p.x`.
-          // Under lean the near south row spreads WIDER than the north row
-          // and sits at swx..sex; anchoring the window at `p.x + s*frac`
-          // put it inboard of the face, so it slid off-centre and cropped
-          // against the face clip as the camera panned. Everything in this
-          // stack draws inside translate(0, yBase), so the map is built in
-          // FRAME-LOCAL coords: base row is the south foot (v=0 ⇒ y=0), the
-          // top the crown south edge (v=1 ⇒ y=-hs). At q=0 the south row
-          // projects to p.x..p.x+s, top and base share x, and the map
-          // collapses to today's rect ⇒ pixel-for-pixel identical. The
-          // legacy `leanX` skew is retired here: PERSP_LEAN=0 makes it a
-          // no-op, and the lean now lives in the projected corners.
-          const fpx = q === 0 ? p.x : swx; // face west origin (frame-local x)
-          const fs = q === 0 ? s : sex - swx; // face width in screen px (== sS)
+          // FEATURE-ON-FACE: the window opening, its dressing, wall-hangings
+          // and sill pots ride the FACE'S OWN plane — mapped through its four
+          // corners in face UV (u along the wall W→E, v up the height
+          // base→crown). Everything in this stack draws inside
+          // translate(0, yBase), so the map is built in FRAME-LOCAL coords:
+          // base row is the south foot (v=0 ⇒ y=0), the top the crown south
+          // edge (v=1 ⇒ y=-hs).
+          const fpx = p.x; // face west origin (frame-local x)
+          const fs = s; // face width in screen px
           const faceMap = faceUV(fpx, 0, fpx + fs, 0, fpx, -hs, fpx + fs, -hs);
           // The glazed opening, set at the body's eye line: sill at
           // ~0.9 tiles, head at ~1.6 — a window a person stands at.
@@ -12509,14 +10627,11 @@ export class Renderer {
           const winE = window && this.fgGroundAt(tx + 1, ty) === tile;
           // Singles ride the face at 28%/72% of its width (u mapped
           // through the face corners); merged edges butt the neighbour on
-          // the snapped shared face edge (x0/x1 are already south-row).
+          // the snapped shared face edge.
           const wx = winW ? x0 : faceMap(0.28, 0).x;
           const wxE = winE ? x1 : faceMap(0.72, 0).x;
           const ww = wxE - wx;
-          // The height band mapped to face scale: head at 1.62 tiles up,
-          // sill 0.7 tiles below it (fs === s at q=0 ⇒ today's -s*1.62 /
-          // s*0.7). Equivalent to faceMap's v-band; kept as a direct face
-          // height so the wall's foreshortening carries the opening.
+          // The height band: head at 1.62 tiles up, sill 0.7 tiles below it.
           const wy = -fs * 1.62;
           const wh2 = fs * 0.7;
           let hole: Path2D | null = null;
@@ -12538,13 +10653,13 @@ export class Renderer {
           const facePath = new Path2D();
           facePath.moveTo(x0, yBase + 0.5);
           facePath.lineTo(x1, yBase + 0.5);
-          facePath.lineTo(tx1, yTop);
-          facePath.lineTo(tx0, yTop);
+          facePath.lineTo(x1, yTop);
+          facePath.lineTo(x0, yTop);
           facePath.closePath();
           if (hole) facePath.addPath(hole, frame);
           ctx.fill(facePath, 'evenodd');
           // Material detail inside the face's own frame, so courses and
-          // plank seams sit level with the leaned face top.
+          // plank seams sit level with the face top.
           ctx.save();
           ctx.translate(0, yBase);
           if (hole) {
@@ -12811,8 +10926,7 @@ export class Renderer {
           // Wall-hung cloth (banners, tapestry) on the face — skipped
           // on glazed walls, whose guard clip would eat the drop. Pinned
           // to the FACE (fpx origin, fs width/scale) so it stays centred
-          // on the wall under lean instead of drifting off the north row;
-          // fpx===p.x, fs===s at q=0 ⇒ unchanged.
+          // on the wall.
           if (!window) wallHungArt.wallHangings(this, game, tx, ty, fpx, fs, whT, false);
           // Ambient-occlusion seam where the face meets the ground.
           ctx.fillStyle = 'rgba(18, 12, 26, 0.28)';
@@ -12904,43 +11018,32 @@ export class Renderer {
         // north edge down to the sunken neighbour's crown north edge;
         // our own crown and the neighbour's stub overdraw the rest.
         if (n && nH < whT - 0.04) {
-          // North-edge feature: rides the crown's FAR edge (xN*, hsN).
-          const yRTop = p.y - hsN;
+          // North-edge feature: rides the crown's FAR edge.
+          const yRTop = p.y - hs;
           const yRBot = p.y - syT - nH * s;
           if (yRBot > yRTop + 0.5) {
             ctx.fillStyle = shade(face, -14);
             ctx.beginPath();
-            ctx.moveTo(xN0, yRTop);
-            ctx.lineTo(xN1, yRTop);
-            ctx.lineTo(xN1, yRBot);
-            ctx.lineTo(xN0, yRBot);
+            ctx.moveTo(x0, yRTop);
+            ctx.lineTo(x1, yRTop);
+            ctx.lineTo(x1, yRBot);
+            ctx.lineTo(x0, yRBot);
             ctx.closePath();
             ctx.fill();
           }
         }
-        // Crown: the top slab, a TRUE trapezoid drawn in absolute screen
-        // coords. Its NORTH edge rides row ty (footprint xN0..xN1 at y0,
-        // lifted by the far depthScale hsN); its SOUTH edge rides row ty+1
-        // (x0..x1 at y1, lifted by the near depthScale hs). Both rows are
-        // horizontal (all points on a row share one screen y), so the slab
-        // is a flat-topped trapezoid whose slanted E/W sides join the far
-        // edge to the near. Because each edge is the PROJECTED shared world
-        // corner, tile(ty)'s south crown edge coincides with tile(ty+1)'s
-        // north crown edge, and tile(tx)'s east with tile(tx+1)'s west —
-        // no gap is representable. At q=0 hsN===hs, the rows project to the
-        // same width, and the trapezoid collapses to today's lifted
-        // chamferRect vertex-for-vertex (byte-identical).
-        // A2: the crown + the per-tile outline are the wedge/segmentation
-        // sources under lean. In a coalesced run (suppressTop) they are
-        // drawn ONCE for the whole run via topPlane + a run silhouette
-        // (emitWallVolume); here they are skipped so only the south face
-        // art remains. q=0 never suppresses — the flat path is unchanged.
-        if (!suppressTop) {
-        const cNy = y0 - hsN; // north crown top (far, higher up-screen)
+        // Crown: the top slab, drawn in absolute screen coords. Its NORTH
+        // edge rides row ty (footprint x0..x1 at y0), its SOUTH edge row
+        // ty+1 (x0..x1 at y1), both lifted by hs. Because each edge is the
+        // shared world corner, tile(ty)'s south crown edge coincides with
+        // tile(ty+1)'s north crown edge, and tile(tx)'s east with
+        // tile(tx+1)'s west — no gap is representable.
+        {
+        const cNy = y0 - hs; // north crown top (far, higher up-screen)
         const cSy = y1 - hs; // south crown top (near), == the face top
         // Same corner clamp chamferRect applies, keyed to the far edge the
-        // chamfer cuts (byte-identical to today's clamp at q=0).
-        const cCap = Math.min(xN1 - xN0, y1 - y0) / 2;
+        // chamfer cuts.
+        const cCap = Math.min(x1 - x0, y1 - y0) / 2;
         const rTL = Math.min(radii[0], cCap);
         const rTR = Math.min(radii[1], cCap);
         // THE CROWN CLOSES ITS INTERNAL JOINS. The face relies on a bare
@@ -12959,46 +11062,27 @@ export class Renderer {
         // keeps the exact snapPx edge (byte-identical); it is 3/dpr only
         // while baking ⇒ the underlap that survives the resample. EXPOSED
         // edges (n/e/w false) are untouched ⇒ outer silhouette unchanged.
-        const cxN1 = e ? xN1 + (bleedE ? 0 : this.bakeBleedPx) : xN1;
         const cx1 = e ? x1 + (bleedE ? 0 : this.bakeBleedPx) : x1;
         const cNyB = n ? cNy - this.bakeBleedPx : cNy;
         ctx.save();
         ctx.fillStyle = top;
         ctx.beginPath();
-        ctx.moveTo(xN0 + rTL, cNyB);
-        ctx.lineTo(cxN1 - rTR, cNyB);
-        if (rTR > 0) ctx.lineTo(cxN1, cNyB + rTR);
-        else ctx.lineTo(cxN1, cNyB);
+        ctx.moveTo(x0 + rTL, cNyB);
+        ctx.lineTo(cx1 - rTR, cNyB);
+        if (rTR > 0) ctx.lineTo(cx1, cNyB + rTR);
+        else ctx.lineTo(cx1, cNyB);
         ctx.lineTo(cx1, cSy);
         ctx.lineTo(x0, cSy);
         if (rTL > 0) {
-          ctx.lineTo(xN0, cNyB + rTL);
-          ctx.lineTo(xN0 + rTL, cNyB);
+          ctx.lineTo(x0, cNyB + rTL);
+          ctx.lineTo(x0 + rTL, cNyB);
         } else {
-          ctx.lineTo(xN0, cNyB);
+          ctx.lineTo(x0, cNyB);
         }
         ctx.closePath();
         ctx.fill();
         if (mat === Tile.WallWood) {
-          // THE CONTINUOUS CROWN: at q>0 paint the wall-plate beam in the
-          // leaned crown trapezoid's own UV (run-continuous), so the run's
-          // top reads as one coherent plate instead of per-tile ortho caps
-          // that ignore the pitch. At q=0 keep woodCrownPlate verbatim —
-          // byte-identical. Corners (xN0/x0 on the far/near rows) are the
-          // shared world corners, so consecutive tiles' beams meet head-on.
-          if (q > 0)
-            this.woodCrownRun(xN0, cNy, xN1, cNy, x0, cSy, x1, cSy, s, tx, ty, (n || sw) && !(w || e));
-          else
-            this.woodCrownPlate(
-              { x: p.x, y: cNy },
-              cSy - cNy,
-              s,
-              Math.min(xN0, x0),
-              Math.max(xN1, x1),
-              tx,
-              ty,
-              (n || sw) && !(w || e),
-            );
+          this.woodCrownPlate({ x: p.x, y: cNy }, cSy - cNy, s, x0, x1, tx, ty, (n || sw) && !(w || e));
         }
         // Lit south lip of the crown grounds the height read — a thin band
         // just inside the (horizontal) near edge.
@@ -13012,9 +11096,9 @@ export class Renderer {
         // ground contact. Run-shared edges (n/e/w/sw) are skipped so
         // the run reads as one mass, only its outer boundary ringed.
         if (this.outlineOn) {
-          const cTop = y0 - hsN; // crown north (far) edge, lifted
+          const cTop = y0 - hs; // crown north (far) edge, lifted
           const cBot = y1 - hs; // crown south lip (near)
-          const fBot = southBaseY; // projected face foot on the ground
+          const fBot = southBaseY; // face foot on the ground
           const sideBot = sw ? cBot : fBot; // no face ⇒ stop at the crown
           const outline = new Path2D();
           this.addCrownPerimeter(outline, x0, x1, cTop, sideBot, sideBot, radii[0], radii[1], n, e, w);
@@ -13025,7 +11109,7 @@ export class Renderer {
           this.beginStructOutline();
           ctx.stroke(outline);
         }
-        } // end !suppressTop (crown + per-tile outline)
+        }
       },
     };
   }
@@ -13104,130 +11188,6 @@ export class Renderer {
   }
 
   /**
-   * THE CONTINUOUS CROWN (Epic B, q>0) — the wall-plate beam read as ONE
-   * coherent top along the whole run, not a row of per-tile hashed caps.
-   *
-   * woodCrownPlate paints the beam in ORTHO rect coords (fillRect on
-   * p.x / p.y / syT), so under the lean every tile's cap ignores the pitch
-   * and a straight run reads stepped / segmented. This paints the SAME
-   * carpentry — hard arris shadows down the beam's two long edges, a
-   * sun-lit spine, a long grain streak, a pegged butt joint — in the
-   * leaned crown trapezoid's own UV: `u` ALONG the run, `v` ACROSS the beam
-   * thickness, bilerped over the four projected crown corners (NW/NE on the
-   * far row, SW/SE on the near row). Because consecutive tiles share a
-   * crown edge (the SAME projected world corner ⇒ the same device pixel)
-   * and every feature is keyed to a `u`/`v` FRACTION, the spine, arris and
-   * grain lines run head-on across the joint — the whole run reads as one
-   * continuous plate. Per-tile whT (the reveal veil) and per-tile sort are
-   * untouched: only the DETAIL moves into crown-plane space, so a sunk
-   * neighbour still steps its own height while the level run stays coherent.
-   *
-   * The feature hash stays `hashCoords(177, tx, ty)` — this tile's own unit
-   * of the run — so the beam's varied dressing matches woodCrownPlate's
-   * statistics unit-for-unit; the continuity comes purely from drawing in
-   * the leaned UV rather than from re-seeding. Guarded to q>0 by the caller;
-   * q=0 keeps woodCrownPlate verbatim (byte-identical). Call with the crown
-   * fill path still current — it clips the dressing to the chamfered top.
-   */
-  private woodCrownRun(
-    nwx: number,
-    nwy: number,
-    nex: number,
-    ney: number,
-    swx: number,
-    swy: number,
-    sex: number,
-    sey: number,
-    s: number,
-    tx: number,
-    ty: number,
-    vert: boolean,
-  ): void {
-    const ctx = this.ctx;
-    ctx.save();
-    ctx.clip();
-    // Corner assignment so ONE feature routine serves both orientations:
-    //   vert  (N–S run): u north→south, v west→east
-    //   horiz (E–W run): u west→east,  v north→south
-    let c00x: number;
-    let c00y: number;
-    let c10x: number;
-    let c10y: number;
-    let c01x: number;
-    let c01y: number;
-    let c11x: number;
-    let c11y: number;
-    if (vert) {
-      c00x = nwx; c00y = nwy; c10x = swx; c10y = swy; // v=0 (west): u N→S
-      c01x = nex; c01y = ney; c11x = sex; c11y = sey; // v=1 (east)
-    } else {
-      c00x = nwx; c00y = nwy; c10x = nex; c10y = ney; // v=0 (north): u W→E
-      c01x = swx; c01y = swy; c11x = sex; c11y = sey; // v=1 (south)
-    }
-    // Bilinear crown-plane point from (u,v) in [0,1]².
-    const px = (u: number, v: number): number => {
-      const a = 1 - u;
-      const b = 1 - v;
-      return a * b * c00x + u * b * c10x + a * v * c01x + u * v * c11x;
-    };
-    const py = (u: number, v: number): number => {
-      const a = 1 - u;
-      const b = 1 - v;
-      return a * b * c00y + u * b * c10y + a * v * c01y + u * v * c11y;
-    };
-    const quad = (u0: number, v0: number, u1: number, v1: number, col: string): void => {
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.moveTo(px(u0, v0), py(u0, v0));
-      ctx.lineTo(px(u1, v0), py(u1, v0));
-      ctx.lineTo(px(u1, v1), py(u1, v1));
-      ctx.lineTo(px(u0, v1), py(u0, v1));
-      ctx.closePath();
-      ctx.fill();
-    };
-    // Device spans for constant-thickness dressing (seam lines, pegs).
-    const alongPx = Math.hypot(px(1, 0) - px(0, 0), py(1, 0) - py(0, 0)) || 1;
-    const acrossPx = Math.hypot(px(0, 1) - px(0, 0), py(0, 1) - py(0, 0)) || 1;
-    const seam = Math.max(1, s * 0.025);
-    const hj = hashCoords(177, tx, ty);
-    // Hard arris shadows where the beam's long edges fall to the faces.
-    quad(0, 0, 1, 0.1, 'rgba(30, 18, 8, 0.24)');
-    quad(0, 0.9, 1, 1, 'rgba(30, 18, 8, 0.24)');
-    // Sun-lit spine along the beam's back.
-    quad(0, 0.32, 1, 0.68, 'rgba(255, 226, 175, 0.14)');
-    // Long grain following the run.
-    if ((hj & 3) === 1) {
-      const v0 = 0.2 + ((hj >>> 6) % 30) / 100;
-      quad(0.12, v0, 0.74, Math.min(1, v0 + seam / acrossPx), 'rgba(40, 24, 10, 0.2)');
-    }
-    // Rare butt joint, pegged either side — beams are FITTED.
-    if ((hj & 7) === 2) {
-      const u0 = 0.2 + (hj % 55) / 100;
-      quad(u0, 0.08, Math.min(1, u0 + seam / alongPx), 0.92, 'rgba(40, 24, 10, 0.38)');
-      const peg = s * 0.042;
-      ctx.fillStyle = 'rgba(40, 24, 10, 0.5)';
-      ctx.fillRect(px(u0, 0.28) - peg * 0.75, py(u0, 0.28) - peg, peg, peg);
-      ctx.fillRect(px(u0, 0.6) + peg * 0.4, py(u0, 0.6), peg, peg);
-    }
-    ctx.restore();
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  /**
    * A 45° wall corner tile. The mass fills one triangle (named by the
    * tile); the open triangle faces the exterior. NE/NW-mass variants
    * cut a building's camera-side corners and show their SLOPED
@@ -13249,15 +11209,10 @@ export class Renderer {
     game: ClientGame,
     whT: number,
     region: InteriorRegion | null,
-    // THE ONE RENDER A2c: a member of a COALESCED 45° run (floodDiagCrown)
-    // paints only its sloped FACE here; the run's continuous mass-triangle
-    // crown + outline are drawn once by the coalesced path (paintDiagCrownSpan).
-    // q=0 never sets this (it keeps the proven per-tile crown + outline).
-    suppressTop = false,
   ): DrawItem {
     const info = diagWallInfo(tile)!;
     const ctx = this.ctx;
-    const s = this.spriteScale(ty); // B-3 surface depth thread (foreshorten by base depth)
+    const s = this.camera.scale;
     const syT = s * this.camera.yScale;
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
@@ -13292,7 +11247,7 @@ export class Renderer {
       sortY: front ? ty + 0.001 : ty + 1,
       // A5 pitch-aware depth: a 45° face sorts at its NEAR row (the
       // pocket behind the line is solid wall) — bodies sharing its rows
-      // are in front. Match sortY so q=0 is unchanged.
+      // are in front. Matches sortY, so the flat order is unchanged.
       nearRow: this.occlusionOn ? (front ? ty + 0.001 : ty + 1) : undefined,
       drawShadow: front
         ? () => this.castEdgeQuad(hypW[0], hypW[1], hypE[0], hypE[1], whT)
@@ -13307,16 +11262,8 @@ export class Renderer {
         } else if (!nS) {
           this.paintFaceBands([x0, yS], [x1, yS], hs, s, stone, skin, face, tx, ty, whT);
         }
-        // A coalesced-run member paints only its FACE (above): the run's
-        // mass-triangle crown + outline are drawn once by paintDiagCrownSpan.
-        if (suppressTop) return;
-        // Crown: the mass triangle, lifted.
-        // Epic B (FW): lift the crown by the DEPTH-SCALED wall height so the
-        // top slab seats on the depth-scaled face top (hs = whT*s) instead
-        // of floating above it — beginHeightLayer lifts by raw camera.scale,
-        // which under lean detaches the crown from its own face. At q=0
-        // s === camera.scale and PERSP_LEAN is 0, so this is byte-identical
-        // to beginHeightLayer(whT).
+        // Crown: the mass triangle, lifted by the wall height so the top
+        // slab seats on the face top (hs = whT*s).
         ctx.save();
         ctx.translate(0, -whT * s);
         const triPath = new Path2D();
@@ -13363,7 +11310,7 @@ export class Renderer {
           ctx.stroke();
         }
         ctx.restore();
-        ctx.restore(); // beginHeightLayer
+        ctx.restore(); // crown lift
         // SILHOUETTE OUTLINE: the lifted outward arris + the visible
         // face's ground contact + exposed end verticals. Run-shared
         // edges are the neighbour runs' problem, as everywhere.
@@ -13436,24 +11383,11 @@ export class Renderer {
       const sillH = whT >= 1 ? s * 0.11 : 0;
       const plateH = s * 0.13;
       const spanPx = hs - plateH - plinthH - sillH;
-      // Same absolute-pitch law as wallItem's south face: at q=0 keep the
-      // legacy round-and-redistribute fill (byte-identical); under the lean
-      // bed the courses on a fixed foot + pitch so a diagonal run's beds
-      // align with its neighbours instead of each veil-eased tile rounding
-      // to its own count. The plate cap hides the partial top course.
-      let nLogs: number;
-      let chinkG: number;
-      let logH: number;
-      if (this.camera.q === 0) {
-        nLogs = Math.max(1, Math.round(spanPx / (s * 0.42)));
-        chinkG = Math.min(s * 0.055, spanPx * 0.05);
-        logH = (spanPx - chinkG * (nLogs - 1)) / nLogs;
-      } else {
-        const logPitch = s * 0.42;
-        chinkG = s * 0.055;
-        logH = logPitch - chinkG; // logH + chinkG === logPitch (the loop's stride)
-        nLogs = Math.max(0, Math.ceil((hs - plinthH - sillH - logH) / logPitch));
-      }
+      // Same course law as wallItem's south face: round-and-redistribute
+      // this face's own span into whole logs.
+      const nLogs = Math.max(1, Math.round(spanPx / (s * 0.42)));
+      const chinkG = Math.min(s * 0.055, spanPx * 0.05);
+      const logH = (spanPx - chinkG * (nLogs - 1)) / nLogs;
       ctx.fillStyle = Renderer.PLINTH_COL;
       ctx.fillRect(0, -plinthH, w2, plinthH);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
@@ -13724,7 +11658,7 @@ export class Renderer {
 
   /**
    * One paneled timber door leaf on a south face, drawn in the current
-   * (leaned) frame. `hx` is the hinge edge, `dir` which way the leaf
+   * frame. `hx` is the hinge edge, `dir` which way the leaf
    * extends (+1 east, -1 west), `w` its current on-screen width — the
    * swing compresses width toward the hinge, so `oc` (0 shut → 1 open)
    * only drives the edge-on shading and detail fade. The grammar is
@@ -13809,10 +11743,9 @@ export class Renderer {
     region: InteriorRegion | null = null,
   ): DrawItem {
     const ctx = this.ctx;
-    const s = this.spriteScale(ty); // B-3 surface depth thread (foreshorten by base depth)
+    const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
-    const elevLift = game.world.elevAt(tx, ty) * ELEV_H * s;
-    p.y -= elevLift;
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const isWallAt = (x: number, y: number) => this.wallish(game, x, y);
     const ex = tx + runLen - 1; // east-most tile of the run
     const nW = isWallAt(tx, ty - 1);
@@ -13836,42 +11769,17 @@ export class Renderer {
     const trim = stone ? '#8a8496' : skin.trim;
     const syT = s * this.camera.yScale;
     const rw = s * runLen; // the opening spans the whole run (NORTH-frame width)
-    // B-FW DOOR FACE (Epic B P3): a doorway is a wall tile with an opening,
-    // so — exactly like wallItem's south face — its face rides the PROJECTED
-    // south row (ty+1), NOT the affine `p.y + syT`. Under lean the near row
-    // spreads WIDER and sits at a DIFFERENT screen height than `p.y + syT`
-    // (row spacing is nonlinear in depth); anchoring the door to the north
-    // `p.x`/`p.y+syT` frame with a leanX skew floated it off its own wall
-    // foot and let the panel crop/detach/slide when the camera panned. Project
-    // the south row for real — matching the neighbour wall's southBaseY / swx
-    // / sex / hs = whT·sS — so the whole opening is mathematically part of the
-    // wall face and cannot come loose. At q=0 worldToScreen is exact-affine,
-    // sS === s, the south row projects to p.x / p.y+syT, and every value below
-    // collapses to today's rect ⇒ byte-identical (pinned on the q===0 branch,
-    // no reassociated arithmetic).
-    const q = this.camera.q;
-    const sS = q === 0 ? s : this.camera.scale * this.camera.depthScale(ty + 1);
-    const hs = whT * sS; // SOUTH face lift (was whT * s)
-    let swx: number;
-    let sex: number;
-    let southBaseY: number;
-    if (q === 0) {
-      swx = p.x;
-      sex = p.x + rw;
-      southBaseY = p.y + syT;
-    } else {
-      const pS = this.camera.worldToScreen(tx, ty + 1, this.w, this.h);
-      swx = pS.x; // world x = tx        at row ty+1
-      sex = pS.x + sS * runLen; // world x = tx+runLen at row ty+1 (row is affine in x)
-      southBaseY = pS.y - elevLift; // same elevation basis as p.y
-    }
-    // NORTH-frame edges — the CROWN (top slab) is unchanged from today.
+    // A doorway is a wall tile with an opening, so — exactly like
+    // wallItem's south face — its face rides the south row (ty+1).
+    const hs = whT * s; // SOUTH face lift
+    const southBaseY = p.y + syT;
+    // NORTH-frame edges — the CROWN (top slab).
     const nx0 = p.x - 0.25;
     const nx1 = p.x + rw + 0.25;
     // SOUTH-frame edges — the FACE (opening, jambs, header, leaf, threshold).
-    const x0 = swx - 0.25;
-    const x1 = sex + 0.25;
-    const jw = sS * 0.15;
+    const x0 = p.x - 0.25;
+    const x1 = p.x + rw + 0.25;
+    const jw = s * 0.15;
     const r = s * 0.26;
     const radii: [number, number, number, number] = [!nW && !w ? r : 0, !nE && !e ? r : 0, 0, 0];
     return {
@@ -13879,31 +11787,25 @@ export class Renderer {
       // A5 pitch-aware depth: the gateway wall's near (south) ground edge.
       nearRow: this.occlusionOn ? ty + 1 : undefined,
       drawShadow: () => {
-        // Only the jambs cast — light passes through the opening. The base is
-        // the PROJECTED south foot so the cast stays pinned to the leaned wall
-        // (byte-identical at q=0, where southBaseY === p.y + syT).
+        // Only the jambs cast — light passes through the opening.
         this.castEdgeQuad(x0, southBaseY, x0 + jw, southBaseY, whT);
         this.castEdgeQuad(x1 - jw, southBaseY, x1, southBaseY, whT);
       },
       draw: () => {
         const yBase = southBaseY;
-        // FEATURE-ON-FACE (Epic B P3): the opening, jambs, header, leaf and
-        // threshold ride the FACE'S OWN plane — mapped through its four
-        // projected south-row corners in face UV (u along the wall W→E, v up
-        // the height base→crown). Everything below draws inside translate(0,
-        // yBase) in FRAME-LOCAL coords (base row v=0 ⇒ y=0, crown v=1 ⇒
-        // y=-hs). At q=0 the south row projects to p.x..p.x+rw, top and base
-        // share x, and the map collapses to today's plain rect ⇒ pixel-for-
-        // pixel identical. The legacy leanX skew is retired: the lean now
-        // lives entirely in the projected south-row corners.
-        const fpx = q === 0 ? p.x : swx; // face west origin (frame-local x)
-        const fs = q === 0 ? rw : sex - swx; // face width in screen px (== sS·runLen)
+        // FEATURE-ON-FACE: the opening, jambs, header, leaf and threshold
+        // ride the FACE'S OWN plane — mapped through its four south-row
+        // corners in face UV (u along the wall W→E, v up the height
+        // base→crown). Everything below draws inside translate(0, yBase) in
+        // FRAME-LOCAL coords (base row v=0 ⇒ y=0, crown v=1 ⇒ y=-hs).
+        const fpx = p.x; // face west origin (frame-local x)
+        const fs = rw; // face width in screen px
         const faceMap = faceUV(fpx, 0, fpx + fs, 0, fpx, -hs, fpx + fs, -hs);
         ctx.save();
         ctx.translate(0, yBase);
         // The dark interior seen through the opening; melts away as
         // anyone approaches the threshold.
-        const hh = Math.max(0, hs - sS * 1.56); // opening is FIXED height (face-scaled); the header grows (stubs have none)
+        const hh = Math.max(0, hs - s * 1.56); // opening is FIXED height (face-scaled); the header grows (stubs have none)
         // THE DOOR OPENS ONTO A ROOM, NOT THE MAP. A doorway is a
         // hole, and a hole shows whatever the frame already holds —
         // which for a door whose far side is open country is raw
@@ -14028,13 +11930,8 @@ export class Renderer {
         ctx.fillStyle = shade(trim, stone ? 22 : 30);
         ctx.fillRect(x0 + jw, -s * 0.07, x1 - x0 - jw * 2, s * 0.07);
         ctx.restore();
-        // Crown: the run's top mass continues unbroken over the door.
-        // Epic B (FW): lift the crown by the DEPTH-SCALED wall height so the
-        // top slab seats on the depth-scaled face top (hs = whT*s) instead
-        // of floating above it — beginHeightLayer lifts by raw camera.scale,
-        // which under lean detaches the crown from its own face. At q=0
-        // s === camera.scale and PERSP_LEAN is 0, so this is byte-identical
-        // to beginHeightLayer(whT).
+        // Crown: the run's top mass continues unbroken over the door,
+        // lifted by the wall height so it seats on the face top.
         ctx.save();
         ctx.translate(0, -whT * s);
         ctx.fillStyle = top;
@@ -14052,8 +11949,8 @@ export class Renderer {
         // it reads as a real threshold, not a painted gap. The jamb
         // feet ring the wall's ground contact either side of the door.
         if (this.outlineOn) {
-          const cTop = p.y - 0.25 - whT * s; // crown top (north lift, as the crown block draws it)
-          const fBot = southBaseY; // face foot on the projected south row
+          const cTop = p.y - 0.25 - whT * s; // crown top (as the crown block draws it)
+          const fBot = southBaseY; // face foot on the south row
           const headBot = fBot - hs + hh; // header underside
           const outline = new Path2D();
           this.addCrownPerimeter(outline, x0, x1, cTop, fBot, fBot, radii[0], radii[1], n, e, w);
@@ -14104,10 +12001,7 @@ export class Renderer {
     runLen: number,
     items: DrawItem[],
   ): void {
-    // B-3 surface depth thread (Epic B, clause 2): the prop rides its
-    // elevation by a lift that must foreshorten at its own foot row —
-    // spriteScale(ty) === camera.scale at q=0, byte-identical.
-    const s = this.spriteScale(ty);
+    const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const elevated = game.world.elevAt(tx, ty) !== 0;
@@ -14317,66 +12211,40 @@ export class Renderer {
    */
   private archItem(tx: number, ty: number, game: ClientGame): DrawItem {
     const ctx = this.ctx;
-    const s = this.spriteScale(ty); // B-3 surface depth thread (foreshorten by base depth)
+    const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
-    const elevLift = game.world.elevAt(tx, ty) * ELEV_H * s;
-    p.y -= elevLift;
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const isArch = (t: number | undefined) => t === Tile.ArchStone;
     const ae = isArch(game.world.groundAt(tx + 1, ty));
     const aw = isArch(game.world.groundAt(tx - 1, ty));
     const top = '#8c8798';
     const face = '#5b5566';
     const syT = s * this.camera.yScale;
-    // B-FW ARCH FACE (Epic B P3): the same migration as doorwayItem — the
-    // arch's lintel, opening and piers ride the PROJECTED south row (ty+1),
-    // NOT the affine `p.y + syT`, so the voussoirs/reveals stay seated in the
-    // wall face and cannot crop/detach/slide under lean. The legacy leanX skew
-    // is retired (the lean lives in the projected corners). At q=0 sS === s,
-    // the south row projects to p.x / p.y+syT, and every value below collapses
-    // to today's rect ⇒ byte-identical (pinned q===0, no reassociated math).
-    const q = this.camera.q;
-    const sS = q === 0 ? s : this.camera.scale * this.camera.depthScale(ty + 1);
-    const hs = WALL_H * sS; // SOUTH face lift (was WALL_H * s)
-    let swx: number;
-    let sex: number;
-    let southBaseY: number;
-    if (q === 0) {
-      swx = p.x;
-      sex = p.x + s;
-      southBaseY = p.y + syT;
-    } else {
-      const pS = this.camera.worldToScreen(tx, ty + 1, this.w, this.h);
-      swx = pS.x; // world x = tx   at row ty+1
-      sex = pS.x + sS; // world x = tx+1 at row ty+1
-      southBaseY = pS.y - elevLift; // same elevation basis as p.y
-    }
-    // NORTH-frame west edge — the CROWN (top slab) is unchanged from today.
+    // The arch's lintel, opening and piers ride the south row (ty+1), as
+    // doorwayItem's face does.
+    const hs = WALL_H * s; // SOUTH face lift
+    const southBaseY = p.y + syT;
+    // NORTH-frame west edge — the CROWN (top slab).
     const nx0 = p.x - 0.25;
     // SOUTH-frame edges — the FACE (lintel, opening, piers).
-    const x0 = swx - 0.25;
-    const x1 = sex + 0.25;
-    const pw = sS * 0.2;
+    const x0 = p.x - 0.25;
+    const x1 = p.x + s + 0.25;
+    const pw = s * 0.2;
     const r = s * 0.26;
     return {
       sortY: ty + 1,
       // A5 pitch-aware depth: the arcade wall's near (south) ground edge.
       nearRow: this.occlusionOn ? ty + 1 : undefined,
       drawShadow: () => {
-        // Piers cast; the open mouth passes light. Base = projected south foot
-        // (byte-identical at q=0, where southBaseY === p.y + syT).
+        // Piers cast; the open mouth passes light.
         if (!aw) this.castEdgeQuad(x0, southBaseY, x0 + pw, southBaseY, WALL_H);
         if (!ae) this.castEdgeQuad(x1 - pw, southBaseY, x1, southBaseY, WALL_H);
       },
       draw: () => {
         const yBase = southBaseY;
-        // FEATURE-ON-FACE (Epic B P3): lintel/opening/piers ride the FACE'S
-        // OWN plane — its four projected south-row corners in face UV. With the
-        // face's top corners vertically above its base (topW.x == baseW.x), the
-        // bilinear faceUV(fpx,0,fpx+fs,0, fpx,-hs,fpx+fs,-hs) reduces to
-        // S(u,v) = (fpx + fs·u, -hs·v): the translated south-row rect the
-        // features below span in x0..x1 × 0..-hs. Frame-local inside
-        // translate(0, yBase): base v=0 ⇒ y=0, crown v=1 ⇒ y=-hs. At q=0
-        // fpx=p.x, fs=s ⇒ today's rect, pixel-for-pixel identical.
+        // Lintel/opening/piers ride the FACE'S OWN plane: the south-row rect
+        // x0..x1 × 0..-hs, frame-local inside translate(0, yBase) (base
+        // v=0 ⇒ y=0, crown v=1 ⇒ y=-hs).
         ctx.save();
         ctx.translate(0, yBase);
         // Lintel band spanning the tile (continuous through a run),
@@ -14411,10 +12279,8 @@ export class Renderer {
         if (!aw) pier(x0, 1);
         if (!ae) pier(x1 - pw, -1);
         ctx.restore();
-        // Crown: the arch's own top slab.
-        // Epic B (FW): depth-scaled crown lift (see wallItem) — seats the
-        // slab on the depth-scaled face top instead of the raw-scale float.
-        // Byte-identical at q=0 (s === camera.scale, PERSP_LEAN=0).
+        // Crown: the arch's own top slab, lifted by the wall height so it
+        // seats on the face top.
         ctx.save();
         ctx.translate(0, -WALL_H * s);
         ctx.fillStyle = top;
@@ -14429,8 +12295,8 @@ export class Renderer {
         // one continuous span), but the opening's vertical reveals are
         // stroked ONLY at run ends where a pier actually stands.
         if (this.outlineOn) {
-          const cTop = p.y - 0.25 - WALL_H * s; // crown top (north lift, as the crown block draws it)
-          const fBot = southBaseY; // face foot on the projected south row
+          const cTop = p.y - 0.25 - WALL_H * s; // crown top (as the crown block draws it)
+          const fBot = southBaseY; // face foot on the south row
           const lintelBot = fBot - hs + hh;
           const leftInner = aw ? x0 : x0 + pw;
           const rightInner = ae ? x1 : x1 - pw;
@@ -14466,7 +12332,7 @@ export class Renderer {
    * portals are rare enough that caching would buy nothing.
    */
   private portalItem(tx: number, ty: number, up: boolean, game: ClientGame): DrawItem {
-    const s = this.spriteScale(ty); // B-3 surface depth thread (foreshorten by base depth)
+    const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const syT = s * this.camera.yScale;
@@ -14497,12 +12363,11 @@ export class Renderer {
   }
 
   /**
-   * A freestanding column: faceted plinth, tapered shaft that leans
-   * with the camera, chamfered capital. Solid, walk-around, y-sorted
-   * like a prop.
+   * A freestanding column: faceted plinth, tapered shaft, chamfered
+   * capital. Solid, walk-around, y-sorted like a prop.
    */
   private pillarItem(tx: number, ty: number, game: ClientGame): DrawItem {
-    const s = this.spriteScale(ty + 0.5); // B-3 surface depth thread (foreshorten by base depth)
+    const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const syT = s * this.camera.yScale;
@@ -14529,7 +12394,7 @@ export class Renderer {
         // the column onto the main canvas and bake an empty sprite).
         const ctx = this.ctx;
         const baseY = p.y + syT * 0.16;
-        const topX = p.x; // legacy leanX(p.x, H) retired (PERSP_LEAN=0 identity)
+        const topX = p.x;
         const topY = baseY - H * s;
         // Contact shade roots the column to the pavement.
         ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
@@ -14545,8 +12410,8 @@ export class Renderer {
         ctx.beginPath();
         facetCircle(ctx, p.x, baseY - s * 0.1, s * 0.19, 6, 0.25, 0.55);
         ctx.fill();
-        // Tapered shaft, leaning with the fake camera, with a banded
-        // drum joint like the masonry it stands among.
+        // Tapered shaft with a banded drum joint like the masonry it
+        // stands among.
         ctx.fillStyle = '#6f697c';
         ctx.beginPath();
         ctx.moveTo(p.x - s * 0.15, baseY - s * 0.1);
@@ -14616,7 +12481,7 @@ export class Renderer {
    * one continuous handrail.
    */
   private railItem(tx: number, ty: number, game: ClientGame): DrawItem {
-    const s = this.spriteScale(ty + 0.5); // B-3 surface depth thread (foreshorten by base depth)
+    const s = this.camera.scale;
     const syT = s * this.camera.yScale;
     const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
@@ -14834,8 +12699,7 @@ export class Renderer {
     const southFacing = legs[0] === 'N';
     const post = '#6f4d26';
     const rail = '#8a6534';
-    // B-3 spanning warp: the rail's post height foreshortens with its deck.
-    const hr = 0.46 * this.spriteScale(ty + 0.5);
+    const hr = 0.46 * s;
     const railT = Math.max(2, s * 0.07);
     items.push({
       sortY: southFacing ? ty + 1.02 : ty + 0.04,
@@ -14843,9 +12707,8 @@ export class Renderer {
       draw: () => {
         const a = this.camera.worldToScreen(ax, ty, this.w, this.h);
         const b = this.camera.worldToScreen(bx, ty + 1, this.w, this.h);
-        // Each corner's deck lift foreshortens by its own depth (ty vs ty+1).
-        a.y -= lift * s * this.camera.depthScale(ty);
-        b.y -= lift * s * this.camera.depthScale(ty + 1);
+        a.y -= lift * s;
+        b.y -= lift * s;
         ctx.fillStyle = post;
         for (const f of [0.3, 0.7]) {
           const x = a.x + (b.x - a.x) * f;
@@ -14973,403 +12836,6 @@ export class Renderer {
     return false;
   }
 
-  /**
-   * FJ-2 THE DECK CARPENTRY STANDS UP. For one dock or porch-deck tile,
-   * emit the vertical carpentry the flat bake omits under lean —
-   * side/south fascia and (over water) driven pilings — as screen-space
-   * STANDING trapezoids, the cliffArt method: project each edge's world
-   * corners with worldToScreen and lift top & base by EACH corner's own
-   * depthScale, so a face recedes as a true trapezoid and consecutive
-   * tiles, sharing the exact projected world corner, form one continuous
-   * edge (no floating stepped blocks). Only exposed (non-deck) edges
-   * emit. Called ONLY at q≠0; the flat deck TOP stays baked on the
-   * ground quad. See collectRaisedTiles.
-   */
-  private deckCarpentryItems(game: ClientGame, tx: number, ty: number, items: DrawItem[]): void {
-    const g = (x: number, y: number): number | undefined => game.world.groundAt(x, y);
-    const t = g(tx, ty);
-    if (t === undefined) return;
-    const isDock = t === Tile.Dock && isDockTile(g, tx, ty);
-    const isPorch = !isDock && isPorchSurface(g, tx, ty);
-    if (!isDock && !isPorch) return;
-
-    // Exposure — matches the bake exactly: a dock edge is covered by a
-    // deck neighbour OR a 45° notch fill welded to it; a porch edge only
-    // by another porch surface.
-    const covered = (nx: number, ny: number, edge: 'N' | 'S' | 'E' | 'W'): boolean =>
-      isDock
-        ? isDeckGround(g(nx, ny)) || fillCoversEdge(g, nx, ny, edge)
-        : isPorchSurface(g, nx, ny);
-    const hasN = covered(tx, ty - 1, 'S');
-    const hasS = covered(tx, ty + 1, 'N');
-    const hasE = covered(tx + 1, ty, 'W');
-    const hasW = covered(tx - 1, ty, 'E');
-    if (hasN && hasS && hasE && hasW) return; // interior tile, no faces
-
-    const elevLvl = game.world.elevAt(tx, ty);
-    const baseLift = elevLvl * ELEV_H; // terrace / water surface
-    const topLift = baseLift + DOCK_LIFT; // the deck's board top
-    const strat = elevLvl !== 0 ? elevLvl : undefined;
-    const elevated = elevLvl !== 0;
-    // Rim tones: the flat bake's dock south fascia is '#6d5130', its side
-    // rim lit +12 (west) / −16 (east); porch shares the tone.
-    const rim = '#6d5130';
-
-    // South face — a rim across the tile's south edge (row ty+1).
-    if (!hasS)
-      this.deckStandFace(items, tx, ty + 1, tx + 1, ty + 1, ty + 1.02, rim, topLift, baseLift, 'dockJoist', strat, elevated);
-    // West / East faces — trapezoids down each N-S edge (rows ty..ty+1),
-    // lit like the flat bake's rim (west sunlit, east shaded).
-    if (!hasW)
-      this.deckStandFace(items, tx, ty, tx, ty + 1, ty + 1.0, shade(rim, 12), topLift, baseLift, 'none', strat, elevated);
-    if (!hasE)
-      this.deckStandFace(items, tx + 1, ty, tx + 1, ty + 1, ty + 1.0, shade(rim, -16), topLift, baseLift, 'none', strat, elevated);
-
-    // Driven pilings on water-facing dock edges (docks only; a ground
-    // porch has footing behind its fascia, drawn within the face).
-    if (isDock) {
-      if (!hasS && isWaterTile(g(tx, ty + 1))) {
-        for (const fpos of [0.18, 0.82])
-          this.deckStandPile(items, tx + fpos, ty + 1, ty + 1.01, baseLift, strat, elevated, '#4e3a22', '#77593a');
-      }
-      if (!hasW && isWaterTile(g(tx - 1, ty)) && hashCoords(151, tx * 1, ty) % 2 === 0) {
-        this.deckStandPile(items, tx, ty + 0.55, ty + 0.99, baseLift, strat, elevated, '#4e3a22', '#77593a');
-      }
-      if (!hasE && isWaterTile(g(tx + 1, ty)) && hashCoords(151, tx * 3, ty) % 2 === 0) {
-        this.deckStandPile(items, tx + 1, ty + 0.55, ty + 0.99, baseLift, strat, elevated, '#4e3a22', '#77593a');
-      }
-    }
-  }
-
-  /**
-   * FJ-2 shared standing face: ONE screen-space trapezoid between two
-   * world-ground corners (ax,ay)-(bx,by), filled from `topLift` down to
-   * `baseLift`, each corner foreshortened by its OWN depthScale. Shared
-   * corners round to the same device pixel, so consecutive pieces meet
-   * seam-free — the cliffArt law that keeps docks, porches, bridges and
-   * notch fills continuous under lean. `band` dresses the top arris:
-   * 'dockJoist' (dock/porch — a shadow band + lit catch on the lip),
-   * 'bridgeRim' (a catch-light lip + a shadow foot), or 'none'.
-   */
-  private deckStandFace(
-    items: DrawItem[],
-    ax: number,
-    ay: number,
-    bx: number,
-    by: number,
-    sortY: number,
-    body: string,
-    topLift: number,
-    baseLift: number,
-    band: 'dockJoist' | 'bridgeRim' | 'dockFill' | 'none',
-    strat: number | undefined,
-    elevated: boolean,
-  ): void {
-    const ctx = this.ctx;
-    const cam = this.camera;
-    const s = cam.scale;
-    const W = this.w;
-    const H = this.h;
-    items.push({
-      sortY,
-      strat,
-      elevated,
-      draw: () => {
-        // THE STRUCTURE FACE (cliffArt/deck law): one screen-space trapezoid
-        // between world corners (ax,ay)-(bx,by), each foreshortened by its own
-        // depthScale, shared corners rounded to the device pixel. `emit`
-        // projects; the callback paints the deck fascia + dressing bands.
-        emitStructureFace(cam, W, H, ax, ay, bx, by, topLift * s, baseLift * s, (f) => {
-        const { ax: Ax, bx: Bx, dsA, dsB, yTopA, yTopB, yBotA: yBaseA, yBotB: yBaseB } = f;
-        const A = { x: Ax };
-        const B = { x: Bx };
-        ctx.fillStyle = body;
-        ctx.beginPath();
-        ctx.moveTo(A.x, yTopA);
-        ctx.lineTo(B.x, yTopB);
-        ctx.lineTo(B.x, yBaseB);
-        ctx.lineTo(A.x, yBaseA);
-        ctx.closePath();
-        ctx.fill();
-        // Dressing bands, keyed off the face height so they foreshorten
-        // with the trapezoid.
-        const joist = (dsA + dsB) * 0.5 * s * DOCK_LIFT * 0.22;
-        if (band === 'dockJoist') {
-          // The rim-joist shadow band under the deck lip + a thin lit
-          // catch on the top arris.
-          ctx.fillStyle = 'rgba(30, 19, 9, 0.45)';
-          ctx.beginPath();
-          ctx.moveTo(A.x, yTopA);
-          ctx.lineTo(B.x, yTopB);
-          ctx.lineTo(B.x, yTopB + joist);
-          ctx.lineTo(A.x, yTopA + joist);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = 'rgba(214, 178, 120, 0.28)';
-          ctx.beginPath();
-          ctx.moveTo(A.x, yTopA);
-          ctx.lineTo(B.x, yTopB);
-          ctx.lineTo(B.x, yTopB + Math.max(1, joist * 0.16));
-          ctx.lineTo(A.x, yTopA + Math.max(1, joist * 0.16));
-          ctx.closePath();
-          ctx.fill();
-        } else if (band === 'bridgeRim') {
-          // A bridge rim wears a catch-light lip at the top and a firm
-          // shadow foot at the base (mirrors the flat bake's dressing).
-          const catchH = Math.max(1, (dsA + dsB) * 0.5 * s * 0.02);
-          ctx.fillStyle = 'rgba(222, 184, 122, 0.32)';
-          ctx.beginPath();
-          ctx.moveTo(A.x, yTopA);
-          ctx.lineTo(B.x, yTopB);
-          ctx.lineTo(B.x, yTopB + catchH);
-          ctx.lineTo(A.x, yTopA + catchH);
-          ctx.closePath();
-          ctx.fill();
-          const footH = Math.max(1.5, joist * 0.73);
-          ctx.fillStyle = 'rgba(20, 14, 7, 0.42)';
-          ctx.beginPath();
-          ctx.moveTo(A.x, yBaseA - footH);
-          ctx.lineTo(B.x, yBaseB - footH);
-          ctx.lineTo(B.x, yBaseB);
-          ctx.lineTo(A.x, yBaseA);
-          ctx.closePath();
-          ctx.fill();
-        } else if (band === 'dockFill') {
-          // A dock notch fill's fascia: a thin lit catch at the top and
-          // a firm shadow foot at the base (mirrors the flat bake).
-          const catchH = Math.max(1, (dsA + dsB) * 0.5 * s * 0.02);
-          ctx.fillStyle = 'rgba(214, 178, 120, 0.28)';
-          ctx.beginPath();
-          ctx.moveTo(A.x, yTopA);
-          ctx.lineTo(B.x, yTopB);
-          ctx.lineTo(B.x, yTopB + catchH);
-          ctx.lineTo(A.x, yTopA + catchH);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = 'rgba(30, 19, 9, 0.45)';
-          ctx.beginPath();
-          ctx.moveTo(A.x, yBaseA - joist);
-          ctx.lineTo(B.x, yBaseB - joist);
-          ctx.lineTo(B.x, yBaseB);
-          ctx.lineTo(A.x, yBaseA);
-          ctx.closePath();
-          ctx.fill();
-        }
-        if (this.outlineOn) {
-          this.beginStructOutline();
-          ctx.beginPath();
-          ctx.moveTo(A.x, yTopA);
-          ctx.lineTo(B.x, yTopB);
-          ctx.lineTo(B.x, yBaseB);
-          ctx.lineTo(A.x, yBaseA);
-          ctx.closePath();
-          ctx.stroke();
-        }
-        });
-      },
-    });
-  }
-
-  /**
-   * FJ-2 shared standing pile: one driven leg at world (wx,wy) from just
-   * under the deck lip down into the water, with its seat shadow +
-   * waterline collar. `pwK` sets the leg width (dock 0.11, bridge 0.13).
-   */
-  private deckStandPile(
-    items: DrawItem[],
-    wx: number,
-    wy: number,
-    sortY: number,
-    baseLift: number,
-    strat: number | undefined,
-    elevated: boolean,
-    body: string,
-    lit: string,
-    pwK = 0.11,
-  ): void {
-    const ctx = this.ctx;
-    const cam = this.camera;
-    const s = cam.scale;
-    const W = this.w;
-    const H = this.h;
-    const FLAT = 0.6; // deck ellipse flatten, mirrors terrain
-    items.push({
-      sortY,
-      strat,
-      elevated,
-      draw: () => {
-        const P = cam.worldToScreen(wx, wy, W, H);
-        const ds = cam.depthScale(wy);
-        const pw = Math.max(1.5, s * ds * pwK);
-        const topY = P.y - (baseLift + DOCK_LIFT * 0.75) * s * ds;
-        const botY = P.y - (baseLift - 0.14) * s * ds;
-        // Seat shadow: the water darkens where the leg stands in it.
-        ctx.fillStyle = 'rgba(20, 34, 62, 0.28)';
-        ctx.beginPath();
-        ctx.ellipse(P.x, botY, pw * 1.1, pw * 1.1 * FLAT, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = body;
-        ctx.fillRect(P.x - pw / 2, topY, pw, botY - topY);
-        ctx.fillStyle = lit; // sun-law lit west edge
-        ctx.fillRect(P.x - pw / 2, topY, Math.max(1, pw * 0.3), botY - topY);
-        ctx.strokeStyle = 'rgba(226, 240, 251, 0.38)';
-        ctx.lineWidth = Math.max(1, s * ds * 0.022);
-        ctx.beginPath();
-        ctx.ellipse(P.x, botY, pw * 0.62, pw * 0.62 * FLAT, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      },
-    });
-  }
-
-  /**
-   * FJ-2 THE BRIDGE CARPENTRY STANDS UP. A bridge span bakes its
-   * full-height vertical timber — the south rim joist, the driven pile
-   * pairs + their X-brace, and a flat span's edge-on side fascia — FLAT
-   * into the ground chunk; under lean each floats off as a stepped
-   * block. Under q≠0 the bake omits them (standingPass) and this sweep
-   * re-emits them as screen-space standing trapezoids/legs that share
-   * projected world corners with their neighbours (the cliffArt law the
-   * docks use), so a whole crossing reads as one continuous standing
-   * trestle. Ramp-sheared pieces (the raked stringer, an apron's own
-   * side fascia) stay baked — they ride and shear with the ground quad
-   * and never float. Nothing runs at q=0.
-   */
-  private bridgeCarpentryItems(game: ClientGame, tx: number, ty: number, items: DrawItem[]): void {
-    const g = (x: number, y: number): number | undefined => game.world.groundAt(x, y);
-    if (!isBridgeTile(g, tx, ty)) return;
-    const ctx = this.ctx;
-
-    const sT = g(tx, ty + 1);
-    const eT = g(tx + 1, ty);
-    const wT = g(tx - 1, ty);
-    const isLand = (t: number | undefined): boolean =>
-      t !== undefined && !isDeckGround(t) && !isWaterTile(t);
-    const deckS = isDeckGround(sT);
-    const deckE = isDeckGround(eT);
-    const deckW = isDeckGround(wT);
-    const hasS = deckS || fillCoversEdge(g, tx, ty + 1, 'N');
-    const hasE = deckE || fillCoversEdge(g, tx + 1, ty, 'W');
-    const hasW = deckW || fillCoversEdge(g, tx - 1, ty, 'E');
-    const landW = !deckW && isLand(wT);
-    const landE = !deckE && isLand(eT);
-    const waterS = isWaterTile(sT);
-
-    const vertRun = this.bridgeWalkVert(game, tx, ty);
-    const apron = this.bridgeApron(game, tx, ty);
-
-    const elevLvl = game.world.elevAt(tx, ty);
-    const baseLift = elevLvl * ELEV_H;
-    const topLift = baseLift + DOCK_LIFT;
-    const strat = elevLvl !== 0 ? elevLvl : undefined;
-    const elevated = elevLvl !== 0;
-
-    // Bridge timber tones (BRIDGE_TIMBER in terrain.ts, kept in sync).
-    const rim = '#5c4527';
-    const pile = '#4a3620';
-    const pileLit = '#6d5233';
-    const brace = '#3f2d18';
-
-    // The full-height south rim joist + its pile pairs and X-brace —
-    // exactly the bake's `!hasS && (apron 'none' | 'N')` condition.
-    if (!hasS && (apron === 'none' || apron === 'N')) {
-      this.deckStandFace(items, tx, ty + 1, tx + 1, ty + 1, ty + 1.02, rim, topLift, baseLift, 'bridgeRim', strat, elevated);
-      if (waterS) {
-        for (const fpos of [0.18, 0.82])
-          this.deckStandPile(items, tx + fpos, ty + 1, ty + 1.01, baseLift, strat, elevated, pile, pileLit, 0.13);
-        // The cross-brace tying the pile pair — a standing X from just
-        // under the deck lip down below the waterline, foreshortened at
-        // the south edge's own depth.
-        const cam = this.camera;
-        const s = cam.scale;
-        const W = this.w;
-        const H = this.h;
-        items.push({
-          sortY: ty + 1.005,
-          strat,
-          elevated,
-          draw: () => {
-            const P0 = cam.worldToScreen(tx + 0.18, ty + 1, W, H);
-            const P1 = cam.worldToScreen(tx + 0.82, ty + 1, W, H);
-            const ds = cam.depthScale(ty + 1);
-            const topY = P0.y - (baseLift + DOCK_LIFT * 0.7) * s * ds;
-            const botY = P0.y - (baseLift - 0.1) * s * ds;
-            ctx.strokeStyle = brace;
-            ctx.lineWidth = Math.max(1.2, s * ds * 0.032);
-            ctx.globalAlpha = 0.75;
-            ctx.beginPath();
-            ctx.moveTo(P0.x, topY);
-            ctx.lineTo(P1.x, botY);
-            ctx.moveTo(P1.x, topY);
-            ctx.lineTo(P0.x, botY);
-            ctx.stroke();
-            ctx.globalAlpha = 1;
-          },
-        });
-      }
-    }
-
-    // A FLAT span's edge-on side fascia (an E-W walk's water-facing W/E
-    // step faces). Mirrors the bake's `apron === 'none'` gate; a ramp's
-    // fascia is sheared inside the apron transform and stays baked.
-    if (apron === 'none') {
-      const kerbW = !hasW && vertRun;
-      const kerbE = !hasE && vertRun;
-      const thW = landW && !vertRun;
-      const thE = landE && !vertRun;
-      if (!hasW && !kerbW && !thW)
-        this.deckStandFace(items, tx, ty, tx, ty + 1, ty + 1.0, shade(rim, 12), topLift, baseLift, 'none', strat, elevated);
-      if (!hasE && !kerbE && !thE)
-        this.deckStandFace(items, tx + 1, ty, tx + 1, ty + 1, ty + 1.0, shade(rim, -16), topLift, baseLift, 'none', strat, elevated);
-    }
-  }
-
-  /**
-   * FJ-2: a 45° notch fill's vertical carpentry stands up under lean —
-   * its camera-facing hypotenuse fascia (ONE standing trapezoid between
-   * the two hyp world corners, projected with per-corner depthScale so
-   * it welds seam-free to the straight rims it abuts) and the midpoint
-   * driven pile. The lifted deck triangle TOP, boards, kerb and the
-   * hyp-TOP silhouette stay baked on the ground quad. Only a camera-
-   * facing (south) hyp shows a face; nothing runs at q=0.
-   */
-  private deckFillCarpentryItems(game: ClientGame, tx: number, ty: number, items: DrawItem[]): void {
-    const f = this.deckFill(game, tx, ty);
-    if (f === null) return;
-    const southFacing = f.legs[0] === 'N'; // hypotenuse faces the camera
-    if (!southFacing) return;
-    const bridge = f.family === 'bridge';
-    const diagMain = f.legs === 'NE' || f.legs === 'SW';
-    // Hyp world corners: the tile's top-row corner A to its bottom-row
-    // corner B — the same endpoints the flat bake sheared its face over.
-    const ax = diagMain ? tx : tx + 1;
-    const ay = ty;
-    const bx = diagMain ? tx + 1 : tx;
-    const by = ty + 1;
-
-    const elevLvl = game.world.elevAt(tx, ty);
-    const baseLift = elevLvl * ELEV_H;
-    const topLift = baseLift + DOCK_LIFT;
-    const strat = elevLvl !== 0 ? elevLvl : undefined;
-    const elevated = elevLvl !== 0;
-
-    const faceColor = bridge ? '#5c4527' : '#6d5130';
-    this.deckStandFace(
-      items, ax, ay, bx, by, ty + 1.02, faceColor, topLift, baseLift,
-      bridge ? 'bridgeRim' : 'dockFill', strat, elevated,
-    );
-
-    // The midpoint driven pile — only over water (a bank fill presses
-    // into land and stands nothing). Mirrors drawDeckFill's `!bank`.
-    if (!f.bank) {
-      const mx = (ax + bx) / 2;
-      const my = (ay + by) / 2;
-      this.deckStandPile(
-        items, mx, my, ty + 1.01, baseLift, strat, elevated,
-        bridge ? '#4a3620' : '#4e3a22', bridge ? '#6d5233' : '#77593a', bridge ? 0.13 : 0.11,
-      );
-    }
-  }
-
   private bridgeRailItems(tx: number, ty: number, game: ClientGame, items: DrawItem[]): void {
     const ctx = this.ctx;
     const s = this.camera.scale;
@@ -15445,21 +12911,10 @@ export class Renderer {
           draw: () => {
             const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
             const edge = north ? 0 : syT;
-            // B-FJ span warp: a horizontal rail rides ONE depth row (ty
-            // north / ty+1 south), so a single depthScale foreshortens
-            // its post height (hrD) and ramp lift, and the south base
-            // rides the PROJECTED south corner instead of a flat +syT.
-            // q=0: ds=1, base=p.y+edge, hrD=RAIL_H*s → byte-identical.
-            const q0 = this.camera.q === 0;
-            const edgeY = north ? ty : ty + 1;
-            const ds = q0 ? 1 : this.camera.depthScale(edgeY);
-            const baseY = q0
-              ? p.y + edge
-              : north
-                ? p.y
-                : this.camera.worldToScreen(tx, ty + 1, this.w, this.h).y;
-            const hrD = RAIL_H * this.spriteScale(edgeY);
-            const yAt = (f: number): number => baseY - liftAt(f) * s * ds;
+            // A horizontal rail rides ONE row (ty north / ty+1 south).
+            const baseY = p.y + edge;
+            const hrD = RAIL_H * s;
+            const yAt = (f: number): number => baseY - liftAt(f) * s;
             ctx.fillStyle = post;
             for (const fx of [0.28, 0.72]) {
               ctx.fillRect(p.x + s * fx - s * 0.035, yAt(fx) - hrD, s * 0.07, hrD);
@@ -15537,21 +12992,10 @@ export class Renderer {
           draw: () => {
             const p = this.camera.worldToScreen(tx, ty, this.w, this.h);
             const ex = p.x + (west ? s * 0.055 : s - s * 0.055);
-            // B-FJ span warp: an edge-on rail spans the tile's DEPTH
-            // (ty→ty+1), so its screen y rides the PROJECTED deck point
-            // at each depth fraction (cliffArt trapezoid law) and its
-            // lift + post height foreshorten by depthScale AT that depth
-            // — matching the receding deck instead of staircasing off it.
-            // q=0: worldToScreen is affine (p.y+syT*f) and depthScale=1
-            // → the exact old flat span, byte-identical.
-            const q0 = this.camera.q === 0;
-            const yAt = q0
-              ? (f: number): number => p.y + syT * f - liftAt(f) * s
-              : (f: number): number =>
-                  this.camera.worldToScreen(tx, ty + f, this.w, this.h).y -
-                  liftAt(f) * s * this.camera.depthScale(ty + f);
-            // Post height foreshortens at each post's own depth.
-            const hrAt = (f: number): number => RAIL_H * this.spriteScale(ty + f);
+            // An edge-on rail spans the tile's DEPTH (ty→ty+1): its screen
+            // y rides the deck at each depth fraction.
+            const yAt = (f: number): number => p.y + syT * f - liftAt(f) * s;
+            const hr = RAIL_H * s;
             const fTop = contN ? 0 : 0.5;
             const fBot = contS ? 1 : 0.5;
             // THE EDGE-ON BALUSTRADE (the fence railNS dialect): ONE
@@ -15564,7 +13008,7 @@ export class Renderer {
             // deck" wound), and a floating band with see-through gaps
             // read as a chain.
             const hw2 = s * 0.068;
-            const bandTop = yAt(fTop) - hrAt(fTop);
+            const bandTop = yAt(fTop) - hr;
             const bandBot = yAt(fBot) + railT * 0.4;
             ctx.fillStyle = shade(rail, 10);
             ctx.fillRect(ex - hw2, bandTop, hw2 * 2, bandBot - bandTop);
@@ -15606,17 +13050,17 @@ export class Renderer {
             // Posts punctuate the strip in depth — the post-and-rail
             // read the twin wires never had.
             for (const f of [0.3, 0.7]) {
-              if (f > fTop && f < fBot) postAt(ex, yAt(f) + railT, false, hrAt(f));
+              if (f > fTop && f < fBot) postAt(ex, yAt(f) + railT, false, hr);
             }
             // A strip stopping mid-tile plants its end post; a fill
             // joint plants one ringed at the exact corner, covering
             // the seam where the dive meets the diagonal's handrail.
-            if (fTop === 0.5 || fBot === 0.5) postAt(ex, yAt(0.5) + railT, true, hrAt(0.5));
-            if (jointN) postAt(ex, yAt(0) + railT, true, hrAt(0));
-            if (jointS) postAt(ex, yAt(1) + railT, true, hrAt(1));
+            if (fTop === 0.5 || fBot === 0.5) postAt(ex, yAt(0.5) + railT, true, hr);
+            if (jointN) postAt(ex, yAt(0) + railT, true, hr);
+            if (jointS) postAt(ex, yAt(1) + railT, true, hr);
             // THE LANDFALL NEWEL at an entrance mouth.
-            if (mouthN) this.drawRailNewel(ex, yAt(0) + railT, s, hrAt(0), post);
-            if (mouthS) this.drawRailNewel(ex, yAt(1) + railT, s, hrAt(1), post);
+            if (mouthN) this.drawRailNewel(ex, yAt(0) + railT, s, hr, post);
+            if (mouthS) this.drawRailNewel(ex, yAt(1) + railT, s, hr, post);
           },
         });
       }
@@ -15795,11 +13239,7 @@ export class Renderer {
    */
   private rampItem(tx: number, ty: number, game: ClientGame, runLen: number): DrawItem {
     const ctx = this.ctx;
-    // B-3 surface depth thread: a flight is short, so it foreshortens
-    // uniformly by its base row's depth (step heights + masonry ride `s`;
-    // x-positions come from worldToScreen and lean on their own). Matches
-    // the landing/apron warp at the same row. spriteScale === scale at q=0.
-    const s = this.spriteScale(ty);
+    const s = this.camera.scale;
     const lvl = game.world.elevAt(tx, ty);
     const dir = this.rampDir(game, tx, ty);
     const N = 5;
@@ -16051,9 +13491,8 @@ export class Renderer {
         // wide landings into a row of little arches).
         const x0 = Math.round(wts(tx, ty).x);
         const x1 = Math.round(wts(tx + runLen, ty).x);
-        // B-3 spanning warp: the landing sits on the flight's elevated top,
-        // so its lift foreshortens by the row's depth.
-        const yTop = wts(tx, ty).y - lift * this.camera.depthScale(ty);
+        // The landing sits on the flight's elevated top.
+        const yTop = wts(tx, ty).y - lift;
         const inset = s * 0.09;
         const reach = s * 0.32; // how far the worn patch spills north
         ctx.fillStyle = '#6d5642';
@@ -16104,9 +13543,8 @@ export class Renderer {
         // flight's mouth, flared only at its two ends.
         const x0 = Math.round(wts(tx, ty).x);
         const x1 = Math.round(wts(tx + runLen, ty).x);
-        // B-3 spanning warp: the apron mouth sits at the base level, lift
-        // foreshortened by the mouth row's depth.
-        const yMouth = wts(tx, ty + 1).y - baseLift * this.camera.depthScale(ty + 1);
+        // The apron mouth sits at the base level.
+        const yMouth = wts(tx, ty + 1).y - baseLift;
         const fan = s * 0.34;
         const flare = s * 0.12;
         ctx.fillStyle = '#6d5642';
@@ -17021,11 +14459,6 @@ export class Renderer {
     const gl = this.stageWorldGl!;
     const list = this.stageWorldItems;
     if (list.length === 0 && !this.stageShadowPending) return;
-    // B9: the scratch-cell resolution ceiling for THIS flush — bounded under
-    // lean, 0 (off) at q=0 so flat cells are byte-identical. Covers both the
-    // shadow-layer draw and the world draw below; the quad upscales a capped
-    // cell to its full projected extent (see GlStage.cellCapPx / faceCap.ts).
-    gl.cellCapPx = this.faceCapDim() ?? 0;
     gl.begin(this.w, this.h, this.dpr(), null, this.stageScale());
     if (this.stageShadowPending) {
       // The prepass shadows: layer-rendered, composited once at the
@@ -17124,24 +14557,6 @@ export class Renderer {
       },
     });
     this.stageWorldStats.paints++;
-  }
-
-  /** THE ONE RENDER — B9: the scratch-cell resolution ceiling in effect THIS
-   *  frame (device px) — `undefined` at q=0 so a flat frame's cells are
-   *  byte-identical (the golden gate). Under lean: the tunable `faceCapPx`, or
-   *  AUTO (0) = the viewport's larger device dimension — a cell that fits the
-   *  screen is never capped (faces stay sharp), only one projecting larger than
-   *  the screen softens. Set on the world GL stage each frame and threaded into
-   *  the wall/structure-face pushes so a face/run/row projecting huge at zoom 2
-   *  bakes bounded and the quad upscales it, instead of minting a giant cell. */
-  private faceCapDim(): number | undefined {
-    // q=0 (the flat golden gate) and an explicit disable (`faceCapPx < 0`,
-    // the dev escape hatch) take no cap; a positive value forces that device-px
-    // ceiling; 0 (the default) is AUTO = the viewport's larger device dimension.
-    if (this.camera.q === 0 || this.faceCapPx < 0) return undefined;
-    return this.faceCapPx > 0
-      ? this.faceCapPx
-      : Math.ceil(Math.max(this.w, this.h) * this.dpr());
   }
 
   /**
@@ -17373,21 +14788,11 @@ export class Renderer {
       // lane: the tint composite is real painting.
       const b = item.body;
       if (b !== undefined) {
-        // THE BODY SCRATCH PAD RIDES THE LEAN (Epic B, canopy-clip fix):
-        // the pad is HEADROOM the live paint reaches into (a crown's sway,
-        // a weapon's arc, a canopy's overhang), and that art foreshortens
-        // by depthScale under q>0 — a raw camera.scale pad under-covers a
-        // NEAR body/crown and the scratch cell hard-clips the overflow
-        // (flat top / edge sliver). Grow the pad by the foot row's
-        // depthScale (>=1, so a far body never shrinks below today's
-        // headroom). depthScaleAtScreenY is 1 at q=0 → byte-identical.
-        const dPad =
-          this.camera.q !== 0
-            ? Math.max(1, this.camera.depthScaleAtScreenY(b.y + b.h, this.h))
-            : 1;
-        const padX = 0.9 * sc * dPad;
-        const padTop = 1.7 * sc * dPad;
-        const padBot = (0.7 * sc + (item.elevated ? 3 * sc : 0)) * dPad;
+        // THE BODY SCRATCH PAD: the pad is HEADROOM the live paint reaches
+        // into (a crown's sway, a weapon's arc, a canopy's overhang).
+        const padX = 0.9 * sc;
+        const padTop = 1.7 * sc;
+        const padBot = 0.7 * sc + (item.elevated ? 3 * sc : 0);
         const box = { x: b.x - padX, y: b.y - padTop, w: b.w + padX * 2, h: b.h + padTop + padBot };
         if (this.outlineOn && !this.bodyRelightPossible()) {
           if (!this.stageAssemble(item)) {
@@ -17417,38 +14822,13 @@ export class Renderer {
         let uy0 = Infinity;
         let ux1 = -Infinity;
         let uy1 = -Infinity;
-        // THE RUN STAYS SPATIALLY WHOLE (lean fix): at q=0 the y-sort
-        // places a wall's members in physical order, so greedily
-        // unioning every consecutive lane item bounds one contiguous
-        // strip. Under the lean the SAME sort interleaves spatially
-        // SCATTERED members (a far member at screen x=997 landing next
-        // to members at x=-147…414), and the greedy union then spans
-        // nearly the whole screen — one ~1297px-wide scratch cell,
-        // hundreds per frame. Those monster cells are the translucent
-        // dark bands (the wide box bakes/clips its foreshortened,
-        // scattered members into an axis-aligned slab — see the
-        // masonry-band note at emitRaisedMember) and they tank perf.
-        // So under lean ONLY, break the run when the next member's box
-        // is spatially DISJOINT from the accumulated union (a gap past
-        // ~1 world tile in x or y): a real wall's members overlap the
-        // union and stay coalesced; an interleaved distant member
-        // starts a fresh run. q=0 keeps the exact greedy merge below
-        // (byte-identical — the wide cell composites correctly there).
-        const leaned = this.camera.q !== 0;
-        const gap = leaned ? this.camera.scale : 0; // one world tile of slack
+        // THE RUN STAYS SPATIALLY WHOLE: the y-sort places a wall's
+        // members in physical order, so greedily unioning every
+        // consecutive lane item bounds one contiguous strip.
         while (j < n) {
           const it2 = items[j]!;
           if (it2.stageRebuild === undefined || it2.pb === undefined) break;
           const bb = it2.pb;
-          if (
-            leaned &&
-            j > i &&
-            (bb.x > ux1 + gap ||
-              bb.x + bb.w < ux0 - gap ||
-              bb.y > uy1 + gap ||
-              bb.y + bb.h < uy0 - gap)
-          )
-            break;
           if (bb.x < ux0) ux0 = bb.x;
           if (bb.y < uy0) uy0 = bb.y;
           if (bb.x + bb.w > ux1) ux1 = bb.x + bb.w;
@@ -17711,22 +15091,9 @@ export class Renderer {
     cx: number;
     cy: number;
     data: ChunkData;
-    /** WARP-DOWN (B5a): the near-worst px this chunk should re-bake at
-     *  (chosen once in the visible scan, carried to the paced start so
-     *  the tier decision and the bake agree). */
-    px: number;
-  }> = [];
-
-  /** B5b — near-field resolution-DEFICIT candidates this frame: near-ring
-   *  chunks carried in at the sparse tier that the current depth now
-   *  out-resolves. A priority lane, uncapped but bounded to the near
-   *  ring, so standing still resolves the ground sharp without a step.
-   *  Distinct from replaceQueue (content / zoom-tier re-bakes). */
-  private readonly deficitQueue: Array<{
-    baked: BakedChunk;
-    cx: number;
-    cy: number;
-    data: ChunkData;
+    /** The px this chunk should re-bake at (chosen once in the visible
+     *  scan, carried to the paced start so the tier decision and the
+     *  bake agree). */
     px: number;
   }> = [];
 
@@ -17923,13 +15290,13 @@ export class Renderer {
   private drawBulkItem(item: DrawItem): void {
     switch (item.bulk) {
       case BulkKind.Particle:
-        this.particles.drawOne(this.ctx, item.bulkArg as Particle, this.liftedWTSScratch, this.camera.scale, this.camDepthAt);
+        this.particles.drawOne(this.ctx, item.bulkArg as Particle, this.liftedWTSScratch, this.camera.scale);
         break;
       case BulkKind.Debris:
-        this.debris.drawOne(this.ctx, item.bulkArg as DebrisChunk, this.liftedWTSScratch, this.camera.scale, this.outlineOn, this.camDepthAt);
+        this.debris.drawOne(this.ctx, item.bulkArg as DebrisChunk, this.liftedWTSScratch, this.camera.scale, this.outlineOn);
         break;
       case BulkKind.GroundedBird:
-        this.birds.drawOne(this.ctx, item.bulkArg as Bird, this.liftedWTSScratch, this.camera.scale, this.outlineOn, this.birdEnv.tSec, this.camDepthAt);
+        this.birds.drawOne(this.ctx, item.bulkArg as Bird, this.liftedWTSScratch, this.camera.scale, this.outlineOn, this.birdEnv.tSec);
         break;
       case BulkKind.Halo:
         this.drawSeatedHalo(item.bulkArg as EmitterGlowOut);
@@ -18111,14 +15478,10 @@ export class Renderer {
     wy: number,
     tSec: number,
     windOverride: number | undefined,
-    bakeDpr: number,
   ): WorldSprite {
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
-    // THE DEPTH LOD LAW: bake density (dpr) rides the caller's tier, so
-    // near sprites carry more pixels and far ones fewer; geometry stays
-    // at camera.scale. bakeDpr === dpr() at q=0 → byte-identical.
-    const dpr = bakeDpr;
+    const dpr = this.dpr();
     // THE TREE FITS ITS FRAME (trees.ts treeExtent): the canvas is
     // sized to the ink the painter can actually reach, not to a
     // generous guess. The guess (spread * 1.15 + 0.08h + 0.45 sideways,
@@ -18819,13 +16182,7 @@ export class Renderer {
       memberItems.push(this.objectItem(tile, members[i]!, members[i + 1]!, game));
     }
     const s = this.camera.scale;
-    // B-3 lift law (see objectItem): the run's bounds/padding stay at the
-    // canonical `s` (the sheet bakes once; drawPropOutlined's k
-    // foreshortens the blit), but the elevation lift is a screen offset
-    // that must ride depthScale at the run's foot so a merged table on a
-    // raised floor sits ON the leaned boards. spriteScale === scale at
-    // q=0 → byte-identical when not leaning.
-    const lift = game.world.elevAt(ax, ay) * ELEV_H * this.spriteScale(ay + 0.5);
+    const lift = game.world.elevAt(ax, ay) * ELEV_H * s;
     const pMin = this.camera.worldToScreen(x0 + 0.5, y0 + 0.5, this.w, this.h);
     const pMax = this.camera.worldToScreen(x1 + 0.5, y1 + 0.5, this.w, this.h);
     pMin.y -= lift;
@@ -18878,14 +16235,12 @@ export class Renderer {
     prev: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | undefined,
     b: { x: number; y: number; w: number; h: number },
     paint: () => void,
-    bakeDpr: number,
   ): WorldSprite {
     const r = Math.max(1.25, this.camera.scale * 0.04);
     const m = Math.ceil(r) + 2;
     const cw = Math.ceil(b.w) + m * 2;
     const ch = Math.ceil(b.h) + m * 2;
-    // THE DEPTH LOD LAW: density rides the tier (see bakeTreeSprite).
-    const dpr = bakeDpr;
+    const dpr = this.dpr();
     const pw = Math.max(1, Math.ceil(cw * dpr));
     const ph = Math.max(1, Math.ceil(ch * dpr));
     const { canvas, sctx } = this.acquireSpriteCanvas(prev, pw, ph);
@@ -19018,32 +16373,22 @@ export class Renderer {
     b: { x: number; y: number; w: number; h: number },
     paint: () => void,
   ): void {
-    // B-1c depth thread: the prop blit foreshortens by its tile's world-y.
-    // `s` here drives ONLY the blit (k = s/sp.scale) and the staleness gate
-    // — the bake takes the caller's `b`/`paint` (canonical camera.scale), so
-    // the shared sprite never re-bakes per depth (staleness keys on
-    // camera.scale below). spriteScale === camera.scale at q=0.
-    const s = this.spriteScale(ty + 0.5);
+    // `s` drives the blit (k = s/sp.scale, the staleness glide) and the
+    // staleness gate; the bake takes the caller's `b`/`paint`.
+    const s = this.camera.scale;
     const key = treeKey(tx + 0.5, ty + 0.5, tile);
     this.treesVisible++;
     let sp = this.treeSprites.get(key);
-    // THE DEPTH LOD LAW: a per-instance prop bakes at the density its
-    // depth-scaled on-screen size wants (near = dense, far = sparse),
-    // quantized to √2 tiers with a hysteresis dead-band anchored on the
-    // sprite's current tier so a moving camera does not re-tier — and
-    // re-bake — every frame. tier 0 at q=0 → lodDpr === dpr(), and the
-    // staleness/bake below reduce to the pre-lean path exactly.
-    const tier = this.lodTier(ty + 0.5, sp ? this.lodTierOfDpr(sp.dpr) : undefined);
-    const bakeDpr = this.lodDpr(tier);
+    const bakeDpr = this.dpr();
     const cadence = Renderer.STATIC_RING_TILES.has(tile) ? 240 : this.treeCadence;
     const due = (this.frameNo + key) % cadence === 0;
     const stale =
       !sp ||
       (due && sp.frame !== this.frameNo) ||
       Math.abs(sp.scale - this.camera.scale) > this.camera.scale * 0.2 ||
-      // The effective bake density moved (browser zoom/rig override, OR
-      // the depth tier crossed its hysteresis band): re-bake to the new
-      // grid (paced by the budget — the blit stays correct meanwhile
+      // The effective bake density moved (browser zoom/rig override):
+      // re-bake to the new grid (paced by the budget — the blit stays
+      // correct meanwhile
       // because the source rect reads the BAKE's dpr).
       sp.dpr !== bakeDpr ||
       !sp.outlined;
@@ -19063,7 +16408,7 @@ export class Renderer {
       if (lane !== BakeLane.None) {
         this.treeBakeBudget--;
         const t0 = performance.now();
-        sp = this.bakePropSprite(sp, b, paint, bakeDpr);
+        sp = this.bakePropSprite(sp, b, paint);
         const took = performance.now() - t0;
         this.spriteBakeMsLeft -= took;
         this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
@@ -19110,19 +16455,16 @@ export class Renderer {
     const k = s / sp.scale;
     const sw = Math.ceil(sp.cw * sp.dpr);
     const sh = Math.ceil(sp.ch * sp.dpr);
-    // B-3 FOOT ANCHOR (float fix): the depth-foreshortened blit (k =
-    // spriteScale/bakeScale = depthScale at this row) must pivot about the
-    // prop's GROUND FOOT — exactly as drawTree anchors its trunk base — not
-    // the baked box's top-left corner. The box `b` and the sprite anchor
-    // (sp.ax, sp.ay = the bake margin, i.e. the box's top-left) form a
-    // canonical-scale frame; scaling that frame about its top-left lifts the
-    // foot off the leaned ground by (footY − b.y)·(1 − k), so a far prop
-    // (small depthScale) HOVERS and only settles as it nears (k → 1). This
-    // was the mailbox/chairs float. Re-derive the foot in screen space — the
-    // tile centre's leaned ground, raised by the SAME renderLift the caller
-    // folded into `b` (elevAt·ELEV_H + porch DOCK_LIFT, at spriteScale) — and
-    // pivot the blit there. At q=0, k === 1, so dx0/dy0 collapse to
-    // `b.x − sp.ax` / `b.y − sp.ay`, byte-identical to the pre-lean path.
+    // THE FOOT ANCHOR: a blit at k ≠ 1 (a stale bake during a zoom glide)
+    // must pivot about the prop's GROUND FOOT — exactly as drawTree anchors
+    // its trunk base — not the baked box's top-left corner. The box `b` and
+    // the sprite anchor (sp.ax, sp.ay = the bake margin, i.e. the box's
+    // top-left) form a bake-scale frame; scaling that frame about its
+    // top-left would lift the foot off the ground by (footY − b.y)·(1 − k).
+    // Re-derive the foot in screen space — the tile centre's ground, raised
+    // by the SAME renderLift the caller folded into `b` (elevAt·ELEV_H +
+    // porch DOCK_LIFT) — and pivot the blit there. At k === 1, dx0/dy0
+    // collapse to `b.x − sp.ax` / `b.y − sp.ay`.
     const foot = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
     const footX = foot.x;
     const footY = foot.y - this.renderLift(tx + 0.5, ty + 0.5) * s;
@@ -19130,11 +16472,10 @@ export class Renderer {
     // foot's BAKED offset within the sprite (fixed at bake), not the LIVE
     // (footX − b.x + ax) offset. When the sprite was baked THIS frame the two
     // are identical (footAx is captured as exactly that live offset), so a
-    // fresh/rest blit — and the q>0 parity oracle, which settles before it
-    // samples — is byte-identical. They diverge only when the sprite is
-    // reused at a scale it was NOT baked at: k = spriteScale/bakeScale carries
-    // depth-k (lean, always) AND staleness-k (a zoom glide the bake budget
-    // couldn't keep up with). The live-offset form multiplied a *live-scale*
+    // fresh/rest blit is byte-identical. They diverge only when the sprite is
+    // reused at a scale it was NOT baked at: k = scale/bakeScale carries the
+    // staleness-k of a zoom glide the bake budget couldn't keep up with. The
+    // live-offset form multiplied a *live-scale*
     // (footX − b.x) by that k and slid the foot by ~(foot − b)·(1 − k) — the
     // reported "props scale with the screen and drift, then snap back on the
     // settle re-bake." The baked offset scaled by k lands the baked foot on
@@ -19241,7 +16582,6 @@ export class Renderer {
     wx: number,
     wy: number,
     tSec: number,
-    bakeDpr: number,
   ): WorldSprite {
     const s = this.camera.scale;
     // Headroom: sway throw sideways, payload twinkle above, base below.
@@ -19250,8 +16590,7 @@ export class Renderer {
     const below = 0.35 * s;
     const cw = Math.ceil(half * 2);
     const ch = Math.ceil(top + below);
-    // THE DEPTH LOD LAW: density rides the tier (see bakeTreeSprite).
-    const dpr = bakeDpr;
+    const dpr = this.dpr();
     const pw = Math.max(1, Math.ceil(cw * dpr));
     const ph = Math.max(1, Math.ceil(ch * dpr));
     const { canvas, sctx } = this.acquireSpriteCanvas(prev, pw, ph);
@@ -19285,9 +16624,7 @@ export class Renderer {
 
   /** Cached-sprite draw for a grown plant — forage node or farm crop. */
   drawFlora(bx: number, by: number, tx: number, ty: number, tile: Tile, h: number, tSec: number): void {
-    // B-1c depth thread: flora foreshortens by its tile's world-y; baked at
-    // the canonical camera.scale (shared cache), only the blit scales.
-    const s = this.spriteScale(ty + 0.5);
+    const s = this.camera.scale;
     const syT = s * this.camera.yScale;
     const fm = plantModel(tile, h);
     const key = treeKey(tx + 0.5, ty + 0.5, tile);
@@ -19295,17 +16632,11 @@ export class Renderer {
     // eviction, canvas pool. Keys can't collide — tile ids differ.
     this.treesVisible++;
     let sp = this.treeSprites.get(key);
-    // THE DEPTH LOD LAW: bake density tracks the depth-scaled size, √2-
-    // quantized with a hysteresis band (see drawPropOutlined). tier 0 at
-    // q=0 → lodDpr === dpr() → byte-identical.
-    const tier = this.lodTier(ty + 0.5, sp ? this.lodTierOfDpr(sp.dpr) : undefined);
-    const bakeDpr = this.lodDpr(tier);
+    const bakeDpr = this.dpr();
     const due = (this.frameNo + key) % this.treeCadence === 0;
     const stale =
       !sp ||
       (due && sp.frame !== this.frameNo) ||
-      // Staleness keys on the canonical bake scale, not the depth-scaled s
-      // (else depth variation thrashes the shared sheet — see drawTree).
       Math.abs(sp.scale - this.camera.scale) > this.camera.scale * 0.2 ||
       sp.dpr !== bakeDpr ||
       sp.outlined !== this.outlineOn;
@@ -19322,7 +16653,7 @@ export class Renderer {
       if (lane !== BakeLane.None) {
         this.treeBakeBudget--;
         const t0 = performance.now();
-        sp = this.bakeFloraSprite(sp, fm, tx + 0.5, ty + 0.5, tSec, bakeDpr);
+        sp = this.bakeFloraSprite(sp, fm, tx + 0.5, ty + 0.5, tSec);
         const took = performance.now() - t0;
         this.spriteBakeMsLeft -= took;
         this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
@@ -19477,168 +16808,6 @@ export class Renderer {
     sctx.globalCompositeOperation = 'destination-over';
     sctx.drawImage(this.outlineB, 0, 0, pw, ph, 0, 0, pw, ph);
     sctx.restore();
-  }
-
-  /**
-   * THE ONE RENDER — A3: THE VOLUME WEARS THE SAME RING. Outline a coalesced
-   * world-geometry VOLUME (a wall / garrison / diagonal / hedge run) with the
-   * SAME 8-tap alpha-DILATE ring characters and props already wear, retiring
-   * the per-tile / per-edge vector STROKE the coalesced path hand-rolled (its
-   * mixed near/far corners were the wall-top wedge + seam source).
-   *
-   * `sil` is the run's projected outer SILHOUETTE in css screen px — the crown
-   * loop plus the exposed side-face rings, each world corner projected+rounded
-   * ONCE (so the run's members share device pixels and the ring is seamless).
-   * The rings are filled to a solid mask, dilated by the body ring radius,
-   * tinted STRUCT_OUTLINE, and then the silhouette is SUBTRACTED so the result
-   * is a hollow ANNULUS: it paints only OUTSIDE the art, so it may be blitted
-   * in any order without ever covering the faces (which are drawn per-tile as
-   * separate DrawItems). At q=0 the coalesced path is never taken (q>0-only),
-   * so the flat golden look is untouched.
-   *
-   * CACHED PER RUN: the annulus is baked once per `key` and reblitted until the
-   * run's baked SHAPE changes (camera scale / dpr / q / on-screen size) — never
-   * re-dilated per frame per tile. Panning does not rebake (q=0 shape is
-   * translation-invariant; q>0 reblits the near-identical shape, exactly as the
-   * crown scratch cache already does). Cost is O(visible silhouette bbox): the
-   * mask is clamped to the viewport so an off-screen run tail rasterizes nil.
-   */
-  private paintVolumeRing(sil: Silhouette, key: number): void {
-    const rings = sil.rings;
-    const bounds = silhouetteBounds(sil); // silhouette screen bbox (css px)
-    if (bounds === null) return;
-    let { x0, y0, x1, y1 } = bounds;
-    const dpr = this.dpr();
-    // Ring radius + margin: EXACTLY the body ring (bakeOutlineRing), so world
-    // geometry wears the same weight as every character and prop.
-    const r = Math.max(1.25, this.camera.scale * 0.04);
-    const m = Math.ceil(r) + 2;
-    // Clamp to the viewport (+ apron) so a long run's mask never rasterizes
-    // megapixels off-screen — the dilate is O(visible bbox), not run length.
-    const vpad = m + 8;
-    x0 = Math.max(x0, -vpad);
-    y0 = Math.max(y0, -vpad);
-    x1 = Math.min(x1, this.w + vpad);
-    y1 = Math.min(y1, this.h + vpad);
-    if (x1 <= x0 || y1 <= y0) return; // fully off-screen
-    const ox = Math.round(x0) - m; // integer css blit origin (no resample)
-    const oy = Math.round(y0) - m;
-    const wCss = Math.ceil(x1 - ox) + m;
-    const hCss = Math.ceil(y1 - oy) + m;
-    const w = Math.max(1, Math.ceil(wCss * dpr));
-    const h = Math.max(1, Math.ceil(hCss * dpr));
-    // Cache signature: the run key plus everything that changes the baked
-    // SHAPE (scale, q, dpr, device size). Position is NOT in it — the annulus
-    // is origin-relative and reblitted at the current bbox each frame.
-    const sig =
-      ((Math.round(this.camera.scale * 16) & 0xffff) |
-        ((Math.round(this.camera.q * 1e6) & 0x3ff) << 16)) ^
-      Math.imul(w, 0x9e37) ^
-      Math.imul(h, 0x85eb) ^
-      (Math.round(dpr * 4) << 27);
-    let entry = this.volRingCache.get(key);
-    if (!entry || entry.sig !== sig || entry.w !== w || entry.h !== h) {
-      // (Re)bake the annulus into a pooled cache canvas.
-      const { canvas, sctx } = this.acquireSpriteCanvas(entry, w, h);
-      // 1. Solid silhouette mask into scratch A (device px, origin ox,oy). Each
-      //    ring is filled on its own so opposite windings union (never cancel).
-      if (this.volMaskA.width < w) this.volMaskA.width = this.volMaskB.width = w;
-      if (this.volMaskA.height < h) this.volMaskA.height = this.volMaskB.height = h;
-      const a = this.volMaskACtx;
-      const b = this.volMaskBCtx;
-      const apron = Math.ceil(r * dpr) + 4;
-      const cw = Math.min(this.volMaskA.width, w + apron);
-      const ch = Math.min(this.volMaskA.height, h + apron);
-      a.setTransform(1, 0, 0, 1, 0, 0);
-      a.clearRect(0, 0, cw, ch);
-      a.setTransform(dpr, 0, 0, dpr, -ox * dpr, -oy * dpr);
-      a.fillStyle = '#000';
-      for (const ring of rings) {
-        if (ring.length < 3) continue;
-        a.beginPath();
-        a.moveTo(ring[0]!.x, ring[0]!.y);
-        for (let i = 1; i < ring.length; i++) a.lineTo(ring[i]!.x, ring[i]!.y);
-        a.closePath();
-        a.fill();
-      }
-      a.setTransform(1, 0, 0, 1, 0, 0);
-      // 2. Dilate A → grown, tinted silhouette in B (integer taps, bake law —
-      //    see bakeOutlineRing).
-      const ri = Math.max(1, Math.round(r * dpr));
-      const rd = Math.max(1, Math.round(r * 0.71 * dpr));
-      b.setTransform(1, 0, 0, 1, 0, 0);
-      b.clearRect(0, 0, cw, ch);
-      for (const [tx, ty] of Renderer.OUTLINE_TAPS) {
-        const diag = tx !== 0 && ty !== 0;
-        const oxT = Math.sign(tx) * (diag ? rd : ri);
-        const oyT = Math.sign(ty) * (diag ? rd : ri);
-        b.drawImage(this.volMaskA, 0, 0, w, h, oxT, oyT, w, h);
-      }
-      b.globalCompositeOperation = 'source-in';
-      b.fillStyle = STRUCT_OUTLINE;
-      b.fillRect(0, 0, w, h);
-      // 3. Subtract the silhouette itself → a HOLLOW ring that never covers art.
-      b.globalCompositeOperation = 'destination-out';
-      b.drawImage(this.volMaskA, 0, 0, w, h, 0, 0, w, h);
-      b.globalCompositeOperation = 'source-over';
-      // 4. Copy the annulus into the pooled cache canvas.
-      sctx.setTransform(1, 0, 0, 1, 0, 0);
-      sctx.clearRect(0, 0, canvas.width, canvas.height);
-      sctx.drawImage(this.volMaskB, 0, 0, w, h, 0, 0, w, h);
-      entry = { canvas, ctx: sctx, sig, used: this.frameNo, w, h };
-      this.volRingCache.set(key, entry);
-    }
-    entry.used = this.frameNo;
-    // Blit the cached annulus at the current bbox origin (hollow ⇒ order-free).
-    // B8: when a warp crown (stage-safe assembly) rings itself, this.ctx is the
-    // real frame — the annulus must ride the STAGE, not paint under the GL
-    // world layer. Push it as a small bounded KEYED paint (the annulus bbox,
-    // clamped to the viewport — far smaller than the old crown+face union
-    // scratch cell) so it composites in stream order and caches by its bake
-    // sig. Otherwise (wall-lane scratch paint, or the non-stage path) blit
-    // straight to the swapped/real ctx exactly as before.
-    const cap = entry.canvas;
-    if (this.stageAssembling) {
-      this.stagePushPaintRaw(
-        ox,
-        oy,
-        wCss,
-        hCss,
-        () => {
-          this.ctx.drawImage(cap, 0, 0, w, h, ox, oy, wCss, hCss);
-        },
-        'vol-ring',
-        (key ^ 0x5170_b8b8) | 0,
-        sig,
-      );
-    } else {
-      this.ctx.drawImage(cap, 0, 0, w, h, ox, oy, wCss, hCss);
-    }
-  }
-
-  /** Drop volume outline-ring annuli scrolled away for ~4s; pool their
-   *  canvases. Called each frame beside the other camera-riding caches. */
-  private evictVolRings(): void {
-    const cutoff = this.frameNo - 240;
-    if (this.volRingCache.size > 0) {
-      for (const [key, e] of this.volRingCache) {
-        if (e.used < cutoff) {
-          this.volRingCache.delete(key);
-          this.poolCanvas(e.canvas);
-        }
-      }
-    }
-    // B8: drop crown UV textures for spans scrolled away for ~4s and RELEASE
-    // their GPU record (the canvases are per-crown, not pooled). A returning
-    // span re-bakes + re-uploads once — the arrival cost, not a per-frame one.
-    if (this.structCrownCache.size > 0) {
-      for (const [key, e] of this.structCrownCache) {
-        if (e.used < cutoff) {
-          this.structCrownCache.delete(key);
-          this.stageWorldGl?.release(e.tex);
-        }
-      }
-    }
   }
 
   /**
@@ -19826,20 +16995,6 @@ export class Renderer {
     return ((tile as number) << 6) | (h & (TREE_VARIANT_COUNT - 1));
   }
 
-  /** THE DEPTH LOD LAW meets THE SPECIES SHEET: the shared archetype
-   *  sheet is split by depth tier, so near trees share a dense sheet
-   *  and far trees a sparse one instead of one flat sheet fought over
-   *  by every depth (which would thrash the shared bake every frame
-   *  under the lean). Each depth band picks an EXISTING neighbour's
-   *  sheet as a tree crosses a boundary — a cheap key swap, not a
-   *  re-bake. At q=0 there is only tier 0, so a variant occupies one
-   *  sheet exactly as before; the pixel-affecting flutter phase and
-   *  cadence still key off the UN-tiered vkey (see drawTree), so q=0
-   *  output is byte-identical. */
-  private treeVariantKeyLod(tile: Tile, h: number, tier: number): number {
-    return this.treeVariantKey(tile, h) * (LOD_TIER_MAX - LOD_TIER_MIN + 1) + (tier - LOD_TIER_MIN);
-  }
-
   /** THE STANDING LEAN: a constant hash-dealt shear bias (±0.028) so
    *  shared-variant neighbors hold different postures — silhouette
    *  diversity paid at the quad, not the bake. */
@@ -19859,14 +17014,10 @@ export class Renderer {
     grow = 1,
     foliage = 1,
   ): void {
-    // B-1c DEPTH THREAD (Epic B): a tree foreshortens with depth like every
-    // other billboard — its on-screen SIZE rides spriteScale at the trunk's
-    // world-y (`wy`). The sprite is BAKED at the canonical camera.scale
-    // (bakeTreeSprite, shared across the forest); only the blit scales, so
-    // depth variation never thrashes the shared species sheet (the
-    // staleness check below keys on camera.scale, not this depth-scaled s).
-    // At q=0 spriteScale === camera.scale, so this is byte-identical.
-    const s = this.spriteScale(wy);
+    // The sprite is BAKED at camera.scale (bakeTreeSprite, shared across
+    // the forest); the blit's k = s/sp.scale only carries a stale bake's
+    // zoom glide.
+    const s = this.camera.scale;
     const syT = s * this.camera.yScale;
     const m = this.treeOrSaplingModel(tile, h);
     let wind: number;
@@ -19909,16 +17060,8 @@ export class Renderer {
       // sprites per species, and the cadence flutter treadmill
       // re-paints archetypes, not trees.
       const vkey = this.treeVariantKey(tile, h);
-      // THE DEPTH LOD LAW: the species sheet is split by the tree's own
-      // depth tier so a near tree carries a dense sheet and a far one a
-      // sparse sheet — the reported "wrong LOD under lean" cured at the
-      // bake. tier 0 at q=0 → one sheet per variant as before. The
-      // pixel-affecting flutter phase and cadence still key off the
-      // UN-tiered vkey, so q=0 is byte-identical.
-      const tier = this.lodTier(wy);
-      const lodKey = this.treeVariantKeyLod(tile, h, tier);
-      let sp = this.treeVariantSprites.get(lodKey);
-      const bakeDpr = this.lodDpr(tier);
+      let sp = this.treeVariantSprites.get(vkey);
+      const bakeDpr = this.dpr();
       // Each variant re-bakes on its own phase of the (adaptive)
       // cadence, derived from its key, so the sheet never re-bakes in
       // one frame; sp.frame guards the many instances that all reach
@@ -19927,16 +17070,11 @@ export class Renderer {
       const stale =
         !sp ||
         (due && sp.frame !== this.frameNo) ||
-        // Key the re-bake on the CANONICAL scale the sprite is baked at
-        // (camera.scale), NOT the depth-scaled blit `s` — otherwise trees
-        // at different depths would each demand their own bake and thrash
-        // the shared species sheet under the lean. The blit's `k = s/scale`
-        // carries the foreshortening instead.
+        // Key the re-bake on the scale the sprite is baked at
+        // (camera.scale); the blit's `k = s/scale` carries a stale
+        // bake's glide.
         Math.abs(sp.scale - this.camera.scale) > this.camera.scale * 0.2 ||
-        // The effective bake density moved (dpr change, OR the depth tier
-        // — but the tier lives in the KEY, so a tier change is a fresh
-        // lookup, and this only fires on a device-grid change). tier 0 →
-        // lodDpr === dpr(), so q=0 is the old `sp.dpr !== this.dpr()`.
+        // The effective bake density moved (a device-grid change).
         sp.dpr !== bakeDpr ||
         sp.outlined !== this.outlineOn;
       // The storm law (see drawPropOutlined): visible-now misses take
@@ -19962,7 +17100,7 @@ export class Renderer {
           // world position decorrelates flutter phase BETWEEN
           // variants; tSec keeps flutter moving across cadence
           // re-bakes.
-          sp = this.bakeTreeSprite(sp, m, (vkey % 61) * 1.7, (vkey % 53) * 2.3, tSec, 0, bakeDpr);
+          sp = this.bakeTreeSprite(sp, m, (vkey % 61) * 1.7, (vkey % 53) * 2.3, tSec, 0);
           const took = performance.now() - t0;
           this.spriteBakeMsLeft -= took;
           this.bakeCostEma += (took - this.bakeCostEma) * 0.2;
@@ -19971,7 +17109,7 @@ export class Renderer {
             this.visArrivalCount--;
           }
           if (!hadSp) sp.mint = this.frameNo; // THE PROMISED FADE
-          this.treeVariantSprites.set(lodKey, sp);
+          this.treeVariantSprites.set(vkey, sp);
         }
       }
       if (!sp) {
@@ -20209,9 +17347,7 @@ export class Renderer {
     tSec: number,
     grow = 1,
   ): void {
-    // B-1c depth thread: the cast foreshortens with its tree (foot = wy);
-    // the shadow sheet bakes at the canonical scale (staleness keys on it).
-    const syT = this.spriteScale(wy) * this.camera.yScale;
+    const syT = this.camera.scale * this.camera.yScale;
     const groundY = by + syT * 0.3;
     const sunOn = this.sky.shadowAlpha >= 0.02;
     const throws = this.lightThrows(bx, groundY, 0.6);
@@ -20227,7 +17363,7 @@ export class Renderer {
       const asm = this.stageAssembling && this.stageCastLane;
       const c = asm ? null : this.beginCastFill();
       if (c || asm) {
-        const s = this.spriteScale(wy); // B-1c depth thread (blit; bake canonical)
+        const s = this.camera.scale;
         if (grow < 1) {
           // Regrowth animates shape per frame — build live.
           if (asm) {
@@ -20300,14 +17436,7 @@ export class Renderer {
           // broken trunk at the leading screen edge. The stamp
           // stands down until the body exists, then blooms in on
           // the body's own mint ramp (THE PROMISED FADE).
-          // THE CAST WAITS FOR ITS TREE reads the body sheet by the
-          // SAME depth-tier key drawTree stored it under (the body sheet
-          // is split by tier; the shadow sheet is not — a soft ground
-          // blob reads no density change). tier 0 at q=0 → the pre-lean
-          // sheet.
-          const bodySp = this.treeVariantSprites.get(
-            this.treeVariantKeyLod(tile, h, this.lodTier(wy)),
-          );
+          const bodySp = this.treeVariantSprites.get(this.treeVariantKey(tile, h));
           if (sh && bodySp) {
             const mintA = this.mintAlpha(bodySp);
             sh.used = this.frameNo;
@@ -20552,14 +17681,7 @@ export class Renderer {
         continue;
       }
       const u = ms / DUR;
-      // THE LIFT RIDES ITS ROW (Epic1 B1): the debris art draws at
-      // spriteScale (depthScale-aware) but its terrain lift used a bare
-      // scale — fold depthScale so the crumbling rock stays on its
-      // terrace under lean/zoom. depthScale === 1 at q=0.
-      const lift =
-        this.renderLift(br.tx + 0.5, br.ty + 0.5) *
-        this.camera.scale *
-        this.camera.depthScale(br.ty + 0.5);
+      const lift = this.renderLift(br.tx + 0.5, br.ty + 0.5) * this.camera.scale;
       items.push({
         // A hair above the depleted rock underneath, which it hides.
         sortY: br.ty + 0.86,
@@ -20567,7 +17689,7 @@ export class Renderer {
         strat: this.stratAt(br.tx, br.ty),
         draw: () => {
           const ctx = this.ctx;
-          const s = this.spriteScale(br.ty + 0.5); // B-1c depth thread
+          const s = this.camera.scale;
           const p = this.camera.worldToScreen(br.tx + 0.5, br.ty + 0.5, this.w, this.h);
           p.y -= lift;
           const baseY = p.y + s * 0.35; // crush toward the ground line
@@ -20720,10 +17842,7 @@ export class Renderer {
       // blinks off at the first lean the way it used to.
       const s = this.camera.scale;
       const syT = s * this.camera.yScale;
-      // THE LIFT RIDES ITS ROW (Epic1 B1): the falling-tree outline is
-      // world matter — foreshorten its terrain lift by depthScale so the
-      // ground pivot stays pinned under lean/zoom. 1 at q=0.
-      const lift = this.renderLift(cx, cy) * s * this.camera.depthScale(cy);
+      const lift = this.renderLift(cx, cy) * s;
       const p = this.camera.worldToScreen(cx, cy, this.w, this.h);
       p.y -= lift;
       const groundY = p.y + syT * 0.3;
@@ -20782,20 +17901,14 @@ export class Renderer {
     h: number,
     px: number,
     py: number,
-    wy: number,
   ): { x: number; y: number; w: number; h: number } {
     const m = this.treeOrSaplingModel(tile, h);
-    // THE TREE BODY BOX RIDES THE LEAN (Epic B, canopy-clip fix): a
-    // growing tree/sapling paints LIVE through the scratch/paint lane
-    // (paintOutlinedDirect splits, then stagePaintItem bounds it), and
-    // drawTree sizes that live paint by spriteScale(wy) = scale·depthScale.
-    // Sizing THIS box by the raw camera.scale left it TALLER/WIDER art
-    // than box under q>0 — the world stage's scratch CELL then hard-clips
-    // the overflow, slicing a flat top off the crown (and the class-canvas
-    // UV bound can sample past the cell → an edge sliver). Size the box by
-    // the SAME spriteScale the draw uses so cell and art always agree.
-    // spriteScale === camera.scale at q=0 → byte-identical to the ortho box.
-    const s = this.spriteScale(wy);
+    // THE TREE BODY BOX: a growing tree/sapling paints LIVE through the
+    // scratch/paint lane (paintOutlinedDirect splits, then stagePaintItem
+    // bounds it) — the world stage's scratch CELL hard-clips any overflow,
+    // so size the box by the SAME scale the draw uses so cell and art
+    // always agree.
+    const s = this.camera.scale;
     const half = (m.spread * 1.15 + 0.08 * m.height + 0.45) * s;
     const top = (m.height * 1.18 + 0.45) * s;
     const groundY = py + s * this.camera.yScale * 0.3;
@@ -21445,19 +18558,10 @@ export class Renderer {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
-    // B-3 lift law: the shared `s` stays canonical (camera.scale) so the
-    // cases that BAKE bake at one density and the blit foreshortens by k
-    // (see drawPropOutlined) — but a world HEIGHT that repositions the
-    // anchor (elevation, the porch board) is a screen offset and MUST
-    // ride depthScale at this prop's own foot, exactly like wallItem's
-    // crown/elev lift. A flat lift left a raised-floor prop floating off
-    // its leaned floor. spriteScale(ty+0.5) === camera.scale at q=0, so
-    // the anchor is byte-identical when not leaning.
-    const sLift = this.spriteScale(ty + 0.5);
-    p.y -= game.world.elevAt(tx, ty) * ELEV_H * sLift;
+    p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     // A prop on the porch stands ON the boards (the carried-deck
     // rule): its whole painter rides the same lift the feet do.
-    if (this.porchAt(game, tx, ty)) p.y -= DOCK_LIFT * sLift;
+    if (this.porchAt(game, tx, ty)) p.y -= DOCK_LIFT * s;
     const h = hashCoords(41, tx, ty);
     const t = performance.now() / 1000;
     // Interactables wear the character outline ring — one generous
@@ -21514,6 +18618,18 @@ export class Renderer {
         // by treeExtent.test.ts. No side-channel pads here.
         return {
           sortY: ty + 0.9,
+          // A5 pitch-aware depth (tree-vs-volume sort): a mature tree is a
+          // tall, ground-rooted OCCLUDER — like a wall or hedge, not a mobile
+          // billboard. Carrying its foot row as `nearRow` (=== sortY, so the
+          // depth term and q=0 flat order are byte-identical) makes it a
+          // VOLUME for DRAW_ORDER, so the front-base cross-shelf exception
+          // resolves tree-vs-hedge (and tree-vs-wall/building) by TRUE ground
+          // depth: a tree planted in FRONT (south) of a raised hedge draws
+          // OVER it instead of being dominated by the hedge's higher shelf,
+          // and a tree behind it is still occluded. Mobile entities (players,
+          // NPCs, beasts) stay billboards (no nearRow), so wall/hedge-vs-entity
+          // sort is unchanged.
+          nearRow: this.occlusionOn ? ty + 0.9 : undefined,
           occKey: occ ? treeKey(tx + 0.5, ty + 0.5, tile) : undefined,
           occX0: occ ? p.x + shiver + occ.x0 * s : undefined,
           occX1: occ ? p.x + shiver + occ.x1 * s : undefined,
@@ -21522,7 +18638,7 @@ export class Renderer {
           // Mature trees carry the ring baked into their cached sprite
           // (bakeOutlineRing) — only the live-painted regrowth ease
           // goes through the per-frame outline pass.
-          body: grow < 1 ? this.treeBody(tile, h, p.x, p.y, ty + 0.5) : undefined,
+          body: grow < 1 ? this.treeBody(tile, h, p.x, p.y) : undefined,
           drawShadow: () => this.drawTreeShadow(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, grow),
           // A struck trunk answers the axe: a damped screen-x ring on
           // the whole sprite for a quarter second after each bite.
@@ -21558,7 +18674,7 @@ export class Renderer {
           // sprite exactly like mature trees — a body here would send
           // the already-ringed blit through paintOutlined and dilate
           // the ring a second time (a doubled, twice-thick stroke).
-          body: grow < 1 ? this.treeBody(tile, h, p.x, p.y, ty + 0.5) : undefined,
+          body: grow < 1 ? this.treeBody(tile, h, p.x, p.y) : undefined,
           drawShadow: () => this.drawTreeShadow(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, grow),
           draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, undefined, grow),
         };
@@ -21587,12 +18703,9 @@ export class Renderer {
         const south = game.world.groundAt(tx, ty + 1);
         const crowded =
           south !== undefined && ROCK_TILES.has(south) && game.world.elevAt(tx, ty + 1) === game.world.elevAt(tx, ty);
-        // B-1c depth thread: the rock (a LIVE painter, not a cached sprite)
-        // foreshortens by its tile's world-y. objectItem's shared `s` stays
-        // canonical for the cases that BAKE; this case paints live, so it
-        // takes the depth-scaled scale directly — body, shadow and paint all
-        // ride `rs` so the outline ring and cast track the smaller stone.
-        const rs = this.spriteScale(ty + 0.5);
+        // The rock is a LIVE painter, not a cached sprite: body, shadow
+        // and paint all ride `rs`.
+        const rs = s;
         return {
           sortY: ty + 0.85,
           // Depleted rocks go ringless on purpose: the outline doubles
@@ -21601,7 +18714,7 @@ export class Renderer {
           body: depleted
             ? undefined
             : { x: p.x - rs * 1.2, y: p.y - rs * 1.5, w: rs * 2.4, h: rs * 2.1 },
-          drawShadow: () => this.castRockShadow(p.x, p.y, tile, h, crowded, rs),
+          drawShadow: () => this.castRockShadow(p.x, p.y, tile, h, crowded),
           // Struck stone barely gives — a tighter, smaller ring than
           // the tree's whip: mass answers, it doesn't sway.
           draw: () =>
@@ -22190,34 +19303,68 @@ export class Renderer {
     // y-sort (below) so bodies walk THROUGH thickets.
     this.grass.collectGpuBlades(ground, detail, bounds, this.grassBlades, true);
     this.grass.collectGpuOrnaments(ground, detail, bounds, this.grassFlowers, this.grassSeeds);
-    // This frame's disturbers → the trample uniform. Body radius (~0.3t) is
-    // the footprint CENTRE; the parted patch spreads wider, so scale it.
+    // G-INTERACT — this frame's disturbers → the parting uniforms. Each
+    // body's radius (~0.3t) is the footprint CENTRE; the parted patch spreads
+    // wider, so packDisturbers scales it. The travel VELOCITY (world u/s,
+    // derived from each id's last position) becomes the wake lay-vector so
+    // blades comb down in the direction of motion and spring back when still.
+    // `?__grassNoDisturb` (a fresh-page bisect flag, the probe FLAG law) feeds
+    // zero disturbers for a clean A/B against the static-through-body look.
+    const noDisturb = (globalThis as { __grassNoDisturb?: boolean }).__grassNoDisturb === true;
     const src = this.frameDisturbers;
-    const dz = this.grassDisturb;
-    const dn = Math.min(MAX_DISTURB, src.length);
-    for (let i = 0; i < dn; i++) {
+    const dtSec = this.frameDt > 1e-4 ? this.frameDt : 1 / 60;
+    const last = this.grassDisturbLast;
+    const seen = new Set<number | 'own'>();
+    const entries = this.grassDisturbEntries;
+    entries.length = 0;
+    for (let i = 0; i < src.length; i++) {
       const d = src[i]!;
-      dz[i * 4] = d.x;
-      dz[i * 4 + 1] = d.y;
-      dz[i * 4 + 2] = Math.max(0.9, d.r * 3.2); // parted spread, not body radius
-      dz[i * 4 + 3] = 1;
+      const prev = last.get(d.id);
+      // Clamp the per-frame delta before dividing by dt so a teleport or a
+      // fresh id cannot fling a one-frame velocity spike into the wake.
+      let vx = 0;
+      let vy = 0;
+      if (prev) {
+        vx = Math.max(-0.6, Math.min(0.6, d.x - prev.x)) / dtSec;
+        vy = Math.max(-0.6, Math.min(0.6, d.y - prev.y)) / dtSec;
+      }
+      if (prev) {
+        prev.x = d.x;
+        prev.y = d.y;
+      } else {
+        last.set(d.id, { x: d.x, y: d.y });
+      }
+      seen.add(d.id);
+      entries.push({ x: d.x, y: d.y, r: d.r, vx, vy });
     }
+    // Drop bodies that left view so the last-position map cannot grow forever.
+    if (last.size > seen.size) for (const id of last.keys()) if (!seen.has(id)) last.delete(id);
+    // MANY BODIES, EIGHT SLOTS: a crowded town can field far more disturbers
+    // than the uniform holds, and the own player is gathered LAST — so pack
+    // the ones NEAREST the camera look-at (the bodies actually in the meadow
+    // on screen), never the arbitrary first eight. O(n log n) on ≤ a few
+    // dozen, no per-blade cost.
+    const camX = this.camera.x;
+    const camY = this.camera.y;
+    entries.sort(
+      (a, b) => (a.x - camX) ** 2 + (a.y - camY) ** 2 - ((b.x - camX) ** 2 + (b.y - camY) ** 2),
+    );
+    const dz = this.grassDisturb;
+    const dv = this.grassDisturbVel;
+    const dn = noDisturb ? 0 : packDisturbers(entries, dz, dv);
     const cam = this.camera;
     const frame: GrassFrame = {
       scale: cam.scale,
       yScale: cam.yScale,
-      // Pass q so the origin is UNSNAPPED under a lean, exactly as the world
-      // feed uses it — a snapped pre-divide origin sawtooths through the
-      // perspective divide (grass parallax + jitter). q=0 keeps the snap.
-      ox: camOriginX(cam.scale, cam.x, cam.snapDpr, this.w, cam.q),
-      oy: camOriginY(cam.scale, cam.yScale, cam.y, cam.snapDpr, this.h, cam.q),
-      q: cam.q,
+      ox: cam.originX(this.w),
+      oy: cam.originY(this.h),
       wCss: this.w,
       hCss: this.h,
       dpr: this.dpr(),
       timeSec: performance.now() / 1000,
       windGain: 0.12,
       disturb: dn > 0 ? dz.subarray(0, dn * 4) : undefined,
+      disturbVel: dn > 0 ? dv.subarray(0, dn * 2) : undefined,
     };
     // Stash the frame so the later skirt pass (collectGpuSkirts, run after
     // the world collect gathers grass-rooted objects) renders its blades
@@ -22233,8 +19380,7 @@ export class Renderer {
     // frame rate — no baked monolith, and (crucially) NO player-centred
     // radius box (the CPU path's #2 artifact). Blitted UNDER the coat at the
     // frame's shade alpha, one density with the world's shade: THE CAST LIES
-    // UNDER THE COAT. Perspective-correct at q>0 (both quad ends are ground
-    // points through projectWorld). Skipped when the sun casts no shade.
+    // UNDER THE COAT. Skipped when the sun casts no shade.
     if (this.sky.shadowAlpha >= 0.02) {
       const off = grassShadowOffset(this.sky.shadowX, this.sky.shadowY, this.sky.shadowLen);
       const shade = this.sky.moonlit ? SHADOW_MOON_RGB : SHADOW_SUN_RGB;
@@ -22308,7 +19454,7 @@ export class Renderer {
 
   /** G-PERF coalesced-band world-y span cap. A merged band renders into an
    *  atlas slot as tall as its span + a blade height, so an unbounded merge
-   *  balloons the atlas (a tall run under a lean can span the screen). This
+   *  balloons the atlas (a tall run can span the screen). This
    *  keeps every slot atlas-thin while the band COUNT still falls ~this:pitch
    *  to one in a body-free stretch — the sub-draw/blit reduction without the
    *  atlas blow-up. Tuned against dense-meadow ground cost (see plan). */
@@ -22337,6 +19483,81 @@ export class Renderer {
               b.dstH,
               () => this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH),
               'grass-tall',
+            );
+          } else {
+            this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH);
+          }
+        },
+      } as DrawItem);
+    }
+  }
+
+  /**
+   * G-ELEVATED — THE COAT RIDES THE SHELF. Gather the raised terrain's grass
+   * (collectGpuElevated on the Grass system — one band per row/level, each
+   * carrying its shelf lift), render the bands through the GPU elevated atlas,
+   * and emit each as a y-sorted DrawItem at its row so the raised coat draws
+   * OVER its plateau ground quad and UNDER the bodies standing on it — the
+   * same z-order the CPU drawRow had inside collectElevatedGround. No-op when
+   * the GPU meadow is inactive, nothing is raised in view, or the elevated
+   * atlas is unavailable (the plateau simply shows its baked ground that
+   * frame). Blades project through the SAME frame projection + wind as the
+   * flat field, LIFTED onto their shelf by the shader (band.elev).
+   */
+  private collectGpuElevated(items: DrawItem[], bounds: GrassBounds): void {
+    if (!this.grassGpuActive) return;
+    // Bisect lever for the promote-to-default gate (the probe FLAG law): a
+    // fresh page may set window.__grassNoElev to force the raised terrain back
+    // onto the CPU drawRow (collectElevatedGround) so the OLD baked/CPU coat
+    // on plateau tops can be A/B'd against this GPU one. Unset in normal play.
+    if ((globalThis as { __grassNoElev?: boolean }).__grassNoElev === true) return;
+    const layer = this.grassGpuLayer;
+    const frame = this.grassFrameSaved;
+    if (!layer || !frame) return;
+    const blades = this.grassElev;
+    const bands = this.grassElevBands;
+    // A plateau row south of the bottom edge lifts up-screen into view (like
+    // collectElevatedGround's elevPadS), so reach past maxTy; the flat field's
+    // grassBounds is capped to the meadow's near window and would miss those
+    // shelves (their coat would go bare, since the CPU drawRow is skipped).
+    const elevPadS = Math.ceil((ELEV_H * 3) / this.camera.yScale);
+    const eb: GrassBounds = {
+      minTx: bounds.minTx,
+      maxTx: bounds.maxTx,
+      minTy: bounds.minTy - 3,
+      maxTy: bounds.maxTy + 1 + elevPadS,
+    };
+    this.grass.collectGpuElevated(
+      (tx, ty) => this.fgGroundAt(tx, ty),
+      (tx, ty) => this.fgDetailAt(tx, ty),
+      (tx, ty) => this.fgElevAt(tx, ty),
+      eb,
+      ELEV_H,
+      blades,
+      bands,
+    );
+    this.grassElevBlits = [];
+    this.grassElevCanvas = null;
+    if (bands.length === 0) return;
+    const blits = layer.renderElev(blades, bands, frame);
+    if (blits.length === 0) return;
+    this.grassElevBlits = blits;
+    this.grassElevCanvas = layer.elevCanvas;
+    const canvas = layer.elevCanvas;
+    for (const bl of this.grassElevBlits) {
+      const b = bl;
+      items.push({
+        sortY: b.sortY,
+        stageSafe: true,
+        draw: () => {
+          if (this.stageAssembling) {
+            this.stagePushPaintRaw(
+              b.dstX,
+              b.dstY,
+              b.dstW,
+              b.dstH,
+              () => this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH),
+              'grass-elev',
             );
           } else {
             this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH);
@@ -22393,11 +19614,21 @@ export class Renderer {
       const key = packTile(site.tx, site.ty);
       const cached = this.grassSkirtCache.get(key);
       let skirt: Blade[];
-      if (cached && cached.footY === site.footY) {
+      if (
+        cached &&
+        cached.footY === site.footY &&
+        cached.strength === site.strength &&
+        cached.sides === site.sides
+      ) {
         skirt = cached.blades;
       } else {
-        skirt = generateSkirtBlades(site.tx, site.ty, site.footY);
-        this.grassSkirtCache.set(key, { footY: site.footY, blades: skirt });
+        skirt = generateSkirtBlades(site.tx, site.ty, site.footY, site.strength, site.sides);
+        this.grassSkirtCache.set(key, {
+          footY: site.footY,
+          strength: site.strength,
+          sides: site.sides,
+          blades: skirt,
+        });
       }
       if (skirt.length === 0) continue;
       const i0 = blades.length;
@@ -22416,6 +19647,9 @@ export class Renderer {
         sortY: site.footY + 0.02,
         minBy,
         maxBy,
+        // G-ELEVATED: a skirt around an object rooted on raised terrain rides
+        // its shelf too, so the tuft nestles the LIFTED base, not a sunk one.
+        elev: this.fgElevAt(site.tx, site.ty) * ELEV_H,
       });
     }
     if (bands.length === 0) return;
@@ -23478,14 +20712,9 @@ export class Renderer {
      */
     mount?: string;
   }): DrawItem {
-    // THE CAMERA LEARNS TO LEAN (Epic B, B-1c): the billboard foreshortens
-    // with depth — one multiply by depthScale at the FOOT (e.y), because
     // `s` is the single scalar the whole rig (feet, geometry, tail,
-    // shadow) is measured against. depthScale is 1 at q=0, so this is
-    // byte-identical until the lean turns on. (This is the first threaded
-    // billboard; the remaining mob/mount body draws follow the same one-
-    // multiply pattern in B-1c's continuation — see the epic plan.)
-    const s = this.spriteScale(e.y);
+    // shadow) is measured against.
+    const s = this.camera.scale;
     const now = performance.now();
     const anim = this.animFor(e.eid, e.x, e.y, e.pose, now);
     // THE GIANT GAIT: giant-kin walk on a statured solver — world-true
@@ -26175,7 +23404,7 @@ export class Renderer {
     if (meta.ownerEid !== undefined) nameInk = '#9fd39a';
     const def = npcDef(defId);
     const radius = def?.radius ?? 0.3;
-    const scale = this.spriteScale(s.y); // B-1c: foreshorten the body with depth
+    const scale = this.camera.scale;
     const terrainLift = this.renderLift(s.x, s.y) * scale;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= terrainLift;
@@ -26505,7 +23734,7 @@ export class Renderer {
     }
 
     const def = npcDef(defId);
-    const scale = this.spriteScale(s.y); // B-1c: foreshorten the body with depth
+    const scale = this.camera.scale;
     const r = (def?.radius ?? 0.3) * scale;
     const terrainLift = this.renderLift(s.x, s.y) * scale;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
@@ -27100,7 +24329,7 @@ export class Renderer {
     nameInk?: string,
   ): DrawItem {
     const def = npcDef(defId);
-    const scale = this.spriteScale(s.y); // B-1c: foreshorten the body with depth
+    const scale = this.camera.scale;
     const radius = def?.radius ?? 0.3;
     const r = radius * scale;
     const terrainLift = this.renderLift(s.x, s.y) * scale;
@@ -27269,7 +24498,7 @@ export class Renderer {
     nameInk?: string,
   ): DrawItem {
     const def = npcDef(defId);
-    const scale = this.spriteScale(s.y); // B-1c: foreshorten the body with depth
+    const scale = this.camera.scale;
     const radius = def?.radius ?? 0.3;
     const r = radius * scale;
     const terrainLift = this.renderLift(s.x, s.y) * scale;
@@ -27372,7 +24601,7 @@ export class Renderer {
     roll?: ItemRoll,
   ): DrawItem {
     const ctx = this.ctx;
-    const k = this.spriteScale(s.y); // B-1c depth thread
+    const k = this.camera.scale;
     const terrainLift = this.renderLift(s.x, s.y) * k;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= terrainLift;
@@ -27616,8 +24845,7 @@ export class Renderer {
 
   private projectileItem(eid: number, style: string, s: { x: number; y: number; dir: number }): DrawItem {
     const ctx = this.ctx;
-    // B-1c depth thread: the shot foreshortens by its ground anchor's depth.
-    const scale = this.spriteScale(s.y);
+    const scale = this.camera.scale;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= this.renderLift(s.x, s.y) * scale;
     // Shots fly at CHEST height — leaving the bow's nock / the staff's
@@ -28596,7 +25824,7 @@ export class Renderer {
    * castBody pool, sun/lamp lobes and all.
    */
   private corpseItem(c: (typeof this.corpses)[number], now: number): DrawItem {
-    const scale = this.spriteScale(c.y); // B-1c: foreshorten the body with depth
+    const scale = this.camera.scale;
     const p = this.liftedWTS(c.x, c.y);
     const b = c.rag.bounds();
     // The fade clock: set at settle, pulled earlier by the budget
@@ -28713,7 +25941,7 @@ export class Renderer {
     now: number,
   ): DrawItem {
     const ctx = this.ctx;
-    const scale = this.spriteScale(a.y); // B-1c depth thread
+    const scale = this.camera.scale;
     const p = this.camera.worldToScreen(a.x, a.y, this.w, this.h);
     p.y -= this.renderLift(a.x, a.y) * scale;
     if (a.wall) p.y -= a.wall.h * scale;
@@ -28736,7 +25964,7 @@ export class Renderer {
     const adv = FALLING_SHAFT_ADVANCE * (1 - (1 - t) * (1 - t));
     const wx = f.x + Math.cos(f.dir) * adv;
     const wy = f.y + Math.sin(f.dir) * adv;
-    const scale = this.spriteScale(wy); // B-1c depth thread (foot = landing wy)
+    const scale = this.camera.scale;
     const height = PROJ_AIR * (1 - t * t);
     const p = this.camera.worldToScreen(wx, wy, this.w, this.h);
     p.y -= this.renderLift(wx, wy) * scale;
@@ -28793,7 +26021,7 @@ export class Renderer {
     s: { x: number; y: number },
   ): DrawItem {
     const ctx = this.ctx;
-    const scale = this.spriteScale(s.y); // B-1c depth thread (match host body)
+    const scale = this.camera.scale;
     return {
       sortY: s.y + 0.02,
       draw: () => {
@@ -29325,7 +26553,7 @@ export class Renderer {
    */
   private gravestoneItem(eid: number, s: { x: number; y: number }): DrawItem {
     const ctx = this.ctx;
-    const sc = this.spriteScale(s.y); // B-1c depth thread
+    const sc = this.camera.scale;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= this.renderLift(s.x, s.y) * sc;
     // Per-stone identity: lean, crack side, pebble scatter.
@@ -29486,7 +26714,7 @@ export class Renderer {
     now: number,
   ): DrawItem {
     const ctx = this.ctx;
-    const sc = this.spriteScale(s.y); // B-1c depth thread
+    const sc = this.camera.scale;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= this.renderLift(s.x, s.y) * sc;
     return {
@@ -29872,15 +27100,11 @@ export class Renderer {
   ): SigCtx {
     const sc = this.camera.scale;
     const p = this.camera.worldToScreen(fx.x, fx.y, this.w, this.h);
-    // THE LIFT RIDES ITS ROW (Epic1 B1): FX anchors ride the terrain
-    // lift by depthScale so the signature stays on its terrace under
-    // lean/zoom (only the vertical lift; the art size stays at `sc`).
-    // depthScale === 1 at q=0.
-    p.y -= this.renderLift(fx.x, fx.y) * sc * this.camera.depthScale(fx.y);
+    p.y -= this.renderLift(fx.x, fx.y) * sc;
     const wx2 = fx.x2 ?? fx.x;
     const wy2 = fx.y2 ?? fx.y;
     const q = this.camera.worldToScreen(wx2, wy2, this.w, this.h);
-    q.y -= this.renderLift(wx2, wy2) * sc * this.camera.depthScale(wy2);
+    q.y -= this.renderLift(wx2, wy2) * sc;
     return {
       ctx: this.ctx,
       st,
@@ -30734,10 +27958,7 @@ export class Renderer {
     const t = (now - d.bornAt) / d.life;
     if (t >= 1) return;
     const p = this.camera.worldToScreen(d.x, d.y, this.w, this.h);
-    // THE LIFT RIDES ITS ROW (Epic1 B1): the ground decal's terrain lift
-    // foreshortens with depthScale so it stays on the raised terrace
-    // under lean/zoom. 1 at q=0.
-    p.y -= this.renderLift(d.x, d.y) * sc * this.camera.depthScale(d.y);
+    p.y -= this.renderLift(d.x, d.y) * sc;
     const squash = Renderer.FX_SQUASH;
     const rand = srand(d.seed);
     const rPx = d.r * sc * 0.85;
@@ -31035,10 +28256,7 @@ export class Renderer {
         continue;
       }
       const p = this.camera.worldToScreen(pr.x, pr.y, this.w, this.h);
-      // THE LIFT RIDES ITS ROW (Epic1 B1): the footprint trail's terrain
-      // lift foreshortens with depthScale so prints stay on their
-      // terrace under lean/zoom. 1 at q=0.
-      p.y -= this.renderLift(pr.x, pr.y) * sc * this.camera.depthScale(pr.y);
+      p.y -= this.renderLift(pr.x, pr.y) * sc;
       // Off screen prints still age; they just cost nothing to skip.
       if (p.x < -80 || p.x > this.w + 80 || p.y < -80 || p.y > this.h + 80) continue;
       const rand = srand(pr.seed);
@@ -31291,12 +28509,9 @@ export class Renderer {
     const ease = 1 - (1 - inT) * (1 - inT);
 
     const o = this.camera.worldToScreen(g.ox, g.oy, this.w, this.h);
-    // THE LIFT RIDES ITS ROW (Epic1 B1): the aim ghost's ground anchors
-    // ride the terrain lift by depthScale so the ring stays on its
-    // terrace under lean/zoom. 1 at q=0.
-    o.y -= this.renderLift(g.ox, g.oy) * sc * this.camera.depthScale(g.oy);
+    o.y -= this.renderLift(g.ox, g.oy) * sc;
     const p = this.camera.worldToScreen(g.x, g.y, this.w, this.h);
-    p.y -= this.renderLift(g.x, g.y) * sc * this.camera.depthScale(g.y);
+    p.y -= this.renderLift(g.x, g.y) * sc;
     const rPx = g.radius * sc * (0.75 + 0.25 * ease);
     const rangePx = g.range * sc;
 
@@ -31472,8 +28687,7 @@ export class Renderer {
       const t = age / life;
       const st = fxStyleFor(fx.id, fx.color);
       const p = this.camera.worldToScreen(fx.x, fx.y, this.w, this.h);
-      // THE LIFT RIDES ITS ROW (Epic1 B1): FX foot foreshortens with depthScale (1 at q=0).
-      p.y -= this.renderLift(fx.x, fx.y) * sc * this.camera.depthScale(fx.y);
+      p.y -= this.renderLift(fx.x, fx.y) * sc;
       const rPx = fx.radius * sc;
       const seed = (fx.bornAt * 31) & 0x7fffffff;
 
@@ -31891,8 +29105,7 @@ export class Renderer {
             const lx2 = fx.x2;
             const ly2 = fx.y2 ?? fx.y;
             const q = this.camera.worldToScreen(lx2, ly2, this.w, this.h);
-            // THE LIFT RIDES ITS ROW (Epic1 B1): 1 at q=0.
-          q.y -= this.renderLift(lx2, ly2) * sc * this.camera.depthScale(ly2);
+            q.y -= this.renderLift(lx2, ly2) * sc;
             ctx.globalAlpha = (1 - t / 0.5) * 0.5 * voice.weight;
             ctx.strokeStyle = t < 0.18 ? st.core : st.mid;
             ctx.lineWidth = Math.max(1, sc * 0.03);
@@ -31984,8 +29197,7 @@ export class Renderer {
           const bx = fx.x2 ?? fx.x;
           const by = fx.y2 ?? fx.y;
           const q0 = this.camera.worldToScreen(bx, by, this.w, this.h);
-          // THE LIFT RIDES ITS ROW (Epic1 B1): 1 at q=0.
-          q0.y -= this.renderLift(bx, by) * sc * this.camera.depthScale(by);
+          q0.y -= this.renderLift(bx, by) * sc;
           ctx.save();
           ctx.globalAlpha = (1 - t) * 0.3;
           ctx.fillStyle = st.mid;
@@ -32001,8 +29213,7 @@ export class Renderer {
           const bx = fx.x2 ?? fx.x;
           const by = fx.y2 ?? fx.y;
           const q0 = this.camera.worldToScreen(bx, by, this.w, this.h);
-          // THE LIFT RIDES ITS ROW (Epic1 B1): 1 at q=0.
-          q0.y -= this.renderLift(bx, by) * sc * this.camera.depthScale(by);
+          q0.y -= this.renderLift(bx, by) * sc;
           const grow = Math.min(1, age / 70);
           ctx.save();
           ctx.globalAlpha = (1 - t) * 0.32;
@@ -32026,8 +29237,7 @@ export class Renderer {
           const bx = fx.x2 ?? fx.x;
           const by = fx.y2 ?? fx.y;
           const q1 = this.camera.worldToScreen(bx, by, this.w, this.h);
-          // THE LIFT RIDES ITS ROW (Epic1 B1): 1 at q=0.
-          q1.y -= this.renderLift(bx, by) * sc * this.camera.depthScale(by);
+          q1.y -= this.renderLift(bx, by) * sc;
           ctx.save();
           if (fx.radius > 0) {
             const rr = rPx * Math.sqrt(t);
@@ -32079,8 +29289,7 @@ export class Renderer {
           ay = fx.y2 ?? fx.y;
         }
         const ap = this.camera.worldToScreen(ax, ay, this.w, this.h);
-        // THE LIFT RIDES ITS ROW (Epic1 B1): 1 at q=0.
-        ap.y -= this.renderLift(ax, ay) * sc * this.camera.depthScale(ay);
+        ap.y -= this.renderLift(ax, ay) * sc;
         // A summon's wire radius is its INFLUENCE (taunt reach, bait
         // draw) — the stagecraft itself stays body-sized.
         const motifR = fx.kind === 'summon' ? Math.min(rPx, sc * 1.1) : Math.max(rPx, sc * 0.9);
@@ -32643,8 +29852,7 @@ export class Renderer {
       const t = age / life;
       const st = fxStyleFor(fx.id, fx.color);
       const p = this.camera.worldToScreen(fx.x, fx.y, this.w, this.h);
-      // THE LIFT RIDES ITS ROW (Epic1 B1): FX foot foreshortens with depthScale (1 at q=0).
-      p.y -= this.renderLift(fx.x, fx.y) * sc * this.camera.depthScale(fx.y);
+      p.y -= this.renderLift(fx.x, fx.y) * sc;
       const rPx = fx.radius * sc;
       const seed = (fx.bornAt * 31) & 0x7fffffff;
 
@@ -32689,8 +29897,7 @@ export class Renderer {
           // streak at once (the old one-beat grammar, kept for every
           // legacy emitter).
           const q = this.camera.worldToScreen(fx.x2 ?? fx.x, fx.y2 ?? fx.y, this.w, this.h);
-          // THE LIFT RIDES ITS ROW (Epic1 B1): link endpoint foreshortens with depthScale (1 at q=0).
-      q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc * this.camera.depthScale(fx.y2 ?? fx.y);
+          q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc;
           const roadMs = fx.ticks !== undefined ? fx.ticks * TICK_MS : 0;
           const travelT = roadMs > 0 ? Math.min(1, age / roadMs) : 1;
           if (!fx.spawned) {
@@ -32791,8 +29998,7 @@ export class Renderer {
           // relic's embers); the grammar here is the shared truth of
           // leaving one place and owning another.
           const q = this.camera.worldToScreen(fx.x2 ?? fx.x, fx.y2 ?? fx.y, this.w, this.h);
-          // THE LIFT RIDES ITS ROW (Epic1 B1): link endpoint foreshortens with depthScale (1 at q=0).
-      q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc * this.camera.depthScale(fx.y2 ?? fx.y);
+          q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc;
           if (!fx.spawned) {
             fx.spawned = true;
             // The collapse exhales where you left...
@@ -32884,8 +30090,7 @@ export class Renderer {
         case 'bolt': {
           // Jagged lightning that re-kinks as it lives, with branches.
           const q = this.camera.worldToScreen(fx.x2 ?? fx.x, fx.y2 ?? fx.y, this.w, this.h);
-          // THE LIFT RIDES ITS ROW (Epic1 B1): link endpoint foreshortens with depthScale (1 at q=0).
-      q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc * this.camera.depthScale(fx.y2 ?? fx.y);
+          q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc;
           if (!fx.spawned) {
             fx.spawned = true;
             this.fxDebris(fx.x2 ?? fx.x, fx.y2 ?? fx.y, st, 6);
@@ -32962,8 +30167,7 @@ export class Renderer {
           // The corridor of light: three nested bands that snap on,
           // hold, then shatter into blocks as they dissolve.
           const q = this.camera.worldToScreen(fx.x2 ?? fx.x, fx.y2 ?? fx.y, this.w, this.h);
-          // THE LIFT RIDES ITS ROW (Epic1 B1): link endpoint foreshortens with depthScale (1 at q=0).
-      q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc * this.camera.depthScale(fx.y2 ?? fx.y);
+          q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc;
           if (!fx.spawned) {
             fx.spawned = true;
             const dir = Math.atan2((fx.y2 ?? fx.y) - fx.y, (fx.x2 ?? fx.x) - fx.x);

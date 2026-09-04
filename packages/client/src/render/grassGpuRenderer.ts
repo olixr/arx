@@ -13,10 +13,22 @@
  * texture atlas: the blades are flat graded facets, not textured detail.
  *
  * This is the renderer in isolation (fed instances, a view matrix, and
- * time). Scene integration — the camera homography, depth-LOD, the
+ * time). Scene integration — the camera projection, the
  * y-sort slot, the ?grass=gpu flag — rides on top (proposal §A / G-2).
  */
-import { grassWindGlsl, grassProjectGlsl, GRASS_INSTANCE_FLOATS, type GrassProj } from './grassGpu.js';
+import {
+  grassWindGlsl,
+  grassProjectGlsl,
+  grassDisturbGlsl,
+  GRASS_INSTANCE_FLOATS,
+  MAX_DISTURB,
+  type GrassProj,
+} from './grassGpu.js';
+
+// Re-export so the shadow renderer + scene feed keep importing MAX_DISTURB
+// from the blade renderer (its historical home) even though the constant now
+// lives with the shared disturbance substrate in grassGpu.ts.
+export { MAX_DISTURB };
 
 /** Up-segments in a blade's strip — a blocky blade leans as a gentle arc,
  *  so a few segments suffice (fewer = crisper, blockier). Verts=(SEG+1)·2. */
@@ -27,9 +39,6 @@ const BLADE_VERTS = (BLADE_SEGMENTS + 1) * 2;
 const PAL_TONES = 8;
 const PAL_LIGHTS = 7;
 
-/** Max simultaneous disturbers (walkers/entities pressing the grass). */
-export const MAX_DISTURB = 8;
-
 const VERT_SRC = `#version 300 es
 layout(location=0) in vec2 aTmpl;   // x = side [-1,1], y = up [0,1]
 layout(location=1) in vec2 iRoot;   // world root
@@ -37,8 +46,6 @@ layout(location=2) in vec4 iShape;  // height, halfWidth, lean, phase
 layout(location=3) in vec2 iTone;   // tone index, seg2
 uniform float uTime;
 uniform vec2 uWindGain; // x = wind shear gain, y = reserved
-uniform vec4 uDisturb[${MAX_DISTURB}]; // xy = world pos, z = radius, w = strength
-uniform int uDisturbN;
 // G1 ATLAS REMAP: retarget the real-screen NDC into a band's atlas slot
 // (xy = scale, zw = bias). (1,1,0,0) = identity = the whole real screen
 // (the short-coat / ornament path, byte-identical to before).
@@ -49,61 +56,46 @@ out float vShimmer;
 out float vPress;
 ${grassProjectGlsl()}
 ${grassWindGlsl()}
+${grassDisturbGlsl()}
 void main() {
   float up = aTmpl.y;
   float side = aTmpl.x;
   // A BLOCKY COLUMN: a tall, narrow, straight-sided rectangular prism with
   // a FLAT top and no taper — the vertical-slab grass of our low-poly
   // brand, not a leaf.
-  float wj = 0.82 + 0.26 * fract(iShape.w * 7.31);
+  float wj = 0.68 + 0.48 * fract(iShape.w * 7.31);
   vec4 wind = grassWind(iRoot, uTime + iShape.w * 6.2831853);
   vec2 root = iRoot;
-  float height = iShape.x * 1.55;       // TALL
-  float hw = iShape.y * 1.42 * wj;      // chunky bars, not hairlines
+  float height = iShape.x * 1.42;       // ankle-to-shin coat, waist-high thickets
+  float hw = iShape.y * 0.76 * wj;      // fine flush blades, not chunky bars
 
   // WIND — a whole-blade SHEAR, linear in height: the blade leans as a
   // clean parallelogram with straight edges and a flat top. No per-vertex
   // kink, no nudged tip — one cohesive blade of grass.
   float lean = wind.x * uWindGain.x;
 
-  // TRAMPLING — entities pressing through splay the blades outward and
-  // press them over; the field springs back as they pass. Summed over
-  // nearby disturbers with a smoothstep falloff. A per-blade lay JITTER
-  // rotates each blade's push a little off pure-radial, so a stepped-on
-  // patch bends over naturally instead of skewering into a starburst.
+  // G-INTERACT — THE MEADOW PARTS. A body pressing through peels the blades
+  // radially outward (a pocket opens around the feet), combs them down in
+  // its direction of travel, and flattens the tight foot tile so the feet
+  // read on top; the field springs back as the body passes. One shared law
+  // (grassDisturb) the coat, the tall bands and the cast all obey.
   float jit = (fract(iShape.w * 17.13) - 0.5) * 0.8; // ±0.4 rad per blade
-  float cj = cos(jit), sj = sin(jit);
-  vec2 push = vec2(0.0);
-  float press = 0.0;
-  for (int i = 0; i < ${MAX_DISTURB}; i++) {
-    if (i >= uDisturbN) break;
-    vec2 d = root - uDisturb[i].xy;
-    float r = max(uDisturb[i].z, 1e-3);
-    float f = 1.0 - clamp(length(d) / r, 0.0, 1.0);
-    f = f * f * (3.0 - 2.0 * f);                    // smoothstep falloff
-    float s = f * uDisturb[i].w;
-    vec2 dir = length(d) > 1e-4 ? normalize(d) : vec2(0.0, 1.0);
-    dir = vec2(dir.x * cj - dir.y * sj, dir.x * sj + dir.y * cj); // jittered
-    push += dir * s;
-    press = max(press, s);
-  }
-  // Cap the press: a trodden patch LAYS OVER but is never a bare hole —
-  // the grass keeps ~20% of its height, still present, just flattened.
-  press = clamp(press, 0.0, 0.8);
+  vec2 push;
+  float press;
+  grassDisturb(root, jit, push, press);
 
   vec2 world = root;
   world.x += side * hw;                            // straight column width
   world.x += up * lean;                            // wind shear
-  world.x += up * push.x * height;                 // trampled lay-over (x)
-  world.y -= up * height * (1.0 - press);          // grow up; flattened when pressed
-  world.y += up * push.y * height;                 // trampled lay-over (y)
+  world.x += up * push.x * height;                 // parted lay-over (x)
+  world.y -= up * height * (1.0 - press);          // grow up; flattened in the pocket
+  world.y += up * push.y * height;                 // parted lay-over (y)
   world.y += wind.y * up * uWindGain.x * 0.15;     // slight sway
-  // ONE PROJECTION: the full projectWorld homography (perspective divide in
-  // the shader), so the whole blade — root through leaned/trampled tip —
-  // recedes with the world at exactly the player's parallax rate.
-  // ONE PROJECTION then the atlas remap: a pure NDC→NDC affine applied
-  // AFTER the perspective divide, so it is correct at q=0 and q>0 alike.
-  vec4 c = grassProject(world);
+  // ONE PROJECTION: the camera affine (grassProjectGlsl), so the whole
+  // blade — root through leaned/trampled tip — moves with the world at
+  // exactly the player's parallax rate; then the atlas remap, a pure
+  // NDC→NDC affine applied after the projection.
+  vec4 c = grassProject(world, root);
   gl_Position = vec4(c.xy * uNdcRemap.xy + uNdcRemap.zw, 0.0, 1.0);
   vUp = up;
   vTone = iTone.x;
@@ -165,13 +157,14 @@ export class GrassGpuRenderer {
   private readonly uScale: WebGLUniformLocation;
   private readonly uYScale: WebGLUniformLocation;
   private readonly uOrigin: WebGLUniformLocation;
-  private readonly uQ: WebGLUniformLocation;
   private readonly uViewport: WebGLUniformLocation;
   private readonly uTime: WebGLUniformLocation;
   private readonly uWindGain: WebGLUniformLocation;
   private readonly uDisturb: WebGLUniformLocation;
+  private readonly uDisturbVel: WebGLUniformLocation;
   private readonly uDisturbN: WebGLUniformLocation;
   private readonly uNdcRemap: WebGLUniformLocation;
+  private readonly uElev: WebGLUniformLocation;
   private instanceCount = 0;
   private disposed = false;
 
@@ -207,13 +200,14 @@ export class GrassGpuRenderer {
     this.uScale = gl.getUniformLocation(program, 'uScale')!;
     this.uYScale = gl.getUniformLocation(program, 'uYScale')!;
     this.uOrigin = gl.getUniformLocation(program, 'uOrigin')!;
-    this.uQ = gl.getUniformLocation(program, 'uQ')!;
     this.uViewport = gl.getUniformLocation(program, 'uViewport')!;
     this.uTime = gl.getUniformLocation(program, 'uTime')!;
     this.uWindGain = gl.getUniformLocation(program, 'uWindGain')!;
     this.uDisturb = gl.getUniformLocation(program, 'uDisturb')!;
+    this.uDisturbVel = gl.getUniformLocation(program, 'uDisturbVel')!;
     this.uDisturbN = gl.getUniformLocation(program, 'uDisturbN')!;
     this.uNdcRemap = gl.getUniformLocation(program, 'uNdcRemap')!;
+    this.uElev = gl.getUniformLocation(program, 'uElev')!;
     gl.useProgram(program);
     gl.uniform1i(gl.getUniformLocation(program, 'uPalette'), 0);
 
@@ -271,6 +265,22 @@ export class GrassGpuRenderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   }
 
+  /** Set the trample uniforms from a frame's packed disturbers: POSITION
+   *  `[x,y,r,strength]×n` and the parallel VELOCITY lay-vector `[vx,vy]×n`.
+   *  A missing velocity array leaves the wake at zero (pure radial part). */
+  private setDisturb(opts: { disturb?: Float32Array; disturbVel?: Float32Array }): void {
+    const gl = this.gl;
+    const disturb = opts.disturb;
+    const n = disturb ? Math.min(MAX_DISTURB, Math.floor(disturb.length / 4)) : 0;
+    gl.uniform1i(this.uDisturbN, n);
+    if (n > 0) {
+      gl.uniform4fv(this.uDisturb, disturb!.subarray(0, n * 4));
+      const vel = opts.disturbVel;
+      if (vel && vel.length >= n * 2) gl.uniform2fv(this.uDisturbVel, vel.subarray(0, n * 2));
+      else gl.uniform2fv(this.uDisturbVel, new Float32Array(n * 2));
+    }
+  }
+
   /** (Re)point the interleaved instance attributes so instance 0 reads
    *  from blade `baseFloats/GRASS_INSTANCE_FLOATS` — used to draw a
    *  contiguous band slice (WebGL2 has no baseInstance). Assumes the VAO
@@ -294,7 +304,7 @@ export class GrassGpuRenderer {
   }
 
   /**
-   * Draw the field. `proj` carries the frame's projectWorld homography
+   * Draw the field. `proj` carries the frame's camera projection
    * inputs (the whole meadow rides one projection). Options:
    *   · windGain — scales the whole-blade wind shear (default 0.12).
    *   · disturb  — walkers pressing the grass, packed 4 floats each
@@ -304,7 +314,7 @@ export class GrassGpuRenderer {
   draw(
     proj: GrassProj,
     timeSec: number,
-    opts: { windGain?: number; disturb?: Float32Array } = {},
+    opts: { windGain?: number; disturb?: Float32Array; disturbVel?: Float32Array } = {},
   ): void {
     const gl = this.gl;
     if (this.disposed || this.instanceCount === 0) return;
@@ -312,16 +322,14 @@ export class GrassGpuRenderer {
     gl.uniform1f(this.uScale, proj.scale);
     gl.uniform1f(this.uYScale, proj.yScale);
     gl.uniform2f(this.uOrigin, proj.ox, proj.oy);
-    gl.uniform1f(this.uQ, proj.q);
     gl.uniform2f(this.uViewport, proj.wCss, proj.hCss);
     gl.uniform1f(this.uTime, timeSec);
     gl.uniform2f(this.uWindGain, opts.windGain ?? 0.12, 0);
-    const disturb = opts.disturb;
-    const n = disturb ? Math.min(MAX_DISTURB, Math.floor(disturb.length / 4)) : 0;
-    gl.uniform1i(this.uDisturbN, n);
-    if (n > 0) gl.uniform4fv(this.uDisturb, disturb!.subarray(0, n * 4));
+    this.setDisturb(opts);
     // Identity remap: the short coat / whole field targets the real screen.
     gl.uniform4f(this.uNdcRemap, 1, 1, 0, 0);
+    // Flat ground: no terrace lift (the elevated bands set this per band).
+    gl.uniform1f(this.uElev, 0);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.palTex);
     gl.enable(gl.BLEND);
@@ -344,7 +352,7 @@ export class GrassGpuRenderer {
     count: number,
     proj: GrassProj,
     timeSec: number,
-    opts: { windGain?: number; disturb?: Float32Array } = {},
+    opts: { windGain?: number; disturb?: Float32Array; disturbVel?: Float32Array } = {},
   ): void {
     if (this.disposed) return;
     const gl = this.gl;
@@ -353,14 +361,12 @@ export class GrassGpuRenderer {
     gl.uniform1f(this.uScale, proj.scale);
     gl.uniform1f(this.uYScale, proj.yScale);
     gl.uniform2f(this.uOrigin, proj.ox, proj.oy);
-    gl.uniform1f(this.uQ, proj.q);
     gl.uniform2f(this.uViewport, proj.wCss, proj.hCss);
     gl.uniform1f(this.uTime, timeSec);
     gl.uniform2f(this.uWindGain, opts.windGain ?? 0.12, 0);
-    const disturb = opts.disturb;
-    const n = disturb ? Math.min(MAX_DISTURB, Math.floor(disturb.length / 4)) : 0;
-    gl.uniform1i(this.uDisturbN, n);
-    if (n > 0) gl.uniform4fv(this.uDisturb, disturb!.subarray(0, n * 4));
+    this.setDisturb(opts);
+    // Bands default to flat; the elevated-coat bands raise it per drawBand.
+    gl.uniform1f(this.uElev, 0);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.palTex);
     gl.enable(gl.BLEND);
@@ -369,11 +375,19 @@ export class GrassGpuRenderer {
   }
 
   /** Draw one band slice [i0, i0+count) with its atlas NDC remap. The
-   *  caller has set the atlas viewport/scissor for this band's slot. */
-  drawBand(i0: number, count: number, remap: { sx: number; sy: number; bx: number; by: number }): void {
+   *  caller has set the atlas viewport/scissor for this band's slot. `elev`
+   *  (WORLD height, level·ELEV_H) lifts the whole band onto its terrace
+   *  shelf (G-ELEVATED); 0 = flat (tall + skirt bands). */
+  drawBand(
+    i0: number,
+    count: number,
+    remap: { sx: number; sy: number; bx: number; by: number },
+    elev = 0,
+  ): void {
     if (this.disposed || count <= 0) return;
     const gl = this.gl;
     gl.uniform4f(this.uNdcRemap, remap.sx, remap.sy, remap.bx, remap.by);
+    gl.uniform1f(this.uElev, elev);
     this.bindInstanceAttribs(i0 * GRASS_INSTANCE_FLOATS);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, BLADE_VERTS, count);
   }

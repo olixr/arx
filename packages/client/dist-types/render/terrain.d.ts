@@ -61,10 +61,69 @@ export interface ChunkBakeJob {
     /** Remaining paint steps; each sized to fit a slice of frame budget. */
     steps: Array<() => void>;
     next: number;
+    /** THE STRIP PAINTS ASIDE's scratch canvas (fringe jobs only) —
+     *  the caller pools it when the job completes or dies. */
+    fringeScratch?: HTMLCanvasElement;
 }
 /** Advance a sliced bake by one step; true when the bake is complete. */
 export declare function stepChunkBake(job: ChunkBakeJob): boolean;
-export declare function startChunkBake(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, woodSkin?: WoodSkinSampler, live?: boolean, reuse?: HTMLCanvasElement | null): ChunkBakeJob;
+/**
+ * THE FRINGE RE-BAKE (foundation audit's charted lever). A neighbor
+ * arrival can only change a chunk's painted pixels within a border
+ * fringe — the blob halo reaches 2 rings, the detail pass 1 tile,
+ * deck lookahead a hair more — yet a fringe bump used to re-run all
+ * ~29 sliced steps over the whole canvas, and one arrival bumps up
+ * to 8 neighbors. A fringe job instead COPIES the prior bake whole,
+ * CLEARS the affected border strips, and re-runs every step CLIPPED
+ * to them (loops narrowed where they dominate). Determinism makes
+ * this pixel-exact: the strip is wide enough (FRINGE_TILES = reach 3
+ * + 1 paint bleed) that every pixel at a strip boundary depends only
+ * on unchanged data, strips sit on tile boundaries (integer px — the
+ * clip edge is crisp, no partial coverage), and the cleared strip
+ * recomposes from the base up in the full bake's own step order.
+ * scripts/probes/fringe-seam.mjs is the proof, and its gate is
+ * STRUCTURAL — the measured truth about this GPU canvas, in order
+ * of discovery: (1) identical op streams on identical canvases are
+ * BYTE-EXACT (the null cases pin it; a no-narrowing fringe measured
+ * zero differing bytes). (2) clip() re-rounds AA coverage on
+ * interior pixels — which is why the strips paint ASIDE, never
+ * under a clip. (3) ANY op-stream change re-rolls scattered AA edge
+ * pixels across the whole canvas, magnitude scaling with the stream
+ * delta (one mutated tile ±14; the narrowed meadow's absent
+ * thousands of fills ±27) — but every such pixel is a legitimate
+ * roll of the same content, landing as SINGLES and short boundary
+ * chains. A real defect is a CONTIGUOUS region. The gate therefore
+ * bounds the largest 4-connected cluster of >8-delta pixels (24)
+ * plus a hard per-channel cap (48); measured: honest clusters 0-17,
+ * canaries 28-2507.
+ */
+export interface FringeSpec {
+    /** Edge mask: 1 = N, 2 = S, 4 = W, 8 = E — the sides changed
+     *  neighbor data reaches in from. */
+    mask: number;
+    /** The prior COMPLETE bake of the same data at the same tier —
+     *  copied whole; the strips are overwritten at completion. */
+    copyFrom: HTMLCanvasElement;
+    /** Pooled canvas for the strip scratch (see THE STRIP PAINTS
+     *  ASIDE), or null to mint one. The job returns it via
+     *  ChunkBakeJob.fringeScratch for the caller to recycle. */
+    scratch?: HTMLCanvasElement | null;
+}
+/** Strip depth in tiles: neighbor-data reach (3 — THE BUMP IS
+ *  EARNED's own constant) + 1 tile of paint bleed, so clip-boundary
+ *  pixels depend only on unchanged data. */
+export declare const FRINGE_TILES = 4;
+/**
+ * The affected strips as DISJOINT rects in bake-ctx coordinates
+ * (post gutter-translate: the chunk spans [0, CHUNK*px), the gutter
+ * [-G, 0) and [CHUNK*px, CHUNK*px+G)). Disjointness is load-bearing:
+ * strips clear once and every repaint pass visits a pixel once —
+ * translucent content (detail flecks, skin crumbs) is not
+ * double-composited at corners. N/S strips take the full width;
+ * W/E strips take only the rows between them.
+ */
+export declare function fringeStrips(mask: number, px: number, G: number): Array<[number, number, number, number]>;
+export declare function startChunkBake(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, woodSkin?: WoodSkinSampler, live?: boolean, reuse?: HTMLCanvasElement | null, fringe?: FringeSpec): ChunkBakeJob;
 export declare function bakeChunk(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, woodSkin?: WoodSkinSampler): HTMLCanvasElement;
 /** The world's outline ink — MUST equal Renderer.STRUCT_OUTLINE. The
  *  decks wear the same bold dark edge as walls, props and entities
@@ -94,6 +153,12 @@ export interface ElevatedBake {
     canvas: HTMLCanvasElement;
     /** Chunk rows (local ly) containing any lifted content at this level. */
     rows: boolean[];
+    /** THE LIFTED LAYER PAYS FOR ITS ROWS (B2): the tight canvas covers
+     *  only [rowOrigin ..], with painting shifted up by rowOrigin·px — a
+     *  consumer must sample row r at `sy = gut + (r - rowOrigin)·px`, not
+     *  the pre-B2 `gut + r·px`. Carried here so the one-shot bake can
+     *  never hand back a shifted canvas without the offset to read it. */
+    rowOrigin: number;
 }
 /**
  * A sliced elevated-level bake: same shape as ChunkBakeJob so the
@@ -104,8 +169,28 @@ export interface ElevatedBake {
  */
 export interface ElevatedBakeJob extends ChunkBakeJob {
     rows: boolean[];
+    /** THE LIFTED LAYER PAYS FOR ITS ROWS (B2): the chunk row this
+     *  level's tight canvas begins at. The canvas covers only the
+     *  occupied (±1-padded) row span, and every paint was shifted up by
+     *  rowOrigin·px, so the draw samples `sy = gut + (r - rowOrigin)·px`. */
+    rowOrigin: number;
 }
-export declare function startElevatedBake(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, level: number, reuse?: HTMLCanvasElement | null): ElevatedBakeJob | null;
+/** How tall a lifted level's tight canvas must be (B2), and where it
+ *  begins, given the per-row occupancy scan.
+ *
+ *  The renderer draws each band ±1-padded and clamped to [0, CHUNK-1]
+ *  (advanceChunkPending), so the canvas must cover [firstRow-1 ..
+ *  lastRow+1]. The height is then bucketed UP to a multiple of `bucket`
+ *  rows so the byte-bounded chunk pool sees only a handful of lifted
+ *  shapes and retired canvases still find reuse — the extra rows sit
+ *  unused below the sampled span (the draw only reads rowOrigin..lastRow
+ *  +1). Returns a full-height span if the level somehow has no rows
+ *  (defensive; callers gate on `any`). */
+export declare function liftedRowSpan(rows: readonly boolean[], chunkSize?: number, bucket?: number): {
+    rowOrigin: number;
+    rowCount: number;
+};
+export declare function startElevatedBake(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, level: number, takeCanvas?: (rows: number) => HTMLCanvasElement | null | undefined): ElevatedBakeJob | null;
 /** The one-shot elevated bake: start + run every step. Output is
  *  identical to the sliced path — this IS the sliced path, run whole. */
 export declare function bakeElevated(ground: GroundSampler, detail: DetailSampler, elev: ElevSampler, cx: number, cy: number, px: number, level: number): ElevatedBake | null;

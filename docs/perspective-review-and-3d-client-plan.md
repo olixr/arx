@@ -384,6 +384,30 @@ both backends (golden 5/5, parity 7/7, full client tests).
 Expected size: the same ~100 commits in reverse, but mechanical. Two to three
 bands. Zero player-visible change by construction.
 
+**Band ledger (as landed on `epic/lean-out`, 2026-09-04).** Bands A0–F did
+W0.1–W0.5; band G (review fixes) merged main tip `d4aad2a0` (dropping the
+`#q=` lab lean main had added to `dev/grasslab.ts`) and recaptured both
+backends' goldens from that tip. Two notes for whoever chases a later diff:
+
+- *One arithmetic-form change at q=0 vs main*: `drawGroundChunks` chunk
+  corners went from the B6 `rowProject` memo (`ox + wx·((scale+ox)−ox)`) back
+  to the direct affine `wx·scale + ox` (`Camera.worldToScreenInto`,
+  renderer.ts `drawGroundChunks`). Bit-equal at integer scale; during a
+  fractional zoom glide `(scale+ox)−ox` can differ from `scale` by an ulp, so
+  a chunk edge could straddle a `snapPx` half-pixel in a rare frame. That is
+  the canonical form the pre-B6 goldens were shot with, not a regression.
+- *How identity was pinned*: the committed gate is loose by design
+  (`pixelThresh 24`, per-scene 2–22 % — animation floors). Band G also ran
+  the strict form: `ab` mode, main-tip rig vs candidate, `THRESH=0 TOL=0`, on
+  BOTH backends, next to an A/A control (main-tip vs itself, same settings).
+  A/B landed inside the A/A noise floor on every scene (stage A/A
+  9.4/5.6/10.9/22.4/23.1 % vs A/B 11.2/6.0/10.9/21.9/24.2 %; canvas alike, several
+  A/B scenes under A/A) and the diff images paint only lit/animated surfaces,
+  never an edge. That plus the per-fork arithmetic audit is the identity
+  proof; a frozen-frame hash would be the next rung if one is ever needed.
+- *Left in place on purpose*: the GL per-vertex `w` (W0.4 — "leave it") and
+  `cameraProject.ts` (reference math, no callers).
+
 ### Workstream 1 — THE SECOND DOOR (3D client skeleton)
 
 `packages/client/play3d.html` + `src/play3d/` (or `packages/client3d` if the

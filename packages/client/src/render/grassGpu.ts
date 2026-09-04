@@ -17,16 +17,14 @@ import { WX, WY } from './grass.js';
 import type { Blade } from './grass.js';
 
 /** The frame's projection uniforms for the grass shaders — the exact
- *  `projectWorld` inputs (unsnapped origin under a lean). Shared by the
- *  blade and ornament programs so the whole meadow rides one homography. */
+ *  Camera.worldToScreen affine inputs. Shared by the blade and
+ *  ornament programs so the whole meadow rides one projection. */
 export interface GrassProj {
   scale: number;
   yScale: number;
-  /** Screen origin in CSS px (camOriginX/Y, unsnapped under lean). */
+  /** Screen origin in CSS px (Camera.originX/Y). */
   ox: number;
   oy: number;
-  /** Lean parameter. */
-  q: number;
   /** Viewport in CSS px. */
   wCss: number;
   hCss: number;
@@ -74,6 +72,10 @@ export interface TallBand {
   /** Band world-y extent (min/max blade root), for screen-bbox bounding. */
   minBy: number;
   maxBy: number;
+  /** G-ELEVATED — the terrace lift (WORLD height, level·ELEV_H) every blade
+   *  in this band rides. Absent/0 = flat ground (tall + skirt bands). Set
+   *  only on the elevated-coat bands so a whole row lifts onto its shelf. */
+  elev?: number;
 }
 
 /**
@@ -141,8 +143,9 @@ export function partitionTallBands(
  * SPAN CAP: `maxSpan` bounds a merged run's world-y extent. The tall path
  * renders each band in ISOLATION into an atlas slot sized to its SCREEN
  * bbox — a slot as tall as the run's span PLUS a blade height — so an
- * unbounded merge produces a giant slot (a tall run under a lean can span
- * the whole screen), and the atlas balloons past the win. Capping the span
+ * unbounded merge produces a giant slot (a tall run at high zoom or in a
+ * tall viewport can span the whole screen), and the atlas balloons past the
+ * win. Capping the span
  * keeps every slot atlas-thin: the count still falls (a dense field merges
  * ~pitch:maxSpan-to-one) but no single band's bbox blows up. Pass Infinity
  * for no cap (the pure-geometry tests). Pure + tested.
@@ -210,13 +213,13 @@ export function coalesceTallBands(
  * cross-band contamination, so a band's blit carries only its own blades)
  * into a distinct slot of ONE offscreen atlas — a single GL pass, then
  * cheap 2d blits at the interleaved y-sort slots. The blade shader still
- * projects through the full `projectWorld` homography (grassProjectGlsl),
+ * projects through the camera affine (grassProjectGlsl),
  * emitting NDC for the REAL screen (viewport `SW×SH` device px). This
  * returns the affine `gl_Position.xy = ndc·scale + bias` that RETARGETS
  * that real-screen NDC into the band's atlas slot: the screen device rect
  * at (bandSx,bandSy) maps to the atlas device rect at (ax,ay), same size.
- * Because it is a pure NDC→NDC affine applied AFTER the perspective
- * divide, it is correct for q=0 AND q>0. Pure + tested (corner mapping).
+ * It is a pure NDC→NDC affine applied after the projection. Pure + tested
+ * (corner mapping).
  *
  *   SW,SH = full-screen backbuffer size in DEVICE px (viewCss·dpr)
  *   AW,AH = atlas size in DEVICE px
@@ -244,21 +247,21 @@ export function bandNdcRemap(
 }
 
 /**
- * Build the world→clip `mat3` (column-major, 9 floats) the grass vertex
- * shader consumes as `uView` — for the ORTHO camera (q=0, the shipping
- * default). It composes the renderer's affine world→screen projection
+ * Build the world→clip `mat3` (column-major, 9 floats) a grass vertex
+ * shader could consume as `uView`. It composes the renderer's affine
+ * world→screen projection
  * (`screenX = wx·scale + ox`, `screenY = wy·scale·yScale + oy`, matching
- * cameraProject's q=0 fast path) with the GL screen→NDC map, folding in
+ * Camera.worldToScreen; reference math in render/cameraProject.ts) with
+ * the GL screen→NDC map, folding in
  * the Y-FLIP the stage shader applies (`ndcY = 1 − 2·screenY/h`), so
  * `uView · vec3(world,1)` lands each blade root exactly where the canvas2d
- * meadow paints it. `ox`/`oy` are the snapped screen origins (camOriginX/Y);
+ * meadow paints it. `ox`/`oy` are the snapped screen origins (Camera.originX/Y);
  * `w`/`h` are the frame's CSS pixel dimensions. Alloc-free with `out`.
  *
- * RETIRED from the live path (Epic "THE ONE RENDER", B2): a lean is a true
- * projective map needing a per-vertex divide, not expressible in this affine
- * mat3. The grass shaders now project every vertex through `grassProjectGlsl`
- * (the full `projectWorld` homography) instead of this matrix. Kept only as a
- * pinned reference of the q=0 affine map (grassGpu.test.ts); no live caller.
+ * RETIRED from the live path (Epic "THE ONE RENDER", B2): the grass shaders
+ * project every vertex through `grassProjectGlsl` (the per-vertex form of the
+ * same affine) instead of this matrix. Kept only as a pinned reference of the
+ * affine map (grassGpu.test.ts); no live caller.
  */
 export function grassViewMatrix(
   scale: number,
@@ -277,30 +280,20 @@ export function grassViewMatrix(
   return m;
 }
 
-/** The perspective-divisor floor — mirrors cameraProject's MIN_W. Kept in
- *  lockstep by grassProjectParity.test.ts (a divergence surfaces the moment
- *  a sample lands in the clamped near field). */
-export const GRASS_MIN_W = 0.04;
-
 /**
  * THE ONE PROJECTION in GLSL (Epic "THE ONE RENDER", phase B2). The grass
  * vertex shaders map every blade/bloom world point to `gl_Position` through
- * THIS function — the exact `projectWorld` homography (render/
- * cameraProject.ts), not a private ortho matrix. It replaces the affine
- * `grassViewMatrix` + `gl_Position.w = 1` approximation that made the meadow
- * parallax faster than the world under a lean and edge-crawl against bodies.
+ * THIS function — the exact Camera.worldToScreen affine (render/renderer.ts;
+ * reference math `projectWorld` in render/cameraProject.ts), not a private
+ * view matrix, so the meadow parallaxes at exactly the player's rate and
+ * never edge-crawls against bodies.
  *
- * The camera uniforms `(uScale, uYScale, uOrigin, uQ, uViewport)` carry the
+ * The camera uniforms `(uScale, uYScale, uOrigin, uViewport)` carry the
  * frame's projection; `uOrigin` is the screen origin the feed computes with
- * `camOriginX/Y(..., q)` — the UNSNAPPED origin under a lean, so there is no
- * pre-divide sawtooth to amplify (the jitter fix). Per vertex we form the
- * ortho screen point, apply the perspective divide about the viewport centre
- * (the same `wdiv = max(MIN_W, 1 − q·(sy0−cy))`), then map to NDC with the
- * stage's Y-flip. Because the divide is done HERE, `gl_Position.w = 1` is
- * now exactly right (the pre-divided screen point, not an affine guess).
+ * `Camera.originX/Y`. Per vertex we form the screen point, then map to NDC with
+ * the stage's Y-flip (`gl_Position.w = 1`).
  *
- * At q=0 the divide vanishes through the branch (byte-identical affine feed),
- * so short and tall grass ride one law: a blade tip recedes with its root
+ * Short and tall grass ride one law: a blade tip moves with its root
  * because wind/trample move the point in WORLD space BEFORE this projection.
  * Pinned equal to `projectWorld` by grassProjectParity.test.ts via the JS
  * mirror `grassProjectMirror` below (the `grassWindMirror` pattern).
@@ -309,21 +302,23 @@ export function grassProjectGlsl(): string {
   return `
 uniform float uScale;
 uniform float uYScale;
-uniform vec2 uOrigin;    // screen origin (ox, oy); unsnapped under lean
-uniform float uQ;        // lean parameter
+uniform vec2 uOrigin;    // screen origin (ox, oy)
 uniform vec2 uViewport;  // frame size in CSS px (w, h)
-const float GRASS_MIN_W = ${GRASS_MIN_W};
-vec4 grassProject(vec2 world) {
-  float sx0 = world.x * uScale + uOrigin.x;
-  float sy0 = world.y * uScale * uYScale + uOrigin.y;
-  float sx = sx0;
-  float sy = sy0;
-  if (uQ != 0.0) {
-    float cx = uViewport.x * 0.5;
-    float cy = uViewport.y * 0.5;
-    float wdiv = max(GRASS_MIN_W, 1.0 - uQ * (sy0 - cy));
-    sx = cx + (sx0 - cx) / wdiv;
-    sy = cy + (sy0 - cy) / wdiv;
+// GRASS RIDES ITS SHELF (G-ELEVATED): the terrace lift, in WORLD height, of
+// the tile the blade is rooted on (level·ELEV_H). 0 = flat ground = the whole
+// shipped meadow, byte-identical (the lift branch is skipped). >0 raises the
+// blade onto the plateau top; <0 sinks it into a pit.
+uniform float uElev;
+vec4 grassProject(vec2 world, vec2 root) {
+  float sx = world.x * uScale + uOrigin.x;
+  float sy = world.y * uScale * uYScale + uOrigin.y;
+  if (uElev != 0.0) {
+    // A RIGID screen rise equal to the terrace lift under the blade's ROOT
+    // row — level·ELEV_H · scale — exactly the shift the elevated ground
+    // quad applies (renderer collectElevatedGround), so the whole blade sits
+    // ON the raised top. (root is the rooted tile; the camera is the plain
+    // affine, so the rise is uniform across the row.)
+    sy -= uElev * uScale;
   }
   float ndcX = 2.0 * sx / uViewport.x - 1.0;
   float ndcY = 1.0 - 2.0 * sy / uViewport.y;   // stage Y-flip
@@ -332,32 +327,194 @@ vec4 grassProject(vec2 world) {
 }
 
 /**
- * A JS transcription of grassProjectGlsl's screen-space math — FOR THE
- * PARITY TEST ONLY. Given the camera uniforms and a world point it returns
- * the final SCREEN position (post-divide, pre-NDC) and the divisor `wDiv`
- * the homography applied (`depthScale = 1/wDiv`). Asserting it equals
- * `projectWorld` proves the shader parallaxes the meadow at exactly the
- * player's rate. Keep it in lockstep with grassProjectGlsl (the test fails
- * if they drift). `uOrigin` is passed in already resolved (camOriginX/Y).
+ * A JS transcription of grassProjectGlsl's screen-space math — for the
+ * parity test and the tall-band bbox sweep. Given the camera uniforms and
+ * a world point it returns the SCREEN position (pre-NDC). Asserting it
+ * equals `projectWorld` proves the shader parallaxes the meadow at exactly
+ * the player's rate. Keep it in lockstep with grassProjectGlsl (the test
+ * fails if they drift). `uOrigin` is passed in already resolved
+ * (Camera.originX/Y). Alloc-free when `out` is given.
  */
 export function grassProjectMirror(
   scale: number,
   yScale: number,
   ox: number,
   oy: number,
-  q: number,
   wx: number,
   wy: number,
-  w: number,
-  h: number,
-): { x: number; y: number; wDiv: number } {
-  const sx0 = wx * scale + ox;
-  const sy0 = wy * scale * yScale + oy;
-  if (q === 0) return { x: sx0, y: sy0, wDiv: 1 };
-  const cx = w / 2;
-  const cy = h / 2;
-  const wDiv = Math.max(GRASS_MIN_W, 1 - q * (sy0 - cy));
-  return { x: cx + (sx0 - cx) / wDiv, y: cy + (sy0 - cy) / wDiv, wDiv };
+  out?: { x: number; y: number },
+): { x: number; y: number } {
+  const o = out ?? { x: 0, y: 0 };
+  o.x = wx * scale + ox;
+  o.y = wy * scale * yScale + oy;
+  return o;
+}
+
+/**
+ * GRASS G-INTERACT — THE MEADOW REACTS TO THE BODY. The number of nearby
+ * disturbers (players + NPCs) the trample uniform holds. Shared by the
+ * blade, cast and (feed) renderer paths so they cannot drift.
+ */
+export const MAX_DISTURB = 8;
+
+/** Floats per packed disturber POSITION record — [worldX, worldY, radius,
+ *  strength]. The velocity lay-vector rides a parallel vec2 array. */
+export const DISTURB_STRIDE = 4;
+
+/**
+ * G-INTERACT tuning — the one place the parting FEEL lives, so the blade
+ * shader, the cast shader and the parity test all read the SAME numbers.
+ *
+ *  · bendRadial — how far a blade lays over AWAY from the body, as a
+ *    fraction of its own height, at the foot (falls smoothly to 0 at the
+ *    disturb radius). The PART: blades peel outward so a pocket opens.
+ *  · bendWake   — extra lay-over in the body's DIRECTION OF TRAVEL, per
+ *    world-unit/sec of the passed lay-vector. The blades comb down in the
+ *    wake as the body moves, and spring back radial once it stops.
+ *  · pocketFrac — the CLEAR pocket is the inner this-fraction of the
+ *    radius; inside it blades flatten so the feet read on top of the
+ *    ground, not buried. Small on purpose (a foot pocket, not a bald ring).
+ *  · pocketMax  — the most a pocket blade flattens (1 = flat); kept below 1
+ *    so a trodden tuft still shows, never a bare hole.
+ */
+export interface DisturbTune {
+  bendRadial: number;
+  bendWake: number;
+  pocketFrac: number;
+  pocketMax: number;
+}
+export const DISTURB_TUNE: DisturbTune = {
+  // Pass 2 (the refined feel): a touch more outward peel so the part reads as
+  // a clear rosette around the body, a slightly wider + deeper foot pocket so
+  // the feet sit cleanly on the ground, and the same gentle travel wake.
+  bendRadial: 0.72,
+  bendWake: 0.1,
+  pocketFrac: 0.58,
+  pocketMax: 0.96,
+};
+
+/**
+ * THE PARTING, in GLSL — the shared displacement every disturbed blade (and
+ * its cast) obeys, so the coat, the tall bands and the shade all part
+ * around a body identically. Emits `grassDisturb(root, jitter, out push,
+ * out flat)`:
+ *   · push — the lay-over vector in WORLD units per unit blade-height
+ *     (radial-away + travel-wake), added at the tip (× up × height).
+ *   · flat — the foot-pocket flatten in 0..pocketMax; the caller shortens
+ *     the blade by (1 − flat) so the feet sit in a cleared pocket.
+ * Summed over the nearby disturbers with a smoothstep falloff (no hard
+ * rim). `jitter` rotates each blade's radial push a little off pure-radial
+ * so a trodden patch combs over naturally instead of skewering into a
+ * starburst. Pinned to `grassDisturbMirror` below by the parity test.
+ */
+export function grassDisturbGlsl(t: DisturbTune = DISTURB_TUNE): string {
+  return `
+uniform vec4 uDisturb[${MAX_DISTURB}];    // xy = world pos, z = radius, w = strength
+uniform vec2 uDisturbVel[${MAX_DISTURB}]; // xy = travel lay-vector (world u/s), clamped
+uniform int uDisturbN;
+void grassDisturb(vec2 root, float jitter, out vec2 push, out float pocket) {
+  push = vec2(0.0);
+  pocket = 0.0;
+  float cj = cos(jitter), sj = sin(jitter);
+  for (int i = 0; i < ${MAX_DISTURB}; i++) {
+    if (i >= uDisturbN) break;
+    vec2 d = root - uDisturb[i].xy;
+    float dist = length(d);
+    float r = max(uDisturb[i].z, 1e-3);
+    float t = clamp(dist / r, 0.0, 1.0);
+    float bend = 1.0 - t;
+    bend = bend * bend * (3.0 - 2.0 * bend);       // smoothstep falloff, soft rim
+    float s = bend * uDisturb[i].w;
+    vec2 rad = dist > 1e-4 ? d / dist : vec2(0.0, 1.0);
+    rad = vec2(rad.x * cj - rad.y * sj, rad.x * sj + rad.y * cj); // jittered radial
+    // Radial PART (peel outward) + travel WAKE (comb down where it walks).
+    push += rad * s * ${t.bendRadial} + uDisturbVel[i] * s * ${t.bendWake};
+    // The tight inner CLEAR pocket — flattens the foot tile so feet read.
+    float core = 1.0 - clamp(dist / (r * ${t.pocketFrac}), 0.0, 1.0);
+    core = core * core * (3.0 - 2.0 * core);
+    pocket = max(pocket, core * uDisturb[i].w);
+  }
+  pocket = clamp(pocket, 0.0, ${t.pocketMax});
+}`;
+}
+
+/**
+ * A JS transcription of grassDisturbGlsl — FOR THE PARITY TEST ONLY. Given
+ * a blade root, its per-blade jitter, and the nearby disturbers (packed as
+ * the shader reads them: `pos` = [x,y,r,strength]×n, `vel` = [vx,vy]×n),
+ * it returns the exact `{push, flat}` the shader computes. Keep it in
+ * lockstep with grassDisturbGlsl (the test fails if they drift).
+ */
+export function grassDisturbMirror(
+  rootX: number,
+  rootY: number,
+  jitter: number,
+  pos: ArrayLike<number>,
+  vel: ArrayLike<number>,
+  n: number,
+  t: DisturbTune = DISTURB_TUNE,
+): { px: number; py: number; flat: number } {
+  let px = 0;
+  let py = 0;
+  let flat = 0;
+  const cj = Math.cos(jitter);
+  const sj = Math.sin(jitter);
+  for (let i = 0; i < Math.min(n, MAX_DISTURB); i++) {
+    const dx = rootX - pos[i * 4]!;
+    const dy = rootY - pos[i * 4 + 1]!;
+    const dist = Math.hypot(dx, dy);
+    const r = Math.max(pos[i * 4 + 2]!, 1e-3);
+    const strength = pos[i * 4 + 3]!;
+    const tt = Math.min(Math.max(dist / r, 0), 1);
+    let bend = 1 - tt;
+    bend = bend * bend * (3 - 2 * bend);
+    const s = bend * strength;
+    let radx = dist > 1e-4 ? dx / dist : 0;
+    let rady = dist > 1e-4 ? dy / dist : 1;
+    const jx = radx * cj - rady * sj;
+    const jy = radx * sj + rady * cj;
+    radx = jx;
+    rady = jy;
+    px += radx * s * t.bendRadial + vel[i * 2]! * s * t.bendWake;
+    py += rady * s * t.bendRadial + vel[i * 2 + 1]! * s * t.bendWake;
+    let core = 1 - Math.min(Math.max(dist / (r * t.pocketFrac), 0), 1);
+    core = core * core * (3 - 2 * core);
+    flat = Math.max(flat, core * strength);
+  }
+  flat = Math.min(Math.max(flat, 0), t.pocketMax);
+  return { px, py, flat };
+}
+
+/**
+ * Pack the frame's disturbers into the two uniform arrays the shaders read
+ * — POSITION `[x, y, radius, strength]×n` and VELOCITY lay-vector
+ * `[vx, vy]×n` (world units/sec, clamped so a sprinting body cannot fling a
+ * blade off-screen). Pure and alloc-reusing: it fills the caller's pooled
+ * buffers and returns the count actually written (≤ MAX_DISTURB). The
+ * `radiusScale` widens the body footprint into the parted spread, and
+ * `velClamp` bounds the wake. Tested (grassGpu.test.ts).
+ */
+export function packDisturbers(
+  entries: ArrayLike<{ x: number; y: number; r: number; vx: number; vy: number }>,
+  posOut: Float32Array,
+  velOut: Float32Array,
+  opts: { radiusScale?: number; minRadius?: number; strength?: number; velClamp?: number } = {},
+): number {
+  const radiusScale = opts.radiusScale ?? 2.8;
+  const minRadius = opts.minRadius ?? 0.95;
+  const strength = opts.strength ?? 1;
+  const velClamp = opts.velClamp ?? 5;
+  const n = Math.min(MAX_DISTURB, entries.length);
+  for (let i = 0; i < n; i++) {
+    const e = entries[i]!;
+    posOut[i * 4] = e.x;
+    posOut[i * 4 + 1] = e.y;
+    posOut[i * 4 + 2] = Math.max(minRadius, e.r * radiusScale);
+    posOut[i * 4 + 3] = strength;
+    velOut[i * 2] = Math.max(-velClamp, Math.min(velClamp, e.vx));
+    velOut[i * 2 + 1] = Math.max(-velClamp, Math.min(velClamp, e.vy));
+  }
+  return n;
 }
 
 /**
