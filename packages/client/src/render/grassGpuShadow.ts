@@ -86,7 +86,9 @@ void main() {
   vec2 c = mix(baseC, tipC, t);
   float hw = mix(baseHW, tipHW, t);
   vec2 world = c + vec2(side * hw, 0.0);
-  gl_Position = grassProject(world);
+  // Casts stay on flat ground for now (uElev defaults 0); the elevated coat
+  // rides its shelf via the blade renderer. Root passed for the shared sig.
+  gl_Position = grassProject(world, iRoot);
 }`;
 
 const FRAG_SRC = `#version 300 es

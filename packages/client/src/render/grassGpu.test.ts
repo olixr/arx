@@ -278,7 +278,7 @@ test('grassProjectMirror q=0 is the plain affine (interleave bbox uses it)', () 
 test('the grass cast shader embeds the shared wind and projection', () => {
   const src = grassShadowVertSrc();
   assert.match(src, /grassWind\(iRoot/); // thrown by the one wind
-  assert.match(src, /grassProject\(world\)/); // through the one homography
+  assert.match(src, /grassProject\(world, iRoot\)/); // through the one homography (root passed for the shelf-lift sig)
   assert.match(src, /uShadow \* H/); // ground throw scales with world height
 });
 

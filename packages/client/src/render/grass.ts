@@ -19,6 +19,7 @@ import {
   scaleFresh,
   windTerm,
 } from './grassSpriteBudget.js';
+import type { TallBand } from './grassGpu.js';
 
 /**
  * The bespoke grass system. The ground IS the game's biggest canvas, and
@@ -2190,6 +2191,112 @@ export class GrassSystem {
     out.sort((a, b) => a.by - b.by);
     return out.length;
   }
+
+  /**
+   * G-ELEVATED — THE COAT RIDES THE SHELF. Gather the RAISED-terrain grass
+   * (tiles whose `elevAt` level ≠ 0) for the visible field, grouped into ONE
+   * band per (row, level) so each band can be lifted onto its shelf and
+   * y-sorted at its own row (drawn over the elevated ground quad, under the
+   * bodies standing on it). Reads the SAME immutable tile cache as
+   * collectGpuBlades — no separate generation. Each band gathers a tile's
+   * `under` coat AND its `north`/`south` tall standing mass (elevated tall is
+   * NOT per-body interleaved — a small, rare field where the flat meadow's
+   * fine tall interleave does not apply); the slice is sorted back-to-front
+   * by world-y so the opaque no-depth GPU draw paints correctly within the
+   * band. `elevH` is one level's world height (ELEV_H); `band.elev` is
+   * `level·elevH`, the exact lift the elevated ground quad rides. `out` and
+   * `bands` are caller-owned pooled arrays (truncated here); cached Blade
+   * records are pushed by reference. Flat (level-0) tiles are ignored — they
+   * ride the flat GPU field (collectGpuBlades).
+   */
+  collectGpuElevated(
+    ground: Sampler,
+    detail: DetailFn,
+    elevAt: (tx: number, ty: number) => number,
+    bounds: GrassBounds,
+    elevH: number,
+    out: Blade[],
+    bands: TallBand[],
+  ): void {
+    out.length = 0;
+    bands.length = 0;
+    const levels = this.elevLevelScratch;
+    for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
+      // Which elevation levels does this row carry? (usually one — a terrace
+      // top — so this scan is short and levels stays tiny.)
+      levels.length = 0;
+      for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
+        const t = ground(tx, ty);
+        if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
+        const lvl = elevAt(tx, ty);
+        if (lvl === 0) continue;
+        if (!levels.includes(lvl)) levels.push(lvl);
+      }
+      for (const lvl of levels) {
+        const i0 = out.length;
+        let minBy = Infinity;
+        let maxBy = -Infinity;
+        for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
+          const t = ground(tx, ty);
+          if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
+          if (elevAt(tx, ty) !== lvl) continue;
+          const geom = this.tile(tx, ty, t, detail(tx, ty), ground).geom;
+          for (const b of geom.under) {
+            out.push(b);
+            if (b.by < minBy) minBy = b.by;
+            if (b.by > maxBy) maxBy = b.by;
+          }
+          if (t === Tile.GrassTall) {
+            for (const b of geom.north) {
+              out.push(b);
+              if (b.by < minBy) minBy = b.by;
+              if (b.by > maxBy) maxBy = b.by;
+            }
+            for (const b of geom.south) {
+              out.push(b);
+              if (b.by < minBy) minBy = b.by;
+              if (b.by > maxBy) maxBy = b.by;
+            }
+          }
+        }
+        const count = out.length - i0;
+        if (count === 0) continue;
+        // Back-to-front within the band (opaque, no depth buffer).
+        this.sortBladeSlice(out, i0, count);
+        bands.push({
+          i0,
+          count,
+          // Draw just past the row's foot so the coat lands OVER the elevated
+          // ground quad (sorted at worldTy − 0.01) yet under a body on the row.
+          sortY: ty + 0.001,
+          minBy,
+          maxBy,
+          elev: lvl * elevH,
+        });
+      }
+    }
+  }
+
+  /** In-place back-to-front (by ascending) sort of a slice of a blade array
+   *  — used by collectGpuElevated to order each band's own blades without
+   *  disturbing (or reallocating) the shared output buffer. */
+  private sortBladeSlice(a: Blade[], i0: number, count: number): void {
+    // Small per-band slices — an insertion sort avoids allocating a subarray
+    // and is faster than Array.sort for the tens of blades a row holds.
+    for (let i = i0 + 1; i < i0 + count; i++) {
+      const v = a[i]!;
+      let j = i - 1;
+      while (j >= i0 && a[j]!.by > v.by) {
+        a[j + 1] = a[j]!;
+        j--;
+      }
+      a[j + 1] = v;
+    }
+  }
+
+  /** Reused scratch for collectGpuElevated's per-row level set (no per-frame
+   *  alloc); a row rarely carries more than one or two elevation levels. */
+  private readonly elevLevelScratch: number[] = [];
 
   /**
    * The GPU path's ORNAMENT gatherer (proposal G-2) — flowers and
