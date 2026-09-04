@@ -209,6 +209,7 @@ import { GrassSystem, windAtInto, windScalarAt, BLADE_FILLS, ORNAMENT_FILLS, typ
 import { GrassGpuLayer, type GrassFrame, type BandBlit } from './grassGpuLayer.js';
 import { partitionTallBands } from './grassGpu.js';
 import { MAX_DISTURB } from './grassGpuRenderer.js';
+import { grassShadowOffset, shadeRgb01 } from './grassGpuShadow.js';
 import { paintTree, saplingModel, treeExtent,
   treeModel, TREE_VARIANT_COUNT, treeVariantHash, type TreeModel } from './trees.js';
 import { dust } from './matter/dust.js';
@@ -427,6 +428,9 @@ import {
  */
 const SHADOW_SUN = '#180e20';
 const SHADOW_MOON = '#0e1430';
+/** The GPU grass cast colours in 0..1 (G2) — parsed once, not per frame. */
+const SHADOW_SUN_RGB = shadeRgb01(SHADOW_SUN);
+const SHADOW_MOON_RGB = shadeRgb01(SHADOW_MOON);
 
 /**
  * Tree sprites/shadow sprites re-bake every Nth frame (staggered by a
@@ -22146,12 +22150,39 @@ export class Renderer {
       windGain: 0.12,
       disturb: dn > 0 ? dz.subarray(0, dn * 4) : undefined,
     };
+    // Gather the tall standing mass first — its casts join the short coat's
+    // in one uniform GPU shade layer (below), laid UNDER the whole meadow.
+    this.grass.collectGpuTall(ground, detail, bounds, this.grassTall);
+
+    // G2 — THE MEADOW CASTS ITS OWN SHADE, on the GPU. Every blade (short
+    // coat + tall) throws a sheared GROUND quad bent by the SAME per-vertex
+    // wind term the coat uses, so the whole field's shade sways uniformly at
+    // frame rate — no baked monolith, and (crucially) NO player-centred
+    // radius box (the CPU path's #2 artifact). Blitted UNDER the coat at the
+    // frame's shade alpha, one density with the world's shade: THE CAST LIES
+    // UNDER THE COAT. Perspective-correct at q>0 (both quad ends are ground
+    // points through projectWorld). Skipped when the sun casts no shade.
+    if (this.sky.shadowAlpha >= 0.02) {
+      const off = grassShadowOffset(this.sky.shadowX, this.sky.shadowY, this.sky.shadowLen);
+      const shade = this.sky.moonlit ? SHADOW_MOON_RGB : SHADOW_SUN_RGB;
+      const shadowCanvas = layer.renderShadow(this.grassBlades, this.grassTall, frame, shade, off.x, off.y);
+      if (shadowCanvas) {
+        const prevA = this.ctx.globalAlpha;
+        // Full-field coverage at a touch below the CPU's per-caster 0.85 so
+        // the denser (every-blade) GPU cast reads one density with the CPU
+        // meadow's half-herd shade, not heavier.
+        this.ctx.globalAlpha = Math.min(1, this.sky.shadowAlpha * 0.7);
+        this.ctx.drawImage(shadowCanvas, 0, 0, this.w, this.h);
+        this.ctx.globalAlpha = prevA;
+      }
+    }
+
     const canvas = layer.render(this.grassBlades, this.grassFlowers, this.grassSeeds, frame);
     if (!canvas) return false;
     this.ctx.drawImage(canvas, 0, 0, this.w, this.h);
 
-    // G1 — THE TALL BLADE INTERLEAVES. Gather the tall standing mass,
-    // partition it into fine world-row bands, and render each band in
+    // G1 — THE TALL BLADE INTERLEAVES. Partition the tall standing mass
+    // (gathered above) into fine world-row bands, and render each band in
     // isolation into the layer's tall atlas. The band blits are emitted as
     // y-sorted DrawItems in collect (collectGpuTallBands) so a body walks
     // THROUGH the thicket — no CPU collectTall, no bakes, no two-band pop.
@@ -22159,7 +22190,6 @@ export class Renderer {
     // back to the CPU collectTall pass for this frame.
     this.grassTallBlits = [];
     this.grassTallCanvas = null;
-    this.grass.collectGpuTall(ground, detail, bounds, this.grassTall);
     if (this.grassTall.length > 0) {
       const bands = partitionTallBands(this.grassTall, Renderer.TALL_BAND_PITCH);
       const blits = layer.renderTall(this.grassTall, bands, frame);

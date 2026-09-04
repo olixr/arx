@@ -26,6 +26,7 @@ import {
   type TallBand,
 } from './grassGpu.js';
 import { GrassOrnamentRenderer, ORNAMENT_INSTANCE_FLOATS, packOrnamentInstances } from './grassOrnament.js';
+import { GrassShadowRenderer } from './grassGpuShadow.js';
 import type { Blade, Flower, SeedHead } from './grass.js';
 
 /** G1 — one tall band's atlas→screen blit. `src*` are DEVICE px in the
@@ -91,6 +92,19 @@ export class GrassGpuLayer {
   private tallInstances: Float32Array = new Float32Array(0);
   private readonly bandBlits: BandBlit[] = [];
 
+  /** G2 CAST path — its own offscreen canvas + GL context + shadow
+   *  renderer. The cast layer composites at a DIFFERENT alpha than the
+   *  blade coat (THE CAST LIES UNDER THE COAT), so it needs its own output
+   *  image; a WebGL context binds one canvas, so it is a separate context.
+   *  Degrades independently: a lost cast context makes renderShadow return
+   *  null and the meadow simply draws its coat with no GPU shade that frame. */
+  readonly shadowCanvas: HTMLCanvasElement;
+  private shadowGl: WebGL2RenderingContext | null = null;
+  private shadowRenderer: GrassShadowRenderer | null = null;
+  private shadowLost = false;
+  private shadowInstances: Float32Array = new Float32Array(0);
+  private shadowTallInstances: Float32Array = new Float32Array(0);
+
   constructor(palette: readonly string[], ornamentPalette: readonly string[]) {
     this.palette = palette;
     this.ornPalette = ornamentPalette;
@@ -133,6 +147,19 @@ export class GrassGpuLayer {
       this.buildRenderer();
     });
     this.tallGl = this.tallCanvas.getContext('webgl2', ctxOpts);
+
+    // G2 cast atlas — a third WebGL2 canvas/context (see field docs).
+    this.shadowCanvas = document.createElement('canvas');
+    this.shadowCanvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      this.shadowLost = true;
+      this.shadowRenderer = null;
+    });
+    this.shadowCanvas.addEventListener('webglcontextrestored', () => {
+      this.shadowLost = false;
+      this.buildRenderer();
+    });
+    this.shadowGl = this.shadowCanvas.getContext('webgl2', ctxOpts);
     this.buildRenderer();
   }
 
@@ -157,6 +184,15 @@ export class GrassGpuLayer {
         this.tallRenderer?.dispose();
         this.tallRenderer = null;
         this.tallGl = null;
+      }
+    }
+    if (this.shadowGl && !this.shadowLost && !this.shadowRenderer) {
+      try {
+        this.shadowRenderer = new GrassShadowRenderer(this.shadowGl);
+      } catch {
+        this.shadowRenderer?.dispose();
+        this.shadowRenderer = null;
+        this.shadowGl = null;
       }
     }
   }
@@ -217,6 +253,68 @@ export class GrassGpuLayer {
       this.ornaments.draw(proj, f.timeSec);
     }
     return this.canvas;
+  }
+
+  /** True when the cast path can render this frame. */
+  get shadowOk(): boolean {
+    return this.shadowGl !== null && this.shadowRenderer !== null && !this.shadowLost;
+  }
+
+  /**
+   * G2 — THE MEADOW CASTS ITS OWN SHADE. Render the whole visible field's
+   * casts (short coat `blades` + tall `tallBlades`, as two instanced draws)
+   * into the private shadow canvas as OPAQUE union coverage, and return it
+   * for the renderer to blit UNDER the blade coat at the frame's shade
+   * alpha. Because every cast is thrown by the SAME per-vertex wind term
+   * the blades use, the whole field's shade sways uniformly — no baked
+   * monolith, no player-centred radius. Both quad ends are ground points
+   * run through projectWorld, so it is perspective-correct at q>0.
+   *
+   * `shade` is the cast colour in 0..1; `sx,sy` is the world-ground throw
+   * per unit world-height (grassShadowOffset). Returns null when the cast
+   * context is unavailable (the caller then draws the coat with no shade).
+   */
+  renderShadow(
+    blades: readonly Blade[],
+    tallBlades: readonly Blade[],
+    f: GrassFrame,
+    shade: readonly [number, number, number],
+    sx: number,
+    sy: number,
+  ): HTMLCanvasElement | null {
+    if (!this.shadowOk || !this.shadowGl || !this.shadowRenderer) return null;
+    if (blades.length === 0 && tallBlades.length === 0) return null;
+    const gl = this.shadowGl;
+    const wDev = Math.max(1, Math.round(f.wCss * f.dpr));
+    const hDev = Math.max(1, Math.round(f.hCss * f.dpr));
+    if (this.shadowCanvas.width !== wDev) this.shadowCanvas.width = wDev;
+    if (this.shadowCanvas.height !== hDev) this.shadowCanvas.height = hDev;
+    gl.viewport(0, 0, wDev, hDev);
+    gl.disable(gl.SCISSOR_TEST);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    const proj: GrassProj = {
+      scale: f.scale,
+      yScale: f.yScale,
+      ox: f.ox,
+      oy: f.oy,
+      q: f.q,
+      wCss: f.wCss,
+      hCss: f.hCss,
+    };
+    const opts = { windGain: f.windGain, disturb: f.disturb };
+    if (blades.length > 0) {
+      this.shadowInstances = packBladeInstances(blades, this.shadowInstances);
+      this.shadowRenderer.upload(this.shadowInstances, blades.length);
+      this.shadowRenderer.draw(proj, f.timeSec, blades.length, shade, sx, sy, opts);
+    }
+    if (tallBlades.length > 0) {
+      this.shadowTallInstances = packBladeInstances(tallBlades, this.shadowTallInstances);
+      this.shadowRenderer.upload(this.shadowTallInstances, tallBlades.length);
+      this.shadowRenderer.draw(proj, f.timeSec, tallBlades.length, shade, sx, sy, opts);
+    }
+    return this.shadowCanvas;
   }
 
   /** True when the tall atlas path can render this frame. */
@@ -388,15 +486,20 @@ export class GrassGpuLayer {
     this.renderer?.dispose();
     this.ornaments?.dispose();
     this.tallRenderer?.dispose();
+    this.shadowRenderer?.dispose();
     this.renderer = null;
     this.ornaments = null;
     this.tallRenderer = null;
+    this.shadowRenderer = null;
     this.gl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.tallGl?.getExtension('WEBGL_lose_context')?.loseContext();
+    this.shadowGl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.gl = null;
     this.tallGl = null;
+    this.shadowGl = null;
     this.lost = true;
     this.tallLost = true;
+    this.shadowLost = true;
   }
 }
 
