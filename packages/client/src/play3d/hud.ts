@@ -93,11 +93,12 @@ export function fmtStructStats(s: {
   buildMsLast: number;
   dirty: number;
   rebuilds: number;
+  wakesSkipped: number;
 }): string {
   return (
     `${s.draws} draws · ${(s.tris / 1000).toFixed(1)}k tris (${s.quads} quads) over ${s.chunks} chunks · ` +
     `geometry ${fmtBytes(s.geometryBytes)} · faces ${s.atlasTiles} tiles / ${s.atlasPages} pages (${fmtBytes(s.atlasBytes)}) · ` +
-    `build ${s.buildMsLast.toFixed(1)}ms · dirty ${s.dirty} · rebuilds ${s.rebuilds}`
+    `build ${s.buildMsLast.toFixed(1)}ms · dirty ${s.dirty} · rebuilds ${s.rebuilds} (wakes skipped ${s.wakesSkipped})`
   );
 }
 

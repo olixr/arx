@@ -28,13 +28,12 @@ import { Detail, hashCoords } from '@arx/shared';
 import { AWNING_CLOTHS, GAR_LEAF, stone01 } from '../../render/paintVocab.js';
 import { shade } from '../../render/tint.js';
 import { WOOD_SKINS, type WoodSkin } from '../../render/woodSkins.js';
-import { paintGarrisonMasonry } from '../../render/garrisonArt.js';
 import * as wallHungArt from '../../render/wallHungArt.js';
 import type { ClientGame } from '../../game/clientGame.js';
 import type { AwningShape, WallHungInfo } from '@arx/shared';
 import { FACE_LIFT, litTone } from './faceTone.js';
 import { FACE_PX, type FaceSpec } from './faceAtlas.js';
-import { GARRISON_H, WALL_H, type WallMaterial } from './structKinds.js';
+import { WALL_H, type WallMaterial } from './structKinds.js';
 import { asPaintHost, faceFrame, type StubHost } from './stubHost.js';
 
 // ------------------------------------------------------------- tones
@@ -46,11 +45,6 @@ export const CAVE_TOP = '#3a3444';
 export const CAVE_FACE = '#221d2c';
 export const PLINTH_COL = '#6e6779';
 export const STONE_TRIM = '#8a8496';
-/** Garrison palette (garrisonArt.ts:18-33, module-private there). */
-export const GAR_FACE = '#544e61';
-export const GAR_TOP = '#655f72';
-export const GAR_MERLON_TOP = '#847e91';
-export const GAR_TRIM = '#7b7590';
 /** The REAR RISER's back-face shade (renderer.ts:11031). */
 export const REAR_SHADE = -14;
 /** A crown faces the sun square-on and needs only a whisper of the stop. */
@@ -779,81 +773,6 @@ export function paintAwningSkirt(ctx: CanvasRenderingContext2D, w: number, h: nu
     ctx.moveTo(0, vTop + vDepth * 0.5);
     ctx.quadraticCurveTo(w / 2, vTop + vDepth + s * 0.02, w, vTop + vDepth * 0.5);
     ctx.stroke();
-  }
-}
-
-// ------------------------------------------------------ the garrison
-
-/** The garrison ashlar face via the amber painter, washed a stop. */
-export function paintGarrisonFace(host: StubHost, w: number, hs: number, s: number, tone: FaceToneKind, worldX: number, tilesW: number, seedX: number, seedY: number, loops: boolean): void {
-  paintGarrisonMasonry(asPaintHost(host), 0, w, hs, s, worldX, tilesW, seedX, seedY, GARRISON_H, loops);
-  host.ctx.save();
-  host.ctx.translate(0, -hs);
-  lambertWash(host.ctx, w, hs, tone);
-  host.ctx.restore();
-}
-
-/** The wall-walk flags (garrisonArt.ts:280-300). */
-export function paintGarrisonCrown(ctx: CanvasRenderingContext2D, w: number, h: number, seedX: number, seedY: number): void {
-  const s = w;
-  ctx.fillStyle = litTone(GAR_TOP, CROWN_LIFT);
-  ctx.fillRect(0, 0, w, h);
-  const hf = hashCoords(457, seedX, seedY);
-  ctx.fillStyle = 'rgba(20, 14, 28, 0.16)';
-  if ((hf & 3) !== 0) ctx.fillRect(s * (0.2 + (hf % 60) / 100), 0, Math.max(1, s * 0.03), h);
-  if ((hf & 4) === 0) ctx.fillRect(0, h * (0.3 + ((hf >>> 6) % 40) / 100), w, Math.max(1, s * 0.028));
-}
-
-/** One merlon face: the tooth's outward stone with its contact shade. */
-export function paintMerlonFace(ctx: CanvasRenderingContext2D, w: number, h: number, k: number): void {
-  ctx.fillStyle = litTone(shade(GAR_FACE, k));
-  ctx.fillRect(0, -h, w, h);
-  ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
-  ctx.fillRect(0, -Math.max(1, h * 0.14), w, Math.max(1, h * 0.14));
-}
-
-/** The merlon cap. */
-export function paintMerlonTop(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-  ctx.fillStyle = litTone(GAR_MERLON_TOP, CROWN_LIFT);
-  ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
-  ctx.fillRect(0, 0, w, h * 0.24);
-  ctx.fillStyle = 'rgba(255, 236, 200, 0.18)';
-  ctx.fillRect(0, h - h * 0.18, w, h * 0.18);
-}
-
-/**
- * A gate slice of the curtain: ashlar with the pier trim (GAR_TRIM)
- * where the pier stands and the dressed head over the passage.
- */
-export function paintGarrisonGateFace(host: StubHost, w: number, hs: number, s: number, tone: FaceToneKind, jambL: boolean, jambR: boolean, pierW: number, headH: number, seedX: number, seedY: number): void {
-  const ctx = host.ctx;
-  paintGarrisonFace(host, w, hs, s, tone, seedX * 3, 1, seedX, seedY, false);
-  const pw = pierW * s;
-  const head = -headH * s;
-  const trim = litTone(GAR_TRIM);
-  const ox0 = jambL ? pw : 0;
-  const ox1 = jambR ? w - pw : w;
-  ctx.fillStyle = 'rgba(10, 8, 16, 1)';
-  ctx.fillRect(ox0, head, ox1 - ox0, -head);
-  // The voussoir band and the dressed head.
-  ctx.fillStyle = trim;
-  ctx.fillRect(ox0 - (jambL ? s * 0.06 : 0), head - s * 0.22, ox1 - ox0 + (jambL ? s * 0.06 : 0) + (jambR ? s * 0.06 : 0), s * 0.22);
-  ctx.fillStyle = 'rgba(255, 236, 200, 0.14)';
-  ctx.fillRect(ox0, head - s * 0.22, ox1 - ox0, s * 0.04);
-  ctx.fillStyle = 'rgba(18, 12, 26, 0.35)';
-  ctx.fillRect(ox0, head, ox1 - ox0, s * 0.06);
-  if (jambL) {
-    ctx.fillStyle = trim;
-    ctx.fillRect(0, -hs, pw, hs);
-    ctx.fillStyle = shade(trim, 14);
-    ctx.fillRect(pw - s * 0.04, -hs * 0.7, s * 0.04, hs * 0.7);
-  }
-  if (jambR) {
-    ctx.fillStyle = trim;
-    ctx.fillRect(w - pw, -hs, pw, hs);
-    ctx.fillStyle = shade(trim, 14);
-    ctx.fillRect(w - pw, -hs * 0.7, s * 0.04, hs * 0.7);
   }
 }
 

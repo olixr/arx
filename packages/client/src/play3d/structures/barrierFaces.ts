@@ -29,7 +29,7 @@
  * are module-private in their homes; they are restated here with the
  * line they were read from. paintVocab's exports are imported.
  */
-import { Tile, hashCoords } from '@arx/shared';
+import { Tile, hashCoords, type WallHungInfo } from '@arx/shared';
 import { paintGarrisonMasonry } from '../../render/garrisonArt.js';
 import {
   drawFencePost,
@@ -48,6 +48,7 @@ import { FACE_PX, type FaceAtlas, type FaceRef } from './faceAtlas.js';
 import { FACE_LIFT } from './faceTone.js';
 import { HED_H } from './structKinds.js';
 import { aimStubHost, asPaintHost, faceFrame, type StubHost } from './stubHost.js';
+import { paintHungDetail, type HungRun } from './wallFaces.js';
 
 /** Card texture density (px per world tile). */
 export const CARD_PX = 96;
@@ -809,6 +810,28 @@ export class BarrierFaces {
         paintGarrisonMasonry(asPaintHost(this.host), 0, w, GARRISON_H * s, s, wx, 1, wx, 7, GARRISON_H, true);
       });
     }, 0.14);
+  }
+
+  /**
+   * The curtain face wearing its wall-hung detail (the 2D hangs art on
+   * garrisonish walls too: banners on the gatehouse towers, the
+   * standards along the curtain — wallHungArt *OnFace with `garrison`
+   * true). Keyed by detail + place in the merged run; the masonry is
+   * lifted first so the art keeps its own inks (INTEGRATE: moved here
+   * from the walls lane's cut garrison path).
+   */
+  garrisonHungFace(worldX: number, info: WallHungInfo, detail: number, run: HungRun, tile: number): FaceRef {
+    const wx = ((worldX % 17) + 17) % 17;
+    return this.prism(`gar/hung/${wx}/${detail}/${run.index}/${run.length}`, 1, GARRISON_H, FACE_PX, (ctx, w, h, s) => {
+      faceFrame(ctx, h, () => {
+        paintGarrisonMasonry(asPaintHost(this.host), 0, w, GARRISON_H * s, s, wx, 1, wx, 7, GARRISON_H, true);
+        ctx.save();
+        ctx.translate(0, -h);
+        liftPainted(ctx, w, h, 0.14);
+        ctx.restore();
+        paintHungDetail(this.host, info, detail, s, true, run, tile);
+      });
+    }, 0);
   }
 
   /** The wall-walk flags (garrisonArt.ts:255-277), `v` a hashed variant. */

@@ -12,6 +12,7 @@ import {
   familyOf,
   gridSampler,
   isSideDoorway,
+  ringStands,
   scanChunkStructs,
   snapshotWithBorder,
   wallish,
@@ -226,6 +227,27 @@ test('scanChunkStructs lists by family in scan order and reads the border throug
   assert.equal(snap.elevAt(99, 99), 0);
   const scan2 = scanChunkStructs(snap, 0, 0, size);
   assert.equal(scan2.tiles[0]!.runE, true);
+});
+
+test('THE BORDER WAKES ONLY WHEN IT STANDS: a seam wakes on a standing ring tile or an elev step, never on grass', () => {
+  const size = 4;
+  // A 4×4 chunk at (0,0) with a 1-tile ring; a wall east of the seam, a cliff step north, grass elsewhere.
+  const rows = [
+    [G, G, G, G, G, G],
+    [G, G, G, G, G, WS],
+    [G, G, G, G, G, G],
+    [G, G, G, G, G, G],
+    [G, G, G, G, G, G],
+    [G, G, G, G, G, G],
+  ];
+  const elev = rows.map((r, y) => r.map(() => (y === 0 ? 1 : 0)));
+  const s = gridSampler(rows, { elev, ox: -1, oy: -1 });
+  assert.equal(ringStands(s, 0, 0, size, 1, 0), true, 'east: a wall stands in the ring');
+  assert.equal(ringStands(s, 0, 0, size, 0, -1), true, 'north: the ring is a level up');
+  assert.equal(ringStands(s, 0, 0, size, -1, 1), false, 'south-west corner: grass on grass');
+  assert.equal(ringStands(s, 0, 0, size, 0, 1), false, 'south: grass on grass');
+  assert.equal(ringStands(s, 0, 0, size, 1, -1), true, 'north-east corner: the step');
+  assert.equal(ringStands(s, 0, 0, size, 1, 1), false, 'south-east corner: nothing');
 });
 
 // ---------------------------------------------------------- sink

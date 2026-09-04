@@ -23,6 +23,12 @@
  *    chunk). A SIDE gate (edge-on in a N–S curtain) is one leaf in the
  *    notch, thrown east when open.
  *
+ *  - WALL-HUNG ART (INTEGRATE): a straight tile whose detail hangs
+ *    something (banner, standard, tapestry, arms…) and whose south face
+ *    is exposed wears a per-detail face variant painted by the 2D
+ *    wallHungArt painters over the ashlar (pennants and tapestries
+ *    merge along the row, keyed by index/length as in walls.ts).
+ *
  * All heights ride `ctx.heightAt` (elev lift included). Opaque kind
  * throughout, except the portcullis and the leaves (cutout cards).
  *
@@ -30,7 +36,7 @@
  * garrison; this lane was briefed to build it. INTEGRATE keeps ONE
  * (docs/play3d-plan.md §W2 BARRIERS gaps).
  */
-import { GARRISON_H, MERLON_H, garrisonish, isGarrisonSideGate, type TileStruct } from './structKinds.js';
+import { GARRISON_H, MERLON_H, garrisonish, isGarrisonSideGate, type StructSampler, type TileStruct } from './structKinds.js';
 import type { StructBuildCtx } from './structures.js';
 import {
   BarrierFaces,
@@ -69,11 +75,25 @@ function merlonsForTile(ctx: StructBuildCtx, faces: BarrierFaces, tx: number, ty
   }
 }
 
+/** This tile's place in its merged hung-art run (pennants and tapestries merge along the row; walls.ts hungRun). */
+function hungRun(s: StructSampler, t: TileStruct): { index: number; length: number } {
+  const kind = t.wallHung?.kind;
+  if (kind !== 'pennant' && kind !== 'tapestry') return { index: 0, length: 1 };
+  const d = s.detailAt(t.tx, t.ty);
+  const member = (x: number): boolean => s.groundAt(x, t.ty) === t.tile && s.detailAt(x, t.ty) === d;
+  let w = 0;
+  while (w < 8 && member(t.tx - w - 1)) w++;
+  let e = 0;
+  while (e < 8 && member(t.tx + e + 1)) e++;
+  return { index: w, length: w + e + 1 };
+}
+
 function straightTile(ctx: StructBuildCtx, faces: BarrierFaces, t: TileStruct): void {
   const { tx, ty } = t;
   const y0 = ctx.heightAt(tx + 0.5, ty + 0.5);
   const y1 = y0 + GARRISON_H;
   const alongX = faces.garrisonFace(tx);
+  const hung = t.wallHung !== null && t.wallHung.kind !== 'sill' && !t.runS ? faces.garrisonHungFace(tx, t.wallHung, ctx.sampler.detailAt(tx, ty), hungRun(ctx.sampler, t), t.tile) : null;
   const alongZ = faces.garrisonFace(ty);
   const top = faces.garrisonTop(variantAt(457, tx, ty, 4));
   exposed.n = !t.runN;
@@ -81,7 +101,7 @@ function straightTile(ctx: StructBuildCtx, faces: BarrierFaces, t: TileStruct): 
   exposed.e = !t.runE;
   exposed.w = !t.runW;
   exposed.top = true;
-  emitBox(ctx.sink, 'opaque', { side: alongX, back: alongX, end: alongZ, top }, tx, ty, tx + 1, ty + 1, y0, y1, exposed);
+  emitBox(ctx.sink, 'opaque', { side: hung ?? alongX, back: alongX, end: alongZ, top }, tx, ty, tx + 1, ty + 1, y0, y1, exposed);
   merlonsForTile(ctx, faces, tx, ty, y1, exposed.n, exposed.e, exposed.s, exposed.w);
 }
 

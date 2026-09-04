@@ -1,13 +1,13 @@
 /**
  * THE WALLS LANE (play3d W2) — buildings as geometry with painted
  * faces: stone / wood / cave wall runs, windows as real holes, doorways
- * with jambs, headers and hinged leaves, 45° diagonals, the garrison
- * curtain with its merlons and gates, awnings over their hosts, and
- * the wall-hung details on the south face.
+ * with jambs, headers and hinged leaves, 45° diagonals, awnings over
+ * their hosts, and the wall-hung details on the south face. (The
+ * garrison curtain is garrison.ts's — see THE CURTAIN HAS ONE BUILDER.)
  *
  * Laws:
- *  - A WALL TILE IS A PRISM: crown at ground + WALL_H (GARRISON_H for
- *    the curtain), faces on EXPOSED sides only — THE SHARED-EDGE LAW
+ *  - A WALL TILE IS A PRISM: crown at ground + WALL_H, faces on
+ *    EXPOSED sides only — THE SHARED-EDGE LAW
  *    (structKinds runN/E/S/W by the 2D's own `wallish`): a run reads
  *    as one mass and two run-mates never put coincident faces in the
  *    depth buffer. Corner heights come from the heightfield's own
@@ -39,10 +39,6 @@
  *    triangle (DiagNE = mass across the N and E edges); faces on the
  *    two mass edges when exposed and always on the hypotenuse (a √2
  *    wide face tile so the courses keep their pitch).
- *  - THE GARRISON is the same prism at GARRISON_H with the ashlar
- *    painter, two merlons (MERLON_H) per exposed crown edge, gates as
- *    tall tunnels under a dressed head (piers min(0.34, 0.18·run),
- *    spring 1.75 + rise) hanging iron-bound leaves.
  *  - AN AWNING is a sloped cloth slab (root 1.76 on the host's face,
  *    rail 1.70 at 0.85 out, hem flared 0.16 at free ends) with an
  *    underside and an alpha-cut skirt in the dye's cloth.
@@ -57,7 +53,7 @@ import type { InteriorRegion } from '../../render/interiors.js';
 import type { WoodSkin } from '../../render/woodSkins.js';
 import { packChunk } from '../chunkRing.js';
 import type { StructBuildCtx, StructBuildResult } from './structures.js';
-import { GARRISON_H, MERLON_H, WALL_H, familyOf, type StructSampler, type TileStruct, type WallMaterial } from './structKinds.js';
+import { WALL_H, familyOf, type StructSampler, type TileStruct, type WallMaterial } from './structKinds.js';
 import type { FaceRef } from './faceAtlas.js';
 import { aimStubHost, type StubHost } from './stubHost.js';
 import type { StructMaterialKind, StructSink } from './structSink.js';
@@ -67,13 +63,11 @@ import * as F from './wallFaces.js';
 /** Face tile variants minted per (material, skin, tone). */
 export const VARIANTS = 6;
 /**
- * THE CURTAIN HAS TWO BUILDERS: the scaffold named the garrison in this
- * lane, and the BARRIERS lane was briefed to build it too (garrison.ts).
- * This lane's curtain (prism + merlons + gates through the shared
- * doorway law) stays complete but OFF, so the two never stand in the
- * same depth buffer; INTEGRATE keeps one (docs/play3d-plan.md §W2).
+ * THE CURTAIN HAS ONE BUILDER: garrison.ts (the BARRIERS lane) builds
+ * the garrison — prism, merlons, gatehouse, side gates and the
+ * wall-hung art on its south faces. This lane's own curtain paths were
+ * cut by INTEGRATE so two curtains never stand in one depth buffer.
  */
-export const WALLS_OWN_GARRISON = false;
 /** Sample the heightfield this far inside a tile for its own corner. */
 const EPS = 0.002;
 /** The shut leaf stands this far inside its outdoor face plane. */
@@ -178,14 +172,6 @@ export function diagShape(mass: 'NE' | 'NW' | 'SE' | 'SW'): { tri: ReadonlyArray
   }
 }
 
-/** Garrison gate measures (garrisonArt.ts:585-600) for a run `runLen` tiles wide. */
-export function gateMeasures(runLen: number): { pierW: number; headH: number } {
-  const pierW = Math.min(0.34, runLen * 0.18);
-  const ow = runLen - pierW * 2;
-  const rise = Math.min(ow * 0.22, 0.42);
-  return { pierW, headH: 1.75 + rise };
-}
-
 // ---------------------------------------------------------- the lane
 
 class WallBuilder {
@@ -200,7 +186,6 @@ class WallBuilder {
   doors = 0;
   windows = 0;
   awnings = 0;
-  garrison = 0;
   hung = 0;
 
   constructor(private readonly ctx: StructBuildCtx) {
@@ -352,7 +337,7 @@ class WallBuilder {
     });
   }
 
-  private crownRef(mat: WallMaterial | 'garrison', skin: WoodSkin, vert: boolean, variant: number): FaceRef {
+  private crownRef(mat: WallMaterial, skin: WoodSkin, vert: boolean, variant: number): FaceRef {
     const si = mat === 'wood' ? F.skinIndex(skin) : 0;
     const key = `cr/${mat}/${si}/${vert ? 'v' : 'h'}/${variant}`;
     return this.ctx.atlas.get(key, () => {
@@ -360,7 +345,7 @@ class WallBuilder {
       return {
         w,
         h,
-        paint: (c) => (mat === 'garrison' ? F.paintGarrisonCrown(c, w, h, variant * 5 + 1, variant * 2 + 3) : F.paintCrownTile(c, w, h, mat, skin, vert, variant * 7 + 3, variant * 3 + 11)),
+        paint: (c) => F.paintCrownTile(c, w, h, mat, skin, vert, variant * 7 + 3, variant * 3 + 11),
       };
     });
   }
@@ -375,7 +360,7 @@ class WallBuilder {
     return this.ctx.atlas.get(key, () => F.faceSpec(1, WALL_H, (c, w, hs, s) => F.paintDoorFace(c, w, hs, s, mat, skin, tone, jambL, jambR, 9, 23)));
   }
 
-  private leafRef(mat: WallMaterial | 'garrison', skin: WoodSkin, w: number, h: number, mirror: boolean): FaceRef {
+  private leafRef(mat: WallMaterial, skin: WoodSkin, w: number, h: number, mirror: boolean): FaceRef {
     const si = mat === 'wood' ? F.skinIndex(skin) : 0;
     const wq = Math.round(w * 20) / 20;
     const hq = Math.round(h * 20) / 20;
@@ -383,49 +368,17 @@ class WallBuilder {
     return mirror ? { ...ref, u0: ref.u1, u1: ref.u0 } : ref;
   }
 
-  private hungRef(mat: WallMaterial | 'garrison', skin: WoodSkin, t: TileStruct, index: number, length: number): FaceRef {
+  private hungRef(mat: WallMaterial, skin: WoodSkin, t: TileStruct, index: number, length: number): FaceRef {
     const detail = this.sampler.detailAt(t.tx, t.ty);
     const si = mat === 'wood' ? F.skinIndex(skin) : 0;
-    const garrison = mat === 'garrison';
-    const H = garrison ? GARRISON_H : WALL_H;
     const key = `wh/${mat}/${si}/${detail}/${index}/${length}`;
     return this.ctx.atlas.get(key, () =>
-      F.faceSpec(1, H, (c, w, hs, s) => {
+      F.faceSpec(1, WALL_H, (c, w, hs, s) => {
         aimStubHost(this.host, c, s);
-        if (garrison) F.paintGarrisonFace(this.host, w, hs, s, 'lit', index * 3, 1, 5, 19, true);
-        else F.paintMaterialFace(c, 0, w, hs, s, mat, skin, 'lit', 5, 19);
-        F.paintHungDetail(this.host, t.wallHung!, detail, s, garrison, { index, length }, t.tile);
+        F.paintMaterialFace(c, 0, w, hs, s, mat, skin, 'lit', 5, 19);
+        F.paintHungDetail(this.host, t.wallHung!, detail, s, false, { index, length }, t.tile);
       }),
     );
-  }
-
-  private garrisonFaceRef(tone: F.FaceToneKind, variant: number, tilesW = 1): FaceRef {
-    return this.ctx.atlas.get(`gf/${tone}/${variant}/${tilesW}`, () =>
-      F.faceSpec(tilesW, GARRISON_H, (c, w, hs, s) => {
-        aimStubHost(this.host, c, s);
-        F.paintGarrisonFace(this.host, w, hs, s, tone, variant * 5, tilesW, variant * 7 + 3, variant * 3 + 11, true);
-      }),
-    );
-  }
-
-  private gateFaceRef(tone: F.FaceToneKind, jambL: boolean, jambR: boolean, runLen: number): FaceRef {
-    const { pierW, headH } = gateMeasures(runLen);
-    return this.ctx.atlas.get(`gg/${tone}/${jambL ? 1 : 0}${jambR ? 1 : 0}/${runLen}`, () =>
-      F.faceSpec(1, GARRISON_H, (c, w, hs, s) => {
-        aimStubHost(this.host, c, s);
-        F.paintGarrisonGateFace(this.host, w, hs, s, tone, jambL, jambR, pierW, headH, 4, 29);
-      }),
-    );
-  }
-
-  private merlonRefs(k: number): { face: FaceRef; top: FaceRef } {
-    const face = this.ctx.atlas.get(`gm/f/${k}`, () => F.faceSpec(0.34, MERLON_H, (c, w, h) => F.paintMerlonFace(c, w, h, k)));
-    const top = this.ctx.atlas.get('gm/t', () => {
-      const { s } = F.faceTileSize(1, 1);
-      const w = Math.round(0.34 * s);
-      return { w, h: w, paint: (c: CanvasRenderingContext2D) => F.paintMerlonTop(c, w, w) };
-    });
-    return { face, top };
   }
 
   private awningRefs(shape: AwningInfo['shape'], dye: number, skin: WoodSkin): { top: FaceRef; under: FaceRef; skirt: FaceRef } {
@@ -442,7 +395,7 @@ class WallBuilder {
 
   // ------------------------------------------------------ the crown
 
-  private crown(t: TileStruct, g: Corners, H: number, mat: WallMaterial | 'garrison', skin: WoodSkin): void {
+  private crown(t: TileStruct, g: Corners, H: number, mat: WallMaterial, skin: WoodSkin): void {
     const vert = (t.runN || t.runS) && !(t.runW || t.runE);
     const ref = this.crownRef(mat, skin, vert, this.variant(t.tx, t.ty));
     this.flatQuad('opaque', ref, t.tx, t.ty, t.tx + 1, t.ty + 1, g[0] + H, g[1] + H, g[2] + H, g[3] + H, true);
@@ -450,14 +403,14 @@ class WallBuilder {
 
   // ------------------------------------------------------ the prism
 
-  private prism(t: TileStruct, mat: WallMaterial, skin: WoodSkin, garrison: boolean): void {
+  private prism(t: TileStruct, mat: WallMaterial, skin: WoodSkin): void {
     const g = this.corners(t.tx, t.ty);
-    const H = garrison ? GARRISON_H : WALL_H;
+    const H = WALL_H;
     const v = this.variant(t.tx, t.ty);
     const cracked = t.tile === Tile.CrackedCaveWall;
     // The window's axis: through the two exposed opposite faces.
     let axis: 'NS' | 'EW' | null = null;
-    if (t.isWindow && !garrison) {
+    if (t.isWindow) {
       if (!t.runS && !t.runN) axis = 'NS';
       else if (!t.runE && !t.runW) axis = 'EW';
     }
@@ -487,15 +440,14 @@ class WallBuilder {
         if (u1 < 1) this.piece('opaque', f, u1, 1, v0, v1, ref);
       } else if (side === 'S' && hung) {
         const { index, length } = this.hungRun(t);
-        this.whole(f, this.hungRef(garrison ? 'garrison' : mat, skin, t, index, length));
+        this.whole(f, this.hungRef(mat, skin, t, index, length));
         this.hung++;
       } else {
-        this.whole(f, garrison ? this.garrisonFaceRef(tone, v) : this.faceRef(mat, skin, tone, v, cracked));
+        this.whole(f, this.faceRef(mat, skin, tone, v, cracked));
       }
     }
     if (axis) this.windowReveal(t, g, mat, skin, axis, mergeW, mergeE, mergeN, mergeS);
-    this.crown(t, g, H, garrison ? 'garrison' : mat, skin);
-    if (garrison) this.merlons(t, g, GARRISON_H);
+    this.crown(t, g, H, mat, skin);
   }
 
   /** The reveal's four inner faces + the mullion card, along `axis`. */
@@ -558,42 +510,11 @@ class WallBuilder {
     return { index: w, length: w + e + 1 };
   }
 
-  // ----------------------------------------------------- the merlons
-
-  /** Two teeth per exposed crown edge (garrisonArt.ts:246-260). */
-  private merlons(t: TileStruct, g: Corners, H: number): void {
-    const mw = 0.34;
-    const md = 0.34;
-    const y = Math.max(g[0], g[1], g[2], g[3]) + H;
-    const box = (x0: number, z0: number, x1: number, z1: number, k: number): void => {
-      const { face, top } = this.merlonRefs(k);
-      const f = this.face;
-      f.H = MERLON_H;
-      f.ya = y;
-      f.yb = y;
-      Object.assign(f, { ax: x0, az: z1, bx: x1, bz: z1, nx: 0, nz: 1 });
-      this.whole(f, face);
-      Object.assign(f, { ax: x1, az: z0, bx: x0, bz: z0, nx: 0, nz: -1 });
-      this.whole(f, face);
-      Object.assign(f, { ax: x1, az: z1, bx: x1, bz: z0, nx: 1, nz: 0 });
-      this.whole(f, face);
-      Object.assign(f, { ax: x0, az: z0, bx: x0, bz: z1, nx: -1, nz: 0 });
-      this.whole(f, face);
-      this.flatQuad('opaque', top, x0, z0, x1, z1, y + MERLON_H, y + MERLON_H, y + MERLON_H, y + MERLON_H, true);
-    };
-    for (const c of [0.25, 0.75]) {
-      if (!t.runN) box(t.tx + c - mw / 2, t.ty, t.tx + c + mw / 2, t.ty + md, -16);
-      if (!t.runS) box(t.tx + c - mw / 2, t.ty + 1 - md, t.tx + c + mw / 2, t.ty + 1, 8);
-      if (!t.runW) box(t.tx, t.ty + c - mw / 2, t.tx + md, t.ty + c + mw / 2, 2);
-      if (!t.runE) box(t.tx + 1 - md, t.ty + c - mw / 2, t.tx + 1, t.ty + c + mw / 2, -8);
-    }
-  }
-
   // ---------------------------------------------------- the diagonal
 
-  private diag(t: TileStruct, mat: WallMaterial, skin: WoodSkin, garrison: boolean): void {
+  private diag(t: TileStruct, mat: WallMaterial, skin: WoodSkin): void {
     const g = this.corners(t.tx, t.ty);
-    const H = garrison ? GARRISON_H : WALL_H;
+    const H = WALL_H;
     const v = this.variant(t.tx, t.ty);
     const shape = diagShape(t.diag!.mass);
     const f = this.face;
@@ -601,7 +522,7 @@ class WallBuilder {
       if (runOn(t, side)) continue;
       sideFace(side, t.tx, t.ty, g, H, f);
       const tone: F.FaceToneKind = side === 'S' ? 'lit' : 'shaded';
-      this.whole(f, garrison ? this.garrisonFaceRef(tone, v) : this.faceRef(mat, skin, tone, v, false));
+      this.whole(f, this.faceRef(mat, skin, tone, v, false));
     }
     // The hypotenuse: √2 wide so the courses keep their pitch.
     const cornerH = (c: readonly [number, number]): number => (c[0] === 0 ? (c[1] === 0 ? g[0] : g[3]) : c[1] === 0 ? g[1] : g[2]);
@@ -617,9 +538,9 @@ class WallBuilder {
       nz: shape.nz,
     });
     const front = shape.nz > 0;
-    this.whole(f, garrison ? this.garrisonFaceRef(front ? 'lit' : 'shaded', v, Math.SQRT2) : this.faceRef(mat, skin, front ? 'lit' : 'shaded', v, false, Math.SQRT2));
+    this.whole(f, this.faceRef(mat, skin, front ? 'lit' : 'shaded', v, false, Math.SQRT2));
     // The crown triangle.
-    const ref = this.crownRef(garrison ? 'garrison' : mat, skin, false, v);
+    const ref = this.crownRef(mat, skin, false, v);
     const p = this.sink.p;
     const uv = this.sink.uv;
     shape.tri.forEach((c, i) => {
@@ -640,12 +561,11 @@ class WallBuilder {
    * north-south through an E-W wall; 'EW' = a side doorway). Wide
    * doors merge along the wall (jambs only at true ends).
    */
-  private doorway(t: TileStruct, mat: WallMaterial | 'garrison', skin: WoodSkin): void {
+  private doorway(t: TileStruct, mat: WallMaterial, skin: WoodSkin): void {
     this.doors++;
     const door = t.door!;
-    const garrison = mat === 'garrison';
-    const wmat: WallMaterial = mat === 'garrison' ? 'stone' : mat;
-    const H = garrison ? GARRISON_H : WALL_H;
+    const wmat: WallMaterial = mat;
+    const H = WALL_H;
     const axis: 'NS' | 'EW' = t.sideDoorway ? 'EW' : 'NS';
     const g = this.corners(t.tx, t.ty);
     const base = this.flat(t.tx, t.ty);
@@ -661,7 +581,8 @@ class WallBuilder {
     const runLen = before + after + 1;
     const jambA = before === 0; // west / north end
     const jambB = after === 0; // east / south end
-    const { pierW, headH } = garrison ? gateMeasures(runLen) : { pierW: F.DOOR_JAMB, headH: F.DOOR_CLEAR };
+    const pierW = F.DOOR_JAMB;
+    const headH = F.DOOR_CLEAR;
     const clear = Math.min(headH, H - 0.2);
     const jw = pierW;
     const v = this.variant(t.tx, t.ty);
@@ -673,20 +594,20 @@ class WallBuilder {
       const tone: F.FaceToneKind = side === 'S' ? 'lit' : 'shaded';
       const framed = axis === 'NS' ? side === 'S' || side === 'N' : side === 'E' || side === 'W';
       if (!framed) {
-        this.whole(f, garrison ? this.garrisonFaceRef(tone, v) : this.faceRef(wmat, skin, tone, v, false));
+        this.whole(f, this.faceRef(wmat, skin, tone, v, false));
         continue;
       }
       // Face-local jambs: left/right as seen from outside.
       const jL = side === 'S' || side === 'W' ? jambA : jambB;
       const jR = side === 'S' || side === 'W' ? jambB : jambA;
-      const ref = garrison ? this.gateFaceRef(tone, jL, jR, runLen) : this.doorFaceRef(wmat, skin, tone, jL, jR);
+      const ref = this.doorFaceRef(wmat, skin, tone, jL, jR);
       const cv = clear / H;
       this.piece('opaque', f, 0, 1, cv, 1, ref);
       if (jL) this.piece('opaque', f, 0, jw, 0, cv, ref);
       if (jR) this.piece('opaque', f, 1 - jw, 1, 0, cv, ref);
     }
     // The tunnel: header underside + jamb reveals.
-    const trim = garrison ? F.toned(F.GAR_TRIM, 'shaded') : F.matTones(wmat, skin, 'shaded').trim;
+    const trim = F.matTones(wmat, skin, 'shaded').trim;
     const rv = this.plainRef(trim);
     f.H = clear;
     f.ya = base;
@@ -717,7 +638,6 @@ class WallBuilder {
       }
     }
     this.crown(t, g, H, mat, skin);
-    if (garrison) this.merlons(t, g, GARRISON_H);
     // THE LEAF: in the outdoor face plane, hinged on the end jambs, swinging outward.
     const anchorKey = axis === 'NS' ? `${t.tx - before},${t.ty}` : `${t.tx},${t.ty - before}`;
     const opening = runLen - jw * 2;
@@ -804,16 +724,9 @@ class WallBuilder {
       const mat = t.material ?? 'stone';
       const skin = mat === 'wood' ? this.skinAt(t.tx, t.ty) : this.ctx.woodSkinFor(null);
       this.runs++;
-      if (t.diag) this.diag(t, mat, skin, false);
+      if (t.diag) this.diag(t, mat, skin);
       else if (t.door) this.doorway(t, mat, skin);
-      else this.prism(t, mat, skin, false);
-    }
-    const oak = this.ctx.woodSkinFor(null);
-    for (const t of WALLS_OWN_GARRISON ? (scan.byFamily.get('garrison') ?? []) : []) {
-      this.garrison++;
-      if (t.diag) this.diag(t, 'stone', oak, true);
-      else if (t.door) this.doorway(t, 'garrison', oak);
-      else this.prism(t, 'stone', oak, true);
+      else this.prism(t, mat, skin);
     }
     // Awnings are not a standing family: sweep the chunk for them.
     for (let ly = 0; ly < scan.size; ly++) {
@@ -836,6 +749,6 @@ export function buildWallStructures(ctx: StructBuildCtx): StructBuildResult {
   b.build();
   return {
     quads: ctx.sink.quads - before,
-    note: `walls ${b.runs} (${b.windows} windows, ${b.doors} doors, ${b.hung} hung) garrison ${b.garrison} awnings ${b.awnings}`,
+    note: `walls ${b.runs} (${b.windows} windows, ${b.doors} doors, ${b.hung} hung) awnings ${b.awnings}`,
   };
 }

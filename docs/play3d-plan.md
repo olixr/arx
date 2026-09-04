@@ -709,3 +709,118 @@ square-on) → `CROWN_LIFT 0.05` instead of the face stop.
   inside) is `'lit'` as in the 2D.
 - **Cave walls** use the stone masonry courses (as the 2D does) — no
   dedicated rock painter.
+
+### W2 INTEGRATE — as built (2026-09-04)
+
+The three geometry lanes merged, curated twice against live shots and
+the 2D goldens, measured, and closed. Everything below stands on
+`epic/play3d` after WALLS (96c18f52).
+
+**W2 as-built — the whole workstream in one table**
+
+| module | what | real / placeholder |
+| --- | --- | --- |
+| `structKinds.ts` | per-tile classification, run continuity, bordered snapshot, the 2D heights; **+ `ringStands`** (INTEGRATE): does the snapshot ring on a neighbour's side hold a standing tile or an elevation step | real (14 tests) |
+| `structSink.ts` / `faceTone.ts` / `faceAtlas.ts` / `stubHost.ts` / `structMaterials.ts` | quad sink by (kind, page) → merged geometry; LAMBERT EATS A STOP tones; the shelf-packed sRGB face atlas (pad wears the edge, sub-rect blits, mips once per flush); the eight-member stub host the amber painters read; Lambert opaque + alpha-cut materials with the alpha-tested depth material for the sun | real |
+| `structures.ts` | `ChunkStructures`: snapshot → scan → the three lane builders → one BufferGeometry per (kind, page) per chunk, cast + receive, explicit dispose with the byte ledger; THE BORDER WAKES THE NEIGHBOUR now **ONLY WHEN IT STANDS** (a wake is skipped when the seam is grass on grass — `stats.wakesSkipped`); **`audit()`** recomputes draws/tris/quads/bytes/meshes-in-group from the records and compares them with the running stats (the dispose proof); `stats.drawsMax` = the worst chunk's draw count | real |
+| `walls.ts` / `wallFaces.ts` / `doors.ts` | buildings: prisms with exposed faces only, windows as holes (THE WIDE LIGHT), doorways as tunnels with hinged leaves eased on their own clock, diagonals, awnings, wall-hung art; **the OFF garrison path was cut** (THE CURTAIN HAS ONE BUILDER — −167 lines, `gateMeasures` and the garrison painters with it) | real (30 tests) |
+| `barrierGeom.ts` / `barrierFaces.ts` / `barriers.ts` | the node graph (every edge emitted once, across seams by the lexicographic-min end), the turned cross, fences / palisades / iron rest / hedges with their gates; **+ `garrisonHungFace`** (INTEGRATE) | real (14 tests) |
+| `garrison.ts` | THE curtain: GARRISON_H boxes with world-anchored ashlar, wall-walk, merlons at the 2D phase, gatehouse runs (piers, lintel, soffit, portcullis, iron-bound leaves), side gates; **+ wall-hung art on exposed south faces** (the crown banner on the gatehouse tower, standards along the curtain — the 2D hangs on garrisonish walls too; moved here from the cut walls path with its run law) | real |
+| `terrainForms.ts` / `cliffFaces.ts` / `deckFaces.ts` / `heightfield.ts collectStepFaces` | cliff strips a hair proud of the heightfield's own faces (4-tile periodic rock lattice, turf brow); decks: apron-sloped tops, hollow jetties on joists and piles, kerbs, thresholds, porch treads, notch fills; `heightAt` carries the deck lift so bodies stand on the boards | real (11 tests) |
+| `main3d.ts` / `hud.ts` / `ground.ts` | composition; `faces.flush()` per frame; the door-leaf layer mounted and pruned by `structures.has`; the HUD structures line (+ wakes skipped); the probe's `stats().structures` (+ `audit`, `drawsMax`, `doorLeaves`) | real |
+| `dev/play3dW2.mjs` | THE harness: 14 scenes (interiors, wall-market, curtain-fence, curtain-gate, graveyard, terraces, amberford-bridge, weir-dock, hedge, palisade, palisade-gate, fence-gate, occlusion, interiors-night) × low/high pitch, `find` re-teleports to the nearest LOCAL cluster of a tile id (THE STORE REMEMBERS: clusters from earlier scenes are ignored), THE LEDGER WALK (≥ 60 tiles, then audit) | real |
+| lane drivers `play3dWalls.mjs` / `play3dBarriers.mjs` / `play3dTerrainForms.mjs` | the lanes' own framings; kept for close-ups | real |
+
+**Laws that hold (W2, whole):**
+
+- MESHES ARE GEOMETRY WITH A DEPTH BUFFER: no sort hacks; the
+  occlusion shot puts the body behind the curtain and the wall cuts it.
+- ONE MERGED GEOMETRY PER (chunk × material × page): the worst chunk in
+  every scene costs 4 draws (opaque + cutout on two pages) — under the
+  6 target; a town ring is 40–74 structure draws over 25–35 chunks.
+- THE ATLAS IS PAINTED ONCE: 451 face tiles / 2 pages across the
+  whole roster (42.9 MB), 2 page uploads, one sub-rect blit per tile,
+  never evicted, never repainted.
+- THE SHARED-EDGE LAW everywhere: walls, garrison, hedges, decks and
+  cliffs put faces only on exposed sides; barrier lines emit every edge
+  exactly once. No z-fighting was seen in any of the 28 + 20 + 16 + 12
+  committed shots (three lanes, two curation passes here).
+- FACE UV = the 2D face frame (u W→E, v base→crown) — every 2D measure
+  carried 1:1; heights are the 2D constants.
+- TONES ARE THE 2D's: measured against the goldens (mean sRGB over the
+  same face) — garrison lit face 3D (86,82,93) vs 2D (87,81,101), stone
+  wall (104,100,112) vs (94,87,108), timber (113,84,50) vs (106,76,46):
+  within ~10%, a hair desaturated by the white-lerp lift. The lifts stay
+  as the lanes set them (the eye's "too pale" was the display scaling,
+  not the paint — the numbers decided).
+- DISPOSE IS EXPLICIT AND AUDITED: the ledger walk (133 tiles) evicts
+  the previous ring; `audit()` recomputes the ledger from the records
+  and it balances before and after (draws 59→51, quads 13.9k→8.5k,
+  geometry 2.0→1.2 MB, renderer geometries 167→122).
+- THE BORDER WAKES ONLY WHEN IT STANDS: cumulative neighbour-woken
+  rebuilds over the same 14-scene roster fell from 257 to 136 (−47%);
+  the HUD confesses the wakes skipped (324 by the last scene).
+- SHADOWS: structures cast (opaque and, through the alpha-tested depth
+  material, cutouts) and receive. The clearest proof is the merlons'
+  shadows lying on the wall-walk (`w2-curtain-fence-low`); in the
+  occlusion shot the grass strip at the curtain's north foot (the sun
+  stands south-west) measures darker than the open grass beside it
+  (mean sRGB G 88 vs 104) — a band, not a drama, because the curtain's
+  shadow reaches only ~1.4 tiles north at that sun.
+
+**Curation passes (what was wrong across lanes, and what changed):**
+
+- Pass 1 (int0): (a) the garrison had two builders — the WALLS lane's
+  complete-but-OFF path and the BARRIERS lane's live one; only the OFF
+  one knew how to hang the 2D's wall art on the curtain, so the live
+  gatehouse stood bare while the golden shows the crown banner on its
+  tower → the walls path was cut and the hung-face law moved into
+  `garrison.ts` (`BarrierFaces.garrisonHungFace`, run law ported).
+  (b) `find` in the drivers picked clusters from chunks the store still
+  held from earlier scenes (hedge → −68,−29; fence gate → −39,2) → only
+  clusters within 40 tiles of the teleport count. (c) The brief's
+  occlusion framing cannot work: the orbit's pitch floor is 0.30 and a
+  2.05 house wall cannot hide a body from that pitch at any distance →
+  the proof uses the 3.4 curtain, camera north, body south.
+  (d) Neighbour wakes were unconditional (257 rebuilds by the last
+  scene) → `ringStands`.
+- Pass 2 (int1/int2): the crown banner hangs on the gatehouse tower;
+  hedge, fence gate, palisade gate, weir dock, bridge, terraces clean at
+  both pitches; the occlusion shot moved from the gate passage (the body
+  was behind the lintel — correct but unreadable) to a plain run with
+  the shadow in frame. Nothing else moved.
+
+**Perf ledger (headless, indications):** structure draws per chunk ≤ 4
+(target < 6) in every scene; build 0.7–2.6 ms per chunk (barrier-heavy
+chunks the slowest); nothing per frame in `structures/` except the door
+leaves' eased rewrites and the atlas flush of pending blits (zero when
+nothing was minted); geometry 0.2–2.5 MB per ring.
+
+**Gaps / next (W3):**
+
+- **Roofs: none exist** — buildings are open boxes seen from above (the
+  2D has no roof art; the crown plate is the cap). W3's first art call.
+- **Cutaway / reveal**: walls stand at full height; the 2D veil law is a
+  2.5D fix. If a cut is wanted it is the camera's concern with
+  `WALL_STUB` as the cut height.
+- **Props emission registry**: props (summons, drops, gravestones,
+  bridge rails, awning posts) are still the statics' billboards, not
+  structure geometry; the terrain lane's bridge rails have no lane.
+- **Water**: the river is the bake's paint; no water plane, no
+  reflection under the jetty.
+- **Door toggles rebuild the whole chunk** (ground bake too) through the
+  streamer's `refresh`; a structures-only rebuild path is the next
+  perf lever (`ChunkStructures.build` already stands alone).
+- **Interiors can go stale across chunks** (scaffold gap) — the wake
+  law does not wake a neighbour for a room whose floor crosses the seam
+  with no standing tile on it; rebuilt only on eviction.
+- **`settle` can report −1** when a chunk sits inside EVICT_RING but
+  outside LOAD_RING after a teleport: it is never baked, so
+  `painted < chunks` forever (ground.ts's ring law, S2) — the shot is
+  still complete; the harness waits 600 frames. Fix in the streamer.
+- **The heightfield's placeholder faces still stand under the cliff
+  curtains** (terrain gap); `skipFaces` once the curtains are trusted.
+- **No glass / glint / hearth glow** on windows; no door veil; no awning
+  posts or wind; hung art is baked still.
+- **Hedge 45°** slabs, **diagonal garrison teeth** axis-aligned, **iron
+  N–S** full panels — the barrier lane's honest simplifications stand.

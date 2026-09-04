@@ -10,7 +10,7 @@ import { StructSink } from './structSink.js';
 import type { StubHost } from './stubHost.js';
 import type { StructBuildCtx } from './structures.js';
 import { doorLeaves } from './doors.js';
-import { buildWallStructures, diagShape, gateMeasures, sideFace, windowSpan, type FaceEdge } from './walls.js';
+import { buildWallStructures, diagShape, sideFace, windowSpan, type FaceEdge } from './walls.js';
 import { DOOR_JAMB, WINDOW_HEAD, WINDOW_SILL, timberCourses } from './wallFaces.js';
 
 const G = Tile.Grass;
@@ -104,15 +104,6 @@ test('diagShape names the SOLID triangle: DiagNE = mass across N and E, hypotenu
   assert.deepEqual(sw.edges, ['S', 'W']);
   assert.ok(sw.nx > 0 && sw.nz < 0);
   for (const m of ['NE', 'NW', 'SE', 'SW'] as const) assert.equal(diagShape(m).tri.length, 3);
-});
-
-test('gateMeasures: piers min(0.34, 0.18·run), head = spring 1.75 + a capped rise', () => {
-  const one = gateMeasures(1);
-  assert.equal(one.pierW, 0.18);
-  assert.ok(one.headH > 1.75 && one.headH < 1.75 + 0.42 + 1e-9);
-  const three = gateMeasures(3);
-  assert.equal(three.pierW, 0.34);
-  assert.ok(Math.abs(three.headH - (1.75 + 0.42)) < 1e-9);
 });
 
 test('the course law is absolute: a taller face stacks more logs, never stretched ones', () => {
@@ -313,7 +304,7 @@ test('a wall-hung detail mints its own south-face variant, keyed by the detail',
   assert.ok(ctx.atlas.keys.some((k) => k.startsWith('wh/stone/') && k.includes(`/${Detail.WallBanner}/`)));
 });
 
-test('the garrison family is left to garrison.ts while WALLS_OWN_GARRISON is off', () => {
+test('THE CURTAIN HAS ONE BUILDER: the garrison family is garrison.ts\'s, this lane lands nothing for it', () => {
   const { r } = build(ctxOver([[G, G, G], [G, Tile.WallGarrison, G], [G, G, G]]));
   assert.equal(r.quads, 0);
 });

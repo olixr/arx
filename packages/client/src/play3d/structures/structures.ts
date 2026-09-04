@@ -22,9 +22,13 @@
  *
  * THE BORDER WAKES THE NEIGHBOUR: a chunk built while its neighbour
  * was not yet streamed saw `undefined` past the seam and put a face
- * there. When the neighbour arrives, the 8 chunks around it are marked
- * dirty and rebuilt under `update`'s budget (a rebuild never wakes its
- * own neighbours — no ping-pong).
+ * there. When the neighbour arrives, the built chunks around it are
+ * marked dirty and rebuilt under `update`'s budget (a rebuild never
+ * wakes its own neighbours — no ping-pong). THE BORDER WAKES ONLY WHEN
+ * IT STANDS (INTEGRATE): a neighbour is woken only when the ring cells
+ * on its side hold a standing tile or an elevation step
+ * (structKinds.ringStands) — grass against grass rebuilds nothing;
+ * `stats.wakesSkipped` counts the rebuilds this spares.
  *
  * Dispose is explicit: `evict` removes the meshes, disposes their
  * geometries and debits the byte ledger. Materials are shared
@@ -45,7 +49,7 @@ import { dealWoodSkin, type WoodSkin } from '../../render/woodSkins.js';
 import { chunkOf, packChunk } from '../chunkRing.js';
 import type { WorldSource3D } from '../world.js';
 import { FaceAtlas } from './faceAtlas.js';
-import { ELEV_H, scanChunkStructs, snapshotWithBorder, type ChunkStructScan, type StructSampler } from './structKinds.js';
+import { ELEV_H, ringStands, scanChunkStructs, snapshotWithBorder, type ChunkStructScan, type StructSampler } from './structKinds.js';
 import { StructMaterials } from './structMaterials.js';
 import { StructSink, bucketBytes } from './structSink.js';
 import { makeStubHost, type StubHost } from './stubHost.js';
@@ -109,6 +113,23 @@ export interface StructStats {
   dirty: number;
   /** Per-lane quad counts from the last build. */
   lanes: { walls: number; barriers: number; terrainForms: number };
+  /** The most draws any one built chunk costs (the < 6 target). */
+  drawsMax: number;
+  /** Neighbour wakes skipped because the seam holds nothing (THE BORDER WAKES ONLY WHEN IT STANDS). */
+  wakesSkipped: number;
+}
+
+/** THE LEDGER CONFESSES: the running stats recomputed from the records. */
+export interface StructAudit {
+  ok: boolean;
+  chunks: number;
+  draws: number;
+  drawsMax: number;
+  tris: number;
+  quads: number;
+  geometryBytes: number;
+  /** Meshes still parented under the group (must equal draws). */
+  meshesInGroup: number;
 }
 
 interface StructRec {
@@ -157,6 +178,8 @@ export class ChunkStructures {
     rebuilds: 0,
     dirty: 0,
     lanes: { walls: 0, barriers: 0, terrainForms: 0 },
+    drawsMax: 0,
+    wakesSkipped: 0,
   };
   /** The lane builders, overridable for labs and tests. */
   builders: { walls: StructBuilder; barriers: StructBuilder; terrainForms: StructBuilder } = {
@@ -264,6 +287,7 @@ export class ChunkStructures {
     }
     this.stats.chunks = this.recs.size;
     this.stats.draws += rec.meshes.length;
+    if (rec.meshes.length > this.stats.drawsMax) this.stats.drawsMax = rec.meshes.length;
     this.stats.tris += rec.tris;
     this.stats.quads += rec.quads;
     this.stats.geometryBytes += rec.bytes;
@@ -273,10 +297,13 @@ export class ChunkStructures {
     if (wake) {
       for (const [dx, dy] of NEIGHBOURS) {
         const n = this.recs.get(packChunk(cx + dx, cy + dy));
-        if (n && !n.dirty) {
-          n.dirty = true;
-          this.stats.dirty++;
+        if (!n || n.dirty) continue;
+        if (!ringStands(sampler, scan.x0, scan.y0, CHUNK_SIZE, dx, dy)) {
+          this.stats.wakesSkipped++;
+          continue;
         }
+        n.dirty = true;
+        this.stats.dirty++;
       }
     }
   }
@@ -312,6 +339,39 @@ export class ChunkStructures {
   /** The chunk under a world point is built. */
   builtAt(wx: number, wy: number): boolean {
     return this.has(chunkOf(wx), chunkOf(wy));
+  }
+
+  /**
+   * Recompute the ledger from the records and compare it with the
+   * running stats — the dispose proof (a walk that evicts chunks must
+   * leave bytes/draws/tris exactly what the survivors own, and no mesh
+   * orphaned under the group).
+   */
+  audit(): StructAudit {
+    let draws = 0;
+    let drawsMax = 0;
+    let tris = 0;
+    let quads = 0;
+    let bytes = 0;
+    for (const r of this.recs.values()) {
+      draws += r.meshes.length;
+      if (r.meshes.length > drawsMax) drawsMax = r.meshes.length;
+      tris += r.tris;
+      quads += r.quads;
+      bytes += r.bytes;
+    }
+    const meshesInGroup = this.group.children.length;
+    const s = this.stats;
+    return {
+      ok: draws === s.draws && tris === s.tris && quads === s.quads && bytes === s.geometryBytes && meshesInGroup === draws && this.recs.size === s.chunks,
+      chunks: this.recs.size,
+      draws,
+      drawsMax,
+      tris,
+      quads,
+      geometryBytes: bytes,
+      meshesInGroup,
+    };
   }
 
   private refreshAtlasStats(): void {

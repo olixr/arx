@@ -438,6 +438,30 @@ export function snapshotWithBorder(world: StructSampler, cx: number, cy: number,
   };
 }
 
+/**
+ * THE BORDER WAKES ONLY WHEN IT STANDS (INTEGRATE): when chunk (x0,y0)
+ * is built, does the neighbour at offset (dx,dy) — read through this
+ * chunk's bordered snapshot — have anything at the shared seam that
+ * this chunk's arrival could change? True when any ring cell on that
+ * side holds a standing family tile, or steps in elevation against the
+ * chunk cell it touches (a cliff face is owned by the high tile, so a
+ * step at the seam is a face the neighbour may have to re-decide).
+ * Every other seam is grass against grass: nothing to rebuild.
+ */
+export function ringStands(s: StructSampler, x0: number, y0: number, size: number, dx: number, dy: number): boolean {
+  const rx0 = dx < 0 ? x0 - 1 : dx > 0 ? x0 + size : x0;
+  const rx1 = dx === 0 ? x0 + size - 1 : rx0;
+  const ry0 = dy < 0 ? y0 - 1 : dy > 0 ? y0 + size : y0;
+  const ry1 = dy === 0 ? y0 + size - 1 : ry0;
+  for (let ry = ry0; ry <= ry1; ry++) {
+    for (let rx = rx0; rx <= rx1; rx++) {
+      if (familyOf(s.groundAt(rx, ry)) !== 'none') return true;
+      if (s.elevAt(rx, ry) !== s.elevAt(rx - dx, ry - dy)) return true;
+    }
+  }
+  return false;
+}
+
 /** A sampler over a small authored grid — tests and labs. */
 export function gridSampler(rows: ReadonlyArray<ReadonlyArray<number>>, opts?: { detail?: ReadonlyArray<ReadonlyArray<number>>; elev?: ReadonlyArray<ReadonlyArray<number>>; ox?: number; oy?: number }): StructSampler {
   const ox = opts?.ox ?? 0;

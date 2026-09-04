@@ -346,7 +346,7 @@ const probe = {
     hud: hud.lines,
     ground: { ...ground.stats },
     atlas: { sprites: atlas.sprites, pages: atlas.pages.length, uploads: atlas.uploads, blits: atlas.blits, bytes: atlas.textureBytes },
-    structures: { ...structures.stats, lanes: { ...structures.stats.lanes }, faceUploads: faces.uploads, faceBlits: faces.blits, doorLeaves: doorLayer.leaves },
+    structures: { ...structures.stats, lanes: { ...structures.stats.lanes }, faceUploads: faces.uploads, faceBlits: faces.blits, doorLeaves: doorLayer.leaves, audit: structures.audit() },
     bodies: { count: stage.bodies, paints: stage.paints, entities: game.entities.size },
     info: {
       calls: engine.renderer.info.render.calls,
