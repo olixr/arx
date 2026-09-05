@@ -29,7 +29,6 @@
     "clearing": 4,
     "approachPath": true,
     "scatter": [
-      { "tile": "LegionStandard", "count": 1 },
       { "tile": "PrisonCage", "count": 1 },
       { "tile": "SpikeBarrier", "count": 2 }
     ]

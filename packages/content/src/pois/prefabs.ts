@@ -1143,7 +1143,7 @@ const banditToll = declareInfluence(sketch(
     '_____,,,________',
     '__,::::::,,,____',
     '_,:.c.a..G.:,___',
-    '_,:.1..f..2.:,__',
+    'R,:.1..f..2.:,__',
     '_::::::::::::::_',
     '_,:>..o.Y.>.:,__',
     '_,:.3...X.w.:,__',
@@ -1156,7 +1156,11 @@ const banditToll = declareInfluence(sketch(
   // The trophy stake stands the banner row beside the bones — how
   // the last argument about the toll went, nailed up for the next
   // traveler to read; the confiscated cart sits by the strongbox.
-  { Y: Tile.TrophyStake, w: Tile.PlunderCart },
+  // 'R' is the reavers' red-rag stake on the bar's west shoulder
+  // (shadowing cave rubble, which no toll has): the one claim mark
+  // the sketch owns, so it stands at the bar and not wherever the
+  // cue placer finds bare grass (the K2 census found none).
+  { Y: Tile.TrophyStake, w: Tile.PlunderCart, R: Tile.RedRagStake },
 ), { cap: 22 });
 
 /**
@@ -2739,10 +2743,13 @@ const ashlamp = declareInfluence(sketch(
 ), { exempt: true });
 
 // THE WARD LINE speaks local: '~' is the thread (never water here),
-// 'g' the grey stone at its end. The waystone rides the global '8'.
+// 'g' the grey stone at its end, 'k' the Waykeepers' lamp cairn (the
+// global 'L' stays the rest's own LampPost). The waystone rides the
+// global '8'.
 const wardLine: Record<string, number> = {
   '~': Tile.WardThread,
   g: Tile.GloomStone,
+  k: Tile.LampCairn,
 };
 
 /**
@@ -2750,7 +2757,12 @@ const wardLine: Record<string, number> = {
  * Even Court waystone at its fork side (east), a ward thread of three
  * tiles leaving the stone toward the north-east — the dying stand —
  * and a gloom stone at the run's far end that nobody explains. The
- * lamps stop here; the stone keeps the mile past it. Extra watch
+ * lamps stop here; the stone keeps the mile past it. The Waykeepers'
+ * claim — a lamp cairn pair — flanks the rest's WEST mouth, the dirt
+ * tongue that leaves the yard toward the lamped road (THE MARK STANDS
+ * WHERE IT IS AUTHORED: the def's cue placer lands marks only on bare
+ * grass along an approach cone, which the K2 census proved loses them
+ * to canopy; the sketch owns them instead, two by law). Extra watch
  * posts (Torsten, the sentinels) are semantic and land at compose.
  */
 const forkWaystation = declareInfluence(sketch(
@@ -2760,9 +2772,9 @@ const forkWaystation = declareInfluence(sketch(
     '_____________________',
     '__,::::::::,......g.,',
     '_,:.l.l.l..:,....~..,',
-    '_,:.e..f..e:,...~...,',
-    '_,:.M....a.:,..~....,',
-    '_,:.L..c...:.8.....,_',
+    'k,:.e..f..e:,...~...,',
+    ':::.M....a.:,..~....,',
+    'k,:.L..c...:.8.....,_',
     '__,::::::::,.i....,,_',
     '______,,_,,,,,,,,,,__',
   ],
@@ -2824,6 +2836,12 @@ const thirdStone = declareInfluence(sketch(
 // survey stake, 'L' the lectern chart-table, 'N' the tally board,
 // 'A' the canvas over them at the line's east end.
 const spoilWold: Record<string, number> = {
+  // 'n' is the Returners' doused lamp stake (shadowing the banner
+  // pole: the barrow flies no banner) — the mark of the west wold's
+  // dark, standing at the track's south mouth where a lamp was staked
+  // and put out (THE MARK STANDS WHERE IT IS AUTHORED; the cue placer
+  // left it under a canopy).
+  n: Tile.PitLampDark,
   m: Tile.GraveMound,
   C: Tile.FieldCairn,
   u: Tile.GnawTrough,
@@ -2872,7 +2890,7 @@ const brokenBarrow = declareInfluence(sketch(
     '_,..rr,,,,,rr.hTQh.....G.......,,_',
     '_,...rrrrrrr..:hh:......J..FF..,,_',
     '__,,..o.......C..:....FFi.F.F..,__',
-    '___,,,,,,o...,,,,:::,,,..F..,,,,__',
+    '___,,,,,,o...,,,,:::n,,..F..,,,,__',
     '_______,,,,,,,,,,,:,,,,,,,,,,,____',
   ],
   {},

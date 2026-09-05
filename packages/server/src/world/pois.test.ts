@@ -652,6 +652,57 @@ test('every authored wild site finds honest ground and composes', async () => {
   }
 });
 
+test('THE PINNED SKETCH: a forced cell honours the authored prefab pin; a pin outside the pool refuses; the rolled path never reads it', () => {
+  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [], []);
+  const def = POI_DEFS.get('bandit_camp')!;
+  assert.ok(def.prefabs.includes('poi_bandit_toll') && def.prefabs.includes('poi_bandit_hollow'));
+  // A cell whose variant stream deals the HOLLOW and whose ground can
+  // also seat the (wider) toll, so the pin is seen to override. The
+  // site scan still rules: a pinned prefab the land refuses stands
+  // nothing, which is why the search asks both questions.
+  let cell: [number, number] | null = null;
+  let pinned: PoiSite | null = null;
+  for (let cy = -12; cy <= 12 && !cell; cy++) {
+    for (let cx = -12; cx <= 12; cx++) {
+      const s = poiForCell(SEED, cx, cy, 0, ctx, 'bandit_camp');
+      if (!s || s.prefabId !== 'poi_bandit_hollow') continue;
+      pinned = poiForCell(SEED, cx, cy, 0, ctx, 'bandit_camp', false, 'poi_bandit_toll');
+      if (pinned) { cell = [cx, cy]; break; }
+    }
+  }
+  assert.ok(cell && pinned, 'no hollow-dealing cell seats the pinned toll — the pin cannot be shown to override');
+  const [cx, cy] = cell!;
+  assert.equal(pinned!.prefabId, 'poi_bandit_toll');
+  assert.equal(pinned!.defId, 'bandit_camp');
+  const zone = composePoi(SEED, pinned!, ctx);
+  assert.ok(zone, 'the pinned toll failed to compose');
+  const stakes = [...zone!.ground, ...zone!.detail].filter((t) => t === Tile.RedRagStake).length;
+  assert.ok(stakes >= 1, 'the toll sketch stands its red-rag stake');
+  // A pin the def never listed is refused, like an unknown prefab.
+  assert.equal(poiForCell(SEED, cx, cy, 0, ctx, 'bandit_camp', false, 'poi_last_lamp'), null);
+  assert.equal(poiForCell(SEED, cx, cy, 0, ctx, 'bandit_camp', false, 'poi_no_such'), null);
+  // Unpinned, the same cell deals exactly what it always dealt.
+  assert.deepEqual(poiForCell(SEED, cx, cy, 0, ctx, 'bandit_camp', false, undefined), poiForCell(SEED, cx, cy, 0, ctx, 'bandit_camp'));
+  assert.deepEqual(poiForCell(SEED, cx, cy, 0, ctx, undefined, false, 'poi_bandit_toll'), poiForCell(SEED, cx, cy, 0, ctx));
+});
+
+test('the First Road toll stands the toll sketch with its red-rag stake', async () => {
+  const { AUTHORED_WILD_SITES } = await import('@arx/content');
+  const { findAuthoredAnchor, poiCellOf } = await import('./pois.js');
+  const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [], []);
+  const want = AUTHORED_WILD_SITES.find((s) => s.id === 'first_road_toll')!;
+  assert.equal(want.prefabId, 'poi_bandit_toll');
+  const prefab = POI_PREFABS.get(want.prefabId!)!;
+  const spot = findAuthoredAnchor(SEED, want.x!, want.y!, prefab, ctx);
+  assert.ok(spot, 'no honest ground for the toll at its pin');
+  const zone = composePoi(SEED, {
+    cellX: poiCellOf(want.x!), cellY: poiCellOf(want.y!), epoch: 0, tier: 3,
+    defId: want.defId, prefabId: want.prefabId!, anchorX: spot!.x, anchorY: spot!.y,
+  }, ctx)!;
+  assert.ok(zone);
+  assert.ok([...zone.ground, ...zone.detail].includes(Tile.RedRagStake), 'the toll stands its red-rag stake');
+});
+
 test('the Last Lamp composes with its lamps, its keeper, and its watch', async () => {
   const { AUTHORED_WILD_SITES } = await import('@arx/content');
   const { findAuthoredAnchor, poiCellOf } = await import('./pois.js');

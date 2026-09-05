@@ -417,23 +417,39 @@ const SPECS: ReadonlyArray<readonly [Tile, EmitterSpec]> = [
     glows: [{ dx: 0.5, dy: 0.5, r: 0.8, rRide: true, rgb: '110, 160, 130', a: 0.1 }],
     lights: [{ dx: 0.5, dy: 0.5, r: 2.0, rgb: [110, 160, 130], intensity: 0.28 }],
   }],
-  // The lamp cairn: LampPost-tier warmth in a waykeeper's stone —
-  // but NON-occluding (a pile of stones is not architecture) and
-  // ungated (the road's faith burns by day too; the night boost does
-  // the rest). Its steadiness is the point: barely a breath.
+  // The lamp cairn: LampPost-tier warmth in a waykeeper's stone.
+  // Flame-gated like every man-made lamp (THE JUDGING LAW: cold by
+  // day — the K2 proof caught a noon halo), and so occluding by THE
+  // FLAME LAW (a flame-gated light is architecture; the cairn is a
+  // 0.95-tile stone pile, and the lamp it crowns is a LampPost's
+  // lamp). The lantern seats in the
+  // cairn's crown 0.62 tiles up (marks.ts LampCairn: crownY − ledge
+  // − lanH/2), so bloom and punch ride that height, not the foot.
+  // Its steadiness is the point: barely a breath.
   [Tile.LampCairn, {
     curve: { base: 0.92, terms: [{ hz: 0.7, amp: 0.06, px: 1.1, py: 0.4 }] },
-    glows: [{ dx: 0.5, dy: 0.4, r: 1.1, rRide: true, rgb: '255, 205, 130', a: 0.24 }],
-    lights: [{ dx: 0.5, dy: 0.5, r: 4.5, rRide: true, rgb: [255, 205, 135], intensity: 0.8 }],
+    flameGate: true,
+    glows: [{ dx: 0.5, dy: 0.4, air: 0.6, r: 1.1, rRide: true, rgb: '255, 205, 130', a: 0.24, gate: 'flame' }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 4.5, rRide: true, rgb: [255, 205, 135], intensity: 0.8, flameGated: true, occlude: true, z: 0.6 }],
   }],
   // The pit lamp: COALS-class warm — the Returners' word against the
-  // LampPost. No flame gate (a miner's lamp burns in any light), the
-  // cooking coals' quick working flicker, occluding like the lamp it
-  // answers. Its dark posture (PitLampDark) has no row at all.
+  // LampPost. Flame-gated (cold by day — the judging law), the cooking
+  // coals' quick working flicker, occluding like the lamp it answers.
+  // The lantern hangs from the arm 0.98 tiles up (marks.ts PitLamp:
+  // lanTop + lanH/2), dealt ±0.32 tiles to either side of the stake,
+  // so the bloom rides that height as TWO flame-gated lobes, one over
+  // each arm's seat (dx 0.18 / 0.82, r 0.6): the lantern's own lobe
+  // reads as the bloom and the empty arm's sits dim on the iron,
+  // instead of one wide halo centred on the stake where nothing
+  // burns. Its dark posture (PitLampDark) has no row at all.
   [Tile.PitLamp, {
     curve: { base: 0.85, terms: [{ hz: 4.2, amp: 0.12, px: 1.7 }] },
-    glows: [{ dx: 0.5, dy: 0.5, r: 0.8, rRide: true, rgb: '240, 120, 45', a: 0.2 }],
-    lights: [{ dx: 0.5, dy: 0.6, r: 2.6, rgb: [255, 160, 90], intensity: 0.45, occlude: true }],
+    flameGate: true,
+    glows: [
+      { dx: 0.18, dy: 0.5, air: 1.0, r: 0.6, rRide: true, rgb: '240, 120, 45', a: 0.2, gate: 'flame' },
+      { dx: 0.82, dy: 0.5, air: 1.0, r: 0.6, rRide: true, rgb: '240, 120, 45', a: 0.2, gate: 'flame' },
+    ],
+    lights: [{ dx: 0.5, dy: 0.6, r: 2.6, rgb: [255, 160, 90], intensity: 0.45, flameGated: true, occlude: true, z: 1.0 }],
   }],
 ];
 

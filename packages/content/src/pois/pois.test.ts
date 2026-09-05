@@ -5,10 +5,12 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { Detail, TILE_SKIP, Tile, chestInfo } from '@arx/shared';
 import { DANGER_LAWS } from '../danger.js';
+import { FRONTIER } from '../frontier.js';
+import { AUTHORED_GEOGRAPHY, roadBearingAt } from '../geography.js';
 import { NPCS } from '../npcs.js';
 import type { PrefabDef } from '../maps/prefab.js';
 import { AUTHORED_POI_DEFS, POI_DEFS } from './defs.js';
-import { declareInfluence, expandInfluence } from './influence.js';
+import { CLAIM_MARKS_MAX, claimMarkOf, declareInfluence, expandInfluence, familyVocabOf } from './influence.js';
 import { POI_PREFABS } from './prefabs.js';
 import { validatePoiDef } from './validate.js';
 
@@ -881,5 +883,359 @@ test('THE CONTENT BOUNDARY: the contested defs keep the palette', () => {
     const text = JSON.stringify(POI_DEFS.get(id));
     const hit = text.match(banned);
     assert.equal(hit, null, `${id}: '${hit?.[0]}' is outside the content boundary`);
+  }
+});
+
+// ---- THE MARKS (docs/contested-lands-plan.md §2, §6 family E, K2):
+// five peoples finally have a glyph — and every glyph stands on its
+// own people's ground and nobody else's.
+test('THE MARKS: every scatter name is a Tile, and each claim mark lands on its own people', () => {
+  // The claim marks by people (plan §2's Mark column), and the defs
+  // each may stand on. A mark on any other def is a lie about whose
+  // ground it is — the whole point of the kit.
+  const MARK_HOME: Record<string, ReadonlySet<string>> = {
+    LegionStandard: new Set(['hobgoblin_warcamp', 'hobgoblin_legion', 'legion_pressed']),
+    BoneTree: new Set(['wolfkin_den', 'wolfkin_greatden']),
+    TallyStone: new Set(['kobold_digs']),
+    RedRagStake: new Set(['road_toll', 'bandit_camp', 'company_tollhouse']),
+    LampCairn: new Set(['fork_waystation']),
+    WardThread: new Set(['fork_waystation']),
+    PitLampDark: new Set(['broken_barrow']),
+    CharterPost: new Set<string>(),
+    SkullTotem: new Set<string>(),
+  };
+  // Every def that MUST fly its people's mark BY CUE on the approach:
+  // the wing-capped pools whose one-tile verge plants nothing from
+  // the shelf, and the pressed satellite's borrowed standard.
+  const MUST_FLY: ReadonlyArray<[string, string[]]> = [
+    ['legion_pressed', ['LegionStandard']],
+    ['wolfkin_den', ['BoneTree']],
+    ['wolfkin_greatden', ['BoneTree']],
+    ['road_toll', ['RedRagStake']],
+    ['bandit_camp', ['RedRagStake']],
+  ];
+  // Every def whose mark STANDS in every prefab it rolls — planted by
+  // the shelf's influence verge or authored in the sketch — and so
+  // flies no cue for it (THE MARK STANDS WHERE IT IS AUTHORED: the cue
+  // placer lands only on bare grass along the approach cone and the K2
+  // census lost the fork's cairns, the barrow's dark lamp and the toll's
+  // stake to canopy; a cue on top of a standing mark also doubled the
+  // shelf's two into three and four).
+  const MUST_STAND: ReadonlyArray<[string, string]> = [
+    ['hobgoblin_warcamp', 'LegionStandard'],
+    ['hobgoblin_legion', 'LegionStandard'],
+    ['kobold_digs', 'TallyStone'],
+    ['company_tollhouse', 'RedRagStake'],
+    ['fork_waystation', 'LampCairn'],
+    ['fork_waystation', 'WardThread'],
+    ['broken_barrow', 'PitLampDark'],
+    ['road_toll', 'RedRagStake'],
+  ];
+  const countIn = (p: PrefabDef, t: Tile): number => p.ground.reduce((n, v) => n + (v === t ? 1 : 0), 0);
+
+  for (const def of POI_DEFS.values()) {
+    const base = def.cues?.scatter ?? [];
+    const rungs = def.boldness?.stages.flatMap((s) => s.scatter ?? []) ?? [];
+    for (const row of [...base, ...rungs]) {
+      assert.equal(typeof Tile[row.tile as keyof typeof Tile], 'number', `${def.id}: scatter '${row.tile}' is not a Tile`);
+    }
+    // The approach is a cue, not a dump: on the contested defs eight
+    // tiles at most, and everywhere no more than two of any one mark
+    // (a glyph, not a picket line). (greatkeep_ruin's ten-tile approach
+    // predates the kit and is not this law's to trim.)
+    const total = base.reduce((n, r) => n + r.count, 0);
+    const contested = Object.values(MARK_HOME).some((home) => home.has(def.id));
+    if (contested) assert.ok(total <= 8, `${def.id}: cues.scatter drops ${total} tiles on the approach (max 8)`);
+    const byTile = new Map<string, number>();
+    for (const r of base) byTile.set(r.tile, (byTile.get(r.tile) ?? 0) + r.count);
+    for (const [tile, home] of Object.entries(MARK_HOME)) {
+      const n = byTile.get(tile) ?? 0;
+      assert.ok(n <= 2, `${def.id}: flies ${n} ${tile} on the approach (max 2 of any mark)`);
+      if (n > 0) assert.ok(home.has(def.id), `${def.id}: flies ${tile} — not its people's ground`);
+      for (const r of rungs) {
+        assert.notEqual(r.tile, tile, `${def.id}: a boldness rung adds the ${tile} mark — marks are the base claim, never escalation`);
+      }
+    }
+  }
+  for (const [id, marks] of MUST_FLY) {
+    const def = POI_DEFS.get(id);
+    assert.ok(def, `${id} missing from the registry`);
+    const names = new Set((def.cues?.scatter ?? []).map((r) => r.tile));
+    for (const m of marks) assert.ok(names.has(m), `${id}: does not fly ${m} on the approach`);
+  }
+  for (const [id, mark] of MUST_STAND) {
+    const def = POI_DEFS.get(id);
+    assert.ok(def, `${id} missing from the registry`);
+    const tile = Tile[mark as keyof typeof Tile] as Tile;
+    for (const pid of def.prefabs) {
+      const p = POI_PREFABS.get(pid);
+      assert.ok(p, `${id}: prefab ${pid} missing from the shelf`);
+      assert.ok(countIn(p, tile) >= 1, `${id}: ${pid} does not stand a ${mark} — the mark must stand where it is authored`);
+    }
+  }
+  // THE SUM IS THE LAW: shelf plus cue never exceeds the two-per-
+  // territory ceiling for any claim mark on any roll. (The ward thread
+  // is a LINE by design — three tiles strung across the fork's stand —
+  // not a glyph, so the ceiling does not count it.)
+  for (const def of POI_DEFS.values()) {
+    const cues = def.cues?.scatter ?? [];
+    for (const [tile] of Object.entries(MARK_HOME)) {
+      // Lines and older marks stand outside the glyph ceiling: the ward
+      // thread and the Charter's chain are LINES by design, and the
+      // goblin skull totem predates the kit (a mootfield rings four).
+      if (tile === 'WardThread' || tile === 'CharterPost' || tile === 'SkullTotem') continue;
+      const t = Tile[tile as keyof typeof Tile] as Tile;
+      const cue = cues.filter((r) => r.tile === tile).reduce((n, r) => n + r.count, 0);
+      for (const pid of def.prefabs) {
+        const p = POI_PREFABS.get(pid);
+        if (!p) continue;
+        const standing = countIn(p, t);
+        assert.ok(
+          standing + cue <= CLAIM_MARKS_MAX,
+          `${def.id}/${pid}: ${standing} ${tile} standing + ${cue} by cue = ${standing + cue} (max ${CLAIM_MARKS_MAX} per territory)`,
+        );
+      }
+    }
+  }
+  // The pressed satellite stands under ONE standard by canon (plan
+  // §3.5): the Legion's reach, not a second Legion.
+  const pressed = POI_DEFS.get('legion_pressed')!;
+  assert.equal(pressed.cues?.scatter?.find((r) => r.tile === 'LegionStandard')?.count, 1, 'legion_pressed must fly exactly one standard');
+});
+
+test('THE MARKS: influence plants each people\'s claim at the trailheads, and the road gate holds', () => {
+  const mk = (id: string): PrefabDef => {
+    const w = 11;
+    const h = 9;
+    const ground = new Uint16Array(w * h).fill(TILE_SKIP);
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) ground[y * w + x] = Tile.Dirt;
+    return { id, name: id, width: w, height: h, ground, detail: new Uint16Array(w * h), elev: new Int8Array(w * h), portals: [], spawns: [], actorSpawns: [] };
+  };
+  const count = (p: PrefabDef, t: Tile): number => p.ground.reduce((n, v) => n + (v === t ? 1 : 0), 0);
+  /** Is this cell one the heart AUTHORED (an opaque tile of the source sketch, translated)? */
+  const heartOf = (p: PrefabDef, src: PrefabDef) => {
+    const hx0 = Math.floor((p.width - src.width) / 2);
+    const hy0 = Math.floor((p.height - src.height) / 2);
+    return (x: number, y: number) => {
+      const lx = x - hx0;
+      const ly = y - hy0;
+      if (lx < 0 || ly < 0 || lx >= src.width || ly >= src.height) return false;
+      return src.ground[ly * src.width + lx] !== TILE_SKIP;
+    };
+  };
+  /** Every mark stands OFF the authored heart and touches worked ground — a track or a patch (the trailhead law). */
+  const marksStandAtTrailheads = (p: PrefabDef, src: PrefabDef, mark: Tile): number => {
+    const inHeart = heartOf(p, src);
+    let n = 0;
+    for (let i = 0; i < p.ground.length; i++) {
+      if (p.ground[i] !== mark) continue;
+      const x = i % p.width;
+      const y = Math.floor(i / p.width);
+      assert.ok(!inHeart(x, y), `${p.id}: mark inside the heart at ${x},${y}`);
+      let touchesTrack = false;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const t = p.ground[(y + dy) * p.width + (x + dx)];
+          if ((dx || dy) && (t === Tile.Dirt || t === Tile.Grass || t === Tile.GrassTall)) touchesTrack = true;
+        }
+      }
+      assert.ok(touchesTrack, `${p.id}: mark at ${x},${y} stands off the worked ground`);
+      n++;
+    }
+    return n;
+  };
+
+  // Each people's mark, one or two, at the trailheads.
+  for (const [vocab, mark] of [
+    ['plunder', Tile.RedRagStake],
+    ['den', Tile.BoneTree],
+    ['digs', Tile.TallyStone],
+    ['warband', Tile.SkullTotem],
+    ['legion', Tile.LegionStandard],
+    ['gnoll', Tile.BoneMidden],
+    ['skral', Tile.TideTotem],
+  ] as const) {
+    const src = mk(`poi_test_mark_${vocab}`);
+    const p = expandInfluence(declareInfluence(src, { vocab }));
+    const n = marksStandAtTrailheads(p, src, mark);
+    assert.ok(n >= 1 && n <= 2, `${vocab}: planted ${n} marks (want 1..2)`);
+  }
+
+  // The dead, the wild and the gloom claim nothing.
+  const MARKS = [Tile.CharterPost, Tile.LampCairn, Tile.LegionStandard, Tile.BoneTree, Tile.TallyStone, Tile.WardThread, Tile.RedRagStake, Tile.SkullTotem, Tile.BoneMidden, Tile.TideTotem];
+  for (const vocab of ['oldstone', 'lair', 'roost', 'blight', 'ruin', 'ogre', 'wild', 'wayside'] as const) {
+    const p = expandInfluence(declareInfluence(mk(`poi_test_nomark_${vocab}`), { vocab }));
+    for (const m of MARKS) assert.equal(count(p, m), 0, `${vocab}: flies ${Tile[m]} — this people claims nothing`);
+  }
+  // An id no family owns is WILD: the same verge, no claim on it.
+  const stray = expandInfluence(mk('poi_test_stray_unowned'));
+  assert.ok(count(stray, Tile.BerryBush) + count(stray, Tile.Rock) > 0, 'the wild verge went empty');
+  for (const m of MARKS) assert.equal(count(stray, m), 0, `an unowned id inherited ${Tile[m]}`);
+
+  // THE ROAD GATE: the settled road flies the Charter's stake off-road
+  // and the Waykeepers' lamp cairn only when a road is PROVEN under it.
+  // ONE source, expanded twice with only the road proof toggled — the
+  // same id is the same RNG stream, so the mark is the ONLY difference.
+  const settled = declareInfluence(mk('poi_test_neutral_road_gate'), { vocab: 'neutral' });
+  const off = expandInfluence(settled);
+  assert.ok(marksStandAtTrailheads(off, settled, Tile.CharterPost) >= 1, 'off-road: no charter post');
+  assert.equal(count(off, Tile.LampCairn), 0, 'off-road: a lamp cairn with no road under it (the road-faith law)');
+  const on = expandInfluence(settled, { nearRoad: true });
+  assert.ok(marksStandAtTrailheads(on, settled, Tile.LampCairn) >= 1, 'near a road: no lamp cairn');
+  assert.equal(count(on, Tile.CharterPost), 0, 'near a road: the lamp cairn should have taken the charter post\'s place');
+  // The mark is the ONLY difference between the two: litter, pockets
+  // and tracks roll identically (the marks spend no rolls of their own).
+  assert.equal(on.width, off.width);
+  for (let i = 0; i < on.ground.length; i++) {
+    const a = on.ground[i]!;
+    const b = off.ground[i]!;
+    if (a === b) continue;
+    assert.ok((a === Tile.LampCairn && b === Tile.CharterPost), `road gate changed a non-mark tile at ${i}: ${Tile[a]} vs ${Tile[b]}`);
+  }
+  // THE WAYSIDE is the road's ground: the cairn where a road is proven,
+  // NOTHING otherwise — never the Charter's stake (plan §2: the order
+  // refuses Charter oil because it comes with a ledger).
+  const waySrc = mk('poi_test_wayside_onroad');
+  const way = expandInfluence(declareInfluence(waySrc, { vocab: 'wayside' }), { nearRoad: true });
+  assert.ok(marksStandAtTrailheads(way, waySrc, Tile.LampCairn) >= 1, 'wayside near a road: no lamp cairn');
+  assert.equal(count(way, Tile.CharterPost), 0, 'wayside: a Charter stake on the road\'s own ground');
+  assert.equal(claimMarkOf('wayside', false), undefined, 'wayside off-road must claim nothing');
+  assert.equal(claimMarkOf('wayside', true), Tile.LampCairn);
+  assert.equal(claimMarkOf('neutral', false), Tile.CharterPost);
+  assert.equal(claimMarkOf('neutral', true), Tile.LampCairn);
+  // The family read: hamlets are the Charter's, the rests are the
+  // road's, the shrines are nobody's stake, the unowned are wild.
+  assert.equal(familyVocabOf('poi_hamlet_croft'), 'neutral');
+  assert.equal(familyVocabOf('poi_waystation_camp'), 'wayside');
+  assert.equal(familyVocabOf('poi_peddler_rest'), 'wayside');
+  assert.equal(familyVocabOf('poi_wayshrine_stones'), 'wild');
+  assert.equal(familyVocabOf('poi_hob_muster'), 'legion');
+  assert.equal(familyVocabOf('poi_company_tollhouse'), 'plunder');
+  assert.equal(familyVocabOf('poi_burnt_steading'), 'ruin');
+  assert.equal(familyVocabOf('poi_broken_barrow'), 'wild');
+
+  // THE RUIN and THE BLIGHT vocabs: ash and timber for a burning; the
+  // gloom's cold-light word until band 4 — and never a K0 stub id in a
+  // live territory, never the neutral hedgerow.
+  const ruin = expandInfluence(declareInfluence(mk('poi_test_vocab_ruin'), { vocab: 'ruin' }));
+  assert.ok(count(ruin, Tile.AshHeap) + count(ruin, Tile.CharredBeam) > 0, 'ruin: no ash or timber on the verge');
+  assert.equal(count(ruin, Tile.BerryBush), 0, 'ruin: the neutral hedgerow leaked in');
+  assert.equal(count(ruin, Tile.Campfire), 0, 'ruin: a living campfire on a burnt verge');
+  const blight = expandInfluence(declareInfluence(mk('poi_test_vocab_blight'), { vocab: 'blight' }));
+  assert.ok(count(blight, Tile.GlowShroom) > 0, 'blight: no cold light on the verge');
+  for (const stub of [Tile.GloomStone, Tile.CreepRoot, Tile.FoulPool, Tile.DeadTree, Tile.CharredStump, Tile.SpoilHeap, Tile.FieldLitter]) {
+    assert.equal(count(ruin, stub) + count(blight, stub), 0, `${Tile[stub]} is a K3/K4 id — it must stay out of the roll until its band lands`);
+  }
+
+  // THE SHELF: the family read reaches the shipped prefabs — the
+  // Legion's yards fly the square, the digs the tally, the Company's
+  // ground the rag, the settled hamlets the stake, the husk warband
+  // the midden, the Drum's stockade the totem; the burnt steading
+  // litters ash; and the lamp havens fly NOTHING from the shelf (their
+  // marks need a road or a Returner under them and ride their defs'
+  // cues instead).
+  for (const [id, mark] of [
+    ['poi_hob_muster', Tile.LegionStandard],
+    ['poi_hob_watch', Tile.LegionStandard],
+    ['poi_hob_forgecamp', Tile.LegionStandard],
+    ['poi_digs_pit', Tile.TallyStone],
+    ['poi_digs_mouth', Tile.TallyStone],
+    ['poi_company_tollhouse', Tile.RedRagStake],
+    ['poi_raider_squat', Tile.RedRagStake],
+    ['poi_wardline_cut', Tile.RedRagStake],
+    ['poi_hamlet_croft', Tile.CharterPost],
+    ['poi_hamlet_pair', Tile.CharterPost],
+    ['poi_gnoll_squat', Tile.BoneMidden],
+    ['poi_goblin_stockade', Tile.SkullTotem],
+  ] as const) {
+    const p = POI_PREFABS.get(id)!;
+    assert.ok(p, `${id} missing from the shelf`);
+    assert.ok(count(p, mark) >= 1 && count(p, mark) <= 2, `${id}: ${count(p, mark)} ${Tile[mark]} on the shelf (want 1..2)`);
+  }
+  // THE WING HAS NO VERGE: a WING_POOL_CAP territory (the dens, the
+  // bandit hollow and toll) keeps a ring a tile or two wide — no track
+  // is walked, so no trailhead, so no mark from the shelf. That is
+  // honest (a stake in a one-tile ring would stand on the perimeter)
+  // and the def's cues carry the glyph on the approach instead: for
+  // every def of this lane the mark reaches the world one way or the
+  // other, and the wing-capped ones by cue.
+  const GLYPH_OF: ReadonlyArray<[string, Tile]> = [
+    ['hobgoblin_warcamp', Tile.LegionStandard],
+    ['hobgoblin_legion', Tile.LegionStandard],
+    ['legion_pressed', Tile.LegionStandard],
+    ['wolfkin_den', Tile.BoneTree],
+    ['wolfkin_greatden', Tile.BoneTree],
+    ['kobold_digs', Tile.TallyStone],
+    ['road_toll', Tile.RedRagStake],
+    ['bandit_camp', Tile.RedRagStake],
+    ['company_tollhouse', Tile.RedRagStake],
+  ];
+  for (const [defId, mark] of GLYPH_OF) {
+    const def = POI_DEFS.get(defId)!;
+    const shelf = def.prefabs.some((pid) => count(POI_PREFABS.get(pid)!, mark) >= 1);
+    const cue = (def.cues?.scatter ?? []).some((r) => r.tile === Tile[mark]);
+    assert.ok(shelf || cue, `${defId}: ${Tile[mark]} reaches the world neither from the shelf nor the cues`);
+    if (!shelf) assert.ok(cue, `${defId}: wing-capped pool plants no ${Tile[mark]} — the cues must carry it`);
+  }
+  for (const id of ['poi_den_bones', 'poi_den_hollow', 'poi_bandit_hollow', 'poi_bandit_toll']) {
+    const p = POI_PREFABS.get(id)!;
+    assert.ok(p.width <= 24 && p.height <= 24, `${id}: no longer wing-capped — the shelf should plant its mark now; move it up to the shelf list`);
+  }
+  assert.equal(count(POI_PREFABS.get('poi_hob_muster')!, Tile.BerryBush), 0, 'a Legion yard with a hedgerow round it');
+  const steading = POI_PREFABS.get('poi_burnt_steading')!;
+  assert.ok(count(steading, Tile.AshHeap) + count(steading, Tile.CharredBeam) > 0, 'the burnt steading litters no ash');
+  for (const id of [
+    'poi_third_stone', 'poi_fork_waystation', 'poi_last_lamp', 'poi_fenside_lamp', 'poi_grove_spring',
+    // The wayside and the shrines: the road's and the old faith's, no
+    // stake from a shelf that cannot see the road.
+    'poi_waystation_camp', 'poi_waystation_rest', 'poi_waystation_walled', 'poi_peddler_rest', 'poi_wayshrine_stones', 'poi_wayshrine_pool',
+  ]) {
+    const p = POI_PREFABS.get(id)!;
+    assert.ok(p, `${id} missing from the shelf`);
+    for (const m of MARKS) {
+      // The fork rest's SKETCH strings the Even Court's thread across
+      // its own waystone (authored heart art, plan §2's WardThread) and
+      // stands the Waykeepers' cairn pair at its west mouth (the road-
+      // faith law holds it: the def is weight 0 and every authored site
+      // is road-proven below) — that is the sketch's word, not the
+      // shelf's roll.
+      if (id === 'poi_fork_waystation' && (m === Tile.WardThread || m === Tile.LampCairn)) continue;
+      assert.equal(count(p, m), 0, `${id}: the shelf flies ${Tile[m]} on ground that is not the Charter's`);
+    }
+  }
+});
+
+// ---- THE ROAD-FAITH LAW on the cues (plan §6.1 row 527): a lamp cairn
+// stands within trailReach of a road ONLY. The shelf cannot see the
+// road, so the vocab's cairn rides `nearRoad`; a def's cues CAN fly it
+// unconditionally — which is honest exactly when every site the def
+// stands at is pinned beside a road. This holds each such def to it.
+test('THE ROAD-FAITH LAW: every site whose cues or sketches fly LampCairn is pinned within trailReach of a road', () => {
+  // A def flies the cairn by cue, or STANDS it in a sketch (the fork
+  // rest's pair at its west mouth) — either way it promises a road.
+  const stands = (d: { prefabs: readonly string[] }): boolean =>
+    d.prefabs.some((pid) => (POI_PREFABS.get(pid)?.ground ?? []).some((v) => v === Tile.LampCairn));
+  const flyers = [...POI_DEFS.values()].filter(
+    (d) => (d.cues?.scatter ?? []).some((r) => r.tile === 'LampCairn') || stands(d),
+  );
+  assert.ok(flyers.length >= 1, 'no def flies the lamp cairn on its approach or stands one in its sketch');
+  assert.ok(flyers.some((d) => d.id === 'fork_waystation'), 'the fork rest stands the Waykeepers\' cairns');
+  for (const def of flyers) {
+    assert.equal(def.weight, 0, `${def.id}: flies LampCairn but rolls freely (weight ${def.weight}) — a rolled site cannot promise a road; use the vocab's nearRoad gate`);
+    const sites = AUTHORED_GEOGRAPHY.sites.filter((s) => s.defId === def.id);
+    assert.ok(sites.length >= 1, `${def.id}: flies LampCairn but stands at no authored site`);
+    for (const s of sites) {
+      assert.ok(s.x !== undefined && s.y !== undefined, `${def.id}@${s.id}: cell-mode site cannot promise a road`);
+      assert.ok(
+        roadBearingAt(s.x!, s.y!, FRONTIER.trailReach) !== null,
+        `${def.id}@${s.id} (${s.x},${s.y}): no road within trailReach ${FRONTIER.trailReach} — the cairn would lie`,
+      );
+    }
+  }
+  // And the rolled defs that scatter a lamp: none may (the vocab's road
+  // gate is the only honest path for a site the geography does not pin).
+  for (const def of POI_DEFS.values()) {
+    const rungs = def.boldness?.stages.flatMap((st) => st.scatter ?? []) ?? [];
+    assert.ok(!rungs.some((r) => r.tile === 'LampCairn'), `${def.id}: a boldness rung lights a lamp cairn — a bolder camp is not a road`);
   }
 });

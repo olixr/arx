@@ -248,6 +248,15 @@ export function poiForCell(
    * opted in cannot deal a war-ground by accident.
    */
   allowHold = false,
+  /**
+   * THE PINNED SKETCH (an authored site's `prefabId`): when named, the
+   * forced archetype stands THIS prefab instead of the one its
+   * variant stream deals. Only honoured with a forced def (authored
+   * sites are the only pinning caller); a pin outside the def's own
+   * pool is refused, exactly as an unknown prefab is. The rolled path
+   * never reads it, so every unpinned cell decides byte-identically.
+   */
+  pinPrefabId?: string,
 ): PoiSite | null {
   const x0 = cellX * POI_CELL;
   const y0 = cellY * POI_CELL;
@@ -293,10 +302,15 @@ export function poiForCell(
   // VARIANT + SITE as one decision, extracted so a PROMOTED cell whose
   // big court finds no ground can fall back to its ordinary roll — the
   // land refusing a war-ground deals a camp, never nothing.
-  const decideSite = (def: PoiDef): PoiSite | null => {
-    // VARIANT: which prefab from the pool.
+  const decideSite = (def: PoiDef, pin?: string): PoiSite | null => {
+    // VARIANT: which prefab from the pool — unless the authored pin
+    // names one (THE PINNED SKETCH), which must be in the pool.
     const variant = stream(seed, ST_VARIANT, cellX, cellY, epoch) % def.prefabs.length;
-    const prefabId = def.prefabs[variant]!;
+    if (pin !== undefined && !def.prefabs.includes(pin)) {
+      console.warn(`[poi] archetype '${def.id}' was pinned to '${pin}', which is not in its pool`);
+      return null;
+    }
+    const prefabId = pin ?? def.prefabs[variant]!;
     const prefab = ctx.prefabs.get(prefabId);
     if (!prefab) {
       console.warn(`[poi] archetype '${def.id}' references unknown prefab '${prefabId}'`);
@@ -382,7 +396,7 @@ export function poiForCell(
   // (no court-sized ground) falls back to the ordinary roll.
   if (typeof force === 'string') {
     const def = ctx.defs.find((d) => d.id === force);
-    return def ? decideSite(def) : null;
+    return def ? decideSite(def, pinPrefabId) : null;
   }
   // THE TERRITORY LEAN (Phase 5): both pools weight toward the
   // country's family — THE ONE ATLAS LAW: the DEF roster names the

@@ -4,8 +4,10 @@
  * Not here by design: RuinWallStone/RuinWallWood (run painters called
  * from the renderer's switch — ruinWalls.ts), DeadTree (the engine
  * tree switch, trees.ts foliage 0), FenceBroken and HedgeDead (their
- * living families' run painters via states.ts), LampPostDark (the
- * LampPost engine case).
+ * living families' run painters via states.ts). LampPostDark IS here
+ * (states.ts, through the hall): the renderer consults PROP_PAINTERS
+ * before its switch, so its own `case Tile.LampPostDark` ("flame held
+ * at zero") is dead code for the renderer's owner to strike.
  */
 import { COLD_HEARTH_PROPS } from './coldHearth.js';
 import { EMBER_BED_PROPS } from './emberBed.js';

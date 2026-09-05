@@ -202,13 +202,27 @@ function golden(
     glows.push({ x: tx + 0.5, y: ty + 0.5, gy: ty + 0.5, z: 0, r: 0.8 * swell, rgb: '110, 160, 130', a: 0.1 * swell * boost });
     lights.push({ x: tx + 0.5, y: ty + 0.5, r: 2.0, rgb: [110, 160, 130], intensity: 0.28 * swell });
   } else if (tile === Tile.LampCairn) {
+    // K2 fix pass (2026-09-04): the cairn's lamp went onto the flame
+    // clock (cold by day — the proof caught a noon halo) and up into
+    // the crown (air/z 0.6: marks.ts seats the lantern 0.62s over the
+    // foot), occluding by THE FLAME LAW. The LampPost chain, no porch.
     const steady = 0.92 + Math.sin(t * 0.7 + tx * 1.1 + ty * 0.4) * 0.06;
-    glows.push({ x: tx + 0.5, y: ty + 0.4, gy: ty + 0.4, z: 0, r: 1.1 * steady, rgb: '255, 205, 130', a: 0.24 * steady * boost });
-    lights.push({ x: tx + 0.5, y: ty + 0.5, r: 4.5 * steady, rgb: [255, 205, 135], intensity: 0.8 * steady });
+    if (flame > 0.05) {
+      glows.push({ x: tx + 0.5, y: ty + 0.4 - 0.6 / yScale, gy: ty + 0.4, z: 0.6, r: 1.1 * steady, rgb: '255, 205, 130', a: 0.24 * flame * steady });
+      lights.push({ x: tx + 0.5, y: ty + 0.5, r: 4.5 * steady, rgb: [255, 205, 135], intensity: 0.8 * flame * steady, occlude: true, z: 0.6 });
+    }
   } else if (tile === Tile.PitLamp) {
+    // K2 fix pass: the hung lamp's bloom rides the arm (air/z 1.0 —
+    // marks.ts hangs the lantern 0.98s up, dealt ±0.32s aside) on the
+    // flame clock. K2c (2026-09-04): the one wide halo split into two
+    // flame-gated lobes at dx 0.18 / 0.82, r 0.6, so the bloom sits on
+    // whichever arm the hash dealt the lantern to.
     const flick = 0.85 + Math.sin(t * 4.2 + tx * 1.7) * 0.12;
-    glows.push({ x: tx + 0.5, y: ty + 0.5, gy: ty + 0.5, z: 0, r: 0.8 * flick, rgb: '240, 120, 45', a: 0.2 * flick * boost });
-    lights.push({ x: tx + 0.5, y: ty + 0.6, r: 2.6, rgb: [255, 160, 90], intensity: 0.45 * flick, occlude: true });
+    if (flame > 0.05) {
+      glows.push({ x: tx + 0.18, y: ty + 0.5 - 1.0 / yScale, gy: ty + 0.5, z: 1.0, r: 0.6 * flick, rgb: '240, 120, 45', a: 0.2 * flame * flick });
+      glows.push({ x: tx + 0.82, y: ty + 0.5 - 1.0 / yScale, gy: ty + 0.5, z: 1.0, r: 0.6 * flick, rgb: '240, 120, 45', a: 0.2 * flame * flick });
+      lights.push({ x: tx + 0.5, y: ty + 0.6, r: 2.6, rgb: [255, 160, 90], intensity: 0.45 * flame * flick, occlude: true, z: 1.0 });
+    }
   } else {
     assert.fail(`golden has no branch for tile ${Tile[tile]}`);
   }

@@ -9971,11 +9971,14 @@ export class GameServer {
         // would ever heal (sweeps skip authored cells by design).
         const stale =
           !this.poiPrefabs.has(row.site.prefabId) || !def.prefabs.includes(row.site.prefabId);
+        // THE PINNED SKETCH re-reads too: a plan that now names the
+        // prefab re-seeds a row standing any other variant.
+        const repinned = want.prefabId !== undefined && row.site.prefabId !== want.prefabId;
         const pinMoved =
           !want.cell &&
           Math.hypot(row.site.anchorX - want.x!, row.site.anchorY - want.y!) >
             GameServer.AUTHORED_NUDGE_MAX + 0.5;
-        if (!stale && !pinMoved) {
+        if (!stale && !repinned && !pinMoved) {
           // Standing true — but heal any legacy cleared/ember stamp
           // (THE AUTHORED GROUND NEVER EMBERS: rows stamped before
           // that law held would otherwise stand garrison-down forever).
@@ -9989,7 +9992,7 @@ export class GameServer {
         }
         console.log(
           `[poi] authored site '${want.id}': ` +
-            `${stale ? 'stored prefab left the library' : 'the pin moved'} — re-seeding`,
+            `${stale ? 'stored prefab left the library' : repinned ? 'the plan pins another prefab' : 'the pin moved'} — re-seeding`,
         );
       }
 
@@ -9998,9 +10001,12 @@ export class GameServer {
       const epoch = row ? row.epoch + 1 : 0;
       let site: PoiSite | null = null;
       if (want.cell) {
-        site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx, want.defId);
+        site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx, want.defId, false, want.prefabId);
       } else {
+        // THE PINNED SKETCH: the plan's named prefab over the hashed
+        // variant (the validator vetted it against the def's pool).
         const prefabId =
+          want.prefabId ??
           def.prefabs[hashCoords(config.worldSeed ^ 0xa07d, want.x!, want.y!) % def.prefabs.length]!;
         const prefab = this.poiPrefabs.get(prefabId);
         // The nudge may never carry the anchor out of the pin's macro

@@ -40,6 +40,24 @@ interface Vocab {
   pocket: readonly Tile[];
   /** Camp families keep a pocket fire; the dead and the wild do not. */
   fire?: Tile;
+  /**
+   * THE CLAIM MARK (docs/contested-lands-plan.md §2, §6 family E): the
+   * one prop that says at a glance WHOSE ground you are on. Planted at
+   * the trailheads — where the worn tracks leave the territory — never
+   * more than two per territory, never in the litter roll (a glyph is
+   * not litter). Absent = this people claims nothing (the dead, the
+   * wild, the gloom).
+   */
+  mark?: Tile;
+  /**
+   * The mark this vocab flies INSTEAD when the site stands within
+   * trailReach of a carved road (the road-faith law: a lamp cairn
+   * never lies about a road being there). Read only through the
+   * `nearRoad` option of `expandInfluence` / `claimMarkOf`; the
+   * prefab shelf expands with no site under it, so the shelf never
+   * flies this one on its own.
+   */
+  roadMark?: Tile;
 }
 
 /**
@@ -47,25 +65,73 @@ interface Vocab {
  * outright (`vocab: 'skral'`) when its id reads wrong for its family.
  */
 const VOCAB = {
-  warband: { litter: [Tile.SkullPile, Tile.BonePile, Tile.WarBanner], pocket: [Tile.TentHide, Tile.MeatRack, Tile.SkullPile], fire: Tile.Campfire },
-  plunder: { litter: [Tile.Crate, Tile.Barrel, Tile.CaveRubble], pocket: [Tile.TentHide, Tile.Crate, Tile.PlunderSacks], fire: Tile.Campfire },
-  den: { litter: [Tile.BonePile, Tile.SkullPile], pocket: [Tile.BeastNest, Tile.BonePile, Tile.HideFrame] },
-  gnoll: { litter: [Tile.BonePile, Tile.SkullPile], pocket: [Tile.TentHide, Tile.MeatSpit, Tile.SkullPile], fire: Tile.Campfire },
+  // THE MARKS (contested lands K2): each people that CLAIMS ground
+  // flies its glyph at the trailheads. The goblins' skull totem stays
+  // their word; the Legion's crimson square, the Company's red rag,
+  // the pack's bone tree, the kobolds' tally stone and the towns'
+  // charter post join it. The dead, the wild and the gloom claim
+  // nothing and fly nothing.
+  warband: { litter: [Tile.SkullPile, Tile.BonePile, Tile.WarBanner], pocket: [Tile.TentHide, Tile.MeatRack, Tile.SkullPile], fire: Tile.Campfire, mark: Tile.SkullTotem },
+  // THE LEGION (hobgoblins): drilled and square — barriers, banners,
+  // supply on the verge, never a skull pile (they do not dig cairns
+  // and they tend their wounded). Their standard is the one crimson
+  // square. `poi_hob_*` used to fall to the neutral rocks-and-berries
+  // read, which put a hedgerow round a muster-yard.
+  legion: { litter: [Tile.SpikeBarrier, Tile.WarBanner, Tile.Crate], pocket: [Tile.TentHide, Tile.Crate, Tile.SpikeBarrier], fire: Tile.Campfire, mark: Tile.LegionStandard },
+  plunder: { litter: [Tile.Crate, Tile.Barrel, Tile.CaveRubble], pocket: [Tile.TentHide, Tile.Crate, Tile.PlunderSacks], fire: Tile.Campfire, mark: Tile.RedRagStake },
+  den: { litter: [Tile.BonePile, Tile.SkullPile], pocket: [Tile.BeastNest, Tile.BonePile, Tile.HideFrame], mark: Tile.BoneTree },
+  // The husk warband's word is the midden (plan §2): they eat here.
+  gnoll: { litter: [Tile.BonePile, Tile.SkullPile], pocket: [Tile.TentHide, Tile.MeatSpit, Tile.SkullPile], fire: Tile.Campfire, mark: Tile.BoneMidden },
   // Skral litter is the CATCH: racks, frames, and fish-bone middens —
   // a shoal's verge smells of smoke and low tide from the road.
   // THE BANKS GET THEIR GOODS: the shoal's verge smells of low tide,
   // not woodsmoke — shell heaps, drying racks, and sprung traps where
   // the war camp would drop bones and hides.
-  skral: { litter: [Tile.ShellMidden, Tile.FishRack, Tile.FishTrap], pocket: [Tile.NetFrame, Tile.KelpLine, Tile.WithyStore], fire: Tile.Campfire },
+  skral: { litter: [Tile.ShellMidden, Tile.FishRack, Tile.FishTrap], pocket: [Tile.NetFrame, Tile.KelpLine, Tile.WithyStore], fire: Tile.Campfire, mark: Tile.TideTotem },
   // Ogre litter is FURNITURE-sized: whole middens, whole skulls, the
   // meat economy of a body that eats a cow a day. The fire is the
   // great bonfire — an ogre camp reads from a hilltop away.
   ogre: { litter: [Tile.BonePile, Tile.SkullPile, Tile.MeatRack], pocket: [Tile.SkullPile, Tile.MeatSpit, Tile.PlunderSacks], fire: Tile.Bonfire },
   oldstone: { litter: [Tile.CaveRubble, Tile.Rock, Tile.BonePile], pocket: [Tile.PillarStone, Tile.Rock, Tile.CaveRubble] },
-  digs: { litter: [Tile.CaveRubble, Tile.Rock], pocket: [Tile.Rock, Tile.CaveRubble, Tile.Barrel] },
+  // THE DIGS: the kobolds' tally stone counts the verge; SpoilHeap
+  // joins the litter roll at K4 (its brush is a K0 stub until then —
+  // a live territory must never fly a stub block).
+  digs: { litter: [Tile.CaveRubble, Tile.Rock], pocket: [Tile.Rock, Tile.CaveRubble, Tile.Barrel], mark: Tile.TallyStone },
   lair: { litter: [Tile.BonePile, Tile.Rock], pocket: [Tile.Rock, Tile.BonePile] },
   roost: { litter: [Tile.BonePile, Tile.Stump], pocket: [Tile.Tree, Tile.BonePile] },
-  neutral: { litter: [Tile.Rock, Tile.Stump, Tile.BerryBush], pocket: [Tile.Rock, Tile.GrassTall, Tile.BerryBush] },
+  // THE RUIN (family A, the cold hearth): what a burning leaves on its
+  // own verge — ash shovelled out, beams that fell short of the door,
+  // and a satellite pocket that is the outbuilding that burned too,
+  // its ember bed the night tell (the family's own fire, LEFT
+  // BURNING). FieldLitter joins the roll at K3 (family B); until then
+  // the verge is ash and timber only.
+  ruin: { litter: [Tile.AshHeap, Tile.CharredBeam], pocket: [Tile.CharredBeam, Tile.AshHeap, Tile.CaveRubble], fire: Tile.EmberBed },
+  // THE BLIGHT (family D, the gloom): the ground that stopped. Until
+  // band 4 lands the gloom's brushes, the roll is the world's OWN
+  // cold-light word for it — glowshrooms where nothing else grows,
+  // cut stumps, bones — and the K4 ids (GloomStone 522, CreepRoot 523,
+  // FoulPool 524, DeadTree 520) stay OUT of the roll: they exist and
+  // paint as K0 stub blocks, and a stub in a live territory is a lie.
+  // K4 replaces the roll with [GloomStone, CreepRoot, DeadTree]. No
+  // mark: what was here first claims nothing.
+  blight: { litter: [Tile.GlowShroom, Tile.Stump, Tile.BonePile], pocket: [Tile.GlowShroom, Tile.Rock, Tile.Stump] },
+  // THE SETTLED GROUND: the towns' litter, and the towns' claim — the
+  // Charter's survey stake off-road (they measure everything, even
+  // what they do not own), the Waykeepers' lamp cairn where a road is
+  // PROVEN within trailReach (the road-faith law; see `roadMark`).
+  neutral: { litter: [Tile.Rock, Tile.Stump, Tile.BerryBush], pocket: [Tile.Rock, Tile.GrassTall, Tile.BerryBush], mark: Tile.CharterPost, roadMark: Tile.LampCairn },
+  // THE WAYSIDE: the road's own ground — a waystation, a peddler's
+  // rest. The same verge, and the ONE mark it can honestly fly is the
+  // Waykeepers' cairn, road-proven; with no proof it flies nothing.
+  // Never the Charter's stake: the order refuses Charter oil because
+  // it comes with a ledger (plan §2), and a survey stake on a lamp
+  // haven would say the ledger won.
+  wayside: { litter: [Tile.Rock, Tile.Stump, Tile.BerryBush], pocket: [Tile.Rock, Tile.GrassTall, Tile.BerryBush], roadMark: Tile.LampCairn },
+  // THE WILD: the same verge with no claim on it — the open default
+  // for any id no family owns (a new sketch never inherits a Charter
+  // stake by accident; it EARNS a mark by matching a family or
+  // declaring a vocab).
+  wild: { litter: [Tile.Rock, Tile.Stump, Tile.BerryBush], pocket: [Tile.Rock, Tile.GrassTall, Tile.BerryBush] },
 } as const satisfies Record<string, Vocab>;
 
 export type InfluenceVocab = keyof typeof VOCAB;
@@ -77,16 +143,65 @@ export type InfluenceVocab = keyof typeof VOCAB;
  */
 const VOCAB_OF: ReadonlyArray<[RegExp, InfluenceVocab]> = [
   [/^poi_(goblin|warhold)/, 'warband'],
-  [/^poi_(bandit|stockade|raider|barrow_diggers|wardline)/, 'plunder'],
+  [/^poi_(hob)/, 'legion'],
+  // The Company's tollhouse is the Company's: it litters what the
+  // road paid and flies the red rag.
+  [/^poi_(bandit|stockade|raider|barrow_diggers|wardline|company)/, 'plunder'],
   [/^poi_(den|greatden)/, 'den'],
   [/^poi_(gnoll)/, 'gnoll'],
   [/^poi_(skral)/, 'skral'],
   [/^poi_(ogre)/, 'ogre'],
   [/^poi_(fell|barrow_ring|watchtower|ruin|riftgate|hoargate|champions)/, 'oldstone'],
+  [/^poi_(burnt)/, 'ruin'],
   [/^poi_(digs)/, 'digs'],
   [/^poi_(lair)/, 'lair'],
   [/^poi_(roost)/, 'roost'],
+  // The settled ground — the hamlets the Charter bills — flies the
+  // towns' claim. The wayside — waystations, the peddler's rest — is
+  // the road's and flies the cairn only where the composer proves the
+  // road (`nearRoad`), nothing from the shelf. The wayshrines are the
+  // old faith's and plant no stake. The lamp havens (last_lamp,
+  // fenside_lamp, fork_waystation, the Third Stone) are NOT here
+  // either: their peoples' marks (LampCairn, PitLamp) need a road or a
+  // Returner under them, and the shelf has neither — their defs' cues
+  // carry the marks per site instead.
+  [/^poi_(hamlet)/, 'neutral'],
+  [/^poi_(waystation|peddler)/, 'wayside'],
 ];
+
+/**
+ * The vocab a prefab id resolves to with no declaration — the family
+ * read, then the wild. Exported so a site composer can ask the same
+ * question the shelf asked.
+ */
+export function familyVocabOf(prefabId: string): InfluenceVocab {
+  return VOCAB_OF.find(([re]) => re.test(prefabId))?.[1] ?? 'wild';
+}
+
+/**
+ * The claim mark a vocab flies at a given site: its road mark when a
+ * carved road stands within trailReach (proven by the caller — the
+ * composer's `roadBearingAt(anchor, FRONTIER.trailReach)`), else its
+ * off-road mark, else nothing. The shelf expands with `nearRoad`
+ * unknown and takes the off-road word; a per-site composer that has
+ * the road under its hand can ask for the honest one.
+ *
+ * NOT YET HONOURED IN PRODUCTION (K2 review): the only production
+ * caller is the shelf's import-time `expandInfluence(p)` with no site
+ * under it, so `nearRoad` is never true outside the tests — no vocab
+ * flies LampCairn from the road gate and `wayside` marks nothing.
+ * The contract stands for the per-site composer that will honour it
+ * (server pois.ts compose has `roadBearingAt` to hand); until then
+ * the fork rest's cairns are the sketch's own (prefabs.ts wardLine).
+ * Nobody may assume a hamlet by a road grows a cairn from this gate.
+ */
+export function claimMarkOf(vocab: InfluenceVocab, nearRoad: boolean): Tile | undefined {
+  const v: Vocab = VOCAB[vocab];
+  return nearRoad ? v.roadMark ?? v.mark : v.mark;
+}
+
+/** The two-per-territory ceiling on claim marks: a glyph, not a picket line. */
+export const CLAIM_MARKS_MAX = 2;
 
 /**
  * A prefab's declared influence treatment — passed at the definition
@@ -136,7 +251,16 @@ export function declareInfluence<T extends PrefabDef>(prefab: T, influence: Pref
   return prefab;
 }
 
-export function expandInfluence(prefab: PrefabDef): PrefabDef {
+export interface ExpandOptions {
+  /**
+   * The site stands within trailReach of a carved road — the caller's
+   * proof, never the shelf's guess. Flips a vocab to its `roadMark`.
+   * Absent = false: the off-road mark, the one that cannot lie.
+   */
+  nearRoad?: boolean;
+}
+
+export function expandInfluence(prefab: PrefabDef, opts: ExpandOptions = {}): PrefabDef {
   const decl = DECLARED.get(prefab.id);
   if (decl?.exempt || !prefab.id.startsWith('poi_')) return prefab;
   const { width: ow, height: oh } = prefab;
@@ -149,7 +273,9 @@ export function expandInfluence(prefab: PrefabDef): PrefabDef {
   const h = Math.min(90, Math.round(oh * s));
   const g = new Uint16Array(w * h).fill(TILE_SKIP);
   const rng = new Rng(hashString(prefab.id) ^ 0x1f7);
-  const vocab: Vocab = VOCAB[decl?.vocab ?? VOCAB_OF.find(([re]) => re.test(prefab.id))?.[1] ?? 'neutral'];
+  const vocabName: InfluenceVocab = decl?.vocab ?? familyVocabOf(prefab.id);
+  const vocab: Vocab = VOCAB[vocabName];
+  const mark = claimMarkOf(vocabName, opts.nearRoad === true);
 
   const put = (x: number, y: number, t: Tile): void => {
     if (x < 1 || y < 1 || x >= w - 1 || y >= h - 1) return; // skip perimeter
@@ -246,15 +372,79 @@ export function expandInfluence(prefab: PrefabDef): PrefabDef {
   }
 
   // Worn tracks out of the heart: the ways in are the ways picked off.
+  // Each track remembers its TRAILHEAD — the last worn tile before
+  // the ground stops remembering feet — because that is where a
+  // people plants its claim.
   const tracks = 2 + rng.int(0, 1);
+  const worked = (t: number): boolean => t === Tile.Dirt || t === Tile.Grass || t === Tile.GrassTall;
+  const trailheads: Array<{ x: number; y: number; a: number; d: number }> = [];
   for (let i = 0; i < tracks; i++) {
     const a = rng.range(0, Math.PI * 2);
     let fade = 1;
+    let head: { x: number; y: number; a: number; d: number } | null = null;
     for (let d = heartR - 1; d < rimR; d++) {
       const tx = Math.round(cx + Math.cos(a) * d);
       const ty = Math.round(cy + Math.sin(a) * d * (h / w));
       if (at(tx, ty) === TILE_SKIP && rng.chance(fade)) put(tx, ty, Tile.Dirt);
+      // The head is the farthest WORKED tile on the bearing — the
+      // track's own dirt, a pocket line it walked along, or a worked
+      // patch that swallowed it; ground that remembers feet either way.
+      if (worked(at(tx, ty))) head = { x: tx, y: ty, a, d };
       fade *= 0.94;
+    }
+    if (head) trailheads.push(head);
+  }
+
+  // THE CLAIM MARKS: the people's glyph at the trailheads — one past
+  // the last worn tile on the track's own bearing, or beside it when
+  // the ground there is taken; at most CLAIM_MARKS_MAX per territory.
+  // Planted AFTER every roll above and with no roll of their own, so
+  // every territory keeps the exact litter, pockets and tracks it
+  // shipped with (the Foundry law) and gains only its mark.
+  if (mark !== undefined) {
+    const free = (x: number, y: number): boolean => x >= 1 && y >= 1 && x < w - 1 && y < h - 1 && at(x, y) === TILE_SKIP;
+    const touchesWorked = (x: number, y: number): boolean => {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if ((dx !== 0 || dy !== 0) && worked(at(x + dx, y + dy))) return true;
+        }
+      }
+      return false;
+    };
+    let planted = 0;
+    for (const t of trailheads) {
+      if (planted >= CLAIM_MARKS_MAX) break;
+      // The stake wants the first FREE tile past the worked ground on
+      // the track's own heading — the edge where the ground stops
+      // remembering feet. A track that a worked patch swallowed has its
+      // head deep in grass and the patch may run on past the track's
+      // own reach, so the walk keeps going outward (over a litter roll
+      // if one sits in the way) until it clears the worked ground, and
+      // only a spot that still TOUCHES worked ground counts: the stake
+      // stands at the verge, never adrift in the empty ring. Failing
+      // that, the shoulders of each worked tile back down the track
+      // toward the heart (the stake moves one tile in, never off the
+      // worked ground).
+      const along = Math.abs(Math.cos(t.a)) >= Math.abs(Math.sin(t.a));
+      const candidates: Array<[number, number]> = [];
+      for (let d = t.d + 1, steps = 0; steps < Math.max(w, h); d++, steps++) {
+        const x = Math.round(cx + Math.cos(t.a) * d);
+        const y = Math.round(cy + Math.sin(t.a) * d * (h / w));
+        if (x < 1 || y < 1 || x >= w - 1 || y >= h - 1) break;
+        if (!free(x, y)) continue;
+        if (touchesWorked(x, y)) candidates.push([x, y]);
+        break;
+      }
+      for (let d = t.d; d > heartR; d--) {
+        const x = Math.round(cx + Math.cos(t.a) * d);
+        const y = Math.round(cy + Math.sin(t.a) * d * (h / w));
+        if (!worked(at(x, y))) continue;
+        candidates.push(along ? [x, y - 1] : [x - 1, y], along ? [x, y + 1] : [x + 1, y]);
+      }
+      const spot = candidates.find(([x, y]) => free(x, y));
+      if (!spot) continue;
+      put(spot[0], spot[1], mark);
+      planted++;
     }
   }
 

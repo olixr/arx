@@ -62,6 +62,10 @@
     "clearing": 2,
     "scatter": [
       {
+        "tile": "BoneTree",
+        "count": 1
+      },
+      {
         "tile": "BonePile",
         "count": 3
       }

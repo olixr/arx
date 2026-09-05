@@ -33,7 +33,13 @@
   ],
   "cues": {
     "clearing": 4,
-    "approachPath": true
+    "approachPath": true,
+    "scatter": [
+      {
+        "tile": "Crate",
+        "count": 1
+      }
+    ]
   },
   "signs": [
     {

@@ -308,6 +308,34 @@ test('the validator refuses a site wearing an unknown archetype when refs are gi
   if (!res.ok) assert.match(res.errors.join(' '), /unknown POI archetype 'no_such_place'/);
 });
 
+test('THE PINNED SKETCH: a site may pin one of its archetype prefabs; the validator refuses any other', () => {
+  const snap = geographySnapshot();
+  snap.sites = [{ id: 'the_toll', defId: 'bandit_camp', x: 500, y: 500, prefabId: 'poi_bandit_toll' }];
+  const ok = validateGeographyDef(snap, { poiDefIds: new Set(POI_DEFS.keys()) });
+  assert.ok(ok.ok, ok.ok ? '' : ok.errors.join('; '));
+  if (ok.ok) assert.equal(ok.def.sites[0]!.prefabId, 'poi_bandit_toll', 'the pin survives the rebuild');
+  // A cell-forced site pins the same way.
+  snap.sites = [{ id: 'den', defId: 'wolfkin_den', cell: [40, 40], prefabId: POI_DEFS.get('wolfkin_den')!.prefabs[0] }];
+  const celled = validateGeographyDef(snap);
+  assert.ok(celled.ok);
+  if (celled.ok) assert.equal(celled.def.sites[0]!.prefabId, POI_DEFS.get('wolfkin_den')!.prefabs[0]);
+  // Another archetype's prefab, an unknown prefab, and a non-string all refuse.
+  for (const bad of ['poi_last_lamp', 'poi_no_such_sketch', 7, '']) {
+    snap.sites = [{ id: 'the_toll', defId: 'bandit_camp', x: 500, y: 500, prefabId: bad as string }];
+    const res = validateGeographyDef(snap);
+    assert.ok(!res.ok, `pin ${JSON.stringify(bad)} passed`);
+    if (!res.ok) assert.match(res.errors.join(' '), /prefabId|pins prefab/);
+  }
+  // An unpinned site rebuilds without the key at all (the closed shape).
+  snap.sites = [{ id: 'the_toll', defId: 'bandit_camp', x: 500, y: 500 }];
+  const bare = validateGeographyDef(snap);
+  assert.ok(bare.ok);
+  if (bare.ok) assert.ok(!('prefabId' in bare.def.sites[0]!));
+  // The First Road toll IS the toll: the shipped plan pins the toll sketch.
+  const toll = AUTHORED_GEOGRAPHY.sites.find((s) => s.id === 'first_road_toll');
+  assert.equal(toll?.prefabId, 'poi_bandit_toll');
+});
+
 test('replaceGeography moves the roads, the anchors, and every query with them', () => {
   const before = geographySnapshot();
   try {

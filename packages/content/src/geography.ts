@@ -1,5 +1,6 @@
 import { DANGER_MAX, POI_MACRO_CELL, fbm, type Vec2, type DangerAnchor } from '@arx/shared';
 import { AUTHORED_ANCHOR_WORDS, SETTLED_ANCHORS, replaceSettledAnchors } from './danger.js';
+import { POI_DEFS } from './pois/defs.js';
 import {
   replaceSpectrum,
   spectrumSnapshot,
@@ -430,6 +431,15 @@ export interface AuthoredWildSite {
   y?: number;
   /** Cell mode: [cellX, cellY] macro-cell to force the archetype in. */
   cell?: readonly [number, number];
+  /**
+   * THE PINNED SKETCH: an authored site may name WHICH of its
+   * archetype's prefabs it stands, instead of the hashed variant roll
+   * (the First Road toll is THE toll, so it rolls the toll sketch and
+   * never the hollow). Must be one of the def's own prefabs; the
+   * validator refuses anything else. Omitted = the variant stream
+   * deals, exactly as the rolled cells do.
+   */
+  prefabId?: string;
 }
 
 /**
@@ -763,7 +773,7 @@ const AUTHORED_PLAN: GeographyDef = {
     // space BETWEEN safeties is the game: the camp watches the fen-
     // waist stretch where the road has water on one side and them on
     // the other.
-    { id: 'first_road_toll', defId: 'bandit_camp', x: 122, y: 112 },
+    { id: 'first_road_toll', defId: 'bandit_camp', x: 122, y: 112, prefabId: 'poi_bandit_toll' },
     // The broken tower on the High Road's west miles, watching the
     // channel country where the road takes its two bridges.
     { id: 'first_climb_tower', defId: 'watchtower_ruin', x: 368, y: -136 },
@@ -1215,7 +1225,27 @@ export function validateGeographyDef(
       if (refs?.poiDefIds && !refs.poiDefIds.has(s.defId)) {
         errors.push(`site '${s.id}' names unknown POI archetype '${s.defId}'`);
       }
-      vetKeys(s, ['id', 'defId', 'x', 'y', 'cell'], `site '${s.id}'`);
+      vetKeys(s, ['id', 'defId', 'x', 'y', 'cell', 'prefabId'], `site '${s.id}'`);
+      // THE PINNED SKETCH is vetted against the archetype's own pool:
+      // a prefab the def never listed would compose a site the def's
+      // muster and cues were never written for.
+      let prefabId: string | undefined;
+      if (s.prefabId !== undefined) {
+        if (typeof s.prefabId !== 'string' || s.prefabId === '') {
+          errors.push(`site '${s.id}' prefabId must be a non-empty string`);
+          continue;
+        }
+        const pool = POI_DEFS.get(s.defId)?.prefabs;
+        if (!pool || !pool.includes(s.prefabId)) {
+          errors.push(
+            `site '${s.id}' pins prefab '${s.prefabId}', which is not one of '${s.defId}' prefabs` +
+              (pool ? ` (${pool.join(', ')})` : ''),
+          );
+          continue;
+        }
+        prefabId = s.prefabId;
+      }
+      const pin = prefabId !== undefined ? { prefabId } : {};
       const pinned = s.x !== undefined || s.y !== undefined;
       const celled = s.cell !== undefined;
       if (pinned === celled) {
@@ -1231,7 +1261,7 @@ export function validateGeographyDef(
         }
         cx = Math.floor(s.x / GEO_POI_CELL);
         cy = Math.floor(s.y / GEO_POI_CELL);
-        sites.push({ id: s.id, defId: s.defId, x: s.x, y: s.y });
+        sites.push({ id: s.id, defId: s.defId, x: s.x, y: s.y, ...pin });
       } else {
         const c = s.cell as unknown;
         if (!Array.isArray(c) || c.length !== 2 || !isInt(c[0]) || !isInt(c[1])) {
@@ -1240,7 +1270,7 @@ export function validateGeographyDef(
         }
         cx = c[0];
         cy = c[1];
-        sites.push({ id: s.id, defId: s.defId, cell: [cx, cy] });
+        sites.push({ id: s.id, defId: s.defId, cell: [cx, cy], ...pin });
       }
       const key = `${cx},${cy}`;
       const prior = seenCells.get(key);

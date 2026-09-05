@@ -65,6 +65,10 @@
     "approachPath": true,
     "scatter": [
       {
+        "tile": "RedRagStake",
+        "count": 1
+      },
+      {
         "tile": "Crate",
         "count": 2
       }
