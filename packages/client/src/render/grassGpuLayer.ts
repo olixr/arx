@@ -42,6 +42,9 @@ export interface BandBlit {
   dstW: number;
   dstH: number;
   sortY: number;
+  /** Skirt bands only: the object's shelf (`strat`), passed through from the
+   *  band so the emitted DrawItem sorts in the object's own slot. */
+  strat?: number;
 }
 
 /** The camera + timing for one frame, in the renderer's own terms. */
@@ -635,6 +638,7 @@ export class GrassGpuLayer {
         dstW: box.x1 - box.x0,
         dstH: box.y1 - box.y0,
         sortY: bands[k]!.sortY,
+        strat: bands[k]!.strat,
       });
     }
     renderer.drawBandEnd();

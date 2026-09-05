@@ -76,6 +76,11 @@ export interface TallBand {
    *  in this band rides. Absent/0 = flat ground (tall + skirt bands). Set
    *  only on the elevated-coat bands so a whole row lifts onto its shelf. */
   elev?: number;
+  /** THE SKIRT RIDES ITS OBJECT'S SHELF (skirt bands only): the `strat`
+   *  (shelf) of the object this skirt nestles, carried through to the blit so
+   *  the emitted DrawItem sorts in the object's own slot. Absent on tall/elev
+   *  bands (their DrawItems set strat separately). */
+  strat?: number;
 }
 
 /**
