@@ -548,6 +548,172 @@ vec4 grassWind(vec2 w, float t) {
 }
 
 /**
+ * THE LIVING WIND (grass color+wind pass) — the grass-ONLY wind layers that
+ * ride ON TOP of the shared ONE WIND (grassWind above). The ONE WIND is
+ * pinned identical to the trees/cloth by the parity test and must NOT change;
+ * this adds the meadow's own life without touching that contract:
+ *
+ *  · env  — a LARGE-SCALE TRAVELLING GUST WAVE in world space: a long-
+ *    wavelength swell moving along the wind axis (skewed a touch across it,
+ *    so the gust front is angled like real weather) that MULTIPLIES the base
+ *    sway amplitude. This is the headline — you SEE a band of stronger wind
+ *    roll across the whole meadow, blades laying over as it passes and
+ *    springing up behind it, never a uniform sway.
+ *  · turb — per-blade high-frequency TURBULENCE + a gentle always-on IDLE
+ *    sway, both phase-shifted by the blade's own seed so no two blades move
+ *    in lockstep and the field never freezes even in a lull.
+ *
+ * Both are pure world-space displacements the vertex shader adds BEFORE the
+ * projection, so they compose cleanly with elevation and the interaction
+ * parting. Templated from GUST_TUNE so the GLSL and the JS mirror
+ * (grassGustMirror) cannot drift — the test pins them.
+ */
+export interface GustTune {
+  /** Spatial frequency of the travelling gust wave (rad per world tile) —
+   *  smaller = longer wavelength = a broader gust band. */
+  gustFreq: number;
+  /** Travel speed of the gust along the wind axis (rad/s). */
+  gustSpeed: number;
+  /** Cross-axis skew of the gust front (rad/tile) — angles the front. */
+  gustSkew: number;
+  /** Envelope floor: the calm-trough sway multiplier (kept > 0 so a lull
+   *  still breathes, never a dead-flat field). */
+  gustBase: number;
+  /** Envelope swing added by the wave crest — base+amp is peak gust. */
+  gustAmp: number;
+  /** Per-blade high-frequency turbulence amplitude (tip world units). */
+  turbAmp: number;
+  turbSpeed: number;
+  /** Gentle always-on idle sway amplitude (tip world units). */
+  idleAmp: number;
+  idleSpeed: number;
+}
+export const GUST_TUNE: GustTune = {
+  // Pass 3 (final): a ~40-tile gust band crossing the meadow in a slow,
+  // calming roll; the envelope dips to 0.28 in a lull and swells to 1.28 at
+  // the crest so the traveling wave READS; light per-blade turbulence + idle
+  // keep the field alive between gusts without ever looking frantic.
+  gustFreq: 0.16,
+  gustSpeed: 0.85,
+  gustSkew: 0.035,
+  gustBase: 0.78,
+  gustAmp: 0.5,
+  turbAmp: 0.14,
+  turbSpeed: 2.05,
+  idleAmp: 0.075,
+  idleSpeed: 0.9,
+};
+
+/**
+ * THE LIVING WIND in GLSL — emits `vec2 grassGust(vec2 w, float t, float
+ * phase)` returning `(env, turb)` (see GustTune). Shared verbatim by the
+ * blade and cast shaders so the shade sways with the crown that throws it.
+ * Templated from GUST_TUNE + the shared wind axis (WX/WY).
+ */
+export function grassGustGlsl(t: GustTune = GUST_TUNE): string {
+  return `
+vec2 grassGust(vec2 w, float t, float phase) {
+  float along = w.x * ${WX} + w.y * ${WY};
+  float across = -w.x * ${WY} + w.y * ${WX};
+  // LARGE travelling gust wave — long wavelength, slow travel, angled front.
+  float wave = sin(along * ${t.gustFreq} - t * ${t.gustSpeed} + across * ${t.gustSkew});
+  float env = ${t.gustBase} + ${t.gustAmp} * wave;
+  float ph = phase * 6.2831853;
+  // per-blade turbulence + gentle idle — decorrelated multipliers on ph so
+  // neighbours never march together.
+  float turb = ${t.turbAmp} * sin(t * ${t.turbSpeed} + ph * 3.1)
+             + ${t.idleAmp} * sin(t * ${t.idleSpeed} + ph * 1.7);
+  return vec2(env, turb);
+}`;
+}
+
+/** JS transcription of grassGustGlsl — FOR THE TEST. Keep in lockstep. */
+export function grassGustMirror(
+  wx: number,
+  wy: number,
+  t: number,
+  phase: number,
+  tune: GustTune = GUST_TUNE,
+): { env: number; turb: number } {
+  const along = wx * WX + wy * WY;
+  const across = -wx * WY + wy * WX;
+  const wave = Math.sin(along * tune.gustFreq - t * tune.gustSpeed + across * tune.gustSkew);
+  const env = tune.gustBase + tune.gustAmp * wave;
+  const ph = phase * 6.2831853;
+  const turb =
+    tune.turbAmp * Math.sin(t * tune.turbSpeed + ph * 3.1) +
+    tune.idleAmp * Math.sin(t * tune.idleSpeed + ph * 1.7);
+  return { env, turb };
+}
+
+/**
+ * THE PAINTED FIELD (grass color pass) — two large-scale, low-frequency
+ * value-noise fields over WORLD space, so the meadow is naturally non-uniform
+ * instead of a flat carpet:
+ *
+ *  · x = VALUE drift — broad patches marginally lighter/darker (shifts the
+ *    blade's light step a touch in the fragment shader).
+ *  · y = HUE drift — broad patches marginally warmer/cooler, DECORRELATED
+ *    from the value patches (different wavelengths + phases) so warmth and
+ *    brightness don't move together, which reads as real ground rather than
+ *    a gradient.
+ *
+ * Both ≈ [-1, 1]. Cheap sums of sines (no texture fetch), evaluated per blade
+ * root in the vertex shader and passed as varyings. Templated from
+ * COLOR_NOISE_TUNE; pinned to grassColorNoiseMirror by the test.
+ */
+export interface ColorNoiseTune {
+  valFx: number;
+  valFy: number;
+  valFx2: number;
+  valFy2: number;
+  hueFx: number;
+  hueFy: number;
+  hueFx2: number;
+  hueFy2: number;
+}
+export const COLOR_NOISE_TUNE: ColorNoiseTune = {
+  // ~18–30 tile patches for value; a different, coarser set for hue so the
+  // warm/cool drift rides its own reaches. Tasteful, never busy.
+  valFx: 0.052,
+  valFy: 0.069,
+  valFx2: 0.11,
+  valFy2: 0.083,
+  hueFx: 0.041,
+  hueFy: 0.058,
+  hueFx2: 0.094,
+  hueFy2: 0.037,
+};
+
+/** THE PAINTED FIELD in GLSL — `vec2 grassColorNoise(vec2 w)` → (value, hue)
+ *  drift, each ≈ [-1,1]. Templated from COLOR_NOISE_TUNE. */
+export function grassColorNoiseGlsl(t: ColorNoiseTune = COLOR_NOISE_TUNE): string {
+  return `
+vec2 grassColorNoise(vec2 w) {
+  float v = 0.6 * sin(w.x * ${t.valFx} + w.y * ${t.valFy})
+          + 0.4 * sin(w.x * ${t.valFx2} - w.y * ${t.valFy2} + 2.1);
+  float hue = 0.6 * sin(w.x * ${t.hueFx} - w.y * ${t.hueFy} + 1.3)
+            + 0.4 * sin(w.x * ${t.hueFx2} + w.y * ${t.hueFy2} + 4.7);
+  return vec2(v, hue);
+}`;
+}
+
+/** JS transcription of grassColorNoiseGlsl — FOR THE TEST. Keep in lockstep. */
+export function grassColorNoiseMirror(
+  wx: number,
+  wy: number,
+  t: ColorNoiseTune = COLOR_NOISE_TUNE,
+): { value: number; hue: number } {
+  const value =
+    0.6 * Math.sin(wx * t.valFx + wy * t.valFy) +
+    0.4 * Math.sin(wx * t.valFx2 - wy * t.valFy2 + 2.1);
+  const hue =
+    0.6 * Math.sin(wx * t.hueFx - wy * t.hueFy + 1.3) +
+    0.4 * Math.sin(wx * t.hueFx2 + wy * t.hueFy2 + 4.7);
+  return { value, hue };
+}
+
+/**
  * A JS transcription of grassWindGlsl — FOR THE PARITY TEST ONLY. It is
  * the GLSL formula line-for-line in JS, so asserting it equals the CPU
  * `windAtInto` proves the shader bends blades to the exact same wind.
