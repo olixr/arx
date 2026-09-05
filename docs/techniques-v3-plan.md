@@ -446,3 +446,51 @@ present set); a follow that reads a STATUS on the target (arx
 cross-school sparks); a per-field once rule for `self.heal` in held
 ground; a small tag credit in the model so openers keep honest
 cooldowns; a beastcraft fang that reads the keeper's follow.
+
+### Phase 3 — THE SECRET SHELF + THE SECOND CADENCE (2026-09-05)
+
+**3a THE ENGINE LEDGER (main session, 4cffdbb0).** `follow.self` (a boon
+worn only when the link lands) and `follow.knockbackMult` (signed — a
+pull deepens, never flips); aftermath on projectile shots (once: the
+first body or where the shot dies, `ProjectileComp.aftermath`), on
+charge roads (dash arrival), on pulse trains and flurries (the LAST
+pulse); THE QUIET BEAT (`quietBeat`: a channel's beats before the last
+leave no ground and spend no state — one field per note, the wound
+answered once); `stateBucket` now reads sunder so `vs sunder` multiplies
+over the amp and `consume` can spend the crack; beams (and, after the
+shelf wave, arcs) may pull toward the caster; the shelf bracket reads
+follow multipliers and exempts casts like the ladder's; the range-0
+ground_field contract = at the caster's feet (held ground you channel
+from). Shelf files: `content/abilities/secrets/<school>.ts`
+(`X_SECRET_ARTS`, `X_SECRET_RANKS`, `X_SECRET_LICENSES`; polearm's four
+stay in polearm.ts with `POLEARM_SECRET_RANKS`); weaponArts/ladders
+retired; `secretRanks.ts` aggregates; seats and anchors untouched in
+secretArts.ts. THE SHELF CONSTITUTION (`masteredHand.test.ts`): a rebuilt
+shelf gives every secret a role and a relationship, and HALF its follows
+read another school's word.
+
+**3b THE WAVE (workflow `mastered-hand-shelf`, five agents, one pass).**
+All 123 secrets re-authored as cross-school spice: 76 follow (72 of them
+across a school line), 70 leave a word, 29 leave ground, 22 arm the red
+ledger, 11 read a page; roles 36/46/21/18/2. Deliveries reseated in
+archery (9 drawn / 5 held / 6 instant), arx (9 / 6 / 5), twohand (5
+heavier winds, payoffs instant), dualwield (links instant, knife-draw
+casts 14–20t, the loom's 12-tick beat, quicken moved onto `follow.self`);
+every school's delivery template is now distinct (11 of 11). Main-session
+close: nine over-long rank notes trimmed; four cast-engine pins now read
+daybreak's def (32t); the model credits `follow.knockbackMult`'s extra
+shove at the utility weight; the tooltip names a link's boon. Gates:
+shared 307 / content 680 / server 646 / client 1258, tsc ×4.
+
+**Residue.** `breathFx.test.ts` IN_FLIGHT now lists 43 arts (rungs and
+secrets that gained, lost, or re-lengthened a breath, plus shape changes:
+wingbeat fan→dash, starfall_arrows fan→channel, skyrend/windsong
+instant→cast, wild_root field→fused blast, eye_of_the_storm
+pulse→channel) — Phase 4 authors every dialect and empties the set.
+Open engine asks carried forward: a follow that reads a STATUS on the
+target (resolved per body at hit time — a different door), held-ground
+`self` DURING a channel, `follow.self` in the model (0, as the self lane
+is), a tag credit for openers, chill `power` (engine-unused, flavor
+only), the beastcraft fang reading the keeper's follow. Not live-proven
+(Phase 5); the PACE DIAL still owed.
+

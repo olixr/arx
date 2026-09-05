@@ -23,6 +23,9 @@ export const POLEARM_LICENSES: Record<string, string[]> = {
   // reads one (`vs`) — the register's leak walk sees the page id and
   // the reading edge is registered here so the read is a conscious
   // ledger entry too.
+  // THE SECRET SHELF (Phase 3) lays no wave-one page: its four arts
+  // chill, pull, shove and read (stagger, brand, expose, rally, chill)
+  // — readers, never appliers, so no shelf license is owed.
 };
 
 export const POLEARM_DEFS: AbilityDef[] = [
@@ -426,16 +429,23 @@ export const POLEARM_DEFS: AbilityDef[] = [
   },
 
   // -------------- THE ARMORY: the polearm secret arts (weapon-taught).
-  // Four instant seats for the knight's roster, one per weapon family:
-  // the spear line's founding thrust, the glaive's wheel, the halberd's
-  // hook (a PULL — ground_aoe negative knockback per the vortex law,
-  // hooking_reap's grammar), and the lance's charge, priced honestly
-  // under knights_charge (the L50 rung is the school's; the weapon's
-  // cousin is smaller by design).
+  // THE MASTERED HAND, Phase 3: the four seats rebuilt as the school's
+  // CROSS-SCHOOL SPICE. A weapon teaches each to any hand (THE FREE
+  // HAND), so every one reads a word another school leaves — the reel
+  // of a stagger, the mark of a brand, the shout of a rally, the cold
+  // of a frost — and answers it with the reach's own grammar: the point
+  // after the hold, the row dragged onto one lane, the line for the
+  // charge. Ids, seats and anchors untouched; every art inside THE
+  // SECRET BAND at Rank I and Rank IV, tuned by cooldown first.
   {
+    // PAYOFF: the spear line's founding thrust reads the REEL — a body
+    // still reeling from any school's stagger (the duelist's bell, the
+    // shield's toll, the greatblade's timber, the veteran's shout) or a
+    // row on the polearm's own hook cannot answer the reach, and the
+    // point lands half again. The red ledger hands the lunge back.
     id: 'reaching_thrust',
     name: 'Reaching Thrust',
-    desc: 'The school\'s first lesson at its full length. Everything begins out of reach.',
+    desc: 'The school\'s first lesson at its full length. A body still reeling, or a row on the hook, takes the point half again, and a kill hands the lunge straight back.',
     color: '#c8d4e0',
     code: 'Rr',
     cooldownTicks: 150, // 7.5 s
@@ -443,11 +453,20 @@ export const POLEARM_DEFS: AbilityDef[] = [
     damage: 8,
     range: 3.6,
     arc: 0.4,
+    role: 'payoff',
+    follow: { after: ['stagger', 'hook'], windowTicks: 60, damageMult: 1.5 },
+    onKill: { refundTicks: 40 },
   },
   {
+    // ANSWER: the glaive's wheel clears the yard — one wide turn that
+    // lays the row down and shoves it off the point. The reading edge
+    // is the cold: a chilled row (the school's own haft and crescent,
+    // or the arx's frost lance in another hand) lies down harder, and
+    // the mown row is a LINE — the word Knight's Charge, the Sundering
+    // Lance and the Couched Charge read.
     id: 'reapers_turn',
     name: "Reaper's Turn",
-    desc: 'The glaive remembers the harvest. One wide turn, and the row lies down.',
+    desc: 'The glaive remembers the harvest. One wide turn and the row lies down in a line; a cold row lies down harder. Leaves the line open for the charge.',
     color: '#aab6a0',
     code: 'Rn',
     cooldownTicks: 170, // 8.5 s
@@ -456,11 +475,19 @@ export const POLEARM_DEFS: AbilityDef[] = [
     range: 2.7,
     arc: 2.4,
     knockback: 1.5,
+    role: 'answer',
+    tag: 'line',
+    vs: { status: 'chill', mult: 1.3 },
   },
   {
+    // OPENER: the halberd's hook over the collar — a fused PULL (the
+    // vortex law) that chills and leaves the row HOOKED for the skewer,
+    // the drive and the fall. Its twist against Hooking Reap: it never
+    // roots; instead a MARK shows it the collar — after archery's brand
+    // or sneak's expose the hook takes a wider row and drags it harder.
     id: 'skullhook',
     name: 'Skullhook',
-    desc: 'The hook goes over the collar and the line runs backward. Yours now.',
+    desc: 'The hook goes over the collar and the line runs backward. A branded or exposed body shows it where the collar is, so it takes a wider row and drags it harder. Leaves the row hooked.',
     color: '#8a94a6',
     code: 'Sk',
     cooldownTicks: 180, // 9 s
@@ -471,11 +498,20 @@ export const POLEARM_DEFS: AbilityDef[] = [
     fuseTicks: 6,
     knockback: -2.2, // the hook PULLS (the vortex law)
     status: { status: 'chill', power: 1, durationTicks: 40 },
+    role: 'opener',
+    tag: 'hook',
+    follow: { after: ['brand', 'expose'], windowTicks: 60, radiusMult: 1.5, knockbackMult: 1.3 },
   },
   {
+    // PAYOFF: the lance's charge spends the road and reads two words —
+    // the polearm's own drawn LINE and the veteran's RALLY (the knight
+    // rides the shout): the arrival lands half again and throws them
+    // further. The red ledger gives the road back on a kill. Priced
+    // under Knight's Charge on purpose: the L50 rung is the school's,
+    // the weapon's cousin is the smaller horse.
     id: 'couched_charge',
     name: 'Couched Charge',
-    desc: 'Set the lance in the crook and spend the road. The arrival signs for you.',
+    desc: 'Set the lance in the crook and spend the road. On a shouted rally or a drawn line the arrival lands half again and throws them further. A kill gives the road back.',
     color: '#d8c48a',
     code: 'Cq',
     cooldownTicks: 180, // 9 s
@@ -484,30 +520,34 @@ export const POLEARM_DEFS: AbilityDef[] = [
     dashTiles: 7.0,
     travel: 'charge',
     knockback: 2.0,
+    role: 'payoff',
+    follow: { after: ['line', 'rally'], windowTicks: 60, damageMult: 1.5, knockbackMult: 1.5 },
+    onKill: { refundTicks: 40 },
   },
 ];
 
 /** THE POLEARM SECRET SHELF's ranks (its four arts sit above, among the hafts). */
 export const POLEARM_SECRET_RANKS: Record<string, Steps> = {
   // --------------------------------------------- polearm, the hafts
+  // II sharpens, III a beat of utility, IV the signature.
   reaching_thrust: [
     { note: 'The point lands heavier.', damage: 10 },
-    { note: 'The reach lengthens and the hand asks again sooner.', range: 3.9, cooldownTicks: 140 },
-    { note: 'The full extension becomes the whole argument.', damage: 11, cooldownTicks: 132 },
+    { note: 'The reach lengthens, and a kill hands the whole lunge back.', range: 3.9, onKill: { refundTicks: 60 } },
+    { note: 'The full extension: a reeling or hooked body takes the point near double.', damage: 11, cooldownTicks: 140, follow: { after: ['stagger', 'hook'], windowTicks: 60, damageMult: 1.75 } },
   ],
   reapers_turn: [
     { note: 'The wheel cuts deeper.', damage: 11 },
     { note: 'The turn opens wider and shoves harder.', arc: 2.7, knockback: 1.8 },
-    { note: 'The row lies down, and the next row is soon.', damage: 12, cooldownTicks: 152 },
+    { note: 'The harvest: a cold row lies down at half again, and the next row is soon.', damage: 12, cooldownTicks: 152, vs: { status: 'chill', mult: 1.5 } },
   ],
   skullhook: [
     { note: 'The hook bites deeper.', damage: 10 },
     { note: 'The drag comes harder, and the cold stays in the collar.', knockback: -2.6, status: { status: 'chill', power: 1, durationTicks: 60 } },
-    { note: 'What the hook claims, it keeps claiming.', damage: 11, cooldownTicks: 170 },
+    { note: 'The marked collar: on a branded or exposed body the hook takes the whole row.', damage: 11, cooldownTicks: 170, follow: { after: ['brand', 'expose'], windowTicks: 60, radiusMult: 2, knockbackMult: 1.5 } },
   ],
   couched_charge: [
     { note: 'The arrival lands heavier.', damage: 12 },
     { note: 'The road runs longer and opens sooner.', dashTiles: 8.0, cooldownTicks: 170 },
-    { note: 'The horizon signs the charge by name.', damage: 13, knockback: 2.4 },
+    { note: 'The banner\'s charge: after a rally or a line it arrives near double; a kill gives it back.', damage: 13, knockback: 2.4, follow: { after: ['line', 'rally'], windowTicks: 60, damageMult: 1.8, knockbackMult: 1.5 }, onKill: { refundTicks: 60 } },
   ],
 };

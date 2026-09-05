@@ -14,6 +14,14 @@
  * felling; the rifts stay open after the blow; answers are the shove,
  * the charge and the stone skin. Signature: Fell Timber (cast, stagger)
  * → Gravedigger (pull + sunder) → Skysunder (consume sunder ×2.2).
+ *
+ * THE SECOND CADENCE (Phase 3): the school no longer walks the
+ * I·W·I·C alternation. Twohand winds up FEWER times and HEAVIER — five
+ * casted arts, every one an opener or the crown, every wind-up 28–36
+ * ticks (the longest in the game) and paid for in weight; every
+ * payoff is an INSTANT follow-up that lands inside the word the
+ * wind-up left (Forgefall lost its breath and became the hammer that
+ * answers the felling). The five held notes stay the school's grind.
  */
 import type { AbilityDef, TechniqueDef } from '@arx/shared';
 
@@ -46,13 +54,13 @@ export const TWOHAND_ARTS: AbilityDef[] = [
   {
     id: 'fell_timber',
     name: 'Fell Timber',
-    desc: 'Wind up and bring the tree down. Whoever it lands on loses their feet for a breath. Follow with Wide Swath while they reel.',
+    desc: 'A long wind-up, then the whole tree comes down. Whoever it lands on loses their feet for a breath. Follow with Wide Swath while they reel.',
     color: '#8a7a4e',
     code: 'Fe',
     cooldownTicks: 150, // 7.5 s
-    castTicks: 20,
+    castTicks: 28, // THE SECOND CADENCE: the longest first breath in any school
     shape: 'melee_arc',
-    damage: 11,
+    damage: 13,
     range: 2.7,
     arc: 1.3,
     knockback: 1.0,
@@ -86,15 +94,15 @@ export const TWOHAND_ARTS: AbilityDef[] = [
 
   // Rung 30, PAYOFF: the hammer that lands on a body already reeling
   // or cracked (follows stagger or sunder) and leaves the forge floor
-  // burning where it landed.
+  // burning where it landed. THE SECOND CADENCE took its wind-up: the
+  // felling already drew the breath, the hammer is the answer to it.
   {
     id: 'forgefall',
     name: 'Forgefall',
-    desc: 'Leap and bring the hammer down still glowing. On a reeling or cracked foe it lands half again as hard, and the ground where it fell keeps burning.',
+    desc: 'No wind-up: leap and bring the hammer down still glowing. On a reeling or cracked foe it lands half again as hard, and the ground where it fell keeps burning.',
     color: '#d97a3d',
     code: 'Fo',
-    cooldownTicks: 250, // 12.5 s
-    castTicks: 22,
+    cooldownTicks: 270, // 13.5 s
     shape: 'leap_slam',
     damage: 12,
     dashTiles: 9.0,
@@ -135,9 +143,9 @@ export const TWOHAND_ARTS: AbilityDef[] = [
     color: '#6a5e6e',
     code: 'Gv',
     cooldownTicks: 220, // 11 s
-    castTicks: 24,
+    castTicks: 32, // THE SECOND CADENCE: the grave is dug slowly and takes more
     shape: 'ground_aoe',
-    damage: 13,
+    damage: 15,
     range: 4.5,
     radius: 2.1,
     fuseTicks: 10,
@@ -177,9 +185,9 @@ export const TWOHAND_ARTS: AbilityDef[] = [
     color: '#c9a24a',
     code: 'Sw',
     cooldownTicks: 250, // 12.5 s
-    castTicks: 24,
+    castTicks: 32, // THE SECOND CADENCE: the sky is lifted all the way up
     shape: 'pulse_nova',
-    damage: 8,
+    damage: 9,
     radius: 2.4,
     pulses: 2,
     pulseEveryTicks: 11,
@@ -220,9 +228,9 @@ export const TWOHAND_ARTS: AbilityDef[] = [
     color: '#e0a04c',
     code: 'Sm',
     cooldownTicks: 240, // 12 s
-    castTicks: 26,
+    castTicks: 36, // THE SECOND CADENCE: the heaviest wind-up in the game — you are swinging the noon
     shape: 'melee_arc',
-    damage: 12,
+    damage: 14,
     range: 2.8,
     arc: 1.6,
     knockback: 1.3,
@@ -441,9 +449,9 @@ export const TWOHAND_ARTS: AbilityDef[] = [
     color: '#e0a04c',
     code: 'Tv',
     cooldownTicks: 320, // 16 s
-    castTicks: 20,
+    castTicks: 30, // THE SECOND CADENCE: the crown is raised slowly and tolls once
     shape: 'nova',
-    damage: 14,
+    damage: 16,
     radius: 2.6,
     knockback: 1.6,
     role: 'crown',
@@ -505,7 +513,7 @@ export const TWOHAND_LADDER: TechniqueDef[] = [
     ranks: [
       { note: 'The stroke lands heavier.', damage: 12 },
       { note: 'A wider horizon, and the reeling rank waits a breath longer.', arc: 2.8, follow: { after: 'stagger', windowTicks: 60, damageMult: 1.5 } },
-      { note: 'The Reaping Line: the front rank leaves the field.', damage: 13, knockback: 1.3 },
+      { note: 'The Reaping Line: the front rank leaves the field, and the stroke is back sooner.', damage: 13, knockback: 1.3, cooldownTicks: 166 },
     ],
   },
   {
@@ -513,9 +521,9 @@ export const TWOHAND_LADDER: TechniqueDef[] = [
     style: 'twohand',
     unlockLevel: 10,
     ranks: [
-      { note: 'The timber lands heavier.', damage: 12 },
+      { note: 'The timber lands heavier.', damage: 14 },
       { note: 'The axe is loose again sooner, and a felling hands more time back.', cooldownTicks: 145, onKill: { refundTicks: 80 } },
-      { note: 'Timber!: the wind-up shortens, the throw lengthens, the tree falls hardest.', damage: 13, castTicks: 18, cooldownTicks: 140, knockback: 1.4 },
+      { note: 'Timber!: the wind-up shortens a little, the throw lengthens, the tree falls hardest.', damage: 15, castTicks: 24, cooldownTicks: 140, knockback: 1.4 },
     ],
   },
   {
@@ -593,9 +601,9 @@ export const TWOHAND_LADDER: TechniqueDef[] = [
     style: 'twohand',
     unlockLevel: 50,
     ranks: [
-      { note: 'The grave takes more.', damage: 15 },
+      { note: 'The grave takes more.', damage: 17 },
       { note: 'The pull deepens and the pit widens.', radius: 2.4, knockback: -1.5 },
-      { note: 'THE OPEN GRAVE: the digging is quicker; the crack it leaves is the widest a maul makes.', damage: 16, cooldownTicks: 205, status: { status: 'sunder', power: 20, durationTicks: 60 } },
+      { note: 'THE OPEN GRAVE: the digging is quicker; the crack it leaves is the widest a maul makes.', damage: 18, cooldownTicks: 205, status: { status: 'sunder', power: 20, durationTicks: 60 } },
     ],
   },
   {
@@ -633,7 +641,7 @@ export const TWOHAND_LADDER: TechniqueDef[] = [
     style: 'twohand',
     unlockLevel: 66,
     ranks: [
-      { note: 'The sky lands heavier.', damage: 9 },
+      { note: 'The sky lands heavier.', damage: 10 },
       { note: 'The weight falls a third time.', pulses: 3 },
       { note: 'The Whole Horizon: the third fall reaches wider.', radius: 2.6 },
     ],
@@ -673,9 +681,9 @@ export const TWOHAND_LADDER: TechniqueDef[] = [
     style: 'twohand',
     unlockLevel: 82,
     ranks: [
-      { note: 'The noon swings heavier.', damage: 14 },
+      { note: 'The noon swings heavier.', damage: 16 },
       { note: 'The arc takes the whole sky.', arc: 2, knockback: 1.5 },
-      { note: 'High Noon: the heat stays on the ground longer, and the iron is loose sooner.', damage: 15, cooldownTicks: 220, aftermath: { fieldTicks: 80, everyTicks: 16, damage: 3, status: { status: 'burn', power: 1, durationTicks: 40 } } },
+      { note: 'High Noon: the heat stays on the ground longer, and the iron is loose sooner.', damage: 17, cooldownTicks: 220, aftermath: { fieldTicks: 80, everyTicks: 16, damage: 3, status: { status: 'burn', power: 1, durationTicks: 40 } } },
     ],
   },
   {
@@ -693,7 +701,7 @@ export const TWOHAND_LADDER: TechniqueDef[] = [
     style: 'twohand',
     unlockLevel: 90,
     ranks: [
-      { note: 'The toll strikes heavier.', damage: 16 },
+      { note: 'The toll strikes heavier.', damage: 18 },
       { note: 'The ring reaches wider, and the earth rings longer under them.', radius: 3.0, aftermath: { fieldTicks: 96, everyTicks: 16, damage: 3, self: { armor: 6, durationTicks: 18 } } },
       { note: 'The Verdict Stands: the earth signs it, and the crater is a fortress to stand in.', cooldownTicks: 280, aftermath: { fieldTicks: 96, everyTicks: 16, damage: 4, self: { armor: 10, durationTicks: 18 } } },
     ],

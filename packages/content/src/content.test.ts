@@ -455,8 +455,12 @@ test('ability shape data is coherent — the executor never guesses', () => {
     // Vortex pulls only make sense on centered effects.
     if ((ab.knockback ?? 0) < 0) {
       assert.ok(
-        ab.shape === 'ground_aoe' || ab.shape === 'ground_field' || ab.shape === 'nova' || ab.shape === 'beam',
-        `${id}: a pull needs a center to pull toward (a beam drags toward the caster)`,
+        ab.shape === 'ground_aoe' ||
+          ab.shape === 'ground_field' ||
+          ab.shape === 'nova' ||
+          ab.shape === 'beam' ||
+          ab.shape === 'melee_arc',
+        `${id}: a pull needs a center to pull toward (a beam or an arc drags toward the caster)`,
       );
     }
   }

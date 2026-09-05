@@ -162,6 +162,13 @@ function followCredit(ab: AbilityDef): number {
     bonus += direct * (Math.min(r * f.radiusMult, 3) - Math.min(r, 3)) * 0.12;
   }
   if (f.status) bonus += Math.max(0, statusValue(f.status) - statusValue(ab.status));
+  // A shove that reads a reeling foe is setup worth the utility lane's
+  // knockback weight on the EXTRA shove (a pull's extra drag likewise).
+  if (f.knockbackMult !== undefined) {
+    const base = ab.knockback ?? 1;
+    const extra = Math.abs(base * f.knockbackMult) - Math.abs(base);
+    if (extra > 0) bonus += extra * (base < 0 ? 0.8 : 0.4);
+  }
   return bonus * FOLLOW_UPTIME;
 }
 

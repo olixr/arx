@@ -197,7 +197,9 @@ test('THE PAYOFF BRACKET FOR THE SHELF: no secret, at any honed rank, deletes an
         // shelf is judged at its heaviest too.
         const perBeat = Math.round(ab.damage * (ab.follow?.damageMult ?? 1) * powerMult(L));
         const beats = oneTargetBeats(ab);
-        const instant = beats === 1 ? perBeat : 0;
+        // A wind-up IS the telegraph: casted secrets escape the no-warning
+        // instant cap exactly as the ladder's do (judged under the 1.1× payload cap).
+        const instant = beats === 1 && !ab.castTicks ? perBeat : 0;
         assert.ok(
           instant <= fighterHp * 0.75,
           `${style}/${seat.ability} @L${L}: instant ${instant} deletes the ${fighterHp}hp line fighter`,

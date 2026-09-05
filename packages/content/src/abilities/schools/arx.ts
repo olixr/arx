@@ -14,6 +14,14 @@
  * ground) → Frost Lance (follows burn: Thermal Shock, leaves ice) →
  * Arc Bolt (follows chill: Shatter, the stun). Every art below names
  * which word it leaves and which word it reads.
+ *
+ * THE SECOND CADENCE (Phase 3): the scholar's school no longer walks
+ * the I·W·I·C alternation. Nine of twenty rungs are LONG CASTS
+ * (22–32 t — a wind-up traded for weight: the drawn art hits harder
+ * than the instant it replaced), six are CHANNELS (the held
+ * elements: the poured river, the raised quarry, the forge cloud,
+ * the lens, the drain, the far sky), and only five are instants —
+ * the interrupt, the step, the circle, the cheap fan, the double.
  */
 import type { AbilityDef, TechniqueDef } from '@arx/shared';
 
@@ -27,7 +35,7 @@ import type { AbilityDef, TechniqueDef } from '@arx/shared';
  *
  * Hollowcall is arx's one hold: a casted, fused void that pulls the
  * yard to its mouth and roots it there (lock 40 t, cooldown ≥ 280 t
- * at every rank, warn 38–40 t ≥ half the lock).
+ * at every rank, warn 42–44 t ≥ half the lock).
  */
 export const ARX_LICENSES: Record<string, string[]> = {
   hollowcall: ['root'],
@@ -71,17 +79,19 @@ export const ARX_ARTS: AbilityDef[] = [
     follow: { after: ['burn', 'chill', 'shock'], windowTicks: 60, refundTicks: 60 },
   },
 
-  // Rung 54, OPENER: the fused stone that lays burn wide, shoves, and leaves fire on the
-  // ground; a kill inside its fall gives the seat back. Leaves burn for Frost Lance / Stormcall.
+  // Rung 54, OPENER: the CALLED stone (Phase 3: a long cast, then the fuse — the sky is
+  // far and the scholar asks it properly) that lays burn wide, shoves, and leaves fire on
+  // the ground; a kill inside its fall gives the seat back. Leaves burn for Frost Lance / Stormcall.
   {
     id: 'meteor_shard',
     name: 'Meteor Shard',
-    desc: 'Call a burning shard down on your mark. Everything near it burns, and the fire stays on the ground after the stone is gone. Follow with cold or lightning.',
+    desc: 'Ask the sky for a burning shard and wait for the answer. Everything near where it lands burns, and the fire stays on the ground after the stone is gone. Follow with cold or lightning.',
     color: '#e85a3c',
     code: 'Ms',
     cooldownTicks: 320, // 16 s
+    castTicks: 24,
     shape: 'ground_aoe',
-    damage: 11,
+    damage: 13,
     range: 12,
     radius: 2.2,
     fuseTicks: 20,
@@ -125,9 +135,9 @@ export const ARX_ARTS: AbilityDef[] = [
     color: '#ff9a4a',
     code: 'Wk',
     cooldownTicks: 200, // 10 s
-    castTicks: 18,
+    castTicks: 22, // the scholar's long wick
     shape: 'projectile_fan',
-    damage: 8,
+    damage: 9,
     range: 10,
     projectiles: 1,
     spreadArc: 0,
@@ -171,9 +181,9 @@ export const ARX_ARTS: AbilityDef[] = [
     color: '#c2e8c8',
     code: 'Wn',
     cooldownTicks: 220, // 11 s
-    castTicks: 20,
+    castTicks: 26, // the whole sky drawn in
     shape: 'nova',
-    damage: 9,
+    damage: 10,
     radius: 2.6,
     knockback: 2.2,
     element: 'gale',
@@ -214,9 +224,9 @@ export const ARX_ARTS: AbilityDef[] = [
     color: '#8ec8dc',
     code: 'Gy',
     cooldownTicks: 240, // 12 s
-    castTicks: 22,
+    castTicks: 28, // the deep water takes a long asking
     shape: 'ground_aoe',
-    damage: 11,
+    damage: 12,
     range: 10,
     radius: 2.0,
     fuseTicks: 14,
@@ -259,7 +269,7 @@ export const ARX_ARTS: AbilityDef[] = [
     color: '#8a6ad0',
     code: 'Ho',
     cooldownTicks: 300, // 15 s
-    castTicks: 24,
+    castTicks: 28, // a nothing is slow to open
     shape: 'ground_aoe',
     damage: 10,
     range: 11,
@@ -304,9 +314,9 @@ export const ARX_ARTS: AbilityDef[] = [
     color: '#d8e2f8',
     code: 'Mo',
     cooldownTicks: 240, // 12 s
-    castTicks: 26,
+    castTicks: 30, // the moon is raised, not thrown
     shape: 'nova',
-    damage: 12,
+    damage: 14,
     radius: 2.4,
     element: 'lunar',
     status: { status: 'chill', power: 1, durationTicks: 60 },
@@ -339,24 +349,26 @@ export const ARX_ARTS: AbilityDef[] = [
     follow: { after: 'hollow', windowTicks: 60, damageMult: 1.5 },
   },
 
-  // Rung 15, PAYOFF: the signature's second press. A cold line down a burning body is
-  // Thermal Shock, and the road it leaves is ice. Reads burn; leaves chill.
+  // Rung 15, PAYOFF: the signature's second press. A DRAWN cold line (Phase 3: the lance
+  // is a scholar's cast, a full second of gathered winter, and hits like it) down a burning
+  // body is Thermal Shock; the road it leaves is ice. Reads burn (a wide window, the
+  // draw eats part of it); leaves chill.
   {
     id: 'frost_lance',
     name: 'Frost Lance',
-    desc: 'One cold line from your hand to the horizon. Cast it down a burning body and the fire answers with Thermal Shock. The road it leaves is ice, ready for lightning.',
+    desc: 'Gather the winter, then throw one cold line from your hand to the horizon. Cast it down a burning body and the fire answers with Thermal Shock. The road it leaves is ice, ready for lightning.',
     color: '#8ac4e8',
     code: 'Fl',
     cooldownTicks: 200, // 10 s
-    castFreezeTicks: 4,
+    castTicks: 20,
     shape: 'beam',
-    damage: 8,
+    damage: 10,
     range: 12,
     width: 0.6,
     status: { status: 'chill', power: 1, durationTicks: 60 },
     role: 'payoff',
     tag: 'chill',
-    follow: { after: 'burn', windowTicks: 60, damageMult: 1.7 },
+    follow: { after: 'burn', windowTicks: 80, damageMult: 1.7 },
     aftermath: { fieldTicks: 48, everyTicks: 16, damage: 1, radius: 1.4, status: { status: 'chill', power: 1, durationTicks: 30 } },
   },
 
@@ -401,15 +413,17 @@ export const ARX_ARTS: AbilityDef[] = [
     onKill: { refundTicks: 60 },
   },
 
-  // Rung 62, PAYOFF: the standing storm asked down on a burning yard; every strike on a burning
-  // body is Combust. Reads burn; leaves shock.
+  // Rung 62, PAYOFF: the standing storm ASKED down (Phase 3: a cast — the sky is petitioned,
+  // not snapped at) on a burning yard; every strike on a burning body is Combust. Reads burn;
+  // leaves shock.
   {
     id: 'stormcall',
     name: 'Stormcall',
-    desc: 'Ask the sky to strike here, and keep striking. Ask it over a burning yard and every strike on the burning is Combust.',
+    desc: 'Petition the sky to strike here, and keep striking. Ask it over a burning yard and every strike on the burning is Combust.',
     color: '#e8e06a',
     code: 'Sc',
     cooldownTicks: 300, // 15 s
+    castTicks: 20,
     shape: 'ground_field',
     damage: 5,
     range: 11,
@@ -446,9 +460,9 @@ export const ARX_ARTS: AbilityDef[] = [
     color: '#ffd98a',
     code: 'Db',
     cooldownTicks: 420, // 21 s
-    castTicks: 24,
+    castTicks: 32, // the longest breath in the school: noon is a long way off
     shape: 'ground_aoe',
-    damage: 15,
+    damage: 17,
     range: 12,
     radius: 2.4,
     fuseTicks: 22,
@@ -525,12 +539,12 @@ export const ARX_LADDER: TechniqueDef[] = [
     style: 'arx',
     unlockLevel: 10,
     ranks: [
-      { note: 'The flame flies heavier.', damage: 10 },
+      { note: 'The flame flies heavier.', damage: 11 },
       {
         note: 'The fire on the ground spreads wider and stays longer.',
         aftermath: { fieldTicks: 64, everyTicks: 16, damage: 2, radius: 1.8, status: { status: 'burn', power: 1, durationTicks: 40 } },
       },
-      { note: 'The long wick: the toss comes quicker, and a kill in the flame relights the seat.', castTicks: 16, onKill: { refundTicks: 80 } },
+      { note: 'The long wick: the toss comes quicker, and a kill in the flame relights the seat.', castTicks: 20, onKill: { refundTicks: 80 } },
     ],
   },
   {
@@ -538,7 +552,7 @@ export const ARX_LADDER: TechniqueDef[] = [
     style: 'arx',
     unlockLevel: 15,
     ranks: [
-      { note: 'The cold line lands harder.', damage: 10 },
+      { note: 'The cold line lands harder.', damage: 12 },
       {
         note: 'The ice road stays longer under them.',
         aftermath: { fieldTicks: 64, everyTicks: 16, damage: 1, radius: 1.4, status: { status: 'chill', power: 1, durationTicks: 30 } },
@@ -546,7 +560,7 @@ export const ARX_LADDER: TechniqueDef[] = [
       {
         note: 'Glasswork: down a burning body the lance strikes twice over.',
         cooldownTicks: 180,
-        follow: { after: 'burn', windowTicks: 60, damageMult: 2 },
+        follow: { after: 'burn', windowTicks: 80, damageMult: 2 },
       },
     ],
   },
@@ -583,13 +597,13 @@ export const ARX_LADDER: TechniqueDef[] = [
     style: 'arx',
     unlockLevel: 30,
     ranks: [
-      { note: 'The gale leans harder.', damage: 11 },
+      { note: 'The gale leans harder.', damage: 12 },
       { note: 'The whole field bows away from you.', radius: 3.0, knockback: 2.6 },
       {
         note: 'The charged gale: the static clings long after the wind, and the sky refills sooner.',
         cooldownTicks: 170,
-        castTicks: 18,
-        damage: 13,
+        castTicks: 22,
+        damage: 14,
         status: { status: 'shock', power: 1, durationTicks: 70 },
       },
     ],
@@ -636,12 +650,12 @@ export const ARX_LADDER: TechniqueDef[] = [
     style: 'arx',
     unlockLevel: 50,
     ranks: [
-      { note: 'The deep water rises harder.', damage: 13 },
+      { note: 'The deep water rises harder.', damage: 14 },
       { note: 'The well mouth widens, and the scald pool lasts.', radius: 2.4, knockback: 2.2, aftermath: { fieldTicks: 64, everyTicks: 16, damage: 2 } },
       {
         note: 'Shatterwell: under a charged body the deep answers with everything it has.',
         cooldownTicks: 220,
-        castTicks: 20,
+        castTicks: 24,
         follow: { after: 'shock', windowTicks: 60, damageMult: 1.8 },
       },
     ],
@@ -651,15 +665,16 @@ export const ARX_LADDER: TechniqueDef[] = [
     style: 'arx',
     unlockLevel: 54,
     ranks: [
-      { note: 'A heavier shard.', damage: 13 },
+      { note: 'A heavier shard.', damage: 15 },
       {
         note: 'The fire it leaves spreads wider and burns longer.',
         radius: 2.6,
         aftermath: { fieldTicks: 80, everyTicks: 16, damage: 2, status: { status: 'burn', power: 1, durationTicks: 40 } },
       },
       {
-        note: 'The cinder field: the burn outlasts the stone, and the sky reloads sooner.',
+        note: 'The cinder field: the burn outlasts the stone, and the sky answers a shorter asking.',
         cooldownTicks: 300,
+        castTicks: 20,
         status: { status: 'burn', power: 1, durationTicks: 80 },
       },
     ],
@@ -703,8 +718,8 @@ export const ARX_LADDER: TechniqueDef[] = [
       {
         note: 'The wide mouth: it opens quicker, closes on more, and a death inside it reopens the seat.',
         cooldownTicks: 280,
-        castTicks: 22,
-        damage: 13,
+        castTicks: 26,
+        damage: 14,
         onKill: { refundTicks: 100 },
       },
     ],
@@ -759,7 +774,7 @@ export const ARX_LADDER: TechniqueDef[] = [
     style: 'arx',
     unlockLevel: 82,
     ranks: [
-      { note: 'A heavier moon.', damage: 14 },
+      { note: 'A heavier moon.', damage: 16 },
       {
         note: 'The silver reaches farther, and the slow runs longer.',
         radius: 2.8,
@@ -768,8 +783,8 @@ export const ARX_LADDER: TechniqueDef[] = [
       {
         note: 'The long silver: the frost sheet outlasts the moon, and the moon answers the first call.',
         cooldownTicks: 220,
-        castTicks: 24,
-        damage: 16,
+        castTicks: 28,
+        damage: 17,
         aftermath: { fieldTicks: 100, everyTicks: 16, damage: 1, status: { status: 'chill', power: 1, durationTicks: 30 } },
       },
     ],
@@ -789,10 +804,11 @@ export const ARX_LADDER: TechniqueDef[] = [
     style: 'arx',
     unlockLevel: 90,
     ranks: [
-      { note: 'Noon weighs more.', damage: 17 },
+      { note: 'Noon weighs more.', damage: 18 },
       { note: 'A wider noon.', radius: 2.8 },
       {
-        note: 'The long noon: it burns hotter and the ground burns a full breath longer.',
+        note: 'The long noon: hotter, the ground burns a breath longer, and noon comes round sooner.',
+        cooldownTicks: 400,
         damage: 20,
         status: { status: 'burn', power: 1, durationTicks: 80 },
         aftermath: { fieldTicks: 100, everyTicks: 16, damage: 3, status: { status: 'burn', power: 1, durationTicks: 40 } },

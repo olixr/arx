@@ -135,7 +135,7 @@ test('the press begins the breath and pays nothing', () => {
   assert.equal(player.castFreezeUntilTick, 0, 'no root — the breath moves at full stride');
   assert.equal(casts.length, 0, 'the one door has not opened');
   const start = sent.find((m) => m.t === 'cast');
-  assert.ok(start && start.state === 'start' && start.ticks === 24, 'the start speaks its length');
+  assert.ok(start && start.state === 'start' && start.ticks === abilityDef('daybreak')!.castTicks, 'the start speaks its length');
   // THE BREATH SPEAKS: watchers read the wind-up on the body from
   // the first tick — the charge dialect opens with the breath.
   const charge = fxOut.find((f) => f.kind === 'charge');
@@ -191,7 +191,7 @@ test('THE PLANTED FOOT: still ticks breathe 1.25, moving ticks breathe 1', () =>
     s2.self.tickCasting.call(s2.self, 1, moving, true);
     ticks++;
   }
-  assert.equal(ticks, 24, 'on the move, the breath takes its authored length');
+  assert.equal(ticks, abilityDef('daybreak')!.castTicks, 'on the move, the breath takes its authored length');
 });
 
 test('a second press of the winding slot cancels clean; other slots are refused', () => {
@@ -242,7 +242,7 @@ test('THE HELD SIGIL composes: the staked point holds and the facing re-derives 
   // watchers on the planted (best-case) clock — never early.
   const tele = fxOut.find((f) => f.kind === 'telegraph');
   assert.ok(tele && tele.x === 6 && tele.y === 0, 'the mark stands where the promise was staked');
-  assert.equal(tele!.ticks, Math.ceil(24 / CAST_STILL_FACTOR), 'the mark runs the planted clock');
+  assert.equal(tele!.ticks, Math.ceil(abilityDef('daybreak')!.castTicks! / CAST_STILL_FACTOR), 'the mark runs the planted clock');
   // The body wanders mid-breath; the promise holds.
   pos.x = 0;
   pos.y = 5;
@@ -281,6 +281,9 @@ test('a cancelled breath leaves the pose and a broken one is idempotent', () => 
 
 test('content pins the pilot: daybreak carries the breath, its old root retired', () => {
   const ab = abilityDef('daybreak')!;
-  assert.equal(ab.castTicks, 24, 'the pilot winds 1.2s');
+  // THE MASTERED HAND reseated the arx cadence (daybreak winds 32t,
+  // the longest breath in the school); the pin is the LAW, not the
+  // literal: a breath, and no post-fire root.
+  assert.ok((ab.castTicks ?? 0) >= 20, 'the pilot winds up');
   assert.equal(ab.castFreezeTicks, undefined, 'the wind-up IS the commit — no post-fire root');
 });

@@ -95,6 +95,8 @@ export function artGrammar(ab: AbilityDef): string {
   if (ab.follow) {
     const after = typeof ab.follow.after === 'string' ? ab.follow.after : ab.follow.after.join(' or ');
     out += ` · follows ${after} (${ab.follow.windowTicks / 20}s)`;
+    if (ab.follow.self) out += ' · the link dresses you';
+    if (ab.follow.knockbackMult) out += ' · the link shoves harder';
   }
   if (ab.tag) out += ` · leaves ${ab.tag}`;
   if (ab.aftermath) out += ` · burns the ground ${ab.aftermath.fieldTicks / 20}s`;

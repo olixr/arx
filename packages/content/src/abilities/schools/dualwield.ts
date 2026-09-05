@@ -12,6 +12,16 @@
  *
  * Signature: Twin Cut (left) → Two Bells (right follows left, ×1.5)
  * → Turning Reel (follows right, ×1.4 and a quicken stack).
+ *
+ * THE SECOND CADENCE (Phase 3): the weave's delivery is mostly instant
+ * links — the whole signature and every link to level 15 is a press —
+ * its casts are RARE and quick (the thrown orbit, the held wicks, the
+ * gathered fall, the drawn execute, the spun-up storm: 14–20 ticks,
+ * never the scholar's 24), and its channels are THE LOOM: a 12-tick
+ * crossing, one beat quicker than every other school's held note, so
+ * a weave note has four or five crossings where a beam has three.
+ * The quickened hand is spoken by the LINK (`follow.self`): the reel
+ * and the crown quicken only when they land inside the window.
  */
 import type { AbilityDef, TechniqueDef } from '@arx/shared';
 
@@ -38,19 +48,20 @@ const QUICKEN_STACK = { status: 'quicken' as const, power: 0, durationTicks: 120
 export const DUALWIELD_ARTS: AbilityDef[] = [
   // ----------------- THE SECOND BREATH — the dualwield breath arts
 
-  // Rung 10, PAYOFF: the casted answer to the left hand's word. Two
+  // Rung 10, PAYOFF: the instant answer to the left hand's word. Two
   // Bells is the second press of the signature; rung 5's Twin Cut
   // leaves `left`, the bells ring ×1.5 inside the window and leave
-  // `right` for the reel. A wind-up in a school of instants so the
-  // level-10 player learns the school's whole law: press, then answer.
+  // `right` for the reel. THE SECOND CADENCE took its wind-up: a link
+  // in a school of links is a press, never a breath — the level-10
+  // player learns press, then press, and the bells trade the drawn
+  // breath's weight for a shorter wait.
   {
     id: 'two_bells',
     name: 'Two Bells',
-    desc: 'Draw both edges and ring them together. Struck inside a left cut the peal lands half again and jars them still. Leaves the right hand open.',
+    desc: 'Both edges, rung together. Struck inside a left cut the peal lands half again and jars them still. Leaves the right hand open.',
     color: '#d9c46a',
     code: '2b',
-    cooldownTicks: 160, // 8 s
-    castTicks: 18,
+    cooldownTicks: 150, // 7.5 s
     shape: 'melee_arc',
     damage: 10,
     range: 2.2,
@@ -61,21 +72,22 @@ export const DUALWIELD_ARTS: AbilityDef[] = [
     follow: { after: 'left', windowTicks: 60, damageMult: 1.5 },
   },
 
-  // Rung 20, SUSTAIN: the first held note. The ribbons cross for
-  // three beats and the last crossing lands double; every pass leaves
+  // Rung 20, SUSTAIN: the first loom. The ribbons cross on the weave's
+  // own 12-tick beat — four crossings where another school's note has
+  // three — and the last crossing lands double; every pass leaves
   // bleed and the note itself leaves `rend`, the word The Shears and
   // First and Last read. The level-20 player's combo closer.
   {
     id: 'ribbonwork',
     name: 'Ribbonwork',
-    desc: 'Hold the crossing. Every pass lays a ribbon of blood and the last pass cuts twice as deep. The wound stays open for the shears.',
+    desc: 'Hold the crossing. Four quick passes, every one a ribbon of blood, and the last pass cuts twice as deep. The wound stays open for the shears.',
     color: '#c45a4a',
     code: 'Rb',
     cooldownTicks: 220, // 11 s
-    channelTicks: 48,
-    pulseEveryTicks: 16,
+    channelTicks: 48, // four crossings on the loom's 12-tick beat
+    pulseEveryTicks: 12,
     shape: 'melee_arc',
-    damage: 5,
+    damage: 4,
     range: 2.1,
     arc: 1.1,
     status: { status: 'bleed', power: 1, durationTicks: 40 },
@@ -85,16 +97,17 @@ export const DUALWIELD_ARTS: AbilityDef[] = [
   },
 
   // Rung 30, PAYOFF: the ranged reader of either hand. Thrown after
-  // any hand's word the moons come home heavier; the casted throw is
-  // the school's one way to spend a window from range.
+  // any hand's word the moons come home heavier; the throw is the
+  // school's one way to spend a window from range, and its draw is a
+  // knife hand's — sixteen ticks, quick and rare.
   {
     id: 'twin_moons',
     name: 'Twin Moons',
-    desc: 'Draw back and loose both blades on one orbit. They always come home, and thrown on the heels of either hand they come home heavier.',
+    desc: 'A short draw and both blades loosed on one orbit. They always come home, and thrown on the heels of either hand they come home heavier.',
     color: '#b8c4d8',
     code: 'Tn',
     cooldownTicks: 200, // 10 s
-    castTicks: 20,
+    castTicks: 16,
     shape: 'projectile_fan',
     damage: 6,
     range: 9,
@@ -112,14 +125,14 @@ export const DUALWIELD_ARTS: AbilityDef[] = [
   {
     id: 'silver_reel',
     name: 'Silver Reel',
-    desc: 'Spin the pair into one cold circle and hold it. Everything in reach slows, and the last turn cuts twice as deep. Chilled bodies take the stitch harder.',
+    desc: 'Spin the pair into one cold circle and hold it. Four quick turns, everything in reach slows, and the last turn cuts twice as deep. Chilled bodies take the stitch harder.',
     color: '#a8c0cc',
     code: 'Sr',
     cooldownTicks: 240, // 12 s
-    channelTicks: 48,
-    pulseEveryTicks: 16,
+    channelTicks: 48, // four turns on the loom's beat
+    pulseEveryTicks: 12,
     shape: 'nova',
-    damage: 4,
+    damage: 3,
     radius: 1.9,
     status: { status: 'chill', power: 1, durationTicks: 40 },
     role: 'sustain',
@@ -133,11 +146,11 @@ export const DUALWIELD_ARTS: AbilityDef[] = [
   {
     id: 'matched_flame',
     name: 'Matched Flame',
-    desc: 'Two wicks, one held breath. The burst lands already burning and leaves the left hand open. A kill in the flame gives the breath back.',
+    desc: 'Two wicks, one short breath. The burst lands already burning and leaves the left hand open. A kill in the flame gives the breath back.',
     color: '#e0854a',
     code: 'Mf',
     cooldownTicks: 220, // 11 s
-    castTicks: 22,
+    castTicks: 18, // a knife hand's breath, not a scholar's
     shape: 'flurry',
     damage: 6,
     range: 2.1,
@@ -183,7 +196,7 @@ export const DUALWIELD_ARTS: AbilityDef[] = [
     color: '#9ab8c8',
     code: 'Mi',
     cooldownTicks: 220, // 11 s
-    castTicks: 20,
+    castTicks: 16, // a short gather before the leap
     shape: 'leap_slam',
     damage: 12,
     dashTiles: 8,
@@ -195,20 +208,21 @@ export const DUALWIELD_ARTS: AbilityDef[] = [
     onKill: { refundTicks: 30 },
   },
 
-  // Rung 74, SUSTAIN: the loom. The longest note in the school, four
-  // crossings and a finale that lands triple; every thread bleeds and
-  // the note leaves `rend` for the shears. The held heart of the weave.
+  // Rung 74, SUSTAIN: the loom itself. The longest note in the school,
+  // five crossings on the 12-tick beat and a finale that lands triple;
+  // every thread bleeds and the note leaves `rend` for the shears. The
+  // held heart of the weave.
   {
     id: 'the_weave',
     name: 'The Weave',
-    desc: 'Warp and weft, held to the count. Every crossing bleeds and the last crossing lands three times over. Break the note early and you keep only the quiet beats.',
+    desc: 'Warp and weft, held to the count. Five crossings, every one bleeding, and the last lands three times over. Break the note early and you keep only the quiet beats.',
     color: '#b0a4c0',
     code: 'Wv',
     cooldownTicks: 240, // 12 s
-    channelTicks: 64,
-    pulseEveryTicks: 16,
+    channelTicks: 60, // five crossings on the loom's beat
+    pulseEveryTicks: 12,
     shape: 'melee_arc',
-    damage: 4,
+    damage: 3,
     range: 2.2,
     arc: 1.3,
     status: { status: 'bleed', power: 1, durationTicks: 40 },
@@ -223,11 +237,11 @@ export const DUALWIELD_ARTS: AbilityDef[] = [
   {
     id: 'first_and_last',
     name: 'First and Last',
-    desc: 'Draw the breath and cut twice. Struck inside an open wound the first cut lands half again; the last cut closes hardest on the failing and on the bleeding. A kill gives the breath back.',
+    desc: 'One drawn breath, two cuts. Struck inside an open wound the first cut lands half again; the last cut closes hardest on the failing and on the bleeding. A kill gives the breath back.',
     color: '#e8d8a0',
     code: 'Fx',
     cooldownTicks: 200, // 10 s
-    castTicks: 24,
+    castTicks: 20, // the school's longest draw, and it is still a knife's
     shape: 'melee_arc',
     damage: 12,
     range: 2.3,
@@ -245,12 +259,12 @@ export const DUALWIELD_ARTS: AbilityDef[] = [
   {
     id: 'hummingbird',
     name: 'Hummingbird',
-    desc: 'Wings too fast to see, held on one flower. Count the visits if you can; the last one lands twice as hard.',
+    desc: 'Wings too fast to see, held on one flower. Four visits, count them if you can; the last one lands twice as hard.',
     color: '#8ac4a8',
     code: 'Hm',
     cooldownTicks: 240, // 12 s
-    channelTicks: 64,
-    pulseEveryTicks: 16,
+    channelTicks: 48, // four visits on the loom's beat
+    pulseEveryTicks: 12,
     shape: 'projectile_fan',
     damage: 3,
     range: 9,
@@ -346,12 +360,13 @@ export const DUALWIELD_ARTS: AbilityDef[] = [
   },
 
   // Rung 45, PAYOFF: the third press of the signature. Turned inside a
-  // right word the ring lands harder and the caster's hands quicken a
-  // stack; the reel is where the weave pays itself in tempo.
+  // right word the ring lands harder and the LINK quickens the caster's
+  // hands (`follow.self`, the door Phase 2 asked for): the reel pays
+  // the weave in tempo only when the thread was kept.
   {
     id: 'turning_reel',
     name: 'Turning Reel',
-    desc: 'One full turn, both edges out, and the ring around you empties. Turned on the heels of a right cut it lands harder and your hands quicken.',
+    desc: 'One full turn, both edges out, and the ring around you empties. Turned on the heels of a right cut it lands harder and the link quickens your hands.',
     color: '#b8a88a',
     code: 'Tr',
     cooldownTicks: 160, // 8 s
@@ -359,9 +374,8 @@ export const DUALWIELD_ARTS: AbilityDef[] = [
     damage: 10,
     radius: 2.1,
     knockback: 1.1,
-    self: { selfStatus: QUICKEN_STACK, durationTicks: 1 },
     role: 'payoff',
-    follow: { after: 'right', windowTicks: 60, damageMult: 1.4 },
+    follow: { after: 'right', windowTicks: 60, damageMult: 1.4, self: { selfStatus: QUICKEN_STACK, durationTicks: 1 } },
   },
 
   // Rung 54, SUSTAIN: the weaving stance. Every landed swing of either
@@ -425,22 +439,25 @@ export const DUALWIELD_ARTS: AbilityDef[] = [
     onKill: { refundTicks: 40 },
   },
 
-  // Rung 78, OPENER: the carried storm. Three rings that bleed and
-  // leave `left` for the high-rung followers; a kill in the storm
-  // hands it back.
+  // Rung 78, OPENER: the carried storm. THE SECOND CADENCE gave it the
+  // wind-up Two Bells gave up — the storm is SPUN UP, a short gather
+  // and then three rings that bleed and leave `left` for the high-rung
+  // followers; a kill in the storm hands it back. The breath bought it
+  // weight: heavier rings, a harder shove.
   {
     id: 'storm_of_two',
     name: 'Storm of Two',
-    desc: 'Carry the storm with you. It rings once for each hand, every ring bleeds, and the left hand stays open when it ends. A kill in the storm gives it back sooner.',
+    desc: 'Spin the storm up and carry it with you. It rings once for each hand, every ring bleeds and shoves, and the left hand stays open when it ends. A kill in the storm gives it back sooner.',
     color: '#a8b0c0',
     code: 'S2',
     cooldownTicks: 240, // 12 s
+    castTicks: 14, // the spin-up: the school's shortest breath
     shape: 'pulse_nova',
-    damage: 6,
+    damage: 7,
     radius: 1.9,
     pulses: 3,
     pulseEveryTicks: 9,
-    knockback: 0.8,
+    knockback: 1.0,
     status: { status: 'bleed', power: 1, durationTicks: 40 },
     role: 'opener',
     tag: 'left',
@@ -449,11 +466,12 @@ export const DUALWIELD_ARTS: AbilityDef[] = [
 
   // Rung 90, CROWN: the whole weave in one press. Five cuts that bleed,
   // land harder after any word in the air, close deeper on a bleeding
-  // body, quicken the caster's hands, and come back on a kill.
+  // body, and come back on a kill; the LINK quickens the caster's
+  // hands (`follow.self`) — the crown pays tempo for a kept thread.
   {
     id: 'hundred_hands',
     name: 'Hundred Hands',
-    desc: 'Five cuts in a breath, every one bleeding. After any open hand they land harder, they close deeper on a bleeding body, and your hands quicken. A kill gives them back.',
+    desc: 'Five cuts in a breath, every one bleeding. After any open hand they land harder and the link quickens your hands; they close deeper on a bleeding body. A kill gives them back.',
     color: '#e0c060',
     code: 'Hh',
     cooldownTicks: 300, // 15 s
@@ -464,9 +482,8 @@ export const DUALWIELD_ARTS: AbilityDef[] = [
     hits: 5,
     pulseEveryTicks: 5,
     status: { status: 'bleed', power: 1, durationTicks: 40 },
-    self: { selfStatus: QUICKEN_STACK, durationTicks: 1 },
     role: 'crown',
-    follow: { after: ['left', 'right', 'rend'], windowTicks: 60, damageMult: 1.3 },
+    follow: { after: ['left', 'right', 'rend'], windowTicks: 60, damageMult: 1.3, self: { selfStatus: QUICKEN_STACK, durationTicks: 1 } },
     vs: { status: 'bleed', mult: 1.2 },
     onKill: { refundTicks: 40 },
   },
@@ -511,7 +528,7 @@ export const DUALWIELD_LADDER: TechniqueDef[] = [
     ranks: [
       { note: 'The bells ring harder.', damage: 12 },
       { note: 'The peal carries wider and holds them longer.', arc: 1.2, status: { status: 'shock', power: 1, durationTicks: 45 } },
-      { note: 'The carillon: after a left cut the peal lands double.', damage: 13, castTicks: 16, cooldownTicks: 150, follow: { after: 'left', windowTicks: 60, damageMult: 2 } },
+      { note: 'The carillon: called sooner, and after a left cut the peal lands well over half again.', damage: 12, cooldownTicks: 140, follow: { after: 'left', windowTicks: 60, damageMult: 1.6 } },
     ],
   },
   {
@@ -529,8 +546,8 @@ export const DUALWIELD_LADDER: TechniqueDef[] = [
     style: 'dualwield',
     unlockLevel: 20,
     ranks: [
-      { note: 'The ribbons cut deeper.', damage: 6 },
-      { note: 'The crossing takes a fourth pass.', channelTicks: 64 },
+      { note: 'The ribbons cut deeper.', damage: 5 },
+      { note: 'The crossing takes a fifth pass.', channelTicks: 60 },
       { note: 'The red knot: the last pass lands half again over double.', finaleMult: 2.5 },
     ],
   },
@@ -569,8 +586,8 @@ export const DUALWIELD_LADDER: TechniqueDef[] = [
     style: 'dualwield',
     unlockLevel: 40,
     ranks: [
-      { note: 'The reel cuts harder.', damage: 5 },
-      { note: 'The reel winds a fourth turn.', channelTicks: 64 },
+      { note: 'The reel cuts harder.', damage: 4 },
+      { note: 'The reel winds a fifth turn.', channelTicks: 60 },
       { note: 'The circle widens, and the cold keeps.', radius: 2.2, status: { status: 'chill', power: 1, durationTicks: 60 } },
     ],
   },
@@ -581,7 +598,7 @@ export const DUALWIELD_LADDER: TechniqueDef[] = [
     ranks: [
       { note: 'The turn cuts deeper.', damage: 12 },
       { note: 'A wider round, called oftener.', radius: 2.5, cooldownTicks: 150 },
-      { note: 'The full turn: after a right cut the ring lands half again.', damage: 13, follow: { after: 'right', windowTicks: 60, damageMult: 1.5 } },
+      { note: 'The full turn: after a right cut the ring lands half again.', damage: 13, follow: { after: 'right', windowTicks: 60, damageMult: 1.5, self: { selfStatus: QUICKEN_STACK, durationTicks: 1 } } },
     ],
   },
   {
@@ -658,7 +675,7 @@ export const DUALWIELD_LADDER: TechniqueDef[] = [
     style: 'dualwield',
     unlockLevel: 74,
     ranks: [
-      { note: 'The threads pull tighter.', damage: 5 },
+      { note: 'The threads pull tighter.', damage: 4 },
       { note: 'The loom reaches wider.', arc: 1.6, range: 2.4 },
       { note: 'The weft runs red: the last crossing lands three times over.', cooldownTicks: 220, finaleMult: 3 },
     ],
@@ -668,9 +685,9 @@ export const DUALWIELD_LADDER: TechniqueDef[] = [
     style: 'dualwield',
     unlockLevel: 78,
     ranks: [
-      { note: 'Each ring lands heavier.', damage: 7 },
+      { note: 'Each ring lands heavier.', damage: 8 },
       { note: 'A fourth ring joins the round.', pulses: 4, cooldownTicks: 260 },
-      { note: 'The storm widens its round.', radius: 2.1, onKill: { refundTicks: 40 } },
+      { note: 'The storm spins up quicker and widens its round.', castTicks: 12, radius: 2.1, onKill: { refundTicks: 40 } },
     ],
   },
   {
@@ -680,7 +697,7 @@ export const DUALWIELD_LADDER: TechniqueDef[] = [
     ranks: [
       { note: 'The first cut opens wider.', damage: 14 },
       { note: 'The door closes harder on the failing.', executeBelow: { frac: 0.35, mult: 2.2 } },
-      { note: 'First and last arrive together: inside an open wound the first cut lands double.', damage: 15, castTicks: 22, follow: { after: 'rend', windowTicks: 60, damageMult: 2 } },
+      { note: 'First and last arrive together: inside an open wound the first cut lands double.', damage: 15, castTicks: 18, follow: { after: 'rend', windowTicks: 60, damageMult: 2 } },
     ],
   },
   {
@@ -700,7 +717,7 @@ export const DUALWIELD_LADDER: TechniqueDef[] = [
     ranks: [
       { note: 'Every hand hits harder.', damage: 6 },
       { note: 'The breath shortens.', cooldownTicks: 280, pulseEveryTicks: 4 },
-      { note: 'A sixth hand joins the count, and after any open hand they land half again.', hits: 6, follow: { after: ['left', 'right', 'rend'], windowTicks: 60, damageMult: 1.5 } },
+      { note: 'A sixth hand joins the count, and after any open hand they land half again.', hits: 6, follow: { after: ['left', 'right', 'rend'], windowTicks: 60, damageMult: 1.5, self: { selfStatus: QUICKEN_STACK, durationTicks: 1 } } },
     ],
   },
   {

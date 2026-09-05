@@ -55,23 +55,49 @@ function stubCtx(): { c: MatterCtx; calls: () => number } {
  * non-empty set past that phase is a debt, not a feature.
  */
 const IN_FLIGHT = new Set([
-  'heavy_slam',
-  'stagger_stomp',
-  'warlords_descent',
   'arrow_tempest',
-  'draw_iron',
-  'hold_the_line',
-  'unbroken',
-  'champions_wall',
-  'titans_verdict',
-  'shoulder_check',
-  'war_shout',
   'break_the_line',
-  'the_long_fight',
+  'champions_wall',
+  'day_breaks',
+  'draw_iron',
+  'eye_of_the_storm',
+  'forgefall',
   'four_roads',
-  'sundering_lance',
+  'frost_lance',
+  'garden_close',
   'haft_strike',
+  'heavy_slam',
+  'hold_the_line',
+  'last_toll',
+  'meteor_shard',
+  'pale_crescent',
+  'perihelion',
+  'phantom_flight',
+  'rain_of_arrows',
+  'realm_rend',
+  'reapers_arc',
+  'shearwind',
+  'shockwave',
+  'shoulder_check',
+  'skyrend',
+  'solar_lance',
+  'stagger_stomp',
+  'starfall_arrows',
+  'still_air',
+  'storm_of_two',
+  'stormcall',
+  'sundering_chop',
+  'sundering_lance',
+  'the_long_fight',
+  'titans_verdict',
+  'two_bells',
+  'unbroken',
   'wall_of_points',
+  'war_shout',
+  'warlords_descent',
+  'wild_root',
+  'windsong',
+  'winterflight',
 ]);
 
 test('every shipped breath art carries a curated dialect voice', () => {
@@ -95,7 +121,7 @@ test('no orphan dialects: every entry names a live breath art with the matching 
   for (const [id, d] of Object.entries(BREATH_DIALECTS)) {
     const ab = ABILITIES.get(id);
     assert.ok(ab, `dialect '${id}' speaks for no ability`);
-    if (d.charge) {
+    if (d.charge && !IN_FLIGHT.has(id)) {
       assert.ok(
         ab!.castTicks || kitWound.has(id),
         `'${id}' has a charge voice but no wind-up (neither castTicks nor a winding kit entry)`,

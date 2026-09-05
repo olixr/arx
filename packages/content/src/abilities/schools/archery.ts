@@ -11,6 +11,17 @@
  * branded body, the volleys fall on a planted patch, the channels
  * pick up the loosed note. Signature: Hawk's Hour brands the ring ->
  * Twin Strike inside the window, both shafts through the branded line.
+ *
+ * THE SECOND CADENCE (Phase 3, 2026-09-05): the ladder no longer walks
+ * the old instant/wind/instant/channel alternation. The archer's
+ * delivery is DRAWN SHOTS and STAKED VOLLEYS — nine drawn presses
+ * (Kingshot, Rain of Arrows, Hawk's Hour, Winterflight, Emberhead,
+ * Gloamshaft, Phantom Flight, Zenith, Arrow Tempest), five held notes
+ * (Stringsong, Skyloom, Harrier, Storm of Shafts, Crowsong), and six
+ * instants that are the answers and the quick payoffs (Tumble, Longshot,
+ * Snare, Ricochet, Twin Strike, Skyfall). Breath changed: Rain of
+ * Arrows gained a call, Winterflight became one drawn cold shot (its
+ * frost stays on the line at IV), Phantom Flight gained a draw.
  */
 import type { AbilityDef, TechniqueDef } from '@arx/shared';
 
@@ -112,19 +123,20 @@ export const ARCHERY_ARTS: AbilityDef[] = [
     follow: { after: 'loose', windowTicks: 60, damageMult: 1.3 },
   },
 
-  // Rung 25, PAYOFF. The sky falls where the archer has already been: on a branded body or a planted patch the rain lands heavier and wider.
+  // Rung 25, PAYOFF. The first STAKED VOLLEY (THE SECOND CADENCE): the archer calls the sky for a breath, then it lands — the wind-up buys the weight; on a branded body or a planted patch the rain lands heavier and wider.
   {
     id: 'rain_of_arrows',
     name: 'Rain of Arrows',
-    desc: 'Darken the sky over a patch of ground, then it lands. Called down on a branded or planted patch it falls heavier and wider.',
+    desc: 'Call the sky down over a patch of ground and hold the call until it darkens; then it lands. Called over a branded or planted patch it falls heavier and wider.',
     color: '#6b8a5a',
     code: 'Ra',
     cooldownTicks: 190, // 9.5 s
+    castTicks: 16, // the call — 0.8 s drawn, 0.64 s planted
     shape: 'ground_aoe',
-    damage: 9,
+    damage: 11,
     range: 12,
     radius: 2.0,
-    fuseTicks: 18,
+    fuseTicks: 14,
     role: 'payoff',
     follow: { after: ['brand', 'plant'], windowTicks: 60, damageMult: 1.5, radiusMult: 1.3 },
   },
@@ -166,23 +178,21 @@ export const ARCHERY_ARTS: AbilityDef[] = [
     tag: 'plant',
   },
 
-  // Rung 40, SUSTAIN. The cold line held: a chill beam with a finale, and run down a planted patch the caught take it harder.
+  // Rung 40, SUSTAIN. THE SECOND CADENCE: the held cold note becomes a DRAWN SHOT — one drawn shaft of winter down the line, chilling the whole corridor, and at rank IV the cold stays on the ground it crossed (the sustain is the frost that lingers, not a channel). Run down a planted patch the caught take it harder.
   {
     id: 'winterflight',
     name: 'Winterflight',
-    desc: 'Loose down one cold line and keep loosing. The caught walk slow, the last breath cuts deepest, and a planted patch takes it harder.',
+    desc: 'Draw the cold in and loose it down one line. Everything on the line walks slow, and a planted patch takes it harder.',
     color: '#8ac4e0',
     code: 'Wf',
     cooldownTicks: 170, // 8.5 s
-    channelTicks: 48,
-    pulseEveryTicks: 16,
+    castTicks: 18, // 0.9 s drawn, 0.72 s planted
     shape: 'beam',
-    damage: 4,
-    range: 9,
+    damage: 11,
+    range: 10,
     width: 0.6,
-    status: { status: 'chill', power: 1, durationTicks: 40 },
+    status: { status: 'chill', power: 1, durationTicks: 50 },
     role: 'sustain',
-    finaleMult: 1.5,
     follow: { after: 'plant', windowTicks: 60, damageMult: 1.3 },
   },
 
@@ -300,16 +310,17 @@ export const ARCHERY_ARTS: AbilityDef[] = [
     onKill: { refundTicks: 40 },
   },
 
-  // Rung 70, PAYOFF. The ghost arrow comes home red: loosed through a branded or planted patch it strikes half again out and back.
+  // Rung 70, PAYOFF. THE SECOND CADENCE: the ghost is DRAWN, not flicked — a short draw, then the arrow flies out pale and comes home red; loosed through a branded body or a planted patch it strikes half again out and back.
   {
     id: 'phantom_flight',
     name: 'Phantom Flight',
-    desc: 'An arrow that flies out pale and comes home red. Loosed through a branded body or a planted patch it bites half again both ways.',
+    desc: 'Draw the ghost and loose it: an arrow that flies out pale and comes home red. Loosed through a branded body or a planted patch it bites half again both ways.',
     color: '#9aa8b8',
     code: 'Pf',
     cooldownTicks: 200, // 10 s
+    castTicks: 16, // 0.8 s drawn, 0.64 s planted
     shape: 'projectile_fan',
-    damage: 7,
+    damage: 8,
     range: 11,
     projectiles: 1,
     projectileSpeed: 15,
@@ -491,7 +502,7 @@ export const ARCHERY_LADDER: TechniqueDef[] = [
     style: 'archery',
     unlockLevel: 25,
     ranks: [
-      { note: 'The sky falls harder.', damage: 11 },
+      { note: 'The sky falls harder.', damage: 13 },
       { note: 'A wider patch of ruin.', radius: 2.4 },
       {
         note: 'Barbed heads: the wounds keep raining.',
@@ -527,9 +538,13 @@ export const ARCHERY_LADDER: TechniqueDef[] = [
     style: 'archery',
     unlockLevel: 40,
     ranks: [
-      { note: 'The cold line runs longer.', range: 11 },
+      { note: 'The cold line runs longer.', range: 12 },
       { note: 'The cold clings longer and the line runs wider.', width: 0.8, status: { status: 'chill', power: 1, durationTicks: 60 } },
-      { note: 'The last breath of winter: the finale cuts double.', finaleMult: 2 },
+      {
+        note: 'The last breath of winter: the shaft lands heavier and the line stays frozen behind it.',
+        damage: 13,
+        aftermath: { fieldTicks: 48, everyTicks: 16, damage: 1, radius: 1.4, status: { status: 'chill', power: 1, durationTicks: 40 } },
+      },
     ],
   },
   {
@@ -601,10 +616,10 @@ export const ARCHERY_LADDER: TechniqueDef[] = [
     unlockLevel: 70,
     ranks: [
       { note: 'The ghost flies further.', range: 13 },
-      { note: 'It haunts you oftener.', cooldownTicks: 180 },
+      { note: 'It haunts you oftener, and the draw comes to hand quicker.', cooldownTicks: 180, castTicks: 14 },
       {
         note: 'It comes home red, and leaves red behind.',
-        damage: 8,
+        damage: 9,
         status: { status: 'bleed', power: 1, durationTicks: 40 },
       },
     ],
