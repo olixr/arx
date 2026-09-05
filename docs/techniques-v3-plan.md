@@ -540,3 +540,75 @@ shards, a wet/cold soft mark, a per-body anchor for standing brands, a
 foot-anchored haft silhouette, a `vs`-read flourish cue, the probe
 re-speaking breath on the wire's cadence and ticking a field's life.
 
+### Phase 5 — THE PROVING + THE PACE DIAL (2026-09-05)
+
+**THE PROVING (8d303a36).** `npm run prove:mastered-hand -w @arx/tools`
+against a fresh world (FRESH WORLD LAW: PORT 8815, DB arx_prove_mh) =
+10 live receipts over the real wire: THE WORD (the opener leaves
+`burn` on `S2CCooldowns.open`), THE AFTERMATH (`wickfire:aftermath`
+field, 64t r1.8), THE FOLLOW (frost_lance inside the window wears
+`flourish: follow`, spends the opening, leaves `chill`), THE REFUND
+(arc_bolt IV on a free seat inside the chill window: 160 of 200), THE
+FINALE (held_gate: four beats, only the last flourished), THE QUIET
+BEAT (one ground per note, on the last beat), THE RED LEDGER (a rat
+killed inside the window hands 84 ticks back), THE HELD GROUND (Hold the
+Line's boon worn inside, gone after walking 10 tiles — proven through a
+stance cast's buffs push, since expiry pushes none). Lane laws learned:
+a reseat keeps the slot's clock (a two-seat player chains
+opener → payoff → third only across a free seat; the lane chains
+lance R → bolt Q); buff expiry sends no `buffs` frame. Recorded
+UNPROVEN, honestly: the chain's follow flourish (no bodies for the
+chain to leap to on the empty course) and THE STAGGER INTERRUPT (a
+player stagger is a casted art by law — heavy_slam's 14t wind-up is
+the goblin firecaller's whole 14t windup, so the live overlap never
+landed; the cancel gate is unit-pinned in the server slate).
+
+**THE PACE DIAL (0f0c34ce) — the ONE number move.** `PACE_HP_MULT =
+1.3` in shared; content `combatHp(def)` applies it to every hostile body
+(`aggroRange > 0` — the wild, the camps, the crowns; townsfolk and
+livestock keep their pool); the server's `spawnNpc` stands a body up
+with `combatHp`, the craven help-call reads the live pool, and the
+PAYOFF BRACKET and SHELF bracket read `combatHp(scaleNpcDef(...))` so
+every cap and floor moved with the world (all green at 1.3 without a
+retune). The TTK brackets in `damage.test.ts` measure a PLAYER dying to
+NPC blows and are untouched by design. Tamed beasts converted from
+wild bodies inherit the paced pool (recorded, not a bug).
+
+## THE GOALS AUDIT — the brief, line by line
+
+- *"Do we have AoE, DoT, channeled, casted?"* — yes before; now every
+  school USES them together: 88 arts leave ground, 63 rungs cast, 48
+  channel, 39 finales. ✔
+- *"Button mashing … same effects over and over"* — nine schools on one
+  mould → 11 of 11 delivery templates distinct; every art has a role in
+  a three-act ladder; combos by level 20. ✔
+- *"Combos are huge … fireball with splash that leaves fire and burns"*
+  — the follow-through (151 follows, 72 crossing school lines), the
+  reading edge priced and consumable, aftermath ground on blasts, arcs,
+  beams, shots, roads, pulse trains; wickfire → frost lance → arc bolt
+  is Thermal Shock → Shatter, proven live. ✔
+- *"Crowd control, slow them down"* — 23 licensed root/stagger/weaken
+  arts under the player HOLD BUDGET, every one casted or fused (the
+  wind-up is the warning); chill, pull and shove everywhere. ✔
+- *"More precasted, channeled, heroic openers, channeled beams with
+  strength"* — casted rungs 46 → 63; finales pay the whole note; the
+  crown of every school is a three-act art in one press. ✔
+- *"No ability is the best; early abilities rank up and stay strong"* —
+  RELEVANCE ±20% and the honing ladder kept; 416 → 490 curated voices.
+  ✔
+- *"Multiple options, not linear; 3–4 seats later"* — every school
+  holds ≥4 openers / ≥4 payoffs / ≥4 sustains / ≥3 answers so any pair
+  combos and any four is a whole fight; THE FULL HAND (seats 3–4) is
+  its own short epic (Part 5). ◐ recorded
+- *"Battles take a little longer, strategy, not so instantaneous"* —
+  THE PACE DIAL ×1.3 plus the setup→payoff cadence. ✔ (one number; the
+  owner may turn it)
+- *"Visual polish that meets that level"* — Phase 4: 490 plans, 144
+  effects, 126 breath dialects, flourishes and grounds voiced, 307
+  arts eye-judged in-world; residue listed in the Phase 4 as-built
+  (breath loudness on the wire, grass occlusion of ground matter, beam
+  aftermath as a line). ◐ the residue is the next polish pass
+- *"Charm / fear"* — future door (needs NPC AI pages); `becalm` stands
+  for beasts. ✗ recorded
+- *"Allies"* — held ground reaches the caster only at v1. ✗ recorded
+
