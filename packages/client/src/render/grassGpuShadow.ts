@@ -22,6 +22,7 @@
  */
 import {
   grassWindGlsl,
+  grassGustGlsl,
   grassProjectGlsl,
   grassDisturbGlsl,
   GRASS_INSTANCE_FLOATS,
@@ -51,6 +52,7 @@ uniform float uWindGain;
 uniform vec2 uShadow;
 ${grassProjectGlsl()}
 ${grassWindGlsl()}
+${grassGustGlsl()}
 ${grassDisturbGlsl()}
 void main() {
   float t = aTmpl.y;
@@ -60,7 +62,12 @@ void main() {
   // gain), so the shadow tip gusts exactly with the crown that casts it.
   float H = iShape.x * 1.55;
   vec4 wind = grassWind(iRoot, uTime + iShape.w * 6.2831853);
-  float lean = wind.x * uWindGain;
+  // THE LIVING WIND (shared): the travelling gust envelope + per-blade
+  // turbulence and the taller-blades-sway-more mass, IDENTICAL to the blade
+  // shader, so a cast leans exactly with the crown that throws it.
+  vec2 gust = grassGust(iRoot, uTime, iShape.w);
+  float mass = 0.6 + 0.62 * clamp(H * 0.75, 0.0, 1.0);
+  float lean = ((wind.x * gust.x) + gust.y) * uWindGain * mass;
 
   // G-INTERACT — the cast follows the parted coat: the SAME shared law the
   // blades use (grassDisturb) peels the shade over and shortens it in the

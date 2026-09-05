@@ -18,6 +18,8 @@
  */
 import {
   grassWindGlsl,
+  grassGustGlsl,
+  grassColorNoiseGlsl,
   grassProjectGlsl,
   grassDisturbGlsl,
   GRASS_INSTANCE_FLOATS,
@@ -54,8 +56,12 @@ out float vUp;
 out float vTone;
 out float vShimmer;
 out float vPress;
+out float vDrift;    // across-field VALUE drift (lighter/darker patches)
+out float vHue;      // across-field HUE drift + per-blade jitter (warm/cool)
 ${grassProjectGlsl()}
 ${grassWindGlsl()}
+${grassGustGlsl()}
+${grassColorNoiseGlsl()}
 ${grassDisturbGlsl()}
 void main() {
   float up = aTmpl.y;
@@ -82,7 +88,16 @@ void main() {
   // WIND — a whole-blade SHEAR, linear in height: the blade leans as a
   // clean parallelogram with straight edges and a flat top. No per-vertex
   // kink, no nudged tip — one cohesive blade of grass.
-  float lean = wind.x * uWindGain.x;
+  //
+  // THE LIVING WIND: the shared ONE WIND (wind.x) sets the base sway; a
+  // LARGE travelling GUST WAVE (gust.x) multiplies its amplitude so a band
+  // of stronger wind visibly rolls across the meadow; per-blade TURBULENCE +
+  // idle (gust.y) keep neighbours out of lockstep and the field alive in a
+  // lull. Taller blades sway MORE (mass) — a knee-high stand leans further
+  // than an ankle chip under the same gust.
+  vec2 gust = grassGust(iRoot, uTime, iShape.w);
+  float mass = 0.6 + 0.62 * clamp(height * 0.75, 0.0, 1.0);
+  float lean = ((wind.x * gust.x) + gust.y) * uWindGain.x * mass;
 
   // G-INTERACT — THE MEADOW PARTS. A body pressing through peels the blades
   // radially outward (a pocket opens around the feet), combs them down in
@@ -100,7 +115,7 @@ void main() {
   world.x += up * push.x * height;                 // parted lay-over (x)
   world.y -= up * height * (1.0 - press);          // grow up; flattened in the pocket
   world.y += up * push.y * height;                 // parted lay-over (y)
-  world.y += wind.y * up * uWindGain.x * 0.15;     // slight sway
+  world.y += wind.y * up * uWindGain.x * 0.15 * gust.x; // slight sway, gust-swelled
   // ONE PROJECTION: the camera affine (grassProjectGlsl), so the whole
   // blade — root through leaned/trampled tip — moves with the world at
   // exactly the player's parallax rate; then the atlas remap, a pure
@@ -111,6 +126,12 @@ void main() {
   vTone = iTone.x;
   vShimmer = wind.w;
   vPress = press;
+  // THE PAINTED FIELD: low-freq value + hue drift over the meadow, plus a
+  // small per-blade hue jitter so richness varies blade to blade (a few
+  // discrete tones once the fragment quantizes it).
+  vec2 cn = grassColorNoise(iRoot);
+  vDrift = cn.x;
+  vHue = cn.y + (fract(iShape.w * 3.7) - 0.5) * 1.1;
 }`;
 
 const FRAG_SRC = `#version 300 es
@@ -119,6 +140,8 @@ in float vUp;
 in float vTone;
 in float vShimmer;
 in float vPress;
+in float vDrift;
+in float vHue;
 uniform sampler2D uPalette;  // ${PAL_LIGHTS} lights × ${PAL_TONES} tones
 out vec4 o;
 void main() {
@@ -128,15 +151,39 @@ void main() {
   // steps (NEAREST palette). No side/face shading (we're flat-vectorized,
   // not volumetric), no gradient smear, no dark cap — light comes from
   // above, so the top is brightest and the base holds the shadow.
-  float lightF = 0.18 + vUp * 0.48;      // root shadow → tip light
-  lightF += vShimmer * 0.12;             // the gust lifts the blade a touch
+  //
+  // Deepened ramp: a darker, cooler root and a crisper tip highlight widen
+  // the two-point read; the shimmer + travelling gust lift the whole blade.
+  float lightF = 0.12 + vUp * 0.56;      // root shadow → crisp tip light
+  lightF += vShimmer * 0.13;             // the gust lifts the blade a touch
+  lightF += vDrift * 0.12;               // across-field patches, lighter/darker
   lightF -= vPress * 0.20;               // trampled blades sink into shadow
   float step = clamp(floor(lightF * float(${PAL_LIGHTS - 1}) + 0.5),
                      0.0, float(${PAL_LIGHTS - 1}));
   float u = (step + 0.5) / float(${PAL_LIGHTS});
   float v = (vTone + 0.5) / float(${PAL_TONES});
   vec3 col = texture(uPalette, vec2(u, v)).rgb;
-  o = vec4(col, 1.0);
+
+  // BASE GROUNDING (AO) — a touch darker + cooler right where the blade meets
+  // the ground, so grass reads PLANTED, not floating. Concentrated at the
+  // very foot (squared) and quantized to a couple of flat steps so it stays
+  // faceted, never a soft gradient. Kept gentle so NIGHT lighting (which
+  // multiplies the whole blade) never turns it muddy.
+  float ao = 1.0 - vUp;
+  ao *= ao;
+  float aoStep = floor(ao * 2.0 + 0.5) * 0.5;    // 0.0 / 0.5 / 1.0
+  col *= 1.0 - aoStep * 0.19;                     // darker at the foot
+  col.b += aoStep * 0.013;                        // shadow leans a hair cooler
+
+  // ACROSS-FIELD + PER-BLADE HUE drift — quantized to a few painterly steps:
+  // warm (>0) nudges toward gold, cool (<0) toward teal. Small, cohesive with
+  // the palette, so the meadow reads as living ground, never a flat carpet.
+  float hueStep = clamp(floor(vHue * 2.0 + 0.5) * 0.5, -1.0, 1.0);
+  col.r += hueStep * 0.028;
+  col.g += hueStep * 0.010;
+  col.b -= hueStep * 0.026;
+
+  o = vec4(clamp(col, 0.0, 1.0), 1.0);
 }`;
 
 function compile(gl: WebGL2RenderingContext, type: number, src: string): WebGLShader {
