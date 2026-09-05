@@ -27,3 +27,19 @@ scripts/refactor/ holds the reusable movers (server-mover.py moves
 GameServer methods behind delegators; panels-mover.py the UI-class
 variant). Their hard-won laws live in docs/foundations-plan.md §8 —
 read it before reusing them.
+
+## Particles v6 — the effect lab probes (docs/particles-v6-plan.md)
+
+The lab page is `packages/client/fxlab.html` (serve it with any client
+vite; `LAB=http://localhost:5299` is the default origin). Deterministic:
+the page steps its own clock, so a screenshot at frame N is the same
+tomorrow.
+
+- fx-sheet.mjs `<effect.id> <moments csv> <px/tile> [outname]` — one fresh
+  cast, N moments cropped around the cast point into ONE contact-sheet PNG
+  (`OUT` dir). The master-pass audit reads a whole life at once.
+- fx-stress.mjs `<effect.id> <n>` — n casts, then n more mid-life; update
+  and draw ms p50/p90/max, peak grains, the governor dial.
+- fx-ingame.mjs `<effect.id> <delays csv>` — logs the probe account into a
+  rig lane (`ORIGIN`) and casts through `renderer.castEffect`, the same
+  door a signature uses; screenshots at each delay.

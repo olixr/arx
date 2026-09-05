@@ -51,12 +51,29 @@
  * pushing; a detonation storm can never grow the heap or the draw
  * bill. The overlay pass draws in (shape, color) buckets so a storm
  * of one material costs one fillStyle set, not thousands.
+ *
+ * THE MATTER LEARNS TO LIVE (v6, docs/particles-v6-plan.md): a grain's
+ * size, alpha, and color over life are CURVES and RAMP TABLES (ids into
+ * render/fx/curves.ts — never closures); its roll widths are authored
+ * (`speedVar`/`lifeVar`/`sizeVar`); it can ride a shaped WAVE and a
+ * per-frame JITTER; it answers pooled FORCE FIELDS (lift, vortex,
+ * attract, wind) when it has `mass`; it can spawn a RECIPE on birth,
+ * death, landing, or on a shed clock (sub-emitters, depth-capped); it
+ * can wear a hotter CORE inside its body; and it can leave a MARK on
+ * the ground when it dies there. Every field defaults to the v5 law —
+ * a recipe that names none of it renders byte-identically.
  */
+
+import { curveAt, rampAt } from './fx/curves.js';
 
 export const PARTICLE_CAP = 2600;
 export const EMITTER_CAP = 48;
 /** Landing records queued per frame before the oldest is recycled. */
 export const LANDING_CAP = 48;
+/** Live force fields before the oldest is recycled. */
+export const FIELD_CAP = 24;
+/** Sub-emitter chains stop here: a child of a child spawns nothing. */
+export const MAX_SUB_DEPTH = 2;
 
 export interface Particle {
   x: number; // world coords — the GROUND anchor (sort, shadow, landing)
@@ -67,7 +84,8 @@ export interface Particle {
   z: number;
   /** Vertical velocity, tiles/sec (+ = rising). */
   vz: number;
-  /** Z-gravity, tiles/s² pulling altitude back to the dirt. 0 = planar. */
+  /** Z-gravity, tiles/s² pulling altitude back to the dirt (POSITIVE = falls,
+   *  negative = buoyant lift). 0 = planar. */
   zg: number;
   /** What happens at z = 0 (falling): LAND_* code. */
   land: number;
@@ -121,7 +139,64 @@ export interface Particle {
   boltRate: number;
   /** Branch weight 0..1 — stubs forking off the main arc. */
   boltBranch: number;
+  // ---- v6: THE LIFE IS A CURVE -------------------------------------
+  /** Size-over-life curve id (0 = the legacy shrink/grow law). */
+  sizeCurve: number;
+  /** Alpha-over-life curve id (0 = the legacy tent/solid law). */
+  alphaCurve: number;
+  /** Ramp table id (0 = the fade/fade2/fade3 switches). */
+  rampId: number;
+  /** WAVE_* code: 0 none, 1 sine, 2 triangle, 3 value noise. */
+  wave: number;
+  waveHz: number;
+  /** Wave amplitude, tiles/sec of lateral drift. */
+  waveAmp: number;
+  /** 0 x, 1 y, 2 z. */
+  waveAxis: number;
+  /** Random-walk acceleration amplitude, tiles/s². */
+  jitter: number;
+  /** Field susceptibility 0..; 0 = never pays a field lookup. */
+  mass: number;
+  /** Recipe ids (0 = none) spawned at the moment named. */
+  onDeath: number;
+  onLand: number;
+  /** Recipe shed on a clock — `shedRate` per second. */
+  shed: number;
+  shedRate: number;
+  /** Sub-emitter generation (0 = a root grain). */
+  depth: number;
+  /** A hotter heart drawn inside the body at `coreK` of its size. */
+  core: string;
+  coreK: number;
+  /** Squares/shards/blobs turn to ride their screen heading. */
+  align: number;
+  /** MARK_* kind left on the ground where the grain dies (0 = none). */
+  mark: number;
+  markLife: number;
+  /** Ring wall as a fraction of the diameter (default 0.09). */
+  ringW: number;
 }
+
+export const WAVE_NONE = 0;
+export const WAVE_SINE = 1;
+export const WAVE_TRI = 2;
+export const WAVE_NOISE = 3;
+
+export const MARK_NONE = 0;
+export const MARK_FLECK = 1;
+export const MARK_CHAR = 2;
+export const MARK_SMEAR = 3;
+export const MARK_FROST = 4;
+
+export type WaveKind = 'sine' | 'tri' | 'noise';
+export type MarkKind = 'fleck' | 'char' | 'smear' | 'frost';
+
+const WAVE_ID: Record<WaveKind, number> = { sine: WAVE_SINE, tri: WAVE_TRI, noise: WAVE_NOISE };
+const MARK_ID: Record<MarkKind, number> = {
+  fleck: MARK_FLECK, char: MARK_CHAR, smear: MARK_SMEAR, frost: MARK_FROST,
+};
+const AXIS_ID: Record<'x' | 'y' | 'z', number> = { x: 0, y: 1, z: 2 };
+const TAU = Math.PI * 2;
 
 export const LAND_NONE = 0;
 export const LAND_DIE = 1;
@@ -171,7 +246,7 @@ export interface BurstOpts {
   /** Which pass draws this matter (default 'overlay'). */
   layer?: ParticleLayer;
   /** Silhouette. */
-  shape?: 'square' | 'streak' | 'shard' | 'lick' | 'puff' | 'glint' | 'mote' | 'drop' | 'bolt';
+  shape?: 'square' | 'streak' | 'shard' | 'lick' | 'puff' | 'glint' | 'mote' | 'drop' | 'bolt' | 'blob' | 'ring';
   /** Shard tumble rate, rad/s. */
   spin?: number;
   /** Strobe weight 0..1 — embers/arcs shimmer as they live. */
@@ -211,6 +286,50 @@ export interface BurstOpts {
   boltRate?: number;
   /** Bolt branch weight 0..1 (default 0.5). */
   boltBranch?: number;
+  // ---- v6 -------------------------------------------------------------
+  /** Size-over-life curve id from curveOf() (default: legacy law). */
+  sizeCurve?: number;
+  /** Alpha-over-life curve id from curveOf() (default: legacy law). */
+  alphaCurve?: number;
+  /** Ramp table id from rampOf() — outranks fade/fade2/fade3. */
+  ramp?: number;
+  /** Speed roll width: v = speed·(1−var … 1). Default 0.6 (the v5 dice). */
+  speedVar?: number;
+  /** Life roll width ±var. Default 0.3. */
+  lifeVar?: number;
+  /** Size roll width ±var. Default 0.3. */
+  sizeVar?: number;
+  /** A shaped lateral wave on top of the flight. */
+  wave?: WaveKind;
+  /** Wave frequency, cycles/sec (default 1.2). */
+  waveHz?: number;
+  /** Wave amplitude, tiles/sec (default 0). */
+  waveAmp?: number;
+  /** Which axis the wave moves (default 'x'). */
+  waveAxis?: 'x' | 'y' | 'z';
+  /** Random-walk acceleration amplitude, tiles/s². */
+  jitter?: number;
+  /** Force-field susceptibility (0 = ignores fields, the default). */
+  mass?: number;
+  /** Recipe id spawned where the grain dies. */
+  onDeath?: number;
+  /** Recipe id spawned at first ground contact. */
+  onLand?: number;
+  /** Recipe id spawned on the shed clock (rate = shedRate/sec). */
+  shed?: number;
+  shedRate?: number;
+  /** A hotter heart color inside the body… */
+  core?: string;
+  /** …at this fraction of the body's size (0 = none). */
+  coreK?: number;
+  /** Squares/shards/blobs ride their heading. */
+  align?: boolean;
+  /** Ground mark left where the grain dies on the dirt. */
+  mark?: MarkKind;
+  /** The mark's life in seconds (default 4). */
+  markLife?: number;
+  /** Ring silhouette: wall width as a fraction of the diameter (default 0.09). */
+  ringWidth?: number;
 }
 
 const SHAPE_ID = {
@@ -223,6 +342,8 @@ const SHAPE_ID = {
   mote: 6,
   drop: 7,
   bolt: 8,
+  blob: 9,
+  ring: 10,
 } as const;
 
 /** The world's ink — contact shadows wear it at low alpha. */
@@ -233,6 +354,7 @@ const SHADOW_INK = '#241a2e';
  * only — matter cools in steps, it never airbrushes.
  */
 export function rampColor(p: Particle, t: number): string {
+  if (p.rampId > 0) return rampAt(p.rampId, t);
   if (p.fade3 !== '' && t > p.fade3At) return p.fade3;
   if (p.fade2 !== '' && t > p.fade2At) return p.fade2;
   if (p.fade !== '' && t > p.fadeAt) return p.fade;
@@ -253,12 +375,91 @@ export interface Landing {
   y: number;
   color: string;
   size: number;
-  /** 'splat' | 'bounce' — settle/die land silently. */
+  /** LANDING_* — settle/die land silently unless they carry a mark. */
   kind: number;
+  /** MARK_* kind for LANDING_MARK (and the stain a splat leaves). */
+  mark: number;
+  /** The mark's requested life, seconds. */
+  life: number;
 }
 
 export const LANDING_SPLAT = 0;
 export const LANDING_BOUNCE = 1;
+/** A grain died on the dirt and asked to be remembered. */
+export const LANDING_MARK = 2;
+
+// ---------------------------------------------------------------------------
+// Recipes — sub-emitters are RECIPES (v6): a registered {colors, opts,
+// count} record a grain names by id on birth, death, landing, or shed.
+// ---------------------------------------------------------------------------
+
+export interface Recipe {
+  colors: string[];
+  opts: BurstOpts;
+  /** Grains per trigger (default 1). */
+  count?: number;
+  /** ± roll on count (default 0). */
+  countVar?: number;
+  /** Fraction of the parent's velocity the children inherit (default 0). */
+  inherit?: number;
+}
+
+const RECIPES: Recipe[] = [{ colors: [], opts: {}, count: 0 }];
+
+/** Register a recipe once (author time); returns its id > 0. */
+export function defineRecipe(r: Recipe): number {
+  RECIPES.push(r);
+  return RECIPES.length - 1;
+}
+
+/** The registered recipe (tests + the lab). */
+export function recipeOf(id: number): Recipe | undefined {
+  return id > 0 ? RECIPES[id] : undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Fields — FORCES ARE FIELDS (v6): pooled records that push matter with
+// mass. Lift is convection (an updraft with a gather at the base),
+// vortex swirls, attract gathers (negative repels), wind blows.
+// ---------------------------------------------------------------------------
+
+export type FieldKind = 'wind' | 'lift' | 'vortex' | 'attract';
+
+const FIELD_KIND_ID: Record<FieldKind, number> = { wind: 0, lift: 1, vortex: 2, attract: 3 };
+
+export interface FieldOpts {
+  kind: FieldKind;
+  x: number;
+  y: number;
+  /** Reach in tiles; influence falls linearly to zero at the edge. */
+  radius: number;
+  /** Acceleration at the center, tiles/s² (attract: negative repels). */
+  strength: number;
+  /** Seconds alive (clamped to 12). */
+  dur: number;
+  /** Wind heading, radians. */
+  dir?: number;
+  /** Lift: altitude where the updraft dies (default 2.5 tiles). */
+  height?: number;
+  attack?: number;
+  release?: number;
+}
+
+export interface Field {
+  alive: boolean;
+  kind: number;
+  x: number;
+  y: number;
+  radius: number;
+  strength: number;
+  dir: number;
+  height: number;
+  dur: number;
+  age: number;
+  attack: number;
+  release: number;
+  stop(): void;
+}
 
 // ---------------------------------------------------------------------------
 // Emitters — sustained matter without per-signature spawn math.
@@ -276,6 +477,11 @@ export interface EmitterPop {
   opts: BurstOpts;
   /** Relative share of the emitter's rate (default 1). */
   weight?: number;
+  /**
+   * THE GOVERNOR SHEDS FINES FIRST: fines scale with quality², body
+   * with quality, heroes never drop. Absent = body.
+   */
+  tier?: 'fine' | 'body' | 'hero';
 }
 
 export interface EmitterOpts {
@@ -301,6 +507,13 @@ export interface EmitterOpts {
   release?: number;
   /** Orbit head speed, rad/s (default 5). */
   orbitSpeed?: number;
+  /** Orbit: grains head along the ring's tangent instead of the template heading. */
+  tangent?: boolean;
+  /**
+   * Path: seconds for the spawn span to advance from the near anchor to
+   * the far one — a line that ignites/tears near→far. 0 = whole line at once.
+   */
+  sweep?: number;
   /**
    * Rim radial speed, tiles/sec (defaults to each pop's own speed).
    * NEGATIVE converges — matter gathers INTO the heart (charge-up).
@@ -338,19 +551,46 @@ export interface Emitter {
   release: number;
   orbitSpeed: number;
   orbitA: number;
+  tangent: boolean;
+  sweep: number;
   outward: number;
   hasDir: boolean;
   hasOutward: boolean;
   /** Shared frozen population templates (reference, not copy). */
   pops: EmitterPop[] | null;
-  /** Per-population fractional emission carry (max 3 pops). */
+  /** Per-population fractional emission carry (max 4 pops). */
   acc0: number;
   acc1: number;
   acc2: number;
+  acc3: number;
   stop(): void;
 }
 
 const MAX_EMITTER_DUR = 12;
+
+/** The v6 fields back to their legacy defaults (hand-built grains). */
+function resetExtras(p: Particle): void {
+  p.sizeCurve = 0;
+  p.alphaCurve = 0;
+  p.rampId = 0;
+  p.wave = 0;
+  p.waveHz = 0;
+  p.waveAmp = 0;
+  p.waveAxis = 0;
+  p.jitter = 0;
+  p.mass = 0;
+  p.onDeath = 0;
+  p.onLand = 0;
+  p.shed = 0;
+  p.shedRate = 0;
+  p.depth = 0;
+  p.core = '';
+  p.coreK = 0;
+  p.align = 0;
+  p.mark = 0;
+  p.markLife = 0;
+  p.ringW = 0.09;
+}
 
 export class Particles {
   private readonly pool: Particle[] = [];
@@ -362,6 +602,19 @@ export class Particles {
 
   private readonly landings: Landing[] = [];
   private landingCount = 0;
+
+  private readonly fields: Field[] = [];
+  private readonly fieldFree: Field[] = [];
+
+  /**
+   * THE GOVERNOR's dial, 0.35..1. Scales emitter populations by tier
+   * (fines q², body q, heroes 1). 1 = every recipe at full voice.
+   */
+  quality = 1;
+
+  /** Overlay cull bounds (CSS px); 0 = no culling. */
+  private viewW = 0;
+  private viewH = 0;
 
   /** color string → bucket id; palettes are small, this stays small. */
   private readonly colorIds = new Map<string, number>();
@@ -406,6 +659,10 @@ export class Particles {
       trail: 0, trailColor: '', wobble: 0,
       layer: LAYER_OVERLAY, shadow: 0,
       x2: 0, y2: 0, z2: 0, boltRate: 9, boltBranch: 0.5,
+      sizeCurve: 0, alphaCurve: 0, rampId: 0,
+      wave: 0, waveHz: 0, waveAmp: 0, waveAxis: 0, jitter: 0, mass: 0,
+      onDeath: 0, onLand: 0, shed: 0, shedRate: 0, depth: 0,
+      core: '', coreK: 0, align: 0, mark: 0, markLife: 0, ringW: 0.09,
     };
     this.pool.push(fresh);
     return fresh;
@@ -429,7 +686,10 @@ export class Particles {
     dirOverride?: number,
     speedOverride?: number,
     zBase = 0,
-  ): void {
+    depth = 0,
+    sizeK = 1,
+    spreadOverride?: number,
+  ): Particle {
     const rand = this.rand;
     // Bolts anchor, they don't fly: an unspecified speed means still.
     const shape = SHAPE_ID[opts.shape ?? 'square'];
@@ -437,11 +697,16 @@ export class Particles {
     const dir = dirOverride ?? opts.dir;
     const angle =
       dir !== undefined
-        ? dir + (rand() - 0.5) * (opts.spread ?? 1.1)
+        ? dir + (rand() - 0.5) * (spreadOverride ?? opts.spread ?? 1.1)
         : opts.up
           ? -Math.PI / 2 + (rand() - 0.5) * 1.2
           : rand() * Math.PI * 2;
-    const v = speed * (0.4 + rand() * 0.6);
+    // VARIANCE IS AUTHORED: the v5 dice (0.4..1 speed, ±0.3 life and
+    // size) are the defaults, so unnamed rolls land where they always did.
+    const sv = opts.speedVar ?? 0.6;
+    const lv = opts.lifeVar ?? 0.3;
+    const zv = opts.sizeVar ?? 0.3;
+    const v = speed * (1 - sv + rand() * sv);
     const p = this.take();
     p.x = x;
     p.y = y;
@@ -454,8 +719,8 @@ export class Particles {
     p.bounce = opts.bounce ?? 0.45;
     p.landed = 0;
     p.life = 0;
-    p.maxLife = (opts.life ?? 0.5) * (0.7 + rand() * 0.6);
-    p.size = (opts.size ?? 0.08) * (0.7 + rand() * 0.6);
+    p.maxLife = (opts.life ?? 0.5) * (1 - lv + rand() * 2 * lv);
+    p.size = (opts.size ?? 0.08) * (1 - zv + rand() * 2 * zv) * sizeK;
     p.color = colors[Math.floor(rand() * colors.length)]!;
     p.colorId = this.colorIdOf(p.color);
     p.gravity = opts.gravity ?? 6;
@@ -484,6 +749,183 @@ export class Particles {
     p.z2 = opts.z2 ?? p.z;
     p.boltRate = opts.boltRate ?? 9;
     p.boltBranch = opts.boltBranch ?? 0.5;
+    p.sizeCurve = opts.sizeCurve ?? 0;
+    p.alphaCurve = opts.alphaCurve ?? 0;
+    p.rampId = opts.ramp ?? 0;
+    p.wave = opts.wave !== undefined ? WAVE_ID[opts.wave] : WAVE_NONE;
+    p.waveHz = opts.waveHz ?? 1.2;
+    p.waveAmp = opts.waveAmp ?? 0;
+    p.waveAxis = opts.waveAxis !== undefined ? AXIS_ID[opts.waveAxis] : 0;
+    p.jitter = opts.jitter ?? 0;
+    p.mass = opts.mass ?? 0;
+    p.onDeath = opts.onDeath ?? 0;
+    p.onLand = opts.onLand ?? 0;
+    p.shed = opts.shed ?? 0;
+    p.shedRate = opts.shedRate ?? 0;
+    p.depth = depth;
+    p.core = opts.core ?? '';
+    p.coreK = opts.core !== undefined ? (opts.coreK ?? 0.45) : 0;
+    p.align = opts.align ? 1 : 0;
+    p.mark = opts.mark !== undefined ? MARK_ID[opts.mark] : MARK_NONE;
+    p.markLife = opts.markLife ?? 4;
+    p.ringW = opts.ringWidth ?? 0.09;
+    return p;
+  }
+
+  /**
+   * SUB-EMITTERS ARE RECIPES: spawn recipe `id` at a point, one
+   * generation deeper than the parent. Depth-capped so a chain can
+   * never run away; the pool cap still binds underneath.
+   */
+  private spawnRecipe(
+    id: number, x: number, y: number, z: number, depth: number,
+    pvx: number, pvy: number, pvz: number,
+  ): void {
+    if (id <= 0 || depth > MAX_SUB_DEPTH) return;
+    const r = RECIPES[id];
+    if (!r) return;
+    const cv = r.countVar ?? 0;
+    let n = r.count ?? 1;
+    if (cv > 0) n += Math.round((this.rand() - 0.5) * 2 * cv);
+    const inherit = r.inherit ?? 0;
+    for (let i = 0; i < n; i++) {
+      const c = this.spawnOne(x, y, r.colors, r.opts, undefined, undefined, z, depth);
+      if (inherit !== 0) {
+        c.vx += pvx * inherit;
+        c.vy += pvy * inherit;
+        c.vz += pvz * inherit;
+      }
+    }
+  }
+
+  /**
+   * The composer's spawn door: one grain at a point with a heading /
+   * radial-speed override and a size multiplier, through the SAME
+   * template the emitters use — no per-grain option cloning.
+   */
+  spawnAt(
+    x: number,
+    y: number,
+    colors: string[],
+    opts: BurstOpts,
+    dir?: number,
+    speed?: number,
+    z = 0,
+    sizeK = 1,
+    spread?: number,
+  ): Particle {
+    return this.spawnOne(x, y, colors, opts, dir, speed, z, 0, sizeK, spread);
+  }
+
+  /** The engine's own dice (arrangement rolls stay on one stream). */
+  rand01(): number {
+    return this.rand();
+  }
+
+  /** Cast a recipe by id at a point (the composer's burst door). */
+  recipe(id: number, x: number, y: number, z = 0, times = 1): void {
+    for (let i = 0; i < times; i++) this.spawnRecipe(id, x, y, z, 0, 0, 0, 0);
+  }
+
+  // -- Fields -----------------------------------------------------------------
+
+  field(opts: FieldOpts): Field {
+    let f: Field;
+    if (this.fields.length >= FIELD_CAP) {
+      f = this.fields.reduce((a, b) => (a.age > b.age ? a : b));
+    } else {
+      const reuse = this.fieldFree.pop();
+      if (reuse) {
+        f = reuse;
+        this.fields.push(f);
+      } else {
+        f = {
+          alive: false, kind: 0, x: 0, y: 0, radius: 1, strength: 0, dir: 0,
+          height: 2.5, dur: 0, age: 0, attack: 0, release: 0,
+          stop() {
+            this.dur = Math.min(this.dur, this.age + this.release);
+          },
+        };
+        this.fields.push(f);
+      }
+    }
+    f.alive = true;
+    f.kind = FIELD_KIND_ID[opts.kind];
+    f.x = opts.x;
+    f.y = opts.y;
+    f.radius = Math.max(0.05, opts.radius);
+    f.strength = opts.strength;
+    f.dir = opts.dir ?? 0;
+    f.height = opts.height ?? 2.5;
+    f.dur = Math.min(opts.dur, MAX_EMITTER_DUR);
+    f.age = 0;
+    f.attack = opts.attack ?? 0.05;
+    f.release = opts.release ?? 0.25;
+    return f;
+  }
+
+  /** Live field count (tests + budget audits). */
+  fieldCount(): number {
+    return this.fields.length;
+  }
+
+  private updateFields(dt: number): void {
+    const list = this.fields;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const f = list[i]!;
+      f.age += dt;
+      if (f.age >= f.dur) {
+        f.alive = false;
+        const last = list.pop()!;
+        if (f !== last) list[i] = last;
+        this.fieldFree.push(f);
+      }
+    }
+  }
+
+  /** Push one grain with every live field it stands inside. */
+  private applyFields(p: Particle, dt: number): void {
+    const list = this.fields;
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i]!;
+      const dx = p.x - f.x;
+      const dy = p.y - f.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d >= f.radius) continue;
+      let env = 1;
+      if (f.age < f.attack && f.attack > 0) env = f.age / f.attack;
+      const tail = f.dur - f.age;
+      if (tail < f.release && f.release > 0) env = Math.min(env, tail / f.release);
+      const w = (1 - d / f.radius) * env * p.mass * dt * f.strength;
+      const nx = d > 1e-4 ? dx / d : 0;
+      const ny = d > 1e-4 ? dy / d : 0;
+      switch (f.kind) {
+        case 0:
+          p.vx += Math.cos(f.dir) * w;
+          p.vy += Math.sin(f.dir) * w;
+          break;
+        case 1: {
+          // Convection: the updraft weakens with altitude; the base
+          // gathers inward (air rushing in under the plume), the top
+          // lets go so a column flares as it rises.
+          const hk = f.height > 0 ? Math.max(0, 1 - p.z / f.height) : 1;
+          p.vz += w * hk;
+          const pull = w * 0.4 * hk;
+          p.vx -= nx * pull;
+          p.vy -= ny * pull;
+          break;
+        }
+        case 2:
+          p.vx += -ny * w;
+          p.vy += nx * w;
+          p.vx -= nx * w * 0.25;
+          p.vy -= ny * w * 0.25;
+          break;
+        default:
+          p.vx -= nx * w;
+          p.vy -= ny * w;
+      }
+    }
   }
 
   // -- Emitters -------------------------------------------------------------
@@ -503,9 +945,9 @@ export class Particles {
         e = {
           alive: false, kind: 0, x: 0, y: 0, z: 0, x2: 0, y2: 0,
           radius: 0, dir: 0, spread: 0, rate: 0, age: 0, dur: 0,
-          attack: 0, release: 0, orbitSpeed: 0, orbitA: 0, outward: 0,
+          attack: 0, release: 0, orbitSpeed: 0, orbitA: 0, tangent: false, sweep: 0, outward: 0,
           hasDir: false, hasOutward: false, pops: null,
-          acc0: 0, acc1: 0, acc2: 0,
+          acc0: 0, acc1: 0, acc2: 0, acc3: 0,
           stop() {
             // Fold the envelope down from wherever we are — the
             // release tail still plays, nothing pops off.
@@ -533,12 +975,15 @@ export class Particles {
     e.release = opts.release ?? 0.2;
     e.orbitSpeed = opts.orbitSpeed ?? 5;
     e.orbitA = this.rand() * Math.PI * 2;
+    e.tangent = opts.tangent ?? false;
+    e.sweep = opts.sweep ?? 0;
     e.outward = opts.outward ?? 0;
     e.hasOutward = opts.outward !== undefined;
     e.pops = opts.pops;
     e.acc0 = 0;
     e.acc1 = 0;
     e.acc2 = 0;
+    e.acc3 = 0;
     return e;
   }
 
@@ -570,11 +1015,14 @@ export class Particles {
       let totalW = 0;
       for (const pop of pops) totalW += pop.weight ?? 1;
       if (totalW <= 0) continue;
-      const n = Math.min(pops.length, 3);
+      const n = Math.min(pops.length, 4);
+      const q = this.quality;
       for (let pi = 0; pi < n; pi++) {
         const pop = pops[pi]!;
-        const share = (e.rate * (pop.weight ?? 1)) / totalW;
-        let acc = (pi === 0 ? e.acc0 : pi === 1 ? e.acc1 : e.acc2) + share * env * dt;
+        // THE GOVERNOR SHEDS FINES FIRST (q = 1 → every tier at 1).
+        const tk = q >= 1 ? 1 : pop.tier === 'hero' ? 1 : pop.tier === 'fine' ? q * q : q;
+        const share = (e.rate * (pop.weight ?? 1) * tk) / totalW;
+        let acc = (pi === 0 ? e.acc0 : pi === 1 ? e.acc1 : pi === 2 ? e.acc2 : e.acc3) + share * env * dt;
         // Backlog clamp: dt is clamped upstream to 250ms, so a hitch
         // used to hand a 130/s pop a 32-particle burst on the very
         // next frame — a self-amplifying stutter. One frame spawns at
@@ -590,7 +1038,8 @@ export class Particles {
         if (acc >= 1) acc %= 1;
         if (pi === 0) e.acc0 = acc;
         else if (pi === 1) e.acc1 = acc;
-        else e.acc2 = acc;
+        else if (pi === 2) e.acc2 = acc;
+        else e.acc3 = acc;
       }
     }
   }
@@ -621,7 +1070,8 @@ export class Particles {
       }
       case 3: {
         // path: anywhere along the segment — fire lines, venom trails.
-        const t = rand();
+        // With a sweep the reachable span grows from the near anchor.
+        const t = e.sweep > 0 ? rand() * Math.min(1, e.age / e.sweep) : rand();
         this.spawnOne(
           e.x + (e.x2 - e.x) * t,
           e.y + (e.y2 - e.y) * t,
@@ -642,7 +1092,9 @@ export class Particles {
         this.spawnOne(
           e.x + Math.cos(a) * e.radius,
           e.y + Math.sin(a) * e.radius,
-          pop.colors, pop.opts, undefined, undefined, e.z,
+          pop.colors, pop.opts,
+          e.tangent ? a + (e.orbitSpeed >= 0 ? Math.PI / 2 : -Math.PI / 2) : undefined,
+          undefined, e.z,
         );
         break;
       }
@@ -665,12 +1117,14 @@ export class Particles {
 
   // -- Landings -------------------------------------------------------------
 
-  private pushLanding(x: number, y: number, color: string, size: number, kind: number): void {
+  private pushLanding(
+    x: number, y: number, color: string, size: number, kind: number, mark = 0, life = 0,
+  ): void {
     let rec: Landing;
     if (this.landingCount < this.landings.length) {
       rec = this.landings[this.landingCount]!;
     } else if (this.landings.length < LANDING_CAP) {
-      rec = { x: 0, y: 0, color: '', size: 0, kind: 0 };
+      rec = { x: 0, y: 0, color: '', size: 0, kind: 0, mark: 0, life: 0 };
       this.landings.push(rec);
     } else {
       return; // a flood past the cap loses the quietest witnesses
@@ -680,6 +1134,8 @@ export class Particles {
     rec.color = color;
     rec.size = size;
     rec.kind = kind;
+    rec.mark = mark;
+    rec.life = life;
     this.landingCount++;
   }
 
@@ -699,16 +1155,34 @@ export class Particles {
     // frame's caller are stale, never a backlog.
     this.landingCount = 0;
     this.updateEmitters(dt);
+    this.updateFields(dt);
+    const hasFields = this.fields.length > 0;
     const pool = this.pool;
     for (let i = pool.length - 1; i >= 0; i--) {
       const p = pool[i]!;
       p.life += dt;
       if (p.life >= p.maxLife) {
+        // THE WORLD REMEMBERS: a grain dying on the dirt may leave its
+        // mark; a grain with a death recipe hands its place to children.
+        if (p.mark !== MARK_NONE && p.z <= 0.03) {
+          this.pushLanding(p.x, p.y, rampColor(p, 1), p.size, LANDING_MARK, p.mark, p.markLife);
+        }
+        if (p.onDeath !== 0) {
+          this.spawnRecipe(p.onDeath, p.x, p.y, p.z, p.depth + 1, p.vx, p.vy, p.vz);
+        }
         // Swap-remove: order is irrelevant, allocation is forbidden.
+        // (spawnRecipe may have grown the pool: `p` still sits at i.)
         const last = pool.pop()!;
         if (p !== last) pool[i] = last;
         this.free.push(p);
         continue;
+      }
+      // Settled matter lies where it fell: a field lifts what flies,
+      // never what already came to rest on the ground layer.
+      if (hasFields && p.mass !== 0 && p.layer !== LAYER_GROUND) this.applyFields(p, dt);
+      if (p.jitter !== 0) {
+        p.vx += (this.rand() - 0.5) * 2 * p.jitter * dt;
+        p.vy += (this.rand() - 0.5) * 2 * p.jitter * dt;
       }
       p.vy += p.gravity * dt;
       if (p.drag > 0) {
@@ -719,6 +1193,7 @@ export class Particles {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       if (p.wobble > 0) p.x += Math.sin(p.life * 6.5 + p.phase) * p.wobble * dt;
+      if (p.wave !== WAVE_NONE) this.applyWave(p, dt);
       if (p.grow > 0) p.size += p.grow * dt;
       if (p.spin !== 0) p.rot += p.spin * dt;
       // HEIGHT IS REAL: altitude integrates apart from the ground
@@ -733,7 +1208,36 @@ export class Particles {
         }
       }
       if (p.trail > 0 && this.rand() < p.trail * dt) this.shedMote(p);
+      if (p.shed !== 0 && p.depth < MAX_SUB_DEPTH && this.rand() < p.shedRate * dt) {
+        this.spawnRecipe(p.shed, p.x, p.y, p.z, p.depth + 1, p.vx, p.vy, p.vz);
+      }
     }
+  }
+
+  /**
+   * THE WAVE HAS A SHAPE: a sine, a triangle, or smooth value noise on
+   * the grain's own phase, driving one axis. Noise re-seeds from the
+   * phase so two grains never share a path; it never allocates.
+   */
+  private applyWave(p: Particle, dt: number): void {
+    const u = p.life * p.waveHz;
+    let s: number;
+    if (p.wave === WAVE_SINE) {
+      s = Math.sin(u * TAU + p.phase);
+    } else if (p.wave === WAVE_TRI) {
+      const f = (u + p.phase / TAU) % 1;
+      s = 4 * Math.abs(f - 0.5) - 1;
+    } else {
+      const seed = (p.phase * 4096) | 0;
+      const i = Math.floor(u);
+      const fr = u - i;
+      const sm = fr * fr * (3 - 2 * fr);
+      s = (h01(seed, i) * 2 - 1) * (1 - sm) + (h01(seed, i + 1) * 2 - 1) * sm;
+    }
+    const off = s * p.waveAmp * dt;
+    if (p.waveAxis === 0) p.x += off;
+    else if (p.waveAxis === 1) p.y += off;
+    else p.z += off;
   }
 
   /**
@@ -741,8 +1245,16 @@ export class Particles {
    * update loop must not touch it again).
    */
   private touchGround(p: Particle, i: number): boolean {
+    if (p.onLand !== 0 && !p.landed && p.land !== LAND_NONE) {
+      this.spawnRecipe(p.onLand, p.x, p.y, 0, p.depth + 1, p.vx, p.vy, -p.vz);
+    }
     switch (p.land) {
       case LAND_DIE:
+        // A death on the dirt is still a death: the death recipe speaks.
+        if (p.onDeath !== 0) this.spawnRecipe(p.onDeath, p.x, p.y, 0, p.depth + 1, p.vx, p.vy, 0);
+        if (p.mark !== MARK_NONE) {
+          this.pushLanding(p.x, p.y, rampColor(p, p.life / p.maxLife), p.size, LANDING_MARK, p.mark, p.markLife);
+        }
         this.kill(p, i);
         return false;
       case LAND_SETTLE:
@@ -751,6 +1263,7 @@ export class Particles {
         p.z = 0;
         p.vz = 0;
         p.zg = 0;
+        p.landed = 1;
         p.layer = LAYER_GROUND;
         p.shadow = 0;
         if (p.drag < 6) p.drag = 6;
@@ -777,8 +1290,9 @@ export class Particles {
       case LAND_SPLAT: {
         // THE LIQUID LAW: a drop that lands is DEAD — it becomes
         // spatter fines and a lingering fleck where it struck.
-        const stain = p.fade3 !== '' ? p.fade3 : p.fade2 !== '' ? p.fade2 : p.fade !== '' ? p.fade : p.color;
-        this.pushLanding(p.x, p.y, stain, p.size, LANDING_SPLAT);
+        const stain = p.rampId > 0 ? rampAt(p.rampId, 1)
+          : p.fade3 !== '' ? p.fade3 : p.fade2 !== '' ? p.fade2 : p.fade !== '' ? p.fade : p.color;
+        this.pushLanding(p.x, p.y, stain, p.size, LANDING_SPLAT, p.mark, p.mark !== MARK_NONE ? p.markLife : 0);
         const fx = p.x;
         const fy = p.y;
         const fsize = p.size;
@@ -822,6 +1336,7 @@ export class Particles {
           f.shadow = 0;
           f.boltRate = 9;
           f.boltBranch = 0;
+          resetExtras(f);
           // ...and the fleck lies where it struck, cooling slowly.
           if (k === 0) {
             const fl = this.take();
@@ -857,6 +1372,7 @@ export class Particles {
             fl.shadow = 0;
             fl.boltRate = 9;
             fl.boltBranch = 0;
+            resetExtras(fl);
           }
         }
         return false;
@@ -914,6 +1430,7 @@ export class Particles {
     m.shadow = 0;
     m.boltRate = 9;
     m.boltBranch = 0;
+    resetExtras(m);
   }
 
   // -- Drawing --------------------------------------------------------------
@@ -928,7 +1445,11 @@ export class Particles {
     ctx: CanvasRenderingContext2D,
     worldToScreen: (wx: number, wy: number) => { x: number; y: number },
     scale: number,
+    viewW = 0,
+    viewH = 0,
   ): void {
+    this.viewW = viewW;
+    this.viewH = viewH;
     const order = this.drawOrder;
     order.length = 0;
     const pool = this.pool;
@@ -983,15 +1504,31 @@ export class Particles {
     // HEIGHT IS REAL: altitude lifts in FULL screen pixels — heights
     // are never squashed by the camera pitch.
     const sy = sy0 - p.z * scale;
+    // Off-screen matter costs nothing to leave undrawn. Bolts span two
+    // anchors and are never culled on one.
+    if (this.viewW > 0 && p.shape !== 8) {
+      const m = 96;
+      if (sx < -m || sx > this.viewW + m || sy < -m || sy > this.viewH + m) return;
+    }
     let size: number;
     let alpha = 1;
-    if (p.grow > 0) {
-      // Growing blocks (dust) hold size and fade via alpha; shrinking
-      // blocks (default) taper to nothing. Both keep hard edges.
-      size = Math.max(2, p.size * scale);
-      alpha = t < 0.25 ? t / 0.25 : 1 - (t - 0.25) / 0.75;
+    if (p.sizeCurve === 0 && p.alphaCurve === 0) {
+      if (p.grow > 0) {
+        // Growing blocks (dust) hold size and fade via alpha; shrinking
+        // blocks (default) taper to nothing. Both keep hard edges.
+        size = Math.max(2, p.size * scale);
+        alpha = t < 0.25 ? t / 0.25 : 1 - (t - 0.25) / 0.75;
+      } else {
+        size = Math.max(2, p.size * scale * (1 - t));
+      }
     } else {
-      size = Math.max(2, p.size * scale * (1 - t));
+      // THE LIFE IS A CURVE: an authored curve on either axis; the
+      // unnamed axis keeps the legacy law for its side of the deal.
+      const sk = p.sizeCurve !== 0 ? curveAt(p.sizeCurve, t) : p.grow > 0 ? 1 : 1 - t;
+      size = Math.max(2, p.size * scale * sk);
+      alpha = p.alphaCurve !== 0
+        ? curveAt(p.alphaCurve, t)
+        : p.grow > 0 ? (t < 0.25 ? t / 0.25 : 1 - (t - 0.25) / 0.75) : 1;
     }
     if (p.flicker > 0) {
       // Embers strobe on their own clock — never in sync with siblings.
@@ -1013,6 +1550,35 @@ export class Particles {
     if (alpha < 1) ctx.globalAlpha = Math.max(0, alpha);
     // THE LIVING MATTER LAW: matter cools in hard bands, never blends.
     this.setFill(ctx, rampColor(p, t));
+    this.drawShape(ctx, p, sx, sy, size, worldToScreen, scale, alpha);
+    // THE CORE: a hotter heart inside the body, dying first — the
+    // white-hot center of a flame, the bright seed of a spark.
+    if (p.coreK > 0 && p.shape !== 1 && p.shape !== 5 && p.shape !== 8 && p.shape !== 10) {
+      const ca = Math.max(0, alpha * (1 - t));
+      if (ca > 0.02) {
+        ctx.globalAlpha = ca;
+        this.setFill(ctx, p.core);
+        this.drawShape(ctx, p, sx, sy, size * p.coreK, worldToScreen, scale, ca);
+        ctx.globalAlpha = 1;
+        return;
+      }
+    }
+    // Tracked reset — reading ctx.globalAlpha here was a per-particle
+    // cross-boundary getter (the shadow path above resets itself).
+    if (alpha < 1) ctx.globalAlpha = 1;
+  }
+
+  /** One silhouette at (sx, sy) with the fill already set. */
+  private drawShape(
+    ctx: CanvasRenderingContext2D,
+    p: Particle,
+    sx: number,
+    sy: number,
+    size: number,
+    worldToScreen: (wx: number, wy: number) => { x: number; y: number },
+    scale: number,
+    alpha: number,
+  ): void {
     if (p.shape === 1) {
       // Streak: a sliver stretched along the flight line — projected
       // through the camera so diagonals lie on the true screen path.
@@ -1114,12 +1680,58 @@ export class Particles {
       ctx.restore();
     } else if (p.shape === 8) {
       this.drawBolt(ctx, p, worldToScreen, scale, size, alpha);
+    } else if (p.shape === 9) {
+      // Blob: an irregular seven-sided body whose radii breathe on
+      // their own clocks — the flame mass that starts big and MORPHS
+      // down, the boulder of smoke, the gout of venom. Hard-edged,
+      // never round, never the same twice.
+      const seed = (p.phase * 4096) | 0;
+      const svx = p.vx;
+      const svy = p.vy - p.vz;
+      const moving = p.align !== 0 && Math.abs(svx) + Math.abs(svy) > 0.05;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(moving ? Math.atan2(svy, svx) : p.rot);
+      if (moving) ctx.scale(1.3, 0.82);
+      ctx.beginPath();
+      for (let k = 0; k < 7; k++) {
+        const a = (k / 7) * TAU;
+        const rk = size * 0.56 * (0.68 + 0.32 * h01(seed, k)) * (0.85 + 0.15 * Math.sin(p.life * 7.5 + k * 1.9 + p.phase));
+        const px = Math.cos(a) * rk;
+        const py = Math.sin(a) * rk * 0.9;
+        if (k === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    } else if (p.shape === 10) {
+      // Ring: a hollow hoop lying on the ground plane — the shock
+      // front, the smoke ring, the pressure wave. `size` is its
+      // diameter (the size curve is the expansion law); the wall is a
+      // fixed fraction, squashed like every ground ellipse.
+      ctx.save();
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.lineWidth = Math.max(1.5, size * p.ringW);
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, size * 0.5, size * 0.5 * 0.62, 0, 0, TAU);
+      ctx.stroke();
+      ctx.restore();
+      this.lastFill = '';
+    } else if (p.align !== 0) {
+      // An aligned square rides its heading as a slab — a thrown chip,
+      // a rushing ember — instead of sitting axis-locked.
+      const svx = p.vx;
+      const svy = p.vy - p.vz;
+      const ang = Math.abs(svx) + Math.abs(svy) > 0.05 ? Math.atan2(svy, svx) : p.rot;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(ang);
+      ctx.fillRect(-size * 0.7, -size * 0.35, size * 1.4, size * 0.7);
+      ctx.restore();
     } else {
       ctx.fillRect(sx - size / 2, sy - size / 2, size, size);
     }
-    // Tracked reset — reading ctx.globalAlpha here was a per-particle
-    // cross-boundary getter (the shadow path above resets itself).
-    if (alpha < 1) ctx.globalAlpha = 1;
   }
 
   /**
@@ -1231,6 +1843,11 @@ export class Particles {
       this.emitterFree.push(e);
     }
     this.emitters.length = 0;
+    for (const f of this.fields) {
+      f.alive = false;
+      this.fieldFree.push(f);
+    }
+    this.fields.length = 0;
     this.landingCount = 0;
   }
 

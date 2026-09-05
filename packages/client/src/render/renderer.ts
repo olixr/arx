@@ -155,7 +155,10 @@ import {
   rarTierOf,
   type GroundDropEnv,
 } from './groundItems.js';
-import { LAYER_GROUND, LAYER_WORLD, Particles, type Particle } from './particles.js';
+import { LAYER_GROUND, LAYER_WORLD, Particles, type Landing, type Particle } from './particles.js';
+import { GroundMarks } from './fx/groundMarks.js';
+import { EffectSystem, type CastParams, type EffectHandle } from './fx/effects.js';
+import { EFFECTS } from './fx/library/index.js';
 import {
   FALL_LOOKAHEAD,
   FALL_LOOKBACK,
@@ -1394,6 +1397,31 @@ interface WorldSprite {
 export class Renderer {
   readonly camera = new Camera();
   readonly particles = new Particles();
+  /**
+   * THE WORLD REMEMBERS (particles v6): the ground-marks layer, fed by
+   * the landing queue — char where coals burned out, flecks where
+   * beads struck, rime where shards melted. Painted in the decal
+   * stratum, under every body.
+   */
+  readonly groundMarks = new GroundMarks();
+  /** THE COMPOSER (particles v6): data-defined layered effects. */
+  readonly effects = new EffectSystem(this.particles, (x, y, r, rgb, a) => this.queueGlow(x, y, r, rgb, a));
+  private readonly ingestLanding = (l: Landing): void => {
+    this.groundMarks.ingest(l, performance.now() / 1000);
+  };
+  /** Wall-clock start of the current render (the governor's meter). */
+  private renderStartMs = 0;
+
+  /**
+   * Cast a library effect at a world point. Signatures and the labs
+   * both come through here — ONE-VOICE: the library masters the
+   * matter, the caller only says where and how big.
+   */
+  castEffect(id: string, x: number, y: number, params?: CastParams): EffectHandle | null {
+    const def = EFFECTS[id];
+    if (!def) return null;
+    return this.effects.cast(def, x, y, params);
+  }
   /** THE LANDING WORD: per-body status memory for application moments. */
   private statusEdges = new StatusEdges();
   private matterCtxCache: MatterCtx | null = null;
@@ -2034,6 +2062,8 @@ export class Renderer {
     this.fxBeats.length = 0;
     this.trailPrints.length = 0;
     this.particles.clear();
+    this.groundMarks.clear();
+    this.effects.clear();
     this.debris.clear();
   }
   /** Per-frame queue of chunks with pending sliced bakes (scan order:
@@ -5063,6 +5093,7 @@ export class Renderer {
   render(game: ClientGame, frameDt: number): void {
     this.game = game;
     const nowMs = performance.now();
+    this.renderStartMs = nowMs;
     if (this.lastFrameAt > 0) {
       const dt = Math.min(200, nowMs - this.lastFrameAt);
       // THE LONE HITCH IS NOT LOAD: an isolated spike (menu open, chunk
@@ -5751,7 +5782,12 @@ export class Renderer {
     // south-running body leaves must paint UNDER the body, and a puff
     // south of a body must paint over it. Airborne effects (sparks,
     // leaves, Arx) stay in the overlay pass below.
+    // THE COMPOSER's timeline fires this frame's layers before the
+    // engine integrates, so a layer born now moves now.
+    this.effects.update(this.frameDt);
     this.particles.update(this.frameDt);
+    // THE WORLD REMEMBERS: this frame's ground contacts become marks.
+    this.particles.drainLandings(this.ingestLanding);
     // Indexed passes over the raw pool (the old per-layer generators
     // minted an iterator + result object per particle per frame), and
     // pooled DrawItems — a POI effect at several hundred live grains
@@ -5881,7 +5917,7 @@ export class Renderer {
       this.birds.drawOne(this.ctx, bd, this.liftedWTSScratch, this.camera.scale, this.outlineOn, this.birdEnv.tSec);
     }
 
-    this.particles.draw(this.ctx, this.liftedWTSScratch, this.camera.scale);
+    this.particles.draw(this.ctx, this.liftedWTSScratch, this.camera.scale, this.w, this.h);
     // The aim guide rides OVER the world pass: elevated ground repaints
     // the whole plateau as y-sorted items, so drawing it early buried
     // the guide anywhere above level 0 (the drawAimGuide-under-items
@@ -6047,6 +6083,8 @@ export class Renderer {
     this.evictAnims();
     this.evictTreeSprites();
     this.perfMark('post');
+    // THE GOVERNOR reads the render's own cost, never the rAF period.
+    this.effects.govern(performance.now() - this.renderStartMs);
   }
 
   /** Deep-cave ambient the underground blend rides to: cool, slightly
@@ -28736,6 +28774,14 @@ export class Renderer {
     const sc = this.camera.scale;
     const now = performance.now();
     const squash = Renderer.FX_SQUASH;
+
+    // THE WORLD REMEMBERS: the marks layer lies under the stamped
+    // decals — the char the coals actually left, then the style's mark.
+    {
+      const nowSec = now / 1000;
+      this.groundMarks.prune(nowSec);
+      this.groundMarks.draw(ctx, this.liftedWTSScratch, sc, nowSec);
+    }
 
     for (let i = this.fxDecals.length - 1; i >= 0; i--) {
       const d = this.fxDecals[i]!;

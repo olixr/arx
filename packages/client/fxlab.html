@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Particle Lab</title>
+    <style>
+      body { margin: 0; background: #2a2230; color: #e8dfc8; font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
+      #stage { position: fixed; left: 0; top: 0; }
+      #panel {
+        position: fixed; right: 0; top: 0; bottom: 0; width: 340px; overflow-y: auto;
+        background: rgba(24, 17, 31, 0.94); border-left: 2px solid #241a2e; padding: 10px 12px; box-sizing: border-box;
+      }
+      #panel h1 { font-size: 14px; margin: 0 0 8px; letter-spacing: 0.06em; text-transform: uppercase; color: #f2c94c; }
+      #panel h2 { font-size: 12px; margin: 12px 0 4px; color: #c9a76a; text-transform: uppercase; letter-spacing: 0.05em; }
+      #panel label { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 3px 0; }
+      #panel input[type=number] { width: 72px; background: #17111d; color: #e8dfc8; border: 1px solid #3a3442; padding: 2px 4px; }
+      #panel input[type=range] { flex: 1; }
+      #panel select, #panel button, #panel textarea { background: #17111d; color: #e8dfc8; border: 1px solid #3a3442; }
+      #panel select { width: 100%; padding: 4px; }
+      #panel button { padding: 4px 10px; cursor: pointer; margin: 2px 2px 2px 0; }
+      #panel button:hover { border-color: #f2c94c; }
+      #panel .row { display: flex; flex-wrap: wrap; gap: 4px; }
+      #panel .layer { border: 1px solid #3a3442; padding: 6px 8px; margin: 6px 0; }
+      #panel .layer summary { cursor: pointer; font-weight: 600; }
+      #panel .layer .kind { color: #8a8394; font-weight: 400; margin-left: 6px; }
+      #panel .story { color: #a39cae; font-style: italic; margin: 0 0 8px; }
+      #stats { font: 12px/1.5 ui-monospace, monospace; white-space: pre; color: #cfe0ea; }
+      #export { width: 100%; height: 140px; font: 11px ui-monospace, monospace; }
+    </style>
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+    <div id="panel"></div>
+    <script type="module" src="/src/dev/particlelab.ts"></script>
+  </body>
+</html>

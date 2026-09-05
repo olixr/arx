@@ -7,6 +7,9 @@
  *   , / .   previous / next deployment
  *   Enter   cast at a fixed offset south-east of the hero
  *   \       toggle repeat (re-casts as each run ends — for tuning)
+ *   e / E   previous / next COMPOSED EFFECT (particles v6 library) —
+ *           selecting one puts the lab in effect mode; Enter casts it
+ *   m       back to matter mode
  *
  * Every cast goes through the SAME registry the signatures will use;
  * what the lab shows is exactly what abilities inherit. The registry
@@ -24,6 +27,7 @@ import type { Renderer } from '../render/renderer.js';
 import type { ClientGame } from '../game/clientGame.js';
 import { MATTER } from '../render/matter/index.js';
 import type { MatterCtx } from '../render/matter/index.js';
+import { EFFECT_LIST } from '../render/fx/library/index.js';
 import {
   AFFLICTION_STACKS_SHIFT,
   COUNT_STACKS_SHIFT,
@@ -38,6 +42,9 @@ export function startFxLab(game: ClientGame, renderer: Renderer): void {
   const ids = Object.keys(MATTER);
   let mi = 0;
   let di = 0;
+  // THE COMPOSER's roster rides beside the matter roster: ei ≥ 0 means
+  // Enter casts EFFECT_LIST[ei] instead of a material deployment.
+  let ei = -1;
   let repeat = false;
   let repeatTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -75,11 +82,13 @@ export function startFxLab(game: ClientGame, renderer: Renderer): void {
     const deps = depsOf(mi);
     const dep = deps[di]!;
     const wing = si < 0 ? 'off' : `${STATUS_IDS[si]} x${tier}`;
+    const head = ei >= 0
+      ? `EFFECT LAB  ${EFFECT_LIST[ei]!.id}  (${ei + 1}/${EFFECT_LIST.length})`
+      : `MATTER LAB  ${mat.name} . ${dep}  (${mi + 1}/${ids.length} · ${di + 1}/${deps.length})`;
     label.textContent =
-      `MATTER LAB  ${mat.name} . ${dep}` +
-      `  (${mi + 1}/${ids.length} · ${di + 1}/${deps.length})` +
+      head +
       `${repeat ? '  [repeat]' : ''}  status:${wing}` +
-      `\n[ ] material   , . deployment   Enter cast   \\ repeat   s status   S tier`;
+      `\n[ ] material   , . deployment   e E effect   m matter   Enter cast   \\ repeat   s status   S tier`;
   };
 
   const cast = () => {
@@ -90,7 +99,11 @@ export function startFxLab(game: ClientGame, renderer: Renderer): void {
     // to audit occlusion when the deployment reaches back over it.
     const x = own.x + 0.9;
     const y = own.y + 0.4;
-    dep(ctx, x, y, { x2: x + 1.8, y2: y - 0.6, dir: 0 });
+    if (ei >= 0) {
+      renderer.castEffect(EFFECT_LIST[ei]!.id, x, y, { x2: x + 1.8, y2: y - 0.6, dir: 0, radius: 1 });
+    } else {
+      dep(ctx, x, y, { x2: x + 1.8, y2: y - 0.6, dir: 0 });
+    }
     if (repeat) repeatTimer = setTimeout(cast, 2400);
   };
 
@@ -99,6 +112,9 @@ export function startFxLab(game: ClientGame, renderer: Renderer): void {
     else if (e.key === ']') mi = (mi + 1) % ids.length;
     else if (e.key === ',') di = (di + depsOf(mi).length - 1) % depsOf(mi).length;
     else if (e.key === '.') di = (di + 1) % depsOf(mi).length;
+    else if (e.key === 'e') ei = ei < 0 ? EFFECT_LIST.length - 1 : (ei + EFFECT_LIST.length - 1) % EFFECT_LIST.length;
+    else if (e.key === 'E') ei = (ei + 1) % EFFECT_LIST.length;
+    else if (e.key === 'm') ei = -1;
     else if (e.key === 'Enter') cast();
     else if (e.key === '\\') {
       repeat = !repeat;
