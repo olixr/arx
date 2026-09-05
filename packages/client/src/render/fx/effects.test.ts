@@ -208,7 +208,7 @@ test('the registry is keyed by id and every id names its material', () => {
   assert.ok(EFFECT_LIST.length >= 14);
   for (const d of EFFECT_LIST) {
     assert.equal(EFFECTS[d.id], d);
-    assert.match(d.id, /^(fire|smoke|frost|storm|venom|arcane|blood|dust|water|shadow)\.[a-z]+$/, d.id);
+    assert.match(d.id, /^[a-z]+\.[a-z_]+$/, d.id);
   }
 });
 

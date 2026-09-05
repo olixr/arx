@@ -20,6 +20,7 @@ import { BLOOD_EFFECTS } from './blood.js';
 import { DUST_EFFECTS } from './dust.js';
 import { WATER_EFFECTS } from './water.js';
 import { SHADOW_EFFECTS } from './shadow.js';
+import { PLAN_EFFECTS } from '../plans/index.js';
 
 export const EFFECT_LIST: readonly EffectDef[] = [
   ...FIRE_EFFECTS,
@@ -32,6 +33,7 @@ export const EFFECT_LIST: readonly EffectDef[] = [
   ...DUST_EFFECTS,
   ...WATER_EFFECTS,
   ...SHADOW_EFFECTS,
+  ...PLAN_EFFECTS,
 ];
 
 export const EFFECTS: Record<string, EffectDef> = Object.fromEntries(EFFECT_LIST.map((e) => [e.id, e]));

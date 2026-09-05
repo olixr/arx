@@ -287,7 +287,8 @@ export class EffectSystem {
     return this.glows.length;
   }
 
-  cast(def: EffectDef, x: number, y: number, p: CastParams = {}): EffectHandle {
+  /** `delay` shifts every layer's clock — a cue that fires later. */
+  cast(def: EffectDef, x: number, y: number, p: CastParams = {}, delay = 0): EffectHandle {
     const c = this.takeCast();
     c.alive = true;
     c.def = def;
@@ -306,7 +307,7 @@ export class EffectSystem {
     const layers = def.layers;
     for (let i = 0; i < layers.length; i++) {
       const L = layers[i]!;
-      const at = L.at ?? 0;
+      const at = (L.at ?? 0) + delay;
       const times = L.times ?? 0;
       if (at <= 0) {
         this.fire(c, L, 0);
