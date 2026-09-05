@@ -36,6 +36,11 @@
  * the far anchor and use path layers + `atFar`. Charges arrive at
  * dashTiles / 13 tiles·s⁻¹ (leaps at 14, dashes at 18) — the arrival
  * cues carry that as `at`.
+ *
+ * THE VOICE (Phase 4) in-world read: the steel was first authored for the
+ * 64-px sheet and read as a hairline in the 40-px meadow — the core,
+ * sleeve, flashes, rings, pikes and shackle were widened a third and the
+ * payoff scales lifted so a thrust reads across the yard, budgets kept.
  */
 
 import type { AbilityPlan } from '../abilityEffects.js';
@@ -44,6 +49,7 @@ import { recipe } from '../effects.js';
 import { curveOf, rampOf } from '../curves.js';
 import type { BurstOpts, EmitterPop } from '../../particles.js';
 import { PALE, LOAM, SHADE, RAMP_CLOD, RAMP_MASS } from '../library/dust.js';
+import { STORM_EFFECTS } from '../library/storm.js';
 
 // ---------------------------------------------------------------------------
 // Palette — steel, ash-wood, straw (the school's own unowned matter)
@@ -90,53 +96,53 @@ const REACH = 3.0;
 
 /** The bright core of the corridor: an aligned streak driven down the aim. */
 const DRIVE: BurstOpts = {
-  shape: 'streak', align: true, speed: 10, speedVar: 0.15, drag: 3, life: 0.32, lifeVar: 0.15,
-  size: 0.12, sizeVar: 0.15, gravity: 0, z: 0.55, layer: 'world', shadow: 0, flicker: 0.2,
+  shape: 'streak', align: true, speed: 10, speedVar: 0.15, drag: 3, life: 0.44, lifeVar: 0.15,
+  size: 0.27, sizeVar: 0.15, gravity: 0, z: 0.55, layer: 'world', shadow: 0, flicker: 0.2,
   ramp: RAMP_STEEL, sizeCurve: HOLD, alphaCurve: BOLT_A,
 };
 
 /** The deep sleeve: wider, dimmer, a hair behind. */
 const SLEEVE: BurstOpts = {
-  ...DRIVE, speed: 8.5, drag: 3, life: 0.36, size: 0.17, ramp: RAMP_SLEEVE, flicker: 0,
+  ...DRIVE, speed: 8.5, drag: 3, life: 0.5, size: 0.42, ramp: RAMP_SLEEVE, flicker: 0,
   alphaCurve: curveOf([0, 0.7, 0.5, 0.7, 1, 0]),
 };
 
 /** The hairline heart: thin, white, fastest. */
 const HEART: BurstOpts = {
-  ...DRIVE, speed: 11, drag: 3, life: 0.28, size: 0.06, ramp: rampOf({ stops: ['#ffffff', WHITE, BRIGHT], at: [0, 0.5, 0.9] }),
+  ...DRIVE, speed: 11, drag: 3, life: 0.36, size: 0.12, ramp: rampOf({ stops: ['#ffffff', WHITE, BRIGHT], at: [0, 0.5, 0.9] }),
 };
 
 /** A leaf-point flash where the reach tops out. */
 const POINT_FLASH: BurstOpts = {
-  shape: 'blob', speed: 0.1, life: 0.16, lifeVar: 0.1, size: 0.22, sizeVar: 0.1, gravity: 0, z: 0.55,
+  shape: 'blob', speed: 0.1, life: 0.3, lifeVar: 0.1, size: 0.55, sizeVar: 0.1, gravity: 0, z: 0.55,
   layer: 'world', shadow: 0, sizeCurve: FLARE, alphaCurve: FADE_OUT,
   ramp: rampOf({ stops: ['#ffffff', WHITE, STEEL] }), core: '#ffffff', coreK: 0.5,
 };
 
 /** Spent steel: glints that fall out of the line, land, and lie. */
 const SPENT: BurstOpts = {
-  shape: 'glint', speed: 0.5, speedVar: 0.5, life: 6, lifeVar: 0.2, size: 0.05, sizeVar: 0.25, gravity: 0,
+  shape: 'glint', speed: 0.5, speedVar: 0.5, life: 6, lifeVar: 0.2, size: 0.085, sizeVar: 0.25, gravity: 0,
   z: 0.5, vz: 0.4, zg: 4, land: 'settle', layer: 'world', shadow: 0, flicker: 0.3,
   ramp: RAMP_SPENT, sizeCurve: HOLD, alphaCurve: SETTLE_A, mark: 'fleck', markLife: 5,
 };
 
 /** Steel sparks: ballistic, dying on the dirt, pricking it. */
 const SPARK: BurstOpts = {
-  shape: 'streak', speed: 1.9, speedVar: 0.6, life: 0.5, lifeVar: 0.3, size: 0.045, gravity: 0,
+  shape: 'streak', speed: 1.9, speedVar: 0.6, life: 0.55, lifeVar: 0.3, size: 0.07, gravity: 0,
   z: 0.5, vz: 1.5, zg: 9, land: 'die', layer: 'world', shadow: 0, flicker: 0.5, trail: 5, trailColor: STEEL,
   ramp: RAMP_STEEL, sizeCurve: HOLD, alphaCurve: FADE_LATE, mark: 'fleck', markLife: 1.4,
 };
 
 /** A hard ring snapping open across the lance: pierced through. */
 const PIERCED_RING: BurstOpts = {
-  shape: 'ring', speed: 0, life: 0.22, lifeVar: 0.05, size: 0.24, sizeVar: 0.04, gravity: 0, z: 0.55,
+  shape: 'ring', speed: 0, life: 0.36, lifeVar: 0.05, size: 0.5, sizeVar: 0.04, gravity: 0, z: 0.55,
   layer: 'world', shadow: 0, ramp: rampOf({ stops: [WHITE, BRIGHT, STEEL], at: [0, 0.4, 0.8] }),
-  sizeCurve: curveOf([0, 0.5, 0.5, 1.5, 1, 1.9]), alphaCurve: curveOf([0, 1, 0.5, 0.7, 1, 0]), ringWidth: 0.14,
+  sizeCurve: curveOf([0, 0.5, 0.5, 1.5, 1, 1.9]), alphaCurve: curveOf([0, 1, 0.5, 0.7, 1, 0]), ringWidth: 0.18,
 };
 
 /** Shock spokes thrown off a pierce. */
 const SPOKE: BurstOpts = {
-  shape: 'streak', align: true, speed: 2.6, speedVar: 0.3, life: 0.22, lifeVar: 0.2, size: 0.09, gravity: 0,
+  shape: 'streak', align: true, speed: 2.6, speedVar: 0.3, life: 0.3, lifeVar: 0.2, size: 0.18, gravity: 0,
   z: 0.55, drag: 4, layer: 'world', shadow: 0, ramp: RAMP_STEEL, sizeCurve: HOLD, alphaCurve: BOLT_A,
 };
 
@@ -182,7 +188,7 @@ export const polearmNeedle: EffectDef = {
     { kind: 'burst', name: 'leaf head', recipe: recipe(['#ffffff', WHITE], POINT_FLASH), count: 1, tier: 'hero', along: REACH, at: 0.12 },
     { kind: 'burst', name: 'spent points', recipe: recipe([BRIGHT, STEEL], SPENT), count: 3, tier: 'hero', along: REACH, at: 0.14, arrange: 'cone', dirOff: Math.PI, spread: 0.6 },
     { kind: 'burst', name: 'withdraw', recipe: recipe([STEEL, IRON], { ...SLEEVE, speed: 8, size: 0.09, life: 0.26 }), count: 4, tier: 'body', along: REACH, at: 0.2, arrange: 'cone', dirOff: Math.PI, spread: 0.05 },
-    { kind: 'glow', name: 'head light', r: 0.5, rgb: STEEL_GLOW, a: 0.16, dur: 0.16, attack: 0.01, release: 0.12, dz: 0.5, along: REACH, at: 0.12 },
+    { kind: 'glow', name: 'head light', r: 1.0, rgb: STEEL_GLOW, a: 0.36, dur: 0.3, attack: 0.01, release: 0.12, dz: 0.5, along: REACH, at: 0.12 },
   ],
 };
 
@@ -196,14 +202,20 @@ export const polearmBite: EffectDef = {
   story: 'the point goes in at the reach: a white pierce flash → a hard ring snaps open across the lance and shock spokes throw off it → steel sparks fly, land and prick the dirt → dust presses out at the foot and two clods hop and lie → the air is shoved',
   layers: [
     { kind: 'field', name: 'shove', field: { kind: 'attract', radius: 0.8, strength: -1.6, dur: 0.3, attack: 0.02, release: 0.15 }, along: REACH },
-    { kind: 'burst', name: 'pierce flash', recipe: recipe(['#ffffff', WHITE], { ...POINT_FLASH, size: 0.34, life: 0.18 }), count: 1, tier: 'hero', along: REACH },
+    { kind: 'burst', name: 'pierce flash', recipe: recipe(['#ffffff', WHITE], { ...POINT_FLASH, size: 0.75, life: 0.32 }), count: 1, tier: 'hero', along: REACH },
     { kind: 'burst', name: 'pierced ring', recipe: recipe([WHITE, BRIGHT], PIERCED_RING), count: 1, tier: 'hero', along: REACH, at: 0.02 },
     { kind: 'burst', name: 'shock spokes', recipe: recipe([WHITE, STEEL], SPOKE), count: 6, tier: 'body', along: REACH, arrange: 'rim', radius: 0.08, outward: 2.6 },
     { kind: 'burst', name: 'steel sparks', recipe: recipe([WHITE, STEEL], SPARK), count: 8, tier: 'fine', along: REACH },
     { kind: 'burst', name: 'press', recipe: recipe([LOAM, PALE], PRESS), count: 4, tier: 'body', along: REACH, arrange: 'disc', radius: 0.1 },
     { kind: 'burst', name: 'clods', recipe: recipe([LOAM, SHADE], CLOD), count: 2, tier: 'hero', along: REACH },
-    { kind: 'glow', name: 'bite light', r: 0.7, rgb: STEEL_GLOW, a: 0.2, dur: 0.2, attack: 0.01, release: 0.15, dz: 0.4, along: REACH },
+    { kind: 'glow', name: 'bite light', r: 1.3, rgb: STEEL_GLOW, a: 0.4, dur: 0.3, attack: 0.01, release: 0.15, dz: 0.4, along: REACH },
   ],
+};
+
+/** The same bite at the anchor itself: for far anchors and landings, which carry no reach. */
+export const polearmBiteHere: EffectDef = {
+  ...polearmBite, id: 'polearm.bite_here', name: 'Polearm — bite (here)',
+  layers: polearmBite.layers.map((l) => ({ ...l, along: 0 })),
 };
 
 // ---------------------------------------------------------------------------
@@ -245,7 +257,7 @@ export const polearmCorridor: EffectDef = {
 /** The leading edge: a hard bright fan of aligned streaks. */
 const EDGE: BurstOpts = {
   shape: 'streak', align: true, speed: 6, speedVar: 0.2, drag: 5, life: 0.3, lifeVar: 0.15,
-  size: 0.13, sizeVar: 0.15, gravity: 0, z: 0.5, layer: 'world', shadow: 0, flicker: 0.2,
+  size: 0.18, sizeVar: 0.15, gravity: 0, z: 0.5, layer: 'world', shadow: 0, flicker: 0.2,
   ramp: RAMP_STEEL, sizeCurve: HOLD, alphaCurve: BOLT_A,
 };
 
@@ -277,7 +289,7 @@ export const polearmReap: EffectDef = {
 
 /** The edge riding the ring tangentially. */
 const LAP: BurstOpts = {
-  ...EDGE, speed: 4.5, drag: 3, life: 0.34, size: 0.14,
+  ...EDGE, speed: 4.5, drag: 3, life: 0.34, size: 0.19,
 };
 
 /** The haft's counterweight: ash-wood running the inner lap opposite. */
@@ -309,131 +321,371 @@ export const polearmGyre: EffectDef = {
 };
 
 // ---------------------------------------------------------------------------
+// THE MASTERED HAND, Phase 4 — THE VOICE. The school's three WORDS made
+// visible: ROOT is a stake driven into the ground that STANDS while the
+// hold lasts (polearm.root_stake), HOOK is the yard dragged in onto one
+// lane (polearm.hook_pull), LINE is the corridor drawn and kept
+// (polearm.torn_road / polearm.formation / polearm.picket). Payoffs
+// break the stake (polearm.skewer_burst); the seam the breaker opens is
+// a crack that stays (polearm.crack). `far` variants sit at the school's
+// REACH for arc wires (no far anchor on the wire).
+// ---------------------------------------------------------------------------
+
+const DARK_IRON = '#3a444f';
+const IRON_GLOW = '170, 190, 210';
+const ASH_GLOW = '196, 176, 132';
+
+/** Iron that stays iron: a dim four-band ramp for matter that STANDS. */
+const RAMP_STANDING = rampOf({ stops: [BRIGHT, STEEL, IRON, IRON_DEEP], at: [0, 0.15, 0.7, 1], steps: 4 });
+/** The crack's ramp: black iron opening to a cold seam and closing dark. */
+const RAMP_CRACK = rampOf({ stops: [DARK_IRON, IRON_DEEP, DARK_IRON], at: [0, 0.5, 1], steps: 3 });
+
+/** The stand: flare in, hold, and go out on the last tenth. */
+const STAND_A = curveOf([0, 0, 0.08, 1, 0.85, 1, 1, 0]);
+const STAND_S = curveOf([0, 0.3, 0.08, 1, 1, 1]);
+
+/** A pike STANDING in the ground: a vertical sliver (velocity is up, and barely). */
+const PIKE: BurstOpts = {
+  shape: 'streak', speed: 0, life: 2.4, lifeVar: 0.08, size: 0.32, sizeVar: 0.12, gravity: 0,
+  z: 0.05, vz: 0.05, zg: 0, layer: 'world', shadow: 0, flicker: 0.12,
+  ramp: RAMP_STANDING, sizeCurve: STAND_S, alphaCurve: STAND_A,
+};
+
+/** The pike's head: a glint riding above the sliver. */
+const PIKE_HEAD: BurstOpts = {
+  shape: 'glint', speed: 0, life: 2.3, lifeVar: 0.1, size: 0.12, sizeVar: 0.15, gravity: 0,
+  z: 0.5, vz: 0.05, zg: 0, layer: 'world', shadow: 0, flicker: 0.5,
+  ramp: rampOf({ stops: ['#ffffff', WHITE, STEEL], at: [0, 0.4, 1], steps: 3 }), sizeCurve: STAND_S, alphaCurve: STAND_A,
+};
+
+/** The shackle: a ring that snaps open and HOLDS at its reach. */
+const SHACKLE: BurstOpts = {
+  shape: 'ring', speed: 0, life: 2.4, lifeVar: 0.05, size: 1.15, gravity: 0, z: 0.02, layer: 'world', shadow: 0,
+  ramp: rampOf({ stops: [WHITE, STEEL, IRON, IRON_DEEP], at: [0, 0.12, 0.6, 1], steps: 4 }),
+  sizeCurve: curveOf([0, 0.25, 0.1, 1, 1, 1.05]), alphaCurve: curveOf([0, 1, 0.12, 0.85, 0.85, 0.7, 1, 0]), ringWidth: 0.15,
+};
+
+/** A furrow dragged along the ground: an aligned slab that lies and smears. */
+const FURROW: BurstOpts = {
+  shape: 'square', align: true, speed: 2.2, speedVar: 0.3, drag: 1.6, life: 1.6, lifeVar: 0.2, size: 0.1, sizeVar: 0.3,
+  gravity: 0, z: 0.02, vz: 0, zg: 0, land: 'settle', layer: 'world', shadow: 0,
+  ramp: RAMP_CLOD, sizeCurve: HOLD, alphaCurve: SETTLE_A, mark: 'smear', markLife: 4,
+};
+
+/** A hook coming in: an aligned iron streak drawn toward the centre. */
+const HOOK: BurstOpts = {
+  shape: 'streak', align: true, speed: 6, speedVar: 0.2, drag: 2.2, life: 0.42, lifeVar: 0.15, size: 0.2, sizeVar: 0.2,
+  gravity: 0, z: 0.45, layer: 'world', shadow: 0, flicker: 0.15,
+  ramp: RAMP_STEEL, sizeCurve: HOLD, alphaCurve: BOLT_A, mass: 0.6,
+};
+
+/** The broken stake: iron shards flung on true height, landing and flecking. */
+const SHARD_IRON: BurstOpts = {
+  shape: 'shard', speed: 2.0, speedVar: 0.5, life: 2.2, lifeVar: 0.3, size: 0.08, sizeVar: 0.3, gravity: 0, spin: 11,
+  z: 0.4, vz: 2.6, zg: 9, land: 'bounce', bounce: 0.35, layer: 'world',
+  ramp: RAMP_SPENT, sizeCurve: HOLD, alphaCurve: SETTLE_A, mark: 'fleck', markLife: 4,
+};
+
+/** A fast shock ring: the pierce's pressure wave. */
+const SHOCK: BurstOpts = {
+  ...PIERCED_RING, life: 0.26, size: 0.36, sizeCurve: curveOf([0, 0.4, 0.5, 2.2, 1, 2.9]), ringWidth: 0.13,
+};
+
+/** The crack itself: a dark jagged bolt that stays open. */
+const CRACK: BurstOpts = {
+  shape: 'bolt', speed: 0, life: 2.4, lifeVar: 0.05, size: 0.1, gravity: 0, z: 0.35, z2: 0.05, layer: 'world', shadow: 0,
+  boltRate: 0.4, boltBranch: 0.5, ramp: RAMP_CRACK, sizeCurve: STAND_S, alphaCurve: STAND_A,
+};
+
+/** Grit sifting out of an opened seam. */
+const GRIT: EmitterPop[] = [
+  { colors: [LOAM, SHADE], opts: { shape: 'square', speed: 0.3, speedVar: 0.5, life: 0.9, lifeVar: 0.3, size: 0.04, gravity: 0, z: 0.35, vz: -0.2, zg: 5, land: 'settle', layer: 'world', shadow: 0, ramp: RAMP_CLOD, sizeCurve: HOLD, alphaCurve: SETTLE_A }, tier: 'fine' },
+];
+
+/** Glints drawn in along a chain. */
+const CHAIN: EmitterPop[] = [
+  { colors: [WHITE, STEEL], opts: { shape: 'glint', speed: 0, life: 0.45, lifeVar: 0.2, size: 0.07, sizeVar: 0.2, gravity: 0, z: 0.4, layer: 'world', shadow: 0, flicker: 0.5, ramp: RAMP_STEEL, sizeCurve: HOLD, alphaCurve: BOLT_A, mass: 0.8 }, tier: 'fine' },
+];
+
+/** Clone an effect with every layer shifted `along` tiles down the aim (arc wires). */
+function farOf(base: EffectDef, id: string, along: number): EffectDef {
+  return { id, name: `${base.name} (far)`, story: base.story, layers: base.layers.map((l) => ({ ...l, along: (l.along ?? 0) + along })) };
+}
+
+/** THE SKY'S PIN: the storm's strike, unchanged, moved out to the reach where the point directs it. */
+export const polearmSkyPin: EffectDef = farOf(STORM_EFFECTS.find((e) => e.id === 'storm.strike')!, 'polearm.sky_pin', REACH);
+
+// polearm.root_stake — THE ROOT: a stake driven, a shackle that holds
+export const polearmRootStake: EffectDef = {
+  id: 'polearm.root_stake',
+  name: 'Polearm — root stake',
+  story: 'the hold made visible: a white pin flash → the shackle ring snaps open and HOLDS at the knee → six iron barbs stand up out of the dirt around the held body and stay the whole breath → glints are drawn in along the chain → the foot presses dust → the barbs go out together when the hold breaks',
+  layers: [
+    { kind: 'burst', name: 'pin flash', recipe: recipe(['#ffffff', WHITE], { ...POINT_FLASH, size: 0.36, life: 0.2, z: 0.4 }), count: 1, tier: 'hero' },
+    { kind: 'burst', name: 'shackle', recipe: recipe([WHITE, STEEL], SHACKLE), count: 1, tier: 'hero', at: 0.02 },
+    { kind: 'burst', name: 'barbs', recipe: recipe([STEEL, IRON], PIKE), count: 6, tier: 'hero', arrange: 'ring', radius: 0.42, at: 0.04 },
+    { kind: 'burst', name: 'barb heads', recipe: recipe([WHITE, STEEL], { ...PIKE_HEAD, life: 2.3 }), count: 6, tier: 'fine', arrange: 'ring', radius: 0.42, at: 0.04 },
+    { kind: 'field', name: 'chain draw', field: { kind: 'attract', radius: 1.2, strength: 3.5, dur: 0.6, attack: 0.05, release: 0.2 } },
+    { kind: 'emit', name: 'chain glints', arrange: 'rim', radius: 0.9, outward: -2.2, rate: 22, dur: 0.5, attack: 0, release: 0.1, tier: 'fine', pops: CHAIN },
+    { kind: 'burst', name: 'press', recipe: recipe([LOAM, PALE], PRESS), count: 5, tier: 'body', arrange: 'disc', radius: 0.15 },
+    { kind: 'glow', name: 'stake light', r: 0.9, rgb: IRON_GLOW, a: 0.2, dur: 2.4, attack: 0.03, release: 0.3, dz: 0.2, flicker: 0.15 },
+  ],
+};
+export const polearmRootStakeFar = farOf(polearmRootStake, 'polearm.root_stake_far', REACH);
+
+// polearm.hook_pull — THE HOOK: the yard dragged in onto one lane
+export const polearmHookPull: EffectDef = {
+  id: 'polearm.hook_pull',
+  name: 'Polearm — hook pull',
+  story: 'everything comes to the point: iron hooks come in off the rim along the drag → furrows are dragged across the dirt toward the centre and smear where they stop → dust is hauled in behind them and glints run the chain → the beak flashes at the middle where the row lands',
+  layers: [
+    { kind: 'field', name: 'haul', field: { kind: 'attract', radius: 1.8, strength: 6, dur: 0.55, attack: 0.02, release: 0.2 }, radiusK: 1.4 },
+    { kind: 'burst', name: 'hooks', recipe: recipe([WHITE, STEEL, IRON], HOOK), count: 10, tier: 'hero', arrange: 'rim', radius: 1.25, radiusK: 1.15, outward: -6 },
+    { kind: 'burst', name: 'furrows', recipe: recipe([LOAM, SHADE], { ...FURROW, size: 0.08, life: 1.1 }), count: 6, tier: 'hero', arrange: 'rim', radius: 1.2, radiusK: 1.1, outward: -2.4 },
+    { kind: 'burst', name: 'hauled dust', recipe: recipe([LOAM, PALE], { ...PRESS, speed: 1.8, drag: 1.8, life: 1.0, size: 0.2 }), count: 6, tier: 'body', arrange: 'rim', radius: 1.1, radiusK: 1.0, outward: -1.8 },
+    { kind: 'emit', name: 'chain glints', arrange: 'rim', radius: 1.2, radiusK: 1.1, outward: -4, rate: 60, dur: 0.35, attack: 0, release: 0.05, tier: 'fine', pops: CHAIN },
+    { kind: 'burst', name: 'beak flash', recipe: recipe(['#ffffff', WHITE], { ...POINT_FLASH, size: 0.3 }), count: 1, tier: 'hero', at: 0.2 },
+    { kind: 'burst', name: 'landing press', recipe: recipe([LOAM, PALE], PRESS), count: 4, tier: 'body', arrange: 'disc', radius: 0.2, at: 0.22 },
+    { kind: 'glow', name: 'drag light', r: 0.8, rgb: IRON_GLOW, a: 0.12, dur: 0.4, attack: 0.05, release: 0.25, dz: 0.2, radiusK: 0.7 },
+  ],
+};
+
+// polearm.skewer_burst — the payoff: the stake breaks, the point goes through
+export const polearmSkewerBurst: EffectDef = {
+  id: 'polearm.skewer_burst',
+  name: 'Polearm — skewer burst',
+  story: 'the point goes through a held body: a white cross-flash → two shock rings race out one behind the other → the broken stake flies as iron shards on true height, bouncing and lying → spokes and sparks throw off the pierce and prick the dirt → dust presses out and clods hop → the air is shoved back',
+  layers: [
+    { kind: 'field', name: 'shove', field: { kind: 'attract', radius: 1.2, strength: -3, dur: 0.3, attack: 0.02, release: 0.15 } },
+    { kind: 'burst', name: 'cross flash', recipe: recipe(['#ffffff', WHITE], { ...POINT_FLASH, size: 0.62, life: 0.22, z: 0.45 }), count: 2, tier: 'hero' },
+    { kind: 'burst', name: 'shock rings', recipe: recipe([WHITE, BRIGHT], SHOCK), count: 1, tier: 'hero', every: 0.07, times: 1 },
+    { kind: 'burst', name: 'broken stake', recipe: recipe([BRIGHT, STEEL, IRON], SHARD_IRON), count: 10, tier: 'hero' },
+    { kind: 'burst', name: 'spokes', recipe: recipe([WHITE, STEEL], { ...SPOKE, speed: 3.2 }), count: 10, tier: 'body', arrange: 'rim', radius: 0.08, outward: 3.2 },
+    { kind: 'burst', name: 'sparks', recipe: recipe([WHITE, STEEL], SPARK), count: 12, tier: 'fine' },
+    { kind: 'burst', name: 'press', recipe: recipe([LOAM, PALE], { ...PRESS, speed: 1.4 }), count: 6, tier: 'body', arrange: 'disc', radius: 0.15 },
+    { kind: 'burst', name: 'clods', recipe: recipe([LOAM, SHADE], CLOD), count: 3, tier: 'hero' },
+    { kind: 'glow', name: 'pierce light', r: 1.2, rgb: STEEL_GLOW, a: 0.4, dur: 0.24, attack: 0.01, release: 0.18, dz: 0.4 },
+  ],
+};
+export const polearmSkewerBurstFar = farOf(polearmSkewerBurst, 'polearm.skewer_burst_far', REACH);
+
+// polearm.crack — THE SEAM: the sunder brand, a crack that stays open
+export const polearmCrack: EffectDef = {
+  id: 'polearm.crack',
+  name: 'Polearm — crack',
+  story: 'the armour opens: a seam flash → three dark cracks jag open across the body and STAY, re-seeding slowly like a wall deciding → plate chips fly and lie → grit sifts out of the seam for the whole window → a dim iron light flickers in the crack',
+  layers: [
+    { kind: 'burst', name: 'seam flash', recipe: recipe(['#ffffff', WHITE], { ...POINT_FLASH, size: 0.3, life: 0.16, z: 0.45 }), count: 1, tier: 'hero' },
+    { kind: 'burst', name: 'cracks', recipe: recipe([DARK_IRON, IRON_DEEP], CRACK), count: 3, tier: 'hero', span: 0.55, dz: 0.3, at: 0.03 },
+    { kind: 'burst', name: 'plate chips', recipe: recipe([BRIGHT, STEEL], { ...SHARD_IRON, speed: 1.8, vz: 2.0, size: 0.065 }), count: 7, tier: 'hero', at: 0.03 },
+    { kind: 'burst', name: 'spokes', recipe: recipe([STEEL, IRON], { ...SPOKE, speed: 2.2 }), count: 6, tier: 'body', arrange: 'rim', radius: 0.06, outward: 2.2 },
+    { kind: 'emit', name: 'grit', arrange: 'disc', radius: 0.15, rate: 16, dur: 2.2, attack: 0.1, release: 0.4, tier: 'fine', dz: 0.35, pops: GRIT },
+    { kind: 'burst', name: 'press', recipe: recipe([LOAM, PALE], PRESS), count: 4, tier: 'body', arrange: 'disc', radius: 0.12 },
+    { kind: 'glow', name: 'seam light', r: 0.55, rgb: IRON_GLOW, a: 0.12, dur: 2.4, attack: 0.05, release: 0.3, dz: 0.3, flicker: 0.35 },
+  ],
+};
+export const polearmCrackFar = farOf(polearmCrack, 'polearm.crack_far', REACH);
+
+// polearm.formation — THE HELD GROUND: the wall of points, standing
+export const polearmFormation: EffectDef = {
+  id: 'polearm.formation',
+  name: 'Polearm — formation',
+  story: 'the wall stands: twelve pikes set on the rim, heads glinting, standing the whole beat → the trench line is trodden into the dirt under them and smears → the armour shimmers on the one inside the formation → a low iron light on the ground',
+  layers: [
+    { kind: 'burst', name: 'pikes', recipe: recipe([STEEL, IRON], { ...PIKE, life: 1.25, size: 0.26 }), count: 12, tier: 'hero', arrange: 'ring', radius: 1.6, radiusK: 0.92 },
+    { kind: 'burst', name: 'pike heads', recipe: recipe([WHITE, STEEL], { ...PIKE_HEAD, life: 1.2, z: 0.56 }), count: 12, tier: 'fine', arrange: 'ring', radius: 1.6, radiusK: 0.92 },
+    { kind: 'burst', name: 'trench', recipe: recipe([LOAM, SHADE], { ...FURROW, speed: 0.5, life: 1.4, size: 0.09 }), count: 12, tier: 'body', arrange: 'rim', radius: 1.6, radiusK: 0.92, outward: 0.3 },
+    { kind: 'burst', name: 'armour shimmer', recipe: recipe([WHITE, STEEL], { ...PIKE_HEAD, life: 0.9, size: 0.07, z: 0.7, vz: 0.15 }), count: 6, tier: 'body', arrange: 'orbit', radius: 0.32, dz: 0.5 },
+    { kind: 'burst', name: 'brace dust', recipe: recipe([LOAM, PALE], { ...PRESS, size: 0.2, speed: 0.5 }), count: 5, tier: 'body', arrange: 'rim', radius: 1.5, radiusK: 0.85, outward: 0.4 },
+    { kind: 'glow', name: 'ward light', r: 1.0, rgb: IRON_GLOW, a: 0.1, dur: 1.1, attack: 0.1, release: 0.3, radiusK: 0.9 },
+  ],
+};
+
+// polearm.splinter_ring — the moulinet's aftermath: splinters that stay
+export const polearmSplinterRing: EffectDef = {
+  id: 'polearm.splinter_ring',
+  name: 'Polearm — splinter ring',
+  story: 'what the wheel left: ash splinters standing on end all round the ring → more thrown outward, tumbling, lying and flecking the rim → scour dust rolls off the edge → glints wink on the cut ends → a faint ash light',
+  layers: [
+    { kind: 'burst', name: 'standing splinters', recipe: recipe([ASH, ASH_DEEP], { ...PIKE, life: 1.0, size: 0.2, ramp: RAMP_ASH, sizeVar: 0.3 }), count: 10, tier: 'hero', arrange: 'ring', radius: 1.4, radiusK: 0.85 },
+    { kind: 'burst', name: 'thrown splinters', recipe: recipe([ASH, STRAW], { ...STRAW_CUT, speed: 0.9, life: 1.6, size: 0.06, ramp: RAMP_ASH, mark: 'fleck', markLife: 2.5 }), count: 8, tier: 'body', arrange: 'rim', radius: 1.3, radiusK: 0.8, outward: 0.9 },
+    { kind: 'burst', name: 'scour', recipe: recipe([LOAM, PALE], { ...SCUFF, size: 0.24, speed: 0.9 }), count: 8, tier: 'body', arrange: 'rim', radius: 1.3, radiusK: 0.8, outward: 0.6 },
+    { kind: 'burst', name: 'cut glints', recipe: recipe([WHITE, STEEL], { ...PIKE_HEAD, life: 0.8, size: 0.06, z: 0.3 }), count: 8, tier: 'fine', arrange: 'ring', radius: 1.4, radiusK: 0.85 },
+    { kind: 'glow', name: 'ash light', r: 1.0, rgb: ASH_GLOW, a: 0.08, dur: 0.9, attack: 0.1, release: 0.3, radiusK: 0.9 },
+  ],
+};
+
+// polearm.torn_road — the lance's aftermath: the road torn and kept
+export const polearmTornRoad: EffectDef = {
+  id: 'polearm.torn_road',
+  name: 'Polearm — torn road',
+  story: 'the road stays torn: furrow lips lie across the disc and smear → sod tabs flip pale-side up on the rim → torn iron stands out of the ground → a dust wake presses low and fines sift down → a dim iron light in the tear',
+  layers: [
+    { kind: 'burst', name: 'furrow lips', recipe: recipe([LOAM, SHADE], { ...FURROW, speed: 0.9, life: 1.3 }), count: 10, tier: 'hero', arrange: 'disc', radius: 1.2, radiusK: 0.85 },
+    { kind: 'burst', name: 'sod tabs', recipe: recipe([SOD_PALE, PALE], { ...SOD, life: 1.4, vz: 1.2 }), count: 4, tier: 'hero', arrange: 'rim', radius: 1.1, radiusK: 0.8, outward: 0.5 },
+    { kind: 'burst', name: 'torn iron', recipe: recipe([STEEL, IRON], { ...PIKE, life: 1.0, size: 0.2, sizeVar: 0.35 }), count: 6, tier: 'hero', arrange: 'ring', radius: 0.9, radiusK: 0.65 },
+    { kind: 'burst', name: 'dust wake', recipe: recipe([LOAM, PALE], { ...PRESS, speed: 0.6, life: 1.2 }), count: 6, tier: 'body', arrange: 'disc', radius: 1.0, radiusK: 0.7 },
+    { kind: 'emit', name: 'fines', arrange: 'disc', radius: 1.1, radiusK: 0.8, rate: 18, dur: 0.7, attack: 0, release: 0.2, tier: 'fine', dz: 0.3, pops: GRIT },
+    { kind: 'glow', name: 'tear light', r: 1.0, rgb: IRON_GLOW, a: 0.1, dur: 0.9, attack: 0.1, release: 0.3, radiusK: 0.9 },
+  ],
+};
+
+// polearm.picket — the stand: pikes thrown forward and SET across the front
+export const polearmPicket: EffectDef = {
+  id: 'polearm.picket',
+  name: 'Polearm — picket',
+  story: 'the line is held: eight pikes are set in a knot at the reach, standing the whole beat with their heads glinting → the stand line is trodden into the dirt and smears → brace dust presses at the caster\'s heels → a low iron light along the front',
+  layers: [
+    { kind: 'burst', name: 'set pikes', recipe: recipe([STEEL, IRON], { ...PIKE, life: 1.2, size: 0.24 }), count: 8, tier: 'hero', arrange: 'ring', radius: 0.6, along: 2.3 },
+    { kind: 'burst', name: 'pike heads', recipe: recipe([WHITE, STEEL], { ...PIKE_HEAD, life: 1.15 }), count: 8, tier: 'fine', arrange: 'ring', radius: 0.6, along: 2.3 },
+    { kind: 'burst', name: 'stand line', recipe: recipe([LOAM, SHADE], { ...FURROW, speed: 0.6, life: 1.3, size: 0.09 }), count: 8, tier: 'body', arrange: 'rim', radius: 0.65, outward: 0.5, along: 2.3 },
+    { kind: 'burst', name: 'brace', recipe: recipe([LOAM, PALE], { ...PRESS, size: 0.2 }), count: 4, tier: 'body', arrange: 'disc', radius: 0.2 },
+    { kind: 'burst', name: 'heel clod', recipe: recipe([LOAM, SHADE], CLOD), count: 1, tier: 'hero', arrange: 'cone', dirOff: Math.PI, spread: 0.5 },
+    { kind: 'glow', name: 'front light', r: 0.9, rgb: IRON_GLOW, a: 0.1, dur: 1.0, attack: 0.05, release: 0.3, along: 2.6 },
+  ],
+};
+
+// ---------------------------------------------------------------------------
 // The plans
 // ---------------------------------------------------------------------------
 
 /** Arrival delay for a charge / leap / dash of `tiles` at the shared travel speed. */
 const charge = (tiles: number): number => Math.round((tiles / 13) * 100) / 100;
-const leap = (tiles: number): number => Math.round((tiles / 14) * 100) / 100;
 const dash = (tiles: number): number => Math.round((tiles / 18) * 100) / 100;
 
 export const POLEARM_PLANS: Record<string, AbilityPlan> = {
   // ---- THE TWENTY ---------------------------------------------------------
 
-  // The reach that surprises: one needle corridor snaps out and is withdrawn; the front foot's skid is the only ground story.
-  lunging_skewer: { cues: [{ id: 'polearm.needle', scale: 0.8 }, { id: 'dust.kick', scale: 0.45 }] },
-  // The butt end: no point at all — the pressure bar shoves dust forward off the cap while the braced heel digs its trench backward.
-  haft_strike: { cues: [
-    { id: 'dust.slam', scale: 0.6 },
-    { id: 'dust.kick', scale: 0.7 },
-    { id: 'dust.billow', scale: 0.4, at: 0.1 },
-  ] },
-  // The hook comes home: the one art anchored out there — everything runs INWARD on the pull, and the beak's bite bleeds.
-  hooking_reap: { cues: [{ id: 'blood.drink', scale: 0.8, radiusK: 1.2 }, { id: 'blood.hit', scale: 0.55, at: 0.12 }] },
-  // The planted haft: the butt bites the dirt where the vault begins, and the body lands 7 tiles on at dash speed with a second stamp.
-  vaulting_step: { cues: [{ id: 'dust.slam', scale: 0.6 }, { id: 'dust.slam', scale: 0.5, atFar: true, at: dash(7) }] },
-  // One breath, one line: the whole corridor goes white at once — the biggest needle, its bite at the far tick — off a planted foot.
-  perfect_thrust: { cues: [
-    { id: 'polearm.needle', scale: 1.3 },
-    { id: 'polearm.bite', scale: 0.9, at: 0.1 },
-    { id: 'dust.kick', scale: 0.4 },
-  ] },
-  // The multi-stab: each beat three pricks down the same corridor on staggered sub-beat clocks — near, far, middle — spent points accumulating on the floor.
-  flurry_of_points: { cues: [
-    { id: 'polearm.needle', scale: 0.6 },
-    { id: 'polearm.needle', scale: 0.45, at: 0.28 },
-    { id: 'polearm.needle', scale: 0.4, at: 0.52 },
-  ] },
-  // The glaive's one answer: a swept EDGE with a trailing wake, cut straw settling along the outer lip, the pivot foot's scuff.
-  crescent_reap: { cues: [{ id: 'polearm.reap', scale: 1.1 }, { id: 'dust.kick', scale: 0.5, at: 0.04 }] },
-  // The line that travels: the bead runs the whole five tiles unrolling the sleeve, the floor is torn along the corridor, the point drives into the ground at the run's end.
-  impaling_drive: { cues: [
-    { id: 'polearm.corridor', scale: 1.2 },
-    { id: 'dust.gouge', scale: 0.6, at: 0.05 },
-    { id: 'dust.slam', scale: 0.4, atFar: true, at: 0.3 },
-  ] },
-  // The braced picket: each beat one shimmer walks the row of standing points and one foot bites fresh dust.
-  wall_of_points: { cues: [{ id: 'polearm.needle', scale: 0.5 }, { id: 'dust.kick', scale: 0.6, at: 0.1 }] },
-  // The gold goes first: gold rails laid down the chord, the road torn between them, and at the lane's end (10 tiles at charge speed) the BAR — the dust skirt thrown off its foot under a gold rim.
-  knights_charge: { cues: [
-    { id: 'arcane.beam', scale: 0.9 },
-    { id: 'dust.gouge', scale: 0.9, at: 0.05 },
-    { id: 'dust.slam', scale: 1.1, atFar: true, at: charge(10) },
-    { id: 'arcane.bloom', scale: 0.6, atFar: true, at: charge(10) },
-  ] },
-  // The opened plate: the point goes in and the plate is pinned against something to be opened — a heavy bite at the reach, off a braced foot.
-  rampart_breaker: { cues: [
-    { id: 'polearm.needle', scale: 1.0 },
-    { id: 'polearm.bite', scale: 1.3, at: 0.06 },
-    { id: 'dust.kick', scale: 0.45 },
-  ] },
-  // The flicker: two slim needles flick out and back on opposite half-beats — one always going while the other comes. No ground story.
-  serpents_tongue: { cues: [{ id: 'polearm.needle', scale: 0.5 }, { id: 'polearm.needle', scale: 0.45, at: 0.4 }] },
-  // Point first, from above: the haft plants for the launch, and the landing (8 tiles at leap speed) answers in a star crack of dust that hangs after.
-  skydriver_fall: { cues: [
-    { id: 'dust.kick', scale: 0.6 },
-    { id: 'dust.slam', scale: 1.4, radiusK: 1, atFar: true, at: leap(8) },
-    { id: 'dust.billow', scale: 0.5, atFar: true, at: leap(8) + 0.3 },
-  ] },
-  // The line moves forward: the second gold — a halo of light at the top of the haft, a gold ward pointing the way underfoot, the steps already taken behind.
-  banner_advance: { cues: [
-    { id: 'arcane.orbit', scale: 0.7 },
-    { id: 'arcane.sigil', scale: 0.5, at: 0.1 },
-    { id: 'dust.kick', scale: 0.45 },
-  ] },
-  // The turning bar: each beat the haft turns a half lap around the body — it is the TIPS that do the work, and they kick dust.
-  moulinet_guard: { cues: [{ id: 'polearm.gyre', scale: 0.7, radiusK: 1 }, { id: 'dust.kick', scale: 0.4, at: 0.2 }] },
-  // The called strike: the sky answers the raised point with one hard bolt, and the rod discharges along the aim as a white corridor that bites at the reach.
-  stormpoint: { cues: [
-    { id: 'storm.strike', scale: 1.2 },
-    { id: 'polearm.needle', scale: 1.0, at: 0.28 },
-    { id: 'polearm.bite', scale: 0.9, at: 0.36 },
-  ] },
-  // The gate parts: the execute — the beak comes down into the seam and the heaviest bite in the school opens it, off a braced foot. Cold iron only.
-  gatebreaker: { cues: [
-    { id: 'polearm.needle', scale: 1.0 },
-    { id: 'polearm.bite', scale: 1.5, at: 0.05 },
-    { id: 'dust.kick', scale: 0.5 },
-  ] },
-  // The full lap: the halberd edge runs the whole circle with the counterweight opposite; the scoured ring's dust rolls after.
-  sweeping_gyre: { cues: [{ id: 'polearm.gyre', scale: 1.3, radiusK: 1 }, { id: 'dust.billow', scale: 0.5, at: 0.3 }] },
-  // Nothing walks through: each beat the level bar takes a hit and RINGS along its length, cold runs the front, and the heels' trenches are dug.
-  hold_the_line_polearm: { cues: [
-    { id: 'polearm.needle', scale: 0.45 },
-    { id: 'frost.breath', scale: 0.5, at: 0.05 },
-    { id: 'dust.kick', scale: 0.5 },
-  ] },
-  // The crown of the school: the longest line in the game — the gold corridor and the steel one laid together down the whole road, the floor torn under them, and the run finishing (12 tiles at charge speed) in a slam.
-  sundering_lance: { cues: [
-    { id: 'arcane.beam', scale: 1.4 },
-    { id: 'polearm.corridor', scale: 1.4, at: 0.02 },
-    { id: 'dust.gouge', scale: 0.9, at: 0.05 },
-    { id: 'dust.slam', scale: 1.2, atFar: true, at: charge(12) },
-  ] },
+  // PAYOFF at reach: the needle snaps out and the head bites at the far tick off a skidding front foot; when it FOLLOWS the root or the hook the stake breaks at the reach — the skewer burst.
+  lunging_skewer: {
+    cues: [{ id: 'polearm.needle', scale: 1.1 }, { id: 'polearm.bite', scale: 0.9, at: 0.1 }, { id: 'dust.kick', scale: 0.45 }],
+    onFollow: [{ id: 'polearm.skewer_burst_far', scale: 1.2, at: 0.1 }],
+  },
+  // SUSTAIN, three rude beats: each beat the butt cap slams the dirt and shoves a low bar of dust forward off the hip while the cold sits in their knees (frost.breath, small); the finale is the last, heaviest shove.
+  haft_strike: {
+    cues: [{ id: 'dust.slam', scale: 0.75 }, { id: 'dust.kick', scale: 0.8 }, { id: 'frost.breath', scale: 0.45, at: 0.06 }],
+    onFinale: [{ id: 'dust.slam', scale: 1.2, at: 0.05 }, { id: 'dust.billow', scale: 0.6, at: 0.15 }],
+  },
+  // OPENER, the signature's first press: the hook goes behind the knee and the whole ring is dragged in onto the point; then the stake — the ROOT — stands in the dirt with its shackle for the breath they are held.
+  hooking_reap: {
+    cues: [{ id: 'polearm.hook_pull', scale: 1.2, radiusK: 1.2 }, { id: 'polearm.root_stake', scale: 1.2, at: 0.24 }],
+  },
+  // ANSWER: the haft plants (the butt bites the dirt) and the body lands point-first 8 tiles on: the bite and a stamp at the far end.
+  vaulting_step: {
+    cues: [{ id: 'dust.kick', scale: 0.7 }, { id: 'dust.slam', scale: 0.45, at: 0.02 }, { id: 'polearm.bite_here', scale: 1.0, atFar: true, at: dash(8) }, { id: 'dust.slam', scale: 0.7, atFar: true, at: dash(8) }],
+  },
+  // PAYOFF, the signature's second press: one drawn breath, one straight line — the biggest needle and its bite; after the root the stake BREAKS in the skewer burst and the shove.
+  perfect_thrust: {
+    cues: [{ id: 'polearm.needle', scale: 1.6 }, { id: 'polearm.bite', scale: 1.3, at: 0.1 }, { id: 'dust.kick', scale: 0.4 }],
+    onFollow: [{ id: 'polearm.skewer_burst_far', scale: 1.5, at: 0.1 }],
+  },
+  // SUSTAIN with a finale: each beat three pricks rain down the lane on staggered sub-clocks; the last point lands like a spear — the full bite and the stake bursting at the reach.
+  flurry_of_points: {
+    cues: [{ id: 'polearm.needle', scale: 0.8 }, { id: 'polearm.needle', scale: 0.65, at: 0.24 }, { id: 'polearm.needle', scale: 0.6, at: 0.46 }],
+    onFinale: [{ id: 'polearm.needle', scale: 1.4, at: 0.5 }, { id: 'polearm.skewer_burst_far', scale: 1.1, at: 0.58 }],
+    onFollow: [{ id: 'polearm.bite', scale: 0.7, at: 0.1 }],
+  },
+  // OPENER: one moonwide stroke of the hafted blade, then the whole ring is HOOKED in cold onto one lane — the reap, the pull, the frost left on the row.
+  crescent_reap: {
+    cues: [{ id: 'polearm.reap', scale: 1.1 }, { id: 'polearm.gyre', scale: 0.7, radiusK: 1, at: 0.04 }, { id: 'polearm.hook_pull', scale: 1.1, radiusK: 0.9, at: 0.2 }, { id: 'frost.breath', scale: 0.5, at: 0.3 }],
+  },
+  // PAYOFF, the drawn corridor: the bead runs five tiles unrolling the sleeve, the floor torn under it, the point driving into the ground at the run's end; after the hook the whole row on the lane takes the skewer burst at the far tick.
+  impaling_drive: {
+    cues: [{ id: 'polearm.corridor', scale: 1.2 }, { id: 'dust.gouge', scale: 0.7, at: 0.05 }, { id: 'polearm.bite_here', scale: 0.9, atFar: true, at: 0.26 }],
+    onFollow: [{ id: 'polearm.skewer_burst', scale: 1.2, atFar: true, at: 0.28 }],
+  },
+  // SUSTAIN, HELD GROUND: the formation is planted and STANDS — twelve pikes on the rim re-set every second for the field's life, the cold of the station creeping out under them, the armour shimmering on the one inside.
+  wall_of_points: {
+    cues: [{ id: 'polearm.formation', scale: 1.2, radiusK: 1, every: 1.0 }, { id: 'frost.fog', scale: 0.55, radiusK: 0.9, at: 0.2, every: 2.0 }, { id: 'dust.slam', scale: 0.5, radiusK: 0.5 }],
+  },
+  // PAYOFF, the road: gold rails down the chord, the road torn between them, and at the lane's end (10 tiles at charge speed) the bar — dust thrown off its foot under a gold rim; down a drawn LINE the arrival breaks the stake too.
+  knights_charge: {
+    cues: [{ id: 'arcane.beam', scale: 0.9 }, { id: 'dust.gouge', scale: 0.9, at: 0.05 }, { id: 'dust.slam', scale: 1.1, atFar: true, at: charge(10) }, { id: 'arcane.bloom', scale: 0.6, atFar: true, at: charge(10) }],
+    onFollow: [{ id: 'polearm.skewer_burst', scale: 1.3, atFar: true, at: charge(10) }],
+  },
+  // OPENER, the seam: the drawn breath drives the head in at the reach and the armour CRACKS — a dark seam that stays open the whole window for the Gatebreaker to read.
+  rampart_breaker: {
+    cues: [{ id: 'polearm.needle', scale: 1.2 }, { id: 'polearm.bite', scale: 1.1, at: 0.06 }, { id: 'polearm.crack_far', scale: 1.3, at: 0.1 }, { id: 'dust.kick', scale: 0.45 }],
+  },
+  // SUSTAIN with the school's biggest finale: two tastes — slim needles flicking out and back on opposite half-beats — and the bite: the whole point at the reach, the stake bursting, at more than twice the weight.
+  serpents_tongue: {
+    cues: [{ id: 'polearm.needle', scale: 0.7 }, { id: 'polearm.needle', scale: 0.65, at: 0.4 }],
+    onFinale: [{ id: 'polearm.needle', scale: 1.7, at: 0.02 }, { id: 'polearm.bite', scale: 1.4, at: 0.12 }, { id: 'polearm.skewer_burst_far', scale: 1.4, at: 0.14 }],
+  },
+  // PAYOFF, the fall: the haft plants for the launch (the dash wire) and the landing (the blast wire, at the point) answers in a star crack of dust with the point driven through the heap; on a hooked or rooted ring the crater spreads wider and the stake bursts.
+  skydriver_fall: {
+    cues: [{ id: 'dust.kick', scale: 0.6 }, { id: 'dust.slam', scale: 1.3, radiusK: 1, at: 0.02 }, { id: 'polearm.bite_here', scale: 1.1, at: 0.04 }, { id: 'dust.billow', scale: 0.45, at: 0.35 }],
+    onFollow: [{ id: 'polearm.skewer_burst', scale: 1.4, radiusK: 1.3, at: 0.06 }, { id: 'dust.slam', scale: 0.7, radiusK: 1.3, at: 0.1 }],
+  },
+  // ANSWER, the banner: the second gold — the halo at the top of the raised haft, the ward pointing the way underfoot, the line already moving (a kick of dust behind the first step).
+  banner_advance: {
+    cues: [{ id: 'arcane.bloom', scale: 0.55 }, { id: 'arcane.orbit', scale: 0.75, at: 0.1 }, { id: 'arcane.sigil', scale: 0.5, at: 0.15 }, { id: 'dust.kick', scale: 0.5, at: 0.2 }],
+  },
+  // SUSTAIN, three turns: each beat the haft runs a lap round the body and the tips kick dust; the last turn FLINGS (the full gyre and a shove of dust) and leaves the splinter ring on the ground.
+  moulinet_guard: {
+    cues: [{ id: 'polearm.gyre', scale: 0.7, radiusK: 1 }, { id: 'dust.kick', scale: 0.4, at: 0.2 }],
+    onFinale: [{ id: 'polearm.gyre', scale: 1.2, radiusK: 1.1, at: 0.08 }, { id: 'dust.slam', scale: 0.8, radiusK: 1, at: 0.12 }],
+  },
+  // The wheel's aftermath: a ring of splinters standing and lying at the reach it defended, re-set every beat, with the cold sitting low in it.
+  'moulinet_guard:aftermath': {
+    cues: [{ id: 'polearm.splinter_ring', scale: 1.2, radiusK: 1, every: 0.8 }, { id: 'frost.fog', scale: 0.45, radiusK: 0.85, at: 0.1, every: 1.6 }],
+  },
+  // OPENER, the sky's pin: the point directs (the needle), the storm answers AT THE REACH (the strike moved out to where the point aims), and where the bolt lands the body is NAILED — the bite and the root stake standing in a crackling floor.
+  stormpoint: {
+    cues: [{ id: 'polearm.needle', scale: 1.2 }, { id: 'polearm.sky_pin', scale: 1.2, at: 0.08 }, { id: 'polearm.bite', scale: 1.1, at: 0.3 }, { id: 'polearm.root_stake_far', scale: 1.2, at: 0.4 }],
+  },
+  // The pin's aftermath: the charge stays in the ground — a held storm charge re-spoken on the disc for the field's life, sparks pricking the dirt.
+  'stormpoint:aftermath': {
+    cues: [{ id: 'storm.charge', scale: 0.6, radiusK: 1, every: 0.8 }, { id: 'storm.nova', scale: 0.35, radiusK: 0.8, at: 0.3, every: 1.6 }],
+  },
+  // PAYOFF, the executioner: the heaviest bite in the school comes down into the seam at the reach and the stake bursts — the crack is SPENT; off a braced foot. Cold iron only.
+  gatebreaker: {
+    cues: [{ id: 'polearm.needle', scale: 1.2 }, { id: 'polearm.bite', scale: 1.6, at: 0.05 }, { id: 'polearm.skewer_burst_far', scale: 1.3, at: 0.08 }, { id: 'dust.kick', scale: 0.5 }],
+  },
+  // ANSWER, the yard cleared: the halberd runs the full circle with the counterweight opposite, everything thrown off the point, and the scoured ring's dust rolls after.
+  sweeping_gyre: {
+    cues: [{ id: 'polearm.gyre', scale: 1.3, radiusK: 1 }, { id: 'dust.slam', scale: 0.6, radiusK: 0.9, at: 0.1 }, { id: 'dust.billow', scale: 0.5, at: 0.3 }],
+  },
+  // SUSTAIN, the stand: each beat the pikes are driven forward and SET across the front, cold running the line; the last beat breaks it — the stake bursts at the reach and the heels' trench is stamped.
+  hold_the_line_polearm: {
+    cues: [{ id: 'polearm.picket', scale: 1.25 }, { id: 'frost.breath', scale: 0.5, at: 0.08 }],
+    onFinale: [{ id: 'polearm.skewer_burst_far', scale: 1.2, at: 0.1 }, { id: 'dust.slam', scale: 0.7, at: 0.12 }],
+  },
+  // CROWN, three acts in one press: the gold corridor and the steel one laid together down the whole road, the floor torn under them, every body on it pierced and CRACKED at the far end; after a root or a drawn line the whole road bursts.
+  sundering_lance: {
+    cues: [{ id: 'arcane.beam', scale: 1.4 }, { id: 'polearm.corridor', scale: 1.4, at: 0.02 }, { id: 'dust.gouge', scale: 0.9, at: 0.05 }, { id: 'polearm.crack', scale: 1.3, atFar: true, at: 0.3 }],
+    onFollow: [{ id: 'polearm.skewer_burst', scale: 1.5, atFar: true, at: 0.3 }, { id: 'arcane.shatter', scale: 0.6, atFar: true, at: 0.32 }],
+  },
+  // The lance's aftermath: the road stays torn — furrows, sod, torn iron re-set every beat with the cold lying in the tear.
+  'sundering_lance:aftermath': {
+    cues: [{ id: 'polearm.torn_road', scale: 1.2, radiusK: 1, every: 0.8 }, { id: 'frost.fog', scale: 0.45, radiusK: 0.9, at: 0.15, every: 1.6 }],
+  },
 
   // ---- THE ARMORY ---------------------------------------------------------
 
-  // The hands give up the pole: one honest extension held a beat and let go — a needle, and a stop-line where the front foot planted.
-  reaching_thrust: { cues: [{ id: 'polearm.needle', scale: 0.8 }, { id: 'dust.kick', scale: 0.4 }] },
-  // The wheel, and the shove off the end of it: a heavy single sweep, then one bar struck square — the furrows thrown OUTWARD from the shove.
-  reapers_turn: { cues: [
-    { id: 'polearm.reap', scale: 1.1 },
-    { id: 'dust.slam', scale: 0.7, at: 0.3 },
-    { id: 'dust.kick', scale: 0.4 },
-  ] },
-  // The ladder of the haul: a pull — everything runs inward — and where the beak bit, the iron leaves its cold: a small rime star that stays.
-  skullhook: { cues: [
-    { id: 'blood.drink', scale: 0.8, radiusK: 1.2 },
-    { id: 'blood.hit', scale: 0.45, at: 0.05 },
-    { id: 'frost.shards', scale: 0.4, radiusK: 0.5, at: 0.15 },
-  ] },
-  // The short run, honestly priced: one gold thread (not a lane), two heel skids where it began, one stamp and three gold splinters where it stopped (7 tiles at charge speed).
-  couched_charge: { cues: [
-    { id: 'arcane.beam', scale: 0.5 },
-    { id: 'dust.kick', scale: 0.6 },
-    { id: 'dust.slam', scale: 0.6, atFar: true, at: charge(7) },
-    { id: 'arcane.shatter', scale: 0.35, atFar: true, at: charge(7) },
-  ] },
+  // PAYOFF at full length: a needle and a stop-line where the front foot planted; on a reeling or hooked body the stake breaks at the reach.
+  reaching_thrust: {
+    cues: [{ id: 'polearm.needle', scale: 1.05 }, { id: 'polearm.bite', scale: 0.8, at: 0.1 }, { id: 'dust.kick', scale: 0.4 }],
+    onFollow: [{ id: 'polearm.skewer_burst_far', scale: 1.1, at: 0.1 }],
+  },
+  // ANSWER, the harvest: one wide turn lays the row down in a LINE — the reap, the shove off the end of it, and the cold row's rime where it fell.
+  reapers_turn: {
+    cues: [{ id: 'polearm.reap', scale: 1.15 }, { id: 'polearm.gyre', scale: 0.6, radiusK: 1, at: 0.05 }, { id: 'dust.slam', scale: 0.7, at: 0.3 }, { id: 'dust.kick', scale: 0.4 }],
+  },
+  // OPENER, the collar hook: the pull — the yard hauled in over the collar — and the cold the iron leaves in it (a small rime star); on a branded or exposed body the row is wider and the drag harder.
+  skullhook: {
+    cues: [{ id: 'polearm.hook_pull', scale: 0.95, radiusK: 1.2 }, { id: 'frost.shards', scale: 0.4, radiusK: 0.5, at: 0.22 }],
+    onFollow: [{ id: 'polearm.hook_pull', scale: 1.1, radiusK: 1.8, at: 0.12 }],
+  },
+  // PAYOFF, the short run: one gold thread, two heel skids where it began, and at the stop (7 tiles at charge speed) a stamp and gold splinters; on a line or a rally the arrival bursts the stake and throws them further.
+  couched_charge: {
+    cues: [{ id: 'arcane.beam', scale: 0.5 }, { id: 'dust.kick', scale: 0.6 }, { id: 'dust.slam', scale: 0.6, atFar: true, at: charge(7) }, { id: 'arcane.shatter', scale: 0.35, atFar: true, at: charge(7) }],
+    onFollow: [{ id: 'polearm.skewer_burst', scale: 1.2, atFar: true, at: charge(7) }],
+  },
 };
 
-export const POLEARM_EFFECTS: EffectDef[] = [polearmNeedle, polearmBite, polearmCorridor, polearmReap, polearmGyre];
+export const POLEARM_EFFECTS: EffectDef[] = [
+  polearmNeedle, polearmBite, polearmBiteHere, polearmCorridor, polearmReap, polearmGyre, polearmSkyPin,
+  polearmRootStake, polearmRootStakeFar, polearmHookPull, polearmSkewerBurst, polearmSkewerBurstFar,
+  polearmCrack, polearmCrackFar, polearmFormation, polearmSplinterRing, polearmTornRoad, polearmPicket,
+];

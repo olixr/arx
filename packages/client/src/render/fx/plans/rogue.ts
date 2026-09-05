@@ -202,103 +202,210 @@ export const ROGUE_EFFECTS: EffectDef[] = [rogueBoneCast, rogueGravelight];
 // ---------------------------------------------------------------------------
 
 export const ROGUE_PLANS: Record<string, AbilityPlan> = {
-  // The shed skin: the green needle whips through the arc (an aimed gob),
-  // the fangs pinprick, and the venom signs the ground in drips that stain.
-  serpents_kiss: { cues: [
-    { id: 'venom.spit', scale: 0.9 },
-    { id: 'blood.hit', at: 0.05, scale: 0.5 },
-    { id: 'venom.drip', at: 0.4, scale: 0.6 },
-  ] },
-  // The needle's gate: the needle-line departs as a steel glint, the puncture
-  // bleeds at the arrival, and a thread of drops writes the drip-line after.
-  stinger: { cues: [
-    { id: 'blade.glint', scale: 0.6 },
-    { id: 'blood.hit', atFar: true, at: 0.1, scale: 0.8 },
-    { id: 'blood.spray', atFar: true, at: 0.35, scale: 0.5 },
-  ] },
-  // The stopped clock: the first frost happens all at once (the nova), the
-  // fog stands still around it, and at the thaw the lozenges crack and drop.
-  cold_snap: { cues: [
-    { id: 'frost.nova', scale: 1.0 },
-    { id: 'frost.fog', at: 0.2, scale: 0.5 },
-    { id: 'frost.shards', at: 0.9, scale: 0.6 },
-  ] },
-  // The marrow reads: the roster's own bone cast at the hit, plus the wound
-  // it found (small — the reading is the point, not the gore).
-  bone_needle: { cues: [
-    { id: 'rogue.bone_cast', scale: 1.0 },
-    { id: 'blood.hit', at: 0.05, scale: 0.5 },
-  ] },
-  // The long shadow: the dark bursts at the arrival, cinches shut on the bite
-  // (the grasp), and what it drew streams home into the biter (the drink,
-  // at the departure end where the rogue stood).
-  shadow_fang: { cues: [
-    { id: 'shadow.burst', atFar: true, at: 0.05, scale: 0.7 },
-    { id: 'shadow.grasp', atFar: true, at: 0.15, scale: 0.8 },
-    { id: 'blood.drink', at: 0.4, scale: 0.6 },
-  ] },
-  // The open bowl: the pact holds the bowl out and the world pays in (the
-  // drink), the tally ring dries on the floor, a second and third draw across
-  // the term, and at the end the bowl tips — the last, quiet pull.
-  crimson_tithe: { cues: [
-    { id: 'blood.drink', scale: 0.9 },
-    { id: 'blood.pool', at: 0.4, scale: 0.45 },
-    { id: 'blood.drink', at: 2.2, scale: 0.7 },
-    { id: 'blood.drink', at: 3.6, scale: 0.5 },
-  ] },
-  // The cold wick: the sweep is a cold breath, the wicks stand out of it as
-  // ice teeth, the frost lies as fog, and the wicks crumble to a thread of smoke.
-  pale_flame: { cues: [
-    { id: 'frost.breath', scale: 0.8 },
-    { id: 'frost.shards', at: 0.15, scale: 0.5 },
-    { id: 'frost.fog', at: 0.5, scale: 0.4 },
-    { id: 'smoke.wisp', at: 0.9, scale: 0.4 },
-  ] },
-  // The grounding nail: the taut wire spans hook to foe, the nail SLAMS down
-  // at the far end (the strike's top-down stroke), and grit kicks at its foot.
-  spark_lash: { cues: [
-    { id: 'storm.arc', scale: 0.9 },
-    { id: 'storm.strike', atFar: true, at: 0.05, scale: 0.7 },
-    { id: 'dust.kick', atFar: true, at: 0.1, scale: 0.4 },
-  ] },
-  // The broken scepter: history lands (steel at the arrival), the wound opens,
-  // the scepter shatters into gold glass that glints where it lies, and the
-  // blood pools beside the crossed halves.
-  kings_bane: { cues: [
-    { id: 'blade.glint', atFar: true, at: 0.05, scale: 0.8 },
-    { id: 'blood.hit', atFar: true, at: 0.1, scale: 1.0 },
-    { id: 'arcane.shatter', atFar: true, at: 0.15, scale: 0.7 },
-    { id: 'blood.pool', atFar: true, at: 0.6, scale: 0.5 },
-  ] },
-  // The closed quote: the step in (a small glint at the departure), the white
-  // stamp at the arrival (the finisher's mirror-flash, big), the wound, and a
-  // dark hush that settles and never glows.
-  last_word: { cues: [
-    { id: 'blade.glint', scale: 0.5 },
-    { id: 'blade.mirror', atFar: true, at: 0.05, scale: 1.5 },
-    { id: 'blood.hit', atFar: true, at: 0.1, scale: 1.1 },
-    { id: 'shadow.veil', atFar: true, at: 0.2, scale: 0.6 },
-  ] },
-  // The night bouquet: the buds burst into venom, the petals shear off and
-  // CONVERGE on the heart (the grasp's pull is that volley), and the venom
-  // freckles keep the garden's ring.
-  garden_close: { cues: [
-    { id: 'venom.burst', at: 0.15, scale: 0.9 },
-    { id: 'shadow.grasp', at: 0.2, scale: 0.9 },
-    { id: 'venom.pool', at: 0.7, scale: 0.5 },
-  ] },
-  // The rook's toll: the rook launches (a kick of dust), the purse bursts at
-  // the arrival in dark slips that land and lie (the shadow's clots), and two
-  // red drops say the toll was taken in kind.
-  beak_first: { cues: [
-    { id: 'dust.kick', scale: 0.5 },
-    { id: 'shadow.burst', atFar: true, at: 0.12, scale: 0.5 },
-    { id: 'blood.hit', atFar: true, at: 0.1, scale: 0.8 },
-  ] },
-  // The footlights: the grave-light comes up for the watch, is kept a second
-  // time mid-term, and dims lamp by lamp at the end — the embers stay.
+  // THE MASTERED HAND, Phase 4: the rogue's-roster secrets are the onehand
+  // shelf's knife arts — every one a cross-school link. `onFollow` is the
+  // link landing (the crossed stroke, the school's payoff word, ×1.15);
+  // `onFinale` the held garden's last petal (×1.35).
+
+  // serpents_kiss — arc, VENOM opener, follows expose (the venom goes in
+  // twice as deep). The shed skin: the green needle whips through the arc,
+  // the fangs pinprick, the venom signs the ground in drips; on an exposed
+  // vein the bite BURSTS green and the drips run heavier.
+  serpents_kiss: {
+    cues: [
+      { id: 'venom.spit', scale: 0.9 },
+      { id: 'blood.hit', at: 0.05, scale: 0.5 },
+      { id: 'venom.drip', at: 0.4, scale: 0.6 },
+    ],
+    onFollow: [
+      { id: 'venom.burst', at: 0.08, scale: 0.9 },
+      { id: 'venom.drip', at: 0.5, scale: 0.8 },
+    ],
+  },
+  // stinger — dash, payoff, follows brand/expose ×1.5. The needle's gate:
+  // the needle-line departs as a steel glint, the puncture bleeds at the
+  // arrival; on a marked spot the point CROSSES and the wound sprays.
+  stinger: {
+    cues: [
+      { id: 'blade.glint', scale: 0.6 },
+      { id: 'blade.glint', atFar: true, at: 0.08, scale: 0.7 },
+      { id: 'blood.hit', atFar: true, at: 0.1, scale: 1.0 },
+      { id: 'blood.spray', atFar: true, at: 0.35, scale: 0.5 },
+    ],
+    onFollow: [
+      { id: 'onehand.riposte', atFar: true, at: 0.1, scale: 0.9 },
+      { id: 'blood.spray', atFar: true, at: 0.4, scale: 0.7 },
+    ],
+  },
+  // cold_snap — nova, CHILL opener, follows burn ×1.5 (Thermal Shock). The
+  // stopped clock: the first frost happens all at once, the fog stands
+  // still, the lozenges crack and drop; laid on a burning body the fire is
+  // QUENCHED — the pane shatters wide and steam climbs off the ring.
+  cold_snap: {
+    cues: [
+      { id: 'frost.nova', scale: 1.0 },
+      { id: 'frost.fog', at: 0.2, scale: 0.5 },
+      { id: 'frost.shards', at: 0.9, scale: 0.6 },
+    ],
+    onFollow: [
+      { id: 'frost.shards', at: 0.05, scale: 1.2, radiusK: 1.2 },
+      { id: 'smoke.wisp', at: 0.15, scale: 0.7 },
+      { id: 'onehand.rime_sheet', at: 0.2, scale: 0.6 },
+    ],
+  },
+  // bone_needle — blast at the hit, payoff, follows brand ×1.5, red ledger.
+  // The marrow reads: the roster's bone cast at the hit plus the small
+  // wound; thrown at a bow's brand the dart CROSSES and finds marrow — the
+  // cast is thrown wide and the wound is not small.
+  bone_needle: {
+    cues: [
+      { id: 'rogue.bone_cast', scale: 1.0 },
+      { id: 'blood.hit', at: 0.05, scale: 0.5 },
+    ],
+    onFollow: [
+      { id: 'onehand.riposte', scale: 0.8 },
+      { id: 'rogue.bone_cast', at: 0.05, scale: 1.2, radiusK: 1.3 },
+      { id: 'blood.spray', at: 0.15, scale: 0.7 },
+    ],
+  },
+  // shadow_fang — dash, payoff, follows vanish ×1.5, drains. The long
+  // shadow: the dark bursts at the arrival, cinches shut on the bite, what
+  // it drew streams home; out of a vanish the fang CROSSES and the drink
+  // runs deep.
+  shadow_fang: {
+    cues: [
+      { id: 'shadow.burst', atFar: true, at: 0.05, scale: 0.7 },
+      { id: 'shadow.grasp', atFar: true, at: 0.15, scale: 0.8 },
+      { id: 'blood.drink', at: 0.4, scale: 0.6 },
+    ],
+    onFollow: [
+      { id: 'onehand.riposte', atFar: true, at: 0.08, scale: 1.0 },
+      { id: 'blood.spray', atFar: true, at: 0.2, scale: 0.7 },
+      { id: 'blood.drink', at: 0.45, scale: 1.0 },
+    ],
+  },
+  // crimson_tithe — buff, answer, follows rend/venom (sooner back). The open
+  // bowl: the pact holds the bowl out and the world pays in, the tally ring
+  // dries, a second and third draw across the term; called on open wounds
+  // the bowl fills at once — the steel rings and the first draw is deep.
+  crimson_tithe: {
+    cues: [
+      { id: 'blood.drink', scale: 1.1 },
+      { id: 'blade.mirror', at: 0.05, scale: 0.4 },
+      { id: 'blood.pool', at: 0.4, scale: 0.45 },
+      { id: 'blood.drink', at: 2.2, scale: 0.7 },
+      { id: 'blood.drink', at: 3.6, scale: 0.5 },
+    ],
+    onFollow: [
+      { id: 'blade.mirror', scale: 0.6 },
+      { id: 'blood.drink', at: 0.1, scale: 1.2 },
+    ],
+  },
+  // pale_flame — arc, payoff, follows hollow/chill ×1.5, chills. The cold
+  // wick: the sweep is a cold breath, the wicks stand as ice teeth, the
+  // frost lies as fog, the wicks crumble to smoke; poured into the hollow
+  // the pale fire CROSSES and the cold detonates as a nova.
+  pale_flame: {
+    cues: [
+      { id: 'frost.breath', scale: 0.8 },
+      { id: 'frost.shards', at: 0.15, scale: 0.5 },
+      { id: 'frost.fog', at: 0.5, scale: 0.4 },
+      { id: 'smoke.wisp', at: 0.9, scale: 0.4 },
+    ],
+    onFollow: [
+      { id: 'onehand.riposte', scale: 0.9 },
+      { id: 'frost.nova', at: 0.08, scale: 1.0 },
+    ],
+  },
+  // spark_lash — bolt per hop, payoff, follows sunder/line ×1.4 (refund).
+  // The grounding nail: the taut wire spans hook to foe, the nail slams at
+  // the far end, grit kicks at its foot; down a cracked guard or a polearm's
+  // line the current CROSSES and the whole charge discharges at the struck.
+  spark_lash: {
+    cues: [
+      { id: 'storm.arc', scale: 0.9 },
+      { id: 'storm.strike', atFar: true, at: 0.05, scale: 0.7 },
+      { id: 'dust.kick', atFar: true, at: 0.1, scale: 0.4 },
+    ],
+    onFollow: [
+      { id: 'onehand.riposte', atFar: true, at: 0.06, scale: 0.9 },
+      { id: 'storm.nova', atFar: true, at: 0.1, scale: 0.9 },
+    ],
+  },
+  // kings_bane — dash, payoff, follows taunt/weaken ×1.3, red ledger. The
+  // broken scepter: history lands, the wound opens, the scepter shatters
+  // into gold glass, the blood pools; on the called-out or the dulled the
+  // bane CROSSES and the scepter shatters wide.
+  kings_bane: {
+    cues: [
+      { id: 'blade.glint', atFar: true, at: 0.05, scale: 0.9 },
+      { id: 'blood.hit', atFar: true, at: 0.1, scale: 1.0 },
+      { id: 'arcane.shatter', atFar: true, at: 0.15, scale: 0.9 },
+      { id: 'blood.pool', atFar: true, at: 0.6, scale: 0.5 },
+    ],
+    onFollow: [
+      { id: 'onehand.riposte', atFar: true, at: 0.08, scale: 1.0 },
+      { id: 'arcane.shatter', atFar: true, at: 0.18, scale: 1.1, radiusK: 1.2 },
+      { id: 'blood.spray', atFar: true, at: 0.25, scale: 0.8 },
+    ],
+  },
+  // last_word — dash, the shelf's finisher, follows root/stagger/weaken
+  // ×1.2, red ledger. The closed quote: the step in, the white stamp at the
+  // arrival, the wound, a dark hush that settles; on a body already held the
+  // word is FINAL — the crossed stroke, a louder stamp, the red not modest.
+  last_word: {
+    cues: [
+      { id: 'blade.glint', scale: 0.5 },
+      { id: 'blade.mirror', atFar: true, at: 0.05, scale: 1.5 },
+      { id: 'blood.hit', atFar: true, at: 0.1, scale: 1.1 },
+      { id: 'shadow.veil', atFar: true, at: 0.2, scale: 0.6 },
+    ],
+    onFollow: [
+      { id: 'onehand.riposte', atFar: true, at: 0.06, scale: 1.3 },
+      { id: 'blade.mirror', atFar: true, at: 0.12, scale: 1.0, radiusK: 1.3 },
+      { id: 'blood.spray', atFar: true, at: 0.2, scale: 1.0 },
+    ],
+  },
+  // garden_close — nova per beat, held, VENOM, finale ×2 (the last petal is
+  // the whole hedge). The night bouquet: each beat the buds burst into venom,
+  // the petals shear off and converge on the heart, the freckles keep the
+  // ring; THE LAST PETAL: the whole hedge closes at once — the dark grasps
+  // the ring, venom bursts wide, and the garden pools under everyone in it.
+  garden_close: {
+    cues: [
+      { id: 'venom.burst', at: 0.15, scale: 0.7 },
+      { id: 'shadow.grasp', at: 0.2, scale: 0.7 },
+      { id: 'venom.pool', at: 0.7, scale: 0.4 },
+    ],
+    onFinale: [
+      { id: 'shadow.grasp', scale: 1.1, radiusK: 1.2 },
+      { id: 'venom.burst', at: 0.1, scale: 1.3, radiusK: 1.2 },
+      { id: 'venom.cloud', at: 0.3, scale: 0.8 },
+      { id: 'venom.pool', at: 0.6, scale: 0.9, radiusK: 1.2 },
+    ],
+  },
+  // beak_first — dash, payoff, follows left/right ×1.4. The rook's toll: the
+  // rook launches, the purse bursts at the arrival in dark slips, two red
+  // drops say the toll was taken; between the twin hands the dive CROSSES
+  // and the toll is paid in a spray.
+  beak_first: {
+    cues: [
+      { id: 'dust.kick', scale: 0.5 },
+      { id: 'shadow.burst', atFar: true, at: 0.12, scale: 0.5 },
+      { id: 'blood.hit', atFar: true, at: 0.1, scale: 0.8 },
+    ],
+    onFollow: [
+      { id: 'onehand.riposte', atFar: true, at: 0.1, scale: 0.9 },
+      { id: 'blood.spray', atFar: true, at: 0.2, scale: 0.7 },
+    ],
+  },
+  // pale_lantern — buff, RIPOSTE answer. The footlights: the grave-light
+  // comes up for the watch, is kept a second time mid-term, and dims lamp by
+  // lamp at the end — the embers stay; the steel rings once at the throat:
+  // the riposte word is open.
   pale_lantern: { cues: [
     { id: 'rogue.gravelight', scale: 1.0 },
+    { id: 'blade.mirror', at: 0.15, scale: 0.5 },
     { id: 'rogue.gravelight', at: 2.4, scale: 0.75 },
     { id: 'rogue.gravelight', at: 4.0, scale: 0.5 },
   ] },

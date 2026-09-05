@@ -54,50 +54,9 @@ function stubCtx(): { c: MatterCtx; calls: () => number } {
  * speak the face-derived fallback. Phase 4 EMPTIES this set — a
  * non-empty set past that phase is a debt, not a feature.
  */
-const IN_FLIGHT = new Set([
-  'arrow_tempest',
-  'break_the_line',
-  'champions_wall',
-  'day_breaks',
-  'draw_iron',
-  'eye_of_the_storm',
-  'forgefall',
-  'four_roads',
-  'frost_lance',
-  'garden_close',
-  'haft_strike',
-  'heavy_slam',
-  'hold_the_line',
-  'last_toll',
-  'meteor_shard',
-  'pale_crescent',
-  'perihelion',
-  'phantom_flight',
-  'rain_of_arrows',
-  'realm_rend',
-  'reapers_arc',
-  'shearwind',
-  'shockwave',
-  'shoulder_check',
-  'skyrend',
-  'solar_lance',
-  'stagger_stomp',
-  'starfall_arrows',
-  'still_air',
-  'storm_of_two',
-  'stormcall',
-  'sundering_chop',
-  'sundering_lance',
-  'the_long_fight',
-  'titans_verdict',
-  'two_bells',
-  'unbroken',
-  'wall_of_points',
-  'war_shout',
-  'warlords_descent',
-  'wild_root',
-  'windsong',
-  'winterflight',
+const IN_FLIGHT = new Set<string>([
+  // Phase 4 THE VOICE (2026-09-05) emptied the set: every breath art
+  // speaks a curated dialect. An id here is a debt, not a feature.
 ]);
 
 test('every shipped breath art carries a curated dialect voice', () => {

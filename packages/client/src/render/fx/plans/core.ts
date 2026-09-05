@@ -242,74 +242,11 @@ export const coreCyclone: EffectDef = {
 // THE PLANS
 // ---------------------------------------------------------------------------
 
+// The onehand arts once here (whirlwind, crescent_sweep, lunge, shockwave)
+// speak in plans/blade.ts — THE MASTERED HAND Phase 4 gave the school one
+// voice file; the steel effects stay here for every roster.
 export const CORE_PLANS: Record<string, AbilityPlan> = {
-  // fireburst — blast (ground_aoe, r1.8, after a 0.8s telegraph). "The
-  // fire that stands up": the detonation, then the globe RISES on a
-  // smoke stem, and the crater keeps burning (burn 3s).
-  fireburst: {
-    cues: [
-      { id: 'fire.burst', scale: 1.5 },
-      { id: 'smoke.wisp', at: 0.35, scale: 1.2 },
-      { id: 'fire.floor', at: 0.55, scale: 0.6, radiusK: 0.8 },
-    ],
-  },
-  // frost_nova — nova (r2.6). "The lake under your feet": the pane
-  // snaps and CRACKS (frost.nova's crack + shards), the hoar collar at
-  // the rim stands up as spears, the melt-back leaves rime in a fog.
-  frost_nova: {
-    cues: [
-      { id: 'frost.nova', scale: 1.6 },
-      { id: 'frost.shards', at: 0.4, scale: 0.9, radiusK: 0.85 },
-      { id: 'frost.fog', at: 1.2, scale: 0.8 },
-    ],
-  },
-  // whirlwind — pulse_nova → THREE blasts (r1.8, 0.4s apart), each one
-  // blade: the plan speaks once per pulse, so each pulse inhales the
-  // loose ground and slings its chips; the churned rings stack.
-  whirlwind: {
-    cues: [{ id: 'core.cyclone', scale: 1.0 }],
-  },
-  // smoke_bomb — nova (r2.4, chill 5s). "The spent shell": the column
-  // climbs and MUSHROOMS (the rolling ring is the cap under the
-  // ceiling), the boulder swallows the room, a veil stands and blinds.
-  smoke_bomb: {
-    cues: [
-      { id: 'smoke.ring', at: 0.05, scale: 0.9 },
-      { id: 'smoke.bomb', scale: 1.5 },
-      { id: 'smoke.veil', at: 0.55, scale: 1.1, radiusK: 0.9 },
-    ],
-  },
-  // crescent_sweep — nova (r1.9, bleed). "The moon that waxes": chips
-  // shed off the horn as the blade laps (a steel ring), the pivot's
-  // heel scuff, and the bleed lands at the far side of the lap.
-  crescent_sweep: {
-    cues: [
-      { id: 'core.steel_ring', scale: 1.0 },
-      { id: 'dust.kick', scale: 0.6 },
-      { id: 'blood.hit', at: 0.28, scale: 0.6 },
-    ],
-  },
-  // lunge — dash (6.8 tiles ≈ 0.38s, x→x2; the tail's hit re-speaks as
-  // a small blast). "The thread pulled taut": heels scuff at the
-  // departure, the whip-crack star and slivers carry through at the
-  // arrival, two red pin-pricks land where the thread snapped.
-  lunge: {
-    cues: [
-      { id: 'dust.kick', scale: 0.7 },
-      { id: 'core.steel_cut', atFar: true, at: 0.36, scale: 1.0 },
-      { id: 'blood.hit', atFar: true, at: 0.42, scale: 0.5 },
-    ],
-  },
-  // shockwave — nova (r2.4, knockback 2.6). "The bell of earth": a
-  // bell's note is three swells pumping outward in beats, each weaker,
-  // the sod flipping at the rim — three slams, decaying.
-  shockwave: {
-    cues: [
-      { id: 'dust.slam', scale: 1.7 },
-      { id: 'dust.slam', at: 0.22, scale: 1.0, radiusK: 1.2 },
-      { id: 'dust.slam', at: 0.44, scale: 0.7, radiusK: 1.4 },
-    ],
-  },
+  
 };
 
 export const CORE_EFFECTS: EffectDef[] = [coreSteelRing, coreSteelCut, coreCyclone];

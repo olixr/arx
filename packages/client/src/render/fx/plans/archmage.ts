@@ -61,15 +61,15 @@ const BRIAR_DEEP = '#3a6a34';
 const BRIAR_THORN = '#2a4a24';
 const BRIAR_GLOW = '140, 208, 120';
 
-const RAMP_CANE = rampOf({ stops: [BRIAR_LEAF, BRIAR_CANE, BRIAR_DEEP, BRIAR_THORN], at: [0, 0.3, 0.75, 1], steps: 5 });
+const RAMP_CANE = rampOf({ stops: [BRIAR_CANE, BRIAR_DEEP, BRIAR_THORN, BRIAR_THORN], at: [0, 0.35, 0.8, 1], steps: 5 });
 const RAMP_LEAFLET = rampOf({ stops: [BRIAR_SPARK, BRIAR_LEAF, BRIAR_DEEP], at: [0, 0.5, 0.9], steps: 4 });
 const RAMP_ROOT_HAZE = rampOf({ stops: [BRIAR_LEAF, BRIAR_DEEP, BRIAR_THORN], at: [0, 0.55, 0.95], steps: 4 });
 
 /** A cane: a tapered tongue that grows up out of the ground, stands, and wilts. */
 const CANE: BurstOpts = {
   shape: 'lick', speed: 0.06, speedVar: 0.3, life: 3.6, lifeVar: 0.3, size: 0.4, sizeVar: 0.3, gravity: 0,
-  vz: 1.1, zg: 1.1, land: 'die', layer: 'world', shadow: 0.4, flicker: 0,
-  ramp: RAMP_CANE,
+  vz: 1.1, zg: 1.1, land: 'die', layer: 'world', shadow: 0.5, flicker: 0,
+  ramp: RAMP_CANE, core: BRIAR_SPARK, coreK: 0.38,
   sizeCurve: curveOf([0, 0.2, 0.18, 1, 0.8, 1, 1, 0.3]), alphaCurve: curveOf([0, 0.8, 0.1, 1, 0.85, 1, 1, 0]),
 };
 
@@ -117,7 +117,7 @@ export const archmageBriar: EffectDef = {
   story: 'one beat of the thicket: the soil heaves and canes grow up out of the circle and STAND, thorns are flung off them and lie in the grass, leaflets fly, pollen lifts off the growth breathing on z, a low green haze breathes at the roots — and the canes wilt together at the end',
   layers: [
     { kind: 'burst', name: 'soil heaves', recipe: recipe(['#8a6f4d', '#6e5a44'], HEAVE), count: 6, tier: 'body', arrange: 'disc', radius: 0.8, radiusK: 0.8 },
-    { kind: 'burst', name: 'canes', recipe: recipe([BRIAR_LEAF, BRIAR_CANE], { ...CANE, life: 4.0 }), count: 5, tier: 'hero', arrange: 'disc', radius: 0.8, radiusK: 0.8, at: 0.05 },
+    { kind: 'burst', name: 'canes', recipe: recipe([BRIAR_CANE, BRIAR_DEEP], { ...CANE, life: 4.0 }), count: 7, tier: 'hero', arrange: 'disc', radius: 0.8, radiusK: 0.8, at: 0.05 },
     { kind: 'burst', name: 'lesser canes', recipe: recipe([BRIAR_CANE, BRIAR_DEEP], { ...CANE, size: 0.28, life: 3.0, vz: 0.9, shadow: 0 }), count: 3, tier: 'body', arrange: 'disc', radius: 0.95, radiusK: 0.95, at: 0.18 },
     { kind: 'burst', name: 'thorns', recipe: recipe([BRIAR_DEEP, BRIAR_THORN], THORN), count: 6, tier: 'hero', arrange: 'disc', radius: 0.7, radiusK: 0.7, at: 0.12 },
     { kind: 'burst', name: 'leaflets', recipe: recipe([BRIAR_SPARK, BRIAR_LEAF], LEAFLET), count: 10, tier: 'fine', arrange: 'disc', radius: 0.8, radiusK: 0.8, at: 0.08 },
@@ -150,7 +150,7 @@ const BONE_GLOW = '220, 214, 190';
 
 const RAMP_TOLL = rampOf({ stops: [BONE_WHITE, BONE, BONE_SHADE, BONE_DEEP], at: [0, 0.35, 0.7, 0.95] });
 const RAMP_KNUCKLE = rampOf({ stops: [BONE_WHITE, BONE, BONE, BONE_SHADE], at: [0, 0.2, 0.75, 1], steps: 4 });
-const RAMP_GRAVE = rampOf({ stops: [GRAVE_LIGHT, GRAVE_GREEN, GRAVE_DARK], at: [0, 0.5, 0.92], steps: 5 });
+const RAMP_GRAVE = rampOf({ stops: [BONE_WHITE, GRAVE_LIGHT, GRAVE_GREEN, GRAVE_DARK], at: [0, 0.3, 0.65, 0.95], steps: 5 });
 const RAMP_CHIP = rampOf({ stops: [BONE, BONE_SHADE, BONE_DEEP], at: [0, 0.5, 0.9], steps: 4 });
 
 /** The toll — a bone-pale ring rolling out on the ground. */
@@ -162,15 +162,15 @@ const TOLL_RING: BurstOpts = {
 
 /** A knucklebone — a pale glint standing on the ring, lit for the toll's whole count. */
 const KNUCKLE: BurstOpts = {
-  shape: 'square', speed: 0, life: 2.4, lifeVar: 0.15, size: 0.12, sizeVar: 0.12, gravity: 0, z: 0.1,
-  layer: 'world', shadow: 0.35, flicker: 0.3, ramp: RAMP_KNUCKLE, core: BONE_WHITE, coreK: 0.4,
+  shape: 'square', speed: 0, life: 2.4, lifeVar: 0.15, size: 0.17, sizeVar: 0.12, gravity: 0, z: 0.1,
+  layer: 'world', shadow: 0.45, flicker: 0.3, ramp: RAMP_KNUCKLE, core: BONE_WHITE, coreK: 0.5,
   sizeCurve: curveOf([0, 0.4, 0.12, 1, 0.85, 1, 1, 0.5]), alphaCurve: curveOf([0, 0, 0.08, 1, 0.8, 1, 1, 0]),
 };
 
 /** Grave-light — pale grey-green motes rising off the circle. */
 const GRAVE_MOTE: BurstOpts = {
-  shape: 'mote', speed: 0.15, speedVar: 0.5, life: 1.4, lifeVar: 0.35, size: 0.16, sizeVar: 0.35, gravity: 0,
-  z: 0.04, vz: 0.42, zg: -0.05, layer: 'world', shadow: 0, flicker: 0.25,
+  shape: 'mote', speed: 0.15, speedVar: 0.5, life: 1.4, lifeVar: 0.35, size: 0.2, sizeVar: 0.35, gravity: 0,
+  z: 0.04, vz: 0.42, zg: -0.05, layer: 'world', shadow: 0, flicker: 0.25, core: BONE_WHITE, coreK: 0.3,
   ramp: RAMP_GRAVE, sizeCurve: BLOOM, alphaCurve: MIST_A, wave: 'sine', waveHz: 0.9, waveAmp: 0.18,
 };
 
@@ -417,173 +417,295 @@ export const archmageSeam: EffectDef = {
 export const ARCHMAGE_EFFECTS: EffectDef[] = [archmageBriar, archmageMarrow, archmageEyewall, archmageSeam];
 
 // ===========================================================================
-// The plans
+// The plans — THE MASTERED HAND, Phase 4: THE VOICE. The staff-taught
+// shelf re-curated to what each secret now does: the cross-school spice
+// — every follow reads ANOTHER school's word (brand, wall, stagger,
+// loose, rally, expose, plant, quake, sunder, line, hook, root, left,
+// right) and its onFollow says the reading out loud; the ground that
+// stays speaks as `<art>:aftermath` (the server's own field fx); the
+// shelf's one channel crescendos on its last beat; the reactions the
+// shelf fires through (Shatter on the frozen) speak the school's own
+// detonations from ARX_EFFECTS. The wire kinds are the executors' (see
+// the header).
 // ===========================================================================
 
 export const ARCHMAGE_PLANS: Record<string, AbilityPlan> = {
   // ------------------------------------------------------- fxSigsArchmageA
-  // arcane_ring — 'nova' r2.2, damage 5 (the jab off the heel). The ring
-  // SNAPS outward (shatter: heart, shock ring, glass flung on true
-  // height); the heel's stamp stays printed at the center (a small sigil).
-  arcane_ring: { cues: [
-    { id: 'arcane.shatter', scale: 0.9 },
-    { id: 'arcane.sigil', at: 0.1, scale: 0.6, radiusK: 0.4 },
-  ] },
+  // arcane_ring — 'nova' r2.2, ANSWER: the panic ring snaps out (shatter)
+  // over the heel's stamp (sigil); off a STAGGERED body or from behind the
+  // WALL it shoves twice as hard — the yard is thrown (kick, wide) and the
+  // seat's refund blooms gold at the center.
+  arcane_ring: {
+    cues: [
+      { id: 'arcane.shatter', scale: 0.9 },
+      { id: 'arcane.sigil', at: 0.1, scale: 0.6, radiusK: 0.4 },
+    ],
+    onFollow: [
+      { id: 'dust.kick', at: 0.02, scale: 1.8, radiusK: 1.1 },
+      { id: 'arcane.bloom', at: 0.12, scale: 0.7, radiusK: 0.5 },
+    ],
+  },
   // wisp_flare — projectile_fan ×3 that RETURN: a 'blast' r0.55 at every
-  // wound, twice per body. Each visit is a small pale flash and a tiny
-  // waypoint loop stamped where the ticket was punched.
-  wisp_flare: { cues: [
-    { id: 'arcane.shatter', scale: 0.45 },
-    { id: 'arcane.sigil', at: 0.05, scale: 0.3, radiusK: 0.4 },
-  ] },
-  // hearth_flare — 'nova' r2.0, burn. The opened stove: the roar (burst),
-  // the stove burning through its life (plume: mixed-age mass, embers in
-  // the chimney, dies down to coals), the raked coal bed at the center.
+  // wound, twice per body. SUSTAIN: each visit is a pale flash and a
+  // waypoint loop; loosed right after the archer's LOOSE the wisps ride
+  // the shaft's line and bite harder — a halo whirls on the wound.
+  wisp_flare: {
+    cues: [
+      { id: 'arcane.shatter', scale: 0.45 },
+      { id: 'arcane.sigil', at: 0.05, scale: 0.3, radiusK: 0.4 },
+    ],
+    onFollow: [{ id: 'arcane.orbit', at: 0.05, scale: 0.55, radiusK: 0.6 }],
+  },
+  // hearth_flare — 'nova' r2.0, burn, ANSWER: THE HELD GROUND on the
+  // shelf. The stove roars open (burst), burns through its life (plume),
+  // rakes to a coal bed (floor); the warm circle that stays is the field.
   hearth_flare: { cues: [
     { id: 'fire.burst', scale: 1.1 },
     { id: 'fire.plume', at: 0.25, scale: 0.7 },
     { id: 'fire.floor', at: 0.5, scale: 0.5, radiusK: 0.4 },
   ] },
-  // undertow — ground_aoe 'blast' r2.2, chill 90. The plughole: the sea
-  // takes its turn (splash: rings walk out, wet flecks stay), a haze
-  // hangs over the drain, then the mouth gulps shut with one last plip.
+  // hearth_flare:aftermath — the hearth kept: the coal bed re-raked every
+  // 1.3 s for 3.2 s, and the plate laid on whoever stands in it (a quiet
+  // sigil every 2 s) — burn for the intruder, armor for the keeper.
+  'hearth_flare:aftermath': { cues: [
+    { id: 'fire.floor', scale: 0.85, radiusK: 1, every: 1.3 },
+    { id: 'arcane.sigil', at: 0.15, scale: 0.7, radiusK: 0.9, every: 2.0 },
+  ] },
+  // undertow — ground_aoe 'blast' r2.2, chill 90, pull. OPENER: the sea
+  // takes its turn (splash), a haze hangs over the drain (mist), the
+  // mouth gulps shut (a second plip); the RIPTIDE that keeps dragging is
+  // its own field.
   undertow: { cues: [
     { id: 'water.splash', scale: 1.2 },
     { id: 'water.mist', at: 0.3, scale: 0.7, radiusK: 0.7 },
     { id: 'water.splash', at: 1.0, scale: 0.6, radiusK: 0.4 },
   ] },
-  // stormlash — chain_zap 'bolt' per hop. The call runs down the line
-  // (arc), the promised bolt strikes from straight overhead at the mark
-  // (strike, far), and a half-beat later the friends arrive — arcs
-  // racing out around it and scorching the cluster (nova, far).
+  // undertow:aftermath — the plughole: the roster's riptide re-spoken
+  // every 1.1 s for 2.4 s — foam pulled to the eye, runnels crawling in,
+  // flecks dragged and splatting, the eye gulping.
+  'undertow:aftermath': { cues: [
+    { id: 'arx.riptide', scale: 1.0, radiusK: 1, every: 1.1 },
+  ] },
+  // stormlash — chain_zap 'bolt' per hop. PAYOFF (reads the CRACK through
+  // `vs`, no window): the call runs the line (arc), the promised bolt
+  // strikes from overhead (strike, far), the friends arrive (nova, far).
   stormlash: { cues: [
     { id: 'storm.arc', scale: 0.6 },
     { id: 'storm.strike', atFar: true, scale: 1.2 },
     { id: 'storm.nova', atFar: true, at: 0.32, scale: 0.6, radiusK: 0.5 },
   ] },
-  // cinderstorm — 'nova' r2.4, burn. The emberstone exhales: a hoop
-  // rolls out of the mouth, the flock of embers rides the heat, and
-  // where each lands the floor burns down white → orange → soot.
-  cinderstorm: { cues: [
-    { id: 'smoke.ring', scale: 0.6 },
-    { id: 'fire.burst', at: 0.04, scale: 1.0 },
-    { id: 'fire.floor', at: 0.2, scale: 0.8, radiusK: 1 },
+  // cinderstorm — 'nova' r2.4, burn. OPENER: the emberstone exhales (a
+  // hoop, the roar, the floor catching); exhaled on the veteran's RALLY it
+  // burns hotter — the stove's own plume stands up in the ring; the
+  // cinders on the floor are its own field.
+  cinderstorm: {
+    cues: [
+      { id: 'smoke.ring', scale: 0.6 },
+      { id: 'fire.burst', at: 0.04, scale: 1.0 },
+      { id: 'fire.floor', at: 0.2, scale: 0.8, radiusK: 1 },
+    ],
+    onFollow: [{ id: 'fire.plume', at: 0.12, scale: 1.0, radiusK: 0.8 }],
+  },
+  // cinderstorm:aftermath — the cinders: the floor re-lit every 1.4 s for
+  // 2.4–3.2 s, smoke off the bed.
+  'cinderstorm:aftermath': { cues: [
+    { id: 'fire.floor', scale: 0.85, radiusK: 1, every: 1.4 },
+    { id: 'smoke.wisp', at: 0.5, scale: 0.5, every: 2.4 },
   ] },
-  // glaciate — 'nova' r2.8, chill 2 (the deepest cold). One breath grows
-  // one crystal: the cold arrives (nova), its arms stand up across the
-  // circle (spears on the ring), the deep cold settles as fog.
-  glaciate: { cues: [
-    { id: 'frost.nova', scale: 1.4 },
-    { id: 'frost.shards', at: 0.35, scale: 1.0, radiusK: 0.8 },
-    { id: 'frost.fog', at: 1.0, scale: 0.8 },
+  // glaciate — 'nova' r2.8, chill 2 (the deepest cold). OPENER: one
+  // breath grows one crystal (nova, spears on the ring, the fog settling);
+  // breathed from behind the shield's WALL the front grows WIDER — a
+  // second, larger cold front at radius ×1.3; the glacier's ice on the
+  // ground is its own field.
+  glaciate: {
+    cues: [
+      { id: 'frost.nova', scale: 1.4 },
+      { id: 'frost.shards', at: 0.35, scale: 1.0, radiusK: 0.8 },
+      { id: 'frost.fog', at: 1.0, scale: 0.8 },
+    ],
+    onFollow: [{ id: 'frost.nova', at: 0.18, scale: 1.2, radiusK: 1.3 }],
+  },
+  // glaciate:aftermath — the glacier front stays: fog riming the floor
+  // every 1.5 s for 3.2 s, a few spears standing up again every 2.5 s.
+  'glaciate:aftermath': { cues: [
+    { id: 'frost.fog', scale: 0.9, radiusK: 1, every: 1.5 },
+    { id: 'frost.shards', at: 0.3, scale: 0.45, radiusK: 0.7, every: 2.5 },
   ] },
-  // galvanic_arc — chain_zap 'bolt' per hop. The live arc leaps down the
-  // line (arc); the pearl hovers at the strike and OVERCHARGES (charge:
-  // ring draws in, motes climb, peaks white at 1.4 s); then it POPS —
-  // a star of short arcs racing out where the pearl died (nova, far).
-  galvanic_arc: { cues: [
-    { id: 'storm.arc', scale: 0.8 },
-    { id: 'storm.charge', atFar: true, at: 0.05, scale: 0.6 },
-    { id: 'storm.nova', atFar: true, at: 1.45, scale: 0.6, radiusK: 0.4 },
-  ] },
-  // overgrowth — ground_field 'field' 5 s, r2.2, chill every 0.9 s. The
-  // roster's own briar, re-spoken every 1.2 s so cane after cane springs
-  // up and the circle thickens into a thicket — the burning-snow law.
-  overgrowth: { cues: [
-    { id: 'archmage.briar', scale: 1.0, every: 1.2 },
-  ] },
-  // grave_chill — 'nova' r2.4, chill 80. The deep earth exhales through
-  // the living: the cold arrives (nova, low), the ground's shadows
-  // deepen and grip at the ankle (veil), the pale breath from below
-  // hangs over the seams and rimes the dirt (fog).
-  grave_chill: { cues: [
-    { id: 'frost.nova', scale: 0.7 },
-    { id: 'shadow.veil', at: 0.15, scale: 0.6, radiusK: 0.8 },
-    { id: 'frost.fog', at: 0.5, scale: 0.9, radiusK: 1 },
-  ] },
+  // galvanic_arc — chain_zap 'bolt' per hop. PAYOFF: the live arc leaps
+  // the line (arc), the pearl overcharges at the strike (charge) and POPS
+  // (nova, far); run down the spear's LINE or the chilled road the circuit
+  // is Shatter — the ice on the far body breaks under the charge.
+  galvanic_arc: {
+    cues: [
+      { id: 'storm.arc', scale: 1.2 },
+      { id: 'storm.charge', atFar: true, at: 0.05, scale: 0.9 },
+      { id: 'storm.nova', atFar: true, at: 0.9, scale: 0.8, radiusK: 0.45 },
+    ],
+    onFollow: [{ id: 'arx.shatter', atFar: true, at: 0.1, scale: 0.95 }],
+  },
+  // overgrowth — ground_field 'field' 5 s, r2.2, chill every 0.9 s.
+  // SUSTAIN: the roster's briar, cane after cane every 1.2 s; grown from
+  // the archer's PLANTED snare the thicket springs quicker — a second,
+  // eager growth right behind the first (the refund, not a heavier rake).
+  overgrowth: {
+    cues: [{ id: 'archmage.briar', scale: 1.25, every: 1.2 }],
+    onFollow: [{ id: 'archmage.briar', at: 0.45, scale: 0.75, radiusK: 0.8 }],
+  },
+  // grave_chill — 'nova' r2.4, chill 80. OPENER: the deep earth exhales
+  // through the living (nova low, the veil gripping, the pale breath
+  // riming); through the seam the sneak EXPOSED the cold rises half again
+  // — rime spears stand up out of the seam and the shadows below stir.
+  grave_chill: {
+    cues: [
+      { id: 'frost.nova', scale: 0.7 },
+      { id: 'shadow.veil', at: 0.15, scale: 0.6, radiusK: 0.8 },
+      { id: 'frost.fog', at: 0.5, scale: 0.9, radiusK: 1 },
+    ],
+    onFollow: [
+      { id: 'frost.shards', at: 0.2, scale: 0.9, radiusK: 0.6 },
+      { id: 'shadow.wisps', at: 0.3, scale: 0.5, radiusK: 0.7 },
+    ],
+  },
   // gloom_burst — ground_field 'field' 5.5 s, r1.9, bleed every 0.9 s.
-  // The violet orchard: the blight is planted (burst), and every beat a
-  // flower opens and sheds — soul-flames waking in a ring and dripping
-  // motes into the dirt (wisps, every 1.1 s); the gloom thickens (veil).
-  gloom_burst: { cues: [
-    { id: 'shadow.burst', scale: 0.8 },
-    { id: 'shadow.wisps', at: 0.2, scale: 0.55, every: 1.1 },
-    { id: 'shadow.veil', at: 0.4, scale: 0.5, every: 2.6 },
-  ] },
+  // SUSTAIN: the violet orchard planted (burst) and shedding every beat
+  // (wisps), the gloom thickening (veil); planted on the sneak's VENOM or
+  // EXPOSED seam it blooms harder — a venom cloud rolls out of the blight.
+  gloom_burst: {
+    cues: [
+      { id: 'shadow.burst', scale: 0.8 },
+      { id: 'shadow.wisps', at: 0.2, scale: 0.55, every: 1.1 },
+      { id: 'shadow.veil', at: 0.4, scale: 0.5, every: 2.6 },
+    ],
+    onFollow: [{ id: 'venom.cloud', at: 0.3, scale: 0.7, radiusK: 0.8 }],
+  },
 
   // ------------------------------------------------------- fxSigsArchmageB
-  // venom_lash — projectile_fan ×2, a 'blast' r0.55 at each wound. Each
-  // serpent's spit lands and SPLITS: the sac bursts into stains, then
-  // the two runnels soak in as heavy beads dripping at the feet.
+  // venom_lash — projectile_fan ×2, a 'blast' r0.55 at each wound. OPENER
+  // (leaves the sneak's own word): each spit lands and SPLITS — the sac
+  // bursts into stains, the runnels soak in as heavy beads.
   venom_lash: { cues: [
     { id: 'venom.burst', scale: 0.7 },
     { id: 'venom.drip', at: 0.35, scale: 0.6 },
   ] },
   // magma_orb — projectile_fan, pierce: a 'blast' r0.55 at every body it
-  // rolls through. The globe's weight throws earth as it passes (kick),
-  // it bursts hot (burst), and the footprint-pool it leaves keeps
-  // burning white → orange → soot (floor).
-  magma_orb: { cues: [
-    { id: 'dust.kick', scale: 0.6 },
-    { id: 'fire.burst', scale: 0.9 },
-    { id: 'fire.floor', at: 0.2, scale: 0.7, radiusK: 0.8 },
+  // rolls through. PAYOFF: the globe throws earth as it passes (kick),
+  // bursts hot; over ground the giant QUAKED or a body he SUNDERED it
+  // rolls HEAVIER — the earth slams under it; the pool of melt where it
+  // stops is its own field.
+  magma_orb: {
+    cues: [
+      { id: 'dust.kick', scale: 0.6 },
+      { id: 'fire.burst', scale: 0.9 },
+      { id: 'fire.floor', at: 0.2, scale: 0.7, radiusK: 0.8 },
+    ],
+    onFollow: [{ id: 'dust.slam', at: 0.04, scale: 0.9, radiusK: 0.9 }],
+  },
+  // magma_orb:aftermath — the melt pool: the floor burning white → orange
+  // → soot every 1.3 s for 2.4 s, smoke off it.
+  'magma_orb:aftermath': { cues: [
+    { id: 'fire.floor', scale: 0.8, radiusK: 1, every: 1.3 },
+    { id: 'smoke.wisp', at: 0.5, scale: 0.45, every: 2.4 },
   ] },
-  // shatterfrost — 'nova' r2.6, chill 80. The glacier bites down: its
-  // weight on the ground (slam, small), the cold detonation (nova), and
-  // the millstones' seam spitting chips — spears standing on the ring.
-  shatterfrost: { cues: [
-    { id: 'dust.slam', scale: 0.5 },
-    { id: 'frost.nova', at: 0.02, scale: 1.3 },
-    { id: 'frost.shards', at: 0.25, scale: 0.9, radiusK: 0.9 },
+  // shatterfrost — 'nova' r2.6, chill 80. PAYOFF, the Shatter nova: the
+  // glacier bites down (slam, nova, spears); bitten on a SHOCKED body or a
+  // STAGGERED one the ice takes the charge and BREAKS — the school's own
+  // Shatter goes off in the ring.
+  shatterfrost: {
+    cues: [
+      { id: 'dust.slam', scale: 0.5 },
+      { id: 'frost.nova', at: 0.02, scale: 1.3 },
+      { id: 'frost.shards', at: 0.25, scale: 0.9, radiusK: 0.9 },
+    ],
+    onFollow: [{ id: 'arx.shatter', at: 0.1, scale: 1.15, radiusK: 0.9 }],
+  },
+  // solar_lance — casted 'beam' x→x2, burn. PAYOFF: noon does not travel,
+  // it IS — the radiant lance the whole line, the singe down the aim, the
+  // far end bursting into light; drawn at the archer's BRAND the fire
+  // finds the mark — a column of noon stands on the far body and the brand
+  // is spent as gold glass; the burnt line is its own field.
+  solar_lance: {
+    cues: [
+      { id: 'arcane.beam', scale: 1.4 },
+      { id: 'fire.fan', at: 0.08, scale: 0.45 },
+      { id: 'arcane.shatter', atFar: true, at: 0.1, scale: 0.6 },
+    ],
+    onFollow: [
+      { id: 'fire.pillar', atFar: true, at: 0.12, scale: 1.0, radiusK: 0.8 },
+      { id: 'arcane.shatter', atFar: true, at: 0.2, scale: 0.5, radiusK: 0.6 },
+    ],
+  },
+  // solar_lance:aftermath — the line it crossed keeps burning: the floor
+  // re-lit every 1.3 s for 2.4 s where the lance was heaviest.
+  'solar_lance:aftermath': { cues: [
+    { id: 'fire.floor', scale: 0.75, radiusK: 1, every: 1.3 },
   ] },
-  // solar_lance — 'beam' x→x2, damage 12, burn. Noon does not travel — it
-  // IS: the radiant lance the whole length of the line, the singe where
-  // it crosses (a low fan of flame down the aim), and the far end
-  // bursting into light shards.
-  solar_lance: { cues: [
-    { id: 'arcane.beam', scale: 1.4 },
-    { id: 'fire.fan', at: 0.08, scale: 0.45 },
-    { id: 'arcane.shatter', atFar: true, at: 0.1, scale: 0.6 },
-  ] },
-  // rune_echo — pulse_nova: three 'nova' r2.2 pulses 0.5 s apart. Every
-  // pulse the tablets flash (a small shatter heart + shock ring) and the
-  // ward rings pulse; three stacked sigils = call, response, louder.
-  rune_echo: { cues: [
-    { id: 'arcane.shatter', scale: 0.35 },
-    { id: 'arcane.sigil', at: 0.02, scale: 0.7 },
-  ] },
-  // marrow_pulse — pulse_nova: three 'nova' r2.3 pulses, chill. The
-  // roster's own counting toll, once per pulse: the ring rolls out, the
-  // knucklebones stand lit, grave-light rises, the chips lie.
+  // rune_echo — pulse_nova: three 'nova' r2.2 pulses. SUSTAIN: every
+  // pulse the tablets flash and the ward rings pulse; spoken on the twin
+  // blades' LEFT or RIGHT each repetition lands LOUDER — gold blooms over
+  // the inscription.
+  rune_echo: {
+    cues: [
+      { id: 'arcane.shatter', scale: 0.35 },
+      { id: 'arcane.sigil', at: 0.02, scale: 0.7 },
+    ],
+    onFollow: [{ id: 'arcane.bloom', at: 0.06, scale: 0.65, radiusK: 0.8 }],
+  },
+  // marrow_pulse — pulse_nova: three 'nova' r2.3 pulses, chill. SUSTAIN
+  // (reads bleed through `vs`): the roster's counting toll once per
+  // pulse — ring, knucklebones lit, grave-light, chips lying.
   marrow_pulse: { cues: [
-    { id: 'archmage.marrow', scale: 1.0 },
+    { id: 'archmage.marrow', scale: 1.3 },
   ] },
-  // void_rift — ground_field 'field' 5 s, r2.6, every beat DRAGS toward
-  // the mouth. The unlit door stands (veil, re-spoken every 3 s) and
-  // INHALES on its beat (grasp every 1.6 s: pulled in, clenched, let go).
-  void_rift: { cues: [
-    { id: 'shadow.veil', scale: 0.9, every: 3.0 },
-    { id: 'shadow.grasp', at: 0.1, scale: 1.2, every: 1.6 },
-  ] },
-  // eye_of_the_storm — pulse_nova: four 'nova' r2.5 pulses 0.45 s apart,
-  // shock. The roster's own eyewall, once per pulse: rain and bolts on
-  // the band only, the calm disc dry at the center.
-  eye_of_the_storm: { cues: [
-    { id: 'archmage.eyewall', scale: 0.85 },
-  ] },
-  // red_eclipse — 'nova' r2.4, drain 35 %, bleed. The reverse rain: the
-  // tithe gathers flecks and beads off the ring and lifts them into the
-  // heart (drink — nothing lands, nothing glows), and where each thread
-  // rose a dark stain stays (pool, small).
+  // void_rift — ground_field 'field' 5 s, r2.6, drags every beat. SUSTAIN
+  // (leaves hollow): the unlit door stands (veil) and INHALES on its beat
+  // (grasp); opened on a HOOKED or ROOTED yard it inhales HARDER — one
+  // deep breath at the opening that clenches the whole circle.
+  void_rift: {
+    cues: [
+      { id: 'shadow.veil', scale: 0.9, every: 3.0 },
+      { id: 'shadow.grasp', at: 0.1, scale: 1.2, every: 1.6 },
+    ],
+    onFollow: [{ id: 'shadow.grasp', at: 0.35, scale: 1.6, radiusK: 1.1 }],
+  },
+  // eye_of_the_storm — channeled 'nova' r2.5 per beat (×4), shock, finale
+  // ×2.5. SUSTAIN: the roster's eyewall once per beat — rain and bolts on
+  // the band, the calm disc dry; the last beat is the THUNDERCLAP — the
+  // bolt from straight overhead into the eye, the band lit end to end,
+  // the earth slammed under it.
+  eye_of_the_storm: {
+    cues: [{ id: 'archmage.eyewall', scale: 0.85 }],
+    onFinale: [
+      { id: 'storm.strike', at: 0.05, scale: 0.6 },
+      { id: 'storm.nova', at: 0.25, scale: 0.9, radiusK: 1.1 },
+      { id: 'dust.slam', at: 0.12, scale: 0.8, radiusK: 0.6 },
+    ],
+  },
+  // red_eclipse — 'nova' r2.4, drain, bleed. PAYOFF (drinks deeper from
+  // bleed through `vs`): the reverse rain — the tithe lifted into the
+  // heart (drink — nothing glows), the stains where each thread rose.
   red_eclipse: { cues: [
     { id: 'blood.drink', scale: 1.4 },
     { id: 'blood.pool', at: 0.5, scale: 0.5, radiusK: 0.8 },
   ] },
-  // realm_rend — 'beam' x→x2 (range 16), damage 15, shock. The roster's
-  // own unsewn seam the length of the corridor, and the shock landing at
-  // the far end where the splinter went home.
-  realm_rend: { cues: [
-    { id: 'archmage.seam', scale: 1.2 },
-    { id: 'storm.nova', atFar: true, at: 0.46, scale: 0.5, radiusK: 0.5 },
+  // realm_rend — casted 'beam' x→x2 (range 16), shock, the CROWN. The
+  // roster's unsewn seam the length of the corridor and the shock landing
+  // where the splinter went home; with ANY spark in the air the seam
+  // tears WIDER — the dark gapes along it and the far end takes the bolt
+  // from overhead; the seam standing open and crackling is its own field.
+  realm_rend: {
+    cues: [
+      { id: 'archmage.seam', scale: 1.2 },
+      { id: 'storm.nova', atFar: true, at: 0.46, scale: 0.5, radiusK: 0.5 },
+    ],
+    onFollow: [
+      { id: 'shadow.burst', at: 0.25, scale: 0.85, radiusK: 0.7 },
+      { id: 'storm.strike', atFar: true, at: 0.5, scale: 1.2 },
+    ],
+  },
+  // realm_rend:aftermath — the seam stays open: the roster's rift
+  // re-spoken every 1.1 s for 3.2 s — the mouth, the static across it,
+  // splinters lifting, the inhale.
+  'realm_rend:aftermath': { cues: [
+    { id: 'arx.rift', scale: 1.0, radiusK: 1, every: 1.1 },
   ] },
 };

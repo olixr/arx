@@ -494,3 +494,49 @@ is), a tag credit for openers, chill `power` (engine-unused, flavor
 only), the beastcraft fang reading the keeper's follow. Not live-proven
 (Phase 5); the PACE DIAL still owed.
 
+### Phase 4 — THE VOICE (2026-09-05)
+
+**4a THE SEAMS (135a2acb).** `S2CFx.flourish` (`follow` | `finale`,
+additive) set by the cast doors around `castAbility` and carried on
+fused blasts; the aftermath ground speaks its own plan (`<art>:aftermath`
+with kind `field`; `fxStyleFor` reads the id before the colon so the
+face stays the art's); `AbilityPlan.onFollow` / `onFinale` cues added
+once at arrival and every cue scaled ×1.15 / ×1.35 (`FLOURISH_SCALE`);
+per-school breath dialect files `render/breath/<school>.ts` merged over
+the founding table; the probe speaks dialects (kinds `charge`/`note`)
+and flourishes (`FLOURISH=`). The rig lane's watcher woke (HMR stays
+off) so every probe page load gets live transforms.
+
+**4b THE WAVE (workflow `mastered-hand-voice`, nine agents; cut twice by
+limits, resumed unedited with a note about the partial work).** Every
+rung, page and secret re-voiced: 490 plans (was 416) and 144 library
+effects (was 85 roster + 47 mastered); 88 aftermath-ground plans; 219
+plans carrying follow or finale flourish cues; 126 breath dialects
+authored (every casted art has a charge, every channeled a note —
+`breathFx.test.ts` IN_FLIGHT is EMPTY and the contract binds); 59 new
+effects (brands that stay, detonations, reactions made visible —
+arx.thermal_shock / shatter / combust — rifts, formations, frost sheets,
+blood floors, the loom's crossings, the spear's stakes). Eye-judgment:
+307 arts viewed in-world at three moments by the agents (onehand 59,
+arx 57, archery 46, twohand 43, sneak 26, combat 23, dualwield 22,
+shield 20, polearm 11); the rest lab-sheet judged. Main-session close:
+dead duplicate plan keys removed from the shared files (core / melee /
+sneak) with the merged table proven identical (490 → 490); stress
+receipt at 2600 grains: update p50 0.23 ms, draw p50 2.4 / p90 5.9 ms
+(the v6 baseline). Gates: client 1258, tsc clean.
+
+**Residue (honest).** Breath dialects were tuned against a probe that
+speaks ONE emission window; the live wire stacks windows over the
+wind-up, so charges will read louder in play — a lane look is owed
+(Phase 5). Standing-zone `every` beats were judged from the first beat
+(the probe casts once). Dust and ground-layer matter can hide under
+tall meadow grass (y-sorted blades): a z-aware occlusion or a matter-
+over-blades rule is a render ask. Beam aftermaths are circles at the
+midpoint (a burning line would say more). Polearm's four armory arts and
+four rungs, plus a few shield arrivals at the clip edge, are lab-judged
+only. Engine asks carried: per-cue flourish scale, `EffectCue.kinds` for
+leap launch/landing, a follow-window-bound `stay` cue, `land:'hold'`
+shards, a wet/cold soft mark, a per-body anchor for standing brands, a
+foot-anchored haft silhouette, a `vs`-read flourish cue, the probe
+re-speaking breath on the wire's cadence and ticking a field's life.
+

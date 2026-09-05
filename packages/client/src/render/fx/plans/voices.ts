@@ -43,7 +43,7 @@ const W_GLOW = '140, 208, 120';
 const STAKE: BurstOpts = {
   shape: 'lick', speed: 0.03, life: 1.9, lifeVar: 0.2, size: 0.18, sizeVar: 0.2, gravity: 0,
   vz: 1.3, zg: 2.6, land: 'settle', layer: 'world', shadow: 0.3,
-  ramp: rampOf({ stops: [W_SPARK, W_MID, W_DEEP], at: [0, 0.35, 0.9], steps: 4 }),
+  ramp: rampOf({ stops: [W_MID, W_DEEP, '#2a4a24'], at: [0, 0.4, 0.9], steps: 4 }), core: W_SPARK, coreK: 0.4,
   sizeCurve: curveOf([0, 0.3, 0.2, 1, 0.85, 1, 1, 0.55]), alphaCurve: FADE_LATE,
 };
 
@@ -72,7 +72,7 @@ const SOIL: BurstOpts = {
 /** The rows as laid: green grains that stay in the dirt after the field. */
 const LAID_ROW: BurstOpts = {
   shape: 'square', speed: 0.02, life: 9, lifeVar: 0.1, size: 0.055, sizeVar: 0.2, gravity: 0,
-  layer: 'ground', shadow: 0, ramp: rampOf({ stops: [W_MID, W_DEEP] }), sizeCurve: HOLD, alphaCurve: SETTLE_A,
+  layer: 'ground', shadow: 0, ramp: rampOf({ stops: [W_DEEP, '#2a4a24'] }), sizeCurve: HOLD, alphaCurve: SETTLE_A,
 };
 
 export const voicesWildRoot: EffectDef = {
@@ -191,70 +191,165 @@ export const voicesShearwind: EffectDef = {
 // ---------------------------------------------------------------------------
 
 export const VOICES_PLANS: Record<string, AbilityPlan> = {
-  // The surveyors: the plat is laid once and stays; every pulse (16
-  // ticks) the field insists with a few more stakes.
+  // wild_root — casted, fused 'blast' r2.0, root 30 t, OPENER (the
+  // licensed root). The forest PLATS the ground: the plat is laid once
+  // as the grip closes (the roster's surveyors) over the soil it throws
+  // (kick); the briars that stay and chill after the grip are the field.
   wild_root: { cues: [
-    { id: 'voices.wild_root', scale: 1.0 },
-    { id: 'voices.root_beat', at: 0.8, scale: 0.8, every: 0.8 },
+    { id: 'dust.kick', scale: 0.9, radiusK: 0.8 },
+    { id: 'voices.wild_root', at: 0.04, scale: 1.25 },
   ] },
-  // The long sunrise: one stretched sun — a radiant lance down the whole
-  // corridor at finisher weight — and a second, lower pass a beat later
-  // as the day climbs; its shed light settles as dew along the edges.
-  day_breaks: { cues: [
-    { id: 'arcane.beam', scale: 1.3 },
-    { id: 'arcane.beam', at: 0.28, scale: 0.8 },
+  // wild_root:aftermath — the forest insists: a few more stakes every
+  // 0.9 s for 3.2 s, and the chill of the briars settling as fog on the
+  // rows every 1.8 s.
+  'wild_root:aftermath': { cues: [
+    { id: 'voices.root_beat', scale: 0.8, radiusK: 1, every: 0.9 },
+    { id: 'frost.fog', at: 0.4, scale: 0.5, radiusK: 0.9, every: 1.8 },
   ] },
-  // The returned moon: it lands as a cold crack and a frost bed at the
-  // mark, then the moon-dust fog settles where it went home.
+  // day_breaks — casted 'beam' x→x2, burn, PAYOFF: one stretched sun
+  // down the corridor, a lower second pass as the day climbs, the line
+  // singed; broken on a CHILLED road the dawn meets the ice — Thermal
+  // Shock at the far end (and the VANISHED sneak is found in the same
+  // light); the lit line is its own field.
+  day_breaks: {
+    cues: [
+      { id: 'arcane.beam', scale: 1.3 },
+      { id: 'arcane.beam', at: 0.28, scale: 0.8 },
+      { id: 'fire.fan', at: 0.12, scale: 0.4 },
+    ],
+    onFollow: [{ id: 'arx.thermal_shock', atFar: true, at: 0.15, scale: 1.1 }],
+  },
+  // day_breaks:aftermath — the line stays lit: a low fire re-lit every
+  // 1.3 s for 2.4 s where the sun was heaviest.
+  'day_breaks:aftermath': { cues: [
+    { id: 'fire.floor', scale: 0.65, radiusK: 1, every: 1.3 },
+  ] },
+  // moonfall — fused 'blast' r2.1, chill 90, OPENER: the borrowed moon
+  // lands — a cold crack, the moon's own light blooming over it, and the
+  // moon-dust fog settling where it went home; its silver on the ground
+  // is its own field.
   moonfall: { cues: [
     { id: 'frost.nova', scale: 1.3 },
+    { id: 'arcane.bloom', at: 0.05, scale: 0.7, radiusK: 0.6 },
     { id: 'frost.fog', at: 0.6, scale: 0.9, radiusK: 1 },
   ] },
-  // The unwound bobbin: authored — the thread pays out on a whirl and
-  // the crowd rearranges itself (knockback 3.2 is the ability's weight).
-  shearwind: { cues: [{ id: 'voices.shearwind', scale: 1.1 }] },
-  // The wax seal: each feather burns away where it lands (five small
-  // blasts) and presses a seal — a small burning floor, post paid.
-  the_molt: { cues: [
-    { id: 'fire.burst', scale: 0.5 },
-    { id: 'fire.floor', at: 0.15, scale: 0.35 },
+  // moonfall:aftermath — the silver: a moonlit frost fog re-laid every
+  // 1.5 s for 3.2 s, riming the ground under it.
+  'moonfall:aftermath': { cues: [
+    { id: 'frost.fog', scale: 0.85, radiusK: 1, every: 1.5 },
   ] },
-  // The polite pit: the dark comes up and holds over the field; each
-  // beat the invitation is extended — the dark called inward, a pull
-  // that persuades (knockback −1.2), never a drag.
-  hollowing: { cues: [
-    { id: 'shadow.veil', scale: 1.1, radiusK: 1 },
-    { id: 'shadow.grasp', at: 0.8, scale: 0.6, every: 1.6 },
+  // shearwind — casted 'nova' r2.6, stagger 14 t, ANSWER (the licensed
+  // stagger): the unwound bobbin — the thread pays out on a whirl and the
+  // crowd REELS (knockback 3.2 is the weight) over the dust it shoves.
+  shearwind: { cues: [
+    { id: 'voices.shearwind', scale: 1.35 },
+    { id: 'dust.kick', at: 0.1, scale: 0.7, radiusK: 0.9 },
   ] },
-  // The ledger thread: each hop the struck one pays (a wet hit at the far
-  // end) and payment flows BACK along the thread to be swallowed at the
-  // origin end (the tithe gathered at the near anchor).
-  red_toll: { cues: [
-    { id: 'blood.hit', scale: 0.8, atFar: true },
-    { id: 'blood.drink', at: 0.15, scale: 0.7 },
-  ] },
-  // q.e.d.: every pulse (three, 9 ticks apart) restates the figure — a
-  // shock ring races out with glass flying, and the inscription stands
-  // under it, restated each time.
-  axiom: { cues: [
-    { id: 'arcane.shatter', scale: 0.75 },
-    { id: 'arcane.sigil', at: 0.1, scale: 0.5 },
-  ] },
-  // The closest pass: the comet KISSES the ground (a white crack, shards,
-  // a frost bed at finisher weight) and climbs away on the far side with
-  // its tail draped onward across the circle; ice-dust settles after.
+  // the_molt — projectile_fan ×5, a 'blast' r0.55 at each wound, PAYOFF:
+  // each feather burns away where it lands and presses a seal (a small
+  // burning floor); on an EXPOSED seam or a BRANDED body the feather
+  // knows the address — the fire stands up on it.
+  the_molt: {
+    cues: [
+      { id: 'fire.burst', scale: 0.5 },
+      { id: 'fire.floor', at: 0.15, scale: 0.35 },
+    ],
+    onFollow: [{ id: 'fire.plume', at: 0.1, scale: 0.6, radiusK: 0.7 }],
+  },
+  // hollowing — ground_field 'field' 5 s, r2.3, pull, SUSTAIN (leaves
+  // hollow): the polite pit holds over the field (veil) and extends its
+  // invitation on the beat (grasp); opened on ground the giant QUAKED it
+  // swallows HARDER — one deep clench at the opening and the dark bursts
+  // up out of it.
+  hollowing: {
+    cues: [
+      { id: 'shadow.veil', scale: 1.1, radiusK: 1 },
+      { id: 'shadow.grasp', at: 0.8, scale: 0.6, every: 1.6 },
+    ],
+    onFollow: [
+      { id: 'shadow.grasp', at: 0.2, scale: 1.4, radiusK: 1.1 },
+      { id: 'shadow.burst', at: 0.5, scale: 0.7, radiusK: 0.6 },
+    ],
+  },
+  // red_toll — chain_zap 'bolt' per hop, bleed, PAYOFF: each hop the
+  // struck one pays (a wet hit at the far end) and payment flows BACK to
+  // be swallowed at the origin (drink); passed after the twin blades' REND
+  // it collects HEAVIER — the far body sprays and the taker drinks deep.
+  // Never glows.
+  red_toll: {
+    cues: [
+      { id: 'blood.hit', scale: 0.8, atFar: true },
+      { id: 'blood.drink', at: 0.15, scale: 0.7 },
+    ],
+    onFollow: [
+      { id: 'blood.spray', atFar: true, at: 0.05, scale: 0.9 },
+      { id: 'blood.drink', at: 0.3, scale: 0.9, radiusK: 0.8 },
+    ],
+  },
+  // axiom — pulse_nova ×3, SUSTAIN: q.e.d. — every pulse restates the
+  // figure (a shock ring with glass flying, the inscription under it);
+  // stated on the veteran's RALLY the room accepts it harder — gold
+  // blooms over the proof.
+  axiom: {
+    cues: [
+      { id: 'arcane.shatter', scale: 0.75 },
+      { id: 'arcane.sigil', at: 0.1, scale: 0.5 },
+    ],
+    onFollow: [{ id: 'arcane.bloom', at: 0.06, scale: 0.65, radiusK: 0.8 }],
+  },
+  // perihelion — casted, fused 'blast' r2.3, burn + shove, OPENER: the
+  // comet's closest pass — the roster's visitor comes down the whole sky
+  // and KISSES the ground, and the kiss is fire: the ring goes up as the
+  // head arrives (burst) and the floor catches; the tail it leaves on the
+  // ground is its own field.
   perihelion: { cues: [
-    { id: 'frost.nova', scale: 1.5 },
-    { id: 'frost.breath', at: 0.12, scale: 1.0 },
-    { id: 'frost.fog', at: 0.8, scale: 0.7 },
+    { id: 'arx.cometfall', scale: 1.2 },
+    { id: 'fire.burst', at: 0.32, scale: 1.1, radiusK: 0.9 },
+    { id: 'fire.floor', at: 0.6, scale: 0.7, radiusK: 0.8 },
   ] },
-  // The presentation: each hop is a herald's cord (a bolt spanning to the
-  // head), and on the presented head a coronet arrives with ceremony —
-  // gold gathers, flares, holds a beat as a halo, and lifts away.
-  crownstorm: { cues: [
-    { id: 'storm.arc', scale: 0.8 },
-    { id: 'arcane.bloom', scale: 0.7, atFar: true },
+  // perihelion:aftermath — the tail on the ground: the floor re-lit every
+  // 1.4 s for 3.2 s, smoke off the burning tail.
+  'perihelion:aftermath': { cues: [
+    { id: 'fire.floor', scale: 0.85, radiusK: 1, every: 1.4 },
+    { id: 'smoke.wisp', at: 0.5, scale: 0.5, every: 2.4 },
   ] },
+  // crownstorm — chain_zap 'bolt' per hop ×5, shock, PAYOFF: each hop is
+  // a herald's cord and on the presented head a coronet arrives (bloom,
+  // far); every head the shield's TAUNT presented kneels HARDER — the
+  // coronet flares gold and the static of the court scorches the ring.
+  crownstorm: {
+    cues: [
+      { id: 'storm.arc', scale: 0.8 },
+      { id: 'arcane.bloom', scale: 0.7, atFar: true },
+    ],
+    onFollow: [
+      { id: 'arcane.bloom', atFar: true, at: 0.15, scale: 1.0, radiusK: 0.7 },
+      { id: 'storm.nova', atFar: true, at: 0.22, scale: 0.55, radiusK: 0.5 },
+    ],
+  },
+  // red_thread — channeled 'beam' per beat (×3), pull, finale ×2, SUSTAIN
+  // (winds faster from bleed through `vs`): the leech link — the far body
+  // is opened (spray) and the take is drunk in at the hand each beat; the
+  // spool's LAST turn is the finale — the far end gushes and the taker
+  // drinks deep. Never glows.
+  red_thread: {
+    cues: [
+      { id: 'blood.spray', atFar: true, scale: 0.7 },
+      { id: 'blood.drink', at: 0.15, scale: 0.6, radiusK: 0.7 },
+    ],
+    onFinale: [
+      { id: 'blood.hit', atFar: true, at: 0.05, scale: 1.1 },
+      { id: 'blood.drink', at: 0.1, scale: 1.3, radiusK: 0.9 },
+    ],
+  },
+  // vigil — self_buff, channeled ×64 t, ANSWER (the licensed mend): the
+  // candle keeps — a quiet circle of kept light at the keeper's feet
+  // while the watch is held; kept behind the shield's WALL the candle
+  // armors the keeper too — the halo wraps them.
+  vigil: {
+    cues: [{ id: 'arcane.sigil', scale: 0.6, radiusK: 0.5 }],
+    onFollow: [{ id: 'arcane.orbit', at: 0.1, scale: 0.7, radiusK: 0.6 }],
+  },
 };
 
 export const VOICES_EFFECTS: EffectDef[] = [voicesWildRoot, voicesRootBeat, voicesShearwind];

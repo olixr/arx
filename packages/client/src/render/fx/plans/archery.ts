@@ -42,7 +42,8 @@ import type { EffectDef } from '../effects.js';
 import { recipe } from '../effects.js';
 import { curveOf, rampOf } from '../curves.js';
 import { defineRecipe, type BurstOpts } from '../../particles.js';
-import { SAND, PALE, LOAM, SHADE, RAMP_MASS, RAMP_CLOD, RAMP_FINE, RAMP_VEIL } from '../library/dust.js';
+import { SAND, PALE, LOAM, SHADE, RAMP_MASS, RAMP_CLOD, RAMP_FINE, RAMP_VEIL, DUST_GLOW } from '../library/dust.js';
+import { GOLD, AMBER, WARM, ARCANE_GLOW } from '../library/arcane.js';
 import { HEART, BRIGHT, FLAME, EMBER, COAL, DEEP as FIRE_DEEP, SOOT, SMOKE_THIN, FIRE_GLOW } from '../library/fire.js';
 
 // ------------------------------------------------------------ palette
@@ -439,7 +440,296 @@ const cinderfall: EffectDef = {
   ],
 };
 
-export const ARCHERY_EFFECTS: EffectDef[] = [thunk, loose, fall, feathers, blackFeathers, flight, cinderfall];
+
+// ------------------------------------------ THE MASTERED HAND: the voice
+//
+// THE PATIENT EYE (techniques v3, Phase 4). The archer BRANDS (the sunder
+// page is her mark), PLANTS (snares, briars, fire on the ground), LOOSES
+// (the quick shaft on the move) and then reads what she left. The
+// library had no word for a mark that STAYS on a body, a mark SPENT, a
+// snare that closes, a briar that breaks the turf, or the string's last
+// heavy note — so the school authors five more, all wood, vane, hemp,
+// hawk-gold and green-wood:
+//
+//   archery.brand        THE HAWK'S MARK — the brand that stays: a ring
+//                        of hawk-eye glints circling the chest for the
+//                        window, gold rising off the body, a gold ring
+//                        laid on the ground that the turf keeps
+//   archery.brand_break  THE BRAND SPENT — the payoff's detonation on a
+//                        branded body: the mark shatters into gold shards
+//                        and sparks, an ivory shock ring, the earth shoved
+//   archery.snare        THE JAW CLOSES — the hemp cord cinches inward,
+//                        iron teeth fly up at the rim and lie, the cord
+//                        ticks with glints while the patch is held
+//   archery.briar        THE THORNS BREAK THE TURF — green-wood thorns
+//                        stand up out of the disc in waves, sap flecks
+//                        the dirt, the patch is DRAGGED to center
+//   archery.crescendo    THE LAST NOTE — the string's final heavy loose
+//                        arriving: a vane flash, an ivory ring at the
+//                        entry, a crown of chips, turf shoved wide
+//
+// Every re-curated plan speaks three acts on the wire's kind, adds
+// `onFollow` for a payoff landed inside its window, `onFinale` for a
+// held note's last beat, and a standing `<art>:aftermath` plan for the
+// ground the art leaves.
+
+/** Hawk gold, the school's brand — the sunder page in the archer's hand. */
+const HAWK = GOLD;
+const HAWK_DEEP = AMBER;
+const HAWK_DULL = WARM;
+/** Hemp cord and iron teeth — the snare. */
+const HEMP = '#c4aa74';
+const HEMP_DARK = '#8f7a4e';
+const IRON = '#7a7f88';
+const IRON_DARK = '#454952';
+/** Green wood — the briar. */
+const LEAF = '#8ab85a';
+const GREENWOOD = '#5a9a4a';
+const GREENWOOD_DEEP = '#3f6e34';
+const SAP_DARK = '#2c4a26';
+
+/** The brand's glint: white heart to hawk gold to warm. */
+const RAMP_HAWK = rampOf({ stops: ['#fff7dc', HAWK, HAWK_DEEP], at: [0, 0.35, 0.85] });
+/** A gold shard: bright in flight, warm where it lies. */
+const RAMP_HAWK_SHARD = rampOf({ stops: [HAWK, HAWK_DEEP, HAWK_DULL], at: [0, 0.4, 0.9], steps: 4 });
+/** The gold laid on the ground: lit, then the turf's warm. */
+const RAMP_HAWK_GROUND = rampOf({ stops: [HAWK, HAWK_DEEP, HAWK_DULL, LOAM], at: [0, 0.3, 0.7, 1], steps: 5 });
+/** The cord. */
+const RAMP_HEMP = rampOf({ stops: [HEMP, HEMP_DARK, WOOD_DARK], at: [0, 0.5, 0.9], steps: 3 });
+/** Iron teeth: a glint, then iron, then the dark of a thing lying in grass. */
+const RAMP_IRON = rampOf({ stops: ['#aeb3bc', IRON, IRON_DARK], at: [0, 0.3, 0.85], steps: 4 });
+/** A thorn: pale tip, green wood, sap-dark where it stands. */
+const RAMP_THORN = rampOf({ stops: [LEAF, GREENWOOD, GREENWOOD_DEEP, SAP_DARK], at: [0, 0.3, 0.7, 1], steps: 5 });
+/** Sap: bright green to the dark it dries to. */
+const RAMP_SAP = rampOf({ stops: [LEAF, GREENWOOD_DEEP, SAP_DARK], at: [0, 0.4, 0.9], steps: 3 });
+/** Leaf fines. */
+const RAMP_LEAF = rampOf({ stops: [LEAF, GREENWOOD, GREENWOOD_DEEP], at: [0, 0.5, 0.9], steps: 3 });
+/** The ivory ring and the crescendo's flash. */
+const RAMP_IVORY_RING = rampOf({ stops: ['#ffffff', IVORY, WOOD], at: [0, 0.45, 0.9] });
+
+/** A hawk-eye glint circling the chest. */
+const EYE: BurstOpts = {
+  shape: 'glint', speed: 0.05, speedVar: 0.5, life: 0.55, lifeVar: 0.25,
+  size: 0.1, sizeVar: 0.25, gravity: 0, layer: 'world', shadow: 0,
+  ramp: RAMP_HAWK, sizeCurve: FLARE, alphaCurve: FADE_OUT, flicker: 0.2,
+};
+/** THE MARK: a gold ring hung at the chest, breathing, for the window. */
+const MARK_RING: BurstOpts = {
+  shape: 'ring', speed: 0, life: 3.0, lifeVar: 0.05, size: 0.46, sizeVar: 0.05, gravity: 0,
+  z: 0.8, layer: 'world', shadow: 0, ringWidth: 0.08,
+  ramp: rampOf({ stops: [HAWK, HAWK_DEEP, HAWK], at: [0, 0.5, 1], steps: 3 }),
+  sizeCurve: curveOf([0, 0.6, 0.1, 1, 0.5, 0.92, 0.9, 1, 1, 0.8]), alphaCurve: curveOf([0, 0, 0.08, 0.85, 0.85, 0.75, 1, 0]),
+  wave: 'sine', waveHz: 1.2, waveAmp: 0.06, waveAxis: 'z',
+};
+/** Gold rising off a branded body. */
+const BRAND_MOTE: BurstOpts = {
+  shape: 'mote', speed: 0.15, speedVar: 0.6, life: 1.1, lifeVar: 0.3,
+  size: 0.045, sizeVar: 0.3, gravity: 0, drag: 0.6,
+  vz: 0.55, zg: -0.1, layer: 'world', shadow: 0, jitter: 1.2,
+  ramp: RAMP_HAWK, sizeCurve: HOLD, alphaCurve: FADE_LATE,
+};
+/** The gold laid on the ground under the mark: streaks lying flat, kept as flecks. */
+const GOLD_RING: BurstOpts = {
+  shape: 'streak', align: true, speed: 0.35, speedVar: 0.4, life: 2.8, lifeVar: 0.25,
+  size: 0.06, sizeVar: 0.25, gravity: 0, drag: 3, layer: 'ground',
+  ramp: RAMP_HAWK_GROUND, sizeCurve: HOLD, alphaCurve: SETTLE_A,
+  mark: 'fleck', markLife: 4,
+};
+/** The ring's pulse: glints popping on the gold ring. */
+const RING_POP: BurstOpts = {
+  shape: 'glint', speed: 0.05, speedVar: 0.5, life: 0.4, lifeVar: 0.3,
+  size: 0.07, sizeVar: 0.3, gravity: 0, z: 0.02, layer: 'world', shadow: 0,
+  ramp: RAMP_HAWK, sizeCurve: FLARE, alphaCurve: FADE_OUT,
+};
+/** The brand shattering: gold shards on true height, spun, lying, flecking. */
+const GOLD_SHARD: BurstOpts = {
+  shape: 'shard', speed: 1.8, speedVar: 0.5, life: 1.6, lifeVar: 0.3,
+  size: 0.06, sizeVar: 0.3, gravity: 0, spin: 12,
+  z: 0.7, vz: 2.2, zg: 6, land: 'settle', layer: 'world', shadow: 0.3,
+  ramp: RAMP_HAWK_SHARD, sizeCurve: HOLD, alphaCurve: SETTLE_A,
+  mark: 'fleck', markLife: 5,
+};
+/** Sparks off the breaking brand: fast glints that die in the air. */
+const GOLD_SPARK: BurstOpts = {
+  shape: 'glint', speed: 2.6, speedVar: 0.5, life: 0.5, lifeVar: 0.3,
+  size: 0.055, sizeVar: 0.3, gravity: 0, drag: 1.5,
+  z: 0.7, vz: 1.5, zg: 5, land: 'die', layer: 'world', shadow: 0,
+  ramp: RAMP_HAWK, sizeCurve: HOLD, alphaCurve: FADE_OUT,
+};
+/** An ivory shock ring at chest height, gone in a breath. */
+const IVORY_RING: BurstOpts = {
+  shape: 'streak', align: true, speed: 4, speedVar: 0.15, life: 0.32, lifeVar: 0.2,
+  size: 0.07, sizeVar: 0.2, gravity: 0, drag: 2, z: 0.6, layer: 'world', shadow: 0,
+  ramp: RAMP_IVORY_RING, sizeCurve: HOLD, alphaCurve: FADE_OUT,
+};
+/** The gold after-ring on the ground where the brand broke. */
+const AFTER_RING: BurstOpts = {
+  ...GOLD_RING, speed: 1.2, life: 0.9, drag: 4, alphaCurve: FADE_LATE, mark: undefined,
+};
+/** The hemp cord racing inward along the turf. */
+const CORD: BurstOpts = {
+  shape: 'streak', align: true, speed: 1.8, speedVar: 0.25, life: 0.55, lifeVar: 0.2,
+  size: 0.07, sizeVar: 0.2, gravity: 0, drag: 1.5, layer: 'ground',
+  ramp: RAMP_HEMP, sizeCurve: HOLD, alphaCurve: FADE_LATE,
+};
+/** An iron tooth: flung up at the rim, lying where it fell. */
+const TOOTH: BurstOpts = {
+  shape: 'streak', speed: 0.3, speedVar: 0.5, life: 2.4, lifeVar: 0.25,
+  size: 0.095, sizeVar: 0.2, gravity: 0, spin: 2,
+  vz: 1.9, zg: 6, land: 'settle', layer: 'world', shadow: 0.4,
+  ramp: RAMP_IRON, sizeCurve: HOLD, alphaCurve: SETTLE_A,
+};
+/** Glints ticking on the held cord. */
+const CORD_TICK: BurstOpts = {
+  shape: 'glint', speed: 0.05, speedVar: 0.5, life: 0.35, lifeVar: 0.3,
+  size: 0.06, sizeVar: 0.3, gravity: 0, z: 0.04, layer: 'world', shadow: 0,
+  ramp: RAMP_IRON, sizeCurve: FLARE, alphaCurve: FADE_OUT,
+};
+/** A thorn standing up out of the turf, then lying in it. */
+const THORN: BurstOpts = {
+  shape: 'streak', speed: 0.25, speedVar: 0.5, life: 2.2, lifeVar: 0.25,
+  size: 0.085, sizeVar: 0.25, gravity: 0, spin: 3,
+  vz: 2.4, zg: 5, land: 'settle', layer: 'world', shadow: 0.4,
+  ramp: RAMP_THORN, sizeCurve: HOLD, alphaCurve: SETTLE_A,
+  mark: 'fleck', markLife: 5,
+};
+/** Sap flecks kicked out of the broken turf. */
+const SAP: BurstOpts = {
+  shape: 'square', speed: 0.8, speedVar: 0.5, life: 0.6, lifeVar: 0.3,
+  size: 0.05, sizeVar: 0.3, gravity: 0, vz: 1.4, zg: 7, land: 'die', layer: 'world', shadow: 0,
+  ramp: RAMP_SAP, sizeCurve: HOLD, alphaCurve: HOLD, mark: 'fleck', markLife: 6,
+};
+/** Leaf fines lifted with the thorns, rocking down. */
+const LEAF_FINE: BurstOpts = {
+  shape: 'mote', speed: 0.5, speedVar: 0.6, life: 1.6, lifeVar: 0.3,
+  size: 0.045, sizeVar: 0.3, gravity: 0, drag: 1.0,
+  vz: 1.2, zg: 1.2, mass: 0.5, land: 'settle', layer: 'world', shadow: 0,
+  wave: 'sine', waveHz: 1.6, waveAmp: 0.4, ramp: RAMP_LEAF, sizeCurve: HOLD, alphaCurve: FADE_LATE,
+};
+
+// ------------------------------------------------------------ effects II
+
+/**
+ * archery.brand — THE HAWK'S MARK. The opener's word made visible: a
+ * strike flash, then a ring of hawk-eye glints circles the chest for
+ * the window, gold rises off the body, and a gold ring is laid on the
+ * ground that pulses on its beats and stays as flecks. The mark that
+ * STAYS until a payoff spends it.
+ */
+const brand: EffectDef = {
+  id: 'archery.brand',
+  name: 'Archery — brand',
+  story: 'the hawk marks the body: a gold strike flash at the chest → hawk-eye glints circle the chest for the window → gold rises off the branded body → a gold ring is laid on the ground and pulses on its beats → the turf keeps the ring in flecks',
+  layers: [
+    { kind: 'burst', name: 'strike flash', recipe: recipe(['#fff7dc', HAWK], { ...EYE, size: 0.2, life: 0.3, z: 0.75 }), count: 3, tier: 'hero' },
+    { kind: 'burst', name: 'the mark', recipe: recipe([HAWK, HAWK_DEEP], MARK_RING), count: 1, tier: 'hero', dz: 0 },
+    { kind: 'emit', name: 'hawk eyes', arrange: 'orbit', radius: 0.3, dz: 0.85, orbitSpeed: 5, rate: 18, dur: 3.0, attack: 0.1, release: 0.5, tier: 'hero',
+      pops: [{ colors: [HAWK, '#fff7dc'], opts: { ...EYE, size: 0.13 } }] },
+    { kind: 'emit', name: 'gold rising', arrange: 'disc', radius: 0.22, dz: 0.35, rate: 10, dur: 3.0, attack: 0.2, release: 0.6, tier: 'fine',
+      pops: [{ colors: [HAWK, HAWK_DEEP], opts: BRAND_MOTE }] },
+    { kind: 'burst', name: 'gold ring', recipe: recipe([HAWK, HAWK_DEEP], GOLD_RING), count: 14, tier: 'body', arrange: 'rim', radiusK: 0.8, outward: 0.35 },
+    { kind: 'burst', name: 'ring pulse', recipe: recipe([HAWK, '#fff7dc'], RING_POP), count: 6, tier: 'fine', arrange: 'ring', radiusK: 0.8, at: 0.3, every: 0.75, times: 3, decay: 0.85 },
+    { kind: 'glow', name: 'brand light', r: 0.55, rgb: ARCANE_GLOW, a: 0.24, dur: 3.0, attack: 0.1, release: 0.6, flicker: 0.25, dz: 0.3 },
+  ],
+};
+
+/**
+ * archery.brand_break — THE BRAND SPENT. The payoff lands on a branded
+ * body and the mark shatters: an ivory shock ring at the chest, the
+ * flash, gold shards flung on true height that lie and fleck, sparks
+ * that die in the air, turf shoved out from the wound, a gold
+ * after-ring on the ground.
+ */
+const brandBreak: EffectDef = {
+  id: 'archery.brand_break',
+  name: 'Archery — brand break',
+  story: 'the brand is spent: an ivory shock ring snaps out at the chest → the mark flares white → gold shards fling on true height, spin, and lie flecking the turf → sparks die in the air → the earth is shoved from the wound → a gold after-ring races out on the ground and fades',
+  layers: [
+    { kind: 'burst', name: 'shock ring', recipe: recipe(['#ffffff', IVORY], IVORY_RING), count: 12, tier: 'hero', arrange: 'ring', radius: 0.15 },
+    { kind: 'burst', name: 'mark flare', recipe: recipe(['#fff7dc', HAWK], { ...EYE, size: 0.42, life: 0.32, z: 0.75 }), count: 3, tier: 'hero' },
+    { kind: 'burst', name: 'mark bursts', recipe: recipe([HAWK, '#fff7dc'], { ...MARK_RING, life: 0.45, lifeVar: 0.1, size: 0.5, ringWidth: 0.1, sizeCurve: curveOf([0, 0.5, 0.5, 1.6, 1, 2.2]), alphaCurve: FADE_OUT, wave: undefined }), count: 1, tier: 'hero' },
+    { kind: 'burst', name: 'gold shards', recipe: recipe([HAWK, HAWK_DEEP], { ...GOLD_SHARD, speed: 1.3, drag: 1.2 }), count: 10, tier: 'body' },
+    { kind: 'burst', name: 'sparks', recipe: recipe([HAWK, '#fff7dc'], GOLD_SPARK), count: 14, tier: 'fine' },
+    { kind: 'burst', name: 'turf', recipe: recipe([LOAM, SHADE], { ...CLOD, speed: 1.2 }), count: 3, tier: 'hero' },
+    { kind: 'field', name: 'shove', field: { kind: 'attract', radius: 0.7, strength: -1.6, dur: 0.25, attack: 0.02, release: 0.12 } },
+    { kind: 'burst', name: 'after-ring', recipe: recipe([HAWK, HAWK_DEEP], AFTER_RING), count: 10, tier: 'fine', arrange: 'rim', radius: 0.12, outward: 1.4, at: 0.06 },
+    { kind: 'glow', name: 'break light', r: 0.8, rgb: ARCANE_GLOW, a: 0.3, dur: 0.35, attack: 0.02, release: 0.25, dz: 0.4 },
+  ],
+};
+
+/**
+ * archery.snare — THE JAW CLOSES. The snare lands and shuts: the stake
+ * drives (clods), the hemp cord races INWARD along the turf, iron teeth
+ * fly up at the rim and lie, a cinch drags the caught toward the
+ * center, dust puffs at the rim, and the cord ticks with glints for as
+ * long as the patch is held. No light: hemp and iron do not glow.
+ */
+const snare: EffectDef = {
+  id: 'archery.snare',
+  name: 'Archery — snare',
+  story: 'the snare shuts: the stake drives and clods fly → the hemp cord races inward along the turf → iron teeth fly up at the rim and lie in the grass → the cinch drags the patch to center → dust puffs at the rim and the turf scratches → glints tick on the held cord',
+  layers: [
+    { kind: 'burst', name: 'stake drives', recipe: recipe([LOAM, SHADE], CLOD), count: 3, tier: 'hero' },
+    { kind: 'burst', name: 'cord cinches', recipe: recipe([HEMP, HEMP_DARK], CORD), count: 22, tier: 'body', arrange: 'rim', radiusK: 1.0, outward: -1.8 },
+    { kind: 'burst', name: 'iron teeth', recipe: recipe([IRON, IVORY], TOOTH), count: 8, tier: 'hero', arrange: 'rim', radiusK: 0.85, at: 0.12 },
+    { kind: 'field', name: 'cinch', field: { kind: 'attract', radius: 1.4, strength: 1.4, dur: 0.45, attack: 0.05, release: 0.2 }, radiusK: 1.0 },
+    { kind: 'burst', name: 'stake dust', recipe: recipe([PALE, LOAM], { ...PUFF, size: 0.3, speed: 0.35, life: 0.85 }), count: 6, tier: 'body', arrange: 'disc', radiusK: 0.4, at: 0.1 },
+    { kind: 'burst', name: 'scratch', recipe: recipe([SAND, PALE], SKIRT), count: 8, tier: 'fine', arrange: 'disc', radiusK: 0.8, at: 0.15 },
+    { kind: 'emit', name: 'cord held', arrange: 'rim', radiusK: 0.7, outward: -0.5, rate: 14, dur: 1.5, attack: 0.15, release: 0.5, tier: 'body',
+      pops: [{ colors: [HEMP, HEMP_DARK], opts: { ...CORD, speed: 0.5, life: 0.7, drag: 0.5 } }] },
+    { kind: 'emit', name: 'cord ticks', arrange: 'ring', radiusK: 0.7, rate: 10, dur: 1.5, attack: 0.2, release: 0.5, tier: 'fine',
+      pops: [{ colors: [IRON, HEMP], opts: CORD_TICK }] },
+  ],
+};
+
+/**
+ * archery.briar — THE THORNS BREAK THE TURF. The seed arrow takes: the
+ * roots heave the turf, green-wood thorns stand up out of the disc in
+ * two waves and lie where they stood, sap flecks the dirt, leaf fines
+ * rock down, and the patch is DRAGGED to center. Re-spoken on a beat it
+ * is the planted patch keeping its teeth.
+ */
+const briar: EffectDef = {
+  id: 'archery.briar',
+  name: 'Archery — briar',
+  story: 'the seed takes: roots heave the turf and clods fly → green-wood thorns stand up out of the disc in waves and lie where they stood → sap flecks the dirt → leaf fines rock down → the patch is dragged to center → a rustle of leaf stays on the rim',
+  layers: [
+    { kind: 'burst', name: 'root heave', recipe: recipe([LOAM, SHADE], CLOD), count: 4, tier: 'hero', arrange: 'disc', radiusK: 0.6 },
+    { kind: 'burst', name: 'thorns', recipe: recipe([GREENWOOD, GREENWOOD_DEEP, LEAF], THORN), count: 10, tier: 'hero', arrange: 'disc', radiusK: 0.85, every: 0.18, times: 2, decay: 0.8 },
+    { kind: 'burst', name: 'sap flecks', recipe: recipe([LEAF, GREENWOOD_DEEP], SAP), count: 10, tier: 'body', arrange: 'disc', radiusK: 0.8 },
+    { kind: 'burst', name: 'leaf fines', recipe: recipe([LEAF, GREENWOOD], LEAF_FINE), count: 8, tier: 'fine', arrange: 'disc', radiusK: 0.9 },
+    { kind: 'field', name: 'gather', field: { kind: 'attract', radius: 1.4, strength: 1.2, dur: 0.5, attack: 0.05, release: 0.25 }, radiusK: 1.1 },
+    { kind: 'burst', name: 'turf puff', recipe: recipe([LOAM, PALE], { ...PUFF, size: 0.3, speed: 0.45, life: 0.85 }), count: 5, tier: 'body', arrange: 'disc', radiusK: 0.35 },
+    { kind: 'emit', name: 'rim rustle', arrange: 'rim', radiusK: 0.9, rate: 6, dur: 1.0, attack: 0.15, release: 0.4, tier: 'fine', outward: 0.3,
+      pops: [{ colors: [LEAF, GREENWOOD], opts: { ...LEAF_FINE, vz: 0.6, life: 1.2 } }] },
+  ],
+};
+
+/**
+ * archery.crescendo — THE LAST NOTE. The held note's final beat, or a
+ * payoff's heavy arrival: the vane flashes, an ivory ring snaps out at
+ * the shaft's entry, a crown of fletch chips flies, turf is shoved wide
+ * by a stronger blow, a bigger puff, a doubled skirt, fines sift. The
+ * thunk, heavier, and saying so.
+ */
+const crescendo: EffectDef = {
+  id: 'archery.crescendo',
+  name: 'Archery — crescendo',
+  story: 'the last note lands: the vane flashes white → an ivory ring snaps out at the entry → a crown of fletch chips flies and lies → turf is shoved wide and clods bounce → a bigger puff settles → a doubled scratch skirt splays → fines sift and the flecks stay',
+  layers: [
+    { kind: 'burst', name: 'vane flash', recipe: recipe(['#ffffff', IVORY], { ...QUIVER, size: 0.2, z: 0.6, life: 0.3 }), count: 3, tier: 'hero' },
+    { kind: 'burst', name: 'entry ring', recipe: recipe(['#ffffff', IVORY], { ...IVORY_RING, z: 0.3, speed: 3.5 }), count: 12, tier: 'hero', arrange: 'ring', radius: 0.15 },
+    { kind: 'burst', name: 'chip crown', recipe: recipe([FLETCH, IVORY], { ...CHIP, vz: 2.4, speed: 1.1 }), count: 12, tier: 'body' },
+    { kind: 'burst', name: 'turf', recipe: recipe([LOAM, SHADE], { ...CLOD, speed: 1.3, vz: 2.8 }), count: 5, tier: 'hero' },
+    { kind: 'burst', name: 'strike puff', recipe: recipe([LOAM, PALE, SHADE], { ...PUFF, speed: 0.6, size: 0.36, drag: 3 }), count: 8, tier: 'body', arrange: 'disc', radius: 0.1 },
+    { kind: 'burst', name: 'doubled skirt', recipe: recipe([SAND, PALE], SKIRT), count: 12, tier: 'fine', arrange: 'rim', radius: 0.1, outward: 3.4 },
+    { kind: 'field', name: 'shove', field: { kind: 'attract', radius: 0.8, strength: -2.0, dur: 0.3, attack: 0.02, release: 0.15 } },
+    { kind: 'burst', name: 'sift', recipe: recipe([SAND, PALE], SIFT), count: 8, tier: 'fine', arrange: 'disc', radius: 0.15, at: 0.08 },
+    { kind: 'glow', name: 'strike light', r: 0.7, rgb: DUST_GLOW, a: 0.2, dur: 0.3, attack: 0.02, release: 0.2 },
+  ],
+};
+
+export const ARCHERY_EFFECTS: EffectDef[] = [thunk, loose, fall, feathers, blackFeathers, flight, cinderfall, brand, brandBreak, snare, briar, crescendo];
 
 // ------------------------------------------------------------ plans
 //
@@ -448,83 +738,104 @@ export const ARCHERY_EFFECTS: EffectDef[] = [thunk, loose, fall, feathers, black
 // telegraph (a pure instrument, no plan) then `blast` at the target with
 // the art's radius (scale ≈ 1.35 at r2); channels re-run that per beat;
 // `dash`/`bolt`/`beam` carry x→x2; `field` lives for its ticks and
-// re-speaks any `every` cue; `nova` is at the caster.
+// re-speaks any `every` cue; `nova` is at the caster. THE MASTERED HAND:
+// a cast landed inside its follow window arrives with flourish `follow`
+// (onFollow cues added, ×1.15); a held note's last beat with `finale`
+// (onFinale, ×1.35); an art's aftermath arrives as its own `field` fx
+// `<art>:aftermath` at the field's radius for the field's life.
 
 export const ARCHERY_PLANS: Record<string, AbilityPlan> = {
-  // ---- THE SIGNATURE LAW: the archery wave -------------------------------
+  // ---- THE PATIENT EYE: the rungs ----------------------------------------
 
-  // Five arrows, five thunks, each a modest one — the fan is many, not heavy.
-  volley: { cues: [{ id: 'archery.thunk', scale: 0.75 }] },
-  // The through-bore: the heavy shaft's thunk, then a low shove of earth as it punches on through.
+  // ANSWER, `loose`. The roll writes itself on the turf (kick + gouge along the escape line), the string snaps at the rise and a covey flushes out of the roll — the loosed word, seen.
+  tumble_shot: { cues: [{ id: 'dust.kick', scale: 1.6 }, { id: 'dust.gouge', scale: 0.55, at: 0.05 }, { id: 'archery.loose', scale: 1.0, atFar: true, at: 0.35 }, { id: 'archery.feathers', scale: 0.5, radiusK: 0.4, atFar: true, at: 0.4 }] },
+  // PAYOFF reads brand. The full draw buries to the fletching (heavy thunk, the lane's chaff shoved flat); inside the brand window the mark SHATTERS on the body — gold shards, the ivory ring, the earth shoved.
+  kingshot: { cues: [{ id: 'archery.thunk', scale: 1.3 }, { id: 'dust.slam', scale: 0.5, at: 0.06 }], onFollow: [{ id: 'archery.brand_break', scale: 1.2, at: 0.02 }] },
+  // OPENER, `brand`. One line, and every body on it wears the hawk's mark: the thunk, then the brand STAYS — eyes circling the chest, gold on the ground.
+  longshot: { cues: [{ id: 'archery.thunk', scale: 1.15 }, { id: 'dust.slam', scale: 0.35, at: 0.08 }, { id: 'archery.brand', scale: 1.0, at: 0.1 }] },
+  // SUSTAIN, storm, finale ×1.5, reads `loose`. Each beat's arrow arrives still singing (thunk + crackle); sung after a loosed shot the wound sparks wider; the last note lands as the crescendo under a storm ring.
+  stringsong: { cues: [{ id: 'archery.thunk', scale: 0.9 }, { id: 'storm.charge', scale: 0.5, at: 0.02 }, { id: 'storm.nova', scale: 0.3, at: 0.03 }], onFollow: [{ id: 'storm.nova', scale: 0.45, at: 0.05 }], onFinale: [{ id: 'archery.crescendo', scale: 1.0 }, { id: 'storm.strike', scale: 0.8, at: 0.05 }] },
+  // PAYOFF reads brand|plant. The called sky lands: shafts on staggered clocks, feathers off the thicket; over a branded or planted patch a second, wider wave falls and the earth is slammed at the rim.
+  rain_of_arrows: { cues: [{ id: 'archery.fall', scale: 1.4, radiusK: 0.85 }, { id: 'archery.feathers', scale: 0.6, radiusK: 0.6, at: 0.45 }], onFollow: [{ id: 'archery.fall', scale: 1.0, radiusK: 1.15, at: 0.35 }, { id: 'dust.slam', scale: 0.9, radiusK: 1.0, at: 0.55 }] },
+  // OPENER, `brand`, the signature setup. The gold hour flashes on the ring, the stoop slams the center, feathers lie — and the whole ring is BRANDED: the hawk's eyes at the heart, a gold ring the size of the hour laid on the ground.
+  hawks_hour: { cues: [{ id: 'arcane.bloom', scale: 0.55 }, { id: 'dust.slam', scale: 1.0, at: 0.08 }, { id: 'archery.feathers', scale: 0.9, radiusK: 0.5, at: 0.15 }, { id: 'archery.brand', scale: 1.5, radiusK: 1.25, at: 0.12 }] },
+  // ANSWER, `plant`, licensed ROOT. The snare lands and the jaw closes: cord cinching inward, iron teeth at the rim, the caught dragged to center, the cord ticking while it holds.
+  snare_shot: { cues: [{ id: 'archery.snare', scale: 1.2, radiusK: 1.0 }] },
+  // Rank IV: frost on the cord — the ground stays cold after the snare lets go: a rime sheet standing on the patch, spears at the rim, re-fogged on its beats.
+  'snare_shot:aftermath': { cues: [{ id: 'frost.shards', scale: 0.5, radiusK: 0.9 }, { id: 'frost.fog', scale: 0.8, radiusK: 0.95, at: 0.2, every: 0.9 }] },
+  // SUSTAIN, drawn cold shot, reads `plant`. One drawn shaft of winter down the line (breath + down drifting onto it, the quill's point set at the far end); down a planted patch the far end cracks — spears and a cold nova where the caught stand.
+  winterflight: { cues: [{ id: 'frost.breath', scale: 0.9 }, { id: 'archery.feathers', scale: 0.45, at: 0.15 }, { id: 'frost.shards', scale: 0.5, atFar: true, at: 0.3 }], onFollow: [{ id: 'frost.nova', scale: 0.7, atFar: true, at: 0.3 }, { id: 'frost.shards', scale: 0.8, atFar: true, at: 0.35 }] },
+  // Rank IV: the line stays frozen behind the shaft — rime rails, a fog that keeps re-settling.
+  'winterflight:aftermath': { cues: [{ id: 'frost.shards', scale: 0.45, radiusK: 0.8 }, { id: 'frost.fog', scale: 0.8, radiusK: 1.0, at: 0.15, every: 0.9 }] },
+  // PAYOFF reads brand. Every hop is a flight (flash, line, thunk at the next body); loosed at a branded body the mark breaks where the carom lands.
+  ricochet: { cues: [{ id: 'archery.flight', scale: 1.1 }], onFollow: [{ id: 'archery.brand_break', scale: 0.9, atFar: true, at: 0.1 }] },
+  // OPENER, `plant`, burn + aftermath. The fireball that leaves fire: two campfire shafts arc down, the heads burst as one flame mass, the floor catches under them.
+  emberhead: { cues: [{ id: 'archery.fall', scale: 0.5, radiusK: 0.3 }, { id: 'fire.burst', scale: 0.95, at: 0.2 }, { id: 'fire.floor', scale: 0.7, radiusK: 0.85, at: 0.5 }] },
+  // The ground burns on after the pair: an ember bed re-catching on its beats, flakes still coming down out of the heat.
+  'emberhead:aftermath': { cues: [{ id: 'fire.floor', scale: 0.85, radiusK: 0.95, every: 1.0 }, { id: 'archery.cinderfall', scale: 0.55, radiusK: 0.8, at: 0.4, every: 1.3 }] },
+  // PAYOFF reads brand, the signature's second press. Two heavy shafts punch through (thunk + the chaff shoved); inside the brand both strike half again and the mark shatters on the line.
+  twin_strike: { cues: [{ id: 'archery.thunk', scale: 0.95 }, { id: 'dust.slam', scale: 0.35, at: 0.06 }], onFollow: [{ id: 'archery.brand_break', scale: 1.1, at: 0.02 }] },
+  // SUSTAIN, finale ×1.5, reads brand. The shuttle stitches foe to foe (the zap, the shuttle's own flight under it); off a branded body every pass holds a charge; the last pass strikes the far body and drives the shuttle home.
+  skyloom: { cues: [{ id: 'storm.arc', scale: 0.8 }, { id: 'archery.flight', scale: 0.5, at: 0.02 }], onFollow: [{ id: 'storm.charge', scale: 0.5, atFar: true, at: 0.05 }], onFinale: [{ id: 'storm.strike', scale: 0.9, atFar: true, at: 0.05 }, { id: 'archery.crescendo', scale: 0.9, atFar: true, at: 0.1 }] },
+  // ANSWER, knockback + licensed STAGGER. Counted to two: ONE great shaft drops plumb, the crater punches out, the crowd is thrown in a rolling cloud, fletch dust lifts off it.
+  skyfall_shot: { cues: [{ id: 'archery.fall', scale: 0.5, radiusK: 0.15 }, { id: 'dust.slam', scale: 1.6, at: 0.24 }, { id: 'dust.billow', scale: 0.6, radiusK: 0.9, at: 0.4 }, { id: 'archery.feathers', scale: 0.5, radiusK: 0.4, at: 0.45 }] },
+  // OPENER, `brand`, licensed WEAKEN + aftermath. The displaced light: the shot leaves, the dark is drawn in at the mouth, NIGHT arrives at the far end — and the hawk's mark burns gold inside the gloam.
+  gloamshaft: { cues: [{ id: 'archery.loose', scale: 0.8 }, { id: 'shadow.burst', scale: 0.7, at: 0.02 }, { id: 'shadow.burst', scale: 1.1, atFar: true, at: 0.28 }, { id: 'archery.brand', scale: 0.9, atFar: true, at: 0.35 }] },
+  // The gloam pools where the shaft passed: a veil that stands and re-fills on its beats, soul-flames waking in it.
+  'gloamshaft:aftermath': { cues: [{ id: 'shadow.veil', scale: 0.9, radiusK: 1.0, every: 0.9 }, { id: 'shadow.wisps', scale: 0.5, radiusK: 0.7, at: 0.2 }] },
+  // PAYOFF, drawn, returns, reads brand|plant. Out pale (a small thunk, the after-image lifting as smoke), home red (the wound beads); through a branded body or a planted patch the ghost bites both ways — the mark breaks, the blood sprays.
+  phantom_flight: { cues: [{ id: 'archery.thunk', scale: 0.6 }, { id: 'smoke.wisp', scale: 0.5, at: 0.12 }, { id: 'blood.hit', scale: 0.4, at: 0.3 }], onFollow: [{ id: 'archery.brand_break', scale: 0.9, at: 0.02 }, { id: 'blood.spray', scale: 0.6, at: 0.25 }] },
+  // SUSTAIN, finale ×2, reads `loose`. The wing that circles: a light thunk per pass, molted feathers where it has been; hungrier off a loosed shot; the last pass takes double — the crescendo, and the whole covey in the air.
+  harrier: { cues: [{ id: 'archery.thunk', scale: 0.65 }, { id: 'archery.feathers', scale: 0.9, radiusK: 0.5, at: 0.1 }], onFollow: [{ id: 'archery.feathers', scale: 0.6, radiusK: 0.6, at: 0.3 }], onFinale: [{ id: 'archery.crescendo', scale: 1.0 }, { id: 'archery.feathers', scale: 1.3, radiusK: 0.8, at: 0.15 }] },
+  // PAYOFF, staked volley, finale ×1.5, reads brand|plant. Each beat is one surge of shafts out of the owned sky; over a branded or planted patch a wider second wave; the last volley blackens the sky (a churning cloud), falls thickest and slams the earth.
+  storm_of_shafts: { cues: [{ id: 'archery.fall', scale: 1.05, radiusK: 0.8 }], onFollow: [{ id: 'archery.fall', scale: 0.7, radiusK: 1.15, at: 0.3 }], onFinale: [{ id: 'storm.cloud', scale: 0.9, radiusK: 0.8 }, { id: 'archery.fall', scale: 1.3, radiusK: 0.9, at: 0.25 }, { id: 'dust.slam', scale: 0.8, radiusK: 0.9, at: 0.6 }] },
+  // OPENER, `plant`, burn + aftermath. Noon comes down: one shaft point-first, the flare of noon where it buries, the burning pillar stands, and the court is set alight under it.
+  zenith: { cues: [{ id: 'archery.fall', scale: 0.45, radiusK: 0.15 }, { id: 'arcane.bloom', scale: 1.3, at: 0.2 }, { id: 'fire.pillar', scale: 1.1, at: 0.25 }, { id: 'fire.floor', scale: 0.6, radiusK: 0.9, at: 0.7 }] },
+  // The fire stays planted: the court's floor re-catching on its beats, noon's light still pulsing over it.
+  'zenith:aftermath': { cues: [{ id: 'fire.floor', scale: 1.0, radiusK: 0.95, every: 1.0 }, { id: 'arcane.bloom', scale: 0.4, radiusK: 0.5, at: 0.3, every: 1.6 }] },
+  // SUSTAIN, bleed, finale ×1.5, reads `plant`. The wheeling murder per call: the flock's dark at flight height, the dive strikes blood, black feathers pile; hungrier over a planted patch; the last call — the whole flock lands at once, black feathers everywhere, the field opened.
+  crowsong: { cues: [{ id: 'shadow.wisps', scale: 0.7, radiusK: 0.6 }, { id: 'blood.hit', scale: 0.6, at: 0.15 }, { id: 'archery.black_feathers', scale: 0.8, radiusK: 0.6, at: 0.25 }], onFollow: [{ id: 'blood.spray', scale: 0.5, at: 0.3 }], onFinale: [{ id: 'shadow.burst', scale: 0.8, radiusK: 0.7, at: 0.05 }, { id: 'archery.black_feathers', scale: 1.5, radiusK: 0.9, at: 0.15 }, { id: 'blood.spray', scale: 0.9, at: 0.2 }] },
+  // CROWN, storm seekers, brands, reads brand|plant|loose. Five throats: a modest thunk, storm-chips crackling at each terminus, and every body found wears the hawk's mark; read off a word the storm breaks the marks it finds in a ring of lightning.
+  arrow_tempest: { cues: [{ id: 'archery.thunk', scale: 0.8 }, { id: 'storm.charge', scale: 0.5, at: 0.05 }, { id: 'storm.nova', scale: 0.45, at: 0.04 }, { id: 'archery.brand', scale: 0.7, at: 0.12 }], onFollow: [{ id: 'archery.brand_break', scale: 0.8, at: 0.02 }, { id: 'storm.nova', scale: 0.45, at: 0.08 }] },
+  // ANSWER (the page), `loose`, knockback, reads `plant`. The no-further bar: four thunks, each with a radial shove; over a planted patch the shafts land as the crescendo and the shove doubles.
+  warden_volley: { cues: [{ id: 'archery.thunk', scale: 0.8 }, { id: 'dust.slam', scale: 0.4, at: 0.05 }], onFollow: [{ id: 'archery.crescendo', scale: 0.7 }, { id: 'dust.slam', scale: 0.6, at: 0.1 }] },
+
+  // ---- THE SECRET SHELF: the bow's cross-school spice ---------------------
+
+  // PAYOFF reads stagger|brand. Five arrows, five modest thunks; on a reeling or branded line every shaft breaks the mark.
+  volley: { cues: [{ id: 'archery.thunk', scale: 0.75 }], onFollow: [{ id: 'archery.brand_break', scale: 0.7, at: 0.02 }] },
+  // PAYOFF, vs sunder (consume). The through-bore: the heavy shaft's thunk, then a low shove of earth as it punches on through — the crack it spends is the brand the eye already sees.
   piercing_bolt: { cues: [{ id: 'archery.thunk', scale: 1.05 }, { id: 'dust.slam', scale: 0.45, at: 0.04 }] },
-  // The roll writes itself on the turf (kick + a gouge along the escape line), then the string twangs at the rise.
-  tumble_shot: { cues: [{ id: 'dust.kick', scale: 1.6 }, { id: 'dust.gouge', scale: 0.55, at: 0.05 }, { id: 'archery.loose', scale: 0.9, atFar: true, at: 0.4 }] },
-  // The darkened patch pays off as wood: shafts drop on staggered clocks; feathers sift off the standing thicket.
-  rain_of_arrows: { cues: [{ id: 'archery.fall', scale: 1.4, radiusK: 0.85 }, { id: 'archery.feathers', scale: 0.6, radiusK: 0.6, at: 0.45 }] },
-  // The held note: each beat's blast is one surge of steep streaks out of the owned sky.
-  storm_of_shafts: { cues: [{ id: 'archery.fall', scale: 1.05, radiusK: 0.8 }] },
-  // Buried to the feathers: the whole field's weight lands, and the sink shoves the earth a beat later.
-  longshot: { cues: [{ id: 'archery.thunk', scale: 1.25 }, { id: 'dust.slam', scale: 0.4, at: 0.1 }] },
-  // The stake drives, then eight teeth snap out of the turf; the jaw waits in silence after.
-  snare_shot: { cues: [{ id: 'archery.thunk', scale: 0.9 }, { id: 'dust.slam', scale: 0.55, at: 0.12 }] },
-  // Every hop is a flight: flash at the corner, the line, the thunk at the next body.
-  ricochet: { cues: [{ id: 'archery.flight', scale: 0.85 }] },
-  // Counted to two: ONE great shaft drops plumb at the center, the crater punches out, fletch dust lifts off it.
-  skyfall_shot: { cues: [{ id: 'archery.fall', scale: 0.5, radiusK: 0.15 }, { id: 'dust.slam', scale: 1.5, at: 0.24 }, { id: 'archery.feathers', scale: 0.5, radiusK: 0.4, at: 0.45 }] },
-  // The wound keeps no wood: a small thunk, then the pale after-image lifts out of it like smoke.
-  phantom_flight: { cues: [{ id: 'archery.thunk', scale: 0.6 }, { id: 'smoke.wisp', scale: 0.5, at: 0.12 }] },
-  // The seeker's coil: five modest thunks, storm-chips crackling at each terminus.
-  arrow_tempest: { cues: [{ id: 'archery.thunk', scale: 0.7 }, { id: 'storm.charge', scale: 0.35, at: 0.05 }] },
-  // The no-further bar: four thunks, each with a radial shove — the knockback written in dust.
-  warden_volley: { cues: [{ id: 'archery.thunk', scale: 0.8 }, { id: 'dust.slam', scale: 0.4, at: 0.05 }] },
-
-  // ---- THE SECOND BREATH SPEAKS: the loosed sky ---------------------------
-
-  // The whole lane kneels: a heavy thunk, then the chaff shoved flat to both sides.
-  kingshot: { cues: [{ id: 'archery.thunk', scale: 1.3 }, { id: 'dust.slam', scale: 0.5, at: 0.06 }] },
-  // Every beat's arrow arrives still singing: a light thunk with the note's hum crackling on the wound.
-  stringsong: { cues: [{ id: 'archery.thunk', scale: 0.6 }, { id: 'storm.charge', scale: 0.3, at: 0.02 }] },
-  // The stoop: the gold hour flashes on the ring, the strike slams the center, feathers knocked loose lie.
-  hawks_hour: { cues: [{ id: 'arcane.bloom', scale: 0.55 }, { id: 'dust.slam', scale: 1.1, at: 0.08 }, { id: 'archery.feathers', scale: 1.0, radiusK: 0.5, at: 0.15 }] },
-  // The great quill: cold breathed down the lane on the wind, down tufts drifting onto it, the quill's point set at the far end (rime rails grow beat over beat).
-  winterflight: { cues: [{ id: 'frost.breath', scale: 0.9 }, { id: 'archery.feathers', scale: 0.45, at: 0.15 }, { id: 'frost.shards', scale: 0.5, atFar: true, at: 0.3 }] },
-  // The coal-tipped shaft lands and STAYS: the thunk, then the head bursts as a live coal that keeps burning in its scorch.
-  emberhead: { cues: [{ id: 'archery.thunk', scale: 0.8 }, { id: 'fire.burst', scale: 0.55, at: 0.03 }] },
-  // The weft through the warp: the storm speaks the zap, the shuttle's own flight and loom-knot ride under it.
-  skyloom: { cues: [{ id: 'storm.arc', scale: 0.8 }, { id: 'archery.flight', scale: 0.5, at: 0.02 }] },
-  // The displaced light: the heavy shot leaves, the dark is drawn in at the mouth, and NIGHT arrives at the far end where the spent shaft lies in the stain.
-  gloamshaft: { cues: [{ id: 'archery.loose', scale: 0.8 }, { id: 'shadow.burst', scale: 0.7, at: 0.02 }, { id: 'shadow.burst', scale: 1.1, atFar: true, at: 0.28 }] },
-  // The hairpin: a light thunk per beat, molted feathers wobbling down where the harrier has been.
-  harrier: { cues: [{ id: 'archery.thunk', scale: 0.55 }, { id: 'archery.feathers', scale: 0.7, radiusK: 0.5, at: 0.1 }] },
-  // Noon comes down: one shaft point-first, then the flare of noon where it buries, then the burning pillar stands and its ash ring keeps the appointment.
-  zenith: { cues: [{ id: 'archery.fall', scale: 0.45, radiusK: 0.15 }, { id: 'arcane.bloom', scale: 1.3, at: 0.2 }, { id: 'fire.pillar', scale: 1.1, at: 0.25 }] },
-  // The wheeling murder, per beat: the flock's dark at flight height, the dive strikes blood, black feathers pile.
-  crowsong: { cues: [{ id: 'shadow.wisps', scale: 0.7, radiusK: 0.6 }, { id: 'blood.hit', scale: 0.6, at: 0.15 }, { id: 'archery.black_feathers', scale: 0.8, radiusK: 0.6, at: 0.25 }] },
-
-  // ---- THE ARMORY REMEMBERS: the archer's twelve --------------------------
-
-  // The blazed trail: the axe-head's thunk, then the notch beads red at its lower corner.
-  broadhead: { cues: [{ id: 'archery.thunk', scale: 1.0 }, { id: 'blood.hit', scale: 0.7, at: 0.06 }] },
-  // Three arrows, three coveys: a light thunk and the flush of down off each wound.
-  wingbeat: { cues: [{ id: 'archery.thunk', scale: 0.55 }, { id: 'archery.feathers', scale: 0.9, at: 0.03 }] },
-  // The jaw of spring: the rim erupts as the tusks break the turf; sap stains keep the ring after.
-  verdant_burst: { cues: [{ id: 'dust.slam', scale: 1.1, radiusK: 0.85 }, { id: 'venom.pool', scale: 0.5, radiusK: 0.7, at: 0.9 }] },
-  // The parted curtain: the note passes through — a thunk, and the parted air hangs pale a beat.
-  windsong: { cues: [{ id: 'archery.thunk', scale: 0.8 }, { id: 'water.mist', scale: 0.4, at: 0.04 }] },
-  // The hedge laid: five modest thunks, the barbs biting a little blood at each.
-  thorn_fan: { cues: [{ id: 'archery.thunk', scale: 0.65 }, { id: 'blood.hit', scale: 0.35, at: 0.1 }] },
-  // The pack's eyes: a small thunk, the winter dusk curling beneath, cold biting at the wound.
-  howling_loose: { cues: [{ id: 'archery.thunk', scale: 0.5 }, { id: 'frost.shards', scale: 0.4, at: 0.02 }, { id: 'frost.fog', scale: 0.5, at: 0.04 }] },
-  // The shut trap: the cage's bars stand up around the rim, the lock click-flashes at the center, the bars sublime to mist.
+  // OPENER, `rend`, bleed. The axe-head's thunk, the notch beads red, and the wound is LEFT — a pool for the shears to read.
+  broadhead: { cues: [{ id: 'archery.thunk', scale: 1.0 }, { id: 'blood.hit', scale: 0.7, at: 0.06 }, { id: 'blood.pool', scale: 0.45, at: 0.5 }] },
+  // ANSWER, `loose`, reads vanish. The skip back: the heel kicks, the string snaps at the far foot, three coveys flush; from the dark the feathers bite half again — the arrival is the crescendo out of a burst of dark.
+  wingbeat: { cues: [{ id: 'dust.kick', scale: 1.2 }, { id: 'archery.loose', scale: 0.9, atFar: true, at: 0.25 }, { id: 'archery.feathers', scale: 0.9, atFar: true, at: 0.3 }], onFollow: [{ id: 'shadow.burst', scale: 0.5, atFar: true, at: 0.2 }, { id: 'archery.crescendo', scale: 0.7, atFar: true, at: 0.35 }] },
+  // OPENER, `plant`, pull, bleed + aftermath. The seed takes: the briar breaks the turf, drags the patch to center, opens what it catches.
+  verdant_burst: { cues: [{ id: 'archery.briar', scale: 1.2, radiusK: 1.0 }, { id: 'blood.hit', scale: 0.4, at: 0.3 }] },
+  // The thorns stay: the planted patch re-grows its teeth on its beats and keeps tugging the caught to center.
+  'verdant_burst:aftermath': { cues: [{ id: 'archery.briar', scale: 0.85, radiusK: 0.9, every: 0.9 }] },
+  // PAYOFF, drawn, reads rally. The note passes through — a thunk, the parted air hanging pale; sung on a rally it lands as the crescendo and the whole line's air parts.
+  windsong: { cues: [{ id: 'archery.thunk', scale: 0.8 }, { id: 'water.mist', scale: 0.4, at: 0.04 }], onFollow: [{ id: 'archery.crescendo', scale: 1.0 }, { id: 'water.mist', scale: 0.6, at: 0.1 }] },
+  // PAYOFF, bleed, reads rend|expose. The hedge laid: five modest thunks, the barbs biting a little blood; on an opened body the briar breaks the turf under each and the wound sprays.
+  thorn_fan: { cues: [{ id: 'archery.thunk', scale: 0.65 }, { id: 'blood.hit', scale: 0.35, at: 0.1 }], onFollow: [{ id: 'archery.briar', scale: 0.5, radiusK: 0.5, at: 0.05 }, { id: 'blood.spray', scale: 0.5, at: 0.15 }] },
+  // OPENER, `chill`, reads `loose`. The pack's eyes: a small thunk, winter dusk curling beneath, cold biting at the wound; after a quick shot the pack runs harder — a cold nova at each bite.
+  howling_loose: { cues: [{ id: 'archery.thunk', scale: 0.5 }, { id: 'frost.shards', scale: 0.4, at: 0.02 }, { id: 'frost.fog', scale: 0.5, at: 0.04 }], onFollow: [{ id: 'frost.nova', scale: 0.5, at: 0.05 }] },
+  // ANSWER, `chill`, knockback + aftermath. The stamped limb: the cage's bars stand up around the rim, the lock click-flashes at the center, the bars sublime to mist — and the rime STAYS.
   hoarfrost: { cues: [{ id: 'frost.shards', scale: 1.4, radiusK: 1.0 }, { id: 'frost.nova', scale: 1.0, at: 0.35 }, { id: 'frost.fog', scale: 0.7, radiusK: 0.8, at: 1.4 }] },
-  // The remembered flight: it lands, the violet pinhole flashes, and the after-images drift up and dissolve.
-  ghost_shaft: { cues: [{ id: 'archery.thunk', scale: 0.5 }, { id: 'shadow.burst', scale: 0.55, at: 0.02 }, { id: 'smoke.wisp', scale: 0.4, at: 0.25 }] },
-  // The burning snow: the shaft comes back down first, then the flakes keep coming on the field's beat and the char drift grows.
-  cinder_rain: { cues: [{ id: 'archery.fall', scale: 0.45, radiusK: 0.3 }, { id: 'archery.cinderfall', scale: 1.1, radiusK: 0.9, at: 0.2, every: 0.8 }] },
-  // The road cleared: a full thunk, then the royal gold flares and its ring races out — the crowd parting.
-  kings_arrow: { cues: [{ id: 'archery.thunk', scale: 1.0 }, { id: 'arcane.bloom', scale: 0.65, at: 0.03 }] },
-  // The chart of the night: seven small thunks, a star igniting where each fell.
-  starfall_arrows: { cues: [{ id: 'archery.thunk', scale: 0.45 }, { id: 'arcane.bloom', scale: 0.42, at: 0.02 }] },
-  // The hanging rail: the railshot leaves, the rail hangs and re-forms along the corridor, then it overloads at the wall the ray died on.
-  skyrend: { cues: [{ id: 'archery.loose', scale: 0.8 }, { id: 'storm.arc', scale: 1.3, at: 0.02 }, { id: 'storm.strike', scale: 0.85, atFar: true, at: 0.45 }] },
+  // The rime sheet on the floor: spears at the rim, the fog re-settling on its beats, the ground riming under it.
+  'hoarfrost:aftermath': { cues: [{ id: 'frost.shards', scale: 0.4, radiusK: 0.9 }, { id: 'frost.fog', scale: 0.9, radiusK: 1.0, at: 0.2, every: 0.9 }] },
+  // PAYOFF reads vanish. The remembered flight: it lands, the violet pinhole flashes, after-images drift up; from the dark it arrives as the crescendo out of a burst of night.
+  ghost_shaft: { cues: [{ id: 'archery.thunk', scale: 0.5 }, { id: 'shadow.burst', scale: 0.55, at: 0.02 }, { id: 'smoke.wisp', scale: 0.4, at: 0.25 }], onFollow: [{ id: 'shadow.burst', scale: 1.0, at: 0.02 }, { id: 'archery.crescendo', scale: 0.9, at: 0.05 }] },
+  // SUSTAIN, `plant`, burn, reads burn. The burning snow: the shaft comes back down first, the flakes keep coming on the field's beat, the floor catches under them; over a body already burning the first fall detonates.
+  cinder_rain: { cues: [{ id: 'archery.fall', scale: 0.45, radiusK: 0.3 }, { id: 'archery.cinderfall', scale: 1.1, radiusK: 0.9, at: 0.2, every: 0.8 }, { id: 'fire.floor', scale: 0.5, radiusK: 0.8, at: 1.2, every: 1.6 }], onFollow: [{ id: 'fire.burst', scale: 0.8, radiusK: 0.6, at: 0.3 }] },
+  // PAYOFF reads taunt|stagger. The road cleared: a full thunk, the royal gold flares and its ring races out; on the called-out or reeling line the shot lands as the crescendo and the gold ward shatters.
+  kings_arrow: { cues: [{ id: 'archery.thunk', scale: 1.0 }, { id: 'arcane.bloom', scale: 0.65, at: 0.03 }], onFollow: [{ id: 'archery.crescendo', scale: 1.1 }, { id: 'arcane.shatter', scale: 0.6, at: 0.05 }] },
+  // SUSTAIN, finale ×1.5, reads hollow. The chart of the night: seven small thunks, a star igniting where each fell; under a hollowed sky the stars shatter; the last fall — the crescendo under a full bloom.
+  starfall_arrows: { cues: [{ id: 'archery.thunk', scale: 0.45 }, { id: 'arcane.bloom', scale: 0.42, at: 0.02 }], onFollow: [{ id: 'arcane.shatter', scale: 0.4, at: 0.04 }], onFinale: [{ id: 'arcane.bloom', scale: 0.9, at: 0.05 }, { id: 'archery.crescendo', scale: 0.7 }] },
+  // OPENER, drawn, `shock` + aftermath. The railshot: the string snaps, the rail hangs and re-forms along the corridor, then it overloads at the wall the ray died on.
+  skyrend: { cues: [{ id: 'archery.loose', scale: 0.8 }, { id: 'storm.arc', scale: 1.3, at: 0.02 }, { id: 'storm.strike', scale: 1.1, atFar: true, at: 0.45 }] },
+  // The line keeps crackling after the shaft has gone: a held charge re-peaking on its beats, a static ring re-snapping on the slower one.
+  'skyrend:aftermath': { cues: [{ id: 'storm.nova', scale: 0.4, radiusK: 0.7, every: 1.2 }, { id: 'storm.charge', scale: 0.9, radiusK: 0.8, at: 0.2, every: 0.6 }] },
+  // PAYOFF, the longest draw, reads wall|plant. Drawn past the ear: the heaviest thunk on the shelf, the chaff shoved flat, feathers knocked loose; behind a raised wall or over planted ground it lands as the crescendo and the earth is slammed.
+  full_draw: { cues: [{ id: 'archery.thunk', scale: 1.4 }, { id: 'dust.slam', scale: 0.6, at: 0.06 }, { id: 'archery.feathers', scale: 0.4, radiusK: 0.5, at: 0.2 }], onFollow: [{ id: 'archery.crescendo', scale: 1.3 }, { id: 'dust.slam', scale: 0.7, at: 0.12 }] },
 };
