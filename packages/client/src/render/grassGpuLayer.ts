@@ -27,7 +27,7 @@ import {
 } from './grassGpu.js';
 import { GrassOrnamentRenderer, ORNAMENT_INSTANCE_FLOATS, packOrnamentInstances } from './grassOrnament.js';
 import { GrassShadowRenderer } from './grassGpuShadow.js';
-import type { Blade, Flower, SeedHead } from './grass.js';
+import type { Blade, Flower, SeedHead, ElevOrnGroup } from './grass.js';
 
 /** G1 — one tall band's atlas→screen blit. `src*` are DEVICE px in the
  *  tall atlas canvas; `dst*` are CSS px on the frame. The renderer emits
@@ -45,6 +45,22 @@ export interface BandBlit {
   /** Skirt bands only: the object's shelf (`strat`), passed through from the
    *  band so the emitted DrawItem sorts in the object's own slot. */
   strat?: number;
+}
+
+/** A band's screen bounding box in CSS px (clamped to the viewport). */
+interface SlotBox {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/** One packed atlas slot in DEVICE px (a vertical-stack column). */
+interface AtlasSlot {
+  ax: number;
+  ay: number;
+  wDev: number;
+  hDev: number;
 }
 
 /** The camera + timing for one frame, in the renderer's own terms. */
@@ -138,6 +154,33 @@ export class GrassGpuLayer {
   private elevInstances: Float32Array = new Float32Array(0);
   private readonly elevBlits: BandBlit[] = [];
 
+  /** G-ELEVATED CAST path — its own offscreen atlas canvas + GL context +
+   *  shadow renderer. The raised coat's casts ride the SAME per-band atlas
+   *  machinery the elevated coat uses (one band per (row, level), LIFTED onto
+   *  its shelf by band.elev), so a raised blade's shade sits on its raised
+   *  surface. It cannot share the elevated coat atlas — both re-blit this same
+   *  frame at their own y-sort rows — so it keeps a sixth context. A lost
+   *  context simply drops the raised casts that frame. */
+  readonly elevShadowCanvas: HTMLCanvasElement;
+  private elevShadowGl: WebGL2RenderingContext | null = null;
+  private elevShadowRenderer: GrassShadowRenderer | null = null;
+  private elevShadowLost = false;
+  private elevShadowInstances: Float32Array = new Float32Array(0);
+  private readonly elevShadowBlits: BandBlit[] = [];
+
+  /** G-ELEVATED ORNAMENT path — its own offscreen atlas canvas + GL context +
+   *  ornament renderer. The raised flowers/seeds ride the SAME per-band atlas
+   *  machinery, one band per (row, level) LIFTED onto its shelf, so a raised
+   *  bloom sits on its raised surface (over the raised coat, under bodies). A
+   *  seventh context (all elevated paths re-blit this same frame at their own
+   *  rows); a lost context simply drops the raised blooms that frame. */
+  readonly elevOrnCanvas: HTMLCanvasElement;
+  private elevOrnGl: WebGL2RenderingContext | null = null;
+  private elevOrnRenderer: GrassOrnamentRenderer | null = null;
+  private elevOrnLost = false;
+  private elevOrnInstances: Float32Array = new Float32Array(0);
+  private readonly elevOrnBlits: BandBlit[] = [];
+
   constructor(palette: readonly string[], ornamentPalette: readonly string[]) {
     this.palette = palette;
     this.ornPalette = ornamentPalette;
@@ -223,6 +266,32 @@ export class GrassGpuLayer {
       this.buildRenderer();
     });
     this.elevGl = this.elevCanvas.getContext('webgl2', ctxOpts);
+
+    // G-ELEVATED CAST atlas — a sixth WebGL2 canvas/context (see field docs).
+    this.elevShadowCanvas = document.createElement('canvas');
+    this.elevShadowCanvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      this.elevShadowLost = true;
+      this.elevShadowRenderer = null;
+    });
+    this.elevShadowCanvas.addEventListener('webglcontextrestored', () => {
+      this.elevShadowLost = false;
+      this.buildRenderer();
+    });
+    this.elevShadowGl = this.elevShadowCanvas.getContext('webgl2', ctxOpts);
+
+    // G-ELEVATED ORNAMENT atlas — a seventh WebGL2 canvas/context (see docs).
+    this.elevOrnCanvas = document.createElement('canvas');
+    this.elevOrnCanvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      this.elevOrnLost = true;
+      this.elevOrnRenderer = null;
+    });
+    this.elevOrnCanvas.addEventListener('webglcontextrestored', () => {
+      this.elevOrnLost = false;
+      this.buildRenderer();
+    });
+    this.elevOrnGl = this.elevOrnCanvas.getContext('webgl2', ctxOpts);
     this.buildRenderer();
   }
 
@@ -277,6 +346,24 @@ export class GrassGpuLayer {
         this.elevRenderer?.dispose();
         this.elevRenderer = null;
         this.elevGl = null;
+      }
+    }
+    if (this.elevShadowGl && !this.elevShadowLost && !this.elevShadowRenderer) {
+      try {
+        this.elevShadowRenderer = new GrassShadowRenderer(this.elevShadowGl);
+      } catch {
+        this.elevShadowRenderer?.dispose();
+        this.elevShadowRenderer = null;
+        this.elevShadowGl = null;
+      }
+    }
+    if (this.elevOrnGl && !this.elevOrnLost && !this.elevOrnRenderer) {
+      try {
+        this.elevOrnRenderer = new GrassOrnamentRenderer(this.elevOrnGl, this.ornPalette);
+      } catch {
+        this.elevOrnRenderer?.dispose();
+        this.elevOrnRenderer = null;
+        this.elevOrnGl = null;
       }
     }
   }
@@ -515,8 +602,7 @@ export class GrassGpuLayer {
     // the FOUR world-extent corners projected (root line south, tip line
     // north) — 4 projections/band instead of 2/blade, the same bound with
     // the wind/trample margins folded in.
-    type Box = { x0: number; y0: number; x1: number; y1: number };
-    const boxes: (Box | null)[] = [];
+    const boxes: (SlotBox | null)[] = [];
     const proj = (wx: number, wy: number): { x: number; y: number } =>
       grassProjectMirror(f.scale, f.yScale, f.ox, f.oy, wx, wy);
     for (const band of bands) {
@@ -567,25 +653,7 @@ export class GrassGpuLayer {
     }
 
     // Pass 2: pack slots as a vertical stack; size the atlas to fit.
-    const MAX_ATLAS = 8192;
-    let atlasW = 1;
-    let atlasH = 0;
-    const slots: ({ ax: number; ay: number; wDev: number; hDev: number } | null)[] = [];
-    for (const box of boxes) {
-      if (!box) {
-        slots.push(null);
-        continue;
-      }
-      const wDev = Math.max(1, Math.ceil((box.x1 - box.x0) * dpr));
-      const hDev = Math.max(1, Math.ceil((box.y1 - box.y0) * dpr));
-      if (atlasH + hDev > MAX_ATLAS || wDev > MAX_ATLAS) {
-        slots.push(null); // atlas full — this band falls back to CPU tall
-        continue;
-      }
-      slots.push({ ax: 0, ay: atlasH, wDev, hDev });
-      atlasW = Math.max(atlasW, wDev);
-      atlasH += hDev;
-    }
+    const { slots, atlasW, atlasH } = this.packSlots(boxes, dpr);
     if (atlasH === 0) return out;
 
     if (canvas.width !== atlasW) canvas.width = atlasW;
@@ -646,6 +714,366 @@ export class GrassGpuLayer {
     return out;
   }
 
+  /** Pack each band's screen bbox into a distinct slot of ONE vertical-stack
+   *  atlas, sizing the atlas to fit. A null box (off-screen / empty band) or a
+   *  slot that would overflow MAX_ATLAS gets a null slot (that band is
+   *  dropped). Shared by the tall/skirt/elev coat, the elevated cast and the
+   *  elevated ornament paths so all size their atlas the same way. */
+  private packSlots(
+    boxes: readonly (SlotBox | null)[],
+    dpr: number,
+  ): { slots: (AtlasSlot | null)[]; atlasW: number; atlasH: number } {
+    const MAX_ATLAS = 8192;
+    let atlasW = 1;
+    let atlasH = 0;
+    const slots: (AtlasSlot | null)[] = [];
+    for (const box of boxes) {
+      if (!box) {
+        slots.push(null);
+        continue;
+      }
+      const wDev = Math.max(1, Math.ceil((box.x1 - box.x0) * dpr));
+      const hDev = Math.max(1, Math.ceil((box.y1 - box.y0) * dpr));
+      if (atlasH + hDev > MAX_ATLAS || wDev > MAX_ATLAS) {
+        slots.push(null); // atlas full — this band is dropped this frame
+        continue;
+      }
+      slots.push({ ax: 0, ay: atlasH, wDev, hDev });
+      atlasW = Math.max(atlasW, wDev);
+      atlasH += hDev;
+    }
+    return { slots, atlasW, atlasH };
+  }
+
+  /** True when the elevated cast atlas path can render this frame. */
+  get elevShadowOk(): boolean {
+    return this.elevShadowGl !== null && this.elevShadowRenderer !== null && !this.elevShadowLost;
+  }
+
+  /**
+   * G-ELEVATED — THE CAST RIDES THE SHELF. The cast analogue of renderElev:
+   * the raised coat's casts (the SAME elevated blade array + bands the coat
+   * uses) render through a per-band cast atlas, each band LIFTED onto its shelf
+   * (band.elev) and thrown along the light ray, so a raised blade's shade sits
+   * on its raised surface. Each slot is opaque union coverage (blend disabled),
+   * blitted UNDER the raised coat at the frame's shade alpha — matching the
+   * flat-field cast look. Returns each band's atlas src-rect + screen dst-rect
+   * for the renderer to y-sort just under the coat, over the terrace ground.
+   * `shade` is the cast colour 0..1; `sx,sy` the world-ground throw per unit
+   * world-height (grassShadowOffset). Returns [] when the context is
+   * unavailable or nothing is in view.
+   */
+  renderElevShadow(
+    elevBlades: readonly Blade[],
+    bands: readonly TallBand[],
+    f: GrassFrame,
+    shade: readonly [number, number, number],
+    sx: number,
+    sy: number,
+  ): BandBlit[] {
+    const out = this.elevShadowBlits;
+    out.length = 0;
+    const gl = this.elevShadowGl;
+    const renderer = this.elevShadowRenderer;
+    if (!this.elevShadowOk || !gl || !renderer) return out;
+    if (elevBlades.length === 0 || bands.length === 0) return out;
+    const dpr = f.dpr;
+
+    // The cast quad spans from the blade root along the light ray, so its bbox
+    // extends by the shadow throw (+ wind lean + a trample margin) beyond the
+    // blade roots — NOT straight up like the coat. Mirror the cast shader:
+    // H = height ×1.55, base half-width ×1.42×0.95 (+ margin). Throw = off·H.
+    const H_FACTOR = 1.55;
+    const HW_FACTOR = 1.42 * 0.95;
+    const X_MARGIN = 1.5;
+    const PX_PAD = 3;
+    const boxes: (SlotBox | null)[] = [];
+    const proj = (wx: number, wy: number): { x: number; y: number } =>
+      grassProjectMirror(f.scale, f.yScale, f.ox, f.oy, wx, wy);
+    for (const band of bands) {
+      let minBx = Infinity;
+      let maxBx = -Infinity;
+      let maxW = 0;
+      let maxH = 0;
+      let maxLean = 0;
+      for (let i = band.i0; i < band.i0 + band.count; i++) {
+        const b = elevBlades[i]!;
+        if (b.bx < minBx) minBx = b.bx;
+        if (b.bx > maxBx) maxBx = b.bx;
+        if (b.w > maxW) maxW = b.w;
+        if (b.h > maxH) maxH = b.h;
+        const al = Math.abs(b.lean);
+        if (al > maxLean) maxLean = al;
+      }
+      const halfW = maxW * HW_FACTOR + X_MARGIN;
+      const Hw = maxH * H_FACTOR; // world height that scales the throw
+      const throwX = sx * Hw;
+      const throwY = sy * Hw;
+      const pushMargin = Hw * 0.6; // trample lay-over can shove the tip
+      // The union of the root band and the shadow-thrown tip band.
+      const x0w = Math.min(minBx - halfW, minBx + throwX - maxLean - pushMargin - halfW);
+      const x1w = Math.max(maxBx + halfW, maxBx + throwX + maxLean + pushMargin + halfW);
+      const y0w = Math.min(band.minBy, band.minBy + throwY - pushMargin);
+      const y1w = Math.max(band.maxBy, band.maxBy + throwY + pushMargin);
+      const elev = band.elev ?? 0;
+      const liftPx = elev !== 0 ? elev * f.scale : 0;
+      let x0 = Infinity;
+      let y0 = Infinity;
+      let x1 = -Infinity;
+      let y1 = -Infinity;
+      for (const [wx, wy] of [
+        [x0w, y0w],
+        [x1w, y0w],
+        [x0w, y1w],
+        [x1w, y1w],
+      ] as const) {
+        const s = proj(wx, wy);
+        const syp = s.y - liftPx;
+        if (s.x < x0) x0 = s.x;
+        if (s.x > x1) x1 = s.x;
+        if (syp < y0) y0 = syp;
+        if (syp > y1) y1 = syp;
+      }
+      x0 = Math.max(0, Math.floor(x0 - PX_PAD));
+      y0 = Math.max(0, Math.floor(y0 - PX_PAD));
+      x1 = Math.min(f.wCss, Math.ceil(x1 + PX_PAD));
+      y1 = Math.min(f.hCss, Math.ceil(y1 + PX_PAD));
+      boxes.push(x1 > x0 && y1 > y0 ? { x0, y0, x1, y1 } : null);
+    }
+
+    const { slots, atlasW, atlasH } = this.packSlots(boxes, dpr);
+    if (atlasH === 0) return out;
+    const canvas = this.elevShadowCanvas;
+    if (canvas.width !== atlasW) canvas.width = atlasW;
+    if (canvas.height !== atlasH) canvas.height = atlasH;
+    gl.viewport(0, 0, atlasW, atlasH);
+    gl.disable(gl.SCISSOR_TEST);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    const proj3: GrassProj = {
+      scale: f.scale,
+      yScale: f.yScale,
+      ox: f.ox,
+      oy: f.oy,
+      wCss: f.wCss,
+      hCss: f.hCss,
+    };
+    const packed = packBladeInstances(elevBlades, this.elevShadowInstances);
+    this.elevShadowInstances = packed;
+    renderer.beginBands(packed, elevBlades.length, proj3, f.timeSec, shade, sx, sy, {
+      windGain: f.windGain,
+      disturb: f.disturb,
+      disturbVel: f.disturbVel,
+    });
+    gl.enable(gl.SCISSOR_TEST);
+    const SW = f.wCss * dpr;
+    const SH = f.hCss * dpr;
+    for (let k = 0; k < bands.length; k++) {
+      const slot = slots[k];
+      const box = boxes[k];
+      if (!slot || !box) continue;
+      const bandSx = box.x0 * dpr;
+      const bandSy = box.y0 * dpr;
+      gl.scissor(slot.ax, atlasH - (slot.ay + slot.hDev), slot.wDev, slot.hDev);
+      const remap = bandNdcRemap(SW, SH, atlasW, atlasH, bandSx, bandSy, slot.ax, slot.ay);
+      renderer.drawBand(bands[k]!.i0, bands[k]!.count, remap, bands[k]!.elev ?? 0);
+      out.push({
+        srcX: slot.ax,
+        srcY: slot.ay,
+        srcW: slot.wDev,
+        srcH: slot.hDev,
+        dstX: box.x0,
+        dstY: box.y0,
+        dstW: box.x1 - box.x0,
+        dstH: box.y1 - box.y0,
+        sortY: bands[k]!.sortY,
+        strat: bands[k]!.strat,
+      });
+    }
+    renderer.drawBandEnd();
+    gl.disable(gl.SCISSOR_TEST);
+    return out;
+  }
+
+  /** True when the elevated ornament atlas path can render this frame. */
+  get elevOrnOk(): boolean {
+    return this.elevOrnGl !== null && this.elevOrnRenderer !== null && !this.elevOrnLost;
+  }
+
+  /**
+   * G-ELEVATED — THE BLOOM RIDES THE SHELF. The ornament analogue of
+   * renderElev: the raised flowers + seed-heads (grouped one band per (row,
+   * level) by collectGpuElevatedOrnaments) render through a per-band ornament
+   * atlas, each band LIFTED onto its shelf (group.elev). Flowers and seeds
+   * share one draw per group — the buffer is packed group-contiguous (a
+   * group's flowers then its seeds), and the shader's `kind` selects the head.
+   * Each band is emitted as a y-sorted DrawItem OVER the raised coat, under
+   * bodies on the row. Returns [] when the context is unavailable or nothing is
+   * in view.
+   */
+  renderElevOrnament(
+    flowers: readonly Flower[],
+    seeds: readonly SeedHead[],
+    groups: readonly ElevOrnGroup[],
+    f: GrassFrame,
+  ): BandBlit[] {
+    const out = this.elevOrnBlits;
+    out.length = 0;
+    const gl = this.elevOrnGl;
+    const renderer = this.elevOrnRenderer;
+    if (!this.elevOrnOk || !gl || !renderer) return out;
+    if (groups.length === 0) return out;
+    const dpr = f.dpr;
+
+    // Pack group-contiguous so each group is one contiguous instance slice: a
+    // group's flowers (kind 0) then its seeds (kind 1). Records into the same
+    // ORNAMENT_INSTANCE_FLOATS layout packOrnamentInstances writes, so the
+    // ornament shader reads it unchanged.
+    const total = flowers.length + seeds.length;
+    const need = total * ORNAMENT_INSTANCE_FLOATS;
+    let buf =
+      this.elevOrnInstances.length >= need ? this.elevOrnInstances : new Float32Array(need);
+    const ranges: { i0: number; count: number }[] = [];
+    let w = 0;
+    let inst = 0;
+    for (const g of groups) {
+      const i0 = inst;
+      for (let i = 0; i < g.fCount; i++) {
+        const fl = flowers[g.fStart + i]!;
+        buf[w] = fl.bx;
+        buf[w + 1] = fl.by;
+        buf[w + 2] = fl.h;
+        buf[w + 3] = fl.size;
+        buf[w + 4] = 0; // kind = flower
+        buf[w + 5] = fl.pal;
+        buf[w + 6] = fl.phase;
+        buf[w + 7] = 0; // lean (flowers don't lean)
+        w += ORNAMENT_INSTANCE_FLOATS;
+        inst++;
+      }
+      for (let i = 0; i < g.sCount; i++) {
+        const sd = seeds[g.sStart + i]!;
+        buf[w] = sd.bx;
+        buf[w + 1] = sd.by;
+        buf[w + 2] = sd.h;
+        buf[w + 3] = sd.size;
+        buf[w + 4] = 1; // kind = seed
+        buf[w + 5] = 0;
+        buf[w + 6] = sd.phase;
+        buf[w + 7] = sd.lean;
+        w += ORNAMENT_INSTANCE_FLOATS;
+        inst++;
+      }
+      ranges.push({ i0, count: g.fCount + g.sCount });
+    }
+    this.elevOrnInstances = buf;
+
+    // Pass 1: each group's screen bbox. Blooms grow UP from the root (head at
+    // by − h, petals ±size, wind bob up to ~h); the bbox folds those margins.
+    const X_MARGIN = 0.5;
+    const PX_PAD = 3;
+    const boxes: (SlotBox | null)[] = [];
+    const proj = (wx: number, wy: number): { x: number; y: number } =>
+      grassProjectMirror(f.scale, f.yScale, f.ox, f.oy, wx, wy);
+    // Group x-extent: sweep roots per group (cheap; blooms are sparse).
+    for (let gi = 0; gi < groups.length; gi++) {
+      const g = groups[gi]!;
+      let minBx = Infinity;
+      let maxBx = -Infinity;
+      for (let i = 0; i < g.fCount; i++) {
+        const fl = flowers[g.fStart + i]!;
+        if (fl.bx < minBx) minBx = fl.bx;
+        if (fl.bx > maxBx) maxBx = fl.bx;
+      }
+      for (let i = 0; i < g.sCount; i++) {
+        const sd = seeds[g.sStart + i]!;
+        if (sd.bx < minBx) minBx = sd.bx;
+        if (sd.bx > maxBx) maxBx = sd.bx;
+      }
+      if (minBx === Infinity) {
+        boxes.push(null);
+        continue;
+      }
+      // Petals reach one size-arm out from the head + half a chip; wind bob
+      // shoves the head sideways up to ~height. Fold both into the half-width.
+      const halfW = g.maxSize * 1.5 + g.maxH + X_MARGIN;
+      const topY = g.minBy - g.maxH - g.maxSize * 1.5; // head + upward petal
+      const botY = g.maxBy + g.maxSize; // downward petal
+      const liftPx = g.elev !== 0 ? g.elev * f.scale : 0;
+      let x0 = Infinity;
+      let y0 = Infinity;
+      let x1 = -Infinity;
+      let y1 = -Infinity;
+      for (const [wx, wy] of [
+        [minBx - halfW, botY],
+        [maxBx + halfW, botY],
+        [minBx - halfW, topY],
+        [maxBx + halfW, topY],
+      ] as const) {
+        const s = proj(wx, wy);
+        const syp = s.y - liftPx;
+        if (s.x < x0) x0 = s.x;
+        if (s.x > x1) x1 = s.x;
+        if (syp < y0) y0 = syp;
+        if (syp > y1) y1 = syp;
+      }
+      x0 = Math.max(0, Math.floor(x0 - PX_PAD));
+      y0 = Math.max(0, Math.floor(y0 - PX_PAD));
+      x1 = Math.min(f.wCss, Math.ceil(x1 + PX_PAD));
+      y1 = Math.min(f.hCss, Math.ceil(y1 + PX_PAD));
+      boxes.push(x1 > x0 && y1 > y0 ? { x0, y0, x1, y1 } : null);
+    }
+
+    const { slots, atlasW, atlasH } = this.packSlots(boxes, dpr);
+    if (atlasH === 0) return out;
+    const canvas = this.elevOrnCanvas;
+    if (canvas.width !== atlasW) canvas.width = atlasW;
+    if (canvas.height !== atlasH) canvas.height = atlasH;
+    gl.viewport(0, 0, atlasW, atlasH);
+    gl.disable(gl.SCISSOR_TEST);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    const proj3: GrassProj = {
+      scale: f.scale,
+      yScale: f.yScale,
+      ox: f.ox,
+      oy: f.oy,
+      wCss: f.wCss,
+      hCss: f.hCss,
+    };
+    renderer.beginBands(buf, total, proj3, f.timeSec);
+    gl.enable(gl.SCISSOR_TEST);
+    const SW = f.wCss * dpr;
+    const SH = f.hCss * dpr;
+    for (let k = 0; k < groups.length; k++) {
+      const slot = slots[k];
+      const box = boxes[k];
+      const range = ranges[k]!;
+      if (!slot || !box || range.count === 0) continue;
+      const bandSx = box.x0 * dpr;
+      const bandSy = box.y0 * dpr;
+      gl.scissor(slot.ax, atlasH - (slot.ay + slot.hDev), slot.wDev, slot.hDev);
+      const remap = bandNdcRemap(SW, SH, atlasW, atlasH, bandSx, bandSy, slot.ax, slot.ay);
+      renderer.drawBand(range.i0, range.count, remap, groups[k]!.elev);
+      out.push({
+        srcX: slot.ax,
+        srcY: slot.ay,
+        srcW: slot.wDev,
+        srcH: slot.hDev,
+        dstX: box.x0,
+        dstY: box.y0,
+        dstW: box.x1 - box.x0,
+        dstH: box.y1 - box.y0,
+        sortY: groups[k]!.sortY,
+      });
+    }
+    renderer.drawBandEnd();
+    gl.disable(gl.SCISSOR_TEST);
+    return out;
+  }
+
   /** Free the GL programs/buffers and drop the context. Idempotent. */
   dispose(): void {
     this.renderer?.dispose();
@@ -654,27 +1082,37 @@ export class GrassGpuLayer {
     this.shadowRenderer?.dispose();
     this.skirtRenderer?.dispose();
     this.elevRenderer?.dispose();
+    this.elevShadowRenderer?.dispose();
+    this.elevOrnRenderer?.dispose();
     this.renderer = null;
     this.ornaments = null;
     this.tallRenderer = null;
     this.shadowRenderer = null;
     this.skirtRenderer = null;
     this.elevRenderer = null;
+    this.elevShadowRenderer = null;
+    this.elevOrnRenderer = null;
     this.gl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.tallGl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.shadowGl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.skirtGl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.elevGl?.getExtension('WEBGL_lose_context')?.loseContext();
+    this.elevShadowGl?.getExtension('WEBGL_lose_context')?.loseContext();
+    this.elevOrnGl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.gl = null;
     this.tallGl = null;
     this.shadowGl = null;
     this.skirtGl = null;
     this.elevGl = null;
+    this.elevShadowGl = null;
+    this.elevOrnGl = null;
     this.lost = true;
     this.tallLost = true;
     this.shadowLost = true;
     this.skirtLost = true;
     this.elevLost = true;
+    this.elevShadowLost = true;
+    this.elevOrnLost = true;
   }
 }
 

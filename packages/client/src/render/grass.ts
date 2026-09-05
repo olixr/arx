@@ -146,6 +146,28 @@ export interface SeedHead {
   bin: number; // quantized phase → flutter-table index
 }
 
+/**
+ * G-ELEVATED — THE BLOOM RIDES THE SHELF. One (row, level) group of raised
+ * ornaments: a contiguous slice of the flowers array (`fStart`, `fCount`) AND
+ * of the seeds array (`sStart`, `sCount`), lifted onto its shelf (`elev` =
+ * level·ELEV_H) and y-sorted at `sortY`. `minBy/maxBy` and the record maxima
+ * (`maxH`, `maxSize`) are pre-swept here so the GPU layer sizes each band's
+ * atlas slot without re-touching the records. One band per group is rendered
+ * (flowers + seeds share the draw; the shader's `kind` selects the head).
+ */
+export interface ElevOrnGroup {
+  fStart: number;
+  fCount: number;
+  sStart: number;
+  sCount: number;
+  sortY: number;
+  elev: number;
+  minBy: number;
+  maxBy: number;
+  maxH: number;
+  maxSize: number;
+}
+
 export interface GrassTileGeom {
   /** Short blades — always drawn under entities. */
   under: Blade[];
@@ -1137,6 +1159,89 @@ export class GrassSystem {
       }
     }
     return flowersOut.length + seedsOut.length;
+  }
+
+  /**
+   * G-ELEVATED — THE BLOOM RIDES THE SHELF. The ornament analogue of
+   * collectGpuElevated: gather the RAISED-terrain flowers + seed-heads (tiles
+   * whose `elevAt` level ≠ 0) grouped into ONE band per (row, level) so each
+   * can be lifted onto its shelf and y-sorted at its own row (drawn OVER the
+   * elevated coat, under the bodies standing on it). Flat (level-0) tiles are
+   * ignored — their blooms ride the flat GPU field (collectGpuOrnaments). All
+   * three output arrays are caller-owned and pooled (truncated here); cached
+   * records are pushed by reference. `elevH` is one level's world height
+   * (ELEV_H). Each group's record maxima are swept here so the GPU layer sizes
+   * its atlas slot without re-touching the records.
+   */
+  collectGpuElevatedOrnaments(
+    ground: Sampler,
+    detail: DetailFn,
+    elevAt: (tx: number, ty: number) => number,
+    bounds: GrassBounds,
+    elevH: number,
+    flowersOut: Flower[],
+    seedsOut: SeedHead[],
+    groups: ElevOrnGroup[],
+  ): void {
+    flowersOut.length = 0;
+    seedsOut.length = 0;
+    groups.length = 0;
+    const levels = this.elevLevelScratch;
+    for (let ty = bounds.minTy; ty <= bounds.maxTy; ty++) {
+      levels.length = 0;
+      for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
+        const t = ground(tx, ty);
+        if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
+        const lvl = elevAt(tx, ty);
+        if (lvl === 0) continue;
+        if (!levels.includes(lvl)) levels.push(lvl);
+      }
+      for (const lvl of levels) {
+        const fStart = flowersOut.length;
+        const sStart = seedsOut.length;
+        let minBy = Infinity;
+        let maxBy = -Infinity;
+        let maxH = 0;
+        let maxSize = 0;
+        for (let tx = bounds.minTx; tx <= bounds.maxTx; tx++) {
+          const t = ground(tx, ty);
+          if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
+          if (elevAt(tx, ty) !== lvl) continue;
+          const geom = this.tile(tx, ty, t, detail(tx, ty), ground).geom;
+          for (const fl of geom.flowers) {
+            flowersOut.push(fl);
+            if (fl.by < minBy) minBy = fl.by;
+            if (fl.by > maxBy) maxBy = fl.by;
+            if (fl.h > maxH) maxH = fl.h;
+            if (fl.size > maxSize) maxSize = fl.size;
+          }
+          for (const sd of geom.seeds) {
+            seedsOut.push(sd);
+            if (sd.by < minBy) minBy = sd.by;
+            if (sd.by > maxBy) maxBy = sd.by;
+            if (sd.h > maxH) maxH = sd.h;
+            if (sd.size > maxSize) maxSize = sd.size;
+          }
+        }
+        const fCount = flowersOut.length - fStart;
+        const sCount = seedsOut.length - sStart;
+        if (fCount === 0 && sCount === 0) continue;
+        groups.push({
+          fStart,
+          fCount,
+          sStart,
+          sCount,
+          // Just past the elevated coat's row (ty + 0.001) so the blooms sit
+          // OVER the raised blades, yet under a body standing on the row.
+          sortY: ty + 0.0015,
+          elev: lvl * elevH,
+          minBy,
+          maxBy,
+          maxH,
+          maxSize,
+        });
+      }
+    }
   }
 
 }

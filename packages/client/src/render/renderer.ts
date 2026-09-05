@@ -203,7 +203,7 @@ import * as rockArt from './rockArt.js';
 import { FENCE_POST, FENCE_RAIL, PANEL_DOOR_TILES } from './paintVocab.js';
 import { radialGlowSprite } from './glowSprite.js';
 import { Birds, type Bird, type BirdEnv } from './birds.js';
-import { GrassSystem, windAtInto, windScalarAt, generateSkirtBlades, BLADE_FILLS, ORNAMENT_FILLS, type Disturber, type WindSample, type Blade, type GrassBounds, type Flower, type SeedHead } from './grass.js';
+import { GrassSystem, windAtInto, windScalarAt, generateSkirtBlades, BLADE_FILLS, ORNAMENT_FILLS, type Disturber, type WindSample, type Blade, type GrassBounds, type Flower, type SeedHead, type ElevOrnGroup } from './grass.js';
 import { GrassGpuLayer, type GrassFrame, type BandBlit } from './grassGpuLayer.js';
 import { partitionTallBands, coalesceTallBands, type TallBand } from './grassGpu.js';
 import { grassRootedSkirtAt, skirtStrengthForTile, wallSkirtSidesAt, SIDE_ALL } from './grassSkirt.js';
@@ -1499,6 +1499,19 @@ export class Renderer {
   private readonly grassElevBands: TallBand[] = [];
   private grassElevBlits: readonly BandBlit[] = [];
   private grassElevCanvas: HTMLCanvasElement | null = null;
+  /** G-ELEVATED CAST — the raised coat's casts ride the same per-band atlas as
+   *  the coat, lifted onto their shelves, emitted UNDER the coat / over the
+   *  terrace ground. Reuses grassElev/grassElevBands (the cast reads the blade
+   *  instances); only the rendered blits + canvas are its own. */
+  private grassElevShadowBlits: readonly BandBlit[] = [];
+  private grassElevShadowCanvas: HTMLCanvasElement | null = null;
+  /** G-ELEVATED ORNAMENT — the raised flowers/seeds gather (one group per row/
+   *  level) + rendered blits + canvas, emitted OVER the raised coat. */
+  private readonly grassElevFlowers: Flower[] = [];
+  private readonly grassElevSeeds: SeedHead[] = [];
+  private readonly grassElevOrnGroups: ElevOrnGroup[] = [];
+  private grassElevOrnBlits: readonly BandBlit[] = [];
+  private grassElevOrnCanvas: HTMLCanvasElement | null = null;
   /** This frame's GrassFrame (camera/wind), stashed by drawGrassGpu so the
    *  later skirt pass renders under the exact same projection + wind. */
   private grassFrameSaved: GrassFrame | null = null;
@@ -19487,32 +19500,126 @@ export class Renderer {
     );
     this.grassElevBlits = [];
     this.grassElevCanvas = null;
+    this.grassElevShadowBlits = [];
+    this.grassElevShadowCanvas = null;
+    this.grassElevOrnBlits = [];
+    this.grassElevOrnCanvas = null;
     if (bands.length === 0) return;
+
+    // G-ELEVATED CAST — THE CAST RIDES THE SHELF. Before the raised coat,
+    // throw its casts through the SAME per-band atlas, LIFTED onto their
+    // shelves; emit each UNDER its coat band (sortY − a hair, so it lands over
+    // the terrace ground quad at row − 0.01 yet under the raised blades) and
+    // composite at the frame's shade alpha, exactly as the flat cast layer
+    // does. Skipped when the sun casts no shade.
+    if (this.sky.shadowAlpha >= 0.02) {
+      const off = grassShadowOffset(this.sky.shadowX, this.sky.shadowY, this.sky.shadowLen);
+      const shade = this.sky.moonlit ? SHADOW_MOON_RGB : SHADOW_SUN_RGB;
+      const sblits = layer.renderElevShadow(blades, bands, frame, shade, off.x, off.y);
+      if (sblits.length > 0) {
+        this.grassElevShadowBlits = sblits;
+        this.grassElevShadowCanvas = layer.elevShadowCanvas;
+        const scanvas = layer.elevShadowCanvas;
+        const alpha = Math.min(1, this.sky.shadowAlpha * 0.7);
+        for (const bl of sblits) {
+          const b = bl;
+          const blit = (): void => {
+            const prevA = this.ctx.globalAlpha;
+            this.ctx.globalAlpha = alpha;
+            this.ctx.drawImage(scanvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH);
+            this.ctx.globalAlpha = prevA;
+          };
+          items.push({
+            // Just under the coat band (row + 0.001) so the shade lies over the
+            // terrace ground (row − 0.01) and beneath the raised blades.
+            sortY: b.sortY - 0.006,
+            stageSafe: true,
+            draw: () => {
+              if (this.stageAssembling) {
+                this.stagePushPaintRaw(b.dstX, b.dstY, b.dstW, b.dstH, blit, 'grass-elev-cast');
+              } else {
+                blit();
+              }
+            },
+          } as DrawItem);
+        }
+      }
+    }
+
     const blits = layer.renderElev(blades, bands, frame);
-    if (blits.length === 0) return;
-    this.grassElevBlits = blits;
-    this.grassElevCanvas = layer.elevCanvas;
-    const canvas = layer.elevCanvas;
-    for (const bl of this.grassElevBlits) {
-      const b = bl;
-      items.push({
-        sortY: b.sortY,
-        stageSafe: true,
-        draw: () => {
-          if (this.stageAssembling) {
-            this.stagePushPaintRaw(
-              b.dstX,
-              b.dstY,
-              b.dstW,
-              b.dstH,
-              () => this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH),
-              'grass-elev',
-            );
-          } else {
-            this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH);
-          }
-        },
-      } as DrawItem);
+    if (blits.length > 0) {
+      this.grassElevBlits = blits;
+      this.grassElevCanvas = layer.elevCanvas;
+      const canvas = layer.elevCanvas;
+      for (const bl of blits) {
+        const b = bl;
+        items.push({
+          sortY: b.sortY,
+          stageSafe: true,
+          draw: () => {
+            if (this.stageAssembling) {
+              this.stagePushPaintRaw(
+                b.dstX,
+                b.dstY,
+                b.dstW,
+                b.dstH,
+                () => this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH),
+                'grass-elev',
+              );
+            } else {
+              this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH);
+            }
+          },
+        } as DrawItem);
+      }
+    }
+
+    // G-ELEVATED ORNAMENT — THE BLOOM RIDES THE SHELF. Gather the raised
+    // flowers/seeds (one group per row/level) and render them through their own
+    // per-band atlas, LIFTED onto their shelves; emit each OVER its coat band
+    // (group.sortY = row + 0.0015) so the blooms sit on the raised blades,
+    // under bodies on the row.
+    const flowers = this.grassElevFlowers;
+    const seeds = this.grassElevSeeds;
+    const groups = this.grassElevOrnGroups;
+    this.grass.collectGpuElevatedOrnaments(
+      (tx, ty) => this.fgGroundAt(tx, ty),
+      (tx, ty) => this.fgDetailAt(tx, ty),
+      (tx, ty) => this.fgElevAt(tx, ty),
+      eb,
+      ELEV_H,
+      flowers,
+      seeds,
+      groups,
+    );
+    if (groups.length > 0) {
+      const oblits = layer.renderElevOrnament(flowers, seeds, groups, frame);
+      if (oblits.length > 0) {
+        this.grassElevOrnBlits = oblits;
+        this.grassElevOrnCanvas = layer.elevOrnCanvas;
+        const ocanvas = layer.elevOrnCanvas;
+        for (const bl of oblits) {
+          const b = bl;
+          items.push({
+            sortY: b.sortY,
+            stageSafe: true,
+            draw: () => {
+              if (this.stageAssembling) {
+                this.stagePushPaintRaw(
+                  b.dstX,
+                  b.dstY,
+                  b.dstW,
+                  b.dstH,
+                  () => this.ctx.drawImage(ocanvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH),
+                  'grass-elev-orn',
+                );
+              } else {
+                this.ctx.drawImage(ocanvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH);
+              }
+            },
+          } as DrawItem);
+        }
+      }
     }
   }
 

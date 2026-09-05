@@ -281,6 +281,15 @@ test('the grass cast shader embeds the shared wind and projection', () => {
   assert.match(src, /uShadow \* H/); // ground throw scales with world height
 });
 
+test('the grass cast shader lifts + slots for elevated cast bands', () => {
+  const src = grassShadowVertSrc();
+  // uElev (inside grassProject) lifts a raised cast onto its shelf; uNdcRemap
+  // retargets it into its atlas slot — the same elevated-band routing the coat
+  // uses, so a raised blade's shade sits on its raised surface.
+  assert.match(src, /uNdcRemap/, 'cast applies the atlas remap for elevated bands');
+  assert.match(src, /c2\.xy \* uNdcRemap\.xy \+ uNdcRemap\.zw/, 'remap is a post-projection NDC affine');
+});
+
 test('grassShadowOffset folds the sky shear to a world-ground vector', () => {
   // The scale (and yScale) factors cancel between the CPU screen throw and
   // our world quad's projection, so the world offset is just dir·len.
