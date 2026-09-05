@@ -851,40 +851,42 @@ awning host pairs, the KEEP_OUT rects (new ones added, none shrunk).
 
 | District | After |
 |---|---|
-| **The Ring and the west meadow** | Identical inside eight tiles. Beyond: a worn Dirt desire line curving north-east toward the burnt cottage (feet went to look), three CharterPosts in a ruled line at the west meadow (one fallen: CairnFallen posture is wrong for a post; use a Rock + Pebbles), one DeadTree at the hem. The first eyeful after waking: seven pillars, one thin smoke, and a lane of lamps going the other way. |
+| **The Ring and the west meadow** | Identical inside eight tiles (the box (64,100)-(93,124) is stamped from a golden literal; J17). Beyond: THE BURNT COTTAGE stands on the west meadow's edge, three columns off the box (J1): shell (54,100)-(61,107) of RuinWallWood with RuinWallStone at the four corners, open face south, ChimneyStack (59,100) standing in the north run, EmberBed (59,101) on a Dirt-under-Ash floor (J14), CollapsedRoof (56,102) (58,105), AshHeap, CaveRubble and CharredBeam as walkable debris, GrassTall through the ash, a BelongingsCart (63,108) of salvage. One board, HOBB'S COUSIN'S ROOF at (53,109): "Went up in the spring." / "Nobody agrees how." The desire line is two lines, not one: the Ring's trace from the pad's west bite to the open face (G8), and the cousin's way curving from the lane south-west to the shell's east corner (G9), because feet went to look. THE SURVEY LINE at y128: two CharterPosts ruled eight apart (40,128) (48,128) and the fallen third as the Rock it was footed in (56,128) with brass chips (Pebbles) beside it; a chain leaves no path. One DeadTree at the west hem (11,108). The first eyeful after waking: seven pillars, the shell's stack top-left, and a lane of lamps going the other way; the thin smoke is a dusk sight (see §13.4). |
 | **Keeper's Way** | Untouched as a home. TiedParcels on the porch step (letters going out with whoever walks east). Wren's hub gains one `threat_near` line: "Halla is counting again. I knit; it comes to the same." Wren offers **no** theory about the cottage (her refusal is her position). |
-| **The Green** | Still grass, but argued on. Dirt desire lines lane→inn and well→bell. THE TALLY STALL: one MarketStall kept, its twin replaced by Table + Lectern, a fordgate bannerStand, road-tally crates; **Margit** (Charter tally-clerk, fordgate member) by day. A Bench by the bell where **Hilde** (Returner widow) sits at noon. **Leif** the lamp-boy's midday stop in front of the stall. The NoticeBoard gets authored words if the tile is a sign, else the DAWNMEAD post's second line: "Carts turned at the fen waist: four. Lamps out past the gate: two. Signed for the Charter." Two banner poles, one planter. |
-| **The Five Stones inn** | Fuller than it was: crates and baskets in the wing aisle (aisle stays one wide), two crofter children's things on the common-room floor, the pennant down. Gilly: "Four beds, and I am making up floors. Do not tell Berrit I am winning." **New throats get their own beds** (Margit in the worn cottage, Hilde in the green cottage, the crofters on the crowded roof); the four claimable guest beds stay the waker's. |
-| **Cottage Row** | WEST: THE BURNT COTTAGE. RuinWallWood outline with the south wall gone, RuinWallStone at two corners, CollapsedRoof where the roof came down, ChimneyStack standing alone at the north wall, EmberBed at the hearth breathing a thin smoke by day and a coal-glow at night (the column the Ring sees), AshHeap, Detail.Ash, GrassTall through the ash, CaveRubble as walkable debris, a BelongingsCart of salvage in the lane. One board: "HOBB'S COUSIN'S ROOF. Went up in the spring. Nobody agrees how." Three mouths and none corrected: Halla (a dusk fire jumped the hedge, hers to own), Brammel (thatch rotten a year, he said so), Wick (the sixth stone). MIDDLE: THE RETURNER'S HOUSE (Hilde): kept, hedge unclipped, a PitLampDark by the door she has not lit. EAST: THE CROWDED ROOF: two crofter families in one house, extra Bed pair, crates, BelongingsCart in the yard, WaterTrough, two sheep in a RailWood pen with the gate open, DryingRack. |
-| **The farmstead** | Robbed by weather and rats, not raiders: two crop rows to bare Tilled, pumpkins short two, a second CritterCage at the coop, a CharterPost at the barn's wain door. Sign: "Six beds, three crops, one man who wants rain." (No tutorial quest collects carrots, onions or bittercress; verified.) |
-| **The Common** | Contested grass: the crofters' sheep on it, Brammel's hay moved to the far rail, two CharterPosts inside the west gate, one rail down at the south-east corner as FenceBroken (the crofters' way in). Brammel vs the crofter at the west gate at midday: "His common is grass. Ours is ash." |
-| **The orchard and the trail head** | Kept (gardens survive bad years). At the hedge arch, **not** on the trail: two DeadTrees where bark was stripped, Rill's rag-stakes (RedRagStake hashed to a plain rag) with a BonePile at the foot of one (she hung the skull so the sign is read by people who cannot read; she does not walk the trail, per the bible), the trail's first ten rows worn three wide. Rill's one new line stops at "The wolves came down to the arch in the spring. They do not come to be fed." |
-| **Weir's fishery** | Weir's record made visible: four notched TimberPosts on the near bank, the newest highest (his "up a finger" as a line of stakes you can see from the bridge). A second WeirPanels. Otherwise the one calm district. |
+| **The Green** | Still grass, but argued on. The well court's stone ellipse, Well, TownBell and NoticeBoard are kept pins (ruling 11); the NoticeBoard is a mute tile. Wear is Dirt in wobbling lines: the inn's south desire line (120,110) to (120,106), Hilde's way from the ginnel to the bell bench, the twins' worn patch; the well-to-bell line lies on the court's own stone and is carried by pebbles. THE TALLY STALL is a new placement on the green's east verge on its own Dirt ellipse: MarketStall (129,106) (the one MarketStall), Table (127,106) (128,106), Lectern (128,108), BannerStand weld (130,107), CrateStack (126,108), CrateGoods (130,109); Margit (129.5,107.5) by day 7.5-18.5. A Bench (110,108) by the bell where Hilde sits 11.25-13.5, staged from the court's stone (110,109) (she is seated by twelve). Leif's midday stops: the stall front (128.5,109.5) 10.5-12 and 12.5-14, the bell side (112.5,109.5) 12-12.5. The tally rides the DAWNMEAD post's lines 2-4 (ruling Kit 5): "Carts turned, fen waist: four." / "Lamps out past the gate: two." / "Signed for the Charter." Two banner poles (the north pair, shipped dyes), one StreetPlanter (132,114), the great oak, both benches; the south poles, three planters, both flower boxes and the StoneBench (112,110) are cut (J8). |
+| **The Five Stones inn** | Fuller than it was: crates and baskets in the wing aisle (aisle stays one wide), two crofter children's things on the common-room floor, the pennant down. Gilly: "Four beds, and I am making up floors. Do not tell Berrit I am winning." New throats get their own beds: Margit BOARDS WITH HILDE in the second Bed run of Hilde's cottage (J2, ruling 5: Gilly refused the Charter chit, Hilde took it), the crofters on the crowded roof; the four claimable guest beds stay the waker's. Steinar's inn bed is owed to the barrow band (J20). |
+| **Cottage Row** | Two roofs, not three (J1, J3). WEST: THE RETURNER'S HOUSE (Hilde), (79,83)-(86,90), hedge unclipped, a PitLampDark (84,91) one tile east of her door line (ruling Kit 9); two Bed runs inside, (80,84)/(80,85) Hilde and (83,84)/(83,85) Margit. EAST: THE CROWDED ROOF, (94,85)-(101,92), east of the orchard walk's bend: two crofter families in one house, three Bed runs (95,86)/(95,87) (97,86)/(97,87) (99,86)/(99,87), crates, BelongingsCart in the yard, WaterTrough, two sheep in a RailWood pen (103-107,85-90) whose gate is the ONE-tile gap (105,90) (ruling Kit 14), DryingRack. Between the roofs the walk's bend and the cart; the empty west end where the cousin never built. THE BURNT COTTAGE is the west meadow's (above), not the Row's. |
+| **The farmstead** | Robbed by weather and rats, not raiders: two crop rows to bare Tilled, pumpkins short two, a second CritterCage outside the coop's west rail at (99,59) (one open tile from the orchard's skep), a CharterPost at the barn's wain door. Sign BRAMMEL'S FIELD (117,30): "Six beds, three crops," / "one man who wants rain." THE COOP board is cut (its lines are Brammel's bark). (No tutorial quest collects carrots, onions or bittercress; verified.) |
+| **The Common** | Contested grass, x96-134 (J4): the crofters' three ewes east, Brammel's two cows west, the hay at the north-west rail (the far rail from the ewes), two CharterPosts (98,72) (98,76) inside the west gate, FenceBroken at the south-east corner (133,82) (the crofters' way in). Brammel vs the crofter at the west gate at midday: Brammel's added slot runs 11.0-12.75 (he is inside the gate at (97.5,74.5) by about 11:50 and leaves at 12:45; a 63-tile walk from the field), the crofter paces outside it 12-13. "His common is grass. Ours is ash." Sign THE COMMON at (95,79). The gates are FenceGate tiles drawn shut by the tile art under "the gate stays open": a dressing-pass flag, shipped tiles (J19). |
+| **The orchard and the trail head** | Kept. At the hedge arch, not on the trail: two DeadTrees (64,23) (73,23) where bark was stripped, Rill's marks as ArrowPost (66,28) (70,28) in her own fletch colour with a BonePile (66,29) at the foot of one (J13: RedRagStake is the reavers' rag and has no plain-rag posture), the trail's first ten rows worn three wide. Sign THE ORCHARD at (90,28) by the trail; HUNTERS' TRAIL (62,28). Rill's one new line stops at "The wolves came down to the arch in the spring. They do not come to be fed." |
+| **Weir's fishery** | Weir's record made visible as placement, not notches (ruling 12, J18): four TimberPosts marching up the near bank away from the water, (158,58) oldest at the shallow's edge, (156,57), (154,56), (152,55) newest, each one row higher and two columns further from the water. A second WeirPanels (156,42). The lane's east lamp stands at (156,109) on the bank at the bridge's west foot (the shipped (157,109) was the brook's shallow and never stood). Otherwise the one calm district. |
 | **Sorrel's yard** | A BrokenCart she is fixing unasked, FieldLitter by the gate where a load spilled, a third HitchingPost for the carts off the road. |
 | **Ottery's works** | Making swords now, not stools: a SpearRack beside the WeaponRack, a charcoal BarrelStack, Alder's log supply short. "I would like to make one stool this year. One." / "Make it a sharp stool." |
-| **The cookhouse** | Feeding more than the table seats: a second bench pair, a CrateStack of the crofters' bowls, the kitchen garden picked to the stalks, the Woodpile doubled. Berrit never discusses the winter. |
-| **The muster court and the count-knoll** | A muster that musters: a fourth Vale Ward on a new `dawn_ward_muster` routine standing the line by day and taking the lodge's hot bunk at night; THE MUSTER LINE sign with the fire count and the rota; HALLA'S CHART (WallWood stub + board awning + Table + Lectern, where her watch trees are physically read). South of it THE COUNT-KNOLL: a level-1 raise 7×4 with stairs on its south face, a Brazier and a StoneBench inside the rim, a sightline straight down the spur to the south hem's notch. Halla's dusk stop moves here (a new stop; her post does not). The first elevation in the zone flips `hasElev` (serialize round-trip pin). |
-| **The pell yard and the lodge** | ArmorStand → ArmorStandFull (kit issued, nobody's), FieldLitter at the scarred wall's foot, the hot bunk finally has a body. |
-| **The butts and Rill's shed** | Untouched except a second stave rack and shavings spreading to three tiles: she whittles when worried. |
+| **The cookhouse** | Feeding more than the table seats: a second bench pair (124,134) (125,134), a CrateStack (133,133) of the crofters' bowls, the kitchen garden picked to the stalks, the Woodpile doubled (127,124). The supper court's Campfire (129,144) is the only Campfire in Dawnmead. THE LONG TABLE board is cut (Berrit's bark). Berrit never discusses the winter. |
+| **The muster court and the count-knoll** | A muster that musters: a fourth Vale Ward on `dawn_ward_muster` standing the line at (98.5,120.5) 7-19.25 and walking the spur to THE FIFTH BUNK (104,184)/(104,185) in the lodge; the day ward keeps THE HOT BUNK (106,181), so the fifth bunk is the one that is warm at nineteen when the day ward is up (ruling Pins 3). THE MUSTER LINE sign at (95,124) inside the court's dirt: "Bridge by day, green by night." / "The line, seven to seven." / "Fires this spring: one." / "That is one too many." HALLA'S CHART at the line's east end: WallWood stub (103-105,121), board awning (103-105,122) charcoal, Table (103,123), Lectern (105,123). The box's NW rim (NoticeBoard (93,119), WeaponRack, ArmorStandFull, benches) is kept as shipped (J7). South of it THE COUNT-KNOLL: a level-1 raise (100,138) 7x4 with three Ramps on its south face (102..104,141), StoneBench (102,139) and Brazier (104,139) inside the rim, a sightline down the spur to the notch. Halla's dusk stop is an ADDED slot 19.5-21: she climbs the ramp and SITS on the bench facing south (ruling 4); her post does not move. The Brazier burns as a flame emitter with a ground glow and is not a night light in the renderer's lights row (J15 fallback shape); "she lights it herself at dusk" is a bark. `hasElev` flips; content.test pins exactly one raise and the round trip. |
+| **The pell yard and the lodge** | ArmorStand to ArmorStandFull, FieldLitter at the scarred wall's foot; the yard is x86-105 y151-172 with four open tiles to the butts' fence; the lodge is twelve wide (96-107,176-187) and the spur bends round its gable (J5); five bunks, the fifth for the muster ward. The lodge's shipped LampPost (110,173) is not placed (the S3 corridor). |
+| **The butts and Rill's shed** | Untouched except a second stave rack and shavings spreading to three tiles; the east downrange gate is gone and the walk-in is a north FenceGate (47-48,153) at the shooting line (J5). The shooting ground and the three marks are worn Dirt with ragged rims, not squares (fix pass 2). She whittles when worried. |
 | **The spark circle** | Varn has been testing the cottage ash: an AshHeap on the pad's east verge with CrateGoods marked 'samples'. "Ordinary ash lies down. This sat up. I have written it down. Nobody will read it, which is the usual." (He does not know why.) |
-| **The Copse, the log yard, the crag** | Two oaks felled out of turn (Stump + FelledLog), one DeadTree at the stand's south end that Alder will not fell. The crag gains a SpoilHeap where a seam face came down and a CharterPost counting the copper; ore rocks unchanged. |
-| **The old granary** | Already the right voice. Rats back a season early: one knot moved to the open dirt at the south breach so the fight reads from the road (re-run the walkability flood after the move), a SpoilHeap replacing one CaveRubble for silhouette, a second BurialUrns stack. Sign: "Rats took the roof year before last. Back early this year." Nothing surfaces on a flag. |
-| **The brook, bridge, ford** | Dirt shoulders where wheels leave the Path; a FieldCairn on the east bank where the crofters crossed. Berry banks untouched. |
+| **The Copse, the log yard, the crag** | Two oaks felled out of turn (Stump + FelledLog at (24,138)/(25,138) and (27,128)/(28,128)), one DeadTree (18,200) at the stand's south end that Alder will not fell. The shipped stand (31,158) is struck: it stood on the log yard's Dirt and came up inside the yard once the yard's rim ragged. The crag gains a SpoilHeap (21,209), the MineCart (24,214) and a CharterPost (26,214) at the tin's foot; ore rocks unchanged. |
+| **The old granary** | Already the right voice. Rats back a season early: one knot on the breach apron (142.5,172.5) so the fight reads from the road, a SpoilHeap (152,159) replacing one CaveRubble, a second BurialUrns (140,166). The track off the spur bends at (137,167), runs ruled down the shell's west wall (a wall is its edge), turns two rows under the wall and joins the apron at (141,172) (fix pass 2; the shipped track dead-ended against the wall). Sign THE OLD GRANARY at (137,152): "Rats took the roof" / "year before last." / "Back early this year." Nothing surfaces on a flag. |
+| **The brook, bridge, ford** | Dirt shoulders where wheels leave the Path (the bridge feet, the gate, the works' apron); the two bridge poles at the bridge's WEST foot only, (155,108) (155,116) (ruling 9; the east pair cut); a FieldCairn (167,148) on the east bank where the crofters crossed. Berry banks untouched. |
 | **The crab bank** | Untouched. The first mark for a beginner stays the calm one. |
-| **THE SACKING ROW** (the East Wold) | Three families under sacking along the hedge's south face between the gate lamps and the water: TentHide ×2 + LeanTo against the hedge (a freestanding prop, not an awning), an EmberBed cooking fire (never a Campfire), WaterTrough, BelongingsCart and a BrokenCart, CrateGoods, DryingRack, FieldLitter where a load spilled, a trodden Dirt ellipse. No sign (the FIRST ROAD board is the eyeful's board). A day camp unless the seating audit admits Bedroll as a lie stop; the crofters sleep on the crowded roof. From the gate lamps the row is the first thing a departing waker sees before the threshold stones. |
-| **The First Road gate** | Still the send-off, now with a cost: a waykeeper-dyed bannerStand by the WayShrine, a fordgate-dyed one across the road, a CharterPost at the milestone where carts are counted, a BrokenCart at the verge, Dirt shoulders. Sign: "Amberford, a day east. Lamps to the fen waist. Then ask Hale." Hale himself stands at the First Lamp outside the rect; Leif walks in. |
-| **The old-road spur and THE ROAD ROW** | Worn hard for thirty rows (feet go to the knoll and the graves), then breaking to alternate-tile Dirt with GrassTall between. At its shoulder THE ROAD ROW: three cut Gravestones and one GravestoneTall under an oak (older stones, freshly cut), and ONE GraveMound with no stone yet: a **crofter's** dead from the drowned crofts, not Halla's (the bible says she lost wakers not recently). A RailWood run with the gap open, StoneBench, FieldCairn where the path meets the spur, Tuft not flowers. Three mouths: Halla "Two of mine, years back. I counted them once, out loud." Gilly "The new one came up the old road in a cart." Alder "Those stones are older than this year. They cut them fresh." Past the row a ColdCamp where somebody waited a night and did not go, two DeadTrees framing the hem's notch, the edge woods thinned so the road out reads as a road into something. |
-| **The quiet quarters** | The breathing room, kept empty on purpose. A DeadTree at the north-west hem; the west meadow's three survey posts; the high meadow's stags gone (an empty meadow is the point). |
+| **THE SACKING ROW** (the East Wold) | The wold hedge gains a south leg the crofters put up themselves (J11, ruling 7): Hedge (172-177,100) + (171,100-104) + (165-170,104), gap (163-164,104) open to the bank (the water way); two oaks (165,101) (169,102) north of the leg. The row stands on the leg's south face, x163-171 y105-108, on a trodden Dirt ellipse (167,106.5, 4.5, 2): LeanTo (164,105), LeanTo (168,105), FieldCot (170,105) (no TentHide: war-camp voice), Bedroll (165,106) (a day camp; not a lie stop), CrateGoods (166,105), WaterTrough (163,106), DryingRack (169,107), EmberBed (167,107) over a six-tile ash pan (never a Campfire), BelongingsCart (170,107), FieldLitter (169,108), BrokenCart (171,108) at the lane's verge. ONE BrokenCart serves the row's sentence and the gate's. The gate lamps stay at 172/184. No sign. The crofters lie on the crowded roof; crofter A's dusk walk home runs the whole lane at 19. |
+| **The First Road gate** | Still the send-off, now with a cost: BannerStand woad (179,115) by the WayShrine (waykeepers), BannerStand weld (180,108) across the road (fordgate), never madder (J10); a CharterPost (187,110) at the milestone; the row's BrokenCart at the verge; Dirt shoulders. Sign THE FIRST ROAD (182,116): "Amberford, a day east." / "Lamps to the fen waist." / "Then ask Hale." Leif's in-rect body stands the tally stake at (186.5,109.5) by day; at night he walks to the stand between the threshold stones (190.5,112.5) and waits facing east (J12's fallback, taken in fix pass 2: the out-of-rect target was a thicket in the edge-wood). Hale himself and the First Lamp body are outside the rect and are band 7's. |
+| **The old-road spur and THE ROAD ROW** | Worn hard for the rows feet use (the knoll, the graves, the lodge), bending round the lodge's gable on x108-109, then breaking to single tiles with GrassTall between. THE ROAD ROW stands SOUTH of the kitchen garden at (109,150)-(118,162) with the rail's gap at (110,156) (J6): three cut Gravestones and one GravestoneTall under an oak, ONE GraveMound with no stone yet (a crofter's dead from the drowned crofts), StoneBench, a FieldCairn where the path meets the spur, Tuft not flowers. THE OLD ROAD board at (112,171) on the shoulder: "Kingsdelf, forty stones and one." / "Dark past the third." / "Ask at the Stone." Three mouths: Halla "Two of mine, years back. I counted them once, out loud." Gilly "The new one came up the old road in a cart." Alder "Those stones are older than this year. They cut them fresh." Past the row a ColdCamp on a worn ellipse (111,197), two DeadTrees framing the notch, the edge woods thinned so the road out reads as a road into something. |
+| **The quiet quarters** | The breathing room, kept empty on purpose. A DeadTree (14,40) and rocks at the north-west hem; the high meadow's stags gone. The survey posts are the west meadow's (above). |
 
 ### 7.4 New throats (all names verified collision-free against content, docs and the bible on 2026-09-04)
 
 | Slug | Who | Faction | Post | Bed |
 |---|---|---|---|---|
-| `charter_margit` | Margit, tally-clerk | fordgate member | the tally stall by day | the worn cottage |
-| `returner_hilde` | Hilde, Returner widow with the oil-subscription slate | returners member (never a fineActor) | the bell bench at noon | the green cottage |
-| `fenside_crofter` ×3 (pooled, titled, no names) | the drowned-out | none | the sacking row, the crowded roof's pen, the Common's west gate | the crowded roof |
-| `waykeeper_leif` | Leif, Hale's lamp-boy | waykeepers | the green at midday; walks in from the First Lamp | the First Lamp (outside the rect) |
-| `dawnmead_ward` (fourth) | the muster ward | fordgate enforcer (as the other three) | the muster line 07-19 | the lodge hot bunk |
+| `charter_margit` | Margit, tally-clerk | fordgate member | the tally stall (129.5,107.5) 7.5-18.5 | Hilde's cottage, the second Bed run (83,84)/(83,85), stand (83,86) (J2) |
+| `returner_hilde` | Hilde, Returner widow with the oil-subscription slate | returners member (never a fineActor) | her own step (83.5,91.5); the bell bench (110,108) 11.25-13.5 | her own cottage, (80,84)/(80,85), stand (80,86) |
+| `fenside_crofter` ×3 (pooled, titled, no names) | the drowned-out | none | A the sacking row's coals (166.5,107.5); B the crowded roof's pen gap (105.5,91.5); C outside the Common's west gate (94.5,74.5) | the crowded roof: (97,86)/(97,87), (99,86)/(99,87), (95,86)/(95,87) |
+| `waykeeper_leif` | Leif, Hale's lamp-boy | waykeepers | the tally stake by the milestone (186.5,109.5); the stall front 10.5-12 and 12.5-14; the bell side 12-12.5 | none inside the rect: he waits the night between the threshold stones (190.5,112.5) facing east; the First Lamp body is band 7's (J12) |
+| `dawnmead_ward` (fourth) | the muster ward | fordgate enforcer (as the other three) | the muster line (98.5,120.5) 7-19.25 | THE FIFTH BUNK in the lodge (104,184)/(104,185); the hot bunk (106,181) stays the day ward's (ruling Pins 3) |
+
+Delete "the worn cottage" and "the green cottage" from the table: Cottage Row has two roofs (Hilde's, the crowded roof) and the burnt cottage stands on the west meadow.
 
 Names retired from the drafts and why: Marit (one letter from three Marens
 and used for three different people), Ketil (Pinewatch's Kettil), Oddny
@@ -925,21 +927,73 @@ tiles under boards). Awning host law for Halla's chart (wall run first,
 canopy directly south). Sealed-pocket flood for the crowded roof's beds, the
 wing aisle and the pen: write the throwaway flood that reports unreachable
 FLOOR tiles. Green is grass: wear is Dirt in wobbling one-wide lines and
-ellipses, never a rectangle; graves stand on grass. Ruins grow weeds. One sign
-per eyeful (screenshot THE MUSTER LINE against THE OLD ROAD; move the latter
-six rows south if they share a screen). Singleton pins: the refugee fire is an
+ellipses, never a rectangle; graves stand on grass. An OPEN worked yard (a
+farm yard, a smoke yard, a harvest corner, a shooting ground) goes down
+through `wear.rect`, whose rim rags on the hash; only a FENCED yard or a
+floor keeps `fillRect`, because a rail or a wall is its edge. A one-wide leg
+that runs along a wall may be ruled for the same reason. Ruins grow weeds.
+One Signpost per eyeful. The eyeful is 48x45 tiles at the shipped camera
+(yScale 0.6, zoom 1), so two Signposts share a frame when |dx| <= 24 AND
+|dy| <= 22; shingles (a HangingSign on its own frontage) are nameplates and
+exempt. lint.ts measures every pair; the ledger stands at 18 Signposts and 5
+shingles with no pair inside a frame: THE COOP, THE STALLS and THE LONG
+TABLE are cut (their lines are barks), THE ORCHARD stands at (90,28), THE
+MUSTER LINE at (95,124), THE OLD ROAD at (112,171), THE OLD GRANARY at
+(137,152). Singleton pins: the refugee fire is an
 EmberBed. Elevation law for the knoll (rim auto-fences to Cliff; keep props
 inside x101-105, y139-140; the spur's Dirt at x107-108 is clear of the rim).
 KEEP_OUT: add the sacking row, the Road Row, widen the south notch. Scatter
 order: authored Tuft after the scatter. Occlusion law: nothing tall one or two
-rows south of doors, stations, signs, posts. Routine laws: post-is-the-origin,
+rows south of doors, stations, signs, posts. Ruling Kit 11 ("do NOT change the
+renderer") scoped daytime smoke. Fix pass 1 changed one renderer law,
+`mintAlpha` reads 1 inside a bake (bakeVeilFull or bakingMask), so a static
+prop whose sprite first mints on a bake frame is never frozen at 1/9 alpha
+for the life of the bake (the burnt cottage's stack, roofs, beam and heaps
+read at 57/255 in every band canvas before it); parity 7/7 on the golden
+set. Routine laws: post-is-the-origin,
 night paths end `lie:true` on the foot tile of a two-tile head-north bed,
-every lie/sit stop stages on a walkable cardinal neighbour. Dialogue rails:
+every lie/sit stop stages on a walkable cardinal neighbour. A once-path's
+arrival time is its walk length over its speed (1.3 t/s is 46 game minutes
+for 50 tiles at 50 real seconds per hour); a stop that must be seen "at
+noon" starts its slot early enough to be there: Brammel 11.0, Hilde 11.25.
+An out-of-rect night leg is accepted by the runtime but stands in worldgen;
+use it only where the tile is proven ground. Dialogue rails:
 world flags closed, node ids frozen, node text ≤480, choices ≤90, whole
 sentences, no dashes, Berrit never discusses the winter, Wren never explains
 the Ring, Wick is never corrected. GEOGRAPHY-DOC PURITY at rollout (the zone
 has never been rolled to prod; the two new pinned sites need the Studio
 append if the prod doc is tool-edited).
+
+### 7.7 As built 2026-09-05 (Band 6)
+
+The rulings below are binding on every lane that touched Dawnmead this band; where a later fix pass overtook a ruling's letter, the proof stands here in its place.
+
+- J1. THE BURNT COTTAGE stands on the west meadow's edge, not on Cottage Row; the Ring box is sacred and the first eyeful's own sentence outranks the table's old cell.
+- J2. Margit boards with Hilde: two Bed runs share Hilde's cottage; the Margit and Gilly quarrel is barks, since Gilly refused the Charter chit and Hilde took it.
+- J3. Cottage Row slides west and the crowded roof steps east of the walk, with the orchard walk bending between the two roofs.
+- J4. THE COMMON shrinks to x96-134 so Sorrel's rails stand four clear, with FenceBroken, the hay and two CharterPosts placed as the plan now says.
+- J5. Sorrel's south rail moves to y86; the pell yard is x86-105 y151-172; the butts' downrange gate is gone for a north FenceGate walk-in; the lodge is twelve wide with the spur bending round its gable.
+- J6. THE ROAD ROW stands south of the kitchen garden with a one-tile rail gap; THE OLD ROAD board sits six rows south of its rail.
+- J7 (as built). HALLA'S CHART stands at (103-105,121-123); THE MUSTER LINE board moved to (95,124); the court's north-west rim is kept as shipped.
+- J8. THE GREEN keeps its shipped well court, Well, TownBell, NoticeBoard, the great oak, the north poles and all four lamps; the south poles, the extra planters, both flower boxes and one StoneBench are cut; THE TALLY STALL is a new placement on its own Dirt ellipse.
+- J9. THE HOMESTEAD TRACK runs east of the inn from the Common's south gate to the lane near the stall; the inn's south desire line is wobble Dirt.
+- J10. Dyes are fixed for good: fordgate and Charter wear weld, waykeepers wear woad, the Crown wears ochre; no faction stand ever wears madder.
+- J11. THE SACKING ROW stands on a new south leg of the wold hedge as a day camp with no TentHide; the crofters lie on the crowded roof at night.
+- J12 (as built). Leif's out-of-rect night target proved to be worldgen grass, not the First Lamp; the fallback stands him between the threshold stones, facing east.
+- J13. Rill's marks are ArrowPost with a BonePile, since RedRagStake has no plain-rag posture and reads as the reavers' rag.
+- J14. Inside the rect, ash is Detail.Ash plus AshHeap, CaveRubble, CharredBeam and GrassTall; the burnt shell's floor is Dirt under Ash.
+- J15 (as built). The knoll's Brazier stands and burns as a flame emitter with a ground glow, not in the renderer's lights row; the line about her lighting it herself is a bark.
+- J16 (as built). The eyeful measures 48 by 45 tiles with the pair rule dx within 24 and dy within 22; THE COOP, THE STALLS and THE LONG TABLE are cut as barks, several boards moved, and the ledger stands at 18 Signposts and 5 shingles with no pair sharing an eyeful.
+- J17. The Ring box is stamped from a golden literal after the scatter step, so it stays byte-identical by construction.
+- J18. Weir's record is four TimberPosts marching up the near bank, the oldest at the shallow's edge and the newest highest and furthest from the water.
+- J19 (as built). The shipped lamp post at the brook's west shallow never stood and moves to the bank; the log yard's shipped oak is struck; the lodge's shipped lamp post by the gable is not placed; the pell hay bale and the gate's drying rack land where the pocket flood cleared room for them.
+- J20. Steinar is not placed this band; his inn bed is owed to the barrow band, and the four claimable guest beds stay the waker's.
+
+Owed to the dressing pass (section 6, not defects; no plan text changes beyond this listing):
+
+- The Common's west and south fence gate tiles need their tile art drawn shut under the rule that the gate stays open in play.
+- The ward body's def name still reads Vale Ward over the Dawnmead wards and wants its own name.
+- The crofters' way in beside the homestead track runs one grass column east of it for twenty two rows; if the eye objects, the way can start further south and the crofters can use the track from the lane instead.
 
 ---
 
@@ -1700,10 +1754,15 @@ ward thread across a path you can step over and feel you should not.
 
 ### 13.4 The ten-minute demo walk
 
-From the Ring: minute 0-1 the seven stones, the thin smoke over the burnt
-cottage, the lane of lamps going the other way. Minute 1-3 the green: the
-tally stall, Hilde on the bench, Leif chalking the tithe, the first
-contradiction heard aloud (four carts / three carts and a barrow). Minute
+Minute 0-1: From the Ring at dusk (the walk starts at 19:00, brief §8): the
+seven stones, the burnt cottage's stack top-left with its coal glow and one
+thin exhale from the ember (the column is flame-gated and breathes from
+dusk; by day the cottage reads by its ChimneyStack, CollapsedRoof and ash;
+ruling Kit 11), and the lane of lamps going the other way. Minute 1-3: The
+green at noon (the village variant of the walk): the tally stall, Hilde on
+the bench (seated by twelve), Leif chalking at the stall front, the first
+contradiction heard aloud (four carts / three carts and a barrow), one
+board. Minute
 3-4 the gate: two banners in two dyes, the sacking row under the oaks, the
 threshold stones. Minute 4-5 the Ashlamp: the first scar, two stories and a
 sign. Minute 5-6 the fen waist: the road narrows, red rags on the fence
