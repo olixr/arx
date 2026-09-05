@@ -6,6 +6,9 @@
  */
 import type { AbilityDef } from '@arx/shared';
 
+/** THE REGISTER, per school (see schools/onehand.ts). */
+export const POLEARM_LICENSES: Record<string, string[]> = {};
+
 export const POLEARM_DEFS: AbilityDef[] = [
   // ----------------- THE REACHING SCHOOL — the polearm arts (THE TWENTY)
   // The school of REACH and the THRUST: the point ends arguments from

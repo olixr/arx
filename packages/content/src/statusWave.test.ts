@@ -6,6 +6,15 @@ import { ITEMS } from './items.js';
 import { ENCHANT_DEFS } from './equipment/enchants.js';
 import { SET_WORDS } from './equipment/setWords.js';
 import { TEMPERS } from './equipment/tempers.js';
+import { ONEHAND_LICENSES } from './abilities/schools/onehand.js';
+import { ARCHERY_LICENSES } from './abilities/schools/archery.js';
+import { ARX_LICENSES } from './abilities/schools/arx.js';
+import { SNEAK_LICENSES } from './abilities/schools/sneak.js';
+import { SHIELD_LICENSES } from './abilities/schools/shield.js';
+import { TWOHAND_LICENSES } from './abilities/schools/twohand.js';
+import { DUALWIELD_LICENSES } from './abilities/schools/dualwield.js';
+import { COMBAT_LICENSES } from './abilities/schools/combat.js';
+import { POLEARM_LICENSES } from './abilities/polearm.js';
 
 /**
  * THE AUTHORED TIDE'S REGISTER (statusBook Phase 5 — this file was
@@ -84,7 +93,17 @@ const GEAR_LICENSED: Record<string, string[]> = {
  * the exact page list it lays (follow statuses and aftermath pages
  * count); the register refuses anything unlisted.
  */
-export const PLAYER_LICENSED: Record<string, string[]> = {};
+export const PLAYER_LICENSED: Record<string, string[]> = {
+  ...ONEHAND_LICENSES,
+  ...ARCHERY_LICENSES,
+  ...ARX_LICENSES,
+  ...SNEAK_LICENSES,
+  ...SHIELD_LICENSES,
+  ...TWOHAND_LICENSES,
+  ...DUALWIELD_LICENSES,
+  ...COMBAT_LICENSES,
+  ...POLEARM_LICENSES,
+};
 
 function leaks(value: unknown): string[] {
   const found: string[] = [];
