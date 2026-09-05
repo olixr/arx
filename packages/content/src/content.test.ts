@@ -21,6 +21,15 @@ import type { StationType } from '@arx/shared';
 import type { ZoneSign } from './maps/types.js';
 import { ZoneBuilder } from './maps/builder.js';
 import { buildDawnmead } from './maps/dawnmead.js';
+import { buildDawnmeadWithRegistry } from './maps/dawnmead/index.js';
+import {
+  boxOverlaps,
+  emberBedsOffAsh,
+  occlusionViolations,
+  ringBoxDiff,
+  signPairViolations,
+  unreachableFloor,
+} from './maps/dawnmead/lint.js';
 import { buildAmberford } from './maps/amberford.js';
 import { buildSilverfall } from './maps/silverfall.js';
 import { buildSaltmere } from './maps/saltmere.js';
@@ -1194,35 +1203,55 @@ test('dawnmead: awakening anchors, stations, pens, and the lane seam hold', () =
   for (const [sx, sy] of [[78, 108], [74, 110], [82, 109], [74, 115], [81, 116], [72, 112], [85, 113]] as const) {
     assert.equal(at(sx, sy), Tile.PillarStone, `ring stone missing at ${sx},${sy}`);
   }
-  const counts = new Map<number, number>();
-  for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);
-  // The singleton stations: one of each, exactly, in the whole zone.
-  assert.equal(counts.get(Tile.Campfire) ?? 0, 1, 'the supper fire missing');
-  assert.equal(counts.get(Tile.Workbench) ?? 0, 1, "Ottery's bench missing");
-  assert.equal(counts.get(Tile.ChestWood) ?? 0, 1, 'the granary chest missing');
-  assert.equal(counts.get(Tile.Furnace) ?? 0, 1, 'the forge corner furnace missing');
-  assert.equal(counts.get(Tile.Anvil) ?? 0, 1, 'the forge corner anvil missing');
-  assert.equal(counts.get(Tile.CookPot) ?? 0, 1, "Berrit's pot missing");
-  assert.equal(counts.get(Tile.BeastPen) ?? 0, 1, 'the stall door missing');
-  // The teaching grounds: forage, ore, straw butts, and dummies.
-  assert.ok((counts.get(Tile.BerryBush) ?? 0) >= 6, 'the berry banks thinned');
-  assert.equal(counts.get(Tile.RockCopper) ?? 0, 2, 'the Scrap Crag copper moved');
-  assert.equal(counts.get(Tile.RockTin) ?? 0, 2, 'the Scrap Crag tin moved');
-  assert.ok((counts.get(Tile.TargetDummy) ?? 0) >= 4, 'the drill yard emptied');
-  assert.ok((counts.get(Tile.FishingSpot) ?? 0) >= 3, 'the brook stopped biting');
-  // The syllabus fights in the OPEN: rats at the granary meadow,
-  // mudcrabs on the bank, and the gentle farm animals.
+  // The singleton stations, the teaching ground, the syllabus animals
+  // and the cast are pinned apart (below): they land with the district
+  // modules and people.ts of the band-6 rebuild.
+  // DAWNMEAD UNDER SIEGE: the count-knoll is the zone's first
+  // elevation, so the JSON round trip now carries the elev layer and
+  // must be byte-exact WITH it (the flat-zone law moved to Amberford).
+  const json = zoneToJson(z);
+  assert.ok(json.elev !== undefined, 'dawnmead carries the count-knoll');
+  assert.deepEqual(zoneToJson(zoneFromJson(json)), json);
+  // Exactly one raise: the knoll (100,138) 7x4 at level 1, 0 elsewhere.
+  for (let i = 0; i < z.elev!.length; i++) {
+    const x = i % z.width;
+    const y = Math.floor(i / z.width);
+    const onKnoll = x >= 100 && x <= 106 && y >= 138 && y <= 141;
+    assert.equal(z.elev![i], onKnoll ? 1 : 0, `elevation off the knoll at (${x},${y})`);
+  }
+  // The knoll's rim is Cliff with the three stairs its only gap.
+  for (const [sx, sy] of [[102, 141], [103, 141], [104, 141]] as const) {
+    assert.equal(at(sx, sy), Tile.Ramp, `knoll stair missing at ${sx},${sy}`);
+  }
+  assert.equal(at(101, 141), Tile.Cliff);
+  assert.equal(at(105, 141), Tile.Cliff);
+  assert.equal(at(100, 139), Tile.Cliff);
+  assert.equal(at(106, 139), Tile.Cliff);
+  assert.equal(at(103, 138), Tile.Cliff);
+  // Halla's seat is the StoneBench inside the rim (ruling 4; her sit
+  // waypoint lands ON it); she is staged from (102,140), grass at level 1.
+  assert.equal(at(102, 139), Tile.StoneBench, "Halla's bench on the knoll top");
+  assert.equal(TILE_DEFS[at(102, 140)].solid, false, "Halla's bench stand on the knoll top");
+  assert.equal(z.elev![140 * z.width + 102], 1, "Halla's stand is on the knoll's level");
+});
+
+/**
+ * THE CAST SEATING (band 6 §5, §9.2 #15): thirteen named villagers,
+ * Halla's four-ward rota, the Charter's clerk, the Returner, three
+ * crofters and the Waykeeper at the gate, every one keeping hours; and
+ * the syllabus animals in the open. These numbers are FINAL and land
+ * with people.ts (lane L6); until it lands this test is red on purpose.
+ */
+function assertDawnmeadCast(z: ReturnType<typeof buildDawnmead>): void {
   const spawnCount = (npc: string) =>
     (z.spawns ?? []).filter((s) => s.npc === npc).reduce((n, s) => n + s.count, 0);
   assert.equal(spawnCount('chicken'), 5);
   assert.equal(spawnCount('cow'), 2);
-  assert.equal(spawnCount('sheep'), 3);
+  assert.equal(spawnCount('sheep'), 5, 'three ewes on the Common and two in the borrowed pen');
   assert.equal(spawnCount('rat'), 7, 'the granary rats moved indoors');
   assert.equal(spawnCount('mudcrab'), 5, 'the crab bank emptied');
-  // Thirteen named villagers plus Halla's three-ward rota, every one
-  // of them keeping hours (THE CHANGING OF THE GUARD).
   const actors = z.actorSpawns ?? [];
-  assert.equal(actors.length, 16);
+  assert.equal(actors.length, 23);
   for (const slug of [
     'keeper_wren',
     'yardmaster_halla',
@@ -1237,19 +1266,72 @@ test('dawnmead: awakening anchors, stations, pens, and the lane seam hold', () =
     'drover_sorrel',
     'twin_tansy',
     'twin_wick',
+    'charter_margit',
+    'returner_hilde',
+    'fenside_crofter',
+    'waykeeper_leif',
   ]) {
     assert.ok(actors.some((a) => a.actor === slug), `${slug} missing from the village`);
   }
-  assert.equal(actors.filter((a) => a.actor === 'dawnmead_ward').length, 3, 'the ward rota changed');
-  assert.equal(actors.filter((a) => a.routine).length, 16, 'every villager keeps hours');
-  // The zone survives the editor's JSON round trip. zoneFromJson
-  // zero-fills the flat elev layer and the re-export then carries it,
-  // so elevation is compared out; everything else must be byte-exact.
-  const json = zoneToJson(z);
-  assert.equal(json.elev, undefined, 'dawnmead is a flat zone');
-  const { elev: _rt, ...back } = zoneToJson(zoneFromJson(json));
-  const { elev: _src, ...src } = json;
-  assert.deepEqual(back, src);
+  assert.equal(actors.filter((a) => a.actor === 'dawnmead_ward').length, 4, 'the ward rota changed');
+  assert.equal(actors.filter((a) => a.actor === 'fenside_crofter').length, 3, 'three families walked in');
+  assert.equal(actors.filter((a) => a.routine).length, 23, 'every villager keeps hours');
+}
+
+test('dawnmead: the cast of twenty-three and the syllabus animals (lands with people.ts)', () => {
+  assertDawnmeadCast(buildDawnmead());
+});
+
+/**
+ * THE SINGLETON LEDGER (band 6 §6): one of each station, exactly, and
+ * the teaching ground's floors. FINAL numbers; each lands with its
+ * district (cookhouse, works, granary, stalls, copse, waterside, pell,
+ * butts, spark) and is red on purpose until that lane lands.
+ */
+function assertDawnmeadStations(z: ReturnType<typeof buildDawnmead>): void {
+  const counts = new Map<number, number>();
+  for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);
+  // The singleton stations: one of each, exactly, in the whole zone.
+  assert.equal(counts.get(Tile.Campfire) ?? 0, 1, 'the supper fire missing');
+  assert.equal(counts.get(Tile.Workbench) ?? 0, 1, "Ottery's bench missing");
+  assert.equal(counts.get(Tile.ChestWood) ?? 0, 1, 'the granary chest missing');
+  assert.equal(counts.get(Tile.Furnace) ?? 0, 1, 'the forge corner furnace missing');
+  assert.equal(counts.get(Tile.Anvil) ?? 0, 1, 'the forge corner anvil missing');
+  assert.equal(counts.get(Tile.CookPot) ?? 0, 1, "Berrit's pot missing");
+  assert.equal(counts.get(Tile.BeastPen) ?? 0, 1, 'the stall door missing');
+  assert.equal(counts.get(Tile.Well) ?? 0, 1, 'the well missing');
+  // The teaching grounds: forage, ore, straw butts, and dummies.
+  assert.ok((counts.get(Tile.BerryBush) ?? 0) >= 6, 'the berry banks thinned');
+  assert.equal(counts.get(Tile.RockCopper) ?? 0, 2, 'the Scrap Crag copper moved');
+  assert.equal(counts.get(Tile.RockTin) ?? 0, 2, 'the Scrap Crag tin moved');
+  assert.ok((counts.get(Tile.TargetDummy) ?? 0) >= 4, 'the drill yard emptied');
+  assert.ok((counts.get(Tile.FishingSpot) ?? 0) >= 3, 'the brook stopped biting');
+}
+
+test('dawnmead: the singleton stations and the teaching ground (land with the districts)', () => {
+  assertDawnmeadStations(buildDawnmead());
+});
+
+test('dawnmead: the tally stall is the ONE MarketStall (lands with green.ts)', () => {
+  const z = buildDawnmead();
+  let stalls = 0;
+  for (const t of z.ground) if (t === Tile.MarketStall) stalls++;
+  assert.equal(stalls, 1, 'ruling Kit 12: MarketStall stays ONE');
+});
+
+test('dawnmead: THE TUTORIAL IS SACRED and the four floods run clean', () => {
+  const { zone: z, registry } = buildDawnmeadWithRegistry();
+  // The Ring box (64,100)-(93,124) is byte-identical to the shipped
+  // build, ground and detail, 750 cells each (brief J17).
+  assert.deepEqual(ringBoxDiff(z), [], 'the Waking Ring changed inside eight tiles');
+  // K1: every EmberBed sits on its own ash.
+  assert.deepEqual(emberBedsOffAsh(z), []);
+  // No sealed pocket, nothing tall south of a door or a board, one
+  // Signpost per eyeful, every scene box its own ground.
+  assert.deepEqual(unreachableFloor(z, registry), [], 'sealed pockets');
+  assert.deepEqual(occlusionViolations(z, registry), [], 'the occlusion law');
+  assert.deepEqual(signPairViolations(z), [], 'one Signpost per eyeful');
+  assert.deepEqual(boxOverlaps(registry), [], 'scene boxes overlap');
 });
 
 test('dawnmead: every doorway (granary included) walks from the spawn', () => {
@@ -2191,10 +2273,15 @@ test('zone JSON round-trips signed elevation; flat zones export none', () => {
   assert.deepEqual(Array.from(back.elev!), Array.from(z.elev!));
   assert.ok(Array.from(back.elev!).some((v) => v < 0), 'negatives lost in transit');
   // Flat zones carry no elev blob and decode zero-filled — the JSON
-  // for every pre-elevation zone stays byte-identical.
-  const json = zoneToJson(buildDawnmead());
+  // for every pre-elevation zone stays byte-identical. (Amberford is
+  // the flat witness now: Dawnmead grew the count-knoll in band 6.)
+  const json = zoneToJson(buildAmberford());
   assert.equal(json.elev, undefined);
   assert.ok(zoneFromJson(json).elev!.every((v) => v === 0));
+  // Dawnmead's one raise round-trips with its layer intact.
+  const dawn = zoneToJson(buildDawnmead());
+  assert.ok(dawn.elev !== undefined);
+  assert.deepEqual(zoneToJson(zoneFromJson(dawn)), dawn);
 });
 
 

@@ -65,6 +65,10 @@ export class ZoneBuilder {
     return (this.ground[y * this.width + x] ?? Tile.Void) as Tile;
   }
 
+  getDetail(x: number, y: number): Detail {
+    return (this.detail[y * this.width + x] ?? Detail.None) as Detail;
+  }
+
   setDetail(x: number, y: number, d: Detail): this {
     if (x >= 0 && y >= 0 && x < this.width && y < this.height) {
       this.detail[y * this.width + x] = d;

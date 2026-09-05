@@ -10146,8 +10146,19 @@ export class Renderer {
    *  dedupe wants A set; the real runSeen already served collect). */
   private readonly stageRebuildSeen = new Set<number>();
 
-  /** THE PROMISED FADE's ramp (see WorldSprite.mint). */
+  /** THE PROMISED FADE's ramp (see WorldSprite.mint).
+   *  THE RAMP NEVER BAKES (band 6 fix pass 1, the ghost chimney): a
+   *  bake context reads 1 — the same law propFade keeps, because the
+   *  ramp is a per-frame animation and must never freeze into pixels.
+   *  A band stretch that bakes a static prop on the very frame its
+   *  sprite first mints (an expensive painter declined on the arrival
+   *  frames, minted inside the band bake instead) otherwise holds that
+   *  prop at 1/9..2/9 alpha for the life of the bake: the burnt
+   *  cottage's ChimneyStack, CollapsedRoofs, CharredBeam and AshHeaps
+   *  read at a measured 57/255 in every band canvas over the shell,
+   *  opaque only while the stretch drew live. */
   private mintAlpha(sp: { mint?: number }): number {
+    if (this.bakeVeilFull || this.bakingMask) return 1;
     return sp.mint !== undefined ? Math.min(1, (this.frameNo - sp.mint + 1) / 9) : 1;
   }
 

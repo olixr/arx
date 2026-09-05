@@ -146,6 +146,17 @@ import brammelHours from './defs/brammel_hours.json';
 import sorrelHours from './defs/sorrel_hours.json';
 import tansyScamp from './defs/tansy_scamp.json';
 import wickScamp from './defs/wick_scamp.json';
+// DAWNMEAD UNDER SIEGE (band 6, brief §5): the seven new lives the war
+// brought to the village's hem — the fourth ward, the Charter's clerk,
+// the Returner widow, the three drowned-out crofters, and the lamp-boy's
+// in-rect hours at the gate.
+import dawnWardMuster from './defs/dawn_ward_muster.json';
+import margitHours from './defs/margit_hours.json';
+import hildeHours from './defs/hilde_hours.json';
+import crofterRow from './defs/crofter_row.json';
+import crofterPen from './defs/crofter_pen.json';
+import crofterGate from './defs/crofter_gate.json';
+import leifGate from './defs/leif_gate.json';
 import saltPortreeve from './defs/salt_portreeve.json';
 import saltFactor from './defs/salt_factor.json';
 import saltInnkeep from './defs/salt_innkeep.json';
@@ -427,6 +438,13 @@ const SOURCES: readonly unknown[] = [
   sorrelHours,
   tansyScamp,
   wickScamp,
+  dawnWardMuster,
+  margitHours,
+  hildeHours,
+  crofterRow,
+  crofterPen,
+  crofterGate,
+  leifGate,
   saltPortreeve,
   saltFactor,
   saltInnkeep,

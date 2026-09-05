@@ -1,0 +1,90 @@
+{
+  "id": "leif_gate",
+  "base": {
+    "kind": "post",
+    "dir": 3.1415927,
+    "speed": 1.7
+  },
+  "slots": [
+    {
+      "from": 10.5,
+      "to": 12,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.7,
+        "waypoints": [
+          {
+            "x": -14,
+            "y": 3
+          },
+          {
+            "x": -36,
+            "y": 3
+          },
+          {
+            "x": -58,
+            "y": 1
+          },
+          {
+            "x": -58,
+            "y": 0,
+            "dir": -1.5707963,
+            "waitSec": 900
+          }
+        ]
+      }
+    },
+    {
+      "from": 12,
+      "to": 12.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.7,
+        "waypoints": [
+          {
+            "x": -74,
+            "y": 0,
+            "dir": 3.1415927,
+            "waitSec": 900
+          }
+        ]
+      }
+    },
+    {
+      "from": 12.5,
+      "to": 14,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.7,
+        "waypoints": [
+          {
+            "x": -58,
+            "y": 0,
+            "dir": -1.5707963,
+            "waitSec": 900
+          }
+        ]
+      }
+    },
+    {
+      "from": 20.5,
+      "to": 6,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.7,
+        "waypoints": [
+          {
+            "x": 4,
+            "y": 3,
+            "dir": 0,
+            "waitSec": 900
+          }
+        ]
+      }
+    }
+  ]
+}
