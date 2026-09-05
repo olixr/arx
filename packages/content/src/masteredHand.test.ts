@@ -49,3 +49,81 @@ test('a finale is one beat at the extra weight; a kill refund shortens the cycle
 test('the relationships hone with the ranks', () => {
   for (const k of ['follow', 'aftermath', 'finaleMult', 'onKill']) assert.ok(HONABLE.has(k), k);
 });
+
+// ---------------------------------------------------------------------
+// THE SCHOOL CONSTITUTION — binding on every school the moment it
+// declares roles (a school that has not been rebuilt yet declares
+// none and is left alone; a rebuilt school declares ALL of them).
+// ---------------------------------------------------------------------
+import { ABILITIES, TECHNIQUES, techniquesFor } from './abilities.js';
+import { pageOf, ABILITY_ROLES, type AbilityRole, type StatusId } from '@arx/shared';
+
+const REBUILT_SCHOOLS = ['onehand', 'archery', 'arx', 'sneak', 'shield', 'twohand', 'dualwield', 'combat', 'polearm'];
+
+function rebuilt(style: string): boolean {
+  const arts = techniquesFor(style).filter((t) => !t.hidden);
+  return arts.some((t) => ABILITIES.get(t.ability)!.role !== undefined);
+}
+
+test('THE THREE-ACT ART: a rebuilt school declares a role on every rung and meets the quota', () => {
+  for (const style of REBUILT_SCHOOLS) {
+    if (!rebuilt(style)) continue;
+    const arts = techniquesFor(style).filter((t) => !t.hidden).sort((a, b) => a.unlockLevel - b.unlockLevel);
+    const count: Record<AbilityRole, number> = { opener: 0, payoff: 0, sustain: 0, answer: 0, crown: 0 };
+    let prev: AbilityRole | undefined;
+    for (const t of arts) {
+      const ab = ABILITIES.get(t.ability)!;
+      assert.ok(ab.role && ABILITY_ROLES.includes(ab.role), `${style}/${t.ability} declares no role`);
+      assert.notEqual(ab.role, prev, `${style}/${t.ability} repeats the role of the rung before it`);
+      prev = ab.role;
+      count[ab.role]++;
+    }
+    assert.ok(count.opener >= 4, `${style} holds ${count.opener} openers (4 owed)`);
+    assert.ok(count.payoff >= 4, `${style} holds ${count.payoff} payoffs (4 owed)`);
+    assert.ok(count.sustain >= 4, `${style} holds ${count.sustain} sustains (4 owed)`);
+    assert.ok(count.answer >= 3, `${style} holds ${count.answer} answers (3 owed)`);
+    assert.equal(count.crown, 1, `${style} wears exactly one crown`);
+    assert.equal(ABILITIES.get(arts.at(-1)!.ability)!.role, 'crown', `${style}'s crown sits at the capstone rung`);
+    const first = new Set(arts.slice(0, 4).map((t) => ABILITIES.get(t.ability)!.role));
+    for (const r of ['opener', 'payoff', 'sustain', 'answer'] as const) {
+      assert.ok(first.has(r), `${style}'s first four rungs lack an ${r} — a level-20 player must already own a combo`);
+    }
+  }
+});
+
+test('THE FOLLOW-THROUGH is read by someone: every tag a school leaves has a follower in the school, and every follow has a leaver', () => {
+  for (const style of REBUILT_SCHOOLS) {
+    if (!rebuilt(style)) continue;
+    const arts = techniquesFor(style).map((t) => ABILITIES.get(t.ability)!);
+    const tags = new Set(arts.map((a) => a.tag).filter((t): t is string => !!t));
+    const reads = new Set<string>();
+    for (const a of arts) {
+      if (!a.follow) continue;
+      const after = typeof a.follow.after === 'string' ? [a.follow.after] : a.follow.after;
+      assert.ok(a.follow.windowTicks >= 40 && a.follow.windowTicks <= 80, `${a.id} window ${a.follow.windowTicks} outside 2–4 s`);
+      for (const w of after) reads.add(w);
+    }
+    for (const t of tags) assert.ok(reads.has(t), `${style} leaves the word ${t} and nothing in the school reads it`);
+    for (const r of reads) {
+      assert.ok(tags.has(r) || TECHNIQUES.some((t) => ABILITIES.get(t.ability)!.tag === r), `${style} follows ${r}, which no art leaves`);
+    }
+    assert.ok(arts.some((a) => a.follow), `${style} has no follow at all — no combo`);
+  }
+});
+
+test('THE HOLD BUDGET, the player edition: a player hold on a body is short, warned, and never past a tenth of its cycle', () => {
+  const holds: StatusId[] = ['root', 'stagger'];
+  for (const t of TECHNIQUES) {
+    const ab = ABILITIES.get(t.ability)!;
+    const laid = [ab.status, ab.follow?.status, ab.aftermath?.status].filter((s): s is NonNullable<typeof s> => !!s);
+    for (const s of laid) {
+      if (!holds.includes(s.status)) continue;
+      const cc = pageOf(s.status).cc!;
+      const lock = Math.min(s.durationTicks, cc.maxTicks);
+      const duty = lock / (ab.cooldownTicks + cc.immunityTicks);
+      assert.ok(duty <= 0.1, `${ab.id} holds ${(duty * 100).toFixed(1)}% of its cycle — past the tenth`);
+      const warn = (ab.castTicks ?? 0) + (ab.fuseTicks ?? 0);
+      assert.ok(warn >= lock / 2, `${ab.id} holds ${lock}t but warns only ${warn}t — a hold is a casted or fused art`);
+    }
+  }
+});
