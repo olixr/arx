@@ -8,6 +8,9 @@ import {
   laneUses,
   windAt,
   type Blade,
+  type Flower,
+  type SeedHead,
+  type ElevOrnGroup,
 } from './grass.js';
 
 // ------------------------------------------------------------------ wind
@@ -281,6 +284,67 @@ test('collectGpuElevated: an all-flat field yields no raised bands', () => {
   gs.collectGpuElevated(ground, () => 0, () => 0, bounds, 24, out, bands as never);
   assert.equal(bands.length, 0, 'flat ground rides the flat field, not the shelf path');
   assert.equal(out.length, 0);
+});
+
+test('collectGpuElevatedOrnaments: only raised blooms, grouped per row/level, lifted', () => {
+  // Rows 14..16 are a level-1 plateau; row 13 is flat. (The procedural meadow
+  // only deals blooms in this coordinate band — see the flat row exclusion
+  // below.) Raised ornaments only.
+  const bounds = { minTx: 0, maxTx: 19, minTy: 13, maxTy: 16 };
+  const ground = (tx: number, ty: number): number | undefined =>
+    tx >= bounds.minTx && tx <= bounds.maxTx && ty >= bounds.minTy && ty <= bounds.maxTy
+      ? Tile.Grass
+      : undefined;
+  const elevAt = (_tx: number, ty: number): number => (ty >= 14 ? 1 : 0);
+  const gs = new GrassSystem();
+  const flowers: Flower[] = [];
+  const seeds: SeedHead[] = [];
+  const groups: ElevOrnGroup[] = [];
+  gs.collectGpuElevatedOrnaments(ground, () => 0, elevAt, bounds, 24, flowers, seeds, groups);
+
+  // Exactly the ornaments the RAISED rows generate — the flat row 13 is skipped.
+  let expF = 0;
+  let expS = 0;
+  for (let ty = 14; ty <= 16; ty++) {
+    for (let tx = 0; tx <= 19; tx++) {
+      const g = generateGrassTile(tx, ty, Tile.Grass, 0);
+      expF += g.flowers.length;
+      expS += g.seeds.length;
+    }
+  }
+  assert.equal(flowers.length, expF, 'raised flowers gathered, flat row excluded');
+  assert.equal(seeds.length, expS, 'raised seeds gathered, flat row excluded');
+  assert.ok(expF + expS > 0, 'sanity: the raised rows actually deal ornaments');
+
+  for (const g of groups) {
+    assert.equal(g.elev, 24, 'every raised group carries level·ELEV_H = 1·24');
+    // sortY = row + 0.0015 (just over the coat) → the row is raised (≥ 1).
+    const row = Math.round(g.sortY - 0.0015);
+    assert.ok(row >= 14, 'a group only ever sits on a raised row');
+    assert.ok(g.fCount > 0 || g.sCount > 0, 'a group holds at least one bloom');
+  }
+  // The groups' slices exactly tile the flower/seed arrays (no gaps/overlap).
+  let fSum = 0;
+  let sSum = 0;
+  for (const g of groups) {
+    fSum += g.fCount;
+    sSum += g.sCount;
+  }
+  assert.equal(fSum, flowers.length, 'flower group slices cover the array');
+  assert.equal(sSum, seeds.length, 'seed group slices cover the array');
+});
+
+test('collectGpuElevatedOrnaments: an all-flat field yields no raised groups', () => {
+  const bounds = { minTx: 0, maxTx: 2, minTy: 0, maxTy: 2 };
+  const ground = (): number | undefined => Tile.Grass;
+  const gs = new GrassSystem();
+  const flowers: Flower[] = [];
+  const seeds: SeedHead[] = [];
+  const groups: ElevOrnGroup[] = [];
+  gs.collectGpuElevatedOrnaments(ground, () => 0, () => 0, bounds, 24, flowers, seeds, groups);
+  assert.equal(groups.length, 0, 'flat blooms ride the flat field, not the shelf path');
+  assert.equal(flowers.length, 0);
+  assert.equal(seeds.length, 0);
 });
 
 // ---------------------------------------------------------- displacement

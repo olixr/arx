@@ -49,6 +49,10 @@ uniform float uWindGain;
 // ground projection, folded with the camera's vertical squash so the cast
 // lands where the CPU shade did. Tuned in the renderer from the sky.
 uniform vec2 uShadow;
+// G1 ATLAS REMAP (elevated cast bands): retarget the real-screen NDC into a
+// band's atlas slot (xy = scale, zw = bias). (1,1,0,0) = identity = the whole
+// real screen (the flat full-field cast path, byte-identical to before).
+uniform vec4 uNdcRemap;
 ${grassProjectGlsl()}
 ${grassWindGlsl()}
 ${grassDisturbGlsl()}
@@ -85,9 +89,13 @@ void main() {
   vec2 c = mix(baseC, tipC, t);
   float hw = mix(baseHW, tipHW, t);
   vec2 world = c + vec2(side * hw, 0.0);
-  // Casts stay on flat ground for now (uElev defaults 0); the elevated coat
-  // rides its shelf via the blade renderer. Root passed for the shared sig.
-  gl_Position = grassProject(world, iRoot);
+  // THE CAST RIDES THE SHELF (G-ELEVATED): grassProject lifts the whole quad
+  // by uElev·scale when a raised band sets it (0 = flat = the shipped
+  // full-field path, byte-identical), so a raised blade's shade sits on its
+  // raised surface. Then the atlas remap (a pure NDC→NDC affine) retargets it
+  // into the band's slot — identity for the flat path.
+  vec4 c2 = grassProject(world, iRoot);
+  gl_Position = vec4(c2.xy * uNdcRemap.xy + uNdcRemap.zw, 0.0, 1.0);
 }`;
 
 const FRAG_SRC = `#version 300 es
@@ -142,6 +150,8 @@ export class GrassShadowRenderer {
   private readonly uDisturb: WebGLUniformLocation;
   private readonly uDisturbVel: WebGLUniformLocation;
   private readonly uDisturbN: WebGLUniformLocation;
+  private readonly uNdcRemap: WebGLUniformLocation;
+  private readonly uElev: WebGLUniformLocation;
   private disposed = false;
 
   constructor(gl: WebGL2RenderingContext) {
@@ -172,6 +182,8 @@ export class GrassShadowRenderer {
     this.uDisturb = gl.getUniformLocation(program, 'uDisturb')!;
     this.uDisturbVel = gl.getUniformLocation(program, 'uDisturbVel')!;
     this.uDisturbN = gl.getUniformLocation(program, 'uDisturbN')!;
+    this.uNdcRemap = gl.getUniformLocation(program, 'uNdcRemap')!;
+    this.uElev = gl.getUniformLocation(program, 'uElev')!;
 
     // The cast template: base pair (t=0) → tip pair (t=1), a 4-vertex strip.
     const tmpl = new Float32Array([-1, 0, 1, 0, -1, 1, 1, 1]);
@@ -193,11 +205,30 @@ export class GrassShadowRenderer {
     gl.bindVertexArray(null);
   }
 
-  private bindInstanceAttribs(): void {
+  /** (Re)point the interleaved instance attributes so instance 0 reads from
+   *  blade `baseFloats/GRASS_INSTANCE_FLOATS` — used to draw a contiguous band
+   *  slice (WebGL2 has no baseInstance). 0 = the whole array (the flat path). */
+  private bindInstanceAttribs(baseFloats = 0): void {
     const gl = this.gl;
     const stride = GRASS_INSTANCE_FLOATS * 4;
-    gl.vertexAttribPointer(1, 2, gl.FLOAT, false, stride, 0);  // root
-    gl.vertexAttribPointer(2, 4, gl.FLOAT, false, stride, 8);  // height,hw,lean,phase
+    const base = baseFloats * 4;
+    gl.vertexAttribPointer(1, 2, gl.FLOAT, false, stride, base + 0);  // root
+    gl.vertexAttribPointer(2, 4, gl.FLOAT, false, stride, base + 8);  // height,hw,lean,phase
+  }
+
+  /** Set the trample uniforms from a frame's packed disturbers (shared by the
+   *  flat draw and the elevated band run). */
+  private setDisturb(opts: { disturb?: Float32Array; disturbVel?: Float32Array }): void {
+    const gl = this.gl;
+    const disturb = opts.disturb;
+    const n = disturb ? Math.min(MAX_DISTURB, Math.floor(disturb.length / 4)) : 0;
+    gl.uniform1i(this.uDisturbN, n);
+    if (n > 0) {
+      gl.uniform4fv(this.uDisturb, disturb!.subarray(0, n * 4));
+      const vel = opts.disturbVel;
+      if (vel && vel.length >= n * 2) gl.uniform2fv(this.uDisturbVel, vel.subarray(0, n * 2));
+      else gl.uniform2fv(this.uDisturbVel, new Float32Array(n * 2));
+    }
   }
 
   /** Upload the packed blade instances (same layout as the blade renderer;
@@ -235,19 +266,79 @@ export class GrassShadowRenderer {
     gl.uniform1f(this.uWindGain, opts.windGain ?? 0.12);
     gl.uniform2f(this.uShadow, shadowX, shadowY);
     gl.uniform3f(this.uShade, shade[0], shade[1], shade[2]);
-    const disturb = opts.disturb;
-    const n = disturb ? Math.min(MAX_DISTURB, Math.floor(disturb.length / 4)) : 0;
-    gl.uniform1i(this.uDisturbN, n);
-    if (n > 0) {
-      gl.uniform4fv(this.uDisturb, disturb!.subarray(0, n * 4));
-      const vel = opts.disturbVel;
-      if (vel && vel.length >= n * 2) gl.uniform2fv(this.uDisturbVel, vel.subarray(0, n * 2));
-      else gl.uniform2fv(this.uDisturbVel, new Float32Array(n * 2));
-    }
+    this.setDisturb(opts);
+    // Flat full-field cast: identity remap (the whole real screen), no lift.
+    gl.uniform4f(this.uNdcRemap, 1, 1, 0, 0);
+    gl.uniform1f(this.uElev, 0);
     gl.disable(gl.BLEND);
     gl.bindVertexArray(this.vao);
-    this.bindInstanceAttribs();
+    this.bindInstanceAttribs(0);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, SHADOW_VERTS, count);
+    gl.bindVertexArray(null);
+  }
+
+  /**
+   * G-ELEVATED — THE CAST RIDES THE SHELF. Set the shared per-frame cast
+   * uniforms (projection, wind, throw, shade, disturbers) ONCE for a run of
+   * band sub-draws; `count` casts are uploaded (the whole by-sorted elevated
+   * array). Each band is then a `drawBand` slice into its own atlas slot,
+   * LIFTED onto its shelf. Blend stays DISABLED so overlaps within a band
+   * overwrite (opaque union) — the renderer composites the slot at the frame's
+   * shade alpha, exactly as the flat cast layer does. Call before a sequence of
+   * drawBand, then drawBandEnd.
+   */
+  beginBands(
+    instances: Float32Array,
+    count: number,
+    proj: GrassProj,
+    timeSec: number,
+    shade: readonly [number, number, number],
+    shadowX: number,
+    shadowY: number,
+    opts: { windGain?: number; disturb?: Float32Array; disturbVel?: Float32Array } = {},
+  ): void {
+    if (this.disposed) return;
+    const gl = this.gl;
+    this.upload(instances, count);
+    gl.useProgram(this.program);
+    gl.uniform1f(this.uScale, proj.scale);
+    gl.uniform1f(this.uYScale, proj.yScale);
+    gl.uniform2f(this.uOrigin, proj.ox, proj.oy);
+    gl.uniform2f(this.uViewport, proj.wCss, proj.hCss);
+    gl.uniform1f(this.uTime, timeSec);
+    gl.uniform1f(this.uWindGain, opts.windGain ?? 0.12);
+    gl.uniform2f(this.uShadow, shadowX, shadowY);
+    gl.uniform3f(this.uShade, shade[0], shade[1], shade[2]);
+    this.setDisturb(opts);
+    // Bands default to flat + identity; drawBand sets each slot's remap + lift.
+    gl.uniform4f(this.uNdcRemap, 1, 1, 0, 0);
+    gl.uniform1f(this.uElev, 0);
+    gl.disable(gl.BLEND);
+    gl.bindVertexArray(this.vao);
+  }
+
+  /** Draw one elevated cast band slice [i0, i0+count) with its atlas NDC remap
+   *  and terrace lift (`elev` = level·ELEV_H world height). The caller has set
+   *  the atlas viewport/scissor for this band's slot. */
+  drawBand(
+    i0: number,
+    count: number,
+    remap: { sx: number; sy: number; bx: number; by: number },
+    elev = 0,
+  ): void {
+    if (this.disposed || count <= 0) return;
+    const gl = this.gl;
+    gl.uniform4f(this.uNdcRemap, remap.sx, remap.sy, remap.bx, remap.by);
+    gl.uniform1f(this.uElev, elev);
+    this.bindInstanceAttribs(i0 * GRASS_INSTANCE_FLOATS);
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, SHADOW_VERTS, count);
+  }
+
+  /** End a band run: restore the base attrib offset and unbind the VAO. */
+  drawBandEnd(): void {
+    if (this.disposed) return;
+    const gl = this.gl;
+    this.bindInstanceAttribs(0);
     gl.bindVertexArray(null);
   }
 

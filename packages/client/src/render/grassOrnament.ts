@@ -81,6 +81,10 @@ layout(location=1) in vec4 iA;     // rootX, rootY, height, size
 layout(location=2) in vec4 iB;     // kind, pal, phase, lean
 uniform float uTime;
 uniform float uBobGain;
+// G1 ATLAS REMAP (elevated ornament bands): retarget the real-screen NDC into
+// a band's atlas slot (xy = scale, zw = bias). (1,1,0,0) = identity = the
+// whole real screen (the flat full-field path, byte-identical to before).
+uniform vec4 uNdcRemap;
 out float vPart;  // 0 stem, 1 petal, 2 core, 3 gold
 out float vPal;
 ${grassProjectGlsl()}
@@ -149,7 +153,11 @@ void main() {
     vec2 corner = vec2(aVert.y * 2.0 - 1.0, aVert.z * 2.0 - 1.0);
     pos = center + corner * hf;
   }
-  gl_Position = grassProject(pos, root);   // ONE PROJECTION (the camera affine)
+  // ONE PROJECTION (the camera affine); grassProject lifts the bloom onto its
+  // terrace shelf when a raised band sets uElev (0 = flat = byte-identical),
+  // then the atlas remap retargets it into the band's slot (identity = flat).
+  vec4 c = grassProject(pos, root);
+  gl_Position = vec4(c.xy * uNdcRemap.xy + uNdcRemap.zw, 0.0, 1.0);
   vPart = part;
   vPal = pal;
 }`;
@@ -200,6 +208,8 @@ export class GrassOrnamentRenderer {
   private readonly uViewport: WebGLUniformLocation;
   private readonly uTime: WebGLUniformLocation;
   private readonly uBobGain: WebGLUniformLocation;
+  private readonly uNdcRemap: WebGLUniformLocation;
+  private readonly uElev: WebGLUniformLocation;
   private instanceCount = 0;
   private disposed = false;
 
@@ -230,6 +240,8 @@ export class GrassOrnamentRenderer {
     this.uViewport = gl.getUniformLocation(program, 'uViewport')!;
     this.uTime = gl.getUniformLocation(program, 'uTime')!;
     this.uBobGain = gl.getUniformLocation(program, 'uBobGain')!;
+    this.uNdcRemap = gl.getUniformLocation(program, 'uNdcRemap')!;
+    this.uElev = gl.getUniformLocation(program, 'uElev')!;
     gl.useProgram(program);
     gl.uniform1i(gl.getUniformLocation(program, 'uPal'), 0);
 
@@ -258,13 +270,11 @@ export class GrassOrnamentRenderer {
 
     this.instanceBuf = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuf);
-    const stride = ORNAMENT_INSTANCE_FLOATS * 4;
     gl.enableVertexAttribArray(1);
-    gl.vertexAttribPointer(1, 4, gl.FLOAT, false, stride, 0); // rootXY, height, size
     gl.vertexAttribDivisor(1, 1);
     gl.enableVertexAttribArray(2);
-    gl.vertexAttribPointer(2, 4, gl.FLOAT, false, stride, 16); // kind, pal, phase, lean
     gl.vertexAttribDivisor(2, 1);
+    this.bindInstanceAttribs(0);
     gl.bindVertexArray(null);
 
     this.palTex = gl.createTexture()!;
@@ -282,6 +292,17 @@ export class GrassOrnamentRenderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  }
+
+  /** (Re)point the interleaved instance attributes so instance 0 reads from
+   *  ornament `baseFloats/ORNAMENT_INSTANCE_FLOATS` — used to draw a contiguous
+   *  band slice (WebGL2 has no baseInstance). 0 = the whole array (flat path). */
+  private bindInstanceAttribs(baseFloats: number): void {
+    const gl = this.gl;
+    const stride = ORNAMENT_INSTANCE_FLOATS * 4;
+    const base = baseFloats * 4;
+    gl.vertexAttribPointer(1, 4, gl.FLOAT, false, stride, base + 0); // rootXY, height, size
+    gl.vertexAttribPointer(2, 4, gl.FLOAT, false, stride, base + 16); // kind, pal, phase, lean
   }
 
   upload(instances: Float32Array, count: number): void {
@@ -304,12 +325,74 @@ export class GrassOrnamentRenderer {
     gl.uniform2f(this.uViewport, proj.wCss, proj.hCss);
     gl.uniform1f(this.uTime, timeSec);
     gl.uniform1f(this.uBobGain, bobGain);
+    // Flat full-field ornaments: identity remap (whole real screen), no lift.
+    gl.uniform4f(this.uNdcRemap, 1, 1, 0, 0);
+    gl.uniform1f(this.uElev, 0);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.palTex);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.bindVertexArray(this.vao);
+    this.bindInstanceAttribs(0);
     gl.drawArraysInstanced(gl.TRIANGLES, 0, VERTS, this.instanceCount);
+    gl.bindVertexArray(null);
+  }
+
+  /**
+   * G-ELEVATED — THE BLOOM RIDES THE SHELF. Set the shared per-frame ornament
+   * uniforms (projection, wind, bob) ONCE for a run of band sub-draws; `count`
+   * ornaments are uploaded (the whole elevated flower+seed array). Each band is
+   * then a `drawBand` slice into its own atlas slot, LIFTED onto its shelf.
+   * Call before a sequence of drawBand, then drawBandEnd.
+   */
+  beginBands(
+    instances: Float32Array,
+    count: number,
+    proj: GrassProj,
+    timeSec: number,
+    bobGain = 1,
+  ): void {
+    if (this.disposed) return;
+    const gl = this.gl;
+    this.upload(instances, count);
+    gl.useProgram(this.program);
+    gl.uniform1f(this.uScale, proj.scale);
+    gl.uniform1f(this.uYScale, proj.yScale);
+    gl.uniform2f(this.uOrigin, proj.ox, proj.oy);
+    gl.uniform2f(this.uViewport, proj.wCss, proj.hCss);
+    gl.uniform1f(this.uTime, timeSec);
+    gl.uniform1f(this.uBobGain, bobGain);
+    gl.uniform4f(this.uNdcRemap, 1, 1, 0, 0);
+    gl.uniform1f(this.uElev, 0);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.palTex);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.bindVertexArray(this.vao);
+  }
+
+  /** Draw one elevated ornament band slice [i0, i0+count) with its atlas NDC
+   *  remap and terrace lift (`elev` = level·ELEV_H world height). The caller
+   *  has set the atlas viewport/scissor for this band's slot. */
+  drawBand(
+    i0: number,
+    count: number,
+    remap: { sx: number; sy: number; bx: number; by: number },
+    elev = 0,
+  ): void {
+    if (this.disposed || count <= 0) return;
+    const gl = this.gl;
+    gl.uniform4f(this.uNdcRemap, remap.sx, remap.sy, remap.bx, remap.by);
+    gl.uniform1f(this.uElev, elev);
+    this.bindInstanceAttribs(i0 * ORNAMENT_INSTANCE_FLOATS);
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, VERTS, count);
+  }
+
+  /** End a band run: restore the base attrib offset and unbind the VAO. */
+  drawBandEnd(): void {
+    if (this.disposed) return;
+    const gl = this.gl;
+    this.bindInstanceAttribs(0);
     gl.bindVertexArray(null);
   }
 
