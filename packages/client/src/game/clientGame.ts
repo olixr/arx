@@ -657,6 +657,12 @@ export class ClientGame {
   readonly abilityReadyAt: [number, number, number, number] = [0, 0, 0, 0];
   /** Full cooldowns in ticks (0 = nothing equipped in that slot). */
   abilityMax: [number, number, number, number] = [0, 0, 0, 0];
+  /**
+   * THE FOLLOW-THROUGH: the word the own player's last fired art left
+   * in the air, on the local clock. The hotbar lights every seated
+   * art whose follow reads the tag while its own window still stands.
+   */
+  artOpen: { tag: string; sinceMs: number } | null = null;
   /** THE SECOND HAND: the seated techniques, [Q, R] (server-confirmed). */
   techniques: [string | null, string | null] = [null, null];
   /** Earned arts: deed pages and mastered secrets alike (server truth). */
@@ -2274,6 +2280,7 @@ export class ClientGame {
       const now = performance.now();
       g.abilityMax = [msg.max[0], msg.max[1], msg.max[2], msg.max[3]];
       for (let i = 0; i < 4; i++) g.abilityReadyAt[i] = now + msg.cd[i]! * TICK_MS;
+      g.artOpen = msg.open ? { tag: msg.open.tag, sinceMs: now - msg.open.age * TICK_MS } : null;
     },
     combo: (g, msg) => {
       // THE SPOKEN BEAT: the stage the server just swung, the run,

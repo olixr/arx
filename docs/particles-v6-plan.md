@@ -209,3 +209,20 @@ a `wet`/`cold` soft mark kind; path density/size falloff along t; blob
 ground squash; orbit y-squash; a per-grain attract toward the cast point;
 `land: 'hold'`. In-world: dark floors may swallow DRIED/char stains —
 audit on stone with `?fx`.
+
+**Phase 5 — THE LIBRARY IS THE VOICE (2026-09-05, main 0661426a,
+deployed).** Every combat cast on the wire speaks the library:
+`fx/abilityEffects.ts` (plans = cues with timing/scale/far anchor/
+standing beats; `derivePlan` family × kind fallback; `MutedParticles`),
+`fx/plans/<roster>.ts` — 416 curated plans across 22 roster files
+written by ten curation passes, 84 roster-only effects (131 total). The
+renderer casts the plan at arrival (and on `every` beats), and while a
+plan speaks the signature bursts, kind-grammar debris, decal stamps,
+rings and aftermath beats are muted; painted centerpieces stay; pure
+instruments (telegraph/charge/note) keep their voice. `renderer.castPlan`
++ `scripts/probes/fx-plan.mjs` prove any ability in-world. Gate: 1115
+client tests + typecheck; eight cross-roster in-world proofs judged.
+NEXT: per-ability polish waves on the sheets (the agents' in-world
+batches were cut by session limits — their plans shipped as written and
+gate-proven, not all 416 eye-judged); dark-floor stain audit; the
+deferred engine asks.

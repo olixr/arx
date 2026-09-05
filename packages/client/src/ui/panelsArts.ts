@@ -2064,6 +2064,74 @@ export function renderArtsBench(host: Panels, all?: Array<{ style: SkillId; t: T
         }),
       );
     }
+    // THE MASTERED HAND: the relationships between presses, each a
+    // full-bar row (they are facts, not figures against the envelope).
+    if (ab.follow) {
+      const after = typeof ab.follow.after === 'string' ? ab.follow.after : ab.follow.after.join(' or ');
+      const gain = ab.follow.damageMult
+        ? `×${ab.follow.damageMult} damage`
+        : ab.follow.status
+          ? `lays ${ab.follow.status.status}`
+          : ab.follow.refundTicks
+            ? `${secs(ab.follow.refundTicks)} given back`
+            : 'answers';
+      measures.appendChild(
+        measureRow(host, {
+          label: 'Follows',
+          value: `after ${after} · ${gain}`,
+          frac: 1,
+          tone: '#f2c94c',
+          tip: `Cast within ${secs(ab.follow.windowTicks)} of an art that leaves ${after} and this one ${gain}. A follow spends the opening.`,
+        }),
+      );
+    }
+    if (ab.tag) {
+      measures.appendChild(
+        measureRow(host, {
+          label: 'Leaves',
+          value: ab.tag,
+          frac: 1,
+          tone: '#f2c94c',
+          tip: `The word this art leaves in the air for a follower to answer.`,
+        }),
+      );
+    }
+    if (ab.aftermath) {
+      const a = ab.aftermath;
+      measures.appendChild(
+        measureRow(host, {
+          label: 'Aftermath',
+          value: `${a.damage > 0 ? `${a.damage} every ${secs(a.everyTicks ?? 16)} for ` : ''}${secs(a.fieldTicks)}${a.status ? ` · ${a.status.status}` : ''}${a.self ? ' · holds ground' : ''}`,
+          frac: 1,
+          tone: '#e07a3a',
+          tip: a.self
+            ? 'The ground stays. Stand in it and wear its boon.'
+            : 'The ground keeps burning after the press lands.',
+        }),
+      );
+    }
+    if (ab.finaleMult && ab.finaleMult > 1) {
+      measures.appendChild(
+        measureRow(host, {
+          label: 'Finale',
+          value: `last beat ×${ab.finaleMult}`,
+          frac: 1,
+          tone: '#d2e0f6',
+          tip: 'Hold the whole note and its last beat lands at this weight. Break it early and keep only the quiet beats.',
+        }),
+      );
+    }
+    if (ab.onKill) {
+      measures.appendChild(
+        measureRow(host, {
+          label: 'On a kill',
+          value: `${secs(ab.onKill.refundTicks)} given back`,
+          frac: 1,
+          tone: '#d95763',
+          tip: 'A kill landed within two seconds of the press refunds this much of the cooldown.',
+        }),
+      );
+    }
     // THE DRAWN BREATH / THE HELD NOTE wear words: the planted
     // figure reads the same ONE ruler the accrual does.
     if (ab.castTicks) {

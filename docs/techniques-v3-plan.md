@@ -337,4 +337,56 @@ body; then the one number decision (Part 5).
 
 ## As built
 
-(Phase ledgers land here as each ships.)
+### Phase 1 — THE ENGINE OF MASTERY (2026-09-05)
+
+Shared (`sim/abilities.ts`): `AbilityRole`/`ABILITY_ROLES`, `FollowDef`
+(`after`, `windowTicks`, `damageMult`, `radiusMult`, `status`,
+`refundTicks`), `followMatches`, `FOLLOW_WINDOW_MAX` 80, `AftermathDef`
+(`fieldTicks`, `everyTicks` 16, `damage`, `radius`, `status`, `self`,
+`knockback`), `KILL_REFUND_WINDOW_TICKS` 40; `AbilityDef` gains `role`,
+`tag`, `follow`, `aftermath`, `finaleMult`, `onKill`. Wire:
+`S2CCooldowns.open?: { tag, age }` (additive, no protocol bump).
+
+Server (`game/gameServer.ts`): `PlayerComp.lastArt` / `killRefund`;
+`ChannelAction.follow`; `PendingBlast.aftermath`; `ActiveField.self/
+selfId/selfColor`. Module-level `resolveFollow` / `withFollow` /
+`stampArt` (THE SLATE-TEST LAW: the cast and channel doors are slate-
+driven; new METHODS on those doors break every pin — module functions
+do not). `castAbility(..., follow?)` resolves a follow-adjusted def
+copy at the top (same id/shape/fx face) and a single `powerK`; the
+aftermath is left at melee_arc (a stride ahead), nova, beam (midpoint),
+leap landing, and every fused blast (`tickBlasts`, carried on the
+PendingBlast pre-scaled). `tickFields`: THE HELD GROUND (`holdGround`
+extends ONE buff by name — the fold table SUMS armor and shield, so a
+twin would double count) and a silent zone (no damage/status/vs)
+never hunts bodies. `channelPulse`: the last beat (`ticksLeft ≤
+every`, the model's own beat count) multiplies `powerMult` by
+`finaleMult`. `fireAbility`/`beginChannel`: resolve → refund → cast →
+stamp (a follow spends the opening; a tagged art leaves its word;
+`onKill` arms the ledger). `killNpc` → `settleKillRefund` (once, and a
+stale ledger clears). A staggered NPC caster loses its breath like a
+shocked one (`isStaggered` joins the cancel gate). `sendCooldowns`
+carries `open`.
+
+Content model (`ladderModel.ts`): `followCredit` (bonus × 0.5 uptime),
+`aftermathValue` (pulses × 0.45 + one status), `finaleCredit` (one beat
+at mult − 1), `cycleSeconds` (refunds shorten the cycle: kill × 0.25,
+follow × 0.5; floor 1 s); HONABLE += follow/aftermath/finaleMult/
+onKill. Register (`statusWave.test.ts`): `PLAYER_LICENSED` (player arts
+lay wave-one pages on NPCs by license, exact page list); FAIR HANDS'
+one-stagger count now walks the arts NPC kits carry (hands laid on
+PLAYERS), not the whole book.
+
+Client: `clientGame.artOpen` from the wire; hotbar wells wear `.open`
+(gold breath, edge-only class writes) while a seated follow reads the
+open word inside its window; tooltip speaks `follows/leaves/burns the
+ground/finale/a kill gives back` (`artGrammar`); codex measures gain
+Follows / Leaves / Aftermath / Finale / On a kill rows.
+
+Tests: `server/masteredHand.test.ts` (7 pins: window + spend + refund,
+outside/stranger, resolved def, finale beats, aftermath field + fx +
+scaling, held ground ONE buff + silent zone, red ledger once/late);
+`content/masteredHand.test.ts` (4 model pins). Gates: shared 302 /
+content 625 / server 632 / client 1108, tsc ×4. Zero content authored
+in this phase — every shipped art is byte-identical in the model
+(RELEVANCE, PAYOFF, SECRET BAND all pass unchanged).

@@ -650,6 +650,11 @@ import {
   type VsClause,
   snapShot,
   type AbilityDef,
+  type AftermathDef,
+  type FollowDef,
+  followMatches,
+  FOLLOW_WINDOW_MAX,
+  KILL_REFUND_WINDOW_TICKS,
   type AbilitySlot,
   type ActiveStatus,
   type CollisionSource,
@@ -667,6 +672,7 @@ import {
   type TrophyWire,
   type BuffInfo,
   type StatusApply,
+  type AbilitySelf,
   type StatusId,
   type SteerMemory,
 } from '@arx/shared';
@@ -901,6 +907,8 @@ interface ChannelAction {
   every: number;
   ticksLeft: number;
   total: number;
+  /** THE FOLLOW-THROUGH: the bonus resolved at the first note, kept for every beat. */
+  follow?: FollowDef;
 }
 
 type PlayerAction =
@@ -1584,6 +1592,8 @@ interface PendingBlast {
   arcHalf?: number;
   executeBelow?: { frac: number; mult: number };
   drainFrac?: number;
+  /** THE AFTERMATH: the ground the blast leaves (damage pre-scaled by the caster's power). */
+  aftermath?: { def: AftermathDef; damage: number; abilityId: string; color: string };
 }
 
 /**
@@ -1636,6 +1646,14 @@ interface ActiveField {
   attackerLevel?: number;
   knockback: number;
   drainFrac?: number;
+  /**
+   * THE HELD GROUND: the boon the owner wears while standing inside
+   * (re-applied each pulse, lapsing the beat after leaving). `selfId`
+   * and `selfColor` name the art for the buff chip and its fx.
+   */
+  self?: AbilitySelf;
+  selfId?: string;
+  selfColor?: string;
   /**
    * THE FANG FINDS ITS VOICE: a companion's field — player polarity
    * (pulses strike the bestiary), credit through damageNpc viaPet,
@@ -2036,6 +2054,10 @@ export interface PlayerComp {
    * LOAN LAW's lent art while a teaching weapon is in hand.
    */
   techniques: [string | null, string | null];
+  /** THE FOLLOW-THROUGH: the last fired tagged art and its tick (spent by a follow). */
+  lastArt: { tag: string; tick: number } | null;
+  /** THE RED LEDGER: the seat owed a refund if a kill lands before `until`. */
+  killRefund: { slot: AbilitySlot; ticks: number; until: number } | null;
   /**
    * THE LESSON LAW: secret arts whose lesson:<id> meter changed since
    * the last save — flushed on the savePlayer cadence, never per hit.
@@ -2606,6 +2628,58 @@ type TriggerHandler = (fire: TriggerFireEvent) => void;
 
 /** A guard hails a lawful crossing from this many tiles (with sight). */
 const GREET_RADIUS = 12;
+
+/**
+ * THE FOLLOW-THROUGH (techniques v3): does this art follow the word
+ * the player's last fired art left in the air, inside its window?
+ * Resolved ONCE at fire (a channel keeps the answer for every beat).
+ * Module-level on purpose — the cast and channel doors are slate-
+ * driven by their tests, and a door that reaches for a new method
+ * breaks every pin (THE SLATE-TEST LAW).
+ */
+function resolveFollow(
+  player: { lastArt: { tag: string; tick: number } | null },
+  ab: AbilityDef,
+  tick: number,
+): FollowDef | undefined {
+  const f = ab.follow;
+  const last = player.lastArt;
+  if (!f || !last) return undefined;
+  if (!followMatches(f, last.tag)) return undefined;
+  if (tick - last.tick > f.windowTicks) return undefined;
+  return f;
+}
+
+/** The follow's bonuses folded onto a copy of the def — same id, same shape, same fx face. */
+function withFollow(ab: AbilityDef, f: FollowDef): AbilityDef {
+  const out: AbilityDef = { ...ab };
+  if (f.damageMult !== undefined) out.damage = Math.round(ab.damage * f.damageMult * 100) / 100;
+  if (f.radiusMult !== undefined && ab.radius !== undefined) out.radius = ab.radius * f.radiusMult;
+  if (f.status) out.status = f.status;
+  return out;
+}
+
+/**
+ * The word an art leaves and the ledger it opens. A follow SPENDS the
+ * opening it read (one payoff per setup); a tagged art then speaks
+ * its own word; THE RED LEDGER arms its refund window.
+ */
+function stampArt(
+  player: {
+    lastArt: { tag: string; tick: number } | null;
+    killRefund: { slot: AbilitySlot; ticks: number; until: number } | null;
+  },
+  slot: AbilitySlot,
+  ab: AbilityDef,
+  follow: FollowDef | undefined,
+  tick: number,
+): void {
+  if (follow) player.lastArt = null;
+  if (ab.tag) player.lastArt = { tag: ab.tag, tick };
+  player.killRefund = ab.onKill ? { slot, ticks: ab.onKill.refundTicks, until: tick + KILL_REFUND_WINDOW_TICKS } : null;
+}
+
+export { resolveFollow as masteredHandResolveFollow, withFollow as masteredHandWithFollow };
 
 export class GameServer {
   tickCount = 0;
@@ -4204,6 +4278,8 @@ export class GameServer {
       casting: null,
       buffs: [],
       techniques: character.id > 0 ? await this.accounts.loadTechniques(character.id) : [null, null],
+      lastArt: null,
+      killRefund: null,
       lessonDirty: new Set(),
       callings: character.id > 0 ? await this.accounts.loadCallings(character.id) : new Map(),
       callingProcs: [],
@@ -18639,10 +18715,16 @@ export class GameServer {
       // Radials show the same cooldown the cast will actually set.
       max[slot] = base > 0 ? Math.max(1, Math.round(base * player.gear.cooldownMult)) : 0;
     }
+    const last = player.lastArt;
+    const open =
+      last && this.tickCount - last.tick <= FOLLOW_WINDOW_MAX
+        ? { tag: last.tag, age: this.tickCount - last.tick }
+        : undefined;
     player.session.sendJson({
       t: 'cooldowns',
       cd: [player.abilityCd[0], player.abilityCd[1], player.abilityCd[2], player.abilityCd[3]],
       max,
+      ...(open ? { open } : {}),
     });
   }
 
@@ -18964,7 +19046,10 @@ export class GameServer {
           ? player.equipment.sigil
           : undefined;
     const powerMult = trinket?.roll ? trinketPowerMult(trinket.roll.rar, trinket.roll.pwr) : 1;
-    this.castAbility(eid, ab, aim, style, level, false, targetPos, powerMult);
+    const follow = resolveFollow(player, ab, this.tickCount);
+    if (follow?.refundTicks) player.abilityCd[slot] = Math.max(1, player.abilityCd[slot] - follow.refundTicks);
+    this.castAbility(eid, ab, aim, style, level, false, targetPos, powerMult, follow);
+    stampArt(player, slot, ab, follow, this.tickCount);
     // THE DEEPER SIGIL: the art is away, so the cast is a moment. Fired
     // here rather than inside castAbility on purpose — that door also
     // serves NPC casters and every relic and trinket echo, and only a
@@ -19144,6 +19229,8 @@ export class GameServer {
           ? player.equipment.sigil
           : undefined;
     const powerMult = trinket?.roll ? trinketPowerMult(trinket.roll.rar, trinket.roll.pwr) : 1;
+    const follow = resolveFollow(player, ab, this.tickCount);
+    if (follow?.refundTicks) player.abilityCd[slot] = Math.max(1, player.abilityCd[slot] - follow.refundTicks);
     const total = ab.channelTicks ?? 0;
     const action: ChannelAction = {
       kind: 'channel',
@@ -19156,8 +19243,10 @@ export class GameServer {
       every: ab.pulseEveryTicks ?? 16,
       ticksLeft: total,
       total,
+      follow,
     };
     player.action = action;
+    stampArt(player, slot, ab, follow, this.tickCount);
     // Visible for the whole note (the tame's held-pose law), and the
     // rail's own wire carries the bar — with the art named, so the
     // client can tint the fill and breathe the singing well.
@@ -19178,7 +19267,12 @@ export class GameServer {
 
   /** One beat of the note: the shape executes through the one door. */
   private channelPulse(eid: EntityId, player: PlayerComp, a: ChannelAction, aim: number): void {
-    this.castAbility(eid, a.ab, aim, a.style, a.level, false, a.targetPos, a.powerMult);
+    // THE FINALE: the last beat of the note hits at the authored
+    // multiple — the whole note is paid, a broken note keeps only
+    // its quiet beats. The last beat is the one no further beat
+    // follows (ticksLeft ≤ every), the model's own beat count.
+    const finale = a.ticksLeft <= a.every ? (a.ab.finaleMult ?? 1) : 1;
+    this.castAbility(eid, a.ab, aim, a.style, a.level, false, a.targetPos, a.powerMult * finale, a.follow);
     void player;
   }
 
@@ -19209,6 +19303,128 @@ export class GameServer {
         this.broadcastFx(pos.plane, { t: 'fx', kind: 'note', x: pos.x, y: pos.y, radius: 0.9, id: a.ab.id, color: a.ab.color });
       }
     }
+  }
+
+  /** THE AFTERMATH at a resolved strike: the ground keeps burning. */
+  private leaveAftermath(
+    ab: AbilityDef,
+    plane: PlaneId,
+    x: number,
+    y: number,
+    radiusDefault: number,
+    ownerEid: EntityId,
+    style: SkillId,
+    fromNpc: boolean,
+    level: number,
+    powerK: number,
+  ): void {
+    const a = ab.aftermath;
+    if (!a) return;
+    const damage = a.damage > 0 ? Math.max(1, Math.round(a.damage * powerK)) : 0;
+    this.spawnAftermath(
+      a,
+      damage,
+      plane,
+      x,
+      y,
+      radiusDefault,
+      ownerEid,
+      style,
+      fromNpc,
+      fromNpc ? level : undefined,
+      ab.id,
+      ab.color,
+    );
+  }
+
+  private spawnAftermath(
+    a: AftermathDef,
+    damage: number,
+    plane: PlaneId,
+    x: number,
+    y: number,
+    radiusDefault: number,
+    ownerEid: EntityId,
+    style: SkillId,
+    fromNpc: boolean,
+    attackerLevel: number | undefined,
+    abilityId: string,
+    color: string,
+  ): void {
+    const radius = a.radius ?? radiusDefault;
+    this.activeFields.push({
+      plane,
+      x,
+      y,
+      radius,
+      damage,
+      everyTicks: a.everyTicks ?? 16,
+      ticksLeft: a.fieldTicks,
+      status: a.status,
+      ownerEid,
+      style,
+      fromNpc,
+      attackerLevel,
+      knockback: a.knockback ?? 0,
+      self: a.self,
+      selfId: abilityId,
+      selfColor: color,
+    });
+    this.broadcastFx(plane, {
+      t: 'fx',
+      kind: 'field',
+      x,
+      y,
+      radius,
+      ticks: a.fieldTicks,
+      id: abilityId,
+      color,
+    });
+  }
+
+  /**
+   * THE HELD GROUND: the owner standing inside their own zone wears
+   * its boon. One buff by name, its clock pushed a beat past the next
+   * pulse (so it lapses the beat after leaving) — never a second
+   * copy, since the fold table SUMS armor and shield.
+   */
+  private holdGround(field: ActiveField): void {
+    const self = field.self;
+    if (!self) return;
+    const player = this.players.get(field.ownerEid);
+    const pos = this.positions.get(field.ownerEid);
+    if (!player || !pos || pos.plane !== field.plane) return;
+    if (Math.hypot(pos.x - field.x, pos.y - field.y) > field.radius) return;
+    const face = abilityDef(field.selfId ?? '');
+    const name = face?.name ?? 'Held Ground';
+    const until = this.tickCount + field.everyTicks + 2;
+    const held = player.buffs.find((b) => b.name === name);
+    if (held) {
+      held.untilTick = until;
+      return;
+    }
+    const base: AbilityDef = face ?? {
+      id: field.selfId ?? 'held_ground',
+      name,
+      desc: '',
+      color: field.selfColor ?? '#ffffff',
+      code: '',
+      cooldownTicks: 0,
+      shape: 'self_buff',
+      damage: 0,
+    };
+    this.applySelf(field.ownerEid, { ...base, self: { ...self, durationTicks: field.everyTicks + 2 } }, 1, pos);
+  }
+
+  /** THE RED LEDGER at the kill: a kill inside the art's window refunds its seat, once. */
+  private settleKillRefund(killer: PlayerComp): void {
+    const owed = killer.killRefund;
+    if (!owed) return;
+    killer.killRefund = null;
+    if (this.tickCount > owed.until) return;
+    const before = killer.abilityCd[owed.slot];
+    killer.abilityCd[owed.slot] = Math.max(0, before - owed.ticks);
+    if (killer.abilityCd[owed.slot] !== before) this.sendCooldowns(killer);
   }
 
   /** Execute law: a target low enough on HP eats the bonus multiplier. */
@@ -19584,7 +19800,7 @@ export class GameServer {
    */
   private castAbility(
     casterEid: EntityId,
-    ab: AbilityDef,
+    abIn: AbilityDef,
     aim: number,
     style: SkillId,
     level: number,
@@ -19593,7 +19809,12 @@ export class GameServer {
     targetPos?: { x: number; y: number },
     /** Trinket-instance scaling (relic/sigil rarity + power). */
     powerMult = 1,
+    /** THE FOLLOW-THROUGH: the bonus this cast landed (resolved once at fire). */
+    follow?: FollowDef,
   ): void {
+    // A landed follow speaks through the SAME interpreter on a
+    // resolved def — never a second executor.
+    const ab = follow ? withFollow(abIn, follow) : abIn;
     const pos = this.positions.must(casterEid);
     // Arx Art projectiles fly in the caster's staff school — the
     // element is a weapon fact, so a Frost Nova from an ember staff
@@ -19623,18 +19844,9 @@ export class GameServer {
       : 1;
     // THE THREAT LAW: NPC casters climb the steeper NPC curve — the
     // level line is all they have; players compound gear on top.
-    const maxHit =
-      ab.damage > 0
-        ? Math.max(
-            1,
-            Math.round(
-              ab.damage *
-                powerMultFn(level, fromNpc ? NPC_POWER_PER_LEVEL : PLAYER_POWER_PER_LEVEL) *
-                gearMult *
-                powerMult,
-            ),
-          )
-        : 0;
+    const powerK =
+      powerMultFn(level, fromNpc ? NPC_POWER_PER_LEVEL : PLAYER_POWER_PER_LEVEL) * gearMult * powerMult;
+    const maxHit = ab.damage > 0 ? Math.max(1, Math.round(ab.damage * powerK)) : 0;
     const knockbackMult = ab.knockback ?? 1;
 
     switch (ab.shape) {
@@ -19651,6 +19863,18 @@ export class GameServer {
           id: ab.id,
           color: ab.color,
         });
+        this.leaveAftermath(
+          ab,
+          pos.plane,
+          pos.x + Math.cos(aim) * range * 0.6,
+          pos.y + Math.sin(aim) * range * 0.6,
+          1.4,
+          casterEid,
+          style,
+          fromNpc,
+          level,
+          powerK,
+        );
         // THE KIT: an NPC's sweep cuts the OTHER side of the fight —
         // same crescent, same whiff-0 roll, THREAT LAW mitigation.
         if (fromNpc) {
@@ -19698,6 +19922,7 @@ export class GameServer {
           id: ab.id,
           color: ab.color,
         });
+        this.leaveAftermath(ab, pos.plane, pos.x, pos.y, radius, casterEid, style, fromNpc, level, powerK);
         if (fromNpc) {
           this.blastPlayers(pos.plane, pos.x, pos.y, radius, maxHit, ab.status, level, {
             sourceEid: casterEid,
@@ -20076,6 +20301,14 @@ export class GameServer {
           abilityId: ab.id,
           executeBelow: ab.executeBelow,
           drainFrac: ab.drainFrac,
+          aftermath: ab.aftermath
+            ? {
+                def: ab.aftermath,
+                damage: ab.aftermath.damage > 0 ? Math.max(1, Math.round(ab.aftermath.damage * powerK)) : 0,
+                abilityId: ab.id,
+                color: ab.color,
+              }
+            : undefined,
         });
         this.broadcastFx(pos.plane, {
           t: 'fx',
@@ -20112,6 +20345,9 @@ export class GameServer {
           attackerLevel: fromNpc ? level : undefined,
           knockback: ab.knockback ?? 0,
           drainFrac: ab.drainFrac,
+          self: ab.self,
+          selfId: ab.id,
+          selfColor: ab.color,
         });
         this.broadcastFx(pos.plane, {
           t: 'fx',
@@ -20154,6 +20390,7 @@ export class GameServer {
           id: ab.id,
           color: ab.color,
         });
+        this.leaveAftermath(ab, pos.plane, (pos.x + ex) / 2, (pos.y + ey) / 2, 1.4, casterEid, style, fromNpc, level, powerK);
         const strike = (targetEid: EntityId, bodyR: number, tx: number, ty: number): boolean => {
           const px = tx - pos.x;
           const py = ty - pos.y;
@@ -20225,6 +20462,7 @@ export class GameServer {
               id: ab.id,
               color: ab.color,
             });
+            this.leaveAftermath(ab, endPos.plane, cx, cy, radius, casterEid, style, fromNpc, level, powerK);
             // The landing re-roots for the promised recovery — the
             // freeze paid at the press would have burned mid-air.
             if (!fromNpc && (ab.castFreezeTicks ?? 0) > 0) {
@@ -20600,6 +20838,10 @@ export class GameServer {
     return this.statuses.get(eid)?.some((s) => s.id === 'shock' && (s.stunLeft ?? 0) > 0) ?? false;
   }
 
+  private isStaggered(eid: EntityId): boolean {
+    return this.statuses.get(eid)?.some((s) => s.id === 'stagger') ?? false;
+  }
+
   private isChilled(eid: EntityId): boolean {
     return this.statuses.get(eid)?.some((s) => s.id === 'chill') ?? false;
   }
@@ -20753,6 +20995,23 @@ export class GameServer {
           this.drainHeal(blast.ownerEid, dmg, blast.drainFrac);
         });
       }
+      if (blast.aftermath) {
+        const a = blast.aftermath;
+        this.spawnAftermath(
+          a.def,
+          a.damage,
+          blast.plane,
+          blast.x,
+          blast.y,
+          blast.radius,
+          blast.ownerEid,
+          blast.style,
+          blast.fromNpc,
+          blast.attackerLevel,
+          a.abilityId,
+          a.color,
+        );
+      }
     }
   }
 
@@ -20766,6 +21025,9 @@ export class GameServer {
         continue;
       }
       if (field.ticksLeft % field.everyTicks !== 0) continue;
+      if (field.self && !field.fromNpc) this.holdGround(field);
+      // A zone that only holds ground wounds nothing.
+      if (field.damage <= 0 && !field.status && !field.vs) continue;
       if (field.fromNpc) {
         this.blastPlayers(field.plane, field.x, field.y, field.radius, field.damage, field.status, field.attackerLevel, {
           sourceEid: field.ownerEid,
@@ -21945,6 +22207,7 @@ export class GameServer {
       // On-kill haste (Battlecharged etc.): victory shaves the Q/E
       // slots — THE QUICKENED HAND's second engine, same index law as
       // the on-hit site above.
+      this.settleKillRefund(killer);
       const haste = killer.gear.onKillHasteTicks;
       if (haste > 0) {
         const before0 = killer.abilityCd[0];
@@ -25751,9 +26014,10 @@ export class GameServer {
       // Shock is a hard stagger: no thinking, no moving, no swinging.
       // Companions obey it the same as everyone (their branch sits
       // below on purpose — a shocked pet stands staggered too).
-      if (this.isShocked(eid)) {
+      if (this.isShocked(eid) || this.isStaggered(eid)) {
         npc.windupTicks = 0;
-        // Shock is the interrupt school: a drawn breath gutters.
+        // Shock is the interrupt school (and a staggered caster loses
+        // its breath the same way): a drawn breath gutters.
         this.cancelNpcCast(eid, npc);
         continue;
       }

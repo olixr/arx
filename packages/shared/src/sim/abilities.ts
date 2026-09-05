@@ -608,6 +608,69 @@ export interface AbilitySummon {
   power: number;
 }
 
+/**
+ * THE THREE-ACT ART (techniques v3): the role a technique plays in a
+ * fight. An opener sets a state (brand, slow, root, pull, a planted
+ * zone) and hits light; a payoff reads or spends a state; a sustain
+ * holds ground or a line (channels, fields, pulse trains); an answer
+ * is the defensive, mobility, or utility beat; the crown is the
+ * capstone spectacle. The ladder tests hold each school to its quota.
+ */
+export type AbilityRole = 'opener' | 'payoff' | 'sustain' | 'answer' | 'crown';
+export const ABILITY_ROLES: readonly AbilityRole[] = ['opener', 'payoff', 'sustain', 'answer', 'crown'];
+
+/**
+ * THE FOLLOW-THROUGH: an art cast inside `windowTicks` of a landed art
+ * wearing one of the `after` tags speaks these bonuses. The server
+ * remembers each player's last fired art (its `tag`, the tick); a
+ * follow SPENDS the opening (one payoff per setup). Windows are short
+ * by law (FOLLOW_WINDOW_MAX); the ladder model credits the bonus at
+ * half, assuming the combo lands every other cycle.
+ */
+export interface FollowDef {
+  after: string | readonly string[];
+  windowTicks: number;
+  /** Multiplies the art's damage for this cast. */
+  damageMult?: number;
+  /** Multiplies the art's radius (blast shapes) for this cast. */
+  radiusMult?: number;
+  /** Replaces the art's carried status for this cast. */
+  status?: StatusApply;
+  /** Cooldown given back to the seat at fire when the follow lands. */
+  refundTicks?: number;
+}
+
+/** The longest a follow window may stand (4 s). */
+export const FOLLOW_WINDOW_MAX = 80;
+
+export function followMatches(follow: FollowDef, tag: string | undefined): boolean {
+  if (!tag) return false;
+  return typeof follow.after === 'string' ? follow.after === tag : follow.after.includes(tag);
+}
+
+/**
+ * THE AFTERMATH: the press resolves, then the ground keeps burning. A
+ * standing field at the impact point (blast shapes at the blast, an
+ * arc a stride ahead of the caster, a beam at its midpoint), pulsing
+ * `damage` (scaled by the caster's power exactly as the art's own
+ * damage is) every `everyTicks` for `fieldTicks`. `self` makes it
+ * HELD GROUND: the caster standing inside wears the boon.
+ */
+export interface AftermathDef {
+  fieldTicks: number;
+  /** Default 16. */
+  everyTicks?: number;
+  damage: number;
+  /** Default: the blast's own radius; 1.4 for arcs and beams. */
+  radius?: number;
+  status?: StatusApply;
+  self?: AbilitySelf;
+  knockback?: number;
+}
+
+/** THE RED LEDGER: a kill landed inside this many ticks of the fire refunds the seat. */
+export const KILL_REFUND_WINDOW_TICKS = 40;
+
 export interface AbilityDef {
   id: string;
   name: string;
@@ -730,6 +793,21 @@ export interface AbilityDef {
    * one factor, derived, never authored twice. Honable by rank.
    */
   channelTicks?: number;
+  /** THE THREE-ACT ART: the role this technique plays (ladder quotas read it). */
+  role?: AbilityRole;
+  /** THE FOLLOW-THROUGH: the word this art leaves in the air for a follower. */
+  tag?: string;
+  /** THE FOLLOW-THROUGH: what this art speaks when it follows a tagged art. */
+  follow?: FollowDef;
+  /** THE AFTERMATH: the ground this art leaves behind. */
+  aftermath?: AftermathDef;
+  /**
+   * THE FINALE: a channel's LAST beat hits at this multiple. Holding
+   * the whole note is paid; breaking early keeps only the quiet beats.
+   */
+  finaleMult?: number;
+  /** THE RED LEDGER: a kill inside KILL_REFUND_WINDOW_TICKS of the fire refunds this much cooldown. */
+  onKill?: { refundTicks: number };
   /** pet_command: which word this art speaks to the companion. */
   command?: PetCommandKind;
   /** becalm / wild_howl: how long the stilled blood stays down, ticks. */

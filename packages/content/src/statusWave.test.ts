@@ -75,6 +75,17 @@ const GEAR_LICENSED: Record<string, string[]> = {
   packlord: ['quicken'],
 };
 
+/**
+ * THE MASTERED HAND (techniques v3): player-wielded wave-one pages,
+ * licensed one applier at a time by the school waves. A player art
+ * lays its page on NPCs only (FAIR HANDS is untouched — no player is
+ * ever held by another player's art), and every entry here is priced
+ * by the HOLD BUDGET pins in statusLedger.test.ts. Add the art id and
+ * the exact page list it lays (follow statuses and aftermath pages
+ * count); the register refuses anything unlisted.
+ */
+export const PLAYER_LICENSED: Record<string, string[]> = {};
+
 function leaks(value: unknown): string[] {
   const found: string[] = [];
   const walk = (v: unknown): void => {
@@ -98,8 +109,11 @@ test('every wave-one applier is licensed, lays exactly its page, and no stranger
   for (const [id, ab] of ABILITIES) {
     const laid = leaks(ab);
     const licensed = LICENSED[id];
+    const playerLicensed = PLAYER_LICENSED[id];
     if (licensed) {
       assert.deepEqual(laid, [licensed], `${id} must lay exactly its licensed page`);
+    } else if (playerLicensed) {
+      assert.deepEqual([...laid].sort(), [...playerLicensed].sort(), `${id} must lay exactly its licensed pages`);
     } else {
       assert.deepEqual(laid, [], `${id} lays a wave-one state without a license`);
     }
@@ -132,12 +146,18 @@ test('the eight licensed arts are the EIGHT CROWNS: one per boss kit, page-match
 });
 
 test('FAIR HANDS at the register: one player stagger in the whole game, root page-clamped', () => {
+  // FAIR HANDS is about the hands laid on PLAYERS: the count walks the
+  // arts a body carries in its kit (THE MASTERED HAND licenses player
+  // staggers on NPCs through PLAYER_LICENSED — a different lane).
+  const carried = new Set<string>();
+  for (const [, def] of NPCS) for (const k of def.kit ?? []) carried.add(k.ability);
   let staggers = 0;
-  for (const [, ab] of ABILITIES) {
+  for (const [id, ab] of ABILITIES) {
+    if (!carried.has(id)) continue;
     const walk = JSON.stringify(ab);
     if (walk.includes('"stagger"')) staggers++;
   }
-  assert.equal(staggers, 1, 'the anvil toll is THE one stagger signature (the green-light law)');
+  assert.equal(staggers, 1, 'the anvil toll is THE one stagger signature laid on players (the green-light law)');
   const grasp = ABILITIES.get('tide_grasp')!;
   assert.ok((grasp.status?.durationTicks ?? 99) <= 40, "a root's clock never outruns its page");
 });

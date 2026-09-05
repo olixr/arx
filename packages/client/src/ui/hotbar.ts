@@ -1,4 +1,12 @@
-import { EQUIP_SLOTS, PASSIVES, isStowedSlot, type AbilitySlot } from '@arx/shared';
+import {
+  EQUIP_SLOTS,
+  PASSIVES,
+  TICK_MS,
+  followMatches,
+  isStowedSlot,
+  type AbilityDef,
+  type AbilitySlot,
+} from '@arx/shared';
 import { CALLINGS, ENCHANTS, itemDef } from '@arx/content';
 import type { ClientGame } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
@@ -77,6 +85,24 @@ const BAR_ORDER = [0, 2, 1, 3] as const;
  * pressing one casts, so touch and mouse players get abilities
  * without a keyboard.
  */
+
+/**
+ * THE MASTERED HAND on the tooltip: the relationships an art carries
+ * between presses, in the register's words.
+ */
+export function artGrammar(ab: AbilityDef): string {
+  let out = '';
+  if (ab.follow) {
+    const after = typeof ab.follow.after === 'string' ? ab.follow.after : ab.follow.after.join(' or ');
+    out += ` · follows ${after} (${ab.follow.windowTicks / 20}s)`;
+  }
+  if (ab.tag) out += ` · leaves ${ab.tag}`;
+  if (ab.aftermath) out += ` · burns the ground ${ab.aftermath.fieldTicks / 20}s`;
+  if (ab.finaleMult && ab.finaleMult > 1) out += ` · finale ×${ab.finaleMult}`;
+  if (ab.onKill) out += ` · a kill gives back ${ab.onKill.refundTicks / 20}s`;
+  return out;
+}
+
 export class Hotbar {
   private readonly root = document.getElementById('hotbar')!;
   private readonly tray = document.getElementById('passive-tray')!;
@@ -95,6 +121,8 @@ export class Hotbar {
   private readonly names: string[] = ['', '', '', ''];
   private readonly wasReady: boolean[] = [true, true, true, true];
   private readonly wasDormant: boolean[] = [false, false, false, false];
+  /** THE FOLLOW-THROUGH: last-written open state per well (edge-only class writes). */
+  private readonly wasOpen: boolean[] = [false, false, false, false];
   private trayKey = '';
   /** Fires when a slot transitions to ready (for the soft tick). */
   onReady: (() => void) | null = null;
@@ -239,11 +267,12 @@ export class Hotbar {
         el.classList.remove('empty');
         el.classList.toggle('dormant', dormant);
         // THE SPOKEN TIMING: a breath or a note names its length.
-        const timing = ab.castTicks
-          ? ` · winds ${ab.castTicks / 20}s`
-          : ab.channelTicks && ab.shape !== 'tame'
-            ? ` · held ${ab.channelTicks / 20}s`
-            : '';
+        const timing =
+          (ab.castTicks
+            ? ` · winds ${ab.castTicks / 20}s`
+            : ab.channelTicks && ab.shape !== 'tame'
+              ? ` · held ${ab.channelTicks / 20}s`
+              : '') + artGrammar(ab);
         el.title = dormant
           ? `${ab.name} sleeps. Hold a weapon that teaches it.`
           : `${ab.name} — ${ab.desc}${timing}`;
@@ -277,6 +306,20 @@ export class Hotbar {
         this.onReady?.();
       }
       this.wasReady[slot] = ready;
+
+      // THE FOLLOW-THROUGH on the tray: the well of every art whose
+      // follow reads the word in the air glows while its window stands
+      // (the client counts the window down from the server's age).
+      const win = game.artOpen;
+      const open =
+        !!win &&
+        !!ab.follow &&
+        followMatches(ab.follow, win.tag) &&
+        now - win.sinceMs <= ab.follow.windowTicks * TICK_MS;
+      if (open !== this.wasOpen[slot]) {
+        this.wasOpen[slot] = open;
+        el.classList.toggle('open', open);
+      }
     }
 
     // Passive tray: the quiet half of the build, rebuilt only when the

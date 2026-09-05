@@ -1162,6 +1162,13 @@ export interface S2CCooldowns {
   cd: [number, number, number, number];
   /** [art, relic, technique, sigil] full durations, for the radials. */
   max: [number, number, number, number];
+  /**
+   * THE FOLLOW-THROUGH: the word the own player's last fired art left
+   * in the air and how many ticks ago it was spoken. Additive; absent
+   * when nothing tagged was fired. The hotbar lights every seated art
+   * whose follow reads the tag while its own window still stands.
+   */
+  open?: { tag: string; age: number };
 }
 
 /**

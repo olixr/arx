@@ -144,10 +144,65 @@ function utilityCredit(ab: AbilityDef): number {
   return u;
 }
 
+/**
+ * THE FOLLOW-THROUGH, priced: the bonus a follow speaks, credited at
+ * HALF — the model assumes the combo lands every other cycle. Damage
+ * and radius multipliers ride the art's own direct value; a replaced
+ * status is worth its own status value less the one it replaces.
+ */
+export const FOLLOW_UPTIME = 0.5;
+
+function followCredit(ab: AbilityDef): number {
+  const f = ab.follow;
+  if (!f) return 0;
+  const direct = ab.damage * singleTargetHits(ab) * aoeCredit(ab) * channelBeats(ab);
+  let bonus = direct * ((f.damageMult ?? 1) - 1);
+  if (f.radiusMult && BLAST_SHAPES.has(ab.shape)) {
+    const r = ab.radius ?? 2;
+    bonus += direct * (Math.min(r * f.radiusMult, 3) - Math.min(r, 3)) * 0.12;
+  }
+  if (f.status) bonus += Math.max(0, statusValue(f.status) - statusValue(ab.status));
+  return bonus * FOLLOW_UPTIME;
+}
+
+/**
+ * THE AFTERMATH, priced: a standing field's pulses at the model's own
+ * 0.45 connect factor (a body walks out of a zone), plus one status
+ * application. The field's own damage scales like the art's.
+ */
+export function aftermathValue(ab: AbilityDef): number {
+  const a = ab.aftermath;
+  if (!a) return 0;
+  const pulses = Math.floor(a.fieldTicks / (a.everyTicks ?? 16));
+  return a.damage * pulses * 0.45 + statusValue(a.status);
+}
+
+/** THE FINALE, priced: the last beat's extra weight, once per note. */
+function finaleCredit(ab: AbilityDef): number {
+  if (!ab.channelTicks || !ab.finaleMult || ab.finaleMult <= 1) return 0;
+  return ab.damage * singleTargetHits(ab) * aoeCredit(ab) * (ab.finaleMult - 1);
+}
+
+/**
+ * THE RED LEDGER, priced: a kill refund shortens the cycle. Credited
+ * at a quarter of its face — kills are the fight's last act, not its
+ * every act.
+ */
+export const KILL_REFUND_UPTIME = 0.25;
+
+export function cycleSeconds(ab: AbilityDef): number {
+  const base = ab.cooldownTicks / TICK + (ab.castTicks ?? 0) / TICK / CAST_STILL_FACTOR;
+  const refund =
+    (ab.onKill?.refundTicks ?? 0) * KILL_REFUND_UPTIME + (ab.follow?.refundTicks ?? 0) * FOLLOW_UPTIME;
+  return Math.max(1, base - refund / TICK);
+}
+
 export function cycleValue(ab: AbilityDef): number {
   const direct = ab.damage * singleTargetHits(ab) * aoeCredit(ab) * channelBeats(ab);
-  const cycleSecs = ab.cooldownTicks / TICK + (ab.castTicks ?? 0) / TICK / CAST_STILL_FACTOR;
-  return (direct + statusValue(ab.status) + utilityCredit(ab)) / cycleSecs;
+  return (
+    (direct + statusValue(ab.status) + utilityCredit(ab) + followCredit(ab) + aftermathValue(ab) + finaleCredit(ab)) /
+    cycleSeconds(ab)
+  );
 }
 
 /**
@@ -199,6 +254,11 @@ export const HONABLE: ReadonlySet<string> = new Set([
   'summon',
   'tauntRadius',
   'channelTicks',
+  // THE MASTERED HAND (techniques v3): the relationships between presses hone too.
+  'follow',
+  'aftermath',
+  'finaleMult',
+  'onKill',
   // THE KEEPER'S TONGUE: the keeper dials rank like any other number.
   'becalmTicks',
   'petHealFrac',
