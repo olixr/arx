@@ -166,6 +166,7 @@ import {
   TOOL_TIER_NAMES,
   TOWN_SPAWNS,
   abilityDef,
+  combatHp,
   actorAppearance,
   actorCombatDef,
   bandDy,
@@ -22336,7 +22337,7 @@ export class GameServer {
       npc.def.pack &&
       npc.state === 'chase' &&
       !npc.helpCalled &&
-      health.hp <= npc.def.maxHp * 0.35
+      health.hp <= health.maxHp * 0.35
     ) {
       npc.helpCalled = true;
       if (Math.random() < 0.5) this.npcSeekHelp(npcEid, npc);
@@ -23643,7 +23644,9 @@ export class GameServer {
     this.kinds.set(eid, EntityKind.Npc);
     this.positions.set(eid, { x, y, dir: Math.random() * Math.PI * 2, plane });
     this.poses.set(eid, PoseState.Idle);
-    this.healths.set(eid, { hp: def.maxHp, maxHp: def.maxHp });
+    // THE PACE DIAL: a fighting body stands up with its paced pool.
+    const pool = combatHp(def);
+    this.healths.set(eid, { hp: pool, maxHp: pool });
     this.npcs.set(eid, {
       def,
       originX: x,

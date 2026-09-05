@@ -676,6 +676,16 @@ export interface AftermathDef {
   knockback?: number;
 }
 
+/**
+ * THE PACE DIAL (THE MASTERED HAND, Phase 5 — the ONE number move):
+ * every hostile body's hit points, multiplied once at spawn. The
+ * technique rebuild moved the fight from instants to setups and
+ * payoffs; this lengthens the fight so the setup has room to be read.
+ * Basics' share of a kill drops, the technique's rises. Every TTK
+ * bracket reads it, so a future turn of the dial re-pins them all.
+ */
+export const PACE_HP_MULT = 1.3;
+
 /** THE RED LEDGER: a kill landed inside this many ticks of the fire refunds the seat. */
 export const KILL_REFUND_WINDOW_TICKS = 40;
 

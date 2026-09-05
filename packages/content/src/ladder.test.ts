@@ -20,7 +20,7 @@ import {
 } from '@arx/shared';
 import { ABILITIES, TECHNIQUES, abilityDef, techniquesFor } from './abilities.js';
 import { HONABLE, channelBeats, cycleValue, isUtilityArt, rootedPremium } from './ladderModel.js';
-import { NPCS, scaleNpcDef } from './npcs.js';
+import { NPCS, combatHp, scaleNpcDef } from './npcs.js';
 
 test('every technique carries a full honing ladder of well-formed steps', () => {
   for (const tech of TECHNIQUES) {
@@ -386,7 +386,7 @@ test('THE PAYOFF BRACKET: one press never deletes an at-level line fighter', () 
     return base * channelBeats(ab);
   };
   for (const L of [10, 25, 50, 75, 95]) {
-    const fighterHp = scaleNpcDef(skeleton, L).maxHp;
+    const fighterHp = combatHp(scaleNpcDef(skeleton, L));
     for (const style of ['combat', 'onehand', 'archery', 'arx', 'sneak', 'twohand', 'polearm', 'shield', 'dualwield']) {
       let instantBest = 0;
       let channelBest = 0;

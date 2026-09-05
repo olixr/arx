@@ -17,7 +17,7 @@ import { SECRET_ARTS, secretArtsFor } from './secretArts.js';
 import { SECRET_RANKS } from './secretRanks.js';
 import { HONABLE, cycleValue, isUtilityArt } from './ladderModel.js';
 import { ITEMS } from './items.js';
-import { NPCS, scaleNpcDef } from './npcs.js';
+import { NPCS, combatHp, scaleNpcDef } from './npcs.js';
 
 /** The five schools that own weapons — the only schools a secret may
  * sit in. THE ARMORY's polearm roster joined 2026-08-16: the knight's
@@ -187,7 +187,7 @@ test('THE PAYOFF BRACKET FOR THE SHELF: no secret, at any honed rank, deletes an
     }
   };
   for (const L of [10, 25, 50, 75, 95]) {
-    const fighterHp = scaleNpcDef(skeleton, L).maxHp;
+    const fighterHp = combatHp(scaleNpcDef(skeleton, L));
     for (const style of WEAPON_SCHOOLS) {
       for (const seat of secretArtsFor(style)) {
         if (techniqueAnchor(seat) > L) continue;

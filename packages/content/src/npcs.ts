@@ -3,7 +3,7 @@ export { BOSS_KIT_MAX, TEMPERAMENT_BOUNDS } from './npcs/limits.js';
 import { NPC_DEFS } from './npcs/defs.js';
 export { NPC_DEFS } from './npcs/defs.js';
 export { validateNpcDef } from './npcs/validate.js';
-import { STATUS_IDS, type StatusApply, type StatusId } from '@arx/shared';
+import { STATUS_IDS, type StatusApply, type StatusId, PACE_HP_MULT } from '@arx/shared';
 import { DAMAGE_LANES, NPC_LANES, type NpcLanes } from './npcLanes.js';
 
 
@@ -493,6 +493,17 @@ export function replaceNpcDefs(next: Iterable<NpcDef>): void {
  * troll still fights like a troll. Loot rolls read the SCALED level,
  * so deep dungeon beasts pay out deep-level loot by construction.
  */
+/**
+ * THE PACE DIAL applied: the hit points a body stands up with. Hostile
+ * bodies (aggroRange > 0 — the wild, the camps, the crowns) wear the
+ * dial; townsfolk, livestock and other quiet bodies keep their authored
+ * pool. The server's spawn door and every bracket read THIS, never
+ * def.maxHp, for a fighting body.
+ */
+export function combatHp(def: NpcDef): number {
+  return def.aggroRange > 0 ? Math.max(1, Math.round(def.maxHp * PACE_HP_MULT)) : def.maxHp;
+}
+
 export function scaleNpcDef(def: NpcDef, level: number, name?: string): NpcDef {
   if (level === def.level && !name) return def;
   const ratio = level / Math.max(1, def.level);
