@@ -7,6 +7,7 @@
     "bot": "tsx src/bot/bot.ts",
     "prove:secret-arts": "tsx src/proving/secretArts.ts",
     "prove:drawn-breath": "tsx src/proving/drawnBreath.ts",
+    "prove:mastered-hand": "tsx src/proving/masteredHand.ts",
     "prove:lesson-combat": "tsx src/proving/lessonCombat.ts",
     "prove:mounts": "tsx src/proving/mounts.ts",
     "prove:pets": "tsx src/proving/pets.ts",
