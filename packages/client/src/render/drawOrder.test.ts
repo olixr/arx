@@ -259,6 +259,69 @@ test('CROSS-SHELF stays narrow: a raised tree genuinely IN FRONT of a ground hed
   assert.deepEqual(order([raisedTreeSameRow, groundHedge]), [groundHedge, raisedTreeSameRow]);
 });
 
+// ── G4: THE OVER-FOOT SKIRT is BOUND to its object ─────────────────────────
+// The grass skirt around an object's foot must draw immediately AFTER its
+// object, in the object's OWN sort slot, every frame — never a fragile
+// +epsilon near-tie that flips order as the camera moves. The renderer emits
+// the skirt with the object's EXACT (strat, sortY) and a strictly greater
+// `seq` (it is collected after the world objects), so DRAW_ORDER binds it
+// deterministically right after that object.
+
+test('SKIRT: over a GENERIC object (billboard tree/rock) it shares the exact row+shelf and draws right after via seq', () => {
+  // The renderer copies footY = object.sortY and strat, and stamps a later seq.
+  const treeObj: DrawOrderItem = { sortY: 40, strat: 0, seq: 5 };
+  const skirt: DrawOrderItem = { sortY: 40, strat: 0, seq: 12 }; // same slot, later seq
+  // Whichever way they arrive, the object draws first, the skirt right after.
+  assert.deepEqual(order([treeObj, skirt]), [treeObj, skirt]);
+  assert.deepEqual(order([skirt, treeObj]), [treeObj, skirt]);
+  assert.ok(DRAW_ORDER(treeObj, skirt) < 0);
+  assert.ok(DRAW_ORDER(skirt, treeObj) > 0);
+});
+
+test('SKIRT: over a WALL (a VOLUME) it shares the wall foot row and still draws right after (rank + seq)', () => {
+  // The wall carries nearRow === its foot row; the skirt is a billboard at the
+  // same row. The volume (rank 0) draws first, the skirt after — and the skirt
+  // has the later seq besides, so it can never precede its wall.
+  const wall: DrawOrderItem = { sortY: 10, nearRow: 10, strat: 0, seq: 3 };
+  const skirt: DrawOrderItem = { sortY: 10, strat: 0, seq: 9 };
+  assert.deepEqual(order([wall, skirt]), [wall, skirt]);
+  assert.deepEqual(order([skirt, wall]), [wall, skirt]);
+});
+
+test('SKIRT: no other item can wedge between object and skirt at the shared slot — the pair is contiguous', () => {
+  // The old bug: the skirt sat a hair south (footY + 0.02), so an object rooted
+  // between footY and footY+0.02 (or a moving body oscillating across it) slid
+  // BETWEEN the object and its skirt and flipped frame-to-frame. Now the skirt
+  // shares the object's EXACT row, so a genuinely-souther object sorts AFTER
+  // both (it occludes the pair), never between them.
+  const obj: DrawOrderItem = { sortY: 50, strat: 0, seq: 2 };
+  const skirt: DrawOrderItem = { sortY: 50, strat: 0, seq: 8 };
+  const souther: DrawOrderItem = { sortY: 50.5, strat: 0, seq: 4 }; // in front
+  const sorted = order([souther, skirt, obj]);
+  assert.deepEqual(sorted, [obj, skirt, souther]);
+  // object and skirt are adjacent (contiguous), souther is strictly after both.
+  assert.ok(sorted.indexOf(skirt) === sorted.indexOf(obj) + 1);
+});
+
+test('SKIRT: is still OCCLUDED when the whole object is behind something in front (souther row wins over the skirt)', () => {
+  const skirt: DrawOrderItem = { sortY: 30, strat: 0, seq: 7 };
+  const inFront: DrawOrderItem = { sortY: 31, strat: 0, seq: 1 }; // south ⇒ nearer
+  // Despite the smaller seq, the souther item draws last ⇒ in front of the skirt.
+  assert.deepEqual(order([skirt, inFront]), [skirt, inFront]);
+});
+
+test('SKIRT: sharing the object shelf means SHELF never separates them (elevated foot)', () => {
+  // A skirt around an object rooted on a terrace rides the SAME shelf as its
+  // object; SHELF therefore cannot lift/sink one relative to the other.
+  const raisedObj: DrawOrderItem = { sortY: 20, strat: 1, seq: 2 };
+  const skirt: DrawOrderItem = { sortY: 20, strat: 1, seq: 6 };
+  assert.deepEqual(order([skirt, raisedObj]), [raisedObj, skirt]);
+  // A mismatched-shelf skirt (the bug shape: strat dropped to 0) would be torn
+  // BELOW its raised object by SHELF — this guards that we copy the shelf.
+  const skirtWrongShelf: DrawOrderItem = { sortY: 20, strat: 0, seq: 6 };
+  assert.deepEqual(order([raisedObj, skirtWrongShelf]), [skirtWrongShelf, raisedObj]);
+});
+
 test('REGRESSION GUARD: the tree fix does NOT touch player-vs-hedge — a raised BODY over a ground hedge still keeps SHELF', () => {
   // A player/NPC/beast is a billboard (no nearRow); only trees became volumes.
   // A raised body in front of a ground hedge still keeps SHELF exactly as

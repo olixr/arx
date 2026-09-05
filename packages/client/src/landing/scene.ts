@@ -18,7 +18,17 @@
  *   fire and sky never wait for them.
  */
 import { Tile, daylightAt, valueNoise } from '@arx/shared';
-import { GrassSystem, type Disturber } from '../render/grass.js';
+import {
+  GrassSystem,
+  BLADE_FILLS,
+  ORNAMENT_FILLS,
+  type Disturber,
+  type Blade,
+  type Flower,
+  type SeedHead,
+} from '../render/grass.js';
+import { GrassGpuLayer, type GrassFrame } from '../render/grassGpuLayer.js';
+import { packDisturbers, MAX_DISTURB } from '../render/grassGpu.js';
 import { fire } from '../render/matter/fire.js';
 import { radialGlowSprite } from '../render/glowSprite.js';
 import { LAYER_OVERLAY, Particles, type Emitter, type Particle } from '../render/particles.js';
@@ -400,7 +410,17 @@ export function createScene(canvas: HTMLCanvasElement, opts: SceneOptions): ArxS
   }
 
   // ------------------------------------------------------- the systems
+  // THE LIVING MEADOW rides the GPU, exactly as the game does — the
+  // canvas2d baked coat was removed 2026-09-04. GrassSystem is now just the
+  // blade-DATA generator the GPU layer consumes; if WebGL2 is unavailable
+  // the meadow simply shows bare ground (no crash).
   const grass = new GrassSystem();
+  const grassLayer = new GrassGpuLayer(BLADE_FILLS, ORNAMENT_FILLS);
+  const grassBlades: Blade[] = [];
+  const grassFlowers: Flower[] = [];
+  const grassSeeds: SeedHead[] = [];
+  const grassDisturbBuf = new Float32Array(MAX_DISTURB * 4);
+  const grassDisturbVelBuf = new Float32Array(MAX_DISTURB * 2);
   const particles = new Particles();
   const glows: Array<{ x: number; y: number; r: number; rgb: string; a: number }> = [];
   const mctx = {
@@ -708,7 +728,31 @@ export function createScene(canvas: HTMLCanvasElement, opts: SceneOptions): ArxS
       maxTy: Math.ceil(hh) + 1,
     };
     grass.beginFrame(now, dt, disturbers, groundAt, noop, 0, 0);
-    grass.drawUnder(ctx, groundAt, detailAt, bounds, wts, S);
+    // THE MEADOW ON THE GPU: gather the visible field's blade DATA and render
+    // it instanced (same path the game uses), then blit under the y-sorted
+    // world. wts here is the standard camera projection (wx*S + w/2,
+    // wy*S*YS + h/2), so the GPU frame's origin is the screen centre.
+    if (grassLayer.ok) {
+      grass.collectGpuBlades(groundAt, detailAt, bounds, grassBlades, false);
+      grass.collectGpuOrnaments(groundAt, detailAt, bounds, grassFlowers, grassSeeds);
+      const entries = disturbers.map((d) => ({ x: d.x, y: d.y, r: d.r, vx: 0, vy: 0 }));
+      const dn = packDisturbers(entries, grassDisturbBuf, grassDisturbVelBuf);
+      const frame: GrassFrame = {
+        scale: S,
+        yScale: YS,
+        ox: w / 2,
+        oy: h / 2,
+        wCss: w,
+        hCss: h,
+        dpr,
+        timeSec: now / 1000,
+        windGain: 0.12,
+        disturb: dn > 0 ? grassDisturbBuf.subarray(0, dn * 4) : undefined,
+        disturbVel: dn > 0 ? grassDisturbVelBuf.subarray(0, dn * 2) : undefined,
+      };
+      const gcanvas = grassLayer.render(grassBlades, grassFlowers, grassSeeds, frame);
+      if (gcanvas) ctx.drawImage(gcanvas, 0, 0, w, h);
+    }
 
     // The y-sorted world pass: trees, fire, figures, world particles.
     const items: SortItem[] = [];
