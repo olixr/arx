@@ -1472,6 +1472,11 @@ export class Renderer {
     /** Grass-edge bitmask (SIDE_*): SIDE_ALL for a free-standing wild's ring,
      *  a partial mask for a wall foot (grass-facing edges only). */
     sides: number;
+    /** THE SKIRT RIDES ITS OBJECT'S SHELF: the exact `strat` (shelf) of the
+     *  object this skirt nestles. Copied onto the skirt's DrawItem so SHELF
+     *  can never separate the two — the skirt sorts in the object's own slot
+     *  and (by its later `seq`) draws immediately AFTER it. */
+    strat?: number;
   }[] = [];
   /** Pooled skirt-blade array (all sites concatenated) + per-site bands. */
   private readonly grassSkirt: Blade[] = [];
@@ -9314,6 +9319,8 @@ export class Renderer {
               footY: ty + 1,
               strength: skirtStrengthForTile(tile),
               sides,
+              // The wall's own shelf — the skirt sorts in its slot.
+              strat: this.stratAt(tx, ty),
             });
           }
         }
@@ -9344,6 +9351,8 @@ export class Renderer {
             footY: item.sortY,
             strength: skirtStrengthForTile(tile),
             sides: SIDE_ALL,
+            // The object's own shelf — the skirt sorts in its slot.
+            strat: this.stratAt(tx, ty),
           });
         }
         // THE SHELF LAW: a standing object sorts on the shelf of its
@@ -19582,9 +19591,15 @@ export class Renderer {
       bands.push({
         i0,
         count: skirt.length,
-        // A hair past the object's foot: the skirt draws right after (over)
-        // its own object, and before any object rooted further south.
-        sortY: site.footY + 0.02,
+        // THE SKIRT IS BOUND TO ITS OBJECT: it takes the object's EXACT foot
+        // sort row (not a +0.02 near-tie, which flipped order under floating
+        // compare as the camera moved → z-fight/flicker). It shares the
+        // object's shelf (`strat`) and, because collectGpuSkirts runs after
+        // the world collect, its stamped `seq` is strictly greater than its
+        // object's — so on the exact (shelf, row) tie the skirt sorts in the
+        // object's own slot, deterministically right AFTER it, every frame.
+        sortY: site.footY,
+        strat: site.strat,
         minBy,
         maxBy,
         // G-ELEVATED: a skirt around an object rooted on raised terrain rides
@@ -19603,6 +19618,10 @@ export class Renderer {
       const b = bl;
       items.push({
         sortY: b.sortY,
+        // Ride the object's shelf so SHELF cannot lift/sink the skirt off its
+        // object; the shared row + the skirt's later `seq` then bind it to draw
+        // immediately after that object, deterministically (no z-fight flicker).
+        strat: b.strat,
         stageSafe: true,
         draw: () => {
           if (this.stageAssembling) {
