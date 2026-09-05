@@ -1,10 +1,19 @@
 /**
- * THE TWOHAND SECRET SHELF's arts — the loot-taught greatblade voices
- * (the rung arts of every school live in ./schools/<school>.ts).
+ * THE TWOHAND SECRET SHELF — the weapon-taught arts of this school and
+ * their honed ranks, one file per school (THE MASTERED HAND,
+ * techniques v3). Moved verbatim from weaponArts/ladders and
+ * secretRanks; the shelf waves rewrite the arts here. Seats and
+ * anchors stay in secretArts.ts (THE ANCHOR RULER is not this file's
+ * to move).
  */
-import type { AbilityDef } from '@arx/shared';
+import type { AbilityDef, RankStep } from '@arx/shared';
 
-export const LADDER_DEFS: AbilityDef[] = [
+type Steps = readonly [RankStep, RankStep, RankStep];
+
+/** THE REGISTER, per shelf (see schools/onehand.ts). */
+export const TWOHAND_SECRET_LICENSES: Record<string, string[]> = {};
+
+export const TWOHAND_SECRET_ARTS: AbilityDef[] = [
   // The founding pair's Weapon Arts (the Q axis — no rungs, no ranks).
   {
     id: 'colossus_arc',
@@ -331,3 +340,112 @@ export const LADDER_DEFS: AbilityDef[] = [
     summon: { kind: 'decoy', durationTicks: 180, radius: 6, power: 0 },
   },
 ];
+
+export const TWOHAND_SECRET_RANKS: Record<string, Steps> = {
+  // ------------------------------------------- twohand, the great steel
+  colossus_arc: [
+    { note: 'The arc falls heavier.', damage: 13 },
+    { note: 'The swing owns a wider circle.', arc: 2.9 },
+    { note: 'What the colossus strikes, it removes, and the arm is ready again.', knockback: 2.2, cooldownTicks: 175 },
+  ],
+  hewers_wheel: [
+    { note: 'The wheel bites deeper.', damage: 11 },
+    { note: 'The turn sweeps fully round.', arc: 3.4 },
+    { note: 'The hewing leaves the timber weeping.', status: { status: 'bleed', power: 2, durationTicks: 50 } },
+  ],
+  reavers_due: [
+    { note: 'The due is collected heavier.', damage: 11 },
+    { note: 'The reach of the reaving grows.', range: 3.0 },
+    { note: 'What is owed is thrown from the hall, and collected again soon.', knockback: 3.2, cooldownTicks: 154 },
+  ],
+  mournfield: [
+    { note: 'The mourning bites deeper.', damage: 4 },
+    { note: 'The field of grief spreads wider.', radius: 2.6 },
+    { note: 'The grieving runs longer, and cuts deeper.', fieldTicks: 140, damage: 5 },
+  ],
+  ash_harvest: [
+    { note: 'The harvest cuts deeper.', damage: 12 },
+    { note: 'The burning row grows wider.', arc: 2.7 },
+    { note: 'The ash keeps its heat.', status: { status: 'burn', power: 2, durationTicks: 70 } },
+  ],
+  barrow_bite: [
+    { note: 'The bite closes harder.', damage: 11 },
+    { note: 'The maw opens wider.', arc: 2.3 },
+    { note: 'The barrow does not let go.', status: { status: 'bleed', power: 2, durationTicks: 80 } },
+  ],
+  quakefall: [
+    { note: 'The fall lands heavier.', damage: 15 },
+    { note: 'The fracture spreads wider.', radius: 2.6 },
+    { note: 'The earth gives no notice at all.', fuseTicks: 6 },
+  ],
+  road_opens: [
+    { note: 'The toll is taken heavier.', damage: 12 },
+    { note: 'The road claims a wider verge.', arc: 2.6 },
+    { note: 'Whatever stood in the way is a milestone now.', knockback: 3.8, cooldownTicks: 168 },
+  ],
+  standing_stone: [
+    { note: 'The stone stands longer.', summon: { kind: 'decoy', durationTicks: 220, radius: 6, power: 0 } },
+    { note: 'The stone speaks over a wider field.', summon: { kind: 'decoy', durationTicks: 220, radius: 7, power: 0 } },
+    { note: 'The ground knows the stone now, and raises it sooner.', cooldownTicks: 320 },
+  ],
+  crowns_word: [
+    { note: 'Each word lands heavier.', damage: 9 },
+    { note: 'The argument carries wider.', radius: 2.7 },
+    { note: 'The crown speaks a third time.', pulses: 3 },
+  ],
+  glacier_sunder: [
+    { note: 'The sunder drives deeper.', damage: 13 },
+    { note: 'The crevasse opens wider.', radius: 2.5 },
+    { note: 'The glacier calves without warning.', fuseTicks: 5 },
+  ],
+  marsh_light: [
+    { note: 'The light draws blood now.', damage: 5 },
+    { note: 'The fen glow spreads wider.', radius: 2.5 },
+    { note: 'The marsh keeps its guests a breath longer.', fieldTicks: 128 },
+  ],
+  thunder_fell: [
+    { note: 'The fell strikes heavier.', damage: 13 },
+    { note: 'The thunderhead spreads wider.', radius: 2.4 },
+    { note: 'The bolt outruns its own warning.', fuseTicks: 5 },
+  ],
+  white_heat: [
+    { note: 'The heat works faster through the arms.', self: { speedMult: 1.16, onHitStatus: { status: 'burn', power: 1, durationTicks: 60 }, durationTicks: 150 } },
+    { note: 'The forge holds its temper longer.', self: { speedMult: 1.16, onHitStatus: { status: 'burn', power: 1, durationTicks: 60 }, durationTicks: 180 } },
+    { note: 'Every blow off the anvil brands deeper.', self: { speedMult: 1.16, onHitStatus: { status: 'burn', power: 2, durationTicks: 60 }, durationTicks: 180 } },
+  ],
+  winters_hunger: [
+    { note: 'The hunger drives the arms faster.', self: { speedMult: 1.14, onHitStatus: { status: 'bleed', power: 1, durationTicks: 70 }, durationTicks: 150 } },
+    { note: 'The appetite lasts longer.', self: { speedMult: 1.14, onHitStatus: { status: 'bleed', power: 1, durationTicks: 70 }, durationTicks: 180 } },
+    { note: 'Every bite tears wider.', self: { speedMult: 1.14, onHitStatus: { status: 'bleed', power: 2, durationTicks: 70 }, durationTicks: 180 } },
+  ],
+  open_seam: [
+    { note: 'The seam splits deeper.', damage: 6 },
+    { note: 'The tear runs wider.', radius: 2.4 },
+    { note: 'The seam stays open longer, and cuts to the quick.', fieldTicks: 112, damage: 7 },
+  ],
+  pale_crescent: [
+    { note: 'The crescent falls heavier.', damage: 12 },
+    { note: 'The moon path sweeps wider.', arc: 2.8 },
+    { note: 'Moonlight lies cold on the wound, and the moon rises sooner.', status: { status: 'chill', power: 2, durationTicks: 70 }, cooldownTicks: 192 },
+  ],
+  last_argument: [
+    { note: 'The argument lands heavier.', damage: 17 },
+    { note: 'It admits no one outside its reach.', range: 3.3, arc: 3.0 },
+    { note: 'The conclusion clears the room, and brooks little rebuttal.', knockback: 3.0, cooldownTicks: 230 },
+  ],
+  horizon_fall: [
+    { note: 'The fall lands heavier.', damage: 15 },
+    { note: 'The horizon breaks wider.', radius: 2.7 },
+    { note: 'Where it lands, the world makes room, and the sky reloads.', knockback: 3.2, cooldownTicks: 300 },
+  ],
+  riftfall: [
+    { note: 'The rift bites deeper.', damage: 16 },
+    { note: 'The tear opens wider.', radius: 2.6 },
+    { note: 'The far side arrives early, and often.', fuseTicks: 5, cooldownTicks: 270 },
+  ],
+  last_toll: [
+    { note: 'Each toll rings heavier.', damage: 11 },
+    { note: 'The bell is heard wider.', radius: 2.8 },
+    { note: 'The final toll throws the room, and rings in the bones.', knockback: 2.5, status: { status: 'shock', power: 1, durationTicks: 80 } },
+  ],
+};

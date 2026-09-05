@@ -15,6 +15,10 @@ import { TWOHAND_LICENSES } from './abilities/schools/twohand.js';
 import { DUALWIELD_LICENSES } from './abilities/schools/dualwield.js';
 import { COMBAT_LICENSES } from './abilities/schools/combat.js';
 import { POLEARM_LICENSES } from './abilities/polearm.js';
+import { ONEHAND_SECRET_LICENSES } from './abilities/secrets/onehand.js';
+import { TWOHAND_SECRET_LICENSES } from './abilities/secrets/twohand.js';
+import { ARCHERY_SECRET_LICENSES } from './abilities/secrets/archery.js';
+import { ARX_SECRET_LICENSES } from './abilities/secrets/arx.js';
 
 /**
  * THE AUTHORED TIDE'S REGISTER (statusBook Phase 5 — this file was
@@ -103,6 +107,10 @@ export const PLAYER_LICENSED: Record<string, string[]> = {
   ...DUALWIELD_LICENSES,
   ...COMBAT_LICENSES,
   ...POLEARM_LICENSES,
+  ...ONEHAND_SECRET_LICENSES,
+  ...TWOHAND_SECRET_LICENSES,
+  ...ARCHERY_SECRET_LICENSES,
+  ...ARX_SECRET_LICENSES,
 };
 
 function leaks(value: unknown): string[] {

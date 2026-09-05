@@ -1,9 +1,8 @@
 import type { AbilityDef, TechniqueDef } from '@arx/shared';
 import { GREEN_ART_DEFS } from './abilities/greenArts.js';
-import { WEAPON_ART_DEFS } from './abilities/weaponArts.js';
+import { SECRET_ART_DEFS } from './abilities/secrets/index.js';
 import { RELIC_DEFS } from './abilities/relics.js';
 import { SCHOOL_ART_DEFS } from './abilities/schools/index.js';
-import { LADDER_DEFS } from './abilities/ladders.js';
 import { SIGIL_DEFS } from './abilities/sigils.js';
 import { NPC_ART_DEFS } from './abilities/npcArts.js';
 import { BEASTCRAFT_DEFS } from './abilities/beastcraft.js';
@@ -22,10 +21,9 @@ import { TECHNIQUE_LADDER_DEFS } from './abilities/techniqueLadder.js';
  */
 const defs: AbilityDef[] = [
   ...GREEN_ART_DEFS,
-  ...WEAPON_ART_DEFS,
+  ...SECRET_ART_DEFS,
   ...RELIC_DEFS,
   ...SCHOOL_ART_DEFS,
-  ...LADDER_DEFS,
   ...SIGIL_DEFS,
   ...NPC_ART_DEFS,
   ...BEASTCRAFT_DEFS,

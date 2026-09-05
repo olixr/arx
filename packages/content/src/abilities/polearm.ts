@@ -4,7 +4,9 @@
  * (techniques v3, Phase 2) rebuilt the twenty on the school's own
  * grammar: ids untouched, mechanics reforged under them.
  */
-import type { AbilityDef } from '@arx/shared';
+import type { AbilityDef, RankStep } from '@arx/shared';
+
+type Steps = readonly [RankStep, RankStep, RankStep];
 
 /**
  * THE REGISTER, per school (see schools/onehand.ts): every polearm art
@@ -484,3 +486,28 @@ export const POLEARM_DEFS: AbilityDef[] = [
     knockback: 2.0,
   },
 ];
+
+/** THE POLEARM SECRET SHELF's ranks (its four arts sit above, among the hafts). */
+export const POLEARM_SECRET_RANKS: Record<string, Steps> = {
+  // --------------------------------------------- polearm, the hafts
+  reaching_thrust: [
+    { note: 'The point lands heavier.', damage: 10 },
+    { note: 'The reach lengthens and the hand asks again sooner.', range: 3.9, cooldownTicks: 140 },
+    { note: 'The full extension becomes the whole argument.', damage: 11, cooldownTicks: 132 },
+  ],
+  reapers_turn: [
+    { note: 'The wheel cuts deeper.', damage: 11 },
+    { note: 'The turn opens wider and shoves harder.', arc: 2.7, knockback: 1.8 },
+    { note: 'The row lies down, and the next row is soon.', damage: 12, cooldownTicks: 152 },
+  ],
+  skullhook: [
+    { note: 'The hook bites deeper.', damage: 10 },
+    { note: 'The drag comes harder, and the cold stays in the collar.', knockback: -2.6, status: { status: 'chill', power: 1, durationTicks: 60 } },
+    { note: 'What the hook claims, it keeps claiming.', damage: 11, cooldownTicks: 170 },
+  ],
+  couched_charge: [
+    { note: 'The arrival lands heavier.', damage: 12 },
+    { note: 'The road runs longer and opens sooner.', dashTiles: 8.0, cooldownTicks: 170 },
+    { note: 'The horizon signs the charge by name.', damage: 13, knockback: 2.4 },
+  ],
+};

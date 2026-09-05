@@ -135,3 +135,41 @@ test('THE READING EDGE reads the crack: a vs sunder clause multiplies over the a
   assert.ok(Math.abs(stateBucket(riders, []) - 1.15) < 1e-9, 'the bare mark lets 15% through');
   assert.ok(Math.abs(stateBucket(riders, [{ status: 'sunder', mult: 1.5 }]) - 1.15 * 1.5) < 1e-9, 'a reader multiplies on top');
 });
+
+// ---------------------------------------------------------------------
+// THE SHELF CONSTITUTION — binding on a school's secret shelf the
+// moment one of its secrets declares a role.
+// ---------------------------------------------------------------------
+import { SECRET_ARTS } from './secretArts.js';
+
+test('THE SECRET SHELF: a rebuilt shelf gives every secret a role and a relationship, and half its follows cross a school line', () => {
+  const rungWords = new Map<string, Set<string>>();
+  for (const t of TECHNIQUES) {
+    const ab = ABILITIES.get(t.ability)!;
+    if (ab.tag) (rungWords.get(t.style) ?? rungWords.set(t.style, new Set()).get(t.style)!).add(ab.tag);
+  }
+  const allWords = new Set([...rungWords.values()].flatMap((s) => [...s]));
+  const byStyle = new Map<string, typeof SECRET_ARTS>();
+  for (const s of SECRET_ARTS) byStyle.set(s.style, [...(byStyle.get(s.style) ?? []), s]);
+  for (const [style, seats] of byStyle) {
+    const arts = seats.map((s) => ABILITIES.get(s.ability)!);
+    if (!arts.some((a) => a.role)) continue;
+    let follows = 0;
+    let crossing = 0;
+    for (const a of arts) {
+      assert.ok(a.role, `${style}/${a.id} on a rebuilt shelf declares no role`);
+      assert.ok(
+        a.tag || a.follow || a.vs || a.aftermath || a.finaleMult || a.onKill,
+        `${style}/${a.id} carries no relationship — a secret is the cross-school spice`,
+      );
+      if (a.follow) {
+        follows++;
+        const after = typeof a.follow.after === 'string' ? [a.follow.after] : a.follow.after;
+        for (const w of after) assert.ok(allWords.has(w), `${style}/${a.id} follows ${w}, which no rung leaves`);
+        if (after.some((w) => !rungWords.get(style)?.has(w))) crossing++;
+      }
+    }
+    assert.ok(follows > 0, `${style}'s shelf follows nothing`);
+    assert.ok(crossing * 2 >= follows, `${style}'s shelf: ${crossing} of ${follows} follows cross a school line (half owed)`);
+  }
+});
