@@ -127,3 +127,11 @@ test('THE HOLD BUDGET, the player edition: a player hold on a body is short, war
     }
   }
 });
+
+import { stateBucket } from '@arx/shared';
+
+test('THE READING EDGE reads the crack: a vs sunder clause multiplies over the amp the mark always lets through', () => {
+  const riders = [{ id: 'sunder' as const, power: 15, ticksLeft: 40 }];
+  assert.ok(Math.abs(stateBucket(riders, []) - 1.15) < 1e-9, 'the bare mark lets 15% through');
+  assert.ok(Math.abs(stateBucket(riders, [{ status: 'sunder', mult: 1.5 }]) - 1.15 * 1.5) < 1e-9, 'a reader multiplies on top');
+});

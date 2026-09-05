@@ -2081,7 +2081,7 @@ export function renderArtsBench(host: Panels, all?: Array<{ style: SkillId; t: T
           value: `after ${after} · ${gain}`,
           frac: 1,
           tone: '#f2c94c',
-          tip: `Cast within ${secs(ab.follow.windowTicks)} of an art that leaves ${after} and this one ${gain}. A follow spends the opening.`,
+          tip: `Cast within ${secs(ab.follow.windowTicks)} of an art that leaves ${after} and this one ${gain}. A follow spends the opening; a held note reads it at the press.`,
         }),
       );
     }

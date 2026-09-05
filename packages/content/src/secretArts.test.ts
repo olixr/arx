@@ -193,7 +193,9 @@ test('THE PAYOFF BRACKET FOR THE SHELF: no secret, at any honed rank, deletes an
         if (techniqueAnchor(seat) > L) continue;
         const ab = honedAbility(abilityDef(seat.ability)!, seat.ranks, techniqueRankFor(seat, L));
         if (ab.damage < 3) continue;
-        const perBeat = Math.round(ab.damage * powerMult(L));
+        // THE MASTERED HAND: a landed follow multiplies the hit; the
+        // shelf is judged at its heaviest too.
+        const perBeat = Math.round(ab.damage * (ab.follow?.damageMult ?? 1) * powerMult(L));
         const beats = oneTargetBeats(ab);
         const instant = beats === 1 ? perBeat : 0;
         assert.ok(

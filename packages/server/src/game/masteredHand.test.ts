@@ -242,3 +242,105 @@ test('THE RED LEDGER: a kill inside the window refunds the seat once; a late kil
   assert.equal(player.abilityCd[0], 200, 'a kill past the window is just a kill');
   assert.equal(player.killRefund, null, 'the stale ledger is cleared');
 });
+
+// ---------------------------------------------------------------------
+// Phase 3 — the engine ledger the schools asked for.
+// ---------------------------------------------------------------------
+import { masteredHandQuietBeat } from './gameServer.js';
+
+const proto3 = GameServer.prototype as unknown as {
+  castAbility: Fn;
+  landAftermath: Fn;
+};
+
+test('THE FOLLOW-THROUGH riders: a landed follow can shove harder and dress the caster; a missed one does neither', () => {
+  const shove = masteredHandWithFollow({ ...PAYOFF, knockback: 1.5 }, { after: 'brand', windowTicks: 40, knockbackMult: 2 });
+  assert.equal(shove.knockback, 3);
+  const { self, player, applied } = slate();
+  const linked: AbilityDef = { ...PAYOFF, id: 'test_link', follow: { after: 'brand', windowTicks: 40, self: { speedMult: 1.1, durationTicks: 40 } } };
+  self.fireAbility.call(self, 1, player, 2, linked, 0);
+  assert.equal(applied.length, 0, 'no opening, no boon');
+  player.lastArt = { tag: 'brand', tick: 100 };
+  self.fireAbility.call(self, 1, player, 2, linked, 0);
+  assert.equal(applied.length, 1, 'the landed link dresses the caster');
+  assert.equal((applied[0]!.ab.self as { speedMult: number }).speedMult, 1.1);
+});
+
+test('THE QUIET BEAT: a channel leaves ground and spends the wound on its last beat only', () => {
+  const note: AbilityDef = {
+    ...OPENER,
+    id: 'test_red_note',
+    channelTicks: 48,
+    pulseEveryTicks: 16,
+    aftermath: { fieldTicks: 40, damage: 1 },
+    vs: { status: 'bleed', mult: 1.5, consume: true },
+  };
+  const quiet = masteredHandQuietBeat(note);
+  assert.equal(quiet.aftermath, undefined);
+  assert.equal(quiet.vs?.consume, false);
+  assert.equal(quiet.vs?.mult, 1.5, 'the quiet beats still READ the wound');
+  assert.equal(masteredHandQuietBeat(OPENER), OPENER, 'an art with nothing to hold back is itself');
+  const { self, player, casts } = slate();
+  const action = { kind: 'channel', slot: 0, ab: note, style: 'arx', level: 50, powerMult: 1, every: 16, ticksLeft: 48, total: 48 };
+  self.channelPulse.call(self, 1, player, action, 0);
+  action.ticksLeft = 16;
+  self.channelPulse.call(self, 1, player, action, 0);
+  assert.equal(casts[0]!.ab.aftermath, undefined, 'the first beat leaves nothing');
+  assert.equal(casts[1]!.ab.aftermath, note.aftermath, 'the last beat leaves the ground');
+  assert.equal(casts[1]!.ab.vs?.consume, true, 'and spends the wound');
+});
+
+test('THE LAST PULSE: a pulse train and a flurry carry the aftermath and the consume on their final pulse only', () => {
+  const pos = { plane: 0, x: 0, y: 0, dir: 0 };
+  const self = {
+    tickCount: 100,
+    positions: { get: () => pos, must: () => pos },
+    players: { get: () => undefined },
+    pendingBlasts: [] as Array<Record<string, unknown>>,
+    broadcastFx: () => undefined,
+    castAbility: proto3.castAbility,
+  };
+  const train: AbilityDef = {
+    ...OPENER,
+    id: 'test_train',
+    shape: 'pulse_nova',
+    pulses: 3,
+    pulseEveryTicks: 8,
+    aftermath: { fieldTicks: 40, damage: 2 },
+    vs: { status: 'sunder', mult: 1.5, consume: true },
+  };
+  self.castAbility.call(self, 1, train, 0, 'arx', 50, false);
+  assert.equal(self.pendingBlasts.length, 3);
+  assert.deepEqual(
+    self.pendingBlasts.map((b) => [!!b.aftermath, (b.vs as { consume: boolean }).consume]),
+    [
+      [false, false],
+      [false, false],
+      [true, true],
+    ],
+  );
+  assert.equal((self.pendingBlasts[2]!.aftermath as { damage: number }).damage, Math.round(2 * (1 + 50 * 0.05)), 'the field scales like the art');
+  self.pendingBlasts.length = 0;
+  const flurry: AbilityDef = { ...train, id: 'test_flurry', shape: 'flurry', hits: 2 };
+  self.castAbility.call(self, 1, flurry, 0, 'onehand', 50, false);
+  assert.deepEqual(self.pendingBlasts.map((b) => !!b.aftermath), [false, true]);
+});
+
+test('THE AFTERMATH on a shot lands once: the first body, or where the shot dies', () => {
+  const { self } = slate();
+  const proj = {
+    ownerEid: 1,
+    style: 'archery',
+    fromNpc: false,
+    splashRadius: undefined,
+    aftermath: { def: { fieldTicks: 60, damage: 2 }, damage: 3, abilityId: 'test_ember', color: '#f80' },
+  };
+  proto3.landAftermath.call(self, proj, { plane: 0, x: 4, y: 5 });
+  assert.equal(self.activeFields.length, 1);
+  const f = self.activeFields[0] as Record<string, unknown>;
+  assert.equal(f.x, 4);
+  assert.equal(f.radius, 1.4, 'a shot without splash leaves a stride of ground');
+  assert.equal(f.damage, 3);
+  proto3.landAftermath.call(self, proj, { plane: 0, x: 9, y: 9 });
+  assert.equal(self.activeFields.length, 1, 'spent once');
+});

@@ -1427,6 +1427,8 @@ interface ProjectileComp {
   /** The wand's heavy third bolt — fat visual, shove on impact. */
   heavy?: boolean;
   /** Splash damage radius around the impact point. */
+  /** THE AFTERMATH the shot carries, spent once where it lands. */
+  aftermath?: { def: AftermathDef; damage: number; abilityId: string; color: string };
   splashRadius?: number;
   /**
    * Arx school riding the shot — cosmetic. Reaches clients as an
@@ -2665,8 +2667,52 @@ function withFollow(ab: AbilityDef, f: FollowDef): AbilityDef {
   const out: AbilityDef = { ...ab };
   if (f.damageMult !== undefined) out.damage = Math.round(ab.damage * f.damageMult * 100) / 100;
   if (f.radiusMult !== undefined && ab.radius !== undefined) out.radius = ab.radius * f.radiusMult;
+  if (f.knockbackMult !== undefined) out.knockback = (ab.knockback ?? 1) * f.knockbackMult;
   if (f.status) out.status = f.status;
   return out;
+}
+
+/**
+ * THE QUIET BEAT: a channel's beats before the last neither leave
+ * ground nor spend a state — the aftermath and the consume verb ride
+ * the finale beat only, so a held note leaves ONE field and spends
+ * the wound ONCE. Pulse trains and flurries keep the same law on
+ * their last pulse (see the shape cases).
+ */
+function quietBeat(ab: AbilityDef): AbilityDef {
+  if (!ab.aftermath && !ab.vs?.consume) return ab;
+  const out: AbilityDef = { ...ab };
+  delete out.aftermath;
+  if (ab.vs?.consume) out.vs = { ...ab.vs, consume: false };
+  return out;
+}
+
+export { quietBeat as masteredHandQuietBeat };
+
+/**
+ * A pulse train's LAST pulse is the one that leaves the ground and
+ * spends the state; every pulse before it reads the state without
+ * consuming it. Returns the pending-blast fields for pulse `last`.
+ */
+function lastPulseOnly(
+  ab: AbilityDef,
+  last: boolean,
+  powerK: number,
+): { vs?: AbilityDef['vs']; aftermath?: PendingBlast['aftermath'] } {
+  if (last) {
+    return {
+      vs: ab.vs,
+      aftermath: ab.aftermath
+        ? {
+            def: ab.aftermath,
+            damage: ab.aftermath.damage > 0 ? Math.max(1, Math.round(ab.aftermath.damage * powerK)) : 0,
+            abilityId: ab.id,
+            color: ab.color,
+          }
+        : undefined,
+    };
+  }
+  return { vs: ab.vs?.consume ? { ...ab.vs, consume: false } : ab.vs };
 }
 
 /**
@@ -19133,6 +19179,12 @@ export class GameServer {
     if (follow?.refundTicks) player.abilityCd[slot] = Math.max(1, player.abilityCd[slot] - follow.refundTicks);
     this.castAbility(eid, ab, aim, style, level, false, targetPos, powerMult, follow);
     stampArt(player, slot, ab, follow, this.tickCount);
+    // THE FOLLOW-THROUGH's rider: a boon worn only when the follow
+    // lands (guarded inline — THE SLATE-TEST LAW).
+    if (follow?.self) {
+      const fp = this.positions.get(eid);
+      if (fp) this.applySelf(eid, { ...ab, self: follow.self }, powerMult, fp);
+    }
     // THE DEEPER SIGIL: the art is away, so the cast is a moment. Fired
     // here rather than inside castAbility on purpose — that door also
     // serves NPC casters and every relic and trinket echo, and only a
@@ -19330,6 +19382,10 @@ export class GameServer {
     };
     player.action = action;
     stampArt(player, slot, ab, follow, this.tickCount);
+    if (follow?.self) {
+      const fp = this.positions.get(eid);
+      if (fp) this.applySelf(eid, { ...ab, self: follow.self }, powerMult, fp);
+    }
     // Visible for the whole note (the tame's held-pose law), and the
     // rail's own wire carries the bar — with the art named, so the
     // client can tint the fill and breathe the singing well.
@@ -19354,8 +19410,9 @@ export class GameServer {
     // multiple — the whole note is paid, a broken note keeps only
     // its quiet beats. The last beat is the one no further beat
     // follows (ticksLeft ≤ every), the model's own beat count.
-    const finale = a.ticksLeft <= a.every ? (a.ab.finaleMult ?? 1) : 1;
-    this.castAbility(eid, a.ab, aim, a.style, a.level, false, a.targetPos, a.powerMult * finale, a.follow);
+    const last = a.ticksLeft <= a.every;
+    const finale = last ? (a.ab.finaleMult ?? 1) : 1;
+    this.castAbility(eid, last ? a.ab : quietBeat(a.ab), aim, a.style, a.level, false, a.targetPos, a.powerMult * finale, a.follow);
     void player;
   }
 
@@ -19417,6 +19474,27 @@ export class GameServer {
       fromNpc ? level : undefined,
       ab.id,
       ab.color,
+    );
+  }
+
+  /** A projectile's aftermath lands once: on the first body it strikes, or where it dies. */
+  private landAftermath(proj: ProjectileComp, pos: { plane: PlaneId; x: number; y: number }): void {
+    const a = proj.aftermath;
+    if (!a) return;
+    proj.aftermath = undefined;
+    this.spawnAftermath(
+      a.def,
+      a.damage,
+      pos.plane,
+      pos.x,
+      pos.y,
+      proj.splashRadius ?? 1.4,
+      proj.ownerEid,
+      proj.style,
+      proj.fromNpc ?? false,
+      proj.attackerLevel,
+      a.abilityId,
+      a.color,
     );
   }
 
@@ -20123,6 +20201,8 @@ export class GameServer {
               });
             }
             this.fireDashTail(casterEid, ab, arrivalAim, endPos, maxHit, style, level, fromNpc, element);
+            // THE AFTERMATH on a road: the ground where the charge came down.
+            this.leaveAftermath(ab, endPos.plane, endPos.x, endPos.y, 1.4, casterEid, style, fromNpc, level, powerK);
           },
         });
         break;
@@ -20275,6 +20355,7 @@ export class GameServer {
             abilityId: ab.id,
             executeBelow: ab.executeBelow,
             drainFrac: ab.drainFrac,
+            ...lastPulseOnly(ab, i === pulses - 1, powerK),
           });
         }
         break;
@@ -20318,6 +20399,14 @@ export class GameServer {
             drainFrac: ab.drainFrac,
             abilityId: ab.id,
             abilityColor: ab.color,
+            aftermath: ab.aftermath
+              ? {
+                  def: ab.aftermath,
+                  damage: ab.aftermath.damage > 0 ? Math.max(1, Math.round(ab.aftermath.damage * powerK)) : 0,
+                  abilityId: ab.id,
+                  color: ab.color,
+                }
+              : undefined,
           });
           this.updateChunkMembership(proj);
         }
@@ -20605,6 +20694,7 @@ export class GameServer {
             arcHalf: ab.arc ?? Math.PI / 3,
             executeBelow: ab.executeBelow,
             drainFrac: ab.drainFrac,
+            ...lastPulseOnly(ab, i === hits - 1, powerK),
           });
         }
         break;
@@ -21294,6 +21384,7 @@ export class GameServer {
     // golem's boulder lies in the ground it hit, and anyone standing
     // close to the miss still pays the splash. That is what dodging
     // means: not being near where it comes down.
+    if (dead && proj.aftermath) this.landAftermath(proj, pos);
     if (dead && proj.fromNpc && proj.abilityId) {
       this.broadcastFx(pos.plane, {
         t: 'fx',
@@ -21468,6 +21559,9 @@ export class GameServer {
             ...(proj.viaPetEid !== undefined ? { viaPet: { petEid: proj.viaPetEid } } : {}),
           });
           this.drainHeal(proj.ownerEid, dmg, proj.drainFrac);
+          // THE AFTERMATH where the shot lands: once, on the first body
+          // (guarded inline — THE SLATE-TEST LAW).
+          if (proj.aftermath) this.landAftermath(proj, pos);
           // THE SIGNATURE LAW: an ability's shot announces its
           // impact — the client's bespoke signature fires at the
           // wound, not just where the arrow left the string. Basic

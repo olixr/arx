@@ -327,8 +327,12 @@ export function stateBucket(
 ): number {
   if (!list || list.length === 0) return 1;
   let mult = sunderAmp(list);
+  // THE MASTERED HAND: the crack is readable too — a `vs sunder`
+  // clause multiplies on top of the amp the mark always lets
+  // through, and a consume clause can spend it (the executioner
+  // reads the seam, the skysunder spends it).
   const present = new Set<StatusId>();
-  for (const s of list) if (s.id !== 'sunder') present.add(s.id);
+  for (const s of list) present.add(s.id);
   for (const id of present) {
     let best = 1;
     for (const c of clauses) {
@@ -638,6 +642,10 @@ export interface FollowDef {
   status?: StatusApply;
   /** Cooldown given back to the seat at fire when the follow lands. */
   refundTicks?: number;
+  /** Multiplies the art's knockback for this cast (a shove that reads a reeling foe). */
+  knockbackMult?: number;
+  /** A boon the caster wears only when the follow lands (a link that quickens the hand). */
+  self?: AbilitySelf;
 }
 
 /** The longest a follow window may stand (4 s). */
