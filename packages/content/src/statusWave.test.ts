@@ -115,6 +115,9 @@ function leaks(value: unknown): string[] {
     }
     if (typeof v === 'object') {
       for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+        // THE READING EDGE reads a page; it lays nothing — a `vs`
+        // clause is never an applier.
+        if (k === 'vs') continue;
         if (k === 'status' && typeof x === 'string' && WAVE_ONE.includes(x)) found.push(x);
         walk(x);
       }

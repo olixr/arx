@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { artFlag, xpForLevel } from '@arx/shared';
-import { abilityDef, channelBeats } from '@arx/content';
+import { TECHNIQUES, abilityDef, channelBeats } from '@arx/content';
 import { GameServer } from './gameServer.js';
 
 /**
@@ -166,7 +166,13 @@ test('the singing slot’s re-press ends the note; the forfeit refunds nothing',
 });
 
 test('another slot’s cast takes the hands: the channel yields with reason cast', () => {
-  const player = mkPlayer({ techniques: ['maelstrom', 'heavy_slam'] });
+  // THE MASTERED HAND made heavy_slam a wind-up; the pin wants an
+  // instant in the other hand, found rather than named.
+  const instant = TECHNIQUES.find((t) => {
+    const ab = abilityDef(t.ability)!;
+    return !ab.castTicks && !ab.channelTicks && ab.damage > 0 && !t.hidden && t.style === 'onehand' && t.unlockLevel <= 60;
+  })!.ability;
+  const player = mkPlayer({ techniques: ['maelstrom', instant] });
   const { self, sent, casts } = slate(player);
   self.tryCastAbility.call(self, 1, player, 0, 0);
   assert.equal(player.action?.kind, 'channel');
@@ -174,7 +180,7 @@ test('another slot’s cast takes the hands: the channel yields with reason cast
   assert.equal(player.action, null, 'the new cast took the hands');
   const stop = sent.filter((m) => m.t === 'action').at(-1);
   assert.ok(stop && stop.state === 'stop' && stop.reason === 'cast');
-  assert.equal(casts.at(-1)?.ab.id, 'heavy_slam', 'and the new art fired');
+  assert.equal(casts.at(-1)?.ab.id, instant, 'and the new art fired');
 });
 
 test('the aim is live: each beat reads the caster’s facing', () => {

@@ -226,7 +226,7 @@ export const SECRET_RANKS: Record<string, Steps> = {
   reavers_due: [
     { note: 'The due is collected heavier.', damage: 11 },
     { note: 'The reach of the reaving grows.', range: 3.0 },
-    { note: 'What is owed is thrown from the hall, and collected again soon.', knockback: 3.2, cooldownTicks: 160 },
+    { note: 'What is owed is thrown from the hall, and collected again soon.', knockback: 3.2, cooldownTicks: 154 },
   ],
   mournfield: [
     { note: 'The mourning bites deeper.', damage: 4 },
@@ -251,7 +251,7 @@ export const SECRET_RANKS: Record<string, Steps> = {
   road_opens: [
     { note: 'The toll is taken heavier.', damage: 12 },
     { note: 'The road claims a wider verge.', arc: 2.6 },
-    { note: 'Whatever stood in the way is a milestone now.', knockback: 3.8, cooldownTicks: 175 },
+    { note: 'Whatever stood in the way is a milestone now.', knockback: 3.8, cooldownTicks: 168 },
   ],
   standing_stone: [
     { note: 'The stone stands longer.', summon: { kind: 'decoy', durationTicks: 220, radius: 6, power: 0 } },
@@ -296,7 +296,7 @@ export const SECRET_RANKS: Record<string, Steps> = {
   pale_crescent: [
     { note: 'The crescent falls heavier.', damage: 12 },
     { note: 'The moon path sweeps wider.', arc: 2.8 },
-    { note: 'Moonlight lies cold on the wound, and the moon rises sooner.', status: { status: 'chill', power: 2, durationTicks: 70 }, cooldownTicks: 200 },
+    { note: 'Moonlight lies cold on the wound, and the moon rises sooner.', status: { status: 'chill', power: 2, durationTicks: 70 }, cooldownTicks: 192 },
   ],
   last_argument: [
     { note: 'The argument lands heavier.', damage: 17 },
@@ -311,7 +311,7 @@ export const SECRET_RANKS: Record<string, Steps> = {
   riftfall: [
     { note: 'The rift bites deeper.', damage: 16 },
     { note: 'The tear opens wider.', radius: 2.6 },
-    { note: 'The far side arrives early, and often.', fuseTicks: 5, cooldownTicks: 280 },
+    { note: 'The far side arrives early, and often.', fuseTicks: 5, cooldownTicks: 270 },
   ],
   last_toll: [
     { note: 'Each toll rings heavier.', damage: 11 },
@@ -627,12 +627,12 @@ export const SECRET_RANKS: Record<string, Steps> = {
   reaching_thrust: [
     { note: 'The point lands heavier.', damage: 10 },
     { note: 'The reach lengthens and the hand asks again sooner.', range: 3.9, cooldownTicks: 140 },
-    { note: 'The full extension becomes the whole argument.', damage: 11 },
+    { note: 'The full extension becomes the whole argument.', damage: 11, cooldownTicks: 132 },
   ],
   reapers_turn: [
     { note: 'The wheel cuts deeper.', damage: 11 },
     { note: 'The turn opens wider and shoves harder.', arc: 2.7, knockback: 1.8 },
-    { note: 'The row lies down, and the next row is soon.', damage: 12, cooldownTicks: 160 },
+    { note: 'The row lies down, and the next row is soon.', damage: 12, cooldownTicks: 152 },
   ],
   skullhook: [
     { note: 'The hook bites deeper.', damage: 10 },

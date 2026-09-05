@@ -177,6 +177,18 @@ export function aftermathValue(ab: AbilityDef): number {
   return a.damage * pulses * 0.45 + statusValue(a.status);
 }
 
+/**
+ * THE READING EDGE, priced: a `vs` clause multiplies the art's direct
+ * value on a body wearing the page. Credited at the follow's uptime
+ * (the state is there every other cycle); a consume spends a state
+ * another press paid for and earns nothing extra here.
+ */
+function vsCredit(ab: AbilityDef): number {
+  if (!ab.vs || ab.vs.mult <= 1) return 0;
+  const direct = ab.damage * singleTargetHits(ab) * aoeCredit(ab) * channelBeats(ab);
+  return direct * (ab.vs.mult - 1) * FOLLOW_UPTIME;
+}
+
 /** THE FINALE, priced: the last beat's extra weight, once per note. */
 function finaleCredit(ab: AbilityDef): number {
   if (!ab.channelTicks || !ab.finaleMult || ab.finaleMult <= 1) return 0;
@@ -200,7 +212,7 @@ export function cycleSeconds(ab: AbilityDef): number {
 export function cycleValue(ab: AbilityDef): number {
   const direct = ab.damage * singleTargetHits(ab) * aoeCredit(ab) * channelBeats(ab);
   return (
-    (direct + statusValue(ab.status) + utilityCredit(ab) + followCredit(ab) + aftermathValue(ab) + finaleCredit(ab)) /
+    (direct + statusValue(ab.status) + utilityCredit(ab) + followCredit(ab) + aftermathValue(ab) + finaleCredit(ab) + vsCredit(ab)) /
     cycleSeconds(ab)
   );
 }
@@ -259,6 +271,7 @@ export const HONABLE: ReadonlySet<string> = new Set([
   'aftermath',
   'finaleMult',
   'onKill',
+  'vs',
   // THE KEEPER'S TONGUE: the keeper dials rank like any other number.
   'becalmTicks',
   'petHealFrac',

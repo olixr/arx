@@ -394,7 +394,9 @@ test('THE PAYOFF BRACKET: one press never deletes an at-level line fighter', () 
         if (!t.hidden && t.unlockLevel > L) continue;
         const ab = honedAbility(abilityDef(t.ability)!, t.ranks, techniqueRankFor(t, L));
         if (ab.damage < 3) continue;
-        const perBeat = Math.round(ab.damage * powerMult(L));
+        // THE MASTERED HAND: a landed follow multiplies the hit; the
+        // bracket judges the press at its heaviest.
+        const perBeat = Math.round(ab.damage * (ab.follow?.damageMult ?? 1) * powerMult(L));
         const beats = oneTargetBeats(ab);
         // THE PRICED BREATH: a casted art is never an "instant" — its
         // wind-up is a visible telegraph, so its one press is judged

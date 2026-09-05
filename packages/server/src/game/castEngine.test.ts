@@ -1,7 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CAST_STILL_FACTOR, artFlag, xpForLevel } from '@arx/shared';
-import { abilityDef } from '@arx/content';
+import { TECHNIQUES, abilityDef } from '@arx/content';
+
+/**
+ * THE MASTERED HAND rebuilt the ladders (heavy_slam now winds up), so
+ * the instant these pins press is found, not named: the first rung
+ * art with no breath at all.
+ */
+const INSTANT = TECHNIQUES.find((t) => {
+  const ab = abilityDef(t.ability)!;
+  return !ab.castTicks && !ab.channelTicks && ab.damage > 0 && !t.hidden && t.style === 'onehand' && t.unlockLevel <= 60;
+})!.ability;
 import { GameServer } from './gameServer.js';
 
 /**
@@ -161,13 +171,16 @@ test('THE PLANTED FOOT: still ticks breathe 1.25, moving ticks breathe 1', () =>
     s1.self.tickCasting.call(s1.self, 1, planted, false);
     ticks++;
   }
+  // THE MASTERED HAND reforged daybreak's numbers; the law is the
+  // clock, so the pin reads the def instead of a literal.
+  const daybreak = abilityDef('daybreak')!;
   assert.equal(
     ticks,
-    Math.ceil(24 / CAST_STILL_FACTOR),
+    Math.ceil(daybreak.castTicks! / CAST_STILL_FACTOR),
     'planted, the breath completes on the quickened clock',
   );
   assert.equal(s1.casts.length, 1, 'the fire opens the one door once');
-  assert.equal(planted.abilityCd[0], 280, 'the cooldown lands at the fire');
+  assert.equal(planted.abilityCd[0], daybreak.cooldownTicks, 'the cooldown lands at the fire');
   assert.deepEqual(castMsgs(s1.sent), ['start', 'fire']);
 
   const moving = mkPlayer();
@@ -244,7 +257,7 @@ test('THE HELD SIGIL composes: the staked point holds and the facing re-derives 
 });
 
 test('the instants stand unchanged: pay-at-press, fire-at-press', () => {
-  const player = mkPlayer({ techniques: ['heavy_slam', null] });
+  const player = mkPlayer({ techniques: [INSTANT, null] });
   const { self, sent, casts, fxOut } = slate(player);
   self.tryCastAbility.call(self, 1, player, 0, 0);
   assert.equal(player.casting, null, 'no wind-up on an instant');

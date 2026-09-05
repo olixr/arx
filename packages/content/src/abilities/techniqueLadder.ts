@@ -65,14 +65,16 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     ],
   },
   // -------------------- THE REACHING SCHOOL — the polearm rungs
+  // THE MASTERED HAND: rank II sharpens, rank III adds a beat of
+  // utility, rank IV is the signature flourish. Honable fields only.
   {
     ability: 'lunging_skewer',
     style: 'polearm',
     unlockLevel: 5,
     ranks: [
       { note: 'The point lands heavier.', damage: 10 },
-      { note: 'The reach lengthens; the lunge asks less.', range: 3.7, cooldownTicks: 120 },
-      { note: 'The argument ends sooner every time.', damage: 11, cooldownTicks: 115 },
+      { note: 'The lunge asks less, and the hook\'s window stays open longer.', cooldownTicks: 125, follow: { after: ['root', 'hook'], windowTicks: 60, damageMult: 1.5 } },
+      { note: 'THE COUNTY POINT: a held body takes the lunge at half again and more.', damage: 11, follow: { after: ['root', 'hook'], windowTicks: 60, damageMult: 1.6 } },
     ],
   },
   {
@@ -80,9 +82,9 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     style: 'polearm',
     unlockLevel: 10,
     ranks: [
-      { note: 'The shove carries them farther.', knockback: 3.0, cooldownTicks: 110 },
-      { note: 'The jolt hangs in their knees.', damage: 5, status: { status: 'chill', power: 1, durationTicks: 60 } },
-      { note: 'Room made, and made quickly.', knockback: 3.4, cooldownTicks: 100 },
+      { note: 'Every beat shoves harder.', knockback: 1.5 },
+      { note: 'The cold settles deeper in their knees.', status: { status: 'chill', power: 1, durationTicks: 45 } },
+      { note: 'THE FOURTH BEAT: the rhythm holds a beat longer and bites deeper.', channelTicks: 64, damage: 4 },
     ],
   },
   {
@@ -90,9 +92,9 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     style: 'polearm',
     unlockLevel: 15,
     ranks: [
-      { note: 'The bite behind the hook deepens.', damage: 8 },
-      { note: 'The drag is longer and colder.', knockback: -2.5, status: { status: 'chill', power: 1, durationTicks: 60 } },
-      { note: 'Whatever the hook finds, it keeps.', damage: 9, cooldownTicks: 150 },
+      { note: 'The bite behind the hook deepens.', damage: 7 },
+      { note: 'The drag is longer, and the ring comes in from farther out.', knockback: -3.0, radius: 1.3 },
+      { note: 'THE LONG HOOK: the reap reaches farther and comes back sooner.', range: 4.0, cooldownTicks: 120, damage: 8 },
     ],
   },
   {
@@ -100,9 +102,9 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     style: 'polearm',
     unlockLevel: 20,
     ranks: [
-      { note: 'The vault carries farther, sooner.', dashTiles: 8.0, cooldownTicks: 150 },
-      { note: 'You land meaning it.', damage: 8 },
-      { note: 'The haft barely touches the ground.', damage: 10, dashTiles: 9.0, cooldownTicks: 130 },
+      { note: 'The vault carries farther.', dashTiles: 9.0 },
+      { note: 'You land meaning it.', damage: 9 },
+      { note: 'THE HAFT BARELY TOUCHES: the vault is ready again sooner, and lands harder.', cooldownTicks: 100, damage: 10 },
     ],
   },
   {
@@ -111,8 +113,8 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     unlockLevel: 25,
     ranks: [
       { note: 'The line lands heavier.', damage: 16 },
-      { note: 'The breath draws shorter.', castTicks: 16, cooldownTicks: 160 },
-      { note: 'One line, and the world agrees with it.', damage: 18 },
+      { note: 'The breath draws shorter.', castTicks: 16 },
+      { note: 'THE PERFECT LINE: a thrust that follows the root gives back four seconds.', damage: 18, follow: { after: 'root', windowTicks: 60, refundTicks: 80 } },
     ],
   },
   {
@@ -121,8 +123,8 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     unlockLevel: 30,
     ranks: [
       { note: 'Every point bites deeper.', damage: 5 },
-      { note: 'The rain holds a fourth beat.', channelTicks: 64 },
-      { note: 'The lane clears sooner for the next storm.', cooldownTicks: 170 },
+      { note: 'The rain reaches a stride farther.', range: 3.7 },
+      { note: 'THE LAST POINT: the last point lands at half again the finale.', finaleMult: 2.5 },
     ],
   },
   {
@@ -130,9 +132,9 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     style: 'polearm',
     unlockLevel: 35,
     ranks: [
-      { note: 'The crescent lands heavier.', damage: 11 },
-      { note: 'The moon opens wider, oftener.', arc: 2.5, cooldownTicks: 160 },
-      { note: 'The stroke clears the whole field row.', damage: 13, knockback: 1.8, cooldownTicks: 150 },
+      { note: 'The crescent lands heavier.', damage: 7 },
+      { note: 'The moon opens wider and drags harder.', radius: 2.6, knockback: -2.0 },
+      { note: 'THE HARVEST HOOK: the whole field row comes in, and sooner.', damage: 8, cooldownTicks: 140 },
     ],
   },
   {
@@ -142,7 +144,7 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     ranks: [
       { note: 'The drive lands heavier.', damage: 15 },
       { note: 'The line is drawn quicker.', castTicks: 20, cooldownTicks: 160 },
-      { note: 'The corridor widens; the lesson is general.', damage: 17, width: 0.7 },
+      { note: 'THE GENERAL LESSON: the corridor widens; a hooked row takes it near double.', width: 0.75, follow: { after: 'hook', windowTicks: 60, damageMult: 1.8 } },
     ],
   },
   {
@@ -150,9 +152,9 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     style: 'polearm',
     unlockLevel: 45,
     ranks: [
-      { note: 'Every picket bites deeper.', damage: 5 },
-      { note: 'The cold of the wall settles in.', status: { status: 'chill', power: 1, durationTicks: 50 }, cooldownTicks: 190 },
-      { note: 'Nothing crosses. Nothing ever did.', damage: 6 },
+      { note: 'Every picket bites deeper.', damage: 6 },
+      { note: 'The formation stands longer.', fieldTicks: 140 },
+      { note: 'THE SHIELDWALL: standing among the pikes, they are a shield too.', self: { armor: 8, shieldHp: 10, durationTicks: 22 } },
     ],
   },
   {
@@ -160,9 +162,9 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     style: 'polearm',
     unlockLevel: 50,
     ranks: [
-      { note: 'The arrival lands heavier.', damage: 15 },
-      { note: 'The road runs longer, and opens sooner.', dashTiles: 11.0, cooldownTicks: 180 },
-      { note: 'The charge answers only to the horizon.', damage: 16, knockback: 3.0 },
+      { note: 'The arrival lands heavier.', damage: 13 },
+      { note: 'The road runs longer.', dashTiles: 11.0 },
+      { note: 'THE WEATHER: down a drawn line the charge lands near double.', follow: { after: 'line', windowTicks: 60, damageMult: 1.8 } },
     ],
   },
   {
@@ -170,9 +172,9 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     style: 'polearm',
     unlockLevel: 54,
     ranks: [
-      { note: 'The breach opens wider.', damage: 16 },
+      { note: 'The breach opens wider.', damage: 14 },
       { note: 'The crack runs deeper and holds longer.', status: { status: 'sunder', power: 15, durationTicks: 80 } },
-      { note: 'Ramparts learn their place.', damage: 17, cooldownTicks: 180 },
+      { note: 'THE OPEN DOOR: ramparts learn their place, and the breach comes sooner.', damage: 15, cooldownTicks: 160 },
     ],
   },
   {
@@ -180,9 +182,9 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     style: 'polearm',
     unlockLevel: 58,
     ranks: [
-      { note: 'The tongue takes more each taste.', damage: 7 },
-      { note: 'The serpent rests less.', cooldownTicks: 180 },
-      { note: 'It flickers faster than the eye votes.', damage: 8 },
+      { note: 'The tongue reaches farther.', range: 4.0 },
+      { note: 'The tongue opens a little wider.', arc: 0.35 },
+      { note: 'THE BITE: the last flicker lands at three times the weight.', finaleMult: 3 },
     ],
   },
   {
@@ -190,9 +192,9 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     style: 'polearm',
     unlockLevel: 62,
     ranks: [
-      { note: 'The fall lands heavier.', damage: 14 },
-      { note: 'The crater spreads wider, sooner.', radius: 1.8, cooldownTicks: 190 },
-      { note: 'The landing scatters whatever survives it.', damage: 15, knockback: 1.5 },
+      { note: 'The fall lands heavier.', damage: 11 },
+      { note: 'The crater spreads wider, sooner.', radius: 1.8, cooldownTicks: 180 },
+      { note: 'THE SKY SIGNS: on a held ring the crater lands half again and wider still.', damage: 12, follow: { after: ['root', 'hook'], windowTicks: 60, damageMult: 1.6, radiusMult: 1.4 } },
     ],
   },
   {
@@ -200,9 +202,9 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     style: 'polearm',
     unlockLevel: 66,
     ranks: [
-      { note: 'The banner holds the line longer.', self: { speedMult: 1.15, armor: 5, durationTicks: 140 } },
+      { note: 'The banner holds the line longer.', self: { speedMult: 1.15, armor: 5, durationTicks: 140, selfStatus: { status: 'quicken', power: 1, durationTicks: 140 } } },
       { note: 'The call comes sooner.', cooldownTicks: 280 },
-      { note: 'The whole line moves as one body.', self: { speedMult: 1.2, armor: 6, shieldHp: 10, durationTicks: 160 } },
+      { note: 'THE STANDARD RAISED: the whole line moves as one body under a quickened hand.', self: { speedMult: 1.2, armor: 6, shieldHp: 10, durationTicks: 160, selfStatus: { status: 'quicken', power: 1, durationTicks: 160 } } },
     ],
   },
   {
@@ -210,9 +212,9 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     style: 'polearm',
     unlockLevel: 70,
     ranks: [
-      { note: 'Every turn of the wheel bites deeper.', damage: 5 },
-      { note: 'The wheel spins wider and shoves.', radius: 2.0, knockback: 0.6 },
-      { note: 'The guard is ready again sooner.', cooldownTicks: 170 },
+      { note: 'Every turn of the wheel bites deeper.', damage: 4 },
+      { note: 'The wheel spins wider and shoves harder.', radius: 2.0, knockback: 1.0 },
+      { note: 'THE SPLINTER RING: the ring the wheel leaves stands longer and wider.', aftermath: { fieldTicks: 64, everyTicks: 16, damage: 2, radius: 2.0, status: { status: 'chill', power: 1, durationTicks: 30 } } },
     ],
   },
   {
@@ -220,9 +222,9 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     style: 'polearm',
     unlockLevel: 74,
     ranks: [
-      { note: 'The called strike lands heavier.', damage: 20 },
-      { note: 'The charge clings longer; the sky asks less.', status: { status: 'shock', power: 1, durationTicks: 60 }, cooldownTicks: 200 },
-      { note: 'The storm knows the point by name.', damage: 22 },
+      { note: 'The called strike lands heavier.', damage: 18 },
+      { note: 'The sky asks less, and the charge lingers on the ground.', cooldownTicks: 210, aftermath: { fieldTicks: 64, everyTicks: 16, damage: 2, radius: 1.4, status: { status: 'shock', power: 1, durationTicks: 20 } } },
+      { note: 'THE NAMED POINT: the storm knows the point by name, and answers quicker.', damage: 20, castTicks: 22 },
     ],
   },
   {
@@ -230,9 +232,9 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     style: 'polearm',
     unlockLevel: 78,
     ranks: [
-      { note: 'The blow lands heavier.', damage: 14 },
+      { note: 'The blow lands heavier.', damage: 13 },
       { note: 'It reads the lean earlier.', executeBelow: { frac: 0.35, mult: 2.0 } },
-      { note: 'Gates fall on the first knock.', damage: 15, cooldownTicks: 180 },
+      { note: 'THE FIRST KNOCK: gates fall on the first knock, and a fall gives back five seconds.', damage: 14, onKill: { refundTicks: 100 } },
     ],
   },
   {
@@ -240,9 +242,9 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     style: 'polearm',
     unlockLevel: 82,
     ranks: [
-      { note: 'The circle lands heavier.', damage: 11 },
-      { note: 'The gyre reaches wider, oftener.', radius: 2.5, cooldownTicks: 180 },
-      { note: 'One turn, and the yard is yours.', damage: 12, knockback: 2.0 },
+      { note: 'The circle lands heavier.', damage: 8 },
+      { note: 'The gyre reaches wider.', radius: 2.5 },
+      { note: 'THE MEASURED YARD: one turn throws them farther, and the yard is yours sooner.', damage: 9, knockback: 2.4, cooldownTicks: 122 },
     ],
   },
   {
@@ -250,9 +252,9 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     style: 'polearm',
     unlockLevel: 86,
     ranks: [
-      { note: 'Every beat of the stand bites deeper.', damage: 5 },
-      { note: 'The cold at the line holds them longer.', status: { status: 'chill', power: 1, durationTicks: 80 }, cooldownTicks: 200 },
-      { note: 'The line was never really in question.', damage: 6 },
+      { note: 'The cold at the line holds them longer.', status: { status: 'chill', power: 1, durationTicks: 60 } },
+      { note: 'The stand reaches a stride farther.', range: 3.3 },
+      { note: 'THE UNBROKEN LINE: the last beat breaks them at half again the finale.', finaleMult: 2.5 },
     ],
   },
   {
@@ -261,8 +263,8 @@ export const TECHNIQUE_LADDER_DEFS: TechniqueDef[] = [
     unlockLevel: 90,
     ranks: [
       { note: 'The run lands heavier.', damage: 17 },
-      { note: 'The road runs longer and opens sooner.', dashTiles: 14.0, cooldownTicks: 200 },
-      { note: 'The crown of the school, at full gallop.', damage: 19, knockback: 3.2 },
+      { note: 'The road runs longer.', range: 10 },
+      { note: 'THE CROWN OF THE SCHOOL: the torn road stands longer behind the lance.', aftermath: { fieldTicks: 80, everyTicks: 16, damage: 2, radius: 1.4, status: { status: 'chill', power: 1, durationTicks: 40 } } },
     ],
   },
   // ------------------------- beastcraft, the keeper's ladder (THE

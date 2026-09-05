@@ -390,3 +390,59 @@ scaling, held ground ONE buff + silent zone, red ledger once/late);
 content 625 / server 632 / client 1108, tsc ×4. Zero content authored
 in this phase — every shipped art is byte-identical in the model
 (RELEVANCE, PAYOFF, SECRET BAND all pass unchanged).
+
+### Phase 2 — THE NINE SCHOOLS (2026-09-05)
+
+One workflow (`mastered-hand-schools`, nine agents, one pass each,
+brief at the session scratchpad `SCHOOL_BRIEF.md`, reports per school).
+Every rung art of the nine combat schools was re-authored under its id
+on its grammar spine: 46 openers / 47 payoffs / 47 sustains / 31
+answers / 9 crowns; 81 arts leave a word, 75 follow one, 30 leave
+aftermath ground, 39 channels carry a finale, 45 arm the red ledger,
+18 read a page through `vs`, 23 lay a licensed hold or weaken (root /
+stagger / weaken by license, every one casted or fused under the
+player HOLD BUDGET). Rungs: 88 instant / 59 casted / 48 channeled
+(was 101 / 46 / 48). Every school owns a three-press signature that
+resolves in the model, and a combo by level 20. The reports (kept in
+the session scratchpad) carry the one-line rationale per art.
+
+**Main-session gate and close.** The reading edge is now PRICED
+(`vsCredit`: direct × (mult − 1) at the follow uptime; `vs` honable)
+and the PAYOFF BRACKET judges a press at its follow-multiplied
+heaviest — both were asked by every school. Pricing them surfaced nine
+breaches, tuned by hand (perfect_thrust vs ×2→1.5 + cd, kingshot
+follow ×2→1.6, giantsfall follow → refund, sweeping_gyre cd, two_answers
+follow ×1.2, stormcall follow ×1.2, thousand_cuts cd, skysunder consume
+×2.2→1.6, the_opening vs ×2→1.5 + cd, wide_swath cd; four twohand
+secrets' rank-IV cooldowns lifted 4% because the rung floor rose). The
+register exempts `vs` (a reader is not an applier). Four over-long rank
+notes trimmed. Three server slate pins that named literal content
+numbers (daybreak's clock, heavy_slam as "an instant") now read the
+def. Gates: shared 302 / content 628 / server 632 / client 1108, tsc ×4.
+
+**Honest residue.** (1) The client breath-voice contract lists 17
+arts IN_FLIGHT (`breathFx.test.ts`): they gained or lost a breath and
+speak the face-derived fallback until Phase 4 authors their dialects
+— a debt with a name, emptied by THE VOICE. (2) Shape changes await
+Phase 4 voices: snare_shot summon→fused blast, emberhead fan→blast,
+wall_of_points arc→field, haft_strike instant→channel, crescent_reap
+arc→pulling nova, sundering_lance dash→casted beam, titans_verdict
+pulse_nova→nova + rift. (3) The DELIVERY cadence still walks the old
+I·W·I·C alternation in four schools (archery, arx, twohand, dualwield
+share it exactly); the mechanics, roles and combos differ, the breath
+rhythm does not — Phase 3 reseats deliveries per school identity
+(archery = more staked volleys, arx = longer casts, twohand = fewer
+heavier winds, dualwield = mostly instant links) inside the ≥5/≥5
+floors. (4) Not live-proven: Phase 5.
+
+**Engine asks ledger (for Phase 3).** `follow.self` (a self rider
+spoken only when the follow lands — dualwield's quicken-per-link);
+`follow.knockbackMult` (twohand's shove on a reeling foe); aftermath
+on projectile splash, dash roads and pulse novas; HELD GROUND `self` on
+channel shapes / aftermath-on-last-beat (combat's long watch, polearm's
+brace); a pulling beam; consume on the LAST beat of a flurry/channel
+(sneak); a sunder-consume door (`stateBucket` excludes sunder from the
+present set); a follow that reads a STATUS on the target (arx
+cross-school sparks); a per-field once rule for `self.heal` in held
+ground; a small tag credit in the model so openers keep honest
+cooldowns; a beastcraft fang that reads the keeper's follow.
