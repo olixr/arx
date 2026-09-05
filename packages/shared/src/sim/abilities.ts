@@ -1060,8 +1060,11 @@ export type PassiveId =
   | 'chill_charged'
   /** Your heavy (third) bolt also burns. */
   | 'ember_bolt'
-  /** Dodging grants a burst of speed. */
-  | 'dodge_haste'
+  /**
+   * THE SLIPPED BLOW's worn lane: a flat chance that a blow misses the
+   * body entirely (sim/evasion.ts folds it with leather, sneak, buffs).
+   */
+  | 'wolf_reflexes'
   /** Constant stride bonus while worn. */
   | 'fleet_footed'
   /** Dropping below 30% health triggers a burst of speed. */
@@ -1095,9 +1098,9 @@ export const PASSIVES: Record<PassiveId, PassiveMeta> = {
     color: '#e8763c',
     code: 'Eb',
   },
-  dodge_haste: {
+  wolf_reflexes: {
     name: 'Wolf Reflexes',
-    desc: 'Dodging grants +35% speed for 1.5 s.',
+    desc: 'Blows have a 10% chance to slip past you entirely.',
     color: '#6a6f7d',
     code: 'Wr',
   },

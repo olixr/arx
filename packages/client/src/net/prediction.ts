@@ -1,11 +1,7 @@
 import {
-  DODGE_COOLDOWN_SEQ,
   DRAW_MOVE_FACTOR,
-  InputButton,
   TICK_DT,
   TRAVEL_SPEEDS,
-  applyDodge,
-  hasButton,
   isDrawSlowed,
   resolveTeleport,
   stepMovement,
@@ -65,15 +61,12 @@ export class Predictor {
   private pending: Array<{ frame: InputFrame; speed: number }> = [];
   private errX = 0;
   private errY = 0;
-  private lastDodgeSeq = -999;
   /** Most recent locally-committed ability cast, mirrored from the
    * server's rules so casts don't rubber-band: movement freezes for the
    * commitment window, and dash Arts move the body on the cast frame. */
   private lastCastSeq = -999;
   private lastCastFreeze = 0;
   private lastCastMove: (CastMove & { frames: number; stepPer: number }) | null = null;
-  /** Fires when a dodge impulse applies locally (for whoosh/trail FX). */
-  onDodge: ((x: number, y: number, mx: number, my: number) => void) | null = null;
   /**
    * Equipped weapon style ('archery' slows movement while Attack is held
    * — the braced draw stance). Must mirror the server's view; ClientGame
@@ -116,7 +109,6 @@ export class Predictor {
     this.pending = [];
     this.errX = 0;
     this.errY = 0;
-    this.lastDodgeSeq = -999;
     this.lastCastSeq = -999;
     this.lastCastMove = null;
   }
@@ -199,21 +191,9 @@ export class Predictor {
     return speed;
   }
 
-  /** The shared per-frame move: normal step + optional dodge impulse. */
-  private simFrame(pos: Vec2, frame: InputFrame, trackDodge: boolean): Vec2 {
+  /** The shared per-frame move: the normal step + a cast's own move. */
+  private simFrame(pos: Vec2, frame: InputFrame): Vec2 {
     let out = stepMovement(pos, frame, this.frameSpeed(frame), TICK_DT, this.collision);
-    if (
-      hasButton(frame.buttons, InputButton.Dodge) &&
-      !this.roadOwns(frame.seq) && // the road owns the legs — no dodge mid-crossing
-      frame.seq >= this.lastDodgeSeq + DODGE_COOLDOWN_SEQ &&
-      Math.hypot(frame.mx, frame.my) > 0.01
-    ) {
-      if (trackDodge) {
-        this.lastDodgeSeq = frame.seq;
-        this.onDodge?.(out.x, out.y, frame.mx, frame.my);
-      }
-      out = applyDodge(out, frame.mx, frame.my, this.collision);
-    }
     out = this.applyCastMove(out, frame.seq);
     return out;
   }
@@ -221,7 +201,7 @@ export class Predictor {
   applyInput(frame: InputFrame): void {
     this.pending.push({ frame, speed: this.frameSpeed(frame) });
     this.prev = this.pos;
-    this.pos = this.simFrame(this.pos, frame, true);
+    this.pos = this.simFrame(this.pos, frame);
   }
 
   reconcile(authoritative: Vec2, lastProcessedSeq: number): void {
@@ -235,10 +215,7 @@ export class Predictor {
       // root learned late (a charged cast's fire) covers its frames.
       const replaySpeed = this.rooted(frame.seq) ? 0 : speed;
       pos = stepMovement(pos, frame, replaySpeed, TICK_DT, this.collision);
-      // Replay the committed dodge/cast impulses on their exact frames.
-      if (frame.seq === this.lastDodgeSeq) {
-        pos = applyDodge(pos, frame.mx, frame.my, this.collision);
-      }
+      // Replay the committed cast impulses on their exact frames.
       pos = this.applyCastMove(pos, frame.seq);
     }
     this.pos = pos;

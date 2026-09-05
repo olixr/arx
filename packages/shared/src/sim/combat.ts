@@ -223,9 +223,9 @@ export function advanceCombo(
 
 /**
  * Drop the string. Called at every honest break — sheathe, death,
- * mounting up, a drawn bow shot superseding the snap rhythm. Dodge
- * deliberately does NOT reset: the dodge-weave is a combo verb, not a
- * retreat from the string.
+ * mounting up, a drawn bow shot superseding the snap rhythm. Plain
+ * walking never resets: stepping out and cutting back in IS the
+ * string (grace expiry is the only quiet end).
  */
 export function resetCombo(track: ComboTrack): void {
   track.stage = 0;
@@ -258,15 +258,9 @@ export function armBuffer(remainingCooldown: number, now: number): number {
   return now + remainingCooldown + BUFFER_FIRE_SLACK_TICKS;
 }
 
-/**
- * THE DODGE-WEAVE: a dodge that FIRES cuts the rest of the swing
- * recovery to this floor — the string stays alive (grace untouched,
- * the track never resets on a dodge) and the next cut follows the
- * slide. The floor keeps one honest beat of commitment; the dodge's
- * own seq cooldown (1.2s) and its movement requirement bound the
- * cadence gain, and the baseline hold-flow cadence is unchanged.
- */
-export const DODGE_CANCEL_FLOOR_TICKS = 3;
+// (THE DODGE-WEAVE — the pressed dodge's recovery cut — retired with
+// the button dodge on 2026-09-05. Recovery is the moveset book's
+// alone now; the swing commits to its full beat.)
 
 // (Per-lane recovery/grace numbers live in THE MOVESET BOOK now —
 // content/src/movesets.ts derives every default from the constants

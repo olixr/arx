@@ -1,8 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DODGE_DIST,
-  applyDodge,
   resolveTeleport,
   rideSpeedMult,
   stepMovement,
@@ -72,24 +70,6 @@ test('shallow water wades at the shared factor — dry land does not', () => {
 test('zero input means zero movement', () => {
   const pos = stepMovement({ x: 3, y: 3 }, { mx: 0, my: 0 }, 5, 0.05, NO_COLLISION);
   assert.deepEqual(pos, { x: 3, y: 3 });
-});
-
-test('dodge dashes the full distance in the open', () => {
-  const out = applyDodge({ x: 10, y: 10 }, 1, 0, NO_COLLISION);
-  assert.ok(Math.abs(out.x - 10 - DODGE_DIST) < 1e-9);
-  assert.equal(out.y, 10);
-});
-
-test('dodge is deterministic and stops at walls', () => {
-  const a = applyDodge({ x: 4.3, y: 0.5 }, 1, 0, wallAtX5);
-  const b = applyDodge({ x: 4.3, y: 0.5 }, 1, 0, wallAtX5);
-  assert.deepEqual(a, b);
-  assert.ok(a.x < 5, `dash stopped at the wall (x=${a.x.toFixed(3)})`);
-});
-
-test('dodge with no direction goes nowhere', () => {
-  const out = applyDodge({ x: 2, y: 2 }, 0, 0, NO_COLLISION);
-  assert.deepEqual(out, { x: 2, y: 2 });
 });
 
 test('THE TORN VEIL: a blink lands its full wish in the open', () => {

@@ -473,7 +473,6 @@ import {
 import {
   COMBO_GRACE_TICKS,
   COMBO_STAGES,
-  DODGE_COOLDOWN_SEQ,
   DRAW_FULL_TICKS,
   DRAW_MIN_TICKS,
   DRAW_MOVE_FACTOR,
@@ -556,7 +555,8 @@ import {
   WALL_RUN_TILES,
   FENCE_TILES,
   GARRISON_TILES,
-  applyDodge,
+  evadeChancePct,
+  rollSlip,
   diagWallInfo,
   diagWallTile,
   orientDiagWall,
@@ -606,7 +606,6 @@ import {
   isOvercharged,
   OVERCHARGE_TICKS,
   resetCombo,
-  DODGE_CANCEL_FLOOR_TICKS,
   GUARD_SWEEP_KNOCKBACK,
   GUARD_SWEEP_RANGE,
   GUARD_SWEEP_WINDUP,
@@ -639,6 +638,7 @@ import {
   buffDmgMult,
   buffSpeedMult,
   buffArmor,
+  buffEvadePct,
   buffReflectFrac,
   buffRegenPer4s,
   buffGatherSpeed,
@@ -1964,15 +1964,6 @@ export interface PlayerComp {
   /** Last tick a block spark flew — the rim speaks at most every few beats. */
   lastBlockFxTick: number;
   poseUntilTick: number;
-  lastDodgeSeq: number;
-  /**
-   * ONE LAW, TWO CLOCKS for the dodge too: seqs are client-authored,
-   * so the seq-only cooldown could be inflated away (a ~24-seq jump
-   * per frame = a fresh dodge every frame = 21 tiles/s of legal
-   * wall-sliding). The tick twin is the server's own wall clock; an
-   * honest 20Hz client sees both expire on the same frame.
-   */
-  lastDodgeTick: number;
   /** Ticks the bow has been drawn; 0 = not drawing. */
   drawTicks: number;
   /** Client-reported adaptive interp delay, ms (v8) — exact lag comp. */
@@ -1996,7 +1987,7 @@ export interface PlayerComp {
    * press, landing at `at` (the choreography's impact frame). The
    * promise made at press is the promise kept: every number is
    * captured there. Cleared by the honest breaks (sheathe, death,
-   * mount); a dodge never recalls a blow already swung.
+   * mount); a step never recalls a blow already swung.
    */
   pendingStrike: {
     at: number;
@@ -2120,8 +2111,8 @@ export interface PlayerComp {
   /**
    * THE SADDLE IS A STANCE: the active mount def id, or null afoot.
    * The mount is the player's appearance, never a second entity.
-   * Riding yields to every deed — attack, art, dodge, action, sneak,
-   * sit, landed damage, dungeon ground — and only movement keeps it.
+   * Riding yields to every deed — attack, art, action, sneak, sit,
+   * landed damage, dungeon ground — and only movement keeps it.
    */
   mountId: string | null;
   /** Mount def ids this character owns. Persisted in Phase 4. */
@@ -2388,6 +2379,11 @@ export interface PlayerBuff {
   critPct: number;
   /** Multiplier on this player's outgoing max hits (a surge working's lift). */
   dmgMult: number;
+  /**
+   * THE SLIPPED BLOW: percentage points of chance a blow misses the
+   * body (the forge's additive fold; capped at the one roll site).
+   */
+  evadePct: number;
   /** THE QUIET WALK: wild beasts do not mark the wearer while active. */
   beastTruce: boolean;
   /** THE WILD PARTS (rank IV): beasts within this many tiles ease aside. */
@@ -4198,8 +4194,6 @@ export class GameServer {
       lastCombatAt: 0,
       lastBlockFxTick: 0,
       poseUntilTick: 0,
-      lastDodgeSeq: -999,
-      lastDodgeTick: -999,
       drawTicks: 0,
       combo: freshCombo(),
       attackBufferedUntilTick: 0,
@@ -4360,7 +4354,6 @@ export class GameServer {
     // A fresh client restarts its input numbering from 1 — accepting the
     // old high-water mark would silently drop all of its movement.
     player.lastProcessedSeq = 0;
-    player.lastDodgeSeq = -999;
     // The seq-domain beat locks belong to the OLD numbering — a stale
     // lock against a restarted clock would refuse combat for hours.
     player.drawLockUntilSeq = 0;
@@ -13094,6 +13087,8 @@ export class GameServer {
           armor: b.armor ?? 0,
           dmgMult: b.dmgMult ?? 1,
           critPct: b.critPct ?? 0,
+          // THE SLIPPED BLOW's cup rides the same additive fold.
+          evadePct: b.evadePct ?? 0,
           untilTick: this.tickCount + Math.round(b.durationSec * 20 * durMult),
           channel: b.channel,
           itemId: def.id,
@@ -13455,6 +13450,7 @@ export class GameServer {
           ...(g.reflectFrac !== undefined ? { reflectFrac: g.reflectFrac } : {}),
           ...(g.meleeLifesteal !== undefined ? { meleeLifesteal: g.meleeLifesteal } : {}),
           ...(g.gatherSpeed !== undefined ? { gatherSpeed: g.gatherSpeed } : {}),
+          ...(g.evadePct !== undefined ? { evadePct: g.evadePct } : {}),
         }),
       );
       changed = true;
@@ -13673,6 +13669,7 @@ export class GameServer {
     if (b.regenPer4s > 0) parts.push(`mends ${b.regenPer4s} every four breaths`);
     if (b.meleeLifesteal > 0) parts.push(`blows drink ${Math.round(b.meleeLifesteal * 100)}%`);
     if (b.reflectFrac > 0) parts.push(`returns ${Math.round(b.reflectFrac * 100)}% of blows`);
+    if (b.evadePct > 0) parts.push(`slips ${Math.round(b.evadePct)}% of blows`);
     if (b.offhandWeight > 0) parts.push('the off hand echoes');
     if (b.gatherSpeed > 1) parts.push(`gathers ${Math.round((b.gatherSpeed - 1) * 100)}% faster`);
     if (b.onHitStatus) parts.push(`blows carry ${b.onHitStatus.status}`);
@@ -13685,9 +13682,9 @@ export class GameServer {
     // THE VISIBLE FIGHT (buildcraft Phase 5): the invisible-buff era
     // ends. Consumables keep their chips; NAMED combat buffs — proc
     // wards and surges, stance riders, the passives' bursts — join
-    // under the 'combat' channel. Unnamed micro-buffs (sprint,
-    // dodge haste) and the momentum channel stay off the HUD by
-    // design (the knife's hunger reads in the feet, not a chip).
+    // under the 'combat' channel. Unnamed micro-buffs (sprint) and
+    // the momentum channel stay off the HUD by design (the knife's
+    // hunger reads in the feet, not a chip).
     const secs = (b: PlayerBuff): number =>
       Math.max(0, Math.ceil((b.untilTick - this.tickCount) / 20));
     const buffs: BuffInfo[] = [];
@@ -19447,8 +19444,8 @@ export class GameServer {
   /**
    * THE TRAVELED ROAD (THE CROSSING, docs/transport-arts-plan.md): a
    * body crossing the world over real ticks. One transit per body;
-   * while the road runs, input movement, dodges, casts, and the
-   * body's own steering (NPC/pet AI) all wait. tickTransits advances
+   * while the road runs, input movement, casts, and the body's own
+   * steering (NPC/pet AI) all wait. tickTransits advances
    * every road each tick through the same transitStep door the
    * predictor mirrors; the sweep and the arrival payload ride as
    * closures captured where the cast still knew its numbers.
@@ -22283,6 +22280,48 @@ export class GameServer {
     // A blow breaks any conversation — the cinematic frame drops with it.
     if (raw > 0 && player.dialogue) this.dialogueClose(player);
 
+    // THE SLIPPED BLOW (shared/sim/evasion.ts): the nimble body's
+    // answer to a blow — it never lands. ONE roll, here, before the
+    // armor speaks: the worn lane (Wolf Reflexes) + each leather
+    // piece + the trained Sneak level + the buffs' evadePct fold,
+    // scaled by the feet (a hold slips nothing, a chill slips slower,
+    // a seated or saddled body never slips), capped at half. A wound
+    // already inside the armor (DoT pulses, piercing drips) never
+    // reaches the roll. A slipped blow still blew your cover (the
+    // reveal above ran) and still counts as combat, but carries no
+    // status, teaches the wall nothing, and touches no ward — the
+    // door closes right here.
+    if (raw > 0 && opts.via === undefined && !opts.pierceArmor) {
+      const chance = evadeChancePct({
+        buffPct: buffEvadePct(player.buffs),
+        wolfReflexes: this.hasPassive(player, 'wolf_reflexes'),
+        leatherPieces: player.gear.classCounts.leather,
+        sneakLevel: this.effectiveLevel(player, 'sneak'),
+        moveFactor: moveFactorOfList(this.statuses.get(eid)),
+        planted: player.seat !== null || player.mountId !== null,
+      });
+      if (rollSlip(chance)) {
+        // The afterimage smears AWAY from the striker: the hit wire
+        // carries the striker-to-body direction (unit) when known.
+        const ppos = this.positions.get(eid);
+        const spos = opts.sourceEid !== undefined ? this.positions.get(opts.sourceEid) : undefined;
+        let kx = 0;
+        let ky = 0;
+        if (ppos && spos) {
+          const dx = ppos.x - spos.x;
+          const dy = ppos.y - spos.y;
+          const len = Math.hypot(dx, dy);
+          if (len > 1e-6) {
+            kx = dx / len;
+            ky = dy / len;
+          }
+        }
+        this.broadcastHit(eid, 0, false, kx, ky, false, false, undefined, true);
+        player.lastCombatAt = Date.now();
+        return;
+      }
+    }
+
     const defLevel = this.effectiveLevel(player, 'defence');
     // THE RAISED WALL: only an offhand shield held in the fist counts.
     const shieldUp = this.equippedShield(player);
@@ -22679,6 +22718,8 @@ export class GameServer {
     backstab = false,
     immune = false,
     via?: 'burn' | 'bleed' | 'venom',
+    /** THE SLIPPED BLOW: the blow missed — dmg 0, the client says "Slip". */
+    slip = false,
   ): void {
     const hasDir = kx !== 0 || ky !== 0;
     // One stringify for the whole fan (see broadcastFx).
@@ -22694,6 +22735,7 @@ export class GameServer {
           ky: hasDir ? Math.round(ky * 100) / 100 : undefined,
           bs: backstab || undefined,
           im: immune || undefined,
+          sl: slip || undefined,
           via,
         });
         s.sendJsonRaw(json);
@@ -27323,45 +27365,11 @@ export class GameServer {
         if (pressed & InputButton.Ability3) this.tryCastAbility(eid, player, 2, frame.aim, aimPt);
         if (pressed & InputButton.Ability4) this.tryCastAbility(eid, player, 3, frame.aim, aimPt);
       }
-      // Dodge dash: same seq-cooldown rule the client predicts with —
-      // plus the tick twin (ONE LAW, TWO CLOCKS): the seq half keeps
-      // the mirror deterministic, the tick half keeps the cooldown
-      // honest against a client-authored seq counter.
-      if (
-        hasButton(frame.buttons, InputButton.Dodge) &&
-        // The road owns the legs — no dodge mid-crossing. Read LIVE,
-        // not the top-of-frame snapshot: a cast press THIS frame may
-        // have just begun the road, and the dodge runs after casts.
-        !this.transits.has(eid) &&
-        frame.seq >= player.lastDodgeSeq + DODGE_COOLDOWN_SEQ &&
-        this.tickCount >= player.lastDodgeTick + DODGE_COOLDOWN_SEQ &&
-        Math.hypot(frame.mx, frame.my) > 0.01
-      ) {
-        player.lastDodgeSeq = frame.seq;
-        player.lastDodgeTick = this.tickCount;
-        const dashed = applyDodge(pos, frame.mx, frame.my, this.worldOf(pos.plane));
-        pos.x = dashed.x;
-        pos.y = dashed.y;
-        moved = true;
-        player.drawTicks = 0; // dodging lets the string down
-        // THE DODGE-WEAVE (combat v2): the fired dodge cuts the rest
-        // of the swing recovery to a floor — the combo track never
-        // resets on a dodge, so slide-out, cut back in IS the string.
-        // Mirrored client-side off the same seq-gated dodge law.
-        if (player.attackCooldown > DODGE_CANCEL_FLOOR_TICKS) {
-          player.attackCooldown = DODGE_CANCEL_FLOOR_TICKS;
-        }
-        // THE DRAWN BREATH's bail-out: the dodge that FIRES breaks the
-        // breath (mirrored client-side off the same seq-gated law, so
-        // a dodge press on cooldown never lies to the bar).
-        this.cancelCasting(eid, player);
-        this.dismount(eid, player); // a dodge is the body's own deed
-        // Wolf Reflexes: the dodge itself becomes an engage/escape tool.
-        if (this.hasPassive(player, 'dodge_haste')) {
-          player.buffs.push(mkBuff({ speedMult: 1.35, untilTick: this.tickCount + 30 }));
-          this.rideDirty.add(player); // the reflex speed reaches the predictor
-        }
-      }
+      // (The pressed dodge dash — the seq/tick-twinned impulse, THE
+      // DODGE-WEAVE's recovery cut, the breath bail-out, and Wolf
+      // Reflexes' haste — was retired here on 2026-09-05. Bit 2 of
+      // the button word is reserved and ignored; the body's slip is
+      // THE SLIPPED BLOW in damagePlayer now.)
       player.lastProcessedSeq = frame.seq;
 
       // A cast this frame (or one still resolving) holds the basic back.

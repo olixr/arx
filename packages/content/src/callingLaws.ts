@@ -313,7 +313,8 @@ export function callingFaults(def: CallingDef): string[] {
           (g.regenPer4s ?? 0) !== 0 ||
           (g.reflectFrac ?? 0) !== 0 ||
           (g.meleeLifesteal ?? 0) !== 0 ||
-          (g.gatherSpeed ?? 1) !== 1;
+          (g.gatherSpeed ?? 1) !== 1 ||
+          (g.evadePct ?? 0) !== 0;
         if (!grants) f.push(`${at}: when clause grants nothing`);
         if ((g.attackSpeedMult ?? 1) > WHEN_SWING_MAX) f.push(`${at}: when-grant swing ${g.attackSpeedMult} over THE SWING BUDGET (${WHEN_SWING_MAX})`);
         if (!g.name || g.name.length > NAME_MAX) f.push(`${at}: when grant needs a chip name (1..${NAME_MAX})`);

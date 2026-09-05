@@ -241,6 +241,10 @@ present grows per-stage hitstop/shake. **Proof:** input-latency capture before/a
   ready clocks inside the existing seq-gated predictor.onDodge. Cadence honesty:
   baseline hold-flow unchanged; the gain is bounded by the dodge's own 1.2s seq
   cooldown + movement requirement.
+  **RETIRED 2026-09-05** with the button dodge itself (it had become a stride
+  exploit: dodge, ride the haste, repeat). Recovery is the moveset book's alone;
+  the string still never resets on plain walking. The body's defensive slip is
+  THE SLIPPED BLOW now — see docs/evasion-plan.md.
 - THE RUN: ComboTrack grew `run` — consecutive swings in unbroken rhythm, ACROSS
   string wraps; dies with the string. Spoken in S2CCombo. Pure feedback in Phase 2;
   Phase 3's windup axis gives tempo its mechanical teeth (deliberately deferred —

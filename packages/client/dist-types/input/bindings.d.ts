@@ -16,7 +16,7 @@
  *   load before the first frame; resetting restores this file exactly.
  */
 import { type PadFamily } from './padProfiles.js';
-export type ActionId = 'moveUp' | 'moveDown' | 'moveLeft' | 'moveRight' | 'attack' | 'ability1' | 'ability2' | 'ability3' | 'ability4' | 'dodge' | 'quickUse' | 'interact' | 'lootReveal' | 'buildRotate' | 'sit' | 'sheathe' | 'swapSets' | 'mount' | 'walkToggle' | 'sneakToggle' | 'screenPack' | 'screenSkills' | 'screenArts' | 'screenCraft' | 'screenBuild' | 'screenSocial' | 'screenMap' | 'screenQuests' | 'screenRep' | 'screenSettings' | 'screenKeys' | 'screenBeasts' | 'screenCompanions' | 'screenLoot' | 'mapGlass' | 'zoomIn' | 'zoomOut' | 'zoomCycle';
+export type ActionId = 'moveUp' | 'moveDown' | 'moveLeft' | 'moveRight' | 'attack' | 'ability1' | 'ability2' | 'ability3' | 'ability4' | 'quickUse' | 'interact' | 'lootReveal' | 'buildRotate' | 'sit' | 'sheathe' | 'swapSets' | 'mount' | 'walkToggle' | 'sneakToggle' | 'screenPack' | 'screenSkills' | 'screenArts' | 'screenCraft' | 'screenBuild' | 'screenSocial' | 'screenMap' | 'screenQuests' | 'screenRep' | 'screenSettings' | 'screenKeys' | 'screenBeasts' | 'screenCompanions' | 'screenLoot' | 'mapGlass' | 'zoomIn' | 'zoomOut' | 'zoomCycle';
 export interface ActionDef {
     id: ActionId;
     /** Player-facing name — quiet quartermaster diction. */
@@ -29,12 +29,19 @@ export interface ActionDef {
 }
 /**
  * The shipped layout. Keyboard: WASD moves, Space attacks, QERT casts,
- * F uses, Shift dodges, 1 swallows the belt's meal, backquote trades
- * weapon sets; the stance row is Z walk / X sit / C sneak; screens
- * live on I K V N B U M O G. Pad: RT (or Ⓧ) attacks, Ⓐ uses, Ⓑ
- * dodges, LB/LT/RB/▲ cast, Ⓨ names the loot; d-pad ▼ eats off the
- * belt, ◀ sheathes (HELD ◀ trades weapon sets), ▶ raises the glass;
- * L3 sneaks, R3 steps the camera; Start is the pack, Select the chart.
+ * F uses, 1 swallows the belt's meal, backquote trades weapon sets;
+ * the stance row is Z walk / X sit / C sneak; screens live on
+ * I K V N B U M O G. Pad: RT (or Ⓧ) attacks, Ⓐ uses, LB/LT/RB/▲
+ * cast, Ⓨ names the loot; d-pad ▼ eats off the belt, ◀ sheathes
+ * (HELD ◀ trades weapon sets), ▶ raises the glass; L3 sneaks, R3
+ * steps the camera; Start is the pack, Select the chart.
+ *
+ * THE FREED HAND (2026-09-05): Shift on keys and Ⓑ on the pad are
+ * UNBOUND. The pressed dodge dash that lived there left the game (it
+ * had become a stride exploit and nothing else; its defensive worth
+ * is THE SLIPPED BLOW now, rolled where a blow lands). Both stay free
+ * on purpose — the first genuinely open pad button since ONE KEYMAP —
+ * so the next verb that truly needs a thumb has somewhere to land.
  *
  * THE PAIRED HAND: the two technique seats ride TOGETHER — Q and E on
  * keys, LB and LT under the left hand — because arts are the first

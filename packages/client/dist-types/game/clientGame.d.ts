@@ -282,6 +282,18 @@ export interface GameEvents {
         crit: boolean;
         isOwnTarget: boolean;
     }): void;
+    /**
+     * THE SLIPPED BLOW: a blow missed a body. `kx`/`ky` is the unit
+     * striker-to-body direction when the server knew the striker (0,0
+     * otherwise) — the afterimage smears along it.
+     */
+    onSlip?(slip: {
+        x: number;
+        y: number;
+        kx: number;
+        ky: number;
+        isOwn: boolean;
+    }): void;
     /** This character has never chosen a look — open the creator. */
     onNeedLook?(): void;
     /** A timed action began — `ticks` server ticks to completion; craft
@@ -911,8 +923,6 @@ export declare class ClientGame {
      * while the hand is at the hip, so the trade reads as one motion).
      */
     swapStowing(now?: number): boolean;
-    /** Dodge FX hook (the predictor's onDodge is owned internally). */
-    onDodgeFx: ((x: number, y: number, mx: number, my: number) => void) | null;
     /**
      * THE GUARD SWEEP's client eye: injected by main (which owns the
      * entity scan) — true when a living foe stands within `range` tiles.
@@ -1028,7 +1038,7 @@ export declare class ClientGame {
      * something waits at the back — the empty press stays silent here
      * and the server speaks the refusal. Cosmetic on mispredict: a
      * stale local view plays a beat over nothing and touches no
-     * authority. Dodge stays free through the beat, like the server.
+     * authority. Movement stays free through the beat, like the server.
      */
     /**
      * THE SAFETY, mirrored — the sheathe toggle and the auto-draw. The

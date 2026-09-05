@@ -292,8 +292,14 @@ export declare class Sfx {
     /** The hotbar radial refilling to ready — a soft affirmative tick. */
     abilityReady(): void;
     zap(): void;
-    /** Dodge dash: a short breathy whoosh. */
+    /** A dash art or a drop into the crouch: a short breathy whoosh. */
     dash(): void;
+    /**
+     * THE SLIPPED BLOW: a blow that never landed — a lighter, quicker
+     * breath than the dash, a swept-cloth hiss with a rising whisper
+     * where the impact would have thudded. Reads as "missed", not "hit".
+     */
+    slip(): void;
     /** A kill: a small dark pop with a satisfying tail. */
     kill(): void;
     /** An instant ray firing — a bright sustained lance with a crack. */

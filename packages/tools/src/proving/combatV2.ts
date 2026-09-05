@@ -2,7 +2,7 @@
  * COMBAT V2 PROOF — THE PROVING (docs/combat-v2-plan.md Phase 6).
  * Every law the six phases shipped, receipted over the REAL wire
  * against a running server: the spoken beat, the one rhythm's resets,
- * the held intent, the dodge-weave, the honest swing's windup, the
+ * the held intent, the honest swing's windup, the
  * branch, the pages (roster live), the guard sweep, the knife's
  * hunger, the weave, the overcharge volley, and the cadence contract.
  *
@@ -25,7 +25,6 @@ const URL = process.env.ARX_PROVE_URL ?? 'ws://localhost:8790/ws';
 const STAMP = String(Math.floor(Math.random() * 1e6));
 const USER = `combatv2_${STAMP}`;
 const ATTACK = 1 << 0;
-const DODGE = 1 << 2;
 const SHEATHE = 1 << 9;
 const TICK = 50;
 
@@ -329,27 +328,8 @@ const main = async () => {
     buffered ? `stage ${buffered.stage}` : 'no swing fired',
   );
 
-  // THE DODGE-WEAVE: the finisher's long rest is cut by a fired dodge.
-  await restStringDead(c);
-  beats = await holdFor(c, 4); // through the finisher (recovery 14t = 700ms)
-  const finisherAt = beats[3]!.at;
-  c.frame(DODGE, 0, 1, 0); // dodge needs movement intent
-  await sleep(60);
-  from = c.mark();
-  let woven: Msg | null = null;
-  const weaveDeadline = Date.now() + 2000;
-  while (woven === null && Date.now() < weaveDeadline) {
-    c.frame(ATTACK, 0);
-    await sleep(45);
-    woven = c.since(from, 'combo')[0] ?? null;
-  }
-  c.frame(0, 0);
-  if (!woven) throw new Error('post-dodge swing never fired');
-  receipt(
-    'THE DODGE-WEAVE cuts the recovery, the string stays alive',
-    woven.at - finisherAt < 480,
-    `${woven.at - finisherAt}ms after the finisher (uncut would be ~700ms)`,
-  );
+  // (THE DODGE-WEAVE receipt retired 2026-09-05 with the button dodge:
+  // recovery is the moveset book's alone now.)
 
   // ------------------------------------- C. the honest swing, with teeth
   from = c.mark();

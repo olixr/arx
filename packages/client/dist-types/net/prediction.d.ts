@@ -48,15 +48,12 @@ export declare class Predictor {
     private pending;
     private errX;
     private errY;
-    private lastDodgeSeq;
     /** Most recent locally-committed ability cast, mirrored from the
      * server's rules so casts don't rubber-band: movement freezes for the
      * commitment window, and dash Arts move the body on the cast frame. */
     private lastCastSeq;
     private lastCastFreeze;
     private lastCastMove;
-    /** Fires when a dodge impulse applies locally (for whoosh/trail FX). */
-    onDodge: ((x: number, y: number, mx: number, my: number) => void) | null;
     /**
      * Equipped weapon style ('archery' slows movement while Attack is held
      * — the braced draw stance). Must mirror the server's view; ClientGame
@@ -109,7 +106,7 @@ export declare class Predictor {
      * pages' feet (chill, the holds).
      */
     private frameSpeed;
-    /** The shared per-frame move: normal step + optional dodge impulse. */
+    /** The shared per-frame move: the normal step + a cast's own move. */
     private simFrame;
     applyInput(frame: InputFrame): void;
     reconcile(authoritative: Vec2, lastProcessedSeq: number): void;

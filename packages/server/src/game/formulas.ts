@@ -39,6 +39,7 @@ export function mkBuff(partial: Partial<PlayerBuff> & { untilTick: number }): Pl
     regenPer4s: 0,
     critPct: 0,
     dmgMult: 1,
+    evadePct: 0,
     beastTruce: false,
     beastPart: 0,
     ...partial,

@@ -144,6 +144,8 @@ export interface CallingGrant {
   reflectFrac?: number;
   meleeLifesteal?: number;
   gatherSpeed?: number;
+  /** THE SLIPPED BLOW: percentage points of chance a blow misses (additive, capped at the roll). */
+  evadePct?: number;
   quiet?: boolean;
 }
 

@@ -92,7 +92,7 @@ export const ARMOR_CLASS_MODS: Record<
 // card and slips past the dash-ban regex.
 export const ARMOR_CLASS_BLURB: Record<ArmorClass, string> = {
   plate: 'Plate: +one-handed, two-handed and polearm damage, -Arx damage, slightly slower',
-  leather: 'Leather: +archery damage, slightly faster',
+  leather: 'Leather: +archery damage, slightly faster, each piece slips 2% of blows',
   cloth: 'Cloth: +Arx damage, faster ability cooldowns',
 };
 

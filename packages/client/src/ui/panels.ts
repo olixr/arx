@@ -142,7 +142,7 @@ export const SKILL_STORY: Record<string, string> = {
   herbalism: 'Leaf and root distilled',
   enchanting: 'Power bound into gear',
   beastcraft: 'The wild answers a gentle hand',
-  sneak: 'Unseen, unheard, unhurried',
+  sneak: 'Unseen, unheard, untouched',
   twohand: 'Both hands, one argument',
   polearm: 'The point that gets there first',
   dualwield: 'A blade in each fist',

@@ -4,7 +4,7 @@
  * Registers a throwaway account and rides the whole law: the join
  * mirror, the empty whistle, the dev whistle, the Ride pose byte, the
  * measured stride (max-not-product against a live tonic), and every
- * dismount trigger — deed, crouch, dodge, dungeon ground, damage.
+ * dismount trigger — deed, crouch, dungeon ground, damage.
  *
  * Usage (against a running dev server):
  *   npm run prove:mounts -w @arx/tools
@@ -19,7 +19,6 @@ const CHAR = `Saddle ${STAMP}`;
 
 type Msg = Record<string, any>;
 const ATTACK = 1 << 0;
-const DODGE = 1 << 2;
 const SNEAK = 1 << 7;
 const SIT = 1 << 8;
 const MOUNT = 1 << 10;
@@ -250,7 +249,7 @@ const main = async () => {
   receipt('the second press takes the wayside rest', c.pos?.pose === PoseState.Sit, `pose ${c.pos?.pose}`);
   await c.press(SIT); // stand back up
 
-  // --- Every deed dismounts: attack, sneak, dodge.
+  // --- Every deed dismounts: attack, sneak.
   await mountUp(c);
   mark = c.mark();
   await c.press(ATTACK);
@@ -262,13 +261,6 @@ const main = async () => {
   await sleep(150);
   c.frame(0);
   await expectDismount(c, 'the crouch', mark);
-
-  await mountUp(c);
-  mark = c.mark();
-  c.frame(DODGE, 1, 0);
-  await sleep(150);
-  c.frame(0);
-  await expectDismount(c, 'the dodge', mark);
 
   // --- The underground refuses the saddle (the Undercroft landing —
   // real dark-band ground; raw dungeon-band space has no floor to tp to).

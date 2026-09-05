@@ -24,6 +24,8 @@
  * | regenPer4s       | best-of             | mending doesn't compound           |
  * | gatherSpeed      | best-of             | one pair of hands                  |
  * | meleeLifesteal   | max                 | one thirst, the deepest            |
+ * | evadePct         | additive            | THE SLIPPED BLOW: every reflex     |
+ * |                  |                     | counts; the cap lives at the roll  |
  *
  * STACKS: a buff may carry `stacks` (absent = 1). Additive rules
  * multiply their contribution by the count; multiplicative rules
@@ -45,6 +47,12 @@ export interface BuffLike {
   meleeLifesteal: number;
   critPct: number;
   dmgMult: number;
+  /**
+   * THE SLIPPED BLOW: percentage points of chance that a blow misses
+   * the body (absent = 0). Folded at the one roll site (sim/evasion.ts)
+   * beside the worn, trained and leather lanes, then capped THERE.
+   */
+  evadePct?: number;
   /** Stack count for stacking buffs (absent = 1). */
   stacks?: number;
   /**
@@ -104,6 +112,13 @@ export function buffGatherSpeed(buffs: readonly BuffLike[]): number {
   let mult = 1;
   for (const b of buffs) mult = Math.max(mult, b.gatherSpeed);
   return mult;
+}
+
+/** evadePct: ADDITIVE × stacks — every reflex counts (cap at the roll). */
+export function buffEvadePct(buffs: readonly BuffLike[]): number {
+  let pct = 0;
+  for (const b of buffs) pct += (b.evadePct ?? 0) * nOf(b);
+  return pct;
 }
 
 /** meleeLifesteal: MAX — one thirst, the deepest; stacks ignored. */

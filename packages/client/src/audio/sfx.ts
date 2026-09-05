@@ -764,10 +764,21 @@ export class Sfx {
     this.tone(780, 0.1, { type: 'sine', slide: -400, volume: 0.2, delay: 0.02 });
   }
 
-  /** Dodge dash: a short breathy whoosh. */
+  /** A dash art or a drop into the crouch: a short breathy whoosh. */
   dash(): void {
     this.noise(0.13, 0.22);
     this.tone(180, 0.12, { type: 'sine', slide: 240, volume: 0.18 });
+  }
+
+  /**
+   * THE SLIPPED BLOW: a blow that never landed — a lighter, quicker
+   * breath than the dash, a swept-cloth hiss with a rising whisper
+   * where the impact would have thudded. Reads as "missed", not "hit".
+   */
+  slip(): void {
+    this.noise(0.09, 0.16, 0.01);
+    this.tone(420, 0.09, { type: 'sine', slide: 380, volume: 0.1, detune: false });
+    this.tone(1240, 0.05, { type: 'triangle', slide: 600, volume: 0.05, delay: 0.03, detune: false });
   }
 
   /** A kill: a small dark pop with a satisfying tail. */

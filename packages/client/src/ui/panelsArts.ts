@@ -899,6 +899,7 @@ export function grantParts(host: Panels, g: CallingGrant): string[] {
   if (g.reflectFrac) parts.push(`returns ${Math.round(g.reflectFrac * 100)}% of blows`);
   if (g.meleeLifesteal) parts.push(`blows drink ${Math.round(g.meleeLifesteal * 100)}%`);
   if (g.gatherSpeed && g.gatherSpeed !== 1) parts.push(`gathers ${Math.round((g.gatherSpeed - 1) * 100)}% faster`);
+  if (g.evadePct) parts.push(`slips ${Math.round(g.evadePct)}% of blows`);
   return parts;
 }
 

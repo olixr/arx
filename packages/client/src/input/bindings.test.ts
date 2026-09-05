@@ -30,15 +30,15 @@ test('every action has a label and a group', () => {
 });
 
 test('core actions are reachable on the pad', () => {
-  // The audit found pads had NO dodge at all — never again. Every
-  // combat-critical action must ship with a pad button.
+  // The audit once found pads missing a combat verb entirely — never
+  // again. Every combat-critical action must ship with a pad button.
+  // (The button dodge retired 2026-09-05; Ⓑ is deliberately free.)
   const padRequired = [
     'attack',
     'ability1',
     'ability2',
     'ability3',
     'ability4',
-    'dodge',
     'interact',
     // THE BELT outranks the pose: d-pad ▼ swallows the belt consumable
     // now. Sit ships keyboard-only (X) and stays rebindable on pad.
@@ -83,10 +83,10 @@ test('the swap verb rides backquote, and the pad trades by holding sheathe', () 
 test('rebinding steals the key from its old owner', () => {
   const b = new Bindings();
   b.resetAll();
-  const res = b.bindKb('dodge', 'Space'); // Space is attack's
+  const res = b.bindKb('interact', 'Space'); // Space is attack's
   assert.notEqual(res, 'reserved');
   assert.equal((res as { stolenFrom: string | null }).stolenFrom, 'attack');
-  assert.deepEqual([...b.kb('dodge')], ['Space']);
+  assert.deepEqual([...b.kb('interact')], ['Space']);
   assert.ok(!b.kbMatches('attack', 'Space'));
   b.resetAll();
 });

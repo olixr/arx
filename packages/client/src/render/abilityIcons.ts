@@ -7922,8 +7922,9 @@ const PASSIVE_PLATES: Record<string, (st: FxStyle) => Painter> = {
     arrow(c, 0, 0.1, -Math.PI / 4, 0.8, st, 1.1);
     flame(c, 0.2, -0.2, 0.45, st, 0.1);
   },
-  // Wolf Reflexes — the dodge afterimage: chevrons snapping sideways.
-  dodge_haste: (st) => (c) => {
+  // Wolf Reflexes — the slipped blow's afterimage: chevrons snapping
+  // sideways, the spark where the blow would have landed.
+  wolf_reflexes: (st) => (c) => {
     c.translate(0.5, 0.5);
     chevrons(c, 0.22, 0, 0, st, 3, 1.5);
     star4(c, -0.28, -0.24, 0.08, st.spark);

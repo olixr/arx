@@ -7,6 +7,7 @@ import {
   buffArmor,
   buffCritPct,
   buffDmgMult,
+  buffEvadePct,
   buffGatherSpeed,
   buffLifesteal,
   buffReflectFrac,
@@ -63,6 +64,11 @@ test('the table: armor sums; reflect, lifesteal, regen, gather take the best', (
   assert.equal(buffLifesteal(buffs), 0.35);
   assert.equal(buffRegenPer4s(buffs), 5);
   assert.equal(buffGatherSpeed(buffs), 1.2);
+});
+
+test('THE SLIPPED BLOW: evadePct adds across buffs, deepens with stacks, absent reads 0', () => {
+  assert.equal(buffEvadePct([buff(), buff({ evadePct: 6 }), buff({ evadePct: 4, stacks: 2 })]), 14);
+  assert.equal(buffEvadePct([]), 0, 'no reflex, no slip');
 });
 
 test('stacks deepen additive rules and are ignored by the best-of rules', () => {

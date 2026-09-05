@@ -120,6 +120,12 @@ export interface ConsumableBuff {
   dmgMult?: number;
   /** Additive crit chance in percent points. */
   critPct?: number;
+  /**
+   * THE SLIPPED BLOW's cup: percentage points of chance a blow misses
+   * the drinker (folds beside the worn, leather and trained lanes;
+   * capped at the roll). As scarce as the other combat dials.
+   */
+  evadePct?: number;
 }
 
 /**
@@ -1413,8 +1419,8 @@ const defs: ItemDef[] = [
     value: 220,
     equipSlot: 'cape',
     armor: 1,
-    passive: 'dodge_haste',
-    desc: 'Wolves dodge sideways out of trouble. Now so do you.',
+    passive: 'wolf_reflexes',
+    desc: 'Wolves slip sideways out of trouble. Now so do you.',
     color: '#6a6f7d',
     code: 'Wc',
   },
@@ -1496,7 +1502,7 @@ const defs: ItemDef[] = [
     value: 380,
     equipSlot: 'cape',
     armor: 1,
-    passive: 'dodge_haste',
+    passive: 'wolf_reflexes',
     desc: 'Cloth so dark it drinks the lamplight.',
     color: '#2e2a3e',
     code: 'Ms',
@@ -1544,7 +1550,7 @@ const defs: ItemDef[] = [
     value: 800,
     equipSlot: 'cape',
     armor: 2,
-    passive: 'dodge_haste',
+    passive: 'wolf_reflexes',
     desc: 'A piece of the night sky, still twinkling.',
     color: '#1f2247',
     code: 'Cc',

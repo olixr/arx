@@ -303,7 +303,6 @@ test('the swap verb owns a fresh input bit', () => {
   const all = [
     InputButton.Attack,
     InputButton.Interact,
-    InputButton.Dodge,
     InputButton.Ability1,
     InputButton.Ability2,
     InputButton.Ability3,

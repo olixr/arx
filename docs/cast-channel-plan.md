@@ -265,8 +265,11 @@ quickens the breath.**
   and the strike itself all land when the breath completes. A cancelled
   cast costs nothing but the time you spent winding.
 - **Cancel grammar** (mirror of THE SWALLOW LAW, both sides):
-  dodge press cancels (the canonical bail-out — and client-side the held
-  button is swallowed until it lifts); re-pressing the same slot cancels;
+  ~~dodge press cancels~~ — **2026-09-05: the button dodge retired; the
+  SHEATHE press is the canonical bail-out now** (server-side it already
+  broke the breath; client-side THE LOWERED RING eats the sheathe press
+  while a ground ring is held, so it lowers the ring without stowing the
+  steel); re-pressing the same slot cancels;
   sheathe, mount, death, and teleport cancel. **Damage does NOT push back
   or cancel at v1** — no pushback dial exists and none ships until the
   grammar has lived. Other slots' presses are refused quietly while a

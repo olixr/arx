@@ -36,7 +36,6 @@ import {
   freshCombo,
   isOvercharged,
   resetCombo,
-  DODGE_CANCEL_FLOOR_TICKS,
   GUARD_SWEEP_RANGE,
   VOLLEY_SPREAD,
   PoseState,
@@ -282,6 +281,12 @@ export interface GameEvents {
     crit: boolean;
     isOwnTarget: boolean;
   }): void;
+  /**
+   * THE SLIPPED BLOW: a blow missed a body. `kx`/`ky` is the unit
+   * striker-to-body direction when the server knew the striker (0,0
+   * otherwise) — the afterimage smears along it.
+   */
+  onSlip?(slip: { x: number; y: number; kx: number; ky: number; isOwn: boolean }): void;
   /** This character has never chosen a look — open the creator. */
   onNeedLook?(): void;
   /** A timed action began — `ticks` server ticks to completion; craft
@@ -859,8 +864,6 @@ export class ClientGame {
     return this.ownSwapAt > 0 && now < this.ownSwapAt + SWAP_BEAT_MS / 2;
   }
 
-  /** Dodge FX hook (the predictor's onDodge is owned internally). */
-  onDodgeFx: ((x: number, y: number, mx: number, my: number) => void) | null = null;
   /**
    * THE GUARD SWEEP's client eye: injected by main (which owns the
    * entity scan) — true when a living foe stands within `range` tiles.
@@ -906,25 +909,7 @@ export class ClientGame {
   constructor(
     private readonly input: InputManager,
     private readonly events: GameEvents,
-  ) {
-    this.predictor.onDodge = (x, y, mx, my) => {
-      this.drawStartAt = 0; // dodging lets the string down
-      // THE DRAWN BREATH's bail-out, mirrored off the same seq-gated
-      // dodge law the server fires with — the bar and the truth agree.
-      this.ownCast = null;
-      // THE DODGE-WEAVE, mirrored: the fired dodge cuts the rest of
-      // every basic recovery to the shared floor (the server clamps
-      // attackCooldown, which gates all three lanes).
-      const dodgeSeq = this.inputSeq - 1;
-      this.meleeReadySeq = Math.min(this.meleeReadySeq, dodgeSeq + DODGE_CANCEL_FLOOR_TICKS);
-      this.staffReadySeq = Math.min(this.staffReadySeq, dodgeSeq + DODGE_CANCEL_FLOOR_TICKS);
-      this.drawReadyAt = Math.min(
-        this.drawReadyAt,
-        performance.now() + DODGE_CANCEL_FLOOR_TICKS * TICK_MS,
-      );
-      this.onDodgeFx?.(x, y, mx, my);
-    };
-  }
+  ) {}
 
   /**
    * THE OVERCHARGE: true once the held draw has pulled past full into
@@ -1075,8 +1060,7 @@ export class ClientGame {
     ];
     // THE DRAWN BREATH's press-edge bail-outs, mirrored: sheathe, the
     // saddle, and rest each break the breath on the press the server
-    // breaks it on. (The dodge mirrors via predictor.onDodge — the
-    // seq-gated law — so a dodge press on cooldown never lies.)
+    // breaks it on.
     if (
       this.ownCast &&
       pressed & (InputButton.Sheathe | InputButton.Mount | InputButton.Sit)
@@ -1180,7 +1164,7 @@ export class ClientGame {
    * something waits at the back — the empty press stays silent here
    * and the server speaks the refusal. Cosmetic on mispredict: a
    * stale local view plays a beat over nothing and touches no
-   * authority. Dodge stays free through the beat, like the server.
+   * authority. Movement stays free through the beat, like the server.
    */
   /**
    * THE SAFETY, mirrored — the sheathe toggle and the auto-draw. The
@@ -2047,12 +2031,25 @@ export class ClientGame {
             isOwnTarget: msg.eid !== g.ownEid,
           });
         }
+        const slipped = msg.sl === true;
+        if (slipped) {
+          // THE SLIPPED BLOW: the body stepped aside — the afterimage
+          // smears away from the striker before the word rises.
+          g.events.onSlip?.({
+            x,
+            y,
+            kx: msg.kx ?? 0,
+            ky: msg.ky ?? 0,
+            isOwn: msg.eid === g.ownEid,
+          });
+        }
         g.floaties.push({
           x: x + (Math.random() - 0.5) * 0.3,
           y: y - 0.4,
           // A warded blow says so in words — a bare "0" reads as a
-          // bad roll, not an unbreakable guard.
-          text: msg.im ? 'Immune' : String(msg.dmg),
+          // bad roll, not an unbreakable guard. A slipped blow says
+          // so too: "Slip" is a body's deed, never a striker's whiff.
+          text: slipped ? 'Slip' : msg.im ? 'Immune' : String(msg.dmg),
           // A signed DoT pulse prints in its wound's ink (ONE
           // GRAMMAR: the same hex as the ambience and the state
           // blocks), quieter than a struck blow — and the ink wins
@@ -2060,17 +2057,19 @@ export class ClientGame {
           // something is (the vignette tint carries the "you").
           color: crit
             ? '#ffd24a'
-            : msg.im
-              ? '#9db7d6'
-              : msg.dmg === 0
-                ? '#7fb2d9'
-                : msg.via
-                  ? STATUS_INK[msg.via]!
-                  : msg.eid === g.ownEid
-                    ? '#ff7b6b'
-                    : '#f4efe4',
+            : slipped
+              ? '#e6eef4'
+              : msg.im
+                ? '#9db7d6'
+                : msg.dmg === 0
+                  ? '#7fb2d9'
+                  : msg.via
+                    ? STATUS_INK[msg.via]!
+                    : msg.eid === g.ownEid
+                      ? '#ff7b6b'
+                      : '#f4efe4',
           bornAt: performance.now(),
-          sizeMul: crit ? 1.6 : msg.via ? 0.85 : 1,
+          sizeMul: crit ? 1.6 : slipped ? 1.15 : msg.via ? 0.85 : 1,
         });
         if (msg.bs) {
           g.floaties.push({

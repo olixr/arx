@@ -27,9 +27,9 @@ const STAMP = process.argv[2] ?? String(Math.floor(Math.random() * 1e6));
 
 type Msg = Record<string, any>;
 const ATTACK = 1 << 0;
-const DODGE = 1 << 2;
 const A1 = 1 << 3; // Q — technique seat 0
 const A3 = 1 << 5; // R — technique seat 2
+const SHEATHE = 1 << 9; // H — the canonical bail-out press
 
 // The clocks under proof (content truths, pinned here on purpose —
 // a def drift that changes a clock should FAIL the proving).
@@ -321,7 +321,7 @@ async function castOnce(
     tx?: number;
     ty?: number;
     bailAfterMs?: number;
-    bailWith?: 'repress' | 'dodge';
+    bailWith?: 'repress' | 'sheathe';
   } = {},
 ): Promise<{ startAt: number; fireAt: number | null; brokeAt: number | null; startTicks: number }> {
   const mark = c.mark();
@@ -355,7 +355,7 @@ async function castOnce(
   let bailTimer: ReturnType<typeof setTimeout> | null = null;
   if (opts.bailAfterMs) {
     bailTimer = setTimeout(() => {
-      if (opts.bailWith === 'dodge') c.frame(DODGE, 1, 0);
+      if (opts.bailWith === 'sheathe') c.frame(SHEATHE, 1, 0);
       else c.frame(button);
       setTimeout(() => c.frame(0), 60);
     }, opts.bailAfterMs);
@@ -517,10 +517,12 @@ const main = async () => {
   receipt('a re-pressed breath costs nothing', !spent);
 
   mark = a.mark();
-  const dodged = await castOnce(a, 0, { moving: true, bailAfterMs: 400, bailWith: 'dodge' });
-  receipt('the dodge bails the breath out clean', dodged.brokeAt !== null && dodged.fireAt === null);
+  // The sheathe press is the canonical bail-out now (the button dodge
+  // retired 2026-09-05): steel away, breath let go, nothing spent.
+  const stowed = await castOnce(a, 0, { moving: true, bailAfterMs: 400, bailWith: 'sheathe' });
+  receipt('the sheathe bails the breath out clean', stowed.brokeAt !== null && stowed.fireAt === null);
   spent = a.msgs.slice(mark).some((m) => m.t === 'cooldowns' && m.cd?.[0] > 0);
-  receipt('a dodged-out breath costs nothing', !spent);
+  receipt('a sheathed-out breath costs nothing', !spent);
 
   // --- The catch-up shape: clumped frames, the breath keeps its truth.
   const jittered = await castOnce(a, 0, { jitterBurst: true });

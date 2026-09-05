@@ -1003,6 +1003,8 @@ test('livestock produce/lays and consumable buffs resolve', () => {
         item.buff.armor ||
         item.buff.dmgMult ||
         item.buff.critPct ||
+        // THE SLIPPED BLOW's cup.
+        item.buff.evadePct ||
         // THE SWING CHANNEL's consumable lane (statusBook Phase 5).
         item.buff.attackSpeedMult,
       `${id} buff does nothing`,

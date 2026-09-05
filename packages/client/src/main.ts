@@ -1242,6 +1242,60 @@ const game = new ClientGame(input, {
       impact.crit ? 0.5 : 0.32,
     );
   },
+  onSlip: (slip) => {
+    // THE SLIPPED BLOW's signature — three layers, all cool and pale,
+    // so it never confuses with a landed hit's warm sparks:
+    //  1. THE WHIFF: the blow's own path through empty air — a thin
+    //     streak crossing the body's front along the striker's line
+    //     and dying past it, so the eye reads "it went THROUGH where
+    //     you were".
+    //  2. THE AFTERIMAGE: a short smear of pale motes trailing OPPOSITE
+    //     the sidestep (the body stepped aside; its ghost stays a beat
+    //     where it was and drifts back toward the blow's line).
+    //  3. THE FEET: a low dust kick on the ground layer, away-side —
+    //     the sidestep had weight.
+    // Unknown striker (no source): the smear falls straight back and
+    // the whiff is skipped — never draw a line from nowhere.
+    const known = slip.kx !== 0 || slip.ky !== 0;
+    const along = known ? Math.atan2(slip.ky, slip.kx) : -Math.PI / 2;
+    // The sidestep is perpendicular to the blow; pick the side away
+    // from screen-down so the ghost never hides under the body.
+    const side = along + (Math.sin(along) > 0 ? -Math.PI / 2 : Math.PI / 2);
+    if (known) {
+      renderer.particles.burst(
+        slip.x - slip.kx * 0.35,
+        slip.y - 0.3 - slip.ky * 0.35,
+        3,
+        ['#e6eef4', '#b9c9d8'],
+        { speed: 6.5, life: 0.16, dir: along, spread: 0.05, gravity: 0, shape: 'streak', drag: 2 },
+      );
+    }
+    renderer.particles.burst(slip.x, slip.y - 0.3, 7, ['#e6eef4', '#cfdbe6', '#9fb2c2'], {
+      speed: 1.6,
+      life: 0.3,
+      dir: side + Math.PI,
+      spread: 0.35,
+      gravity: 0,
+      drag: 4,
+      shape: 'mote',
+      fade: '#9fb2c2',
+      fadeAt: 0.4,
+    });
+    renderer.particles.burst(slip.x, slip.y, 5, ['#cfd6c4', '#a8b096'], {
+      speed: 1.4,
+      life: 0.28,
+      dir: side,
+      spread: 0.6,
+      gravity: 3,
+      ground: true,
+      shape: 'puff',
+    });
+    renderer.addRing(slip.x, slip.y, 'rgba(230, 238, 244, 0.55)', 0.28);
+    // Spatial like every other body sound; the own body also feels a
+    // faint tick — lighter than a hit, so the hand learns the difference.
+    sfx.spatial({ x: slip.x, y: slip.y }, 'near', () => sfx.slip());
+    if (slip.isOwn) input.rumble(0.08, 0.18, 45);
+  },
   onDeath: (death) => {
     const def = npcDef(death.defId);
     const color = def?.color ?? '#c9ccd4';
@@ -1885,7 +1939,6 @@ dressPanel(el('social-panel'), {
   onClose: () => socialPanel.close(),
 });
 
-// Dodge dash feedback: whoosh + a streak of dust kicked out behind.
 const hotbar = new Hotbar(input);
 hotbar.onReady = () => sfx.abilityReady();
 // THE BELT: the fifth well — one press eats the belt's consumable
@@ -2180,20 +2233,6 @@ game.onFx = (fx) => {
     renderer.addRing(fx.x, fx.y - 0.3, '#8a7fae', 0.5);
     sfx.spatial(at, 'near', () => sfx.dash());
   }
-};
-
-game.onDodgeFx = (x, y, mx, my) => {
-  const back = Math.atan2(-my, -mx);
-  renderer.particles.burst(x, y, 10, ['#cfd6c4', '#efe3c2', '#a8b096'], {
-    speed: 3.2,
-    life: 0.35,
-    dir: back,
-    spread: 0.8,
-    gravity: 2,
-  });
-  renderer.addRing(x, y, '#efe3c2', 0.35);
-  sfx.dash();
-  input.rumble(0.15, 0.4, 90);
 };
 
 /**
@@ -3358,13 +3397,13 @@ function frame(now: number): void {
   } else {
     // THE HELD SIGIL's strip: only once the hold has clearly become a
     // hold (a quick tap never flashes it), naming the two verbs the
-    // gesture answers to — let go to cast, dodge to bail out.
+    // gesture answers to — let go to cast, sheathe to lower the ring.
     const held = groundAim.gesture();
     if (held && now - held.bornAt > 250) {
       const action = `ability${held.slot + 1}` as ActionId;
       if (nav.mode === 'pad') {
         const g = bindings.padBadge(action);
-        const d = bindings.padBadge('dodge');
+        const d = bindings.padBadge('sheathe');
         const rows: Array<[string, string, string]> = [];
         if (g) rows.push([`pad-glyph ${g.cls}`, g.text, 'Release to Cast']);
         if (d) rows.push([`pad-glyph ${d.cls}`, d.text, 'Cancel']);
@@ -3372,7 +3411,7 @@ function frame(now: number): void {
       } else {
         nav.showModeStrip(`aim:kb:${held.slot}`, [
           ['kb-glyph', bindings.kbBadge(action) || 'Q', 'Release to Cast'],
-          ['kb-glyph', bindings.kbBadge('dodge') || 'Shift', 'Cancel'],
+          ['kb-glyph', bindings.kbBadge('sheathe') || 'H', 'Cancel'],
         ]);
       }
     } else if (canWalkAway(game) && nav.mode === 'pad') {

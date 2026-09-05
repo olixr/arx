@@ -4,34 +4,10 @@ import { circleHitsSolid, type CollisionSource } from '../world/collision.js';
 import { isWadeTile, WADE_SPEED_FACTOR } from '../world/tiles.js';
 import type { InputFrame } from './input.js';
 
-/** Dodge dash: distance covered and the seq-based cooldown (in ticks). */
-export const DODGE_DIST = 0.85;
-export const DODGE_COOLDOWN_SEQ = 24; // 1.2s at 20Hz
-
-/**
- * Apply a dodge impulse along (mx, my). Pure and shared — the client
- * predicts it and the server applies it from the same input frame, and
- * because the cooldown is sequence-number based both sides agree without
- * any extra state in snapshots. Substepped so walls stop (and slide)
- * the dash instead of letting it clip through.
- */
-export function applyDodge(
-  pos: Vec2,
-  mx: number,
-  my: number,
-  collision: CollisionSource,
-  radius = BODY_RADIUS,
-): Vec2 {
-  const len = Math.hypot(mx, my);
-  if (len < 1e-6) return { x: pos.x, y: pos.y };
-  let out = { x: pos.x, y: pos.y };
-  const input = { mx: mx / len, my: my / len };
-  // 5 slide-aware substeps of DODGE_DIST/5 each.
-  for (let i = 0; i < 5; i++) {
-    out = stepMovement(out, input, DODGE_DIST, 1 / 5, collision, radius);
-  }
-  return out;
-}
+// (The pressed dodge dash — applyDodge and its seq cooldown — was
+// retired 2026-09-05; the body's defensive slip is THE SLIPPED BLOW
+// in sim/evasion.ts now, a chance rolled where the blow lands, not a
+// keypress that moved the feet.)
 
 /**
  * THE TORN VEIL (THE CROSSING, docs/transport-arts-plan.md): resolve
@@ -142,8 +118,8 @@ export function stepMovement(
 
   // THE WADE LAW: knee-deep water drags every stride. Sampled at the
   // body's current tile, inside the shared step, so prediction and the
-  // authoritative sim slow down in perfect lockstep (dodge substeps
-  // shorten through a ford the same way).
+  // authoritative sim slow down in perfect lockstep (a transit's
+  // substeps shorten through a ford the same way).
   const wade =
     collision.tileAt && isWadeTile(collision.tileAt(Math.floor(pos.x), Math.floor(pos.y)))
       ? WADE_SPEED_FACTOR

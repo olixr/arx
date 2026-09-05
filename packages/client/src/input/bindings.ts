@@ -28,7 +28,6 @@ export type ActionId =
   | 'ability2'
   | 'ability3'
   | 'ability4'
-  | 'dodge'
   | 'quickUse'
   | 'interact'
   | 'lootReveal'
@@ -71,12 +70,19 @@ export interface ActionDef {
 
 /**
  * The shipped layout. Keyboard: WASD moves, Space attacks, QERT casts,
- * F uses, Shift dodges, 1 swallows the belt's meal, backquote trades
- * weapon sets; the stance row is Z walk / X sit / C sneak; screens
- * live on I K V N B U M O G. Pad: RT (or Ⓧ) attacks, Ⓐ uses, Ⓑ
- * dodges, LB/LT/RB/▲ cast, Ⓨ names the loot; d-pad ▼ eats off the
- * belt, ◀ sheathes (HELD ◀ trades weapon sets), ▶ raises the glass;
- * L3 sneaks, R3 steps the camera; Start is the pack, Select the chart.
+ * F uses, 1 swallows the belt's meal, backquote trades weapon sets;
+ * the stance row is Z walk / X sit / C sneak; screens live on
+ * I K V N B U M O G. Pad: RT (or Ⓧ) attacks, Ⓐ uses, LB/LT/RB/▲
+ * cast, Ⓨ names the loot; d-pad ▼ eats off the belt, ◀ sheathes
+ * (HELD ◀ trades weapon sets), ▶ raises the glass; L3 sneaks, R3
+ * steps the camera; Start is the pack, Select the chart.
+ *
+ * THE FREED HAND (2026-09-05): Shift on keys and Ⓑ on the pad are
+ * UNBOUND. The pressed dodge dash that lived there left the game (it
+ * had become a stride exploit and nothing else; its defensive worth
+ * is THE SLIPPED BLOW now, rolled where a blow lands). Both stay free
+ * on purpose — the first genuinely open pad button since ONE KEYMAP —
+ * so the next verb that truly needs a thumb has somewhere to land.
  *
  * THE PAIRED HAND: the two technique seats ride TOGETHER — Q and E on
  * keys, LB and LT under the left hand — because arts are the first
@@ -104,7 +110,6 @@ export const ACTIONS: readonly ActionDef[] = [
   { id: 'ability3', label: 'Second Art', group: 'Combat', kb: ['KeyE'], pad: [6] },
   { id: 'ability2', label: 'Relic', group: 'Combat', kb: ['KeyR'], pad: [5] },
   { id: 'ability4', label: 'Sigil', group: 'Combat', kb: ['KeyT'], pad: [12] },
-  { id: 'dodge', label: 'Dodge', group: 'Combat', kb: ['ShiftLeft'], pad: [1] },
   // THE BELT: one press swallows the belt's consumable, no pack visit.
   // d-pad ▼ is the genre's item button and the panic hand finds it.
   { id: 'quickUse', label: 'Belt consumable', group: 'Combat', kb: ['Digit1'], pad: [13] },

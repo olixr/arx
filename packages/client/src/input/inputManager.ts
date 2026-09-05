@@ -415,28 +415,26 @@ export class InputManager {
     // Build mode holsters the weapons on EVERY device: the click (or
     // Space, or Q/E/R/T) that places a wall must never double as an
     // attack or a cast. Only movement-adjacent bits survive — you can
-    // still dodge and sneak around your own site while the ghost is up.
+    // still sneak around your own site while the ghost is up.
     if (this.buildCapture) {
       this.sitQueued = false;
       this.sheatheQueued = false;
       this.swapQueued = false;
       this.padSheatheDownAt = null;
       this.mountQueued = false;
-      if (bindings.kbDown('dodge', this.keys)) b |= InputButton.Dodge;
       if (this.sneakMode) b |= InputButton.Sneak;
       return b;
     }
     const pad = this.uiCapture ? null : this.pad();
     const snap = pad ? { buttons: pad.buttons } : null;
     // Every pad read below goes through the one keymap — RT/Ⓧ attack,
-    // LB/RB/Ⓨ/▲ abilities, Ⓑ dodge by default, all rebindable.
+    // LB/LT/RB/▲ abilities by default, all rebindable (Ⓑ is free).
     const padAttack = bindings.padHeld('attack', snap);
     const padAb1 = bindings.padHeld('ability1', snap);
     const padAb2 = bindings.padHeld('ability2', snap);
     const padAb3 = bindings.padHeld('ability3', snap);
     const padAb4 = bindings.padHeld('ability4', snap);
-    const padDodge = bindings.padHeld('dodge', snap);
-    if (padAttack || padAb1 || padAb2 || padAb3 || padAb4 || padDodge) this.padUsed = true;
+    if (padAttack || padAb1 || padAb2 || padAb3 || padAb4) this.padUsed = true;
     if (this.mouseDown || bindings.kbDown('attack', this.keys) || padAttack || this.touchAttack) {
       b |= InputButton.Attack;
     }
@@ -446,7 +444,6 @@ export class InputManager {
     if (bindings.kbDown('ability3', this.keys) || padAb3 || this.touchAbility3) b |= InputButton.Ability3;
     if (bindings.kbDown('ability4', this.keys) || padAb4 || this.touchAbility4) b |= InputButton.Ability4;
     if (bindings.kbDown('interact', this.keys)) b |= InputButton.Interact;
-    if (bindings.kbDown('dodge', this.keys) || padDodge) b |= InputButton.Dodge;
     if (this.sneakMode) b |= InputButton.Sneak;
     // Sneak: press edge on the pad's toggle button (L3 by default)
     // flips the same latch the keyboard's toggle drives.

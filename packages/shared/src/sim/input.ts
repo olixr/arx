@@ -25,7 +25,15 @@ export interface InputFrame {
 export enum InputButton {
   Attack = 1 << 0,
   Interact = 1 << 1,
-  Dodge = 1 << 2,
+  /**
+   * Bit 2 is RETIRED (2026-09-05): the pressed dodge dash lived here.
+   * The button dodge left the game — it had become a stride exploit
+   * (dodge + dodge-haste = a faster walk) and nothing else — and its
+   * defensive worth moved into THE SLIPPED BLOW (sim/evasion.ts): a
+   * trained, worn, and buffed chance that a blow misses the body.
+   * Never re-key this bit while a client that still sends it could
+   * be live: an old Shift press would fire whatever verb took it.
+   */
   /** Weapon Art (Q) — fires on press edge, not hold. */
   Ability1 = 1 << 3,
   /** Relic active (E) — fires on press edge, not hold. */

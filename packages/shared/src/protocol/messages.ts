@@ -1110,6 +1110,13 @@ export interface S2CHit {
    */
   im?: boolean;
   /**
+   * THE SLIPPED BLOW: the blow missed the body — dmg is 0, the client
+   * says "Slip" and smears an afterimage away from the striker (kx/ky
+   * carry the striker-to-body direction when known). Additive wire
+   * fact: old clients paint a quiet 0.
+   */
+  sl?: boolean;
+  /**
    * The wound that ticked this damage — DoT pulses sign their status
    * so the client can ink the number and tint the hurt edge (THE
    * LANDING WORD). Absent on struck blows. Additive wire fact: old

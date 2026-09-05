@@ -100,8 +100,14 @@ export class GroundAimController {
 
     // A reseated (or unequipped) art mid-hold dissolves the gesture.
     if (this.g && this.host.slotAbility(this.g.slot)?.id !== this.g.ab.id) this.cancel();
-    // A dodge is the bail-out gesture: the roll happens, the ring dies.
-    if (this.g && pressed & InputButton.Dodge) this.cancel();
+    // THE LOWERED RING: sheathe is the bail-out gesture (H / d-pad ◀
+    // — the one "put it away" verb the hand already knows). The ring
+    // dies and the press is EATEN whole: it lowers the ring, it never
+    // reaches the server to stow the steel you were about to cast with.
+    if (this.g && pressed & InputButton.Sheathe) {
+      this.cancel();
+      this.swallowBits |= InputButton.Sheathe;
+    }
 
     if (this.g) {
       const bit = SLOT_BITS[this.g.slot]![0];
@@ -154,7 +160,7 @@ export class GroundAimController {
       break;
     }
 
-    // A cancel INSIDE this very tick (dodge press, reseated art) adds
+    // A cancel INSIDE this very tick (sheathe press, reseated art) adds
     // its bit to the swallow AFTER the top-of-frame mask ran — re-mask,
     // or this one frame ships the still-held button as a fresh press
     // edge and the server casts the art you just bailed out of.
