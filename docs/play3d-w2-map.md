@@ -119,12 +119,14 @@ The client holds one: `packages/client/src/game/clientGame.ts:362` — `readonly
 | `GARRISON_H` | **3.4** | `paintVocab.ts:178` |
 | `MERLON_H` | **0.5** | `paintVocab.ts:180` |
 | `HED_H` | **0.95** | `barrierArt.ts:2632` (local const inside `hedgeItem`) |
-| fence post height | `s * 1.72` | `barrierArt.ts:905` |
-| palisade / grave pier | `s * 1.66` | `barrierArt.ts:1783` |
+| fence post height | `s * 0.92` (`drawFencePost`) | `barrierArt.ts:353` — the scaffold's first cut mislabeled the PALISADE GATE post (1.72) as the fence post |
+| palisade gate post | `s * 1.72` (`POST_H`, inside `palisadeGateItem`) | `barrierArt.ts:905` |
+| iron run / corner pier | `s * 1.52` (`drawGravePier`, 'urn') | `barrierArt.ts:1734` |
+| iron gate pier | `s * 1.66` (`PIER_H`, inside `ironGateItem`, 'orb') | `barrierArt.ts:1783` |
 | `ELEV_H` | **1.35** | `elevPick.ts:8` |
 | `DOCK_LIFT` | **0.22** | `terrain.ts:5360` |
 | window head / sill | head 1.62 tiles, band 0.7 tall (sill ≈ 0.92) | `renderer.ts:11148-11150` (`wy = -fs*1.62`, `wh2 = fs*0.7`) |
-| doorway opening | **fixed** `hs - s*1.56`; the header grows with the wall | `renderer.ts:11813` |
+| doorway opening | **1.56 tiles clear**, fixed; `hh = hs - s*1.56` at `:11813` is the HEADER's height (it grows with the wall) | `renderer.ts:11813` |
 | doorway jamb width | `s * 0.15` | `renderer.ts:11787` |
 | crown chamfer radius | `s * 0.26` | `renderer.ts:10540` |
 
@@ -332,7 +334,7 @@ awning        = awningInfo(world.groundAt(tx,ty))             // walkable canopy
 
 **B. Garrison** — `GARRISON_TILES.has(tile)`; `diagWallInfo(tile).material === 'garrison'`; `doorInfo(tile).material === 'garrison'` for gates (always `wide`, run-merged E-W, west anchor). Height `GARRISON_H = 3.4`, merlons `+MERLON_H = 0.5`. Merges ONLY with garrison (separate-masonry law) — never with §A.
 
-**C. Fence / palisade / hedge / iron fence** — five independent sets: `FENCE_TILES`, `PALISADE_TILES`, `HEDGE_TILES`, `IRON_FENCE_TILES` (+ gates via `doorInfo(tile).material`). Continuity = same-set 4-neighbour, plus the two 45° diagonals (`*DiagNE` = "/" spanning NE-SW, `*DiagNW` = "\\"). Heights: fence post `1.72`, palisade/pier `1.66`, hedge `HED_H = 0.95`. These are **run-continuous volumes** (the hedge is one folded mass across its component, not per-tile boxes) — `collectVolume(sampler, classOf, seed, …)` (`collectVolume.ts:128`) gives the 4-connected component + its **exposed-perimeter world-corner loop**, which is precisely the extrusion footprint a 3D mesh builder wants. Lift by `elevAt * ELEV_H`.
+**C. Fence / palisade / hedge / iron fence** — five independent sets: `FENCE_TILES`, `PALISADE_TILES`, `HEDGE_TILES`, `IRON_FENCE_TILES` (+ gates via `doorInfo(tile).material`). Continuity = same-set 4-neighbour, plus the two 45° diagonals (`*DiagNE` = "/" spanning NE-SW, `*DiagNW` = "\\"). Heights: fence post `0.92` (palisade gate post `1.72`), iron pier `1.52` (gate pier `1.66`), hedge `HED_H = 0.95`. These are **run-continuous volumes** (the hedge is one folded mass across its component, not per-tile boxes) — `collectVolume(sampler, classOf, seed, …)` (`collectVolume.ts:128`) gives the 4-connected component + its **exposed-perimeter world-corner loop**, which is precisely the extrusion footprint a 3D mesh builder wants. Lift by `elevAt * ELEV_H`.
 
 **D. Decks (dock / bridge / porch)**
 ```

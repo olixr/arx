@@ -26,10 +26,11 @@
  * ENV: ORIGIN (default http://localhost:5243), TAG (filename prefix,
  * default w2), SCENES (comma list; default all), NOLEDGER=1 skips the
  * walk. Writes dev/play3d-shots/<TAG>-<scene>-{low,high|night}.png.
+ * Scenes with `tone` run THE TONE PROBE after their low shot.
  * Frame-ms numbers are headless INDICATIONS ONLY, never an fps claim.
  */
 import { chromium } from '/Users/aeriek/.npm/_npx/705bc6b22212b352/node_modules/playwright/index.mjs';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -53,11 +54,11 @@ const SCENES = [
   // The market walls: awnings, signs, banners on the south faces; stone + timber side by side.
   { name: 'wall-market', tp: [-420, -240], yaw: 0.2, dist: 16 },
   // The garrison curtain beside a wood fence pen (the brief's scene).
-  { name: 'curtain-fence', tp: [-460, -240], yaw: -0.4, dist: 20 },
+  { name: 'curtain-fence', tp: [-460, -240], yaw: -0.4, dist: 20, tone: { tiles: [139], hex: '#544e61', mid: 1.7, label: 'rampart ashlar (garrisonArt)' } },
   // The gatehouse close: piers, lintel, portcullis, leaves, merlons at the 2D phase.
   { name: 'curtain-gate', tp: [-460, -240], find: 139, yaw: -0.3, dist: 12 },
   // The iron rest: iron fence + stone wall + gate (the barriers driver's graveyard-close).
-  { name: 'graveyard', tp: [-512, -198], yaw: 0.6, dist: 12 },
+  { name: 'graveyard', tp: [-512, -198], yaw: 0.6, dist: 12, tone: { tiles: [10], hex: '#5b5566', mid: 1.0, label: 'house stone (STONE_FACE)' } },
   // The worldgen terraces NE of Dawnmead: cliff strips over the heightfield, ramps.
   { name: 'terraces', tp: [48, -78], yaw: 0.5, dist: 24 },
   // Amberford's bridge + dock junction (terrain lane's framing).
@@ -66,6 +67,11 @@ const SCENES = [
   { name: 'weir-dock', tp: [-3, -15], yaw: 0.3, dist: 14 },
   // Dawnmead's hedges (the barriers driver found 342 at −460,−167).
   { name: 'hedge', tp: [-460, -167], find: 342, yaw: 0.3, dist: 14 },
+  // A hedge gate (either posture) in Amberford (the barriers driver found 345/346 at 519,18): THE HEDGE THICKENED AT
+  // THE GAP — posts at the run's height, finials, the wicket.
+  { name: 'hedge-gate', tp: [519, 18], find: [345, 346], yaw: 0.5, dist: 8, shots: [['low', 0.3], ['high', 0.8]] },
+  // The same gate with the body OFF the gate tile (two tiles south-west), so the wicket shows in the gap.
+  { name: 'hedge-wicket', tp: [517, 20], yaw: 0.9, dist: 7, shots: [['low', 0.45]] },
   // Amberford's palisade + its great gate.
   { name: 'palisade', tp: [579, 45], find: 292, yaw: 0.3, dist: 16 },
   { name: 'palisade-gate', tp: [582, 38], find: [295, 296], yaw: 0.3, dist: 12 },
@@ -79,6 +85,16 @@ const SCENES = [
   // Night: lamps on the faces, the sun gone — the same house.
   { name: 'interiors-night', tp: [-430, -290], yaw: 0.45, dist: 16, day: 0.08, shots: [['night', LOW]] },
 ];
+/**
+ * THE TONE PROBE (W2 fixes): a scene may name a wall tile family and
+ * the 2D tone its lit face wears; after the LOW shot the probe finds a
+ * tile of that family with an open south side in front of the camera,
+ * projects the face's midpoint to the screen, samples the shot there
+ * and reads the median against the 2D tone in STOPS (linear luminance).
+ * The lit face must stay within ONE stop of the 2D (recognisable, never
+ * washed out) — a photograph, not a guess. Occluded candidates (a
+ * saturated or sky-bright sample) are skipped; up to six are tried.
+ */
 /** THE LEDGER WALK: ≥ 60 tiles from the last scene (open Dawnmead meadow NW of the graveyard). */
 const LEDGER_TP = [-560, -260];
 
@@ -204,6 +220,107 @@ const fmtStats = (st) => {
   );
 };
 
+const toneFailures = [];
+const toneProbe = async (tone, file) =>
+  page.evaluate(
+    async ({ tiles, hex, mid, b64 }) => {
+      const p = window.__play3d;
+      const g = window.dcGame;
+      const pose = p.stats().camera;
+      const own = g.predictor.pos;
+      const camX = own.x + Math.sin(pose.yaw) * Math.cos(pose.pitch) * pose.dist;
+      const camZ = own.y + Math.cos(pose.yaw) * Math.cos(pose.pitch) * pose.dist;
+      const camY = p.heightAt(own.x, own.y) + 0.9 + Math.sin(pose.pitch) * pose.dist;
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      const tileAt = (tx, ty) => {
+        const size = 32;
+        const ch = g.world.chunks.get?.(`${Math.floor(tx / size)},${Math.floor(ty / size)}`) ?? null;
+        if (ch) return ch.ground[(ty - ch.cy * size) * size + (tx - ch.cx * size)];
+        for (const c of g.world.chunks.values()) {
+          const sz = Math.round(Math.sqrt(c.ground.length));
+          if (Math.floor(tx / sz) === c.cx && Math.floor(ty / sz) === c.cy) return c.ground[(ty - c.cy * sz) * sz + (tx - c.cx * sz)];
+        }
+        return undefined;
+      };
+      // LINE OF SIGHT: walk the camera→face segment; a family tile whose crown stands above the ray hides the face.
+      const clear = (fx, fy, fz) => {
+        const n = 40;
+        for (let k = 1; k < n; k++) {
+          const t = k / n;
+          const x = camX + (fx - camX) * t;
+          const z = camZ + (fz - camZ) * t;
+          const y = camY + (fy - camY) * t;
+          const tx = Math.floor(x);
+          const ty = Math.floor(z);
+          if (tx === Math.floor(fx) && ty === Math.floor(fz) - 1) continue; // the face's own tile
+          if (tiles.includes(tileAt(tx, ty)) && y < p.heightAt(x, z) + 2.05) return false;
+        }
+        return true;
+      };
+      // Candidates: family tiles with an open south side, their south face midpoint on screen, facing the camera, in clear sight.
+      const cands = [];
+      for (const ch of g.world.chunks.values()) {
+        const gr = ch.ground;
+        const size = Math.round(Math.sqrt(gr.length));
+        for (let i = 0; i < gr.length; i++) {
+          if (!tiles.includes(gr[i])) continue;
+          const ly = Math.floor(i / size);
+          if (ly === size - 1) continue;
+          if (tiles.includes(gr[i + size])) continue;
+          const tx = ch.cx * size + (i % size);
+          const ty = ch.cy * size + ly;
+          if (camZ <= ty + 1) continue;
+          const d = Math.hypot(camX - tx - 0.5, camZ - ty - 1);
+          if (d > 22) continue;
+          const y = p.heightAt(tx + 0.5, ty + 1) + mid;
+          const s = p.project(tx + 0.5, y, ty + 1);
+          if (!(s.z > 0 && s.z < 1) || s.sx < 40 || s.sx > W - 40 || s.sy < 120 || s.sy > H - 120) continue;
+          if (!clear(tx + 0.5, y, ty + 1)) continue;
+          // An outdoor face (grass to the south) before an inner one.
+          cands.push({ tx, ty, sx: s.sx, sy: s.sy, d, outdoor: gr[i + size] === 1 ? 0 : 1 });
+        }
+      }
+      // OUTDOOR FIRST, THEN NEAREST THE CAMERA (a farther face can hide behind a nearer crown plate — grey too).
+      cands.sort((a, b) => a.outdoor - b.outdoor || a.d - b.d);
+      const img = new Image();
+      img.src = 'data:image/png;base64,' + b64;
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = img.width;
+      c.height = img.height;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const lin = (v) => Math.pow(v / 255, 2.2);
+      const lum = (r, g2, b) => 0.2126 * lin(r) + 0.7152 * lin(g2) + 0.0722 * lin(b);
+      const exp = [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
+      const Ye = lum(...exp);
+      const tried = [];
+      for (const cand of cands.slice(0, 6)) {
+        const d = ctx.getImageData(Math.round(cand.sx) - 5, Math.round(cand.sy) - 5, 10, 10).data;
+        const R = [];
+        const G = [];
+        const B = [];
+        for (let i = 0; i < d.length; i += 4) {
+          R.push(d[i]);
+          G.push(d[i + 1]);
+          B.push(d[i + 2]);
+        }
+        const med = (a) => a.sort((x, y) => x - y)[a.length >> 1];
+        const m = [med(R), med(G), med(B)];
+        const sat = Math.max(...m) - Math.min(...m);
+        const got = '#' + m.map((v) => v.toString(16).padStart(2, '0')).join('');
+        tried.push(`${cand.tx},${cand.ty}@${cand.sx.toFixed(0)},${cand.sy.toFixed(0)}=${got}`);
+        // Occluded by grass/a tree (saturated) or the sky (bright): not the face.
+        if (sat > 40 || Math.max(...m) > 200) continue;
+        const stops = Math.log2(lum(...m) / Ye);
+        return { ok: Math.abs(stops) <= 1, got, stops, at: [cand.tx, cand.ty], screen: [Math.round(cand.sx), Math.round(cand.sy)], tried, candidates: cands.length };
+      }
+      return { ok: null, tried, candidates: cands.length };
+    },
+    { tiles: tone.tiles, hex: tone.hex, mid: tone.mid, b64: readFileSync(file).toString('base64') },
+  );
+
 let lastTp = null;
 for (const s of SCENES) {
   if (ONLY && !ONLY.has(s.name)) continue;
@@ -242,6 +359,14 @@ for (const s of SCENES) {
     await page.screenshot({ path: file });
     console.log(`  ${shotName} (settled ${n}): ${file}`);
     console.log(`    ${fmtStats(stats)}`);
+    if (s.tone && shotName === 'low') {
+      const t = await toneProbe(s.tone, file);
+      if (t.ok === null) console.log(`    TONE ${s.tone.label}: no unoccluded candidate (${t.candidates} candidates; tried ${t.tried.join(' ')})`);
+      else {
+        console.log(`    TONE ${s.tone.label}: lit south face of ${t.at} at px ${t.screen} = ${t.got} vs 2D ${s.tone.hex} → ${t.stops >= 0 ? '+' : ''}${t.stops.toFixed(2)} stop → ${t.ok ? 'PASS (within a stop)' : 'FAIL (more than a stop off)'}`);
+        if (!t.ok) toneFailures.push(`${s.name}: ${t.got} vs ${s.tone.hex} (${t.stops.toFixed(2)} stop)`);
+      }
+    }
   }
   await page.evaluate(() => window.__play3d.day(null));
 }
@@ -264,6 +389,7 @@ if (!process.env.NOLEDGER && lastTp) {
   console.log(`  ${file}`);
 }
 
+if (toneFailures.length) console.log(`TONE FAILURES: ${toneFailures.join('; ')}`);
 if (errors.length) {
   console.log('CONSOLE:');
   for (const e of errors) console.log(`  ${e}`);

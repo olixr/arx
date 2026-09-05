@@ -44,8 +44,13 @@ export interface SinkBucket {
   indices: Uint32Array;
   vertexCount: number;
   triangles: number;
+  /** THE BUCKET KNOWS ITS OWN EXTENT: the AABB of every vertex landed (world units), for a bounding sphere that never culls a flared awning or a gatehouse reaching past the chunk. */
+  minX: number;
+  maxX: number;
   minY: number;
   maxY: number;
+  minZ: number;
+  maxZ: number;
 }
 
 class Bucket {
@@ -53,8 +58,22 @@ class Bucket {
   normals: number[] = [];
   uvs: number[] = [];
   indices: number[] = [];
+  minX = Infinity;
+  maxX = -Infinity;
   minY = Infinity;
   maxY = -Infinity;
+  minZ = Infinity;
+  maxZ = -Infinity;
+
+  /** Fold a vertex into the extent. */
+  extend(x: number, y: number, z: number): void {
+    if (x < this.minX) this.minX = x;
+    if (x > this.maxX) this.maxX = x;
+    if (y < this.minY) this.minY = y;
+    if (y > this.maxY) this.maxY = y;
+    if (z < this.minZ) this.minZ = z;
+    if (z > this.maxZ) this.maxZ = z;
+  }
 }
 
 export class StructSink {
@@ -81,12 +100,13 @@ export class StructSink {
     const b = this.bucket(kind, page);
     const base = b.positions.length / 3;
     for (let i = 0; i < 4; i++) {
+      const x = p[i * 3]!;
       const y = p[i * 3 + 1]!;
-      b.positions.push(p[i * 3]!, y, p[i * 3 + 2]!);
+      const z = p[i * 3 + 2]!;
+      b.positions.push(x, y, z);
       b.normals.push(nx, ny, nz);
       b.uvs.push(uv[i * 2]!, uv[i * 2 + 1]!);
-      if (y > b.maxY) b.maxY = y;
-      if (y < b.minY) b.minY = y;
+      b.extend(x, y, z);
     }
     if (orientation(p, 0, 1, 2, nx, ny, nz) >= 0) b.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
     else b.indices.push(base, base + 2, base + 1, base, base + 3, base + 2);
@@ -98,12 +118,13 @@ export class StructSink {
     const b = this.bucket(kind, page);
     const base = b.positions.length / 3;
     for (let i = 0; i < 3; i++) {
+      const x = p[i * 3]!;
       const y = p[i * 3 + 1]!;
-      b.positions.push(p[i * 3]!, y, p[i * 3 + 2]!);
+      const z = p[i * 3 + 2]!;
+      b.positions.push(x, y, z);
       b.normals.push(nx, ny, nz);
       b.uvs.push(uv[i * 2]!, uv[i * 2 + 1]!);
-      if (y > b.maxY) b.maxY = y;
-      if (y < b.minY) b.minY = y;
+      b.extend(x, y, z);
     }
     if (orientation(p, 0, 1, 2, nx, ny, nz) >= 0) b.indices.push(base, base + 1, base + 2);
     else b.indices.push(base, base + 2, base + 1);
@@ -203,8 +224,12 @@ export class StructSink {
         indices: Uint32Array.from(b.indices),
         vertexCount: b.positions.length / 3,
         triangles: b.indices.length / 3,
+        minX: b.minX,
+        maxX: b.maxX,
         minY: b.minY,
         maxY: b.maxY,
+        minZ: b.minZ,
+        maxZ: b.maxZ,
       });
     }
     this.buckets.clear();

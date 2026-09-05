@@ -182,25 +182,41 @@ export class DoorLeafRegistry {
 
   setChunk(key: number, leaves: readonly DoorLeaf[], now: number): void {
     const states: LeafState[] = [];
+    const before = this.chunks.get(key);
     for (const leaf of leaves) {
       const was = this.posture.get(leaf.key);
       if (was !== undefined && was !== leaf.open) this.eases.add(leaf.key, leaf.open ? 'open' : 'close', now);
       this.posture.set(leaf.key, leaf.open);
       states.push({ leaf, written: NaN });
     }
-    if (states.length === 0 && !this.chunks.has(key)) return;
+    // THE POSTURE MAP FORGETS WHAT LEFT: a door the rebuild no longer
+    // lists (the wall was pulled down) drops its memory here.
+    if (before) {
+      for (const s of before) if (!states.some((n) => n.leaf.key === s.leaf.key)) this.posture.delete(s.leaf.key);
+    }
+    if (states.length === 0 && !before) return;
     if (states.length === 0) this.chunks.delete(key);
     else this.chunks.set(key, states);
     this.version++;
   }
 
+  /** Drop a chunk's leaves AND their posture memory (a true eviction, not a rebuild). */
   dropChunk(key: number): void {
-    if (this.chunks.delete(key)) this.version++;
+    const list = this.chunks.get(key);
+    if (!list) return;
+    for (const s of list) this.posture.delete(s.leaf.key);
+    this.chunks.delete(key);
+    this.version++;
   }
 
-  /** Drop every chunk `keep` refuses (the structures' own set). */
+  /** Drop every chunk `keep` refuses (the structures' own set). Deleting during Map iteration is safe; nothing is allocated. */
   prune(keep: (key: number) => boolean): void {
-    for (const key of [...this.chunks.keys()]) if (!keep(key)) this.dropChunk(key);
+    for (const key of this.chunks.keys()) if (!keep(key)) this.dropChunk(key);
+  }
+
+  /** Posture entries held (the leak proof). */
+  get postures(): number {
+    return this.posture.size;
   }
 
   get count(): number {
@@ -386,6 +402,8 @@ export class DoorLeafLayer {
       p.material.dispose();
     }
     this.pages.clear();
+    this.packedVersion = -1;
+    this.registry.clear();
     this.group.removeFromParent();
   }
 }

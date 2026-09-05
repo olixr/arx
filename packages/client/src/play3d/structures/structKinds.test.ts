@@ -9,6 +9,7 @@ import {
   MERLON_H as MERLON_H_3D,
   WALL_STUB as WALL_STUB_3D,
   classifyTile,
+  diagMassTouches,
   familyOf,
   gridSampler,
   isSideDoorway,
@@ -124,6 +125,33 @@ test('a diagonal corner: diagWallInfo names the solid triangle and the run conti
   const wood = classifyTile(gridSampler([[Tile.WallWoodDiagSW]]), 0, 0);
   assert.equal(wood.material, 'wood');
   assert.equal(wood.diag?.mass, 'SW');
+});
+
+test('THE DIAGONAL TOUCHES ONLY TWO EDGES: a wall abutting a diagonal\'s open edge keeps its end face', () => {
+  // A DiagNE's mass spans its N and E edges; its W and S edges are open air behind the hypotenuse.
+  const s = gridSampler([
+    [G, G, G],
+    [WS, Tile.WallStoneDiagNE, G],
+    [G, WS, G],
+  ]);
+  const west = classifyTile(s, 0, 1);
+  assert.equal(west.runE, false, 'the wall west of a DiagNE abuts open air: its east face stands');
+  const south = classifyTile(s, 1, 2);
+  assert.equal(south.runN, false, 'the wall south of it likewise keeps its north face');
+  const diag = classifyTile(s, 1, 1);
+  assert.deepEqual([diag.runN, diag.runE, diag.runS, diag.runW], [false, false, false, false], 'and the diag joins neither (no mass on those edges)');
+  // The joining case still joins: a wall EAST of a DiagNE shares its E edge.
+  const j = gridSampler([[Tile.WallStoneDiagNE, WS]]);
+  assert.equal(classifyTile(j, 1, 0).runW, true);
+  assert.equal(classifyTile(j, 0, 0).runE, true);
+  // The pure rule, all four masses × four steps.
+  assert.deepEqual(['NE', 'NW', 'SE', 'SW'].map((m) => diagMassTouches(m as 'NE', 1, 0)), [false, true, false, true], 'stepping east, the neighbour\'s W edge');
+  assert.deepEqual(['NE', 'NW', 'SE', 'SW'].map((m) => diagMassTouches(m as 'NE', -1, 0)), [true, false, true, false], 'stepping west, its E edge');
+  assert.deepEqual(['NE', 'NW', 'SE', 'SW'].map((m) => diagMassTouches(m as 'NE', 0, 1)), [true, true, false, false], 'stepping south, its N edge');
+  assert.deepEqual(['NE', 'NW', 'SE', 'SW'].map((m) => diagMassTouches(m as 'NE', 0, -1)), [false, false, true, true], 'stepping north, its S edge');
+  // Garrison diagonals follow the same rule.
+  const g = gridSampler([[Tile.WallGarrison, Tile.WallGarrisonDiagNE]]);
+  assert.equal(classifyTile(g, 0, 0).runE, false, 'a curtain west of a garrison DiagNE ends there');
 });
 
 // --------------------------------------------- fence pen with a gate
@@ -289,6 +317,15 @@ test('StructSink buckets by (kind,page), corrects winding and drains typed array
   assert.equal(bucketPage(cut.key), 1);
   assert.ok(bucketBytes(op) > 0);
   assert.ok(sink.isEmpty, 'drain empties the sink');
+});
+
+test('THE BUCKET KNOWS ITS OWN EXTENT: the drained AABB wraps every vertex landed, not the chunk footprint', () => {
+  const sink = new StructSink();
+  // A face reaching from x 30 to 34.5 (two tiles past a 32-chunk) and a top at z 40..41.
+  sink.face('opaque', 0, 30, 2, 34.5, 2, 0.5, 3.4, 0, 0, 1, 1, 0, 1);
+  sink.top('opaque', 0, -1.5, 40, 0, 41, 2.05, 0, 0, 1, 1);
+  const [b] = sink.drain();
+  assert.deepEqual([b!.minX, b!.maxX, b!.minZ, b!.maxZ, b!.minY, b!.maxY], [-1.5, 34.5, 2, 41, 0.5, 3.4]);
 });
 
 // ------------------------------------------------------ face tone

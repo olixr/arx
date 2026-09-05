@@ -76,10 +76,12 @@ export const GARRISON_H = 3.4;
 export const MERLON_H = 0.5;
 /** Hedge mass height — barrierArt.ts:2632 (local const HED_H). */
 export const HED_H = 0.95;
-/** Fence post height (s·1.72) — barrierArt.ts:905. */
-export const FENCE_POST_H = 1.72;
-/** Palisade log / grave pier height (s·1.66) — barrierArt.ts:1783. */
-export const PALISADE_H = 1.66;
+/** The wood fence post (drawFencePost s·0.92) — barrierArt.ts:353. */
+export const FENCE_POST_H = 0.92;
+/** The palisade GATE's towering post (POST_H = s·1.72) — barrierArt.ts:905 (inside palisadeGateItem). */
+export const PALI_GATE_POST_H = 1.72;
+/** The iron GATE's orb pier (PIER_H = s·1.66) — barrierArt.ts:1783 (inside ironGateItem); run/corner piers are 1.52 (:1734). */
+export const IRON_GATE_PIER_H = 1.66;
 /** One elevation level's rise — elevPick.ts:8. */
 export const ELEV_H = 1.35;
 /** A water-touching deck's lift — terrain.ts:5360. */
@@ -266,17 +268,41 @@ export function garrisonish(s: StructSampler, tx: number, ty: number): boolean {
 }
 
 /**
+ * THE DIAGONAL TOUCHES ONLY TWO EDGES: a diagonal wall's solid
+ * triangle covers two of its four edges; the other two are open air
+ * behind the hypotenuse. A neighbour reached by stepping (dx,dy) from
+ * the caller shares the edge on ITS opposite side — and only a mass
+ * that includes that edge continues the caller's run (a wall west of a
+ * DiagNE abuts the diag's open W edge and must show its own end face).
+ */
+export function diagMassTouches(mass: DiagWallMass, dx: number, dy: number): boolean {
+  if (dx === 1) return mass === 'NW' || mass === 'SW'; // the neighbour's W edge
+  if (dx === -1) return mass === 'NE' || mass === 'SE'; // its E edge
+  if (dy === 1) return mass === 'NE' || mass === 'NW'; // its N edge
+  if (dy === -1) return mass === 'SE' || mass === 'SW'; // its S edge
+  return true;
+}
+
+/**
  * Does the tile at (tx,ty) CONTINUE a run of `family` seeded from a
  * tile of `kind` (the deck kind, for the deck family's two classes)?
  * This is the one shared-edge question: a face is emitted on a side
- * whose neighbour answers false.
+ * whose neighbour answers false. `(dx,dy)` is the step the caller took
+ * to reach (tx,ty) — a diagonal wall or curtain continues only across
+ * an edge its mass touches (diagMassTouches); (0,0) asks without a side.
  */
-export function continues(s: StructSampler, family: StructFamily, kind: DeckKind | null, tx: number, ty: number): boolean {
+export function continues(s: StructSampler, family: StructFamily, kind: DeckKind | null, tx: number, ty: number, dx = 0, dy = 0): boolean {
   switch (family) {
-    case 'wall':
-      return wallish(s, tx, ty);
-    case 'garrison':
-      return garrisonish(s, tx, ty);
+    case 'wall': {
+      if (!wallish(s, tx, ty)) return false;
+      const d = diagWallInfo(s.groundAt(tx, ty) ?? -1);
+      return d === null || diagMassTouches(d.mass, dx, dy);
+    }
+    case 'garrison': {
+      if (!garrisonish(s, tx, ty)) return false;
+      const d = diagWallInfo(s.groundAt(tx, ty) ?? -1);
+      return d === null || diagMassTouches(d.mass, dx, dy);
+    }
     case 'fence':
     case 'palisade':
     case 'hedge':
@@ -339,10 +365,18 @@ export function classifyTile(s: StructSampler, tx: number, ty: number, elevH = E
   // own faces still answer to the run it pierces: north/south continue
   // into the wall, east/west are the open passage.
   const own = family === 'wall' ? wallish(s, tx, ty) : family === 'garrison' ? garrisonish(s, tx, ty) : true;
-  rec.runN = continues(s, family, deckKind, tx, ty - 1);
-  rec.runS = continues(s, family, deckKind, tx, ty + 1);
-  rec.runE = own && continues(s, family, deckKind, tx + 1, ty);
-  rec.runW = own && continues(s, family, deckKind, tx - 1, ty);
+  rec.runN = continues(s, family, deckKind, tx, ty - 1, 0, -1);
+  rec.runS = continues(s, family, deckKind, tx, ty + 1, 0, 1);
+  rec.runE = own && continues(s, family, deckKind, tx + 1, ty, 1, 0);
+  rec.runW = own && continues(s, family, deckKind, tx - 1, ty, -1, 0);
+  // A diagonal's OWN open edges continue nothing either (the mirror of diagMassTouches).
+  if (rec.diag) {
+    const m = rec.diag.mass;
+    if (m === 'SE' || m === 'SW') rec.runN = false;
+    if (m === 'NE' || m === 'NW') rec.runS = false;
+    if (m === 'NW' || m === 'SW') rec.runE = false;
+    if (m === 'NE' || m === 'SE') rec.runW = false;
+  }
   if (family === 'fence' || family === 'palisade' || family === 'hedge' || family === 'iron') {
     rec.cornerNE = familyOf(s.groundAt(tx + 1, ty - 1)) === family;
     rec.cornerNW = familyOf(s.groundAt(tx - 1, ty - 1)) === family;

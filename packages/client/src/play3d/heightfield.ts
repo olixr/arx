@@ -17,10 +17,13 @@
  *    cliff wall wears the cliff tile's baked art, chunk borders never
  *    double-emit, and the low side never paints a grass wall.
  *  - Faces stretch the tile rect vertically (a 3-level drop is one
- *    stretched rect). Honest placeholder — W2's terrain-forms lane
- *    lays real cliff art over these faces from a face atlas
- *    (structures/cliffFaces.ts), reading the SAME faces through
- *    `collectStepFaces` below (per-face metadata, no geometry change).
+ *    stretched rect). THE CURTAIN IS THE FACE (W2 fixes): with the
+ *    terrain-forms lane mounted, the heightfield emits NO faces of its
+ *    own (`faces: false`) — the lane's cliff curtains, read from the
+ *    SAME edge law through `collectStepFaces` below, are the only
+ *    geometry there; nothing is drawn twice. Labs and tests without
+ *    the lane keep the stretched-rect placeholder (`faces` defaults
+ *    true).
  *  - UVs address the baked chunk canvas INSIDE its gutter, so the
  *    gutter's real neighbour content feeds the sampler at chunk edges
  *    (the same reason the 2D blit insets) and nothing is cropped.
@@ -42,6 +45,8 @@ export interface HeightfieldInput {
   /** Bake pixels per tile and the bake gutter, for the UV inset. */
   px: number;
   gutter: number;
+  /** Emit the placeholder vertical faces (default true; false when the terrain-forms lane owns the cliffs). */
+  faces?: boolean;
 }
 
 export interface HeightfieldMesh {
@@ -162,6 +167,8 @@ class MeshSink {
 /** Build the chunk mesh. Vertex count stays well under 2^32 (uint32 indices). */
 export function buildHeightfield(inp: HeightfieldInput): HeightfieldMesh {
   const { cx, cy, size, levelAt, isRamp, levelH, px, gutter } = inp;
+  // THE CURTAIN IS THE FACE: the caller says whether the placeholder faces stand.
+  const faces = inp.faces !== false;
   const sink = new MeshSink();
   const x0 = cx * size;
   const y0 = cy * size;
@@ -225,64 +232,66 @@ export function buildHeightfield(inp: HeightfieldInput): HeightfieldMesh {
       }
       sink.quad(p, uv, nx, ny, nz);
 
-      // Vertical faces: THE HIGH TILE OWNS THE FACE. Each edge compares
-      // this tile's two edge corners against the neighbour's matching
-      // pair and emits when this side is (strictly) higher on average.
-      // East edge: own ne/se vs neighbour nw/sw.
-      cornerLevels(tx + 1, ty, levelAt, isRamp, nb);
-      if (c[1]! + c[2]! > nb[0]! + nb[3]! + EPS) {
-        setP(0, tx + 1, hNe, ty);
-        setP(1, tx + 1, hSe, ty + 1);
-        setP(2, tx + 1, nb[3]! * levelH, ty + 1);
-        setP(3, tx + 1, nb[0]! * levelH, ty);
-        setUv(0, u(lx), v(ly));
-        setUv(1, u(lx + 1), v(ly));
-        setUv(2, u(lx + 1), v(ly + 1));
-        setUv(3, u(lx), v(ly + 1));
-        sink.quad(p, uv, 1, 0, 0);
-        sink.faceCount++;
-      }
-      // West edge: own nw/sw vs neighbour ne/se.
-      cornerLevels(tx - 1, ty, levelAt, isRamp, nb);
-      if (c[0]! + c[3]! > nb[1]! + nb[2]! + EPS) {
-        setP(0, tx, hSw, ty + 1);
-        setP(1, tx, hNw, ty);
-        setP(2, tx, nb[1]! * levelH, ty);
-        setP(3, tx, nb[2]! * levelH, ty + 1);
-        setUv(0, u(lx), v(ly));
-        setUv(1, u(lx + 1), v(ly));
-        setUv(2, u(lx + 1), v(ly + 1));
-        setUv(3, u(lx), v(ly + 1));
-        sink.quad(p, uv, -1, 0, 0);
-        sink.faceCount++;
-      }
-      // South edge: own sw/se vs neighbour nw/ne.
-      cornerLevels(tx, ty + 1, levelAt, isRamp, nb);
-      if (c[3]! + c[2]! > nb[0]! + nb[1]! + EPS) {
-        setP(0, tx, hSw, ty + 1);
-        setP(1, tx + 1, hSe, ty + 1);
-        setP(2, tx + 1, nb[1]! * levelH, ty + 1);
-        setP(3, tx, nb[0]! * levelH, ty + 1);
-        setUv(0, u(lx), v(ly));
-        setUv(1, u(lx + 1), v(ly));
-        setUv(2, u(lx + 1), v(ly + 1));
-        setUv(3, u(lx), v(ly + 1));
-        sink.quad(p, uv, 0, 0, 1);
-        sink.faceCount++;
-      }
-      // North edge: own ne/nw vs neighbour se/sw.
-      cornerLevels(tx, ty - 1, levelAt, isRamp, nb);
-      if (c[0]! + c[1]! > nb[3]! + nb[2]! + EPS) {
-        setP(0, tx + 1, hNe, ty);
-        setP(1, tx, hNw, ty);
-        setP(2, tx, nb[3]! * levelH, ty);
-        setP(3, tx + 1, nb[2]! * levelH, ty);
-        setUv(0, u(lx), v(ly));
-        setUv(1, u(lx + 1), v(ly));
-        setUv(2, u(lx + 1), v(ly + 1));
-        setUv(3, u(lx), v(ly + 1));
-        sink.quad(p, uv, 0, 0, -1);
-        sink.faceCount++;
+      if (faces) {
+        // Vertical faces: THE HIGH TILE OWNS THE FACE. Each edge compares
+        // this tile's two edge corners against the neighbour's matching
+        // pair and emits when this side is (strictly) higher on average.
+        // East edge: own ne/se vs neighbour nw/sw.
+        cornerLevels(tx + 1, ty, levelAt, isRamp, nb);
+        if (c[1]! + c[2]! > nb[0]! + nb[3]! + EPS) {
+          setP(0, tx + 1, hNe, ty);
+          setP(1, tx + 1, hSe, ty + 1);
+          setP(2, tx + 1, nb[3]! * levelH, ty + 1);
+          setP(3, tx + 1, nb[0]! * levelH, ty);
+          setUv(0, u(lx), v(ly));
+          setUv(1, u(lx + 1), v(ly));
+          setUv(2, u(lx + 1), v(ly + 1));
+          setUv(3, u(lx), v(ly + 1));
+          sink.quad(p, uv, 1, 0, 0);
+          sink.faceCount++;
+        }
+        // West edge: own nw/sw vs neighbour ne/se.
+        cornerLevels(tx - 1, ty, levelAt, isRamp, nb);
+        if (c[0]! + c[3]! > nb[1]! + nb[2]! + EPS) {
+          setP(0, tx, hSw, ty + 1);
+          setP(1, tx, hNw, ty);
+          setP(2, tx, nb[1]! * levelH, ty);
+          setP(3, tx, nb[2]! * levelH, ty + 1);
+          setUv(0, u(lx), v(ly));
+          setUv(1, u(lx + 1), v(ly));
+          setUv(2, u(lx + 1), v(ly + 1));
+          setUv(3, u(lx), v(ly + 1));
+          sink.quad(p, uv, -1, 0, 0);
+          sink.faceCount++;
+        }
+        // South edge: own sw/se vs neighbour nw/ne.
+        cornerLevels(tx, ty + 1, levelAt, isRamp, nb);
+        if (c[3]! + c[2]! > nb[0]! + nb[1]! + EPS) {
+          setP(0, tx, hSw, ty + 1);
+          setP(1, tx + 1, hSe, ty + 1);
+          setP(2, tx + 1, nb[1]! * levelH, ty + 1);
+          setP(3, tx, nb[0]! * levelH, ty + 1);
+          setUv(0, u(lx), v(ly));
+          setUv(1, u(lx + 1), v(ly));
+          setUv(2, u(lx + 1), v(ly + 1));
+          setUv(3, u(lx), v(ly + 1));
+          sink.quad(p, uv, 0, 0, 1);
+          sink.faceCount++;
+        }
+        // North edge: own ne/nw vs neighbour se/sw.
+        cornerLevels(tx, ty - 1, levelAt, isRamp, nb);
+        if (c[0]! + c[1]! > nb[3]! + nb[2]! + EPS) {
+          setP(0, tx + 1, hNe, ty);
+          setP(1, tx, hNw, ty);
+          setP(2, tx, nb[3]! * levelH, ty);
+          setP(3, tx + 1, nb[2]! * levelH, ty);
+          setUv(0, u(lx), v(ly));
+          setUv(1, u(lx + 1), v(ly));
+          setUv(2, u(lx + 1), v(ly + 1));
+          setUv(3, u(lx), v(ly + 1));
+          sink.quad(p, uv, 0, 0, -1);
+          sink.faceCount++;
+        }
       }
     }
   }

@@ -83,8 +83,13 @@ export const FENCE_RAIL_TOP = 0.8;
 export const FENCE_LEAF_H = 0.72;
 /** The palisade card's crown: max shoulder 1.62 + max spike 0.345 (giantLog / logShoulder). */
 export const PALI_CARD_H = 2.0;
-/** Where the palisade's opaque body stops and the crowned points begin (below the lowest shoulder 1.3). */
-export const PALI_BODY_H = 1.22;
+/**
+ * Where the palisade's flank cards stop and THE ONE CROWN begins: just
+ * under the lowest shoulder (1.3). Both flanks carry bodies only; the
+ * crowned silhouette rides a single card on the edge axis, so an
+ * oblique view never sees two interleaved rows of points.
+ */
+export const PALI_BODY_H = 1.28;
 /** Palisade log girth (barrierArt.ts:772 w = s·(0.24..0.28)). */
 export const PALI_W = 0.24;
 /** Palisade gate post (barrierArt.ts:905 POST_H = s·1.72) + its point. */
@@ -100,10 +105,12 @@ export const IRON_CURB_H = 0.15;
 export const IRON_CURB_W = 0.17;
 export const IRON_PANEL_H = 1.5;
 export const IRON_STANDARD_H = 1.5;
-/** Grave pier: drawGravePier(w = s·0.26, hTot = s·1.52) — cap and finial ride above hTot. */
+/** Grave pier: drawGravePier(w = s·0.26, hTot) — run/corner piers 1.52 (barrierArt.ts:1734), gate piers 1.66 (:1783); cap and finial ride above hTot. */
 export const IRON_PIER_W = 0.26;
 export const IRON_PIER_H = 1.52;
-export const IRON_PIER_CARD_H = 2.1;
+export const IRON_GATE_PIER_H = 1.66;
+/** The pier card rises this much over hTot (cap 0.135 + the finial). */
+export const IRON_PIER_CARD_OVER = 0.58;
 export const IRON_PIER_CARD_W = 0.44;
 export const IRON_LEAF_H = 1.3;
 export const IRON_OVERTHROW_Y = 1.62;
@@ -111,16 +118,21 @@ export const IRON_OVERTHROW_H = 0.66;
 /** The hedge crown's lobe card above HED_H. */
 export const HEDGE_LOBE_H = 0.34;
 export const HEDGE_LOBE_DROP = 0.12;
-export const HEDGE_PILLAR_W = 0.32;
-export const HEDGE_PILLAR_H = HED_H + 0.22;
-export const HEDGE_ARCH_Y = 1.32;
-export const HEDGE_ARCH_H = 0.6;
+/** THE GATE IS THE HEDGE, THICKENED AT THE GAP (barrierArt.ts hedgeGateItem): posts 0.3 wide at the run's own height, the wicket waist-high. */
+export const HEDGE_GATE_POST_W = 0.3;
+/** A vertical gate's stubs, cut from the run (v ±0.5..±0.18). */
+export const HEDGE_GATE_STUB_D = 0.32;
+export const HEDGE_WICKET_H = 0.58;
+export const HEDGE_FINIAL_H = 0.3;
+export const HEDGE_FINIAL_W = 0.3;
 /** Garrison gate: spring line 1.75 (garrisonArt.ts:592), pier width (:588). */
 export const GAR_SPRING_H = 1.75;
 export const GAR_LEAF_H = 1.75;
 export const GAR_SIDE_LEAF_H = 1.9;
 export const GAR_SIDE_LEAF_W = 0.8;
-export const GAR_PORTCULLIS_DROP = 0.3;
+/** The raised portcullis shows this much below the arch head (bars thick enough to survive the mip chain: 0.09 tiles). */
+export const GAR_PORTCULLIS_DROP = 0.24;
+export const GAR_PORTCULLIS_BAR_W = 0.09;
 
 /** A source-atop white wash: litTone for a painted tile, alpha kept. */
 export function liftPainted(ctx: CanvasRenderingContext2D, w: number, h: number, k = FACE_LIFT): void {
@@ -524,9 +536,9 @@ export class BarrierFaces {
    * molded cap, finial) — one card; the pier's boxes sample sub-rects
    * of it (plinth / shaft / cap bands) and the finial rides as a cross.
    */
-  ironPier(finial: 'urn' | 'orb'): FaceRef {
-    return this.card(`iron/pier/${finial}`, IRON_PIER_CARD_W, IRON_PIER_CARD_H, (_ctx, w, h, s) => {
-      drawGravePier(asPaintHost(this.host), w / 2, h - s * 0.02, s * IRON_PIER_W, s * IRON_PIER_H, finial);
+  ironPier(finial: 'urn' | 'orb', hTot = IRON_PIER_H): FaceRef {
+    return this.card(`iron/pier/${finial}/${hTot.toFixed(2)}`, IRON_PIER_CARD_W, hTot + IRON_PIER_CARD_OVER, (_ctx, w, h, s) => {
+      drawGravePier(asPaintHost(this.host), w / 2, h - s * 0.02, s * IRON_PIER_W, s * hTot, finial);
     });
   }
 
@@ -762,35 +774,75 @@ export class BarrierFaces {
     });
   }
 
-  /** The living arch over a hedge gate: foliage lobes over a dark underside. */
-  hedgeArch(): FaceRef {
-    return this.card('hedge/arch', 1, HEDGE_ARCH_H, (ctx, w, h, s) => {
-      ctx.fillStyle = HEDGE_DARK;
+  /**
+   * The gatepost's clipped ball (barrierArt.ts hedgeGateItem `finial`):
+   * a CLEAN circle — seat shadow, globe, one lit crescent, a dark
+   * shadow spot — seated on the post crown (card base = the crown).
+   */
+  hedgeFinial(): FaceRef {
+    return this.card('hedge/finial', HEDGE_FINIAL_W, HEDGE_FINIAL_H, (ctx, w, h, s) => {
+      const r0 = s * 0.125;
+      const bx = w / 2;
+      const cy0 = h - s * 0.01;
+      const by = cy0 - r0 * 0.85;
+      ctx.fillStyle = 'rgba(24, 50, 28, 0.3)';
       ctx.beginPath();
-      ctx.moveTo(0, h);
-      ctx.quadraticCurveTo(w * 0.5, h - s * 0.22, w, h);
-      ctx.lineTo(w, h * 0.4);
-      ctx.lineTo(0, h * 0.4);
-      ctx.closePath();
+      ctx.ellipse(bx, cy0 - r0 * 0.05, r0 * 0.8, r0 * 0.3, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = HEDGE_LEAF;
       ctx.beginPath();
-      ctx.moveTo(0, h * 0.45);
-      for (let i = 0; i < 4; i++) {
-        const amp = (0.1 + ((hashCoords(71, i, 19) >> 2) & 7) * 0.02) * s;
-        ctx.quadraticCurveTo(w * (i * 0.25 + 0.125), h * 0.45 - amp * 2, w * ((i + 1) * 0.25), h * 0.45);
-      }
-      ctx.lineTo(w, h * 0.55);
-      ctx.lineTo(0, h * 0.55);
-      ctx.closePath();
+      ctx.arc(bx, by, r0, 0, Math.PI * 2);
       ctx.fill();
-      for (let j = 0; j < 5; j++) {
-        const cseed = hashCoords(89, j + 40, 7);
-        ctx.fillStyle = (cseed & 4) === 0 ? HEDGE_DARK : shade(HEDGE_LIT, 8);
+      ctx.fillStyle = shade(HEDGE_LIT, 14);
+      ctx.beginPath();
+      ctx.arc(bx - r0 * 0.24, by - r0 * 0.26, r0 * 0.52, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = HEDGE_DARK;
+      ctx.beginPath();
+      ctx.arc(bx + r0 * 0.3, by + r0 * 0.32, r0 * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(16, 26, 18, 0.55)';
+      ctx.lineWidth = Math.max(1, s * 0.018);
+      ctx.beginPath();
+      ctx.arc(bx, by, r0, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+  }
+
+  /**
+   * The timber wicket (barrierArt.ts hedgeGateItem `wicket`): three
+   * pales under a capped top rail, one diagonal brace — waist-high,
+   * light against the green. Hinge at u = 0; `wt` is the leaf width.
+   */
+  hedgeWicket(wt: number): FaceRef {
+    return this.card(`hedge/wicket/${wt.toFixed(2)}`, wt, HEDGE_WICKET_H, (ctx, w, h, s) => {
+      const yBot = h - s * 0.03;
+      const yTop = h - HEDGE_WICKET_H * s;
+      const paleW = Math.min(s * 0.05, w * 0.22);
+      for (let i = 0; i < 3; i++) {
+        const px2 = (w - paleW) * (i / 2);
+        ctx.fillStyle = shade(FENCE_POST, 4);
+        ctx.fillRect(px2, yTop + s * 0.05, paleW, yBot - yTop - s * 0.05);
+        ctx.fillStyle = shade(FENCE_POST, 18);
         ctx.beginPath();
-        facetBlob(ctx, w * (0.08 + j * 0.2), h * 0.42 + (((cseed >>> 5) % 20) - 10) / 100 * s, s * 0.05, cseed, 6, 0.85);
+        ctx.moveTo(px2, yTop + s * 0.05);
+        ctx.lineTo(px2 + paleW / 2, yTop);
+        ctx.lineTo(px2 + paleW, yTop + s * 0.05);
+        ctx.closePath();
         ctx.fill();
       }
+      for (const ry of [yTop + s * 0.14, yBot - s * 0.16]) {
+        ctx.fillStyle = shade(FENCE_RAIL, 8);
+        ctx.fillRect(0, ry, w, s * 0.05);
+        ctx.fillStyle = shade(FENCE_RAIL, 22);
+        ctx.fillRect(0, ry, w, s * 0.016);
+      }
+      ctx.strokeStyle = shade(FENCE_RAIL, -6);
+      ctx.lineWidth = Math.max(1.5, s * 0.032);
+      ctx.beginPath();
+      ctx.moveTo(s * 0.01, yBot - s * 0.14);
+      ctx.lineTo(w - s * 0.01, yTop + s * 0.16);
+      ctx.stroke();
     });
   }
 
@@ -973,9 +1025,12 @@ export class BarrierFaces {
   /** The raised portcullis's teeth hanging in the arch head (garrisonArt.ts:660-683). */
   garrisonPortcullis(): FaceRef {
     return this.card('gar/portcullis', 1, GAR_PORTCULLIS_DROP, (ctx, w, h, s) => {
-      const tipY = h - s * 0.12;
-      const barW = Math.max(1.5, s * 0.065);
-      for (let bx = s * 0.05; bx < w - s * 0.08; bx += s * 0.23) {
+      // THE BARS SURVIVE THE MIP: a 0.065-tile bar alpha-tested away at
+      // play distance and left its teeth floating; 0.09 wide at a 0.24
+      // pitch keeps a bar where the eye looks for one.
+      const tipY = h - s * 0.1;
+      const barW = Math.max(2, s * GAR_PORTCULLIS_BAR_W);
+      for (let bx = s * 0.04; bx < w - s * 0.06; bx += s * 0.24) {
         ctx.fillStyle = '#3d3950';
         ctx.fillRect(bx, 0, barW, tipY);
         ctx.beginPath();

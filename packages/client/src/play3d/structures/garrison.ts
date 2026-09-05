@@ -38,6 +38,7 @@
  */
 import { GARRISON_H, MERLON_H, garrisonish, isGarrisonSideGate, type StructSampler, type TileStruct } from './structKinds.js';
 import type { StructBuildCtx } from './structures.js';
+import { diagShape } from './walls.js';
 import {
   BarrierFaces,
   GAR_LEAF_H,
@@ -64,12 +65,17 @@ function merlon(ctx: StructBuildCtx, faces: BarrierFaces, x0: number, z0: number
   emitBox(ctx.sink, 'opaque', { side: mf, top: mt }, x0, z0, x1, z1, y1, y1 + MERLON_H, ALL_EXPOSED);
 }
 
-/** Teeth along a tile's exposed crown edges (garrisonArt.ts:301-325). */
-function merlonsForTile(ctx: StructBuildCtx, faces: BarrierFaces, tx: number, ty: number, y1: number, n: boolean, e: boolean, s: boolean, w: boolean): void {
+/**
+ * Teeth along a tile's exposed crown edges (garrisonArt.ts:301-325).
+ * `skipS` masks the south-edge centres a taller pier cap already owns
+ * (the gatehouse corners: bit 1 = the west centre, bit 2 = the east) —
+ * a merlon there would lay a coplanar face inside the cap.
+ */
+function merlonsForTile(ctx: StructBuildCtx, faces: BarrierFaces, tx: number, ty: number, y1: number, n: boolean, e: boolean, s: boolean, w: boolean, skipS = 0): void {
   const hw = MERLON_W / 2;
   for (const c of MERLON_CENTRES) {
     if (n) merlon(ctx, faces, tx + c - hw, ty, tx + c + hw, ty + MERLON_D, y1);
-    if (s) merlon(ctx, faces, tx + c - hw, ty + 1 - MERLON_D, tx + c + hw, ty + 1, y1);
+    if (s && !(skipS & (c === MERLON_CENTRES[0] ? 1 : 2))) merlon(ctx, faces, tx + c - hw, ty + 1 - MERLON_D, tx + c + hw, ty + 1, y1);
     if (w) merlon(ctx, faces, tx, ty + c - hw, tx + MERLON_D, ty + c + hw, y1);
     if (e) merlon(ctx, faces, tx + 1 - MERLON_D, ty + c - hw, tx + 1, ty + c + hw, y1);
   }
@@ -79,6 +85,7 @@ function merlonsForTile(ctx: StructBuildCtx, faces: BarrierFaces, tx: number, ty
 function hungRun(s: StructSampler, t: TileStruct): { index: number; length: number } {
   const kind = t.wallHung?.kind;
   if (kind !== 'pennant' && kind !== 'tapestry') return { index: 0, length: 1 };
+  // THE RUN REACHES PAST THE RING (walls.ts): `s` is the live world, not the snapshot.
   const d = s.detailAt(t.tx, t.ty);
   const member = (x: number): boolean => s.groundAt(x, t.ty) === t.tile && s.detailAt(x, t.ty) === d;
   let w = 0;
@@ -93,7 +100,7 @@ function straightTile(ctx: StructBuildCtx, faces: BarrierFaces, t: TileStruct): 
   const y0 = ctx.heightAt(tx + 0.5, ty + 0.5);
   const y1 = y0 + GARRISON_H;
   const alongX = faces.garrisonFace(tx);
-  const hung = t.wallHung !== null && t.wallHung.kind !== 'sill' && !t.runS ? faces.garrisonHungFace(tx, t.wallHung, ctx.sampler.detailAt(tx, ty), hungRun(ctx.sampler, t), t.tile) : null;
+  const hung = t.wallHung !== null && t.wallHung.kind !== 'sill' && !t.runS ? faces.garrisonHungFace(tx, t.wallHung, ctx.sampler.detailAt(tx, ty), hungRun(ctx.world, t), t.tile) : null;
   const alongZ = faces.garrisonFace(ty);
   const top = faces.garrisonTop(variantAt(457, tx, ty, 4));
   exposed.n = !t.runN;
@@ -113,47 +120,19 @@ function diagTile(ctx: StructBuildCtx, faces: BarrierFaces, t: TileStruct): void
   const y1 = y0 + GARRISON_H;
   const face = faces.garrisonFace(tx);
   const top = faces.garrisonTop(variantAt(457, tx, ty, 4));
-  // Corners.
-  const NW: [number, number] = [tx, ty];
-  const NE: [number, number] = [tx + 1, ty];
-  const SE: [number, number] = [tx + 1, ty + 1];
-  const SW: [number, number] = [tx, ty + 1];
-  // Hypotenuse west end → east end, outward normal, the mass triangle, exposed legs.
-  let a: [number, number];
-  let b: [number, number];
-  let nx: number;
-  let nz: number;
-  let tri: [[number, number], [number, number], [number, number]];
+  // The hypotenuse a→b (left→right SEEN FROM OUTSIDE, so the world-anchored
+  // bond reads forward on all four masses), its outward normal and the
+  // mass triangle: ONE law with the house walls (walls.ts diagShape).
+  const shape = diagShape(mass);
+  const a: [number, number] = [tx + shape.hypA[0], ty + shape.hypA[1]];
+  const b: [number, number] = [tx + shape.hypB[0], ty + shape.hypB[1]];
+  const nx = shape.nx;
+  const nz = shape.nz;
+  const tri = shape.tri;
   const legN = mass === 'NE' || mass === 'NW';
   const legS = mass === 'SE' || mass === 'SW';
   const legE = mass === 'NE' || mass === 'SE';
   const legW = mass === 'NW' || mass === 'SW';
-  const R = Math.SQRT1_2;
-  if (mass === 'NE') {
-    a = NW;
-    b = SE;
-    nx = -R;
-    nz = R;
-    tri = [NW, NE, SE];
-  } else if (mass === 'NW') {
-    a = SW;
-    b = NE;
-    nx = R;
-    nz = R;
-    tri = [NW, NE, SW];
-  } else if (mass === 'SE') {
-    a = SW;
-    b = NE;
-    nx = -R;
-    nz = -R;
-    tri = [NE, SE, SW];
-  } else {
-    a = NW;
-    b = SE;
-    nx = R;
-    nz = -R;
-    tri = [NW, SE, SW];
-  }
   sink.face('opaque', face.page, a[0], a[1], b[0], b[1], y0, y1, face.u0, face.v0, face.u1, face.v1, nx, nz);
   const faceZ = faces.garrisonFace(ty);
   if (legN && !t.runN) sink.face('opaque', face.page, tx + 1, ty, tx, ty, y0, y1, face.u0, face.v0, face.u1, face.v1, 0, -1);
@@ -165,11 +144,11 @@ function diagTile(ctx: StructBuildCtx, faces: BarrierFaces, t: TileStruct): void
   const uv = sink.uv;
   for (let i = 0; i < 3; i++) {
     const c = tri[i]!;
-    p[i * 3] = c[0];
+    p[i * 3] = tx + c[0];
     p[i * 3 + 1] = y1;
-    p[i * 3 + 2] = c[1];
-    uv[i * 2] = top.u0 + (top.u1 - top.u0) * (c[0] - tx);
-    uv[i * 2 + 1] = top.v1 - (top.v1 - top.v0) * (c[1] - ty);
+    p[i * 3 + 2] = ty + c[1];
+    uv[i * 2] = top.u0 + (top.u1 - top.u0) * c[0];
+    uv[i * 2 + 1] = top.v1 - (top.v1 - top.v0) * c[1];
   }
   sink.tri('opaque', top.page, p, uv, 0, 1, 0);
   // Teeth stepping the hypotenuse.
@@ -240,8 +219,9 @@ function gateRun(ctx: StructBuildCtx, faces: BarrierFaces, tx: number, ty: numbe
     uv[7] = soffit.v0;
     sink.quad('opaque', soffit.page, p, uv, 0, -1, 0);
   }
-  // Teeth over the run (both crown edges), taller pier caps at the south corners.
-  for (let i = 0; i < len; i++) merlonsForTile(ctx, faces, tx + i, ty, y1, true, false, true, false);
+  // Teeth over the run (both crown edges); the taller pier caps at the
+  // south corners OWN those corners (no merlon under a cap).
+  for (let i = 0; i < len; i++) merlonsForTile(ctx, faces, tx + i, ty, y1, true, false, true, false, (i === 0 ? 1 : 0) | (i === len - 1 ? 2 : 0));
   const capD = MERLON_D * 1.15;
   const mf = faces.merlonFace();
   const mt = faces.merlonTop();

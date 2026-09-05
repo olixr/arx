@@ -18,6 +18,7 @@ import {
   emitRunBox,
   garrisonGateRuns,
   hedgeExposure,
+  hedgeMassAt,
   leafSwing,
   swingLeafEnd,
   type FaceRect,
@@ -194,8 +195,19 @@ test('hedge exposure: faces only where the neighbour is not straight hedge; gate
   const ex = { n: false, e: false, s: false, w: false };
   hedgeExposure(s, 1, 0, ex);
   assert.deepEqual(ex, { n: true, e: false, s: true, w: false });
+  // THE GATE IS THE HEDGE, THICKENED AT THE GAP: the gate below runs N–S
+  // (its hedge is to the north), so along its own axis its stub JOINS the
+  // run above — a cut, no face; across the axis it is an opening.
   hedgeExposure(s, 2, 0, ex);
-  assert.deepEqual(ex, { n: true, e: true, s: true, w: false }, 'a hedge gate below is an opening');
+  assert.deepEqual(ex, { n: true, e: true, s: false, w: false }, 'a hedge gate below, on its axis, is a cut');
+  assert.ok(hedgeMassAt(s, 2, 1, 0, 1), 'the gate is mass along its axis (asked from the north)');
+  assert.ok(!hedgeMassAt(s, 2, 1, 1, 0) && !hedgeMassAt(s, 2, 1, 0, 0), 'an opening across it; an aimless ask is never mass');
+  // A gate with hedge to its EAST and WEST runs E–W: mass from E/W, an opening from N/S.
+  const ew = gridSampler([[G, G, G], [H, HG, H], [G, G, G]]);
+  assert.ok(hedgeMassAt(ew, 1, 1, 1, 0) && hedgeMassAt(ew, 1, 1, -1, 0), 'the E–W gate joins its run');
+  assert.ok(!hedgeMassAt(ew, 1, 1, 0, 1) && !hedgeMassAt(ew, 1, 1, 0, -1), 'and opens across it');
+  hedgeExposure(ew, 0, 1, ex);
+  assert.deepEqual(ex, { n: true, e: false, s: true, w: true }, 'the run west of the gate shows no face toward it');
   hedgeExposure(s, 0, 2, ex);
   assert.deepEqual(ex, { n: false, e: true, s: true, w: true }, 'a 45° hedge east is a slab, the face shows');
 });

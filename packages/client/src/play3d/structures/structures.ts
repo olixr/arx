@@ -54,6 +54,7 @@ import { StructMaterials } from './structMaterials.js';
 import { StructSink, bucketBytes } from './structSink.js';
 import { makeStubHost, type StubHost } from './stubHost.js';
 import { buildWallStructures } from './walls.js';
+import { doorLeaves } from './doors.js';
 import { buildBarrierStructures } from './barriers.js';
 import { buildTerrainFormStructures } from './terrainForms.js';
 
@@ -230,14 +231,23 @@ export class ChunkStructures {
   build(cx: number, cy: number, wake = true): void {
     const key = packChunk(cx, cy);
     const had = this.recs.get(key);
-    if (had) this.evict(cx, cy);
+    // A REBUILD KEEPS ITS DOORS' MEMORY: release the meshes only — the
+    // leaves are re-registered by the walls lane below and the registry
+    // must still hold the old posture to notice a flip. Only a true
+    // `evict` drops the chunk's leaves.
+    if (had) this.release(had);
     const t0 = performance.now();
     this.interiors.beginFrame(this.version);
     const sampler = snapshotWithBorder(this.world, cx, cy, CHUNK_SIZE, 1);
     const scan = scanChunkStructs(sampler, cx, cy, CHUNK_SIZE, this.elevH);
     const rec: StructRec = { key, cx, cy, meshes: [], geometries: [], bytes: 0, tris: 0, quads: 0, dirty: false };
     this.recs.set(key, rec);
-    if (scan.tiles.length > 0) {
+    // EVERY LANE IS ASKED, EVERY TIME: an emptied chunk must still tell
+    // the door registry it has no leaves (an old gate's leaf would
+    // otherwise hang on), and the terrain-forms lane reads elevation
+    // steps that need no standing tile at all. Lanes with nothing to
+    // do return in a few comparisons.
+    {
       const ctx: StructBuildCtx = {
         world: this.world,
         cx,
@@ -267,9 +277,13 @@ export class ChunkStructures {
         geometry.setAttribute('normal', new THREE.BufferAttribute(b.normals, 3));
         geometry.setAttribute('uv', new THREE.BufferAttribute(b.uvs, 2));
         geometry.setIndex(new THREE.BufferAttribute(b.indices, 1));
+        // THE SPHERE WRAPS WHAT WAS LANDED: the bucket's own AABB (a
+        // gatehouse anchored on the east column reaches two tiles past
+        // the chunk, an awning flares past its tile) — never the chunk
+        // footprint, which culled such geometry while still on screen.
         geometry.boundingSphere = new THREE.Sphere(
-          new THREE.Vector3((cx + 0.5) * CHUNK_SIZE, (b.minY + b.maxY) / 2, (cy + 0.5) * CHUNK_SIZE),
-          Math.hypot(CHUNK_SIZE + 2, b.maxY - b.minY, CHUNK_SIZE + 2) / 2 + 0.5,
+          new THREE.Vector3((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, (b.minZ + b.maxZ) / 2),
+          Math.hypot(b.maxX - b.minX, b.maxY - b.minY, b.maxZ - b.minZ) / 2 + 0.05,
         );
         const set = this.materials.get(b.kind, b.page);
         const mesh = new THREE.Mesh(geometry, set.material);
@@ -325,6 +339,13 @@ export class ChunkStructures {
     const key = packChunk(cx, cy);
     const rec = this.recs.get(key);
     if (!rec) return;
+    this.release(rec);
+    doorLeaves.dropChunk(key);
+  }
+
+  /** Take a record's meshes down and settle its ledger (the chunk's door leaves are the caller's call). */
+  private release(rec: StructRec): void {
+    const key = rec.key;
     for (const m of rec.meshes) this.group.remove(m);
     for (const g of rec.geometries) g.dispose();
     if (rec.dirty) this.stats.dirty--;

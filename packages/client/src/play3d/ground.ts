@@ -254,6 +254,10 @@ export class GroundStreamer {
       levelH: ELEV_H,
       px: BAKE_PX,
       gutter: this.gutter,
+      // THE CURTAIN IS THE FACE: with the structures aggregator mounted, the
+      // terrain-forms lane's cliff curtains are the only cliff geometry —
+      // the heightfield keeps its stretched-rect placeholder only for labs.
+      faces: this.structures === null,
     });
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(hf.positions, 3));

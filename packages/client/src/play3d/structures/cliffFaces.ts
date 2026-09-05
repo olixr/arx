@@ -55,9 +55,15 @@ import type { StructSampler } from './structKinds.js';
 export const CLIFF_PERIOD = 4;
 /** Strip variants per (levels, brow) — beds agree, details differ. */
 export const CLIFF_VARIANTS = 3;
-/** Outward push of the curtain's crown edge (tiles). */
+/**
+ * Outward push of the curtain's crown edge (tiles). THE CURTAIN IS THE
+ * FACE (W2 fixes): the heightfield no longer stands a placeholder face
+ * under the curtain, so this lean fights nothing — it is kept as a
+ * hairline stand-off from the plateau's own edge (no depth-precision
+ * dependency remains; the value could be 0).
+ */
 export const CLIFF_EPS_TOP = 0.006;
-/** Outward push of the curtain's foot edge (tiles), and the end extension. */
+/** Outward push of the curtain's foot edge (tiles), and the end extension (the foot buries into the low ground). */
 export const CLIFF_EPS_BOT = 0.03;
 
 export type BrowKind = 'turf' | 'bare';

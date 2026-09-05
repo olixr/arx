@@ -45,6 +45,7 @@ import { FaceAtlas } from './structures/faceAtlas.js';
 import { StructMaterials } from './structures/structMaterials.js';
 import { ChunkStructures } from './structures/structures.js';
 import { DoorLeafLayer } from './structures/doors.js';
+import { tickDeckLiftMemo } from './structures/deckFaces.js';
 import { unpackCx, unpackCy } from './chunkRing.js';
 import { LiveInput, PointerRig } from './input.js';
 import { EntityStage } from './bodies.js';
@@ -94,6 +95,9 @@ let aimValid = false;
 let attackPulseUntil = 0;
 let orbitSaveTimer = 0;
 
+/** The door layer's keep predicate, bound ONCE (a per-frame closure was an allocation). */
+const keepBuiltChunk = (key: number): boolean => structures.has(unpackCx(key), unpackCy(key));
+
 const shell = new Shell(input, {
   onLocal: (cmd) => {
     if (cmd === 'night') dayOverride = 0.08;
@@ -141,7 +145,8 @@ const engine = new Engine(canvas, createBackend(canvas), {
       atlas.flush();
       faces.flush();
       // W2 walls: the hinged leaves swing on their own clock, pruned to the built chunks.
-      doorLayer.update(nowMs, (key) => structures.has(unpackCx(key), unpackCy(key)));
+      doorLayer.update(nowMs, keepBuiltChunk);
+      tickDeckLiftMemo(nowMs);
       const gy = ground.heightAt(own.x, own.y);
       engine.target.set(own.x, gy + 0.9, own.y);
       sky.follow(own.x, gy, own.y, engine.pose.dist, nowMs);
@@ -332,6 +337,13 @@ const probe = {
   ink: (k: number): void => post.set({ ink: k }),
   tilt: (k: number): void => post.set({ tilt: k }),
   click: onWorldClick,
+  /** World point → screen px (the canvas's CSS box) + NDC depth; THE TONE PROBE aims by this. */
+  project: (x: number, y: number, z: number): { sx: number; sy: number; z: number } => {
+    const v = new THREE.Vector3(x, y, z).project(engine.camera);
+    return { sx: ((v.x + 1) / 2) * canvas.clientWidth, sy: ((1 - v.y) / 2) * canvas.clientHeight, z: v.z };
+  },
+  /** The ground (with deck lift) under a world point. */
+  heightAt: (x: number, y: number): number => ground.heightAt(x, y),
   /** Step the streamer to completion around the body (all ring chunks painted). */
   settle: (): boolean => {
     if (game.ownEid === null) return false;

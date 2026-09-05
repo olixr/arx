@@ -824,3 +824,65 @@ nothing was minted); geometry 0.2–2.5 MB per ring.
   posts or wind; hung art is baked still.
 - **Hedge 45°** slabs, **diagonal garrison teeth** axis-aligned, **iron
   N–S** full panels — the barrier lane's honest simplifications stand.
+
+### W2 FIXES — the review answered (2026-09-04)
+
+Two reviewers, seventeen findings. Every one was verified on the tree
+before it was touched; the verdicts, with evidence, stand below. The
+harness gained THE TONE PROBE and a `hedge-gate` scene; the shots were
+re-taken after the fixes (`dev/play3d-shots/w2-*.png`).
+
+**Measured, not assumed — THE TONE PROBE.** The one major ("stone and
+garrison faces render washed-out near-white") was checked against the
+PIXELS, not a viewer: `dev/play3dW2.mjs` now projects a known lit
+south face (the family tile nearest the camera with grass to its south
+and a clear line of sight over any nearer crown) to the screen and
+reads the shot's median there against the 2D tone in stops (linear
+luminance). House stone: `#625e67` vs the 2D `#5b5566` = **+0.27
+stop**; rampart ashlar: `#5b5762` vs `#544e61` = **+0.29 stop**. Both
+PASS the one-stop law; the sun rig (sun 2.2 + hemi 2.4 + fill 0.5,
+÷π under three's physical lights) puts a lit south face at ≈ ×0.72
+linear, the 0.18 lift buys that back and a whisper more. The shots
+LOOK paler than they are: the PNGs carry no colour profile and two
+independent decoders (PIL, a pure-Python filter walk) agree with the
+in-page canvas — the wash-out was the viewer's rendering. No double
+lift exists (`garrisonFace` passes 0.14 as its ONLY lift; the amber
+painters' `lambertWash` is theirs). **Rejected with evidence; the probe
+stands as the standing assertion** (`TONE FAILURES:` is printed at the
+end of a run).
+
+**Fixed (all confirmed):**
+
+| finding | fix | proof |
+| --- | --- | --- |
+| bucket bounding sphere = chunk footprint (culled flared awnings / a gatehouse reaching past the chunk) | `structSink` tracks minX/maxX/minZ/maxZ per bucket; the sphere wraps the drained AABB | `structKinds.test` THE BUCKET KNOWS ITS OWN EXTENT |
+| wide-door / hung-run scans truncated at the 1-tile snapshot ring (two chunks disagreeing on a run) | `WallBuilder.far = ctx.world` for the 8-tile scans; garrison `hungRun` reads the live world too | `walls.test` THE RUN REACHES PAST THE RING: a 3-wide door across a 4-tile chunk seam → one leaf key `3,1`, one jamb pair, the whole run's leaf width |
+| gatehouse south merlons coplanar under the pier caps | `merlonsForTile(..., skipS)` bitmask (west/east centre); a length-1 run masks both | — |
+| per-frame allocations in the door layer | `prune` walks the live Map; `keepBuiltChunk` bound once in main3d; `tickDeckLiftMemo(nowMs)` hands the clock in | — |
+| door leaves stale / leaked | every lane is asked every build (an emptied chunk still `setChunk([])`s); `evict` → `doorLeaves.dropChunk`; `dispose` → `registry.clear()`; the posture map forgets doors a rebuild no longer lists | `doors.test` THE POSTURE MAP FORGETS WHAT LEFT |
+| cliff faces emitted twice (heightfield placeholder + curtain) | `HeightfieldInput.faces` implemented; the streamer passes `faces: structures === null` — THE CURTAIN IS THE FACE; the HUD's `cliff faces` reads 0 in play | `w2-terraces-*.png` |
+| a diagonal treated as a run-mate on all four sides (see-through end faces) | `diagMassTouches(mass, dx, dy)` in `continues()` for wall AND garrison; a diagonal's own open edges continue nothing either | `structKinds.test` THE DIAGONAL TOUCHES ONLY TWO EDGES |
+| hedge gate = pillars under a floating arch, stateless | rewritten to the 2D's round-four law: posts at HED_H whose joined edges are CUTS (`hedgeMassAt` continues the mass along the gate's axis), crown slices, a finial ball per post, a timber wicket (three pales, capped rail, brace) swung on `barrierGateOpen` | `barriers.test` hedge exposure; `w2-hedge-gate-*.png` |
+| palisade doubled crown (two crowned flanks 0.24 apart) | THE ONE CROWN: flank cards body-only to the shoulder line (`PALI_BODY_H` 1.28), the pointed silhouette on one centre card | `w2-palisade-low.png` — a single row of points on every run |
+| garrison SE/SW hypotenuse u mirrored | garrison `diagTile` now reads `walls.ts diagShape` (one law, one test) | `walls.test` diagShape |
+| iron gate piers 1.52 (2D: 1.66) | `ironPier(…, hTot)`; gate piers `IRON_GATE_PIER_H` 1.66, run piers 1.52; the card scales with hTot | — |
+| `FENCE_POST_H` / `PALISADE_H` mislabeled | `FENCE_POST_H = 0.92`, `PALI_GATE_POST_H = 1.72`, `IRON_GATE_PIER_H = 1.66`; `docs/play3d-w2-map.md` §2.1 rows corrected (and the doorway row: 1.56 is the opening, `hh` the header) | `structKinds.test` heights |
+| a windowed tile with one exposed face lost its glass; hung art dropped on window tiles | a single-face window gets a half-depth reveal capped by a back plate in the shaded tone, the mullion a hair before the plate; `windowHungRef` composites the hung detail over the window on the south face | `w2-interiors-*.png` |
+| raised portcullis = floating blobs | bars 0.09 tiles at a 0.24 pitch (`GAR_PORTCULLIS_BAR_W`), drop 0.24 | `w2-curtain-gate-low.png` — a continuous toothed edge |
+
+**Caught by the shots, not the reviewers:** the first cut of the hedge
+wicket hinged mid-tile inside the full-plan posts, so an open leaf
+swung INTO the post mass and was buried (`w2-hedge-wicket-low.png`
+showed an empty gap). It now hinges at the post's outer corner — shut
+in the hedge's own face plane, open in the air (the `hedge-wicket`
+scene stands the body off the gate tile so the gap is seen).
+
+**Also in this band:** `probe.project(x,y,z)` / `probe.heightAt` on
+`window.__play3d` (the tone probe aims by them); `cliffFaces` eps
+comment restated (the lean now fights nothing — kept as a hairline
+stand-off).
+
+**Gaps that stand:** the tone probe samples one face per scene (a
+timber probe would need the skin's own tone — wood varies by skin);
+the hedge gate's vertical form goes finial-less (as the 2D's does); a
+length-1 gatehouse is legal but unseen in the world.

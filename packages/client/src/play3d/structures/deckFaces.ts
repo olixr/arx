@@ -232,15 +232,22 @@ export function apronLift(apron: BridgeApron, fx: number, fy: number, lift = DOC
   }
 }
 
-/** The walk-axis memo for per-frame callers, world-keyed with the 2D's 5 s flush (terrain.ts deckLiftMemo pattern). */
-let axisMemoShared = new Map<number, boolean>();
+/**
+ * The walk-axis memo for per-frame callers, world-keyed with the 2D's
+ * 5 s flush (terrain.ts deckLiftMemo pattern). THE CLOCK IS HANDED
+ * IN: the composition root ticks it once per frame (`tickDeckLiftMemo`)
+ * so `deckLiftAt` — called per body per frame through `heightAt` —
+ * never reads the clock itself.
+ */
+const axisMemoShared = new Map<number, boolean>();
 let axisMemoFlushAt = 0;
-function sharedAxisMemo(): Map<number, boolean> {
-  const now = performance.now();
-  if (now - axisMemoFlushAt > 5000) {
-    axisMemoShared = new Map();
-    axisMemoFlushAt = now;
+export function tickDeckLiftMemo(nowMs: number): void {
+  if (nowMs - axisMemoFlushAt > 5000) {
+    axisMemoShared.clear();
+    axisMemoFlushAt = nowMs;
   }
+}
+function sharedAxisMemo(): Map<number, boolean> {
   return axisMemoShared;
 }
 

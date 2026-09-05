@@ -5,7 +5,7 @@ import { WOOD_SKINS } from '../../render/woodSkins.js';
 import type { InteriorMap } from '../../render/interiors.js';
 import type { WorldSource3D } from '../world.js';
 import type { FaceAtlas, FaceRef } from './faceAtlas.js';
-import { ELEV_H, gridSampler, scanChunkStructs, type StructSampler } from './structKinds.js';
+import { ELEV_H, gridSampler, scanChunkStructs, snapshotWithBorder, type StructSampler } from './structKinds.js';
 import { StructSink } from './structSink.js';
 import type { StubHost } from './stubHost.js';
 import type { StructBuildCtx } from './structures.js';
@@ -41,17 +41,24 @@ function fakeAtlas(): FaceAtlas & { keys: string[] } {
 }
 
 /** A build context over an authored grid inside chunk (0,0); `inside` marks room tiles. */
-function ctxOver(rows: ReadonlyArray<ReadonlyArray<number>>, opts?: { detail?: ReadonlyArray<ReadonlyArray<number>>; inside?: (tx: number, ty: number) => boolean; height?: (wx: number, wy: number) => number }): StructBuildCtx & { atlas: FaceAtlas & { keys: string[] } } {
-  const sampler: StructSampler = gridSampler(rows, { detail: opts?.detail });
-  const scan = scanChunkStructs(sampler, 0, 0, 32, ELEV_H);
+function ctxOver(
+  rows: ReadonlyArray<ReadonlyArray<number>>,
+  opts?: { detail?: ReadonlyArray<ReadonlyArray<number>>; inside?: (tx: number, ty: number) => boolean; height?: (wx: number, wy: number) => number; chunk?: { cx: number; size: number } },
+): StructBuildCtx & { atlas: FaceAtlas & { keys: string[] } } {
+  // The grid is THE WORLD; a `chunk` builds through the bordered snapshot (as the streamer does).
+  const grid: StructSampler = gridSampler(rows, { detail: opts?.detail });
+  const cx = opts?.chunk?.cx ?? 0;
+  const size = opts?.chunk?.size ?? 32;
+  const sampler: StructSampler = opts?.chunk ? snapshotWithBorder(grid, cx, 0, size, 1) : grid;
+  const scan = scanChunkStructs(sampler, cx, 0, size, ELEV_H);
   const atlas = fakeAtlas();
   const region = { id: 1, tiles: new Set<number>(), wallTiles: new Set<number>(), x0: 0, y0: 0, x1: 0, y1: 0, doorTiles: [], wallMaterial: WS, hasHearth: false, elevLevel: 0, seed: 1 };
   return {
-    world: {} as WorldSource3D,
-    cx: 0,
+    world: { groundAt: grid.groundAt, detailAt: grid.detailAt, elevAt: grid.elevAt } as WorldSource3D,
+    cx,
     cy: 0,
-    size: 32,
-    x0: 0,
+    size,
+    x0: cx * size,
     y0: 0,
     sampler,
     scan,
@@ -244,6 +251,30 @@ test('a wide doorway merges E-W: jambs at the run ends only, a French pair shari
   assert.ok(Math.abs(a!.w - ((2 - 2 * DOOR_JAMB) / 2 - 0.01)) < 1e-9);
   assert.equal(a!.sx, 1, 'west leaf lies east from its hinge');
   assert.equal(b!.sx, -1, 'east leaf lies west');
+});
+
+test('THE RUN REACHES PAST THE RING: a 3-wide doorway straddling a chunk seam is one run in both chunks', () => {
+  doorLeaves.clear();
+  // Chunks of 4: chunk 0 = x 0..3, chunk 1 = x 4..7; the wide door spans x 3..5.
+  const rows = [
+    [G, G, G, G, G, G, G, G],
+    [G, WS, WS, DSW, DSW, DSW, WS, G],
+    [G, G, G, G, G, G, G, G],
+  ];
+  const a = build(ctxOver(rows, { chunk: { cx: 0, size: 4 } }));
+  const b = build(ctxOver(rows, { chunk: { cx: 1, size: 4 } }));
+  // Chunk 0 holds the west end (x 3): S header + jamb, N header + jamb, underside, jamb reveal, crown = 7;
+  // walls x1 (S, N, W end, crown = 4) + x2 (S, N, crown = 3 — the door continues the run) = 7.
+  // Chunk 1 holds x 4 (mid: 2 headers + underside + crown = 4) and x 5 (the east end = 7); wall x6 = 4.
+  assert.equal(a.r.quads, 7 + 7);
+  assert.equal(b.r.quads, 4 + 7 + 4);
+  // ONE leaf key, agreed across the seam, each chunk hanging the leaf on its own end jamb.
+  const leaves = [...doorLeaves.states()].map((s) => s.leaf);
+  assert.equal(leaves.length, 2);
+  assert.equal(leaves[0]!.key, leaves[1]!.key);
+  assert.equal(leaves[0]!.key, '3,1');
+  const lw = (3 - 2 * DOOR_JAMB) / 2 - 0.01;
+  for (const l of leaves) assert.ok(Math.abs(l.w - lw) < 1e-9, 'the leaf width is the whole run\'s, not the snapshot\'s');
 });
 
 test('a side doorway stands edge-on: jambs on the E/W faces, the leaf hinged on the north jamb', () => {

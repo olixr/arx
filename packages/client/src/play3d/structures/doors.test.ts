@@ -116,3 +116,28 @@ test('the registry drops evicted chunks under prune and forgets on clear', () =>
   r.setChunk(1, [leaf({ key: 'a', open: true })], 0);
   assert.equal(r.eases.size, 0, 'posture memory was forgotten with clear');
 });
+
+test('THE POSTURE MAP FORGETS WHAT LEFT: a rebuild without a door drops its memory; dropChunk drops the chunk\'s', () => {
+  const r = new DoorLeafRegistry();
+  r.setChunk(1, [leaf({ key: 'a' }), leaf({ key: 'b' })], 0);
+  r.setChunk(2, [leaf({ key: 'c' })], 0);
+  assert.equal(r.postures, 3);
+  // A rebuild of chunk 1 that lists only 'a': 'b' is forgotten, 'a' is kept (a flip would still ease).
+  r.setChunk(1, [leaf({ key: 'a', open: true })], 10);
+  assert.equal(r.postures, 2);
+  assert.ok(r.eases.hot('a', 11), 'a flipped door still eases across the rebuild');
+  // An emptied chunk (no doors at all) still registers — and forgets.
+  r.setChunk(1, [], 20);
+  assert.equal(r.postures, 1);
+  assert.equal(r.count, 1);
+  // A true eviction drops the posture with the leaves.
+  r.dropChunk(2);
+  assert.equal(r.postures, 0);
+  assert.equal(r.count, 0);
+  // prune walks the live map, deleting as it goes.
+  r.setChunk(3, [leaf({ key: 'd' })], 30);
+  r.setChunk(4, [leaf({ key: 'e' })], 30);
+  r.prune((k) => k === 4);
+  assert.equal(r.postures, 1);
+  assert.equal([...r.states()][0]!.leaf.key, 'e');
+});

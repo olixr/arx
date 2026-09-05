@@ -177,6 +177,15 @@ export function diagShape(mass: 'NE' | 'NW' | 'SE' | 'SW'): { tri: ReadonlyArray
 class WallBuilder {
   private readonly sink: StructSink;
   private readonly sampler: StructSampler;
+  /**
+   * THE RUN REACHES PAST THE RING: wide doorways and merged hung art
+   * scan up to 8 tiles along the wall, further than the 1-tile
+   * bordered snapshot answers — so those scans read the LIVE world
+   * (as garrison gate runs do) and two chunks sharing a run agree on
+   * its extent (one jamb pair, one leaf key, one pennant index). The
+   * 4-neighbour continuity still reads the snapshot.
+   */
+  private readonly far: StructSampler;
   private readonly host: StubHost;
   private readonly face: FaceEdge = { ax: 0, az: 0, bx: 0, bz: 0, ya: 0, yb: 0, H: 0, nx: 0, nz: 0 };
   private readonly g: Corners = [0, 0, 0, 0];
@@ -191,6 +200,7 @@ class WallBuilder {
   constructor(private readonly ctx: StructBuildCtx) {
     this.sink = ctx.sink;
     this.sampler = ctx.sampler;
+    this.far = ctx.world;
     this.host = ctx.host;
   }
 
@@ -325,6 +335,21 @@ class WallBuilder {
     );
   }
 
+  /** THE GLAZED FACE WEARS ITS ART TOO: the window dressing with the wall-hung detail composited over it (the 2D order). */
+  private windowHungRef(mat: WallMaterial, skin: WoodSkin, mergeL: boolean, mergeR: boolean, t: TileStruct, index: number, length: number): FaceRef {
+    const detail = this.sampler.detailAt(t.tx, t.ty);
+    const si = mat === 'wood' ? F.skinIndex(skin) : 0;
+    const key = `wwh/${mat}/${si}/${mergeL ? 1 : 0}${mergeR ? 1 : 0}/${detail}/${index}/${length}`;
+    return this.ctx.atlas.get(key, () =>
+      F.faceSpec(1, WALL_H, (c, w, hs, s) => {
+        F.paintMaterialFace(c, 0, w, hs, s, mat, skin, 'lit', 5, 17);
+        F.paintWindowDressing(c, s, mat, F.tonedSkin(skin, 'lit'), F.matTones(mat, skin, 'lit').face, mergeL, mergeR);
+        aimStubHost(this.host, c, s);
+        F.paintHungDetail(this.host, t.wallHung!, detail, s, false, { index, length }, t.tile);
+      }),
+    );
+  }
+
   private mullionRef(mat: WallMaterial, skin: WoodSkin, mergeL: boolean, mergeR: boolean, spanU: number): FaceRef {
     const si = mat === 'wood' ? F.skinIndex(skin) : 0;
     const key = `mul/${mat}/${si}/${mergeL ? 1 : 0}${mergeR ? 1 : 0}/${spanU.toFixed(2)}`;
@@ -408,11 +433,21 @@ class WallBuilder {
     const H = WALL_H;
     const v = this.variant(t.tx, t.ty);
     const cracked = t.tile === Tile.CrackedCaveWall;
-    // The window's axis: through the two exposed opposite faces.
+    // The window's axis: through the two exposed opposite faces —
+    // or, when only ONE face of the pair is exposed (a party wall, a
+    // thick mass), THE LIGHT STILL SHOWS on that face: a shallow reveal
+    // half a tile deep, capped by a back plate in the shaded tone (the
+    // 2D paints the window whenever the south face is open).
     let axis: 'NS' | 'EW' | null = null;
+    let single: Side | null = null;
     if (t.isWindow) {
       if (!t.runS && !t.runN) axis = 'NS';
       else if (!t.runE && !t.runW) axis = 'EW';
+      else if (!t.runS) single = 'S';
+      else if (!t.runN) single = 'N';
+      else if (!t.runE) single = 'E';
+      else if (!t.runW) single = 'W';
+      if (single) axis = single === 'S' || single === 'N' ? 'NS' : 'EW';
     }
     const sillMix = t.wallHung?.kind === 'sill' ? (t.wallHung.mix ?? 0) : -1;
     const sameWin = (dx: number, dy: number): boolean => this.sampler.groundAt(t.tx + dx, t.ty + dy) === t.tile;
@@ -420,17 +455,23 @@ class WallBuilder {
     const mergeE = axis === 'NS' && sameWin(1, 0);
     const mergeN = axis === 'EW' && sameWin(0, -1);
     const mergeS = axis === 'EW' && sameWin(0, 1);
-    const hung = t.wallHung !== null && t.wallHung.kind !== 'sill' && !t.runS && axis === null;
+    // Hung art rides the south face whether or not it is glazed (the 2D hangs over the window).
+    const hung = t.wallHung !== null && t.wallHung.kind !== 'sill' && !t.runS;
     for (const side of SIDES) {
       if (runOn(t, side)) continue;
       const f = sideFace(side, t.tx, t.ty, g, H, this.face);
       const tone: F.FaceToneKind = side === 'S' ? 'lit' : 'shaded';
-      const onAxis = axis === 'NS' ? side === 'S' || side === 'N' : axis === 'EW' ? side === 'E' || side === 'W' : false;
+      const onAxis = single ? side === single : axis === 'NS' ? side === 'S' || side === 'N' : axis === 'EW' ? side === 'E' || side === 'W' : false;
       if (onAxis) {
         // Face-local merge flags: left/right as seen from outside.
         const mergeL = side === 'S' ? mergeW : side === 'N' ? mergeE : side === 'E' ? mergeS : mergeN;
         const mergeR = side === 'S' ? mergeE : side === 'N' ? mergeW : side === 'E' ? mergeN : mergeS;
-        const ref = this.windowRef(mat, skin, tone, mergeL, mergeR, sillMix);
+        let ref = this.windowRef(mat, skin, tone, mergeL, mergeR, sillMix);
+        if (side === 'S' && hung) {
+          const { index, length } = this.hungRun(t);
+          ref = this.windowHungRef(mat, skin, mergeL, mergeR, t, index, length);
+          this.hung++;
+        }
         const [u0, u1] = windowSpan(mergeL, mergeR);
         const v0 = F.WINDOW_SILL / H;
         const v1 = F.WINDOW_HEAD / H;
@@ -446,12 +487,17 @@ class WallBuilder {
         this.whole(f, this.faceRef(mat, skin, tone, v, cracked));
       }
     }
-    if (axis) this.windowReveal(t, g, mat, skin, axis, mergeW, mergeE, mergeN, mergeS);
+    if (axis) this.windowReveal(t, g, mat, skin, axis, single, mergeW, mergeE, mergeN, mergeS);
     this.crown(t, g, H, mat, skin);
   }
 
-  /** The reveal's four inner faces + the mullion card, along `axis`. */
-  private windowReveal(t: TileStruct, g: Corners, mat: WallMaterial, skin: WoodSkin, axis: 'NS' | 'EW', mergeW: boolean, mergeE: boolean, mergeN: boolean, mergeS: boolean): void {
+  /**
+   * The reveal's inner faces + the mullion card, along `axis`. A
+   * through window spans the tile; a `single`-face window's reveal
+   * runs from that face to mid-tile and a back plate (shaded face
+   * tone) closes it, the mullion a hair in front of the plate.
+   */
+  private windowReveal(t: TileStruct, g: Corners, mat: WallMaterial, skin: WoodSkin, axis: 'NS' | 'EW', single: Side | null, mergeW: boolean, mergeE: boolean, mergeN: boolean, mergeS: boolean): void {
     this.windows++;
     const base = (g[0] + g[1] + g[2] + g[3]) / 4;
     const y0 = base + F.WINDOW_SILL;
@@ -462,37 +508,59 @@ class WallBuilder {
     f.H = y1 - y0;
     f.ya = y0;
     f.yb = y0;
+    const PLATE = 0.06;
     if (axis === 'NS') {
       const x0 = t.tx + (mergeW ? 0 : F.WINDOW_U0);
       const x1 = t.tx + (mergeE ? 1 : F.WINDOW_U1);
-      this.flatQuad('opaque', rv, x0, t.ty, x1, t.ty + 1, y0, y0, y0, y0, true);
-      this.flatQuad('opaque', rv, x0, t.ty, x1, t.ty + 1, y1, y1, y1, y1, false);
+      // Depth range of the reveal along z.
+      const z0 = single === 'S' ? t.ty + 0.5 : t.ty;
+      const z1 = single === 'N' ? t.ty + 0.5 : t.ty + 1;
+      this.flatQuad('opaque', rv, x0, z0, x1, z1, y0, y0, y0, y0, true);
+      this.flatQuad('opaque', rv, x0, z0, x1, z1, y1, y1, y1, y1, false);
       if (!mergeW) {
-        Object.assign(f, { ax: x0, az: t.ty, bx: x0, bz: t.ty + 1, nx: 1, nz: 0 });
+        Object.assign(f, { ax: x0, az: z0, bx: x0, bz: z1, nx: 1, nz: 0 });
         this.whole(f, rv);
       }
       if (!mergeE) {
-        Object.assign(f, { ax: x1, az: t.ty + 1, bx: x1, bz: t.ty, nx: -1, nz: 0 });
+        Object.assign(f, { ax: x1, az: z1, bx: x1, bz: z0, nx: -1, nz: 0 });
         this.whole(f, rv);
       }
-      // The mullion card mid-wall, seen from the south (u W→E).
-      Object.assign(f, { ax: x0, az: t.ty + 0.5, bx: x1, bz: t.ty + 0.5, nx: 0, nz: 1 });
+      if (single === 'S') {
+        Object.assign(f, { ax: x0, az: z0, bx: x1, bz: z0, nx: 0, nz: 1 });
+        this.whole(f, rv);
+      } else if (single === 'N') {
+        Object.assign(f, { ax: x1, az: z1, bx: x0, bz: z1, nx: 0, nz: -1 });
+        this.whole(f, rv);
+      }
+      // The mullion card mid-wall (or just before the plate), seen from the south (u W→E).
+      const zm = single === 'S' ? z0 + PLATE : single === 'N' ? z1 - PLATE : t.ty + 0.5;
+      Object.assign(f, { ax: x0, az: zm, bx: x1, bz: zm, nx: 0, nz: 1 });
       this.piece('cutout', f, 0, 1, 0, 1, this.mullionRef(mat, skin, mergeW, mergeE, x1 - x0));
     } else {
       const z0 = t.ty + (mergeN ? 0 : F.WINDOW_U0);
       const z1 = t.ty + (mergeS ? 1 : F.WINDOW_U1);
-      this.flatQuad('opaque', rv, t.tx, z0, t.tx + 1, z1, y0, y0, y0, y0, true);
-      this.flatQuad('opaque', rv, t.tx, z0, t.tx + 1, z1, y1, y1, y1, y1, false);
+      const x0 = single === 'E' ? t.tx + 0.5 : t.tx;
+      const x1 = single === 'W' ? t.tx + 0.5 : t.tx + 1;
+      this.flatQuad('opaque', rv, x0, z0, x1, z1, y0, y0, y0, y0, true);
+      this.flatQuad('opaque', rv, x0, z0, x1, z1, y1, y1, y1, y1, false);
       if (!mergeN) {
-        Object.assign(f, { ax: t.tx + 1, az: z0, bx: t.tx, bz: z0, nx: 0, nz: 1 });
+        Object.assign(f, { ax: x1, az: z0, bx: x0, bz: z0, nx: 0, nz: 1 });
         this.whole(f, rv);
       }
       if (!mergeS) {
-        Object.assign(f, { ax: t.tx, az: z1, bx: t.tx + 1, bz: z1, nx: 0, nz: -1 });
+        Object.assign(f, { ax: x0, az: z1, bx: x1, bz: z1, nx: 0, nz: -1 });
+        this.whole(f, rv);
+      }
+      if (single === 'E') {
+        Object.assign(f, { ax: x0, az: z1, bx: x0, bz: z0, nx: 1, nz: 0 });
+        this.whole(f, rv);
+      } else if (single === 'W') {
+        Object.assign(f, { ax: x1, az: z0, bx: x1, bz: z1, nx: -1, nz: 0 });
         this.whole(f, rv);
       }
       // Seen from the east (u S→N): left = south.
-      Object.assign(f, { ax: t.tx + 0.5, az: z1, bx: t.tx + 0.5, bz: z0, nx: 1, nz: 0 });
+      const xm = single === 'E' ? x0 + PLATE : single === 'W' ? x1 - PLATE : t.tx + 0.5;
+      Object.assign(f, { ax: xm, az: z1, bx: xm, bz: z0, nx: 1, nz: 0 });
       this.piece('cutout', f, 0, 1, 0, 1, this.mullionRef(mat, skin, mergeS, mergeN, z1 - z0));
     }
   }
@@ -502,7 +570,8 @@ class WallBuilder {
     const kind = t.wallHung?.kind;
     if (kind !== 'pennant' && kind !== 'tapestry') return { index: 0, length: 1 };
     const d = this.sampler.detailAt(t.tx, t.ty);
-    const member = (x: number): boolean => this.sampler.groundAt(x, t.ty) === t.tile && this.sampler.detailAt(x, t.ty) === d;
+    const far = this.far;
+    const member = (x: number): boolean => far.groundAt(x, t.ty) === t.tile && far.detailAt(x, t.ty) === d;
     let w = 0;
     while (w < 8 && member(t.tx - w - 1)) w++;
     let e = 0;
@@ -569,8 +638,8 @@ class WallBuilder {
     const axis: 'NS' | 'EW' = t.sideDoorway ? 'EW' : 'NS';
     const g = this.corners(t.tx, t.ty);
     const base = this.flat(t.tx, t.ty);
-    const same = (dx: number, dy: number): boolean => this.sampler.groundAt(t.tx + dx, t.ty + dy) === t.tile;
-    // Run extent along the wall (bounded by the snapshot ring).
+    const same = (dx: number, dy: number): boolean => this.far.groundAt(t.tx + dx, t.ty + dy) === t.tile;
+    // Run extent along the wall, read from the live world (THE RUN REACHES PAST THE RING).
     const along: [number, number] = axis === 'NS' ? [1, 0] : [0, 1];
     let before = 0;
     let after = 0;

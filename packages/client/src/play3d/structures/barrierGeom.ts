@@ -239,9 +239,20 @@ export function barrierGateVertical(fam: BarrierFamily, s: StructSampler, tx: nu
 
 // ------------------------------------------------------------- hedge
 
-/** The hedge MASS: straight hedge tiles only (gates open, 45° tiles are slabs). */
-export function hedgeMassAt(s: StructSampler, tx: number, ty: number): boolean {
-  return barrierKindOf('hedge', s.groundAt(tx, ty)) === 'straight';
+/**
+ * The hedge MASS at a tile, asked from a neighbour that stepped (dx,dy)
+ * to reach it: straight hedge tiles always; a GATE continues the mass
+ * along its own axis only — THE GATE IS THE HEDGE, THICKENED AT THE
+ * GAP (barrierArt.ts hedgeGateItem): its posts stand at the run's own
+ * height and plan and the edge meeting a continuing neighbour is a
+ * CUT, so the run flows into its gateposts without a face. Across the
+ * gate's axis (the passage side) it is an opening. 45° tiles are slabs.
+ */
+export function hedgeMassAt(s: StructSampler, tx: number, ty: number, dx = 0, dy = 0): boolean {
+  const k = barrierKindOf('hedge', s.groundAt(tx, ty));
+  if (k === 'straight') return true;
+  if (k !== 'gate' || (dx === 0 && dy === 0)) return false;
+  return barrierGateVertical('hedge', s, tx, ty) ? dx === 0 : dy === 0;
 }
 
 export interface HedgeExposure {
@@ -253,10 +264,10 @@ export interface HedgeExposure {
 
 /** Which sides of a mass tile show a face (the neighbour is not mass). */
 export function hedgeExposure(s: StructSampler, tx: number, ty: number, out: HedgeExposure): HedgeExposure {
-  out.n = !hedgeMassAt(s, tx, ty - 1);
-  out.e = !hedgeMassAt(s, tx + 1, ty);
-  out.s = !hedgeMassAt(s, tx, ty + 1);
-  out.w = !hedgeMassAt(s, tx - 1, ty);
+  out.n = !hedgeMassAt(s, tx, ty - 1, 0, -1);
+  out.e = !hedgeMassAt(s, tx + 1, ty, 1, 0);
+  out.s = !hedgeMassAt(s, tx, ty + 1, 0, 1);
+  out.w = !hedgeMassAt(s, tx - 1, ty, -1, 0);
   return out;
 }
 

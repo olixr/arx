@@ -12,9 +12,11 @@
  *    hinge posts on the tile's boundary and a five-bar leaf that
  *    swings on the tile's own state.
  *  - PALISADE: per edge two flank cards of carved giants (the 2D's
- *    E–W course, both faces) either side of a thin bark top strip, so
- *    the wall has girth from above and crowned points from the side;
- *    a fat junction giant at corners, tees and ends; the gate as two
+ *    E–W course, both faces) cropped at the shoulder line either side
+ *    of a thin bark top strip, and ONE crown card on the edge axis
+ *    carrying the pointed silhouette (two crowned flanks 0.24 apart
+ *    read as a doubled sawtooth from any oblique angle); a fat
+ *    junction giant at corners, tees and ends; the gate as two
  *    towering posts (rope collar, the skull), a lintel box with its
  *    three spikes, double lashed leaves.
  *  - IRON: a granite curb PRISM under every edge (iron never touches
@@ -24,24 +26,29 @@
  *    every corner, tee, end and gate; gate piers wear the orb, the
  *    overthrow spans them, barred leaves swing.
  *  - HEDGE: a VOLUME — the straight mass's faces on EXPOSED sides only
- *    (neighbour not a straight hedge), one crown per tile, and a LOBE
+ *    (neighbour not hedge mass), one crown per tile, and a LOBE
  *    card billowing above every exposed crown edge so the silhouette
  *    reads pillowed from a low camera and the painted crown from a high
  *    one; a 45° hedge is a rotated slab a hair lower than the mass; a
- *    hedge gate is two pillars under a living arch, always open.
+ *    hedge gate is THE HEDGE THICKENED AT THE GAP (the 2D's round-four
+ *    ruling): two posts at the run's own height whose joined edges are
+ *    cuts, a topiary finial on each, and a timber wicket hinged at a
+ *    post's outer corner (it swings clear of the post mass) that
+ *    follows the tile's open/shut state.
  *  - GARRISON rides in garrison.ts (this lane's brief) — see its
  *    ownership note.
  *
  * Heights: every base is `ctx.heightAt` at the element's own foot (a
  * rail between two tiles at different lifts slopes with its ground).
  * The 2D's own heights: fence post 0.92 (drawFencePost s·0.92 — the
- * scaffold's FENCE_POST_H 1.72 is the PALISADE GATE post,
- * barrierArt.ts:905), rails 0.45/0.75, palisade shoulders 1.3–1.62 +
- * points, gate posts 1.72, iron curb 0.15 / spears to 1.41 / piers
- * 1.52 + cap + finial, HED_H 0.95.
+ * structKinds' FENCE_POST_H), rails 0.45/0.75, palisade shoulders
+ * 1.3–1.62 + points, gate posts 1.72 (PALI_GATE_POST_H), iron curb 0.15
+ * / spears to 1.41 / run piers 1.52 + cap + finial, gate piers 1.66
+ * (IRON_GATE_PIER_H), HED_H 0.95.
  */
 import { Tile } from '@arx/shared';
 import { HED_H } from './structKinds.js';
+import type { FaceRef } from './faceAtlas.js';
 import type { StructBuildCtx, StructBuildResult } from './structures.js';
 import type { FaceAtlas } from './faceAtlas.js';
 import type { StubHost } from './stubHost.js';
@@ -51,19 +58,21 @@ import {
   FENCE_H,
   FENCE_LEAF_H,
   FENCE_RAIL_TOP,
-  HEDGE_ARCH_H,
-  HEDGE_ARCH_Y,
+  HEDGE_FINIAL_H,
+  HEDGE_FINIAL_W,
+  HEDGE_GATE_POST_W,
+  HEDGE_GATE_STUB_D,
   HEDGE_LOBE_DROP,
   HEDGE_LOBE_H,
-  HEDGE_PILLAR_H,
-  HEDGE_PILLAR_W,
+  HEDGE_WICKET_H,
   IRON_CURB_H,
   IRON_CURB_W,
   IRON_LEAF_H,
   IRON_OVERTHROW_H,
   IRON_OVERTHROW_Y,
   IRON_PANEL_H,
-  IRON_PIER_CARD_H,
+  IRON_GATE_PIER_H,
+  IRON_PIER_CARD_OVER,
   IRON_PIER_CARD_W,
   IRON_PIER_H,
   IRON_PIER_W,
@@ -90,10 +99,12 @@ import {
   emitCross,
   emitRunBox,
   hedgeExposure,
+  hedgeMassAt,
   leafSwing,
   swingLeafEnd,
   type BarrierFamily,
   type BarrierNode,
+  type BoxExposed,
   type FaceRect,
   type HedgeExposure,
 } from './barrierGeom.js';
@@ -109,6 +120,8 @@ function facesFor(atlas: FaceAtlas, host: StubHost): BarrierFaces {
 
 const swingPt = { x: 0, z: 0 };
 const hedgeEx: HedgeExposure = { n: false, e: false, s: false, w: false };
+/** A hedge gatepost's exposure (module scratch — a build never allocates per post). */
+const postEx: BoxExposed = { n: true, e: true, s: true, w: true, top: true };
 
 function withPage(page: number, r: [number, number, number, number]): FaceRect {
   return { page, u0: r[0], v0: r[1], u1: r[2], v1: r[3] };
@@ -211,8 +224,12 @@ function buildPalisade(ctx: StructBuildCtx, faces: BarrierFaces): void {
       const nx = (-dz / e.len) * (PALI_W / 2);
       const nz = (dx / e.len) * (PALI_W / 2);
       const fu1 = Math.min(1, e.len);
-      emitCard(sink, 'cutout', run, e.ax + nx, e.az + nz, e.bx + nx, e.bz + nz, ya, yb, PALI_CARD_H, 0, fu1);
-      emitCard(sink, 'cutout', run, e.ax - nx, e.az - nz, e.bx - nx, e.bz - nz, ya, yb, PALI_CARD_H, 0, fu1);
+      // THE ONE CROWN: bodies on both flanks, cropped at the shoulder line; the points on a single card down the middle.
+      const body = withPage(run.page, subRect(run, 0, 0, 1, PALI_BODY_H / PALI_CARD_H));
+      const crownCard = withPage(run.page, subRect(run, 0, PALI_BODY_H / PALI_CARD_H, 1, 1));
+      emitCard(sink, 'cutout', body, e.ax + nx, e.az + nz, e.bx + nx, e.bz + nz, ya, yb, PALI_BODY_H, 0, fu1);
+      emitCard(sink, 'cutout', body, e.ax - nx, e.az - nz, e.bx - nx, e.bz - nz, ya, yb, PALI_BODY_H, 0, fu1);
+      emitCard(sink, 'cutout', crownCard, e.ax, e.az, e.bx, e.bz, ya + PALI_BODY_H, yb + PALI_BODY_H, PALI_CARD_H - PALI_BODY_H, 0, fu1);
       emitRunBox(sink, 'opaque', { side: null, end: null, top }, e.ax, e.az, e.bx, e.bz, PALI_W, ya, yb, PALI_BODY_H, false, false);
     }
     if (node.anchor) {
@@ -262,13 +279,14 @@ function palisadeGate(ctx: StructBuildCtx, faces: BarrierFaces, tx: number, ty: 
 
 // -------------------------------------------------------------- iron
 
-/** A grave pier at (cx,cz): plinth, shaft and cap boxes off the pier elevation, the finial a cross. */
-function ironPier(ctx: StructBuildCtx, faces: BarrierFaces, cx: number, cz: number, finial: 'urn' | 'orb'): void {
+/** A grave pier at (cx,cz): plinth, shaft and cap boxes off the pier elevation, the finial a cross. Run piers stand 1.52, gate piers 1.66 (`hTot`). */
+function ironPier(ctx: StructBuildCtx, faces: BarrierFaces, cx: number, cz: number, finial: 'urn' | 'orb', hTot = IRON_PIER_H): void {
   const sink = ctx.sink;
-  const card = faces.ironPier(finial);
+  const card = faces.ironPier(finial, hTot);
   const y0 = ctx.heightAt(cx, cz);
-  const H = IRON_PIER_CARD_H;
+  const H = hTot + IRON_PIER_CARD_OVER;
   const W = IRON_PIER_CARD_W;
+  const PIER_H = hTot;
   const plinthH = 0.16;
   const plinthW = IRON_PIER_W * 1.24;
   const capW = IRON_PIER_W * 1.42;
@@ -279,15 +297,15 @@ function ironPier(ctx: StructBuildCtx, faces: BarrierFaces, cx: number, cz: numb
   const plinth = withPage(card.page, subRect(card, pu0, 0.01, pu1, plinthH / H));
   emitBox(sink, 'opaque', { side: plinth, top: null }, cx - plinthW / 2, cz - plinthW / 2, cx + plinthW / 2, cz + plinthW / 2, y0, y0 + plinthH, ALL_EXPOSED);
   const [su0, su1] = col(IRON_PIER_W);
-  const shaft = withPage(card.page, subRect(card, su0, plinthH / H, su1, IRON_PIER_H / H));
-  emitBox(sink, 'opaque', { side: shaft, top: null }, cx - IRON_PIER_W / 2, cz - IRON_PIER_W / 2, cx + IRON_PIER_W / 2, cz + IRON_PIER_W / 2, y0 + plinthH, y0 + IRON_PIER_H, ALL_EXPOSED);
+  const shaft = withPage(card.page, subRect(card, su0, plinthH / H, su1, PIER_H / H));
+  emitBox(sink, 'opaque', { side: shaft, top: null }, cx - IRON_PIER_W / 2, cz - IRON_PIER_W / 2, cx + IRON_PIER_W / 2, cz + IRON_PIER_W / 2, y0 + plinthH, y0 + PIER_H, ALL_EXPOSED);
   const [cu0, cu1] = col(capW);
-  const cap = withPage(card.page, subRect(card, cu0, IRON_PIER_H / H, cu1, (IRON_PIER_H + capH) / H));
-  emitBox(sink, 'opaque', { side: cap, top }, cx - capW / 2, cz - capW / 2, cx + capW / 2, cz + capW / 2, y0 + IRON_PIER_H, y0 + IRON_PIER_H + capH, ALL_EXPOSED);
+  const cap = withPage(card.page, subRect(card, cu0, PIER_H / H, cu1, (PIER_H + capH) / H));
+  emitBox(sink, 'opaque', { side: cap, top }, cx - capW / 2, cz - capW / 2, cx + capW / 2, cz + capW / 2, y0 + PIER_H, y0 + PIER_H + capH, ALL_EXPOSED);
   const fw = 0.22;
   const [fu0, fu1] = col(fw);
-  const finialRef = withPage(card.page, subRect(card, fu0, (IRON_PIER_H + capH) / H, fu1, 1));
-  emitCross(sink, 'cutout', finialRef, cx, cz, y0 + IRON_PIER_H + capH, fw, H - IRON_PIER_H - capH);
+  const finialRef = withPage(card.page, subRect(card, fu0, (PIER_H + capH) / H, fu1, 1));
+  emitCross(sink, 'cutout', finialRef, cx, cz, y0 + PIER_H + capH, fw, H - PIER_H - capH);
 }
 
 function buildIron(ctx: StructBuildCtx, faces: BarrierFaces): void {
@@ -330,8 +348,8 @@ function buildIron(ctx: StructBuildCtx, faces: BarrierFaces): void {
 function ironGate(ctx: StructBuildCtx, faces: BarrierFaces, tx: number, ty: number, open: boolean): void {
   const sink = ctx.sink;
   const f = gateFrame('iron', ctx, tx, ty, frame);
-  ironPier(ctx, faces, f.p0x, f.p0z, 'orb');
-  ironPier(ctx, faces, f.p1x, f.p1z, 'orb');
+  ironPier(ctx, faces, f.p0x, f.p0z, 'orb', IRON_GATE_PIER_H);
+  ironPier(ctx, faces, f.p1x, f.p1z, 'orb', IRON_GATE_PIER_H);
   const y0 = ctx.heightAt(f.p0x, f.p0z);
   const y1 = ctx.heightAt(f.p1x, f.p1z);
   const yo = Math.max(y0, y1) + IRON_OVERTHROW_Y;
@@ -410,21 +428,92 @@ function buildHedge(ctx: StructBuildCtx, faces: BarrierFaces): void {
       emitCard(sink, 'cutout', lob, ax + nx, az + nz, bx + nx, bz + nz, yl, yl, HEDGE_LOBE_H);
       emitCard(sink, 'cutout', lob, ax - nx, az - nz, bx - nx, bz - nz, yl, yl, HEDGE_LOBE_H);
     } else {
-      // THE LIVING ARCH: two pillars on the boundary under a foliage arch; the passage stays open.
-      const f = gateFrame('hedge', ctx, tx, ty, frame);
-      const fr = faces.hedgeFace(variantAt(181, tx, ty, 12));
-      const hw = HEDGE_PILLAR_W / 2;
-      const capRef = withPage(crown.page, subRect(crown, 0.3, 0.3, 0.7, 0.7));
-      for (const [px, pz] of [
-        [f.p0x, f.p0z],
-        [f.p1x, f.p1z],
-      ] as const) {
-        const py = ctx.heightAt(px, pz);
-        emitBox(sink, 'opaque', { side: fr, top: capRef }, px - hw, pz - hw, px + hw, pz + hw, py, py + HEDGE_PILLAR_H, ALL_EXPOSED);
-      }
-      const ya = Math.max(ctx.heightAt(f.p0x, f.p0z), ctx.heightAt(f.p1x, f.p1z)) + HEDGE_ARCH_Y;
-      emitCard(sink, 'cutout', faces.hedgeArch(), f.p0x, f.p0z, f.p1x, f.p1z, ya, ya, HEDGE_ARCH_H);
+      hedgeGate(ctx, faces, t.tx, t.ty, y0, crown, barrierGateOpen(t.tile));
     }
+  }
+}
+
+/**
+ * THE GATE IS THE HEDGE, THICKENED AT THE GAP (barrierArt.ts
+ * hedgeGateItem, round four — "the towering arch and its inked pillar
+ * towers died as out of scale"): each post is a cushion at the RUN'S
+ * OWN height (HED_H) and plan; the edge that meets a continuing
+ * neighbour is a CUT (no face either side — hedgeMassAt), so the
+ * hedgerow flows straight into its gateposts. A topiary finial ball
+ * crowns each post of an E–W gate (a vertical gate's stubs go bare, as
+ * the 2D's do), and the timber wicket — three pales under a capped
+ * rail — hangs on the posts' inner faces and swings on the tile's own
+ * state (THE TILE IS THE STATE).
+ */
+function hedgeGate(ctx: StructBuildCtx, faces: BarrierFaces, tx: number, ty: number, y0: number, crown: FaceRef, open: boolean): void {
+  const sink = ctx.sink;
+  const s = ctx.sampler;
+  const vertical = barrierGateVertical('hedge', s, tx, ty);
+  const y1 = y0 + HED_H;
+  const yl = y1 - HEDGE_LOBE_DROP;
+  const fr = faces.hedgeFace(variantAt(181, tx, ty, 12));
+  const lob = faces.hedgeLobes(variantAt(71, tx, ty, 8));
+  const sw = leafSwing(open);
+  if (!vertical) {
+    const P = HEDGE_GATE_POST_W;
+    const joinW = hedgeMassAt(s, tx - 1, ty, -1, 0);
+    const joinE = hedgeMassAt(s, tx + 1, ty, 1, 0);
+    // The two posts: west [tx, tx+P], east [tx+1-P, tx+1], full plan.
+    for (const west of [true, false]) {
+      const x0 = west ? tx : tx + 1 - P;
+      const x1 = west ? tx + P : tx + 1;
+      postEx.n = true;
+      postEx.s = true;
+      postEx.w = west ? !joinW : true;
+      postEx.e = west ? true : !joinE;
+      const top = withPage(crown.page, subRect(crown, west ? 0 : 1 - P, 0, west ? P : 1, 1));
+      emitBox(sink, 'opaque', { side: fr, top }, x0, ty, x1, ty + 1, y0, y1, postEx);
+      // Lobes on the outward (N/S) faces, the post's own slice of the card.
+      emitCard(sink, 'cutout', lob, x0, ty + 1, x1, ty + 1, yl, yl, HEDGE_LOBE_H, west ? 0 : 1 - P, west ? P : 1);
+      emitCard(sink, 'cutout', lob, x1, ty, x0, ty, yl, yl, HEDGE_LOBE_H, west ? 1 - P : 0, west ? 1 : P);
+      if (postEx.w) emitCard(sink, 'cutout', lob, x0, ty, x0, ty + 1, yl, yl, HEDGE_LOBE_H);
+      if (postEx.e) emitCard(sink, 'cutout', lob, x1, ty + 1, x1, ty, yl, yl, HEDGE_LOBE_H);
+      emitCross(sink, 'cutout', faces.hedgeFinial(), (x0 + x1) / 2, ty + 0.5, y1, HEDGE_FINIAL_W, HEDGE_FINIAL_H);
+    }
+    // THE WICKET SWINGS CLEAR: one leaf (the 2D's) hinged at the west
+    // post's inner SOUTH corner — shut, it bars the gap in the hedge's
+    // own south face plane; open, it hangs south of the post in the
+    // open air (a mid-tile hinge swung it INTO the full-plan post mass
+    // and buried it).
+    const gapW = 1 - 2 * P - 0.02;
+    const wicket = faces.hedgeWicket(gapW);
+    const hx = tx + P + 0.01;
+    const hz = ty + 1;
+    const e0 = swingLeafEnd(hx, hz, 1, 0, 0, 1, gapW, sw, swingPt);
+    emitCard(sink, 'cutout', wicket, hx, hz, e0.x, e0.z, y0, y0, HEDGE_WICKET_H);
+  } else {
+    const D = HEDGE_GATE_STUB_D;
+    const joinN = hedgeMassAt(s, tx, ty - 1, 0, -1);
+    const joinS = hedgeMassAt(s, tx, ty + 1, 0, 1);
+    // Two run-width stubs cut from the hedge itself: north [ty, ty+D], south [ty+1-D, ty+1].
+    for (const north of [true, false]) {
+      const z0 = north ? ty : ty + 1 - D;
+      const z1 = north ? ty + D : ty + 1;
+      postEx.e = true;
+      postEx.w = true;
+      postEx.n = north ? !joinN : true;
+      postEx.s = north ? true : !joinS;
+      // The crown's v runs north at v1: the north stub samples the top slice.
+      const top = withPage(crown.page, subRect(crown, 0, north ? 1 - D : 0, 1, north ? 1 : D));
+      emitBox(sink, 'opaque', { side: fr, top }, tx, z0, tx + 1, z1, y0, y1, postEx);
+      emitCard(sink, 'cutout', lob, tx + 1, z1, tx + 1, z0, yl, yl, HEDGE_LOBE_H, north ? 1 - D : 0, north ? 1 : D);
+      emitCard(sink, 'cutout', lob, tx, z0, tx, z1, yl, yl, HEDGE_LOBE_H, north ? 0 : 1 - D, north ? D : 1);
+      if (postEx.n) emitCard(sink, 'cutout', lob, tx + 1, z0, tx, z0, yl, yl, HEDGE_LOBE_H);
+      if (postEx.s) emitCard(sink, 'cutout', lob, tx, z1, tx + 1, z1, yl, yl, HEDGE_LOBE_H);
+    }
+    // One wicket hinged at the north stub's inner EAST corner (the run's east face plane), barring the gap shut,
+    // swung east into the open — never into the stub.
+    const gap = 1 - 2 * D - 0.02;
+    const wicket = faces.hedgeWicket(gap);
+    const hx = tx + 1;
+    const hz = ty + D + 0.01;
+    const e0 = swingLeafEnd(hx, hz, 0, 1, 1, 0, gap, sw, swingPt);
+    emitCard(sink, 'cutout', wicket, hx, hz, e0.x, e0.z, y0, y0, HEDGE_WICKET_H);
   }
 }
 
