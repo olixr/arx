@@ -3,7 +3,7 @@ import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
-import { Detail, TILE_SKIP, Tile, chestInfo } from '@arx/shared';
+import { Detail, TILE_SKIP, Tile, chestInfo, isSolidTile } from '@arx/shared';
 import { DANGER_LAWS } from '../danger.js';
 import { FRONTIER } from '../frontier.js';
 import { AUTHORED_GEOGRAPHY, roadBearingAt } from '../geography.js';
@@ -11,7 +11,7 @@ import { NPCS } from '../npcs.js';
 import type { PrefabDef } from '../maps/prefab.js';
 import { AUTHORED_POI_DEFS, POI_DEFS } from './defs.js';
 import { CLAIM_MARKS_MAX, claimMarkOf, declareInfluence, expandInfluence, familyVocabOf } from './influence.js';
-import { POI_PREFABS } from './prefabs.js';
+import { K3_SKETCHES, POI_PREFABS } from './prefabs.js';
 import { validatePoiDef } from './validate.js';
 
 const DEFS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'defs');
@@ -1114,18 +1114,43 @@ test('THE MARKS: influence plants each people\'s claim at the trailheads, and th
   assert.equal(familyVocabOf('poi_burnt_steading'), 'ruin');
   assert.equal(familyVocabOf('poi_broken_barrow'), 'wild');
 
-  // THE RUIN and THE BLIGHT vocabs: ash and timber for a burning; the
-  // gloom's cold-light word until band 4 — and never a K0 stub id in a
-  // live territory, never the neutral hedgerow.
+  // THE RUIN and THE BLIGHT vocabs (K3/K4 THE VOCAB): ash, timber and
+  // the fight's litter for a burning; the gloom keyed to its OWN ids —
+  // and never the neutral hedgerow, never a living campfire.
   const ruin = expandInfluence(declareInfluence(mk('poi_test_vocab_ruin'), { vocab: 'ruin' }));
   assert.ok(count(ruin, Tile.AshHeap) + count(ruin, Tile.CharredBeam) > 0, 'ruin: no ash or timber on the verge');
+  assert.ok(count(ruin, Tile.FieldLitter) > 0, 'ruin: the fight at the door left no litter (K3 joins the roll)');
   assert.equal(count(ruin, Tile.BerryBush), 0, 'ruin: the neutral hedgerow leaked in');
   assert.equal(count(ruin, Tile.Campfire), 0, 'ruin: a living campfire on a burnt verge');
   const blight = expandInfluence(declareInfluence(mk('poi_test_vocab_blight'), { vocab: 'blight' }));
-  assert.ok(count(blight, Tile.GlowShroom) > 0, 'blight: no cold light on the verge');
-  for (const stub of [Tile.GloomStone, Tile.CreepRoot, Tile.FoulPool, Tile.DeadTree, Tile.CharredStump, Tile.SpoilHeap, Tile.FieldLitter]) {
-    assert.equal(count(ruin, stub) + count(blight, stub), 0, `${Tile[stub]} is a K3/K4 id — it must stay out of the roll until its band lands`);
+  assert.ok(count(blight, Tile.GloomStone) + count(blight, Tile.CreepRoot) > 0, 'blight: the gloom is not keyed to its own ids');
+  assert.equal(count(blight, Tile.Stump), 0, 'blight: a cut stump is a feller\'s word, not the gloom\'s');
+  assert.equal(count(blight, Tile.BonePile), 0, 'blight: bones are the den\'s word, not the gloom\'s');
+  // Sick water and a dead crop are PLACED by the hand that drained the
+  // pond and tilled the field — never rolled as litter on any verge.
+  for (const placed of [Tile.FoulPool, Tile.CropBlighted]) {
+    assert.equal(count(ruin, placed) + count(blight, placed), 0, `${Tile[placed]} is placed, never rolled`);
   }
+  // THE DIGS: the spoil heap joins the rubble (K4, family C).
+  const digs = expandInfluence(declareInfluence(mk('poi_test_vocab_digs'), { vocab: 'digs' }));
+  assert.ok(count(digs, Tile.SpoilHeap) > 0, 'digs: the verge is not what they threw out of the ground');
+  // THE FIELD and THE DISPLACED (K3, families B and F): the fight's
+  // leavings, and the runners' — neither with a mark, neither with the
+  // wild's berry hedge; the displaced cook on an ember bed, never a
+  // campfire.
+  const field = expandInfluence(declareInfluence(mk('poi_test_vocab_field'), { vocab: 'field' }));
+  assert.ok(count(field, Tile.FieldLitter) > 0, 'field: no litter on the verge');
+  assert.equal(count(field, Tile.BerryBush), 0, 'field: the hedgerow round a battlefield');
+  assert.equal(count(field, Tile.Campfire) + count(field, Tile.EmberBed), 0, 'field: nobody stayed to light a fire');
+  const displaced = expandInfluence(declareInfluence(mk('poi_test_vocab_displaced'), { vocab: 'displaced' }));
+  assert.ok(count(displaced, Tile.Crate) + count(displaced, Tile.Bedroll) + count(displaced, Tile.Barrel) > 0, 'displaced: nothing set down on the verge');
+  assert.equal(count(displaced, Tile.Campfire), 0, 'displaced: a campfire — the plan says ember bed, never');
+  assert.equal(count(displaced, Tile.BerryBush), 0, 'displaced: the hedgerow');
+  for (const v of [field, displaced, blight]) {
+    for (const m of MARKS) assert.equal(count(v, m), 0, `${v.id}: the dead, the displaced and the gloom claim nothing (${Tile[m]})`);
+  }
+  assert.equal(familyVocabOf('poi_field_after'), 'field');
+  assert.equal(familyVocabOf('poi_muster_ground'), 'displaced');
 
   // THE SHELF: the family read reaches the shipped prefabs — the
   // Legion's yards fly the square, the digs the tally, the Company's
@@ -1237,5 +1262,188 @@ test('THE ROAD-FAITH LAW: every site whose cues or sketches fly LampCairn is pin
   for (const def of POI_DEFS.values()) {
     const rungs = def.boldness?.stages.flatMap((st) => st.scatter ?? []) ?? [];
     assert.ok(!rungs.some((r) => r.tile === 'LampCairn'), `${def.id}: a boldness rung lights a lamp cairn — a bolder camp is not a road`);
+  }
+});
+
+// Every people's glyph (plan §2's Mark column): the K3 lane plants none
+// of them — the field, the displaced and the gloom claim nothing.
+const K3_MARKS = [Tile.CharterPost, Tile.LampCairn, Tile.LegionStandard, Tile.BoneTree, Tile.TallyStone, Tile.WardThread, Tile.RedRagStake, Tile.SkullTotem, Tile.BoneMidden, Tile.TideTotem, Tile.PitLamp, Tile.PitLampDark];
+
+// ---- THE FIELD AFTER AND THE DISPLACED (docs/contested-lands-plan.md
+// §6 families B and F, K3 THE VOCAB): the two K3 sketches read as the
+// plan drew them, and the ten defs' cue rows fly the kit by name.
+test('THE FIELD AFTER: open ground where two sides met, the spill under the horse and half the litter, the drag behind the cart', () => {
+  const count = (p: PrefabDef, t: Tile): number => p.ground.reduce((n, v) => n + (v === t ? 1 : 0), 0);
+  const shelf = POI_PREFABS.get('poi_field_after')!;
+  assert.ok(shelf, 'poi_field_after missing from the shelf');
+  const field = K3_SKETCHES.get('poi_field_after')!;
+  assert.ok(field, 'poi_field_after raw sketch missing');
+  assert.ok(shelf.width > field.width && shelf.height > field.height, 'the field took no verge (the field vocab should roll one)');
+  assert.equal(count(field, Tile.FallenBanner), 1, 'the banner down where the line broke');
+  assert.equal(count(field, Tile.BeastBones), 1, 'the horse on its side');
+  assert.equal(count(field, Tile.BrokenCart), 1, 'the cart at the south mouth');
+  assert.equal(count(field, Tile.ArrowPost), 1, "the archers' post on the flank");
+  assert.equal(count(field, Tile.FieldLitter), 8, 'a field, not a skirmish: eight litter tiles at the heart');
+  assert.equal(count(field, Tile.FieldCairn), 2, 'somebody came back for two of them');
+  // And the verge rolls the field vocab — more litter, never a fire.
+  assert.ok(count(shelf, Tile.FieldLitter) > 8, 'the verge rolled no litter');
+  assert.equal(count(shelf, Tile.Campfire) + count(shelf, Tile.EmberBed), 0, 'a fire on the field\'s verge');
+  // No wall, no fire, no camp, no garrison, no strongbox: the field is
+  // the stage; a zone def pins what haunts it.
+  for (const t of [Tile.Campfire, Tile.EmberBed, Tile.Bonfire, Tile.RuinWallStone, Tile.RuinWallWood, Tile.TentHide, Tile.LeanTo]) {
+    assert.equal(count(field, t), 0, `the field stands a ${Tile[t]}`);
+  }
+  assert.equal(shelf.spawns.length, 0, 'the field posts no body of its own');
+  for (const g of shelf.ground) assert.equal(chestInfo(g), null, 'the field keeps no strongbox');
+  // Who met whom is never said: no people's mark on the field, heart
+  // or verge.
+  for (const m of K3_MARKS) assert.equal(count(shelf, m), 0, `the field flies ${Tile[m]} — who met whom is never said`);
+  // THE FLOOR REMEMBERS: the dark spill lies under the horse and under
+  // about half the litter — baked on the detail plane, never a decal
+  // (plan §1 law 8); a spill under EVERY litter tile read as a spotted
+  // floor (the K3/K4 proof) — and the drag furrow runs as one north-
+  // south column that ends at the cart (the furrow bake draws N-S bands).
+  const w = field.width;
+  let cartX = -1;
+  let cartY = -1;
+  let litterN = 0;
+  let litterSpilled = 0;
+  for (let i = 0; i < field.ground.length; i++) {
+    const t = field.ground[i]!;
+    if (t === Tile.BeastBones) {
+      assert.equal(field.detail[i], Detail.DarkSpill, `the horse at ${i % w},${Math.floor(i / w)} lies on clean ground — the spill must lie under it`);
+    }
+    if (t === Tile.FieldLitter) {
+      litterN++;
+      if (field.detail[i] === Detail.DarkSpill) litterSpilled++;
+    }
+    if (t === Tile.BrokenCart) { cartX = i % w; cartY = Math.floor(i / w); }
+  }
+  assert.ok(litterSpilled >= 3 && litterSpilled * 2 <= litterN + 1, `about half the litter carries a spill (${litterSpilled} of ${litterN})`);
+  const furrow: Array<[number, number]> = [];
+  for (let i = 0; i < field.detail.length; i++) if (field.detail[i] === Detail.DragFurrow) furrow.push([i % w, Math.floor(i / w)]);
+  assert.ok(furrow.length >= 3, 'the drag is a run, not a smudge');
+  assert.ok(furrow.every(([x]) => x === cartX), 'the furrow runs in the cart\'s own column (the bake draws north-south bands)');
+  const ys = furrow.map(([, y]) => y).sort((a, b) => a - b);
+  assert.equal(ys[ys.length - 1]! + 1, cartY, 'the furrow ends at the cart — it was dragged here, not from here');
+  for (let k = 1; k < ys.length; k++) assert.equal(ys[k], ys[k - 1]! + 1, 'the drag is unbroken');
+  // Nothing on the field stands on the spill but what belongs there:
+  // no spill wanders under grass with nothing on it.
+  for (let i = 0; i < field.detail.length; i++) {
+    if (field.detail[i] !== Detail.DarkSpill) continue;
+    const t = field.ground[i]!;
+    assert.ok(t === Tile.FieldLitter || t === Tile.BeastBones, `a spill at ${i % w},${Math.floor(i / w)} under ${Tile[t]} — the spill marks where something fell`);
+  }
+});
+
+test('THE MUSTER GROUND: the displaced pitched with their faces south, the fire an ember bed over its pan', () => {
+  const count = (p: PrefabDef, t: Tile): number => p.ground.reduce((n, v) => n + (v === t ? 1 : 0), 0);
+  const shelf = POI_PREFABS.get('poi_muster_ground')!;
+  assert.ok(shelf, 'poi_muster_ground missing from the shelf');
+  // The sketch's own word is read off the raw sketch; the verge is the
+  // displaced vocab's roll (one more household under a lean-to, a
+  // pocket fire that is an ember bed) and answers on the shelf's copy.
+  const muster = K3_SKETCHES.get('poi_muster_ground')!;
+  assert.ok(muster, 'poi_muster_ground raw sketch missing');
+  assert.ok(shelf.width > muster.width && shelf.height > muster.height, 'the muster ground took no verge');
+  assert.equal(count(muster, Tile.LeanTo), 2);
+  assert.equal(count(muster, Tile.Bedroll), 3);
+  assert.equal(count(muster, Tile.BelongingsCart), 1);
+  assert.equal(count(muster, Tile.FieldCot), 2);
+  assert.equal(count(muster, Tile.WaterTrough), 1);
+  assert.equal(count(muster, Tile.Signpost), 1, 'one plain post at the road mouth');
+  assert.equal(count(muster, Tile.CrateGoods), 1, "the household's goods beside the cart");
+  assert.equal(count(muster, Tile.EmberBed), 1, 'one cooking fire, banked');
+  assert.equal(count(shelf, Tile.Campfire) + count(shelf, Tile.Bonfire), 0, 'never a campfire, heart or verge (plan §7.3)');
+  assert.equal(count(shelf, Tile.TreePine), 0, "'j' is the trough here, never the pine");
+  assert.equal(count(shelf, Tile.HangingSign), 0, "'i' is the plain post here, never the hanging sign");
+  assert.equal(shelf.spawns.length, 0, 'a haven\'s actors stand here by def; the sketch posts nobody');
+  for (const g of shelf.ground) assert.equal(chestInfo(g), null, 'they own what is on the cart and nothing else');
+  for (const m of K3_MARKS) assert.equal(count(shelf, m), 0, `the displaced fly ${Tile[m]} — they claim nothing`);
+  const w = muster.width;
+  for (let i = 0; i < muster.ground.length; i++) {
+    const t = muster.ground[i]!;
+    if (t === Tile.LeanTo) {
+      // Open face SOUTH: the cell below a lean-to is never a solid.
+      const south = muster.ground[i + w];
+      assert.ok(south !== undefined && south !== TILE_SKIP && !isSolidTile(south), `lean-to at ${i % w},${Math.floor(i / w)}: its open face is blocked by ${south === undefined ? 'the edge' : Tile[south]}`);
+    }
+    if (t === Tile.EmberBed) assert.equal(muster.detail[i], Detail.Ash, 'the ember bed sits over its ash pan (K1 grammar)');
+  }
+  // The verge's lean-tos keep the law too: the influence roll puts a
+  // pocket piece on dirt inside its worked patch, never with a solid
+  // pressed against its south face.
+  const sw = shelf.width;
+  for (let i = 0; i < shelf.ground.length; i++) {
+    if (shelf.ground[i] !== Tile.LeanTo) continue;
+    const south = shelf.ground[i + sw];
+    assert.ok(south === undefined || south === TILE_SKIP || !isSolidTile(south), `verge lean-to at ${i % sw},${Math.floor(i / sw)}: its open face is blocked by ${south === undefined ? 'the edge' : Tile[south]}`);
+  }
+});
+
+test('THE VOCAB CUES: the ten defs fly the field, the displaced, the stripped land and the spoil by name, within their ceilings', () => {
+  const rows = (id: string): Map<string, number> => {
+    const def = POI_DEFS.get(id);
+    assert.ok(def, `${id} missing from the registry`);
+    const m = new Map<string, number>();
+    for (const r of def.cues?.scatter ?? []) {
+      assert.equal(typeof Tile[r.tile as keyof typeof Tile], 'number', `${id}: scatter '${r.tile}' is not a Tile`);
+      m.set(r.tile, (m.get(r.tile) ?? 0) + r.count);
+    }
+    return m;
+  };
+  // THE DEAD-FAMILY RUINS fly the field after: litter, a cairn or two,
+  // the horse — at most two of each (a cue, not a dump), and the
+  // muster (the field where the muster died) flies all three.
+  for (const id of ['dead_muster', 'greatkeep_ruin', 'forest_ruin', 'watchtower_ruin']) {
+    const m = rows(id);
+    assert.ok((m.get('FieldLitter') ?? 0) + (m.get('FieldCairn') ?? 0) + (m.get('BeastBones') ?? 0) >= 2, `${id}: the field after never reached the approach`);
+    for (const t of ['FieldLitter', 'FieldCairn', 'BeastBones']) {
+      assert.ok((m.get(t) ?? 0) <= 2, `${id}: flies ${m.get(t)} ${t} (max 2 each)`);
+    }
+    for (const t of ['LeanTo', 'Bedroll', 'BelongingsCart', 'FieldCot']) {
+      assert.equal(m.get(t) ?? 0, 0, `${id}: the displaced camp on a dead field`);
+    }
+    assert.equal(POI_DEFS.get(id)!.family, 'dead', `${id}: not the dead family`);
+  }
+  for (const t of ['FieldLitter', 'FieldCairn', 'BeastBones']) assert.ok(rows('dead_muster').has(t), `dead_muster: does not fly ${t}`);
+  // THE HAVENS' pockets carry the displaced: one lean-to, one bedroll,
+  // one cart each — a family under sacking at the edge of somebody's
+  // safety, never a second haven.
+  for (const id of ['wardens_outpost', 'waystation', 'roadside_hamlet']) {
+    const m = rows(id);
+    assert.ok(POI_DEFS.get(id)!.haven, `${id}: not a haven`);
+    for (const t of ['LeanTo', 'Bedroll', 'BelongingsCart']) {
+      assert.equal(m.get(t), 1, `${id}: flies ${m.get(t) ?? 0} ${t} (want exactly 1)`);
+    }
+    for (const t of ['FieldLitter', 'BeastBones', 'FieldCairn', 'DeadTree', 'CharredStump', 'SpoilHeap']) {
+      assert.equal(m.get(t) ?? 0, 0, `${id}: a haven flies ${t}`);
+    }
+  }
+  // THE STRIPPED LAND: the fellers leave snags and the clamp's stumps.
+  for (const id of ['fellers_camp', 'timber_poachers']) {
+    const m = rows(id);
+    assert.ok((m.get('DeadTree') ?? 0) >= 1, `${id}: no dead standing tree on the verge`);
+    assert.ok((m.get('CharredStump') ?? 0) >= 1, `${id}: no charred stump on the verge`);
+    assert.ok((m.get('DeadTree') ?? 0) <= 2 && (m.get('CharredStump') ?? 0) <= 2, `${id}: the stripped cue is a cue, not a clear-cut`);
+  }
+  // THE DIGS: the spoil heap on the approach, the tally stone STANDING
+  // in the sketch (K2's MUST_STAND law) and never doubled by cue.
+  const digs = rows('kobold_digs');
+  assert.equal(digs.get('SpoilHeap'), 2, 'kobold_digs: the spoil');
+  assert.equal(digs.get('TallyStone') ?? 0, 0, 'kobold_digs: the tally stands in the sketch — a cue would double it');
+  // Every cue row in this lane drops eight tiles or fewer on the
+  // approach (the K2 ceiling), the pre-kit great keep ten.
+  for (const id of ['dead_muster', 'forest_ruin', 'watchtower_ruin', 'wardens_outpost', 'waystation', 'roadside_hamlet', 'fellers_camp', 'timber_poachers', 'kobold_digs']) {
+    const total = [...rows(id).values()].reduce((n, v) => n + v, 0);
+    assert.ok(total <= 9, `${id}: cues.scatter drops ${total} tiles on the approach`);
+  }
+  assert.ok([...rows('greatkeep_ruin').values()].reduce((n, v) => n + v, 0) <= 10, 'greatkeep_ruin: keeps its pre-kit ten');
+  // The K3/K4 defs fly no claim mark by cue that their people do not
+  // own — the two-per-territory SUM law (K2) is held by THE MARKS test
+  // above; this pins that this lane added no glyph at all.
+  for (const id of ['dead_muster', 'greatkeep_ruin', 'forest_ruin', 'watchtower_ruin', 'wardens_outpost', 'waystation', 'roadside_hamlet', 'fellers_camp', 'timber_poachers', 'kobold_digs']) {
+    const m = rows(id);
+    for (const mark of K3_MARKS) assert.equal(m.get(Tile[mark]!) ?? 0, 0, `${id}: this lane flies ${Tile[mark]} — the marks are K2's`);
   }
 });

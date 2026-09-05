@@ -341,6 +341,23 @@ const STORY_TABLES: Record<DungeonTheme, Vignette[]> = {
         { tile: Tile.CharredBeam, role: 'near', opt: true },
       ],
     },
+    {
+      // THE SCARRED LAND (K3, THE FIELD AFTER): the hall where the
+      // garrison met whoever came up the stair — the standard down
+      // where the line broke (the anchor: without it there is no
+      // story), the litter of the fight on both sides of it, the post
+      // that took the archers' misses, and the one cairn they had time
+      // to raise before they had to leave — a hall's fight, never the
+      // cart or the horse (nothing rolls down a stair). Lands on the
+      // ENTRY half: the sally is fought at the door, not at the prize.
+      id: 'field_after', weight: 2, anchor: Tile.FallenBanner, half: 'entry', styles: ['hall'],
+      pieces: [
+        { tile: Tile.FieldLitter, role: 'near' },
+        { tile: Tile.FieldLitter, role: 'beside', opt: true },
+        { tile: Tile.ArrowPost, role: 'near', opt: true },
+        { tile: Tile.FieldCairn, role: 'near', opt: true },
+      ],
+    },
   ],
   warren: [
     {
@@ -437,9 +454,12 @@ const PROP_CAPS: ReadonlyMap<Tile, number> = new Map([
   [Tile.ChainedSkeleton, 5],
   [Tile.BrokenPillar, 5],
   // THE SCARRED LAND: one burning per dungeon reads as a story; three
-  // read as a theme the halls never earned.
+  // read as a theme the halls never earned. One fallen standard is
+  // the fight; a hall floored with them is a flag shop.
   [Tile.CollapsedRoof, 2],
   [Tile.EmberBed, 2],
+  [Tile.FallenBanner, 2],
+  [Tile.FieldCairn, 2],
 ]);
 
 /**
@@ -491,6 +511,11 @@ const PLACED_PROP_TILES: ReadonlySet<Tile> = new Set([
   Tile.EmberBed,
   Tile.AshHeap,
   Tile.CharredBeam,
+  // THE SCARRED LAND (K3 THE FIELD AFTER)
+  Tile.FallenBanner,
+  Tile.FieldLitter,
+  Tile.ArrowPost,
+  Tile.FieldCairn,
 ]);
 
 const FLOORISH: ReadonlySet<Tile> = new Set([Tile.CaveFloor, Tile.DungeonFloor, Tile.CaveRubble]);

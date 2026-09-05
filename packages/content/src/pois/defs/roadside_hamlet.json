@@ -41,7 +41,21 @@
   },
   "cues": {
     "clearing": 3,
-    "approachPath": true
+    "approachPath": true,
+    "scatter": [
+      {
+        "tile": "LeanTo",
+        "count": 1
+      },
+      {
+        "tile": "Bedroll",
+        "count": 1
+      },
+      {
+        "tile": "BelongingsCart",
+        "count": 1
+      }
+    ]
   },
   "signs": [
     {

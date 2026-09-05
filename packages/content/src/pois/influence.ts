@@ -93,28 +93,44 @@ const VOCAB = {
   // great bonfire — an ogre camp reads from a hilltop away.
   ogre: { litter: [Tile.BonePile, Tile.SkullPile, Tile.MeatRack], pocket: [Tile.SkullPile, Tile.MeatSpit, Tile.PlunderSacks], fire: Tile.Bonfire },
   oldstone: { litter: [Tile.CaveRubble, Tile.Rock, Tile.BonePile], pocket: [Tile.PillarStone, Tile.Rock, Tile.CaveRubble] },
-  // THE DIGS: the kobolds' tally stone counts the verge; SpoilHeap
-  // joins the litter roll at K4 (its brush is a K0 stub until then —
-  // a live territory must never fly a stub block).
-  digs: { litter: [Tile.CaveRubble, Tile.Rock], pocket: [Tile.Rock, Tile.CaveRubble, Tile.Barrel], mark: Tile.TallyStone },
+  // THE DIGS: the kobolds' tally stone counts the verge, and the verge
+  // is what they threw out of the ground — the spoil heap (K4, family
+  // C) joins the rubble in the roll and heads every pocket (a pocket
+  // is a trial pit: its spoil beside it, a barrel for the water).
+  digs: { litter: [Tile.CaveRubble, Tile.SpoilHeap, Tile.Rock], pocket: [Tile.SpoilHeap, Tile.CaveRubble, Tile.Barrel], mark: Tile.TallyStone },
   lair: { litter: [Tile.BonePile, Tile.Rock], pocket: [Tile.Rock, Tile.BonePile] },
   roost: { litter: [Tile.BonePile, Tile.Stump], pocket: [Tile.Tree, Tile.BonePile] },
   // THE RUIN (family A, the cold hearth): what a burning leaves on its
   // own verge — ash shovelled out, beams that fell short of the door,
   // and a satellite pocket that is the outbuilding that burned too,
   // its ember bed the night tell (the family's own fire, LEFT
-  // BURNING). FieldLitter joins the roll at K3 (family B); until then
-  // the verge is ash and timber only.
-  ruin: { litter: [Tile.AshHeap, Tile.CharredBeam], pocket: [Tile.CharredBeam, Tile.AshHeap, Tile.CaveRubble], fire: Tile.EmberBed },
-  // THE BLIGHT (family D, the gloom): the ground that stopped. Until
-  // band 4 lands the gloom's brushes, the roll is the world's OWN
-  // cold-light word for it — glowshrooms where nothing else grows,
-  // cut stumps, bones — and the K4 ids (GloomStone 522, CreepRoot 523,
-  // FoulPool 524, DeadTree 520) stay OUT of the roll: they exist and
-  // paint as K0 stub blocks, and a stub in a live territory is a lie.
-  // K4 replaces the roll with [GloomStone, CreepRoot, DeadTree]. No
-  // mark: what was here first claims nothing.
-  blight: { litter: [Tile.GlowShroom, Tile.Stump, Tile.BonePile], pocket: [Tile.GlowShroom, Tile.Rock, Tile.Stump] },
+  // BURNING) — and the field litter (K3, family B): whoever burned it
+  // was fought at the door, and what the fight dropped lies on the
+  // verge with the ash.
+  ruin: { litter: [Tile.AshHeap, Tile.CharredBeam, Tile.FieldLitter], pocket: [Tile.CharredBeam, Tile.AshHeap, Tile.FieldLitter], fire: Tile.EmberBed },
+  // THE FIELD (family B, the field after): open ground where two sides
+  // met. The verge is what the fight dropped — litter, twice over, and
+  // a cairn somebody knocked flat walking through; a pocket is a knot
+  // that stood and died together: the cairn raised over them, their
+  // litter, a post bristling with the archers' misses. No fire (nobody
+  // stayed), no mark (the dead claim nothing).
+  field: { litter: [Tile.FieldLitter, Tile.FieldLitter, Tile.CairnFallen], pocket: [Tile.FieldCairn, Tile.FieldLitter, Tile.ArrowPost] },
+  // THE DISPLACED (family F): the muster ground's verge is what people
+  // set down when they stopped running — a crate, a cask, a bedroll
+  // slept in out past the lean-tos; a pocket is one more household
+  // that pitched apart from the rest, its fire an EMBER BED (a cooking
+  // fire banked by day — never a Campfire, plan §7.3). No mark: the
+  // displaced claim nothing, they are standing on somebody's ground.
+  displaced: { litter: [Tile.Crate, Tile.Bedroll, Tile.Barrel], pocket: [Tile.LeanTo, Tile.Bedroll, Tile.CrateGoods], fire: Tile.EmberBed },
+  // THE BLIGHT (family D, the gloom): the ground that stopped, keyed
+  // to the gloom's own ids (K4): the gloom stone's cold swell, the
+  // creep root that comes back on the hour, the snag that died from
+  // the roots. A pocket is where it is thickest — the stone, the
+  // root, and the world's own cold light beside them. FoulPool and
+  // CropBlighted stay out: sick water and a dead crop are placed by
+  // the hand that drained the pond and tilled the field, never
+  // scattered. No mark: what was here first claims nothing.
+  blight: { litter: [Tile.GloomStone, Tile.CreepRoot, Tile.DeadTree], pocket: [Tile.GloomStone, Tile.CreepRoot, Tile.GlowShroom] },
   // THE SETTLED GROUND: the towns' litter, and the towns' claim — the
   // Charter's survey stake off-road (they measure everything, even
   // what they do not own), the Waykeepers' lamp cairn where a road is
@@ -153,6 +169,11 @@ const VOCAB_OF: ReadonlyArray<[RegExp, InfluenceVocab]> = [
   [/^poi_(ogre)/, 'ogre'],
   [/^poi_(fell|barrow_ring|watchtower|ruin|riftgate|hoargate|champions)/, 'oldstone'],
   [/^poi_(burnt)/, 'ruin'],
+  // The field after and the muster ground (K3): the fight's leavings
+  // and the displaced's — never the wild's hedgerow round a
+  // battlefield (the Legion-yard lesson, above).
+  [/^poi_(field)/, 'field'],
+  [/^poi_(muster)/, 'displaced'],
   [/^poi_(digs)/, 'digs'],
   [/^poi_(lair)/, 'lair'],
   [/^poi_(roost)/, 'roost'],

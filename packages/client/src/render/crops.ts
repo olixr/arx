@@ -32,6 +32,7 @@ import { isCropTile } from '@arx/content';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import { shade } from './tint.js';
 import { windScalarAt } from './grass.js';
+import { SCAR_CHAR } from './props/palette.js';
 import {
   OUTLINE,
   floraModel,
@@ -182,42 +183,90 @@ export function paintPlant(ctx: CanvasRenderingContext2D, m: PlantModel, f: Flor
 
 /** The crop index the blight paints under (past every living crop). */
 const BLIGHT_CROP = 40;
-/** The blight palette: char-violet stalks, ash-grey heads gone soft,
- *  a dark vein at the root. Never a living green, never a warm brown. */
-const BLIGHT_STALK = ['#3a3430', '#4a4340', '#5a5044'] as const;
-const BLIGHT_HEAD = ['#5c5860', '#6e6a70'] as const;
+/** The blight palette (K4 THE GLOOM): SCAR_CHAR stalks in three cold
+ *  steps (back row, front row, the lit west edge), SCAR_GLOOM heads
+ *  painted UNDER the ink at the gloom stone's two plate values with
+ *  a darker underside and one lit top facet — no seed colour, no
+ *  kernel gold, no living green anywhere; the dark vein at the root. */
+const BLIGHT_STALK = [shade(SCAR_CHAR, 2), shade(SCAR_CHAR, 12), shade(SCAR_CHAR, 24)] as const;
+const BLIGHT_HEAD = ['#4a5280', '#5c6899'] as const;
+const BLIGHT_HEAD_UNDER = '#3a4166';
+const BLIGHT_HEAD_LIT = '#6b78a8';
 const BLIGHT_ROOT = '#241f26';
+/** tan 30°: the stalks stand to the knee, then break over at 30°
+ *  from the vertical — the whole row bent one way, the way it fell. */
+const BLIGHT_BEND_X = 0.5; // sin 30°
+const BLIGHT_BEND_Y = 0.866; // cos 30°
 
 /** A wheat-height row grown from the living wheat's grammar (same
- *  hash → same stand), flagged for the blight painter. K4 THE GLOOM
- *  recuts the art; the path and the palette are laid here. */
+ *  hash → same stand), flagged for the blight painter. */
 function growBlighted(variant: number, h: number, rnd: () => number): CropModel {
   const m = growWheat(1, variant, h, rnd);
   return { ...m, crop: BLIGHT_CROP, height: m.height * 0.8 };
 }
 
-/** K0 stub: bowed dark stalks with soft grey heads — every stalk a
- *  squared filled blade (no strokes), the whole row bending on the
- *  one wind field at 0.4 of the living crop's give. */
+/**
+ * THE BLIGHTED ROW. Every stalk a squared filled slab (no strokes):
+ * a straight lower third, then the upper two thirds broken over at
+ * 30° the way the model's lean falls — the whole row bent together,
+ * the heads hung off the tips and drooping further. The one wind
+ * field moves it at 0.4 of the living crop's give (a dead stand is
+ * stiff); nothing bobs after (no lag: dead heads do not nod). Back
+ * row first, then front — two tones give the stand depth; every
+ * feature ≥0.03s.
+ */
 function paintBlighted(ctx: CanvasRenderingContext2D, m: CropModel, f: FloraFrame, wind: number): void {
   const s = f.s;
   const X = (x: number): number => f.bx + x * s;
   const Y = (y: number): number => f.groundY - y * s;
   const bend = wind * 0.4;
-  // The dark vein at the root — the row's tell from the path.
+  // The row fell one way: the majority lean of the stand.
+  const dir = m.heads.reduce((t, hd) => t + hd.lean, 0) >= 0 ? 1 : -1;
+  // The dark vein at the root — the blight in the soil.
   ctx.fillStyle = BLIGHT_ROOT;
   ctx.fillRect(X(-0.36), Y(0.02), s * 0.72, s * 0.04);
-  for (const st of m.heads) {
-    const lean = st.lean + bend * 0.3;
+  const sorted = [...m.heads].sort((a, b) => a.tone - b.tone);
+  for (const st of sorted) {
     const hgt = st.len * 0.8;
-    const w = Math.max(1, s * 0.035);
-    ctx.fillStyle = BLIGHT_STALK[st.tone === 0 ? 0 : 2]!;
-    // A bowed stalk: two squared segments, the upper one leaning.
-    ctx.fillRect(X(st.x0) - w / 2, Y(hgt * 0.5), w, hgt * 0.5 * s);
-    ctx.fillRect(X(st.x0 + lean * 0.5) - w / 2, Y(hgt), w, hgt * 0.5 * s);
-    // The head gone soft: a small grey block hung off the tip.
+    const knee = hgt * 0.36;
+    const upper = hgt - knee;
+    // The tip: 30° over from the knee, plus the wind's give at the
+    // top (the stalk bends a little further the way the wind blows).
+    const tipX = st.x0 + dir * upper * BLIGHT_BEND_X + st.lean * 0.3 + bend * 0.3 * hgt;
+    const tipY = knee + upper * BLIGHT_BEND_Y;
+    const w = s * 0.045;
+    const wt = s * 0.03;
+    const stalk = BLIGHT_STALK[st.tone === 0 ? 0 : 1]!;
+    // The lower third: a squared slab, straight.
+    ctx.fillStyle = stalk;
+    ctx.fillRect(X(st.x0) - w * 0.5, Y(knee), w, knee * s);
+    // The upper two thirds: one quad broken over at the knee.
+    ctx.beginPath();
+    ctx.moveTo(X(st.x0) - w * 0.5, Y(knee));
+    ctx.lineTo(X(st.x0) + w * 0.5, Y(knee));
+    ctx.lineTo(X(tipX) + wt * 0.5, Y(tipY));
+    ctx.lineTo(X(tipX) - wt * 0.5, Y(tipY));
+    ctx.closePath();
+    ctx.fill();
+    // The lit west edge on the front row's knee: a cold square.
+    if (st.tone !== 0) {
+      ctx.fillStyle = BLIGHT_STALK[2]!;
+      ctx.fillRect(X(st.x0) - w * 0.5, Y(knee) - s * 0.015, s * 0.03, s * 0.03);
+    }
+    // The head: a gloom block hung off the tip and drooping on past
+    // it, its underside a step darker, its top the one lit facet.
+    // Three bands, each ≥0.03s where it shows: the lit top facet
+    // (west half), the head body, the darker underside.
+    const hw = s * (0.06 + (st.tone === 0 ? 0 : 0.01));
+    const hh = s * 0.07;
+    const hx = X(tipX) + dir * hw * 0.3;
+    const hy = Y(tipY) - hh * 0.35;
+    ctx.fillStyle = BLIGHT_HEAD_UNDER;
+    ctx.fillRect(hx - hw * 0.5, hy, hw, hh);
     ctx.fillStyle = BLIGHT_HEAD[st.tone === 0 ? 0 : 1]!;
-    ctx.fillRect(X(st.x0 + lean * 0.5) - s * 0.03, Y(hgt) - s * 0.02, s * 0.06, s * 0.05);
+    ctx.fillRect(hx - hw * 0.5, hy, hw, s * 0.04);
+    ctx.fillStyle = BLIGHT_HEAD_LIT;
+    ctx.fillRect(hx - hw * 0.5, hy, hw * 0.5, s * 0.03);
   }
 }
 

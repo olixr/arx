@@ -194,13 +194,23 @@ function golden(
     glows.push({ x: tx + 0.5, y: ty + 0.55, gy: ty + 0.55, z: 0, r: 0.9 * breath, rgb: '255, 122, 42', a: 0.4 * flame * breath });
     lights.push({ x: tx + 0.5, y: ty + 0.55, r: 2.6, rgb: [255, 122, 42], intensity: 0.45 * flame * breath });
   } else if (tile === Tile.GloomStone) {
-    const swell = 0.8 + Math.sin(t * 1.1 + tx * 0.7 + ty * 1.3) * 0.2;
-    glows.push({ x: tx + 0.5, y: ty + 0.42, gy: ty + 0.42, z: 0, r: 0.9 * swell, rgb: '128, 140, 196', a: 0.12 * swell * boost });
-    lights.push({ x: tx + 0.5, y: ty + 0.5, r: 2.6, rgb: [128, 140, 196], intensity: 0.38 * swell });
+    // K4 THE GLOOM (2026-09-04): the stone's swell slowed 1.1 → 0.8Hz
+    // (base 0.82, amp 0.18), the bloom seated at the block's mid-
+    // height (dy 0.42 → 0.3, r 0.85, a 0.14) in SCAR_GLOOM's exact
+    // 127/140/196, the punch 2.6 → 2.4 at 0.36. Still no gate,
+    // non-occluding.
+    const swell = 0.82 + Math.sin(t * 0.8 + tx * 0.7 + ty * 1.3) * 0.18;
+    glows.push({ x: tx + 0.5, y: ty + 0.3, gy: ty + 0.3, z: 0, r: 0.85 * swell, rgb: '127, 140, 196', a: 0.14 * swell * boost });
+    lights.push({ x: tx + 0.5, y: ty + 0.5, r: 2.4, rgb: [127, 140, 196], intensity: 0.36 * swell });
   } else if (tile === Tile.FoulPool) {
-    const swell = 0.78 + Math.sin(t * 0.9 + tx * 1.3 + ty * 0.6) * 0.22;
-    glows.push({ x: tx + 0.5, y: ty + 0.5, gy: ty + 0.5, z: 0, r: 0.8 * swell, rgb: '110, 160, 130', a: 0.1 * swell * boost });
-    lights.push({ x: tx + 0.5, y: ty + 0.5, r: 2.0, rgb: [110, 160, 130], intensity: 0.28 * swell });
+    // K4 THE GLOOM (2026-09-04): the pool's swell slowed 0.9 → 0.6Hz
+    // (base 0.8, amp 0.2), bloom AND punch moved onto the water
+    // (the pan sits 0.2 south of centre: dy 0.5 → 0.62; r 0.75,
+    // a 0.09) in the wash's gloom-teal 104/150/140, the punch
+    // 2.0 → 1.9 at 0.26. No gate, non-occluding.
+    const swell = 0.8 + Math.sin(t * 0.6 + tx * 1.3 + ty * 0.6) * 0.2;
+    glows.push({ x: tx + 0.5, y: ty + 0.62, gy: ty + 0.62, z: 0, r: 0.75 * swell, rgb: '104, 150, 140', a: 0.09 * swell * boost });
+    lights.push({ x: tx + 0.5, y: ty + 0.62, r: 1.9, rgb: [104, 150, 140], intensity: 0.26 * swell });
   } else if (tile === Tile.LampCairn) {
     // K2 fix pass (2026-09-04): the cairn's lamp went onto the flame
     // clock (cold by day — the proof caught a noon halo) and up into

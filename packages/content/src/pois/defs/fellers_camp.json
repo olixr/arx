@@ -27,5 +27,17 @@
       "title": "THE TALLY",
       "lines": ["cut: forty lengths", "still here: forty lengths"]
     }
-  ]
+  ],
+  "cues": {
+    "scatter": [
+      {
+        "tile": "DeadTree",
+        "count": 2
+      },
+      {
+        "tile": "CharredStump",
+        "count": 2
+      }
+    ]
+  }
 }

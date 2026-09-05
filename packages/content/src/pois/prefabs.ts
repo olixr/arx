@@ -186,10 +186,15 @@ export interface Marker {
  * tiny on purpose — a sketch carries a floor mark only where the mark
  * must outlive every decal.
  *   _ leave alone   a ash pan (Detail.Ash)   b bone litter (Detail.Bones)
+ *   s dark spill (Detail.DarkSpill — blood-dark by VALUE, never red)
+ *   d drag furrow (Detail.DragFurrow — runs north-south; string it
+ *     in a column behind the thing that was dragged)
  */
 const DETAIL_LEGEND: Record<string, number> = {
   a: Detail.Ash,
   b: Detail.Bones,
+  s: Detail.DarkSpill,
+  d: Detail.DragFurrow,
 };
 
 export function sketch(
@@ -1612,6 +1617,125 @@ const burntSteading = sketch(
 );
 
 /**
+ * THE FIELD AFTER (THE SCARRED LAND, K3, family B): open ground where
+ * two sides met. No wall, no fire, no camp — a meadow with a trampled
+ * band through it where the lines stood, and what a fight leaves on
+ * that band: the litter (shield halves, a snapped spear, a helm) over
+ * the dark spill that was somebody, the banner down where the line
+ * broke, the horse on its side where it fell, a post bristling with
+ * the archers' misses on the west flank where they ranged, and two
+ * cairns at the east verge — somebody came back for two of them and
+ * had time for no more. The cart at the south mouth was DRAGGED from
+ * where the horse fell toward the road and given up on, overturned:
+ * the furrow between them is the drag, baked (never a decal) in a
+ * north-south column behind the wreck. Who met whom is never said
+ * (plan §1 law 3): the banner's field is hashed from the four-colour
+ * set and reads as no people's dye band. No garrison, no strongbox —
+ * the field is the stage; a zone def pins what haunts it (the dead
+ * family's cues fly its litter on their own approaches). The spill
+ * lies under the horse and under HALF the litter (the pois test holds
+ * it — the first cut laid one under every litter tile and the field
+ * read as a spotted floor): the mark that must last rides the detail
+ * plane, and a spill never lies under clean grass.
+ */
+const fieldAfter = declareInfluence(sketch(
+  'poi_field_after',
+  'The field after',
+  [
+    '_______,,,,,,,_____',
+    '____,,.........,,__',
+    '__,,...l...:..c..,_',
+    '_,....:::::::.....,',
+    '_,.l.::l:n::o:.l..,',
+    '_,...::::l::::.c..,',
+    '_,..i.:::::l:.....,',
+    '_,....l::::::.....,',
+    '_,,....:::l.....,,_',
+    '__,,.....:..w...,__',
+    '___,,..........,,__',
+    '_____,,,,,,,,,,____',
+  ],
+  {},
+  undefined,
+  scarredLand,
+  [
+    '___________________',
+    '___________________',
+    '_______s___________',
+    '___________________',
+    '____________s__s___',
+    '____________d______',
+    '___________sd______',
+    '____________d______',
+    '__________s_d______',
+    '___________________',
+    '___________________',
+    '___________________',
+  ],
+), { vocab: 'field', cap: 40 });
+
+/**
+ * THE MUSTER GROUND (THE SCARRED LAND, K3, family F): the displaced,
+ * pitched on open ground within a haven's reach — what people carry
+ * when they run, set down where they stopped. Two lean-tos on the
+ * north side with their open faces SOUTH (a freestanding prop, not
+ * an awning; the sketch keeps the cell south of each one open —
+ * a bedroll under the lip counts as open, it is where you sleep),
+ * three bedrolls, two field cots by the fire, the fire an EMBER BED
+ * over its ash pan (a cooking fire that is banked by day — never a
+ * Campfire, plan §7.3), the household's cart on the east side with
+ * its goods crate beside it, a trough for whatever they led here,
+ * and one plain post at the road mouth that says only what it says.
+ * No garrison (a haven's actors stand here by def; hostiles never
+ * do), no strongbox: they own what is on the cart and nothing else.
+ * Flies the Scarred Land legend with the plain signpost and the
+ * trough re-voiced locally ('j' shadows the pine — no pine grows on
+ * a muster ground).
+ */
+const musterGround = declareInfluence(sketch(
+  'poi_muster_ground',
+  'Muster ground',
+  [
+    '______,,,,,,,_____',
+    '___,,.........,,__',
+    '__,...^...^....,__',
+    '_,...E.E.:E.....,_',
+    '_,..:::::f::K...,_',
+    '_,.j.::::::K.G..,_',
+    '_,....:::::..W..,_',
+    '__,....:i:.....,__',
+    '___,,..:::...,,___',
+    '_____,,,,,,,,_____',
+  ],
+  {},
+  undefined,
+  { ...scarredLand, i: Tile.Signpost, j: Tile.WaterTrough },
+  [
+    '__________________',
+    '__________________',
+    '__________________',
+    '__________________',
+    '_________a________',
+    '__________________',
+    '__________________',
+    '__________________',
+    '__________________',
+    '__________________',
+  ],
+), { vocab: 'displaced', cap: QUIET_WAYSIDE_CAP });
+
+/**
+ * THE SKETCH'S OWN WORD: the K3 sketches BEFORE the influence law
+ * expands them (the shelf below holds heart + rolled verge, and the
+ * verge's litter roll lands in the heart's transparent corners — so
+ * a count taken off the shelf is the vocab's word as much as the
+ * sketch's). The pois test reads the authored counts and the baked
+ * floor laws (the spill under every litter, the pan under the bed)
+ * off these; the shelf's copies answer for the verge.
+ */
+export const K3_SKETCHES: ReadonlyMap<string, PrefabDef> = new Map([fieldAfter, musterGround].map((p) => [p.id, p]));
+
+/**
  * The tower's standing sibling: door on its hinges, bench swept,
  * cache stocked — and the lamp over the door burning, though the
  * Watch struck this post from the rolls thirty years ago. Somebody
@@ -2925,6 +3049,9 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     watchtowerShelter,
     // THE SCARRED LAND (the contested lands, K1 THE COLD HEARTH):
     burntSteading,
+    // THE FIELD AFTER AND THE DISPLACED (K3, families B and F):
+    fieldAfter,
+    musterGround,
     wayshrineStones,
     wayshrinePool,
     goblinStockade,

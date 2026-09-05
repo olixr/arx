@@ -403,19 +403,30 @@ const SPECS: ReadonlyArray<readonly [Tile, EmitterSpec]> = [
   // The gloom stone: GlowShroom-class — a cold swell, never a
   // flicker, no flame gate, non-occluding (it was here first and it
   // does not keep a clock). The Riftgate apron's palette above
-  // ground: a bruised blue-violet, dimmer than the shroom.
+  // ground: SCAR_GLOOM itself (127, 140, 196), dimmer than the shroom.
+  // K4 THE GLOOM (2026-09-04): slowed to 0.8Hz (the shroom breathes
+  // at 1.4; the stone is older and slower), the bloom seated at
+  // dy 0.3 — the stone's mid-height in ground terms (gloom.ts stands
+  // the block 0.6s over a foot line 0.18 south of centre; the lichen
+  // plates on its cap and east flank are painted COLD and this row
+  // is what lifts them at night) — and the punch pulled in to 2.4 so
+  // the halo stays a stone's, not a lamp's.
   [Tile.GloomStone, {
-    curve: { base: 0.8, terms: [{ hz: 1.1, amp: 0.2, px: 0.7, py: 1.3 }] },
-    glows: [{ dx: 0.5, dy: 0.42, r: 0.9, rRide: true, rgb: '128, 140, 196', a: 0.12 }],
-    lights: [{ dx: 0.5, dy: 0.5, r: 2.6, rgb: [128, 140, 196], intensity: 0.38 }],
+    curve: { base: 0.82, terms: [{ hz: 0.8, amp: 0.18, px: 0.7, py: 1.3 }] },
+    glows: [{ dx: 0.5, dy: 0.3, r: 0.85, rRide: true, rgb: '127, 140, 196', a: 0.14 }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 2.4, rgb: [127, 140, 196], intensity: 0.36 }],
   }],
   // The foul pool: sick water's own cool swell — slower and dimmer
-  // than the stone, a scum-green haze low on the ground. No gate,
-  // never occludes.
+  // than the stone, a gloom-teal haze low on the ground. No gate,
+  // never occludes. K4 THE GLOOM (2026-09-04): 0.6Hz (the slowest
+  // swell in the book — standing water); gloom.ts lays the pan 0.2
+  // south of the tile centre with its pale wash 0.06 north of the
+  // pan, so bloom and punch both sit at dy 0.62 — ON the water, in
+  // the wash's own teal; the punch a wading-depth 1.9.
   [Tile.FoulPool, {
-    curve: { base: 0.78, terms: [{ hz: 0.9, amp: 0.22, px: 1.3, py: 0.6 }] },
-    glows: [{ dx: 0.5, dy: 0.5, r: 0.8, rRide: true, rgb: '110, 160, 130', a: 0.1 }],
-    lights: [{ dx: 0.5, dy: 0.5, r: 2.0, rgb: [110, 160, 130], intensity: 0.28 }],
+    curve: { base: 0.8, terms: [{ hz: 0.6, amp: 0.2, px: 1.3, py: 0.6 }] },
+    glows: [{ dx: 0.5, dy: 0.62, r: 0.75, rRide: true, rgb: '104, 150, 140', a: 0.09 }],
+    lights: [{ dx: 0.5, dy: 0.62, r: 1.9, rgb: [104, 150, 140], intensity: 0.26 }],
   }],
   // The lamp cairn: LampPost-tier warmth in a waykeeper's stone.
   // Flame-gated like every man-made lamp (THE JUDGING LAW: cold by

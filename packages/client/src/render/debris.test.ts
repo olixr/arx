@@ -132,3 +132,89 @@ test('each kind breaks along its own joinery', () => {
   assert.ok(colors('barrel').has('#3a3444'), 'barrel hoops are iron');
   assert.ok(!colors('chair').has('#3a3444'), 'chairs own no ironwork');
 });
+
+/**
+ * THE SCARRED LAND (K3/K4 THE VOCAB): the seven kits K0 stubbed are
+ * real — every one gives up a handful with the shape of the thing
+ * that broke, and the shapes are pinnable: the cart keeps its one
+ * wheel, the ribcage its skull, the tally stone its slabs, the cot its
+ * canvas, the root its tap-root, the post its long top, the thread
+ * its one pale line. Nothing bright: the field's wreckage is wood,
+ * iron, bone and stone.
+ */
+test('THE SCARRED KITS: cart, post, bones, stone, root, thread and cot break with their own shape', () => {
+  const roll = (kind: Parameters<Debris['smash']>[3], seed: number): DebrisChunk[] => {
+    const d = new Debris();
+    d.smash(4, 4, 0, kind, mulberry32(seed));
+    return chunksOf(d);
+  };
+  const rgbHex = /^#[0-9a-f]{6}$/i;
+  const lum = (c: string): number => {
+    const r = parseInt(c.slice(1, 3), 16);
+    const g = parseInt(c.slice(3, 5), 16);
+    const b = parseInt(c.slice(5, 7), 16);
+    return (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+  };
+  for (const kind of ['cart', 'post', 'bones', 'stone', 'root', 'thread', 'cot'] as const) {
+    const a = roll(kind, 31);
+    const b = roll(kind, 32);
+    assert.ok(a.length >= 8, `${kind}: a real handful (${a.length})`);
+    for (const c of a) {
+      assert.ok(rgbHex.test(c.color), `${kind}: colour ${c.color} is not a flat #rrggbb key`);
+      if (c.stripe !== null) assert.ok(rgbHex.test(c.stripe), `${kind}: stripe ${c.stripe}`);
+      assert.ok(c.len > 0 && c.wid > 0, `${kind}: a chunk with no body`);
+      assert.ok(c.vz > 0, `${kind}: burst matter goes up before it comes down`);
+    }
+    // No two breakages match.
+    const sig = (cs: DebrisChunk[]) => cs.map((c) => `${c.len.toFixed(3)}:${c.rot.toFixed(3)}`);
+    assert.notDeepEqual(sig(a), sig(b), `${kind}: two rolls, one wreck`);
+  }
+  // The cart: exactly one wheel (the round piece wide enough to roll),
+  // the two shafts as the longest timbers, and iron in the kit.
+  const cart = roll('cart', 5);
+  assert.equal(cart.filter((c) => c.round && c.wid >= 0.2).length, 1, 'the cart keeps ONE wheel — the other was already gone');
+  assert.ok(cart.filter((c) => !c.round && c.len >= 0.5).length >= 2, 'the two shafts are the longest pieces');
+  assert.ok(cart.some((c) => c.color === '#3a3444'), 'a cart is iron besides wood: the axle and the fittings');
+  // Old bone: every piece pale (the MournerStatue precedent — bone
+  // reads as bone), the skull one round piece that rolls clear.
+  const bones = roll('bones', 6);
+  for (const c of bones) assert.ok(lum(c.color) > 0.55, `bones: ${c.color} is not dry pale bone`);
+  assert.equal(bones.filter((c) => c.round && c.wid >= 0.15).length, 1, 'one skull');
+  assert.ok(bones.filter((c) => !c.round && c.len >= 0.3).length >= 2, 'two long bones');
+  // The tally stone: flat slabs (wide, not round) that keep the counted
+  // face's pale stripe, and grit — stone reads as stone in pieces.
+  const stone = roll('stone', 7);
+  const slabs = stone.filter((c) => !c.round && c.wid >= 0.1);
+  assert.ok(slabs.length >= 2, 'the stone cracks in slabs');
+  for (const s of slabs) assert.equal(s.stripe, '#a39ead', 'the counted face keeps its tally');
+  assert.ok(stone.filter((c) => c.round).length >= 4, 'a spray of grit');
+  // The root: one long tap-root, knotted lengths, pale sap-wood checks.
+  const root = roll('root', 8);
+  assert.ok(root.some((c) => !c.round && c.len >= 0.42), 'the tap-root is the long piece');
+  assert.ok(root.filter((c) => c.round && lum(c.color) > 0.6).length >= 3, 'pale sap-wood where the cut went through');
+  assert.ok(root.filter((c) => !c.round && lum(c.color) < 0.3).length >= 3, 'dark knotted lengths');
+  // The thread: one pale line (the longest thing in the kit, and
+  // thin), two dark pegs, the knots — and nothing bright.
+  const thread = roll('thread', 9);
+  const line = thread.reduce((m, c) => (c.len > m.len ? c : m), thread[0]!);
+  assert.ok(line.wid <= 0.025 && line.color === '#d8cba8', 'the longest piece is the pale line, thin');
+  assert.ok(thread.filter((c) => !c.round && c.wid >= 0.03 && c.wid <= 0.04 && lum(c.color) < 0.35).length >= 2, 'the two driven pegs');
+  assert.ok(thread.filter((c) => c.round).length >= 3, 'the knots it was tied with');
+  assert.ok(thread.length <= 12, 'a thread is a small thing to break');
+  // The cot: the canvas as one big flap (round, wide), the blanket a
+  // second smaller flap, the poles as long timbers, the lashings thin.
+  const cot = roll('cot', 10);
+  const flaps = cot.filter((c) => c.round && c.wid >= 0.15).sort((p, q) => q.wid - p.wid);
+  assert.equal(flaps.length, 2, 'canvas and blanket');
+  assert.ok(flaps[0]!.wid > flaps[1]!.wid, 'the canvas is the bigger flap');
+  assert.ok(cot.filter((c) => !c.round && c.len >= 0.38).length >= 2, 'the two long side-poles');
+  assert.ok(cot.filter((c) => c.wid <= 0.02).length >= 3, 'the lashings');
+  // The post: one long top (with the board's stripe still on it), one
+  // short dark stub, splinters, two nails, three clods of earth.
+  const post = roll('post', 11);
+  const top = post.reduce((m, c) => (c.len > m.len ? c : m), post[0]!);
+  assert.ok(top.len >= 0.48 && top.stripe === '#7a5c36', 'the long top carries what it carried');
+  assert.ok(post.some((c) => !c.round && c.len <= 0.21 && c.len >= 0.16 && c.wid >= 0.075 && lum(c.color) < 0.25), 'the stub, dark with the damp');
+  assert.equal(post.filter((c) => c.color === '#3a3444').length, 2, 'the two nails');
+  assert.equal(post.filter((c) => c.round).length, 3, 'the earth the stub tore out');
+});

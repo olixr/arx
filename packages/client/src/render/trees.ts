@@ -90,6 +90,7 @@ import { Tile, hashCoords } from '@arx/shared';
 import { BLOB_M, unitBlob } from './shapes.js';
 import { shade } from './tint.js';
 import { windScalarAt } from './grass.js';
+import { SCAR_ASH } from './props/palette.js';
 
 export interface TreeBranch {
   /** Polyline base→tip, model tiles (y up from the ground). */
@@ -174,12 +175,26 @@ export interface TreeModel {
   /**
    * THE SCARRED LAND's snag: a standing dead tree (Tile.DeadTree).
    * Grown by the living grammar (species by hash — the bones of a
-   * real oak or birch) and painted with foliage 0 for good: the crown
-   * never paints, the wood stands in dead-bark greys. Every tree lane
-   * (species sheet, shear sway at 0.35 wind, occlusion, shadow) serves
-   * it unchanged; the limbs sway because dead wood still does.
+   * real oak, birch, willow, yew or pine) then BARED (K4, `bareSnag`):
+   * foliage 0 for good, the curtains gone, the clusters shrunk to
+   * anchors (the boughs still land their tips on them; the shadow
+   * pass skips anything under 1.5px), every bough promoted to a
+   * level-0 limb (it casts, it takes edge light — bare wood IS the
+   * silhouette), two or three splintered SPARS where the crown
+   * broke off, grey-brown bark with a pale ash lit facet, moss on
+   * the shaded side. Every tree lane (species sheet, shear sway,
+   * occlusion, shadow) serves it unchanged.
    */
   dead?: boolean;
+  /**
+   * Cantilever amplitude multiplier (default 1). The snag sways at
+   * 0.35: dead wood still moves, but it is stiff. paintTree and
+   * clusterSway apply it, and so do the renderer's live sprite shear
+   * and its shadow cantilever (`m.swayMul ?? 1`, source-pinned in
+   * stripped.test.ts) — the world sways the snag at the same
+   * amplitude the sheet does.
+   */
+  swayMul?: number;
   /** Ground → crown top, tiles. */
   height: number;
   /** Max |x| + r across the crown — shadow and culling. */
@@ -398,12 +413,86 @@ export function speciesOf(tile: Tile, h: number): number {
     : h % 5;
 }
 
-/** THE SCARRED LAND: the snag species by hash — the broadleaf bones
- *  and the yew's column. Never the willow (its curtains ARE foliage)
- *  and never the pine (a dead pine is its plates, a K4 question). */
-const DEAD_SNAG_SPECIES: readonly number[] = [0, 1, 2, 3, 4, 5, 7];
-/** Dead bark: the kit's char-violet greys, never a living brown. */
-const DEAD_BARK = '#4a4046';
+/** THE SCARRED LAND: the snag species by hash — every silhouette the
+ *  living grammar grows. K4 admitted the willow (its arching limbs
+ *  stand bare once the curtains go — the classic drowned-willow
+ *  snag) and the pine (a bare bole with its whorl stubs and a
+ *  splintered spar is the northern snag); `bareSnag` strips both. */
+const DEAD_SNAG_SPECIES: readonly number[] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+/** Dead bark: desaturated toward grey-brown (chroma 17 — weathered
+ *  silver-grey wood, never a living brown and never the kit's char:
+ *  a snag is dead, not burnt). The lit facet is the pale SCAR_ASH. */
+const DEAD_BARK = '#5b524a';
+/** Moss on the snag's shaded side — paintVocab's GY_MOSS verbatim
+ *  (not imported: paintVocab pulls the icon sheet). */
+const DEAD_MOSS = 'rgba(74, 97, 56, 0.5)';
+/** What a snag sheds when the wind shakes it (the renderer's leaf
+ *  shed reads m.leaves): ash-grey bark flakes, never a leaf. */
+const DEAD_LEAVES: [string, string, string] = ['#5e5a60', '#6e6a70', '#7e7a80'];
+/** The snag's cantilever amplitude: stiff dead wood. */
+const DEAD_SWAY = 0.35;
+/** A bared cluster's radius: an anchor for bough tips, under the
+ *  shadow pass's 1.5px floor at every shipping zoom (0.004 tiles
+ *  clears the floor to s = 375px). */
+const DEAD_CLUSTER_R = 0.004;
+
+/**
+ * BARE THE SNAG (K4 THE STRIPPED LAND). Takes a grown living model's
+ * parts and strips them to dead wood in place:
+ *  - curtains emptied (the willow's skirt, the pine's plates: foliage
+ *    that would still cast a shadow);
+ *  - clusters shrunk to anchors (their centres stay: bough tips still
+ *    land on them; the crown mass never paints, never casts);
+ *  - every bough promoted to level 0 — bare limbs ARE the silhouette,
+ *    so they cast and carry the edge light;
+ *  - two or three SPARS splayed off the trunk's top where the crown
+ *    broke away — jagged, tapering to a point, level 0.
+ * Returns the bared height and spread (recomputed off the wood).
+ */
+function bareSnag(
+  branches: TreeBranch[],
+  clusters: TreeCluster[],
+  curtains: TreeCurtain[],
+  H: number,
+  rnd: (i: number) => number,
+): { height: number; spread: number } {
+  curtains.length = 0;
+  for (const c of clusters) c.r = DEAD_CLUSTER_R;
+  for (const b of branches) b.level = 0;
+  const trunk = branches[branches.length - 1]!;
+  const [ax, ay] = trunk.pts[trunk.pts.length - 1]!;
+  const nSpar = 2 + (rnd(1200) < 0.4 ? 1 : 0);
+  const spars: TreeBranch[] = [];
+  for (let k = 0; k < nSpar; k++) {
+    const side = k === 0 ? -1 : k === 1 ? 1 : rnd(1201) < 0.5 ? -1 : 1;
+    const reach = 0.12 + rnd(1202 + k) * 0.16;
+    const rise = 0.18 + rnd(1206 + k) * 0.22;
+    spars.push({
+      pts: [
+        [ax, ay],
+        [ax + side * reach * 0.55, ay + rise * 0.6],
+        [ax + side * reach, ay + rise],
+      ],
+      w0: trunk.w1 * 1.4 + 0.012,
+      w1: 0.012,
+      flare: 0,
+      tip: -1,
+      level: 0,
+    });
+  }
+  // The trunk stays LAST (seam law): the spars go in before it.
+  branches.splice(branches.length - 1, 0, ...spars);
+  let height = H;
+  let spread = 0;
+  for (const b of branches) {
+    for (const [x, y] of b.pts) {
+      height = Math.max(height, y + b.w0);
+      spread = Math.max(spread, Math.abs(x) + b.w0);
+    }
+  }
+  for (const c of clusters) spread = Math.max(spread, Math.abs(c.x) + c.r);
+  return { height, spread };
+}
 
 /**
  * The widest flared trunk base any variant can grow, per tree tile —
@@ -411,7 +500,9 @@ const DEAD_BARK = '#4a4046';
  * the art. Flare widens the very base by up to (1 + flare * 0.4).
  */
 export function maxTrunkBaseRadius(tile: Tile): number {
-  const idxs = tile === Tile.Tree ? [0, 1, 2, 3, 4] : [speciesOf(tile, 0)];
+  // The snag grows every species by hash: its widest base is the
+  // widest of all of them (the collider must stay honest to the art).
+  const idxs = tile === Tile.Tree ? [0, 1, 2, 3, 4] : tile === Tile.DeadTree ? [...DEAD_SNAG_SPECIES] : [speciesOf(tile, 0)];
   let m = 0;
   for (const si of idxs) {
     const def = SPECIES[si]!;
@@ -1147,16 +1238,19 @@ export function treeModel(tile: Tile, h: number): TreeModel {
 
   const dead = tile === Tile.DeadTree;
   const bark = dead ? DEAD_BARK : g.bark;
+  // THE SCARRED LAND's snag: the living form, bared (see bareSnag).
+  const bared = dead ? bareSnag(branches, clusters, curtains, H, rnd) : null;
   const model: TreeModel = {
     species, variant,
     rigid: g.tiers > 0 || undefined,
     dead: dead || undefined,
-    height: Math.max(H, top),
-    spread,
+    swayMul: dead ? DEAD_SWAY : undefined,
+    height: bared ? bared.height : Math.max(H, top),
+    spread: bared ? bared.spread : spread,
     bark,
-    barkLit: shade(bark, bark === '#d7d2c4' ? 10 : 16),
+    barkLit: dead ? SCAR_ASH : shade(bark, bark === '#d7d2c4' ? 10 : 16),
     barkDark: shade(bark, -18),
-    leaves: g.leaves,
+    leaves: dead ? DEAD_LEAVES : g.leaves,
     sides: g.sides,
     branches,
     clusters,
@@ -1675,7 +1769,7 @@ function clusterSway(
   rb: Float32Array,
 ): void {
   const H = m.height;
-  const bendT = wind * 0.055 * H;
+  const bendT = wind * 0.055 * H * (m.swayMul ?? 1);
   const windy = 0.2 + Math.min(1, Math.abs(wind));
   for (let i = 0; i < m.clusters.length; i++) {
     const c = m.clusters[i]!;
@@ -1711,7 +1805,8 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
   const wind = f.windOverride !== undefined ? f.windOverride : windScalarAt(f.wx, f.wy, f.tSec);
   const H = m.height;
   // Cantilever: base planted, crown swaying most (tiles at hf = 1).
-  const bendT = wind * 0.055 * H;
+  // The snag sways at its own stiff amplitude (swayMul 0.35).
+  const bendT = wind * 0.055 * H * (m.swayMul ?? 1);
   const disp = (hf: number): number => bendT * Math.pow(Math.max(0, hf), 1.4);
 
   // --- Per-cluster rustle: each segment of the crown re-samples the
@@ -1838,6 +1933,33 @@ export function paintTree(ctx: CanvasRenderingContext2D, m: TreeModel, f: TreeFr
       m.bark, m.barkLit, m.barkDark,
       b.level === 0,
     );
+  }
+
+  // THE SNAG'S SHADED SIDE (K4): moss takes the flank the west art sun
+  // never reaches — squares on the trunk's east side, low, and at the
+  // root of every limb that reaches east (the "north" limbs of a tree
+  // seen from the south). Squared fills ≥0.03s; the same ink the
+  // graveyard's stones wear.
+  if (m.dead) {
+    ctx.fillStyle = DEAD_MOSS;
+    const sq = Math.max(s * 0.03, w0px * 0.6);
+    for (const u of [0.14, 0.28, 0.44]) {
+      const [x, y] = alongSpine(trunk.pts, u);
+      const hf = Math.min(1, y / H);
+      const w = (trunk.w0 + (trunk.w1 - trunk.w0) * u) * wMul * g;
+      ctx.fillRect(X(x + disp(hf) + w * 0.3), Y(y) - sq * 0.5, sq, Math.max(s * 0.03, sq * (0.7 + ((u * 7) % 1) * 0.6)));
+    }
+    let limbs = 0;
+    for (const b of m.branches) {
+      if (b === trunk || limbs >= 4) continue;
+      const [x0, y0] = b.pts[0]!;
+      const [x1] = b.pts[b.pts.length - 1]!;
+      if (x1 <= x0) continue; // a west-reaching limb keeps the sun
+      const hf = Math.min(1, y0 / H);
+      const msq = Math.max(s * 0.03, sq * 0.8);
+      ctx.fillRect(X(x0 + disp(hf) + b.w0 * wMul * g * 0.2), Y(y0) - msq * 0.4, msq, msq);
+      limbs++;
+    }
   }
 
   // Bark seam ticks along the trunk.

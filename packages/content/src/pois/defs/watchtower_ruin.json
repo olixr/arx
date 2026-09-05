@@ -66,6 +66,14 @@
       {
         "tile": "CharredBeam",
         "count": 1
+      },
+      {
+        "tile": "FieldLitter",
+        "count": 1
+      },
+      {
+        "tile": "FieldCairn",
+        "count": 1
       }
     ]
   },

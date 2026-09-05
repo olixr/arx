@@ -3019,66 +3019,159 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       break;
     }
     case 'root': {
-      // The root parts: dark knotted lengths and pale sap-wood where
-      // the cut went through — and it will be back on the hour.
-      for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.22 + rand() * 0.1, wid: 0.06, color: '#3a3038', stripe: '#57484f', pace: 0.6 });
+      // THE SCARRED LAND K4 — the creep root parts along its knots:
+      // dark gnarled lengths (each with the pale sap-line where the
+      // bark split), one long tap-root that lands heavy and slow, a
+      // scatter of pale sap-wood checks where the cut went through,
+      // clods of the sick ground it was gripping, and a few of the
+      // fine root-hairs that fly farthest and lie lightest. It will be
+      // back on the hour — the kit is honest about how much of it was
+      // under the ground.
+      out.push({ len: 0.42 + rand() * 0.12, wid: 0.075, color: '#2e262e', stripe: '#57484f', pace: 0.5 });
+      for (let i = 0, n = 3 + Math.floor(rand() * 2); i < n; i++) {
+        out.push({ len: 0.18 + rand() * 0.12, wid: 0.06, color: pick(rand, ['#3a3038', '#2e262e', '#453640']), stripe: rand() < 0.7 ? '#57484f' : null, pace: 0.65 });
+      }
+      for (let i = 0, n = 3 + Math.floor(rand() * 2); i < n; i++) {
+        out.push({ len: 0.06 + rand() * 0.03, wid: 0.05, color: pick(rand, ['#c8b8a8', '#b8a494']), round: true, pace: 1.0 });
       }
       for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.06, wid: 0.05, color: '#c8b8a8', round: true, pace: 1.0 });
+        out.push({ len: 0.08 + rand() * 0.04, wid: 0.07, color: pick(rand, ['#3a2f2a', '#2c2420']), round: true, pace: 0.8 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.1 + rand() * 0.05, wid: 0.018, color: '#57484f', pace: 1.3 });
       }
       break;
     }
     case 'thread': {
-      // The thread parts: one pale line and its two pegs.
-      out.push({ len: 0.34, wid: 0.02, color: '#d8cba8', pace: 1.3 });
+      // THE SCARRED LAND K2 — the ward thread parts: ONE pale line
+      // (the slowest-fading thing on the field, it floats), its two
+      // driven pegs, the knots it was tied with — three small pale
+      // rounds — and the pegs' splinters. Nothing bright: the Even
+      // Court's mark carries no light and its wreck carries none.
+      out.push({ len: 0.36 + rand() * 0.08, wid: 0.02, color: '#d8cba8', stripe: '#ece2c8', pace: 1.35 });
+      out.push({ len: 0.18 + rand() * 0.06, wid: 0.02, color: '#d8cba8', pace: 1.25 });
       for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.1, wid: 0.035, color: '#5a4226', pace: 0.8 });
+        out.push({ len: 0.11 + rand() * 0.03, wid: 0.035, color: pick(rand, ['#5a4226', '#4e3820']), stripe: '#7a5c36', pace: 0.8 });
       }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.04, wid: 0.035, color: '#e2d6b6', round: true, pace: 1.1 });
+      }
+      wood('#5a4226', 2, 0.06, 0.1, 0.025);
       break;
     }
     case 'cot': {
-      // Canvas folds, the poles clap out, the pegs scatter.
-      out.push({ len: 0.36, wid: 0.22, color: '#6a5a44', stripe: '#8d7c66', round: true, pace: 1.3 });
-      wood('#5a4226', 3, 0.22, 0.34, 0.05);
+      // THE SCARRED LAND K3 — the field cot lets go the way it was
+      // put up, in reverse: the canvas comes off as one big flap (it
+      // floats, the lightest piece), then the two long side-poles and
+      // the two short cross-poles as timber — one of them the folded
+      // X-leg that lands heavy — the lashings as short pale strings,
+      // the pegs, and the blanket that was on it as a second, smaller
+      // flap in wool.
+      out.push({ len: 0.38 + rand() * 0.08, wid: 0.24, color: '#6a5a44', stripe: '#8d7c66', round: true, pace: 1.3 });
+      out.push({ len: 0.2 + rand() * 0.06, wid: 0.16, color: pick(rand, ['#5d4f42', '#6a5648', '#4e463e']), round: true, pace: 1.2 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.38 + rand() * 0.08, wid: 0.05, color: pick(rand, ['#5a4226', '#6a4e2c']), stripe: '#7a5c36', pace: 0.7 });
+      }
+      out.push({ len: 0.22 + rand() * 0.06, wid: 0.05, color: '#4e3820', pace: 0.8 });
+      out.push({ len: 0.26 + rand() * 0.06, wid: 0.07, color: '#4a3620', stripe: '#5a4226', pace: 0.55 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.08 + rand() * 0.03, wid: 0.018, color: '#c9b892', pace: 1.2 });
+      }
       for (let i = 0; i < 3; i++) {
         out.push({ len: 0.06, wid: 0.03, color: '#4a3a28', pace: 1.0 });
       }
       break;
     }
     case 'cart': {
-      // Boards, the axle, and the one wheel that was left, rolling.
-      wood('#5e4630', 5, 0.22, 0.4, 0.07);
-      out.push({ len: 0.34, wid: 0.05, color: '#3a3444', pace: 0.6 });
-      out.push({ len: 0.22, wid: 0.22, color: '#7d6040', stripe: '#3a3444', round: true, pace: 0.5 });
+      // THE SCARRED LAND K3 — a cart comes apart along its joinery:
+      // the bed boards (long, with the grain stripe), the two shafts
+      // it was pulled by (longest, slowest — they were the last thing
+      // still whole), the axle as one dark iron bar, the ONE wheel
+      // that was left rolling clear (round, heavy, the slowest piece
+      // on the field, iron tyre stripe), two spokes from the wheel
+      // that was already gone, the cargo lashings, and the iron
+      // fittings — the cotter pins and strap ends — that fly farthest
+      // and ring. The kit's iron is what a cart is besides wood.
+      wood('#5e4630', 4 + Math.floor(rand() * 3), 0.24, 0.42, 0.075);
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.5 + rand() * 0.1, wid: 0.06, color: pick(rand, ['#5e4630', '#6e553a']), stripe: '#7d6040', pace: 0.55 });
+      }
+      out.push({ len: 0.36 + rand() * 0.06, wid: 0.05, color: '#3a3444', stripe: '#565064', pace: 0.6 });
+      out.push({ len: 0.24 + rand() * 0.04, wid: 0.24, color: '#7d6040', stripe: '#3a3444', round: true, pace: 0.45 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.16 + rand() * 0.04, wid: 0.035, color: '#6e553a', pace: 0.9 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.1 + rand() * 0.04, wid: 0.02, color: '#a8925e', pace: 1.2 });
+      }
+      for (let i = 0, n = 2 + Math.floor(rand() * 2); i < n; i++) {
+        out.push({ len: 0.07 + rand() * 0.03, wid: 0.025, color: '#3a3444', stripe: '#565064', pace: 1.35 });
+      }
       break;
     }
     case 'post': {
-      // A driven post snaps at the ground line: the long top piece
-      // and the stub, splinters between.
-      out.push({ len: 0.5 + rand() * 0.1, wid: 0.07, color: '#5a4226', stripe: '#7a5c36', pace: 0.65 });
-      out.push({ len: 0.16, wid: 0.07, color: '#4a3620', pace: 0.5 });
-      wood('#5a4226', 3, 0.08, 0.14, 0.03);
+      // THE SCARRED LAND K2/K3 — a driven post snaps at the ground
+      // line: the long top piece (with whatever it carried still on
+      // it — the board's or the fletch's stripe is the top's stripe),
+      // the stub that was in the ground (short, dark with the damp,
+      // slowest), a spray of long splinters from the break, the two
+      // nails that held the board or the crosspiece, and the earth
+      // the stub tore out as it went — three dark clods.
+      out.push({ len: 0.48 + rand() * 0.12, wid: 0.07, color: '#5a4226', stripe: '#7a5c36', pace: 0.65 });
+      out.push({ len: 0.16 + rand() * 0.05, wid: 0.075, color: '#3f2c18', stripe: '#4a3620', pace: 0.45 });
+      wood('#5a4226', 3 + Math.floor(rand() * 2), 0.1, 0.2, 0.03);
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.08 + rand() * 0.03, wid: 0.02, color: '#3a3444', stripe: '#565064', pace: 1.35 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.07, wid: 0.06, color: pick(rand, ['#3a2f2a', '#2c2420']), round: true, pace: 0.8 });
+      }
       break;
     }
     case 'bones': {
-      // Old bone: a few long ones, a handful of short, dry and pale.
-      for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.24 + rand() * 0.1, wid: 0.05, color: '#b5ac91', stripe: '#cfc7ae', pace: 0.8 });
+      // THE SCARRED LAND K3 — old bone: the ribcage on its side comes
+      // apart into ribs (curved lengths read as long thin pieces with
+      // the pale ridge stripe), the long bones — two heavy ones that
+      // land slow — the skull as ONE round piece that rolls clear
+      // (dry, pale, the field's own version of the war camp's dome),
+      // a rattle of vertebrae as small rounds, and the dust of it: a
+      // few chips paler than the rest. Nothing wet: it has been here
+      // a season.
+      const bone = ['#b5ac91', '#cfc7ae', '#a89f84'];
+      for (let i = 0, n = 4 + Math.floor(rand() * 3); i < n; i++) {
+        out.push({ len: 0.2 + rand() * 0.1, wid: 0.04, color: pick(rand, bone), stripe: '#ddd6c0', pace: 0.9 });
       }
-      for (let i = 0; i < 4; i++) {
-        out.push({ len: 0.07, wid: 0.05, color: '#cfc7ae', round: true, pace: 1.1 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.3 + rand() * 0.08, wid: 0.06, color: pick(rand, bone), stripe: '#cfc7ae', pace: 0.6 });
+      }
+      out.push({ len: 0.18 + rand() * 0.04, wid: 0.17, color: '#cfc7ae', stripe: '#e4ddc8', round: true, pace: 1.1 });
+      for (let i = 0, n = 3 + Math.floor(rand() * 3); i < n; i++) {
+        out.push({ len: 0.06, wid: 0.055, color: pick(rand, bone), round: true, pace: 1.0 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.05, wid: 0.035, color: '#e4ddc8', pace: 1.25 });
       }
       break;
     }
     case 'stone': {
-      // A marked stone cracks in slabs and grit — it lands heavy.
+      // THE SCARRED LAND K2 — the tally stone cracks in slabs: two or
+      // three flat faces that land heavy (the counted face keeps its
+      // scratches — the pale stripe is the tally, still legible on the
+      // wreck), a spray of grit, the chips of the notches, and the
+      // one small pale scrap of the chalk they marked it with. Cairns
+      // and markers stay pale (the MournerStatue precedent) — the
+      // stone reads as stone even in pieces.
+      for (let i = 0, n = 2 + Math.floor(rand() * 2); i < n; i++) {
+        out.push({ len: 0.2 + rand() * 0.1, wid: 0.11, color: pick(rand, ['#6b6678', '#787388', '#5f5a6c']), stripe: '#a39ead', pace: 0.45 });
+      }
+      out.push({ len: 0.14 + rand() * 0.04, wid: 0.08, color: '#57525f', pace: 0.55 });
+      for (let i = 0, n = 4 + Math.floor(rand() * 3); i < n; i++) {
+        out.push({ len: 0.05, wid: 0.045, color: pick(rand, ['#57525f', '#6b6678']), round: true, pace: 0.9 });
+      }
       for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.2 + rand() * 0.08, wid: 0.1, color: '#6b6678', stripe: '#8f8a9e', pace: 0.45 });
+        out.push({ len: 0.04, wid: 0.03, color: '#8f8a9e', pace: 1.2 });
       }
-      for (let i = 0; i < 4; i++) {
-        out.push({ len: 0.05, wid: 0.045, color: '#57525f', round: true, pace: 0.9 });
-      }
+      out.push({ len: 0.05, wid: 0.04, color: '#e6e0d2', round: true, pace: 1.3 });
       break;
     }
     case 'rubble': {

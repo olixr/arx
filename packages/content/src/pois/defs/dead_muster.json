@@ -24,10 +24,30 @@
     "clearing": 5,
     "approachPath": true,
     "scatter": [
-      { "tile": "BonePile", "count": 4 },
-      { "tile": "CaveRubble", "count": 2 },
-      { "tile": "AshHeap", "count": 1 },
-      { "tile": "CharredBeam", "count": 2 }
+      {
+        "tile": "FieldLitter",
+        "count": 2
+      },
+      {
+        "tile": "FieldCairn",
+        "count": 2
+      },
+      {
+        "tile": "BeastBones",
+        "count": 1
+      },
+      {
+        "tile": "BonePile",
+        "count": 2
+      },
+      {
+        "tile": "CharredBeam",
+        "count": 1
+      },
+      {
+        "tile": "AshHeap",
+        "count": 1
+      }
     ]
   },
   "signs": [

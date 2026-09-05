@@ -45,6 +45,18 @@
       {
         "tile": "BannerPole",
         "count": 1
+      },
+      {
+        "tile": "LeanTo",
+        "count": 1
+      },
+      {
+        "tile": "Bedroll",
+        "count": 1
+      },
+      {
+        "tile": "BelongingsCart",
+        "count": 1
       }
     ]
   },

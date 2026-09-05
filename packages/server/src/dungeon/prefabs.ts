@@ -45,6 +45,10 @@ import { Tile } from '@arx/shared';
  *   -- THE SCARRED LAND shelf (tiles 505–511, K1 THE COLD HEARTH) --
  *   "  ruin wall (stone crest)   /  charred beam   <  collapsed roof
  *   %  ash heap                  @  ember bed
+ *   -- THE SCARRED LAND shelf (tiles 512–516, K3 THE FIELD AFTER) --
+ *   V  fallen banner (down)      :  field litter (strewn)
+ *   `  arrow post (the fletch)   ]  field cairn (stacked flat)
+ *   }  broken cart (one wheel gone)
  *   (the wall-hung five — & i j ^ ) * — only read walled with rock
  *   due north; stamp them under a '#' row or accept their
  *   freestanding fallback form)
@@ -142,6 +146,16 @@ export const PREFAB_TILES: Record<string, Tile> = {
   '<': Tile.CollapsedRoof,
   '%': Tile.AshHeap,
   '@': Tile.EmberBed,
+  // THE SCARRED LAND (K3, THE FIELD AFTER): the fight's leavings join
+  // the legend so a set-piece can have been fought over — the V is the
+  // banner down, the colon the litter strewn, the backtick the fletch
+  // standing in the post, the bracket the cairn's stacked flats, the
+  // brace the cart with a wheel gone.
+  V: Tile.FallenBanner,
+  ':': Tile.FieldLitter,
+  '`': Tile.ArrowPost,
+  ']': Tile.FieldCairn,
+  '}': Tile.BrokenCart,
 };
 
 /** Horizontal mirror — the cheap doubling of every authored variant. */

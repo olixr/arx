@@ -861,6 +861,10 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.TreeWillow, 0.26],
   [Tile.TreeYew, 0.34],
   [Tile.TreePine, 0.28],
+  // The snag grows every species by hash: its widest base is the
+  // oak's (trees.ts maxTrunkBaseRadius(DeadTree)); a full-block solid
+  // under a drawn trunk was the K4 first cut's gap.
+  [Tile.DeadTree, 0.42],
   [Tile.Rock, 0.4],
   [Tile.RockCopper, 0.46],
   [Tile.RockTin, 0.46],

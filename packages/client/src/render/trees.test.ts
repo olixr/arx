@@ -53,8 +53,9 @@ test('trees stand at proper scale — never stubby, never absurd', () => {
 test('colliders track the drawn trunk base — physics matches the art', () => {
   // tileColliderRadius must stay within a whisker of the fattest
   // flared trunk any variant can grow, so bodies brush past exactly
-  // the wood they see (tight forests stay walkable).
-  for (const tile of TREES) {
+  // the wood they see (tight forests stay walkable). The snag stands
+  // in the same law: a dead tree is a tree.
+  for (const tile of [...TREES, Tile.DeadTree]) {
     const collider = tileColliderRadius(tile);
     assert.ok(collider !== null, `${Tile[tile]} lost its trunk collider`);
     const drawn = maxTrunkBaseRadius(tile);

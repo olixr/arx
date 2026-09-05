@@ -54,7 +54,11 @@
     "scatter": [
       {
         "tile": "CaveRubble",
-        "count": 3
+        "count": 2
+      },
+      {
+        "tile": "SpoilHeap",
+        "count": 2
       }
     ]
   },

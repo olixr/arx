@@ -74,7 +74,7 @@
     "scatter": [
       {
         "tile": "BonePile",
-        "count": 3
+        "count": 2
       },
       {
         "tile": "AshHeap",
@@ -82,6 +82,14 @@
       },
       {
         "tile": "CharredBeam",
+        "count": 1
+      },
+      {
+        "tile": "FieldCairn",
+        "count": 1
+      },
+      {
+        "tile": "BeastBones",
         "count": 1
       }
     ]

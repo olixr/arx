@@ -228,3 +228,38 @@ test('THE PALETTE LAW: a palette row deals an alt color to every entry', () => {
     for (const l of spec.lights) assert.ok(l.altRgb, `${Tile[tile]}: light missing altRgb`);
   });
 });
+
+/**
+ * THE GLOOM PAIR (THE SCARRED LAND K4, 2026-09-04): the gloom stone
+ * and the foul pool are GlowShroom-class — a cool SLOW swell (under
+ * 1Hz, slower than the shroom's 1.4), never a flicker, no gate on
+ * either channel (the gloom does not keep a man's clock), and never
+ * occluding (it was here first; it is not architecture). Cool: blue
+ * leads red on every entry. The painters (gloom.ts) paint the plates
+ * and the wash COLD — these rows are the only glow they ever get.
+ */
+test('THE GLOOM PAIR: a cool slow swell, no gate, non-occluding, dimmer than the shroom', () => {
+  const shroom = tileEmitter(Tile.GlowShroom)!;
+  for (const tile of [Tile.GloomStone, Tile.FoulPool]) {
+    const spec = tileEmitter(tile)!;
+    assert.ok(spec, `${Tile[tile]}: no row`);
+    for (const term of spec.curve.terms) assert.ok(term.hz < 1, `${Tile[tile]}: a swell, not a flicker (hz ${term.hz})`);
+    assert.equal(spec.glows.length, 1, `${Tile[tile]}: one bloom`);
+    assert.equal(spec.lights.length, 1, `${Tile[tile]}: one pool`);
+    const g = spec.glows[0]!;
+    const l = spec.lights[0]!;
+    assert.equal(g.gate, undefined, `${Tile[tile]}: the bloom never rides the flame clock`);
+    assert.ok(!l.flameGated, `${Tile[tile]}: the pool never rides the flame clock`);
+    assert.ok(!l.occlude, `${Tile[tile]}: the gloom never occludes`);
+    assert.ok(l.z === undefined && g.air === undefined, `${Tile[tile]}: on the ground`);
+    const [r, , b] = l.rgb;
+    assert.ok(b > r, `${Tile[tile]}: cool — blue leads red (${l.rgb})`);
+    assert.ok(l.intensity < shroom.lights[0]!.intensity, `${Tile[tile]}: dimmer than the shroom`);
+    assert.ok(l.r <= 2.6, `${Tile[tile]}: a stone's reach, not a lamp's (r ${l.r})`);
+  }
+  // The pool is the slower, dimmer of the two: standing water.
+  const stone = tileEmitter(Tile.GloomStone)!;
+  const pool = tileEmitter(Tile.FoulPool)!;
+  assert.ok(pool.curve.terms[0]!.hz < stone.curve.terms[0]!.hz);
+  assert.ok(pool.lights[0]!.intensity < stone.lights[0]!.intensity);
+});
