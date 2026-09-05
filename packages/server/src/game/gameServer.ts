@@ -22295,6 +22295,7 @@ export class GameServer {
       const chance = evadeChancePct({
         buffPct: buffEvadePct(player.buffs),
         wolfReflexes: this.hasPassive(player, 'wolf_reflexes'),
+        gearPct: player.gear.evadePct,
         leatherPieces: player.gear.classCounts.leather,
         sneakLevel: this.effectiveLevel(player, 'sneak'),
         moveFactor: moveFactorOfList(this.statuses.get(eid)),

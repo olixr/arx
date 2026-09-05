@@ -150,6 +150,8 @@ test('THE SET IS WORTH ONE EXTRA ITEM: the flat budget holds', () => {
       case 'cooldown': return (fx.pct as number) * 2;
       case 'speed': return (fx.pct as number) * 4;
       case 'crit': return (fx.pct as number) * 2.5;
+      // THE SLIPPED BLOW prices as crit's defensive twin.
+      case 'evade': return (fx.pct as number) * 2.5;
       case 'vsState': return (fx.pct as number) * 0.7;
       default: return 0;
     }

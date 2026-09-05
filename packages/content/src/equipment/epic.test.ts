@@ -46,6 +46,8 @@ function power(fx: EnchantEffect): number {
     // the CALLINGS' gear lane folds through this same kind.
     case 'swingSpeed': return fx.pct * 1.2;
     case 'crit': return fx.pct * 2.5;
+    // THE SLIPPED BLOW: crit's defensive twin, priced alike.
+    case 'evade': return fx.pct * 2.5;
     case 'onKillHaste': return fx.ticks * 1.5;
     case 'lifesteal': return fx.frac * 220;
     case 'backstab': return fx.bonus * 18;

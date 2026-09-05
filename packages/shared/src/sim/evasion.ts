@@ -18,6 +18,8 @@
  *
  * THE LANES (all percentage points, summed, then capped):
  *   worn     Wolf Reflexes (a cape passive)        flat WOLF_REFLEXES_PCT
+ *   gear     the wardrobe's own `evade` effects    the gear cache's evadePct
+ *            (house words, native effects, the Weave scroll line)
  *   leather  each leather armor piece worn         LEATHER_EVADE_PER_PIECE
  *   trained  the Sneak skill's effective level     SNEAK_EVADE_PER_LEVEL each
  *   buffs    tonics, callings' when-grants, boons   the forge's evadePct fold
@@ -49,6 +51,11 @@ export interface EvadeInputs {
   buffPct: number;
   /** Wolf Reflexes worn (an unstowed cape carrying the passive). */
   wolfReflexes: boolean;
+  /**
+   * The gear cache's evadePct: every worn `evade` effect summed (house
+   * words at 2 and 4 pieces, native effects, the Weave scrolls).
+   */
+  gearPct: number;
   /** Leather armor pieces worn — the gear cache's classCounts.leather. */
   leatherPieces: number;
   /** The Sneak skill's effective level (0 when untrained). */
@@ -72,6 +79,7 @@ export function evadeChancePct(i: EvadeInputs): number {
   if (feet <= 0) return 0;
   const raw =
     Math.max(0, i.buffPct) +
+    Math.max(0, i.gearPct) +
     (i.wolfReflexes ? WOLF_REFLEXES_PCT : 0) +
     Math.max(0, i.leatherPieces) * LEATHER_EVADE_PER_PIECE +
     Math.max(0, i.sneakLevel) * SNEAK_EVADE_PER_LEVEL;

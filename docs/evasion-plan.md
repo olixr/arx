@@ -41,6 +41,7 @@ counts as combat.
 | lane    | source                                        | value                    |
 |---------|-----------------------------------------------|--------------------------|
 | worn    | **Wolf Reflexes** passive (the three capes)   | flat 10                  |
+| gear    | the wardrobe's own `evade` effects (house words, the Weave scrolls) | the gear cache's summed `evadePct` |
 | leather | each leather armor piece (head/body/legs/gloves/boots) | 2 per piece     |
 | trained | the Sneak skill's effective level             | 0.1 per level (9.9 at 99) |
 | buffs   | tonics (`evadePct`), callings' when-grants, boons | the forge's additive fold |
@@ -90,8 +91,33 @@ The mode strip names it ("Cancel").
 - Leather's card blurb speaks its lane; Sneak's hall blurb reads
   "Unseen, unheard, untouched"; Wolf Reflexes' card reads its new desc.
 
-No shipped calling or draught carries `evadePct` yet — the lanes above
-are the whole live table. Authoring is a content edit, never engine work.
+No shipped calling or draught carries `evadePct` yet. Authoring is a
+content edit, never engine work.
+
+## THE WARDROBE ANSWERS (armor pass, same day)
+
+The armor houses carry no native effects; their identity is THE HOUSE
+WORD (2pc flat line, 4pc behavioral word). So the slip enters the
+wardrobe through a new flat effect kind, `{ kind: 'evade', pct }`,
+folded into the gear cache (`GearStats.evadePct`) and priced as crit's
+defensive twin (2.5 per point) in the budget pins. Cards speak it as
+"N% of blows slip past you"; quality scales it like every pct.
+
+| where                 | line                                                        |
+|-----------------------|-------------------------------------------------------------|
+| Nightveil 2pc         | **Quiet Cloth** — 3% of blows slip (was +2 sneak)            |
+| Skydancer 2pc (cloth) | **Light Feet** — 2% of blows slip (was +3% move speed)       |
+| Stormtalon 4pc        | **The Fifth Stoop** + rider: 4% of blows slip                |
+| Rookfeather 4pc       | **Molt and Be Elsewhere** + rider: 3% of blows slip          |
+| Broodsilk 4pc         | **What Bites the Web** + rider: 3% of blows slip             |
+| Legs scroll line      | **Sidestep 2 / Ghoststep 3 / Shadowstep 5 (+1 sneak) / Phantomstep 7 (+2% speed) / Untouched 9 (+2 sneak, +2% speed)**, tiers 1..5 |
+
+THE OPENER IS THE HOUSE holds: two houses on the slip opener at
+different numbers (the law allows two, never three). Every 2pc line
+stays flat; every 4pc word keeps its behavioral effect. A full
+Nightveil rogue in five leather pieces with Untouched legs and a Wolf
+Reflexes cape stands at 10 + 3 + 10 + 9 = 32 before Sneak — a real
+lane, still well under the cap.
 
 ## As-built receipts
 

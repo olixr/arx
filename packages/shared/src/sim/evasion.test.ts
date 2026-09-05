@@ -23,6 +23,7 @@ import {
 const free = (over: Partial<EvadeInputs> = {}): EvadeInputs => ({
   buffPct: 0,
   wolfReflexes: false,
+  gearPct: 0,
   leatherPieces: 0,
   sneakLevel: 0,
   moveFactor: 1,
@@ -35,11 +36,11 @@ test('a bare body slips nothing', () => {
   assert.equal(describeEvade(0), 'no blows slip');
 });
 
-test('the lanes sum: worn, leather, trained, buffs', () => {
+test('the lanes sum: worn, gear, leather, trained, buffs', () => {
   const pct = evadeChancePct(
-    free({ wolfReflexes: true, leatherPieces: 5, sneakLevel: 40, buffPct: 3 }),
+    free({ wolfReflexes: true, gearPct: 7, leatherPieces: 5, sneakLevel: 40, buffPct: 3 }),
   );
-  const want = WOLF_REFLEXES_PCT + 5 * LEATHER_EVADE_PER_PIECE + 40 * SNEAK_EVADE_PER_LEVEL + 3;
+  const want = WOLF_REFLEXES_PCT + 7 + 5 * LEATHER_EVADE_PER_PIECE + 40 * SNEAK_EVADE_PER_LEVEL + 3;
   assert.ok(Math.abs(pct - want) < 1e-9, `${pct} vs ${want}`);
   assert.equal(describeEvade(pct), `${Math.round(want)}% of blows slip`);
 });
@@ -60,7 +61,7 @@ test('THE FEET ARE THE SLIP: stone feet slip nothing, a chill slips slower, a pl
 });
 
 test('negative lanes never add and a move factor never exceeds 1', () => {
-  assert.equal(evadeChancePct(free({ buffPct: -20, leatherPieces: -3, sneakLevel: -9 })), 0);
+  assert.equal(evadeChancePct(free({ buffPct: -20, gearPct: -4, leatherPieces: -3, sneakLevel: -9 })), 0);
   const capped = evadeChancePct(free({ wolfReflexes: true, moveFactor: 4 }));
   assert.equal(capped, WOLF_REFLEXES_PCT, 'the feet scale down, never up');
 });

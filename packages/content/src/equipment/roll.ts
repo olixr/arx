@@ -195,6 +195,12 @@ export interface GearStats {
   thorns: number;
   /** Additional crit chance, percentage points on the base roll. */
   critPct: number;
+  /**
+   * THE SLIPPED BLOW's worn lane: percentage points of chance a blow
+   * misses the wearer (house words, native effects, scrolls — summed).
+   * Capped with every other lane at the one roll site.
+   */
+  evadePct: number;
   /** Ability-cooldown ticks shaved on every kill. */
   onKillHasteTicks: number;
   /**
@@ -236,6 +242,7 @@ export function emptyGearStats(): GearStats {
     elementDmgMult: {},
     thorns: 0,
     critPct: 0,
+    evadePct: 0,
     onKillHasteTicks: 0,
     vsState: {},
     setCounts: {},
@@ -293,6 +300,9 @@ export function foldEffect(out: GearStats, fx: EnchantEffect): void {
       break;
     case 'crit':
       out.critPct += fx.pct;
+      break;
+    case 'evade':
+      out.evadePct += fx.pct;
       break;
     case 'onKillHaste':
       out.onKillHasteTicks += fx.ticks;

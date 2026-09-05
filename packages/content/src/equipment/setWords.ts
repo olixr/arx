@@ -122,8 +122,10 @@ export const SET_WORDS: Record<string, SetWord[]> = {
       { kind: 'onHitStatus', status: 'bleed', power: 2, durationTicks: 100, chance: 0.15 }),
   ],
   nightveil: [
-    W(2, 'Quiet Cloth', '+2 sneak.',
-      { kind: 'skill', skill: 'sneak', amount: 2 }),
+    // THE SLIPPED BLOW: the rogue house opens with the slip itself —
+    // the first thing Nightveil says is that blows miss you.
+    W(2, 'Quiet Cloth', '3% of blows slip past you.',
+      { kind: 'evade', pct: 3 }),
     W(4, 'The Poisoned Seam', 'Venomed foes take 25% more from you.',
       { kind: 'vsState', status: 'venom', pct: 25 }),
   ],
@@ -214,8 +216,10 @@ export const SET_WORDS: Record<string, SetWord[]> = {
         action: { do: 'ward', absorb: 15, ticks: 150 }, icd: 1200, element: 'radiant' }),
   ],
   skydancer: [
-    W(2, 'Light Feet', '+3% move speed.',
-      { kind: 'speed', pct: 3 }),
+    // THE SLIPPED BLOW: a dancer's feet are for not being where the
+    // blow lands (the second and last house on the slip opener).
+    W(2, 'Light Feet', '2% of blows slip past you.',
+      { kind: 'evade', pct: 2 }),
     W(4, 'Ribbons Ahead of the Storm', 'Every thirty tiles on foot sharpen your eye.',
       { kind: 'proc', id: 'word_skydancer_ribbon', name: 'Ribbons Ahead of the Storm',
         trigger: { on: 'stride', tiles: 30 },
@@ -305,7 +309,8 @@ export const SET_WORDS: Record<string, SetWord[]> = {
   broodsilk: [
     W(2, 'Silk Steps', '+2 tailoring.',
       { kind: 'skill', skill: 'tailoring', amount: 2 }),
-    W(4, 'What Bites the Web', 'A quarter of wounds taken envenom the striker.',
+    W(4, 'What Bites the Web', 'A quarter of wounds taken envenom the striker, and 3% of blows slip past you.',
+      { kind: 'evade', pct: 3 },
       { kind: 'proc', id: 'word_broodsilk_bite', name: 'What Bites the Web',
         trigger: { on: 'hurt', chance: 0.25 },
         action: { do: 'status', status: 'venom', power: 2, ticks: 100 }, icd: 240,
@@ -320,7 +325,8 @@ export const SET_WORDS: Record<string, SetWord[]> = {
   rookfeather: [
     W(2, 'Oiled Feathers', '+3 sneak.',
       { kind: 'skill', skill: 'sneak', amount: 3 }),
-    W(4, 'Molt and Be Elsewhere', 'A third of wounds taken shed into a burst of speed.',
+    W(4, 'Molt and Be Elsewhere', 'A third of wounds taken shed into a burst of speed, and 3% of blows slip past you.',
+      { kind: 'evade', pct: 3 },
       { kind: 'proc', id: 'word_rookfeather_molt', name: 'Molt and Be Elsewhere',
         trigger: { on: 'hurt', chance: 0.3 },
         action: { do: 'surge', stat: 'speed', pct: 20, ticks: 30 }, icd: 300 }),
@@ -450,7 +456,10 @@ export const SET_WORDS: Record<string, SetWord[]> = {
     // THE COUNT CHASE: the recorded count-model word, and the gear
     // lane's first licensed boon (statusWave GEAR_LICENSED). Quicken
     // stacks price it, and the band clamp prices the stack.
-    W(4, 'The Fifth Stoop', 'Every fifth landed blow quickens your hands.',
+    // THE SLIPPED BLOW rides the capstone as a flat rider: leather's
+    // top house is the hardest body in the wardrobe to lay a hand on.
+    W(4, 'The Fifth Stoop', 'Every fifth landed blow quickens your hands, and 4% of blows slip past you.',
+      { kind: 'evade', pct: 4 },
       { kind: 'proc', id: 'word_stormtalon_stoop', name: 'The Fifth Stoop',
         trigger: { on: 'stacks', per: 'hit', count: 5 },
         action: { do: 'boon', status: 'quicken', power: 1, ticks: 100 }, icd: 300,

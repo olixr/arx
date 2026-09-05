@@ -291,6 +291,14 @@ export type EnchantEffect =
   | { kind: 'swingSpeed'; pct: number }
   | { kind: 'thorns'; amount: number }
   | { kind: 'crit'; pct: number }
+  /**
+   * THE SLIPPED BLOW's worn lane (docs/evasion-plan.md): `pct`
+   * percentage points of chance a blow misses the wearer. Aggregate
+   * channel, additive across pieces, words and scrolls; folds beside
+   * Wolf Reflexes, leather, trained Sneak and the buffs at the one
+   * roll site, which caps the whole assembly at half.
+   */
+  | { kind: 'evade'; pct: number }
   | { kind: 'onKillHaste'; ticks: number }
   | { kind: 'onHitStatus'; status: StatusId; power: number; durationTicks: number; chance: number }
   | { kind: 'lifesteal'; frac: number }
@@ -580,6 +588,44 @@ export const ENCHANT_DEFS: EnchantDef[] = [
     element: 'arcane', level: 20,
     effects: [E({ kind: 'armor', amount: 3 })],
     desc: 'The weave remembers being an anvil. Blows land duller.',
+  },
+  // ---- Legs: THE SLIPPED BLOW's scroll line. Armor is the anvil's
+  // answer to a blow; the slip is the dancer's. One line, five tiers,
+  // climbing the same ladder the wards climb — the leg is where a
+  // sidestep lives, so the leg is where the working goes.
+  {
+    id: 'sidestep', name: 'Sidestep Weave', prefix: 'Sidestepping', tier: 1, slot: 'legs',
+    element: 'storm', level: 9,
+    effects: [E({ kind: 'evade', pct: 2 })],
+    desc: 'The seams give a half-step before the blow arrives.',
+  },
+  {
+    id: 'ghoststep', name: 'Ghoststep Weave', prefix: 'Ghoststepping', tier: 2, slot: 'legs',
+    element: 'void', level: 28,
+    effects: [E({ kind: 'evade', pct: 3 })],
+    desc: 'The cloth is where you were. You are a hand to the left of it.',
+  },
+  {
+    id: 'shadowstep', name: 'Shadowstep Weave', prefix: 'Shadowstepping', tier: 3, slot: 'legs',
+    element: 'void', level: 46,
+    effects: [E({ kind: 'evade', pct: 5 }), E({ kind: 'skill', skill: 'sneak', amount: 1 })],
+    desc: 'Blows fall through a shadow shaped like you. The real one is quieter.',
+  },
+  {
+    id: 'phantomstep', name: 'Phantomstep Weave', prefix: 'Phantomstepping', tier: 4, slot: 'legs',
+    element: 'void', level: 66,
+    effects: [E({ kind: 'evade', pct: 7 }), E({ kind: 'speed', pct: 2 })],
+    desc: 'The weave learns the striker before the striker learns you.',
+  },
+  {
+    id: 'untouched', name: 'Untouched Weave', prefix: 'Untouched', tier: 5, slot: 'legs',
+    element: 'astral', level: 86,
+    effects: [
+      E({ kind: 'evade', pct: 9 }),
+      E({ kind: 'skill', skill: 'sneak', amount: 2 }),
+      E({ kind: 'speed', pct: 2 }),
+    ],
+    desc: 'Nothing that swung at the wearer can quite remember connecting.',
   },
   // ---- Boots ----
   {
@@ -1766,6 +1812,8 @@ export function describeEffect(fx: EnchantEffect): string {
       return `attackers take ${fx.amount} damage`;
     case 'crit':
       return `+${fx.pct}% critical chance`;
+    case 'evade':
+      return `${fx.pct}% of blows slip past you`;
     case 'onKillHaste':
       return `kills hasten your abilities`;
     case 'onHitStatus':
@@ -1910,6 +1958,7 @@ export function scaleEffect(fx: EnchantEffect, q: number): EnchantEffect {
     case 'speed':
     case 'swingSpeed':
     case 'crit':
+    case 'evade':
     case 'vsState':
       return { ...fx, pct: scaleN(fx.pct, q) };
     case 'onKillHaste':
