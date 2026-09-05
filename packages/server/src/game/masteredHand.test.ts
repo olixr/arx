@@ -186,7 +186,7 @@ test('THE AFTERMATH: a resolved press leaves a standing field with the field fx,
   assert.equal(f.selfId, 'test_fire');
   const fx = fxOut.at(-1)!;
   assert.equal(fx.kind, 'field');
-  assert.equal(fx.id, 'test_fire');
+  assert.equal(fx.id, 'test_fire:aftermath', 'the ground speaks its own voice under the art\'s face');
   assert.equal(fx.ticks, 80);
   const quiet: AbilityDef = { ...OPENER, id: 'test_quiet' };
   self.leaveAftermath.call(self, quiet, 0, 0, 0, 2, 1, 'arx', false, 50, 1.5);

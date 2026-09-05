@@ -3,7 +3,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { derivePlan, MutedParticles, planEffects, planFor, scaleForRadius } from './abilityEffects.js';
+import { derivePlan, MutedParticles, planCues, planEffects, planFor, scaleForRadius } from './abilityEffects.js';
 import { EFFECTS } from './library/index.js';
 import { PLANS } from './plans/index.js';
 import { SIGNATURES } from '../fxSignatures.js';
@@ -38,8 +38,8 @@ test('an unknown ability still speaks: the wire color derives a family', () => {
 test('curated plans name real effects and standing cues carry a beat', () => {
   for (const [id, plan] of Object.entries(PLANS)) {
     assert.ok(plan.cues.length > 0, `${id} has no cues`);
-    assert.equal(planEffects(plan).length, plan.cues.length, `${id} cues an effect that does not exist`);
-    for (const cue of plan.cues) {
+    assert.equal(planEffects(plan).length, planCues(plan).length, `${id} cues an effect that does not exist`);
+    for (const cue of planCues(plan)) {
       if (cue.every !== undefined) assert.ok(cue.every >= 0.5, `${id} re-speaks too fast`);
       if (cue.scale !== undefined) assert.ok(cue.scale > 0 && cue.scale <= 3, `${id} scale ${cue.scale}`);
     }

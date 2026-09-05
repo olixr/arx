@@ -43,6 +43,10 @@ export interface EffectCue {
 
 export interface AbilityPlan {
   cues: EffectCue[];
+  /** THE MASTERED HAND: cues added when the cast landed inside a follow window. */
+  onFollow?: EffectCue[];
+  /** THE MASTERED HAND: cues added on a held note's last beat. */
+  onFinale?: EffectCue[];
   /**
    * Keep the signature's own particle matter beside the library (rare:
    * a hand-painted lie the library refuses to tell). Default false.
@@ -245,8 +249,16 @@ export function planFor(id: string | undefined, kind: string, st: FxStyle): Abil
 
 /** Every curated plan's effect must exist (the contract test). */
 export function planEffects(plan: AbilityPlan): EffectDef[] {
-  return plan.cues.map((c) => EFFECTS[c.id]).filter((d): d is EffectDef => d !== undefined);
+  return planCues(plan).map((c) => EFFECTS[c.id]).filter((d): d is EffectDef => d !== undefined);
 }
+
+/** Every cue a plan can speak: the cast's, the follow's, the finale's. */
+export function planCues(plan: AbilityPlan): EffectCue[] {
+  return [...plan.cues, ...(plan.onFollow ?? []), ...(plan.onFinale ?? [])];
+}
+
+/** How much heavier a flourished cast speaks. */
+export const FLOURISH_SCALE: Record<'follow' | 'finale', number> = { follow: 1.15, finale: 1.35 };
 
 /** The default cast scale from the wire radius: bigger reach, bigger voice. */
 export function scaleForRadius(radius: number): number {

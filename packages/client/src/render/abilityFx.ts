@@ -1004,7 +1004,8 @@ export const FX_STYLES: Record<string, FxStyle> = {
  */
 export function fxStyleFor(id: string | undefined, color: string | undefined): FxStyle {
   if (id) {
-    const st = FX_STYLES[id];
+    // THE MASTERED HAND: a suffixed id (`<art>:aftermath`) wears the art's face.
+    const st = FX_STYLES[id] ?? FX_STYLES[id.split(':')[0]!];
     if (st) return st;
   }
   const mid = color ?? '#f4efe4';

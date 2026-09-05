@@ -1,5 +1,6 @@
 // PARTICLES v6 in-world probe: speaks an ABILITY's plan through renderer.castPlan(id, kind, …) on a rig lane
-// (ORIGIN=, USER_=, PASS_=): node fx-plan.mjs <abilityId> <kind> <delays csv>.
+// (ORIGIN=, USER_=, PASS_=): node fx-plan.mjs <abilityId> <kind> <delays csv>. FLOURISH=follow|finale adds the
+// flourish cues; kind charge|note speaks the breath dialect instead of a plan (THE MASTERED HAND Phase 4).
 // In-world proof: the ?fx lever's effect roster in the live game.
 import { chromium } from '/Users/aeriek/.npm/_npx/705bc6b22212b352/node_modules/playwright/index.mjs';
 const OUT = process.env.OUT ?? process.cwd();
@@ -30,12 +31,12 @@ const pos = await page.evaluate(() => ({ x: window.dcRenderer.ownPX, y: window.d
 console.log('in game at', JSON.stringify(pos));
 // Cast through the renderer's own door — exactly what a signature would call.
 const t0 = Date.now();
-const spoke = await page.evaluate(({ ability, kind }) => {
+const spoke = await page.evaluate(({ ability, kind, flourish }) => {
   const r = window.dcRenderer;
   const own = window.dcGame.predictor.renderPos();
-  const plan = r.castPlan(ability, kind, own.x + 0.9, own.y + 0.35, { radius: 1.2, dir: 0, x2: own.x + 2.9, y2: own.y - 0.3 });
+  const plan = r.castPlan(ability, kind, own.x + 0.9, own.y + 0.35, { radius: 1.2, dir: 0, x2: own.x + 2.9, y2: own.y - 0.3, flourish });
   return plan ? plan.cues.map((c) => c.id).join('+') : 'NO PLAN';
-}, { ability, kind });
+}, { ability, kind, flourish: process.env.FLOURISH || undefined });
 console.log('plan:', spoke);
 for (const d of delays) {
   const wait = d - (Date.now() - t0);

@@ -1288,6 +1288,12 @@ export interface S2CCombo {
  */
 export interface S2CFx {
   t: 'fx';
+  /**
+   * THE MASTERED HAND: the flourish this cast earned — `follow` when it
+   * landed inside a follow window, `finale` on a held note's last
+   * beat. Additive; the plan speaks heavier and adds its flourish cues.
+   */
+  flourish?: 'follow' | 'finale';
   kind:
     | 'nova'
     | 'telegraph'

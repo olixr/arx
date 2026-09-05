@@ -1606,6 +1606,8 @@ interface PendingBlast {
   drainFrac?: number;
   /** THE AFTERMATH: the ground the blast leaves (damage pre-scaled by the caster's power). */
   aftermath?: { def: AftermathDef; damage: number; abilityId: string; color: string };
+  /** THE MASTERED HAND: the flourish the press earned, spoken when the fuse burns down. */
+  flourish?: 'follow' | 'finale';
 }
 
 /**
@@ -2808,6 +2810,12 @@ export class GameServer {
 
   /** Lingering hazard zones (ground_field) pulsing while they live. */
   readonly activeFields: ActiveField[] = [];
+  /**
+   * THE MASTERED HAND: the flourish the cast in flight earned (a landed
+   * follow, a note's last beat). Set around castAbility by its callers,
+   * merged onto every fx the cast broadcasts, carried on fused blasts.
+   */
+  castFlourish: 'follow' | 'finale' | undefined = undefined;
   /**
    * THE PET'S BREATH: pulse-shaped companion arts (the undertow's
    * three pulls, the flurry's rakes) queue their later waves here —
@@ -18993,6 +19001,7 @@ export class GameServer {
 
   /** Combat FX go to every session close enough to possibly see them. */
   broadcastFx(plane: PlaneId, fx: S2CFx): void {
+    if (this.castFlourish && !fx.flourish) fx = { ...fx, flourish: this.castFlourish };
     // Stringify ONCE, fan the same bytes: a busy fight's fx used to
     // pay one JSON.stringify per fx per session for identical output
     // (a casting NPC alone emits a charge every 10 ticks).
@@ -19178,6 +19187,7 @@ export class GameServer {
     const follow = resolveFollow(player, ab, this.tickCount);
     if (follow?.refundTicks) player.abilityCd[slot] = Math.max(1, player.abilityCd[slot] - follow.refundTicks);
     this.castAbility(eid, ab, aim, style, level, false, targetPos, powerMult, follow);
+    this.castFlourish = undefined;
     stampArt(player, slot, ab, follow, this.tickCount);
     // THE FOLLOW-THROUGH's rider: a boon worn only when the follow
     // lands (guarded inline — THE SLATE-TEST LAW).
@@ -19412,7 +19422,9 @@ export class GameServer {
     // follows (ticksLeft ≤ every), the model's own beat count.
     const last = a.ticksLeft <= a.every;
     const finale = last ? (a.ab.finaleMult ?? 1) : 1;
+    if (last && finale > 1) this.castFlourish = 'finale';
     this.castAbility(eid, last ? a.ab : quietBeat(a.ab), aim, a.style, a.level, false, a.targetPos, a.powerMult * finale, a.follow);
+    this.castFlourish = undefined;
     void player;
   }
 
@@ -19531,6 +19543,8 @@ export class GameServer {
       selfId: abilityId,
       selfColor: color,
     });
+    // The ground's own voice: the plan for `<id>:aftermath` (the face
+    // stays the art's — fxStyleFor reads the id before the colon).
     this.broadcastFx(plane, {
       t: 'fx',
       kind: 'field',
@@ -19538,7 +19552,7 @@ export class GameServer {
       y,
       radius,
       ticks: a.fieldTicks,
-      id: abilityId,
+      id: `${abilityId}:aftermath`,
       color,
     });
   }
@@ -19976,6 +19990,7 @@ export class GameServer {
     // A landed follow speaks through the SAME interpreter on a
     // resolved def — never a second executor.
     const ab = follow ? withFollow(abIn, follow) : abIn;
+    if (follow && !this.castFlourish) this.castFlourish = 'follow';
     const pos = this.positions.must(casterEid);
     // Arx Art projectiles fly in the caster's staff school — the
     // element is a weapon fact, so a Frost Nova from an ember staff
@@ -20356,6 +20371,7 @@ export class GameServer {
             executeBelow: ab.executeBelow,
             drainFrac: ab.drainFrac,
             ...lastPulseOnly(ab, i === pulses - 1, powerK),
+            flourish: this.castFlourish,
           });
         }
         break;
@@ -20481,6 +20497,7 @@ export class GameServer {
                 color: ab.color,
               }
             : undefined,
+          flourish: this.castFlourish,
         });
         this.broadcastFx(pos.plane, {
           t: 'fx',
@@ -20695,6 +20712,7 @@ export class GameServer {
             executeBelow: ab.executeBelow,
             drainFrac: ab.drainFrac,
             ...lastPulseOnly(ab, i === hits - 1, powerK),
+            flourish: this.castFlourish,
           });
         }
         break;
@@ -21130,6 +21148,7 @@ export class GameServer {
         dir: blast.arcAim,
         id: blast.abilityId,
         color: blast.color,
+        ...(blast.flourish ? { flourish: blast.flourish } : {}),
       });
       if (blast.fromNpc) {
         // NPC flurries keep their authored crescent now that the

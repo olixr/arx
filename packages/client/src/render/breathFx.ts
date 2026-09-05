@@ -42,10 +42,19 @@ import {
   water,
   type MatterCtx,
 } from './matter/index.js';
+import { ONEHAND_BREATH } from './breath/onehand.js';
+import { ARCHERY_BREATH } from './breath/archery.js';
+import { ARX_BREATH } from './breath/arx.js';
+import { SNEAK_BREATH } from './breath/sneak.js';
+import { SHIELD_BREATH } from './breath/shield.js';
+import { TWOHAND_BREATH } from './breath/twohand.js';
+import { DUALWIELD_BREATH } from './breath/dualwield.js';
+import { COMBAT_BREATH } from './breath/combat.js';
+import { POLEARM_BREATH } from './breath/polearm.js';
 
-type Voice = (c: MatterCtx, x: number, y: number, o: { radius: number }) => void;
+export type Voice = (c: MatterCtx, x: number, y: number, o: { radius: number }) => void;
 
-interface BreathDialect {
+export interface BreathDialect {
   /** The winding gather — `radius` is the wire's contracting reach. */
   charge?: Voice;
   /** The held hum — one overlapping window per re-emit. */
@@ -1087,6 +1096,13 @@ const FALLBACK: Record<DebrisKind, Voice> = {
   bone: (c, x, y, o) =>
     dust.deployments.skirt!(c, x, y, { radius: o.radius * 0.5, scale: 0.4, dur: 0.9 }),
 };
+
+// THE MASTERED HAND (Phase 4): each school keeps its breath dialects
+// beside its plans in ./breath/<school>.ts; a school's entry outranks
+// the founding table above (the rebuilt art's voice is the newer one).
+for (const m of [ONEHAND_BREATH, ARCHERY_BREATH, ARX_BREATH, SNEAK_BREATH, SHIELD_BREATH, TWOHAND_BREATH, DUALWIELD_BREATH, COMBAT_BREATH, POLEARM_BREATH]) {
+  Object.assign(BREATH_DIALECTS, m);
+}
 
 /** One door for the renderer: resolve the dialect and speak it. */
 export function speakBreath(

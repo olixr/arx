@@ -159,7 +159,7 @@ import { LAYER_GROUND, LAYER_WORLD, PARTICLE_CAP, Particles, type Landing, type 
 import { GroundMarks } from './fx/groundMarks.js';
 import { EffectSystem, type CastParams, type EffectHandle } from './fx/effects.js';
 import { EFFECTS } from './fx/library/index.js';
-import { MutedParticles, planFor, scaleForRadius, type AbilityPlan } from './fx/abilityEffects.js';
+import { FLOURISH_SCALE, MutedParticles, planFor, scaleForRadius, type AbilityPlan } from './fx/abilityEffects.js';
 import {
   FALL_LOOKAHEAD,
   FALL_LOOKBACK,
@@ -1447,11 +1447,18 @@ export class Renderer {
    * each cue's `every` beat while the cast lives (standing zones).
    */
   private castFxPlan(
-    fx: { x: number; y: number; x2?: number; y2?: number; radius: number; dir?: number; bornAt: number } & { planNext?: number[] },
+    fx: { x: number; y: number; x2?: number; y2?: number; radius: number; dir?: number; bornAt: number; flourish?: 'follow' | 'finale' } & {
+      planNext?: number[];
+    },
     plan: AbilityPlan,
     now: number,
   ): void {
-    const cues = plan.cues;
+    // THE MASTERED HAND: a flourished cast speaks heavier and adds its
+    // flourish cues (once, at arrival — they are the detonation, the
+    // crescendo).
+    const flourish = fx.flourish;
+    const cues = flourish === 'follow' && plan.onFollow ? [...plan.cues, ...plan.onFollow] : flourish === 'finale' && plan.onFinale ? [...plan.cues, ...plan.onFinale] : plan.cues;
+    const heavier = flourish ? FLOURISH_SCALE[flourish] : 1;
     if (!fx.planNext) {
       fx.planNext = new Array(cues.length).fill(-1);
     }
@@ -1471,7 +1478,7 @@ export class Renderer {
       const ax = cue.atFar ? fx.x2 ?? fx.x : fx.x;
       const ay = cue.atFar ? fx.y2 ?? fx.y : fx.y;
       this.effects.cast(def, ax, ay, {
-        scale: cue.scale ?? scaleForRadius(fx.radius),
+        scale: (cue.scale ?? scaleForRadius(fx.radius)) * heavier,
         dir,
         radius: fx.radius * (cue.radiusK ?? 1),
         x2: fx.x2 ?? fx.x,
@@ -1490,12 +1497,19 @@ export class Renderer {
     kind: string,
     x: number,
     y: number,
-    opts: { radius?: number; dir?: number; x2?: number; y2?: number; color?: string } = {},
+    opts: { radius?: number; dir?: number; x2?: number; y2?: number; color?: string; flourish?: 'follow' | 'finale' } = {},
   ): AbilityPlan | null {
     const st = fxStyleFor(abilityId, opts.color);
+    if (kind === 'charge' || kind === 'note') {
+      // The probe's door to a breath dialect: one emission window, as the wire would speak it.
+      const now = performance.now();
+      const fx = { kind, id: abilityId, x, y, radius: opts.radius ?? 1.5, bornAt: now } as unknown as Parameters<typeof this.makeSigCtx>[0];
+      speakBreath(kind, abilityId, st, asMatter(this.makeSigCtx(fx, st, 0, 0, now, 1)), x, y, opts.radius ?? 1.5);
+      return null;
+    }
     const plan = planFor(abilityId, kind, st);
     if (!plan) return null;
-    this.castFxPlan({ x, y, x2: opts.x2, y2: opts.y2, radius: opts.radius ?? 1, dir: opts.dir, bornAt: performance.now() }, plan, performance.now());
+    this.castFxPlan({ x, y, x2: opts.x2, y2: opts.y2, radius: opts.radius ?? 1, dir: opts.dir, bornAt: performance.now(), flourish: opts.flourish }, plan, performance.now());
     return plan;
   }
 
