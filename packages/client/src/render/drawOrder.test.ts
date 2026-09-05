@@ -1,335 +1,315 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DRAW_ORDER, SHELF, type DrawOrderItem } from './drawOrder.js';
+import {
+  DRAW_ORDER,
+  Layer,
+  stampDrawKeys,
+  type DrawOrderItem,
+  type DrawKeyItem,
+} from './drawOrder.js';
 
 // ── helpers ──────────────────────────────────────────────────────────────
-const vol = (nearRow: number, strat?: number): DrawOrderItem => ({ sortY: nearRow, nearRow, strat });
-const body = (foot: number, strat?: number): DrawOrderItem => ({ sortY: foot, strat });
-/** A mature tree: a ground-rooted VOLUME whose near edge is its foot row
- *  (renderer objectItem sets nearRow === sortY === ty+0.9). */
-const tree = (foot: number, strat?: number): DrawOrderItem => ({ sortY: foot, nearRow: foot, strat });
 
-/** Sort a bag and return an index array so ties are observable. */
-const order = (items: DrawOrderItem[]): DrawOrderItem[] => items.slice().sort(DRAW_ORDER);
+/** Sort a bag and return the array (a copy) so ties are observable. */
+const order = <T extends DrawOrderItem>(items: T[]): T[] => items.slice().sort(DRAW_ORDER);
 
-// ── THE SHELF LAW is untouched (primary term) ─────────────────────────────
+/** Stamp a raw draw list exactly as the renderer does, then sort by row.
+ *  Defaults model the flat camera: slope 1, origin 0, no elevation lift —
+ *  so screenFootY == the world row and the algebraic collapse is exact. */
+const stampAndOrder = (
+  items: DrawKeyItem[],
+  sYS = 1,
+  oy = 0,
+  elevPx = 1,
+): DrawKeyItem[] => {
+  stampDrawKeys(items, sYS, oy, elevPx);
+  return items.slice().sort(DRAW_ORDER);
+};
 
-test('SHELF clamps positive shelves to one rank, sinks negatives', () => {
-  assert.equal(SHELF(undefined), 0);
-  assert.equal(SHELF(0), 0);
-  assert.equal(SHELF(1), 1);
-  assert.equal(SHELF(2), 1); // clamp
-  assert.equal(SHELF(5), 1); // clamp
-  assert.equal(SHELF(-1), -1); // pit sinks
+// ── THE PROPERTY: DRAW_ORDER is a VALID TOTAL ORDER ────────────────────────
+// The whole point of the refactor. The old comparator had a per-pair
+// exception that made it INTRANSITIVE, so V8's sort produced order that
+// depended on input order → z-flicker. These fuzz the comparator over many
+// random triples and assert antisymmetry + transitivity + totality. A
+// regression to any pair-dependent key is caught here.
+
+/** A cheap deterministic PRNG so the fuzz is reproducible. */
+const rng = (seed: number) => {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 0x100000000;
+  };
+};
+
+/** A bag of random items exactly as the renderer produces them: a UNIQUE
+ *  `seq` per item (stampDrawKeys stamps the collect index), no stableId (the
+ *  shipping config). Small key domains so exact (layer, screenFootY,
+ *  classRank) ties are COMMON — the interesting case for a total order — and
+ *  the unique seq then makes the order STRICT (no two distinct items equal). */
+const randBag = (r: () => number, n: number): DrawOrderItem[] =>
+  Array.from({ length: n }, (_, seq) => ({
+    layer: [Layer.Ground, Layer.GroundDecal, Layer.World, Layer.Overhead][
+      Math.floor(r() * 4)
+    ]!,
+    screenFootY: Math.floor(r() * 4), // 0..3 — many exact ties
+    classRank: r() < 0.5 ? 0 : 1,
+    seq, // unique, as stampDrawKeys guarantees
+  }));
+
+const sign = (n: number): number => (n < 0 ? -1 : n > 0 ? 1 : 0);
+/** Negate a sign so 0 stays +0 (avoids the -0 !== 0 strict-equal artifact). */
+const negSign = (n: number): number => (n === 0 ? 0 : -n);
+
+test('PROPERTY: DRAW_ORDER is antisymmetric + reflexive over 20k random pairs', () => {
+  const r = rng(0xa5a5);
+  const bag = randBag(r, 400);
+  for (let i = 0; i < 20000; i++) {
+    const a = bag[Math.floor(r() * bag.length)]!;
+    const b = bag[Math.floor(r() * bag.length)]!;
+    assert.equal(
+      sign(DRAW_ORDER(a, b)),
+      negSign(sign(DRAW_ORDER(b, a))),
+      `antisymmetry broke on ${JSON.stringify(a)} vs ${JSON.stringify(b)}`,
+    );
+    assert.equal(DRAW_ORDER(a, a), 0); // reflexive
+  }
 });
 
-test('shelf is the primary term: a higher shelf always draws later regardless of row', () => {
-  const lowShelfSouth = body(100, 0); // far south (nearer), shelf 0
-  const highShelfNorth = body(-100, 2); // far north, shelf 2 (clamps to 1)
-  const [first, second] = order([highShelfNorth, lowShelfSouth]);
-  assert.equal(first, lowShelfSouth); // shelf 0 first
-  assert.equal(second, highShelfNorth); // shelf 1 later
+test('PROPERTY: DRAW_ORDER is transitive over 200k random triples', () => {
+  const r = rng(0x1234);
+  const bag = randBag(r, 400);
+  for (let i = 0; i < 200000; i++) {
+    const a = bag[Math.floor(r() * bag.length)]!;
+    const b = bag[Math.floor(r() * bag.length)]!;
+    const c = bag[Math.floor(r() * bag.length)]!;
+    const ab = sign(DRAW_ORDER(a, b));
+    const bc = sign(DRAW_ORDER(b, c));
+    const ac = sign(DRAW_ORDER(a, c));
+    if (ab <= 0 && bc <= 0) assert.ok(ac <= 0, `transitivity broke (<=): ${ab} ${bc} ${ac}`);
+    if (ab >= 0 && bc >= 0) assert.ok(ac >= 0, `transitivity broke (>=): ${ab} ${bc} ${ac}`);
+    if (ab === 0 && bc === 0) assert.equal(ac, 0, 'equality not transitive');
+  }
 });
 
-// ── A5: near-edge depth key — billboard foot vs volume near row ────────────
-
-test('a billboard whose foot is SOUTH of a wall near row draws IN FRONT (later)', () => {
-  const wall = vol(10); // near/south edge at row 10
-  const infront = body(11); // foot south of the wall
-  const [first, second] = order([infront, wall]);
-  assert.equal(first, wall);
-  assert.equal(second, infront); // billboard painted last ⇒ in front
+test('PROPERTY: sorting is order-independent — every input permutation yields the same output', () => {
+  // The intransitivity symptom was that shuffling the input changed the sort
+  // output. With unique seqs the order is STRICT: sort many shuffles of the
+  // same bag; the exact object sequence must match every time.
+  const r = rng(0xbeef);
+  const bag = randBag(r, 60);
+  const keyOf = (it: DrawOrderItem): string => `${it.seq}`; // unique per item
+  const canonical = order(bag).map(keyOf);
+  for (let sh = 0; sh < 200; sh++) {
+    const shuffled = bag.slice();
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(r() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
+    }
+    assert.deepEqual(order(shuffled).map(keyOf), canonical);
+  }
 });
 
-test('a billboard whose foot is NORTH of a wall near row draws BEHIND (earlier)', () => {
-  const wall = vol(10);
-  const behind = body(9); // foot north of the wall near edge
-  const [first, second] = order([wall, behind]);
-  assert.equal(first, behind); // billboard painted first ⇒ behind
-  assert.equal(second, wall);
+// ── THE LAYER BANDS are the PRIMARY term ───────────────────────────────────
+
+test('layer bands draw in order: ground < ground-decal < world < overhead < ui', () => {
+  const ui: DrawOrderItem = { layer: Layer.Ui, screenFootY: -999 };
+  const overhead: DrawOrderItem = { layer: Layer.Overhead, screenFootY: -999 };
+  const world: DrawOrderItem = { layer: Layer.World, screenFootY: -999 };
+  const decal: DrawOrderItem = { layer: Layer.GroundDecal, screenFootY: 999 };
+  const ground: DrawOrderItem = { layer: Layer.Ground, screenFootY: 999 };
+  // Even with a huge screenFootY, a lower band draws first.
+  assert.deepEqual(order([ui, world, ground, overhead, decal]), [
+    ground,
+    decal,
+    world,
+    overhead,
+    ui,
+  ]);
 });
 
-// ── A5: THE TIE RULE — body at the base of a wall wins ─────────────────────
+test('layer defaults to World when unset', () => {
+  const dflt: DrawOrderItem = { screenFootY: 5 };
+  const decal: DrawOrderItem = { layer: Layer.GroundDecal, screenFootY: 5 };
+  const overhead: DrawOrderItem = { layer: Layer.Overhead, screenFootY: 5 };
+  assert.deepEqual(order([overhead, dflt, decal]), [decal, dflt, overhead]);
+});
 
-test('TIE: a billboard foot EQUAL to the wall near row draws IN FRONT (a body at the base wins)', () => {
-  const wall = vol(10);
-  const atBase = body(10); // pressed against the wall base
-  // order must be [wall, body] whichever way they arrive.
+test('a raised grass decal draws under a world object even at the same row', () => {
+  // The grass-swim guard: a ground-decal (raised coat) at the SAME screen row
+  // as a body must stay under it — the band beats the row.
+  const coat: DrawOrderItem = { layer: Layer.GroundDecal, screenFootY: 100 };
+  const body: DrawOrderItem = { layer: Layer.World, screenFootY: 100 };
+  assert.deepEqual(order([body, coat]), [coat, body]);
+});
+
+// ── WITHIN A BAND: screenFootY is the depth term ───────────────────────────
+
+test('within a band, smaller screenFootY (up-screen) draws first (behind)', () => {
+  const near: DrawOrderItem = { layer: Layer.World, screenFootY: 30 };
+  const far: DrawOrderItem = { layer: Layer.World, screenFootY: 10 };
+  const mid: DrawOrderItem = { layer: Layer.World, screenFootY: 20 };
+  assert.deepEqual(order([near, far, mid]).map((i) => i.screenFootY), [10, 20, 30]);
+});
+
+// ── classRank: volume before billboard at an exact tie ─────────────────────
+
+test('TIE: a volume draws before a billboard at the same screenFootY (body at a wall base wins)', () => {
+  const wall: DrawOrderItem = { layer: Layer.World, screenFootY: 50, classRank: 0 };
+  const atBase: DrawOrderItem = { layer: Layer.World, screenFootY: 50, classRank: 1 };
   assert.deepEqual(order([wall, atBase]), [wall, atBase]);
   assert.deepEqual(order([atBase, wall]), [wall, atBase]);
-  // and the comparator is antisymmetric on the tie.
   assert.ok(DRAW_ORDER(wall, atBase) < 0);
   assert.ok(DRAW_ORDER(atBase, wall) > 0);
 });
 
-test('the tie rule respects the shelf: it only fires WITHIN a shelf', () => {
-  const wall = vol(10, 0);
-  const atBaseHigher = body(10, 1); // same row, higher shelf
-  const [first, second] = order([atBaseHigher, wall]);
-  assert.equal(first, wall); // shelf 0 volume first
-  assert.equal(second, atBaseHigher); // higher shelf later regardless
+test('classRank only decides EXACT ties — screenFootY still dominates', () => {
+  const volNorth: DrawOrderItem = { screenFootY: 9, classRank: 0 };
+  const billSouth: DrawOrderItem = { screenFootY: 10, classRank: 1 };
+  // The billboard is souther (nearer) ⇒ draws last despite being a billboard.
+  assert.deepEqual(order([billSouth, volNorth]), [volNorth, billSouth]);
 });
 
-// ── A5: near-edge vs foot — the volume uses its SOUTH edge, not its span ────
+// ── stableId / seq: the final, deterministic tiebreak ──────────────────────
 
-test('a body BESIDE a wall (its foot row < the wall south edge) still sorts behind', () => {
-  // Wall run rows 5..8, south edge row 9. A body at row 7 (beside it) is
-  // north of the near edge ⇒ behind. (One near-edge row per volume is the
-  // D.2 model; D.3 per-column ceiling handles the poke-through case.)
-  const wall = vol(9);
-  const beside = body(7);
-  assert.deepEqual(order([beside, wall]), [beside, wall]);
+test('seq is the final tiebreak on an exact (layer, screenFootY, classRank) tie', () => {
+  const a: DrawOrderItem = { screenFootY: 42, classRank: 1, seq: 3 };
+  const b: DrawOrderItem = { screenFootY: 42, classRank: 1, seq: 7 };
+  assert.deepEqual(order([b, a]), [a, b]);
+  assert.ok(DRAW_ORDER(a, b) < 0);
 });
 
-// ── The flat reduction: with occlusion OFF no item carries nearRow ─────────
-
-test('with occlusion OFF (no nearRow) the comparator is the exact old sortY key', () => {
-  // Reproduces the pre-A5 behaviour: sort purely by (shelf, sortY), stable.
-  const a = body(3);
-  const b = body(1);
-  const c = body(2);
-  const sorted = order([a, b, c]);
-  assert.deepEqual(sorted.map((i) => i.sortY), [1, 2, 3]);
-  // Equal rows preserve arrival order (stable, no tie-rank because neither
-  // is a volume) — matches the old `a.sortY - b.sortY` returning 0.
-  const p = body(5);
-  const q = body(5);
-  assert.equal(DRAW_ORDER(p, q), 0);
+test('stableId, when present, overrides seq for the final tiebreak', () => {
+  // A camera-invariant id beats the per-frame collect index.
+  const a: DrawOrderItem = { screenFootY: 1, classRank: 1, stableId: 2, seq: 99 };
+  const b: DrawOrderItem = { screenFootY: 1, classRank: 1, stableId: 5, seq: 1 };
+  assert.deepEqual(order([b, a]), [a, b]); // by stableId (2 < 5), not seq
 });
 
-test('a volume with nearRow === sortY sorts identically to the old key against other volumes', () => {
-  // nearRow === the volume south-edge sortY, so volume-vs-volume
-  // ordering is unchanged from the raw-row era.
-  const w1 = vol(4);
-  const w2 = vol(6);
-  const w3 = vol(5);
-  assert.deepEqual(order([w1, w2, w3]).map((i) => i.nearRow), [4, 5, 6]);
+// ── stampDrawKeys: THE CENTRAL DERIVATION ──────────────────────────────────
+
+test('stampDrawKeys sets seq to the collect index and defaults layer to World', () => {
+  const items: DrawKeyItem[] = [{ sortY: 3 }, { sortY: 1 }, { sortY: 2, layer: Layer.Ground }];
+  stampDrawKeys(items, 1, 0, 1);
+  assert.deepEqual(items.map((i) => i.seq), [0, 1, 2]);
+  assert.deepEqual(items.map((i) => i.layer), [Layer.World, Layer.World, Layer.Ground]);
 });
 
-// ── A5: the interleave a hedge-line needs ─────────────────────────────────
-
-// ── G-PERF: THE STABLE TIEBREAK — a per-item sequence id ───────────────────
-
-test('seq is the final tiebreak: exact (depth, rank) ties resolve by seq, not array position', () => {
-  // Two billboards on the SAME row — a tall-grass band blit and a body.
-  const grass: DrawOrderItem = { sortY: 42, seq: 3 };
-  const bodyItem: DrawOrderItem = { sortY: 42, seq: 7 };
-  // Whichever way they arrive, the lower seq draws first (behind).
-  assert.deepEqual(order([grass, bodyItem]), [grass, bodyItem]);
-  assert.deepEqual(order([bodyItem, grass]), [grass, bodyItem]);
-  assert.ok(DRAW_ORDER(grass, bodyItem) < 0);
-  assert.ok(DRAW_ORDER(bodyItem, grass) > 0);
+test('stampDrawKeys derives classRank from nearRow presence (volume vs billboard)', () => {
+  const vol: DrawKeyItem = { sortY: 5, nearRow: 5 };
+  const bill: DrawKeyItem = { sortY: 5 };
+  stampDrawKeys([vol, bill], 1, 0, 1);
+  assert.equal(vol.classRank, 0);
+  assert.equal(bill.classRank, 1);
 });
 
-test('seq only decides EXACT ties — depth and shelf still dominate', () => {
-  const north: DrawOrderItem = { sortY: 10, seq: 100 };
-  const south: DrawOrderItem = { sortY: 11, seq: 1 };
-  // Depth wins over seq: the north (smaller row) draws first despite big seq.
-  assert.deepEqual(order([south, north]), [north, south]);
-  const lowShelf: DrawOrderItem = { sortY: 50, strat: 0, seq: 99 };
-  const highShelf: DrawOrderItem = { sortY: 5, strat: 2, seq: 0 };
-  // Shelf wins over both depth and seq.
-  assert.deepEqual(order([highShelf, lowShelf]), [lowShelf, highShelf]);
+test('stampDrawKeys uses nearRow as the depth for volumes, sortY for billboards', () => {
+  // A wall run spanning rows 5..8 sorts at its SOUTH edge (nearRow 9), not its
+  // span; a billboard sorts at its foot (sortY).
+  const wall: DrawKeyItem = { sortY: 5, nearRow: 9 };
+  const bodyBeside: DrawKeyItem = { sortY: 7 }; // beside the wall, north of edge
+  stampDrawKeys([wall, bodyBeside], 1, 0, 1);
+  assert.equal(wall.screenFootY, 9);
+  assert.equal(bodyBeside.screenFootY, 7);
+  // The body (row 7) is north of the wall's near edge (9) ⇒ behind.
+  assert.deepEqual([wall, bodyBeside].slice().sort(DRAW_ORDER), [bodyBeside, wall]);
 });
 
-test('seq absent (default 0) preserves the pre-tiebreak behaviour', () => {
-  // Two bodies on the same row with no seq — the comparator returns 0 (the
-  // old stable-sort tie), byte-identical to before the tiebreak existed.
-  const p = body(5);
-  const q = body(5);
-  assert.equal(DRAW_ORDER(p, q), 0);
-  // The volume/billboard rank still outranks seq: a volume with a HIGHER seq
-  // than a same-row body still draws first (rank beats seq).
-  const wall: DrawOrderItem = { sortY: 8, nearRow: 8, seq: 100 };
-  const atBase: DrawOrderItem = { sortY: 8, seq: 0 };
-  assert.deepEqual(order([atBase, wall]), [wall, atBase]);
+test('screenFootY order: a body walking a hedge line — in front when south, behind when north', () => {
+  const hedge: DrawKeyItem = { sortY: 20, nearRow: 20 }; // hedge south edge row 20
+  const south: DrawKeyItem = { sortY: 21 }; // south of the hedge ⇒ in front
+  const north: DrawKeyItem = { sortY: 19 }; // north of the hedge ⇒ behind
+  assert.deepEqual(stampAndOrder([hedge, south]), [hedge, south]);
+  assert.deepEqual(stampAndOrder([hedge, north]), [north, hedge]);
 });
 
-test('a body walking a hedge line: in front when south of it, behind when north', () => {
-  const hedge = vol(20); // hedge run south edge at row 20
-  const south = body(21); // south of the hedge ⇒ in front
-  const north = body(19); // north of the hedge ⇒ behind
-  assert.deepEqual(order([hedge, south]), [hedge, south]); // hedge, then body
-  assert.deepEqual(order([hedge, north]), [north, hedge]); // body, then hedge
+// ── THE ALGEBRAIC COLLAPSE: flat ground == the old raw-row (sortY) order ────
+
+test('FLAT collapse: with strat 0 everywhere, WORLD order equals the old sortY order', () => {
+  // The golden-gate invariant. screenFootY = sortY·(scale·yScale) + oy is a
+  // strictly-monotone affine image of the world row, so sorting by it yields
+  // exactly the raw-row order regardless of the (positive) slope and origin.
+  const rows = [8.2, 1.0, 5.5, 5.5001, 3.3, 12.0, 0.0];
+  const scale = 2.7;
+  const yScale = 0.6;
+  const sYS = scale * yScale;
+  const oy = 137.5;
+  const items: DrawKeyItem[] = rows.map((r, i) => ({ sortY: r, seq: i }));
+  const got = stampAndOrder(items, sYS, oy, ELEV_PLACEHOLDER * scale).map((i) => i.sortY);
+  const expected = [...rows].sort((a, b) => a - b);
+  assert.deepEqual(got, expected);
 });
 
-// ── CAUSE 1: a BAKED wall keeps its volume rank (nearRow carried) ──────────
-
-test('CAUSE 1: a baked wall carrying nearRow ties as a VOLUME vs a front hedge, and the hedge (south) draws in front', () => {
-  // A COLD/BAKED wall now carries nearRow (== its sortY) just like a live
-  // wall, so DRAW_ORDER treats it as a volume, not a billboard. A hedge
-  // abutting its south face on the SAME row must draw in front of it.
-  const bakedWall = vol(10); // baked wall, near/south edge at row 10, strat 0
-  const frontHedge = vol(11); // hedge one row south (its own south edge row 11)
-  assert.deepEqual(order([bakedWall, frontHedge]), [bakedWall, frontHedge]);
-  assert.deepEqual(order([frontHedge, bakedWall]), [bakedWall, frontHedge]);
+test('FLAT collapse: an exact row tie between billboards falls to seq, deterministically', () => {
+  const a: DrawKeyItem = { sortY: 5, seq: 0 };
+  const b: DrawKeyItem = { sortY: 5, seq: 1 };
+  stampDrawKeys([a, b], 3, 10, 3);
+  assert.equal(a.screenFootY, b.screenFootY); // exact tie
+  assert.deepEqual([b, a].slice().sort(DRAW_ORDER), [a, b]); // seq breaks it
 });
 
-test('CAUSE 1 regression it guards: a baked wall MISSING nearRow (billboard) loses the same-row tie to a front hedge', () => {
-  // This is the pre-fix bug shape: the baked wall was emitted WITHOUT nearRow,
-  // so on an exact same-row tie DRAW_ORDER's rank rule drew the volume (hedge)
-  // FIRST and the billboard (baked wall) AFTER ⇒ wall over hedge. Documented
-  // here so a future regression that drops the baked nearRow is caught.
-  const bakedWallNoNear: DrawOrderItem = { sortY: 10 }; // billboard-class (bug)
-  const hedge = vol(10); // volume on the exact same row
-  // The volume (hedge) draws FIRST, the billboard (wall) LAST ⇒ wall over hedge.
-  assert.deepEqual(order([bakedWallNoNear, hedge]), [hedge, bakedWallNoNear]);
+// A stand-in for ELEV_H (renderer constant) — its exact value is irrelevant
+// to the flat collapse (strat 0 zeroes the term); only its role as a lift.
+const ELEV_PLACEHOLDER = 0.9;
+
+// ── ELEVATION folded into screenFootY (no shelf clamp, no exception) ────────
+
+test('ELEVATION: a raised item lifts up-screen (smaller screenFootY) so it draws behind a ground item at the same row', () => {
+  // The old shelf-major rank forced raised OVER lower; now the true screen
+  // contact row decides. A body on a level-2 crown at row R and a body on
+  // ground at the same row R: the crown body's foot is lifted up-screen, so
+  // it draws first (behind) — its contact point is genuinely farther.
+  const sYS = 1;
+  const oy = 0;
+  const elevPx = 10;
+  const raised: DrawKeyItem = { sortY: 40, strat: 2 }; // lifted 20 up
+  const ground: DrawKeyItem = { sortY: 40, strat: 0 };
+  stampDrawKeys([raised, ground], sYS, oy, elevPx);
+  assert.equal(raised.screenFootY, 40 - 20);
+  assert.equal(ground.screenFootY, 40);
+  assert.deepEqual([ground, raised].slice().sort(DRAW_ORDER), [raised, ground]);
 });
 
-// ── CAUSE 2: a raised building base does NOT dominate a ground hedge in front ─
-
-test('CAUSE 2: a ground hedge in front (south) of a raised building base occludes the base, not dominated by SHELF', () => {
-  // Terraced town: the building base wall is a VOLUME on shelf 1, the hedge a
-  // VOLUME on shelf 0 planted one row SOUTH (in front). Before the fix SHELF
-  // put the raised base over the hedge at every row; now the front-base
-  // exception resolves by near row ⇒ the hedge draws last (in front).
-  const raisedBase = vol(10, 1); // building base wall, shelf 1, south edge row 10
-  const groundHedge = vol(11, 0); // hedge one row south, ground shelf 0
-  assert.deepEqual(order([raisedBase, groundHedge]), [raisedBase, groundHedge]);
-  assert.deepEqual(order([groundHedge, raisedBase]), [raisedBase, groundHedge]);
+test('ELEVATION: a ground hedge in FRONT of a raised base occludes it — no front-base exception needed', () => {
+  // The case the deleted exception patched. A raised building base (shelf 1)
+  // and a ground hedge planted one row SOUTH (in front). The hedge's contact
+  // point is lower on screen (not lifted) than the raised base's, so it draws
+  // last (in front) straight from screenFootY — no special-case term.
+  const sYS = 1;
+  const oy = 0;
+  const elevPx = 10;
+  const raisedBase: DrawKeyItem = { sortY: 10, nearRow: 10, strat: 1 }; // lifted 10 up ⇒ 0
+  const groundHedge: DrawKeyItem = { sortY: 11, nearRow: 11, strat: 0 }; // ⇒ 11
+  stampDrawKeys([raisedBase, groundHedge], sYS, oy, elevPx);
+  assert.ok(groundHedge.screenFootY! > raisedBase.screenFootY!);
+  assert.deepEqual(
+    [groundHedge, raisedBase].slice().sort(DRAW_ORDER),
+    [raisedBase, groundHedge],
+  );
 });
 
-test('CAUSE 2 stays NARROW: a raised volume NOT in front of the ground volume keeps SHELF and draws over it', () => {
-  // Genuine elevation layering must be untouched. The exception fires ONLY when
-  // the LOWER shelf is STRICTLY south of (in front of) the higher one; anything
-  // else keeps SHELF so raised content draws over lower foreground.
-  const groundHedge = vol(10, 0);
-  // (1) Raised volume SOUTH of / in front of the hedge (larger near row): the
-  //     raised thing is genuinely in front and up ⇒ SHELF wins, raised on top.
-  const raisedInFront = vol(11, 1);
-  assert.deepEqual(order([raisedInFront, groundHedge]), [groundHedge, raisedInFront]);
-  // (2) Exact same near row keeps SHELF (conservative: raised stays on top).
-  const raisedSameRow = vol(10, 1);
-  assert.deepEqual(order([raisedSameRow, groundHedge]), [groundHedge, raisedSameRow]);
+// ── THE OVER-FOOT SKIRT stays bound to its object (still WORLD band) ────────
+// The grass skirt shares its object's EXACT foot row + shelf and is collected
+// AFTER the world objects, so its later seq draws it immediately after (over)
+// its object — unchanged by the refactor (skirts stay in the WORLD band, not
+// demoted to a decal, so they still nestle over the object's base edge).
+
+test('SKIRT: shares the object row+shelf and draws right after it via the later seq', () => {
+  const tree: DrawKeyItem = { sortY: 40, strat: 0, seq: 5 };
+  const skirt: DrawKeyItem = { sortY: 40, strat: 0, seq: 12 };
+  stampDrawKeys([tree, skirt], 1, 0, 1);
+  assert.equal(tree.screenFootY, skirt.screenFootY); // same slot
+  assert.deepEqual([skirt, tree].slice().sort(DRAW_ORDER), [tree, skirt]);
 });
 
-test('CAUSE 2 exception never fires for billboards: a raised BODY over a ground hedge keeps SHELF (wall/entity sort unchanged)', () => {
-  // Only volume-vs-volume enters the exception. A raised entity (billboard, no
-  // nearRow) over a ground hedge keeps pure SHELF — elevation over foreground.
-  const raisedBody = body(11, 1); // a body on the terrace, south of the hedge
-  const groundHedge = vol(10, 0);
-  assert.deepEqual(order([raisedBody, groundHedge]), [groundHedge, raisedBody]);
-});
-
-// ── TREE vs HEDGE: a tree is a VOLUME, so it sorts by TRUE ground depth ─────
-
-test('FLAT tree-vs-hedge: a tree NORTH of a hedge draws BEHIND it, a tree SOUTH draws IN FRONT', () => {
-  // Same shelf (flat q=0). The tree's near edge is its foot row (ty+0.9); the
-  // hedge run's is its south edge (ty+1). North of the hedge ⇒ smaller row ⇒
-  // painted first ⇒ behind; south ⇒ larger row ⇒ painted last ⇒ in front.
-  const hedge = vol(20); // hedge tile row 19, south edge row 20
-  const north = tree(18.9); // tree tile row 18 ⇒ foot 18.9 (north of the hedge)
-  const south = tree(20.9); // tree tile row 20 ⇒ foot 20.9 (south of the hedge)
-  assert.deepEqual(order([hedge, north]), [north, hedge]); // tree then hedge ⇒ behind
-  assert.deepEqual(order([hedge, south]), [hedge, south]); // hedge then tree ⇒ in front
-});
-
-test('CROSS-SHELF (the bug): a ground tree in FRONT (south) of a RAISED hedge draws OVER it', () => {
-  // The reported defect: a hedge on a higher terrace (shelf 1) and a tree at
-  // ground (shelf 0) planted SOUTH of it. Before trees carried a near row the
-  // tree was a billboard, so SHELF dominated and the raised hedge drew over the
-  // tree even though the tree is physically in front. As a VOLUME the tree now
-  // flows through the front-base exception and its true (souther) ground row
-  // wins ⇒ the tree draws last, over the hedge.
-  const raisedHedge = vol(35, 1); // hedge on the terrace, south edge row 35
-  const groundTree = tree(36.9, 0); // tree at ground, foot two rows south / in front
-  assert.deepEqual(order([raisedHedge, groundTree]), [raisedHedge, groundTree]);
-  assert.deepEqual(order([groundTree, raisedHedge]), [raisedHedge, groundTree]);
-});
-
-test('CROSS-SHELF: a RAISED tree over a ground hedge that is SOUTH of it (in front) is occluded by the hedge', () => {
-  // The mirror case: a tree up on the terrace (shelf 1) and a hedge at ground
-  // (shelf 0) planted in FRONT (south). The ground hedge is genuinely nearer,
-  // so it draws last (over the raised tree's base) — no tree-over-hedge.
-  const raisedTree = tree(9.9, 1); // tree on the terrace (north/up)
-  const groundHedge = vol(11, 0); // hedge at ground, south / in front
-  assert.deepEqual(order([raisedTree, groundHedge]), [raisedTree, groundHedge]);
-  assert.deepEqual(order([groundHedge, raisedTree]), [raisedTree, groundHedge]);
-});
-
-test('CROSS-SHELF stays narrow: a raised tree genuinely IN FRONT of a ground hedge keeps SHELF and draws over it', () => {
-  // The front-base exception fires ONLY when the LOWER shelf is strictly south
-  // of the higher one. A raised tree whose foot is SOUTH of (in front of) a
-  // ground hedge is genuinely in front AND up ⇒ SHELF wins, raised tree on top.
-  const groundHedge = vol(10, 0); // hedge at ground, south edge row 10
-  const raisedTreeInFront = tree(11, 1); // tree up on the terrace, south of it
-  assert.deepEqual(order([raisedTreeInFront, groundHedge]), [groundHedge, raisedTreeInFront]);
-  // Exact same near row keeps SHELF too (conservative: raised stays on top).
-  const raisedTreeSameRow = tree(10, 1);
-  assert.deepEqual(order([raisedTreeSameRow, groundHedge]), [groundHedge, raisedTreeSameRow]);
-});
-
-// ── G4: THE OVER-FOOT SKIRT is BOUND to its object ─────────────────────────
-// The grass skirt around an object's foot must draw immediately AFTER its
-// object, in the object's OWN sort slot, every frame — never a fragile
-// +epsilon near-tie that flips order as the camera moves. The renderer emits
-// the skirt with the object's EXACT (strat, sortY) and a strictly greater
-// `seq` (it is collected after the world objects), so DRAW_ORDER binds it
-// deterministically right after that object.
-
-test('SKIRT: over a GENERIC object (billboard tree/rock) it shares the exact row+shelf and draws right after via seq', () => {
-  // The renderer copies footY = object.sortY and strat, and stamps a later seq.
-  const treeObj: DrawOrderItem = { sortY: 40, strat: 0, seq: 5 };
-  const skirt: DrawOrderItem = { sortY: 40, strat: 0, seq: 12 }; // same slot, later seq
-  // Whichever way they arrive, the object draws first, the skirt right after.
-  assert.deepEqual(order([treeObj, skirt]), [treeObj, skirt]);
-  assert.deepEqual(order([skirt, treeObj]), [treeObj, skirt]);
-  assert.ok(DRAW_ORDER(treeObj, skirt) < 0);
-  assert.ok(DRAW_ORDER(skirt, treeObj) > 0);
-});
-
-test('SKIRT: over a WALL (a VOLUME) it shares the wall foot row and still draws right after (rank + seq)', () => {
-  // The wall carries nearRow === its foot row; the skirt is a billboard at the
-  // same row. The volume (rank 0) draws first, the skirt after — and the skirt
-  // has the later seq besides, so it can never precede its wall.
-  const wall: DrawOrderItem = { sortY: 10, nearRow: 10, strat: 0, seq: 3 };
-  const skirt: DrawOrderItem = { sortY: 10, strat: 0, seq: 9 };
-  assert.deepEqual(order([wall, skirt]), [wall, skirt]);
-  assert.deepEqual(order([skirt, wall]), [wall, skirt]);
-});
-
-test('SKIRT: no other item can wedge between object and skirt at the shared slot — the pair is contiguous', () => {
-  // The old bug: the skirt sat a hair south (footY + 0.02), so an object rooted
-  // between footY and footY+0.02 (or a moving body oscillating across it) slid
-  // BETWEEN the object and its skirt and flipped frame-to-frame. Now the skirt
-  // shares the object's EXACT row, so a genuinely-souther object sorts AFTER
-  // both (it occludes the pair), never between them.
-  const obj: DrawOrderItem = { sortY: 50, strat: 0, seq: 2 };
-  const skirt: DrawOrderItem = { sortY: 50, strat: 0, seq: 8 };
-  const souther: DrawOrderItem = { sortY: 50.5, strat: 0, seq: 4 }; // in front
-  const sorted = order([souther, skirt, obj]);
+test('SKIRT: a genuinely souther object sorts after BOTH the object and its skirt (never wedges between)', () => {
+  // Collection order (stampDrawKeys stamps seq by position): world objects
+  // first (obj, then the souther object), skirts LAST — so the skirt's seq is
+  // strictly greater than every world object's, binding it right after obj.
+  const obj: DrawKeyItem = { sortY: 50, strat: 0 };
+  const souther: DrawKeyItem = { sortY: 50.5, strat: 0 };
+  const skirt: DrawKeyItem = { sortY: 50, strat: 0 };
+  const sorted = stampAndOrder([obj, souther, skirt]);
   assert.deepEqual(sorted, [obj, skirt, souther]);
-  // object and skirt are adjacent (contiguous), souther is strictly after both.
-  assert.ok(sorted.indexOf(skirt) === sorted.indexOf(obj) + 1);
-});
-
-test('SKIRT: is still OCCLUDED when the whole object is behind something in front (souther row wins over the skirt)', () => {
-  const skirt: DrawOrderItem = { sortY: 30, strat: 0, seq: 7 };
-  const inFront: DrawOrderItem = { sortY: 31, strat: 0, seq: 1 }; // south ⇒ nearer
-  // Despite the smaller seq, the souther item draws last ⇒ in front of the skirt.
-  assert.deepEqual(order([skirt, inFront]), [skirt, inFront]);
-});
-
-test('SKIRT: sharing the object shelf means SHELF never separates them (elevated foot)', () => {
-  // A skirt around an object rooted on a terrace rides the SAME shelf as its
-  // object; SHELF therefore cannot lift/sink one relative to the other.
-  const raisedObj: DrawOrderItem = { sortY: 20, strat: 1, seq: 2 };
-  const skirt: DrawOrderItem = { sortY: 20, strat: 1, seq: 6 };
-  assert.deepEqual(order([skirt, raisedObj]), [raisedObj, skirt]);
-  // A mismatched-shelf skirt (the bug shape: strat dropped to 0) would be torn
-  // BELOW its raised object by SHELF — this guards that we copy the shelf.
-  const skirtWrongShelf: DrawOrderItem = { sortY: 20, strat: 0, seq: 6 };
-  assert.deepEqual(order([raisedObj, skirtWrongShelf]), [skirtWrongShelf, raisedObj]);
-});
-
-test('REGRESSION GUARD: the tree fix does NOT touch player-vs-hedge — a raised BODY over a ground hedge still keeps SHELF', () => {
-  // A player/NPC/beast is a billboard (no nearRow); only trees became volumes.
-  // A raised body in front of a ground hedge still keeps SHELF exactly as
-  // before, so wall/hedge-vs-entity sort is unchanged.
-  const raisedBody = body(21, 1); // a player on the terrace, south of the hedge
-  const groundHedge = vol(20, 0);
-  assert.deepEqual(order([raisedBody, groundHedge]), [groundHedge, raisedBody]);
-  // …and a raised body over a ground hedge stays on top regardless of row.
-  const raisedBodyNorth = body(18, 1);
-  assert.deepEqual(order([groundHedge, raisedBodyNorth]), [groundHedge, raisedBodyNorth]);
+  assert.equal(sorted.indexOf(skirt), sorted.indexOf(obj) + 1); // contiguous
 });

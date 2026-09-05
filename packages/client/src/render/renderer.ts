@@ -283,7 +283,7 @@ import {
 import { collectEmitter, type EmitterGlowOut } from './emitters.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
 import { collectVolume } from './collectVolume.js';
-import { DRAW_ORDER } from './drawOrder.js';
+import { DRAW_ORDER, Layer, stampDrawKeys } from './drawOrder.js';
 import {
   RaisedKind,
   buildRegisterRows,
@@ -1144,31 +1144,23 @@ const WOOD_FACE_TILES: ReadonlySet<number> = new Set<number>([
   ...PALISADE_TILES,
 ]);
 
-/** THE SHELF LAW's one comparator lives in `./drawOrder.ts` (a pure module
- *  so the A5 pitch-aware depth law can be pinned by node tests) — hoisted
- *  out of the frame loop since a fresh closure per frame de-optimized the
- *  hottest sort in the engine.
+/** THE ONE RENDER's one comparator lives in `./drawOrder.ts` (a pure module
+ *  so the depth law can be pinned by node tests) — hoisted out of the frame
+ *  loop since a fresh closure per frame de-optimized the hottest sort in the
+ *  engine.
  *
- *  THE SHELF CLAMP (2026-08-17): positive shelves flatten to ONE rank
- *  before comparing. A shelf exists so raised content can beat the
- *  crown ROWS beneath it (shelf 0) and so pit content sinks with its
- *  floor (negative levels, untouched here) — but between two RAISED
- *  items the raw world row is the true camera depth, and unclamped
- *  shelf-major let anything on shelf N+1 paint over a shelf-N stander
- *  standing rows SOUTH of it. The visible wound: a tree at a stair
- *  mouth (shelf 1) had its whole canopy cut by the terrace wall two
- *  levels up (shelf 2) — the "stair apron over the trees" report.
- *  Clamped, raised-vs-raised resolves by row like flat land always
- *  has; every within-terrace contract the law names (climber over
- *  flight, wall over the body behind it, face under its own crown's
- *  standers — billboards paint no pixels below their feet, so row
- *  order never bleeds) still holds, now by row instead of by rank.
- *
- *  THE ONE RENDER — A5 (pitch-aware depth) adds the secondary depth term:
- *  a world-geometry VOLUME sorts by its NEAR (south) ground-edge row
- *  (`nearRow`, set only under the `occlusionOn` kill-switch), and on a
- *  depth TIE a billboard at the wall's base draws in front. See
- *  `drawOrder.ts` for the full contract. */
+ *  The world sorts by a VALID TOTAL ORDER over a lexicographic key,
+ *  (layer, screenFootY, classRank, stableId), derived centrally by
+ *  `stampDrawKeys` from each item's (sortY, strat, nearRow). Elevation is
+ *  folded into ONE screen-row term — screenFootY — so there is no shelf
+ *  clamp and no per-pair exception (both retired: the old front-base
+ *  exception made the comparator intransitive → z-flicker). A world-geometry
+ *  VOLUME carries `nearRow` (its south ground edge, set only under the
+ *  `occlusionOn` kill-switch) so classRank ranks it a volume: on an exact
+ *  screenFootY tie a billboard at the wall's base draws in front. On flat
+ *  ground strat is 0 everywhere, so screenFootY is a strictly-monotone image
+ *  of the world row and the WORLD band's order equals the old raw-row sort
+ *  (the golden gate). See `drawOrder.ts` for the full contract. */
 
 /** The dynamic-glow falloff profile, hoisted — a per-glow-per-frame
  *  array literal defeated the glow sprite cache's identity memo. */
@@ -1181,36 +1173,40 @@ const GLOW_STOPS: ReadonlyArray<readonly [number, number]> = [
 export interface DrawItem {
   sortY: number;
   /**
-   * THE SHELF LAW — the world sort runs on ONE compound key:
-   * (strat, sortY). `sortY` is always the item's RAW world row (its
-   * true camera depth — never a lifted/screen-space row), and `strat`
-   * is the shelf the item STANDS ON:
+   * THE ELEVATION SHELF the item STANDS ON — folded into screenFootY by
+   * stampDrawKeys as a screen LIFT (strat·ELEV_H·scale), not a sort band.
+   * `sortY` is always the item's RAW world row (its true camera depth —
+   * never a lifted/screen-space row). `strat` is:
    *
    *   - objects, entities, and airborne matter: the elevation level of
-   *     the tile under their feet (omitted when 0);
-   *   - cliff faces and side planes: their BASE level (level − 1) — a
-   *     wall loses to everything standing on its own crown, and wins
-   *     over everything at its base level standing behind it (raw row
-   *     settles that within the shelf);
-   *   - elevated ground rows: shelf 0 for positive levels (the crown
-   *     is landscape — bodies at a cliff foot must peek over it), the
-   *     level itself for sunken rows (pit floors draw under whatever
-   *     stands in the pit);
-   *   - ramp flights/aprons: the LOW level (a body at the mouth paints
-   *     over the treads); landings: the high level.
+   *     the tile under their feet (omitted when 0) — its true visual lift;
+   *   - cliff faces and side planes: their BASE level (level − 1) — the
+   *     true lift of the face's south base edge;
+   *   - elevated GROUND rows: shelf 0 for positive levels (the crown is
+   *     landscape — bodies at a cliff foot peek over it; these emit in the
+   *     GROUND band so objects paint over their own rows regardless), the
+   *     level itself for sunken rows;
+   *   - ramp flights/aprons: the LOW level; landings: the high level.
    *
-   * Higher shelves draw later. Within a shelf, the proven flat-land
-   * raw-row order applies unchanged — flat ground (all shelf 0) is
-   * bit-for-bit the old sort. This one key retires three generations
-   * of pairwise patches (the armory-crop face law, the Lantern Row
-   * awning exemption, the face-contest object shift) whose mixed sort
-   * spaces let plateau rows slice standing trees and ore.
+   * On flat ground strat is 0 everywhere, so screenFootY collapses to a
+   * strictly-monotone image of the world row — the WORLD band is
+   * bit-for-bit the old raw-row sort (the golden gate). Elevation is now
+   * one screen-row term, not a shelf-major rank, so a raised item and a
+   * ground item in front of it order by their true screen contact row.
    */
   strat?: number;
-  /** THE STABLE TIEBREAK (grass G-PERF): the collect-order index, stamped on
-   *  every item just before the world sort so exact depth ties resolve
-   *  deterministically (see DrawOrderItem.seq). Assigned per frame; not read
-   *  by any painter. */
+  /** THE ONE RENDER total-order key, stamped centrally by stampDrawKeys just
+   *  before the world sort (see drawOrder.ts). None is read by a painter.
+   *  `layer` — the painter's BAND (Layer); default World. Set at the FEW
+   *  ground-decal/elevated-ground collectors; everything else defaults. */
+  layer?: Layer;
+  /** SCREEN-Y of the ground-contact point, elevation folded in. Stamped. */
+  screenFootY?: number;
+  /** volume(0) before billboard(1) at an exact screenFootY tie. Stamped. */
+  classRank?: number;
+  /** Camera-invariant final tiebreak; falls back to `seq`. */
+  stableId?: number;
+  /** The per-frame collect-order index — the fallback final tiebreak. */
   seq?: number;
   draw?: () => void;
   /**
@@ -4466,6 +4462,11 @@ export class Renderer {
               const pbLift = Math.round(level * ELEV_H * s);
               items.push({
                 sortY: worldTy - 0.01,
+                // THE GROUND BAND: a raised terrace/pit surface is ground —
+                // it draws under every world object so bodies on the crown
+                // paint over their own rows (the crown is landscape they peek
+                // over), exactly the old shelf-0 intent, now via the band.
+                layer: Layer.Ground,
                 stageSafe: true,
                 // Stage bounds: the row slice at its lift, plus the
                 // grass layer's blade headroom above and slack.
@@ -5872,7 +5873,10 @@ export class Renderer {
       for (let i = 0; i < pool.length; i++) {
         const p = pool[i]!;
         if (p.layer !== LAYER_GROUND) continue;
-        items.push(this.takeBulkItem(p.y, this.stratAt(p.x, p.y), BulkKind.Particle, p));
+        // THE GROUND-MARK BAND: ground particles are decals under the world.
+        const gp = this.takeBulkItem(p.y, this.stratAt(p.x, p.y), BulkKind.Particle, p);
+        gp.layer = Layer.GroundDecal;
+        items.push(gp);
       }
       // THE WORLD LAYER: airborne matter that lives WITH the bodies —
       // a fire ring's north arc passes behind the caster, a venom cloud
@@ -5941,24 +5945,29 @@ export class Renderer {
         items.push(this.takeBulkItem(bd.y + 0.01, this.stratAt(bd.x, bd.y), BulkKind.GroundedBird, bd));
       }
     }
-    // THE SEATED HALOS y-sort with the world at their flame's ground
-    // row: a stall south of the lantern clips the glow, a body just
-    // north stands inside it — the halo is world geometry (lighting v4
-    // phase 2). The +0.02 nudge keeps it over its own fixture's paint.
+    // THE SEATED HALOS are ground glows: the GroundDecal band draws them
+    // under every body, so a body standing in a lantern's pool is lit from
+    // beneath. No epsilon nudge — the band, not a sortY hair, orders them
+    // (lighting v4 phase 2).
     for (const g of this.seatedGlows) {
       if (g.a < 0.01) continue;
-      items.push(this.takeBulkItem(g.gy + 0.02, this.stratAt(g.x, g.gy), BulkKind.Halo, g));
+      const hi = this.takeBulkItem(g.gy, this.stratAt(g.x, g.gy), BulkKind.Halo, g);
+      hi.layer = Layer.GroundDecal;
+      items.push(hi);
     }
     this.perfMark('collect');
-    // THE STABLE TIEBREAK (grass G-PERF): stamp each item with its collect
-    // index so an EXACT (shelf, depth, rank) tie — a tall-grass band blit and
-    // a body whose foot lands on the band's row, say — resolves by this
-    // deliberate id rather than the accident of array position. This is the
-    // order JS's stable sort already yields today (so no visual change), but
-    // now it is a TOTAL order the comparator owns: deterministic, and immune
-    // to any residual tie flicker.
-    for (let i = 0; i < items.length; i++) items[i]!.seq = i;
-    // THE SHELF LAW (see DrawItem.strat): shelf first, raw row within.
+    // THE ONE RENDER: derive every item's total-order key (layer,
+    // screenFootY, classRank, seq) centrally from the fields it already
+    // carries, then sort by the ONE valid comparator. screenFootY folds
+    // elevation into a single screen-row term (see stampDrawKeys); on flat
+    // ground it collapses to a strictly-monotone image of the world row, so
+    // the WORLD band's order is byte-identical to the old raw-row sort.
+    stampDrawKeys(
+      items,
+      this.camera.scale * this.camera.yScale,
+      this.camera.originY(this.h),
+      ELEV_H * this.camera.scale,
+    );
     items.sort(DRAW_ORDER);
     this.perfMark('sort');
     this.cullHiddenTrees(items);
@@ -15466,6 +15475,12 @@ export class Renderer {
     it.strat = strat;
     it.bulk = bulk;
     it.bulkArg = bulkArg;
+    // Pooled items are reused across frames: clear the per-frame draw-order
+    // band so a ground-mark slot does not leak L1 onto a later world grain
+    // (stampDrawKeys defaults `undefined` → World). nearRow is never set on
+    // bulk items; clear it too so classRank stays billboard.
+    it.layer = undefined;
+    it.nearRow = undefined;
     return it;
   }
 
@@ -16282,6 +16297,13 @@ export class Renderer {
     }
     items.push({
       sortY: y1 + cfg.sortOff,
+      // THE ONE RENDER: a joined run (a long table, a fence line) is a
+      // world-geometry VOLUME, not a billboard — carry its near (south) edge
+      // as nearRow so classRank is volume(0). A body whose foot lands on the
+      // run's south edge then draws IN FRONT of it (billboards paint no pixels
+      // below their feet). Same depth row as sortY, so ordering is unchanged;
+      // only the exact-tie rank against a same-row billboard is fixed.
+      nearRow: y1 + cfg.sortOff,
       elevated: game.world.elevAt(ax, ay) !== 0,
       strat: this.stratAt(ax, ay),
       drawShadow: () => {
@@ -18696,17 +18718,14 @@ export class Renderer {
         // by treeExtent.test.ts. No side-channel pads here.
         return {
           sortY: ty + 0.9,
-          // A5 pitch-aware depth (tree-vs-volume sort): a mature tree is a
-          // tall, ground-rooted OCCLUDER — like a wall or hedge, not a mobile
-          // billboard. Carrying its foot row as `nearRow` (=== sortY, so the
-          // depth term and q=0 flat order are byte-identical) makes it a
-          // VOLUME for DRAW_ORDER, so the front-base cross-shelf exception
-          // resolves tree-vs-hedge (and tree-vs-wall/building) by TRUE ground
-          // depth: a tree planted in FRONT (south) of a raised hedge draws
-          // OVER it instead of being dominated by the hedge's higher shelf,
-          // and a tree behind it is still occluded. Mobile entities (players,
-          // NPCs, beasts) stay billboards (no nearRow), so wall/hedge-vs-entity
-          // sort is unchanged.
+          // THE ONE RENDER (tree-vs-volume sort): a mature tree is a tall,
+          // ground-rooted OCCLUDER — like a wall or hedge, not a mobile
+          // billboard. Carrying its foot row as `nearRow` (=== sortY, so
+          // screenFootY and the q=0 flat order are byte-identical) makes it a
+          // VOLUME (classRank 0) for DRAW_ORDER, so on an exact contact-row tie
+          // a body at the tree's foot draws in front and the tree sorts by its
+          // TRUE ground depth against hedges/walls. Mobile entities (players,
+          // NPCs, beasts) stay billboards (no nearRow).
           nearRow: this.occlusionOn ? ty + 0.9 : undefined,
           occKey: occ ? treeKey(tx + 0.5, ty + 0.5, tile) : undefined,
           occX0: occ ? p.x + shiver + occ.x0 * s : undefined,
@@ -19645,6 +19664,9 @@ export class Renderer {
             // Just under the coat band (row + 0.001) so the shade lies over the
             // terrace ground (row − 0.01) and beneath the raised blades.
             sortY: b.sortY - 0.006,
+            // THE GROUND-DECAL BAND: the raised grass coat (and its cast) is a
+            // ground mark — over the terrace surface, under every world object.
+            layer: Layer.GroundDecal,
             stageSafe: true,
             draw: () => {
               if (this.stageAssembling) {
@@ -19667,6 +19689,8 @@ export class Renderer {
         const b = bl;
         items.push({
           sortY: b.sortY,
+          // THE GROUND-DECAL BAND: the raised grass coat is a ground mark.
+          layer: Layer.GroundDecal,
           stageSafe: true,
           draw: () => {
             if (this.stageAssembling) {
@@ -19714,6 +19738,9 @@ export class Renderer {
           const b = bl;
           items.push({
             sortY: b.sortY,
+            // THE GROUND-DECAL BAND: raised blooms ride over the coat, under
+            // every world object on the row.
+            layer: Layer.GroundDecal,
             stageSafe: true,
             draw: () => {
               if (this.stageAssembling) {
