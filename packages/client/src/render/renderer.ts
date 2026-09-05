@@ -17028,24 +17028,37 @@ export class Renderer {
     // tangential walk grazing the boundary can't strobe the coverage.
     const f0 = this.fadeMap.get(key);
     const slack = f0 !== undefined && f0.k > 0.05 ? dw * 0.06 : 0;
+    const sx0 = dx0 + ix - slack;
+    const sx1 = dx0 + dw - ix + slack;
+    // THE CENTER-COLUMN LAW (field fix — "a box nowhere near in front,
+    // faded"). An occluder is only genuinely BETWEEN the camera and the
+    // body when its silhouette covers the body's CENTER column. The old
+    // gate armed on any AABB overlap, so a prop off to one side — south of
+    // you (fronts) and grazing the corner of your screen box — faded
+    // though you stand clear of it. Require the inset silhouette to span
+    // the body's center x: a side prop no longer fades, only one you are
+    // actually standing behind. (The presence floor + ease are unchanged.)
+    const cx = (this.fadeBX0 + this.fadeBX1) / 2;
+    const coversCenterX = sx0 < cx && sx1 > cx;
     // COVER-FRACTION GATE: fade strength tracks how much of the body's
     // screen box the occluder's inset silhouette genuinely COVERS — not
     // a binary rect clip. A grazing crown-tip (low cover) fades nothing;
     // the tree you stand squarely behind (high cover) reaches the
     // presence floor, and the boundary eases in/out. OCCLUSION, NOT
     // PROXIMITY — the far south wedge (cover 0) never arms.
-    const cover = fronts
-      ? occluderCover(
-          dx0 + ix - slack,
-          dx0 + dw - ix + slack,
-          dy0 + dh * FADE_INSET_TOP - slack,
-          dy0 + dh + slack,
-          this.fadeBX0,
-          this.fadeBX1,
-          this.fadeBY0,
-          this.fadeBY1,
-        )
-      : 0;
+    const cover =
+      fronts && coversCenterX
+        ? occluderCover(
+            sx0,
+            sx1,
+            dy0 + dh * FADE_INSET_TOP - slack,
+            dy0 + dh + slack,
+            this.fadeBX0,
+            this.fadeBX1,
+            this.fadeBY0,
+            this.fadeBY1,
+          )
+        : 0;
     const target = fadeStrength(cover);
     const occludes = target > 0.001;
     let f = f0;
@@ -17058,11 +17071,12 @@ export class Renderer {
     const step = this.frameDt / FADE_EASE_S;
     f.k += Math.max(-step, Math.min(step, target - f.k));
     // CORE = the silhouette covers the torso itself — this sprite
-    // genuinely shades the body, so it feeds the ember's stack.
+    // genuinely shades the body, so it feeds the ember's stack. The
+    // center-column gate above already proved it spans cx; the core adds
+    // the vertical: its silhouette also brackets the body's center y.
     if (occludes) {
-      const cx = (this.fadeBX0 + this.fadeBX1) / 2;
       const cy = (this.fadeBY0 + this.fadeBY1) / 2;
-      if (dx0 + ix < cx && dx0 + dw - ix > cx && dy0 < cy && dy0 + dh > cy) {
+      if (dy0 < cy && dy0 + dh > cy) {
         this.fadeCoreCountNew++;
       }
     }
