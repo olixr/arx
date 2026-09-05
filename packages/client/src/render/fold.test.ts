@@ -4,14 +4,28 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CHUNK_SIZE } from '@arx/shared';
-import { HALO_LEN, band, haloIndex, type SpectrumCore, type SpectrumStroke } from '@arx/content';
+import {
+  FOLD_STRIP_H,
+  FOLD_STRIP_W,
+  HALO_LEN,
+  MUSEUM_PLANE_ID,
+  SURFACE_PLANE_ID,
+  band,
+  haloIndex,
+  museumFoldWing,
+  museumSpectrum,
+  type SpectrumCore,
+  type SpectrumStroke,
+} from '@arx/content';
 import {
   allocSpectrumHalo,
   resetSpectrum,
   setSpectrum,
   setSpectrumClock,
+  setSpectrumPlane,
   spectrumCores,
   spectrumEpoch,
+  spectrumHallOn,
   spectrumHalo,
   spectrumHaloSig,
   spectrumPrepared,
@@ -161,4 +175,124 @@ test('NO CLOCK REACHES A PAINTED VALUE: fold.ts reads no clock', () => {
   assert.doesNotMatch(code, /\bDate\b/);
   assert.doesNotMatch(code, /\bperformance\b/);
   assert.doesNotMatch(code, /Math\.random/);
+});
+
+// ------------------------------------------------ THE HALL'S OWN RULER (LG-2)
+// The Prop Museum's Living Ground wing declares its own stroke set
+// (content/maps/museum.ts museumSpectrum). The registry lays it over
+// the wire's set KEYED ON THE PLANE: in the hall the field is the
+// ruler and nothing else; the wire's strokes and cores stay held and
+// return on the crossing out. The cases the refused server door
+// missed are the pins: waking inside the hall (the world's set was
+// applied at welcome), and a broadcast swap while standing in it.
+
+/** The chunk a wing cell stands in, per block and row. */
+function wingChunks(): Array<[number, number]> {
+  const wing = museumFoldWing();
+  const out: Array<[number, number]> = [];
+  for (const block of wing.blocks) {
+    for (const row of wing.rows) {
+      for (const dx of [0, FOLD_STRIP_W - 1]) {
+        out.push([Math.floor((block.stripX + dx) / CHUNK_SIZE), Math.floor((row.stripY + FOLD_STRIP_H - 1) / CHUNK_SIZE)]);
+      }
+    }
+  }
+  return out;
+}
+
+test('THE HALL\'S OWN RULER: in the museum the field is the wing\'s set; the wire\'s set is held and returns on the way out', () => {
+  resetSpectrum();
+  // The world's registry as the welcome delivered it: one stroke that
+  // happens to land on the wing's numbers, and one far away.
+  const wing = museumFoldWing();
+  const world: SpectrumStroke[] = [
+    circle('world-overlap', wing.blocks[0]!.stripX + 3, wing.rows[0]!.stripY + 1, 10),
+    circle('world-far', 900, 900, 20, { axis: 'burn' }),
+  ];
+  setSpectrum(world, []);
+  assert.equal(setSpectrumPlane(SURFACE_PLANE_ID), false, 'the surface is not a change');
+  assert.equal(spectrumHallOn(), false);
+  const surfaceSigs = wingChunks().map(([cx, cy]) => spectrumSig(cx, cy));
+  const surfaceEpoch = spectrumEpoch();
+  assert.ok(surfaceSigs.some((s) => s !== 0), 'the overlapping world stroke reaches the wing on the surface');
+  // The crossing in: the epoch walks, every wing chunk signs, and the
+  // prepared list is the museum's ids alone — no world stroke, whatever
+  // its numbers.
+  assert.equal(setSpectrumPlane(MUSEUM_PLANE_ID), true);
+  assert.equal(spectrumHallOn(), true);
+  assert.ok(spectrumEpoch() > surfaceEpoch);
+  const ids = spectrumPrepared().map((p) => p.src.id).sort();
+  assert.deepEqual(ids, museumSpectrum().map((s) => s.id).sort());
+  for (const [cx, cy] of wingChunks()) assert.notEqual(spectrumSig(cx, cy), 0, `wing chunk ${cx},${cy} signs in the hall`);
+  assert.equal(spectrumSig(Math.floor(900 / CHUNK_SIZE), Math.floor(900 / CHUNK_SIZE)), 0, 'the far world stroke is silent in the hall');
+  // The wire's set is HELD, not lost.
+  assert.deepEqual(spectrumStrokes().map((s) => s.id), ['world-overlap', 'world-far']);
+  // A stay is free: the same plane again rebuilds nothing.
+  const hallEpoch = spectrumEpoch();
+  assert.equal(setSpectrumPlane(MUSEUM_PLANE_ID), false);
+  assert.equal(spectrumEpoch(), hallEpoch);
+  // A broadcast swap while standing in the hall stores the new world
+  // set and leaves the ruler in place.
+  setSpectrum([circle('world-new', wing.blocks[1]!.stripX, wing.rows[2]!.stripY, 8)], []);
+  assert.equal(spectrumHallOn(), true);
+  assert.deepEqual(spectrumPrepared().map((p) => p.src.id).sort(), museumSpectrum().map((s) => s.id).sort());
+  assert.deepEqual(spectrumStrokes().map((s) => s.id), ['world-new']);
+  // The crossing out restores the wire's (new) set exactly.
+  assert.equal(setSpectrumPlane(SURFACE_PLANE_ID), true);
+  assert.equal(spectrumHallOn(), false);
+  assert.deepEqual(spectrumPrepared().map((p) => p.src.id), ['world-new']);
+  // Waking INSIDE the hall (the plane persists across logins): the
+  // welcome applies the world's set first, the latch folds the wing
+  // anyway — the order of the two never matters.
+  resetSpectrum();
+  setSpectrumPlane(MUSEUM_PLANE_ID);
+  setSpectrum(world, []);
+  for (const [cx, cy] of wingChunks()) assert.notEqual(spectrumSig(cx, cy), 0, `wing chunk ${cx},${cy} signs after a welcome inside the hall`);
+  assert.deepEqual(spectrumPrepared().map((p) => p.src.id).sort(), museumSpectrum().map((s) => s.id).sort());
+  resetSpectrum();
+  assert.equal(spectrumHallOn(), false, 'resetSpectrum forgets the hall too');
+});
+
+test('THE HALL\'S OWN RULER: live cores never reach the hall, and the ruler reads every band on every wing cell', () => {
+  resetSpectrum();
+  const wing = museumFoldWing();
+  const core: SpectrumCore = {
+    id: 'core-1',
+    axis: 'blight',
+    x: wing.blocks[2]!.stripX,
+    y: wing.rows[4]!.stripY,
+    r0: 6,
+    r1: 30,
+    t0: 0,
+    t1: 10_000,
+    soft: 0.5,
+  };
+  setSpectrum([], [core]);
+  assert.equal(setSpectrumClock(5_000), true, 'on the surface the core projects');
+  assert.equal(spectrumPrepared().length, 1);
+  setSpectrumPlane(MUSEUM_PLANE_ID);
+  assert.equal(spectrumPrepared().every((p) => p.src.id.startsWith('museum-')), true, 'the projected core is not in the hall');
+  assert.equal(setSpectrumClock(9_000), false, 'a tick in the hall moves nothing painted');
+  assert.equal(spectrumPrepared().every((p) => p.src.id.startsWith('museum-')), true);
+  // The halo at the first block's first row reads the ruler: the west
+  // apron column summer, the strip's four cells touched/taken/held in
+  // order at the tile centres, on the season axis alone.
+  const block = wing.blocks[0]!;
+  const row = wing.rows[0]!;
+  const baseX = Math.floor(block.x0 / CHUNK_SIZE) * CHUNK_SIZE;
+  const baseY = Math.floor(row.stripY / CHUNK_SIZE) * CHUNK_SIZE;
+  const halo = allocSpectrumHalo();
+  assert.equal(spectrumHalo(baseX, baseY, halo), true);
+  const wordAt = (axis: number, x: number, y: number): number => halo[haloIndex(axis, x - baseX, y - baseY)]!;
+  const y = row.stripY + 1;
+  assert.equal(band(wordAt(0, block.x0, y)), 0, 'the west apron is summer');
+  for (let c = 0; c < 4; c++) {
+    const x = block.stripX + c * (FOLD_STRIP_W / 4) + 1;
+    assert.equal(band(Math.abs(wordAt(0, x, y))), c, `cell ${c} reads band ${c}`);
+    assert.equal(wordAt(1, x, y), 0);
+    assert.equal(wordAt(2, x, y), 0);
+  }
+  setSpectrumPlane(SURFACE_PLANE_ID);
+  assert.equal(spectrumPrepared().length, 1, 'the core returns with the surface');
+  resetSpectrum();
 });

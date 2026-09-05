@@ -18,6 +18,7 @@ import {
 } from '@arx/shared';
 import { ARMS_FORMS, BUNDLE_MIXES, DYES, SIGN_MOTIFS, SILL_MIXES, TRELLIS_SPECIES } from '../buildables.js';
 import { MUSEUM_PLANE_ID } from '../planes.js';
+import type { SpectrumAxis, SpectrumStroke } from '../spectrum.js';
 import { ZoneBuilder } from './builder.js';
 import type { ZoneDef } from './types.js';
 
@@ -56,7 +57,9 @@ type Exhibit =
   | { kind: 'floordetail'; detail: Detail; host: Tile; label: string }
   | { kind: 'dyerow'; tiles: Tile[]; label: string; lines: string[] }
   | { kind: 'shopfront'; awnings: Tile[]; label: string; lines: string[] }
-  | { kind: 'terrace' };
+  | { kind: 'terrace' }
+  /** THE LIVING GROUND: one material, one strip per look, band by band. */
+  | { kind: 'foldrow'; tile: Tile };
 
 interface Wing {
   label: string;
@@ -64,7 +67,168 @@ interface Wing {
   /** Bay pitch; wide-canopy and ground-patch wings breathe more. */
   pitchX?: number;
   pitchY?: number;
+  /** Lines under the header plinth (absent = the bare 'wing' note). */
+  intro?: string[];
+  /**
+   * Bare floor rows before the header and after the last row: a wing
+   * whose FIELD spills past its exhibits (the Living Ground's hem is
+   * FOLD_PAD tiles deep on every side of its crest) lands that hem on
+   * empty flags, never under a neighbour wing's plinths.
+   */
+  padY?: number;
 }
+
+// ------------------------------------------------ THE LIVING GROUND wing
+/**
+ * THE LIVING GROUND (docs/contested-lands-plan.md §12.8 LG-2): every
+ * material that folds, one tile row per look, the FIELD ramping west
+ * to east across the row so the four bands stand in a line — summer |
+ * touched | taken | held — each band a FOLD_CELL-wide cell, the strip
+ * in a grass apron so the material's hem, fringe and bank read against
+ * the meadow's own fold beside them, and a plaque with a reading spot
+ * under every strip.
+ *
+ * THE MECHANISM, chosen and named: the museum's ground is a zone, and
+ * the fold is not a tile — it is a field the bake reads from the
+ * stroke registry. So the wing DECLARES its own stroke set
+ * (museumSpectrum()): one rect stroke per look in the museum plane's
+ * own coordinates, soft 1 (the whole hem is the ramp), grain 0 (a
+ * clean ruler, so "which band" per cell is exact and museum.test.ts
+ * pins it), the plateau standing just east of each strip and its
+ * FOLD_PAD-tile hem lying across the strip. The painter reads the
+ * declaration KEYED ON THE PLANE (client render/fold.ts
+ * setSpectrumPlane, latched once per frame beside the fold gate):
+ * while the player stands in this plane the field is this set and
+ * nothing else; the wire's strokes and cores (surface coordinates
+ * that would fold this hall wherever the numbers overlap) stay held
+ * and return the moment the plane changes. Nothing rides the wire
+ * and the server knows nothing: a login that wakes inside the hall,
+ * a `/museum` crossing either way, and a broadcast registry swap
+ * while a reviewer stands in the wing all show the same ruler.
+ * Two roads were refused: a `?fold` query (neither data the zone
+ * owns nor scoped to the plane — it would fold whatever ground the
+ * viewer stood on) and a per-session server swap on `/museum` (built
+ * first; it missed the login-inside case, since the welcome applies
+ * the world's geo, and every broadcast push clobbered it).
+ * Blocks stand FOLD_BLOCK_PITCH apart because a rect's hem is
+ * symmetric: east of each crest the hall's own flags run the ramp
+ * back over the gap, and the next block begins past that hem; the
+ * wing pads FOLD_PAD bare rows north and south for the same reason.
+ */
+export const FOLD_CELL = 3;
+export const FOLD_STRIP_W = FOLD_CELL * 4;
+export const FOLD_STRIP_H = 3;
+/** The ramp: the stroke's hem in tiles (the rect's pad). */
+export const FOLD_PAD = 12;
+/** The grass apron around a strip: one tile each side. */
+export const FOLD_BLOCK_W = FOLD_STRIP_W + 2;
+export const FOLD_BLOCK_H = FOLD_STRIP_H + 2;
+/** Blocks stand past each other's east hem (pad + the plateau's own width). */
+export const FOLD_BLOCK_PITCH = FOLD_BLOCK_W + FOLD_PAD + 1;
+
+export interface MuseumFoldLook {
+  id: string;
+  name: string;
+  axis: SpectrumAxis;
+  amp: number;
+}
+
+/** The looks, west to east: the turn (to the cold), the flush, blight, burn. */
+export const MUSEUM_FOLD_LOOKS: readonly MuseumFoldLook[] = [
+  { id: 'museum-turn', name: 'the turn', axis: 'season', amp: 1 },
+  { id: 'museum-flush', name: 'the flush', axis: 'season', amp: -1 },
+  { id: 'museum-blight', name: 'blight', axis: 'blight', amp: 1 },
+  { id: 'museum-burn', name: 'burn', axis: 'burn', amp: 1 },
+];
+
+/** Every material that carries a MaterialFold (terrain.ts's BlobLayer.fold), north to south. */
+export const MUSEUM_FOLD_MATERIALS: readonly Tile[] = [
+  Tile.Dirt,
+  Tile.Path,
+  Tile.Tilled,
+  Tile.Swamp,
+  Tile.Sand,
+  Tile.StoneFloor,
+  Tile.DungeonFloor,
+  Tile.CaveRubble,
+  Tile.Snow,
+  Tile.WaterShallow,
+];
+
+/**
+ * THE PLAQUE TELLS THE TRUTH: the (material, look) pairs that HOLD —
+ * the material answers that look with no key at all (snow is a winter
+ * no-op on every season sign; the flush reaches only the marsh, the
+ * one material that is half plant; the shallows answer the flush with
+ * nothing, not even a bank face). Their plaques say so instead of
+ * promising a ramp. The client's foldSkins.ts is the truth and
+ * terrain.fold.test.ts pins this table against it, pair for pair.
+ */
+export const MUSEUM_FOLD_HOLDS: ReadonlyArray<readonly [Tile, string]> = [
+  [Tile.Snow, 'museum-turn'],
+  [Tile.Snow, 'museum-flush'],
+  [Tile.Snow, 'museum-blight'],
+  [Tile.Dirt, 'museum-flush'],
+  [Tile.Path, 'museum-flush'],
+  [Tile.Tilled, 'museum-flush'],
+  [Tile.Sand, 'museum-flush'],
+  [Tile.StoneFloor, 'museum-flush'],
+  [Tile.DungeonFloor, 'museum-flush'],
+  [Tile.CaveRubble, 'museum-flush'],
+  [Tile.WaterShallow, 'museum-flush'],
+];
+
+/** Whether a wing strip's material holds (folds nothing) under a look. */
+export function museumFoldHolds(tile: Tile, lookId: string): boolean {
+  return MUSEUM_FOLD_HOLDS.some(([t, l]) => t === tile && l === lookId);
+}
+
+/**
+ * THE PLAQUE TELLS THE WHOLE TRUTH: pairs that answer a look but not
+ * with the ramp — the strand and the laid floors under the turn rime
+ * only at held (frost lobes, the runs' cold inks); the shallows under
+ * the turn and under burn answer only at the bank face (the water
+ * fill never folds). Their plaques say so instead of promising
+ * "summer, touched, taken, held". terrain.fold.test.ts pins both
+ * tables against foldSkins, pair for pair.
+ */
+export const MUSEUM_FOLD_HELD_ONLY: ReadonlyArray<readonly [Tile, string]> = [
+  [Tile.Sand, 'museum-turn'],
+  [Tile.StoneFloor, 'museum-turn'],
+  [Tile.DungeonFloor, 'museum-turn'],
+  [Tile.CaveRubble, 'museum-turn'],
+];
+export const MUSEUM_FOLD_BANK_ONLY: ReadonlyArray<readonly [Tile, string]> = [
+  [Tile.WaterShallow, 'museum-turn'],
+  [Tile.WaterShallow, 'museum-burn'],
+];
+
+/** The plaque's first line: the ramp legend, the held-only or bank-only legend, or the hold. */
+export const FOLD_PLAQUE_RAMP = 'w-e: summer, touched, taken, held';
+export const FOLD_PLAQUE_HELD_ONLY = 'answers at held only';
+export const FOLD_PLAQUE_BANK_ONLY = 'answers at the bank face only';
+export const FOLD_PLAQUE_HOLD = 'holds under this look';
+
+/** The legend a (material, look) plaque prints. */
+export function museumFoldLegend(tile: Tile, lookId: string): string {
+  if (museumFoldHolds(tile, lookId)) return FOLD_PLAQUE_HOLD;
+  if (MUSEUM_FOLD_HELD_ONLY.some(([t, l]) => t === tile && l === lookId)) return FOLD_PLAQUE_HELD_ONLY;
+  if (MUSEUM_FOLD_BANK_ONLY.some(([t, l]) => t === tile && l === lookId)) return FOLD_PLAQUE_BANK_ONLY;
+  return FOLD_PLAQUE_RAMP;
+}
+
+/** Where the wing stands once the hall is laid out — the strokes and the test read it. */
+export interface MuseumFoldWing {
+  /** The apron rows' span (y0 inclusive, y1 exclusive). */
+  y0: number;
+  y1: number;
+  /** Per look: the block's west edge, its strip's west edge, the crest (the rect's x). */
+  blocks: Array<{ look: MuseumFoldLook; x0: number; stripX: number; crestX: number }>;
+  /** Per material: the apron's top row and the strip's top row. */
+  rows: Array<{ tile: Tile; y0: number; stripY: number }>;
+}
+
+const foldrow = (tile: Tile): Exhibit => ({ kind: 'foldrow', tile });
 
 const single = (tile: Tile): Exhibit => ({ kind: 'single', tile });
 const run = (tile: Tile, flank?: Tile): Exhibit => ({ kind: 'run', tile, flank });
@@ -430,6 +594,18 @@ function buildWings(): Wing[] {
       pitchY: 8,
     },
     {
+      label: 'The Living Ground',
+      exhibits: MUSEUM_FOLD_MATERIALS.map(foldrow),
+      pitchY: FOLD_BLOCK_H + 3,
+      padY: FOLD_PAD,
+      intro: [
+        'the field ramps west to east:',
+        'summer, touched, taken, held',
+        'east of each crest the hall',
+        'flags run the ramp back',
+      ],
+    },
+    {
       label: 'Elevation',
       exhibits: [{ kind: 'terrace' as const }],
       pitchY: 12,
@@ -468,7 +644,7 @@ export function museumExhibitedTiles(): Set<number> {
   for (const wing of buildWings()) {
     for (const ex of wing.exhibits) {
       if (ex.kind === 'single' || ex.kind === 'swatch' || ex.kind === 'pool') placed.add(ex.tile);
-      else if (ex.kind === 'run') placed.add(ex.tile);
+      else if (ex.kind === 'run' || ex.kind === 'foldrow') placed.add(ex.tile);
       else if (ex.kind === 'dyerow') for (const t of ex.tiles) placed.add(t);
       else if (ex.kind === 'shopfront') for (const t of ex.awnings) placed.add(t);
       else if (ex.kind === 'hung' || ex.kind === 'floordetail') placed.add(ex.host);
@@ -488,16 +664,27 @@ export function museumStrayTiles(): Tile[] {
   return strays;
 }
 
-export function buildMuseum(): ZoneDef {
+interface MuseumLayout {
+  ops: Op[];
+  spawnAt: { x: number; y: number };
+  H: number;
+  foldWing: MuseumFoldWing;
+}
+
+let LAYOUT: MuseumLayout | null = null;
+
+/** Pass 1 — lay the floor plan as deferred ops, measuring height. Memoised: the plan is pure. */
+function layoutMuseum(): MuseumLayout {
+  if (LAYOUT !== null) return LAYOUT;
   const wings = buildWings();
   const strays = museumStrayTiles();
   if (strays.length > 0) {
     wings.push({ label: 'Strays (unfiled art)', exhibits: strays.map(single) });
   }
 
-  // Pass 1 — lay the floor plan as deferred ops, measuring height.
   const ops: Op[] = [];
   const placedTiles = new Set<number>();
+  const foldWing: MuseumFoldWing = { y0: 0, y1: 0, blocks: [], rows: [] };
   let cy = 3;
 
   // The entrance: the welcome plinth; the spawn stands just north.
@@ -531,10 +718,19 @@ export function buildMuseum(): ZoneDef {
     });
     if (exhibits.length === 0) continue;
 
+    // Bare rows before a wing whose field spills past its exhibits.
+    cy += wing.padY ?? 0;
     // Wing header plinth on the west margin.
     const headerY = cy;
-    ops.push((b) => b.sign(MARGIN + 1, headerY + 1, wing.label.toUpperCase(), ['wing']));
+    ops.push((b) => b.sign(MARGIN + 1, headerY + 1, wing.label.toUpperCase(), wing.intro ?? ['wing']));
     cy += 3;
+    if (wing.exhibits.some((ex) => ex.kind === 'foldrow')) {
+      foldWing.y0 = cy;
+      for (let k = 0; k < MUSEUM_FOLD_LOOKS.length; k++) {
+        const x0 = MARGIN + k * FOLD_BLOCK_PITCH;
+        foldWing.blocks.push({ look: MUSEUM_FOLD_LOOKS[k]!, x0, stripX: x0 + 1, crestX: x0 + 1 + FOLD_STRIP_W });
+      }
+    }
 
     let bx = MARGIN;
     for (const ex of exhibits) {
@@ -543,6 +739,7 @@ export function buildMuseum(): ZoneDef {
         ex.kind === 'shopfront' ? ex.awnings.length + 2
         : ex.kind === 'dyerow' ? ex.tiles.length * 2 + 2
         : ex.kind === 'terrace' ? 14
+        : ex.kind === 'foldrow' ? W - MARGIN * 2
         : pitchX;
       if (bx + wide > W - MARGIN) {
         bx = MARGIN;
@@ -630,13 +827,65 @@ export function buildMuseum(): ZoneDef {
           });
           break;
         }
+        case 'foldrow': {
+          // One strip per look, each in its grass apron, the plaque
+          // under the strip's middle and its reading spot south of it.
+          foldWing.rows.push({ tile: ex.tile, y0, stripY: y0 + 1 });
+          foldWing.y1 = y0 + FOLD_BLOCK_H;
+          const label = `${name(ex.tile).toLowerCase()}`;
+          for (const block of foldWing.blocks) {
+            const bx0 = block.x0;
+            const lookName = block.look.name;
+            const legend = museumFoldLegend(ex.tile, block.look.id);
+            ops.push((b) => {
+              b.fillRect(bx0, y0, FOLD_BLOCK_W, FOLD_BLOCK_H, Tile.Grass);
+              b.fillRect(bx0 + 1, y0 + 1, FOLD_STRIP_W, FOLD_STRIP_H, ex.tile);
+              b.sign(bx0 + Math.floor(FOLD_BLOCK_W / 2), y0 + FOLD_BLOCK_H, `${label} · ${lookName}`, [
+                legend,
+                `tile ${ex.tile}`,
+              ]);
+            });
+          }
+          break;
+        }
       }
       bx += wide;
     }
-    cy += pitchY + 1; // wing gap
+    cy += pitchY + 1 + (wing.padY ?? 0); // wing gap (+ the field's own hem)
   }
 
-  const H = cy + MARGIN;
+  LAYOUT = { ops, spawnAt, H: cy + MARGIN, foldWing };
+  return LAYOUT;
+}
+
+/** Where THE LIVING GROUND wing stands (museum-plane coordinates). */
+export function museumFoldWing(): MuseumFoldWing {
+  return layoutMuseum().foldWing;
+}
+
+/**
+ * THE LIVING GROUND wing's stroke set — the museum plane's own, never
+ * the world's (see the wing's header comment for the mechanism). One
+ * 'max' rect per look: the plateau two tiles wide just east of the
+ * strips, the hem FOLD_PAD tiles west across them, soft 1 and grain 0
+ * so every cell's band is a ruler read; the rect spans the wing's rows
+ * with a margin so no strip sees a corner of the hem.
+ */
+export function museumSpectrum(): SpectrumStroke[] {
+  const wing = layoutMuseum().foldWing;
+  return wing.blocks.map((block) => ({
+    id: block.look.id,
+    axis: block.look.axis,
+    shape: { kind: 'rect', x: block.crestX, y: wing.y0 - 1, w: 2, h: wing.y1 - wing.y0 + 2, pad: FOLD_PAD },
+    amp: block.look.amp,
+    soft: 1,
+    grain: 0,
+    mode: 'max',
+  }));
+}
+
+export function buildMuseum(): ZoneDef {
+  const { ops, spawnAt, H } = layoutMuseum();
 
   // Pass 2 — materialize.
   const b = new ZoneBuilder('museum', 'The Prop Museum', { x: 0, y: 0 }, W, H, Tile.StoneFloor);

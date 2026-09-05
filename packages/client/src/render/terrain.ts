@@ -24,7 +24,47 @@ import {
 } from '@arx/shared';
 import { chamferRect, facetCircle } from './shapes.js';
 import { shade } from './tint.js';
-import { CHANNEL_FEED_RANGE } from '@arx/content';
+import {
+  BAND_HELD,
+  BAND_TAKEN,
+  BAND_TOUCHED,
+  CHANNEL_FEED_RANGE,
+  HALO_CELLS,
+  HALO_N,
+  band,
+} from '@arx/content';
+import { allocSpectrumHalo, spectrumHalo, spectrumHaloSig, spectrumSig } from './fold.js';
+import {
+  BANK_FACE_FOLD,
+  DIRT_FOLD,
+  DUNGEON_FOLD,
+  FOLD_ALT_SALT,
+  FOLD_AUTUMN,
+  FOLD_HELD_SALT,
+  FOLD_BLIGHT,
+  FOLD_BURN,
+  FOLD_NONE,
+  FOLD_SPRING,
+  FRINGE_ALT,
+  MARK_INK,
+  MATERIAL_MARK_INK,
+  PATH_FOLD,
+  RUBBLE_FOLD,
+  SAND_FOLD,
+  SHALLOWS_FOLD,
+  SNOW_FOLD,
+  STONE_FOLD,
+  STUBBLE_INK,
+  STUBBLE_INK_COLD,
+  SUBSTRATE_FOLD,
+  SWAMP_FOLD,
+  TILLED_FOLD,
+  foldLaneSeed,
+  washAltKey,
+  washKey,
+  type FoldRunInk,
+  type MaterialFold,
+} from './foldSkins.js';
 import { farmPlots, wellNearClient } from '../game/farmCare.js';
 import { DYE_SWATCHES } from './icons.js';
 import type { WoodSkin } from './woodSkins.js';
@@ -61,6 +101,18 @@ const GRASS_TONES = ['#5c8941', '#588440', '#608e45', '#55813e'];
 const CAVE_TONES = ['#5a5468', '#554f62', '#5f5870'];
 
 interface BlobLayer {
+  /**
+   * THE LAYER SEED. The stable salt of every contour hash this layer
+   * rolls — edge crossings, control-point bows, the swell field, the
+   * alt-patch sub-lanes (seed + 64 / + 96). It is NOT the array index:
+   * the array is the PAINT order (lowest → highest) and may gain a
+   * layer mid-list (AshGround after Dirt) without re-rolling a single
+   * shipped road or shore. Seeds are unique, never reused, and live
+   * below 64 so no sub-lane can collide with a layer's own lane; a new
+   * layer takes the next unused value, never an insertion's index.
+   * Pinned by terrain.seed.test.ts (op-stream golden).
+   */
+  seed: number;
   /** Does this ground id belong to the layer? */
   match: (t: number) => boolean;
   color: (t: number, tx: number, ty: number) => string;
@@ -121,11 +173,24 @@ interface BlobLayer {
    * deep, never a drawn ring.
    */
   feather?: boolean;
+  /**
+   * THE MATERIALS FOLD (THE LIVING GROUND, LG-2): the layer's keys
+   * per look under the spectrum field — the hem pair the region fill
+   * reads per dual cell, the taken / held keys the in-region isoband
+   * paints on the isoline, the run inks the worn band and the lip take
+   * at a run's midpoint. Absent = the material holds under every look
+   * (open water, planks, the underground's own floor): foldable false.
+   * Every read is guarded on the bake's view being non-null, so a
+   * chunk with no stroke in reach paints this layer byte for byte as
+   * it always did. Keys live in foldSkins.ts.
+   */
+  fold?: MaterialFold;
 }
 
 /** Painted lowest → highest; later layers' rounding overlaps earlier. */
 const BLOB_LAYERS: BlobLayer[] = [
   {
+    seed: 0,
     match: (t) => t === Tile.Dirt,
     color: () => '#96744c',
     alt: { color: '#8f6e47', salt: 31 },
@@ -133,26 +198,32 @@ const BLOB_LAYERS: BlobLayer[] = [
     band: 'rgba(70, 50, 30, 0.3)',
     lip: 'rgba(228, 196, 148, 0.32)',
     fringe: true,
+    fold: DIRT_FOLD,
   },
   {
     // Tilled garden soil: dug by hand — near-straight edges, a deep
     // worked-earth band. All crop stages resolve to this material.
+    seed: 1,
     match: (t) => t === Tile.Tilled,
     color: () => '#6b4f33',
     alt: { color: '#654a30', salt: 43 },
     wobble: 0.08,
     band: 'rgba(38, 26, 16, 0.4)',
     fringe: true,
+    fold: TILLED_FOLD,
   },
   {
+    seed: 2,
     match: (t) => t === Tile.Swamp,
     color: () => '#556b3e',
     alt: { color: '#4f6539', salt: 51 },
     wobble: 0.24,
     band: 'rgba(30, 42, 24, 0.35)',
     fringe: true,
+    fold: SWAMP_FOLD,
   },
   {
+    seed: 3,
     match: (t) => t === Tile.Path,
     color: () => '#c2a26e',
     alt: { color: '#bc9d69', salt: 33 },
@@ -160,8 +231,10 @@ const BLOB_LAYERS: BlobLayer[] = [
     band: 'rgba(105, 78, 44, 0.3)',
     lip: 'rgba(240, 216, 170, 0.34)',
     fringe: true,
+    fold: PATH_FOLD,
   },
   {
+    seed: 4,
     match: (t) => t === Tile.Sand,
     color: () => '#ddc98d',
     alt: { color: '#d6c286', salt: 35 },
@@ -170,10 +243,12 @@ const BLOB_LAYERS: BlobLayer[] = [
     lip: 'rgba(248, 234, 192, 0.4)',
     interior: 'sand',
     fringe: true,
+    fold: SAND_FOLD,
   },
   {
     // Hand-laid flagstone: a light wobble — tighter than wild ground,
     // looser than a laser cut.
+    seed: 5,
     match: (t) => t === Tile.StoneFloor,
     color: () => '#a09aa8',
     alt: { color: '#99939f', salt: 37 },
@@ -182,26 +257,33 @@ const BLOB_LAYERS: BlobLayer[] = [
     band: 'rgba(40, 34, 56, 0.28)',
     lip: 'rgba(214, 212, 224, 0.4)',
     fringe: true,
+    fold: STONE_FOLD,
   },
   {
+    seed: 6,
     match: (t) => t === Tile.WoodFloor || t === Tile.Bridge,
     color: () => '#a87e46',
     wobble: 0,
     band: 'rgba(58, 40, 22, 0.3)',
     fringe: false,
+    // foldable: false — laid planks are planks under any sky.
   },
   {
+    seed: 7,
     match: (t) => t === Tile.CaveFloor || t === Tile.PortalDown || t === Tile.PortalUp,
     color: () => CAVE_TONES[0]!,
     alt: { color: CAVE_TONES[1]!, salt: 41 },
     wobble: 0.18,
     band: 'rgba(18, 14, 28, 0.35)',
     fringe: false,
+    // foldable: false — the underground's own floor; the plane gate
+    // keeps every underground chunk unfolded regardless.
   },
   {
     // Dungeon flagstones: hand-laid masonry in the dark band — the
     // flagstone wobble (tight, deliberate) in cave-depth tones, so a
     // built room reads man-made against the raw cave around it.
+    seed: 8,
     match: (t) => t === Tile.DungeonFloor,
     color: () => '#514b58',
     alt: { color: '#4c4653', salt: 47 },
@@ -209,19 +291,23 @@ const BLOB_LAYERS: BlobLayer[] = [
     wobble: 0.11,
     band: 'rgba(16, 12, 24, 0.32)',
     fringe: false,
+    fold: DUNGEON_FOLD,
   },
   {
     // Cave rubble: collapsed scree spilling across the corridors —
     // fully organic patches, a shade lighter than the rock they broke
     // from, painted over both cave floor and flagstone.
+    seed: 9,
     match: (t) => t === Tile.CaveRubble,
     color: () => '#544e5f',
     alt: { color: '#4f4959', salt: 49 },
     wobble: 0.18,
     band: 'rgba(18, 14, 28, 0.3)',
     fringe: false,
+    fold: RUBBLE_FOLD,
   },
   {
+    seed: 10,
     match: (t) => t === Tile.Snow,
     color: () => '#e9edf3',
     alt: { color: '#e0e6ef', salt: 57 },
@@ -230,11 +316,13 @@ const BLOB_LAYERS: BlobLayer[] = [
     interior: 'snow',
     laden: true,
     fringe: true,
+    fold: SNOW_FOLD,
   },
   {
     // Knee-deep shallows: the sunlit wading rim of every water body.
     // Lighter and greener than open water so "walkable" reads at a
     // glance; the live shoreline draws its waterline — no baked band.
+    seed: 11,
     match: (t) => t === Tile.WaterShallow,
     color: () => '#649cc0',
     alt: { color: '#5f96ba', salt: 45 },
@@ -242,12 +330,14 @@ const BLOB_LAYERS: BlobLayer[] = [
     band: null,
     bank: true,
     fringe: false,
+    fold: SHALLOWS_FOLD,
   },
   {
     // Open water. Its band is the DEPTH SHELF — the underwater shade
     // step where the wadeable rim drops away into swimming water,
     // feathered so the drop reads as dissolving depth, not a drawn
     // ring.
+    seed: 12,
     match: (t) => t === Tile.Water || isFishingTile(t),
     color: () => '#4979b8',
     alt: { color: '#4574b2', salt: 53 },
@@ -255,8 +345,11 @@ const BLOB_LAYERS: BlobLayer[] = [
     band: 'rgba(24, 44, 84, 0.3)',
     feather: true,
     fringe: false,
+    // foldable: false — open water is water (the bank face and the
+    // shallows' scum carry the fold to the shore, never past it).
   },
   {
+    seed: 13,
     match: (t) => t === Tile.WaterDeep,
     color: () => '#3a629e',
     alt: { color: '#375d97', salt: 55 },
@@ -264,6 +357,7 @@ const BLOB_LAYERS: BlobLayer[] = [
     band: 'rgba(24, 42, 80, 0.4)',
     feather: true,
     fringe: false,
+    // foldable: false.
   },
 ];
 
@@ -273,6 +367,32 @@ const BLOB_LAYERS: BlobLayer[] = [
  * land|water boundary now that every body of water wears a wading rim.
  */
 const WATER_LI = BLOB_LAYERS.findIndex((l) => l.match(Tile.WaterShallow));
+
+/**
+ * A CONTOUR LANE: everything the organic-boundary machinery needs to
+ * know about the region it is tracing. `seed` salts every hash (the
+ * layer's own `seed`, or seed + 64 / + 96 for its alt-patch sub-
+ * contours); `water` halves the independent per-edge jitter (THE
+ * CHANNEL WARP carries the water family's meander coherently). The
+ * array index never reaches a hash from here on — paint order and
+ * hash identity are two different facts.
+ */
+interface ContourLane {
+  seed: number;
+  water: boolean;
+}
+
+/** One lane per layer, in paint order — built once, alloc-free after. */
+const LAYER_LANES: readonly ContourLane[] = BLOB_LAYERS.map((l, i) => ({
+  seed: l.seed,
+  water: i >= WATER_LI,
+}));
+const WATER_LANE = LAYER_LANES[WATER_LI]!;
+
+/** Every BlobLayer's seed, in paint order (test pin; see BlobLayer.seed). */
+export function blobLayerSeeds(): number[] {
+  return BLOB_LAYERS.map((l) => l.seed);
+}
 
 const GRASS_LIKE = new Set<number>([
   Tile.Grass,
@@ -806,6 +926,16 @@ export interface ChunkBakeJob {
   /** THE STRIP PAINTS ASIDE's scratch canvas (fringe jobs only) —
    *  the caller pools it when the job completes or dies. */
   fringeScratch?: HTMLCanvasElement;
+  /**
+   * THE LIVING GROUND's cache words (plan §12.2): the reach sig this
+   * job was built against (0 = no stroke in reach = today's paint,
+   * byte for byte) and the FIELD-AWARE hash of the halo it actually
+   * painted (0 when the halo was all zero). The renderer keys its
+   * BakedChunk on both: a reach change re-bakes only if the painted
+   * words moved.
+   */
+  spectrumSig: number;
+  spectrumHaloSig: number;
 }
 
 /** Advance a sliced bake by one step; true when the bake is complete. */
@@ -992,6 +1122,11 @@ export function startChunkBake(
 
   const steps: Array<() => void> = [];
   const darkBand = baseY >= 512;
+  // Step 0 — THE HALO (THE LIVING GROUND, LG-1): the chunk's read of
+  // the spectrum field, built beside the layer index when anything
+  // reaches the chunk; null (and never built) at sig 0. Every fold
+  // branch below is guarded on `fold === null` → today's code.
+  const { sig: foldSig, view: fold } = foldForBake(cx, cy);
 
   // THE STRIP PAINTS ASIDE (the fringe mechanism). Clipping was the
   // obvious shape and it CANNOT be byte-exact: this browser rounds
@@ -1075,9 +1210,13 @@ export function startChunkBake(
     // would — a free-running start would shift every sample point.
     const xs = -G + Math.floor((x0 + G) / cell) * cell;
     const ys = -G + Math.floor((y0 + G) / cell) * cell;
+    // Step 1 — THE SUBSTRATE FOLDS: the four-tone table is chosen by
+    // the field at the cell's centre (half a cell past the corner the
+    // noise samples), so the band step lands on the isoline.
+    const half = cell / 2 / px;
     for (let y = ys; y < y1; y += cell) {
       for (let x = xs; x < x1; x += cell) {
-        ctx.fillStyle = meadowTone(baseX + x / px, baseY + y / px);
+        ctx.fillStyle = meadowToneFold(fold, baseX, baseY, baseX + x / px, baseY + y / px, half);
         ctx.fillRect(x, y, cell, cell);
       }
     }
@@ -1095,10 +1234,13 @@ export function startChunkBake(
     fillMask(ctx, (tx, ty) => elev(tx, ty) !== 0, baseX, baseY, px, '#282334');
   };
   if (live && !darkBand) {
+    // The coarse placeholder folds too (a folded chunk never flashes
+    // summer-green while its fine pass streams in).
     const coarse = Math.max(cell, px);
+    const halfC = coarse / 2 / px;
     for (let y = -G; y < CHUNK_SIZE * px + G; y += coarse) {
       for (let x = -G; x < CHUNK_SIZE * px + G; x += coarse) {
-        ctx.fillStyle = meadowTone(baseX + x / px, baseY + y / px);
+        ctx.fillStyle = meadowToneFold(fold, baseX, baseY, baseX + x / px, baseY + y / px, halfC);
         ctx.fillRect(x, y, coarse, coarse);
       }
     }
@@ -1132,6 +1274,18 @@ export function startChunkBake(
         ctx.restore();
       });
     }
+    // Step 2 — THE WASH: one sliced step per (look, band) present,
+    // over the folded meadow and under every skin (a road through a
+    // blighted wood covers it exactly as it covers the meadow). Runs
+    // WHOLE in a fringe job — see paintFoldWash. Absent at sig 0, so
+    // an unfolded chunk's step count is what it always was.
+    if (fold !== null) {
+      for (const [look, b] of foldWashPasses(fold)) {
+        add(() => {
+          paintFoldWash(ctx, fold, look, b, baseX, baseY, px);
+        });
+      }
+    }
   }
   // Restore the placeholder order over the fine repaint (and paint it
   // at all, for replacement jobs that skipped the synchronous pass).
@@ -1158,7 +1312,7 @@ export function startChunkBake(
   for (let li = 0; li < BLOB_LAYERS.length; li++) {
     add(() => {
       idx ??= computeLayerIdx(g, baseX, baseY);
-      paintLayerSkin(ctx, idx, li, baseX, baseY, px, g);
+      paintLayerSkin(ctx, idx, li, baseX, baseY, px, g, fold);
     });
   }
 
@@ -1191,7 +1345,7 @@ export function startChunkBake(
           const ty = baseY + ly;
           // Raised/sunken tiles' details belong to their lifted layer.
           if (elev(tx, ty) !== 0) continue;
-          drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail, g, ground);
+          drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail, g, ground, fold);
         }
       }
     });
@@ -1225,8 +1379,18 @@ export function startChunkBake(
       mainCtx.restore();
     });
   }
+  // THE HALO GOES HOME: a folded job returns its borrowed halo in its
+  // last step (a job that dies mid-flight just drops it to the GC).
+  if (fold !== null) steps.push(() => releaseFoldView(fold));
 
-  return { canvas, steps, next: 0, fringeScratch };
+  return {
+    canvas,
+    steps,
+    next: 0,
+    fringeScratch,
+    spectrumSig: foldSig,
+    spectrumHaloSig: fold === null ? 0 : fold.sig,
+  };
 }
 
 /** The one-shot bake: start + run every step. Output is identical to
@@ -2551,6 +2715,272 @@ function drawDeckFill(
  * flecks so the ground carries the same detail density as the props
  * above it. Shared by the base and lifted-terrain bakes.
  */
+/**
+ * Step 5 — THE FOUR FIELD MARKS, dealt off the field as their own
+ * coverage: leaf litter under the turn, frost pools under the cold,
+ * soot smuts and charcoal chips under burn, grey rings under blight.
+ * Every mark draws iff its own hash byte falls under the tile's
+ * weight, so the density IS the gradient (THE MARKS CARRY THE
+ * GRADIENT, THE WASHES CARRY THE SHAPE). Fills only — ellipses and
+ * rects, no transforms — the bake is one canvas both backends blit.
+ * Spring deals no mark: the flush is the blades' and the flowers'
+ * (LG-3); here the substrate carries it. `w` is 0..255.
+ */
+function drawFieldMarks(
+  ctx: CanvasRenderingContext2D,
+  look: number,
+  w: number,
+  tx: number,
+  ty: number,
+  gx: number,
+  gy: number,
+  px: number,
+): void {
+  switch (look) {
+    case FOLD_AUTUMN: {
+      if (w >= BAND_HELD) {
+        // THE COLD: a soft blue pool where the turf dips, rime on the
+        // crowns — the snow blanket's own two marks, before the snow.
+        const hp = hashCoords(2801, tx, ty);
+        if ((hp & 255) < (w - 200) * 4) {
+          ctx.fillStyle = MARK_INK.frostPool;
+          ctx.beginPath();
+          ctx.ellipse(
+            gx + (0.2 + ((hp >>> 8) % 60) / 100) * px,
+            gy + (0.2 + ((hp >>> 15) % 60) / 100) * px,
+            px * (0.13 + ((hp >>> 22) % 3) * 0.04),
+            px * 0.085,
+            0,
+            0,
+            Math.PI * 2,
+          );
+          ctx.fill();
+        }
+        for (let k = 0; k < 3; k++) {
+          const hr = hashCoords(2807 + k, tx, ty);
+          if ((hr & 255) * 3 >= (w - 190) * 8) continue;
+          ctx.fillStyle = MARK_INK.frostRime;
+          const r = Math.max(1, px * 0.03);
+          ctx.fillRect(gx + ((hr >>> 8) % 90) / 100 * px, gy + ((hr >>> 15) % 90) / 100 * px, r * 1.6, r);
+        }
+      } else {
+        // LEAF LITTER: up to three chips, each a squared quad (BLOCK
+        // LAW) with its seat shade a step down-sun, russet to gold,
+        // the count dealt against the weight.
+        for (let k = 0; k < 3; k++) {
+          const hl = hashCoords(2803 + k, tx, ty);
+          if ((hl & 255) * 2 >= w) continue;
+          const cx = gx + (0.08 + ((hl >>> 8) % 84) / 100) * px;
+          const cy = gy + (0.08 + ((hl >>> 15) % 84) / 100) * px;
+          const lw = Math.max(1, px * (0.075 + ((hl >>> 22) % 3) * 0.02));
+          const lh = Math.max(1, lw * (0.55 + ((hl >>> 25) % 3) * 0.12));
+          ctx.fillStyle = MARK_INK.leafSeat;
+          ctx.fillRect(cx + lw * 0.2, cy + lh * 0.45, lw, lh);
+          ctx.fillStyle = MARK_INK.leaf[(hl >>> 4) & 3]!;
+          ctx.fillRect(cx, cy, lw, lh);
+        }
+      }
+      break;
+    }
+    case FOLD_BURN: {
+      // SOOT SMUTS: one soft dark settle where the ash blew — broad
+      // and faint, a squared smudge (a dense small dot read as a
+      // pebble field).
+      {
+        const hs = hashCoords(2811, tx, ty);
+        if ((hs & 255) * 2 < w) {
+          const sw = px * (0.3 + ((hs >>> 12) % 4) * 0.07);
+          ctx.fillStyle = MARK_INK.smut;
+          ctx.fillRect(
+            gx + (0.05 + ((hs >>> 8) % 60) / 100) * px,
+            gy + (0.1 + ((hs >>> 18) % 70) / 100) * px,
+            sw,
+            sw * 0.5,
+          );
+        }
+      }
+      // CHARCOAL CHIPS: a char body with its lit top plane (BLOCK
+      // LAW: one lit facet, depth as a value step), more where held.
+      const chips = w >= BAND_HELD ? 3 : 2;
+      for (let k = 0; k < chips; k++) {
+        const hc = hashCoords(2821 + k, tx, ty);
+        if ((hc & 255) * 5 >= w * 2) continue;
+        const cw = px * (0.04 + ((hc >>> 10) % 3) * 0.012);
+        const ch = cw * 0.7;
+        const x = gx + (0.06 + ((hc >>> 8) % 86) / 100) * px;
+        const y = gy + (0.06 + ((hc >>> 16) % 86) / 100) * px;
+        ctx.fillStyle = MARK_INK.charcoal[(hc >>> 4) & 1]!;
+        ctx.fillRect(x, y, cw, ch);
+        ctx.fillStyle = MARK_INK.charcoalCap;
+        ctx.fillRect(x, y, cw, Math.max(1, ch * 0.3));
+      }
+      break;
+    }
+    case FOLD_BLIGHT: {
+      // GREY RINGS: a pale dead rim around a bruised centre — the
+      // sickness comes up from the roots in rings, never in blots.
+      // Squared (BLOCK LAW): the rim is a quad, the core a quad inset.
+      const hr = hashCoords(2831, tx, ty);
+      if ((hr & 255) * 4 < w * 2) {
+        const rw = px * (0.22 + ((hr >>> 10) % 4) * 0.05);
+        const rh = rw * 0.62;
+        const cx = gx + (0.1 + ((hr >>> 14) % 60) / 100) * px;
+        const cy = gy + (0.1 + ((hr >>> 21) % 60) / 100) * px;
+        ctx.fillStyle = MARK_INK.ringRim;
+        ctx.fillRect(cx, cy, rw, rh);
+        ctx.fillStyle = MARK_INK.ringCore;
+        ctx.fillRect(cx + rw * 0.25, cy + rh * 0.25, rw * 0.5, rh * 0.5);
+      }
+      if (w >= BAND_TAKEN) {
+        const h2 = hashCoords(2837, tx, ty);
+        if ((h2 & 255) * 10 < (w - 100) * 4) {
+          const rw = px * (0.12 + ((h2 >>> 10) % 3) * 0.03);
+          ctx.fillStyle = MARK_INK.ringRim;
+          ctx.fillRect(gx + (0.1 + ((h2 >>> 14) % 80) / 100) * px, gy + (0.1 + ((h2 >>> 21) % 80) / 100) * px, rw, rw * 0.62);
+        }
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+/** The materials that deal field marks (Snow and the water family never do). */
+const FOLD_MARK_TILES = new Set<number>([
+  Tile.Dirt,
+  Tile.Path,
+  Tile.Tilled,
+  Tile.Swamp,
+  Tile.Sand,
+  Tile.StoneFloor,
+  Tile.DungeonFloor,
+  Tile.CaveRubble,
+]);
+
+/**
+ * Step 5 on the materials (THE MATERIALS FOLD): the four field marks
+ * re-dealt for worked ground — sparser than the meadow's (a road is
+ * swept by feet; a flagstone holds less than turf) and on their own
+ * hash lanes so a chip on the road never twins a chip on the verge.
+ * Every mark is a squared quad (BLOCK LAW); every count is dealt
+ * hash-vs-weight, so the marks carry the gradient across the hem.
+ */
+function drawMaterialMarks(
+  ctx: CanvasRenderingContext2D,
+  look: number,
+  w: number,
+  m: number,
+  tx: number,
+  ty: number,
+  gx: number,
+  gy: number,
+  px: number,
+): void {
+  const earth = m === Tile.Dirt || m === Tile.Tilled || m === Tile.Path;
+  switch (look) {
+    case FOLD_AUTUMN: {
+      if (w >= BAND_HELD) {
+        // THE FROZEN RUT (earth only): one long low frost pool lying
+        // in the wheel line — E-W or N-S by the hash, since the road
+        // runs either way — with a rime sliver on its sun edge.
+        if (earth) {
+          const hp = hashCoords(2851, tx, ty);
+          if ((hp & 255) < (w - 200) * 3) {
+            const along = (hp >>> 8) & 1;
+            const len = px * (0.42 + ((hp >>> 10) % 4) * 0.08);
+            const wid = px * 0.07;
+            const x = gx + (along ? 0.06 + ((hp >>> 14) % 40) / 100 : 0.15 + ((hp >>> 14) % 70) / 100) * px;
+            const y = gy + (along ? 0.15 + ((hp >>> 20) % 70) / 100 : 0.06 + ((hp >>> 20) % 40) / 100) * px;
+            ctx.fillStyle = MATERIAL_MARK_INK.rut;
+            if (along) ctx.fillRect(x, y, len, wid);
+            else ctx.fillRect(x, y, wid, len);
+            ctx.fillStyle = MATERIAL_MARK_INK.rutRime;
+            const rime = Math.max(1, px * 0.02);
+            if (along) ctx.fillRect(x, y, len, rime);
+            else ctx.fillRect(x, y, rime, len);
+          }
+        }
+        // RIME on every worked ground: two flecks at most.
+        for (let k = 0; k < 2; k++) {
+          const hr = hashCoords(2857 + k, tx, ty);
+          if ((hr & 255) * 4 >= (w - 190) * 8) continue;
+          ctx.fillStyle = MARK_INK.frostRime;
+          const r = Math.max(1, px * 0.03);
+          ctx.fillRect(gx + ((hr >>> 8) % 90) / 100 * px, gy + ((hr >>> 15) % 90) / 100 * px, r * 1.6, r);
+        }
+      } else if (m !== Tile.Sand) {
+        // LEAF CHIPS blown onto the road and the flags (the strand
+        // keeps none: the wind takes them off the sand): two at most,
+        // each with its seat shade a step down-sun.
+        for (let k = 0; k < 2; k++) {
+          const hl = hashCoords(2863 + k, tx, ty);
+          if ((hl & 255) * 3 >= w) continue;
+          const cx = gx + (0.08 + ((hl >>> 8) % 84) / 100) * px;
+          const cy = gy + (0.08 + ((hl >>> 15) % 84) / 100) * px;
+          const lw = Math.max(1, px * (0.07 + ((hl >>> 22) % 3) * 0.02));
+          const lh = Math.max(1, lw * (0.55 + ((hl >>> 25) % 3) * 0.12));
+          ctx.fillStyle = MARK_INK.leafSeat;
+          ctx.fillRect(cx + lw * 0.2, cy + lh * 0.45, lw, lh);
+          ctx.fillStyle = MARK_INK.leaf[(hl >>> 4) & 3]!;
+          ctx.fillRect(cx, cy, lw, lh);
+        }
+      }
+      break;
+    }
+    case FOLD_BURN: {
+      // SOOT SMUT: the settle where the ash blew, a squared smudge.
+      const hs = hashCoords(2869, tx, ty);
+      if ((hs & 255) * 3 < w) {
+        const sw = px * (0.26 + ((hs >>> 12) % 4) * 0.06);
+        ctx.fillStyle = MARK_INK.smut;
+        ctx.fillRect(
+          gx + (0.05 + ((hs >>> 8) % 64) / 100) * px,
+          gy + (0.1 + ((hs >>> 18) % 70) / 100) * px,
+          sw,
+          sw * 0.5,
+        );
+      }
+      // A CHARCOAL CHIP in the earth (the flags and the strand hold
+      // none — a chip on stone reads as a pebble): body + lit cap.
+      if (earth) {
+        const hc = hashCoords(2879, tx, ty);
+        if ((hc & 255) * 5 < w * 2) {
+          const cw = px * (0.04 + ((hc >>> 10) % 3) * 0.012);
+          const ch = cw * 0.7;
+          const x = gx + (0.06 + ((hc >>> 8) % 86) / 100) * px;
+          const y = gy + (0.06 + ((hc >>> 16) % 86) / 100) * px;
+          ctx.fillStyle = MARK_INK.charcoal[(hc >>> 4) & 1]!;
+          ctx.fillRect(x, y, cw, ch);
+          ctx.fillStyle = MARK_INK.charcoalCap;
+          ctx.fillRect(x, y, cw, Math.max(1, ch * 0.3));
+        }
+      }
+      break;
+    }
+    case FOLD_BLIGHT: {
+      // A GREY RING in the worked earth only (the sickness comes up
+      // through soil, never through laid stone), at taken and past.
+      if ((earth || m === Tile.Swamp) && w >= BAND_TAKEN) {
+        const hr = hashCoords(2887, tx, ty);
+        if ((hr & 255) * 8 < (w - 100) * 2) {
+          const rw = px * (0.18 + ((hr >>> 10) % 4) * 0.05);
+          const rh = rw * 0.62;
+          const cx = gx + (0.1 + ((hr >>> 14) % 60) / 100) * px;
+          const cy = gy + (0.1 + ((hr >>> 21) % 60) / 100) * px;
+          ctx.fillStyle = MARK_INK.ringRim;
+          ctx.fillRect(cx, cy, rw, rh);
+          ctx.fillStyle = MARK_INK.ringCore;
+          ctx.fillRect(cx + rw * 0.25, cy + rh * 0.25, rw * 0.5, rh * 0.5);
+        }
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 function drawTileDetail(
   ctx: CanvasRenderingContext2D,
   m: number,
@@ -2567,6 +2997,10 @@ function drawTileDetail(
   // into a stone yard) still needs its own detail painted, and its
   // run-connectivity read, from what the map actually says.
   rawAt?: (x: number, y: number) => number | undefined,
+  // THE LIVING GROUND's view of this chunk (null = no stroke in reach
+  // = today's marks). The tile's own halo sample folds the stubble
+  // and deals the four field marks (step 5).
+  fold: FoldView | null = null,
 ): void {
   const hg = hashCoords(83, tx, ty);
   const gx = lx * px;
@@ -2865,6 +3299,21 @@ function drawTileDetail(
         // reads as carpet tiling from a distance).
         const lush = valueNoise(907, tx * 0.04, ty * 0.04);
         const n = Math.max(0, Math.round((2 + (hg % 3)) * (0.3 + 1.2 * lush)));
+        // Step 5 — THE MARKS. The tile's own field sample: its look
+        // after precedence and its weight 0..255. Everything below
+        // deals HASH-VS-WEIGHT (a fleck folds when its hash byte falls
+        // under the weight), so the change is a dither across the hem
+        // and never a step — THE HAND NEVER REPEATS ITSELF, and THE
+        // MARKS CARRY THE GRADIENT.
+        let fLook = FOLD_NONE;
+        let fW = 0;
+        if (fold !== null) {
+          const pk = foldTileAt(fold, lx, ly);
+          fLook = pk & 7;
+          fW = pk >> 3;
+        }
+        const fCold = fLook === FOLD_AUTUMN && fW >= BAND_HELD;
+        const fThin = fLook === FOLD_BLIGHT || fLook === FOLD_BURN;
         for (let k = 0; k < n; k++) {
           const hh = hashCoords(101 + k, tx, ty);
           const fx = (hh % 88) / 100;
@@ -2877,16 +3326,27 @@ function drawTileDetail(
           ) {
             continue;
           }
+          // Sick or scorched turf goes bare from the roots: the count
+          // thins hash-vs-weight (two thirds gone at full weight; a
+          // third already at the touched hem, so the touched band
+          // reads by its stubble as well as its key).
+          if (fThin && ((hh >>> 17) & 255) * 3 < fW * 2) continue;
           const sx = gx + fx * px;
           const sy = gy + fy * px;
           const stub = px * (0.05 + ((hh >> 3) % 4) * 0.014);
           // Floor law: turf detail is never DARKER than the ground —
           // dark flecks read as holes. Two grades of lighter green only.
-          ctx.fillStyle = nearSnow
-            ? (hh & 1 ? 'rgba(178, 198, 168, 0.22)' : 'rgba(228, 238, 224, 0.2)')
-            : (hh & 1 ? 'rgba(148, 178, 96, 0.18)' : 'rgba(215, 227, 140, 0.15)');
+          // A folded fleck takes its look's pair (the cold takes the
+          // snow rim's): which flecks fold is the hash against the weight.
+          const folded = fLook !== FOLD_NONE && ((hh >>> 19) & 255) < fW;
+          ctx.fillStyle = nearSnow || (folded && fCold)
+            ? (hh & 1 ? STUBBLE_INK_COLD[0] : STUBBLE_INK_COLD[1])
+            : folded
+              ? (hh & 1 ? STUBBLE_INK[fLook]![0] : STUBBLE_INK[fLook]![1])
+              : (hh & 1 ? 'rgba(148, 178, 96, 0.18)' : 'rgba(215, 227, 140, 0.15)');
           ctx.fillRect(sx, sy - stub, Math.max(1, px * 0.045), stub);
         }
+        if (fLook !== FOLD_NONE && !nearSnow) drawFieldMarks(ctx, fLook, fW, tx, ty, gx, gy, px);
       }
       if (m === Tile.Snow) {
         // THE SPARKLE: sun on fresh crystal — pinpoint glints and the
@@ -2956,13 +3416,27 @@ function drawTileDetail(
           const hh = hashCoords(163, tx, ty);
           const wx0 = gx + (0.15 + (hh % 60) / 100) * px;
           const wy0 = gy + (0.2 + ((hh >> 7) % 60) / 100) * px;
-          const tone = meadowTone(tx, ty);
+          // Step 4 — the weeds fold with the meadow they broke out of
+          // (the noise keeps its corner sample; the field reads the
+          // tile's centre).
+          const tone = meadowToneFold(fold, tx - lx, ty - ly, tx, ty, 0.5);
+          let weedAlt = '#79a556';
+          let weedThin = 0;
+          if (fold !== null) {
+            const pk = foldTileAt(fold, lx, ly);
+            const look = pk & 7;
+            if (look !== FOLD_NONE) {
+              weedAlt = FRINGE_ALT[look]![band(pk >> 3) - 1]!;
+              if (look === FOLD_BLIGHT || look === FOLD_BURN) weedThin = pk >> 3;
+            }
+          }
           for (let bl = 0; bl < 2 + (hh % 2); bl++) {
             const hb = hashCoords(167 + bl, tx, ty);
+            if (weedThin !== 0 && ((hb >>> 13) & 255) * 3 < weedThin * 2) continue;
             const bx = wx0 + ((hb % 100) / 100 - 0.5) * px * 0.16;
             const lean = (((hb >> 5) % 100) / 100 - 0.5) * 0.6;
             const tall = px * (0.08 + ((hb >> 9) % 100) / 100 * 0.06);
-            ctx.fillStyle = hb & 1 ? tone : '#79a556';
+            ctx.fillStyle = hb & 1 ? tone : weedAlt;
             ctx.beginPath();
             ctx.moveTo(bx - px * 0.024, wy0);
             ctx.lineTo(bx + px * 0.024, wy0);
@@ -3031,6 +3505,15 @@ function drawTileDetail(
           Math.PI * 2,
         );
         ctx.fill();
+      }
+      // THE MATERIAL MARKS (THE MATERIALS FOLD, plan §12.4's ground-
+      // layer column): leaf chips on the road under the turn, frozen
+      // ruts and rime under the cold, soot on any ground under burn,
+      // rings in the worked earth under blight — the tile's own field
+      // sample, hash-vs-weight, half the meadow's density, own lanes.
+      if (fold !== null && FOLD_MARK_TILES.has(m)) {
+        const pk = foldTileAt(fold, lx, ly);
+        if (pk !== 0) drawMaterialMarks(ctx, pk & 7, pk >> 3, m, tx, ty, gx, gy, px);
       }
       if (d === Detail.Pebbles) {
         // Angular stone chips. THE SCATTER IS THE HAND'S: the first
@@ -4024,66 +4507,180 @@ function drawTileDetail(
         ctx.fillRect(jx + jw * 0.62, jy + jh, tooth, tooth);
         if (((hh >>> 22) & 1) === 0) ctx.fillRect(jx + jw * 0.4, jy + jh, tooth, tooth);
       } else if (d === Detail.DragFurrow) {
-        // Two dark drag bands running north-south (a felled trunk, a
-        // cart, a spoil sled) with a lit ridge between them.
+        // THE DRAG (K3 recut): two dark bands running north-south (a
+        // felled trunk, a cart, a spoil sled) — each broken into three
+        // or four hashed SEGMENTS with gaps where the load lifted or
+        // the ground held, never two full-height bars — and a lit
+        // ridge between them where the earth was thrown up. On dirt
+        // the ridge is skipped: thrown dirt on dirt is no lighter.
+        // Fills only; min feature 0.03s.
         const hh = hashCoords(243, tx, ty);
         const off = ((hh % 7) - 3) * px * 0.02;
         const dark = 'rgba(28, 20, 30, 0.42)';
-        ctx.fillStyle = dark;
-        ctx.fillRect(gx + px * 0.28 + off, gy, px * 0.12, px);
-        ctx.fillRect(gx + px * 0.6 + off, gy, px * 0.12, px);
-        ctx.fillStyle = 'rgba(214, 200, 176, 0.14)';
-        ctx.fillRect(gx + px * 0.44 + off, gy, px * 0.12, px);
-      } else if (d === Detail.BlightVeins) {
-        // Three or four dark veins radiating off the tile's centre —
-        // the ground the gloom stone and the creep root sicken.
-        const hh = hashCoords(247, tx, ty);
-        const n = 3 + (hh & 1);
-        ctx.fillStyle = 'rgba(26, 18, 34, 0.5)';
-        for (let k = 0; k < n; k++) {
-          const hk = hashCoords(251 + k, tx, ty);
-          const vx = gx + (0.14 + (hk % 60) / 100) * px;
-          const vy = gy + (0.14 + ((hk >>> 6) % 60) / 100) * px;
-          // A vein is a run of three stepped squares, each a value
-          // step darker toward the root.
-          for (let j = 0; j < 3; j++) {
-            const dxv = (((hk >>> (10 + j * 2)) & 3) - 1.5) * px * 0.08;
-            const dyv = (((hk >>> (16 + j * 2)) & 3) - 1.5) * px * 0.08;
-            ctx.fillRect(vx + dxv * j, vy + dyv * j, px * 0.07, px * 0.05);
+        const deep = 'rgba(20, 14, 22, 0.3)';
+        const bandW = px * 0.11;
+        for (let bnd = 0; bnd < 2; bnd++) {
+          const bx = gx + px * (bnd === 0 ? 0.27 : 0.62) + off;
+          const hb = hashCoords(245 + bnd, tx, ty);
+          const segs = 3 + (hb & 1);
+          let y = gy - px * 0.02 + ((hb >>> 1) % 5) * px * 0.02;
+          for (let k = 0; k < segs && y < gy + px; k++) {
+            const hk = hashCoords(249 + k, tx + bnd * 7, ty);
+            const len = px * (0.14 + ((hk >>> 2) % 5) * 0.04);
+            const gap = px * (0.03 + ((hk >>> 6) % 3) * 0.02);
+            const wob = (((hk >>> 9) % 3) - 1) * px * 0.012;
+            ctx.fillStyle = dark;
+            ctx.fillRect(bx + wob, y, bandW, Math.min(len, gy + px - y));
+            // The deeper groove along the segment's east half.
+            ctx.fillStyle = deep;
+            ctx.fillRect(bx + wob + bandW * 0.5, y + px * 0.02, bandW * 0.5, Math.max(1, Math.min(len, gy + px - y) - px * 0.04));
+            y += len + gap;
           }
         }
-        ctx.fillStyle = 'rgba(60, 44, 72, 0.4)';
-        ctx.fillRect(gx + px * 0.42, gy + px * 0.42, px * 0.16, px * 0.14);
+        if (m !== Tile.Dirt) {
+          // The thrown ridge: a lit run between the bands, itself
+          // broken in two by a hashed gap.
+          ctx.fillStyle = 'rgba(214, 200, 176, 0.14)';
+          const rx = gx + px * 0.45 + off;
+          const cut = gy + px * (0.35 + ((hh >>> 4) % 4) * 0.08);
+          ctx.fillRect(rx, gy, px * 0.1, Math.max(1, cut - gy - px * 0.04));
+          ctx.fillRect(rx + px * 0.01, cut + px * 0.04, px * 0.1, Math.max(1, gy + px - cut - px * 0.04));
+        }
+      } else if (d === Detail.BlightVeins) {
+        // THE VEINS (K4 recut): the ground the gloom stone and the
+        // creep root sicken — a bruised core with a pale dead rim (the
+        // blight's own grey-ring mark, plan §12.4) and three or four
+        // veins radiating off it, each a run of four to five stepped
+        // squares that SHRINK and darken toward the tip (depth as
+        // value steps, never a stroke). Fills only; min feature 0.03s.
+        const hh = hashCoords(247, tx, ty);
+        const n = 3 + (hh & 1);
+        const cx = gx + px * (0.38 + ((hh >>> 2) % 5) * 0.06);
+        const cy = gy + px * (0.38 + ((hh >>> 6) % 5) * 0.06);
+        // The rim first, the core over it.
+        ctx.fillStyle = 'rgba(168, 168, 178, 0.22)';
+        ctx.fillRect(cx - px * 0.16, cy - px * 0.12, px * 0.32, px * 0.24);
+        ctx.fillStyle = 'rgba(52, 38, 66, 0.5)';
+        ctx.fillRect(cx - px * 0.1, cy - px * 0.075, px * 0.2, px * 0.15);
+        for (let k = 0; k < n; k++) {
+          const hk = hashCoords(251 + k, tx, ty);
+          // The vein's heading: one of eight compass runs, hashed,
+          // with a per-step jog so no vein is a ruler line.
+          const dir = (hk >>> 3) & 7;
+          const dxs = [1, 1, 0, -1, -1, -1, 0, 1][dir]!;
+          const dys = [0, 1, 1, 1, 0, -1, -1, -1][dir]!;
+          const steps = 4 + ((hk >>> 6) & 1);
+          let vx = cx + dxs * px * 0.14;
+          let vy = cy + dys * px * 0.1;
+          for (let j = 0; j < steps; j++) {
+            const sz = px * (0.085 - j * 0.012);
+            const a = 0.36 + j * 0.05;
+            ctx.fillStyle = `rgba(26, 18, 34, ${a.toFixed(2)})`;
+            ctx.fillRect(vx - sz * 0.5, vy - sz * 0.35, sz, sz * 0.7);
+            const jog = ((((hk >>> (9 + j * 2)) & 3) - 1.5) * px * 0.03);
+            vx += dxs * px * 0.09 + (dys !== 0 ? jog : 0);
+            vy += dys * px * 0.07 + (dxs !== 0 ? jog : 0);
+            if (vx < gx + px * 0.02 || vx > gx + px * 0.98 || vy < gy + px * 0.02 || vy > gy + px * 0.98) break;
+          }
+        }
       } else if (d === Detail.DarkSpill) {
-        // A near-black stain with a lit dry rim: blood-dark by VALUE,
-        // never red (the content boundary is a palette law too).
+        // THE SPILL (K3 recut): blood-dark by VALUE, never red (the
+        // content boundary is a palette law too). The first cut was one
+        // filled rectangle at α .72 with a rim rectangle — the black
+        // box. Now a CLUSTER of four to six hashed stepped squares
+        // (≥ 0.03s) at a soaked-in α ≈ .4, two of them darker cores, and
+        // the dry pale rim as separate paler squares along the west and
+        // north of the cluster — where it dried first, toward the sun.
+        // Fills only.
         const hh = hashCoords(257, tx, ty);
-        const sx = gx + (0.14 + (hh % 20) / 100) * px;
-        const sy = gy + (0.18 + ((hh >>> 5) % 20) / 100) * px;
-        const sw = px * (0.5 + ((hh >>> 9) % 20) / 100);
-        const sh = px * (0.42 + ((hh >>> 13) % 20) / 100);
-        ctx.fillStyle = 'rgba(150, 132, 112, 0.28)';
-        ctx.fillRect(sx - px * 0.03, sy - px * 0.03, sw + px * 0.06, sh + px * 0.06);
-        ctx.fillStyle = 'rgba(16, 10, 18, 0.72)';
-        ctx.fillRect(sx, sy, sw, sh);
-        ctx.fillStyle = 'rgba(16, 10, 18, 0.5)';
-        ctx.fillRect(sx + sw * 0.7, sy + sh * 0.6, px * 0.12, px * 0.1);
+        const n = 4 + ((hh >>> 1) % 3);
+        const cx = gx + px * (0.4 + ((hh >>> 3) % 5) * 0.05);
+        const cy = gy + px * (0.42 + ((hh >>> 7) % 5) * 0.05);
+        let minX = cx;
+        let minY = cy;
+        const blots: Array<[number, number, number, number]> = [];
+        for (let k = 0; k < n; k++) {
+          const hk = hashCoords(259 + k, tx, ty);
+          const bw = px * (0.14 + ((hk >>> 2) % 5) * 0.04);
+          const bh = bw * (0.6 + ((hk >>> 6) % 3) * 0.12);
+          const bx = cx + (((hk >>> 9) % 41) - 20) * px * 0.012;
+          const by = cy + (((hk >>> 15) % 33) - 16) * px * 0.011;
+          blots.push([bx - bw * 0.5, by - bh * 0.5, bw, bh]);
+          if (bx - bw * 0.5 < minX) minX = bx - bw * 0.5;
+          if (by - bh * 0.5 < minY) minY = by - bh * 0.5;
+        }
+        // The dry rim: paler squares hugging the west and north edges.
+        ctx.fillStyle = 'rgba(150, 132, 112, 0.22)';
+        for (let k = 0; k < 3; k++) {
+          const hr = hashCoords(271 + k, tx, ty);
+          const rs = px * (0.06 + ((hr >>> 2) % 3) * 0.02);
+          if ((hr & 1) === 0) ctx.fillRect(minX - rs * 0.6, cy - px * 0.14 + ((hr >>> 5) % 6) * px * 0.05, rs, rs * 0.8);
+          else ctx.fillRect(cx - px * 0.16 + ((hr >>> 5) % 6) * px * 0.05, minY - rs * 0.6, rs * 1.1, rs * 0.7);
+        }
+        ctx.fillStyle = 'rgba(16, 10, 18, 0.4)';
+        for (const [bx, by, bw, bh] of blots) ctx.fillRect(bx, by, bw, bh);
+        // Two darker cores where it pooled deepest.
+        ctx.fillStyle = 'rgba(16, 10, 18, 0.3)';
+        for (let k = 0; k < 2 && k < blots.length; k++) {
+          const [bx, by, bw, bh] = blots[(hh >>> (11 + k * 3)) % blots.length]!;
+          ctx.fillRect(bx + bw * 0.25, by + bh * 0.25, Math.max(px * 0.03, bw * 0.5), Math.max(px * 0.03, bh * 0.5));
+        }
       } else if (d === Detail.Mudcrack) {
-        // The drained pond: dry plate seams — a grid of squared plates
-        // with dark seams between, the near plates a step lighter.
+        // THE DRAINED POND (K4 recut): dry plate seams — an IRREGULAR
+        // grid of squared plates (two to four per axis, each row and
+        // column a hashed width) with dark seams between, every plate
+        // showing one lit north-west facet and a curled corner on the
+        // hashed few (a paler square at the plate's south-east — the
+        // clay lifts as it dries). The first cut was an even grid of
+        // equal plates. Fills only; min feature 0.03s.
         const hh = hashCoords(263, tx, ty);
         ctx.fillStyle = 'rgba(40, 32, 30, 0.55)';
-        ctx.fillRect(gx + px * 0.06, gy + px * 0.06, px * 0.88, px * 0.88);
-        const cols = 2 + (hh & 1);
-        const rows = 2 + ((hh >>> 1) & 1);
-        const pw = (px * 0.88) / cols;
-        const ph = (px * 0.88) / rows;
+        ctx.fillRect(gx + px * 0.04, gy + px * 0.04, px * 0.92, px * 0.92);
+        const cols = 2 + (hh % 3);
+        const rows = 2 + ((hh >>> 2) % 3);
+        // Hashed column and row widths, normalised to the plate field.
+        const cw: number[] = [];
+        const rh: number[] = [];
+        let cwSum = 0;
+        let rhSum = 0;
+        for (let c = 0; c < cols; c++) {
+          const v = 0.6 + ((hashCoords(277 + c, tx, ty) >>> 4) % 9) * 0.1;
+          cw.push(v);
+          cwSum += v;
+        }
         for (let r = 0; r < rows; r++) {
+          const v = 0.6 + ((hashCoords(283 + r, tx, ty) >>> 4) % 9) * 0.1;
+          rh.push(v);
+          rhSum += v;
+        }
+        const field = px * 0.92;
+        const seam = px * 0.035;
+        let py0 = gy + px * 0.04;
+        for (let r = 0; r < rows; r++) {
+          const ph = (field * rh[r]!) / rhSum;
+          let px0 = gx + px * 0.04;
           for (let c = 0; c < cols; c++) {
-            const hk = hashCoords(269 + r * 3 + c, tx, ty);
-            ctx.fillStyle = (hk & 1) === 0 ? '#8a7a66' : '#7a6c5a';
-            ctx.fillRect(gx + px * 0.06 + c * pw + px * 0.025, gy + px * 0.06 + r * ph + px * 0.025, pw - px * 0.05, ph - px * 0.05);
+            const pw = (field * cw[c]!) / cwSum;
+            const hk = hashCoords(269 + r * 5 + c, tx, ty);
+            const x = px0 + seam * 0.5;
+            const y = py0 + seam * 0.5;
+            const w = pw - seam;
+            const h = ph - seam;
+            ctx.fillStyle = (hk & 1) === 0 ? '#8a7a66' : '#7f7060';
+            ctx.fillRect(x, y, w, h);
+            // The lit facet: the plate's north-west edge toward the sun.
+            ctx.fillStyle = '#9a8a74';
+            ctx.fillRect(x, y, w, Math.max(1, px * 0.03));
+            ctx.fillRect(x, y, Math.max(1, px * 0.03), h);
+            // A curled corner on the hashed few: the south-east lifts.
+            if (((hk >>> 3) & 3) === 0) {
+              ctx.fillStyle = '#a4937c';
+              const cs = Math.max(px * 0.03, Math.min(w, h) * 0.3);
+              ctx.fillRect(x + w - cs, y + h - cs, cs, cs);
+            }
+            px0 += pw;
           }
+          py0 += ph;
         }
       }
 }
@@ -4270,6 +4867,9 @@ export function startElevatedBake(
     (member(baseX + i - 1, baseY + j) ? 8 : 0);
 
   const steps: Array<() => void> = [];
+  // Step 6 — elevated layers run the same fold closures (the halo is
+  // the chunk's, so a terrace folds exactly as the ground beneath it).
+  const { sig: foldSig, view: fold } = foldForBake(cx, cy);
 
   // Silhouette build — a pure Path2D construction pass.
   steps.push(() => {
@@ -4319,21 +4919,32 @@ export function startElevatedBake(
   steps.push(
     clipped(() => {
       const cell = Math.max(4, Math.floor(px / 4));
+      const half = cell / 2 / px;
       for (let y = -G; y < CHUNK_SIZE * px + G; y += cell) {
         for (let x = -G; x < CHUNK_SIZE * px + G; x += cell) {
-          ctx.fillStyle = meadowTone(baseX + x / px, baseY + y / px);
+          ctx.fillStyle = meadowToneFold(fold, baseX, baseY, baseX + x / px, baseY + y / px, half);
           ctx.fillRect(x, y, cell, cell);
         }
       }
     }),
   );
+  // The wash on the terrace, clipped to the crown like every step.
+  if (fold !== null) {
+    for (const [look, b] of foldWashPasses(fold)) {
+      steps.push(
+        clipped(() => {
+          paintFoldWash(ctx, fold, look, b, baseX, baseY, px);
+        }),
+      );
+    }
+  }
   // One material layer per step, sharing the halo index.
   let idx: Int8Array | null = null;
   for (let li = 0; li < BLOB_LAYERS.length; li++) {
     steps.push(
       clipped(() => {
         idx ??= computeLayerIdx(g, baseX, baseY);
-        paintLayerSkin(ctx, idx, li, baseX, baseY, px, g);
+        paintLayerSkin(ctx, idx, li, baseX, baseY, px, g, fold);
       }),
     );
   }
@@ -4347,7 +4958,7 @@ export function startElevatedBake(
             const tx = baseX + lx;
             const ty = baseY + ly;
             if (!member(tx, ty)) continue;
-            drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail, g, ground);
+            drawTileDetail(ctx, g(tx, ty) ?? Tile.Grass, detail(tx, ty), tx, ty, lx, ly, px, detail, g, ground, fold);
           }
         }
       }),
@@ -4453,8 +5064,17 @@ export function startElevatedBake(
     drawBridges(ctx, ground, baseX, baseY, px, deckHere);
     drawPorchDecks(ctx, ground, baseX, baseY, px, undefined, deckHere);
   });
+  if (fold !== null) steps.push(() => releaseFoldView(fold));
 
-  return { canvas, rows, steps, next: 0, rowOrigin };
+  return {
+    canvas,
+    rows,
+    steps,
+    next: 0,
+    rowOrigin,
+    spectrumSig: foldSig,
+    spectrumHaloSig: fold === null ? 0 : fold.sig,
+  };
 }
 
 /** The one-shot elevated bake: start + run every step. Output is
@@ -4612,11 +5232,11 @@ const rnd01 = (seed: number, x: number, y: number): number =>
  * world noise swells and calms that jitter over ~10-tile stretches, so
  * a shoreline carries long meanders with quiet reaches between the
  * choppy ones — coastline, not corrugation. Pure function of world
- * position (+ per-layer salt), so bakes, tiers, and the live shoreline
+ * position (+ the lane's seed), so bakes, tiers, and the live shoreline
  * agree by construction.
  */
-function edgeSwell(li: number, wx: number, wy: number): number {
-  return 0.45 + 1.1 * valueNoise(6151 + li * 97, wx * 0.031, wy * 0.031);
+function edgeSwell(seed: number, wx: number, wy: number): number {
+  return 0.45 + 1.1 * valueNoise(6151 + seed * 97, wx * 0.031, wy * 0.031);
 }
 
 /**
@@ -4631,7 +5251,7 @@ function edgeSwell(li: number, wx: number, wy: number): number {
  * bndCurve geometry) shifts by the SAME local vector, so opposing
  * banks sway together and the channel keeps its breadth by
  * construction while the whole ribbon meanders. One field for ALL
- * layers (no per-li salt) is load-bearing twice over: the depth
+ * layers (no per-lane seed) is load-bearing twice over: the depth
  * shelves swing with their shoreline, and the land layers' underlap
  * contours stay covered under the water skin (a water-only warp
  * exposed them as dark lobes along the banks).
@@ -4649,29 +5269,29 @@ function warpY(wx: number, wy: number): number {
  * the edge. Keyed on the edge's world identity so the two cells
  * sharing the edge (and every chunk/tier/live pass) agree exactly.
  */
-function crossT(li: number, wob: number, kx: number, ky: number, vert: number): number {
+function crossT(lane: ContourLane, wob: number, kx: number, ky: number, vert: number): number {
   if (wob === 0) return 0.5;
   // Water halves its independent jitter — the channel warp carries the
   // meander coherently, and uncorrelated crossings are what pinched
   // narrow channels shut.
   const amp =
     wob *
-    edgeSwell(li, kx + (vert === 0 ? 0.5 : 0), ky + (vert === 1 ? 0.5 : 0)) *
-    (li >= WATER_LI ? 0.5 : 1);
-  return 0.5 + (rnd01(7717 + li * 131 + vert * 67, kx, ky) - 0.5) * 2 * Math.min(0.42, amp);
+    edgeSwell(lane.seed, kx + (vert === 0 ? 0.5 : 0), ky + (vert === 1 ? 0.5 : 0)) *
+    (lane.water ? 0.5 : 1);
+  return 0.5 + (rnd01(7717 + lane.seed * 131 + vert * 67, kx, ky) - 0.5) * 2 * Math.min(0.42, amp);
 }
 
 /** Crossing point on one edge of dual cell (I, J). 0=T 1=R 2=B 3=L.
  *  Water-family crossings then ride the channel warp — a pure world
  *  function, so the two cells sharing the edge (and every chunk, tier
  *  and live pass) still agree on the displaced point exactly. */
-function edgeCross(li: number, wob: number, I: number, J: number, edge: number): Pt {
+function edgeCross(lane: ContourLane, wob: number, I: number, J: number, edge: number): Pt {
   let p: Pt;
   switch (edge) {
-    case 0: p = [I - 0.5 + crossT(li, wob, I - 1, J - 1, 0), J - 0.5]; break;
-    case 1: p = [I + 0.5, J - 0.5 + crossT(li, wob, I, J - 1, 1)]; break;
-    case 2: p = [I - 0.5 + crossT(li, wob, I - 1, J, 0), J + 0.5]; break;
-    default: p = [I - 0.5, J - 0.5 + crossT(li, wob, I - 1, J - 1, 1)]; break;
+    case 0: p = [I - 0.5 + crossT(lane, wob, I - 1, J - 1, 0), J - 0.5]; break;
+    case 1: p = [I + 0.5, J - 0.5 + crossT(lane, wob, I, J - 1, 1)]; break;
+    case 2: p = [I - 0.5 + crossT(lane, wob, I - 1, J, 0), J + 0.5]; break;
+    default: p = [I - 0.5, J - 0.5 + crossT(lane, wob, I - 1, J - 1, 1)]; break;
   }
   // EVERY organic boundary rides the ONE warp field (masonry, wob 0,
   // stays ruler-straight). One field for all layers is load-bearing:
@@ -4687,7 +5307,7 @@ function edgeCross(li: number, wob: number, I: number, J: number, edge: number):
 
 /** Edge pairs: 0=T·L 1=T·R 2=R·B 3=B·L 4=L·R 5=T·B. */
 function bndCurve(
-  li: number,
+  lane: ContourLane,
   wob: number,
   I: number,
   J: number,
@@ -4709,8 +5329,8 @@ function bndCurve(
     // channel warp — independent per-run bows are exactly the motion
     // that pinched opposing banks together (see THE CHANNEL WARP).
     const amp =
-      Math.min(0.42, wob * edgeSwell(li, cx, cy)) * (li >= WATER_LI ? 0.5 : 1);
-    const d = (rnd01(8117 + li * 131 + pair * 29, I, J) - 0.5) * 2 * amp * len;
+      Math.min(0.42, wob * edgeSwell(lane.seed, cx, cy)) * (lane.water ? 0.5 : 1);
+    const d = (rnd01(8117 + lane.seed * 131 + pair * 29, I, J) - 0.5) * 2 * amp * len;
     cx += (-dy / len) * d;
     cy += (dx / len) * d;
   }
@@ -4724,14 +5344,36 @@ const RT2 = Math.SQRT1_2;
  * the single source of truth shared by the baked fills, the worn-edge
  * bands, the turf fringe, and the live shoreline.
  */
-function boundaryCurvesFor(li: number, wob: number, I: number, J: number, mask: number): Bnd[] {
+function boundaryCurvesFor(lane: ContourLane, wob: number, I: number, J: number, mask: number): Bnd[] {
   if (mask === 0 || mask === 15) return [];
-  const cT = edgeCross(li, wob, I, J, 0);
-  const cR = edgeCross(li, wob, I, J, 1);
-  const cB = edgeCross(li, wob, I, J, 2);
-  const cL = edgeCross(li, wob, I, J, 3);
+  const cT = edgeCross(lane, wob, I, J, 0);
+  const cR = edgeCross(lane, wob, I, J, 1);
+  const cB = edgeCross(lane, wob, I, J, 2);
+  const cL = edgeCross(lane, wob, I, J, 3);
+  return boundaryCurvesFrom(lane, wob, I, J, mask, cT, cR, cB, cL);
+}
+
+/**
+ * The runs of a dual cell from FOUR GIVEN edge crossings — the body
+ * of boundaryCurvesFor, split out so a contour whose crossings come
+ * from somewhere other than the hash (THE WEIGHTED CROSSING of the
+ * living ground's wash) shares the very same run geometry, bows and
+ * outward normals. Byte-identical for the hashed callers: the four
+ * crossings were computed in the same order before the split.
+ */
+function boundaryCurvesFrom(
+  lane: ContourLane,
+  wob: number,
+  I: number,
+  J: number,
+  mask: number,
+  cT: Pt,
+  cR: Pt,
+  cB: Pt,
+  cL: Pt,
+): Bnd[] {
   const b = (pair: number, a: Pt, z: Pt, ox: number, oy: number): Bnd =>
-    bndCurve(li, wob, I, J, pair, a, z, ox, oy);
+    bndCurve(lane, wob, I, J, pair, a, z, ox, oy);
   switch (mask) {
     case 1: return [b(0, cT, cL, RT2, RT2)];
     case 14: return [b(0, cT, cL, -RT2, -RT2)];
@@ -4767,7 +5409,7 @@ function qpoint(b: Bnd, t: number): Pt {
  */
 function organicCellPath(
   path: Path2D,
-  li: number,
+  lane: ContourLane,
   wob: number,
   I: number,
   J: number,
@@ -4776,18 +5418,43 @@ function organicCellPath(
   toX: (wx: number) => number,
   toY: (wy: number) => number,
 ): void {
+  if (mask === 15) {
+    const x0 = toX(I - 0.5);
+    const y0 = toY(J - 0.5);
+    const x1 = toX(I + 0.5);
+    const y1 = toY(J + 0.5);
+    path.rect(x0, y0, x1 - x0, y1 - y0);
+    return;
+  }
+  const cT = edgeCross(lane, wob, I, J, 0);
+  const cR = edgeCross(lane, wob, I, J, 1);
+  const cB = edgeCross(lane, wob, I, J, 2);
+  const cL = edgeCross(lane, wob, I, J, 3);
+  organicCellPathFrom(path, I, J, mask, bnds, cT, cR, cB, cL, toX, toY);
+}
+
+/**
+ * The cell polygon from FOUR GIVEN crossings (organicCellPath's body,
+ * split out for THE WEIGHTED CROSSING — see boundaryCurvesFrom). The
+ * full cell (mask 15) never reaches here: it needs no crossings.
+ */
+function organicCellPathFrom(
+  path: Path2D,
+  I: number,
+  J: number,
+  mask: number,
+  bnds: Bnd[],
+  cT: Pt,
+  cR: Pt,
+  cB: Pt,
+  cL: Pt,
+  toX: (wx: number) => number,
+  toY: (wy: number) => number,
+): void {
   const x0 = toX(I - 0.5);
   const y0 = toY(J - 0.5);
   const x1 = toX(I + 0.5);
   const y1 = toY(J + 0.5);
-  if (mask === 15) {
-    path.rect(x0, y0, x1 - x0, y1 - y0);
-    return;
-  }
-  const cT = edgeCross(li, wob, I, J, 0);
-  const cR = edgeCross(li, wob, I, J, 1);
-  const cB = edgeCross(li, wob, I, J, 2);
-  const cL = edgeCross(li, wob, I, J, 3);
   const M = (p: Pt): void => path.moveTo(toX(p[0]), toY(p[1]));
   const L = (p: Pt): void => path.lineTo(toX(p[0]), toY(p[1]));
   const Lc = (x: number, y: number): void => path.lineTo(x, y);
@@ -4816,14 +5483,846 @@ function organicCellPath(
   path.closePath();
 }
 
-/** The meadow's noise-driven grass tone at a world position. */
-function meadowTone(wx: number, wy: number): string {
+/** The meadow's four-way tone INDEX at a world position — the noise
+ *  picks which of the four; the fold (below) picks the four. */
+function meadowToneIdx(wx: number, wy: number): number {
   const n =
     valueNoise(1234, wx * 0.055, wy * 0.055) * 0.7 +
     valueNoise(777, wx * 0.021, wy * 0.021) * 0.3;
-  const idx = n < 0.38 ? 3 : n < 0.52 ? 1 : n < 0.72 ? 0 : 2;
-  return GRASS_TONES[idx]!;
+  return n < 0.38 ? 3 : n < 0.52 ? 1 : n < 0.72 ? 0 : 2;
 }
+
+/** The meadow's noise-driven grass tone at a world position. */
+function meadowTone(wx: number, wy: number): string {
+  return GRASS_TONES[meadowToneIdx(wx, wy)]!;
+}
+
+// ------------------------------------------------ THE FOLD (LG-1)
+// THE SUBSTRATE FOLDS (docs/contested-lands-plan.md §12.3 canvas
+// steps 0-2, 4-5). Everything from here to drawGrassFringe is the
+// living ground's painter side: the halo (step 0), the folded
+// substrate (1), the wash (2), and the doors the fringe (4) and the
+// marks (5) read. Every branch is guarded by `fold === null` → today's
+// code, and the sig-0 fast path never builds a view at all, so parity
+// at zero strokes is structural (terrain.seed.test.ts's golden).
+//
+// NO CLOCK REACHES A PAINTED VALUE: nothing in this section reads
+// Date, performance or Math.random (terrain.fold.test.ts lints the
+// section). The field arrives quantised (Int16 words, integer band
+// thresholds); the only arithmetic added here is IEEE add/mul/div on
+// those words, so two clients bake the same picture.
+
+/**
+ * THE FOLD GATE. The renderer latches this once per frame from the
+ * plane and the LIVING_GROUND_OFF flag (drawGroundChunks): an
+ * underground plane never builds a halo — gated on the PLANE, not on
+ * the stale `baseY >= 512` dark-band constant (a latent planes bug
+ * the plan files, not fixed here). Default on, so the Studio's
+ * synchronous bakeChunk and the tests fold without a renderer.
+ */
+let foldEnabled = true;
+export function setFoldEnabled(on: boolean): void {
+  foldEnabled = on;
+}
+
+/** The chunk's reach sig under the gate: 0 = today's paint. */
+export function foldSigFor(cx: number, cy: number): number {
+  return foldEnabled ? spectrumSig(cx, cy) : 0;
+}
+
+/** THE HALO IS BORROWED: 36²×4 Int16 words (~10 KB), pooled; a job
+ *  returns its halo in its last step, a job that dies just drops it. */
+const HALO_POOL: Int16Array[] = [];
+function takeHalo(): Int16Array {
+  return HALO_POOL.pop() ?? allocSpectrumHalo();
+}
+function returnHalo(h: Int16Array): void {
+  if (HALO_POOL.length < 8) HALO_POOL.push(h);
+}
+
+/**
+ * THE FIELD-AWARE KEY (plan §12.2): the hash of the halo this chunk
+ * would paint right now. The renderer asks only when the reach sig
+ * moved — a registry swap that left every sample where it was hashes
+ * the same and is NOT a re-bake. 0 when nothing reaches.
+ */
+export function foldHaloSigFor(cx: number, cy: number): number {
+  if (foldSigFor(cx, cy) === 0) return 0;
+  const h = takeHalo();
+  const sig = spectrumHalo(cx * CHUNK_SIZE, cy * CHUNK_SIZE, h) ? spectrumHaloSig(h) : 0;
+  returnHalo(h);
+  return sig;
+}
+
+/**
+ * THE VIEW: a chunk bake's read of the field. The halo's words, the
+ * per-corner LOOK after precedence, a bitmask of the looks present
+ * (which wash passes to run), and the halo's hash (the job's key).
+ */
+interface FoldView {
+  halo: Int16Array;
+  /** Per halo cell: FOLD_NONE | AUTUMN | SPRING | BLIGHT | BURN. */
+  look: Uint8Array;
+  /** Per halo cell: `(band << 3) | look` — the substrate's word. */
+  bl: Uint8Array;
+  /** Per halo cell: 1 when the corner's word cannot move under the
+   *  hem dither on ANY axis — four stable corners sharing one word
+   *  make a paint cell that word without a lerp (most of a chunk). */
+  stable: Uint8Array;
+  /** `1 << look` for every look at any corner of the halo. */
+  present: number;
+  sig: number;
+  /** The taken isoband's region per look (band 2's step) and the held
+   *  isoband's region (band 3's step) — the weighted-crossing contours
+   *  that clip the lobes, and that THE MATERIALS FOLD re-fills. */
+  washRegion: Array<Path2D | null>;
+  washHeldRegion: Array<Path2D | null>;
+  /** The touched contour per look, traced LAZILY (undefined = not yet)
+   *  by the first material that needs it for its hem fill; a meadow-
+   *  only chunk never pays for it. */
+  washTouched: Array<Path2D | null | undefined>;
+  /** The taken lobes' union per look and the held lobes' union per
+   *  look — kept so THE MATERIALS FOLD re-keys the very same shapes
+   *  inside every layer's region (one contour across a road edge,
+   *  never a jog). */
+  washAlt: Array<Path2D | null>;
+  washHeld: Array<Path2D | null>;
+}
+
+/**
+ * THE HEM CRUMBLES (the recut of THE HEM DITHERS). A band step printed
+ * exactly on the isoline is a hard line, so the substrate decides its
+ * table on the field PLUS a per-cell hash jitter — but the first cut
+ * jittered a flat ±26 u8, and on a soft hem (r 40, soft .6 → a 24-tile
+ * hem at ~10 u8 per tile) that was ±2.5 TILES: the step printed as a
+ * five-tile stair of quarter-tile squares, the art director's
+ * "speckled edge". The jitter is now scaled to each axis's LOCAL
+ * GRADIENT so a step never moves more than FOLD_CRUMB tiles: a narrow
+ * fringe of crumbs along an isoline the field's own 22-tile grain
+ * already rags — crumbs, never a dither cloud, and the three bands
+ * read as three nested organic shapes. FOLD_DITHER stays as the CAP
+ * the jitter can never exceed; the corner stability test in
+ * buildFoldView reasons about that cap. Hashed on a 1/8-tile lattice
+ * every tier's paint cells sit on, so chunks agree.
+ */
+const FOLD_DITHER = 26;
+const FOLD_CRUMB = 0.35;
+const FOLD_NEAR = BAND_TOUCHED - FOLD_DITHER;
+
+/**
+ * PRECEDENCE AT A POINT — THE STRONGEST CLAIM WINS, and burn over
+ * blight over season breaks the tie (ash covers sickness covers the
+ * calendar). Band-major, not axis-major: the plan's bare rule let a
+ * TOUCHED blight hem print itself over a TAKEN autumn as a gap ring
+ * of grey-green between the straw and the bruise (the lab's HEM
+ * block caught it); a weak claim now yields to a strong one and shows
+ * only once it is as strong. Decided PER CORNER, never per chunk — a
+ * per-chunk winner is not a function of world position and prints a
+ * seam wherever the winner flips at a chunk border. Where two looks
+ * meet, each band's contour interpolates toward the other's true
+ * weight and the higher look paints later: two sources disagreeing
+ * at a hem is a real hem.
+ *
+ * Returns `(w << 6) | (band << 3) | look`, 0 for summer; `w` is the
+ * winning look's magnitude (the spring look reads the season word
+ * negated).
+ */
+function resolveLook(season: number, blight: number, burn: number): number {
+  const bu = band(burn);
+  const bb = band(blight);
+  const bs = band(season);
+  if (bu > 0 && bu >= bb && bu >= bs) return (burn << 6) | (bu << 3) | FOLD_BURN;
+  if (bb > 0 && bb >= bs) return (blight << 6) | (bb << 3) | FOLD_BLIGHT;
+  if (bs > 0) {
+    return season > 0 ? (season << 6) | (bs << 3) | FOLD_AUTUMN : (-season << 6) | (bs << 3) | FOLD_SPRING;
+  }
+  return 0;
+}
+
+/** The tie-break rank of a look's axis (burn > blight > season). */
+function lookRank(look: number): number {
+  return look === FOLD_BURN ? 3 : look === FOLD_BLIGHT ? 2 : look === FOLD_NONE ? 0 : 1;
+}
+
+/** A look's signed-corrected weight at halo cell `i` (0..255; the
+ *  spring look reads the season word negated). Reads THE TRUE word of
+ *  the look's axis whatever look won the corner — the interpolation
+ *  into a neighbour of another look must see where this field really
+ *  falls, not a precedence-zeroed step. */
+function lookWeight(halo: Int16Array, look: number, i: number): number {
+  switch (look) {
+    case FOLD_AUTUMN: return halo[i]!;
+    case FOLD_SPRING: return -halo[i]!;
+    case FOLD_BLIGHT: return halo[i + HALO_CELLS]!;
+    case FOLD_BURN: return halo[i + 2 * HALO_CELLS]!;
+    default: return 0;
+  }
+}
+
+/** Step 0 — THE HALO, built beside computeLayerIdx. Null when no word
+ *  is non-zero (the painter then takes today's code path throughout). */
+function buildFoldView(baseX: number, baseY: number): FoldView | null {
+  const halo = takeHalo();
+  if (!spectrumHalo(baseX, baseY, halo)) {
+    returnHalo(halo);
+    return null;
+  }
+  const look = new Uint8Array(HALO_CELLS);
+  const bl = new Uint8Array(HALO_CELLS);
+  const stable = new Uint8Array(HALO_CELLS);
+  let present = 0;
+  for (let i = 0; i < HALO_CELLS; i++) {
+    const s = halo[i]!;
+    const b = halo[i + HALO_CELLS]!;
+    const u = halo[i + 2 * HALO_CELLS]!;
+    const pk = resolveLook(s, b, u);
+    const lk = pk & 7;
+    look[i] = lk;
+    bl[i] = pk & 63;
+    present |= 1 << lk;
+    // Stability under the hem dither: the winner's own band holds at
+    // w ± J, and no other axis can reach the winner's band (or tie it
+    // with a higher rank) at m + J. Summer is stable when every axis
+    // sits below touched − J.
+    const m = s < 0 ? -s : s;
+    if (pk === 0) {
+      stable[i] = m < FOLD_NEAR && b < FOLD_NEAR && u < FOLD_NEAR ? 1 : 0;
+      continue;
+    }
+    const bd = (pk >> 3) & 7;
+    const w = pk >> 6;
+    let ok = band(w - FOLD_DITHER) === bd && band(w + FOLD_DITHER) === bd;
+    if (ok) {
+      const rank = lookRank(lk);
+      const beats = (mag: number, r: number): boolean => {
+        const bb = band(mag + FOLD_DITHER);
+        return bb > bd || (bb === bd && r > rank);
+      };
+      if (lk !== FOLD_BURN && beats(u, 3)) ok = false;
+      if (lk !== FOLD_BLIGHT && beats(b, 2)) ok = false;
+      if (lk !== FOLD_AUTUMN && lk !== FOLD_SPRING && beats(m, 1)) ok = false;
+    }
+    stable[i] = ok ? 1 : 0;
+  }
+  return {
+    halo,
+    look,
+    bl,
+    stable,
+    present,
+    sig: spectrumHaloSig(halo),
+    washRegion: [null, null, null, null, null],
+    washHeldRegion: [null, null, null, null, null],
+    washTouched: [undefined, undefined, undefined, undefined, undefined],
+    washAlt: [null, null, null, null, null],
+    washHeld: [null, null, null, null, null],
+  };
+}
+
+function releaseFoldView(view: FoldView | null): void {
+  if (view !== null) returnHalo(view.halo);
+}
+
+/** The halo cell of chunk-local tile (lx, ly), −2..33 on each axis. */
+function haloCell(lx: number, ly: number): number {
+  return lx + 2 + (ly + 2) * HALO_N;
+}
+
+/** The look and weight of THE TILE at (lx, ly), packed `(w << 3) | look`
+ *  — the marks read their own tile's sample, no interpolation. */
+function foldTileAt(view: FoldView, lx: number, ly: number): number {
+  const i = haloCell(lx, ly);
+  const look = view.look[i]!;
+  if (look === FOLD_NONE) return 0;
+  return (lookWeight(view.halo, look, i) << 3) | look;
+}
+
+/**
+ * THE FIELD BETWEEN THE CORNERS: the look and weight at a continuous
+ * world point, bilinear between the four tile-centre samples around
+ * it, precedence applied to the interpolated words — so the substrate's
+ * band step lands on the isoline, never on the dual grid, and agrees
+ * exactly with the wash's crossing along every cell edge (bilinear
+ * restricted to an edge IS the linear crossing). Packed `(w << 3) |
+ * look`, 0 for summer. Alloc-free.
+ */
+function foldSampleAt(view: FoldView, baseX: number, baseY: number, wx: number, wy: number): number {
+  const ux = wx - 0.5 - baseX;
+  const uy = wy - 0.5 - baseY;
+  let x0 = Math.floor(ux);
+  let y0 = Math.floor(uy);
+  if (x0 < -2) x0 = -2;
+  else if (x0 > CHUNK_SIZE) x0 = CHUNK_SIZE;
+  if (y0 < -2) y0 = -2;
+  else if (y0 > CHUNK_SIZE) y0 = CHUNK_SIZE;
+  let fx = ux - x0;
+  let fy = uy - y0;
+  if (fx < 0) fx = 0;
+  else if (fx > 1) fx = 1;
+  if (fy < 0) fy = 0;
+  else if (fy > 1) fy = 1;
+  const h = view.halo;
+  const i00 = haloCell(x0, y0);
+  const i10 = i00 + 1;
+  const i01 = i00 + HALO_N;
+  const i11 = i01 + 1;
+  const lerp = (o: number): number => {
+    const top = h[i00 + o]! + (h[i10 + o]! - h[i00 + o]!) * fx;
+    const bot = h[i01 + o]! + (h[i11 + o]! - h[i01 + o]!) * fx;
+    return Math.round(top + (bot - top) * fy);
+  };
+  const pk = resolveLook(lerp(0), lerp(HALO_CELLS), lerp(2 * HALO_CELLS));
+  if (pk === 0) return 0;
+  return ((pk >> 6) << 3) | (pk & 7);
+}
+
+/**
+ * The substrate's read of a paint cell: the look and BAND at a world
+ * point, packed `(band << 3) | look`, 0 for summer. Bilinear like
+ * foldSampleAt, with two things the substrate wants that the fringe
+ * does not: THE HEM DITHERS (every axis reads ±FOLD_DITHER by the
+ * cell's hash before precedence and banding), and a fast path — a
+ * cell whose four corners are all far from the touched threshold is
+ * summer without a lerp, which is most of a partly-folded chunk.
+ */
+function foldBandAt(view: FoldView, baseX: number, baseY: number, wx: number, wy: number): number {
+  const ux = wx - 0.5 - baseX;
+  const uy = wy - 0.5 - baseY;
+  let x0 = Math.floor(ux);
+  let y0 = Math.floor(uy);
+  if (x0 < -2) x0 = -2;
+  else if (x0 > CHUNK_SIZE) x0 = CHUNK_SIZE;
+  if (y0 < -2) y0 = -2;
+  else if (y0 > CHUNK_SIZE) y0 = CHUNK_SIZE;
+  const i00 = haloCell(x0, y0);
+  const i10 = i00 + 1;
+  const i01 = i00 + HALO_N;
+  const i11 = i01 + 1;
+  // THE FAST PATH: four stable corners sharing one word — the interior
+  // of a band, or open summer — decide the cell without a lerp or a
+  // hash. Only true hem cells pay the slow path below.
+  const bl = view.bl;
+  const st = view.stable;
+  const w00 = bl[i00]!;
+  if (
+    (st[i00]! & st[i10]! & st[i01]! & st[i11]!) === 1 &&
+    bl[i10] === w00 && bl[i01] === w00 && bl[i11] === w00
+  ) {
+    return w00;
+  }
+  let fx = ux - x0;
+  let fy = uy - y0;
+  if (fx < 0) fx = 0;
+  else if (fx > 1) fx = 1;
+  if (fy < 0) fy = 0;
+  else if (fy > 1) fy = 1;
+  const h = view.halo;
+  const lerp = (o: number): number => {
+    const top = h[i00 + o]! + (h[i10 + o]! - h[i00 + o]!) * fx;
+    const bot = h[i01 + o]! + (h[i11 + o]! - h[i01 + o]!) * fx;
+    return Math.round(top + (bot - top) * fy);
+  };
+  // The crumb: one hash per 1/8-tile lattice cell, −1..1, scaled to
+  // each axis's own gradient across the cell so the jitter is at most
+  // FOLD_CRUMB tiles (and never past the ±FOLD_DITHER cap).
+  const hj = hashCoords(2843, Math.floor(wx * 8 + 0.5), Math.floor(wy * 8 + 0.5));
+  const j01 = (((hj >>> 8) & 1023) - 511.5) / 511.5;
+  const crumb = (o: number): number => {
+    const a = h[i00 + o]!;
+    let gx = h[i10 + o]! - a;
+    let gy = h[i01 + o]! - a;
+    if (gx < 0) gx = -gx;
+    if (gy < 0) gy = -gy;
+    const j = Math.round(j01 * FOLD_CRUMB * (gx > gy ? gx : gy));
+    return j > FOLD_DITHER ? FOLD_DITHER : j < -FOLD_DITHER ? -FOLD_DITHER : j;
+  };
+  let s = lerp(0);
+  const js = crumb(0);
+  s = s > 0 ? s + js : s < 0 ? s - js : s;
+  const pk = resolveLook(s, lerp(HALO_CELLS) + crumb(HALO_CELLS), lerp(2 * HALO_CELLS) + crumb(2 * HALO_CELLS));
+  return pk & 63;
+}
+
+/**
+ * Step 1 — THE SUBSTRATE. meadowTone's noise picks which of the four
+ * tones; with a view, the four are chosen from SUBSTRATE_FOLD by the
+ * band of the field at the paint cell's CENTRE (`half` = half a cell
+ * in tiles; the noise keeps sampling the corner it always did). Null
+ * view → GRASS_TONES, byte for byte.
+ */
+function meadowToneFold(
+  view: FoldView | null,
+  baseX: number,
+  baseY: number,
+  wx: number,
+  wy: number,
+  half: number,
+): string {
+  const idx = meadowToneIdx(wx, wy);
+  if (view === null) return GRASS_TONES[idx]!;
+  const pk = foldBandAt(view, baseX, baseY, wx + half, wy + half);
+  const look = pk & 7;
+  if (look === FOLD_NONE) return GRASS_TONES[idx]!;
+  return SUBSTRATE_FOLD[look]![(pk >> 3) - 1]![idx]!;
+}
+
+/**
+ * THE WEIGHTED CROSSING: where the isoline of `thr` crosses an edge
+ * whose corner weights are wA → wB, as a param along the edge. Pure
+ * interpolation — the field's own grain already rags the hem, and a
+ * hash wobble on top would pull the contour OFF the isoline the
+ * substrate steps on. Clamped away from the corners so a corner that
+ * is barely a member still gets a run to draw, and so a neighbour
+ * that lost precedence (a true weight past the threshold, another
+ * look winning) lands the crossing near itself: the two looks' washes
+ * overlap there and the higher one paints on top — no gap, no seam.
+ * Exported for the shared-corner proof.
+ */
+export function foldCrossT(wA: number, wB: number, thr: number): number {
+  const d = wB - wA;
+  const t = d === 0 ? 0.5 : (thr - wA) / d;
+  return t < 0.08 ? 0.08 : t > 0.92 ? 0.92 : t;
+}
+
+/**
+ * The wash's contour wobble (a nature lane: the bows breathe). The
+ * LOBES roll their own: the sub-lane halves every wobble (the water
+ * law), so .6 lands their bows at .3 — the one-tile cells bow into
+ * lobes, never 45° facets.
+ */
+const WASH_WOB = 0.24;
+const WASH_LOBE_WOB = 0.6;
+
+/**
+ * Where the wash of `look` crosses the edge between halo cells iA and
+ * iB, as a param A→B. Exactly one end is a member (marching squares
+ * asks only for transition edges). Two cases:
+ *  - the other end is summer, this look, or holds this look's weight
+ *    below the threshold: THE ISOLINE, foldCrossT on the look's own
+ *    weights;
+ *  - the other end holds this look at or past the threshold but
+ *    ANOTHER look won it (THE STRONGEST CLAIM WINS): THE CLAIM FLIPS
+ *    somewhere along the edge — found by bisecting resolveLook over
+ *    the linearly interpolated words (eight halvings, 1/256 of a
+ *    tile; pure integer-word arithmetic, so both chunks sharing the
+ *    edge land the same point). A clamped isoline here printed the
+ *    hem between two looks as a cell-grid line (the lab's HEM block).
+ */
+function foldCrossOnEdge(view: FoldView, look: number, thr: number, iA: number, iB: number): number {
+  const h = view.halo;
+  const wA = lookWeight(h, look, iA);
+  const wB = lookWeight(h, look, iB);
+  const memA = view.look[iA] === look && wA >= thr;
+  const memB = view.look[iB] === look && wB >= thr;
+  if (memA === memB) return 0.5;
+  const iP = memA ? iA : iB;
+  const iQ = memA ? iB : iA;
+  const wP = memA ? wA : wB;
+  const wQ = memA ? wB : wA;
+  const lq = view.look[iQ]!;
+  let t: number;
+  if (lq === look || lq === FOLD_NONE || wQ < thr) {
+    t = foldCrossT(wP, wQ, thr);
+  } else {
+    const sP = h[iP]!;
+    const bP = h[iP + HALO_CELLS]!;
+    const uP = h[iP + 2 * HALO_CELLS]!;
+    const sQ = h[iQ]!;
+    const bQ = h[iQ + HALO_CELLS]!;
+    const uQ = h[iQ + 2 * HALO_CELLS]!;
+    let lo = 0;
+    let hi = 1;
+    for (let k = 0; k < 8; k++) {
+      const m = (lo + hi) / 2;
+      const pk = resolveLook(
+        Math.round(sP + (sQ - sP) * m),
+        Math.round(bP + (bQ - bP) * m),
+        Math.round(uP + (uQ - uP) * m),
+      );
+      if ((pk & 7) === look) lo = m;
+      else hi = m;
+    }
+    t = (lo + hi) / 2;
+    if (t < 0.08) t = 0.08;
+    else if (t > 0.92) t = 0.92;
+  }
+  return memA ? t : 1 - t;
+}
+
+/** Crossing point of the wash on one edge of dual cell (I, J) — the
+ *  corners are tile centres, so the halo's own words are the vertex
+ *  weights. Rides the ONE warp field like every organic edge. */
+function foldEdgeCross(
+  view: FoldView,
+  look: number,
+  thr: number,
+  baseX: number,
+  baseY: number,
+  I: number,
+  J: number,
+  edge: number,
+): Pt {
+  const i = I - baseX;
+  const j = J - baseY;
+  const c = (lx: number, ly: number): number => haloCell(lx, ly);
+  let p: Pt;
+  switch (edge) {
+    case 0: p = [I - 0.5 + foldCrossOnEdge(view, look, thr, c(i - 1, j - 1), c(i, j - 1)), J - 0.5]; break;
+    case 1: p = [I + 0.5, J - 0.5 + foldCrossOnEdge(view, look, thr, c(i, j - 1), c(i, j))]; break;
+    case 2: p = [I - 0.5 + foldCrossOnEdge(view, look, thr, c(i - 1, j), c(i, j)), J + 0.5]; break;
+    default: p = [I - 0.5, J - 0.5 + foldCrossOnEdge(view, look, thr, c(i - 1, j - 1), c(i - 1, j))]; break;
+  }
+  return [p[0] + warpX(p[0], p[1]), p[1] + warpY(p[0], p[1])];
+}
+
+/** The wash passes, lowest look first: the calendar, then sickness, then ash. */
+const WASH_ORDER: readonly number[] = [FOLD_AUTUMN, FOLD_SPRING, FOLD_BLIGHT, FOLD_BURN];
+const WASH_BANDS: readonly number[] = [2, 3];
+
+/** Which (look, band) wash passes a view needs — one sliced step each. */
+function foldWashPasses(view: FoldView): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  for (const look of WASH_ORDER) {
+    if ((view.present & (1 << look)) === 0) continue;
+    for (const b of WASH_BANDS) out.push([look, b]);
+  }
+  return out;
+}
+
+/**
+ * THE ISOBAND: the region of every dual cell where `look` holds at or
+ * past `thr`, contoured by THE WEIGHTED CROSSING (foldEdgeCross) on
+ * the wash's lane with the meadow's bows, joined into ONE path (the
+ * union under the nonzero rule has no interior seams). Null when no
+ * corner is a member. Shared by the touched, taken and held bands.
+ */
+function traceFoldRegion(
+  view: FoldView,
+  look: number,
+  thr: number,
+  baseX: number,
+  baseY: number,
+  px: number,
+  lane: ContourLane,
+  toX: (wx: number) => number,
+  toY: (wy: number) => number,
+): Path2D | null {
+  const member = (lx: number, ly: number): boolean => {
+    const i = haloCell(lx, ly);
+    return view.look[i] === look && lookWeight(view.halo, look, i) >= thr;
+  };
+  const region = new Path2D();
+  let any = false;
+  for (let j = 0; j <= CHUNK_SIZE; j++) {
+    for (let i = 0; i <= CHUNK_SIZE; i++) {
+      const mask =
+        (member(i - 1, j - 1) ? 1 : 0) |
+        (member(i, j - 1) ? 2 : 0) |
+        (member(i, j) ? 4 : 0) |
+        (member(i - 1, j) ? 8 : 0);
+      if (mask === 0) continue;
+      any = true;
+      const I = baseX + i;
+      const J = baseY + j;
+      if (mask === 15) {
+        region.rect(toX(I - 0.5), toY(J - 0.5), px, px);
+        continue;
+      }
+      const cT = foldEdgeCross(view, look, thr, baseX, baseY, I, J, 0);
+      const cR = foldEdgeCross(view, look, thr, baseX, baseY, I, J, 1);
+      const cB = foldEdgeCross(view, look, thr, baseX, baseY, I, J, 2);
+      const cL = foldEdgeCross(view, look, thr, baseX, baseY, I, J, 3);
+      const bnds = boundaryCurvesFrom(lane, WASH_WOB, I, J, mask, cT, cR, cB, cL);
+      organicCellPathFrom(region, I, J, mask, bnds, cT, cR, cB, cL, toX, toY);
+    }
+  }
+  return any ? region : null;
+}
+
+/** The touched contour of a look, traced once per bake on demand (THE MATERIALS FOLD's hem clip). */
+function foldTouchedRegion(
+  view: FoldView,
+  look: number,
+  baseX: number,
+  baseY: number,
+  px: number,
+  toX: (wx: number) => number,
+  toY: (wy: number) => number,
+): Path2D | null {
+  const have = view.washTouched[look];
+  if (have !== undefined) return have;
+  const lane: ContourLane = { seed: foldLaneSeed(look, 1), water: false };
+  const region = traceFoldRegion(view, look, BAND_TOUCHED, baseX, baseY, px, lane, toX, toY);
+  view.washTouched[look] = region;
+  return region;
+}
+
+/**
+ * THE LOBE FIELD: two octaves of value noise — broad (≈ 14 tiles, the
+ * weathering-zone scale) with a mid octave (≈ 6 tiles) at six tenths
+ * ragging it — so a lobe is a large soft shape with an organic edge,
+ * and the field meanders at two scales. 0..1. The octaves are kept
+ * SHORT of the country's own scale on purpose: a 22-tile broad octave
+ * let a whole r-12 disc sit in one trough of the field and deal no
+ * lobe at all (the lab's disc did exactly that).
+ */
+function foldLobeField(salt: number, wx: number, wy: number): number {
+  return (valueNoise(salt, wx * 0.07, wy * 0.07) + 0.6 * valueNoise(salt + 1, wx * 0.16, wy * 0.16)) / 1.6;
+}
+
+/**
+ * The lobe threshold at a corner's weight: coverage FOLLOWS THE FIELD
+ * — about a fifth of the band at its outer edge, half of it at its
+ * inner — so the lobes thicken toward the heart and THE MARKS CARRY
+ * THE GRADIENT is spoken by the washes too.
+ */
+function foldLobeThresh(w: number, lo: number, hi: number): number {
+  const t = (w - lo) / (hi - lo);
+  return 0.62 - 0.16 * (t < 0 ? 0 : t > 1 ? 1 : t);
+}
+
+/**
+ * Step 2 — THE WASH, one (look, band) per call, two bands (the touched
+ * band is the hem the folded substrate and the marks carry; its
+ * contour is traced only for a material's hem, on demand).
+ *
+ * THE RECUT (the art director's four points): the wash paints NO flat
+ * fill on the meadow. The first cut filled the taken isoband with the
+ * band's base key over the folded substrate and the country read as
+ * one flat tinted circle; the substrate already carries each band's
+ * four-tone grain, stepping on the isoline (foldBandAt), so the
+ * isoband's contour is kept only as the CLIP for the lobes. TAKEN
+ * (band 2) traces the taken isoline and deals the taken lobes inside
+ * it — the two-octave lobe field against a weight-driven threshold,
+ * bowed on the lobe wobble — as one union (fill + hairline once).
+ * HELD (band 3) traces the HELD ISOLINE with the same weighted
+ * crossing (never a hashed carve — that was the faceted polygon) and
+ * deals the held lobes inside it, darker, over the taken lobes: the
+ * heart reads as a deepening mottle inside three nested organic
+ * shapes, never as rings.
+ *
+ * Runs WHOLE in a fringe job (never strip-narrowed: its runs phase
+ * along multi-cell paths exactly like the skins'). Bands paint lowest
+ * first, looks in WASH_ORDER, so burn covers blight covers the
+ * calendar. Returns whether anything painted.
+ */
+function paintFoldWash(
+  ctx: CanvasRenderingContext2D,
+  view: FoldView,
+  look: number,
+  bandNo: number,
+  baseX: number,
+  baseY: number,
+  px: number,
+): boolean {
+  const toX = (wx: number): number => (wx - baseX) * px;
+  const toY = (wy: number): number => (wy - baseY) * px;
+  const lane: ContourLane = { seed: foldLaneSeed(look, bandNo), water: false };
+  const held = bandNo === 3;
+  const thr = held ? BAND_HELD : BAND_TAKEN;
+  const region = traceFoldRegion(view, look, thr, baseX, baseY, px, lane, toX, toY);
+  if (held) view.washHeldRegion[look] = region;
+  else view.washRegion[look] = region;
+  if (region === null) return false;
+  const member = (lx: number, ly: number): boolean => {
+    const i = haloCell(lx, ly);
+    return view.look[i] === look && lookWeight(view.halo, look, i) >= thr;
+  };
+  const hi = held ? 255 : BAND_HELD;
+  const salt = held ? FOLD_HELD_SALT[look]! : FOLD_ALT_SALT[look]!;
+  const test = (wx: number, wy: number, lx: number, ly: number): boolean =>
+    foldLobeField(salt, wx, wy) > foldLobeThresh(lookWeight(view.halo, look, haloCell(lx, ly)), thr, hi);
+  const lobes = paintAltPatches(
+    ctx,
+    region,
+    { color: washAltKey(look, bandNo), salt, test },
+    member,
+    lane,
+    held ? 0 : 64,
+    WASH_LOBE_WOB,
+    baseX,
+    baseY,
+    px,
+    toX,
+    toY,
+    true,
+  );
+  if (held) view.washHeld[look] = lobes;
+  else view.washAlt[look] = lobes;
+  return true;
+}
+
+// ---------------------------------------------- THE MATERIALS FOLD (LG-2)
+// Plan §12.3 step 3. Three doors into paintLayerSkin, every one of them
+// guarded on the view: the touched contour filled with the hem key
+// inside the region (THE HEM), the isobands re-keyed and clipped
+// inside the region (THE WASH), and the run inks read at a run's
+// midpoint (THE RUNS). The wash traces no new contour — it re-fills
+// the very paths the meadow's wash kept on the view, so the contour
+// runs across a road edge as one line and costs fills, not a
+// marching-squares pass; the hem's touched contour is traced once per
+// look per bake, by the first material that asks.
+
+/**
+ * THE HEM's read of a dual cell — the alt sub-patch's key door: the
+ * look's hem pair wherever the cell's band is ≥ touched (the crumb
+ * jitter is ≤ a third of a tile now, so a sparse patch cannot form a
+ * checker). Packed as [fill, alt] — null means "the material holds"
+ * (no fold, summer, or a look this material does not answer). The
+ * FILL no longer reads this per cell: it fills the touched contour
+ * (paintLayerHem).
+ */
+function foldHemAt(
+  layer: BlobLayer,
+  view: FoldView | null,
+  baseX: number,
+  baseY: number,
+  I: number,
+  J: number,
+): readonly [string, string] | null {
+  if (view === null || layer.fold === undefined) return null;
+  const pk = foldBandAt(view, baseX, baseY, I, J);
+  if (pk === 0) return null;
+  return layer.fold.hem[pk & 7] ?? null;
+}
+
+/**
+ * THE RUNS' read at a run's midpoint: the look and band there, UNdithered
+ * (a stroke is a tile long; a tile-scale dither on an ink is noise, not
+ * a hem). Packed `(band << 3) | look`, 0 for summer or below taken.
+ */
+function foldRunAt(view: FoldView, baseX: number, baseY: number, wx: number, wy: number): number {
+  const pk = foldSampleAt(view, baseX, baseY, wx, wy);
+  if (pk === 0) return 0;
+  const bd = band(pk >> 3);
+  return bd < 2 ? 0 : (bd << 3) | (pk & 7);
+}
+
+/** The run ink a layer answers with at a midpoint word (see foldRunAt). */
+function foldRunInk(layer: BlobLayer, word: number): FoldRunInk | null {
+  if (word === 0 || layer.fold?.run === undefined) return null;
+  const pair = layer.fold.run[word & 7];
+  return pair === null || pair === undefined ? null : pair[(word >> 3) - 2]!;
+}
+
+/** Fill + hairline in one key (the skins' own seam-killing recipe). */
+function fillHairline(ctx: CanvasRenderingContext2D, path: Path2D, key: string): void {
+  ctx.fillStyle = key;
+  ctx.fill(path);
+  ctx.strokeStyle = key;
+  ctx.lineWidth = 0.8;
+  ctx.stroke(path);
+}
+
+/**
+ * THE HEM inside a layer: for every look the material answers with a
+ * hem pair, the TOUCHED contour (traced on demand, kept on the view)
+ * filled with the hem key, clipped inside the layer's region — painted
+ * right after the region's own fill and before its alt patches, so
+ * the touched band on a road is one organic shape a clear step from
+ * the road, never a per-cell read.
+ */
+function paintLayerHem(
+  ctx: CanvasRenderingContext2D,
+  layer: BlobLayer,
+  view: FoldView,
+  region: Path2D,
+  baseX: number,
+  baseY: number,
+  px: number,
+  toX: (wx: number) => number,
+  toY: (wy: number) => number,
+): void {
+  const fold = layer.fold;
+  if (fold === undefined) return;
+  let clipped = false;
+  for (const look of WASH_ORDER) {
+    const hem = fold.hem[look];
+    if (hem === null || hem === undefined) continue;
+    if ((view.present & (1 << look)) === 0) continue;
+    const touched = foldTouchedRegion(view, look, baseX, baseY, px, toX, toY);
+    if (touched === null) continue;
+    if (!clipped) {
+      ctx.save();
+      ctx.clip(region);
+      clipped = true;
+    }
+    fillHairline(ctx, touched, hem[0]);
+  }
+  if (clipped) ctx.restore();
+}
+
+/**
+ * THE WASH inside a layer: for every look whose isobands the view
+ * kept, re-fill the taken region with the material's taken key (fill
+ * + hairline), the taken lobes with its lobe key clipped inside the
+ * taken region, and the held lobes with its held key clipped inside
+ * the held region — all clipped inside the layer's region, in
+ * WASH_ORDER so burn covers blight covers the calendar. A null key
+ * skips that fill (sand under the cold rimes in lobes and never
+ * re-fills; the shallows scum in lobes and never re-fill): the road
+ * through a blighted wood wears its own greyed keys IN LOBES.
+ */
+function paintLayerFold(
+  ctx: CanvasRenderingContext2D,
+  layer: BlobLayer,
+  view: FoldView,
+  region: Path2D,
+): void {
+  const fold = layer.fold;
+  if (fold === undefined) return;
+  let clipped = false;
+  for (const look of WASH_ORDER) {
+    const keys = fold.wash[look];
+    if (keys === null || keys === undefined) continue;
+    const taken = view.washRegion[look];
+    if (taken === null || taken === undefined) continue;
+    if (!clipped) {
+      ctx.save();
+      ctx.clip(region);
+      clipped = true;
+    }
+    if (keys[0] !== null) fillHairline(ctx, taken, keys[0]);
+    const lobes = view.washAlt[look];
+    if (keys[1] !== null && lobes !== null && lobes !== undefined) {
+      ctx.save();
+      ctx.clip(taken);
+      fillHairline(ctx, lobes, keys[1]);
+      ctx.restore();
+    }
+    const heldRegion = view.washHeldRegion[look];
+    const heldLobes = view.washHeld[look];
+    if (keys[2] !== null && heldRegion !== null && heldRegion !== undefined && heldLobes !== null && heldLobes !== undefined) {
+      ctx.save();
+      ctx.clip(heldRegion);
+      fillHairline(ctx, heldLobes, keys[2]);
+      ctx.restore();
+    }
+  }
+  if (clipped) ctx.restore();
+}
+
+/** Every layer's fold in paint order (test pin): its seed, its base key, which tiles it claims, and its fold (null = holds). */
+export function blobLayerFolds(): Array<{
+  seed: number;
+  base: string;
+  match: (t: number) => boolean;
+  fold: MaterialFold | null;
+}> {
+  return BLOB_LAYERS.map((l) => ({ seed: l.seed, base: l.color(0, 0, 0), match: l.match, fold: l.fold ?? null }));
+}
+
+/**
+ * THE FOLD OF A BAKE: what startChunkBake and startElevatedBake share
+ * — the gate, the sig, the view (built eagerly when anything reaches:
+ * the placeholder folds too), and the wash passes as sliced steps.
+ */
+function foldForBake(cx: number, cy: number): { sig: number; view: FoldView | null } {
+  const sig = foldSigFor(cx, cy);
+  const view = sig === 0 ? null : buildFoldView(cx * CHUNK_SIZE, cy * CHUNK_SIZE);
+  return { sig, view };
+}
+// ------------------------------------------------ END OF THE FOLD
 
 /**
  * Turf fringe where a material borders grass: tufts of blades leaning
@@ -4839,6 +6338,9 @@ function drawGrassFringe(
   toY: (wy: number) => number,
   px: number,
   laden = false,
+  fold: FoldView | null = null,
+  baseX = 0,
+  baseY = 0,
 ): void {
   const seed = 9313 + bnd.pair * 17;
   for (let k = 0; k < 3; k++) {
@@ -4852,10 +6354,25 @@ function drawGrassFringe(
     const blades = 2 + ((h >> 9) % 3);
     // At a snow rim the tufts are frost-kissed: pale sage, not summer
     // green — cold bleeds into the meadow instead of butting it.
-    const tone = laden ? '#93ae90' : meadowTone(rx, ry);
-    const toneAlt = laden ? '#b4c8ae' : '#79a556';
+    // Step 4 — THE FRINGE FOLDS: the tuft reads the substrate's own
+    // folded tone at its root and the look's accent beside it; blight
+    // and burn thin the blades hash-vs-weight (a tuft on sick ground
+    // is a thinner tuft, never a missing one).
+    const tone = laden ? '#93ae90' : meadowToneFold(fold, baseX, baseY, rx, ry, 0);
+    let toneAlt = laden ? '#b4c8ae' : '#79a556';
+    let thin = 0;
+    if (fold !== null && !laden) {
+      const pk = foldSampleAt(fold, baseX, baseY, rx, ry);
+      const look = pk & 7;
+      if (look !== FOLD_NONE) {
+        const w = pk >> 3;
+        toneAlt = FRINGE_ALT[look]![band(w) - 1]!;
+        if (look === FOLD_BLIGHT || look === FOLD_BURN) thin = w;
+      }
+    }
     for (let bl = 0; bl < blades; bl++) {
       const hb = hashCoords(seed + k * 293 + 31 * (bl + 1), bnd.I, bnd.J);
+      if (thin !== 0 && ((hb >>> 13) & 255) * 5 < thin * 3) continue;
       const bx = toX(rx) + ((hb % 100) / 100 - 0.5) * px * 0.22;
       const by = toY(ry) + (((hb >> 7) % 100) / 100 - 0.5) * px * 0.1;
       const lean = (((hb >> 3) % 100) / 100 - 0.5) * 0.7;
@@ -4948,6 +6465,7 @@ function paintLayerSkin(
   baseY: number,
   px: number,
   g: GroundSampler,
+  fold: FoldView | null = null,
 ): void {
   const N = CHUNK_SIZE + 4;
   const at = (lx: number, ly: number): number => idx[lx + 2 + (ly + 2) * N]!;
@@ -4957,6 +6475,7 @@ function paintLayerSkin(
 
   {
     const layer = BLOB_LAYERS[li]!;
+    const lane = LAYER_LANES[li]!;
     const wob = layer.wobble;
     const region = new Path2D();
     const runs: Array<{ bnd: Bnd; lone: boolean }> = [];
@@ -4995,6 +6514,12 @@ function paintLayerSkin(
       const lt = layerIndexOf(g(wx, wy) ?? Tile.Grass);
       return lt >= li && lt !== -1;
     };
+    // THE FOLD PAYS ONLY WHERE THE LAYER STANDS: a layer with no cell in
+    // this chunk (most layers, most chunks) must not pay the wash re-fill
+    // against an empty clip — three path fills per absent layer per
+    // folded chunk, caught by the strip-job proof. Fold-only: the
+    // zero-stroke op stream is untouched.
+    let anyCell = false;
     const loneMemo = new Map<number, boolean>();
     const isLone = (wx: number, wy: number): boolean => {
       const key = wx * 131072 + wy;
@@ -5022,11 +6547,12 @@ function paintLayerSkin(
           (memberAt(i, j) ? 4 : 0) |
           (memberAt(i - 1, j) ? 8 : 0);
         if (mask === 0) continue;
+        anyCell = true;
         const I = baseX + i;
         const J = baseY + j;
-        const bnds = boundaryCurvesFor(li, wob, I, J, mask);
+        const bnds = boundaryCurvesFor(lane, wob, I, J, mask);
         const cell = new Path2D();
-        organicCellPath(cell, li, wob, I, J, mask, bnds, toX, toY);
+        organicCellPath(cell, lane, wob, I, J, mask, bnds, toX, toY);
         const col = layer.color(0, I, J);
         ctx.fillStyle = col;
         ctx.fill(cell);
@@ -5059,17 +6585,39 @@ function paintLayerSkin(
       }
     }
 
+    // THE HEM (THE MATERIALS FOLD): the touched contour filled with the
+    // look's hem key inside the region, under the alt patches.
+    if (fold !== null && anyCell) paintLayerHem(ctx, layer, fold, region, baseX, baseY, px, toX, toY);
+
     // Region-scale two-tone drift, contoured through the same organic
     // machinery as the region itself (a distinct hash lane keeps the
     // sub-patch meander uncorrelated with the material's own edge).
     // The broader alt2 wash paints after, overlapping — big soft
     // weathering zones over the mid-scale patches.
+    const altBase = (lx: number, ly: number): boolean => {
+      const lt = at(lx, ly);
+      return !(lt < li || lt === -1);
+    };
     if (layer.alt) {
-      paintAltPatches(ctx, region, layer.alt, li, 64, layer.wobble, at, baseX, baseY, px, toX, toY);
+      // THE HEM's alt: the sub-patch takes the look's alt key wherever
+      // its cell is in the hem (undefined = today's key, byte for byte).
+      const altKey = layer.alt.color;
+      const altAt =
+        fold !== null && layer.fold !== undefined
+          ? (I: number, J: number): string => {
+              const hem = foldHemAt(layer, fold, baseX, baseY, I, J);
+              return hem === null ? altKey : hem[1];
+            }
+          : undefined;
+      paintAltPatches(ctx, region, layer.alt, altBase, lane, 64, layer.wobble, baseX, baseY, px, toX, toY, false, altAt);
     }
     if (layer.alt2) {
-      paintAltPatches(ctx, region, layer.alt2, li, 96, layer.wobble, at, baseX, baseY, px, toX, toY);
+      paintAltPatches(ctx, region, layer.alt2, altBase, lane, 96, layer.wobble, baseX, baseY, px, toX, toY);
     }
+    // THE WASH inside the material (THE MATERIALS FOLD): the isoband
+    // re-keyed with this layer's own taken / held keys, clipped to the
+    // region, under the interior dressing and the worn band.
+    if (fold !== null && anyCell) paintLayerFold(ctx, layer, fold, region);
 
     // Material interiors: the dressing that makes a plaza read as laid
     // flags and a snowfield as wind-worked drifts, not blank fill.
@@ -5091,14 +6639,23 @@ function paintLayerSkin(
       ctx.lineJoin = 'round';
       for (const { bnd, lone } of runs) {
         const mid = qpoint(bnd, 0.5);
-        const sw = Math.max(0, Math.min(1, (edgeSwell(li, mid[0], mid[1]) - 0.45) / 1.1));
+        const sw = Math.max(0, Math.min(1, (edgeSwell(lane.seed, mid[0], mid[1]) - 0.45) / 1.1));
+        // THE RUNS (THE MATERIALS FOLD): the worn band, the lip, the
+        // laden shade and crest, and the bank face take the look's ink
+        // at the run's MIDPOINT, so a stroke never changes colour
+        // mid-run; a look with no ink for this layer holds the layer's
+        // own. The fold re-inks strokes and never adds one.
+        const fw = fold !== null && layer.fold !== undefined ? foldRunAt(fold, baseX, baseY, mid[0], mid[1]) : 0;
+        const ink = foldRunInk(layer, fw);
+        const bandInk = ink?.band ?? layer.band;
+        const lipInk = ink?.lip ?? layer.lip;
         const sunDot = bnd.ox * ART_SUN_X + bnd.oy * ART_SUN_Y;
         const p = new Path2D();
         p.moveTo(toX(bnd.ax), toY(bnd.ay));
         p.quadraticCurveTo(toX(bnd.cx), toY(bnd.cy), toX(bnd.bx), toY(bnd.by));
         if (layer.band !== null) {
           const weight = (lone ? 0.55 : 1) * (0.7 + 0.6 * sw) * (1 - 0.38 * Math.max(0, sunDot));
-          ctx.strokeStyle = layer.band;
+          ctx.strokeStyle = bandInk ?? layer.band;
           if (layer.feather) {
             // THE DEPTH DISSOLVES: the shelf between water depths is a
             // soft three-step feather — a wide faint settling, a mid
@@ -5195,7 +6752,12 @@ function paintLayerSkin(
             ctx.globalAlpha = 1;
             ctx.lineWidth = px * 0.44;
             ctx.stroke(p);
-            ctx.strokeStyle = face;
+            // Under a fold the face re-tints at [taken, held] (icy pale,
+            // bruised, char) and stays close in value; a snow land keeps
+            // its own face, which is already the cold's.
+            const faceFold =
+              fw !== 0 && landT !== Tile.Snow ? (BANK_FACE_FOLD[fw & 7]?.[(fw >> 3) - 2] ?? null) : null;
+            ctx.strokeStyle = faceFold ?? face;
             ctx.globalAlpha = 0.92;
             ctx.lineWidth = px * 0.19;
             ctx.stroke(p);
@@ -5212,21 +6774,22 @@ function paintLayerSkin(
         }
         if (layer.laden) {
           // Cool blue settling shade instead of a dirt band — snow
-          // shadows itself, it never wears mud.
-          ctx.strokeStyle = 'rgba(126, 146, 188, 0.3)';
+          // shadows itself, it never wears mud. (Under burn the ink is
+          // the look's: a sooted blanket settles ash-warm.)
+          ctx.strokeStyle = ink?.laden ?? 'rgba(126, 146, 188, 0.3)';
           ctx.globalAlpha = 0.6 + 0.4 * sw;
           ctx.lineWidth = px * 0.38 * (0.75 + 0.5 * sw);
           ctx.stroke(p);
           // The crest catching the sun on lit edges.
           if (sunDot > 0.2) {
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+            ctx.strokeStyle = ink?.crest ?? 'rgba(255, 255, 255, 0.55)';
             ctx.globalAlpha = Math.min(1, sunDot);
             ctx.lineWidth = px * 0.08;
             ctx.stroke(p);
           }
         }
         if (layer.lip !== undefined && sunDot > 0.25) {
-          ctx.strokeStyle = layer.lip;
+          ctx.strokeStyle = lipInk ?? layer.lip;
           ctx.globalAlpha = Math.min(1, (sunDot - 0.1) * 1.1);
           ctx.lineWidth = px * 0.07;
           ctx.stroke(p);
@@ -5263,7 +6826,7 @@ function paintLayerSkin(
     }
 
     for (const f of fringe) {
-      drawGrassFringe(ctx, f.bnd, f.color, toX, toY, px, layer.laden === true);
+      drawGrassFringe(ctx, f.bnd, f.color, toX, toY, px, layer.laden === true, fold, baseX, baseY);
     }
   }
 }
@@ -5301,30 +6864,76 @@ function emitOffsetRun(
 function paintAltPatches(
   ctx: CanvasRenderingContext2D,
   region: Path2D,
-  alt: { color: string; salt: number; freq?: number; thresh?: number },
-  li: number,
-  lane: number,
+  alt: {
+    color: string;
+    salt: number;
+    freq?: number;
+    thresh?: number;
+    /** THE LIVING GROUND's lobes: a membership test that replaces the
+     *  single-octave noise-vs-threshold read (the two-octave lobe
+     *  field against a weight-driven threshold). Absent for every
+     *  layer: byte for byte the noise read. */
+    test?: (wx: number, wy: number, lx: number, ly: number) => boolean;
+  },
+  base: (lx: number, ly: number) => boolean,
+  lane: ContourLane,
+  laneSalt: number,
   wobble: number,
-  at: (lx: number, ly: number) => number,
   baseX: number,
   baseY: number,
   px: number,
   toX: (wx: number) => number,
   toY: (wy: number) => number,
-): void {
-  const sub = li + lane; // distinct hash lane for the sub-contour
+  // THE LIVING GROUND's wash unions its sub-patch cells into one path
+  // and fills + strokes once (the nonzero union has no interior seam);
+  // the layers keep their per-cell fill-and-stroke, byte for byte.
+  merged = false,
+  // THE MATERIALS FOLD: a per-cell key for the per-cell branch (the
+  // layer's alt patch reads its folded alt key wherever the dual cell
+  // is in the hem); absent = `alt.color` everywhere, byte for byte.
+  colorAt?: (I: number, J: number) => string,
+): Path2D | null {
+  // The sub-contour's own hash lane: the layer's seed shifted by the
+  // wash's salt (64 for alt, 96 for alt2), so the patch meander is
+  // uncorrelated with the material's own edge — and pinned to the seed,
+  // not the array index, so a layer inserted below never re-rolls it.
+  // Sub-lanes have ALWAYS ridden the water half-jitter (the shifted
+  // index landed past WATER_LI for every layer); kept so, byte for byte.
+  const subLane: ContourLane = { seed: lane.seed + laneSalt, water: true };
   const wob = Math.max(0.18, wobble);
   const freq = alt.freq ?? 0.09;
   const thresh = alt.thresh ?? 0.55;
+  // `base` is the region's own membership (a layer: every tile at or
+  // above it in the paint order; the living ground's wash: every
+  // corner of the band) — the noise field then carves the sub-patch
+  // out of it.
+  // THE CORNER IS READ ONCE: every dual cell asks its four corners, so
+  // an unmemoised read costs four noise samples per corner — a pure
+  // memo (0 unasked, 1 out, 2 in) over the halo grid quarters that,
+  // for the layers and the living ground's wash alike, and changes no
+  // op (the golden pins it).
+  const memoN = CHUNK_SIZE + 4;
+  const memo = new Uint8Array(memoN * memoN);
+  const test = alt.test;
   const memberAt = (lx: number, ly: number): boolean => {
-    const lt = at(lx, ly);
-    if (lt < li || lt === -1) return false;
-    const wx = baseX + lx;
-    const wy = baseY + ly;
-    return valueNoise(alt.salt, wx * freq, wy * freq) > thresh;
+    const k = lx + 2 + (ly + 2) * memoN;
+    let v = memo[k]!;
+    if (v === 0) {
+      v =
+        base(lx, ly) &&
+        (test === undefined
+          ? valueNoise(alt.salt, (baseX + lx) * freq, (baseY + ly) * freq) > thresh
+          : test(baseX + lx, baseY + ly, lx, ly))
+          ? 2
+          : 1;
+      memo[k] = v;
+    }
+    return v === 2;
   };
   ctx.save();
   ctx.clip(region);
+  const union = merged ? new Path2D() : null;
+  let any = false;
   for (let j = 0; j <= CHUNK_SIZE; j++) {
     for (let i = 0; i <= CHUNK_SIZE; i++) {
       const mask =
@@ -5335,17 +6944,31 @@ function paintAltPatches(
       if (mask === 0) continue;
       const I = baseX + i;
       const J = baseY + j;
-      const bnds = boundaryCurvesFor(sub, wob, I, J, mask);
+      const bnds = boundaryCurvesFor(subLane, wob, I, J, mask);
+      if (union !== null) {
+        organicCellPath(union, subLane, wob, I, J, mask, bnds, toX, toY);
+        any = true;
+        continue;
+      }
       const cell = new Path2D();
-      organicCellPath(cell, sub, wob, I, J, mask, bnds, toX, toY);
-      ctx.fillStyle = alt.color;
+      organicCellPath(cell, subLane, wob, I, J, mask, bnds, toX, toY);
+      const key = colorAt === undefined ? alt.color : colorAt(I, J);
+      ctx.fillStyle = key;
       ctx.fill(cell);
-      ctx.strokeStyle = alt.color;
+      ctx.strokeStyle = key;
       ctx.lineWidth = 0.8;
       ctx.stroke(cell);
     }
   }
+  if (union !== null && any) {
+    ctx.fillStyle = alt.color;
+    ctx.fill(union);
+    ctx.strokeStyle = alt.color;
+    ctx.lineWidth = 0.8;
+    ctx.stroke(union);
+  }
   ctx.restore();
+  return union !== null && any ? union : null;
 }
 
 /** Dispatch a material's interior dressing, clipped to its region. */
@@ -6898,8 +8521,8 @@ export function waterRegionPath(
         (isWaterTile(ground(i - 1, j)) ? 8 : 0);
       if (mask === 0) continue;
       path ??= new Path2D();
-      const bnds = mask === 15 ? [] : boundaryCurvesFor(WATER_LI, wob, i, j, mask);
-      organicCellPath(path, WATER_LI, wob, i, j, mask, bnds, id, id);
+      const bnds = mask === 15 ? [] : boundaryCurvesFor(WATER_LANE, wob, i, j, mask);
+      organicCellPath(path, WATER_LANE, wob, i, j, mask, bnds, id, id);
     }
   }
   return path;
@@ -6998,7 +8621,7 @@ function drawShorelines(
         }
       }
       if (nearDeck) continue;
-      const bnds = boundaryCurvesFor(WATER_LI, wob, i, j, mask);
+      const bnds = boundaryCurvesFor(WATER_LANE, wob, i, j, mask);
       for (let k = 0; k < bnds.length; k++) {
         const bnd = bnds[k]!;
         // The run's world polyline, sampled once and re-used by every

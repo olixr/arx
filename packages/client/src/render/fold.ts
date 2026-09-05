@@ -1,10 +1,12 @@
 import { CHUNK_SIZE } from '@arx/shared';
 import {
   HALO_LEN,
+  MUSEUM_PLANE_ID,
   allocHalo,
   copyStroke,
   fillHalo,
   haloSig,
+  museumSpectrum,
   prepareStrokes,
   projectCores,
   reachSig,
@@ -50,6 +52,23 @@ interface FoldRegistry {
   /** Authored strokes + projected cores, prepared for the field walk. */
   prepared: PreparedStroke[];
   epoch: number;
+  /**
+   * THE HALL'S OWN RULER (THE MATERIALS FOLD, plan §12.8 LG-2): while
+   * the player stands in the Prop Museum the field walk reads the
+   * wing's stroke set the zone DECLARES (content/maps/museum.ts
+   * museumSpectrum — the plane's own coordinates, a clean ruler per
+   * look) and nothing else; the wire's strokes and cores are surface
+   * geography (their numbers would fold the hall wherever they
+   * happen to overlap it) and stay held, untouched, so leaving the
+   * hall restores them without a round trip. Keyed on the PLANE by
+   * the renderer's per-frame latch, never on a door: a login that
+   * wakes inside the hall, a plane crossing, and a broadcast registry
+   * swap while a reviewer stands in the wing all land on the same
+   * truth. A server-side per-session swap on `/museum` was built
+   * first and refused — it missed the login-inside case (the welcome
+   * applies the world's geo) and every broadcast push clobbered it.
+   */
+  hall: boolean;
 }
 
 const REG: FoldRegistry = {
@@ -59,6 +78,7 @@ const REG: FoldRegistry = {
   coreKeys: '',
   prepared: [],
   epoch: 0,
+  hall: false,
 };
 
 /** Per-chunk sig memo, cleared on every epoch; bounded so a long walk cannot grow it forever. */
@@ -74,9 +94,30 @@ function chunkSlot(cx: number, cy: number): number {
 function rebuild(): void {
   const projected = REG.coreNowMs === null ? [] : projectCores(REG.cores, REG.coreNowMs);
   REG.coreKeys = projected.map(strokeKey).join('\n');
-  REG.prepared = prepareStrokes(REG.strokes.concat(projected));
+  // In the hall the ruler is the whole field: no wire stroke, no core.
+  REG.prepared = prepareStrokes(REG.hall ? museumSpectrum() : REG.strokes.concat(projected));
   REG.epoch++;
   SIG_CACHE.clear();
+}
+
+/**
+ * THE HALL'S OWN RULER — latch the plane the painter stands on (see
+ * FoldRegistry.hall). Called once per frame by the renderer beside the
+ * fold gate; a Map-free compare, so an unchanged plane costs nothing
+ * and the registry rebuilds only on the crossing itself. Returns
+ * whether the field changed.
+ */
+export function setSpectrumPlane(planeId: string): boolean {
+  const hall = planeId === MUSEUM_PLANE_ID;
+  if (hall === REG.hall) return false;
+  REG.hall = hall;
+  rebuild();
+  return true;
+}
+
+/** Whether the field walk is reading the hall's ruler right now. */
+export function spectrumHallOn(): boolean {
+  return REG.hall;
 }
 
 /**
@@ -101,6 +142,13 @@ export function setSpectrumClock(nowMs: number): boolean {
   if (REG.cores.length === 0) return false;
   const keys = projectCores(REG.cores, nowMs).map(strokeKey).join('\n');
   if (keys === REG.coreKeys) return false;
+  if (REG.hall) {
+    // In the hall no core is painted: note the ring the surface would
+    // show (the crossing out rebuilds from coreNowMs anyway) and say
+    // so — a re-bake for a field that did not move is a lie.
+    REG.coreKeys = keys;
+    return false;
+  }
   rebuild();
   return true;
 }
@@ -179,5 +227,6 @@ export function resetSpectrum(): void {
   REG.strokes = [];
   REG.cores = [];
   REG.coreNowMs = null;
+  REG.hall = false;
   rebuild();
 }

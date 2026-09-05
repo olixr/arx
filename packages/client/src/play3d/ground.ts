@@ -50,12 +50,15 @@ import * as THREE from 'three';
 import { CHUNK_SIZE, Tile, type ChunkData } from '@arx/shared';
 import {
   bakeGutter,
+  foldSigFor,
+  setFoldEnabled,
   startChunkBake,
   startElevatedBake,
   stepChunkBake,
   type ChunkBakeJob,
   type ElevatedBakeJob,
 } from '../render/terrain.js';
+import { setSpectrumPlane } from '../render/fold.js';
 import { ELEV_H } from '../render/elevPick.js';
 import { buildHeightfield, heightAtPoint } from './heightfield.js';
 import { deckLiftAt } from './structures/deckFaces.js';
@@ -88,6 +91,14 @@ interface ChunkRec {
   texBytes: number;
   /** The bake in flight: the base job, then one elevated job per level. */
   job: ChunkBakeJob | null;
+  /**
+   * THE LIVING GROUND's cache word (plan §12.2): the spectrum reach
+   * sig the base bake was started under. A registry swap (the
+   * `spectrum` record, the museum's plane latch) moves it, and
+   * `update` evicts the record so the ring re-bakes it folded — the
+   * 2D client's own compare, at chunk grain. 0 = no stroke in reach.
+   */
+  spectrumSig: number;
   /** The base canvas the level bakes composite onto (null until baked). */
   base: HTMLCanvasElement | null;
   /** Remaining elevation levels to bake (ascending), after the base. */
@@ -200,7 +211,16 @@ export class GroundStreamer {
    * One frame of streaming around the target: admit new chunks
    * (nearest first), step bakes under `budgetMs`, evict the far ones.
    */
-  update(targetX: number, targetZ: number, budgetMs: number): void {
+  update(targetX: number, targetZ: number, budgetMs: number, plane?: { id: string; underground: boolean }): void {
+    // THE FOLD GATE, latched once per update exactly as the 2D
+    // renderer latches it once per frame: the living ground folds only
+    // above ground, and in the Prop Museum the field is the wing's own
+    // ruler (fold.ts). Every bake this update starts and every sig
+    // compare below read the same latch.
+    if (plane !== undefined) {
+      setFoldEnabled(!plane.underground);
+      setSpectrumPlane(plane.id);
+    }
     const ccx = chunkOf(targetX);
     const ccy = chunkOf(targetZ);
     ringAround(ccx, ccy, LOAD_RING, this.ring);
@@ -208,9 +228,12 @@ export class GroundStreamer {
       const key = packChunk(e.cx, e.cy);
       if (!this.recs.has(key) && this.world.ready(e.cx, e.cy)) this.admit(key, e.cx, e.cy);
     }
-    // Evict beyond the wider ring.
+    // Evict beyond the wider ring — and any painted chunk whose
+    // spectrum reach moved under it (the field changed: a full re-bake,
+    // never a stale fold).
     for (const rec of this.recs.values()) {
       if (outsideRing(rec.cx, rec.cy, ccx, ccy, EVICT_RING)) this.evict(rec);
+      else if (rec.painted !== null && rec.job === null && rec.spectrumSig !== foldSigFor(rec.cx, rec.cy)) this.evict(rec);
     }
     // Bake: nearest un-painted chunks first, MAX_JOBS in flight, under budget.
     const t0 = performance.now();
@@ -221,6 +244,7 @@ export class GroundStreamer {
       const rec = this.recs.get(packChunk(e.cx, e.cy));
       if (!rec || rec.painted || rec.job) continue;
       rec.job = startChunkBake(this.groundSampler, this.detailSampler, this.levelAt, rec.cx, rec.cy, BAKE_PX);
+      rec.spectrumSig = rec.job.spectrumSig;
       rec.levels = elevLevels(this.world.ensure(rec.cx, rec.cy).elev);
       inFlight++;
     }
@@ -285,6 +309,7 @@ export class GroundStreamer {
       tex: null,
       texBytes: 0,
       job: null,
+      spectrumSig: 0,
       base: null,
       levels: [],
       statics: null,

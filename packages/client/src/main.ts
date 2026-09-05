@@ -2156,12 +2156,15 @@ game.onFx = (fx) => {
           // shrine's rubble are the street's masonry — they land like it.
           kind === 'guardian' || kind === 'wayshrine' ||
           // THE SCARRED LAND: a whole roof coming down (rafters,
-          // ridge board, the thatch dome), a marked stone, and a
-          // spoil slide land with masonry's weight. A charred beam
-          // (charbeam) is brittle char and nails — it breaks at the
-          // joinery weight below, and nothing in the kit BOOMS: a
-          // ruin has no hollow left.
-          kind === 'roofheap' || kind === 'stone' || kind === 'rubble'
+          // ridge board, the thatch dome), a marked stone, a spoil
+          // slide, and a whole cart (bed, shafts, axle and the one
+          // wheel — the household on two wheels and the wreck on
+          // three) land with masonry's weight. A charred beam
+          // (charbeam) is brittle char and nails, a driven post, a
+          // ribcage, a cot, a root and a thread are all light — they
+          // break at the joinery weight below — and nothing in the
+          // kit BOOMS: a ruin has no hollow left, and old bone is dry.
+          kind === 'roofheap' || kind === 'stone' || kind === 'rubble' || kind === 'cart'
           ? 3.2
           : 2.2,
       );

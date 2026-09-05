@@ -141,7 +141,7 @@ const engine = new Engine(canvas, createBackend(canvas), {
     }
     if (game.ownEid !== null) {
       const own = game.predictor.renderPos();
-      ground.update(own.x, own.y, 6);
+      ground.update(own.x, own.y, 6, game.plane);
       atlas.flush();
       faces.flush();
       // W2 walls: the hinged leaves swing on their own clock, pruned to the built chunks.
@@ -349,7 +349,7 @@ const probe = {
     if (game.ownEid === null) return false;
     const own = game.predictor.pos;
     ground.refresh();
-    ground.update(own.x, own.y, 50);
+    ground.update(own.x, own.y, 50, game.plane);
     atlas.flush();
     faces.flush();
     return ground.stats.chunks > 0 && ground.stats.baking === 0 && ground.stats.painted === ground.stats.chunks && structures.stats.dirty === 0;

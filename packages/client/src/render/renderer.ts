@@ -329,6 +329,9 @@ import {
   FRINGE_TILES,
   fringeStrips,
   type FringeSpec,
+  foldHaloSigFor,
+  foldSigFor,
+  setFoldEnabled,
   startChunkBake,
   startElevatedBake,
   stepChunkBake,
@@ -339,6 +342,7 @@ import {
   type WaterFx,
   type WetLists,
 } from './terrain.js';
+import { setSpectrumPlane } from './fold.js';
 
 /** The waterfall palette for one lighting state (fallTones()). */
 export interface FallTones {
@@ -1049,6 +1053,18 @@ interface BakedChunk {
    *  last completed bake. rev delta === fringeRev delta means every
    *  bump since was neighbor-driven — strip-eligible. */
   fringeRev?: number;
+  /** THE LIVING GROUND's cache words (plan §12.2): the spectrum reach
+   *  sig the bake was built against (0 = today's paint) and the
+   *  field-aware hash of the halo it painted. Compared beside rev and
+   *  px in drawGroundChunks — a mismatch is a FULL bake, never a
+   *  fringe strip (fringeSpecFor requires equality). */
+  spectrumSig?: number;
+  spectrumHaloSig?: number;
+  /** The field-aware probe's memo: the reach sig it was built for and
+   *  the halo hash it found — a stale entry waiting in the paced
+   *  replace queue pays the halo fill once, not once per frame. */
+  spectrumProbe?: number;
+  spectrumProbeHalo?: number;
   /** THE TEXTURE IS THE CANVAS'S SHADOW (stage lane): the GL handle
    *  for this entry's base canvas. Created at first stage emission,
    *  retargeted there when the pooled bake swap replaces the canvas,
@@ -7531,6 +7547,16 @@ export class Renderer {
 
   private drawGroundChunks(game: ClientGame): void {
     const s = this.camera.scale;
+    // THE FOLD GATE, latched once per frame: the living ground folds
+    // only above ground (gated on the PLANE) and only while the
+    // LIVING_GROUND_OFF bisect flag is down. Every bake this frame
+    // starts and every sig compare below read the same latch.
+    setFoldEnabled(this.livingGroundOn && !game.plane.underground);
+    // THE HALL'S OWN RULER: in the Prop Museum the field is the wing's
+    // declared stroke set, keyed on the plane (fold.ts) — the sigs
+    // move on the crossing and the wing's chunks re-bake folded.
+    setSpectrumPlane(game.plane.id);
+    this.foldProbes = 0;
     const b = this.visibleTileBounds();
     const minCx = Math.floor(b.minTx / CHUNK_SIZE);
     const maxCx = Math.floor(b.maxTx / CHUNK_SIZE);
@@ -7613,11 +7639,14 @@ export class Renderer {
           // fringe 0 / full 13 on the very hardware the lever is
           // for. Own-content changes still restart unconditionally.
           const p = baked.pending;
-          if (p.data !== data || p.rev !== (data.rev ?? 0)) {
+          // The field moved under an in-flight job: restart whole —
+          // a folded strip against an unfolded base is never honest.
+          const foldMoved = p.job.spectrumSig !== foldSigFor(cx, cy);
+          if (p.data !== data || p.rev !== (data.rev ?? 0) || foldMoved) {
             const dRev = (data.rev ?? 0) - p.rev;
             const dFr = (data.fringeRev ?? 0) - p.fringeRev;
             const pureFringe =
-              this.fringeOn && p.data === data && dRev > 0 && dRev === dFr;
+              !foldMoved && this.fringeOn && p.data === data && dRev > 0 && dRev === dFr;
             if (!pureFringe) this.replaceQueue.push({ baked, cx, cy, data, px: chunkPx });
           }
         } else if (
@@ -7628,7 +7657,10 @@ export class Renderer {
           // paced through the replace queue exactly as ever, and waits
           // out the glide (a mid-glide re-bake would render for a scale
           // the camera hasn't reached).
-          (baked.px !== chunkPx && !this.zoomGliding)
+          (baked.px !== chunkPx && !this.zoomGliding) ||
+          // THE LIVING GROUND: the spectrum reach moved — a full bake,
+          // unless the field-aware key says no painted word did.
+          this.foldStale(baked, cx, cy)
         ) {
           // Content / zoom-tier re-bake behind the old blit.
           this.replaceQueue.push({ baked, cx, cy, data, px: chunkPx });
@@ -7684,7 +7716,11 @@ export class Renderer {
         }
         if (baked.pending) {
           this.chunkJobQueue.push(baked);
-        } else if (baked.data !== data || baked.rev !== (data.rev ?? 0)) {
+        } else if (
+          baked.data !== data ||
+          baked.rev !== (data.rev ?? 0) ||
+          this.foldStale(baked, cx, cy)
+        ) {
           this.startChunkReplace(baked, game, cx, cy, data, rpx);
           this.chunkJobQueue.push(baked);
           break ring;
@@ -7897,6 +7933,8 @@ export class Renderer {
       canvas: pending.job.canvas,
       data,
       rev: data.rev ?? 0,
+      spectrumSig: pending.job.spectrumSig,
+      spectrumHaloSig: pending.job.spectrumHaloSig,
       cx,
       cy,
       px: bakePx,
@@ -7950,6 +7988,46 @@ export class Renderer {
    *  lever) disables it for whole-battery A/Bs. */
   fringeOn = (globalThis as unknown as { FRINGE_OFF?: boolean }).FRINGE_OFF !== true;
 
+  /** THE LIVING GROUND's kill switch (the FRINGE_OFF pattern): with
+   *  LIVING_GROUND_OFF set at boot no chunk builds a halo and every
+   *  sig reads 0 — today's paint, byte for byte — the bisect flag the
+   *  parity battery and the field both reach for. */
+  livingGroundOn = (globalThis as unknown as { LIVING_GROUND_OFF?: boolean }).LIVING_GROUND_OFF !== true;
+  /** Field-aware fold probes spent this frame (see foldStale). */
+  private foldProbes = 0;
+  private static readonly FOLD_PROBE_CAP = 6;
+
+  /**
+   * THE LIVING GROUND's compare (plan §12.2 cache keys). The cheap
+   * word is the reach sig (a memo read); when it moved, the
+   * FIELD-AWARE key decides: build the halo the chunk would paint now
+   * and hash it — a registry swap that left every sample where it
+   * was (a far stroke edited, a core step that snapped to the same
+   * ring) hashes the same, the entry adopts the new reach word, and
+   * nothing re-bakes. Anything else is a full bake, never a strip.
+   */
+  private foldStale(baked: BakedChunk, cx: number, cy: number): boolean {
+    const sig = foldSigFor(cx, cy);
+    if ((baked.spectrumSig ?? 0) === sig) return false;
+    if (baked.spectrumProbe !== sig) {
+      // THE PROBE IS PACED: a registry swap moves every visible
+      // chunk's reach word in one frame, and each probe is a full halo
+      // build (1296 field samples against every stroke in reach). A
+      // per-frame cap spreads the probes over a few frames instead of
+      // one spike; an unprobed chunk simply waits its turn (not stale
+      // this frame, asked again next).
+      if (this.foldProbes >= Renderer.FOLD_PROBE_CAP) return false;
+      this.foldProbes++;
+      baked.spectrumProbe = sig;
+      baked.spectrumProbeHalo = foldHaloSigFor(cx, cy);
+    }
+    if (baked.spectrumProbeHalo === (baked.spectrumHaloSig ?? 0)) {
+      baked.spectrumSig = sig;
+      return false;
+    }
+    return true;
+  }
+
   /**
    * THE FRINGE RE-BAKE's gate. Strip-eligible only when the honest
    * conditions all hold: no job in flight (a partial canvas cannot
@@ -7970,6 +8048,9 @@ export class Renderer {
     if (entry.pending) return null;
     if (entry.data !== data) return null;
     if (entry.px !== bakePx) return null;
+    // THE LIVING GROUND: a field change is never a strip — the wash
+    // and the folded meadow run whole, so the sig must match exactly.
+    if ((entry.spectrumSig ?? 0) !== foldSigFor(cx, cy)) return null;
     const mask = data.fringeMask ?? 0;
     if (mask === 0) return null;
     const dRev = (data.rev ?? 0) - entry.rev;
@@ -8549,6 +8630,8 @@ export class Renderer {
     entry.data = p.data;
     entry.rev = p.rev;
     entry.px = p.px;
+    entry.spectrumSig = p.job.spectrumSig;
+    entry.spectrumHaloSig = p.job.spectrumHaloSig;
     // THE FRINGE RE-BAKE's settlement: the baseline advances to the
     // build-time capture and the consumed mask bits clear — bits set
     // mid-job survive for the restart the rev mismatch forces.
@@ -16303,6 +16386,7 @@ export class Renderer {
     Tile.BeastBones,
     Tile.CharredStump,
     Tile.SpoilHeap,
+    Tile.GloomStone,
     Tile.CreepRoot,
     Tile.CharterPost,
     Tile.TallyStone,
@@ -17411,7 +17495,9 @@ export class Renderer {
       // instance bias so shared-variant neighbors hold different
       // postures (shared bakes are neutral, so the delta here IS the
       // full live wind).
-      const kSh = (wind - sp.windAt) * 0.055 + this.treeLean(h);
+      // The snag sways stiff: swayMul (0.35) scales the live shear
+      // exactly as it scales paintTree's cantilever (trees.ts).
+      const kSh = (wind - sp.windAt) * 0.055 * (m.swayMul ?? 1) + this.treeLean(h);
       if (this.stageAssembling) {
         // THE WORLD ON STAGE: the same numbers, as a quad — the shear
         // is four floats of per-quad matrix, and the step-aside fade
@@ -17444,8 +17530,10 @@ export class Renderer {
     }
 
     // Life: strong gusts shake the occasional leaf loose (skipped
-    // while felling — the fall spawns its own debris).
-    if (bendOverride === undefined && grow >= 1 && Math.random() < 0.0009 * (0.5 + Math.abs(wind))) {
+    // while felling — the fall spawns its own debris; never from a
+    // snag — dead wood has no leaf to shed, and the burst's kernel
+    // gold is a living tree's).
+    if (!m.dead && bendOverride === undefined && grow >= 1 && Math.random() < 0.0009 * (0.5 + Math.abs(wind))) {
       const c = m.clusters[Math.floor(Math.random() * m.clusters.length)]!;
       const leaf = m.leaves[c.tone]!;
       // pickWorld, not the flat inverse: particles draw through
@@ -17491,7 +17579,7 @@ export class Renderer {
     const wMul = 0.45 + 0.55 * g;
     const rMul = 0.5 + 0.5 * g;
     const H = m.height;
-    const bendT = wind * 0.055 * H;
+    const bendT = wind * 0.055 * H * (m.swayMul ?? 1);
     const path = new Path2D();
     // THE CAST FITS ITS FRAME: the builder visits every point it draws,
     // so it reports the exact box rather than leaving the bake to guess
@@ -18859,7 +18947,10 @@ export class Renderer {
       // THE SCARRED LAND: the dead tree is a tree — trees.ts grows a
       // snag (species by hash, foliage 0, dead bark) and every tree
       // lane (species sheet, shear sway, occlusion box, shadow) serves
-      // it unchanged. K4 THE STRIPPED LAND gives it the timber law.
+      // it unchanged. It carries a trunk collider honest to the drawn
+      // base (tiles.ts) but NOT the timber law: felling, deadwood logs
+      // and respawn-as-itself need an item and its icon — a deferred
+      // K4 lane, logged in the fix-pass report.
       case Tile.DeadTree: {
         // A tree that just stood up from its sapling eases from
         // sapling scale to full height instead of popping in.
