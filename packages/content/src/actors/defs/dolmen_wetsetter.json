@@ -1,0 +1,12 @@
+{
+  "id": "dolmen_wetsetter",
+  "name": "Dolmen",
+  "title": "Sinter of the ninth course",
+  "examine": "It stands stooped in the wet with a milky crust along the rim of its shoulders and a calcite bob hung true. It is counting the courses under the water.",
+  "disposition": "neutral",
+  "protection": "untargetable",
+  "model": {
+    "kind": "creature",
+    "creature": "dolmen_sinter"
+  }
+}

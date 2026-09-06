@@ -1,0 +1,12 @@
+{
+  "id": "dolmen_weightkeeper",
+  "name": "Dolmen",
+  "title": "Keeper of the weight",
+  "examine": "It stands with its big hands open before its knees and three dull iron beads set along the rim of its shoulders. Behind it the taken stakes lie in a row.",
+  "disposition": "neutral",
+  "protection": "untargetable",
+  "model": {
+    "kind": "creature",
+    "creature": "dolmen_gossan"
+  }
+}

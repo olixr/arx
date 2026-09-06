@@ -197,9 +197,13 @@ const MOB_SIZE: Record<string, number> = {
   hobgoblin_warcaster: 1.04,
   hobgoblin_champion: 1.28,
   hobgoblin_juggernaut: 1.62,
-  // THE COURSE DIALECT: the Marl at man height (renderer DOLMEN_SIZE
-  // hand-sync).
+  // THE COURSE DIALECT: the Marl at man height, the strata above it,
+  // Vorl the biggest Gossan (renderer DOLMEN_SIZE hand-sync).
   dolmen: 1.02,
+  dolmen_sinter: 1.1,
+  dolmen_culm: 1.04,
+  dolmen_gossan: 1.16,
+  dolmen_champion: 1.3,
 };
 
 /** Road tans for the human outlaws (the renderer's BRIGAND_SKIN twin). */

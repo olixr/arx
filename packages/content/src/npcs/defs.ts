@@ -706,7 +706,7 @@ export const NPC_DEFS: NpcDef[] = [
   // precedent: the cone pin asks a sightArc of any body that would).
   // 66/22 = 3.0 sits inside the xpEconomy band. Speed 1.8 is the
   // setter's pace (ROUTINE_WALK_SPEED).
-  // 9b adds the Sinter, the Culm, the Gossan and the champion beside it.
+  // 9c adds the Sinter, the Culm, the Gossan and the champion beside it.
   {
     id: 'dolmen',
     name: 'Dolmen',
@@ -724,6 +724,88 @@ export const NPC_DEFS: NpcDef[] = [
     color: '#d9cfbd',
     radius: 0.3,
     hitHeight: 2.2,
+  },
+  // Band 9c: THE REMAINING BODIES. Four rows on the Marl's shape, every
+  // one at xp/hp = 3.0 exactly, aggroRange 0 (the set never initiates),
+  // loot [] (no Dolmen table yet; a stone drop is 9d's with the errand),
+  // color = the look's hide hex so the card and the row read one colour.
+  // The roster lock-step pin reads this order: sinter, culm, gossan,
+  // champion. The Sinter's 1.4 is the slowest bestiary speed; an actor
+  // walks at its routine's pace, so "the slowest walk in the game" is
+  // authored on 9d's routine. The champion's name follows the family
+  // rank-word law (Skral deepking, Hobgoblin warlord). No crown pool:
+  // the forge needs a kit and a pool, and the arts are 9d's.
+  {
+    id: 'dolmen_sinter',
+    name: 'Dolmen sinter',
+    level: 8,
+    maxHp: 30,
+    damage: 3,
+    attackRange: 1.0,
+    attackCooldownTicks: 60,
+    aggroRange: 0,
+    leashRange: 12,
+    speed: 1.4,
+    xpReward: 90,
+    loot: [],
+    respawnSec: 60,
+    color: '#c3cad0',
+    radius: 0.32,
+    hitHeight: 2.3,
+  },
+  {
+    id: 'dolmen_culm',
+    name: 'Dolmen culm',
+    level: 9,
+    maxHp: 33,
+    damage: 4,
+    attackRange: 1.0,
+    attackCooldownTicks: 60,
+    aggroRange: 0,
+    leashRange: 12,
+    speed: 2.2,
+    xpReward: 99,
+    loot: [],
+    respawnSec: 60,
+    color: '#5e5b56',
+    radius: 0.3,
+    hitHeight: 2.25,
+  },
+  {
+    id: 'dolmen_gossan',
+    name: 'Dolmen gossan',
+    level: 11,
+    maxHp: 42,
+    damage: 5,
+    attackRange: 1.0,
+    attackCooldownTicks: 60,
+    aggroRange: 0,
+    leashRange: 12,
+    speed: 1.8,
+    xpReward: 126,
+    loot: [],
+    respawnSec: 60,
+    color: '#a4693f',
+    radius: 0.34,
+    hitHeight: 2.45,
+  },
+  {
+    id: 'dolmen_champion',
+    name: 'Dolmen fullweight',
+    level: 14,
+    maxHp: 60,
+    damage: 6,
+    attackRange: 1.0,
+    attackCooldownTicks: 60,
+    aggroRange: 0,
+    leashRange: 12,
+    speed: 2.0,
+    xpReward: 180,
+    loot: [],
+    respawnSec: 60,
+    color: '#955f3a',
+    radius: 0.4,
+    hitHeight: 2.7,
   },
   // ------------------------------------ THE SKRAL (docs/skral-plan.md):
   // the brine-folk — fish-headed waders who net the banks by day and

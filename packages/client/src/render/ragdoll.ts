@@ -107,7 +107,14 @@ import { type GolemLook } from './golems.js';
 import { type OgreLook } from './ogre.js';
 import { type SkralLook } from './skral.js';
 import { type HobgoblinLook } from './hobgoblin.js';
-import { type DolmenLook } from './dolmen.js';
+import {
+  bobForm,
+  dolmenHash,
+  dolmenRimFixtures,
+  dolmenYoke,
+  drawDolmenPlumbSlack,
+  type DolmenLook,
+} from './dolmen.js';
 
 const BOOT = '#4a3324';
 
@@ -577,9 +584,10 @@ export interface HumanoidCorpseLook {
    *  seated, the corner fang proud of a jaw that gives no more
    *  orders. */
   hob?: HobgoblinLook;
-  /** Set = this corpse is a Dolmen. The look union only in 9a: the
-   *  corpse painter and the painted static plumb are owed to 9b (an
-   *  untargetable body never falls). */
+  /** Set = this corpse is a Dolmen: the keel wedge lying inside its
+   *  fallen collar, the stratum's fixture on the rim, the bib and the
+   *  mantle slab, and THE PAINTED STATIC PLUMB (a slack cord, no
+   *  PendantSim on the ragdoll path). */
   dol?: DolmenLook;
   /** Worn equipment — the corpse keeps everything it died in. */
   gear?: CorpseGear;
@@ -867,6 +875,412 @@ function drawFallenCape(
  * two-segment limbs, square mitts, boot chips. Far-side limbs go
  * behind the trunk, near-side in front — a sprawl, not a stack.
  */
+/**
+ * THE COURSE DIALECT's fallen trunk: the bib apron from the collar to
+ * mid-thigh along the spine axis (the shaded half against the ground,
+ * the girdle beads on its hem for the Gossan), then the mantle slab
+ * lying across the shoulders (its chamfer per yoke shape) with the
+ * shoulder mark in the stratum's kind. Painted in the trunk frame:
+ * +x along the spine toward the head, the pelvis at −ul.
+ */
+function drawDolmenTrunk(
+  ctx: CanvasRenderingContext2D,
+  dl: DolmenLook,
+  s: number,
+  pelvis: { x: number; y: number },
+  chest: { x: number; y: number },
+  ux: number,
+  uy: number,
+  downSide: number,
+): void {
+  const tw = 0.185 * s * 1.3;
+  const ww = 0.125 * s * 0.85;
+  const ul = Math.hypot(chest.x - pelvis.x, chest.y - pelvis.y);
+  ctx.save();
+  ctx.translate(chest.x, chest.y);
+  ctx.rotate(Math.atan2(uy, ux));
+  // THE BIB: collar to mid-thigh, the hem a shallow V past the pelvis.
+  const topX = -s * 0.05;
+  const botX = -(ul + s * 0.09);
+  const hemX = -(ul + s * 0.12);
+  const hwTop = tw * 0.66;
+  const hwBot = ww * 1.15;
+  ctx.fillStyle = dl.bib;
+  ctx.beginPath();
+  ctx.moveTo(topX, -hwTop);
+  ctx.lineTo(topX, hwTop);
+  ctx.lineTo(botX, hwBot);
+  ctx.lineTo(hemX, 0);
+  ctx.lineTo(botX, -hwBot);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = shade(dl.bib, -12);
+  ctx.beginPath();
+  ctx.moveTo(topX, 0);
+  ctx.lineTo(topX, downSide * hwTop);
+  ctx.lineTo(botX, downSide * hwBot);
+  ctx.lineTo(hemX, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = shade(dl.bib, -24);
+  ctx.lineWidth = Math.max(1, s * 0.01);
+  ctx.beginPath();
+  ctx.moveTo(topX, -hwTop);
+  ctx.lineTo(topX, hwTop);
+  ctx.stroke();
+  // THE GIRDLE on the hem: dull iron beads, never a belt on the hide.
+  const nG = dl.girdle ?? 0;
+  if (nG > 0) {
+    const br = s * 0.016;
+    const bead = dl.bead ?? '#5c5e62';
+    for (let i = 0; i < nG; i++) {
+      const t = (i + 0.5) / nG;
+      const u = t < 0.5 ? t * 2 : (t - 0.5) * 2;
+      const ax = botX;
+      const ay = t < 0.5 ? -hwBot : 0;
+      const bx = t < 0.5 ? hemX : botX;
+      const by = t < 0.5 ? 0 : hwBot;
+      const gx = (t < 0.5 ? ax + (bx - ax) * u : hemX + (botX - hemX) * u) + br * 0.7;
+      const gy = ay + (by - ay) * u;
+      ctx.fillStyle = bead;
+      ctx.beginPath();
+      ctx.arc(gx, gy, br, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = shade(bead, 26);
+      ctx.beginPath();
+      ctx.arc(gx + br * 0.3, gy - br * 0.32, br * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  // THE MANTLE SLAB across the shoulders, over the bib's collar.
+  const slabW = tw * 1.02 + s * 0.012;
+  const slabH = s * 0.15;
+  const cham = s * (dl.yokeShape === 'squared' ? 0.025 : 0.06);
+  ctx.fillStyle = dl.yoke;
+  ctx.beginPath();
+  chamferRect(ctx, -slabH * 0.55, -slabW, slabH, slabW * 2, cham);
+  ctx.fill();
+  ctx.fillStyle = dl.yokeRim;
+  ctx.beginPath();
+  chamferRect(ctx, slabH * 0.45 - s * 0.022, -slabW * 0.9, s * 0.022, slabW * 1.8, s * 0.01);
+  ctx.fill();
+  ctx.fillStyle = shade(dl.yoke, -14);
+  ctx.beginPath();
+  chamferRect(ctx, -slabH * 0.55, -slabW * 0.96, s * 0.028, slabW * 1.92, s * 0.012);
+  ctx.fill();
+  ctx.save();
+  ctx.beginPath();
+  chamferRect(ctx, -slabH * 0.55, -slabW, slabH, slabW * 2, cham);
+  ctx.clip();
+  ctx.fillStyle = 'rgba(16, 12, 10, 0.1)';
+  ctx.fillRect(-slabH * 0.6, downSide > 0 ? 0 : -slabW, slabH * 1.2, slabW);
+  ctx.restore();
+  // The shoulder mark per cap, in the stratum's kind (seed-laid).
+  const h = dolmenHash(dl.seed ?? 0);
+  const mark = dl.markKind ?? 'mottle';
+  for (const sgn of [-1, 1] as const) {
+    const jx = (((h >>> (sgn < 0 ? 20 : 25)) & 7) / 7 - 0.5) * s * 0.03;
+    const jy = (((h >>> (sgn < 0 ? 23 : 28)) & 3) / 3 - 0.5) * s * 0.05;
+    const mx = -slabH * 0.05 + jx;
+    const my = sgn * slabW * 0.72 + jy;
+    if (mark === 'streak' || mark === 'drip') {
+      ctx.globalAlpha = mark === 'streak' ? 0.7 : 0.6;
+      ctx.strokeStyle = dl.mottle;
+      ctx.lineWidth = Math.max(1, s * 0.016);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      if (mark === 'streak') {
+        ctx.moveTo(mx - s * 0.03, my - sgn * s * 0.03);
+        ctx.lineTo(mx + s * 0.03, my + sgn * s * 0.03);
+      } else {
+        ctx.moveTo(mx - s * 0.04, my);
+        ctx.lineTo(mx + s * 0.04, my);
+      }
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.globalAlpha = mark === 'soot' ? 0.5 : 0.55;
+      ctx.fillStyle = dl.mottle;
+      ctx.beginPath();
+      ctx.ellipse(mx, my, s * 0.032, s * 0.05, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+  ctx.restore();
+}
+
+/**
+ * THE COURSE DIALECT's fallen head, in the head frame (crown toward
+ * −y, the face out +x in profile): the yoke's back plate lying on the
+ * ground behind the nape as a COLLAR taller than the crown — so the
+ * headless-from-behind read becomes "the head inside its collar" —
+ * with the rim lip, the hood keel and the stratum's fixture on the
+ * fallen rim (ticks, the notch off the nape, the three beads, the
+ * ridge line); the low near lip across the neck; then the keel wedge
+ * in profile INSIDE it: the keel stroke at the look's weight, the
+ * brow shelf, the socket SHUT (a shaded pit and an ink lid, no pale
+ * tick), the nose slits, THE STONE FACE's straight seam (the Culm
+ * keeps its red line), no ears, no hair. Last, THE PAINTED STATIC
+ * PLUMB: a slack cord from the collar's throat station lying along
+ * the ground perpendicular to the spine, the bob at its end.
+ */
+/** The fallen collar's plate about the dialect's head rung. */
+interface FallenCollar {
+  plateL: number;
+  plateR: number;
+  plateW: number;
+  rimY: number;
+  baseY: number;
+  hBack: number;
+  cham: number;
+  rimCut: number;
+  napeX: number;
+}
+
+function fallenCollar(dl: DolmenLook, s: number, hwD: number, hhD: number): FallenCollar {
+  const hBack = s * (dl.yokeH ?? 0.315);
+  const baseY = hhD * 0.48;
+  const rimY = baseY - hBack;
+  const plateL = -hwD * 1.95;
+  const plateR = -hwD * 0.66;
+  const plateW = plateR - plateL;
+  const cham = s * (dl.yokeShape === 'squared' ? 0.025 : 0.06);
+  // The rim end rounds like the hood's crown; the base end sits square
+  // on the shoulders (the squared yoke keeps its small chamfer). The
+  // round never eats past the plate's outer thirds: a chamfer over half
+  // the width caps the rim to a POINT and every fixture on it stacks
+  // into one, so the rim keeps a flat crown for its studs to sit across.
+  const rimCut = Math.min(dl.yokeShape === 'squared' ? cham * 1.4 : cham * 2.2, plateW * 0.3);
+  return { plateL, plateR, plateW, rimY, baseY, hBack, cham, rimCut, napeX: (plateL + plateR) / 2 };
+}
+
+/** One fixture station on the fallen rim: x across the plate, the rim
+ *  edge's y there (the rounded corner followed), the drawn size. */
+export interface DolmenFallenRimStation {
+  kind: 'tick' | 'bead' | 'notch';
+  x: number;
+  y: number;
+  len: number;
+}
+
+/**
+ * THE FALLEN RIM: where each of the live rim's fixtures lands along the
+ * collar's rim end. The ring's theta about the nape maps by its sine
+ * across the plate (the north band's read laid flat: one bead at the
+ * nape, one to each side), the beads are pushed a clear diameter apart
+ * where the plate is narrow, and the rounded corner is followed so no
+ * station floats off the edge. Exported so THE CORPSE pin reads the
+ * same stations the painter draws.
+ */
+export function dolmenFallenRimStations(dl: DolmenLook, s: number, hw: number, hh: number): DolmenFallenRimStation[] {
+  const hwD = hw * 0.9;
+  const hhD = hh * 0.9;
+  const c = fallenCollar(dl, s, hwD, hhD);
+  const yk = dolmenYoke(dl, s, 0.46 * s, 0, 1);
+  const spanHalf = c.plateW / 2 - s * 0.006;
+  const flatHalf = c.plateW / 2 - c.rimCut;
+  const edgeY = (dx: number): number => {
+    const into = Math.abs(dx) - flatHalf;
+    if (into <= 0) return c.rimY;
+    return c.rimY + c.rimCut - Math.sqrt(Math.max(0, c.rimCut * c.rimCut - into * into));
+  };
+  const out: DolmenFallenRimStation[] = [];
+  for (const f of dolmenRimFixtures(dl, yk, s, dl.seed ?? 0)) {
+    const k = Math.max(-1, Math.min(1, Math.sin(f.theta - Math.PI) / Math.sin(1.3)));
+    let dx = k * spanHalf;
+    if (f.kind === 'bead' && k !== 0) dx = Math.sign(k) * Math.max(Math.abs(dx), f.len * 2.1);
+    dx = Math.max(-spanHalf, Math.min(spanHalf, dx));
+    out.push({ kind: f.kind, x: c.napeX + dx, y: edgeY(dx), len: f.len });
+  }
+  return out;
+}
+
+function drawDolmenHeadFallen(
+  ctx: CanvasRenderingContext2D,
+  dl: DolmenLook,
+  s: number,
+  hw: number,
+  hh: number,
+  cut: number,
+): void {
+  // The dialect's own head rung (0.90 of the human head).
+  const hwD = hw * 0.9;
+  const hhD = hh * 0.9;
+  const cutD = cut * 0.9;
+  const kl = dl.keel ?? 1;
+  const { plateL, plateR, plateW, rimY, baseY, hBack, cham, rimCut, napeX } = fallenCollar(dl, s, hwD, hhD);
+  // ---- THE FALLEN COLLAR: the back plate lying flat behind the nape,
+  // from the shoulders to past the crown.
+  ctx.fillStyle = dl.yoke;
+  ctx.beginPath();
+  chamferRect(ctx, plateL, rimY, plateW, baseY + s * 0.1 - rimY, [rimCut, rimCut, cham * 0.4, cham * 0.4]);
+  ctx.fill();
+  ctx.save();
+  ctx.beginPath();
+  chamferRect(ctx, plateL, rimY, plateW, baseY + s * 0.1 - rimY, [rimCut, rimCut, cham * 0.4, cham * 0.4]);
+  ctx.clip();
+  ctx.fillStyle = 'rgba(16, 12, 10, 0.1)';
+  ctx.fillRect(plateL, rimY, plateW * 0.5, hBack + s * 0.2);
+  ctx.restore();
+  // The hood keel down the plate from the rim.
+  ctx.strokeStyle = shade(dl.yoke, -22);
+  ctx.lineWidth = Math.max(1, s * 0.016 * kl);
+  ctx.beginPath();
+  ctx.moveTo(napeX, rimY - s * 0.02);
+  ctx.lineTo(napeX, baseY);
+  ctx.stroke();
+  ctx.strokeStyle = dl.yokeRim;
+  ctx.lineWidth = Math.max(1, s * 0.01);
+  ctx.beginPath();
+  ctx.moveTo(napeX - s * 0.012, rimY);
+  ctx.lineTo(napeX - s * 0.012, baseY);
+  ctx.stroke();
+  // The rim lip along the fallen rim, and the ridge line inside it.
+  ctx.strokeStyle = dl.crust ?? dl.yokeRim;
+  ctx.lineWidth = Math.max(1, s * 0.02);
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(plateL + rimCut * 0.5, rimY + rimCut * 0.3);
+  ctx.quadraticCurveTo(plateL + plateW * 0.5, rimY - s * 0.006, plateR - rimCut * 0.5, rimY + rimCut * 0.3);
+  ctx.stroke();
+  if (dl.yokeShape === 'ridged') {
+    ctx.strokeStyle = shade(dl.yoke, -18);
+    ctx.lineWidth = Math.max(1, s * 0.012);
+    ctx.beginPath();
+    ctx.moveTo(plateL + rimCut * 0.5, rimY + s * 0.02 + rimCut * 0.3);
+    ctx.quadraticCurveTo(plateL + plateW * 0.5, rimY + s * 0.014, plateR - rimCut * 0.5, rimY + s * 0.02 + rimCut * 0.3);
+    ctx.stroke();
+  }
+  // The stratum's fixture on the fallen rim: the same seeded list the
+  // live wall draws, laid across the rim end by `dolmenFallenRimStations`
+  // (three beads a clear diameter apart; ticks and the notch along the
+  // rounded crown).
+  for (const st of dolmenFallenRimStations(dl, s, hw, hh)) {
+    const fx = st.x;
+    const ry = st.y;
+    if (st.kind === 'tick') {
+      // The drop hangs from the lip INTO the plate face, as it hangs down
+      // the live wall — never outward off the edge (a row of teeth past
+      // the rim reads as a comb or a crown).
+      const w = s * 0.02;
+      ctx.fillStyle = dl.crust ?? dl.yokeRim;
+      ctx.beginPath();
+      ctx.moveTo(fx - w, ry + s * 0.002);
+      ctx.lineTo(fx + w, ry + s * 0.002);
+      ctx.lineTo(fx + w * 0.35, ry + st.len);
+      ctx.lineTo(fx - w * 0.35, ry + st.len);
+      ctx.closePath();
+      ctx.fill();
+    } else if (st.kind === 'bead') {
+      const r = st.len;
+      const bead = dl.bead ?? '#5c5e62';
+      ctx.fillStyle = bead;
+      ctx.beginPath();
+      ctx.arc(fx, ry + s * 0.008, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = shade(bead, -18);
+      ctx.beginPath();
+      ctx.arc(fx, ry + s * 0.008, r, 0, Math.PI);
+      ctx.fill();
+      ctx.fillStyle = shade(bead, 26);
+      ctx.beginPath();
+      ctx.arc(fx - r * 0.32, ry + s * 0.008 - r * 0.36, r * 0.26, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      const w = s * 0.022;
+      ctx.fillStyle = dl.mottle;
+      ctx.beginPath();
+      ctx.moveTo(fx - w, ry - s * 0.006);
+      ctx.lineTo(fx + w, ry - s * 0.006);
+      ctx.lineTo(fx, ry + st.len);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  // The low near lip across the neck: the collar the head sat inside
+  // (the throat lip is the plate's own worn edge, as on the live body;
+  // the crust rides the back arc only).
+  ctx.fillStyle = dl.yoke;
+  ctx.beginPath();
+  chamferRect(ctx, plateR - s * 0.01, baseY - s * 0.02, hwD * 1.55, s * 0.06, s * 0.012);
+  ctx.fill();
+  ctx.strokeStyle = dl.yokeRim;
+  ctx.lineWidth = Math.max(1, s * 0.014);
+  ctx.beginPath();
+  ctx.moveTo(plateR, baseY - s * 0.02);
+  ctx.lineTo(plateR + hwD * 1.5, baseY - s * 0.02);
+  ctx.stroke();
+  // ---- THE KEEL WEDGE in profile, inside the collar.
+  ctx.fillStyle = dl.hide;
+  ctx.beginPath();
+  chamferRect(ctx, -hwD, -hhD * 0.66, hwD * 2.0, hhD * 1.32, [cutD * 1.4, cutD * 1.4, cutD * 0.6, cutD * 0.6]);
+  ctx.fill();
+  // The keel ridge brow to nape along the top, at the look's weight.
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = shade(dl.hide, -20);
+  ctx.lineWidth = Math.max(1, s * 0.016 * kl);
+  ctx.beginPath();
+  ctx.moveTo(-hwD * 0.88, -hhD * 0.5);
+  ctx.quadraticCurveTo(0, -hhD * 0.78, hwD * 0.86, -hhD * 0.52);
+  ctx.stroke();
+  ctx.strokeStyle = shade(dl.hide, 16);
+  ctx.lineWidth = Math.max(1, s * 0.014 * kl);
+  ctx.beginPath();
+  ctx.moveTo(-hwD * 0.86, -hhD * 0.44);
+  ctx.quadraticCurveTo(0, -hhD * 0.7, hwD * 0.84, -hhD * 0.46);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+  // The brow shelf, one bar; the socket SHUT under it.
+  const shK = 1 + (kl - 1) * 0.5;
+  ctx.fillStyle = shade(dl.hide, -16);
+  ctx.fillRect(hwD * 0.3, -hhD * 0.3, hwD * 0.68, hhD * 0.15 * shK);
+  ctx.fillStyle = shade(dl.hide, -28);
+  ctx.beginPath();
+  ctx.ellipse(hwD * 0.58, -hhD * 0.02, hhD * 0.2, hhD * 0.13, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = dl.ink;
+  ctx.lineWidth = Math.max(1, hhD * 0.06);
+  ctx.beginPath();
+  ctx.moveTo(hwD * 0.42, -hhD * 0.03);
+  ctx.quadraticCurveTo(hwD * 0.6, hhD * 0.06, hwD * 0.76, -hhD * 0.04);
+  ctx.stroke();
+  // The nose slits at the bow's edge.
+  ctx.lineWidth = Math.max(1, s * 0.008);
+  for (const dy of [0.1, 0.2]) {
+    ctx.beginPath();
+    ctx.moveTo(hwD * 0.9, hhD * dy);
+    ctx.lineTo(hwD * 1.0, hhD * (dy + 0.02));
+    ctx.stroke();
+  }
+  // THE STONE FACE's seam, straight and shut; the Culm's red line under it.
+  ctx.strokeStyle = dl.ink;
+  ctx.lineWidth = Math.max(1, s * 0.015);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(hwD * 0.22, hhD * 0.42);
+  ctx.lineTo(hwD * 0.96, hhD * 0.38);
+  ctx.stroke();
+  if (dl.seam) {
+    ctx.globalAlpha = 0.85;
+    ctx.strokeStyle = dl.seam;
+    ctx.lineWidth = Math.max(1, s * 0.01);
+    ctx.beginPath();
+    ctx.moveTo(hwD * 0.22, hhD * 0.42 + s * 0.012);
+    ctx.lineTo(hwD * 0.96, hhD * 0.38 + s * 0.012);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  ctx.lineCap = 'butt';
+  // ---- THE PAINTED STATIC PLUMB from the collar's throat station,
+  // lying out past the chin perpendicular to the spine.
+  ctx.save();
+  ctx.translate(hwD * 0.55, baseY + s * 0.01);
+  drawDolmenPlumbSlack(ctx, dl, s, 0.94, 0.34);
+  ctx.restore();
+}
+
 export function drawHumanoidRagdoll(
   ctx: CanvasRenderingContext2D,
   rag: Ragdoll,
@@ -912,7 +1326,9 @@ export function drawHumanoidRagdoll(
           ? shade(look.skr.hide, -6)
           : look.hob
             ? shade(look.hob.strap, 10)
-            : (legSt?.thigh ?? shade(look.bodyColor, -28));
+            : look.dol
+              ? shade(look.dol.hide, -6)
+              : (legSt?.thigh ?? shade(look.bodyColor, -28));
   const shinCol = look.kob
     ? shade(look.kob.hide, -12)
     : look.gno
@@ -923,8 +1339,10 @@ export function drawHumanoidRagdoll(
           ? shade(look.skr.hide, -14)
           : look.hob
             ? shade(look.hob.strap, -4)
-            : (legSt?.shin ?? legCol);
-  const sleeveCol = bodySt?.sleeve ?? shade(cloth, -10);
+            : look.dol
+              ? shade(look.dol.hide, -13)
+              : (legSt?.shin ?? legCol);
+  const sleeveCol = look.dol ? shade(look.dol.hide, -5) : (bodySt?.sleeve ?? shade(cloth, -10));
   const footCol = look.kob
     ? shade(look.kob.hide, -8)
     : look.gno
@@ -935,9 +1353,12 @@ export function drawHumanoidRagdoll(
           ? shade(look.skr.belly, -8)
           : look.hob
             ? shade(look.hob.strap, -6)
-            : (bootSt?.color ?? BOOT);
-  const mittCol = gloveSt?.color ?? look.skinColor;
-  const foreCol = gloveSt ? (gloveSt.bracer ?? shade(gloveSt.color, -8)) : look.skinColor;
+            : look.dol
+              // The Dolmen walks bare: the BOOT fallback never paints on it.
+              ? shade(look.dol.hide, -7)
+              : (bootSt?.color ?? BOOT);
+  const mittCol = look.dol ? look.dol.hide : (gloveSt?.color ?? look.skinColor);
+  const foreCol = look.dol ? look.dol.hide : gloveSt ? (gloveSt.bracer ?? shade(gloveSt.color, -8)) : look.skinColor;
 
   // Torso frame: axis pelvis→chest, widths from the live proportions.
   let ux = chest.x - pelvis.x;
@@ -1101,13 +1522,19 @@ export function drawHumanoidRagdoll(
     ctx.lineTo(chest.x, chest.y);
     ctx.stroke();
   }
-  // Belt band riding just above the pelvis.
-  ctx.strokeStyle = bodySt ? bodySt.trim : shade(look.bodyColor, -34);
-  ctx.lineWidth = Math.max(1.5, s * 0.05);
-  ctx.beginPath();
-  ctx.moveTo(pelvis.x + ux * s * 0.06 + nx * ww, pelvis.y + uy * s * 0.06 + ny * ww);
-  ctx.lineTo(pelvis.x + ux * s * 0.06 - nx * ww, pelvis.y + uy * s * 0.06 - ny * ww);
-  ctx.stroke();
+  // Belt band riding just above the pelvis — never on a Dolmen (a belt
+  // is on the dwarf list; its bib hem carries the girdle instead).
+  if (!look.dol) {
+    ctx.strokeStyle = bodySt ? bodySt.trim : shade(look.bodyColor, -34);
+    ctx.lineWidth = Math.max(1.5, s * 0.05);
+    ctx.beginPath();
+    ctx.moveTo(pelvis.x + ux * s * 0.06 + nx * ww, pelvis.y + uy * s * 0.06 + ny * ww);
+    ctx.lineTo(pelvis.x + ux * s * 0.06 - nx * ww, pelvis.y + uy * s * 0.06 - ny * ww);
+    ctx.stroke();
+  }
+  // THE YOKE AND THE BIB lie on the fallen trunk: the hide apron along
+  // the spine, the mantle slab across the shoulders, the shoulder mark.
+  if (look.dol) drawDolmenTrunk(ctx, look.dol, s, pelvis, chest, ux, uy, downSide);
 
   // Head: chamfered skin block along the neck axis, hair slab crowning
   // the far end. No face — eyes closed is drawn as absence, not marks.
@@ -1514,6 +1941,8 @@ export function drawHumanoidRagdoll(
         ctx.fill();
       }
     }
+  } else if (look.dol) {
+    drawDolmenHeadFallen(ctx, look.dol, s, hw, hh, cut);
   } else {
     ctx.fillStyle = look.skinColor;
     ctx.beginPath();

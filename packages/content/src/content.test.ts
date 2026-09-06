@@ -138,12 +138,14 @@ test('THE THREE CITIZENSHIPS: rung, page, and secret seats never overlap', () =>
 test('npc loot, kits, and spawns all resolve — THE KIT contract', () => {
   // THE COMPANY CRITTERS: pure-company bodies (the house cat) pay
   // nothing at all — no loot, no xp — so the kill law passes them by.
-  // THE DOLMEN (band 9a): the setter's body is worn only by an
-  // untargetable actor, so no corpse ever rolls its table; loot stays
-  // [] until a fightable body exists (9b) and brings its table with it.
-  const COMPANY = new Set(['cat', 'dolmen']);
+  // THE DOLMEN (bands 9a/9c): no Dolmen loot table exists yet; the set
+  // never initiates (aggroRange 0) and its bodies are worn by
+  // untargetable actors, so loot stays [] on every dolmen* row until 9d
+  // brings the errand's stone drop. The exemption is by prefix so the
+  // four 9c strata rows ride the same door as the Marl.
+  const COMPANY = (id: string): boolean => id === 'cat' || id.startsWith('dolmen');
   for (const [id, npc] of NPCS) {
-    if (COMPANY.has(id)) continue;
+    if (COMPANY(id)) continue;
     assert.ok(npc.loot.length > 0, `${id} has no loot tables`);
     for (const tableId of npc.loot) {
       assert.ok(LOOT_TABLES.has(tableId), `${id} loot table '${tableId}' missing`);

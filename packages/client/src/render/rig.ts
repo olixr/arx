@@ -2709,10 +2709,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ? { pitch: 0.18, handDropS: 0.09, hangFwdS: 0.06, hangDropS: 0.04 }
       : dol
         // The Dolmen's rest carriage: a forward hunch of 0.10 thrust
-        // under the yoke; the setting hands hang forward of the
-        // thighs (the stoop-lane law: the arms hang from the stooped
-        // frame, palms back, as if a stone had just been let go).
-        ? { pitch: 0.1, handDropS: 0.05, hangFwdS: 0.09, hangDropS: 0.04 }
+        // under the yoke (the Sinter folds deeper: the look's own
+        // pitch); the setting hands hang forward of the thighs (the
+        // stoop-lane law: the arms hang from the stooped frame, palms
+        // back, as if a stone had just been let go).
+        ? { pitch: dol.stoop ?? 0.1, handDropS: 0.05, hangFwdS: 0.09, hangDropS: 0.04 }
         : null;
 
   // Melee combo stages — THE CUT LIVES IN THE WORLD (strikes.ts, the
@@ -5657,7 +5658,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // (the facing-law band on the root station's depth, remembered
     // on the entity's depth memory; stateless callers take the plain
     // threshold).
-    const pr = dolmenPlumbRoot(s, th, fx, fy);
+    const pr = dolmenPlumbRoot(dol, s, th, fx, fy);
     dolPlumbFront = dolmenPlumbFront(rig.depthMemory, pr.d);
     if (rig.dolmenPlumb) {
       const cosP = Math.cos(lean);

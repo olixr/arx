@@ -1,0 +1,12 @@
+{
+  "id": "dolmen_firekeeper",
+  "name": "Dolmen",
+  "title": "Keeper of the hearth cell",
+  "examine": "It stands near the hearth cell with ember eyes and a line of red dust along the seam of its mouth. A black bob hangs true from the rim of its shoulders. The heat comes off the stone.",
+  "disposition": "neutral",
+  "protection": "untargetable",
+  "model": {
+    "kind": "creature",
+    "creature": "dolmen_culm"
+  }
+}

@@ -1438,6 +1438,156 @@ wants it, the bar's word, a topsider's name, a cause for the wet.
 
 ---
 
+### The Dolmen wetsetter — pooled, one body, no name, the Sett's wet floor
+**Actor:** `dolmen_wetsetter` (LIVE, band 9c; body `dolmen_sinter`; examine
+only, no lines, no tree, no voice cast, no routine of its own until the
+Sett's rows land in 9d; no faction membership and no tribe prefix) ·
+**Trees:** none
+
+**Life.** A Sinter of the ninth course. The dripstone stratum, as 11.1
+writes it: blue-white hide drip-scarred and stooped, a milky calcite crust
+on the yoke with short dripstone ticks along its rim, wet dark eyes, the
+tallest hooded yoke, a milky calcite bob, and the slowest walk in the game.
+It keeps the corbel cell half in shallow water at the Sett's wet floor and
+it comes up no higher than the ninth course. It is a pool and not a
+person: the pool gives no name and the people do not offer theirs. It
+speaks nothing to a topsider; Drusa is the one of them who comes up to say
+a thing, and this one is not Drusa. It grinds in the idle, stone on stone,
+which is a proximity voice and never a note, and which is owed past 9c.
+
+**Wants.** The wet floor left wet. Nothing above the ninth course. Nothing
+asked.
+
+**Carries.** A calcite bob on a bone cord hung from the rim of the yoke,
+milky, hung true. The crust on its shoulders, which is the wet's own count
+of the years it has stood there. The count of the courses under the water.
+
+**Knows.** How many courses are wet from the bottom row, today, because it
+is standing in them counting. That the last dry course is the ninth. That
+the top row goes last. Nothing about why; the Sinter say where the wet
+stops and never why it came up.
+
+**Room.** Drusa, whose "we" this body is one of. Ammat, above, whose count
+the wet floor is one row of. The rest of the Sinter, who do not come up.
+Nobody topside has been to the ninth course.
+
+**Threads.** None owned. The `dolmen|skral` neutral row is author-facing
+only.
+
+**Speaks.** Nothing. Silence is the clip.
+
+**Examine (bible and tooling text; it never reaches the wire).**
+> "It stands stooped in the wet with a milky crust along the rim of its
+> shoulders and a calcite bob hung true. It is counting the courses under
+> the water."
+
+**Never.** A name, a question, a lamp, a coin, a course above the ninth, a
+cause for the wet, the bar's word, a topsider's name.
+
+---
+
+### The Dolmen firekeeper — pooled, one body, no name, the hearth-cells on the east shelf
+**Actor:** `dolmen_firekeeper` (LIVE, band 9c; body `dolmen_culm`; examine
+only, no lines, no tree, no voice cast, no routine of its own until the
+Sett's rows land in 9d; no faction membership and no tribe prefix) ·
+**Trees:** none
+
+**Life.** A Culm of the hearth-cells. The coal seam, as 11.1 writes it:
+ash-dark grey to near-black hide, a squared yoke with a soot-cut notch, the
+only warm eyes of the four strata, ember, a red-dust line along the mouth
+seam, a black bob, and the quickest walk of the set. It keeps one of the
+hearth-cells on the Sett's east shelf, which are the set's only lights,
+and it is one of the only people in the valley burning stone and not wood.
+It is a pool and not a person: the pool gives no name and the people do not
+offer theirs. Durrow speaks for the shelf; this one keeps a hearth and says
+nothing, and the heat comes off it the way it comes off the cell.
+
+**Wants.** Stone that burns, kept burning. The hearth it keeps, lit. A
+buyer who walks up and asks in words, which it will not walk down and
+offer.
+
+**Carries.** A black bob on a bone cord hung from the rim of the yoke. The
+red dust along the seam of its mouth, which is the shelf's mark on every
+Culm that keeps a hearth. The Culm's one oath, "cold on you", unsaid,
+because it says nothing to a topsider.
+
+**Knows.** That wood burns out and stone burns on. Which hearth is its own
+and how long the black stone in it will burn. That the diggers do not come
+near the shelf because the shelf is warm. Nothing about why the wet came
+up; the Culm do not wonder either.
+
+**Room.** Durrow, who would sell the black stone if anyone asked, and who
+speaks for the shelf. Ammat. Vorl, across the Sett on the west shelf, whom
+the Culm count right to keep the weight. Ottery, "the smith", who does not
+know the shelf exists. Nobody topside has walked up to the hearth-cells.
+
+**Threads.** None owned.
+
+**Speaks.** Nothing. Silence is the clip.
+
+**Examine (bible and tooling text; it never reaches the wire).**
+> "It stands near the hearth cell with ember eyes and a line of red dust
+> along the seam of its mouth. A black bob hangs true from the rim of its
+> shoulders. The heat comes off the stone."
+
+**Never.** A name, a question, a lamp (the hearth is not a lamp), a coin,
+wood on its fire, a cause for the wet, the bar's word, a topsider's name.
+
+---
+
+### The Dolmen weightkeeper — pooled, one body, no name, the weight-yard on the west shelf
+**Actor:** `dolmen_weightkeeper` (LIVE, band 9c; body `dolmen_gossan`;
+examine only, no lines, no tree, no voice cast, no routine of its own
+until the Sett's rows land in 9d; no faction membership and no tribe
+prefix) · **Trees:** none
+
+**Life.** A Gossan of the weight-yard. The iron hat, as 11.1 writes it:
+rust-ochre hide streaked like weathered iron, the deepest keel and a ridged
+yoke with three dull iron beads, never gold, and the biggest hands of the
+four strata. The Gossan keep THE WEIGHT, the count of every stone taken
+from the Course, kept without wanting, because a people that never asks
+cannot demand. This body keeps the weight-yard on the Sett's west shelf
+under Vorl: the taken Charter post stubs and Returner lamp stakes laid in
+a row behind it, the cart built into the wall. It is a pool and not a
+person: the pool gives no name and the people do not offer theirs. Vorl
+recites the weight; this one keeps it and says nothing.
+
+**Wants.** The weight kept. The forty back, or forty like them. Nothing
+asked; a people that never asks cannot demand, and it does not.
+
+**Carries.** Three dull iron beads set along the rim of the yoke, never
+gold. A stone bob on a bone cord, hung true. The weight, which is a count
+kept the way a debt is kept, without wanting anything for it. Its hands,
+which are the biggest in the set and which hang open before its knees
+because the weight is not carried in them.
+
+**Knows.** The weight: forty stones to the Charter's causeway, one cart,
+twelve stakes, and every row of the count behind it. Which stakes were
+level-set (the chain man's) and which were not (the row behind it). That
+Vorl's stile asks a stone for a step, which the Gossan count as theirs and
+the Marl disown aloud. Nothing about why the wet came up.
+
+**Room.** Vorl Fullweight, whose yard this is and whose weight this body
+keeps. Ammat, whose count of stones moved and the Gossan's weight are two
+rows of the same count and stay two rows. The stake man (Garrow's crews),
+never named, whose stakes lie in the row. The chain man (Rurik), never
+named, whose stakes stand because they were level. Durrow, across the Sett.
+
+**Threads.** None owned. T47 (the wall folk) passes it by.
+
+**Speaks.** Nothing. Silence is the clip.
+
+**Examine (bible and tooling text; it never reaches the wire).**
+> "It stands with its big hands open before its knees and three dull iron
+> beads set along the rim of its shoulders. Behind it the taken stakes lie
+> in a row."
+
+**Never.** A name, a question, a lamp, a coin, gold on the beads, a stone
+set where a road wants it, an unpicked Crown stake, the bar's word, a
+topsider's name, a cause for the wet.
+
+---
+
 ## Flags owned by this cast
 
 | Flag | Set at | Read at |

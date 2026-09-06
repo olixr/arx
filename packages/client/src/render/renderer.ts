@@ -21941,9 +21941,11 @@ export class Renderer {
       // way — one legion, many faces, no shared sprites.
       e.hobgoblin ? `H${(e.hobgoblin.seed ?? 0) & 0xff}` : ''
     }${
-      // The Dolmen is a DESIGN (no cluster roll in 9a) but its mottle
-      // layout rides the seed — a stable tag per body all the same.
-      e.dolmen ? `Tm${(e.dolmen.seed ?? 0) & 0xff}` : ''
+      // THE CLUSTER IS THE STRATUM: the Dolmen's tag carries the
+      // stratum letter and the seed byte (plan 11.7's T<stratum><seed>)
+      // — two strata never share a sprite, and the mark layout and the
+      // pooled shade jitter ride the same low byte the look hashed.
+      e.dolmen ? `T${e.dolmen.stratum[0]}${(e.dolmen.seed ?? 0) & 0xff}` : ''
     }${seat ? `|${seat.kind}${seat.head ?? ''}` : ''}${riding ? `|m${anim.mountKey}` : ''}`;
 
     const capeFront = capeSim !== null && capeSim.front(Math.sin(dir));
@@ -23735,6 +23737,11 @@ export class Renderer {
    */
   private static readonly DOLMEN_SIZE: Record<string, number> = {
     dolmen: 1.02,
+    dolmen_sinter: 1.1,
+    dolmen_culm: 1.04,
+    dolmen_gossan: 1.16,
+    // Vorl Fullweight: the biggest Gossan, under the 1.5 giant-gait line.
+    dolmen_champion: 1.3,
   };
 
   /**
@@ -24029,7 +24036,9 @@ export class Renderer {
   private npcItem(
     eid: number,
     defId: string,
-    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean; company?: boolean; shorn?: boolean; seed?: number },
+    // `actor` is the slug on the wire (interest.ts, v20 static
+    // identity): the Dolmen's design seam keys a named throat's face on it.
+    meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean; company?: boolean; shorn?: boolean; seed?: number; actor?: string },
     s: { x: number; y: number; dir: number; hpPct: number; pose: number; status?: number },
     hurt: boolean,
     nameInk?: string,
@@ -24070,9 +24079,11 @@ export class Renderer {
       // ranked hobgoblins are designs (THE LEGION DIALECT). One
       // banner, many faces.
       const hbg = defId.startsWith('hobgoblin') ? hobgoblinLook(defId, eid) : undefined;
-      // The Dolmen is a DESIGN in 9a: every dolmen* id resolves to the
-      // Marl; the seed lays the mottle and the plumb phase only.
-      const dol = defId.startsWith('dolmen') ? dolmenLook(defId, eid) : undefined;
+      // THE CLUSTER IS THE STRATUM: every dolmen* id resolves to its
+      // stratum's design palette; the eid seed lays the marks and the
+      // plumb phase (and the pooled shade jitter). A named throat's
+      // slug pins its layout across boots (DOLMEN_DESIGNS, Fix B).
+      const dol = defId.startsWith('dolmen') ? dolmenLook(defId, eid, meta.actor) : undefined;
       // The rock golem rolls its stone cluster the same way; the other
       // builds are designs whose seed varies layout, never palette.
       const gol = defId.endsWith('_golem') ? golemLook(defId, eid) : undefined;
@@ -26047,8 +26058,8 @@ export class Renderer {
       death.defId.startsWith('ogre') ||
       death.defId.startsWith('skral') ||
       death.defId.startsWith('hobgoblin') ||
-      // The prefix line only: a later fightable Dolmen must never fall
-      // to the beast ragdoll (no corpse painter in 9a — untargetable).
+      // A fightable Dolmen (a bestiary body) falls on the humanoid rig
+      // with its own painter (ragdoll.ts, band 9c), never the beast.
       death.defId.startsWith('dolmen') ||
       death.defId === 'troll';
     let rag: Ragdoll;
@@ -26133,9 +26144,17 @@ export class Renderer {
       const corpseHob = death.defId.startsWith('hobgoblin')
         ? hobgoblinLook(death.defId, death.eid)
         : undefined;
+      // The fallen Dolmen keeps its stratum and its layout (the
+      // corpse-coat law: the raw eid, the same low byte the live body
+      // hashed; no slug — every named throat is untargetable and never
+      // falls).
+      const corpseDol = death.defId.startsWith('dolmen')
+        ? dolmenLook(death.defId, death.eid)
+        : undefined;
       // The fallen soldier's torso stays IRON — the cuirass outlives
       // the body wearing it (the loot-story law's visual half).
-      const bodyColor = corpseGob?.hide ?? corpseOgr?.hide ?? corpseSkr?.hide ?? corpseHob?.iron ?? def.color ?? '#999';
+      const bodyColor =
+        corpseGob?.hide ?? corpseOgr?.hide ?? corpseSkr?.hide ?? corpseHob?.iron ?? corpseDol?.hide ?? def.color ?? '#999';
       // THE KIT FALLS WITH THE WEARER: the same issued equipment that
       // dresses the live rig dresses the corpse — the brigand's
       // leathers, the guard's helm and shield, the ogre's greatclub.
@@ -26171,6 +26190,9 @@ export class Renderer {
                 corpseOgr?.hide ??
                 corpseSkr?.hide ??
                 corpseHob?.hide ??
+                // Bare hide, not the palm: the palm shows only where
+                // the hand lies palm-up, which the ragdoll does not know.
+                corpseDol?.hide ??
                 Renderer.BRIGAND_SKIN[death.defId] ??
                 '#7aa74a'),
           hairColor: shade(bodyColor, -24),
@@ -26182,7 +26204,9 @@ export class Renderer {
           // golem corpses keep the construct dialect — the collapse;
           // skral corpses keep the brine dialect — the flopped crest;
           // hobgoblin corpses keep the legion dialect — the spilled
-          // queue and the helm that stayed on.
+          // queue and the helm that stayed on;
+          // dolmen corpses keep the course dialect — the head inside
+          // its fallen collar and the slack plumb.
           skel: death.defId.startsWith('skeleton')
             ? skeletonLook(death.defId)
             : undefined,
@@ -26193,6 +26217,7 @@ export class Renderer {
           ogr: corpseOgr,
           skr: corpseSkr,
           hob: corpseHob,
+          dol: corpseDol,
           gear: kitGear,
         },
       };
