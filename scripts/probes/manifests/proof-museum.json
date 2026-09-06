@@ -1,0 +1,20 @@
+{
+  "band": "proof-museum",
+  "zoom": 1.3,
+  "hours": [12, null, 0],
+  "setup": ["/tp 201 292", "/spawnnpc dolmen_setter dolmen_set"],
+  "scenes": [
+    { "id": "scarred-wing", "plane": "museum", "x": 30, "y": 158, "hour": 16.5, "notes": "THE SCARRED LAND wing: header plinth (5,150), rows 155/162" },
+    { "id": "standing-wing", "plane": "museum", "x": 18, "y": 172, "hour": 16.5, "notes": "THE STANDING COURSE wing: header (5,168), five plinths at row 173" },
+    { "id": "living-wing", "plane": "museum", "x": 22, "y": 351, "hour": 16.5, "notes": "THE LIVING GROUND wing: header (5,342), the turn block rows 344+" }
+  ],
+  "bodies": [
+    {
+      "slug": "dolmen_setter", "anchor": "spawn", "near": [201, 292],
+      "stops": [
+        { "hour": 12, "dx": 0, "dy": 0, "kind": "post" },
+        { "hour": 15.5, "dx": 0, "dy": 0, "tol": 2.6, "kind": "wander" }
+      ]
+    }
+  ]
+}
