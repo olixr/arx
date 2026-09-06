@@ -695,6 +695,36 @@ export const NPC_DEFS: NpcDef[] = [
     resist: ['bleed'],
   },
 
+  // ------------------------------------ THE DOLMEN (docs/contested-lands-plan.md §11):
+  // the fourth people, the Marl stratum — a dry-stone people the deep
+  // pushed up before the kobolds. They do not dig and they do not tamp,
+  // they SET, and what they set holds. Band 9a: ONE body, the setter,
+  // that stands, walks and speaks as a creature-bodied actor; the level
+  // shows on the nameplate only (the actor is untargetable, so no stat
+  // here ever runs). No pack, no craven, no sightArc, no temperament,
+  // no kit: a set that never initiates (aggroRange 0, the HUMANOID_BASE
+  // precedent: the cone pin asks a sightArc of any body that would).
+  // 66/22 = 3.0 sits inside the xpEconomy band. Speed 1.8 is the
+  // setter's pace (ROUTINE_WALK_SPEED).
+  // 9b adds the Sinter, the Culm, the Gossan and the champion beside it.
+  {
+    id: 'dolmen',
+    name: 'Dolmen',
+    level: 6,
+    maxHp: 22,
+    damage: 3,
+    attackRange: 1.0,
+    attackCooldownTicks: 60,
+    aggroRange: 0,
+    leashRange: 12,
+    speed: 1.8,
+    xpReward: 66,
+    loot: [],
+    respawnSec: 60,
+    color: '#d9cfbd',
+    radius: 0.3,
+    hitHeight: 2.2,
+  },
   // ------------------------------------ THE SKRAL (docs/skral-plan.md):
   // the brine-folk — fish-headed waders who net the banks by day and
   // march as a shoal by night. The watersides' first PEOPLE: where the

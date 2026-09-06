@@ -1375,6 +1375,69 @@ Northguard (T54); he is not that man and never was.
 
 ---
 
+### The Dolmen setter — pooled, one body, no name, the Sett's north lip
+**Actor:** `dolmen_setter` (LIVE, band 9a; the first creature-bodied throat
+in the game; body `dolmen`; no faction membership and no tribe prefix until
+a fightable body exists; routine `dolmen_set`, a post and one wander at
+fifteen; stood for the proof by the dev spawn at the Sett's east lip and
+given its permanent row in the Sett zone in 9c) · **Trees:** none (barks
+only, three lines rotating on interact; no voice cast, silence is the clip)
+
+**Life.** A Marl of the rim-set who keeps the north lip. It came up the
+Sett eleven winters back with the rest and has stood on the lip since,
+setting back what moves. It learned the common tongue from Fenside drovers
+the way all the Marl did, so its words are crofter words, and it uses them
+the way the Marl use anything: laid one on the last until the course is
+level. It is a pool and not a person. The pool gives no name and the people
+do not offer theirs; a name is a thing topsiders spend and the Dolmen
+keep. The old tongue is never rendered: whatever the Dolmen say to each
+other on the lip is never written, in any spelling, in any bark or tree,
+and a player hears only the crofter words. It looks at you once and goes
+back to looking at the ground.
+
+**Wants.** The ninth stone back on the lip, set right. Nothing else
+offered, nothing asked. A people that keeps the weight and never asks
+keeps this count the same way: the count is kept, the count is said if
+you come and stand, and nothing is done with it.
+
+**Carries.** A chalk bob on a bone cord hung from the rim of the yoke, and
+a level in the bib. Also the count, which is a weight the way a debt is a
+weight, and which it carries without wanting anything for it.
+
+**Knows.** The count of every stone moved on the north lip since the wet
+came up: nine this year, eight set back, the ninth under the sheep man's
+wall, and it has counted that one too. Six paces of grass between the
+lip and the drop, and that the drop held when the wet came up and holds
+now. Nothing about why; it does not wonder, and it may say a stone moved
+but never that anything is moving.
+
+**Room.** Ammat, whose count the setter's is one row of. Sarsen at the dry
+end, who keeps the other end of the same Course. The sheep man (Halvor),
+never named, whose wall has the ninth stone in it and who has not been
+told. The crofter pool, who call the setter's people the wall folk; the
+setter has heard it and keeps no count of what people call you. Nobody
+else has come to the lip.
+
+**Threads.** None owned. T47 (the wall folk) passes it by; that row is
+Sarsen's and the pool's.
+
+**Speaks.**
+> "We set here."
+> "There are six paces of grass between you and the drop. The drop held
+> when the wet came up and it holds now. Stand where you like."
+> "Nine stones moved on the north lip this year. I have set eight of them
+> back. The ninth is under the sheep man's wall and I have counted it."
+
+**Examine (bible and tooling text; it never reaches the wire).**
+> "It stands with its hands open before its knees and a chalk bob hung
+> true from the rim of its shoulders. It looked at you once and went back
+> to looking at the ground."
+
+**Never.** A name, a question, a lamp, a coin, a stone set where a road
+wants it, the bar's word, a topsider's name, a cause for the wet.
+
+---
+
 ## Flags owned by this cast
 
 | Flag | Set at | Read at |

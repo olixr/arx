@@ -18,6 +18,7 @@ export const HUMANOID_PREFIXES: readonly string[] = [
   'ogre',
   'skral',
   'hobgoblin',
+  'dolmen',
 ];
 export const HUMANOID_SUFFIXES: readonly string[] = ['_golem'];
 export const HUMANOID_EXACT: readonly string[] = ['troll'];
@@ -35,5 +36,8 @@ export function humanoidMonsterSize(defId: string): number {
   if (defId.startsWith('ogre')) return 1.35;
   if (defId.endsWith('_golem')) return 1.2;
   if (defId.startsWith('hobgoblin') || defId.startsWith('brigand')) return 1;
+  // The Dolmen in 3D is a plain humanoid at man height until bodies.ts
+  // learns the yoke (accepted in 9a).
+  if (defId.startsWith('dolmen')) return 1;
   return 0.85;
 }

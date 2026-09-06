@@ -138,7 +138,10 @@ test('THE THREE CITIZENSHIPS: rung, page, and secret seats never overlap', () =>
 test('npc loot, kits, and spawns all resolve — THE KIT contract', () => {
   // THE COMPANY CRITTERS: pure-company bodies (the house cat) pay
   // nothing at all — no loot, no xp — so the kill law passes them by.
-  const COMPANY = new Set(['cat']);
+  // THE DOLMEN (band 9a): the setter's body is worn only by an
+  // untargetable actor, so no corpse ever rolls its table; loot stays
+  // [] until a fightable body exists (9b) and brings its table with it.
+  const COMPANY = new Set(['cat', 'dolmen']);
   for (const [id, npc] of NPCS) {
     if (COMPANY.has(id)) continue;
     assert.ok(npc.loot.length > 0, `${id} has no loot tables`);

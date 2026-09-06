@@ -227,6 +227,44 @@ Fullweight, and the carter is Garrow.
   the same three words to end every hard sentence. Wit: NO.
   > "They do not come to the yard. They do not ask. I have a schedule.
   > Those three things together are what a carter calls a field."
+- **The setter** (pooled `dolmen_setter`, a Marl body on the Sett's north
+  lip; band 9a, the first creature-bodied throat in the game, LIVE): wants
+  the ninth stone back on the lip, set right. Wound: none it would call
+  one; it keeps a count of the north lip and offers nothing for it. Quirk:
+  it looks at you once and goes back to looking at the ground. Cadence:
+  the set sentence with nothing on it, the count first and the judgement
+  after, every one a whole sentence. Wit: NO. Spice: NONE (Ammat's alone).
+  No tree, no voice cast (silence is the valid clip), three barks
+  rotating on interact.
+  > "We set here."
+  > "There are six paces of grass between you and the drop. The drop held
+  > when the wet came up and it holds now. Stand where you like."
+  > "Nine stones moved on the north lip this year. I have set eight of
+  > them back. The ninth is under the sheep man's wall and I have counted
+  > it."
+
+**THE SETTER'S CARD (band 9a; the pooled body's law, one row under the
+Dolmen card above).** THE SET SENTENCE: short level declaratives laid one
+on the last, every one a whole sentence, no dropped subject, no fragment.
+HOLDS / DOES NOT HOLD is the whole judgement vocabulary. COUNT BEFORE
+OPINION: a number comes first, the judgement after it. THEY NEVER ASK A
+QUESTION, not of a player, not of each other. No names for topsiders (the
+stake man, the chain man, the sheep man, the lamp boys, the red-rag men).
+THE WET CAME UP is rain, flood and the water table in one phrase. "We set
+here." is the whole answer to why they came up and is never enlarged.
+Spice belongs to Ammat alone and once; the setter has none. THE SPINE IS
+NEVER GESTURED AT: a Dolmen may say a stone moved and may say where it
+went; a Dolmen never says anything is moving, never counts a pattern,
+never names the Gabbro, never wonders. A people that keeps the weight and
+never asks: the setter keeps a count of the north lip and offers nothing
+for it. The old tongue is never rendered: whatever the Dolmen say to each
+other is never written, in any spelling. No name is spent: the pool gives
+none and the people do not offer theirs.
+
+*Want* the ninth stone back on the lip, set right. *Carries* a chalk bob
+on a bone cord, a level in the bib. *Knows* the count of every stone moved
+on the north lip since the wet came up, and where each went. *Never* a
+name, a question, a lamp, a coin, a stone set where a road wants it.
 
 ---
 

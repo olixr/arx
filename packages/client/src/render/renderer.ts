@@ -125,6 +125,7 @@ import { golemLook, type GolemLook } from './golems.js';
 import { GutSim, PendantSim, ogreLook, type OgreLook } from './ogre.js';
 import { skralLook, type SkralLook } from './skral.js';
 import { hobgoblinLook, type HobgoblinLook } from './hobgoblin.js';
+import { dolmenLook, type DolmenLook } from './dolmen.js';
 import { LIFT_RING, LegRig, type LegPose } from './legs.js';
 import { FOOTPRINT_TUNE, FootprintField, printInkFor, type FootWord } from './footprints.js';
 import { FINISHER_PHASES, strikePhases } from './carriage.js';
@@ -916,6 +917,8 @@ interface AnimState {
   ogreGut?: GutSim;
   /** The ogre's belt-trophy pendant verlet — same contract. */
   ogrePendant?: PendantSim;
+  /** The Dolmen's plumb verlet — its OWN slot (the per-species law). */
+  dolmenPlumb?: PendantSim;
   /** THE FLEECE TELLS THE TIME: last seen shorn state on a sheep —
    *  the false→true edge is the shear moment and puffs the tufts. */
   shornSeen?: boolean;
@@ -21052,6 +21055,8 @@ export class Renderer {
     skral?: SkralLook;
     /** Legion-dialect override: this humanoid is a hobgoblin. */
     hobgoblin?: HobgoblinLook;
+    /** Course-dialect override: this humanoid is a Dolmen. */
+    dolmen?: DolmenLook;
     /** Weapons stowed on the body (snapshot SHEATHED_BIT). */
     sheathed?: boolean;
     /**
@@ -21719,6 +21724,14 @@ export class Renderer {
       anim.ogreGut = undefined;
       anim.ogrePendant = undefined;
     }
+    // THE PLUMB JOINS THE SAME LAW: the Dolmen's chalk bob is a
+    // PendantSim on its OWN slot (never the ogre's — the per-species
+    // law); the rig ticks it at the yoke's near rim, lifecycle here.
+    if (e.dolmen) {
+      anim.dolmenPlumb ??= new PendantSim(typeof e.eid === 'number' ? e.eid : 7);
+    } else if (anim.dolmenPlumb) {
+      anim.dolmenPlumb = undefined;
+    }
     // Paint side follows the FACING (the beast head/tail convention):
     // the back — and the cloth on it — is toward the camera only when
     // facing up-screen. Hysteresis in front() keeps the flip steady.
@@ -21758,6 +21771,9 @@ export class Renderer {
       // rate — the jiggle IS the read; a cadence-sampled bounce skips.
       (anim.ogreGut !== undefined && anim.ogreGut.restless) ||
       (anim.ogrePendant !== undefined && anim.ogrePendant.restless) ||
+      // A swinging plumb on a standing Dolmen re-bakes at full rate
+      // until it settles to THE ONE REST (the ogre's cost, accepted).
+      (anim.dolmenPlumb !== undefined && anim.dolmenPlumb.restless) ||
       (sitK > 0 && sitK < 1) ||
       (lieK > 0 && lieK < 1) ||
       (rideK > 0 && rideK < 1) ||
@@ -21789,6 +21805,10 @@ export class Renderer {
       // The hobgoblin's skin cluster rides the spawn seed the same
       // way — one legion, many faces, no shared sprites.
       e.hobgoblin ? `H${(e.hobgoblin.seed ?? 0) & 0xff}` : ''
+    }${
+      // The Dolmen is a DESIGN (no cluster roll in 9a) but its mottle
+      // layout rides the seed — a stable tag per body all the same.
+      e.dolmen ? `Tm${(e.dolmen.seed ?? 0) & 0xff}` : ''
     }${seat ? `|${seat.kind}${seat.head ?? ''}` : ''}${riding ? `|m${anim.mountKey}` : ''}`;
 
     const capeFront = capeSim !== null && capeSim.front(Math.sin(dir));
@@ -22145,6 +22165,8 @@ export class Renderer {
           goblin: e.goblin,
           skral: e.skral,
           hobgoblin: e.hobgoblin,
+          dolmen: e.dolmen,
+          dolmenPlumb: anim.dolmenPlumb,
           earSim: anim.ears,
           golem: e.golem,
           ogre: e.ogre,
@@ -23571,6 +23593,16 @@ export class Renderer {
   };
 
   /**
+   * Dolmen stature (docs/contested-lands-plan.md §11): THE MARL at
+   * man height, under the giant-gait line. No equip table, ever —
+   * never a head slot (the yoke IS the head furniture). Hand-sync
+   * with gameRender MOB_SIZE and dolmenlab SIZE.
+   */
+  private static readonly DOLMEN_SIZE: Record<string, number> = {
+    dolmen: 1.02,
+  };
+
+  /**
    * Legion kit — the loot-story law: issued pieces that really drop
    * from the legion's tables (the hobgoblin_arms rack). The line
    * fights sword-and-board, the longbowman strings the shortbow, the
@@ -23883,6 +23915,7 @@ export class Renderer {
       defId.startsWith('ogre') ||
       defId.startsWith('skral') ||
       defId.startsWith('hobgoblin') ||
+      defId.startsWith('dolmen') ||
       defId === 'troll'
     ) {
       const def = npcDef(defId);
@@ -23902,6 +23935,9 @@ export class Renderer {
       // ranked hobgoblins are designs (THE LEGION DIALECT). One
       // banner, many faces.
       const hbg = defId.startsWith('hobgoblin') ? hobgoblinLook(defId, eid) : undefined;
+      // The Dolmen is a DESIGN in 9a: every dolmen* id resolves to the
+      // Marl; the seed lays the mottle and the plumb phase only.
+      const dol = defId.startsWith('dolmen') ? dolmenLook(defId, eid) : undefined;
       // The rock golem rolls its stone cluster the same way; the other
       // builds are designs whose seed varies layout, never palette.
       const gol = defId.endsWith('_golem') ? golemLook(defId, eid) : undefined;
@@ -24017,7 +24053,7 @@ export class Renderer {
         // The goblin's garment ground is its own rolled hide — the
         // tunic block under the pot-gut overpaint must never flash a
         // different green at the silhouette edge.
-        color: gob?.hide ?? ogr?.hide ?? skr?.hide ?? hbg?.hide ?? def?.color ?? '#999',
+        color: gob?.hide ?? ogr?.hide ?? skr?.hide ?? hbg?.hide ?? dol?.hide ?? def?.color ?? '#999',
         skinColor:
           defId === 'troll'
             ? '#6a7d5c'
@@ -24035,7 +24071,9 @@ export class Renderer {
                         ? skr.hide
                         : hbg
                           ? hbg.hide
-                          : Renderer.BRIGAND_SKIN[defId],
+                          : dol
+                            ? dol.palm
+                            : Renderer.BRIGAND_SKIN[defId],
         size:
           Renderer.KOBOLD_SIZE[defId] ??
           Renderer.GNOLL_SIZE[defId] ??
@@ -24046,6 +24084,7 @@ export class Renderer {
           Renderer.OGRE_SIZE[defId] ??
           Renderer.SKRAL_SIZE[defId] ??
           Renderer.HOB_SIZE[defId] ??
+          Renderer.DOLMEN_SIZE[defId] ??
           (defId === 'troll' ? 1.4 : 0.85),
         nameInk,
         skeletal: skel,
@@ -24056,6 +24095,7 @@ export class Renderer {
         ogre: ogr,
         skral: skr,
         hobgoblin: hbg,
+        dolmen: dol,
       });
     }
 
@@ -25872,6 +25912,9 @@ export class Renderer {
       death.defId.startsWith('ogre') ||
       death.defId.startsWith('skral') ||
       death.defId.startsWith('hobgoblin') ||
+      // The prefix line only: a later fightable Dolmen must never fall
+      // to the beast ragdoll (no corpse painter in 9a — untargetable).
+      death.defId.startsWith('dolmen') ||
       death.defId === 'troll';
     let rag: Ragdoll;
     let look: (typeof this.corpses)[number]['look'];
@@ -25923,6 +25966,7 @@ export class Renderer {
         Renderer.OGRE_SIZE[death.defId] ??
         Renderer.SKRAL_SIZE[death.defId] ??
         Renderer.HOB_SIZE[death.defId] ??
+        Renderer.DOLMEN_SIZE[death.defId] ??
         (death.defId === 'troll' ? 1.4 : 0.85);
       const corpseKob = death.defId.startsWith('kobold')
         ? koboldLook(death.defId)

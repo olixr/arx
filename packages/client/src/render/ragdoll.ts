@@ -107,6 +107,7 @@ import { type GolemLook } from './golems.js';
 import { type OgreLook } from './ogre.js';
 import { type SkralLook } from './skral.js';
 import { type HobgoblinLook } from './hobgoblin.js';
+import { type DolmenLook } from './dolmen.js';
 
 const BOOT = '#4a3324';
 
@@ -576,6 +577,10 @@ export interface HumanoidCorpseLook {
    *  seated, the corner fang proud of a jaw that gives no more
    *  orders. */
   hob?: HobgoblinLook;
+  /** Set = this corpse is a Dolmen. The look union only in 9a: the
+   *  corpse painter and the painted static plumb are owed to 9b (an
+   *  untargetable body never falls). */
+  dol?: DolmenLook;
   /** Worn equipment — the corpse keeps everything it died in. */
   gear?: CorpseGear;
 }

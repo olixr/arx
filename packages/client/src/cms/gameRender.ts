@@ -21,6 +21,7 @@ import {
 import { ogreLook } from '../render/ogre.js';
 import { skralLook } from '../render/skral.js';
 import { hobgoblinLook } from '../render/hobgoblin.js';
+import { dolmenLook } from '../render/dolmen.js';
 import { TailSim, drawTail } from '../render/tail.js';
 import { batExtent, batLook, drawBat, drawGreatOwl, flierSpec, stagedFlight } from '../render/flight.js';
 
@@ -196,6 +197,9 @@ const MOB_SIZE: Record<string, number> = {
   hobgoblin_warcaster: 1.04,
   hobgoblin_champion: 1.28,
   hobgoblin_juggernaut: 1.62,
+  // THE COURSE DIALECT: the Marl at man height (renderer DOLMEN_SIZE
+  // hand-sync).
+  dolmen: 1.02,
 };
 
 /** Road tans for the human outlaws (the renderer's BRIGAND_SKIN twin). */
@@ -215,6 +219,7 @@ function isHumanoidMob(defId: string): boolean {
     defId.startsWith('ogre') ||
     defId.startsWith('skral') ||
     defId.startsWith('hobgoblin') ||
+    defId.startsWith('dolmen') ||
     defId === 'troll'
   );
 }
@@ -241,6 +246,9 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
   // The hobgoblin card pins the war-brick skin; blades and queue
   // paint THE ONE REST the same stateless way.
   const hbg = def.id.startsWith('hobgoblin') ? hobgoblinLook(def.id, 0) : undefined;
+  // The Dolmen card pins THE DESIGN (seed 0); the plumb paints THE ONE
+  // REST through the rig's stateless pendantRest path (no sim slot).
+  const dol = def.id.startsWith('dolmen') ? dolmenLook(def.id, 0) : undefined;
   if (gno) {
     // The tail is a simulation in the world (tail.ts); the poster runs
     // it to rest at a pinned moment and paints the settled brush
@@ -284,7 +292,7 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
     // A pinned poster is deliberately STATELESS: no depthMemory, so
     // the rig runs its single-frame fallbacks — fine for a still.
     kneeMemory: [0, 0],
-    bodyColor: gob?.hide ?? ogr?.hide ?? skr?.hide ?? hbg?.hide ?? def.color,
+    bodyColor: gob?.hide ?? ogr?.hide ?? skr?.hide ?? hbg?.hide ?? dol?.hide ?? def.color,
     hurt: false,
     isOwn: false,
     weaponItem: eq.weapon,
@@ -296,7 +304,7 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
     skinColor:
       def.id === 'troll'
         ? '#6a7d5c'
-        : (gob?.hide ?? kob?.hide ?? gno?.fur ?? ogr?.hide ?? skr?.hide ?? hbg?.hide ?? MOB_SKIN[def.id]),
+        : (gob?.hide ?? kob?.hide ?? gno?.fur ?? ogr?.hide ?? skr?.hide ?? hbg?.hide ?? dol?.palm ?? MOB_SKIN[def.id]),
     size: sizeK,
     skeletal: skel,
     kobold: kob,
@@ -305,6 +313,7 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
     ogre: ogr,
     skral: skr,
     hobgoblin: hbg,
+    dolmen: dol,
     gatherPhase: 0,
     craftKind: null,
   };

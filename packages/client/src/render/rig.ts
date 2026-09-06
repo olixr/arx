@@ -85,6 +85,7 @@ import {
   paintOgreHead,
   type GutSim,
   type OgreLook,
+  type PendantChain,
   type PendantSim,
 } from './ogre.js';
 import {
@@ -108,6 +109,17 @@ import {
   paintHobgoblinHead,
   type HobgoblinLook,
 } from './hobgoblin.js';
+import {
+  DOLMEN_BOB,
+  dolmenPlumbFront,
+  dolmenPlumbLen,
+  dolmenPlumbRoot,
+  drawDolmenArm,
+  paintDolmenBody,
+  paintDolmenFoot,
+  paintDolmenHead,
+  type DolmenLook,
+} from './dolmen.js';
 import {
   LegRig,
   chooseLimbSign,
@@ -552,6 +564,17 @@ export interface RigPose {
    * different argument, not a bigger goblin.
    */
   hobgoblin?: HobgoblinLook;
+  /**
+   * THE COURSE DIALECT (docs/contested-lands-plan.md §11): swap the
+   * flesh head for the Dolmen's keel wedge sunk inside THE YOKE, the
+   * bib and the setting hands, the slab feet, and THE PLUMB on its
+   * own sim slot below — while the rig, carriage, and facing bands
+   * keep working untouched. THE LEVEL GAIT dials the walk bob at
+   * both hip sites (walkBobK).
+   */
+  dolmen?: DolmenLook;
+  /** The Dolmen's plumb verlet — its OWN slot (the per-species law). */
+  dolmenPlumb?: PendantSim;
   /** Time-based swing driver for the gather pose. */
   gatherPhase: number;
   /**
@@ -731,6 +754,17 @@ export const HANG_WAIST_K = 1.08;
 export const SHOULDER_Y_DROP_S = 0.06;
 /** Hip line → shoulder line rise before the crouch/squash factors. */
 export const TORSO_RISE_S = 0.46;
+/**
+ * THE LEVEL GAIT dial (the walk-bob seam): how much of the legs' bob
+ * the hips take. Every body rides 0.45 — except the Dolmen, whose
+ * yoke stays level while the legs roll under it (DOLMEN_BOB). ONE
+ * helper read at BOTH hip sites (drawHumanoid's hipYStand and
+ * drawBackGear's hipY), so the twin law holds by construction.
+ */
+export function walkBobK(rig: RigPose): number {
+  return rig.dolmen ? DOLMEN_BOB : 0.45;
+}
+
 
 
 /** Shared per-frame IK scratches (see solveLimbInto's contract). */
@@ -853,6 +887,12 @@ function drawArm(
    *  cloth/glove branches the way bone does; the legion issues its
    *  own kit. */
   hob?: HobgoblinLook | null,
+  /** Course dialect: bare bone-hide arms ending in THE SETTING HANDS
+   *  — 1.5x wide, four fingers, the pale palm turned back (shown as
+   *  the body faces away: `dolFy`). Overrides the cloth/glove
+   *  branches the way bone does; a Dolmen wears a bib and nothing. */
+  dol?: DolmenLook | null,
+  dolFy?: number,
 ): { ex: number; ey: number; kx: number; ky: number } {
   // THE REMEMBERED ELBOW: the arms carry the same side-choice
   // hysteresis the knees have had since the quadruped rig — score the
@@ -917,6 +957,11 @@ function drawArm(
 
   if (hob) {
     drawHobgoblinArm(ctx, hob, sx, sy, kx, ky, ex, ey, s, hurt ?? false, nowMs ?? 0);
+    return { ex, ey, kx, ky };
+  }
+
+  if (dol) {
+    drawDolmenArm(ctx, dol, sx, sy, kx, ky, ex, ey, s, hurt ?? false, nowMs ?? 0, dolFy ?? 1);
     return { ex, ey, kx, ky };
   }
 
@@ -1516,6 +1561,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const ogr = rig.ogre ?? null;
   const skr = rig.skral ?? null;
   const hob = rig.hobgoblin ?? null;
+  const dol = rig.dolmen ?? null;
   const skin = rig.hurt
     ? '#ffffff'
     : (skel?.bone ?? rig.skinColor ?? (rig.look ? SKIN_TONES[rig.look.skin]! : SKIN));
@@ -1580,7 +1626,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // whole upper body (armY/shoulderY hang off hipY) comes down (or
   // up onto the throne) with it.
   const seatLift = chairSit ? (rig.seatH ?? 0.34) : 0.13;
-  const hipYStand = rig.y - (rig.rise + rig.bob * 0.45) * s + 0.11 * s * crouch;
+  const hipYStand = rig.y - (rig.rise + rig.bob * walkBobK(rig)) * s + 0.11 * s * crouch;
   const hipY = hipYStand + (rig.y - seatLift * s - hipYStand) * sit;
 
   // ---- legs: two-bone IK from SCREEN-FIXED hips to planted feet.
@@ -1678,6 +1724,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
                       // harness brown — the first dialect leg that
                       // wears the quartermaster's issue, not its hide.
                       ? shade(hob.strap, 10)
+                      : dol
+                        // The Dolmen walks bare: bone hide to the slab.
+                        ? shade(dol.hide, -6)
                       : rig.look
                         ? shade(CLOTH_COLORS[rig.look.pants]!, -8)
                         : shade(bodyColor, -28);
@@ -1700,7 +1749,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
                       ? shade(skr.hide, -14)
                       : hob
                         ? shade(hob.strap, -4)
-                        : (legSt?.shin ?? legSt?.thigh ?? baseLeg);
+                        : dol
+                          ? shade(dol.hide, -13)
+                          : (legSt?.shin ?? legSt?.thigh ?? baseLeg);
       // THE FOOT CAPS THE LEG: the shin stroke ends at the ANKLE — the
       // endpoint pulled back up the bone so its round cap tucks inside
       // the footwear painted below. Stroked all the way to the sole, the
@@ -1720,7 +1771,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // haunch above carries all the leg's mass; the shin is a reed.
       const shinLW = Math.max(
         2,
-        s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : gno ? 0.078 : gob ? 0.062 : gol ? 0.128 : ogr ? 0.145 : skr ? 0.058 : hob ? 0.08 : 0.09),
+        s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : gno ? 0.078 : gob ? 0.062 : gol ? 0.128 : ogr ? 0.145 : skr ? 0.058 : hob ? 0.08 : dol ? 0.092 : 0.09),
       );
       const ankPull = shinLW * 0.55;
       const ankX = fxx - aux * ankPull;
@@ -1745,18 +1796,23 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
                       // wrapped shin — sturdy, never bandy.
                       : hob
                         ? 0.1 * (0.9 + 0.2 * hob.heavy)
-                        : 0.09),
+                        // The setter's leg: a stone-carrier's thigh
+                        // over a straight shank — sturdy under the
+                        // widest carriage in the game, never bandy.
+                        : dol
+                          ? 0.12 * (0.9 + 0.1 * dol.heavy)
+                          : 0.09),
       );
       ctx.beginPath();
       ctx.moveTo(hipX, hipY);
       ctx.lineTo(kx, ky);
-      if (shinCol === thighCol && !skel && !gno && !gob && !gol && !ogr && !skr && !hob) {
+      if (shinCol === thighCol && !skel && !gno && !gob && !gol && !ogr && !skr && !hob && !dol) {
         ctx.lineTo(ankX, ankY);
         ctx.stroke();
       } else {
         ctx.stroke();
         ctx.strokeStyle = shinCol;
-        if (skel || gno || gob || gol || ogr || skr || hob) ctx.lineWidth = shinLW;
+        if (skel || gno || gob || gol || ogr || skr || hob || dol) ctx.lineWidth = shinLW;
         ctx.beginPath();
         ctx.moveTo(kx, ky);
         ctx.lineTo(ankX, ankY);
@@ -2380,6 +2436,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         // THE MARCHING BOOT: iron toe, greave cuff, hobnails — the
         // legion is shod (hobgoblin.ts owns the anatomy).
         paintHobgoblinFoot(ctx, hob, fxx, fyy, s, fx, lead, rig.hurt);
+      } else if (dol && !bootSt) {
+        // THE SLAB FOOT: flat, bare, broad, splayed — the foot line
+        // reads wider than the narrow hips (dolmen.ts owns the anatomy).
+        paintDolmenFoot(ctx, dol, fxx, fyy, s, fx, lead, rig.hurt);
       } else if (gob && !bootSt) {
         // The bare goblin foot: a FLAP a size too big for the spindle
         // shank above it — wide, flat, pale-soled, with two toe seams
@@ -2611,8 +2671,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // THE PARADE FRAME: the hobgoblin's proportion argument INVERTS the
   // goblin's — broad squared shoulders over a soldier's waist (the
   // silhouette triangle points DOWN; the goblin's gut points it up).
-  const tw = SHOULDER_HALF_S * s * (gno ? 1.28 : gob ? 0.92 : gol ? 1.4 * (0.94 + 0.12 * gol.heavy) : ogr ? 1.32 * (0.94 + 0.1 * ogr.heavy) : skr ? 0.88 : hob ? 1.14 * (0.95 + 0.08 * hob.heavy) : 1); // shoulder half-width
-  const ww = WAIST_HALF_S * s * (gno ? 1.06 : gob ? 1.16 + 0.14 * gob.heavy : gol ? 1.22 : ogr ? 1.4 + 0.12 * ogr.heavy : skr ? 1.1 + 0.1 * skr.heavy : hob ? 0.94 + 0.1 * (hob.heavy - 1) : 1); // waist half-width
+  // THE YOKE (the Dolmen): the widest carriage in the game, 1.30x,
+  // over hips at 0.85 — the triangle points hard down; the width is
+  // the mantle, not muscle (dolmen.ts paints the plate on it).
+  const tw = SHOULDER_HALF_S * s * (gno ? 1.28 : gob ? 0.92 : gol ? 1.4 * (0.94 + 0.12 * gol.heavy) : ogr ? 1.32 * (0.94 + 0.1 * ogr.heavy) : skr ? 0.88 : hob ? 1.14 * (0.95 + 0.08 * hob.heavy) : dol ? 1.3 : 1); // shoulder half-width
+  const ww = WAIST_HALF_S * s * (gno ? 1.06 : gob ? 1.16 + 0.14 * gob.heavy : gol ? 1.22 : ogr ? 1.4 + 0.12 * ogr.heavy : skr ? 1.1 + 0.1 * skr.heavy : hob ? 0.94 + 0.1 * (hob.heavy - 1) : dol ? 0.85 : 1); // waist half-width
   const th = TORSO_RISE_S * s * (1 - 0.12 * crouch); // hip line → shoulders
   // ---- THE STOOP LANE (the hunched-biped carriage). The gnoll and
   // the skral carry their spine pitched and their skull sunk INTO the
@@ -2644,7 +2707,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     ? { pitch: 0.18, handDropS: 0.1, hangFwdS: 0.07, hangDropS: 0.05 }
     : skr
       ? { pitch: 0.18, handDropS: 0.09, hangFwdS: 0.06, hangDropS: 0.04 }
-      : null;
+      : dol
+        // The Dolmen's rest carriage: a forward hunch of 0.10 thrust
+        // under the yoke; the setting hands hang forward of the
+        // thighs (the stoop-lane law: the arms hang from the stooped
+        // frame, palms back, as if a stone had just been let go).
+        ? { pitch: 0.1, handDropS: 0.05, hangFwdS: 0.09, hangDropS: 0.04 }
+        : null;
 
   // Melee combo stages — THE CUT LIVES IN THE WORLD (strikes.ts, the
   // one strike engine): every cut is authored as a world-space arc —
@@ -4364,6 +4433,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ogr,
       skr,
       hob,
+      dol,
+      fy,
     );
     armSegPass = null;
     if (shieldSt && shieldFr && seg !== 'under') {
@@ -4505,6 +4576,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ogr,
       skr,
       hob,
+      dol,
+      fy,
     );
     armSegPass = null;
   };
@@ -5214,6 +5287,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     lean += stoop!.pitch * fx * (1 - sit);
     lean += swS * 0.07 * (1 - profileK) * Math.min(1, rig.poleStrength) * (1 - sit);
   }
+  // The Dolmen's hunch: the forward thrust under the yoke — the stoop
+  // lane's own number (ONE TRUTH with the shoulder roots), and nothing
+  // rides on top: THE LEVEL GAIT keeps the yoke line still.
+  if (dol) lean += stoop!.pitch * fx * (1 - sit);
   // The giant's stoop: the heaviest carriage in the game leads with
   // its brow — the gut hangs, the hump rises, the head arrives last.
   // THE MARCH STRAIGHTENS IT: a standing ogre looms over its supper;
@@ -5452,9 +5529,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // frame, carried HIGH on a real neck (the only dialect that stands
   // parade-straight): every other monstrous head slumps, sinks, or
   // juts, and the upright carry against them IS the discipline read.
-  const headR = 0.15 * s * (kob ? 1.16 : gno ? 1.22 : gob ? 1.34 : gol ? 1.04 : ogr ? 0.98 : skr ? 1.42 : hob ? 1.02 : 1);
+  // The Dolmen head is the only dialect UNDER the human head (0.90):
+  // a small wedge sunk inside the yoke with no neck at all — the
+  // mantle carries the silhouette, so the skull needn't.
+  const headR = 0.15 * s * (kob ? 1.16 : gno ? 1.22 : gob ? 1.34 : gol ? 1.04 : ogr ? 0.98 : skr ? 1.42 : hob ? 1.02 : dol ? 0.9 : 1);
   const headX =
-    kob ? fx * 0.14 * s : gno ? fx * 0.19 * s : gob ? fx * 0.1 * s : gol ? fx * 0.08 * s : ogr ? fx * 0.12 * s : skr ? fx * 0.12 * s : hob ? fx * 0.06 * s : fx * 0.05 * s;
+    kob ? fx * 0.14 * s : gno ? fx * 0.19 * s : gob ? fx * 0.1 * s : gol ? fx * 0.08 * s : ogr ? fx * 0.12 * s : skr ? fx * 0.12 * s : hob ? fx * 0.06 * s : dol ? fx * 0.1 * s : fx * 0.05 * s;
   const headY =
     kob
       ? -th - headR * 0.48
@@ -5470,7 +5550,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
                 ? -th - headR * 0.34
                 : hob
                   ? -th - headR * 0.66
-                  : -th - headR * 0.82;
+                  : dol
+                    ? -th - headR * 0.25
+                    : -th - headR * 0.82;
   const hw = headR * 1.04; // half-width
   const hh = headR * 1.0; // half-height
   const cut = headR * 0.34;
@@ -5536,7 +5618,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   };
   // The bone, scale, fur, and greenskin dialects replace head, hair,
   // and face wholesale.
-  if (!skel && !kob && !gno && !gob && !gol && !ogr && !skr && !hob) drawHairBack(ctx, hairFrame, hairIx, cover);
+  if (!skel && !kob && !gno && !gob && !gol && !ogr && !skr && !hob && !dol) drawHairBack(ctx, hairFrame, hairIx, cover);
 
   // The skral's behind-pass: the slung trident's shaft and the far-
   // side spine finlets paint UNDER the torso — occlusion by paint
@@ -5559,6 +5641,44 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       hob,
       { s, tw, ww, th, fx, fy, profileK, backK, lead, hurt: rig.hurt, nowMs: rig.nowMs },
       bodySt != null,
+      'behind',
+    );
+  }
+  // THE PLUMB TICKS HERE (the ear law: the part-owner ticks the sim at
+  // the exact anchor it computed). The root is the yoke's near-rim
+  // station projected through (fx, fy), carried through the torso
+  // frame's own lean and squash to screen space; the anchor rides
+  // hipY, so bob and rise arrive at the cord as inertia (THE BODY
+  // MOVES AS ONE). One tick, both passes read the chain.
+  let dolPlumb: PendantChain | null = null;
+  let dolPlumbFront = true;
+  if (dol) {
+    // THE PLUMB KEEPS ITS LAYER: one latched answer for both passes
+    // (the facing-law band on the root station's depth, remembered
+    // on the entity's depth memory; stateless callers take the plain
+    // threshold).
+    const pr = dolmenPlumbRoot(s, th, fx, fy);
+    dolPlumbFront = dolmenPlumbFront(rig.depthMemory, pr.d);
+    if (rig.dolmenPlumb) {
+      const cosP = Math.cos(lean);
+      const sinP = Math.sin(lean);
+      const prx = pr.x * wS;
+      const pry = pr.y * hScale;
+      dolPlumb = rig.dolmenPlumb.update(
+        rig.x + cosP * prx - sinP * pry,
+        hipY + sinP * prx + cosP * pry,
+        dolmenPlumbLen(s),
+        rig.nowMs,
+      );
+    }
+    // The Dolmen's behind-pass: the yoke's far wall — the back plate
+    // seen through the collar — and the plumb when its rim has turned
+    // away, painted UNDER the torso by station depth.
+    paintDolmenBody(
+      ctx,
+      dol,
+      { s, tw, ww, th, fx, fy, profileK, backK, lead, hurt: rig.hurt, nowMs: rig.nowMs, plumb: dolPlumb, plumbFront: dolPlumbFront },
+      rig.hurt,
       'behind',
     );
   }
@@ -5786,6 +5906,18 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       bodySt != null,
     );
   }
+  // THE YOKE AND THE BIB: the mantle slab across the shoulders, the
+  // hide apron, the shoulder mottle, and the plumb hanging before the
+  // bib — over the bare torso (a Dolmen wears the bib and nothing).
+  if (dol) {
+    paintDolmenBody(
+      ctx,
+      dol,
+      { s, tw, ww, th, fx, fy, profileK, backK, lead, hurt: rig.hurt, nowMs: rig.nowMs, plumb: dolPlumb, plumbFront: dolPlumbFront },
+      rig.hurt,
+      'front',
+    );
+  }
 
   // ---- THE HEAD SITS UPON THE SHOULDERS: at a settled, empty-handed
   // rest the torso frame closes here so the hanging arms can paint in
@@ -5976,6 +6108,31 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         ? Math.sin(Math.min(1, rig.poseT) * Math.PI)
         : 0;
     paintHobgoblinHead(ctx, hob, {
+      s,
+      headX,
+      headY,
+      hw,
+      hh,
+      cut,
+      fx,
+      fy,
+      profileK,
+      backK,
+      lead,
+      hurt: rig.hurt,
+      nowMs: rig.nowMs,
+      gape,
+    });
+  } else if (dol) {
+    // THE COURSE DIALECT head replaces head, hair, and face wholesale
+    // — the keel wedge over the brow shelf, sunk inside the yoke whose
+    // near wall paints over it. The rig's gape is passed and IGNORED:
+    // THE STONE FACE never opens (the combat tell is the hands, 9b).
+    const gape =
+      meleeStage >= 0 || rig.pose === PoseState.Cast
+        ? Math.sin(Math.min(1, rig.poseT) * Math.PI)
+        : 0;
+    paintDolmenHead(ctx, dol, {
       s,
       headX,
       headY,
@@ -6634,7 +6791,7 @@ export function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void 
             // const stay identical — the drawBackGear twin law).
             0.3 * Math.min(1, rig.poseT)
           : 0;
-  const hipY = rig.y - (rig.rise + rig.bob * 0.45) * s + 0.11 * s * crouch;
+  const hipY = rig.y - (rig.rise + rig.bob * walkBobK(rig)) * s + 0.11 * s * crouch;
   const wS = rig.wScale;
   const hScale = 1 + (1 - wS) * 0.55;
   const th = TORSO_RISE_S * s * (1 - 0.12 * crouch);

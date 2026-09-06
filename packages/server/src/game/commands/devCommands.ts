@@ -960,14 +960,18 @@ const cmdSpawnnpc: ChatCommand = {
   name: '/spawnnpc',
   claims: (text) => text.startsWith('/spawnnpc'),
   run(srv, eid, player, text) {
-    // /spawnnpc <slug> — ephemeral copy of a defined actor beside
-    // the caller (no post, no respawn). The staging lever: audit any
-    // actor's face, gear, and voice without walking to their post.
-    const [, slug] = text.split(/\s+/);
+    // /spawnnpc <slug> [routine] — ephemeral copy of a defined actor
+    // beside the caller (no post, no respawn). The staging lever:
+    // audit any actor's face, gear, and voice without walking to
+    // their post. The optional routine id (band 9a, THE GROUND DOOR)
+    // stands the body on its day exactly as a zone row would:
+    // spawnActor resolves it, and an unknown id stands the body still
+    // with the existing one-line warning.
+    const [, slug, routine] = text.split(/\s+/);
     const actor = slug ? srv.actorDefs.get(slug) : undefined;
     if (!actor) {
       const ids = [...srv.actorDefs.keys()].join(', ');
-      player.session?.sendJson({ t: 'chat', channel: 'system', text: `/spawnnpc <slug> — ${ids}` });
+      player.session?.sendJson({ t: 'chat', channel: 'system', text: `/spawnnpc <slug> [routine] — ${ids}` });
       return;
     }
     const pos = srv.positions.get(eid);
@@ -985,8 +989,12 @@ const cmdSpawnnpc: ChatCommand = {
         break;
       }
     }
-    srv.spawnActor(actor, pos.plane, x, y, -1);
-    player.session?.sendJson({ t: 'chat', channel: 'system', text: `Spawned ${actor.name}.` });
+    srv.spawnActor(actor, pos.plane, x, y, -1, undefined, routine);
+    player.session?.sendJson({
+      t: 'chat',
+      channel: 'system',
+      text: `Spawned ${actor.name}${routine ? ` (${routine})` : ''}.`,
+    });
     return;
   },
 };

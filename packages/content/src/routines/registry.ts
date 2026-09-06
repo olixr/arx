@@ -292,6 +292,10 @@ import valeWatchMarket from './defs/vale_watch_market.json';
 import valePilgrimRest from './defs/vale_pilgrim_rest.json';
 import valePilgrimWay from './defs/vale_pilgrim_way.json';
 import valeCarterYard from './defs/vale_carter_yard.json';
+// Band 9a (docs/contested-lands-plan.md §11): the Dolmen setter's post on
+// the Sett's lip and one mid-afternoon wander. THE POST IS THE ORIGIN, so
+// the 9c zone row reuses this file as is and faces the bowl by its own dir.
+import dolmenSet from './defs/dolmen_set.json';
 
 const SOURCES: readonly unknown[] = [
   fallMiller,
@@ -549,6 +553,7 @@ const SOURCES: readonly unknown[] = [
   hartHerder,
   grandRingMaster,
   fordRingMaster,
+  dolmenSet,
 ];
 
 function buildRegistry(): ReadonlyMap<string, RoutineDef> {

@@ -1,0 +1,17 @@
+{
+  "id": "dolmen_setter",
+  "name": "Dolmen",
+  "title": "Setter of the Course",
+  "examine": "It stands with its hands open before its knees and a chalk bob hung true from the rim of its shoulders. It looked at you once and went back to looking at the ground.",
+  "disposition": "neutral",
+  "protection": "untargetable",
+  "model": {
+    "kind": "creature",
+    "creature": "dolmen"
+  },
+  "lines": [
+    "We set here.",
+    "There are six paces of grass between you and the drop. The drop held when the wet came up and it holds now. Stand where you like.",
+    "Nine stones moved on the north lip this year. I have set eight of them back. The ninth is under the sheep man's wall and I have counted it."
+  ]
+}
