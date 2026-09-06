@@ -167,52 +167,75 @@ fresh-page screenshot before pinning.**
 ### 3.1 THE FEN LAMP AND THE BAR — east, the First Road
 
 Places, in walking order from the gate at (32,48):
-- **The Ashlamp** at the causeway head (~(72,64), on a willow islet at the
-  fen's west rim, ~140 tiles): a burnt Waykeeper waystation. RuinWallStone
-  shell with three breaches, a LampPostDark with a cold socket, CharredBeam
-  heap, one EmberBed that still smokes, AshHeap, Detail.Ash ring, a stalled
-  Charter wain (BelongingsCart + CrateGoods under tarp) with Margit's tally
-  board beside it. **Not a POI: an authored dressing patch** (site scan will
-  refuse the marsh; the patch is a prefab stamped by an authored zone-less
-  sketch at the causeway head, weight 0, no garrison, tier ignored).
+- **The Ashlamp** at the lake's south tip where the First Road turns east
+  (authored zone `ashlamp`, rect (48..70, 92..110), the shell at
+  (54..60, 93..97), 60..75 tiles from the gate): a burnt Waykeeper
+  waystation. RuinWallStone shell with three breaches, a LampPostDark with a
+  cold socket, CharredBeam heap, one EmberBed that still smokes, AshHeap,
+  Detail.Ash ring, a stalled Charter wain (BelongingsCart + CrateGoods under
+  tarp) with Margit's tally board beside it. **Not a POI: an authored zone
+  patch on worldgen** (`maps/ashlamp/`, the Dawnmead module pattern copied;
+  the `ashlamp` def, the `poi_ashlamp` sketch and the parked pin retired; the
+  first authored burn stroke of the spectrum stands under it).
   Attributed two ways and a sign: Hale says the Company put a torch to it;
   Brede says the order pulled its crew and let it burn, and keeps a lamp-glass
   on a TrophyStake to prove they left it; the sign says only
   "THE ASHLAMP. Struck." Berrit's winter is **not** this fire (timeline: the
   winter was before most of the current village; the Ashlamp burned in the
   spring).
-- **The Causeway Head** beside it: the Charter's dike-stake line (CharterPost
-  run + Fence standing in WaterShallow) and spoil bank marching east,
-  WoodFloor pallets over mud, a Counter under canvas with the levy book,
-  StreetLantern pair, CrateGoods/BarrelStack, an ochre pennant, warded
-  ChestIron. Dike-master **Ingram** (fordgate actor, post hearth).
-- **The First Lamp** at ~(162,38) where the road climbs out of the marsh on
-  the fen's east rim (~226 tiles, tier 2; fallback (36,-4) at the north rim):
-  a weight-0 authored `first_lamp` haven in the last_lamp mould, safeR 12.
-  LampPost + WayShrine + StoneBench + milestone Rock + canvas lean-to +
-  BarrelStack of tithed oil + a chalk-tallied post. **waykeeper_hale** on
-  watch, pooled wayward_watch on the ring, and **Leif** the lamp-boy whose
-  routine walks to Dawnmead's green and back daily. Hale is **removed from the
-  wardens_outpost actor pool** (replaced by a name-free pooled sergeant) so no
-  rolled outpost mints a second Hale; the two quests that name him
-  (`the_lamps_of_the_line`, `the_long_way_round`) now find him where their
-  text always said he was.
-- **The upstream weir** on the sluice reach (~(44,92)): skral_shoal variant
-  garrison (tribe skral) on WeirPanels + KeepPool with an axe-cut in it +
-  TideTotem + ReedShelter; the old sluice (SluiceGate) on two posts, one post
-  with the kelp-string variant.
-- **Brede's bar** = the pinned `first_road_toll` bandit_camp (122,112): the
-  toll-warden crowned via `names[]` as **Brede**; SpikeBarrier + a TollBar
-  (TimberPost pair with a rope; no new tile), RedRagStake line to the crofts,
-  PrisonCage with a Charter drover who could not pay, WarTable as a counter,
-  NoticeBoard of receipts, chest_pit_takings warded. Brede's mark-post
-  scratched with six water lines a finger apart.
+- **The Causeway Head** at THE FORD (136..140, 84..86), the First Road's one
+  crossing, in the authored zone `fenside` (rect (118..141, 76..100)); the
+  head stands on the west bank north of the road (layout W, measured); the
+  dike line crosses the channel's upstream lip; the pennant is weld (J10),
+  the plan's word "ochre" was the Crown's dye: the Charter's dike-stake line
+  (CharterPost run + Fence standing in WaterShallow) and spoil bank marching
+  east, WoodFloor pallets over mud, a Counter under canvas with the levy
+  book, StreetLantern pair, CrateGoods/BarrelStack, warded ChestIron.
+  Dike-master **Ingram**'s post is the crofts' hearth (the bed under the
+  gate's canvas); his morning loop walks the line at the ford (routine
+  `ingram_dike`, back by eleven).
+- **The First Lamp** at the drowned crofts' gate (the `fenside_lamp` prefab's
+  north row, the lamp at world (152,87)), safeR 16; the plan's (162,38) and
+  the `first_lamp` name retire. LampPost + StoneBench + milestone Rock +
+  canvas lean-to + BarrelStack of tithed oil + a chalk-tallied post.
+  **waykeeper_hale** on watch, pooled wayward_watch on the ring.
+  **Leif is Dawnmead's one body (E4)**; his walk is the road's, not a
+  routine's, and Hale's bark carries it ("The boy walks the tithe in each
+  morning and chalks it on their post. He is theirs by day."). Hale is
+  **removed from the wardens_outpost actor pool** (replaced by a name-free
+  pooled sergeant) so no rolled outpost mints a second Hale; the two quests
+  that name him (`the_lamps_of_the_line`, `the_long_way_round`) now find him
+  where their text always said he was.
+- **The upstream weir** at the crofts' south water edge inside the
+  `fenside_lamp` prefab (R8): a dressing scene, no garrison; two skral stand
+  there as NEUTRAL actor rows (`skral_weirward`, wordless) and read
+  `weir_cut`, on WeirPanels + KeepPool with an axe-cut in it + TideTotem +
+  ReedShelter; the old sluice (SluiceGate) on two posts, one post with the
+  kelp-string variant.
+- **Brede's bar** = the pinned `first_road_toll` on the weight-0 def
+  `first_road_bar` (an honest smaller toll, pinned (126,109) south-west of
+  the ford, one row south of the fenside rect under THE AUTHORED HUG, which
+  its site row alone declares): **Brede is the crowned reaver of the bar,
+  who speaks through the row (THE MOUTH ON THE ROW); he is forged under the
+  Company's crown (a brigand crown pool); his third offer waits on THE
+  CHALLENGE**; the BAR SCENE is the fenside zone's dressing on the road: two
+  TimberPosts flanking the bed, SpikeBarrier teeth narrowing it to the
+  warden's gap (129,88), no rope (none exists; the posts, the barriers and
+  the bodies are the bar), RedRagStake line to the crofts, PrisonCage with
+  the drover **Ansel** (a Charter drover who could not pay, a zone actor),
+  WarTable as a counter, NoticeBoard of receipts, chest_pit_takings warded.
+  Brede's mark-post scratched with six water lines a finger apart, a
+  TimberPost standing in the water at (137,83).
 - **The drowned crofts** = the pinned `fenside_crofts` roadside_hamlet
-  (148,98), re-dressed: Tilled rows authored as WaterShallow with Scarecrow,
+  (160,94), the 24x16 core at nudge 0, footprint x 148..171, y 86..101,
+  re-dressed: Tilled rows authored as WaterShallow with Scarecrow,
   IrrigationChannel and Fence standing in it (no flood system; the "rising" is
   carried by Weir's stake, Brede's post and Margit's ledger in three units),
   drowned corn cut green on stilted PorchDeck pallets, Dugouts, RailWood pens
-  on stilts. Headman **Halvor** (fenside actor) and the pooled crofter bodies.
+  on stilts. Headman **Halvor** (fenside actor) and the pooled crofter
+  bodies; the east cabin holds two beds apart (one sleeper owns the
+  mattress); Halvor wades to the sluice's near post each dawn from the
+  shallows east of it.
 
 **The contention.** The water rose and nobody saw it rise. Ingram says the
 Company broke the sluice to keep the road slow ("a wet road is a paying
@@ -228,24 +251,63 @@ four accounts are locally true.
 `quest:the_first_road:done`; each offer tree `forbids` the other's
 `quest:<id>:done` and `active`; both set the bare flag `fen_side_taken`.
 - (A) *Stakes in the Waist* (Ingram): carry eight stakes, plant the dike
-  line, hold the head against the shoal's sortie when the stakes cut its
-  reach, post the levy on Dawnmead's green. Rewards: +fordgate, a Charter
-  causeway-pass (Brede's crew honours Charter paper: the toll refuses to
-  charge the character), Margit's ledger opens a repeatable corn-carry.
-  Costs: −fenside (Halvor's closed throat at outlaw band; the crofter pool's
-  barks turn), Weir's shelf line "you dried a water I fish" (a shop line, not
-  a refusal), flag `weir_cut` read by Weir and by the skral zone's sign.
+  line, hold the crossing: the shoal answers on the channel's WEST bank
+  north of the ford, twenty tiles up, past the lamp's relief (the haven law
+  drops the ford's own banks to tier 1, where no skral rolls; the journal
+  names the bank), post the levy on Dawnmead's green. Rewards: +fordgate,
+  Charter paper (`charter_pass`): the crew holds fire on Charter paper and
+  on anyone who has not walked the first road (THE PASS with the nursery
+  clause), Margit's ledger opens a repeatable corn-carry.
+  Costs: −fenside past outlaw (the crofter pool's closed throat; Halvor, the
+  fineActor, stays cold and sells the name back at six coins a point),
+  Weir's shelf line "you dried a water I fish" (a shop line, not
+  a refusal), flag `weir_cut` read by Weir, by Halvor and by the two skral
+  at the weir.
 - (B) *The Old Gate* (Halvor): repair the sluice with boards from Ottery's
-  shed, carry the kelp-string back to the weir and set it on the TideTotem
-  (wordless), then carry the crofters' green corn past Brede's bar without
-  paying (stealth, fight, or Brede's third offer: he carries it for a cut).
-  Rewards: +fenside, a crofter's Dugout, the kelp-string as a held token.
-  Costs: −fordgate (Ingram bills "obstruction" and Margit's ledger closes to
-  the character), Hale posts the character's name on the lamp as a toll
-  walked (a bark and the rota bill on the green).
-Neither side ends the toll; only the frontier's shared dice can
-(`bounty_open` on the bandit_camp cell). Aldis's `word_on_the_road` reads
-`fen_side_taken` and files it under the Toll War's fourth duration.
+  shed, carry the kelp-string back to the weir and hand it to the shoal
+  there, who take it without a word (a `talk` on the neutral skral), then
+  carry the crofters' green corn past Brede's bar without paying (steel, or
+  the south shoulder in the dark; Brede's third offer waits on THE
+  CHALLENGE). Rewards: +fenside, the kelp-string as a held token (a Dugout
+  is a tile and the world is shared; the empty berth stays empty for
+  everyone). Costs: −fordgate (Ingram bills "obstruction" and Margit's
+  ledger closes to the character), Hale posts the character's name on the
+  lamp as a toll walked (a bark and the rota bill on the green); Ingram's
+  obstruction bill is a door back (refusable forever); Margit's ledger
+  closes; Hale and Leif chalk the name once each. A B walked by steel ends
+  fordgate −5, not −20: breaking the bar credits fordgate +15 (the clear's
+  own reward).
+Neither side ends the bar. A blade ends it for the character who swings it
+(the clear stamps `poi_first_bar_broken` per character and the crew musters
+anew in ~180 s); the bar stands for everyone else, until Epic 2. Aldis's
+`word_on_the_road` reads `fen_side_taken` as "a side was taken", never
+which.
+
+### 3.1a As built 2026-09-05
+
+Band 7's rulings, binding on this section and folded in above:
+
+- R1. THE ASHLAMP is a small authored zone, `maps/ashlamp/`, built on the Dawnmead module pattern and sited at the lake's south tip where the First Road turns east.
+- R2. THE CAUSEWAY HEAD stands at the ford inside a second authored zone, `maps/fenside/`, which also authors the bar scene on the road's west approach.
+- R3. Ingram's post is the crofts' hearth, and his day loop walks the dike line at the ford.
+- R4. Brede's bodies are a weight-0 `first_road_bar` def, pinned beside the road south-west of the ford, and it replaces `first_road_toll`.
+- R5. The world flag `toll_near` now also counts pinned defs that declare `toll: true`, giving the Leif and Margit bicker and Aldis's toll lines their trigger.
+- R6. Dawnmead keeps one Leif; the second def row and `leif_walk` retire, and Hale's bark carries the boy's walk.
+- R7. THE FIRST LAMP rides the re-dressed `fenside_lamp` prefab at the crofts, and the plan's (162,38) and the `first_lamp` name retire.
+- R8. THE UPSTREAM WEIR is a dressing scene inside the crofts prefab, with two skral standing as neutral actor rows, not a garrison.
+- R9. THE FORK composes on the four objective kinds only, and the sortie composes as a kill objective on shore skral wild rows, with no new stage.
+- R10. The tiers stand as dangerAt rolled them, and Brede's row is minTier 1, so he stands whatever the jitter says.
+- R11. The crofter pool's six lines are rewritten place-neutral, so the same pool stands true at the gate and at the crofts.
+- R12. No new Detail postures are added this band, and the knucklebone is dropped from the plan.
+- R13. The world flag `war_near` is not required at the crofts, since no garrison stands there.
+
+Owed and gated, carried out of this band for the owner to accept or reverse:
+
+- THE HUNG LANTERN (`shared/world/lights.ts`): every shipped StreetLantern now carries a light row, lighting lanterns the brief asked to gate only by day. Owed: accept, or revert by deleting the row and its census line.
+- THE COLD TORCH BY DAY (`client/render/props/warCamp.ts`): every camp torch now rides the flame gate, cold by day and lit from dusk. Owed: accept, or revert by striking the gate block.
+- THE CHEST WINDOW (owed L5): the head's chest and the camp's stay warded while the crew stands, and open for the breaker only inside the grace window before the crew musters anew. Owed: accept as written, or read `poi_first_bar_broken` on the ward instead.
+- THE AUTHORED HUG is opt-in per site, said by the bar's site row alone. Owed: accept the per-site word.
+- THE COMPANY'S CROWN: a brigand crown pool forges Brede and would forge any future crowned reaver row. Owed: accept, or drop `crowned` from the row, which R4 forbids.
 
 ### 3.2 THE HUSK — north, the hunters' trail
 
@@ -566,7 +628,9 @@ after the capstone).
    the kerb.
 5. **The watch charges what the bar charges.** Existing watchVsMenace: Hale's
    ring and Brede's crew both charge any goblin satellite that seeds between
-   them; enemies fighting the same goblins sixty tiles apart.
+   them; enemies fighting the same goblins sixty tiles apart (no body on the
+   east: satellites never seed in authored cells and both east cells are
+   authored; the east's NPC versus NPC is the watch and a crab).
 6. **The hired dark.** Aske's rows tribe `reavers`, hours 18-06 on a road
    loop; the haven watch charges any Gloamwood menace; the crew dies for the
    lamp.
@@ -580,12 +644,17 @@ after the capstone).
    (COALS-class, flame-gated where man-made) plus a dt-gated `smoke.plume`
    grain in the `collectStaticLights` scan (spawnPortalFx precedent). From
    the gate the player sees smokes when they get there; nothing on the sky
-   band (no weather system exists and none is proposed).
+   band (no weather system exists and none is proposed). (The Ashlamp's one
+   ember: the exhale is the smoke material's own plume, a 0.06/s die on the
+   flame clock; PROVEN at the emit door, five breaths in 90 s at 20:00 and
+   none at noon; a screenshot burst cannot prove a one-second roll.)
 10. **Bickering on the green.** Two-actor bark exchanges on the closed world
     flags Halla already reads, plus the one new rostered flag `war_near`
     (predicate: two mutually hostile cores inside watchTiles 96). Leif walks
     in daily to chalk the tithe on the green's LampPost and bickers with
-    Margit on `toll_near`.
+    Margit daily at noon (ungated: watchTiles 96 from the speaker cannot
+    reach the bar from the green); `toll_near` fires for Hale alone at the
+    crofts (R5's survey flag reads pinned defs declaring `toll: true`).
 11. **Bodies where the fight was.** GraveComp-pattern spawner: an NPC-vs-NPC
     kill inside a POI zone raises FieldLitter on the nearest free tile for
     the spill's quarter hour, capped six per zone, dignity 48, never inside a
@@ -1005,11 +1074,13 @@ The rulings below are binding on every lane that touched Dawnmead this band; whe
 - J19 (as built). The shipped lamp post at the brook's west shallow never stood and moves to the bank; the log yard's shipped oak is struck; the lodge's shipped lamp post by the gable is not placed; the pell hay bale and the gate's drying rack land where the pocket flood cleared room for them.
 - J20. Steinar is not placed this band; his inn bed is owed to the barrow band, and the four claimable guest beds stay the waker's.
 
-Owed to the dressing pass (section 6, not defects; no plan text changes beyond this listing):
-
-- The Common's west and south fence gate tiles need their tile art drawn shut under the rule that the gate stays open in play.
-- The ward body's def name still reads Vale Ward over the Dawnmead wards and wants its own name.
-- The crofters' way in beside the homestead track runs one grass column east of it for twenty two rows; if the eye objects, the way can start further south and the crofters can use the track from the lane instead.
+Owed to the dressing pass (section 6, not defects): the list below reduces
+to nothing this band. The Common's west and south fence gate tiles (D5) are
+recorded closed. The ward body's def name (E9, the ward wears its post:
+"Dawnmead Ward" / "The Vale Ward") is recorded landed. The crofters' way in
+beside the homestead track (E8, the crofters use the track) is recorded
+landed. The count-mound, revetted (owed D2) is recorded closed as owed.md
+rules.
 
 ---
 
@@ -1714,9 +1785,9 @@ the route points; cell tiers by cell centre.
 
 | Site | Re-celled | Cell | Tier | Walk | Note |
 |---|---|---|---|---|---|
-| The Ashlamp (scar, dressing, no core) | (72,64) | [0,0] | 1 | 9 s east | the threshold scar, not a camp; Band 0 authored its def and prefab but PARKED the pin: one ledger row per cell and no zone-less stamp path exist; band 7 lands it as a small authored zone patch |
-| Brede's bar **+ the drowned crofts + the First Lamp: ONE STAGED SCENE** | the existing pins (122,112) and (148,98), 30 tiles apart, declared one scene: the toll stands at the crofts' gate and Hale's lamp stands at the hamlet | [0,0] + [1,0] | 1 + 2 | 28-34 s | `fenside_crofts` becomes the weight-0 def `fenside_lamp` (Hale on watch, Leif, Halvor, Ingram, a new `fenside_crofter` pool); one name reads one ledger |
-| The skral | wilds shore rows in the fen waist + the sluice and weir as dressing at the crofts' reach | rows | — | — | no core; the first hostile thing on the road stays the bar |
+| The Ashlamp (scar, dressing, no core) | authored zone `ashlamp`, rect (48..70, 92..110), cell [0,0], tier 1, 12..15 s east; no core | [0,0] | 1 | 13 s east | the threshold scar, not a camp; Band 0 authored its def and prefab but PARKED the pin: one ledger row per cell and no zone-less stamp path exist; band 7 lands it as a small authored zone patch |
+| Brede's bar **+ the drowned crofts + the First Lamp: ONE STAGED SCENE** | the pins (126,109) `first_road_bar` on `poi_first_road_bar` and (160,94) `fenside_lamp` on the re-sketched `poi_fenside_lamp`, 37 tiles apart across the ford, the fenside zone (118..141, 76..100) between them, declared one scene: the toll stands at the crofts' gate and Hale's lamp stands at the hamlet | [0,0] + [1,0] | 2 + 3 (R10: dangerAt's rolls, [0,0] centre 2, [1,0] centre 3) | 27..38 s | `fenside_crofts` becomes the weight-0 def `fenside_lamp` (Hale on watch, Leif, Halvor, Ingram, a new `fenside_crofter` pool); one name reads one ledger |
+| The skral | wilds shore rows on the channel's west bank north of the ford (the ford's own banks read tier 1 under the crofts' haven relief and roll no skral) + the sluice and weir as dressing at the crofts' reach | rows | — | — | no core; the first hostile thing on the road stays the bar |
 | Torsten's picket | trail DRESSING (slate, bell, the four grave mounds) at (-120,-124), 40 tiles from the dire wolf | [-1,-1] | — | 12 s up the trail | no core; Torsten himself is posted at the fork rest |
 | The fork rest **+ the waystone + Torsten** | fork_rest's defId changes to a weight-0 `fork_waystation` (a prefab with an ElvenWaystone and extra posts; two new pooled unnamed sentinel actors under evencourt; Sergeant Torsten under waykeepers) | [-2,-2] | 2 | 24 s to the fork | canon: the lamps stop at the fork; waystones take over |
 | The Husk | moved OFF the High Road to (-64,-240): 109 from the fork, 128 from longmeadow_rest | [-1,-2] | 2 | 28 s + 24 off | `husk_of_the_line`, family dead, tiers [2,4] |
@@ -1731,12 +1802,14 @@ the route points; cell tiers by cell centre.
 | longmeadow_rest / amberfen_shoal / returners_camp | unchanged (shipped) | [0,-2] / [1,1] / [-3,1] | 2 | — | counted honestly |
 | The Drowned Meadow / the Ashen Hem / the Spoil Reach | belts: [0,1] / [0,-1] (the Felling's stand) / [-2,2] | — | — | — | no cores except the Felling in [0,-1] |
 
-Census after re-celling: tier-1 cells with a core = 4 of 6 (the veil den,
-Brede's bar, the Felling, the barrow and farm; the west has no gate and
-the barrow is its one core, so the cap is restated as 4 of 6). Tier-2 cells with a core = 9 of 14: six of this
-epic (the fork waystation, the husk, the crofts and lamp, the Third Stone,
-the digs, the barrow and farm) plus three shipped havens and shoals that
-predate it (longmeadow_rest, amberfen_shoal, returners_camp). No new core
+Census after re-celling: tier-1 cells with a core = 3 of 6 (the veil den,
+the Felling, the barrow and farm; the west has no gate and
+the barrow is its one core, so the cap is restated as 3 of 6; tier-1 cells
+with a core lose Brede's bar, which stands at tier 2). Tier-2 cells with a core = 10 of 14: seven of this
+epic (the fork waystation, the husk, the crofts and lamp, Brede's bar, the
+Third Stone, the digs, the barrow and farm) plus three shipped havens and
+shoals that predate it (longmeadow_rest, amberfen_shoal, returners_camp).
+Tell the truth about the roll, not the plan. No new core
 is allowed in a tier-2 cell for the life of the epic. **Empty on
 purpose:** [-3,-1], [1,-1], [-1,2], [-2,2] beyond the belt, the far
 north beyond the Legion, the whole First Road past the crofts for ~290
@@ -1781,9 +1854,12 @@ contradiction heard aloud (four carts / three carts and a barrow), one
 board. Minute
 3-4 the gate: two banners in two dyes, the sacking row under the oaks, the
 threshold stones. Minute 4-5 the Ashlamp: the first scar, two stories and a
-sign. Minute 5-6 the fen waist: the road narrows, red rags on the fence
-posts, the tier-2 cairn. Minute 6-7 Brede's bar: the first camp, a toll you
-can pay or not. Minute 7-8 the drowned crofts: fields under water, the
+sign. Minute 5-6 the fen waist: the tier-2 cairn alone on the north
+shoulder at (119,89), then the posts and the teeth narrowing the road to
+one pair of boots, the roped drover, the counter and the board, the rags
+running east to the water. Minute 6-7 Brede's bar: paper or not: Charter
+paper walks the gap, everyone else fights or walks the south shoulder in
+the dark. Minute 7-8 the drowned crofts: fields under water, the
 scarecrow to its waist, Hale's lamp lit at the hamlet gate, the kelp-string
 on the sluice post. Minute 8-9 the stream south: the last dry stones of the
 Course with sheep on them, a PlumbStone, Sarsen setting a cairn right.
