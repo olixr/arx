@@ -28,6 +28,7 @@ const proto = GameServer.prototype as unknown as {
   npcTribeOf: AnyFn;
   npcStanceRangeVs: AnyFn;
   playerBandWith: AnyFn;
+  poiPassHolds: AnyFn;
 };
 const call = (fn: AnyFn, self: unknown, ...args: unknown[]): unknown =>
   (fn as (...a: unknown[]) => unknown).call(self, ...args);
@@ -106,6 +107,11 @@ function slate(): Record<string, unknown> {
     npcTribeOf: proto.npcTribeOf,
     npcStanceRangeVs: proto.npcStanceRangeVs,
     playerBandWith: proto.playerBandWith,
+    // THE PASS (band 7): the aggro door now reads the body's site row
+    // for a passFlag — no POI cells here, so the read answers false.
+    poiPassHolds: proto.poiPassHolds,
+    poiSpawnCells: new Map(),
+    poiLedger: new Map(),
     worldOf: () => ({ isSolid: () => false }),
   };
   return s;

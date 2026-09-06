@@ -176,12 +176,22 @@ import saltFisherPiers from './defs/salt_fisher_piers.json';
 import saltFisherYard from './defs/salt_fisher_yard.json';
 import saltFisherEast from './defs/salt_fisher_east.json';
 import waystationKeeper from './defs/waystation_keeper.json';
-// THE CONTESTED LANDS (docs/contested-lands-plan.md §3.1): the First
-// Lamp's hours — Hale trims the lamp at dawn and dusk, Leif walks the
-// road's edge and back (a within-site loop: the green is past the
-// ±128 offset a routine may reach).
+// THE CONTESTED LANDS (docs/contested-lands-plan.md §3.1; band 7 THE
+// HAVEN'S CAST, blockout §4): the First Lamp's hours. Hale trims the
+// lamp at dawn and dusk and sleeps on the bench at his post in his
+// boots; Halvor walks to the sluice each morning and looks at it;
+// Ingram walks the dike line at the ford from the crofts' gate and
+// back (every leg inside the ±128 offset); the two crofters keep the
+// boards and the stilted pen; Ansel sits roped beside the cage at the
+// bar. ONE LEIF (R6/E4): `leif_walk` retired with the def row; the
+// boy's walk is the road's, carried by Hale's bark, and `leif_gate`
+// at Dawnmead is the one body's hours.
 import haleLamp from './defs/hale_lamp.json';
-import leifWalk from './defs/leif_walk.json';
+import halvorGate from './defs/halvor_gate.json';
+import ingramDike from './defs/ingram_dike.json';
+import crofterBoards from './defs/crofter_boards.json';
+import crofterStilts from './defs/crofter_stilts.json';
+import droverHeld from './defs/drover_held.json';
 
 /**
  * Every authored routine JSON, registered here. A def that isn't
@@ -465,7 +475,11 @@ const SOURCES: readonly unknown[] = [
   saltFisherEast,
   waystationKeeper,
   haleLamp,
-  leifWalk,
+  halvorGate,
+  ingramDike,
+  crofterBoards,
+  crofterStilts,
+  droverHeld,
   hartSpeaker,
   kdDelfmaster,
   kdFactor,

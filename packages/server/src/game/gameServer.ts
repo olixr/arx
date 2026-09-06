@@ -1062,6 +1062,16 @@ export interface NpcComp {
    */
   tribe?: string;
   /**
+   * THE MOUTH ON THE ROW (contested lands, band 7): the actor slug a
+   * named crowned garrison body speaks through. Placement data from
+   * the spawn record (ZoneSpawn.mouth): the same body carries an
+   * ActorComp under this slug, so the shipped talk path finds its
+   * lines and trees; and it never OPENS a fight (npcPerception skips
+   * it; the unforced aggro door refuses everything but a rally from
+   * its crew or a landed blow). Absent on every other body.
+   */
+  mouth?: string;
+  /**
    * THE STATE LADDER (perception rebuild): 'suspicious' = the meter
    * crossed ALERT_SUS — feet planted, eyes on the last-known spot;
    * 'investigate' = the look didn't settle it, walk over and see;
@@ -1719,6 +1729,8 @@ interface SpawnState {
     dir: number;
     hours?: { from: number; to: number };
   };
+  /** THE MOUTH ON THE ROW: the actor slug the seat's body speaks through — survives respawns. */
+  mouth?: string;
 }
 
 /** One placed actor's post — exact spot, no scatter, no count. */
@@ -3592,19 +3604,60 @@ export class GameServer {
    * are absolute positions (the dungeon-teardown law) — so a reload
    * deactivates the old records in place and appends the new ones.
    */
-  private readonly zonePlacements = new Map<string, { spawns: number[]; actors: number[] }>();
+  private readonly zonePlacements = new Map<
+    string,
+    { spawns: number[]; actors: number[]; chests: string[] }
+  >();
 
   /** Permanently-retired slot indexes awaiting reuse (see freeSpawnSlot). */
   private readonly freeSpawnSlots: number[] = [];
   private readonly freeActorSlots: number[] = [];
 
-  private zonePlacementIdx(zoneId: string): { spawns: number[]; actors: number[] } {
+  private zonePlacementIdx(zoneId: string): { spawns: number[]; actors: number[]; chests: string[] } {
     let rec = this.zonePlacements.get(zoneId);
     if (!rec) {
-      rec = { spawns: [], actors: [] };
+      rec = { spawns: [], actors: [], chests: [] };
       this.zonePlacements.set(zoneId, rec);
     }
     return rec;
+  }
+
+  /** The macro-cell key a pinned authored site claims, or null for an unknown id. */
+  private authoredCellOf(siteId: string): string | null {
+    for (const [key, id] of this.authoredCells()) {
+      if (id === siteId) return key;
+    }
+    return null;
+  }
+
+  /**
+   * THE ZONE'S WARDED CHEST (contested lands, band 7; site-grammar
+   * G-6): an authored zone may bind its strongboxes — a loot table
+   * and a ward — to a PINNED authored site's garrison. Each binding
+   * registers exactly as the POI materialise path registers a def's
+   * chestLoot/chestWarded (`{ cell, table, warded: true }` keyed by
+   * the chest's world tile), with `cell` the warding site's macro-cell,
+   * so the one chest-open door reads both the same way: the lid holds
+   * while any fighting body of that cell stands, and lifts for whoever
+   * comes once the crew is broken. The Charter's coin box at the ford
+   * is under the Company's eye like the camp's own. A zone has no
+   * garrison of its own; an id the plan does not pin warns and binds
+   * nothing (the content vet refuses it before it ever gets here).
+   * Bindings retire with the zone's placements, so a live Studio save
+   * never leaves a stale ward on a moved chest.
+   */
+  registerZoneChests(zone: ZoneDef): void {
+    const plane = zone.plane ?? SURFACE_PLANE_ID;
+    for (const c of zone.chests ?? []) {
+      const cell = this.authoredCellOf(c.wardedBy);
+      if (cell === null) {
+        console.warn(`[poi] zone '${zone.id}' wards a chest by unknown site '${c.wardedBy}' — unbound`);
+        continue;
+      }
+      const key = `${plane}|${c.x},${c.y}`;
+      this.poiChests.set(key, { cell, table: c.table, warded: true });
+      this.zonePlacementIdx(zone.id).chests.push(key);
+    }
   }
 
   /** Expand spawn tables into scattered points; returns their indexes. */
@@ -3631,6 +3684,7 @@ export class GameServer {
         dir: number;
         hours?: { from: number; to: number };
       };
+      mouth?: string;
     }>,
     plane: PlaneId,
     zoneId?: string,
@@ -3666,6 +3720,7 @@ export class GameServer {
           wing: spawn.wing,
           tribe: spawn.tribe,
           post: spawn.post,
+          mouth: spawn.mouth,
         };
         // A retired slot is re-tenanted before the array grows — the
         // roster stays proportional to what STANDS, not to history.
@@ -8833,6 +8888,7 @@ export class GameServer {
     if (zone.actorSpawns && zone.actorSpawns.length > 0) {
       this.registerActorSpawns(zone.actorSpawns, zonePlane, zone.id);
     }
+    if (zone.chests && zone.chests.length > 0) this.registerZoneChests(zone);
     // THE ADOPTED RING: a save that took over a code-side town spawn
     // retires the constant's live copy in place (deactivate-never-
     // splice, the dungeon-teardown law) — no doubles until reboot.
@@ -8900,6 +8956,8 @@ export class GameServer {
       }
       this.freeActorSlots.push(i);
     }
+    // THE ZONE'S WARDED CHEST: the bindings go with the placements.
+    for (const key of rec.chests) this.poiChests.delete(key);
     this.zonePlacements.delete(zoneId);
   }
 
@@ -10074,8 +10132,10 @@ export class GameServer {
         const inY = want.y! - cellY * POI_CELL;
         const edge = Math.min(inX, inY, POI_CELL - 1 - inX, POI_CELL - 1 - inY);
         const nudge = Math.max(0, Math.min(GameServer.AUTHORED_NUDGE_MAX, edge));
+        // THE AUTHORED HUG rides the site row's own word (`hug`), never
+        // a blanket: an unworded pin keeps the pad from its first probe.
         const spot = prefab
-          ? findAuthoredAnchor(config.worldSeed, want.x!, want.y!, prefab, ctx, nudge)
+          ? findAuthoredAnchor(config.worldSeed, want.x!, want.y!, prefab, ctx, nudge, want.hug === true)
           : null;
         if (spot) {
           site = {
@@ -12137,6 +12197,38 @@ export class GameServer {
       this.findsLive.delete(key);
     }
   }
+
+  /**
+   * THE PASS (contested lands, band 7): does this garrison body hold
+   * its fire on this character by paper? A def may name a `passFlag`;
+   * a character carrying it walks the site's crew unbothered at BOTH
+   * hold-fire chokes (the perception scan and the unforced aggro
+   * door). The body's site row is resolved from its SPAWN RECORD (the
+   * cell it was mustered for), never from where it stands — the ring's
+   * far bearing can straddle the next macro-cell and a sentry there
+   * still answers to its own def. THE NURSERY CLAUSE rides the same
+   * read: a character without the durable `qst:the_first_road` stamp
+   * is also held off, because two shipped quests send pre-fork feet
+   * past the bar to Hale and the Company tolls nobody under a first
+   * sword. A blow forces past all of it (the damage chokes pass
+   * `force`, which never reaches this read). Flags never expire —
+   * paid is paid — and a def without a pass answers false so every
+   * other camp is byte-identical in its behaviour.
+   */
+  private poiPassHolds(npc: NpcComp, player: PlayerComp): boolean {
+    if (npc.spawnIndex < 0) return false;
+    const cellKey = this.poiSpawnCells.get(npc.spawnIndex);
+    if (cellKey === undefined) return false;
+    const defId = this.poiLedger.get(cellKey)?.site?.defId;
+    if (defId === undefined) return false;
+    const pass = POI_DEFS.get(defId)?.passFlag;
+    if (pass === undefined) return false;
+    if (player.flags.has(pass)) return true;
+    return !player.flags.has(questDoneFlag(GameServer.FIRST_ROAD_QUEST));
+  }
+
+  /** THE NURSERY CLAUSE reads this quest's durable stamp (the tutorial is sacred). */
+  static readonly FIRST_ROAD_QUEST = 'the_first_road';
 
   /** Does any FIGHTING garrison body of this POI cell still stand? */
   private poiGarrisonStands(cellKey: string): boolean {
@@ -15543,7 +15635,12 @@ export class GameServer {
    * another keeper's friend, never the dead.
    */
   private petLegalMark(eid: EntityId): boolean {
-    if (!this.npcs.has(eid) || this.pets.has(eid) || this.companions.has(eid) || this.actors.has(eid)) return false;
+    const npc = this.npcs.get(eid);
+    if (!npc || this.pets.has(eid) || this.companions.has(eid)) return false;
+    // THE MOUTH ON THE ROW: a speaking garrison body is still the
+    // crowned boss of its camp — a fang may mark it like any other
+    // hostile bestiary body; only the friendly actors stay off limits.
+    if (this.actors.has(eid) && npc.mouth === undefined) return false;
     return (this.healths.get(eid)?.hp ?? 0) > 0;
   }
 
@@ -17945,8 +18042,14 @@ export class GameServer {
    */
   private npcTribeOf(eid: EntityId, npc: NpcComp): string {
     if (npc.tribe !== undefined) return npc.tribe;
-    const actor = this.actors.get(eid);
-    if (actor) return tribeOfActorId(actor.actor.id);
+    // THE MOUTH ON THE ROW: the crown flies its CREW's banner — the
+    // actor slug lends the body a face, never a different side in the
+    // stances matrix (its faction, for the talk laws, still reads
+    // through the actor as for any actor: npcFactionOf).
+    if (npc.mouth === undefined) {
+      const actor = this.actors.get(eid);
+      if (actor) return tribeOfActorId(actor.actor.id);
+    }
     return tribeOfNpcId(npc.def.id, npc.def.aggroRange > 0);
   }
 
@@ -19635,6 +19738,11 @@ export class GameServer {
    */
   private assistMark(npcEid: EntityId): boolean {
     if (this.pets.has(npcEid) || this.companions.has(npcEid) || this.livestock.has(npcEid)) return false;
+    // THE MOUTH ON THE ROW (fix pass 2): a speaking garrison body is
+    // still the crowned boss of its camp, so the assist marks it like
+    // any hostile bestiary body; only the placed actors are the people
+    // you'd sooner talk to.
+    if (this.npcs.get(npcEid)?.mouth !== undefined) return true;
     const actor = this.actors.get(npcEid)?.actor;
     if (actor && (actor.protection === 'invulnerable' || actor.disposition !== 'hostile')) {
       return false;
@@ -21232,8 +21340,10 @@ export class GameServer {
       this.forEachNpcNear(field.plane, field.x, field.y, field.radius, (npcEid, npc, npos) => {
         if (struck.has(npcEid)) return;
         // THE FANG KNOWS ITS FRIENDS: a companion's lattice never
-        // pulses a townsperson (pets are refused downstream).
-        if (field.viaPetEid !== undefined && this.actors.has(npcEid)) return;
+        // pulses a townsperson (pets are refused downstream). THE MOUTH
+        // ON THE ROW is no townsperson: the crowned body that speaks
+        // for its crew takes the pulse like the rest of the camp.
+        if (field.viaPetEid !== undefined && this.actors.has(npcEid) && npc.mouth === undefined) return;
         if (Math.hypot(npos.x - field.x, npos.y - field.y) - npc.def.radius > field.radius) {
           return;
         }
@@ -21545,8 +21655,9 @@ export class GameServer {
         // Arrows fly past a companion — it neither blocks nor bleeds.
         if (this.pets.has(npcEid) || this.companions.has(npcEid)) return;
         // THE FANG KNOWS ITS FRIENDS: a companion's spit passes every
-        // townsperson clean by.
-        if (proj.viaPetEid !== undefined && this.actors.has(npcEid)) return;
+        // townsperson clean by; THE MOUTH ON THE ROW (a speaking crowned
+        // garrison body) is a foe, and the spit lands on it.
+        if (proj.viaPetEid !== undefined && this.actors.has(npcEid) && npc.mouth === undefined) return;
         const dx = npos.x - pos.x;
         // The visual body rises north of the ground point — test the
         // feet→crown band so a shot crossing the chest or head lands.
@@ -23275,7 +23386,7 @@ export class GameServer {
           break;
         }
       }
-      spawn.eid = this.spawnNpc(def, spawn.plane, x, y, i, spawn.patrol, spawn.post, spawn.tribe);
+      spawn.eid = this.spawnNpc(def, spawn.plane, x, y, i, spawn.patrol, spawn.post, spawn.tribe, spawn.mouth);
     }
 
     // Placed actors stand back up the same way beasts do.
@@ -23329,6 +23440,9 @@ export class GameServer {
 
   /** Crowned-but-unforgeable seats already warned about (once per def id). */
   private readonly crownWarned = new Set<string>();
+
+  /** THE MOUTH ON THE ROW: unknown mouth slugs already warned about (once per slug). */
+  private readonly mouthWarned = new Set<string>();
 
   /** Tick-time reservoir (logged once a minute — see start()). */
   private tickMsSum = 0;
@@ -23639,6 +23753,7 @@ export class GameServer {
       hours?: { from: number; to: number };
     },
     tribe?: string,
+    mouth?: string,
   ): EntityId {
     const eid = this.ecs.create();
     this.kinds.set(eid, EntityKind.Npc);
@@ -23710,7 +23825,37 @@ export class GameServer {
       post,
       postPulseTick: 0,
       tribe,
+      ...(mouth !== undefined ? { mouth } : {}),
     });
+    // THE MOUTH ON THE ROW: the named crowned body registers in the
+    // actor table under its slug — ONE entity, two comps. The NpcComp
+    // is the body (art, level, crown, hit band, the garrison's clear
+    // and ward); the ActorComp is the face (lines, examine, bound
+    // trees, the closed throat and the fine, all through the shipped
+    // talk path, which resolves a talk by `actors.get(eid)`). The
+    // ActorComp's spawnIndex is -1: the body's respawn belongs to its
+    // garrison seat, never to the actor spawn table. An unknown slug
+    // warns once and the body stands mute, exactly as a placement of
+    // an unknown actor is skipped with a warning.
+    if (mouth !== undefined) {
+      const actor = this.actorDefs.get(mouth);
+      if (actor) {
+        const dir = this.positions.get(eid)!.dir;
+        this.actors.set(eid, {
+          actor,
+          spawnIndex: -1,
+          homeDir: dir,
+          restDir: dir,
+          gazeDir: dir,
+          nextGazeTick: 0,
+          nextLine: 0,
+          mount: null,
+        });
+      } else if (!this.mouthWarned.has(mouth)) {
+        this.mouthWarned.add(mouth);
+        console.warn(`[npc] garrison seat for '${def.id}' names unknown mouth '${mouth}' — stands mute`);
+      }
+    }
     this.updateChunkMembership(eid);
     return eid;
   }
@@ -24917,6 +25062,12 @@ export class GameServer {
     // break) answers to this; a BLOW always forces (`force` rides
     // from the damage chokes — a wound outranks any ledger).
     if (opts.force !== true) {
+      // THE MOUTH ON THE ROW: a garrison body that speaks never OPENS
+      // a fight. Its crew charges (and a packmate's rally reaches it,
+      // because the fight has then reached it); a blow forces past
+      // this line like every other; nothing else — no perception
+      // lock, no decoy pull, no nerve break — puts the crown on you.
+      if (npc.mouth !== undefined && opts.rally !== true) return;
       const target = this.players.get(targetEid);
       if (target) {
         const fid = this.npcFactionOf(eid, npc);
@@ -24928,6 +25079,9 @@ export class GameServer {
               : bandAtLeast(band, FACTIONS.peaceBand);
           if (holds) return;
         }
+        // THE PASS: paper walks the bar (see poiPassHolds). The same
+        // read stands at the aggro scan; a blow still forces.
+        if (this.poiPassHolds(npc, target)) return;
       }
       // THE WILD TAKES SIDES: the peace holds at the door for
       // NPC-shaped quarry too — never a companion (THE QUIET SHADOW),
@@ -25176,6 +25330,10 @@ export class GameServer {
    * feud it can pick any other beat.
    */
   private npcPerception(eid: EntityId, npc: NpcComp, pos: { plane: PlaneId; x: number; y: number; dir: number }): void {
+    // THE MOUTH ON THE ROW: the speaking body has no eye for a fight
+    // — no player scan, no feud scan. It stands at its fire and talks
+    // until its crew's fight reaches it or a blow lands.
+    if (npc.mouth !== undefined) return;
     if (this.npcPerceivePlayers(eid, npc, pos)) return;
     this.npcPerceiveNpcs(eid, npc, pos);
   }
@@ -25238,6 +25396,12 @@ export class GameServer {
           continue;
         }
       }
+      // THE PASS: a character carrying this site's passFlag (or one
+      // still under a first sword — the nursery clause) is not
+      // quarry to its garrison. Resolved from the body's OWN spawn
+      // record, so a sentry whose ring bearing stands in the next
+      // macro-cell still honours the def it musters for.
+      if (this.poiPassHolds(npc, player)) continue;
       if (baseRange <= 0) continue;
       let sightRange = baseRange * SIGHT_RANGE_MULT;
       let engageRange = baseRange * levelAggroFactor(npc.def.level, combatLevel(player.skills));

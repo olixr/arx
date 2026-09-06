@@ -210,6 +210,33 @@ export const CROWN_POOLS: readonly CrownPool[] = [
     barksDefeat: ['The shoal... swims on...', 'Back... to the cold larder...'],
     phaseNames: ['The Bank Rises', 'The Wet Court', 'The Long Undertow', 'Cold Water Closing'],
   },
+  {
+    // THE COMPANY'S CROWN (contested lands, band 7 fix pass 2): the
+    // toll reaver made warden. Brede at the First Road bar musters
+    // crowned on his row (rulings R4; THE MOUTH ON THE ROW), and until
+    // this bin existed the forge had no family to draw him from, so
+    // he stood a plain reaver under a crown the client never showed
+    // (the boot's "crowned but unforgeable"). Dialect purity holds
+    // hard here: the brigand bodies speak ONE word in the world, the
+    // reaver's own reaping sweep, and this bin adds none (a bandit
+    // with a bow's volley or a goblin's fire is somebody else). The
+    // crown is the ladder, the temper, the purse and the words: the
+    // same sweep, sharpened, behind a man who counts and does not
+    // raise his voice. Names are for a seat that gives none (every
+    // crowned reaver today is named by its own row); the register is
+    // the Company's, whole sentences, paid is paid.
+    appliesTo: ['brigand_reaver'],
+    voices: [],
+    chains: [],
+    lootAdd: ['champion_armory'],
+    names: ['Osk Tally', 'Wat Ledger', 'Bess Sixlines', 'Hobb Weighman', 'Mora Plankwise', 'Tam Farthing'],
+    epithets: ['the Counter', 'Two Columns', 'of the Wet Bar', 'the Patient Book', 'Halfweight', 'Paid in Full'],
+    titles: ['Warden of the Bar', 'The Company’s Count', 'Keeper of the Two Columns', 'The Road’s Collector'],
+    barksEngage: ['The bar is the road and the road pays.', 'Two columns. You are in the other one now.', 'I do not raise my voice. I count.'],
+    barksPhase: ['The book stays open.', 'Six lines on the post. Read them after.', 'Paid is paid.', 'The Hall does not send apologies.'],
+    barksDefeat: ['The Hall sends another.', 'Write it in the book.'],
+    phaseNames: ['The Count Begins', 'The Second Column', 'The Bar Holds', 'Paid in Full'],
+  },
 ];
 
 /** Pool lookup — null when no family claims the base. */

@@ -333,6 +333,11 @@ export const FACTIONS: FactionsDef = {
         // THE CONTESTED LANDS: the Company's other hand in the valley —
         // the escort-man paid to keep the Old Road's dark miles.
         'company_aske',
+        // Band 7: the crowned warden of the First Road's bar, who speaks
+        // through the garrison row (THE MOUTH ON THE ROW). Fighting his
+        // crew is slayMember; his throat closes at outlaw and Ferrick
+        // sells the name back at the Tollhouse, which is correct and far.
+        'company_brede',
       ],
       enforcers: ['company_blade'],
       npcPrefixes: ['brigand'],

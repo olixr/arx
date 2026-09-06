@@ -1,0 +1,35 @@
+{
+  "id": "charter_drover",
+  "name": "Ansel",
+  "title": "Charter drover",
+  "examine": "Roped at the ankle to a cage he is not in, because a man let out to sit is a better sign than a man in a box.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 2,
+      "hairColor": 4,
+      "beard": 2,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 7,
+      "pants": 3
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "twine",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "They let me out to sit. There is nowhere to sit to.",
+    "I had the Charter's chit and he wanted paper. A chit is paper. He said it was not the right paper.",
+    "He says the order left the waystation to burn and he has the glass to prove it. He says it every morning. I have stopped hearing it."
+  ]
+}

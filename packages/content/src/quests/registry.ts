@@ -108,6 +108,15 @@ import walkingTheBounds from './defs/walking_the_bounds.json';
 import theFirstRoad from './defs/the_first_road.json';
 import stillWaters from './defs/still_waters.json';
 import theMeadowKeepsCount from './defs/the_meadow_keeps_count.json';
+// THE CONTESTED LANDS band 7 — THE CAUSEWAY OR THE SLUICE (plan §3.1):
+// the fork at the fen waist as two opposed two-link chains, the
+// Charter's ledger carry and the obstruction bill behind them.
+import stakesInTheWaist from './defs/stakes_in_the_waist.json';
+import theLevyPosted from './defs/the_levy_posted.json';
+import theOldGate from './defs/the_old_gate.json';
+import theGreenRoad from './defs/the_green_road.json';
+import theLedgerLine from './defs/the_ledger_line.json';
+import theObstructionBill from './defs/the_obstruction_bill.json';
 
 const SOURCES: readonly unknown[] = [
   theWetCount,
@@ -176,6 +185,17 @@ const SOURCES: readonly unknown[] = [
   theUndercut,
   bootsForBlades,
   theHerdStands,
+  // THE CAUSEWAY OR THE SLUICE (contested lands band 7): side A is the
+  // Charter's dike (stakes, then the levy), side B is the crofters' gate
+  // (boards, then the corn); each offer tree forbids the other side by
+  // quest state, both sides stamp fen_side_taken, and the two
+  // repeatables behind them are the ledger's carry and the Charter's bill.
+  stakesInTheWaist,
+  theLevyPosted,
+  theOldGate,
+  theGreenRoad,
+  theLedgerLine,
+  theObstructionBill,
   // Item-borne: the torn page starts it; nobody offers it.
   theStolenLedger,
   // The Sealed Galleries — Grettir's brother's crew, closed at last.

@@ -52,8 +52,14 @@ function golden(
     glows.push({ x: tx + 0.5, y: ty + 0.45, gy: ty + 0.45, z: 0, r: 1.4 * pulse, rgb: '235, 150, 62', a: 0.26 * pulse * boost });
     lights.push({ x: tx + 0.5, y: ty + 0.7, r: 4.2, rgb: [255, 190, 120], intensity: 0.85 * flame * pulse, occlude: true });
   } else if (tile === Tile.Brazier) {
+    // THE COLD BRAZIER BY DAY (contested lands band 7, owed E6 / D3,
+    // 2026-09-05): the bloom moved onto the flame clock (`gate:
+    // 'flame'`, the LampPost's own word) in the same commit that gated
+    // the painted blaze — an ungated bloom left a warm pool under a
+    // basket the painter now shows cold at noon. The punch was
+    // flame-gated from the first; nothing else in the row moved.
     const flick = 0.85 + Math.sin(t * 11 + tx * 3.1) * 0.1 + Math.sin(t * 23 + ty) * 0.05;
-    glows.push({ x: tx + 0.5, y: ty + 0.3, gy: ty + 0.3, z: 0, r: 1.5 * flick, rgb: '255, 158, 66', a: 0.3 * flick * boost });
+    glows.push({ x: tx + 0.5, y: ty + 0.3, gy: ty + 0.3, z: 0, r: 1.5 * flick, rgb: '255, 158, 66', a: 0.3 * flame * flick });
     lights.push({ x: tx + 0.5, y: ty + 0.5, r: 4.4 * flick, rgb: [255, 180, 104], intensity: 0.9 * flame * flick, occlude: true });
   } else if (tile === Tile.WallSconce) {
     const flick = 0.8 + Math.sin(t * 13 + tx * 2.9) * 0.13 + Math.sin(t * 29 + ty * 1.1) * 0.07;

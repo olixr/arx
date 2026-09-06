@@ -287,6 +287,12 @@ test('CONTESTED LANDS: returners and fenside stand in the roster with real bodie
   assert.equal(factionOfActor('waykeeper_sergeant'), 'waykeepers');
   assert.equal(factionOfActor('even_sentinel'), 'evencourt');
   assert.equal(factionOfActor('company_aske'), 'reavers');
+  // Band 7: Brede rides the reavers by membership (his crew by prefix),
+  // so a blow on the bar closes his throat and Ferrick sells it back;
+  // the drover is nobody's ("I drive for the Charter. I am not the Charter.").
+  assert.equal(factionOfActor('company_brede'), 'reavers');
+  assert.equal(factionOfActor('charter_drover'), null);
+  assert.equal(factionOfActor('skral_weirward'), null);
   for (const c of ['charter_margit', 'charter_ingram', 'charter_steinar', 'charter_bodil']) {
     assert.equal(factionOfActor(c), 'fordgate', c);
   }

@@ -1,0 +1,35 @@
+{
+  "id": "q_stakes_in_the_waist_offer",
+  "start": "hub",
+  "requires": ["quest:stakes_in_the_waist:available"],
+  "forbids": [
+    "quest:the_old_gate:active",
+    "quest:the_old_gate:done",
+    "quest:the_green_road:active",
+    "quest:the_green_road:done"
+  ],
+  "bindings": [{ "kind": "actor", "target": "charter_ingram", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_stakes_in_the_waist_offer__hub",
+      "text": "Eight stakes at Margit's stall and no hands to carry them. Carry them and the road is a hand's width drier by dusk. I will tell you now what it costs. The water the line keeps off the road goes down the channel onto the crofts, and the crofts know whose hands carried the stakes.",
+      "hooks": [{ "kind": "quest_offer", "quest": "stakes_in_the_waist" }],
+      "choices": [
+        { "text": "I will carry them.", "next": "sworn" },
+        { "text": "Not for the Charter.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_stakes_in_the_waist_offer__sworn",
+      "text": "Margit has them counted out in the tally crates on the green. She will count them again when you take them. Let her.",
+      "hooks": [{ "kind": "quest_accept", "quest": "stakes_in_the_waist" }]
+    },
+    {
+      "id": "declined",
+      "voice": "q_stakes_in_the_waist_offer__declined",
+      "text": "Then walk the wet road. It is the same road."
+    }
+  ]
+}

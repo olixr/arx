@@ -1,0 +1,36 @@
+{
+  "id": "halvor_fine",
+  "start": "hub",
+  "requires": ["faction:fenside:atmost:outlaw"],
+  "bindings": [{ "kind": "actor", "target": "fenside_halvor", "priority": 12 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "halvor_fine__hub",
+      "text": "You dried my field and now you want my door. The door costs. Everything costs this year, and I am not the one who set the prices.",
+      "choices": [
+        { "text": "How much?", "next": "quote" },
+        { "text": "Pay it.", "next": "paid" },
+        { "text": "Not today.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "quote",
+      "voice": "halvor_fine__quote",
+      "text": "He counts it on the fingers of one hand, twice, and says the number to the water.",
+      "hooks": [{ "kind": "fine", "faction": "fenside", "quote": true }],
+      "next": "hub"
+    },
+    {
+      "id": "paid",
+      "voice": "halvor_fine__paid",
+      "text": "Paid. It does not dry the field.",
+      "hooks": [{ "kind": "fine", "faction": "fenside" }]
+    },
+    {
+      "id": "bye",
+      "voice": "halvor_fine__bye",
+      "text": "Then the door stays what it is."
+    }
+  ]
+}

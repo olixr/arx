@@ -1,0 +1,28 @@
+{
+  "id": "the_green_road",
+  "name": "The Green Road",
+  "giver": "fenside_halvor",
+  "turnIn": "waykeeper_leif",
+  "requires": { "quests": ["the_old_gate"] },
+  "stages": [
+    {
+      "id": "string",
+      "journal": "The kelp string, back to the shoal at the weir on the crofts' south water, ten tiles from Halvor's fire. Hand it to one of them at the totem. Say nothing. They will not.",
+      "objectives": [{ "kind": "talk", "actor": "skral_weirward" }]
+    },
+    {
+      "id": "corn",
+      "journal": "Three sheaves past Brede's bar to the gate at Dawnmead, to the boy with chalk on his hands. It is his family's corn. Steel, or the south shoulder in the dark; the road does not know which and neither will the corn.",
+      "objectives": [{ "kind": "collect", "item": "green_corn", "count": 3 }]
+    }
+  ],
+  "rewards": {
+    "coins": 80,
+    "xp": [{ "skill": "combat", "amount": 150 }],
+    "standing": [
+      { "faction": "fenside", "delta": 15 },
+      { "faction": "fordgate", "delta": -15 }
+    ],
+    "flags": ["fen_side_taken", "halvor_string_carried"]
+  }
+}

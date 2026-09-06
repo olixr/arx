@@ -65,6 +65,50 @@ export interface PoiGarrisonEntry {
    * the stances matrix. Absent = the bestiary's own tribe.
    */
   tribe?: string;
+  /**
+   * THE MOUTH ON THE ROW (contested lands, band 7): the actor slug
+   * this row's ONE named, crowned body speaks through. The muster
+   * carries it as ZoneSpawn.mouth; when the body stands, the server
+   * registers it in the actor table under this slug, so the actor
+   * def's `lines`, examine and bound dialogue trees resolve through
+   * the shipped talk path while the body keeps the bestiary's art,
+   * level, crown and hit band. A mouthed body never OPENS a fight (its
+   * crew does; a blow forces; it fights as the crowned boss once the
+   * fight reaches it). The validator allows it only on a holdfast row
+   * with `names` of length exactly 1 and `crowned: true`, naming a
+   * live actor def; one body per named slug (no zone or actors row
+   * may place the same slug). Brede at the First Road bar is the
+   * first; every crowned face this epic owes speaks through it.
+   */
+  actor?: string;
+  /**
+   * THE POST IS NAMED, for the ring (contested lands, band 7 fix pass
+   * 1): a prefab-local cell this SENTRY row stands on instead of a
+   * ring bearing, with its cardinal stand. The cell lies outside the
+   * sketch by nature (a sentry's ground is the approach) and is taken
+   * verbatim by the muster — no field probe, no nudge — because the
+   * plan that names it also authors the ground under it (the bar's
+   * archer and picket stand on the fen waist's worn shoulder at the
+   * post line, where the pass is read). The validator allows it only
+   * on a sentry row of count [1, 1] without `patrol` (a posted body
+   * stands; the round is the ring's), within 32 tiles of the sketch,
+   * and never on a solid sketch cell.
+   */
+  at?: PoiActorAt;
+}
+
+/**
+ * THE POST IS NAMED (the seating law): a prefab-local cell an actor
+ * row stands on instead of a derived hearth or watch spot. `dir` is
+ * a cardinal stand (absent = face the fire, as the derived posts do).
+ * The validator holds it inside the prefab's rect on a non-solid cell,
+ * or on a seat/bed cell for a sit/lie post; composePoi posts the body
+ * there exactly, and rows without `at` keep the derived path.
+ */
+export interface PoiActorAt {
+  dx: number;
+  dy: number;
+  dir?: 'N' | 'E' | 'S' | 'W';
 }
 
 /**
@@ -86,6 +130,11 @@ export interface PoiActorEntry {
   post: 'hearth' | 'watch';
   /** RoutineDef id bound at the placement (post-is-the-origin law). */
   routine?: string;
+  /**
+   * THE POST IS NAMED: an exact prefab-local cell for this body (see
+   * PoiActorAt). Absent = the derived hearth/watch spot, as before.
+   */
+  at?: PoiActorAt;
 }
 
 /**
@@ -267,6 +316,28 @@ export interface PoiDef {
    * (the dialogue system owns that namespace).
    */
   clearedFlag?: string;
+  /**
+   * THE PASS (contested lands, band 7): a character_flags key that
+   * walks this site's garrison. Both hold-fire chokes (the aggro scan
+   * and the unforced aggro door) resolve the body's OWN site row from
+   * its spawn record and hold fire on a character who carries the
+   * flag — and, THE NURSERY CLAUSE, on any character without the
+   * durable `qst:the_first_road` stamp (the tutorial is sacred; the
+   * Company tolls nobody under a first sword). A blow still forces.
+   * Flags never expire: the bar is bought once per character ("Paid
+   * is paid"); a toll that expires is a flag TTL and is refused.
+   * Same slug shape as clearedFlag; never 'dlg:'.
+   */
+  passFlag?: string;
+  /**
+   * THE TOLL SURVEY (contested lands, band 7): this def is a toll for
+   * the `world:toll_near` read. watchSurvey counts a standing pinned
+   * def declaring `toll: true` for its `toll` output ONLY — the
+   * `near`/`bold` outputs stay procedural-only, and the authored-cell
+   * skip is bypassed for that one read. Absent = not a toll (the
+   * procedural `road_toll` id keeps its own name-match).
+   */
+  toll?: boolean;
   /**
    * THE WAR-GROUND: this def composes as a compound hold — court plus
    * wings, cleared in chapters. See PoiCompound. Mutually exclusive

@@ -1,0 +1,13 @@
+{
+  "id": "skral_weir_paid",
+  "start": "held",
+  "requires": ["halvor_string_carried"],
+  "bindings": [{ "kind": "actor", "target": "skral_weirward", "priority": 10 }],
+  "nodes": [
+    {
+      "id": "held",
+      "voice": "skral_weir_paid__held",
+      "text": "The skral lifts its hand and holds it there, palm out, longer than a wave. Beside its own strings on the totem there is one more."
+    }
+  ]
+}

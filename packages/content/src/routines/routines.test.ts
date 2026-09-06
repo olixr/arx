@@ -209,3 +209,54 @@ test('the saddle validator rejects the dishonest riders', () => {
     'ride overrides demand a mounted task',
   );
 });
+
+test('THE HAVEN\'S CAST (band 7): the east keeps its hours and the lamp-boy keeps one body', () => {
+  // The five lives the fen lamp and the bar brought, and the one struck.
+  for (const id of ['hale_lamp', 'halvor_gate', 'ingram_dike', 'crofter_boards', 'crofter_stilts', 'drover_held']) {
+    assert.ok(ROUTINES.has(id), `${id} missing from the registry`);
+  }
+  assert.ok(!ROUTINES.has('leif_walk'), 'ONE LEIF (R6/E4): leif_walk retired; his walk is the road\'s');
+  assert.ok(ROUTINES.has('leif_gate'), 'Dawnmead\'s Leif keeps his gate');
+  // The clock: Hale trims at dawn and dusk and sleeps on the bench from
+  // half past nine; Halvor walks to the gate at dawn, sits at noon
+  // while Hale wanders, and is abed by nine; Ingram is on the line all
+  // morning and under canvas by nine; the drover sits all day and
+  // night but for his half hour let out.
+  const hale = ROUTINES.get('hale_lamp')!;
+  assert.equal(routineTaskAt(hale, 5.75).kind, 'path', 'the dawn trim');
+  assert.equal(routineTaskAt(hale, 19.75).kind, 'path', 'the dusk trim');
+  const bench = routineTaskAt(hale, 23);
+  assert.ok(bench.kind === 'post' && bench.sit === true, 'Hale sleeps at his post in his boots');
+  assert.equal(routineTaskAt(hale, 3).kind, 'post', 'the night sit wraps midnight');
+  assert.equal(routineTaskAt(hale, 12.5).kind, 'wander');
+  const halvor = ROUTINES.get('halvor_gate')!;
+  assert.equal(routineTaskAt(halvor, 6).kind, 'path', 'thirty years of walking to it every morning');
+  const noon = routineTaskAt(halvor, 12.25);
+  assert.ok(noon.kind === 'post' && noon.sit === true, 'the bench at noon');
+  const abed = routineTaskAt(halvor, 22);
+  assert.ok(abed.kind === 'post' && abed.lie === true);
+  // Fix pass 1 (the seating audit): the base is a POST facing west,
+  // the gate across the water, not a wander — a wander around a cell
+  // diagonal to the fire walked him onto the fire's own column at
+  // noon (the proof's weir shot), and Halvor at his fire facing the
+  // gate is the sentence.
+  const base = routineTaskAt(halvor, 9);
+  assert.ok(base.kind === 'post' && base.dir !== undefined && Math.abs(base.dir - Math.PI) < 1e-3, 'the base post, facing the gate');
+  const ingram = ROUTINES.get('ingram_dike')!;
+  const line = routineTaskAt(ingram, 8);
+  assert.ok(line.kind === 'path' && line.mode === 'once' && line.waypoints.length === 4, 'the counter, the line\'s end, its middle, and home');
+  const cot = routineTaskAt(ingram, 23);
+  assert.ok(cot.kind === 'post' && cot.lie === true, 'the bed under the canvas');
+  const drover = ROUTINES.get('drover_held')!;
+  const sat = routineTaskAt(drover, 15);
+  assert.ok(sat.kind === 'post' && sat.sit === true, 'a wayside sit all day');
+  assert.equal(routineTaskAt(drover, 6.25).kind, 'wander', 'let out to walk, nowhere to walk to');
+  // The two crofters keep the boards by day and the east cabin by night.
+  for (const id of ['crofter_boards', 'crofter_stilts']) {
+    const c = ROUTINES.get(id)!;
+    assert.equal(routineTaskAt(c, 7).kind, 'path', `${id}: the boards at seven`);
+    assert.equal(routineTaskAt(c, 12.25).kind, 'wander', `${id}: the noon drift`);
+    const night = routineTaskAt(c, 23);
+    assert.ok(night.kind === 'post' && (night.lie === true || night.sit === true), `${id}: indoors by night`);
+  }
+});

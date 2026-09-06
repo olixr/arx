@@ -1,0 +1,14 @@
+{
+  "id": "q_the_obstruction_bill_turnin",
+  "start": "paid",
+  "requires": ["quest:the_obstruction_bill:ready"],
+  "bindings": [{ "kind": "actor", "target": "charter_ingram", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "voice": "q_the_obstruction_bill_turnin__paid",
+      "text": "Sixty. Counted and entered. The gate stays hung and the bill is paid, and both of those are true at once, which is the Charter's whole trade. Next season I write it again.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_obstruction_bill" }]
+    }
+  ]
+}

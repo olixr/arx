@@ -1,0 +1,14 @@
+{
+  "id": "hale_toll_walked",
+  "start": "chalked",
+  "once": true,
+  "requires": ["quest:the_green_road:done"],
+  "bindings": [{ "kind": "actor", "target": "waykeeper_hale", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "chalked",
+      "voice": "hale_toll_walked__chalked",
+      "text": "You walked the crofts' corn past the bar. I chalked it on the post. Toll walked, and a name. It is not a charge. It is a ledger. The Company keeps one and so do I, and mine is the one that stays lit."
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "id": "crofter_stilts",
+  "base": {
+    "kind": "post",
+    "dir": 3.1415927,
+    "speed": 1.3
+  },
+  "slots": [
+    {
+      "from": 6,
+      "to": 9.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.3,
+        "waypoints": [
+          {
+            "x": -15,
+            "y": -6,
+            "waitSec": 60,
+            "dir": 0
+          }
+        ]
+      }
+    },
+    {
+      "from": 12,
+      "to": 12.5,
+      "task": {
+        "kind": "wander",
+        "radius": 1.5,
+        "speed": 1.3
+      }
+    },
+    {
+      "from": 20.5,
+      "to": 6,
+      "task": {
+        "kind": "post",
+        "x": 1,
+        "y": -8,
+        "lie": true,
+        "speed": 1.3
+      }
+    }
+  ]
+}

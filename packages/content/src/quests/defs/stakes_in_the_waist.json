@@ -1,0 +1,26 @@
+{
+  "id": "stakes_in_the_waist",
+  "name": "Stakes in the Waist",
+  "giver": "charter_ingram",
+  "requires": { "quests": ["the_first_road"] },
+  "stages": [
+    {
+      "id": "fetch",
+      "journal": "Ingram's eight stakes are at Margit's stall on Dawnmead's green, with the Charter's tally crates. She posts and she does not carry. Fetch them west to east: the gate, the causeway, the bar, the ford. You are not Charter paper yet, and the bar reads faces.",
+      "objectives": [{ "kind": "talk", "actor": "charter_margit" }]
+    },
+    {
+      "id": "plant",
+      "journal": "Eight stakes to the counter at the ford, where Ingram stands with the level. The line goes across the crossing on the downstream side; he drives, you hand. Every stake that goes in is a hand's width of road kept dry and a hand's width of water sent down past the crofts.",
+      "objectives": [{ "kind": "collect", "item": "dike_stake", "count": 8 }]
+    }
+  ],
+  "rewards": {
+    "coins": 60,
+    "standing": [
+      { "faction": "fordgate", "delta": 10 },
+      { "faction": "fenside", "delta": -10 }
+    ],
+    "flags": ["dike_planted"]
+  }
+}

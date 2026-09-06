@@ -509,6 +509,82 @@ function isCaveGround(t: number | undefined): boolean {
 
 // ---------------------------------------------------------------- baking
 
+/**
+ * THE PROP STANDS IN WATER (contested lands band 7, site-grammar G-2;
+ * R7: drowned rows must READ drowned). The amphibious set: props an
+ * author may write INTO a WaterShallow run — the drowned croft rows'
+ * fences and scarecrow, the Charter's dike stakes and the Company's
+ * rag stakes in the channel, the sluice and its strung twin, the
+ * mark-post, a rail, the skral kit's dugout, totem, weir panels,
+ * keep-pool and reed shelter, the irrigation trench, a felled log in
+ * the shallows. Every one of these falls through nearestFloor (whose
+ * fallback is Grass: WATER IS NOT A FLOOR) or GRASS_LIKE (the fence
+ * family), so before G-2 a fence written into a pond baked a green
+ * square in the water. Now, for exactly this set, `wetUnderGround`
+ * reads the cardinal ring first: run-mates (any other member of the
+ * set) are skipped as deck tiles are skipped under a bridge, and if
+ * the water in the ring is at least the land, the prop stands in
+ * that water (the most common depth wins) and the pool's own contour
+ * runs beneath it. A dry ring falls through to the family's shipped
+ * underlay untouched (a fence on a lawn is still on a lawn), which
+ * is what keeps every existing bake byte-identical: only a prop with
+ * water beside it changes. The model is deckUnderGround (below).
+ */
+export const WET_STANDERS: ReadonlySet<number> = new Set<number>([
+  Tile.Fence,
+  Tile.FenceBroken,
+  Tile.Scarecrow,
+  Tile.CharterPost,
+  Tile.RedRagStake,
+  Tile.SluiceGate,
+  Tile.SluiceGateStrung,
+  Tile.TimberPost,
+  Tile.RailWood,
+  Tile.Dugout,
+  Tile.TideTotem,
+  Tile.WeirPanels,
+  Tile.KeepPool,
+  Tile.ReedShelter,
+  Tile.IrrigationChannel,
+  Tile.FelledLog,
+]);
+
+/**
+ * The water a wet-standing prop stands in, or null when the ring is
+ * dry (or unknowable) and the family's own underlay should decide.
+ * Cardinal ring first; when every cardinal is a run-mate or unknown
+ * (a fence mid-run across a pond), the diagonals decide; still
+ * nothing, null. Ties go to the water: a stake with pond on two sides
+ * and bank on two is a stake in the shallows.
+ */
+export function wetUnderGround(ground: GroundSampler, tx: number, ty: number): number | null {
+  const rings: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
+    [[1, 0], [-1, 0], [0, 1], [0, -1]],
+    [[1, 1], [-1, 1], [1, -1], [-1, -1]],
+  ];
+  for (const ring of rings) {
+    let shallow = 0;
+    let water = 0;
+    let deep = 0;
+    let land = 0;
+    for (const [dx, dy] of ring) {
+      const t = ground(tx + dx, ty + dy);
+      if (t === undefined || WET_STANDERS.has(t)) continue;
+      if (t === Tile.WaterShallow) shallow++;
+      else if (t === Tile.Water || isFishingTile(t)) water++;
+      else if (t === Tile.WaterDeep) deep++;
+      else land++;
+    }
+    const wet = shallow + water + deep;
+    if (wet === 0 && land === 0) continue;
+    if (wet === 0 || wet < land) return null;
+    if (deep >= water && deep >= shallow) return Tile.WaterDeep;
+    if (water >= shallow) return Tile.Water;
+    return Tile.WaterShallow;
+  }
+  return null;
+}
+
 /** Effective ground for blob purposes: objects show what's under them. */
 function effectiveGround(ground: GroundSampler): GroundSampler {
   // Per-bake memos: one axis flood per span, one underground verdict
@@ -518,6 +594,12 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
   const g = (tx: number, ty: number): number => {
     const t = ground(tx, ty);
     if (t === undefined) return Tile.Grass;
+    // THE PROP STANDS IN WATER (G-2): the amphibious set reads its
+    // ring before any family branch can hand it a lawn.
+    if (WET_STANDERS.has(t)) {
+      const wet = wetUnderGround(ground, tx, ty);
+      if (wet !== null) return wet;
+    }
     // Raised decks: the SKIN under a dock or bridge is whatever the
     // structure actually spans — water over the pool, the BANK at the
     // road aprons (a ramp is bank-first: even a diagonal lick of
@@ -1829,6 +1911,12 @@ export function porchCarries(t: number | undefined): boolean {
     t === Tile.RailWood ||
     t === Tile.TimberPost ||
     t === Tile.LampPost ||
+    // THE CARRIED SHEAF (contested lands, band 7 fix pass 1): a hay
+    // bale on porch boards keeps the deck beneath it, so the drowned
+    // crofts' green corn can stand on its stilted pallets and read as
+    // corn (the sketch carried crates for want of this one line). The
+    // renderer's porchAt mirrors it exactly.
+    t === Tile.HayBale ||
     (t >= Tile.Barrel && t <= Tile.Basin)
   );
 }
@@ -4416,89 +4504,108 @@ function drawTileDetail(
       // no transforms — a ground bake is a quad's texture and must
       // read the same off the canvas oracle and the GL stage.
       } else if (d === Detail.Ash) {
-        // THE COLD HEARTH's ash pan (K1). A pan, not a stamp: the grey
-        // runs to the tile edge on every side that meets more ash
-        // (dAt), so a floor of it reads as ONE spill, and on a free
-        // side the rim is a ragged union of squared lobes dealt from
-        // the world hash — no two tiles cut the same shape, and a
-        // lone tile is a blot, never a badge. Value planes only: a
-        // packed-wet seat one step down under the free rim, the pan,
-        // two dealt plates of dry pale ash (lit toward the west sun,
-        // TWO SUNS), the clinker — the black that did not burn — as
-        // squared blocks with one lit facet, and a feather fringe of
-        // blown flakes thinning outward in alpha steps. Min feature
-        // 0.03s, no strokes, no transforms (parity: a ground bake is
-        // a quad's texture).
+        // THE ASH LIES SOFT (contested lands band 7, owed E3 / D1): the
+        // second pass on THE COLD HEARTH's ash pan (K1). The first pass
+        // laid ONE flat grey pan per tile, inset on its free sides, and
+        // a floor of them read as flagstones: every tile the same
+        // value, every seam a grid line, the sacking row's pan a grey
+        // flag on the meadow. Ash is not a flag. It is a GRAIN: a field
+        // of small squared flakes whose presence, size and value ride
+        // a slow WORLD-keyed noise (the flake lattice, its deal and the
+        // swell are all keyed to the world cell of each flake, never to
+        // the tile), so one grain runs across every tile edge without a
+        // seam; thick where the spill lay deep, thinning to nothing at
+        // the rim so the tile's own ground (the shell's dirt, the pan's
+        // grass) shows through between the last flakes; and the rim is
+        // where the hash says the last flake fell, never a straight
+        // edge. Value planes only (FLAT FORGE): a packed-wet seat one
+        // step SE under the deep grain, the grey grain in three alpha
+        // steps, the dry pale plates lit toward the west sun, the
+        // clinker (the black that did not burn) with one lit facet, and
+        // the blown flakes past the rim. Min feature 0.03s; fills only,
+        // no strokes, no transforms — a ground bake is a quad's texture
+        // and must read the same off the canvas oracle and the GL stage.
         const hh = hashCoords(231, tx, ty);
         const ashAt = (ox: number, oy: number): boolean => dAt !== undefined && dAt(tx + ox, ty + oy) === Detail.Ash;
         const jW = ashAt(-1, 0);
         const jE = ashAt(1, 0);
         const jN = ashAt(0, -1);
         const jS = ashAt(0, 1);
-        // The world-keyed swell: slow noise decides how full this
-        // tile's pan is (deep mid-spill, thin at the fringe) and where
-        // the dry pale ash lies.
-        const swell = valueNoise(0x0a5, tx * 0.23, ty * 0.23);
-        const dry = valueNoise(0x0a7, tx * 0.31 + 7.3, ty * 0.31 + 2.1);
-        // The core: inset on free sides by hash + (1-swell), flush
-        // (with a hair of overlap) on joined sides.
-        const inset = (side: number, joined: boolean): number =>
-          joined ? -0.02 : 0.12 + ((hh >>> (side * 5)) % 6) * 0.018 + (1 - swell) * 0.08;
-        const iw = inset(0, jW);
-        const ie = inset(1, jE);
-        const inn = inset(2, jN);
-        const is = inset(3, jS);
-        const x0 = gx + px * iw;
-        const y0 = gy + px * inn;
-        const pw = px * (1 - iw - ie);
-        const ph = px * (1 - inn - is);
-        // The lobes: on each free side two squared lobes push from
-        // the core toward the edge by a hashed reach; their union with
-        // the core is the pan's ragged silhouette. `pad` grows every
-        // rect by a step (the seat under the rim).
-        const lobes: Array<[number, number, number, number]> = [];
-        for (let side = 0; side < 4; side++) {
-          if (side === 0 && jW) continue;
-          if (side === 1 && jE) continue;
-          if (side === 2 && jN) continue;
-          if (side === 3 && jS) continue;
-          for (let k = 0; k < 2; k++) {
-            const hk = hashCoords(291 + side * 2 + k, tx, ty);
-            const span = 0.16 + ((hk >>> 3) % 5) * 0.04;
-            const reach = 0.04 + ((hk >>> 7) % 4) * 0.03;
-            const along = ((hk >>> 11) % 61) / 60;
-            if (side === 0) lobes.push([x0 - px * reach, y0 + (ph - px * span) * along, px * reach + px * 0.02, px * span]);
-            else if (side === 1) lobes.push([x0 + pw - px * 0.02, y0 + (ph - px * span) * along, px * reach + px * 0.02, px * span]);
-            else if (side === 2) lobes.push([x0 + (pw - px * span) * along, y0 - px * reach, px * span, px * reach + px * 0.02]);
-            else lobes.push([x0 + (pw - px * span) * along, y0 + ph - px * 0.02, px * span, px * reach + px * 0.02]);
+        const jNW = ashAt(-1, -1);
+        const jNE = ashAt(1, -1);
+        const jSW = ashAt(-1, 1);
+        const jSE = ashAt(1, 1);
+        // How far (u, v) in the tile lies from the spill's rim: joined
+        // sides count as far; a bare diagonal is a corner rim too, so
+        // the grain thins into an outside corner the way the neighbour
+        // thins toward its own free side (no step along the shared
+        // edge). 0 at the rim, up to 1 deep inside.
+        const rimAt = (u: number, v: number): number => {
+          let e = 1;
+          if (!jW) e = Math.min(e, u);
+          if (!jE) e = Math.min(e, 1 - u);
+          if (!jN) e = Math.min(e, v);
+          if (!jS) e = Math.min(e, 1 - v);
+          if (!jNW) e = Math.min(e, Math.max(u, v));
+          if (!jNE) e = Math.min(e, Math.max(1 - u, v));
+          if (!jSW) e = Math.min(e, Math.max(u, 1 - v));
+          if (!jSE) e = Math.min(e, Math.max(1 - u, 1 - v));
+          return e;
+        };
+        // The depth of the spill at a world point: the rim distance
+        // scaled by the slow swell (how full the pan is here), ragged
+        // by a noise a third of a tile long. Below 0.06 no flake lies.
+        const depthAt = (u: number, v: number): number => {
+          const wx = tx + u;
+          const wy = ty + v;
+          const swell = valueNoise(0x0a5, wx * 0.9 + 3.7, wy * 0.9 + 1.9);
+          const rag = valueNoise(0x0a9, wx * 3.3, wy * 3.3);
+          return rimAt(u, v) * (0.7 + 0.6 * swell) + (rag - 0.5) * 0.36;
+        };
+        // THE GRAIN: a G×G lattice of flakes per tile, each keyed to
+        // its world lattice cell (tx·G + i, ty·G + j) so the lattices of
+        // neighbouring tiles interlock at the edge.
+        const G = 7;
+        const cell = px / G;
+        const tones = ['rgba(141, 138, 144, ', 'rgba(152, 149, 156, ', 'rgba(128, 125, 133, '];
+        for (let j = 0; j < G; j++) {
+          for (let i = 0; i < G; i++) {
+            const u = (i + 0.5) / G;
+            const v = (j + 0.5) / G;
+            const depth = depthAt(u, v);
+            if (depth < 0.06) continue;
+            const hk = hashCoords(293, tx * G + i, ty * G + j);
+            const fw = cell * (0.82 + ((hk >>> 3) % 5) * 0.1);
+            const fhh = cell * (0.82 + ((hk >>> 7) % 5) * 0.1);
+            const fx = gx + (i + 0.5) * cell - fw * 0.5 + (((hk >>> 11) % 7) - 3) * cell * 0.09;
+            const fy = gy + (j + 0.5) * cell - fhh * 0.5 + (((hk >>> 15) % 7) - 3) * cell * 0.09;
+            // Three alpha steps by depth; one deep flake in four sits
+            // on a packed-wet seat one step SE (away from the west
+            // sun) — every flake seated read as cobbles, not ash.
+            if (depth > 0.3 && ((hk >>> 23) & 3) === 0) {
+              ctx.fillStyle = 'rgba(72, 68, 76, 0.3)';
+              ctx.fillRect(fx + px * 0.025, fy + px * 0.025, fw, fhh);
+            }
+            const a = depth > 0.3 ? 0.62 : depth > 0.16 ? 0.44 : 0.26;
+            ctx.fillStyle = `${tones[(hk >>> 19) % 3]}${a})`;
+            ctx.fillRect(fx, fy, fw, fhh);
           }
         }
-        const pan = (pad: number): void => {
-          ctx.fillRect(
-            x0 - (jW ? 0 : pad),
-            y0 - (jN ? 0 : pad),
-            pw + (jW ? 0 : pad) + (jE ? 0 : pad),
-            ph + (jN ? 0 : pad) + (jS ? 0 : pad),
-          );
-          for (const [lx0, ly0, lw0, lh0] of lobes) ctx.fillRect(lx0 - pad, ly0 - pad, lw0 + pad * 2, lh0 + pad * 2);
-        };
-        // The seat (one value step down, under the free rim only).
-        ctx.fillStyle = 'rgba(72, 68, 76, 0.36)';
-        pan(px * 0.03);
-        // The pan.
-        ctx.fillStyle = 'rgba(141, 138, 144, 0.64)';
-        pan(0);
         // The dry pale ash: two dealt plates (a third where the noise
         // says the spill dried), each a step up, their lit corner a
-        // step up again toward the west sun. Sizes ride the hash so
-        // no two tiles share a plate.
+        // step up again toward the west sun, only where the grain is
+        // deep enough to carry them.
+        const dry = valueNoise(0x0a7, tx * 0.31 + 7.3, ty * 0.31 + 2.1);
         const plates = 2 + (dry > 0.62 ? 1 : 0);
         for (let k = 0; k < plates; k++) {
           const hk = hashCoords(301 + k, tx, ty);
-          const plw = pw * (0.18 + ((hk >>> 2) % 5) * 0.05);
-          const plh = ph * (0.14 + ((hk >>> 6) % 5) * 0.05);
-          const plx = x0 + (pw - plw) * (((hk >>> 10) % 71) / 70);
-          const ply = y0 + (ph - plh) * (((hk >>> 17) % 67) / 66);
+          const plw = px * (0.14 + ((hk >>> 2) % 5) * 0.04);
+          const plh = px * (0.11 + ((hk >>> 6) % 5) * 0.04);
+          const pu = 0.08 + 0.84 * (((hk >>> 10) % 71) / 70);
+          const pv = 0.08 + 0.84 * (((hk >>> 17) % 67) / 66);
+          if (depthAt(pu, pv) < 0.22) continue;
+          const plx = gx + px * pu - plw * 0.5;
+          const ply = gy + px * pv - plh * 0.5;
           ctx.fillStyle = `rgba(186, 184, 190, ${(0.3 + dry * 0.2).toFixed(3)})`;
           ctx.fillRect(plx, ply, plw, plh);
           ctx.fillStyle = 'rgba(214, 212, 216, 0.28)';
@@ -4506,15 +4613,18 @@ function drawTileDetail(
         }
         // The clinker: 3–6 squared black blocks, one lit facet each
         // (a thin lighter cap on the top and west edges — depth as a
-        // value step). Sizes 0.06–0.12 so the 0.03s cap stays a cap,
-        // kept inside the core.
+        // value step). Sizes 0.06–0.12 so the 0.03s cap stays a cap;
+        // a block deals itself only into the deep grain.
         const nClink = 3 + ((hh >>> 14) % 4);
         for (let k = 0; k < nClink; k++) {
           const hk = hashCoords(233 + k, tx, ty);
           const cw = px * (0.06 + ((hk >>> 3) % 4) * 0.02);
           const chh = cw * (0.7 + ((hk >>> 9) % 3) * 0.15);
-          const cx = x0 + px * 0.02 + (pw - cw - px * 0.04) * (((hk >>> 12) % 97) / 96);
-          const cy = y0 + px * 0.02 + (ph - chh - px * 0.04) * (((hk >>> 19) % 89) / 88);
+          const cu = 0.06 + 0.88 * (((hk >>> 12) % 97) / 96);
+          const cv = 0.06 + 0.88 * (((hk >>> 19) % 89) / 88);
+          if (depthAt(cu, cv) < 0.16) continue;
+          const cx = gx + px * cu - cw * 0.5;
+          const cy = gy + px * cv - chh * 0.5;
           ctx.fillStyle = (hk & 1) === 0 ? '#2a2529' : '#37313a';
           ctx.fillRect(cx, cy, cw, chh);
           ctx.fillStyle = (hk & 1) === 0 ? '#4a444c' : '#57505c';
@@ -4527,27 +4637,24 @@ function drawTileDetail(
             ctx.fillRect(cx + cw * 0.3, cy + chh * 0.35, Math.max(1, px * 0.03), Math.max(1, px * 0.03));
           }
         }
-        // The feather fringe: pale flakes blown past the rim, dealt
-        // per free side, two alpha steps thinning outward. A joined
-        // side gets none — the pan continues into the neighbour.
-        const flake = (fx: number, fy: number, a: number): void => {
-          ctx.fillStyle = `rgba(200, 198, 204, ${a})`;
-          ctx.fillRect(fx, fy, px * 0.05, px * 0.04);
-        };
-        for (let k = 0; k < 10; k++) {
+        // The blown flakes: pale grains carried past the rim onto the
+        // bare ground, dealt per free side, thinning outward in two
+        // alpha steps. A joined side gets none — the grain continues.
+        for (let k = 0; k < 8; k++) {
           const hk = hashCoords(281 + k, tx, ty);
           const side = (hk >>> 2) & 3;
           if (side === 0 && jW) continue;
           if (side === 1 && jE) continue;
           if (side === 2 && jN) continue;
           if (side === 3 && jS) continue;
-          const along = ((hk >>> 6) % 83) / 82;
-          const out = 0.05 + ((hk >>> 13) % 4) * 0.03;
-          const a = out > 0.1 ? 0.18 : 0.34;
-          if (side === 0) flake(x0 - px * (out + 0.05), y0 + ph * along, a);
-          else if (side === 1) flake(x0 + pw + px * out, y0 + ph * along, a);
-          else if (side === 2) flake(x0 + pw * along, y0 - px * (out + 0.04), a);
-          else flake(x0 + pw * along, y0 + ph + px * out, a);
+          const along = 0.05 + 0.9 * (((hk >>> 6) % 83) / 82);
+          const out = 0.04 + ((hk >>> 13) % 4) * 0.035;
+          ctx.fillStyle = `rgba(200, 198, 204, ${out > 0.1 ? 0.16 : 0.3})`;
+          const fs = px * 0.045;
+          if (side === 0) ctx.fillRect(gx - px * out - fs, gy + px * along, fs, fs * 0.8);
+          else if (side === 1) ctx.fillRect(gx + px * (1 + out), gy + px * along, fs, fs * 0.8);
+          else if (side === 2) ctx.fillRect(gx + px * along, gy - px * out - fs * 0.8, fs, fs * 0.8);
+          else ctx.fillRect(gx + px * along, gy + px * (1 + out), fs, fs * 0.8);
         }
       } else if (d === Detail.Bones) {
         // THE COLD HEARTH's bone litter (K1): three to five slivers of

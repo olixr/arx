@@ -3,17 +3,40 @@ import { test } from 'node:test';
 import { TILE_DEFS, TILE_SKIP, Tile, chestInfo, closedChestTile } from '@arx/shared';
 import { WORLD_SEED,
   AMBERFORD_RECT,
+  ASHLAMP_RECT,
+  AUTHORED_WILD_SITES,
+  AUTHORED_ZONE_PAD,
+  FENSIDE_RECT,
   MINOR_DEFS,
   PLANNED_ZONE_RECTS,
   POI_DEFS,
   POI_PREFABS,
   SETTLED_ANCHORS,
   dangerLaw,
+  prefabFromJson,
+  prefabToJson,
+  validatePoiDef,
 } from '@arx/content';
-import { groundProbeAt } from '@arx/content';
+import {
+  buildAmberford,
+  buildAshlamp,
+  buildDawnmead,
+  buildEvenfall,
+  buildFenside,
+  buildHartfell,
+  buildKingsdelf,
+  buildLowhall,
+  buildPinewatch,
+  buildSaltmere,
+  buildSilverfall,
+  buildUndercroft,
+  groundProbeAt,
+} from '@arx/content';
 import {
   POI_CELL,
   composePoi,
+  findAuthoredAnchor,
+  poiCellOf,
   poiContext,
   poiForCell,
   poiSiteBlocked,
@@ -686,21 +709,117 @@ test('THE PINNED SKETCH: a forced cell honours the authored prefab pin; a pin ou
   assert.deepEqual(poiForCell(SEED, cx, cy, 0, ctx, undefined, false, 'poi_bandit_toll'), poiForCell(SEED, cx, cy, 0, ctx));
 });
 
-test('the First Road toll stands the toll sketch with its red-rag stake', async () => {
+test('the First Road pin stands its pinned sketch, in its def\'s own pool, with its red-rag stake', async () => {
+  // Band 7 (R4) re-points the pin from the rolled bandit_camp's toll
+  // sketch to Brede's bar (`first_road_bar` / `poi_first_road_bar`);
+  // the geography lane owns the pin, so this case reads whatever the
+  // plan names and holds the laws that survive the re-point: the pin
+  // names a prefab, the prefab is in the def's pool, honest ground
+  // stands within the nudge, and the Company's red rag stands.
   const { AUTHORED_WILD_SITES } = await import('@arx/content');
   const { findAuthoredAnchor, poiCellOf } = await import('./pois.js');
   const ctx = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [], []);
   const want = AUTHORED_WILD_SITES.find((s) => s.id === 'first_road_toll')!;
-  assert.equal(want.prefabId, 'poi_bandit_toll');
+  assert.ok(want, 'the First Road pin is missing from the plan');
+  assert.ok(want.prefabId, 'the First Road pin names its prefab');
+  const def = POI_DEFS.get(want.defId)!;
+  assert.ok(def, `${want.defId} is not in the registry`);
+  assert.ok(def.prefabs.includes(want.prefabId!), `${want.prefabId} is not in ${want.defId}'s pool`);
   const prefab = POI_PREFABS.get(want.prefabId!)!;
   const spot = findAuthoredAnchor(SEED, want.x!, want.y!, prefab, ctx);
-  assert.ok(spot, 'no honest ground for the toll at its pin');
+  assert.ok(spot, 'no honest ground for the bar at its pin');
   const zone = composePoi(SEED, {
     cellX: poiCellOf(want.x!), cellY: poiCellOf(want.y!), epoch: 0, tier: 3,
     defId: want.defId, prefabId: want.prefabId!, anchorX: spot!.x, anchorY: spot!.y,
   }, ctx)!;
   assert.ok(zone);
-  assert.ok([...zone.ground, ...zone.detail].includes(Tile.RedRagStake), 'the toll stands its red-rag stake');
+  assert.ok([...zone.ground, ...zone.detail].includes(Tile.RedRagStake), 'the bar stands its red-rag stake');
+});
+
+test('THE REBORN TOLL (band 7, R4): the toll sketch survives the boot\'s JSON round trip byte-identical, so every rolled toll stands unchanged with its tracked file gone', () => {
+  // data/prefabs/poi_bandit_toll.json retired with the pin (R4). The
+  // library is FILE-WINS: loadPoiPrefabs seeds a missing file from the
+  // sketch through prefabToJson and reads every file back through
+  // prefabFromJson, so the toll every rolled bandit_camp stamps after
+  // the deletion is the sketch's toll reborn through that round trip.
+  // The rebirth must be lossless to the byte (the tracked file was
+  // proven identical to the sketch's JSON before it went), and a
+  // rolled cell composed against either library must deal the same
+  // zone: unpinned cells byte-identical.
+  const toll = POI_PREFABS.get('poi_bandit_toll')!;
+  assert.ok(toll, 'poi_bandit_toll left the shelf');
+  const born = JSON.stringify(prefabToJson(toll), null, 2);
+  const reborn = prefabFromJson(JSON.parse(born) as Parameters<typeof prefabFromJson>[0]);
+  assert.equal(JSON.stringify(prefabToJson(reborn), null, 2), born, 'the round trip changed the toll');
+  assert.deepEqual([...reborn.ground], [...toll.ground]);
+  assert.deepEqual([...reborn.detail], [...toll.detail]);
+  assert.deepEqual([...reborn.elev], [...toll.elev]);
+  assert.deepEqual(reborn.spawns, toll.spawns);
+  assert.deepEqual(reborn.portals, toll.portals);
+  assert.deepEqual(reborn.actorSpawns, toll.actorSpawns);
+  assert.equal(reborn.width, toll.width);
+  assert.equal(reborn.height, toll.height);
+  const rebornLib = new Map(POI_PREFABS);
+  rebornLib.set('poi_bandit_toll', reborn);
+  const ctxA = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [], []);
+  const ctxB = poiContext(SETTLED_ANCHORS, [], rebornLib, [], []);
+  let cell: [number, number] | null = null;
+  let site: PoiSite | null = null;
+  for (let cy = -12; cy <= 12 && !cell; cy++) {
+    for (let cx = -12; cx <= 12; cx++) {
+      const s = poiForCell(SEED, cx, cy, 0, ctxA, 'bandit_camp', false, 'poi_bandit_toll');
+      if (s) { cell = [cx, cy]; site = s; break; }
+    }
+  }
+  assert.ok(cell && site, 'no cell seats a rolled toll');
+  const [cx, cy] = cell!;
+  assert.deepEqual(poiForCell(SEED, cx, cy, 0, ctxB, 'bandit_camp', false, 'poi_bandit_toll'), site);
+  const zoneA = composePoi(SEED, site!, ctxA);
+  const zoneB = composePoi(SEED, site!, ctxB);
+  assert.ok(zoneA && zoneB, 'the rolled toll failed to compose');
+  assert.deepEqual(zoneB, zoneA, 'the reborn toll deals a different zone');
+  // And the whole unpinned world: every naturally-decided site is the
+  // same site against either library.
+  for (let sy = -SCAN; sy <= SCAN; sy++) {
+    for (let sx = -SCAN; sx <= SCAN; sx++) {
+      assert.deepEqual(poiForCell(SEED, sx, sy, 0, ctxB), poiForCell(SEED, sx, sy, 0, ctxA));
+    }
+  }
+});
+
+test("BREDE'S BAR (band 7, R4): the shipped def musters Brede crowned with his mouth at tier 1 and 2, a crew of five, the warded box and the red rag, and never rolls", () => {
+  const def = POI_DEFS.get('first_road_bar')!;
+  assert.ok(def, 'first_road_bar is not in the registry');
+  assert.equal(def.passFlag, 'charter_pass');
+  assert.equal(def.toll, true);
+  for (const tier of [1, 2]) {
+    const shown = previewPoi(SEED, CTX, 'first_road_bar', tier);
+    assert.ok(shown, `no tier-${tier} site composed for the bar`);
+    assert.equal(shown!.site.prefabId, 'poi_first_road_bar');
+    const spawns = shown!.zone.spawns ?? [];
+    const mouths = spawns.filter((s) => s.mouth !== undefined);
+    assert.equal(mouths.length, 1, `tier ${tier}: exactly one body carries the mouth`);
+    const brede = mouths[0]!;
+    assert.equal(brede.mouth, 'company_brede');
+    assert.equal(brede.name, 'Brede');
+    assert.equal(brede.npc, 'brigand_reaver');
+    assert.equal(brede.count, 1);
+    assert.ok(brede.crown !== undefined, 'Brede is the crown');
+    assert.equal(brede.x, shown!.site.anchorX + 0.5, 'the crown stands at the anchor');
+    assert.equal(brede.y, shown!.site.anchorY + 0.5);
+    // A crew of five, not a warband (FREQUENCY, NOT AMPLITUDE): two
+    // pickets, the archer on patrol, the sentry (minTier 1) and Brede.
+    const bodies = spawns.reduce((n, s) => n + s.count, 0);
+    assert.equal(bodies, 5, `tier ${tier}: a crew of five (got ${bodies})`);
+    // The warded box stands once; the red rag stands.
+    let chests = 0;
+    for (const t of shown!.zone.ground) if (chestInfo(t) !== null) chests++;
+    assert.equal(chests, 1, 'one strongbox');
+    assert.ok([...shown!.zone.ground, ...shown!.zone.detail].includes(Tile.RedRagStake), 'the red rag stands');
+  }
+  // A weight-0 archetype never rolls on its own anywhere.
+  const stats = simulatePois(SEED, CTX, 600);
+  assert.equal(stats.byDef['first_road_bar'], undefined, "Brede's bar rolled procedurally");
 });
 
 test('the Last Lamp composes with its lamps, its keeper, and its watch', async () => {
@@ -847,4 +966,219 @@ test('THE ROUND HAS STATIONS: authored landmark routes reach the composed patrol
     }
   }
   assert.ok(proved >= 1, 'no landmark stood anywhere in the scan — siting law suspect');
+});
+
+// ---------------------------------------------------------------------
+// BAND 7 ENGINE (L5): THE POST IS NAMED and THE MOUTH ON THE ROW as
+// the composer carries them — a separate block from the sketch lane's
+// cases so the two hunks never touch.
+// ---------------------------------------------------------------------
+
+test('THE POST IS NAMED: composePoi posts an `at` row on its exact prefab cell with its cardinal stand', () => {
+  const grid = POI_PREFABS.get('poi_waystation_camp')!;
+  let open: { dx: number; dy: number } | null = null;
+  for (let i = 0; i < grid.ground.length && !open; i++) {
+    const t = grid.ground[i]!;
+    if (t !== TILE_SKIP && !TILE_DEFS[t as Tile]!.solid) open = { dx: i % grid.width, dy: Math.floor(i / grid.width) };
+  }
+  assert.ok(open, 'the waystation sketch has an open cell');
+  const res = validatePoiDef({
+    id: 'test_named_post',
+    name: 'Test named post',
+    tiers: [2, 4],
+    weight: 0,
+    prefabs: ['poi_waystation_camp'],
+    garrison: [],
+    actors: [
+      { pool: ['wayward_watch'], post: 'watch', at: { ...open!, dir: 'S' } },
+      { pool: ['wayfarer_senna'], post: 'hearth', routine: 'waystation_keeper' },
+    ],
+  });
+  assert.ok(res.ok, JSON.stringify(res));
+  if (!res.ok) return;
+  const ctx: PoiContext = { ...CTX, defs: [...CTX.defs, res.def] };
+  const shown = previewPoi(SEED, ctx, 'test_named_post', 3);
+  assert.ok(shown, 'no tier-3 site composed for the test def');
+  const { site, zone } = shown!;
+  const named = (zone.actorSpawns ?? []).find((a) => a.actor === 'wayward_watch');
+  assert.ok(named, 'the named row stands');
+  // The prefab blits at anchor - floor(size/2): the row stands on that cell, plus the half-tile centre.
+  assert.equal(named!.x, site.anchorX - Math.floor(grid.width / 2) + open!.dx + 0.5);
+  assert.equal(named!.y, site.anchorY - Math.floor(grid.height / 2) + open!.dy + 0.5);
+  assert.equal(named!.dir, Math.PI / 2, "'S' is the camera-facing stand");
+  // The ground under it is the sketch's own cell, never the fringe.
+  const zi = (Math.floor(named!.y) - zone.origin.y) * zone.width + (Math.floor(named!.x) - zone.origin.x);
+  assert.equal(zone.ground[zi], grid.ground[open!.dy * grid.width + open!.dx]);
+  // The row without `at` keeps its derived hearth post, exactly as before.
+  const keeper = (zone.actorSpawns ?? []).find((a) => a.actor === 'wayfarer_senna');
+  assert.ok(keeper && keeper.routine === 'waystation_keeper');
+  assert.deepEqual(previewPoi(SEED, ctx, 'test_named_post', 3), shown, 'deterministic');
+});
+
+test('THE AUTHORED HUG: a pin that says the word may stand edge to edge with a patch; without it the same pin walks and keeps the pad', () => {
+  const prefab = POI_PREFABS.get('poi_first_road_bar')!;
+  const want = AUTHORED_WILD_SITES.find((s) => s.id === 'first_road_toll')!;
+  assert.equal(want.hug, true, 'the bar is the one site that declares the hug');
+  const rects = [{ x: -160, y: -64, w: 192, h: 224 }, ASHLAMP_RECT, FENSIDE_RECT];
+  const ctx: PoiContext = { ...CTX, zoneRects: rects };
+  // The bar's pin stands unnudged one row south of the fen waist's rect.
+  const spot = findAuthoredAnchor(SEED, want.x!, want.y!, prefab, ctx, 1, want.hug === true);
+  assert.deepEqual(spot, { x: want.x, y: want.y }, 'the pin stands where the plan put it');
+  // THE WORD IS OPT-IN (fix pass 2): the same pin without it is refused
+  // at the pad and walked away from the rect like any other pin.
+  assert.equal(findAuthoredAnchor(SEED, want.x!, want.y!, prefab, ctx, 1), null, 'no hug, no ground within one tile');
+  const walked = findAuthoredAnchor(SEED, want.x!, want.y!, prefab, ctx, 14)!;
+  assert.ok(walked, 'the unworded pin walks to ground');
+  const wfy0 = walked.y - Math.floor(prefab.height / 2);
+  const wfx0 = walked.x - Math.floor(prefab.width / 2);
+  const wgap = Math.max(
+    wfy0 - (FENSIDE_RECT.y + FENSIDE_RECT.h),
+    FENSIDE_RECT.x - (wfx0 + prefab.width),
+    wfx0 - (FENSIDE_RECT.x + FENSIDE_RECT.w),
+  );
+  assert.ok(wgap >= AUTHORED_ZONE_PAD, `an unworded pin keeps the pad (gap ${wgap})`);
+  const fy0 = spot!.y - Math.floor(prefab.height / 2);
+  assert.equal(fy0 - (FENSIDE_RECT.y + FENSIDE_RECT.h), 1, 'one row of nobody\'s ground between the rect and the footprint');
+  assert.ok(fy0 - AUTHORED_ZONE_PAD < FENSIDE_RECT.y + FENSIDE_RECT.h, 'the old pad alone would have refused this pin');
+  // Overlap is still refused: a pin whose footprint crosses the rect
+  // walks away from it under the pad, never into it.
+  const inside = findAuthoredAnchor(SEED, want.x!, want.y! - 4, prefab, ctx, 14, true);
+  assert.ok(inside, 'the walked pin finds ground');
+  const wy0 = inside!.y - Math.floor(prefab.height / 2);
+  const wx0 = inside!.x - Math.floor(prefab.width / 2);
+  const gapY = wy0 - (FENSIDE_RECT.y + FENSIDE_RECT.h);
+  const gapX = Math.max(FENSIDE_RECT.x - (wx0 + prefab.width), wx0 - (FENSIDE_RECT.x + FENSIDE_RECT.w));
+  assert.ok(Math.max(gapX, gapY) >= AUTHORED_ZONE_PAD, `a walked footprint keeps the pad (gap x ${gapX} y ${gapY})`);
+  // The crofts, east of the rect by exactly the pad, stand as before.
+  const crofts = AUTHORED_WILD_SITES.find((s) => s.id === 'fenside_crofts')!;
+  const cp = POI_PREFABS.get(POI_DEFS.get(crofts.defId)!.prefabs[0]!)!;
+  assert.deepEqual(findAuthoredAnchor(SEED, crofts.x!, crofts.y!, cp, ctx, 14), { x: crofts.x, y: crofts.y });
+});
+
+test('THE GOLDEN ANCHORS: every pinned authored site stands where it stood before band 7, the hugging bar excepted', () => {
+  // The seeder's own context (gameServer poiCtx at boot: the settled
+  // anchors, every builtin zone's rect plus the planned rects, no
+  // claim rings) and the seeder's own nudge clamp, over every x/y pin
+  // in the plan. Measured at seed 24601 with capitals empty; the five
+  // cells where the boot's capital masks shift an anchor a few tiles
+  // (gullmoor_rest, drovers_fire, first_waystone, spineshelf_rest,
+  // hobgoblin_legion) read identically in every boot log before and
+  // after this band, so the boot log stays their live pin and this
+  // list pins the scan's own answer. Fix pass 1 hugged EVERY pin and
+  // moved hoargate from (-402,-566) onto its pin (-408,-560), which
+  // nobody had measured or shot; the word is per site now, and this
+  // list is the fence: a pad or hug change that moves any anchor
+  // fails here before it moves a shipped camp.
+  const zones = [
+    buildDawnmead(), buildAmberford(), buildSilverfall(), buildSaltmere(), buildPinewatch(),
+    buildHartfell(), buildKingsdelf(), buildEvenfall(), buildUndercroft(), buildLowhall(),
+    buildAshlamp(), buildFenside(),
+  ];
+  const ctx = poiContext(SETTLED_ANCHORS, zones, POI_PREFABS, [], []);
+  const GOLDEN: Record<string, string> = {
+    fernway_rest: '328,-115', longmeadow_rest: '22,-147', fork_rest: '-150,-165', last_lamp: 'NONE',
+    first_road_toll: '126,109', first_climb_tower: 'NONE', company_tollhouse: '463,-77', fenside_crofts: '160,94',
+    gullmoor_rest: '559,135', pinehollow_rest: '983,-64', hollow_watch: '1140,-213', drovers_fire: '1227,-457',
+    diggers_camp: 'NONE', hoargate: '-402,-566', first_waystone: '-830,-352', heartwood_door: '-1108,-476',
+    spineshelf_rest: '-408,-64', third_stone: '-178,148', returners_camp: '-285,225', husk_of_the_line: '-64,-240',
+    felling_drum: '80,-42', hobgoblin_legion: '-54,-330', broken_barrow: '-208,48', oldcrown_door: 'NONE',
+  };
+  const got: Record<string, string> = {};
+  for (const s of AUTHORED_WILD_SITES) {
+    if (s.x === undefined || s.y === undefined) continue;
+    const def = POI_DEFS.get(s.defId)!;
+    const prefab = POI_PREFABS.get(s.prefabId ?? def.prefabs[0]!)!;
+    const cellX = poiCellOf(s.x);
+    const cellY = poiCellOf(s.y);
+    const inX = s.x - cellX * POI_CELL;
+    const inY = s.y - cellY * POI_CELL;
+    const nudge = Math.max(0, Math.min(14, Math.min(inX, inY, POI_CELL - 1 - inX, POI_CELL - 1 - inY)));
+    const spot = findAuthoredAnchor(SEED, s.x, s.y, prefab, ctx, nudge, s.hug === true);
+    got[s.id] = spot ? `${spot.x},${spot.y}` : 'NONE';
+  }
+  assert.deepEqual(got, GOLDEN);
+  // The one hug in the plan is the bar's; hoargate keeps the anchor it shipped with.
+  assert.deepEqual(AUTHORED_WILD_SITES.filter((s) => s.hug === true).map((s) => s.id), ['first_road_toll']);
+});
+
+test('THE POST IS NAMED, for the ring: the bar\'s archer and picket muster on their named cells at the post line, planted on watch posts', () => {
+  const want = AUTHORED_WILD_SITES.find((s) => s.id === 'first_road_toll')!;
+  const prefab = POI_PREFABS.get(want.prefabId!)!;
+  const ctx: PoiContext = { ...CTX, zoneRects: [{ x: -160, y: -64, w: 192, h: 224 }, ASHLAMP_RECT, FENSIDE_RECT] };
+  const spot = findAuthoredAnchor(SEED, want.x!, want.y!, prefab, ctx, 1, want.hug === true)!;
+  const zone = composePoi(SEED, {
+    cellX: poiCellOf(want.x!), cellY: poiCellOf(want.y!), epoch: 0, tier: 2,
+    defId: want.defId, prefabId: want.prefabId!, anchorX: spot.x, anchorY: spot.y,
+  }, ctx)!;
+  const spawns = zone.spawns ?? [];
+  const posted = spawns.filter((s) => s.post?.kind === 'watch');
+  assert.equal(posted.length, 2, 'the archer and the picket carry watch posts');
+  const px0 = spot.x - Math.floor(prefab.width / 2);
+  const py0 = spot.y - Math.floor(prefab.height / 2);
+  const archer = posted.find((s) => s.npc === 'brigand_archer')!;
+  const picket = posted.find((s) => s.npc === 'brigand')!;
+  assert.deepEqual([archer.x, archer.y], [px0 + 13 + 0.5, py0 - 11 + 0.5], 'the archer on the south shoulder');
+  assert.deepEqual([picket.x, picket.y], [px0 + 13 + 0.5, py0 - 16 + 0.5], 'the picket on the north shoulder');
+  assert.equal(archer.post!.dir, -Math.PI / 2, 'facing north, the road');
+  assert.equal(picket.post!.dir, Math.PI / 2, 'facing south, the road');
+  assert.deepEqual([archer.post!.x, archer.post!.y], [archer.x, archer.y], 'the post is the spawn cell');
+  assert.equal(archer.patrol, undefined, 'no round');
+  assert.equal(archer.count, 1);
+  // World cells (128,91) and (128,86): beside the gap (129,88), never on the bed.
+  assert.deepEqual([Math.floor(archer.x), Math.floor(archer.y)], [128, 91]);
+  assert.deepEqual([Math.floor(picket.x), Math.floor(picket.y)], [128, 86]);
+  // The ground under them is the fen waist's own, passable.
+  const fen = buildFenside();
+  for (const b of [archer, picket]) {
+    const lx = Math.floor(b.x) - fen.origin.x;
+    const ly = Math.floor(b.y) - fen.origin.y;
+    const t = fen.ground[ly * fen.width + lx]!;
+    assert.ok(t !== TILE_SKIP && !TILE_DEFS[t as Tile]!.solid, `(${Math.floor(b.x)},${Math.floor(b.y)}) is open zone ground (tile ${t})`);
+  }
+  // The crew is still five, and the ring bearings went to nobody.
+  assert.equal(spawns.reduce((n, s) => n + s.count, 0), 5);
+  assert.equal(spawns.filter((s) => s.patrol !== undefined).length, 0, 'nobody walks a ring at the bar');
+});
+
+test('THE MOUTH ON THE ROW: the named crowned holdfast carries its actor slug into the composed spawn', () => {
+  const res = validatePoiDef({
+    id: 'test_mouth_bar',
+    name: 'Test mouth bar',
+    tiers: [1, 3],
+    weight: 0,
+    prefabs: ['poi_bandit_hollow'],
+    garrison: [
+      { npc: 'brigand', count: [2, 2], role: 'holdfast' },
+      {
+        npc: 'brigand_reaver',
+        count: [1, 1],
+        role: 'holdfast',
+        minTier: 1,
+        names: ['Brede'],
+        crowned: true,
+        actor: 'company_broker',
+      },
+    ],
+    passFlag: 'charter_pass',
+    toll: true,
+  });
+  assert.ok(res.ok, JSON.stringify(res));
+  if (!res.ok) return;
+  const ctx: PoiContext = { ...CTX, defs: [...CTX.defs, res.def] };
+  const shown = previewPoi(SEED, ctx, 'test_mouth_bar', 2);
+  assert.ok(shown, 'no tier-2 site composed for the test def');
+  const spawns = shown!.zone.spawns ?? [];
+  const mouths = spawns.filter((s) => s.mouth !== undefined);
+  assert.equal(mouths.length, 1, 'exactly one body carries the mouth');
+  const brede = mouths[0]!;
+  assert.equal(brede.npc, 'brigand_reaver');
+  assert.equal(brede.name, 'Brede');
+  assert.equal(brede.mouth, 'company_broker');
+  assert.equal(brede.count, 1);
+  assert.ok(brede.crown !== undefined, 'the mouth rides the crowned body');
+  // The crown stands at the anchor (a named holdfast never takes a post seat).
+  assert.equal(brede.x, shown!.site.anchorX + 0.5);
+  assert.equal(brede.y, shown!.site.anchorY + 0.5);
+  // The crew carries no mouth.
+  for (const s of spawns) if (s !== brede) assert.equal(s.mouth, undefined);
 });

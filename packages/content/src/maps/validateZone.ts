@@ -1,4 +1,6 @@
-import { TILE_SKIP, Tile, hangHostTiles, wallHungInfo } from '@arx/shared';
+import { TILE_SKIP, Tile, chestInfo, hangHostTiles, wallHungInfo } from '@arx/shared';
+import { AUTHORED_WILD_SITES } from '../geography.js';
+import { LOOT_TABLES } from '../loot/tables.js';
 import { ZoneBuilder } from './builder.js';
 import type { ZoneDef } from './types.js';
 
@@ -74,6 +76,42 @@ export function zonePlacementErrors(zone: ZoneDef): string[] {
     // stance read for the body ('' !== undefined wins the override).
     if (s.tribe !== undefined && (typeof s.tribe !== 'string' || !/^[a-z][a-z0-9_]*$/.test(s.tribe))) {
       errors.push(`${at}.tribe must be a slug`);
+    }
+    // THE MOUTH ON THE ROW: the slug shape only — the actor registry
+    // vets the reference at the POI def door (the mouth is composed,
+    // never authored on a zone); a malformed one would register a
+    // body under no name.
+    if (s.mouth !== undefined && (typeof s.mouth !== 'string' || !/^[a-z][a-z0-9_]*$/.test(s.mouth))) {
+      errors.push(`${at}.mouth must be an actor slug`);
+    }
+  }
+  // THE ZONE'S WARDED CHEST (G-6): every binding sits on a CLOSED
+  // chest tile inside the rect, names a loot table that exists, and
+  // is warded by a PINNED authored site — a zone has no garrison of
+  // its own, so an unknown site id is a ward nobody could ever break
+  // (or, worse, one that never holds). Refused at every load door.
+  const pinned = new Set(AUTHORED_WILD_SITES.map((s) => s.id));
+  for (const [i, c] of (zone.chests ?? []).entries()) {
+    const at = `chests[${i}]`;
+    if (!Number.isInteger(c.x) || !Number.isInteger(c.y)) {
+      errors.push(`${at} needs integer world x/y`);
+      continue;
+    }
+    const lx = c.x - zone.origin.x;
+    const ly = c.y - zone.origin.y;
+    if (lx < 0 || ly < 0 || lx >= zone.width || ly >= zone.height) {
+      errors.push(`${at} at (${c.x},${c.y}) lies outside the zone rect`);
+    } else if (zone.ground) {
+      const info = chestInfo(zone.ground[ly * zone.width + lx]!);
+      if (!info || info.open) {
+        errors.push(`${at} at (${c.x},${c.y}) has no closed chest tile under it`);
+      }
+    }
+    if (typeof c.table !== 'string' || !LOOT_TABLES.has(c.table)) {
+      errors.push(`${at}: unknown loot table '${String(c.table)}'`);
+    }
+    if (typeof c.wardedBy !== 'string' || !pinned.has(c.wardedBy)) {
+      errors.push(`${at}: wardedBy '${String(c.wardedBy)}' is not a pinned authored site`);
     }
   }
   for (const [i, a] of (zone.actorSpawns ?? []).entries()) {

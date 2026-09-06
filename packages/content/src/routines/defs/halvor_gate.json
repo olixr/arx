@@ -1,0 +1,53 @@
+{
+  "id": "halvor_gate",
+  "base": {
+    "kind": "post",
+    "dir": 3.1415927,
+    "speed": 1.1
+  },
+  "slots": [
+    {
+      "from": 5.5,
+      "to": 6.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.1,
+        "waypoints": [
+          {
+            "x": -7,
+            "y": 0,
+            "waitSec": 30,
+            "dir": 3.1415927
+          },
+          {
+            "x": 0,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "from": 12,
+      "to": 12.5,
+      "task": {
+        "kind": "post",
+        "x": -6,
+        "y": -9,
+        "sit": true,
+        "speed": 1.1
+      }
+    },
+    {
+      "from": 20.5,
+      "to": 6,
+      "task": {
+        "kind": "post",
+        "x": 1,
+        "y": -6,
+        "lie": true,
+        "speed": 1.1
+      }
+    }
+  ]
+}

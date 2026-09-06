@@ -27,6 +27,8 @@ import {
   QUESTS,
   ROUTINES,
   buildAmberford,
+  buildAshlamp,
+  buildFenside,
   buildPinewatch,
   buildHartfell,
   buildKingsdelf,
@@ -121,6 +123,11 @@ const builtinZones = new Map<string, ZoneDef>(
     buildEvenfall(),
     buildUndercroft(),
   buildLowhall(),
+    // THE CONTESTED LANDS (band 7): the Ashlamp and the fen waist —
+    // patches on the First Road, after Dawnmead by the spawn law
+    // (neither declares a spawn, a haven or a spawn row).
+    buildAshlamp(),
+    buildFenside(),
   ].map((z) => [z.id, z]),
 );
 const zones: ZoneDef[] = [...builtinZones.values()];
@@ -599,6 +606,10 @@ for (const zone of zones) {
   if (zone.spawns && zone.spawns.length > 0) {
     game.registerSpawns(zone.spawns, zone.plane ?? SURFACE_PLANE_ID, zone.id);
   }
+  // THE ZONE'S WARDED CHEST: a zone's strongbox bindings register at
+  // the same station as its spawns (after initPois, so the warding
+  // site's cell is known).
+  if (zone.chests && zone.chests.length > 0) game.registerZoneChests(zone);
 }
 
 // NPC actors, DB-first: authored JSON seeds the relational tables,

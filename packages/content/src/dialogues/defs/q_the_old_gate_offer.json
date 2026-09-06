@@ -1,0 +1,35 @@
+{
+  "id": "q_the_old_gate_offer",
+  "start": "hub",
+  "requires": ["quest:the_old_gate:available"],
+  "forbids": [
+    "quest:stakes_in_the_waist:active",
+    "quest:stakes_in_the_waist:done",
+    "quest:the_levy_posted:active",
+    "quest:the_levy_posted:done"
+  ],
+  "bindings": [{ "kind": "actor", "target": "fenside_halvor", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_the_old_gate_offer__hub",
+      "text": "The gate takes four boards and I have two hands and a boy who goes and looks at water. Bring boards and the gate hangs and the mere goes down the way it went down for thirty years. I will tell you what it costs, since the other man tells you what his costs. The Charter bills obstruction and the tally clerk shuts her book to you. I will not pay for a dike that drowns me and I will not ask you to.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_old_gate" }],
+      "choices": [
+        { "text": "I will bring the boards.", "next": "sworn" },
+        { "text": "Not against the Charter.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_the_old_gate_offer__sworn",
+      "text": "Ottery's shed. Say Halvor sent you and he will charge you the same.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_old_gate" }]
+    },
+    {
+      "id": "declined",
+      "voice": "q_the_old_gate_offer__declined",
+      "text": "Then say it to the water."
+    }
+  ]
+}

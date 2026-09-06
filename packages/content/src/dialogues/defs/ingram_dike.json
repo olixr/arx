@@ -1,0 +1,58 @@
+{
+  "id": "ingram_dike",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "charter_ingram" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "ingram_dike__hub",
+      "text": "Dike master. The Charter's, and the road's, in that order today. The stakes go in at first light and the level goes in after them. If you have come about the water, you are in the right place and the wrong year.",
+      "choices": [
+        { "text": "Where does the water go?", "next": "water" },
+        { "text": "Who pays for the dike?", "next": "pays" },
+        { "text": "There is kelp on the sluice post.", "next": "weed" },
+        { "text": "I will leave you to it.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "water",
+      "voice": "ingram_dike__water",
+      "text": "Water goes where it is let. It was let across the road at the ford every time the mere came up, and a road under water is a road that turns carts. The line across the crossing keeps it in the channel, and the channel takes it down past the crofts and out. Where it goes instead of the road is a fair question with a fair answer. Not across the road.",
+      "next": "hub"
+    },
+    {
+      "id": "pays",
+      "voice": "ingram_dike__pays",
+      "text": "The crofts pay. The levy is posted on the green at Dawnmead and it is posted at the ford. It is paid in corn this year because there is no coin at the crofts, and I take the corn off the boards at the ford price. Those are the terms and they are the moot's, not mine.",
+      "choices": [
+        { "text": "Who should pay?", "next": "should" },
+        { "text": "What is on the counter?", "next": "counter" },
+        { "text": "Back to it.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "should",
+      "voice": "ingram_dike__should",
+      "text": "The ford. I wrote it twice. A dry road to Amberford is worth more to the ford than to a field, and the ford voted that the field pays. I build what is voted. Ask the moot who should have paid and they will tell you the crofts, because they voted it, and that is the sentence I have to stand in.",
+      "next": "hub"
+    },
+    {
+      "id": "counter",
+      "voice": "ingram_dike__counter",
+      "text": "The levy, on a shelf. Corn taken off the boards at the ford price and sold back to the road at the ford price, and the dike's own boards beside it. Look when we are done talking. The book is under the canvas and the prices are on it.",
+      "hooks": [{ "kind": "shop", "shop": "causeway_head" }],
+      "next": "hub"
+    },
+    {
+      "id": "weed",
+      "voice": "ingram_dike__weed",
+      "text": "Weed. It is a fen. Things grow on posts in a fen. Halvor looks at that post every morning as if it will say something and it says what a post says. If the shoal wanted anything from the crofts they would have taken it, and they did.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "ingram_dike__bye",
+      "text": "Mind the stakes. They are not driven for you to lean on."
+    }
+  ]
+}

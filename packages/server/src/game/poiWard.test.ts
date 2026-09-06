@@ -530,3 +530,184 @@ test("THE CHAMPION'S MARK: the roster derives from the ledger, and the dissolve 
   const after = proto4.trophyWire.call(s) as Array<{ id: string }>;
   assert.deepEqual(after.map((w) => w.id), ['6,6']);
 });
+
+// ---------------------------------------------------------------------
+// BAND 7 ENGINE (L5): THE PASS. `passFlag` on a PoiDef holds the
+// garrison's fire on a character who carries it, resolved from the
+// body's OWN spawn record at both chokes; THE NURSERY CLAUSE holds it
+// on anyone without the durable first-road stamp; a blow forces.
+// ---------------------------------------------------------------------
+
+import { NPC_ACTORS, POI_DEFS, questDoneFlag, replacePoiDefs, validatePoiDef } from '@arx/content';
+
+const passProto = GameServer.prototype as unknown as {
+  poiPassHolds: WardFn;
+  npcAggro: WardFn;
+  npcFactionOf: WardFn;
+  npcEnforcerFid: WardFn;
+  playerBandWith: WardFn;
+  npcTribeOf: WardFn;
+};
+
+/** Stand a validated test def in the live registry for one test body. */
+function withTestDef(raw: Record<string, unknown>, body: () => void): void {
+  const res = validatePoiDef(raw);
+  assert.ok(res.ok, JSON.stringify(res));
+  if (!res.ok) return;
+  const before = [...POI_DEFS.values()];
+  replacePoiDefs([...before, res.def]);
+  try {
+    body();
+  } finally {
+    replacePoiDefs(before);
+  }
+}
+
+const BAR_DEF = {
+  id: 'test_first_road_bar',
+  name: 'Test bar',
+  tiers: [1, 3],
+  weight: 0,
+  prefabs: ['poi_bandit_hollow'],
+  garrison: [
+    { npc: 'brigand', count: [2, 2], role: 'holdfast' },
+    { npc: 'brigand_archer', count: [1, 1], role: 'sentry', patrol: true },
+  ],
+  passFlag: 'charter_pass',
+  toll: true,
+};
+
+/** A walker: `paid` carries the pass, `green` has never walked the first road. */
+function walker(opts: { paid?: boolean; green?: boolean } = {}) {
+  const flags = new Map<string, number>();
+  if (!opts.green) flags.set(questDoneFlag('the_first_road'), 1);
+  if (opts.paid) flags.set('charter_pass', 1);
+  return { flags, standing: new Map<string, number>(), eid: 77 };
+}
+
+/** The bar's cell in the ledger, and a body mustered for it. */
+function barSlate(npcId = 'brigand', spawnIndex = 0) {
+  const npc = {
+    def: NPCS.get(npcId)!,
+    state: 'idle' as string,
+    targetEid: null as number | null,
+    spawnIndex,
+    steer: { side: 0, ticks: 0 },
+    navBest: 0,
+    navStuck: 0,
+    navRefX: 0,
+    navRefY: 0,
+    nav: null,
+    progressLane: null,
+    nextRepathTick: 0,
+    losUntilTick: 0,
+    alert: 0,
+    alertEid: null,
+    alertVelX: 0,
+    alertVelY: 0,
+    alertSeenTick: 0,
+    alertX: 0,
+    alertY: 0,
+    huntWps: null,
+    huntIdx: 0,
+    huntWaitUntilTick: 0,
+    standTicks: 0,
+    mouth: undefined as string | undefined,
+  };
+  const s = {
+    npc,
+    poiSpawnCells: new Map([[spawnIndex, '3,4']]),
+    poiLedger: new Map([['3,4', { site: { defId: 'test_first_road_bar' } }]]),
+    // The unforced aggro door's slate: no pets, no herds, no actors
+    // (the body reads its faction by bestiary prefix), one player.
+    pets: new Map(),
+    companions: new Map(),
+    livestock: new Map(),
+    actors: new Map(),
+    npcs: new Map<number, unknown>([[1, npc]]),
+    players: new Map<number, unknown>(),
+    positions: new Map<number, { plane: string; x: number; y: number }>([
+      [1, { plane: 'surface', x: 10, y: 10 }],
+      [77, { plane: 'surface', x: 12, y: 10 }],
+    ]),
+    tickCount: 100,
+    poiPassHolds: passProto.poiPassHolds,
+    npcFactionOf: passProto.npcFactionOf,
+    npcEnforcerFid: passProto.npcEnforcerFid,
+    playerBandWith: passProto.playerBandWith,
+    npcTribeOf: passProto.npcTribeOf,
+    resetBossEngagement: () => {},
+    npcRefillGrit: () => {},
+    rallyPack: () => {},
+    sayAloud: () => {},
+    broadcastFx: () => {},
+  };
+  return s;
+}
+
+test('THE PASS: paper walks the bar, an unflagged walker is charged, a green walker is nursed', () => {
+  withTestDef(BAR_DEF, () => {
+    const s = barSlate();
+    const holds = (w: ReturnType<typeof walker>) => passProto.poiPassHolds.call(s, s.npc, w) as boolean;
+    assert.equal(holds(walker({ paid: true })), true, 'charter paper walks the bar');
+    assert.equal(holds(walker()), false, 'an unflagged post-tutorial walker is charged');
+    assert.equal(holds(walker({ green: true })), true, 'the nursery clause: no first-road stamp, no toll');
+    // The same read at the unforced aggro door: the crew stands for
+    // paper and for new feet, and charges everyone else.
+    const charge = (w: ReturnType<typeof walker>) => {
+      const slate = barSlate();
+      slate.players.set(77, w);
+      passProto.npcAggro.call(slate, 1, slate.npc, 77);
+      return slate.npc.state === 'chase';
+    };
+    assert.equal(charge(walker({ paid: true })), false);
+    assert.equal(charge(walker({ green: true })), false);
+    assert.equal(charge(walker()), true);
+  });
+});
+
+test('THE PASS: a blow forces regardless of paper', () => {
+  withTestDef(BAR_DEF, () => {
+    const s = barSlate();
+    s.players.set(77, walker({ paid: true }));
+    passProto.npcAggro.call(s, 1, s.npc, 77, { force: true });
+    assert.equal(s.npc.state, 'chase');
+    assert.equal(s.npc.targetEid, 77);
+  });
+});
+
+test('THE PASS: a sentry standing in the neighbour cell still honours its own def', () => {
+  withTestDef(BAR_DEF, () => {
+    // The archer's ring bearing stands 130 tiles east of the anchor —
+    // the next macro-cell — but its spawn record was mustered for the
+    // bar's cell, and that is the row the pass reads.
+    const s = barSlate('brigand_archer', 2);
+    s.positions.set(1, { plane: 'surface', x: 200, y: 10 });
+    s.positions.set(77, { plane: 'surface', x: 201, y: 10 });
+    assert.equal(passProto.poiPassHolds.call(s, s.npc, walker({ paid: true })), true);
+    assert.equal(passProto.poiPassHolds.call(s, s.npc, walker()), false);
+  });
+});
+
+test('THE PASS: a def without a pass answers false for everyone (every other camp unchanged)', () => {
+  const s = barSlate();
+  s.poiLedger.set('3,4', { site: { defId: 'bandit_camp' } });
+  assert.equal(passProto.poiPassHolds.call(s, s.npc, walker({ paid: true })), false);
+  assert.equal(passProto.poiPassHolds.call(s, s.npc, walker({ green: true })), false);
+  // A body with no spawn record (an ephemeral split, spawnIndex -1) reads nothing.
+  s.npc.spawnIndex = -1;
+  assert.equal(passProto.poiPassHolds.call(s, s.npc, walker({ green: true })), false);
+});
+
+test("THE MOUTH ON THE ROW: the speaking body's death counts toward the clear like any garrison body", () => {
+  assert.ok(NPC_ACTORS.has('company_broker'), 'the fixture mouth exists');
+  const s = slate([
+    brigand(),
+    { ...brigand({ npc: 'brigand_reaver', eid: 9 }), mouth: 'company_broker' } as FakeSpawn,
+  ]);
+  assert.equal(proto.poiGarrisonStands.call(s, '3,4'), true, 'the crown holds the ward while it stands');
+  s.spawnPoints[1]!.eid = null;
+  proto.notePoiKill.call(s, 1);
+  assert.equal(proto.poiGarrisonStands.call(s, '3,4'), false);
+  assert.equal(s.cleared.length, 1, 'the crown was the last body: the clear stamps');
+});

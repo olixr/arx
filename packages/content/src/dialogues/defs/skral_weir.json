@@ -1,0 +1,12 @@
+{
+  "id": "skral_weir",
+  "start": "wave",
+  "bindings": [{ "kind": "actor", "target": "skral_weirward" }],
+  "nodes": [
+    {
+      "id": "wave",
+      "voice": "skral_weir__wave",
+      "text": "The skral looks at the water, then at you, and lifts one webbed hand, palm out. The wave. Nothing else."
+    }
+  ]
+}

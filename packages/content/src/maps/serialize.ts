@@ -1,5 +1,5 @@
 import { SURFACE_PLANE_ID, legacyPlaneOfY, type PlaneId } from '../planes.js';
-import type { PortalDef, ZoneActorSpawn, ZoneDef, ZoneSign, ZoneSpawn } from './types.js';
+import type { PortalDef, ZoneActorSpawn, ZoneChest, ZoneDef, ZoneSign, ZoneSpawn } from './types.js';
 
 /**
  * Zone <-> JSON. Tile arrays are base64-encoded little-endian u16 so
@@ -39,6 +39,8 @@ export interface ZoneJson {
   spawns?: ZoneSpawn[];
   /** What the zone's sign tiles say (world coords), same plain-JSON law. */
   signs?: ZoneSign[];
+  /** Strongbox bindings (world coords; THE ZONE'S WARDED CHEST), same law. */
+  chests?: ZoneChest[];
 }
 
 export function u16ToBase64(arr: Uint16Array): string {
@@ -115,6 +117,7 @@ export function zoneToJson(zone: ZoneDef): ZoneJson {
     portals: zone.portals && zone.portals.length > 0 ? zone.portals : undefined,
     spawns: zone.spawns && zone.spawns.length > 0 ? zone.spawns : undefined,
     signs: zone.signs && zone.signs.length > 0 ? zone.signs : undefined,
+    chests: zone.chests && zone.chests.length > 0 ? zone.chests : undefined,
   };
 }
 
@@ -144,5 +147,8 @@ export function zoneFromJson(json: ZoneJson): ZoneDef {
     portals: json.portals,
     spawns: json.spawns,
     signs: json.signs,
+    // Absent stays absent (no undefined-valued key): a legacy file and
+    // a chestless zone decode deep-equal to what the builder built.
+    ...(json.chests !== undefined ? { chests: json.chests } : {}),
   };
 }

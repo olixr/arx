@@ -1,0 +1,14 @@
+{
+  "id": "halvor_string",
+  "start": "once",
+  "once": true,
+  "requires": ["halvor_string_carried"],
+  "bindings": [{ "kind": "actor", "target": "fenside_halvor", "priority": 10 }],
+  "nodes": [
+    {
+      "id": "once",
+      "voice": "halvor_string__once",
+      "text": "You took the string up. I saw you go. I will say this once and I will not say it again, to you or to anybody. They paid. I knew what it was on the post the morning I saw it and I have known every morning since."
+    }
+  ]
+}

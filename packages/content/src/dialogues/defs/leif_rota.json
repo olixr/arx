@@ -1,0 +1,14 @@
+{
+  "id": "leif_rota",
+  "start": "chalk",
+  "once": true,
+  "requires": ["quest:the_green_road:done"],
+  "bindings": [{ "kind": "actor", "target": "waykeeper_leif", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "chalk",
+      "voice": "leif_rota__chalk",
+      "text": "Hale chalked a name on the post at the lamp. Yours. It says toll walked. I chalked it again on the board by the wain so she would read it. I do not know what it costs. He does."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "skral_weirward",
+  "name": "Skral",
+  "title": "Skral of the weir",
+  "examine": "It watches the water and then you and lifts one webbed hand, palm out. That is the whole of what it says.",
+  "disposition": "neutral",
+  "protection": "untargetable",
+  "model": {
+    "kind": "creature",
+    "creature": "skral"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "the_ledger_line",
+  "name": "The Ledger Line",
+  "giver": "charter_margit",
+  "requires": { "quests": ["the_levy_posted"] },
+  "repeat": { "cooldownHours": 24 },
+  "stages": [
+    {
+      "id": "carry",
+      "journal": "The Charter takes the crofts' corn at the ford price and sells it on. Three sheaves from Ingram's counter to the tally stall, under Charter paper, past the bar the paper walks. The ledger pays the legs.",
+      "objectives": [{ "kind": "collect", "item": "green_corn", "count": 3 }]
+    }
+  ],
+  "rewards": {
+    "coins": 24,
+    "standing": [{ "faction": "fordgate", "delta": 2 }]
+  }
+}

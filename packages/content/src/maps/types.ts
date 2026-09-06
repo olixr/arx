@@ -118,6 +118,38 @@ export interface ZoneSpawn {
    * own tribe (claim → faction prefix → implicit), exactly as before.
    */
   tribe?: string;
+  /**
+   * THE MOUTH ON THE ROW (contested lands, band 7): the actor slug
+   * this seat's one named crowned body speaks through (composed from
+   * PoiGarrisonEntry.actor; see pois/types.ts). The server registers
+   * the standing body in its actor table under the slug, so its
+   * lines, examine and bound trees resolve through the shipped talk
+   * path; the body keeps the bestiary's art, level and crown, and it
+   * never opens a fight of its own. Only meaningful with count 1.
+   */
+  mouth?: string;
+}
+
+/**
+ * THE ZONE'S WARDED CHEST (contested lands, band 7; site-grammar
+ * G-6): a strongbox binding for an authored zone, addressed by the
+ * chest's WORLD tile. `table` re-keys the loot; `wardedBy` names a
+ * pinned authored site (geography AUTHORED_WILD_SITES id) whose
+ * standing garrison holds the lid shut — the server registers the
+ * override exactly as the POI materialise path does (`{ cell, table,
+ * warded: true }`), so the Charter's coin box at the ford opens for
+ * the character who broke the Company's bar, and for nobody else
+ * while the crew stands. A zone has no garrison of its own; the ward
+ * is always another site's.
+ */
+export interface ZoneChest {
+  /** World-tile position of a closed chest tile in this zone. */
+  x: number;
+  y: number;
+  /** Loot table id (loot/tables). */
+  table: string;
+  /** Authored wild site id whose garrison wards the lid. */
+  wardedBy: string;
 }
 
 /**
@@ -214,4 +246,10 @@ export interface ZoneDef {
   actorSpawns?: ZoneActorSpawn[];
   /** What this zone's sign tiles say — the what-is-written-where layer. */
   signs?: ZoneSign[];
+  /**
+   * THE ZONE'S WARDED CHEST: loot-table and ward bindings for this
+   * zone's strongboxes (see ZoneChest). Absent = every chest stands
+   * as drawn, a plain strongchest of its tile's kind.
+   */
+  chests?: ZoneChest[];
 }

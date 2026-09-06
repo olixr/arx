@@ -1,0 +1,21 @@
+{
+  "id": "the_old_gate",
+  "name": "The Old Gate",
+  "giver": "fenside_halvor",
+  "requires": { "quests": ["the_first_road"] },
+  "stages": [
+    {
+      "id": "boards",
+      "journal": "Four boards for the broken post and the panel, any sawing that is true. Ottery's shed at Dawnmead has them stacked flat, and a wright's counter sells what a wright's shed holds. Carry them east past the bar to the crofts on the channel's far bank, where Halvor looks at the gate every morning.",
+      "objectives": [{ "kind": "collect", "item": "board", "count": 4 }]
+    }
+  ],
+  "rewards": {
+    "coins": 50,
+    "standing": [
+      { "faction": "fenside", "delta": 10 },
+      { "faction": "fordgate", "delta": -5 }
+    ],
+    "flags": ["sluice_mended"]
+  }
+}

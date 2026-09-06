@@ -1,0 +1,41 @@
+{
+  "id": "halvor_crofts",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "fenside_halvor" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "halvor_crofts__hub",
+      "text": "Halvor. This is the Fenside, what stands of it. The corn is on the boards and the boards are on stilts and the stilts are in my furrows. Say what you came to say. If it is about the gate, say it to the gate.",
+      "choices": [
+        { "text": "What happened to the sluice?", "next": "water" },
+        { "text": "What do you want done?", "next": "gate" },
+        { "text": "Where is your son?", "next": "boy" },
+        { "text": "Nothing today.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "water",
+      "voice": "halvor_crofts__water",
+      "text": "The shoal moved their weir onto my reach in the spring and the post went. That is what happened. The gate hung on two posts for thirty years and let the mere down slow below the furrows, and one post went and the water came up in the night, and you do not hear water, that is the trouble with it. Somebody tied kelp to the near post after. I do not need a Charter man with a level to tell me what happened to my own gate.",
+      "next": "hub"
+    },
+    {
+      "id": "gate",
+      "voice": "halvor_crofts__gate",
+      "text": "The gate open. Boards on the broken post and the panel hung true, and the mere let down the old way, slow, out under the furrows into the far water. Not a dike. Not a road. The gate. And the crossing free, because it was free, and a man with a rag on a stick does not make it his by standing on it.",
+      "next": "hub"
+    },
+    {
+      "id": "boy",
+      "voice": "halvor_crofts__boy",
+      "text": "He is at the water. He goes and looks at it now. He did not used to.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "halvor_crofts__bye",
+      "text": "Say it to the water. It is the only one here that listens."
+    }
+  ]
+}

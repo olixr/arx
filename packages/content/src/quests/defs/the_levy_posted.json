@@ -1,0 +1,65 @@
+{
+  "id": "the_levy_posted",
+  "name": "The Levy Posted",
+  "giver": "charter_ingram",
+  "turnIn": "charter_margit",
+  "requires": {
+    "quests": [
+      "stakes_in_the_waist"
+    ]
+  },
+  "stages": [
+    {
+      "id": "hold",
+      "journal": "The line went in and the shoal came up the channel at it, as Ingram said they would. Hold the crossing. They work the channel's west bank north of the ford by day, twenty tiles up from the crossing where the water sounds busiest and the lamp's light does not reach.",
+      "objectives": [
+        {
+          "kind": "kill",
+          "npc": "skral",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "id": "post",
+      "journal": "Ingram's levy sheet, signed at the ford. Margit posts what she is handed. Hand it to her at the tally stall on Dawnmead's green, where the drowned can read it.",
+      "objectives": [
+        {
+          "kind": "collect",
+          "item": "levy_sheet",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 90,
+    "xp": [
+      {
+        "skill": "combat",
+        "amount": 250
+      }
+    ],
+    "standing": [
+      {
+        "faction": "fordgate",
+        "delta": 15
+      },
+      {
+        "faction": "fenside",
+        "delta": -15
+      }
+    ],
+    "items": [
+      {
+        "item": "charter_pass",
+        "qty": 1
+      }
+    ],
+    "flags": [
+      "fen_side_taken",
+      "charter_pass",
+      "weir_cut"
+    ]
+  }
+}

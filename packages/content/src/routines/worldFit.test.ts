@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BED_RUN_CAP, Tile, TILE_DEFS, doorInfo, seatAt } from '@arx/shared';
+import { BED_RUN_CAP, Tile, TILE_DEFS, TILE_SKIP, doorInfo, seatAt } from '@arx/shared';
 import type { ZoneDef } from '../maps/types.js';
 import { buildDawnmead } from '../maps/dawnmead.js';
 import { buildAmberford } from '../maps/amberford.js';
@@ -12,6 +12,8 @@ import { buildKingsdelf } from '../maps/kingsdelf.js';
 import { buildEvenfall } from '../maps/evenfall.js';
 import { buildUndercroft } from '../maps/undercroft.js';
 import { buildLowhall } from '../maps/lowhall.js';
+import { buildAshlamp } from '../maps/ashlamp.js';
+import { buildFenside } from '../maps/fenside.js';
 import { ROUTINES } from './registry.js';
 import type { RoutineTask, RoutineDef } from './types.js';
 
@@ -58,6 +60,13 @@ const ZONES: Array<() => ZoneDef> = [
   buildEvenfall,
   buildUndercroft,
   buildLowhall,
+  // THE CONTESTED LANDS (band 7): the two east zones. The Ashlamp
+  // places nobody; the Fen Waist places Ansel the drover, whose
+  // wayside sit beside the cage and morning walk to nowhere are held
+  // here like any villager's hours. The crofts' bodies are POI rows
+  // and stand under pois/prefabFit.test.ts instead.
+  buildAshlamp,
+  buildFenside,
 ];
 
 /**
@@ -87,6 +96,9 @@ function buildGrid(z: ZoneDef): Grid {
   const lvl = (i: number): number => z.elev?.[i] ?? 0;
   const standable = (i: number): boolean => {
     const t = z.ground[i]! as Tile;
+    // An authored zone's transparent cells (TILE_SKIP) are worldgen's
+    // ground, unknowable here: never a stand, never a wall.
+    if ((t as number) === TILE_SKIP) return false;
     return !TILE_DEFS[t].solid || doorPass(t);
   };
   // Label walk components: BFS floods with the sim's own movement law
@@ -221,6 +233,7 @@ function checkRoutine(
       const ty = Math.floor(stop.wy);
       if (!g.inRect(tx, ty)) continue; // open-world leg — worldgen ground, unknowable here
       const t = g.ground(tx, ty)! as Tile;
+      if ((t as number) === TILE_SKIP) continue; // a transparent cell of an authored zone: the field's own ground
       const solid = TILE_DEFS[t].solid && !doorPass(t);
       const where = `(${tx},${ty}) [local ${tx - g.z.origin.x},${ty - g.z.origin.y}] tile '${TILE_DEFS[t].name}'`;
 

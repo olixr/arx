@@ -1,0 +1,14 @@
+{
+  "id": "q_the_ledger_line_turnin",
+  "start": "entered",
+  "requires": ["quest:the_ledger_line:ready"],
+  "bindings": [{ "kind": "actor", "target": "charter_margit", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "entered",
+      "voice": "q_the_ledger_line_turnin__entered",
+      "text": "Three sheaves, entered. The ford price in, the town price out, and the legs in between paid out of the difference. That is the Charter's whole arithmetic and I keep it in ink so nobody can say it was done in the dark.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_ledger_line" }]
+    }
+  ]
+}

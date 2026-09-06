@@ -2,7 +2,7 @@
   "id": "fenside_crofter",
   "name": "Fenside Crofter",
   "title": "Crofter, drowned out",
-  "examine": "Off the First Road crofts, the wet still on them. Under sacking by day and two families to a cottage by night, with the sheep on a common nobody gave them.",
+  "examine": "Some are under sacking at Dawnmead's hedge and some are still on the boards at home with the green corn.",
   "disposition": "friendly",
   "model": {
     "kind": "humanoid",
@@ -32,11 +32,11 @@
     }
   ],
   "lines": [
-    "The water came up in the night. We did not hear it. You do not hear water, that is the trouble with it.",
-    "The corn is cut. It is standing on boards at the crofts going green waiting for somebody with legs. Anybody at all.",
-    "The wall folk let the sheep stand on their stone. Ask them nothing. They will tell you a number.",
-    "Six ewes and the lamb. The stone folk counted them onto the wall and I counted them off it. Same number both ways.",
-    "His common is grass. Ours is ash. I will move them when there is somewhere to move them to.",
-    "The fire is small on purpose. Sit if you are sitting."
+    "The water came up in the night. You do not hear water. That is the trouble with it.",
+    "Cut it green or lose it. Green corn keeps a week on boards. It has been a week.",
+    "Anybody with legs can carry corn. That is the whole of what we are asking.",
+    "Somebody tied kelp to the near post. Nobody has asked whose. Halvor looks at it every morning.",
+    "The sheep are on a common nobody gave us and the corn is on boards nobody made. We will settle both when there is dry ground to settle on.",
+    "A man with a level came and said the road was the road's business. The field was ours. Now it is the water's."
   ]
 }

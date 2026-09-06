@@ -1,7 +1,9 @@
 import { TILE_SKIP, tileDef } from '@arx/shared';
 import {
   buildAmberford,
+  buildAshlamp,
   buildDawnmead,
+  buildFenside,
   buildPinewatch,
   buildHartfell,
   buildKingsdelf,
@@ -85,6 +87,10 @@ export function authoredZoneArt(): ZoneArt[] {
       buildEvenfall(),
       buildUndercroft(),
       buildLowhall(),
+      // THE CONTESTED LANDS (band 7): the two First Road patches; their
+      // TILE_SKIP stays transparent, so only the authored cells chart.
+      buildAshlamp(),
+      buildFenside(),
     ].map(bakeZone);
   }
   return cache;

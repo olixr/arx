@@ -1,7 +1,7 @@
 {
   "id": "dawnmead_ward",
-  "name": "Vale Ward",
-  "title": "Dawnmead Ward",
+  "name": "Dawnmead Ward",
+  "title": "The Vale Ward",
   "examine": "Leather that still smells of the tannery and a sword kept sharper than it strictly needs to be. Halla drills them until walking the lanes feels like soldiering.",
   "disposition": "neutral",
   "protection": "invulnerable",

@@ -211,6 +211,10 @@ const FORM_BY_ID: Record<string, GroundForm> = {
   grave_band: 'ring',
   torn_ledger_page: 'paper', survey_pages: 'paper', weathered_letter: 'paper',
   redmask_writ: 'paper',
+  // The fen waist's fork (contested lands band 7): two papers, a stake
+  // that lies like timber, a kelp string that lies like twine, corn as a sheaf.
+  levy_sheet: 'paper', charter_pass: 'paper', dike_stake: 'board',
+  kelp_string: 'spool', green_corn: 'sheaf',
   gilded_locket: 'locket', crew_paytin: 'token', reavers_mark: 'token',
   warlord_crest: 'token', spade_mark: 'token', marked_tool: 'token',
   sand_laurel: 'laurel',

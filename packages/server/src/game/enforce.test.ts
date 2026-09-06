@@ -19,6 +19,7 @@ const proto = GameServer.prototype as unknown as {
   npcFactionOf: AnyFn;
   npcEnforcerFid: AnyFn;
   playerBandWith: AnyFn;
+  poiPassHolds: AnyFn;
   chargeAssault: AnyFn;
   creditDeed: AnyFn;
   creditStanding: AnyFn;
@@ -91,6 +92,11 @@ function slate(opts: {
     npcFactionOf: proto.npcFactionOf,
     npcEnforcerFid: proto.npcEnforcerFid,
     playerBandWith: proto.playerBandWith,
+    // THE PASS (band 7): the aggro door now reads the body's site row
+    // for a passFlag — no POI cells here, so the read answers false.
+    poiPassHolds: proto.poiPassHolds,
+    poiSpawnCells: new Map(),
+    poiLedger: new Map(),
     chargeAssault: proto.chargeAssault,
     creditDeed: proto.creditDeed,
     creditStanding: proto.creditStanding,

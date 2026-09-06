@@ -7397,6 +7397,284 @@ const PAINTERS: Record<string, IconPainter> = {
     c.stroke();
     c.restore();
   },
+  // ---- THE CAUSEWAY OR THE SLUICE (contested lands band 7): the fen
+  // waist's five faces. Two papers that are not the shared scroll (a
+  // posted sheet lies flat; a pass is folded and sealed), the Charter's
+  // driven stake, the shoal's kelp string, and green corn on the boards.
+  dikestake: (c, col) => {
+    // An ochre survey stake on the diagonal, brass plate near the head,
+    // the foot sharpened to be driven. Driven, it is the Charter's ground.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(0.55);
+    // The shaft, tapering to the point.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.07, -0.42);
+    c.lineTo(0.07, -0.42);
+    c.lineTo(0.05, 0.28);
+    c.lineTo(0.0, 0.44);
+    c.lineTo(-0.05, 0.28);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The grain light down one edge.
+    c.strokeStyle = shade(col, 24);
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.moveTo(-0.045, -0.38);
+    c.lineTo(-0.03, 0.24);
+    c.stroke();
+    // The brass plate, riveted, with the Charter's hand scratched on it.
+    c.fillStyle = '#c9a44e';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.rect(-0.1, -0.3, 0.2, 0.16);
+    c.fill();
+    c.stroke();
+    dot(c, '#6b5426', -0.065, -0.265, 0.018);
+    dot(c, '#6b5426', 0.065, -0.265, 0.018);
+    c.strokeStyle = '#7a6230';
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.moveTo(-0.06, -0.19);
+    c.lineTo(0.06, -0.19);
+    c.stroke();
+    // The head, hammered dark.
+    c.fillStyle = shade(col, -40);
+    c.beginPath();
+    c.rect(-0.08, -0.46, 0.16, 0.06);
+    c.fill();
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.stroke();
+    c.restore();
+  },
+  levysheet: (c, col) => {
+    // A posted sheet lying flat with one corner turned, two ruled
+    // columns and a wax seal at the foot: the number, posted so anyone
+    // can argue with it.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(-0.12);
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.3, -0.38);
+    c.lineTo(0.18, -0.38);
+    c.lineTo(0.3, -0.26);
+    c.lineTo(0.3, 0.38);
+    c.lineTo(-0.3, 0.38);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The turned corner.
+    c.fillStyle = shade(col, -22);
+    c.beginPath();
+    c.moveTo(0.18, -0.38);
+    c.lineTo(0.18, -0.26);
+    c.lineTo(0.3, -0.26);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The column rule and the ruled lines.
+    c.strokeStyle = shade(col, -48);
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.moveTo(0.02, -0.28);
+    c.lineTo(0.02, 0.16);
+    c.stroke();
+    c.lineWidth = 0.018;
+    for (const y of [-0.22, -0.12, -0.02, 0.08]) {
+      c.beginPath();
+      c.moveTo(-0.22, y);
+      c.lineTo(-0.06, y);
+      c.moveTo(0.1, y);
+      c.lineTo(0.22, y);
+      c.stroke();
+    }
+    // The wax seal at the foot, the ford's.
+    dot(c, '#9a3a2c', 0.16, 0.26, 0.075);
+    dot(c, '#c2513f', 0.145, 0.245, 0.03);
+    c.restore();
+  },
+  charterpass: (c, col) => {
+    // Charter paper folded once and sealed across the fold with a weld
+    // ribbon: the pass the Company honours. Small, because it is carried.
+    c.save();
+    c.translate(0.5, 0.52);
+    c.rotate(0.3);
+    // The lower leaf.
+    c.fillStyle = shade(col, -18);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.rect(-0.28, -0.08, 0.56, 0.34);
+    c.fill();
+    c.stroke();
+    // The upper leaf, folded down over it.
+    c.fillStyle = col;
+    c.beginPath();
+    c.moveTo(-0.28, -0.08);
+    c.lineTo(0.28, -0.08);
+    c.lineTo(0.28, -0.3);
+    c.lineTo(-0.28, -0.3);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The fold's shadow.
+    c.strokeStyle = shade(col, -40);
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.moveTo(-0.26, -0.08);
+    c.lineTo(0.26, -0.08);
+    c.stroke();
+    // The weld ribbon across the fold.
+    c.fillStyle = '#b9a13a';
+    c.beginPath();
+    c.rect(-0.06, -0.3, 0.12, 0.56);
+    c.fill();
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.026;
+    c.stroke();
+    // The seal over the ribbon, pressed on the fold.
+    dot(c, '#8c3b2d', 0.0, -0.08, 0.085);
+    dot(c, '#b8503f', -0.02, -0.1, 0.035);
+    c.restore();
+  },
+  kelpstring: (c, col) => {
+    // A string of fen kelp tied the way the shoal ties them: a loop of
+    // three strands drawn through one knot, two blades trailing. It
+    // means paid, and nobody in the crofts has said so.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.lineCap = 'round';
+    // The loop's three strands.
+    c.strokeStyle = shade(col, -30);
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(-0.02, -0.4);
+    c.bezierCurveTo(-0.42, -0.34, -0.4, 0.22, -0.02, 0.24);
+    c.bezierCurveTo(0.38, 0.22, 0.38, -0.32, -0.02, -0.4);
+    c.stroke();
+    c.strokeStyle = col;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(-0.02, -0.36);
+    c.bezierCurveTo(-0.34, -0.3, -0.32, 0.16, -0.02, 0.19);
+    c.stroke();
+    c.strokeStyle = shade(col, 22);
+    c.lineWidth = 0.022;
+    c.beginPath();
+    c.moveTo(0.0, -0.33);
+    c.bezierCurveTo(0.28, -0.26, 0.26, 0.12, 0.0, 0.16);
+    c.stroke();
+    // The two blades trailing below the knot.
+    c.fillStyle = shade(col, -12);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(-0.04, 0.24);
+    c.quadraticCurveTo(-0.24, 0.3, -0.2, 0.46);
+    c.quadraticCurveTo(-0.08, 0.4, -0.04, 0.24);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.0, 0.24);
+    c.quadraticCurveTo(0.16, 0.34, 0.1, 0.46);
+    c.quadraticCurveTo(0.0, 0.38, 0.0, 0.24);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The knot, drawn tight.
+    dot(c, OUTLINE, -0.02, 0.24, 0.075);
+    dot(c, shade(col, -45), -0.02, 0.24, 0.055);
+    dot(c, shade(col, 10), -0.04, 0.22, 0.02);
+    c.restore();
+  },
+  greencorn: (c, col) => {
+    // Corn cut green: three ears on their stalks bound with one band of
+    // straw, the kernels still pale. It keeps a week on boards.
+    c.save();
+    c.translate(0.5, 0.52);
+    c.lineCap = 'round';
+    // The three stalks, splayed from the band.
+    c.strokeStyle = shade(col, -35);
+    c.lineWidth = 0.04;
+    for (const [dx, tilt] of [[-0.16, -0.22], [0.0, 0.0], [0.16, 0.22]] as const) {
+      c.beginPath();
+      c.moveTo(0.0, 0.2);
+      c.quadraticCurveTo(dx * 0.6, 0.0, dx, -0.12 + Math.abs(tilt) * 0.2);
+      c.stroke();
+    }
+    // The ears: tapered, with a husk leaf at the base and rows of kernels.
+    for (const [dx, tilt] of [[-0.18, -0.22], [0.0, 0.0], [0.18, 0.22]] as const) {
+      c.save();
+      c.translate(dx, -0.16 + Math.abs(tilt) * 0.2);
+      c.rotate(tilt);
+      c.fillStyle = col;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.03;
+      c.beginPath();
+      c.moveTo(0.0, -0.26);
+      c.quadraticCurveTo(0.1, -0.12, 0.08, 0.1);
+      c.quadraticCurveTo(0.0, 0.16, -0.08, 0.1);
+      c.quadraticCurveTo(-0.1, -0.12, 0.0, -0.26);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      // The kernel rows.
+      c.strokeStyle = shade(col, -28);
+      c.lineWidth = 0.016;
+      for (const y of [-0.14, -0.04, 0.06]) {
+        c.beginPath();
+        c.moveTo(-0.05, y);
+        c.lineTo(0.05, y);
+        c.stroke();
+      }
+      // The husk leaf, darker, peeled to one side.
+      c.fillStyle = shade(col, -18);
+      c.beginPath();
+      c.moveTo(-0.07, 0.08);
+      c.quadraticCurveTo(-0.18, 0.02, -0.14, -0.14);
+      c.quadraticCurveTo(-0.08, -0.02, -0.03, 0.06);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.024;
+      c.stroke();
+      c.restore();
+    }
+    // The straw band, tied at the front.
+    c.fillStyle = '#d2b665';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.roundRect(-0.14, 0.14, 0.28, 0.1, 0.03);
+    c.fill();
+    c.stroke();
+    c.strokeStyle = '#9a8340';
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.moveTo(-0.03, 0.15);
+    c.lineTo(0.03, 0.23);
+    c.stroke();
+    // The cut stalk ends below the band.
+    c.strokeStyle = shade(col, -35);
+    c.lineWidth = 0.04;
+    c.beginPath();
+    c.moveTo(-0.05, 0.24);
+    c.lineTo(-0.07, 0.4);
+    c.moveTo(0.04, 0.24);
+    c.lineTo(0.07, 0.4);
+    c.stroke();
+    c.restore();
+  },
   spademark: (c, col) => {
     // ON THE BOOKS: a Red Company crew tally — a rough iron tag struck
     // with the spade, holed and thonged for the paymaster's wire.
@@ -8548,6 +8826,15 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   spade_mark: { icon: 'spademark', color: '#a3452e' },
   grave_band: { icon: 'graveband', color: '#c9a94c' },
   seal_ring: { icon: 'sealringicon', color: '#9aa4b2' },
+  // THE CAUSEWAY OR THE SLUICE (contested lands band 7): the fen waist's
+  // five faces, each its own drawing. The two papers are not the shared
+  // scroll on purpose: a levy is posted flat and a pass is folded and
+  // sealed, and a player who holds both must tell them apart at 26px.
+  dike_stake: { icon: 'dikestake', color: '#c4783a' },
+  levy_sheet: { icon: 'levysheet', color: '#e6dcbe' },
+  charter_pass: { icon: 'charterpass', color: '#d9c98a' },
+  kelp_string: { icon: 'kelpstring', color: '#4f6b48' },
+  green_corn: { icon: 'greencorn', color: '#9fb35a' },
   hardened_leather: { icon: 'hide', color: '#7d5636' },
   linen_scrap: { icon: 'ragswatch', color: '#ddd6c2' },
   linen: { icon: 'linenbolt', color: '#e4dcc4' },

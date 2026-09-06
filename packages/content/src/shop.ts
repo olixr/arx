@@ -92,6 +92,9 @@ export const GENERAL_STORE: readonly ShopEntry[] = [
   { item: 'plum_sapling', price: 40 },
   { item: 'barley_seed', price: 45 },
   { item: 'watering_can', price: 30 },
+  // THE OLD GATE (contested lands band 7): a wright's counter sells what
+  // a wright's shed holds. Halvor's four boards come off this shelf.
+  { item: 'board', price: 4 },
   // Basic outfitting — always the fixed common baseline; better rolls
   // come from the anvil, the workbench, or the wilds.
   { item: 'leather_boots', price: 60 },
@@ -203,6 +206,19 @@ const defs: ShopDef[] = [
   { id: 'seed_stall', name: "Jorel's Seed Stall", stock: SEED_STALL },
   { id: 'drover_yard', name: "Sorrel's Drover Yard", stock: DROVER_YARD },
   { id: 'gilly_board', name: 'The Five Stones', stock: GILLY_BOARD },
+  // THE CAUSEWAY HEAD (contested lands band 7, plan §3.1): Ingram's
+  // counter at the ford. The levy is paid in corn, the corn goes on a
+  // shelf, and the shelf sells it back to the road at the ford price:
+  // the Charter's honest cruelty in one line. Open to both sides of the
+  // fork; the boards are the dike's own timber, sold to anyone.
+  {
+    id: 'causeway_head',
+    name: 'The Causeway Head',
+    stock: [
+      { item: 'green_corn', price: 4 },
+      { item: 'board', price: 4 },
+    ],
+  },
   { id: 'waystation_supplies', name: "The Wayfarer's Pack", stock: WAYSTATION_SUPPLIES },
   // THE ROAD'S FORTUNE (living frontier, phase 5): the peddler carts.
   // Each carries a thing or two town never sells — drop-unlock recipe

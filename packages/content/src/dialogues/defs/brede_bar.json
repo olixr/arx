@@ -1,0 +1,50 @@
+{
+  "id": "brede_bar",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "company_brede" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "brede_bar__hub",
+      "text": "Brede. The bar is the road and the road pays. Charter paper walks through. Crofters pay. Children walk through. Those are the three rules and I did not write any of them. Which are you?",
+      "choices": [
+        { "text": "Charter paper.", "next": "paper", "requires": ["charter_pass"] },
+        { "text": "What are the lines on the post at the ford?", "next": "lines" },
+        { "text": "What happened to the waystation?", "next": "glass" },
+        { "text": "Walking on.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "paper",
+      "voice": "brede_bar__paper",
+      "text": "Then walk. The book has two columns and you are in the better one. Mind the ford. It is deeper than it looks and I am not paid to fish anybody out.",
+      "next": "hub"
+    },
+    {
+      "id": "lines",
+      "voice": "brede_bar__lines",
+      "text": "Six lines on that post, a finger apart. That is the winter. The water came up like a bill nobody sent, and I am the one standing here when it arrives. The first line was cut before the Charter's first stake went in. I have not thought about that. The stakes are backing it up onto my bar and I have said so to the man with the level.",
+      "choices": [
+        { "text": "Somebody said a croft burned.", "next": "croft" },
+        { "text": "Back.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "glass",
+      "voice": "brede_bar__glass",
+      "text": "The order pulled its crew off the Ashlamp and let it burn. I have the glass, whole, on a stake at the ruin. Nobody puts a torch to a lamp and leaves the glass whole. Ask Hale where his crew was that night and watch him do arithmetic.",
+      "next": "hub"
+    },
+    {
+      "id": "croft",
+      "voice": "brede_bar__croft",
+      "text": "A croft is a croft. The water took the crofts this spring, all of them, and if one went another way that is between it and the water. Six lines on the post. Go and read them. They are a finger apart and they are the whole of what happened here this year.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "brede_bar__bye",
+      "text": "Walk on or pay on. The bar does not mind which."
+    }
+  ]
+}

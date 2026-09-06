@@ -1,34 +1,126 @@
 {
   "id": "fenside_lamp",
   "name": "The Fenside Lamp",
-  "description": "The drowned crofts and the First Lamp on the Amberfen's waist. The crofters' rows stand under water with the scarecrow in to its waist, the corn is cut green onto stilted pallets, the old sluice hangs on two posts at the reach with a kelp-string on the near one, and Hale's lamp burns at the hamlet gate.",
-  "tiers": [1, 3],
+  "description": "The drowned crofts and the First Lamp on the Amberfen's waist, one scene with the bar at the ford. The crofters' rows stand under water with the scarecrow in to its waist, the corn is cut green onto stilted pallets, the old sluice hangs on two posts at the reach with a kelp string on the near one, the shoal's weir stands at the south water with two of them beside it, and Hale's lamp burns at the hamlet gate.",
+  "tiers": [
+    1,
+    3
+  ],
   "weight": 0,
-  "prefabs": ["poi_fenside_lamp"],
+  "prefabs": [
+    "poi_fenside_lamp"
+  ],
   "garrison": [],
   "actors": [
-    { "pool": ["waykeeper_hale"], "post": "watch", "routine": "hale_lamp" },
-    { "pool": ["waykeeper_leif"], "post": "hearth", "routine": "leif_walk" },
-    { "pool": ["fenside_halvor"], "post": "hearth", "routine": "waystation_keeper" },
-    { "pool": ["charter_ingram"], "post": "hearth" },
-    { "pool": ["fenside_crofter"], "post": "hearth" },
-    { "pool": ["fenside_crofter"], "post": "hearth" },
-    { "pool": ["wayward_watch"], "post": "watch" }
+    {
+      "pool": [
+        "waykeeper_hale"
+      ],
+      "post": "watch",
+      "at": {
+        "dx": 4,
+        "dy": 2,
+        "dir": "N"
+      },
+      "routine": "hale_lamp"
+    },
+    {
+      "pool": [
+        "fenside_halvor"
+      ],
+      "post": "hearth",
+      "at": {
+        "dx": 12,
+        "dy": 10,
+        "dir": "W"
+      },
+      "routine": "halvor_gate"
+    },
+    {
+      "pool": [
+        "charter_ingram"
+      ],
+      "post": "hearth",
+      "at": {
+        "dx": 9,
+        "dy": 4,
+        "dir": "E"
+      },
+      "routine": "ingram_dike"
+    },
+    {
+      "pool": [
+        "fenside_crofter"
+      ],
+      "post": "hearth",
+      "at": {
+        "dx": 8,
+        "dy": 6,
+        "dir": "W"
+      },
+      "routine": "crofter_boards"
+    },
+    {
+      "pool": [
+        "fenside_crofter"
+      ],
+      "post": "hearth",
+      "at": {
+        "dx": 20,
+        "dy": 12,
+        "dir": "W"
+      },
+      "routine": "crofter_stilts"
+    },
+    {
+      "pool": [
+        "skral_weirward"
+      ],
+      "post": "hearth",
+      "at": {
+        "dx": 8,
+        "dy": 14,
+        "dir": "E"
+      }
+    },
+    {
+      "pool": [
+        "skral_weirward"
+      ],
+      "post": "hearth",
+      "at": {
+        "dx": 3,
+        "dy": 13,
+        "dir": "S"
+      }
+    },
+    {
+      "pool": [
+        "wayward_watch"
+      ],
+      "post": "watch",
+      "at": {
+        "dx": 8,
+        "dy": 0,
+        "dir": "N"
+      }
+    }
   ],
-  "haven": { "safeR": 16 },
-  "cues": { "clearing": 3, "approachPath": true },
+  "haven": {
+    "safeR": 16
+  },
+  "cues": {
+    "clearing": 7,
+    "approachPath": true
+  },
   "signs": [
     {
-      "title": "THE OLD SLUICE",
-      "lines": ["two posts and a broken gate", "somebody tied kelp to the near post", "nobody has asked whose"]
-    },
-    {
-      "title": "DROWNED CORN",
-      "lines": ["cut green and stacked on the pallets", "carried by anyone at all", "ask at the near croft"]
-    },
-    {
       "title": "THE FIRST LAMP",
-      "lines": ["a Waykeeper lamp. lit at dusk", "past the reach the fen is nobody's road"]
+      "lines": [
+        "A Waykeeper lamp, lit at dusk.",
+        "Past the reach the fen",
+        "is nobody's road."
+      ]
     }
   ]
 }

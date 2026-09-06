@@ -1,4 +1,4 @@
-import { isFishingTile, Tile, tileColliderRadius } from './tiles.js';
+import { footprintCoveredAt, isFishingTile, Tile, tileColliderRadius } from './tiles.js';
 
 /** Anything that can answer "is this tile solid?" — maps, generated chunks. */
 export interface CollisionSource {
@@ -23,10 +23,28 @@ function solidRadius(src: CollisionSource, tx: number, ty: number): number | nul
 }
 
 /**
+ * THE CART HAS TWO FEET (tiles.ts FOOTPRINT): an open tile is still
+ * blocked to boots when a two-foot prop beside it reaches into it —
+ * the belongings cart's shafts, the lean-to's skirt, the cot's far
+ * trestle, the broken cart's spilled sacks. The second foot is a
+ * full block (the art fills it edge to edge on the foot line), never
+ * a centered radius. Sources without `tileAt` cannot see a footprint
+ * and keep their one-tile world, exactly as they keep full-tile
+ * collision. Shared by the walk collider, the point test and the nav
+ * grid (pathfind.ts), so server, client prediction and NPC paths all
+ * stop at the same canvas — the netcode determinism law.
+ */
+export function footprintBlocked(src: CollisionSource, tx: number, ty: number): boolean {
+  if (!src.tileAt) return false;
+  return footprintCoveredAt(src.tileAt.bind(src), tx, ty);
+}
+
+/**
  * Circle-vs-tilemap test: does a body of `radius` at (x, y) overlap any
  * solid tile? Positions are in tile units; tile (tx, ty) spans
  * [tx, tx+1) x [ty, ty+1). Centered-mass tiles (trees, rocks) test as
- * circles at the tile centre — the rest as full AABBs.
+ * circles at the tile centre — the rest as full AABBs. A two-foot
+ * prop's second foot (footprintBlocked) tests as a full AABB too.
  */
 export function circleHitsSolid(
   src: CollisionSource,
@@ -40,14 +58,18 @@ export function circleHitsSolid(
   const maxTy = Math.floor(y + radius);
   for (let ty = minTy; ty <= maxTy; ty++) {
     for (let tx = minTx; tx <= maxTx; tx++) {
-      if (!src.isSolid(tx, ty)) continue;
-      const r = solidRadius(src, tx, ty);
-      if (r !== null) {
-        // Circle-vs-circle against the trunk/boulder at the centre.
-        const dx = x - (tx + 0.5);
-        const dy = y - (ty + 0.5);
-        if (dx * dx + dy * dy < (radius + r) * (radius + r)) return true;
-        continue;
+      if (!src.isSolid(tx, ty)) {
+        if (!footprintBlocked(src, tx, ty)) continue;
+        // The second foot: a full block, tested below like a wall.
+      } else {
+        const r = solidRadius(src, tx, ty);
+        if (r !== null) {
+          // Circle-vs-circle against the trunk/boulder at the centre.
+          const dx = x - (tx + 0.5);
+          const dy = y - (ty + 0.5);
+          if (dx * dx + dy * dy < (radius + r) * (radius + r)) return true;
+          continue;
+        }
       }
       // Closest point on the tile AABB to the circle center.
       const cx = Math.max(tx, Math.min(x, tx + 1));
@@ -63,12 +85,14 @@ export function circleHitsSolid(
 /**
  * Point-vs-tilemap test with the same shape law — the projectile's
  * view of the world: a shot entering a tree's tile only dies when it
- * reaches the trunk.
+ * reaches the trunk. A two-foot prop's second foot is solid to a
+ * point on the ground (a dropped item, a spawn probe) as it is to
+ * boots.
  */
 export function pointHitsSolid(src: CollisionSource, x: number, y: number): boolean {
   const tx = Math.floor(x);
   const ty = Math.floor(y);
-  if (!src.isSolid(tx, ty)) return false;
+  if (!src.isSolid(tx, ty)) return footprintBlocked(src, tx, ty);
   const r = solidRadius(src, tx, ty);
   if (r === null) return true;
   const dx = x - (tx + 0.5);
@@ -103,6 +127,12 @@ function shotOverflies(src: CollisionSource, tx: number, ty: number): boolean {
   );
 }
 
+/**
+ * A two-foot prop's second foot never stops a shot: the resting
+ * shafts, the pegged skirt and the spilled sacks all lie under chest
+ * height (the water rule's cousin), so this test reads only the
+ * tile's own solidity, as it always did.
+ */
 export function pointHitsShot(src: CollisionSource, x: number, y: number): boolean {
   const tx = Math.floor(x);
   const ty = Math.floor(y);

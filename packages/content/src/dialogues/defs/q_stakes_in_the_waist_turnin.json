@@ -1,0 +1,14 @@
+{
+  "id": "q_stakes_in_the_waist_turnin",
+  "start": "planted",
+  "requires": ["quest:stakes_in_the_waist:ready"],
+  "bindings": [{ "kind": "actor", "target": "charter_ingram", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "planted",
+      "voice": "q_stakes_in_the_waist_turnin__planted",
+      "text": "Eight in, eight true. The line stands across the crossing to the far bank. The shoal will come up the channel at it by morning, and the crofts will have something to say by the morning after. Both of those are the dike working.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "stakes_in_the_waist" }]
+    }
+  ]
+}

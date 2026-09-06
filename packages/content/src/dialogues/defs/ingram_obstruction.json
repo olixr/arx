@@ -1,0 +1,35 @@
+{
+  "id": "ingram_obstruction",
+  "start": "hub",
+  "requires": ["quest:the_green_road:done", "quest:the_obstruction_bill:available"],
+  "bindings": [{ "kind": "actor", "target": "charter_ingram", "priority": 6 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "ingram_obstruction__hub",
+      "text": "You hung a gate against a voted work. The Charter calls that obstruction and bills it at sixty a season, and I am the one who has to write it. Pay it or do not. The gate stays hung either way, and so does the bill.",
+      "choices": [
+        { "text": "Take the sixty.", "next": "bill" },
+        { "text": "I will not pay a bill for a gate.", "next": "refused" }
+      ]
+    },
+    {
+      "id": "bill",
+      "voice": "ingram_obstruction__bill",
+      "text": "Sixty, to the counter, and your name comes out of the obstruction column when it is counted. It goes back in next season if the gate is still hung. It will be.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_obstruction_bill" }],
+      "next": "sworn"
+    },
+    {
+      "id": "sworn",
+      "voice": "ingram_obstruction__sworn",
+      "text": "Then it is in the book as owed. The book is patient. So am I.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_obstruction_bill" }]
+    },
+    {
+      "id": "refused",
+      "voice": "ingram_obstruction__refused",
+      "text": "Then it stands in the book. The book is patient. So am I."
+    }
+  ]
+}

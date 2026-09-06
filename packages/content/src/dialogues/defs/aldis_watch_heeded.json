@@ -26,10 +26,23 @@
      "next": "toll"
     },
     {
+     "text": "The fen waist.",
+     "next": "fen",
+     "requires": [
+      "fen_side_taken"
+     ]
+    },
+    {
      "text": "Carry on, Captain.",
      "next": "bye"
     }
    ]
+  },
+  {
+   "id": "fen",
+   "voice": "aldis_watch_heeded__fen",
+   "text": "The chain at the ford came down on the fourth day. The one at the fen waist has not come down and I do not think it will, so I file it under the fourth day and I leave the entry open. Whichever way you turned out there, it is in that column now. I do not need to know which.",
+   "next": "hub"
   },
   {
    "id": "road",

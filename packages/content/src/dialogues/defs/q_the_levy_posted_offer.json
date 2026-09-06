@@ -1,0 +1,38 @@
+{
+  "id": "q_the_levy_posted_offer",
+  "start": "hub",
+  "requires": ["quest:the_levy_posted:available"],
+  "forbids": [
+    "quest:the_old_gate:active",
+    "quest:the_old_gate:done",
+    "quest:the_green_road:active",
+    "quest:the_green_road:done"
+  ],
+  "bindings": [{ "kind": "actor", "target": "charter_ingram", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_the_levy_posted_offer__hub",
+      "text": "The line holds if the crossing holds. The shoal will not let a stake stand in their water without answering it, and I want the crossing held while it is answered. After that there is a sheet to post at Dawnmead and paper to walk the bar with. Charter paper walks through Brede's bar. That is his rule and I did not write it either.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_levy_posted" }],
+      "choices": [
+        { "text": "I will hold it.", "next": "sworn" },
+        { "text": "Hold it yourself.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_the_levy_posted_offer__sworn",
+      "text": "Here is the sheet. Do not lose it in the water.",
+      "hooks": [
+        { "kind": "give", "item": "levy_sheet", "qty": 1 },
+        { "kind": "quest_accept", "quest": "the_levy_posted" }
+      ]
+    },
+    {
+      "id": "declined",
+      "voice": "q_the_levy_posted_offer__declined",
+      "text": "Then the crossing holds with two hands. It has before."
+    }
+  ]
+}

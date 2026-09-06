@@ -7,6 +7,7 @@ import {
   TILE_DEFS,
   Tile,
   WALL_RUN_TILES,
+  chestInfo,
   hashString,
   isSolidTile,
   sanitizeSignText,
@@ -15,7 +16,7 @@ import {
 import { stampTemplate } from '../structures/stamp.js';
 import type { StructureTemplate } from '../structures/types.js';
 import type { PlaneId } from '../planes.js';
-import type { PortalDef, ZoneActorSpawn, ZoneDef, ZoneSign, ZoneSpawn } from './types.js';
+import type { PortalDef, ZoneActorSpawn, ZoneChest, ZoneDef, ZoneSign, ZoneSpawn } from './types.js';
 
 /**
  * Authoring API for hand-made zones. Zones are built by carving shapes
@@ -33,10 +34,13 @@ export class ZoneBuilder {
   private hasElev = false;
   private spawnPoint: Vec2 | undefined;
   private zonePlane: PlaneId | undefined;
+  /** THE KEPT AND THE WILD: the growth domain mark; unset = 'kept' by law. */
+  private zoneGrowth: 'kept' | 'wild' | undefined;
   private readonly portals: PortalDef[] = [];
   private readonly zoneSpawns: ZoneSpawn[] = [];
   private readonly zoneActorSpawns: ZoneActorSpawn[] = [];
   private readonly zoneSigns: ZoneSign[] = [];
+  private readonly zoneChests: ZoneChest[] = [];
   private readonly rng: Rng;
 
   constructor(
@@ -283,6 +287,39 @@ export class ZoneBuilder {
   /** Spawn point in local coords; stored in world coords. */
   spawn(x: number, y: number): this {
     this.spawnPoint = { x: this.origin.x + x, y: this.origin.y + y };
+    return this;
+  }
+
+  /**
+   * THE KEPT AND THE WILD (site-grammar G-3): mark this zone's owned
+   * tiles as authored wilderness. 'wild' hands its resources to the
+   * growth ledger (slow, persistent regrowth: the Ashlamp's ash ring,
+   * the fen waist's reeds); 'kept' is the default and stays absent on
+   * the built def, so every legacy zone remains byte-identical.
+   */
+  growth(domain: 'kept' | 'wild'): this {
+    this.zoneGrowth = domain;
+    return this;
+  }
+
+  /**
+   * THE ZONE'S WARDED CHEST (site-grammar G-6): stand a closed chest
+   * tile at local (x, y) and bind its lid — `table` re-keys the loot,
+   * `wardedBy` names the pinned authored site whose standing garrison
+   * holds it shut (the server registers the binding exactly as a POI
+   * def's chestLoot/chestWarded). The tile must be a CLOSED chest;
+   * an open lid or any other tile is refused here, and the placement
+   * vet holds the same law on every load door.
+   */
+  chest(x: number, y: number, table: string, wardedBy: string, tile: Tile = Tile.ChestIron): this {
+    const info = chestInfo(tile);
+    if (!info || info.open) {
+      throw new Error(
+        `${this.id}: chest at (${x},${y}) must be a closed chest tile, not '${this.tileName(tile)}'`,
+      );
+    }
+    this.set(x, y, tile);
+    this.zoneChests.push({ x: this.origin.x + x, y: this.origin.y + y, table, wardedBy });
     return this;
   }
 
@@ -582,10 +619,15 @@ export class ZoneBuilder {
       // Flat zones export no layer, keeping legacy defs byte-identical.
       elev: this.hasElev ? this.elev : undefined,
       spawn: this.spawnPoint,
+      // The default domain and an empty chest list stay ABSENT so the
+      // legacy zones' built defs never grow a key (the JSON round-trip
+      // law the placements keep).
+      ...(this.zoneGrowth !== undefined ? { growth: this.zoneGrowth } : {}),
       portals: this.portals,
       spawns: this.zoneSpawns,
       actorSpawns: this.zoneActorSpawns,
       signs: this.zoneSigns,
+      ...(this.zoneChests.length > 0 ? { chests: this.zoneChests } : {}),
     };
   }
 }

@@ -1,5 +1,17 @@
-import type { CollisionSource } from './collision.js';
+import { footprintBlocked, type CollisionSource } from './collision.js';
 import type { Vec2 } from '../math/vec.js';
+
+/**
+ * THE CART HAS TWO FEET on the nav grid: a tile is closed to a path
+ * when it is solid OR when it is the second foot of a two-foot prop
+ * beside it (collision.ts footprintBlocked) — otherwise the planner
+ * would lay a lane through the cart's shafts and the walk collider
+ * would stop the body dead inside it, the stuck watchdog's exact
+ * diet. Every solidity read in this file goes through here.
+ */
+function navSolid(world: CollisionSource, x: number, y: number): boolean {
+  return world.isSolid(x, y) || footprintBlocked(world, x, y);
+}
 
 /** Outcome of a chase-grade nav query (findPathNav). */
 export interface NavPathResult {
@@ -108,7 +120,7 @@ export function findPathNav(
 
   // Goal snap: hunt the rings around a solid goal tile for the
   // walkable tile closest to the true goal point.
-  if (world.isSolid(tx, ty)) {
+  if (navSolid(world, tx, ty)) {
     let bestD = Infinity;
     let bx = tx;
     let by = ty;
@@ -118,7 +130,7 @@ export function findPathNav(
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
           const nx = tx + dx;
           const ny = ty + dy;
-          if (world.isSolid(nx, ny)) continue;
+          if (navSolid(world, nx, ny)) continue;
           const d = Math.hypot(nx + 0.5 - toX, ny + 0.5 - toY);
           if (d < bestD) {
             bestD = d;
@@ -184,10 +196,10 @@ export function findPathNav(
         if (dx === 0 && dy === 0) continue;
         const nx = current.x + dx;
         const ny = current.y + dy;
-        if (!inBounds(nx, ny) || world.isSolid(nx, ny)) continue;
+        if (!inBounds(nx, ny) || navSolid(world, nx, ny)) continue;
         // No diagonal corner-cutting.
         if (dx !== 0 && dy !== 0) {
-          if (world.isSolid(current.x + dx, current.y) || world.isSolid(current.x, current.y + dy)) {
+          if (navSolid(world, current.x + dx, current.y) || navSolid(world, current.x, current.y + dy)) {
             continue;
           }
         }
@@ -222,7 +234,7 @@ export function findPath(
   const tx = Math.floor(toX);
   const ty = Math.floor(toY);
   if (sx === tx && sy === ty) return [];
-  if (world.isSolid(tx, ty)) return null;
+  if (navSolid(world, tx, ty)) return null;
 
   const key = (x: number, y: number) => `${x},${y}`;
   const open: Array<{ x: number; y: number; g: number; f: number }> = [
@@ -263,10 +275,10 @@ export function findPath(
         if (dx === 0 && dy === 0) continue;
         const nx = current.x + dx;
         const ny = current.y + dy;
-        if (world.isSolid(nx, ny)) continue;
+        if (navSolid(world, nx, ny)) continue;
         // No diagonal corner-cutting.
         if (dx !== 0 && dy !== 0) {
-          if (world.isSolid(current.x + dx, current.y) || world.isSolid(current.x, current.y + dy)) {
+          if (navSolid(world, current.x + dx, current.y) || navSolid(world, current.x, current.y + dy)) {
             continue;
           }
         }

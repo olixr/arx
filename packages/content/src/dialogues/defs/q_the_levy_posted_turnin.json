@@ -1,0 +1,17 @@
+{
+  "id": "q_the_levy_posted_turnin",
+  "start": "posted",
+  "requires": ["quest:the_levy_posted:ready"],
+  "bindings": [{ "kind": "actor", "target": "charter_margit", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "posted",
+      "voice": "q_the_levy_posted_turnin__posted",
+      "text": "Posted. The Fenside crofts, the levy in corn at the ford price, Ingram's hand and now mine. The three under the sacking will read it by noon. I will tell you something for nothing. It is a good work billed to the wrong people, and I have posted it, and I am the one who has to stand next to it.",
+      "hooks": [
+        { "kind": "quest_turnin", "quest": "the_levy_posted" },
+        { "kind": "standing", "faction": "fenside", "delta": -10 }
+      ]
+    }
+  ]
+}

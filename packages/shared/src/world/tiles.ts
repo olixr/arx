@@ -1106,6 +1106,67 @@ export function tileColliderRadius(id: number): number | null {
 }
 
 /**
+ * THE CART HAS TWO FEET (contested lands band 7, owed E5 / A6). Four
+ * scarred-land props paint wider than the one tile they own, and a
+ * body used to walk straight through the painted half: the
+ * belongings cart rests its shafts 0.36 of a tile past its WEST edge
+ * (displaced.ts: "the shafts' tips at −0.86s"); the field cot's far
+ * trestle splays 0.15 past its EAST edge ("the far east trestle's
+ * splayed foot at +0.65s"); the lean-to pegs its skirts 0.31 past
+ * BOTH flanks, the west one carrying the sun strip that reads as the
+ * solid wall (the east fold sits a step under, in shade); the broken
+ * cart spills its sacks on the tie side, WEST ("the sacks' seat
+ * reaches past the burst sack's mouth on the tie side"). Each of the
+ * four owns a SECOND FOOT: the one cardinal neighbour its painter
+ * reaches into. The walk collider (collision.ts) and the nav grid
+ * (pathfind.ts) hold that neighbour as a full block while the prop
+ * stands, exactly as if it were solid, so feet stop at the canvas and
+ * the shafts instead of inside them. The side is the PAINTER's fixed
+ * side, never a guess: read the painter before changing a number,
+ * because a footprint the art does not draw is an invisible wall. The
+ * content lint (content maps/lint/footprint.ts) refuses any placement
+ * whose second foot is solid, a route or a routine waypoint, so the
+ * blocked tile is always open ground the author gave the prop. Shots
+ * ignore the second foot (an arrow crosses a resting shaft at chest
+ * height, the canopy law's cousin); the prop's own tile keeps its
+ * full block for both.
+ */
+export interface Footprint {
+  readonly dx: -1 | 0 | 1;
+  readonly dy: -1 | 0 | 1;
+}
+export const FOOTPRINT: ReadonlyMap<Tile, Footprint> = new Map<Tile, Footprint>([
+  [Tile.LeanTo, { dx: -1, dy: 0 }],
+  [Tile.FieldCot, { dx: 1, dy: 0 }],
+  [Tile.BelongingsCart, { dx: -1, dy: 0 }],
+  [Tile.BrokenCart, { dx: -1, dy: 0 }],
+]);
+
+/** The second foot of a two-foot prop, or null for every one-tile tile. */
+export function tileFootprint(id: number): Footprint | null {
+  return FOOTPRINT.get(id as Tile) ?? null;
+}
+
+/**
+ * Is (tx, ty) the SECOND FOOT of a two-foot prop standing beside it?
+ * Reads the four cardinal neighbours through the given sampler; an
+ * unknown neighbour (undefined) never covers.
+ */
+export function footprintCoveredAt(
+  tileAt: (tx: number, ty: number) => number | undefined,
+  tx: number,
+  ty: number,
+): boolean {
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    const t = tileAt(tx + dx, ty + dy);
+    if (t === undefined) continue;
+    const f = FOOTPRINT.get(t as Tile);
+    if (f !== undefined && dx + f.dx === 0 && dy + f.dy === 0) return true;
+  }
+  return false;
+}
+
+/**
  * THE SIGHT LAW — what a watching eye sees past. Three masses:
  * 'wall' seals the sight-line outright: every lamplight blocker plus
  * the cliff face (nobody looks through the hill). 'cover' is a

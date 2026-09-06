@@ -335,13 +335,19 @@ function paintBrazier(rend: PropHost, env: PropFrame): DrawItem {
   const syT = s * rend.camera.yScale;
   const baseY = p.y + syT * 0.18;
   // An iron fire-basket at the waist: three splayed legs under a
-  // riveted bowl, a STANDING FIRE banked in the open top. The
-  // fire is always lit — a brazier is a tended flame (the
-  // campfire precedent), not a lamp on the dusk clock — so the
-  // painted blaze burns at noon while the lightmap punch stays
-  // flame-gated in collectStaticLights, where daylight rightly
-  // swallows it. Bounds reach past the smoke crown: a too-tight
-  // body clips the bake and rings the straight clip edge.
+  // riveted bowl, a STANDING FIRE banked in the open top.
+  // THE COLD BRAZIER BY DAY (contested lands band 7, owed E6 / D3):
+  // the painted blaze rides sky.flame exactly like the LampPost's
+  // caged flame — cold iron and a dead grey coal bed at noon, the
+  // fire climbing with the dusk clock and burning through the night
+  // — because the kit law says a brazier is lit AT DUSK (the light
+  // row in shared/world/lights.ts has been flame-gated since it was
+  // written; only the painter still burned at noon, which is the
+  // fault this gate closes). Underground the frame's flame gate
+  // rides to 1 (renderer applyUnderground), so a dungeon brazier
+  // never goes cold; WarBrazier is its own id and its own painter.
+  // Bounds reach past the smoke crown: a too-tight body clips the
+  // bake and rings the straight clip edge.
   const rimY = baseY - s * 0.72;
   const rw = s * 0.3; // rim half-width
   return {
@@ -353,6 +359,16 @@ function paintBrazier(rend: PropHost, env: PropFrame): DrawItem {
       // to its scratch — the build-time capture would paint past it.
       const ctx = rend.ctx;
       const lit = rend.sky.flame;
+      // THE GATE: under 0.05 the basket is cold iron (the LampPost's
+      // own threshold); from there the fire CLIMBS with the dusk clock
+      // on a smooth ramp to full at 0.4, never a pop — the ring cache
+      // re-mints the sprite on its cadence while the live lane draws
+      // every frame, and a hard step at the threshold would put the
+      // two lanes a whole blaze apart for one cadence (the parity
+      // gate's crown scenes measured exactly that).
+      const rampT = Math.max(0, Math.min(1, (lit - 0.05) / 0.35));
+      const fire = rampT * rampT * (3 - 2 * rampT);
+      const cold = fire <= 0;
       const flick = 0.9 + Math.sin(t * 9 + h) * 0.07 + Math.sin(t * 21 + h * 3) * 0.04;
       // Contact shade under the leg stance.
       ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
@@ -360,11 +376,14 @@ function paintBrazier(rend: PropHost, env: PropFrame): DrawItem {
       ctx.ellipse(p.x, baseY, s * 0.3, s * 0.08, 0, 0, Math.PI * 2);
       ctx.fill();
       // Firelight laps the ground through the legs — a faceted
-      // warm pool, deeper after dark (the campfire's floor law).
-      ctx.fillStyle = `rgba(232, 122, 51, ${(0.05 + 0.04 * flick) * (0.6 + lit * 0.4)})`;
-      ctx.beginPath();
-      facetCircle(ctx, p.x, baseY - s * 0.02, s * 0.46, 8, h * 0.3, 0.5);
-      ctx.fill();
+      // warm pool, deeper after dark (the campfire's floor law);
+      // a cold basket throws none.
+      if (!cold) {
+        ctx.fillStyle = `rgba(232, 122, 51, ${(0.05 + 0.04 * flick) * fire})`;
+        ctx.beginPath();
+        facetCircle(ctx, p.x, baseY - s * 0.02, s * 0.46, 8, h * 0.3, 0.5);
+        ctx.fill();
+      }
       // Three splayed legs: two forward, one behind the bowl —
       // wrought iron with clawed feet.
       ctx.fillStyle = '#211c2b';
@@ -423,10 +442,16 @@ function paintBrazier(rend: PropHost, env: PropFrame): DrawItem {
       ctx.beginPath();
       ctx.ellipse(p.x, rimY - s * 0.012, rw * 0.96, s * 0.12, 0, Math.PI, Math.PI * 2);
       ctx.fill();
-      // Coals: the banked bed glows ALWAYS — night lifts the
-      // painted heat a notch, out-of-phase pulses keep it alive.
-      const hot = 0.85 + lit * 0.15;
-      ctx.fillStyle = '#7c3018';
+      // Coals: lit, the banked bed glows and out-of-phase pulses keep
+      // it alive, night lifting the painted heat a notch; cold, it is
+      // yesterday's bed — grey clinker in a dead brown seat, no pulse.
+      const hot = 0.85 + fire * 0.15;
+      // The bed warms on the same ramp: dead brown-grey through to
+      // the banked red (a value ride, so the dusk lane never steps).
+      const bedR = Math.round(58 + (124 - 58) * fire);
+      const bedG = Math.round(50 + (48 - 50) * fire);
+      const bedB = Math.round(56 + (24 - 56) * fire);
+      ctx.fillStyle = `rgb(${bedR}, ${bedG}, ${bedB})`;
       ctx.beginPath();
       ctx.ellipse(p.x, rimY + s * 0.01, rw * 0.74, s * 0.095, 0, 0, Math.PI * 2);
       ctx.fill();
@@ -435,13 +460,21 @@ function paintBrazier(rend: PropHost, env: PropFrame): DrawItem {
         const cx = p.x + (((hc % 100) / 100 - 0.5) * rw * 1.1);
         const cy = rimY + s * 0.005 - ((hc >>> 6) % 8) / 100 * s;
         const pulse = 0.5 + Math.sin(t * 3.1 + k * 2.2 + h) * 0.5;
-        ctx.fillStyle =
-          (hc & 1) === 0
-            ? `rgba(232, 147, 60, ${(0.55 + 0.45 * pulse) * hot})`
-            : `rgba(255, 196, 96, ${(0.45 + 0.5 * pulse) * hot})`;
+        // Grey clinker first (the cold read), the ember over it at
+        // the ramp's alpha — the two cross-fade instead of swapping.
+        ctx.fillStyle = (hc & 1) === 0 ? '#57505c' : '#6a636e';
         ctx.beginPath();
         facetCircle(ctx, cx, cy, s * (0.036 + ((hc >>> 9) % 4) * 0.007), 6, hc * 0.3);
         ctx.fill();
+        if (!cold) {
+          ctx.fillStyle =
+            (hc & 1) === 0
+              ? `rgba(232, 147, 60, ${(0.55 + 0.45 * pulse) * hot * fire})`
+              : `rgba(255, 196, 96, ${(0.45 + 0.5 * pulse) * hot * fire})`;
+          ctx.beginPath();
+          facetCircle(ctx, cx, cy, s * (0.036 + ((hc >>> 9) % 4) * 0.007), 6, hc * 0.3);
+          ctx.fill();
+        }
       }
       // THE STANDING FIRE: four banked layers of angular flame —
       // deep ember sheath, orange body, gold heart, white-hot
@@ -451,8 +484,10 @@ function paintBrazier(rend: PropHost, env: PropFrame): DrawItem {
       // speaks the same blocky dialect as the prop it rides.
       // Cadence sampling gives it the stop-motion shimmer (the
       // LampPost precedent); the live glow pass carries the
-      // actual light.
-      const fh = s * (0.5 + 0.07 * Math.sin(t * 3.7 + h)) * flick;
+      // actual light. Nothing of it burns while the basket is cold;
+      // its height and its heat climb with the dusk clock.
+      if (!cold) {
+      const fh = s * (0.5 + 0.07 * Math.sin(t * 3.7 + h)) * flick * (0.45 + 0.55 * fire);
       const blaze = (cx: number, bw: number, hgt: number, ph: number): void => {
         const sw = Math.sin(t * 6.3 + ph) * s * 0.028 + Math.sin(t * 11.7 + ph * 2.1) * s * 0.014;
         const tipX = cx + sw * 1.7;
@@ -471,13 +506,14 @@ function paintBrazier(rend: PropHost, env: PropFrame): DrawItem {
         ctx.closePath();
         ctx.fill();
       };
-      ctx.fillStyle = `rgba(194, 74, 32, ${0.92 * hot})`;
+      const heat = hot * fire;
+      ctx.fillStyle = `rgba(194, 74, 32, ${0.92 * heat})`;
       blaze(p.x, rw * 0.78, fh * 1.2, h * 0.7);
-      ctx.fillStyle = `rgba(232, 130, 61, ${0.95 * hot})`;
+      ctx.fillStyle = `rgba(232, 130, 61, ${0.95 * heat})`;
       blaze(p.x + s * 0.012, rw * 0.6, fh * 0.94, h * 1.3);
-      ctx.fillStyle = `rgba(242, 201, 76, ${0.95 * hot})`;
+      ctx.fillStyle = `rgba(242, 201, 76, ${0.95 * heat})`;
       blaze(p.x - s * 0.014, rw * 0.42, fh * 0.66, h * 0.4);
-      ctx.fillStyle = `rgba(255, 243, 200, ${0.9 * hot})`;
+      ctx.fillStyle = `rgba(255, 243, 200, ${0.9 * heat})`;
       blaze(p.x, rw * 0.24, fh * 0.4, h * 2.2);
       // Ember motes: square chips shed off the crown, spiraling
       // up and dimming — the fire's own weather.
@@ -486,8 +522,8 @@ function paintBrazier(rend: PropHost, env: PropFrame): DrawItem {
         const es = s * (0.05 - ph * 0.022);
         ctx.fillStyle =
           (i & 1) === 0
-            ? `rgba(255, 190, 110, ${(1 - ph) * 0.85 * hot})`
-            : `rgba(242, 201, 76, ${(1 - ph) * 0.7 * hot})`;
+            ? `rgba(255, 190, 110, ${(1 - ph) * 0.85 * heat})`
+            : `rgba(242, 201, 76, ${(1 - ph) * 0.7 * heat})`;
         ctx.fillRect(
           p.x + Math.sin(t * 2.1 + i * 2.6 + h) * s * (0.08 + ph * 0.1) - es / 2,
           rimY - fh * 0.8 - ph * s * 0.55,
@@ -499,7 +535,7 @@ function paintBrazier(rend: PropHost, env: PropFrame): DrawItem {
       // they thin — the same gray the campfire breathes.
       for (let i = 0; i < 2; i++) {
         const sp = (t * (0.24 + i * 0.09) + h * 0.13 + i * 0.5) % 1;
-        ctx.fillStyle = `rgba(146, 140, 152, ${(1 - sp) * 0.2})`;
+        ctx.fillStyle = `rgba(146, 140, 152, ${(1 - sp) * 0.2 * fire})`;
         ctx.beginPath();
         facetCircle(
           ctx,
@@ -512,6 +548,7 @@ function paintBrazier(rend: PropHost, env: PropFrame): DrawItem {
         );
         ctx.fill();
       }
+      } // the gate closes: a cold basket ends at its coals
       // Rim front lip reads over the flame roots.
       ctx.fillStyle = '#2c2836';
       ctx.beginPath();

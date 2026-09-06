@@ -205,10 +205,14 @@ const SPECS: ReadonlyArray<readonly [Tile, EmitterSpec]> = [
   // Dungeon brazier: an open coal basket — campfire-class reach with
   // the same standing-flame flicker, flame-gated like every man-made
   // fire (underground the flame gate rides to 1, so braziers always
-  // carry the dark band).
+  // carry the dark band). THE COLD BRAZIER BY DAY (band 7, owed E6):
+  // the bloom rides the flame clock too (`gate: 'flame'`, the
+  // LampPost's own word) — the punch was gated from the first, but
+  // an ungated bloom left a warm pool under a basket the painter now
+  // shows cold at noon.
   [Tile.Brazier, {
     curve: FLICK_OPEN_FIRE,
-    glows: [{ dx: 0.5, dy: 0.3, r: 1.5, rRide: true, rgb: '255, 158, 66', a: 0.3 }],
+    glows: [{ dx: 0.5, dy: 0.3, r: 1.5, rRide: true, rgb: '255, 158, 66', a: 0.3, gate: 'flame' }],
     lights: [{ dx: 0.5, dy: 0.5, r: 4.4, rRide: true, rgb: [255, 180, 104], intensity: 0.9, flameGated: true, occlude: true }],
   }],
   // THE LONG DARK FURNISHED: the caged wall flame — torch-class heat
@@ -373,6 +377,28 @@ const SPECS: ReadonlyArray<readonly [Tile, EmitterSpec]> = [
     porch: true,
     glows: [{ dx: 0.5, dy: 0.62, air: 1.4, r: 1.3, rRide: true, rgb: '255, 205, 130', a: 0.28, gate: 'flame' }],
     lights: [{ dx: 0.5, dy: 0.5, r: 5, rRide: true, rgb: [255, 205, 135], intensity: 0.9, flameGated: true, occlude: true, z: 1.4 }],
+  }],
+  // THE HUNG LANTERN (contested lands, band 7 fix pass 1): the porch
+  // lantern on its crook is LIT AT DUSK like the lamp it is a smaller
+  // cousin of, and until now it lit nothing — its horn panes were
+  // paint and the commons shelf carried no light rows by law, so the
+  // Charter's two lanterns at the causeway head stood dark from the
+  // ford at dusk and the head read as a dead counter. This row is the
+  // lantern's own tier UNDER the town lamp (THE TOWN LAW, tiered):
+  // the same flame gate and porch reach, the bloom hung at the box's
+  // height on the hook (about one post-height up, against the lamp's
+  // cage at 1.4), a pool of yard reach (r 3.2 against 5) at lantern
+  // brightness (0.55 against 0.9), warmer in hue because it burns
+  // through horn and not glass. Flame-gated light is architecture
+  // (THE FLAME LAW) so it occludes like the lamp. Every lantern on
+  // every quay and lane lights its own few tiles at night now, and
+  // none of them outshines the lamp that owns the town's night.
+  [Tile.StreetLantern, {
+    curve: { base: 0.9, terms: [{ hz: 7, amp: 0.05, px: 1.7, py: 0.6 }, { hz: 15, amp: 0.03, py: 2.1 }] },
+    flameGate: true,
+    porch: true,
+    glows: [{ dx: 0.5, dy: 0.62, air: 1.0, r: 0.9, rRide: true, rgb: '255, 190, 115', a: 0.24, gate: 'flame' }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 3.2, rRide: true, rgb: [255, 192, 120], intensity: 0.55, flameGated: true, occlude: true, z: 1.0 }],
   }],
   // THE SCARRED LAND (docs/contested-lands-plan.md §6.1). Five rows,
   // and NO rows on purpose for PitLampDark, LampPostDark, and

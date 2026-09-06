@@ -18,7 +18,7 @@ import {
   wallHungInfo,
 } from '@arx/shared';
 import type { StationType } from '@arx/shared';
-import type { ZoneSign } from './maps/types.js';
+import type { ZoneDef, ZoneSign } from './maps/types.js';
 import { ZoneBuilder } from './maps/builder.js';
 import { buildDawnmead } from './maps/dawnmead.js';
 import { buildDawnmeadWithRegistry } from './maps/dawnmead/index.js';
@@ -30,6 +30,7 @@ import {
   signPairViolations,
   unreachableFloor,
 } from './maps/dawnmead/lint.js';
+import { footprintViolations, footprintViolationsOn } from './maps/lint/footprint.js';
 import { buildAmberford } from './maps/amberford.js';
 import { buildSilverfall } from './maps/silverfall.js';
 import { buildSaltmere } from './maps/saltmere.js';
@@ -39,6 +40,8 @@ import { buildKingsdelf } from './maps/kingsdelf.js';
 import { buildEvenfall } from './maps/evenfall.js';
 import { buildUndercroft } from './maps/undercroft.js';
 import { buildLowhall } from './maps/lowhall.js';
+import { buildAshlamp } from './maps/ashlamp.js';
+import { buildFenside } from './maps/fenside.js';
 import { AMBERFORD_RECT, EVENFALL_RECT, HARTFELL_RECT, KINGSDELF_RECT, SALTMERE_RECT, SILVERFALL_RECT } from './geography.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import { zonePlacementErrors } from './maps/validateZone.js';
@@ -1183,6 +1186,10 @@ test('every authored zone passes the placement vet — no orphaned wall hangings
     ['evenfall', buildEvenfall],
     ['undercroft', buildUndercroft],
     ['lowhall', buildLowhall],
+    // THE CONTESTED LANDS (band 7): the two First Road patches take
+    // the same vet (a warded chest, one actor row, the bar's gap).
+    ['ashlamp', buildAshlamp],
+    ['fenside', buildFenside],
   ];
   for (const [name, build] of towns) {
     const errors = zonePlacementErrors(build()).filter((e) => e.includes('wall-hung'));
@@ -1336,6 +1343,47 @@ test('dawnmead: THE TUTORIAL IS SACRED and the four floods run clean', () => {
   assert.deepEqual(occlusionViolations(z, registry), [], 'the occlusion law');
   assert.deepEqual(signPairViolations(z), [], 'one Signpost per eyeful');
   assert.deepEqual(boxOverlaps(registry), [], 'scene boxes overlap');
+});
+
+test('THE CART HAS TWO FEET: every two-foot prop in every authored zone stands its second foot on open ground', () => {
+  // The lint (maps/lint/footprint.ts) over every shipped zone: a
+  // belongings cart's shafts, a lean-to's skirt, a cot's far trestle
+  // and a broken cart's spilled sacks each own one cardinal neighbour,
+  // and that neighbour is never solid, a route or a routine waypoint.
+  const zones: Array<[string, ZoneDef]> = [
+    ['dawnmead', buildDawnmead()],
+    ['amberford', buildAmberford()],
+    ['silverfall', buildSilverfall()],
+    ['saltmere', buildSaltmere()],
+    ['pinewatch', buildPinewatch()],
+    ['hartfell', buildHartfell()],
+    ['kingsdelf', buildKingsdelf()],
+    ['evenfall', buildEvenfall()],
+    ['undercroft', buildUndercroft()],
+    ['lowhall', buildLowhall()],
+  ];
+  for (const [id, z] of zones) assert.deepEqual(footprintViolations(z), [], `${id}: the second foot`);
+  // Dawnmead's sacking row and the two lone carts are under the law
+  // (five two-foot props stand in the village; none may vanish).
+  const dawn = buildDawnmead();
+  let twoFoot = 0;
+  for (const t of dawn.ground) if (t === Tile.LeanTo || t === Tile.FieldCot || t === Tile.BelongingsCart || t === Tile.BrokenCart) twoFoot++;
+  assert.equal(twoFoot, 8, 'two lean-tos, a cot, three belongings carts, two broken carts');
+  // The three refusals, each on a two-tile string world.
+  const world = (rows: string[], waypoints: string[] = []) => {
+    const chars: Record<string, number> = { G: Tile.Grass, P: Tile.Path, H: Tile.Hedge, C: Tile.BelongingsCart, T: Tile.FieldCot };
+    const at = (x: number, y: number): number | undefined => (y >= 0 && y < rows.length && x >= 0 && x < rows[y]!.length ? chars[rows[y]![x]!] : undefined);
+    const cells: Array<[number, number]> = [];
+    rows.forEach((r, y) => [...r].forEach((c, x) => { if (c === 'C' || c === 'T') cells.push([x, y]); }));
+    return footprintViolationsOn({ at, cells, waypoints: new Set(waypoints) });
+  };
+  assert.deepEqual(world(['GGCG']), [], 'a cart with open ground west of it stands');
+  assert.match(world(['GHCG'])[0]!, /solid 'hedge'/, 'a hedge in the shafts is refused');
+  assert.match(world(['GPCG'])[0]!, /a route/, 'the shafts across the lane are refused');
+  assert.match(world(['GGCG'], ['1,0'])[0]!, /routine waypoint/, 'a post in the shafts is refused');
+  assert.match(world(['CG'])[0]!, /outside the authored ground/, 'a cart at the rect edge is refused');
+  assert.match(world(['GGTH'])[0]!, /solid 'hedge'/, 'the cot reaches east');
+  assert.deepEqual(world(['HGTG']), [], 'the cot does not reach west');
 });
 
 test('dawnmead: every doorway (granary included) walks from the spawn', () => {

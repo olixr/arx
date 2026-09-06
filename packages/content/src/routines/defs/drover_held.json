@@ -1,0 +1,11 @@
+{
+  "id": "drover_held",
+  "base": { "kind": "post", "sit": true, "speed": 1.0 },
+  "slots": [
+    {
+      "from": 6,
+      "to": 6.5,
+      "task": { "kind": "wander", "radius": 1, "speed": 0.9 }
+    }
+  ]
+}

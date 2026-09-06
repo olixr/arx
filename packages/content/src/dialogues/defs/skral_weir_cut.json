@@ -1,0 +1,13 @@
+{
+  "id": "skral_weir_cut",
+  "start": "back",
+  "requires": ["weir_cut"],
+  "bindings": [{ "kind": "actor", "target": "skral_weirward", "priority": 9 }],
+  "nodes": [
+    {
+      "id": "back",
+      "voice": "skral_weir_cut__back",
+      "text": "The skral does not lift its hand. It looks at the water, then at the stakes across it, then at you, and turns its back."
+    }
+  ]
+}

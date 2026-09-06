@@ -1,0 +1,29 @@
+{
+  "id": "q_the_ledger_line_offer",
+  "start": "hub",
+  "requires": ["quest:the_ledger_line:available"],
+  "bindings": [{ "kind": "actor", "target": "charter_margit", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_the_ledger_line_offer__hub",
+      "text": "The ledger has a line for you now. The Charter takes the crofts' corn at the ford price and sells it on, and the corn does not walk itself from Ingram's counter to this stall. Three sheaves, under Charter paper, past the bar the paper walks. The ledger pays the legs.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_ledger_line" }],
+      "choices": [
+        { "text": "I will carry it.", "next": "sworn" },
+        { "text": "Not today.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_the_ledger_line_offer__sworn",
+      "text": "Three off his shelf. Do not tell me where he got it. I know where he got it.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_ledger_line" }]
+    },
+    {
+      "id": "declined",
+      "voice": "q_the_ledger_line_offer__declined",
+      "text": "The line stays open. The corn does not."
+    }
+  ]
+}

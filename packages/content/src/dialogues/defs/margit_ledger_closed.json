@@ -1,0 +1,13 @@
+{
+  "id": "margit_ledger_closed",
+  "start": "closed",
+  "requires": ["quest:the_green_road:done"],
+  "bindings": [{ "kind": "actor", "target": "charter_margit", "priority": 7 }],
+  "nodes": [
+    {
+      "id": "closed",
+      "voice": "margit_ledger_closed__closed",
+      "text": "Your name is in the obstruction column in Ingram's hand, and my ledger does not carry work for that column. It is not my column. I know how that sounds. Carry for the hedge if you like. Nobody posts that."
+    }
+  ]
+}

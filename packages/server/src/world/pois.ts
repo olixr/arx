@@ -33,6 +33,7 @@ import {
   territoryAt,
   territoryWeight,
   type MinorDef,
+  type PoiActorAt,
   type PoiDef,
   type PoiGarrisonEntry,
   type PostKind,
@@ -1282,6 +1283,7 @@ export function composePoi(
     patrol?: boolean;
     hours?: { from: number; to: number };
     tribe?: string;
+    at?: PoiActorAt;
   }> = [];
   // Boldness rungs collected up front only to size the sentry ring —
   // their spawns append strictly AFTER the whole base composition
@@ -1349,6 +1351,12 @@ export function composePoi(
           crown: g.crowned ? hashCoords(musterBase, gi, 0x517d) & 0x7fffffff : undefined,
           hours: g.hours,
           tribe: g.tribe,
+          // THE MOUTH ON THE ROW: the named crowned body carries its
+          // actor slug into the spawn record. The validator holds it
+          // to exactly this push (one name, crowned, holdfast, count
+          // [1,1]): a named row never peels onto a post seat above,
+          // so the mouth always rides the anchor body and no other.
+          ...(g.actor !== undefined ? { mouth: g.actor } : {}),
         });
       }
     } else {
@@ -1360,6 +1368,7 @@ export function composePoi(
           patrol: g.patrol,
           hours: g.hours,
           tribe: g.tribe,
+          ...(g.at !== undefined ? { at: g.at } : {}),
         });
       }
     }
@@ -1401,10 +1410,47 @@ export function composePoi(
     }
   }
   const byScore = [...ring].sort((a, b) => b.score - a.score);
-  const sentryWatchPosts = sentryWants.filter((w) => !w.patrol).length;
-  if (sentryWants.length > 0) {
-    const patrollers = sentryWants.filter((w) => w.patrol);
-    const watchers = sentryWants.filter((w) => !w.patrol);
+  // THE POST IS NAMED, for the ring (contested lands, band 7 fix pass
+  // 1): a sentry row carrying `at` stands on the plan's own
+  // prefab-local cell and consumes no ring bearing. The bar's crew
+  // mustered twenty rows from the road on a ring sized to the camp,
+  // and a toll nobody stands at is a camp, not a bar; the archer and
+  // the picket now hold the post line where the pass is read. The
+  // cell is taken VERBATIM: it lies outside the sketch by nature (a
+  // sentry's ground is the approach, never the footprint) and the
+  // blind field probe reads a road shoulder as rock, while the zone
+  // that owns that shoulder has worn it to dirt — so no probe, no
+  // nudge, no ring fallback; the def's validator and the server's
+  // own composed-ground test carry the honesty. The body plants on a
+  // `watch` post facing its cardinal (the idle brain's post branch:
+  // walk to it, hold it, leash back to it after a chase), so it never
+  // drifts into the one-tile gap it stands beside. Rows without `at`
+  // take the ring exactly as before — every other camp is byte-
+  // identical.
+  const cardinalDir = (d: PoiActorAt['dir'], fallback: number): number =>
+    d === 'N' ? -Math.PI / 2 : d === 'E' ? 0 : d === 'S' ? Math.PI / 2 : d === 'W' ? Math.PI : fallback;
+  for (const want of sentryWants) {
+    if (want.at === undefined) continue;
+    const wx = originX + px0 + want.at.dx + 0.5;
+    const wy = originY + py0 + want.at.dy + 0.5;
+    spawns.push({
+      npc: want.npc,
+      x: wx,
+      y: wy,
+      radius: 1.2,
+      count: 1,
+      level: want.level,
+      name: want.name,
+      hours: want.hours,
+      tribe: want.tribe,
+      post: { kind: 'watch', x: wx, y: wy, dir: cardinalDir(want.at.dir, Math.atan2(ay, ax)) },
+    });
+  }
+  const ringWants = sentryWants.filter((w) => w.at === undefined);
+  const sentryWatchPosts = ringWants.filter((w) => !w.patrol).length;
+  if (ringWants.length > 0) {
+    const patrollers = ringWants.filter((w) => w.patrol);
+    const watchers = ringWants.filter((w) => !w.patrol);
     // Standing watchers take the townward posts, best bearing first.
     for (let i = 0; i < watchers.length && i < byScore.length; i++) {
       const want = watchers[i]!;
@@ -1557,6 +1603,34 @@ export function composePoi(
     let watchI = 0;
     for (const [ei, entry] of staff.entries()) {
       const slug = entry.pool[hashCoords(musterBase ^ 0x37, ei, 3) % entry.pool.length]!;
+      // THE POST IS NAMED (the seating law): a row with `at` stands on
+      // its exact prefab-local cell — the sergeant's lamp cell, the
+      // sleeper's bed, the skral's bank at the weir — and consumes no
+      // derived hearth or watch slot, so the rows without it keep the
+      // spots they always had. The cardinal `dir` is the stand; absent,
+      // the body faces the fire exactly as a derived hearth post does.
+      if (entry.at !== undefined) {
+        const zx = px0 + entry.at.dx;
+        const zy = py0 + entry.at.dy;
+        const dir =
+          entry.at.dir === 'N'
+            ? -Math.PI / 2
+            : entry.at.dir === 'E'
+              ? 0
+              : entry.at.dir === 'S'
+                ? Math.PI / 2
+                : entry.at.dir === 'W'
+                  ? Math.PI
+                  : Math.atan2(heart.y - zy, heart.x - zx);
+        actorSpawns.push({
+          actor: slug,
+          x: originX + zx + 0.5,
+          y: originY + zy + 0.5,
+          dir,
+          ...(entry.routine !== undefined ? { routine: entry.routine } : {}),
+        });
+        continue;
+      }
       if (entry.post === 'hearth') {
         const spot = hearthSpots[hearthI++];
         if (!spot) continue; // a prefab with no open interior posts nobody
@@ -2007,6 +2081,7 @@ export function findAuthoredAnchor(
   prefab: PrefabDef,
   ctx: PoiContext,
   maxNudge = 14,
+  hug = false,
 ): { x: number; y: number } | null {
   // THE RELAXED LANDMARK SITING reaches authored pins too: the
   // INFLUENCE LAW grew every ordinary prefab past what hand-picked
@@ -2023,15 +2098,37 @@ export function findAuthoredAnchor(
   // same reason — THIS is the one site that checks capitals per
   // candidate (the cell scans mask whole cells before any roll), so
   // its preset alone passes them.
-  const fits = (tx: number, ty: number): boolean =>
+  const fitsWith = (tx: number, ty: number, zonePad: number): boolean =>
     siteScan(seed, tx, ty, prefab.width, prefab.height, ctx.zoneRects, ctx.claimRings, {
-      zonePad: AUTHORED_ZONE_PAD,
+      zonePad,
       darkPad: ZONE_CLEARANCE,
       darkFrom: 'center',
       stride,
       tolerance,
       capitals: ctx.capitals,
     }) !== null;
+  const fits = (tx: number, ty: number): boolean => fitsWith(tx, ty, AUTHORED_ZONE_PAD);
+  // THE AUTHORED HUG (contested lands, band 7; OPT-IN per site since
+  // fix pass 2): a pin whose site row says `hug` is tried first with
+  // NO zone pad. A pinned site is the plan placing its own landmark
+  // beside its own patch, and the pad exists so the scan's WALK never
+  // sets a footprint flush against ground it did not choose; a
+  // footprint that stands exactly where the plan pinned it, on the
+  // plan's own word, needs no such guard, only the strict no-overlap
+  // edge (intersectsZones at pad 0). So the plan may lay a zone rect
+  // and THAT pinned footprint edge to edge (the fen waist's felled
+  // shoulder runs to the bar's own clearing without six rows of
+  // nobody's trees between them), and only a pin the scan has to
+  // nudge keeps AUTHORED_ZONE_PAD — a walked footprint is the scan's
+  // choice, not the plan's, and it stays clear. Every pin WITHOUT the
+  // word keeps the pad from its first probe, byte-identical to the
+  // scan before band 7 (fix pass 1 hugged every pin and moved
+  // hoargate's anchor six tiles onto a pin nobody had measured; the
+  // word is the plan's, one site at a time, and a golden test pins
+  // every authored anchor). Rows the boot decided before a rect was
+  // planned are still vetted by poiSiteBlocked at the frontier's own
+  // clearance; this hug is the seeder's alone.
+  if (hug && fitsWith(x, y, 0)) return { x, y };
   if (fits(x, y)) return { x, y };
   for (let r = 1; r <= maxNudge; r++) {
     for (let dy = -r; dy <= r; dy++) {

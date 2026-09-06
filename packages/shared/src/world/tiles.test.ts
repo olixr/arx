@@ -50,6 +50,9 @@ import {
   chestInfo,
   closedChestTile,
   tileColliderRadius,
+  FOOTPRINT,
+  tileFootprint,
+  footprintCoveredAt,
   destructibleInfo,
   DESTRUCTIBLE_TILES,
   diagWallInfo,
@@ -1043,4 +1046,31 @@ test('scarred-land run families: the two ruin walls stand apart and merge with t
   // down a course), char comes down in three (charbeam).
   assert.equal(destructibleInfo(Tile.RuinWallStone), null, 'stone is load-bearing');
   assert.deepEqual(destructibleInfo(Tile.RuinWallWood), { kind: 'charbeam', respawnSec: 600, hits: 3 });
+});
+
+test('THE CART HAS TWO FEET: the four footprints name one cardinal second foot each, and only those', () => {
+  const owners = [Tile.LeanTo, Tile.FieldCot, Tile.BelongingsCart, Tile.BrokenCart];
+  assert.deepEqual([...FOOTPRINT.keys()].sort((a, b) => a - b), [...owners].sort((a, b) => a - b));
+  for (const t of owners) {
+    const f = tileFootprint(t)!;
+    assert.ok(f !== null, `${tileDef(t).name} has a second foot`);
+    // One cardinal step, never a diagonal, never the tile itself.
+    assert.equal(Math.abs(f.dx) + Math.abs(f.dy), 1, `${tileDef(t).name} steps one cardinal`);
+    // The owner is a full-block solid: the second foot doubles a block, never a radius.
+    assert.equal(tileDef(t).solid, true, `${tileDef(t).name} is solid`);
+    assert.equal(tileColliderRadius(t), null, `${tileDef(t).name} is a full-tile mass`);
+  }
+  // The painters' fixed sides (client props/scarred/displaced.ts, fieldAfter.ts).
+  assert.deepEqual(tileFootprint(Tile.BelongingsCart), { dx: -1, dy: 0 }, 'the resting shafts lie west');
+  assert.deepEqual(tileFootprint(Tile.FieldCot), { dx: 1, dy: 0 }, 'the far trestle splays east');
+  assert.deepEqual(tileFootprint(Tile.LeanTo), { dx: -1, dy: 0 }, 'the sunlit skirt is the west one');
+  assert.deepEqual(tileFootprint(Tile.BrokenCart), { dx: -1, dy: 0 }, 'the sacks spill on the tie side');
+  assert.equal(tileFootprint(Tile.Bedroll), null, 'a one-tile prop owns no second foot');
+  // footprintCoveredAt reads the owner from the covered cell's side.
+  const at = (x: number, y: number): number | undefined => (x === 5 && y === 5 ? Tile.FieldCot : x === 9 && y === 9 ? Tile.LeanTo : Tile.Grass);
+  assert.equal(footprintCoveredAt(at, 6, 5), true, 'east of the cot');
+  assert.equal(footprintCoveredAt(at, 4, 5), false, 'west of the cot is free');
+  assert.equal(footprintCoveredAt(at, 8, 9), true, 'west of the lean-to');
+  assert.equal(footprintCoveredAt(at, 10, 9), false);
+  assert.equal(footprintCoveredAt(() => undefined, 6, 5), false, 'an unknown neighbour never covers');
 });

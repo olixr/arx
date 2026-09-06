@@ -1016,6 +1016,15 @@ const defs: ItemDef[] = [
   { id: 'crew_paytin', name: 'Crew pay-tin', stackable: true, value: 0, quest: true, desc: 'A dented tin, wages still inside. Nobody came up to spend them.', color: '#a9976a', code: 'Pt' },
   { id: 'gilded_locket', name: 'Gilded locket', stackable: true, value: 0, quest: true, desc: 'Gold over brass, warm even in a dead hand. The clasp still works.', color: '#d8b45a', code: 'Gl' },
   { id: 'weathered_letter', name: 'Weathered letter', stackable: true, value: 0, quest: true, startsQuest: 'the_last_patrol', desc: 'Rain-run ink, folded to a worn crease. The last line is still legible.', color: '#cfc5ab', code: 'Wl' },
+  // THE CAUSEWAY OR THE SLUICE (contested lands band 7, plan §3.1): the
+  // fork's four tokens and the one plain good. Four are quest paper and
+  // timber, worthless by law; the corn is a real thing with a real price,
+  // sold back to the road off the Charter's counter at the ford.
+  { id: 'dike_stake', name: 'Dike stake', stackable: true, value: 0, quest: true, desc: "An ochre survey stake with a brass plate. Driven, it is the Charter's ground.", color: '#c4783a', code: 'Dk' },
+  { id: 'levy_sheet', name: 'Levy sheet', stackable: true, value: 0, quest: true, desc: "Ingram's levy, signed at the ford. Margit posts what she is handed.", color: '#e6dcbe', code: 'Lv' },
+  { id: 'charter_pass', name: 'Charter pass', stackable: true, value: 0, quest: true, desc: "Charter paper with the ford's seal. The Company honours paper.", color: '#d9c98a', code: 'Ch' },
+  { id: 'kelp_string', name: 'Kelp string', stackable: true, value: 0, quest: true, desc: 'A string of fen kelp tied the way the shoal ties them. It means paid.', color: '#4f6b48', code: 'Ks' },
+  { id: 'green_corn', name: 'Green corn', stackable: true, maxStack: 20, value: 1, desc: 'Corn cut green and going soft. It keeps a week on boards.', color: '#9fb35a', code: 'Gc' },
   { id: 'linen_scrap', name: 'Linen scrap', stackable: true, value: 3, desc: 'Torn cloth off someone who stopped needing it.', color: '#ddd6c2', code: 'Ls' },
   { id: 'gloomsilk_thread', name: 'Gloomsilk thread', stackable: true, value: 14, desc: 'Cold spun shadow from the crypt. It drinks the light.', color: '#5a4a78', code: 'Gt' },
 

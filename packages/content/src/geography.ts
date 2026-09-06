@@ -379,6 +379,46 @@ export const EVENFALL_RECT: ZoneRect = { x: -1112, y: -414, w: 160, h: 112 };
 export const HEARTWOOD_RECT: ZoneRect = { x: -1232, y: -534, w: 96, h: 64 };
 
 /**
+ * THE ASHLAMP and THE FEN WAIST (contested lands, band 7): the two
+ * small authored zones on the First Road east of Dawnmead's gate.
+ * Patches on worldgen (site-grammar §2): each stamps only what it
+ * authors and stays transparent elsewhere, so neither needs chunk
+ * alignment nor an apron. The Ashlamp rect stands at the lake's south
+ * tip where the road turns east (west edge x 48, never under 40,
+ * seventeen tiles clear of Dawnmead's rect); the fenside rect is the
+ * thin band around the ford whose EAST edge is measured against the
+ * crofts' pinned footprint (x 148..171 at (160,94)): the pad law
+ * puts it at x 141; its SOUTH edge is y 100 (h 25), ONE row of
+ * nobody's ground above the bar's scanned footprint (y 102..115 at
+ * the pin (126,109)), which stands that close only because the bar's
+ * pin declares THE AUTHORED HUG (`hug: true` on its site row; every
+ * other pin keeps AUTHORED_ZONE_PAD). Both rects are the zones' own
+ * pins; these mirror them for the plan.
+ */
+export const ASHLAMP_RECT: ZoneRect = { x: 48, y: 92, w: 23, h: 19 };
+export const FENSIDE_RECT: ZoneRect = { x: 118, y: 76, w: 24, h: 25 };
+
+/**
+ * THE PAD LAW, mirrored from the server's siting scan (server
+ * world/pois.ts: AUTHORED_ZONE_PAD, and findAuthoredAnchor's maxNudge)
+ * so content can hold its own rects to it (geography.test G-12, the
+ * zone lints' padClear): a pinned site's scanned footprint keeps
+ * AUTHORED_ZONE_PAD tiles clear of every authored zone rect WHEN THE
+ * SCAN WALKS IT, and the scan walks a refused pin at most
+ * AUTHORED_NUDGE_MAX tiles — away from a zone, never into one. THE
+ * AUTHORED HUG (band 7; opt-in per site since fix pass 2, pois.ts
+ * findAuthoredAnchor): a pin that declares `hug` on its site row is
+ * tried first with no pad at all, so a plan may lay a patch and THAT
+ * pinned footprint edge to edge (the fen waist's felled shoulder runs
+ * to the bar's own clearing); content's mirror is strict no-overlap
+ * for a hugging pin and the full pad for every other pin, exactly the
+ * scan's own first probe. A test pins both numbers to the server's
+ * source so the mirror can never drift.
+ */
+export const AUTHORED_ZONE_PAD = 6;
+export const AUTHORED_NUDGE_MAX = 14;
+
+/**
  * THE EVERWOOD — the great wood of the far west, and the first
  * landform beyond the Silverspine. THREE veil hearts (the paired-
  * hearts grammar the Amberfen and the Spinewall taught: a landform
@@ -440,6 +480,22 @@ export interface AuthoredWildSite {
    * deals, exactly as the rolled cells do.
    */
   prefabId?: string;
+  /**
+   * THE AUTHORED HUG (contested lands, band 7 fix pass 2), OPT-IN per
+   * site: a pin that declares `hug` is tried FIRST with no zone pad at
+   * all (server world/pois.ts findAuthoredAnchor), so the plan may lay
+   * an authored zone rect and this footprint edge to edge (the fen
+   * waist's felled shoulder runs to the bar's own clearing without six
+   * rows of nobody's trees between them). Only the strict no-overlap
+   * edge holds for a hugging pin; a hugging pin the scan still has to
+   * WALK keeps AUTHORED_ZONE_PAD like any other. Every pin WITHOUT the
+   * word keeps the pad from the first probe, exactly as it stood
+   * before band 7 (fix pass 1 tried pad 0 for EVERY pin and moved
+   * hoargate six tiles onto its pin, unmeasured; this word puts the
+   * hug back in the plan's hand, one site at a time). Pinned mode
+   * only; the validator refuses it on a cell-forced site.
+   */
+  hug?: true;
 }
 
 /**
@@ -769,11 +825,26 @@ const AUTHORED_PLAN: GeographyDef = {
     // wolfkin den wants deep wood, not crag.)
     { id: 'veil_den', defId: 'wolfkin_den', cell: [-2, -1] },
     { id: 'spine_digs', defId: 'kobold_digs', cell: [-5, -4] },
-    // The First Road ambush — every waker's first lesson that the
-    // space BETWEEN safeties is the game: the camp watches the fen-
-    // waist stretch where the road has water on one side and them on
-    // the other.
-    { id: 'first_road_toll', defId: 'bandit_camp', x: 122, y: 112, prefabId: 'poi_bandit_toll' },
+    // BREDE'S BAR (contested lands, band 7; rulings R4): the Red
+    // Company's crew on the First Road's west approach to the ford —
+    // every waker's first lesson that the space BETWEEN safeties is
+    // the game. The site id is kept so the ledger's poi:0,0 row
+    // re-seeds in place; the def is the weight-0 `first_road_bar` on
+    // its own sketch (an honest smaller toll, Brede crowned on the
+    // row). Pinned SOUTH-WEST of the ford with its footprint clear of
+    // the road shoulder and ONE row south of the fenside rect under
+    // THE AUTHORED HUG, which THIS pin alone declares (`hug`, fix pass
+    // 2: the word is per site, and every other pin keeps the pad):
+    // measured at seed 24601 (fix pass 1), the 22x14 scanned
+    // footprint at (126,109) is x 115..136, y 102..115 (nudge 0, min
+    // roadDist 5.32 at (115,102), tier 2 in cell [0,0]); the proof's
+    // (126,108) stood 4.48 from the carve, a hair inside the
+    // shoulder's letter. The crew's archer and picket stand at the
+    // post line on the zone's worn shoulders (the def's `at` rows).
+    // The bar SCENE (the posts, the teeth, the cage, the counter) is
+    // the fenside zone's dressing on the road (maps/fenside/), never
+    // the camp's.
+    { id: 'first_road_toll', defId: 'first_road_bar', x: 126, y: 109, prefabId: 'poi_first_road_bar', hug: true },
     // The broken tower on the High Road's west miles, watching the
     // channel country where the road takes its two bridges.
     { id: 'first_climb_tower', defId: 'watchtower_ruin', x: 368, y: -136 },
@@ -787,9 +858,20 @@ const AUTHORED_PLAN: GeographyDef = {
     // east has a place to breathe.
     // THE CONTESTED LANDS (plan §3.1, §13.2): the crofts are drowned
     // and Hale's First Lamp stands at their gate — ONE staged scene
-    // with Brede's bar 30 tiles west (the declared one-scene pair in
-    // the validator's spacing law). Same pin; the def changed.
-    { id: 'fenside_crofts', defId: 'fenside_lamp', x: 148, y: 98 },
+    // with Brede's bar 35 tiles west across the ford (the declared
+    // one-scene pair in the validator's spacing law).
+    // RE-PINNED (band 7, brief 0.2 K): the shipped pin (148,98) sat ON
+    // the channel and the seeder walked it twenty tiles south-west
+    // over the toll camp; (160,94) is the first candidate on the EAST
+    // bank south of the road, and the 24x16 core stands there at
+    // nudge 0 (footprint x 148..171, y 86..101; roadDist 16.3; tier 3
+    // in cell [1,0]). The fenside rect's east edge (x 141) follows
+    // this footprint by the pad law. The prefab must NOT grow past its
+    // core (an influence cap above 24 makes a 30x20 the scan can stand
+    // nowhere within the nudge: the shoulder rows and the channel
+    // exceed its tolerance) — the crofts' declareInfluence cap is the
+    // pin's own law.
+    { id: 'fenside_crofts', defId: 'fenside_lamp', x: 160, y: 94 },
     // THE GULLMOOR REST — the Salt Road's halfway lamp, the last roof
     // before the tier-3 league.
     { id: 'gullmoor_rest', defId: 'waystation', x: 556, y: 140 },
@@ -863,7 +945,11 @@ const AUTHORED_PLAN: GeographyDef = {
     // belt ([-3,0] emptied when the barrow came east, below), the
     // far north past the Legion, the First Road past the crofts to
     // the tollhouse, the Old Road from the Third Stone to
-    // returners_camp. The Sett is reserved (below).
+    // returners_camp, and THE LONG DRY on the First Road itself,
+    // x 70..118 between the Ashlamp's dead tree and the fen waist's
+    // cairn: 54 tiles of worldgen forest that carry nothing authored,
+    // by the curation law (composed emptiness, band 7). The Sett is
+    // reserved (below).
     // ---------------------------------------------------------------
     // THE HUSK OF THE LINE — moved OFF the trail's end into the dark
     // between the fork and the longmeadow (109 from the fork, 128
@@ -900,16 +986,13 @@ const AUTHORED_PLAN: GeographyDef = {
     // canvas at its east end) is part of the prefab, not a site of
     // its own. Off every way.
     { id: 'broken_barrow', defId: 'broken_barrow', x: -208, y: 48 },
-    // THE ASHLAMP — the threshold scar at the causeway head (72,64),
-    // def `ashlamp` (no core: no garrison, no haven). NOT PINNED HERE
-    // YET: (72,64) shares macro-cell [0,0] with first_road_toll, and
-    // the server's POI ledger holds ONE row per cell (seedAuthoredSites
-    // would retire the bar to seed the scar and the scar to re-seed
-    // the bar, every boot), and the pin stands 35 tiles off the road
-    // carve. Plan §3.1 always called it a dressing patch stamped by a
-    // zone-less sketch, not a site: it needs that stamp path (or a
-    // second-row ledger) before this line is uncommented.
-    // { id: 'ashlamp', defId: 'ashlamp', x: 72, y: 64 },
+    // THE ASHLAMP is NOT a site (band 7, rulings R1): the scar is the
+    // authored zone maps/ashlamp/ (its `planned` row is below), a
+    // dressing patch on worldgen at the lake's south tip where the
+    // road turns east, twelve seconds from the gate. It shares cell
+    // [0,0] with the bar and the ledger holds one row per cell, which
+    // a zone never asks for. The `ashlamp` def, the `poi_ashlamp`
+    // sketch and the parked pin that stood here retired with it.
     // TODO(band 9, THE STANDING COURSE): cell [1,2] is RESERVED for
     // the Sett — the Dolmen's quarry bowl at (172,300), an AUTHORED
     // ZONE with its own actors and spawn rows (plan §11.6), never a
@@ -993,6 +1076,34 @@ const AUTHORED_PLAN: GeographyDef = {
     { id: 'oldcrown', name: 'The Oldcrown', ...OLDCROWN_RECT },
     { id: 'evenfall', name: 'Evenfall', ...EVENFALL_RECT, apron: true },
     { id: 'heartwood', name: 'The Heartwood', ...HEARTWOOD_RECT },
+    // THE CONTESTED LANDS, band 7 (rulings R1, R2): the two small
+    // authored zones on the First Road east of the gate. No apron:
+    // these are patches on worldgen (TILE_SKIP everywhere they do not
+    // author), not towns with fields. The rects are the zones' own
+    // (maps/ashlamp/pins.ts, maps/fenside/pins.ts) and the pad law
+    // (AUTHORED_ZONE_PAD) keeps every pinned footprint clear of them.
+    { id: 'ashlamp', name: 'The Ashlamp', ...ASHLAMP_RECT },
+    { id: 'fenside', name: 'The Fen Waist', ...FENSIDE_RECT },
+  ],
+  // THE LIVING GROUND's first authored stroke (band 7, owed E2): the
+  // burn under the Ashlamp. Centre the shell's heart (57,95), reach 11
+  // ragged by the grain to about 10..12, soft over most of the hem, so
+  // the skin folds toward ash under the scar and thins out through
+  // the ring into the field; the reach box (x about 45..69, y 83..107)
+  // stands more than eight tiles east of Dawnmead's rect (x ends at
+  // 31: THE TUTORIAL IS SACRED by the validator's refusal) and crosses
+  // the chunk border at x 64, which is where the fringe-seam probe
+  // reads it. Skin only (no `bones`): worldgen is byte-identical.
+  spectrum: [
+    {
+      id: 'ashlamp_burn',
+      axis: 'burn',
+      shape: { kind: 'circle', x: 57, y: 95, r: 11 },
+      amp: 1,
+      soft: 0.6,
+      grain: 0.3,
+      mode: 'max',
+    },
   ],
 };
 export const AUTHORED_GEOGRAPHY: GeographyDef = Object.freeze(AUTHORED_PLAN);
@@ -1225,7 +1336,22 @@ export function validateGeographyDef(
       if (refs?.poiDefIds && !refs.poiDefIds.has(s.defId)) {
         errors.push(`site '${s.id}' names unknown POI archetype '${s.defId}'`);
       }
-      vetKeys(s, ['id', 'defId', 'x', 'y', 'cell', 'prefabId'], `site '${s.id}'`);
+      vetKeys(s, ['id', 'defId', 'x', 'y', 'cell', 'prefabId', 'hug'], `site '${s.id}'`);
+      // THE AUTHORED HUG is a word the plan says on purpose, per site:
+      // `true` or absent, never false (an absent word is the pad), and
+      // only on a pinned site (a cell scan has no pin to hug from).
+      let hug: true | undefined;
+      if (s.hug !== undefined) {
+        if (s.hug !== true) {
+          errors.push(`site '${s.id}' hug must be true or absent (the pad is the default; say nothing for it)`);
+          continue;
+        }
+        if (s.cell !== undefined) {
+          errors.push(`site '${s.id}' hug is a pinned site's word (a cell-forced site has no pin to hug from)`);
+          continue;
+        }
+        hug = true;
+      }
       // THE PINNED SKETCH is vetted against the archetype's own pool:
       // a prefab the def never listed would compose a site the def's
       // muster and cues were never written for.
@@ -1245,7 +1371,7 @@ export function validateGeographyDef(
         }
         prefabId = s.prefabId;
       }
-      const pin = prefabId !== undefined ? { prefabId } : {};
+      const pin = { ...(prefabId !== undefined ? { prefabId } : {}), ...(hug ? { hug } : {}) };
       const pinned = s.x !== undefined || s.y !== undefined;
       const celled = s.cell !== undefined;
       if (pinned === celled) {

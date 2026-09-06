@@ -38,11 +38,27 @@ function paintStandingTorch(rend: PropHost, env: PropFrame): DrawItem {
     draw: () => {
       // Draw-time ctx capture: the outline pass swaps rend.ctx.
       const ctx = rend.ctx;
-      // Firelight laps the ground first.
-      ctx.fillStyle = `rgba(232, 122, 51, ${0.07 * flick})`;
-      ctx.beginPath();
-      facetCircle(ctx, p.x, baseY - s * 0.04, s * 0.42, 8, 0.3, 0.55);
-      ctx.fill();
+      // THE COLD TORCH BY DAY (contested lands band 7 fix pass 1, the
+      // brazier's E6 gate extended): the painted flame rides sky.flame
+      // exactly as the brazier's blaze does — a charred rag on its
+      // stake at noon, the fire climbing with the dusk clock on the
+      // same smooth ramp (cold under 0.05, full at 0.4, never a pop
+      // between the ring cache and the live lane), burning through the
+      // night. The light row in shared/world/lights.ts was flame-gated
+      // from the first; only the painter still burned at noon, which
+      // is the fault this gate closes. Underground the frame's flame
+      // gate rides to 1, so a dungeon torch never goes cold.
+      const lit = rend.sky.flame;
+      const rampT = Math.max(0, Math.min(1, (lit - 0.05) / 0.35));
+      const fire = rampT * rampT * (3 - 2 * rampT);
+      const cold = fire <= 0;
+      // Firelight laps the ground first (only while the rag burns).
+      if (!cold) {
+        ctx.fillStyle = `rgba(232, 122, 51, ${0.07 * flick * fire})`;
+        ctx.beginPath();
+        facetCircle(ctx, p.x, baseY - s * 0.04, s * 0.42, 8, 0.3, 0.55);
+        ctx.fill();
+      }
       ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
       ctx.beginPath();
       ctx.ellipse(p.x, baseY + s * 0.015, s * 0.11, s * 0.045, 0, 0, Math.PI * 2);
@@ -72,7 +88,17 @@ function paintStandingTorch(rend: PropHost, env: PropFrame): DrawItem {
       ctx.fillRect(tipX - s * 0.075, tipY - s * 0.055, s * 0.15, s * 0.028);
       ctx.fillStyle = '#2c2430';
       ctx.fillRect(tipX - s * 0.06, tipY - s * 0.13, s * 0.12, s * 0.045);
-      // Flame: one ragged lick and its hot core, flickering hard.
+      if (cold) {
+        // By day: the rag head, charred black at the crown, and no
+        // flame — the stake reads as a torch by its shape alone.
+        ctx.fillStyle = '#1e1822';
+        ctx.fillRect(tipX - s * 0.05, tipY - s * 0.17, s * 0.1, s * 0.05);
+        return;
+      }
+      // Flame: one ragged lick and its hot core, flickering hard,
+      // scaled by the dusk ramp so it grows in rather than pops.
+      ctx.save();
+      ctx.globalAlpha *= fire;
       ctx.fillStyle = '#e8823d';
       ctx.beginPath();
       ctx.moveTo(tipX - s * 0.09 * flick, tipY - s * 0.1);
@@ -96,6 +122,7 @@ function paintStandingTorch(rend: PropHost, env: PropFrame): DrawItem {
         s * 0.022,
         s * 0.022,
       );
+      ctx.restore();
     },
   };
 }

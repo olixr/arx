@@ -1,10 +1,13 @@
-import { Tile, sanitizeSignText } from '@arx/shared';
+import { TILE_DEFS, TILE_SKIP, Tile, isSeatTile, sanitizeSignText } from '@arx/shared';
 import { NPC_ACTORS } from '../actors/registry.js';
 import { DANGER_LAWS } from '../danger.js';
 import { LOOT_TABLES } from '../loot/tables.js';
+import type { PrefabDef } from '../maps/prefab.js';
 import { NPCS } from '../npcs.js';
 import { ROUTINES } from '../routines/registry.js';
+import { POI_PREFABS } from './prefabs.js';
 import type {
+  PoiActorAt,
   PoiActorEntry,
   PoiBoldness,
   PoiBoldnessStage,
@@ -62,11 +65,18 @@ export function validatePoiDef(
     actorIds?: ReadonlySet<string>;
     routineIds?: ReadonlySet<string>;
     lootTables?: ReadonlySet<string>;
+    /**
+     * THE POST IS NAMED reads the prefab GRID (an `at` cell must lie
+     * inside the rect on standable ground): the server passes its
+     * live library, authored code falls to the builtin sketches.
+     */
+    prefabs?: ReadonlyMap<string, PrefabDef>;
   } = {},
 ): ValidatePoiResult {
   const hasActor = (id: string) => refs.actorIds?.has(id) ?? NPC_ACTORS.has(id);
   const hasRoutine = (id: string) => refs.routineIds?.has(id) ?? ROUTINES.has(id);
   const hasTable = (id: string) => refs.lootTables?.has(id) ?? LOOT_TABLES.has(id);
+  const prefabGrid = (id: string): PrefabDef | undefined => (refs.prefabs ?? POI_PREFABS).get(id);
   if (!isRecord(raw)) return { ok: false, errors: ['poi def must be an object'] };
   const errors: string[] = [];
   const id = typeof raw.id === 'string' ? raw.id : '';
@@ -244,6 +254,63 @@ export function validatePoiDef(
           : typeof g.tribe === 'string' && /^[a-z][a-z0-9_]*$/.test(g.tribe)
             ? g.tribe
             : (errors.push(`${at}: tribe must be a lowercase slug`), undefined);
+      // THE MOUTH ON THE ROW: a garrison body that speaks. The slug
+      // must be a live actor def, and the row must muster exactly ONE
+      // named crowned holdfast — a sentry row never carries the crown
+      // (the composer forges only the anchor body), a name pool would
+      // pick a different name for the same mouth at every site, and
+      // an unnamed row has no body for the slug to ride.
+      const actor =
+        g.actor === undefined
+          ? undefined
+          : typeof g.actor === 'string' && hasActor(g.actor)
+            ? g.actor
+            : (errors.push(`${at}: actor '${String(g.actor)}' is not a live actor def`), undefined);
+      if (actor !== undefined) {
+        if (names === undefined || names.length !== 1) {
+          errors.push(`${at}: actor needs names of exactly one entry (the mouth rides ONE named body)`);
+        }
+        if (crowned !== true) {
+          errors.push(`${at}: actor needs crowned: true (the mouth is the crown's)`);
+        }
+        if (role !== 'holdfast') {
+          errors.push(`${at}: actor is a holdfast trait (only the anchor body carries the crown)`);
+        }
+      }
+      // THE POST IS NAMED, for the ring: a sentry row's exact stand.
+      // Sentry only (a holdfast keeps the heart), one body (a post
+      // seats one), never with `patrol` (a posted body stands; the
+      // round is the ring's), within a shout of the sketch, and if the
+      // cell falls inside the sketch it must not be a solid tile.
+      let atCell: PoiActorAt | undefined;
+      if (g.at !== undefined) {
+        const r = g.at as Record<string, unknown>;
+        const okDir = (d: unknown): d is PoiActorAt['dir'] =>
+          d === undefined || d === 'N' || d === 'E' || d === 'S' || d === 'W';
+        if (!isRecord(g.at) || !Number.isInteger(r.dx) || !Number.isInteger(r.dy) || !okDir(r.dir)) {
+          errors.push(`${at}: at must be {dx: int, dy: int, dir?: 'N'|'E'|'S'|'W'}`);
+        } else {
+          const dx = r.dx as number;
+          const dy = r.dy as number;
+          if (role !== 'sentry') errors.push(`${at}: at is a sentry trait (a holdfast keeps the heart)`);
+          if (patrol) errors.push(`${at}: at and patrol cannot both stand (a posted body stands; the round is the ring's)`);
+          if (count[1] > 1) errors.push(`${at}: at posts one body — count must be [1, 1]`);
+          for (const pid of prefabs) {
+            const grid = prefabGrid(pid);
+            if (!grid) continue;
+            if (Math.abs(dx) > grid.width + 32 || Math.abs(dy) > grid.height + 32) {
+              errors.push(`${at}: at (${dx},${dy}) stands out of shouting distance of prefab '${pid}'`);
+              continue;
+            }
+            if (dx < 0 || dy < 0 || dx >= grid.width || dy >= grid.height) continue; // the approach: the plan's ground
+            const t = grid.ground[dy * grid.width + dx]!;
+            if (t !== TILE_SKIP && TILE_DEFS[t as Tile]?.solid && !isSeatTile(t)) {
+              errors.push(`${at}: at (${dx},${dy}) is solid tile ${t} in prefab '${pid}'`);
+            }
+          }
+          atCell = { dx, dy, ...(r.dir !== undefined ? { dir: r.dir as PoiActorAt['dir'] } : {}) };
+        }
+      }
       if (role) {
         out.push({
           npc,
@@ -257,6 +324,8 @@ export function validatePoiDef(
           ...(names !== undefined ? { names } : {}),
           ...(crowned !== undefined ? { crowned } : {}),
           ...(tribe !== undefined ? { tribe } : {}),
+          ...(actor !== undefined ? { actor } : {}),
+          ...(atCell !== undefined ? { at: atCell } : {}),
         });
       }
     }
@@ -505,8 +574,46 @@ export function validatePoiDef(
           : typeof a.routine === 'string' && hasRoutine(a.routine)
             ? a.routine
             : (errors.push(`${at}: unknown routine '${String(a.routine)}'`), undefined);
+      // THE POST IS NAMED: the exact cell, held against EVERY prefab
+      // in the pool (a def rolls any of them, and a cell honest in one
+      // sketch may be a wall in the next). Inside the rect, never a
+      // transparent cell, and standable — a solid tile passes only
+      // when it is a seat or a bed (a sit/lie post lands ON its
+      // furniture; the seating law).
+      let atCell: PoiActorAt | undefined;
+      if (a.at !== undefined) {
+        const r = a.at as Record<string, unknown>;
+        const okDir = (d: unknown): d is PoiActorAt['dir'] =>
+          d === undefined || d === 'N' || d === 'E' || d === 'S' || d === 'W';
+        if (!isRecord(a.at) || !Number.isInteger(r.dx) || !Number.isInteger(r.dy) || !okDir(r.dir)) {
+          errors.push(`${at}: at must be {dx: int, dy: int, dir?: 'N'|'E'|'S'|'W'}`);
+        } else {
+          const dx = r.dx as number;
+          const dy = r.dy as number;
+          for (const pid of prefabs) {
+            const grid = prefabGrid(pid);
+            if (!grid) continue; // an unknown prefab is already refused (or warns at compose)
+            if (dx < 0 || dy < 0 || dx >= grid.width || dy >= grid.height) {
+              errors.push(`${at}: at (${dx},${dy}) lies outside prefab '${pid}' (${grid.width}x${grid.height})`);
+              continue;
+            }
+            const t = grid.ground[dy * grid.width + dx]!;
+            if (t === TILE_SKIP) {
+              errors.push(`${at}: at (${dx},${dy}) is a transparent cell of prefab '${pid}' (no ground to stand on)`);
+            } else if (TILE_DEFS[t as Tile]?.solid && !isSeatTile(t)) {
+              errors.push(`${at}: at (${dx},${dy}) is solid tile ${t} in prefab '${pid}' (stand on open ground, a seat or a bed)`);
+            }
+          }
+          atCell = { dx, dy, ...(r.dir !== undefined ? { dir: r.dir as PoiActorAt['dir'] } : {}) };
+        }
+      }
       if (pool.length > 0 && post) {
-        actors.push({ pool, post, ...(routine !== undefined ? { routine } : {}) });
+        actors.push({
+          pool,
+          post,
+          ...(routine !== undefined ? { routine } : {}),
+          ...(atCell !== undefined ? { at: atCell } : {}),
+        });
       }
     }
   }
@@ -589,6 +696,27 @@ export function validatePoiDef(
             `clearedFlag '${String(raw.clearedFlag)}' must match ${FLAG_RE}`,
           ), undefined);
 
+  // THE PASS: the same slug law as clearedFlag (a plain character flag
+  // the chokes read; never the dialogue system's namespace). A pass
+  // with no garrison walks nothing — refuse the confusion.
+  const passFlag =
+    raw.passFlag === undefined
+      ? undefined
+      : typeof raw.passFlag === 'string' && FLAG_RE.test(raw.passFlag)
+        ? raw.passFlag
+        : (errors.push(`passFlag '${String(raw.passFlag)}' must match ${FLAG_RE}`), undefined);
+  if (passFlag !== undefined && garrison.length === 0) {
+    errors.push('passFlag needs a garrison — a pass with nobody to hold fire is paper for nothing');
+  }
+
+  // THE TOLL SURVEY flag.
+  const toll =
+    raw.toll === undefined
+      ? undefined
+      : typeof raw.toll === 'boolean'
+        ? raw.toll
+        : (errors.push('toll must be a boolean'), undefined);
+
   // THE CLOSED SHAPE (the crowned lesson): this validator rebuilds the
   // def field-by-field, so a key it doesn't know is a key that silently
   // vanishes — exactly how `crowned` was eaten for its whole first
@@ -598,6 +726,7 @@ export function validatePoiDef(
     'id', 'name', 'description', 'family', 'shore', 'tiers', 'weight', 'prefabs',
     'garrison', 'chestTierBonus', 'cues', 'boldness', 'actors', 'haven',
     'chestLoot', 'chestWarded', 'clearedFlag', 'signs', 'compound',
+    'passFlag', 'toll',
   ]);
   for (const key of Object.keys(raw)) {
     if (!KNOWN_KEYS.has(key)) errors.push(`unknown field '${key}'`);
@@ -626,6 +755,8 @@ export function validatePoiDef(
       ...(chestLoot !== undefined ? { chestLoot } : {}),
       ...(chestWarded !== undefined ? { chestWarded } : {}),
       ...(clearedFlag !== undefined ? { clearedFlag } : {}),
+      ...(passFlag !== undefined ? { passFlag } : {}),
+      ...(toll !== undefined ? { toll } : {}),
       ...(signs !== undefined && signs.length > 0 ? { signs } : {}),
       ...(compound !== undefined ? { compound } : {}),
     },

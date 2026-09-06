@@ -1,0 +1,18 @@
+{
+  "id": "margit_stakes",
+  "start": "crates",
+  "requires": ["quest:stakes_in_the_waist:active"],
+  "forbids": ["stakes_taken"],
+  "bindings": [{ "kind": "actor", "target": "charter_margit", "priority": 6 }],
+  "nodes": [
+    {
+      "id": "crates",
+      "voice": "margit_stakes__crates",
+      "text": "Eight. Ochre, brass plate, Ingram's hand on the plate. I have counted them out and I will count them back if you bring them back, which nobody has.",
+      "hooks": [
+        { "kind": "give", "item": "dike_stake", "qty": 8 },
+        { "kind": "flag", "flag": "stakes_taken" }
+      ]
+    }
+  ]
+}

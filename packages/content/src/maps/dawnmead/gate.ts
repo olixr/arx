@@ -21,10 +21,13 @@
  * KEEP_OUT [160,83,191,110].
  *
  * One deviation from the brief's letter, noted: the row's DryingRack
- * stands at (169,107), one row south of the brief's (169,106), because
+ * stands at (169,108), two rows south of the brief's (169,106), because
  * at (169,106) it sealed the tile (169,105) between the two shelters
  * under the hedge (LeanTo west, FieldCot east, Hedge north): a camp
- * with a tile nobody can stand on fails the pocket flood.
+ * with a tile nobody can stand on fails the pocket flood; and at
+ * (169,107), where fix pass 1 put it, it stood inside the belongings
+ * cart's resting shafts once THE CART HAS TWO FEET (band 7, owed E5)
+ * gave the cart its west foot, so the rack and the spill traded rows.
  */
 import { Detail, Tile, bannerStandTile } from '@arx/shared';
 import type { DawnCtx } from './ctx.js';
@@ -99,12 +102,18 @@ export function gate(ctx: DawnCtx): void {
   // The crate of what the first family carried out dry, under the
   // hedge between the shelters.
   b.set(166, 105, Tile.CrateGoods);
-  // Sacking and blankets drying in front of the cot, on the row's south
-  // rim where the sun reaches past the hedge (one row south of the
-  // brief's tile, see the header).
-  b.set(169, 107, Tile.DryingRack);
-  // Where a load spilled off the belongings cart and stayed spilled.
-  b.set(169, 108, Tile.FieldLitter);
+  // Where a load spilled off the belongings cart and stayed spilled:
+  // under its own resting shafts, which is where a load slides off a
+  // cart backed in on a slope. THE CART HAS TWO FEET (band 7, owed
+  // E5): the cart's painter rests its shafts a tile to the west and
+  // that tile is the cart's second foot; the rack that stood here
+  // would have been inside the shafts, so the rack and the spill
+  // traded places.
+  b.set(169, 107, Tile.FieldLitter);
+  // Sacking and blankets drying on the row's south rim where the sun
+  // reaches past the hedge, one row further south than the spill so
+  // the rack stands clear of the cart's shafts.
+  b.set(169, 108, Tile.DryingRack);
 
   // Crofter A stands the coals by day, facing the lane he came in on;
   // his post tile is the pan's west cell (people.ts places the body).

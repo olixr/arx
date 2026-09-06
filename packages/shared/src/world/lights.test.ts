@@ -52,6 +52,9 @@ const ROSTER: readonly Tile[] = [
   // THE SCARRED LAND: the ember bed, the gloom pair, the lamp cairn,
   // the pit lamp. The dark postures and the thread have no row.
   Tile.EmberBed, Tile.GloomStone, Tile.FoulPool, Tile.LampCairn, Tile.PitLamp,
+  // THE HUNG LANTERN (band 7 fix pass 1): the porch lantern's own tier
+  // under the town lamp.
+  Tile.StreetLantern,
 ];
 
 test('the emitter census: exactly the transcribed roster, each row reachable', () => {
@@ -163,6 +166,22 @@ test('THE TOWN LAW, TIERED (§7.1): candles carry one tiny non-occluding pool; L
   const lamp = tileEmitter(Tile.LampPost);
   assert.ok(lamp?.flameGate && lamp.porch, 'LampPost: flame-gated, porch-aware');
   assert.ok(lamp.lights[0]?.occlude, 'LampPost: the town light is architecture');
+});
+
+test('THE HUNG LANTERN: the porch lantern lights its own tier under the lamp, flame-gated, porch-aware, never outshining it', () => {
+  const lamp = tileEmitter(Tile.LampPost)!;
+  const lantern = tileEmitter(Tile.StreetLantern)!;
+  assert.ok(lantern, 'the lantern has a row');
+  assert.ok(lantern.flameGate && lantern.porch, 'StreetLantern: flame-gated, porch-aware, like the lamp');
+  assert.equal(lantern.lights.length, 1, 'ONE pool');
+  const pool = lantern.lights[0]!;
+  assert.ok(pool.flameGated && pool.occlude, 'a hung flame is architecture (THE FLAME LAW)');
+  assert.ok(pool.r < lamp.lights[0]!.r, `yard reach under the lamp's street reach (${pool.r} < ${lamp.lights[0]!.r})`);
+  assert.ok(pool.intensity < lamp.lights[0]!.intensity, 'lantern brightness under lamp brightness');
+  assert.ok(pool.r >= 2.5 && pool.intensity >= 0.4, 'but a real light: seen from the ford at dusk, not a candle');
+  assert.equal(lantern.glows.length, 1, 'one bloom on the hook');
+  assert.equal(lantern.glows[0]!.gate, 'flame', 'the bloom stands down by day');
+  assert.ok((lantern.glows[0]!.air ?? 0) < (lamp.glows[0]!.air ?? 0), 'the box hangs lower than the lamp cage');
 });
 
 test('THE LIGHT STANDS WHERE THE FLAME BURNS: a z light matches a glow at its own air height', () => {

@@ -3282,6 +3282,8 @@ export class Renderer {
       (t !== Tile.RailWood &&
         t !== Tile.TimberPost &&
         t !== Tile.LampPost &&
+        // THE CARRIED SHEAF: the bale rides the boards (terrain.ts porchCarries).
+        t !== Tile.HayBale &&
         !(t >= Tile.Barrel && t <= Tile.Basin))
     ) {
       return false;
@@ -16103,7 +16105,9 @@ export class Renderer {
     // under 4Hz; the still pieces idle in STATIC_RING_TILES.
     // Zero light entries by
     // law: every flame on this shelf is paint — the LampPost
-    // still owns the town night.
+    // still owns the town night. (One exception since band 7's fix
+    // pass: THE HUNG LANTERN carries its own tier under the lamp in
+    // shared/world/lights.ts, argued there.)
     Tile.CandleStand,
     // THE KEPT FLAME: the lit postures breathe on the fast cadence
     // (the ONE flame's sub-2Hz sway); the snuffed postures idle in
@@ -19129,13 +19133,14 @@ export class Renderer {
           },
         };
 
-      case Tile.LampPost:
-      // THE SCARRED LAND: the dark lamp post is the same fixture with
-      // its flame held at zero — no light row, no glow, on purpose.
-      case Tile.LampPostDark: {
+      case Tile.LampPost: {
         // An iron lantern on a post: cold black metal by day, a warm
         // caged flame after dark (the light itself lives in the
         // lightmap + glow passes — this is just the fixture).
+        // THE SCARRED LAND's dark lamp (LampPostDark) is NOT a case
+        // here: the hall's painter (props/scarred/states.ts) owns the
+        // cold socket, and PROP_PAINTERS is consulted before this
+        // switch ever runs (band 7, owed E7 struck the dead case).
         const syT = s * this.camera.yScale;
         return {
           sortY: ty + 0.8,
@@ -19149,7 +19154,7 @@ export class Renderer {
             // to its scratch — the build-time capture would paint past it.
             const ctx = this.ctx;
             const baseY = p.y + syT * 0.12;
-            const lit = tile === Tile.LampPostDark ? 0 : this.sky.flame;
+            const lit = this.sky.flame;
             // Stone foot.
             ctx.fillStyle = '#5b5566';
             ctx.beginPath();

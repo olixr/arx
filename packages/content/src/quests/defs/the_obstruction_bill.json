@@ -1,0 +1,17 @@
+{
+  "id": "the_obstruction_bill",
+  "name": "The Obstruction Bill",
+  "giver": "charter_ingram",
+  "requires": { "quests": ["the_green_road"] },
+  "repeat": { "cooldownHours": 24 },
+  "stages": [
+    {
+      "id": "sixty",
+      "journal": "Sixty a season, billed in Ingram's hand for a gate hung against a voted work. Pay it at the counter or do not. The gate stays hung either way, and so does the bill. It is a door back into the Charter's book, not a wall.",
+      "objectives": [{ "kind": "collect", "item": "coins", "count": 60 }]
+    }
+  ],
+  "rewards": {
+    "standing": [{ "faction": "fordgate", "delta": 5 }]
+  }
+}

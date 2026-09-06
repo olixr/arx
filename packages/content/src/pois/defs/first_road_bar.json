@@ -1,0 +1,77 @@
+{
+  "id": "first_road_bar",
+  "name": "Brede's bar",
+  "description": "The Red Company's bar on the First Road, where the fen waist narrows to its one crossing. A crew of five keeps it and a crowned warden counts at it. Charter paper walks through, crofters pay, and the road pays or walks the south shoulder in the dark. The strongbox opens only for the one who breaks them.",
+  "tiers": [
+    1,
+    3
+  ],
+  "weight": 0,
+  "family": "brigand",
+  "prefabs": [
+    "poi_first_road_bar"
+  ],
+  "garrison": [
+    {
+      "npc": "brigand",
+      "count": [
+        2,
+        2
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "brigand_archer",
+      "count": [
+        1,
+        1
+      ],
+      "role": "sentry",
+      "at": {
+        "dx": 13,
+        "dy": -11,
+        "dir": "N"
+      }
+    },
+    {
+      "npc": "brigand",
+      "count": [
+        1,
+        1
+      ],
+      "role": "sentry",
+      "minTier": 1,
+      "at": {
+        "dx": 13,
+        "dy": -16,
+        "dir": "S"
+      }
+    },
+    {
+      "npc": "brigand_reaver",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "minTier": 1,
+      "levelOffset": 3,
+      "names": [
+        "Brede"
+      ],
+      "crowned": true,
+      "actor": "company_brede"
+    }
+  ],
+  "chestLoot": "chest_pit_takings",
+  "chestTierBonus": 1,
+  "chestWarded": true,
+  "clearedFlag": "poi_first_bar_broken",
+  "passFlag": "charter_pass",
+  "toll": true,
+  "cues": {
+    "clearing": 3,
+    "approachPath": true,
+    "scatter": []
+  }
+}

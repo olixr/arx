@@ -1169,6 +1169,66 @@ const banditToll = declareInfluence(sketch(
 ), { cap: 22 });
 
 /**
+ * BREDE'S CAMP (docs/contested-lands-plan.md §3.1; band 7 blockout
+ * §2.6, R4): the honest smaller variant of the toll, pinned beside
+ * the First Road south-west of the ford. The crew is the toll and the
+ * furniture is the shares; a crew of five, not a warband (FREQUENCY,
+ * NOT AMPLITUDE). The BAR itself (the posts, the teeth, the cage, the
+ * counter, the mark-post) is the fenside zone's dressing on the road
+ * (R2) and stands nowhere in this sketch: no WarTable, NoticeBoard,
+ * PrisonCage or SpikeBarrier here.
+ *   - the Dirt track from the north edge (the road is north; the
+ *     approach cue picks it up toward the bed) to the fire at the
+ *     anchor: Brede musters there, his back to the road and his eyes
+ *     on the ford;
+ *   - the WarBanner pair flanking the track's mouth: how the last
+ *     argument about the bar went, nailed up for the next traveller,
+ *     and the silhouette from the road twelve tiles north;
+ *   - the StandingTorch at the mouth, the crew's one warm point after
+ *     the fire (flame-gated);
+ *   - NO digit markers: a sketch's digits ADD bodies on top of the
+ *     def's garrison (server pois.ts composePoi, the hand-placed
+ *     spawns), and the bar's crew is the def's five rows and nothing
+ *     more (two pickets and Brede at the fire, the archer walking the
+ *     ring, the sentry on the other bearing). The rolled toll's three
+ *     digits would make this camp eight, which is the warband the
+ *     frequency law keeps off the tutorial's road;
+ *   - the warded ChestIron and the drover's confiscated wain beside
+ *     it: the strongbox opens only for the character who broke them,
+ *     and the cart is the drover's;
+ *   - the barrel, the crate and the goods stacked where the fire
+ *     lights them; the bone pile by the track;
+ *   - ONE RedRagStake at the north-east corner, toward the ford: the
+ *     Company's claim, standing where it is authored;
+ *   - the north row and the second row's corners are the camp's own
+ *     long grass (fix pass 1): a transparent cell there let a worldgen
+ *     oak stand inside the footprint and paint its crown seven rows
+ *     north, over the shoulder the crew felled for their sight line
+ *     to the gap; the crew's ground is the crew's to the edge;
+ *   - EMPTY: the south half of the footprint beyond the fire.
+ */
+const firstRoadBar = declareInfluence(sketch(
+  'poi_first_road_bar',
+  "Brede's camp",
+  [
+    '_,,,,,,:,,,,,_',
+    '_,,,:>:::>:R,_',
+    '_,::::!:::::,_',
+    ',:.c.a:::.o.:,',
+    ',:.G..:f:.Xw:,',
+    ',:....:::...:,',
+    '_,:........:,_',
+    '__,::....::,__',
+    '_____,,,,,____',
+  ],
+  {},
+  undefined,
+  // The toll's own ext: the confiscated cart by the strongbox and
+  // the one red rag (shadowing cave rubble, which no camp has).
+  { w: Tile.PlunderCart, R: Tile.RedRagStake },
+), { cap: 22 });
+
+/**
  * THE COVETOUS CAMP (living-frontier Phase 4): a raider squat thrown
  * up in a night — one fire, one stolen banner, packs still roped. It
  * reads TEMPORARY on purpose: no pen, no stump-work, half the crates
@@ -2776,7 +2836,19 @@ const heartwoodDoor = sketch('poi_heartwood_door', 'The Heartwood door', [
 // 'x' the scarecrow in to its waist, 'I' the channel that fed the
 // rows and now drains the road, '=' and '%' the old sluice's two
 // panels on their posts ('T'), one strung with kelp, 'P' the stilted
-// pallets, 'D' the crofter's dugout. The rails ('l') pen on stilts.
+// pallets, 'D' a dugout. The rails ('l') pen on stilts. Band 7 (R7,
+// R8) widened the dialect for the shoal's weir and the First Lamp's
+// furniture, each mark shadowing a global the crofts never fly: the
+// skral's own '#' weir panels, 'O' keep-pool, '?' tide totem and 'A'
+// reed shelter (the shoal precedent above); 'u' the felled log where
+// the stump would be; 'e' the stone bench (a bench is a bench); 'a'
+// the barrel STACK (no single barrel stands here); '^' the lean-to
+// (the Scarred Land's canvas); 'i' the plain signpost (the shingle
+// retired with two of the three boards); 'm' the woodpile and ')'
+// the drying rack (no tents and no meat racks at a croft); 'y' the
+// hay bale, the green corn on the pallets (shadowing the stone
+// doorway, which no croft has; band 7 fix pass 1 taught porchCarries
+// to lift a bale, so the boards run beneath the corn).
 const fenside: Record<string, number> = {
   x: Tile.Scarecrow,
   I: Tile.IrrigationChannel,
@@ -2785,86 +2857,139 @@ const fenside: Record<string, number> = {
   T: Tile.TimberPost,
   P: Tile.PorchDeck,
   D: Tile.Dugout,
+  '#': Tile.WeirPanels,
+  O: Tile.KeepPool,
+  '?': Tile.TideTotem,
+  A: Tile.ReedShelter,
+  u: Tile.FelledLog,
+  e: Tile.StoneBench,
+  a: Tile.BarrelStack,
+  '^': Tile.LeanTo,
+  i: Tile.Signpost,
+  m: Tile.Woodpile,
+  ')': Tile.DryingRack,
+  y: Tile.HayBale,
 };
 
 /**
- * THE FENSIDE LAMP (plan §3.1, §13.2): the drowned crofts and the
- * First Lamp as one scene. The hamlet pair stands as it did; its
- * grain plot is authored as shallows with the scarecrow, the channel
- * and the fence standing in it (no flood system — the water simply
- * IS there); the corn is cut green onto pallets by the reach; the
- * old sluice hangs on two posts where the field meets the water, one
- * post kelp-strung; the pens stand on stilts; and Hale's lamp burns
- * at the road gate on the townward (west) side. Two boards: the
- * shingle at the crofts and the post by the lamp.
+ * THE FENSIDE LAMP (plan §3.1, §13.2; band 7 blockout §2.7, R7, R8):
+ * the drowned crofts and the First Lamp as one scene, re-dressed.
+ * The road is NORTH and the channel is WEST: the sketch's own
+ * shallows column (cols 1..4) is the channel's real bank widening
+ * into the crofts' reach, and the drowned rows fill the south-west
+ * quarter off it. Ground first; every prop with its sentence:
+ *   - THE FIRST LAMP at the gate, the north row at the approach
+ *     path's head: a Waykeeper lamp has never once lied. The milestone
+ *     one west of it, the plain post beside it, Hale's stone bench two
+ *     east (his night seat; the cell south of the lamp is his post),
+ *     the tithed oil stacked behind, the chalk post (no posture: the
+ *     chalk is Leif's mouth), and the watch's lean-to at the gate's
+ *     east end with a bed at its mouth (Ingram's cot: a bed is a bed,
+ *     no new seat kind; the canvas's north foot kept open).
+ *   - THE DROWNED ROWS: the furrows are under water, fenced on four
+ *     sides with the fence standing in the water, the scarecrow in
+ *     to its waist, the channel where the rows drank from the mere
+ *     (the west fence's gap). That is the whole picture. No system
+ *     rises it; the water simply IS there.
+ *   - THE OLD SLUICE on its two posts across the channel, the strung
+ *     panel beside the near post: the gate the water broke. Somebody
+ *     tied kelp to the near post. Halvor has looked at it every
+ *     morning for thirty years and looks at it still. Channel, gate,
+ *     trench, furrows: one line of water.
+ *   - THE UPSTREAM WEIR at the south water edge (R8): the shoal moved
+ *     their weir onto the crofters' reach because the fen rose under
+ *     them. Three panels across the water, the keep-pool beside them
+ *     (cut, and the axe came back laid straight on the bank, which is
+ *     a sentence: the felled log lies where the axe was laid), the
+ *     tide totem on the bank, the reed shelter behind it, the shoal's
+ *     taken dugout drawn up on their side of the panels. Nobody built
+ *     a sign. Two neutral skral stand here by the def's actor rows.
+ *   - THE PALLETS: green corn on stilted boards, on Dirt one row back
+ *     from the water (the corn is HayBale on the middle boards: fix
+ *     pass 1 taught porchCarries to lift a bale, so the pallet's deck
+ *     runs beneath the sheaves and the corn reads as corn, not as a
+ *     crate). Cut green or lose it. A week on boards. It has been a
+ *     week.
+ *   - THE BOATS: the crofters' one dugout at the water's edge by the
+ *     pallets; two posts SIDE BY SIDE in the shallows at the bank,
+ *     one tile of open water between them and nothing moored: THE
+ *     EMPTY BERTH. Nobody says whose here. (Fix pass 1: the pair
+ *     stood one above the other in the boat's own column and fused
+ *     into one mast; now they stand abreast at (2,6) and (4,6), the
+ *     water between them the whole sentence.)
+ *   - THE CLEARING SOUTH (cues.clearing 7): the crofters cut the wood
+ *     south of the reach for the pallets' boards and the pen's stilts,
+ *     and the stumps are the winter's firewood. The forest's big oaks
+ *     paint their crowns seven rows north of their trunks, and at the
+ *     shipped three the canopy stood over the weir's shelter and the
+ *     skral beside it; the felled ring is the fringe's only ground on
+ *     the south side (the road shoulder north reads as rock to the
+ *     cue and keeps its oaks, the bank west is grass, the marsh east
+ *     is marsh).
+ *   - THE TWO CABINS north-east, the hamlet pair (two beds each,
+ *     hearth, table, chair). The east cabin's beds stand APART (fix
+ *     pass 2: 'E.E', a floor cell between) because two crofters sleep
+ *     there and ONE SLEEPER OWNS THE MATTRESS (prefabFit): a joined
+ *     'EE' run is one bed, and the second crofter sat all night in
+ *     the chair beside the hearth for want of his own. The west
+ *     cabin keeps its joined run: Halvor sleeps alone. THE FIRE at
+ *     the heart the hearth
+ *     posts derive from, small on purpose; THE PEN on stilts south-
+ *     east, empty (the ewes are on Brammel's common); two hens, a
+ *     woodpile, a drying rack: winter taken seriously in the wrong
+ *     season.
+ *   - ONE board (J16): the signpost beside the lamp. THE OLD SLUICE
+ *     and DROWNED CORN retired into Halvor's mouth and the crofter
+ *     lines. LIGHTS: the lamp and the fire; nothing on the water.
+ *   - EMPTY: the east of the footprint toward the marsh; the channel
+ *     south of the pen (band 9's ground).
  */
 const fensideLamp = declareInfluence(sketch(
   'poi_fenside_lamp',
   'The Fenside Lamp',
   [
-    '__________,,,,,_________',
-    '__,,...........,,,~~~,__',
-    '_,.wwgww..wwgww...,~~~,_',
-    '_,.wpppw..wpppw.FFFF~~,_',
-    '_,.wEppv..vppEw.F~~F~~,_',
-    '_,.wkqHw..wqkHw.I~x~~~,_',
-    '_,.wwgww..wwgww.F~~F~~,_',
-    '_,....:....:....FFFF~~,_',
-    '_,Li..:.f..:...:..T=%T,_',
-    '_,.llll....i...:..~~~~,_',
-    '_,.lPPl.8......:.PP~~~,_',
-    '_,.llll........:.PPD~~,_',
-    '__,,...8.......:...~~,,_',
-    '____,,,,,,,,,,,,,,,,,,__',
+    '___,,,,,,,,_____________',
+    '_,:rLie::..,,,,,,,,,,,,_',
+    '_,:a:::T:^............,_',
+    '_~~~~::::E..wwgww.wwgww_',
+    '_~~~D:PP:...wEEpw.wEpEw_',
+    '_~~~~:yy:)..wpppv.vpppw_',
+    '_~T~T:PP:...wkqHw.wHqkw_',
+    '_~~~~:......wwgww.wwgww_',
+    '_~~~~~~~~~~~:::.8..::.,_',
+    '_~~~~~FFFFF~:f:.m..:..,_',
+    '_T=%T~I~~~F~:::..8....,_',
+    '_~~~~~F~x~F~:::lllll..,_',
+    '_~~~~~FFFFF~.:.lPPPl..,_',
+    '_~~~~~~~~~~~.:.ll.ll.,,_',
+    '_D###Ou?:A....:.......,_',
+    '________,,,,,,,,,,,,,,__',
   ],
   hamletMarks,
   undefined,
   fenside,
-), { cap: QUIET_WAYSIDE_CAP });
+  // MEASURED cap (the influence law's own rule for a coordinate-pinned
+  // site: the tightest verge that stands within the 14-tile nudge sizes
+  // it). The crofts stand on the channel's EAST bank at the ford, a
+  // forest strip 27 tiles wide between the water (x <= 146 at y 94)
+  // and the fen's marsh (x >= 174), under the road's shoulder to the
+  // north. The stamp law reads 5% rough over the WHOLE grown footprint:
+  // at 30 wide (QUIET_WAYSIDE_CAP) the shelf drags water and marsh
+  // sand in from both sides and stands NOWHERE on the bank (0 anchors
+  // in x 146..180, y 84..112; 26 wide likewise); at 24 the sketch is
+  // its own footprint and stands ON the pin (160,94) with 12 rough
+  // probes of 19 allowed (band 7 L3 probe-fit). So the crofts take no
+  // verge: the drowned rows, the reach and the weir are the sketch's
+  // own water, and the bank outside the rect is worldgen's.
+), { cap: 24 });
 
-/**
- * THE ASHLAMP (plan §3.1, §13.2): a scar, not a camp — the burnt
- * shell of a Waykeeper waystation at the causeway head. Ruin walls
- * breached north, west and east, the order's own lamp post cold in
- * its socket inside, one ember bed that still smokes over its ash
- * pan, the ash heap shovelled out the west breach, charred beams
- * where the roof went, a stalled Charter wain with its crates under
- * tarp in the lane, and one post that says only what it says. No
- * garrison, no strongbox, no territory: EXEMPT from the influence
- * law — a scar does not breed a verge. Flies the Scarred Land legend
- * with a plain signpost for the board.
- */
-const ashlamp = declareInfluence(sketch(
-  'poi_ashlamp',
-  'The Ashlamp',
-  [
-    '_____,,,,,,,_____',
-    '__,,...:::...,,__',
-    '_,..#S#.#S#...,__',
-    '_,..#SSSSS#.v.,__',
-    '_,.a.SSdSS#.v.,__',
-    '_,..#SfSS...W.,__',
-    '_,..#S#.#S#.G.,__',
-    '_,.:..a:::..:.,__',
-    '_,,..:i::::..,,__',
-    '__,,,,,:::,,,,,__',
-  ],
-  {},
-  undefined,
-  { ...scarredLand, i: Tile.Signpost },
-  [
-    '_________________',
-    '_________________',
-    '_________________',
-    '_________________',
-    '_____aaa_________',
-    '_____aaaa________',
-    '_____aaa_________',
-    '______a__________',
-    '_________________',
-    '_________________',
-  ],
-), { exempt: true });
+// THE ASHLAMP is no sketch any more: band 7 (R1) made the scar an
+// AUTHORED ZONE (`maps/ashlamp/`, the Dawnmead module pattern) because
+// a scar has no core, the ledger holds one row per cell, and only a
+// zone may author beside the road carve. The shell, the cold socket,
+// the ember bed over its ash pan, the wain, the tally board, Brede's
+// stake and the one board all stand there now, each with its
+// sentence. `poi_ashlamp` and the `ashlamp` def retired with it.
 
 // THE WARD LINE speaks local: '~' is the thread (never water here),
 // 'g' the grey stone at its end, 'k' the Waykeepers' lamp cairn (the
@@ -3122,10 +3247,11 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     fellersBoom,
     heartwoodDoor,
     // THE CONTESTED LANDS (docs/contested-lands-plan.md §13.2): the
-    // ring's staged sites — the Fenside Lamp, the Ashlamp scar, the
-    // fork rest, the Third Stone, the broken barrow.
+    // ring's staged sites — the Fenside Lamp, Brede's camp (band 7;
+    // the Ashlamp scar retired into an authored zone), the fork rest,
+    // the Third Stone, the broken barrow.
     fensideLamp,
-    ashlamp,
+    firstRoadBar,
     forkWaystation,
     thirdStone,
     brokenBarrow,

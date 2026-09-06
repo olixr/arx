@@ -22,7 +22,9 @@
 import { CHUNK_SIZE, ChunkStore, TILE_SKIP, Tile, isSolidTile, tileIndex, type ChunkData, type Vec2 } from '@arx/shared';
 import {
   WORLD_SEED,
+  buildAshlamp,
   buildDawnmead,
+  buildFenside,
   generateChunk,
   replaceZoneEdgeProfiles,
   zoneEdgeProfileOf,
@@ -79,7 +81,9 @@ export class StandaloneWorld extends ChunkStore implements WorldSource3D {
 
   constructor(
     private readonly seed = WORLD_SEED,
-    zones: ZoneDef[] = [buildDawnmead()],
+    // Dawnmead first (the spawn), then the two First Road patches
+    // (band 7): the Ashlamp scar and the fen waist around the ford.
+    zones: ZoneDef[] = [buildDawnmead(), buildAshlamp(), buildFenside()],
   ) {
     super();
     this.zones = zones;

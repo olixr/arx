@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { circleHitsSolid, pointHitsShot, pointHitsSolid, SHOT_TRUNK_K, type CollisionSource } from './collision.js';
+import { circleHitsSolid, footprintBlocked, pointHitsShot, pointHitsSolid, SHOT_TRUNK_K, type CollisionSource } from './collision.js';
 import { Tile } from './tiles.js';
 
 /** One solid tile at (5,5) of the given kind; everything else open. */
@@ -33,6 +33,46 @@ test('trees collide as a trunk circle, not the whole tile', () => {
   // Arrows fly through the tile corner and die on the trunk.
   assert.equal(pointHitsSolid(w, 5.05, 5.05), false);
   assert.equal(pointHitsSolid(w, 5.45, 5.4), true);
+});
+
+/** A two-foot prop at (5,5) on open ground. */
+function worldWithProp(tile: Tile): CollisionSource {
+  return {
+    isSolid: (tx, ty) => tx === 5 && ty === 5,
+    tileAt: (tx, ty) => (tx === 5 && ty === 5 ? tile : Tile.Grass),
+  };
+}
+
+test('THE CART HAS TWO FEET: the belongings cart blocks the tile under its shafts (west)', () => {
+  const w = worldWithProp(Tile.BelongingsCart);
+  assert.equal(footprintBlocked(w, 4, 5), true, 'the west neighbour is the second foot');
+  assert.equal(footprintBlocked(w, 6, 5), false, 'the east neighbour stays open');
+  assert.equal(footprintBlocked(w, 5, 4), false);
+  assert.equal(footprintBlocked(w, 5, 6), false);
+  // A body standing in the shafts' tile is blocked as by a wall...
+  assert.equal(circleHitsSolid(w, 4.5, 5.5, 0.25), true);
+  assert.equal(pointHitsSolid(w, 4.5, 5.5), true);
+  // ...and one just past the second foot's west edge walks free.
+  assert.equal(circleHitsSolid(w, 3.7, 5.5, 0.25), false);
+  // The east side is a one-tile wall as before.
+  assert.equal(circleHitsSolid(w, 6.2, 5.5, 0.25), true);
+  assert.equal(circleHitsSolid(w, 6.3, 5.5, 0.25), false);
+  // Shots cross the resting shafts at chest height: only the cart's own tile stops one.
+  assert.equal(pointHitsShot(w, 4.5, 5.5), false);
+  assert.equal(pointHitsShot(w, 5.5, 5.5), true);
+});
+
+test('THE CART HAS TWO FEET: the cot reaches east, the lean-to and the broken cart west', () => {
+  assert.equal(footprintBlocked(worldWithProp(Tile.FieldCot), 6, 5), true);
+  assert.equal(footprintBlocked(worldWithProp(Tile.FieldCot), 4, 5), false);
+  assert.equal(footprintBlocked(worldWithProp(Tile.LeanTo), 4, 5), true);
+  assert.equal(footprintBlocked(worldWithProp(Tile.BrokenCart), 4, 5), true);
+  // A one-tile solid owns no second foot.
+  assert.equal(footprintBlocked(worldWithProp(Tile.WallStone), 4, 5), false);
+  // Sources without tileAt cannot see a footprint.
+  const blind: CollisionSource = { isSolid: (tx, ty) => tx === 5 && ty === 5 };
+  assert.equal(footprintBlocked(blind, 4, 5), false);
+  assert.equal(circleHitsSolid(blind, 4.5, 5.5, 0.25), false);
 });
 
 test('sources without tileAt fall back to full-tile collision', () => {

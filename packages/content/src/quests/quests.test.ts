@@ -289,3 +289,75 @@ test('items: quest facets are lawful', () => {
     }
   }
 });
+
+// ---- THE CONTESTED LANDS band 7: THE CAUSEWAY OR THE SLUICE (plan §3.1,
+// band7/blockout.md §6). The fork is two opposed two-link chains on the
+// four objective kinds; each side's offer trees forbid the OTHER side by
+// quest state only (E10: never by the bare flag, so a third corner can
+// land without touching these files); both sides stamp fen_side_taken.
+test('CONTESTED LANDS: the fen waist fork is two chains that shut each other by quest state', () => {
+  const A = ['stakes_in_the_waist', 'the_levy_posted'];
+  const B = ['the_old_gate', 'the_green_road'];
+  for (const id of [...A, ...B, 'the_ledger_line', 'the_obstruction_bill']) {
+    assert.ok(QUESTS.has(id), `${id} is shipped`);
+  }
+  // The chains: link 1 gated on the tutorial, link 2 on link 1.
+  assert.deepEqual(QUESTS.get(A[0]!)!.requires?.quests, ['the_first_road']);
+  assert.deepEqual(QUESTS.get(B[0]!)!.requires?.quests, ['the_first_road']);
+  assert.deepEqual(QUESTS.get(A[1]!)!.requires?.quests, [A[0]]);
+  assert.deepEqual(QUESTS.get(B[1]!)!.requires?.quests, [B[0]]);
+  // The ledger carry is closed to B by construction; the bill to A.
+  assert.deepEqual(QUESTS.get('the_ledger_line')!.requires?.quests, [A[1]]);
+  assert.deepEqual(QUESTS.get('the_obstruction_bill')!.requires?.quests, [B[1]]);
+  assert.ok(QUESTS.get('the_ledger_line')!.repeat && QUESTS.get('the_obstruction_bill')!.repeat);
+  // Both sides stamp the one shared flag; only A cuts the reach and
+  // buys the pass; only B carries the string.
+  const flagsOf = (id: string) => QUESTS.get(id)!.rewards.flags ?? [];
+  assert.deepEqual(flagsOf(A[1]!), ['fen_side_taken', 'charter_pass', 'weir_cut']);
+  assert.deepEqual(flagsOf(B[1]!), ['fen_side_taken', 'halvor_string_carried']);
+  assert.deepEqual(flagsOf(A[0]!), ['dike_planted']);
+  assert.deepEqual(flagsOf(B[0]!), ['sluice_mended']);
+  // Opposition authored on both sides of every reward row, never crossed.
+  const A2 = QUESTS.get(A[1]!)!;
+  assert.deepEqual(A2.rewards.standing, [
+    { faction: 'fordgate', delta: 15 },
+    { faction: 'fenside', delta: -15 },
+  ]);
+  assert.deepEqual(QUESTS.get(B[1]!)!.rewards.standing, [
+    { faction: 'fenside', delta: 15 },
+    { faction: 'fordgate', delta: -15 },
+  ]);
+  // The pass is a held keepsake AND a flag; the sortie is a kill on the
+  // shipped shore rows; the wordless beat is a talk on the neutral skral.
+  assert.deepEqual(A2.rewards.items, [{ item: 'charter_pass', qty: 1 }]);
+  assert.deepEqual(A2.stages[0]!.objectives, [{ kind: 'kill', npc: 'skral', count: 4 }]);
+  assert.equal(A2.turnIn, 'charter_margit');
+  const B2 = QUESTS.get(B[1]!)!;
+  assert.deepEqual(B2.stages[0]!.objectives, [{ kind: 'talk', actor: 'skral_weirward' }]);
+  assert.equal(B2.turnIn, 'waykeeper_leif');
+  // Every offer tree forbids the other side's two ids in both states and
+  // reads no bare flag (E10: the fork stays open to a third corner).
+  const shut = (side: string[]) => side.flatMap((q) => [`quest:${q}:active`, `quest:${q}:done`]);
+  for (const [id, other] of [
+    ['q_stakes_in_the_waist_offer', B],
+    ['q_the_levy_posted_offer', B],
+    ['q_the_old_gate_offer', A],
+    ['q_the_green_road_offer', A],
+  ] as const) {
+    const tree = DIALOGUES.get(id);
+    assert.ok(tree, `${id} is shipped`);
+    assert.deepEqual(tree!.forbids, shut([...other]), `${id} forbids the other side by quest state`);
+    assert.ok(!(tree!.forbids ?? []).includes('fen_side_taken'), `${id} never forbids the bare flag`);
+  }
+  // Nothing in the band reads fen_side_taken as a side: Aldis alone
+  // reads it, on a choice, and her node names neither corner.
+  const readers: string[] = [];
+  for (const d of DIALOGUES.values()) {
+    const reads = [
+      ...(d.requires ?? []),
+      ...d.nodes.flatMap((n) => (n.choices ?? []).flatMap((c) => c.requires ?? [])),
+    ];
+    if (reads.includes('fen_side_taken')) readers.push(d.id);
+  }
+  assert.deepEqual(readers, ['aldis_watch_heeded']);
+});

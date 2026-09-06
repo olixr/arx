@@ -1,0 +1,27 @@
+{
+  "id": "halvor_cold",
+  "start": "hub",
+  "requires": ["weir_cut"],
+  "bindings": [{ "kind": "actor", "target": "fenside_halvor", "priority": 9 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "halvor_cold__hub",
+      "text": "You carried the stakes. I know whose hands. The reach is cut and the water sits on my furrows and does not go down, and the man who did that is standing on my ground asking me something. Say it short.",
+      "choices": [
+        { "text": "About the corn.", "next": "corn_cold" },
+        { "text": "Nothing.", "next": "bye_cold" }
+      ]
+    },
+    {
+      "id": "corn_cold",
+      "voice": "halvor_cold__corn_cold",
+      "text": "It is on the boards. It is not for you."
+    },
+    {
+      "id": "bye_cold",
+      "voice": "halvor_cold__bye_cold",
+      "text": "Then go the way you came. The bar knows you."
+    }
+  ]
+}

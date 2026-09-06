@@ -161,8 +161,10 @@ const VOCAB_OF: ReadonlyArray<[RegExp, InfluenceVocab]> = [
   [/^poi_(goblin|warhold)/, 'warband'],
   [/^poi_(hob)/, 'legion'],
   // The Company's tollhouse is the Company's: it litters what the
-  // road paid and flies the red rag.
-  [/^poi_(bandit|stockade|raider|barrow_diggers|wardline|company)/, 'plunder'],
+  // road paid and flies the red rag. So does Brede's bar on the First
+  // Road (band 7): the camp beside the ford is a Company crew, and its
+  // verge is the toll's leavings, never the wild's hedgerow.
+  [/^poi_(bandit|stockade|raider|barrow_diggers|wardline|company|first_road_bar)/, 'plunder'],
   [/^poi_(den|greatden)/, 'den'],
   [/^poi_(gnoll)/, 'gnoll'],
   [/^poi_(skral)/, 'skral'],

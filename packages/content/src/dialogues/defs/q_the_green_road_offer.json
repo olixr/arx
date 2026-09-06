@@ -1,0 +1,40 @@
+{
+  "id": "q_the_green_road_offer",
+  "start": "hub",
+  "requires": ["quest:the_green_road:available"],
+  "forbids": [
+    "quest:stakes_in_the_waist:active",
+    "quest:stakes_in_the_waist:done",
+    "quest:the_levy_posted:active",
+    "quest:the_levy_posted:done"
+  ],
+  "bindings": [{ "kind": "actor", "target": "fenside_halvor", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_the_green_road_offer__hub",
+      "text": "The gate hangs. Now the corn. Four sheaves off the boards, three for the hedge at Dawnmead and one for the road if the road wants one. Past the bar, and the bar knows your face now. There is one more thing to carry, and I will say what it is when you say yes.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_green_road" }],
+      "choices": [
+        { "text": "I will carry it.", "next": "sworn" },
+        { "text": "Not past the bar.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_the_green_road_offer__sworn",
+      "text": "Four sheaves. Three are for the hedge and one is for the road, if the road wants one. And this. The boy cut it off the near post the morning after the axe and I have kept it in my coat since. Take it down to them at the weir and hand it over and say nothing. I cannot. Do not ask me why.",
+      "hooks": [
+        { "kind": "give", "item": "green_corn", "qty": 4 },
+        { "kind": "give", "item": "kelp_string", "qty": 1 },
+        { "kind": "flag", "flag": "green_road_sworn" },
+        { "kind": "quest_accept", "quest": "the_green_road" }
+      ]
+    },
+    {
+      "id": "declined",
+      "voice": "q_the_green_road_offer__declined",
+      "text": "Then it goes soft on the boards, and that is a sentence too."
+    }
+  ]
+}

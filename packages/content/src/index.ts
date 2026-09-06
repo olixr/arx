@@ -120,4 +120,9 @@ export * from './maps/kingsdelf.js';
 export * from './maps/evenfall.js';
 export * from './maps/undercroft.js';
 export * from './maps/lowhall.js';
+// THE CONTESTED LANDS (band 7): the two small authored zones on the
+// First Road east of Dawnmead's gate — the Ashlamp scar and the fen
+// waist around the ford. Patches on worldgen, registered like towns.
+export * from './maps/ashlamp.js';
+export * from './maps/fenside.js';
 export * from './maps/museum.js';

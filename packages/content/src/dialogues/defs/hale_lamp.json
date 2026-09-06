@@ -1,0 +1,57 @@
+{
+  "id": "hale_lamp",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "waykeeper_hale", "priority": 6 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "hale_lamp__hub",
+      "text": "Wardens' post. The First Lamp, and the last one east until Amberford's gate. Fourteen miles of road, one lamp, and the water past it is nobody's. What do you need?",
+      "choices": [
+        { "text": "What holds the road?", "next": "holds" },
+        { "text": "Who burned the waystation?", "next": "ashlamp" },
+        { "text": "What about the water?", "next": "water" },
+        { "text": "Hold the post.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "holds",
+      "voice": "hale_lamp__holds",
+      "text": "Us, the lamp, and the crofters' fence, in that order. The Company holds the bar at the ford and calls it a toll. The fen holds the rest and calls it nothing. I keep the ledger even and I keep the lamp lit, and the second one is the job.",
+      "choices": [
+        { "text": "The Charter offered you oil.", "next": "oil" },
+        { "text": "The bar at the ford.", "next": "bar", "requires": ["world:toll_near"] },
+        { "text": "Back.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "bar",
+      "voice": "hale_lamp__bar",
+      "text": "There is a bar on the one dry crossing and a man at it who counts. I keep a ledger and so does he, and mine is the one that stays lit. The boy walks the tithe in each morning and chalks it on their post. He is theirs by day.",
+      "next": "hub"
+    },
+    {
+      "id": "ashlamp",
+      "voice": "hale_lamp__ashlamp",
+      "text": "The Company put a torch to it in the spring. A waystation that does not pay is a waystation that burns, and it did not pay, because the order does not. I had four hands that night and I had them here. That is where my crew was. Write that down if you are writing.",
+      "next": "hub"
+    },
+    {
+      "id": "water",
+      "voice": "hale_lamp__water",
+      "text": "The road past my lamp is the Charter's problem and the fen past the road is nobody's. The water came up. I did not see it come and I was here. I hold fourteen miles with six hands and the boy, and none of the six is a level. Ask the man with the level. Then ask the man with the gate. Then come back and tell me which one you believed, and I will tell you they are both wrong about the same thing.",
+      "next": "hub"
+    },
+    {
+      "id": "oil",
+      "voice": "hale_lamp__oil",
+      "text": "He did. Charter oil comes with a Charter ledger and a ledger is a lamp that lies in glass. Torsten would burn a lamp before he took Charter oil for it. I take the oil. I do not tell him. The lamp stays lit, and that is the part people leave out.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "hale_lamp__bye",
+      "text": "That is the job."
+    }
+  ]
+}

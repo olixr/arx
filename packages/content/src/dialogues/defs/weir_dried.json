@@ -1,0 +1,14 @@
+{
+  "id": "weir_dried",
+  "start": "brook",
+  "once": true,
+  "requires": ["weir_cut"],
+  "bindings": [{ "kind": "actor", "target": "angler_weir", "priority": 11 }],
+  "nodes": [
+    {
+      "id": "brook",
+      "voice": "weir_dried__brook",
+      "text": "You dried a water I fish. It is the same water forty miles up, and forty miles up it is lower by a hand this week. I am not refusing you anything. I am telling you what the brook told me."
+    }
+  ]
+}

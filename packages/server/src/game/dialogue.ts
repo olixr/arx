@@ -92,6 +92,14 @@ export function worldFlagAnswer(srv: GameServer, flag: string, player: PlayerCom
  * count — authored landmarks are the land's permanent character, not
  * news, and counting them would leave some posts uneasy forever.
  * Standing = staffed: cleared trophies and scattered embers are over.
+ *
+ * THE TOLL SURVEY (contested lands, band 7): the one exception is
+ * the `toll` output. A pinned def declaring `toll: true` (Brede's
+ * bar on the First Road) counts as a toll for `world:toll_near`
+ * even though its cell is authored — a bar on the one dry crossing
+ * IS news to the sergeant thirty tiles east of it — while the
+ * `near`/`bold` outputs stay procedural-only, exactly as before. The
+ * procedural `road_toll` keeps its name-match; nothing else changes.
  */
 export function watchSurvey(srv: GameServer, sx: number, sy: number): { near: boolean; bold: boolean; toll: boolean } {
   const authored = srv.authoredCells();
@@ -99,14 +107,18 @@ export function watchSurvey(srv: GameServer, sx: number, sy: number): { near: bo
   const out = { near: false, bold: false, toll: false };
   for (const [key, row] of srv.poiLedger) {
     if (row.site === null || row.clearedAt !== null || row.emberUntil !== null) continue;
-    if (authored.has(key)) continue;
-    if (!srv.poiThreatens(row.site.defId)) continue;
     const dx = row.site.anchorX - sx;
     const dy = row.site.anchorY - sy;
     if (dx * dx + dy * dy > watch * watch) continue;
+    const tollDef = POI_DEFS.get(row.site.defId)?.toll === true;
+    if (authored.has(key)) {
+      if (tollDef) out.toll = true;
+      continue;
+    }
+    if (!srv.poiThreatens(row.site.defId)) continue;
     out.near = true;
     if (row.stage >= FRONTIER.satelliteStage) out.bold = true;
-    if (row.site.defId === 'road_toll') out.toll = true;
+    if (row.site.defId === 'road_toll' || tollDef) out.toll = true;
   }
   // THE LONG WAR: a standing capital in the watch is news — and a
   // STAGED one is the loudest worry a post can carry. (Defensive

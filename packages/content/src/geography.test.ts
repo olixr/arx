@@ -2,11 +2,17 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DANGER_OVER, dangerAt, type DangerAnchor } from '@arx/shared';
 import { POI_DEFS } from './pois/defs.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import {
   AMBERFORD_RECT,
+  ASHLAMP_RECT,
   AUTHORED_GEOGRAPHY,
+  AUTHORED_NUDGE_MAX,
   AUTHORED_WILD_SITES,
+  AUTHORED_ZONE_PAD,
   DAWNMEAD_RECT,
+  FENSIDE_RECT,
   PLANNED_ZONE_RECTS,
   ROAD_ROUTES,
   SILVERFALL_RECT,
@@ -31,9 +37,13 @@ import {
   validateGeographyDef,
   GEO_ONE_SCENE_PAIRS,
   GEO_PIN_SPACING,
+  prepareStrokes,
 } from './geography.js';
 import { SETTLED_ANCHORS } from './danger.js';
 import { buildDawnmead } from './maps/dawnmead.js';
+import { buildAshlamp } from './maps/ashlamp.js';
+import { buildFenside } from './maps/fenside.js';
+import { POI_PREFABS } from './pois/prefabs.js';
 import { WORLD_SEED, elevationAt } from './worldgen.js';
 
 /** Every terrain fact in this file is a fact about THE SHIPPED SEED. */
@@ -142,14 +152,17 @@ test('distToRect is zero inside, exact outside', () => {
 //
 // THE CONTESTED LANDS — BREATHING ROOM (docs/contested-lands-plan.md
 // §13.1, §13.2, band 0). ONE SITE PER CELL, the ring as re-celled:
-//   tier-1 cores (3 of 6): veil_den [-2,-1], first_road_toll [0,0],
-//     felling_drum [0,-1];
-//   tier-2 cores (9 of 14): fork_rest [-2,-2], husk_of_the_line
-//     [-1,-2], fenside_crofts [1,0] (the crofts AND the lamp: one
-//     scene with the bar), third_stone [-2,1], broken_barrow [-2,0],
-//     plus the shipped longmeadow_rest [0,-2], amberfen_shoal [1,1],
-//     returners_camp [-3,1];
-//   tier-3: hobgoblin_legion [-1,-3].
+//   tier-1 cores (2 of 6): veil_den [-2,-1], felling_drum [0,-1];
+//   tier-2 cores (9 of 14): first_road_toll [0,0] (BREDE'S BAR: the
+//     cell's centre rolls tier 2 as dangerAt lays it, band 7 R10,
+//     and the reaver row is minTier 1 so Brede stands whatever the
+//     jitter says), fork_rest [-2,-2], husk_of_the_line [-1,-2],
+//     third_stone [-2,1], broken_barrow [-2,0], plus the shipped
+//     longmeadow_rest [0,-2], amberfen_shoal [1,1], returners_camp
+//     [-3,1];
+//   tier-3: fenside_crofts [1,0] (the crofts AND the lamp: one scene
+//     with the bar; the cell's centre rolls tier 3, R10),
+//     hobgoblin_legion [-1,-3].
 // EMPTY ON PURPOSE — a listed asset, not a gap; never author a core
 // here for the life of the epic: [-3,-1], [-3,0] (emptied when the
 // barrow came east: its centre read tier 4 under the Spinewall's
@@ -300,6 +313,30 @@ test('the validator collects every error and names its subject', () => {
   }
 });
 
+test('THE AUTHORED HUG is a site row\'s own word: true or absent, pinned only; it survives the rebuild', () => {
+  const snap = geographySnapshot();
+  snap.sites = [{ id: 'the_toll', defId: 'bandit_camp', x: 500, y: 500, hug: true }];
+  const ok = validateGeographyDef(snap, { poiDefIds: new Set(POI_DEFS.keys()) });
+  assert.ok(ok.ok, ok.ok ? '' : ok.errors.join('; '));
+  if (ok.ok) assert.equal(ok.def.sites[0]!.hug, true, 'the word survives the rebuild');
+  // Absent is the pad, and the rebuilt row carries no key for it.
+  snap.sites = [{ id: 'the_toll', defId: 'bandit_camp', x: 500, y: 500 }];
+  const plain = validateGeographyDef(snap);
+  assert.ok(plain.ok);
+  if (plain.ok) assert.ok(!('hug' in plain.def.sites[0]!), 'an unworded pin carries no hug key');
+  // false, a string, and a cell-forced site all refuse.
+  for (const bad of [false, 'yes', 1]) {
+    snap.sites = [{ id: 'the_toll', defId: 'bandit_camp', x: 500, y: 500, hug: bad as unknown as true }];
+    const res = validateGeographyDef(snap);
+    assert.ok(!res.ok, `hug ${JSON.stringify(bad)} passed`);
+    if (!res.ok) assert.match(res.errors.join(' '), /hug must be true or absent/);
+  }
+  snap.sites = [{ id: 'den', defId: 'wolfkin_den', cell: [40, 40], hug: true }];
+  const celled = validateGeographyDef(snap);
+  assert.ok(!celled.ok, 'a cell-forced site has no pin to hug from');
+  if (!celled.ok) assert.match(celled.errors.join(' '), /pinned site's word/);
+});
+
 test('the validator refuses a site wearing an unknown archetype when refs are given', () => {
   const snap = geographySnapshot();
   snap.sites = [{ id: 'lost', defId: 'no_such_place', x: 500, y: 500 }];
@@ -331,9 +368,11 @@ test('THE PINNED SKETCH: a site may pin one of its archetype prefabs; the valida
   const bare = validateGeographyDef(snap);
   assert.ok(bare.ok);
   if (bare.ok) assert.ok(!('prefabId' in bare.def.sites[0]!));
-  // The First Road toll IS the toll: the shipped plan pins the toll sketch.
+  // The First Road toll IS Brede's bar (band 7, R4): the site id is
+  // kept so the ledger's poi:0,0 row re-seeds in place, and the plan
+  // pins the bar's own sketch (the toll's honest smaller variant).
   const toll = AUTHORED_GEOGRAPHY.sites.find((s) => s.id === 'first_road_toll');
-  assert.equal(toll?.prefabId, 'poi_bandit_toll');
+  assert.equal(toll?.prefabId, 'poi_first_road_bar');
 });
 
 test('replaceGeography moves the roads, the anchors, and every query with them', () => {
@@ -512,7 +551,7 @@ test('THE RE-CELLED MAP: every §13.2 site stands in its table cell on its def',
     s.cell ? `${s.cell[0]},${s.cell[1]}` : `${Math.floor(s.x! / 128)},${Math.floor(s.y! / 128)}`;
   const TABLE: Array<[string, string, string]> = [
     // site id, def id, cell
-    ['first_road_toll', 'bandit_camp', '0,0'],
+    ['first_road_toll', 'first_road_bar', '0,0'],
     ['fenside_crofts', 'fenside_lamp', '1,0'],
     ['fork_rest', 'fork_waystation', '-2,-2'],
     ['husk_of_the_line', 'husk_of_the_line', '-1,-2'],
@@ -534,7 +573,7 @@ test('THE RE-CELLED MAP: every §13.2 site stands in its table cell on its def',
     assert.ok(def, `${id}: def '${defId}' not in the registry`);
   }
   // Every contested def is weight 0 — placed by hand, never rolled.
-  for (const defId of ['fenside_lamp', 'ashlamp', 'fork_waystation', 'third_stone_rest',
+  for (const defId of ['fenside_lamp', 'first_road_bar', 'fork_waystation', 'third_stone_rest',
     'husk_of_the_line', 'felling_drum', 'legion_pressed', 'hobgoblin_legion', 'broken_barrow']) {
     assert.equal(POI_DEFS.get(defId)!.weight, 0, `${defId} must be weight 0`);
   }
@@ -599,7 +638,10 @@ const WOLD_GLOOM: SpectrumStroke = {
 test('THE LIVING GROUND: the doc admits `spectrum`, round-trips without the word when absent, refuses the rest', () => {
   const snap = geographySnapshot();
   assert.ok('spectrum' in snap, 'the snapshot always writes the key — the welcome geo says the server folds');
-  assert.deepEqual(snap.spectrum, []);
+  // THE FIRST AUTHORED STROKE (band 7, owed E2): the Ashlamp burn is
+  // the plan's one stroke; its shape is pinned in this file's band 7
+  // cases below. Nothing else is painted.
+  assert.deepEqual(snap.spectrum!.map((s) => s.id), ['ashlamp_burn']);
   // A doc saved before the field validates and comes back WITHOUT the key.
   const { spectrum: _absent, ...bare } = snap;
   const old = validateGeographyDef(bare);
@@ -693,5 +735,154 @@ test('THE SHIPPED PLAN folds nothing over the tutorial: every axis is 0 across t
     }
   } finally {
     replaceGeography(snap);
+  }
+});
+
+// ------------------------------------------------------------------
+// THE CONTESTED LANDS, band 7 — THE FEN LAMP AND THE BAR (L1 FRAME).
+// Every number below is the brief's, measured at the shipped seed.
+// ------------------------------------------------------------------
+
+test('THE PAD LAW mirrors the server: AUTHORED_ZONE_PAD and the nudge agree with pois.ts', () => {
+  // Content cannot import the server, so the mirror is pinned to the
+  // server's source text: the two constants a content lint (padClear)
+  // and this file hold the rects to.
+  const src = readFileSync(
+    fileURLToPath(new URL('../../server/src/world/pois.ts', import.meta.url)),
+    'utf8',
+  );
+  const pad = /export const AUTHORED_ZONE_PAD = (\d+);/.exec(src);
+  const nudge = /maxNudge = (\d+),/.exec(src);
+  assert.ok(pad && nudge, 'the server names both numbers');
+  assert.equal(Number(pad![1]), AUTHORED_ZONE_PAD, 'AUTHORED_ZONE_PAD drifted from the server');
+  assert.equal(Number(nudge![1]), AUTHORED_NUDGE_MAX, 'the nudge drifted from findAuthoredAnchor');
+});
+
+test('THE TWO PATCHES: the Ashlamp and the fen waist are planned rects that build to their own pins', () => {
+  const planned = new Map(PLANNED_ZONE_RECTS.map((p) => [p.id, p]));
+  const ash = buildAshlamp();
+  const fen = buildFenside();
+  for (const [z, rect, name] of [
+    [ash, ASHLAMP_RECT, 'The Ashlamp'],
+    [fen, FENSIDE_RECT, 'The Fen Waist'],
+  ] as const) {
+    const row = planned.get(z.id);
+    assert.ok(row, `${z.id} has a planned row`);
+    assert.equal(row!.name, name);
+    assert.ok(!row!.apron, `${z.id} is a patch on worldgen: no apron`);
+    assert.deepEqual({ x: z.origin.x, y: z.origin.y, w: z.width, h: z.height }, rect, `${z.id}: the built rect is the plan's`);
+    assert.equal(z.growth, 'wild', `${z.id} grows wild (G-3)`);
+    assert.equal(z.spawn, undefined, `${z.id} declares no spawn`);
+  }
+  // R1: the Ashlamp's west edge never under x 40 and never touching
+  // the tutorial's rect (Dawnmead ends at x 31); the fen waist's rect
+  // is measured to the crofts' footprint (below), never past x 152.
+  assert.ok(ASHLAMP_RECT.x >= 40 && ASHLAMP_RECT.x > DAWNMEAD_RECT.x + DAWNMEAD_RECT.w);
+  assert.ok(FENSIDE_RECT.x + FENSIDE_RECT.w - 1 <= 152);
+  // THE LONG DRY (x 70..124) lies between them and carries nothing:
+  // neither rect reaches into it.
+  assert.ok(ASHLAMP_RECT.x + ASHLAMP_RECT.w - 1 <= 70, 'the Ashlamp ends where the long dry begins');
+  // Fix pass 1 widened the fen waist west to x 118 so the tier-2
+  // cairn stands alone before the bar; the long dry is x 70..118.
+  assert.ok(FENSIDE_RECT.x >= 118, 'the fen waist begins where the long dry ends');
+});
+
+test('G-12 THE PAD LAW with THE AUTHORED HUG opt-in: every pinned footprint keeps the pad from both patches unless its row says hug', () => {
+  // The footprint the server scans is the pinned prefab (or the def's
+  // first) as the shelf expanded it; the predicate mirrors pois.ts
+  // intersectsZones (strict on both edges) at the pad findAuthoredAnchor
+  // asks of the pin itself: PAD 0 for a pin whose site row says `hug`
+  // (THE AUTHORED HUG, opt-in per site since fix pass 2: it may stand
+  // edge to edge with a patch), AUTHORED_ZONE_PAD for every other pin
+  // (the scan's first probe keeps it; a pin the scan has to walk keeps
+  // it too, and the server test proves both east pins stand unnudged).
+  // MEASURED: the bar's 22x14 at (126,109) is x 115..136, y 102..115,
+  // ONE row south of the fen waist (y ends 100) so the zone's felled
+  // shoulder meets the crew's own clearing, on the bar's word alone;
+  // the crofts' 24x16 core at (160,94) is x 148..171, y 86..101,
+  // exactly the pad east of the rect (x ends 141). A crofts prefab
+  // grown past its core cannot stand at its pin at all (its 30x20
+  // finds no ground within the nudge on either bank), so the crofts'
+  // influence cap is the pin's own law: the core, no verge.
+  const rects = [ASHLAMP_RECT, FENSIDE_RECT];
+  const hits: string[] = [];
+  const gaps: Record<string, number> = {};
+  for (const s of AUTHORED_WILD_SITES) {
+    if (s.x === undefined || s.y === undefined) continue;
+    const def = POI_DEFS.get(s.defId);
+    const prefabId = s.prefabId ?? def?.prefabs[0];
+    const p = prefabId !== undefined ? POI_PREFABS.get(prefabId) : undefined;
+    if (!p) continue;
+    const fx0 = s.x - Math.floor(p.width / 2);
+    const fy0 = s.y - Math.floor(p.height / 2);
+    const pad = s.hug === true ? 0 : AUTHORED_ZONE_PAD;
+    for (const r of rects) {
+      if (fx0 - pad < r.x + r.w && fx0 + p.width + pad > r.x && fy0 - pad < r.y + r.h && fy0 + p.height + pad > r.y) {
+        hits.push(`${s.id} (${prefabId} ${p.width}x${p.height} at (${s.x},${s.y}), pad ${pad}: x ${fx0}..${fx0 + p.width - 1} y ${fy0}..${fy0 + p.height - 1}) stands inside the pad of rect x ${r.x}..${r.x + r.w - 1} y ${r.y}..${r.y + r.h - 1}`);
+      }
+      // The gap between the footprint and the rect on the axis they meet on.
+      const gx = Math.max(r.x - (fx0 + p.width), fx0 - (r.x + r.w));
+      const gy = Math.max(r.y - (fy0 + p.height), fy0 - (r.y + r.h));
+      gaps[`${s.id}/${r === FENSIDE_RECT ? 'fenside' : 'ashlamp'}`] = Math.max(gx, gy);
+    }
+  }
+  assert.deepEqual(hits, [], 'a pinned footprint stands inside a patch\'s pad (if it is the crofts, its influence cap must be its 24x16 core)');
+  assert.equal(gaps['first_road_toll/fenside'], 1, 'the bar stands one row south of the fen waist (THE AUTHORED HUG, on its own word)');
+  assert.deepEqual(AUTHORED_WILD_SITES.filter((s) => s.hug === true).map((s) => s.id), ['first_road_toll'], 'the bar is the one hugging pin');
+  assert.equal(gaps['fenside_crofts/fenside'], AUTHORED_ZONE_PAD, 'the crofts keep the pad east of the fen waist');
+  // The two east pins stand where the brief measured them.
+  const bar = AUTHORED_WILD_SITES.find((s) => s.id === 'first_road_toll')!;
+  const crofts = AUTHORED_WILD_SITES.find((s) => s.id === 'fenside_crofts')!;
+  assert.deepEqual([bar.x, bar.y, bar.defId, bar.prefabId], [126, 109, 'first_road_bar', 'poi_first_road_bar']);
+  assert.deepEqual([crofts.x, crofts.y, crofts.defId], [160, 94, 'fenside_lamp']);
+  // Both pins stand at least AUTHORED_NUDGE_MAX clear of the tutorial rect.
+  for (const s of [bar, crofts]) assert.ok(distToRect(s.x!, s.y!, DAWNMEAD_RECT) > AUTHORED_NUDGE_MAX);
+});
+
+test('R10 THE TIERS AS ROLLED: cell [0,0] centres tier 2 and [1,0] tier 3; the bar and the crofts stand on them', () => {
+  const anchors = SETTLED_ANCHORS;
+  assert.equal(dangerAt(SEED, 64, 64, anchors), 2, 'cell [0,0] centre');
+  assert.equal(dangerAt(SEED, 192, 64, anchors), 3, 'cell [1,0] centre');
+  assert.equal(dangerAt(SEED, 126, 109, anchors), 2, "Brede's bar at its pin");
+  assert.equal(dangerAt(SEED, 160, 94, anchors), 3, 'the crofts at their pin');
+  // The tier-2 line crosses the road at the fen waist's cairn (119,89), the rect's west edge.
+  assert.equal(dangerAt(SEED, 119, 89, anchors), 2, 'the cairn stands on the threshold');
+  assert.equal(dangerAt(SEED, 57, 95, anchors), 1, 'the Ashlamp is still tier-1 country');
+});
+
+test('E2 THE FIRST BURN STROKE: the Ashlamp burn stands east of the tutorial and crosses the x 64 chunk border', () => {
+  const strokes = AUTHORED_GEOGRAPHY.spectrum ?? [];
+  const burn = strokes.find((s) => s.id === 'ashlamp_burn');
+  assert.ok(burn, 'the stroke is authored');
+  assert.equal(burn!.axis, 'burn');
+  assert.deepEqual(burn!.shape, { kind: 'circle', x: 57, y: 95, r: 11 }, "centred on the shell's heart");
+  assert.equal(burn!.amp, 1);
+  assert.ok(!('bones' in burn!) || !(burn as { bones?: boolean }).bones, 'skin only: worldgen is byte-identical');
+  const [p] = prepareStrokes([burn!]);
+  assert.ok(p, 'the stroke is live (amp not 0)');
+  // The ragged reach box: at least eight tiles east of x 32 (the
+  // tutorial rect ends at x 31), and it straddles the chunk border at
+  // x 64 so the fringe-seam probe reads the halo step across it.
+  assert.ok(p!.x0 >= 32 + 8, `bbox west edge ${p!.x0.toFixed(1)} is under eight tiles east of x 32`);
+  assert.ok(p!.x0 < 64 && p!.x1 > 64, `bbox x ${p!.x0.toFixed(1)}..${p!.x1.toFixed(1)} does not cross x 64`);
+  // The whole box lies inside the Ashlamp's eyeful, never reaching
+  // the fen waist or the tutorial.
+  assert.ok(p!.x1 < FENSIDE_RECT.x && p!.x0 > DAWNMEAD_RECT.x + DAWNMEAD_RECT.w);
+  // The field reads the burn at the shell and nothing at the ford.
+  assert.ok(spectrumAt('burn', 57, 95) > 0.9, 'full amplitude at the shell');
+  assert.equal(spectrumAt('burn', 138, 85), 0, 'nothing at the ford');
+});
+
+test('THE LONG DRY carries nothing: no pinned site and no planned rect between x 71 and x 117 on the First Road', () => {
+  // Fix pass 1: the fen waist's rect begins at x 118 (the cairn stands
+  // at its west edge), so the long dry is x 71..117.
+  for (const s of AUTHORED_WILD_SITES) {
+    if (s.x === undefined || s.y === undefined) continue;
+    const onTheDry = s.x > 70 && s.x < 118 && s.y > 80 && s.y < 120;
+    assert.ok(!onTheDry, `${s.id} stands on the long dry`);
+  }
+  for (const r of PLANNED_ZONE_RECTS) {
+    const overlaps = r.x <= 117 && r.x + r.w - 1 >= 71 && r.y <= 120 && r.y + r.h - 1 >= 80;
+    assert.ok(!overlaps, `${r.id} reaches into the long dry`);
   }
 });

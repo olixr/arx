@@ -75,6 +75,19 @@ export const GAZETTEER: Readonly<Record<string, GazetteerEntry>> = {
     epithet: 'The hall under the roads',
     line: 'The Red Company keeps its hearth where five cities keep their cellars.',
   },
+  // THE CONTESTED LANDS, band 7: the two patches on the First Road.
+  // Neither is a settlement, so neither may wear the kind word the
+  // herald speaks for a town; the epithet says what stands there.
+  ashlamp: {
+    epithet: 'The struck waystation',
+    line: 'A Waykeeper lamp stood here until the spring, and the shell of its room stands still.',
+    country: 1,
+  },
+  fenside: {
+    epithet: 'The one crossing of the fen',
+    line: 'The First Road crosses the channel here between a bar and a stake line, and the water is nobody\'s.',
+    country: 2,
+  },
 };
 
 /**

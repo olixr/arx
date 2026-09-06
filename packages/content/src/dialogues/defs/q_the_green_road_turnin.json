@@ -1,0 +1,14 @@
+{
+  "id": "q_the_green_road_turnin",
+  "start": "counted",
+  "requires": ["quest:the_green_road:ready"],
+  "bindings": [{ "kind": "actor", "target": "waykeeper_leif", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "counted",
+      "voice": "q_the_green_road_turnin__counted",
+      "text": "That is our corn. That is my da's corn off the boards. You carried it past the bar and it is here, so it counts. The fire is small on purpose and tonight it is not. I am not going to cry about it. I am going to count it.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_green_road" }]
+    }
+  ]
+}

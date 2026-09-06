@@ -61,7 +61,7 @@ import heartwoodDoor from './defs/heartwood_door.json';
 // the re-celled map's weight-0 variants — every one an EXISTING
 // family (ONE ATLAS LAW: no new family value, ever).
 import fensideLamp from './defs/fenside_lamp.json';
-import ashlamp from './defs/ashlamp.json';
+import firstRoadBar from './defs/first_road_bar.json';
 import forkWaystation from './defs/fork_waystation.json';
 import thirdStoneRest from './defs/third_stone_rest.json';
 import huskOfTheLine from './defs/husk_of_the_line.json';
@@ -172,10 +172,24 @@ const SOURCES: readonly unknown[] = [
   //  - fenside_lamp: the drowned crofts + the First Lamp as ONE staged
   //    scene with Brede's bar (§3.1, §13.2); weight 0, pinned by the
   //    geography; one lamp, one ledger, one name. Hale trims the lamp
-  //    (hale_lamp), Leif walks the road's edge (leif_walk).
-  //  - ashlamp: a SCAR, not a camp (§3.1, §13.2) — no garrison, no
-  //    haven, no strongbox; the tier is ignored, weight 0, a dressing
-  //    patch the geography stamps, never rolled.
+  //    (hale_lamp). Band 7 re-dressed the crofts: the drowned rows,
+  //    the green corn on the pallets, the old sluice and the shoal's
+  //    weir at the south water edge (R7, R8).
+  //  - first_road_bar: BREDE'S BAR (band 7, R4) — the honest smaller
+  //    variant of bandit_camp, weight 0, tiers 1..3, pinned beside the
+  //    road south-west of the ford. The reaver row is minTier 1 so
+  //    Brede stands whatever the jitter rolls, crowned, and speaks
+  //    through THE MOUTH ON THE ROW (`actor: company_brede`). It
+  //    carries THE PASS (`passFlag: charter_pass`, with the nursery
+  //    clause in the server) and THE TOLL SURVEY (`toll: true`). No
+  //    boldness (authored cells never stage), no actors[] (Brede rides
+  //    the row; the drover is the fenside zone's). The BAR SCENE
+  //    itself (posts, teeth, cage, counter) is zone dressing (R2);
+  //    the camp is the bodies and the shares. It REPLACES the rolled
+  //    bandit_camp on the `first_road_toll` pin.
+  //  - THE ASHLAMP is no longer a def: band 7 (R1) made it an authored
+  //    zone (`maps/ashlamp/`), because a scar has no core and the
+  //    ledger holds one row per cell; `poi_ashlamp` retired with it.
   //  - fork_waystation: fork_rest's def (§3.2, §3.3, §13.2); weight 0,
   //    pinned at the Thornveil fork.
   //  - third_stone_rest: §3.4, §13.2; weight 0, pinned on the Old
@@ -208,7 +222,7 @@ const SOURCES: readonly unknown[] = [
   //    post) and a rolled outpost mints a name-free sergeant, so no
   //    second Hale ever stands (§3.1, §8).
   fensideLamp,
-  ashlamp,
+  firstRoadBar,
   forkWaystation,
   thirdStoneRest,
   huskOfTheLine,

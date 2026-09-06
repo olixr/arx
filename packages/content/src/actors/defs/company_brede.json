@@ -1,0 +1,27 @@
+{
+  "id": "company_brede",
+  "name": "Brede",
+  "title": "The Company's Warden",
+  "examine": "Two years at the bar where the road has water on one side and him on the other. Counts under his breath. Does not raise his voice. The book has two columns and the post in the water has six lines.",
+  "disposition": "neutral",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 1,
+      "hairColor": 2,
+      "beard": 4,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 8
+    }
+  },
+  "lines": [
+    "Six lines on that post, a finger apart. That is the winter. The water came up like a bill nobody sent, and I am the one standing here when it arrives.",
+    "The order pulled its crew off the Ashlamp and let it burn. I have the glass. Ask Hale where his crew was and watch him do arithmetic.",
+    "Charter paper walks through. Crofters pay. Children walk through. Those are the three rules and I did not write any of them.",
+    "The sergeant and I have never spoken. He keeps his lamp and I keep my bar and the road runs between them and pays neither of us enough."
+  ]
+}

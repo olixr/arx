@@ -263,9 +263,16 @@ export function buildMeta(srv: GameServer, eid: EntityId): EntityMeta {
   const actorComp = srv.actors.get(eid);
   if (actorComp) {
     const actor = actorComp.actor;
-    meta.name = actor.name;
+    // THE MOUTH ON THE ROW: a speaking garrison body keeps the
+    // bestiary's name (the forged crown's), art and level on the wire
+    // — the actor lends only its title, its voice and its slug. The
+    // actor's own look is unused on the row.
+    const mouthed = npc?.mouth !== undefined;
+    if (!mouthed) meta.name = actor.name;
     if (actor.title) meta.title = actor.title;
-    if (actor.model.kind === 'creature') {
+    if (mouthed) {
+      // The body's own defId and level already stand from the npc read.
+    } else if (actor.model.kind === 'creature') {
       // The bestiary body carries the art; the actor carries the name.
       meta.defId = actor.model.creature;
     } else {

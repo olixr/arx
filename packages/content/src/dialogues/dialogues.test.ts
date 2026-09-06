@@ -326,3 +326,60 @@ test('the mood mark: yes/no/hm validate, anything else refuses', () => {
   const bad = validateDialogue(tree('angry'));
   assert.ok(!bad.ok && bad.errors.some((e) => e.includes('mood')));
 });
+
+// ---- THE CONTESTED LANDS band 7: the fen waist's mouths (band7/blockout.md
+// §5). The priority ladders are the whole of how a voice turns: a gated
+// tree outranks the hub by the number this pins, and a `once` bark
+// falls back to the ladder below it the day after it is said.
+test('CONTESTED LANDS: the fen waist ladders pick the right mouth', () => {
+  const at = (actor: string, flags: Iterable<string>) => {
+    const set = new Set(flags);
+    return pickDialogue(offersFor(actor), (f) => set.has(f))?.id;
+  };
+  // Halvor: hub, then the offers, then cold, then the string once, then the fine.
+  assert.equal(at('fenside_halvor', []), 'halvor_crofts');
+  assert.equal(at('fenside_halvor', ['quest:the_old_gate:available']), 'q_the_old_gate_offer');
+  assert.equal(at('fenside_halvor', ['weir_cut']), 'halvor_cold');
+  assert.equal(at('fenside_halvor', ['weir_cut', 'halvor_string_carried']), 'halvor_string');
+  assert.equal(
+    at('fenside_halvor', ['halvor_string_carried', dialogueDoneFlag('halvor_string')]),
+    'halvor_crofts',
+  );
+  assert.equal(at('fenside_halvor', ['weir_cut', 'faction:fenside:atmost:outlaw']), 'halvor_fine');
+  // Ingram: hub, the offers, the bill above the hub once B is done and the bill is offerable.
+  assert.equal(at('charter_ingram', []), 'ingram_dike');
+  assert.equal(at('charter_ingram', ['quest:stakes_in_the_waist:available']), 'q_stakes_in_the_waist_offer');
+  assert.equal(
+    at('charter_ingram', ['quest:the_green_road:done', 'quest:the_obstruction_bill:available']),
+    'ingram_obstruction',
+  );
+  assert.equal(at('charter_ingram', ['quest:the_green_road:done']), 'ingram_dike');
+  // Hale: the First Lamp's tree outranks the old post; the chalk bark once above it.
+  assert.equal(at('waykeeper_hale', []), 'hale_lamp');
+  assert.equal(at('waykeeper_hale', ['quest:the_green_road:done']), 'hale_toll_walked');
+  assert.equal(
+    at('waykeeper_hale', ['quest:the_green_road:done', dialogueDoneFlag('hale_toll_walked')]),
+    'hale_lamp',
+  );
+  // The skral: the wave, the turned back, the long wave.
+  assert.equal(at('skral_weirward', []), 'skral_weir');
+  assert.equal(at('skral_weirward', ['weir_cut']), 'skral_weir_cut');
+  assert.equal(at('skral_weirward', ['weir_cut', 'halvor_string_carried']), 'skral_weir_paid');
+  // Margit: the stakes once (retired by its own flag), the ledger shut to B.
+  assert.equal(at('charter_margit', ['quest:stakes_in_the_waist:active']), 'margit_stakes');
+  assert.equal(at('charter_margit', ['quest:stakes_in_the_waist:active', 'stakes_taken']), undefined);
+  assert.equal(at('charter_margit', ['quest:the_green_road:done']), 'margit_ledger_closed');
+  // Weir: the dried line once, then the pier as before.
+  assert.equal(at('angler_weir', ['weir_cut', dialogueDoneFlag('weir_line')]), 'weir_dried');
+  assert.equal(
+    at('angler_weir', ['weir_cut', dialogueDoneFlag('weir_line'), dialogueDoneFlag('weir_dried')]),
+    'weir_pier',
+  );
+  // Brede's paper choice is the pass's one door; the skral say no word.
+  const brede = DIALOGUES.get('brede_bar')!;
+  const paper = brede.nodes.find((n) => n.id === 'hub')!.choices!.find((c) => c.next === 'paper')!;
+  assert.deepEqual(paper.requires, ['charter_pass']);
+  for (const id of ['skral_weir', 'skral_weir_cut', 'skral_weir_paid']) {
+    for (const n of DIALOGUES.get(id)!.nodes) assert.ok(!/"/.test(n.text), `${id}: wordless prose`);
+  }
+});

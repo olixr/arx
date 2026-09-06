@@ -214,11 +214,17 @@ export function ground(ctx: DawnCtx): void {
   wear.rect(46, 66, 51, 70);
 
   // G22 THE COMMON'S GROUND — Brammel's stand inside the west gate; the
-  // crofters' drive from the walk; the crofters' way in up the strip
-  // between the Common and Sorrel's rails to the broken corner.
+  // crofters' drive from the walk; the crofters' way in to the broken
+  // corner. THE CROFTERS USE THE TRACK (band 7, owed E8 / D4): the way
+  // in used to run its own column (x135-136, y85..107) one grass tile
+  // east of the homestead track's south leg for twenty-two rows, two
+  // parallel worn lines where one road was walked. The crofters walk
+  // the track now, like everybody else, and the way in is only the last
+  // two steps: off the east band's end at (134,84) to the broken corner
+  // of Sorrel's rails at (133,83).
   wear.ellipse(98, 74, 2, 1.5);
   L([[94, 75], [95, 74]]);
-  L([[136, 109], [136, 101], [135, 93], [136, 87], [134, 84], [133, 83]]);
+  L([[134, 84], [133, 83]]);
 
   // G24 THE WATER WAY — Sorrel's night path; Weir's fish on a barrow:
   // north off the lane through the drover yard's south mouth and the

@@ -1,0 +1,14 @@
+{
+  "id": "q_the_old_gate_turnin",
+  "start": "hung",
+  "requires": ["quest:the_old_gate:ready"],
+  "bindings": [{ "kind": "actor", "target": "fenside_halvor", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "hung",
+      "voice": "q_the_old_gate_turnin__hung",
+      "text": "True boards. The post will take them by dusk and the panel will hang by morning and the mere will go down the old way, slow, out under the furrows. The Charter man will call that obstruction. He can call it what he calls it. It is a gate.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_old_gate" }]
+    }
+  ]
+}

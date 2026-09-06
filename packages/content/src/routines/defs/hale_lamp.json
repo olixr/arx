@@ -10,7 +10,7 @@
         "mode": "once",
         "speed": 1.2,
         "waypoints": [
-          { "x": 0, "y": -2, "waitSec": 120, "work": true },
+          { "x": 0, "y": -1, "waitSec": 120, "work": true },
           { "x": 0, "y": 0 }
         ]
       }
@@ -28,10 +28,15 @@
         "mode": "once",
         "speed": 1.2,
         "waypoints": [
-          { "x": 0, "y": -2, "waitSec": 120, "work": true },
+          { "x": 0, "y": -1, "waitSec": 120, "work": true },
           { "x": 0, "y": 0 }
         ]
       }
+    },
+    {
+      "from": 21.5,
+      "to": 5,
+      "task": { "kind": "post", "x": 2, "y": -1, "sit": true, "speed": 1.2 }
     }
   ]
 }
