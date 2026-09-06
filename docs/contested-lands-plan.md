@@ -1576,46 +1576,64 @@ That is the weight and I keep it."
 
 ### 11.6 Where, and how they enter the war
 
-THE SETT: the worldgen quarry bowl at x 156..188, y 276..324 (probed at
-seed 24601: a −1 ring of ~1,100 tiles with a −2 core of ~325 around
-x 161..187, y 286..302; the bowl reaches y≈330 and x≈194), cell [1,2].
-Its cell centre is 373 tiles from the anchor (tier 3 by the cell-centre
-law); the Course crosses the tier-3 line on the walk south, which is the
-threshold the spacing audit asks for (marked with a PlumbStone). The site
-scan refuses a pit and `findAuthoredAnchor` refuses a pin inside an
-authored zone, so the Sett is an AUTHORED ZONE whose sketch covers the
-whole bowl (≈x 154..194, y 270..330, so the rim cliffs match at its
-edge) with its own −1 and −2 levels (the shipped precedents: `hasElev`
-on authored maps in maps/builder.ts and the terraced-prefab elev layer
-pinned in pois.test), and **the garrison is the zone's own spawn rows and
-actor pool** (the Dawnmead pattern), 10-12 bodies mostly holdfast, one
-loop, guard temperament (never initiates; the set answers). The Plug and
-the Sinter's wet floor sit on the −2 core. An honest `dolmen` POI family
-(the roster test passes as long as no find or wild entry leans on an
-absent family) with litter vocab `course` (CaveRubble, Rock, PlumbStone);
-`golem` was refused because a family drives the territory lean, not the
-litter, and a golem lean is the strongest possible "reads as golem"
-failure. The cell-forced `amberfen_shoal` stands in [1,1] directly north:
-the two settlements are acknowledged neighbours who do not meet (the
-Sinter stop at the ninth course; the shoal keeps to the fen), on a
-`neutral` row. One dressing patch, no core, at the Drowned Meadow's
-south-east corner: Sarsen, a PlumbStone, the re-set cairn, sheep on the
-last dry course. Walk from the crofts to the north lip: 48-52 seconds.
+THE SETT: zone `sett` ("The Sett"), rect origin (150,265), 50×74 (x
+150..199, y 265..338), cell [1,2]. The rect's own shape is not drawn; it
+is read. Worldgen's own levels at seed 24601, stamped per cell, give a
+−1 ring of 1,532 tiles (1,535 once the one authored edit lands) with a
+−2 core of 325 at x 164..187, y 286..302, inside a bowl at x 154..195, y
+269..334, every rim cell painted Cliff with six tread gaps the only way
+down. The one authored edit is THE LIP: (172..174,269) sunk to −1 so the
+north flight reads straight. The lip is the tier-3 line and the head's
+threshold PlumbStone (175,267) marks it; the walk south from the crofts
+to the lip is about 34 seconds over the open [1,1] meadow. There is zero
+worldgen water in the bowl; the Sinter's wet floor is authored, 61
+WaterShallow cells at −2 across the core's south half, with the ninth
+course and Drusa's cell standing in ten of them and 51 left as open
+water. No `dolmen` POI family, VOCAB regex or faction exists, or ever
+will (the family is keyed on prefab ids the Sett never has); the
+`course` litter vocabulary (CaveRubble, Rock, PlumbStone, Chalkline)
+stands on its own. The cell-forced `amberfen_shoal` stands in [1,1]
+directly north at its own authored seat (203,184), footprint x 173..232,
+y 161..206: the two settlements are acknowledged neighbours who do not
+meet (the Sinter stop at the ninth course; the shoal keeps to the fen),
+on a `neutral` row, and the Course that will carry the Sett's stone
+north to the Drowned Meadow keeps clear of that footprint's own pad.
+
+The bowl reads north to south as one worked quarry: THE HEAD on the
+lip (the approach, the north flight, the threshold stone, the head run
+of set wall with its stile), THE RIM-SET at −1 (the foot apron, three
+desire lines down into the bowl), THE CORE STEPS down to −2, THE PLUG
+(a corbelled dome standing alone on bare cave floor, walked around
+rather than through, with an inner ring of niches inside the dome left
+unbuilt), THE WET FLOOR (the authored water and the ninth course
+standing in it), THE WEIGHT-YARD on the west shelf (the cart, the row
+of the taken, one door in and one door out), and THE HEARTH-CELLS on
+the east shelf (two firekeepers each in their own ash, the only two
+lights in the bowl). Eleven bodies stand posted through the bowl on
+their own rows, guard temperament, mostly holdfast, one loop: the four
+named throats (Ammat at the head, Drusa on the wet floor, Durrow on the
+hearth shelf, and Vorl Fullweight in the weight-yard) and seven pooled
+setters, wetsetters, firekeepers and weightkeepers. Vorl is a zone
+spawn row, named and mouthed rather than crowned: he carries a name, a
+level and a mouth the way any authored actor can, and the mouth rides
+through him on his row, which needed no new engine ceremony once the
+zone format learned to carry those three fields on a spawn.
 
 **No sixth fork.** The Dolmen are the THIRD CORNER of THE CAUSEWAY OR THE
 SLUICE (§3.1): Ingram's stakes are the Course's own stone, and on (A) the
-character who plants them enters Ammat's count ("forty and twelve; the
-twelve are yours"), Garrow's stone-yard opens, Durrow's shelf closes; on
-(B) the kelp-string carried back past the Course earns Sarsen's one extra
-line and the plumb_bob token. THE ERRAND, *Forty Stones* (Ammat,
-repeatable, requires the capstone, forbids `course_broken`): carry a load
-of the Charter's carted stone from Garrow's yard back to the Course's north
-gap (stealth, fight with the yard's enforcer rows, or Garrow's third offer
-to sell it back for coin the Dolmen will not pay) and set it (CourseStile to
+character who plants them enters Ammat's count ("forty and eight"),
+Garrow's stone-yard opens, Durrow's shelf closes; on (B) the kelp-string
+carried back past the Course earns Sarsen's one extra line and the
+plumb_bob token. THE ERRAND, *Forty Stones* (Ammat, repeatable, requires
+the capstone, forbids `course_broken`): carry a load of the Charter's
+carted stone from Garrow's yard back to the Course's north gap (stealth,
+fight with the yard's enforcer rows, or Garrow's third offer to sell it
+back for coin the Dolmen will not pay) and set it (CourseStile to
 CourseWall, the candle grammar). The full fork THE WEIGHT OR THE ROAD is
-the v2 seed. Roster: faction `dolmen` (members ammat, kesk, durrow, oskel +
-pooled `dolmen_setter`; fineActor ammat; oppose fordgate .25 as a standing
-feud, never blade); reputation is for speaking parties and this one speaks.
+the v2 seed. There is no `dolmen` faction and no member roster; the
+Dolmen speak as themselves, tribe by tribe, on a `neutral` standing row,
+and reputation stays for speaking parties who keep a faction to speak
+for.
 
 ### 11.7 Engine cost and risks
 
@@ -1982,6 +2000,93 @@ zone gives a live body to test it against, since a body with no fight
 placed against it today never opens its guard. The two-handed overhead
 strike and the family's whole art kit remain unbuilt after three bands;
 the hurt pose is still the only combat frame any Dolmen owns.
+
+### 11.11 As built 2026-09-06 (Band 9d, the Sett)
+
+Band 9d shipped the Sett as an authored zone standing on the worldgen
+bowl described in §11.6, with its full population, its four named
+throats, and the engine seams their rows needed, proven on the shipped
+rig and against a throwaway world database.
+
+**Rulings, binding on the build (owner delegate, rulings.md, R-A
+through R-H).** R-A: two runs, and Band 9d is the Sett alone; the
+Course, Forty Stones, the third corner, Sarsen and Garrow wait for Band
+9e. R-B: the ground wins, meaning the rect and its levels are read from
+worldgen rather than redrawn, the bowl carries no worldgen water, and
+the walk from the crofts is the open meadow's own pace rather than an
+authored number. R-C: Vorl's door is the passthrough, a zone spawn row
+threading a name, a level and a mouth rather than a crown pool or a new
+kit. R-D: a zone gains `reachFrom`, a named point the reachability
+check floods from, so a zone with no spawn of its own can still pass
+without becoming a respawn hearth. R-E: the `dolmen` POI family and its
+regex are refused for good; the `course` litter vocabulary stands on
+its own. R-F: eleven bodies stand the bowl, ten pooled plus Vorl's row,
+on one loop; Sarsen belongs to Band 9e and was not written here. R-H:
+the proof stands under the run's own shape with a live elevation walk,
+the walker descending both flights and returning with no sealed pocket
+and the wet floor holding its props.
+
+**The four engine seams.** A zone spawn row learned to carry a name, a
+level and a mouth alongside its body, so an authored champion like Vorl
+needs no crown pool to stand as himself. A zone definition learned
+`reachFrom`, a point the reachability check floods from instead of a
+spawn, so a garrisoned zone with no respawn of its own still proves
+reachable. The terrain renderer learned to stand water-capable set
+pieces (a course wall, a course stile, a plumb stone, a corbelled cell)
+in standing water without a green placeholder square showing through.
+And the hostile-prefix flip that lets a Dolmen answer a blow reads off
+one list, so a family can be added to it without touching the fight
+code itself.
+
+**Two renderer laws, both fixes rather than new art.** The first: a
+sunk member's own painted stretch, and the mask that keeps its sprite
+whole, must grow south by that member's own depth, not by a flat
+amount, since a body standing two levels down drops two levels' worth
+of pixels before its cap ever shows; without this law a corbelled dome
+or a wet-floor body baked with its cap showing and its foot clipped
+away. The second: a mirrored basket on a skral fishing rig was carrying
+its mirror into a measurement that should have stayed positive, which
+threw partway through drawing the world whenever the shoal's own props
+stood in view; the fix drops the sign from that measurement without
+touching the mirror itself. Both are pre-existing defects rather than
+Sett-specific work, and both land ahead of Band 9e, since the Course
+runs along the shoal's own apron.
+
+**THE QUARRY FLOOR, a dressing pass (commit f2036f65).** The bowl was
+carried a step past bare terrain so it reads as worked rock rather than
+a hole in the ground: two cut-face tongues where the rock still shows
+its own quarrying, a spoil scatter beside the cuts, rubble runs
+gathered at the foot of the rim, a ledge at the water's edge, a coal
+seam showing on both cut faces, a laid course of set stone with its own
+chalk marking, and the walks themselves reading as broken trails of
+feet rather than a clean path. The line brush that draws a course or a
+trail gained a gap knob, so a run can be told to leave a gap rather
+than draw solid, which is what lets a broken trail read as broken and
+a set course read as unbroken in the same brush.
+
+**One item still owed: THE QUARRY SKIN.** The cave floor under the
+bowl was dressed by hand rather than drawn from the Living Ground
+material bands described in §12, and the ground painter's own habit of
+ribboning a material one tile wide at a time was worked around rather
+than fixed. Both are owed to that system once it lands, so the Sett's
+own floor can be re-skinned from the same material band every other
+cave floor draws from instead of carrying its own one-off paint.
+
+**The handoff to Band 9e.** The shoal's authored seat at (203,184),
+footprint x 173..232, y 161..206 with its own six-tile pad, is 9e's
+first input: the Course's frames must clear that pad the way the Sett's
+own head run already does. The head run itself ends at a seam cell
+(150,267) ready for the Course to pick up, with its one gap in the
+course wall already marked for a stile. The four named throats and
+their two live trees stand; `dolmen_sarsen.json` was deliberately not
+written in Band 9d and is Band 9e's own file to add. The dialogue
+`durrow_cold`, drafted and proven correct during Band 9d, was pulled
+back out and handed to Band 9e verbatim rather than shipped a band
+early, since it answers a flag the Course itself has not yet set. Band
+9e inherits all four engine seams above, plus the renderer's own law
+that a sunk member's stretch grows south by its depth, which its own
+level-0 frames will never trigger but should not have to reason about
+either.
 
 Two architectures were designed against each other (per-tile weights with
 a corner array; strokes and fields evaluated at bake) and they converge on
