@@ -10115,7 +10115,9 @@ export class Renderer {
    *  read at a measured 57/255 in every band canvas over the shell,
    *  opaque only while the stretch drew live. */
   private mintAlpha(sp: { mint?: number }): number {
-    if (this.bakeVeilFull || this.bakingMask) return 1;
+    // A keyed scratch paint is a bake too: the ramp must never freeze
+    // into its cached texture (THE LEDGER NEVER FREEZES A PROVISIONAL FRAME).
+    if (this.bakeVeilFull || this.bakingMask || this.scratchKeyed) return 1;
     return sp.mint !== undefined ? Math.min(1, (this.frameNo - sp.mint + 1) / 9) : 1;
   }
 
@@ -14769,6 +14771,9 @@ export class Renderer {
         this.ctx = ctx;
         try {
           paint();
+          // DEV — the scratch tap: a rig probe sets renderer.scratchTap to
+          // read back each scratch paint (tag, box, the sheet it landed on).
+          if (this.scratchTap) this.scratchTap(tag, px, py, pw, ph, ctx);
         } finally {
           this.ctx = saved;
         }
@@ -15129,15 +15134,30 @@ export class Renderer {
               (runDyn !== 0 ? Math.imul(runDyn, 0x27d4eb2f) : 0) ^
               // Per-run phase stagger (the tree-cadence law): the
               // breathing herd never repaints in one frame.
-              (anim ? Math.imul(((this.frameNo + (runKey & 63)) / 3) | 0, 0x9e37) : 0)) |
+              (anim ? Math.imul(((this.frameNo + (runKey & 63)) / 3) | 0, 0x9e37) : 0) ^
+              // THE LEDGER NEVER FREEZES A PROVISIONAL FRAME: a paint that
+              // skipped a not-yet-minted member sprite bumped this nonce,
+              // so the rev moves and the run re-mints until it paints whole.
+              Math.imul(this.wallRunRetry.get(runKey) ?? 0, 0x2545f491)) |
             0;
+          const keyedRun = runKey;
           this.stagePushPaintRaw(
             ux0,
             uy0,
             uw,
             uh,
             () => {
-              for (const it2 of run) it2.stageRebuild!();
+              this.scratchKeyed = true;
+              this.scratchProvisional = false;
+              try {
+                for (const it2 of run) it2.stageRebuild!();
+              } finally {
+                this.scratchKeyed = false;
+                if (this.scratchProvisional) {
+                  if (this.wallRunRetry.size > 4096) this.wallRunRetry.clear();
+                  this.wallRunRetry.set(keyedRun, (this.wallRunRetry.get(keyedRun) ?? 0) + 1);
+                }
+              }
             },
             'wall-run',
             runKey,
@@ -15463,6 +15483,28 @@ export class Renderer {
 
   /** DEV — per-frame tap over the sorted draw list (see the sort site). */
   itemsTap: ((items: DrawItem[]) => void) | null = null;
+  /**
+   * THE LEDGER NEVER FREEZES A PROVISIONAL FRAME. A keyed wall-lane scratch
+   * paints ONCE and is then served from its cached texture (THE SCRATCH
+   * LEDGER). Two per-frame laws used to get baked into that texture and
+   * held for the life of the key: THE PROMISED FADE's mint ramp (a member
+   * sprite minted this very frame blits at 1/9..2/9 alpha → a ghost stall
+   * at ~22% until a zoom/dpr/outline change re-minted the run) and LAW 2's
+   * declined-miss SKIP (a member whose sprite the budget declined painted
+   * NOTHING → half a counter missing, frozen). `scratchKeyed` marks a keyed
+   * scratch paint in flight: the ramp and the step-aside fade read 1 there
+   * (exactly the bakingMask duty), and a skipped sprite flags the paint
+   * PROVISIONAL — the run's retry nonce bumps, its rev changes, and the
+   * ledger re-mints next frame instead of caching the hole.
+   */
+  private scratchKeyed = false;
+  private scratchProvisional = false;
+  /** Per-run retry nonce (runKey → bumps), mixed into the keyed rev. */
+  private readonly wallRunRetry = new Map<number, number>();
+  /** DEV — tap over every stage scratch paint (see stagePushPaintRaw). */
+  scratchTap:
+    | ((tag: string, px: number, py: number, pw: number, ph: number, ctx: CanvasRenderingContext2D) => void)
+    | null = null;
   /** Viewport culling on/off — the A/B door for rig proofs and the kill
    *  switch if a canopy ever blinks. */
   occlusionOn = true;
@@ -16682,6 +16724,9 @@ export class Renderer {
       // bakes run with the veil live, so bakingMask carries the duty).
       this.bakeVeilFull ||
       this.bakingMask ||
+      // A keyed wall-lane scratch is cached: a fade painted into it would
+      // hold past the body walking away (the same law as bakingMask).
+      this.scratchKeyed ||
       // A prop declared tall by its tile (FADE_TALL_PROPS) fades on
       // its silhouette whatever its drawn box says; every other prop
       // must measure up.
@@ -16779,6 +16824,9 @@ export class Renderer {
       // bounded pop-in, never unbounded absence (the 08-18 deadlock
       // class cannot recur: the floor cannot starve).
       this.liveStats.prop++;
+      // Inside a keyed scratch paint a skipped sprite must not be cached
+      // as absence — flag the paint provisional (re-minted next frame).
+      if (this.scratchKeyed) this.scratchProvisional = true;
       return;
     }
     sp.used = this.frameNo;
@@ -17003,6 +17051,7 @@ export class Renderer {
     // frame is near (see drawPropOutlined for the measured story).
     if (!sp) {
       this.liveStats.flora++;
+      if (this.scratchKeyed) this.scratchProvisional = true;
       return;
     }
     {
@@ -17467,6 +17516,7 @@ export class Renderer {
         // fades in when it lands (see drawPropOutlined for the
         // measured 3fps story this replaces).
         this.liveStats.tree++;
+        if (this.scratchKeyed) this.scratchProvisional = true;
         return;
       }
       sp.used = this.frameNo;
