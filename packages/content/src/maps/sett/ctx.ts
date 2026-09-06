@@ -85,6 +85,13 @@ export interface WearLineOpts {
   width?: 1 | 2 | 3;
   wobble?: number;
   tile?: Tile;
+  /**
+   * THE BROKEN TRAIL (the floor pass): the hash drops this fraction of
+   * the line's cells (never the two ends, never two in a row), so a
+   * trail on rock reads as feet that found the same way, not a laid
+   * ribbon. 0 (the default, every other zone's) paints every cell.
+   */
+  gap?: number;
 }
 
 export interface WearBrushes {
@@ -297,6 +304,7 @@ export function makeCtx(b: ZoneBuilder, frame: Frame): { ctx: SettCtx; registry:
     const width = opts.width ?? 1;
     const wobble = opts.wobble ?? 0.35;
     const tile = opts.tile ?? Tile.Dirt;
+    const gap = opts.gap ?? 0;
     if (pts.length === 0) return;
     const cells: Array<{ x: number; y: number; px: number; py: number }> = [];
     const first = pts[0]!;
@@ -316,6 +324,7 @@ export function makeCtx(b: ZoneBuilder, frame: Frame): { ctx: SettCtx; registry:
     let prevJ = 0;
     let run = 0;
     let rest = 0;
+    let dropped = false;
     const last = cells.length - 1;
     for (let i = 0; i <= last; i++) {
       const c = cells[i]!;
@@ -336,6 +345,12 @@ export function makeCtx(b: ZoneBuilder, frame: Frame): { ctx: SettCtx; registry:
       run = j !== 0 && j === prevJ ? run + 1 : j !== 0 ? 1 : 0;
       const cx = c.x + c.px * j;
       const cy = c.y + c.py * j;
+      prevJ = j;
+      // THE BROKEN TRAIL: a dropped cell keeps the wobble's state (the
+      // trail bends where it bends) and paints nothing.
+      const drop: boolean = gap > 0 && i !== 0 && i !== last && !dropped && settRng(cx + 23, cy + 41) < gap;
+      dropped = drop;
+      if (drop) continue;
       paint(cx, cy, tile);
       if (width >= 2) {
         paint(cx + c.px, cy + c.py, tile);
@@ -346,7 +361,6 @@ export function makeCtx(b: ZoneBuilder, frame: Frame): { ctx: SettCtx; registry:
         paint(cx - c.px, cy - c.py, tile);
         if (settRng(cx + 43, cy + 47) < 0.2) paint(cx - c.px * 2, cy - c.py * 2, tile);
       }
-      prevJ = j;
     }
   };
 

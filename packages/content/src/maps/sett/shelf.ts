@@ -10,8 +10,9 @@
  * in its ash (ground.ts lays the pan on the cardinals), flame-gated by
  * the shipped row, lit from dusk: the set's only lights
  * (lint.lightsCensus). TERTIARY three rubble (the seam's own, brought
- * up); Durrow and the two firekeepers (people.ts). No Chalkline: the
- * Culm burn; they do not set courses.
+ * up); THE SEAM, the black stone showing in the core's east face on
+ * both sides of the rim; Durrow and the two firekeepers (people.ts).
+ * No Chalkline: the Culm burn; they do not set courses.
  */
 import { Tile } from '@arx/shared';
 import type { SettCtx } from './ctx.js';
@@ -35,4 +36,11 @@ export function shelf(ctx: SettCtx): void {
   // THE RUBBLE. SENTENCE: the seam's own rubble, brought up with the
   // black stone and left at the rim's foot.
   for (const [x, y] of SHELF.RUBBLE) ctx.rubble(x, y);
+
+  // THE SEAM. SENTENCE: the black stone runs through the core's east
+  // rim and shows on both faces, two cells at the foot of the face on
+  // the floor and one on the shelf where Durrow faces it; the Culm
+  // burn it and nobody topside knows it is here.
+  for (const [x, y] of SHELF.SEAM_CORE) ctx.put(x, y, Tile.RockCoal);
+  ctx.put(SHELF.SEAM_SHELF[0], SHELF.SEAM_SHELF[1], Tile.RockCoal);
 }

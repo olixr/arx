@@ -6,7 +6,8 @@
  * §11.3, §11.6; band9d/blockout.md §1-§4; rulings R-A..R-H): the first
  * sunk authored zone. THE SHAPE IS READ, NOT DRAWN: worldgen's own
  * levels are stamped per cell (the −1 ring, the −2 core) with the rim
- * painted Cliff verbatim and one listed edit (E1 the lip); the north
+ * painted Cliff verbatim and three listed edits (E1 the lip, E2 and
+ * E3 the tongues the floor pass left standing as cut faces); the north
  * flight comes down from the lip, the core steps from the ring to the
  * floor; the Marl's rim-set, the Plug, the Sinter's authored wet floor
  * with the ninth course standing in it, the Gossan's weight-yard with
@@ -20,8 +21,9 @@
  *
  * THE ORDER, which is the whole law of this file:
  *   makeCtx(SETT) → mask (the bowl read and stamped; the rim as Cliff;
- *   E1) → the six treads → ground (the aprons, the desire lines, the
- *   wet floor, the ash, the yard's ground, the posts' patches) → head
+ *   E1-E3) → the six treads → ground (the aprons, the two worn lines
+ *   and the laid course, the wet floor, the ash, the yard's ground,
+ *   the walk, the posts' patches) → head
  *   → rimset → plug → wetfloor → yard → shelf → south → people → the
  *   deferred details → NO sign flush (none) → growth 'wild' →
  *   reachFrom → build.

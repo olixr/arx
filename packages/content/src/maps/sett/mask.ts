@@ -17,9 +17,10 @@
  *    never has to bury a TILE_SKIP cell it may not touch;
  *  - nothing else is painted: outside the rim the field shows through.
  *
- * The frame's listed EDITS ride inside ctx.level (E1 THE LIP; each
- * with its sentence in pins.ts), so the mask, the rim and every scene
- * argue with one read. The two flights are laid AFTER the mask by the
+ * The frame's listed EDITS ride inside ctx.level (E1 THE LIP sinks
+ * three; E2 and E3 THE TONGUES leave three each standing one level up
+ * as cut faces, every cell a rim; each with its sentence in pins.ts),
+ * so the mask, the rim and every scene argue with one read. The two flights are laid AFTER the mask by the
  * frame (index.ts): a tread overwrites its rim cell with Ramp and the
  * builder records it as the fence's one legal gap.
  */

@@ -1,0 +1,19 @@
+{
+  "band": "band9d-floor",
+  "zoom": 1.3,
+  "hours": [null],
+  "setup": [],
+  "scenes": [
+    { "id": "head", "x": 172, "y": 266, "hour": 12, "dir": "s", "notes": "S1 THE HEAD from the lip: the run, the gap, P0, C1; the flight down" },
+    { "id": "ring", "x": 172, "y": 272, "hour": 19.5, "dir": "s", "notes": "S2 from the flight's foot at dusk: the laid course, C4, the crown spoil, the tongues, the west foot" },
+    { "id": "plug", "x": 175, "y": 289, "hour": 12, "dir": "s", "notes": "S4 THE PLUG: the broken walk, the Sinter's cut, the seam's floor side" },
+    { "id": "wet", "x": 178, "y": 298, "hour": 12, "dir": "n", "notes": "S5 THE WET FLOOR: the ragged bank, the ledge, the south foot" },
+    { "id": "yard", "x": 160, "y": 291, "hour": 12, "dir": "e", "notes": "S6 THE WEIGHT-YARD kept; E3 and the Sinter's spoil east of its wall" },
+    { "id": "shelf", "x": 189, "y": 292, "hour": 21, "dir": "w", "notes": "S7 THE HEARTH-CELLS at night: the seam's shelf side by Durrow" },
+    { "id": "eastlip", "x": 200, "y": 292, "hour": 12, "dir": "w", "notes": "the 9a proof spot on the east lip looking west over the shelf into the bowl" }
+  ],
+  "bodies": [
+    { "slug": "dolmen_ammat", "near": [168, 266], "stops": [ { "hour": 12, "x": 168, "y": 266, "kind": "post" } ] },
+    { "slug": "dolmen_drusa", "near": [180, 296], "stops": [ { "hour": 12, "x": 180, "y": 296, "kind": "post" } ] }
+  ]
+}

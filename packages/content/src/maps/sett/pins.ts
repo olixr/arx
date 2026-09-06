@@ -116,10 +116,38 @@ export const E1_THE_LIP: Edit = {
   why: 'E1 THE LIP: the three rim cells under the north flight come down to −1 so the flight reads straight',
 };
 
+/**
+ * E2 THE WEST TONGUE (the floor pass): (157..159, 274) RAISED to 0. A
+ * quarry is not a bowl; where the rock ran hard the Marl cut round it
+ * and left a tongue of the lip standing into the ring, a cut face
+ * three long with its foot in the floor. It joins worldgen's own rim
+ * at (156,274) so the fence reads as one rock; nothing stands behind
+ * it (the floor is open on three sides) and the north flight stays
+ * the only gap.
+ */
+export const E2_THE_WEST_TONGUE: Edit = {
+  cells: [[157, 274], [158, 274], [159, 274]],
+  level: 0,
+  why: 'E2 THE WEST TONGUE: three ring cells left standing at the lip\'s level, a cut face the Marl quarried round',
+};
+
+/**
+ * E3 THE SINTER'S TONGUE: (164..166, 294) RAISED to −1. The Sinter cut
+ * the core's west face round a hard tongue and it stands into the −2
+ * floor, joined to the core's own rim at (163,294); the floor is open
+ * north, east and south of it and the core steps stay the only way
+ * down.
+ */
+export const E3_THE_SINTER_TONGUE: Edit = {
+  cells: [[164, 294], [165, 294], [166, 294]],
+  level: -1,
+  why: 'E3 THE SINTER\'S TONGUE: three core cells left standing at the ring\'s level, a cut face the Sinter quarried round',
+};
+
 /** THE SEAM CELL (§3.3): the one outer-ring cell the Sett authors, CourseWall, so 9e\'s COURSE_A picks the run up at (149,267). */
 export const SEAM: Pt = [150, 267];
 
-export const SETT = frame('sett', 'The Sett', 150, 265, 50, 74, [E1_THE_LIP], [SEAM], 0);
+export const SETT = frame('sett', 'The Sett', 150, 265, 50, 74, [E1_THE_LIP, E2_THE_WEST_TONGUE, E3_THE_SINTER_TONGUE], [SEAM], 0);
 
 /**
  * THE FRAMES SHAPE, with SETT filled and the four Course frames
@@ -192,23 +220,56 @@ export const RIMSET = {
   /** The stair-foot apron: a Dirt ellipse under the north flight's mouth. */
   FOOT: { cx: 172, cy: 271, rx: 2.5, ry: 1.5 },
   /**
-   * The three desire lines from the foot, ORTHOGONAL polylines the
-   * wear brush wobbles: WEST to the yard's stile (ending on the cell
-   * north of VS; the line rounds the dead-row's east end by two and
-   * turns west along y 286), EAST to the shelf's mouth (rounding the
-   * core's rim by one row: at y 286..288 the rim stands at x 180..186),
-   * CORE to the core steps' crown apron.
+   * The two desire lines from the foot, ORTHOGONAL polylines the wear
+   * brush wobbles and breaks (THE FLOOR PASS: feet on rock wear a
+   * broken one-wide trail, never a ribbon; WEAR says how): WEST to the
+   * yard's stile (ending on the cell north of VS; the line rounds the
+   * dead-row's east end by two and turns west along y 286), EAST to
+   * the shelf's mouth (rounding the core's rim by one row: at y
+   * 286..288 the rim stands at x 180..186). The third way, to the core
+   * steps, is not worn: it is LAID (below).
    */
   LINES: {
     WEST: [[172, 272], [164, 272], [164, 286], [160, 286]] as ReadonlyArray<Pt>,
     EAST: [[172, 272], [176, 272], [176, 281], [187, 281], [187, 288], [189, 288]] as ReadonlyArray<Pt>,
-    CORE: [[172, 272], [172, 278], [175, 278], [175, 283]] as ReadonlyArray<Pt>,
   },
+  /** THE WEAR: the trail brush's wobble and its break, the same for every worn line in the bowl. */
+  WEAR: { wobble: 0.15, gap: 0.3 },
+  /**
+   * THE LAID COURSE (the floor pass): the way from the foot to the core
+   * steps is the one way down to the floor and the Marl SET it, a
+   * course of stone laid flat (StoneFloor, one wide, the brush's
+   * wobble) from the foot's south edge to three short of the crown
+   * apron. The last three are C4, chalked and not set.
+   */
+  LAID: [[172, 273], [172, 278], [175, 278], [175, 280]] as ReadonlyArray<Pt>,
+  /**
+   * Chalkline C4 (moved from the south ring, where it lay under the
+   * core's south face and read from nowhere): the laid course's next
+   * three, chalked toward the crown and not set, because the count of
+   * stones has not come back. Beside a laid course is where a chalk
+   * line is legible at zoom 1.3.
+   */
+  C4: [[175, 281], [175, 282], [175, 283]] as ReadonlyArray<Pt>,
+  /**
+   * THE CROWN SPOIL: what came off the core's north face when the Marl
+   * cut the steps, thrown up beside the crown where the barrow tipped
+   * (two heaps, west of the apron, off the laid course's wobble).
+   */
+  CROWN_SPOIL: [[169, 283], [170, 283]] as ReadonlyArray<Pt>,
+  /**
+   * THE WEST FOOT: rubble along the foot of the west rim, a wobbling
+   * one-wide run from below the tongue to the dead-row: the rim sheds
+   * and nobody clears the west, where nobody walks.
+   */
+  WEST_FOOT: [[155, 277], [155, 278], [156, 279], [155, 280], [155, 281]] as ReadonlyArray<Pt>,
   /** M1 and M2: the Marl's two corbel cells, facing the stairs so a stone coming down is seen before it lands. */
   M1: [166, 276] as Pt,
   M2: [180, 277] as Pt,
   /** Every cell's Dirt apron: r 1.5 round the cell. */
   CELL_APRON_R: 1.5,
+  /** A post in the open wears a ragged ellipse r 1 (the centre and what the hash keeps of its cardinals). */
+  POST_APRON_R: 1,
   /** THE DEAD-ROW: CourseWall (158..162,282), a Course is also a grave-row; short because eleven winters is a short count. */
   DEADROW: { y: 282, x0: 158, x1: 162 },
   /** P1 at the dead-row's head. */
@@ -261,6 +322,10 @@ export const WETFLOOR = {
   EDGE: { y: 296, x0: 169, x1: 183 },
   /** Two rubble on the dry floor: the seam's spoil the Sinter set aside. */
   RUBBLE: [[168, 290], [184, 293]] as ReadonlyArray<Pt>,
+  /** THE SINTER'S SPOIL: one heap where the barrow stopped when they dug for the water, beside their rubble at (168,290). */
+  SPOIL: [167, 289] as Pt,
+  /** THE LEDGE: two cells of uncut rock at the foot of the core's south-west face, a bench the water did not reach (never beside the water: (170,300) lies between). */
+  LEDGE: [[168, 300], [169, 300]] as ReadonlyArray<Pt>,
 } as const;
 
 // =====================================================================
@@ -300,8 +365,10 @@ export const YARD = {
   /**
    * Chalkline C2: the wall for the forty, chalked and not set (the one
    * honest bid, on the ground). The brief drew it on (161..163,293);
-   * (163,293) is the core's own rim (Cliff) at this seed, so the line
+   * (163,293) was the core's own rim (Cliff) at this seed, so the line
    * stands one row north on (161..163,292), at the cart wall's foot.
+   * E3's tongue now shelters (163,293) (floor again); the line stays
+   * at the wall's foot, where a chalk line is legible (the floor pass).
    */
   C2: [[161, 292], [162, 292], [163, 292]] as ReadonlyArray<Pt>,
   RUBBLE: [155, 299] as Pt,
@@ -325,6 +392,16 @@ export const SHELF = {
    * (189,295), at the rim's foot between the two hearths.
    */
   RUBBLE: [[193, 292], [189, 295], [193, 299]] as ReadonlyArray<Pt>,
+  /**
+   * THE SEAM (the floor pass): the black stone the Culm burn shows in
+   * the core's east face on both sides of the rim: two cells on the −2
+   * floor at the face's foot (the Sinter's rubble at (184,293) is its
+   * spoil) and one on the shelf at the rim's foot beside the Culm's
+   * rubble, where Durrow faces it. RockCoal, the shipped coal rock:
+   * the quarry's honest wealth, left showing.
+   */
+  SEAM_CORE: [[187, 291], [187, 292]] as ReadonlyArray<Pt>,
+  SEAM_SHELF: [189, 293] as Pt,
 } as const;
 
 // =====================================================================
@@ -332,10 +409,15 @@ export const SHELF = {
 // =====================================================================
 
 export const SOUTH = {
-  /** Chalkline C4: the Course's next run, chalked southward by the Marl and not set; the wood's teeth are that way. */
-  C4: [[174, 304], [175, 304], [176, 304]] as ReadonlyArray<Pt>,
-  /** Three rubble by hand (the `course` vocab's weights, no roll). Nothing else to y 334. */
+  /** Three rubble by hand (the `course` vocab's weights, no roll). Nothing else to y 334 but the foot run. */
   RUBBLE: [[170, 306], [181, 309], [176, 318]] as ReadonlyArray<Pt>,
+  /**
+   * THE SOUTH FOOT: rubble along the foot of the core's south face
+   * (the rim at y 303, x 174..181), a broken one-wide run either side
+   * of it: the face sheds south, where nobody set anything. C4 stood
+   * here and moved to the laid course (RIMSET.C4).
+   */
+  FOOT: [[172, 303], [173, 303], [177, 304], [178, 304], [182, 303]] as ReadonlyArray<Pt>,
 } as const;
 
 // =====================================================================
@@ -454,7 +536,7 @@ export const KEEP_OUT: ReadonlyArray<KeepOut> = [
   { cells: [...row(267, 170, 174), [172, 266]], allow: [Tile.Dirt], why: 'the stair crown and the approach: Dirt only' },
   { cells: row(269, 171, 173), allow: [Tile.CaveFloor, Tile.Dirt], why: 'the north flight\'s mouth: floor only' },
   { cells: [...row(284, 173, 177), ...row(286, 173, 177)], allow: [Tile.Dirt], why: 'the core steps\' crown and mouth aprons: Dirt only' },
-  { cells: boxBorder(PLUG.WALK), allow: [Tile.Dirt], why: 'the Plug\'s walk: Dirt only, never crossed by a solid' },
+  { cells: boxBorder(PLUG.WALK), allow: [Tile.Dirt, Tile.CaveFloor], why: 'the Plug\'s walk: Dirt worn in a broken ring on the floor, never crossed by a solid' },
   { cells: boxInside(PLUG.WALK).filter(([x, y]) => x !== PLUG.DOME[0] || y !== PLUG.DOME[1]), allow: [Tile.CaveFloor], why: 'inside the walk: bare CaveFloor; the dome alone stands there' },
   { cells: [YARD.CART_FOOT], allow: [Tile.Dirt], why: 'the cart\'s second foot: open Dirt, not a route, not a waypoint' },
   { cells: [[155, 296], [162, 296]], allow: [Tile.CaveFloor, Tile.Dirt], why: 'the row strip\'s two open ends' },
@@ -467,7 +549,7 @@ export const LIGHTS_CENSUS = { emberBeds: 2, pitLampsDark: 2 } as const;
 export const TAKEN = { brokenCarts: 1, charterPosts: 4, pitLampsDark: 2 } as const;
 
 export const PINS = {
-  SETT, FRAMES, E1_THE_LIP, SEAM, STAIRS_NORTH, STAIRS_CORE, STAIRS, REACH_FROM,
+  SETT, FRAMES, E1_THE_LIP, E2_THE_WEST_TONGUE, E3_THE_SINTER_TONGUE, SEAM, STAIRS_NORTH, STAIRS_CORE, STAIRS, REACH_FROM,
   HEAD, RIMSET, CORE_STEPS, PLUG, WETFLOOR, YARD, SHELF, SOUTH,
   POSTS, VORL_ROW, LOOPS, COURSE_LAW, COURSE_GAPS, KEEP_OUT, LIGHTS_CENSUS, TAKEN,
 } as const;

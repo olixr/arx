@@ -76,7 +76,7 @@ test('sett: THE RECT and the empty rosters — sunk, wild, spawnless, chestless,
   assert.ok(z.elev !== undefined, 'the first sunk authored zone carries a level layer');
 });
 
-test('sett: THE SHAPE IS READ, NOT DRAWN — the −1 ring is 1,532 + E1\'s three, the −2 core 325, every rim Cliff or a tread, six treads exactly', () => {
+test('sett: THE SHAPE IS READ, NOT DRAWN — the −1 ring is 1,532 + E1\'s three (E2 takes three up, E3 brings three up: 1,535), the −2 core 322, every rim Cliff or a tread, six treads exactly', () => {
   const { zone: z, registry } = buildSettWithRegistry();
   let m1 = 0;
   let m2 = 0;
@@ -88,21 +88,41 @@ test('sett: THE SHAPE IS READ, NOT DRAWN — the −1 ring is 1,532 + E1\'s thre
   }
   // Both counts are read off the same worldgen mask the zone stamps
   // (sett-ground.txt §A: −1 ring 1,532, −2 core 325), so the pin is
-  // the ground's; E1 adds three to the ring.
-  assert.equal(m1, 1532 + 3, 'the −1 ring with E1');
-  assert.equal(m2, 325, 'the −2 core');
-  assert.equal(other, 0, 'nothing raised, nothing deeper');
-  assert.deepEqual(registry.mask.sunk, { '-1': 1535, '-2': 325 });
-  assert.deepEqual(registry.mask.edits, [PINS.E1_THE_LIP.why]);
+  // the ground's; E1 adds three to the ring; THE FLOOR PASS's two
+  // tongues move three each: E2 raises three ring cells to the lip
+  // (−3) and E3 raises three core cells to the ring (+3 ring, −3
+  // core), so the ring stays 1,535 and the core is 322.
+  assert.equal(m1, 1532 + 3 - 3 + 3, 'the −1 ring with E1, E2 and E3');
+  assert.equal(m2, 325 - 3, 'the −2 core less E3\'s tongue');
+  assert.equal(other, 0, 'nothing raised above the lip, nothing deeper');
+  assert.deepEqual(registry.mask.sunk, { '-1': 1535, '-2': 322 });
+  assert.deepEqual(registry.mask.edits, [PINS.E1_THE_LIP.why, PINS.E2_THE_WEST_TONGUE.why, PINS.E3_THE_SINTER_TONGUE.why]);
   // E1: worldgen had the three at level 0 (rim rock); the zone sinks them.
   for (const [x, y] of PINS.E1_THE_LIP.cells) {
     assert.equal(fieldLevel(x, y), 0, `worldgen's (${x},${y}) is level 0`);
     assert.equal(lvl(z, x, y), -1, `E1 sinks (${x},${y})`);
   }
+  // E2 and E3, the tongues: worldgen had them as floor; the zone
+  // leaves them standing one level up, every cell a rim, Cliff, joined
+  // to the rim it grows from.
+  for (const [x, y] of PINS.E2_THE_WEST_TONGUE.cells) {
+    assert.equal(fieldLevel(x, y), -1, `worldgen's (${x},${y}) is ring floor`);
+    assert.equal(lvl(z, x, y), 0, `E2 leaves (${x},${y}) at the lip`);
+    assert.equal(at(z, x, y), Tile.Cliff, 'a cut face');
+  }
+  assert.equal(at(z, 156, 274), Tile.Cliff, 'E2 grows from the west rim');
+  for (const [x, y] of PINS.E3_THE_SINTER_TONGUE.cells) {
+    assert.equal(fieldLevel(x, y), -2, `worldgen's (${x},${y}) is core floor`);
+    assert.equal(lvl(z, x, y), -1, `E3 leaves (${x},${y}) at the ring`);
+    assert.equal(at(z, x, y), Tile.Cliff, 'a cut face');
+  }
+  assert.equal(at(z, 163, 294), Tile.Cliff, 'E3 grows from the core\'s west rim');
   // The rim: 220 level-0 cells and 86 −1 cells (worldgen's own Cliff
-  // at 303 of them), less the six treads = 300 Cliff.
-  assert.equal(registry.mask.rim, 306);
-  assert.equal(count(z, Tile.Cliff), 300);
+  // at 303 of them) = 306, plus the tongues' six, less (163,293),
+  // which E3 shelters (its only lower neighbour was (164,294)) and
+  // which is floor again = 311; less the six treads = 305 Cliff.
+  assert.equal(registry.mask.rim, 311);
+  assert.equal(count(z, Tile.Cliff), 305);
   assert.equal(count(z, Tile.Ramp), 6);
   assert.deepEqual(stairsExact(z, PINS.STAIRS), [], 'exactly six treads at the listed cells');
   assert.deepEqual(PINS.STAIRS, [[171, 268], [172, 268], [173, 268], [174, 285], [175, 285], [176, 285]]);
@@ -189,16 +209,29 @@ test('sett: S2-S8 — the rim-set, the core steps, the Plug, the wet floor, the 
   // S3 THE CORE STEPS: the aprons.
   for (let x = CORE_STEPS.CROWN_APRON.x0; x <= CORE_STEPS.CROWN_APRON.x1; x++) assert.equal(at(z, x, 284), Tile.Dirt);
   for (let x = CORE_STEPS.MOUTH_APRON.x0; x <= CORE_STEPS.MOUTH_APRON.x1; x++) assert.equal(at(z, x, 286), Tile.Dirt);
-  // S4 THE PLUG: the dome on bare CaveFloor, the walk's ring of Dirt, nothing inside.
+  // S4 THE PLUG: the dome on bare CaveFloor, the walk's ring of Dirt
+  // broken by the hash (THE FLOOR PASS: a ring of feet, not a square
+  // of tape; the four corners, where they turn, always worn; 24 of the
+  // 32 border cells Dirt at this salt), nothing inside.
   assert.equal(at(z, PLUG.DOME[0], PLUG.DOME[1]), Tile.CorbelCell);
+  let walkDirt = 0;
   for (let y = PLUG.WALK.y0; y <= PLUG.WALK.y1; y++) {
     for (let x = PLUG.WALK.x0; x <= PLUG.WALK.x1; x++) {
       const border = x === PLUG.WALK.x0 || x === PLUG.WALK.x1 || y === PLUG.WALK.y0 || y === PLUG.WALK.y1;
+      const corner = (x === PLUG.WALK.x0 || x === PLUG.WALK.x1) && (y === PLUG.WALK.y0 || y === PLUG.WALK.y1);
       const dome = x === PLUG.DOME[0] && y === PLUG.DOME[1];
-      assert.equal(at(z, x, y), border ? Tile.Dirt : dome ? Tile.CorbelCell : Tile.CaveFloor, `the walk (${x},${y})`);
+      const t = at(z, x, y);
+      if (border) {
+        assert.ok(t === Tile.Dirt || t === Tile.CaveFloor, `the walk (${x},${y}) is worn or bare`);
+        if (corner) assert.equal(t, Tile.Dirt, `the walk turns at (${x},${y})`);
+        if (t === Tile.Dirt) walkDirt++;
+      } else {
+        assert.equal(t, dome ? Tile.CorbelCell : Tile.CaveFloor, `inside the walk (${x},${y})`);
+      }
       assert.equal(lvl(z, x, y), -2);
     }
   }
+  assert.equal(walkDirt, 24, 'the walk is worn on three cells in four');
   // S5 THE WET FLOOR: the ninth course in the water, Drusa's cell half in, the bank, two rubble.
   for (let x = WETFLOOR.NINTH.x0; x <= WETFLOOR.NINTH.x1; x++) {
     assert.equal(at(z, x, 298), Tile.CourseWall, `the ninth course (${x},298)`);
@@ -209,8 +242,24 @@ test('sett: S2-S8 — the rim-set, the core steps, the Plug, the wet floor, the 
   assert.equal(at(z, 182, 298), Tile.WaterShallow, 'water south of it');
   assert.equal(at(z, 181, 297), Tile.WaterShallow, 'water west of it');
   assert.equal(at(z, 182, 296), Tile.Dirt, 'Dirt north of it');
-  for (let x = WETFLOOR.EDGE.x0; x <= WETFLOOR.EDGE.x1; x++) assert.equal(at(z, x, 296), Tile.Dirt, 'the bank');
+  // The bank, worn where they stand and rock between (12 of 15 at
+  // this salt); Drusa's post and her Dirt always worn.
+  let bank = 0;
+  for (let x = WETFLOOR.EDGE.x0; x <= WETFLOOR.EDGE.x1; x++) {
+    const t = at(z, x, 296);
+    assert.ok(t === Tile.Dirt || t === Tile.CaveFloor, `the bank (${x},296)`);
+    if (t === Tile.Dirt) bank++;
+  }
+  assert.equal(bank, 12, 'the bank is worn, not laid');
+  assert.equal(at(z, 180, 296), Tile.Dirt, 'Drusa stands on worn ground');
   for (const [x, y] of WETFLOOR.RUBBLE) assert.equal(at(z, x, y), Tile.CaveRubble);
+  // THE FLOOR PASS on the −2 floor: the Sinter's spoil at the west
+  // face beside their tongue, the ledge at the south-west foot, the
+  // seam showing at the foot of the east face.
+  assert.equal(at(z, WETFLOOR.SPOIL[0], WETFLOOR.SPOIL[1]), Tile.SpoilHeap, 'the Sinter\'s spoil');
+  for (const [x, y] of WETFLOOR.LEDGE) assert.equal(at(z, x, y), Tile.Rock, 'the ledge');
+  assert.equal(at(z, 170, 300), Tile.CaveFloor, 'the ledge never touches the water');
+  for (const [x, y] of SHELF.SEAM_CORE) assert.equal(at(z, x, y), Tile.RockCoal, 'the seam on the floor side');
   // S6 THE WEIGHT-YARD: the two courses rim to rim, the stile, the cart beside its wall, the row, P2, C2, the rubble.
   for (let x: number = YARD.NORTH_COURSE.x0; x <= YARD.NORTH_COURSE.x1; x++) {
     assert.equal(at(z, x, 287), x === YARD.VS[0] ? Tile.CourseStile : Tile.CourseWall, `the north course (${x},287)`);
@@ -228,7 +277,7 @@ test('sett: S2-S8 — the rim-set, the core steps, the Plug, the wet floor, the 
   for (let x = 156; x <= 161; x++) assert.equal(lvl(z, x, 296), -1, 'the row lies on the ring');
   assert.equal(at(z, 157, 289), Tile.PlumbStone, 'P2');
   for (const [x, y] of YARD.C2) assert.equal(detail(z, x, y), Detail.Chalkline, `C2 (${x},${y})`);
-  assert.equal(at(z, 163, 293), Tile.Cliff, 'the brief\'s C2 end (163,293) is the core\'s rim: the line moved one row north');
+  assert.equal(at(z, 163, 293), Tile.CaveFloor, 'the brief\'s C2 end (163,293) was the core\'s rim and E3\'s tongue now shelters it; the line stays at the cart wall\'s foot, where a chalk line is legible');
   assert.equal(at(z, 155, 299), Tile.CaveRubble);
   // S7 THE HEARTH-CELLS: two cells, two beds in their ash, three rubble.
   for (const [x, y] of [SHELF.K1, SHELF.K2]) assert.equal(at(z, x, y), Tile.CorbelCell);
@@ -238,9 +287,24 @@ test('sett: S2-S8 — the rim-set, the core steps, the Plug, the wet floor, the 
   }
   for (const [x, y] of SHELF.RUBBLE) assert.equal(at(z, x, y), Tile.CaveRubble);
   assert.equal(at(z, 188, 294), Tile.Cliff, 'the brief\'s middle rubble cell is the core\'s rim: it stands at (189,295)');
-  // S8 THE SOUTH: C4 and three rubble, nothing else to y 334.
-  for (const [x, y] of SOUTH.C4) assert.equal(detail(z, x, y), Detail.Chalkline);
+  assert.equal(at(z, SHELF.SEAM_SHELF[0], SHELF.SEAM_SHELF[1]), Tile.RockCoal, 'the seam on the shelf side, where Durrow faces it');
+  // S2 again, THE FLOOR PASS on the ring: the laid course of set stone
+  // from the foot toward the core steps, C4 chalked at its end, the
+  // crown spoil beside the apron, the west foot's rubble.
+  assert.equal(at(z, 172, 273), Tile.StoneFloor, 'the laid course leaves the foot');
+  assert.equal(at(z, 175, 280), Tile.StoneFloor, 'and stops three short of the crown');
+  assert.equal(count(z, Tile.StoneFloor), 11, 'eleven set stones (the brush\'s wobble adds one at the bend)');
+  for (const [x, y] of RIMSET.C4) {
+    assert.equal(detail(z, x, y), Detail.Chalkline, `C4 (${x},${y})`);
+    assert.equal(at(z, x, y), Tile.CaveFloor, 'chalk on bare rock, not set');
+  }
+  for (const [x, y] of RIMSET.CROWN_SPOIL) assert.equal(at(z, x, y), Tile.SpoilHeap);
+  for (const [x, y] of RIMSET.WEST_FOOT) assert.equal(at(z, x, y), Tile.CaveRubble);
+  // S8 THE SOUTH: the foot run and three rubble, nothing else to y 334
+  // (C4 moved to the ring: rimset.ts says why).
+  for (const [x, y] of SOUTH.FOOT) assert.equal(at(z, x, y), Tile.CaveRubble);
   for (const [x, y] of SOUTH.RUBBLE) assert.equal(at(z, x, y), Tile.CaveRubble);
+  for (let x = 174; x <= 176; x++) assert.equal(detail(z, x, 304), 0, 'no chalk under the south face');
   let southAuthored = 0;
   for (let y = 302; y <= 334; y++) {
     for (let x = 150; x <= 199; x++) {
@@ -248,7 +312,7 @@ test('sett: S2-S8 — the rim-set, the core steps, the Plug, the wet floor, the 
       if (t !== TILE_SKIP && t !== Tile.CaveFloor && t !== Tile.Cliff) southAuthored++;
     }
   }
-  assert.equal(southAuthored, SOUTH.RUBBLE.length, 'three rubble and nothing else south of the core');
+  assert.equal(southAuthored, SOUTH.RUBBLE.length + SOUTH.FOOT.length, 'the foot run, three rubble and nothing else south of the core');
 });
 
 test('sett: THE COUNTS — the kit, the taken, the water, the chalk; no timber, no board, the two hearths the only lights', () => {
@@ -266,7 +330,14 @@ test('sett: THE COUNTS — the kit, the taken, the water, the chalk; no timber, 
   assert.equal(count(z, Tile.BrokenCart), 1);
   assert.equal(count(z, Tile.CharterPost), 4);
   assert.equal(count(z, Tile.PitLampDark), 2);
-  assert.equal(count(z, Tile.CaveRubble), 9);
+  // THE FLOOR PASS: the nine rubble plus the two foot runs (five each),
+  // three spoil heaps (the crown's two, the Sinter's one), the ledge's
+  // two rock, the seam's three coal rock; the chalk still nine, none
+  // added, C4 moved to the laid course.
+  assert.equal(count(z, Tile.CaveRubble), 9 + 5 + 5);
+  assert.equal(count(z, Tile.SpoilHeap), 3);
+  assert.equal(count(z, Tile.Rock), 2);
+  assert.equal(count(z, Tile.RockCoal), 3);
   assert.equal(dcount(z, Detail.Chalkline), 9, 'C1, C2, C4: three runs of three');
   assert.equal(dcount(z, Detail.DragFurrow), 2);
   assert.equal(dcount(z, Detail.Ash), 7, 'B1\'s three floor cardinals (its west is the rim) and B2\'s four');

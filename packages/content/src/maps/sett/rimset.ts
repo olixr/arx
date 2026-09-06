@@ -10,10 +10,12 @@
  * registered as an occluder and no post stands in its south shadow).
  * SECONDARY the dead-row (CourseWall x5) with P1 at its head: a Course
  * is also a grave-row; the row is short because eleven winters is a
- * short count. TERTIARY the two setters (people.ts); the foot apron
- * and the three lines (ground.ts).
+ * short count; the laid course to the core steps (ground.ts) with C4
+ * chalked at its end. TERTIARY the two setters (people.ts); the foot
+ * apron and the two worn lines (ground.ts); the crown spoil; the west
+ * foot's rubble; E2 THE WEST TONGUE (the mask's, pins.ts).
  */
-import { Tile } from '@arx/shared';
+import { Detail, Tile } from '@arx/shared';
 import type { SettCtx } from './ctx.js';
 
 export function rimset(ctx: SettCtx): void {
@@ -33,4 +35,17 @@ export function rimset(ctx: SettCtx): void {
   // hung true.
   for (let x = RIMSET.DEADROW.x0; x <= RIMSET.DEADROW.x1; x++) ctx.put(x, RIMSET.DEADROW.y, Tile.CourseWall);
   ctx.put(RIMSET.P1[0], RIMSET.P1[1], Tile.PlumbStone);
+
+  // C4. SENTENCE: the laid course stops three short of the crown; the
+  // three are chalked and not set, because the count of stones has
+  // not come back.
+  for (const [x, y] of RIMSET.C4) ctx.detail(x, y, Detail.Chalkline);
+
+  // THE CROWN SPOIL. SENTENCE: what came off the core's north face
+  // when the Marl cut the steps, tipped beside the crown and left.
+  for (const [x, y] of RIMSET.CROWN_SPOIL) ctx.put(x, y, Tile.SpoilHeap);
+
+  // THE WEST FOOT. SENTENCE: the west rim sheds and nobody clears the
+  // west, where nobody walks; the rubble runs to the dead-row.
+  for (const [x, y] of RIMSET.WEST_FOOT) ctx.rubble(x, y);
 }

@@ -11,11 +11,15 @@
  *    mouth; the crown and mouth aprons of the core steps; a Dirt
  *    apron r 1.5 round each of the four corbel cells on the −1 ring
  *    (M1, M2, K1, K2): a cell's door is worn whatever the hash says.
- * G3 THE DESIRE LINES: three worn lines from the foot (pins.RIMSET.
- *    LINES): west to the yard's stile, east to the shelf's mouth,
- *    south to the core steps' crown. Width 1 with the wobble; the
- *    brush never paints a rim (Cliff is not wearable) and never
- *    crosses a solid (the lint keeps them open).
+ * G3 THE WEAR (the floor pass; THE CURATION LAW: wear is wobbling
+ *    one-wide lines and ragged ellipses, never ribbons or rectangles):
+ *    two worn lines from the foot (pins.RIMSET.LINES), west to the
+ *    yard's stile and east to the shelf's mouth, one wide with a low
+ *    wobble and the hash's breaks (RIMSET.WEAR), so they read as feet
+ *    on rock; the third way, foot to core steps, is THE LAID COURSE:
+ *    StoneFloor set by the Marl in a wobbling line (RIMSET.LAID), its
+ *    last three chalked (rimset.ts). The brush never paints a rim
+ *    (Cliff is not wearable) and never crosses a solid.
  * G4 THE WET FLOOR: authored WaterShallow on the core's south half,
  *    61 cells at −2 (the water IS the ground; the ninth course and
  *    Drusa's cell stand in it later); the Dirt edge along its north
@@ -23,13 +27,17 @@
  * G5 THE ASH: on the four cardinals of each hearth (K1 as the Ashlamp
  *    fixed it: the bed's own cell carries none; lint.emberBedsOffAsh).
  * G6 THE YARD'S GROUND: the row strip the taken stand on, the cart's
- *    two feet, and the Plug's walk (Dirt on the ring's border cells).
+ *    two feet, and the Plug's walk (Dirt on the ring's border cells,
+ *    broken by the hash: a ring of feet, not a square of tape; the
+ *    corners, where they turn, always worn).
  * Then every post's patch: a body that stands all day wears its
- *    ground (the crew-stands law); the two in the water stand in it.
+ *    ground (the crew-stands law); the two in the water stand in it;
+ *    the posts that stand in the open (setter_b, Durrow) wear a
+ *    ragged ellipse, not a square.
  */
 import { Tile } from '@arx/shared';
 import type { Pt } from './pins.js';
-import type { SettCtx } from './ctx.js';
+import { settRng, type SettCtx } from './ctx.js';
 
 const rowCells = (r: { y: number; x0: number; x1: number }): Pt[] => {
   const out: Pt[] = [];
@@ -60,18 +68,24 @@ export function ground(ctx: SettCtx): void {
   for (const [x, y] of HEAD.C1) ctx.put(x, y, Tile.Dirt);
   for (const [x, y] of HEAD.FURROWS) ctx.put(x, y, Tile.Dirt);
 
-  // G3 THE DESIRE LINES. SENTENCE: from the foot the Marl go west to
-  // the weight, east to the fire and south to the floor, and the ring
-  // remembers the three ways and no fourth.
-  wear.line(RIMSET.LINES.WEST, { width: 1 });
-  wear.line(RIMSET.LINES.EAST, { width: 1 });
-  wear.line(RIMSET.LINES.CORE, { width: 1 });
+  // G3 THE WEAR. SENTENCE: from the foot the Marl go west to the
+  // weight and east to the fire, and on rock a way is worn where the
+  // feet agree, a broken line one foot wide, and nowhere else.
+  wear.line(RIMSET.LINES.WEST, { width: 1, ...RIMSET.WEAR });
+  wear.line(RIMSET.LINES.EAST, { width: 1, ...RIMSET.WEAR });
+  // THE LAID COURSE. SENTENCE: the way south to the floor is the one
+  // way down and the Marl set it, stone laid flat from the foot to
+  // three short of the crown; the three are chalked (rimset.ts).
+  wear.line(RIMSET.LAID, { width: 1, wobble: RIMSET.WEAR.wobble, tile: Tile.StoneFloor });
 
   // G4 THE WET FLOOR. SENTENCE: the wet came up under the Sinter and
   // they set where it stands on the Sett's floor.
   ctx.water(WETFLOOR.ROWS.flatMap(rowCells));
-  // SENTENCE: the bank the dry ones stand on to look at the wet.
-  for (const [x, y] of rowCells(WETFLOOR.EDGE)) ctx.floor(x, y, Tile.Dirt);
+  // SENTENCE: the bank the dry ones stand on to look at the wet, worn
+  // where they stand and rock between (the hash breaks it, never two
+  // in a row); Drusa's Dirt north of her cell is hers whatever the
+  // hash says.
+  ragged(rowCells(WETFLOOR.EDGE), (x, y) => ctx.floor(x, y, Tile.Dirt), 0.3, new Set([`${WETFLOOR.DRUSA_DIRT[0]},${WETFLOOR.DRUSA_DIRT[1]}`]));
   ctx.floor(WETFLOOR.DRUSA_DIRT[0], WETFLOOR.DRUSA_DIRT[1], Tile.Dirt);
 
   // G5 THE ASH. SENTENCE: black stone burns long and leaves a pan;
@@ -88,16 +102,45 @@ export function ground(ctx: SettCtx): void {
   ctx.floor(YARD.CART_FOOT[0], YARD.CART_FOOT[1], Tile.Dirt);
   // THE PLUG'S WALK. SENTENCE: they go round the dome and never over
   // it, and the ring their feet have worn is the whole of what the
-  // floor says about the hole.
+  // floor says about the hole: worn hardest where they turn, broken
+  // between, a ring of feet and not a square of tape.
   const w = PLUG.WALK;
-  for (let y = w.y0; y <= w.y1; y++) {
-    for (let x = w.x0; x <= w.x1; x++) {
-      if (x === w.x0 || x === w.x1 || y === w.y0 || y === w.y1) ctx.floor(x, y, Tile.Dirt);
-    }
-  }
+  const corners = new Set([`${w.x0},${w.y0}`, `${w.x1},${w.y0}`, `${w.x1},${w.y1}`, `${w.x0},${w.y1}`]);
+  ragged(ringCells(w), (x, y) => ctx.floor(x, y, Tile.Dirt), 0.3, corners);
 
   // The posts' patches (the crew-stands law): the two wetsetters stand
-  // in the water and wear nothing.
+  // in the water and wear nothing; a post in the open wears a ragged
+  // ellipse (the setter at the dead-row's head, Durrow between his
+  // fires); the rest stand in an apron already worn.
   for (const p of Object.values(POSTS)) ctx.stand(p.x, p.y);
   ctx.stand(pins.VORL_ROW.seat[0], pins.VORL_ROW.seat[1]);
+  for (const key of ['setter_b', 'dolmen_durrow'] as const) {
+    const p = POSTS[key];
+    wear.ellipse(p.x, p.y, RIMSET.POST_APRON_R, RIMSET.POST_APRON_R);
+  }
+}
+
+/** The border of a box, walked in order (top L→R, east side, bottom R→L, west side) so "never two in a row" means along the ring. */
+function ringCells(b: { x0: number; y0: number; x1: number; y1: number }): Pt[] {
+  const out: Pt[] = [];
+  for (let x = b.x0; x <= b.x1; x++) out.push([x, b.y0]);
+  for (let y = b.y0 + 1; y <= b.y1; y++) out.push([b.x1, y]);
+  for (let x = b.x1 - 1; x >= b.x0; x--) out.push([x, b.y1]);
+  for (let y = b.y1 - 1; y > b.y0; y--) out.push([b.x0, y]);
+  return out;
+}
+
+/**
+ * THE RAGGED RUN: paint every cell of an ordered run but the ones the
+ * hash drops (fraction `gap`, never two in a row, never a kept cell),
+ * on the Sett's own salt, so the run is byte-identical and reads as
+ * wear, not fill.
+ */
+function ragged(cells: ReadonlyArray<Pt>, paint: (x: number, y: number) => void, gap: number, keep: ReadonlySet<string>): void {
+  let dropped = false;
+  for (const [x, y] of cells) {
+    const drop: boolean = !keep.has(`${x},${y}`) && !dropped && settRng(x + 61, y + 67) < gap;
+    dropped = drop;
+    if (!drop) paint(x, y);
+  }
 }
