@@ -679,7 +679,7 @@ import {
   type SteerMemory,
 } from '@arx/shared';
 import { config } from '../config.js';
-import { CHAT_COMMANDS } from './commands/index.js';
+import { CHAT_COMMANDS, DEV_COMMAND_SET } from './commands/index.js';
 import * as dlgSys from './dialogue.js';
 import * as farmSys from './farming.js';
 import * as arenaSys from './arena.js';
@@ -692,7 +692,6 @@ import * as statusSys from './statuses.js';
 import * as standingSys from './standing.js';
 import { CHAIN_PROC_RANGE, HEARTH_CD_MS, MILK_TICKS, MIN_GATHER_TICKS, SUS_DWELL_TICKS, WILD_MAX_R } from './tuning.js';
 import { compass8, mkBuff, rollBasic, rollDamage, surgeCritPct, surgeDmgMult , hearthOwnerOf } from './formulas.js';
-import { DEV_COMMANDS } from './commands/devCommands.js';
 import { Session, sanitizeName } from '../net/session.js';
 import type { AccountStore, CharacterRow, CompanionRow, PetRow } from '../db/accounts.js';
 import type { WorldSource } from '../world/worldSource.js';
@@ -1410,6 +1409,8 @@ interface DropComp {
 /** A spill's gravestone: who fell, and when the ground forgets. */
 interface GraveComp {
   name: string;
+  /** ONE STONE PER SOUL: whose stone, so the sink retires the pointer. */
+  characterId: number;
   despawnAt: number;
 }
 
@@ -2788,11 +2789,13 @@ export class GameServer {
    * FAIR HANDS (statusBook): per-body immunity clocks for CC pages
    * with an authored immunityTicks — the door refuses the page until
    * the tick passes, so CC chains are impossible by construction.
-   * Lazily cleaned at the check (values are bare tick stamps; no
-   * shipped page authors a window yet, so this map stays empty until
-   * wave one).
+   * Root and stagger author windows today, so this store is written
+   * for every CC'd body; the per-page stamp is lazily cleaned at the
+   * check, and the ECS registration is what retires the row when the
+   * body dies (a plain Map here leaked one record per felled npc for
+   * the life of the process).
    */
-  readonly ccImmunity = new Map<EntityId, Partial<Record<StatusId, number>>>();
+  readonly ccImmunity = this.ecs.register<Partial<Record<StatusId, number>>>();
   readonly summons = this.ecs.register<SummonComp>();
   /** Tamed companions at heel — the pointer home; rows on PlayerComp.pets. */
   readonly pets = this.ecs.register<PetComp>();
@@ -2932,6 +2935,14 @@ export class GameServer {
   readonly sessions = new Set<Session>();
   /** In-world players by character id (blocks duplicate logins). */
   readonly characterEids = new Map<number, EntityId>();
+  /**
+   * THE BODY IS ONE: characters mid-arrival (the loads awaited, no
+   * body yet). A second enterWorld for the same character JOINS this
+   * promise instead of racing it — two resumes could otherwise both
+   * pass the guard and stand two bodies (the orphan never despawned
+   * and its saveAll rolled the row back every 30 s).
+   */
+  readonly entering = new Map<number, Promise<EntityId | null>>();
   /** Ephemeral guest tokens -> eid (guests have no DB session). */
   private readonly guestTokens = new Map<string, EntityId>();
   private nextGuestId = -1;
@@ -3072,6 +3083,13 @@ export class GameServer {
    * world mutation.
    */
   readonly doorLocks = new Set<string>();
+  /**
+   * THE AUTHORED KEYS: the lock keys AUTHORED_LOCKS seeded at boot,
+   * kept apart so /lock (a player command) can refuse them — a Court
+   * door answers to a pick or a key, never to a typed word. The pick
+   * still opens them; the boot re-arms them.
+   */
+  readonly authoredLockKeys = new Set<string>();
 
   /** Players some NPC is chasing this tick — drives the DETECTED status bit. */
   readonly chasedPlayers = new Set<EntityId>();
@@ -3380,7 +3398,9 @@ export class GameServer {
       const info = g === undefined ? null : doorInfo(g);
       if (!info) continue;
       const unit = this.doorUnit(lockPlane, l.x, l.y, info);
-      this.doorLocks.add(`${lockPlane}|${unit.ax},${unit.ay}`);
+      const key = `${lockPlane}|${unit.ax},${unit.ay}`;
+      this.doorLocks.add(key);
+      this.authoredLockKeys.add(key);
     }
     // THE EVENT DOOR's founding roster (docs/triggers-plan.md): code
     // subscribers registered at construction. The 'town' event's first
@@ -4192,11 +4212,40 @@ export class GameServer {
     const existing = this.characterEids.get(character.id);
     if (existing !== undefined && this.players.has(existing)) {
       const player = this.players.must(existing);
-      player.token = token;
+      // A closed caller's token is nobody's key — the live tab keeps its own.
+      if (!session.isClosed) player.token = token;
       this.bindSession(session, existing);
       return existing;
     }
+    // THE BODY IS ONE: an arrival already in flight for this character
+    // is the arrival — wait for it, then come back through the door
+    // (the standing body takes this socket; a failed load lets this
+    // caller try the loads itself).
+    const inFlight = this.entering.get(character.id);
+    if (inFlight !== undefined) {
+      await inFlight.catch(() => undefined);
+      return this.enterWorld(session, character, accountId, token);
+    }
+    const arrival = this.enterWorldStand(session, character, accountId, token);
+    this.entering.set(character.id, arrival);
+    try {
+      return await arrival;
+    } finally {
+      this.entering.delete(character.id);
+    }
+  }
 
+  /**
+   * The loads, then the body. EVERY await lives above `ecs.create()`:
+   * a rejected load leaves no entity, no players row, no characterEids
+   * row, and the one double-login re-check sits after the last await.
+   */
+  private async enterWorldStand(
+    session: Session,
+    character: CharacterRow,
+    accountId: number | null,
+    token: string,
+  ): Promise<EntityId | null> {
     // Load progression; brand-new characters get the starter kit and
     // RS-style vitality 10.
     let skills: SkillXp;
@@ -4321,18 +4370,6 @@ export class GameServer {
       spawnY = home.y;
     }
 
-    // The loads above awaited — re-check the double-login guard in case
-    // the same character finished entering while they were in flight.
-    {
-      const raced = this.characterEids.get(character.id);
-      if (raced !== undefined && this.players.has(raced)) {
-        const player = this.players.must(raced);
-        player.token = token;
-        this.bindSession(session, raced);
-        return raced;
-      }
-    }
-
     // The chart and the place ledger — loaded whole before the body
     // stands (guests chart in memory only).
     const explored = new Map<PlaneId, ExploredMask>();
@@ -4399,23 +4436,57 @@ export class GameServer {
     const standing =
       character.id > 0 ? await this.accounts.loadStandings(character.id) : new Map<string, number>();
 
-    const eid = this.ecs.create();
-    this.kinds.set(eid, EntityKind.Player);
-    this.positions.set(eid, { x: spawnX, y: spawnY, dir: 0, plane: spawnPlane });
-    this.poses.set(eid, PoseState.Idle);
-    this.healths.set(eid, { hp: Math.min(character.hp, maxHp), maxHp });
     const grips =
       character.id > 0
         ? await this.accounts.loadCarryStyles(character.id)
         : { main: 'normal' as CarryStyle, off: 'normal' as CarryStyle };
     const autoLoot = character.id > 0 ? await this.accounts.loadLootPref(character.id) : true;
+    const look = character.id > 0 ? await this.accounts.loadLook(character.id) : null;
+    const techniques: PlayerComp['techniques'] =
+      character.id > 0 ? await this.accounts.loadTechniques(character.id) : [null, null];
+    const callings: PlayerComp['callings'] =
+      character.id > 0 ? await this.accounts.loadCallings(character.id) : new Map();
+    // THE STABLE DOOR: the owned string returns with the character
+    // (row presence = owned, `chosen` answers the whistle). One read
+    // serves both the set and the choice.
+    const mounts = character.id > 0 ? await this.accounts.loadMounts(character.id) : [];
+    // THE OPEN HAND: the household returns with the character; the
+    // heel-state row takes its body once the entity stands (below).
+    const pets: PlayerComp['pets'] = character.id > 0 ? await this.accounts.loadPets(character.id) : [];
+    const arena = (character.id > 0 ? await this.accounts.loadArena(character.id) : null) ?? freshArenaBank();
+    // THE COMPANY YOU KEEP: the roster returns with the character;
+    // the heel-state row takes its body once the entity stands.
+    const companions: PlayerComp['companions'] =
+      character.id > 0 ? await this.accounts.loadCompanions(character.id) : [];
+    const flags: PlayerComp['flags'] = character.id > 0 ? await this.accounts.loadFlags(character.id) : new Map();
+    const knownRecipes: PlayerComp['knownRecipes'] =
+      character.id > 0 ? new Set(await this.accounts.loadRecipes(character.id)) : new Set();
+
+    // The last await is behind us — the ONE double-login re-check, in
+    // case the same character finished entering while the loads were
+    // in flight (the in-flight map makes this a belt-and-braces read).
+    {
+      const raced = this.characterEids.get(character.id);
+      if (raced !== undefined && this.players.has(raced)) {
+        const player = this.players.must(raced);
+        if (!session.isClosed) player.token = token;
+        this.bindSession(session, raced);
+        return raced;
+      }
+    }
+
+    const eid = this.ecs.create();
+    this.kinds.set(eid, EntityKind.Player);
+    this.positions.set(eid, { x: spawnX, y: spawnY, dir: 0, plane: spawnPlane });
+    this.poses.set(eid, PoseState.Idle);
+    this.healths.set(eid, { hp: Math.min(character.hp, maxHp), maxHp });
     this.players.set(eid, {
       // The comp knows its own entity (the buffs push reads riding
       // status pages by eid — the one back-reference, stamped once).
       eid,
       name: character.name,
       speed: PLAYER_SPEED,
-      look: character.id > 0 ? await this.accounts.loadLook(character.id) : null,
+      look,
       carryStyle: grips.main,
       carryOff: grips.off,
       autoLoot,
@@ -4453,11 +4524,11 @@ export class GameServer {
       castFreezeUntilTick: 0,
       casting: null,
       buffs: [],
-      techniques: character.id > 0 ? await this.accounts.loadTechniques(character.id) : [null, null],
+      techniques,
       lastArt: null,
       killRefund: null,
       lessonDirty: new Set(),
-      callings: character.id > 0 ? await this.accounts.loadCallings(character.id) : new Map(),
+      callings,
       callingProcs: [],
       callingWhens: [],
       licensedArts: new Map(),
@@ -4469,22 +4540,11 @@ export class GameServer {
       lying: false,
       seat: null,
       mountId: null,
-      // THE STABLE DOOR: the owned string returns with the character
-      // (row presence = owned, `chosen` answers the whistle).
-      mountsOwned: new Set(
-        (character.id > 0 ? await this.accounts.loadMounts(character.id) : []).map((m) => m.id),
-      ),
-      mountChosen:
-        character.id > 0
-          ? ((await this.accounts.loadMounts(character.id)).find((m) => m.chosen)?.id ?? null)
-          : null,
+      mountsOwned: new Set(mounts.map((m) => m.id)),
+      mountChosen: mounts.find((m) => m.chosen)?.id ?? null,
       rideSigSent: '',
-      // THE OPEN HAND: the household returns with the character; the
-      // heel-state row takes its body once the entity stands (below).
-      pets: character.id > 0 ? await this.accounts.loadPets(character.id) : [],
-      arena:
-        (character.id > 0 ? await this.accounts.loadArena(character.id) : null) ??
-        freshArenaBank(),
+      pets,
+      arena,
       petEid: null,
       petCalmTicks: 0,
       petSigSent: '',
@@ -4492,9 +4552,7 @@ export class GameServer {
       petHpWatch: -1,
       petXpDirty: false,
       petBondAt: new Map(),
-      // THE COMPANY YOU KEEP: the roster returns with the character;
-      // the heel-state row takes its body once the entity stands.
-      companions: character.id > 0 ? await this.accounts.loadCompanions(character.id) : [],
+      companions,
       companionEid: null,
       companionCalmTicks: 0,
       companionSigSent: '',
@@ -4505,8 +4563,8 @@ export class GameServer {
       swapLockUntilTick: 0,
       sneakStillTicks: 0,
       hidden: false,
-      flags: character.id > 0 ? await this.accounts.loadFlags(character.id) : new Map(),
-      knownRecipes: character.id > 0 ? new Set(await this.accounts.loadRecipes(character.id)) : new Set(),
+      flags,
+      knownRecipes,
       dialogue: null,
       revealLockUntilTick: 0,
       sneakMoveAccum: 0,
@@ -4537,6 +4595,25 @@ export class GameServer {
       procs: new Map(),
     });
     this.characterEids.set(character.id, eid);
+    // THE BODY LEAKS NOTHING: the body stands; everything after this
+    // line is the seating. A throw in it (welcome build, pet or
+    // company spawn, the friends ledger) must not leave a body with
+    // session null AND disconnectedAt null — the one shape the grace
+    // sweep never collects.
+    try {
+      return await this.enterWorldSeat(session, character, eid);
+    } catch (err) {
+      const stood = this.players.get(eid);
+      if (stood && stood.session === null) {
+        stood.disconnectedAt ??= Date.now();
+        stood.inputQueue.length = 0;
+      }
+      throw err;
+    }
+  }
+
+  /** The seating: the Q seat, the chunk, the socket, the household, the room, the friends. */
+  private async enterWorldSeat(session: Session, character: CharacterRow, eid: EntityId): Promise<EntityId> {
     // THE HAND REMEMBERS: on a first arrival under THE SECOND HAND an
     // empty Q seat takes the equipped weapon's art — yesterday's
     // loadout, verbatim, with the choice now underneath. A null seat
@@ -4586,6 +4663,21 @@ export class GameServer {
   /** Attach a socket to a player entity (fresh join or reconnect). */
   private bindSession(session: Session, eid: EntityId): void {
     const player = this.players.must(eid);
+    // NO GHOST BIND: a socket that closed while the loads were in
+    // flight (its 'close' fired with playerEid still null) is never
+    // seated. Read FIRST — a corpse kicks nobody: if a live tab holds
+    // the body it keeps it untouched; if none does, the body goes
+    // straight into the reconnect grace it would have entered had the
+    // socket lived one tick longer (a bound dead socket had
+    // disconnectedAt null forever: an immortal ghost).
+    if (session.isClosed) {
+      if (player.session === null) {
+        player.disconnectedAt ??= Date.now();
+        player.inputQueue.length = 0;
+        console.log(`[game] ${player.name} arrived on a closed socket, grace ${RECONNECT_GRACE_MS}ms`);
+      }
+      return;
+    }
     if (player.session) {
       player.session.sendJson({ t: 'reject', reason: 'logged in from another window' });
       player.session.playerEid = null;
@@ -4801,6 +4893,8 @@ export class GameServer {
     }
     this.savePlayer(eid);
     this.characterEids.delete(player.characterId);
+    // The museum's return slip goes with the body (eids never reuse).
+    this.museumReturn.delete(eid);
     // Only now — past the reconnect grace — do friends see "offline".
     if (player.characterId > 0) {
       void this.social.notifyOffline(player.characterId, player.name).catch(() => undefined);
@@ -5520,6 +5614,9 @@ export class GameServer {
         tx,
         ty,
         tile: closedChestTile(chest.kind),
+        // Only the open lid recloses — a floor redrawn under it (a POI
+        // re-roll, a Studio reload) stays whatever it became.
+        over: openChestTile(chest.kind),
       });
     }
     // THE LIGHT FINGERS (Phase 5): a town's stash is somebody's
@@ -8341,6 +8438,10 @@ export class GameServer {
     // second op interleaving could double-count an instance.
     if (this.bankOpBusy.has(eid)) return;
     this.bankOpBusy.add(eid);
+    // THE SOCKET CAN CLOSE MID-OP: the narrowing above is compile-time
+    // only — every await below yields, and a session gone by then is
+    // read fresh (the ledger work already done stands; nobody is told).
+    const liveSession = () => this.players.get(eid)?.session ?? null;
     try {
 
     if (op === 'deposit') {
@@ -8372,6 +8473,7 @@ export class GameServer {
                 console.error('[bank]', err.message);
                 return false;
               });
+            const session = liveSession();
             if (stored) {
               // The instance now lives only in its row — flush the
               // pack ahead of the 30s cadence so a crash inside the
@@ -8391,7 +8493,7 @@ export class GameServer {
                   });
                 }
               }
-              player.session.sendJson({
+              session?.sendJson({
                 t: 'chat',
                 channel: 'system',
                 text: 'The vault will not take that just now.',
@@ -8422,6 +8524,7 @@ export class GameServer {
         const stored = (await this.accounts.loadBankGear(player.characterId)).find(
           (g) => g.id === gearId && g.item === item,
         );
+        if (liveSession() === null) return;
         // Space is proved AFTER the await, and the proof and the add
         // run back to back with no await between them: the 20Hz tick
         // (tickCraft, the walk-over vacuum) can fill the pack while
@@ -8448,6 +8551,7 @@ export class GameServer {
             // flush it ahead of the 30s cadence.
             this.accounts.saveInventory(player.characterId, player.inventory);
           } else {
+            if (liveSession() === null) return;
             this.speak(player, 'Pack full', 'Your pack has no room for that.');
           }
         }
@@ -8471,7 +8575,9 @@ export class GameServer {
         player.bankDirty = true;
       }
     }
-      player.session.sendJson({ t: 'inv', slots: player.inventory });
+      const session = liveSession();
+      if (session === null) return;
+      session.sendJson({ t: 'inv', slots: player.inventory });
       await this.sendBank(player);
     } finally {
       this.bankOpBusy.delete(eid);
@@ -10895,9 +11001,10 @@ export class GameServer {
       if (this.calmNear(cx!, cy!, now)) continue;
       const ctx = this.poiCtx(cx!, cy!);
       const site = poiForCell(config.worldSeed, cx!, cy!, row.epoch, ctx);
-      if (site && this.playerWithin(SURFACE_PLANE_ID, site.anchorX, site.anchorY, FRONTIER.dignityTiles)) {
-        return true; // someone is standing on the meadow — retry next pass
-      }
+      // Someone is standing on the meadow — this row waits; the walk
+      // goes on (a `return` here spent the whole beat on nothing and
+      // starved every lane after this one while one settler stood).
+      if (site && this.playerWithin(SURFACE_PLANE_ID, site.anchorX, site.anchorY, FRONTIER.dignityTiles)) continue;
       this.accounts.recordPoiCell(
         cx!,
         cy!,
@@ -11491,8 +11598,10 @@ export class GameServer {
   }
 
 
-  /** When the global dice next roll (the Valheim law: one clock, one shard). */
-  private nextRaidRollAt = Date.now() + FRONTIER.raidRollMs;
+  /** When the global dice last rolled (the Valheim law: one clock, one
+   *  shard) — the NEXT roll is `last + FRONTIER.raidRollMs` read at use,
+   *  so a Studio edit to the dial re-aims the pending clock too. */
+  private lastRaidRollAt = Date.now();
   /** Why the last raid pass refused — the /frontier raid lever reads it. */
   raidTrace: string[] = [];
 
@@ -11510,8 +11619,8 @@ export class GameServer {
   tickRaidDice(now: number, force = false): boolean {
     if (!this.poiPrefabs) return false;
     if (!force) {
-      if (now < this.nextRaidRollAt) return false;
-      this.nextRaidRollAt = now + FRONTIER.raidRollMs;
+      if (now < this.lastRaidRollAt + FRONTIER.raidRollMs) return false;
+      this.lastRaidRollAt = now;
       if (Math.random() >= FRONTIER.raidChance) return false; // silence
     }
     this.raidTrace = [];
@@ -12562,8 +12671,12 @@ export class GameServer {
       this.cancelCasting(eid, player);
       this.standUp(eid, player, pos, false);
       player.inputQueue.length = 0;
-      // A windup traded on one world must not land on another.
+      // A windup traded on one world must not land on another — nor
+      // an off-hand echo still counting down, nor a buffered press.
       player.pendingStrike = null;
+      player.offhandEchoTicks = 0;
+      player.offhandEchoAim = 0;
+      player.attackBufferedUntilTick = 0;
       // The conversation ends at the door — the partner stays behind,
       // and the guard's bare distance would keep it alive through the
       // rock (a stair crossing barely moves the coordinates).
@@ -14852,7 +14965,7 @@ export class GameServer {
     const spawn = this.spawnPoints[npc.spawnIndex];
     if (spawn) {
       spawn.eid = null;
-      const baseSec = NPCS.get(spawn.npc)!.respawnSec;
+      const baseSec = NPCS.get(spawn.npc)?.respawnSec ?? npc.def.respawnSec;
       const sec =
         this.poiSpawnCells.has(npc.spawnIndex) || this.minorSpawnSlots.has(npc.spawnIndex)
           ? Math.max(baseSec, GameServer.POI_RESPAWN_MIN_SEC)
@@ -15195,7 +15308,10 @@ export class GameServer {
             if (oEid === mark.eid || this.pets.has(oEid) || this.companions.has(oEid) || this.actors.has(oEid)) continue;
             if (other.def.damage <= 0 || (this.healths.get(oEid)?.hp ?? 0) <= 0) continue;
             const opos = this.positions.get(oEid);
-            if (!opos || Math.hypot(opos.x - mark.x, opos.y - mark.y) > dare) continue;
+            // THE WORLDS APART: a body under the meadow at aliased
+            // coordinates is not "beside" the mark.
+            if (!opos || opos.plane !== pos.plane) continue;
+            if (Math.hypot(opos.x - mark.x, opos.y - mark.y) > dare) continue;
             this.npcAggro(oEid, other, petEid, { force: true });
           }
         }
@@ -17164,6 +17280,10 @@ export class GameServer {
     return dlgSys.watchSurvey(this, sx, sy);
   }
 
+  warSurvey(sx: number, sy: number): boolean {
+    return dlgSys.warSurvey(this, sx, sy);
+  }
+
   /** Any relax window still running within `reach` tiles of a point? */
   calmWithinTiles(sx: number, sy: number, reach: number): boolean {
     const now = Date.now();
@@ -17799,8 +17919,10 @@ export class GameServer {
     this.persistQuest(player, questId);
     const mark = def.stages[q.stage]?.mark;
     if (mark) {
-      this.setWaypoint(eid, mark.x, mark.y);
-      player.session?.sendJson({ t: 'waypoint', x: mark.x, y: mark.y });
+      // The mark names its plane — an underworld errand must not pin
+      // the surface chart (session.ts's waypoint door tells the tale).
+      this.setWaypoint(eid, mark.x, mark.y, mark.plane);
+      player.session?.sendJson({ t: 'waypoint', x: mark.x, y: mark.y, plane: mark.plane });
     }
     this.pushQuestWire(player, def, q);
     this.pushQuestAvail(player);
@@ -17962,8 +18084,8 @@ export class GameServer {
         if (mark) {
           const eid = player.session?.playerEid;
           if (eid !== null && eid !== undefined) {
-            this.setWaypoint(eid, mark.x, mark.y);
-            player.session?.sendJson({ t: 'waypoint', x: mark.x, y: mark.y });
+            this.setWaypoint(eid, mark.x, mark.y, mark.plane);
+            player.session?.sendJson({ t: 'waypoint', x: mark.x, y: mark.y, plane: mark.plane });
           }
         }
       } else if (!wasReady && questReady(def, q, ctx)) {
@@ -22967,7 +23089,7 @@ export class GameServer {
         // POI garrisons refill on a slow clock: the bestiary's 15–40s
         // beats suit open-field hunting, but a camp that restaffs while
         // you fight it can never be wiped — the floor buys the clear.
-        const baseSec = NPCS.get(spawn.npc)!.respawnSec;
+        const baseSec = NPCS.get(spawn.npc)?.respawnSec ?? npc.def.respawnSec;
         // Find whispers share the floor: a two-body find whose first
         // body restaffs mid-fight could never be wiped either.
         const sec =
@@ -23483,6 +23605,7 @@ export class GameServer {
         });
         this.graves.set(graveEid, {
           name: player.name,
+          characterId: player.characterId,
           despawnAt: spillNow + DEATH_SPILL_TTL_MS,
         });
         this.graveByChar.set(player.characterId, graveEid);
@@ -26370,6 +26493,9 @@ export class GameServer {
     }
     this.setNpcPose(eid, npc, PoseState.Art, 10);
     this.castAbility(eid, ab, aim, 'onehand', npc.def.level, true, pt);
+    // Every caller resets the flourish: a transit's onFinish fires
+    // ticks later and must not inherit whatever this cast left live.
+    this.castFlourish = undefined;
     // The howl carries further than sight: an AUTHORED rally
     // re-gathers a few more mid-fight — bounded like every cry, so
     // the camp never empties at once.
@@ -27871,21 +27997,26 @@ export class GameServer {
         this.ecs.destroy(eid);
       });
     }
-    // Gravestones sink when the spill's quarter hour runs out.
+    // Gravestones sink when the spill's quarter hour runs out — and
+    // the soul's pointer sinks with its stone (a fresh fall may have
+    // already re-aimed it; only the matching stone retires it).
     for (const [eid, grave] of this.graves) {
       if (grave.despawnAt <= now) {
         this.removeFromChunks(eid);
         this.ecs.destroy(eid);
+        if (this.graveByChar.get(grave.characterId) === eid) this.graveByChar.delete(grave.characterId);
       }
     }
     // The walk-back beacon retires itself: arrival within reach of the
     // stone (the skull's promise is kept), or the clock running out.
-    for (const [playerEid, player] of this.players) {
-      if (player.session === null) continue;
-      const mark = this.deathMarks.get(player.characterId);
-      if (!mark) continue;
+    // The clock runs for the logged-out too — a mark is keyed by
+    // character, and an owner who never returns must not pin it for
+    // the life of the process.
+    for (const [characterId, mark] of this.deathMarks) {
+      const playerEid = this.characterEids.get(characterId);
+      const player = playerEid === undefined ? undefined : this.players.get(playerEid);
       let clear = mark.until <= now;
-      if (!clear) {
+      if (!clear && player && player.session !== null && playerEid !== undefined) {
         const ppos = this.positions.get(playerEid);
         if (
           ppos &&
@@ -27896,8 +28027,8 @@ export class GameServer {
         }
       }
       if (clear) {
-        this.deathMarks.delete(player.characterId);
-        player.session.sendJson({ t: 'deathmark' });
+        this.deathMarks.delete(characterId);
+        player?.session?.sendJson({ t: 'deathmark' });
       }
     }
   }
@@ -27934,11 +28065,13 @@ export class GameServer {
     // commands/ — walked in order, first claim wins; dev entries answer
     // only behind the same config gate they always wore.
     for (const cmd of CHAT_COMMANDS) {
-      if (DEV_COMMANDS.includes(cmd) && !config.devCommands) continue;
+      if (DEV_COMMAND_SET.has(cmd) && !config.devCommands) continue;
       if (!cmd.claims(text)) continue;
       cmd.run(this, eid, player, text);
       return;
     }
+    // The ledger's last entry claims every unclaimed slash line, so a
+    // mistyped verb or a dev lever on a prod box is never spoken aloud.
     this.sayAloud(eid, player.name, text);
   }
 

@@ -2532,4 +2532,4 @@ export type S2CMessage =
 
 // ------------------------------------------------------- validation
 
-export { isFiniteNum, isObj, parseC2S } from './parseC2S.js';
+export { C2S_VALIDATORS, isFiniteNum, isObj, parseC2S } from './parseC2S.js';

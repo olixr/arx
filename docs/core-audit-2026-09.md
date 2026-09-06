@@ -522,3 +522,32 @@ Top 5 by value:
 4. [P1] 992 tracked tsc output files under packages/client/dist-types churn on every typecheck (gitignore only covers dist/).
 5. [P1] Split-module test debt: every foundations server module (standing/statuses/procs/arena/farming/dialogue/…) and every client wing has 0 direct test importers — coverage rides the 111 delegators; probes are pinned to one laptop's npx cache path/ports/passwords.
 Not covered: renderer.ts / gameServer.ts bodies (other lanes), session/ws cleanup, a live rig boot (read-only lane — iron_rest skip status unverified), the `import type`-as-value heuristic (dropped: tsc already guarantees it).
+
+## §4 As-built
+
+**Band A — THE BODY IS ONE (epic/core-audit, 2026-09-06).** As chartered (§2 Band A), plus
+the fix pass after the adversarial review. The arrival door is now `enterWorld` (rebind /
+join-in-flight / stand) → `enterWorldStand` (every await above `ecs.create()`, ONE re-check
+after the last) → `enterWorldSeat` (the Q seat, chunk, socket, household, room, friends) under a
+try/catch: a throw in the seating leaves the body with `disconnectedAt` set, so the grace sweep
+collects it — THE BODY LEAKS NOTHING now holds after the body stands, not only before. Laws
+learned: **A CORPSE KICKS NOBODY** — `bindSession` reads `session.isClosed` FIRST; a closed
+socket never sends the "another window" kick, never enters grace over a live tab
+(`disconnectedAt ??=` only when `player.session === null`), and its token never replaces the
+live tab's in either rebind branch (the review's P1: a joiner whose wire dropped while parked
+could evict the tab that held the body). **THE VERB IS THE CLAIM** — the two player verbs claim
+by first token (`/lock the door` reaches `/lock`), so THE UNSPOKEN WORD only ever names a verb
+nobody holds; `/lock` on an authored door that a pick or key already opened says so ("set by
+another hand — opened, it stays open") instead of naming a key. **THE PIN'S PLANE** — a quest
+mark's `plane` validates against the static plane ids (or `refs.planeIds`, as the arena venues
+do); the runtime waypoint law refused a typo silently, leaving an errand with no pin. **THE STUB
+WINS THE DOOR, no exceptions** — `warSurvey` got its class delegator (112 delegators now) and
+`dialogue.ts` calls `srv.warSurvey`; `KNOWN_UNDELEGATED` is gone. The delegator-parity walk
+matches over the whole file with top-level comma counting, so a formatter wrap or a nested call
+in an arg list can neither hide a delegator nor mis-count its arity. C2S dispatch is the
+mapped-exhaustive `C2S_DISPATCH` table (68 rows, mechanically verbatim to the switch; the three
+auth arms carry the `authInFlight` strike). Counts: server 778 tests (was 699 at audit time:
++enterWorldLaws 6, farming, the ten split-module door suites, delegatorParity 4, ledger,
+bandACorrectness), content 792, four-package tsc clean. Not in this band, recorded so it is not
+mistaken for done: `despawnBody(eid)` for silent removals (appendix P2 #28, `transits` still
+leaks) and the capitalCache clear-on-claim-ring (P1 #21, Band B).

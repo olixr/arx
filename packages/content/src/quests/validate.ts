@@ -5,6 +5,7 @@ import { NPC_ACTORS } from '../actors/registry.js';
 import { parseDialogueMarkup } from '../dialogues/markup.js';
 import { FACTION_FLAG_RE, isFactionFlag } from '../factions/flags.js';
 import { FACTIONS, factionIds } from '../factions/factions.js';
+import { STATIC_PLANES } from '../planes.js';
 import type {
   QuestDef,
   QuestDrop,
@@ -37,6 +38,15 @@ export interface ValidateQuestRefs {
   npcIds?: ReadonlySet<string>;
   itemIds?: ReadonlySet<string>;
   placeIds?: ReadonlySet<string>;
+  /** Planes a mark may pin; default = the static planes (rifts are minted per run). */
+  planeIds?: ReadonlySet<string>;
+}
+
+/** THE PIN'S PLANE: a mark on a plane that never stands is a mark nobody sees. */
+const STATIC_PLANE_IDS: ReadonlySet<string> = new Set(STATIC_PLANES.map((p) => p.id));
+
+function knownPlane(id: string, refs?: ValidateQuestRefs): boolean {
+  return refs?.planeIds ? refs.planeIds.has(id) : STATIC_PLANE_IDS.has(id);
 }
 
 const SLUG_RE = /^[a-z][a-z0-9_]*$/;
@@ -202,11 +212,16 @@ function validateStage(
     if (
       !isRecord(m) ||
       !isCount(m.x, -20000, 20000) ||
-      !isCount(m.y, -20000, 20000)
+      !isCount(m.y, -20000, 20000) ||
+      (m.plane !== undefined && (typeof m.plane !== 'string' || m.plane.length === 0))
     ) {
-      errors.push(`${where}.mark must be {x, y} integer world tiles within ±20000`);
+      errors.push(`${where}.mark must be {x, y[, plane]} — integer world tiles within ±20000`);
+    } else if (m.plane !== undefined && !knownPlane(m.plane, refs)) {
+      // The waypoint law refuses a non-persistent plane at runtime,
+      // silently — the errand would stand with no pin and nobody told.
+      errors.push(`${where}.mark.plane '${m.plane}' is not a static plane (${[...STATIC_PLANE_IDS].join(', ')})`);
     } else {
-      stage.mark = { x: m.x, y: m.y };
+      stage.mark = m.plane === undefined ? { x: m.x, y: m.y } : { x: m.x, y: m.y, plane: m.plane };
     }
   }
   return stage;

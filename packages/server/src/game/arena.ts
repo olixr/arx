@@ -5,6 +5,7 @@
  */
 import { arenaPayFor, bankArenaXp, freshArenaBank, inPit, rollMatchPlan, scatterSpots, stockBark } from './arenaMind.js';
 import { addItem, countItem, removeItem } from './inventory.js';
+import { secToTicks } from './tuning.js';
 import { ARENAS, ArenaMatchDef, ArenaVenueDef, NPCS, SURFACE_PLANE_ID, arenaMatchDef, arenaPurseTableFor, arenaTitleFor, arenaVenue, crownPoolFor, forgeCrown, matchesForVenue, scaleNpcDef, totalXpForArenaRank } from '@arx/content';
 import { EntityId, S2CArenaState, S2CMessage, TICK_MS, Tile, closedChestTile, shutDoorTile } from '@arx/shared';
 import type { ArenaMatchState, GameServer, PlayerComp } from './gameServer.js';
@@ -270,7 +271,7 @@ export function arenaQueue(srv: GameServer, eid: EntityId, matchId: string, opts
     seed,
     phase: 'muster',
     round: 0,
-    deadlineTick: srv.tickCount + ARENAS.dials.musterSec * 20,
+    deadlineTick: srv.tickCount + secToTicks(ARENAS.dials.musterSec),
     members: new Map([[player.characterId, { alive: true }]]),
     initiatorChar: player.characterId,
     waveEids: new Set(),
@@ -628,7 +629,7 @@ export function arenaBodyFell(srv: GameServer, npcEid: EntityId, venueId: string
   } else {
     match.round++;
     match.phase = 'breather';
-    match.deadlineTick = srv.tickCount + ARENAS.dials.countdownSec * 20;
+    match.deadlineTick = srv.tickCount + secToTicks(ARENAS.dials.countdownSec);
     srv.arenaBark(match, stockBark('round', match.seed, 20 + match.round));
     srv.arenaStateFan(match);
   }
@@ -643,7 +644,7 @@ export function arenaVictory(srv: GameServer, match: ArenaMatchState): void {
   }
   const plane = venue.plane ?? SURFACE_PLANE_ID;
   match.phase = 'victory';
-  match.deadlineTick = srv.tickCount + ARENAS.dials.chestGraceSec * 20;
+  match.deadlineTick = srv.tickCount + secToTicks(ARENAS.dials.chestGraceSec);
   srv.arenaSetGates(match, false);
   // The ladder pays every enrolled soul — the fallen at the doc's
   // fraction (they bought the card too; the sand remembers).
@@ -822,7 +823,7 @@ export function tickArenas(srv: GameServer, now: number): void {
         else {
           match.round++;
           match.phase = 'breather';
-          match.deadlineTick = srv.tickCount + ARENAS.dials.countdownSec * 20;
+          match.deadlineTick = srv.tickCount + secToTicks(ARENAS.dials.countdownSec);
           srv.arenaStateFan(match);
         }
         continue;
@@ -835,7 +836,7 @@ export function tickArenas(srv: GameServer, now: number): void {
           break;
         case 'gates':
           match.phase = 'breather';
-          match.deadlineTick = srv.tickCount + ARENAS.dials.countdownSec * 20;
+          match.deadlineTick = srv.tickCount + secToTicks(ARENAS.dials.countdownSec);
           srv.arenaStateFan(match);
           break;
         case 'breather':

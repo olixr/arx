@@ -506,7 +506,10 @@ const cmdTame: ChatCommand = {
         return;
       }
       const [row] = player.pets.splice(idx, 1);
-      if (row!.state === 'heel') srv.despawnPetEntity(player);
+      if (row!.state === 'heel') {
+        srv.despawnPetEntity(player);
+        player.petHp = null; // the heel row's hp goes with it
+      }
       if (player.characterId > 0) srv.accounts.deletePet(player.characterId, row!.slot);
       say(`${row!.name} returns to the wild.`);
       srv.sendPet(player);
@@ -1265,10 +1268,18 @@ const cmdQuest: ChatCommand = {
       return;
     }
     if (sub === 'reload') {
-      void srv.reloadQuests().then((res) => {
-        sys(`Quests reloaded: ${res.count}${res.errors.length ? ` (${res.errors.length} invalid)` : ''}.`);
-        for (const p of srv.players.values()) srv.sendQuestsFull(p);
-      });
+      void srv
+        .reloadQuests()
+        .then((res) => {
+          sys(`Quests reloaded: ${res.count}${res.errors.length ? ` (${res.errors.length} invalid)` : ''}.`);
+          for (const p of srv.players.values()) srv.sendQuestsFull(p);
+        })
+        .catch((err: Error) => {
+          // A rejected lever is a logged refusal, never an unhandled
+          // rejection that takes the process with it.
+          console.error('[quest reload]', err.message);
+          sys(`Quest reload failed: ${err.message}`);
+        });
       return;
     }
     sys('/quest — list · accept <id> · complete <id> · turnin <id> · reset [id] · reload');
@@ -1767,10 +1778,16 @@ const cmdTriggers: ChatCommand = {
     const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
     const [, verb] = text.split(/\s+/);
     if (verb === 'reload') {
-      void srv.reloadTriggers().then((r) => {
-        sys(`triggers reloaded: ${r.count}${r.errors.length ? ` (${r.errors.length} refused)` : ''}`);
-        for (const e of r.errors.slice(0, 4)) sys(`  ${e}`);
-      });
+      void srv
+        .reloadTriggers()
+        .then((r) => {
+          sys(`triggers reloaded: ${r.count}${r.errors.length ? ` (${r.errors.length} refused)` : ''}`);
+          for (const e of r.errors.slice(0, 4)) sys(`  ${e}`);
+        })
+        .catch((err: Error) => {
+          console.error('[triggers reload]', err.message);
+          sys(`triggers reload failed: ${err.message}`);
+        });
       return;
     }
     const pos = srv.positions.get(eid);
