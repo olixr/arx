@@ -596,7 +596,9 @@ test('the taiga stands north: pines take the cold forests, never the south', () 
       ) northOther++;
     }
   }
-  assert.ok(northPine > 40, `only ${northPine} pines in the deep north`);
+  // THE WOOD LEARNS TO BREATHE thinned every stand to about a third
+  // (forest.ts); the floor follows the census, the dominance law holds.
+  assert.ok(northPine > 15, `only ${northPine} pines in the deep north`);
   assert.ok(northPine > northOther, `north not taiga: ${northPine} pines vs ${northOther} others`);
   // The warm south grows none.
   let southPine = 0;

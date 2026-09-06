@@ -330,6 +330,8 @@ export const DETAILS: Array<{ d: Detail; label: string }> = [
   { d: Detail.Tuft, label: 'grass tuft' },
   { d: Detail.Pebbles, label: 'pebbles' },
   { d: Detail.Mushroom, label: 'mushroom' },
+  { d: Detail.LeafLitter, label: 'leaf litter' },
+  { d: Detail.Bracken, label: 'bracken' },
   { d: Detail.Rug, label: 'rug' },
   { d: Detail.RugRound, label: 'round rug' },
   { d: Detail.CarpetRoyal, label: 'royal carpet' },

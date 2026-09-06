@@ -543,6 +543,8 @@ function buildWings(): Wing[] {
         { kind: 'floordetail' as const, detail: Detail.Tuft, host: Tile.Grass, label: 'grass tuft' },
         { kind: 'floordetail' as const, detail: Detail.Pebbles, host: Tile.Dirt, label: 'pebbles' },
         { kind: 'floordetail' as const, detail: Detail.Mushroom, host: Tile.Grass, label: 'mushroom' },
+        { kind: 'floordetail' as const, detail: Detail.LeafLitter, host: Tile.Grass, label: 'leaf litter' },
+        { kind: 'floordetail' as const, detail: Detail.Bracken, host: Tile.Grass, label: 'bracken' },
       ],
     },
     {

@@ -1,4 +1,4 @@
-import { Tile, hashCoords, valueNoise } from '@arx/shared';
+import { Tile, hashCoords, valueNoise, Detail } from '@arx/shared';
 import type { TallBand } from './grassGpu.js';
 
 /**
@@ -191,6 +191,22 @@ interface GrassTileState {
 /** Detail-layer ids mirrored here to avoid a wider import surface. */
 const DETAIL_FLOWERS = 1;
 const DETAIL_TUFT = 2;
+/**
+ * THE FOREST FLOOR (worldgen forest.ts): the two floor details fold to
+ * grass codes at the cache door — the numeric tile key packs the code
+ * into three bits, and only these four details ever change the coat.
+ */
+const DETAIL_LITTER = 3;
+const DETAIL_BRACKEN = 4;
+
+/** Fold a world Detail id to the coat's own code (0 = no effect). */
+export function grassDetailCode(detailId: number): number {
+  if (detailId === Detail.Flowers) return DETAIL_FLOWERS;
+  if (detailId === Detail.Tuft) return DETAIL_TUFT;
+  if (detailId === Detail.LeafLitter) return DETAIL_LITTER;
+  if (detailId === Detail.Bracken) return DETAIL_BRACKEN;
+  return 0;
+}
 
 function rand01(h: number, shift: number): number {
   return ((h >>> shift) & 1023) / 1024;
@@ -337,7 +353,12 @@ export function generateGrassTile(
   // ones) but never drops to zero: bald tiles are what made the old
   // meadow read as nodules on flat paint.
   const hn = hashCoords(661, tx, ty);
-  const napN = Math.max(2, Math.round((3 + (hn % 3)) * (0.5 + 0.9 * lush)));
+  // Under a crown the coat wears thin: leaf litter starves the nap
+  // to its floor, so the baked litter reads through and the wood's
+  // floor is not the meadow's. Bracken keeps the coat — the fronds
+  // are painted into the bake and stand over ordinary turf.
+  const litter = detailId === DETAIL_LITTER;
+  const napN = litter ? 2 : Math.max(2, Math.round((3 + (hn % 3)) * (0.5 + 0.9 * lush)));
   for (let i = 0; i < napN; i++) {
     const b = makeBlade(tx, ty, 673 + i * 17, i, false, null, tileTone, true);
     // Floor-law gate: the shade row only lives inside a dense coat.
@@ -350,10 +371,14 @@ export function generateGrassTile(
   // each growing 1-3 blades — and the budget jitters tile to tile on
   // top of the meadow coverage. Uniform per-tile counts are what make
   // a lattice read.
-  const clump = detailId === DETAIL_TUFT || cov > 0.74;
+  const clump = detailId === DETAIL_TUFT || (!litter && cov > 0.74);
   {
     const hc = hashCoords(167, tx, ty);
-    const budget = cov < 0.32 ? 1 + (hc % 2) : cov < 0.56 ? 2 + (hc % 2) : 3 + (hc % 3);
+    const budget = litter
+      ? hc % 2
+      : detailId === DETAIL_BRACKEN
+        ? 1
+        : cov < 0.32 ? 1 + (hc % 2) : cov < 0.56 ? 2 + (hc % 2) : 3 + (hc % 3);
     let placed = 0;
     let seed = 0;
     while (placed < budget) {
@@ -395,7 +420,11 @@ export function generateGrassTile(
   // fan from a shared seed point (organic, not one-per-cell), split at the
   // tile midline into north/south so the G1 band machinery interleaves them
   // with entities. GPU-only: the canvas default never grows these.
-  if (gpu && !tall) {
+  // THE FOREST FLOOR steps the standing grass aside: under leaf litter
+  // the floor is bare by law, and on a bracken tile the fronds ARE the
+  // standing element — waist-high blades over either buried the bake.
+  const floorDetail = litter || detailId === DETAIL_BRACKEN;
+  if (gpu && !tall && !floorDetail) {
     const stand =
       valueNoise(941, tx * 0.05, ty * 0.05) * 0.62 + valueNoise(942, tx * 0.11, ty * 0.11) * 0.38;
     if (stand > GPU_STAND_THRESHOLD) {
@@ -909,7 +938,8 @@ export class GrassSystem {
     ground?: Sampler,
   ): GrassTileState {
     // Numeric key — string building here showed up in profiles.
-    const key = (((ty + 8192) * 16384 + (tx + 8192)) * 16 + tileId) * 8 + detailId;
+    const code = grassDetailCode(detailId);
+    const key = (((ty + 8192) * 16384 + (tx + 8192)) * 16 + tileId) * 8 + code;
     let st = this.tiles.get(key);
     if (!st) {
       // Snow adjacency culls blades under the blanket's baked overhang
@@ -922,7 +952,7 @@ export class GrassSystem {
           (ground(tx - 1, ty) === Tile.Snow ? 8 : 0)
         : 0;
       st = {
-        geom: generateGrassTile(tx, ty, tileId, detailId, snowMask, this.gpuGeom),
+        geom: generateGrassTile(tx, ty, tileId, code, snowMask, this.gpuGeom),
         wakeAt: 0,
         tx,
         ty,

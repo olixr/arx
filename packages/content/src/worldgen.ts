@@ -5,8 +5,24 @@ import {
   emptyChunk,
   fbm,
   hashCoords,
+  saplingOf,
   type ChunkData,
 } from '@arx/shared';
+import {
+  COPSE_SALT,
+  ELDER_SALT,
+  FLOOR,
+  FOREST_LAW,
+  FOREST_LINE,
+  HIGHLAND_SALT,
+  OLD_WOOD_DAMP,
+  canopyCoverAt,
+  copseCoverAt,
+  dampOf,
+  floorSeatOf,
+  latticeTreeAt,
+  standGateAt,
+} from './forest.js';
 import {
   ROAD_APRON,
   ROAD_HALF,
@@ -489,6 +505,109 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
   const L = (lx: number, ly: number): number => lv[lx + M + (ly + M) * N]!;
   const E = (lx: number, ly: number): number => el[lx + M + (ly + M) * N]!;
 
+  // THE WOOD LEARNS TO BREATHE (forest.ts): the canopy law reads its
+  // touching neighbours, so moisture and the elder verdict are memoized
+  // over the margin — each sampled at most once per chunk, and only
+  // where a tree question is actually asked. The margin (M = 3) covers
+  // every tile the law can reach from a chunk-edge tile: a shade check
+  // looks one out, and that neighbour's weeding looks one further.
+  const mo = new Float64Array(N * N).fill(NaN);
+  const Mo = (lx: number, ly: number): number => {
+    const i = lx + M + (ly + M) * N;
+    let v = mo[i]!;
+    if (v !== v) {
+      v = moistureAt(seed, baseX + lx, baseY + ly);
+      mo[i] = v;
+    }
+    return v;
+  };
+  const inMargin = (lx: number, ly: number): boolean =>
+    lx >= -M && ly >= -M && lx < CHUNK_SIZE + M && ly < CHUNK_SIZE + M;
+  /** Moisture at a WORLD tile, through the memo when it lies in reach. */
+  const moistureW = (wx: number, wy: number): number => {
+    const lx = wx - baseX;
+    const ly = wy - baseY;
+    return inMargin(lx, ly) ? Mo(lx, ly) : moistureAt(seed, wx, wy);
+  };
+  /**
+   * Where an elder may take root at all: flat dry land off the road's
+   * shoulder. Rims, ramps and talus feet are refused downstream by the
+   * branch order (a candidate on a dell lip simply never reaches the
+   * forest branch); the canopy law only needs the cheap, grid-local
+   * truth so a tree on water never casts a phantom shade.
+   */
+  const elderGround = (lx: number, ly: number): boolean => {
+    if (!inMargin(lx, ly)) return true;
+    if (E(lx, ly) < 0.4 || L(lx, ly) !== 0) return false;
+    if (rd) {
+      const gi = lx + M + (ly + M) * N;
+      const shoulder = rtrail![gi] === 1 ? TRAIL_SHOULDER : ROAD_SHOULDER;
+      if (rd[gi]! <= shoulder) return false;
+    }
+    return true;
+  };
+  const elderCoverW = (wx: number, wy: number): number => {
+    const lx = wx - baseX;
+    const ly = wy - baseY;
+    if (!elderGround(lx, ly)) return 0;
+    const m = moistureW(wx, wy);
+    if (m <= FOREST_LINE) return 0;
+    return canopyCoverAt(seed, wx, wy, m, coldAt(seed, wx, wy));
+  };
+  const eld = new Int8Array(N * N).fill(-1);
+  /** An elder (canopy tree) stands on this tile — memoized over the margin. */
+  const isElder = (lx: number, ly: number): boolean => {
+    if (!inMargin(lx, ly)) {
+      return latticeTreeAt(seed, ELDER_SALT, FOREST_LAW.elderCell, baseX + lx, baseY + ly, elderCoverW);
+    }
+    const i = lx + M + (ly + M) * N;
+    let v = eld[i]!;
+    if (v < 0) {
+      v = latticeTreeAt(seed, ELDER_SALT, FOREST_LAW.elderCell, baseX + lx, baseY + ly, elderCoverW)
+        ? 1
+        : 0;
+      eld[i] = v;
+    }
+    return v === 1;
+  };
+  /** Any elder crown touching this tile (8-neighbourhood). */
+  const shadedAt = (lx: number, ly: number): boolean => {
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if ((dx !== 0 || dy !== 0) && isElder(lx + dx, ly + dy)) return true;
+      }
+    }
+    return false;
+  };
+  /** Meadow copses and lone sentinels — the same lattice law, coarser cell. */
+  const copseCoverW = (wx: number, wy: number): number => {
+    const lx = wx - baseX;
+    const ly = wy - baseY;
+    if (!elderGround(lx, ly)) return 0;
+    const m = moistureW(wx, wy);
+    if (m > FOREST_LINE || m < 0.34) return 0;
+    // A field tree never stands against the wood's own edge: the elder
+    // law can't see across the forest line, so the copse law keeps
+    // the gap itself (the only way two trees could ever touch).
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if ((dx !== 0 || dy !== 0) && moistureW(wx + dx, wy + dy) > FOREST_LINE) return 0;
+      }
+    }
+    return copseCoverAt(seed, wx, wy);
+  };
+  const isCopseTree = (tx: number, ty: number): boolean =>
+    latticeTreeAt(seed, COPSE_SALT, FOREST_LAW.copseCell, tx, ty, copseCoverW);
+  /** Highland scatter: windswept, spaced, no copse composition up here. */
+  const highlandCoverW = (wx: number, wy: number): number => {
+    const lx = wx - baseX;
+    const ly = wy - baseY;
+    if (inMargin(lx, ly) && L(lx, ly) !== 1) return 0;
+    return FOREST_LAW.highlandCover;
+  };
+  const isHighlandTree = (tx: number, ty: number): boolean =>
+    latticeTreeAt(seed, HIGHLAND_SALT, FOREST_LAW.highlandCell, tx, ty, highlandCoverW);
+
   /**
    * Rim tile: at least one LOWER tile in the 8-neighborhood. Signed and
    * relative — a plateau's crown edge and a pit's level-0 lip are the
@@ -588,7 +707,7 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
 
       const elevation = E(lx, ly);
       const lvl = L(lx, ly);
-      const moisture = moistureAt(seed, tx, ty);
+      const moisture = Mo(lx, ly);
       const roll = hashCoords(seed ^ 0xabcdef, tx, ty) / 4294967296;
 
       let ground: Tile;
@@ -648,10 +767,12 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
           } else {
             // Hardy highland meadow: sparse windswept trees, thin soil.
             // Moonbell only opens up here, near the sky.
+            // The windswept trees ride the lattice law (forest.ts):
+            // spaced, never touching, a scatter and not a speckle.
             const flora = hashCoords(seed ^ 0xf10a5, tx, ty) / 4294967296;
             ground =
-              roll < 0.02 ? Tile.Tree
-              : roll < 0.028 ? Tile.Rock
+              isHighlandTree(tx, ty) ? Tile.Tree
+              : roll < 0.008 ? Tile.Rock
               : flora < 0.006 ? Tile.WildMoonbell
               : moisture < 0.4 ? Tile.StoneFloor
               : roll < 0.14 ? Tile.GrassTall
@@ -776,36 +897,85 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
         // courtesy the raised branches pay their stair tops, or a tree
         // could grow across the only way down into a dell.
         ground = Tile.Grass;
-      } else if (moisture > 0.62) {
-        // Forest: tree density scales with moisture; some trees are oaks.
-        // The understory hides the herbalist's plants — sagewort in the
-        // shade, moonbell only in the deepest damp, fibre at the edges.
-        const treeDensity = 0.10 + (moisture - 0.62) * 1.4;
+      } else if (moisture > FOREST_LINE) {
+        // THE WOOD LEARNS TO BREATHE (forest.ts). The canopy is dealt
+        // by the lattice-and-weeding law — one candidate per cell,
+        // the weaker of any touching pair dies — under a stand field
+        // that closes the cores and opens the fringes into glades. The
+        // floor between the elders is dealt by its seat: under a
+        // crown, in a canopy gap, or out in the open. The herb and
+        // chest deals keep their old thresholds exactly (the forager's
+        // economy is untouched), and the species deal is the old one.
+        const damp = dampOf(moisture);
         const oakRoll = hashCoords(seed ^ 0x0acc0de, tx, ty) / 4294967296;
         const flora = hashCoords(seed ^ 0xf10a5, tx, ty) / 4294967296;
-        // Species by rarity: yew is the ancient one-in-forty find, willow
-        // grows only where the forest turns properly damp (and shuns the
-        // deep cold), and northward the pines take the common share —
-        // half the stand on Silverfall's approach, near-pure taiga in
-        // the far north. Oaks salt whatever the cold leaves.
+        // Species by rarity: yew is the ancient find, willow grows only
+        // where the forest turns properly damp (and shuns the deep
+        // cold), and northward the pines take the common share — half
+        // the stand on Silverfall's approach, near-pure taiga in the
+        // far north. Oaks salt whatever the cold leaves. Yew's share
+        // rises a touch with the thinner stand so the bowyer's find
+        // stays a find per league, not per lifetime.
         const cold = coldAt(seed, tx, ty);
         const pineRoll = hashCoords(seed ^ 0x9b1e5, tx, ty) / 4294967296;
         const species =
-          oakRoll < 0.025 ? Tile.TreeYew
-          : oakRoll < 0.12 && moisture > 0.74 && cold < 0.6 ? Tile.TreeWillow
+          oakRoll < 0.04 ? Tile.TreeYew
+          : oakRoll < 0.13 && moisture > 0.74 && cold < 0.6 ? Tile.TreeWillow
           : pineRoll < (cold - 0.42) * 1.9 ? Tile.TreePine
-          : oakRoll < 0.26 ? Tile.TreeOak
+          : oakRoll < 0.27 ? Tile.TreeOak
           : Tile.Tree;
-        ground =
-          roll < treeDensity ? species
-          : flora < 0.008 ? Tile.WildSagewort
-          : flora < 0.012 && moisture > 0.75 ? Tile.WildMoonbell
-          : flora < 0.017 ? Tile.FibrePlant
+        if (isElder(lx, ly)) {
+          ground = species;
+        } else if (flora < 0.008) {
+          ground = Tile.WildSagewort;
+        } else if (flora < 0.012 && moisture > 0.75) {
+          ground = Tile.WildMoonbell;
+        } else if (flora < 0.017) {
+          ground = Tile.FibrePlant;
+        } else if (flora < 0.0185) {
           // A traveller's chest abandoned under the canopy — the deep
           // woods' rare find; regen restocks it like any other node.
-          : flora < 0.0185 ? Tile.ChestWood
-          : Tile.Grass;
-        if (ground === Tile.Grass && roll > 0.93) detail = Detail.Mushroom;
+          ground = Tile.ChestWood;
+        } else {
+          // THE FLOOR. Seat first: shade under a touching crown, a gap
+          // inside a closed stand, or a glade the stand field opened.
+          const gate = standGateAt(seed, tx, ty, damp, cold);
+          const seat = floorSeatOf(shadedAt(lx, ly), gate);
+          const deal = FLOOR[seat];
+          const u = hashCoords(seed ^ 0x7ee5, tx, ty) / 4294967296;
+          const oldWood = damp > OLD_WOOD_DAMP;
+          ground =
+            u < deal.sapling ? (saplingOf(species) ?? Tile.Sapling)
+            : u < deal.tall ? Tile.GrassTall
+            : u < deal.rock ? Tile.Rock
+            : u < deal.stump && oldWood ? Tile.Stump
+            : u < deal.snag && oldWood ? Tile.DeadTree
+            : Tile.Grass;
+          if (ground === Tile.Grass) {
+            if (seat === 'shade') {
+              // Litter under the crown, and the shade mushrooms.
+              detail =
+                roll < 0.42 ? Detail.LeafLitter
+                : roll > 0.94 ? Detail.Mushroom
+                : Detail.None;
+            } else if (seat === 'gap') {
+              // Bracken takes the light between the elders.
+              detail =
+                roll < 0.15 ? Detail.Bracken
+                : roll < 0.27 ? Detail.LeafLitter
+                : roll > 0.955 ? Detail.Flowers
+                : roll > 0.92 ? Detail.Tuft
+                : Detail.None;
+            } else {
+              // A glade: open sky, meadow flowers, a tuft.
+              detail =
+                roll > 0.95 ? Detail.Flowers
+                : roll > 0.87 ? Detail.Tuft
+                : roll < 0.05 ? Detail.Bracken
+                : Detail.None;
+            }
+          }
+        }
       } else if (moisture < 0.34) {
         // Dry meadow: bare grass except for the odd rocky knoll — a
         // freestanding formation of boulders with shallow copper/tin.
@@ -822,11 +992,13 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
         }
       } else {
         // Open meadow: berry bushes and fibre plants for the forager.
-        // In the cold country the lone field trees are pines — the
-        // scattered sentinels that read as the taiga's outriders.
+        // The field trees ride the copse law (forest.ts): they gather
+        // where the stand field crests and stand alone where it does
+        // not — never the old 1.5% speckle. In the cold country the
+        // field trees are pines, the taiga's outriders.
         const flora = hashCoords(seed ^ 0xf10a5, tx, ty) / 4294967296;
         ground =
-          roll < 0.015 ? (coldAt(seed, tx, ty) > 0.5 ? Tile.TreePine : Tile.Tree)
+          isCopseTree(tx, ty) ? (coldAt(seed, tx, ty) > 0.5 ? Tile.TreePine : Tile.Tree)
           : flora < 0.005 ? Tile.BerryBush
           : flora < 0.009 ? Tile.FibrePlant
           : roll < 0.06 ? Tile.GrassTall
@@ -931,6 +1103,12 @@ const ROAD_FELLED: ReadonlySet<number> = new Set([
   Tile.TreeWillow,
   Tile.TreeYew,
   Tile.TreePine,
+  Tile.Sapling,
+  Tile.SaplingOak,
+  Tile.SaplingWillow,
+  Tile.SaplingYew,
+  Tile.SaplingPine,
+  Tile.DeadTree,
   Tile.Rock,
   Tile.ChestWood,
 ]);
@@ -942,4 +1120,11 @@ const SCORCH_STANDS: ReadonlySet<number> = new Set([
   Tile.TreeWillow,
   Tile.TreeYew,
   Tile.TreePine,
+  // The floor's young and dead wood burns with the canopy.
+  Tile.Sapling,
+  Tile.SaplingOak,
+  Tile.SaplingWillow,
+  Tile.SaplingYew,
+  Tile.SaplingPine,
+  Tile.DeadTree,
 ]);

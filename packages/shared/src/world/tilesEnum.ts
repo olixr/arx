@@ -1196,6 +1196,11 @@ export enum Detail {
   DarkSpill = 180,
   /** Dried plate seams — the drained pond. */
   Mudcrack = 181,
+  // THE WOOD LEARNS TO BREATHE — the forest floor (worldgen forest.ts).
+  /** Fallen leaves under a crown: a few russet and ochre chips, hash-dealt. */
+  LeafLitter = 182,
+  /** Bracken fronds in a canopy gap: two or three low pinnate fans. */
+  Bracken = 183,
 }
 
 /** THE DYE LAW's count — ten cloths, index-married everywhere. */

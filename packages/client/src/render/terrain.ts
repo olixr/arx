@@ -3554,6 +3554,122 @@ function drawTileDetail(
         ctx.lineTo(mx + px * 0.13, my - px * 0.02);
         ctx.closePath();
         ctx.fill();
+      } else if (d === Detail.LeafLitter) {
+        // THE FOREST FLOOR (worldgen forest.ts) — fallen leaves under a
+        // crown. Two registers so the tile reads at EVERY zoom: a drift
+        // (an irregular translucent blotch that shifts the turf's tone
+        // to floor-brown — neighbouring litter tiles merge into one
+        // continuous floor under the elders) and, on it, four to seven
+        // chips dealt by hash (count, seat, size, turn, hue), seats
+        // running edge to edge so drifts straddle borders. Each chip is
+        // a filled lozenge with a seat seam and a pale midrib — wide
+        // enough to hold tone at street zoom (the fish law).
+        const h = hashCoords(419, tx, ty);
+        {
+          const cx0 = lx * px + (0.3 + ((h >>> 3) % 40) / 100) * px;
+          const cy0 = ly * px + (0.3 + ((h >>> 9) % 40) / 100) * px;
+          const rr = px * (0.5 + ((h >>> 15) % 5) * 0.05);
+          ctx.fillStyle = 'rgba(112, 78, 40, 0.30)';
+          ctx.beginPath();
+          for (let k = 0; k < 8; k++) {
+            const hk = hashCoords(421 + k, tx, ty);
+            const a = (k / 8) * Math.PI * 2;
+            const r = rr * (0.7 + (hk % 40) / 100);
+            const x = cx0 + Math.cos(a) * r * 1.15;
+            const y = cy0 + Math.sin(a) * r * 0.8;
+            if (k === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.fill();
+        }
+        const n = 4 + (h % 4);
+        for (let k = 0; k < n; k++) {
+          const hp = hashCoords(431 + k * 53, tx, ty);
+          const ox = ((hp % 100) / 100) * px;
+          const oy = (((hp >>> 7) % 100) / 100) * px;
+          const w = px * (0.17 + ((hp >>> 3) % 5) * 0.02);
+          const rot = (((hp >>> 14) % 100) / 100) * Math.PI;
+          const hue = (hp >>> 20) & 3;
+          const fill =
+            hue === 0 ? '#a8683a' : hue === 1 ? '#bd8c3c' : hue === 2 ? '#8c5a2e' : '#cfa14a';
+          ctx.save();
+          ctx.translate(lx * px + ox, ly * px + oy);
+          ctx.rotate(rot);
+          ctx.fillStyle = 'rgba(46, 34, 20, 0.32)';
+          ctx.beginPath();
+          ctx.ellipse(px * 0.012, px * 0.024, w * 0.52, w * 0.3, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = fill;
+          ctx.beginPath();
+          ctx.moveTo(-w * 0.5, 0);
+          ctx.quadraticCurveTo(0, -w * 0.36, w * 0.5, 0);
+          ctx.quadraticCurveTo(0, w * 0.36, -w * 0.5, 0);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 236, 190, 0.5)';
+          ctx.lineWidth = Math.max(1, px * 0.02);
+          ctx.beginPath();
+          ctx.moveTo(-w * 0.38, 0);
+          ctx.lineTo(w * 0.36, 0);
+          ctx.stroke();
+          ctx.restore();
+        }
+      } else if (d === Detail.Bracken) {
+        // THE FOREST FLOOR — bracken in a canopy gap. A dark seat under
+        // the root, then three or four fronds fanning up and out: each
+        // a bowed stem (real width, never a hairline) carrying
+        // alternating FILLED leaflets that shorten toward the tip —
+        // dark green low, lit green at the tip. Fans and lengths ride
+        // the hash so a bracken bank reads as many plants, not a stamp.
+        const h = hashCoords(443, tx, ty);
+        const rx = lx * px + (0.3 + ((h % 40) / 100)) * px;
+        const ry = ly * px + (0.55 + (((h >>> 6) % 35) / 100)) * px;
+        ctx.fillStyle = 'rgba(30, 48, 24, 0.30)';
+        ctx.beginPath();
+        ctx.ellipse(rx, ry + px * 0.02, px * 0.3, px * 0.14, 0, 0, Math.PI * 2);
+        ctx.fill();
+        const fronds = 3 + ((h >>> 12) % 2);
+        for (let f = 0; f < fronds; f++) {
+          const hf = hashCoords(457 + f * 61, tx, ty);
+          // Fan: −165°..−15° from the root, spread by hash.
+          const ang = -Math.PI * (0.08 + ((f + 0.5) / fronds) * 0.84 + (((hf % 100) / 100) - 0.5) * 0.12);
+          const len = px * (0.6 + ((hf >>> 7) % 6) * 0.05);
+          const bow = (((hf >>> 11) & 1) ? 1 : -1) * len * 0.18;
+          const cosA = Math.cos(ang);
+          const sinA = Math.sin(ang);
+          const cx2 = rx + cosA * len * 0.5 - sinA * bow;
+          const cy2 = ry + sinA * len * 0.5 + cosA * bow;
+          const tipX = rx + cosA * len;
+          const tipY = ry + sinA * len;
+          const pinnae = 6 + ((hf >>> 14) % 3);
+          for (let i = 1; i <= pinnae; i++) {
+            const t = i / (pinnae + 1);
+            const mt = 1 - t;
+            const sx = mt * mt * rx + 2 * mt * t * cx2 + t * t * tipX;
+            const sy = mt * mt * ry + 2 * mt * t * cy2 + t * t * tipY;
+            const side = i & 1 ? 1 : -1;
+            const pl = len * (0.36 - t * 0.24);
+            const pw = px * 0.09;
+            // Leaflet sweeps forward along the stem as it leaves it.
+            const ex = sx + (-sinA * side * 0.85 + cosA * 0.5) * pl;
+            const ey = sy + (cosA * side * 0.85 + sinA * 0.5) * pl;
+            ctx.fillStyle = t < 0.4 ? '#3f6d2d' : t < 0.75 ? '#5c9a37' : '#8cbf47';
+            ctx.beginPath();
+            ctx.moveTo(sx + cosA * pw, sy + sinA * pw);
+            ctx.lineTo(ex, ey);
+            ctx.lineTo(sx - cosA * pw, sy - sinA * pw);
+            ctx.closePath();
+            ctx.fill();
+          }
+          ctx.strokeStyle = '#2f5222';
+          ctx.lineWidth = Math.max(1.5, px * 0.06);
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(rx, ry);
+          ctx.quadraticCurveTo(cx2, cy2, tipX, tipY);
+          ctx.stroke();
+        }
       } else if (d === Detail.Rug) {
         // A woven rug: bound border with selvedge ticks, knotted
         // fringe off the two loom ends, and a hash-dealt motif —
