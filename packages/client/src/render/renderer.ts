@@ -208,10 +208,9 @@ import * as rockArt from './rockArt.js';
 import { FENCE_POST, FENCE_RAIL, PANEL_DOOR_TILES } from './paintVocab.js';
 import { radialGlowSprite } from './glowSprite.js';
 import { Birds, type Bird, type BirdEnv } from './birds.js';
-import { GrassSystem, windAtInto, windScalarAt, generateSkirtBlades, BLADE_FILLS, ORNAMENT_FILLS, type Disturber, type WindSample, type Blade, type GrassBounds, type Flower, type SeedHead, type ElevOrnGroup } from './grass.js';
+import { GrassSystem, windAtInto, windScalarAt, BLADE_FILLS, ORNAMENT_FILLS, type Disturber, type WindSample, type Blade, type GrassBounds, type Flower, type SeedHead, type ElevOrnGroup } from './grass.js';
 import { GrassGpuLayer, type GrassFrame, type BandBlit } from './grassGpuLayer.js';
 import { partitionTallBands, coalesceTallBands, type TallBand } from './grassGpu.js';
-import { grassRootedSkirtAt, skirtStrengthForTile, wallSkirtSidesAt, SIDE_ALL } from './grassSkirt.js';
 import { MAX_DISTURB } from './grassGpuRenderer.js';
 import { packDisturbers } from './grassGpu.js';
 import { grassShadowOffset, shadeRgb01 } from './grassGpuShadow.js';
@@ -1553,14 +1552,9 @@ export class Renderer {
    *  ground. If WebGL2/the layer is unavailable the field simply shows no
    *  grass (grassGpuActive stays false) — never a crash. */
   grassGpu = true;
-  /** G4 — THE OVER-FOOT SKIRT. When true, grass-rooted objects (tree/bush/
-   *  rock/prop in the meadow) get a skirt of GPU blades nestled around their
-   *  foot so they read as embedded. Dev A/B toggle (?skirt=off); on by
-   *  default whenever the GPU meadow is active. */
-  grassSkirtOn = true;
   private grassGpuLayer: GrassGpuLayer | null = null;
   /** Whether the GPU meadow actually drew this frame (→ run the tall y-sort
-   *  and skirt/elevated passes; false → no grass this frame, e.g. no WebGL2
+   *  and elevated passes; false → no grass this frame, e.g. no WebGL2
    *  or `?grass=off`). */
   private grassGpuActive = false;
   /** Pooled scratch for the GPU path — never reallocated per frame. */
@@ -1587,39 +1581,6 @@ export class Renderer {
    *  optimization buys, confessed on the grass line. */
   private grassBandFine = 0;
   private grassBandCoalesced = 0;
-  /** G4 — THE OVER-FOOT SKIRT. This frame's grass-rooted objects (tree,
-   *  bush, rock, prop on a grass tile), gathered as objectItems are emitted
-   *  so each carries its true foot sort row. After the world collect, each
-   *  becomes one skirt band (generateSkirtBlades) drawn OVER its own base. */
-  private readonly grassSkirtSites: {
-    tx: number;
-    ty: number;
-    footY: number;
-    /** Per-type strength (0..1), scaling count/height/radius — rocks low,
-     *  trees full, walls subtle. See skirtStrengthForTile. */
-    strength: number;
-    /** Grass-edge bitmask (SIDE_*): SIDE_ALL for a free-standing wild's ring,
-     *  a partial mask for a wall foot (grass-facing edges only). */
-    sides: number;
-    /** THE SKIRT RIDES ITS OBJECT'S SHELF: the exact `strat` (shelf) of the
-     *  object this skirt nestles. Copied onto the skirt's DrawItem so SHELF
-     *  can never separate the two — the skirt sorts in the object's own slot
-     *  and (by its later `seq`) draws immediately AFTER it. */
-    strat?: number;
-  }[] = [];
-  /** Pooled skirt-blade array (all sites concatenated) + per-site bands. */
-  private readonly grassSkirt: Blade[] = [];
-  private readonly grassSkirtBands: TallBand[] = [];
-  /** Per-tile skirt-blade cache (a still object mints its skirt once). Keyed
-   *  by tile; footY/strength/sides are stored so a tile whose object changed
-   *  (tree→stump, a different foot row, a re-tuned strength) re-mints instead
-   *  of reusing the stale skirt. */
-  private readonly grassSkirtCache = new Map<
-    number,
-    { footY: number; strength: number; sides: number; blades: Blade[] }
-  >();
-  private grassSkirtBlits: readonly BandBlit[] = [];
-  private grassSkirtCanvas: HTMLCanvasElement | null = null;
   /** G-ELEVATED — the raised-terrain coat's per-frame gather: blades + one
    *  band per (row, level), the rendered atlas blits, and its canvas. Emitted
    *  as y-sorted DrawItems (collectGpuElevated) so the raised grass draws over
@@ -1642,7 +1603,7 @@ export class Renderer {
   private grassElevOrnBlits: readonly BandBlit[] = [];
   private grassElevOrnCanvas: HTMLCanvasElement | null = null;
   /** This frame's GrassFrame (camera/wind), stashed by drawGrassGpu so the
-   *  later skirt pass renders under the exact same projection + wind. */
+   *  later elevated pass renders under the exact same projection + wind. */
   private grassFrameSaved: GrassFrame | null = null;
   private readonly lighting = new LightingSystem();
   /** Derived building-interior regions (cutaway, facades, windows). */
@@ -5748,11 +5709,6 @@ export class Renderer {
     this.collectGpuElevated(items, grassBounds);
     cliffArt.collectCliffFaces(this, game, items);
     this.collectRaisedTiles(game, items);
-    // G4 — THE OVER-FOOT SKIRT: now that the world collect has recorded this
-    // frame's grass-rooted objects (grassSkirtSites), nestle a GPU grass
-    // skirt around each object's foot, emitted as y-sorted DrawItems that
-    // draw over each object's lower base edge.
-    this.collectGpuSkirts(items);
     this.collectInteriorRegions(game);
     this.collectBreakingRocks(game, items);
     this.collectFallingTrees(items);
@@ -6004,6 +5960,9 @@ export class Renderer {
       ELEV_H * this.camera.scale,
     );
     items.sort(DRAW_ORDER);
+    // DEV — the sorted-list tap: a rig probe may read this frame's final
+    // draw order (keys only) to verify depth decisions in a live scene.
+    if (this.itemsTap) this.itemsTap(items);
     this.perfMark('sort');
     this.cullHiddenTrees(items);
     this.perfMark('cull');
@@ -9601,33 +9560,6 @@ export class Renderer {
         }
         if (game.world.elevAt(tx, ty) !== 0) item.elevated = true;
         item.strat = this.stratAt(tx, ty);
-        // G4b — THE BUILDING FOOT NESTLES: a wall foot that meets grass gets a
-        // subtle, low, grass-side-only skirt so the building reads as sitting
-        // IN the meadow, not pasted on. Grass-adjacent edges only (never the
-        // stone/path/interior side); skipped for a walls-only run with no
-        // grass neighbour. Elevated feet keep their hard base (the skirt sits
-        // on the ground plane, not up a terrace).
-        if (this.grassGpuActive && this.grassSkirtOn && !item.elevated) {
-          const sides = wallSkirtSidesAt(
-            (this.skirtGroundSampler ??= (x, y) => this.game?.world.groundAt(x, y)),
-            tx,
-            ty,
-            tile,
-          );
-          if (sides !== 0) {
-            // The wall's ground contact is its SOUTH foot (ty+1) — the row the
-            // near face stands on — so the fringe rises exactly there.
-            this.grassSkirtSites.push({
-              tx,
-              ty,
-              footY: ty + 1,
-              strength: skirtStrengthForTile(tile),
-              sides,
-              // The wall's own shelf — the skirt sorts in its slot.
-              strat: this.stratAt(tx, ty),
-            });
-          }
-        }
         items.push(item);
         return;
       }
@@ -9640,25 +9572,6 @@ export class Renderer {
         )
           return;
         const item = this.objectItem(tile, tx, ty, game);
-        // G4 — THE OVER-FOOT SKIRT: a grass-rooted object (tree, bush, rock,
-        // or natural prop standing in the meadow) records its foot row so
-        // the GPU grass pass can nestle a skirt of blades up around its base
-        // (collectGpuSkirts). item.sortY is the object's true foot sort row —
-        // the skirt slots a hair past it, drawing OVER the lower base edge.
-        if (this.grassGpuActive && this.grassRootedSkirt(game, tx, ty, tile)) {
-          // A free-standing wild replaces its own tile and is ringed by
-          // meadow, so it scatters a FULL ring (SIDE_ALL); its strength is
-          // read off its kind (rock → a few short wisps, tree → full collar).
-          this.grassSkirtSites.push({
-            tx,
-            ty,
-            footY: item.sortY,
-            strength: skirtStrengthForTile(tile),
-            sides: SIDE_ALL,
-            // The object's own shelf — the skirt sorts in its slot.
-            strat: this.stratAt(tx, ty),
-          });
-        }
         // THE SHELF LAW: a standing object sorts on the shelf of its
         // own tile, at its raw row. Awnings need no exemption — their
         // host wall shares the tile's shelf, so the Lantern Row order
@@ -9708,7 +9621,21 @@ export class Renderer {
         // THE WORLD ON STAGE: objectItem's family draws only through
         // stage-aware painters (drawPropOutlined / drawFlora / the
         // body-outline path) — the sink may assembly-run it.
-        item.stageSafe = true;
+        //
+        // EXCEPT THE BARRIER FAMILIES (hedges, fences, palisades, iron
+        // fences and their gates, the ruin walls, the dead hedge, the
+        // broken fence): their painters are raw canvas brushes that read
+        // rend.ctx at draw time and know nothing of assembly. Marked
+        // stage-safe, an assembly run "succeeded" while the brush had
+        // painted straight onto the 2D underframe — under every quad the
+        // GL world stream composited after it (the wall band's plinth,
+        // the tall grass, the very body standing behind the hedge, the
+        // sun shadows). The field read: a hedge as a flat dark mat under
+        // its house, the player standing "on" it. They carry a
+        // reconstruction closure + box from stageMarkRaised, so leaving
+        // them unmarked routes them down THE WALL LANE — painted in sort
+        // order through the scratch ledger, exactly like a wall.
+        if (!Renderer.RAW_BARRIER_TILES.has(tile)) item.stageSafe = true;
         items.push(item);
         return;
       }
@@ -10218,8 +10145,12 @@ export class Renderer {
     const crev =
       game.world.get(Math.floor(m.tx / CHUNK_SIZE), Math.floor(m.ty / CHUNK_SIZE))?.rev ?? 0;
     const breathes =
-      (m.kind === RaisedKind.Wall || m.kind === RaisedKind.GarrisonWall) &&
-      !!wallHungInfo(game.world.detailAt(m.tx, m.ty));
+      ((m.kind === RaisedKind.Wall || m.kind === RaisedKind.GarrisonWall) &&
+        !!wallHungInfo(game.world.detailAt(m.tx, m.ty))) ||
+      // A hedge is a living thing: its crown catches the wind's rolling
+      // light and its sprigs flutter (THE BODY HOLDS STILL, the LIFE is
+      // layered on) — it re-paints on the breathing cadence, not once.
+      (m.kind === RaisedKind.Generic && HEDGE_TILES.has(m.tile as Tile));
     // THE REV TELLS THE WHOLE TRUTH (foundation audit): the member's
     // dynamic-paint signature — reveal cut heights, door veil, hearth
     // glass — rides the item into the run rev, so a cached run
@@ -15527,6 +15458,8 @@ export class Renderer {
     this.liveStats.offscreen = offscreen;
   }
 
+  /** DEV — per-frame tap over the sorted draw list (see the sort site). */
+  itemsTap: ((items: DrawItem[]) => void) | null = null;
   /** Viewport culling on/off — the A/B door for rig proofs and the kill
    *  switch if a canopy ever blinks. */
   occlusionOn = true;
@@ -16478,6 +16411,36 @@ export class Renderer {
    *  its own route). None of these read the clock or the sky —
    *  Table's candles, LampPost, Brazier, and Hearth all live outside
    *  this set. */
+  /** The run-merging barrier families whose painters (barrierArt + the
+   *  scarred-land ruin walls) are raw canvas brushes — never assembly-run
+   *  on the stage; they take THE WALL LANE (see the Generic case). */
+  private static readonly RAW_BARRIER_TILES = new Set<number>([
+    Tile.Fence,
+    Tile.FenceDiagNE,
+    Tile.FenceDiagNW,
+    Tile.FenceGate,
+    Tile.FenceGateShut,
+    Tile.Palisade,
+    Tile.PalisadeDiagNE,
+    Tile.PalisadeDiagNW,
+    Tile.PalisadeGate,
+    Tile.PalisadeGateShut,
+    Tile.Hedge,
+    Tile.HedgeDiagNE,
+    Tile.HedgeDiagNW,
+    Tile.HedgeGate,
+    Tile.HedgeGateShut,
+    Tile.HedgeDead,
+    Tile.IronFence,
+    Tile.IronFenceDiagNE,
+    Tile.IronFenceDiagNW,
+    Tile.IronGate,
+    Tile.IronGateShut,
+    Tile.RuinWallStone,
+    Tile.RuinWallWood,
+    Tile.FenceBroken,
+  ]);
+
   private static readonly BAND_STATIC_PROPS = new Set<number>(
     [...Renderer.STATIC_RING_TILES].filter(
       (t) => !Renderer.RUN_RING_TILES.has(t) && t !== Tile.PillarStone,
@@ -19703,12 +19666,6 @@ export class Renderer {
     if (!this.grassGpuLayer) this.grassGpuLayer = new GrassGpuLayer(BLADE_FILLS, ORNAMENT_FILLS);
     const layer = this.grassGpuLayer;
     if (!layer.ok) return false;
-    // G4 — arm the over-foot skirt for this frame: objectItem records its
-    // grass-rooted objects into grassSkirtSites as the world collect runs
-    // (after this pass); collectGpuSkirts then renders + emits them.
-    this.grassSkirtSites.length = 0;
-    this.grassSkirtBlits = [];
-    this.grassSkirtCanvas = null;
     // B3 — TALL INTERLEAVE: the GPU flat field carries only the short
     // `under` coat; the tall standing mass rides the GPU tall-band y-sort
     // (collectGpuTallBands, below) so bodies walk THROUGH thickets.
@@ -19777,9 +19734,9 @@ export class Renderer {
       disturb: dn > 0 ? dz.subarray(0, dn * 4) : undefined,
       disturbVel: dn > 0 ? dv.subarray(0, dn * 2) : undefined,
     };
-    // Stash the frame so the later skirt pass (collectGpuSkirts, run after
-    // the world collect gathers grass-rooted objects) renders its blades
-    // under the exact same projection + wind + disturbers.
+    // Stash the frame so the later elevated pass (collectGpuElevated, run
+    // after the world collect) renders its blades under the exact same
+    // projection + wind + disturbers.
     this.grassFrameSaved = frame;
     // Gather the tall standing mass first — its casts join the short coat's
     // in one uniform GPU shade layer (below), laid UNDER the whole meadow.
@@ -20072,131 +20029,6 @@ export class Renderer {
           } as DrawItem);
         }
       }
-    }
-  }
-
-  /** G4 — is a grass-rooted object here (skirt-eligible + meadow neighbours)?
-   *  The bound sampler reads this.game (always the current world) so it stays
-   *  correct across plane/world swaps, and avoids a per-call closure. */
-  private grassRootedSkirt(_game: ClientGame, tx: number, ty: number, tile: Tile): boolean {
-    return grassRootedSkirtAt(
-      (this.skirtGroundSampler ??= (x, y) => this.game?.world.groundAt(x, y)),
-      tx,
-      ty,
-      tile,
-    );
-  }
-  private skirtGroundSampler: ((tx: number, ty: number) => number | undefined) | null = null;
-
-  /**
-   * G4 — THE OVER-FOOT SKIRT. After the world collect has gathered this
-   * frame's grass-rooted objects (grassSkirtSites), synthesise a small
-   * cluster of grass blades around each object's foot (generateSkirtBlades,
-   * cached per tile), render them through the GPU band atlas as ONE band per
-   * object — each at sortY = the object's foot row + a hair — and emit each
-   * as a y-sorted DrawItem. The band slots JUST past its object, so its
-   * blades draw OVER the object's lower base edge (breaking the hard pasted
-   * line) while the object's mass above still occludes. Reuses the instanced
-   * pipeline (no per-frame bakes); only object-adjacent tiles pay. No-op
-   * when the GPU meadow is inactive, nothing is rooted, or the skirt atlas
-   * is unavailable (the object simply keeps its hard base that frame).
-   */
-  private collectGpuSkirts(items: DrawItem[]): void {
-    if (!this.grassGpuActive || !this.grassSkirtOn) return;
-    const layer = this.grassGpuLayer;
-    const frame = this.grassFrameSaved;
-    const sites = this.grassSkirtSites;
-    if (!layer || !frame || sites.length === 0) return;
-
-    // Build the combined skirt-blade array + one band per object. Blades are
-    // pulled from the per-tile cache (a still object mints its skirt once).
-    const blades = this.grassSkirt;
-    const bands = this.grassSkirtBands;
-    blades.length = 0;
-    bands.length = 0;
-    // Bound the per-tile skirt cache as the player roams (skirt geometry is
-    // static per tile, so a coarse cap + full clear is enough — it refills
-    // from the visible sites in a frame).
-    if (this.grassSkirtCache.size > 8192) this.grassSkirtCache.clear();
-    for (const site of sites) {
-      const key = packTile(site.tx, site.ty);
-      const cached = this.grassSkirtCache.get(key);
-      let skirt: Blade[];
-      if (
-        cached &&
-        cached.footY === site.footY &&
-        cached.strength === site.strength &&
-        cached.sides === site.sides
-      ) {
-        skirt = cached.blades;
-      } else {
-        skirt = generateSkirtBlades(site.tx, site.ty, site.footY, site.strength, site.sides);
-        this.grassSkirtCache.set(key, {
-          footY: site.footY,
-          strength: site.strength,
-          sides: site.sides,
-          blades: skirt,
-        });
-      }
-      if (skirt.length === 0) continue;
-      const i0 = blades.length;
-      let minBy = Infinity;
-      let maxBy = -Infinity;
-      for (const b of skirt) {
-        blades.push(b);
-        if (b.by < minBy) minBy = b.by;
-        if (b.by > maxBy) maxBy = b.by;
-      }
-      bands.push({
-        i0,
-        count: skirt.length,
-        // THE SKIRT IS BOUND TO ITS OBJECT: it takes the object's EXACT foot
-        // sort row (not a +0.02 near-tie, which flipped order under floating
-        // compare as the camera moved → z-fight/flicker). It shares the
-        // object's shelf (`strat`) and, because collectGpuSkirts runs after
-        // the world collect, its stamped `seq` is strictly greater than its
-        // object's — so on the exact (shelf, row) tie the skirt sorts in the
-        // object's own slot, deterministically right AFTER it, every frame.
-        sortY: site.footY,
-        strat: site.strat,
-        minBy,
-        maxBy,
-        // G-ELEVATED: a skirt around an object rooted on raised terrain rides
-        // its shelf too, so the tuft nestles the LIFTED base, not a sunk one.
-        elev: this.fgElevAt(site.tx, site.ty) * ELEV_H,
-      });
-    }
-    if (bands.length === 0) return;
-
-    const blits = layer.renderSkirt(blades, bands, frame);
-    if (blits.length === 0) return;
-    this.grassSkirtBlits = blits;
-    this.grassSkirtCanvas = layer.skirtCanvas;
-    const canvas = layer.skirtCanvas;
-    for (const bl of this.grassSkirtBlits) {
-      const b = bl;
-      items.push({
-        sortY: b.sortY,
-        // Ride the object's shelf so SHELF cannot lift/sink the skirt off its
-        // object; the shared row + the skirt's later `seq` then bind it to draw
-        // immediately after that object, deterministically (no z-fight flicker).
-        strat: b.strat,
-        stageSafe: true,
-        draw: () => {
-          if (this.stageAssembling) {
-            this.stagePushPaintRaw(
-              b.dstX,
-              b.dstY,
-              b.dstW,
-              b.dstH,
-              () => this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH),
-              'grass-skirt',
-            );
-          } else {
-            this.ctx.drawImage(canvas, b.srcX, b.srcY, b.srcW, b.srcH, b.dstX, b.dstY, b.dstW, b.dstH);
-          }
-        },
-      } as DrawItem);
     }
   }
 

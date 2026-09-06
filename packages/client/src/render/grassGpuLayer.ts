@@ -42,7 +42,7 @@ export interface BandBlit {
   dstW: number;
   dstH: number;
   sortY: number;
-  /** Skirt bands only: the object's shelf (`strat`), passed through from the
+  /** The band's shelf (`strat`), passed through from the
    *  band so the emitted DrawItem sorts in the object's own slot. */
   strat?: number;
 }
@@ -124,26 +124,11 @@ export class GrassGpuLayer {
   private shadowInstances: Float32Array = new Float32Array(0);
   private shadowTallInstances: Float32Array = new Float32Array(0);
 
-  /** G4 SKIRT path — its own offscreen atlas canvas + GL context +
-   *  renderer. The over-foot skirt (grass nestling around an object's base)
-   *  renders through the SAME per-band atlas machinery the tall blades use,
-   *  but each grass-rooted object is ONE band at its own foot slot — so its
-   *  atlas cannot share the tall atlas (that canvas is re-blitted at the
-   *  tall bands' own sort rows this same frame). A separate context keeps
-   *  the two atlases independent (and a lost skirt context simply drops the
-   *  skirts that frame — the object falls back to its hard pasted base). */
-  readonly skirtCanvas: HTMLCanvasElement;
-  private skirtGl: WebGL2RenderingContext | null = null;
-  private skirtRenderer: GrassGpuRenderer | null = null;
-  private skirtLost = false;
-  private skirtInstances: Float32Array = new Float32Array(0);
-  private readonly skirtBlits: BandBlit[] = [];
-
   /** G-ELEVATED path — its own offscreen atlas canvas + GL context +
    *  renderer. The raised-terrain coat (grass on plateau tops / terrace
-   *  edges) renders through the SAME per-band atlas machinery the tall + skirt
+   *  edges) renders through the SAME per-band atlas machinery the tall
    *  blades use, one band per elevated (level, row) each LIFTED onto its shelf
-   *  (band.elev). It cannot share the tall/skirt atlases — all three re-blit
+   *  (band.elev). It cannot share the tall atlas — both re-blit
    *  this same frame at their own y-sort rows — so it keeps a fifth context.
    *  A lost elevated context simply drops the raised coat that frame (the
    *  baked meadow already painted the plateau ground beneath). */
@@ -237,21 +222,6 @@ export class GrassGpuLayer {
     });
     this.shadowGl = this.shadowCanvas.getContext('webgl2', ctxOpts);
 
-    // G4 skirt atlas — a fourth WebGL2 canvas/context (see field docs). It
-    // degrades independently: a lost skirt context makes renderSkirt return
-    // an empty band list and objects keep their hard base that frame.
-    this.skirtCanvas = document.createElement('canvas');
-    this.skirtCanvas.addEventListener('webglcontextlost', (e) => {
-      e.preventDefault();
-      this.skirtLost = true;
-      this.skirtRenderer = null;
-    });
-    this.skirtCanvas.addEventListener('webglcontextrestored', () => {
-      this.skirtLost = false;
-      this.buildRenderer();
-    });
-    this.skirtGl = this.skirtCanvas.getContext('webgl2', ctxOpts);
-
     // G-ELEVATED atlas — a fifth WebGL2 canvas/context (see field docs). It
     // degrades independently: a lost elevated context makes renderElev return
     // an empty band list and the raised coat is skipped that frame.
@@ -328,15 +298,6 @@ export class GrassGpuLayer {
         this.shadowRenderer?.dispose();
         this.shadowRenderer = null;
         this.shadowGl = null;
-      }
-    }
-    if (this.skirtGl && !this.skirtLost && !this.skirtRenderer) {
-      try {
-        this.skirtRenderer = new GrassGpuRenderer(this.skirtGl, this.palette);
-      } catch {
-        this.skirtRenderer?.dispose();
-        this.skirtRenderer = null;
-        this.skirtGl = null;
       }
     }
     if (this.elevGl && !this.elevLost && !this.elevRenderer) {
@@ -517,28 +478,6 @@ export class GrassGpuLayer {
     return this.renderBands('tall', tallBlades, bands, f);
   }
 
-  /** True when the skirt atlas path can render this frame. */
-  get skirtOk(): boolean {
-    return this.skirtGl !== null && this.skirtRenderer !== null && !this.skirtLost;
-  }
-
-  /**
-   * G4 — THE OVER-FOOT SKIRT. Identical atlas machinery to renderTall, but
-   * fed the per-object skirt blades (generateSkirtBlades) and one band PER
-   * OBJECT — each band's `sortY` is the object's foot row plus a hair, so
-   * the renderer emits it as a y-sorted DrawItem that draws OVER the
-   * object's lower base. A separate GL context/atlas from the tall path
-   * (both blit this same frame), degrading independently. Returns [] when
-   * the skirt context is unavailable or nothing is in view.
-   */
-  renderSkirt(
-    skirtBlades: readonly Blade[],
-    bands: readonly TallBand[],
-    f: GrassFrame,
-  ): BandBlit[] {
-    return this.renderBands('skirt', skirtBlades, bands, f);
-  }
-
   /** True when the elevated atlas path can render this frame. */
   get elevOk(): boolean {
     return this.elevGl !== null && this.elevRenderer !== null && !this.elevLost;
@@ -546,12 +485,12 @@ export class GrassGpuLayer {
 
   /**
    * G-ELEVATED — THE COAT RIDES THE SHELF. The same atlas machinery as
-   * renderTall/renderSkirt, fed the raised-terrain grass with one band per
+   * renderTall, fed the raised-terrain grass with one band per
    * elevated (level, row); each band carries `elev` (level·ELEV_H) so the
    * shader lifts its blades onto the plateau top exactly as the elevated
    * ground quad lifts. The renderer emits one y-sorted DrawItem per band
    * (drawn OVER its ground row, under bodies standing on it). A separate GL
-   * context/atlas from tall + skirt (all three blit this same frame),
+   * context/atlas from tall (both blit this same frame),
    * degrading independently. Returns [] when the context is unavailable or
    * nothing is in view.
    */
@@ -563,25 +502,24 @@ export class GrassGpuLayer {
     return this.renderBands('elev', elevBlades, bands, f);
   }
 
-  /** Shared atlas render for the tall + skirt band paths: each band renders
+  /** Shared atlas render for the tall + elevated band paths: each band renders
    *  in ISOLATION into its own slot of one offscreen atlas (a single GL
    *  pass), returning each slot's atlas src-rect + screen dst-rect for the
    *  renderer to y-sort. `which` selects the private context/canvas/renderer
    *  + instance buffer so the two atlases never clobber one another. */
   private renderBands(
-    which: 'tall' | 'skirt' | 'elev',
+    which: 'tall' | 'elev',
     srcBlades: readonly Blade[],
     bands: readonly TallBand[],
     f: GrassFrame,
   ): BandBlit[] {
-    const isSkirt = which === 'skirt';
     const isElev = which === 'elev';
-    const out = isElev ? this.elevBlits : isSkirt ? this.skirtBlits : this.bandBlits;
+    const out = isElev ? this.elevBlits : this.bandBlits;
     out.length = 0;
-    const gl = isElev ? this.elevGl : isSkirt ? this.skirtGl : this.tallGl;
-    const renderer = isElev ? this.elevRenderer : isSkirt ? this.skirtRenderer : this.tallRenderer;
-    const canvas = isElev ? this.elevCanvas : isSkirt ? this.skirtCanvas : this.tallCanvas;
-    const okFlag = isElev ? this.elevOk : isSkirt ? this.skirtOk : this.tallOk;
+    const gl = isElev ? this.elevGl : this.tallGl;
+    const renderer = isElev ? this.elevRenderer : this.tallRenderer;
+    const canvas = isElev ? this.elevCanvas : this.tallCanvas;
+    const okFlag = isElev ? this.elevOk : this.tallOk;
     if (!okFlag || !gl || !renderer) return out;
     const tallBlades = srcBlades;
     if (tallBlades.length === 0 || bands.length === 0) return out;
@@ -673,10 +611,9 @@ export class GrassGpuLayer {
     };
     const packed = packBladeInstances(
       tallBlades,
-      isElev ? this.elevInstances : isSkirt ? this.skirtInstances : this.tallInstances,
+      isElev ? this.elevInstances : this.tallInstances,
     );
     if (isElev) this.elevInstances = packed;
-    else if (isSkirt) this.skirtInstances = packed;
     else this.tallInstances = packed;
     renderer.beginBands(packed, tallBlades.length, proj3, f.timeSec, {
       windGain: f.windGain,
@@ -717,7 +654,7 @@ export class GrassGpuLayer {
   /** Pack each band's screen bbox into a distinct slot of ONE vertical-stack
    *  atlas, sizing the atlas to fit. A null box (off-screen / empty band) or a
    *  slot that would overflow MAX_ATLAS gets a null slot (that band is
-   *  dropped). Shared by the tall/skirt/elev coat, the elevated cast and the
+   *  dropped). Shared by the tall/elev coat, the elevated cast and the
    *  elevated ornament paths so all size their atlas the same way. */
   private packSlots(
     boxes: readonly (SlotBox | null)[],
@@ -1080,7 +1017,6 @@ export class GrassGpuLayer {
     this.ornaments?.dispose();
     this.tallRenderer?.dispose();
     this.shadowRenderer?.dispose();
-    this.skirtRenderer?.dispose();
     this.elevRenderer?.dispose();
     this.elevShadowRenderer?.dispose();
     this.elevOrnRenderer?.dispose();
@@ -1088,28 +1024,24 @@ export class GrassGpuLayer {
     this.ornaments = null;
     this.tallRenderer = null;
     this.shadowRenderer = null;
-    this.skirtRenderer = null;
     this.elevRenderer = null;
     this.elevShadowRenderer = null;
     this.elevOrnRenderer = null;
     this.gl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.tallGl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.shadowGl?.getExtension('WEBGL_lose_context')?.loseContext();
-    this.skirtGl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.elevGl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.elevShadowGl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.elevOrnGl?.getExtension('WEBGL_lose_context')?.loseContext();
     this.gl = null;
     this.tallGl = null;
     this.shadowGl = null;
-    this.skirtGl = null;
     this.elevGl = null;
     this.elevShadowGl = null;
     this.elevOrnGl = null;
     this.lost = true;
     this.tallLost = true;
     this.shadowLost = true;
-    this.skirtLost = true;
     this.elevLost = true;
     this.elevShadowLost = true;
     this.elevOrnLost = true;

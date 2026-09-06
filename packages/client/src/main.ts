@@ -287,9 +287,6 @@ FOOTPRINT_TUNE.enabled = localStorage.getItem('arx.footprints') !== 'off';
   // escape that disables grass entirely.
   const grassParam = new URLSearchParams(location.search).get('grass');
   renderer.grassGpu = grassParam !== 'off';
-  // G4 — THE OVER-FOOT SKIRT: on by default with the GPU meadow; ?skirt=off
-  // is the dev A/B (a tree with its hard pasted base vs nestled in grass).
-  renderer.grassSkirtOn = new URLSearchParams(location.search).get('skirt') !== 'off';
 }
 // SETTINGS' TAB RAIL: Sound / Display / Controls, one bench standing
 // at a time, LT/RT stepping them like every room's pager.
