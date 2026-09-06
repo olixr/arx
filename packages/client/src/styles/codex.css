@@ -2271,3 +2271,69 @@ body:not(.no-ui-motion) .seat-plaque .plaque-well {
     inset 0 0 0 var(--hairline) var(--ink-line),
     0 0 0.5rem rgba(217, 164, 65, 0.65);
 }
+
+/* THE HAND SEES — the bench speaks the grammar: role and word seals,
+   then THE COMBO: the arts that set this one up and the arts that
+   answer it, across every school, each a plate you can walk to. */
+.grammar-seals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0.375rem 0 0.25rem;
+}
+.grammar-seals .mark-seal.role {
+  font-weight: 800;
+}
+.combo-block {
+  margin: 0.625rem 0 0.25rem;
+}
+.combo-title {
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-quiet, #a39cae);
+  margin: 0.375rem 0 0.25rem;
+}
+.combo-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+.combo-plate {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.5rem 0.125rem 0.125rem;
+  border: 0.125rem solid var(--ui-quiet-ink, #3a3442);
+  background: rgba(24, 17, 31, 0.35);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+}
+.combo-plate:hover,
+.combo-plate:focus-visible {
+  border-color: #f2c94c;
+  outline: none;
+}
+.combo-plate img {
+  width: 1.75rem;
+  height: 1.75rem;
+  image-rendering: pixelated;
+}
+.combo-plate .combo-word {
+  color: #f2c94c;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+}
+.combo-plate .combo-school {
+  color: var(--ink-quiet, #a39cae);
+  font-size: 0.625rem;
+}
+.combo-empty {
+  font-size: 0.75rem;
+  color: var(--ink-quiet, #a39cae);
+  font-style: italic;
+}

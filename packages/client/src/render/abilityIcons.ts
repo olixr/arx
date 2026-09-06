@@ -1,4 +1,5 @@
 import { PASSIVES } from '@arx/shared';
+import { abilityDef } from '@arx/content';
 import { burstStarPath, fxStyleFor, jaggedRingPath, type FxStyle } from './abilityFx.js';
 import { paintedIconUrl, paintedIconUrlIfBaked, queueIconTask } from './icons.js';
 import { shade } from './tint.js';
@@ -1236,21 +1237,27 @@ Object.assign(PLATES, {
   },
   // Wingbeat — three arrows in one flutter, the wing's curve behind.
   wingbeat: (st) => (c) => {
+    // THE MASTERED HAND reforged it: the archer's SKIP BACK — the wing
+    // beats once, the body goes the other way, and three feathers are
+    // loosed at the foe you left. The plate is the beat and the leap.
     c.translate(0.5, 0.5);
     c.strokeStyle = st.core;
     c.lineWidth = 0.05;
     c.lineCap = 'round';
     c.beginPath();
-    c.moveTo(-0.4, 0.06);
-    c.quadraticCurveTo(-0.12, -0.42, 0.34, -0.34);
+    c.moveTo(0.38, 0.1);
+    c.quadraticCurveTo(0.1, -0.44, -0.36, -0.3);
     c.stroke();
     c.beginPath();
-    c.moveTo(-0.34, 0.2);
-    c.quadraticCurveTo(-0.08, -0.2, 0.3, -0.16);
+    c.moveTo(0.32, 0.24);
+    c.quadraticCurveTo(0.06, -0.18, -0.3, -0.1);
     c.stroke();
-    arrow(c, -0.02, 0.12, -0.12, 0.66, st);
-    arrow(c, 0.02, 0.28, 0.02, 0.6, st);
-    arrow(c, -0.04, -0.04, -0.26, 0.6, st);
+    // The road backward, in chevrons the way every road is drawn.
+    chevrons(c, -0.1, 0.3, Math.PI, st, 3, 0.9);
+    // Three feathers loosed forward.
+    for (const [x, y, a] of [[0.06, -0.02, -0.16], [0.14, 0.14, 0.04], [0.02, 0.3, 0.18]] as const) {
+      fill(c, st.mid, [[x, y], [x + 0.3 * Math.cos(a), y + 0.3 * Math.sin(a)], [x + 0.22 * Math.cos(a) + 0.05 * Math.sin(a), y + 0.22 * Math.sin(a) - 0.05 * Math.cos(a)]]);
+    }
   },
   // Verdant Burst — the arrow planted like a seed, the ground blooming
   // teeth around it.
@@ -5977,13 +5984,18 @@ Object.assign(PLATES, {
   // Emberhead — the fire-tipped pair: two shafts, twin flames riding
   // their heads, coals already dropping.
   emberhead: (st) => (c) => {
-    c.translate(0.5, 0.5);
-    c.rotate(-0.2);
-    arrow(c, 0, -0.12, 0, 0.82, st, 1.1);
-    arrow(c, 0, 0.12, 0, 0.82, st, 1.1);
-    flame(c, 0.38, -0.14, 0.3, st, 0.1);
-    flame(c, 0.38, 0.1, 0.26, st, 0.08);
-    dot(c, st.deep, -0.2, 0.3, 0.03);
+    // THE MASTERED HAND reforged it: one drawn shaft carrying a fire-
+    // head DOWN into a patch, and the patch keeps burning — the plate
+    // is the fall and the ground, not the pair.
+    c.translate(0.5, 0.52);
+    ground(c, 0.02, 0.36, st);
+    arrow(c, -0.16, -0.22, 0.9, 0.62, st, 1.1);
+    orb(c, 0.16, 0.06, 0.15, st);
+    flame(c, 0.16, -0.02, 0.34, st, 0.1);
+    flame(c, -0.2, 0.2, 0.2, st, 0.06);
+    flame(c, 0.36, 0.22, 0.18, st, 0.06);
+    dot(c, st.deep, -0.06, 0.34, 0.03);
+    dot(c, st.deep, 0.3, 0.36, 0.025);
   },
   // Skyloom — the stitched line: three marks threaded by the shuttle
   // shaft, the thread still trailing.
@@ -7530,17 +7542,30 @@ Object.assign(PLATES, {
   // level, the road gone to chevrons, every body on the run pierced,
   // the school's one crown riding the point.
   sundering_lance: (st) => (c) => {
+    // THE MASTERED HAND reforged it: a CASTED lance — the point held
+    // level while the breath draws, then one bright line through every
+    // body on the road, and the road left torn. The plate is the line
+    // and the tear, the crown still riding the point.
     c.translate(0.5, 0.5);
     c.rotate(-0.14);
-    fill(c, st.deep, [[-0.48, -0.13], [0.46, -0.09], [0.46, 0.09], [-0.48, 0.13]]);
-    chevrons(c, -0.36, 0.0, Math.PI, st, 3, 1.15);
-    for (const x of [-0.14, 0.12]) {
-      ringDot(c, st.mid, x, 0, 0.07, 0.026);
-      dot(c, st.deep, x, 0, 0.03);
+    // The torn road: a dark seam with the earth's edges lifted.
+    fill(c, st.deep, [[-0.48, 0.16], [0.4, 0.1], [0.4, 0.2], [-0.48, 0.26]]);
+    fill(c, st.mid, [[-0.36, 0.12], [-0.22, 0.05], [-0.14, 0.14]]);
+    fill(c, st.mid, [[0.02, 0.1], [0.16, 0.03], [0.22, 0.12]]);
+    // The line the point drew: one bright core, the bodies it passed rung as marks.
+    c.strokeStyle = st.core;
+    c.lineCap = 'round';
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(-0.3, -0.04);
+    c.lineTo(0.5, -0.04);
+    c.stroke();
+    for (const x of [-0.06, 0.2]) {
+      ringDot(c, st.spark, x, -0.04, 0.07, 0.026);
     }
-    pole(c, 0.06, 0, 1.0, st, 0);
-    crown(c, 0.42, -0.16, 0.22, st.mid, st.core);
-    star4(c, 0.5, 0, 0.07, st.core);
+    pole(c, -0.08, -0.04, 0.9, st, 0);
+    crown(c, 0.36, -0.2, 0.22, st.mid, st.core);
+    star4(c, 0.5, -0.04, 0.08, st.core);
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
@@ -7855,7 +7880,47 @@ export function abilityIconUrl(id: string, size = 64): string {
         dot(c, st.deep, 0, 0, 0.2);
         star4(c, 0, 0, 0.12, st.core);
       };
-  return paintedIconUrl(`ability:${id}`, painter, st.mid, size);
+  return paintedIconUrl(`ability:${id}`, withRoleRune(id, painter, st), st.mid, size);
+}
+
+/**
+ * THE HAND SEES: every technique plate wears its ROLE as one small rune
+ * in the low corner — opener a rising quarter, payoff a burst, sustain
+ * two bars, answer a roof, crown a crown — so the hotbar reads the
+ * three acts at a glance. Drawn AFTER the fitted plate, in the plate's
+ * own ink, never scaled with it.
+ */
+function withRoleRune(id: string, painter: Painter, st: FxStyle): Painter {
+  const role = abilityDef(id)?.role;
+  if (!role) return painter;
+  return (c) => {
+    c.save();
+    painter(c);
+    c.restore();
+    const x = 0.84;
+    const y = 0.84;
+    // A dark seat so the rune reads on any plate.
+    dot(c, st.deep, x, y, 0.13);
+    switch (role) {
+      case 'opener':
+        ringDot(c, st.core, x, y, 0.075, 0.03);
+        fill(c, st.core, [[x, y], [x + 0.075, y], [x + 0.053, y - 0.053], [x, y - 0.075]]);
+        break;
+      case 'payoff':
+        star4(c, x, y, 0.09, st.core);
+        break;
+      case 'sustain':
+        fill(c, st.core, [[x - 0.075, y - 0.05], [x + 0.075, y - 0.05], [x + 0.075, y - 0.02], [x - 0.075, y - 0.02]]);
+        fill(c, st.core, [[x - 0.075, y + 0.02], [x + 0.075, y + 0.02], [x + 0.075, y + 0.05], [x - 0.075, y + 0.05]]);
+        break;
+      case 'answer':
+        fill(c, st.core, [[x - 0.08, y + 0.01], [x, y - 0.075], [x + 0.08, y + 0.01], [x + 0.05, y + 0.01], [x + 0.05, y + 0.07], [x - 0.05, y + 0.07], [x - 0.05, y + 0.01]]);
+        break;
+      case 'crown':
+        crown(c, x, y + 0.01, 0.16, st.core, st.spark);
+        break;
+    }
+  };
 }
 
 /**

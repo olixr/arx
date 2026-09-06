@@ -14,6 +14,7 @@ import { itemIconUrl, sneakEyeUrl } from '../render/icons.js';
 import { abilityIconUrl, passiveIconUrl } from '../render/abilityIcons.js';
 import { bindings, type ActionId } from '../input/bindings.js';
 import { elementTint } from '../render/wornLight.js';
+import { artGrammarLine, wordOf } from './artWords.js';
 
 /**
  * THE METER SHOWS ITS HAND: the wire carries only (id, have, need) for
@@ -125,6 +126,21 @@ export class Hotbar {
   private readonly wasDormant: boolean[] = [false, false, false, false];
   /** THE FOLLOW-THROUGH: last-written open state per well (edge-only class writes). */
   private readonly wasOpen: boolean[] = [false, false, false, false];
+  private window!: HTMLDivElement;
+  private windowWord!: HTMLSpanElement;
+  private windowDrain!: HTMLSpanElement;
+  private windowOn = false;
+  private windowText = '';
+  private landedAt = 0;
+  private finaleSlot: AbilitySlot | null = null;
+
+  /** THE FINALE is coming: the singing well breathes hard for its last beat. */
+  setFinale(slot: AbilitySlot | null): void {
+    if (slot === this.finaleSlot) return;
+    if (this.finaleSlot !== null) this.slots[this.finaleSlot]?.classList.remove('finale');
+    if (slot !== null) this.slots[slot]?.classList.add('finale');
+    this.finaleSlot = slot;
+  }
   private trayKey = '';
   /** Fires when a slot transitions to ready (for the soft tick). */
   onReady: (() => void) | null = null;
@@ -197,6 +213,14 @@ export class Hotbar {
       this.wipes[i] = wipe;
       this.icons[i] = icon;
     }
+    // THE HAND SEES: the open word's ribbon (one for the whole tray).
+    this.window = document.createElement('div');
+    this.window.className = 'hotbar-window';
+    this.windowWord = document.createElement('span');
+    this.windowDrain = document.createElement('span');
+    this.windowDrain.className = 'window-drain';
+    this.window.append(this.windowWord, this.windowDrain);
+    this.root.appendChild(this.window);
 
     // The stealth eye lives beside the buff chips, shown only while the
     // sneak latch is on: half-lidded = sneaking, closed = hidden, open
@@ -269,12 +293,13 @@ export class Hotbar {
         el.classList.remove('empty');
         el.classList.toggle('dormant', dormant);
         // THE SPOKEN TIMING: a breath or a note names its length.
+        const grammar = artGrammarLine(ab);
         const timing =
           (ab.castTicks
             ? ` · winds ${ab.castTicks / 20}s`
             : ab.channelTicks && ab.shape !== 'tame'
               ? ` · held ${ab.channelTicks / 20}s`
-              : '') + artGrammar(ab);
+              : '') + (grammar ? `\n${grammar}` : '');
         el.title = dormant
           ? `${ab.name} sleeps. Hold a weapon that teaches it.`
           : `${ab.name} — ${ab.desc}${timing}`;
@@ -321,6 +346,41 @@ export class Hotbar {
       if (open !== this.wasOpen[slot]) {
         this.wasOpen[slot] = open;
         el.classList.toggle('open', open);
+      }
+      // THE FOLLOW LANDED: one hard flash on the well that answered.
+      const landed = game.followLanded;
+      if (landed && landed.slot === slot && landed.at !== this.landedAt) {
+        this.landedAt = landed.at;
+        el.classList.remove('landed');
+        void el.offsetWidth;
+        el.classList.add('landed');
+      }
+    }
+
+    // The open word's ribbon: named, draining with the LONGEST window
+    // any seated answer holds (the last well to go dark).
+    {
+      const win = game.artOpen;
+      let longest = 0;
+      if (win) {
+        for (const slot of [0, 1, 2, 3] as const) {
+          const ab = game.slotAbilityDef(slot as AbilitySlot);
+          if (ab?.follow && followMatches(ab.follow, win.tag)) longest = Math.max(longest, ab.follow.windowTicks * TICK_MS);
+        }
+      }
+      const left = win && longest > 0 ? longest - (now - win.sinceMs) : 0;
+      const on = left > 0;
+      if (on !== this.windowOn) {
+        this.windowOn = on;
+        this.window.classList.toggle('on', on);
+      }
+      if (on) {
+        const text = `${wordOf(win!.tag).seal} stands`;
+        if (text !== this.windowText) {
+          this.windowText = text;
+          this.windowWord.textContent = text;
+        }
+        this.windowDrain.style.transform = `scaleX(${Math.max(0, Math.min(1, left / longest)).toFixed(3)})`;
       }
     }
 

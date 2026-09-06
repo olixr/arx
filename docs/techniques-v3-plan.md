@@ -612,3 +612,39 @@ wild bodies inherit the paced pool (recorded, not a bug).
   for beasts. ✗ recorded
 - *"Allies"* — held ground reaches the caster only at v1. ✗ recorded
 
+### Phase 6 — THE HAND SEES (2026-09-05): the UI speaks the grammar
+
+The wire and the model spoke in field names; the player never has to.
+`ui/artWords.ts` = THE WORD BOOK (all 24 words the techniques leave and
+read, each a whole sentence in THE PEOPLE SPEAK register: "brands the
+foe for the next shot" / "a branded foe"), THE ROLE BOOK (five roles
+with glyph, tone and a sentence), `followSentence` / `leavesSentence`,
+and the combo finders `setUpBy` / `answeredBy` across every school
+(a secret in another hand answers your word — the free hand shown).
+Contract test: every word in content has a sentence; partners are
+symmetric across schools.
+
+- **Codex bench**: role and word seals under the name (`✦ Payoff ·
+  answers Brand`); the measures rows speak ("Answers: a branded foe ·
+  3s", "Leaves: Brand") with whole-sentence tips; THE COMBO block last
+  on the bench — "Set up by" and "Answered by" as plates (art, word,
+  school) you can walk to.
+- **Hotbar**: the open word's RIBBON above the tray ("BURN STANDS", a
+  drain bar for the longest seated window); the answering well glows
+  gold (Phase 1); the well FLASHES when its answer lands (client
+  detects a seat going on cooldown while its follow read the open
+  word — `game.followLanded`); the singing well breathes hard inside
+  the last beat of a finale note (`setFinale`); tooltips carry the
+  spoken grammar line.
+- **Spell plates**: every technique plate wears its ROLE as a small
+  rune in the low corner (opener quarter, payoff burst, sustain bars,
+  answer roof, crown) drawn after the fitted plate in the plate's ink;
+  the three plates that lied after the reshapes were repainted
+  (emberhead = the fall and the burning patch; sundering lance = the
+  drawn line and the torn road; wingbeat = the skip back and three
+  feathers loosed).
+- **Proof**: `scripts/probes/ui-hand-sees.mjs` on the rig lane
+  (restarted on the new server code): bench on Twin Strike and
+  Wickfire, the tray seated, the word standing, the answer landed —
+  viewed. Client 1260 tests, tsc clean. `window.dcPanels` dev handle.
+

@@ -2,7 +2,7 @@ import { procShape } from './render/wornLight.js';
 import { isStageResTier } from './render/stage/renderScale.js';
 import { deckFillAt, fillContains } from './render/terrain.js';
 import { AWNING_HOST_TILES, AWNING_SHAPES, CHUNK_SIZE, EntityKind, FENCE_TILES, GARRISON_TILES, HEDGE_TILES, PoseState, ROCK_TILES, SWAP_BEAT_MS, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, hangHostTiles, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo, type EntityMeta, type EquipSlot } from '@arx/shared';
-import { BUILDABLES, DYE_PIGMENTS, ELEMENT_COLORS, POI_DEFS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, isDaggerStats, itemDef, npcActor, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
+import { BUILDABLES, DYE_PIGMENTS, ELEMENT_COLORS, POI_DEFS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, abilityDef, buildableForTile, buildableGround, enchantDef, isDaggerStats, itemDef, npcActor, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { farmBins, farmJobs, farmKey } from './game/farmCare.js';
 import { WORK_RECIPES, WORK_VERBS, workDone, type WorkStation } from '@arx/content';
@@ -1675,6 +1675,8 @@ const game = new ClientGame(input, {
 (window as unknown as { dcMusic: TrackPlayer }).dcMusic = music;
 // Dev/Playwright handle: the renderer beside the game (camera, anims).
 (window as unknown as { dcRenderer: Renderer }).dcRenderer = renderer;
+// Dev/Playwright handle: the panels beside the game (THE HAND SEES proof drives the codex through it).
+(window as unknown as { dcPanels: Panels }).dcPanels = panels;
 
 // `?fx` — THE MATTER LAB: cycle material × deployment live, in-world
 // (the `?icons` contract: the game runs untouched, the lever rides on
@@ -3602,6 +3604,21 @@ function frame(now: number): void {
     hotbar.setChanneling(
       typeof game.action?.slot === 'number' ? (game.action.slot as 0 | 1 | 2 | 3) : null,
     );
+    // THE FINALE is coming: inside the last beat of a note that pays on
+    // it, the singing well breathes hard (THE HAND SEES).
+    {
+      const act = game.action;
+      let fin: 0 | 1 | 2 | 3 | null = null;
+      if (act?.ability && typeof act.slot === 'number') {
+        const ab = abilityDef(act.ability);
+        if (ab?.channelTicks && (ab.finaleMult ?? 1) > 1) {
+          const every = (ab.pulseEveryTicks ?? 16) * TICK_MS;
+          const left = act.durationMs - (performance.now() - act.startedAt);
+          if (left <= every && left > 0) fin = act.slot as 0 | 1 | 2 | 3;
+        }
+      }
+      hotbar.setFinale(fin);
+    }
     // The arm moment travels through the hands — one soft tick, pad only.
     if (live !== null && !aimWasActive && input.padPrimary()) input.rumble(0.06, 0.22, 45);
     aimWasActive = live !== null;

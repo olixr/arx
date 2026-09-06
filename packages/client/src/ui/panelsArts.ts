@@ -8,6 +8,7 @@ import { abilityIconUrl, queueAbilityIcon } from '../render/abilityIcons.js';
 import { itemIconUrl } from '../render/icons.js';
 import { SheetVerb, openSheet } from './kit/contextSheet.js';
 import { glyphLine, seatChip } from './kit/glyphs.js';
+import { ROLE_BOOK, afterWords, answeredBy, followSentence, leavesSentence, setUpBy, wordOf } from './artWords.js';
 import { socket } from './kit/plates.js';
 import { ringGauge } from './kit/ring.js';
 import { bigButton } from './panel.js';
@@ -17,6 +18,7 @@ import { CAST_STILL_FACTOR, HIDDEN_SKILLS, RANK_ROMAN, SKILL_IDS, SkillId, TECHN
 // rides; touched only at render time, long after both initialize.
 import { SKILL_FACE, WIELD_WORD } from './panelFaces.js';
 import type { Panels } from './panels.js';
+import type { AbilityDef } from '@arx/shared';
 
 /** Combat schools owning a technique ladder, hidden law honored. */
 export function artsSchoolIds(host: Panels): SkillId[] {
@@ -1974,6 +1976,21 @@ export function renderArtsBench(host: Panels, all?: Array<{ style: SkillId; t: T
   }
   head.appendChild(state);
 
+  // THE HAND SEES: the role and the words, worn as seals under the name.
+  if (st !== 'veiled' && (ab.role || ab.tag || ab.follow)) {
+    const seals = document.createElement('div');
+    seals.className = 'grammar-seals';
+    if (ab.role) {
+      const r = ROLE_BOOK[ab.role];
+      const seal = markSeal(host, `${r.glyph} ${r.name}`, r.tone, r.said);
+      seal.classList.add('role');
+      seals.appendChild(seal);
+    }
+    if (ab.tag) seals.appendChild(markSeal(host, `leaves ${wordOf(ab.tag).seal}`, '#f2c94c', leavesSentence(ab)));
+    for (const w of afterWords(ab)) seals.appendChild(markSeal(host, `answers ${wordOf(w).seal}`, '#e07a3a', followSentence(ab)));
+    head.appendChild(seals);
+  }
+
   // THE LESSON LAW's meter — the courtship told PLAINLY (user
   // mandate 2026-07-31, supersedes the launch quiet-fill: the player
   // must know how close the art is to staying). The bar carries its
@@ -2067,21 +2084,14 @@ export function renderArtsBench(host: Panels, all?: Array<{ style: SkillId; t: T
     // THE MASTERED HAND: the relationships between presses, each a
     // full-bar row (they are facts, not figures against the envelope).
     if (ab.follow) {
-      const after = typeof ab.follow.after === 'string' ? ab.follow.after : ab.follow.after.join(' or ');
-      const gain = ab.follow.damageMult
-        ? `×${ab.follow.damageMult} damage`
-        : ab.follow.status
-          ? `lays ${ab.follow.status.status}`
-          : ab.follow.refundTicks
-            ? `${secs(ab.follow.refundTicks)} given back`
-            : 'answers';
+      const reads = afterWords(ab).map((w) => wordOf(w).reads);
       measures.appendChild(
         measureRow(host, {
-          label: 'Follows',
-          value: `after ${after} · ${gain}`,
+          label: 'Answers',
+          value: `${reads.join(' or ')} · ${secs(ab.follow.windowTicks)}`,
           frac: 1,
-          tone: '#f2c94c',
-          tip: `Cast within ${secs(ab.follow.windowTicks)} of an art that leaves ${after} and this one ${gain}. A follow spends the opening; a held note reads it at the press.`,
+          tone: '#e07a3a',
+          tip: `${followSentence(ab)} An answer spends the opening; a held note reads it at the press. The well glows gold while the word stands.`,
         }),
       );
     }
@@ -2089,10 +2099,10 @@ export function renderArtsBench(host: Panels, all?: Array<{ style: SkillId; t: T
       measures.appendChild(
         measureRow(host, {
           label: 'Leaves',
-          value: ab.tag,
+          value: wordOf(ab.tag).seal,
           frac: 1,
           tone: '#f2c94c',
-          tip: `The word this art leaves in the air for a follower to answer.`,
+          tip: `${leavesSentence(ab)} The word stands for a few seconds; any art that answers it lands heavier while it does.`,
         }),
       );
     }
@@ -2237,6 +2247,10 @@ export function renderArtsBench(host: Panels, all?: Array<{ style: SkillId; t: T
   }
 
   // THE PROVING GROUND reads the same honed figures the measures do.
+  // THE COMBO: who sets this art up and who answers it, across every
+  // school (a secret in another hand answers your word too) — last on
+  // the bench, under the measures, where the eye lands after the numbers.
+  if (st !== 'veiled') renderCombo(host, ab);
   host.ground.show(st === 'veiled' ? null : ab);
 
   // THE HONED-ART LAW's spine: the four ranks as studs on one forged
@@ -2296,4 +2310,64 @@ export function renderArtsBench(host: Panels, all?: Array<{ style: SkillId; t: T
     }
     host.artsDetail.appendChild(seats);
   }
+}
+
+
+/** THE COMBO block on the bench: setups above, answers below, each a plate you can walk to. */
+function renderCombo(host: Panels, ab: AbilityDef): void {
+  const setups = setUpBy(ab);
+  const answers = answeredBy(ab);
+  if (!setups.length && !answers.length) return;
+  const block = document.createElement('div');
+  block.className = 'combo-block';
+  const row = (title: string, list: ReturnType<typeof setUpBy>, empty: string): void => {
+    const h = document.createElement('div');
+    h.className = 'combo-title';
+    h.textContent = title;
+    block.appendChild(h);
+    const r = document.createElement('div');
+    r.className = 'combo-row';
+    if (!list.length) {
+      const e = document.createElement('span');
+      e.className = 'combo-empty';
+      e.textContent = empty;
+      r.appendChild(e);
+    }
+    for (const p of list.slice(0, 8)) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'combo-plate';
+      b.dataset.tipname = p.name;
+      b.dataset.tipsub = abilityDef(p.id)?.desc ?? '';
+      const img = document.createElement('img');
+      img.draggable = false;
+      queueAbilityIcon(img, p.id, 40);
+      const name = document.createElement('span');
+      name.textContent = p.name;
+      const word = document.createElement('span');
+      word.className = 'combo-word';
+      word.textContent = wordOf(p.word).seal;
+      const school = document.createElement('span');
+      school.className = 'combo-school';
+      school.textContent = HIDDEN_SKILLS[p.style as SkillId]?.name ?? p.style;
+      b.append(img, name, word, school);
+      b.addEventListener('click', () => {
+        host.artsWing = 'arts';
+        host.artsSchoolSel = p.style as SkillId;
+        host.artsSel = p.id;
+        renderArts(host);
+      });
+      r.appendChild(b);
+    }
+    if (list.length > 8) {
+      const more = document.createElement('span');
+      more.className = 'combo-empty';
+      more.textContent = `and ${list.length - 8} more`;
+      r.appendChild(more);
+    }
+    block.appendChild(r);
+  };
+  if (ab.follow) row('Set up by', setups, 'Nothing leaves this word yet.');
+  if (ab.tag) row('Answered by', answers, 'Nothing answers this word yet.');
+  host.artsDetail.appendChild(block);
 }

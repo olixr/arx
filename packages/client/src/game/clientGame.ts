@@ -1,6 +1,7 @@
 import {
   CAST_STILL_FACTOR,
   CHUNK_SIZE,
+  followMatches,
   CLIENT_REVEAL_MS,
   ChunkStore,
   DRAW_FULL_TICKS,
@@ -664,6 +665,8 @@ export class ClientGame {
    * art whose follow reads the tag while its own window still stands.
    */
   artOpen: { tag: string; sinceMs: number } | null = null;
+  /** THE FOLLOW LANDED: the seat whose answer just read the open word, stamped for the hotbar's flash. */
+  followLanded: { slot: AbilitySlot; at: number } | null = null;
   /** THE SECOND HAND: the seated techniques, [Q, R] (server-confirmed). */
   techniques: [string | null, string | null] = [null, null];
   /** Earned arts: deed pages and mastered secrets alike (server truth). */
@@ -2285,8 +2288,19 @@ export class ClientGame {
     },
     cooldowns: (g, msg) => {
       const now = performance.now();
+      const prevCd = [0, 1, 2, 3].map((i) => g.abilityReadyAt[i]! - now);
       g.abilityMax = [msg.max[0], msg.max[1], msg.max[2], msg.max[3]];
       for (let i = 0; i < 4; i++) g.abilityReadyAt[i] = now + msg.cd[i]! * TICK_MS;
+      // THE FOLLOW LANDED: a seat that just went on cooldown while its
+      // answer read the open word — the well flashes once.
+      const before = g.artOpen;
+      for (let i = 0; i < 4; i++) {
+        if (!(prevCd[i]! <= 0 && msg.cd[i]! > 0)) continue;
+        const ab = g.slotAbilityDef(i as AbilitySlot);
+        if (before && ab?.follow && followMatches(ab.follow, before.tag) && now - before.sinceMs <= ab.follow.windowTicks * TICK_MS) {
+          g.followLanded = { slot: i as AbilitySlot, at: now };
+        }
+      }
       g.artOpen = msg.open ? { tag: msg.open.tag, sinceMs: now - msg.open.age * TICK_MS } : null;
     },
     combo: (g, msg) => {
