@@ -1,0 +1,11 @@
+{
+  "id": "drusa_ninth",
+  "start": "ninth",
+  "bindings": [{ "kind": "actor", "target": "dolmen_drusa", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "ninth",
+      "text": "Four courses wet from the bottom row. The top row last. Tell the sheep man that, since he asks us nothing. The last dry course is the ninth. We stop at the ninth. We set here. Lower."
+    }
+  ]
+}

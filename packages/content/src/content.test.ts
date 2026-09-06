@@ -43,6 +43,7 @@ import { buildLowhall } from './maps/lowhall.js';
 import { buildAshlamp } from './maps/ashlamp.js';
 import { buildFenside } from './maps/fenside.js';
 import { buildPicket, buildTurnoff, buildWardthread } from './maps/wardthread.js';
+import { buildSett } from './maps/sett.js';
 import { AMBERFORD_RECT, EVENFALL_RECT, HARTFELL_RECT, KINGSDELF_RECT, SALTMERE_RECT, SILVERFALL_RECT } from './geography.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import { zonePlacementErrors } from './maps/validateZone.js';
@@ -1213,6 +1214,9 @@ test('every authored zone passes the placement vet — no orphaned wall hangings
     ['wardthread', buildWardthread],
     ['picket', buildPicket],
     ['turnoff', buildTurnoff],
+    // THE CONTESTED LANDS (band 9d): the Sett takes the same vet
+    // (eleven actor rows and Vorl's one spawn row; no board).
+    ['sett', buildSett],
   ];
   for (const [name, build] of towns) {
     const errors = zonePlacementErrors(build()).filter((e) => e.includes('wall-hung'));

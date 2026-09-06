@@ -60,6 +60,12 @@ export function zonePlacementErrors(zone: ZoneDef): string[] {
     if (s.level !== undefined && (!Number.isInteger(s.level) || s.level < 1 || s.level > 99)) {
       errors.push(`${at}.level must be an integer 1..99`);
     }
+    // VORL'S DOOR (band 9d, E1): a named row's name is a short string.
+    // The server applies it through scaleNpcDef on the standing body;
+    // a non-string or a novel would ride the wire as the body's name.
+    if (s.name !== undefined && (typeof s.name !== 'string' || s.name.length === 0 || s.name.length > 60)) {
+      errors.push(`${at}.name must be a non-empty string (max 60)`);
+    }
     if (s.hours !== undefined && (!num(s.hours.from) || !num(s.hours.to))) {
       errors.push(`${at}.hours needs numeric from/to`);
     }
@@ -206,6 +212,15 @@ export function validateZone(zone: ZoneDef): ValidationResult {
     const sy = zone.spawn.y - zone.origin.y;
     if (sx >= 0 && sy >= 0 && sx < zone.width && sy < zone.height) {
       b.spawn(Math.floor(sx), Math.floor(sy));
+    }
+  }
+  // THE REACH ANCHOR (band 9d, E2) replays through the same law: a
+  // spawnless sunk zone floods from it, exactly as at content build.
+  if (zone.reachFrom) {
+    const rx = zone.reachFrom.x - zone.origin.x;
+    const ry = zone.reachFrom.y - zone.origin.y;
+    if (rx >= 0 && ry >= 0 && rx < zone.width && ry < zone.height) {
+      b.reachFrom(Math.floor(rx), Math.floor(ry));
     }
   }
   let built;

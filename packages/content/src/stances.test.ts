@@ -334,3 +334,27 @@ test('CONTESTED LANDS band 8: the three rows land and read initiator-side', () =
   assert.ok(res.ok);
   if (res.ok) assert.deepEqual(res.warnings, []);
 });
+
+// ---- THE PREFIX FLIP (contested lands, band 9d, L4's E4; 9c handoff
+// 4; rulings R-E): the dolmen tribe wears its prefix now that a body
+// stands in the world (Vorl's row on the Sett).
+test('CONTESTED LANDS (9d E4): the dolmen tribe wears its prefix, the champion resolves to it, the three neutral rows are live, no hostile row gains a body', () => {
+  const tribe = AUTHORED_STANCES.tribes.find((t) => t.id === 'dolmen')!;
+  assert.deepEqual(tribe.npcPrefixes, ['dolmen']);
+  assert.deepEqual(tribe.actors, []);
+  for (const id of ['dolmen', 'dolmen_sinter', 'dolmen_culm', 'dolmen_gossan', 'dolmen_champion']) {
+    assert.equal(tribeOfNpcId(id, false), 'dolmen', `${id} wears the tribe`);
+  }
+  for (const other of ['kobold', 'reavers', 'skral']) {
+    assert.equal(stanceBetween('dolmen', other).stance, 'neutral', `dolmen regards ${other}`);
+    assert.equal(stanceBetween(other, 'dolmen').stance, 'neutral', `${other} regards dolmen`);
+  }
+  // A set that never initiates is nobody's menace: the watch does not
+  // charge it, and no hostile row names it on either side.
+  assert.equal(stanceBetween('fordgate', 'dolmen').stance, 'neutral');
+  for (const [key, row] of Object.entries(AUTHORED_STANCES.matrix)) {
+    if (row.stance === 'hostile') assert.ok(!key.split('|').includes('dolmen'), `hostile row ${key} names the dolmen`);
+  }
+  // No faction claims the prefix (there is no dolmen faction: standing never targets them).
+  assert.ok(!FACTIONS.roster.some((f) => f.npcPrefixes.some((p) => p.startsWith('dolmen'))));
+});

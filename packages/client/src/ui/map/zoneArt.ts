@@ -7,6 +7,7 @@ import {
   buildPicket,
   buildTurnoff,
   buildWardthread,
+  buildSett,
   buildPinewatch,
   buildHartfell,
   buildKingsdelf,
@@ -99,6 +100,9 @@ export function authoredZoneArt(): ZoneArt[] {
       buildWardthread(),
       buildPicket(),
       buildTurnoff(),
+      // THE CONTESTED LANDS (band 9d): the Sett; its sunk floors chart
+      // darker by the elev shade above, its TILE_SKIP stays transparent.
+      buildSett(),
     ].map(bakeZone);
   }
   return cache;

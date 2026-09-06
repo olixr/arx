@@ -296,6 +296,7 @@ import valeCarterYard from './defs/vale_carter_yard.json';
 // the Sett's lip and one mid-afternoon wander. THE POST IS THE ORIGIN, so
 // the 9c zone row reuses this file as is and faces the bowl by its own dir.
 import dolmenSet from './defs/dolmen_set.json';
+import dolmenWet from './defs/dolmen_wet.json';
 
 const SOURCES: readonly unknown[] = [
   fallMiller,
@@ -554,6 +555,7 @@ const SOURCES: readonly unknown[] = [
   grandRingMaster,
   fordRingMaster,
   dolmenSet,
+  dolmenWet,
 ];
 
 function buildRegistry(): ReadonlyMap<string, RoutineDef> {

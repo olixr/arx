@@ -238,6 +238,16 @@ export interface ZoneDef {
   /** World-tile spawn point, if this zone hosts one. */
   spawn?: Vec2;
   /**
+   * THE REACH ANCHOR (contested lands, band 9d, E2; rulings R-D): the
+   * world tile ZoneBuilder's reachability flood starts from when the
+   * zone declares no `spawn`. Validation data only: a sunk zone with
+   * no hearth (the Sett) proves its floors reachable without becoming
+   * a respawn point, because every spawn reader (`spawn`, `spawnOf`,
+   * `nearestSpawnTo`) reads `spawn` alone and never this. Absent on
+   * every legacy zone.
+   */
+  reachFrom?: Vec2;
+  /**
    * THE KEPT AND THE WILD (second-growth Phase 1): which growth domain
    * this zone's owned tiles belong to. Absent ⇒ 'kept' — authored
    * ground is tended ground, and its resources respawn fast and in

@@ -1,0 +1,17 @@
+{
+  "id": "dolmen_durrow",
+  "name": "Durrow",
+  "title": "Culm of the hearth cells",
+  "examine": "It stands on the warm shelf with ember eyes and a red line of dust along its mouth seam, a soot cut in the rim over one shoulder and a black bob hung true. It is the only one of them that is quick.",
+  "disposition": "neutral",
+  "protection": "untargetable",
+  "model": {
+    "kind": "creature",
+    "creature": "dolmen_culm"
+  },
+  "lines": [
+    "Cold on you, then. Go and be cold.",
+    "The stake man's cart goes by with our kerb on it. Cold on him. He does not hear it. It is still said.",
+    "Wood burns out. Stone burns on."
+  ]
+}

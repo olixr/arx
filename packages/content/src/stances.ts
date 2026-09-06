@@ -210,12 +210,19 @@ export const STANCES: StancesDef = {
       npcPrefixes: [],
       actors: [],
     },
-    // The fourth people (plan §11): declared now, bodies in band 9 —
-    // the Sett's own rows will wear it. A set that never initiates.
+    // The fourth people (plan §11): declared in band 7, the bodies in
+    // band 9 (9a-9c the five looks, 9d THE SETT). THE PREFIX FLIP (9d,
+    // E4; 9c handoff 4; rulings R-E): the bestiary's five Dolmen rows
+    // (dolmen, dolmen_sinter, dolmen_culm, dolmen_gossan,
+    // dolmen_champion) wear the tribe by prefix now that a body stands
+    // in the world (Vorl's row on the Sett), so the three neutral rows
+    // below are live and the set that never initiates is read as its
+    // own people, never as wildfolk. No faction claims the prefix
+    // (there is no `dolmen` faction: standing never targets them).
     {
       id: 'dolmen',
       name: 'The Standing Course',
-      npcPrefixes: [],
+      npcPrefixes: ['dolmen'],
       actors: [],
     },
   ],

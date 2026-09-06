@@ -10136,7 +10136,13 @@ export class Renderer {
     const wallish =
       m.kind === RaisedKind.Wall || m.kind === RaisedKind.DiagWall || m.kind === RaisedKind.Doorway;
     const northT = (garrison ? 4.6 : wallish ? 2.8 : 2.4) + e * ELEV_H + (rampish ? 1.5 : 0);
-    const southT = rampish ? 1.7 : 0.7;
+    // THE SUNK ROW REACHES SOUTH (band 9d, the Sett): a member on a
+    // sunk row is lifted DOWN |level|·ELEV_H rows, so its crown sits
+    // near the raw row and its whole body hangs below the flat south
+    // pad — a −2 corbel cell boxed cap-only. The cliff bake's own law
+    // (cliffArt: CLIFF_BAKE_SOUTH_T − (level−1)·ELEV_H); level ≥ 0 is
+    // byte-identical.
+    const southT = (rampish ? 1.7 : 0.7) + Math.max(0, -e) * ELEV_H;
     const spanS = rampish ? m.len : 1;
     const p0 = this.camera.worldToScreen(m.tx, m.ty, this.w, this.h);
     const p1 = this.camera.worldToScreen(m.endX + 1, m.ty + spanS, this.w, this.h);
@@ -10287,6 +10293,7 @@ export class Renderer {
     let wx0 = Infinity;
     let wx1 = -Infinity;
     let maxElev = 0;
+    let minElev = 0;
     let garrison = false;
     let rampish = false;
     for (let i = s.i0; i <= s.i1; i++) {
@@ -10295,6 +10302,7 @@ export class Renderer {
       if (m.endX + 1 > wx1) wx1 = m.endX + 1;
       const e = game.world.elevAt(m.tx, m.ty);
       if (e > maxElev) maxElev = e;
+      if (e < minElev) minElev = e;
       if (
         m.kind === RaisedKind.GarrisonWall ||
         m.kind === RaisedKind.GarrisonGate
@@ -10333,7 +10341,13 @@ export class Renderer {
     // overdraw at composite time.
     const northT =
       (garrison ? 4.6 : wallish ? 2.8 : 2.4) + maxElev * ELEV_H + (rampish ? 1.5 : 0);
-    const southT = rampish ? 1.7 : 0.7;
+    // THE SUNK ROW REACHES SOUTH (band 9d, the Sett): a sunk member's
+    // pixels hang |level|·ELEV_H rows below the raw row (the lift is a
+    // drop), so the canvas grows south by the run's deepest level —
+    // the Plug's −2 corbel cell and Drusa's baked cap-only under the
+    // flat 0.7 pad (the body clipped at +1.3 rows, the foot at +2.7).
+    // The cliff bake's own law; a level ≥ 0 run is byte-identical.
+    const southT = (rampish ? 1.7 : 0.7) + Math.max(0, -minElev) * ELEV_H;
     const padXT = 1;
     // The bake replicates the LIVE environment: a CSS-coordinate ctx
     // scaled by the live dpr, the camera at the settled target

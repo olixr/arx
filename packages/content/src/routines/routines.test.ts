@@ -341,3 +341,18 @@ test('THE HUSK AND THE WARD LINE (band 8 THE CAST): the north keeps its hours', 
     assert.ok((routineTaskAt(feller, 4) as { lie?: boolean }).lie === true, `${id}: wraps midnight`);
   }
 });
+
+test('THE SINTER\'S WALK (band 9d): dolmen_wet is the one loop in the Sett, at 1.0 on every leg', () => {
+  // R-F: one loop, the slowest Dolmen walk. The post is Drusa's Dirt cell
+  // at the water's edge; (-4,+3) is the water south of the ninth course.
+  const wet = ROUTINES.get('dolmen_wet')!;
+  assert.equal(wet.base.kind, 'post');
+  assert.equal(wet.base.speed, 1.0);
+  const dawn = routineTaskAt(wet, 6);
+  assert.ok(dawn.kind === 'path' && dawn.mode === 'once' && dawn.waypoints.length === 2, 'into the wet, held, and home');
+  assert.equal(dawn.kind === 'path' ? dawn.waypoints[0]!.waitSec : NaN, 240);
+  const dusk = routineTaskAt(wet, 18);
+  assert.deepEqual(dusk, dawn, 'the same walk at dusk');
+  assert.equal(routineTaskAt(wet, 12).kind, 'post');
+  assert.equal(routineTaskAt(wet, 7).kind, 'post', 'the slot closes at seven');
+});

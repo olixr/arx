@@ -413,6 +413,20 @@ export const FENSIDE_RECT: ZoneRect = { x: 118, y: 76, w: 24, h: 25 };
 export const WARDTHREAD_RECT: ZoneRect = { x: -164, y: -203, w: 37, h: 25 };
 export const PICKET_RECT: ZoneRect = { x: -131, y: -140, w: 24, h: 26 };
 export const TURNOFF_RECT: ZoneRect = { x: -80, y: -182, w: 14, h: 16 };
+/**
+ * THE CONTESTED LANDS, band 9d (band9d/blockout.md §1.1, §3.2; rulings
+ * R-A, R-B; maps/sett/pins.ts carries the tape): THE SETT, the
+ * Dolmen's quarry bowl at cell [1,2], the first SUNK authored zone.
+ * The rect is the bowl's (worldgen level<0 at x 154..195, y 269..334,
+ * its Cliff rim one cell out) plus the builder's flat two-tile apron
+ * with two of slack: base TILE_SKIP everywhere the bowl is not, so
+ * the thinned belt, the east meadow and the forest show through. No
+ * apron (a patch on worldgen; an apron row would damp the very basin
+ * the zone reads), no core, no spawn (a Sett spawn would be a respawn
+ * hearth: the def carries `reachFrom` instead), no haven, no chest.
+ * Nothing authored north of y 266.
+ */
+export const SETT_RECT: ZoneRect = { x: 150, y: 265, w: 50, h: 74 };
 
 /**
  * THE PAD LAW, mirrored from the server's siting scan (server
@@ -987,7 +1001,19 @@ const AUTHORED_PLAN: GeographyDef = {
     // x 70..118 between the Ashlamp's dead tree and the fen waist's
     // cairn: 54 tiles of worldgen forest that carry nothing authored,
     // by the curation law (composed emptiness, band 7). The Sett is
-    // reserved (below).
+    // an authored zone in [1,2] (below).
+    // THE SETT'S EMPTINESS (band 9d, blockout §1.3, the listed assets
+    // of §13.1 law 7): THE WALK from the crofts' core (160,100) to the
+    // lip (172,268), 168 tiles of open [1,1] grass then the thinned
+    // belt, about 34 s, with NOTHING authored on it (no cairn, no
+    // lamp, no board; the threshold is the lip's own PlumbStone); THE
+    // EAST MEADOW x 197..230 (the 9a proof spot); the belt west of x
+    // 150 except the Course's thread (9e); the forest strip x 81..118
+    // between the brook and the Drowned Meadow except the Course's
+    // thread (9e); THE SOUTH RING AND THE GULLY inside the Sett's own
+    // rect (y 301..334: a chalk line, three rubble, nothing else); the
+    // stone track to the ford (two furrows at the lip and no more);
+    // the Gloamwood south of y 335. Nothing stands in any of them.
     // THE NORTH'S EMPTINESS (band 8, blockout §2.14, the listed
     // assets of §13.1 law 7): THE CLIMB on the hunters' trail from
     // (-110,-80) to (-118,-112), 35 tiles of closed forest either
@@ -1051,11 +1077,12 @@ const AUTHORED_PLAN: GeographyDef = {
     // [0,0] with the bar and the ledger holds one row per cell, which
     // a zone never asks for. The `ashlamp` def, the `poi_ashlamp`
     // sketch and the parked pin that stood here retired with it.
-    // TODO(band 9, THE STANDING COURSE): cell [1,2] is RESERVED for
-    // the Sett — the Dolmen's quarry bowl at (172,300), an AUTHORED
-    // ZONE with its own actors and spawn rows (plan §11.6), never a
-    // def or a site row here. Do not author a core in [1,2].
-    // amberfen_shoal in [1,1] is its acknowledged neighbour.
+    // THE SETT (band 9d, THE STANDING COURSE): cell [1,2] holds the
+    // Dolmen's quarry bowl, an AUTHORED ZONE (maps/sett/; its `planned`
+    // row is below) with its own actors and one spawn row (Vorl's);
+    // never a def, never a core, never a site row here. Do not author
+    // a core in [1,2]. amberfen_shoal in [1,1] is its acknowledged
+    // neighbour (the two peoples moved for water and never meet).
     // THE OLDCROWN DOOR — the buried capital's east gatehouse, pinned
     // east of the reserve with room for the prefab's INFLUENCE apron.
     // Weight-0: this door exists exactly once.
@@ -1153,6 +1180,13 @@ const AUTHORED_PLAN: GeographyDef = {
     { id: 'wardthread', name: 'The Ward Line', ...WARDTHREAD_RECT },
     { id: 'picket', name: 'The Picket', ...PICKET_RECT },
     { id: 'turnoff', name: 'The Turn', ...TURNOFF_RECT },
+    // THE CONTESTED LANDS, band 9d (rulings R-A..R-D; blockout §3.2):
+    // THE SETT, the Dolmen's quarry bowl in cell [1,2], an authored
+    // zone with its own actors and one spawn row; never a def, never
+    // a core; no apron (the basin the zone reads must not be damped),
+    // no spawn, no haven, no chest. amberfen_shoal in [1,1] is its
+    // acknowledged neighbour.
+    { id: 'sett', name: 'The Sett', ...SETT_RECT },
   ],
   // THE LIVING GROUND's first authored stroke (band 7, owed E2): the
   // burn under the Ashlamp. Centre the shell's heart (57,95), reach 11

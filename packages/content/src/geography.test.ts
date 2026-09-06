@@ -15,6 +15,7 @@ import {
   FENSIDE_RECT,
   PICKET_RECT,
   PLANNED_ZONE_RECTS,
+  SETT_RECT,
   ROAD_ROUTES,
   SILVERFALL_RECT,
   TURNOFF_RECT,
@@ -47,6 +48,7 @@ import { buildDawnmead } from './maps/dawnmead.js';
 import { buildAshlamp } from './maps/ashlamp.js';
 import { buildFenside } from './maps/fenside.js';
 import { buildPicket, buildTurnoff, buildWardthread } from './maps/wardthread.js';
+import { buildSett } from './maps/sett.js';
 import { POI_PREFABS } from './pois/prefabs.js';
 import { WORLD_SEED, elevationAt } from './worldgen.js';
 
@@ -911,10 +913,11 @@ test('G-12 THE PAD LAW with THE AUTHORED HUG opt-in: every pinned footprint keep
   // Band 8 adds the three north patches to the same law (no north pin
   // says hug; the fork rest's padded footprint at its PIN ends one
   // row short of the ward line's rect, pins.ts says so).
-  const rects = [ASHLAMP_RECT, FENSIDE_RECT, WARDTHREAD_RECT, PICKET_RECT, TURNOFF_RECT];
+  const rects = [ASHLAMP_RECT, FENSIDE_RECT, WARDTHREAD_RECT, PICKET_RECT, TURNOFF_RECT, SETT_RECT];
   const rectName = new Map<object, string>([
     [ASHLAMP_RECT, 'ashlamp'], [FENSIDE_RECT, 'fenside'],
     [WARDTHREAD_RECT, 'wardthread'], [PICKET_RECT, 'picket'], [TURNOFF_RECT, 'turnoff'],
+    [SETT_RECT, 'sett'],
   ]);
   const hits: string[] = [];
   const gaps: Record<string, number> = {};
@@ -1001,4 +1004,35 @@ test('THE LONG DRY carries nothing: no pinned site and no planned rect between x
     const overlaps = r.x <= 117 && r.x + r.w - 1 >= 71 && r.y <= 120 && r.y + r.h - 1 >= 80;
     assert.ok(!overlaps, `${r.id} reaches into the long dry`);
   }
+});
+
+// ------------------------------------------------------------------
+// THE CONTESTED LANDS, band 9d — THE SETT (L1 FRAME). The rect is the
+// bowl's own (maps/sett/pins.ts carries the tape); rulings R-A..R-D.
+// ------------------------------------------------------------------
+
+test('THE SETT: a planned rect in cell [1,2] that builds to its own pin, sunk, spawnless, with no site row and no pinned footprint inside the pad', () => {
+  const z = buildSett();
+  const row = PLANNED_ZONE_RECTS.find((p) => p.id === 'sett');
+  assert.ok(row, 'sett has a planned row');
+  assert.equal(row!.name, 'The Sett');
+  assert.ok(!row!.apron, 'a patch on worldgen: no apron (an apron would damp the basin the zone reads)');
+  assert.deepEqual(SETT_RECT, { x: 150, y: 265, w: 50, h: 74 });
+  assert.deepEqual({ x: z.origin.x, y: z.origin.y, w: z.width, h: z.height }, SETT_RECT, 'the built rect is the plan\'s');
+  assert.equal(z.growth, 'wild');
+  assert.equal(z.spawn, undefined, 'no spawn: a Sett spawn would be a respawn hearth (R-D)');
+  assert.deepEqual(z.reachFrom, { x: 172, y: 266 }, 'the reach anchor on the lip proves the floors instead');
+  assert.equal(z.chests, undefined, 'no chest (R-E)');
+  assert.ok(z.elev !== undefined, 'the first sunk authored zone carries a level layer');
+  // Cell [1,2] carries no site row and no def: the zone is the cell's
+  // whole authored content (§13: never a core here).
+  const cell = (x: number, y: number): [number, number] => [Math.floor(x / 128), Math.floor(y / 128)];
+  for (const s of AUTHORED_WILD_SITES) {
+    if (s.x === undefined || s.y === undefined) continue;
+    assert.notDeepEqual(cell(s.x, s.y), [1, 2], `site '${s.id}' stands in [1,2]`);
+  }
+  // The rect stands south of the tutorial's and clear of the two east
+  // patches by more than a screen.
+  assert.ok(SETT_RECT.y > DAWNMEAD_RECT.y + DAWNMEAD_RECT.h, 'south of Dawnmead');
+  assert.ok(SETT_RECT.y > FENSIDE_RECT.y + FENSIDE_RECT.h + 100, 'a hundred past the fen waist');
 });

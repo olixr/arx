@@ -15,6 +15,7 @@ import { buildLowhall } from '../maps/lowhall.js';
 import { buildAshlamp } from '../maps/ashlamp.js';
 import { buildFenside } from '../maps/fenside.js';
 import { buildPicket, buildTurnoff, buildWardthread } from '../maps/wardthread.js';
+import { buildSett } from '../maps/sett.js';
 import { ROUTINES } from './registry.js';
 import type { RoutineTask, RoutineDef } from './types.js';
 
@@ -82,6 +83,17 @@ const ZONES: Array<() => ZoneDef> = [
   buildWardthread,
   buildPicket,
   buildTurnoff,
+  // THE SETT (band 9d): the first sunk authored zone. Eleven actor
+  // rows on the -1 ring and the -2 floor (Ammat on the lip at level
+  // 0), every post read against the zone's own elev layer: the
+  // sweep's flood crosses a level only over a Ramp tile, exactly the
+  // sim's law, so a post sealed on the wrong side of a flight fails
+  // here before a body ever stands mute at the bottom of a cliff.
+  // The two wetsetters stand IN the authored WaterShallow on the
+  // floor (a `post` stop with no sit/lie/work is lawful in water) and
+  // Drusa's one loop (`dolmen_wet`) walks into the wet and back.
+  // Vorl is a spawn row (no routine) and stands apart from the sweep.
+  buildSett,
 ];
 
 /**

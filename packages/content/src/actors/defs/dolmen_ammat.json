@@ -1,0 +1,17 @@
+{
+  "id": "dolmen_ammat",
+  "name": "Ammat",
+  "title": "Coursemother of the Marl",
+  "examine": "She stands on the lip with her hands open before her knees and a chalk bob hung true from the rim of her shoulders. Her yoke is the lowest on the Sett. She has counted you already.",
+  "disposition": "neutral",
+  "protection": "untargetable",
+  "model": {
+    "kind": "creature",
+    "creature": "dolmen"
+  },
+  "lines": [
+    "Nine. Fourteen. Thirty three. Stones moved, by year, topside. Wet, and wains, and bad setting. We set here.",
+    "The stake man took forty stones from the north end and carried them to his wet road. We counted them going. We will have forty back, or forty like them. That is not a threat. It is a count.",
+    "Six paces from the last stone to the drop. The drop held when the wet came up. The stairs are set. Go down if you like."
+  ]
+}

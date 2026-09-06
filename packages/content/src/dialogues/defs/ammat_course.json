@@ -1,0 +1,36 @@
+{
+  "id": "ammat_course",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "dolmen_ammat", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "You are standing on the Course. It held when the wet came up and it will hold when you have gone. Sit on it if you like. It does not mind weight, it minds wrong weight.",
+      "choices": [
+        { "text": "Say the count.", "next": "count" },
+        { "text": "The gap.", "next": "gap", "requires": ["capstone_counted"] }
+      ]
+    },
+    {
+      "id": "count",
+      "text": "Nine. Fourteen. Thirty three. Stones moved, by year, topside. Wet, and wains, and bad setting. Forty went off the north end on the stake man's cart and we counted them going. We set here.",
+      "choices": [
+        { "text": "I will carry stone.", "next": "sworn", "forbids": ["capstone_counted"], "set": ["capstone_counted"] },
+        { "text": "The gap.", "next": "gap", "requires": ["capstone_counted"] },
+        { "text": "Not today.", "next": "level" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Then you are counted. One. A stone in each hand is a load. The cart man's yard is at the wet road's head, where our kerb went. Bring one back to the gap and set it where the chalk is. Bring one to me."
+    },
+    {
+      "id": "level",
+      "text": "Then stand where you like. The Course does not mind."
+    },
+    {
+      "id": "gap",
+      "text": "The gap is by the stairs, where the chalk is. One stone sets it. The count is kept whether you carry or not."
+    }
+  ]
+}

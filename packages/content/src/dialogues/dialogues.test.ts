@@ -588,3 +588,60 @@ test('CONTESTED LANDS band 8: THE PEOPLE SPEAK on every new string (the hand lin
     }
   }
 });
+
+// ---- THE CONTESTED LANDS band 9d: THE SETT'S CAST (band9d/blockout.md
+// §5; rulings R-C, R-F). Three trees on three throats (9e's durrow_cold
+// outranks the hearth later); Vorl is barks only (THE MOUTH ON THE ROW).
+// The five Dolmen regexes live in dolmen.test.ts; this file holds the
+// hand lint and the ladders, as bands 7 and 8 do.
+const BAND9D_TREES = ['ammat_course', 'drusa_ninth', 'durrow_hearth'] as const;
+
+test('CONTESTED LANDS band 9d: the Sett ladders pick the right mouth', () => {
+  const at = (actor: string, flags: Iterable<string>) => {
+    const set = new Set(flags);
+    return pickDialogue(offersFor(actor), (f) => set.has(f))?.id;
+  };
+  // Ammat: the hub while no quest tree outranks it (9e's offers ride above 5).
+  assert.equal(at('dolmen_ammat', []), 'ammat_course');
+  assert.equal(at('dolmen_ammat', [dialogueDoneFlag('ammat_course'), 'capstone_counted']), 'ammat_course');
+  // Drusa: the one thing the Sinter say, always.
+  assert.equal(at('dolmen_drusa', []), 'drusa_ninth');
+  assert.equal(at('dolmen_drusa', [dialogueDoneFlag('drusa_ninth')]), 'drusa_ninth');
+  // Durrow: the hearth to everyone in 9d; 9e's durrow_cold shuts the shelf to the A character by a read of dike_planted, never once.
+  assert.equal(at('dolmen_durrow', []), 'durrow_hearth');
+  assert.equal(at('dolmen_durrow', ['dike_planted']), 'durrow_hearth', 'durrow_cold is 9e\'s');
+  assert.equal(at('dolmen_durrow', ['halvor_string_carried']), 'durrow_hearth', 'the B side keeps the hearth');
+  // Vorl: no tree binds the mouth; the barks are the whole of him.
+  assert.deepEqual(offersFor('dolmen_vorl'), []);
+  // The sworn choice is the capstone's one stamper and retires itself.
+  const count = DIALOGUES.get('ammat_course')!.nodes.find((n) => n.id === 'count')!;
+  const sworn = count.choices!.find((c) => c.next === 'sworn')!;
+  assert.deepEqual(sworn.set, ['capstone_counted']);
+  assert.deepEqual(sworn.forbids, ['capstone_counted']);
+  // Every 9d tree is bound to a live Dolmen throat and to nobody else.
+  for (const id of BAND9D_TREES) {
+    const d = DIALOGUES.get(id)!;
+    assert.equal(d.bindings!.length, 1, `${id}: one throat`);
+    assert.ok(d.bindings![0]!.target.startsWith('dolmen_'), `${id}: a Dolmen throat`);
+  }
+});
+
+test('CONTESTED LANDS band 9d: THE PEOPLE SPEAK on every new string (the hand lint)', () => {
+  const DASH = /[-‐‑‒–—―]/;
+  const BOUNDARY = /\b(witch|witches|witchcraft|hex|hexes|coven|warlock|demon|demons|devil|devils|infernal|occult|hell)\b/i;
+  const check = (where: string, s: string) => {
+    assert.ok(!DASH.test(s), `${where}: dash in "${s}"`);
+    assert.ok(!BOUNDARY.test(s), `${where}: boundary word in "${s}"`);
+    assert.ok(/\.$/.test(s.trim()), `${where}: not a whole set sentence "${s}"`);
+    assert.ok(!/[?!]/.test(s), `${where}: a Dolmen never asks and never raises its voice "${s}"`);
+  };
+  for (const id of BAND9D_TREES) {
+    const d = DIALOGUES.get(id)!;
+    assert.ok(!DASH.test(id) && !BOUNDARY.test(id), `${id}: clean id`);
+    for (const n of d.nodes) {
+      check(`${id}/${n.id}`, stripDialogueMarkup(n.text));
+      assert.equal(n.voice, undefined, `${id}/${n.id}: no voice cast (silence is the clip)`);
+      for (const c of n.choices ?? []) check(`${id}/${n.id}/choice`, c.text);
+    }
+  }
+});

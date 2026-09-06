@@ -1,0 +1,19 @@
+{
+  "id": "dolmen_vorl",
+  "name": "Vorl Fullweight",
+  "title": "Keeper of the weight",
+  "examine": "The biggest of them by a head and a hand. Rust hide streaked like old iron, three dull beads along the rim of the yoke, a rust stone bob hung true. Its hands are open. Behind it the row and the cart.",
+  "disposition": "neutral",
+  "protection": "untargetable",
+  "model": {
+    "kind": "creature",
+    "creature": "dolmen_champion"
+  },
+  "lines": [
+    "One cart. Twelve wheels of stone. A rope. A row of sticks with glass on them. That is the weight and I keep it.",
+    "One stone sets a step. Set it and pass.",
+    "Forty from the north end. A wall for forty. The stake man has not come.",
+    "The chain man's stakes are level. They stand. The others were not. They are here.",
+    "The stone ones under the barrow are unset. We would set them. We are not let."
+  ]
+}

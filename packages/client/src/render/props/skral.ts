@@ -1706,12 +1706,14 @@ function paintCatchBasket(rend: PropHost, env: PropFrame): DrawItem {
       }
       ctx.fillStyle = '#241f1c';
       ctx.beginPath();
-      ctx.ellipse(tpX - m * s * 0.05, tpY - s * 0.075, m * s * 0.035, s * 0.078, 0, 0, Math.PI * 2);
+      // The mouth's radii carry no mirror sign: a negative radius is an
+      // IndexSizeError that aborts the whole frame's draw (band 9d L4).
+      ctx.ellipse(tpX - m * s * 0.05, tpY - s * 0.075, s * 0.035, s * 0.078, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = SKR_WICKER_LIT;
       ctx.lineWidth = Math.max(1, s * 0.014);
       ctx.beginPath();
-      ctx.ellipse(tpX - m * s * 0.05, tpY - s * 0.075, m * s * 0.035, s * 0.078, 0, 0, Math.PI * 2);
+      ctx.ellipse(tpX - m * s * 0.05, tpY - s * 0.075, s * 0.035, s * 0.078, 0, 0, Math.PI * 2);
       ctx.stroke();
       // The spilled run: silver slivers fanned on a wet streak,
       // one scale-tick of light each.

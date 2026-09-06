@@ -107,6 +107,15 @@ export const GAZETTEER: Readonly<Record<string, GazetteerEntry>> = {
     line: 'A Waykeeper claim cairn let fall on the north shoulder where the order\'s path to its first tower left the road.',
     country: 2,
   },
+  // THE CONTESTED LANDS, band 9d: the Sett. Not a settlement the
+  // herald may call a town (the Dolmen keep no board and no lamp);
+  // the epithet says what stands there, and the country pips read the
+  // ground's own base tier (the lip is the tier-3 line).
+  sett: {
+    epithet: 'The quarry bowl nobody\'s road names',
+    line: 'A people who set stone dry came up through the floor of a quarry nobody\'s road names, and what they set holds.',
+    country: 3,
+  },
 };
 
 /**

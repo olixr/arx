@@ -548,6 +548,16 @@ export const WET_STANDERS: ReadonlySet<number> = new Set<number>([
   Tile.ReedShelter,
   Tile.IrrigationChannel,
   Tile.FelledLog,
+  // THE STANDING COURSE (contested lands band 9d, E3; rulings R-D):
+  // the Dolmen's dry stone stands in the wet by its own sentence — the
+  // Sinter's ninth course and Drusa's cell on the Sett's authored wet
+  // floor, the Course's last courses in the Drowned Meadow's sheet
+  // and the ford's bank stones (9e). Without the row a CourseWall
+  // written into WaterShallow baked a green square in the water.
+  Tile.CourseWall,
+  Tile.CourseStile,
+  Tile.CorbelCell,
+  Tile.PlumbStone,
 ]);
 
 /**

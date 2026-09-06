@@ -181,7 +181,8 @@ Hesk, the Whin for the live actor Wyn, Kesk one letter from Hesk, Oskel
 beside Eskil); the names now are Ammat, Drusa, Durrow, Sarsen, Vorl
 Fullweight, and the carter is Garrow.
 
-- **Ammat** (coursemother of the Marl, the north lip): wants the Course
+- **Ammat** (coursemother of the Marl, the north lip; `dolmen_ammat`, LIVE
+  band 9d, tree `ammat_course`): wants the Course
   finished to the bend and the forty back or forty like them. Wound: her
   count of stones moved (nine, fourteen, thirty-three) is the truest
   measurement in the valley and she has filed it under bad setting. Quirk:
@@ -201,20 +202,24 @@ Fullweight, and the carter is Garrow.
   > "The small diggers stack this every night with one stone wrong. I set
   > it right every morning. Neither of us has said anything about it. It
   > is a good arrangement."
-- **Drusa** (of the Sinter, the wet floor): wants the wet floor left wet.
+- **Drusa** (of the Sinter, the wet floor; `dolmen_drusa`, LIVE band 9d,
+  tree `drusa_ninth`, the Sett's one loop): wants the wet floor left wet.
   Wound: moved for water that came up under them, the same as the shoal,
   and neither knows. Quirk: speaks only as "we"; grinds stone on stone in
   the idle. Cadence: a few sentences each, the water refusal as a count,
   the slowest throat in the game. Wit: NO.
   > "The last dry course is the ninth. We stop at the ninth."
-- **Durrow** (of the Culm, the hearth-cells): wants stone that burns kept
+- **Durrow** (of the Culm, the hearth-cells; `dolmen_durrow`, LIVE band 9d,
+  tree `durrow_hearth`; 9e adds `durrow_cold`): wants stone that burns kept
   burning and a buyer who asks in words. Wound: hot and quick in a level
   people. Quirk: the only oath any Dolmen has, "cold on you". Cadence: the
   set sentence at speed, the one Dolmen voice with heat in it, the oath as
   a goodbye. Wit: NO.
   > "Cold on you, then. Go and be cold."
-- **Vorl Fullweight** (champion of the Gossan, the weight-yard; crowned;
-  barks only): wants the weight kept and a wall set for the stake man in
+- **Vorl Fullweight** (champion of the Gossan, the weight-yard; the mouth
+  `dolmen_vorl` on the Sett's one named `dolmen_champion` row, LIVE band
+  9d; named, never forged; barks only, five, the stile law spoken once in
+  the Sett): wants the weight kept and a wall set for the stake man in
   exchange for forty. Wound: none; the weight is kept without wanting.
   Quirk: unpicks every stake but the chain man's. Cadence: the weight
   recited as inventory, the stile law in six words. Wit: NO.

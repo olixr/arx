@@ -32,6 +32,7 @@ import {
   buildPicket,
   buildTurnoff,
   buildWardthread,
+  buildSett,
   buildPinewatch,
   buildHartfell,
   buildKingsdelf,
@@ -139,6 +140,11 @@ const builtinZones = new Map<string, ZoneDef>(
     buildWardthread(),
     buildPicket(),
     buildTurnoff(),
+    // THE CONTESTED LANDS (band 9d): THE SETT, the Dolmen's quarry bowl
+    // in [1,2], the first sunk authored zone — after Dawnmead by the
+    // spawn law (no spawn, no haven, no chest; the def's `reachFrom`
+    // proved its floors and is never a hearth; one spawn row, Vorl).
+    buildSett(),
   ].map((z) => [z.id, z]),
 );
 const zones: ZoneDef[] = [...builtinZones.values()];

@@ -33,6 +33,12 @@ export class ZoneBuilder {
   /** True once any elevation primitive ran; flat zones export no layer. */
   private hasElev = false;
   private spawnPoint: Vec2 | undefined;
+  /**
+   * THE REACH ANCHOR (contested lands, band 9d, E2; rulings R-D): the
+   * cell the reachability flood starts from when the zone declares
+   * no spawn. World coords, like the spawn; absent stays absent.
+   */
+  private reachAnchor: Vec2 | undefined;
   private zonePlane: PlaneId | undefined;
   /** THE KEPT AND THE WILD: the growth domain mark; unset = 'kept' by law. */
   private zoneGrowth: 'kept' | 'wild' | undefined;
@@ -291,6 +297,24 @@ export class ZoneBuilder {
   }
 
   /**
+   * THE REACH ANCHOR (contested lands, band 9d, E2; rulings R-D). A
+   * sunk zone with no spawn used to build UNCHECKED: validateReachable
+   * floods from the spawn alone, and the only way to buy the flood was
+   * a `spawn`, which worldSource.nearestSpawnTo turns into a respawn
+   * hearth (the dead would rise at the Sett). `reachFrom` is a
+   * validation-only anchor: the flood starts here when no spawn is
+   * declared (the spawn still wins when both are set), the built def
+   * carries it as `reachFrom` and NEVER as `spawn`, and every spawn
+   * reader (`spawn`, `spawnOf`, `nearestSpawnTo`) ignores it by
+   * construction because they read `zone.spawn` only. Local coords;
+   * stored in world coords; absent stays absent.
+   */
+  reachFrom(x: number, y: number): this {
+    this.reachAnchor = { x: this.origin.x + x, y: this.origin.y + y };
+    return this;
+  }
+
+  /**
    * THE KEPT AND THE WILD (site-grammar G-3): mark this zone's owned
    * tiles as authored wilderness. 'wild' hands its resources to the
    * growth ledger (slow, persistent regrowth: the Ashlamp's ash ring,
@@ -418,6 +442,17 @@ export class ZoneBuilder {
    * in world tiles, and an absent field stays absent so the zone
    * survives its JSON round-trip byte-exact. validateZone vets the
    * shapes; the server reads them off the ZoneSpawn as it always did.
+   *
+   * VORL'S DOOR (contested lands, band 9d, E1; rulings R-C): the row
+   * may also be NAMED, LEVELLED and MOUTHED — `name` (the display
+   * name the server applies through scaleNpcDef), `level` (the combat
+   * level; at the def's own level the scale is the identity with the
+   * name applied) and `mouth` (THE MOUTH ON THE ROW: the actor slug
+   * the one body speaks through). The type and the server already
+   * carried all three (ZoneSpawn; gameServer copies them off any
+   * spawn record); only the builder never threaded them. No `crown`:
+   * a crown that forges needs a pool and a kit, and a people with no
+   * flag stays crownless.
    */
   npcSpawn(
     npc: string,
@@ -432,6 +467,9 @@ export class ZoneBuilder {
       post?: { kind: PostKind; x: number; y: number; dir: number; hours?: { from: number; to: number } };
       minDark?: number;
       passive?: true;
+      name?: string;
+      level?: number;
+      mouth?: string;
     },
   ): this {
     const spawn: ZoneSpawn = {
@@ -441,6 +479,9 @@ export class ZoneBuilder {
       radius,
       count,
     };
+    if (opts?.level !== undefined) spawn.level = opts.level;
+    if (opts?.name !== undefined) spawn.name = opts.name;
+    if (opts?.mouth !== undefined) spawn.mouth = opts.mouth;
     if (opts?.tribe !== undefined) spawn.tribe = opts.tribe;
     if (opts?.passive === true) spawn.passive = true;
     if (opts?.hours !== undefined) spawn.hours = { from: opts.hours.from, to: opts.hours.to };
@@ -597,14 +638,18 @@ export class ZoneBuilder {
    * Every walkable off-level tile must be reachable from the zone spawn
    * crossing level changes only via Ramp — an unreachable dell floor is
    * a content bug worth failing the build over. Skipped when the zone
-   * declares no spawn (dungeons entered by portal validate in play).
+   * declares neither a spawn nor a reach anchor (dungeons entered by
+   * portal validate in play). THE REACH ANCHOR (E2): a spawnless zone
+   * floods from `reachFrom` instead, so the Sett's sunk floors are
+   * proven without the zone becoming a respawn hearth.
    */
   private validateReachable(): void {
-    if (!this.spawnPoint) return;
+    const anchor = this.spawnPoint ?? this.reachAnchor;
+    if (!anchor) return;
     // Spawns are usually tile-centered (x.5): floor to the tile, or
     // the fractional index silently breaks the flood fill.
-    const sx = Math.floor(this.spawnPoint.x - this.origin.x);
-    const sy = Math.floor(this.spawnPoint.y - this.origin.y);
+    const sx = Math.floor(anchor.x - this.origin.x);
+    const sy = Math.floor(anchor.y - this.origin.y);
     const seen = new Set<number>();
     const stack = [sy * this.width + sx];
     while (stack.length > 0) {
@@ -639,7 +684,8 @@ export class ZoneBuilder {
     }
     if (unreachable.length > 0) {
       throw new Error(
-        `${this.id}: ${unreachable.length} off-level walkable tiles unreachable from spawn ` +
+        `${this.id}: ${unreachable.length} off-level walkable tiles unreachable from ` +
+          `${this.spawnPoint ? 'spawn' : 'reachFrom'} (${anchor.x},${anchor.y}) ` +
           `(no stair connects them): ${unreachable.slice(0, 8).join(' ')}` +
           (unreachable.length > 8 ? ' …' : ''),
       );
@@ -668,6 +714,9 @@ export class ZoneBuilder {
       // Flat zones export no layer, keeping legacy defs byte-identical.
       elev: this.hasElev ? this.elev : undefined,
       spawn: this.spawnPoint,
+      // THE REACH ANCHOR stays ABSENT unless declared (the JSON
+      // round-trip law); it is never a spawn.
+      ...(this.reachAnchor !== undefined ? { reachFrom: this.reachAnchor } : {}),
       // The default domain and an empty chest list stay ABSENT so the
       // legacy zones' built defs never grow a key (the JSON round-trip
       // law the placements keep).

@@ -28,6 +28,7 @@ import {
   buildPicket,
   buildTurnoff,
   buildWardthread,
+  buildSett,
   generateChunk,
   replaceZoneEdgeProfiles,
   zoneEdgeProfileOf,
@@ -87,8 +88,8 @@ export class StandaloneWorld extends ChunkStore implements WorldSource3D {
     // Dawnmead first (the spawn), then the two First Road patches
     // (band 7): the Ashlamp scar and the fen waist around the ford;
     // then band 8's three north patches: the ward line, the picket
-    // and the turn.
-    zones: ZoneDef[] = [buildDawnmead(), buildAshlamp(), buildFenside(), buildWardthread(), buildPicket(), buildTurnoff()],
+    // and the turn; then band 9d's Sett (the first sunk authored zone).
+    zones: ZoneDef[] = [buildDawnmead(), buildAshlamp(), buildFenside(), buildWardthread(), buildPicket(), buildTurnoff(), buildSett()],
   ) {
     super();
     this.zones = zones;

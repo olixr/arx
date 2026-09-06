@@ -23,6 +23,10 @@ function samplerOf(rows: string[]) {
     T: Tile.TimberPost,
     R: Tile.RedRagStake,
     I: Tile.IrrigationChannel,
+    w: Tile.CourseWall,
+    K: Tile.CorbelCell,
+    k: Tile.CorbelCell,
+    p: Tile.PlumbStone,
   };
   return (tx: number, ty: number): number | undefined => {
     if (ty < 0 || ty >= rows.length || tx < 0) return undefined;
@@ -31,7 +35,7 @@ function samplerOf(rows: string[]) {
   };
 }
 
-test('the amphibious set is exactly the sixteen the site grammar names', () => {
+test('the amphibious set is exactly the sixteen the site grammar names plus the Standing Course\'s four (9d E3)', () => {
   assert.deepEqual(
     [...WET_STANDERS].sort((a, b) => a - b),
     [
@@ -39,8 +43,30 @@ test('the amphibious set is exactly the sixteen the site grammar names', () => {
       Tile.SluiceGate, Tile.SluiceGateStrung, Tile.TimberPost, Tile.RailWood, Tile.Dugout,
       Tile.TideTotem, Tile.WeirPanels, Tile.KeepPool, Tile.ReedShelter, Tile.IrrigationChannel,
       Tile.FelledLog,
+      // THE STANDING COURSE (band 9d, E3): the Sett's wet floor and the meadow's sheet.
+      Tile.CourseWall, Tile.CourseStile, Tile.CorbelCell, Tile.PlumbStone,
     ].sort((a, b) => a - b),
   );
+});
+
+test('THE NINTH COURSE (9d E3): a course wall with water on two cardinals stands in the shallows; a corbel cell half in the wet reads the water; a dry course keeps its floor', () => {
+  // The Sinter's wet floor: the ninth course runs east to west through
+  // the shallows with water north and south of every tile; run-mates
+  // skipped; Drusa's cell at the run's east end has water south and
+  // west and dry floor north and east (a tie goes to the water).
+  const g = samplerOf([
+    'sssssssss',
+    'wwwwwwwwK', // y1: the ninth course, Drusa's cell at its east end
+    'sssssssss',
+    'DDDDDDDDD',
+    'DDwDDkDDp', // y4: a dry course, a dry cell and a dry stone on the floor
+    'DDDDDDDDD',
+  ]);
+  for (let x = 0; x <= 7; x++) assert.equal(wetUnderGround(g, x, 1), Tile.WaterShallow, `course x${x} stands in the water`);
+  assert.equal(wetUnderGround(g, 8, 1), Tile.WaterShallow, 'the cell: water on two cardinals, run-mate west, floor east');
+  assert.equal(wetUnderGround(g, 2, 4), null, 'a dry course keeps its floor (byte-identical bakes)');
+  assert.equal(wetUnderGround(g, 5, 4), null, 'a dry cell keeps its floor');
+  assert.equal(wetUnderGround(g, 8, 4), null, 'a dry stone keeps its floor');
 });
 
 test('a fence line written into a drowned row stands in the shallows, run-mates skipped', () => {

@@ -1,0 +1,26 @@
+{
+  "id": "durrow_hearth",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "dolmen_durrow", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Wood burns out. Stone burns on. The smith burns wood. Nobody has asked us anything, and the hearths are lit.",
+      "choices": [
+        { "text": "Tell me what burns here.", "next": "stone" },
+        { "text": "Cold on you.", "next": "cold" }
+      ]
+    },
+    {
+      "id": "stone",
+      "text": "Black stone from the seam. It came up with us. It burns hot and it burns long and it does not ask to be fed at dawn. The smith does not know it is here. That is his count, not ours.",
+      "choices": [
+        { "text": "Cold on you.", "next": "cold" }
+      ]
+    },
+    {
+      "id": "cold",
+      "text": "Cold on you, then. Go and be cold."
+    }
+  ]
+}

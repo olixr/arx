@@ -1,0 +1,17 @@
+{
+  "id": "dolmen_drusa",
+  "name": "Drusa",
+  "title": "Sinter of the wet floor",
+  "examine": "It stands stooped at the water's edge, the tallest hood on the Sett, a milky crust along the rim and a calcite bob hung true. The wet is on it. It has come up to say one thing.",
+  "disposition": "neutral",
+  "protection": "untargetable",
+  "model": {
+    "kind": "creature",
+    "creature": "dolmen_sinter"
+  },
+  "lines": [
+    "We stop at the ninth.",
+    "Four courses wet from the bottom row. The top row last.",
+    "We set here. Lower."
+  ]
+}

@@ -1067,10 +1067,13 @@ the one who names the thing with his own word. Common tongue learned from
 Fenside drovers over eleven summers, so their words are crofter words.
 
 ### Ammat — coursemother of the Marl, the rim-set on the Sett's north lip
-**Actor:** `dolmen_ammat` (proposed; dolmen fineActor; model.kind creature,
-body `dolmen`) · **Trees:** `ammat_course`, `q_forty_stones_offer`,
-`q_forty_stones_turnin` (repeatable; requires the capstone; forbids
-`course_broken`)
+**Actor:** `dolmen_ammat` (LIVE, band 9d; model.kind creature, body
+`dolmen`, design seed 17; no faction, none exists (R-E); untargetable;
+routine `dolmen_set` at (168,266) facing the gap and the stairs) ·
+**Trees:** `ammat_course` (LIVE, band 9d: the hub with the one wit, the
+count, the sworn choice that stamps `capstone_counted` and the gap line);
+`ammat_count`, `q_forty_stones_offer`, `q_forty_stones_turnin` (9e;
+repeatable; requires the capstone; forbids `course_broken`)
 
 **Life.** She came up through the plug at the Sett's floor eleven winters
 back with the Marl, the shallow stratum, first up and first to learn the
@@ -1114,8 +1117,9 @@ can check.
 **Room.** Sarsen (`dolmen_sarsen`), who stands at the dry end and meets
 everybody first. Drusa (`dolmen_drusa`) of the Sinter, who stops at the
 ninth course and always will. Durrow (`dolmen_durrow`) of the Culm, whose
-hearths are the Sett's only lights. Vorl (`dolmen_champion` crown), who
-keeps the weight and whose stile she disowns aloud and lets stand. Garrow
+hearths are the Sett's only lights. Vorl (`dolmen_vorl`, the mouth on the
+champion's row), who keeps the weight and whose stile she disowns aloud
+and lets stand. Garrow
 (`charter_garrow`), "the cart man", who has never once asked. Ingram, "the
 stake man". Halvor, "the sheep man". The sentinels, "the ones at the stone
 that was set right". Brede she has met and calls "the red-rag man who
@@ -1125,7 +1129,18 @@ laughed and paid"; the laugh was noted as a count of one.
 T51 (the stile-price, Brede's word for it).
 
 **Wit.** Granted, once, ever. Her one spice is the plan's line about weight,
-and it is spent in the first tree and never again.
+and it is spent in `ammat_course`'s hub and never again.
+
+**Examine (bible and tooling text; it never reaches the wire).**
+> "She stands on the lip with her hands open before her knees and a chalk
+> bob hung true from the rim of her shoulders. Her yoke is the lowest on
+> the Sett. She has counted you already."
+
+**Barks (three, rotating on interact when no tree outranks them).** The
+count line, the forty line, and: "Six paces from the last stone to the
+drop. The drop held when the wet came up. The stairs are set. Go down if
+you like." The count is written "Thirty three": no hyphen stands in a
+Dolmen line.
 
 **Speaks.**
 > "You are standing on the Course. It held when the wet came up and it will
@@ -1194,9 +1209,13 @@ correct, and stays a theory.
 ---
 
 ### Drusa — of the Sinter, the corbel cell at the wet floor
-**Actor:** `dolmen_drusa` (proposed; dolmen member; body `dolmen_sinter`) ·
-**Trees:** `drusa_ninth` (short; the Sinter speak a few sentences each and
-only as "we")
+**Actor:** `dolmen_drusa` (LIVE, band 9d; body `dolmen_sinter`, design
+seed 23; untargetable; no faction; routine `dolmen_wet`, the Sett's ONE
+loop: her post is the Dirt edge at (180,296) facing the ninth course, and
+at five and at seventeen she walks into the wet to (176,299) at 1.0, the
+slowest Dolmen walk, stands four minutes facing the courses, and comes
+back) · **Trees:** `drusa_ninth` (LIVE, band 9d; one node, the whole of
+what the Sinter say, only as "we")
 
 **Life.** The dripstone stratum, blue-white and stooped, a milky crust on
 the yoke and short ticks along its rim, the tallest hood and the slowest
@@ -1231,12 +1250,25 @@ only; no throat on either side names the other.
 > "The last dry course is the ninth. We stop at the ninth."
 > "We set here. Lower."
 
+**Examine (bible and tooling text; it never reaches the wire).**
+> "It stands stooped at the water's edge, the tallest hood on the Sett, a
+> milky crust along the rim and a calcite bob hung true. The wet is on it.
+> It has come up to say one thing."
+
+**Barks (three).** "We stop at the ninth." / "Four courses wet from the
+bottom row. The top row last." / "We set here. Lower."
+
 ---
 
 ### Durrow — of the Culm, the hearth-cells on the east shelf
-**Actor:** `dolmen_durrow` (proposed; dolmen member; body `dolmen_culm`) ·
-**Trees:** `durrow_hearth`; his shelf (black stone; closes on the east
-fork's causeway branch)
+**Actor:** `dolmen_durrow` (LIVE, band 9d; body `dolmen_culm`, design
+seed 29; untargetable; no faction; routine `dolmen_set` at (190,294)
+between the two hearth beds facing the bowl) · **Trees:** `durrow_hearth`
+(LIVE, band 9d: the hub, the black stone, the oath as the goodbye);
+`durrow_cold` (9e, with the errand: the shelf shut to the causeway's
+character by a READ of `dike_planted`, priority 10 over the hearth, never
+once);
+`q_black_stone_offer` / `q_black_stone_turnin` (9e; stone for stone)
 
 **Life.** The coal seam: ash-dark hide, a squared yoke with a soot-cut
 notch, the only warm eyes of the four strata, a red-dust line along the
@@ -1278,12 +1310,24 @@ poor way to burn a tree.
 > us anything, and the hearths are lit."
 > "The stake man's cart goes by with our kerb on it. Cold on him. He does
 > not hear it. It is still said."
+> "Eight stakes in the wet road. Your hands. The shelf is lit and it is not
+> lit for you. Cold on you. Go and be cold." (`durrow_cold`, 9e, the A side)
+
+**Examine (bible and tooling text; it never reaches the wire).**
+> "It stands on the warm shelf with ember eyes and a red line of dust
+> along its mouth seam, a soot cut in the rim over one shoulder and a
+> black bob hung true. It is the only one of them that is quick."
 
 ---
 
 ### Vorl Fullweight — champion of the Gossan, the weight-yard on the west shelf
-**Actor:** the Sett's `dolmen_champion` crown via `names[]` (**Vorl
-Fullweight**); barks and the weight recited; no tree · **Trees:** none
+**Actor:** `dolmen_vorl` (LIVE, band 9d; THE MOUTH ON THE ROW, ruling
+R-C: the Sett's ONE spawn row `dolmen_champion` at (160,293), level 14,
+name **Vorl Fullweight**, `mouth: dolmen_vorl`, tribe dolmen, passive, a
+vigil post facing east across the yard; named, never forged: no crown pool,
+no kit; the row never opens and answers a blow; the mouth def carries the
+five barks and the examine, design seed 7, and is placed by no actor row) ·
+**Trees:** none
 
 **Life.** The iron hat: rust-ochre hide streaked like weathered iron, the
 deepest keel, a ridged yoke with three dull iron beads, the biggest hands
@@ -1320,6 +1364,11 @@ because the chain man's stakes are level-set. His bid is honest.
 > are here."
 > "The stone ones under the barrow are unset. We would set them. We are not
 > let."
+
+**Examine (bible and tooling text; it never reaches the wire).**
+> "The biggest of them by a head and a hand. Rust hide streaked like old
+> iron, three dull beads along the rim of the yoke, a rust stone bob hung
+> true. Its hands are open. Behind it the row and the cart."
 
 ---
 
@@ -1440,9 +1489,9 @@ wants it, the bar's word, a topsider's name, a cause for the wet.
 
 ### The Dolmen wetsetter — pooled, one body, no name, the Sett's wet floor
 **Actor:** `dolmen_wetsetter` (LIVE, band 9c; body `dolmen_sinter`; examine
-only, no lines, no tree, no voice cast, no routine of its own until the
-Sett's rows land in 9d; no faction membership and no tribe prefix) ·
-**Trees:** none
+only, no lines, no tree, no voice cast; two rows in the Sett on routine
+`dolmen_set`, standing in the water at (172,299) and (179,300) facing the
+ninth course (band 9d); no faction membership) · **Trees:** none
 
 **Life.** A Sinter of the ninth course. The dripstone stratum, as 11.1
 writes it: blue-white hide drip-scarred and stooped, a milky calcite crust
@@ -1488,9 +1537,9 @@ cause for the wet, the bar's word, a topsider's name.
 
 ### The Dolmen firekeeper — pooled, one body, no name, the hearth-cells on the east shelf
 **Actor:** `dolmen_firekeeper` (LIVE, band 9c; body `dolmen_culm`; examine
-only, no lines, no tree, no voice cast, no routine of its own until the
-Sett's rows land in 9d; no faction membership and no tribe prefix) ·
-**Trees:** none
+only, no lines, no tree, no voice cast; two rows in the Sett on routine
+`dolmen_set`, one at each hearth bed, (190,290) and (191,298), facing the
+bed (band 9d); no faction membership) · **Trees:** none
 
 **Life.** A Culm of the hearth-cells. The coal seam, as 11.1 writes it:
 ash-dark grey to near-black hide, a squared yoke with a soot-cut notch, the
@@ -1537,9 +1586,10 @@ wood on its fire, a cause for the wet, the bar's word, a topsider's name.
 
 ### The Dolmen weightkeeper — pooled, one body, no name, the weight-yard on the west shelf
 **Actor:** `dolmen_weightkeeper` (LIVE, band 9c; body `dolmen_gossan`;
-examine only, no lines, no tree, no voice cast, no routine of its own
-until the Sett's rows land in 9d; no faction membership and no tribe
-prefix) · **Trees:** none
+examine only, no lines, no tree, no voice cast; two rows in the Sett on
+routine `dolmen_set`, (157,294) facing the bowl with the row behind it and
+(162,298) facing the cart (band 9d); no faction membership) · **Trees:**
+none
 
 **Life.** A Gossan of the weight-yard. The iron hat, as 11.1 writes it:
 rust-ochre hide streaked like weathered iron, the deepest keel and a ridged
@@ -1603,6 +1653,7 @@ topsider's name, a cause for the wet.
 | `grubfarm_burnt` / `grubfarm_spared` | the west fork's turn-ins | every Doorless bark, the knucklebone on Alder's fence, the pickets' shout |
 | `rurik_witness` / `rurik_body` | the west fork's turn-ins | `rurik_chain` |
 | `margit_two_hearths` | `margit_ledger` second ask | `margit_ledger`, Hilde's tree |
+| `capstone_counted` | `ammat_course`, the sworn choice (band 9d; the one stamper, retires itself) | 9e's three quests require it; `ammat_course`'s gap line |
 | `course_broken` | (v2 seed, THE WEIGHT OR THE ROAD) | `q_forty_stones` forbids |
 | `plumb_bob` (token) | Sarsen, on the sluice branch | held token, no reader yet |
 

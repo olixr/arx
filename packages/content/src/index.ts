@@ -129,4 +129,8 @@ export * from './maps/fenside.js';
 // line at the fork, Torsten's picket on the trail, the turn on the
 // road east (one module, maps/wardthread/).
 export * from './maps/wardthread.js';
+// THE CONTESTED LANDS, band 9d — THE SETT: the Dolmen's quarry bowl,
+// the first sunk authored zone (one module, maps/sett/; 9e adds the
+// Course's frames to it).
+export * from './maps/sett.js';
 export * from './maps/museum.js';
