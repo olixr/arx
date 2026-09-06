@@ -153,7 +153,25 @@ export class Session {
     return this.ws.bufferedAmount > 256 * 1024;
   }
 
+  /** THE FRAME NEVER TAKES THE SERVER DOWN: one malformed or hostile
+   *  frame is that session's problem — a throw anywhere in the dispatch
+   *  is logged once per session and answered with a strike, never
+   *  allowed out to the socket loop (where it would be a process exit). */
   private handleRaw(raw: string): void {
+    try {
+      this.handleRawInner(raw);
+    } catch (err) {
+      if (!this.loggedDispatchError) {
+        this.loggedDispatchError = true;
+        console.error(`[session] dispatch threw (${raw.slice(0, 80)}):`, err);
+      }
+      this.strike();
+    }
+  }
+
+  private loggedDispatchError = false;
+
+  private handleRawInner(raw: string): void {
     if (this.closed) return;
     const msg = parseC2S(raw);
     if (msg === null) return this.strike();

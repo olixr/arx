@@ -363,3 +363,16 @@ test("THE LIVING GROUND record is additive JSON: a canonical sample survives the
   // Both lists are always present, so a client never guesses whether cores exist.
   assert.deepEqual(Object.keys(back).sort(), ['cores', 'strokes', 't']);
 });
+
+test('the gate owns its keys: prototype-named message types are rejected, never thrown', () => {
+  for (const key of Object.getOwnPropertyNames(Object.prototype)) {
+    assert.equal(parseC2S(JSON.stringify({ t: key })), null, key);
+    assert.equal(parseC2S(JSON.stringify({ t: key, x: 1 })), null, key);
+  }
+  assert.equal(parseC2S(JSON.stringify({ t: '__proto__' })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'constructor' })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'nope' })), null);
+  assert.equal(parseC2S('{"t":'), null);
+  assert.equal(parseC2S('[]'), null);
+  assert.equal(parseC2S('null'), null);
+});

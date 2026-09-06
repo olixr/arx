@@ -481,7 +481,7 @@ export function interactApiary(srv: GameServer,
   player.session?.sendJson({ t: 'inv', slots: player.inventory });
   sys(
     grade === 2
-      ? 'The comb runs heavy and bright. The garden did srv.'
+      ? 'The comb runs heavy and bright. The garden did this.'
       : grade === 1
         ? 'Good comb, sweetened by the flowers near.'
         : 'You take fair comb. Bees do better beside a garden.',

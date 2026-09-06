@@ -515,6 +515,12 @@ export function parseC2S(raw: string): C2SMessage | null {
     return null;
   }
   if (!isObj(msg) || typeof msg.t !== 'string') return null;
+  // THE GATE OWNS ITS KEYS: the table is a plain object with
+  // Object.prototype behind it, so `t: "hasOwnProperty"` (or valueOf,
+  // constructor, __proto__ ...) would resolve to a prototype member —
+  // a throw inside the socket handler, or for `constructor` the RAW
+  // client object handed back as "validated". Only an own key is a row.
+  if (!Object.hasOwn(C2S_VALIDATORS, msg.t)) return null;
   const validate = (C2S_VALIDATORS as Record<string, (m: Record<string, unknown>) => C2SMessage | null>)[
     msg.t
   ];

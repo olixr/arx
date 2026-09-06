@@ -4013,7 +4013,16 @@ export class GameServer {
       next += TICK_MS;
       const gensBefore = this.planes.generatedCount;
       const t0 = performance.now();
-      this.tick();
+      // THE CLOCK OUTLIVES A BAD TICK: an exception escaping tick() used
+      // to be a process exit (no handler above this loop) — every player
+      // rolled back to the last 30 s save. Log it with the tick number
+      // and keep the world moving; the per-system guards decide what
+      // that tick lost.
+      try {
+        this.tick();
+      } catch (err) {
+        console.error(`[tick] tick ${this.tickCount} threw:`, err);
+      }
       // THE TICK NAMES ITS DEBT: chunk generation runs synchronously
       // inside the tick (interest streaming, movement/AI collision
       // probes into unloaded space). A handful per tick is the normal

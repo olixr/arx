@@ -803,15 +803,39 @@ if (config.fakeLagMs > 0) {
   console.log(`[server] fake lag enabled: ${config.fakeLagMs}ms ± ${config.fakeJitterMs}ms jitter`);
 }
 
-function shutdown(): void {
+let shuttingDown = false;
+function shutdown(code = 0): void {
+  if (shuttingDown) return;
+  shuttingDown = true;
   console.log('[server] shutting down');
   game.stop();
   wss.close();
   httpServer.close();
-  // stop() enqueued the final saves — let the FIFO drain before exit.
+  // stop() enqueued the final saves — let the FIFO drain before exit,
+  // but never past the supervisor's SIGKILL: a wedged connection must
+  // not turn a restart into a kill with the saves still queued.
+  const DRAIN_DEADLINE_MS = 10_000;
+  const deadline = setTimeout(() => {
+    console.error(`[server] drain deadline (${DRAIN_DEADLINE_MS}ms) hit — exiting with saves still queued`);
+    process.exit(code || 1);
+  }, DRAIN_DEADLINE_MS);
+  deadline.unref();
   db.close()
     .catch(() => undefined)
-    .finally(() => process.exit(0));
+    .finally(() => process.exit(code));
 }
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+process.on('SIGINT', () => shutdown(0));
+process.on('SIGTERM', () => shutdown(0));
+// THE CRASH NET: anything that escapes every handler used to end the
+// process with no final save — every player rolled back 30 s and the
+// supervisor restarted a world that never said why. Log it, save
+// through the normal shutdown, and exit non-zero so the restart is
+// visible in the supervisor log.
+process.on('uncaughtException', (err) => {
+  console.error('[server] uncaught exception:', err);
+  shutdown(1);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[server] unhandled rejection:', reason);
+  shutdown(1);
+});
