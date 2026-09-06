@@ -52,6 +52,7 @@ function slate(rows: Array<[string, unknown]>, authored: string[]) {
     authoredCells: () => new Map(authored.map((k) => [k, `site_${k}`])),
     poiThreatens: proto.poiThreatens,
     watchSurvey: proto.watchSurvey,
+    warSurvey: proto.warSurvey,
     strongholdLedger: undefined,
   };
 }

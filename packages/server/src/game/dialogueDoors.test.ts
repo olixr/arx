@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { GameServer } from './gameServer.js';
+import * as dlgSys from './dialogue.js';
 
 // THE SPOKEN CHARACTER (foundations F4.10). Written against the
 // in-class dialogue engine BEFORE the move; identical after. Slate
@@ -57,7 +58,7 @@ test('world:war_near reads two hostile garrisons inside the watch, and nothing l
     ...over,
   });
   const ask = (rows: Array<[string, unknown]>, sx = 0) => {
-    const slate = { poiLedger: new Map(rows), poiThreatens: proto.poiThreatens };
+    const slate = { poiLedger: new Map(rows), poiThreatens: proto.poiThreatens, warSurvey: proto.warSurvey };
     return (proto.worldFlagAnswer as Fn).call(slate, 'world:war_near' as never, {} as never, sx as never, 0 as never);
   };
   // The Company's bar against a goblin camp: the watch charges the
@@ -79,4 +80,23 @@ test('world:war_near reads two hostile garrisons inside the watch, and nothing l
   // now read as two garrisons at each other's throats. Nothing north
   // reads war_near this band; the answer is simply true again.
   assert.equal(ask([['a', site('gnoll_squat', 10)], ['b', site('fell_barrow', 40)]]), true);
+});
+
+// ---- THE DOOR, DIRECT (core audit 2026-09, Band A).
+
+test('worldFlagAnswer direct === delegator: bounty_open, peddler_near, calm', () => {
+  const ledger = new Map([
+    ['r1', { site: { defId: 'peddler_rest', anchorX: 10, anchorY: 0 } }],
+  ]);
+  const slate = {
+    openBounties: () => [{ id: 'b1' }],
+    poiLedger: ledger,
+    watchSurvey: () => ({ near: false, bold: false, toll: false }),
+  } as unknown as GameServer;
+  const p = {} as never;
+  const asks: Array<[string, number]> = [['world:bounty_open', 0], ['world:peddler_near', 12], ['world:peddler_near', 500], ['world:calm', 0], ['world:threat_near', 0], ['world:no_such', 0]];
+  const direct = asks.map(([flag, sx]) => dlgSys.worldFlagAnswer(slate, flag, p, sx, 0));
+  const viaClass = asks.map(([flag, sx]) => (proto.worldFlagAnswer as Fn).call(slate, flag as never, p, sx as never, 0 as never));
+  assert.deepEqual(direct, [true, true, false, true, false, false]);
+  assert.deepEqual(viaClass, direct);
 });

@@ -11,7 +11,7 @@ import { PLAYER_COMMANDS } from './playerCommands.js';
 test('the ledger holds every command, player verbs first', () => {
   assert.equal(PLAYER_COMMANDS.length, 2);
   assert.equal(DEV_COMMANDS.length, 44);
-  assert.equal(CHAT_COMMANDS.length, 46);
+  assert.equal(CHAT_COMMANDS.length, 47);
   assert.deepEqual(
     PLAYER_COMMANDS.map((c) => c.name),
     ['/lock', '/recall'],
@@ -30,11 +30,19 @@ test('first claim wins: the overlapping verbs resolve as the chain did', () => {
   assert.equal(firstClaim('/petbond 3'), '/petbond');
   assert.equal(firstClaim('/petarts'), '/petarts');
   assert.equal(firstClaim('/petstate rest'), '/petstate');
-  // Player verbs claim exactly their own line.
+  // THE VERB IS THE CLAIM: player verbs own their line whatever trails it.
   assert.equal(firstClaim('/lock'), '/lock');
   assert.equal(firstClaim('/home'), '/recall');
+  assert.equal(firstClaim('/lock the door'), '/lock');
+  assert.equal(firstClaim('  /recall now'), '/recall');
+  assert.equal(firstClaim('/locked'), '/');
   // Plain speech claims nothing — it falls to the say path.
   assert.equal(firstClaim('hello there'), undefined);
+  // THE UNSPOKEN WORD: any slash line nobody owns ends at the terminal
+  // entry, never in the room's ears.
+  assert.equal(firstClaim('/homee'), '/');
+  assert.equal(firstClaim('/homee the door'), '/');
+  assert.equal(CHAT_COMMANDS[CHAT_COMMANDS.length - 1]!.name, '/');
 });
 
 test('every command is terminal by construction: names are unique', () => {

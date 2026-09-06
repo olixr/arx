@@ -120,7 +120,9 @@ export function sweepWornKeys(srv: GameServer, player: PlayerComp): void {
   for (let i = player.keyRing.length - 1; i >= 0; i--) {
     const row = player.keyRing[i]!;
     if (keyUsesLeft(row.roll) > 0) continue;
-    if (row.roll.seed === liveSeed) continue;
+    // Normalized like every sibling read (keyForge, keyLabel): a legacy
+    // signed seed must still recognise its own standing run.
+    if ((row.roll.seed >>> 0) === liveSeed) continue;
     player.keyRing.splice(i, 1);
     crumbled++;
   }

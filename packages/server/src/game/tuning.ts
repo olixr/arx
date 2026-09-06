@@ -4,6 +4,12 @@
  * downhill, so no system needs a value edge back into gameServer.ts to
  * read a number.
  */
+import { TICK_RATE } from '@arx/shared';
+
+/** Seconds of authored dial → whole ticks of the server clock. */
+export function secToTicks(sec: number): number {
+  return Math.round(sec * TICK_RATE);
+}
 
 /** No gather resolves faster than this, whatever the speedups say. */
 export const MIN_GATHER_TICKS = 60;

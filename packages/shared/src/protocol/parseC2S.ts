@@ -29,7 +29,8 @@ type C2SValidators = {
   readonly [K in C2SMessage['t']]: (msg: Record<string, unknown>) => Extract<C2SMessage, { t: K }> | null;
 };
 
-const C2S_VALIDATORS: C2SValidators = {
+/** Exported for the server's dispatch-table pin (one row per validator). */
+export const C2S_VALIDATORS: C2SValidators = {
   hello: (msg) => {
     if (!isFiniteNum(msg.v)) return null;
     if (msg.name !== undefined && typeof msg.name !== 'string') return null;

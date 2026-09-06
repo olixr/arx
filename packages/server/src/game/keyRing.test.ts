@@ -4,6 +4,7 @@ import { GameServer } from './gameServer.js';
 import { addItem, countItem, emptyInventory } from './inventory.js';
 import { DUNGEON_KEY_ITEM, dungeonSpecFromRoll, keyForgePrice, keyUsesForTier } from '@arx/shared';
 import type { InvSlot, ItemRoll, KeyLore } from '@arx/shared';
+import * as keySys from './keyring.js';
 
 /**
  * THE KEY RING: dungeon keys never enter the pack — both pickup doors
@@ -303,4 +304,40 @@ test('the forge refuses: away from the bench, unknown doors, held copies, light 
   proto.keyForge.call(poor, 1, 888);
   assert.equal(poor.player.keyRing.length, 0);
   assert.equal(countItem(poor.player.inventory, 'coins'), 0);
+});
+
+// ---- THE DOOR, DIRECT (core audit 2026-09, Band A).
+
+test('mintFreshKeyRoll / addKeyToRing direct === delegator on the same dice', () => {
+  const real = Math.random;
+  const mint = (via: 'module' | 'class') => {
+    Math.random = () => 0.25;
+    try {
+      return via === 'module' ? keySys.mintFreshKeyRoll({} as never) : (GameServer.prototype as unknown as { mintFreshKeyRoll: () => ItemRoll }).mintFreshKeyRoll.call({});
+    } finally {
+      Math.random = real;
+    }
+  };
+  const roll = mint('module');
+  assert.deepEqual(mint('class'), roll);
+  assert.equal(roll.rar, 'common');
+  assert.equal(roll.seed, Math.floor(0.25 * 0x100000000) >>> 0);
+  assert.equal(roll.uses, keyUsesForTier('common'));
+  const ring = (via: 'module' | 'class') => {
+    const sent: unknown[] = [];
+    const player = { keyRing: [] as unknown[], nextKeyId: 1, session: { sendJson: (m: unknown) => sent.push(m) } };
+    const s = {
+      sendKeyRing: (p: unknown) => sent.push(['ring', (p as { keyRing: unknown[] }).keyRing.length]),
+      recordKeyLore: (_p: unknown, r: ItemRoll) => sent.push(['lore', r.seed]),
+    } as unknown as GameServer;
+    const row =
+      via === 'module'
+        ? keySys.addKeyToRing(s, player as never, roll, true)
+        : (proto.addKeyToRing.call(s, player as never, roll as never, true as never) as { id: number; roll: ItemRoll });
+    return { row, ring: player.keyRing, sent };
+  };
+  const a = ring('module');
+  assert.deepEqual(ring('class'), a);
+  assert.equal(a.ring.length, 1);
+  assert.deepEqual(a.row.roll, roll);
 });

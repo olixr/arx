@@ -7,12 +7,19 @@ import { DoorInfo, doorInfo } from '@arx/shared';
 import { HEARTH_CD_MS } from '../tuning.js';
 import type { ChatCommand } from './types.js';
 
+/**
+ * THE VERB IS THE CLAIM: a player verb owns its line whatever trails
+ * it (`/lock the door` reaches /lock), so the unspoken word only ever
+ * names a verb nobody holds.
+ */
+const verbOf = (text: string): string => text.trim().split(/\s+/)[0] ?? '';
+
 // /lock — toggle the lock on the nearest shut door in reach. A
 // player feature, not dev-gated: the first rung of the locking
 // ladder (keys and ownership arrive with a later epic).
 const cmdLock: ChatCommand = {
   name: '/lock',
-  claims: (text) => text.trim() === '/lock',
+  claims: (text) => verbOf(text) === '/lock',
   run(srv, eid, player, text) {
     const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
     const pos = srv.positions.get(eid);
@@ -47,6 +54,18 @@ const cmdLock: ChatCommand = {
     }
     const unit = srv.doorUnit(pos.plane, best.tx, best.ty, best.info);
     const key = `${pos.plane}|${unit.ax},${unit.ay}`;
+    // THE AUTHORED KEYS: a boot-seeded faction lock is not the
+    // player's to work — it wants a pick or a key, not a word.
+    if (srv.authoredLockKeys.has(key)) {
+      // ...and once picked or keyed open, it is not the player's to
+      // set again — the Court's door stays as the Court left it.
+      sys(
+        srv.doorLocks.has(key)
+          ? 'This lock answers to a key you do not carry.'
+          : 'This lock was set by another hand — opened, it stays open.',
+      );
+      return;
+    }
     if (srv.doorLocks.delete(key)) sys('The lock clicks open.');
     else {
       srv.doorLocks.add(key);
@@ -61,7 +80,7 @@ const cmdLock: ChatCommand = {
 // only, and the hearth rests ten minutes between recalls.
 const cmdRecall: ChatCommand = {
   name: '/recall',
-  claims: (text) => text.trim() === '/recall' || text.trim() === '/home',
+  claims: (text) => verbOf(text) === '/recall' || verbOf(text) === '/home',
   run(srv, eid, player, text) {
     const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
     if (!player.home) {

@@ -167,6 +167,13 @@ test('validator: the laws hold', () => {
     { stages: [{ id: 'a', journal: 'x', objectives: [{ kind: 'discover', place: 'poi:1,2' }] }] },
     'zone:',
   );
+  // THE PIN'S PLANE: a mark names a plane that stands at boot, or none.
+  const marked = (plane?: string) => ({
+    stages: [{ ...base.stages[0]!, mark: plane === undefined ? { x: 1, y: 2 } : { x: 1, y: 2, plane } }],
+  });
+  broken(marked('underwrold'), 'not a static plane');
+  assert.ok(validateQuest({ ...base, ...marked('underworld') }).ok, 'the underworld is a static plane');
+  assert.ok(validateQuest({ ...base, ...marked() }).ok, 'a plane-less mark rides the surface');
 
   // Rolled gear can never be a collect ask — the turn-in consumes by id.
   const gearId = [...ITEMS.values()].find((d) => d.gear)?.id;

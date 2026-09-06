@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { BURN_TICK_EVERY, XP_PER_DMG_SCHOOL, XP_PER_DMG_VITALITY } from '@arx/shared';
 import { GameServer } from './gameServer.js';
+import * as procSys from './procs.js';
 
 /**
  * THE DEEPER SIGIL's door-side laws, pinned against the 2026-07 audit:
@@ -551,4 +552,20 @@ test('stride banks by the one door: ground accrues through rest, calling boots i
   call(protoV2.strideMoment, s, 1, player, 4);
   assert.equal(runs.length, 1, 'ten tiles wake the boots');
   assert.equal((player.procs.get('long_road') as { tiles: number }).tiles, 0, 'the spend clears the bank');
+});
+
+// ---- THE DOOR, DIRECT (core audit 2026-09, Band A).
+
+test('procState / bodyMoment direct === delegator: the runtime is minted once; no workings, no yield', () => {
+  const mk = () => ({ gear: { procs: [] }, procs: new Map() });
+  const a = mk();
+  const b = mk();
+  const s = { tickCount: 5, offerProc: proto.offerProc, procState: proto.procState } as unknown as GameServer;
+  const ra = procSys.procState(s, a as never, 'x');
+  const rb = call(protoV2.procState, s, b, 'x') as typeof ra;
+  assert.deepEqual(ra, rb);
+  assert.deepEqual(ra, { restUntil: 0, stacks: 0, strikes: 0, tiles: 0 });
+  assert.equal(procSys.procState(s, a as never, 'x'), ra, 'the same row on the second ask');
+  assert.equal(procSys.bodyMoment(s, 1, a as never, 'gather', { x: 0, y: 0 } as never), 0);
+  assert.equal(call(protoV2.bodyMoment, s, 1, b, 'gather', { x: 0, y: 0 }), 0);
 });

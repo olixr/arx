@@ -66,7 +66,7 @@ export function worldFlagAnswer(srv: GameServer, flag: string, player: PlayerCom
   if (flag === 'world:war_near') {
     // Two hostile garrisons in the watch — its own survey (authored
     // cells count; see warSurvey), so it never pays for watchSurvey.
-    return warSurvey(srv, sx, sy);
+    return srv.warSurvey(sx, sy);
   }
   const watch = srv.watchSurvey(sx, sy);
   switch (flag) {

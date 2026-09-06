@@ -71,9 +71,10 @@ export interface QuestStage {
   objectives: QuestObjective[];
   /**
    * RARE: plant the player's waypoint here when the stage begins —
-   * only where the story literally hands over a destination.
+   * only where the story literally hands over a destination. The
+   * plane names where the mark lives; absent = surface.
    */
-  mark?: { x: number; y: number };
+  mark?: { x: number; y: number; plane?: string };
 }
 
 /** Gates on offering (and on item-starts). All present parts must pass. */
