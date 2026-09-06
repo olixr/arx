@@ -309,44 +309,90 @@ Owed and gated, carried out of this band for the owner to accept or reverse:
 - THE AUTHORED HUG is opt-in per site, said by the bar's site row alone. Owed: accept the per-site word.
 - THE COMPANY'S CROWN: a brigand crown pool forges Brede and would forge any future crowned reaver row. Owed: accept, or drop `crowned` from the row, which R4 forbids.
 
+#### 3.1a As built (band 8 addendum; the owner gates)
+
+The five owed-and-gated items above are struck as ACCEPTED (G4): THE HUNG LANTERN, THE COLD TORCH BY DAY (load-bearing for the Felling's noon shot and the husk's brazier), THE CHEST WINDOW, THE AUTHORED HUG per site, THE COMPANY'S CROWN.
+
+Band 8's gates, answered: G1 FieldLitter YES (landed, dignity 12 since the fix pass; proven at the Felling, unreachable at the husk by its floor); G2 the `goblin_warcamp` rivalDef/rivalNear word YES (the def edit landed with the frontier test); G3 SmolderHeap MINTED 548; G5 the cadence (one jumped day, two un-jumped stretches, one fix pass); G6 the refusals stand (no Doorless body north-west, no Legion loop, no timed light row, no fallen-lamp id, no hug on any north pin, no second core in [-2,-2], THE CHALLENGE stays Epic 2).
+
+New this band, for the owner to accept or reverse: THE COUNTED PACK (`ZoneSpawn.passive`: a placed body that never opens on a player; the ward line's wolves fly it); THE TRAMPLED RING (`cues.trampled`; the veil den flies it); THE UNWATCHED SQUAT STEPS OFF (keepSpawnHours drops the idle-only rule for unwatched off-window bodies); the litter's dignity 12; the fork rest's `cues.clearing` 4 (the north fringe gains a ring row of the clearing law's stumps so the mouth's oak falls: refused otherwise, the sketch cannot grow a row without sliding the golden anchor); the NaN guards (a non-finite heading moves nobody, the field has no NaN tile, the edge law refuses a non-finite point, the body that lost its bearing is named and stood on its origin).
+
 ### 3.2 THE HUSK — north, the hunters' trail
 
-- **Torsten's picket** at ~(-104,-86), just past the TOWN_SPAWNS wolf pairs:
-  two LampPost, a bell on a TimberPost, a slate with an authored tally
+- **Torsten's picket**: trail DRESSING at (-120,-124) on the trail's east
+  shoulder where the wood opens to grass, forty tiles past the dire wolf
+  (authored zone `picket`, rect (-131..-108, -140..-115), no core, no haven,
+  no body; the lints `wolfClear` 30 / centre 40, `thresholdStake`,
+  `benchUnused`): two LampPost, a TownBell, a slate with an authored tally
   (Signpost words: gnolls eleven, wolves seven, "ours" three with a line
-  through the three), a StoneBench nobody sits on. Sergeant **Torsten** and
-  two sworn (waykeeper actors, invulnerable haven watch safeR 8). Four
-  GraveMounds beside the trail with a red rag on a stick: Aske's brother's
-  crew, who walked past this lamp at dusk against Torsten's word.
-- **The Felling** at ~(-140,-140), cell [-2,-2] (~210 tiles, tier 2): the
-  **rolled** goblin_warcamp core the frontier already deals here at tier 1-3
-  weight 3, but authored as a `cell` pin so it stands on the first visit
-  (cell pins are still authored cells; the frontier beats below ride the
-  **satellite** the Felling's stage-2 rung deals, which is a rolled cell).
-  The Drum: punctuation palisade, worg pickets (rows wear tribe `goblin` so
-  the den's wolves fight the camp's own worgs), a firecaller, four
-  SmolderHeap charcoal clamps in a downwind line (cap four per prefab), forty
-  tiles of CharredStump in rows with Detail.DragFurrow to the camp, a ring of
-  DeadTree snags where the roots went grey. On the trail side, the Charter's
-  **licensed cut**: feller-boss **Bodil**'s crew (fordgate actors on watch,
-  Sawhorse, FelledLog, LumberRack, a CharterPost with the lot number, ochre
-  canvas). A Doorless night row (tribe `goblin_doorless`, hours 20-06) cuts
-  snags at the edge and leaves knucklebones on Bodil's rope.
-- **The husk** at ~(-96,-168), cell [-1,-2] (~236 tiles, tier 2): weight-0
-  variant `husk_of_the_line` on the `poi_watchtower_husk` prefab, family
-  `dead`, tiers [2,4], with a gnoll garrison row hours 05:30-20:30 (tribe
-  gnoll, packlord crowned from the pool: Old Cackle) and the existing
-  skeleton rows 20:30-05:30 (tribe dead, crowned "the Struck Sergeant" in the
-  Pale Reeve mould). **Overlap 18:00-20:30 where both stand on the ground**
-  and the changeover is a fight the player can time from the picket. WallStone
-  breaches re-crested with RuinWallStone, StoneFloor, CaveRubble, a
-  LampPostDark torn down across the door (the order's own lamp, snuffed, used
-  as a cook-pot by day), BoneMidden and KnucklePit on the swept-gravel apron,
-  TrophyStake with a Waykeeper's grey wool, a Brazier with a lights row timed
-  20:30-05:30 (it lights itself), a lamp bracket with no lamp. Between husk
-  and den: a deer kill-field, Detail.Bones, wolf tracks, a snare line cut.
-- **The veil pack** in the pinned `veil_den` cell [-2,-1]: dire-crowned
-  (Hollowhowl), BoneTree at the den mouth, BeastNest, gnawed BonePile.
+  through the three), a StoneBench nobody sits on. Sergeant **Torsten** is
+  posted at the fork rest's mouth and walks DOWN to the slate each morning
+  (routine `torsten_fork`: 05:30 down the scuff, at the slate's west cell by
+  about 06:15 chalking the count for one game hour and a little, home by
+  half past eight); the picket places nobody. Four GraveMounds in a row
+  hugging the scuff north of the post, and the RedRagStake beside the second
+  mound ON the tier-2 ring (192.0 from the settled anchor, where a walker
+  coming up reads it before the mounds; §13.1 law 5): Aske's brother's crew,
+  who walked past this lamp at dusk against Torsten's word.
+- **The Felling** at (80,-42), cell [0,-1], tier 2, on its OWN burnt stand
+  east of the gate on the First Road side (weight-0 `felling_drum` on the
+  NEW sketch `poi_felling_drum`, 32x29, the stockade verbatim inside it; the
+  `felling_burn` stroke circle r 18 amp 0.8 under it; `boldness` STRUCK:
+  authored cells never stage). The Drum: punctuation palisade, worg pickets
+  (rows wear tribe `goblin` so the den's wolves fight the camp's own worgs),
+  a firecaller, four SmolderHeap (548, MINTED in band 8) charcoal clamps in
+  a downwind line (cap four per prefab), twelve CharredStump in two rows of
+  six (six more on the cone by `cues.scatter`), the drag furrows running
+  NORTH-WEST from the rows toward each clamp on the detail plane and
+  stopping a cell short of the dome (the fix pass: straight furrows read as
+  domes on stalks at zoom 1.3), six DeadTree snags on the sketch's rim on
+  the sentry ring's bearings (a ring worldgen never deals). The licensed cut
+  is NOT here: it is Bodil's, at the dying stand's west skirt north of the
+  High Road at the fork (§3.3). Two Doorless bodies (tribe `goblin_doorless`,
+  hours 20-06, one row of one each) stand at named `at` posts beside the two
+  EAST snags, (87,-49) and (90,-40), inside the pickets' round; the
+  knucklebone on Bodil's rope is SPOKEN (R12), never drawn. PROVEN live in
+  the fix pass: the pair musters on its posts at 20:00 and the Drum's sentry
+  worg and firecaller open on them within the hour (both Doorless dead by
+  20:44 on the running clock, the worg at 36 of 109); two FieldLitter bodies
+  lay inside the ring after it (beat 11).
+- **The husk** at (-64,-240), cell [-1,-2], tier 2, off every way on the
+  mere's far ground (a peninsula: the mere y -190..-185 from x -120 to -57
+  and the eastern water x -66..-44 from y -250 to -192), found by the cairn
+  that fell at the High Road's turn (-73,-172) and the water where it
+  narrows (the wade at x -85 through rows -189..-185, or the marsh strip's
+  dry sand at x -55..-43; both WALKED); weight-0 `husk_of_the_line` on the
+  NEW sketch `poi_husk_of_the_line` (16x15; the shipped `poi_watchtower_husk`
+  is every rolled husk's and stands untouched; `cues.scatter []`: every mark
+  is in the sketch), family `dead`, tiers [2,4], with a gnoll garrison row
+  hours 05:30-20:30 (tribe gnoll, packlord crowned from the pool: Old
+  Cackle) and the existing skeleton rows 20:30-05:30 (tribe dead, crowned
+  "the Struck Sergeant", levelOffset 3 since the fix pass (Old Cackle's own
+  offset; the dead take the crown first now and the line wins by 21:00)).
+  **The changeover at half past eight is a fight when a character stands
+  within 20 to see it** (keepSpawnHours never steps a body off in front of
+  anyone; an off-window body nobody watches steps off between glances
+  WHATEVER it was doing, the fix pass's rule, so a walk twenty tiles off and
+  back finds the line alone; the dead do not walk a lit apron for two and a
+  half hours). WallStone breaches re-crested with RuinWallStone, StoneFloor,
+  CaveRubble, the order's own LampPostDark standing dark at the door's west
+  jamb (snuffed, not felled) and the gnolls' CookPot on the order's hearth
+  stone inside, BoneMidden and KnucklePit on the swept-gravel apron,
+  TrophyStake with a Waykeeper's grey wool, a Brazier on the flame clock
+  like every man-made fire (cold at noon, lit from dusk); the burnt board
+  (SignpostBurnt) at the door's east side, which reads "Char. Whatever it
+  said went up with it."; ONE living board STRUCK FROM THE ROLLS at the
+  apron's south edge. The kill-field's edge (BeastBones x3, Detail.Bones) is
+  the husk's own south rows: the den is 190 tiles west. The chest stays free
+  (no `chestWarded`): loot fast or fight fair.
+- **The veil pack** in the pinned cell [-2,-1] at (-186,-99) (epoch 0), on
+  the NEW weight-0 def `veil_den` (wolfkin, tiers [1,4], wolf 2-3 holdfast,
+  wolf 1-2 sentry, `dire_wolf` x1 crowned 'Hollowhowl' minTier 1 levelOffset
+  2; `clearedFlag: poi_veil_den_broken`, never the generic den flag) on the
+  NEW sketch `poi_veil_den` (den_bones re-dressed; `cues.trampled: true`,
+  THE TRAMPLED RING of the fix pass: a pack cuts nothing, so the felled ring
+  is grass and never a stump), BoneTree at the den mouth, BeastNest, gnawed
+  BonePile.
 
 **The contention.** Sorrel wants the pack culled. Alder says the wolves are
 running from something and killing them clears the trail for what is behind
@@ -357,62 +403,153 @@ brother and will pay. Everyone's local read is "a bad year for wolves" and
 nobody asks why a pack that denned in the veil for forty years came down.
 
 **The fork — THE PACK OR THE SQUAT.**
-- (A) *Wool Count* (Sorrel): cull the veil pack (a player clear of a rolled
-  satellite knot; the den cell itself is pinned and stands). Rewards:
-  +fordgate, a drover's fleece cloak, Sorrel's pen sells cheaper. Costs:
-  Alder closes his copse **trades** to the character (shop refusal line; his
-  quest and talk objectives are untouched, the tutorial is done by now),
-  Torsten's slate bark reads "wolves 0" and his uneasy tree stops paying
-  relief.
+- (A) *Wool Count* (Sorrel): get the count from Torsten's mouth, then break
+  the pack at the pinned den (THE FLAG OBJECTIVE reads `poi_veil_den_broken`,
+  retro-credited; the den re-musters in 180 s for everyone), then three
+  pelts off the pack (`questDrops` on wolf 0.6 and dire_wolf 1, rolled only
+  while `the_fleece` is active). Rewards: +fordgate, a drover's fleece
+  cloak, Sorrel's pen at KNOWN (fordgate +25 net: three percent off at every
+  Charter counter, said in her turn-in). Costs: Alder's yard is SHUT to the
+  character for good (`alder_trades_closed`, priority 14, outranks the grey
+  root offer since the fix pass: an A north character hears the closure
+  first, and the closed hub carries the grey root's door for any hand the
+  thread side has not taken; the `copse_yard` shelf B's bow wood opens stays
+  shut to them; the axe questions still answer), Torsten's slate LINE reads
+  'wolves nought' (`nought`) and his relief tree (`torsten_watch_relief`)
+  forbids `wool_count_taken`. No waykeepers delta on A.
 - (B) *The Tower's Debt* (Torsten, with Aske's coin stacked if
   `fen_side_taken` is set): break the gnoll squat by day (killable garrison
-  rows), then hold the breach with Torsten until 20:30 and watch the line
-  stand. Inside the quest, one choice: hand Torsten the oil (he burns the
-  bracket room; flag `first_line_burnt`, which Hale reads as shame) or refuse
-  it (flag `first_line_kept`, which Torsten never forgives). Rewards:
-  +waykeepers either way, the order's grey wool, Aske's coin (+reavers if
-  taken, and Hale hears). Costs: −fordgate via Sorrel ("you left my wolves").
+  rows), then hold the apron with Torsten's LAMP (the shipped `lantern`,
+  given at the sworn node, taken back at the turn-in: THE TURN-IN CONSUMES)
+  from dusk through half past eight, and walk off when the line stands
+  (trigger `husk_breach_held`, exit, minInsideSec 75, timeBetween 20.5→5.5).
+  Inside the quest, one choice: say the word and Torsten's own oil burns the
+  room (`first_line_burnt`, Hale's shame line once) or leave it
+  (`first_line_kept`; `torsten_kept` shrinks his hub for good). Rewards:
+  +waykeepers either way, the order's grey wool, Aske's coin at the Third
+  Stone (60, or 90 at the road's rate with `fen_side_taken`; +reavers 10;
+  Hale hears, −5). Costs: fordgate −25 net across B1 and B2 (SUSPECT:
+  Sorrel's pen at 1.12); Sorrel's count line once (`sorrel_left_wolves`,
+  once since the fix pass, so her hub and her yard come back).
 The husk itself never changes hands for good (F2: NPC kills never ember a
 site, and the site is authored). Both roads teach the same lesson: the trail
-is not safer after either.
+is not safer after either. The trail is not safer after either, and both
+journals say so; the picket's slate says seven and eleven before either
+offer, and the mounds say what the count cost.
 
 ### 3.3 THE WARD LINE — north-west, the Thornveil fork
 
 The mysterious party the first drafts forgot. Where the hunters' trail ends
 at the Thornveil fork (-140,-176) and the stand is dying from the roots:
-- **The waystone glade** at ~(-176,-190) (~250 tiles): the existing
-  `waystone_glade` haven def pinned, ElvenWaystone at its heart, two Even
-  Court **sentinels** from the sentinel_arbor pool (unnamed; elves never
-  name-bomb), speaking the old tongue that is never translated and one line of
+- **The waystone glade**: the waystone stands at the fork rest's road
+  corner (the `poi_fork_waystation` re-sketch: the mouth turned EAST to the
+  trail's last leg, the cairn pair flanking it, ONE board THE FORK REST, the
+  ElvenWaystone at the yard's north-east corner; the thread and the grey
+  stone LEFT the yard); the two sentinels stand at named `at` posts flanking
+  the stone, hearth rows (never watch: a sentinel must never draw on a
+  wolf), speaking the old tongue that is never translated and one line of
   the common tongue each per visit. Their light draws nothing at night (no
   flame gate, cool row).
-- **The ward line**: WardThread strung tile to tile across the dying stand
-  from the glade toward the Felling's snag ring, GloomStone at three points
-  along it where the roots went grey (the only gloom-touched ground in the
-  north), a single CreepRoot at the line's end that nobody explains.
-  Stepping over the thread is free; cutting it is the evencourt deed hook.
+- **The ward line**: WardThread strung as an L round the dying stand NORTH
+  of the High Road at the fork (x -156..-132, y -184..-200, one ground): the
+  south leg along y -184 from the head stone by the junction west to the
+  corner, the west leg up x -150 to where the wood gives out; 28 tiles in
+  the authored zone `wardthread` (rect (-164..-128, -203..-179)), painted as
+  ONE line with wands at the ends and the turn, three grey points in dead
+  rings (three DeadTree each): the head stone by the road (-135,-184), the
+  corner stone (-151,-184), the end stone where the wood gives out
+  (-150,-198), the bruise (Detail.BlightVeins) on each and the
+  `wardthread_blight` stroke (capsule, amp 0.7) under the stand (the only
+  gloom-touched ground in the north), a single CreepRoot two tiles past the
+  end stone in open glade (-150,-200) that nobody explains. Stepping over
+  the thread is free; cutting it is THE DELIBERATE CUT: a tile interact on
+  the thread ("Cut the thread", never the cell under the boots since the
+  fix pass), the deed `wardCut` −8 to the Court (the `evencourt|reavers`
+  cross pays the Company +4), the flag `ward_thread_cut`, the regrow in ten
+  minutes for everyone; a swing or a shot passes through it.
 - **The contention.** The stand heats a village and a camp and a waystation.
   The old folk will not fell living wood and will not say whether they know
   why it is dying. Alder wants it thinned before frost and blames the wrong
-  people. Bodil cuts on licence up to the thread and has started cutting past
-  it. The Drum chars it. Torsten wants it left standing because grey-root
-  posts rot. The wolves walk the thread unbothered, which nobody but the
-  sentinels has noticed.
+  people. Bodil cuts on licence up to the thread at the stand's WEST SKIRT
+  (the Charter's lot forty one, x -160..-151, y -194..-185, on damp glade
+  the crew found open: the lot post, the rope, four face stumps one tile
+  from the thread, two cut past it and dragged back across it, the
+  sawhorse, the trunks, the rack, the lean-to with Bodil's bed under it and
+  a bed frame for each of the two fellers, the fire, the banked clamp) and
+  has cut two past it. The Drum chars its own stand east of the gate; Bodil
+  says dying wood chars best and the Drum knows it. Torsten wants it left
+  standing because grey-root posts rot. Two wolves walk the thread's south
+  leg from seven at night to six (a zone row, tribe predators, PASSIVE since
+  the fix pass: THE COUNTED PACK never opens on a player, a blow still
+  answers), which nobody but the sentinels has noticed; with the trail's
+  five they are Torsten's seven.
 
 **The fork — THE THREAD OR THE AXE.**
-- (A) *Keep the Thread* (a sentinel; one common-tongue line): carry the cut
-  threads back to the waystone and re-string the line; stand at the glade one
-  dusk while the Drum's pickets test it. Rewards: +evencourt, a moonglass
-  chip (held token), Alder's bark changes to the one true reading ("the pack
-  went north; that is the one true thing this year"). Costs: −fordgate (Margit
-  bills the stopped licence), Bodil's shelf closes.
-- (B) *The Grey Root* (Alder, with Bodil's licence): fell the dying stand
-  yourselves before frost, past the thread, and deliver the cordwood to the
-  Copse yard. Rewards: +fordgate, the Copse's bow-wood shelf, the village's
-  winter tally posted full on the green. Costs: −evencourt (the sentinels'
-  closed throat; the waystone's light goes cool to the character's eye is a
-  bark, not a light change), Rill's stave shelf reads short (no north yew).
+- (A) *Keep the Thread* (a sentinel; one common-tongue line): carry four
+  lengths the Court gathered past the three grey stones (three enter
+  triggers, once each, `notFlag ward_thread_cut`) and hand them to the stone
+  (the turn-in strings them; the tile never changes); then stand at the HEAD
+  STONE by the road one dusk from half past seven for a hundred seconds
+  (trigger `stone_dusk_stood`, exit, timeBetween 19.5→23) and watch what
+  walks it: the pack's two, and nothing else (PROVEN live in the fix pass:
+  a stander at the head stone for 115 s from 19:30 took no damage, the pair
+  passed within three tiles fifteen times and never opened). Rewards:
+  +evencourt, a moonglass chip (held token), Alder's bark changes to the one
+  true reading ("the pack went north; that is the one true thing this
+  year"). Costs: fordgate −25 net (Margit bills the stop once,
+  `margit_licence_billed`; Bodil's stopped licence is a line, she has no
+  shop). A cut hand hears `sentinel_cut` once and the dusk offer never (both
+  the dusk offer and its re-offer forbid `ward_thread_cut` since the fix
+  pass: closure by law, not by shadow).
+- (B) *The Grey Root* (Alder, with Bodil's licence): speak to Bodil for the
+  licence (her `signed` choice pays evencourt −10; "Not yet" pays nothing),
+  fell twelve of cord and two of yew INSIDE the thread where the stand still
+  stands (stepping over is free; the thread stays whole), and deliver them
+  to Alder at the Copse; then six more to Margit's tally stall. Rewards:
+  +fordgate, the Copse's bow-wood shelf, the village's winter tally posted
+  full on the green. Costs: evencourt −30 with the signature (OUTLAW: the
+  sentinels' closed throat; the fineActor is sentinel_serel at Evenfall) or
+  −20 without (SUSPECT), both said, Rill's stave shelf reads short (no
+  north yew).
 Both defensible: the axe is the war; the axe is the winter.
+
+### 3.3a As built 2026-09-06 (Band 8)
+
+The judge's conflicts decided (blockout.md §0.2), one line each:
+
+- A. The booted anchors are the pins: fork_rest, husk_of_the_line, felling_drum, hobgoblin_legion and the veil den stand where they booted; the plan's stale coordinates go to the owner as the amendments folded above.
+- B. The dying stand is the forest block north of the High Road at the fork, and nothing hugs it: the fork rest's anchor never carries `hug` and never moves on a fresh boot.
+- C. The fork rest faces the trail; the thread and the grey stone left the yard: the waystone stands at the yard's road corner, the mouth turns east, and the lamps stop here for good until Silverfall's country.
+- D. The picket is on the east shoulder and marks the threshold: zone `picket`, no core, no haven, no body, the rag on the tier-2 ring.
+- E. Torsten does not walk to the husk; his lamp does: the mere makes the ground a peninsula, so the hold is stood with the shipped `lantern`, given and taken back at the turn-in.
+- F. The seam is kept: gnolls by day, the dead by night, the changeover a fight only under an eye within 20; an unwatched squat steps off between glances.
+- G. The chest stays free: no `chestWarded` on the husk, so it is loot fast or fight fair every day.
+- H. The husk's marks live in its own sketch: the new `poi_husk_of_the_line` prefab, the order's own lamp standing dark (not torn down), the burnt board and one living board struck from the rolls.
+- I. The veil den is an honest smaller variant: a new weight-0 def with its own `clearedFlag`, minTier 1 so Hollowhowl stands whatever the jitter says.
+- J. The Felling ships its own ground, and the clamp is a tile: the new `poi_felling_drum` prefab, SmolderHeap 548 minted as the primary prop, the licensed cut removed from its description.
+- K. The crew is placed, protected and bedded honestly: Bodil and two pooled fellers, all invulnerable, one Bed and two Bedrolls at the cut.
+- L. The north-west is quiet: no Doorless body there, the knucklebone is spoken and never drawn, the thread's wolves are one passive zone row on the south leg only.
+- M. Torsten and the sentinels are hearth rows with named posts, never watch rows: a sentinel must never draw on a wolf.
+- N. The Legion is untouched this band: no standard, no loop, no edited sketch; the standard is band 10's Spoil Wold.
+- O. The pack or the squat, as ladders: Sorrel's Wool Count and Torsten's Tower's Debt compose on the shipped quest rails with no waykeepers delta on A and a net fordgate/waykeepers trade on both sides.
+- P. The thread or the axe, as ladders: the sentinels' Keep the Thread and Alder's Grey Root compose the same way, `ward_line_taken` stamping on both closing links.
+- Q. The door back: every fork offer tree forbids its own `<id>_declined` and the giver's hub carries one re-offer choice, except the sentinels, who have no hub and so nag every visit while declined (recorded, not fixed).
+- R. The mouths' shapes: Torsten keeps one hub that shrinks for good on `first_line_kept`; the sentinels carry no hub and no old-tongue string is ever rendered.
+- S. The cut is deliberate, and a deed: a tile interact only, never a swing or a shot, crediting `wardCut` and regrowing the thread in ten minutes for everyone.
+- T. The cairn that fell: zone `turnoff`, two tiles, no light, no board, no body, marking the way to the husk and naming B1's journal landmark.
+- U. The owner gates, asked: FieldLitter, `rivalNear`, SmolderHeap minted, and the five §3.1a gates all went to the owner as G1-G6 below.
+- V. Names and ids: the module is `content/src/maps/wardthread/`, the zone ids `wardthread` / `picket` / `turnoff`, and one body per named slug (Torsten, Bodil, Hollowhowl) throughout.
+
+The owner's rulings (band8/rulings.md), as built:
+
+- G1. FieldLitter: YES, landed and reachable; dignity 12; proven live at the Felling; unreachable at the husk by the ground itself, so the wound count stands as the husk's honest picture.
+- G2. The `goblin_warcamp` rivalDef/rivalNear word: YES, the def edit stands with the frontier test; not claimable live in one day (the boldness clock).
+- G3. SmolderHeap: MINTED 548, standing at the Felling; the clamps' furrows now run north-west and stop a cell short (the fix pass, since straight furrows read as domes on stalks at zoom 1.3).
+- G4. The five §3.1a gates: recorded ACCEPTED (see the 3.1a band 8 addendum above).
+- G5. The proof cadence: kept, one in-game day jumped to each stop, two un-jumped stretches (the hold through 20:30, the dusk stand), one fix pass after the audit and the review together.
+- G6. The refusals: kept, plus two more recorded in the fix pass (the client never offers the cut for the cell under the boots; a same-tile blind pair was checked against sightLine and refuted, nothing changed there).
+
+Owed, out of this band for the owner to accept or reverse (see the 3.1a band 8 addendum above for the full text): THE COUNTED PACK, THE TRAMPLED RING, THE UNWATCHED SQUAT STEPS OFF, the litter's dignity 12, the fork rest's `cues.clearing` 4, and the NaN guards. Also owed and refused, with the reason recorded in rulings.md: the stump field north of the yard (the sketch cannot grow a row without sliding the golden anchor); `wolfClear` 30 for authored cells (accepted with the note that the south pocket fells to y -116).
 
 ### 3.4 THE THIRD STONE — south, the Old Road
 
@@ -590,8 +727,8 @@ player's own map of the thing nobody names.
 | Zone | Pair | Giver A / Giver B | Pays A | Pays B | Shared flag |
 |---|---|---|---|---|---|
 | East | THE CAUSEWAY OR THE SLUICE | Ingram / Halvor | +fordgate, causeway-pass, corn-carry | +fenside, Dugout, kelp-string token | `fen_side_taken` |
-| North | THE PACK OR THE SQUAT | Sorrel / Torsten | +fordgate, fleece cloak, cheaper beasts | +waykeepers, grey wool, Aske's coin | `first_line_burnt` or `first_line_kept` |
-| North-west | THE THREAD OR THE AXE | a sentinel / Alder+Bodil | +evencourt, moonglass chip | +fordgate, bow-wood shelf | `ward_line_taken` |
+| North | THE PACK OR THE SQUAT | Sorrel / Torsten | +fordgate, fleece cloak, cheaper beasts | +waykeepers, grey wool, Aske's coin | `wool_count_taken` / `tower_debt_paid`, and B's inner `first_line_burnt` or `first_line_kept` |
+| North-west | THE THREAD OR THE AXE | a sentinel / Alder+Bodil | +evencourt, moonglass chip | +fordgate, bow-wood shelf | `ward_line_taken` stamps on BOTH closing links (`keep_thread_done` / `grey_root_done` say which) |
 | South | THE LAMP OR THE LAW | Eskil / Torsten via Hale | +returners, PitLamp, Kingsdelf shelf | +waykeepers, lamp glass, the bell | `south_road_taken` |
 | West | THE FARM OR THE STAKE | Steinar / Rurik+Alder | +fordgate, tin route | +crown, Doorless token | `grubfarm_burnt` or `grubfarm_spared` |
 
@@ -609,20 +746,36 @@ Gates on the tutorial: none of the ten givers is a teacher; Alder's and
 Weir's tutorial objectives are untouched (only shop lines change, and only
 after the capstone).
 
+THE DOOR BACK: every fork offer tree forbids its own `<id>_declined`, and the
+giver's plain hub carries one re-offer choice (Sorrel, Torsten, Alder); the
+sentinels have no hub, so their two re-offers are trees that nag every visit
+while declined (the house pattern, on the Court alone; recorded, not fixed).
+
 ---
 
 ## 5. Living-world beats
 
 **Ship in v1 (all compose on existing grammar plus the dials named):**
 1. **The ranks re-form at dusk.** Gnoll rows 05:30-20:30 and dead rows
-   20:30-05:30 on one husk def, overlap 18:00-20:30, matrix row
-   `dead|gnoll hostile@10 initiator dead`. Zero server code.
+   20:30-05:30 on one husk def, the changeover at half past eight under an
+   eye within 20; matrix row `dead|gnoll hostile@10 initiator dead`; three
+   stance rows and one server rule (THE UNWATCHED SQUAT STEPS OFF: an
+   off-window body nobody watches steps off whatever its state). PROVEN:
+   20:37 five gnolls and eight dead in the brazier's light, the crown down
+   first, the last two gnolls dead by 20:54, the dead alone on the apron at
+   21:00 and after the walk-off.
 2. **Worg against wolf on the trail.** The Felling's worg rows wear tribe
    `goblin`; row `predators|goblin hostile@8`. The den's wolves and the
-   camp's worgs meet at dusk where the loops cross in the Ashen Hem.
+   camp's worgs meet at dusk where the loops cross in the Ashen Hem. No
+   authored ground until band 10's Ashen Hem; `goblin|predators` lands
+   world-wide (range 8); the far-camp count in the proof's day: no rolled
+   goblin camp beside a den in cells cx -4..3, cy -5..2, and the Felling's
+   tier-2 grass roster deals no predators, so 0 engagements (empty, honest).
 3. **The Drum hunts its deserters.** Row `goblin|goblin_doorless hostile@10
    initiator goblin`; the Doorless night row at the Felling's snag ring meets
-   the Drum's pickets.
+   the Drum's pickets. PROVEN live (the fix pass): the Doorless pair on `at`
+   posts beside the east snags; the worg and the firecaller open on them
+   within the hour.
 4. **The dead against the door.** Row `dead|goblin_doorless hostile@8
    initiator dead` at the broken barrow; the Doorless night hoes fight at
    the kerb.
@@ -637,9 +790,11 @@ after the capstone).
 7. **Misaligned pairs coexist.** `neutral` rows with range for
    `goblin_doorless|kobold`, `skral|reavers`, `predators|evencourt`,
    `crown|goblin`.
-8. **The pressed satellite.** FRONTIER dial `boldness.rivalDef` on the
-   Felling's def: stage 2 deals the Legion's pressed-goblin def townward
-   (seedOneSatellite already takes any def id via `poiForCell(force)`).
+8. **The pressed satellite.** `boldness.rivalDef: legion_pressed` +
+   `rivalNear { defId: hobgoblin_legion, tiles: 320 }` on the ROLLED
+   `goblin_warcamp` def (G2 YES): the pressed satellite is dealt only within
+   320 of the authored Legion's anchor; unit-proven (frontier.test), not
+   claimable live in one day.
 9. **Smoke that does not bake.** EmberBed / SmolderHeap lights rows
    (COALS-class, flame-gated where man-made) plus a dt-gated `smoke.plume`
    grain in the `collectStaticLights` scan (spawnPortalFx precedent). From
@@ -657,10 +812,19 @@ after the capstone).
     crofts (R5's survey flag reads pinned defs declaring `toll: true`).
 11. **Bodies where the fight was.** GraveComp-pattern spawner: an NPC-vs-NPC
     kill inside a POI zone raises FieldLitter on the nearest free tile for
-    the spill's quarter hour, capped six per zone, dignity 48, never inside a
-    town rect. No loot, no XP, no ember (F2 holds).
+    the spill's quarter hour, capped six per zone, dignity 12 (one screen off
+    at zoom 1.3; the fight it fell in is only a fight under an eye within
+    20, so a dignity of 48 could never meet it), never inside a planned
+    rect, never on a route, a station or a routine waypoint, two per loop
+    and six per cell, no persistence. No loot, no XP, no ember (F2 holds).
+    PROVEN live at the Felling (two bodies inside the ring after the
+    Doorless fight, read from twenty tiles off). At the HUSK it does not
+    land: the changeover's kills fall on the tower's stone floor within two
+    of no open tile, and within 12 of any watcher on the apron; the wound
+    count on the rows is the husk's honest picture.
 12. **The wolves leave, as a reading.** On `ward_line_taken` (A) Alder's bark
-    changes; the den is never embered by a quest.
+    changes; `quest:the_stone_at_dusk:done` (`alder_pack_north`, once); the
+    den is never embered by a quest.
 
 **Deferred to THE OVERRUN (Epic 2), owner-gated:** a new ledger verb
 (`overrun`, originCell dialect `war:<pairKey>`) so a garrison beaten below a
@@ -715,7 +879,7 @@ posture is its own id.
 | 517 | CairnFallen | B | no | no | none | the two-state tell with 516; the kobolds' one-stone-wrong is a hash posture of 516 |
 | 518 | BeastBones | B | yes r.4 | bones ×2 | none | ribcage on its side; the wreck that stands in for the dead horse |
 | 519 | CharredStump | C stripped | no | no | none | worldgen SCORCH emits it at s>0.35 instead of Stump |
-| 520 | DeadTree | C | yes | timber law (choppable, deadwood logs, respawns as itself) | limbs at 0.35 wind | trees.ts foliage:0 through the engine switch; FADE_TALL |
+| 520 | DeadTree | C | yes | timber law (choppable, deadwood logs, respawns as itself) | limbs at 0.35 wind | trees.ts foliage:0 through the engine switch; FADE_TALL; also worldgen's old-wood snag (3af57ada) |
 | 521 | SpoilHeap | C | yes r.4 | rubble ×2 | none | two hashed washes: quarry-brown, starfall-black |
 | 522 | GloomStone | D gloom | yes | no | GlowShroom-class cool swell, no gate | Riftgate apron palette |
 | 523 | CreepRoot | D | yes r.3 | root ×3, respawn 3600 | none | it comes back; says the spine without a word |
@@ -741,6 +905,7 @@ posture is its own id.
 | 543 | LampPostDark | G | yes | as LampPost | none, on purpose | FADE_TALL; frontier creep may swap LampPost↔Dark later |
 | 544 | SluiceGate | G | yes | post ×2 | none | board gate on two posts |
 | 545 | SluiceGateStrung | G | yes | post ×2 | kelp-string ≤0.03s | the paid variant |
+| 548 | SmolderHeap | A | yes | no (bonfire law, cap four per prefab) | COALS-class flame-gated row, plume grain | the turfed dome with a smoking crown, cold by day; museum row; validator's cap of four per prefab (G3 MINTED, band 8) |
 | 176 | Detail.Ash | floor | — | — | — | baked beside Sawdust/Straw |
 | 177 | Detail.Bones | floor | — | — | — | den edges, squats, old fields |
 | 178 | Detail.DragFurrow | floor | — | — | — | felled rows, cart tracks, spoil paths |
@@ -748,8 +913,10 @@ posture is its own id.
 | 180 | Detail.DarkSpill | floor | — | — | — | blood-dark by value, never red |
 | 181 | Detail.Mudcrack | floor | — | — | — | the drained pond |
 
-**AshGround (546)** and **GrassBlighted (547)** are true tiles under THE LIVING
-GROUND (§12.5; owner ruling 5) and land in LG-6; the Dolmen's four tiles
+**AshGround (546)** and **GrassBlighted (547)** stay reserved as true tiles
+under THE LIVING GROUND (§12.5; owner ruling 5) and land in LG-6; SmolderHeap
+548 is a true prop in this ledger, minted band 8 (G3), and does not touch
+546/547. The Dolmen's four tiles
 (548-551) and Detail 182 follow in §11.3. **QuarryFace** and **BoardedAdit**
 are deferred (no v1 scene needs them). The Doorless knucklebone and the skral kelp-string on a
 fence rail are hashed Detail postures, not tiles.
@@ -798,7 +965,9 @@ quiet); editor palette category 'scarred'; prefabs.ts local legends
 its seeded JSON on every deployed data dir); pois cues.scatter rows by Tile
 name on forest_ruin / watchtower_ruin / greatkeep_ruin / dead_muster /
 hobgoblin_warcamp / wolfkin_den / kobold_digs / road_toll / bandit_camp /
-fellers_camp / timber_poachers; dungeon dress.ts stories 'burnt_steading' and
+fellers_camp / timber_poachers; `cues.trampled` (THE TRAMPLED RING: a
+beast's felled ring is grass and never a stump; only beside a `clearing`)
+joins the composer's cue vocabulary, band 8; dungeon dress.ts stories 'burnt_steading' and
 'the_tally'; influence.ts litter vocab 'ruin', 'blight', and claim-marks per
 family (plunder→RedRagStake, den→BoneTree, digs→TallyStone/SpoilHeap,
 neutral→CharterPost/LampCairn by road proximity); server interact hooks
@@ -1788,12 +1957,15 @@ the route points; cell tiers by cell centre.
 | The Ashlamp (scar, dressing, no core) | authored zone `ashlamp`, rect (48..70, 92..110), cell [0,0], tier 1, 12..15 s east; no core | [0,0] | 1 | 13 s east | the threshold scar, not a camp; Band 0 authored its def and prefab but PARKED the pin: one ledger row per cell and no zone-less stamp path exist; band 7 lands it as a small authored zone patch |
 | Brede's bar **+ the drowned crofts + the First Lamp: ONE STAGED SCENE** | the pins (126,109) `first_road_bar` on `poi_first_road_bar` and (160,94) `fenside_lamp` on the re-sketched `poi_fenside_lamp`, 37 tiles apart across the ford, the fenside zone (118..141, 76..100) between them, declared one scene: the toll stands at the crofts' gate and Hale's lamp stands at the hamlet | [0,0] + [1,0] | 2 + 3 (R10: dangerAt's rolls, [0,0] centre 2, [1,0] centre 3) | 27..38 s | `fenside_crofts` becomes the weight-0 def `fenside_lamp` (Hale on watch, Leif, Halvor, Ingram, a new `fenside_crofter` pool); one name reads one ledger |
 | The skral | wilds shore rows on the channel's west bank north of the ford (the ford's own banks read tier 1 under the crofts' haven relief and roll no skral) + the sluice and weir as dressing at the crofts' reach | rows | — | — | no core; the first hostile thing on the road stays the bar |
-| Torsten's picket | trail DRESSING (slate, bell, the four grave mounds) at (-120,-124), 40 tiles from the dire wolf | [-1,-1] | — | 12 s up the trail | no core; Torsten himself is posted at the fork rest |
-| The fork rest **+ the waystone + Torsten** | fork_rest's defId changes to a weight-0 `fork_waystation` (a prefab with an ElvenWaystone and extra posts; two new pooled unnamed sentinel actors under evencourt; Sergeant Torsten under waykeepers) | [-2,-2] | 2 | 24 s to the fork | canon: the lamps stop at the fork; waystones take over |
-| The Husk | moved OFF the High Road to (-64,-240): 109 from the fork, 128 from longmeadow_rest | [-1,-2] | 2 | 28 s + 24 off | `husk_of_the_line`, family dead, tiers [2,4] |
+| Torsten's picket | trail DRESSING (slate, bell, the four grave mounds) at (-120,-124), 40 tiles from the dire wolf | [-1,-1] | — | 12 s up the trail; Torsten's morning walk down to it | no core; Torsten himself is posted at the fork rest; the rag on the 192 ring beside the second mound |
+| The fork rest **+ the waystone + Torsten** | fork_rest's defId changes to a weight-0 `fork_waystation` (a prefab with an ElvenWaystone and extra posts; two new pooled unnamed sentinel actors under evencourt; Sergeant Torsten under waykeepers) | [-2,-2] | 2 | 24 s to the fork | canon: the lamps stop at the fork; waystones take over; the sketch is the shelf (22x8 at cap 22, the mouth's last cell authored); `cues.clearing` 4 so the ring fells the oak whose crown stood over the mouth; the north fringe's stumps are the clearing law's own |
+| The Husk | moved OFF the High Road to (-64,-240): 109 from the fork, 128 from longmeadow_rest | [-1,-2] | 2 | 28 s + 24 off | `husk_of_the_line`, family dead, tiers [2,4]; found by the fallen cairn at (-73,-172) (zone `turnoff`) and the water where it narrows; the crossing walked both ways |
+| The Ward Line (scar, dressing, no core) | authored zone `wardthread`, rect (-164..-128, -203..-179); no core; the thread, three stones, the root, Bodil's cut, two passive wolves, three civilians | [-2,-2] | 2 | off the fork rest, north of the road | Bodil's licensed cut stands here too, at the stand's west skirt |
+| The Picket (scar, dressing, no core) | authored zone `picket`, rect (-131..-108, -140..-115); no core | [-1,-1] | — | 12 s up the trail | see Torsten's picket row above |
+| The Turn (scar, dressing, no core) | authored zone `turnoff`, rect (-80..-67, -182..-167); no core; two tiles | [-1,-2] | 2 | on the High Road east of the fork | the fallen cairn and the DeadTree that mark the way to the husk |
 | The Felling (the Drum) | weight-0 `felling_drum` (a goblin_warcamp variant, tiers [1,3], garrison 8) PINNED at (80,-42) (the cell pin found no ground on the ridge; this stands with no nudge), beside its burnt stand; the rolled dice run in the neighbour cells; its `rivalDef` is NOT on this authored def (authored cells never stage): the pressed-goblin satellite will ride the ROLLED goblin_warcamp def gated to the marches of an authored `hobgoblin_legion`, band 8 | [0,-1] | 1 | 20 s | a rolled Drum stood in the ring with ~11% probability, which is not a demo |
-| The Legion core | pinned `hobgoblin_legion` (weight-0, tiers [3,6]) at (-64,-320); its reach is an AUTHORED patrol loop and straggler rows down the trail, never a satellite (authored cells cannot deal one); the pressed-goblin satellite is dealt by the ROLLED neighbour Drum's `rivalDef` | [-1,-3] | 3 | off every way | ≥128 tiles from fork_rest, longmeadow_rest and coldwater_shoal |
-| The veil den | unchanged | [-2,-1] | 1 | — | existing pin |
+| The Legion core | pinned `hobgoblin_legion` (weight-0, tiers [3,6]) at (-64,-320); its reach is an AUTHORED patrol loop and straggler rows down the trail, never a satellite (authored cells cannot deal one); the pressed-goblin satellite is dealt by the ROLLED neighbour Drum's `rivalDef` | [-1,-3] | 3 | off every way | ≥128 tiles from fork_rest, longmeadow_rest and coldwater_shoal; reach and standard: band 10 (the standard would never land: cue scatter lands only on a road-bearing cone and the Legion is off every way) |
+| The veil den | re-pinned in place under `veil_den` / `poi_veil_den` (the `repinned` boot line is the proof; the epoch-0 anchor (-186,-99) holds) | [-2,-1] | 1 | — | existing pin |
 | The digs (kobolds) | (40,290), off every way, south of the Drowned Meadow across the Gloamwood; its spoil track runs north along the brook to the meadow | [0,2] | 2 | 26 s south of the hem | the Old Road never enters [-1,2]; the road-creep beat is dropped |
 | The Third Stone + Aske's crew | re-defined `third_stone_rest` and MOVED to (-178,148): Band 0 found the shipped pin had never stood (a wolfkin bonering capital's clearance covers it); it now stands up a track 39 tiles off the Old Road, tier 3 by centre (moot for a haven); the spur trail is owed to band 10; Aske's crew are `company_blade` actor rows on watch (a haven cannot carry a hostile garrison) and their six-to-six road walk is owed | [-2,1] | 3 | 25 s + track | — |
 | The broken barrow + the grub farm + Steinar's chain | ONE site: `broken_barrow` (weight-0, family dead, tiers [2,4], rows tribe dead + goblin_doorless, one merged prefab that carries the Charter survey line across the kerb) at (-208,48) (ruled (-236,72) had no ground; Band 0 verify moved it east to the first standing ground in the cell): [-3,0]'s centre reads tier 4 under the Spinewall's word, which would over-level a farming clan; tier 1 here is honest | [-2,0] | 1 | 15 s west of the hem | [-3,0] becomes empty on purpose |
@@ -1814,7 +1986,17 @@ is allowed in a tier-2 cell for the life of the epic. **Empty on
 purpose:** [-3,-1], [1,-1], [-1,2], [-2,2] beyond the belt, the far
 north beyond the Legion, the whole First Road past the crofts for ~290
 tiles to the tollhouse, and the Old Road's run from the Third Stone to
-returners_camp.
+returners_camp, plus (band 8): the climb (35 tiles), the dark third (40),
+the glade country west and north of the stand, the unlamped High Road west
+of x -164, the road east to the crossing and the whole mere, the peninsula
+between the crossing and the husk's apron, the far north to the Legion,
+[-1,-1] beyond the picket's rect, [-3,-1], [-3,-2].
+
+Census line (band 8): tier-1 cells with a core = 2 of 6 by centre
+(geography.test's own line: veil_den [-2,-1], felling_drum [0,-1]); both
+stand at tier 2 at the tile (the boot log says so, and Hollowhowl's
+minTier 1 is why the crown stands whatever the jitter says): tell the
+truth about the roll.
 
 Density, with each way's denominator from the route points: First Road
 gate to the crofts, 163 tiles, three things in two scenes (the Ashlamp at
@@ -1866,6 +2048,18 @@ Course with sheep on them, a PlumbStone, Sarsen setting a cairn right.
 Minute 9-10 the view south from the Course: the Sett's dome on the skyline,
 smoke from the Culm's hearths, and past it the tier-3 line and nothing
 authored for a hundred tiles. Every minute has a pause in it.
+
+THE NORTH VARIANT (one zoom, 1.3; the clock jumped between stops): the
+picket at noon and at half past six (the one man the lamps were lit for,
+chalking); the fork rest at noon and at nine (the lamps stop here: warm
+behind you, three cold blue points across the road, no light on the
+thread); the ward line at noon (the thread seen from the junction before
+anyone explains it) and at eight (the passive pair walking it, the crew on
+their three beds); the turn at noon; the husk at noon and through the
+changeover with the clock running (be there at half past eight or it did
+not happen); the den at noon; the Felling at noon and at eight (the clamps
+breathing, the Doorless on their posts and the pickets meeting them, the
+bodies where the fight was); the Legion at noon. Every stop has a pause.
 
 ---
 
