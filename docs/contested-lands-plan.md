@@ -906,18 +906,23 @@ posture is its own id.
 | 544 | SluiceGate | G | yes | post ×2 | none | board gate on two posts |
 | 545 | SluiceGateStrung | G | yes | post ×2 | kelp-string ≤0.03s | the paid variant |
 | 548 | SmolderHeap | A | yes | no (bonfire law, cap four per prefab) | COALS-class flame-gated row, plume grain | the turfed dome with a smoking crown, cold by day; museum row; validator's cap of four per prefab (G3 MINTED, band 8) |
+| 549 | CourseWall | run family (the eighth run-merging family) | yes (cover) | stone ×3 | none | Dolmen kit; run-merges own kind only; the head column tooths course to course, a full value step off the face on every course |
+| 550 | CourseStile | run kin (COURSE_TILES) | no, passable by state | no | none | Dolmen kit; `doorInfo === null`; the two-state tell, not destructible |
+| 551 | CorbelCell | discrete | yes, light-blocking | no | none | Dolmen kit; the beehive hut; tallest piece; FADE_TALL; not destructible |
+| 552 | PlumbStone | discrete | yes, `tileColliderRadius 0.3` | stone ×3 | bob ≤0.03s (ONE BREEZE) | Dolmen kit; the claim-mark, the `course` influence row's MARK, never litter |
 | 176 | Detail.Ash | floor | — | — | — | baked beside Sawdust/Straw |
 | 177 | Detail.Bones | floor | — | — | — | den edges, squats, old fields |
 | 178 | Detail.DragFurrow | floor | — | — | — | felled rows, cart tracks, spoil paths |
 | 179 | Detail.BlightVeins | floor | — | — | — | around GloomStone/CreepRoot |
 | 180 | Detail.DarkSpill | floor | — | — | — | blood-dark by value, never red |
 | 181 | Detail.Mudcrack | floor | — | — | — | the drained pond |
+| 184 | Detail.Chalkline | floor | — | — | — | Dolmen kit; baked beside Ash/DragFurrow; the ash law grain, one axis per tile, never a lattice; 182 and 183 stand reserved by the forest law |
 
 **AshGround (546)** and **GrassBlighted (547)** stay reserved as true tiles
 under THE LIVING GROUND (§12.5; owner ruling 5) and land in LG-6; SmolderHeap
 548 is a true prop in this ledger, minted band 8 (G3), and does not touch
-546/547. The Dolmen's four tiles
-(548-551) and Detail 182 follow in §11.3. **QuarryFace** and **BoardedAdit**
+546/547. The Dolmen's four tiles (549-552) and Detail 184, as built in
+band 9b, are rowed above and follow in §11.3. **QuarryFace** and **BoardedAdit**
 are deferred (no v1 scene needs them). The Doorless knucklebone and the skral kelp-string on a
 fence rail are hashed Detail postures, not tiles.
 
@@ -1456,15 +1461,19 @@ corner, a stile every twelve and a PlumbStone every forty (the lateral
 silhouette law of §13.1), the last courses standing dry in the meadow's
 sheet with crofter sheep on them.
 
-Kit additions (ids follow the Living Ground's two, §12): **548 CourseWall**
-(run tile, own kind only, cover, stone ×3 so the fork can breach it),
-**549 CourseStile** (passable posture, the two-state tell), **550
-CorbelCell** (the beehive hut, tallest, FADE_TALL, light-blocking), **551
-PlumbStone** (the claim-mark: a knee-high set stone with a slotted top, a
-bone cord and a hanging bob riding ONE BREEZE), **Detail 182 Chalkline**
-(one snapped chalk line where a course will go; sparse, never a lattice).
-Museum wing THE STANDING COURSE. Inks TH_MARL / TH_SINTER / TH_CULM /
-TH_GOSSAN.
+Kit additions, as built in band 9b (SmolderHeap already held 548, so the
+four shift one id up from the earlier draft; ruling R-C, §11.8): **549
+CourseWall** (run tile, own kind only, cover, stone ×3 so the fork can
+breach it), **550 CourseStile** (passable posture, the two-state tell),
+**551 CorbelCell** (the beehive hut, tallest, FADE_TALL, light-blocking),
+**552 PlumbStone** (the claim-mark: a knee-high set stone with a slotted
+top, a bone cord and a hanging bob riding ONE BREEZE), **Detail 184
+Chalkline** (one snapped chalk line where a course will go; sparse, never
+a lattice, baked on bare ground beside Ash / DragFurrow). Museum wing THE
+STANDING COURSE, after THE SCARRED LAND wing. Inks minted: TH_MARL /
+TH_MARL_LIT / TH_MARL_DARK / TH_MARL_MOTTLE / TH_CHALK; TH_SINTER /
+TH_CULM / TH_GOSSAN wait for the first painter that reads them (band 9c
+and past it).
 
 ### 11.4 Wants, fault, virtue, and who they stand against
 
@@ -1710,6 +1719,107 @@ carries two honest numbers from two different sources: the sheet's walk
 row runs at 1.8 (the NpcDef speed, ROUTINE_WALK_SPEED), while the
 `dolmen_set` routine wanders at 1.2; band 9c chooses the setter's actual
 in-world pace on its own zone row.
+
+### 11.9 As built 2026-09-06 (Band 9b, the four stones)
+
+Band 9b shipped the four Standing Course props and the chalk line Detail,
+proven under the run shape in the museum and against a throwaway world
+rig, and nothing past them.
+
+**Rulings, binding on the build (owner delegate, rulings.md).** R-1: the
+five ids stand as ruled, 549 CourseWall, 550 CourseStile, 551 CorbelCell,
+552 PlumbStone, Detail 184 Chalkline; 553 is refused, and 546 and 547
+never answer `isScarredTile`; no rows were added to lights.ts; CourseWall
+and PlumbStone smash as `stone/600/3` on the existing debris kit;
+CorbelCell and CourseStile are not destructible; PlumbStone stands as the
+`course` influence row's MARK and is never counted as litter, an
+amendment to the litter list in §11.6, since a glyph is not litter; the
+`dolmen` POI family and its vocabulary regex wait for band 9d; the whole
+kit paints from one file, `props/scarred/course.ts`; the museum wing THE
+STANDING COURSE follows THE SCARRED LAND wing; and the only inks minted
+this band are TH_MARL, TH_MARL_LIT, TH_MARL_DARK, TH_MARL_MOTTLE and
+TH_CHALK, with TH_SINTER, TH_CULM and TH_GOSSAN left for the first
+painter that reads them. R-2: the chalk line bake follows the ash law, a
+grain that crosses tile edges, ragged on the hash, one axis per tile from
+the neighbour read, and never a ruled stripe or a lattice; the museum
+hosts it on Dirt; no dev command places a floor Detail in the world, so
+it stands proven in the museum only, and the road into the world is
+recorded for band 9d's sketch layer. R-3: proof stands under the run
+shape, museum shots at zoom 1.3 for noon and midnight per piece, the
+breeze pair on the plumb stone, the wall-against-ruin pair, and one Sett
+east lip composition placed with `/spawnnpc` and `/settile` on a
+throwaway pair; parity read 7/7 on an idle machine across two runs. R-4:
+nothing from the band 9c or 9d lists was built this band. No bodies,
+strike or seed rows, or arts; no zone, legend character, cue, family,
+stile server verb, hut interior or door, per-prefab cap, second foot,
+grass code or play3d dialect.
+
+**Deviations from the brief, each one recorded and each one pinned.** The
+CorbelCell profile reads as a corbelled stone hut rather than the
+brief's stepped cone: the lower two fifths of its height hold near plumb
+and the walls close above the lintel on a quarter circle to a flattened
+capstone, itself 0.30 of the rig's scale wide against the brief's 0.24,
+so the crown reads flat rather than pointed; the shape stays taller than
+it is wide by the pinned proportions and cannot read as squat within the
+current radius. The CourseStile's step stone is built 0.10 of the rig's
+scale thick against the brief's 0.06, carrying the through-stone's own
+lit-top and dark-underside grammar instead of the brief's ink bracket,
+with no ring of its own, since it reads as a feature against the wall
+face under the broken-fence shared-edge rule. The CourseWall's built
+heads alternate a long header and a short one course to course so the
+inner joint tooths, and the whole head column stands a full value step
+off the wall face on every course, a stronger read than the brief's
+plumb column asked for and needed to be visible at all at gameplay zoom.
+The PlumbStone's hanging bob is built at 0.09 by 0.12 of the rig's
+scale, the brief's own documented fallback size, larger than the brief's
+first-choice 0.07 by 0.10, and still rides within the wind bound and the
+one-ring law. The chalk line's two paint values sit at 0.70 and 0.45
+rather than the brief's 0.55 and 0.32, with the dust value and the line
+width unchanged, and still reads as a subtle dashed bar rather than a
+stripe at museum zoom. The museum's stile exhibit stands its plinth one
+tile east of the run's centre so the post never covers the stile's south
+face. And the accelerated display's raw-tile roster was found to be
+missing the two new run tiles, so CourseWall and CourseStile were added
+to it; without that fix the wall painted itself under the grass and the
+standing bodies on that display path, and the fix was proven on a world
+rig with the wall correctly over the grass and a standing body's legs
+correctly behind the low band.
+
+**WATCH items, not defects, left for the owner.** The CorbelCell's
+proportions read as a corbelled hut rather than a squat one: reaching a
+squat read would mean widening the cell's base radius, from 0.60 of the
+rig's scale toward 0.75, or adding a second footprint tile, and both
+options are recorded rather than built. The chalk line's paint stays
+subtle at museum zoom even at the raised values above; the owner may
+want it bolder once it is seen laid along an actual course in the world
+rather than alone on the museum's Dirt tile. The PlumbStone's bob was
+already raised once, to the brief's own fallback size, and may still
+read small next to the stone; a further increase is the owner's call
+before band 9d builds courses that repeat it across a whole route.
+
+**The handoff to bands 9c and 9d.** Band 9c, building the Dolmen bodies,
+inherits TH_MARL and TH_CHALK as the base every stratum's look is built
+as one fixture on top of, the Gossan's dull iron beads as an ink that
+belongs to a body and never to a prop, and the reminder that the corpse
+look, the strike and the eid-keyed look seam need to be settled before
+the wider Marl cluster rolls its faces; the `dolmen` NPC prefix is only
+correct once a fightable body exists to answer it. Band 9d, building the
+zone, inherits the Sett sketch and local legend characters for ids 549
+through 552 with a builder helper that lays a course along a path, a
+stile every twelve tiles and a PlumbStone every forty; the `dolmen` POI
+family and its vocabulary regex, held back this band by R-1; the chalk
+line as a Detail layer in the sketch, the only road that reaches the
+world; the errand's CourseStile-to-CourseWall state swap as a server
+verb built on the existing candle grammar, and its reverse; the Culm's
+EmberBed rows; a CorbelCell cap where a scene calls for one; the second
+foot for the corbelled cell if the owner rules for it; a grass code for
+the chalk line if the meadow's own courses want one; the missing
+WET_STANDERS row, since a course written into shallow water bakes a
+green square until it is added; the rule that a course builder must
+never lay a stile at a junction, where a wall tees in from another
+course; the sheep standing on the last dry course; and the Drowned
+Meadow's own patch, carrying a Sarsen stone, a PlumbStone and the
+re-set cairn.
 
 ---
 
