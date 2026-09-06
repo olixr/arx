@@ -1255,6 +1255,12 @@ export interface DrawItem {
    *  over the split path. Sized honest-and-generous; the oracle's
    *  clip makes an undersized box a visible defect, not a quiet one. */
   pb?: { x: number; y: number; w: number; h: number };
+  /** A run-merged piece (tryRunRingItem): the WHOLE run's screen box and
+   *  its world anchor. stageMarkRaised unions the box into `pb` and keys
+   *  the scratch on the anchor — the emitting member's one-tile box used
+   *  to clip a long counter's far end, and which end survived depended on
+   *  scan order as the camera moved (the "table's right side missing"). */
+  run?: { ax: number; ay: number; x: number; y: number; w: number; h: number };
   /** THE SCRATCH LEDGER: this wall-lane member's identity hash (world
    *  anchor + kind + emission index + its chunk's data rev), chained
    *  into the run key so the GL backend can cache the run's texture.
@@ -10173,9 +10179,24 @@ export class Renderer {
     for (let j = before; j < items.length; j++) {
       const it = items[j]!;
       const idx = j - before;
-      it.pb = pb;
+      // THE RUN OWNS ITS BOX: a run-merged item paints the WHOLE run, so
+      // its scratch box is the union of the member's box and the run's;
+      // its ledger key is the run's world anchor (scan-order invariant).
+      const rb = it.run;
+      if (rb) {
+        const x0 = Math.min(pb.x, rb.x);
+        const y0 = Math.min(pb.y, rb.y);
+        const x1 = Math.max(pb.x + pb.w, rb.x + rb.w);
+        const y1 = Math.max(pb.y + pb.h, rb.y + rb.h);
+        it.pb = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+      } else {
+        it.pb = pb;
+      }
       if (dyn !== -1) {
-        it.pbKey = (keyBase ^ (idx << 17)) | 0;
+        const kb = rb
+          ? (hashCoords(73, rb.ax, rb.ay) ^ ((m.kind as number) << 2) ^ 0x5a5a ^ Math.imul(crev | 0, 0x85eb)) | 0
+          : keyBase;
+        it.pbKey = (kb ^ (idx << 17)) | 0;
         it.pbDyn = dyn;
       }
       it.pbLive = breathes;
@@ -15141,6 +15162,17 @@ export class Renderer {
               Math.imul(this.wallRunRetry.get(runKey) ?? 0, 0x2545f491)) |
             0;
           const keyedRun = runKey;
+          // THE CACHE KEEPS ITS SPRITES WARM (see wallRunWarm): a run served
+          // from cache still touches the sprites it was painted from.
+          const warm = this.wallRunWarm.get(keyedRun);
+          if (warm) {
+            for (let wi = 0; wi < warm.length; wi++) {
+              const wk = warm[wi]!;
+              const wsp = this.treeSprites.get(wk);
+              if (wsp) wsp.used = this.frameNo;
+              this.propSeen.set(wk, this.frameNo);
+            }
+          }
           this.stagePushPaintRaw(
             ux0,
             uy0,
@@ -15149,6 +15181,7 @@ export class Renderer {
             () => {
               this.scratchKeyed = true;
               this.scratchProvisional = false;
+              this.scratchTouched.length = 0;
               try {
                 for (const it2 of run) it2.stageRebuild!();
               } finally {
@@ -15157,6 +15190,9 @@ export class Renderer {
                   if (this.wallRunRetry.size > 4096) this.wallRunRetry.clear();
                   this.wallRunRetry.set(keyedRun, (this.wallRunRetry.get(keyedRun) ?? 0) + 1);
                 }
+                if (this.wallRunWarm.size > 4096) this.wallRunWarm.clear();
+                if (this.propSeen.size > 16384) this.propSeen.clear();
+                this.wallRunWarm.set(keyedRun, this.scratchTouched.slice());
               }
             },
             'wall-run',
@@ -15501,6 +15537,22 @@ export class Renderer {
   private scratchProvisional = false;
   /** Per-run retry nonce (runKey → bumps), mixed into the keyed rev. */
   private readonly wallRunRetry = new Map<number, number>();
+  /**
+   * THE CACHE KEEPS ITS SPRITES WARM. A keyed run served from its cached
+   * texture never re-runs its paint, so the member sprites it was minted
+   * from were never marked used again — after 240 frames the evictor
+   * dropped them, and the moment the body walked up (the run flipping to
+   * live paint) each sprite re-minted and replayed THE PROMISED FADE from
+   * 1/9 alpha: the "veil flicker on approach" on every cached piece. The
+   * keyed paint records the sprite keys it touched; every frame the run
+   * is served from cache those records are touched too.
+   */
+  private readonly scratchTouched: number[] = [];
+  private readonly wallRunWarm = new Map<number, number[]>();
+  /** Last frame a prop sprite key was DRAWN (live or via a warm cache):
+   *  the mint ramp is an ARRIVAL fade and never replays for a piece that
+   *  was on screen a moment ago. */
+  private readonly propSeen = new Map<number, number>();
   /** DEV — tap over every stage scratch paint (see stagePushPaintRaw). */
   scratchTap:
     | ((tag: string, px: number, py: number, pw: number, ph: number, ctx: CanvasRenderingContext2D) => void)
@@ -16587,6 +16639,7 @@ export class Renderer {
       }
     }
     items.push({
+      run: { ax, ay, x: b.x, y: b.y, w: b.w, h: b.h },
       sortY: y1 + cfg.sortOff,
       // THE ONE RENDER: a joined run (a long table, a fence line) is a
       // world-geometry VOLUME, not a billboard — carry its near (south) edge
@@ -16813,7 +16866,10 @@ export class Renderer {
           this.visSpriteMsLeft -= took;
           this.visArrivalCount--;
         }
-        if (!hadSp) sp.mint = this.frameNo; // THE PROMISED FADE
+        // THE PROMISED FADE is an ARRIVAL fade: a piece drawn within the
+        // last second (live, or kept warm by a cached run) re-minting for
+        // any reason lands whole — never a replayed 1/9 flash.
+        if (!hadSp && (this.propSeen.get(key) ?? -1e9) < this.frameNo - 60) sp.mint = this.frameNo;
         this.treeSprites.set(key, sp);
       }
     }
@@ -16849,6 +16905,8 @@ export class Renderer {
       return;
     }
     sp.used = this.frameNo;
+    this.propSeen.set(key, this.frameNo);
+    if (this.scratchKeyed) this.scratchTouched.push(key);
     // Source rect on the sprite's OWN bake dpr — the live dpr can
     // drift (browser zoom), and sizing the source by it
     // crops (or letterboxes) every cached prop until its re-bake.
