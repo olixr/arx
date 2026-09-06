@@ -90,6 +90,8 @@ export const WAIN = { cart: [67, 98], foot: [66, 98], goods: [68, 98] } as const
 export const LECTERN = [65, 98] as const;
 /** The trodden patch under the wain: an ellipse on the hash, never a ruled yard (fix pass 2). */
 export const WAIN_PATCH = { cx: 66.5, cy: 98.5, rx: 3, ry: 1.2 } as const;
+/** The two oaks the wain stands under, authored so no forest law can fell them (verge.ts says why). */
+export const WAIN_OAKS: ReadonlyArray<readonly [number, number]> = [[65, 97], [66, 97]];
 /** The one snag on the skyline, lateral to the road. */
 export const DEAD_TREE = [68, 94] as const;
 /**
@@ -151,7 +153,7 @@ export const FLOOD_FROM = [52, 99] as const;
 export const PINS = {
   RECT, ORIGIN, WIDTH, HEIGHT, AUTHORABLE, CARVE_PTS,
   SHELL, BREACHES, FLOOR, LAMP, EMBER, BEAMS, ASH_HEAP, STAKE, ASH_RING_COLS, ASH_RING_ROWS, TUFT_RIM,
-  WAIN, LECTERN, WAIN_PATCH, DEAD_TREE, DEAD_TREE_FELL, DEAD_TREE_FELL_ROW,
+  WAIN, LECTERN, WAIN_PATCH, WAIN_OAKS, DEAD_TREE, DEAD_TREE_FELL, DEAD_TREE_FELL_ROW,
   WEST_BREACH_WEAR, WEST_LINE, SIGN_LINE,
   SHOULDER_LISTED, BED_EXEMPT, SIGN_LEDGER, FLOOD_FROM,
 } as const;

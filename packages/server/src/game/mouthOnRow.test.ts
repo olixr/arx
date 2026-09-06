@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { NPCS, NPC_ACTORS, type DialogueDef } from '@arx/content';
+import { NPCS, NPC_ACTORS, combatHp, type DialogueDef } from '@arx/content';
 import { GameServer } from './gameServer.js';
 
 /**
@@ -71,7 +71,8 @@ test('THE MOUTH ON THE ROW: the standing body registers under its actor slug, on
   assert.ok(face, 'the actor table holds the body');
   assert.equal(face!.actor.id, MOUTH);
   assert.equal(face!.spawnIndex, -1, 'the face has no actor spawn seat: respawn is the garrison seat’s');
-  assert.equal(s.healths.get(eid)!.maxHp, NPCS.get('brigand_reaver')!.maxHp, 'the hit band is the bestiary’s');
+  // THE PACE DIAL (Mastered Hand Ph5): every hostile body stands up through combatHp(); the mouth is no exception.
+  assert.equal(s.healths.get(eid)!.maxHp, combatHp(NPCS.get('brigand_reaver')!), 'the hit band is the bestiary’s, paced');
   // A mouthless body registers no face; an unknown slug warns once and stands mute.
   const plain = standBrede(s, null);
   assert.equal(s.actors.has(plain), false);

@@ -95,9 +95,11 @@ test('ashlamp: THE CLOSED CONTENT LIST (R1) — the shell, the cold socket, the 
       }
     }
   }
-  assert.ok(felled >= 4, `the pocket felled real trees (${felled})`);
-  // The wain keeps the two oaks it pulled in under, north-west of the cart on its row.
-  for (const x of [65, 66]) assert.ok(TREE_TILES.has(field(x, 97) as Tile) && at(z, x, 97) === TILE_SKIP, `the wain stands under the oak at (${x},97) still`);
+  // THE WOOD LEARNS TO BREATHE (3af57ada) thinned the field's forest by two thirds; the pocket still fells what
+  // stood there (two on the shipped seed), and the snag stands alone either way.
+  assert.ok(felled >= 1, `the pocket felled real trees (${felled})`);
+  // The wain keeps the two oaks it pulled in under: AUTHORED, so no forest law can fell them (verge.ts).
+  for (const [x, y] of PINS.WAIN_OAKS) assert.equal(at(z, x, y), Tile.TreeOak, `the wain stands under the oak at (${x},${y}) still`);
   // The ember on the north row, two open rows from the south wall that hid it.
   assert.deepEqual([...PINS.EMBER], [58, 94]);
   assert.equal(at(z, 58, 95), Tile.Dirt, 'open floor south of the pan');

@@ -51,5 +51,12 @@ export function verge(ctx: AshCtx): void {
   // The oaks east of the cart on the wain's own row come down too;
   // the cart keeps the ones it pulled in under (pins.DEAD_TREE_FELL_ROW).
   for (const dr of pins.DEAD_TREE_FELL_ROW) ctx.fell(dr.x0, dr.y0, dr.x1, dr.y1);
+  // The two oaks the wain pulled in under are the SCENE'S, not the
+  // field's: THE WOOD LEARNS TO BREATHE (3af57ada) thins and weeds the
+  // worldgen forest, and a sentence that leans on a worldgen trunk dies
+  // with the next forest law. SENTENCE: the drover pulled the wain off
+  // the road under the only two crowns that stood close enough together
+  // to keep the rain off the tarp.
+  for (const [ox, oy] of pins.WAIN_OAKS) ctx.put(ox, oy, Tile.TreeOak);
   ctx.deadTree(pins.DEAD_TREE[0], pins.DEAD_TREE[1]);
 }
