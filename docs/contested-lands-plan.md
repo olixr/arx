@@ -1396,6 +1396,15 @@ setting, never a pattern. The deepest stratum, the Gabbro, did not come up.
 | **The Gossan** (the iron hat) | Rust-ochre hide streaked like weathered iron, the deepest keel and a ridged yoke with three dull iron beads (never gold), the biggest hands. Stature 1.16; the champion 1.30. | The weight-keepers. They keep THE WEIGHT: the count of every stone taken from the Course (forty to the Charter's causeway, one cart, twelve stakes), kept without wanting, because a people that never asks cannot demand. They re-set anything they judge set wrong, graves included, and they unpick Charter posts and Returner lamp-stakes by night and lay them in a row in the weight-yard. Vorl's stile law (set one stone to pass) is theirs. They would fight. | The weight-yard on the Sett's west shelf. Bodies `dolmen_gossan` (L11), `dolmen_champion` Vorl Fullweight (L14, crowned via names[]). |
 | **The Gabbro** (the deep-set stone, deepest) | NOT BUILT. A ring of empty set-niches inside the Plug and a run of names in the Gossan's weight. | The Gossan count them "not yet up"; the Marl count them "set where they are"; the two counts disagree and stay standing. | Nowhere topside. Reserved: if a Gabbro ever comes up it comes up as bad luck to the people who find it, never as an answer. |
 
+As built (Band 9c, §11.10): the five statures above landed exactly as
+sketched, 1.02 (Marl), 1.04 (Culm), 1.10 (Sinter), 1.16 (Gossan), 1.30
+(the champion), and the Gabbro never came up; it is still nowhere in the
+build, by ruling rather than by oversight. Every stratum is the same
+rig plus one fixture, keyed on a single per-look dial table (heavy,
+hand, keel, stoop, yoke height and shape, rim fixture, corpse-and-strike
+mark, girdle count) rather than on separate bodies; see §11.10 for the
+table and the numbers.
+
 ### 11.2 The silhouette (why they read as Dolmen at gameplay zoom)
 
 Four reads owned by no other body, delivered through widths, head and
@@ -1433,6 +1442,14 @@ boots) AND in culture (no ledger of wrongs, no smith, no hall, no
 ale-hall, no clan, no oath but the Culm's; THE WEIGHT is a count kept
 without wanting); screenshot-judged beside the Stoneborn heritage bust
 before any content lands.
+
+As built (Band 9c, §11.10): all four constants above (the yoke at 1.30
+over hips 0.85, headR 0.90, the keel-and-shelf hull, THE STONE FACE, the
+setting hands, the plumb on its own PendantSim slot, THE LEVEL GAIT, no
+equipment) held as one rig across all five strata and never moved per
+look; only the per-look dial table on top of that rig changed the read.
+That table, its numbers, and the deviations the sheet forced on it are
+recorded in §11.10.
 
 ### 11.3 Culture, architecture, marks
 
@@ -1821,9 +1838,150 @@ course; the sheep standing on the last dry course; and the Drowned
 Meadow's own patch, carrying a Sarsen stone, a PlumbStone and the
 re-set cairn.
 
----
+### 11.10 As built 2026-09-06 (Band 9c, the strata)
 
-## 12. THE LIVING GROUND — a spectrum the bake reads
+Band 9c shipped the five Dolmen bodies, the corpse plumb, and the
+eid-keyed look seam, proven on the shipped rig and against a throwaway
+world database, and nothing past them.
+
+**Rulings, binding on the build (owner delegate, rulings.md, R-A through
+R-G).** R-A: the proposed rulings stand as blockout applied them, with
+four corrections (a mob spawn is the bestiary spawn; a crown pool lives
+in content's crown forge; the Marl gets no hand dial and stays
+byte-identical; a ruler pairing a rock golem with the Gossan is added).
+R-B: the Gabbro is not built; the five cards are the Marl (kept), the
+Sinter at 1.10, the Culm at 1.04, the Gossan at 1.16, and Vorl Fullweight
+at 1.30 as the Gossan's own design made darker and larger with no new
+fixture. R-C: the eid-keyed look seam is fixed so that a stratum's face
+follows its actor's slug rather than its database row, with pinned seeds
+per named throat and the Marl's bytes held still. R-D: the corpse plumb
+ships, carrying its stratum through the death path and the ragdoll
+branches, and the corpse's own signature now carries the stratum's
+letter so two strata never wear the same fallen sprite. R-E: four
+NpcDef rows land at the ratio the earlier bands set, with aggro range
+zero, no loot table, hide as the body colour, and the same prefix
+exemption the Course props use; three nameless pooled actor rows join
+them for examine only, with no voice cast; no crown pool lands this
+band, since Vorl's crown is a ruling left to the zone band. R-F: proof
+stands as a sheet at one zoom in row bands, one strip round per look
+beside the Marl as the constant, an in-world line-up of the five at
+noon via a mob spawn and the player ruler, the corpse shot, and parity
+on an idle machine. R-G: refused this run were the Gabbro, any prop,
+any zone or site or quest or tree or voice, the tribe-prefix flip on
+hostility, the strike and the arts, the five named actor rows, and a
+crown pool; all five wait for the zone band.
+
+**One rig, five looks, and the dials that separate them.** Every
+stratum is the shipped rig plus one fixture; the §11.2 constants never
+move per look, and each stratum's read comes from one per-look dial
+table:
+
+| Stratum | Stature | Heavy | Hand | Keel | Stoop | Yoke height | Yoke shape | Rim fixture | Corpse-and-strike mark | Girdle |
+|---|---|---|---|---|---|---|---|---|---|---|
+| The Marl | 1.02 | 1.0 | absent | absent | absent | absent | round | plain | mottle | 0 |
+| The Sinter | 1.10 | 1.0 | 1.04 | 0.85 | 0.16 | 0.35 | hooded | ticks | drip | 0 |
+| The Culm | 1.04 | 0.95 | 1.02 | 1.0 | 0.10 | 0.315 | squared | notch | soot | 0 |
+| The Gossan | 1.16 | 1.12 | 1.18 | 1.35 | 0.10 | 0.315 | ridged | three beads | streak | 5 |
+| Vorl Fullweight (the champion) | 1.30 | 1.25 | 1.28 | 1.5 | 0.10 | 0.315 | ridged | three beads | streak | 7 |
+
+Where a dial is left absent (the Marl's hand, keel and stoop, and its
+default stoop and yoke height), the body reads at the rig's own default
+and the Marl stays byte-identical to its Band 9a bytes at every seed
+under 256. All five bodies share the same attack range, cooldown, aggro
+range of zero, leash, respawn timer, empty loot table, and hide as the
+body colour, with the same prefix exemption from hostility rolls that
+the Course props already carry.
+
+**The cluster is the stratum.** No stratum ever rolls another stratum's
+palette. A world seed varies only layout, station and phase, never
+which stratum a body belongs to. The four pooled bodies (the Marl, the
+Sinter, the Culm, the Gossan) take a small shade jitter on hide and
+yoke when a world's seed is not the authored seed; the champion and
+every named throat never jitter, and the authored seed is the reference
+card the sheet judges every jittered card against.
+
+**Deviations from the blockout, each recorded on a sheet read.** The
+squared yoke's plateau ramp landed on a different curve than first
+drafted, chosen because the first draft's rise read as cheek guards
+rather than a plateau at the strip's own zoom. The pooled shade jitter
+landed as a true even band rather than the wider band a stray bitmask
+would have allowed, since the wider band broke the brief's own pin on
+how far a body may drift from its stratum's card. The tick length and
+the rim-lip's paint width both moved by a few dial steps after the
+first pass read as either too faint to read at distance or too thick to
+read as a drip rather than a stroke; both now read as intended at the
+sheet's working zoom and remain honest rather than showy at the
+farthest zoom the game ever holds a body at. A lab-only row, reachable
+only through a debug flag, stands five settled corpses through the
+game's own corpse painter for review; it ships beyond the blockout's
+own list because the corpse plumb needed a place to be judged before it
+went live, and it never appears to a player.
+
+**The corpse plumb, as built.** A fallen body now carries its stratum
+through the death path into the ragdoll's paint: the limb colours, a
+trunk marking (a mantle slab, a bib, a shoulder mark), and a head
+marking (the collar fallen behind the nape, the hood keel, the rim lip,
+the ridge line, the stratum's own rim fixture, the keel wedge in
+profile with the eyes shut, and the Culm's own red line at the mouth
+seam) all read from the same per-look dial table above. The plumb
+itself lies slack and painted rather than simulated once a body falls,
+since a corpse no longer needs a live physics cord.
+
+**Sheet and rulers.** The full sheet stands twenty-one rows at the
+game's own working zoom: five looks across an idle, a walk and a hurt
+pose, four spread rows for read-at-a-glance comparison, the stature
+ladder from the Marl through the champion, and seven rulers pairing
+each stratum against a body already shipped (the player, the rock
+golem, the hobgoblin) plus one ruler standing the Marl beside Vorl
+Fullweight. Every look reads as its own stratum beside the Marl and as
+none of its card's own negations; the girdle read at the working zoom
+on the Culm was checked and stands as a hem on cloth rather than a
+belt, which is not a defect.
+
+**The fix pass, after the first review.** The corpse's fallen rim had
+capped to a point and stacked every fixture into one at first pass; it
+now spreads its fixtures across the rim's own usable width, keeps them
+a minimum distance apart, and follows the rim's rounded corner so
+nothing floats off its edge. The Sinter's rim ticks were re-stationed to
+read from the north rather than crowd one side, with a lip stroke that
+no longer eats the drop's own top. The lab's sheet ground was painted a
+mid-value swatch under every cell so a dark stratum reads correctly
+against a meadow rather than a blank page. All three fixes are proven
+and read correctly; a fourth item, below, stays open for the owner.
+
+**The WATCH.** Two items stand open rather than fixed. The Sinter's
+hooded yoke still reads closer to a helm than the brief intended when
+seen from the south, even after its throat lip was quieted; the
+brief's own fallback number for that rim is recorded and is a single
+dial away, left to the owner rather than applied without asking. The
+Culm's inner face, read against dark ground rather than the lab's own
+meadow swatch, has not yet been checked; it is recorded as a watch item
+for whoever next places the Culm against a genuinely dark floor.
+
+**The handoff to Band 9d (the Sett) and Band 9e.** The bodies are done;
+the zone stands on them. Four pooled bodies carry the zone's
+population, and three of the five named throats (Ammat, Sarsen, Drusa,
+Durrow, Vorl) need their actor rows written before their faces are
+stable from one server boot to the next. Every zone row that places a
+Dolmen body must author its own facing toward the bowl it stands in,
+since an actor's rest pose is wherever its last walk left it facing,
+and a scattered spawn command is not a substitute for an authored row.
+The Sinter's "slowest walk in the game" needs a routine task slower
+than a plain walk, not a slower base speed, since an actor walks at its
+task's own pace rather than its stated speed once it is on a routine;
+its stone-on-stone grind also needs a proximity sound bound to an
+actor, which does not exist yet and is owed. Vorl's crown is an engine
+ruling left to Band 9d: either the zone's own spawn format grows a way
+to carry a name, a crown and a mouth for one authored champion, or he
+stands as an ordinary named throat on the champion's body with his
+line from §11.5, which needs no engine work at all; a crown that
+actually forges into being needs a real kit and a pool in the crafting
+system, and both are still arts work. The hostility flip that lets a
+Dolmen answer a blow is written and waiting; it lands only once the
+zone gives a live body to test it against, since a body with no fight
+placed against it today never opens its guard. The two-handed overhead
+strike and the family's whole art kit remain unbuilt after three bands;
+the hurt pose is still the only combat frame any Dolmen owns.
 
 Two architectures were designed against each other (per-tile weights with
 a corner array; strokes and fields evaluated at bake) and they converge on
