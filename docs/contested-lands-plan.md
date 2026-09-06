@@ -1636,6 +1636,81 @@ Band 0, extend it to read the whole dialogue bible and to run a one-edit
 and homophone pass over the actor roster, and run it as part of the
 Dolmen band's gate.
 
+### 11.8 As built 2026-09-06 (Band 9a, THE MARL stands)
+
+Band 9a shipped the creature-actor proof and nothing past it: one body,
+THE MARL, art id `dolmen`, standing, walking, turning, idling and speaking
+as an actor in the world, plus its sheet, its rig-lab proof, two in-world
+shots and one jumped day. Section 11.6's zone, roster and errand, and
+11.7's ragdoll corpse look and arts, remain unbuilt and are handed to bands
+9b and 9c below.
+
+**Rulings, binding on the build (owner delegate).** R-A: the brief's own
+R1 through R9 stand as written, THE MARL as id `dolmen`, stature 1.02, a
+DESIGN and not a cluster roll, the nameless actor `dolmen_setter`, examine
+plus three lines on the bark path, no dialogue tree and no voice cast, the
+sheet rows as listed, THE LEVEL GAIT helper at both hip sites. R-B: THE
+GROUND DOOR is A, the dev command `/spawnnpc <slug> [routine]` is this
+run's only engine addition, and it is dev-only and tested; the body's
+permanent home is the Sett zone in band 9c, not a crofts row and not a
+tiny zone of its own, and the in-world proof shots stand the body at the
+east lip (201, 292) facing west through that command. R-C: the four prop
+ids for band 9b shift to 549 through 552, because SmolderHeap already
+took 548, and the Chalkline detail takes id 184, the next free Detail id
+after the forest law's 182 and 183, not 182 as an earlier note in this
+section implied. R-D: the eid-keyed look seam, where a rolled cluster look
+under a named actor would re-roll its face on every boot, is recorded for
+band 9c and not fixed in this band. R-E: refused this run were any second
+sub-people body, any strike or seed row, a voice clip, a dialogue tree,
+any change to the humanoid rig ladder beyond the `dolmen` rung, and any
+zone or site row.
+
+**Deviations from the written plan, each one recorded and each one
+pinned.** The NpcDef ships with `aggroRange` 0, not 4: the engine's own
+test demands a sightArc on any body with a nonzero aggro range, and the
+brief forbids the Marl one, so 0 is the honest reconciliation and the body
+is untargetable in this band. The plumb, on its own PendantSim slot, is
+ticked by the rig at the yoke's near rim station with its anchor riding
+hipY, so the whole body moves as one; the layer switch that decides
+whether the cord hangs before the bib or behind the torso is latched with
+the cape contract's own hysteresis band on the root station's depth (on
+at plus 0.1, off at minus 0.1), holding at every cardinal facing outside
+that band so the eased gaze can never pop the cord in a single frame. That
+plumb layer latch is written as a reusable helper, `dolmenPlumbFront(mem,
+rootDepth)`, and later sub-peoples riding the same rim, the Sinter's beads
+and the Culm's ticks among them, can take the same band on their own keys.
+
+**A WATCH, not a defect, left for the owner.** At the south and southeast
+bands near 110 degrees the yoke over the face can read as an open-faced
+helm or a cowl rather than the intended hood; at 220 degrees it reads as a
+hood as written. This is not a build defect and nothing was changed for
+it. Only if the owner calls it a helm outright: move `dolmenYoke`'s hBack
+from 0.315 to 0.285 and the nape peak from 0.035 to 0.025, and keep the
+north hood pin green, meaning the rim must still sit at or above the crown
+plus 0.05s.
+
+**The handoff to bands 9b and 9c.** Prop ids for 9b are set: 549
+CourseWall, 550 CourseStile, 551 CorbelCell, 552 PlumbStone, and Chalkline
+takes Detail id 184 (ruling R-C); no id was spent in 9a itself. The
+eid-keyed look seam (ruling R-D) is `dolmenLook(defId, eid)`, and every
+spawned actor mints a fresh eid on restart, respawn or `/spawnnpc`, while
+the actor slug travels on the wire but is threaded into no look call; 9b
+must decide, before the Marl cluster rolls, whether the five named throats
+(Ammat, Sarsen, Drusa, Durrow, Vorl) get their own def ids or a
+slug-keyed design seam in the renderer's look call, while pooled
+`dolmen_setter` bodies may keep rolling. The post needs an authored
+direction: a wander slot's walk-in facing becomes the rest anchor after
+every slot, so a post never faces the bowl on its own, and 9c's zone row
+must either pass an explicit facing on the post task or accept whatever
+facing the walk-in leaves behind. Talk reach and the turn ring are engine
+constants worth recording here and changing nothing about: the body turns
+to the nearest player inside a 3-tile ring and answers within 2.2 tiles,
+so a player sees the turn before the prompt ever appears. The walk speed
+carries two honest numbers from two different sources: the sheet's walk
+row runs at 1.8 (the NpcDef speed, ROUTINE_WALK_SPEED), while the
+`dolmen_set` routine wanders at 1.2; band 9c chooses the setter's actual
+in-world pace on its own zone row.
+
 ---
 
 ## 12. THE LIVING GROUND — a spectrum the bake reads
@@ -2081,7 +2156,7 @@ owner-gated worldgen touch.
 | 6 | THE DAWN UNDER SIEGE | the ground-up rebuild (§7) on the full kit and the fold |
 | 7 | THE FEN LAMP AND THE BAR | §3.1 with the one-scene design; the Dolmen's third corner is deferred to band 9 |
 | 8 | THE HUSK AND THE WARD LINE | §3.2 + §3.3 at the fork waystation; the Felling at [0,-1] |
-| 9 | THE STANDING COURSE | the Dolmen: the creature-actor proof band → the head on the turn strip (3-5 rounds) → bodies and the sheet → the four props + Chalkline → the Sett zone → the Course → Ammat's errand and the east fork's third corner |
+| 9 | THE STANDING COURSE | the Dolmen, run as four half-runs: 9a the creature-actor proof (THE MARL stands, shipped, see §11.8) → 9b the four props (CourseWall, CourseStile, CorbelCell, PlumbStone) plus Chalkline → 9c the remaining bodies and the sheet → 9d the Sett zone, the Course, Ammat's errand and the east fork's third corner |
 | 10 | THE THIRD STONE, THE SPOIL WOLD, THE LAND BETWEEN | §3.4, §3.5, §3.6, §3.7 and the small finds of §13.3 |
 | 11 | THE BLADES AND THE CANOPY FOLD | LG-3 + LG-4 |
 | 12 | THE STUDIO HOLDS THE BRUSH | LG-5 |
