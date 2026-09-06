@@ -1,0 +1,14 @@
+{
+  "id": "q_the_grey_root_turnin",
+  "start": "stacked",
+  "requires": ["quest:the_grey_root:ready"],
+  "bindings": [{ "kind": "actor", "target": "forester_alder", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "stacked",
+      "voice": "q_the_grey_root_turnin__stacked",
+      "text": "Twelve and two. Stacked. The yard is warm this winter and the bows have their yew. Margit wants a second load at the stall so the tally reads full where the green can see it. Say it was Alder's word.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_grey_root" }]
+    }
+  ]
+}

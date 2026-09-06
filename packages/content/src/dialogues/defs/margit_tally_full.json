@@ -1,0 +1,13 @@
+{
+  "id": "margit_tally_full",
+  "start": "full",
+  "requires": ["full_tally_posted"],
+  "bindings": [{ "kind": "actor", "target": "charter_margit", "priority": 4 }],
+  "nodes": [
+    {
+      "id": "full",
+      "voice": "margit_tally_full__full",
+      "text": "The winter column is full in your hand. Cord eighteen, north yew two. Hilde read it on the green and nobody argued the number."
+    }
+  ]
+}

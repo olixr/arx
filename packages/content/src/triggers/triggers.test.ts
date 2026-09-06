@@ -103,3 +103,64 @@ test('validator: reference existence is strict only at the Studio door', () => {
 test('the once-latch flag wears the trig: namespace', () => {
   assert.equal(triggerOnceFlag('town_amberford'), 'trig:town_amberford');
 });
+
+// ---- THE CONTESTED LANDS band 8: THE HUSK AND THE WARD LINE (band8/
+// blockout.md §6.4). Five patches of watching ground, every event slug
+// the trigger's own id, every fire a once-stamped plain flag that a
+// flag objective reads. The husk's and the rest's anchors are golden,
+// so the rects are honest in world tiles.
+test('CONTESTED LANDS band 8: the five north triggers stand as the brief drew them', () => {
+  const rect = (id: string) => {
+    const def = TRIGGERS.get(id);
+    assert.ok(def, `${id} is authored`);
+    assert.equal(def!.event, id, `${id}: the event slug is its own id`);
+    assert.equal(def!.once, true, `${id}: once per character`);
+    assert.equal(def!.area.kind, 'rect');
+    return def!;
+  };
+  // The apron held: an exit after half past eight, having stood the
+  // changeover inside (75 s), sworn to the sergeant, not yet held.
+  const husk = rect('husk_breach_held');
+  assert.deepEqual(husk.area, { kind: 'rect', x: -76, y: -248, w: 24, h: 18 });
+  assert.equal(husk.on, 'exit');
+  assert.equal(husk.minInsideSec, 75);
+  assert.equal(husk.setFlag, 'husk_held');
+  assert.deepEqual(husk.conditions, [
+    { when: 'timeBetween', from: 20.5, to: 5.5 },
+    { when: 'flag', flag: 'towers_debt_sworn' },
+    { when: 'notFlag', flag: 'husk_held' },
+  ]);
+  // The three grey stones, 5x5 on each, entered with the four lengths in
+  // the pack and the thread uncut (a cut closes fork A's walk forever).
+  for (const [id, cx, cy] of [
+    ['grey_one', -135, -184],
+    ['grey_two', -151, -184],
+    ['grey_three', -150, -198],
+  ] as const) {
+    const g = rect(id);
+    assert.deepEqual(g.area, { kind: 'rect', x: cx - 2, y: cy - 2, w: 5, h: 5 });
+    assert.equal(g.on, 'enter');
+    assert.equal(g.setFlag, id);
+    assert.deepEqual(g.conditions, [
+      { when: 'hasItem', item: 'cut_thread', qty: 4 },
+      { when: 'flag', flag: 'keep_thread_sworn' },
+      { when: 'notFlag', flag: 'ward_thread_cut' },
+    ]);
+  }
+  // The head stone stood from dusk: two game hours (100 s) inside, an
+  // exit between half past seven and eleven, sworn to the stone.
+  const dusk = rect('stone_dusk_stood');
+  assert.deepEqual(dusk.area, { kind: 'rect', x: -140, y: -188, w: 10, h: 8 });
+  assert.equal(dusk.on, 'exit');
+  assert.equal(dusk.minInsideSec, 100);
+  assert.equal(dusk.setFlag, 'glade_stood');
+  assert.deepEqual(dusk.conditions, [
+    { when: 'timeBetween', from: 19.5, to: 23 },
+    { when: 'flag', flag: 'stone_dusk_sworn' },
+    { when: 'notFlag', flag: 'glade_stood' },
+  ]);
+  // The head stone's rect holds the east end of the thread and its
+  // stone, and the dusk rect and grey_one overlap on purpose: the same
+  // ground teaches the walk and holds the stand.
+  assert.equal(TRIGGERS.size, 13, 'eight towns and the north\'s five');
+});

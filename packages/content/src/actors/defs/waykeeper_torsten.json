@@ -2,7 +2,7 @@
   "id": "waykeeper_torsten",
   "name": "Sergeant Torsten",
   "title": "Waykeeper Sergeant",
-  "examine": "Twenty-two years in the order and a slate in his own chalk: gnolls eleven, wolves seven, ours three with a line through the three. Stands the way a lamp post stands.",
+  "examine": "Twenty two years in the order and a slate in his own chalk, eleven and seven and three. Stands the way a lamp post stands. Posted at the fork; the picket below is his slate and his bell.",
   "disposition": "neutral",
   "protection": "invulnerable",
   "model": {

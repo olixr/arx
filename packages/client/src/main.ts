@@ -545,6 +545,8 @@ const PROMPT_LABELS: Record<string, string> = {
   seat: 'Sit',
   bed: 'Rest',
   sign: 'Read Sign',
+  thread: 'Cut the Thread',
+  burnt: 'Read Board',
 };
 
 /** THE LIVING SOIL: has this compost bin's batch finished working? */
@@ -2765,6 +2767,11 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       screens.closeAll();
       signHud.open(target.tx, target.ty);
       game.interact(target.tx, target.ty);
+      break;
+    case 'burnt':
+      // THE BURNT BOARD: nothing streamed, nothing to ask; the client
+      // answers with one risen word on the board (owed F7).
+      game.readBurntBoard(target.tx, target.ty);
       break;
     case 'npc':
       game.interactNpc(target.eid);

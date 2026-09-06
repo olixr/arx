@@ -128,6 +128,14 @@ export interface ZoneSpawn {
    * never opens a fight of its own. Only meaningful with count 1.
    */
   mouth?: string;
+  /**
+   * THE COUNTED PACK (contested lands, band 8 fix pass): a body that
+   * walks its loop as theatre and never OPENS on a player — no player
+   * scan, no unforced aggro; a packmate's rally or a landed blow still
+   * answers. The ward line's wolves fly it so the Court's count can
+   * pass a standing walker. Placement data, like `tribe`.
+   */
+  passive?: true;
 }
 
 /**

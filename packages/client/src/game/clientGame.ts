@@ -141,9 +141,13 @@ export type InteractTarget =
   | { kind: 'chest'; tx: number; ty: number; chest: ChestKind }
   | { kind: 'door'; tx: number; ty: number; open: boolean; gate: boolean }
   | { kind: 'candle'; tx: number; ty: number; lit: boolean }
+  /** THE DELIBERATE CUT: the Court's ward thread offers the cut. */
+  | { kind: 'thread'; tx: number; ty: number }
   | { kind: 'seat'; tx: number; ty: number }
   | { kind: 'bed'; tx: number; ty: number }
-  | { kind: 'sign'; tx: number; ty: number; mine: boolean; blank: boolean };
+  | { kind: 'sign'; tx: number; ty: number; mine: boolean; blank: boolean }
+  /** THE BURNT BOARD: a scorched board offers a read and answers one RISEN WORD. */
+  | { kind: 'burnt'; tx: number; ty: number };
 import { STATUS_INK } from '../render/statusFx.js';
 import { setSpectrum } from '../render/fold.js';
 import { WORD_LIFE_MS } from './wordLife.js';
@@ -199,6 +203,11 @@ export interface ChatLine {
 }
 
 export { WORD_LIFE_MS };
+
+/** THE BURNT BOARD's risen word (two or three words at most, the wire's law). */
+export const BURNT_BOARD_WORD = 'CHAR';
+/** THE BURNT BOARD's log sentence: whole sentences, no dash, the board reads nothing. */
+export const BURNT_BOARD_LINE = 'Char. Whatever it said went up with it.';
 
 /** A combat effect in flight (nova ring, telegraph, blast, reaction). */
 export interface ActiveFx {
@@ -1913,25 +1922,9 @@ export class ClientGame {
     },
     notice: (g, msg) => {
       // ONE MESSAGE, TWO VOICES: the sentence keeps the log honest,
-      // the word stands up where the refusal happened.
-      g.events.onChat({ channel: 'system', text: msg.text });
-      const own = g.predictor.renderPos();
-      const x = msg.x ?? own.x;
-      const y = msg.y ?? own.y;
-      const now = performance.now();
-      // THE DEDUPE LAW: mashing the verb re-bumps the standing word
-      // (the renderer re-pops it) — never a stack of copies.
-      const standing = g.words.find(
-        (w) => w.word === msg.word && Math.hypot(w.x - x, w.y - y) < 0.75 && now - w.bornAt < WORD_LIFE_MS,
-      );
-      if (standing) {
-        standing.bornAt = now;
-        standing.bumpedAt = now;
-        standing.x = x;
-        standing.y = y;
-      } else {
-        g.words.push({ x, y, word: msg.word, tone: msg.tone ?? 'deny', bornAt: now, bumpedAt: now });
-      }
+      // the word stands up where the refusal happened (raiseWord is
+      // the one door; the client's own reads walk through it too).
+      g.raiseWord(msg.word, msg.text, msg.x, msg.y, msg.tone);
     },
     pong: (g, msg) => {
       g.rttMs = performance.now() - msg.ct;
@@ -3127,6 +3120,47 @@ export class ClientGame {
     this.conn?.send({ t: 'waypoint' });
   }
 
+  /**
+   * THE RISEN WORD's one door on the client: the sentence lands in the
+   * system log and the word stands up at the anchor (no anchor: over
+   * your own head). THE DEDUPE LAW: mashing the verb re-bumps the
+   * standing word (the renderer re-pops it) — never a stack of copies.
+   * The server's S2CNotice walks through here; so does every answer
+   * the client already knows without asking (a burnt board).
+   */
+  raiseWord(word: string, text: string, x?: number, y?: number, tone?: RisenWord['tone']): void {
+    this.events.onChat({ channel: 'system', text });
+    const own = this.predictor.renderPos();
+    const ax = x ?? own.x;
+    const ay = y ?? own.y;
+    const now = performance.now();
+    const standing = this.words.find(
+      (w) => w.word === word && Math.hypot(w.x - ax, w.y - ay) < 0.75 && now - w.bornAt < WORD_LIFE_MS,
+    );
+    if (standing) {
+      standing.bornAt = now;
+      standing.bumpedAt = now;
+      standing.x = ax;
+      standing.y = ay;
+    } else {
+      this.words.push({ x: ax, y: ay, word, tone: tone ?? 'deny', bornAt: now, bumpedAt: now });
+    }
+  }
+
+  /**
+   * THE BURNT BOARD (contested lands band 8, owed F7). Law: reading is
+   * a client act (the words already streamed), and a scorched board
+   * has no words to stream; so the read never asks the server, it
+   * answers here with one RISEN WORD standing ON the board (the anchor
+   * grammar: an object's state stands on the object) and the sentence
+   * in the log, in the note tone because nothing was refused. The
+   * board stays what it is: a solid post the destructible row can
+   * still take down in two hits.
+   */
+  readBurntBoard(tx: number, ty: number): void {
+    this.raiseWord(BURNT_BOARD_WORD, BURNT_BOARD_LINE, tx + 0.5, ty + 0.5, 'note');
+  }
+
   /** Send an interact intent for a specific world tile. */
   interact(tx: number, ty: number): void {
     this.lastInteract = { tx, ty };
@@ -3202,6 +3236,11 @@ export class ClientGame {
     // snuff, snuffed offers the light. The server owns the flip.
     const candle = candleInfo(ground);
     if (candle) return { kind: 'candle', tx, ty, lit: candle.lit };
+    // THE DELIBERATE CUT (contested lands, band 8): the ward thread is
+    // walkable and no swing or shot bursts it; the only way through
+    // the Court's word is this offered verb, and the server owns the
+    // deed, the flag and the regrow.
+    if (ground === Tile.WardThread) return { kind: 'thread', tx, ty };
     if (ground === Tile.BankChest) return { kind: 'bank', tx, ty };
     // THE THREE STALLS: the pen opens the stable door. The household
     // already lives client-side (S2CPet), so the panel needs no
@@ -3211,6 +3250,10 @@ export class ClientGame {
     // Boards offer a read. A blank one is only a target for the hand
     // that raised it (there is nothing there for anyone else to do),
     // which is why the blankness rides on the target itself.
+    // THE BURNT BOARD (contested lands band 8, owed F7): a scorched
+    // board is not in the sign roster and streams no words, but it
+    // still offers the read, and the answer is the client's own.
+    if (ground === Tile.SignpostBurnt) return { kind: 'burnt', tx, ty };
     if (isSignTile(ground)) {
       const sign = this.signs.get(signKey(tx, ty));
       const blank = !sign || (sign.title === '' && sign.lines.length === 0);
@@ -3242,6 +3285,14 @@ export class ClientGame {
       for (let tx = cx - 2; tx <= cx + 2; tx++) {
         const target = this.targetAt(tx, ty);
         if (!target) continue;
+        // THE DELIBERATE CUT, NEVER UNDERFOOT (contested lands, band 8
+        // fix pass): the thread is walkable, so a hand standing ON it
+        // used to see "Cut the Thread" at distance zero over every
+        // Talk and loot in reach, the whole length of the Court's
+        // own walk — and one press was the deed for good. The cell
+        // under the boots offers nothing; a cut is a thing you turn
+        // to and choose, from beside the line.
+        if (target.kind === 'thread' && tx === cx && ty === cy) continue;
         const dx = tx + 0.5 - pos.x;
         const dy = ty + 0.5 - pos.y;
         const d = dx * dx + dy * dy;

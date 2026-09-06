@@ -732,9 +732,13 @@ export const RUIN_WALL_TILES: ReadonlySet<Tile> = new Set([
 ]);
 
 /** The kit's contiguous id band, anchored on LIVING endpoints (never
- *  a literal) — the terrain underlay and the museum wing read it. */
+ *  a literal) — the terrain underlay and the museum wing read it.
+ *  Band 8's clamp (548) stands PAST the band on purpose: 546 and 547
+ *  are reserved for the living ground's two true tiles (AshGround,
+ *  GrassBlighted — plan §12.5), which are floors, never props, and
+ *  must never answer here. So the clamp is named, not ranged. */
 export function isScarredTile(id: number): boolean {
-  return id >= Tile.RuinWallStone && id <= Tile.SluiceGateStrung;
+  return (id >= Tile.RuinWallStone && id <= Tile.SluiceGateStrung) || id === Tile.SmolderHeap;
 }
 
 /** The fence family's auto-orient law, spoken in wrought iron. */
@@ -1098,6 +1102,10 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.BoneTree, 0.25],
   [Tile.TallyStone, 0.3],
   [Tile.RedRagStake, 0.15],
+  // Band 8: the charcoal clamp is a turfed mound a body walks round
+  // (.42 — wider than the spoil heap; a clamp is banked to burn for
+  // days and nobody leans on it).
+  [Tile.SmolderHeap, 0.42],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */

@@ -190,6 +190,12 @@ const VOCAB_OF: ReadonlyArray<[RegExp, InfluenceVocab]> = [
   // carry the marks per site instead.
   [/^poi_(hamlet)/, 'neutral'],
   [/^poi_(waystation|peddler)/, 'wayside'],
+  // Band 8's three north sketches are NOT here either: the veil den
+  // claims the den's vocab AT ITS DECLARATION (`vocab: 'den'` on
+  // `poi_veil_den`, since its id reads as nothing), and the husk and
+  // the Felling are their own footprint (cap = long axis, no verge):
+  // the peninsula's grass and the burnt stand outside them are
+  // worldgen's, EMPTY ON PURPOSE (blockout §2.10, §2.12).
 ];
 
 /**

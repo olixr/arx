@@ -1,0 +1,14 @@
+{
+  "id": "rill_no_yew",
+  "start": "once",
+  "once": true,
+  "requires": ["grey_root_done"],
+  "bindings": [{ "kind": "actor", "target": "fletcher_rill", "priority": 9 }],
+  "nodes": [
+    {
+      "id": "once",
+      "voice": "rill_no_yew__once",
+      "text": "The north yew went to Alder's bow shelf and none came here. My staves are short this winter. I am not charging you for that. I am telling you where the yew went."
+    }
+  ]
+}

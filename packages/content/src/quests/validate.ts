@@ -43,6 +43,14 @@ const SLUG_RE = /^[a-z][a-z0-9_]*$/;
 const PLACE_RE = /^zone:[a-z][a-z0-9_]*$/;
 /** Quest requires/rewards flags: plain story slugs or dlg: completions. */
 const STORY_FLAG_RE = /^(dlg:)?[a-z][a-z0-9_]*$/;
+/**
+ * THE FLAG OBJECTIVE's flag: a plain slug or a trigger's once-mark
+ * (the trigger validator's own FLAG_RE) — never world:/quest:/faction:,
+ * which the world answers and no hand ever holds.
+ */
+const OBJECTIVE_FLAG_RE = /^(trig:)?[a-z][a-z0-9_]*$/;
+/** THE PEOPLE SPEAK: the label is a wire name, ninety or fewer. */
+const OBJECTIVE_LABEL_MAX = 90;
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -121,7 +129,24 @@ function validateObjective(
     }
     return { kind: 'talk', actor: raw.actor };
   }
-  errors.push(`${where}.kind must be 'kill', 'collect', 'discover', or 'talk'`);
+  if (raw.kind === 'flag') {
+    // THE FLAG OBJECTIVE: the world already knows the fact; the quest
+    // asks you to have it be true. Only a holdable flag may be asked
+    // for — the synthetic namespaces are answered live and can never
+    // be stamped on a character.
+    if (typeof raw.flag !== 'string' || !OBJECTIVE_FLAG_RE.test(raw.flag) || raw.flag.length > 64) {
+      errors.push(
+        `${where}.flag '${String(raw.flag)}' must be a plain story slug (or trig: once-mark) — never world:/quest:/faction:`,
+      );
+      return undefined;
+    }
+    if (typeof raw.label !== 'string' || raw.label.length === 0 || raw.label.length > OBJECTIVE_LABEL_MAX) {
+      errors.push(`${where}.label must be a non-empty string of at most ${OBJECTIVE_LABEL_MAX} chars`);
+      return undefined;
+    }
+    return { kind: 'flag', flag: raw.flag, label: raw.label };
+  }
+  errors.push(`${where}.kind must be 'kill', 'collect', 'discover', 'talk', or 'flag'`);
   return undefined;
 }
 

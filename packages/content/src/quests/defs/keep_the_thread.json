@@ -1,0 +1,29 @@
+{
+  "id": "keep_the_thread",
+  "name": "Keep the Thread",
+  "giver": "even_sentinel",
+  "turnIn": "even_sentinel",
+  "requires": { "quests": ["the_first_road"] },
+  "stages": [
+    {
+      "id": "walk",
+      "journal": "Four lengths of the Court's thread, in your pack. Carry them the length of the line, past the three grey stones, the one by the road, the one at the corner, and the one where the wood gives out. Do not cut. The hand that strings them back must be one the wood has not seen cut.",
+      "objectives": [
+        { "kind": "flag", "flag": "grey_one", "label": "Carry the lengths past the stone by the road" },
+        { "kind": "flag", "flag": "grey_two", "label": "Past the stone at the corner" },
+        { "kind": "flag", "flag": "grey_three", "label": "Past the stone where the wood gives out" }
+      ],
+      "mark": { "x": -135, "y": -184 }
+    },
+    {
+      "id": "string",
+      "journal": "Hand the four lengths to the stone. The wood strings it back for everyone; the count is what you carried.",
+      "objectives": [{ "kind": "collect", "item": "cut_thread", "count": 4 }]
+    }
+  ],
+  "rewards": {
+    "xp": [{ "skill": "combat", "amount": 120 }],
+    "standing": [{ "faction": "evencourt", "delta": 10 }],
+    "flags": ["keep_thread_done"]
+  }
+}

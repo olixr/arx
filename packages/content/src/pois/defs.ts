@@ -67,6 +67,8 @@ import thirdStoneRest from './defs/third_stone_rest.json';
 import huskOfTheLine from './defs/husk_of_the_line.json';
 import fellingDrum from './defs/felling_drum.json';
 import legionPressed from './defs/legion_pressed.json';
+// Band 8 (THE HUSK AND THE WARD LINE): the veil den's own def.
+import veilDen from './defs/veil_den.json';
 import hobgoblinLegion from './defs/hobgoblin_legion.json';
 import brokenBarrow from './defs/broken_barrow.json';
 
@@ -200,19 +202,43 @@ const SOURCES: readonly unknown[] = [
   //    plan's six-to-six road walk is a routine still owed.
   //  - husk_of_the_line: the watchtower_ruin's honest smaller variant
   //    (§3.2, §13.2); weight 0, family dead, tiers 2..4, pinned off
-  //    the trail's end.
-  //  - felling_drum: the goblin_warcamp's cell-forced weight-0
-  //    variant (§3.2, §13.2) so the Drum stands on the first visit;
-  //    rows wear tribe goblin so the veil's wolves fight its worgs.
-  //    It carries NO rivalDef: a cell-forced site is in authoredCells
-  //    and never stages up or deals a satellite (§1 law 2), so the
-  //    field on it was dead. §13.2 wants the pressed camp dealt by the
-  //    ROLLED neighbour Drum, i.e. rivalDef on goblin_warcamp itself,
-  //    which is a world-wide change (every stage-2 warcamp would press
-  //    for the Legion) and waits on the owner's word at band 8.
+  //    every way on the mere's far ground. Band 8 gave it its OWN
+  //    sketch (`poi_husk_of_the_line`): every mark the scatter used
+  //    to ask for stands in the sketch (cues.scatter []), one board
+  //    (STRUCK FROM THE ROLLS), the chest free (the fight is the
+  //    ward), the garrison windows as booted (the changeover at half
+  //    past eight is the fight; KEEP THE SEAM).
+  //  - felling_drum: the goblin_warcamp's weight-0 variant (§3.2,
+  //    §13.2), pinned so the Drum stands on the first visit; rows
+  //    wear tribe goblin so the veil's wolves fight its worgs. Band 8
+  //    gave it its OWN sketch (`poi_felling_drum`: the four clamps,
+  //    the stump rows, the snag ring) and STRUCK its boldness block:
+  //    a pinned site is in authoredCells and never stages up or deals
+  //    a satellite (§1 law 2), so the ladder on it was a lie. It
+  //    carries NO rivalDef for the same reason.
+  //  - goblin_warcamp (the ROLLED Drum) carries the pressed camp on
+  //    the owner's word (band 8, rulings G2): `rivalDef:
+  //    legion_pressed` GATED by `rivalNear { hobgoblin_legion, 320 }`,
+  //    so a stage-2 warcamp deals the Legion's pressed goblins only
+  //    within a march of the authored Legion and its own reach
+  //    everywhere else (THE PRESSED SATELLITE, GATED; owed F3).
   //  - legion_pressed: weight 0, tiers 1..3, rows tribe legion; never
-  //    rolled and never pinned — dealt only through rivalDef (unwired
-  //    in band 0, see above).
+  //    rolled and never pinned — dealt only through rivalDef (wired
+  //    from the rolled Drum in band 8, see above).
+  //  - veil_den (band 8, blockout 0.2 I): the wolfkin_den's honest
+  //    smaller variant for the pinned den in cell [-2,-1]; weight 0,
+  //    family wolfkin, tiers 1..4, on its own sketch `poi_veil_den`
+  //    (den_bones re-dressed: the bone tree at the mouth, the nest
+  //    kept). The dire row is minTier 1 (the den's ground reads tier
+  //    2 at the tile and 1 by centre, and Hollowhowl stands whatever
+  //    the jitter says; the Brede precedent), levelOffset 2, ONE name,
+  //    crowned. The worg row and the boldness block are struck. Its
+  //    clearedFlag `poi_veil_den_broken` is load-bearing beyond the
+  //    crown: the generic `poi_den_broken` is stamped by every wolfkin
+  //    den in the world and would credit the Wool Count to a
+  //    character who broke some other den last year. The wolfkin_den
+  //    pool keeps the name Hollowhowl; the variant's row is a
+  //    different body under the same name, one per world (the pin).
   //  - hobgoblin_legion: tier 3 by canon and never nearer (§2, §3.5,
   //    §13.2); weight 0, pinned off every way; no ladder (authored
   //    cells deal no satellites) — its reach is an authored loop.
@@ -230,6 +256,7 @@ const SOURCES: readonly unknown[] = [
   legionPressed,
   hobgoblinLegion,
   brokenBarrow,
+  veilDen,
 ];
 
 function buildRegistry(): ReadonlyMap<string, PoiDef> {

@@ -92,7 +92,13 @@ export const LECTERN = [65, 98] as const;
 export const WAIN_PATCH = { cx: 66.5, cy: 98.5, rx: 3, ry: 1.2 } as const;
 /** The two oaks the wain stands under, authored so no forest law can fell them (verge.ts says why). */
 export const WAIN_OAKS: ReadonlyArray<readonly [number, number]> = [[65, 97], [66, 97]];
-/** The one snag on the skyline, lateral to the road. */
+/**
+ * The one snag on the skyline, lateral to the road. Worldgen now deals
+ * DeadTree snags of its own in OLD wood (D6, the timber law), but the
+ * Ashlamp's field is dry forest, not old wood, so at this seed the
+ * authored snag is still the only one in the eyeful; a snag the field
+ * dealt beside it would be a second silhouette, not a broken pin.
+ */
 export const DEAD_TREE = [68, 94] as const;
 /**
  * THE SNAG'S CLEARING (fix pass 1): worldgen's oaks south of the snag

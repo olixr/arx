@@ -152,6 +152,15 @@ export interface PoiCues {
    */
   clearing?: number;
   /**
+   * THE TRAMPLED RING (contested lands, band 8 fix pass): the felled
+   * ring is a beast's ground, not a camp's — every tree inside it
+   * goes to trampled grass and none to a stump, because a pack cuts
+   * nothing and a den ringed with stumps says an axe was here. Only
+   * with `clearing`; absent = the camp's ring (stumps where the trees
+   * stood thickest), byte-identical to every site before it.
+   */
+  trampled?: boolean;
+  /**
    * Wear a dirt path stub from the footprint edge outward on the
    * townward bearing — the direction players arrive from.
    */
@@ -209,6 +218,20 @@ export interface PoiBoldness {
    * (a rival is dealt, never rolled).
    */
   rivalDef?: string;
+  /**
+   * THE PRESSED SATELLITE, GATED (contested lands, band 8; owed F3): a
+   * rival is dealt only where the rival's master stands within a
+   * march. `rivalDef` alone is unconditional, so putting it on a rolled
+   * archetype would deal the Legion's pressed goblins from every
+   * warcamp in the world; with `rivalNear` the seed deals the rival
+   * ONLY when a pinned authored site of `defId` (an AUTHORED_WILD_SITES
+   * entry, its live ledger anchor where it stood) lies within `tiles`
+   * of the seeding core's anchor, and otherwise falls to the ordinary
+   * satelliteDef (or the def itself). The validator holds the shape:
+   * needs rivalDef, defId a roster slug, tiles 64..512. Absent = the
+   * rivalDef deals everywhere, exactly as before.
+   */
+  rivalNear?: { defId: string; tiles: number };
 }
 
 /**

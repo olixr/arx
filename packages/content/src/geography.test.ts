@@ -13,9 +13,12 @@ import {
   AUTHORED_ZONE_PAD,
   DAWNMEAD_RECT,
   FENSIDE_RECT,
+  PICKET_RECT,
   PLANNED_ZONE_RECTS,
   ROAD_ROUTES,
   SILVERFALL_RECT,
+  TURNOFF_RECT,
+  WARDTHREAD_RECT,
   distToRect,
   fenAt,
   fieldApronAt,
@@ -43,6 +46,7 @@ import { SETTLED_ANCHORS } from './danger.js';
 import { buildDawnmead } from './maps/dawnmead.js';
 import { buildAshlamp } from './maps/ashlamp.js';
 import { buildFenside } from './maps/fenside.js';
+import { buildPicket, buildTurnoff, buildWardthread } from './maps/wardthread.js';
 import { POI_PREFABS } from './pois/prefabs.js';
 import { WORLD_SEED, elevationAt } from './worldgen.js';
 
@@ -557,7 +561,9 @@ test('THE RE-CELLED MAP: every §13.2 site stands in its table cell on its def',
     ['husk_of_the_line', 'husk_of_the_line', '-1,-2'],
     ['felling_drum', 'felling_drum', '0,-1'],
     ['hobgoblin_legion', 'hobgoblin_legion', '-1,-3'],
-    ['veil_den', 'wolfkin_den', '-2,-1'],
+    // Band 8 (blockout 0.2 I): the den's row keeps its cell and takes
+    // the weight-0 variant with Hollowhowl crowned (L3's def).
+    ['veil_den', 'veil_den', '-2,-1'],
     ['third_stone', 'third_stone_rest', '-2,1'],
     ['broken_barrow', 'broken_barrow', '-2,0'],
     ['longmeadow_rest', 'waystation', '0,-2'],
@@ -574,7 +580,7 @@ test('THE RE-CELLED MAP: every §13.2 site stands in its table cell on its def',
   }
   // Every contested def is weight 0 — placed by hand, never rolled.
   for (const defId of ['fenside_lamp', 'first_road_bar', 'fork_waystation', 'third_stone_rest',
-    'husk_of_the_line', 'felling_drum', 'legion_pressed', 'hobgoblin_legion', 'broken_barrow']) {
+    'husk_of_the_line', 'felling_drum', 'legion_pressed', 'hobgoblin_legion', 'broken_barrow', 'veil_den']) {
     assert.equal(POI_DEFS.get(defId)!.weight, 0, `${defId} must be weight 0`);
   }
   // The pressed camp is dealt, never placed: no site row names it.
@@ -638,10 +644,11 @@ const WOLD_GLOOM: SpectrumStroke = {
 test('THE LIVING GROUND: the doc admits `spectrum`, round-trips without the word when absent, refuses the rest', () => {
   const snap = geographySnapshot();
   assert.ok('spectrum' in snap, 'the snapshot always writes the key — the welcome geo says the server folds');
-  // THE FIRST AUTHORED STROKE (band 7, owed E2): the Ashlamp burn is
-  // the plan's one stroke; its shape is pinned in this file's band 7
-  // cases below. Nothing else is painted.
-  assert.deepEqual(snap.spectrum!.map((s) => s.id), ['ashlamp_burn']);
+  // THE AUTHORED STROKES: the Ashlamp burn (band 7, owed E2), then
+  // band 8's two (owed F6): the blight under the ward line and the
+  // Felling's burn, pinned in this file's band 8 cases below. Nothing
+  // else is painted.
+  assert.deepEqual(snap.spectrum!.map((s) => s.id), ['ashlamp_burn', 'wardthread_blight', 'felling_burn']);
   // A doc saved before the field validates and comes back WITHOUT the key.
   const { spectrum: _absent, ...bare } = snap;
   const old = validateGeographyDef(bare);
@@ -787,6 +794,103 @@ test('THE TWO PATCHES: the Ashlamp and the fen waist are planned rects that buil
   assert.ok(FENSIDE_RECT.x >= 118, 'the fen waist begins where the long dry ends');
 });
 
+// ------------------------------------------------------------------
+// THE CONTESTED LANDS, band 8 — THE HUSK AND THE WARD LINE (L1 FRAME).
+// Every number below is the brief's, measured at the shipped seed
+// (maps/wardthread/pins.ts carries the tape).
+// ------------------------------------------------------------------
+
+test('THE THREE NORTH PATCHES: the ward line, the picket and the turn are planned rects that build to their own pins', () => {
+  const planned = new Map(PLANNED_ZONE_RECTS.map((p) => [p.id, p]));
+  for (const [z, rect, name] of [
+    [buildWardthread(), WARDTHREAD_RECT, 'The Ward Line'],
+    [buildPicket(), PICKET_RECT, 'The Picket'],
+    [buildTurnoff(), TURNOFF_RECT, 'The Turn'],
+  ] as const) {
+    const row = planned.get(z.id);
+    assert.ok(row, `${z.id} has a planned row`);
+    assert.equal(row!.name, name);
+    assert.ok(!row!.apron, `${z.id} is a patch on worldgen: no apron`);
+    assert.deepEqual({ x: z.origin.x, y: z.origin.y, w: z.width, h: z.height }, rect, `${z.id}: the built rect is the plan's`);
+    assert.equal(z.growth, 'wild', `${z.id} grows wild (G-3)`);
+    assert.equal(z.spawn, undefined, `${z.id} declares no spawn`);
+    assert.equal(z.chests, undefined, `${z.id} keeps no chest`);
+  }
+  // The rects as the tape measured them (pins.ts says why each grew):
+  // the ward line to the road's shoulder and the tarn's rim, the
+  // picket two rows south, the turn as drawn.
+  assert.deepEqual(WARDTHREAD_RECT, { x: -164, y: -203, w: 37, h: 25 });
+  assert.deepEqual(PICKET_RECT, { x: -131, y: -140, w: 24, h: 26 });
+  assert.deepEqual(TURNOFF_RECT, { x: -80, y: -182, w: 14, h: 16 });
+  // All three stand north of the tutorial's rect (y ends at 159; the
+  // picket's bottom row is y -115, 51 rows north of its top at -64).
+  for (const r of [WARDTHREAD_RECT, PICKET_RECT, TURNOFF_RECT]) {
+    assert.ok(r.y + r.h - 1 < DAWNMEAD_RECT.y, `${r.x},${r.y} stands north of Dawnmead`);
+  }
+  // No north pin carries `hug` (blockout 0.2 B: a hug on a pin under
+  // the pad can move its anchor on every fresh boot).
+  for (const id of ['fork_rest', 'husk_of_the_line', 'felling_drum', 'hobgoblin_legion', 'veil_den', 'last_lamp']) {
+    const s = AUTHORED_WILD_SITES.find((x) => x.id === id)!;
+    assert.ok(!('hug' in s), `${id} says hug`);
+  }
+  // The den's row keeps its cell and gains its prefab (0.2 I).
+  const den = AUTHORED_WILD_SITES.find((x) => x.id === 'veil_den')!;
+  assert.deepEqual([den.cell, den.prefabId], [[-2, -1], 'poi_veil_den']);
+});
+
+test('THE LIVING GROUND, band 8: the blight under the ward line and the Felling\'s burn validate and keep clear of Dawnmead', () => {
+  const shipped = validateGeographyDef(AUTHORED_GEOGRAPHY, { poiDefIds: new Set(POI_DEFS.keys()) });
+  assert.ok(shipped.ok, shipped.ok ? '' : shipped.errors.join('\n'));
+  const strokes = AUTHORED_GEOGRAPHY.spectrum!;
+  const blight = strokes.find((s) => s.id === 'wardthread_blight')!;
+  const burn = strokes.find((s) => s.id === 'felling_burn')!;
+  assert.deepEqual(blight, {
+    id: 'wardthread_blight',
+    axis: 'blight',
+    shape: { kind: 'capsule', x0: -146, y0: -188, x1: -140, y1: -196, r: 7 },
+    amp: 0.7,
+    soft: 0.5,
+    grain: 0.35,
+    mode: 'max',
+  });
+  assert.deepEqual(burn, {
+    id: 'felling_burn',
+    axis: 'burn',
+    shape: { kind: 'circle', x: 80, y: -42, r: 18 },
+    amp: 0.8,
+    soft: 0.6,
+    grain: 0.3,
+    mode: 'max',
+  });
+  // Skin only: neither carries `bones`, so worldgen is byte-identical.
+  assert.ok(!('bones' in blight) && !('bones' in burn));
+  // The reach boxes (fully ragged): the blight's over the stand north
+  // of the road, inside the ward line's rect and past its own hem,
+  // more than 115 tiles north of Dawnmead's rect; the burn's east of
+  // the gate, more than 25 tiles east of it.
+  const [pb, pu] = prepareStrokes([blight, burn]);
+  assert.ok(pb && pu);
+  assert.ok(pb!.x0 > -155 && pb!.x1 < -131 && pb!.y0 > -205 && pb!.y1 < -179, `blight reach x ${pb!.x0}..${pb!.x1} y ${pb!.y0}..${pb!.y1}`);
+  assert.ok(pb!.y1 < DAWNMEAD_RECT.y - 115, 'the blight ends more than 115 tiles north of the tutorial');
+  assert.ok(pu!.x0 > 59 && pu!.x1 < 101 && pu!.y0 > -63 && pu!.y1 < -21, `burn reach x ${pu!.x0}..${pu!.x1} y ${pu!.y0}..${pu!.y1}`);
+  assert.ok(pu!.x0 > DAWNMEAD_RECT.x + DAWNMEAD_RECT.w + 25, 'the burn begins more than 25 tiles east of the tutorial');
+  // The blight's reach crosses the chunk border at y -192, where the
+  // fringe-seam probe reads it; the burn's crosses x 64, x 96 and
+  // y -32. The y -64 border lies two tiles past its ragged reach
+  // (18 × (1 + 0.35 × 0.3) = 19.9 from y -42 ends at -61.9), so the
+  // probe reads three of the Felling's four seams and the fourth is
+  // the field's own.
+  assert.ok(pb!.y0 < -192 && pb!.y1 > -192);
+  for (const [lo, hi, edge] of [[pu!.x0, pu!.x1, 64], [pu!.x0, pu!.x1, 96], [pu!.y0, pu!.y1, -32]] as const) {
+    assert.ok(lo < edge && hi > edge, `the burn crosses the seam at ${edge}`);
+  }
+  assert.ok(pu!.y0 > -64 && pu!.y0 < -61, 'the y -64 seam lies just past the burn\'s ragged reach');
+  // The blight's own hem never touches the road's bed at the fork:
+  // the reach box's bottom stands north of the bed's centre at x -143
+  // (y -176.5) by more than the bed's half.
+  assert.ok(pb!.y1 < -176.5 - 1.6);
+});
+
 test('G-12 THE PAD LAW with THE AUTHORED HUG opt-in: every pinned footprint keeps the pad from both patches unless its row says hug', () => {
   // The footprint the server scans is the pinned prefab (or the def's
   // first) as the shelf expanded it; the predicate mirrors pois.ts
@@ -804,7 +908,14 @@ test('G-12 THE PAD LAW with THE AUTHORED HUG opt-in: every pinned footprint keep
   // grown past its core cannot stand at its pin at all (its 30x20
   // finds no ground within the nudge on either bank), so the crofts'
   // influence cap is the pin's own law: the core, no verge.
-  const rects = [ASHLAMP_RECT, FENSIDE_RECT];
+  // Band 8 adds the three north patches to the same law (no north pin
+  // says hug; the fork rest's padded footprint at its PIN ends one
+  // row short of the ward line's rect, pins.ts says so).
+  const rects = [ASHLAMP_RECT, FENSIDE_RECT, WARDTHREAD_RECT, PICKET_RECT, TURNOFF_RECT];
+  const rectName = new Map<object, string>([
+    [ASHLAMP_RECT, 'ashlamp'], [FENSIDE_RECT, 'fenside'],
+    [WARDTHREAD_RECT, 'wardthread'], [PICKET_RECT, 'picket'], [TURNOFF_RECT, 'turnoff'],
+  ]);
   const hits: string[] = [];
   const gaps: Record<string, number> = {};
   for (const s of AUTHORED_WILD_SITES) {
@@ -823,11 +934,16 @@ test('G-12 THE PAD LAW with THE AUTHORED HUG opt-in: every pinned footprint keep
       // The gap between the footprint and the rect on the axis they meet on.
       const gx = Math.max(r.x - (fx0 + p.width), fx0 - (r.x + r.w));
       const gy = Math.max(r.y - (fy0 + p.height), fy0 - (r.y + r.h));
-      gaps[`${s.id}/${r === FENSIDE_RECT ? 'fenside' : 'ashlamp'}`] = Math.max(gx, gy);
+      gaps[`${s.id}/${rectName.get(r)}`] = Math.max(gx, gy);
     }
   }
   assert.deepEqual(hits, [], 'a pinned footprint stands inside a patch\'s pad (if it is the crofts, its influence cap must be its 24x16 core)');
   assert.equal(gaps['first_road_toll/fenside'], 1, 'the bar stands one row south of the fen waist (THE AUTHORED HUG, on its own word)');
+  // The fork rest's pin (-146,-168) keeps exactly the pad from the
+  // ward line's rect (its 22x8 footprint's top row -172, the rect's
+  // bottom -179: six rows between) and 22 from the picket's.
+  assert.equal(gaps['fork_rest/wardthread'], AUTHORED_ZONE_PAD, 'the fork rest keeps the pad south of the ward line');
+  assert.ok(gaps['fork_rest/picket']! >= 20, 'the fork rest stands well north of the picket');
   assert.deepEqual(AUTHORED_WILD_SITES.filter((s) => s.hug === true).map((s) => s.id), ['first_road_toll'], 'the bar is the one hugging pin');
   assert.equal(gaps['fenside_crofts/fenside'], AUTHORED_ZONE_PAD, 'the crofts keep the pad east of the fen waist');
   // The two east pins stand where the brief measured them.

@@ -1,0 +1,36 @@
+{
+  "id": "q_the_full_tally_offer",
+  "start": "hub",
+  "requires": ["quest:the_full_tally:available"],
+  "forbids": [
+    "quest:keep_the_thread:active",
+    "quest:keep_the_thread:done",
+    "quest:the_stone_at_dusk:active",
+    "quest:the_stone_at_dusk:done",
+    "full_tally_declined"
+  ],
+  "bindings": [{ "kind": "actor", "target": "forester_alder", "priority": 15 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_the_full_tally_offer__hub",
+      "text": "Six more of cord, to Margit's stall on the green, so the winter column reads full where the village can see it. Then the yard sells you bow wood, which it has sold nobody.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_full_tally" }],
+      "choices": [
+        { "text": "Six more.", "next": "sworn" },
+        { "text": "Enough.", "next": "declined", "set": ["full_tally_declined"] }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_the_full_tally_offer__sworn",
+      "text": "Six. Say it was Alder's word.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_full_tally" }]
+    },
+    {
+      "id": "declined",
+      "voice": "q_the_full_tally_offer__declined",
+      "text": "Then it reads half."
+    }
+  ]
+}

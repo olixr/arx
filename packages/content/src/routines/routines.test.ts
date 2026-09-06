@@ -260,3 +260,84 @@ test('THE HAVEN\'S CAST (band 7): the east keeps its hours and the lamp-boy keep
     assert.ok(night.kind === 'post' && (night.lie === true || night.sit === true), `${id}: indoors by night`);
   }
 });
+
+test('THE HUSK AND THE WARD LINE (band 8 THE CAST): the north keeps its hours', () => {
+  // The three lives the fork and the cut brought (blockout §4).
+  for (const id of ['torsten_fork', 'bodil_cut', 'feller_cut']) {
+    assert.ok(ROUTINES.has(id), `${id} missing from the registry`);
+  }
+  // TORSTEN: down the trail's bed to his slate before six and back, a
+  // noon wander in the mouth, and the lamp-post stand every other hour.
+  // A game hour is fifty seconds: sixty tiles at 1.4 is forty-three
+  // seconds, so the walk leaves at half past five and the chalk is on
+  // the slate by about twenty past six; the brief's 06:00 out with a
+  // ninety-second chalk cannot be back by half past seven, and the
+  // slot holds the whole round trip so the base post never pulls him
+  // home across the dark third's wood.
+  const torsten = ROUTINES.get('torsten_fork')!;
+  const walk = routineTaskAt(torsten, 6);
+  assert.ok(walk.kind === 'path' && walk.mode === 'once', 'the morning walk holds at its last stop');
+  assert.equal(walk.kind === 'path' ? walk.speed : 0, 1.4, 'a sergeant on the trail');
+  const stops = walk.kind === 'path' ? walk.waypoints : [];
+  assert.equal(stops.length, 9, 'four stops out, the slate, three back, and home');
+  const slate = stops[4]!;
+  assert.ok(slate.work === true && slate.dir === 0 && (slate.waitSec ?? 0) >= 60, 'chalking, facing the slate east of his stand');
+  assert.deepEqual([stops[8]!.x, stops[8]!.y], [0, 0], 'and home');
+  assert.ok(stops.every((wp) => !wp.sit && !wp.lie), 'a sergeant does not sit on his watch');
+  assert.equal(torsten.slots![0]!.from, 5.5);
+  assert.equal(routineTaskAt(torsten, 12.25).kind, 'wander', 'the noon wander in the mouth');
+  const stand = routineTaskAt(torsten, 21);
+  assert.ok(stand.kind === 'post' && stand.x === undefined && stand.sit === undefined && stand.lie === undefined, 'stands the way a lamp post stands');
+  assert.equal(routineTaskAt(torsten, 3).kind, 'post');
+  // Out-leg, wait and return fit the clock: the walk is at the slate
+  // before the 06:30 shot and home before the slot closes even with
+  // the human wobble (+20 %) on the chalk.
+  const leg = (a: { x: number; y: number }, b: { x: number; y: number }): number => Math.hypot(a.x - b.x, a.y - b.y);
+  let out = leg({ x: 0, y: 0 }, stops[0]!);
+  for (let i = 1; i <= 4; i++) out += leg(stops[i - 1]!, stops[i]!);
+  let back = 0;
+  for (let i = 5; i < stops.length; i++) back += leg(stops[i - 1]!, stops[i]!);
+  const speed = walk.kind === 'path' ? walk.speed! : 1;
+  assert.ok(out / speed <= (6.5 - torsten.slots![0]!.from) * 50, `at the slate before 06:30 (${(out / speed).toFixed(0)} s)`);
+  assert.ok((out + back) / speed + (slate.waitSec ?? 0) * 1.2 <= (torsten.slots![0]!.to - torsten.slots![0]!.from) * 50, 'the round trip fits its slot');
+
+  // BODIL: the sawhorse from six to six, the ground by the fire at
+  // noon (a wayside sit, no bench at a felling camp), the rope at half
+  // past five, the bed under the canvas from half past eight.
+  const bodil = ROUTINES.get('bodil_cut')!;
+  const saw = routineTaskAt(bodil, 9);
+  assert.ok(saw.kind === 'post' && saw.work === true && saw.x === undefined, 'her post from six to six, working the sawhorse');
+  const noon = routineTaskAt(bodil, 12.25);
+  assert.ok(noon.kind === 'post' && noon.sit === true && noon.x === -1 && noon.y === -2, 'on the ground beside the fire, facing it');
+  assert.ok(noon.kind === 'post' && noon.dir !== undefined && Math.abs(noon.dir - Math.PI) < 1e-3);
+  const rope = routineTaskAt(bodil, 17.75);
+  assert.ok(rope.kind === 'path' && rope.mode === 'once' && rope.waypoints.length === 2, 'to the rope and home');
+  assert.ok(rope.kind === 'path' && rope.waypoints[0]!.x === -2 && rope.waypoints[0]!.y === 3 && (rope.waypoints[0]!.waitSec ?? 0) >= 60, 'counts the snags from the road side');
+  assert.equal(routineTaskAt(bodil, 19.5).kind, 'post', 'standing at the sawhorse until bed');
+  const bed = routineTaskAt(bodil, 23);
+  assert.ok(bed.kind === 'post' && bed.lie === true && bed.x === -6 && bed.y === -3, 'SLEEPER STAYS IN BED: the bed under the lean-to');
+  assert.equal(routineTaskAt(bodil, 3).kind, 'post', 'the night wraps midnight');
+  assert.ok(routineTaskAt(bodil, 3).kind === 'post' && (routineTaskAt(bodil, 3) as { lie?: boolean }).lie === true);
+
+  // THE FELLERS: two routines, two posts (THE POST IS THE ORIGIN: the
+  // two beds lie at different offsets from the two stands, so each
+  // post has its own id; band 8 fix pass): the face from six, the
+  // fire after Bodil, and from half past eight a LIE on a Bed at the
+  // camp — the face feller's at (-4,-2), the trunk feller's at
+  // (-4,2). The Bedrolls that stood as declared wayside lies are
+  // gone: a Bedroll is no bed in tiles.ts and the audit found both
+  // men sitting on the ground beside theirs (0.2 K's own fallback).
+  for (const [id, bed] of [['feller_cut', { x: -4, y: -2 }], ['feller_trunk_cut', { x: -4, y: 2 }]] as const) {
+    const feller = ROUTINES.get(id)!;
+    assert.ok(feller, `${id} missing`);
+    const face = routineTaskAt(feller, 9);
+    assert.ok(face.kind === 'post' && face.work === true && face.x === undefined, `${id}: the face from six`);
+    const fire = routineTaskAt(feller, 12.75);
+    assert.ok(fire.kind === 'wander' && fire.radius >= 2, `${id}: the fire after Bodil`);
+    assert.equal(routineTaskAt(feller, 12.25).kind, 'post', 'not before her');
+    const night = routineTaskAt(feller, 22);
+    assert.ok(night.kind === 'post' && night.lie === true && night.x === bed.x && night.y === bed.y, `${id}: SLEEPER STAYS IN BED, the frame at the camp`);
+    assert.equal(routineTaskAt(feller, 4).kind, 'post');
+    assert.ok((routineTaskAt(feller, 4) as { lie?: boolean }).lie === true, `${id}: wraps midnight`);
+  }
+});

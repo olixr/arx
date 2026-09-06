@@ -1,0 +1,19 @@
+{
+  "id": "the_full_tally",
+  "name": "The Full Tally",
+  "giver": "forester_alder",
+  "turnIn": "charter_margit",
+  "requires": { "quests": ["the_grey_root"] },
+  "stages": [
+    {
+      "id": "post",
+      "journal": "Six more of cord to Margit's tally stall on the green, so the winter column reads full where the village can see it.",
+      "objectives": [{ "kind": "collect", "item": "log", "count": 6 }]
+    }
+  ],
+  "rewards": {
+    "coins": 50,
+    "standing": [{ "faction": "fordgate", "delta": 10 }],
+    "flags": ["full_tally_posted"]
+  }
+}

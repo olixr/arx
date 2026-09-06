@@ -1,18 +1,19 @@
 {
   "id": "felling_drum",
   "name": "The Felling",
-  "description": "The Drum's warcamp on the burnt stand north-east of Dawnmead. The goblins of the Felling char the dying wood by the clamp, run worgs on the herds, and answer a drum that is crimson and not theirs. After dark, Doorless hands cut snags at the camp's edge and leave knucklebones on the rope.",
+  "description": "The Drum's warcamp on its own burnt stand east of the gate. The goblins of the Felling char what they fell by the clamp, run worgs on the herds, and answer a drum that is crimson and not theirs. After dark, Doorless hands cut snags at the camp's edge, and the Drum's pickets hunt them.",
   "family": "goblin",
   "tiers": [1, 3],
   "weight": 0,
-  "prefabs": ["poi_goblin_stockade"],
+  "prefabs": ["poi_felling_drum"],
   "garrison": [
     { "npc": "goblin", "count": [4, 4], "role": "holdfast", "tribe": "goblin" },
     { "npc": "goblin", "count": [1, 1], "role": "sentry", "patrol": true, "tribe": "goblin" },
     { "npc": "worg", "count": [1, 1], "role": "holdfast", "tribe": "goblin" },
     { "npc": "worg", "count": [1, 1], "role": "sentry", "patrol": true, "tribe": "goblin" },
     { "npc": "goblin_firecaller", "count": [1, 1], "role": "holdfast", "tribe": "goblin" },
-    { "npc": "goblin", "count": [2, 2], "role": "sentry", "tribe": "goblin_doorless", "hours": { "from": 20, "to": 6 } }
+    { "npc": "goblin", "count": [1, 1], "role": "sentry", "tribe": "goblin_doorless", "hours": { "from": 20, "to": 6 }, "at": { "dx": 23, "dy": 7, "dir": "W" } },
+    { "npc": "goblin", "count": [1, 1], "role": "sentry", "tribe": "goblin_doorless", "hours": { "from": 20, "to": 6 }, "at": { "dx": 26, "dy": 16, "dir": "W" } }
   ],
   "chestTierBonus": 0,
   "clearedFlag": "poi_felling_drum_broken",
@@ -20,35 +21,7 @@
     "clearing": 4,
     "approachPath": true,
     "scatter": [
-      { "tile": "CharredStump", "count": 4 },
-      { "tile": "DeadTree", "count": 3 },
-      { "tile": "EmberBed", "count": 4 },
-      { "tile": "BannerPole", "count": 1 }
+      { "tile": "CharredStump", "count": 6 }
     ]
-  },
-  "boldness": {
-    "stages": [
-      {
-        "garrison": [
-          { "npc": "goblin", "count": [1, 2], "role": "holdfast", "tribe": "goblin" },
-          { "npc": "goblin_thrower", "count": [1, 1], "role": "sentry", "tribe": "goblin" }
-        ],
-        "scatter": [{ "tile": "BannerPole", "count": 1 }]
-      },
-      {
-        "garrison": [
-          { "npc": "goblin", "count": [1, 1], "role": "sentry", "patrol": true, "tribe": "goblin" },
-          { "npc": "worg", "count": [1, 1], "role": "holdfast", "minTier": 2, "tribe": "goblin" }
-        ],
-        "scatter": [{ "tile": "BannerPole", "count": 1 }]
-      },
-      {
-        "garrison": [
-          { "npc": "goblin", "count": [2, 3], "role": "holdfast", "tribe": "goblin" },
-          { "npc": "goblin_thrower", "count": [1, 1], "role": "sentry", "patrol": true, "tribe": "goblin" }
-        ]
-      }
-    ],
-    "satellites": true
   }
 }

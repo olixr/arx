@@ -95,9 +95,13 @@ test('ashlamp: THE CLOSED CONTENT LIST (R1) — the shell, the cold socket, the 
       }
     }
   }
-  // THE WOOD LEARNS TO BREATHE (3af57ada) thinned the field's forest by two thirds; the pocket still fells what
-  // stood there (two on the shipped seed), and the snag stands alone either way.
-  assert.ok(felled >= 1, `the pocket felled real trees (${felled})`);
+  // THE ASHLAMP TEST STOPS COUNTING (contested lands band 8, owed F8):
+  // THE WOOD LEARNS TO BREATHE (3af57ada) thinned the field's forest by
+  // two thirds and a further thinning may leave nothing in the pocket to
+  // fell, so the count is a log, never a gate. The sentence this test
+  // means is the loop above: no living tree stands in the pocket, and
+  // the snag stands alone either way.
+  console.log(`ashlamp: the snag's pocket felled ${felled} worldgen tree(s) on the shipped seed (a log, not a gate)`);
   // The wain keeps the two oaks it pulled in under: AUTHORED, so no forest law can fell them (verge.ts).
   for (const [x, y] of PINS.WAIN_OAKS) assert.equal(at(z, x, y), Tile.TreeOak, `the wain stands under the oak at (${x},${y}) still`);
   // The ember on the north row, two open rows from the south wall that hid it.

@@ -84,6 +84,11 @@ export function zonePlacementErrors(zone: ZoneDef): string[] {
     if (s.mouth !== undefined && (typeof s.mouth !== 'string' || !/^[a-z][a-z0-9_]*$/.test(s.mouth))) {
       errors.push(`${at}.mouth must be an actor slug`);
     }
+    // THE COUNTED PACK: the word is `true` or absent — a falsy value
+    // written by hand would read as a passive row to a lax check.
+    if (s.passive !== undefined && s.passive !== true) {
+      errors.push(`${at}.passive must be true or absent`);
+    }
   }
   // THE ZONE'S WARDED CHEST (G-6): every binding sits on a CLOSED
   // chest tile inside the rect, names a loot table that exists, and

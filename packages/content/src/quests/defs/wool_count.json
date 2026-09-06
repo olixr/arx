@@ -1,0 +1,29 @@
+{
+  "id": "wool_count",
+  "name": "The Wool Count",
+  "giver": "drover_sorrel",
+  "turnIn": "drover_sorrel",
+  "requires": { "quests": ["the_first_road"] },
+  "stages": [
+    {
+      "id": "count",
+      "journal": "Sorrel wants the pack's count from the man who keeps it. Sergeant Torsten stands at the fork rest at the top of the hunters' trail, past the wolves, past his own picket. His slate says wolves seven. Get it from his mouth.",
+      "objectives": [{ "kind": "talk", "actor": "waykeeper_torsten" }],
+      "mark": { "x": -149, "y": -165 }
+    },
+    {
+      "id": "cull",
+      "journal": "The den is in the veil west of the trail, deep wood and no path, past the picket and left where the ground climbs. Hollowhowl leads them. Break the pack at the den. The den stands for everyone; the count is yours.",
+      "objectives": [
+        { "kind": "flag", "flag": "poi_veil_den_broken", "label": "Break the veil pack at its den" }
+      ],
+      "mark": { "x": -186, "y": -99 }
+    }
+  ],
+  "rewards": {
+    "coins": 50,
+    "xp": [{ "skill": "combat", "amount": 150 }],
+    "standing": [{ "faction": "fordgate", "delta": 10 }],
+    "flags": ["wool_counted"]
+  }
+}

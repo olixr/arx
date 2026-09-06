@@ -1,0 +1,15 @@
+{
+  "id": "sentinel_whole",
+  "start": "line",
+  "once": true,
+  "requires": ["keep_thread_done"],
+  "forbids": ["quest:the_stone_at_dusk:active", "quest:the_stone_at_dusk:done"],
+  "bindings": [{ "kind": "actor", "target": "even_sentinel", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "line",
+      "voice": "sentinel_whole__line",
+      "text": "Four again. None of them yours."
+    }
+  ]
+}

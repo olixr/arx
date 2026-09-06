@@ -1,0 +1,14 @@
+{
+  "id": "bodil_cut_seen",
+  "start": "seen",
+  "once": true,
+  "requires": ["ward_thread_cut"],
+  "bindings": [{ "kind": "actor", "target": "charter_bodil", "priority": 11 }],
+  "nodes": [
+    {
+      "id": "seen",
+      "voice": "bodil_cut_seen__seen",
+      "text": "You cut it. I saw the gap from the yard. I have never cut it. Two past it, never through it. I do not know what that makes you and I am not going to think about it."
+    }
+  ]
+}

@@ -383,3 +383,208 @@ test('CONTESTED LANDS: the fen waist ladders pick the right mouth', () => {
     for (const n of DIALOGUES.get(id)!.nodes) assert.ok(!/"/.test(n.text), `${id}: wordless prose`);
   }
 });
+
+// ---- THE CONTESTED LANDS band 8: THE HUSK AND THE WARD LINE (band8/
+// blockout.md §5, §6.0). The priority ladders are the whole of how the
+// north's voices turn. Where the brief's numbers would have hidden an
+// offer behind a standing line, the offer was lifted above it and the
+// pin below is the proof; where a hub already held four choices, THE
+// DOOR BACK rides the topic node nearest the errand.
+const BAND8_TREES = [
+  'torsten_slate', 'torsten_kept', 'torsten_watch_uneasy', 'torsten_watch_relief',
+  'q_the_towers_debt_offer', 'q_the_towers_debt_turnin', 'q_the_order_pays_offer',
+  'q_the_order_pays_turnin', 'hale_first_line_burnt', 'hale_aske_coin', 'aske_coin',
+  'sentinel_cut', 'sentinel_whole', 'sentinel_alder', 'sentinel_feller',
+  'q_keep_the_thread_offer', 'q_keep_the_thread_reoffer', 'q_keep_the_thread_turnin',
+  'q_the_stone_at_dusk_offer', 'q_the_stone_at_dusk_reoffer', 'q_the_stone_at_dusk_turnin',
+  'bodil_cut', 'bodil_licence', 'bodil_licence_stopped', 'bodil_cut_seen',
+  'q_wool_count_offer', 'q_wool_count_turnin', 'q_the_fleece_offer', 'q_the_fleece_turnin',
+  'sorrel_left_wolves', 'sorrel_stalls',
+  'q_the_grey_root_offer', 'q_the_grey_root_turnin', 'q_the_full_tally_offer',
+  'alder_trades_closed', 'alder_bowwood', 'alder_pack_north', 'alder_copse',
+  'margit_licence_billed', 'q_the_full_tally_turnin', 'margit_tally_full',
+  'rill_no_yew', 'leif_tally_chalk',
+] as const;
+
+test('CONTESTED LANDS band 8: the north ladders pick the right mouth', () => {
+  const at = (actor: string, flags: Iterable<string>) => {
+    const set = new Set(flags);
+    return pickDialogue(offersFor(actor), (f) => set.has(f))?.id;
+  };
+  for (const id of BAND8_TREES) assert.ok(DIALOGUES.has(id), `${id} is shipped`);
+  // Torsten: one hub for good; the offer above the watch pair; the
+  // refused offer falls back to the hub (THE DOOR BACK); the kept line
+  // shrinks the hub, and the wool's offer must still outrank it or a
+  // kept character never hears it (10 over 9, the one lifted number).
+  assert.equal(at('waykeeper_torsten', []), 'torsten_slate');
+  assert.equal(at('waykeeper_torsten', ['quest:the_towers_debt:available']), 'q_the_towers_debt_offer');
+  assert.equal(
+    at('waykeeper_torsten', ['quest:the_towers_debt:available', 'world:threat_near']),
+    'q_the_towers_debt_offer',
+  );
+  assert.equal(
+    at('waykeeper_torsten', ['quest:the_towers_debt:available', 'towers_debt_declined']),
+    'torsten_slate',
+  );
+  assert.equal(at('waykeeper_torsten', ['quest:the_towers_debt:ready']), 'q_the_towers_debt_turnin');
+  assert.equal(at('waykeeper_torsten', ['first_line_kept']), 'torsten_kept');
+  assert.equal(
+    at('waykeeper_torsten', ['first_line_kept', 'quest:the_order_pays:available']),
+    'q_the_order_pays_offer',
+  );
+  assert.equal(
+    at('waykeeper_torsten', ['first_line_kept', 'quest:the_order_pays:available', 'order_pays_declined']),
+    'torsten_kept',
+  );
+  assert.equal(at('waykeeper_torsten', ['world:threat_near']), 'torsten_watch_uneasy');
+  assert.equal(at('waykeeper_torsten', ['world:relief']), 'torsten_watch_relief');
+  // A culled trail never earns his relief line (plan §3.2).
+  assert.equal(at('waykeeper_torsten', ['world:relief', 'wool_count_taken']), 'torsten_slate');
+  // The hub's count turns on the pair flag: seven, or the nought.
+  const hub = DIALOGUES.get('torsten_slate')!.nodes.find((n) => n.id === 'hub')!;
+  const counts = hub.choices!.filter((c) => c.text === 'The count.');
+  assert.deepEqual(counts.map((c) => [c.next, c.forbids, c.requires]), [
+    ['count', ['wool_count_taken'], undefined],
+    ['nought', undefined, ['wool_count_taken']],
+  ]);
+  // The sentinels: NO hub (with no tree eligible the shipped lines are
+  // the visit's line); the gated one-liners above the offers; the
+  // whole line is once so the dusk offer can speak after it.
+  assert.equal(at('even_sentinel', []), undefined);
+  assert.equal(at('even_sentinel', ['quest:keep_the_thread:available']), 'q_keep_the_thread_offer');
+  assert.equal(
+    at('even_sentinel', ['quest:keep_the_thread:available', 'keep_thread_declined']),
+    'q_keep_the_thread_reoffer',
+  );
+  assert.equal(at('even_sentinel', ['quest:keep_the_thread:available', 'ward_thread_cut']), 'sentinel_cut');
+  assert.equal(at('even_sentinel', ['keep_thread_done', 'quest:the_stone_at_dusk:available']), 'sentinel_whole');
+  assert.equal(
+    at('even_sentinel', ['keep_thread_done', 'quest:the_stone_at_dusk:available', dialogueDoneFlag('sentinel_whole')]),
+    'q_the_stone_at_dusk_offer',
+  );
+  assert.equal(at('even_sentinel', ['quest:the_stone_at_dusk:done']), 'sentinel_alder');
+  assert.equal(at('even_sentinel', ['quest:the_grey_root:active']), 'sentinel_feller');
+  assert.equal(at('even_sentinel', ['quest:keep_the_thread:ready']), 'q_keep_the_thread_turnin');
+  assert.equal(at('even_sentinel', ['quest:keep_the_thread:ready', 'ward_thread_cut']), 'sentinel_cut');
+  // Sorrel: the pen's hub, the offer, and after a refusal the hub again
+  // so the shop on her def opens (THE DOOR BACK's whole reason); the
+  // cold count for B characters carries the pen's shop hook itself.
+  assert.equal(at('drover_sorrel', []), 'sorrel_stalls');
+  assert.equal(at('drover_sorrel', ['quest:wool_count:available']), 'q_wool_count_offer');
+  assert.equal(at('drover_sorrel', ['quest:wool_count:available', 'wool_count_declined']), 'sorrel_stalls');
+  assert.equal(at('drover_sorrel', ['tower_debt_paid']), 'sorrel_left_wolves');
+  assert.ok(
+    DIALOGUES.get('sorrel_left_wolves')!.nodes[0]!.hooks?.some((h) => h.kind === 'shop' && h.shop === 'drover_yard'),
+    'the pen stays open to the character she is telling the count',
+  );
+  // Alder: the tutorial once, then the copse; the closure outranks the
+  // shelf AND the grey root offer (band 8 fix pass, the live audit's
+  // defect 7: an A north character heard the offer first and the
+  // closure only after declining it; the closure is A's cost and is
+  // said first, 14 over 13, and its hub carries the grey root's door
+  // for any hand the thread side has not taken, with the thread's
+  // four states shut on the choice); the tally offer outranks the
+  // closure (15) or an A north character who cut the grey root never
+  // hears the tally.
+  const alderIn = [dialogueDoneFlag('alder_axe')];
+  assert.equal(at('forester_alder', alderIn), 'alder_copse');
+  assert.equal(at('forester_alder', [...alderIn, 'quest:the_grey_root:available']), 'q_the_grey_root_offer');
+  assert.equal(
+    at('forester_alder', [...alderIn, 'quest:the_grey_root:available', 'wool_count_taken']),
+    'alder_trades_closed',
+  );
+  const closedDoor = DIALOGUES.get('alder_trades_closed')!.nodes[0]!.choices!.find((c) => c.next === 'reoffer_root')!;
+  assert.deepEqual(closedDoor.requires, ['quest:the_grey_root:available'], 'the closed hub offers the grey root to a hand that never heard it');
+  assert.deepEqual(closedDoor.forbids, ['quest:keep_the_thread:active', 'quest:keep_the_thread:done', 'quest:the_stone_at_dusk:active', 'quest:the_stone_at_dusk:done']);
+  assert.equal(
+    at('forester_alder', [...alderIn, 'grey_root_done', 'wool_count_taken', 'quest:the_full_tally:available']),
+    'q_the_full_tally_offer',
+  );
+  assert.equal(at('forester_alder', [...alderIn, 'wool_count_taken']), 'alder_trades_closed');
+  assert.equal(at('forester_alder', [...alderIn, 'grey_root_done']), 'alder_bowwood');
+  assert.equal(at('forester_alder', [...alderIn, 'grey_root_done', 'wool_count_taken']), 'alder_trades_closed');
+  assert.equal(
+    at('forester_alder', [...alderIn, 'grey_root_done', 'quest:the_full_tally:available']),
+    'q_the_full_tally_offer',
+  );
+  assert.equal(at('forester_alder', [...alderIn, 'quest:the_stone_at_dusk:done']), 'alder_pack_north');
+  assert.equal(
+    at('forester_alder', [...alderIn, 'quest:the_stone_at_dusk:done', dialogueDoneFlag('alder_pack_north')]),
+    'alder_copse',
+  );
+  assert.ok(
+    DIALOGUES.get('alder_bowwood')!.nodes.some((n) => n.hooks?.some((h) => h.kind === 'shop' && h.shop === 'copse_yard')),
+    'the yard opens by hook alone',
+  );
+  assert.equal(NPC_ACTORS.get('forester_alder')!.shop, undefined, 'no shop on the def');
+  // Bodil: the hub, the licence while the axe is active until signed,
+  // the stop after the dusk, the cut seen once.
+  assert.equal(at('charter_bodil', []), 'bodil_cut');
+  assert.equal(at('charter_bodil', ['quest:the_grey_root:active']), 'bodil_licence');
+  assert.equal(at('charter_bodil', ['quest:the_grey_root:active', 'bodil_licence_signed']), 'bodil_cut');
+  assert.equal(at('charter_bodil', ['quest:the_stone_at_dusk:done']), 'bodil_licence_stopped');
+  assert.equal(at('charter_bodil', ['ward_thread_cut']), 'bodil_cut_seen');
+  assert.equal(at('charter_bodil', ['ward_thread_cut', dialogueDoneFlag('bodil_cut_seen')]), 'bodil_cut');
+  // The signature is the cost: evencourt pays on the signed choice's
+  // node alone; "Not yet" pays nothing.
+  const licence = DIALOGUES.get('bodil_licence')!;
+  assert.deepEqual(licence.nodes.find((n) => n.id === 'signed')!.hooks, [
+    { kind: 'flag', flag: 'bodil_licence_signed' },
+    { kind: 'standing', faction: 'evencourt', delta: -10 },
+  ]);
+  assert.equal(licence.nodes.find((n) => n.id === 'later')!.hooks, undefined);
+  // Hale: the shame line once above the lamp; the wool's turn-in.
+  assert.equal(at('waykeeper_hale', ['first_line_burnt']), 'hale_first_line_burnt');
+  assert.equal(at('waykeeper_hale', ['first_line_burnt', dialogueDoneFlag('hale_first_line_burnt')]), 'hale_lamp');
+  assert.equal(at('waykeeper_hale', ['quest:the_order_pays:ready']), 'q_the_order_pays_turnin');
+  assert.equal(at('waykeeper_hale', ['aske_coin_taken']), 'hale_aske_coin');
+  // Aske: the coin after the debt, once taken or refused never again.
+  assert.equal(at('company_aske', ['quest:the_towers_debt:done']), 'aske_coin');
+  assert.equal(at('company_aske', ['quest:the_towers_debt:done', 'aske_coin_taken']), undefined);
+  assert.equal(at('company_aske', ['quest:the_towers_debt:done', 'aske_coin_refused']), undefined);
+  const book = DIALOGUES.get('aske_coin')!.nodes.find((n) => n.id === 'hub')!.choices!.find((c) => c.next === 'paid_book')!;
+  assert.deepEqual(book.requires, ['fen_side_taken']);
+  // Margit: the bill once; the full column BELOW the ledger line's
+  // repeatable offer so the carry stays reachable (4, not 7).
+  assert.equal(at('charter_margit', ['quest:the_stone_at_dusk:done']), 'margit_licence_billed');
+  assert.equal(at('charter_margit', ['full_tally_posted']), 'margit_tally_full');
+  assert.equal(
+    at('charter_margit', ['full_tally_posted', 'quest:the_ledger_line:available']),
+    'q_the_ledger_line_offer',
+  );
+  assert.equal(at('charter_margit', ['quest:the_full_tally:ready']), 'q_the_full_tally_turnin');
+  // Rill and Leif: one line each, once.
+  assert.equal(at('fletcher_rill', ['grey_root_done', dialogueDoneFlag('rill_bow')]), 'rill_no_yew');
+  assert.equal(at('waykeeper_leif', ['full_tally_posted']), 'leif_tally_chalk');
+  // Nothing in the band reads the north-west pair flag as a side.
+  for (const d of DIALOGUES.values()) {
+    const reads = [
+      ...(d.requires ?? []),
+      ...(d.forbids ?? []),
+      ...d.nodes.flatMap((n) => (n.choices ?? []).flatMap((c) => [...(c.requires ?? []), ...(c.forbids ?? [])])),
+    ];
+    assert.ok(!reads.includes('ward_line_taken'), `${d.id} never reads ward_line_taken`);
+  }
+});
+
+test('CONTESTED LANDS band 8: THE PEOPLE SPEAK on every new string (the hand lint)', () => {
+  // tools/voice/lint.mjs does not exist in this tree, so the gate is
+  // pinned here: no dash or hyphen of any kind in anything a player
+  // reads, whole sentences, the content boundary held on every id and
+  // line. The spine and the old tongue are reviewed by eye (§0.3).
+  const DASH = /[-‐‑‒–—―]/;
+  const BOUNDARY = /\b(witch|witches|witchcraft|hex|hexes|coven|warlock|demon|demons|devil|devils|infernal|occult|hell)\b/i;
+  const check = (where: string, s: string) => {
+    assert.ok(!DASH.test(s), `${where}: dash in "${s}"`);
+    assert.ok(!BOUNDARY.test(s), `${where}: boundary word in "${s}"`);
+    assert.ok(/[.!?]$/.test(s.trim()), `${where}: not a whole sentence "${s}"`);
+  };
+  for (const id of BAND8_TREES) {
+    const d = DIALOGUES.get(id)!;
+    assert.ok(!DASH.test(id) && !BOUNDARY.test(id), `${id}: clean id`);
+    for (const n of d.nodes) {
+      check(`${id}/${n.id}`, stripDialogueMarkup(n.text));
+      for (const c of n.choices ?? []) check(`${id}/${n.id}/choice`, c.text);
+    }
+  }
+});

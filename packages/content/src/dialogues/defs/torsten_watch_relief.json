@@ -1,0 +1,14 @@
+{
+  "id": "torsten_watch_relief",
+  "start": "hub",
+  "requires": ["world:relief"],
+  "forbids": ["wool_count_taken"],
+  "bindings": [{ "kind": "actor", "target": "waykeeper_torsten", "priority": 4 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "torsten_watch_relief__hub",
+      "text": "Quieter. I have not rubbed anything out. I will when it stays quiet a week."
+    }
+  ]
+}

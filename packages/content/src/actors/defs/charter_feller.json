@@ -1,0 +1,42 @@
+{
+  "id": "charter_feller",
+  "name": "Feller",
+  "title": "Charter feller",
+  "examine": "Six on the licence, three on the wains, three at the cut. Counts the hands at the end of the day.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 1,
+      "hairColor": 1,
+      "beard": 2,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 6,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "legs": "leather_chaps",
+    "boots": "leather_boots",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    {
+      "item": "bronze_axe",
+      "qty": 1
+    },
+    {
+      "item": "log",
+      "qty": 1
+    }
+  ],
+  "lines": [
+    "Up to the string and past it. She says the far side is dying and it is. It splits like bread.",
+    "We lost one in the summer. Thirty feet in. Nobody says his name here and it is not because we forgot it.",
+    "Something takes a snag off the pile at night and leaves a bone on the rope. Bodil says it is a tidy thief. I say it is paying."
+  ]
+}

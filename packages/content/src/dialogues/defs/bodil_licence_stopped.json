@@ -1,0 +1,13 @@
+{
+  "id": "bodil_licence_stopped",
+  "start": "stopped",
+  "requires": ["quest:the_stone_at_dusk:done"],
+  "bindings": [{ "kind": "actor", "target": "charter_bodil", "priority": 9 }],
+  "nodes": [
+    {
+      "id": "stopped",
+      "voice": "bodil_licence_stopped__stopped",
+      "text": "The clerk stopped the licence at the thread. Your name is on the stop. I do not know what you told the old folk and I am not asking. The crew goes home with the same hands it came with, so there is that."
+    }
+  ]
+}

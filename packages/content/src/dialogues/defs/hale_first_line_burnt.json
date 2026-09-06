@@ -1,0 +1,14 @@
+{
+  "id": "hale_first_line_burnt",
+  "start": "once",
+  "once": true,
+  "requires": ["first_line_burnt"],
+  "bindings": [{ "kind": "actor", "target": "waykeeper_hale", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "once",
+      "voice": "hale_first_line_burnt__once",
+      "text": "He burnt the room. I can smell his own oil on the wool. Twenty two years, and he put his lamp's oil to a post the order struck, and I will write it, and I will not write what I think of it. A line that keeps its post is not the order's shame. Burning it is."
+    }
+  ]
+}

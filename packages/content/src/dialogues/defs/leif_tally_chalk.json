@@ -1,0 +1,14 @@
+{
+  "id": "leif_tally_chalk",
+  "start": "once",
+  "once": true,
+  "requires": ["full_tally_posted"],
+  "bindings": [{ "kind": "actor", "target": "waykeeper_leif", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "once",
+      "voice": "leif_tally_chalk__once",
+      "text": "Margit's column is full. I chalked it on the board by the stall so Hilde would read it out. Cord eighteen. Yew two. I do not know what yew is for."
+    }
+  ]
+}

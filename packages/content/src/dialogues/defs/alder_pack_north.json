@@ -1,0 +1,14 @@
+{
+  "id": "alder_pack_north",
+  "start": "once",
+  "once": true,
+  "requires": ["quest:the_stone_at_dusk:done"],
+  "bindings": [{ "kind": "actor", "target": "forester_alder", "priority": 11 }],
+  "nodes": [
+    {
+      "id": "once",
+      "voice": "alder_pack_north__once",
+      "text": "The pack went north. That is the one true thing this year, and you are the one I will say it to."
+    }
+  ]
+}

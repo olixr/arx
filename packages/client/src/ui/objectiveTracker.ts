@@ -242,5 +242,7 @@ function iconFor(o: QuestObjectiveWire): string {
       return uiIconUrl('signpost', 32);
     case 'talk':
       return uiIconUrl('bell', 32);
+    case 'flag':
+      return uiIconUrl('signpost', 32);
   }
 }

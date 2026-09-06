@@ -1,0 +1,15 @@
+{
+  "id": "stone_dusk_stood",
+  "label": "The head stone stood from dusk until the wood was dark",
+  "area": { "kind": "rect", "x": -140, "y": -188, "w": 10, "h": 8 },
+  "on": "exit",
+  "event": "stone_dusk_stood",
+  "conditions": [
+    { "when": "timeBetween", "from": 19.5, "to": 23 },
+    { "when": "flag", "flag": "stone_dusk_sworn" },
+    { "when": "notFlag", "flag": "glade_stood" }
+  ],
+  "minInsideSec": 100,
+  "once": true,
+  "setFlag": "glade_stood"
+}

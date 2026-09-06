@@ -82,6 +82,17 @@ export interface FactionDeedsDef {
   slayMember: number;
   /** A theft seen by a faction body (Phase 5) — unseen is unswayed. */
   theftWitnessed: number;
+  /**
+   * THE WARD DEED (contested lands, band 8): one length of the Court's
+   * ward thread cut by a deliberate hand. The thread is the Court's
+   * word strung across a wood; the cut is a deed against the Court,
+   * chosen with a hand and not a swing (a swing passes through it),
+   * and the wood re-strings it in ten minutes for everyone because
+   * the world is shared. Paid to `evencourt` through the one door with
+   * the cross matrix (evencourt|reavers 0.5 pays the Company above
+   * outlaw). Four cuts from a clean name = outlaw, the ladder's rhythm.
+   */
+  wardCut: number;
   /** |delta| ceiling for QuestDef.rewards.standing entries. */
   questCap: number;
   /** |delta| ceiling for dialogue `standing` hooks. */

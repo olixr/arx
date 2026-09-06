@@ -17,7 +17,9 @@ test('the hall holds every extracted prop and only those', () => {
   // LampPostDark moved INTO the hall at K2 (states.ts: a sooted pane,
   // a missing corner, one shard in the contact shade — the LampPost
   // engine case's "flame held at zero" is dead code behind it).
-  assert.equal(PROP_PAINTERS.size, 282 + 36);
+  // Band 8 THE CLAMP added 1: SmolderHeap 548 (smolderHeap.ts), the
+  // kit's mint past the two reserved ground ids.
+  assert.equal(PROP_PAINTERS.size, 282 + 36 + 1);
 });
 
 test('the benches and squares answer; the wilds stay with the engine', () => {
@@ -36,7 +38,7 @@ test('the benches and squares answer; the wilds stay with the engine', () => {
   }
   // …and the kit's hall members answer (the dark lamp among them —
   // the hall is consulted before the switch, so its painter wins).
-  for (const t of [Tile.CharredBeam, Tile.EmberBed, Tile.FieldCairn, Tile.SpoilHeap, Tile.GloomStone, Tile.CropBlighted, Tile.LegionStandard, Tile.LeanTo, Tile.SignpostBurnt, Tile.WellFouled, Tile.SluiceGateStrung, Tile.LampPostDark]) {
+  for (const t of [Tile.CharredBeam, Tile.EmberBed, Tile.FieldCairn, Tile.SpoilHeap, Tile.GloomStone, Tile.CropBlighted, Tile.LegionStandard, Tile.LeanTo, Tile.SignpostBurnt, Tile.WellFouled, Tile.SluiceGateStrung, Tile.LampPostDark, Tile.SmolderHeap]) {
     assert.ok(PROP_PAINTERS.has(t), `missing painter for tile ${Tile[t]}`);
   }
 });

@@ -390,7 +390,8 @@ function buildWings(): Wing[] {
     },
     {
       // THE SCARRED LAND (docs/contested-lands-plan.md §6): every id
-      // 505..545 in family order, the run families shown as runs (the
+      // 505..545 in family order (and band 8's clamp, 548, at the
+      // end), the run families shown as runs (the
       // broken fence and the dead hedge inside their living lines),
       // then the six floor Details. The strays gallery stays quiet.
       label: 'The Scarred Land',
@@ -410,6 +411,10 @@ function buildWings(): Wing[] {
         single(Tile.SignpostBurnt), single(Tile.WellFouled),
         run(Tile.HedgeDead, Tile.Hedge),
         single(Tile.LampPostDark), single(Tile.SluiceGate), single(Tile.SluiceGateStrung),
+        // Band 8's mint past the two reserved ground ids: the clamp
+        // stands with its family in spirit (the cold hearth) but at
+        // the wing's end, where the ledger put its number.
+        single(Tile.SmolderHeap),
         { kind: 'floordetail' as const, detail: Detail.Ash, host: Tile.Dirt, label: 'ash' },
         { kind: 'floordetail' as const, detail: Detail.Bones, host: Tile.Dirt, label: 'bones' },
         { kind: 'floordetail' as const, detail: Detail.DragFurrow, host: Tile.Dirt, label: 'drag furrow' },

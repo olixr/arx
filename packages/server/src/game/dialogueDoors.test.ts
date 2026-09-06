@@ -73,7 +73,10 @@ test('world:war_near reads two hostile garrisons inside the watch, and nothing l
   assert.equal(ask([['a', site('bandit_camp', 10)], ['b', site('goblin_warcamp', 40, { emberUntil: 1 })]]), false);
   // A haven has no garrison and menaces nobody.
   assert.equal(ask([['a', site('last_lamp', 10)], ['b', site('goblin_warcamp', 40)]]), false);
-  // The husk's changeover (gnoll by day, dead by night) is NOT a war
-  // until band 8 lands the 'dead|gnoll' row — Band 0 ships no hostile row.
-  assert.equal(ask([['a', site('gnoll_squat', 10)], ['b', site('fell_barrow', 40)]]), false);
+  // The husk's changeover (gnoll by day, dead by night) became a war the
+  // day band 8 landed the 'dead|gnoll' row (THE HUSK AND THE WARD LINE,
+  // plan §5 beat 1): a gnoll squat and a fell barrow inside one watch
+  // now read as two garrisons at each other's throats. Nothing north
+  // reads war_near this band; the answer is simply true again.
+  assert.equal(ask([['a', site('gnoll_squat', 10)], ['b', site('fell_barrow', 40)]]), true);
 });

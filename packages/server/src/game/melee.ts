@@ -483,6 +483,20 @@ export function meleeSwing(srv: GameServer,
 }
 
 /**
+ * THE DELIBERATE CUT (contested lands, band 8): may a blow or a shot
+ * burst this prop? The Court's ward thread (kind 'thread') is the ONE
+ * exemption: a swing that clears a room passes THROUGH a thread and
+ * leaves it standing, and so does an arrow, because cutting the thread
+ * is a deed against the Court and an accident must never choose a
+ * fork. The cut is a tile interact (gameServer cutWardThread), chosen
+ * with a hand. Both smash sites (the melee arc below, the projectile's
+ * last act in gameServer) read this one predicate.
+ */
+export function blowSmashes(info: DestructibleInfo): boolean {
+  return info.kind !== 'thread';
+}
+
+/**
  * Sweep the strike arc for destructible clutter — same cone law as
  * the NPC sweep (the caller's arcHalf of aim, touch range always
  * counts) so a swing that would cut a goblin also bursts the barrel
@@ -505,6 +519,7 @@ export function smashPropsInArc(srv: GameServer,
       if (g === undefined) continue;
       const info = destructibleInfo(g);
       if (!info) continue;
+      if (!blowSmashes(info)) continue; // the thread stands (THE DELIBERATE CUT)
       const dx = tx + 0.5 - pos.x;
       const dy = ty + 0.5 - pos.y;
       const dist = Math.hypot(dx, dy) - 0.35;

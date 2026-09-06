@@ -1,0 +1,41 @@
+{
+  "id": "bodil_cut",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "charter_bodil" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "bodil_cut__hub",
+      "text": "Bodil. Charter licence, lot forty one, six fellers and a rope. Up to the thread is the licence. Past the thread is dying anyway. If you are the old folk's you can say so and I will not stop working, and if you are Alder's you can say that and I will not either.",
+      "choices": [
+        { "text": "The thread.", "next": "thread" },
+        { "text": "The one you lost.", "next": "lost" },
+        { "text": "The rope.", "next": "rope" },
+        { "text": "Back to it.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "thread",
+      "voice": "bodil_cut__thread",
+      "text": "A string on sticks with a bit of glass in it. Step over it, they say. I have stepped over it. The wood on the far side is grey at the root and it splits like bread. I have cut two past it and I will cut more, and I will pay the clerk what the clerk bills. I do not charge the wood for its opinions and I do not charge the old folk for theirs.",
+      "next": "hub"
+    },
+    {
+      "id": "lost",
+      "voice": "bodil_cut__lost",
+      "text": "Thirty feet in. Summer. Two of them stood by their stone and said something in the other tongue and he did not stop, because he did not know he was being warned. He was from Pinewatch. His mother is there. That is all I have to say about the old folk and I have said it.",
+      "next": "hub"
+    },
+    {
+      "id": "rope",
+      "voice": "bodil_cut__rope",
+      "text": "Somebody takes a snag off the rope every night and leaves a knucklebone where it was. It is a tidy thief, at least. I have not had a tidy thief before and I do not want the wood's opinion on that either.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "bodil_cut__bye",
+      "text": "Look up before you swing. Look down too."
+    }
+  ]
+}

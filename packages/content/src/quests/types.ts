@@ -42,7 +42,22 @@ export type QuestObjective =
   /** Chart a place: an authored zone's discovery id ('zone:<id>'). */
   | { kind: 'discover'; place: string }
   /** Address a named actor (a Talk within reach credits it). */
-  | { kind: 'talk'; actor: string };
+  | { kind: 'talk'; actor: string }
+  /**
+   * THE FLAG OBJECTIVE (contested lands, band 8): hold a plain story
+   * flag. A flag objective is a thing the world already knows about
+   * you; the quest only asks you to go and have it be true. It is
+   * retro-credited at stage entry (the `discover` law applied to
+   * flags: a character who broke the den last week has culled it) and
+   * live-credited the moment ANY shipped stamp lands the flag — a
+   * trigger's setFlag, a choice's set, a def's clearedFlag, another
+   * quest's reward — because every stamp rides the server's one flag
+   * choke. `label` is the wire's name for the ask (a flag has none):
+   * THE PEOPLE SPEAK, 90 or fewer. The flag is a plain slug or a
+   * `trig:` once-mark; never world:/quest:/faction: (those are
+   * answered, never held).
+   */
+  | { kind: 'flag'; flag: string; label: string };
 
 /** One leg of the story. Stages advance when every objective is met. */
 export interface QuestStage {

@@ -4,6 +4,10 @@ import { TILE_DEFS, TILE_SKIP, Tile, doorInfo, seatAt } from '@arx/shared';
 import { AUTHORED_WILD_SITES } from '../geography.js';
 import { buildFenside } from '../maps/fenside.js';
 import { PINS as FEN } from '../maps/fenside/pins.js';
+import { buildPicket, buildWardthread } from '../maps/wardthread.js';
+import { PINS as WARD } from '../maps/wardthread/pins.js';
+import { NPC_ACTORS } from '../actors/registry.js';
+import { validateNpcActor } from '../actors/validate.js';
 import { ROUTINES } from '../routines/registry.js';
 import type { RoutineDef, RoutineTask } from '../routines/types.js';
 import { POI_DEFS } from './defs.js';
@@ -403,4 +407,240 @@ test('INGRAM WALKS THE LINE (R3, G-11): the ford stops are the fenside zone\'s o
     const t = at(x, y);
     assert.ok(t === undefined || t === TILE_SKIP || !TILE_DEFS[t as Tile].solid, `the line stand (${x},${y}) is the field's own ground`);
   }
+});
+
+test('THE FORK\'S CAST (band 8 blockout §3.3, 0.2 M): Torsten and the sentinels are hearth rows with named posts, and the rest has one board', () => {
+  const def = POI_DEFS.get('fork_waystation')!;
+  assert.ok(def, 'fork_waystation missing');
+  const rows = def.actors!;
+  assert.equal(rows.length, 6, 'the keeper, the two watch, Torsten, the two sentinels');
+  // The keeper and the derived ring are untouched.
+  assert.deepEqual(rows[0], { pool: ['wayfarer_senna', 'wayfarer_dray', 'wayfarer_petch'], post: 'hearth', routine: 'waystation_keeper' });
+  const watch = rows.filter((a) => a.pool.length === 1 && a.pool[0] === 'wayward_watch');
+  assert.equal(watch.length, 2, 'the derived ring, and the only bodies that charge');
+  assert.ok(watch.every((w) => w.post === 'watch' && w.at === undefined && w.routine === undefined));
+  // Torsten in the mouth facing down the scuff, a HEARTH row (a watch
+  // row charges any menace inside its reach; the sergeant stands the
+  // way a lamp post stands), with the walk to his slate.
+  const torsten = rows.filter((a) => a.pool.length === 1 && a.pool[0] === 'waykeeper_torsten');
+  assert.equal(torsten.length, 1, 'one Torsten');
+  assert.equal(torsten[0]!.post, 'hearth');
+  assert.deepEqual(torsten[0]!.at, { dx: 12, dy: 4, dir: 'E' });
+  assert.equal(torsten[0]!.routine, 'torsten_fork');
+  // The two sentinels flank the stone, hearth rows, no routine: a
+  // sentinel that sleeps where you can see it is not this sentinel,
+  // and one that draws on a wolf makes its own line a lie.
+  const sentinels = rows.filter((a) => a.pool.length === 1 && a.pool[0] === 'even_sentinel');
+  assert.equal(sentinels.length, 2);
+  assert.ok(sentinels.every((s) => s.post === 'hearth' && s.routine === undefined));
+  assert.deepEqual(sentinels.map((s) => s.at), [{ dx: 14, dy: 1, dir: 'N' }, { dx: 16, dy: 2, dir: 'E' }]);
+  // The sketch under the posts: the mouth's Dirt under the sergeant;
+  // the waystone between the sentinels' open cells; the cairn pair
+  // down the mouth from him.
+  const p = POI_PREFABS.get('poi_fork_waystation')!;
+  const g = (x: number, y: number): number | undefined => (x >= 0 && y >= 0 && x < p.width && y < p.height ? p.ground[y * p.width + x] : undefined);
+  // THE SHELF IS THE SKETCH (band 8 fix pass): 22x8 at cap 22, so the
+  // expansion hands it back untouched and every `at` above is a sketch
+  // column; the footprint is the one band 0 measured, so the golden
+  // anchor and the posts hold. Column 21 is the mouth's own last Dirt
+  // (no hashed stump plugs it); the oak at the mouth falls to the
+  // def's clearing 4 (a ninth row slid the anchor, refused).
+  assert.equal(p.width, 22, 'the 22-wide sketch: no apron column');
+  assert.equal(p.height, 8);
+  assert.equal(g(21, 4), Tile.Dirt, 'the mouth reaches the shoulder: no clearing stump at (-140,-165)');
+  assert.equal(g(21, 3), TILE_SKIP, 'the rest of column 21 is the field\'s');
+  assert.equal(def.cues?.clearing, 4, 'the ring reaches the oak at (-144,-158), four rows south');
+  assert.equal(g(0, 1), TILE_SKIP, 'column 0 is the sketch\'s own west edge, not an apron');
+  assert.equal(g(12, 4), Tile.Dirt, 'the mouth under Torsten');
+  assert.equal(g(15, 1), Tile.ElvenWaystone, 'the stone the sentinels keep');
+  for (const [x, y] of [[14, 1], [16, 2]] as const) {
+    const t = g(x, y)!;
+    assert.ok(t !== TILE_SKIP && !TILE_DEFS[t as Tile].solid, `a sentinel's cell (${x},${y}) is open ground`);
+  }
+  assert.equal(g(17, 3), Tile.LampCairn, 'the cairn pair');
+  assert.equal(g(17, 5), Tile.LampCairn);
+  for (let x = 13; x <= 20; x++) assert.equal(g(x, 4), Tile.Dirt, `the mouth runs east of him at (${x},4)`);
+  // ONE BOARD: THE TALLY went to the picket (the zone's ZoneSign).
+  assert.deepEqual(def.signs, [{ title: 'THE FORK REST', lines: ['the lamps stop here', 'the stone keeps the mile past it'] }]);
+  assert.ok(def.description!.includes('across the road the thread they strung round the dying stand'), 'the description says where the thread is');
+  assert.ok(!def.description!.includes('grey stone at the thread\'s end'), 'no grey stone in a Waykeeper yard');
+  assert.deepEqual(def.haven, { safeR: 18 });
+  // ONE TORSTEN: no other def places him (the picket places nobody).
+  for (const d of POI_DEFS.values()) {
+    if (d.id === 'fork_waystation') continue;
+    assert.ok(!(d.actors ?? []).some((a) => a.pool.includes('waykeeper_torsten')), `${d.id} places a second Torsten`);
+  }
+  assert.deepEqual(buildPicket().actorSpawns ?? [], [], 'the picket places nobody: the sergeant walks down to it');
+});
+
+test('TORSTEN WALKS TO THE SLATE (band 8 §4, N10): the morning walk\'s stops are the trail\'s route points and the picket\'s own pins', () => {
+  // composePoi's blit anchor for the fork: the 22x8 sketch is the
+  // shelf (server/src/world/pois.test.ts's sentence: sketch column c
+  // is world x = -161 + c), so the sketch's (0,0) lands at the golden
+  // anchor (-150,-165) minus (11,4). The frame lane's FORK_FOOTPRINT
+  // is the same box measured the other way, and its AT_POSTS are
+  // derived from it plus the def's own offsets; the boxes must agree
+  // or every offset below is a tile out (the review's finding 8).
+  const shelf = POI_PREFABS.get('poi_fork_waystation')!;
+  const ox = WARD.HAVEN.x - Math.floor(shelf.width / 2);
+  const oy = WARD.HAVEN.y - Math.floor(shelf.height / 2);
+  assert.equal(shelf.width, 22, 'the sketch is the shelf');
+  assert.equal(ox, WARD.FORK_FOOTPRINT[0], 'the shelf\'s west edge is the frame lane\'s');
+  assert.equal(oy, WARD.FORK_FOOTPRINT[1]);
+  assert.equal(oy + shelf.height - 1, WARD.FORK_FOOTPRINT[3], 'and its south edge');
+  const atRows = POI_DEFS.get('fork_waystation')!.actors!.filter((a) => a.at !== undefined);
+  assert.deepEqual(atRows.map((a) => [ox + a.at!.dx, oy + a.at!.dy]), WARD.AT_POSTS.map((p) => [p[0], p[1]]), 'the frame lane\'s at posts are the composed cells');
+  const row = POI_DEFS.get('fork_waystation')!.actors!.find((a) => a.pool[0] === 'waykeeper_torsten')!;
+  const ax = ox + row.at!.dx;
+  const ay = oy + row.at!.dy;
+  assert.ok(ax >= -150 && ax <= -141 && ay === -165, `the post (${ax},${ay}) is in the mouth's Dirt row`);
+  const def = ROUTINES.get('torsten_fork')!;
+  const walk = def.slots![0]!.task;
+  assert.ok(walk.kind === 'path' && walk.mode === 'once');
+  const world = walk.waypoints.map((wp) => [ax + wp.x, ay + wp.y] as const);
+  assert.ok(walk.waypoints.every((wp) => Math.abs(wp.x) <= 128 && Math.abs(wp.y) <= 128), 'every leg inside MAX_OFFSET');
+  // Out: the trail's own route points (the bed by definition, read
+  // from ROAD_ROUTES, never typed), then the bed cell nearest the
+  // slate, then the slate's west cell; back the same way; home last.
+  const isRoutePt = ([x, y]: readonly [number, number]): boolean => WARD.TRAIL_PTS.some((p) => p.x === x && p.y === y);
+  for (const i of [0, 1, 2]) assert.ok(isRoutePt(world[i]!), `stop ${i} (${world[i]!.join(',')}) is a hunters' trail route point`);
+  assert.deepEqual(world[0], [-136, -166], 'the trail\'s last leg, east of the mouth');
+  assert.deepEqual(world[3], [WARD.PICKET_FLOOD_FROM[0], WARD.PICKET_FLOOD_FROM[1]], 'the bed cell nearest the slate');
+  assert.deepEqual(world[4], [WARD.SLATE_STAND[0], WARD.SLATE_STAND[1]], 'the slate\'s west cell: the chalking stand');
+  assert.deepEqual(world.slice(5, 8), world.slice(0, 3).reverse(), 'back the way he came');
+  assert.deepEqual(world[8], [ax, ay], 'and home');
+  // The slate is one east of the stand and he faces it; the stand is
+  // the picket's own Dirt; the bench is nobody's stop (benchUnused).
+  assert.equal(WARD.SLATE[0], WARD.SLATE_STAND[0] + 1);
+  assert.equal(WARD.SLATE[1], WARD.SLATE_STAND[1]);
+  assert.equal(walk.waypoints[4]!.dir, 0, 'facing east at the slate');
+  assert.equal(walk.waypoints[4]!.work, true, 'chalking');
+  const z = buildPicket();
+  const at = (x: number, y: number): number | undefined => {
+    const lx = x - z.origin.x;
+    const ly = y - z.origin.y;
+    return lx >= 0 && ly >= 0 && lx < z.width && ly < z.height ? z.ground[ly * z.width + lx] : undefined;
+  };
+  assert.equal(at(WARD.SLATE_STAND[0], WARD.SLATE_STAND[1]), Tile.Dirt, 'twenty two years of one man standing');
+  assert.equal(at(WARD.SLATE[0], WARD.SLATE[1]), Tile.Signpost, 'THE TALLY');
+  assert.equal(at(WARD.PICKET_FLOOD_FROM[0], WARD.PICKET_FLOOD_FROM[1]), TILE_SKIP, 'the bed is the carve\'s, never authored');
+  for (const [x, y] of world) {
+    assert.ok(!(x === WARD.BENCH[0] && y === WARD.BENCH[1]) && !(x === WARD.BENCH_STAND[0] && y === WARD.BENCH_STAND[1]), 'Torsten has never sat on it');
+    const t = at(x, y);
+    if (t === undefined || t === TILE_SKIP) continue;
+    assert.ok(!TILE_DEFS[t as Tile].solid, `a stop at (${x},${y}) stands on open ground, not '${TILE_DEFS[t as Tile].name}'`);
+  }
+  // The worn line from the bed to the stand is Dirt where the picket
+  // authors it (G2), so the last leg reads as his.
+  for (let x = WARD.SLATE_LINE[0]![0]; x <= WARD.SLATE_STAND[0]; x++) assert.equal(at(x, WARD.SLATE_STAND[1]), Tile.Dirt, `the worn line at (${x},${WARD.SLATE_STAND[1]})`);
+});
+
+test('THE CUT\'S FURNITURE (band 8 §4.1, 0.2 K): the furniture under Bodil\'s and the fellers\' stops is the furniture the pins name', () => {
+  const z = buildWardthread();
+  const at = (x: number, y: number): number | undefined => {
+    const lx = x - z.origin.x;
+    const ly = y - z.origin.y;
+    return lx >= 0 && ly >= 0 && lx < z.width && ly < z.height ? z.ground[ly * z.width + lx] : undefined;
+  };
+  const spawns = z.actorSpawns ?? [];
+  const post = (def: RoutineDef, slot: number): { x: number; y: number } => {
+    const t = def.slots![slot]!.task;
+    assert.equal(t.kind, 'post');
+    return t.kind === 'post' ? { x: t.x ?? 0, y: t.y ?? 0 } : { x: 0, y: 0 };
+  };
+  // BODIL at the sawhorse's south cell, facing north into it.
+  const bodil = spawns.find((a) => a.actor === 'charter_bodil')!;
+  assert.ok(bodil && bodil.routine === 'bodil_cut');
+  const bx = Math.floor(bodil.x);
+  const by = Math.floor(bodil.y);
+  assert.deepEqual([bx, by], [WARD.POSTS.charter_bodil.x, WARD.POSTS.charter_bodil.y]);
+  assert.equal(at(bx, by), Tile.Dirt, 'her stand is worn');
+  assert.equal(at(bx, by - 1), Tile.Sawhorse, 'the sawhorse one north: the station her work post squares to');
+  const routine = ROUTINES.get('bodil_cut')!;
+  const sit = post(routine, 0);
+  assert.equal(at(bx + sit.x, by + sit.y), Tile.Dirt, 'the noon sit is the wayside kind, on the yard\'s Dirt');
+  assert.equal(at(bx + sit.x - 1, by + sit.y), Tile.Campfire, 'beside the fire, which she faces');
+  const rope = routine.slots![1]!.task;
+  assert.ok(rope.kind === 'path');
+  const rx = bx + rope.waypoints[0]!.x;
+  const ry = by + rope.waypoints[0]!.y;
+  assert.equal(at(rx, ry - 1), Tile.RailWood, 'the rope one north of her count, which she faces');
+  assert.ok(WARD.ROPE.some(([x, y]) => x === rx && y === ry - 1));
+  assert.ok(Math.abs(rope.waypoints[0]!.dir! + Math.PI / 2) < 1e-3, 'facing north at the rope');
+  const bed = post(routine, 3);
+  assert.equal(at(bx + bed.x, by + bed.y), Tile.Bed, 'SLEEPER STAYS IN BED');
+  assert.deepEqual([bx + bed.x, by + bed.y], [WARD.CAMP.bed[0], WARD.CAMP.bed[1]]);
+  assert.equal(at(WARD.CAMP.leanTo[0], WARD.CAMP.leanTo[1]), Tile.LeanTo, 'the canvas over it');
+  // THE FELLERS: two bodies, two routines (band 8 fix pass; THE POST
+  // IS THE ORIGIN: the two beds lie at different offsets from the two
+  // stands, so each post carries its own id), and each night stop is
+  // a LIE that lands on a Bed at the camp — SLEEPER STAYS IN BED for
+  // the whole crew. The Bedrolls that stood as declared wayside lies
+  // are gone (the audit found both men sitting on the ground beside
+  // them: a Bedroll is no seat kind). The face feller's own cell was
+  // boxed by a stump, the thread and two cells the zone left to the
+  // field; the fellers' walk (pins.FACE_WALK) wears the way west.
+  const fellers = spawns.filter((a) => a.actor === 'charter_feller');
+  assert.equal(fellers.length, 2);
+  assert.deepEqual(fellers.map((f) => f.routine).sort(), ['feller_cut', 'feller_trunk_cut']);
+  const bedsTaken = new Set<string>();
+  for (const f of fellers) {
+    const fr = ROUTINES.get(f.routine!)!;
+    const night = post(fr, 2);
+    const nightTask = fr.slots![2]!.task;
+    assert.ok(nightTask.kind === 'post' && nightTask.lie === true, `${f.routine}: the night is a lie`);
+    const wander = fr.slots![0]!.task;
+    assert.ok(wander.kind === 'wander');
+    const fx = Math.floor(f.x);
+    const fy = Math.floor(f.y);
+    assert.equal(at(fx, fy), Tile.Dirt, `a feller's stand at (${fx},${fy}) is worn`);
+    const nx = fx + night.x;
+    const ny = fy + night.y;
+    assert.equal(at(nx, ny), Tile.Bed, `${f.routine}: the night lie at (${nx},${ny}) lands on a Bed`);
+    assert.ok(WARD.CAMP.beds.some(([bx2, by2]) => bx2 === nx && by2 === ny), 'one of the camp\'s two frames');
+    bedsTaken.add(`${nx},${ny}`);
+    // The fire's ring or his own stand lies inside the noon circle.
+    const cx = fx + (wander.x ?? 0) + 0.5;
+    const cy = fy + (wander.y ?? 0) + 0.5;
+    const nearFire = Math.hypot(WARD.CAMP.fire[0] + 0.5 - cx, WARD.CAMP.fire[1] + 0.5 - cy) <= wander.radius + 1;
+    const nearPost = Math.hypot(fx + 0.5 - cx, fy + 0.5 - cy) <= wander.radius;
+    assert.ok(nearFire || nearPost, `the noon drift at (${cx},${cy}) reaches the fire or the face`);
+  }
+  assert.equal(bedsTaken.size, 2, 'two men, two frames, nobody shares');
+  // The way from the face to the fire is worn, so the sweep can read
+  // the face feller's bed from his stand.
+  for (const [x, y] of WARD.FACE_WALK) assert.equal(at(x, y), Tile.Dirt, `the fellers' walk at (${x},${y})`);
+  // THE CIVILIAN WORD (0.2 K, as the validator allows it): friendly
+  // bodies carry no combat body at all, so a wolf on the line cannot
+  // see them and a swing passes through; `protection: invulnerable`
+  // is a word for NEUTRAL bodies with a combat block (Torsten, the
+  // sentinels) and the validator refuses it on a friendly def.
+  for (const slug of ['charter_bodil', 'charter_feller']) {
+    const a = NPC_ACTORS.get(slug)!;
+    assert.ok(a, `${slug} missing`);
+    assert.equal(a.disposition, 'friendly');
+    assert.equal(a.protection, undefined);
+    assert.equal(a.combat, undefined);
+    const warded = validateNpcActor({ ...a, protection: 'invulnerable' });
+    assert.ok(!warded.ok && warded.errors.some((e) => e.includes('friendly actors cannot carry protection')), 'the validator\'s own law');
+  }
+  const feller = NPC_ACTORS.get('charter_feller')!;
+  assert.equal(feller.name, 'Feller');
+  assert.equal(feller.title, 'Charter feller');
+  assert.equal(feller.lines!.length, 3, 'the pool\'s three lines, place-neutral');
+  assert.ok(feller.inventory!.some((s) => s.item === 'bronze_axe'), 'an axe in the pockets');
+  for (const s of [NPC_ACTORS.get('waykeeper_torsten')!, NPC_ACTORS.get('even_sentinel')!]) {
+    assert.equal(s.disposition, 'neutral');
+    assert.equal(s.protection, 'invulnerable');
+  }
+  assert.ok(NPC_ACTORS.get('waykeeper_torsten')!.examine!.includes('the picket below is his slate and his bell'));
+  // THE PEOPLE SPEAK: no dash of any kind in anything a player reads
+  // that this band wrote or touched.
+  const fork = POI_DEFS.get('fork_waystation')!;
+  const spoken = [
+    feller.name, feller.title!, feller.examine!, ...feller.lines!,
+    NPC_ACTORS.get('charter_bodil')!.title!, NPC_ACTORS.get('waykeeper_torsten')!.examine!,
+    fork.description!, ...fork.signs!.flatMap((s) => [s.title, ...(s.lines ?? [])]),
+  ];
+  for (const s of spoken) assert.ok(!/[-—–]/.test(s), `dash in a player string: ${s}`);
 });

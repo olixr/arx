@@ -1458,6 +1458,53 @@ const denBones = declareInfluence(sketch(
   wolfMarks,
 ), { cap: WING_POOL_CAP });
 
+// THE VEIL DEN speaks local (band 8, blockout §2.11): 'Y' is the pack's
+// bone tree at the den's mouth (shadowing the yew: no yew stands in a
+// den). Everything else is den_bones' own dialect.
+const veilDenExt: Record<string, number> = {
+  Y: Tile.BoneTree,
+};
+
+/**
+ * THE VEIL DEN (plan §3.2, §13.2; band 8, blockout §2.11 and 0.2 I):
+ * the pack's ground at the veil's west edge, 68 tiles west of the
+ * trail through core forest, no path. den_bones re-dressed for the
+ * pinned den in cell [-2,-1]: the same 15x9 and the same
+ * WING_POOL_CAP verge (the den's own vocab), so the cell scan finds
+ * the same ground (-186,-99). Three edits: the BONE TREE at the den's
+ * mouth on the south fringe, on the approach (THE MARK STANDS WHERE
+ * IT IS AUTHORED: the def's cues.scatter is []); the NEST kept as
+ * Hollowhowl's seat (the crowned holdfast musters at the anchor
+ * beside it; the nest is the sentence); one gnawed bone pile moved to
+ * the mouth beside the tree. The rocks, the traveller's chest, cold
+ * fire and torn crate stand as den_bones drew them. Forty years in the
+ * veil and they came down this year for two ewes and a dog, and
+ * nobody asks why. The dire wolf has a name so the drover can want it
+ * dead by name. No light, no board. EMPTY: the grass west of the
+ * mouth to the Spinewall's foot.
+ * DEPLOY: data/prefabs/poi_veil_den.json is born once at boot and
+ * committed; the [-2,-1] row re-seeds `repinned` (the plan pins this
+ * prefab) and its boot line is the proof.
+ */
+const veilDen = declareInfluence(sketch(
+  'poi_veil_den',
+  'The veil den',
+  [
+    '_____,,,_______',
+    '__,,......,,___',
+    '_,.rrr..o..,,__',
+    '_,rrXrr...1.,__',
+    '_,.r.r..;...,__',
+    '_,.o.....f..,__',
+    '_,.1...c....,__',
+    '__,...oY.,,,___',
+    '____,,,________',
+  ],
+  wolfMarks,
+  undefined,
+  veilDenExt,
+), { cap: WING_POOL_CAP, vocab: 'den' });
+
 /**
  * A trampled hollow ringed by stumps the pack has scent-marked to
  * death — bones dragged to the middle, and the last owner's chest
@@ -1623,6 +1670,136 @@ const watchtowerHusk = sketch(
     '______________',
   ],
 );
+
+// THE STRUCK LINE speaks local (band 8, blockout §2.10): the husk of
+// the line's own dialect over the globals ('#' wall, 'S' floor, 'X'
+// iron chest, 'b' brazier, ':' gravel). The ruin crest and the cold
+// hearth's '@' '0' ride coldHearth's readings, 'R' the rubble and '{'
+// the cook pot the globals'; 'd' is the order's lamp standing DARK
+// (shadowing the sawhorse: no saw stands here), 'o' the gnolls' bone
+// midden, 'x' their knuckle pit and 'Y' their trophy stake (campLife's
+// readings), 'B' the kill-field's beast bones (shadowing the berry
+// bush), 's' the order's burnt board (shadowing sagewort; never a sign
+// tile, so it takes no words from the pool) and 'i' the one living
+// board, a Signpost (never the town's shingle: nothing here has a wall
+// left to hang from).
+const struckLine: Record<string, number> = {
+  '"': Tile.RuinWallStone,
+  '@': Tile.EmberBed,
+  '0': Tile.AshHeap,
+  R: Tile.CaveRubble,
+  d: Tile.LampPostDark,
+  '{': Tile.CookPot,
+  o: Tile.BoneMidden,
+  x: Tile.KnucklePit,
+  Y: Tile.TrophyStake,
+  B: Tile.BeastBones,
+  s: Tile.SignpostBurnt,
+  i: Tile.Signpost,
+};
+
+/**
+ * THE HUSK OF THE LINE (plan §3.2, §13.2; band 8, blockout §2.10 and
+ * 0.2 H): the Waykeepers' first tower on the hunters' trail, on open
+ * cold grass on the mere's far ground, off every way. The shipped
+ * `poi_watchtower_husk` is every rolled husk's and stands untouched;
+ * this is the pinned husk's OWN sketch, 16x15, anchor (-64,-240) at
+ * cell (8,7), the south breach's east cell, where both crews muster.
+ * THE MARK STANDS WHERE IT IS AUTHORED: every mark the def's scatter
+ * used to ask for (the midden, the pit, the stake, the dark lamp)
+ * stands in here, and the def's cues.scatter is [].
+ *   - THE TOWER, breached three ways and re-crested (rows 3..7, cols
+ *     4..10): the order struck it and left it. The courses snapped
+ *     where they snapped; nobody felled it. Three breaches (north,
+ *     east, south) so the line inside can be seen standing from the
+ *     apron.
+ *   - THE ORDER'S LAMP, dark, at the door's west jamb (5,7): snuffed,
+ *     not felled. It stands straight because it was set straight. No
+ *     light row by law (E7 struck the dead case). The gnolls have not
+ *     bothered to knock it down, which is the most honest thing about
+ *     them.
+ *   - THE POT on the order's hearth stone (6,5): the gnolls' dinner on
+ *     the order's hearth. No furniture post is asked of it (family
+ *     dead strips post hours); the bodies wander the tower by day.
+ *   - THE BRAZIER (8,5): lit on the flame clock like every man-made
+ *     fire, cold by day. The line stands at half past eight in its
+ *     light. The only warm light north of the road.
+ *   - THE CHEST, free (7,6): loot fast or fight fair. No chestWarded:
+ *     the fight is the ward (0.2 G).
+ *   - THE EMBER BED over its ash (5,6) and THE HEAP out the south
+ *     breach (7,8): somebody sleeps in the corner at night and it is
+ *     not the gnolls; the floor shovelled out the door by hands that
+ *     meant to come back. Ash under both on the detail plane.
+ *   - THE MIDDEN (6,8) and THE PIT (5,9) on the swept gravel: deer,
+ *     mostly. The knuckle pit is a gnoll game and a gnoll count;
+ *     Torsten's slate is the other kind.
+ *   - THE STAKE with the grey wool (9,8): a Waykeeper's grey wool on a
+ *     gnoll stake at the order's door. One posture, one sentence; the
+ *     wool Torsten hands over at his turn-in is this one's twin.
+ *   - THE BURNT BOARD at the door's east side (11,7): the order's own
+ *     board, burnt. Char. Whatever it said went up with it.
+ *   - THE APRON (rows 9..11): swept gravel, the gnolls' yard.
+ *   - THE KILL-FIELD's edge (rows 11..12): BeastBones x3 with the bone
+ *     litter on the detail plane, where the deer come down to the
+ *     water and do not go back up. Wolf sign and gnoll sign in the
+ *     same field; nobody sorts them.
+ *   - ONE BOARD (11,9), a Signpost at the apron's south edge facing
+ *     south: STRUCK FROM THE ROLLS, the first thing a walker up from
+ *     the crossing reads. THE HUSK retired from the def's signs (its
+ *     words were the dark lamp's).
+ *   - EMPTY: the tower's interior beyond the pot, the chest, the ember
+ *     and the brazier (no cot, no crate); the whole north and east
+ *     fringe; the grass between the apron and the water. Six gnolls by
+ *     day, seven dead by night, and nothing else lives here.
+ * MEASURED cap: the sketch is its own footprint (cap 16, the crofts'
+ * precedent). The peninsula's grass outside it is worldgen's and EMPTY
+ * ON PURPOSE, so no verge, no hedgerow, no litter; the pin (-64,-240)
+ * stands at nudge 0 on grass that runs x -86..-48 at this seed.
+ * DEPLOY: data/prefabs/poi_husk_of_the_line.json is born once at boot
+ * and committed; the ledger row for [-1,-2] re-seeds because the plan
+ * pins another prefab, and its boot line is the proof.
+ */
+const huskOfTheLine = declareInfluence(sketch(
+  'poi_husk_of_the_line',
+  'The husk of the line',
+  [
+    '______,,,,______',
+    '__,,........,,__',
+    '_,............,_',
+    '_,...#"S"#....,_',
+    '_,..#SSSSS#...,_',
+    '_,..#S{SbS"...,_',
+    '_,..#@SXSSR...,_',
+    '_,...d"SS"Rs..,_',
+    '_,....o0RY....,_',
+    '_,...x.:::.i..,_',
+    '_,....:::::...,_',
+    '_,..B..:::..B.,_',
+    '__,....B......,_',
+    '___,,........,__',
+    '_____,,,,,______',
+  ],
+  {},
+  undefined,
+  struckLine,
+  [
+    '________________',
+    '________________',
+    '________________',
+    '________________',
+    '________________',
+    '________________',
+    '_____a__________',
+    '________________',
+    '_______a________',
+    '________________',
+    '________________',
+    '___b_b_____b_b__',
+    '______b_b_______',
+    '________________',
+    '________________',
+  ],
+), { cap: 16 });
 
 /**
  * THE COLD HEARTH's stage piece (THE SCARRED LAND, K1): a burnt
@@ -1887,6 +2064,152 @@ const goblinStockade = sketch(
   undefined,
   campLife,
 );
+
+// THE FELLING speaks local (band 8, blockout §2.12): the stockade's
+// campLife dialect plus the burnt stand's three words — 'Q' the
+// charcoal clamp (SmolderHeap 548, minted in band 8; shadowing the
+// arch, which no camp builds), 't' the dead standing snag (shadowing
+// the living tree: nothing living stands on this ground) and 'C' the
+// charred stump (shadowing the copper rock; 'u' is the gnaw trough
+// here, campLife's reading).
+const fellingGround: Record<string, number> = {
+  ...campLife,
+  Q: Tile.SmolderHeap,
+  t: Tile.DeadTree,
+  C: Tile.CharredStump,
+};
+
+/**
+ * THE FELLING (plan §3.2, §13.2; band 8, blockout §2.12 and 0.2 J):
+ * the Drum's warcamp on the stand it burnt, east of the gate on the
+ * First Road side, charring what it felled by the clamp, running
+ * worgs on the herds, answering a drum that is crimson and not
+ * theirs; after dark Doorless hands cut snags at the camp's edge and
+ * the pickets hunt them. The shipped `poi_goblin_stockade` is every
+ * rolled stockade's and stands untouched; this is the pinned
+ * Felling's OWN sketch, 32x29, the stockade verbatim at cols 8..23
+ * rows 8..19 so the anchor (80,-42) lands on the same interior cell
+ * (16,14) it did at (8,6). THE TRUNK LAW: the Felling authors its own
+ * ground (the `felling_burn` stroke skins it); nothing here is a
+ * worldgen read.
+ *   - THE STOCKADE as shipped: palisade, two gates, fires, the banners
+ *     and torch at the south gate, the trophy stake, the cage, the
+ *     beast stake, the grog, the midden. The warcamp grown teeth,
+ *     unchanged (its three marker bodies stand as they always did).
+ *   - THE FOUR CLAMPS in a downwind line off the south gate (rows
+ *     21..24), a worn tongue of dirt beside each and the worn way out
+ *     of the gate above them: charcoal by the clamp. Dying wood chars
+ *     best and the Drum knows it. Cold turf domes at noon; from dusk
+ *     each crown breathes on the emit door (the COALS-class row,
+ *     flame-gated). The demo's smoke on the north skyline. Ash under
+ *     each on the detail plane. The clamps never leave the sketch
+ *     (blockout §11 risk 15).
+ *   - THE STUMP ROWS (rows 26 and 28, twelve CharredStump in two rows
+ *     of six, offset by one): the stand the Drum has already taken, in
+ *     rows, because a camp fells in rows. Forty in the plan; twelve
+ *     authored and six more in cues.scatter where they may honestly
+ *     fall. THE DRAG FURROWS (band 8 fix pass) run NORTH-WEST from the
+ *     rows toward each clamp on the detail plane, one diagonal per
+ *     clamp starting beside a stump and stopping a cell short of the
+ *     dome: the logs went to the fire. The proof's first cut ran them
+ *     straight north into each clamp's foot and at zoom 1.3 the four
+ *     read as domes on stalks; a diagonal that stops short reads as a
+ *     drag.
+ *   - THE VERGE CELLS: the only authored ground outside the palisade
+ *     and its apron is the four dirt tongues and the furrows' own
+ *     grass; the burn skin does the rest.
+ *   - THE SNAG RING, six DeadTree at the sketch's rim on the sentry
+ *     ring's bearings (north, north-east, east, south-east, west,
+ *     north-west): dead standing wood ringing the camp where the
+ *     Doorless night row spawns and cuts. A ring is a shape worldgen
+ *     never deals (owed D6), so it reads as authored.
+ *   - BOARD: none (a warcamp letters nothing). LIGHTS: the fires and
+ *     the torch from dusk, the clamps' rows flame-gated.
+ *   - EMPTY: the burnt stand beyond the rows (the burn skin and the
+ *     six scattered stumps; nothing else authored).
+ * MEASURED footprint: the burnt stand is open grass from y -55 south
+ * past the gate's road, and rock stands from y -57 north (band 8 L3
+ * ground probe at seed 24601), so the sketch reaches 14 rows north of
+ * the anchor (row -56 carries thirteen rough cells at its north-west
+ * corner, 1.5% under the stamp law's 5%) and 14 rows south; the
+ * picture the brief drew down to y -23 is compressed to that ground
+ * (the clamps step two west and one south instead of two and two, the
+ * stump rows stand at y -30 and -28). cap 32 = its own footprint: no
+ * verge (a wild hedgerow round a warcamp was the Legion-yard lesson).
+ * DEPLOY: data/prefabs/poi_felling_drum.json is born once at boot and
+ * committed; the [0,-1] row re-seeds because the plan pins another
+ * prefab, and its boot line is the proof. poi_goblin_stockade.json is
+ * untouched.
+ */
+const fellingDrum = declareInfluence(sketch(
+  'poi_felling_drum',
+  'The Felling',
+  [
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '__________t_____________________',
+    '________________________________',
+    '________________________t_______',
+    '________________________________',
+    '______________,,,_______________',
+    '______t___,::::::::::,__________',
+    '_________,:||||==||||:,_________',
+    '_________,:|.^E....0|:,_________',
+    '_________,:|.f.1..f.|:,_________',
+    '_________,:|a..W...-|:,_________',
+    '_________,:|.2...3.o|:,_________',
+    '_________,:|.u.f.J.[|:,____t____',
+    '_________,:||||==||||:,_________',
+    '_________,::>::!:Y:>::,_________',
+    '_t________,::::::::::,__________',
+    '_____________,,,________________',
+    '_______________:________________',
+    '_____________Q:_________________',
+    '___________Q:___________________',
+    '_________Q:_.___________________',
+    '_______Q:_.__.__________t_______',
+    '_________._.__._________________',
+    '_____C_C.C.C.C_C________________',
+    '_________._._.__________________',
+    '______C_C_C_C_C_C_______________',
+  ],
+  goblinMarks,
+  undefined,
+  fellingGround,
+  [
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '________________________________',
+    '_____________a__________________',
+    '___________a____________________',
+    '_________a__d___________________',
+    '_______a__d__d__________________',
+    '_________d_d__d_________________',
+    '________d_d_d___________________',
+    '_________d_d_d__________________',
+    '________________________________',
+  ],
+), { cap: 32 });
 
 /**
  * One arch still standing over a road that no longer exists — the
@@ -2991,41 +3314,98 @@ const fensideLamp = declareInfluence(sketch(
 // stake and the one board all stand there now, each with its
 // sentence. `poi_ashlamp` and the `ashlamp` def retired with it.
 
-// THE WARD LINE speaks local: '~' is the thread (never water here),
-// 'g' the grey stone at its end, 'k' the Waykeepers' lamp cairn (the
-// global 'L' stays the rest's own LampPost). The waystone rides the
-// global '8'.
+// THE WARD LINE speaks local: 'k' is the Waykeepers' lamp cairn (the
+// global 'L' stays the rest's own LampPost). Band 8 (blockout 0.2 C)
+// struck '~' (the thread) and 'g' (the grey stone) from the dialect:
+// the thread and its three grey points are the `wardthread` ZONE's
+// across the road (content/src/maps/wardthread/), never a sketch's —
+// a thread strung from the stone to a stand north of the road would
+// cross the High Road's bed, and a grey stone inside the Waykeepers'
+// yard says the rest stands on grey root, the one thing Torsten says
+// a post must not do. The waystone rides the global '8'.
 const wardLine: Record<string, number> = {
-  '~': Tile.WardThread,
-  g: Tile.GloomStone,
   k: Tile.LampCairn,
 };
 
 /**
- * THE FORK REST (plan §3.2, §3.3, §13.2): the roadside rest with an
- * Even Court waystone at its fork side (east), a ward thread of three
- * tiles leaving the stone toward the north-east — the dying stand —
- * and a gloom stone at the run's far end that nobody explains. The
- * lamps stop here; the stone keeps the mile past it. The Waykeepers'
- * claim — a lamp cairn pair — flanks the rest's WEST mouth, the dirt
- * tongue that leaves the yard toward the lamped road (THE MARK STANDS
- * WHERE IT IS AUTHORED: the def's cue placer lands marks only on bare
- * grass along an approach cone, which the K2 census proved loses them
- * to canopy; the sketch owns them instead, two by law). Extra watch
- * posts (Torsten, the sentinels) are semantic and land at compose.
+ * THE FORK REST (plan §3.2, §3.3, §13.2; band 8 re-sketch, blockout
+ * §2.5): the last lamp on the hunters' trail, where the Waykeepers'
+ * road stops and the old folk's stone takes over. Same id, the same
+ * 22x8 footprint (the sketch is the shelf since the fix pass, below),
+ * the same anchor (-150,-165) as band 0, so THE GOLDEN ANCHORS hold and no
+ * ledger row re-seeds; only the east fringe is re-laid, and it faces
+ * the TRAIL now (the band-0 mouth faced west into closed forest and
+ * the thread ran north-east through the yard).
+ *   - THE YARD (the ':' ring, cols 2..11) is unchanged: rail, benches,
+ *     fire, the keeper's stall, the barrel and crate, the rest's own
+ *     LampPost. A roadside rest with a keeper, exactly as the
+ *     Waykeeper pattern book draws one, at the one place on the trail
+ *     the pattern book has stopped applying.
+ *   - THE MOUTH: the dirt tongue leaves the yard's EAST gate at row 4
+ *     and runs to the sketch's east edge, so a hunter coming up the
+ *     trail's last leg walks straight into the yard between the two
+ *     cairns. The yard opens to the scuff, not to the wood. Torsten
+ *     stands in it (his `at` post, on the def).
+ *   - THE CAIRN PAIR flanking the mouth (rows 3 and 5, col 17): the
+ *     Waykeepers' claim, two by law, facing the trail the hunters come
+ *     up. THE MARK STANDS WHERE IT IS AUTHORED (the K2 census: the cue
+ *     placer lands only on bare grass along the approach cone and lost
+ *     the cairns to canopy; the sketch owns them). From the junction
+ *     at dusk they are the last two Waykeeper flames you will see; the
+ *     stone beside them is the first thing that is not one. The lamps
+ *     stop here.
+ *   - THE WAYSTONE at the yard's north-east corner (row 1, col 15),
+ *     facing the road: the old folk's stone, the cool swell with no
+ *     flame gate, the light that draws nothing. Torsten's highest
+ *     praise, and he means it. The two sentinels flank it (their `at`
+ *     posts, on the def).
+ *   - ONE BOARD (row 6, col 15, the global HangingSign as shipped) at
+ *     the mouth's south side facing the scuff: THE FORK REST, "the
+ *     lamps stop here", and now literally true on this ground. THE
+ *     TALLY moved to the picket (the `picket` zone's ZoneSign).
+ *   - EMPTY: the west fringe (cols 0..1: closed forest; no mouth, no
+ *     mark); the north fringe between the yard and the road. The rest
+ *     faces the trail and the road. Nothing faces the veil.
+ * THE SHELF IS THE SKETCH (band 8 fix pass): the sketch is 22x8 at
+ * cap 22, so expandInfluence hands it back untouched and the footprint
+ * the placer scans IS this grid — no apron column, no expansion. It
+ * blits at anchor (-11, -4): sketch column c is world x = -161 + c
+ * and row r is y = -169 + r, exactly where the 21-wide heart and its
+ * one east apron column stood before (the expansion added an empty
+ * column and nothing else, so the ground is byte-identical bar one
+ * cell), and THE GOLDEN ANCHORS hold. The one cell: THE MOUTH'S LAST
+ * CELL, column 21 row 4 (world (-140,-165)). The apron column was
+ * transparent, the clearing hashed a Stump into it, and the stump
+ * plugged the mouth's east end between the dirt tongue and the
+ * trail's bed; it is the mouth's own Dirt now and the tongue reaches
+ * the shoulder. THE OAK AT THE MOUTH (the proof's first defect): a
+ * worldgen oak at (-144,-158), four rows south of the sketch, painted
+ * its crown over the south cairn and THE FORK REST board from the
+ * junction. The sketch cannot grow a row to reach it — a 22x9 shelf
+ * slides the golden anchor to (-150,-166) (the scan's rough fraction
+ * on the damp glade south-west of the yard), and the pad law holds
+ * the north edge at the pin — so the def's `cues.clearing` is 4 and
+ * the ring reaches y -158. The cost is one more ring row north
+ * (y -173, the clearing law's own thirty percent as at every camp
+ * that burns wood since band 0): the proof's second defect, the
+ * north stump field, is refused with that reason (band8/rulings.md,
+ * the As built addendum).
+ * FILE-WINS: data/prefabs/poi_fork_waystation.json is tracked by
+ * nobody and deleted on every box that wrote one, so this sketch is
+ * the rest.
  */
 const forkWaystation = declareInfluence(sketch(
   'poi_fork_waystation',
   'The fork rest',
   [
-    '_____________________',
-    '__,::::::::,......g.,',
-    '_,:.l.l.l..:,....~..,',
-    'k,:.e..f..e:,...~...,',
-    ':::.M....a.:,..~....,',
-    'k,:.L..c...:.8.....,_',
-    '__,::::::::,.i....,,_',
-    '______,,_,,,,,,,,,,__',
+    '______________________',
+    '__,::::::::,,..8...,__',
+    '_,:.l.l.l..:,.......,_',
+    '_,:.e..f..e:,....k..,_',
+    '_,:.M....a.:::::::::::',
+    '_,:.L..c...:,....k..,_',
+    '__,::::::::,,..i....,_',
+    '______,,_,,,,,,,,,,,__',
   ],
   {},
   undefined,
@@ -3255,6 +3635,12 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     forkWaystation,
     thirdStone,
     brokenBarrow,
+    // Band 8 (THE HUSK AND THE WARD LINE): the north's three pinned
+    // sites author their own ground — the husk, the veil den, the
+    // Felling. The fork rest re-sketched above under its own id.
+    huskOfTheLine,
+    veilDen,
+    fellingDrum,
     // THE LANDMARKS (the hybrid charter): expansive authored grounds,
     // 3-5x the camp shelf — built in landmarks.ts the Foundry way.
     ...LANDMARK_PREFABS,

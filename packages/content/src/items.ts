@@ -1025,6 +1025,16 @@ const defs: ItemDef[] = [
   { id: 'charter_pass', name: 'Charter pass', stackable: true, value: 0, quest: true, desc: "Charter paper with the ford's seal. The Company honours paper.", color: '#d9c98a', code: 'Ch' },
   { id: 'kelp_string', name: 'Kelp string', stackable: true, value: 0, quest: true, desc: 'A string of fen kelp tied the way the shoal ties them. It means paid.', color: '#4f6b48', code: 'Ks' },
   { id: 'green_corn', name: 'Green corn', stackable: true, maxStack: 20, value: 1, desc: 'Corn cut green and going soft. It keeps a week on boards.', color: '#9fb35a', code: 'Gc' },
+  // THE HUSK AND THE WARD LINE (contested lands band 8, plan §3.2, §3.3):
+  // the north's four pockets. The pelt is the one plain good (a quest
+  // drop off the veil pack while the fleece asks for it, ordinary loot
+  // never); the wool, the thread and the chip are quest paper by law,
+  // worthless, each consumed or held exactly where its journal says.
+  // The drover's cloak is gear and lives with the capes below.
+  { id: 'wolf_pelt', name: 'Veil wolf pelt', stackable: true, maxStack: 10, value: 6, desc: "A veil wolf's pelt, grey at the guard hairs. It smells of the wood it came out of.", color: '#8a8c96', code: 'Vp' },
+  { id: 'grey_wool', name: "The order's grey wool", stackable: true, value: 0, quest: true, desc: "A hank of the order's grey, off a gnoll's stake. It goes back on a post.", color: '#a9aab0', code: 'Gw' },
+  { id: 'cut_thread', name: 'Cut thread', stackable: true, maxStack: 8, value: 0, quest: true, desc: "A cut length of the court's thread. A knot at one end and a chip of moonglass at the other. It is not for tying anything.", color: '#c9d4e8', code: 'Ct' },
+  { id: 'moonglass_chip', name: 'Moonglass chip', stackable: true, value: 0, quest: true, desc: "A chip off the fork's waystone. It draws nothing, and that is the point of it.", color: '#dce8f4', code: 'Mc' },
   { id: 'linen_scrap', name: 'Linen scrap', stackable: true, value: 3, desc: 'Torn cloth off someone who stopped needing it.', color: '#ddd6c2', code: 'Ls' },
   { id: 'gloomsilk_thread', name: 'Gloomsilk thread', stackable: true, value: 14, desc: 'Cold spun shadow from the crypt. It drinks the light.', color: '#5a4a78', code: 'Gt' },
 
@@ -1432,6 +1442,21 @@ const defs: ItemDef[] = [
     desc: 'Wolves slip sideways out of trouble. Now so do you.',
     color: '#6a6f7d',
     code: 'Wc',
+  },
+  // THE FLEECE (contested lands band 8): Sorrel's cloak, lined with the
+  // veil pack. The wolf cloak's shape and the wolf cloak's reflex, in a
+  // drover's cloth; the lining is the point and she never says so.
+  {
+    id: 'drover_fleece_cloak',
+    name: "Drover's fleece cloak",
+    stackable: false,
+    value: 220,
+    equipSlot: 'cape',
+    armor: 1,
+    passive: 'wolf_reflexes',
+    desc: "A drover's cloak lined with veil wolf. Sorrel put her hand on the lining once and said nothing.",
+    color: '#9a8f7a',
+    code: 'Dc',
   },
 
   // Capes — worn gear with real properties, never mere decoration.

@@ -1,0 +1,34 @@
+{
+  "id": "q_keep_the_thread_reoffer",
+  "start": "hub",
+  "requires": ["keep_thread_declined", "quest:keep_the_thread:available"],
+  "forbids": [
+    "quest:the_grey_root:active",
+    "quest:the_grey_root:done",
+    "quest:the_full_tally:active",
+    "quest:the_full_tally:done",
+    "ward_thread_cut"
+  ],
+  "bindings": [{ "kind": "actor", "target": "even_sentinel", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_keep_the_thread_reoffer__hub",
+      "text": "Four lengths, past three stones, back to the stone. The lengths are still here.",
+      "hooks": [{ "kind": "quest_offer", "quest": "keep_the_thread" }],
+      "choices": [
+        { "text": "I will.", "next": "resworn", "set": ["keep_thread_sworn"] },
+        { "text": "Still no." }
+      ]
+    },
+    {
+      "id": "resworn",
+      "voice": "q_keep_the_thread_reoffer__resworn",
+      "text": "Four. Do not cut. Step over it where you must.",
+      "hooks": [
+        { "kind": "give", "item": "cut_thread", "qty": 4 },
+        { "kind": "quest_accept", "quest": "keep_the_thread" }
+      ]
+    }
+  ]
+}

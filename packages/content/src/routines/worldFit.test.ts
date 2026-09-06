@@ -14,6 +14,7 @@ import { buildUndercroft } from '../maps/undercroft.js';
 import { buildLowhall } from '../maps/lowhall.js';
 import { buildAshlamp } from '../maps/ashlamp.js';
 import { buildFenside } from '../maps/fenside.js';
+import { buildPicket, buildTurnoff, buildWardthread } from '../maps/wardthread.js';
 import { ROUTINES } from './registry.js';
 import type { RoutineTask, RoutineDef } from './types.js';
 
@@ -67,6 +68,20 @@ const ZONES: Array<() => ZoneDef> = [
   // and stand under pois/prefabFit.test.ts instead.
   buildAshlamp,
   buildFenside,
+  // THE HUSK AND THE WARD LINE (band 8): the three north zones. The
+  // picket and the turn place nobody (Torsten walks DOWN to his slate
+  // from the fork rest's `at` post, held under pois/prefabFit.test.ts);
+  // the ward line places Bodil and the two fellers, whose sawhorse
+  // stand, wayside sit by the fire, rope count, bed under the canvas
+  // and ground by the camp are held here like any villager's hours.
+  // A cell the zone does not author is TILE_SKIP — the field's own
+  // felled grass at the cut — and is unknowable here by the sweep's
+  // own law: the face feller's cell is boxed by a stump, the thread
+  // and two such cells, so every stop of his that the sweep CAN read
+  // must be reachable from that box (feller_cut is authored to it).
+  buildWardthread,
+  buildPicket,
+  buildTurnoff,
 ];
 
 /**

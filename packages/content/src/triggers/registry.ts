@@ -6,6 +6,16 @@ import town_kingsdelf from './defs/town_kingsdelf.json';
 import town_pinewatch from './defs/town_pinewatch.json';
 import town_saltmere from './defs/town_saltmere.json';
 import town_silverfall from './defs/town_silverfall.json';
+// THE HUSK AND THE WARD LINE (contested lands band 8): the five patches
+// of watching ground the north's flag objectives read. Every `event`
+// slug is the trigger's own id and no subscriber is needed: the server
+// stamps `setFlag` before dispatch, and THE FLAG OBJECTIVE credits on
+// the stamp.
+import husk_breach_held from './defs/husk_breach_held.json';
+import grey_one from './defs/grey_one.json';
+import grey_two from './defs/grey_two.json';
+import grey_three from './defs/grey_three.json';
+import stone_dusk_stood from './defs/stone_dusk_stood.json';
 import type { TriggerDef } from './types.js';
 import { validateTrigger } from './validate.js';
 
@@ -27,6 +37,21 @@ const SOURCES: unknown[] = [
   town_hartfell,
   town_evenfall,
   town_kingsdelf,
+  // THE HUSK AND THE WARD LINE (contested lands band 8, plan §3.2, §3.3).
+  // The husk's apron, held with the sergeant's lamp until the line
+  // stands: an exit after half past eight, having stood 75 s inside
+  // (the changeover window), stamps husk_held once. The three grey
+  // stones, entered with the Court's four lengths in the pack and the
+  // thread uncut, stamp grey_one, grey_two, grey_three once each: three
+  // places teach the line. The head stone by the road, stood from dusk
+  // for two game hours and left before the wood is fully dark, stamps
+  // glade_stood once. The husk's and the rest's anchors are golden, so
+  // every rect is honest in world tiles.
+  husk_breach_held,
+  grey_one,
+  grey_two,
+  grey_three,
+  stone_dusk_stood,
 ];
 
 function buildRegistry(): ReadonlyMap<string, TriggerDef> {

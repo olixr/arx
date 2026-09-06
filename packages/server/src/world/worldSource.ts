@@ -503,6 +503,9 @@ export class WorldSource extends ChunkStore {
   generatedCount = 0;
 
   ensure(cx: number, cy: number): ChunkData {
+    if (!Number.isFinite(cx) || !Number.isFinite(cy)) {
+      throw new Error(`WorldSource.ensure: a non-finite chunk (${cx},${cy}) was asked for; the caller's coordinate went NaN`);
+    }
     const existing = this.get(cx, cy);
     if (existing) return existing;
     this.generatedCount++;
@@ -568,12 +571,21 @@ export class WorldSource extends ChunkStore {
     return chunk;
   }
 
+  // THE FIELD HAS NO NaN TILE (contested lands, band 8 fix pass): the
+  // two doors the sim walks through every tick refuse a non-finite
+  // coordinate before it reaches ensure(), whose generator would
+  // otherwise index the edge law with it and bring the process down
+  // (the live audit's boot loss: one NPC's position went NaN under a
+  // fight). A nowhere tile is solid and unknown, which stops the
+  // body where it stands; ensure() itself names the chunk it refuses.
   override isSolid(tx: number, ty: number): boolean {
+    if (!Number.isFinite(tx) || !Number.isFinite(ty)) return true;
     this.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
     return super.isSolid(tx, ty);
   }
 
   override tileAt(tx: number, ty: number): number | undefined {
+    if (!Number.isFinite(tx) || !Number.isFinite(ty)) return undefined;
     this.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
     return super.tileAt(tx, ty);
   }

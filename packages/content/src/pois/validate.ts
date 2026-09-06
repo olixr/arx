@@ -6,6 +6,10 @@ import type { PrefabDef } from '../maps/prefab.js';
 import { NPCS } from '../npcs.js';
 import { ROUTINES } from '../routines/registry.js';
 import { POI_PREFABS } from './prefabs.js';
+
+/** THE CLAMP CAP: the most SmolderHeap (548) cells one prefab may
+ *  seat, and the most one scatter row may deal (band 8, plan §9). */
+export const SMOLDER_HEAP_CAP = 4;
 import type {
   PoiActorAt,
   PoiActorEntry,
@@ -131,6 +135,23 @@ export function validatePoiDef(
       }
       if (prefabs.includes(p)) errors.push(`duplicate prefab '${p}' in the pool`);
       prefabs.push(p);
+    }
+  }
+  // THE CLAMP CAP (band 8, SmolderHeap 548): a charcoal burner banks
+  // one clamp per crew and a felling banks a line of them; past four
+  // a sketch is no longer a yard but a kiln field, and each clamp
+  // carries a light row and an exhale on the emit door, so the cap is
+  // a scene law and a budget law in one sentence. Read off the prefab
+  // GRID where the library is known (the server passes its live
+  // library, authored code falls to the builtin sketches), and off
+  // every scatter row below by the same number.
+  for (const pid of prefabs) {
+    const grid = prefabGrid(pid);
+    if (!grid) continue;
+    let clamps = 0;
+    for (const t of grid.ground) if (t === Tile.SmolderHeap) clamps++;
+    if (clamps > SMOLDER_HEAP_CAP) {
+      errors.push(`prefab '${pid}' seats ${clamps} smolder heaps; the cap is ${SMOLDER_HEAP_CAP} per prefab`);
     }
   }
 
@@ -366,6 +387,11 @@ export function validatePoiDef(
         errors.push(`${listName}[${i}]: count must be 1..8`);
         continue;
       }
+      // THE CLAMP CAP holds on the cone as it holds in the sketch.
+      if (s.tile === 'SmolderHeap' && (s.count as number) > SMOLDER_HEAP_CAP) {
+        errors.push(`${listName}[${i}]: at most ${SMOLDER_HEAP_CAP} smolder heaps per site`);
+        continue;
+      }
       out.push({ tile: s.tile, count: s.count as number });
     }
     return out;
@@ -391,9 +417,20 @@ export function validatePoiDef(
           : typeof c.approachPath === 'boolean'
             ? c.approachPath
             : (errors.push('cues.approachPath must be a boolean'), undefined);
+      // THE TRAMPLED RING rides the clearing: a boolean, and only
+      // beside a `clearing` (a trampled nothing is a typo).
+      const trampled =
+        c.trampled === undefined
+          ? undefined
+          : typeof c.trampled === 'boolean'
+            ? clearing === undefined
+              ? (errors.push('cues.trampled needs cues.clearing (a trampled ring is a felled ring)'), undefined)
+              : c.trampled
+            : (errors.push('cues.trampled must be a boolean'), undefined);
       const scatter = vetScatter(c.scatter, 'cues.scatter');
       cues = {
         ...(clearing !== undefined ? { clearing } : {}),
+        ...(trampled !== undefined ? { trampled } : {}),
         ...(approachPath !== undefined ? { approachPath } : {}),
         ...(scatter.length > 0 ? { scatter } : {}),
       };
@@ -470,6 +507,24 @@ export function validatePoiDef(
           rivalDef = b.rivalDef;
         }
       }
+      // THE PRESSED SATELLITE, GATED (band 8): the march a rival needs.
+      let rivalNear: { defId: string; tiles: number } | undefined;
+      if (b.rivalNear !== undefined) {
+        const rn = b.rivalNear;
+        if (!isRecord(rn)) {
+          errors.push('boldness.rivalNear must be { defId, tiles }');
+        } else if (rivalDef === undefined) {
+          errors.push('boldness.rivalNear needs rivalDef (a march with no rival to deal)');
+        } else if (typeof rn.defId !== 'string' || !POI_ID_RE.test(rn.defId)) {
+          errors.push('boldness.rivalNear.defId must be a def id');
+        } else if (rn.defId === id) {
+          errors.push('boldness.rivalNear.defId must not name the def itself (a core is always near itself)');
+        } else if (!Number.isInteger(rn.tiles) || (rn.tiles as number) < 64 || (rn.tiles as number) > 512) {
+          errors.push('boldness.rivalNear.tiles must be an integer 64..512 (a march, not a step or a province)');
+        } else {
+          rivalNear = { defId: rn.defId, tiles: rn.tiles as number };
+        }
+      }
       if (garrison.length === 0) {
         errors.push('boldness needs a garrison — a site with no muster has nothing to embolden');
       }
@@ -479,6 +534,7 @@ export function validatePoiDef(
           ...(satellites !== undefined ? { satellites } : {}),
           ...(satelliteDef !== undefined ? { satelliteDef } : {}),
           ...(rivalDef !== undefined ? { rivalDef } : {}),
+          ...(rivalNear !== undefined ? { rivalNear } : {}),
         };
       }
     }

@@ -7546,6 +7546,107 @@ const PAINTERS: Record<string, IconPainter> = {
     dot(c, '#b8503f', -0.02, -0.1, 0.035);
     c.restore();
   },
+  // THE HUSK AND THE WARD LINE (contested lands band 8): the north's
+  // three tokens, each its own drawing. The wool is a hank tied at the
+  // neck, the thread a cut length with its knot and its chip, the chip
+  // a cold sliver; a player holding all three must tell them apart at
+  // 26px, and none of them may read as the fen waist's paper.
+  greywoolhank: (c, col) => {
+    // A hank of the order's grey: fleece folded double and tied at the
+    // neck with its own end, the strands running with the fold. It went
+    // on a gnoll's stake and it goes back on a post.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(0.08);
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.08, -0.4);
+    c.bezierCurveTo(-0.36, -0.3, -0.32, 0.3, -0.04, 0.38);
+    c.bezierCurveTo(0.06, 0.41, 0.1, 0.39, 0.12, 0.34);
+    c.bezierCurveTo(0.36, 0.26, 0.32, -0.3, 0.1, -0.4);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The twist: three strands bowed with the hank.
+    c.strokeStyle = shade(col, -26);
+    c.lineWidth = 0.024;
+    for (const x of [-0.14, -0.02, 0.1]) {
+      c.beginPath();
+      c.moveTo(x, -0.3);
+      c.quadraticCurveTo(x - 0.08, 0.0, x, 0.3);
+      c.stroke();
+    }
+    // The neck tie, lit on top.
+    bar(c, shade(col, -40), -0.2, -0.31, 0.4, 0.075);
+    bar(c, shade(col, 12), -0.2, -0.31, 0.4, 0.028);
+    // The one lit edge.
+    c.strokeStyle = shade(col, 30);
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.moveTo(-0.22, -0.16);
+    c.quadraticCurveTo(-0.28, 0.04, -0.16, 0.26);
+    c.stroke();
+    c.restore();
+  },
+  cutthread: (c, col) => {
+    // A cut length of the court's thread lying in a loose S: the knot
+    // at the low end, the moonglass chip at the high end, and nothing
+    // to tie. The outline is drawn first so the pale cord reads on any
+    // slot.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.lineCap = 'round';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.09;
+    c.beginPath();
+    c.moveTo(-0.34, 0.3);
+    c.bezierCurveTo(-0.1, 0.34, -0.3, -0.1, 0.0, -0.06);
+    c.bezierCurveTo(0.3, -0.02, 0.1, -0.4, 0.32, -0.34);
+    c.stroke();
+    c.strokeStyle = col;
+    c.lineWidth = 0.05;
+    c.stroke();
+    c.strokeStyle = shade(col, 34);
+    c.lineWidth = 0.018;
+    c.stroke();
+    // The knot: a tight loop at the low end.
+    c.fillStyle = shade(col, -18);
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.ellipse(-0.33, 0.29, 0.075, 0.06, 0.4, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    // The chip: a cold sliver at the high end.
+    poly(c, '#e4eefa', [[0.28, -0.42], [0.4, -0.34], [0.34, -0.22], [0.22, -0.3]]);
+    c.restore();
+  },
+  moonglasschip: (c, col) => {
+    // A chip off the fork's waystone: an angular sliver with one
+    // cleaved face left dark, because it draws no light and holds none.
+    c.save();
+    c.translate(0.5, 0.5);
+    c.rotate(-0.3);
+    poly(c, col, [[-0.06, -0.4], [0.24, -0.16], [0.18, 0.3], [-0.1, 0.38], [-0.26, 0.04]]);
+    // The cleaved face, darker.
+    c.fillStyle = shade(col, -28);
+    c.beginPath();
+    c.moveTo(-0.06, -0.4);
+    c.lineTo(0.24, -0.16);
+    c.lineTo(0.02, -0.02);
+    c.closePath();
+    c.fill();
+    // The one cold edge.
+    c.strokeStyle = shade(col, 24);
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.moveTo(-0.24, 0.02);
+    c.lineTo(-0.08, 0.34);
+    c.stroke();
+    c.restore();
+  },
   kelpstring: (c, col) => {
     // A string of fen kelp tied the way the shoal ties them: a loop of
     // three strands drawn through one knot, two blades trailing. It
@@ -8835,6 +8936,15 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   charter_pass: { icon: 'charterpass', color: '#d9c98a' },
   kelp_string: { icon: 'kelpstring', color: '#4f6b48' },
   green_corn: { icon: 'greencorn', color: '#9fb35a' },
+  // THE HUSK AND THE WARD LINE (contested lands band 8): the north's
+  // five faces. The pelt rides the pelt its kin ride and the cloak rides
+  // the cape its shipped cousin rides, each through its own colour; the
+  // three tokens are their own drawings (NO FACELESS SHIPS).
+  wolf_pelt: { icon: 'hide', color: '#8a8c96' },
+  grey_wool: { icon: 'greywoolhank', color: '#a9aab0' },
+  cut_thread: { icon: 'cutthread', color: '#c9d4e8' },
+  moonglass_chip: { icon: 'moonglasschip', color: '#dce8f4' },
+  drover_fleece_cloak: { icon: 'cape', color: '#9a8f7a' },
   hardened_leather: { icon: 'hide', color: '#7d5636' },
   linen_scrap: { icon: 'ragswatch', color: '#ddd6c2' },
   linen: { icon: 'linenbolt', color: '#e4dcc4' },

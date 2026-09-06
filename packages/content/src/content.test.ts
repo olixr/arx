@@ -42,6 +42,7 @@ import { buildUndercroft } from './maps/undercroft.js';
 import { buildLowhall } from './maps/lowhall.js';
 import { buildAshlamp } from './maps/ashlamp.js';
 import { buildFenside } from './maps/fenside.js';
+import { buildPicket, buildTurnoff, buildWardthread } from './maps/wardthread.js';
 import { AMBERFORD_RECT, EVENFALL_RECT, HARTFELL_RECT, KINGSDELF_RECT, SALTMERE_RECT, SILVERFALL_RECT } from './geography.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import { zonePlacementErrors } from './maps/validateZone.js';
@@ -67,6 +68,7 @@ import { BUILDABLES, BUILD_CATEGORIES, DYES, DYE_PIGMENTS, buildableForDetail, b
 import { GENERAL_STORE, SHOPS, TRAINER_DIRECTORY } from './shop.js';
 import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
 import { NPC_ACTORS } from './actors/registry.js';
+import { DIALOGUES } from './dialogues/registry.js';
 import {
   CROPS,
   CROP_BY_SEED,
@@ -881,11 +883,21 @@ test('recipe unlocks are honest: scrolls exist, shelves and troves cover them', 
     }
   }
   // Every shop an actor advertises exists; every trainer shop has a keeper.
+  // A keeper is a def's `shop`, or a bound tree's `shop` hook: band 8's
+  // copse_yard opens by hook alone (alder_bowwood, on grey_root_done) so
+  // the Wool Count's closure can outrank the shelf, which a def shop
+  // could not be made to do.
   const carried = new Set<string>();
   for (const actor of NPC_ACTORS.values()) {
     if (!actor.shop) continue;
     assert.ok(SHOPS.has(actor.shop), `actor '${actor.id}' advertises unknown shop '${actor.shop}'`);
     carried.add(actor.shop);
+  }
+  for (const d of DIALOGUES.values()) {
+    if (!(d.bindings ?? []).length) continue;
+    for (const n of d.nodes) {
+      for (const h of n.hooks ?? []) if (h.kind === 'shop') carried.add(h.shop);
+    }
   }
   for (const shop of SHOPS.values()) {
     if (shop.id === 'general_store') continue; // the counter tile serves it too
@@ -1190,6 +1202,12 @@ test('every authored zone passes the placement vet — no orphaned wall hangings
     // the same vet (a warded chest, one actor row, the bar's gap).
     ['ashlamp', buildAshlamp],
     ['fenside', buildFenside],
+    // THE CONTESTED LANDS (band 8): the three north patches take the
+    // same vet (three actor rows and one spawn row on the ward line;
+    // the picket's one board; the turn's two tiles).
+    ['wardthread', buildWardthread],
+    ['picket', buildPicket],
+    ['turnoff', buildTurnoff],
   ];
   for (const [name, build] of towns) {
     const errors = zonePlacementErrors(build()).filter((e) => e.includes('wall-hung'));

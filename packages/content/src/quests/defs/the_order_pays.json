@@ -1,0 +1,22 @@
+{
+  "id": "the_order_pays",
+  "name": "The Order Pays",
+  "giver": "waykeeper_torsten",
+  "turnIn": "waykeeper_hale",
+  "requires": { "quests": ["the_towers_debt"] },
+  "stages": [
+    {
+      "id": "carry",
+      "journal": "The order's grey to Hale at the First Lamp, fourteen miles and a ford. The Charter will count you suspect by the time you are back.",
+      "objectives": [{ "kind": "collect", "item": "grey_wool", "count": 1 }]
+    }
+  ],
+  "rewards": {
+    "coins": 40,
+    "standing": [
+      { "faction": "waykeepers", "delta": 10 },
+      { "faction": "fordgate", "delta": -15 }
+    ],
+    "flags": ["wool_returned"]
+  }
+}

@@ -80,7 +80,25 @@ test('the validator normalizes a good doc and names every fault in a bad one', (
   assert.ok(good.ok, JSON.stringify(good));
   if (good.ok) {
     assert.equal(good.def.cues?.clearing, 3);
+    assert.equal(good.def.cues?.trampled, undefined, 'absent stays absent: the camp\'s ring');
     assert.equal(good.def.garrison[0]!.patrol, true);
+  }
+  // THE TRAMPLED RING (band 8 fix pass): a boolean beside a clearing;
+  // a trampled nothing and a non-boolean are refused.
+  const trampled = validatePoiDef({
+    id: 'test_den', name: 'Test den', tiers: [1, 3], weight: 2, prefabs: ['poi_goblin_camp_ring'],
+    garrison: [{ npc: 'wolf', count: [1, 2], role: 'holdfast' }],
+    cues: { clearing: 2, trampled: true },
+  });
+  assert.ok(trampled.ok, JSON.stringify(trampled));
+  if (trampled.ok) assert.equal(trampled.def.cues?.trampled, true);
+  for (const cues of [{ trampled: true }, { clearing: 2, trampled: 'yes' }]) {
+    const r = validatePoiDef({
+      id: 'test_den', name: 'Test den', tiers: [1, 3], weight: 2, prefabs: ['poi_goblin_camp_ring'],
+      garrison: [{ npc: 'wolf', count: [1, 2], role: 'holdfast' }],
+      cues,
+    });
+    assert.ok(!r.ok && r.errors.join('\n').includes('cues.trampled'), `refused: ${JSON.stringify(cues)}`);
   }
 
   const bad = validatePoiDef({
@@ -617,10 +635,12 @@ test('CONTESTED LANDS: boldness.rivalDef validates its shape and the registry ho
 // --------------------------------------------------------------------
 
 // Band 7: `ashlamp` retired (the scar is an authored zone, R1) and
-// `first_road_bar` joined (Brede's bodies, R4).
+// `first_road_bar` joined (Brede's bodies, R4). Band 8: `veil_den`
+// joined (the pinned den's own weight-0 variant, 0.2 I).
 const CONTESTED_DEFS = [
   'fenside_lamp', 'first_road_bar', 'fork_waystation', 'third_stone_rest',
   'husk_of_the_line', 'felling_drum', 'legion_pressed', 'hobgoblin_legion', 'broken_barrow',
+  'veil_den',
 ] as const;
 
 test('THE CONTESTED LANDS: weight-0 variants on existing families only (ONE ATLAS LAW)', () => {
@@ -647,6 +667,7 @@ test('THE CONTESTED LANDS: weight-0 variants on existing families only (ONE ATLA
   assert.deepEqual(POI_DEFS.get('hobgoblin_legion')!.tiers, [3, 6]);
   assert.deepEqual(POI_DEFS.get('felling_drum')!.tiers, [1, 3]);
   assert.deepEqual(POI_DEFS.get('legion_pressed')!.tiers, [1, 3]);
+  assert.deepEqual(POI_DEFS.get('veil_den')!.tiers, [1, 4]);
   // BREDE'S BAR (band 7, R4 + §3.2): the honest smaller variant of
   // bandit_camp — weight 0, tiers 1..3, the reaver row minTier 1 so
   // Brede stands whatever the jitter rolls, crowned, ONE name, and
@@ -799,21 +820,32 @@ test('THE WILD TAKES SIDES: the validator carries tribe (it used to eat it)', ()
   const drum = POI_DEFS.get('felling_drum')!;
   assert.ok(drum.garrison.filter((g) => g.npc === 'worg').every((g) => g.tribe === 'goblin'));
   assert.ok(drum.garrison.some((g) => g.npc === 'goblin_firecaller'));
-  assert.ok(drum.garrison.some((g) => g.tribe === 'goblin_doorless' && g.hours?.from === 20 && g.hours?.to === 6 && g.count[1] === 2));
+  // THE DOORLESS AT THEIR POSTS (band 8 fix pass): two rows of one,
+  // each on a named `at` cell by the east snags where the pickets'
+  // round passes; the townward ring posts stood them twenty tiles
+  // west of the loop and the nightly fight never happened.
+  const doorless = drum.garrison.filter((g) => g.tribe === 'goblin_doorless');
+  assert.equal(doorless.length, 2);
+  assert.ok(doorless.every((g) => g.hours?.from === 20 && g.hours?.to === 6 && g.count[1] === 1 && g.role === 'sentry' && g.at !== undefined));
   const day = drum.garrison.filter((g) => !g.hours).reduce((n, g) => n + g.count[1], 0);
   assert.equal(day, 8, 'the Drum musters eight by day (the perf budget)');
 });
 
-test("THE RIVAL'S REACH: legion_pressed is registered and dealt by nobody in band 0", () => {
+test("THE RIVAL'S REACH: legion_pressed is registered and dealt by the ROLLED Drum within a march of the Legion (band 8, rulings G2)", () => {
   const drum = POI_DEFS.get('felling_drum')!;
-  assert.equal(drum.boldness?.satellites, true);
-  // A cell-forced site is in authoredCells: it never stages up and
-  // never deals a satellite (§1 law 2), so a rivalDef on it is dead.
+  // A pinned site is in authoredCells: it never stages up and never
+  // deals a satellite (§1 law 2), so a ladder on it was a lie the def
+  // told for two bands. Band 8 STRUCK the Felling's boldness block
+  // (blockout 0.2 J); no rivalDef, no rungs, no satellites.
+  assert.equal(drum.boldness, undefined, 'authored cells never stage: the Felling carries no ladder');
   // §13.2 deals the pressed camp from the ROLLED Drum (goblin_warcamp)
-  // — a world-wide change that waits on the owner's word (band 8).
-  assert.equal(drum.boldness?.rivalDef, undefined, 'no dead rivalDef on an authored cell');
-  assert.equal(POI_DEFS.get('goblin_warcamp')!.boldness?.rivalDef, undefined, 'the rolled Drum is unwired until the owner rules');
-  assert.equal(drum.boldness?.stages.length, 3, 'the Drum keeps the warcamp ladder');
+  // — the world-wide change the owner ruled YES in band 8 (G2), GATED:
+  // the rival stands only within 320 tiles of the authored Legion,
+  // and everywhere else a stage-2 warcamp deals its own reach.
+  const rolled = POI_DEFS.get('goblin_warcamp')!;
+  assert.equal(rolled.boldness?.rivalDef, 'legion_pressed', "the rolled Drum deals the Legion's pressed goblins");
+  assert.deepEqual(rolled.boldness?.rivalNear, { defId: 'hobgoblin_legion', tiles: 320 }, 'gated on the Legion within a march');
+  assert.equal(rolled.boldness?.satellites, true);
   const pressed = POI_DEFS.get('legion_pressed')!;
   assert.equal(pressed.weight, 0);
   assert.equal(pressed.family, 'goblin');
@@ -937,13 +969,26 @@ test('THE CONTESTED SKETCHES: the staged sites read as the plan drew them', () =
   // of the garrison (server composePoi's hand-placed spawns), so the
   // bar's sketch places none — five rows, five bodies, not eight.
   assert.equal(camp.spawns.length, 0, 'the sketch musters nobody; the def\'s five rows are the crew');
-  // The fork rest: one waystone, a thread of three, one grey stone.
+  // The fork rest (band 8 re-sketch, blockout §2.5): one waystone at
+  // the yard's road corner, the cairn pair at the trail mouth, one
+  // board, the rest's own lamp and fire and benches; NO thread and NO
+  // grey stone (the line is the `wardthread` zone's across the road,
+  // 0.2 C). The sketch is the shelf since the fix pass: 22x8 at cap
+  // 22, the mouth's last cell authored as Dirt (the apron column's
+  // hashed stump plugged it); the oak at the mouth falls to clearing 4.
   const fork = POI_PREFABS.get('poi_fork_waystation')!;
   assert.ok(fork, 'poi_fork_waystation missing');
   assert.equal(count(fork, Tile.ElvenWaystone), 1);
-  assert.equal(count(fork, Tile.WardThread), 3);
-  assert.equal(count(fork, Tile.GloomStone), 1);
-  assert.equal(count(fork, Tile.WaterShallow), 0, "'~' is the thread here");
+  assert.equal(count(fork, Tile.LampCairn), 2, 'the Waykeepers\' claim, two by law');
+  assert.equal(count(fork, Tile.HangingSign), 1, 'one board');
+  assert.equal(count(fork, Tile.WardThread), 0, 'the thread left the yard (it is the zone\'s)');
+  assert.equal(count(fork, Tile.GloomStone), 0, 'no grey stone in a Waykeeper yard');
+  assert.equal(count(fork, Tile.LampPost), 1);
+  assert.equal(count(fork, Tile.Campfire), 1);
+  assert.equal(count(fork, Tile.Bench), 2);
+  assert.equal(count(fork, Tile.WaterShallow), 0, "'~' is nothing here");
+  assert.deepEqual([fork.width, fork.height], [22, 8], 'the footprint band 0 measured');
+  assert.equal(POI_DEFS.get('fork_waystation')!.cues?.clearing, 4, 'the ring reaches the oak at the mouth (the fix pass)');
   // The Third Stone: a pit lamp on a stake and NEVER a lamp post, two
   // dark lamps on the approach, the cart, the ladder, the chest, the
   // shrine, two boards.
@@ -1036,11 +1081,13 @@ test('THE MARKS: every scatter name is a Tile, and each claim mark lands on its 
   // ground it is — the whole point of the kit.
   const MARK_HOME: Record<string, ReadonlySet<string>> = {
     LegionStandard: new Set(['hobgoblin_warcamp', 'hobgoblin_legion', 'legion_pressed']),
-    BoneTree: new Set(['wolfkin_den', 'wolfkin_greatden']),
+    BoneTree: new Set(['wolfkin_den', 'wolfkin_greatden', 'veil_den']),
     TallyStone: new Set(['kobold_digs']),
     RedRagStake: new Set(['road_toll', 'bandit_camp', 'company_tollhouse', 'first_road_bar']),
     LampCairn: new Set(['fork_waystation']),
-    WardThread: new Set(['fork_waystation']),
+    // Band 8: the ward thread is NO def's mark any more — the line is
+    // the `wardthread` ZONE's across the road (blockout 0.2 C).
+    WardThread: new Set<string>(),
     PitLampDark: new Set(['broken_barrow']),
     CharterPost: new Set<string>(),
     SkullTotem: new Set<string>(),
@@ -1068,7 +1115,9 @@ test('THE MARKS: every scatter name is a Tile, and each claim mark lands on its 
     ['kobold_digs', 'TallyStone'],
     ['company_tollhouse', 'RedRagStake'],
     ['fork_waystation', 'LampCairn'],
-    ['fork_waystation', 'WardThread'],
+    // Band 8: the veil den's bone tree stands at its mouth in its own
+    // sketch (blockout §2.11) — no cue.
+    ['veil_den', 'BoneTree'],
     ['broken_barrow', 'PitLampDark'],
     ['road_toll', 'RedRagStake'],
     // Brede's camp (band 7): the one red rag at its north-east corner
@@ -1363,13 +1412,13 @@ test('THE MARKS: influence plants each people\'s claim at the trailheads, and th
     const p = POI_PREFABS.get(id)!;
     assert.ok(p, `${id} missing from the shelf`);
     for (const m of MARKS) {
-      // The fork rest's SKETCH strings the Even Court's thread across
-      // its own waystone (authored heart art, plan §2's WardThread) and
-      // stands the Waykeepers' cairn pair at its west mouth (the road-
-      // faith law holds it: the def is weight 0 and every authored site
-      // is road-proven below) — that is the sketch's word, not the
-      // shelf's roll.
-      if (id === 'poi_fork_waystation' && (m === Tile.WardThread || m === Tile.LampCairn)) continue;
+      // The fork rest's SKETCH stands the Waykeepers' cairn pair at its
+      // trail mouth (the road-faith law holds it: the def is weight 0
+      // and every authored site is road-proven below) — that is the
+      // sketch's word, not the shelf's roll. The Even Court's thread
+      // LEFT the sketch in band 8 (the `wardthread` zone strings it
+      // across the road), so it falls through to the plain check.
+      if (id === 'poi_fork_waystation' && m === Tile.LampCairn) continue;
       // The crofts' SKETCH stands the shoal's own tide totem at the
       // weir on the south water edge (band 7, R8: the shoal moved their
       // weir onto the crofters' reach, and the totem is theirs) — the
@@ -1760,5 +1809,292 @@ test('BAND 7: one body per named slug — a garrison mouth is placed by no zone 
     for (const a of build().actorSpawns ?? []) {
       assert.ok(!mouths.has(a.actor), `'${a.actor}' is a garrison mouth of ${mouths.get(a.actor)} and stands in ${name}`);
     }
+  }
+});
+
+test('THE CLAMP CAP (band 8): four smolder heaps per prefab and per scatter row, the fifth refused', () => {
+  // A charcoal burner banks one clamp per crew and a felling banks a
+  // line of them; past four a sketch is a kiln field, and each clamp
+  // carries a light row and an exhale on the emit door — a scene law
+  // and a budget law in one number (validate.ts SMOLDER_HEAP_CAP).
+  const mk = (id: string, clamps: number): PrefabDef => {
+    const w = 9;
+    const h = 7;
+    const ground = new Uint16Array(w * h).fill(Tile.Dirt);
+    for (let i = 0; i < clamps; i++) ground[w + 1 + i] = Tile.SmolderHeap;
+    return { id, name: id, width: w, height: h, ground, detail: new Uint16Array(w * h), elev: new Int8Array(w * h), portals: [], spawns: [], actorSpawns: [] };
+  };
+  const lib = new Map<string, PrefabDef>([
+    ['poi_test_yard', mk('poi_test_yard', 4)],
+    ['poi_test_kiln_field', mk('poi_test_kiln_field', 5)],
+  ]);
+  const refs = { prefabIds: new Set(lib.keys()), prefabs: lib };
+  const base = { id: 'test_clamps', name: 'Test clamps', tiers: [1, 2] as [number, number], weight: 1, garrison: [] };
+  const yard = validatePoiDef({ ...base, prefabs: ['poi_test_yard'] }, refs);
+  assert.ok(yard.ok, `four clamps pass: ${!yard.ok ? yard.errors.join('; ') : ''}`);
+  const kiln = validatePoiDef({ ...base, prefabs: ['poi_test_kiln_field'] }, refs);
+  assert.ok(!kiln.ok, 'five clamps in one sketch must be refused');
+  if (!kiln.ok) assert.ok(kiln.errors.some((e) => /seats 5 smolder heaps; the cap is 4/.test(e)), kiln.errors.join('; '));
+  // The cone holds the same number.
+  const cone4 = validatePoiDef({ ...base, prefabs: ['poi_test_yard'], cues: { scatter: [{ tile: 'SmolderHeap', count: 4 }] } }, refs);
+  assert.ok(cone4.ok, `four on the cone pass: ${!cone4.ok ? cone4.errors.join('; ') : ''}`);
+  const cone5 = validatePoiDef({ ...base, prefabs: ['poi_test_yard'], cues: { scatter: [{ tile: 'SmolderHeap', count: 5 }] } }, refs);
+  assert.ok(!cone5.ok, 'five on the cone must be refused');
+  if (!cone5.ok) assert.ok(cone5.errors.some((e) => /at most 4 smolder heaps per site/.test(e)), cone5.errors.join('; '));
+  // Any other tile keeps the ordinary 1..8 range.
+  const stumps = validatePoiDef({ ...base, prefabs: ['poi_test_yard'], cues: { scatter: [{ tile: 'CharredStump', count: 6 }] } }, refs);
+  assert.ok(stumps.ok, 'the cap is the clamp\'s alone');
+  // Every shipped def already obeys it (the validator runs over the
+  // builtin library when no refs are given).
+  for (const def of AUTHORED_POI_DEFS.values()) {
+    for (const pid of def.prefabs) {
+      const p = POI_PREFABS.get(pid);
+      if (!p) continue;
+      let clamps = 0;
+      for (const t of p.ground) if (t === Tile.SmolderHeap) clamps++;
+      assert.ok(clamps <= 4, `${def.id}/${pid} seats ${clamps} clamps`);
+    }
+  }
+});
+
+// --------------------------------------------------------------------
+// BAND 8: THE HUSK AND THE WARD LINE (band8/blockout.md §2.5, §2.10,
+// §2.11, §2.12, §3.3; rulings G2, G3). The north's three pinned sites
+// author their own ground under their own prefab ids; the fork rest
+// faces the trail; the clamp is a tile.
+// --------------------------------------------------------------------
+
+test('BAND 8 THE HUSK: its own sketch carries every mark the scatter used to ask for, one board, a free chest, the seam kept', () => {
+  const count = (p: PrefabDef, t: Tile): number => p.ground.reduce((n, v) => n + (v === t ? 1 : 0), 0);
+  const husk = POI_PREFABS.get('poi_husk_of_the_line')!;
+  assert.ok(husk, 'poi_husk_of_the_line missing from the shelf');
+  assert.deepEqual([husk.width, husk.height], [16, 15], 'its own footprint (cap 16: no verge)');
+  // THE MARK STANDS WHERE IT IS AUTHORED (0.2 H).
+  assert.equal(count(husk, Tile.CookPot), 1, "the gnolls' pot on the order's hearth stone");
+  assert.equal(count(husk, Tile.Brazier), 1, 'the brazier on the flame clock');
+  assert.equal(count(husk, Tile.LampPostDark), 1, "the order's lamp standing dark at the door");
+  assert.equal(count(husk, Tile.ChestIron), 1, 'the chest, free');
+  assert.equal(count(husk, Tile.EmberBed), 1);
+  assert.equal(count(husk, Tile.AshHeap), 1);
+  assert.equal(count(husk, Tile.BoneMidden), 1);
+  assert.equal(count(husk, Tile.KnucklePit), 1);
+  assert.equal(count(husk, Tile.TrophyStake), 1, 'the grey wool on a gnoll stake');
+  assert.equal(count(husk, Tile.SignpostBurnt), 1, "the order's own board, burnt");
+  assert.equal(count(husk, Tile.Signpost), 1, 'ONE living board: STRUCK FROM THE ROLLS');
+  assert.equal(count(husk, Tile.HangingSign), 0, 'nothing here has a wall left to hang from');
+  assert.equal(count(husk, Tile.BeastBones), 3, "the kill-field's edge");
+  assert.ok(count(husk, Tile.RuinWallStone) >= 4, 'the breaches re-crested');
+  assert.ok(count(husk, Tile.WallStone) >= 6, 'the courses that stand');
+  assert.equal(count(husk, Tile.WaterShallow) + count(husk, Tile.WarDrum) + count(husk, Tile.Sawhorse), 0, 'no global reading leaked through the local dialect');
+  assert.equal(husk.spawns.length, 0, "the sketch musters nobody; the def's rows are the crews");
+  // The anchor cell is the south breach's east cell: open floor, where both crews muster.
+  const ax = Math.floor(husk.width / 2);
+  const ay = Math.floor(husk.height / 2);
+  assert.equal(husk.ground[ay * husk.width + ax], Tile.StoneFloor, 'the anchor stands in the south breach');
+  // Ash under the ember bed and the heap; bone litter on the south rows.
+  let ash = 0;
+  let bones = 0;
+  for (const d of husk.detail) {
+    if (d === Detail.Ash) ash++;
+    if (d === Detail.Bones) bones++;
+  }
+  assert.equal(ash, 2, 'ash under the ember bed and the heap');
+  assert.equal(bones, 6, 'six cells of bone litter on the kill-field rows');
+  // The shipped rolled husk stands untouched.
+  const rolled = POI_PREFABS.get('poi_watchtower_husk')!;
+  assert.equal(count(rolled, Tile.LampPostDark) + count(rolled, Tile.Signpost) + count(rolled, Tile.TrophyStake), 0, 'poi_watchtower_husk is every rolled husk\'s and was not edited');
+  // The def: the sketch, no cue scatter, one sign, no ward, no ladder, the seam as booted.
+  const def = POI_DEFS.get('husk_of_the_line')!;
+  assert.deepEqual(def.prefabs, ['poi_husk_of_the_line']);
+  assert.deepEqual(def.cues?.scatter ?? [], [], 'every mark moved into the sketch');
+  assert.equal(def.cues?.approachPath, true);
+  assert.deepEqual(def.signs?.map((s) => s.title), ['STRUCK FROM THE ROLLS'], 'THE HUSK retired from the pool');
+  assert.deepEqual(def.signs![0]!.lines, ['the first line kept this post', 'the order does not say so']);
+  assert.equal(def.chestWarded, undefined, 'loot fast or fight fair (0.2 G)');
+  assert.equal(def.boldness, undefined, 'authored cells never stage');
+  assert.equal(def.garrison.length, 7, 'the two crews as booted');
+  assert.ok(def.description!.includes('standing dark at the door'), 'the lamp stands dark, never torn down');
+  assert.ok(!/[-–—]/.test(def.description!), 'no dash in the description');
+});
+
+test('BAND 8 THE VEIL DEN: the pinned den\'s own weight-0 variant on den_bones re-dressed, Hollowhowl crowned at minTier 1, its own clearedFlag', () => {
+  const count = (p: PrefabDef, t: Tile): number => p.ground.reduce((n, v) => n + (v === t ? 1 : 0), 0);
+  const den = POI_PREFABS.get('poi_veil_den')!;
+  assert.ok(den, 'poi_veil_den missing from the shelf');
+  const bones = POI_PREFABS.get('poi_den_bones')!;
+  assert.deepEqual([den.width, den.height], [bones.width, bones.height], 'the same footprint as den_bones, so the cell scan finds the same ground');
+  assert.equal(count(den, Tile.BoneTree), 1, "the pack's bone tree at the mouth");
+  assert.equal(count(den, Tile.BeastNest), 1, "Hollowhowl's nest, kept");
+  assert.ok(count(den, Tile.BonePile) >= 3, 'the gnawed piles');
+  assert.equal(count(den, Tile.ChestIron), 1, "the traveller's chest");
+  assert.equal(count(den, Tile.TreeYew), 0, "'Y' is the bone tree here");
+  assert.equal(den.spawns.length, 2, 'the two wolf markers of den_bones');
+  assert.ok(den.spawns.every((s) => s.npc === 'wolf'));
+  // The tree stands at the mouth on the south fringe with a pile beside it.
+  const treeAt = den.ground.indexOf(Tile.BoneTree);
+  const tx = treeAt % den.width;
+  const ty = Math.floor(treeAt / den.width);
+  assert.ok(ty >= den.height - 6, 'the mouth is the south fringe');
+  assert.equal(den.ground[ty * den.width + tx - 1], Tile.BonePile, 'one gnawed pile moved beside the tree');
+  // den_bones itself is untouched.
+  assert.equal(count(bones, Tile.BoneTree), 0, 'the rolled den still flies its tree by cue');
+  // The def (0.2 I).
+  const def = POI_DEFS.get('veil_den')!;
+  assert.equal(def.weight, 0);
+  assert.equal(def.family, 'wolfkin');
+  assert.deepEqual(def.tiers, [1, 4]);
+  assert.deepEqual(def.prefabs, ['poi_veil_den']);
+  assert.equal(def.clearedFlag, 'poi_veil_den_broken', 'never the generic poi_den_broken: every den in the world stamps that one');
+  assert.equal(def.boldness, undefined, 'authored cells never stage');
+  assert.equal(def.actors, undefined);
+  assert.deepEqual(def.cues?.scatter ?? [], [], 'the tree is in the sketch');
+  assert.ok(!def.garrison.some((g) => g.npc === 'worg'), 'the worg row struck: a pack, not a warband');
+  assert.equal(def.cues?.trampled, true, 'THE TRAMPLED RING: a pack cuts nothing, so no stump rings the den (the fix pass)');
+  assert.equal(def.cues?.clearing, 2);
+  const dire = def.garrison.find((g) => g.npc === 'dire_wolf')!;
+  assert.ok(dire, 'the dire row is missing');
+  assert.deepEqual(dire.names, ['Hollowhowl'], 'ONE name: the drover wants it dead by name');
+  assert.equal(dire.crowned, true);
+  assert.equal(dire.minTier, 1, 'Hollowhowl stands whatever the jitter says (the Brede precedent)');
+  assert.equal(dire.levelOffset, 2);
+  assert.equal(dire.role, 'holdfast');
+  assert.deepEqual(dire.count, [1, 1]);
+  assert.equal(def.garrison.filter((g) => g.npc === 'wolf').length, 2, 'the pack: a holdfast row and a sentry row');
+  // The shipped wolfkin_den keeps its pool (the name is a pool name there and a body here).
+  assert.ok(POI_DEFS.get('wolfkin_den')!.garrison.some((g) => g.names?.includes('Hollowhowl')));
+  assert.ok(!/[-–—]/.test(def.description!), 'no dash in the description');
+});
+
+test('BAND 8 THE FELLING: its own sketch stands the stockade verbatim, four clamps, twelve stumps in rows, a snag ring; the ladder struck', () => {
+  const count = (p: PrefabDef, t: Tile): number => p.ground.reduce((n, v) => n + (v === t ? 1 : 0), 0);
+  const drum = POI_PREFABS.get('poi_felling_drum')!;
+  assert.ok(drum, 'poi_felling_drum missing from the shelf');
+  assert.deepEqual([drum.width, drum.height], [32, 29], 'its own footprint (cap 32: no verge), measured against the rock north of y -57');
+  assert.equal(count(drum, Tile.SmolderHeap), 4, 'THE FOUR CLAMPS (SmolderHeap 548, minted; never the EmberBed fallback since L7 landed, rulings G3)');
+  assert.equal(count(drum, Tile.EmberBed), 0, 'no swapped clamp');
+  assert.equal(count(drum, Tile.CharredStump), 12, 'the stump rows: twelve, in two rows of six');
+  assert.equal(count(drum, Tile.DeadTree), 6, 'the snag ring');
+  assert.equal(count(drum, Tile.Tree) + count(drum, Tile.ArchStone) + count(drum, Tile.RockCopper), 0, 'no global reading leaked through the local dialect');
+  // The stockade as shipped, verbatim inside it. The shelf's
+  // poi_goblin_stockade is the influence-EXPANDED prefab (its verge
+  // litters banners and skulls), so the comparison is ring to ring:
+  // the palisade box and everything inside it, cell for cell.
+  const stockade = POI_PREFABS.get('poi_goblin_stockade')!;
+  const box = (p: PrefabDef): { x0: number; y0: number; x1: number; y1: number } => {
+    let x0 = Infinity; let y0 = Infinity; let x1 = -1; let y1 = -1;
+    for (let i = 0; i < p.ground.length; i++) {
+      const t = p.ground[i];
+      if (t !== Tile.Palisade && t !== Tile.PalisadeGate) continue;
+      const x = i % p.width; const y = Math.floor(i / p.width);
+      x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+    }
+    return { x0, y0, x1, y1 };
+  };
+  const db = box(drum);
+  const sb = box(stockade);
+  assert.deepEqual([db.x1 - db.x0, db.y1 - db.y0], [sb.x1 - sb.x0, sb.y1 - sb.y0], 'the same palisade ring');
+  for (let dy = 0; dy <= sb.y1 - sb.y0; dy++) {
+    for (let dx = 0; dx <= sb.x1 - sb.x0; dx++) {
+      assert.equal(
+        drum.ground[(db.y0 + dy) * drum.width + db.x0 + dx],
+        stockade.ground[(sb.y0 + dy) * stockade.width + sb.x0 + dx],
+        `stockade cell (${dx},${dy}) inside the ring, verbatim`,
+      );
+    }
+  }
+  // The banner row at the south gate is the sketch's own (no verge to
+  // double it): two banners, the torch, the trophy stake.
+  assert.equal(count(drum, Tile.WarBanner), 2);
+  assert.equal(count(drum, Tile.StandingTorch), 1);
+  assert.equal(count(drum, Tile.TrophyStake), 1);
+  assert.equal(count(drum, Tile.SkullTotem), 0, 'no verge: the totem the rolled stockade flies from the shelf is not here');
+  assert.equal(drum.spawns.length, stockade.spawns.length, 'the same three marker bodies');
+  assert.deepEqual(
+    drum.spawns.map((s) => [s.npc, s.dx - db.x0, s.dy - db.y0]).sort(),
+    stockade.spawns.map((s) => [s.npc, s.dx - sb.x0, s.dy - sb.y0]).sort(),
+    'the markers stand on the same cells inside the ring',
+  );
+  // The clamps stand in a line off the south gate, each one row down and two west of the last.
+  const clamps: Array<[number, number]> = [];
+  for (let i = 0; i < drum.ground.length; i++) if (drum.ground[i] === Tile.SmolderHeap) clamps.push([i % drum.width, Math.floor(i / drum.width)]);
+  clamps.sort((a, b) => a[1] - b[1]);
+  for (let i = 1; i < clamps.length; i++) {
+    assert.equal(clamps[i]![1] - clamps[i - 1]![1], 1, 'a downwind line');
+    assert.equal(clamps[i - 1]![0] - clamps[i]![0], 2, 'stepping west');
+  }
+  assert.ok(clamps[0]![1] > 19, 'off the south gate, below the apron');
+  // The stump rows stand south of the clamps, and the furrows run north to them on the detail plane.
+  const stumpRows = new Set<number>();
+  for (let i = 0; i < drum.ground.length; i++) if (drum.ground[i] === Tile.CharredStump) stumpRows.add(Math.floor(i / drum.width));
+  assert.equal(stumpRows.size, 2, 'two rows');
+  assert.ok(Math.min(...stumpRows) > clamps[clamps.length - 1]![1], 'the rows lie south of the last clamp');
+  let ash = 0;
+  let furrows = 0;
+  for (let i = 0; i < drum.detail.length; i++) {
+    if (drum.detail[i] === Detail.Ash) { ash++; assert.equal(drum.ground[i], Tile.SmolderHeap, 'ash lies under a clamp'); }
+    if (drum.detail[i] === Detail.DragFurrow) { furrows++; assert.equal(drum.ground[i], Tile.Grass, 'a furrow runs over open ground'); }
+  }
+  assert.equal(ash, 4, 'ash under each clamp');
+  assert.ok(furrows >= 8, 'the drag furrows from the rows to the clamps');
+  // The anchor lands on the stockade's interior cell at the same
+  // offset inside the ring as the stockade's own anchor (8,6), so the
+  // Drum's crews muster inside the palisade exactly as they did.
+  const ax = Math.floor(drum.width / 2);
+  const ay = Math.floor(drum.height / 2);
+  const sax = Math.floor(stockade.width / 2);
+  const say = Math.floor(stockade.height / 2);
+  assert.deepEqual([ax - db.x0, ay - db.y0], [sax - sb.x0, say - sb.y0], 'the anchor at the same cell inside the ring');
+  assert.ok(!isSolidTile(drum.ground[ay * drum.width + ax]! as Tile), 'the anchor is open floor inside the palisade');
+  // The def (0.2 J): the sketch, six more stumps on the cone, the ladder STRUCK, the rows as booted.
+  const def = POI_DEFS.get('felling_drum')!;
+  assert.deepEqual(def.prefabs, ['poi_felling_drum']);
+  assert.deepEqual(def.cues?.scatter, [{ tile: 'CharredStump', count: 6 }]);
+  assert.equal(def.cues?.clearing, 4);
+  assert.equal(def.boldness, undefined, 'authored cells never stage; the def no longer lies');
+  assert.equal(def.garrison.length, 7, 'the rows as booted, the Doorless night row split into two posted bodies (the fix pass)');
+  // The Doorless posts stand on transparent sketch cells (the field's
+  // burnt grass) beside the east snags, inside the pickets' round.
+  for (const g of def.garrison.filter((r) => r.tribe === 'goblin_doorless')) {
+    const t = drum.ground[g.at!.dy * drum.width + g.at!.dx];
+    assert.equal(t, TILE_SKIP, `a Doorless post (${g.at!.dx},${g.at!.dy}) is the field's cell`);
+    const nearSnag = ([[24, 6], [27, 15]] as const).some(([sx, sy]) => Math.hypot(sx - g.at!.dx, sy - g.at!.dy) <= 1.5);
+    assert.ok(nearSnag, `a Doorless post (${g.at!.dx},${g.at!.dy}) stands beside a snag`);
+    assert.equal(drum.ground[6 * drum.width + 24], Tile.DeadTree);
+    assert.equal(drum.ground[15 * drum.width + 27], Tile.DeadTree);
+  }
+  assert.ok(def.description!.includes('Doorless hands cut snags'), 'the Doorless sentence');
+  assert.ok(!def.description!.includes('rope') && !def.description!.includes('dying wood'), "the licensed cut is Bodil's, not the Drum's");
+  assert.ok(!/[-–—]/.test(def.description!), 'no dash in the description');
+  // The rolled stockade is untouched.
+  assert.equal(count(stockade, Tile.SmolderHeap) + count(stockade, Tile.CharredStump) + count(stockade, Tile.DeadTree), 0);
+});
+
+test('BAND 8 THE FORK REST faces the trail: the at cells the cast stands on are open, and the mouth runs east to the edge', () => {
+  const fork = POI_PREFABS.get('poi_fork_waystation')!;
+  // The heart blits at column 0 of the 22-wide shelf prefab; the
+  // apron column lies east. Torsten's `at` (12,4) is the mouth; the
+  // sentinels' (14,1) and (16,2) flank the waystone at (15,1).
+  const at = (x: number, y: number): number => fork.ground[y * fork.width + x]!;
+  assert.equal(at(15, 1), Tile.ElvenWaystone, "the waystone at the yard's road corner");
+  assert.equal(at(17, 3), Tile.LampCairn);
+  assert.equal(at(17, 5), Tile.LampCairn);
+  assert.equal(at(15, 6), Tile.HangingSign, 'the one board at the mouth\'s south side');
+  for (const [x, y, who] of [[12, 4, 'Torsten'], [14, 1, 'sentinel A'], [16, 2, 'sentinel B']] as const) {
+    const t = at(x, y);
+    assert.ok(t !== TILE_SKIP && !isSolidTile(t as Tile), `${who}'s post (${x},${y}) is open ground (${Tile[t]})`);
+  }
+  // The mouth: Dirt from the ring's east gate (col 11) to the sketch's east edge (col 21) on row 4.
+  for (let x = 11; x <= 21; x++) assert.equal(at(x, 4), Tile.Dirt, `the mouth at col ${x}`);
+  assert.equal(at(0, 4), TILE_SKIP, 'no west mouth: the west fringe is closed forest');
+  assert.equal(at(1, 3), Tile.GrassTall);
+  // The waystone's neighbours are open so the sentinels can stand beside it.
+  assert.ok(!isSolidTile(at(14, 1) as Tile) && !isSolidTile(at(16, 1) as Tile));
+});
+
+test('BAND 8 THE CLAMP IS A TILE: the Felling seats exactly the cap and no other shipped sketch seats one', () => {
+  for (const [id, p] of POI_PREFABS) {
+    let clamps = 0;
+    for (const t of p.ground) if (t === Tile.SmolderHeap) clamps++;
+    assert.equal(clamps, id === 'poi_felling_drum' ? 4 : 0, `${id} seats ${clamps} clamps`);
   }
 });

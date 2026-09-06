@@ -1,0 +1,32 @@
+{
+  "id": "the_grey_root",
+  "name": "The Grey Root",
+  "giver": "forester_alder",
+  "turnIn": "forester_alder",
+  "requires": { "quests": ["the_first_road"] },
+  "stages": [
+    {
+      "id": "licence",
+      "journal": "Bodil's cut is at the wood's west skirt across the road from the fork rest, under an ochre post with a brass plate. The licence is hers to the thread. Speak to her before you swing.",
+      "objectives": [{ "kind": "talk", "actor": "charter_bodil" }],
+      "mark": { "x": -158, "y": -186 }
+    },
+    {
+      "id": "cord",
+      "journal": "Twelve of cord and two of yew off the wood inside the thread, where it is still standing. Crossing the thread is free. Look up before you swing. Look down too.",
+      "objectives": [
+        { "kind": "collect", "item": "log", "count": 12 },
+        { "kind": "collect", "item": "yew_log", "count": 2 }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 80,
+    "xp": [{ "skill": "woodcutting", "amount": 300 }],
+    "standing": [
+      { "faction": "fordgate", "delta": 15 },
+      { "faction": "evencourt", "delta": -20 }
+    ],
+    "flags": ["ward_line_taken", "grey_root_done"]
+  }
+}

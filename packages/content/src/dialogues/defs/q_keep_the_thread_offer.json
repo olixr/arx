@@ -1,0 +1,40 @@
+{
+  "id": "q_keep_the_thread_offer",
+  "start": "hub",
+  "requires": ["quest:keep_the_thread:available"],
+  "forbids": [
+    "quest:the_grey_root:active",
+    "quest:the_grey_root:done",
+    "quest:the_full_tally:active",
+    "quest:the_full_tally:done",
+    "ward_thread_cut",
+    "keep_thread_declined"
+  ],
+  "bindings": [{ "kind": "actor", "target": "even_sentinel", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_keep_the_thread_offer__hub",
+      "text": "The thread is cut in four places and we gathered the lengths where they fell. The hand that strings them back must be one the wood has not seen cut. Carry them past the three grey stones, the one by the road, the one at the corner, and the one where the wood gives out, and bring them back to the stone. The Charter will bill the licence they stop for it and the stake woman will not sell you anything. That is the cost and it is a number.",
+      "hooks": [{ "kind": "quest_offer", "quest": "keep_the_thread" }],
+      "choices": [
+        { "text": "I will carry them.", "next": "sworn", "set": ["keep_thread_sworn"] },
+        { "text": "Not for the court.", "next": "declined", "set": ["keep_thread_declined"] }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_keep_the_thread_offer__sworn",
+      "text": "Four. Do not cut. Step over it where you must. The wolves will pass you on the road side and they will not stop.",
+      "hooks": [
+        { "kind": "give", "item": "cut_thread", "qty": 4 },
+        { "kind": "quest_accept", "quest": "keep_the_thread" }
+      ]
+    },
+    {
+      "id": "declined",
+      "voice": "q_keep_the_thread_offer__declined",
+      "text": "Then step over it."
+    }
+  ]
+}

@@ -397,6 +397,22 @@ export const HEARTWOOD_RECT: ZoneRect = { x: -1232, y: -534, w: 96, h: 64 };
  */
 export const ASHLAMP_RECT: ZoneRect = { x: 48, y: 92, w: 23, h: 19 };
 export const FENSIDE_RECT: ZoneRect = { x: 118, y: 76, w: 24, h: 25 };
+/**
+ * THE CONTESTED LANDS, band 8 (band8/blockout.md §2.3, §2.6, §2.8;
+ * maps/wardthread/pins.ts says why each rect is the size it is): the
+ * three north patches on worldgen. THE WARD LINE north of the High
+ * Road at the fork (the thread, the grey points, Bodil's cut; grown
+ * south to the road's shoulder and east to the tarn's rim so the fell
+ * pockets reach the trunks that painted over the head stone), THE
+ * PICKET on the hunters' trail's east shoulder (grown two rows south
+ * for the same law), and THE TURN on the road east (as drawn). No
+ * apron, no core, no hug; the pad law keeps the fork rest's footprint
+ * AUTHORED_ZONE_PAD rows south of the ward line's rect at its pin
+ * (six; geography.test pins it) and nine at the booted anchor.
+ */
+export const WARDTHREAD_RECT: ZoneRect = { x: -164, y: -203, w: 37, h: 25 };
+export const PICKET_RECT: ZoneRect = { x: -131, y: -140, w: 24, h: 26 };
+export const TURNOFF_RECT: ZoneRect = { x: -80, y: -182, w: 14, h: 16 };
 
 /**
  * THE PAD LAW, mirrored from the server's siting scan (server
@@ -817,13 +833,35 @@ const AUTHORED_PLAN: GeographyDef = {
     // the old folk's — Torsten and two sentinels stand at it.
     { id: 'fork_rest', defId: 'fork_waystation', x: -146, y: -168 },
     // THE LAST LAMP: the final haven before Silverfall's gate country.
+    // CANON (band 8, owed F11 / D10): this pin is REFUSED at seed
+    // 24601 (the scan finds no ground for it; the boot log and THE
+    // GOLDEN ANCHORS say NONE), so west of the fork rest no Waykeeper
+    // lamp stands until Silverfall's country, and the fork's haven
+    // count assumes no Last Lamp within 128. "The lamps stop here" on
+    // the fork's board is literally true on this ground. No re-site
+    // here: the separate audit's, never a band lane's.
     { id: 'last_lamp', defId: 'last_lamp', x: -264, y: -202 },
     // The named dens of the wild — the veil and the spine have ALWAYS
     // held these; the cell-forced scan finds them honest ground.
     // (The den moved one cell east into the veil proper when the
     // Spinewall's south shoulder re-seated onto its old cell — a
     // wolfkin den wants deep wood, not crag.)
-    { id: 'veil_den', defId: 'wolfkin_den', cell: [-2, -1] },
+    // THE VEIL DEN (band 8, blockout 0.2 I; plan §3.2 A): the same
+    // cell row, now on the weight-0 variant `veil_den` (wolfkin,
+    // tiers [1,4], Hollowhowl crowned on the dire row at minTier 1,
+    // clearedFlag `poi_veil_den_broken` so the Wool Count reads THIS
+    // den and no other) on its own sketch `poi_veil_den` (L3's). On a
+    // live ledger the row's ARCHETYPE changes (wolfkin_den to
+    // veil_den), so the seeder retires the cell silently and prints
+    // only the fresh "stands at" line (no `re-seeding` line: that word
+    // is the same-archetype paths', the husk's and the Felling's); the
+    // den's epoch-0 anchor (-186,-99) holds under the same 15x9 because
+    // the seeder reads an authored cell at epoch 0 on every box (THE
+    // AUTHORED CELL IS GEOLOGIC TOO, gameServer.seedAuthoredSites; the
+    // integrator's boots read (-201,-100) and (-178,-99) before that
+    // law). The pack's ground at the veil's west edge, 68 tiles west of
+    // the trail, no path.
+    { id: 'veil_den', defId: 'veil_den', cell: [-2, -1], prefabId: 'poi_veil_den' },
     { id: 'spine_digs', defId: 'kobold_digs', cell: [-5, -4] },
     // BREDE'S BAR (contested lands, band 7; rulings R4): the Red
     // Company's crew on the First Road's west approach to the ford —
@@ -950,6 +988,26 @@ const AUTHORED_PLAN: GeographyDef = {
     // cairn: 54 tiles of worldgen forest that carry nothing authored,
     // by the curation law (composed emptiness, band 7). The Sett is
     // reserved (below).
+    // THE NORTH'S EMPTINESS (band 8, blockout §2.14, the listed
+    // assets of §13.1 law 7): THE CLIMB on the hunters' trail from
+    // (-110,-80) to (-118,-112), 35 tiles of closed forest either
+    // side of the scuff with no prop, no board, no body; THE DARK
+    // THIRD from the picket's rag to the fork rest's mouth, 40 tiles
+    // of core forest and the scuff and nothing (worldgen's own
+    // old-wood snags may stand there and that is the wood's
+    // business; nothing authored claims one); THE GLADE COUNTRY west
+    // and north of the dying stand (x -214..-157, y -260..-190; the
+    // plan's old glade pin at (-176,-190) is in it); THE UNLAMPED
+    // WEST, the High Road west of x -164, where the old folk's
+    // country begins at the road's shoulder's end and no lamp stands
+    // until Silverfall's (the Last Lamp's canon line, above); THE
+    // ROAD EAST from the junction to the crossing and the whole mere
+    // (y -190..-185, x -120..-57), where nothing marks the way to
+    // the husk but the fallen cairn at the turn and Torsten's
+    // journal; THE PENINSULA between the crossing and the husk's
+    // apron; THE FAR NORTH beyond the husk to the Legion, 90 tiles of
+    // open cold; cell [-1,-1] beyond the picket's rect; [-3,-1] and
+    // [-3,-2]. Nothing stands in any of them.
     // ---------------------------------------------------------------
     // THE HUSK OF THE LINE — moved OFF the trail's end into the dark
     // between the fork and the longmeadow (109 from the fork, 128
@@ -1084,6 +1142,17 @@ const AUTHORED_PLAN: GeographyDef = {
     // (AUTHORED_ZONE_PAD) keeps every pinned footprint clear of them.
     { id: 'ashlamp', name: 'The Ashlamp', ...ASHLAMP_RECT },
     { id: 'fenside', name: 'The Fen Waist', ...FENSIDE_RECT },
+    // THE CONTESTED LANDS, band 8 (rulings G1-G6; blockout 0.2 V): the
+    // three north patches, one module (maps/wardthread/). Patches on
+    // worldgen like the two above: no apron, no core, no spawn, no
+    // haven. The ward line's rect is declared ONE SCENE with the
+    // fork rest across the road (the band 7 bar-and-crofts idiom:
+    // twenty tiles apart, two eyefuls, one sentence); the picket is
+    // trail dressing 61 tiles from the hem, inside the hundred a camp
+    // may not stand in and a dressing may; the turn is two tiles.
+    { id: 'wardthread', name: 'The Ward Line', ...WARDTHREAD_RECT },
+    { id: 'picket', name: 'The Picket', ...PICKET_RECT },
+    { id: 'turnoff', name: 'The Turn', ...TURNOFF_RECT },
   ],
   // THE LIVING GROUND's first authored stroke (band 7, owed E2): the
   // burn under the Ashlamp. Centre the shell's heart (57,95), reach 11
@@ -1100,6 +1169,45 @@ const AUTHORED_PLAN: GeographyDef = {
       axis: 'burn',
       shape: { kind: 'circle', x: 57, y: 95, r: 11 },
       amp: 1,
+      soft: 0.6,
+      grain: 0.3,
+      mode: 'max',
+    },
+    // THE DYING STAND (band 8, blockout §2.6 G1, owed F6): the blight
+    // under the ward line, a capsule over the stand's heart north of
+    // the High Road at the fork, from (-146,-188) to (-140,-196) with
+    // reach 7 ragged by the grain to about six to eight, soft over
+    // half the hem, at amp 0.7 — TAKEN at the thread, TOUCHED at the
+    // hem, never HELD: a stand that is dying, not dead. The reach box
+    // (x about -154..-132, y about -204..-180) stays clear of the
+    // road's bed (y -177 at x -143) and 116 tiles north of Dawnmead's
+    // rect; it crosses the chunk border at y -192, where the
+    // fringe-seam probe reads it. Skin only (no `bones`): worldgen is
+    // byte-identical; the authored rings and the root say the rest.
+    {
+      id: 'wardthread_blight',
+      axis: 'blight',
+      shape: { kind: 'capsule', x0: -146, y0: -188, x1: -140, y1: -196, r: 7 },
+      amp: 0.7,
+      soft: 0.5,
+      grain: 0.35,
+      mode: 'max',
+    },
+    // THE FELLING'S BURN (band 8, blockout §2.12, owed F6): the stand
+    // the Drum burnt, a circle on its pin (80,-42) with reach 18
+    // ragged to about sixteen to twenty, soft over most of the hem, at
+    // amp 0.8. The reach box (x about 60..100, y about -62..-22) ends
+    // 29 tiles east of Dawnmead's rect (x ends at 31) and crosses the
+    // chunk borders at x 64, x 96 and y -32, the three seams the
+    // probe reads; the y -64 border lies two tiles past the ragged
+    // reach. The Ashlamp's burn at (57,95) is 130 south.
+    // Skin only; the clamps, the stump rows and the snag ring are the
+    // Felling's own sketch (L3).
+    {
+      id: 'felling_burn',
+      axis: 'burn',
+      shape: { kind: 'circle', x: 80, y: -42, r: 18 },
+      amp: 0.8,
       soft: 0.6,
       grain: 0.3,
       mode: 'max',

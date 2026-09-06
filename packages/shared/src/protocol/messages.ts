@@ -2286,11 +2286,13 @@ export interface QuestHintWire {
 
 /** One objective row: the id (in its namespace) keys the client icon. */
 export interface QuestObjectiveWire {
-  kind: 'kill' | 'collect' | 'discover' | 'talk';
+  kind: 'kill' | 'collect' | 'discover' | 'talk' | 'flag';
   item?: string;
   npc?: string;
   actor?: string;
   place?: string;
+  /** THE FLAG OBJECTIVE: the held flag; `label` is its authored name. */
+  flag?: string;
   label: string;
   have: number;
   need: number;

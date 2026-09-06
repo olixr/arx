@@ -1,11 +1,11 @@
 {
   "id": "husk_of_the_line",
   "name": "The husk of the line",
-  "description": "The Waykeepers' first tower on the hunters' trail, struck from the rolls and left. By day a gnoll warband squats in it: the order's own lamp torn down across the door and used for a cook-pot, a bone midden on the swept apron, a Waykeeper's grey wool on a trophy stake. From half past eight the line that died holding it stands its watch again, and while it stands the gnolls do not.",
+  "description": "The Waykeepers' first tower on the hunters' trail, struck from the rolls and left. By day a gnoll warband squats in it: the order's own lamp standing dark at the door and the gnolls' pot on its hearth stone, a bone midden on the swept apron, a Waykeeper's grey wool on a trophy stake. From half past eight the line that died holding it stands its watch again, and while it stands the gnolls do not.",
   "family": "dead",
   "tiers": [2, 4],
   "weight": 0,
-  "prefabs": ["poi_watchtower_husk"],
+  "prefabs": ["poi_husk_of_the_line"],
   "garrison": [
     { "npc": "gnoll", "count": [4, 4], "role": "holdfast", "tribe": "gnoll", "hours": { "from": 5.5, "to": 20.5 } },
     { "npc": "gnoll", "count": [1, 1], "role": "sentry", "patrol": true, "tribe": "gnoll", "hours": { "from": 5.5, "to": 20.5 } },
@@ -26,7 +26,7 @@
       "npc": "skeleton_champion",
       "count": [1, 1],
       "role": "holdfast",
-      "levelOffset": 2,
+      "levelOffset": 3,
       "names": ["the Struck Sergeant"],
       "crowned": true,
       "tribe": "dead",
@@ -38,15 +38,9 @@
   "cues": {
     "clearing": 2,
     "approachPath": true,
-    "scatter": [
-      { "tile": "BoneMidden", "count": 2 },
-      { "tile": "KnucklePit", "count": 1 },
-      { "tile": "TrophyStake", "count": 1 },
-      { "tile": "LampPostDark", "count": 1 }
-    ]
+    "scatter": []
   },
   "signs": [
-    { "title": "STRUCK FROM THE ROLLS", "lines": ["the first line kept this post", "the order does not say so"] },
-    { "title": "THE HUSK", "lines": ["a cook-pot by day where the lamp was", "after dark the line stands its watch"] }
+    { "title": "STRUCK FROM THE ROLLS", "lines": ["the first line kept this post", "the order does not say so"] }
   ]
 }

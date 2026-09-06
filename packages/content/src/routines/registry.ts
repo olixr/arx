@@ -192,6 +192,22 @@ import ingramDike from './defs/ingram_dike.json';
 import crofterBoards from './defs/crofter_boards.json';
 import crofterStilts from './defs/crofter_stilts.json';
 import droverHeld from './defs/drover_held.json';
+// THE HUSK AND THE WARD LINE (band 8 THE CAST, blockout §4): the
+// north's three lives. Torsten walks down the trail's bed to his slate
+// before six and chalks the count (the picket is his; nobody is posted
+// there), wanders the mouth at noon and stands the way a lamp post
+// stands the rest of the clock; Bodil works the sawhorse from six to
+// six, sits on the ground by the fire at noon, counts the rope at
+// half past five and sleeps on the bed under the canvas; the fellers
+// work the face, drift to the fire after her, and lie on the ground
+// by the camp from half past eight. THE POST IS THE ORIGIN: every
+// offset is from the placement (the fork's `at` cell for Torsten,
+// wardthread/pins.ts POSTS for the crew), and every leg lies inside
+// a zone rect, on the trail's carve, or inside the fork's sketch.
+import torstenFork from './defs/torsten_fork.json';
+import bodilCut from './defs/bodil_cut.json';
+import fellerCut from './defs/feller_cut.json';
+import fellerTrunkCut from './defs/feller_trunk_cut.json';
 
 /**
  * Every authored routine JSON, registered here. A def that isn't
@@ -480,6 +496,10 @@ const SOURCES: readonly unknown[] = [
   crofterBoards,
   crofterStilts,
   droverHeld,
+  torstenFork,
+  bodilCut,
+  fellerCut,
+  fellerTrunkCut,
   hartSpeaker,
   kdDelfmaster,
   kdFactor,

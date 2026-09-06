@@ -220,6 +220,22 @@ const defs: ShopDef[] = [
     ],
   },
   { id: 'waystation_supplies', name: "The Wayfarer's Pack", stock: WAYSTATION_SUPPLIES },
+  // THE GREY ROOT (contested lands band 8, plan §3.3): Alder's yard, the
+  // bow wood shelf that has sold nobody. No `shop` rides forester_alder's
+  // def: the hook in alder_bowwood alone opens it, on grey_root_done, so
+  // the yard is a thing the axe earns, and the Wool Count's closure
+  // (alder_trades_closed, one priority above) outranks it for a
+  // character who walked both forks. Priced at the ledger's own values
+  // plus the yard's handling, the way the general store prices boards.
+  {
+    id: 'copse_yard',
+    name: 'The Copse yard',
+    stock: [
+      { item: 'yew_log', price: 60 },
+      { item: 'log', price: 6 },
+      { item: 'board', price: 4 },
+    ],
+  },
   // THE ROAD'S FORTUNE (living frontier, phase 5): the peddler carts.
   // Each carries a thing or two town never sells — drop-unlock recipe
   // scrolls (found knowledge, sold only on the road) and keys under

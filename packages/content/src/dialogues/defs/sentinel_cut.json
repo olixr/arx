@@ -1,0 +1,14 @@
+{
+  "id": "sentinel_cut",
+  "start": "line",
+  "once": true,
+  "requires": ["ward_thread_cut"],
+  "bindings": [{ "kind": "actor", "target": "even_sentinel", "priority": 9 }],
+  "nodes": [
+    {
+      "id": "line",
+      "voice": "sentinel_cut__line",
+      "text": "Five places now. The fifth is yours."
+    }
+  ]
+}

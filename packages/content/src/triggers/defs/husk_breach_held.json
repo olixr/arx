@@ -1,0 +1,15 @@
+{
+  "id": "husk_breach_held",
+  "label": "The husk's apron held through the changeover",
+  "area": { "kind": "rect", "x": -76, "y": -248, "w": 24, "h": 18 },
+  "on": "exit",
+  "event": "husk_breach_held",
+  "conditions": [
+    { "when": "timeBetween", "from": 20.5, "to": 5.5 },
+    { "when": "flag", "flag": "towers_debt_sworn" },
+    { "when": "notFlag", "flag": "husk_held" }
+  ],
+  "minInsideSec": 75,
+  "once": true,
+  "setFlag": "husk_held"
+}

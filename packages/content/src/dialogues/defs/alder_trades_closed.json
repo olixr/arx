@@ -1,0 +1,62 @@
+{
+  "id": "alder_trades_closed",
+  "start": "hub",
+  "requires": ["wool_count_taken"],
+  "bindings": [{ "kind": "actor", "target": "forester_alder", "priority": 14 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "alder_trades_closed__hub",
+      "text": "The wolves were the stand's business and you settled it for a fleece. The yard sells you nothing, and it would not have sold you much. Bring me an axe question and I will still answer it.",
+      "choices": [
+        { "text": "Which trees can I take?", "next": "marked_cold" },
+        { "text": "The big oak.", "next": "oak_cold" },
+        { "text": "Just walking.", "next": "pass_cold" },
+        {
+          "text": "The stand at the fork, then.",
+          "next": "reoffer_root",
+          "requires": ["quest:the_grey_root:available"],
+          "forbids": [
+            "quest:keep_the_thread:active",
+            "quest:keep_the_thread:done",
+            "quest:the_stone_at_dusk:active",
+            "quest:the_stone_at_dusk:done"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "marked_cold",
+      "voice": "alder_trades_closed__marked_cold",
+      "text": "Blaze cut low means take it. No blaze means it is still working. That has not changed and it will not change for you.",
+      "next": "hub"
+    },
+    {
+      "id": "oak_cold",
+      "voice": "alder_trades_closed__oak_cold",
+      "text": "It went in the year I was born. It is still going in. So am I.",
+      "next": "hub"
+    },
+    {
+      "id": "pass_cold",
+      "voice": "alder_trades_closed__pass_cold",
+      "text": "Look up before you swing."
+    },
+    {
+      "id": "reoffer_root",
+      "voice": "alder_trades_closed__reoffer_root",
+      "text": "The stand across the road at the fork is dying from the roots, and it will heat this village if somebody cuts it before frost. Bodil has the licence to the thread. The wood inside it, twelve of cord and two of yew, here. The old folk will count it against you, and so will I, and the yard stays shut either way.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_grey_root" }],
+      "choices": [
+        { "text": "I will.", "next": "resworn_root", "set": ["grey_root_sworn"] },
+        { "text": "Still no." }
+      ]
+    },
+    {
+      "id": "resworn_root",
+      "voice": "alder_trades_closed__resworn_root",
+      "text": "Speak to Bodil at the cut. Look up before you swing.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_grey_root" }]
+    }
+  ]
+}

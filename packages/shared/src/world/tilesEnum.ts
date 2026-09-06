@@ -1016,7 +1016,8 @@ export enum Tile {
   /** A weathered stone mourner, hooded and bowed over folded hands. Rain has worn tracks down the cowl. */
   MournerStatue = 504,
   // THE SCARRED LAND — the contested-lands prop kit (ids 505..545,
-  // contiguous, family order; docs/contested-lands-plan.md §6.1).
+  // contiguous, family order, plus the band 8 clamp at 548 past the
+  // two reserved ground ids; docs/contested-lands-plan.md §6.1).
   // The fifth shelf voice, LEFT BURNING: every piece is a thing a
   // smith, mason, carpenter, or a fire made and then left. TILE IS
   // THE STATE — every posture is its own id; nothing rides metadata.
@@ -1110,6 +1111,14 @@ export enum Tile {
   SluiceGate = 544,
   /** The sluice gate strung with kelp-cord — the paid variant. */
   SluiceGateStrung = 545,
+  // THE SCARRED LAND — band 8's mint (rulings G3). 546 and 547 stay
+  // RESERVED for AshGround and GrassBlighted, the two true ground
+  // tiles of THE LIVING GROUND (plan §12.5), so the clamp lands past
+  // them at 548; the Dolmen's four (plan §11.3) follow at 549+. It is
+  // family A (the cold hearth) by voice: a fire somebody made and
+  // then banked under turf. isScarredTile names it beside the band.
+  /** A charcoal clamp: a turfed mound of cordwood over a slow fire, vent holes cut in the turf, the coals showing at the vents from dusk. The north's charcoal is made here. */
+  SmolderHeap = 548,
 }
 
 export enum Detail {

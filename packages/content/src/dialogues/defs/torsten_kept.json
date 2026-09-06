@@ -1,0 +1,48 @@
+{
+  "id": "torsten_kept",
+  "start": "hub",
+  "requires": ["first_line_kept"],
+  "bindings": [{ "kind": "actor", "target": "waykeeper_torsten", "priority": 9 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "torsten_kept__hub",
+      "text": "You left the room dry. The line stands in it. I have nothing else about it.",
+      "choices": [
+        { "text": "The count.", "next": "count_kept" },
+        { "text": "Keep the watch.", "next": "bye_kept" },
+        {
+          "text": "The wool to Hale, then.",
+          "next": "reoffer_wool",
+          "requires": ["order_pays_declined", "quest:the_order_pays:available"]
+        }
+      ]
+    },
+    {
+      "id": "count_kept",
+      "voice": "torsten_kept__count_kept",
+      "text": "Gnolls eleven. Wolves seven. Ours three. Read it off the slate. I am not saying it to you."
+    },
+    {
+      "id": "bye_kept",
+      "voice": "torsten_kept__bye_kept",
+      "text": "Go on down."
+    },
+    {
+      "id": "reoffer_wool",
+      "voice": "torsten_kept__reoffer_wool",
+      "text": "The wool to Hale at the First Lamp, fourteen miles and a ford. The post is still bare.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_order_pays" }],
+      "choices": [
+        { "text": "I will.", "next": "resworn_wool" },
+        { "text": "Still no." }
+      ]
+    },
+    {
+      "id": "resworn_wool",
+      "voice": "torsten_kept__resworn_wool",
+      "text": "Fourteen miles. Do not lose it in the water.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_order_pays" }]
+    }
+  ]
+}

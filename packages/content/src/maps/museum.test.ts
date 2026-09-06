@@ -57,6 +57,10 @@ test('coverage is total: every TILE_DEFS id is shown or excluded on purpose', ()
     assert.ok(exhibited.has(t), `tile ${t} (${TILE_DEFS[t]!.name}) has no museum bay`);
     assert.ok(onFloor.has(t), `tile ${t} (${TILE_DEFS[t]!.name}) never landed on the floor`);
   }
+  // Band 8 THE CLAMP: the smolder heap stands in the Scarred Land
+  // wing on purpose (a judged row), never as a stray that walked in.
+  assert.ok(!museumStrayTiles().includes(Tile.SmolderHeap), 'the clamp is a stray, not a wing row');
+  assert.ok(museumExhibitedTiles().has(Tile.SmolderHeap), 'the clamp has its wing row');
 });
 
 test('every exhibit plinth stands, reads, and can be reached', () => {

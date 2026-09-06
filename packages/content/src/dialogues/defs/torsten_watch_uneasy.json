@@ -1,0 +1,13 @@
+{
+  "id": "torsten_watch_uneasy",
+  "start": "hub",
+  "requires": ["world:threat_near"],
+  "bindings": [{ "kind": "actor", "target": "waykeeper_torsten", "priority": 4 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "torsten_watch_uneasy__hub",
+      "text": "Something is bold on my count tonight. Walk the scuff and do not stop at the mounds."
+    }
+  ]
+}

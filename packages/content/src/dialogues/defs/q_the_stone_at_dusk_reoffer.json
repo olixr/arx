@@ -1,0 +1,31 @@
+{
+  "id": "q_the_stone_at_dusk_reoffer",
+  "start": "hub",
+  "requires": ["stone_dusk_declined", "quest:the_stone_at_dusk:available"],
+  "forbids": [
+    "quest:the_grey_root:active",
+    "quest:the_grey_root:done",
+    "quest:the_full_tally:active",
+    "quest:the_full_tally:done",
+    "ward_thread_cut"
+  ],
+  "bindings": [{ "kind": "actor", "target": "even_sentinel", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_the_stone_at_dusk_reoffer__hub",
+      "text": "The stone by the road, one dusk, from half past seven. Another dusk is here.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_stone_at_dusk" }],
+      "choices": [
+        { "text": "I will.", "next": "resworn", "set": ["stone_dusk_sworn"] },
+        { "text": "Still no." }
+      ]
+    },
+    {
+      "id": "resworn",
+      "voice": "q_the_stone_at_dusk_reoffer__resworn",
+      "text": "From half past seven. Two hours by your clock. Do not go to them.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_stone_at_dusk" }]
+    }
+  ]
+}

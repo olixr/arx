@@ -1,0 +1,36 @@
+{
+  "id": "q_the_order_pays_offer",
+  "start": "hub",
+  "requires": ["quest:the_order_pays:available"],
+  "forbids": [
+    "quest:wool_count:active",
+    "quest:wool_count:done",
+    "quest:the_fleece:active",
+    "quest:the_fleece:done",
+    "order_pays_declined"
+  ],
+  "bindings": [{ "kind": "actor", "target": "waykeeper_torsten", "priority": 10 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_the_order_pays_offer__hub",
+      "text": "The wool goes to Hale at the First Lamp, and the order pays what it owes when the grey is back on the post. It is fourteen miles and a ford. The Charter will count you suspect for it by the time you are back, and I would not blame them.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_order_pays" }],
+      "choices": [
+        { "text": "I will carry it.", "next": "sworn" },
+        { "text": "Not fourteen miles.", "next": "declined", "set": ["order_pays_declined"] }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_the_order_pays_offer__sworn",
+      "text": "Fourteen miles. Do not lose it in the water.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_order_pays" }]
+    },
+    {
+      "id": "declined",
+      "voice": "q_the_order_pays_offer__declined",
+      "text": "Then it stays in your pack and the post stays bare."
+    }
+  ]
+}

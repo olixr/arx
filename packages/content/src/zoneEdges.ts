@@ -266,7 +266,15 @@ function edgeInfluenceAt(seed: number, tx: number, ty: number): EdgeInfluence | 
   let wob = 0;
   for (const p of ZONE_EDGE_PROFILES) {
     const d = distToRect(tx, ty, p);
-    if (d >= EDGE_REACH) continue;
+    // THE HONEST COMPARISON (contested lands, band 8 fix pass): a NaN
+    // coordinate passes `d >= EDGE_REACH` (every comparison with NaN
+    // is false), walks into classAt with a NaN jitter index, reads
+    // `undefined` off the profile and crashes the server on
+    // EDGE_LAW[undefined] — the live audit lost a boot exactly so,
+    // to one NPC whose position went non-finite mid-fight. Written as
+    // "not inside reach" the guard refuses NaN by construction, and
+    // an out-of-reach point costs the same one compare it always did.
+    if (!(d < EDGE_REACH)) continue;
     if (Number.isNaN(warp)) {
       warp = (fbm(seed ^ 0xed6ea, tx * 0.06, ty * 0.06, 2) - 0.5) * 2;
       wob = (fbm(seed ^ 0x1a7e5, tx * 0.07, ty * 0.07, 2) - 0.5) * 2;

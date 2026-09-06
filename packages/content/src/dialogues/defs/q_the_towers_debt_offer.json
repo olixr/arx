@@ -1,0 +1,39 @@
+{
+  "id": "q_the_towers_debt_offer",
+  "start": "hub",
+  "requires": ["quest:the_towers_debt:available"],
+  "forbids": [
+    "quest:wool_count:active",
+    "quest:wool_count:done",
+    "quest:the_fleece:active",
+    "quest:the_fleece:done",
+    "towers_debt_declined"
+  ],
+  "bindings": [{ "kind": "actor", "target": "waykeeper_torsten", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_the_towers_debt_offer__hub",
+      "text": "The squat in the tower is eleven gnolls and a packlord called Old Cackle. Break it by daylight, and then stand at the door with my lamp from dusk until half past eight and watch what stands up. The order will pay in standing and in the wool they took off our stake. I will tell you now what it costs, because the drover tells you what hers costs. Sorrel's wolves stay on the trail, and the Charter's counters will know whose hands went north.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_towers_debt" }],
+      "choices": [
+        { "text": "I will break it.", "next": "sworn", "set": ["towers_debt_sworn"] },
+        { "text": "Not the order's errand.", "next": "declined", "set": ["towers_debt_declined"] }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_the_towers_debt_offer__sworn",
+      "text": "By daylight. Take the lamp. It is the order's and the line will know it is. Stand the apron with it from dusk and do not leave to chase anything past the ring. The line does not know you from a gnoll after dark. Bring the lamp back, lit or not.",
+      "hooks": [
+        { "kind": "give", "item": "lantern", "qty": 1 },
+        { "kind": "quest_accept", "quest": "the_towers_debt" }
+      ]
+    },
+    {
+      "id": "declined",
+      "voice": "q_the_towers_debt_offer__declined",
+      "text": "Then it stands. It has stood two years."
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "q_the_stone_at_dusk_turnin",
+  "start": "count",
+  "requires": ["quest:the_stone_at_dusk:ready"],
+  "bindings": [{ "kind": "actor", "target": "even_sentinel", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "count",
+      "voice": "q_the_stone_at_dusk_turnin__count",
+      "text": "Two. Wolves, on the road side, and nothing else. That is the count and now you hold it. This is moonglass, a chip off the stone. It draws nothing. Keep it where it draws nothing.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_stone_at_dusk" }]
+    }
+  ]
+}

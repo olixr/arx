@@ -292,6 +292,8 @@ test('THE PARTICIPATION LEDGER: every hand that bled the garrison gets the credi
     payPurse: proto3.payPurse,
     bankDrop: proto3.bankDrop,
     setPlayerFlag: proto3.setPlayerFlag,
+    // THE FLAG OBJECTIVE (band 8): the choke credits flag asks; the slate has no quests.
+    creditQuestEvent: () => {},
     clearPlayerFlag: proto3.clearPlayerFlag,
   });
   armStanding(s);
@@ -407,6 +409,8 @@ test('THE HEARTH WATCH: breaking the squat stamps the settler the full quiet', (
     payPurse: proto3.payPurse,
     bankDrop: proto3.bankDrop,
     setPlayerFlag: proto3.setPlayerFlag,
+    // THE FLAG OBJECTIVE (band 8): the choke credits flag asks; the slate has no quests.
+    creditQuestEvent: () => {},
     clearPlayerFlag: proto3.clearPlayerFlag,
   });
   s.accounts = {
@@ -456,6 +460,8 @@ test("THE CHAMPION'S MARK: the felling hand signs first, then the sworn party", 
     placeDrop: () => {},
     payBounty: () => {},
     setPlayerFlag: proto3.setPlayerFlag,
+    // THE FLAG OBJECTIVE (band 8): the choke credits flag asks; the slate has no quests.
+    creditQuestEvent: () => {},
     // The slayer's fellowship: 102 stands sworn beside 101, and 103
     // is a sworn fellow who never swung (offline, elsewhere) — the
     // signature is the party, not the ledger.

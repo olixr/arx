@@ -175,6 +175,8 @@ export const TILE_CATEGORIES: TileCategory[] = [
       Tile.LeanTo, Tile.Bedroll, Tile.BelongingsCart, Tile.FieldCot,
       Tile.FenceBroken, Tile.SignpostBurnt, Tile.WellFouled, Tile.HedgeDead,
       Tile.LampPostDark, Tile.SluiceGate, Tile.SluiceGateStrung,
+      // Band 8: the charcoal clamp (548), the cold hearth's late child.
+      Tile.SmolderHeap,
     ],
   },
   {

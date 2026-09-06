@@ -1,0 +1,37 @@
+{
+  "id": "q_the_stone_at_dusk_offer",
+  "start": "hub",
+  "requires": ["quest:the_stone_at_dusk:available"],
+  "forbids": [
+    "quest:the_grey_root:active",
+    "quest:the_grey_root:done",
+    "quest:the_full_tally:active",
+    "quest:the_full_tally:done",
+    "ward_thread_cut",
+    "stone_dusk_declined"
+  ],
+  "bindings": [{ "kind": "actor", "target": "even_sentinel", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_the_stone_at_dusk_offer__hub",
+      "text": "Stand at the grey stone by the road one dusk from half past seven until the wood is dark and watch what walks the line. Do not go to it. Count it. Then tell us the count.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_stone_at_dusk" }],
+      "choices": [
+        { "text": "I will stand.", "next": "sworn", "set": ["stone_dusk_sworn"] },
+        { "text": "Not tonight.", "next": "declined", "set": ["stone_dusk_declined"] }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_the_stone_at_dusk_offer__sworn",
+      "text": "From half past seven. Two hours by your clock. Do not go to them.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_stone_at_dusk" }]
+    },
+    {
+      "id": "declined",
+      "voice": "q_the_stone_at_dusk_offer__declined",
+      "text": "Another dusk, then. There are more of those than of us."
+    }
+  ]
+}

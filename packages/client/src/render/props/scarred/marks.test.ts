@@ -71,8 +71,12 @@ interface Rig {
  * The rig. `gale` is what breezeAt answers with (px, both beats): 0
  * is the still pose, a huge number is the storm the clamp must hold.
  */
-function rig(h: number, tile: Tile, gale = 0): Rig {
+function rig(h: number, tile: Tile, gale = 0, cells: ReadonlyArray<readonly [number, number, Tile]> = []): Rig {
   const ctx = new RecCtx();
+  // THE JOIN reads the world: the rig's ground is grass except the
+  // cells a test lays (the thread's neighbours), keyed on world tiles.
+  const ground = new Map<string, Tile>();
+  for (const [x, y, t] of cells) ground.set(`${x},${y}`, t);
   const casts: string[] = [];
   const r: Rig = { host: null as unknown as PropHost, env: null as unknown as PropFrame, ctx, casts, breezeCalls: 0, glows: 0 };
   r.host = {
@@ -89,7 +93,7 @@ function rig(h: number, tile: Tile, gale = 0): Rig {
     tile,
     tx: 10,
     ty: 12,
-    game: {} as PropFrame['game'],
+    game: { world: { groundAt: (x: number, y: number) => ground.get(`${x},${y}`) ?? Tile.Grass } } as unknown as PropFrame['game'],
     ctx: ctx as unknown as CanvasRenderingContext2D,
     p,
     s: S,
@@ -433,4 +437,129 @@ test('marks.ts: the content boundary holds and the laws are spoken in the file',
   assert.ok(/const ctx = rend\.ctx;/.test(src), 'draw-time ctx capture');
   assert.ok(!/h >> \d/.test(src), 'hash deals with h >>> k');
   assert.ok(!/ctx\.stroke\(|strokeRect\(|strokeStyle/.test(src), 'THE ONE RING: nothing strokes');
+});
+
+// ---------------------------------------------------------------------
+// THE THREAD IS ONE LINE (contested lands band 8, owed F2): the join.
+// ---------------------------------------------------------------------
+
+/** The rig's thread sits at (10,12); its four cardinal neighbours. */
+const N = [10, 11, Tile.WardThread] as const;
+const E = [11, 12, Tile.WardThread] as const;
+const SO = [10, 13, Tile.WardThread] as const;
+const W = [9, 12, Tile.WardThread] as const;
+
+/** A short stable digest of everything a painter put on the rig (draw, shadow, body, sort). */
+function digest(r: Rig, item: ReturnType<PropPainter>): number {
+  const text = JSON.stringify([r.ctx.calls, r.ctx.fills, r.ctx.verts.map(([x, y]) => [x.toFixed(6), y.toFixed(6)]), r.casts, item.body, item.sortY]);
+  let d = 5381;
+  for (let i = 0; i < text.length; i++) d = (Math.imul(d, 33) ^ text.charCodeAt(i)) >>> 0;
+  return d;
+}
+
+/** The thread's vertices: a mint + draw + shadow on the rig, with neighbours laid. */
+function threadRun(h: number, cells: ReadonlyArray<readonly [number, number, Tile]>, gale = 0): { r: Rig; item: ReturnType<PropPainter> } {
+  const r = rig(h, Tile.WardThread, gale, cells);
+  const item = painterFor(Tile.WardThread)(r.host, r.env);
+  item.drawShadow!();
+  item.draw!();
+  return { r, item };
+}
+
+test('THE THREAD IS ONE LINE: a lone thread is byte-identical to the shipped glyph at every seed, calm and in a gale', () => {
+  // Digests recorded off the pre-join painter (8acf9952) with the same
+  // recorder: the join must not move a single vertex, fill, cast, body
+  // or sort of a tile with no thread neighbour. A diagonal neighbour is
+  // no neighbour (the Court strings cardinal), so it pins the same.
+  const GOLDEN: Record<string, [number, number]> = {
+    '305441741': [1887135818, 3684665958],
+    '2147483647': [38933639, 3094456483],
+    '195948557': [1887135818, 3684665958],
+    '-559038737': [1887135818, 3684665958],
+    '1': [2287280205, 1650598092],
+    '1431655765': [3327389440, 2771800265],
+    '707406378': [1887135818, 3684665958],
+    '324508639': [38933639, 3094456483],
+  };
+  for (const h of SEEDS) {
+    for (const [gi, gale] of [0, 1e6].entries()) {
+      const lone = threadRun(h, [], gale);
+      const diag = threadRun(h, [[11, 11, Tile.WardThread], [9, 13, Tile.WardThread]], gale);
+      const want = GOLDEN[String(h)]![gi];
+      assert.equal(digest(lone.r, lone.item), want, `h=${h} gale=${gale} the lone thread moved`);
+      assert.equal(digest(diag.r, diag.item), want, `h=${h} gale=${gale} a diagonal neighbour joined`);
+      assert.deepEqual(lone.r.casts, ['edge', 'edge'], 'the lone thread stands two wands');
+    }
+  }
+});
+
+test('THE THREAD IS ONE LINE: a two-tile run draws one thread and two wands, meeting at the shared edge', () => {
+  for (const h of SEEDS) {
+    // The west tile of a west-east pair: its east neighbour is thread.
+    const west = threadRun(h, [E]);
+    // The east tile of the same pair: its west neighbour is thread.
+    const east = threadRun(h, [W]);
+    assert.deepEqual(west.r.casts, ['edge'], 'an end stands one wand');
+    assert.deepEqual(east.r.casts, ['edge'], 'an end stands one wand');
+    // The wand stands at the edge facing away from the run.
+    const westWand = west.r.ctx.verts[0]!;
+    const eastWand = east.r.ctx.verts[0]!;
+    assert.ok(westWand[0] < west.r.env.p.x - 0.4 * S, 'the west end plants its wand west');
+    assert.ok(eastWand[0] > east.r.env.p.x + 0.4 * S, 'the east end plants its wand east');
+    // The half thread leaves the tile at the shared edge's midpoint at
+    // the thread's height (0.3s over the ground line) on BOTH sides: the
+    // same world point, so the seam is invisible.
+    const ground = west.r.env.p.y + S * YS * 0.18;
+    const edgeY = ground - 0.3 * S;
+    const westEdge = west.r.ctx.verts.filter(([x, y]) => Math.abs(x - (west.r.env.p.x + 0.5 * S)) < 0.03 * S && Math.abs(y - edgeY) < 0.03 * S);
+    const eastEdge = east.r.ctx.verts.filter(([x, y]) => Math.abs(x - (east.r.env.p.x - 0.5 * S)) < 0.03 * S && Math.abs(y - edgeY) < 0.03 * S);
+    assert.ok(westEdge.length >= 2, `h=${h} the west tile's thread never reaches its east edge`);
+    assert.ok(eastEdge.length >= 2, `h=${h} the east tile's thread never reaches its west edge`);
+    // One line: each tile paints exactly two cords (wand to knot, knot
+    // to edge), so the pair paints one thread between two wands.
+    const cords = (r: Rig) => r.ctx.fills.filter((f, i) => f === '#cdd8ec' && r.ctx.calls.filter((c) => c === 'fill' || c === 'fillRect')[i] === 'fill').length;
+    assert.equal(cords(west.r), 2, `h=${h} the west tile paints ${cords(west.r)} cords`);
+    assert.equal(cords(east.r), 2, `h=${h} the east tile paints ${cords(east.r)} cords`);
+  }
+});
+
+test('THE THREAD IS ONE LINE: a straight stands no wand; a corner draws two half threads and one wand at the centre; a fork ties to one', () => {
+  for (const h of SEEDS) {
+    const straight = threadRun(h, [W, E]);
+    assert.deepEqual(straight.r.casts, [], 'a straight run stands no wand');
+    assert.ok(!straight.r.ctx.calls.includes('ellipse'), 'no wand, no contact shade');
+    const tall = threadRun(h, [N, SO]);
+    assert.deepEqual(tall.r.casts, [], 'a north-south straight stands no wand');
+    const corner = threadRun(h, [N, E]);
+    assert.deepEqual(corner.r.casts, ['edge'], 'a corner stands one wand');
+    // The corner's wand stands at the tile's centre, the turn post.
+    const foot = corner.r.ctx.verts[0]!;
+    assert.ok(Math.abs(foot[0] - corner.r.env.p.x) < 1e-6, 'the turn wand stands on the centre line');
+    // Two half threads: to the north edge and to the east edge.
+    const ground = corner.r.env.p.y + S * YS * 0.18;
+    const nEdge = corner.r.ctx.verts.filter(([x, y]) => Math.abs(x - corner.r.env.p.x) < 0.03 * S && Math.abs(y - (ground - 0.5 * S * YS - 0.3 * S)) < 0.03 * S);
+    const eEdge = corner.r.ctx.verts.filter(([x, y]) => Math.abs(x - (corner.r.env.p.x + 0.5 * S)) < 0.03 * S && Math.abs(y - (ground - 0.3 * S)) < 0.03 * S);
+    assert.ok(nEdge.length >= 2 && eEdge.length >= 2, `h=${h} the corner's half threads miss an edge`);
+    const fork = threadRun(h, [N, E, W]);
+    assert.deepEqual(fork.r.casts, ['edge'], 'a fork ties every half thread to one wand');
+    const cross = threadRun(h, [N, E, SO, W]);
+    assert.deepEqual(cross.r.casts, ['edge'], 'a cross ties every half thread to one wand');
+    // Every posture samples the one breeze exactly once.
+    for (const { r } of [straight, tall, corner, fork, cross]) assert.equal(r.breezeCalls, 1, 'ONE BREEZE');
+  }
+});
+
+test('THE THREAD IS ONE LINE: the join holds in a gale (no vertex leaves its still pose by more than the law)', () => {
+  for (const h of SEEDS) {
+    for (const cells of [[E], [W, E], [N, E], [N, E, SO, W]] as const) {
+      const still = threadRun(h, cells, 0);
+      const gale = threadRun(h, cells, 1e6);
+      assert.equal(still.r.ctx.verts.length, gale.r.ctx.verts.length, 'the gale changes no shape');
+      for (let i = 0; i < still.r.ctx.verts.length; i++) {
+        const [ax, ay] = still.r.ctx.verts[i]!;
+        const [bx, by] = gale.r.ctx.verts[i]!;
+        assert.ok(Math.hypot(ax - bx, ay - by) <= 0.03 * S + 1e-6, `h=${h} vertex ${i} blew ${Math.hypot(ax - bx, ay - by).toFixed(2)}px`);
+      }
+    }
+  }
 });

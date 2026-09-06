@@ -1008,7 +1008,13 @@ export function composePoi(
     // The felled clearing: forest within `clearing` of the footprint
     // edge is cut — stumps where the trees stood thickest, trampled
     // grass elsewhere. The camp burns wood, and the wood came from
-    // somewhere.
+    // somewhere. THE TRAMPLED RING (contested lands, band 8 fix
+    // pass): a def whose cues say `trampled` is a beast's ground —
+    // every tree in the ring goes to grass and none to a stump,
+    // because a pack cuts nothing and a den ringed with stumps says
+    // an axe was here (the pinned veil den; every other site is
+    // byte-identical, the hash still rolled and ignored).
+    const trampled = cues.trampled === true;
     for (let zy = 0; zy < zh; zy++) {
       for (let zx = 0; zx < zw; zx++) {
         if (!fringeSkip(zx, zy)) continue;
@@ -1019,7 +1025,7 @@ export function composePoi(
         const { wx, wy } = worldOf(zx, zy);
         if (groundProbeAt(seed, wx, wy) !== 'forest') continue;
         const h = hashCoords(musterBase ^ 0x25, wx, wy);
-        ground[zy * zw + zx] = h % 100 < 30 ? Tile.Stump : Tile.Grass;
+        ground[zy * zw + zx] = !trampled && h % 100 < 30 ? Tile.Stump : Tile.Grass;
       }
     }
   }

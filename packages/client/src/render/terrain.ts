@@ -885,8 +885,9 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     // path, or bare earth; carved granite never paves its plot.
     if (t >= Tile.Gravestone && t <= Tile.MournerStatue) return nearestFloor(ground, tx, ty);
     // THE SCARRED LAND (the band anchored on living endpoints,
-    // Tile.RuinWallStone..Tile.SluiceGateStrung; the dead hedge left
-    // through the hedge branch above). Per-family fronting:
+    // Tile.RuinWallStone..Tile.SluiceGateStrung, and the band 8 clamp
+    // isScarredTile names past it; the dead hedge left through the
+    // hedge branch above). Per-family fronting:
     if (isScarredTile(t)) {
       const front = (fallback: Tile): Tile => {
         // Whatever walkable ground fronts the piece continues beneath
@@ -928,6 +929,12 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
       if (t >= Tile.CharredBeam && t <= Tile.ChimneyStack) {
         return nearestFloor(ground, tx, ty);
       }
+      // The clamp (band 8) is family A by voice but stands in a
+      // charcoal yard, never in a shell: the trodden ground that
+      // fronts it continues beneath, dirt where nothing does — a
+      // burner's yard is raked bare, and the painter lays its own
+      // ash apron over whatever that is.
+      if (t === Tile.SmolderHeap) return front(Tile.Dirt);
       // B. the field after: trampled ground — the field's own skin
       // continues; open-country fallback is DIRT (a fight tramples).
       if (t >= Tile.BrokenCart && t <= Tile.BeastBones) return front(Tile.Dirt);

@@ -88,6 +88,25 @@ export const GAZETTEER: Readonly<Record<string, GazetteerEntry>> = {
     line: 'The First Road crosses the channel here between a bar and a stake line, and the water is nobody\'s.',
     country: 2,
   },
+  // THE CONTESTED LANDS, band 8: the three north patches. None is a
+  // settlement (the proof's herald raised "a settlement stands here"
+  // over the picket, the fix pass's defect 5); the epithet says what
+  // stands there, and the country pips read the ground's own tier.
+  picket: {
+    epithet: 'The order\'s forward post on the trail',
+    line: 'Two Waykeeper lamps, a slate with a count on it, a bell nobody rang for, and four mounds in a row beside the scuff.',
+    country: 2,
+  },
+  wardthread: {
+    epithet: 'The thread round the dying stand',
+    line: 'The old folk strung their thread round a wood that is dying from the roots, and a Charter crew cuts up to it and past it.',
+    country: 2,
+  },
+  turnoff: {
+    epithet: 'The cairn that fell',
+    line: 'A Waykeeper claim cairn let fall on the north shoulder where the order\'s path to its first tower left the road.',
+    country: 2,
+  },
 };
 
 /**

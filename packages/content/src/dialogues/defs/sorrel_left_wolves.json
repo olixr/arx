@@ -1,0 +1,15 @@
+{
+  "id": "sorrel_left_wolves",
+  "start": "count",
+  "once": true,
+  "requires": ["tower_debt_paid"],
+  "bindings": [{ "kind": "actor", "target": "drover_sorrel", "priority": 9 }],
+  "nodes": [
+    {
+      "id": "count",
+      "voice": "sorrel_left_wolves__count",
+      "text": "You went north for the sergeant's gnolls and my wolves are still seven. I am not shutting the pen to you. I am telling you the count.",
+      "hooks": [{ "kind": "shop", "shop": "drover_yard" }]
+    }
+  ]
+}

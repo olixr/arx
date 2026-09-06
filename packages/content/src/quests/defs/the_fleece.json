@@ -1,0 +1,24 @@
+{
+  "id": "the_fleece",
+  "name": "The Fleece",
+  "giver": "drover_sorrel",
+  "turnIn": "drover_sorrel",
+  "requires": { "quests": ["wool_count"] },
+  "stages": [
+    {
+      "id": "pelts",
+      "journal": "Three pelts off the veil pack for the cloak's lining. Sorrel does not want the heads. She wants the count to be nought and the pelts are how she will believe it.",
+      "objectives": [{ "kind": "collect", "item": "wolf_pelt", "count": 3 }]
+    }
+  ],
+  "questDrops": [
+    { "npc": "wolf", "item": "wolf_pelt", "chance": 0.6 },
+    { "npc": "dire_wolf", "item": "wolf_pelt", "chance": 1 }
+  ],
+  "rewards": {
+    "coins": 60,
+    "items": [{ "item": "drover_fleece_cloak", "qty": 1 }],
+    "standing": [{ "faction": "fordgate", "delta": 15 }],
+    "flags": ["wool_count_taken"]
+  }
+}

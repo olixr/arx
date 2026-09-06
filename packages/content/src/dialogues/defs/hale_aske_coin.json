@@ -1,0 +1,15 @@
+{
+  "id": "hale_aske_coin",
+  "start": "once",
+  "once": true,
+  "requires": ["aske_coin_taken"],
+  "bindings": [{ "kind": "actor", "target": "waykeeper_hale", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "once",
+      "voice": "hale_aske_coin__once",
+      "text": "The Company paid you for the order's gnolls. I have written it. The lamp does not care who is paid. I do.",
+      "hooks": [{ "kind": "standing", "faction": "waykeepers", "delta": -5 }]
+    }
+  ]
+}

@@ -17,6 +17,7 @@ import { GLOOM_PROPS } from './gloom.js';
 import { MARKS_PROPS } from './marks.js';
 import { DISPLACED_PROPS } from './displaced.js';
 import { STATES_PROPS } from './states.js';
+import { SMOLDER_HEAP_PROPS } from './smolderHeap.js';
 import type { PropEntries } from '../types.js';
 
 export { ruinWallItem } from './ruinWalls.js';
@@ -31,4 +32,7 @@ export const SCARRED_PROPS: PropEntries = [
   ...MARKS_PROPS,
   ...DISPLACED_PROPS,
   ...STATES_PROPS,
+  // Band 8 THE CLAMP (548): family A by voice, its own file — the
+  // charcoal clamp stands past the band's two reserved ground ids.
+  ...SMOLDER_HEAP_PROPS,
 ];

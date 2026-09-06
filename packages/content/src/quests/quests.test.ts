@@ -14,6 +14,8 @@ import { buildUndercroft } from '../maps/undercroft.js';
 import { QUEST_FLAG_RE, isQuestFlag, parseQuestFlag, questDoneFlag } from './flags.js';
 import { QUESTS } from './registry.js';
 import { validateQuest } from './validate.js';
+import { TRIGGERS } from '../triggers/registry.js';
+import { POI_DEFS } from '../pois/defs.js';
 
 const DEFS_DIR = new URL('./defs/', import.meta.url).pathname;
 
@@ -349,8 +351,11 @@ test('CONTESTED LANDS: the fen waist fork is two chains that shut each other by 
     assert.deepEqual(tree!.forbids, shut([...other]), `${id} forbids the other side by quest state`);
     assert.ok(!(tree!.forbids ?? []).includes('fen_side_taken'), `${id} never forbids the bare flag`);
   }
-  // Nothing in the band reads fen_side_taken as a side: Aldis alone
-  // reads it, on a choice, and her node names neither corner.
+  // Nothing reads fen_side_taken as a side: Aldis reads it on a choice
+  // and her node names neither corner; band 8 added Aske's coin, which
+  // reads it as "in the book from the ford" (the road's rate) and
+  // likewise names neither corner. Band 7's ledger foresaw exactly
+  // that reader.
   const readers: string[] = [];
   for (const d of DIALOGUES.values()) {
     const reads = [
@@ -359,5 +364,253 @@ test('CONTESTED LANDS: the fen waist fork is two chains that shut each other by 
     ];
     if (reads.includes('fen_side_taken')) readers.push(d.id);
   }
-  assert.deepEqual(readers, ['aldis_watch_heeded']);
+  assert.deepEqual(readers.sort(), ['aldis_watch_heeded', 'aske_coin']);
+  const book = DIALOGUES.get('aske_coin')!.nodes.find((n) => n.id === 'paid_book')!.text;
+  assert.ok(!/causeway|sluice|dike|gate/i.test(book), 'the book names neither corner');
+});
+
+// ---- THE CONTESTED LANDS band 8: THE HUSK AND THE WARD LINE (plan §3.2,
+// §3.3; band8/blockout.md §6). Two forks, each two opposed two-link
+// chains on the four kinds plus THE FLAG OBJECTIVE; each offer tree
+// forbids the OTHER side by quest state and its own declined flag
+// (THE DOOR BACK), never the bare pair flag; every collect rides a
+// final stage and is consumed at the turn-in.
+test('CONTESTED LANDS band 8: the north pair is two chains, the pack or the squat', () => {
+  const A = ['wool_count', 'the_fleece'];
+  const B = ['the_towers_debt', 'the_order_pays'];
+  for (const id of [...A, ...B]) assert.ok(QUESTS.has(id), `${id} is shipped`);
+  assert.deepEqual(QUESTS.get(A[0]!)!.requires?.quests, ['the_first_road']);
+  assert.deepEqual(QUESTS.get(B[0]!)!.requires?.quests, ['the_first_road']);
+  assert.deepEqual(QUESTS.get(A[1]!)!.requires?.quests, [A[0]]);
+  assert.deepEqual(QUESTS.get(B[1]!)!.requires?.quests, [B[0]]);
+  const flagsOf = (id: string) => QUESTS.get(id)!.rewards.flags ?? [];
+  assert.deepEqual(flagsOf('wool_count'), ['wool_counted']);
+  assert.deepEqual(flagsOf('the_fleece'), ['wool_count_taken']);
+  assert.deepEqual(flagsOf('the_towers_debt'), ['tower_debt_paid']);
+  assert.deepEqual(flagsOf('the_order_pays'), ['wool_returned']);
+  // A1: the count is a talk, the cull is THE FLAG OBJECTIVE reading the
+  // veil den's own clearedFlag (retro-credited; the generic den flag
+  // would credit a break of any den in the world).
+  const a1 = QUESTS.get('wool_count')!;
+  assert.deepEqual(a1.stages[0]!.objectives, [{ kind: 'talk', actor: 'waykeeper_torsten' }]);
+  assert.deepEqual(a1.stages[1]!.objectives, [
+    { kind: 'flag', flag: 'poi_veil_den_broken', label: 'Break the veil pack at its den' },
+  ]);
+  // A2: three pelts by quest drop only while the fleece is asked for.
+  const a2 = QUESTS.get('the_fleece')!;
+  assert.deepEqual(a2.stages[0]!.objectives, [{ kind: 'collect', item: 'wolf_pelt', count: 3 }]);
+  assert.deepEqual(a2.questDrops, [
+    { npc: 'wolf', item: 'wolf_pelt', chance: 0.6 },
+    { npc: 'dire_wolf', item: 'wolf_pelt', chance: 1 },
+  ]);
+  assert.deepEqual(a2.rewards.items, [{ item: 'drover_fleece_cloak', qty: 1 }]);
+  // B1: break the squat (the day rows), hold the apron by flag, and the
+  // lamp comes back as a collect on the FINAL stage (THE TURN-IN
+  // CONSUMES: the sworn node always gives one first, so nothing
+  // pre-owned is ever taken).
+  const b1 = QUESTS.get('the_towers_debt')!;
+  assert.deepEqual(b1.stages.map((s) => s.id), ['break', 'hold', 'lamp']);
+  assert.deepEqual(b1.stages[0]!.objectives, [
+    { kind: 'kill', npc: 'gnoll', count: 4 },
+    { kind: 'kill', npc: 'gnoll_champion', count: 1 },
+  ]);
+  assert.equal(b1.stages[1]!.objectives[0]!.kind, 'flag');
+  assert.equal((b1.stages[1]!.objectives[0] as { flag: string }).flag, 'husk_held');
+  assert.deepEqual(b1.stages[2]!.objectives, [{ kind: 'collect', item: 'lantern', count: 1 }]);
+  assert.deepEqual(b1.rewards.items, [{ item: 'grey_wool', qty: 1 }]);
+  // B2: the wool carried to Hale and consumed there.
+  const b2 = QUESTS.get('the_order_pays')!;
+  assert.equal(b2.turnIn, 'waykeeper_hale');
+  assert.deepEqual(b2.stages[0]!.objectives, [{ kind: 'collect', item: 'grey_wool', count: 1 }]);
+  // Opposition authored on every closing row, never crossed. A pays the
+  // Charter alone (A's costs are Alder's yard and Torsten's nought).
+  assert.deepEqual(a2.rewards.standing, [{ faction: 'fordgate', delta: 15 }]);
+  assert.deepEqual(b1.rewards.standing, [
+    { faction: 'waykeepers', delta: 15 },
+    { faction: 'fordgate', delta: -10 },
+  ]);
+  assert.deepEqual(b2.rewards.standing, [
+    { faction: 'waykeepers', delta: 10 },
+    { faction: 'fordgate', delta: -15 },
+  ]);
+});
+
+test('CONTESTED LANDS band 8: the north-west pair is two chains, the thread or the axe', () => {
+  const A = ['keep_the_thread', 'the_stone_at_dusk'];
+  const B = ['the_grey_root', 'the_full_tally'];
+  for (const id of [...A, ...B]) assert.ok(QUESTS.has(id), `${id} is shipped`);
+  assert.deepEqual(QUESTS.get(A[0]!)!.requires?.quests, ['the_first_road']);
+  assert.deepEqual(QUESTS.get(B[0]!)!.requires?.quests, ['the_first_road']);
+  assert.deepEqual(QUESTS.get(A[1]!)!.requires?.quests, [A[0]]);
+  assert.deepEqual(QUESTS.get(B[1]!)!.requires?.quests, [B[0]]);
+  const flagsOf = (id: string) => QUESTS.get(id)!.rewards.flags ?? [];
+  // ward_line_taken stamps on BOTH closing links and names no side; the
+  // side words are keep_thread_done and grey_root_done.
+  assert.deepEqual(flagsOf('keep_the_thread'), ['keep_thread_done']);
+  assert.deepEqual(flagsOf('the_stone_at_dusk'), ['ward_line_taken', 'moonglass_chip_held']);
+  assert.deepEqual(flagsOf('the_grey_root'), ['ward_line_taken', 'grey_root_done']);
+  assert.deepEqual(flagsOf('the_full_tally'), ['full_tally_posted']);
+  // A1: three places teach the line (three flag objectives, three
+  // triggers), then the four lengths go back to the stone.
+  const a1 = QUESTS.get('keep_the_thread')!;
+  assert.deepEqual(
+    a1.stages[0]!.objectives.map((o) => (o as { flag?: string }).flag),
+    ['grey_one', 'grey_two', 'grey_three'],
+  );
+  assert.deepEqual(a1.stages[1]!.objectives, [{ kind: 'collect', item: 'cut_thread', count: 4 }]);
+  // A2: the stand is a flag, the word is the final talk (a talk credits
+  // on address, so it can only ever be the last stage).
+  const a2 = QUESTS.get('the_stone_at_dusk')!;
+  assert.equal((a2.stages[0]!.objectives[0] as { flag: string }).flag, 'glade_stood');
+  assert.deepEqual(a2.stages[1]!.objectives, [{ kind: 'talk', actor: 'even_sentinel' }]);
+  assert.deepEqual(a2.rewards.items, [{ item: 'moonglass_chip', qty: 1 }]);
+  // B1: the licence is Bodil's talk; the cord and the yew are the final
+  // collect. B2: six more to Margit.
+  const b1 = QUESTS.get('the_grey_root')!;
+  assert.deepEqual(b1.stages[0]!.objectives, [{ kind: 'talk', actor: 'charter_bodil' }]);
+  assert.deepEqual(b1.stages[1]!.objectives, [
+    { kind: 'collect', item: 'log', count: 12 },
+    { kind: 'collect', item: 'yew_log', count: 2 },
+  ]);
+  const b2 = QUESTS.get('the_full_tally')!;
+  assert.equal(b2.turnIn, 'charter_margit');
+  assert.deepEqual(b2.stages[0]!.objectives, [{ kind: 'collect', item: 'log', count: 6 }]);
+  // Opposition authored both ways on the closing rows.
+  assert.deepEqual(a2.rewards.standing, [
+    { faction: 'evencourt', delta: 15 },
+    { faction: 'fordgate', delta: -15 },
+  ]);
+  assert.deepEqual(b1.rewards.standing, [
+    { faction: 'fordgate', delta: 15 },
+    { faction: 'evencourt', delta: -20 },
+  ]);
+});
+
+test('CONTESTED LANDS band 8: every offer shuts the other side by quest state and carries THE DOOR BACK', () => {
+  const north = { A: ['wool_count', 'the_fleece'], B: ['the_towers_debt', 'the_order_pays'] };
+  const west = { A: ['keep_the_thread', 'the_stone_at_dusk'], B: ['the_grey_root', 'the_full_tally'] };
+  const shut = (side: string[]) => side.flatMap((q) => [`quest:${q}:active`, `quest:${q}:done`]);
+  const declined: Record<string, string> = {
+    wool_count: 'wool_count_declined',
+    the_fleece: 'fleece_declined',
+    the_towers_debt: 'towers_debt_declined',
+    the_order_pays: 'order_pays_declined',
+    keep_the_thread: 'keep_thread_declined',
+    the_stone_at_dusk: 'stone_dusk_declined',
+    the_grey_root: 'grey_root_declined',
+    the_full_tally: 'full_tally_declined',
+  };
+  const pairFlags = ['wool_count_taken', 'tower_debt_paid', 'ward_line_taken'];
+  for (const [pair, side, other] of [
+    [north, 'A', north.B],
+    [north, 'B', north.A],
+    [west, 'A', west.B],
+    [west, 'B', west.A],
+  ] as const) {
+    for (const q of pair[side]) {
+      const offer = DIALOGUES.get(`q_${q}_offer`);
+      assert.ok(offer, `q_${q}_offer is shipped`);
+      const forbids = offer!.forbids ?? [];
+      for (const f of shut([...other])) assert.ok(forbids.includes(f), `q_${q}_offer forbids ${f}`);
+      assert.ok(forbids.includes(declined[q]!), `q_${q}_offer forbids its own declined flag`);
+      for (const p of pairFlags) assert.ok(!forbids.includes(p), `q_${q}_offer never forbids ${p}`);
+      // The declined flag is stamped on the offer's own refusal...
+      const stamps = offer!.nodes.flatMap((n) => (n.choices ?? []).flatMap((c) => c.set ?? []));
+      assert.ok(stamps.includes(declined[q]!), `q_${q}_offer stamps ${declined[q]}`);
+      // ...and a door back stands: some tree bound to the giver, not the
+      // offer, reaches a quest_offer node for this quest through a gate
+      // on the declined flag AND availability (a hub choice, or a
+      // re-offer tree where the giver keeps no hub).
+      const giver = QUESTS.get(q)!.giver;
+      const doors = [...DIALOGUES.values()].filter((d) => {
+        if (d.id === `q_${q}_offer`) return false;
+        if (!d.bindings?.some((b) => b.target === giver)) return false;
+        const reoffer = d.nodes.filter((n) =>
+          n.hooks?.some((h) => h.kind === 'quest_offer' && h.quest === q),
+        );
+        if (reoffer.length === 0) return false;
+        const treeGate =
+          (d.requires ?? []).includes(declined[q]!) &&
+          (d.requires ?? []).includes(`quest:${q}:available`);
+        const choiceGate = d.nodes.some((n) =>
+          (n.choices ?? []).some(
+            (c) =>
+              reoffer.some((r) => r.id === c.next) &&
+              (c.requires ?? []).includes(declined[q]!) &&
+              (c.requires ?? []).includes(`quest:${q}:available`),
+          ),
+        );
+        // Every re-offer node continues to a quest_accept for the same quest.
+        const accepts = reoffer.every((r) =>
+          (r.choices ?? []).some((c) =>
+            d.nodes.some(
+              (n) => n.id === c.next && n.hooks?.some((h) => h.kind === 'quest_accept' && h.quest === q),
+            ),
+          ),
+        );
+        return (treeGate || choiceGate) && accepts;
+      });
+      assert.ok(doors.length > 0, `${q}: THE DOOR BACK stands at ${giver}`);
+    }
+  }
+});
+
+test('CONTESTED LANDS band 8: THE FLAG OBJECTIVE validates, and every shipped one is stampable', () => {
+  const base = {
+    id: 'flag_probe',
+    name: 'Flag Probe',
+    giver: 'farmer_brammel',
+    rewards: {},
+  };
+  const stage = (obj: Record<string, unknown>) => ({
+    ...base,
+    stages: [{ id: 'one', journal: 'A probe.', objectives: [obj] }],
+  });
+  assert.ok(validateQuest(stage({ kind: 'flag', flag: 'held_it', label: 'Hold it' })).ok);
+  assert.ok(validateQuest(stage({ kind: 'flag', flag: 'trig:some_gate', label: 'Cross it' })).ok);
+  for (const [obj, needle] of [
+    [{ kind: 'flag', flag: 'world:calm', label: 'x' }, 'never world:'],
+    [{ kind: 'flag', flag: 'quest:eggs_for_the_morning:done', label: 'x' }, 'never world:'],
+    [{ kind: 'flag', flag: 'held_it' }, 'label'],
+    [{ kind: 'flag', flag: 'held_it', label: 'x'.repeat(91) }, 'label'],
+  ] as const) {
+    const res = validateQuest(stage(obj as Record<string, unknown>));
+    assert.ok(!res.ok, `refused: ${needle}`);
+    assert.ok(res.errors.some((e) => e.includes(needle)), `${needle}: ${res.errors.join(' | ')}`);
+  }
+  // A flag objective is a thing the world already knows about you: the
+  // flag must be stamped by a shipped trigger's setFlag, a dialogue's
+  // set or flag hook, a quest reward, or a POI def's clearedFlag.
+  const stampable = new Set<string>();
+  for (const d of DIALOGUES.values()) {
+    for (const n of d.nodes) {
+      for (const h of n.hooks ?? []) if (h.kind === 'flag') stampable.add(h.flag);
+      for (const c of n.choices ?? []) for (const f of c.set ?? []) stampable.add(f);
+    }
+  }
+  for (const q of QUESTS.values()) for (const f of q.rewards?.flags ?? []) stampable.add(f);
+  for (const t of TRIGGERS.values()) {
+    if (t.setFlag) stampable.add(t.setFlag);
+    if (t.once) stampable.add(`trig:${t.id}`);
+  }
+  for (const p of POI_DEFS.values()) if (p.clearedFlag) stampable.add(p.clearedFlag);
+  const seen: string[] = [];
+  for (const q of QUESTS.values()) {
+    for (const s of q.stages) {
+      for (const o of s.objectives) {
+        if (o.kind !== 'flag') continue;
+        seen.push(o.flag);
+        assert.ok(stampable.has(o.flag), `${q.id}/${s.id}: flag '${o.flag}' is stamped nowhere`);
+        assert.ok(o.label.length > 0 && o.label.length <= 90, `${q.id}/${s.id}: label is a wire name`);
+      }
+    }
+  }
+  assert.deepEqual(seen.sort(), [
+    'glade_stood',
+    'grey_one',
+    'grey_three',
+    'grey_two',
+    'husk_held',
+    'poi_veil_den_broken',
+  ]);
 });

@@ -1,0 +1,62 @@
+{
+  "id": "bodil_cut",
+  "base": {
+    "kind": "post",
+    "speed": 1.2
+  },
+  "slots": [
+    {
+      "from": 12,
+      "to": 12.5,
+      "task": {
+        "kind": "post",
+        "x": -1,
+        "y": -2,
+        "dir": 3.1415927,
+        "sit": true,
+        "speed": 1.2
+      }
+    },
+    {
+      "from": 17.5,
+      "to": 19,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.2,
+        "waypoints": [
+          {
+            "x": -2,
+            "y": 3,
+            "waitSec": 60,
+            "dir": -1.5707963
+          },
+          {
+            "x": 0,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "from": 6,
+      "to": 18,
+      "task": {
+        "kind": "post",
+        "work": true,
+        "speed": 1.2
+      }
+    },
+    {
+      "from": 20.5,
+      "to": 5.5,
+      "task": {
+        "kind": "post",
+        "x": -6,
+        "y": -3,
+        "lie": true,
+        "speed": 1.2
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "q_the_towers_debt_turnin",
+  "start": "hub",
+  "requires": ["quest:the_towers_debt:ready"],
+  "bindings": [{ "kind": "actor", "target": "waykeeper_torsten", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_the_towers_debt_turnin__hub",
+      "text": "The lamp back, and the line stood. I have the oil. It is the order's own, out of my own lamp, and Hale does not know it is here. Say the word and the room burns and the line has nothing to stand in. Say the other word and I go down the trail with the oil and the doctrine and nothing else.",
+      "choices": [
+        { "text": "Burn it.", "next": "burnt", "set": ["first_line_burnt"] },
+        { "text": "Leave the room.", "next": "kept", "set": ["first_line_kept"] }
+      ]
+    },
+    {
+      "id": "burnt",
+      "voice": "q_the_towers_debt_turnin__burnt",
+      "text": "Then it burns. Here is the wool off their stake. It is the order's grey and it goes back on the order's post, which is Hale's. Take it to him. He will know what I did by the smell on it.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_towers_debt" }]
+    },
+    {
+      "id": "kept",
+      "voice": "q_the_towers_debt_turnin__kept",
+      "text": "Then it stands. Here is the wool off their stake. Take it to Hale. He will be pleased, and I will not say why, to him or to you.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_towers_debt" }]
+    }
+  ]
+}

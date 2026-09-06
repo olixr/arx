@@ -1,0 +1,41 @@
+{
+  "id": "the_towers_debt",
+  "name": "The Tower's Debt",
+  "giver": "waykeeper_torsten",
+  "turnIn": "waykeeper_torsten",
+  "requires": { "quests": ["the_first_road"] },
+  "stages": [
+    {
+      "id": "break",
+      "journal": "The husk stands on the far ground north of the High Road, past the cairn that fell at the turn, across the water where it narrows, off every way. Eleven gnolls by the slate and a packlord called Old Cackle. Break the squat while the sun is up. Break it after the middle of the afternoon and it stays broken past dark; break it at noon and it stands again by three, and the line will do it over at half past eight in front of you. Either is the sergeant's sentence.",
+      "objectives": [
+        { "kind": "kill", "npc": "gnoll", "count": 4 },
+        { "kind": "kill", "npc": "gnoll_champion", "count": 1 }
+      ],
+      "mark": { "x": -65, "y": -239 }
+    },
+    {
+      "id": "hold",
+      "journal": "Stand the apron with the lamp from the hour the brazier lights until half past eight, when the line stands. Do not leave it to chase anything past the ring. When the dead are up and the gnolls are not, walk off and it is held.",
+      "objectives": [
+        { "kind": "flag", "flag": "husk_held", "label": "Hold the apron with Torsten's lamp until the line stands" }
+      ],
+      "mark": { "x": -65, "y": -239 }
+    },
+    {
+      "id": "lamp",
+      "journal": "Bring the lamp back to the fork. Lit or not.",
+      "objectives": [{ "kind": "collect", "item": "lantern", "count": 1 }]
+    }
+  ],
+  "rewards": {
+    "coins": 70,
+    "xp": [{ "skill": "combat", "amount": 250 }],
+    "standing": [
+      { "faction": "waykeepers", "delta": 15 },
+      { "faction": "fordgate", "delta": -10 }
+    ],
+    "items": [{ "item": "grey_wool", "qty": 1 }],
+    "flags": ["tower_debt_paid"]
+  }
+}

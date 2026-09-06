@@ -1,0 +1,36 @@
+{
+  "id": "q_the_fleece_offer",
+  "start": "hub",
+  "requires": ["quest:the_fleece:available"],
+  "forbids": [
+    "quest:the_towers_debt:active",
+    "quest:the_towers_debt:done",
+    "quest:the_order_pays:active",
+    "quest:the_order_pays:done",
+    "fleece_declined"
+  ],
+  "bindings": [{ "kind": "actor", "target": "drover_sorrel", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_the_fleece_offer__hub",
+      "text": "Three pelts off the veil pack and I will line the cloak with them. Not for the warmth. So that when Alder says the wolves were running from something, I can put my hand on the lining.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_fleece" }],
+      "choices": [
+        { "text": "Three pelts.", "next": "sworn" },
+        { "text": "No.", "next": "declined", "set": ["fleece_declined"] }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_the_fleece_offer__sworn",
+      "text": "Off the pack. Not off the trail's strays, they are somebody's count.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_fleece" }]
+    },
+    {
+      "id": "declined",
+      "voice": "q_the_fleece_offer__declined",
+      "text": "Then it is a cloak with no lining."
+    }
+  ]
+}

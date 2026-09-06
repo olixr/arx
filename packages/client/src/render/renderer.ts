@@ -6282,8 +6282,18 @@ export class Renderer {
    * fight's matter, never over it.
    * Living-matter law: the plume is the smoke material's own mastered
    * voice; nothing here hand-rolls a puff.
+   * THE CLAMP BREATHES BY THE SAME LAW (band 8, SmolderHeap 548): a
+   * charcoal clamp is a fire banked under turf on purpose, and it
+   * exhales exactly as the bed does — the same 0.06/s die on the flame
+   * clock, the same one-live-exhale ledger, the same cap — only the
+   * birth point moves: the bed breathes from its ash pan (0.57 south),
+   * the clamp from its CROWN VENT, which smolderHeap.ts stands 0.62
+   * tiles up over a foot 0.2 south of centre, so in world y the crown
+   * sits 0.42 north of the tile centre (0.08). Born there the plume
+   * sorts behind the dome and climbs out of its top — a clamp smokes
+   * from its crown and never from its foot.
    */
-  private emberBedExhale(tx: number, ty: number, t: number, flame: number): void {
+  private emberBedExhale(tx: number, ty: number, t: number, flame: number, tile: Tile = Tile.EmberBed): void {
     if (flame < 0.05) return;
     const dx = tx + 0.5 - this.camera.x;
     const dy = ty + 0.5 - this.camera.y;
@@ -6294,10 +6304,11 @@ export class Renderer {
     if (this.particles.count() > PARTICLE_CAP * 0.7) return;
     if (Math.random() >= this.frameDt * 0.06 * flame) return;
     const dur = 1.0;
+    const clamp = tile === Tile.SmolderHeap;
     smoke.deployments.plume!(
       { particles: this.particles },
-      tx + 0.5 + (Math.random() - 0.5) * 0.28,
-      ty + 0.57 + (Math.random() - 0.5) * 0.12,
+      tx + 0.5 + (Math.random() - 0.5) * (clamp ? 0.16 : 0.28),
+      (clamp ? ty + 0.08 : ty + 0.57) + (Math.random() - 0.5) * 0.12,
       { scale: 0.2, dur },
     );
     this.emberExhales.set(key, t + dur + 4);
@@ -6344,7 +6355,7 @@ export class Renderer {
           // THE SCARRED LAND: the ember bed exhales from HERE — the one
           // per-frame scan that knows every visible bed (the Riftgate
           // precedent below). Painters never draw smoke.
-          if (tile === Tile.EmberBed) this.emberBedExhale(tx, ty, t, flame);
+          if (tile === Tile.EmberBed || tile === Tile.SmolderHeap) this.emberBedExhale(tx, ty, t, flame, tile);
         } else if (tile === Tile.PortalDown || tile === Tile.PortalUp) {
           // The Riftgate: bloom rides the vortex heart (raised off the
           // ground — divide the squash back out, the projAir law), a
@@ -16202,6 +16213,10 @@ export class Renderer {
     Tile.LampPostDark,
     Tile.SluiceGate,
     Tile.SluiceGateStrung,
+    // Band 8: the clamp — a still dome whose only life is its light
+    // row (collect-time) and its exhale (the emit door); the sprite
+    // bakes once and stays on the fast cadence like the ember bed.
+    Tile.SmolderHeap,
   ]);
 
   /**

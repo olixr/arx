@@ -567,6 +567,9 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.LampPostDark]: { name: 'dark lamp post', solid: true, color: '#3a3444', raised: true, topColor: '#5d5670' },
   [Tile.SluiceGate]: { name: 'sluice gate', solid: true, color: '#5a4226', raised: true, topColor: '#7a5c36' },
   [Tile.SluiceGateStrung]: { name: 'strung sluice gate', solid: true, color: '#5a4226', raised: true, topColor: '#4c6a58' },
+  // Band 8's mint (548): a turfed charcoal clamp — a solid mound you
+  // skirt, its lit top the browned turf of the crown.
+  [Tile.SmolderHeap]: { name: 'smolder heap', solid: true, color: '#4a4236', raised: true, topColor: '#6c6250' },
 };
 
 // THE KNIGHT'S KEEPING: the standing banner's dye band — defs for

@@ -1,0 +1,13 @@
+{
+  "id": "sentinel_alder",
+  "start": "line",
+  "requires": ["quest:the_stone_at_dusk:done"],
+  "bindings": [{ "kind": "actor", "target": "even_sentinel", "priority": 7 }],
+  "nodes": [
+    {
+      "id": "line",
+      "voice": "sentinel_alder__line",
+      "text": "Alder wants it thinned before frost. Thinning is felling with a smaller word."
+    }
+  ]
+}

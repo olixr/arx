@@ -125,4 +125,8 @@ export * from './maps/lowhall.js';
 // waist around the ford. Patches on worldgen, registered like towns.
 export * from './maps/ashlamp.js';
 export * from './maps/fenside.js';
+// THE CONTESTED LANDS, band 8 — the three north patches: the ward
+// line at the fork, Torsten's picket on the trail, the turn on the
+// road east (one module, maps/wardthread/).
+export * from './maps/wardthread.js';
 export * from './maps/museum.js';

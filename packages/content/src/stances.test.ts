@@ -130,7 +130,10 @@ test('WILD SIDES: stanceScanRange reads 0 for the uninvolved (the cheap gate)', 
   assert.equal(stanceScanRange('wildfolk'), 0);
   assert.equal(stanceScanRange('folk'), 0);
   assert.equal(stanceScanRange('menace'), 0); // one-way: the mob never scans
-  assert.equal(stanceScanRange('predators'), 6);
+  // Band 8 re-pin: the pack's scan was the hunt's 6 until
+  // 'goblin|predators' (range 8, either side opening) landed; a wolf
+  // now looks for a worg two tiles further than it looks for a deer.
+  assert.equal(stanceScanRange('predators'), 8);
   assert.ok(stanceScanRange('crown') >= STANCES.watchRange);
 });
 
@@ -273,12 +276,19 @@ test('CONTESTED LANDS: the neutral rows coexist, and no hostile row lands in Ban
   withDoc(doc, () => {
     assert.equal(stanceBetween('returners', 'waykeepers').stance, 'hostile');
   });
-  // Band 0 ships no hostile row beyond the hunt: the zone bands land
-  // theirs one at a time behind the FRONTIER doc (plan §8).
+  // The zone bands land their hostile rows one at a time behind the
+  // FRONTIER doc (plan §8): Band 0 shipped the hunt alone; band 8 (THE
+  // HUSK AND THE WARD LINE) landed its three. Band 10's pair is still
+  // a comment, so nothing else may stand here.
   const hostile = Object.entries(AUTHORED_STANCES.matrix).filter(([, e]) => e.stance === 'hostile');
-  assert.deepEqual(hostile.map(([k]) => k), ['grazers|predators']);
-  // The husk's changeover is neutral until band 8 lands 'dead|gnoll'.
-  assert.equal(stanceBetween('dead', 'gnoll').stance, 'neutral');
+  assert.deepEqual(hostile.map(([k]) => k), [
+    'grazers|predators',
+    'dead|gnoll',
+    'goblin|predators',
+    'goblin|goblin_doorless',
+  ]);
+  // The husk's changeover is a fight now that band 8 landed 'dead|gnoll'.
+  assert.equal(stanceBetween('dead', 'gnoll').stance, 'hostile');
   // The shipped seed still round-trips its validator with no warnings.
   const res = validateStances(JSON.parse(JSON.stringify(AUTHORED_STANCES)));
   assert.ok(res.ok);
@@ -286,4 +296,41 @@ test('CONTESTED LANDS: the neutral rows coexist, and no hostile row lands in Ban
   // The Drum's banner is spawn-minted: a goblin body is still a goblin.
   assert.equal(stanceBetween('crown', 'goblin').stance, 'neutral');
   assert.equal(stanceBetween('crown', 'menace').stance, 'hostile');
+});
+
+// ---- THE CONTESTED LANDS band 8: THE HUSK AND THE WARD LINE (plan §5
+// beats 1-3; band8/blockout.md §8.1 F1). The three hostile rows land
+// as the seed wrote them, and THE ONE-WAY FEUD reads each one the way
+// its beat needs: the dead open on the squat, the Drum opens on its
+// deserters, and worg and wolf open on each other.
+test('CONTESTED LANDS band 8: the three rows land and read initiator-side', () => {
+  // Beat 1: the line that died charges the squat; the squat answers.
+  const dead = stanceBetween('dead', 'gnoll');
+  assert.equal(dead.stance, 'hostile');
+  assert.equal(dead.range, 10);
+  assert.equal(dead.initiates, true);
+  const gnoll = stanceBetween('gnoll', 'dead');
+  assert.equal(gnoll.stance, 'hostile');
+  assert.equal(gnoll.initiates, false);
+  // Beat 2: worg against wolf, either side opening, at the shorter reach.
+  const worg = stanceBetween('goblin', 'predators');
+  assert.equal(worg.stance, 'hostile');
+  assert.equal(worg.range, 8);
+  assert.equal(worg.initiates, true);
+  assert.equal(stanceBetween('predators', 'goblin').initiates, true);
+  // Beat 3: the Drum's pickets hunt the Doorless; the Doorless never open it.
+  const drum = stanceBetween('goblin', 'goblin_doorless');
+  assert.equal(drum.stance, 'hostile');
+  assert.equal(drum.range, 10);
+  assert.equal(drum.initiates, true);
+  assert.equal(stanceBetween('goblin_doorless', 'goblin').initiates, false);
+  // The pack still walks the ward line unbothered: the truce row stands.
+  assert.equal(stanceBetween('evencourt', 'predators').stance, 'neutral');
+  // Band 10's pair is still owed, not landed.
+  assert.equal(AUTHORED_STANCES.matrix['dead|goblin_doorless'], undefined);
+  assert.equal(AUTHORED_STANCES.matrix['goblin_doorless|legion'], undefined);
+  // The seed round-trips its validator with no warnings.
+  const res = validateStances(JSON.parse(JSON.stringify(AUTHORED_STANCES)));
+  assert.ok(res.ok);
+  if (res.ok) assert.deepEqual(res.warnings, []);
 });

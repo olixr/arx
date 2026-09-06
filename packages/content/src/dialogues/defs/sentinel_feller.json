@@ -1,0 +1,13 @@
+{
+  "id": "sentinel_feller",
+  "start": "line",
+  "requires": ["quest:the_grey_root:active"],
+  "bindings": [{ "kind": "actor", "target": "even_sentinel", "priority": 6 }],
+  "nodes": [
+    {
+      "id": "line",
+      "voice": "sentinel_feller__line",
+      "text": "The stake woman's fellers cut past the thread on the fourth day. You are the fifth."
+    }
+  ]
+}

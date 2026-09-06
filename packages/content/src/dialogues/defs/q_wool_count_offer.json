@@ -1,0 +1,36 @@
+{
+  "id": "q_wool_count_offer",
+  "start": "hub",
+  "requires": ["quest:wool_count:available"],
+  "forbids": [
+    "quest:the_towers_debt:active",
+    "quest:the_towers_debt:done",
+    "quest:the_order_pays:active",
+    "quest:the_order_pays:done",
+    "wool_count_declined"
+  ],
+  "bindings": [{ "kind": "actor", "target": "drover_sorrel", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_wool_count_offer__hub",
+      "text": "Two ewes and the dog. A pack that sat in the veil forty years and never came down for a sheep. That is Sorrel's count. Torsten has his on a slate up the trail, wolves seven, and I want it nought. Get his count from his mouth, then go into the veil and make it nought at the den. I will say the cost, since the sergeant will. Alder shuts his yard to you for it and says the wolves were the stand's business, and the sergeant writes a nought under his seven and does not thank you.",
+      "hooks": [{ "kind": "quest_offer", "quest": "wool_count" }],
+      "choices": [
+        { "text": "I will make it nought.", "next": "sworn", "set": ["wool_count_sworn"] },
+        { "text": "Not for a fleece.", "next": "declined", "set": ["wool_count_declined"] }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_wool_count_offer__sworn",
+      "text": "The den is in the veil west of the trail, past the picket. Follow the wolves home.",
+      "hooks": [{ "kind": "quest_accept", "quest": "wool_count" }]
+    },
+    {
+      "id": "declined",
+      "voice": "q_wool_count_offer__declined",
+      "text": "Then mind the trail at dusk."
+    }
+  ]
+}

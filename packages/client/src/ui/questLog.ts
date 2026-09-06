@@ -452,6 +452,8 @@ function objectiveIconUrl(o: QuestObjectiveWire): string {
       return uiIconUrl('signpost', 48);
     case 'talk':
       return uiIconUrl('bell', 48);
+    case 'flag':
+      return uiIconUrl('signpost', 48);
   }
 }
 
@@ -465,6 +467,9 @@ function objectiveVerb(o: QuestObjectiveWire): string {
       return `Find ${o.label}`;
     case 'talk':
       return `Speak with ${o.label}`;
+    case 'flag':
+      // THE FLAG OBJECTIVE: the authored label is the whole verb.
+      return o.label;
   }
 }
 

@@ -24,7 +24,19 @@
       "id": "pen",
       "voice": "sorrel_stalls__pen",
       "text": "Three stalls to a household, one friend at your heel. Swap them here. Rest one that limped home. And when a bond has run its course, this is where you slip the collar. Easy, you. Not talking about your collar.",
-      "next": "hub"
+      "choices": [
+        {
+          "text": "The count you wanted nought.",
+          "next": "reoffer_count",
+          "requires": ["wool_count_declined", "quest:wool_count:available"]
+        },
+        {
+          "text": "The pelts for the lining.",
+          "next": "reoffer_fleece",
+          "requires": ["fleece_declined", "quest:the_fleece:available"]
+        },
+        { "text": "Back.", "next": "hub" }
+      ]
     },
     {
       "id": "gentle",
@@ -42,6 +54,38 @@
       "id": "off",
       "voice": "sorrel_stalls__off",
       "text": "Gate on your way out. They notice."
+    },
+    {
+      "id": "reoffer_count",
+      "voice": "sorrel_stalls__reoffer_count",
+      "text": "Torsten's count off his own mouth, and then the den, and nought. The offer stands where it stood.",
+      "hooks": [{ "kind": "quest_offer", "quest": "wool_count" }],
+      "choices": [
+        { "text": "I will.", "next": "resworn_count", "set": ["wool_count_sworn"] },
+        { "text": "Still no." }
+      ]
+    },
+    {
+      "id": "resworn_count",
+      "voice": "sorrel_stalls__resworn_count",
+      "text": "West of the trail, past the picket. Follow the wolves home.",
+      "hooks": [{ "kind": "quest_accept", "quest": "wool_count" }]
+    },
+    {
+      "id": "reoffer_fleece",
+      "voice": "sorrel_stalls__reoffer_fleece",
+      "text": "Three pelts off the veil pack for the lining. The cloak is still on the peg.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_fleece" }],
+      "choices": [
+        { "text": "I will.", "next": "resworn_fleece" },
+        { "text": "Still no." }
+      ]
+    },
+    {
+      "id": "resworn_fleece",
+      "voice": "sorrel_stalls__resworn_fleece",
+      "text": "Off the pack. Not off the trail's strays.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_fleece" }]
     }
   ]
 }

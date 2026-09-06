@@ -84,12 +84,21 @@ export function questAvailable(def: QuestDef, ctx: QuestPlayerCtx): boolean {
   return true;
 }
 
-/** Fresh per-objective counters for a stage, discover retro-credited. */
+/**
+ * Fresh per-objective counters for a stage, discover retro-credited.
+ * THE FLAG OBJECTIVE rides the same law: a flag objective is a thing
+ * the world already knows about you, so a flag already held counts
+ * the moment the stage opens (the character who broke the den last
+ * week has culled it).
+ */
 function freshProgress(def: QuestDef, stage: number, ctx: QuestPlayerCtx): number[] {
   const s = def.stages[stage];
   if (!s) return [];
   return s.objectives.map((obj) =>
-    obj.kind === 'discover' && ctx.hasDiscovered(obj.place) ? 1 : 0,
+    (obj.kind === 'discover' && ctx.hasDiscovered(obj.place)) ||
+    (obj.kind === 'flag' && ctx.hasFlag(obj.flag))
+      ? 1
+      : 0,
   );
 }
 
@@ -105,7 +114,7 @@ export function acceptQuest(def: QuestDef, prior: QuestProgress | undefined, ctx
   };
 }
 
-export type QuestCreditKind = 'kill' | 'talk' | 'discover';
+export type QuestCreditKind = 'kill' | 'talk' | 'discover' | 'flag';
 
 /**
  * Credit one event against the CURRENT stage. Returns true when a
@@ -123,7 +132,11 @@ export function creditQuest(
   let changed = false;
   for (const [i, obj] of stage.objectives.entries()) {
     if (obj.kind !== kind) continue;
-    const objKey = obj.kind === 'kill' ? obj.npc : obj.kind === 'talk' ? obj.actor : obj.place;
+    const objKey =
+      obj.kind === 'kill' ? obj.npc
+      : obj.kind === 'talk' ? obj.actor
+      : obj.kind === 'flag' ? obj.flag
+      : obj.place;
     if (objKey !== key) continue;
     const need = objectiveNeed(obj);
     const have = q.progress[i] ?? 0;
@@ -259,6 +272,9 @@ export function questWire(
         return { kind: obj.kind, place: obj.place, label: names.placeName(obj.place), have, need, hint, hints };
       case 'talk':
         return { kind: obj.kind, actor: obj.actor, label: names.actorName(obj.actor), have, need, hint, hints };
+      case 'flag':
+        // The authored label IS the name: a flag has no registry row.
+        return { kind: obj.kind, flag: obj.flag, label: obj.label, have, need, hint, hints };
     }
   });
   return {

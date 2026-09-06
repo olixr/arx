@@ -128,3 +128,12 @@ test('THE SADDLE OUTRANKS THE SOLES: max, never product', () => {
   // Naked foot, plain saddle.
   assert.equal(rideSpeedMult(1.6, 1), 1.6);
 });
+
+test('a non-finite heading moves nobody (band 8 fix pass: the NaN that crashed a boot)', () => {
+  const pos = { x: 10, y: 10 };
+  assert.deepEqual(stepMovement(pos, { mx: Number.NaN, my: 0 }, 5, 0.05, NO_COLLISION), { x: 10, y: 10 });
+  assert.deepEqual(stepMovement(pos, { mx: 0, my: Number.NaN }, 5, 0.05, NO_COLLISION), { x: 10, y: 10 });
+  assert.deepEqual(stepMovement(pos, { mx: Number.POSITIVE_INFINITY, my: 1 }, 5, 0.05, NO_COLLISION), { x: 10, y: 10 });
+  // A finite heading still walks.
+  assert.notDeepEqual(stepMovement(pos, { mx: 1, my: 0 }, 5, 0.05, NO_COLLISION), { x: 10, y: 10 });
+});

@@ -809,9 +809,30 @@ function paintTallyStone(rend: PropHost, env: PropFrame): DrawItem {
  * (stepping over is free; cutting it is the deed). ZERO light
  * entries — a mark that draws nothing at night is the point. The
  * thread samples the one breeze, clamped to 0.03s.
+ *
+ * THE THREAD IS ONE LINE (contested lands band 8, owed F2). The
+ * painter reads its four cardinal neighbours through the world (the
+ * dead hedge's gAt idiom) and JOINS them, so a run of thread tiles
+ * reads as one unbroken line and never as a row of glyphs. The law:
+ * a wand stands only where the thread has nowhere further to go. A
+ * LONE tile keeps its two wands at the east and west edges, byte
+ * identical to the shipped glyph (marks.test pins it at every seed,
+ * calm and in a gale). An END (one thread neighbour) stands one wand
+ * at the edge facing away from the run and strings the thread from
+ * that wand through its knot to the shared edge. A STRAIGHT (two
+ * opposite neighbours) stands no wand and runs two half threads,
+ * edge to knot to edge. A TURN, a fork or a cross stands ONE wand at
+ * the tile's centre and ties every half thread to it. Every half
+ * thread ends at the shared edge's midpoint at one height (0.3s over
+ * the ground line), which is exactly where the neighbour's begins,
+ * so the seam is invisible; the knot and the chip ride every tile;
+ * the shadows follow the wands (one cast each). Diagonal neighbours
+ * are not neighbours: the Court strings cardinal, and the fork rest's
+ * diagonal run re-lays cardinal with one turn. The 3D door draws the
+ * marks as billboards and owes no join (a note, not a debt).
  */
 function paintWardThread(rend: PropHost, env: PropFrame): DrawItem {
-  const { p, s, h, t, tx, ty, stationBody } = env;
+  const { p, s, h, t, tx, ty, stationBody, game } = env;
   const syT = s * rend.camera.yScale;
   const baseY = p.y + syT * 0.18;
   const wx = [p.x - s * 0.46, p.x + s * 0.46] as const;
@@ -819,55 +840,92 @@ function paintWardThread(rend: PropHost, env: PropFrame): DrawItem {
   const wandW = s * 0.06;
   const sagY = baseY - s * 0.2;
   const ph = breezePhase(h, 6);
+  // THE JOIN: which cardinal edges the thread runs on through.
+  const threadAt = (dx: number, dy: number): boolean => game.world.groundAt(tx + dx, ty + dy) === Tile.WardThread;
+  const jn = threadAt(0, -1);
+  const je = threadAt(1, 0);
+  const js = threadAt(0, 1);
+  const jw = threadAt(-1, 0);
+  const links = (jn ? 1 : 0) + (je ? 1 : 0) + (js ? 1 : 0) + (jw ? 1 : 0);
+  /** A wand: its foot and its height. */
+  type Wand = { readonly x: number; readonly y: number; readonly hh: number };
+  const wands: Wand[] = [];
+  /** The half threads' far ends: each shared edge's midpoint at the thread's height. */
+  const edges: Array<readonly [number, number]> = [];
+  const edgeH = s * 0.3;
+  const straight = links === 2 && ((jn && js) || (je && jw));
+  /** A TURN, a fork or a cross: the knot is tied to one centre wand and the breeze pulls only the chip. */
+  const tied = links >= 2 && !straight;
+  if (links === 0) {
+    wands.push({ x: wx[0], y: baseY, hh: wandH[0] }, { x: wx[1], y: baseY, hh: wandH[1] });
+  } else {
+    if (jn) edges.push([p.x, baseY - syT * 0.5 - edgeH]);
+    if (je) edges.push([p.x + s * 0.5, baseY - edgeH]);
+    if (js) edges.push([p.x, baseY + syT * 0.5 - edgeH]);
+    if (jw) edges.push([p.x - s * 0.5, baseY - edgeH]);
+    if (links === 1) {
+      // An end: the one wand stands at the edge facing away from the run.
+      if (jn) wands.push({ x: p.x, y: p.y + syT * 0.46, hh: wandH[0] });
+      else if (js) wands.push({ x: p.x, y: p.y - syT * 0.46, hh: wandH[0] });
+      else if (je) wands.push({ x: wx[0], y: baseY, hh: wandH[0] });
+      else wands.push({ x: wx[1], y: baseY, hh: wandH[1] });
+    } else if (tied) {
+      wands.push({ x: p.x, y: baseY, hh: wandH[0] });
+    }
+  }
   return {
     sortY: ty + 0.5,
     // Painted extent: wands to ±0.49s, tips 0.38s over baseY.
     body: stationBody(0.56, 0.5, 0.3),
     drawShadow: () => {
-      rend.castEdgeQuad(wx[0] - wandW * 0.5, baseY, wx[0] + wandW * 0.5, baseY, 0.35);
-      rend.castEdgeQuad(wx[1] - wandW * 0.5, baseY, wx[1] + wandW * 0.5, baseY, 0.35);
+      for (const wd of wands) rend.castEdgeQuad(wd.x - wandW * 0.5, wd.y, wd.x + wandW * 0.5, wd.y, 0.35);
     },
     draw: () => {
       // Draw-time ctx capture: the outline pass swaps rend.ctx.
       const ctx = rend.ctx;
       // ONE BREEZE, held to the thread's law (0.03s).
       const { sw, lg } = breeze(rend, tx, ty, t, ph, s, 0.03);
-      // PASS 1 — primary mass: the two wands, each a squared shaft
-      // with a lit west strip and a dark east strip, a pale cut at
-      // the tip (the wand was cut, not broken).
-      for (let i = 0; i < 2; i++) {
-        const x = wx[i]!;
-        const hh = wandH[i]!;
-        contact(ctx, x, baseY + s * 0.01, s * 0.07, syT * 0.04);
-        shaft(ctx, x, baseY, x, baseY - hh, wandW, WAND, WAND_WEST, WAND_EAST, s * 0.03, s * 0.03);
+      // PASS 1 — primary mass: the wands, each a squared shaft with a
+      // lit west strip and a dark east strip, a pale cut at the tip
+      // (the wand was cut, not broken).
+      for (const wd of wands) {
+        contact(ctx, wd.x, wd.y + s * 0.01, s * 0.07, syT * 0.04);
+        shaft(ctx, wd.x, wd.y, wd.x, wd.y - wd.hh, wandW, WAND, WAND_WEST, WAND_EAST, s * 0.03, s * 0.03);
         ctx.fillStyle = WAND_CUT;
-        ctx.fillRect(x - wandW * 0.5, baseY - hh - s * 0.03, wandW, s * 0.03);
+        ctx.fillRect(wd.x - wandW * 0.5, wd.y - wd.hh - s * 0.03, wandW, s * 0.03);
       }
-      // PASS 2 — secondary: the thread, two thin quads from tip to
-      // knot to tip, the knot carried by the breeze; the chip hangs
-      // under the knot on a short drop.
-      const kx = p.x + sw;
-      const ky = sagY + lg;
+      // PASS 2 — secondary: the thread, thin quads from each wand tip
+      // and each shared edge to the knot; the knot carried by the
+      // breeze (or tied to the centre wand); the chip hangs under the
+      // knot on a short drop.
+      const kx = tied ? p.x : p.x + sw;
+      const ky = tied ? sagY : sagY + lg;
       ctx.fillStyle = THREAD;
-      cord(ctx, wx[0], baseY - wandH[0]! - s * 0.015, kx, ky, s * 0.03);
-      cord(ctx, wx[1], baseY - wandH[1]! - s * 0.015, kx, ky, s * 0.03);
+      for (const wd of wands) cord(ctx, wd.x, wd.y - wd.hh - s * 0.015, kx, ky, s * 0.03);
+      for (const [ex, ey] of edges) cord(ctx, ex, ey, kx, ky, s * 0.03);
       ctx.fillStyle = KNOT;
       ctx.fillRect(kx - s * 0.02, ky - s * 0.02, s * 0.04, s * 0.04);
+      const cx = tied ? kx + sw : kx;
       ctx.fillStyle = THREAD;
-      ctx.fillRect(kx - s * 0.015, ky + s * 0.02, s * 0.03, s * 0.035);
+      ctx.fillRect(cx - s * 0.015, ky + s * 0.02, s * 0.03, s * 0.035);
       const cy = ky + s * 0.055;
       ctx.fillStyle = MOONGLASS;
       ctx.beginPath();
-      chamferRect(ctx, kx - s * 0.04, cy, s * 0.08, s * 0.08, s * 0.02);
+      chamferRect(ctx, cx - s * 0.04, cy, s * 0.08, s * 0.08, s * 0.02);
       ctx.fill();
       ctx.fillStyle = MOONGLASS_LIT;
-      ctx.fillRect(kx - s * 0.03, cy + s * 0.015, s * 0.03, s * 0.05);
-      // PASS 3 — tertiary: a second knot on the west wand where the
-      // thread was tied off (the court ties, it never nails).
-      ctx.fillStyle = KNOT;
-      ctx.fillRect(wx[0] - s * 0.02, baseY - wandH[0]! + s * 0.01, s * 0.04, s * 0.04);
+      ctx.fillRect(cx - s * 0.03, cy + s * 0.015, s * 0.03, s * 0.05);
+      // PASS 3 — tertiary: a second knot on the first wand where the
+      // thread was tied off (the court ties, it never nails); a
+      // straight run has no wand and no tie off.
+      const w0 = wands[0];
+      if (w0) {
+        ctx.fillStyle = KNOT;
+        ctx.fillRect(w0.x - s * 0.02, w0.y - w0.hh + s * 0.01, s * 0.04, s * 0.04);
+      }
       // PASS 4 — re-read: willow (4 values), thread, knot, glass (2);
-      // no light, no glow, breeze ≤0.03s, every piece tied on.
+      // no light, no glow, breeze ≤0.03s, every piece tied on; the
+      // line leaves the tile only at a shared edge.
     },
   };
 }

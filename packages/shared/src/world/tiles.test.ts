@@ -710,6 +710,11 @@ test('load-bearing scenery is not smashable', () => {
     Tile.RuinWallStone,
     // The ember bed is the bonfire law: a fire is doused, not smashed.
     Tile.EmberBed,
+    // The clamp (band 8, 548) is the same law banked under turf: a
+    // charcoal fire burns for days and is opened by its burner, never
+    // by a club — and the Felling's line of four is authored ground
+    // that a smash would patch out of the world (no debris kind).
+    Tile.SmolderHeap,
     // The chimney holds the sky up over a shell (the grand pillar's
     // law in brick) — and it is the kit's one lamplight blocker.
     Tile.ChimneyStack,
@@ -757,6 +762,15 @@ test('THE SCARRED LAND: the id band, the ruin walls, and the two state-kin', () 
   }
   assert.ok(!isScarredTile(Tile.MournerStatue));
   assert.ok(!isScarredTile(Tile.SluiceGateStrung + 1));
+  // Band 8 THE CLAMP: 548 stands PAST the band by name, not by range
+  // — 546 and 547 stay reserved for the living ground's two true
+  // tiles (plan §12.5), which are floors and must never answer here.
+  assert.equal(Tile.SmolderHeap, 548);
+  assert.ok(isScarredTile(Tile.SmolderHeap), 'the clamp is kit');
+  assert.ok(!isScarredTile(546) && !isScarredTile(547), 'the reserved ground ids never answer');
+  assert.ok(!isScarredTile(549), 'the Dolmen\'s ids are not yet minted');
+  const clamp = tileDef(Tile.SmolderHeap);
+  assert.ok(clamp.raised && clamp.solid && clamp.name === 'smolder heap', 'a solid raised prop with its plaque name');
   // The six floor Details land right after the drape band.
   assert.equal(Detail.Ash, 176);
   assert.equal(Detail.Mudcrack, 181);

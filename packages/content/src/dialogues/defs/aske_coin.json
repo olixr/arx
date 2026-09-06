@@ -1,0 +1,44 @@
+{
+  "id": "aske_coin",
+  "start": "hub",
+  "requires": ["quest:the_towers_debt:done"],
+  "forbids": ["aske_coin_taken", "aske_coin_refused"],
+  "bindings": [{ "kind": "actor", "target": "company_aske", "priority": 9 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "aske_coin__hub",
+      "text": "Eleven gnolls. I said I would pay for eleven and I do not need to know their names. Roald was mine.",
+      "choices": [
+        { "text": "Take the coin.", "next": "paid" },
+        { "text": "Take it at the road's rate.", "next": "paid_book", "requires": ["fen_side_taken"] },
+        { "text": "Keep it.", "next": "kept", "set": ["aske_coin_refused"] }
+      ]
+    },
+    {
+      "id": "paid",
+      "voice": "aske_coin__paid",
+      "text": "Paid. The order will not thank me and I did not ask it to. I will say this once. The picket said nothing that counted.",
+      "hooks": [
+        { "kind": "give", "item": "coins", "qty": 60 },
+        { "kind": "standing", "faction": "reavers", "delta": 10 },
+        { "kind": "flag", "flag": "aske_coin_taken" }
+      ]
+    },
+    {
+      "id": "paid_book",
+      "voice": "aske_coin__paid_book",
+      "text": "You are in the book from the ford. The book pays the book's rate. The picket said nothing that counted.",
+      "hooks": [
+        { "kind": "give", "item": "coins", "qty": 90 },
+        { "kind": "standing", "faction": "reavers", "delta": 10 },
+        { "kind": "flag", "flag": "aske_coin_taken" }
+      ]
+    },
+    {
+      "id": "kept",
+      "voice": "aske_coin__kept",
+      "text": "Roald's page holds it, then. The book is patient."
+    }
+  ]
+}

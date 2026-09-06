@@ -110,7 +110,14 @@ export function stepMovement(
 ): Vec2 {
   let { mx, my } = input;
   const len = Math.hypot(mx, my);
-  if (len < 1e-6) return { x: pos.x, y: pos.y };
+  // THE BODY THAT LOST ITS BEARING (contested lands, band 8 fix pass):
+  // a non-finite heading (0/0 from a zero-length steer, a NaN that
+  // rode in on a separation vector) used to pass every comparison
+  // below, step the body to NaN and hand a NaN tile to the collision
+  // source, whose chunk generator then died on it. A heading that is
+  // not a number is no heading: the body stands where it stands, and
+  // the caller owns the diagnosis (the server logs the body).
+  if (!Number.isFinite(len) || len < 1e-6) return { x: pos.x, y: pos.y };
   if (len > 1) {
     mx /= len;
     my /= len;

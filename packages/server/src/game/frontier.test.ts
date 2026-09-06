@@ -9,10 +9,11 @@ import {
   fallowRestFor,
   scatterLingerFor,
   stageWaitFor,
+  validatePoiDef,
 } from '@arx/content';
 import { GameServer } from './gameServer.js';
 import { hearthOwnerOf } from './formulas.js';
-import { POI_CELL, poiCellKey, poiContext, poiForCell, composePoi, type PoiSite } from '../world/pois.js';
+import { POI_CELL, poiCellKey, poiCellOf, poiContext, poiForCell, composePoi, type PoiSite } from '../world/pois.js';
 import { config } from '../config.js';
 
 /**
@@ -33,6 +34,7 @@ const proto = GameServer.prototype as unknown as {
   spendRenewalCredit: Fn;
   stageOnePoi: Fn;
   seedOneSatellite: Fn;
+  rivalMasterNear: Fn;
   playerWithin: Fn;
   authoredCells: Fn;
   calmNear: Fn;
@@ -154,6 +156,14 @@ function slate(rows: Array<[string, LedgerRow]>, opts: { credits?: number } = {}
     broadcastTrophies: () => {},
     playerWithin: proto.playerWithin,
     authoredCells: proto.authoredCells,
+    // THE PRESSED SATELLITE, GATED (band 8, rulings G2): the shipped
+    // goblin_warcamp carries `rivalNear` on the Legion, so every seed
+    // over the live def reads the gate — the slate carries the gate's
+    // three members and the trace it writes to, as the server does.
+    rivalMasterNear: proto.rivalMasterNear,
+    authoredPinsOf: (GameServer.prototype as unknown as { authoredPinsOf: Fn }).authoredPinsOf,
+    authoredPinsCache: null as unknown,
+    satTrace: [] as string[],
     poiCtx: proto.poiCtx,
     // The mask now derives from the queried ground (core-audit debt 2)
     // — the slate keeps an empty frontier of capitals.
@@ -952,7 +962,10 @@ test('THE PRESSED SATELLITE: a rivalDef core deals the rival townward, not its o
   const def = POI_DEFS.get('goblin_warcamp')!;
   const saved = def.boldness;
   assert.ok(saved?.satellites, 'the warcamp seeds satellites (precondition)');
-  (def as { boldness?: unknown }).boldness = { ...saved, rivalDef: 'company_tollhouse' };
+  // The shipped Drum carries the GATED rival since band 8 (rulings
+  // G2: rivalNear on the Legion); this case is the UNGATED law, so the
+  // gate is lifted for its length and the gated cases below hold it.
+  (def as { boldness?: unknown }).boldness = { ...saved, rivalDef: 'company_tollhouse', rivalNear: undefined };
   try {
     assert.equal(proto.seedOneSatellite.call(s, now), true, 'the stage-2 core must deal');
     const sat = [...s.poiLedger.entries()].find(([k, r]) => k !== KEY && r.site !== null);
@@ -962,4 +975,125 @@ test('THE PRESSED SATELLITE: a rivalDef core deals the rival townward, not its o
   } finally {
     (def as { boldness?: unknown }).boldness = saved;
   }
+});
+
+/**
+ * THE PRESSED SATELLITE, GATED (contested lands band 8, owed F3): a
+ * rival is dealt only where the rival's master stands within a march.
+ * `rivalNear { defId, tiles }` beside `rivalDef` gates the seed on the
+ * authored pins of `defId` (their live ledger anchors); out of reach
+ * the core deals its ordinary reach and the trace says why.
+ */
+function gatedSlate(rows: Array<[string, LedgerRow]>) {
+  const s = slate(rows) as ReturnType<typeof slate> & {
+    satTrace: string[];
+    rivalMasterNear: Fn;
+    authoredPinsOf: Fn;
+    authoredPinsCache: null;
+  };
+  s.satTrace = [];
+  s.rivalMasterNear = proto.rivalMasterNear;
+  s.authoredPinsOf = (GameServer.prototype as unknown as { authoredPinsOf: Fn }).authoredPinsOf;
+  s.authoredPinsCache = null;
+  return s;
+}
+
+const LEGION_KEY = poiCellKey(poiCellOf(-64), poiCellOf(-320));
+
+test('THE PRESSED SATELLITE, GATED: the Legion is pinned (precondition) and lies a march and more from the test cell', () => {
+  const authored = proto.authoredCells.call({}) as Map<string, string>;
+  assert.equal(authored.get(LEGION_KEY), 'hobgoblin_legion');
+  const st = site();
+  assert.ok(Math.hypot(-64 - st.anchorX, -320 - st.anchorY) > 512, 'far beyond any legal reach');
+});
+
+test('THE PRESSED SATELLITE, GATED: out of the master\'s march the core deals its own reach, and the trace says why', () => {
+  const now = Date.now();
+  const st = site({ tier: 3 });
+  const s = gatedSlate([[KEY, row({ site: st, stage: 2, stageAt: now })]]);
+  const def = POI_DEFS.get('goblin_warcamp')!;
+  const saved = def.boldness;
+  (def as { boldness?: unknown }).boldness = {
+    ...saved,
+    rivalDef: 'legion_pressed',
+    rivalNear: { defId: 'hobgoblin_legion', tiles: 320 },
+  };
+  try {
+    assert.equal(proto.seedOneSatellite.call(s, now), true, 'the stage-2 core still deals');
+    const sat = [...s.poiLedger.entries()].find(([k, r]) => k !== KEY && r.site !== null);
+    assert.ok(sat, 'a satellite row must exist');
+    assert.equal(sat![1].site!.defId, 'goblin_warcamp', 'its OWN reach: no Legion within a march');
+    assert.ok(s.satTrace.includes(`${KEY}:rivalfar`), 'the trace names the gate');
+  } finally {
+    (def as { boldness?: unknown }).boldness = saved;
+  }
+});
+
+test('THE PRESSED SATELLITE, GATED: within the master\'s march the rival is dealt townward', () => {
+  const now = Date.now();
+  const st = site({ tier: 3 });
+  // The Legion's authored cell holds a LIVE site whose anchor stands
+  // 200 tiles east of the core (the ledger anchor outranks the pin).
+  const legion = site({
+    cellX: poiCellOf(-64),
+    cellY: poiCellOf(-320),
+    tier: 3,
+    defId: 'hobgoblin_legion',
+    prefabId: 'poi_goblin_camp_ring',
+    anchorX: st.anchorX + 200,
+    anchorY: st.anchorY,
+  });
+  const s = gatedSlate([
+    [KEY, row({ site: st, stage: 2, stageAt: now })],
+    [LEGION_KEY, row({ site: legion })],
+  ]);
+  const def = POI_DEFS.get('goblin_warcamp')!;
+  const saved = def.boldness;
+  (def as { boldness?: unknown }).boldness = {
+    ...saved,
+    rivalDef: 'legion_pressed',
+    rivalNear: { defId: 'hobgoblin_legion', tiles: 320 },
+  };
+  try {
+    assert.equal(proto.seedOneSatellite.call(s, now), true, 'the stage-2 core must deal');
+    const sat = [...s.poiLedger.entries()].find(([k, r]) => k !== KEY && k !== LEGION_KEY && r.site !== null);
+    assert.ok(sat, 'a satellite row must exist');
+    assert.equal(sat![1].site!.defId, 'legion_pressed', 'the RIVAL stands: the Legion is within a march');
+    assert.equal(sat![1].originCell, KEY, 'and it dies with the core like any satellite');
+    assert.ok(!s.satTrace.includes(`${KEY}:rivalfar`));
+    // The reach is the reach: 199 tiles is out, exactly as the field says.
+    assert.equal(proto.rivalMasterNear.call(s, 'hobgoblin_legion', 199, st.anchorX, st.anchorY), false);
+    assert.equal(proto.rivalMasterNear.call(s, 'hobgoblin_legion', 200, st.anchorX, st.anchorY), true);
+    // A def nobody pins is never near.
+    assert.equal(proto.rivalMasterNear.call(s, 'nobody_pins_this', 512, st.anchorX, st.anchorY), false);
+  } finally {
+    (def as { boldness?: unknown }).boldness = saved;
+  }
+});
+
+test('THE PRESSED SATELLITE, GATED: the validator holds the shape (needs rivalDef; tiles 64..512; a roster slug; never itself)', () => {
+  const base = JSON.parse(JSON.stringify(POI_DEFS.get('goblin_warcamp'))) as Record<string, unknown>;
+  // The shipped Drum carries the gated word since band 8 (rulings G2);
+  // the shape cases below start from the bare ladder.
+  delete (base.boldness as Record<string, unknown>).rivalDef;
+  delete (base.boldness as Record<string, unknown>).rivalNear;
+  const vet = (mut: (b: Record<string, unknown>) => void): string[] => {
+    const raw = JSON.parse(JSON.stringify(base)) as Record<string, unknown>;
+    mut(raw.boldness as Record<string, unknown>);
+    const res = validatePoiDef(raw);
+    return res.ok ? [] : res.errors;
+  };
+  assert.deepEqual(vet(() => {}), [], 'the shipped def re-validates (precondition)');
+  assert.deepEqual(
+    vet((b) => { b.rivalDef = 'legion_pressed'; b.rivalNear = { defId: 'hobgoblin_legion', tiles: 320 }; }),
+    [],
+    'the gated rival is legal',
+  );
+  const has = (errs: string[], needle: string) => errs.some((e) => e.includes(needle));
+  assert.ok(has(vet((b) => { b.rivalNear = { defId: 'hobgoblin_legion', tiles: 320 }; }), 'needs rivalDef'));
+  assert.ok(has(vet((b) => { b.rivalDef = 'legion_pressed'; b.rivalNear = { defId: 'hobgoblin_legion', tiles: 20 }; }), '64..512'));
+  assert.ok(has(vet((b) => { b.rivalDef = 'legion_pressed'; b.rivalNear = { defId: 'hobgoblin_legion', tiles: 600 }; }), '64..512'));
+  assert.ok(has(vet((b) => { b.rivalDef = 'legion_pressed'; b.rivalNear = { defId: 'Not A Slug', tiles: 320 }; }), 'defId must be a def id'));
+  assert.ok(has(vet((b) => { b.rivalDef = 'legion_pressed'; b.rivalNear = { defId: 'goblin_warcamp', tiles: 320 }; }), 'must not name the def itself'));
+  assert.ok(has(vet((b) => { b.rivalDef = 'legion_pressed'; b.rivalNear = 'hobgoblin_legion'; }), 'must be { defId, tiles }'));
 });

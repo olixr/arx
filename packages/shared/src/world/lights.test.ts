@@ -55,6 +55,9 @@ const ROSTER: readonly Tile[] = [
   // THE HUNG LANTERN (band 7 fix pass 1): the porch lantern's own tier
   // under the town lamp.
   Tile.StreetLantern,
+  // THE CLAMP (band 8, rulings G3): the smolder heap's COALS-class
+  // row, flame-gated, cool by day.
+  Tile.SmolderHeap,
 ];
 
 test('the emitter census: exactly the transcribed roster, each row reachable', () => {
@@ -106,8 +109,14 @@ test('every row is well-formed: sane reaches, intensities, colors, and at least 
  * it is a licence, not a loophole: one modest non-occluding pool
  * (r ≤ 2.6, intensity ≤ 0.45), still flame-voiced so it stands down
  * by day. A brighter or wider ground fire is a new owner decision.
+ *
+ * THE CLAMP JOINS THE LICENCE (band 8, SmolderHeap 548): a turf
+ * mound is not architecture either — nothing about a sodded dome
+ * bites its own light, and a felling seats four in a row — so its
+ * pool stands under the same ceiling, lower than the bed's (r 2.2,
+ * i 0.4, base 0.55: a fire deliberately starved).
  */
-const GROUND_POOL_LICENCE: ReadonlySet<Tile> = new Set([Tile.EmberBed]);
+const GROUND_POOL_LICENCE: ReadonlySet<Tile> = new Set([Tile.EmberBed, Tile.SmolderHeap]);
 
 test('THE FLAME LAW: flame-gated light is architecture (occludes) — except the licensed candle tier and ground pools', () => {
   eachSpec((tile, spec) => {
@@ -119,7 +128,7 @@ test('THE FLAME LAW: flame-gated light is architecture (occludes) — except the
   });
 });
 
-test('THE GROUND-POOL LICENCE: the ember bed is one modest flame-voiced pool that never occludes', () => {
+test('THE GROUND-POOL LICENCE: the ember bed and the clamp are each one modest flame-voiced pool that never occludes', () => {
   for (const tile of GROUND_POOL_LICENCE) {
     const spec = tileEmitter(tile)!;
     assert.ok(spec, `${Tile[tile]}: licensed but has no row`);
@@ -140,6 +149,34 @@ test('THE GROUND-POOL LICENCE: the ember bed is one modest flame-voiced pool tha
     assert.ok(spec.curve.base <= 0.65, `${Tile[tile]}: a banked bed breathes low (base ${spec.curve.base})`);
     assert.ok(spec.curve.base * pool.intensity <= 0.3, `${Tile[tile]}: effective pool ${(spec.curve.base * pool.intensity).toFixed(2)} over 0.3`);
   }
+});
+
+test('THE CLAMP (band 8): a fire deliberately starved — under the bed on every channel, its bloom in the air at the flank vents', () => {
+  // A charcoal clamp is cordwood banked under turf so it chars
+  // instead of burning: the only light it shows is the coals at its
+  // vent holes. So the row sits UNDER the ember bed's (base, pool
+  // reach, pool intensity, bloom alpha all lower or equal), breathes
+  // slower (the sub-Hz swell under the bed's 0.7 Hz), and lifts its
+  // bloom into the air at the vents' height (smolderHeap.ts cuts them
+  // at mid-height of a 0.62-tile dome). Both channels ride the flame
+  // clock: by day the painter's cold turf is all there is.
+  const bed = tileEmitter(Tile.EmberBed)!;
+  const clamp = tileEmitter(Tile.SmolderHeap)!;
+  assert.ok(clamp, 'the clamp has a row');
+  assert.ok(clamp.curve.base <= bed.curve.base, `base ${clamp.curve.base} over the bed's ${bed.curve.base}`);
+  const slow = clamp.curve.terms.find((term) => term.hz < 1);
+  assert.ok(slow, 'the clamp breathes on a sub-Hz swell');
+  assert.ok(slow.hz <= bed.curve.terms[0]!.hz, 'the clamp breathes slower than the bed');
+  assert.equal(clamp.lights.length, 1, 'ONE pool');
+  assert.equal(clamp.glows.length, 1, 'ONE bloom');
+  const pool = clamp.lights[0]!;
+  const bloom = clamp.glows[0]!;
+  assert.ok(pool.r <= bed.lights[0]!.r && pool.intensity <= bed.lights[0]!.intensity, 'the pool stands under the bed\'s');
+  assert.ok(bloom.a <= bed.glows[0]!.a, 'the bloom stands under the bed\'s');
+  assert.ok(bloom.air !== undefined && bloom.air > 0.2 && bloom.air < 0.5, `the bloom rides the flank vents (air ${bloom.air})`);
+  assert.equal(bloom.gate, 'flame');
+  assert.ok(pool.flameGated && !pool.occlude);
+  assert.ok(!clamp.flameGate, 'the fixture is not gated whole: the pool and bloom each ride the clock (the bed\'s shape)');
 });
 
 test('THE TOWN LAW, TIERED (§7.1): candles carry one tiny non-occluding pool; LampPost owns the night', () => {

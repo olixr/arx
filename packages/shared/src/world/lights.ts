@@ -426,6 +426,25 @@ const SPECS: ReadonlyArray<readonly [Tile, EmitterSpec]> = [
     glows: [{ dx: 0.5, dy: 0.55, r: 0.9, rRide: true, rgb: '255, 122, 42', a: 0.4, gate: 'flame' }],
     lights: [{ dx: 0.5, dy: 0.55, r: 2.6, rgb: [255, 122, 42], intensity: 0.45, flameGated: true }],
   }],
+  // THE SCARRED LAND (band 8, THE CLAMP): the smolder heap — COALS-
+  // class, the ember bed's law in a charcoal burner's shape. A clamp
+  // is a fire DELIBERATELY starved: cordwood banked under turf so it
+  // chars instead of burning, and the only light it shows is the
+  // coals at its vent holes. So the row breathes slower and lower
+  // than the bed (base 0.55 against 0.6; a 0.5 Hz swell as the draw
+  // shifts, a faint 4 Hz tick where a vent flares) and the bloom sits
+  // in the AIR at the flank vents (air 0.35: smolderHeap.ts stands
+  // the dome 0.62 tall over a foot 0.2 south of centre, and the vents
+  // are cut at mid-height), while the pool stays a modest ground pool
+  // under THE GROUND-POOL LICENCE (r 2.2, i 0.4, effective 0.22 —
+  // lights.test argues it): a turf mound is not architecture and a
+  // felling seats four in a row. Both channels ride the flame clock:
+  // by day the painter's cold turf and dry char are all there is.
+  [Tile.SmolderHeap, {
+    curve: { base: 0.55, terms: [{ hz: 0.5, amp: 0.1, px: 1.3, py: 0.9 }, { hz: 4, amp: 0.03, py: 0.4 }] },
+    glows: [{ dx: 0.5, dy: 0.5, air: 0.35, r: 0.7, rRide: true, rgb: '255, 110, 36', a: 0.3, gate: 'flame' }],
+    lights: [{ dx: 0.5, dy: 0.5, r: 2.2, rgb: [255, 110, 36], intensity: 0.4, flameGated: true }],
+  }],
   // The gloom stone: GlowShroom-class — a cold swell, never a
   // flicker, no flame gate, non-occluding (it was here first and it
   // does not keep a clock). The Riftgate apron's palette above

@@ -4,6 +4,9 @@ import {
   buildAshlamp,
   buildDawnmead,
   buildFenside,
+  buildPicket,
+  buildTurnoff,
+  buildWardthread,
   buildPinewatch,
   buildHartfell,
   buildKingsdelf,
@@ -91,6 +94,11 @@ export function authoredZoneArt(): ZoneArt[] {
       // TILE_SKIP stays transparent, so only the authored cells chart.
       buildAshlamp(),
       buildFenside(),
+      // THE CONTESTED LANDS (band 8): the three north patches; their
+      // TILE_SKIP stays transparent, so only the authored cells chart.
+      buildWardthread(),
+      buildPicket(),
+      buildTurnoff(),
     ].map(bakeZone);
   }
   return cache;

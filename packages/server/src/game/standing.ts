@@ -63,11 +63,24 @@ export function creditStanding(srv: GameServer,
   }
 }
 
+/**
+ * The named systemic deeds — every key of FACTIONS.deeds that is a
+ * deed and not a cap. `wardCut` is THE WARD DEED (contested lands,
+ * band 8): the deliberate cut of the Court's thread.
+ */
+export type DeedId =
+  | 'bountyHonored'
+  | 'tollBroken'
+  | 'assaultEnforcer'
+  | 'slayMember'
+  | 'theftWitnessed'
+  | 'wardCut';
+
 /** A systemic deed by name — value read from the live doc, matrix paid. */
 export function creditDeed(srv: GameServer, 
   player: PlayerComp,
   factionId: string | null,
-  deed: 'bountyHonored' | 'tollBroken' | 'assaultEnforcer' | 'slayMember' | 'theftWitnessed',
+  deed: DeedId,
 ): void {
   if (factionId === null) return;
   srv.creditStanding(player, factionId, FACTIONS.deeds[deed], { cross: true });

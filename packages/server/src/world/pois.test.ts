@@ -1182,3 +1182,132 @@ test('THE MOUTH ON THE ROW: the named crowned holdfast carries its actor slug in
   // The crew carries no mouth.
   for (const s of spawns) if (s !== brede) assert.equal(s.mouth, undefined);
 });
+
+test('BAND 8 THE NORTH REBORN: the three new sketches survive the boot\'s JSON round trip byte-identical, the pinned ground holds, the den re-pins in place, and every unpinned cell is unchanged', () => {
+  // data/prefabs/{poi_husk_of_the_line,poi_veil_den,poi_felling_drum}
+  // .json are born at boot through prefabToJson and read back through
+  // prefabFromJson (FILE-WINS); the rebirth must be lossless, and the
+  // library with the reborn three must deal the same world.
+  const rebornLib = new Map(POI_PREFABS);
+  for (const id of ['poi_husk_of_the_line', 'poi_veil_den', 'poi_felling_drum', 'poi_fork_waystation']) {
+    const src = POI_PREFABS.get(id)!;
+    assert.ok(src, `${id} left the shelf`);
+    const born = JSON.stringify(prefabToJson(src), null, 2);
+    const reborn = prefabFromJson(JSON.parse(born) as Parameters<typeof prefabFromJson>[0]);
+    assert.equal(JSON.stringify(prefabToJson(reborn), null, 2), born, `${id}: the round trip changed it`);
+    assert.deepEqual([...reborn.ground], [...src.ground]);
+    assert.deepEqual([...reborn.detail], [...src.detail], `${id}: the detail plane (ash, furrows, bones) must survive the file`);
+    assert.deepEqual(reborn.spawns, src.spawns);
+    rebornLib.set(id, reborn);
+  }
+  const zones = [
+    buildDawnmead(), buildAmberford(), buildSilverfall(), buildSaltmere(), buildPinewatch(),
+    buildHartfell(), buildKingsdelf(), buildEvenfall(), buildUndercroft(), buildLowhall(),
+    buildAshlamp(), buildFenside(),
+  ];
+  const ctxA = poiContext(SETTLED_ANCHORS, zones, POI_PREFABS, [], []);
+  const ctxB = poiContext(SETTLED_ANCHORS, zones, rebornLib, [], []);
+  // THE PINNED GROUND: the husk and the Felling stand on their pins at
+  // nudge 0 under their OWN prefabs (the golden list above holds the
+  // numbers; this is the sentence: a 16x15 husk on the peninsula's
+  // grass and a 32x29 Felling on the burnt stand south of the rock).
+  for (const [id, x, y] of [['husk_of_the_line', -64, -240], ['felling_drum', 80, -42], ['fork_rest', -150, -165]] as const) {
+    const want = AUTHORED_WILD_SITES.find((s) => s.id === id)!;
+    const def = POI_DEFS.get(want.defId)!;
+    const prefab = POI_PREFABS.get(want.prefabId ?? def.prefabs[0]!)!;
+    assert.ok(!want.hug, `${id}: no north pin says hug (0.2 B)`);
+    // The seeder's own nudge clamp (the fork's pin (-146,-168) walks
+    // to (-150,-165) as it did in band 0; the husk and the Felling
+    // stand ON their pins).
+    const cellX = poiCellOf(want.x!);
+    const cellY = poiCellOf(want.y!);
+    const inX = want.x! - cellX * POI_CELL;
+    const inY = want.y! - cellY * POI_CELL;
+    const nudge = Math.max(0, Math.min(14, Math.min(inX, inY, POI_CELL - 1 - inX, POI_CELL - 1 - inY)));
+    assert.deepEqual(findAuthoredAnchor(SEED, want.x!, want.y!, prefab, ctxA, nudge, false), { x, y }, `${id}: stands where it stood under ${prefab.id}`);
+    if (id !== 'fork_rest') assert.deepEqual(findAuthoredAnchor(SEED, want.x!, want.y!, prefab, ctxA, 0, false), { x, y }, `${id}: on its pin at nudge 0`);
+    const site: PoiSite = { cellX: poiCellOf(x), cellY: poiCellOf(y), epoch: 0, tier: 2, defId: want.defId, prefabId: prefab.id, anchorX: x, anchorY: y };
+    const zone = composePoi(SEED, site, ctxA);
+    assert.ok(zone, `${id}: failed to compose`);
+    assert.deepEqual(composePoi(SEED, site, ctxB), zone, `${id}: the reborn library deals a different zone`);
+  }
+  // THE DEN RE-PINS IN PLACE: forced as `veil_den` on `poi_veil_den`
+  // the cell [-2,-1] scan stands where the rolled wolfkin_den stood
+  // (the same 20x12 shelf footprint), and Hollowhowl musters crowned
+  // at tier 2 AND at tier 1 (minTier 1) with the pack around him.
+  const asDen = poiForCell(SEED, -2, -1, 0, ctxA, 'wolfkin_den')!;
+  const asVeil = poiForCell(SEED, -2, -1, 0, ctxA, 'veil_den', false, 'poi_veil_den')!;
+  assert.ok(asDen && asVeil, 'the den cell stands nothing');
+  assert.equal(asVeil.prefabId, 'poi_veil_den');
+  assert.equal(asVeil.defId, 'veil_den');
+  assert.deepEqual([asVeil.anchorX, asVeil.anchorY], [asDen.anchorX, asDen.anchorY], 'the re-pin keeps the anchor');
+  assert.deepEqual([asVeil.anchorX, asVeil.anchorY], [-186, -99], 'the boot log\'s own line for the den');
+  assert.equal(poiForCell(SEED, -2, -1, 0, ctxA, 'veil_den', false, 'poi_den_bones'), null, 'a pin outside the variant\'s pool is refused');
+  for (const tier of [1, 2]) {
+    const zone = composePoi(SEED, { ...asVeil, tier }, ctxA)!;
+    assert.ok(zone, `tier ${tier}: the den failed to compose`);
+    const spawns = zone.spawns ?? [];
+    const crown = spawns.filter((s) => s.crown !== undefined);
+    assert.equal(crown.length, 1, `tier ${tier}: one crown`);
+    assert.equal(crown[0]!.npc, 'dire_wolf');
+    assert.equal(crown[0]!.name, 'Hollowhowl');
+    assert.equal(crown[0]!.x, asVeil.anchorX + 0.5, 'the crown stands at the anchor, beside the nest');
+    assert.ok(spawns.filter((s) => s.npc === 'wolf').reduce((n, s) => n + s.count, 0) >= 3, `tier ${tier}: the pack stands (two rows plus the two markers)`);
+    assert.ok(!spawns.some((s) => s.npc === 'worg'), 'no worg');
+    assert.ok([...zone.ground].includes(Tile.BoneTree), 'the bone tree at the mouth');
+    // THE TRAMPLED RING (band 8 fix pass): the den's clearing fells
+    // to grass and never to a stump — a pack cuts nothing. The rolled
+    // wolfkin_den on the same cell keeps the camp's ring (the world
+    // is byte-identical everywhere but the pinned den).
+    assert.equal([...zone.ground].filter((t) => t === Tile.Stump).length, 0, `tier ${tier}: no stump rings the veil den`);
+  }
+  const rolledDen = composePoi(SEED, { ...asDen, tier: 2 }, ctxA)!;
+  assert.ok([...rolledDen.ground].filter((t) => t === Tile.Stump).length > 0, 'the rolled den on the same cell still deals the camp\'s stumps: the trampled word is the veil den\'s alone');
+  // THE HUSK letters ONE board (the Signpost) and never the burnt one.
+  const huskSite: PoiSite = { cellX: poiCellOf(-64), cellY: poiCellOf(-240), epoch: 0, tier: 2, defId: 'husk_of_the_line', prefabId: 'poi_husk_of_the_line', anchorX: -64, anchorY: -240 };
+  const husk = composePoi(SEED, huskSite, ctxA)!;
+  assert.equal(husk.signs?.length, 1, 'one lettered board');
+  assert.equal(husk.signs![0]!.title, 'STRUCK FROM THE ROLLS');
+  const burntAt = husk.ground.indexOf(Tile.SignpostBurnt);
+  assert.ok(burntAt >= 0, 'the burnt board stands');
+  assert.ok(!husk.signs!.some((s) => s.x === husk.origin.x + (burntAt % husk.width) && s.y === husk.origin.y + Math.floor(burntAt / husk.width)), 'char takes no words');
+  const counts = (t: Tile): number => husk.ground.reduce((n, v) => n + (v === t ? 1 : 0), 0);
+  assert.equal(counts(Tile.LampPostDark), 1);
+  assert.equal(counts(Tile.BoneMidden), 1, 'no cue doubled the midden');
+  assert.equal(counts(Tile.TrophyStake), 1);
+  assert.equal(counts(Tile.KnucklePit), 1);
+  // The crews muster as booted: six gnolls by day and the crowned two.
+  const hs = husk.spawns ?? [];
+  assert.ok(hs.some((s) => s.name === 'Old Cackle' && s.crown !== undefined));
+  assert.ok(hs.some((s) => s.name === 'the Struck Sergeant' && s.crown !== undefined));
+  // THE FELLING: four clamps and twelve stumps in the heart, six more stumps on the cone at most, six snags.
+  const drumSite: PoiSite = { cellX: poiCellOf(80), cellY: poiCellOf(-42), epoch: 0, tier: 2, defId: 'felling_drum', prefabId: 'poi_felling_drum', anchorX: 80, anchorY: -42 };
+  const drum = composePoi(SEED, drumSite, ctxA)!;
+  const dc = (t: Tile): number => drum.ground.reduce((n, v) => n + (v === t ? 1 : 0), 0);
+  assert.equal(dc(Tile.SmolderHeap), 4, 'the clamps, and the cone adds none');
+  assert.ok(dc(Tile.CharredStump) >= 12 && dc(Tile.CharredStump) <= 18, `twelve authored and up to six on the cone (${dc(Tile.CharredStump)})`);
+  assert.equal(dc(Tile.DeadTree), 6, 'the snag ring, and the cone adds none');
+  assert.ok((drum.spawns ?? []).some((s) => s.tribe === 'goblin_doorless'), 'the Doorless night row stands');
+  // THE FORK REST composes with its cairn pair, its stone and no thread.
+  const forkSite: PoiSite = { cellX: poiCellOf(-150), cellY: poiCellOf(-165), epoch: 0, tier: 2, defId: 'fork_waystation', prefabId: 'poi_fork_waystation', anchorX: -150, anchorY: -165 };
+  const fork = composePoi(SEED, forkSite, ctxA)!;
+  const fc = (t: Tile): number => fork.ground.reduce((n, v) => n + (v === t ? 1 : 0), 0);
+  assert.equal(fc(Tile.LampCairn), 2);
+  assert.equal(fc(Tile.ElvenWaystone), 1);
+  assert.equal(fc(Tile.WardThread), 0);
+  assert.equal(fc(Tile.GloomStone), 0);
+  // The mouth's world cells: the heart blits at column 0 of the 22-wide
+  // shelf prefab, so heart column c is world x = -161 + c; the mouth
+  // (cols 11..20, row 4) is Dirt from -150 to -141 on y -165.
+  for (let x = -150; x <= -141; x++) {
+    const i = (-165 - fork.origin.y) * fork.width + (x - fork.origin.x);
+    assert.equal(fork.ground[i], Tile.Dirt, `the mouth at (${x},-165)`);
+  }
+  // And the whole unpinned world: every naturally-decided site is the
+  // same site against either library (no rolled def names the three).
+  for (let sy = -SCAN; sy <= SCAN; sy++) {
+    for (let sx = -SCAN; sx <= SCAN; sx++) {
+      assert.deepEqual(poiForCell(SEED, sx, sy, 0, ctxB), poiForCell(SEED, sx, sy, 0, ctxA));
+    }
+  }
+});

@@ -1,0 +1,14 @@
+{
+  "id": "q_the_full_tally_turnin",
+  "start": "posted",
+  "requires": ["quest:the_full_tally:ready"],
+  "bindings": [{ "kind": "actor", "target": "charter_margit", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "posted",
+      "voice": "q_the_full_tally_turnin__posted",
+      "text": "Six. Cordwood eighteen, north yew two, posted. The winter column is full and it is the first full column since the ford. I will say this once. The Copse cannot heat Dawnmead and the Third Stone both, and the column does not say which one it is heating.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_full_tally" }]
+    }
+  ]
+}

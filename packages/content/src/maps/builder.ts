@@ -16,7 +16,7 @@ import {
 import { stampTemplate } from '../structures/stamp.js';
 import type { StructureTemplate } from '../structures/types.js';
 import type { PlaneId } from '../planes.js';
-import type { PortalDef, ZoneActorSpawn, ZoneChest, ZoneDef, ZoneSign, ZoneSpawn } from './types.js';
+import type { PatrolPt, PortalDef, PostKind, ZoneActorSpawn, ZoneChest, ZoneDef, ZoneSign, ZoneSpawn } from './types.js';
 
 /**
  * Authoring API for hand-made zones. Zones are built by carving shapes
@@ -405,15 +405,64 @@ export class ZoneBuilder {
     return this;
   }
 
-  /** NPC spawn cluster (local coords; stored in world coords). */
-  npcSpawn(npc: string, x: number, y: number, radius: number, count: number): this {
-    this.zoneSpawns.push({
+  /**
+   * NPC spawn cluster (local coords; stored in world coords).
+   *
+   * THE PASSTHROUGH (contested lands, band 8; band 7 G-4): an authored
+   * zone may seat a body with the same life a POI garrison row has —
+   * `tribe` (THE WILD TAKES SIDES banner), `hours` (the activity
+   * window), `patrol` (the idle loop), `post` (the furniture-anchored
+   * behavior) and `minDark` (the darkness gate) — copied onto the
+   * ZoneSpawn exactly as the builder's other placements are: every
+   * coordinate in `patrol` and `post` is LOCAL to the zone and lands
+   * in world tiles, and an absent field stays absent so the zone
+   * survives its JSON round-trip byte-exact. validateZone vets the
+   * shapes; the server reads them off the ZoneSpawn as it always did.
+   */
+  npcSpawn(
+    npc: string,
+    x: number,
+    y: number,
+    radius: number,
+    count: number,
+    opts?: {
+      tribe?: string;
+      hours?: { from: number; to: number };
+      patrol?: ReadonlyArray<PatrolPt>;
+      post?: { kind: PostKind; x: number; y: number; dir: number; hours?: { from: number; to: number } };
+      minDark?: number;
+      passive?: true;
+    },
+  ): this {
+    const spawn: ZoneSpawn = {
       npc,
       x: this.origin.x + x,
       y: this.origin.y + y,
       radius,
       count,
-    });
+    };
+    if (opts?.tribe !== undefined) spawn.tribe = opts.tribe;
+    if (opts?.passive === true) spawn.passive = true;
+    if (opts?.hours !== undefined) spawn.hours = { from: opts.hours.from, to: opts.hours.to };
+    if (opts?.patrol !== undefined) {
+      spawn.patrol = opts.patrol.map((p) => {
+        const pt: PatrolPt = { x: this.origin.x + p.x, y: this.origin.y + p.y };
+        if (p.dwell !== undefined) pt.dwell = p.dwell;
+        if (p.sit !== undefined) pt.sit = p.sit;
+        return pt;
+      });
+    }
+    if (opts?.post !== undefined) {
+      spawn.post = {
+        kind: opts.post.kind,
+        x: this.origin.x + opts.post.x,
+        y: this.origin.y + opts.post.y,
+        dir: opts.post.dir,
+      };
+      if (opts.post.hours !== undefined) spawn.post.hours = { from: opts.post.hours.from, to: opts.post.hours.to };
+    }
+    if (opts?.minDark !== undefined) spawn.minDark = opts.minDark;
+    this.zoneSpawns.push(spawn);
     return this;
   }
 

@@ -1,0 +1,36 @@
+{
+  "id": "q_the_grey_root_offer",
+  "start": "hub",
+  "requires": ["quest:the_grey_root:available"],
+  "forbids": [
+    "quest:keep_the_thread:active",
+    "quest:keep_the_thread:done",
+    "quest:the_stone_at_dusk:active",
+    "quest:the_stone_at_dusk:done",
+    "grey_root_declined"
+  ],
+  "bindings": [{ "kind": "actor", "target": "forester_alder", "priority": 13 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_the_grey_root_offer__hub",
+      "text": "The stand across the road at the fork is dying from the roots, and it will heat this village if somebody cuts it before frost. Bodil has a Charter licence to the thread. The old folk strung the thread. I want the wood inside it, where it is still standing, and I want it here as cord, and two of yew for the bows. The old folk will count it against you. I am telling you that because they will not.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_grey_root" }],
+      "choices": [
+        { "text": "The axe, then.", "next": "sworn", "set": ["grey_root_sworn"] },
+        { "text": "Not past the thread.", "next": "declined", "set": ["grey_root_declined"] }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_the_grey_root_offer__sworn",
+      "text": "Speak to Bodil at the cut. The licence is hers and the axe is yours. Look up before you swing. Look down too.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_grey_root" }]
+    },
+    {
+      "id": "declined",
+      "voice": "q_the_grey_root_offer__declined",
+      "text": "Then the village burns furniture in the new year."
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "margit_licence_billed",
+  "start": "billed",
+  "once": true,
+  "requires": ["quest:the_stone_at_dusk:done"],
+  "bindings": [{ "kind": "actor", "target": "charter_margit", "priority": 9 }],
+  "nodes": [
+    {
+      "id": "billed",
+      "voice": "margit_licence_billed__billed",
+      "text": "Lot forty one is stopped at the thread and the stop has your name in the column. I bill the stop. I do not bill the old folk, they have no column. It is not personal. It is a column.",
+      "hooks": [{ "kind": "standing", "faction": "fordgate", "delta": -10 }]
+    }
+  ]
+}

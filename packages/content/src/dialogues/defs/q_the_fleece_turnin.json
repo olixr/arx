@@ -1,0 +1,14 @@
+{
+  "id": "q_the_fleece_turnin",
+  "start": "lined",
+  "requires": ["quest:the_fleece:ready"],
+  "bindings": [{ "kind": "actor", "target": "drover_sorrel", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "lined",
+      "voice": "q_the_fleece_turnin__lined",
+      "text": "Three. Here is the cloak. Wear it past Alder's yard and see what he charges you for a board. My pen is open, and it is open at the Charter's price for a name like yours.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_fleece" }]
+    }
+  ]
+}

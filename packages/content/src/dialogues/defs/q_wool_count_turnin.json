@@ -1,0 +1,14 @@
+{
+  "id": "q_wool_count_turnin",
+  "start": "nought",
+  "requires": ["quest:wool_count:ready"],
+  "bindings": [{ "kind": "actor", "target": "drover_sorrel", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "nought",
+      "voice": "q_wool_count_turnin__nought",
+      "text": "Nought. I believe it when I see the pelts and I do not see them. Bring three off that pack and the cloak is yours, lined.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "wool_count" }]
+    }
+  ]
+}

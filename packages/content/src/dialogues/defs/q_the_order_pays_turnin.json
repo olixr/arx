@@ -1,0 +1,14 @@
+{
+  "id": "q_the_order_pays_turnin",
+  "start": "posted",
+  "requires": ["quest:the_order_pays:ready"],
+  "bindings": [{ "kind": "actor", "target": "waykeeper_hale", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "posted",
+      "voice": "q_the_order_pays_turnin__posted",
+      "text": "The order's grey. Off a gnoll's stake by the smell, and by way of Torsten by the fold. It goes back on the post tonight. That is the order paying, and it is not much, and it is honest.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_order_pays" }]
+    }
+  ]
+}

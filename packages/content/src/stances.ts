@@ -252,14 +252,25 @@ export const STANCES: StancesDef = {
     'fenside|fordgate': { stance: 'neutral' },
     // ---- THE HOSTILE ROWS LAND ONE ZONE AT A TIME, behind the
     // FRONTIER doc (plan §8: watch regionBoldMax and calm before the
-    // next). None ships in Band 0. The ledger each zone band adds:
-    //   band 8 (THE HUSK AND THE WARD LINE, plan §5 beats 1-3):
-    //     'dead|gnoll':            { stance: 'hostile', range: 10, initiator: 'dead' }
-    //     'goblin|predators':      { stance: 'hostile', range: 8 }
-    //     'goblin|goblin_doorless':{ stance: 'hostile', range: 10, initiator: 'goblin' }
+    // next). None shipped in Band 0; band 8's three stand below. The
+    // ledger still owed:
     //   band 10 (THE SPOIL WOLD, plan §5 beat 4 + the pressed satellite):
     //     'dead|goblin_doorless':  { stance: 'hostile', range: 8, initiator: 'dead' }
     //     'goblin_doorless|legion':{ stance: 'hostile', range: 10, initiator: 'legion' }
+    // ---- Band 8, THE HUSK AND THE WARD LINE (plan §5 beats 1-3).
+    // The line that died holding the husk charges the squat the tick it
+    // stands: the changeover at half past eight is a fight only under
+    // a character's eye (keepSpawnHours steps nobody off in front of
+    // anyone), and the gnolls answer but never open it.
+    'dead|gnoll': { stance: 'hostile', range: 10, initiator: 'dead' },
+    // Worg against wolf: the Drum's runners and the pack meet on any
+    // ground they share and either side opens it. No authored ground
+    // this band (the Ashen Hem crossing is band 10's); the far-camp
+    // audit counts the row at a rolled camp beside a den.
+    'goblin|predators': { stance: 'hostile', range: 8 },
+    // The Drum's pickets hunt the Doorless hands that cut snags at the
+    // camp's edge after dark; the Doorless never open it (beat 3).
+    'goblin|goblin_doorless': { stance: 'hostile', range: 10, initiator: 'goblin' },
   },
   watchVsMenace: true,
   opposeHostile: true,

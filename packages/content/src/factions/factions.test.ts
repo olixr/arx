@@ -112,6 +112,10 @@ test('THE LADDER CONTRACT: pinned deed arithmetic', () => {
   // border law then shuts the cross-pay door on the very next kill.
   assert.equal(standingBand(FACTIONS.deeds.slayMember), 'outlaw');
   assert.deepEqual(crossDeltas('reavers', FACTIONS.deeds.slayMember, FACTIONS.deeds.slayMember), []);
+  // THE WARD DEED (band 8): four deliberate cuts of the Court's thread
+  // from a clean name = outlaw, three leave you suspect.
+  assert.equal(standingBand(3 * FACTIONS.deeds.wardCut), 'suspect');
+  assert.equal(standingBand(4 * FACTIONS.deeds.wardCut), 'outlaw');
   // A fine restores to exactly the suspect floor — inside suspect.
   assert.equal(standingBand(FACTIONS.fineFloor), 'suspect');
   // The clamp holds the meter's ends.
@@ -293,7 +297,10 @@ test('CONTESTED LANDS: returners and fenside stand in the roster with real bodie
   assert.equal(factionOfActor('company_brede'), 'reavers');
   assert.equal(factionOfActor('charter_drover'), null);
   assert.equal(factionOfActor('skral_weirward'), null);
-  for (const c of ['charter_margit', 'charter_ingram', 'charter_steinar', 'charter_bodil']) {
+  // Band 8: the fellers at the cut are the Charter's by membership (the
+  // pooled body wears no prefix), so a blow at the cut reads the same
+  // ledger as a blow at the stall.
+  for (const c of ['charter_margit', 'charter_ingram', 'charter_steinar', 'charter_bodil', 'charter_feller']) {
     assert.equal(factionOfActor(c), 'fordgate', c);
   }
   assert.equal(factionOfActor('crown_rurik'), 'crown');

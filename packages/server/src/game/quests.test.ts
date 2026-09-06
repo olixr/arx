@@ -13,6 +13,7 @@ import {
   type QuestPlayerCtx,
   type QuestProgress,
 } from './quests.js';
+import { GameServer } from './gameServer.js';
 
 const HUNT: QuestDef = {
   id: 'hunt',
@@ -244,4 +245,137 @@ test('THE FINGER ON THE CHART: every ground rides the wire, best first', () => {
   const w3 = questWire(marked, acceptQuest(marked, undefined, ctxOf()), ctxOf(), names, silent);
   assert.deepEqual(w3.objectives[0]!.hint, { x: 50, y: 60, r: 12 });
   assert.equal(w3.objectives[0]!.hints, undefined);
+});
+
+// ---------------------------------------------------------------------
+// THE FLAG OBJECTIVE (contested lands, band 8): a flag objective is a
+// thing the world already knows about you; the quest only asks you to
+// go and have it be true. Retro-credited at stage entry, live-credited
+// through the server's one flag choke, never on a synthetic namespace.
+// ---------------------------------------------------------------------
+
+const CULL: QuestDef = {
+  id: 'wool_count',
+  name: 'The Wool Count',
+  giver: 'drover',
+  stages: [
+    { id: 'count', journal: 'Count.', objectives: [{ kind: 'talk', actor: 'sergeant' }] },
+    {
+      id: 'cull',
+      journal: 'Cull.',
+      objectives: [{ kind: 'flag', flag: 'poi_veil_den_broken', label: 'Break the veil pack at its den' }],
+    },
+    { id: 'word', journal: 'Word.', objectives: [{ kind: 'talk', actor: 'drover' }] },
+  ],
+  rewards: { flags: ['wool_count_taken'] },
+};
+
+test('THE FLAG OBJECTIVE: a flag already held retro-credits the moment its stage opens', () => {
+  // The character who broke the den last week has culled it: the talk
+  // stage crosses straight through the flag stage into the word.
+  const held = ctxOf({ hasFlag: (f) => f === 'poi_veil_den_broken' });
+  const q = acceptQuest(CULL, undefined, held);
+  assert.ok(creditQuest(CULL, q, 'talk', 'sergeant'));
+  assert.equal(advanceStages(CULL, q, held), 2, 'count crossed, cull retro-credited, word open');
+  assert.equal(CULL.stages[q.stage]!.id, 'word');
+  // A character who never broke it stops at the cull with nothing held.
+  const cold = acceptQuest(CULL, undefined, ctxOf());
+  creditQuest(CULL, cold, 'talk', 'sergeant');
+  assert.equal(advanceStages(CULL, cold, ctxOf()), 1);
+  assert.equal(CULL.stages[cold.stage]!.id, 'cull');
+  assert.deepEqual(cold.progress, [0]);
+});
+
+test('THE FLAG OBJECTIVE: live credit keys on the flag alone, and the wire names the label', () => {
+  const q: QuestProgress = { status: 'active', stage: 1, progress: [0], acceptedAt: 1, completions: 0 };
+  assert.equal(creditQuest(CULL, q, 'flag', 'some_other_flag'), false, 'another flag is nobody');
+  assert.equal(creditQuest(CULL, q, 'discover', 'poi_veil_den_broken'), false, 'the kind must match');
+  assert.equal(creditQuest(CULL, q, 'flag', 'poi_veil_den_broken'), true);
+  assert.deepEqual(q.progress, [1]);
+  assert.equal(creditQuest(CULL, q, 'flag', 'poi_veil_den_broken'), false, 'need 1, already met');
+  const names = { itemName: (s: string) => s, npcName: (s: string) => s, actorName: (s: string) => s, placeName: (s: string) => s };
+  const wire = questWire(CULL, q, ctxOf(), names);
+  assert.deepEqual(
+    { kind: wire.objectives[0]!.kind, flag: wire.objectives[0]!.flag, label: wire.objectives[0]!.label, have: wire.objectives[0]!.have, need: wire.objectives[0]!.need },
+    { kind: 'flag', flag: 'poi_veil_den_broken', label: 'Break the veil pack at its den', have: 1, need: 1 },
+  );
+});
+
+/**
+ * The ONE flag choke under test: setPlayerFlag on a minimal slate —
+ * every stamp (a trigger, a choice, a def's clearedFlag, a reward)
+ * lands here, so this is where the live credit is proven.
+ */
+function flagSlate(defs: QuestDef[]) {
+  type Fn = (...a: unknown[]) => unknown;
+  const proto = GameServer.prototype as unknown as Record<string, Fn>;
+  const stored: Array<[string, number]> = [];
+  const pushes = { avail: 0, wire: 0, persist: 0 };
+  const player = {
+    characterId: 9,
+    flags: new Map<string, number>(),
+    quests: new Map<string, QuestProgress>(),
+    skills: {},
+    discoveries: new Map(),
+    inventory: [],
+    standing: new Map(),
+    session: { sendJson: () => {}, playerEid: null },
+  };
+  const s = {
+    accounts: { setFlag: (_c: number, f: string, v: number) => stored.push([f, v]) },
+    questDefs: new Map(defs.map((d) => [d.id, d])),
+    actorDefs: new Map(),
+    grantArt: () => {},
+    pushQuestAvail: () => pushes.avail++,
+    pushQuestWire: () => pushes.wire++,
+    persistQuest: () => pushes.persist++,
+    setWaypoint: () => {},
+    answerFactionGate: () => false,
+    setPlayerFlag: proto.setPlayerFlag,
+    creditQuestEvent: proto.creditQuestEvent,
+    questCtx: proto.questCtx,
+  };
+  return { s, player, stored, pushes, call: (fn: string, ...a: unknown[]) => (s as unknown as Record<string, Fn>)[fn]!.call(s, ...a) };
+}
+
+test('THE FLAG OBJECTIVE: the one flag choke credits live, and never on a synthetic namespace', () => {
+  const { s, player, stored, pushes, call } = flagSlate([CULL]);
+  player.quests.set('wool_count', { status: 'active', stage: 1, progress: [0], acceptedAt: 1, completions: 0 });
+  // A world:/quest:/faction: flag is answered, never held: no store, no credit.
+  call('setPlayerFlag', player, 'world:threat_near');
+  call('setPlayerFlag', player, 'quest:wool_count:done');
+  call('setPlayerFlag', player, 'faction:fordgate:known');
+  assert.equal(stored.length, 0);
+  assert.deepEqual(player.quests.get('wool_count')!.progress, [0]);
+  // The den's clearedFlag lands through the same door a trigger's
+  // setFlag would: the stage credits and walks on to the word.
+  call('setPlayerFlag', player, 'poi_veil_den_broken');
+  assert.deepEqual(stored, [['poi_veil_den_broken', 1]]);
+  const q = player.quests.get('wool_count')!;
+  assert.equal(CULL.stages[q.stage]!.id, 'word', 'the flag stage crossed live');
+  assert.ok(pushes.persist >= 1 && pushes.wire >= 1, 'the journal heard it');
+  // Re-stamping a held flag is a no-op at the choke (no double credit).
+  call('setPlayerFlag', player, 'poi_veil_den_broken');
+  assert.equal(stored.length, 1);
+  void s;
+});
+
+test('THE FLAG OBJECTIVE: a turn-in reward flag credits another active quest', () => {
+  // The order's pair: the_fleece rewards wool_count_taken; a second
+  // quest waits on that very flag. The reward loop calls setPlayerFlag
+  // for each rewards.flags entry, so the stamp is the credit.
+  const WAIT: QuestDef = {
+    id: 'the_relief',
+    name: 'The Relief',
+    giver: 'sergeant',
+    stages: [
+      { id: 'taken', journal: 'Taken.', objectives: [{ kind: 'flag', flag: 'wool_count_taken', label: 'See the count taken' }] },
+      { id: 'word', journal: 'Word.', objectives: [{ kind: 'talk', actor: 'sergeant' }] },
+    ],
+    rewards: {},
+  };
+  const { player, call } = flagSlate([CULL, WAIT]);
+  player.quests.set('the_relief', { status: 'active', stage: 0, progress: [0], acceptedAt: 1, completions: 0 });
+  for (const f of CULL.rewards.flags ?? []) call('setPlayerFlag', player, f);
+  assert.equal(WAIT.stages[player.quests.get('the_relief')!.stage]!.id, 'word');
 });

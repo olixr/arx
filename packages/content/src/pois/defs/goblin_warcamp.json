@@ -164,7 +164,12 @@
         ]
       }
     ],
-    "satellites": true
+    "satellites": true,
+    "rivalDef": "legion_pressed",
+    "rivalNear": {
+      "defId": "hobgoblin_legion",
+      "tiles": 320
+    }
   },
   "family": "goblin"
 }

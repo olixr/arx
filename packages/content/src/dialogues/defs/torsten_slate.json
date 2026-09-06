@@ -1,0 +1,124 @@
+{
+  "id": "torsten_slate",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "waykeeper_torsten" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "torsten_slate__hub",
+      "text": "Waykeeper sergeant. Two lamps down the trail, a cairn pair here, and a count. If you have come for the count it is on the slate at the picket and it is on me. Say which.",
+      "choices": [
+        { "text": "The count.", "next": "count", "forbids": ["wool_count_taken"] },
+        { "text": "The count.", "next": "nought", "requires": ["wool_count_taken"] },
+        { "text": "The three with a line through.", "next": "roald" },
+        { "text": "The tower.", "next": "husk" }
+      ]
+    },
+    {
+      "id": "count",
+      "voice": "torsten_slate__count",
+      "text": "Gnolls eleven. Wolves seven. Ours three, with a line through the three. The gnolls are in the tower by day and the count is the count. The wolves work the trail at dusk, which is when new feet walk it. The three are under the mounds by the slate. That is the whole of the trail and I have not left anything off it.",
+      "choices": [
+        { "text": "Back.", "next": "hub" },
+        { "text": "Keep the watch.", "next": "bye" },
+        {
+          "text": "The tower's debt, then.",
+          "next": "reoffer_debt",
+          "requires": ["towers_debt_declined", "quest:the_towers_debt:available"]
+        },
+        {
+          "text": "The wool to Hale, then.",
+          "next": "reoffer_wool",
+          "requires": ["order_pays_declined", "quest:the_order_pays:available"]
+        }
+      ]
+    },
+    {
+      "id": "nought",
+      "voice": "torsten_slate__nought",
+      "text": "Gnolls eleven. Wolves nought. I have not rubbed the seven out. I wrote the nought under it in your hand, and the eleven stands where it stood.",
+      "choices": [
+        { "text": "Back.", "next": "hub" },
+        { "text": "Keep the watch.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "roald",
+      "voice": "torsten_slate__roald",
+      "text": "Roald. A Company crew on a Returner contract, four of them, scouting the tower. They came up at dusk. I told them the count. He said the Company was paid for the road. I said the road did not know that. He walked. The mounds are by the slate and the rag on the fourth is the Company's. I have nothing else about it.",
+      "choices": [
+        { "text": "Did you tell them?", "next": "told" },
+        { "text": "Back.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "told",
+      "voice": "torsten_slate__told",
+      "text": "I told them the count.",
+      "next": "hub"
+    },
+    {
+      "id": "husk",
+      "voice": "torsten_slate__husk",
+      "text": "The order's first tower on this trail, struck from the rolls and left. A gnoll squat by day. From half past eight the line that died in it stands its watch, and while it stands the gnolls do not. It stands north of the road past the cairn that fell at the turn, across the water where it narrows, and no road goes to it. It should be burnt so the line has nothing to stand in. I asked for the oil. Hale keeps the oil.",
+      "choices": [
+        { "text": "Hale says a line keeping its post is not the order's shame.", "next": "hale" },
+        { "text": "The two at the stone.", "next": "stone" },
+        { "text": "Back.", "next": "hub" },
+        { "text": "Keep the watch.", "next": "bye" }
+      ]
+    },
+    {
+      "id": "hale",
+      "voice": "torsten_slate__hale",
+      "text": "Hale says a good many things at fourteen miles. A line that keeps a post the order struck is keeping a post that is not there. That is not shame. It is a lie told in bone, and the doctrine has a word for a lie told in glass, and it is the same word.",
+      "next": "husk"
+    },
+    {
+      "id": "stone",
+      "voice": "torsten_slate__stone",
+      "text": "The old folk. Two of them, and their light draws nothing at night, which is the highest thing I have said about anybody. I do not understand a word of the other tongue and I do not try. Their thread runs round the stand across the road, and I have told the stake woman the stand should be left because grey root posts rot. She hears me on the trail and nowhere else.",
+      "next": "husk"
+    },
+    {
+      "id": "bye",
+      "voice": "torsten_slate__bye",
+      "text": "Mind the seven at dusk."
+    },
+    {
+      "id": "reoffer_debt",
+      "voice": "torsten_slate__reoffer_debt",
+      "text": "Break the squat by daylight and stand the door with my lamp until half past eight. The offer stands where it stood.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_towers_debt" }],
+      "choices": [
+        { "text": "I will.", "next": "resworn_debt", "set": ["towers_debt_sworn"] },
+        { "text": "Still no." }
+      ]
+    },
+    {
+      "id": "resworn_debt",
+      "voice": "torsten_slate__resworn_debt",
+      "text": "By daylight. Take the lamp. Stand the apron with it from dusk and do not leave to chase anything past the ring. Bring it back, lit or not.",
+      "hooks": [
+        { "kind": "give", "item": "lantern", "qty": 1 },
+        { "kind": "quest_accept", "quest": "the_towers_debt" }
+      ]
+    },
+    {
+      "id": "reoffer_wool",
+      "voice": "torsten_slate__reoffer_wool",
+      "text": "The wool to Hale at the First Lamp, fourteen miles and a ford. The post is still bare.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_order_pays" }],
+      "choices": [
+        { "text": "I will.", "next": "resworn_wool" },
+        { "text": "Still no." }
+      ]
+    },
+    {
+      "id": "resworn_wool",
+      "voice": "torsten_slate__resworn_wool",
+      "text": "Fourteen miles. Do not lose it in the water.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_order_pays" }]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "grey_two",
+  "label": "The lengths carried past the grey stone at the corner",
+  "area": { "kind": "rect", "x": -153, "y": -186, "w": 5, "h": 5 },
+  "on": "enter",
+  "event": "grey_two",
+  "conditions": [
+    { "when": "hasItem", "item": "cut_thread", "qty": 4 },
+    { "when": "flag", "flag": "keep_thread_sworn" },
+    { "when": "notFlag", "flag": "ward_thread_cut" }
+  ],
+  "once": true,
+  "setFlag": "grey_two"
+}

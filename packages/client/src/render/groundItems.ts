@@ -215,6 +215,9 @@ const FORM_BY_ID: Record<string, GroundForm> = {
   // that lies like timber, a kelp string that lies like twine, corn as a sheaf.
   levy_sheet: 'paper', charter_pass: 'paper', dike_stake: 'board',
   kelp_string: 'spool', green_corn: 'sheaf',
+  // The north's fork (contested lands band 8): a pelt like its kin, a
+  // hank and a cut length that lie like twine, a chip that lies like a gem.
+  wolf_pelt: 'hide', grey_wool: 'spool', cut_thread: 'spool', moonglass_chip: 'gem',
   gilded_locket: 'locket', crew_paytin: 'token', reavers_mark: 'token',
   warlord_crest: 'token', spade_mark: 'token', marked_tool: 'token',
   sand_laurel: 'laurel',

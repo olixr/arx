@@ -29,6 +29,9 @@ import {
   buildAmberford,
   buildAshlamp,
   buildFenside,
+  buildPicket,
+  buildTurnoff,
+  buildWardthread,
   buildPinewatch,
   buildHartfell,
   buildKingsdelf,
@@ -128,6 +131,14 @@ const builtinZones = new Map<string, ZoneDef>(
     // (neither declares a spawn, a haven or a spawn row).
     buildAshlamp(),
     buildFenside(),
+    // THE CONTESTED LANDS (band 8): the three north patches — the
+    // ward line at the fork, the picket on the hunters' trail, the
+    // turn on the High Road east — after Dawnmead by the spawn law
+    // (none declares a spawn, a haven or a chest; the ward line's one
+    // spawn row is the wolves on the thread).
+    buildWardthread(),
+    buildPicket(),
+    buildTurnoff(),
   ].map((z) => [z.id, z]),
 );
 const zones: ZoneDef[] = [...builtinZones.values()];

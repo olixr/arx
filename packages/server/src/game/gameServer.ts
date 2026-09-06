@@ -375,6 +375,7 @@ import {
   WILD_KNOT_SPREAD,
   replaceGeography,
   roadDistanceAt,
+  ROAD_HALF,
   wildCandidates,
   type GeographyDef,
   VOICE,
@@ -1072,6 +1073,18 @@ export interface NpcComp {
    */
   mouth?: string;
   /**
+   * THE COUNTED PACK (contested lands, band 8 fix pass): placement
+   * data from the spawn record (ZoneSpawn.passive) for a body that
+   * walks its loop as theatre and never OPENS on a player — the
+   * wolves on the ward line, which the Court's count needs to pass a
+   * standing walker ("they will not stop"), and which the dusk stand
+   * watches from one tile off. No player scan (npcPerception skips
+   * it; the feud scan stays the world's), and the unforced aggro door
+   * refuses everything but a packmate's rally or a landed blow.
+   * Absent on every other body.
+   */
+  passive?: true;
+  /**
    * THE STATE LADDER (perception rebuild): 'suspicious' = the meter
    * crossed ALERT_SUS — feet planted, eyes on the last-known spot;
    * 'investigate' = the look didn't settle it, walk over and see;
@@ -1731,6 +1744,8 @@ interface SpawnState {
   };
   /** THE MOUTH ON THE ROW: the actor slug the seat's body speaks through — survives respawns. */
   mouth?: string;
+  /** THE COUNTED PACK: the seat's body never opens on a player — survives respawns. */
+  passive?: true;
 }
 
 /** One placed actor's post — exact spot, no scatter, no count. */
@@ -3004,6 +3019,36 @@ export class GameServer {
   readonly entityChunk = new Map<EntityId, string>();
 
   /** Depleted nodes waiting to come back. */
+  /**
+   * BODIES WHERE THE FIGHT WAS (band 8): the live litter the NPC-vs-NPC
+   * death verb laid — where, until when, and the two keys the caps
+   * count by. Never persisted (see layFieldLitter).
+   */
+  private readonly fieldLitter: Array<{
+    plane: PlaneId;
+    tx: number;
+    ty: number;
+    until: number;
+    cellKey: string;
+    loopKey: string;
+  }> = [];
+  /** The quarter hour a body lies. */
+  static readonly FIELD_LITTER_MS = 15 * 60_000;
+  /** Two per loop, six per cell: no eyeful reads as scatter. */
+  static readonly FIELD_LITTER_PER_LOOP = 2;
+  static readonly FIELD_LITTER_PER_CELL = 6;
+  /**
+   * Nobody watches a body appear — but the fight it fell in is only a
+   * fight under a character's eye within 20 (keepSpawnHours never
+   * steps a body off in front of anyone), so the dignity must lie
+   * INSIDE that circle or the two laws never meet and the verb can
+   * never land where the changeover happens (the band 8 review's
+   * finding 2, the proof's empty census). Twelve is the true frame's
+   * half-width at zoom 1.3 (EYEFUL_DX 24): the body appears one
+   * screen off, never in the frame the watcher holds.
+   */
+  static readonly FIELD_LITTER_DIGNITY = 12;
+
   readonly respawnQueue: Array<{
     at: number;
     /** THE WORLDS APART: the plane whose ground restores. */
@@ -3685,6 +3730,7 @@ export class GameServer {
         hours?: { from: number; to: number };
       };
       mouth?: string;
+      passive?: true;
     }>,
     plane: PlaneId,
     zoneId?: string,
@@ -3721,6 +3767,7 @@ export class GameServer {
           tribe: spawn.tribe,
           post: spawn.post,
           mouth: spawn.mouth,
+          ...(spawn.passive === true ? { passive: true as const } : {}),
         };
         // A retired slot is re-tenanted before the array grows — the
         // roster stays proportional to what STANDS, not to history.
@@ -5167,6 +5214,17 @@ export class GameServer {
         y: ty + 0.5,
         radius: 0.4,
       });
+      return;
+    }
+
+    // THE DELIBERATE CUT (contested lands, band 8): the Court's ward
+    // thread answers the hand and nothing else — no swing or shot
+    // bursts it (melee.ts blowSmashes), so an accident can never
+    // choose a fork. The thread is walkable and the hand may stand on
+    // it; the reach check above is from the body's centre, so the
+    // cell under the boots is in reach like any other.
+    if (ground === Tile.WardThread) {
+      this.cutWardThread(player, pos.plane, tx, ty, Math.atan2(dy, dx));
       return;
     }
 
@@ -10029,6 +10087,49 @@ export class GameServer {
   }
 
   /**
+   * THE PRESSED SATELLITE, GATED (contested lands band 8, owed F3):
+   * does a pinned authored site of `defId` stand within `tiles` of
+   * (x, y)? Law: a rival is dealt only where the rival's master stands
+   * within a march. The pins are AUTHORED_WILD_SITES entries of that
+   * def (cached per def, invalidated at the geography swap exactly as
+   * authoredCells is); each pin's anchor is the ledger's LIVE anchor
+   * where the seed stood it (a cell-forced site stands wherever the
+   * scan found ground), else the pin itself, else the cell's centre.
+   * Euclidean tiles, the same measure the townward ranking uses.
+   */
+  rivalMasterNear(defId: string, tiles: number, x: number, y: number): boolean {
+    for (const pin of this.authoredPinsOf(defId)) {
+      const live = this.poiLedger.get(pin.key)?.site;
+      const ax = live && live.defId === defId ? live.anchorX : pin.x;
+      const ay = live && live.defId === defId ? live.anchorY : pin.y;
+      if (Math.hypot(ax - x, ay - y) <= tiles) return true;
+    }
+    return false;
+  }
+
+  /** Per-def projection of the authored pins (rivalMasterNear's roster). */
+  private authoredPinsCache: Map<string, Array<{ key: string; x: number; y: number }>> | null = null;
+
+  private authoredPinsOf(defId: string): Array<{ key: string; x: number; y: number }> {
+    if (!this.authoredPinsCache) this.authoredPinsCache = new Map();
+    const held = this.authoredPinsCache.get(defId);
+    if (held) return held;
+    const pins: Array<{ key: string; x: number; y: number }> = [];
+    for (const s of AUTHORED_WILD_SITES) {
+      if (s.defId !== defId) continue;
+      const cx = s.cell ? s.cell[0] : poiCellOf(s.x!);
+      const cy = s.cell ? s.cell[1] : poiCellOf(s.y!);
+      pins.push({
+        key: poiCellKey(cx, cy),
+        x: s.x ?? cx * POI_CELL + POI_CELL / 2,
+        y: s.y ?? cy * POI_CELL + POI_CELL / 2,
+      });
+    }
+    this.authoredPinsCache.set(defId, pins);
+    return pins;
+  }
+
+  /**
    * Stand the master plan's authored wild sites in the ledger — the
    * waystation mileposts pacing the High Road, the Last Lamp before
    * the Silverspine climb, the Thornveil's named dens. Pinned entries
@@ -10114,7 +10215,25 @@ export class GameServer {
       const epoch = row ? row.epoch + 1 : 0;
       let site: PoiSite | null = null;
       if (want.cell) {
-        site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx, want.defId, false, want.prefabId);
+        // THE AUTHORED CELL IS GEOLOGIC TOO (contested lands band 8,
+        // the integrator's boot proof). A cell pin's SITE is dealt by
+        // the cell's own streams (ST_SITE, ST_VARIANT), and those are
+        // keyed by the epoch — so a plan re-decision on a LIVE ledger
+        // (the veil den re-pinned from `wolfkin_den` to `veil_den`:
+        // the row's epoch 0 becomes 1) stood the same pin fifteen
+        // tiles from where a fresh box stands it: (-201,-100) against
+        // the golden (-186,-99), and (-178,-99) at epoch 2. One plan,
+        // two worlds, keyed by ledger history — the same silent
+        // failure the SETTLED_ANCHORS read above closes for tiers, and
+        // one THE GOLDEN ANCHORS (a fresh context at epoch 0) can never
+        // see. The plan's cell is therefore READ AT EPOCH 0 on every
+        // box, so the golden test is the deploy's truth and a quest
+        // `mark` on the anchor stays on the door; the ROW still bumps,
+        // and the site carries the bumped epoch so the re-decision's
+        // muster streams stay fresh (pois.ts musterBase reads
+        // site.epoch). A first seed (epoch 0) is byte-identical.
+        const rolled = poiForCell(config.worldSeed, cellX, cellY, 0, ctx, want.defId, false, want.prefabId);
+        site = rolled ? { ...rolled, epoch } : null;
       } else {
         // THE PINNED SKETCH: the plan's named prefab over the hashed
         // variant (the validator vetted it against the def's pool).
@@ -10279,6 +10398,7 @@ export class GameServer {
     // (a Studio-moved milepost must claim its NEW cell on the very
     // next sweep — the ROAD_BOUNDS lesson, kept under the cache).
     this.authoredCellsCache = null;
+    this.authoredPinsCache = null; // the rival march's pins died with the roster too
     // The seat context reads SETTLED_ANCHORS and PLANNED_ZONE_RECTS —
     // both just swapped in place. A stale seat cache kept an already-
     // cached capital seated inside a NEW planned rect (or at a moved
@@ -11136,6 +11256,19 @@ export class GameServer {
       if (sats >= FRONTIER.satelliteMax) continue;
       const { cellX, cellY } = row.site;
       if (this.calmNear(cellX, cellY, now)) continue;
+      // THE PRESSED SATELLITE, GATED (band 8, owed F3): a rival is
+      // dealt only where the rival's master stands within a march.
+      // `rivalNear` names the master's def and the reach, read against
+      // the authored pins' live anchors; out of reach the core deals
+      // its ordinary reach and the trace says why. A bare rivalDef
+      // (no rivalNear) deals everywhere, exactly as before.
+      const rivalDef = def.boldness?.rivalDef;
+      const near = def.boldness?.rivalNear;
+      const rivalStands =
+        rivalDef !== undefined &&
+        (near === undefined ||
+          this.rivalMasterNear(near.defId, near.tiles, row.site.anchorX, row.site.anchorY));
+      if (rivalDef !== undefined && !rivalStands) this.satTrace.push(`${key}:rivalfar`);
       // Adjacent cells ranked townward: the camp creeps toward the
       // roads it means to prey on, never away into empty country.
       const anchors = this.dangerAnchors();
@@ -11168,7 +11301,7 @@ export class GameServer {
         // SATELLITE (contested lands §5 beat 8): a rivalDef outranks
         // both — the Drum at stage 2 deals the Legion's pressed camp
         // townward, so the Legion's march is made of goblins.
-        const satDefId = def.boldness?.rivalDef ?? def.boldness?.satelliteDef ?? def.id;
+        const satDefId = (rivalStands ? rivalDef : undefined) ?? def.boldness?.satelliteDef ?? def.id;
         const site = poiForCell(config.worldSeed, cand.ncx, cand.ncy, epoch, ctx, satDefId);
         if (!site) { this.satTrace.push(`${nkey}:noground`); continue; }
         if (this.playerWithin(SURFACE_PLANE_ID, site.anchorX, site.anchorY, FRONTIER.dignityTiles)) { this.satTrace.push(`${nkey}:dignity`); continue; }
@@ -17494,6 +17627,7 @@ export class GameServer {
           obj.kind === 'kill' ? obj.npc
           : obj.kind === 'collect' ? obj.item
           : obj.kind === 'talk' ? obj.actor
+          : obj.kind === 'flag' ? obj.flag
           : obj.place
         }`;
         const now = Date.now();
@@ -17520,6 +17654,13 @@ export class GameServer {
             grounds = h ? [h] : [];
             break;
           }
+          case 'flag':
+            // THE FLAG OBJECTIVE names no ground of its own: a flag is
+            // a fact about the character, not a place, and the stage's
+            // authored `mark` (the markHint backstop in questWire)
+            // already carries the where.
+            grounds = [];
+            break;
         }
         this.questGroundsMemo.set(memoKey, { at: now, grounds });
         // The memo never outgrows the quest book itself.
@@ -17916,6 +18057,16 @@ export class GameServer {
     // flag choke point, so any authored path to the flag counts.
     const art = GameServer.DEED_FLAG_ARTS[flag];
     if (art) this.grantArt(player, art);
+    // THE FLAG OBJECTIVE (contested lands, band 8): a flag objective is
+    // a thing the world already knows about you; the quest only asks
+    // you to go and have it be true. Every stamp in the game rides
+    // this one choke — a trigger's setFlag, a choice's set, a def's
+    // clearedFlag, another quest's reward flag — so crediting HERE,
+    // after the store, means any authored road to the flag completes
+    // the ask. The synthetic namespaces returned above and can never
+    // credit; a flag already held returned above too (its credit was
+    // paid at stage entry by freshProgress's retro-credit).
+    this.creditQuestEvent(player, 'flag', flag);
     // A story beat can open a quest gate — re-answer availability.
     this.pushQuestAvail(player);
   }
@@ -17947,7 +18098,7 @@ export class GameServer {
   creditDeed(
     player: PlayerComp,
     factionId: string | null,
-    deed: 'bountyHonored' | 'tollBroken' | 'assaultEnforcer' | 'slayMember' | 'theftWitnessed',
+    deed: standingSys.DeedId,
   ): void {
     return standingSys.creditDeed(this, player, factionId, deed);
   }
@@ -18855,6 +19006,137 @@ export class GameServer {
     dir: number,
   ): void {
     return meleeSys.smashProp(this, plane, tx, ty, tile, info, dir);
+  }
+
+  /**
+   * THE DELIBERATE CUT (contested lands, band 8; plan §3.3). Law: the
+   * thread is the Court's word strung across a wood; the cut is a deed
+   * against the Court, chosen with a hand and not a swing, and the wood
+   * re-strings it in ten minutes for everyone because the world is
+   * shared. The verb is the tile interact on WardThread (no tool): the
+   * tile floors to its `under` and the 600 s regrow queues for everyone
+   * EXACTLY as smashProp does (the cut IS the smash, minus the
+   * accident), then THE WARD DEED pays evencourt through the one door
+   * (the cross matrix pays the Company above outlaw) and
+   * `ward_thread_cut` stamps the hand, which shuts the thread fork for
+   * good. It yields NOTHING: the lengths a sentinel hands out are the
+   * only cut_thread in the world, or cutting would be the way to get
+   * them. Only a player's interact reaches here; an NPC has no hand on
+   * this door, and a swing or a shot never arrives (blowSmashes).
+   */
+  cutWardThread(player: PlayerComp, plane: PlaneId, tx: number, ty: number, dir: number): void {
+    if (this.worldOf(plane).groundAt(tx, ty) !== Tile.WardThread) return;
+    const info = destructibleInfo(Tile.WardThread);
+    if (!info) return;
+    this.smashProp(plane, tx, ty, Tile.WardThread, info, dir);
+    this.creditDeed(player, 'evencourt', 'wardCut');
+    this.setPlayerFlag(player, 'ward_thread_cut');
+  }
+
+  /**
+   * BODIES WHERE THE FIGHT WAS (contested lands §5 beat 11; band 8 A4,
+   * owner gate G1 YES). Law: a body lies where the fight was for a
+   * quarter hour, and the world forgets it, because the world is shared
+   * and the dead are theatre. The NPC-vs-NPC death path calls this for
+   * a kill no player hand touched inside a POI's ground (`cellKey` is
+   * the site the fallen body or its killer garrisons; `loopKey` is the
+   * fallen body's own loop, its spawn row). The litter lands on the
+   * nearest free open-ground tile within two of the fall — Grass, tall
+   * grass or Dirt (the forest floor is a detail on Grass, so it is in),
+   * the ground a loop actually walks, which by construction is never a
+   * station or a prop — and NEVER on a route
+   * (any tile within ROAD_HALF of a planned road or trail), a routine
+   * waypoint (a live spawn's patrol stop or post cell, an actor's
+   * post), inside any planned zone rect, under a standing body, or with
+   * a player within 48 (dignity: nobody watches a body appear). Capped
+   * two per loop and six per cell for the quarter hour. NO PERSISTENCE:
+   * the tile is laid on the live chunk through setWorldTile alone
+   * (chunks regenerate from the plan at boot and no built-tile or zone
+   * ledger is touched), and the respawn queue floors it again at the
+   * sweep hour over the litter itself; a restart is the boot sweep for
+   * free. Surface only: the halls dress their own dead.
+   */
+  layFieldLitter(
+    plane: PlaneId,
+    x: number,
+    y: number,
+    cellKey: string,
+    loopKey: string,
+    now = Date.now(),
+  ): boolean {
+    if (plane !== SURFACE_PLANE_ID) return false;
+    for (let i = this.fieldLitter.length - 1; i >= 0; i--) {
+      if (this.fieldLitter[i]!.until <= now) this.fieldLitter.splice(i, 1);
+    }
+    let perLoop = 0;
+    let perCell = 0;
+    for (const e of this.fieldLitter) {
+      if (e.loopKey === loopKey) perLoop++;
+      if (e.cellKey === cellKey) perCell++;
+    }
+    if (perLoop >= GameServer.FIELD_LITTER_PER_LOOP) return false;
+    if (perCell >= GameServer.FIELD_LITTER_PER_CELL) return false;
+    if (this.playerWithin(plane, x, y, GameServer.FIELD_LITTER_DIGNITY)) return false;
+    const world = this.worldOf(plane);
+    const fx = Math.floor(x);
+    const fy = Math.floor(y);
+    const waypoints = this.routineWaypointsNear(plane, fx, fy, 16);
+    const open = (t: number | undefined): boolean =>
+      t === Tile.Grass || t === Tile.GrassTall || t === Tile.Dirt;
+    const free = (tx: number, ty: number): boolean => {
+      if (!open(world.groundAt(tx, ty))) return false;
+      if (roadDistanceAt(config.worldSeed, tx, ty) <= ROAD_HALF) return false;
+      if (waypoints.has(`${tx},${ty}`)) return false;
+      if (PLANNED_ZONE_RECTS.some((r) => tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h)) {
+        return false;
+      }
+      if (this.bodyOnTile(plane, tx, ty)) return false;
+      return true;
+    };
+    // The fall cell first, then ring 1, then ring 2: nearest wins.
+    const cells: Array<[number, number]> = [[0, 0]];
+    for (let r = 1; r <= 2; r++) {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) === r) cells.push([dx, dy]);
+        }
+      }
+    }
+    for (const [dx, dy] of cells) {
+      const tx = fx + dx;
+      const ty = fy + dy;
+      if (!free(tx, ty)) continue;
+      const floor = world.groundAt(tx, ty) as Tile;
+      const until = now + GameServer.FIELD_LITTER_MS;
+      this.setWorldTile(plane, tx, ty, Tile.FieldLitter);
+      this.fieldLitter.push({ plane, tx, ty, until, cellKey, loopKey });
+      this.respawnQueue.push({ at: until, plane, tx, ty, tile: floor, over: Tile.FieldLitter });
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Every routine waypoint near a tile, as "tx,ty" keys: a live spawn's
+   * patrol stops and post cell, and an actor placement's post (the
+   * routine's origin). The litter law reads it so a body never lies on
+   * the seat, the stand or the stop a loop returns to.
+   */
+  private routineWaypointsNear(plane: PlaneId, x: number, y: number, reach: number): Set<string> {
+    const out = new Set<string>();
+    const near = (px: number, py: number): boolean =>
+      Math.abs(px - x) <= reach && Math.abs(py - y) <= reach;
+    const key = (px: number, py: number): string => `${Math.floor(px)},${Math.floor(py)}`;
+    for (const sp of this.spawnPoints) {
+      if (!sp.active || sp.plane !== plane) continue;
+      for (const p of sp.patrol ?? []) if (near(p.x, p.y)) out.add(key(p.x, p.y));
+      if (sp.post && near(sp.post.x, sp.post.y)) out.add(key(sp.post.x, sp.post.y));
+    }
+    for (const ap of this.actorSpawnPoints) {
+      if (!ap.active || ap.plane !== plane) continue;
+      if (near(ap.x, ap.y)) out.add(key(ap.x, ap.y));
+    }
+    return out;
   }
 
   // --------------------------------------------------------- abilities
@@ -21491,7 +21773,9 @@ export class GameServer {
           const sty = Math.floor(pos.y);
           const g = this.worldOf(pos.plane).groundAt(stx, sty);
           const dinfo = g === undefined ? null : destructibleInfo(g);
-          if (dinfo) {
+          // THE DELIBERATE CUT: the Court's thread stands under a shot
+          // as under a swing (melee.ts blowSmashes, the one predicate).
+          if (dinfo && meleeSys.blowSmashes(dinfo)) {
             this.hitProp(pos.plane, stx, sty, g as Tile, dinfo, Math.atan2(proj.dirY, proj.dirX));
           }
         }
@@ -22645,6 +22929,19 @@ export class GameServer {
       if (slainFid !== null) {
         for (const p of participants.values()) this.creditDeed(p, slainFid, 'slayMember');
       }
+      // BODIES WHERE THE FIGHT WAS (band 8): a kill no player hand
+      // touched, by another body, inside a POI's ground lays its
+      // litter (layFieldLitter holds the whole law and every cap).
+      if (lootOwnerEid === null) {
+        const killerNpc = this.npcs.get(killerEid);
+        if (killerNpc) {
+          const cellKey =
+            this.poiSpawnCells.get(npc.spawnIndex) ?? this.poiSpawnCells.get(killerNpc.spawnIndex);
+          if (cellKey !== undefined) {
+            this.layFieldLitter(pos.plane, pos.x, pos.y, cellKey, `spawn:${npc.spawnIndex}`);
+          }
+        }
+      }
     }
 
     const spawn = this.spawnPoints[npc.spawnIndex];
@@ -23386,7 +23683,7 @@ export class GameServer {
           break;
         }
       }
-      spawn.eid = this.spawnNpc(def, spawn.plane, x, y, i, spawn.patrol, spawn.post, spawn.tribe, spawn.mouth);
+      spawn.eid = this.spawnNpc(def, spawn.plane, x, y, i, spawn.patrol, spawn.post, spawn.tribe, spawn.mouth, spawn.passive);
     }
 
     // Placed actors stand back up the same way beasts do.
@@ -23412,7 +23709,17 @@ export class GameServer {
       if (slotContains(spawn.hours.from, spawn.hours.to, hours)) continue;
       const eid = spawn.eid;
       const npc = this.npcs.get(eid);
-      if (!npc || npc.state !== 'idle') continue;
+      if (!npc) continue;
+      // THE UNWATCHED SQUAT STEPS OFF (contested lands, band 8 fix
+      // pass): a body whose window closed steps off between glances
+      // WHATEVER it was doing — idle, chasing, or locked in the
+      // changeover's feud. The old idle-only rule let Old Cackle
+      // stand among the re-stood dead all night: never idle, so never
+      // gone, and the plan's "the dead alone on the apron" could not
+      // obtain even after the watcher walked off. A body a character
+      // can see (within 20) still never vanishes in front of them —
+      // the fight is a property of watching, and a fight nobody
+      // watches has no audience to keep it.
       const pos = this.positions.get(eid);
       if (pos && this.playerWithin(pos.plane, pos.x, pos.y, 20)) continue;
       this.removeFromChunks(eid);
@@ -23754,6 +24061,7 @@ export class GameServer {
     },
     tribe?: string,
     mouth?: string,
+    passive?: true,
   ): EntityId {
     const eid = this.ecs.create();
     this.kinds.set(eid, EntityKind.Npc);
@@ -23826,6 +24134,7 @@ export class GameServer {
       postPulseTick: 0,
       tribe,
       ...(mouth !== undefined ? { mouth } : {}),
+      ...(passive === true ? { passive: true as const } : {}),
     });
     // THE MOUTH ON THE ROW: the named crowned body registers in the
     // actor table under its slug — ONE entity, two comps. The NpcComp
@@ -25068,6 +25377,10 @@ export class GameServer {
       // this line like every other; nothing else — no perception
       // lock, no decoy pull, no nerve break — puts the crown on you.
       if (npc.mouth !== undefined && opts.rally !== true) return;
+      // THE COUNTED PACK: a passive body never opens on a player by
+      // any unforced path either; a packmate's rally (the fight has
+      // reached it) and a blow (`force`) still do.
+      if (npc.passive === true && opts.rally !== true && this.players.has(targetEid)) return;
       const target = this.players.get(targetEid);
       if (target) {
         const fid = this.npcFactionOf(eid, npc);
@@ -25334,7 +25647,9 @@ export class GameServer {
     // — no player scan, no feud scan. It stands at its fire and talks
     // until its crew's fight reaches it or a blow lands.
     if (npc.mouth !== undefined) return;
-    if (this.npcPerceivePlayers(eid, npc, pos)) return;
+    // THE COUNTED PACK: a passive body has no eye for a player; the
+    // feud scan is still the world's.
+    if (npc.passive !== true && this.npcPerceivePlayers(eid, npc, pos)) return;
     this.npcPerceiveNpcs(eid, npc, pos);
   }
 
@@ -25548,6 +25863,9 @@ export class GameServer {
     if (bestEid === null) return;
     // Zone survivor: now — and only now — the ray. A wall between
     // the feud is a peace that holds until someone walks the corner.
+    // (A same-tile pair is clear by sightLine's own first line: the
+    // band 8 review's guess that two crowns on one anchor cell read
+    // as blind to each other was checked here and refuted.)
     if (sightVisibility(sightLine(this.worldOf(pos.plane), pos.x, pos.y, bestX, bestY)) <= 0) {
       return;
     }
@@ -26329,6 +26647,24 @@ export class GameServer {
     this.rebuildAwakeChunks();
     for (const [eid, npc] of this.npcs) {
       const pos = this.positions.must(eid);
+      // THE BODY THAT LOST ITS BEARING (contested lands, band 8 fix
+      // pass): a position that went non-finite (the live audit's boot
+      // loss: a veil wolf mid-fight) is named ONCE with everything a
+      // reader can chase (def, eid, spawn, state, target) and stood
+      // back on its origin, so the tick that follows walks a body and
+      // not a NaN into the chunk generator. The shared step refuses a
+      // NaN heading and the world's doors refuse a NaN tile as well;
+      // this is the log the other two guards cannot write.
+      if (!Number.isFinite(pos.x) || !Number.isFinite(pos.y)) {
+        console.warn(
+          `[npc] ${npc.def.id}#${eid} (spawn ${npc.spawnIndex}, state ${npc.state}, target ${npc.targetEid ?? 'none'}) ` +
+            `stood at a non-finite position (${pos.x},${pos.y}) — stood back on its origin (${npc.originX},${npc.originY})`,
+        );
+        pos.x = npc.originX;
+        pos.y = npc.originY;
+        npc.state = 'idle';
+        npc.targetEid = null;
+      }
       if (npc.attackCooldown > 0) npc.attackCooldown--;
       if (npc.def.kit) {
         // Lazy seed (and re-seed after a CMS def swap changes the kit

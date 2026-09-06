@@ -1,0 +1,32 @@
+{
+  "id": "bodil_licence",
+  "start": "hub",
+  "requires": ["quest:the_grey_root:active"],
+  "forbids": ["bodil_licence_signed"],
+  "bindings": [{ "kind": "actor", "target": "charter_bodil", "priority": 6 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "bodil_licence__hub",
+      "text": "Alder's hands. Then the licence is yours to the thread and my word is past it. Sign under my name here and the old folk will count it against you, which they will do anyway. Twelve logs and two of the yew, to the Copse yard.",
+      "choices": [
+        { "text": "Sign it.", "next": "signed" },
+        { "text": "Not yet.", "next": "later" }
+      ]
+    },
+    {
+      "id": "signed",
+      "voice": "bodil_licence__signed",
+      "text": "Signed. Cut what will burn.",
+      "hooks": [
+        { "kind": "flag", "flag": "bodil_licence_signed" },
+        { "kind": "standing", "faction": "evencourt", "delta": -10 }
+      ]
+    },
+    {
+      "id": "later",
+      "voice": "bodil_licence__later",
+      "text": "The post is not going anywhere."
+    }
+  ]
+}

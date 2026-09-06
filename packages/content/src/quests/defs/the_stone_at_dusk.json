@@ -1,0 +1,31 @@
+{
+  "id": "the_stone_at_dusk",
+  "name": "The Stone at Dusk",
+  "giver": "even_sentinel",
+  "turnIn": "even_sentinel",
+  "requires": { "quests": ["keep_the_thread"] },
+  "stages": [
+    {
+      "id": "stand",
+      "journal": "Stand at the first grey stone from the hour the lamps light and watch the thread. Do not walk it. Say afterwards what walked it.",
+      "objectives": [
+        { "kind": "flag", "flag": "glade_stood", "label": "Stand at the grey stone by the road from dusk" }
+      ],
+      "mark": { "x": -135, "y": -184 }
+    },
+    {
+      "id": "word",
+      "journal": "Wolves walked it. Say so at the stone.",
+      "objectives": [{ "kind": "talk", "actor": "even_sentinel" }]
+    }
+  ],
+  "rewards": {
+    "xp": [{ "skill": "combat", "amount": 180 }],
+    "standing": [
+      { "faction": "evencourt", "delta": 15 },
+      { "faction": "fordgate", "delta": -15 }
+    ],
+    "items": [{ "item": "moonglass_chip", "qty": 1 }],
+    "flags": ["ward_line_taken", "moonglass_chip_held"]
+  }
+}

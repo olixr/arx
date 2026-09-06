@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { TILE_SKIP, Tile } from '@arx/shared';
 import {
   ZONE_EDGE_PROFILES,
+  edgeBlendElevation,
+  edgeBlendMoisture,
   packZoneEdgeProfile,
   replaceZoneEdgeProfiles,
   tileEdgeClass,
@@ -92,4 +94,13 @@ test('the registry refills in place (the live-registry law)', () => {
   assert.equal(ref[0]!.id, 't');
   replaceZoneEdgeProfiles([]);
   assert.equal(ref.length, 0);
+});
+
+test('the edge law refuses a non-finite point instead of crashing (band 8 fix pass: the live audit\'s boot loss)', () => {
+  // A NaN coordinate used to pass `d >= EDGE_REACH` (false, like every
+  // comparison with NaN) and index the profile with a NaN jitter.
+  // The blend must hand the field's own value back, untouched.
+  assert.equal(edgeBlendElevation(24601, Number.NaN, Number.NaN, 0.42), 0.42);
+  assert.equal(edgeBlendMoisture(24601, Number.NaN, 5, 0.31), 0.31);
+  assert.equal(edgeBlendElevation(24601, Number.POSITIVE_INFINITY, 0, 0.5), 0.5);
 });

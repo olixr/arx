@@ -10,7 +10,12 @@
       "choices": [
         { "text": "Which trees can I take?", "next": "marked" },
         { "text": "Tell me about the big oak.", "next": "oak" },
-        { "text": "Just walking the copse.", "next": "pass" }
+        { "text": "Just walking the copse.", "next": "pass" },
+        {
+          "text": "The stand at the fork, then.",
+          "next": "reoffer_root",
+          "requires": ["grey_root_declined", "quest:the_grey_root:available"]
+        }
       ]
     },
     {
@@ -29,6 +34,22 @@
       "id": "pass",
       "voice": "alder_copse__pass",
       "text": "Look up before you swing."
+    },
+    {
+      "id": "reoffer_root",
+      "voice": "alder_copse__reoffer_root",
+      "text": "The wood inside the thread, twelve of cord and two of yew, here. The offer stands where it stood.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_grey_root" }],
+      "choices": [
+        { "text": "I will.", "next": "resworn_root", "set": ["grey_root_sworn"] },
+        { "text": "Still no." }
+      ]
+    },
+    {
+      "id": "resworn_root",
+      "voice": "alder_copse__resworn_root",
+      "text": "Speak to Bodil at the cut. Look up before you swing.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_grey_root" }]
     }
   ]
 }

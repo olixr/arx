@@ -78,6 +78,11 @@ export const FACTIONS: FactionsDef = {
         'charter_ingram',
         'charter_steinar',
         'charter_bodil',
+        // Band 8 (THE HUSK AND THE WARD LINE): the licensed cut's crew
+        // at the ward line, a pooled body on the roster so the closed
+        // throat and the standing price read the Charter's ledger at
+        // the cut exactly as they do at the tally stall.
+        'charter_feller',
         // Kingsdelf — the Charter's far venture: the Returning banked
         // on Charter coin, and the watch wears the Charter's coat.
         'delfmaster_ruen',
@@ -402,6 +407,9 @@ export const FACTIONS: FactionsDef = {
     assaultEnforcer: -8,
     slayMember: -30,
     theftWitnessed: -6,
+    // THE WARD DEED (band 8): four deliberate cuts of the Court's
+    // thread from a clean name = outlaw, the assault's own rhythm.
+    wardCut: -8,
     questCap: 25,
     storyCap: 15,
   },
@@ -840,6 +848,7 @@ export function validateFactions(
     assaultEnforcer: num(deedsRaw, 'assaultEnforcer', -50, -1),
     slayMember: num(deedsRaw, 'slayMember', -100, -1),
     theftWitnessed: num(deedsRaw, 'theftWitnessed', -50, -1),
+    wardCut: num(deedsRaw, 'wardCut', -50, -1),
     questCap: num(deedsRaw, 'questCap', 1, 50),
     storyCap: num(deedsRaw, 'storyCap', 1, 50),
   };

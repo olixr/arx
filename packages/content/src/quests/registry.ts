@@ -117,6 +117,21 @@ import theOldGate from './defs/the_old_gate.json';
 import theGreenRoad from './defs/the_green_road.json';
 import theLedgerLine from './defs/the_ledger_line.json';
 import theObstructionBill from './defs/the_obstruction_bill.json';
+// THE CONTESTED LANDS band 8 — THE HUSK AND THE WARD LINE (plan §3.2,
+// §3.3): two forks north of Dawnmead, each two opposed two-link chains.
+// THE PACK OR THE SQUAT: the drover's cull of the veil pack against the
+// sergeant's breaking of the gnoll squat in the order's struck tower.
+import woolCount from './defs/wool_count.json';
+import theFleece from './defs/the_fleece.json';
+import theTowersDebt from './defs/the_towers_debt.json';
+import theOrderPays from './defs/the_order_pays.json';
+// THE THREAD OR THE AXE: the Court's thread carried past its three grey
+// stones and stood at dusk, against the Charter's licensed cut of the
+// dying stand inside it.
+import keepTheThread from './defs/keep_the_thread.json';
+import theStoneAtDusk from './defs/the_stone_at_dusk.json';
+import theGreyRoot from './defs/the_grey_root.json';
+import theFullTally from './defs/the_full_tally.json';
 
 const SOURCES: readonly unknown[] = [
   theWetCount,
@@ -196,6 +211,25 @@ const SOURCES: readonly unknown[] = [
   theGreenRoad,
   theLedgerLine,
   theObstructionBill,
+  // THE HUSK AND THE WARD LINE (contested lands band 8). North: side A
+  // is the drover's count and cull (the flag objective reads the veil
+  // den's own clearedFlag) then the pelts for her lining; side B is the
+  // sergeant's squat broken by day, the apron held with his lamp through
+  // the changeover, and the order's grey carried back to Hale's post.
+  // North-west: side A carries the Court's four lengths past the three
+  // grey stones and stands the head stone at dusk; side B takes Bodil's
+  // licence and fells inside the thread for Alder's yard, then posts the
+  // tally at Margit's stall. Each offer tree forbids the other side by
+  // quest state; ward_line_taken stamps on both closing links of the
+  // north-west pair and names no side.
+  woolCount,
+  theFleece,
+  theTowersDebt,
+  theOrderPays,
+  keepTheThread,
+  theStoneAtDusk,
+  theGreyRoot,
+  theFullTally,
   // Item-borne: the torn page starts it; nobody offers it.
   theStolenLedger,
   // The Sealed Galleries — Grettir's brother's crew, closed at last.

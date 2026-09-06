@@ -1,0 +1,56 @@
+{
+  "id": "alder_bowwood",
+  "start": "hub",
+  "requires": ["grey_root_done"],
+  "bindings": [{ "kind": "actor", "target": "forester_alder", "priority": 11 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "alder_bowwood__hub",
+      "text": "The north yew is in. The bow wood shelf is open to the hands that cut it.",
+      "choices": [
+        { "text": "The bow wood.", "next": "shelf" },
+        { "text": "Which trees can I take?", "next": "marked" },
+        { "text": "Just walking the copse.", "next": "pass" },
+        {
+          "text": "The second load, then.",
+          "next": "reoffer_tally",
+          "requires": ["full_tally_declined", "quest:the_full_tally:available"]
+        }
+      ]
+    },
+    {
+      "id": "shelf",
+      "voice": "alder_bowwood__shelf",
+      "text": "Take the marked ones.",
+      "hooks": [{ "kind": "shop", "shop": "copse_yard" }]
+    },
+    {
+      "id": "marked",
+      "voice": "alder_bowwood__marked",
+      "text": "Blaze cut low on the trunk means take it. No blaze means it's still working. The stand knows what it can spare better than either of us, and I just write down its answer.",
+      "next": "hub"
+    },
+    {
+      "id": "pass",
+      "voice": "alder_bowwood__pass",
+      "text": "Look up before you swing."
+    },
+    {
+      "id": "reoffer_tally",
+      "voice": "alder_bowwood__reoffer_tally",
+      "text": "Six more of cord to Margit's stall, so the column reads full. The offer stands where it stood.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_full_tally" }],
+      "choices": [
+        { "text": "I will.", "next": "resworn_tally" },
+        { "text": "Still no." }
+      ]
+    },
+    {
+      "id": "resworn_tally",
+      "voice": "alder_bowwood__resworn_tally",
+      "text": "Six. Say it was Alder's word.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_full_tally" }]
+    }
+  ]
+}
