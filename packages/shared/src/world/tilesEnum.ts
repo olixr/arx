@@ -1114,11 +1114,26 @@ export enum Tile {
   // THE SCARRED LAND — band 8's mint (rulings G3). 546 and 547 stay
   // RESERVED for AshGround and GrassBlighted, the two true ground
   // tiles of THE LIVING GROUND (plan §12.5), so the clamp lands past
-  // them at 548; the Dolmen's four (plan §11.3) follow at 549+. It is
-  // family A (the cold hearth) by voice: a fire somebody made and
-  // then banked under turf. isScarredTile names it beside the band.
+  // them at 548 (taken by band 8); the Dolmen's four (plan §11.3,
+  // band 9b) stand at 549..552 and their chalk line is Detail 184.
+  // The clamp is family A (the cold hearth) by voice: a fire somebody
+  // made and then banked under turf. isScarredTile ranges 548..552.
   /** A charcoal clamp: a turfed mound of cordwood over a slow fire, vent holes cut in the turf, the coals showing at the vents from dusk. The north's charcoal is made here. */
   SmolderHeap = 548,
+  // THE STANDING COURSE — the Dolmen's dry stone (plan §11.3, band
+  // 9b). No mortar, no timber, no lamp, no dye, no flag: every piece
+  // is set PLUMB, LEVEL and COUNTED, and none of them is a ruin. The
+  // wall and the stile are a run family of their own (COURSE_TILES,
+  // the separate-masonry law spoken a third time); the cell and the
+  // plumb stone stand discrete.
+  /** The Course itself: a double-skin dry-stone field wall with through-stones and a cope set on edge, dead level from end to end, because a wall that is level is a wall that holds. */
+  CourseWall = 549,
+  /** Vorl's law, set one stone to pass: the wall dropped to the hip over one tile with a step stone proud on each side, so a person crosses and a sheep does not. Course-kin in the run mask; passable by state. */
+  CourseStile = 550,
+  /** The beehive hut: a corbelled dry-stone dome, every ring stepped in on the ring below until one capstone closes it, the door hole low and south. The kit's second lamplight mass. */
+  CorbelCell = 551,
+  /** The claim mark: a knee-high set stone on its footing with one groove across the top, a bone cord pinched in the groove and a chalk-white bob hanging down the face dead true. */
+  PlumbStone = 552,
 }
 
 export enum Detail {
@@ -1210,6 +1225,9 @@ export enum Detail {
   LeafLitter = 182,
   /** Bracken fronds in a canopy gap: two or three low pinnate fans. */
   Bracken = 183,
+  // THE STANDING COURSE — the setter's mark (plan §11.3, band 9b).
+  /** One snapped chalk line on bare ground where a course will go. */
+  Chalkline = 184,
 }
 
 /** THE DYE LAW's count — ten cloths, index-married everywhere. */

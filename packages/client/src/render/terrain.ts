@@ -2,6 +2,7 @@ import {
   ART_SUN_X,
   ART_SUN_Y,
   CHEST_TILES,
+  COURSE_TILES,
   DYE_COUNT,
   CHUNK_SIZE,
   Detail,
@@ -919,7 +920,10 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
       // the SOUTH continues beneath it first, and the house floor
       // only where nothing walkable fronts it (an interior run, a
       // run-mate south). Same seam law as every fence and hedge.
-      if (RUIN_WALL_TILES.has(t)) {
+      // THE STANDING COURSE (band 9b) keeps the same fronting law:
+      // the Dolmen's wall and stile stand on whatever open ground
+      // fronts them (the Course crosses meadow and marl alike).
+      if (RUIN_WALL_TILES.has(t) || COURSE_TILES.has(t)) {
         const south = ground(tx, ty + 1);
         if (south !== undefined && !tileDef(south).solid && !isScarredTile(south) && south !== Tile.Ramp) {
           return south;
@@ -935,6 +939,11 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
       // burner's yard is raked bare, and the painter lays its own
       // ash apron over whatever that is.
       if (t === Tile.SmolderHeap) return front(Tile.Dirt);
+      // THE STANDING COURSE (band 9b): a set floor is bared — the cell
+      // stands on trodden dirt; the plumb stone is planted on the verge
+      // where the Course crosses a threshold, so grass continues.
+      if (t === Tile.CorbelCell) return front(Tile.Dirt);
+      if (t === Tile.PlumbStone) return front(Tile.Grass);
       // B. the field after: trampled ground — the field's own skin
       // continues; open-country fallback is DIRT (a fight tramples).
       if (t >= Tile.BrokenCart && t <= Tile.BeastBones) return front(Tile.Dirt);
@@ -4775,6 +4784,83 @@ function drawTileDetail(
           const cut = gy + px * (0.35 + ((hh >>> 4) % 4) * 0.08);
           ctx.fillRect(rx, gy, px * 0.1, Math.max(1, cut - gy - px * 0.04));
           ctx.fillRect(rx + px * 0.01, cut + px * 0.04, px * 0.1, Math.max(1, gy + px - cut - px * 0.04));
+        }
+      } else if (d === Detail.Chalkline) {
+        // THE SETTER'S MARK (band 9b, THE STANDING COURSE): one chalk
+        // line snapped on bare ground where a course will go — the one
+        // drawing the Dolmen make, one line, never two crossing. A
+        // Detail carries no axis, so the bar reads its cardinal
+        // neighbours through dAt (the ash bake's idiom): E-W if a
+        // chalk line lies east or west, N-S if north or south, hashed
+        // when lone; with kin on BOTH axes the tile draws ONE axis by
+        // hash, so a tee or a cross of chalk tiles can never draw two
+        // bars on one tile ("never a lattice" is the brush's law, not
+        // hope). The bar's cross-axis position is the tile's CENTRE
+        // LINE on every tile, so it meets its neighbour at the seam to
+        // the pixel; the ragged wobble (up to 0.012s) and the segment
+        // breaks live mid-tile, never at the seam (the ash grain's seam
+        // law). A lone tile draws 0.6 of the tile with a built end each
+        // side; an end tile runs from its shared seam to a built end.
+        // Segments 4..6 of 0.10..0.28s with 0.03..0.05s gaps, the last
+        // absorbing the remainder to the seam; two values alternate;
+        // a few chalk dust flecks (0.03s squares) thrown to one side
+        // where the cord slapped. Fills only, min feature 0.03s, no
+        // strokes, no transforms — a ground bake is a quad's texture
+        // and must read the same off the canvas oracle and the GL
+        // stage. Never a ruled stripe, never a rune.
+        const hh = hashCoords(257, tx, ty);
+        const chalkAt = (ox: number, oy: number): boolean => dAt !== undefined && dAt(tx + ox, ty + oy) === Detail.Chalkline;
+        const kW = chalkAt(-1, 0);
+        const kE = chalkAt(1, 0);
+        const kN = chalkAt(0, -1);
+        const kS = chalkAt(0, 1);
+        const ewKin = kW || kE;
+        const nsKin = kN || kS;
+        const ew = ewKin && nsKin ? ((hh >>> 3) & 1) === 0 : ewKin ? true : nsKin ? false : ((hh >>> 3) & 1) === 0;
+        // Along the axis: [a0, a1] in tile fractions — a shared seam
+        // is 0 or 1, a built end 0.2 or 0.8.
+        const joinLo = ew ? kW : kN;
+        const joinHi = ew ? kE : kS;
+        const a0 = joinLo ? 0 : 0.2;
+        const a1 = joinHi ? 1 : 0.8;
+        const barW = px * 0.035;
+        const mid = px * 0.5;
+        // The bar's two values (0.55 / 0.32 in the first cut read as
+        // three hairline dashes at 1.3 on the museum's dirt).
+        const bar = 'rgba(245, 241, 232, 0.70)';
+        const barSoft = 'rgba(245, 241, 232, 0.45)';
+        const dust = 'rgba(245, 241, 232, 0.28)';
+        const segs = 4 + ((hh >>> 5) % 3);
+        let a = a0;
+        for (let k = 0; k < segs && a < a1 - 1e-6; k++) {
+          const hk = hashCoords(261 + k, tx, ty);
+          let len = 0.1 + ((hk >>> 2) % 10) * 0.02;
+          const gap = 0.03 + ((hk >>> 6) % 3) * 0.01;
+          // The last segment absorbs the remainder (a tail under 0.06
+          // folds in): the line reaches the seam whole.
+          if (k === segs - 1 || a + len + gap + 0.06 > a1) len = a1 - a;
+          const atSeam = (a === 0 && joinLo) || (a + len >= 1 - 1e-6 && joinHi);
+          // Mid-tile segments wobble off the centre line and vary in
+          // width by segment (the ragged edge); a seam segment holds
+          // the canonical bar so the neighbour meets it to the pixel.
+          const wob = atSeam ? 0 : (((hk >>> 9) % 5) - 2) * px * 0.006;
+          const w = atSeam ? barW : px * (0.03 + ((hk >>> 12) % 4) * 0.005);
+          ctx.fillStyle = k & 1 ? barSoft : bar;
+          if (ew) ctx.fillRect(gx + a * px, gy + mid - w * 0.5 + wob, len * px, w);
+          else ctx.fillRect(gx + mid - w * 0.5 + wob, gy + a * px, w, len * px);
+          a += len + gap;
+        }
+        // The dust: three to five flecks on the side the cord slapped.
+        const side = ((hh >>> 8) & 1) === 0 ? -1 : 1;
+        const flecks = 3 + ((hh >>> 10) % 3);
+        ctx.fillStyle = dust;
+        for (let k = 0; k < flecks; k++) {
+          const hf = hashCoords(271 + k, tx, ty);
+          const along = a0 + 0.06 + ((hf >>> 2) % 16) / 16 * (a1 - a0 - 0.12);
+          const off = mid + side * px * (0.05 + ((hf >>> 7) % 4) * 0.02);
+          const sz = px * 0.03;
+          if (ew) ctx.fillRect(gx + along * px - sz * 0.5, gy + off - sz * 0.5, sz, sz);
+          else ctx.fillRect(gx + off - sz * 0.5, gy + along * px - sz * 0.5, sz, sz);
         }
       } else if (d === Detail.BlightVeins) {
         // THE VEINS (K4 recut): the ground the gloom stone and the

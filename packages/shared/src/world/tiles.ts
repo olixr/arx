@@ -468,6 +468,14 @@ export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
   // tree is a trunk-mass ('cover', by collider radius), and nothing
   // else in the kit is architecture.
   Tile.ChimneyStack,
+  // THE STANDING COURSE: the corbel cell is the kit's SECOND lamplight
+  // mass — a dry-stone dome a body and a half high with no window and
+  // no vent, so lamplight stops at its skin (SIGHT_WALL_TILES derives
+  // from this list, so it blocks the sight law too). The course wall
+  // is chest-high and clears lamplight by the waist law like the
+  // ruin's stone tumble; the stile is lower still; the plumb stone is
+  // knee-high.
+  Tile.CorbelCell,
 ];
 
 /**
@@ -731,14 +739,36 @@ export const RUIN_WALL_TILES: ReadonlySet<Tile> = new Set([
   Tile.RuinWallWood,
 ]);
 
+/**
+ * THE STANDING COURSE — the Dolmen's dry stone (plan §11.3, band 9b):
+ * the course wall and its stile, the EIGHTH run-merging family, and
+ * THE SEPARATE-MASONRY LAW spoken a third time. Stone the Dolmen set
+ * merges with its OWN kind only: never a living WALL_RUN (the roofer
+ * keyed on WALL_RUN_TILES can never roof it), never a fence, never
+ * the garrison, never the ruin beside it (a set wall never dies into
+ * a tumble). The stile stands IN the mask as kin so the wall on either
+ * side reaches into its seams and the run reads continuous through
+ * the low place (the FenceBroken-in-FENCE_TILES precedent), but it is
+ * `solid: false` in TILE_DEFS: passable BY STATE, never a door.
+ * Nothing hangs on either (outside HANGABLE_WALL_TILES).
+ */
+export const COURSE_TILES: ReadonlySet<Tile> = new Set([
+  Tile.CourseWall,
+  Tile.CourseStile,
+]);
+
 /** The kit's contiguous id band, anchored on LIVING endpoints (never
  *  a literal) — the terrain underlay and the museum wing read it.
- *  Band 8's clamp (548) stands PAST the band on purpose: 546 and 547
- *  are reserved for the living ground's two true tiles (AshGround,
- *  GrassBlighted — plan §12.5), which are floors, never props, and
- *  must never answer here. So the clamp is named, not ranged. */
+ *  Band 8's clamp (548) and band 9b's four (549..552) stand PAST the
+ *  band on purpose: 546 and 547 are reserved for the living ground's
+ *  two true tiles (AshGround, GrassBlighted — plan §12.5), which are
+ *  floors, never props, and must never answer here. So the second
+ *  range opens at the clamp and closes at the plumb stone. */
 export function isScarredTile(id: number): boolean {
-  return (id >= Tile.RuinWallStone && id <= Tile.SluiceGateStrung) || id === Tile.SmolderHeap;
+  return (
+    (id >= Tile.RuinWallStone && id <= Tile.SluiceGateStrung) ||
+    (id >= Tile.SmolderHeap && id <= Tile.PlumbStone)
+  );
 }
 
 /** The fence family's auto-orient law, spoken in wrought iron. */
@@ -1106,6 +1136,11 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   // (.42 — wider than the spoil heap; a clamp is banked to burn for
   // days and nobody leans on it).
   [Tile.SmolderHeap, 0.42],
+  // Band 9b: the plumb stone is the tally stone's row — stone-and-cord
+  // you skirt. The course wall is a run family and fills its tile in
+  // plan (no entry); the corbel cell is a full block (no entry); the
+  // stile is not solid.
+  [Tile.PlumbStone, 0.3],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -1795,6 +1830,15 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.LegionStandard, { kind: 'banner', respawnSec: 600, hits: 3 }],
   [Tile.BoneTree, { kind: 'bones', respawnSec: 600, hits: 2 }],
   [Tile.TallyStone, { kind: 'stone', respawnSec: 600, hits: 3 }],
+  // THE STANDING COURSE (band 9b): the plan's own words, "stone x3 so
+  // the fork can breach it" — the war is about stone being TAKEN and
+  // THE WEIGHT counts it. Both drop the tally stone's pale slabs (the
+  // 'stone' kit; pale stone drops pale). The stile is a posture a body
+  // stands ON and is never patched under it; the corbel cell is
+  // load-bearing (a corbelled roof holds itself up, the chimney's
+  // refusal). Neither of those has a row.
+  [Tile.CourseWall, { kind: 'stone', respawnSec: 600, hits: 3 }],
+  [Tile.PlumbStone, { kind: 'stone', respawnSec: 600, hits: 3 }],
   [Tile.WardThread, { kind: 'thread', respawnSec: 600, hits: 1 }],
   [Tile.RedRagStake, { kind: 'stakes', respawnSec: 420, hits: 1 }],
   [Tile.LeanTo, { kind: 'tent', respawnSec: 420, hits: 2 }],

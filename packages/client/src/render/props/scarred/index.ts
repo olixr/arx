@@ -18,9 +18,11 @@ import { MARKS_PROPS } from './marks.js';
 import { DISPLACED_PROPS } from './displaced.js';
 import { STATES_PROPS } from './states.js';
 import { SMOLDER_HEAP_PROPS } from './smolderHeap.js';
+import { COURSE_PROPS } from './course.js';
 import type { PropEntries } from '../types.js';
 
 export { ruinWallItem } from './ruinWalls.js';
+export { courseWallItem, courseStileItem } from './course.js';
 export { fenceBrokenItem, hedgeDeadItem } from './states.js';
 
 export const SCARRED_PROPS: PropEntries = [
@@ -35,4 +37,8 @@ export const SCARRED_PROPS: PropEntries = [
   // Band 8 THE CLAMP (548): family A by voice, its own file — the
   // charcoal clamp stands past the band's two reserved ground ids.
   ...SMOLDER_HEAP_PROPS,
+  // Band 9b THE STANDING COURSE (551, 552): the Dolmen's corbel cell
+  // and plumb stone through the hall; the course wall and stile are
+  // run painters off the renderer's switch (course.ts).
+  ...COURSE_PROPS,
 ];

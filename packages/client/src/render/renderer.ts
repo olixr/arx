@@ -193,7 +193,7 @@ import {
 import { buildableIconUrl, itemIconUrl } from './icons.js';
 import { AWNING_CLOTHS, GAR_LEAF, GY_MOSS, GY_STONE, GY_STONE_LIT, HRB_MOON, HRB_MOON_DEEP, HRB_SAGE, HRB_SAGE_DEEP, HRB_SOIL_WET, PALI_BONE, PALI_LOG, PALI_ROPE, PALI_ROPE_DARK, ROCK_TILES, STALL_BANNERS, STRUCT_OUTLINE, TRD_CRUST, TRD_CRUST_LIT, TRD_HERB, TRD_HERB_DRY, TRD_LEATHER_LIT, TRD_STEEL, TRD_STEEL_LIT, TWN_BRONZE, TWN_BRONZE_LIT, TWN_IRON, TWN_OAK, TWN_OAK_DARK, TWN_OAK_LIT, TWN_ROPE, WALL_TILES, WIND_TMP, stone01, treeKey, twinkle } from './paintVocab.js';
 import { PROP_PAINTERS } from './props/index.js';
-import { fenceBrokenItem, hedgeDeadItem, ruinWallItem } from './props/scarred/index.js';
+import { courseStileItem, courseWallItem, fenceBrokenItem, hedgeDeadItem, ruinWallItem } from './props/scarred/index.js';
 import { SpriteAtlas } from './stage/spriteAtlas.js';
 import * as waterfalls from './waterfalls.js';
 import * as garrisonArt from './garrisonArt.js';
@@ -16195,6 +16195,14 @@ export class Renderer {
     // row (collect-time) and its exhale (the emit door); the sprite
     // bakes once and stays on the fast cadence like the ember bed.
     Tile.SmolderHeap,
+    // Band 9b, THE STANDING COURSE: the two discrete pieces. The
+    // corbel cell is truly still (STATIC_RING_TILES below); the plumb
+    // stone's cord and bob ride ONE BREEZE through breezeAt, so it
+    // stays on the clocked cadence like the ward thread. The course
+    // wall and stile are a RUN family: no body, no ring cache, their
+    // exposed silhouette is stroked live off the engine switch.
+    Tile.CorbelCell,
+    Tile.PlumbStone,
   ]);
 
   /**
@@ -16412,6 +16420,9 @@ export class Renderer {
     Tile.CreepRoot,
     Tile.CharterPost,
     Tile.TallyStone,
+    // Band 9b: the corbel cell is dead still (no clock, no light, no
+    // breeze); the plumb stone is NOT here — its bob reads the clock.
+    Tile.CorbelCell,
     Tile.PitLampDark,
     Tile.Bedroll,
     Tile.BelongingsCart,
@@ -16457,8 +16468,9 @@ export class Renderer {
    *  Table's candles, LampPost, Brazier, and Hearth all live outside
    *  this set. */
   /** The run-merging barrier families whose painters (barrierArt + the
-   *  scarred-land ruin walls) are raw canvas brushes — never assembly-run
-   *  on the stage; they take THE WALL LANE (see the Generic case). */
+   *  scarred-land ruin walls + the standing course) are raw canvas
+   *  brushes — never assembly-run on the stage; they take THE WALL LANE
+   *  (see the Generic case). */
   private static readonly RAW_BARRIER_TILES = new Set<number>([
     Tile.Fence,
     Tile.FenceDiagNE,
@@ -16484,6 +16496,13 @@ export class Renderer {
     Tile.RuinWallStone,
     Tile.RuinWallWood,
     Tile.FenceBroken,
+    // THE STANDING COURSE (band 9b): the Dolmen's course wall and its
+    // stile are the eighth run family and the same raw brush (course.ts
+    // captures rend.ctx at draw time). Off this roster they were marked
+    // stage-safe and "succeeded" under assembly while painting straight
+    // onto the 2D underframe — UNDER the GL grass, bodies and casts.
+    Tile.CourseWall,
+    Tile.CourseStile,
   ]);
 
   private static readonly BAND_STATIC_PROPS = new Set<number>(
@@ -19270,6 +19289,14 @@ export class Renderer {
       case Tile.RuinWallStone:
       case Tile.RuinWallWood:
         return ruinWallItem(this, tile, tx, ty, game);
+
+      // THE STANDING COURSE (band 9b): the Dolmen's course wall and
+      // its stile merge with COURSE_TILES only (props/scarred/course.ts).
+      case Tile.CourseWall:
+        return courseWallItem(this, tx, ty, game);
+
+      case Tile.CourseStile:
+        return courseStileItem(this, tx, ty, game);
 
       case Tile.FenceBroken:
         return fenceBrokenItem(this, tx, ty, game);

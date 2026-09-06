@@ -98,6 +98,16 @@ const VOCAB = {
   // C) joins the rubble in the roll and heads every pocket (a pocket
   // is a trial pit: its spoil beside it, a barrel for the water).
   digs: { litter: [Tile.CaveRubble, Tile.SpoilHeap, Tile.Rock], pocket: [Tile.SpoilHeap, Tile.CaveRubble, Tile.Barrel], mark: Tile.TallyStone },
+  // THE STANDING COURSE (plan §11.3 / §11.6, band 9b): the Dolmen's
+  // verge is stone and only stone — the rubble a course was dressed
+  // from and the rock it was set on; a pocket is one set stone with
+  // its rubble. No fire (they burn nothing; the Culm's hearth-cells
+  // are EmberBed rows the zone places by hand), no roadMark (a lamp
+  // is a stone that goes out). The PLUMB STONE is the mark and never
+  // litter: a glyph is not litter (the law above), so plan §11.6's
+  // litter list is amended here and recorded. The `dolmen` family
+  // regex waits for 9d, where a prefab exists to claim it.
+  course: { litter: [Tile.CaveRubble, Tile.Rock, Tile.Rock], pocket: [Tile.Rock, Tile.CaveRubble, Tile.PlumbStone], mark: Tile.PlumbStone },
   lair: { litter: [Tile.BonePile, Tile.Rock], pocket: [Tile.Rock, Tile.BonePile] },
   roost: { litter: [Tile.BonePile, Tile.Stump], pocket: [Tile.Tree, Tile.BonePile] },
   // THE RUIN (family A, the cold hearth): what a burning leaves on its
@@ -227,6 +237,15 @@ export function familyVocabOf(prefabId: string): InfluenceVocab {
 export function claimMarkOf(vocab: InfluenceVocab, nearRoad: boolean): Tile | undefined {
   const v: Vocab = VOCAB[vocab];
   return nearRoad ? v.roadMark ?? v.mark : v.mark;
+}
+
+/**
+ * The litter roll a vocab thins across its verge — read-only, so a
+ * test can hold "a glyph is not litter" against the row itself (the
+ * mark never rides the roll; band 9b's plumb stone is the pin).
+ */
+export function vocabLitterOf(vocab: InfluenceVocab): readonly Tile[] {
+  return VOCAB[vocab].litter;
 }
 
 /** The two-per-territory ceiling on claim marks: a glyph, not a picket line. */

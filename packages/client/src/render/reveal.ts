@@ -100,9 +100,10 @@ export const FADE_TALL_FRONT = 0.6;
  * Props declared TALL by their tile: they join the step-aside fade on
  * their silhouette whatever their drawn box measures (a column, a
  * snag, a standard, a lamp on its post all stand over the rig and
- * hide a body behind them). THE SCARRED LAND's five: the chimney, the
+ * hide a body behind them). THE SCARRED LAND's six: the chimney, the
  * dead tree (a tree — its own lane fades it, listed for the census),
- * the Legion standard, the dark lamp post, the lit pit lamp.
+ * the Legion standard, the dark lamp post, the lit pit lamp, and the
+ * Dolmen's corbel cell (band 9b: a dome a body and a half high).
  */
 export const FADE_TALL_PROPS: ReadonlySet<Tile> = new Set([
   Tile.ChimneyStack,
@@ -110,6 +111,7 @@ export const FADE_TALL_PROPS: ReadonlySet<Tile> = new Set([
   Tile.LegionStandard,
   Tile.LampPostDark,
   Tile.PitLamp,
+  Tile.CorbelCell,
 ]);
 
 /**

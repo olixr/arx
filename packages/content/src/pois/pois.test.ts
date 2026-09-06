@@ -21,7 +21,7 @@ import { AUTHORED_GEOGRAPHY, roadBearingAt } from '../geography.js';
 import { NPCS } from '../npcs.js';
 import type { PrefabDef } from '../maps/prefab.js';
 import { AUTHORED_POI_DEFS, POI_DEFS } from './defs.js';
-import { CLAIM_MARKS_MAX, claimMarkOf, declareInfluence, expandInfluence, familyVocabOf } from './influence.js';
+import { CLAIM_MARKS_MAX, claimMarkOf, declareInfluence, expandInfluence, familyVocabOf, vocabLitterOf } from './influence.js';
 import { K3_SKETCHES, POI_PREFABS } from './prefabs.js';
 import { validatePoiDef } from './validate.js';
 
@@ -1253,6 +1253,20 @@ test('THE MARKS: influence plants each people\'s claim at the trailheads, and th
     const n = marksStandAtTrailheads(p, src, mark);
     assert.ok(n >= 1 && n <= 2, `${vocab}: planted ${n} marks (want 1..2)`);
   }
+  // THE STANDING COURSE (band 9b): the plumb stone is the Dolmen's
+  // mark and NEVER litter (a glyph is not litter), so the litter roll
+  // holds none; it also heads a set-stone pocket (plan §11.6), so on
+  // expanded ground every plumb stone stands off the heart on worked
+  // ground (a trailhead or a pocket) and at least one is a trailhead
+  // glyph. The `dolmen` family regex waits for 9d.
+  {
+    assert.ok(!vocabLitterOf('course').includes(Tile.PlumbStone), 'course: the plumb stone rides the litter roll');
+    const src = mk('poi_test_mark_course');
+    const p = expandInfluence(declareInfluence(src, { vocab: 'course' }));
+    const n = marksStandAtTrailheads(p, src, Tile.PlumbStone);
+    assert.ok(n >= 1, 'course: no plumb stone planted');
+    assert.equal(familyVocabOf('poi_sett_lip'), 'wild', 'the dolmen family read waits for 9d');
+  }
 
   // The dead, the wild and the gloom claim nothing.
   const MARKS = [Tile.CharterPost, Tile.LampCairn, Tile.LegionStandard, Tile.BoneTree, Tile.TallyStone, Tile.WardThread, Tile.RedRagStake, Tile.SkullTotem, Tile.BoneMidden, Tile.TideTotem];
@@ -1296,6 +1310,11 @@ test('THE MARKS: influence plants each people\'s claim at the trailheads, and th
   assert.equal(claimMarkOf('wayside', true), Tile.LampCairn);
   assert.equal(claimMarkOf('neutral', false), Tile.CharterPost);
   assert.equal(claimMarkOf('neutral', true), Tile.LampCairn);
+  // THE STANDING COURSE (band 9b): the Dolmen fly the plumb stone on
+  // and off the road alike — a lamp is a stone that goes out, so no
+  // road mark ever outranks it.
+  assert.equal(claimMarkOf('course', false), Tile.PlumbStone);
+  assert.equal(claimMarkOf('course', true), Tile.PlumbStone);
   // The family read: hamlets are the Charter's, the rests are the
   // road's, the shrines are nobody's stake, the unowned are wild.
   assert.equal(familyVocabOf('poi_hamlet_croft'), 'neutral');

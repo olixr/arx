@@ -52,7 +52,7 @@ type Exhibit =
   | { kind: 'single'; tile: Tile }
   | { kind: 'swatch'; tile: Tile } // 3x3 ground material patch
   | { kind: 'pool'; tile: Tile } // water tile in a grass apron
-  | { kind: 'run'; tile: Tile; flank?: Tile } // 3-tile E-W wall run, center = tile
+  | { kind: 'run'; tile: Tile; flank?: Tile; plinthDx?: number } // 3-tile E-W wall run, center = tile; the plinth `plinthDx` tiles east of centre
   | { kind: 'hung'; detail: Detail; host: Tile; label: string }
   | { kind: 'floordetail'; detail: Detail; host: Tile; label: string }
   | { kind: 'dyerow'; tiles: Tile[]; label: string; lines: string[] }
@@ -231,7 +231,7 @@ export interface MuseumFoldWing {
 const foldrow = (tile: Tile): Exhibit => ({ kind: 'foldrow', tile });
 
 const single = (tile: Tile): Exhibit => ({ kind: 'single', tile });
-const run = (tile: Tile, flank?: Tile): Exhibit => ({ kind: 'run', tile, flank });
+const run = (tile: Tile, flank?: Tile, plinthDx?: number): Exhibit => ({ kind: 'run', tile, flank, plinthDx });
 
 /** Dye roster line for a banded-row plaque ("w-e: red, sun, …"). */
 function dyeLine(names: string[]): string[] {
@@ -422,6 +422,29 @@ function buildWings(): Wing[] {
         { kind: 'floordetail' as const, detail: Detail.DarkSpill, host: Tile.StoneFloor, label: 'dark spill' },
         { kind: 'floordetail' as const, detail: Detail.Mudcrack, host: Tile.Dirt, label: 'mudcrack' },
       ],
+      pitchY: 7,
+    },
+    {
+      // THE STANDING COURSE (plan §11.3, band 9b): the Dolmen's dry
+      // stone, the kit's family past the two reserved ground ids. The
+      // wall as a run (its level cope reads only as a run), the stile
+      // inside its own course (the FenceBroken-in-Fence idiom), the
+      // corbel cell and the plumb stone on their plinths, and the
+      // chalk line snapped on bare dirt. The strays gallery stays
+      // quiet. The header lines are whole sentences (THE PEOPLE SPEAK).
+      label: 'The Standing Course',
+      intro: ['The Dolmen set dry stone.', 'What they set holds.', 'Plan section 11.3, band 9b.'],
+      exhibits: [
+        run(Tile.CourseWall),
+        // The plinth one tile east: under the centre it overdrew the
+        // stile's south face (the step and Vorl's stone) in every frame.
+        run(Tile.CourseStile, Tile.CourseWall, 1),
+        // The SE plinth law: the cell overdraws north over 1.5 tiles.
+        single(Tile.CorbelCell),
+        single(Tile.PlumbStone),
+        { kind: 'floordetail' as const, detail: Detail.Chalkline, host: Tile.Dirt, label: 'chalk line' },
+      ],
+      // The Scarred wing's pitch: the cell overdraws north.
       pitchY: 7,
     },
     {
@@ -787,7 +810,7 @@ function layoutMuseum(): MuseumLayout {
             b.set(x0 + 1, y0 + 1, flank);
             b.set(x0 + 2, y0 + 1, ex.tile);
             b.set(x0 + 3, y0 + 1, flank);
-            b.sign(x0 + 2, y0 + 3, name(ex.tile), [`tile ${ex.tile}`]);
+            b.sign(x0 + 2 + (ex.plinthDx ?? 0), y0 + 3, name(ex.tile), [`tile ${ex.tile}`]);
           });
           break;
         }

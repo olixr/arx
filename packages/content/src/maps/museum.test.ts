@@ -61,6 +61,58 @@ test('coverage is total: every TILE_DEFS id is shown or excluded on purpose', ()
   // wing on purpose (a judged row), never as a stray that walked in.
   assert.ok(!museumStrayTiles().includes(Tile.SmolderHeap), 'the clamp is a stray, not a wing row');
   assert.ok(museumExhibitedTiles().has(Tile.SmolderHeap), 'the clamp has its wing row');
+  // Band 9b THE STANDING COURSE: the Dolmen's four stand in their own
+  // wing after the Scarred Land, each a judged row, never a stray.
+  for (const t of [Tile.CourseWall, Tile.CourseStile, Tile.CorbelCell, Tile.PlumbStone]) {
+    assert.ok(!museumStrayTiles().includes(t), `${TILE_DEFS[t]!.name} is a stray, not a wing row`);
+    assert.ok(museumExhibitedTiles().has(t), `${TILE_DEFS[t]!.name} has its wing row`);
+  }
+});
+
+test('THE STANDING COURSE wing stands: five plinths, whole sentences, the stile inside its course', () => {
+  const zone = buildMuseum();
+  const signs = zone.signs ?? [];
+  const at = (x: number, y: number): number => zone.ground[(y - zone.origin.y) * zone.width + (x - zone.origin.x)]!;
+  // The header plinth, uppercased, with the three intro sentences.
+  const header = signs.find((s) => s.title === 'THE STANDING COURSE');
+  assert.ok(header, 'the wing has its header plinth');
+  assert.deepEqual(header.lines, ['The Dolmen set dry stone.', 'What they set holds.', 'Plan section 11.3, band 9b.']);
+  // One plinth per piece: the tilesDefs name over `tile <id>`.
+  for (const [title, line] of [
+    ['course wall', 'tile 549'],
+    ['course stile', 'tile 550'],
+    ['corbel cell', 'tile 551'],
+    ['plumb stone', 'tile 552'],
+    ['chalk line', 'detail 184'],
+  ] as const) {
+    const s = signs.find((s) => s.title === title);
+    assert.ok(s, `plinth "${title}" stands`);
+    const lines = s.lines ?? [];
+    assert.ok(lines.includes(line), `plinth "${title}" reads "${line}" (${lines.join(' | ')})`);
+  }
+  // THE PEOPLE SPEAK: whole sentences, no dash, no question mark, and
+  // none of the words the content boundary refuses.
+  for (const l of [header.title, ...(header.lines ?? [])]) {
+    assert.ok(!/[-?]/.test(l), `"${l}" carries a dash or a question`);
+    assert.ok(!/witch|hex|coven|warlock|demon|devil|infernal|occult|hell/i.test(l), `"${l}" crosses the content boundary`);
+  }
+  // The stile stands inside its own course: the run is wall / stile /
+  // wall, read off the plinth south of the run (the plinth stands one
+  // tile east of the stile so its post never covers the south face).
+  const stile = signs.find((s) => s.title === 'course stile')!;
+  let found = false;
+  for (let dy = 1; dy <= 3 && !found; dy++) {
+    const y = stile.y - dy;
+    for (let dx = -1; dx <= 1 && !found; dx++) {
+      const x = stile.x + dx;
+      if (at(x, y) === Tile.CourseStile) {
+        assert.equal(at(x - 1, y), Tile.CourseWall, 'wall west of the stile');
+        assert.equal(at(x + 1, y), Tile.CourseWall, 'wall east of the stile');
+        found = true;
+      }
+    }
+  }
+  assert.ok(found, 'the stile sits north of its plinth inside its run');
 });
 
 test('every exhibit plinth stands, reads, and can be reached', () => {

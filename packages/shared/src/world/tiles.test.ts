@@ -6,6 +6,7 @@ import {
   AWNING_TILES,
   CANDLE_TILES,
   CHEST_TILES,
+  COURSE_TILES,
   DIAG_WALL_TILES,
   DOOR_TILES,
   DYE_COUNT,
@@ -624,6 +625,13 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.TallyStone, 'stone', 3],
     [Tile.WardThread, 'thread', 1],
     [Tile.RedRagStake, 'stakes', 1],
+    // THE STANDING COURSE (band 9b): the plan's own words, "stone x3
+    // so the fork can breach it"; the plumb stone on the tally stone's
+    // row (the war is about stone being TAKEN, and THE WEIGHT counts
+    // it). Both drop the pale 'stone' slabs. The stile and the cell
+    // are argued in the load-bearing test below.
+    [Tile.CourseWall, 'stone', 3],
+    [Tile.PlumbStone, 'stone', 3],
     [Tile.LeanTo, 'tent', 2],
     [Tile.BelongingsCart, 'cart', 3],
     [Tile.FieldCot, 'cot', 2],
@@ -718,6 +726,12 @@ test('load-bearing scenery is not smashable', () => {
     // The chimney holds the sky up over a shell (the grand pillar's
     // law in brick) — and it is the kit's one lamplight blocker.
     Tile.ChimneyStack,
+    // THE STANDING COURSE (band 9b): the corbel cell is the chimney's
+    // exact refusal — a corbelled roof holds itself up (every ring
+    // bears on the ring below, no timber, no mortar), so a club has
+    // nothing to knock out; and it is the kit's SECOND lamplight
+    // mass. No debris kind, no row.
+    Tile.CorbelCell,
     // The cairns are the graves law: a grave is never a prop to kick
     // over (the fallen cairn is the SAME law — its tumble is a
     // posture, authored, never a smash result).
@@ -741,6 +755,11 @@ test('load-bearing scenery is not smashable', () => {
     Tile.AshHeap,
     Tile.FieldLitter,
     Tile.Bedroll,
+    // THE STANDING COURSE (band 9b): the stile is a POSTURE a body
+    // stands on (the CairnFallen law) — the course dropped to the hip
+    // by Vorl's law, never a breach; its swap back to a wall is 9d's
+    // server verb on the candle grammar, never a smash result.
+    Tile.CourseStile,
   ]) {
     assert.equal(destructibleInfo(t), null);
   }
@@ -768,9 +787,24 @@ test('THE SCARRED LAND: the id band, the ruin walls, and the two state-kin', () 
   assert.equal(Tile.SmolderHeap, 548);
   assert.ok(isScarredTile(Tile.SmolderHeap), 'the clamp is kit');
   assert.ok(!isScarredTile(546) && !isScarredTile(547), 'the reserved ground ids never answer');
-  assert.ok(!isScarredTile(549), 'the Dolmen\'s ids are not yet minted');
   const clamp = tileDef(Tile.SmolderHeap);
   assert.ok(clamp.raised && clamp.solid && clamp.name === 'smolder heap', 'a solid raised prop with its plaque name');
+  // Band 9b THE STANDING COURSE: the Dolmen's four stand at 549..552
+  // right after the clamp, and the second range closes on the plumb
+  // stone: nothing is minted past it.
+  assert.equal(Tile.CourseWall, 549);
+  assert.equal(Tile.CourseStile, 550);
+  assert.equal(Tile.CorbelCell, 551);
+  assert.equal(Tile.PlumbStone, 552);
+  for (const t of [Tile.CourseWall, Tile.CourseStile, Tile.CorbelCell, Tile.PlumbStone]) {
+    assert.ok(isScarredTile(t), `${Tile[t]} is kit`);
+    const def = tileDef(t);
+    assert.ok(def.name.length > 0, `${Tile[t]} has a plaque name`);
+    assert.ok(def.raised, `${def.name} is a prop (raised), never ground`);
+  }
+  assert.ok(!isScarredTile(553), 'nothing is minted past the plumb stone');
+  assert.equal(Detail.Chalkline, 184, 'the setter\'s chalk line follows the forest floor');
+  assert.equal(wallHungInfo(Detail.Chalkline), null, 'a snapped line on the ground is no hanging');
   // The six floor Details land right after the drape band.
   assert.equal(Detail.Ash, 176);
   assert.equal(Detail.Mudcrack, 181);
@@ -790,10 +824,16 @@ test('THE SCARRED LAND: the id band, the ruin walls, and the two state-kin', () 
     assert.ok(!HEDGE_TILES.has(tile) && !IRON_FENCE_TILES.has(tile));
     assert.ok(!LIGHT_BLOCKING_TILES.includes(tile), `${tileDef(tile).name} clears lamplight`);
   }
-  // The chimney is the kit's one lamplight mass; nothing else in the
-  // band stops light.
-  for (let id = Tile.RuinWallStone as number; id <= Tile.SluiceGateStrung; id++) {
-    assert.equal(LIGHT_BLOCKING_TILES.includes(id as Tile), id === Tile.ChimneyStack, `${tileDef(id).name} light mass`);
+  // The chimney and the corbel cell are the kit's two lamplight
+  // masses; nothing else in the band (or past the reserved pair)
+  // stops light.
+  for (let id = Tile.RuinWallStone as number; id <= Tile.PlumbStone; id++) {
+    if (id === 546 || id === 547) continue;
+    assert.equal(
+      LIGHT_BLOCKING_TILES.includes(id as Tile),
+      id === Tile.ChimneyStack || id === Tile.CorbelCell,
+      `${tileDef(id).name} light mass`,
+    );
   }
   // The broken fence is Fence-kin (rails reach for it) and walkable
   // by STATE; the dead hedge joins the hedge class and stays solid.
@@ -1060,6 +1100,65 @@ test('scarred-land run families: the two ruin walls stand apart and merge with t
   // down a course), char comes down in three (charbeam).
   assert.equal(destructibleInfo(Tile.RuinWallStone), null, 'stone is load-bearing');
   assert.deepEqual(destructibleInfo(Tile.RuinWallWood), { kind: 'charbeam', respawnSec: 600, hits: 3 });
+});
+
+test('THE STANDING COURSE run family: the course wall and its stile merge with their own kind only', () => {
+  // The roster is exactly the wall and its stile — the EIGHTH
+  // run-merging family. No diagonal posture, no gate: a course turns
+  // on one wide header at the tile heart, and the only way through
+  // is Vorl's stile.
+  assert.deepEqual([...COURSE_TILES].sort((a, b) => a - b), [Tile.CourseWall, Tile.CourseStile]);
+  assert.equal((Tile as Record<string, number | string>)['CourseWallDiagNE'], undefined, 'no diagonal course');
+  assert.equal((Tile as Record<string, number | string>)['CourseGate'], undefined, 'no course gate');
+  for (const tile of COURSE_TILES) {
+    const def = tileDef(tile);
+    assert.ok(def.raised, `${def.name} renders raised`);
+    assert.ok(def.topColor !== undefined, `${def.name} declares its lit top for the bird's eye`);
+    assert.equal(doorInfo(tile), null, `${def.name} is no door`);
+    assert.ok(isScarredTile(tile), `${def.name} inside the kit's band`);
+    // THE SEPARATE-MASONRY LAW, spoken a third time: stone the Dolmen
+    // set never dies into a town wall (the roofer, keyed on
+    // WALL_RUN_TILES, can never roof it), never a fence, never the
+    // garrison, never the camp's logs, never the garden's green, never
+    // the iron, never an interior boundary, and nothing hangs on it.
+    assert.ok(!WALL_RUN_TILES.includes(tile), `${def.name} out of wall runs`);
+    assert.ok(!FENCE_TILES.has(tile), `${def.name} out of the fence family`);
+    assert.ok(!GARRISON_TILES.has(tile), `${def.name} out of the garrison family`);
+    assert.ok(!PALISADE_TILES.has(tile), `${def.name} out of the palisade family`);
+    assert.ok(!HEDGE_TILES.has(tile), `${def.name} out of the hedge family`);
+    assert.ok(!IRON_FENCE_TILES.has(tile), `${def.name} out of the iron family`);
+    assert.ok(!INTERIOR_BOUNDARY_TILES.includes(tile), `${def.name} never encloses a room`);
+    assert.ok(!DIAG_WALL_TILES.has(tile) && !HANGABLE_WALL_TILES.has(tile), `${def.name} outside the living wall masks`);
+    // THE WAIST LAW: a chest-high field wall clears lamplight like the
+    // ruin's tumble; the stile is lower still.
+    assert.ok(!LIGHT_BLOCKING_TILES.includes(tile), `${def.name} clears lamplight`);
+    // A run family fills its tile in plan (no centred collider radius).
+    assert.equal(tileColliderRadius(tile), null, `${def.name} is a full-tile mass`);
+  }
+  // The wall is cover; the stile is passable BY STATE (the
+  // FenceBroken precedent): kin in the mask, open on the ground.
+  assert.equal(tileDef(Tile.CourseWall).solid, true, 'a body cannot walk a course');
+  assert.equal(tileDef(Tile.CourseStile).solid, false, 'a body steps over the stile');
+  // The third separate masonry: the course never merges with the ruin
+  // beside it either (a set wall never dies into a tumble).
+  for (const tile of COURSE_TILES) assert.ok(!RUIN_WALL_TILES.has(tile), `${tileDef(tile).name} is not a ruin`);
+  for (const tile of RUIN_WALL_TILES) assert.ok(!COURSE_TILES.has(tile), `${tileDef(tile).name} is not a course`);
+  // The load-bearing law splits the pair the plan's way: the wall
+  // comes down in three (stone x3 so the fork can breach it); the
+  // stile is a posture a body stands on and is never patched under.
+  assert.deepEqual(destructibleInfo(Tile.CourseWall), { kind: 'stone', respawnSec: 600, hits: 3 });
+  assert.equal(destructibleInfo(Tile.CourseStile), null, 'the stile is a posture');
+  // The two discrete pieces: the cell is a full block that stops
+  // lamplight and never breaks; the plumb stone is skirted at the
+  // tally stone's radius and comes down in three.
+  assert.equal(tileDef(Tile.CorbelCell).solid, true);
+  assert.equal(tileColliderRadius(Tile.CorbelCell), null, 'the cell is a full block');
+  assert.ok(LIGHT_BLOCKING_TILES.includes(Tile.CorbelCell), 'the cell is the kit\'s second lamplight mass');
+  assert.equal(destructibleInfo(Tile.CorbelCell), null, 'a corbelled roof holds itself up');
+  assert.equal(tileDef(Tile.PlumbStone).solid, true);
+  assert.equal(tileColliderRadius(Tile.PlumbStone), 0.3, 'stone-and-cord you skirt');
+  assert.ok(!LIGHT_BLOCKING_TILES.includes(Tile.PlumbStone), 'a knee-high stone clears lamplight');
+  assert.deepEqual(destructibleInfo(Tile.PlumbStone), { kind: 'stone', respawnSec: 600, hits: 3 });
 });
 
 test('THE CART HAS TWO FEET: the four footprints name one cardinal second foot each, and only those', () => {

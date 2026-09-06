@@ -72,6 +72,13 @@ test('the emitter census: exactly the transcribed roster, each row reachable', (
   assert.equal(tileEmitter(Tile.PitLampDark), undefined);
   assert.equal(tileEmitter(Tile.LampPostDark), undefined);
   assert.equal(tileEmitter(Tile.WardThread), undefined);
+  // THE STANDING COURSE (band 9b): the Dolmen keep no lamp ("a lamp
+  // is a stone that goes out") — none of the four carries a row; the
+  // roster above is unchanged.
+  assert.equal(tileEmitter(Tile.CourseWall), undefined);
+  assert.equal(tileEmitter(Tile.CourseStile), undefined);
+  assert.equal(tileEmitter(Tile.CorbelCell), undefined);
+  assert.equal(tileEmitter(Tile.PlumbStone), undefined);
   assert.equal(tileEmitter(Tile.Grass), undefined);
 });
 

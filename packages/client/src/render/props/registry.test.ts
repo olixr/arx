@@ -19,7 +19,10 @@ test('the hall holds every extracted prop and only those', () => {
   // engine case's "flame held at zero" is dead code behind it).
   // Band 8 THE CLAMP added 1: SmolderHeap 548 (smolderHeap.ts), the
   // kit's mint past the two reserved ground ids.
-  assert.equal(PROP_PAINTERS.size, 282 + 36 + 1);
+  // Band 9b THE STANDING COURSE added 2: CorbelCell 551 and PlumbStone
+  // 552 (scarred/course.ts). The course wall and stile (549, 550) are
+  // a run family off the engine switch and never enter the hall.
+  assert.equal(PROP_PAINTERS.size, 282 + 36 + 1 + 2);
 });
 
 test('the benches and squares answer; the wilds stay with the engine', () => {
@@ -33,12 +36,17 @@ test('the benches and squares answer; the wilds stay with the engine', () => {
     // THE SCARRED LAND's engine-switch five: the ruin walls run-merge
     // live, the dead tree is a tree (foliage 0), the broken fence and
     // dead hedge ride their families' run painters.
-    Tile.RuinWallStone, Tile.RuinWallWood, Tile.DeadTree, Tile.FenceBroken, Tile.HedgeDead]) {
+    Tile.RuinWallStone, Tile.RuinWallWood, Tile.DeadTree, Tile.FenceBroken, Tile.HedgeDead,
+    // THE STANDING COURSE (band 9b): the course wall and its stile
+    // run-merge live off the switch beside the ruin walls.
+    Tile.CourseWall, Tile.CourseStile]) {
     assert.ok(!PROP_PAINTERS.has(t), `tile ${Tile[t]} must stay in the engine switch`);
   }
   // …and the kit's hall members answer (the dark lamp among them —
   // the hall is consulted before the switch, so its painter wins).
-  for (const t of [Tile.CharredBeam, Tile.EmberBed, Tile.FieldCairn, Tile.SpoilHeap, Tile.GloomStone, Tile.CropBlighted, Tile.LegionStandard, Tile.LeanTo, Tile.SignpostBurnt, Tile.WellFouled, Tile.SluiceGateStrung, Tile.LampPostDark, Tile.SmolderHeap]) {
+  for (const t of [Tile.CharredBeam, Tile.EmberBed, Tile.FieldCairn, Tile.SpoilHeap, Tile.GloomStone, Tile.CropBlighted, Tile.LegionStandard, Tile.LeanTo, Tile.SignpostBurnt, Tile.WellFouled, Tile.SluiceGateStrung, Tile.LampPostDark, Tile.SmolderHeap,
+    // Band 9b: the two discrete pieces of the Standing Course.
+    Tile.CorbelCell, Tile.PlumbStone]) {
     assert.ok(PROP_PAINTERS.has(t), `missing painter for tile ${Tile[t]}`);
   }
 });

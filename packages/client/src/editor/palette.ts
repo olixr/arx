@@ -177,6 +177,10 @@ export const TILE_CATEGORIES: TileCategory[] = [
       Tile.LampPostDark, Tile.SluiceGate, Tile.SluiceGateStrung,
       // Band 8: the charcoal clamp (548), the cold hearth's late child.
       Tile.SmolderHeap,
+      // Band 9b, THE STANDING COURSE (549..552): the Dolmen's dry
+      // stone stands with the kit until a course shelf of its own
+      // earns a category.
+      Tile.CourseWall, Tile.CourseStile, Tile.CorbelCell, Tile.PlumbStone,
     ],
   },
   {
@@ -334,6 +338,7 @@ export const DETAILS: Array<{ d: Detail; label: string }> = [
   { d: Detail.Mushroom, label: 'mushroom' },
   { d: Detail.LeafLitter, label: 'leaf litter' },
   { d: Detail.Bracken, label: 'bracken' },
+  { d: Detail.Chalkline, label: 'chalk line' },
   { d: Detail.Rug, label: 'rug' },
   { d: Detail.RugRound, label: 'round rug' },
   { d: Detail.CarpetRoyal, label: 'royal carpet' },

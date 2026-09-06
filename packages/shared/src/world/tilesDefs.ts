@@ -570,6 +570,16 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   // Band 8's mint (548): a turfed charcoal clamp — a solid mound you
   // skirt, its lit top the browned turf of the crown.
   [Tile.SmolderHeap]: { name: 'smolder heap', solid: true, color: '#4a4236', raised: true, topColor: '#6c6250' },
+  // THE STANDING COURSE (549..552, band 9b): the Dolmen's warm bone
+  // stone, two steps paler than any town wall (the client's TH_MARL
+  // inks, carried here as literals because shared cannot read the
+  // client palette). The stile is course-kin in the run mask but
+  // passable BY STATE (the FenceBroken row above is the precedent);
+  // the cell is a full-block mass; the plumb stone is skirted.
+  [Tile.CourseWall]: { name: 'course wall', solid: true, color: '#cdc3ad', raised: true, topColor: '#e7e0cd' },
+  [Tile.CourseStile]: { name: 'course stile', solid: false, color: '#cdc3ad', raised: true, topColor: '#e7e0cd' },
+  [Tile.CorbelCell]: { name: 'corbel cell', solid: true, color: '#bfb59f', raised: true, topColor: '#e0d8c4' },
+  [Tile.PlumbStone]: { name: 'plumb stone', solid: true, color: '#cdc3ad', raised: true, topColor: '#e7e0cd' },
 };
 
 // THE KNIGHT'S KEEPING: the standing banner's dye band — defs for

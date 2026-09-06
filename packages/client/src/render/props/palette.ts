@@ -56,3 +56,12 @@ export const SCAR_GLOOM = '#7f8cc4';
 export const SCAR_RAG_RED = '#a8323a';
 export const LEGION_CRIMSON = '#8a1f2a';
 export const CHARTER_BRASS = '#c9a14a';
+// THE STANDING COURSE — the Dolmen's stone (plan §11.3, band 9b). Chalk-clay
+// limestone set by a people who keep no dye: warm bone with a grey mottle,
+// two steps paler than the town's kept stone (TWN_STONE) and never moonpale;
+// the chalk is the Marl's own bob (dolmen.ts DOLMEN_LOOKS.dolmen.bob).
+export const TH_MARL = '#cdc3ad';
+export const TH_MARL_LIT = '#e7e0cd';
+export const TH_MARL_DARK = '#9d9583';
+export const TH_MARL_MOTTLE = '#a8a49b';
+export const TH_CHALK = '#f5f1e8';
