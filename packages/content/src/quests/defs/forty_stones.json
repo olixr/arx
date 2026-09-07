@@ -1,0 +1,28 @@
+{
+  "id": "forty_stones",
+  "name": "Forty Stones",
+  "giver": "dolmen_ammat",
+  "requires": { "flags": ["capstone_counted"] },
+  "repeat": { "cooldownHours": 24 },
+  "stages": [
+    {
+      "id": "load",
+      "journal": "The coursemother wants forty stones back or forty like them, two at a time. The Charter's carter keeps his stone yard at the causeway head by the ford, on the spoil bank the Course's kerb went into. He sells two under Charter paper, or he gives two off the load to anyone who asks him in words, once, and writes it down.",
+      "objectives": [{ "kind": "talk", "actor": "charter_garrow" }]
+    },
+    {
+      "id": "set",
+      "journal": "One stone to the north gap at the Sett's lip, the stile beside the stair crown where a course should stand and the chalk says so. Set it with your hands. The gap has stood a year.",
+      "objectives": [{ "kind": "flag", "flag": "course_gap_set", "label": "Set a stone at the Course's north gap" }]
+    },
+    {
+      "id": "carry",
+      "journal": "The other stone to the coursemother on the lip. She will count it. That is the whole of what she does with it.",
+      "objectives": [{ "kind": "collect", "item": "course_stone", "count": 1 }]
+    }
+  ],
+  "rewards": {
+    "xp": [{ "skill": "construction", "amount": 120 }],
+    "flags": ["forty_carried"]
+  }
+}

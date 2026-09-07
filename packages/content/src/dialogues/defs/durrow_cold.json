@@ -1,0 +1,1 @@
+{ "id": "durrow_cold", "start": "cold", "requires": ["dike_planted"], "bindings": [{ "kind": "actor", "target": "dolmen_durrow", "priority": 10 }], "nodes": [{ "id": "cold", "text": "Eight stakes in the wet road. Your hands. The shelf is lit and it is not lit for you. Cold on you. Go and be cold." }] }

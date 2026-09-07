@@ -83,6 +83,12 @@ export const FACTIONS: FactionsDef = {
         // throat and the standing price read the Charter's ledger at
         // the cut exactly as they do at the tally stall.
         'charter_feller',
+        // Band 9e (THE COURSE AND THE COUNT): the carter boss at the
+        // causeway head's stone yard, whose ledger reads "stone, field";
+        // his asked stone slips the Charter's schedule (-2) and his
+        // Charter paper pays it back (+2 a day). The Dolmen keep no
+        // faction (R-E): only the Charter's side of the stone moves.
+        'charter_garrow',
         // Kingsdelf — the Charter's far venture: the Returning banked
         // on Charter coin, and the watch wears the Charter's coat.
         'delfmaster_ruen',

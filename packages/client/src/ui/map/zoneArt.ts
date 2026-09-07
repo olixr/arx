@@ -8,6 +8,10 @@ import {
   buildTurnoff,
   buildWardthread,
   buildSett,
+  buildCourseA,
+  buildCourseB,
+  buildCourseC,
+  buildMeadow,
   buildPinewatch,
   buildHartfell,
   buildKingsdelf,
@@ -103,6 +107,12 @@ export function authoredZoneArt(): ZoneArt[] {
       // THE CONTESTED LANDS (band 9d): the Sett; its sunk floors chart
       // darker by the elev shade above, its TILE_SKIP stays transparent.
       buildSett(),
+      // THE CONTESTED LANDS (band 9e): the Course's four frames; only
+      // the line of set stone and the meadow's sheets chart.
+      buildCourseA(),
+      buildCourseB(),
+      buildCourseC(),
+      buildMeadow(),
     ].map(bakeZone);
   }
   return cache;

@@ -116,6 +116,33 @@ export const GAZETTEER: Readonly<Record<string, GazetteerEntry>> = {
     line: 'A people who set stone dry came up through the floor of a quarry nobody\'s road names, and what they set holds.',
     country: 3,
   },
+  // THE CONTESTED LANDS, band 9e: the Course and the meadow. Three
+  // frames share the one name (the Course is one wall on the chart)
+  // and each carries its OWN epithet for the stretch the walker stands
+  // on (the fix pass: the first cut's epithet repeated the name, so
+  // the herald read "THE STANDING COURSE / The Standing Course" three
+  // times on one walk); a wall is never a settlement (the herald's
+  // earlier lesson); the country pips read the ground's own tier.
+  course_a: {
+    epithet: 'The belt run along the wood',
+    line: 'A course of dry set stone leaves the quarry\'s lip along the edge of the wood and turns for the brook.',
+    country: 2,
+  },
+  course_b: {
+    epithet: 'The bank run and the ford',
+    line: 'The course runs the brook\'s east bank on the sand to a ford of set stones the water runs shallow over.',
+    country: 1,
+  },
+  course_c: {
+    epithet: 'The strip run through the wood',
+    line: 'Over the ford the course keeps its row across the grass and through the wood to the corner of the meadow.',
+    country: 1,
+  },
+  meadow: {
+    epithet: 'The corner the wall keeps dry',
+    line: 'The course ends in the sheet of a drowned meadow, and the one strip it keeps dry is where the sheep stand.',
+    country: 3,
+  },
 };
 
 /**

@@ -7551,6 +7551,144 @@ const PAINTERS: Record<string, IconPainter> = {
   // neck, the thread a cut length with its knot and its chip, the chip
   // a cold sliver; a player holding all three must tell them apart at
   // 26px, and none of them may read as the fen waist's paper.
+  coursestone: (c, col) => {
+    // THE STANDING COURSE (contested lands band 9e): a kerb stone off
+    // the Course, squared where the Marl dressed it and rough where the
+    // quarry left it, a chalk tick on the face where it was counted,
+    // the seat worn where it was set once. Pale stone, no mortar.
+    c.save();
+    c.translate(0.5, 0.54);
+    c.rotate(-0.06);
+    // The block: a squared kerb, a hair wider at the seat, the top
+    // dressed flat and the back edge left rough.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.moveTo(-0.34, -0.22);
+    c.lineTo(0.3, -0.24);
+    c.lineTo(0.34, 0.24);
+    c.lineTo(-0.36, 0.26);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The dressed face: one cooler plane along the south edge, where
+    // the setter's hand reads the level.
+    c.fillStyle = shade(col, -22);
+    c.beginPath();
+    c.moveTo(-0.36, 0.26);
+    c.lineTo(0.34, 0.24);
+    c.lineTo(0.33, 0.13);
+    c.lineTo(-0.35, 0.15);
+    c.closePath();
+    c.fill();
+    // The rough back: two chips knocked off the north edge.
+    c.fillStyle = shade(col, -12);
+    c.beginPath();
+    c.moveTo(-0.34, -0.22);
+    c.lineTo(-0.2, -0.22);
+    c.lineTo(-0.27, -0.13);
+    c.closePath();
+    c.fill();
+    c.beginPath();
+    c.moveTo(0.1, -0.24);
+    c.lineTo(0.3, -0.24);
+    c.lineTo(0.17, -0.15);
+    c.closePath();
+    c.fill();
+    // The grain: two faint set lines across the face.
+    c.strokeStyle = shade(col, -30);
+    c.lineWidth = 0.018;
+    c.beginPath();
+    c.moveTo(-0.28, -0.04);
+    c.lineTo(0.22, -0.06);
+    c.moveTo(-0.24, 0.06);
+    c.lineTo(0.14, 0.05);
+    c.stroke();
+    // The chalk tick: counted.
+    c.strokeStyle = '#ffffff';
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.moveTo(-0.08, -0.13);
+    c.lineTo(-0.02, -0.02);
+    c.lineTo(0.1, -0.17);
+    c.stroke();
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.moveTo(-0.34, -0.22);
+    c.lineTo(0.3, -0.24);
+    c.lineTo(0.34, 0.24);
+    c.lineTo(-0.36, 0.26);
+    c.closePath();
+    c.stroke();
+    c.restore();
+  },
+  plumbbob: (c, col) => {
+    // THE STANDING COURSE (contested lands band 9e): a chalk bob on a
+    // bone cord, hung true. The cord falls straight from a knot at the
+    // top; the bob is a pale teardrop with a dark point, the one shape
+    // a Dolmen trusts. Set in a hand by one who counts.
+    c.save();
+    c.translate(0.5, 0.5);
+    // The cord: a bone-white line from the knot to the bob's crown.
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.06;
+    c.beginPath();
+    c.moveTo(0, -0.42);
+    c.lineTo(0, 0.02);
+    c.stroke();
+    c.strokeStyle = '#e8dcc4';
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(0, -0.42);
+    c.lineTo(0, 0.02);
+    c.stroke();
+    // The knot at the top: a small bone toggle.
+    c.fillStyle = '#e8dcc4';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.ellipse(0, -0.42, 0.09, 0.05, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    // The bob: a teardrop, wide at the shoulder, a dark tip below.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.moveTo(0, -0.02);
+    c.quadraticCurveTo(0.2, 0.0, 0.19, 0.16);
+    c.quadraticCurveTo(0.17, 0.32, 0, 0.44);
+    c.quadraticCurveTo(-0.17, 0.32, -0.19, 0.16);
+    c.quadraticCurveTo(-0.2, 0.0, 0, -0.02);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The chalk's shade down one side, and the point hardened dark.
+    c.fillStyle = shade(col, -18);
+    c.beginPath();
+    c.moveTo(0.02, 0.0);
+    c.quadraticCurveTo(0.2, 0.0, 0.19, 0.16);
+    c.quadraticCurveTo(0.17, 0.32, 0, 0.44);
+    c.quadraticCurveTo(0.09, 0.28, 0.08, 0.14);
+    c.closePath();
+    c.fill();
+    c.fillStyle = shade(col, -55);
+    c.beginPath();
+    c.moveTo(-0.06, 0.34);
+    c.lineTo(0.06, 0.34);
+    c.lineTo(0, 0.44);
+    c.closePath();
+    c.fill();
+    // The collar where the cord seats: a dark ring.
+    c.strokeStyle = shade(col, -40);
+    c.lineWidth = 0.024;
+    c.beginPath();
+    c.ellipse(0, 0.02, 0.07, 0.03, 0, 0, Math.PI * 2);
+    c.stroke();
+    c.restore();
+  },
   greywoolhank: (c, col) => {
     // A hank of the order's grey: fleece folded double and tied at the
     // neck with its own end, the strands running with the fold. It went
@@ -8943,6 +9081,11 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
   wolf_pelt: { icon: 'hide', color: '#8a8c96' },
   grey_wool: { icon: 'greywoolhank', color: '#a9aab0' },
   cut_thread: { icon: 'cutthread', color: '#c9d4e8' },
+  // THE STANDING COURSE (contested lands band 9e): the Dolmen's two
+  // tokens, each its own drawing (NO FACELESS SHIPS): the kerb stone
+  // with its chalk tick, the bob on its bone cord hung true.
+  course_stone: { icon: 'coursestone', color: '#d9cfbd' },
+  plumb_bob: { icon: 'plumbbob', color: '#f5f1e8' },
   moonglass_chip: { icon: 'moonglasschip', color: '#dce8f4' },
   drover_fleece_cloak: { icon: 'cape', color: '#9a8f7a' },
   hardened_leather: { icon: 'hide', color: '#7d5636' },

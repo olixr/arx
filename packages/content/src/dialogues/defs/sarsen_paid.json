@@ -1,0 +1,14 @@
+{
+  "id": "sarsen_paid",
+  "start": "paid",
+  "once": true,
+  "requires": ["halvor_string_carried"],
+  "bindings": [{ "kind": "actor", "target": "dolmen_sarsen", "priority": 10 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "You carried the set string back to the water people. We saw it go past the Course. A set thing went where it was set to go. Here. It is hung true. Keep it that way.",
+      "hooks": [{ "kind": "give", "item": "plumb_bob", "qty": 1 }]
+    }
+  ]
+}

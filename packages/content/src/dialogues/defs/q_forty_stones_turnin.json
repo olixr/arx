@@ -1,0 +1,13 @@
+{
+  "id": "q_forty_stones_turnin",
+  "start": "carried",
+  "requires": ["quest:forty_stones:ready"],
+  "bindings": [{ "kind": "actor", "target": "dolmen_ammat", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "carried",
+      "text": "One set at the gap. One in my hand. Two of forty. The count is kept. We set here.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "forty_stones" }]
+    }
+  ]
+}

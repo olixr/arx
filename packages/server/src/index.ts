@@ -33,6 +33,10 @@ import {
   buildTurnoff,
   buildWardthread,
   buildSett,
+  buildCourseA,
+  buildCourseB,
+  buildCourseC,
+  buildMeadow,
   buildPinewatch,
   buildHartfell,
   buildKingsdelf,
@@ -149,6 +153,15 @@ const builtinZones = new Map<string, ZoneDef>(
     // spawn law (no spawn, no haven, no chest; the def's `reachFrom`
     // proved its floors and is never a hearth; one spawn row, Vorl).
     buildSett(),
+    // THE CONTESTED LANDS (band 9e): THE STANDING COURSE, four thin
+    // frames of the Sett's module from the lip to the Drowned Meadow
+    // (three lines of set stone, then Sarsen's corner) — after Dawnmead
+    // by the spawn law (no spawn, no haven, no chest; the meadow's one
+    // spawn row is the sheep, 18→7). The frames abut and never overlap.
+    buildCourseA(),
+    buildCourseB(),
+    buildCourseC(),
+    buildMeadow(),
   ].map((z) => [z.id, z]),
 );
 const zones: ZoneDef[] = [...builtinZones.values()];

@@ -16,6 +16,11 @@ import {
   PICKET_RECT,
   PLANNED_ZONE_RECTS,
   SETT_RECT,
+  COURSE_A_RECT,
+  COURSE_B_RECT,
+  COURSE_C_RECT,
+  MEADOW_RECT,
+  type ZoneRect,
   ROAD_ROUTES,
   SILVERFALL_RECT,
   TURNOFF_RECT,
@@ -48,7 +53,8 @@ import { buildDawnmead } from './maps/dawnmead.js';
 import { buildAshlamp } from './maps/ashlamp.js';
 import { buildFenside } from './maps/fenside.js';
 import { buildPicket, buildTurnoff, buildWardthread } from './maps/wardthread.js';
-import { buildSett } from './maps/sett.js';
+import { buildCourseA, buildCourseB, buildCourseC, buildMeadow, buildSett } from './maps/sett.js';
+import type { ZoneDef } from './maps/types.js';
 import { POI_PREFABS } from './pois/prefabs.js';
 import { WORLD_SEED, elevationAt } from './worldgen.js';
 
@@ -913,11 +919,14 @@ test('G-12 THE PAD LAW with THE AUTHORED HUG opt-in: every pinned footprint keep
   // Band 8 adds the three north patches to the same law (no north pin
   // says hug; the fork rest's padded footprint at its PIN ends one
   // row short of the ward line's rect, pins.ts says so).
-  const rects = [ASHLAMP_RECT, FENSIDE_RECT, WARDTHREAD_RECT, PICKET_RECT, TURNOFF_RECT, SETT_RECT];
+  // Band 9e adds the Course's four frames (the shoal is cell-forced,
+  // never pinned, so its seat is held by sett.test's SEAT PIN instead).
+  const rects = [ASHLAMP_RECT, FENSIDE_RECT, WARDTHREAD_RECT, PICKET_RECT, TURNOFF_RECT, SETT_RECT, COURSE_A_RECT, COURSE_B_RECT, COURSE_C_RECT, MEADOW_RECT];
   const rectName = new Map<object, string>([
     [ASHLAMP_RECT, 'ashlamp'], [FENSIDE_RECT, 'fenside'],
     [WARDTHREAD_RECT, 'wardthread'], [PICKET_RECT, 'picket'], [TURNOFF_RECT, 'turnoff'],
     [SETT_RECT, 'sett'],
+    [COURSE_A_RECT, 'course_a'], [COURSE_B_RECT, 'course_b'], [COURSE_C_RECT, 'course_c'], [MEADOW_RECT, 'meadow'],
   ]);
   const hits: string[] = [];
   const gaps: Record<string, number> = {};
@@ -1035,4 +1044,63 @@ test('THE SETT: a planned rect in cell [1,2] that builds to its own pin, sunk, s
   // patches by more than a screen.
   assert.ok(SETT_RECT.y > DAWNMEAD_RECT.y + DAWNMEAD_RECT.h, 'south of Dawnmead');
   assert.ok(SETT_RECT.y > FENSIDE_RECT.y + FENSIDE_RECT.h + 100, 'a hundred past the fen waist');
+});
+
+// ------------------------------------------------------------------
+// THE CONTESTED LANDS, band 9e — THE STANDING COURSE (L1 FRAMES). Four
+// thin planned rects of the Sett's module from the lip to the Drowned
+// Meadow (maps/sett/pins.ts carries the tape); rulings R-B, R-G.
+// ------------------------------------------------------------------
+
+test('THE STANDING COURSE: four planned rects that build to their own pins, flat, spawnless, abutting and never overlapping, clear of the shoal\'s booted pad', () => {
+  const planned = new Map(PLANNED_ZONE_RECTS.map((p) => [p.id, p]));
+  const frames: Array<[string, () => ZoneDef, ZoneRect, string]> = [
+    ['course_a', buildCourseA, COURSE_A_RECT, 'The Standing Course'],
+    ['course_b', buildCourseB, COURSE_B_RECT, 'The Standing Course'],
+    ['course_c', buildCourseC, COURSE_C_RECT, 'The Standing Course'],
+    ['meadow', buildMeadow, MEADOW_RECT, 'The Drowned Meadow'],
+  ];
+  for (const [id, build, rect, name] of frames) {
+    const z = build();
+    const row = planned.get(id);
+    assert.ok(row, `${id} has a planned row`);
+    assert.equal(row!.name, name);
+    assert.ok(!row!.apron, `${id}: a patch on worldgen, no apron`);
+    assert.deepEqual({ x: row!.x, y: row!.y, w: row!.w, h: row!.h }, rect);
+    assert.deepEqual({ x: z.origin.x, y: z.origin.y, w: z.width, h: z.height }, rect, `${id}: the built rect is the plan's`);
+    assert.equal(z.spawn, undefined);
+    assert.equal(z.reachFrom, undefined);
+    assert.equal(z.elev, undefined, 'flat');
+    assert.equal(z.chests, undefined);
+    assert.ok(rect.y >= 198, 'never a rect north of y 198');
+    // THE SHOAL'S SEAT (9d's boot log: amberfen_shoal at (203,184), the
+    // 60x46 prefab's footprint x 173..232, y 161..206, padded by
+    // AUTHORED_ZONE_PAD): no frame cell inside x 167..238, y 155..212.
+    const x1 = rect.x + rect.w - 1;
+    const y1 = rect.y + rect.h - 1;
+    const pad = { x0: 173 - AUTHORED_ZONE_PAD, y0: 161 - AUTHORED_ZONE_PAD, x1: 232 + AUTHORED_ZONE_PAD, y1: 206 + AUTHORED_ZONE_PAD };
+    assert.deepEqual(pad, { x0: 167, y0: 155, x1: 238, y1: 212 });
+    const inside = x1 >= pad.x0 && rect.x <= pad.x1 && y1 >= pad.y0 && rect.y <= pad.y1;
+    assert.ok(!inside, `${id} stands inside the shoal's pad`);
+  }
+  // Abutting, never overlapping: the Sett and the four in a chain.
+  const chain = [SETT_RECT, COURSE_A_RECT, COURSE_B_RECT, COURSE_C_RECT, MEADOW_RECT];
+  for (let i = 0; i < chain.length; i++) {
+    for (let j = i + 1; j < chain.length; j++) {
+      const a = chain[i]!;
+      const b = chain[j]!;
+      const overlap = a.x <= b.x + b.w - 1 && b.x <= a.x + a.w - 1 && a.y <= b.y + b.h - 1 && b.y <= a.y + a.h - 1;
+      assert.ok(!overlap, `${i} overlaps ${j}`);
+    }
+  }
+  assert.equal(COURSE_A_RECT.x + COURSE_A_RECT.w, SETT_RECT.x);
+  assert.equal(COURSE_B_RECT.y + COURSE_B_RECT.h, COURSE_A_RECT.y);
+  assert.equal(COURSE_C_RECT.x + COURSE_C_RECT.w, COURSE_B_RECT.x);
+  assert.equal(MEADOW_RECT.x + MEADOW_RECT.w, COURSE_C_RECT.x);
+  // Cell [1,2] still carries no site row (the Course's frames are zones).
+  const cell = (x: number, y: number): [number, number] => [Math.floor(x / 128), Math.floor(y / 128)];
+  for (const s of AUTHORED_WILD_SITES) {
+    if (s.x === undefined || s.y === undefined) continue;
+    assert.notDeepEqual(cell(s.x, s.y), [1, 2], `site '${s.id}' stands in [1,2]`);
+  }
 });

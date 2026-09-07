@@ -601,6 +601,16 @@ test('CONTESTED LANDS band 8: THE FLAG OBJECTIVE validates, and every shipped on
     if (t.once) stampable.add(`trig:${t.id}`);
   }
   for (const p of POI_DEFS.values()) if (p.clearedFlag) stampable.add(p.clearedFlag);
+  // THE SERVER-STAMPED ROSTER (band 9e, THE STILE VERB): flags no def
+  // spells because the server's own hand stamps them through the one
+  // flag choke, beside the poi_*_broken clears. `course_gap_set`: the
+  // interact case on a CourseStile in content's COURSE_GAPS with a
+  // course_stone in the pack (server/src/game/courseStile.ts), and
+  // SPENT at the turn-in (THE SPENT ASK, gameServer.questTurnIn: a
+  // repeatable quest's flag objectives are cleared when it closes, or
+  // the held flag would retro-credit tomorrow's stage with no stone
+  // set).
+  for (const f of SERVER_STAMPED) stampable.add(f);
   const seen: string[] = [];
   for (const q of QUESTS.values()) {
     for (const s of q.stages) {
@@ -613,6 +623,7 @@ test('CONTESTED LANDS band 8: THE FLAG OBJECTIVE validates, and every shipped on
     }
   }
   assert.deepEqual(seen.sort(), [
+    'course_gap_set',
     'glade_stood',
     'grey_one',
     'grey_three',
@@ -620,4 +631,117 @@ test('CONTESTED LANDS band 8: THE FLAG OBJECTIVE validates, and every shipped on
     'husk_held',
     'poi_veil_den_broken',
   ]);
+});
+
+/** Flags stamped by the server's own hand (see THE SERVER-STAMPED ROSTER above). */
+const SERVER_STAMPED: readonly string[] = ['course_gap_set'];
+
+// ---- THE CONTESTED LANDS band 9e: THE COURSE AND THE COUNT (band9d/
+// blockout.md §6.2-6.4, §6.6; rulings R-E, R-G). Three quests on the
+// shipped kinds, no faction pays the Dolmen, the third corner by READS.
+test('CONTESTED LANDS band 9e: FORTY STONES, THE CARTER\'S PRICE and BLACK STONE on the shipped kinds', () => {
+  const forty = QUESTS.get('forty_stones')!;
+  const price = QUESTS.get('the_carter_price')!;
+  const black = QUESTS.get('black_stone')!;
+  assert.ok(forty && price && black, 'the three are rostered');
+  // FORTY STONES: the coursemother, daily, the capstone first; talk the
+  // carter, set the gap (a server stamp), carry one to her; the count
+  // pays in construction and the flag, never in coin or standing.
+  assert.equal(forty.giver, 'dolmen_ammat');
+  assert.equal(forty.turnIn, undefined);
+  // (The validator writes every optional key; the JSON shape is the pin.)
+  const shape = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+  assert.deepEqual(shape(forty.requires), { flags: ['capstone_counted'] });
+  assert.deepEqual(shape(forty.repeat), { cooldownHours: 24 });
+  assert.deepEqual(forty.stages.map((s) => s.id), ['load', 'set', 'carry']);
+  assert.deepEqual(shape(forty.stages[0]!.objectives), [{ kind: 'talk', actor: 'charter_garrow' }]);
+  assert.deepEqual(shape(forty.stages[1]!.objectives), [{ kind: 'flag', flag: 'course_gap_set', label: "Set a stone at the Course's north gap" }]);
+  assert.deepEqual(shape(forty.stages[2]!.objectives), [{ kind: 'collect', item: 'course_stone', count: 1 }]);
+  assert.deepEqual(shape(forty.rewards), { xp: [{ skill: 'construction', amount: 120 }], flags: ['forty_carried'] });
+  for (const s of forty.stages) assert.equal(s.mark, undefined, 'no marker: the journal names the ground');
+  // THE CARTER'S PRICE: Garrow's coin road, open on the levy (the A
+  // chain's end, a quest gate: the levy leaves no flag of its own), the
+  // Charter's own ledger paid +2 a day under the questCap.
+  assert.equal(price.giver, 'charter_garrow');
+  assert.deepEqual(shape(price.requires), { flags: ['capstone_counted'], quests: ['the_levy_posted'] });
+  assert.deepEqual(shape(price.repeat), { cooldownHours: 24 });
+  assert.deepEqual(shape(price.stages.map((s) => s.objectives)), [[{ kind: 'collect', item: 'coins', count: 40 }]]);
+  assert.deepEqual(shape(price.rewards), { items: [{ item: 'course_stone', qty: 2 }], standing: [{ faction: 'fordgate', delta: 2 }] });
+  // BLACK STONE: stone for stone on the shelf, coin never; the offer
+  // shuts to the A character by a forbid, the def reads no fork flag.
+  assert.equal(black.giver, 'dolmen_durrow');
+  assert.deepEqual(shape(black.requires), { flags: ['capstone_counted'] });
+  assert.deepEqual(shape(black.repeat), { cooldownHours: 24 });
+  assert.deepEqual(shape(black.stages.map((s) => s.objectives)), [[{ kind: 'collect', item: 'course_stone', count: 1 }]]);
+  assert.deepEqual(shape(black.rewards), { items: [{ item: 'coal', qty: 4 }] });
+  assert.deepEqual(DIALOGUES.get('q_black_stone_offer')!.forbids, ['dike_planted']);
+  // No Dolmen quest pays coin or standing (R-E: no dolmen faction) and none names one.
+  for (const q of [forty, black]) {
+    assert.equal(q.rewards.coins, undefined, `${q.id}: the Dolmen pay in stone`);
+    assert.equal(q.rewards.standing, undefined, `${q.id}: no faction to move`);
+  }
+  for (const q of [forty, price, black]) {
+    for (const st of q.rewards.standing ?? []) assert.ok(st.faction !== 'dolmen', `${q.id}: no dolmen faction`);
+    // collect only on the final stage (THE TURN-IN CONSUMES); the flag on its own stage.
+    q.stages.forEach((st, i) => {
+      for (const o of st.objectives) if (o.kind === 'collect') assert.equal(i, q.stages.length - 1, `${q.id}/${st.id}: collect is final`);
+    });
+    // Nothing reads fen_side_taken, weir_cut or charter_pass; the four east-fork quests are untouched by name.
+    for (const f of q.requires?.flags ?? []) assert.ok(!/^(fen_side_taken|weir_cut|charter_pass)$/.test(f), `${q.id}: never reads ${f}`);
+  }
+  // The offer trees carry the quest_offer beat and the accept, gated as the shipped shape.
+  for (const [q, tree] of [['forty_stones', 'q_forty_stones_offer'], ['the_carter_price', 'q_the_carter_price_offer'], ['black_stone', 'q_black_stone_offer']] as const) {
+    const d = DIALOGUES.get(tree)!;
+    assert.ok((d.requires ?? []).includes(`quest:${q}:available`), `${tree} gated on availability`);
+    assert.ok(d.nodes.some((n) => n.hooks?.some((h) => h.kind === 'quest_offer' && h.quest === q)), `${tree} shows the chip`);
+    assert.ok(d.nodes.some((n) => n.hooks?.some((h) => h.kind === 'quest_accept' && h.quest === q)), `${tree} swears it`);
+    const turnin = DIALOGUES.get(`q_${q}_turnin`)!;
+    assert.deepEqual(turnin.requires, [`quest:${q}:ready`]);
+    assert.ok(turnin.nodes.some((n) => n.hooks?.some((h) => h.kind === 'quest_turnin' && h.quest === q)), `q_${q}_turnin closes it`);
+  }
+  // THE DOOR BACK for FORTY STONES (the plan's §4 law): the offer forbids
+  // its own declined flag, the refusal stamps it, and Ammat's plain hub
+  // reaches a re-offer through the declined flag and availability.
+  const offer = DIALOGUES.get('q_forty_stones_offer')!;
+  assert.ok((offer.forbids ?? []).includes('forty_stones_declined'));
+  assert.ok((offer.forbids ?? []).includes('course_broken'), 'a broken course shuts the errand');
+  assert.ok(offer.nodes.flatMap((n) => (n.choices ?? []).flatMap((c) => c.set ?? [])).includes('forty_stones_declined'));
+  const course = DIALOGUES.get('ammat_course')!;
+  const reoffer = course.nodes.filter((n) => n.hooks?.some((h) => h.kind === 'quest_offer' && h.quest === 'forty_stones'));
+  assert.equal(reoffer.length, 1);
+  const door = course.nodes.some((n) =>
+    (n.choices ?? []).some(
+      (c) => c.next === reoffer[0]!.id && (c.requires ?? []).includes('forty_stones_declined') && (c.requires ?? []).includes('quest:forty_stones:available'),
+    ),
+  );
+  assert.ok(door, 'THE DOOR BACK stands at dolmen_ammat');
+  assert.ok(
+    reoffer[0]!.choices!.some((c) => course.nodes.some((n) => n.id === c.next && n.hooks?.some((h) => h.kind === 'quest_accept' && h.quest === 'forty_stones'))),
+    'the re-offer continues to the accept',
+  );
+  // THE STANDING ARITHMETIC (§6.6): the price +2 a day (questCap), the
+  // asking -2 once (storyCap); nothing else moves a ledger.
+  const asked = DIALOGUES.get('garrow_yard')!.nodes.find((n) => n.id === 'asked')!;
+  assert.deepEqual(asked.hooks!.filter((h) => h.kind === 'standing'), [{ kind: 'standing', faction: 'fordgate', delta: -2 }]);
+  for (const id of ['ammat_count', 'q_forty_stones_offer', 'q_forty_stones_turnin', 'durrow_cold', 'q_black_stone_offer', 'q_black_stone_turnin', 'sarsen_cairn', 'sarsen_paid', 'q_the_carter_price_offer', 'q_the_carter_price_turnin']) {
+    for (const n of DIALOGUES.get(id)!.nodes) for (const h of n.hooks ?? []) assert.notEqual(h.kind, 'standing', `${id}/${n.id}: no standing hook`);
+  }
+  // The flag contract (§6.6): the stampers of the 9e flags, each once.
+  const stampers = (flag: string): string[] => {
+    const out: string[] = [];
+    for (const d of DIALOGUES.values()) {
+      for (const n of d.nodes) {
+        for (const h of n.hooks ?? []) if (h.kind === 'flag' && h.flag === flag) out.push(`${d.id}/${n.id}`);
+        for (const c of n.choices ?? []) if ((c.set ?? []).includes(flag)) out.push(`${d.id}/${n.id}/choice`);
+      }
+    }
+    for (const q of QUESTS.values()) if ((q.rewards.flags ?? []).includes(flag)) out.push(`quest:${q.id}`);
+    return out;
+  };
+  assert.deepEqual(stampers('capstone_counted'), ['ammat_course/count/choice']);
+  assert.deepEqual(stampers('forty_carried'), ['quest:forty_stones']);
+  assert.deepEqual(stampers('garrow_asked'), ['garrow_yard/hub/choice']);
+  assert.deepEqual(stampers('forty_stones_declined'), ['q_forty_stones_offer/hub/choice']);
+  assert.deepEqual(stampers('course_gap_set'), [], 'the server stamps it (THE STILE VERB)');
+  assert.deepEqual(stampers('course_broken'), [], 'the server stamps it (THE REVERSE)');
 });

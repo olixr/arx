@@ -15,7 +15,7 @@ import { buildLowhall } from '../maps/lowhall.js';
 import { buildAshlamp } from '../maps/ashlamp.js';
 import { buildFenside } from '../maps/fenside.js';
 import { buildPicket, buildTurnoff, buildWardthread } from '../maps/wardthread.js';
-import { buildSett } from '../maps/sett.js';
+import { buildMeadow, buildSett } from '../maps/sett.js';
 import { ROUTINES } from './registry.js';
 import type { RoutineTask, RoutineDef } from './types.js';
 
@@ -94,6 +94,13 @@ const ZONES: Array<() => ZoneDef> = [
   // Drusa's one loop (`dolmen_wet`) walks into the wet and back.
   // Vorl is a spawn row (no routine) and stands apart from the sweep.
   buildSett,
+  // THE DROWNED MEADOW (band 9e): the Course's last frame places
+  // Sarsen on the dry strip (his post is level 0 Dirt between the two
+  // authored sheets); `sarsen_cairn`'s dawn walk to the cell south of
+  // the cairn and home is held here like any villager's hours. The
+  // three Course frames between the lip and the brook place nobody
+  // and stand apart from the sweep; the sheep are a spawn row.
+  buildMeadow,
 ];
 
 /**

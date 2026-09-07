@@ -47,11 +47,13 @@
 import { TILE_SKIP, type Tile } from '@arx/shared';
 import { ZoneBuilder } from '../builder.js';
 import type { ZoneDef } from '../types.js';
+import { courseA, courseB, courseC } from './course.js';
 import { makeCtx, type SettRegistry } from './ctx.js';
 import { ground } from './ground.js';
 import { head } from './head.js';
 import { mask } from './mask.js';
-import { people } from './people.js';
+import { meadow } from './meadow.js';
+import { meadowPeople, people } from './people.js';
 import { PINS, type Frame } from './pins.js';
 import { plug } from './plug.js';
 import { rimset } from './rimset.js';
@@ -103,4 +105,63 @@ export function buildSettWithRegistry(): { zone: ZoneDef; registry: SettRegistry
 /** The zone alone: the shape every registry and test consumes. */
 export function buildSett(): ZoneDef {
   return buildSettWithRegistry().zone;
+}
+
+// ---------------------------------------------------------------------
+// THE COURSE (band 9e): four more frames of the same module, the same
+// brush, the same counter (pins.COURSE_START per frame, derived from
+// the run before it, never remembered). Each is level 0 (no mask, no
+// treads, no reach anchor: the builder floods nothing flat), TILE_SKIP
+// everywhere the line is not, growth 'wild', no spawn, no chest, no
+// board. The order per course frame: makeCtx(frame) → course(pts) →
+// build; the meadow: makeCtx → the sheets and the strip → the last
+// courses, the END stone, the cairn → people → build.
+// ---------------------------------------------------------------------
+
+/** COURSE_A with its registry: THE BELT RUN from the Sett's seam to the bank. */
+export function buildCourseAWithRegistry(): { zone: ZoneDef; registry: SettRegistry } {
+  const frame = PINS.COURSE_A;
+  const { b, ctx, registry } = open(frame);
+  courseA(ctx);
+  return { zone: close(b, frame, registry), registry };
+}
+/** COURSE_B with its registry: THE BANK RUN and THE FORD. */
+export function buildCourseBWithRegistry(): { zone: ZoneDef; registry: SettRegistry } {
+  const frame = PINS.COURSE_B;
+  const { b, ctx, registry } = open(frame);
+  courseB(ctx);
+  return { zone: close(b, frame, registry), registry };
+}
+/** COURSE_C with its registry: THE STRIP RUN west to the meadow's corner. */
+export function buildCourseCWithRegistry(): { zone: ZoneDef; registry: SettRegistry } {
+  const frame = PINS.COURSE_C;
+  const { b, ctx, registry } = open(frame);
+  courseC(ctx);
+  return { zone: close(b, frame, registry), registry };
+}
+/** THE DROWNED MEADOW with its registry: the last courses, the END stone, the cairn, Sarsen and the sheep. */
+export function buildMeadowWithRegistry(): { zone: ZoneDef; registry: SettRegistry } {
+  const frame = PINS.MEADOW;
+  const { b, ctx, registry } = open(frame);
+  meadow(ctx);
+  meadowPeople(ctx);
+  return { zone: close(b, frame, registry), registry };
+}
+
+export function buildCourseA(): ZoneDef {
+  return buildCourseAWithRegistry().zone;
+}
+export function buildCourseB(): ZoneDef {
+  return buildCourseBWithRegistry().zone;
+}
+export function buildCourseC(): ZoneDef {
+  return buildCourseCWithRegistry().zone;
+}
+export function buildMeadow(): ZoneDef {
+  return buildMeadowWithRegistry().zone;
+}
+
+/** The five frames with their registries, in the counter's order (the lints that walk the whole line read this). */
+export function buildCourseWithRegistries(): Array<{ zone: ZoneDef; registry: SettRegistry }> {
+  return [buildSettWithRegistry(), buildCourseAWithRegistry(), buildCourseBWithRegistry(), buildCourseCWithRegistry(), buildMeadowWithRegistry()];
 }

@@ -356,3 +356,57 @@ test('THE SINTER\'S WALK (band 9d): dolmen_wet is the one loop in the Sett, at 1
   assert.equal(routineTaskAt(wet, 12).kind, 'post');
   assert.equal(routineTaskAt(wet, 7).kind, 'post', 'the slot closes at seven');
 });
+
+test('THE COURSE AND THE COUNT (band 9e THE CAST): Sarsen sets the cairn at dawn, Garrow sleeps on his wain', () => {
+  // SARSEN (brief §4): the post at 1.2 (the Marl's stride, dolmen_set's);
+  // 05:30-06:30 a walk once to the cairn's south cell (-2,0), 120 s
+  // facing north over it (he sets the one wrong stone right), and home;
+  // 15-16 the same mid-afternoon wander the setters keep, r2 on the strip.
+  const sarsen = ROUTINES.get('sarsen_cairn')!;
+  assert.ok(sarsen, 'sarsen_cairn missing from the registry');
+  assert.equal(sarsen.base.kind, 'post');
+  assert.equal(sarsen.base.speed, 1.2);
+  assert.equal(sarsen.base.dir, undefined, 'the row\'s own facing (N, the cairn) is kept');
+  const dawn = routineTaskAt(sarsen, 6);
+  assert.ok(dawn.kind === 'path' && dawn.mode === 'once' && dawn.waypoints.length === 2, 'to the cairn, held, and home');
+  if (dawn.kind !== 'path') return;
+  const stop = dawn.waypoints[0]!;
+  assert.deepEqual([stop.x, stop.y, stop.waitSec], [-2, 0, 120]);
+  assert.ok(Math.abs((stop.dir ?? 0) + Math.PI / 2) < 1e-9, 'facing north over the cairn');
+  assert.ok(!stop.sit && !stop.lie && !stop.work, 'a plain stand at the cairn (no station to work)');
+  assert.deepEqual([dawn.waypoints[1]!.x, dawn.waypoints[1]!.y], [0, 0], 'and home');
+  assert.deepEqual(sarsen.slots!.map((s) => [s.from, s.to]), [[5.5, 6.5], [15, 16]]);
+  const afternoon = routineTaskAt(sarsen, 15.5);
+  assert.ok(afternoon.kind === 'wander' && afternoon.radius === 2, 'the setters\' wander on the strip');
+  assert.equal(routineTaskAt(sarsen, 12).kind, 'post');
+  assert.equal(routineTaskAt(sarsen, 0).kind, 'post');
+  const speeds: number[] = [sarsen.base.speed!];
+  for (const s of sarsen.slots!) {
+    if (s.task.kind === 'path') { speeds.push(s.task.speed!); for (const w of s.task.waypoints) speeds.push(w.speed!); }
+    if (s.task.kind === 'wander') speeds.push(s.task.speed!);
+  }
+  assert.ok(speeds.every((v) => v === 1.2), `every leg 1.2: ${speeds.join(',')}`);
+
+  // GARROW (brief §4): a carter's stride 1.4; 05:00-05:30 a wander r1 in
+  // the yard; 21:30-05:00 the wayside sit one row south (a carter sleeps
+  // on his wain), wrapping midnight; every other hour the post over the
+  // spoil bank with the row's own facing (W).
+  const garrow = ROUTINES.get('garrow_yard')!;
+  assert.ok(garrow, 'garrow_yard missing from the registry');
+  assert.equal(garrow.base.kind, 'post');
+  assert.equal(garrow.base.speed, 1.4);
+  assert.equal(garrow.base.dir, undefined);
+  assert.equal(garrow.base.sit, undefined, 'standing over the forty by day');
+  const early = routineTaskAt(garrow, 5.25);
+  assert.ok(early.kind === 'wander' && early.radius === 1, 'the yard walked at five');
+  const night = routineTaskAt(garrow, 23);
+  assert.ok(night.kind === 'post' && night.sit === true && night.x === 0 && night.y === 1, 'the wayside sit on the wain');
+  assert.ok(night.kind === 'post' && night.lie === undefined && night.work === undefined);
+  assert.deepEqual(routineTaskAt(garrow, 2), night, 'wraps midnight');
+  const day = routineTaskAt(garrow, 12);
+  assert.ok(day.kind === 'post' && day.sit === undefined && day.x === undefined, 'over the spoil bank by day');
+  assert.equal(routineTaskAt(garrow, 5.75).kind, 'post', 'the wander closes at half past five');
+  assert.deepEqual(garrow.slots!.map((s) => [s.from, s.to]), [[5, 5.5], [21.5, 5]]);
+  // Neither is a Dolmen routine by id (the ONE LOOP pin in dolmen.test reads the dolmen_ prefix).
+  assert.ok(!('sarsen_cairn'.startsWith('dolmen') || 'garrow_yard'.startsWith('dolmen')));
+});

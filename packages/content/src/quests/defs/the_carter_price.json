@@ -1,0 +1,18 @@
+{
+  "id": "the_carter_price",
+  "name": "The Carter's Price",
+  "giver": "charter_garrow",
+  "requires": { "flags": ["capstone_counted"], "quests": ["the_levy_posted"] },
+  "repeat": { "cooldownHours": 24 },
+  "stages": [
+    {
+      "id": "price",
+      "journal": "Forty coins to the carter at the causeway head for two stones off the Charter's own load, under Charter paper. The stone came off a bank nobody stood on, he says, and it goes back to the people who set it. The ledger says field both ways.",
+      "objectives": [{ "kind": "collect", "item": "coins", "count": 40 }]
+    }
+  ],
+  "rewards": {
+    "items": [{ "item": "course_stone", "qty": 2 }],
+    "standing": [{ "faction": "fordgate", "delta": 2 }]
+  }
+}

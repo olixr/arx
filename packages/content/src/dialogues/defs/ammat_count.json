@@ -1,0 +1,13 @@
+{
+  "id": "ammat_count",
+  "start": "count",
+  "once": true,
+  "requires": ["dike_planted"],
+  "bindings": [{ "kind": "actor", "target": "dolmen_ammat", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "count",
+      "text": "Eight stakes went into the water at the crossing. Your hands carried them. That is counted too. Forty and eight. The eight are yours."
+    }
+  ]
+}

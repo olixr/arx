@@ -193,7 +193,8 @@ Fullweight, and the carter is Garrow.
   > "The stake man took forty stones from the north end and carried them
   > to his wet road. We counted them going. We will have forty back, or
   > forty like them. That is not a threat. It is a count."
-- **Sarsen** (the Marl's setter at the dry end): wants the cairn set right
+- **Sarsen** (the Marl's setter at the dry end; `dolmen_sarsen`, LIVE band
+  9e, trees `sarsen_cairn` and `sarsen_paid`): wants the cairn set right
   in the morning and the sheep counted on and off. Wound: he says the
   disowning of Vorl's stile to the people who just paid it. Quirk: has
   learned that topsiders sit down when they are tired. Cadence: the set
@@ -225,7 +226,9 @@ Fullweight, and the carter is Garrow.
   recited as inventory, the stile law in six words. Wit: NO.
   > "One cart. Twelve wheels of stone. A rope. A row of sticks with glass
   > on them. That is the weight and I keep it."
-- **Garrow** (Charter carter-boss, the stone-yard; human): wants six wains
+- **Garrow** (Charter carter-boss, the stone-yard; human; `charter_garrow`,
+  LIVE band 9e, trees `garrow_yard`, `q_the_carter_price_offer`,
+  `q_the_carter_price_turnin`): wants six wains
   moving and the dike fed by the cold. Wound: he knows the bank was a
   course and has decided it is not his column. Quirk: "I have a schedule"
   as an answer to everything. Cadence: a carter's, loads and schedules,

@@ -29,6 +29,18 @@
  *    the pins' COURSE_START; never a stile or a stone at a corner (it
  *    shifts to the next straight tile). Returns the counter after the
  *    run so the next frame's start is derived, never remembered.
+ *    9e: `plumbAt` lists the silhouettes laid as PlumbStone whatever
+ *    the counter says (the ford's bank stones, the END stone); `wet`
+ *    lists the ford's cells laid as WaterShallow under the counter
+ *    (set stones the water runs over), each carrying Detail.FordStone
+ *    so the bake paints the slab under the water's wash (the fix
+ *    pass: four bare WaterShallow cells read as a paler band of
+ *    brook, never as set stone); a due stile or stone shifts off
+ *    either as off a corner.
+ *  - sheet(box, keep): WaterShallow over level-0 ground with ragged
+ *    edges but the held ones (9e, the meadow's two bands), painting
+ *    free field only (fieldFree: grass, tall grass, sand); a trunk or
+ *    a prop in the box stands and the water goes round it.
  *  - ash(x,y): Detail.Ash on the four cardinals of a hearth, never on
  *    its own cell (K1 as the Ashlamp fixed it).
  *  - stand(x,y): Dirt under a post that stands all day (never in water).
@@ -106,7 +118,24 @@ export interface CourseOpts {
   start?: number;
   stileEvery?: number;
   plumbEvery?: number;
+  /**
+   * THE LISTED SILHOUETTES (9e): cells laid as PlumbStone whatever the
+   * counter says (the ford's two bank stones, the meadow's END stone).
+   * A counted stile or stone due on one shifts to the next straight
+   * dry tile, exactly as at a corner.
+   */
+  plumbAt?: ReadonlyArray<Pt>;
+  /**
+   * THE SET STONES UNDER THE WATER (9e, the ford): cells laid as
+   * WaterShallow and counted like any tile (a set stone the water
+   * runs shallow over; walkable). Each must be the brook's own water
+   * at the shipped seed (the ford replaces only worldgen water); a
+   * counted stile or stone due on one shifts on.
+   */
+  wet?: ReadonlyArray<Pt>;
 }
+
+export type SheetEdge = 'n' | 's' | 'e' | 'w';
 
 export interface SettCtx {
   b: ZoneBuilder;
@@ -127,12 +156,28 @@ export interface SettCtx {
   get(x: number, y: number): Tile;
   floor(x: number, y: number, tile: Tile): void;
   water(cells: ReadonlyArray<Pt>): void;
+  /**
+   * THE SHEET (9e, the meadow): WaterShallow over a box of level-0
+   * ground, its outer edges ragged by the hash (a drowned meadow's
+   * water has no straight edge) but for the edges named in `keep`,
+   * which paint whole (the wall's row: every last course stands with
+   * its feet in the water). Paints only free worldgen ground (grass,
+   * tall grass, sand): a trunk, a bush or a prop in the box is left
+   * standing and the water goes round it.
+   */
+  sheet(x0: number, y0: number, x1: number, y1: number, keep?: ReadonlyArray<SheetEdge>): void;
+  /** One level-0 water cell the scene insists on whatever the sheet's rag said (the wall's feet, the cairn's water); free field only. */
+  wetCell(x: number, y: number): void;
+  /** Worldgen's ground at a WORLD cell is grass, tall grass or sand at level 0 (nothing to fell, nothing to bury). */
+  fieldFree(x: number, y: number): boolean;
   course(pts: ReadonlyArray<Pt>, opts?: CourseOpts): number;
   ash(x: number, y: number): void;
   stand(x: number, y: number): void;
   rubble(x: number, y: number): void;
   box(x0: number, y0: number, x1: number, y1: number, owner: string): void;
   detail(x: number, y: number, d: Detail): void;
+  /** What the scenes declared at a WORLD cell so far (the details are deferred to close(); the last declaration wins; None where none). */
+  detailAt(x: number, y: number): Detail;
   wear: WearBrushes;
   occluder(x: number, y: number): void;
   post(x: number, y: number): void;
@@ -226,6 +271,17 @@ export function fieldLevel(x: number, y: number): number {
   return fieldChunk(x, y).elev[tileIndex(x, y)]!;
 }
 
+/** The ground a Course frame may author over without felling or burying anything: grass, tall grass, sand, at level 0. */
+const FIELD_FREE: ReadonlySet<number> = new Set([Tile.Grass, Tile.GrassTall, Tile.Sand]);
+export function fieldFree(x: number, y: number): boolean {
+  return FIELD_FREE.has(fieldGround(x, y)) && fieldLevel(x, y) === 0;
+}
+/** The brook's own water at a WORLD tile (the ford replaces only this). */
+export function fieldWater(x: number, y: number): boolean {
+  const g = fieldGround(x, y);
+  return g === Tile.Water || g === Tile.WaterShallow;
+}
+
 /** THE BED, by the nearest route's own half (a trail is narrower than a road). */
 export function bedAt(x: number, y: number): boolean {
   const hit = roadHitAt(WORLD_SEED, x, y);
@@ -297,6 +353,12 @@ export function makeCtx(b: ZoneBuilder, frame: Frame): { ctx: SettCtx; registry:
     if (!authorable(x, y)) return;
     if (onBed(x, y)) return;
     if (rim(x, y)) return;
+    // THE TRUNK LAW at the wear brush (9e): a cell the frame has not
+    // authored is the field's, and the field may hold a trunk, a bush
+    // or a prop there; wear never buries one (the Course frames wear
+    // open ground only). The Sett's floors are authored before any
+    // wear touches them, so this clause never fires in the bowl.
+    if ((get(x, y) as number) === TILE_SKIP && !fieldFree(x, y)) return;
     if (WEARABLE.has(get(x, y))) b.set(x - ORIGIN.x, y - ORIGIN.y, tile);
   };
 
@@ -457,26 +519,77 @@ export function makeCtx(b: ZoneBuilder, frame: Frame): { ctx: SettCtx; registry:
       }
       const stileEvery = opts.stileEvery ?? COURSE_LAW.stileEvery;
       const plumbEvery = opts.plumbEvery ?? COURSE_LAW.plumbEvery;
+      const listed = new Set((opts.plumbAt ?? []).map(([x, y]) => `${x},${y}`));
+      const wet = new Set((opts.wet ?? []).map(([x, y]) => `${x},${y}`));
       let i = opts.start ?? frame.COURSE_START;
       let pending: Tile | null = null;
       for (const c of cells) {
+        const key = `${c.x},${c.y}`;
+        const isWet = wet.has(key);
+        const isListed = listed.has(key);
+        // THE TRUNK LAW at the brush (9e): a course tile stands on free
+        // ground or in the brook's own water, never over a trunk, a
+        // bush, a prop or a rise; the polyline bends for them.
+        if (isWet && !fieldWater(c.x, c.y)) {
+          throw new Error(`${frame.id}: ford cell (${c.x},${c.y}) is not the brook's water at the shipped seed`);
+        }
         let tile: Tile = Tile.CourseWall;
         if (i > 0 && i % plumbEvery === 0) tile = Tile.PlumbStone;
         else if (i % stileEvery === 0) tile = Tile.CourseStile;
-        if (tile !== Tile.CourseWall && c.corner) {
-          // The stile shifts to the next straight tile.
+        // A corner, a listed stone or a wet cell takes no counted stile
+        // or stone: the due tile shifts to the next straight dry tile.
+        const taken = c.corner || isListed || isWet;
+        if (tile !== Tile.CourseWall && taken) {
           pending = tile;
           tile = Tile.CourseWall;
-        } else if (tile === Tile.CourseWall && pending !== null && !c.corner) {
+        } else if (tile === Tile.CourseWall && pending !== null && !taken) {
           tile = pending;
           pending = null;
         }
+        if (isWet) tile = Tile.WaterShallow;
+        else if (isListed) tile = Tile.PlumbStone;
         put(c.x, c.y, tile);
+        if (isWet) {
+          registry.water.push([c.x, c.y]);
+          // THE SET SLAB: the ford's cell is the brook's water with a
+          // set stone in its bed; the detail is what the eye reads
+          // (put() already vetted the cell authorable, off a bed and
+          // off a rim, so the detail door's own checks are passed).
+          registry.details.push({ x: c.x, y: c.y, d: Detail.FordStone });
+        }
         registry.course.push({ x: c.x, y: c.y, i, tile });
         i++;
       }
       return i;
     },
+    sheet(x0, y0, x1, y1, keep = []) {
+      const hold = new Set(keep);
+      for (let iy = y0; iy <= y1; iy++) {
+        for (let ix = x0; ix <= x1; ix++) {
+          const edgeX = (ix === x0 && !hold.has('w')) || (ix === x1 && !hold.has('e'));
+          const edgeY = (iy === y0 && !hold.has('n')) || (iy === y1 && !hold.has('s'));
+          // The rect brush's own rag (corners three in four dropped,
+          // edges nearly one in two) on every edge not held.
+          if (edgeX && edgeY) {
+            if (settRng(ix, iy) > 0.35) continue;
+          } else if (edgeX || edgeY) {
+            if (settRng(ix, iy) > 0.55) continue;
+          }
+          if (!authorable(ix, iy) || onBed(ix, iy) || rim(ix, iy)) continue;
+          if ((get(ix, iy) as number) !== TILE_SKIP || !fieldFree(ix, iy)) continue;
+          put(ix, iy, Tile.WaterShallow);
+          registry.water.push([ix, iy]);
+        }
+      }
+    },
+    wetCell(x, y) {
+      if (get(x, y) === Tile.WaterShallow) return;
+      if ((get(x, y) as number) !== TILE_SKIP) throw new Error(`${frame.id}: wet cell (${x},${y}) is already authored`);
+      if (!fieldFree(x, y)) throw new Error(`${frame.id}: wet cell (${x},${y}) is not free field`);
+      put(x, y, Tile.WaterShallow);
+      registry.water.push([x, y]);
+    },
+    fieldFree,
     ash(x, y) {
       // THE PAN READS AGAINST THE ASH (K1): the bed's own cell carries
       // no ash; its four cardinals do, where they are floor.
@@ -499,6 +612,11 @@ export function makeCtx(b: ZoneBuilder, frame: Frame): { ctx: SettCtx; registry:
     },
     box(x0, y0, x1, y1, owner) {
       registry.boxes.push({ x0, y0, x1, y1, owner });
+    },
+    detailAt(x, y) {
+      let out: Detail = Detail.None;
+      for (const q of registry.details) if (q.x === x && q.y === y) out = q.d;
+      return out;
     },
     detail(x, y, d) {
       if (!authorable(x, y) || onBed(x, y)) {

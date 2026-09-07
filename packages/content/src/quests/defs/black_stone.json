@@ -1,0 +1,17 @@
+{
+  "id": "black_stone",
+  "name": "Black Stone",
+  "giver": "dolmen_durrow",
+  "requires": { "flags": ["capstone_counted"] },
+  "repeat": { "cooldownHours": 24 },
+  "stages": [
+    {
+      "id": "stone",
+      "journal": "The Culm burn stone on the Sett's east shelf and will trade it for stone, since nobody has asked in words. One Course stone to the hearth cells, and four of the black stone back, which the forge at Dawnmead would burn if it knew it was there.",
+      "objectives": [{ "kind": "collect", "item": "course_stone", "count": 1 }]
+    }
+  ],
+  "rewards": {
+    "items": [{ "item": "coal", "qty": 4 }]
+  }
+}

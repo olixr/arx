@@ -61,7 +61,8 @@ import { zoneEdgeProfileOf } from '../../zoneEdges.js';
 import { zoneWaypoints } from '../lint/footprint.js';
 import type { ZoneDef } from '../types.js';
 import type { SettRegistry } from './ctx.js';
-import type { Box4, KeepOut, Pt } from './pins.js';
+import { FRAMES, type Box4, type KeepOut, type Pt } from './pins.js';
+const FRAMES_BY_ID: Readonly<Record<string, { SEAM: ReadonlyArray<Pt> } | undefined>> = FRAMES;
 
 /** Ground at a WORLD cell, or undefined outside the rect. */
 const groundAt = (z: ZoneDef, x: number, y: number): number | undefined => {
@@ -599,6 +600,108 @@ export function keepOut(z: ZoneDef, rules: ReadonlyArray<KeepOut>): string[] {
       const t = groundAt(z, x, y);
       if (t === undefined) continue;
       if (!allow.has(t)) out.push(`(${x},${y}) carries '${TILE_DEFS[t as Tile].name}': ${r.why}`);
+    }
+  }
+  return out;
+}
+
+// =====================================================================
+// THE COURSE (band 9e): the lints the four frames add.
+//  - seamJoined:      the whole polyline from the north gap to the END
+//                     stone is ONE line: every counter value from 0 to
+//                     the end laid once, each tile 4-adjacent to the
+//                     one before it, the seams crossed with no hole.
+//  - noFelling:       THE TRUNK LAW: every authored cell of a frame
+//                     stands over worldgen grass, tall grass or sand at
+//                     level 0, or (a painted water cell) over the
+//                     brook's own water; never over a trunk, a sapling,
+//                     a bush, a rock, a chest, a stump or a rise.
+//  - waterOverField:  every WaterShallow the frame painted replaced
+//                     the listed field: the ford the brook's water, the
+//                     meadow's sheets grass at level 0.
+//  - crowned:         the WATCH derived from the ground: every course
+//                     cell with a trunk one or two rows south of it.
+// =====================================================================
+
+/** The tiles a course counter may lay. */
+const COURSE_LAID: ReadonlySet<number> = new Set<number>([Tile.CourseWall, Tile.CourseStile, Tile.PlumbStone, Tile.WaterShallow]);
+
+/**
+ * THE LINE IS ONE LINE across the five frames: the registries' course
+ * arrays, sorted by counter, run 0..end with no gap and no repeat, and
+ * every consecutive pair of tiles is 4-adjacent (a seam crossed with
+ * no hole). Each frame's SEAM cells must be laid by that frame.
+ */
+export function seamJoined(frames: ReadonlyArray<{ zone: ZoneDef; registry: SettRegistry }>, end: number): string[] {
+  const out: string[] = [];
+  const all: Array<{ x: number; y: number; i: number; tile: number; frame: string }> = [];
+  for (const { zone, registry } of frames) {
+    for (const c of registry.course) all.push({ ...c, frame: zone.id });
+    for (const [x, y] of PINS_SEAMS(zone.id)) {
+      if (!registry.course.some((c) => c.x === x && c.y === y)) out.push(`${zone.id}: seam (${x},${y}) is not laid by its frame`);
+    }
+  }
+  all.sort((a, b) => a.i - b.i);
+  if (all.length !== end) out.push(`${all.length} tiles laid, the counter says ${end}`);
+  for (let k = 0; k < all.length; k++) {
+    const c = all[k]!;
+    if (c.i !== k) {
+      out.push(`counter ${k} missing (next laid is ${c.i} at (${c.x},${c.y}) in ${c.frame})`);
+      break;
+    }
+    if (!COURSE_LAID.has(c.tile)) out.push(`counter ${c.i} at (${c.x},${c.y}) is '${TILE_DEFS[c.tile as Tile]?.name}'`);
+    if (k > 0) {
+      const p = all[k - 1]!;
+      if (Math.abs(p.x - c.x) + Math.abs(p.y - c.y) !== 1) {
+        out.push(`counter ${p.i} (${p.x},${p.y}) in ${p.frame} and ${c.i} (${c.x},${c.y}) in ${c.frame} do not touch`);
+      }
+    }
+  }
+  return out;
+}
+/** The listed seam cells of a frame, by id (pins.FRAMES). */
+function PINS_SEAMS(id: string): ReadonlyArray<Pt> {
+  return (FRAMES_BY_ID[id]?.SEAM) ?? [];
+}
+
+/** THE TRUNK LAW over a built frame: the field under every authored cell. */
+export function noFelling(
+  z: ZoneDef,
+  free: (x: number, y: number) => boolean,
+  water: (x: number, y: number) => boolean,
+  fieldName: (x: number, y: number) => string,
+): string[] {
+  const out: string[] = [];
+  for (const [x, y, t] of authoredCells(z)) {
+    if (t === Tile.WaterShallow ? free(x, y) || water(x, y) : free(x, y)) continue;
+    out.push(`(${x},${y}) '${TILE_DEFS[t as Tile]?.name}' stands over worldgen '${fieldName(x, y)}'`);
+  }
+  return out;
+}
+
+/** Every painted water cell replaced the listed field, and nothing but water or the kit stands on it now. */
+export function waterOverField(
+  z: ZoneDef,
+  painted: ReadonlyArray<Pt>,
+  allowed: (x: number, y: number) => boolean,
+  fieldName: (x: number, y: number) => string,
+): string[] {
+  const out: string[] = [];
+  for (const [x, y] of painted) {
+    if (!allowed(x, y)) out.push(`painted water (${x},${y}) replaced worldgen '${fieldName(x, y)}'`);
+    const t = groundAt(z, x, y);
+    if (t !== Tile.WaterShallow && !COURSE_KIT.has(t ?? -1)) out.push(`painted water (${x},${y}) carries '${TILE_DEFS[t as Tile]?.name}'`);
+    if (elevAt(z, x, y) !== 0) out.push(`painted water (${x},${y}) is not at level 0`);
+  }
+  return out;
+}
+
+/** The WATCH derived from the ground: every laid course cell with a worldgen trunk one or two rows south of it. */
+export function crowned(registry: SettRegistry, trunk: (x: number, y: number) => boolean): Array<{ cell: Pt; trunk: Pt }> {
+  const out: Array<{ cell: Pt; trunk: Pt }> = [];
+  for (const c of registry.course) {
+    for (const dy of [1, 2]) {
+      if (trunk(c.x, c.y + dy)) out.push({ cell: [c.x, c.y], trunk: [c.x, c.y + dy] });
     }
   }
   return out;

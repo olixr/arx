@@ -609,7 +609,7 @@ test('CONTESTED LANDS band 9d: the Sett ladders pick the right mouth', () => {
   assert.equal(at('dolmen_drusa', [dialogueDoneFlag('drusa_ninth')]), 'drusa_ninth');
   // Durrow: the hearth to everyone in 9d; 9e's durrow_cold shuts the shelf to the A character by a read of dike_planted, never once.
   assert.equal(at('dolmen_durrow', []), 'durrow_hearth');
-  assert.equal(at('dolmen_durrow', ['dike_planted']), 'durrow_hearth', 'durrow_cold is 9e\'s');
+  assert.equal(at('dolmen_durrow', ['dike_planted']), 'durrow_cold', 'durrow_cold is LIVE (9e)');
   assert.equal(at('dolmen_durrow', ['halvor_string_carried']), 'durrow_hearth', 'the B side keeps the hearth');
   // Vorl: no tree binds the mouth; the barks are the whole of him.
   assert.deepEqual(offersFor('dolmen_vorl'), []);
@@ -642,6 +642,105 @@ test('CONTESTED LANDS band 9d: THE PEOPLE SPEAK on every new string (the hand li
       check(`${id}/${n.id}`, stripDialogueMarkup(n.text));
       assert.equal(n.voice, undefined, `${id}/${n.id}: no voice cast (silence is the clip)`);
       for (const c of n.choices ?? []) check(`${id}/${n.id}/choice`, c.text);
+    }
+  }
+});
+
+// ---- THE CONTESTED LANDS band 9e: THE COURSE AND THE COUNT (band9d/
+// blockout.md §5, §6; rulings R-E, R-G). Eleven trees on four throats:
+// the count, the cold, Sarsen's two, Garrow's three, the three offers
+// and turn-ins of FORTY STONES, THE CARTER'S PRICE and BLACK STONE; the
+// door back rides ammat_course's hub. The five Dolmen regexes live in
+// dolmen.test.ts; this file holds the ladders and the hand lint.
+const BAND9E_TREES = [
+  'ammat_count', 'q_forty_stones_offer', 'q_forty_stones_turnin',
+  'garrow_yard', 'q_the_carter_price_offer', 'q_the_carter_price_turnin',
+  'durrow_cold', 'q_black_stone_offer', 'q_black_stone_turnin',
+  'sarsen_cairn', 'sarsen_paid',
+] as const;
+const DOLMEN_MOUTHED_9E = new Set<string>(BAND9E_TREES.filter((id) => !/^(garrow_|q_the_carter_price_)/.test(id)));
+
+test('CONTESTED LANDS band 9e: the Course ladders pick the right mouth', () => {
+  const at = (actor: string, flags: Iterable<string>) => {
+    const set = new Set(flags);
+    return pickDialogue(offersFor(actor), (f) => set.has(f))?.id;
+  };
+  // Ammat: the hub; the offer above it once counted and offerable; the
+  // count once above both for the A character; the turn-in over all.
+  assert.equal(at('dolmen_ammat', ['capstone_counted']), 'ammat_course');
+  assert.equal(at('dolmen_ammat', ['capstone_counted', 'quest:forty_stones:available']), 'q_forty_stones_offer');
+  assert.equal(at('dolmen_ammat', ['capstone_counted', 'quest:forty_stones:available', 'course_broken']), 'ammat_course', 'a broken course shuts the errand');
+  assert.equal(at('dolmen_ammat', ['capstone_counted', 'quest:forty_stones:available', 'forty_stones_declined']), 'ammat_course', 'declined: the door back is the hub');
+  assert.equal(at('dolmen_ammat', ['capstone_counted', 'quest:forty_stones:active']), 'ammat_course');
+  assert.equal(at('dolmen_ammat', ['capstone_counted', 'quest:forty_stones:ready']), 'q_forty_stones_turnin');
+  assert.equal(at('dolmen_ammat', ['dike_planted', 'quest:forty_stones:available']), 'ammat_count');
+  assert.equal(at('dolmen_ammat', ['dike_planted', 'quest:forty_stones:ready']), 'q_forty_stones_turnin');
+  // Durrow: the hearth, the stone offer, the cold to the A side, the turn-in over all.
+  assert.equal(at('dolmen_durrow', ['quest:black_stone:available']), 'q_black_stone_offer');
+  assert.equal(at('dolmen_durrow', ['quest:black_stone:active']), 'durrow_hearth');
+  assert.equal(at('dolmen_durrow', ['quest:black_stone:ready']), 'q_black_stone_turnin');
+  assert.equal(at('dolmen_durrow', ['quest:black_stone:ready', 'dike_planted']), 'q_black_stone_turnin', 'a stone already carried is paid');
+  assert.equal(at('dolmen_durrow', ['quest:black_stone:available', 'dike_planted']), 'durrow_cold');
+  // Sarsen: the cairn; the string once; the cairn after.
+  assert.equal(at('dolmen_sarsen', []), 'sarsen_cairn');
+  assert.equal(at('dolmen_sarsen', ['halvor_string_carried']), 'sarsen_paid');
+  assert.equal(at('dolmen_sarsen', ['halvor_string_carried', dialogueDoneFlag('sarsen_paid')]), 'sarsen_cairn');
+  // Garrow: the barks with no errand; the yard on the errand; the price
+  // outside the errand when the levy is posted; the turn-in over all.
+  assert.equal(at('charter_garrow', []), undefined, 'the barks (no plain hub: the yard is the errand\'s)');
+  assert.equal(at('charter_garrow', ['quest:forty_stones:active']), 'garrow_yard');
+  assert.equal(at('charter_garrow', ['quest:the_carter_price:available']), 'q_the_carter_price_offer');
+  assert.equal(at('charter_garrow', ['quest:the_carter_price:available', 'quest:forty_stones:active']), 'garrow_yard', 'on the errand the hub carries the price');
+  assert.equal(at('charter_garrow', ['quest:the_carter_price:ready', 'quest:forty_stones:active']), 'q_the_carter_price_turnin');
+  // The yard's three doors: the price on the levy, the asking once, the asking again.
+  const hub = DIALOGUES.get('garrow_yard')!.nodes.find((n) => n.id === 'hub')!;
+  assert.deepEqual(hub.choices!.map((c) => c.next), ['price', 'asked', 'twice']);
+  assert.deepEqual(hub.choices![0]!.requires, ['quest:the_levy_posted:done', 'quest:the_carter_price:available']);
+  assert.deepEqual(hub.choices![1]!.forbids, ['garrow_asked']);
+  assert.deepEqual(hub.choices![2]!.requires, ['garrow_asked']);
+  // The brief's (c) forbid, keyed on the gate (a) actually opens on
+  // (the levy, not the stakes): once the coin road is open the asked
+  // character hears the price, never "it does not say twice", and
+  // between the stakes and the levy the hub is never empty.
+  assert.deepEqual(hub.choices![2]!.forbids, ['quest:the_levy_posted:done']);
+  // THE DOOR BACK on Ammat's hub: the declined flag and availability open the re-offer to the accept.
+  const course = DIALOGUES.get('ammat_course')!;
+  const door = course.nodes.find((n) => n.id === 'hub')!.choices!.find((c) => c.next === 'reoffer')!;
+  assert.deepEqual(door.requires, ['forty_stones_declined', 'quest:forty_stones:available']);
+  assert.deepEqual(door.forbids, ['course_broken']);
+  assert.deepEqual(course.nodes.find((n) => n.id === 'reoffer')!.hooks, [{ kind: 'quest_offer', quest: 'forty_stones' }]);
+  assert.deepEqual(course.nodes.find((n) => n.id === 'resworn')!.hooks, [{ kind: 'quest_accept', quest: 'forty_stones' }]);
+  assert.deepEqual(DIALOGUES.get('q_forty_stones_offer')!.forbids, ['course_broken', 'forty_stones_declined']);
+  // Every 9e tree is bound to exactly one throat: a Dolmen or the carter.
+  for (const id of BAND9E_TREES) {
+    const d = DIALOGUES.get(id)!;
+    assert.equal(d.bindings!.length, 1, `${id}: one throat`);
+    const t = d.bindings![0]!.target;
+    assert.ok(DOLMEN_MOUTHED_9E.has(id) ? t.startsWith('dolmen_') : t === 'charter_garrow', `${id}: bound to ${t}`);
+  }
+});
+
+test('CONTESTED LANDS band 9e: THE PEOPLE SPEAK on every new string (the hand lint)', () => {
+  const DASH = /[-‐‑‒–—―]/;
+  const BOUNDARY = /\b(witch|witches|witchcraft|hex|hexes|coven|warlock|demon|demons|devil|devils|infernal|occult|hell)\b/i;
+  const check = (where: string, s: string, dolmen: boolean) => {
+    assert.ok(!DASH.test(s), `${where}: dash in "${s}"`);
+    assert.ok(!BOUNDARY.test(s), `${where}: boundary word in "${s}"`);
+    if (dolmen) {
+      assert.ok(/\.$/.test(s.trim()), `${where}: not a whole set sentence "${s}"`);
+      assert.ok(!/[?!]/.test(s), `${where}: a Dolmen never asks and never raises its voice "${s}"`);
+    } else {
+      assert.ok(/[.!?]$/.test(s.trim()), `${where}: not a whole sentence "${s}"`);
+    }
+  };
+  for (const id of BAND9E_TREES) {
+    const d = DIALOGUES.get(id)!;
+    assert.ok(!DASH.test(id) && !BOUNDARY.test(id), `${id}: clean id`);
+    const dolmen = DOLMEN_MOUTHED_9E.has(id);
+    for (const n of d.nodes) {
+      check(`${id}/${n.id}`, stripDialogueMarkup(n.text), dolmen);
+      assert.equal(n.voice, undefined, `${id}/${n.id}: no voice cast (silence is the clip)`);
+      for (const c of n.choices ?? []) check(`${id}/${n.id}/choice`, c.text, dolmen);
     }
   }
 });

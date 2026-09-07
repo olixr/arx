@@ -1,0 +1,26 @@
+{
+  "id": "sarsen_cairn",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "dolmen_sarsen", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "The small diggers stack this every night with one stone wrong. I set it right every morning. Neither of us has said anything about it. It is a good arrangement.",
+      "choices": [
+        { "text": "Tell me about the sheep.", "next": "sheep" },
+        { "text": "And the wall.", "next": "wall" }
+      ]
+    },
+    {
+      "id": "sheep",
+      "text": "Six ewes and the lamb. Counted on at dusk. Counted off at dawn. The sheep man has not come across. The count does not need him.",
+      "choices": [
+        { "text": "And the wall.", "next": "wall" }
+      ]
+    },
+    {
+      "id": "wall",
+      "text": "This is the dry end. The Course holds the wet off this strip and the sheep stand on it. The sheep man says the wall drowned him. The ground went soft under the wall. Nobody can check either. Both are said."
+    }
+  ]
+}

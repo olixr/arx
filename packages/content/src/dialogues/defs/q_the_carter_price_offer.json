@@ -1,0 +1,27 @@
+{
+  "id": "q_the_carter_price_offer",
+  "start": "hub",
+  "requires": ["quest:the_carter_price:available"],
+  "forbids": ["quest:forty_stones:active"],
+  "bindings": [{ "kind": "actor", "target": "charter_garrow", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "You are not here for them. You are here for the coin. Forty coins. Two stones off the load, under Charter paper, and the entry says sold. Where it came from is a field. Where it goes is a road. You do the middle.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_carter_price" }],
+      "choices": [
+        { "text": "Forty.", "next": "sworn" },
+        { "text": "No.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Forty on the counter when you have it. Two off the load under Charter paper, sold, and the entry says so. I have a schedule.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_carter_price" }]
+    },
+    {
+      "id": "declined",
+      "text": "Then the load goes to the dike. It was going there."
+    }
+  ]
+}

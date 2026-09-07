@@ -1,0 +1,40 @@
+{
+  "id": "charter_garrow",
+  "name": "Garrow",
+  "title": "Charter carter boss",
+  "examine": "Twenty years on the wains and six of them on the road. A tally in his head and a place that is not a place on the clerk's board. He does not look at the bank.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 0,
+      "hairColor": 2,
+      "beard": 6,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 5,
+      "pants": 6
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 40
+    },
+    {
+      "item": "twine",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "Stone, field, forty, no vendor. That is the entry. It was lying on a bank and nobody was standing on the bank.",
+    "They do not come to the yard. They do not ask. I have a schedule. Those three things together are what a carter calls a field.",
+    "My best cart is in their wall. I have not gone across. I would have to say what was on it, and I have a schedule."
+  ]
+}

@@ -21,7 +21,8 @@
  * GROUND (ground.ts): G5 the apron and the approach.
  * SIGN: none at the head. THE WATER MARK is the mark-post (R2).
  * CAST HOOKS: none placed here; Ingram (a POI body at the crofts)
- * walks to pins.HEAD_CUSTOMER each morning (L2's routine).
+ * walks to pins.HEAD_CUSTOMER each morning (L2's routine); Garrow
+ * (band 9e, people.ts) stands on GARROW_STAND east of the canvas.
  * LIGHTS: the lantern pair, prop-glow; if it burns at noon it is gated
  * like the brazier (E6, L6's).
  * E5: the LeanTo's second foot (130,78), its west skirt, stays open.
@@ -79,4 +80,11 @@ export function head(ctx: FenCtx): void {
   // forty stones are in it and the ledger says "field" (T50, never
   // spoken here).
   for (const [x, y] of pins.HEAD_SPOIL) ctx.put(x, y, Tile.SpoilHeap);
+
+  // TERTIARY (band 9e): the carter's stand, one cell of the swamp rim
+  // east of the canvas trodden to Dirt. SENTENCE: Garrow stands where
+  // the spoil bank meets the water all day and never looks at the
+  // bank; a year of his boots has worn the rim bare at that one cell
+  // and nowhere else (his night sit one south is the swamp's own).
+  ctx.put(pins.GARROW_STAND[0], pins.GARROW_STAND[1], Tile.Dirt);
 }

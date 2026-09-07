@@ -443,6 +443,9 @@ function buildWings(): Wing[] {
         single(Tile.CorbelCell),
         single(Tile.PlumbStone),
         { kind: 'floordetail' as const, detail: Detail.Chalkline, host: Tile.Dirt, label: 'chalk line' },
+        // Band 9e: the ford's set slab on its own shallows (the water
+        // the crossing runs under is the host, never dirt).
+        { kind: 'floordetail' as const, detail: Detail.FordStone, host: Tile.WaterShallow, label: 'ford stone' },
       ],
       // The Scarred wing's pitch: the cell overdraws north.
       pitchY: 7,

@@ -218,6 +218,9 @@ const FORM_BY_ID: Record<string, GroundForm> = {
   // The north's fork (contested lands band 8): a pelt like its kin, a
   // hank and a cut length that lie like twine, a chip that lies like a gem.
   wolf_pelt: 'hide', grey_wool: 'spool', cut_thread: 'spool', moonglass_chip: 'gem',
+  // The Course's fork (contested lands band 9e): a kerb stone that lies
+  // like a lump of pale rock, a bob that lies like the token it is.
+  course_stone: 'ore', plumb_bob: 'token',
   gilded_locket: 'locket', crew_paytin: 'token', reavers_mark: 'token',
   warlord_crest: 'token', spade_mark: 'token', marked_tool: 'token',
   sand_laurel: 'laurel',

@@ -149,15 +149,116 @@ export const SEAM: Pt = [150, 267];
 
 export const SETT = frame('sett', 'The Sett', 150, 265, 50, 74, [E1_THE_LIP, E2_THE_WEST_TONGUE, E3_THE_SINTER_TONGUE], [SEAM], 0);
 
+// ---------------------------------------------------------------------
+// THE COURSE FRAMES (band 9e L1; brief §6.0; rulings R-B, R-G; the
+// 9d handoff §C.1). MEASURED, NOT COPIED: every origin below was
+// written after the shoal's seat was read off 9d's boot log and the
+// ground was probed at the shipped seed (band9e/l1/probe.out and
+// route.out carry the tape).
+//
+// THE SHOAL'S SEAT (9d's boot log, verbatim: "[poi] authored site
+// 'amberfen_shoal' (skral_village) stands at 203,184 — tier 1"; the
+// prefab poi_skral_village_longbanks 60x46; blit top-left = anchor −
+// floor(size/2) → footprint x 173..232, y 161..206; AUTHORED_ZONE_PAD
+// 6 → every frame keeps its cells OUTSIDE x 167..238, y 155..212).
+// The four rects' greatest x is 149; the pad's least is 167: eighteen
+// clear at the nearest, filed in sett.test as THE SEAT PIN.
+//
+// THE HONEST LINE (the ground refused the brief's letter twice, and
+// the ground won): the brief drew "west along y 267 then north-west
+// to the bank"; worldgen stands three trunks ON that row at (142,267),
+// (144,267) and (146,267), so the run leaves the row after two tiles
+// and goes NORTH along the wood's edge at x 148 (the belt's last
+// free column before the Sett's rect, every cell grass at this seed),
+// turns west at y 244 for six tiles and north again at x 142, where
+// the brook's east bank is two to four tiles off. The bank run in B
+// is the sand itself: x 142 is the east bank's own sand from y 226 to
+// y 207 and is trunk-free the whole way (no B trunk stands on x 142).
+// THE ONE CROSSING is at y 207 (four water cells 138..141; the row
+// at y 206 carries a worldgen fishing spot at (141,206) and y 210 one
+// at (141,210); y 207 is the first clean row south of the shoal's
+// pad), the east bank stone one south of the turn on the sand at
+// (142,208), the west bank stone on the grass at (137,207). West of
+// the brook the run keeps y 207 across eighteen tiles of open grass
+// and into the forest strip until two trunks stand on the row at
+// (100,207) and (97,207): the line steps north ONE row at x 101 (its
+// only bend in the strip, the trunks' own sentence) and runs y 206
+// to the meadow's corner. Every cell of the polyline is worldgen
+// grass, tall grass or sand (the ford's four are the brook's own
+// water): THE TRUNK LAW at the brush (lint.noFelling) — the Dolmen
+// fell no wood, and no fell pocket is opened for the Course.
+//
+// THE COUNTER (one constant, COURSE_LAW, read by every frame's brush):
+// a stile every twelve, a stone every forty, from the north gap; the
+// Sett's head run leaves it at 20; A at 57; B at 97; C at 147; the
+// meadow's END stone is 165: ONE HUNDRED AND SIXTY-SIX TILES from the
+// gap to the END (R-B's 150..170; one water crossing).
+//
+// THE FRAMES ABUT (no rect overlaps another; each seam is one cell on
+// a border, exempt under §3.3): A's east ring x 149 beside the Sett's
+// seam (150,267); A's north ring y 238 under B's south ring y 237 at
+// x 142; B's west ring x 133 beside C's east ring x 132 at y 207;
+// C's west ring x 84 beside MEADOW's east ring x 83 at y 206. The
+// brief's candidates (A (129,238) 21x33, B (133,204) 15x34, C
+// (84,198) 54x13, MEADOW (57,190) 27x25) were sketches: B and C
+// overlapped each other by 5x7 and C's x 84..137 did not reach the
+// water; each rect below is cut to its run (THE CURATION LAW: a line
+// of set stone across open ground and NOTHING else authored).
+// ---------------------------------------------------------------------
+
 /**
- * THE FRAMES SHAPE, with SETT filled and the four Course frames
- * declared EMPTY (9e's L1 writes their origins after the shoal's seat
- * is read off 9d's boot log and measured under the pad law, G-12).
- * The candidates on the ground of sett-ground.txt §B-§D, for the
- * record only: COURSE_A origin (129,238) 21x33; COURSE_B (133,204)
- * 15x34; COURSE_C (84,198) 54x13; MEADOW (57,190) 27x25.
+ * COURSE_A: origin (140,238), 10x31, so x 140..149 and y 238..268
+ * (cells [1,1] and [1,2]). THE BELT RUN: two tiles west from the
+ * Sett's seam, north along the wood's edge at x 148, west along y 244,
+ * north at x 142 to B. Seams: (149,267) east (the Sett's (150,267)
+ * beside it), (142,238) north (B's (142,237) above it).
  */
-export const FRAMES: Readonly<Partial<Record<FrameId, Frame>>> = { sett: SETT };
+export const COURSE_A = frame('course_a', 'The Standing Course', 140, 238, 10, 31, [], [[149, 267], [142, 238]], 20);
+/**
+ * COURSE_B: origin (133,204), 12x34, so x 133..144 and y 204..237
+ * (cell [1,1]; the pad's least x is 167). THE BANK RUN north along the
+ * sand at x 142 to the turn at (142,207), THE FORD west across the
+ * brook's four water cells, and four tiles of grass to the west seam.
+ * Seams: (142,237) south, (133,207) west (C's (132,207) beside it).
+ */
+export const COURSE_B = frame('course_b', 'The Standing Course', 133, 204, 12, 34, [], [[142, 237], [133, 207]], 57);
+/**
+ * COURSE_C: origin (84,204), 49x6, so x 84..132 and y 204..209 (cells
+ * [1,1] and [0,1]; never north of y 198). THE STRIP RUN west along
+ * y 207 over the open grass and into the wood, one step north at x
+ * 101 for the two trunks on the row, then y 206 to the meadow's
+ * corner. Seams: (132,207) east, (84,206) west (MEADOW's (83,206)).
+ */
+export const COURSE_C = frame('course_c', 'The Standing Course', 84, 204, 49, 6, [], [[132, 207], [84, 206]], 97);
+/**
+ * MEADOW: origin (57,198), 27x17, so x 57..83 and y 198..214 (cell
+ * [0,1], no core). SARSEN'S PATCH at the Drowned Meadow's south-east
+ * corner: the two sheets, the dry strip, the last courses with their
+ * feet in the south sheet, the END stone, the cairn, Sarsen and the
+ * sheep. The brief's candidate stood at y 190; nothing is authored
+ * north of y 200, so the rect is cut to the scene. Seam: (83,206).
+ */
+export const MEADOW = frame('meadow', 'The Drowned Meadow', 57, 198, 27, 17, [], [[83, 206]], 147);
+
+/** THE FRAMES SHAPE, all five filled (9d's four EMPTY ids are written). */
+export const FRAMES: Readonly<Record<FrameId, Frame>> = { sett: SETT, course_a: COURSE_A, course_b: COURSE_B, course_c: COURSE_C, meadow: MEADOW };
+/** The four Course frames in the counter's order (the Sett's head run is first). */
+export const COURSE_FRAMES: ReadonlyArray<Frame> = [COURSE_A, COURSE_B, COURSE_C, MEADOW];
+
+/**
+ * THE SEAT PIN: the shoal's booted footprint padded by AUTHORED_ZONE_PAD
+ * (9d's proof.md / shoal-seat.txt; unchanged across the 9c, L3 and L5
+ * boots). No 9e frame cell may stand inside it; sett.test asserts it
+ * and files the nearest gap.
+ */
+export const SHOAL_SEAT = {
+  anchor: [203, 184] as Pt,
+  prefab: 'poi_skral_village_longbanks',
+  footprint: { x0: 173, y0: 161, x1: 232, y1: 206 } as Box4,
+  pad: 6,
+  padded: { x0: 167, y0: 155, x1: 238, y1: 212 } as Box4,
+  bootLine: "[poi] authored site 'amberfen_shoal' (skral_village) stands at 203,184 — tier 1",
+} as const;
 
 // =====================================================================
 // THE ELEVATION: two flights, six treads (the only gaps in the fence).
@@ -502,8 +603,176 @@ export const LOOPS: ReadonlyArray<string> = ['dolmen_wet'];
 
 /** A stile every twelve, a stone every forty, the counter from the north gap. */
 export const COURSE_LAW = { stileEvery: 12, plumbEvery: 40 } as const;
-/** THE SERVER'S ROSTER (9e's stile verb reads it): the stiles a stone may be set in. One entry in 9d: the north gap. */
+/**
+ * THE SERVER'S ROSTER (THE STILE VERB reads it, server/game/courseStile.ts):
+ * the stiles a stone may be set in. ONE entry in 9e: the north gap. Vorl's
+ * stile and every crossing stile on the Course stay crossings.
+ */
 export const COURSE_GAPS: ReadonlyArray<Pt> = [HEAD.GAP];
+
+// =====================================================================
+// THE COURSE (9e): the polyline per frame, the ford, the meadow's end
+// =====================================================================
+
+/**
+ * THE POLYLINES, ORTHOGONAL (a diagonal step throws; the line is one
+ * line). Each frame's first point is its own seam cell where the run
+ * enters and its last point the seam where it leaves (the meadow's
+ * last point is the END stone). Every cell was probed free at the
+ * shipped seed (route.out): grass, tall grass or sand, the ford's
+ * four the brook's water.
+ */
+export const COURSE_PTS: Readonly<Record<Exclude<FrameId, 'sett'>, ReadonlyArray<Pt>>> = {
+  /** THE BELT RUN: two west off the seam; north along the wood's edge (x 148, y 267→244); west six (y 244); north to B (x 142). 37 tiles, 20..56. */
+  course_a: [[149, 267], [148, 267], [148, 244], [142, 244], [142, 238]],
+  /** THE BANK RUN north on the sand (x 142, y 237→207); THE FORD west along y 207 to the west seam. 40 tiles, 57..96. */
+  course_b: [[142, 237], [142, 207], [133, 207]],
+  /** THE STRIP RUN west along y 207 to x 101; one step north for the two trunks on the row; west along y 206 to the meadow. 50 tiles, 97..146. */
+  course_c: [[132, 207], [101, 207], [101, 206], [84, 206]],
+  /** THE LAST COURSES west along y 206 with their feet in the south sheet, to the END stone. 19 tiles, 147..165. */
+  meadow: [[83, 206], [65, 206]],
+};
+/** Tiles the brush lays per frame (the counter's arithmetic: 37 + 40 + 50 + 19 after the head run's 20 = 166). */
+export const COURSE_TILES_PER_FRAME = { course_a: 37, course_b: 40, course_c: 50, meadow: 19 } as const;
+/** The counter after the END stone: 166 tiles from the gap (R-B: 150..170; one crossing). */
+export const COURSE_END_COUNT = 166;
+
+/**
+ * S9 THE FORD OF SET STONES (in COURSE_B). SENTENCE: the Marl set
+ * stones in the brook's bed so the water runs shallow over them; a
+ * set stone in the water is the one crossing the Dolmen own. The four
+ * water cells of y 207 (worldgen Water at 139..140, WaterShallow at
+ * 138 and 141) are laid as WaterShallow UNDER the counter (88..91:
+ * set stones the water runs over; walkable), each with Detail.FordStone
+ * in its bed so the slab reads through the water (the fix pass: bare
+ * WaterShallow read as a paler band of brook); a bank stone stands on
+ * each side, LISTED silhouettes whatever the counter says: east on
+ * the sand at (142,208), one south of the turn (never at the corner),
+ * counter 86; west on the grass at (137,207), counter 92. The line
+ * breaks ONCE, here, for its two silhouettes.
+ */
+export const FORD = {
+  ROW: 207,
+  WET: [[141, 207], [140, 207], [139, 207], [138, 207]] as ReadonlyArray<Pt>,
+  EAST_STONE: [142, 208] as Pt,
+  WEST_STONE: [137, 207] as Pt,
+  /** The turn from the bank run into the crossing: CourseWall on the sand, water to its west. */
+  TURN: [142, 207] as Pt,
+} as const;
+
+/**
+ * S10 THE LAST COURSES and SARSEN'S CORNER (frame MEADOW; brief §1.2).
+ * SENTENCE (the scene's): Sarsen stands where the Course ends in the
+ * meadow's sheet because the crofters walk here and the small diggers
+ * restack the cairn here every night.
+ *
+ * The patch authors ITS OWN small sheet (band 10 owns the belt's):
+ * the north band (62..80, 200..202) and the south band (60..82,
+ * 206..212), the wall's own row INCLUDED so the last courses stand
+ * with their feet in the water (the ninth course's idiom; E3 bakes
+ * them over the water's contour). THE DRY STRIP y 203..205 between
+ * them is the ground the Course keeps dry: Dirt worn ragged (the
+ * sheep stand on it; the crofters say their sheep stand ON the Course
+ * and mean this strip). A worldgen trunk stands on the strip at
+ * (76,203) and the sheet's edges skip a fibre plant at (63,206), a
+ * trunk at (61,208), a fibre plant at (81,212) and a sapling at
+ * (80,201): authored trunks only; the brushes paint round them.
+ * THE END PLUMBSTONE at (65,206) (counter 165, listed): the Course's
+ * last stone, water west and south of it. THE CAIRN: FieldCairn at
+ * (68,203) on the strip's north row with water at (68,202) (forced
+ * whatever the sheet's ragged edge says): half in the sheet by
+ * adjacency; FieldCairn always (a nightly swap would move a tile for
+ * everyone; the beat is Sarsen's dawn walk and his line). The
+ * counter's own stile lands at (74,206) (156) and its stone at
+ * (70,206) (160): the brief's (78,206) was a guess at the count.
+ */
+export const MEADOW_SCENE = {
+  NORTH_BAND: { x0: 62, y0: 200, x1: 80, y1: 202 } as Box4,
+  SOUTH_BAND: { x0: 60, y0: 206, x1: 82, y1: 212 } as Box4,
+  STRIP: { x0: 66, y0: 203, x1: 82, y1: 205 } as Box4,
+  /** The wall's row: every cell under the last courses is water first. */
+  WALL_ROW: { y: 206, x0: 65, x1: 82 },
+  END: [65, 206] as Pt,
+  CAIRN: [68, 203] as Pt,
+  CAIRN_WATER: [68, 202] as Pt,
+  /** Sarsen's dawn stop, the cell south of the cairn where he sets its one wrong stone right (routine sarsen_cairn, L3's). */
+  CAIRN_STOP: [68, 204] as Pt,
+  /** The strip's trunk, worldgen's own, left standing: the sheep shelter under it. */
+  STRIP_TRUNK: [76, 203] as Pt,
+} as const;
+
+/**
+ * THE CAST OF THE MEADOW (brief §4, the 9e rows). Sarsen, young for a
+ * Marl: on the dry strip facing north at his cairn and the crofts'
+ * way, the first Dolmen a player meets. The def `dolmen_sarsen` and
+ * the routine `sarsen_cairn` (post 1.2; 05:30-06:30 a walk once to
+ * the cairn's south cell, 120 s facing N, and home; 15-16 wander r2)
+ * are L3's; the server warns once and stands him mute until they
+ * land. THE POST IS THE ORIGIN.
+ */
+export const POSTS_MEADOW = {
+  dolmen_sarsen: { slug: 'dolmen_sarsen', x: 70, y: 204, dir: N, routine: 'sarsen_cairn' },
+} as const satisfies Record<string, Post>;
+/**
+ * THE SHEEP: one spawn row, sheep x7, seat (76,204) r 1 on the dry
+ * strip, hours 18→7, passive: six ewes and the lamb, counted on at
+ * dusk and off at dawn (the count is true on the ground or the line
+ * is not said). The one row on the Course that keeps hours. The
+ * radius is the LEASH (the server's scatter and wander both read it):
+ * r 1 keeps every sheep on the strip's three rows y 203..205; the
+ * first cut's r 3 stood one in the north sheet at dusk (the fix
+ * pass), and "the sheep stand on it" is the line's own claim.
+ */
+export const SHEEP_ROW = {
+  npc: 'sheep',
+  seat: [76, 204] as Pt,
+  radius: 1,
+  count: 7,
+  hours: { from: 18, to: 7 },
+  passive: true,
+} as const;
+
+/**
+ * WATCH (the proof lane shoots these; nothing moves for them): the
+ * worldgen trunks that stand one or two rows SOUTH of a Course cell
+ * and paint their crowns north over the wall at the true frame.
+ * RECORDED, NOT FELLED (the Dolmen fell no wood; brief §10: if a run
+ * cannot be seen at all the bend moves, never the tree). sett.test
+ * derives the same list from the ground and pins it here.
+ */
+export const CROWNED: Readonly<Record<Exclude<FrameId, 'sett'>, ReadonlyArray<{ cell: Pt; trunk: Pt }>>> = {
+  course_a: [
+    { cell: [149, 267], trunk: [149, 268] },
+    { cell: [144, 244], trunk: [144, 246] },
+  ],
+  course_b: [],
+  course_c: [
+    { cell: [106, 207], trunk: [106, 209] },
+    { cell: [104, 207], trunk: [104, 209] },
+    { cell: [100, 206], trunk: [100, 207] },
+    { cell: [97, 206], trunk: [97, 207] },
+  ],
+  meadow: [],
+};
+
+/** KEEP_OUT for the Course frames: cells that hold only their listed tiles (TILE_SKIP always lawful). */
+export const KEEP_OUT_FRAMES: Readonly<Record<Exclude<FrameId, 'sett'>, ReadonlyArray<KeepOut>>> = {
+  course_a: [],
+  course_b: [
+    { cells: FORD.WET, allow: [Tile.WaterShallow], why: 'the crossing: set stone under the water, never a wall across the brook' },
+    { cells: [FORD.EAST_STONE, FORD.WEST_STONE], allow: [Tile.PlumbStone], why: 'a bank stone on each side of the ford' },
+  ],
+  course_c: [],
+  meadow: [
+    { cells: [[68, 204], [70, 204]], allow: [Tile.Dirt], why: 'Sarsen\'s stand and his dawn stop: worn Dirt, never a solid' },
+    { cells: [[68, 202]], allow: [Tile.WaterShallow], why: 'the cairn is half in the sheet by adjacency' },
+    { cells: [[68, 203]], allow: [Tile.FieldCairn], why: 'the cairn, FieldCairn always' },
+    { cells: [[65, 206]], allow: [Tile.PlumbStone], why: 'the END stone' },
+  ],
+};
+/** No light and none of the taken on the Course (lint.lightsCensus, lint.noTimber). */
+export const LIGHTS_CENSUS_FRAMES = { emberBeds: 0, pitLampsDark: 0 } as const;
+export const TAKEN_FRAMES = { brokenCarts: 0, charterPosts: 0, pitLampsDark: 0 } as const;
 
 // =====================================================================
 // KEEP_OUT (§3.3): cells the zone never authors past the listed tile.
@@ -552,6 +821,9 @@ export const PINS = {
   SETT, FRAMES, E1_THE_LIP, E2_THE_WEST_TONGUE, E3_THE_SINTER_TONGUE, SEAM, STAIRS_NORTH, STAIRS_CORE, STAIRS, REACH_FROM,
   HEAD, RIMSET, CORE_STEPS, PLUG, WETFLOOR, YARD, SHELF, SOUTH,
   POSTS, VORL_ROW, LOOPS, COURSE_LAW, COURSE_GAPS, KEEP_OUT, LIGHTS_CENSUS, TAKEN,
+  // 9e: the Course frames and the meadow.
+  COURSE_A, COURSE_B, COURSE_C, MEADOW, COURSE_FRAMES, SHOAL_SEAT, COURSE_PTS, COURSE_TILES_PER_FRAME, COURSE_END_COUNT,
+  FORD, MEADOW_SCENE, POSTS_MEADOW, SHEEP_ROW, CROWNED, KEEP_OUT_FRAMES, LIGHTS_CENSUS_FRAMES, TAKEN_FRAMES,
 } as const;
 export type Pins = typeof PINS;
 export { Tile };

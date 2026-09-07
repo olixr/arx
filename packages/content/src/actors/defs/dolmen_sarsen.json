@@ -1,0 +1,17 @@
+{
+  "id": "dolmen_sarsen",
+  "name": "Sarsen",
+  "title": "Setter of the dry end",
+  "examine": "Young for a Marl, which means nothing to you. Bone hide, grey mottle, the chalk bob hung true, the hands open. There is a cairn at its feet and it has just set one stone of it right.",
+  "disposition": "neutral",
+  "protection": "untargetable",
+  "model": {
+    "kind": "creature",
+    "creature": "dolmen"
+  },
+  "lines": [
+    "The small diggers stack this every night with one stone wrong. I set it right every morning. Neither of us has said anything about it. It is a good arrangement.",
+    "Six ewes and the lamb. Counted on at dusk. Counted off at dawn. The sheep man has not come across. The count does not need him.",
+    "The stile is the weight keeper's. It is set. We do not set stiles that ask. That one asks. It stands."
+  ]
+}

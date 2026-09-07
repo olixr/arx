@@ -5,6 +5,7 @@
  */
 import { PlaneId, isRiftPlane, itemDef, movesetFor, rolledStats, strikePose, weaponStrikeEffects } from '@arx/content';
 import { BACKSTAB_MULT_DEFAULT, COMBO_STAGES, DestructibleInfo, EntityId, EntityKind, GUARD_SWEEP_KNOCKBACK, GUARD_SWEEP_RANGE, GUARD_SWEEP_WINDUP, PLAYER_POWER_PER_LEVEL, POLEARM_WAR_GRIP_MULT, STRIKE_CLOCKS, SkillId, StatusId, TILE_DEFS, TWOHAND_ARC_HALF, Tile, advanceCombo, destructibleInfo, isBehind, levelForXp, nearestFloorTile, offhandDamageFactor, powerMult as powerMultFn, statusSwingFactor, swingCooldown, swingMult } from '@arx/shared';
+import { COURSE_BROKEN, isCourseGap } from './courseStile.js';
 import { rollBasic, surgeCritPct, surgeDmgMult } from './formulas.js';
 import type { GameServer, PlayerComp } from './gameServer.js';
 
@@ -384,7 +385,7 @@ export function meleeSwing(srv: GameServer,
   // arc bursts regardless of what the blade finds to bleed — through
   // the SAME cone the blade cuts (a greatweapon's wide reap clears
   // wide scenery; this used to hardcode the sword's ±60°).
-  srv.smashPropsInArc(pos, aim, range, arcHalf);
+  srv.smashPropsInArc(pos, aim, range, arcHalf, player);
   // Strike effects live on the blade that lands — the echo cut reads
   // the offhand instance, exactly like coats.
   const struckWeapon =
@@ -503,11 +504,13 @@ export function blowSmashes(info: DestructibleInfo): boolean {
  * beside it. Every prop in the arc goes at once: clearing a room is
  * the fantasy.
  */
-export function smashPropsInArc(srv: GameServer, 
+export function smashPropsInArc(srv: GameServer,
   pos: { plane: PlaneId; x: number; y: number },
   aim: number,
   range: number,
   arcHalf = Math.PI / 3,
+  /** THE REVERSE (band 9e): the player whose swing this is; absent for an NPC's. */
+  by?: PlayerComp,
 ): void {
   const world = srv.worldOf(pos.plane);
   const r = Math.ceil(range + 1);
@@ -528,7 +531,7 @@ export function smashPropsInArc(srv: GameServer,
       let diff = Math.abs(angleTo - aim) % (Math.PI * 2);
       if (diff > Math.PI) diff = Math.PI * 2 - diff;
       if (diff > arcHalf && dist > 0.9) continue;
-      srv.hitProp(pos.plane, tx, ty, g as Tile, info, angleTo);
+      srv.hitProp(pos.plane, tx, ty, g as Tile, info, angleTo, by);
     }
   }
 }
@@ -540,13 +543,14 @@ export function smashPropsInArc(srv: GameServer,
  * remaining fraction in `radius` (the client shudders the prop and
  * spits chips); the last blow runs the full burst.
  */
-export function hitProp(srv: GameServer, 
+export function hitProp(srv: GameServer,
   plane: PlaneId,
   tx: number,
   ty: number,
   tile: Tile,
   info: DestructibleInfo,
   dir: number,
+  by?: PlayerComp,
 ): void {
   const key = `${plane}|${tx},${ty}`;
   const left = (srv.propDamage.get(key) ?? info.hits) - 1;
@@ -564,7 +568,7 @@ export function hitProp(srv: GameServer,
     return;
   }
   srv.propDamage.delete(key);
-  srv.smashProp(plane, tx, ty, tile, info, dir);
+  srv.smashProp(plane, tx, ty, tile, info, dir, by);
 }
 
 /**
@@ -576,13 +580,15 @@ export function hitProp(srv: GameServer,
  * client-side theatre keyed off ONE broadcast fx — the server never
  * simulates a splinter.
  */
-export function smashProp(srv: GameServer, 
+export function smashProp(srv: GameServer,
   plane: PlaneId,
   tx: number,
   ty: number,
   tile: Tile,
   info: DestructibleInfo,
   dir: number,
+  /** THE REVERSE (band 9e): the player whose hand felled it; absent for an NPC's blow or a spill. */
+  by?: PlayerComp,
 ): void {
   // Fx FIRST: it carries the impact heading + kind, and must land
   // before the tile patch that erases the prop.
@@ -604,6 +610,18 @@ export function smashProp(srv: GameServer,
       ? (built.prevTile as Tile)
       : nearestFloorTile((x, y) => world.groundAt(x, y), tx, ty);
   srv.setWorldTile(plane, tx, ty, floor);
+  // THE REVERSE (contested lands, band 9e; courseStile.ts law 3): a
+  // course wall or a plumb stone that FALLS to a player's hand — this
+  // door, the third blow, never a chip — stamps `course_broken` on
+  // that character, forever. No deed (no Dolmen faction), no message
+  // (a people that never asks does not reproach); Forty Stones' offer
+  // forbids it. An NPC's blow and a spill arrive with no hand.
+  const isCourse = tile === Tile.CourseWall || tile === Tile.PlumbStone;
+  if (by !== undefined && isCourse) srv.setPlayerFlag(by, COURSE_BROKEN);
+  // THE SLOW CIRCLE's other half: a set stone that falls AT a roster
+  // gap regrows as the gap (the stile), never as a wall, so the errand
+  // stays repeatable whatever a hand did to the set stone.
+  const stands = tile === Tile.CourseWall && isCourseGap(plane, tx, ty) ? Tile.CourseStile : tile;
   // THE CLEARED HALL STAYS CLEARED: inside a live delve nothing
   // stands back up — a smashed cracked wall stays open (never
   // resealing a hidden room mid-run), a scattered bone pile stays
@@ -614,7 +632,7 @@ export function smashProp(srv: GameServer,
       plane,
       tx,
       ty,
-      tile,
+      tile: stands,
       over: floor,
     });
   }

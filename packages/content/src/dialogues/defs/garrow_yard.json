@@ -1,0 +1,61 @@
+{
+  "id": "garrow_yard",
+  "start": "hub",
+  "requires": ["quest:forty_stones:active"],
+  "bindings": [{ "kind": "actor", "target": "charter_garrow", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "You are here for the stone. They sent a topsider, because they do not come and they do not ask. I have a schedule.",
+      "choices": [
+        {
+          "text": "The Charter's price for two stones.",
+          "next": "price",
+          "requires": ["quest:the_levy_posted:done", "quest:the_carter_price:available"]
+        },
+        {
+          "text": "They are asking. In words. Through me.",
+          "next": "asked",
+          "forbids": ["garrow_asked"],
+          "set": ["garrow_asked"]
+        },
+        {
+          "text": "They are asking again.",
+          "next": "twice",
+          "requires": ["garrow_asked"],
+          "forbids": ["quest:the_levy_posted:done"]
+        }
+      ]
+    },
+    {
+      "id": "price",
+      "text": "Forty coins. Two stones off the load, under Charter paper, and the entry says sold. Where it came from is a field. Where it goes is a road. You do the middle.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_carter_price" }],
+      "choices": [
+        { "text": "Forty.", "next": "sold" },
+        { "text": "No.", "next": "refused" }
+      ]
+    },
+    {
+      "id": "sold",
+      "text": "Forty on the counter when you have it, and two come off the load under Charter paper. Until then they ride the wain. I have a schedule.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_carter_price" }]
+    },
+    {
+      "id": "refused",
+      "text": "Then the load goes to the dike. It was going there."
+    },
+    {
+      "id": "asked",
+      "text": "Asked. Written down. Two off the load, and the column says asked, which it has not said before. It says it once.",
+      "hooks": [
+        { "kind": "give", "item": "course_stone", "qty": 2 },
+        { "kind": "standing", "faction": "fordgate", "delta": -2 }
+      ]
+    },
+    {
+      "id": "twice",
+      "text": "The column says asked. It does not say twice. I have a schedule."
+    }
+  ]
+}

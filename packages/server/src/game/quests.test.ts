@@ -14,6 +14,7 @@ import {
   type QuestProgress,
 } from './quests.js';
 import { GameServer } from './gameServer.js';
+import { countItem } from './inventory.js';
 
 const HUNT: QuestDef = {
   id: 'hunt',
@@ -310,6 +311,7 @@ function flagSlate(defs: QuestDef[]) {
   type Fn = (...a: unknown[]) => unknown;
   const proto = GameServer.prototype as unknown as Record<string, Fn>;
   const stored: Array<[string, number]> = [];
+  const cleared: string[] = [];
   const pushes = { avail: 0, wire: 0, persist: 0 };
   const player = {
     characterId: 9,
@@ -322,20 +324,30 @@ function flagSlate(defs: QuestDef[]) {
     session: { sendJson: () => {}, playerEid: null },
   };
   const s = {
-    accounts: { setFlag: (_c: number, f: string, v: number) => stored.push([f, v]) },
+    accounts: {
+      setFlag: (_c: number, f: string, v: number) => stored.push([f, v]),
+      clearFlag: (_c: number, f: string) => cleared.push(f),
+    },
     questDefs: new Map(defs.map((d) => [d.id, d])),
     actorDefs: new Map(),
+    positions: new Map(),
     grantArt: () => {},
+    grantXp: () => {},
+    creditStanding: () => {},
     pushQuestAvail: () => pushes.avail++,
     pushQuestWire: () => pushes.wire++,
     persistQuest: () => pushes.persist++,
     setWaypoint: () => {},
     answerFactionGate: () => false,
+    questDoneWire: () => ({}),
+    questRewardsWire: () => ({}),
     setPlayerFlag: proto.setPlayerFlag,
+    clearPlayerFlag: proto.clearPlayerFlag,
     creditQuestEvent: proto.creditQuestEvent,
     questCtx: proto.questCtx,
+    questTurnIn: proto.questTurnIn,
   };
-  return { s, player, stored, pushes, call: (fn: string, ...a: unknown[]) => (s as unknown as Record<string, Fn>)[fn]!.call(s, ...a) };
+  return { s, player, stored, cleared, pushes, call: (fn: string, ...a: unknown[]) => (s as unknown as Record<string, Fn>)[fn]!.call(s, ...a) };
 }
 
 test('THE FLAG OBJECTIVE: the one flag choke credits live, and never on a synthetic namespace', () => {
@@ -378,4 +390,62 @@ test('THE FLAG OBJECTIVE: a turn-in reward flag credits another active quest', (
   player.quests.set('the_relief', { status: 'active', stage: 0, progress: [0], acceptedAt: 1, completions: 0 });
   for (const f of CULL.rewards.flags ?? []) call('setPlayerFlag', player, f);
   assert.equal(WAIT.stages[player.quests.get('the_relief')!.stage]!.id, 'word');
+});
+
+/**
+ * THE SPENT ASK (contested lands, band 9e; the audit's free repeat):
+ * a repeatable quest's flag objective is cleared by the engine at the
+ * turn-in. Left held, freshProgress would retro-credit the stage at
+ * the next run's entry and the choke would swallow the fresh stamp
+ * (a held flag stores nothing), so every run after the first walked
+ * the ask for free. A one-shot quest keeps its deed.
+ */
+const CIRCLE: QuestDef = {
+  id: 'circle',
+  name: 'The Circle',
+  giver: 'mother',
+  repeat: { cooldownHours: 24 },
+  stages: [
+    { id: 'load', journal: 'Load.', objectives: [{ kind: 'talk', actor: 'carter' }] },
+    { id: 'set', journal: 'Set.', objectives: [{ kind: 'flag', flag: 'gap_set', label: 'Set the gap' }] },
+    { id: 'carry', journal: 'Carry.', objectives: [{ kind: 'collect', item: 'stone', count: 1 }] },
+  ],
+  rewards: { flags: ['carried'] },
+};
+
+test("THE SPENT ASK: a repeatable quest's flag objective is engine-cleared at the turn-in, so the next run asks again; a one-shot keeps its deed", () => {
+  const { player, call, cleared } = flagSlate([CIRCLE, CULL]);
+  const inv = player.inventory as Array<{ item: string; qty: number }>;
+  // Day 1: accept, talk, set (the stamp credits live), carry, turn in.
+  player.quests.set('circle', acceptQuest(CIRCLE, undefined, call('questCtx', player) as QuestPlayerCtx));
+  call('creditQuestEvent', player, 'talk', 'carter');
+  assert.equal(CIRCLE.stages[player.quests.get('circle')!.stage]!.id, 'set');
+  call('setPlayerFlag', player, 'gap_set');
+  assert.equal(CIRCLE.stages[player.quests.get('circle')!.stage]!.id, 'carry', 'the fresh stamp credits the set');
+  inv.push({ item: 'stone', qty: 1 });
+  assert.equal(call('questTurnIn', 1, player, 'circle'), true, 'turned in');
+  assert.equal(countItem(inv as never, 'stone'), 0, 'the stone is consumed');
+  assert.equal(player.flags.has('gap_set'), false, 'the ask is spent');
+  assert.deepEqual(cleared, ['gap_set'], 'and cleared in the store');
+  assert.equal(player.flags.get('carried'), 1, 'the reward flag stands');
+  assert.equal(player.flags.get('quest:circle:done'), undefined, 'the synthetic namespace is never held');
+  // Day 2 (the cooldown passed): the talk alone crosses ONE stage; the
+  // set stage opens with no retro-credit and waits for a fresh stamp.
+  const done = player.quests.get('circle')!;
+  assert.equal(done.status, 'done');
+  player.quests.set('circle', acceptQuest(CIRCLE, done, { ...(call('questCtx', player) as QuestPlayerCtx), now: (done.cooldownUntil ?? 0) + 1 }));
+  call('creditQuestEvent', player, 'talk', 'carter');
+  const q2 = player.quests.get('circle')!;
+  assert.equal(CIRCLE.stages[q2.stage]!.id, 'set', 'the set stage is open, not crossed');
+  assert.deepEqual(q2.progress, [0], 'no stone set today');
+  call('setPlayerFlag', player, 'gap_set');
+  assert.equal(CIRCLE.stages[player.quests.get('circle')!.stage]!.id, 'carry', "today's stamp credits today's ask");
+  // A one-shot quest's deed stands past its turn-in: the den stays broken.
+  player.quests.set('wool_count', acceptQuest(CULL, undefined, call('questCtx', player) as QuestPlayerCtx));
+  call('creditQuestEvent', player, 'talk', 'sergeant');
+  call('setPlayerFlag', player, 'poi_veil_den_broken');
+  call('creditQuestEvent', player, 'talk', 'drover');
+  assert.equal(call('questTurnIn', 1, player, 'wool_count'), true);
+  assert.equal(player.flags.get('poi_veil_den_broken'), 1, 'a one-shot keeps its flag');
+  assert.deepEqual(cleared, ['gap_set'], 'nothing else cleared');
 });

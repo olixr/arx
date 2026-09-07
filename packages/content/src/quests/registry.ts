@@ -132,6 +132,16 @@ import keepTheThread from './defs/keep_the_thread.json';
 import theStoneAtDusk from './defs/the_stone_at_dusk.json';
 import theGreyRoot from './defs/the_grey_root.json';
 import theFullTally from './defs/the_full_tally.json';
+// THE CONTESTED LANDS band 9e — THE COURSE AND THE COUNT (plan §11.6;
+// band9d/blockout.md §6; rulings R-E, R-G): the Dolmen's errand and the
+// third corner by reads only. FORTY STONES (the coursemother, daily,
+// forbids `course_broken`), THE CARTER'S PRICE (the Charter's coin road,
+// open once the levy is posted) and BLACK STONE (the Culm's stone for
+// stone, shut to the causeway's character). No faction pays the Dolmen;
+// the count is the pay.
+import fortyStones from './defs/forty_stones.json';
+import theCarterPrice from './defs/the_carter_price.json';
+import blackStone from './defs/black_stone.json';
 
 const SOURCES: readonly unknown[] = [
   theWetCount,
@@ -230,6 +240,9 @@ const SOURCES: readonly unknown[] = [
   theStoneAtDusk,
   theGreyRoot,
   theFullTally,
+  fortyStones,
+  theCarterPrice,
+  blackStone,
   // Item-borne: the torn page starts it; nobody offers it.
   theStolenLedger,
   // The Sealed Galleries — Grettir's brother's crew, closed at last.

@@ -427,6 +427,24 @@ export const TURNOFF_RECT: ZoneRect = { x: -80, y: -182, w: 14, h: 16 };
  * Nothing authored north of y 266.
  */
 export const SETT_RECT: ZoneRect = { x: 150, y: 265, w: 50, h: 74 };
+/**
+ * THE CONTESTED LANDS, band 9e (band9d/blockout.md §6.0; rulings R-B,
+ * R-G; maps/sett/pins.ts carries the tape): THE STANDING COURSE from
+ * the Sett's lip to the Drowned Meadow, four thin frames of the Sett's
+ * module, each cut to its run, each a patch on worldgen (TILE_SKIP
+ * everywhere the line is not; no apron, no core, no spawn, no haven,
+ * no chest). MEASURED against the shoal's booted seat (203,184; its
+ * 60x46 footprint x 173..232, y 161..206 padded by AUTHORED_ZONE_PAD
+ * to x 167..238, y 155..212): the frames' greatest x is 149. The
+ * frames ABUT and never overlap: A's east ring beside the Sett's seam
+ * cell, A's north ring under B's south, B's west beside C's east, C's
+ * west beside the meadow's east; the one polyline crosses each seam
+ * with no hole (sett.test seamJoined). Never a rect north of y 198.
+ */
+export const COURSE_A_RECT: ZoneRect = { x: 140, y: 238, w: 10, h: 31 };
+export const COURSE_B_RECT: ZoneRect = { x: 133, y: 204, w: 12, h: 34 };
+export const COURSE_C_RECT: ZoneRect = { x: 84, y: 204, w: 49, h: 6 };
+export const MEADOW_RECT: ZoneRect = { x: 57, y: 198, w: 27, h: 17 };
 
 /**
  * THE PAD LAW, mirrored from the server's siting scan (server
@@ -1008,9 +1026,11 @@ const AUTHORED_PLAN: GeographyDef = {
     // belt, about 34 s, with NOTHING authored on it (no cairn, no
     // lamp, no board; the threshold is the lip's own PlumbStone); THE
     // EAST MEADOW x 197..230 (the 9a proof spot); the belt west of x
-    // 150 except the Course's thread (9e); the forest strip x 81..118
-    // between the brook and the Drowned Meadow except the Course's
-    // thread (9e); THE SOUTH RING AND THE GULLY inside the Sett's own
+    // 150 except the Course's thread (band 9e: one polyline of set
+    // stone, 166 tiles from the north gap to the meadow's END stone,
+    // with one crossing of the brook and nothing else authored); the
+    // forest strip x 81..118 between the brook and the Drowned Meadow
+    // except the Course's thread; THE SOUTH RING AND THE GULLY inside the Sett's own
     // rect (y 301..334: a chalk line, three rubble, nothing else); the
     // stone track to the ford (two furrows at the lip and no more);
     // the Gloamwood south of y 335. Nothing stands in any of them.
@@ -1187,6 +1207,18 @@ const AUTHORED_PLAN: GeographyDef = {
     // no spawn, no haven, no chest. amberfen_shoal in [1,1] is its
     // acknowledged neighbour.
     { id: 'sett', name: 'The Sett', ...SETT_RECT },
+    // THE CONTESTED LANDS, band 9e (rulings R-B, R-G; blockout §6.0):
+    // THE STANDING COURSE, four thin frames of the Sett's module from
+    // the lip to the Drowned Meadow: three carry a line of set stone
+    // and nothing else, the fourth Sarsen's corner (the sheets, the
+    // dry strip, the last courses, the cairn, one actor row and the
+    // sheep row). Patches on worldgen: no apron, no core, no spawn,
+    // no haven, no chest. Every rect measured against the shoal's
+    // booted seat under the pad law before its origin was written.
+    { id: 'course_a', name: 'The Standing Course', ...COURSE_A_RECT },
+    { id: 'course_b', name: 'The Standing Course', ...COURSE_B_RECT },
+    { id: 'course_c', name: 'The Standing Course', ...COURSE_C_RECT },
+    { id: 'meadow', name: 'The Drowned Meadow', ...MEADOW_RECT },
   ],
   // THE LIVING GROUND's first authored stroke (band 7, owed E2): the
   // burn under the Ashlamp. Centre the shell's heart (57,95), reach 11

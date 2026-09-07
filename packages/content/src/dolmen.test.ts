@@ -283,17 +283,17 @@ test('THE THREE EXAMINES: verbatim, whole sentences, no dash, never a question, 
   assert.equal(setter.lines!.length, 3);
 });
 
-test('THE ROSTER (9c, re-pinned by 9d): no crown pool; the named four stand, Sarsen waits on 9e', () => {
+test('THE ROSTER (9c, re-pinned by 9d and 9e): no crown pool; the named five stand', () => {
   const tribe = AUTHORED_STANCES.tribes.find((t) => t.id === 'dolmen')!;
   assert.deepEqual(tribe.npcPrefixes, DOLMEN_PREFIXES, 'the prefix flip is L4\'s E4 (one constant above)');
   assert.deepEqual(tribe.actors, []);
-  // 9d's cast lane wrote the four named defs; Sarsen is placed and
-  // written by 9e (the meadow patch), never before his ground exists.
-  assert.equal(NPC_ACTORS.get('dolmen_sarsen'), undefined, 'dolmen_sarsen is 9e\'s cast lane');
+  // 9d's cast lane wrote the four named defs; 9e's wrote Sarsen with
+  // the meadow patch (his ground exists now: brief §1.2, §5.5).
+  assert.ok(NPC_ACTORS.get('dolmen_sarsen'), 'dolmen_sarsen is LIVE (9e)');
   const dolmenActors = [...NPC_ACTORS.values()].filter((a) => a.id.startsWith('dolmen_'));
   assert.deepEqual(
     dolmenActors.map((a) => a.id).sort(),
-    ['dolmen_ammat', 'dolmen_drusa', 'dolmen_durrow', 'dolmen_firekeeper', 'dolmen_setter', 'dolmen_vorl', 'dolmen_weightkeeper', 'dolmen_wetsetter'],
+    ['dolmen_ammat', 'dolmen_drusa', 'dolmen_durrow', 'dolmen_firekeeper', 'dolmen_sarsen', 'dolmen_setter', 'dolmen_vorl', 'dolmen_weightkeeper', 'dolmen_wetsetter'],
   );
   for (const a of dolmenActors) {
     // The pool spends no name; a named throat spends exactly its own.
@@ -316,14 +316,19 @@ test('THE ROSTER (9c, re-pinned by 9d): no crown pool; the named four stand, Sar
 
 const DIR_N = -Math.PI / 2;
 
-/** The four named defs: slug, name, title, body, design seed (DOLMEN_DESIGNS, 9c Fix B), the binding lines. */
-const NAMED: ReadonlyArray<{ id: string; name: string; title: string; creature: string; seed: number; lines: readonly string[]; examine: string }> = [
+/**
+ * The named defs: slug, name, title, body, design seed (DOLMEN_DESIGNS,
+ * 9c Fix B), the binding lines. The four of 9d, and Sarsen of 9e (the
+ * Marl at the Drowned Meadow's dry end; brief §5.5, R-F).
+ */
+const NAMED: ReadonlyArray<{ id: string; name: string; title: string; creature: string; seed: number; band: '9d' | '9e'; lines: readonly string[]; examine: string }> = [
   {
     id: 'dolmen_ammat',
     name: 'Ammat',
     title: 'Coursemother of the Marl',
     creature: 'dolmen',
     seed: 17,
+    band: '9d',
     examine:
       'She stands on the lip with her hands open before her knees and a chalk bob hung true from the rim of her shoulders. Her yoke is the lowest on the Sett. She has counted you already.',
     lines: [
@@ -338,6 +343,7 @@ const NAMED: ReadonlyArray<{ id: string; name: string; title: string; creature: 
     title: 'Sinter of the wet floor',
     creature: 'dolmen_sinter',
     seed: 23,
+    band: '9d',
     examine:
       "It stands stooped at the water's edge, the tallest hood on the Sett, a milky crust along the rim and a calcite bob hung true. The wet is on it. It has come up to say one thing.",
     lines: ['We stop at the ninth.', 'Four courses wet from the bottom row. The top row last.', 'We set here. Lower.'],
@@ -348,6 +354,7 @@ const NAMED: ReadonlyArray<{ id: string; name: string; title: string; creature: 
     title: 'Culm of the hearth cells',
     creature: 'dolmen_culm',
     seed: 29,
+    band: '9d',
     // The brief's examine ran 204 chars; "along the seam of its mouth"
     // became "along its mouth seam" (the bible's own phrase) to pass
     // the 200-char import cap with the sentence intact.
@@ -365,6 +372,7 @@ const NAMED: ReadonlyArray<{ id: string; name: string; title: string; creature: 
     title: 'Keeper of the weight',
     creature: 'dolmen_champion',
     seed: 7,
+    band: '9d',
     examine:
       'The biggest of them by a head and a hand. Rust hide streaked like old iron, three dull beads along the rim of the yoke, a rust stone bob hung true. Its hands are open. Behind it the row and the cart.',
     lines: [
@@ -375,12 +383,35 @@ const NAMED: ReadonlyArray<{ id: string; name: string; title: string; creature: 
       'The stone ones under the barrow are unset. We would set them. We are not let.',
     ],
   },
+  {
+    id: 'dolmen_sarsen',
+    name: 'Sarsen',
+    title: 'Setter of the dry end',
+    creature: 'dolmen',
+    seed: 41,
+    band: '9e',
+    examine:
+      'Young for a Marl, which means nothing to you. Bone hide, grey mottle, the chalk bob hung true, the hands open. There is a cairn at its feet and it has just set one stone of it right.',
+    lines: [
+      'The small diggers stack this every night with one stone wrong. I set it right every morning. Neither of us has said anything about it. It is a good arrangement.',
+      'Six ewes and the lamb. Counted on at dusk. Counted off at dawn. The sheep man has not come across. The count does not need him.',
+      // The bible's third line with the name struck: no Dolmen line names a Dolmen.
+      "The stile is the weight keeper's. It is set. We do not set stiles that ask. That one asks. It stands.",
+    ],
+  },
 ];
 
-/** The 9d trees (9e's ammat_count, durrow_cold, the offers and turn-ins are that run's: brief §5.3, §9, §11.5). */
+/** The 9d trees (ammat_course now carries THE DOOR BACK's two nodes, 9e). */
 const TREES_9D = ['ammat_course', 'drusa_ninth', 'durrow_hearth'] as const;
+/** The 9e trees in a Dolmen mouth (brief §5.1, §5.3, §5.5): the count, the offers, the turn-ins, the cold, Sarsen's two. */
+const TREES_9E = [
+  'ammat_count', 'q_forty_stones_offer', 'q_forty_stones_turnin',
+  'durrow_cold', 'q_black_stone_offer', 'q_black_stone_turnin',
+  'sarsen_cairn', 'sarsen_paid',
+] as const;
+const TREES = [...TREES_9D, ...TREES_9E] as const;
 
-/** Every string a Dolmen says in 9d: the examines, the barks, the tree nodes. */
+/** Every string a Dolmen says (9d + 9e): the examines, the barks, the tree nodes. */
 function dolmenStrings(): Array<{ where: string; s: string }> {
   const out: Array<{ where: string; s: string }> = [];
   for (const n of NAMED) {
@@ -388,16 +419,16 @@ function dolmenStrings(): Array<{ where: string; s: string }> {
     out.push({ where: `${n.id}/examine`, s: a.examine! });
     for (const [i, l] of (a.lines ?? []).entries()) out.push({ where: `${n.id}/lines[${i}]`, s: l });
   }
-  for (const id of TREES_9D) {
+  for (const id of TREES) {
     for (const node of DIALOGUES.get(id)!.nodes) out.push({ where: `${id}/${node.id}`, s: node.text });
   }
   return out;
 }
 
-/** The player's plates in the 9d trees (a topsider speaks, as statements). */
+/** The player's plates in the Dolmen trees (a topsider speaks, as statements). */
 function playerStrings(): Array<{ where: string; s: string }> {
   const out: Array<{ where: string; s: string }> = [];
-  for (const id of TREES_9D) {
+  for (const id of TREES) {
     for (const node of DIALOGUES.get(id)!.nodes) {
       for (const c of node.choices ?? []) out.push({ where: `${id}/${node.id}/choice`, s: c.text });
     }
@@ -415,7 +446,7 @@ function offersFor(actor: string): DialogueOffer[] {
   return out;
 }
 
-test('THE FOUR NAMED (9d): each validates on its stratum, untargetable, neutral, no cast row, no combat, no gear, no goods', () => {
+test('THE FIVE NAMED (9d + Sarsen 9e): each validates on its stratum, untargetable, neutral, no cast row, no combat, no gear, no goods', () => {
   const cast = JSON.parse(readFileSync(CAST_JSON, 'utf8')) as Record<string, unknown>;
   for (const n of NAMED) {
     const raw = JSON.parse(readFileSync(actorJson(n.id), 'utf8')) as Record<string, unknown>;
@@ -464,8 +495,10 @@ test('THE DESIGN SEAM (9c Fix B): the client keys a pinned seed on every named s
 
 test('THE STRINGS OF §5: every Dolmen string passes the five regexes and the whole-sentence split', () => {
   const strings = dolmenStrings();
-  // 4 examines + 3 + 3 + 3 + 5 lines + the trees' nodes (5 + 1 + 3).
-  assert.equal(strings.length, 4 + 14 + 9);
+  // 5 examines + 3 + 3 + 3 + 5 + 3 lines + the 9d trees' nodes (8 with
+  // THE DOOR BACK's two and the carried line + 1 + 3) + the 9e trees'
+  // nodes (1 + 3 + 1 + 1 + 3 + 1 + 3 + 1).
+  assert.equal(strings.length, 5 + 17 + (8 + 1 + 3) + 14);
   for (const { where, s } of strings) {
     assert.match(s, SET_SENTENCE, `${where}: set sentence: ${s}`);
     assert.doesNotMatch(s, BOUNDARY, `${where}: boundary: ${s}`);
@@ -490,10 +523,14 @@ test('THE ONE WIT, THE ONE STILE, COUNT BEFORE OPINION: the card\'s allowances s
   // Ammat's one wit is spent in ammat_course's hub and nowhere else.
   const wit = all.filter(({ s }) => /it minds wrong weight/.test(s));
   assert.deepEqual(wit.map((w) => w.where), ['ammat_course/hub']);
-  // The stile law is spoken once in the Sett, by Vorl, and by no tree.
+  // The stile law is spoken once in the Sett, by Vorl, and by no tree;
+  // it is disowned once at the meadow, by Sarsen's third bark, with the
+  // weight keeper unnamed; no other Dolmen names the stile.
   const stile = all.filter(({ s }) => /One stone sets a step/.test(s));
   assert.deepEqual(stile.map((w) => w.where), ['dolmen_vorl/lines[1]']);
-  assert.ok(all.every(({ s }) => !/stile/i.test(s)), 'no other Dolmen names the stile');
+  const disown = all.filter(({ s }) => /stile/i.test(s));
+  assert.deepEqual(disown.map((w) => w.where), ['dolmen_sarsen/lines[2]']);
+  assert.match(NPC_ACTORS.get('dolmen_sarsen')!.lines![2]!, /^The stile is the weight keeper's\./);
   // Count before opinion: the counts open on their numbers.
   assert.match(NPC_ACTORS.get('dolmen_ammat')!.lines![0]!, /^Nine\. Fourteen\. Thirty three\./);
   assert.match(DIALOGUES.get('drusa_ninth')!.nodes[0]!.text, /^Four courses wet/);
@@ -504,21 +541,23 @@ test('THE ONE WIT, THE ONE STILE, COUNT BEFORE OPINION: the card\'s allowances s
   for (const { where, s } of all.filter((x) => x.where.startsWith('dolmen_drusa') || x.where.startsWith('drusa_'))) {
     assert.doesNotMatch(s, /\bI\b/, `${where}: the Sinter speak as we`);
   }
-  // The Culm's one oath opens and closes Durrow, and nobody else says it.
+  // The Culm's one oath opens and closes Durrow, and nobody else says it
+  // (9e: the cold and the black stone's turn-in are Durrow's too).
   const oath = all.filter(({ s }) => /Cold on/.test(s));
-  assert.ok(oath.length >= 3 && oath.every((o) => /^(dolmen_durrow|durrow_)/.test(o.where)), 'the oath is the Culm\'s alone');
+  assert.ok(oath.length >= 5 && oath.every((o) => /^(dolmen_durrow|durrow_|q_black_stone_)/.test(o.where)), 'the oath is the Culm\'s alone');
 });
 
-test('THE TREES\' RAILS (9d): ammat_course, drusa_ninth, durrow_hearth bound as §5 says; durrow_cold waits on 9e', () => {
+test('THE TREES\' RAILS (9d, re-pinned by 9e): ammat_course, drusa_ninth, durrow_hearth bound as §5 says; durrow_cold LIVE', () => {
   // Ammat: the hub while no quest tree outranks it; the sworn choice is
   // the one stamper of `capstone_counted` (9e's three quests require it)
-  // and retires itself; the gap line opens once counted.
+  // and retires itself; the gap line opens once counted; THE DOOR BACK
+  // (9e) rides the hub's third choice.
   const ammat = DIALOGUES.get('ammat_course')!;
   assert.deepEqual(ammat.bindings, [{ kind: 'actor', target: 'dolmen_ammat', priority: 5 }]);
   assert.equal(ammat.once, undefined);
   assert.equal(ammat.requires, undefined);
   const hub = ammat.nodes.find((n) => n.id === 'hub')!;
-  assert.deepEqual(hub.choices!.map((c) => c.text), ['Say the count.', 'The gap.']);
+  assert.deepEqual(hub.choices!.map((c) => c.text), ['Say the count.', 'The gap.', 'I will carry the forty after all.']);
   assert.deepEqual(hub.choices![1]!.requires, ['capstone_counted']);
   const count = ammat.nodes.find((n) => n.id === 'count')!;
   const sworn = count.choices!.find((c) => c.next === 'sworn')!;
@@ -526,7 +565,7 @@ test('THE TREES\' RAILS (9d): ammat_course, drusa_ninth, durrow_hearth bound as 
   assert.deepEqual(sworn.set, ['capstone_counted']);
   assert.deepEqual(sworn.forbids, ['capstone_counted']);
   assert.equal(count.choices!.find((c) => c.next === 'level')!.text, 'Not today.');
-  for (const id of ['sworn', 'level', 'gap']) {
+  for (const id of ['sworn', 'level', 'gap', 'carried']) {
     const n = ammat.nodes.find((x) => x.id === id)!;
     assert.equal(n.next, undefined, `${id} ends`);
     assert.equal(n.choices, undefined, `${id} ends`);
@@ -561,9 +600,15 @@ test('THE TREES\' RAILS (9d): ammat_course, drusa_ninth, durrow_hearth bound as 
   assert.equal(cold.next, undefined);
 
   // durrow_cold (the shelf shut on the east fork's A branch by a READ of
-  // `dike_planted`, priority 10 over the hearth's 5) is 9e's L3 tree
-  // (brief §5.3, §9, §11.5): it lands with 9e's errand proof, never before.
-  assert.equal(DIALOGUES.get('durrow_cold'), undefined, 'durrow_cold is 9e\'s');
+  // `dike_planted`, priority 10 over the hearth's 5, never once) landed
+  // with 9e's errand (brief §5.3; plan-amendments §C.4 verbatim).
+  const cold9e = DIALOGUES.get('durrow_cold')!;
+  assert.ok(cold9e, 'durrow_cold is LIVE (9e)');
+  assert.deepEqual(cold9e.bindings, [{ kind: 'actor', target: 'dolmen_durrow', priority: 10 }]);
+  assert.deepEqual(cold9e.requires, ['dike_planted']);
+  assert.equal(cold9e.once, undefined, 'the shelf stays shut: never once');
+  assert.equal(cold9e.nodes.length, 1);
+  assert.equal(cold9e.nodes[0]!.text, 'Eight stakes in the wet road. Your hands. The shelf is lit and it is not lit for you. Cold on you. Go and be cold.');
 
   // The ladders pick the right mouth.
   const at = (actor: string, flags: Iterable<string>) => {
@@ -574,17 +619,25 @@ test('THE TREES\' RAILS (9d): ammat_course, drusa_ninth, durrow_hearth bound as 
   assert.equal(at('dolmen_ammat', ['capstone_counted', dialogueDoneFlag('ammat_course')]), 'ammat_course');
   assert.equal(at('dolmen_drusa', []), 'drusa_ninth');
   assert.equal(at('dolmen_durrow', []), 'durrow_hearth');
-  // Until 9e's durrow_cold outranks it, the A side hears the hearth too.
-  assert.equal(at('dolmen_durrow', ['dike_planted']), 'durrow_hearth');
+  // durrow_cold outranks the hearth for the A side, every visit.
+  assert.equal(at('dolmen_durrow', ['dike_planted']), 'durrow_cold');
+  assert.equal(at('dolmen_durrow', ['dike_planted', dialogueDoneFlag('durrow_cold')]), 'durrow_cold');
   // THE MOUTH ON THE ROW: Vorl has barks and no tree; nothing binds him.
   assert.deepEqual(offersFor('dolmen_vorl'), []);
   assert.equal(NPC_ACTORS.get('dolmen_vorl')!.lines!.length, 5);
-  // No 9d tree reads a world: flag or writes a quest (the closed rosters).
+  // No 9d tree reads a world: flag or writes a quest (the closed rosters):
+  // bare character flags, and (9e) the quest: answers THE DOOR BACK reads.
+  const DOOR_BACK = new Set(['ammat_course/reoffer', 'ammat_course/resworn']);
   for (const id of TREES_9D) {
     const d = DIALOGUES.get(id)!;
-    const reads = [...(d.requires ?? []), ...(d.forbids ?? []), ...d.nodes.flatMap((n) => (n.choices ?? []).flatMap((c) => [...(c.requires ?? []), ...(c.forbids ?? []), ...(c.set ?? [])]))];
-    for (const f of reads) assert.ok(/^[a-z][a-z0-9_]*$/.test(f), `${id}: bare character flag '${f}'`);
-    for (const n of d.nodes) assert.equal(n.hooks, undefined, `${id}/${n.id}: no hooks in 9d`);
+    const reads = [...(d.requires ?? []), ...(d.forbids ?? []), ...d.nodes.flatMap((n) => (n.choices ?? []).flatMap((c) => [...(c.requires ?? []), ...(c.forbids ?? [])]))];
+    for (const f of reads) assert.ok(/^([a-z][a-z0-9_]*|quest:[a-z][a-z0-9_]*:(available|active|ready|done))$/.test(f), `${id}: a bare character flag or a quest: answer '${f}'`);
+    const writes = d.nodes.flatMap((n) => (n.choices ?? []).flatMap((c) => c.set ?? []));
+    for (const f of writes) assert.ok(/^[a-z][a-z0-9_]*$/.test(f), `${id}: bare character flag '${f}'`);
+    for (const n of d.nodes) {
+      if (DOOR_BACK.has(`${id}/${n.id}`)) continue;
+      assert.equal(n.hooks, undefined, `${id}/${n.id}: no hooks but THE DOOR BACK's`);
+    }
   }
 });
 
@@ -657,20 +710,160 @@ test('THE WET LEGS: both of Drusa\'s legs land on WaterShallow at level -2 in th
 test('THE BIBLE AND THE CARD: the four Actor lines read LIVE and Vorl\'s row is the mouth', () => {
   const bible = readFileSync(new URL('../../../docs/dialogue-bible/contested-lands.md', import.meta.url).pathname, 'utf8');
   for (const n of NAMED) {
-    assert.ok(new RegExp('`' + n.id + '` \\(LIVE, band 9d').test(bible), `${n.id} is LIVE in the bible`);
+    assert.ok(new RegExp('`' + n.id + '` \\(LIVE, band ' + n.band).test(bible), `${n.id} is LIVE in the bible (band ${n.band})`);
   }
+  assert.ok(/`charter_garrow` \(LIVE, band 9e/.test(bible), 'Garrow is LIVE in the bible');
   assert.ok(!/`dolmen_champion` crown via `names\[\]`/.test(bible), 'the names[] crown retires (R-C: a named, mouthed row)');
   const card = readFileSync(new URL('../../../docs/VOICE-contested-lands.md', import.meta.url).pathname, 'utf8');
   assert.ok(/\*\*Vorl Fullweight\*\*[\s\S]{0,120}`dolmen_vorl`/.test(card), 'the VOICE card names the mouth');
 });
 
-test('THE NAMES GATE: node tools/voice/names.mjs --collide exits 0 over the four new throats', () => {
+test('THE NAMES GATE: node tools/voice/names.mjs --collide exits 0 over the named throats (9d\'s four, 9e\'s Sarsen and Garrow)', () => {
   const tool = new URL('../../../tools/voice/names.mjs', import.meta.url).pathname;
   const out = execFileSync(process.execPath, [tool, '--collide'], { encoding: 'utf8' });
   assert.match(out, /NAMES GATE: PASS/);
   assert.match(out, /CROSS-TOWN NAME COLLISIONS: 0/);
   // No Dolmen name stands one slip from another person's.
-  for (const name of ['Ammat', 'Drusa', 'Durrow', 'Vorl']) {
+  for (const name of ['Ammat', 'Drusa', 'Durrow', 'Vorl', 'Sarsen', 'Garrow']) {
     assert.ok(!new RegExp(`\\b${name}\\s*~|~\\s*${name}\\b`).test(out), `${name} is in no one-letter pair`);
   }
+});
+
+// ===================================================================
+// BAND 9e — THE COURSE AND THE COUNT (band9d/blockout.md §5.1, §5.3,
+// §5.5, §5.6, §6.2-6.4, §6.6; rulings R-E, R-G; plan-amendments §C).
+// Sarsen's def and two trees, Garrow's def and three trees, the count,
+// the cold, the offers and the turn-ins: the third corner attaches by
+// READS only of the east fork's flags, never re-opening its chains.
+// ===================================================================
+
+/** Garrow's trees (a human carter in his own register: whole sentences, no dash, the schedule ends every hard sentence). */
+const GARROW_TREES = ['garrow_yard', 'q_the_carter_price_offer', 'q_the_carter_price_turnin'] as const;
+
+test('SARSEN (9e): the Marl at the dry end, design seed 41, three barks with the weight keeper unnamed, two trees', () => {
+  const sarsen = NPC_ACTORS.get('dolmen_sarsen')!;
+  assert.equal(sarsen.title, 'Setter of the dry end');
+  assert.deepEqual(sarsen.model, { kind: 'creature', creature: 'dolmen' });
+  assert.equal(sarsen.lines!.length, 3);
+  // The cairn tree: the cairn line, the sheep line, the wall; no hook, no gate.
+  const cairn = DIALOGUES.get('sarsen_cairn')!;
+  assert.deepEqual(cairn.bindings, [{ kind: 'actor', target: 'dolmen_sarsen', priority: 5 }]);
+  assert.equal(cairn.requires, undefined);
+  assert.equal(cairn.once, undefined);
+  assert.equal(cairn.nodes.find((n) => n.id === 'hub')!.text, sarsen.lines![0]);
+  assert.equal(cairn.nodes.find((n) => n.id === 'sheep')!.text, sarsen.lines![1]);
+  assert.match(cairn.nodes.find((n) => n.id === 'wall')!.text, /^This is the dry end\./);
+  for (const n of cairn.nodes) assert.equal(n.hooks, undefined, `sarsen_cairn/${n.id}: no hook`);
+  // The paid tree: once, on the B side's carried string, the bob in the hand.
+  const paid = DIALOGUES.get('sarsen_paid')!;
+  assert.deepEqual(paid.bindings, [{ kind: 'actor', target: 'dolmen_sarsen', priority: 10 }]);
+  assert.equal(paid.once, true);
+  assert.deepEqual(paid.requires, ['halvor_string_carried']);
+  assert.equal(paid.nodes.length, 1);
+  assert.deepEqual(paid.nodes[0]!.hooks, [{ kind: 'give', item: 'plumb_bob', qty: 1 }]);
+  // The ladder: the cairn to everyone; the string once; the cairn after.
+  const at = (actor: string, flags: Iterable<string>) => {
+    const set = new Set(flags);
+    return pickDialogue(offersFor(actor), (f) => set.has(f))?.id;
+  };
+  assert.equal(at('dolmen_sarsen', []), 'sarsen_cairn');
+  assert.equal(at('dolmen_sarsen', ['dike_planted']), 'sarsen_cairn', 'the A side hears the cairn');
+  assert.equal(at('dolmen_sarsen', ['halvor_string_carried']), 'sarsen_paid');
+  assert.equal(at('dolmen_sarsen', ['halvor_string_carried', dialogueDoneFlag('sarsen_paid')]), 'sarsen_cairn');
+  // The sheep count is Sarsen's line and the meadow's row (the placement lane's pin): six ewes and the lamb.
+  assert.match(sarsen.lines![1]!, /^Six ewes and the lamb\./);
+});
+
+test('THE THIRD CORNER (9e, R-G): by READS only of the east fork, nothing reads fen_side_taken, the chains never re-open', () => {
+  const at = (actor: string, flags: Iterable<string>) => {
+    const set = new Set(flags);
+    return pickDialogue(offersFor(actor), (f) => set.has(f))?.id;
+  };
+  // Ammat's count to the A character: once, at 8, above the hub and the offer.
+  const count = DIALOGUES.get('ammat_count')!;
+  assert.deepEqual(count.bindings, [{ kind: 'actor', target: 'dolmen_ammat', priority: 8 }]);
+  assert.equal(count.once, true);
+  assert.deepEqual(count.requires, ['dike_planted']);
+  assert.match(count.nodes[0]!.text, /Forty and eight\. The eight are yours\.$/);
+  assert.equal(at('dolmen_ammat', ['dike_planted']), 'ammat_count');
+  assert.equal(at('dolmen_ammat', ['dike_planted', 'capstone_counted', 'quest:forty_stones:available']), 'ammat_count', 'the count before the errand');
+  assert.equal(at('dolmen_ammat', ['dike_planted', dialogueDoneFlag('ammat_count')]), 'ammat_course');
+  assert.equal(at('dolmen_ammat', ['dike_planted', dialogueDoneFlag('ammat_count'), 'quest:forty_stones:available']), 'q_forty_stones_offer');
+  assert.equal(at('dolmen_ammat', ['halvor_string_carried']), 'ammat_course', 'the B side hears no count');
+  // Durrow's shelf closes to the A character (the cold at 10 over the offer at 8 over the hearth at 5).
+  assert.equal(at('dolmen_durrow', ['dike_planted', 'quest:black_stone:available']), 'durrow_cold');
+  assert.equal(at('dolmen_durrow', ['quest:black_stone:available']), 'q_black_stone_offer');
+  assert.equal(at('dolmen_durrow', ['halvor_string_carried']), 'durrow_hearth');
+  assert.deepEqual(DIALOGUES.get('q_black_stone_offer')!.forbids, ['dike_planted']);
+  // Garrow's coin road opens on the levy (quest:the_levy_posted:done), the asked stone to everyone once.
+  const yard = DIALOGUES.get('garrow_yard')!;
+  assert.deepEqual(yard.requires, ['quest:forty_stones:active']);
+  const hub = yard.nodes.find((n) => n.id === 'hub')!;
+  const price = hub.choices!.find((c) => c.next === 'price')!;
+  assert.deepEqual(price.requires, ['quest:the_levy_posted:done', 'quest:the_carter_price:available']);
+  const asked = hub.choices!.find((c) => c.next === 'asked')!;
+  assert.deepEqual(asked.forbids, ['garrow_asked']);
+  assert.deepEqual(asked.set, ['garrow_asked']);
+  assert.deepEqual(hub.choices!.find((c) => c.next === 'twice')!.requires, ['garrow_asked']);
+  assert.deepEqual(yard.nodes.find((n) => n.id === 'asked')!.hooks, [
+    { kind: 'give', item: 'course_stone', qty: 2 },
+    { kind: 'standing', faction: 'fordgate', delta: -2 },
+  ]);
+  // Nothing in a 9e tree reads fen_side_taken, weir_cut or a world: flag; the four east-fork quests are untouched.
+  for (const id of [...TREES_9E, ...GARROW_TREES]) {
+    const d = DIALOGUES.get(id)!;
+    const reads = [...(d.requires ?? []), ...(d.forbids ?? []), ...d.nodes.flatMap((n) => (n.choices ?? []).flatMap((c) => [...(c.requires ?? []), ...(c.forbids ?? [])]))];
+    for (const f of reads) {
+      assert.ok(!/^(fen_side_taken|weir_cut|charter_pass)$/.test(f), `${id}: never reads ${f}`);
+      assert.ok(!f.startsWith('world:'), `${id}: no world: flag`);
+    }
+    for (const n of d.nodes) {
+      for (const h of n.hooks ?? []) {
+        if (h.kind === 'quest_offer' || h.kind === 'quest_accept' || h.kind === 'quest_turnin') {
+          assert.ok(['forty_stones', 'the_carter_price', 'black_stone'].includes(h.quest), `${id}: only 9e's quests`);
+        }
+      }
+    }
+  }
+});
+
+test('GARROW (9e): a Charter carter in his own register, friendly, fordgate by membership, the schedule ends every hard sentence', () => {
+  const raw = JSON.parse(readFileSync(actorJson('charter_garrow'), 'utf8')) as Record<string, unknown>;
+  const res = validateNpcActor(raw);
+  assert.ok(res.ok, res.ok ? '' : res.errors.join('; '));
+  const g = NPC_ACTORS.get('charter_garrow')!;
+  assert.equal(g.name, 'Garrow');
+  assert.equal(g.title, 'Charter carter boss');
+  assert.equal(g.disposition, 'friendly');
+  // The validator refuses protection on a friendly body (it is already
+  // beyond combat's reach): the brief's "invulnerable" is the disposition's own.
+  assert.equal(g.protection, undefined);
+  assert.equal(g.model.kind, 'humanoid');
+  assert.equal(factionOfActor('charter_garrow'), 'fordgate');
+  assert.equal(g.lines!.length, 3);
+  assert.ok(g.examine!.length <= 200);
+  // THE PEOPLE SPEAK in a carter's mouth: whole sentences, no dash of any
+  // kind, the boundary held, no Dolmen or topsider name; a human may ask.
+  const DASH = /[-‐‑‒–—―]/;
+  const strings: Array<{ where: string; s: string }> = [{ where: 'examine', s: g.examine! }, ...g.lines!.map((s, i) => ({ where: `lines[${i}]`, s }))];
+  for (const id of GARROW_TREES) {
+    const d = DIALOGUES.get(id)!;
+    assert.deepEqual(d.bindings!.map((b) => b.target), ['charter_garrow']);
+    for (const n of d.nodes) {
+      strings.push({ where: `${id}/${n.id}`, s: n.text });
+      for (const c of n.choices ?? []) strings.push({ where: `${id}/${n.id}/choice`, s: c.text });
+      assert.equal(n.voice, undefined, `${id}/${n.id}: silence is the clip`);
+    }
+  }
+  for (const { where, s } of strings) {
+    assert.ok(!DASH.test(s), `${where}: dash in "${s}"`);
+    assert.doesNotMatch(s, BOUNDARY, `${where}: boundary: ${s}`);
+    assert.doesNotMatch(s, TOPSIDERS, `${where}: a name inside a carter's line: ${s}`);
+    for (const sentence of s.split(/(?<=[.!?])\s+/)) assert.match(sentence, /^[A-Z].*[.!?]$/, `${where}: fragment: ${sentence}`);
+  }
+  // "I have a schedule." closes at least five of his hard sentences (the bible's cadence).
+  assert.ok(strings.filter(({ s }) => /I have a schedule\.$/.test(s)).length >= 5);
+  // Vorl's mouth and the Dolmen barks stay silent on him: no cast row.
+  const cast = JSON.parse(readFileSync(CAST_JSON, 'utf8')) as Record<string, unknown>;
+  assert.equal(cast['charter_garrow'], undefined);
 });

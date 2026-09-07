@@ -695,6 +695,7 @@ import * as keySys from './keyring.js';
 import * as interestSys from './interest.js';
 import { BODY_NPC, BODY_PLAYER, BODY_SUMMON, LivestockLedger, RespawnQueue, SignLedger, StopIndex, packChunk } from './indexes.js';
 import * as meleeSys from './melee.js';
+import * as courseSys from './courseStile.js';
 import * as procSys from './procs.js';
 import * as statusSys from './statuses.js';
 import * as standingSys from './standing.js';
@@ -5553,6 +5554,15 @@ export class GameServer {
     // cell under the boots is in reach like any other.
     if (ground === Tile.WardThread) {
       this.cutWardThread(player, pos.plane, tx, ty, Math.atan2(dy, dx));
+      return;
+    }
+
+    // THE STILE VERB (contested lands, band 9e; courseStile.ts): a
+    // roster stile answers the hand that holds a course stone (the set
+    // stands for everyone and the gap opens again in ten minutes);
+    // every other stile is a crossing and answers nothing.
+    if (ground === Tile.CourseStile) {
+      courseSys.setCourseGap(this, player, pos.plane, tx, ty, Math.atan2(dy, dx));
       return;
     }
 
@@ -18472,6 +18482,20 @@ export class GameServer {
     // The durable stamp: deed rails and plain dialogue gates read this.
     this.setPlayerFlag(player, questDoneFlag(def.id), q.completions);
     for (const f of def.rewards.flags ?? []) this.setPlayerFlag(player, f);
+    // THE SPENT ASK (contested lands, band 9e; the audit's free
+    // repeat): a repeatable quest's flag objective is an ask the world
+    // answered once, and the turn-in spends it. Left held, the flag
+    // would retro-credit the same stage at tomorrow's entry
+    // (freshProgress) and the stamp that ought to credit it would
+    // return at the choke as a no-op (a held flag stores nothing), so
+    // every run after the first would walk the ask for free: Forty
+    // Stones' gap set once, banked every day. A one-shot quest keeps
+    // its flags (the den broken, the glade stood: the deed stands).
+    if (def.repeat) {
+      for (const s of def.stages) {
+        for (const o of s.objectives) if (o.kind === 'flag') this.clearPlayerFlag(player, o.flag);
+      }
+    }
     // Standing rides the one door; authored deltas never auto-cross.
     for (const s of def.rewards.standing ?? []) this.creditStanding(player, s.faction, s.delta);
 
@@ -19570,8 +19594,10 @@ export class GameServer {
     aim: number,
     range: number,
     arcHalf = Math.PI / 3,
+    /** THE REVERSE (band 9e): the player whose hand swung, so a course that falls stamps them. */
+    by?: PlayerComp,
   ): void {
-    return meleeSys.smashPropsInArc(this, pos, aim, range, arcHalf);
+    return meleeSys.smashPropsInArc(this, pos, aim, range, arcHalf, by);
   }
 
   /**
@@ -19588,8 +19614,9 @@ export class GameServer {
     tile: Tile,
     info: DestructibleInfo,
     dir: number,
+    by?: PlayerComp,
   ): void {
-    return meleeSys.hitProp(this, plane, tx, ty, tile, info, dir);
+    return meleeSys.hitProp(this, plane, tx, ty, tile, info, dir, by);
   }
 
   smashProp(
@@ -19599,8 +19626,9 @@ export class GameServer {
     tile: Tile,
     info: DestructibleInfo,
     dir: number,
+    by?: PlayerComp,
   ): void {
-    return meleeSys.smashProp(this, plane, tx, ty, tile, info, dir);
+    return meleeSys.smashProp(this, plane, tx, ty, tile, info, dir, by);
   }
 
   /**
@@ -22357,7 +22385,9 @@ export class GameServer {
           // THE DELIBERATE CUT: the Court's thread stands under a shot
           // as under a swing (melee.ts blowSmashes, the one predicate).
           if (dinfo && meleeSys.blowSmashes(dinfo)) {
-            this.hitProp(pos.plane, stx, sty, g as Tile, dinfo, Math.atan2(proj.dirY, proj.dirX));
+            // THE REVERSE (band 9e): the shot's owner is the hand a
+            // falling course stamps.
+            this.hitProp(pos.plane, stx, sty, g as Tile, dinfo, Math.atan2(proj.dirY, proj.dirX), this.players.get(proj.ownerEid));
           }
         }
       }

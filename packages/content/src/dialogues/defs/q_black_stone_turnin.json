@@ -1,0 +1,13 @@
+{
+  "id": "q_black_stone_turnin",
+  "start": "burns",
+  "requires": ["quest:black_stone:ready"],
+  "bindings": [{ "kind": "actor", "target": "dolmen_durrow", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "burns",
+      "text": "One kerb. Four black. It burns on. Cold on you, then. Go and be cold.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "black_stone" }]
+    }
+  ]
+}

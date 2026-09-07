@@ -451,3 +451,323 @@ test('sett: byte-identical across two builds and through JSON', () => {
   assert.deepEqual(round.actorSpawns ?? [], a.actorSpawns ?? []);
   assert.deepEqual(round.signs ?? [], a.signs ?? []);
 });
+
+// =====================================================================
+// THE STANDING COURSE (band 9e; brief §6.0, §2 S9-S10, §7; rulings
+// R-B, R-G; the 9d handoff §C.1): the four frames from the lip to the
+// Drowned Meadow. Every number below is the ground's as the route was
+// probed (band9e/l1/probe.out, route.out); pins.ts says where the
+// brief's candidates and the ground disagreed and why the ground won.
+// =====================================================================
+import {
+  buildCourseA,
+  buildCourseB,
+  buildCourseC,
+  buildMeadow,
+} from './sett.js';
+import {
+  buildCourseAWithRegistry,
+  buildCourseBWithRegistry,
+  buildCourseCWithRegistry,
+  buildCourseWithRegistries,
+  buildMeadowWithRegistry,
+} from './sett/index.js';
+import { crowned, noFelling, seamJoined, waterOverField } from './sett/lint.js';
+import { fieldFree, fieldGround, fieldWater } from './sett/ctx.js';
+import { TREE_TILES } from '@arx/shared';
+import { COURSE_A_RECT, COURSE_B_RECT, COURSE_C_RECT, MEADOW_RECT, PLANNED_ZONE_RECTS } from '../geography.js';
+
+const fieldName = (x: number, y: number): string => TILE_DEFS[fieldGround(x, y) as Tile]?.name ?? '?';
+const trunk = (x: number, y: number): boolean => TREE_TILES.has(fieldGround(x, y) as Tile);
+const specials = (r: { course: Array<{ x: number; y: number; i: number; tile: Tile }> }): Array<[number, number, number, string]> =>
+  r.course.filter((c) => c.tile !== Tile.CourseWall).map((c) => [c.x, c.y, c.i, TILE_DEFS[c.tile].name]);
+type Built = ReturnType<typeof buildCourseAWithRegistry>;
+const FRAME_BUILDS: ReadonlyArray<[keyof typeof PINS.KEEP_OUT_FRAMES, () => Built, { x: number; y: number; w: number; h: number }]> = [
+  ['course_a', buildCourseAWithRegistry, COURSE_A_RECT],
+  ['course_b', buildCourseBWithRegistry, COURSE_B_RECT],
+  ['course_c', buildCourseCWithRegistry, COURSE_C_RECT],
+  ['meadow', buildMeadowWithRegistry, MEADOW_RECT],
+];
+
+test('course: THE FOUR FRAMES — measured rects, flat, wild, spawnless, chestless, boardless; the seat pin against the shoal\'s booted footprint', () => {
+  const pad = PINS.SHOAL_SEAT.padded;
+  const gaps: string[] = [];
+  for (const [id, build, rect] of FRAME_BUILDS) {
+    const { zone: z } = build();
+    const frame = PINS.FRAMES[id];
+    assert.equal(z.id, id);
+    assert.deepEqual({ x: z.origin.x, y: z.origin.y, w: z.width, h: z.height }, rect, `${id}: the built rect is the plan's`);
+    assert.deepEqual(frame.RECT, rect, `${id}: pins and geography agree`);
+    assert.equal(z.growth, 'wild');
+    assert.equal(z.spawn, undefined, 'no spawn');
+    assert.equal(z.reachFrom, undefined, 'flat: no reach anchor');
+    assert.equal(z.elev, undefined, 'level 0 throughout');
+    assert.equal(z.chests, undefined);
+    assert.deepEqual(z.signs ?? [], [], 'no board on the Course: the count is spoken');
+    assert.equal(count(z, Tile.Signpost) + count(z, Tile.HangingSign), 0);
+    assert.ok(z.origin.y >= 198, `${id}: never a rect north of y 198`);
+    // THE SEAT PIN: no cell inside the shoal's padded footprint; the
+    // nearest gap filed.
+    const x1 = z.origin.x + z.width - 1;
+    const y1 = z.origin.y + z.height - 1;
+    const rows = y1 >= pad.y0 && z.origin.y <= pad.y1;
+    const cols = x1 >= pad.x0 && z.origin.x <= pad.x1;
+    assert.ok(!(rows && cols), `${id} stands inside the shoal's pad`);
+    gaps.push(`${id}:${rows ? pad.x0 - x1 : z.origin.y - pad.y1}`);
+    const vet = validateZone(z);
+    assert.equal(vet.ok, true, vet.error);
+    assert.equal(vet.fenceAdded, 0);
+    assert.deepEqual(zonePlacementErrors(z), []);
+    assert.ok(PLANNED_ZONE_RECTS.some((p) => p.id === id && p.x === rect.x && p.y === rect.y && p.w === rect.w && p.h === rect.h && !p.apron), `${id} has its planned row, no apron`);
+  }
+  assert.deepEqual(gaps, ['course_a:26', 'course_b:23', 'course_c:35', 'meadow:84'], 'the nearest clearances: B by 23 columns, A by 26 rows');
+  assert.deepEqual(PINS.SHOAL_SEAT.anchor, [203, 184]);
+  assert.deepEqual(PINS.SHOAL_SEAT.padded, { x0: 167, y0: 155, x1: 238, y1: 212 });
+  // THE FRAMES ABUT and never overlap (later zones win overlaps; none here).
+  const rects = [PINS.SETT, PINS.COURSE_A, PINS.COURSE_B, PINS.COURSE_C, PINS.MEADOW].map((f) => f.RECT);
+  for (let i = 0; i < rects.length; i++) {
+    for (let j = i + 1; j < rects.length; j++) {
+      const a = rects[i]!;
+      const b = rects[j]!;
+      const overlap = a.x <= b.x + b.w - 1 && b.x <= a.x + a.w - 1 && a.y <= b.y + b.h - 1 && b.y <= a.y + a.h - 1;
+      assert.ok(!overlap, `rects ${i} and ${j} overlap`);
+    }
+  }
+  assert.equal(PINS.COURSE_A.RECT.x + PINS.COURSE_A.RECT.w, PINS.SETT.RECT.x, 'A\'s east ring beside the Sett\'s west ring');
+  assert.equal(PINS.COURSE_B.RECT.y + PINS.COURSE_B.RECT.h, PINS.COURSE_A.RECT.y, 'B\'s south ring over A\'s north ring');
+  assert.equal(PINS.COURSE_C.RECT.x + PINS.COURSE_C.RECT.w, PINS.COURSE_B.RECT.x, 'C\'s east ring beside B\'s west ring');
+  assert.equal(PINS.MEADOW.RECT.x + PINS.MEADOW.RECT.w, PINS.COURSE_C.RECT.x, 'the meadow\'s east ring beside C\'s west ring');
+});
+
+test('course: THE LINE IS ONE LINE — 166 tiles from the north gap to the END stone, every seam crossed with no hole, the counter one constant', () => {
+  const frames = buildCourseWithRegistries();
+  assert.deepEqual(seamJoined(frames, PINS.COURSE_END_COUNT), [], 'seamJoined');
+  assert.equal(PINS.COURSE_END_COUNT, 166, 'R-B: 150..170 tiles, one crossing');
+  // The counter chain, derived never remembered: each frame starts
+  // where the one before it left off.
+  assert.equal(PINS.SETT.COURSE_START, 0);
+  assert.equal(PINS.COURSE_A.COURSE_START, 0 + PINS.HEAD.RUN_TILES);
+  assert.equal(PINS.COURSE_B.COURSE_START, PINS.COURSE_A.COURSE_START + PINS.COURSE_TILES_PER_FRAME.course_a);
+  assert.equal(PINS.COURSE_C.COURSE_START, PINS.COURSE_B.COURSE_START + PINS.COURSE_TILES_PER_FRAME.course_b);
+  assert.equal(PINS.MEADOW.COURSE_START, PINS.COURSE_C.COURSE_START + PINS.COURSE_TILES_PER_FRAME.course_c);
+  assert.equal(PINS.MEADOW.COURSE_START + PINS.COURSE_TILES_PER_FRAME.meadow, PINS.COURSE_END_COUNT);
+  for (const [id, , , ] of FRAME_BUILDS) {
+    const f = PINS.FRAMES[id];
+    const pts = PINS.COURSE_PTS[id];
+    assert.deepEqual(pts[0], f.SEAM[0], `${id}: the polyline enters at the frame's first seam`);
+    if (id !== 'meadow') assert.deepEqual(pts[pts.length - 1], f.SEAM[1], `${id}: and leaves at its second`);
+  }
+  // THE ONE CROSSING: exactly four wet tiles on the whole line, all in B at y 207.
+  const wet = frames.flatMap((f) => f.registry.course.filter((c) => c.tile === Tile.WaterShallow).map((c) => [c.x, c.y, c.i] as const));
+  assert.deepEqual(wet, [[141, 207, 88], [140, 207, 89], [139, 207, 90], [138, 207, 91]]);
+  // Every stile and stone on the line, by the counter (0 and 12 are the Sett's).
+  const all = frames.flatMap((f) => specials(f.registry));
+  assert.deepEqual(all.filter(([, , , n]) => n === 'course stile').map(([, , i]) => i), [0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 132, 144, 156], 'a stile every twelve (120 is a stone)');
+  assert.deepEqual(all.filter(([, , , n]) => n === 'plumb stone').map(([, , i]) => i), [40, 80, 86, 92, 120, 160, 165], 'a stone every forty, plus the two bank stones and the END');
+  // THE TRUNK LAW and the WATCH: no authored cell over a trunk, a bush,
+  // a prop or a rise; the crowned cells are exactly the pinned ones.
+  for (const { zone: z, registry } of frames.slice(1)) {
+    const id = z.id as keyof typeof PINS.CROWNED;
+    assert.deepEqual(noFelling(z, fieldFree, fieldWater, fieldName), [], `${id}: noFelling`);
+    assert.deepEqual(crowned(registry, trunk), PINS.CROWNED[id], `${id}: the WATCH list is the ground's`);
+    assert.deepEqual(waterOverField(z, registry.water, id === 'meadow' ? fieldFree : fieldWater, fieldName), [], `${id}: painted water replaced only its field`);
+  }
+});
+
+test('course: COURSE_A THE BELT RUN — two west, north along the wood\'s edge, west six, north to the bank; the fortieth stone on the straight', () => {
+  const { zone: z, registry } = buildCourseAWithRegistry();
+  assert.equal(registry.course.length, 37);
+  assert.deepEqual(PINS.COURSE_PTS.course_a, [[149, 267], [148, 267], [148, 244], [142, 244], [142, 238]]);
+  assert.equal(count(z, Tile.CourseWall), 33);
+  assert.equal(count(z, Tile.CourseStile), 3);
+  assert.equal(count(z, Tile.PlumbStone), 1);
+  assert.deepEqual(specials(registry), [
+    [148, 264, 24, 'course stile'],
+    [148, 252, 36, 'course stile'],
+    [148, 248, 40, 'plumb stone'],
+    [144, 244, 48, 'course stile'],
+  ]);
+  assert.equal(at(z, 149, 267), Tile.CourseWall, 'the seam beside the Sett\'s (150,267)');
+  assert.equal(at(z, 142, 238), Tile.CourseWall, 'the seam under B\'s (142,237)');
+  // The three trunks on y 267 that refused the brief's west run stand.
+  for (const [x, y] of [[142, 267], [144, 267], [146, 267]] as const) {
+    assert.ok(trunk(x, y), `worldgen's trunk at (${x},${y})`);
+    assert.equal(at(z, x, y), TILE_SKIP, 'left standing');
+  }
+  // Nothing authored but the line: every authored cell is a course tile.
+  let authored = 0;
+  for (const g of z.ground) if (g !== TILE_SKIP) authored++;
+  assert.equal(authored, 37);
+  assert.deepEqual(z.actorSpawns ?? [], []);
+  assert.deepEqual(z.spawns ?? [], []);
+});
+
+test('course: COURSE_B THE BANK RUN and THE FORD — the sand at x 142, the turn, four set stones under the water, a stone on each bank', () => {
+  const { zone: z, registry } = buildCourseBWithRegistry();
+  const { FORD } = PINS;
+  assert.equal(registry.course.length, 40);
+  assert.deepEqual(PINS.COURSE_PTS.course_b, [[142, 237], [142, 207], [133, 207]]);
+  assert.equal(count(z, Tile.CourseWall), 29);
+  assert.equal(count(z, Tile.CourseStile), 4);
+  assert.equal(count(z, Tile.PlumbStone), 3, 'the eightieth, and the two bank stones');
+  assert.equal(count(z, Tile.WaterShallow), 4, 'the ford');
+  assert.deepEqual(specials(registry), [
+    [142, 234, 60, 'course stile'],
+    [142, 222, 72, 'course stile'],
+    [142, 214, 80, 'plumb stone'],
+    [142, 210, 84, 'course stile'],
+    [142, 208, 86, 'plumb stone'],
+    [141, 207, 88, 'shallow water'],
+    [140, 207, 89, 'shallow water'],
+    [139, 207, 90, 'shallow water'],
+    [138, 207, 91, 'shallow water'],
+    [137, 207, 92, 'plumb stone'],
+    [133, 207, 96, 'course stile'],
+  ]);
+  // S9: the ford's cells were the brook's own water; the bank stones
+  // stand on the sand and the grass; the turn is a wall on the sand.
+  for (const [x, y] of FORD.WET) {
+    assert.ok(fieldWater(x, y), `(${x},${y}) is the brook's water`);
+    assert.equal(at(z, x, y), Tile.WaterShallow);
+  }
+  assert.equal(fieldName(FORD.EAST_STONE[0], FORD.EAST_STONE[1]), 'sand');
+  assert.equal(fieldName(FORD.WEST_STONE[0], FORD.WEST_STONE[1]), 'grass');
+  assert.equal(fieldName(FORD.TURN[0], FORD.TURN[1]), 'sand');
+  assert.equal(at(z, FORD.TURN[0], FORD.TURN[1]), Tile.CourseWall);
+  assert.deepEqual(registry.water, [[141, 207], [140, 207], [139, 207], [138, 207]]);
+  // THE SET SLAB (the fix pass): every ford cell carries the slab the
+  // bake paints under the water, and nothing else on the frame does.
+  for (const [x, y] of FORD.WET) assert.equal(detail(z, x, y), Detail.FordStone, `(${x},${y}) carries a set slab`);
+  assert.equal(dcount(z, Detail.FordStone), 4, 'four slabs, the crossing');
+  assert.deepEqual(registry.details.map((d) => [d.x, d.y, d.d]), FORD.WET.map(([x, y]) => [x, y, Detail.FordStone]));
+  assert.deepEqual(registry.occluders, [[142, 208], [137, 207]], 'the two silhouettes');
+  // The bank run stands on the east bank's sand from y 226 to y 208.
+  for (let y = 208; y <= 226; y++) assert.equal(fieldName(142, y), 'sand', `(142,${y}) is the bank`);
+  // The fishing spots that refused y 206 and y 210 as the crossing stand.
+  assert.equal(fieldName(141, 206), 'fishing spot');
+  assert.equal(fieldName(141, 210), 'fishing spot');
+  assert.equal(at(z, 141, 206), TILE_SKIP);
+  assert.equal(at(z, 141, 210), TILE_SKIP);
+});
+
+test('course: COURSE_C THE STRIP RUN — y 207 across the grass and into the wood, one step north at x 101 for the two trunks on the row', () => {
+  const { zone: z, registry } = buildCourseCWithRegistry();
+  assert.equal(registry.course.length, 50);
+  assert.deepEqual(PINS.COURSE_PTS.course_c, [[132, 207], [101, 207], [101, 206], [84, 206]]);
+  assert.equal(count(z, Tile.CourseWall), 46);
+  assert.equal(count(z, Tile.CourseStile), 3);
+  assert.equal(count(z, Tile.PlumbStone), 1, 'the hundred and twentieth');
+  assert.deepEqual(specials(registry), [
+    [121, 207, 108, 'course stile'],
+    [109, 207, 120, 'plumb stone'],
+    [98, 206, 132, 'course stile'],
+    [86, 206, 144, 'course stile'],
+  ]);
+  assert.ok(trunk(100, 207) && trunk(97, 207), 'the two trunks the step is for');
+  assert.equal(at(z, 100, 207), TILE_SKIP);
+  assert.equal(at(z, 97, 207), TILE_SKIP);
+  assert.equal(at(z, 101, 207), Tile.CourseWall, 'the step\'s first corner');
+  assert.equal(at(z, 101, 206), Tile.CourseWall, 'and its second');
+  assert.equal(at(z, 84, 206), Tile.CourseWall, 'the seam beside the meadow\'s (83,206)');
+});
+
+test('course: MEADOW S10 — the two sheets, the dry strip, the last courses with their feet in the water, the END stone, the cairn, Sarsen and the sheep', () => {
+  const { zone: z, registry } = buildMeadowWithRegistry();
+  const M = PINS.MEADOW_SCENE;
+  assert.equal(registry.course.length, 19);
+  assert.deepEqual(PINS.COURSE_PTS.meadow, [[83, 206], [65, 206]]);
+  assert.equal(count(z, Tile.CourseWall), 16);
+  assert.equal(count(z, Tile.CourseStile), 1, 'the counter\'s own, at 156');
+  assert.equal(count(z, Tile.PlumbStone), 2, 'the hundred and sixtieth, and the END');
+  assert.deepEqual(specials(registry), [
+    [74, 206, 156, 'course stile'],
+    [70, 206, 160, 'plumb stone'],
+    [65, 206, 165, 'plumb stone'],
+  ]);
+  assert.equal(at(z, M.END[0], M.END[1]), Tile.PlumbStone, 'THE END STONE');
+  assert.equal(at(z, 64, 206), Tile.WaterShallow, 'water west of it');
+  assert.equal(at(z, 65, 207), Tile.WaterShallow, 'and south');
+  // THE SHEETS: 176 cells painted (the two bands, the wall's row, the
+  // cairn's water), 18 of them under the last courses, so 158 stand
+  // water; every one over worldgen grass at level 0; every cell under
+  // the wall's row painted first.
+  assert.equal(registry.water.length, 176);
+  assert.equal(count(z, Tile.WaterShallow), 158);
+  for (let x = M.WALL_ROW.x0; x <= M.WALL_ROW.x1; x++) {
+    assert.ok(registry.water.some(([wx, wy]) => wx === x && wy === M.WALL_ROW.y), `(${x},206) painted water under the course`);
+    assert.equal(at(z, x, 207), Tile.WaterShallow, `water south of (${x},206)`);
+  }
+  let north = 0;
+  let south = 0;
+  for (const [x, y] of registry.water) {
+    if (y >= M.NORTH_BAND.y0 && y <= M.NORTH_BAND.y1) north++;
+    else if (y >= M.SOUTH_BAND.y0 && y <= M.SOUTH_BAND.y1) south++;
+    else assert.fail(`water at (${x},${y}) is in neither band`);
+  }
+  // The north band's rag takes nineteen of its 57 cells (two of its
+  // three rows are edges); the south band keeps its held north row
+  // whole and rags the rest: 38 and 138 at this salt, 176 painted.
+  assert.deepEqual([north, south], [38, 138], `two bands: ${north} north, ${south} south`);
+  // THE DRY STRIP: three rows of worn Dirt between the sheets, ragged,
+  // the worldgen trunk on it standing; Sarsen's stand and his dawn stop
+  // always worn.
+  assert.equal(count(z, Tile.Dirt), 36);
+  for (const y of [203, 204, 205]) {
+    let dirt = 0;
+    for (let x = M.STRIP.x0; x <= M.STRIP.x1; x++) if (at(z, x, y) === Tile.Dirt) dirt++;
+    assert.ok(dirt >= 8, `row ${y} of the strip is worn (${dirt})`);
+  }
+  assert.ok(trunk(M.STRIP_TRUNK[0], M.STRIP_TRUNK[1]));
+  assert.equal(at(z, M.STRIP_TRUNK[0], M.STRIP_TRUNK[1]), TILE_SKIP, 'the strip\'s trunk stands');
+  assert.equal(at(z, 70, 204), Tile.Dirt);
+  assert.equal(at(z, M.CAIRN_STOP[0], M.CAIRN_STOP[1]), Tile.Dirt);
+  // THE CAIRN: on the strip's north row with water north of it.
+  assert.equal(at(z, M.CAIRN[0], M.CAIRN[1]), Tile.FieldCairn);
+  assert.equal(at(z, M.CAIRN_WATER[0], M.CAIRN_WATER[1]), Tile.WaterShallow);
+  assert.equal(count(z, Tile.FieldCairn), 1);
+  assert.equal(count(z, Tile.CairnFallen), 0, 'FieldCairn always');
+  // THE CAST: Sarsen on the strip facing north, the sheep row 18→7.
+  assert.deepEqual(z.actorSpawns, [{ actor: 'dolmen_sarsen', x: 70.5, y: 204.5, dir: N, routine: 'sarsen_cairn' }]);
+  // The leash is the strip's: r 1 keeps seven sheep on y 203..205 (r 3
+  // stood one in the north sheet at dusk; the fix pass).
+  assert.deepEqual(z.spawns, [{ npc: 'sheep', x: 76, y: 204, radius: 1, count: 7, passive: true, hours: { from: 18, to: 7 } }]);
+  assert.equal(PINS.SHEEP_ROW.radius, 1);
+  assert.equal(registry.posts.length, 1);
+  assert.deepEqual(registry.occluders, [[65, 206]]);
+});
+
+test('course: THE FLOODS run clean on every frame; byte-identical across two builds and through JSON', () => {
+  for (const [id, build] of FRAME_BUILDS) {
+    const { zone: z, registry } = build();
+    const from: [number, number] = [z.origin.x + 1, z.origin.y + 1];
+    assert.deepEqual(unreachableFloor(z, from), [], `${id}: no sealed pocket (the stiles and the ford pass)`);
+    assert.deepEqual(occlusionViolations(z, registry), [], `${id}: occlusion`);
+    assert.deepEqual(signPairViolations(z), [], `${id}: no board`);
+    assert.deepEqual(boxOverlaps(registry), [], `${id}: boxes`);
+    assert.deepEqual(postStands(z, registry), [], `${id}: every post has a stand`);
+    assert.deepEqual(skipRing(z, PINS.FRAMES[id].SEAM), [], `${id}: the border ring is the field's but the seams; the profile claims nothing`);
+    assert.deepEqual(padClear(z), [], `${id}: G-12`);
+    assert.deepEqual(stileNotAtJunction(z), [], `${id}: no stile or stone at a corner`);
+    assert.deepEqual(lightsCensus(z, PINS.LIGHTS_CENSUS_FRAMES), [], `${id}: no light on the Course`);
+    assert.deepEqual(noTimber(z, PINS.TAKEN_FRAMES), [], `${id}: no timber, none of the taken`);
+    assert.deepEqual(keepOut(z, PINS.KEEP_OUT_FRAMES[id]), [], `${id}: KEEP_OUT`);
+    assert.deepEqual(chalkNoLattice(z), [], `${id}: no chalk`);
+    assert.deepEqual(footprintViolations(z), [], `${id}: FOOTPRINT`);
+    assert.deepEqual(zonePlacementErrors(z), [], `${id}: the placement vet`);
+    const again = build().zone;
+    assert.deepEqual(again, z, `${id}: byte-identical`);
+    const round = zoneFromJson(JSON.parse(JSON.stringify(zoneToJson(z))));
+    assert.deepEqual(round.ground, z.ground);
+    assert.deepEqual(round.detail, z.detail);
+    assert.deepEqual(round.spawns ?? [], z.spawns ?? []);
+    assert.deepEqual(round.actorSpawns ?? [], z.actorSpawns ?? []);
+  }
+  // The Sett itself is byte-identical to its 9d shape: the brush's
+  // new clauses (wet, plumbAt, the wear brush's trunk law) never fire
+  // in the bowl.
+  const sett = buildSett();
+  assert.equal(count(sett, Tile.CourseWall), 55);
+  assert.equal(count(sett, Tile.WaterShallow), 51);
+  assert.equal(count(sett, Tile.Dirt), 146);
+  void buildCourseA; void buildCourseB; void buildCourseC; void buildMeadow;
+});

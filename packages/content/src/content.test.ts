@@ -43,7 +43,7 @@ import { buildLowhall } from './maps/lowhall.js';
 import { buildAshlamp } from './maps/ashlamp.js';
 import { buildFenside } from './maps/fenside.js';
 import { buildPicket, buildTurnoff, buildWardthread } from './maps/wardthread.js';
-import { buildSett } from './maps/sett.js';
+import { buildCourseA, buildCourseB, buildCourseC, buildMeadow, buildSett } from './maps/sett.js';
 import { AMBERFORD_RECT, EVENFALL_RECT, HARTFELL_RECT, KINGSDELF_RECT, SALTMERE_RECT, SILVERFALL_RECT } from './geography.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import { zonePlacementErrors } from './maps/validateZone.js';
@@ -1217,6 +1217,13 @@ test('every authored zone passes the placement vet — no orphaned wall hangings
     // THE CONTESTED LANDS (band 9d): the Sett takes the same vet
     // (eleven actor rows and Vorl's one spawn row; no board).
     ['sett', buildSett],
+    // THE CONTESTED LANDS (band 9e): the four Course frames take the
+    // same vet (three place nobody; the meadow places Sarsen's row and
+    // the sheep row; no board on the Course).
+    ['course_a', buildCourseA],
+    ['course_b', buildCourseB],
+    ['course_c', buildCourseC],
+    ['meadow', buildMeadow],
   ];
   for (const [name, build] of towns) {
     const errors = zonePlacementErrors(build()).filter((e) => e.includes('wall-hung'));

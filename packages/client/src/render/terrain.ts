@@ -25,6 +25,7 @@ import {
 } from '@arx/shared';
 import { chamferRect, facetCircle } from './shapes.js';
 import { shade } from './tint.js';
+import { TH_MARL, TH_MARL_DARK, TH_MARL_MOTTLE } from './props/palette.js';
 import {
   BAND_HELD,
   BAND_TAKEN,
@@ -4872,6 +4873,64 @@ function drawTileDetail(
           if (ew) ctx.fillRect(gx + along * px - sz * 0.5, gy + off - sz * 0.5, sz, sz);
           else ctx.fillRect(gx + off - sz * 0.5, gy + along * px - sz * 0.5, sz, sz);
         }
+      } else if (d === Detail.FordStone) {
+        // THE FORD OF SET STONES (band 9e, THE STANDING COURSE): a set
+        // slab in the bed of a shallow crossing, the water running
+        // over it. The Marl laid the crossing as ONE course of slabs,
+        // so a slab runs to the seam where a ford stone lies east or
+        // west (the chalk line's kin idiom through dAt) and stops a
+        // built end short where none does; a joint (a dark value step,
+        // never a line) closes each shared seam on the east side only,
+        // so a pair draws one joint. The face is the kit's marl
+        // DARKENED (it lies under the brook, never on it) with one grey
+        // mottle chip, a lit north edge where the light meets the set
+        // face through the water and a dark south step for its
+        // thickness, then the water's own blue WASHED over the whole
+        // slab so it reads submerged, and the live shallows pass lays
+        // its caustics over that. Fills only, min feature 0.03s, no
+        // strokes, no transforms: a ground bake is a quad's texture.
+        // Painted only where the content brush put it (authored on
+        // WaterShallow; worldgen never deals it).
+        const hh = hashCoords(281, tx, ty);
+        const fordAt = (ox: number, oy: number): boolean => dAt !== undefined && dAt(tx + ox, ty + oy) === Detail.FordStone;
+        const kW = fordAt(-1, 0);
+        const kE = fordAt(1, 0);
+        const kN = fordAt(0, -1);
+        const kS = fordAt(0, 1);
+        // The crossing's axis: E-W unless the kin lie only N-S.
+        const ns = !kW && !kE && (kN || kS);
+        const joinLo = ns ? kN : kW;
+        const joinHi = ns ? kS : kE;
+        // Along the axis: a shared seam is 0 or 1, a built end 0.1..0.14.
+        const a0 = joinLo ? 0 : 0.1 + ((hh >>> 2) % 3) * 0.02;
+        const a1 = joinHi ? 1 : 0.9 - ((hh >>> 5) % 3) * 0.02;
+        // Across it: the slab's two long edges, 0.2..0.24 and 0.76..0.8.
+        const b0 = 0.2 + ((hh >>> 8) % 3) * 0.02;
+        const b1 = 0.8 - ((hh >>> 11) % 3) * 0.02;
+        const x0 = gx + (ns ? b0 : a0) * px;
+        const y0 = gy + (ns ? a0 : b0) * px;
+        const w = ((ns ? b1 - b0 : a1 - a0)) * px;
+        const h = ((ns ? a1 - a0 : b1 - b0)) * px;
+        ctx.fillStyle = shade(TH_MARL, -10);
+        ctx.fillRect(x0, y0, w, h);
+        // One grey chip a slab, the kit's own mottle.
+        ctx.fillStyle = TH_MARL_MOTTLE;
+        ctx.fillRect(x0 + w * (0.2 + ((hh >>> 14) % 5) * 0.12), y0 + h * (0.3 + ((hh >>> 17) % 3) * 0.14), px * 0.06, px * 0.045);
+        // The lit north edge and the dark south step (screen north and
+        // south whatever the axis: the light is the fixed art sun's).
+        ctx.fillStyle = 'rgba(231, 224, 205, 0.55)';
+        ctx.fillRect(x0, y0, w, px * 0.05);
+        ctx.fillStyle = shade(TH_MARL_DARK, -16);
+        ctx.fillRect(x0, y0 + h - px * 0.045, w, px * 0.045);
+        // The joint at the shared high seam: the east (or south) edge.
+        if (joinHi) {
+          ctx.fillStyle = shade(TH_MARL_DARK, -20);
+          if (ns) ctx.fillRect(x0, gy + px * (1 - 0.035), w, px * 0.035);
+          else ctx.fillRect(gx + px * (1 - 0.035), y0, px * 0.035, h);
+        }
+        // The brook over it: the slab lies under the water.
+        ctx.fillStyle = 'rgba(88, 140, 178, 0.38)';
+        ctx.fillRect(x0, y0, w, h);
       } else if (d === Detail.BlightVeins) {
         // THE VEINS (K4 recut): the ground the gloom stone and the
         // creep root sicken — a bruised core with a pale dead rim (the

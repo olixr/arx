@@ -8,7 +8,13 @@
       "text": "You are standing on the Course. It held when the wet came up and it will hold when you have gone. Sit on it if you like. It does not mind weight, it minds wrong weight.",
       "choices": [
         { "text": "Say the count.", "next": "count" },
-        { "text": "The gap.", "next": "gap", "requires": ["capstone_counted"] }
+        { "text": "The gap.", "next": "gap", "requires": ["capstone_counted"] },
+        {
+          "text": "I will carry the forty after all.",
+          "next": "reoffer",
+          "requires": ["forty_stones_declined", "quest:forty_stones:available"],
+          "forbids": ["course_broken"]
+        }
       ]
     },
     {
@@ -17,6 +23,7 @@
       "choices": [
         { "text": "I will carry stone.", "next": "sworn", "forbids": ["capstone_counted"], "set": ["capstone_counted"] },
         { "text": "The gap.", "next": "gap", "requires": ["capstone_counted"] },
+        { "text": "The two I carried.", "next": "carried", "requires": ["forty_carried"] },
         { "text": "Not today.", "next": "level" }
       ]
     },
@@ -31,6 +38,24 @@
     {
       "id": "gap",
       "text": "The gap is by the stairs, where the chalk is. One stone sets it. The count is kept whether you carry or not."
+    },
+    {
+      "id": "carried",
+      "text": "Two of forty by your hands. Counted."
+    },
+    {
+      "id": "reoffer",
+      "text": "Forty from the north end. The errand stands where it stood. One to the gap by the stairs, where the chalk is. One to me.",
+      "hooks": [{ "kind": "quest_offer", "quest": "forty_stones" }],
+      "choices": [
+        { "text": "I will carry it.", "next": "resworn" },
+        { "text": "Still no." }
+      ]
+    },
+    {
+      "id": "resworn",
+      "text": "Counted.",
+      "hooks": [{ "kind": "quest_accept", "quest": "forty_stones" }]
     }
   ]
 }

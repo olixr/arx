@@ -805,6 +805,9 @@ test('THE SCARRED LAND: the id band, the ruin walls, and the two state-kin', () 
   assert.ok(!isScarredTile(553), 'nothing is minted past the plumb stone');
   assert.equal(Detail.Chalkline, 184, 'the setter\'s chalk line follows the forest floor');
   assert.equal(wallHungInfo(Detail.Chalkline), null, 'a snapped line on the ground is no hanging');
+  // Band 9e, THE FORD OF SET STONES: the slab the water runs over.
+  assert.equal(Detail.FordStone, 185, 'the ford stone follows the chalk line');
+  assert.equal(wallHungInfo(Detail.FordStone), null, 'a slab in the bed is no hanging');
   // The six floor Details land right after the drape band.
   assert.equal(Detail.Ash, 176);
   assert.equal(Detail.Mudcrack, 181);

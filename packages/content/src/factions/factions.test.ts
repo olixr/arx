@@ -303,6 +303,11 @@ test('CONTESTED LANDS: returners and fenside stand in the roster with real bodie
   for (const c of ['charter_margit', 'charter_ingram', 'charter_steinar', 'charter_bodil', 'charter_feller']) {
     assert.equal(factionOfActor(c), 'fordgate', c);
   }
+  // Band 9e: the carter boss at the causeway head's stone yard reads the
+  // Charter's ledger (his asked stone -2, his Charter paper +2 a day);
+  // the Dolmen keep no faction (R-E), Sarsen included.
+  assert.equal(factionOfActor('charter_garrow'), 'fordgate');
+  assert.equal(factionOfActor('dolmen_sarsen'), null);
   assert.equal(factionOfActor('crown_rurik'), 'crown');
   assert.equal(factionOfActor('returner_hilde'), 'returners');
   assert.equal(factionOfActor('fenside_crofter'), 'fenside');

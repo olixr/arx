@@ -69,7 +69,7 @@ test('coverage is total: every TILE_DEFS id is shown or excluded on purpose', ()
   }
 });
 
-test('THE STANDING COURSE wing stands: five plinths, whole sentences, the stile inside its course', () => {
+test('THE STANDING COURSE wing stands: six plinths, whole sentences, the stile inside its course', () => {
   const zone = buildMuseum();
   const signs = zone.signs ?? [];
   const at = (x: number, y: number): number => zone.ground[(y - zone.origin.y) * zone.width + (x - zone.origin.x)]!;
@@ -84,6 +84,7 @@ test('THE STANDING COURSE wing stands: five plinths, whole sentences, the stile 
     ['corbel cell', 'tile 551'],
     ['plumb stone', 'tile 552'],
     ['chalk line', 'detail 184'],
+    ['ford stone', 'detail 185'],
   ] as const) {
     const s = signs.find((s) => s.title === title);
     assert.ok(s, `plinth "${title}" stands`);

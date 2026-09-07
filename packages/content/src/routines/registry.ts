@@ -297,6 +297,11 @@ import valeCarterYard from './defs/vale_carter_yard.json';
 // the 9c zone row reuses this file as is and faces the bowl by its own dir.
 import dolmenSet from './defs/dolmen_set.json';
 import dolmenWet from './defs/dolmen_wet.json';
+// Band 9e (THE COURSE AND THE COUNT): Sarsen's dawn walk to the cairn at
+// the Drowned Meadow's dry end and Garrow's day over the spoil bank at
+// the causeway head (a carter sleeps on his wain: the wayside sit).
+import sarsenCairn from './defs/sarsen_cairn.json';
+import garrowYard from './defs/garrow_yard.json';
 
 const SOURCES: readonly unknown[] = [
   fallMiller,
@@ -556,6 +561,8 @@ const SOURCES: readonly unknown[] = [
   fordRingMaster,
   dolmenSet,
   dolmenWet,
+  sarsenCairn,
+  garrowYard,
 ];
 
 function buildRegistry(): ReadonlyMap<string, RoutineDef> {

@@ -1035,6 +1035,20 @@ const defs: ItemDef[] = [
   { id: 'grey_wool', name: "The order's grey wool", stackable: true, value: 0, quest: true, desc: "A hank of the order's grey, off a gnoll's stake. It goes back on a post.", color: '#a9aab0', code: 'Gw' },
   { id: 'cut_thread', name: 'Cut thread', stackable: true, maxStack: 8, value: 0, quest: true, desc: "A cut length of the court's thread. A knot at one end and a chip of moonglass at the other. It is not for tying anything.", color: '#c9d4e8', code: 'Ct' },
   { id: 'moonglass_chip', name: 'Moonglass chip', stackable: true, value: 0, quest: true, desc: "A chip off the fork's waystone. It draws nothing, and that is the point of it.", color: '#dce8f4', code: 'Mc' },
+  // THE STANDING COURSE (contested lands band 9e, blockout §6.1; rulings
+  // R-G): the Dolmen's two tokens. The course stone is a HELD WEIGHT:
+  // quest paper by law (value 0, never sold, the count is the pay) but
+  // it is CAPPED at the measured stack's floor, five (THE MEASURED STACK
+  // admits no cap under 5: the brief's four was the law's floor
+  // misremembered; a stone in each hand is a load, and a pack of them
+  // fills; Garrow hands out two, the gap takes one, the coursemother
+  // takes one). The bob is the held token
+  // Sarsen hangs in a hand that carried a set thing where it was set to
+  // go; it has no reader yet (the bible's row stands). No black stone
+  // item: `coal` above IS the black stone (the Culm trade it four for
+  // one kerb; no new fuel).
+  { id: 'course_stone', name: 'Course stone', stackable: true, maxStack: 5, value: 0, quest: true, desc: 'A kerb stone off the Standing Course, carted to the ford and carried back. It is heavier than it looks and it was set once.', color: '#d9cfbd', code: 'Cs' },
+  { id: 'plumb_bob', name: 'Plumb bob', stackable: true, value: 0, quest: true, desc: 'A chalk bob on a bone cord, hung true. It was set in your hand by one who counts, and it is counted.', color: '#f5f1e8', code: 'Pb' },
   { id: 'linen_scrap', name: 'Linen scrap', stackable: true, value: 3, desc: 'Torn cloth off someone who stopped needing it.', color: '#ddd6c2', code: 'Ls' },
   { id: 'gloomsilk_thread', name: 'Gloomsilk thread', stackable: true, value: 14, desc: 'Cold spun shadow from the crypt. It drinks the light.', color: '#5a4a78', code: 'Gt' },
 

@@ -339,6 +339,7 @@ export const DETAILS: Array<{ d: Detail; label: string }> = [
   { d: Detail.LeafLitter, label: 'leaf litter' },
   { d: Detail.Bracken, label: 'bracken' },
   { d: Detail.Chalkline, label: 'chalk line' },
+  { d: Detail.FordStone, label: 'ford stone' },
   { d: Detail.Rug, label: 'rug' },
   { d: Detail.RugRound, label: 'round rug' },
   { d: Detail.CarpetRoyal, label: 'royal carpet' },

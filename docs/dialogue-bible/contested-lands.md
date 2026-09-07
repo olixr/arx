@@ -1072,8 +1072,13 @@ Fenside drovers over eleven summers, so their words are crofter words.
 routine `dolmen_set` at (168,266) facing the gap and the stairs) ·
 **Trees:** `ammat_course` (LIVE, band 9d: the hub with the one wit, the
 count, the sworn choice that stamps `capstone_counted` and the gap line);
-`ammat_count`, `q_forty_stones_offer`, `q_forty_stones_turnin` (9e;
-repeatable; requires the capstone; forbids `course_broken`)
+`ammat_count` (LIVE, band 9e: once, "forty and eight" by a READ of
+`dike_planted`, priority 8); `q_forty_stones_offer` (LIVE, band 9e: the
+errand, repeatable daily, requires the capstone, forbids `course_broken`
+and its own `forty_stones_declined`) / `q_forty_stones_turnin` (LIVE, band
+9e); THE DOOR BACK rides `ammat_course`'s hub (the re-offer through the
+declined flag and availability), and the count node gains the carried line
+on `forty_carried`
 
 **Life.** She came up through the plug at the Sett's floor eleven winters
 back with the Marl, the shallow stratum, first up and first to learn the
@@ -1155,9 +1160,13 @@ Dolmen line.
 ---
 
 ### Sarsen — the Marl's setter at the dry end, the Drowned Meadow's corner
-**Actor:** `dolmen_sarsen` (proposed; dolmen member; body `dolmen`) ·
-**Trees:** `sarsen_cairn`; the one extra line and the `plumb_bob` token on
-the east fork's sluice branch
+**Actor:** `dolmen_sarsen` (LIVE, band 9e; model.kind creature, body
+`dolmen`, design seed 41; no faction, none exists (R-E); untargetable;
+routine `sarsen_cairn` at (70,204) on the dry strip facing his cairn, the
+dawn walk to set it right) · **Trees:** `sarsen_cairn` (LIVE, band 9e: the
+cairn, the sheep, the wall); `sarsen_paid` (LIVE, band 9e: once, on the
+east fork's sluice branch by a READ of `halvor_string_carried`, the one
+extra line and the `plumb_bob` token in the hand)
 
 **Life.** The first Dolmen a player meets, standing at the Course's last dry
 courses where they run into the drowned meadow's sheet with the crofters'
@@ -1203,8 +1212,9 @@ correct, and stays a theory.
 > good arrangement."
 > "Six ewes and the lamb. Counted on at dusk. Counted off at dawn. The sheep
 > man has not come across. The count does not need him."
-> "The stile is Vorl's. It is set. We do not set stiles that ask. That one
-> asks. It stands."
+> "The stile is the weight keeper's. It is set. We do not set stiles that
+> ask. That one asks. It stands." (the name struck at 9e: no Dolmen line
+> names a Dolmen; the disowning is said once, here, and nowhere else)
 
 ---
 
@@ -1265,10 +1275,11 @@ bottom row. The top row last." / "We set here. Lower."
 seed 29; untargetable; no faction; routine `dolmen_set` at (190,294)
 between the two hearth beds facing the bowl) · **Trees:** `durrow_hearth`
 (LIVE, band 9d: the hub, the black stone, the oath as the goodbye);
-`durrow_cold` (9e, with the errand: the shelf shut to the causeway's
-character by a READ of `dike_planted`, priority 10 over the hearth, never
-once);
-`q_black_stone_offer` / `q_black_stone_turnin` (9e; stone for stone)
+`durrow_cold` (LIVE, band 9e, with the errand: the shelf shut to the
+causeway's character by a READ of `dike_planted`, priority 10 over the
+hearth, never once);
+`q_black_stone_offer` / `q_black_stone_turnin` (LIVE, band 9e; stone for
+stone, coal never coin; the offer forbids `dike_planted`)
 
 **Life.** The coal seam: ash-dark hide, a squared yoke with a soot-cut
 notch, the only warm eyes of the four strata, a red-dust line along the
@@ -1311,7 +1322,7 @@ poor way to burn a tree.
 > "The stake man's cart goes by with our kerb on it. Cold on him. He does
 > not hear it. It is still said."
 > "Eight stakes in the wet road. Your hands. The shelf is lit and it is not
-> lit for you. Cold on you. Go and be cold." (`durrow_cold`, 9e, the A side)
+> lit for you. Cold on you. Go and be cold." (`durrow_cold`, LIVE band 9e, the A side)
 
 **Examine (bible and tooling text; it never reaches the wire).**
 > "It stands on the warm shelf with ember eyes and a red line of dust
@@ -1373,10 +1384,18 @@ because the chain man's stakes are level-set. His bid is honest.
 ---
 
 ### Garrow — Charter carter-boss, the stone-yard on the stream track
-**Actor:** `charter_garrow` (proposed; fordgate member, human) · **Trees:**
-`garrow_yard`; the third offer in `q_forty_stones` (sell it back for coin
-the Dolmen will not pay); his stone-yard opens on the east fork's causeway
-branch
+**Actor:** `charter_garrow` (LIVE, band 9e; human, friendly (the validator
+refuses protection on a friendly body: he is beyond combat's reach by
+disposition); fordgate member by `factions.ts` membership; routine
+`garrow_yard` at (132,78) in fenside's head yard over the spoil bank,
+facing west; a carter sleeps on his wain from half past nine) ·
+**Trees:** `garrow_yard` (LIVE, band 9e: the errand's hub, requires
+`quest:forty_stones:active`; three doors: THE CARTER'S PRICE on the levy,
+`quest:the_levy_posted:done`; THE ASKED STONE once, everyone, two off the
+load and fordgate −2, stamping `garrow_asked`; and "it does not say
+twice", shut once the levy opens the price); `q_the_carter_price_offer` (LIVE, band 9e: the price outside the
+errand) / `q_the_carter_price_turnin` (LIVE, band 9e). The fight at the
+ford and the night take are REFUSED (R-G).
 
 **Life.** A ford carter, twenty years on the wains, given the stone-track up
 the stream from the Sett's north lip to the causeway head because he can
@@ -1654,8 +1673,12 @@ topsider's name, a cause for the wet.
 | `rurik_witness` / `rurik_body` | the west fork's turn-ins | `rurik_chain` |
 | `margit_two_hearths` | `margit_ledger` second ask | `margit_ledger`, Hilde's tree |
 | `capstone_counted` | `ammat_course`, the sworn choice (band 9d; the one stamper, retires itself) | 9e's three quests require it; `ammat_course`'s gap line |
-| `course_broken` | (v2 seed, THE WEIGHT OR THE ROAD) | `q_forty_stones` forbids |
-| `plumb_bob` (token) | Sarsen, on the sluice branch | held token, no reader yet |
+| `course_broken` | THE REVERSE (band 9e, server): a CourseWall or PlumbStone FELLED by a player's hand | `q_forty_stones_offer` forbids; `ammat_course`'s door back forbids |
+| `course_gap_set` | THE STILE VERB (band 9e, server): a `course_stone` set on the north gap's stile; SPENT at the errand's turn-in (THE SPENT ASK: the engine clears a repeatable quest's flag objectives when it closes, so tomorrow asks for a stone again) | `forty_stones` stage `set` (the flag objective) |
+| `forty_carried` | `forty_stones` turn-in (band 9e) | `ammat_course`, the carried line |
+| `garrow_asked` | `garrow_yard`, the asking choice (band 9e; once, everyone) | `garrow_yard` (the asking forbids, "it does not say twice" requires) |
+| `forty_stones_declined` | `q_forty_stones_offer`, the refusal (band 9e; THE DOOR BACK) | `q_forty_stones_offer` forbids; `ammat_course`'s re-offer requires |
+| `plumb_bob` (token) | `sarsen_paid` (band 9e), on the sluice branch by a READ of `halvor_string_carried` | held token, no reader yet |
 
 All of these are bare character flags. None is a world flag. `war_near` is
 the epic's one rostered world flag and no throat in this file owns it; the

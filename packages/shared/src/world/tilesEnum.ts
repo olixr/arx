@@ -1228,6 +1228,13 @@ export enum Detail {
   // THE STANDING COURSE — the setter's mark (plan §11.3, band 9b).
   /** One snapped chalk line on bare ground where a course will go. */
   Chalkline = 184,
+  /**
+   * A set slab in the bed of a shallow crossing: the water runs over
+   * it (band 9e, THE FORD OF SET STONES). Authored on WaterShallow
+   * only; the ground bake paints the slab under the water's wash so a
+   * ford reads as set stone, never as a paler band of brook.
+   */
+  FordStone = 185,
 }
 
 /** THE DYE LAW's count — ten cloths, index-married everywhere. */

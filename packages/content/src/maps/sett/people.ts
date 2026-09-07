@@ -51,3 +51,27 @@ export function people(ctx: SettCtx): void {
   });
   ctx.post(v.seat[0], v.seat[1]);
 }
+
+/**
+ * THE MEADOW'S CAST (band 9e; brief §4's 9e rows): Sarsen on the dry
+ * strip facing his cairn and the crofts' way, and the sheep row. The
+ * one row on the Course that keeps hours is the sheep's (18→7: six
+ * ewes and the lamb counted on at dusk and off at dawn); Sarsen
+ * stands always but for his dawn walk and his slot. The def
+ * `dolmen_sarsen` and the routine `sarsen_cairn` are L3's; the server
+ * warns once and stands him mute until they land.
+ */
+export function meadowPeople(ctx: SettCtx): void {
+  const { b, pins } = ctx;
+  const { ORIGIN } = ctx.frame;
+  const local = (x: number, y: number): [number, number] => [x - ORIGIN.x + 0.5, y - ORIGIN.y + 0.5];
+  for (const p of Object.values(pins.POSTS_MEADOW)) {
+    b.actor(p.slug, ...local(p.x, p.y), p.dir, p.routine);
+    ctx.post(p.x, p.y);
+  }
+  const s = pins.SHEEP_ROW;
+  b.npcSpawn(s.npc, s.seat[0] - ORIGIN.x, s.seat[1] - ORIGIN.y, s.radius, s.count, {
+    hours: { from: s.hours.from, to: s.hours.to },
+    passive: s.passive,
+  });
+}

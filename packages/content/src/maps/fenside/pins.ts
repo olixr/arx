@@ -172,6 +172,14 @@ export const HEAD_BARRELS = [132, 80] as const;
 /** The levy's coin box west of the canvas's skirt on the apron, under the spoil, warded by the bar (0.2 G). */
 export const HEAD_CHEST = [129, 78] as const;
 export const HEAD_SPOIL: ReadonlyArray<readonly [number, number]> = [[129, 77], [130, 77]];
+/**
+ * THE CARTER'S STAND (band 9e): the one cell of the swamp rim east of
+ * the canvas trodden to Dirt under Garrow's boots, where the spoil
+ * bank meets the water. His sit one south (garrow_yard) stays the
+ * rim's own swamp. The routine sweep (worldFit) measures a body from
+ * an authored stand; nothing else moves for him.
+ */
+export const GARROW_STAND = [132, 78] as const;
 /** The clerk's stand behind the counter and the road's cell before it: both kept open. */
 export const HEAD_STAND = [131, 79] as const;
 export const HEAD_CUSTOMER = [131, 81] as const;
@@ -204,6 +212,7 @@ export const DYE_FORDGATE = 3; // weld: the Charter, the fordgate, the levy
 // THE CAST (post-is-the-origin): the one zone body.
 // ---------------------------------------------------------------------
 const S = Math.PI / 2;
+const W = Math.PI;
 export interface Post {
   slug: string;
   x: number;
@@ -216,6 +225,20 @@ export const POSTS = {
   // can see him, facing south to the bed; `drover_held` (L2) is the
   // all-day wayside sit with a morning walk to nowhere.
   charter_drover: { slug: 'charter_drover', x: 126.5, y: 85.5, dir: S, routine: 'drover_held' },
+  // GARROW THE CARTER BOSS (band 9e, plan §11.6, brief §5.6): the
+  // Charter's stone yard is the spoil bank at the causeway head, and
+  // its boss stands on the swamp rim east of the canvas at (132,78),
+  // the cell the brief's chest gave up to the water, facing WEST at
+  // the counter and never at the bank ("He does not look at the
+  // bank"). No cell moves for him: the rim is worldgen's own swamp,
+  // walkable, trodden to Dirt at his stand alone (GARROW_STAND) so
+  // the routine sweep has a cell to measure him from; the barrels two
+  // south are no tall prop (the occlusion lint's set) and the lean-to
+  // is west. His
+  // day is `garrow_yard` (9e's L3): the post all day, a wayside sit
+  // one south on the same rim 21:30-05:00 (the bank he will not look
+  // at, at his back), a one-tile wander at first light.
+  charter_garrow: { slug: 'charter_garrow', x: 132.5, y: 78.5, dir: W, routine: 'garrow_yard' },
 } as const satisfies Record<string, Post>;
 
 /** THE ZONE'S WARDED CHEST (0.2 G): the levy's coin box, the bar's ward, the camp's table. */
@@ -234,7 +257,7 @@ export const PINS = {
   CAGE_WEAR, COUNTER_WEAR, POST_LINE_SHOULDERS, CREW_STANDS, BAR_FELL, HEAD_FELL, HEAD_FELL_SOUTH,
   DIKE_LINE, STAKES, FENCES, LINE_END_STAND, LINE_MIDDLE_STAND,
   HEAD_COUNTER, HEAD_LEANTO, HEAD_LEANTO_FOOT, HEAD_FLOOR, HEAD_LANTERNS, HEAD_BANNER, HEAD_CRATE,
-  HEAD_BARRELS, HEAD_CHEST, HEAD_SPOIL, HEAD_STAND, HEAD_CUSTOMER, HEAD_MOUTH, HEAD_APRON, HEAD_APPROACH,
+  HEAD_BARRELS, HEAD_CHEST, HEAD_SPOIL, GARROW_STAND, HEAD_STAND, HEAD_CUSTOMER, HEAD_MOUTH, HEAD_APRON, HEAD_APPROACH,
   SHOULDER_LISTED, BED_EXEMPT, DYE_FORDGATE, POSTS, CHEST_BINDING, SIGN_LEDGER, FLOOD_FROM,
 } as const;
 export type Pins = typeof PINS;

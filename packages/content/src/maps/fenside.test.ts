@@ -129,11 +129,20 @@ test('fenside: THE ZONE\'S WARDED CHEST (0.2 G) binds the head\'s box to the bar
   assert.ok(AUTHORED_WILD_SITES.some((s) => s.id === 'first_road_toll'), 'the ward is the pinned bar');
 });
 
-test('fenside: THE ONE BODY — Ansel the drover, roped beside the cage, facing the road', () => {
+test('fenside: THE TWO BODIES — Ansel the drover roped beside the cage facing the road; Garrow the carter boss on the rim facing the counter (9e)', () => {
   const z = buildFenside();
   assert.deepEqual(z.actorSpawns, [
     { actor: 'charter_drover', x: 126.5, y: 85.5, dir: Math.PI / 2, routine: 'drover_held' },
+    { actor: 'charter_garrow', x: 132.5, y: 78.5, dir: Math.PI, routine: 'garrow_yard' },
   ]);
+  // Garrow's stand is the one rim cell trodden to Dirt (the sweep
+  // measures him from it); his sit one south (garrow_yard) is the
+  // swamp rim's own; nothing moved for him; the barrels two south are
+  // no tall prop.
+  assert.deepEqual(PINS.GARROW_STAND, [132, 78]);
+  assert.equal(at(z, 132, 78), Tile.Dirt, 'the carter\'s stand, trodden');
+  assert.equal(at(z, 132, 79), TILE_SKIP, 'his sit is the rim\'s own swamp');
+  assert.equal(at(z, 132, 80), Tile.BarrelStack, 'the oil at his feet, never over his head');
   assert.equal(at(z, 126, 85), Tile.Dirt, 'a wayside sit on trodden ground, not in the cage');
   assert.equal(at(z, 126, 84), Tile.PrisonCage, 'the cage beside him');
 });

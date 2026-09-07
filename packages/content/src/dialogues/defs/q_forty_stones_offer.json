@@ -1,0 +1,27 @@
+{
+  "id": "q_forty_stones_offer",
+  "start": "hub",
+  "requires": ["quest:forty_stones:available"],
+  "forbids": ["course_broken", "forty_stones_declined"],
+  "bindings": [{ "kind": "actor", "target": "dolmen_ammat", "priority": 7 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Forty from the north end. The cart man's yard is at the wet road's head by the crossing. A stone in each hand is a load. Bring one to the gap by the stairs and set it where the chalk is. Bring the other to me. That is the errand, and it is the same errand tomorrow.",
+      "hooks": [{ "kind": "quest_offer", "quest": "forty_stones" }],
+      "choices": [
+        { "text": "I will carry it.", "next": "sworn" },
+        { "text": "Not today.", "next": "declined", "set": ["forty_stones_declined"] }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Counted.",
+      "hooks": [{ "kind": "quest_accept", "quest": "forty_stones" }]
+    },
+    {
+      "id": "declined",
+      "text": "Then the gap stands. It has stood a year."
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "q_the_carter_price_turnin",
+  "start": "sold",
+  "requires": ["quest:the_carter_price:ready"],
+  "bindings": [{ "kind": "actor", "target": "charter_garrow", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "sold",
+      "text": "Forty. Two off the load. Sold, field, no vendor. I have a schedule.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_carter_price" }]
+    }
+  ]
+}
