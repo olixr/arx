@@ -20,7 +20,7 @@ export function mirrorPlot(srv: GameServer, state: CropState): void {
     m: state.mulched,
     f: state.framed,
   };
-  for (const s of srv.sessions) s.sendJson({ t: 'farm', plots: [info] });
+  for (const s of srv.sessionsOn(SURFACE_PLANE_ID)) s.sendJson({ t: 'farm', plots: [info] });
 }
 
 export function mirrorBin(srv: GameServer, bin: FarmBinState): void {
@@ -31,7 +31,7 @@ export function mirrorBin(srv: GameServer, bin: FarmBinState): void {
     graded: bin.graded,
     readyAt: bin.startedAt === 0 ? 0 : bin.startedAt + COMPOST_MINUTES * 60_000,
   };
-  for (const s of srv.sessions) s.sendJson({ t: 'farm', bins: [info] });
+  for (const s of srv.sessionsOn(SURFACE_PLANE_ID)) s.sendJson({ t: 'farm', bins: [info] });
 }
 
 /** The whole farm's care facts, for a fresh session. */
@@ -248,7 +248,7 @@ export function prune(srv: GameServer, eid: EntityId, tx: number, ty: number): v
 }
 
 export function mirrorJob(srv: GameServer, job: { tx: number; ty: number; recipe: string; qty: number; startedAt: number; grade: number }): void {
-  for (const s of srv.sessions) {
+  for (const s of srv.sessionsOn(SURFACE_PLANE_ID)) {
     s.sendJson({
       t: 'farm',
       jobs: [{ tx: job.tx, ty: job.ty, recipe: job.recipe, qty: job.qty, startedAt: job.startedAt, grade: job.grade }],
@@ -257,7 +257,7 @@ export function mirrorJob(srv: GameServer, job: { tx: number; ty: number; recipe
 }
 
 export function mirrorApiary(srv: GameServer, tx: number, ty: number, since: number): void {
-  for (const s of srv.sessions) s.sendJson({ t: 'farm', apiaries: [{ tx, ty, since }] });
+  for (const s of srv.sessionsOn(SURFACE_PLANE_ID)) s.sendJson({ t: 'farm', apiaries: [{ tx, ty, since }] });
 }
 
 /**
@@ -534,7 +534,7 @@ export function tickFleece(srv: GameServer, now: number): void {
 }
 
 export function mirrorTrough(srv: GameServer, trough: { tx: number; ty: number; feed: number }): void {
-  for (const s of srv.sessions) {
+  for (const s of srv.sessionsOn(SURFACE_PLANE_ID)) {
     s.sendJson({ t: 'farm', troughs: [{ tx: trough.tx, ty: trough.ty, feed: trough.feed }] });
   }
 }
@@ -978,7 +978,7 @@ export function tickHarvest(srv: GameServer, eid: EntityId, player: PlayerComp):
   srv.surface.unregisterCropTile(action.tx, action.ty);
   srv.setWorldTile(SURFACE_PLANE_ID, action.tx, action.ty, bedTileFor(def, state.framed === 1));
   // The care mirror lets go of the harvested row.
-  for (const s of srv.sessions) {
+  for (const s of srv.sessionsOn(SURFACE_PLANE_ID)) {
     s.sendJson({ t: 'farm', remove: [{ tx: action.tx, ty: action.ty }] });
   }
   player.session?.sendJson({ t: 'inv', slots: player.inventory });

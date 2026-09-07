@@ -7,6 +7,7 @@ import {
   SNEAK_CASE_CAP_PER_LEVEL,
 } from '@arx/shared';
 import { GameServer } from './gameServer.js';
+import { packChunk } from './indexes.js';
 
 // The slate idiom: assemble a minimal `this` from real proto methods
 // plus stubs, so the law under test runs the SHIPPED code path.
@@ -133,6 +134,7 @@ function sneakSlate(npcLevel: number) {
     ]),
     grantXp: (_e: unknown, _p: unknown, _skill: string, amount: number) => grants.push(amount),
     chunks: new Map([['surface|0,0', new Set([9])]]),
+    chunkGrid: new Map([['surface', new Map([[packChunk(0, 0), new Set([9])]])]]),
     forEachNpcNear: proto.forEachNpcNear,
     tickSneakXp: proto.tickSneakXp,
   };

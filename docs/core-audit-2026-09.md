@@ -551,3 +551,41 @@ auth arms carry the `authInFlight` strike). Counts: server 778 tests (was 699 at
 bandACorrectness), content 792, four-package tsc clean. Not in this band, recorded so it is not
 mistaken for done: `despawnBody(eid)` for silent removals (appendix P2 #28, `transits` still
 leaks) and the capitalCache clear-on-claim-ring (P1 #21, Band B).
+
+**Band B — THE TICK EARNS ITS SCALE (epic/core-audit, 2026-09-06).** As chartered (§2 Band B),
+plus the fix pass after the adversarial review. Every NPC-side hit test, splash, sweep, chain,
+perception scan and `playerWithin` rides `forEachBodyNear` (the chunk grid, kind-masked, 27
+sites, each pinned against its whole-map walk in `bodiesNear.test`); the frontier beat reads
+the satellite/toll index (`poiLedger.ts`, oracle-pinned; 5k rows under 2 ms); POI zones RETIRE
+ON DISTANCE behind a walker (60 beats past the padded reach, carcasses and authored cells
+kept); the growth beat pops a due-heap instead of walking the ledger; the cadence save is a
+per-eid-phase trickle that writes only the tables whose fingerprint moved; `/healthz` is a
+readiness verdict and `/metrics` a loopback ledger; boot warnings are counted and
+`BOOT_STRICT` refuses to listen on any. Laws learned in the fix pass: **THE ONE DOOR** —
+`clearCapitalCache`/`noteClaimBuilt` are public and every clear in the server (home set/clear,
+layout/geography reload, build/demolish/plant, the dev tile clear) walks through them; the dev
+lever's bare `capitalCache.clear()` left the rects mask standing on the old ring, and the
+planting-over-a-plot note now names the plot's OWNER, never the planter. **THE SAVE OUTLIVES
+THE TICK** — `tick()` is `tickCount++` then `tickSystems()` inside a `finally { saveDue() }`,
+so a system throwing every tick (the loop's catch keeps the world moving) can no longer starve
+every player's save; **THE THROW IS COUNTED** — the catch raises `tick.throws` (minute line,
+`/metrics`, `/healthz.tickThrows`) and files a stamp in a one-minute window; more than
+`TICK_THROWS_MAX_PER_MIN` (20, tuning.ts) answers 503 `tick throwing N/min`, ranked under the
+stale-tick verdict. **THE HALF-WON CAMP KEEPS ITS STATE** — a live cell with a seat down on a
+finite floor or a strongbox standing open is not pristine and never starts its far count; the
+respawn floor and the reclose clock settle it back to the ledger's shape and only then may
+distance forget it (nothing is dropped while there is anything to lose; a pinned-Infinity seat
+is the carcass the ember exemption already keeps). **THE REBUILD KEEPS THE BEAT'S CLOCK** —
+the stale-heap rebuild in `heapPush` reindexes at the last clock `popGrowthDue`/`reindexGrowth`
+saw, not at the pushed entry's future look time (which projected every row there and skipped
+the checkpoints between). **ONE PING IN FLIGHT** — concurrent `/healthz` probes share one
+`SELECT 1` through the single process-wide probe object, abandoned after 30 s so a dropped
+statement cannot pin the verdict; the wedged-FIFO case no longer queues one statement per
+poll. `forEachBodyNear` carries the struck-set law in its doc (a visit that re-chunks its body
+can be met again). Ops: `db-backup.sh` fails by name without `pg_dump`; DEPLOY.md states the
+prerequisite and forbids `BOOT_STRICT` on prod until `poi_iron_rest` is re-authored under the
+12-hop cap (Band E). Counts: server tests 812 → 818 (+healthz 2, saveCadence 2, frontierScale
+1, growth 1), four-package tsc clean, check-cycles at baseline (server 0). Recorded, not
+done: the pre-existing `dropZoneChunks` pad vs `dropClientChunks` gap (clients keep stale
+padding chunks around a zone add/retire); visit order under the chunk-major walk where the
+first hit ends a search (measure-zero, no test pins order).

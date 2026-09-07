@@ -3,6 +3,19 @@ import { test } from 'node:test';
 import { Tile } from '@arx/shared';
 import { PLANNED_ZONE_RECTS, ROAD_HALF, ROAD_ROUTES, roadDistanceAt } from '@arx/content';
 import { GameServer } from './gameServer.js';
+import { StopIndex } from './indexes.js';
+
+type StopRow = { active: boolean; plane: string; x?: number; y?: number; patrol?: Array<{ x: number; y: number }>; post?: { x: number; y: number } };
+/** The stop index the server files at registration, built from the slate's rows. */
+function stopsOf(spawns: unknown[], actors: unknown[]): StopIndex {
+  const idx = new StopIndex();
+  for (const sp of spawns as StopRow[]) {
+    for (const p of sp.patrol ?? []) idx.add(sp as never, p.x, p.y);
+    if (sp.post) idx.add(sp as never, sp.post.x, sp.post.y);
+  }
+  for (const ap of actors as StopRow[]) idx.add(ap as never, ap.x!, ap.y!);
+  return idx;
+}
 import { config } from '../config.js';
 
 /**
@@ -53,6 +66,7 @@ function slate(
     respawnQueue: [] as Array<{ at: number; plane: string; tx: number; ty: number; tile: Tile; over?: Tile }>,
     spawnPoints: opts.spawnPoints ?? [],
     actorSpawnPoints: opts.actorSpawnPoints ?? [],
+    routineStops: stopsOf(opts.spawnPoints ?? [], opts.actorSpawnPoints ?? []),
     playerWithin: () => opts.playerNear === true,
     worldOf: () => w,
     setWorldTile: (_p: string, x: number, y: number, t: Tile) => w.setGround(x, y, t),

@@ -27,11 +27,21 @@ a browser at your machine.
 Other commands:
 
 ```bash
-npm test                            # simulation, codec, worldgen, pathfinding suites
+npm test                            # simulation, codec, worldgen, pathfinding suites (server suite needs Postgres, see Testing)
 npm run typecheck                   # strict TS across all packages
 npm run build                       # production client bundle → public/
 npm run bot -w @arx/tools -- 30     # 30-bot load/soak test
 ```
+
+### Testing
+
+`npm test` runs every package; the **server suite needs the same local
+PostgreSQL as `npm run dev`** (each test file creates and drops one
+`arx_test_*` scratch database, so the connecting role needs CREATE
+DATABASE). Without it the server files fail with one clear
+`[testDb] no Postgres at host:port` line; shared/content/client run
+without a database. Run one suite with
+`cd packages/server && node --import tsx --test src/game/<file>.test.ts`.
 
 ## Production
 

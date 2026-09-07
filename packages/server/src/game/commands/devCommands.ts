@@ -274,11 +274,15 @@ const cmdClearfarm: ChatCommand = {
           srv.accounts.deleteFarmTrough(tx, ty);
           srv.mirrorTrough({ tx, ty, feed: 0 });
         }
-        if (srv.worldOf(pos.plane).builtAt(tx, ty)) {
+        const built = srv.worldOf(pos.plane).builtAt(tx, ty);
+        if (built) {
           srv.worldOf(pos.plane).unregisterBuilt(tx, ty);
           srv.accounts.deleteBuiltTile(pos.plane, tx, ty);
-          srv.ringCache = null;
-  srv.capitalCache?.clear();
+          // THE ONE DOOR: the tile's owner may have lost ring — the
+          // seat cache and its rects fall through the same door every
+          // build/demolish uses (a bare capitalCache.clear() here left
+          // the rects mask standing on the old ring).
+          srv.noteClaimBuilt(built.owner);
         }
         const g = srv.worldOf(pos.plane).groundAt(tx, ty);
         if (g !== undefined && g !== Tile.Grass) {
@@ -2015,7 +2019,7 @@ const cmdFrontier: ChatCommand = {
         srv.frontierCalm.size === 0
           ? 'No relax windows standing.'
           : [...srv.frontierCalm.entries()]
-              .map(([k, u]) => `${k}: ${Math.max(0, Math.round((u - Date.now()) / 60000))}m`)
+              .map(([k, w]) => `${k}: ${Math.max(0, Math.round((w.until - Date.now()) / 60000))}m`)
               .join(' · '),
       );
       return;

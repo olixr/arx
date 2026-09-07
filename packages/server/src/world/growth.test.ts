@@ -44,6 +44,8 @@ const proto = GameServer.prototype as unknown as {
   tickGermination: (now: number) => void;
   visitDormant: (seed: number, row: GrowthRow, now: number) => void;
   maybeWander: (row: GrowthRow, now: number) => boolean;
+  noteClaimBuilt: (characterId: number) => void;
+  clearCapitalCache: () => void;
   fellWild: (tx: number, ty: number, node: NodeDef) => void;
   plantWild: (
     eid: number,
@@ -77,6 +79,10 @@ function slate(world: WorldSource) {
     bodyOnTile: (() => false) as (plane: string, tx: number, ty: number) => boolean,
     inClaimRing: (() => false) as (tx: number, ty: number) => boolean,
     growthRand: (() => 0.5) as () => number,
+    // The planting's claim-ring note: a slate with no homes moves no ring.
+    homesByCharacter: new Map<number, { x: number; y: number }>(),
+    noteClaimBuilt: proto.noteClaimBuilt,
+    clearCapitalCache: proto.clearCapitalCache,
     tickGermination: proto.tickGermination,
     visitDormant: proto.visitDormant,
     maybeWander: proto.maybeWander,
@@ -290,6 +296,7 @@ test('a drifted species rests as a crown, and the next felling re-aims at truth'
   const drifted = spot.tile === Tile.TreePine ? Tile.TreeOak : Tile.TreePine;
   row.tile = drifted;
   row.due = row.since + 60_000;
+  world.noteGrowth(row); // the visitor files what it checkpoints
   const sapDue = projectGrowth(SEED, row, row.due).due!;
   proto.tickGrowth.call(s, row.due + 1000);
   proto.tickGrowth.call(s, sapDue + 1000);
@@ -354,6 +361,7 @@ test('a tree never stands up through a body — the defer courtesy', () => {
   const row = fellAt(s, spot.tx, spot.ty, spot.tile);
   proto.tickGrowth.call(s, row.due! + 1000);
   row.due = row.since + 60_000; // germinated (checkpointed by hand)
+  world.noteGrowth(row);
   const sapDue = projectGrowth(SEED, row, row.due).due!;
   proto.tickGrowth.call(s, row.due + 1000); // the sapling stands (non-solid)
   s.bodyOnTile = () => true;
@@ -502,6 +510,21 @@ test('a dial edit re-aims live regrowth on the next beat (call-time reads)', () 
     replaceGrowth({ ...AUTHORED_GROWTH });
   }
 });
+test("THE REBUILD KEEPS THE BEAT'S CLOCK: a stale-heap rebuild projects at the last beat, not at the pushed future", () => {
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
+  const s = slate(world);
+  const row = fellAt(s, 230, 230, Tile.RockGold);
+  const due = row.due!;
+  assert.ok(due > row.since);
+  world.popGrowthDue(row.since); // the beat's clock stands at the felling
+  // A body-blocked row defers one entry per beat; past four per row the
+  // heap is rebuilt — at the beat's clock, never at the deferred future.
+  const far = due + 10 * 86_400_000;
+  for (let i = 0; i < 70; i++) world.noteGrowth(row, far + i);
+  assert.equal(row.due, due, 'the checkpoint stays where the beat clock put it');
+  assert.equal(world.popGrowthDue(due + 1), row, 'the vein is still due on its own clock');
+});
+
 // ------------------------------------------------- THE SOWN LINE (Ph4)
 
 function mkPlanter(seed: string, qty = 3) {
@@ -612,6 +635,9 @@ test('THE SEED TAKES THE PLOT: sowing on a garden plot consumes the built record
   (s.accounts as unknown as { deleteBuiltTile: (tx: number, ty: number) => void }).deleteBuiltTile =
     (tx: number, ty: number) => deletedBuilt.push([tx, ty]);
   const { player } = mkPlanter('acorn');
+  // The planter keeps a hearth: spending a plot may move THEIR ring
+  // (a homeless hand's planting moves none — the seat-cache law).
+  s.homesByCharacter.set(player.characterId, { x: spot.tx + 3, y: spot.ty });
   proto.plantWild.call(s, 1, player, spot.tx, spot.ty, 'acorn', Tile.TreeOak, () => {});
   assert.ok(world.growthAt(spot.tx, spot.ty), 'the sowing stands');
   assert.equal(world.builtAt(spot.tx, spot.ty), undefined, 'the plot is spent');

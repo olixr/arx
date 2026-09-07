@@ -441,12 +441,17 @@ import {
   poiCellKey,
   poiCellOf,
   poiContext,
+  poiContextBase,
+  type PoiContextBase,
   poiForCell,
   poiSiteBlocked,
   type ClaimRing,
   type PoiContext,
   type PoiSite,
 } from '../world/pois.js';
+import { ChestLedger, PoiLedger, type CalmWindow } from './poiLedger.js';
+import { CAPITAL_DIGNITY_PAD, POI_RETIRE_BEATS, POI_RETIRE_PAD_TILES, TICK_THROW_WINDOW_MS } from './tuning.js';
+import { minorDefsRevision, poiDefsRevision } from '@arx/content';
 import {
   CAPITAL_CLEARANCE,
   CAPITAL_PAD_TILES,
@@ -679,6 +684,8 @@ import {
   type SteerMemory,
 } from '@arx/shared';
 import { config } from '../config.js';
+import { log } from '../log.js';
+import * as metrics from '../metrics.js';
 import { CHAT_COMMANDS, DEV_COMMAND_SET } from './commands/index.js';
 import * as dlgSys from './dialogue.js';
 import * as farmSys from './farming.js';
@@ -686,6 +693,7 @@ import * as arenaSys from './arena.js';
 import * as runSys from './dungeonRuns.js';
 import * as keySys from './keyring.js';
 import * as interestSys from './interest.js';
+import { BODY_NPC, BODY_PLAYER, BODY_SUMMON, LivestockLedger, RespawnQueue, SignLedger, StopIndex, packChunk } from './indexes.js';
 import * as meleeSys from './melee.js';
 import * as procSys from './procs.js';
 import * as statusSys from './statuses.js';
@@ -1545,6 +1553,9 @@ interface CompanionComp {
  */
 interface PetComp {
   ownerEid: EntityId;
+  /** The active shelf folded from the row's arts (petActiveArts memo) and the arts it was read from. */
+  actives?: PetArtDef[];
+  activesSrc?: string[];
   /** Which stall row (PlayerComp.pets slot) this body embodies. */
   slot: number;
   /** Ticks of no follow progress while far — the give-up-to-trailing watchdog. */
@@ -2205,6 +2216,8 @@ export interface PlayerComp {
   petCalmTicks: number;
   /** Last mirrored household signature — resend only on change (the ride discipline). */
   petSigSent: string;
+  /** THE ONE LIVE NUMBER as last mirrored (-1 trailing, -2 downed, else hp) — beside the roster signature, not inside it. */
+  petHpSent: number;
   /** Wounds carried across trailing: the hp the body left with (null = whole). */
   petHp: number | null;
   /**
@@ -2326,7 +2339,7 @@ export interface PlayerComp {
   /** Last-sent availability signature — the quiet-wire diff guard. */
   questAvailSig: string;
   /** Last-sent live collect counts (the 500ms ticker's diff guard). */
-  questCollectSig: string;
+  questCollectSig: number;
   /**
    * THE LEDGER OF NAMES (docs/factions-plan.md): standing per faction
    * id, written ONLY by creditStanding — the one door. Absent = 0
@@ -2500,6 +2513,40 @@ function beastPartRadius(player: PlayerComp, tick: number): number {
   return r;
 }
 
+/** The perception scan's candidate list — filled and drained per body, never re-allocated. */
+const perceiveScratch: EntityId[] = [];
+
+/** sessionsOn's answer for a plane nobody streams. */
+const NO_SESSIONS: ReadonlySet<Session> = new Set();
+
+/**
+ * THE COLLECT SIGNATURE AS A NUMBER (Band B): the live-collect watcher
+ * used to mint an `id:item:count;` string per objective per player
+ * every 500 ms. FNV-1a over the same facts folds to one integer; the
+ * id and item hashes are memoized (a finite vocabulary).
+ */
+const COLLECT_SIG_SEED = 0x811c9dc5 | 0;
+function fnvMix(h: number, v: number): number {
+  return Math.imul(h ^ v, 0x01000193);
+}
+const strHashes = new Map<string, number>();
+function strHash(s: string): number {
+  let h = strHashes.get(s);
+  if (h === undefined) {
+    h = COLLECT_SIG_SEED;
+    for (let i = 0; i < s.length; i++) h = fnvMix(h, s.charCodeAt(i));
+    strHashes.set(s, h);
+  }
+  return h;
+}
+
+/** Same arts in the same order — the pet's active shelf memo key. */
+function sameArts(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
 /**
  * THE CALLING LAW's one-site dials, rebuilt by recomputeGear from the
  * answered set. Every field is read at exactly one hook site (the
@@ -2631,6 +2678,24 @@ const WHEN_HP_HYST = 0.05;
  */
 const MAX_QUEUED_INPUTS = 8;
 const SAVE_INTERVAL_TICKS = 600; // 30s
+
+/**
+ * THE SAVE REMEMBERS WHAT IT WROTE: per player, the fingerprint of each
+ * savePlayer table as it stood when its last write was ISSUED. A null
+ * entry is the dirty flag — set at birth, re-armed by a failed write or
+ * an explicit mark, and cleared only by issuing the write. The cadence
+ * save compares the live mirror to the fingerprint and writes only the
+ * tables that differ, so the mutation doors need not be enumerated
+ * (a mutation that never told the client still reaches its row) and
+ * "when unsure, the flag is set" is total by construction.
+ */
+interface SaveLedger {
+  char: string | null;
+  skills: string | null;
+  inv: string | null;
+  equip: string | null;
+}
+type SaveTable = keyof SaveLedger;
 /** World-y extent of the player's visual body above its ground point
  * (screen height ÷ camera pitch) — NPC shots test the feet→crown band. */
 const PLAYER_HIT_HEIGHT = 1.9;
@@ -2859,6 +2924,8 @@ export class GameServer {
   /** Actor definitions by slug — loaded from the DB at boot (DB-first). */
   readonly actorDefs = new Map<string, NpcActorDef>();
   private readonly actorSpawnPoints: ActorSpawnState[] = [];
+  /** THE STOPS BY THEIR CHUNK: every patrol stop, post cell and actor post, filed at registration. */
+  private readonly routineStops = new StopIndex();
   /** Routine definitions by id — loaded from the DB at boot (DB-first). */
   readonly routineDefs = new Map<string, RoutineDef>();
   /**
@@ -2933,6 +3000,40 @@ export class GameServer {
   triggerSource: (() => Promise<{ defs: TriggerDef[]; errors: string[] }>) | null = null;
 
   readonly sessions = new Set<Session>();
+  /**
+   * THE PLANE ROLL (Band B): live sessions by the plane they stream.
+   * Filed at bind and at every crossing, unfiled at close — the tile
+   * and detail patches, the chunk drops and the farm mirrors fan out
+   * to one plane's sessions instead of asking every session its plane.
+   */
+  readonly sessionsByPlane = new Map<PlaneId, Set<Session>>();
+
+  /** File a session under the plane it streams (null unfiles it). */
+  refileSession(session: Session, plane: PlaneId | null): void {
+    const prev = session.streamPlane;
+    if (prev === plane) return;
+    if (prev !== null) {
+      const set = this.sessionsByPlane.get(prev);
+      if (set) {
+        set.delete(session);
+        if (set.size === 0) this.sessionsByPlane.delete(prev);
+      }
+    }
+    session.streamPlane = plane;
+    if (plane !== null) {
+      let set = this.sessionsByPlane.get(plane);
+      if (!set) {
+        set = new Set();
+        this.sessionsByPlane.set(plane, set);
+      }
+      set.add(session);
+    }
+  }
+
+  /** The sessions streaming one plane — the fan-out set for a plane's mirrors. */
+  sessionsOn(plane: PlaneId): ReadonlySet<Session> {
+    return this.sessionsByPlane.get(plane) ?? NO_SESSIONS;
+  }
   /** In-world players by character id (blocks duplicate logins). */
   readonly characterEids = new Map<number, EntityId>();
   /**
@@ -3028,6 +3129,17 @@ export class GameServer {
   /** chunkKey -> entities inside; the interest-management index. */
   readonly chunks = new Map<string, Set<EntityId>>();
   readonly entityChunk = new Map<EntityId, string>();
+  /**
+   * ONE MEMBERSHIP, TWO DOORS (Band B): the same Sets as `chunks`,
+   * filed per plane under a packed (cx, cy) integer — the door every
+   * per-tick neighbour walk reads (forEachNpcNear, forEachBodyNear,
+   * forEachDropNear, separateHeading, bodyOnTile, the interest union),
+   * so no moving body mints a key string. entityCell/entityPlane are
+   * the unmoved-body fast check in updateChunkMembership.
+   */
+  readonly chunkGrid = new Map<PlaneId, Map<number, Set<EntityId>>>();
+  readonly entityCell = new Map<EntityId, number>();
+  readonly entityPlane = new Map<EntityId, PlaneId>();
 
   /** Depleted nodes waiting to come back. */
   /**
@@ -3060,20 +3172,13 @@ export class GameServer {
    */
   static readonly FIELD_LITTER_DIGNITY = 12;
 
-  readonly respawnQueue: Array<{
-    at: number;
-    /** THE WORLDS APART: the plane whose ground restores. */
-    plane: PlaneId;
-    tx: number;
-    ty: number;
-    tile: Tile;
-    /**
-     * Respawn only if the ground still holds this tile — a smashed
-     * prop whose floor someone has since built over stays gone rather
-     * than stomping the new construction.
-     */
-    over?: Tile;
-  }> = [];
+  /**
+   * THE DUE HEAD (Band B): tile respawns (depleted nodes, smashed
+   * props, door auto-close, chest reclose, field litter) on a heap by
+   * due time — the tick pops what is due, never walks the queue. The
+   * entry shape (RespawnEntry) is the old array's, unchanged.
+   */
+  readonly respawnQueue = new RespawnQueue();
 
   /**
    * Locked doors, keyed by the door unit's anchor tile (`"tx,ty"` of
@@ -3135,6 +3240,8 @@ export class GameServer {
    * changes and clears it (the ring-cache discipline).
    */
   readonly capitalCache = new Map<string, CapitalSeat | null>();
+  /** capitalRectsNear's answer per lattice window — lives and dies with capitalCache. */
+  private readonly capitalRectsCache = new Map<string, Array<{ x: number; y: number; w: number; h: number }>>();
   /** Standing capitals, lattice key → live record. */
   readonly strongholdLive = new Map<
     string,
@@ -3156,6 +3263,9 @@ export class GameServer {
     string,
     {
       layoutId: string;
+      /** The lattice key, parsed once at write (the lanes never split it). */
+      gx: number;
+      gy: number;
       anchorX: number;
       anchorY: number;
       epoch: number;
@@ -3168,28 +3278,8 @@ export class GameServer {
     }
   >();
 
-  readonly poiLedger = new Map<
-    string,
-    {
-      epoch: number;
-      site: PoiSite | null;
-      clearedAt: number | null;
-      emberUntil: number | null;
-      fallowUntil: number | null;
-      /** Boldness rung (0 = base camp) + when the current rung began. */
-      stage: number;
-      stageAt: number | null;
-      /** Satellite camps point at their core's cell key (the family law). */
-      originCell: string | null;
-      /**
-       * THE CHAMPION'S MARK: the victory banner's names (felling hand
-       * first, then their sworn party). Rides only rows with a
-       * clearedAt stamp; omitted everywhere a fresh decision stands —
-       * the banner falls with the carcass, never survives the turn.
-       */
-      clearedBy?: string[] | null;
-    }
-  >();
+  /** The world_pois ledger, satellite-indexed (poiLedger.ts holds the row shape). */
+  readonly poiLedger = new PoiLedger();
   /**
    * Cells any character holds a LIVE poi: discovery for — the boldness
    * clock's gate (an unseen camp costs nothing and threatens nobody;
@@ -3201,7 +3291,7 @@ export class GameServer {
    * FRONTIER.regionCells of a stamp see no stage-ups, satellites,
    * fallow wakes, or renewal landings until calm_until passes.
    */
-  readonly frontierCalm = new Map<string, number>();
+  readonly frontierCalm = new Map<string, CalmWindow>();
   /**
    * THE CONSERVATION LAW's debt: sites the frontier owes the world
    * after ember dissolves. Spent by tickFrontier standing fresh rolls
@@ -3281,10 +3371,7 @@ export class GameServer {
    * def re-tables the loot (the riftgate key faucet) or wards the lid
    * while the garrison stands (the champion's cache).
    */
-  readonly poiChests = new Map<
-    string,
-    { cell: string; table?: string; warded?: boolean; level?: number }
-  >();
+  readonly poiChests = new ChestLedger();
 
   /**
    * THE ADOPTED RING (Map Studio v2 Phase 6): the code-side TOWN_SPAWNS
@@ -3504,10 +3591,7 @@ export class GameServer {
    * the zone defs (world.signAt) and never enters this map. Held whole
    * in memory like built tiles: a few rows, read on every approach.
    */
-  private readonly playerSigns = new Map<
-    string,
-    { plane: PlaneId; tx: number; ty: number; title: string; lines: string[]; owner: number }
-  >();
+  private readonly playerSigns = new SignLedger();
 
   /** Load persisted player signs at boot. */
   loadSigns(
@@ -3518,7 +3602,7 @@ export class GameServer {
       // rift slot ids recycle, and a stale rift row would be served
       // inside a future unrelated run at the same coordinates.
       if (!this.planes.get(row.plane)) continue;
-      this.playerSigns.set(`${row.plane}|${row.tx},${row.ty}`, row);
+      this.playerSigns.set(row);
     }
   }
 
@@ -3534,7 +3618,7 @@ export class GameServer {
     ty: number,
     forCharacterId: number,
   ): SignInfo | null {
-    const own = this.playerSigns.get(`${plane}|${tx},${ty}`);
+    const own = this.playerSigns.get(plane, tx, ty);
     if (own) {
       const info: SignInfo = { tx, ty, title: own.title, lines: own.lines };
       if (own.owner === forCharacterId && forCharacterId > 0) info.mine = true;
@@ -3562,7 +3646,7 @@ export class GameServer {
     if (!world) return;
     for (const authored of world.signsInChunk(cx, cy)) {
       // A player sign on the same tile is emitted by the sweep below.
-      if (this.playerSigns.has(`${plane}|${authored.x},${authored.y}`)) continue;
+      if (this.playerSigns.has(plane, authored.x, authored.y)) continue;
       signs.push({
         tx: authored.x,
         ty: authored.y,
@@ -3570,12 +3654,9 @@ export class GameServer {
         lines: authored.lines ?? [],
       });
     }
-    const x0 = cx * CHUNK_SIZE;
-    const y0 = cy * CHUNK_SIZE;
-    for (const own of this.playerSigns.values()) {
-      if (own.plane !== plane) continue;
-      if (own.tx < x0 || own.tx >= x0 + CHUNK_SIZE) continue;
-      if (own.ty < y0 || own.ty >= y0 + CHUNK_SIZE) continue;
+    // THE BOARD KNOWS ITS CHUNK (Band B): the chunk's own bucket, not
+    // every player sign in the world per streamed chunk.
+    for (const own of this.playerSigns.inChunk(plane, cx, cy)) {
       const info = this.signInfoAt(plane, own.tx, own.ty, charId);
       if (info) signs.push(info);
     }
@@ -3650,7 +3731,7 @@ export class GameServer {
       return;
     }
     const text = sanitizeSignText({ title, lines });
-    this.playerSigns.set(`${pos.plane}|${tx},${ty}`, {
+    this.playerSigns.set({
       plane: pos.plane,
       tx,
       ty,
@@ -3793,12 +3874,14 @@ export class GameServer {
         // roster stays proportional to what STANDS, not to history.
         const idx = this.freeSpawnSlots.pop();
         if (idx !== undefined) {
+          this.routineStops.remove(this.spawnPoints[idx]);
           this.spawnPoints[idx] = rec;
           indexes.push(idx);
         } else {
           indexes.push(this.spawnPoints.length);
           this.spawnPoints.push(rec);
         }
+        this.fileSpawnStops(rec);
       }
     }
     if (zoneId !== undefined) this.zonePlacementIdx(zoneId).spawns.push(...indexes);
@@ -3853,8 +3936,13 @@ export class GameServer {
       const idx = this.freeActorSlots.pop();
       const at = idx ?? this.actorSpawnPoints.length;
       if (zoneId !== undefined) this.zonePlacementIdx(zoneId).actors.push(at);
-      if (idx !== undefined) this.actorSpawnPoints[idx] = rec;
-      else this.actorSpawnPoints.push(rec);
+      if (idx !== undefined) {
+        this.routineStops.remove(this.actorSpawnPoints[idx]);
+        this.actorSpawnPoints[idx] = rec;
+      } else {
+        this.actorSpawnPoints.push(rec);
+      }
+      this.routineStops.add(rec, rec.x, rec.y);
     }
   }
 
@@ -4041,6 +4129,13 @@ export class GameServer {
       try {
         this.tick();
       } catch (err) {
+        // THE THROW IS COUNTED: a system that throws every tick is the
+        // common bad-content failure, and it used to leave /healthz
+        // green — the loop kept stamping lastTickAt. The counter feeds
+        // the minute line and /metrics; the last-minute rate feeds the
+        // readiness verdict (503 `tick throwing` past the tuning cap).
+        metrics.inc('tick.throws');
+        this.noteTickThrow(performance.now());
         console.error(`[tick] tick ${this.tickCount} threw:`, err);
       }
       // THE TICK NAMES ITS DEBT: chunk generation runs synchronously
@@ -4058,12 +4153,15 @@ export class GameServer {
       // logged once a minute — the audit's scaling fixes are invisible
       // without a number, and a slow drift toward the 50ms budget
       // should be read in the log, not discovered as rubber-banding.
-      const tickMs = performance.now() - t0;
+      const nowTick = performance.now();
+      const tickMs = nowTick - t0;
+      this.lastTickAt = nowTick;
       this.tickMsMax = Math.max(this.tickMsMax, tickMs);
       this.tickMsSum += tickMs;
       if (++this.tickMsCount >= 1200) {
-        const avg = (this.tickMsSum / this.tickMsCount).toFixed(2);
-        console.log(`[tick] avg ${avg}ms, max ${this.tickMsMax.toFixed(1)}ms over ${this.tickMsCount} ticks`);
+        this.tickMsWindowAvg = this.tickMsSum / this.tickMsCount;
+        this.tickMsWindowMax = this.tickMsMax;
+        this.logMinuteLine();
         this.tickMsSum = 0;
         this.tickMsMax = 0;
         this.tickMsCount = 0;
@@ -4084,6 +4182,71 @@ export class GameServer {
     if (this.timer) clearTimeout(this.timer);
     this.saveAll();
     for (const s of this.sessions) s.close();
+  }
+
+  /**
+   * THE MINUTE LINE: the tick reservoir plus the process's other
+   * numbers, read from the metrics ledger so the log and /metrics
+   * never disagree. Sessions/entities/chunks are gauges set here (the
+   * only reader is this line and the endpoint); messages and bytes
+   * are counters the session hooks raise.
+   */
+  private logMinuteLine(): void {
+    this.sampleGauges();
+    const heapMb = Math.round(process.memoryUsage().heapUsed / 1048576);
+    log('info', 'tick', 'minute', {
+      avgMs: Number(this.tickMsWindowAvg.toFixed(2)),
+      maxMs: Number(this.tickMsWindowMax.toFixed(1)),
+      ticks: this.tickCount,
+      tickThrows: metrics.counter('tick.throws'),
+      msgsIn: metrics.counter('msgs.in'),
+      msgsOut: metrics.counter('msgs.out'),
+      bytesOut: metrics.counter('bytes.out'),
+      sessions: this.sessions.size,
+      players: this.players.size,
+      entities: this.ecs.count,
+      chunks: metrics.gauge('chunks.loaded'),
+      dbQueue: metrics.gauge('db.queueDepth'),
+      dbFails: metrics.counter('db.writeFailures'),
+      heapMb,
+    });
+  }
+
+  /** Refresh the gauges the ledger cannot count on its own. */
+  sampleGauges(): void {
+    let chunks = 0;
+    for (const w of this.planes.all()) chunks += w.size;
+    metrics.set('chunks.loaded', chunks);
+    metrics.set('sessions', this.sessions.size);
+    metrics.set('players', this.players.size);
+    metrics.set('entities', this.ecs.count);
+    metrics.set('ticks', this.tickCount);
+    metrics.set('heap.mb', Math.round(process.memoryUsage().heapUsed / 1048576));
+  }
+
+  /** performance.now() stamps of the ticks that threw in the last minute (pruned at both ends). */
+  private tickThrowStamps: number[] = [];
+
+  /** The loop's catch files a throw here; anything older than a minute falls off the front. */
+  noteTickThrow(at: number): void {
+    this.tickThrowStamps.push(at);
+    this.pruneTickThrows(at);
+  }
+
+  private pruneTickThrows(now: number): void {
+    const floor = now - TICK_THROW_WINDOW_MS;
+    let drop = 0;
+    while (drop < this.tickThrowStamps.length && this.tickThrowStamps[drop]! < floor) drop++;
+    if (drop > 0) this.tickThrowStamps.splice(0, drop);
+  }
+
+  /** What /healthz reads: the last completed tick's stamp, the window's averages, the minute's throws. */
+  tickHealth(now: number = performance.now()): { lastTickAt: number; avgMs: number; maxMs: number; throwsLastMin: number } {
+    // Mid-window, the running numbers are fresher than the last closed window.
+    const avgMs = this.tickMsCount > 0 ? this.tickMsSum / this.tickMsCount : this.tickMsWindowAvg;
+    const maxMs = Math.max(this.tickMsMax, this.tickMsCount > 0 ? 0 : this.tickMsWindowMax);
+    this.pruneTickThrows(now);
+    return { lastTickAt: this.lastTickAt, avgMs, maxMs, throwsLastMin: this.tickThrowStamps.length };
   }
 
   // ------------------------------------------------------------- auth
@@ -4548,6 +4711,7 @@ export class GameServer {
       petEid: null,
       petCalmTicks: 0,
       petSigSent: '',
+      petHpSent: -3,
       petHp: null,
       petHpWatch: -1,
       petXpDirty: false,
@@ -4588,7 +4752,7 @@ export class GameServer {
           : null,
       quests,
       questAvailSig: '',
-      questCollectSig: '',
+      questCollectSig: COLLECT_SIG_SEED,
       standing,
       repSig: '',
       markWary: new Map(),
@@ -4682,6 +4846,7 @@ export class GameServer {
       player.session.sendJson({ t: 'reject', reason: 'logged in from another window' });
       player.session.playerEid = null;
       player.session.close();
+      this.refileSession(player.session, null);
       this.sessions.delete(player.session);
     }
     player.session = session;
@@ -4692,6 +4857,7 @@ export class GameServer {
     player.rideSigSent = '';
     // Same law for the household mirror.
     player.petSigSent = '';
+    player.petHpSent = -3;
     // ...and the company's.
     player.companionSigSent = '';
     player.inputQueue.length = 0;
@@ -4715,6 +4881,7 @@ export class GameServer {
     session.knownChunks.clear();
     session.sentSnapSig.clear();
     this.sessions.add(session);
+    this.refileSession(session, this.positions.get(eid)?.plane ?? null);
     session.sendJson({
       t: 'welcome',
       eid,
@@ -4823,6 +4990,7 @@ export class GameServer {
   }
 
   onSessionClosed(session: Session): void {
+    this.refileSession(session, null);
     this.sessions.delete(session);
     const eid = session.playerEid;
     if (eid === null) return;
@@ -5032,15 +5200,56 @@ export class GameServer {
 
   // ------------------------------------------------------ persistence
 
-  private savePlayer(eid: EntityId): void {
+  /** The per-player save ledger (see SaveLedger); weak so a despawned body takes it along. */
+  private readonly saveLedgers = new WeakMap<PlayerComp, SaveLedger>();
+
+  private saveLedgerOf(player: PlayerComp): SaveLedger {
+    let led = this.saveLedgers.get(player);
+    if (!led) {
+      led = { char: null, skills: null, inv: null, equip: null };
+      this.saveLedgers.set(player, led);
+    }
+    return led;
+  }
+
+  /** Re-arm one table: the next cadence writes it whatever the mirror says. */
+  markSaveDirty(player: PlayerComp, table: SaveTable): void {
+    this.saveLedgerOf(player)[table] = null;
+  }
+
+  /**
+   * Persist a player. `onlyDirty` is the cadence's shape — each table
+   * writes only when its mirror differs from the fingerprint of the
+   * last issued write; logout, despawn, death-spill and shutdown call
+   * it whole (the default), so every existing caller's rows are the
+   * rows it always wrote. Each write's verdict comes back through the
+   * accounts promise: a failure re-arms the table (null) so the next
+   * cadence retries — the write is never silently forgotten.
+   */
+  private savePlayer(eid: EntityId, onlyDirty = false): void {
     const player = this.players.get(eid);
     if (!player || player.characterId < 0) return; // guests aren't saved
     const pos = this.positions.must(eid);
     const health = this.healths.must(eid);
-    this.accounts.saveCharacter(player.characterId, pos.plane, pos.x, pos.y, health.hp);
-    this.accounts.saveSkills(player.characterId, player.skills as Record<string, number>);
-    this.accounts.saveInventory(player.characterId, player.inventory);
-    this.accounts.saveEquipment(player.characterId, player.equipment);
+    const led = this.saveLedgerOf(player);
+    const cid = player.characterId;
+    const issue = (table: SaveTable, sig: string, write: () => Promise<boolean>): void => {
+      if (onlyDirty && led[table] === sig) return;
+      led[table] = sig;
+      void write().then((ok) => {
+        // Re-arm only if nothing newer was issued meanwhile — a later
+        // write that landed already carries the truth.
+        if (!ok && led[table] === sig) led[table] = null;
+      });
+    };
+    issue('char', `${pos.plane}|${pos.x}|${pos.y}|${health.hp}`, () =>
+      this.accounts.saveCharacter(cid, pos.plane, pos.x, pos.y, health.hp),
+    );
+    issue('skills', JSON.stringify(player.skills), () =>
+      this.accounts.saveSkills(cid, player.skills as Record<string, number>),
+    );
+    issue('inv', JSON.stringify(player.inventory), () => this.accounts.saveInventory(cid, player.inventory));
+    issue('equip', JSON.stringify(player.equipment), () => this.accounts.saveEquipment(cid, player.equipment));
     this.flushLessons(player);
     if (player.bank && player.bankDirty) {
       this.accounts.saveBank(player.characterId, player.bank);
@@ -5072,8 +5281,24 @@ export class GameServer {
     }
   }
 
+  /** Every player, whole — shutdown's shape. */
   private saveAll(): void {
     for (const eid of this.players.keys()) this.savePlayer(eid);
+  }
+
+  /**
+   * THE BURST BECOMES A TRICKLE: the cadence save no longer walks every
+   * player on one tick every 30 s (hundreds of statements queued behind
+   * the one connection, every login's load waiting behind them). Body
+   * `eid` saves on the tick whose phase is `eid mod SAVE_INTERVAL_TICKS`
+   * — each player still exactly once per interval, spread across it —
+   * and saves only what changed.
+   */
+  private saveDue(): void {
+    const phase = this.tickCount % SAVE_INTERVAL_TICKS;
+    for (const eid of this.players.keys()) {
+      if (eid % SAVE_INTERVAL_TICKS === phase) this.savePlayer(eid, true);
+    }
   }
 
   /**
@@ -5695,11 +5920,13 @@ export class GameServer {
    * them embedded in a solid tile.
    */
   bodyOnTile(plane: PlaneId, tx: number, ty: number, pad = 0.4): boolean {
+    const grid = this.chunkGrid.get(plane);
+    if (!grid) return false;
     const cx = Math.floor((tx + 0.5) / CHUNK_SIZE);
     const cy = Math.floor((ty + 0.5) / CHUNK_SIZE);
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
-        const set = this.chunks.get(`${plane}|${chunkKey(cx + dx, cy + dy)}`);
+        const set = grid.get(packChunk(cx + dx, cy + dy));
         if (!set) continue;
         for (const other of set) {
           const opos = this.positions.get(other);
@@ -5752,10 +5979,7 @@ export class GameServer {
         const shut = g === undefined ? null : shutDoorTile(g);
         if (shut !== null && shut !== g) this.setWorldTile(plane, t.x, t.y, shut);
         // A hand on the door outranks the auto-close timer.
-        for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
-          const e = this.respawnQueue[i]!;
-          if (e.plane === plane && e.tx === t.x && e.ty === t.y) this.respawnQueue.splice(i, 1);
-        }
+        this.respawnQueue.removeWhere((e) => e.plane === plane && e.tx === t.x && e.ty === t.y);
       }
       return;
     }
@@ -6769,7 +6993,7 @@ export class GameServer {
    * and on release, anchored to a feed trough, alive whether the
    * keeper is or not. Never a pet: no combat, no follow, no heel.
    */
-  readonly livestock = new Map<EntityId, LivestockComp>();
+  readonly livestock = new LivestockLedger();
 
   /** Trough feed by "tx,ty" — the yard's mangers. */
   readonly farmTroughs = new Map<string, { tx: number; ty: number; feed: number }>();
@@ -6791,27 +7015,16 @@ export class GameServer {
   }
 
   private livestockEidFor(characterId: number, slot: number): EntityId | null {
-    for (const [eid, comp] of this.livestock) {
-      if (comp.row.characterId === characterId && comp.row.slot === slot) return eid;
-    }
-    return null;
+    return this.livestock.eidFor(characterId, slot);
   }
 
   /** Rows anchored to one trough (the stock cap's counter). */
   livestockAtTrough(tx: number, ty: number): number {
-    let n = 0;
-    for (const comp of this.livestock.values()) {
-      if (comp.row.tx === tx && comp.row.ty === ty) n++;
-    }
-    return n;
+    return this.livestock.troughCount(tx, ty);
   }
 
   livestockCountFor(characterId: number): number {
-    let n = 0;
-    for (const comp of this.livestock.values()) {
-      if (comp.row.characterId === characterId) n++;
-    }
-    return n;
+    return this.livestock.keeperCount(characterId);
   }
 
   mirrorTrough(trough: { tx: number; ty: number; feed: number }): void {
@@ -6955,11 +7168,11 @@ export class GameServer {
     // to wild earth — otherwise the growth beat would read the plot's
     // built-tile record as a builder's claim and end the very growth
     // it hosted. The plot is the price of the planting.
-    if (this.surface.builtAt(tx, ty) !== undefined) {
+    const plot = this.surface.builtAt(tx, ty);
+    if (plot !== undefined) {
       this.surface.unregisterBuilt(tx, ty);
       this.accounts.deleteBuiltTile(SURFACE_PLANE_ID, tx, ty);
-      this.ringCache = null;
-    this.capitalCache?.clear();
+      this.noteClaimBuilt(plot.owner);
     }
     const now = Date.now();
     const row: GrowthRow = {
@@ -7043,14 +7256,30 @@ export class GameServer {
   private tickGrowth(now: number): void {
     let writes = 0;
     const seed = config.worldSeed;
-    for (const row of this.surface.growthLedger.values()) {
-      if (writes >= GROWTH.beatBudget) break;
-      // A drifted crown is at rest — only an axe moves it again.
-      if (row.state === GROWTH_DRIFTED) continue;
-      if (row.deferUntil !== undefined && row.deferUntil > now) continue;
+    // THE DUE-INDEX: the beat pops only rows whose deadline has come
+    // (the surface keeps the heap; drifted crowns and dormant bare
+    // ground never enter it). A dial edit re-aims every deadline at
+    // once by re-filing the ledger — the old whole-ledger walk re-aimed
+    // them one beat at a time and the index must lose nothing to it.
+    const dialPrint = GameServer.growthDialPrint();
+    if (this.growthDialPrint !== dialPrint) {
+      this.growthDialPrint = dialPrint;
+      this.surface.reindexGrowth(now);
+    }
+    // Every pop either lands, unregisters, or re-files at a future
+    // look — the ledger's size bounds the pass all the same.
+    let looks = this.surface.growthLedger.size + 1;
+    while (writes < GROWTH.beatBudget && looks-- > 0) {
+      const row = this.surface.popGrowthDue(now);
+      if (row === undefined) break;
+      if (row.deferUntil !== undefined && row.deferUntil > now) {
+        this.surface.noteGrowth(row, row.deferUntil);
+        continue;
+      }
       const proj = projectGrowth(seed, row, now);
       if (!proj.ripe && proj.state === row.state) {
-        row.due = proj.due; // dial edits re-aim the checkpoint for free
+        row.due = proj.due; // the checkpoint re-aims; the index follows
+        this.surface.noteGrowth(row);
         continue;
       }
       // Something is due. First, the claim guards: a zone that moved
@@ -7088,6 +7317,7 @@ export class GameServer {
           TILE_DEFS[target]?.solid && !(cur !== undefined && TILE_DEFS[cur as Tile]?.solid);
         if (becomingSolid && this.bodyOnTile(SURFACE_PLANE_ID, row.tx, row.ty)) {
           row.deferUntil = now + 5000;
+          this.surface.noteGrowth(row, row.deferUntil);
           continue;
         }
       }
@@ -7116,6 +7346,7 @@ export class GameServer {
           row.state = GROWTH_DRIFTED;
           row.since = now;
           row.due = null;
+          this.surface.noteGrowth(row);
           this.accounts.saveGrowth(row);
         }
       } else {
@@ -7124,12 +7355,19 @@ export class GameServer {
         row.state = proj.state;
         row.since = proj.stateSince;
         row.due = proj.due;
+        this.surface.noteGrowth(row);
         if (loaded) this.setWorldTile(SURFACE_PLANE_ID, row.tx, row.ty, proj.tile);
         this.accounts.saveGrowth(row);
       }
       writes++;
     }
     this.tickGermination(now);
+  }
+
+  /** The GROWTH timing dials' print — a change re-files the due-index. */
+  private growthDialPrint: string | null = null;
+  private static growthDialPrint(): string {
+    return JSON.stringify(GROWTH);
   }
 
   /**
@@ -7234,6 +7472,7 @@ export class GameServer {
       row.tile = host;
       row.since = now;
       row.due = null;
+      this.surface.noteGrowth(row);
       this.accounts.saveGrowth(row);
     }
     if (srcLoaded) this.setWorldTile(SURFACE_PLANE_ID, row.tx, row.ty, host);
@@ -7263,14 +7502,19 @@ export class GameServer {
    */
   private tickGermination(now: number): void {
     const seed = config.worldSeed;
-    const dormant: GrowthRow[] = [];
-    for (const row of this.surface.growthLedger.values()) {
-      if (row.state === GROWTH_BARE && row.due === null) dormant.push(row);
-    }
-    if (dormant.length === 0) return;
-    const visits = Math.min(GameServer.GERM_VISITS_PER_BEAT, dormant.length);
+    // The dormant list is kept by the surface (registerGrowth and
+    // every noteGrowth file bare-and-unclocked rows into it), so the
+    // visitor walks its round without a whole-ledger sweep.
+    const count = this.surface.growthDormantCount;
+    if (count === 0) return;
+    const visits = Math.min(GameServer.GERM_VISITS_PER_BEAT, count);
     for (let i = 0; i < visits; i++) {
-      this.visitDormant(seed, dormant[(this.germCursor + i) % dormant.length]!, now);
+      // A visit that germinates swap-removes its row; index by the
+      // LIVE count each step so the round never reads past the end.
+      const live = this.surface.growthDormantCount;
+      if (live === 0) break;
+      const row = this.surface.growthDormantAt((this.germCursor + i) % live);
+      if (row !== undefined) this.visitDormant(seed, row, now);
     }
     this.germCursor = (this.germCursor + visits) % 1_000_000_007;
   }
@@ -7348,6 +7592,7 @@ export class GameServer {
       );
     }
     row.due = now + germSproutFor(seed, row.tx, row.ty, row.firstSeenAt);
+    this.surface.noteGrowth(row);
     this.accounts.saveGrowth(row);
   }
 
@@ -7392,12 +7637,14 @@ export class GameServer {
     r: number,
     fn: (eid: EntityId, drop: DropComp, pos: { x: number; y: number }) => boolean | void,
   ): void {
+    const grid = this.chunkGrid.get(plane);
+    if (!grid) return;
     const ring = Math.ceil((r + 1) / CHUNK_SIZE);
     const ccx = Math.floor(x / CHUNK_SIZE);
     const ccy = Math.floor(y / CHUNK_SIZE);
     for (let dy = -ring; dy <= ring; dy++) {
       for (let dx = -ring; dx <= ring; dx++) {
-        const set = this.chunks.get(`${plane}|${chunkKey(ccx + dx, ccy + dy)}`);
+        const set = grid.get(packChunk(ccx + dx, ccy + dy));
         if (!set) continue;
         for (const eid of set) {
           const drop = this.drops.get(eid);
@@ -7420,8 +7667,10 @@ export class GameServer {
   ): EntityId {
     let merged: EntityId | null = null;
     const now = Date.now();
+    // The candidate is built once — not re-spread per pile tested.
+    const candidate = { ...comp, item };
     this.forEachDropNear(plane, x, y, DROP_MERGE_RADIUS, (eid, drop, pos) => {
-      if (!canMergeDrop(drop, { ...comp, item }, now)) {
+      if (!canMergeDrop(drop, candidate, now)) {
         return;
       }
       const dx = pos.x - x;
@@ -8074,14 +8323,13 @@ export class GameServer {
     this.accounts.saveBuiltTile(plane, action.tx, action.ty, placed, player.characterId, ground);
     this.setWorldTile(plane, action.tx, action.ty, placed);
     // A homestead grew — its claim ring re-derives on the next read.
-    if (this.homesByCharacter.has(player.characterId)) this.ringCache = null;
-    this.capitalCache?.clear();
+    this.noteClaimBuilt(player.characterId);
     this.grantXp(eid, player, def.skill ?? 'construction', def.xp);
     // A raised board starts BLANK and owned: the row exists from the
     // first moment so the builder sees an edit affordance the instant
     // the post lands, and everyone else sees an empty sign.
     if (isSignTile(placed) && player.characterId > 0) {
-      this.playerSigns.set(`${plane}|${action.tx},${action.ty}`, {
+      this.playerSigns.set({
         plane,
         tx: action.tx,
         ty: action.ty,
@@ -8097,12 +8345,7 @@ export class GameServer {
     // A depleted forage node may have queued a respawn for this very
     // tile (they deplete to buildable Grass) — a late respawn would
     // stomp the new construction and desync it from built_tiles.
-    for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
-      const entry = this.respawnQueue[i]!;
-      if (entry.plane === plane && entry.tx === action.tx && entry.ty === action.ty) {
-        this.respawnQueue.splice(i, 1);
-      }
-    }
+    this.respawnQueue.removeWhere((e) => e.plane === plane && e.tx === action.tx && e.ty === action.ty);
   }
 
   /**
@@ -8165,7 +8408,7 @@ export class GameServer {
         this.accounts.deleteCrop(tx, ty);
         this.surface.unregisterCropTile(tx, ty);
         this.setWorldTile(SURFACE_PLANE_ID, tx, ty, bedTileFor(crop.def, crop.framed === 1));
-        for (const s of this.sessions) s.sendJson({ t: 'farm', remove: [{ tx, ty }] });
+        for (const s of this.sessionsOn(SURFACE_PLANE_ID)) s.sendJson({ t: 'farm', remove: [{ tx, ty }] });
         player.session.sendJson({ t: 'chat', channel: 'system', text: 'You grub the old wood out. The plot stands ready.' });
         return;
       }
@@ -8334,7 +8577,7 @@ export class GameServer {
 
     // The words fall with the post: no orphan record may outlive its
     // board, or a rebuild on the same tile would inherit dead copy.
-    if (this.playerSigns.delete(`${plane}|${tx},${ty}`)) {
+    if (this.playerSigns.delete(plane, tx, ty)) {
       this.accounts.deleteSign(plane, tx, ty);
       this.broadcastSign(plane, tx, ty, true);
     }
@@ -8407,8 +8650,7 @@ export class GameServer {
       this.accounts.saveBuiltTile(plane, tx, ty, built.prevTile, built.owner, natural);
     }
     this.setWorldTile(plane, tx, ty, built.prevTile);
-    if (this.homesByCharacter.has(player.characterId)) this.ringCache = null;
-    this.capitalCache?.clear();
+    this.noteClaimBuilt(player.characterId);
     // Tearing down your own claimed bed dissolves the claim NOW —
     // eagerly, not on the next bedside read — so the hearth watch
     // never guards a yard whose hearth is gone.
@@ -8933,8 +9175,8 @@ export class GameServer {
     this.worldOf(plane).setDetail(tx, ty, detail);
     const key = chunkKey(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
     const patch = encodeDetailPatch({ tx, ty, detail });
-    for (const s of this.sessions) {
-      if (this.sessionPlane(s) === plane && s.knownChunks.has(key)) s.sendBinary(patch);
+    for (const s of this.sessionsOn(plane)) {
+      if (s.knownChunks.has(key)) s.sendBinary(patch);
     }
   }
 
@@ -9023,10 +9265,11 @@ export class GameServer {
     this.evictSeatsAround(plane, tx, ty);
     const key = chunkKey(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
     const patch = encodeTilePatch({ tx, ty, ground: tile });
-    for (const s of this.sessions) {
-      // A patch may only reach sessions whose streamed plane owns the
-      // tile — the same "cx,cy" names different ground elsewhere.
-      if (this.sessionPlane(s) === plane && s.knownChunks.has(key)) s.sendBinary(patch);
+    // A patch may only reach sessions whose streamed plane owns the
+    // tile — the same "cx,cy" names different ground elsewhere. THE
+    // PLANE ROLL hands over exactly those sessions (Band B).
+    for (const s of this.sessionsOn(plane)) {
+      if (s.knownChunks.has(key)) s.sendBinary(patch);
     }
   }
 
@@ -9229,18 +9472,14 @@ export class GameServer {
     // /poi reroll; common once cleared camps dissolve on the ember
     // clock). A reload paints its tiles fresh anyway, so the purge is
     // right for every caller.
-    for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
-      const e = this.respawnQueue[i]!;
-      if (
+    this.respawnQueue.removeWhere(
+      (e) =>
         e.plane === plane &&
         e.tx >= old.origin.x &&
         e.tx < old.origin.x + old.width &&
         e.ty >= old.origin.y &&
-        e.ty < old.origin.y + old.height
-      ) {
-        this.respawnQueue.splice(i, 1);
-      }
-    }
+        e.ty < old.origin.y + old.height,
+    );
   }
 
   /** The plane a session is currently streaming, if it has a body. */
@@ -9261,9 +9500,7 @@ export class GameServer {
         const key = chunkKey(cx, cy);
         // knownChunks keys are bare "cx,cy" — plane-implicit per
         // session, so only same-plane sessions may drop them.
-        for (const s of this.sessions) {
-          if (this.sessionPlane(s) === plane) s.knownChunks.delete(key);
-        }
+        for (const s of this.sessionsOn(plane)) s.knownChunks.delete(key);
       }
     }
   }
@@ -9301,7 +9538,7 @@ export class GameServer {
   initHomes(homes: ReadonlyArray<{ characterId: number; x: number; y: number }>): void {
     for (const h of homes) this.homesByCharacter.set(h.characterId, { x: h.x, y: h.y });
     this.ringCache = null;
-    this.capitalCache?.clear();
+    this.clearCapitalCache();
   }
 
   /** A home claimed, moved, or dissolved — rings re-derive lazily. */
@@ -9309,7 +9546,7 @@ export class GameServer {
     if (home) this.homesByCharacter.set(characterId, home);
     else this.homesByCharacter.delete(characterId);
     this.ringCache = null;
-    this.capitalCache?.clear();
+    this.clearCapitalCache();
   }
 
   /**
@@ -9359,13 +9596,60 @@ export class GameServer {
    * differently by who was online — boot sweeps decided maskless).
    */
   private poiCtx(cellX: number, cellY: number): PoiContext {
-    return poiContext(
-      this.dangerAnchors(),
-      this.surface.zoneDefs,
-      this.poiPrefabs!,
-      this.claimRings(),
-      this.capitalRectsNear(cellX * POI_CELL, cellY * POI_CELL, POI_CELL, POI_CELL),
-    );
+    return {
+      ...this.poiCtxBase(),
+      capitals: this.capitalRectsNear(cellX * POI_CELL, cellY * POI_CELL, POI_CELL, POI_CELL),
+    };
+  }
+
+  /**
+   * The cell-independent half of every context, built ONCE and kept
+   * while its inputs hold: the anchor and ring arrays are the cached
+   * instances themselves (identity is the staleness test), the zone
+   * list and both registries answer by revision. A beat that deals
+   * twenty candidates builds this once, not twenty times.
+   */
+  private poiCtxBaseCache: {
+    anchors: readonly DangerAnchor[];
+    claimRings: readonly ClaimRing[];
+    prefabs: ReadonlyMap<string, PrefabDef>;
+    zoneRev: number;
+    defsRev: number;
+    minorsRev: number;
+    base: PoiContextBase;
+  } | null = null;
+  private poiCtxBase(): PoiContextBase {
+    const anchors = this.dangerAnchors();
+    const claimRings = this.claimRings();
+    const prefabs = this.poiPrefabs!;
+    const zoneRev = this.surface.zoneRevision;
+    const defsRev = poiDefsRevision();
+    const minorsRev = minorDefsRevision();
+    const hit = this.poiCtxBaseCache;
+    if (
+      hit !== null &&
+      hit.anchors === anchors &&
+      hit.claimRings === claimRings &&
+      hit.prefabs === prefabs &&
+      hit.zoneRev === zoneRev &&
+      hit.defsRev === defsRev &&
+      hit.minorsRev === minorsRev
+    ) {
+      return hit.base;
+    }
+    const base = poiContextBase(anchors, this.surface.zoneDefs, prefabs, claimRings, zoneRev);
+    this.poiCtxBaseCache = { anchors, claimRings, prefabs, zoneRev, defsRev, minorsRev, base };
+    return base;
+  }
+
+  /** The family atlas of the live def roster, memoized per registry revision. */
+  private familiesCache: { rev: number; families: string[] } | null = null;
+  private liveFamilies(): string[] {
+    const rev = poiDefsRevision();
+    if (this.familiesCache?.rev !== rev) {
+      this.familiesCache = { rev, families: familiesOf([...POI_DEFS.values()]) };
+    }
+    return this.familiesCache.families;
   }
 
   // ------------------------------------------- THE CAPITAL LAW
@@ -9384,8 +9668,35 @@ export class GameServer {
       claimRings: this.claimRings(),
       layouts: [...STRONGHOLD_DEFS.values()],
       prefabs: this.poiPrefabs ?? new Map(),
-      families: familiesOf([...POI_DEFS.values()]),
+      families: this.liveFamilies(),
     };
+  }
+
+  /**
+   * THE ONE DOOR: the seat cache and the rects derived from it fall
+   * together, and every clear in the server (home set/clear, layout
+   * and geography reloads, claim changes, the dev tile clear) walks
+   * through here — a second clear site that knew only one of the two
+   * maps left the other answering the old world.
+   */
+  clearCapitalCache(): void {
+    this.capitalCache?.clear();
+    this.capitalRectsCache?.clear();
+  }
+
+  /**
+   * A build, demolish, or planting by a HOMEOWNER may have moved
+   * their claim ring — the one live input the seat cache reads. A
+   * homeless hand placing a fence post moves no ring and clears no
+   * seat (the old unconditional clear made build spam near a busy
+   * frontier a repeatable tick spike). The id is the tile's OWNER,
+   * never the hand that moved it — a planter or a dev lever clearing
+   * another character's plot moves THAT character's ring.
+   */
+  noteClaimBuilt(characterId: number): void {
+    if (!this.homesByCharacter.has(characterId)) return;
+    this.ringCache = null;
+    this.clearCapitalCache();
   }
 
   /** The (cached) capital seat of a territory lattice cell. */
@@ -9430,12 +9741,18 @@ export class GameServer {
     // masks outgrew every hand-pinned pad).
     const reach = 512 + CAPITAL_CLEARANCE;
     const r = capitalLatticeRange(x0 - reach, y0 - reach, w + reach * 2, h + reach * 2);
+    // One answer per lattice window: the wild-spawn candidate loop asks
+    // per TILE, the frontier per cell — both land on a handful of windows.
+    const wkey = `${r.gx0},${r.gy0},${r.gx1},${r.gy1}`;
+    const hit = this.capitalRectsCache.get(wkey);
+    if (hit !== undefined) return hit;
     for (let gy = r.gy0; gy <= r.gy1; gy++) {
       for (let gx = r.gx0; gx <= r.gx1; gx++) {
         const seat = this.cachedSeat(gx, gy);
         if (seat) out.push(seat.rect);
       }
     }
+    this.capitalRectsCache.set(wkey, out);
     return out;
   }
 
@@ -9785,6 +10102,8 @@ export class GameServer {
     if (!this.strongholdLedger.has(key)) {
       this.strongholdLedger.set(key, {
         layoutId: layout.id,
+        gx: seat.gx,
+        gy: seat.gy,
         anchorX: seat.x,
         anchorY: seat.y,
         epoch: 0,
@@ -9840,11 +10159,9 @@ export class GameServer {
   private dissolveOneCapitalEmber(now: number): boolean {
     for (const [key, row] of this.strongholdLedger) {
       if (row.clearedAt === null || row.emberUntil === null || row.emberUntil > now) continue;
-      const [gxs, gys] = key.split(',');
-      const gx = Number(gxs);
-      const gy = Number(gys);
+      const { gx, gy } = row;
       // Dignity at citadel scale: nobody within the walls' reach.
-      if (this.playerWithin(SURFACE_PLANE_ID, row.anchorX, row.anchorY, FRONTIER.dignityTiles + 64)) continue;
+      if (this.playerWithin(SURFACE_PLANE_ID, row.anchorX, row.anchorY, FRONTIER.dignityTiles + CAPITAL_DIGNITY_PAD)) continue;
       this.retireCapital(key);
       row.epoch += 1;
       row.wardsCleared = 0;
@@ -9869,11 +10186,9 @@ export class GameServer {
   private wakeOneCapitalFallow(now: number): boolean {
     for (const [key, row] of this.strongholdLedger) {
       if (row.fallowUntil === null || row.fallowUntil > now) continue;
-      const [gxs, gys] = key.split(',');
-      const gx = Number(gxs);
-      const gy = Number(gys);
+      const { gx, gy } = row;
       if (this.calmNear(poiCellOf(row.anchorX), poiCellOf(row.anchorY), now)) continue;
-      if (this.playerWithin(SURFACE_PLANE_ID, row.anchorX, row.anchorY, FRONTIER.dignityTiles + 64)) continue;
+      if (this.playerWithin(SURFACE_PLANE_ID, row.anchorX, row.anchorY, FRONTIER.dignityTiles + CAPITAL_DIGNITY_PAD)) continue;
       row.fallowUntil = null;
       this.saveStrongholdRow(gx, gy);
       console.log(`[stronghold] ${key}: the seat is ready — new walls rise on approach`);
@@ -9886,12 +10201,10 @@ export class GameServer {
     for (const [key, row] of this.strongholdLedger) {
       if (row.clearedAt !== null || row.emberUntil !== null || row.fallowUntil !== null) continue;
       if (row.stageAt === null || row.stage >= FRONTIER.stageMax) continue;
-      const [gxs, gys] = key.split(',');
-      const gx = Number(gxs);
-      const gy = Number(gys);
+      const { gx, gy } = row;
       if (now < row.stageAt + stageWaitFor(config.worldSeed, gx, gy, row.stage)) continue;
       if (this.calmNear(poiCellOf(row.anchorX), poiCellOf(row.anchorY), now)) continue;
-      if (this.playerWithin(SURFACE_PLANE_ID, row.anchorX, row.anchorY, FRONTIER.dignityTiles + 64)) continue;
+      if (this.playerWithin(SURFACE_PLANE_ID, row.anchorX, row.anchorY, FRONTIER.dignityTiles + CAPITAL_DIGNITY_PAD)) continue;
       row.stage += 1;
       row.stageAt = now;
       this.saveStrongholdRow(gx, gy);
@@ -9911,10 +10224,7 @@ export class GameServer {
       if (row.clearedAt !== null || row.emberUntil !== null || row.fallowUntil !== null) continue;
       if (row.stage < FRONTIER.satelliteStage) continue;
       const origin = GameServer.capitalOrigin(key);
-      let sats = 0;
-      for (const r of this.poiLedger.values()) {
-        if (r.originCell === origin && r.site !== null && r.emberUntil === null) sats++;
-      }
+      const sats = this.standingSatellites(origin);
       if (sats >= FRONTIER.satelliteMax) continue;
       const satDef = this.capitalSatelliteDef(
         STRONGHOLD_DEFS.get(row.layoutId)?.family ?? '',
@@ -9991,15 +10301,13 @@ export class GameServer {
     if (!live) return;
     this.unloadZone(live.zoneId);
     for (const i of live.spawnIdx) this.strongholdSpawnCells.delete(i);
-    for (const [tileKey, over] of this.poiChests) {
-      if (over.cell === `sh:${key}` || over.cell.startsWith(`sh:${key}:`)) this.poiChests.delete(tileKey);
-    }
+    this.poiChests.retireCell(`sh:${key}`);
     this.strongholdLive.delete(key);
   }
 
   /** A layout edit re-stands its capitals under the new truth. */
   reloadStrongholdLayout(layoutId: string): void {
-    this.capitalCache?.clear();
+    this.clearCapitalCache();
     for (const [key, live] of [...this.strongholdLive]) {
       if (live.layoutId === layoutId) this.retireCapital(key);
     }
@@ -10017,7 +10325,7 @@ export class GameServer {
    * so client danger reads stay in lockstep.
    */
   private rebuildHavens(): void {
-    const before = JSON.stringify(this.havenWire());
+    const before = [...this.poiHavens.values()];
     this.poiHavens.clear();
     for (const [key, row] of this.poiLedger) {
       if (!row.site) continue;
@@ -10031,8 +10339,17 @@ export class GameServer {
       });
     }
     this.anchorCache = null;
-    const wire = this.havenWire();
-    if (JSON.stringify(wire) !== before) {
+    // Same lamps in the same order = same wire; compare the triples,
+    // never two JSON prints of the whole list.
+    const after = [...this.poiHavens.values()];
+    let changed = after.length !== before.length;
+    for (let i = 0; !changed && i < after.length; i++) {
+      const a = after[i]!;
+      const b = before[i]!;
+      changed = a.x !== b.x || a.y !== b.y || a.safeR !== b.safeR;
+    }
+    if (changed) {
+      const wire = this.havenWire();
       for (const s of this.sessions) {
         if (s.playerEid !== null) {
           s.sendJson({ t: 'havens', list: wire, settled: this.anchorWire() });
@@ -10068,7 +10385,7 @@ export class GameServer {
     this.frontierCredits = frontierCredits;
     for (const key of extras.discovered ?? []) this.discoveredPoiCells.add(key);
     for (const c of extras.calm ?? []) {
-      this.frontierCalm.set(poiCellKey(c.cellX, c.cellY), c.calmUntil);
+      this.frontierCalm.set(poiCellKey(c.cellX, c.cellY), { until: c.calmUntil, cx: c.cellX, cy: c.cellY });
     }
     for (const m of extras.minors ?? []) {
       this.minorLedger.set(poiCellKey(m.cellX, m.cellY), { epoch: m.epoch, cleared: m.cleared });
@@ -10080,6 +10397,8 @@ export class GameServer {
     for (const h of extras.strongholds ?? []) {
       this.strongholdLedger.set(capitalKey(h.latticeX, h.latticeY), {
         layoutId: h.layoutId,
+        gx: h.latticeX,
+        gy: h.latticeY,
         anchorX: h.anchorX,
         anchorY: h.anchorY,
         epoch: h.epoch,
@@ -10518,7 +10837,7 @@ export class GameServer {
     // both just swapped in place. A stale seat cache kept an already-
     // cached capital seated inside a NEW planned rect (or at a moved
     // anchor's dead tier) until process restart.
-    this.capitalCache.clear();
+    this.clearCapitalCache();
     // Anchors may have moved even when no haven changed — push both.
     const wire = { t: 'havens' as const, list: this.havenWire(), settled: this.anchorWire() };
     for (const s of this.sessions) {
@@ -10713,13 +11032,9 @@ export class GameServer {
       })(),
     }));
     const now = Date.now();
-    const calm = [...this.frontierCalm.entries()]
-      .filter(([, until]) => until > now)
-      .map(([key, until]) => ({
-        cellX: Number(key.split(',')[0]),
-        cellY: Number(key.split(',')[1]),
-        calmUntil: until,
-      }));
+    const calm = [...this.frontierCalm.values()]
+      .filter((w) => w.until > now)
+      .map((w) => ({ cellX: w.cx, cellY: w.cy, calmUntil: w.until }));
     return {
       seed: config.worldSeed,
       poiCell: POI_CELL,
@@ -10864,10 +11179,15 @@ export class GameServer {
   private tickPois(): void {
     if (!this.poiPrefabs) return;
     const pad = (INTEREST_CHUNK_RADIUS + 2) * CHUNK_SIZE;
+    const surface: Array<{ x: number; y: number }> = [];
     for (const session of this.sessions) {
       if (session.playerEid === null) continue;
       const pos = this.positions.get(session.playerEid);
       if (!pos || pos.plane !== SURFACE_PLANE_ID) continue; // the frontier is surface law
+      surface.push(pos);
+    }
+    this.retireFarPois(surface, pad + POI_RETIRE_PAD_TILES);
+    for (const pos of surface) {
       const c0x = poiCellOf(pos.x - pad);
       const c1x = poiCellOf(pos.x + pad);
       const c0y = poiCellOf(pos.y - pad);
@@ -10880,6 +11200,113 @@ export class GameServer {
         }
       }
     }
+  }
+
+  /** tickPois beats a live cell has stood with nobody within the retire reach. */
+  private readonly poiFarBeats = new Map<string, number>();
+
+  /**
+   * POI ZONES RETIRE ON DISTANCE (core audit 2026-09, debt 12): the
+   * materialize scan only ever grew poiLive, so a long walk left every
+   * camp, empty decision, and finds zone it passed standing for the
+   * whole uptime — zoneDefs, spawnPoints, and every linear reader of
+   * them grew with exploration, not players. A live cell with no
+   * surface player within `reach` of its rect for POI_RETIRE_BEATS
+   * running retires through the one retire door; the next approach
+   * re-stands it from the ledger, byte-identical (materializePoiCell
+   * skips the decision for a decided row). Kept standing: authored
+   * landmarks (the plan's fixed points), and cleared or embering cells
+   * — the carcass and its participation ledger stay until the ember
+   * clock takes them with dignity. Capitals keep their own lane.
+   */
+  private retireFarPois(surface: ReadonlyArray<{ x: number; y: number }>, reach: number): void {
+    if (this.poiLive.size === 0) {
+      if (this.poiFarBeats.size > 0) this.poiFarBeats.clear();
+      return;
+    }
+    const authored = this.authoredCells();
+    const now = Date.now();
+    for (const key of this.poiLive.keys()) {
+      const row = this.poiLedger.get(key);
+      if (row === undefined) {
+        // A decided-empty settled cell writes no row: it retires like
+        // any other far cell (poiLive is the only thing it holds).
+      } else if (row.clearedAt !== null || row.emberUntil !== null || authored.has(key)) {
+        this.poiFarBeats.delete(key);
+        continue;
+      }
+      // THE HALF-WON CAMP KEEPS ITS STATE: a retire drops the downed
+      // garrison's respawn clocks and the lifted lids with the zone,
+      // and the re-stand would muster 6 of 6 behind a shut chest. A
+      // cell with a body still waiting on its floor or a chest still
+      // open is not pristine and does not retire — the floor and the
+      // reclose clock settle it back to the ledger's shape first, and
+      // THEN the walk may forget it. Nothing is lost because nothing
+      // is dropped while there is anything to lose.
+      if (!this.poiCellPristine(key, now)) {
+        this.poiFarBeats.delete(key);
+        continue;
+      }
+      const comma = key.indexOf(',');
+      const cx = row?.cx ?? Number(key.slice(0, comma));
+      const cy = row?.cy ?? Number(key.slice(comma + 1));
+      const x0 = cx * POI_CELL;
+      const y0 = cy * POI_CELL;
+      let near = false;
+      for (const p of surface) {
+        const dx = p.x < x0 ? x0 - p.x : p.x >= x0 + POI_CELL ? p.x - (x0 + POI_CELL) : 0;
+        const dy = p.y < y0 ? y0 - p.y : p.y >= y0 + POI_CELL ? p.y - (y0 + POI_CELL) : 0;
+        if (dx <= reach && dy <= reach) {
+          near = true;
+          break;
+        }
+      }
+      if (near) {
+        this.poiFarBeats.delete(key);
+        continue;
+      }
+      const beats = (this.poiFarBeats.get(key) ?? 0) + 1;
+      if (beats < POI_RETIRE_BEATS) {
+        this.poiFarBeats.set(key, beats);
+        continue;
+      }
+      this.poiFarBeats.delete(key);
+      this.retirePoiCell(key);
+    }
+    // Cells that retired by another door drop their counters too.
+    if (this.poiFarBeats.size > this.poiLive.size) {
+      for (const key of this.poiFarBeats.keys()) if (!this.poiLive.has(key)) this.poiFarBeats.delete(key);
+    }
+  }
+
+  /**
+   * Is a live cell exactly what its ledger row would re-stand? False
+   * while any of its spawn seats is down on a finite floor (`eid`
+   * null, `respawnAt` ahead — a pinned Infinity is the stood-down
+   * carcass, which the ember exemption already keeps) or while any of
+   * its strongboxes stands open on the ground (the reclose clock has
+   * not run). Only a pristine cell may retire on distance.
+   */
+  private poiCellPristine(key: string, now: number): boolean {
+    const live = this.poiLive.get(key);
+    if (!live) return true;
+    for (const i of live.spawnIdx) {
+      const s = this.spawnPoints[i];
+      if (!s || !s.active || s.eid !== null) continue;
+      if (s.respawnAt > now && s.respawnAt !== Number.POSITIVE_INFINITY) return false;
+    }
+    const lids = this.poiChests.keysOf(key);
+    if (lids !== undefined) {
+      for (const tileKey of lids) {
+        const bar = tileKey.indexOf('|');
+        const comma = tileKey.indexOf(',', bar);
+        const wx = Number(tileKey.slice(bar + 1, comma));
+        const wy = Number(tileKey.slice(comma + 1));
+        const g = this.surface.groundAt(wx, wy);
+        if (g !== undefined && chestInfo(g)?.open) return false;
+      }
+    }
+    return true;
   }
 
   /**
@@ -10896,8 +11323,8 @@ export class GameServer {
     const now = Date.now();
     // Expired relax windows lift quietly (map first; one DB sweep).
     let calmExpired = false;
-    for (const [key, until] of this.frontierCalm) {
-      if (until <= now) {
+    for (const [key, w] of this.frontierCalm) {
+      if (w.until <= now) {
         this.frontierCalm.delete(key);
         calmExpired = true;
       }
@@ -10995,19 +11422,19 @@ export class GameServer {
     for (const [key, row] of this.poiLedger) {
       if (row.site !== null || row.fallowUntil === null || now < row.fallowUntil) continue;
       if (authored.has(key)) continue; // the seeder owns these
-      const [cx, cy] = key.split(',').map(Number);
+      const { cx, cy } = row;
       // THE RELAX WINDOW: a calmed valley stays quiet — the wake waits
       // out the window rather than standing a new camp into it.
-      if (this.calmNear(cx!, cy!, now)) continue;
-      const ctx = this.poiCtx(cx!, cy!);
-      const site = poiForCell(config.worldSeed, cx!, cy!, row.epoch, ctx);
+      if (this.calmNear(cx, cy, now)) continue;
+      const ctx = this.poiCtx(cx, cy);
+      const site = poiForCell(config.worldSeed, cx, cy, row.epoch, ctx);
       // Someone is standing on the meadow — this row waits; the walk
       // goes on (a `return` here spent the whole beat on nothing and
       // starved every lane after this one while one settler stood).
       if (site && this.playerWithin(SURFACE_PLANE_ID, site.anchorX, site.anchorY, FRONTIER.dignityTiles)) continue;
       this.accounts.recordPoiCell(
-        cx!,
-        cy!,
+        cx,
+        cy,
         row.epoch,
         site && {
           poiId: site.defId,
@@ -11203,13 +11630,9 @@ export class GameServer {
 
   /** Is a relax window standing within the neighborhood of this cell? */
   private calmNear(cellX: number, cellY: number, now: number): boolean {
-    for (const [key, until] of this.frontierCalm) {
-      if (until <= now) continue;
-      const [kx, ky] = key.split(',').map(Number);
-      if (
-        Math.abs(kx! - cellX) <= FRONTIER.regionCells &&
-        Math.abs(ky! - cellY) <= FRONTIER.regionCells
-      ) {
+    for (const w of this.frontierCalm.values()) {
+      if (w.until <= now) continue;
+      if (Math.abs(w.cx - cellX) <= FRONTIER.regionCells && Math.abs(w.cy - cellY) <= FRONTIER.regionCells) {
         return true;
       }
     }
@@ -11220,27 +11643,37 @@ export class GameServer {
   private stampCalm(cellX: number, cellY: number): void {
     const until = Date.now() + FRONTIER.calmMs;
     const key = poiCellKey(cellX, cellY);
-    this.frontierCalm.set(key, Math.max(this.frontierCalm.get(key) ?? 0, until));
+    const prior = this.frontierCalm.get(key);
+    this.frontierCalm.set(key, { until: Math.max(prior?.until ?? 0, until), cx: cellX, cy: cellY });
     this.accounts.stampFrontierCalm(cellX, cellY, until);
   }
 
   /** Stage-2+ cores standing within the neighborhood (the regional roof). */
   private boldCoresNear(cellKey: string): number {
-    const [cx, cy] = cellKey.split(',').map(Number);
+    const at = this.poiLedger.get(cellKey);
+    const comma = cellKey.indexOf(',');
+    const cx = at?.cx ?? Number(cellKey.slice(0, comma));
+    const cy = at?.cy ?? Number(cellKey.slice(comma + 1));
     let cores = 0;
     for (const [key, row] of this.poiLedger) {
       if (key === cellKey) continue;
       if (row.site === null || row.originCell !== null) continue;
       if (row.stage < FRONTIER.satelliteStage) continue;
-      const [kx, ky] = key.split(',').map(Number);
-      if (
-        Math.abs(kx! - cx!) <= FRONTIER.regionCells &&
-        Math.abs(ky! - cy!) <= FRONTIER.regionCells
-      ) {
+      if (Math.abs(row.cx - cx) <= FRONTIER.regionCells && Math.abs(row.cy - cy) <= FRONTIER.regionCells) {
         cores++;
       }
     }
     return cores;
+  }
+
+  /** Standing (site, no ember) satellites of an origin — the family, indexed. */
+  private standingSatellites(origin: string): number {
+    let n = 0;
+    for (const k of this.poiLedger.satellitesOf(origin)) {
+      const r = this.poiLedger.get(k);
+      if (r !== undefined && r.site !== null && r.emberUntil === null) n++;
+    }
+    return n;
   }
 
   /** The stage-up rumor + pip push to every online holder of the marker. */
@@ -11365,11 +11798,7 @@ export class GameServer {
       const def = POI_DEFS.get(row.site.defId);
       if (!def?.boldness?.satellites) continue;
       if (row.stage < FRONTIER.satelliteStage) continue;
-      let sats = 0;
-      for (const r of this.poiLedger.values()) {
-        if (r.originCell === key && r.site !== null && r.emberUntil === null) sats++;
-      }
-      if (sats >= FRONTIER.satelliteMax) continue;
+      if (this.standingSatellites(key) >= FRONTIER.satelliteMax) continue;
       const { cellX, cellY } = row.site;
       if (this.calmNear(cellX, cellY, now)) continue;
       // THE PRESSED SATELLITE, GATED (band 8, owed F3): a rival is
@@ -11505,8 +11934,9 @@ export class GameServer {
       if (now - row.stageAt < creepWaitFor(config.worldSeed, cellX, cellY)) continue;
       // One toll per family.
       let hasToll = false;
-      for (const r of this.poiLedger.values()) {
-        if (r.originCell === key && r.site?.defId === 'road_toll' && r.emberUntil === null) {
+      for (const k of this.poiLedger.satellitesOf(key)) {
+        const r = this.poiLedger.get(k);
+        if (r !== undefined && r.site?.defId === 'road_toll' && r.emberUntil === null) {
           hasToll = true;
           break;
         }
@@ -11649,14 +12079,7 @@ export class GameServer {
         this.raidTrace.push(`${who}:away`);
         continue; // the owner must be HOME — an empty house draws nobody
       }
-      let coveted = false;
-      for (const r of this.poiLedger.values()) {
-        if (r.site !== null && r.emberUntil === null &&
-            hearthOwnerOf(r.originCell) === who) {
-          coveted = true;
-          break;
-        }
-      }
+      const coveted = this.standingSatellites(GameServer.hearthOrigin(who)) > 0;
       if (coveted) {
         this.raidTrace.push(`${who}:coveted`);
         continue; // one squat at a time — never a siege
@@ -11834,7 +12257,7 @@ export class GameServer {
         // they never share a neighborhood.
         !this.capitalNearCell(cellX, cellY);
       const site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx, opts.force, allowHold);
-      row = { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null, stage: 0, stageAt: null, originCell: null };
+      row = { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null, stage: 0, stageAt: null, originCell: null, cx: cellX, cy: cellY };
       // Deviations only: a settled cell writes no row (it is 0 by law).
       const centerTier = this.liveDangerTier(
         cellX * POI_CELL + POI_CELL / 2,
@@ -12236,8 +12659,9 @@ export class GameServer {
       this.accounts.setPoiEmber(srow.site.cellX, srow.site.cellY, srow.emberUntil);
       scattered++;
     };
-    for (const [skey, srow] of this.poiLedger) {
-      if (srow.originCell !== key || srow.site === null || srow.emberUntil !== null) continue;
+    for (const skey of [...this.poiLedger.satellitesOf(key)]) {
+      const srow = this.poiLedger.get(skey);
+      if (srow === undefined || srow.site === null || srow.emberUntil !== null) continue;
       scatterCell(skey, srow);
     }
     let tollBroke = false;
@@ -12246,9 +12670,10 @@ export class GameServer {
       const coreKey = row.originCell;
       const core = this.poiLedger.get(coreKey);
       if (core?.site && core.clearedAt === null) scatterCell(coreKey, core);
-      for (const [skey, srow] of this.poiLedger) {
-        if (srow.originCell !== coreKey || skey === key) continue;
-        scatterCell(skey, srow);
+      for (const skey of [...this.poiLedger.satellitesOf(coreKey)]) {
+        if (skey === key) continue;
+        const srow = this.poiLedger.get(skey);
+        if (srow !== undefined) scatterCell(skey, srow);
       }
     }
     // THE HEARTH WATCH resolution (Phase 4.3): a broken squat buys its
@@ -12434,9 +12859,7 @@ export class GameServer {
       this.unloadZone(live.zoneId);
       for (const i of live.spawnIdx) this.poiSpawnCells.delete(i);
     }
-    for (const [tileKey, over] of this.poiChests) {
-      if (over.cell === key) this.poiChests.delete(tileKey);
-    }
+    this.poiChests.retireCell(key);
     this.poiLive.delete(key);
     // The cell's finds retire with it — an epoch turn re-deals the
     // texture along with the trouble.
@@ -12727,7 +13150,12 @@ export class GameServer {
       session.knownChunks.clear();
       session.sentSnapSig.clear();
       session.lastCenterChunk = null;
+      this.refileSession(session, plane);
       session.sendJson({ t: 'plane', plane: this.planeWireOf(plane), x, y });
+      // THE FARM FOLLOWS YOU HOME (Band B): the care mirrors fan out to
+      // the surface's sessions only, so a body coming back up from
+      // under the meadow re-reads the yard whole.
+      if (plane === SURFACE_PLANE_ID) this.sendFarm(session);
     }
   }
 
@@ -12852,6 +13280,26 @@ export class GameServer {
 
   dungeonHeadcount(plane: PlaneId): number {
     return runSys.dungeonHeadcount(this, plane);
+  }
+
+  /**
+   * THE HEADCOUNT, ONCE A TICK (Band B): the wound doors ask per blow,
+   * and a rift fight lands dozens a tick — the count is a per-plane
+   * fact of the tick, read once and held until the tick turns.
+   */
+  private headcountTick = -1;
+  private readonly headcountByPlane = new Map<PlaneId, number>();
+  private dungeonHeadcountThisTick(plane: PlaneId): number {
+    if (this.headcountTick !== this.tickCount) {
+      this.headcountTick = this.tickCount;
+      this.headcountByPlane.clear();
+    }
+    let n = this.headcountByPlane.get(plane);
+    if (n === undefined) {
+      n = this.dungeonHeadcount(plane);
+      this.headcountByPlane.set(plane, n);
+    }
+    return n;
   }
 
   /**
@@ -14704,41 +15152,42 @@ export class GameServer {
     // The mark: nearest tamable body in the aim cone (the homingMarks
     // discipline — forgiving on purpose, pad parity by construction).
     const range = ab.range ?? 5;
-    let best: { eid: EntityId; npc: NpcComp; x: number; y: number } | null = null;
+    // The picks live on a holder — the visit below writes them, and
+    // control flow cannot see into a callback.
+    const pick: { best: { eid: EntityId; npc: NpcComp; x: number; y: number } | null; company: NpcComp | null } = {
+      best: null,
+      company: null,
+    };
     let bestD = Infinity;
     // THE WRONG DOOR TEACHES THE RIGHT ONE: a companion body in the
     // cone (the town cat) is not a tame mark, but the refusal should
     // say so — the gentling aimed at company is a player who does not
     // yet know the two systems are different.
-    let companySeen: NpcComp | null = null;
-    for (const [npcEid, npc] of this.npcs) {
-      if (this.pets.has(npcEid) || this.companions.has(npcEid) || this.actors.has(npcEid)) continue;
+    this.forEachNpcNear(pos.plane, pos.x, pos.y, range, (npcEid, npc, npos) => {
+      if (this.pets.has(npcEid) || this.companions.has(npcEid) || this.actors.has(npcEid)) return;
       // THE SAND AND THE ROAR: the sand's bodies are not for courting
       // — a tamed wave body would leave the round without a fall and
       // wedge the card open until the backstop (the audit's find).
-      if (npc.arenaMatch !== undefined) continue;
+      if (npc.arenaMatch !== undefined) return;
       if (companionDef(npc.def.id)) {
-        const cpos = this.positions.get(npcEid);
-        if (cpos && cpos.plane === pos.plane && Math.hypot(cpos.x - pos.x, cpos.y - pos.y) <= range) {
-          companySeen = npc;
-        }
-        continue;
+        if (Math.hypot(npos.x - pos.x, npos.y - pos.y) <= range) pick.company = npc;
+        return;
       }
-      if (!tameDef(npc.def.id)) continue;
-      const npos = this.positions.get(npcEid);
-      if (!npos || npos.plane !== pos.plane) continue;
+      if (!tameDef(npc.def.id)) return;
       const dx = npos.x - pos.x;
       const dy = npos.y - pos.y;
       const d = Math.hypot(dx, dy) - npc.def.radius;
-      if (d > range) continue;
+      if (d > range) return;
       let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
       if (diff > Math.PI) diff = Math.PI * 2 - diff;
-      if (diff > 0.65 && d > 1.5) continue;
+      if (diff > 0.65 && d > 1.5) return;
       if (d < bestD) {
         bestD = d;
-        best = { eid: npcEid, npc, x: npos.x, y: npos.y };
+        pick.best = { eid: npcEid, npc, x: npos.x, y: npos.y };
       }
-    }
+    });
+    const best = pick.best;
+    const companySeen = pick.company;
     if (!best) {
       if (companySeen) {
         const treat = companionDef(companySeen.def.id)?.treat;
@@ -15057,24 +15506,22 @@ export class GameServer {
   ): { eid: EntityId; npc: NpcComp; x: number; y: number } | null {
     let best: { eid: EntityId; npc: NpcComp; x: number; y: number } | null = null;
     let bestD = Infinity;
-    for (const [npcEid, npc] of this.npcs) {
-      if (this.pets.has(npcEid) || this.companions.has(npcEid) || this.actors.has(npcEid)) continue;
-      if (!isWildBeast(npc.def)) continue;
-      if ((this.healths.get(npcEid)?.hp ?? 0) <= 0) continue;
-      const npos = this.positions.get(npcEid);
-      if (!npos || npos.plane !== pos.plane) continue;
+    this.forEachNpcNear(pos.plane, pos.x, pos.y, range, (npcEid, npc, npos) => {
+      if (this.pets.has(npcEid) || this.companions.has(npcEid) || this.actors.has(npcEid)) return;
+      if (!isWildBeast(npc.def)) return;
+      if ((this.healths.get(npcEid)?.hp ?? 0) <= 0) return;
       const dx = npos.x - pos.x;
       const dy = npos.y - pos.y;
       const d = Math.hypot(dx, dy) - npc.def.radius;
-      if (d > range) continue;
+      if (d > range) return;
       let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
       if (diff > Math.PI) diff = Math.PI * 2 - diff;
-      if (diff > 0.65 && d > 1.5) continue;
+      if (diff > 0.65 && d > 1.5) return;
       if (d < bestD) {
         bestD = d;
         best = { eid: npcEid, npc, x: npos.x, y: npos.y };
       }
-    }
+    });
     return best;
   }
 
@@ -15115,14 +15562,13 @@ export class GameServer {
       // Rank IV: the calm spreads to beasts standing beside the mark.
       const spread = ab.radius ?? 0;
       if (spread > 0) {
-        for (const [oEid, other] of this.npcs) {
-          if (oEid === best.eid || this.pets.has(oEid) || this.companions.has(oEid) || this.actors.has(oEid)) continue;
-          if (!isWildBeast(other.def) || isBeastSovereign(other.def)) continue;
-          const opos = this.positions.get(oEid);
-          if (!opos || opos.plane !== pos.plane) continue;
-          if (Math.hypot(opos.x - best.x, opos.y - best.y) > spread) continue;
+        const mark = best;
+        this.forEachNpcNear(pos.plane, mark.x, mark.y, spread, (oEid, other, opos) => {
+          if (oEid === mark.eid || this.pets.has(oEid) || this.companions.has(oEid) || this.actors.has(oEid)) return;
+          if (!isWildBeast(other.def) || isBeastSovereign(other.def)) return;
+          if (Math.hypot(opos.x - mark.x, opos.y - mark.y) > spread) return;
           this.becalmNpc(oEid, other, hold);
-        }
+        });
       }
       this.broadcastFx(pos.plane, {
         t: 'fx', kind: 'becalm', x: best.x, y: best.y, radius: spread,
@@ -15134,15 +15580,13 @@ export class GameServer {
     if (ab.shape === 'wild_howl') {
       const radius = ab.radius ?? 7;
       const ears: Array<{ eid: EntityId; npc: NpcComp }> = [];
-      for (const [npcEid, npc] of this.npcs) {
-        if (this.pets.has(npcEid) || this.companions.has(npcEid) || this.actors.has(npcEid)) continue;
-        if (!isWildBeast(npc.def) || isBeastSovereign(npc.def)) continue;
-        if ((this.healths.get(npcEid)?.hp ?? 0) <= 0) continue;
-        const npos = this.positions.get(npcEid);
-        if (!npos || npos.plane !== pos.plane) continue;
-        if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > radius) continue;
+      this.forEachNpcNear(pos.plane, pos.x, pos.y, radius, (npcEid, npc, npos) => {
+        if (this.pets.has(npcEid) || this.companions.has(npcEid) || this.actors.has(npcEid)) return;
+        if (!isWildBeast(npc.def) || isBeastSovereign(npc.def)) return;
+        if ((this.healths.get(npcEid)?.hp ?? 0) <= 0) return;
+        if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > radius) return;
         ears.push({ eid: npcEid, npc });
-      }
+      });
       const petEid = player.petEid;
       const petUp = petEid !== null && (this.healths.get(petEid)?.hp ?? 0) > 0;
       if (ears.length === 0 && !petUp) {
@@ -15257,25 +15701,24 @@ export class GameServer {
         // lane: company is not a pet any more, so no pointing art can
         // ever reach it — docs/companions-plan.md.)
         const range = ab.range ?? 7;
-        let mark: { eid: EntityId; npc: NpcComp; x: number; y: number } | null = null;
+        const pointPick: { mark: { eid: EntityId; npc: NpcComp; x: number; y: number } | null } = { mark: null };
         let bestD = Infinity;
-        for (const [npcEid, npc] of this.npcs) {
-          if (this.pets.has(npcEid) || this.companions.has(npcEid) || this.actors.has(npcEid)) continue;
-          if ((this.healths.get(npcEid)?.hp ?? 0) <= 0) continue;
-          const npos = this.positions.get(npcEid);
-          if (!npos || npos.plane !== pos.plane) continue;
+        this.forEachNpcNear(pos.plane, pos.x, pos.y, range, (npcEid, npc, npos) => {
+          if (this.pets.has(npcEid) || this.companions.has(npcEid) || this.actors.has(npcEid)) return;
+          if ((this.healths.get(npcEid)?.hp ?? 0) <= 0) return;
           const dx = npos.x - pos.x;
           const dy = npos.y - pos.y;
           const d = Math.hypot(dx, dy) - npc.def.radius;
-          if (d > range) continue;
+          if (d > range) return;
           let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
           if (diff > Math.PI) diff = Math.PI * 2 - diff;
-          if (diff > 0.65 && d > 1.5) continue;
+          if (diff > 0.65 && d > 1.5) return;
           if (d < bestD) {
             bestD = d;
-            mark = { eid: npcEid, npc, x: npos.x, y: npos.y };
+            pointPick.mark = { eid: npcEid, npc, x: npos.x, y: npos.y };
           }
-        }
+        });
+        const mark = pointPick.mark;
         if (!mark) {
           sys('Nothing in reach to point at.');
           this.sendCooldowns(player);
@@ -15304,16 +15747,16 @@ export class GameServer {
         // Rank IV: the dare carries to whoever stands beside the mark.
         const dare = ab.radius ?? 0;
         if (dare > 0) {
-          for (const [oEid, other] of this.npcs) {
-            if (oEid === mark.eid || this.pets.has(oEid) || this.companions.has(oEid) || this.actors.has(oEid)) continue;
-            if (other.def.damage <= 0 || (this.healths.get(oEid)?.hp ?? 0) <= 0) continue;
-            const opos = this.positions.get(oEid);
-            // THE WORLDS APART: a body under the meadow at aliased
-            // coordinates is not "beside" the mark.
-            if (!opos || opos.plane !== pos.plane) continue;
-            if (Math.hypot(opos.x - mark.x, opos.y - mark.y) > dare) continue;
+          const dared = mark;
+          // THE WORLDS APART: a body under the meadow at aliased
+          // coordinates is not "beside" the mark — the index is
+          // plane-first.
+          this.forEachNpcNear(pos.plane, dared.x, dared.y, dare, (oEid, other, opos) => {
+            if (oEid === dared.eid || this.pets.has(oEid) || this.companions.has(oEid) || this.actors.has(oEid)) return;
+            if (other.def.damage <= 0 || (this.healths.get(oEid)?.hp ?? 0) <= 0) return;
+            if (Math.hypot(opos.x - dared.x, opos.y - dared.y) > dare) return;
             this.npcAggro(oEid, other, petEid, { force: true });
-          }
+          });
         }
         this.broadcastFx(pos.plane, {
           t: 'fx', kind: 'command', x: pos.x, y: pos.y, x2: mark.x, y2: mark.y,
@@ -15902,15 +16345,25 @@ export class GameServer {
     return (this.healths.get(eid)?.hp ?? 0) > 0;
   }
 
-  /** The slotted actives, resolved in the shelf's own order. */
-  private petActiveArts(row: PetRow): PetArtDef[] {
-    if (row.arts.length === 0) return [];
-    const shelf = new Set(repertoireFor(row.species));
+  /**
+   * The slotted actives, resolved in the shelf's own order — folded
+   * onto the body and re-read only when the row's arts change (the
+   * bundle's own discipline); the fighting tick pays no Set.
+   */
+  private petActiveArts(row: PetRow, pet?: PetComp): PetArtDef[] {
+    if (pet?.actives && pet.activesSrc && sameArts(pet.activesSrc, row.arts)) return pet.actives;
     const out: PetArtDef[] = [];
-    for (const id of row.arts) {
-      if (!shelf.has(id)) continue;
-      const art = petArtDef(id);
-      if (art && art.kind === 'active') out.push(art);
+    if (row.arts.length > 0) {
+      const shelf = new Set(repertoireFor(row.species));
+      for (const id of row.arts) {
+        if (!shelf.has(id)) continue;
+        const art = petArtDef(id);
+        if (art && art.kind === 'active') out.push(art);
+      }
+    }
+    if (pet) {
+      pet.actives = out;
+      pet.activesSrc = row.arts.slice();
     }
     return out;
   }
@@ -15934,7 +16387,7 @@ export class GameServer {
     if (pet.artCast || pet.target === null || npc.attackCooldown > 0) return false;
     const row = owner.pets.find((p) => p.slot === pet.slot);
     if (!row) return false;
-    const actives = this.petActiveArts(row);
+    const actives = this.petActiveArts(row, pet);
     if (actives.length === 0) return false;
     const cds = (pet.artCds ??= new Map());
     const health = this.healths.get(eid);
@@ -16727,24 +17180,33 @@ export class GameServer {
    * `ceremony` bypasses the gate and names a just-tamed slot so the
    * client raises the naming card exactly once.
    */
-  sendPet(player: PlayerComp, ceremony?: number): void {
+  sendPet(player: PlayerComp, ceremony?: number, hpOnly = false): void {
     if (!player.session) return;
     const bc = levelForXp(player.skills.beastcraft ?? 0);
     const petHp = player.petEid !== null ? this.healths.get(player.petEid) : null;
     const downed = petHp !== null && petHp !== undefined && petHp.hp <= 0;
-    const sig =
-      player.pets
-        .map(
-          (p) =>
-            `${p.slot}:${p.species}:${p.name}:${p.xp}:${p.state}:${p.restedAt ?? ''}:` +
-            `${p.state === 'heel' ? (player.petEid === null ? 'T' : downed ? 'D' : (petHp?.hp ?? 0)) : ''}:` +
-            // THE FANG FINDS ITS VOICE: the rope, the loadout, and the
-            // journey all move the mirror when they move.
-            `${p.bondXp}:${p.arts.join(',')}:${p.kills}:${p.downs}`,
-        )
-        .join('|') + `@${bc}`;
-    if (ceremony === undefined && sig === player.petSigSent) return;
-    player.petSigSent = sig;
+    // THE ONE LIVE NUMBER rides BESIDE the roster signature (Band B):
+    // an hp-only flush (petHpDirty) ships the household whole — the
+    // wire's shape — but skips the roster string rebuild; a roster
+    // flush compares both halves, exactly the old combined gate.
+    const hpTok = player.petEid === null ? -1 : downed ? -2 : (petHp?.hp ?? 0);
+    if (hpOnly && player.petSigSent !== '') {
+      player.petHpSent = hpTok;
+    } else {
+      const sig =
+        player.pets
+          .map(
+            (p) =>
+              `${p.slot}:${p.species}:${p.name}:${p.xp}:${p.state}:${p.restedAt ?? ''}:` +
+              // THE FANG FINDS ITS VOICE: the rope, the loadout, and the
+              // journey all move the mirror when they move.
+              `${p.bondXp}:${p.arts.join(',')}:${p.kills}:${p.downs}`,
+          )
+          .join('|') + `@${bc}`;
+      if (ceremony === undefined && sig === player.petSigSent && hpTok === player.petHpSent) return;
+      player.petSigSent = sig;
+      player.petHpSent = hpTok;
+    }
     const now = Date.now();
     const pets: PetInfo[] = player.pets.map((p) => {
       const def = NPCS.get(p.species);
@@ -17287,11 +17749,10 @@ export class GameServer {
   /** Any relax window still running within `reach` tiles of a point? */
   calmWithinTiles(sx: number, sy: number, reach: number): boolean {
     const now = Date.now();
-    for (const [key, until] of this.frontierCalm) {
-      if (until <= now) continue;
-      const comma = key.indexOf(',');
-      const cx = (Number(key.slice(0, comma)) + 0.5) * POI_CELL;
-      const cy = (Number(key.slice(comma + 1)) + 0.5) * POI_CELL;
+    for (const w of this.frontierCalm.values()) {
+      if (w.until <= now) continue;
+      const cx = (w.cx + 0.5) * POI_CELL;
+      const cy = (w.cy + 0.5) * POI_CELL;
       const dx = cx - sx;
       const dy = cy - sy;
       if (dx * dx + dy * dy <= reach * reach) return true;
@@ -18159,18 +18620,21 @@ export class GameServer {
     }
   }
 
-  /** The live-collect signature: every watched item's current count. */
-  private questCollectSig(player: PlayerComp, ctx: QuestPlayerCtx): string {
-    let sig = '';
+  /** The live-collect signature: every watched item's current count, folded to one integer. */
+  private questCollectSig(player: PlayerComp, ctx: QuestPlayerCtx): number {
+    let h = COLLECT_SIG_SEED;
     for (const [id, q] of player.quests) {
       if (q.status !== 'active') continue;
       const stage = this.questDefs.get(id)?.stages[q.stage];
       if (!stage) continue;
       for (const obj of stage.objectives) {
-        if (obj.kind === 'collect') sig += `${id}:${obj.item}:${ctx.countItem(obj.item)};`;
+        if (obj.kind !== 'collect') continue;
+        h = fnvMix(h, strHash(id));
+        h = fnvMix(h, strHash(obj.item));
+        h = fnvMix(h, ctx.countItem(obj.item) + 1);
       }
     }
-    return sig;
+    return h;
   }
 
   /** Set a durable story flag; persisted immediately (guests: memory). */
@@ -19254,20 +19718,15 @@ export class GameServer {
    * the seat, the stand or the stop a loop returns to.
    */
   private routineWaypointsNear(plane: PlaneId, x: number, y: number, reach: number): Set<string> {
-    const out = new Set<string>();
-    const near = (px: number, py: number): boolean =>
-      Math.abs(px - x) <= reach && Math.abs(py - y) <= reach;
-    const key = (px: number, py: number): string => `${Math.floor(px)},${Math.floor(py)}`;
-    for (const sp of this.spawnPoints) {
-      if (!sp.active || sp.plane !== plane) continue;
-      for (const p of sp.patrol ?? []) if (near(p.x, p.y)) out.add(key(p.x, p.y));
-      if (sp.post && near(sp.post.x, sp.post.y)) out.add(key(sp.post.x, sp.post.y));
-    }
-    for (const ap of this.actorSpawnPoints) {
-      if (!ap.active || ap.plane !== plane) continue;
-      if (near(ap.x, ap.y)) out.add(key(ap.x, ap.y));
-    }
-    return out;
+    // THE STOPS BY THEIR CHUNK (Band B): filed at registration, read
+    // by cell — the old walk was every spawn row ever registered.
+    return this.routineStops.near(plane, x, y, reach);
+  }
+
+  /** File a spawn row's patrol stops and post cell under their chunks. */
+  private fileSpawnStops(rec: SpawnState): void {
+    for (const p of rec.patrol ?? []) this.routineStops.add(rec, p.x, p.y);
+    if (rec.post) this.routineStops.add(rec, rec.post.x, rec.post.y);
   }
 
   // --------------------------------------------------------- abilities
@@ -20197,23 +20656,22 @@ export class GameServer {
   ): { x: number; y: number } {
     let best: { x: number; y: number } | null = null;
     let bestDist = Infinity;
-    for (const [npcEid] of this.npcs) {
-      if (!this.assistMark(npcEid)) continue;
-      const npos = this.positions.get(npcEid);
-      // The magnet never pulls a cast toward a body in another world.
-      if (!npos || npos.plane !== pos.plane) continue;
+    // The magnet never pulls a cast toward a body in another world —
+    // the index is plane-first, and reads only the cells in range.
+    this.forEachNpcNear(pos.plane, pos.x, pos.y, range, (npcEid, _npc, npos) => {
+      if (!this.assistMark(npcEid)) return;
       const dx = npos.x - pos.x;
       const dy = npos.y - pos.y;
       const dist = Math.hypot(dx, dy);
-      if (dist > range) continue;
+      if (dist > range) return;
       let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
       if (diff > Math.PI) diff = Math.PI * 2 - diff;
-      if (diff > 0.65) continue;
+      if (diff > 0.65) return;
       if (dist < bestDist) {
         bestDist = dist;
         best = { x: npos.x, y: npos.y };
       }
-    }
+    });
     return best ?? { x: pos.x + Math.cos(aim) * range * 0.6, y: pos.y + Math.sin(aim) * range * 0.6 };
   }
 
@@ -20240,30 +20698,27 @@ export class GameServer {
     fromNpc: boolean,
   ): void {
     if (fromNpc) {
-      for (const [pEid, p] of this.players) {
-        if (struck.has(pEid)) continue;
-        if (p.session === null && p.disconnectedAt !== null) continue;
-        const ppos = this.positions.get(pEid);
-        if (!ppos || ppos.plane !== plane) continue;
-        if (Math.hypot(ppos.x - x, ppos.y - y) > radius) continue;
+      this.forEachBodyNear(plane, x, y, radius, BODY_PLAYER, (pEid, ppos) => {
+        if (struck.has(pEid)) return;
+        const p = this.players.get(pEid);
+        if (!p || (p.session === null && p.disconnectedAt !== null)) return;
+        if (Math.hypot(ppos.x - x, ppos.y - y) > radius) return;
         struck.add(pEid);
         this.damagePlayer(pEid, Math.floor(Math.random() * (maxHit + 1)), {
           status: ab.status,
           sourceEid: casterEid,
           attackerLevel: level,
         });
-      }
-      for (const [petEid] of this.pets) {
-        if (struck.has(petEid)) continue;
-        const ppos = this.positions.get(petEid);
-        if (!ppos || ppos.plane !== plane) continue;
-        if (Math.hypot(ppos.x - x, ppos.y - y) > radius) continue;
+      });
+      this.forEachBodyNear(plane, x, y, radius, BODY_NPC, (petEid, ppos) => {
+        if (struck.has(petEid) || !this.pets.has(petEid)) return;
+        if (Math.hypot(ppos.x - x, ppos.y - y) > radius) return;
         struck.add(petEid);
         this.damagePet(petEid, Math.floor(Math.random() * (maxHit + 1)), {
           status: ab.status,
           attackerLevel: level,
         });
-      }
+      });
       return;
     }
     this.forEachNpcNear(plane, x, y, radius, (npcEid, npc, npos) => {
@@ -20756,22 +21211,21 @@ export class GameServer {
           let zfrom = { x: pos.x, y: pos.y };
           const zdone = new Set<EntityId>();
           for (let hop = 0; hop < maxTargets; hop++) {
+            // Candidates within this hop's reach only — the first hop
+            // reads `range` around the caster, later hops the chain
+            // radius around the last struck body.
+            const hopR = hop === 0 ? range : chainRadius;
             const cands: Array<{ eid: EntityId; x: number; y: number; pet: boolean }> = [];
-            for (const [pEid, p] of this.players) {
-              if (zdone.has(pEid)) continue;
-              if (p.session === null && p.disconnectedAt !== null) continue;
-              const ppos = this.positions.get(pEid);
-              if (ppos && ppos.plane === pos.plane) {
-                cands.push({ eid: pEid, x: ppos.x, y: ppos.y, pet: false });
-              }
-            }
-            for (const [petEid] of this.pets) {
-              if (zdone.has(petEid)) continue;
-              const ppos = this.positions.get(petEid);
-              if (ppos && ppos.plane === pos.plane) {
-                cands.push({ eid: petEid, x: ppos.x, y: ppos.y, pet: true });
-              }
-            }
+            this.forEachBodyNear(pos.plane, zfrom.x, zfrom.y, hopR, BODY_PLAYER, (pEid, ppos) => {
+              if (zdone.has(pEid)) return;
+              const p = this.players.get(pEid);
+              if (!p || (p.session === null && p.disconnectedAt !== null)) return;
+              cands.push({ eid: pEid, x: ppos.x, y: ppos.y, pet: false });
+            });
+            this.forEachBodyNear(pos.plane, zfrom.x, zfrom.y, hopR, BODY_NPC, (petEid, ppos) => {
+              if (zdone.has(petEid) || !this.pets.has(petEid)) return;
+              cands.push({ eid: petEid, x: ppos.x, y: ppos.y, pet: true });
+            });
             let best: { eid: EntityId; x: number; y: number; pet: boolean } | null = null;
             let bestDist = Infinity;
             for (const c of cands) {
@@ -21111,17 +21565,18 @@ export class GameServer {
           return perp <= halfW + bodyR;
         };
         if (fromNpc) {
-          for (const [playerEid, player] of this.players) {
-            if (player.session === null && player.disconnectedAt !== null) continue;
-            const ppos = this.positions.get(playerEid);
-            if (!ppos || ppos.plane !== pos.plane) continue;
-            if (!strike(playerEid, BODY_RADIUS, ppos.x, ppos.y)) continue;
+          // The lane's far corner bounds the index read.
+          const reach = Math.hypot(len + BODY_RADIUS, halfW + BODY_RADIUS);
+          this.forEachBodyNear(pos.plane, pos.x, pos.y, reach, BODY_PLAYER, (playerEid, ppos) => {
+            const player = this.players.get(playerEid);
+            if (!player || (player.session === null && player.disconnectedAt !== null)) return;
+            if (!strike(playerEid, BODY_RADIUS, ppos.x, ppos.y)) return;
             this.damagePlayer(playerEid, Math.floor(Math.random() * (maxHit + 1)), {
               status: ab.status,
               attackerLevel: level,
               sourceEid: casterEid,
             });
-          }
+          });
         } else {
           // Knockback re-chunks a struck body mid-walk — pay once.
           const struck = new Set<EntityId>();
@@ -21456,40 +21911,36 @@ export class GameServer {
       return diff <= opts.arcHalf;
     };
     // Planes share coordinates by design (a plane is a tag, not a
-    // translation) — every body test below must name the blast's
-    // plane or a rift boss's nova bleeds into the world next door.
-    for (const [playerEid, player] of this.players) {
-      if (player.session === null && player.disconnectedAt !== null) continue;
-      const ppos = this.positions.get(playerEid);
-      if (!ppos || ppos.plane !== plane) continue;
-      if (Math.hypot(ppos.x - x, ppos.y - y) > radius) continue;
-      if (!inArc(ppos.x, ppos.y)) continue;
+    // translation) — the chunk index is plane-first, so no body test
+    // below can see a rift boss's nova from the world next door.
+    this.forEachBodyNear(plane, x, y, radius, BODY_PLAYER, (playerEid, ppos) => {
+      const player = this.players.get(playerEid);
+      if (!player || (player.session === null && player.disconnectedAt !== null)) return;
+      if (Math.hypot(ppos.x - x, ppos.y - y) > radius) return;
+      if (!inArc(ppos.x, ppos.y)) return;
       this.damagePlayer(playerEid, Math.floor(Math.random() * (maxHit + 1)), {
         status,
         attackerLevel,
         sourceEid: opts?.sourceEid,
       });
-    }
-    for (const [sumEid, sum] of this.summons) {
-      if (sum.kind !== 'decoy') continue;
-      const spos = this.positions.get(sumEid);
-      if (!spos || spos.plane !== plane) continue;
-      if (Math.hypot(spos.x - x, spos.y - y) > radius) continue;
-      if (!inArc(spos.x, spos.y)) continue;
+    });
+    this.forEachBodyNear(plane, x, y, radius, BODY_SUMMON, (sumEid, spos) => {
+      if (this.summons.get(sumEid)?.kind !== 'decoy') return;
+      if (Math.hypot(spos.x - x, spos.y - y) > radius) return;
+      if (!inArc(spos.x, spos.y)) return;
       this.damageSummon(sumEid, Math.floor(Math.random() * (maxHit + 1)));
-    }
+    });
     // A companion standing in the blast eats it like anyone standing
     // in a blast — splash is physical, not perceptual.
-    for (const [petEid] of this.pets) {
-      const ppos = this.positions.get(petEid);
-      if (!ppos || ppos.plane !== plane) continue;
-      if (Math.hypot(ppos.x - x, ppos.y - y) > radius) continue;
-      if (!inArc(ppos.x, ppos.y)) continue;
+    this.forEachBodyNear(plane, x, y, radius, BODY_NPC, (petEid, ppos) => {
+      if (!this.pets.has(petEid)) return;
+      if (Math.hypot(ppos.x - x, ppos.y - y) > radius) return;
+      if (!inArc(ppos.x, ppos.y)) return;
       this.damagePet(petEid, Math.floor(Math.random() * (maxHit + 1)), {
         status,
         attackerLevel,
       });
-    }
+    });
   }
 
   // ----------------------------------------------------------- statuses
@@ -21600,11 +22051,10 @@ export class GameServer {
         // A steady pulse of mending for everyone standing close — on
         // the totem's OWN plane; mending never crosses the rock.
         if (sum.ticksLeft % 40 === 0) {
-          for (const [playerEid, player] of this.players) {
-            if (player.session === null && player.disconnectedAt !== null) continue;
-            const ppos = this.positions.get(playerEid);
-            if (!ppos || ppos.plane !== pos.plane) continue;
-            if (Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > sum.radius) continue;
+          this.forEachBodyNear(pos.plane, pos.x, pos.y, sum.radius, BODY_PLAYER, (playerEid, ppos) => {
+            const player = this.players.get(playerEid);
+            if (!player || (player.session === null && player.disconnectedAt !== null)) return;
+            if (Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > sum.radius) return;
             const health = this.healths.must(playerEid);
             if (health.hp < health.maxHp) {
               health.hp = Math.min(health.maxHp, health.hp + sum.power);
@@ -21620,7 +22070,7 @@ export class GameServer {
                 text: `+${sum.power} health`,
               });
             }
-          }
+          });
         }
       } else if (sum.kind === 'snare_trap') {
         this.forEachNpcNear(pos.plane, pos.x, pos.y, sum.radius, (npcEid, npc, npos) => {
@@ -21942,105 +22392,101 @@ export class GameServer {
       });
       if (proj.splashRadius) {
         const splashHit = Math.max(1, Math.round(proj.maxHit * 0.5));
-        for (const [playerEid, player] of this.players) {
-          if (player.session === null && player.disconnectedAt !== null) continue;
-          const ppos = this.positions.get(playerEid);
-          // The shot lives on ONE plane — bodies at aliased
-          // coordinates in other worlds are not in its story.
-          if (!ppos || ppos.plane !== pos.plane) continue;
-          if (Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > proj.splashRadius) continue;
+        const splashR = proj.splashRadius;
+        // The shot lives on ONE plane — bodies at aliased coordinates
+        // in other worlds are not in its story (the index is plane-first).
+        this.forEachBodyNear(pos.plane, pos.x, pos.y, splashR, BODY_PLAYER, (playerEid, ppos) => {
+          const player = this.players.get(playerEid);
+          if (!player || (player.session === null && player.disconnectedAt !== null)) return;
+          if (Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > splashR) return;
           this.damagePlayer(playerEid, Math.floor(Math.random() * (splashHit + 1)), {
             status: proj.status,
             attackerLevel: proj.attackerLevel,
             sourceEid: proj.ownerEid,
           });
-        }
+        });
       }
     }
 
     if (!dead && proj.fromNpc) {
-      // NPC shots seek players (and straw decoys, which exist to eat them).
-      for (const [playerEid, player] of this.players) {
-        if (player.session === null && player.disconnectedAt !== null) continue;
-        const ppos = this.positions.get(playerEid);
-        if (!ppos || ppos.plane !== pos.plane) continue;
+      // NPC shots seek players (and straw decoys, which exist to eat
+      // them) — through the chunk index, like the player side's shafts
+      // (THE INDEX SERVES THE FIGHT); a far player is never read.
+      this.forEachBodyNear(pos.plane, pos.x, pos.y, 0.45, BODY_PLAYER, (playerEid, ppos) => {
+        const player = this.players.get(playerEid);
+        if (!player || (player.session === null && player.disconnectedAt !== null)) return;
         const dx = ppos.x - pos.x;
         const dy = bandDy(pos.y, ppos.y, PLAYER_HIT_HEIGHT);
-        if (dx * dx + dy * dy < 0.45 ** 2) {
-          this.damagePlayer(playerEid, Math.floor(Math.random() * (proj.maxHit + 1)), {
-            status: proj.status,
-            attackerLevel: proj.attackerLevel,
-            sourceEid: proj.ownerEid,
+        if (dx * dx + dy * dy >= 0.45 ** 2) return;
+        this.damagePlayer(playerEid, Math.floor(Math.random() * (proj.maxHit + 1)), {
+          status: proj.status,
+          attackerLevel: proj.attackerLevel,
+          sourceEid: proj.ownerEid,
+        });
+        // THE SIGNATURE LAW reads both ways: a foe's ability shot
+        // announces its landing too, so the receiving-end
+        // signature speaks at the wound (the golem's boulder lies
+        // where it fell). Basic ranged shafts stay quiet.
+        if (proj.abilityId) {
+          this.broadcastFx(pos.plane, {
+            t: 'fx',
+            kind: 'blast',
+            x: pos.x,
+            y: pos.y,
+            radius: proj.splashRadius ?? 0.55,
+            id: proj.abilityId,
+            color: proj.abilityColor,
           });
-          // THE SIGNATURE LAW reads both ways: a foe's ability shot
-          // announces its landing too, so the receiving-end
-          // signature speaks at the wound (the golem's boulder lies
-          // where it fell). Basic ranged shafts stay quiet.
-          if (proj.abilityId) {
-            this.broadcastFx(pos.plane, {
-              t: 'fx',
-              kind: 'blast',
-              x: pos.x,
-              y: pos.y,
-              radius: proj.splashRadius ?? 0.55,
-              id: proj.abilityId,
-              color: proj.abilityColor,
-            });
-          }
-          // The burst is part of the same landing: everyone else
-          // standing close pays half the direct hit.
-          if (proj.splashRadius) {
-            const splashHit = Math.max(1, Math.round(proj.maxHit * 0.5));
-            for (const [otherEid, other] of this.players) {
-              if (otherEid === playerEid) continue;
-              if (other.session === null && other.disconnectedAt !== null) continue;
-              const opos = this.positions.get(otherEid);
-              if (!opos || opos.plane !== pos.plane) continue;
-              if (Math.hypot(opos.x - pos.x, opos.y - pos.y) > proj.splashRadius) continue;
-              this.damagePlayer(otherEid, Math.floor(Math.random() * (splashHit + 1)), {
-                status: proj.status,
-                attackerLevel: proj.attackerLevel,
-                sourceEid: proj.ownerEid,
-              });
-            }
-          }
-          dead = true;
-          break;
         }
-      }
-      if (!dead) {
-        for (const [sumEid, sum] of this.summons) {
-          if (sum.kind !== 'decoy') continue;
-          const spos = this.positions.get(sumEid);
-          if (!spos || spos.plane !== pos.plane) continue;
-          const dx = spos.x - pos.x;
-          const dy = spos.y - pos.y;
-          if (dx * dx + dy * dy < 0.5 ** 2) {
-            this.damageSummon(sumEid, Math.floor(Math.random() * (proj.maxHit + 1)));
-            dead = true;
-            break;
-          }
-        }
-      }
-      if (!dead) {
-        // A mob's shaft finds a companion body in its line — the
-        // arrow is physical; being unseen never made it a ghost.
-        for (const [petEid] of this.pets) {
-          const ppos = this.positions.get(petEid);
-          const pnpc = this.npcs.get(petEid);
-          if (!ppos || !pnpc || ppos.plane !== pos.plane) continue;
-          const dx = ppos.x - pos.x;
-          const dy = bandDy(pos.y, ppos.y, npcHitHeight(pnpc.def));
-          if (dx * dx + dy * dy < 0.5 ** 2) {
-            this.damagePet(petEid, Math.floor(Math.random() * (proj.maxHit + 1)), {
+        // The burst is part of the same landing: everyone else
+        // standing close pays half the direct hit.
+        if (proj.splashRadius) {
+          const splashHit = Math.max(1, Math.round(proj.maxHit * 0.5));
+          const splashR = proj.splashRadius;
+          this.forEachBodyNear(pos.plane, pos.x, pos.y, splashR, BODY_PLAYER, (otherEid, opos) => {
+            if (otherEid === playerEid) return;
+            const other = this.players.get(otherEid);
+            if (!other || (other.session === null && other.disconnectedAt !== null)) return;
+            if (Math.hypot(opos.x - pos.x, opos.y - pos.y) > splashR) return;
+            this.damagePlayer(otherEid, Math.floor(Math.random() * (splashHit + 1)), {
               status: proj.status,
               attackerLevel: proj.attackerLevel,
               sourceEid: proj.ownerEid,
             });
-            dead = true;
-            break;
-          }
+          });
         }
+        dead = true;
+        return true;
+      });
+      if (!dead) {
+        this.forEachBodyNear(pos.plane, pos.x, pos.y, 0.5, BODY_SUMMON, (sumEid, spos) => {
+          if (this.summons.get(sumEid)?.kind !== 'decoy') return;
+          const dx = spos.x - pos.x;
+          const dy = spos.y - pos.y;
+          if (dx * dx + dy * dy >= 0.5 ** 2) return;
+          this.damageSummon(sumEid, Math.floor(Math.random() * (proj.maxHit + 1)));
+          dead = true;
+          return true;
+        });
+      }
+      if (!dead) {
+        // A mob's shaft finds a companion body in its line — the
+        // arrow is physical; being unseen never made it a ghost.
+        this.forEachBodyNear(pos.plane, pos.x, pos.y, 0.5, BODY_NPC, (petEid, ppos) => {
+          if (!this.pets.has(petEid)) return;
+          const pnpc = this.npcs.get(petEid);
+          if (!pnpc) return;
+          const dx = ppos.x - pos.x;
+          const dy = bandDy(pos.y, ppos.y, npcHitHeight(pnpc.def));
+          if (dx * dx + dy * dy >= 0.5 ** 2) return;
+          this.damagePet(petEid, Math.floor(Math.random() * (proj.maxHit + 1)), {
+            status: proj.status,
+            attackerLevel: proj.attackerLevel,
+            sourceEid: proj.ownerEid,
+          });
+          dead = true;
+          return true;
+        });
       }
       if (!dead && proj.npcTargetEid !== undefined) {
         // THE WILD TAKES SIDES: the feud's own mark — one body, one
@@ -22211,6 +22657,8 @@ export class GameServer {
    */
   rideDirty = new Set<PlayerComp>();
   private petDirty = new Set<PlayerComp>();
+  /** THE ONE LIVE NUMBER's own lane: hp moved, roster unchanged — flushed without the signature rebuild. */
+  private petHpDirty = new Set<PlayerComp>();
   /** The company mirror's own dirty set — the petDirty discipline, held apart. */
   private companionDirty = new Set<PlayerComp>();
 
@@ -22523,7 +22971,7 @@ export class GameServer {
     if (dmg > 0) {
       const npos = this.positions.get(npcEid);
       if (npos && isRiftPlane(npos.plane)) {
-        const heads = this.dungeonHeadcount(npos.plane);
+        const heads = this.dungeonHeadcountThisTick(npos.plane);
         if (heads > 1) dmg = Math.max(1, Math.round(dmg / (1 + 0.55 * (heads - 1))));
       }
     }
@@ -23268,7 +23716,7 @@ export class GameServer {
     if (raw > 0) {
       const dpp = this.positions.get(eid);
       if (dpp && isRiftPlane(dpp.plane)) {
-        const heads = this.dungeonHeadcount(dpp.plane);
+        const heads = this.dungeonHeadcountThisTick(dpp.plane);
         if (heads > 1) raw = Math.round(raw * Math.min(1.5, 1 + 0.12 * (heads - 1)));
       }
     }
@@ -23863,12 +24311,16 @@ export class GameServer {
 
   /** Any connected player within `r` tiles of a point? */
   private playerWithin(plane: PlaneId, x: number, y: number, r: number): boolean {
-    for (const [eid, player] of this.players) {
-      if (player.session === null && player.disconnectedAt !== null) continue;
-      const pos = this.positions.get(eid);
-      if (pos && pos.plane === plane && Math.hypot(pos.x - x, pos.y - y) <= r) return true;
-    }
-    return false;
+    let found = false;
+    this.forEachBodyNear(plane, x, y, r, BODY_PLAYER, (eid, pos) => {
+      const player = this.players.get(eid);
+      if (!player || (player.session === null && player.disconnectedAt !== null)) return;
+      if (Math.hypot(pos.x - x, pos.y - y) <= r) {
+        found = true;
+        return true;
+      }
+    });
+    return found;
   }
 
   // --------------------------------------------- wilderness ambience
@@ -23887,6 +24339,11 @@ export class GameServer {
   private tickMsSum = 0;
   private tickMsMax = 0;
   private tickMsCount = 0;
+  /** The last closed minute window (what the minute line printed). */
+  private tickMsWindowAvg = 0;
+  private tickMsWindowMax = 0;
+  /** performance.now() stamp of the last completed tick — /healthz's staleness clock. */
+  lastTickAt = 0;
 
   /** Per-tick union of every session's streamed chunks (see tickNpcs). */
   private readonly awakeChunks = new Set<string>();
@@ -24113,7 +24570,7 @@ export class GameServer {
     // the site and find picks read (the def roster's families).
     candidates = leanWild(
       candidates,
-      territoryAt(config.worldSeed, tx, ty, familiesOf([...POI_DEFS.values()])),
+      territoryAt(config.worldSeed, tx, ty, this.liveFamilies()),
       FRONTIER.territoryBias,
     );
     const entry = pickWild(candidates, Math.random());
@@ -24456,10 +24913,9 @@ export class GameServer {
       let bestX = 0;
       let bestY = 0;
       let found = false;
-      for (const [playerEid, player] of this.players) {
-        if (player.session === null && player.disconnectedAt !== null) continue;
-        const ppos = this.positions.get(playerEid);
-        if (!ppos || ppos.plane !== pos.plane) continue;
+      this.forEachBodyNear(pos.plane, pos.x, pos.y, 3, BODY_PLAYER, (playerEid, ppos) => {
+        const player = this.players.get(playerEid);
+        if (!player || (player.session === null && player.disconnectedAt !== null)) return;
         const dx = ppos.x - pos.x;
         const dy = ppos.y - pos.y;
         const d = dx * dx + dy * dy;
@@ -24469,7 +24925,7 @@ export class GameServer {
           bestY = dy;
           found = true;
         }
-      }
+      });
       if (found) {
         pos.dir = Math.atan2(bestY, bestX);
       } else {
@@ -24805,12 +25261,14 @@ export class GameServer {
     r: number,
     fn: (eid: EntityId, npc: NpcComp, pos: { x: number; y: number }) => boolean | void,
   ): void {
+    const grid = this.chunkGrid.get(plane);
+    if (!grid) return;
     const ring = Math.ceil((r + 4) / CHUNK_SIZE);
     const ccx = Math.floor(x / CHUNK_SIZE);
     const ccy = Math.floor(y / CHUNK_SIZE);
     for (let dy = -ring; dy <= ring; dy++) {
       for (let dx = -ring; dx <= ring; dx++) {
-        const set = this.chunks.get(`${plane}|${chunkKey(ccx + dx, ccy + dy)}`);
+        const set = grid.get(packChunk(ccx + dx, ccy + dy));
         if (!set) continue;
         for (const eid of set) {
           const npc = this.npcs.get(eid);
@@ -24818,6 +25276,48 @@ export class GameServer {
           const pos = this.positions.get(eid);
           if (!pos) continue;
           if (fn(eid, npc, pos) === true) return;
+        }
+      }
+    }
+  }
+
+  /**
+   * EVERY BODY IS FOUND BY ITS CHUNK (Band B): the same index walk for
+   * ANY body kind — players, summons (decoys, baits, totems: kinded
+   * Prop), NPCs and the heel pets among them — filtered by a bitmask
+   * of EntityKind bits (BODY_PLAYER | BODY_NPC | BODY_SUMMON). The
+   * NPC-side hit tests, splashes, sweeps, the perception scan and
+   * playerWithin ride it; the caller keeps its own body filters
+   * (connected, hidden, decoy-only, pet-only) so the answer is the
+   * old whole-map walk's exactly. The ring pads like forEachNpcNear;
+   * return true from the visit to stop. A visit that RE-CHUNKS its
+   * body (knockback, a death relocation) must keep its own struck
+   * set — a Set yields members added mid-walk, so the moved body can
+   * be met again in its new chunk (the NPC sweeps already do).
+   */
+  forEachBodyNear(
+    plane: PlaneId,
+    x: number,
+    y: number,
+    r: number,
+    kinds: number,
+    fn: (eid: EntityId, pos: PositionComp) => boolean | void,
+  ): void {
+    const grid = this.chunkGrid.get(plane);
+    if (!grid) return;
+    const ring = Math.ceil((r + 4) / CHUNK_SIZE);
+    const ccx = Math.floor(x / CHUNK_SIZE);
+    const ccy = Math.floor(y / CHUNK_SIZE);
+    for (let dy = -ring; dy <= ring; dy++) {
+      for (let dx = -ring; dx <= ring; dx++) {
+        const set = grid.get(packChunk(ccx + dx, ccy + dy));
+        if (!set) continue;
+        for (const eid of set) {
+          const kind = this.kinds.get(eid);
+          if (kind === undefined || (kinds & (1 << kind)) === 0) continue;
+          const pos = this.positions.get(eid);
+          if (!pos) continue;
+          if (fn(eid, pos) === true) return;
         }
       }
     }
@@ -24839,6 +25339,8 @@ export class GameServer {
     mx: number,
     my: number,
   ): { mx: number; my: number } {
+    const grid = this.chunkGrid.get(pos.plane);
+    if (!grid) return { mx, my };
     const ccx = Math.floor(pos.x / CHUNK_SIZE);
     const ccy = Math.floor(pos.y / CHUNK_SIZE);
     let px = 0;
@@ -24846,7 +25348,9 @@ export class GameServer {
     let crowded = false;
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
-        const set = this.chunks.get(`${pos.plane}|${chunkKey(ccx + dx, ccy + dy)}`);
+        // Numeric neighbour keys (Band B): nine lookups, no strings,
+        // for every moving body every tick.
+        const set = grid.get(packChunk(ccx + dx, ccy + dy));
         if (!set) continue;
         for (const other of set) {
           if (other === eid) continue;
@@ -25800,7 +26304,23 @@ export class GameServer {
     let bestInReach = false;
     let bestX = 0;
     let bestY = 0;
-    for (const [playerEid, player] of this.players) {
+    // THE EYE READS ITS OWN CELLS (Band B): the widest circle any
+    // player could be noticed from bounds the index read — the posted
+    // range (or the enforcer's, when this body enforces) times the
+    // sight multiplier, or the point-blank ring; the crouch only ever
+    // shrinks it. A body with no reach sees nobody, as before.
+    const near = perceiveScratch;
+    near.length = 0;
+    const widest = enforcerFid !== null ? Math.max(npc.def.aggroRange, FACTIONS.enforcerAggro) : npc.def.aggroRange;
+    if (widest > 0) {
+      const reach = Math.max(widest * SIGHT_RANGE_MULT, SIGHT_CLOSE_RANGE);
+      this.forEachBodyNear(pos.plane, pos.x, pos.y, reach, BODY_PLAYER, (pEid) => {
+        near.push(pEid);
+      });
+    }
+    for (const playerEid of near) {
+      const player = this.players.get(playerEid);
+      if (!player) continue;
       if (player.session === null && player.disconnectedAt !== null) continue;
       if (player.hidden) continue;
       // THE QUIET WALK: a wild beast simply does not mark a walker
@@ -26780,6 +27300,14 @@ export class GameServer {
     // combat, search, return, and patrol states never doze, and damage
     // force-wakes through npcAggro regardless.
     this.rebuildAwakeChunks();
+    // THE WIDEST TRUCE: the largest parting radius any walker holds
+    // this tick bounds the wild's step-aside read below (zero = no
+    // truce in the world, and the read is skipped outright).
+    let maxPart = 0;
+    for (const [, walker] of this.players) {
+      const pr = beastPartRadius(walker, this.tickCount);
+      if (pr > maxPart) maxPart = pr;
+    }
     for (const [eid, npc] of this.npcs) {
       const pos = this.positions.must(eid);
       // THE BODY THAT LOST ITS BEARING (contested lands, band 8 fix
@@ -27626,20 +28154,22 @@ export class GameServer {
         // quiet passes — never shoved, just yielding the ground.
         let parted = false;
         const wildHere = isWildBeast(npc.def) && !isBeastSovereign(npc.def);
-        if (wildHere) {
-          for (const [wEid, walker] of this.players) {
-            if (walker.session === null && walker.disconnectedAt !== null) continue;
+        // Gated on any parting truce standing this tick (the widest
+        // one bounds the index read) — the old walk paid every player
+        // per wild body per tick with no truce in the world.
+        if (wildHere && maxPart > 0) {
+          this.forEachBodyNear(pos.plane, pos.x, pos.y, maxPart, BODY_PLAYER, (wEid, wpos) => {
+            const walker = this.players.get(wEid);
+            if (!walker || (walker.session === null && walker.disconnectedAt !== null)) return;
             const pr = beastPartRadius(walker, this.tickCount);
-            if (pr <= 0) continue;
-            const wpos = this.positions.get(wEid);
-            if (!wpos || wpos.plane !== pos.plane) continue;
+            if (pr <= 0) return;
             const pd = Math.hypot(pos.x - wpos.x, pos.y - wpos.y);
-            if (pd > pr || pd < 0.01) continue;
+            if (pd > pr || pd < 0.01) return;
             moveX = ((pos.x - wpos.x) / pd) * 0.5;
             moveY = ((pos.y - wpos.y) / pd) * 0.5;
             parted = true;
-            break;
-          }
+            return true;
+          });
         }
         // THE STREWN TABLE: a laid bait draws the wild at rest to come
         // and nose it. It pulls, never breaks — only this idle branch
@@ -28081,8 +28611,24 @@ export class GameServer {
 
   // ------------------------------------------------------------ tick
 
+  /**
+   * THE SAVE OUTLIVES THE TICK: the cadence save used to be the last
+   * line of the systems walk, so one system throwing every tick (the
+   * loop's catch keeps the world moving) starved every player's save
+   * for as long as the fault stood. The tick number and the save ride
+   * outside the walk now — a throw downstream loses that tick's work,
+   * never the trickle that makes the next reboot honest.
+   */
   private tick(): void {
     this.tickCount++;
+    try {
+      this.tickSystems();
+    } finally {
+      this.saveDue();
+    }
+  }
+
+  private tickSystems(): void {
     const now = Date.now();
 
     // Projectiles move FIRST, before this tick's inputs can spawn new
@@ -28159,51 +28705,40 @@ export class GameServer {
     // availability re-diff; cadence gating lives inside.
     this.tickQuests();
 
-    // Respawn depleted nodes (and pull forgotten doors to).
-    for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
-      const entry = this.respawnQueue[i]!;
-      if (entry.at > now) continue;
+    // Respawn depleted nodes (and pull forgotten doors to) — THE DUE
+    // HEAD: only what is due is popped; a deferred entry re-queues at
+    // its new time and cannot come back this tick.
+    for (let entry = this.respawnQueue.peek(); entry !== undefined && entry.at <= now; entry = this.respawnQueue.peek()) {
+      this.respawnQueue.pop();
       const d = doorInfo(entry.tile);
       if (d && !d.open) {
         // Door auto-close: the unit shuts as ONE (matching the merged
         // opening) and never onto a body — an occupied doorway defers
         // the timer instead of embedding whoever stands in it.
         const world = this.planes.get(entry.plane);
-        if (!world) {
-          // The plane is gone (a dropped rift) — the entry dies with it.
-          this.respawnQueue.splice(i, 1);
-          continue;
-        }
+        // The plane is gone (a dropped rift) — the entry dies with it.
+        if (!world) continue;
         const g = world.groundAt(entry.tx, entry.ty);
         const gi = g === undefined ? null : doorInfo(g);
-        if (gi === null || !gi.open) {
-          // Already shut by hand, or the doorway is gone — drop it.
-          this.respawnQueue.splice(i, 1);
-          continue;
-        }
+        // Already shut by hand, or the doorway is gone — drop it.
+        if (gi === null || !gi.open) continue;
         const unit = this.doorUnit(entry.plane, entry.tx, entry.ty, gi);
         if (unit.tiles.some((t) => this.bodyOnTile(entry.plane, t.x, t.y))) {
           entry.at = now + 5000;
+          this.respawnQueue.push(entry);
           continue;
         }
         for (const t of unit.tiles) {
           const gg = world.groundAt(t.x, t.y)!;
           this.setWorldTile(entry.plane, t.x, t.y, shutDoorTile(gg)!);
         }
-        this.respawnQueue.splice(i, 1);
         continue;
       }
       const entryWorld = this.planes.get(entry.plane);
-      if (!entryWorld) {
-        this.respawnQueue.splice(i, 1);
-        continue;
-      }
+      if (!entryWorld) continue;
       const cur = entryWorld.groundAt(entry.tx, entry.ty);
-      if (entry.over !== undefined && cur !== entry.over) {
-        // The world moved on under this entry — let it go.
-        this.respawnQueue.splice(i, 1);
-        continue;
-      }
+      // The world moved on under this entry — let it go.
+      if (entry.over !== undefined && cur !== entry.over) continue;
       // THE WARD RE-ARMS WITH ITS KEEPER: a warded chest's reclose
       // defers while its site lies cleared or embered — the garrison
       // is down for that whole window, so an on-schedule reclose was a
@@ -28213,6 +28748,7 @@ export class GameServer {
         const over = this.poiChests.get(`${entry.plane}|${entry.tx},${entry.ty}`);
         if (over?.warded && this.chestSiteLiesBroken(over.cell)) {
           entry.at = now + 60_000;
+          this.respawnQueue.push(entry);
           continue;
         }
       }
@@ -28223,10 +28759,10 @@ export class GameServer {
         TILE_DEFS[entry.tile]?.solid && !(cur !== undefined && TILE_DEFS[cur as Tile]?.solid);
       if (becomingSolid && this.bodyOnTile(entry.plane, entry.tx, entry.ty)) {
         entry.at = now + 5000;
+        this.respawnQueue.push(entry);
         continue;
       }
       this.setWorldTile(entry.plane, entry.tx, entry.ty, entry.tile);
-      this.respawnQueue.splice(i, 1);
     }
 
     // Stacking meters that moved this tick reach their wearers once,
@@ -28247,6 +28783,12 @@ export class GameServer {
       for (const p of this.rideDirty) this.sendRide(p);
       this.rideDirty.clear();
     }
+    if (this.petHpDirty.size > 0) {
+      // An hp-only mark defers to a roster mark on the same player —
+      // one household message per player per tick, as before.
+      for (const p of this.petHpDirty) if (!this.petDirty.has(p)) this.sendPet(p, undefined, true);
+      this.petHpDirty.clear();
+    }
     if (this.petDirty.size > 0) {
       for (const p of this.petDirty) this.sendPet(p);
       this.petDirty.clear();
@@ -28261,8 +28803,6 @@ export class GameServer {
       this.updateInterest(session);
       this.sendSnapshot(session);
     }
-
-    if (this.tickCount % SAVE_INTERVAL_TICKS === 0) this.saveAll();
   }
 
   private processPlayerInputs(eid: EntityId, player: PlayerComp): void {
@@ -28316,7 +28856,7 @@ export class GameServer {
       const petHp = this.healths.get(player.petEid)?.hp ?? -1;
       if (petHp !== player.petHpWatch) {
         player.petHpWatch = petHp;
-        this.petDirty.add(player);
+        this.petHpDirty.add(player);
       }
     }
     const equipped = this.equippedWeapon(player);

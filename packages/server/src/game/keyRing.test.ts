@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { GameServer } from './gameServer.js';
+import { packChunk } from './indexes.js';
 import { addItem, countItem, emptyInventory } from './inventory.js';
 import { DUNGEON_KEY_ITEM, dungeonSpecFromRoll, keyForgePrice, keyUsesForTier } from '@arx/shared';
 import type { InvSlot, ItemRoll, KeyLore } from '@arx/shared';
@@ -97,6 +98,7 @@ function slate(inventory: InvSlot[], drop: Drop | null, ring: Array<{ id: number
     // The vacuum reads the chunk index now (THE INDEX SERVES THE PILE).
     forEachDropNear: proto.forEachDropNear,
     chunks: new Map(drop ? [['surface|0,0', new Set([9])]] : []),
+    chunkGrid: new Map(drop ? [['surface', new Map([[packChunk(0, 0), new Set([9])]])]] : []),
     dungeons: new Map<number, { seed: number; tier: string; power: number }>(),
     graves: new Map(),
     deathMarks: new Map(),

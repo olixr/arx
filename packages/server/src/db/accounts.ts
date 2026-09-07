@@ -302,8 +302,13 @@ export class AccountStore {
     return { ok: true, accountId: row.account_id, character };
   }
 
-  saveCharacter(id: number, plane: string, x: number, y: number, hp: number): void {
-    this.db.fire(
+  /**
+   * THE SAVE ANSWERS: the four savePlayer tables return the write's
+   * settled verdict (true = landed, false = logged+counted failure) so
+   * the game's dirty ledger can re-arm the table for the next cadence.
+   */
+  saveCharacter(id: number, plane: string, x: number, y: number, hp: number): Promise<boolean> {
+    return this.db.fire(
       'UPDATE characters SET plane = ?, x = ?, y = ?, hp = ?, last_seen = ? WHERE id = ?',
       [plane, x, y, hp, Date.now(), id],
     );
@@ -453,14 +458,18 @@ export class AccountStore {
     return out;
   }
 
-  saveSkills(characterId: number, xp: Record<string, number>): void {
+  saveSkills(characterId: number, xp: Record<string, number>): Promise<boolean> {
+    const writes: Promise<boolean>[] = [];
     for (const [skill, value] of Object.entries(xp)) {
-      this.db.fire(
-        'INSERT INTO character_skills (character_id, skill, xp) VALUES (?, ?, ?) ' +
-          'ON CONFLICT (character_id, skill) DO UPDATE SET xp = excluded.xp',
-        [characterId, skill, value],
+      writes.push(
+        this.db.fire(
+          'INSERT INTO character_skills (character_id, skill, xp) VALUES (?, ?, ?) ' +
+            'ON CONFLICT (character_id, skill) DO UPDATE SET xp = excluded.xp',
+          [characterId, skill, value],
+        ),
       );
     }
+    return Promise.all(writes).then((oks) => oks.every(Boolean));
   }
 
   /**
@@ -1564,7 +1573,7 @@ export class AccountStore {
   }
 
   saveBank(characterId: number, items: Record<string, number>): void {
-    this.db.fireTransaction(async (tx) => {
+    void this.db.fireTransaction(async (tx) => {
       await tx.run('DELETE FROM bank_items WHERE character_id = ?', [characterId]);
       for (const [item, qty] of Object.entries(items)) {
         if (qty > 0) {
@@ -1575,7 +1584,7 @@ export class AccountStore {
           ]);
         }
       }
-    });
+    }, 'bank');
   }
 
   async loadEquipment(characterId: number): Promise<Record<string, { id: string; roll?: ItemRoll }>> {
@@ -1609,8 +1618,8 @@ export class AccountStore {
   saveEquipment(
     characterId: number,
     equipment: Record<string, { id: string; roll?: ItemRoll } | undefined>,
-  ): void {
-    this.db.fireTransaction(async (tx) => {
+  ): Promise<boolean> {
+    return this.db.fireTransaction(async (tx) => {
       await tx.run('DELETE FROM equipment WHERE character_id = ?', [characterId]);
       for (const [slot, worn] of Object.entries(equipment)) {
         if (worn) {
@@ -1626,7 +1635,7 @@ export class AccountStore {
           );
         }
       }
-    });
+    }, 'equipment');
   }
 
   /**
@@ -1709,7 +1718,7 @@ export class AccountStore {
   }
 
   saveKeyRing(characterId: number, keys: readonly ItemRoll[]): void {
-    this.db.fireTransaction(async (tx) => {
+    void this.db.fireTransaction(async (tx) => {
       await tx.run('DELETE FROM key_ring WHERE character_id = ?', [characterId]);
       for (let i = 0; i < keys.length; i++) {
         const k = keys[i]!;
@@ -1718,7 +1727,7 @@ export class AccountStore {
           [characterId, i, k.rar, k.seed, k.pwr ?? null, k.uses ?? null],
         );
       }
-    });
+    }, 'keyring');
   }
 
   /**
@@ -2143,8 +2152,8 @@ export class AccountStore {
   saveInventory(
     characterId: number,
     slots: Array<{ item: string; qty: number; roll?: ItemRoll; stolen?: true } | null>,
-  ): void {
-    this.db.fireTransaction(async (tx) => {
+  ): Promise<boolean> {
+    return this.db.fireTransaction(async (tx) => {
       await tx.run('DELETE FROM inventory_slots WHERE character_id = ?', [characterId]);
       for (let i = 0; i < slots.length; i++) {
         const slot = slots[i];
@@ -2162,6 +2171,6 @@ export class AccountStore {
           );
         }
       }
-    });
+    }, 'inventory');
   }
 }

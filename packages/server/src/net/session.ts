@@ -9,7 +9,10 @@ import {
   type EntityId,
   type S2CMessage,
 } from '@arx/shared';
+import type { PlaneId } from '@arx/content';
 import { config } from '../config.js';
+import { log } from '../log.js';
+import * as metrics from '../metrics.js';
 import { ipGuard } from './ipGuard.js';
 import { TokenBucket } from './rateLimiter.js';
 import type { GameServer } from '../game/gameServer.js';
@@ -69,6 +72,24 @@ export class Session {
    * the first interest pass after a bind.
    */
   lastCenterChunk: string | null = null;
+
+  /**
+   * THE SETTLED WINDOW (Band B): the packed center cell and the
+   * knownChunks size as the last interest pass left them. While both
+   * hold, no chunk can be new and none can fall out of the ring, so
+   * the pass skips the window walk. -1 forces the walk on a fresh
+   * socket; a crossing nulls lastCenterChunk, which reopens it too.
+   */
+  centerCell = -1;
+  knownChunksSettled = -1;
+
+  /**
+   * THE PLANE ROLL (Band B): the plane this session is filed under in
+   * GameServer.sessionsByPlane — the tile patches and the farm
+   * mirrors fan out to one plane's sessions, never the whole house.
+   * Written only by GameServer.refileSession.
+   */
+  streamPlane: PlaneId | null = null;
 
   /**
    * Input frames refill at a hair over the 20Hz tick rate — the burst
@@ -179,12 +200,13 @@ export class Session {
    *  is logged once per session and answered with a strike, never
    *  allowed out to the socket loop (where it would be a process exit). */
   private handleRaw(raw: string): void {
+    metrics.inc('msgs.in');
     try {
       this.handleRawInner(raw);
     } catch (err) {
       if (!this.loggedDispatchError) {
         this.loggedDispatchError = true;
-        console.error(`[session] dispatch threw (${raw.slice(0, 80)}):`, err);
+        log('error', 'session', 'dispatch threw', { raw: raw.slice(0, 80), error: String(err) });
       }
       this.strike();
     }
@@ -689,6 +711,9 @@ export class Session {
 
   private sendRaw(data: string | ArrayBuffer): void {
     if (this.closed || this.ws.readyState !== this.ws.OPEN) return;
+    // The wire's tally (string length ≈ bytes: the protocol is ASCII JSON).
+    metrics.inc('msgs.out');
+    metrics.inc('bytes.out', typeof data === 'string' ? data.length : data.byteLength);
     // A receiver this far gone (4MB ≈ minutes of traffic) is a dead
     // route the TCP stack hasn't given up on yet. Cut it — the
     // reconnect grace window holds the body for an honest rejoin, and

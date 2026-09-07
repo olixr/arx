@@ -326,4 +326,16 @@ export function replacePoiDefs(next: Iterable<PoiDef>): void {
   const map = POI_DEFS as Map<string, PoiDef>;
   map.clear();
   for (const def of next) map.set(def.id, def);
+  poiDefsRev++;
+}
+
+let poiDefsRev = 0;
+/**
+ * THE REGISTRY'S REVISION: bumps once per replacePoiDefs. The registry
+ * swaps IN PLACE (identity stable by design), so a consumer that
+ * derives from the whole roster (the family atlas, a context's def
+ * list) keys its memo on this instead of on the Map.
+ */
+export function poiDefsRevision(): number {
+  return poiDefsRev;
 }

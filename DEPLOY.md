@@ -239,6 +239,16 @@ ln -sfn "$FORGE_SITE_DIRECTORY/shared/voice" "$FORGE_RELEASE_DIRECTORY/data/voic
 
 $ACTIVATE_RELEASE()
 
+# Dump the database BEFORE the restart: the new release runs its
+# migrations forward-only on boot (no down path), so this file is the
+# rollback. Custom-format, dated, pruned past RETENTION_DAYS (14).
+# HARD PREREQUISITE: `pg_dump` on the box (postgresql-client) and a
+# writable shared/backups — the script exits 1 by name without them and
+# the deploy stops HERE, before the restart. That is the intended
+# failure: no dump, no forward-only migration.
+BACKUP_DIR="$FORGE_SITE_DIRECTORY/shared/backups" \
+  bash "$FORGE_RELEASE_DIRECTORY/scripts/db-backup.sh"
+
 # Swing the game server onto the new release. restart discovers the
 # daemon (no ids configured anywhere), stops it gracefully, and polls
 # /healthz until the new release answers — a dead server fails the
@@ -315,7 +325,17 @@ deploy at quiet hours once there's a population.
   `https://arx.gg/?stay` always shows the landing page regardless.
 - `https://arx.gg/play` loads the game and the login panel, which
   carries a "What is Arx? — the front page" link back to `/?stay`.
-- `https://arx.gg/healthz` returns `{"ok":true,…}`.
+- `https://arx.gg/healthz` returns `{"ok":true,…}` with `lastTickAgeMs`, `tickAvgMs`,
+  `tickThrows`, `tickThrowsLastMin`, `dbPingMs`, `dbQueueDepth`, `dbWriteFailures`,
+  `bootWarnings`, `players`, `uptimeSec` (a stale tick, a tick throwing more than 20 times
+  in the last minute, or a slow `SELECT 1` answers **503 `{"ok":false,"why":…}`** — the
+  deploy poll fails on that). `curl http://127.0.0.1:8790/metrics` on the box prints every
+  counter.
+- **Do NOT set `BOOT_STRICT` on prod.** The strict boot turns every counted boot warning
+  into a refusal to listen, and prod today boots with at least one (`poi_iron_rest`: "route 0
+  leg 3 hops 14 (max 12)"). Flipping it "for safety" would fail every deploy until that sketch
+  is re-authored under the 12-hop cap (Band E of the core audit). Leave it unset until then;
+  the warning count is on `/healthz` (`bootWarnings`) and the listening line meanwhile.
 - `https://arx.gg/dev/maps` returns 404.
 - Creating an account WITHOUT the invite code is refused; with it,
   registration works.
@@ -330,7 +350,9 @@ deploy at quiet hours once there's a population.
   SSH-tunnel instead: `ssh -L 8790:127.0.0.1:8790 forge@arx.gg`, run
   the studio locally against the tunnel with `DEV_COMMANDS=1` set on
   the server only for the session — or better, edit locally and deploy.
-- **Backups:** the whole world is the `arx` Postgres database. Forge
+- **Backups:** the whole world is the `arx` Postgres database. The
+  deploy script dumps it before every restart (`scripts/db-backup.sh`,
+  needs `pg_dump` — `apt install postgresql-client` on a fresh box). Forge
   scheduled job (daily):
   `mkdir -p /home/forge/arx.gg/backups && pg_dump -Fc arx > /home/forge/arx.gg/backups/arx-$(date +\%F).dump`
   (the site-level `backups/` dir sits beside `releases/` and `current`,

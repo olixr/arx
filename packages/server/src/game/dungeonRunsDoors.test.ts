@@ -54,6 +54,7 @@ function runSlate() {
     pendingBlasts: [] as Array<{ plane: string }>,
     activeFields: [] as Array<{ plane: string }>,
     chunks: new Map<string, Set<number>>(),
+    chunkGrid: new Map<string, Map<number, Set<number>>>(),
     planes: {
       add: (def: { id: string }) => {
         planesAdded.push(def.id);

@@ -17,7 +17,7 @@ import type { InvSlot } from '@arx/shared';
  */
 
 type Fn = (...a: unknown[]) => unknown;
-const proto = GameServer.prototype as unknown as { tickDemolish: Fn };
+const proto = GameServer.prototype as unknown as { tickDemolish: Fn; noteClaimBuilt: Fn; clearCapitalCache: Fn };
 
 interface BuiltRec {
   tile: number;
@@ -80,6 +80,10 @@ function slate(opts: {
     playerSigns: new Map(),
     homesByCharacter: new Map(),
     ringCache: null,
+    // The claim-ring note a homeowner's demolish leaves (a slate with
+    // no homes moves no ring — the seat-cache law).
+    noteClaimBuilt: proto.noteClaimBuilt,
+    clearCapitalCache: proto.clearCapitalCache,
     world,
     worldOf: () => world,
     accounts: {

@@ -13,6 +13,7 @@ import { WORLD_SEED,
 } from '@arx/content';
 import { chestInfo } from '@arx/shared';
 import { POI_CELL, poiForCell, type PoiContext } from './pois.js';
+import { ChestLedger, PoiLedger } from '../game/poiLedger.js';
 import { findsForCell } from './finds.js';
 import {
   capitalLatticeRange,
@@ -313,7 +314,7 @@ function chapterSlate() {
       }],
     ]),
     strongholdLedger: new Map([
-      [key, { layoutId, anchorX: 0, anchorY: 0, epoch: 0, wardsCleared: 0, clearedAt: null as number | null }],
+      [key, { layoutId, gx: 9, gy: 9, anchorX: 0, anchorY: 0, epoch: 0, wardsCleared: 0, clearedAt: null as number | null }],
     ]),
     players: new Map([[500, killerPlayer]]),
     characterEids: new Map([[77, 500]]),
@@ -443,6 +444,8 @@ function warSlate(row: {
     strongholdLedger: new Map([
       ['4,4', {
         layoutId: 'stronghold_gnoll_cacklefort',
+        gx: 4,
+        gy: 4,
         anchorX: 1700,
         anchorY: 1700,
         epoch: 0,
@@ -454,11 +457,11 @@ function warSlate(row: {
         stageAt: row.stageAt ?? null,
       }],
     ]),
-    poiLedger: new Map(),
+    poiLedger: new PoiLedger(),
     poiLive: new Map(),
     strongholdLive: new Map(),
     strongholdSpawnCells: new Map(),
-    poiChests: new Map(),
+    poiChests: new ChestLedger(),
     frontierCalm: new Map(),
     frontierCredits: 0,
     players: new Map(),
@@ -521,7 +524,7 @@ test('the boldness clock climbs armed capitals and calm freezes it', () => {
   assert.deepEqual(f.retired, ['4,4'], 'recompose-in-place: the walls re-stand bolder');
   // A relax window freezes the climb.
   const g = warSlate({ stage: 0, stageAt: armed });
-  g.slate.frontierCalm.set('13,13', now + 60_000);
+  g.slate.frontierCalm.set('13,13', { until: now + 60_000, cx: 13, cy: 13 });
   assert.equal(warProto.stageOneCapital.call(g.slate, now), false);
 });
 

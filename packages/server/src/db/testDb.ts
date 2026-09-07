@@ -22,7 +22,19 @@ let scratchName = '';
 
 async function adminQuery<T extends object>(sql: string): Promise<T[]> {
   const admin = new pg.Client(ADMIN_CFG);
-  await admin.connect();
+  try {
+    await admin.connect();
+  } catch (err) {
+    // ONE clear line instead of forty files each printing a stack: the
+    // server suite needs a local Postgres (README "Testing").
+    if ((err as { code?: string }).code === 'ECONNREFUSED') {
+      console.error(
+        `\n[testDb] no Postgres at ${ADMIN_CFG.host}:${ADMIN_CFG.port} — the server suite needs a local ` +
+          'PostgreSQL with CREATE DATABASE rights (see README "Testing"; DB_HOST/DB_PORT/DB_USERNAME/DB_PASSWORD override).\n',
+      );
+    }
+    throw err;
+  }
   try {
     const res = await admin.query(sql);
     return res.rows as T[];
