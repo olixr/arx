@@ -1635,6 +1635,30 @@ Dolmen speak as themselves, tribe by tribe, on a `neutral` standing row,
 and reputation stays for speaking parties who keep a faction to speak
 for.
 
+**The Course as built (Band 9e).** The Course is four thin frames of
+the Sett's own module (`maps/sett/{course,ford,meadow}.ts`), one
+running line of set stone laid from the Sett's own seam at (150,267)
+to the END stone at (65,206) in the Drowned Meadow: 166 tiles from the
+north gap, one water crossing, a stile every twelve tiles and a stone
+hung true every forty. THE FORD carries the line across the brook as
+four set slabs under the water's own wash, a floor Detail
+(`FordStone`, tile id 185) rather than a new walkable stone kind, so
+the crossing reads as stone under water without a new kind entering
+the walkable census. The Drowned Meadow at the Course's south end
+holds Sarsen at her cairn and seven sheep grazing the dry strip the
+wall keeps above the flood, the last courses standing with their feet
+in the water. Garrow keeps the fen's own head yard, seated for the
+wain from half past nine at night. THE ERRAND, Forty Stones, shipped
+on the two roads the plan named: the Charter's carted stone under
+Garrow's price, daily, once the levy is posted, and the asked stone,
+once, for everyone. The fight at the ford and the night take were both
+refused by the owner as unneeded gates on a line that only wants a
+stone. The third corner of THE CAUSEWAY OR THE SLUICE stands by reads
+only: the (A) fork's count and Durrow's cold shelf read the stakes
+going in, Garrow's price reads the levy posted, and Sarsen's paid line
+reads the kelp string carried back; none of the four east-fork quests
+were touched to make it so.
+
 ### 11.7 Engine cost and risks
 
 The NINTH head-swap dialect, THE COURSE DIALECT, `render/dolmen.ts` on the
@@ -2088,6 +2112,68 @@ that a sunk member's stretch grows south by its depth, which its own
 level-0 frames will never trigger but should not have to reason about
 either.
 
+### 11.12 As built 2026-09-06 (Band 9e, the Course; THE DOLMEN BAND CLOSED)
+
+Band 9e shipped the Course itself: the four thin frames, the ford, the
+Drowned Meadow with Sarsen and her sheep, Garrow's yard at the fen's
+head, and Forty Stones on its two roads. With this band the Dolmen
+band (9a through 9e) is closed.
+
+**The laws.** THE STILE VERB and THE SLOW CIRCLE: a stone carried to
+the gap's own stile sets it for everyone, turning the stile to a wall
+and clearing the way through the one choke; the gap reopens on its own
+six hundred seconds later, wall clock, for everyone again, whether or
+not the stone was ever spent by a quest. THE REVERSE: a course wall or
+plumb stone that falls to a player's own blow stamps the flag
+`course_broken` forever; a blow from an NPC never does. THE SPENT ASK:
+the flag that marks the gap as set is cleared at the errand's own
+turn-in, so the gap must be set again on every run; this is now a
+general law for any repeatable quest with a flag objective, not a rule
+written only for Forty Stones, though Forty Stones is presently its
+only tenant. FordStone Detail 185: the crossing's four slabs are a
+floor detail painted under the water rather than a new walkable stone
+kind, so the ford reads as stone under the water's own wash while the
+walkable census gains no new row.
+
+**Deviations from the plan's line.** The plan's "along the stream's
+east bank, about a hundred and thirty tiles" did not survive contact
+with the ground: there is no stream at the lip, so the built line runs
+from the Sett's own seam north along the wood's edge, west along the
+brook's own sand bank to the turn, across the ford, west through the
+forest strip, and along the tree row to the END stone in the Drowned
+Meadow, 166 tiles in all. The line crosses the brook once, not
+several times as an earlier sketch of the route had it, and the
+candidate frame rectangles drafted ahead of the build were themselves
+corrected: two overlapped, and a third fell short of the water, before
+the four frames actually laid down replaced them.
+
+**Refused, the owner's own calls.** Two gates on the (A) fork's own
+line were weighed and refused: whether Garrow's stone-yard opens on
+the planting of Ingram's stakes or only once the levy is posted stayed
+with the levy, since the plan's own line does not say which link the
+yard opens on and the levy's own gate was already proven live. The
+turn at the ford's own corner was left as a single course wall rather
+than doubled or moved onto the corner itself, since the brief's own
+law (a stone stands one south of the turn, never at the corner) already
+settled it, even though the stub reads a little bare at full size. The
+stone at the count of a hundred and sixty and the END stone five tiles
+further on were left standing close together rather than merged or
+respaced, since the counter's own arithmetic and the meadow's own
+listed END both have a claim, and either lever would cost something
+the other did not want to give up.
+
+**Owed.** The demo walk of §13.4 is not yet re-shot for the Course.
+The herald fires three times over the one walk across the Course's
+three frames, since each frame is its own zone for discovery purposes
+even though the three share the one name on the chart; a per-stretch
+epithet is the owner's lever if the triple firing should stop. A lamb
+body for the seventh sheep, the chalk line's own boldness carried
+along a real course rather than a short sample, and the plumb stone's
+own bob size held steady across the whole route are all still owed to
+the kit. The Sinter's grind, the play3d dialect, the strike and the
+arts, the Studio palette entry, the museum wing's Dolmen loot and the
+voice cast remain owed from Band 9d and are not repeated here.
+
 Two architectures were designed against each other (per-tile weights with
 a corner array; strokes and fields evaluated at bake) and they converge on
 every load-bearing point. This is the merged design; the engine claims were
@@ -2529,7 +2615,7 @@ owner-gated worldgen touch.
 | 6 | THE DAWN UNDER SIEGE | the ground-up rebuild (§7) on the full kit and the fold |
 | 7 | THE FEN LAMP AND THE BAR | §3.1 with the one-scene design; the Dolmen's third corner is deferred to band 9 |
 | 8 | THE HUSK AND THE WARD LINE | §3.2 + §3.3 at the fork waystation; the Felling at [0,-1] |
-| 9 | THE STANDING COURSE | the Dolmen, run as four half-runs: 9a the creature-actor proof (THE MARL stands, shipped, see §11.8) → 9b the four props (CourseWall, CourseStile, CorbelCell, PlumbStone) plus Chalkline → 9c the remaining bodies and the sheet → 9d the Sett zone, the Course, Ammat's errand and the east fork's third corner |
+| 9 | THE STANDING COURSE — CLOSED (9a-9e shipped) | the Dolmen, run as five half-runs: 9a the creature-actor proof (THE MARL stands, shipped, see §11.8) → 9b the four props (CourseWall, CourseStile, CorbelCell, PlumbStone) plus Chalkline → 9c the remaining bodies and the sheet → 9d the Sett zone (see §11.11) → 9e the Course, the ford, the Drowned Meadow, Garrow's yard, Forty Stones and the east fork's third corner (see §11.12) |
 | 10 | THE THIRD STONE, THE SPOIL WOLD, THE LAND BETWEEN | §3.4, §3.5, §3.6, §3.7 and the small finds of §13.3 |
 | 11 | THE BLADES AND THE CANOPY FOLD | LG-3 + LG-4 |
 | 12 | THE STUDIO HOLDS THE BRUSH | LG-5 |
