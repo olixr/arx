@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { BURN_TICK_EVERY, XP_PER_DMG_SCHOOL, XP_PER_DMG_VITALITY } from '@arx/shared';
 import { GameServer } from './gameServer.js';
+import { packChunk } from './indexes.js';
 import * as procSys from './procs.js';
 
 /**
@@ -303,6 +304,7 @@ test('a live surge sharpens the basic shaft where it lands', () => {
     livestock: new Map(), npcs: new Map([[9, { def: { radius: 0.4 } }]]),
     summons: new Map(),
     chunks: new Map([['surface|0,0', new Set([9])]]),
+    chunkGrid: new Map([['surface', new Map([[packChunk(0, 0), new Set([9])]])]]),
     forEachNpcNear: proto.forEachNpcNear,
     world: { isSolid: () => false, groundAt: () => undefined },
     worldOf: () => ({ isSolid: () => false, groundAt: () => undefined }),
@@ -350,6 +352,7 @@ test('chain per-jump fx carry the `<action>:<procId>` id, same as the closing br
       [10, { def: { radius: 0.4 } }],
     ]),
     chunks: new Map([['surface|0,0', new Set([9, 10])]]),
+    chunkGrid: new Map([['surface', new Map([[packChunk(0, 0), new Set([9, 10])]])]]),
     forEachNpcNear: proto.forEachNpcNear,
     npcsWithin: proto.npcsWithin,
     damageNpc: () => {},

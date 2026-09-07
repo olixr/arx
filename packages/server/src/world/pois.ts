@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { bootWarn } from '../metrics.js';
 import {
   DANGER_BAND,
   POI_MACRO_CELL,
@@ -1866,7 +1867,7 @@ export function loadPoiPrefabs(dataDir: string): Map<string, PrefabDef> {
       try {
         writeFileSync(file, JSON.stringify(prefabToJson(builtin), null, 2));
       } catch (err) {
-        console.warn(`[poi] could not seed ${file}: ${String(err)}`);
+        bootWarn(`[poi] could not seed ${file}: ${String(err)}`);
       }
     }
     out.set(id, builtin);
@@ -1884,7 +1885,7 @@ export function loadPoiPrefabs(dataDir: string): Map<string, PrefabDef> {
       const def = prefabFromJson(JSON.parse(readFileSync(file, 'utf8')));
       out.set(def.id, def);
     } catch (err) {
-      console.warn(`[poi] bad prefab file ${file} — skipped (${String(err)})`);
+      bootWarn(`[poi] bad prefab file ${file} — skipped (${String(err)})`);
     }
   }
   return out;
@@ -2051,23 +2052,60 @@ export function poiContext(
   prefabs: ReadonlyMap<string, PrefabDef>,
   claimRings: readonly ClaimRing[],
   capitals: readonly PoiZoneRect[],
+  zoneRevision?: number,
 ): PoiContext {
+  return { ...poiContextBase(anchors, zones, prefabs, claimRings, zoneRevision), capitals };
+}
+
+/** Everything in a PoiContext but the per-cell capital mask. */
+export type PoiContextBase = Omit<PoiContext, 'capitals'>;
+
+/**
+ * The cell-independent half of a context (the beat's one build): the
+ * capital mask is the only member that changes with the ground being
+ * asked about, so the frontier builds this ONCE per beat and swaps
+ * the mask per candidate. zoneRects are memoized per zone-list
+ * revision (the list is mutated in place; the revision is the truth).
+ */
+export function poiContextBase(
+  anchors: readonly DangerAnchor[],
+  zones: readonly ZoneDef[],
+  prefabs: ReadonlyMap<string, PrefabDef>,
+  claimRings: readonly ClaimRing[],
+  zoneRevision?: number,
+): PoiContextBase {
   return {
     anchors,
-    zoneRects: [
-      ...zones
-        // Capitals' own zones stay out of the clearance list the same
-        // way poi zones do — the capitals MASK handles their ground.
-        .filter((z) => !z.id.startsWith('poi:') && !z.id.startsWith('stronghold:'))
-        .map((z) => ({ x: z.origin.x, y: z.origin.y, w: z.width, h: z.height })),
-      ...PLANNED_ZONE_RECTS,
-    ],
+    zoneRects: zoneRectsOf(zones, zoneRevision),
     claimRings,
     defs: [...POI_DEFS.values()],
     minors: [...MINOR_DEFS.values()],
     prefabs,
-    capitals,
   };
+}
+
+/** zoneRects memo: one entry per zone list, valid while its revision holds. */
+const zoneRectsMemo = new WeakMap<readonly ZoneDef[], { rev: number; rects: PoiZoneRect[] }>();
+
+/**
+ * Authored + planned rects the scaffold keeps clear of. Capitals' own
+ * zones stay out of the clearance list the same way poi zones do —
+ * the capitals MASK handles their ground. Without a revision (tests,
+ * one-off callers) the list is derived fresh every call.
+ */
+export function zoneRectsOf(zones: readonly ZoneDef[], zoneRevision?: number): PoiZoneRect[] {
+  if (zoneRevision !== undefined) {
+    const hit = zoneRectsMemo.get(zones);
+    if (hit !== undefined && hit.rev === zoneRevision) return hit.rects;
+  }
+  const rects: PoiZoneRect[] = [
+    ...zones
+      .filter((z) => !z.id.startsWith('poi:') && !z.id.startsWith('stronghold:'))
+      .map((z) => ({ x: z.origin.x, y: z.origin.y, w: z.width, h: z.height })),
+    ...PLANNED_ZONE_RECTS,
+  ];
+  if (zoneRevision !== undefined) zoneRectsMemo.set(zones, { rev: zoneRevision, rects });
+  return rects;
 }
 
 /**

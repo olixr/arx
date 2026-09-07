@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { FRONTIER, NPCS, npcLivestock } from '@arx/content';
 import { GameServer } from './gameServer.js';
+import { PoiLedger, type CalmWindow } from './poiLedger.js';
 
 /**
  * THE WARD's laws, pinned: a warded POI chest opens when every FIGHTING
@@ -39,7 +40,7 @@ function slate(spawns: FakeSpawn[], opts: { authored?: boolean } = {}) {
     spawnPoints: spawns,
     poiLive: new Map([['3,4', { spawnIdx: spawns.map((_, i) => i) }]]),
     poiSpawnCells: new Map(spawns.map((_, i) => [i, '3,4'])),
-    poiLedger: new Map([
+    poiLedger: new PoiLedger([
       [
         '3,4',
         {
@@ -55,7 +56,7 @@ function slate(spawns: FakeSpawn[], opts: { authored?: boolean } = {}) {
       ],
     ]),
     players: new Map(),
-    frontierCalm: new Map<string, number>(),
+    frontierCalm: new Map<string, CalmWindow>(),
     accounts: {
       markPoiCleared: (cx: number, cy: number, ember: number | null = null) =>
         cleared.push([cx, cy, ember]),
@@ -145,7 +146,7 @@ test('THE EMBER LAW: a procedural wipe stands the garrison down for good', () =>
   // The broken ward stays broken.
   assert.equal(proto.poiGarrisonStands.call(s, '3,4'), false);
   // And the wipe buys the valley its relax window.
-  assert.ok((s.frontierCalm.get('3,4') ?? 0) > Date.now());
+  assert.ok((s.frontierCalm.get('3,4')?.until ?? 0) > Date.now());
 });
 
 test('authored landmarks keep the old covenant: grace window, no ember, NO STAMP', () => {

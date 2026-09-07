@@ -15,6 +15,7 @@ import { GameServer } from './gameServer.js';
 import { hearthOwnerOf } from './formulas.js';
 import { POI_CELL, poiCellKey, poiCellOf, poiContext, poiForCell, composePoi, type PoiSite } from '../world/pois.js';
 import { config } from '../config.js';
+import { PoiLedger, type CalmWindow } from './poiLedger.js';
 
 /**
  * THE FRONTIER CLOCK's laws, pinned (the living frontier, phases 1-2):
@@ -44,6 +45,8 @@ const proto = GameServer.prototype as unknown as {
   poiSpawnFights: Fn;
   pushStageRumor: Fn;
   poiCtx: Fn;
+  poiCtxBase: Fn;
+  standingSatellites: Fn;
   claimRings: Fn;
   inClaimRing: Fn;
   dangerAnchors: Fn;
@@ -114,7 +117,7 @@ function slate(rows: Array<[string, LedgerRow]>, opts: { credits?: number } = {}
   const faded: string[] = [];
   const retired: string[] = [];
   const s = {
-    poiLedger: new Map(rows),
+    poiLedger: new PoiLedger(rows),
     poiLive: new Map<string, { spawnIdx: number[] }>(),
     poiPrefabs: POI_PREFABS,
     world: { zoneDefs: [] as unknown[], builtKeysOf: () => undefined },
@@ -127,7 +130,7 @@ function slate(rows: Array<[string, LedgerRow]>, opts: { credits?: number } = {}
     positions: new Map<number, { plane: string; x: number; y: number }>(),
     spawnPoints: [] as Array<{ npc: string; eid: number | null; respawnAt: number; active: boolean }>,
     frontierCredits: opts.credits ?? 0,
-    frontierCalm: new Map<string, number>(),
+    frontierCalm: new Map<string, CalmWindow>(),
     discoveredPoiCells: new Set<string>(),
     accounts: {
       recordPoiCell: (
@@ -155,6 +158,22 @@ function slate(rows: Array<[string, LedgerRow]>, opts: { credits?: number } = {}
     // broadcast the dissolve fires is a no-op here.
     broadcastTrophies: () => {},
     playerWithin: proto.playerWithin,
+    // The real door reads bodies by chunk; the slate has no chunk
+    // index, so it answers the walk itself over its players map.
+    forEachBodyNear(
+      this: { players: Map<number, unknown>; positions: Map<number, { plane: string; x: number; y: number }> },
+      plane: string,
+      _x: number,
+      _y: number,
+      _r: number,
+      _kinds: number,
+      fn: (eid: number, pos: { plane: string; x: number; y: number }) => boolean | void,
+    ): void {
+      for (const eid of this.players.keys()) {
+        const pos = this.positions.get(eid);
+        if (pos && pos.plane === plane && fn(eid, pos) === true) return;
+      }
+    },
     authoredCells: proto.authoredCells,
     // THE PRESSED SATELLITE, GATED (band 8, rulings G2): the shipped
     // goblin_warcamp carries `rivalNear` on the Legion, so every seed
@@ -165,6 +184,9 @@ function slate(rows: Array<[string, LedgerRow]>, opts: { credits?: number } = {}
     authoredPinsCache: null as unknown,
     satTrace: [] as string[],
     poiCtx: proto.poiCtx,
+    poiCtxBase: proto.poiCtxBase,
+    poiCtxBaseCache: null as unknown,
+    standingSatellites: proto.standingSatellites,
     // The mask now derives from the queried ground (core-audit debt 2)
     // — the slate keeps an empty frontier of capitals.
     capitalRectsNear: () => [],
@@ -186,6 +208,12 @@ function slate(rows: Array<[string, LedgerRow]>, opts: { credits?: number } = {}
     retired,
   };
   return s;
+}
+
+/** Stamp a relax window the way stampCalm does — the window carries its cell. */
+function setCalm(calm: Map<string, CalmWindow>, key: string, until: number): void {
+  const [cx, cy] = key.split(',').map(Number);
+  calm.set(key, { until, cx: cx!, cy: cy! });
 }
 
 function addPlayer(s: ReturnType<typeof slate>, eid: number, x: number, y: number): void {
@@ -283,14 +311,14 @@ test('THE RELAX WINDOW: calm blocks wakes, stage-ups, and renewal landings nearb
   const now = Date.now();
   // Calm stamped one cell over — inside the regionCells neighborhood.
   const s = slate([[KEY, row({ fallowUntil: now - 1000 })]]);
-  s.frontierCalm.set(poiCellKey(CELL_X + 1, CELL_Y + 1), now + 3_600_000);
+  setCalm(s.frontierCalm, poiCellKey(CELL_X + 1, CELL_Y + 1), now + 3_600_000);
   assert.equal(proto.wakeOneFallow.call(s, now), false, 'a calmed valley must not wake');
   // Renewal refuses the calmed neighborhood too: with the whole map
   // calmed, a credit is never spent.
   const s2 = slate([], { credits: 1 });
   addPlayer(s2, 1, 832, 192);
   for (let cx = 0; cx < 12; cx++) {
-    for (let cy = 0; cy < 4; cy++) s2.frontierCalm.set(poiCellKey(cx, cy), now + 3_600_000);
+    for (let cy = 0; cy < 4; cy++) setCalm(s2.frontierCalm, poiCellKey(cx, cy), now + 3_600_000);
   }
   assert.equal(proto.spendRenewalCredit.call(s2, now), false);
   assert.equal(s2.frontierCredits, 1);
@@ -319,7 +347,7 @@ test('the boldness clock: gate, arm, climb, and the frequency of it', () => {
   assert.deepEqual(s.retired, [KEY]);
   // Calm freezes the ladder (the window must outlive the stage wait).
   const due2 = due + stageWaitFor(config.worldSeed, CELL_X, CELL_Y, 1) + 1;
-  s.frontierCalm.set(KEY, due2 + 3_600_000);
+  setCalm(s.frontierCalm, KEY, due2 + 3_600_000);
   assert.equal(proto.stageOnePoi.call(s, due2), false);
   assert.equal(r.stage, 1);
 });
@@ -534,7 +562,7 @@ test('world:relief — calm within the marches, and only when nothing stands', (
   const y = CELL_Y * POI_CELL + 64;
   assert.equal(proto3.worldFlagAnswer.call(s, 'world:relief', player, x, y), false);
   // A relax window one cell over: the road audibly breathes.
-  s.frontierCalm.set(poiCellKey(CELL_X + 1, CELL_Y), Date.now() + 3_600_000);
+  setCalm(s.frontierCalm, poiCellKey(CELL_X + 1, CELL_Y), Date.now() + 3_600_000);
   assert.equal(proto3.worldFlagAnswer.call(s, 'world:relief', player, x, y), true);
   assert.equal(proto3.worldFlagAnswer.call(s, 'world:calm', player, x, y), true);
   // A camp still standing kills the relief even inside the window.
@@ -937,8 +965,8 @@ test('worldSnapshot carries the living state: credits, calm, claimed yards', () 
   // THE FORESTER'S GLASS (second-growth Phase 6) reads the growth
   // ledger off the world — the slate's fake world carries it too.
   Object.assign(s.world as object, { growthLedger: new Map() });
-  s.frontierCalm.set('1,1', Date.now() + 3_600_000);
-  s.frontierCalm.set('2,2', Date.now() - 1); // expired — never reported
+  setCalm(s.frontierCalm, '1,1', Date.now() + 3_600_000);
+  setCalm(s.frontierCalm, '2,2', Date.now() - 1); // expired — never reported
   s.homesByCharacter.set(7, { x: 100, y: 100 });
   const snap = (s as unknown as { worldSnapshot: Fn }).worldSnapshot.call(s) as {
     credits: number;
@@ -947,7 +975,7 @@ test('worldSnapshot carries the living state: credits, calm, claimed yards', () 
     cells: Array<{ stage: number; emberUntil: number | null }>;
   };
   assert.equal(snap.credits, 3);
-  assert.deepEqual(snap.calm, [{ cellX: 1, cellY: 1, calmUntil: s.frontierCalm.get('1,1')! }]);
+  assert.deepEqual(snap.calm, [{ cellX: 1, cellY: 1, calmUntil: s.frontierCalm.get('1,1')!.until }]);
   assert.equal(snap.claimRings.length, 1);
   assert.equal(snap.claimRings[0]!.x, 100);
   assert.equal(snap.cells[0]!.stage, 2);

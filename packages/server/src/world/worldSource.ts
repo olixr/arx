@@ -10,6 +10,8 @@ import {
 import type { GrowthRow, PlaneDef, PortalDef, ZoneDef, ZoneSign } from '@arx/content';
 import {
   EDGE_BASIN_DAMP_RANGE,
+  GROWTH_BARE,
+  GROWTH_DRIFTED,
   SURFACE_PLANE_ID,
   generateCaveChunk,
   generateChunk,
@@ -33,6 +35,16 @@ export class WorldSource extends ChunkStore {
   private readonly portals = new Map<string, PortalDef>();
   /** Authored sign copy, addressed by the tile it stands on. */
   private readonly signs = new Map<string, ZoneSign>();
+  /**
+   * THE ZONE LIST'S REVISION: bumps on every addZone/removeZone/
+   * replaceZone. The list is the same array mutated in place, so a
+   * reader that derives from it (poiContext's zoneRects) keys its
+   * memo on this, never on the array's identity.
+   */
+  private zoneRev = 0;
+  get zoneRevision(): number {
+    return this.zoneRev;
+  }
 
   constructor(
     private readonly seed: number,
@@ -61,6 +73,7 @@ export class WorldSource extends ChunkStore {
       );
     }
     this.zones.push(zone);
+    this.zoneRev++;
     for (const portal of zone.portals ?? []) {
       this.portals.set(`${portal.x},${portal.y}`, portal);
     }
@@ -73,6 +86,7 @@ export class WorldSource extends ChunkStore {
     const idx = this.zones.findIndex((z) => z.id === zoneId);
     if (idx === -1) return;
     const [zone] = this.zones.splice(idx, 1);
+    this.zoneRev++;
     for (const portal of zone!.portals ?? []) {
       this.portals.delete(`${portal.x},${portal.y}`);
     }
@@ -98,6 +112,7 @@ export class WorldSource extends ChunkStore {
     }
     for (const sign of old.signs ?? []) this.signs.delete(`${sign.x},${sign.y}`);
     this.zones[idx] = zone;
+    this.zoneRev++;
     for (const portal of zone.portals ?? []) {
       this.portals.set(`${portal.x},${portal.y}`, portal);
     }
@@ -391,13 +406,164 @@ export class WorldSource extends ChunkStore {
 
   registerGrowth(row: GrowthRow): void {
     const key = `${row.tx},${row.ty}`;
+    const prior = this.growthRows.get(key);
+    if (prior !== undefined && prior !== row) this.dormantDrop(prior);
     this.growthRows.set(key, row);
     WorldSource.chunkIndexAdd(this.growthByChunk, row.tx, row.ty, key);
+    this.noteGrowth(row);
   }
 
   unregisterGrowth(tx: number, ty: number): void {
-    this.growthRows.delete(`${tx},${ty}`);
-    WorldSource.chunkIndexRemove(this.growthByChunk, tx, ty, `${tx},${ty}`);
+    const key = `${tx},${ty}`;
+    const prior = this.growthRows.get(key);
+    if (prior !== undefined) this.dormantDrop(prior);
+    this.growthRows.delete(key);
+    WorldSource.chunkIndexRemove(this.growthByChunk, tx, ty, key);
+    // Its heap entries (if any) are stale by identity and fall out
+    // when they reach the top — see popGrowthDue.
+  }
+
+  // ------------------------------ THE GROWTH BEAT'S DUE-INDEX
+  //
+  // The beat used to walk the ENTIRE ledger twice per beat (every
+  // unhealed wild harvest ever made — world history, not online
+  // players). Now every clocked row sits in a min-heap by its next
+  // deadline and every dormant row (bare ground waiting on the world)
+  // sits in a round-robin list, so a beat touches only what is due.
+  // Heap entries are snapshots: a row whose `due` moved since the
+  // entry was pushed reads as stale at the top and is dropped, so the
+  // one rule for writers is "noteGrowth after you move row.due" —
+  // registerGrowth does it itself.
+
+  /** A clocked row's heap entry: `at` is when to look, `due` the row.due it was pushed under. */
+  private growthHeap: Array<{ at: number; due: number | null; row: GrowthRow }> = [];
+  /** Dormant bare ground, round-robin; swap-removed by index. */
+  private readonly growthDormant: GrowthRow[] = [];
+  private readonly dormantIdx = new Map<GrowthRow, number>();
+
+  /**
+   * Re-file a row after its state/due moved: drifted crowns leave the
+   * clock, dormant bare ground joins the germination list, everything
+   * else is heaped at its due (a null due outside those two states is
+   * a row the projection will settle at once — heaped for now).
+   */
+  noteGrowth(row: GrowthRow, at: number | null = null): void {
+    const dormant = row.state === GROWTH_BARE && row.due === null;
+    if (dormant) this.dormantAdd(row);
+    else this.dormantDrop(row);
+    if (dormant || row.state === GROWTH_DRIFTED) return;
+    this.heapPush({ at: at ?? row.due ?? 0, due: row.due, row });
+  }
+
+  /**
+   * The next row whose look time has come, or undefined. Stale
+   * entries (row gone, row.due moved, row no longer clocked) fall
+   * out here; the caller re-files the row it lands with noteGrowth.
+   */
+  popGrowthDue(now: number): GrowthRow | undefined {
+    this.growthClock = now;
+    for (;;) {
+      const top = this.growthHeap[0];
+      if (top === undefined || top.at > now) return undefined;
+      this.heapPop();
+      const { row } = top;
+      if (this.growthRows.get(`${row.tx},${row.ty}`) !== row) continue;
+      if (row.due !== top.due || row.state === GROWTH_DRIFTED) continue;
+      if (row.state === GROWTH_BARE && row.due === null) continue;
+      return row;
+    }
+  }
+
+  /** Dormant rows for the germination visitor's round-robin. */
+  get growthDormantCount(): number {
+    return this.growthDormant.length;
+  }
+  growthDormantAt(i: number): GrowthRow | undefined {
+    return this.growthDormant[i];
+  }
+
+  /**
+   * Rebuild both indexes from the ledger, re-aiming every clocked
+   * row's checkpoint against the LIVE dials first (the old walk did
+   * that one beat at a time for free; a dial edit must reach a heaped
+   * row the same beat it lands). Rows the projection says are due
+   * file at once.
+   */
+  reindexGrowth(now: number = Date.now()): void {
+    this.growthClock = now;
+    this.growthHeap = [];
+    this.growthDormant.length = 0;
+    this.dormantIdx.clear();
+    for (const row of this.growthRows.values()) {
+      if (row.state !== GROWTH_DRIFTED && !(row.state === GROWTH_BARE && row.due === null)) {
+        const proj = projectGrowth(this.seed, row, now);
+        if (!proj.ripe && proj.state === row.state) row.due = proj.due;
+        else {
+          this.noteGrowth(row, now);
+          continue;
+        }
+      }
+      this.noteGrowth(row);
+    }
+  }
+
+  private dormantAdd(row: GrowthRow): void {
+    if (this.dormantIdx.has(row)) return;
+    this.dormantIdx.set(row, this.growthDormant.length);
+    this.growthDormant.push(row);
+  }
+
+  private dormantDrop(row: GrowthRow): void {
+    const i = this.dormantIdx.get(row);
+    if (i === undefined) return;
+    const last = this.growthDormant.pop()!;
+    if (last !== row) {
+      this.growthDormant[i] = last;
+      this.dormantIdx.set(last, i);
+    }
+    this.dormantIdx.delete(row);
+  }
+
+  /** The last beat clock the index was read or rebuilt at — the only honest `now` a rebuild may project at. */
+  private growthClock = 0;
+
+  private heapPush(e: { at: number; due: number | null; row: GrowthRow }): void {
+    const h = this.growthHeap;
+    // Stale entries pile up only as fast as rows re-aim; past four per
+    // row the heap is rebuilt from the ledger instead of growing on.
+    // THE REBUILD KEEPS THE BEAT'S CLOCK: the pushed entry's look time
+    // is usually a due far ahead — projecting every row THERE wrote
+    // futures into row.due and skipped every checkpoint between.
+    if (h.length > 64 && h.length > this.growthRows.size * 4) {
+      this.reindexGrowth(this.growthClock > 0 ? this.growthClock : Date.now());
+      return;
+    }
+    h.push(e);
+    let i = h.length - 1;
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (h[p]!.at <= h[i]!.at) break;
+      [h[p], h[i]] = [h[i]!, h[p]!];
+      i = p;
+    }
+  }
+
+  private heapPop(): void {
+    const h = this.growthHeap;
+    const last = h.pop()!;
+    if (h.length === 0) return;
+    h[0] = last;
+    let i = 0;
+    for (;;) {
+      const l = i * 2 + 1;
+      const r = l + 1;
+      let m = i;
+      if (l < h.length && h[l]!.at < h[m]!.at) m = l;
+      if (r < h.length && h[r]!.at < h[m]!.at) m = r;
+      if (m === i) break;
+      [h[m], h[i]] = [h[i]!, h[m]!];
+      i = m;
+    }
   }
 
   growthAt(tx: number, ty: number): GrowthRow | undefined {

@@ -377,6 +377,7 @@ test('the swing and the scenery share ONE cone', () => {
     npcs: new Map(),
     pets: new Map(), companions: new Map(),
     chunks: new Map(),
+    chunkGrid: new Map(),
     forEachNpcNear: proto.forEachNpcNear,
   };
   const player = {

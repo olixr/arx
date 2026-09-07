@@ -190,6 +190,8 @@ export function teardownDungeon(srv: GameServer, characterId: number): void {
   for (const [key, set] of srv.chunks) {
     if (set.size === 0 && key.startsWith(deadPrefix)) srv.chunks.delete(key);
   }
+  // The numeric grid drops the dead plane whole (it shares the Sets).
+  srv.chunkGrid.delete(dungeon.plane);
   srv.dungeons.delete(characterId);
   // The court's ward retires with its halls.
   for (const [tileKey, over] of srv.poiChests) {

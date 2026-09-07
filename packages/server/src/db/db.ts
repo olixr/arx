@@ -1,5 +1,7 @@
 import pg from 'pg';
 import { config } from '../config.js';
+import { log } from '../log.js';
+import { inc, set } from '../metrics.js';
 
 /**
  * Postgres via node-postgres. ONE connection, and every statement is
@@ -59,27 +61,52 @@ class TxHandle implements Queryable {
   }
 }
 
+/**
+ * The statement's name in a failure line: verb + table, so a log reader
+ * sees `UPDATE characters` failing, not eighty characters of SQL.
+ */
+export function statementTag(sql: string): string {
+  const m = /^\s*(INSERT\s+INTO|UPDATE|DELETE\s+FROM|SELECT)\s+([A-Za-z_][\w.]*)?/i.exec(sql);
+  if (!m) return sql.trim().slice(0, 40);
+  return `${m[1]!.split(/\s+/)[0]!.toUpperCase()} ${m[2] ?? ''}`.trim();
+}
+
 export class Db implements Queryable {
   /** The FIFO: each unit of work starts only after the previous settled. */
   private chain: Promise<unknown> = Promise.resolve();
+  /** Units enqueued and not yet settled — /healthz's `dbQueueDepth`. */
+  private depth = 0;
 
   constructor(private readonly client: pg.Client) {
     client.on('error', (err) => {
       // A dead connection means every "durable at the handler" write
       // silently vanishes — crash loud and let supervisor restart.
-      console.error('[db] connection lost:', err.message);
+      log('error', 'db', 'connection lost', { error: err.message });
       process.exit(1);
     });
   }
 
   private enqueue<T>(task: () => Promise<T>): Promise<T> {
+    set('db.queueDepth', ++this.depth);
     const run = () => task();
     const next = this.chain.then(run, run);
-    this.chain = next.then(
-      () => undefined,
-      () => undefined,
-    );
+    const settled = () => {
+      set('db.queueDepth', --this.depth);
+    };
+    this.chain = next.then(settled, settled);
     return next;
+  }
+
+  /** How many statements wait in the FIFO right now. */
+  get queueDepth(): number {
+    return this.depth;
+  }
+
+  /** `SELECT 1` through the FIFO — the round trip in ms (waits behind everything queued). */
+  async ping(): Promise<number> {
+    const t0 = performance.now();
+    await this.query('SELECT 1');
+    return performance.now() - t0;
   }
 
   query<R extends object = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<R[]> {
@@ -102,13 +129,27 @@ export class Db implements Queryable {
 
   /**
    * Ordered fire-and-forget write — the sim loop's shape. The statement
-   * takes its place in the FIFO like any other; only the ERROR is
-   * swallowed (logged), so a failed save can never crash the tick.
+   * takes its place in the FIFO like any other; the ERROR is never
+   * thrown (so a failed save cannot crash the tick) but it is not lost
+   * either: it is logged with the statement's tag, counted in
+   * `db.writeFailures`, and the returned promise settles FALSE so an
+   * owner that keeps a dirty flag (savePlayer) can re-arm it and retry
+   * on the next cadence. Callers that have no retry simply ignore the
+   * promise.
    */
-  fire(sql: string, params: unknown[] = []): void {
-    void this.run(sql, params).catch((err: Error) => {
-      console.error(`[db] write failed: ${err.message} — ${sql.slice(0, 80)}`);
-    });
+  fire(sql: string, params: unknown[] = []): Promise<boolean> {
+    return this.run(sql, params).then(
+      () => true,
+      (err: Error) => {
+        this.noteFailure(statementTag(sql), err);
+        return false;
+      },
+    );
+  }
+
+  private noteFailure(tag: string, err: Error): void {
+    inc('db.writeFailures');
+    log('error', 'db', 'write failed', { stmt: tag, error: err.message, queue: this.depth });
   }
 
   /** One atomic unit: BEGIN..COMMIT occupies the FIFO end to end. */
@@ -126,11 +167,19 @@ export class Db implements Queryable {
     });
   }
 
-  /** Fire-and-forget transaction (mirrored friendship rows, save batches). */
-  fireTransaction(fn: (tx: Queryable) => Promise<void>): void {
-    void this.transaction(fn).catch((err: Error) => {
-      console.error(`[db] transaction failed: ${err.message}`);
-    });
+  /**
+   * Fire-and-forget transaction (mirrored friendship rows, save
+   * batches). Same failure law as fire(): logged under `tag`, counted,
+   * settles false.
+   */
+  fireTransaction(fn: (tx: Queryable) => Promise<void>, tag = 'transaction'): Promise<boolean> {
+    return this.transaction(fn).then(
+      () => true,
+      (err: Error) => {
+        this.noteFailure(tag, err);
+        return false;
+      },
+    );
   }
 
   /** Settles when everything enqueued so far has hit the database. */
@@ -1165,7 +1214,7 @@ async function createDatabase(cfg: pg.ClientConfig): Promise<void> {
   await admin.connect();
   try {
     await admin.query(`CREATE DATABASE "${dbName}"`);
-    console.log(`[db] created database '${dbName}'`);
+    log('info', 'db', `created database '${dbName}'`);
   } finally {
     await admin.end();
   }
@@ -1187,6 +1236,6 @@ async function migrate(db: Db): Promise<void> {
       ]);
     });
     version = next;
-    console.log(`[db] migrated to schema v${version}`);
+    log('info', 'db', `migrated to schema v${version}`);
   }
 }

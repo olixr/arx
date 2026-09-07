@@ -110,6 +110,21 @@ test('the rank-IV fang dare stays on its own plane', () => {
     payKeeperCast: () => {},
     npcAggro: (npcEid: number) => aggro.push(npcEid),
     broadcastFx: () => {},
+    // The dare reads bodies by chunk now; the slate has no index, so it
+    // answers the walk itself — plane-first, as the index is.
+    forEachNpcNear(
+      this: { npcs: Map<number, { def: typeof def }>; positions: Map<number, { plane: string; x: number; y: number; dir: number }> },
+      plane: string,
+      _x: number,
+      _y: number,
+      _r: number,
+      fn: (eid: number, npc: { def: typeof def }, pos: { x: number; y: number }) => boolean | void,
+    ): void {
+      for (const [eid, npc] of this.npcs) {
+        const pos = this.positions.get(eid);
+        if (pos && pos.plane === plane && fn(eid, npc, pos) === true) return;
+      }
+    },
   };
   const player = { session: null, pets: [{ state: 'heel', name: 'Fang' }], petEid: 5 };
   const ab = { id: 'fang_dare', shape: 'pet_command', command: 'fang', range: 7, radius: 3, color: 0 };

@@ -4,6 +4,7 @@
  * one-line delegators so every caller and test slate reads unchanged.
  */
 import { arenaPayFor, bankArenaXp, freshArenaBank, inPit, rollMatchPlan, scatterSpots, stockBark } from './arenaMind.js';
+import { log } from '../log.js';
 import { addItem, countItem, removeItem } from './inventory.js';
 import { secToTicks } from './tuning.js';
 import { ARENAS, ArenaMatchDef, ArenaVenueDef, NPCS, SURFACE_PLANE_ID, arenaMatchDef, arenaPurseTableFor, arenaTitleFor, arenaVenue, crownPoolFor, forgeCrown, matchesForVenue, scaleNpcDef, totalXpForArenaRank } from '@arx/content';
@@ -414,7 +415,8 @@ export function arenaWipe(srv: GameServer, match: ArenaMatchState): void {
           bank.losses++;
           srv.accounts.saveArena(cid, bank);
         })
-        .catch(() => undefined);
+        // The bank read failing means the offline loss went unpaid — say so.
+        .catch((err: unknown) => log('error', 'arena', 'offline bank loss unpaid', { cid, error: String(err) }));
     }
   }
   srv.arenaSend(match, { ...srv.arenaState(match, 'wipe'), remainMs: undefined }, { all: true });
@@ -469,12 +471,7 @@ export function arenaReset(srv: GameServer,
   }
   srv.arenaChestClaims.delete(match.venueId);
   for (const g of match.gateTiles) swept.add(`${g.x},${g.y}`);
-  for (let i = srv.respawnQueue.length - 1; i >= 0; i--) {
-    const entry = srv.respawnQueue[i]!;
-    if (entry.plane === plane && swept.has(`${entry.tx},${entry.ty}`)) {
-      srv.respawnQueue.splice(i, 1);
-    }
-  }
+  srv.respawnQueue.removeWhere((entry) => entry.plane === plane && swept.has(`${entry.tx},${entry.ty}`));
   srv.arenaSetGates(match, false);
   // THE WIPE KEEPS ITS BEAT (the audit's find: 'wipe' then 'off' in
   // the same tick meant the lost frame never rendered): on the wipe
@@ -689,7 +686,7 @@ export function arenaVictory(srv: GameServer, match: ArenaMatchState): void {
           bank.wins++;
           srv.accounts.saveArena(cid, bank);
         })
-        .catch(() => undefined);
+        .catch((err: unknown) => log('error', 'arena', 'offline bank win unpaid', { cid, error: String(err) }));
     }
   }
   // The purse rises on the sand, warded to the enrolled, rolled at

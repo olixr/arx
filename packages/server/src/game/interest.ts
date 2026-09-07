@@ -7,6 +7,7 @@ import { Session } from '../net/session.js';
 import { PlaneId, actorAppearance } from '@arx/content';
 import { ALERT_ICON_ENGAGED, ALERT_ICON_HUNTING, ALERT_ICON_LOOKING, ALERT_ICON_NONE, ALERT_ICON_PURSUIT, ALERT_ICON_WARY, CHUNK_SIZE, EntityId, EntityMeta, EquipSlot, INTEREST_CHUNK_RADIUS, POS_SCALE, PoseState, SnapshotEntity, chunkKey, encodeChunk, encodeSnapshot, isStowedSlot, levelForXp, petLevelFor } from '@arx/shared';
 import type { GameServer } from './gameServer.js';
+import { packChunk } from './indexes.js';
 
 /**
  * THE WORLDS APART: the entity-chunk index is keyed plane-first, so
@@ -19,12 +20,22 @@ export function chunkKeyOf(srv: GameServer, plane: PlaneId, x: number, y: number
   return `${plane}|${chunkKey(Math.floor(x / CHUNK_SIZE), Math.floor(y / CHUNK_SIZE))}`;
 }
 
+/**
+ * ONE MEMBERSHIP, TWO DOORS (Band B): the string-keyed `chunks` map
+ * stays the public index (the awake union, the wire, the instance
+ * teardown read it), and `chunkGrid` files the very same Set under
+ * the plane and a packed (cx, cy) integer — the door every per-tick
+ * neighbour walk reads, so no moving body mints a key string. THE
+ * UNMOVED BODY PAYS NOTHING: the packed cell and the plane answer
+ * "still here" before any string exists.
+ */
 export function updateChunkMembership(srv: GameServer, eid: EntityId): void {
   const pos = srv.positions.must(eid);
+  const cell = packChunk(Math.floor(pos.x / CHUNK_SIZE), Math.floor(pos.y / CHUNK_SIZE));
+  if (srv.entityCell.get(eid) === cell && srv.entityPlane.get(eid) === pos.plane) return;
   const key = srv.chunkKeyOf(pos.plane, pos.x, pos.y);
   const prev = srv.entityChunk.get(eid);
-  if (prev === key) return;
-  if (prev !== undefined) srv.chunks.get(prev)?.delete(eid);
+  if (prev !== undefined && prev !== key) srv.chunks.get(prev)?.delete(eid);
   let set = srv.chunks.get(key);
   if (!set) {
     set = new Set();
@@ -32,6 +43,14 @@ export function updateChunkMembership(srv: GameServer, eid: EntityId): void {
   }
   set.add(eid);
   srv.entityChunk.set(eid, key);
+  let grid = srv.chunkGrid.get(pos.plane);
+  if (!grid) {
+    grid = new Map();
+    srv.chunkGrid.set(pos.plane, grid);
+  }
+  if (grid.get(cell) !== set) grid.set(cell, set);
+  srv.entityCell.set(eid, cell);
+  srv.entityPlane.set(eid, pos.plane);
 }
 
 export function removeFromChunks(srv: GameServer, eid: EntityId): void {
@@ -40,7 +59,17 @@ export function removeFromChunks(srv: GameServer, eid: EntityId): void {
     srv.chunks.get(prev)?.delete(eid);
     srv.entityChunk.delete(eid);
   }
+  srv.entityCell.delete(eid);
+  srv.entityPlane.delete(eid);
 }
+
+/**
+ * Per-pass scratch (Band B): the visible union and the window keys
+ * are cleared and refilled, never re-allocated — updateInterest runs
+ * once per session per tick and never re-enters itself.
+ */
+const visibleScratch = new Set<EntityId>();
+const windowScratch = new Set<string>();
 
 /** Diff the session's known set against what's visible; send enter/leave. */
 export function updateInterest(srv: GameServer, session: Session): void {
@@ -50,51 +79,81 @@ export function updateInterest(srv: GameServer, session: Session): void {
 
   const ccx = Math.floor(pos.x / CHUNK_SIZE);
   const ccy = Math.floor(pos.y / CHUNK_SIZE);
+  const cell = packChunk(ccx, ccy);
 
-  // Discovery runs on the center-chunk EDGE — the new-chunk branch
-  // below fires for chunks 2 away (64+ tiles out), far too early to
-  // shout "discovered" about anything.
-  const center = chunkKey(ccx, ccy);
-  if (session.lastCenterChunk !== center) {
-    session.lastCenterChunk = center;
-    srv.checkDiscoveries(eid);
-  }
-
-  // The session streams the player's OWN plane and nothing else —
-  // knownChunks keys stay bare "cx,cy" (the plane is the session's),
-  // while the entity index reads through plane-first keys.
-  const world = srv.planes.require(pos.plane);
-  const visible = new Set<EntityId>();
-  const windowKeys = new Set<string>();
-  for (let cy = ccy - INTEREST_CHUNK_RADIUS; cy <= ccy + INTEREST_CHUNK_RADIUS; cy++) {
-    for (let cx = ccx - INTEREST_CHUNK_RADIUS; cx <= ccx + INTEREST_CHUNK_RADIUS; cx++) {
-      const key = chunkKey(cx, cy);
-      windowKeys.add(key);
-      if (!session.knownChunks.has(key)) {
-        session.knownChunks.add(key);
-        session.sendBinary(encodeChunk(world.ensure(cx, cy)));
-        // The words ride in with the board they belong to.
-        srv.sendChunkSigns(session, cx, cy);
+  // THE SETTLED WINDOW (Band B): while the center cell holds and
+  // knownChunks is exactly the size the last pass left it, no chunk
+  // can be new and none can fall out of the ring — the stream walk,
+  // the key mints and the eviction parse are all skipped. knownChunks
+  // only GROWS here; any outside clear or delete shrinks it and
+  // reopens the walk, and a crossing nulls lastCenterChunk.
+  const settled =
+    session.centerCell === cell &&
+    session.lastCenterChunk !== null &&
+    session.knownChunks.size === session.knownChunksSettled;
+  if (!settled) {
+    // Discovery runs on the center-chunk EDGE — the new-chunk branch
+    // below fires for chunks 2 away (64+ tiles out), far too early to
+    // shout "discovered" about anything.
+    if (session.centerCell !== cell || session.lastCenterChunk === null) {
+      const center = chunkKey(ccx, ccy);
+      session.centerCell = cell;
+      if (session.lastCenterChunk !== center) {
+        session.lastCenterChunk = center;
+        srv.checkDiscoveries(eid);
       }
-      const set = srv.chunks.get(`${pos.plane}|${key}`);
-      if (set) for (const e of set) visible.add(e);
     }
+
+    // The session streams the player's OWN plane and nothing else —
+    // knownChunks keys stay bare "cx,cy" (the plane is the session's),
+    // while the entity index reads through plane-first keys.
+    const world = srv.planes.require(pos.plane);
+    const windowKeys = windowScratch;
+    windowKeys.clear();
+    for (let cy = ccy - INTEREST_CHUNK_RADIUS; cy <= ccy + INTEREST_CHUNK_RADIUS; cy++) {
+      for (let cx = ccx - INTEREST_CHUNK_RADIUS; cx <= ccx + INTEREST_CHUNK_RADIUS; cx++) {
+        const key = chunkKey(cx, cy);
+        windowKeys.add(key);
+        if (!session.knownChunks.has(key)) {
+          session.knownChunks.add(key);
+          session.sendBinary(encodeChunk(world.ensure(cx, cy)));
+          // The words ride in with the board they belong to.
+          srv.sendChunkSigns(session, cx, cy);
+        }
+      }
+    }
+    // CHUNK HYSTERESIS: forget a streamed chunk only when it falls a
+    // full ring beyond the interest window. Evicting at the window's
+    // exact edge meant a player pacing across a chunk border
+    // re-downloaded the same five chunks (~25KB) on every crossing —
+    // the client caches them forever, so the resend was pure waste.
+    for (const key of session.knownChunks) {
+      if (windowKeys.has(key)) continue;
+      const comma = key.indexOf(',');
+      const cx = Number(key.slice(0, comma));
+      const cy = Number(key.slice(comma + 1));
+      if (
+        Math.abs(cx - ccx) > INTEREST_CHUNK_RADIUS + 1 ||
+        Math.abs(cy - ccy) > INTEREST_CHUNK_RADIUS + 1
+      ) {
+        session.knownChunks.delete(key);
+      }
+    }
+    session.knownChunksSettled = session.knownChunks.size;
   }
-  // CHUNK HYSTERESIS: forget a streamed chunk only when it falls a
-  // full ring beyond the interest window. Evicting at the window's
-  // exact edge meant a player pacing across a chunk border
-  // re-downloaded the same five chunks (~25KB) on every crossing —
-  // the client caches them forever, so the resend was pure waste.
-  for (const key of session.knownChunks) {
-    if (windowKeys.has(key)) continue;
-    const comma = key.indexOf(',');
-    const cx = Number(key.slice(0, comma));
-    const cy = Number(key.slice(comma + 1));
-    if (
-      Math.abs(cx - ccx) > INTEREST_CHUNK_RADIUS + 1 ||
-      Math.abs(cy - ccy) > INTEREST_CHUNK_RADIUS + 1
-    ) {
-      session.knownChunks.delete(key);
+
+  // The visible union, read off the plane's numeric grid in the same
+  // row-major window order the stream walk keeps (enter order is
+  // wire-visible), through the very Sets the string index holds.
+  const visible = visibleScratch;
+  visible.clear();
+  const grid = srv.chunkGrid.get(pos.plane);
+  if (grid) {
+    for (let cy = ccy - INTEREST_CHUNK_RADIUS; cy <= ccy + INTEREST_CHUNK_RADIUS; cy++) {
+      for (let cx = ccx - INTEREST_CHUNK_RADIUS; cx <= ccx + INTEREST_CHUNK_RADIUS; cx++) {
+        const set = grid.get(packChunk(cx, cy));
+        if (set) for (const e of set) visible.add(e);
+      }
     }
   }
 
@@ -105,14 +164,16 @@ export function updateInterest(srv: GameServer, session: Session): void {
     if (e !== eid && srv.players.get(e)?.hidden) visible.delete(e);
   }
 
-  const enters: EntityMeta[] = [];
+  // The enter/leave lists are minted only when they carry something —
+  // the wire owns them once sent, so they are never scratch.
+  let enters: EntityMeta[] | null = null;
   for (const e of visible) {
     if (!session.knownEntities.has(e)) {
       session.knownEntities.add(e);
-      enters.push(srv.buildMeta(e));
+      (enters ??= []).push(srv.buildMeta(e));
     }
   }
-  const leaves: EntityId[] = [];
+  let leaves: EntityId[] | null = null;
   for (const e of session.knownEntities) {
     if (visible.has(e)) continue;
     // ENTITY HYSTERESIS: the mirror of the chunk rule above. Leaving
@@ -139,11 +200,11 @@ export function updateInterest(srv: GameServer, session: Session): void {
     }
     session.knownEntities.delete(e);
     session.sentSnapSig.delete(e);
-    leaves.push(e);
+    (leaves ??= []).push(e);
   }
 
-  if (enters.length > 0) session.sendJson({ t: 'enter', entities: enters });
-  if (leaves.length > 0) session.sendJson({ t: 'leave', eids: leaves });
+  if (enters !== null) session.sendJson({ t: 'enter', entities: enters });
+  if (leaves !== null) session.sendJson({ t: 'leave', eids: leaves });
 }
 
 export function buildMeta(srv: GameServer, eid: EntityId): EntityMeta {
@@ -360,7 +421,12 @@ export function sendSnapshot(srv: GameServer, session: Session): void {
   // the current world.
   if (session.congested) return;
   const TAU = Math.PI * 2;
-  const entities: SnapshotEntity[] = [];
+  // THE ROW POOL (Band B): the encoder reads the rows synchronously
+  // and keeps nothing, so one pool of row objects and one view array
+  // serve every session every tick — the old path minted a row per
+  // known entity per session per tick.
+  const entities = snapView;
+  entities.length = 0;
   for (const eid of session.knownEntities) {
     const pos = srv.positions.get(eid);
     if (!pos) continue;
@@ -403,22 +469,28 @@ export function sendSnapshot(srv: GameServer, session: Session): void {
         session.sentSnapSig.set(eid, Int32Array.of(xq, yq, dirq, pose, hpPct, status, alert));
       }
     }
-    entities.push({
-      eid,
-      x: pos.x,
-      y: pos.y,
-      dir: pos.dir,
-      pose,
-      hpPct,
-      status,
-      alert,
-    });
+    const n = entities.length;
+    let row = snapPool[n];
+    if (row === undefined) {
+      row = { eid: 0, x: 0, y: 0, dir: 0, pose: PoseState.Idle, hpPct: 0, status: 0, alert: 0 };
+      snapPool[n] = row;
+    }
+    row.eid = eid;
+    row.x = pos.x;
+    row.y = pos.y;
+    row.dir = pos.dir;
+    row.pose = pose;
+    row.hpPct = hpPct;
+    row.status = status;
+    row.alert = alert;
+    entities.push(row);
   }
-  session.sendBinary(
-    encodeSnapshot({
-      serverTick: srv.tickCount,
-      lastInputSeq: player.lastProcessedSeq,
-      entities,
-    }),
-  );
+  snapFrame.serverTick = srv.tickCount;
+  snapFrame.lastInputSeq = player.lastProcessedSeq;
+  session.sendBinary(encodeSnapshot(snapFrame));
+  entities.length = 0;
 }
+
+const snapPool: SnapshotEntity[] = [];
+const snapView: SnapshotEntity[] = [];
+const snapFrame = { serverTick: 0, lastInputSeq: 0, entities: snapView };

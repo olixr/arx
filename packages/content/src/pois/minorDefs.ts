@@ -104,4 +104,11 @@ export function replaceMinorDefs(defs: Iterable<MinorDef>): void {
   const live = MINOR_DEFS as Map<string, MinorDef>;
   live.clear();
   for (const [k, v] of next) live.set(k, v);
+  minorDefsRev++;
+}
+
+let minorDefsRev = 0;
+/** THE REGISTRY'S REVISION (the poiDefsRevision twin): bumps once per replaceMinorDefs. */
+export function minorDefsRevision(): number {
+  return minorDefsRev;
 }

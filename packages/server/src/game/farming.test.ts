@@ -19,6 +19,7 @@ import { PoseState, Tile } from '@arx/shared';
 import * as farm from './farming.js';
 import type { CropState, GameServer, LivestockComp, LivestockRow, NpcComp, PlayerComp } from './gameServer.js';
 import { GameServer as GS } from './gameServer.js';
+import { LivestockLedger } from './indexes.js';
 import { addItem, countItem, emptyInventory } from './inventory.js';
 import { MILK_TICKS, MIN_GATHER_TICKS } from './tuning.js';
 
@@ -100,6 +101,8 @@ function farmSlate(opts: { characterId?: number; level?: number } = {}) {
   const pos = { plane: SURFACE_PLANE_ID, x: 10.5, y: 10.5, dir: 0 };
   const srv = {
     sessions: new Set([session, other]),
+    // THE PLANE ROLL: the slate's two sessions both stand on the surface.
+    sessionsOn: () => srv.sessions,
     players: new Map<number, unknown>([[1, player]]),
     positions: new Map<number, { plane: string; x: number; y: number; dir: number }>([[1, pos]]),
     poses: new Map<number, number>(),
@@ -108,7 +111,8 @@ function farmSlate(opts: { characterId?: number; level?: number } = {}) {
     farmTroughs: new Map(),
     farmJobs: new Map(),
     farmApiaries: new Map(),
-    livestock: new Map<number, LivestockComp>(),
+    // THE YARD KEEPS ITS ROLL: the real ledger, so the count doors read their indexes.
+    livestock: new LivestockLedger(),
     npcs: new Map<number, Record<string, unknown>>(),
     tickCount: 500,
     surface: {

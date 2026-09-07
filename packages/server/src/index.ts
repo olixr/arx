@@ -88,6 +88,9 @@ import {
   MUSEUM_PLANE,
 } from '@arx/content';
 import { config } from './config.js';
+import { healthReport } from './health.js';
+import { log } from './log.js';
+import { bootWarn, bootWarnings, inc, isLoopback, renderText, sealBoot } from './metrics.js';
 import { AccountStore } from './db/accounts.js';
 import { loadContentDocs, seedContentDocs } from './db/contentDocs.js';
 import { createMapsApi } from './dev/mapsApi.js';
@@ -115,6 +118,7 @@ import { Planes } from './world/planes.js';
 // hedgerows is the procedural frontier.
 // Dawnmead stays FIRST: the world spawn (rescue law, underground
 // surfacing) is the first zone declaring one — the Waking Ring.
+const bootStartedAt = Date.now();
 const builtinZones = new Map<string, ZoneDef>(
   [
     buildDawnmead(),
@@ -166,14 +170,14 @@ try {
       }
       const verdict = validateZone(zone);
       if (!verdict.ok) {
-        console.warn(`[server] zone '${json.id}' fails the builder replay (${verdict.error}) — loaded anyway (grandfathered; re-save in the Studio to heal)`);
+        bootWarn(`[server] zone '${json.id}' fails the builder replay (${verdict.error}) — loaded anyway (grandfathered; re-save in the Studio to heal)`);
       }
       const idx = zones.findIndex((z) => z.id === zone.id);
       if (idx === -1) zones.push(zone);
       else zones[idx] = zone;
       console.log(`[server] loaded zone '${json.id}' from data/maps/${file}`);
     } catch (err) {
-      console.warn(`[server] skipped bad map file ${file}: ${(err as Error).message}`);
+      bootWarn(`[server] skipped bad map file ${file}: ${(err as Error).message}`);
     }
   }
 } catch {
@@ -194,7 +198,7 @@ if (config.requireInvite) {
   const open = await accounts.countOpenInviteCodes();
   console.log(`[server] registration requires an invite code (${open} code(s) open)`);
   if (open === 0) {
-    console.warn('[server] WARNING: invite required but NO open codes exist — nobody can register. Set INVITE_CODE in .env.');
+    bootWarn('[server] WARNING: invite required but NO open codes exist — nobody can register. Set INVITE_CODE in .env.');
   }
 }
 
@@ -234,7 +238,7 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
   const lootDefs = lootDocs.map((d) => d.doc as LootTableDef);
   const lootProblems = lootTableErrors(lootDefs);
   if (lootProblems.length > 0) {
-    console.warn(`[content] DB loot tables invalid (${lootProblems[0]}) — authored set stands`);
+    bootWarn(`[content] DB loot tables invalid (${lootProblems[0]}) — authored set stands`);
   } else {
     replaceLootTables(lootDefs);
   }
@@ -245,7 +249,7 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
   for (const docRow of npcDocs) {
     const errors = validateNpcDef(docRow.doc, { lootTables: lootIds, npcIds });
     if (errors.length > 0) {
-      console.warn(`[content] DB npc '${docRow.id}' invalid (${errors[0]}) — authored def stands`);
+      bootWarn(`[content] DB npc '${docRow.id}' invalid (${errors[0]}) — authored def stands`);
       const authored = AUTHORED_NPCS.get(docRow.id);
       if (authored) goodNpcs.push(authored);
     } else {
@@ -272,7 +276,7 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
   for (const docRow of poiDocs) {
     const res = validatePoiDef(docRow.doc, { actorIds: liveActorIds, routineIds: liveRoutineIds });
     if (!res.ok) {
-      console.warn(`[content] DB poi '${docRow.id}' invalid (${res.errors[0]}) — authored def stands`);
+      bootWarn(`[content] DB poi '${docRow.id}' invalid (${res.errors[0]}) — authored def stands`);
       const authored = AUTHORED_POI_DEFS.get(docRow.id);
       if (authored) goodPois.push(authored);
     } else {
@@ -298,7 +302,7 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
   for (const docRow of minorDocs) {
     const res = validateMinorDef(docRow.doc);
     if (!res.ok) {
-      console.warn(
+      bootWarn(
         `[content] DB minor '${docRow.id}' invalid (${res.errors[0]}) — authored def stands`,
       );
       const authored = AUTHORED_MINOR_DEFS.get(docRow.id);
@@ -342,7 +346,7 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
   for (const docRow of strongholdDocs) {
     const res = validateStronghold(docRow.doc);
     if (!res.ok) {
-      console.warn(
+      bootWarn(
         `[content] DB stronghold '${docRow.id}' invalid (${res.errors[0]}) — authored layout stands`,
       );
       const authored = AUTHORED_STRONGHOLDS.get(docRow.id);
@@ -371,7 +375,7 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
   for (const docRow of nodeDocs) {
     const res = validateNodeDoc(docRow.doc, { lootTables: lootIds });
     if (!res.ok) {
-      console.warn(`[content] DB node '${docRow.id}' invalid (${res.errors[0]}) — authored def stands`);
+      bootWarn(`[content] DB node '${docRow.id}' invalid (${res.errors[0]}) — authored def stands`);
       const authored = AUTHORED_NODES.get(docRow.id);
       if (authored) goodNodes.push(authored);
     } else {
@@ -385,7 +389,7 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
         `(+${nodeSeed.added} ~${nodeSeed.updated} !${nodeSeed.kept} -${nodeSeed.removed} =${nodeSeed.unchanged})`,
     );
   } catch (err) {
-    console.warn(`[content] node roster refused (${(err as Error).message}) — authored roster stands`);
+    bootWarn(`[content] node roster refused (${(err as Error).message}) — authored roster stands`);
   }
 
   // THE GEOGRAPHY joins the law: one 'world' doc holding the whole
@@ -398,7 +402,7 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
   if (geoRow) {
     const res = validateGeographyDef(geoRow.doc);
     if (!res.ok) {
-      console.warn(`[content] DB geography invalid (${res.errors[0]}) — authored plan stands`);
+      bootWarn(`[content] DB geography invalid (${res.errors[0]}) — authored plan stands`);
     } else {
       replaceGeography(res.def);
       console.log(
@@ -425,7 +429,7 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
   if (factionsRow) {
     const res = validateFactions(factionsRow.doc);
     if (!res.ok) {
-      console.warn(`[content] DB factions doc invalid (${res.errors[0]}) — authored roster stands`);
+      bootWarn(`[content] DB factions doc invalid (${res.errors[0]}) — authored roster stands`);
     } else {
       replaceFactions(res.def);
       console.log(
@@ -447,7 +451,7 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
   if (stancesRow) {
     const res = validateStances(stancesRow.doc);
     if (!res.ok) {
-      console.warn(`[content] DB stances doc invalid (${res.errors[0]}) — authored stances stand`);
+      bootWarn(`[content] DB stances doc invalid (${res.errors[0]}) — authored stances stand`);
     } else {
       replaceStances(res.def);
       console.log(
@@ -469,7 +473,7 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
   if (arenaRow) {
     const res = validateArenas(arenaRow.doc, arenaValidateRefsNow());
     if (!res.ok) {
-      console.warn(`[content] DB arena doc invalid (${res.errors[0]}) — authored card stands`);
+      bootWarn(`[content] DB arena doc invalid (${res.errors[0]}) — authored card stands`);
     } else {
       replaceArenas(res.def);
       console.log(
@@ -488,7 +492,7 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
   if (voiceRow) {
     const res = validateVoice(voiceRow.doc);
     if (!res.ok) {
-      console.warn(`[content] DB voice dials invalid (${res.errors[0]}) — authored dials stand`);
+      bootWarn(`[content] DB voice dials invalid (${res.errors[0]}) — authored dials stand`);
     } else {
       replaceVoice(res.def);
       console.log(
@@ -508,7 +512,7 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
   if (growthRow) {
     const res = validateGrowth(growthRow.doc);
     if (!res.ok) {
-      console.warn(`[content] DB growth dials invalid (${res.errors[0]}) — authored dials stand`);
+      bootWarn(`[content] DB growth dials invalid (${res.errors[0]}) — authored dials stand`);
     } else {
       replaceGrowth(res.def);
       console.log(
@@ -525,7 +529,7 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
   if (frontierRow) {
     const res = validateFrontier(frontierRow.doc);
     if (!res.ok) {
-      console.warn(`[content] DB frontier dials invalid (${res.errors[0]}) — authored dials stand`);
+      bootWarn(`[content] DB frontier dials invalid (${res.errors[0]}) — authored dials stand`);
     } else {
       replaceFrontier(res.def);
       console.log(
@@ -634,13 +638,13 @@ for (const zone of zones) {
 // dev tools will edit. One validator guards both directions. (Loaded
 // in the content phase above so the POI validator saw the live ids;
 // registered here, at the same station as always.)
-for (const err of actorLoad.errors) console.warn(`[npc] invalid DB actor: ${err}`);
+for (const err of actorLoad.errors) bootWarn(`[npc] invalid DB actor: ${err}`);
 game.registerActors(actorLoad.actors);
 
 // Routines, DB-first under the same truth law — registered BEFORE the
 // placements that reference them, so a dangling routine id warns at
 // boot instead of failing silently at spawn time.
-for (const err of rtnLoad.errors) console.warn(`[npc] invalid DB routine: ${err}`);
+for (const err of rtnLoad.errors) bootWarn(`[npc] invalid DB routine: ${err}`);
 game.registerRoutines(rtnLoad.routines);
 game.routineSource = () => loadRoutines(db); // /routinereload's live wire
 console.log(
@@ -662,7 +666,7 @@ console.log(
 // the resolver answers every beat door from this live map, and the
 // Studio's clip routes re-register it on every upload/delete.
 const voiceClipLoad = await loadVoiceClips(db);
-for (const err of voiceClipLoad.errors) console.warn(`[content] invalid voice clip: ${err}`);
+for (const err of voiceClipLoad.errors) bootWarn(`[content] invalid voice clip: ${err}`);
 game.registerVoiceClips(voiceClipLoad.clips.map((c) => c.def));
 const voiceBankLoad = await loadVoiceBanks(db);
 game.registerVoiceBanks(voiceBankLoad);
@@ -676,7 +680,7 @@ if (voiceClipLoad.clips.length > 0 || voiceBankLoad.length > 0) {
 // (respecting every tool edit); the runtime reads only the DB.
 const dlgSeed = await seedDialogues(db, [...DIALOGUES.values()]);
 const dlgLoad = await loadDialogues(db, { actorIds: game.actorIds() });
-for (const err of dlgLoad.errors) console.warn(`[npc] invalid DB dialogue: ${err}`);
+for (const err of dlgLoad.errors) bootWarn(`[npc] invalid DB dialogue: ${err}`);
 game.registerDialogues(dlgLoad.dialogues);
 // The live wire for /dlgreload and the Content Studio — validated
 // against the LIVE actor roster, so studio-born actors may speak.
@@ -690,7 +694,7 @@ console.log(
 // the live actor roster the way dialogue bindings do.
 const questSeed = await seedQuests(db, [...QUESTS.values()]);
 const questLoad = await loadQuests(db, { actorIds: game.actorIds() });
-for (const err of questLoad.errors) console.warn(`[npc] invalid DB quest: ${err}`);
+for (const err of questLoad.errors) bootWarn(`[npc] invalid DB quest: ${err}`);
 game.registerQuests(questLoad.quests);
 game.questSource = () => loadQuests(db, { actorIds: game.actorIds() });
 console.log(
@@ -721,7 +725,7 @@ const loadTriggerDefs = async (): Promise<{ defs: TriggerDef[]; errors: string[]
   return { defs, errors };
 };
 const trgLoad = await loadTriggerDefs();
-for (const err of trgLoad.errors) console.warn(`[content] invalid DB trigger: ${err}`);
+for (const err of trgLoad.errors) bootWarn(`[content] invalid DB trigger: ${err}`);
 game.registerTriggers(trgLoad.defs);
 game.triggerSource = loadTriggerDefs;
 console.log(
@@ -736,17 +740,44 @@ game.start();
 // /dev/maps on the same port.
 const mapsApi = createMapsApi(game, builtinZones, db);
 const bootedAt = Date.now();
+// THE SERVER TELLS ITS OWN HEALTH: a readiness probe — 503 {ok:false,
+// why} when the tick is stale or throwing, or the FIFO cannot answer
+// SELECT 1 in time — no auth, no state. The deploy poll (arxctl.sh
+// wait_healthy) needs only a 200 with a body, so the richer shape is
+// upward compatible. ONE probe object for the process: concurrent
+// probes share one in-flight ping through it (health.ts).
+const healthProbe = {
+  lastTickAt: () => game.tickHealth().lastTickAt,
+  now: () => performance.now(),
+  tickAvgMs: () => game.tickHealth().avgMs,
+  tickMaxMs: () => game.tickHealth().maxMs,
+  tickThrowsLastMin: () => game.tickHealth().throwsLastMin,
+  dbPing: () => db.ping(),
+  dbQueueDepth: () => db.queueDepth,
+  players: () => game.playerCount(),
+  bootedAt,
+};
 const httpServer = createServer((req, res) => {
-  // Liveness probe for supervisor/monitoring — no auth, no state.
   if (req.url === '/healthz') {
-    res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(
-      JSON.stringify({
-        ok: true,
-        uptimeSec: Math.floor((Date.now() - bootedAt) / 1000),
-        players: game.playerCount(),
-      }),
-    );
+    void healthReport(healthProbe).then(({ status, body }) => {
+      res.writeHead(status, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(body));
+    });
+    return;
+  }
+  // THE LEDGER ON LOOPBACK: every counter and gauge as `name value`
+  // lines, for curl on the box only — a proxied request (nginx never
+  // forwards this path, but a forwarded header marks one anyway) or a
+  // non-loopback peer gets nothing.
+  if (req.url === '/metrics') {
+    if (!isLoopback(req.socket.remoteAddress) || req.headers['x-forwarded-for'] !== undefined) {
+      res.writeHead(404, { 'content-type': 'text/plain' });
+      res.end('arx server');
+      return;
+    }
+    game.sampleGauges();
+    res.writeHead(200, { 'content-type': 'text/plain; version=0.0.4' });
+    res.end(renderText());
     return;
   }
   // Voice clips (read-only, prod-safe, immutable-cached) — the one
@@ -798,7 +829,11 @@ wss.on('connection', (ws, req) => {
   new Session(ws, game, ip);
 });
 
-console.log(`[server] Arx server listening on ws://${config.host}:${config.port}/ws`);
+log('info', 'server', `Arx server listening on ws://${config.host}:${config.port}/ws`, {
+  bootWarnings: bootWarnings(),
+  bootMs: Date.now() - bootStartedAt,
+});
+sealBoot();
 if (config.fakeLagMs > 0) {
   console.log(`[server] fake lag enabled: ${config.fakeLagMs}ms ± ${config.fakeJitterMs}ms jitter`);
 }
@@ -807,7 +842,7 @@ let shuttingDown = false;
 function shutdown(code = 0): void {
   if (shuttingDown) return;
   shuttingDown = true;
-  console.log('[server] shutting down');
+  log('info', 'server', 'shutting down', { code, dbQueue: db.queueDepth });
   game.stop();
   wss.close();
   httpServer.close();
@@ -816,7 +851,7 @@ function shutdown(code = 0): void {
   // not turn a restart into a kill with the saves still queued.
   const DRAIN_DEADLINE_MS = 10_000;
   const deadline = setTimeout(() => {
-    console.error(`[server] drain deadline (${DRAIN_DEADLINE_MS}ms) hit — exiting with saves still queued`);
+    log('error', 'server', 'drain deadline hit — exiting with saves still queued', { deadlineMs: DRAIN_DEADLINE_MS, dbQueue: db.queueDepth });
     process.exit(code || 1);
   }, DRAIN_DEADLINE_MS);
   deadline.unref();
@@ -826,16 +861,26 @@ function shutdown(code = 0): void {
 }
 process.on('SIGINT', () => shutdown(0));
 process.on('SIGTERM', () => shutdown(0));
+// THE STRICT RIG: a proving boot (BOOT_STRICT=1) treats any counted
+// soft-fail as a failed boot — the warning was logged above; the exit
+// code makes the rig notice. Production leaves it unset and stays
+// tolerant, the way a live world must.
+if (process.env.BOOT_STRICT === '1' && bootWarnings() > 0) {
+  log('error', 'server', 'BOOT_STRICT: boot warnings counted — refusing to serve', { bootWarnings: bootWarnings() });
+  shutdown(1);
+}
 // THE CRASH NET: anything that escapes every handler used to end the
 // process with no final save — every player rolled back 30 s and the
 // supervisor restarted a world that never said why. Log it, save
 // through the normal shutdown, and exit non-zero so the restart is
 // visible in the supervisor log.
 process.on('uncaughtException', (err) => {
-  console.error('[server] uncaught exception:', err);
+  inc('crash.uncaught');
+  log('error', 'server', 'uncaught exception', { error: err instanceof Error ? (err.stack ?? err.message) : String(err) });
   shutdown(1);
 });
 process.on('unhandledRejection', (reason) => {
-  console.error('[server] unhandled rejection:', reason);
+  inc('crash.unhandled');
+  log('error', 'server', 'unhandled rejection', { error: reason instanceof Error ? (reason.stack ?? reason.message) : String(reason) });
   shutdown(1);
 });

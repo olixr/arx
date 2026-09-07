@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { GameServer } from './gameServer.js';
+import { packChunk } from './indexes.js';
 import { addItem, countItem, emptyInventory } from './inventory.js';
 import type { InvSlot } from '@arx/shared';
 
@@ -64,6 +65,7 @@ function sweepSlate(
     // The vacuum reads the chunk index now (THE INDEX SERVES THE PILE).
     forEachDropNear: proto.forEachDropNear,
     chunks: new Map([['surface|0,0', chunkSet]]),
+    chunkGrid: new Map([['surface', new Map([[packChunk(0, 0), chunkSet]])]]),
     graves: new Map(),
     deathMarks: new Map(),
     positions: {
